@@ -590,6 +590,8 @@ val tcc_token = tc_injX o TC_TOKEN
 (** the following function contains the procedure on how to
  *  flatten the arguments and results of an arbitrary FLINT function
  *) 
+val maxFlat = 5 (* most number of args to flatten *)
+
 fun isKnown tc = 
   (case tc_outX(tc_whnm tc)
     of (TC_PRIM _ | TC_ARROW _ | TC_BOX _ | TC_ABS _ | TC_PARROW _) => true 
@@ -608,7 +610,7 @@ and tc_autoflat tc =
          | TC_TUPLE (_, []) =>  (* unit is not flattened to avoid coercions *)
              (true, [ntc], false)
          | TC_TUPLE (_, ts) => 
-             if length ts < 10 then (true, ts, true)
+             if length ts < maxFlat then (true, ts, true)
              else (true, [ntc], false)  (* ZHONG added the magic number 10 *)
          | _ => if isKnown ntc then (true, [ntc], false)
                 else (false, [ntc], false))
@@ -616,7 +618,7 @@ and tc_autoflat tc =
 
 and tc_autotuple [x] = x 
   | tc_autotuple xs = 
-       if length xs < 10 then tcc_tup (RF_TMP, xs)
+       if length xs < maxFlat then tcc_tup (RF_TMP, xs)
        else bug "fatal error with tc_autotuple"
 
 and tcs_autoflat (flag, ts) = 
