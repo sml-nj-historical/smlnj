@@ -335,7 +335,7 @@ MiscUtil/profile/btimp.sml
 
 MiscUtil/util/errormsg.sig
 MiscUtil/util/errormsg.sml
-MiscUtil/util/feedback-new.sml
+MiscUtil/util/feedback.sml
 MiscUtil/util/intstrmap.sig
 MiscUtil/util/intstrmap.sml
 MiscUtil/util/literal-to-num.sml
