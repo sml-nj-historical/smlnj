@@ -34,5 +34,6 @@ structure Servers : SERVERS = struct
 			     work = f,
 			     cleanup = reset }
 	fun allIdle () = true
+	fun noServers () = true
     end
 end

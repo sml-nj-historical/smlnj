@@ -47,6 +47,7 @@ in
 
 	val newTraversal : notifier * bfcReceiver * GG.group ->
 	    { group: GP.info -> result option,
+	      allgroups: GP.info -> bool,
 	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
@@ -237,9 +238,10 @@ in
 						(#inlinfo, "inlinable")]))
 		end
 
-		fun ploaded _ = Say.vsay ["[loading ", descr, "]\n"]
-		fun preceived s =
-		    (Say.vsay ["[receiving ", descr, "]\n"]; pstats s)
+		fun loaded _ = Say.vsay ["[loading ", descr, "]\n"]
+		fun received s =
+		    (Say.vsay ["[receiving ", descr, "]\n"];
+		     pstats s)
 
 		fun fail () =
 		    if #keep_going (#param gp) then NONE else raise Abort
@@ -372,8 +374,8 @@ in
 					    cleanup = fn _ => () })
 				    handle _ => NONE
 				end (* load *)
-				fun tryload (report, otherwise) =
-				    case load () of
+				fun tryload (sync, report, otherwise) =
+				    case (sync (); load ()) of
 					NONE => otherwise ()
 				      | SOME (bfc, ts, stats) => let
 					    val memo = bfc2memo (bfc, ts)
@@ -386,6 +388,7 @@ in
 						 SOME memo)
 					    else otherwise ()
 					end
+				fun sy0 () = ()
 				fun bottleneck () =
 				    (* Are we the only runable task? *)
 				    Servers.allIdle () andalso
@@ -398,10 +401,20 @@ in
 				    compile_there p
 				fun compile () = let
 				    val sp = SmlInfo.sourcepath i
+				    fun sy () = let
+					fun ready () =
+					    OS.FileSys.fileSize binname > 0
+					    handle _ => false
+				    in
+					(***** busy wait for file to appear;
+					 * this is obviously very bad! *)
+					while not (ready ()) do ()
+				    end
 				in
+				    OS.FileSys.remove binname handle _ => ();
 				    youngest := TStamp.NOTSTAMP;
 				    if compile_there' sp then
-					tryload (preceived, compile_again)
+					tryload (sy, received, compile_again)
 				    else compile_again ()
 				end
 			    in
@@ -412,7 +425,7 @@ in
 				 * If the second load also goes wrong, we
 				 * compile locally to gather error messages
 				 * and make everything look "normal". *)
-				tryload (ploaded, compile)
+				tryload (sy0, loaded, compile)
 			    end (* fromfile *)
 			    fun notglobal () =
 				case fromfile () of
@@ -457,7 +470,9 @@ in
 	end
 
 	fun newTraversal (_, _, GG.ERRORGROUP) =
-	    { group = fn _ => NONE, exports = SymbolMap.empty }
+	    { group = fn _ => NONE,
+	      allgroups = fn _ => false,
+	      exports = SymbolMap.empty }
 	  | newTraversal (notify, storeBFC, g as GG.GROUP grec) = let
 		val { exports, ... } = grec
 		val um = Memoize.memoize (fn () => Indegree.indegrees g)
@@ -468,22 +483,44 @@ in
 			(fn () =>
 			    #impexp
 				(mkTraversal (notify, storeBFC, getUrgency)))
-		fun group gp = let
+
+		fun many (gp, iel) = let
 		    val eo_cl =
 			map (fn x => Concur.fork (fn () => impexpth () gp x))
-		            (SymbolMap.listItems exports)
+		            iel
 		    val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
 		in
 		    case eo of
 			NONE => (Servers.reset false; NONE)
 		      | SOME e => SOME (#envs e ())
 		end handle Abort => (Servers.reset false; NONE)
+
+		fun group gp = many (gp, SymbolMap.listItems exports)
+
+		fun allgroups gp = let
+		    fun addgroup ((_, th, _), gl) = th () :: gl
+		    fun collect ([], _, l) = l
+		      | collect (GG.ERRORGROUP :: gl, done, l) =
+			collect (gl, done, l)
+		      | collect (GG.GROUP g :: gl, done, l) =
+			if SrcPathSet.member (done, #grouppath g) then
+			    collect (gl, done, l)
+			else
+			    collect (foldl addgroup gl (#sublibs g),
+				     SrcPathSet.add (done, #grouppath g),
+				     SymbolMap.foldl (op ::) l (#exports g))
+		    val l = collect ([g], SrcPathSet.empty, [])
+		in
+		    isSome (many (gp, l))
+		end
+
 		fun mkExport ie gp =
 		    case impexpth () gp ie handle Abort => NONE of
 			NONE => (Servers.reset false; NONE)
 		      | SOME e => SOME (#envs e ())
 	    in
 		{ group = group,
+		  allgroups = allgroups,
 		  exports = SymbolMap.map mkExport exports }
 	    end
 

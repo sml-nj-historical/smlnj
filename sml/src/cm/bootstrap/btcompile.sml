@@ -52,12 +52,11 @@ struct
 		     structure StabModmap = StabModmap
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
-			 val _ = init_servers g
+			 fun dummy _ _ = ()
 			 val { group, ... } =
-			     Compile.newTraversal (fn _ => fn _ => (),
-						   store, g)
+			     Compile.newTraversal (dummy, store, g)
 		     in
-			 case Servers.withServers (fn () => group gp) of
+			 case group gp of
 			     NONE => NONE
 			   | SOME _ => SOME get
 		     end
@@ -114,7 +113,7 @@ struct
 	end
     end
 
-    fun mk_compile { deliver, root, dirbase = dbopt, paranoid } = let
+    fun mk_compile { master, root, dirbase = dbopt } = let
 
 	val dirbase = getOpt (dbopt, BtNames.dirbaseDefault)
 	val _ = checkDirbase dirbase
@@ -250,7 +249,7 @@ struct
 		val stabarg = { group = g0, anyerrors = ref false,
 				rebindings = [] }
 	    in
-		if deliver then
+		if master then
 		    case Stabilize.stabilize ginfo stabarg of
 			SOME g => g
 		      | NONE => raise Fail "CMB: cannot stabilize init group"
@@ -267,7 +266,7 @@ struct
 	    (* Ok, now, based on "paranoid" and stable verification,
 	     * call the appropriate function(s) to get the init group. *)
 	    val init_group =
-		if paranoid then let
+		if master then let
 		    val export_nodes = perv_n :: others
 		    val ver_arg = (initgspec, export_nodes, [],
 				   SrcPathSet.empty, NONE)
@@ -277,104 +276,124 @@ struct
 			tryLoadInitGroup ()
 		    else dontLoadInitGroup ()
 		end
-		else tryLoadInitGroup ()
-
-
-	    val stab = if deliver then SOME true else NONE
+		else valOf (loadInitGroup ()) (* failure caught at the end *)
 
 	    val gr = GroupReg.new ()
 	    val _ = GroupReg.register gr (initgspec, src)
 
-	    val parse_arg =
+	    fun parse_arg (s, p) =
 		{ load_plugin = load_plugin,
 		  gr = gr,
 		  param = param,
-		  stabflag = stab,
+		  stabflag = s,
 		  group = maingspec,
 		  init_group = init_group,
-		  paranoid = paranoid }
+		  paranoid = p }
+
+	    val lonely_master = master andalso Servers.noServers ()
+
+	    val initial_parse_arg =
+		if lonely_master then parse_arg (SOME true, true)
+		else parse_arg (NONE, master)
 	in
-	    Servers.dirbase dirbase;
-	    Servers.cmb_new { archos = archos };
-	    case Parse.parse parse_arg of
+	    case Parse.parse initial_parse_arg of
 		NONE => NONE
 	      | SOME (g, gp) => let
-		    fun thunk () = let
-			val _ = init_servers g
-			fun store _ = ()
-			val { group = recomp, ... } =
-			    Compile.newTraversal (fn _ => fn _ => (), store, g)
-			val res =
-			    Servers.withServers (fn () => recomp gp)
-		    in
-			if isSome res then let
-			    val { l = bootitems, ss } = mkBootList g
-			    val stablelibs = Reachable.stableLibsOf g
-			    fun inSet bi = StableSet.member (ss, bi)
-			    val frontiers =
-				SrcPathMap.map (Reachable.frontier inSet)
-				               stablelibs
-			    fun writeBootList s = let
-				fun wr str = TextIO.output (s, str ^ "\n")
-				val numitems = length bootitems
-				fun biggerlen (s, n) = Int.max (size s, n)
-				val maxlen = foldl biggerlen 0 bootitems
-			    in
-				wr (concat ["%", Int.toString numitems,
-					    " ", Int.toString maxlen]);
-				app wr bootitems
-			    end
-			    fun writePid s i = let
-				val sn = BinInfo.stablename i
-				val os = BinInfo.offset i
-				val descr = BinInfo.describe i
-				val bfc = BFC.getStable
-				    { stable = sn, offset = os, descr = descr }
-			    in
-				case BF.exportPidOf bfc of
-				    NONE => ()
-				  | SOME pid =>
-				    app (fn str => TextIO.output (s, str))
-					[" ", Int.toString os,
-					 ":", PS.toHex pid]
-			    end
-			    fun writePidLine s (p, set) =
-				if StableSet.isEmpty set then ()
-				else (TextIO.output (s, SrcPath.encode p);
-				      StableSet.app (writePid s) set;
-				      TextIO.output (s, "\n"))
-			    fun writePidMap s =
-				SrcPathMap.appi (writePidLine s) frontiers
+		    fun finish (g, gp) = let
+			val { l = bootitems, ss } = mkBootList g
+			val stablelibs = Reachable.stableLibsOf g
+			fun inSet bi = StableSet.member (ss, bi)
+			val frontiers =
+			    SrcPathMap.map (Reachable.frontier inSet)
+					   stablelibs
+			fun writeBootList s = let
+			    fun wr str = TextIO.output (s, str ^ "\n")
+			    val numitems = length bootitems
+			    fun biggerlen (s, n) = Int.max (size s, n)
+			    val maxlen = foldl biggerlen 0 bootitems
 			in
-			    if deliver then
-				(SafeIO.perform
-				 { openIt = fn () =>
-				       AutoDir.openTextOut listfile,
-				   closeIt = TextIO.closeOut,
-				   work = writeBootList,
-				   cleanup = fn _ =>
-				       OS.FileSys.remove listfile
-				       handle _ => () };
-				 SafeIO.perform
-				 { openIt = fn () =>
-				       AutoDir.openTextOut pidmapfile,
-				   closeIt = TextIO.closeOut,
-				   work = writePidMap,
-				   cleanup = fn _ =>
-				       OS.FileSys.remove pidmapfile
-				       handle _ => () };
-				 Say.say
-				      ["New boot directory has been built.\n"])
-			    else ();
-			    true
+			    wr (concat ["%", Int.toString numitems,
+					" ", Int.toString maxlen]);
+			    app wr bootitems
 			end
+			fun writePid s i = let
+			    val sn = BinInfo.stablename i
+			    val os = BinInfo.offset i
+			    val descr = BinInfo.describe i
+			    val bfc = BFC.getStable { stable = sn, offset = os,
+						      descr = descr }
+			in
+			    case BF.exportPidOf bfc of
+				NONE => ()
+			      | SOME pid =>
+				app (fn str => TextIO.output (s, str))
+				    [" ", Int.toString os, ":", PS.toHex pid]
+			end
+			fun writePidLine s (p, set) =
+			    if StableSet.isEmpty set then ()
+			    else (TextIO.output (s, SrcPath.encode p);
+				  StableSet.app (writePid s) set;
+				  TextIO.output (s, "\n"))
+			fun writePidMap s =
+			    SrcPathMap.appi (writePidLine s) frontiers
+		    in
+			SafeIO.perform
+			    { openIt = fn () => AutoDir.openTextOut listfile,
+			      closeIt = TextIO.closeOut,
+			      work = writeBootList,
+			      cleanup = fn _ => (OS.FileSys.remove listfile
+						 handle _ => ()) };
+			SafeIO.perform
+			    { openIt = fn () => AutoDir.openTextOut pidmapfile,
+			      closeIt = TextIO.closeOut,
+			      work = writePidMap,
+			      cleanup = fn _ => (OS.FileSys.remove pidmapfile
+						 handle _ => ()) };
+			Say.say ["New boot directory has been built.\n"];
+			true
+		    end
+
+		    (* the following thunk represents phase 2 (stabilization)
+		     * of the master's execution path; it is never
+		     * executed in slave mode *)
+		    fun stabilize () =
+			(* now we re-parse everything with stabilization
+			 * turnedon (and servers turned off *)
+			case Parse.parse (parse_arg (SOME true, false)) of
+			    NONE => false
+			  | SOME (g, gp) => finish (g, gp)
+
+		    (* Don't do another traversal if this is a lonely master *)
+		    fun just_stabilize () = finish (g, gp)
+
+		    (* the following thunk is executed in "master" mode only;
+		     * slaves just throw it away *)
+		    fun compile_and_stabilize () = let
+			(* this ought to be consolidated (from 3 make 1)... *)
+			val _ = Servers.dirbase dirbase
+			val _ = Servers.cmb_new { archos = archos }
+			val _ = Servers.cmb { archos = archos,
+					      root = SrcPath.encode maingspec }
+
+			(* make compilation traversal and execute it *)
+			val { allgroups, ... } =
+			    Compile.newTraversal (fn _ => fn _ => (),
+						  fn _ => (),
+						  g)
+		    in
+			if Servers.withServers (fn () => allgroups gp) then
+			    (Compile.reset ();
+			     stabilize ())
 			else false
 		    end
 		in
-		    SOME ((g, gp, penv), thunk)
+		    SOME ((g, gp, penv),
+			  if lonely_master then just_stabilize
+			  else compile_and_stabilize)
 		end
 	end handle Option => (Compile.reset (); NONE)
-	    	   (* to catch valOf failures in "rt" *)
+	    	   (* to catch valOf failures in "rt" or slave's failure
+		    * to load init group *)
     in
 	case BuildInitDG.build ginfo initgspec of
 	    SOME x => mk_main_compile x
@@ -383,16 +402,15 @@ struct
 
     fun compile dbopt =
 	(StabModmap.reset ();
-	 case mk_compile { deliver = true, root = NONE,
-			   dirbase = dbopt, paranoid = true } of
+	 case mk_compile { master = true, root = NONE, dirbase = dbopt } of
 	     NONE => false
-	   | SOME (_, thunk) => thunk ())
+	   | SOME (_, cas) => cas ())
 
     local
 	fun slave NONE = (StabModmap.reset (); NONE)
 	  | slave (SOME (dirbase, root)) =
-	    case mk_compile { deliver = false, root = SOME root,
-			      dirbase = SOME dirbase, paranoid = false } of
+	    case mk_compile { master = false, root = SOME root,
+			      dirbase = SOME dirbase } of
 		NONE => NONE
 	      | SOME ((g, gp, penv), _) => let
 		    val trav = Compile.newSbnodeTraversal ()

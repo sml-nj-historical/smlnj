@@ -14,6 +14,27 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/03/19 17:53:00 EST
+Tag: blume-20010319-parallel
+Description:
+
+Parallel make (using compile servers) now works again.
+
+To this end, CM.stabilize and CMB.make have been modified to work in
+two passes when compile servers are attached:
+   1. Compile everything, do not perform stabilization; this pass
+      uses compile servers
+   2. Stabilize everything; this pass does not use compile servers
+If there are no compile servers, the two passes are combined into one
+(as before).  Splitting the passes increases the inherent parallelism
+in the dependency graph because the entire graph including all
+libraries is available at the same time.  This, in turn, improves
+server utilization.  The downside is that the master process will
+have to do some extra work after compilation is done (because for
+technical reasons it must re-read all the binfiles during stabilization).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/03/16 12:22:00 EST
 Tag: blume-20010316-bootfiles
 Description:

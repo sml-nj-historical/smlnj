@@ -46,5 +46,9 @@ signature SERVERS = sig
     (* schedule a compilation *)
     val compile : string -> bool
 
+    (* run some thunk with compile parallelism enabled *)
     val withServers : (unit -> 'a) -> 'a
+
+    (* check whether there are any servers attached *)
+    val noServers : unit -> bool
 end

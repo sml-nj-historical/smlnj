@@ -55,12 +55,14 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
     (* When an entry A vanishes from the stable cache (this only happens in
      * paranoid mode), then all the other ones that refer to A must
-     * vasish, too.  They might still be valid themselves, but if they
+     * vanish, too.  They might still be valid themselves, but if they
      * had been unpickled before A became invalid they will point to
      * invalid data.  By removing them from the cache we force them to
      * be re-read and re-unpickled.  This restores sanity. *)
-    fun delCachedStable (p, GG.GROUP { grouppath = igp, ... }) =
+    fun delCachedStable (ginfo, p, vers, GG.GROUP { grouppath = igp, ... }) =
 	let val changed = ref true
+	    val policy = #fnpolicy (#param (ginfo: GeneralParams.info))
+	    val sname = FilenamePolicy.mkStableName policy (p, vers)
 	    fun canStay GG.ERRORGROUP = true (* doesn't matter *)
 	      | canStay (GG.GROUP { sublibs, ... }) = let
 		    fun goodSublib (p, gth, _) =
@@ -76,12 +78,16 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    cs
 		end
 	in
+	    (* logically remove the stable library from the registry *)
 	    (sgc := #1 (SrcPathMap.remove (!sgc, p)))
 	    handle LibBase.NotFound => ();
+	    (* physically remove the stablefile... *)
+	    OS.FileSys.remove sname handle _ => ();
+	    (* restore sanity in the registry *)
 	    while !changed do
                (changed := false; sgc := SrcPathMap.filter canStay (!sgc))
 	end
-      | delCachedStable (_, GG.ERRORGROUP) = ()
+      | delCachedStable (_, _, _, GG.ERRORGROUP) = ()
 
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
@@ -276,7 +282,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 					reg (case try_s () of
 						 NONE => SOME g
 					       | SOME g' => SOME g')
-				    else (delCachedStable (group, init_group);
+				    else (delCachedStable (ginfo, group, vers,
+							   init_group);
 					  proc_n (SOME g))
 			    in
 				case gopt' of
