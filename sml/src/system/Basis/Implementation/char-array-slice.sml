@@ -4,14 +4,14 @@
  *
  *)
 
-structure Word8ArraySlice: MONO_ARRAY_SLICE =
+structure CharArraySlice: MONO_ARRAY_SLICE =
 struct
 
-  structure A = InlineT.Word8Array
-  type elem = Word8.word
-  type array = Word8Array.array
-  type vector = Word8Vector.vector
-  type vector_slice = Word8VectorSlice.slice
+  structure A = InlineT.CharArray
+  type elem = Char.char
+  type array = CharArray.array
+  type vector = CharVector.vector
+  type vector_slice = CharVectorSlice.slice
   datatype slice = SL of {base: array, start: int, stop: int}
 
   val (op <)  = InlineT.DfltInt.<
@@ -120,17 +120,18 @@ struct
 
 (* val vector : slice -> vector *)
   fun vector (SL{base,start,stop}) =
-      Word8Vector.tabulate(stop-start, fn n => sub'(base,n+start))
+      CharVector.tabulate(stop-start, fn n => sub'(base,n+start))
 
 (* utility functions *)
   fun checkLen n =
-      if InlineT.DfltInt.ltu(Word8Vector.maxLen, n)
+      if InlineT.DfltInt.ltu(CharVector.maxLen, n)
 	  then raise General.Size
       else ()
 
   fun rev ([], l) = l
     | rev (x::r, l) = rev (r, x::l)
 
+(*
 (* val concat : slice list -> vector *)
 (* DBM: this is inefficient since it unnecessarily creates an intermediate
  * list containing all elements. Should calculate total length and preallocate
@@ -140,17 +141,18 @@ struct
 	  (* get the total length and flatten the list *)
 	  let val len = List.foldl (fn (vs,i) => (length vs)+i) 0 vl
               val _ = checkLen len
-              val v = InlineT.Word8Vector.create len
+              val v = InlineT.CharVector.create len
 	      fun cpslice (SL{base,start,stop},j) = 
 		  let fun cp (i,j) =
 		          if i = stop then j
-		          else (InlineT.Word8Vector.update(v,j,sub'(base,i));
+		          else (InlineT.CharVector.update(v,j,sub'(base,i));
 				cp (i+1,j+1))
                    in cp (start,stop)
 		  end
            in List.foldl cpslice 0 vl;
 	      v
 	  end
+*)
 
 (* val isEmpty : slice -> bool *)
   fun isEmpty (SL{base,start,stop}) = stop<=start
@@ -317,13 +319,13 @@ struct
 
   fun copyVec {src,dst,di} =
       if di < 0 orelse 
-	 di + Word8VectorSlice.length src > A.length dst 
+	 di + CharVectorSlice.length src > A.length dst 
       then raise Core.Subscript
-      else Word8VectorSlice.appi(fn (i,x) => update'(dst,di+i,x)) src
+      else CharVectorSlice.appi(fn (i,x) => update'(dst,di+i,x)) src
 
   fun modifyi f (sl as SL{base,start,stop}) =
       appi (fn (i, x) => update' (base, start+i, f (i, x))) sl
 
   fun modify f (sl as SL{base,start,stop}) =
       appi (fn (i, x) => update' (base, start+i, f x)) sl
-end (* structure Word8ArraySlice *)
+end (* structure CharArraySlice *)

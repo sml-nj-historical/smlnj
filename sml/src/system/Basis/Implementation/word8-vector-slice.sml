@@ -145,7 +145,11 @@ struct
        in app start
       end
 
-(* val mapi : (int * elem -> 'b) -> slice -> vector *)
+(* val mapi : (int * elem -> elem) -> slice -> vector *)
+  fun mapi f (SL{base,start,stop}) =
+      Word8Vector.tabulate (stop - start, fn i => f (i, sub' (base, start + i)))
+
+(*
   fun mapi f (SL{base,start,stop}) =
       let val len = stop - start
 	  fun mapf (i, l) = if (i < stop)
@@ -155,8 +159,12 @@ struct
 	      then mapf (start, [])
 	  else Assembly.vector0
       end
+*)
 
-(* val map  : (elem -> 'b) -> slice -> vector *)
+(* val map  : (elem -> elem) -> slice -> vector *)
+  fun map f (SL{base,start,stop}) =
+      Word8Vector.tabulate (stop - start, fn i => f (sub' (base, start + i)))
+(*
   fun map f (SL{base,start,stop}) =
       let val len = stop - start
 	  fun mapf (i, l) = if (i < stop)
@@ -167,6 +175,7 @@ struct
 	      then mapf (start, [])
 	      else Assembly.vector0
 	  end
+*)
 
 (* val foldli : (int * elem * 'b -> 'b) -> 'b -> slice -> 'b *)
   fun foldli f init (SL{base,start,stop}) = 

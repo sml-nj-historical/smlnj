@@ -8,16 +8,22 @@ functor PrimIO (
 
     structure Vector : MONO_VECTOR
     structure Array : MONO_ARRAY
-      sharing type Vector.vector = Array.vector
-      sharing type Vector.elem = Array.elem
+    structure ArraySlice : MONO_ARRAY_SLICE
+    structure VectorSlice : MONO_VECTOR_SLICE
+      sharing type Vector.vector = Array.vector = ArraySlice.vector = VectorSlice.vector
+      sharing type Vector.elem = Array.elem = ArraySlice.elem = VectorSlice.elem
+      sharing type Array.array = ArraySlice.array
+      sharing type ArraySlice.vector_slice = VectorSlice.slice
     val someElem : Vector.elem
+
     eqtype pos
     val compare : (pos * pos) -> order
-
   ) : PRIM_IO = struct
 
     structure A = Array
     structure V = Vector
+    structure AS = ArraySlice
+    structure VS = VectorSlice
 
     type elem = A.elem
     type vector = V.vector
@@ -71,13 +77,13 @@ functor PrimIO (
 		val a = A.array(n, someElem)
 		val n = reada{buf=a, i=0, sz=NONE}
 		in
-		  A.extract(a, 0, SOME n)
+	            AS.vector (AS.slice (a, 0, SOME n))
 		end
 	  fun readaToReadvNB readaNB n = let
 		val a = A.array(n, someElem)
 		in
 		  case readaNB{buf=a, i=0, sz=NONE}
-		   of SOME n' => SOME(A.extract(a, 0, SOME n'))
+		   of SOME n' => SOME(AS.vector (AS.slice (a, 0, SOME n')))
 		    | NONE => NONE  
 		  (* end case *)
 		end
@@ -86,7 +92,7 @@ functor PrimIO (
 		val v = readv nelems
 		val len = V.length v
 		in
-		  A.copyVec {dst=buf, di=i, src=v, si=0, len=NONE};
+		  A.copyVec {dst=buf, di=i, src=v};
 		  len
 		end
 	  fun readvToReadaNB readvNB {buf, i, sz} = let
@@ -96,7 +102,7 @@ functor PrimIO (
 		   of SOME v => let
 			val len = V.length v
 			in
-			  A.copyVec {dst=buf, di=i, src=v, si=0, len=NONE};
+			  A.copyVec {dst=buf, di=i, src=v};
 			  SOME len
 			end
 		    | NONE => NONE
@@ -152,7 +158,7 @@ functor PrimIO (
 
     fun augmentWriter (WR wr) = let
 	  fun writevToWritea writev {buf, i, sz} = let
-		val v = A.extract(buf, i, sz)
+		val v = AS.vector (AS.slice(buf, i, sz))
 		in
 		  writev{buf=v, i=0, sz=NONE}
 		end
@@ -164,7 +170,7 @@ functor PrimIO (
 		    | _ => let
 			val a = A.array(n, V.sub(buf, i))
 			in
-			  A.copyVec {dst=a, di=1, src=buf, si=i+1, len=SOME(n-1)};
+			  AS.copyVec {dst=a, di=1, src=VS.slice(buf,i+1,SOME(n-1))};
 			  writea {buf=a, i=0, sz=NONE}
 			end
 		  (* end case *)
@@ -177,7 +183,7 @@ functor PrimIO (
 		    | _ => let
 			val a = A.array(n, V.sub(buf, i))
 			in
-			  A.copyVec {dst=a, di=1, src=buf, si=i+1, len=SOME(n-1)};
+			  AS.copyVec {dst=a, di=1, src=VS.slice(buf,i+1,SOME(n-1))};
 			  writeaNB {buf=a, i=0, sz=NONE}
 			end
 		  (* end case *)
@@ -229,6 +235,57 @@ functor PrimIO (
 	    }
 	  end
 
+(*
+    fun openVector v = let
+	val len = V.length v
+	val pos = ref 0
+	val closed = ref false
+	fun checkClosed () = if !closed then raise IO.ClosedStream else ()
+	fun avail () = len - !pos
+	fun readV n = let
+	    val p = !pos
+	    val m = Int.min (n, len - p)
+	in
+	    checkClosed ();
+	    pos := p + m;
+	    VS.vector (VS.slice (src, p, SOME m))
+	end
+	fun readA { buf, i, sz } = let
+	    val p = !pos
+	    val m = case sz of
+			NONE => Int.min (A.length buf - i, len - p)
+		      | SOME n => Int.min (n, len - p)
+	in
+	    checkClosed ();
+	    pos := p + m;
+	    A.copyVec { dst = buf, di = i, src = VS.slice (src, p, SOME m) };
+	    m
+	end
+	fun getPos () = (checkClosed (); !pos)
+	fun setPos i =
+	    (checkClosed ();
+	     if i < 0 orelse len < i then raise Subscript else ();
+	     pos := i)
+    in
+	RD { name = "<vector>",
+	     chunkSize = len,
+	     readVec = SOME readV,
+	     readArr = SOME readA,
+	     readVecNB = SOME (SOME o readV),
+	     readArrNB = SOME (SOME o readA),
+	     block = SOME checkClosed,
+	     canInput = SOME (fn () => (checkClosed (); true)),
+	     avail = SOME o avail,
+	     getPos = SOME getPos,
+	     setPos = SOME setPos,
+	     endPos = SOME (fn () => (checkClosed (); len)),
+	     verifyPos = SOME getPos,
+	     close = fn () => closed := true,
+	     ioDesc = NONE }
+    end
+*)
+    fun openVector v = raise Fail "openVector not implemented yet"
+    fun nullRd () = raise Fail "nullRd not implemented yet"
+    fun nullWr () = raise Fail "nullWr not implemented yet"
+
   end (* PrimIO *)
-
-

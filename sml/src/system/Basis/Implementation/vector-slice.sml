@@ -56,6 +56,7 @@ struct
       
 (* val full : 'a Vector.vector -> 'a slice *)
   fun full base = SL{base=base,start=0,stop=V.length base}
+(*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
           then raise Core.Subscript
@@ -66,6 +67,7 @@ struct
 		      then raise Core.Subscript
 		      else SL{base=base,start=start,stop=start+n}
       end
+*)
 
 (* val subslice : 'a slice * int * int option -> 'a slice *)
   fun subslice (SL{base, start, stop}, i, sz) =
@@ -83,8 +85,7 @@ struct
 
 (* val vector : 'a slice -> 'a Vector.vector *)
   fun vector (SL{base,start,stop}) =
-      Vector.tabulate((fn n => sub'(base,n+start)),
-		      stop-start)
+      Vector.tabulate(stop-start,fn n => sub'(base,n+start))
 
 (* utility functions *)
   fun checkLen n =
@@ -121,7 +122,7 @@ struct
 (* val getItem : 'a slice -> ('a * 'a slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
+      else SOME(sub'(base, start), SL{base=base,start=start+1,stop=stop})
 			      
 (* val appi : (int * 'a -> unit) -> 'a slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -132,7 +133,7 @@ struct
       end
 
 (* val app  : ('a -> unit) -> 'a slice -> unit *)
-  fun appi f (SL{base,start,stop}) =
+  fun app f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -214,7 +215,7 @@ struct
 	      then let val item = sub'(base, i)
 		    in if f item
 		       then SOME(item)
-		       else findi' (i+1)
+		       else find' (i+1)
 		   end
 	      else NONE
        in find' start

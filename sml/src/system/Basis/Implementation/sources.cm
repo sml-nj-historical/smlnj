@@ -272,6 +272,8 @@ is
 	math-sig.sml (* math.sig *)
 	SML90-sig.sml (* sml90.sig *)
 
+	bit-flags-sig.sml
+
 	substring.sml
 	text.sml
 	general.sml
@@ -298,6 +300,7 @@ is
 	real64-array-slice.sml
 
 	char-array.sml
+	char-array-slice.sml
 	char-vector.sml
 	char-vector-slice.sml
 	array.sml
