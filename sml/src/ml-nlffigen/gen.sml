@@ -294,6 +294,7 @@ end = struct
 	in
 	    SM.app sinclude structs;
 	    SM.app uinclude unions;
+	    SM.app einclude enums;
 	    app gty gtys;
 	    app gvar gvars;
 	    app gfun gfuns;
