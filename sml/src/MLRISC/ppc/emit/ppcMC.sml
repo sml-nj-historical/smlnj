@@ -678,11 +678,23 @@ struct
                mb=mb}
           | (I.RLDIMI, _) => rldimi {ra=ra, rs=rs, sh=(sh && 0wx1f), sh2=((sh << 0wx5) && 0wx1), 
                mb=mb}
-	  | _ => error "rotatei"
+          | _ => error "rotatei"
           )
        end
+   and lwarx {rt, ra, rb} = 
+       let val rt = emit_GP rt
+           val ra = emit_GP ra
+           val rb = emit_GP rb
+       in eWord32 ((rt << 0wx15) + ((ra << 0wx10) + ((rb << 0wxb) + 0wx7c000028)))
+       end
+   and stwcx {rs, ra, rb} = 
+       let val rs = emit_GP rs
+           val ra = emit_GP ra
+           val rb = emit_GP rb
+       in eWord32 ((rs << 0wx15) + ((ra << 0wx10) + ((rb << 0wxb) + 0wx7c00012d)))
+       end
 
-(*#line 540.7 "ppc/ppc.mdl"*)
+(*#line 546.7 "ppc/ppc.mdl"*)
    fun relative (I.LabelOp lexp) = (itow ((MLTreeEval.valueOf lexp) - ( ! loc))) ~>> 0wx2
      | relative _ = error "relative"
        fun emitter instr =
@@ -717,6 +729,8 @@ struct
      | emitInstr (I.MCRF{bf, bfa}) = mcrf {bf=bf, bfa=bfa}
      | emitInstr (I.MTSPR{rs, spr}) = mtspr {rs=rs, spr=spr}
      | emitInstr (I.MFSPR{rt, spr}) = mfspr {rt=rt, spr=spr}
+     | emitInstr (I.LWARX{rt, ra, rb}) = lwarx {rt=rt, ra=ra, rb=rb}
+     | emitInstr (I.STWCX{rs, ra, rb}) = stwcx {rs=rs, ra=ra, rb=rb}
      | emitInstr (I.TW{to, ra, si}) = tw {to=to, ra=ra, si=si}
      | emitInstr (I.TD{to, ra, si}) = td {to=to, ra=ra, si=si}
      | emitInstr (I.BC{bo, bf, bit, addr, LK, fall}) = bc {bo=bo, bi=cr_bit {cc=(bf, 

@@ -24,7 +24,7 @@ end
  * This type is somewhat misnamed; it is used to represent constant 
  * expressions.
  *)
-structure LabelExp = LabelExp(UserConst)
+(* structure LabelExp = LabelExp(UserConst) *)
 
 (*
  * User defined datatype for representing aliasing.   Dummy for now.

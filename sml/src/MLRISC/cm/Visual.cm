@@ -19,7 +19,6 @@ is
 	Lib.cm
 	Graphs.cm
 	MLRISC.cm
-	IR.cm
 #else
 	$/Control.cm
 	$/Lib.cm

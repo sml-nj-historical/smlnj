@@ -531,7 +531,11 @@ struct
 	| _                  => error "rotatei"
         )
 
-
+	(* Taken from a googled link:
+	    http://publibn.boulder.ibm.com/doc_link/en_US/a_doc_lib/aixassem/alangref/lwarx.htm
+	 *)
+     | lwarx{oper:6=31, rt:GP 5, ra:GP 5, rb:GP 5, _:10=20, _:1=0} 
+     | stwcx{oper:6=31, rs:GP 5, ra:GP 5, rb:GP 5, _:10=150, _:1=1} 
 
    (*
     * Some helper functions for generating machine code.
@@ -689,7 +693,17 @@ struct
      | MFSPR of {rt: $GP, spr: $SPR}
 	``mf<spr>\t<rt>''
 	mfspr{rt,spr}
- 
+
+       (* Load word and reserve indexed *)
+     | LWARX of {rt: $GP, ra: $GP, rb: $GP}
+         ``lwarx\t<rt>, <ra>, <rb>''
+         lwarx{rt, ra, rb}
+
+       (* Store word conditional indexed *)
+     | STWCX of {rs: $GP, ra: $GP, rb: $GP}
+     	``stwcx.\t<rs>, <ra>, <rb>''
+	stwcx{rs, ra, rb}
+
      (* Trapping word *)
      | TW of {to:int, ra: $GP, si:operand}
 	``tw<eI si>\t<to>, <ra>, <si>''

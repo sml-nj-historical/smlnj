@@ -224,7 +224,7 @@ struct
      | asm_bit (I.OX) = "so"
    and emit_bit x = emit (asm_bit x)
 
-(*#line 570.7 "ppc/ppc.mdl"*)
+(*#line 576.7 "ppc/ppc.mdl"*)
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, (size s) - 1)) = #"e")
           then 
           ( emit (String.substring (s, 0, (size s) - 1)); 
@@ -234,17 +234,17 @@ struct
             emit "x" ))
      | emitx (s, _) = emit s
 
-(*#line 576.7 "ppc/ppc.mdl"*)
+(*#line 582.7 "ppc/ppc.mdl"*)
    fun eOERc {OE=false, Rc=false} = ()
      | eOERc {OE=false, Rc=true} = emit "."
      | eOERc {OE=true, Rc=false} = emit "o"
      | eOERc {OE=true, Rc=true} = emit "o."
 
-(*#line 580.7 "ppc/ppc.mdl"*)
+(*#line 586.7 "ppc/ppc.mdl"*)
    fun eRc false = ""
      | eRc true = "."
 
-(*#line 581.7 "ppc/ppc.mdl"*)
+(*#line 587.7 "ppc/ppc.mdl"*)
    fun cr_bit (cr, bit) = (4 * (CellsBasis.physicalRegisterNum cr)) + 
        (case bit of
          I.LT => 0
@@ -261,18 +261,18 @@ struct
        | I.OX => 3
        )
 
-(*#line 588.7 "ppc/ppc.mdl"*)
+(*#line 594.7 "ppc/ppc.mdl"*)
    fun eCRbit x = emit (Int.toString (cr_bit x))
 
-(*#line 589.7 "ppc/ppc.mdl"*)
+(*#line 595.7 "ppc/ppc.mdl"*)
    fun eLK true = emit "l"
      | eLK false = ()
 
-(*#line 590.7 "ppc/ppc.mdl"*)
+(*#line 596.7 "ppc/ppc.mdl"*)
    fun eI (I.RegOp _) = ()
      | eI _ = emit "i"
 
-(*#line 591.7 "ppc/ppc.mdl"*)
+(*#line 597.7 "ppc/ppc.mdl"*)
    fun eBI (bo, bf, bit) = 
        (case (bo, CellsBasis.physicalRegisterNum bf) of
          (I.ALWAYS, _) => ()
@@ -281,7 +281,7 @@ struct
        | (_, n) => emit ((("4*cr" ^ (Int.toString n)) ^ "+") ^ (asm_bit bit))
        )
 
-(*#line 597.7 "ppc/ppc.mdl"*)
+(*#line 603.7 "ppc/ppc.mdl"*)
    fun emit_bo bo = emit 
        (case bo of
          I.TRUE => "t"
@@ -297,13 +297,13 @@ struct
             else "f")
        )
 
-(*#line 608.7 "ppc/ppc.mdl"*)
+(*#line 614.7 "ppc/ppc.mdl"*)
    fun eME (SOME me) = 
        ( emit ", "; 
          emit_int me )
      | eME NONE = ()
 
-(*#line 611.7 "ppc/ppc.mdl"*)
+(*#line 617.7 "ppc/ppc.mdl"*)
    fun addr (ra, I.RegOp rb) = 
        ( emitCell ra; 
          emit ", "; 
@@ -460,6 +460,20 @@ struct
            emitCell spr; 
            emit "\t"; 
            emitCell rt )
+       | I.LWARX{rt, ra, rb} => 
+         ( emit "lwarx\t"; 
+           emitCell rt; 
+           emit ", "; 
+           emitCell ra; 
+           emit ", "; 
+           emitCell rb )
+       | I.STWCX{rs, ra, rb} => 
+         ( emit "stwcx.\t"; 
+           emitCell rs; 
+           emit ", "; 
+           emitCell ra; 
+           emit ", "; 
+           emitCell rb )
        | I.TW{to, ra, si} => 
          ( emit "tw"; 
            eI si; 

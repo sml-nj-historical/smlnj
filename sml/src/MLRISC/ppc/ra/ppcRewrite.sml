@@ -52,6 +52,10 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
        | I.CALL {def, use, cutsTo, mem} => 
 	    I.CALL{def=def, use=CS.map {from=rs,to=rt} use, 
 		   cutsTo=cutsTo, mem=mem}
+       | I.LWARX {rt, ra, rb} =>
+            I.LWARX{rt=rt, ra=rplac ra, rb=rplac rb}
+       | I.STWCX {rs, ra, rb} =>
+            I.STWCX{rs=rplac rs, ra=rplac ra, rb=rplac rb}
        | _ => instr
     (*esac*))
   in
@@ -89,6 +93,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
        | I.CALL {def, use, cutsTo, mem} => 
 	  I.CALL{def=CS.map {from=rs,to=rt} def, use=use, 
 		 cutsTo=cutsTo, mem=mem}
+       | I.LWARX {rt, ra, rb} =>
+            I.LWARX{rt=rplac rt, ra=ra, rb=rb}
        | _ => instr
     (*esac*))
   in 

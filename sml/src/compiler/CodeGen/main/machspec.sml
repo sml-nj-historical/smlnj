@@ -71,6 +71,6 @@ structure DefaultMachSpec : MACH_SPEC =
 
     val framePtrNeverVirtual = false
 
-    val ccall_maxargspace = NONE
+    (* x86 and sparc don't use pre-allocated arg space for c-calls *)
+    val ccall_prealloc_argspace = NONE
   end (* DefaultMachSpec *)
-

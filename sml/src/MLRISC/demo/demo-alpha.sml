@@ -2,9 +2,30 @@
  * The Alpha instruction set, specialized with respect to the
  * user constant and region types.  
  *)
-structure AlphaInstr = AlphaInstr
-   (structure LabelExp = LabelExp
-    structure Region = UserRegion
+
+structure AlphaMLTree =
+   MLTreeF
+   (structure Constant  = UserConstant
+    structure Region    = UserRegion
+    structure Extension = UserExtension
+   )
+
+structure AlphaInstr = AlphaInstr(AlphaMLTree)
+
+structure AlphaMLTreeEval =
+   MLTreeEval
+   (structure T = AlphaMLTree
+    fun eq _ _ = false
+    val eqRext = eq val eqFext = eq
+    val eqCCext = eq val eqSext = eq
+   )
+
+structure AlphaMLTreeHash =
+   MLTreeHash
+   (structure T = AlphaMLTree
+    fun h _ _ = 0w0
+    val hashRext = eq val hashFext = eq
+    val hashCCext = eq val hashSext = eq
    )
 
 (*
@@ -220,13 +241,13 @@ structure AlphaBackEnd =
             | copy((rds, rss), I.COPY{tmp, ...}) =
               I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
           (* spill register *)
-          fun spillInstr{an,src,spilledCell,spillLoc}
+          fun spillInstr{an,src,spilledCell,spillLoc} =
               [I.STORE{stOp=I.STL, b=sp, d=I.IMMop(get spillLoc), 
                        r=src, mem=spill}]
 
           (* spill copy temp *)
-          fun spillCopyTmp(_,I.COPY{tmp,dst,src,impl},loc) =
-              I.COPY{tmp=SOME(I.Displace{base=sp, disp=get loc}),
+          fun spillCopyTmp(_,I.COPY{k,tmp,dst,src,impl},loc) =
+              I.COPY{k=k,tmp=SOME(I.Displace{base=sp, disp=get loc}),
                      dst=dst,src=src,impl=impl}
       
           (* reload register *)

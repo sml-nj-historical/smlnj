@@ -332,12 +332,12 @@ struct
        end (* srd *)
 
        val paramAlloc =
-	   case MS.ccall_maxargspace of
+	   case MS.ccall_prealloc_argspace of
 	       NONE => (fn { szb, align } => false)
-	     | SOME m => (fn { szb, align } =>
-			     if szb > m then
+	     | SOME s => (fn { szb, align } =>
+			     if szb > s then
 				 error "argument list in C-call too big"
-			     else false)
+			     else true)
 
        val { callseq, result } =
            CCalls.genCall
