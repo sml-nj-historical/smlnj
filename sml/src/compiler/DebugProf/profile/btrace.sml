@@ -35,20 +35,22 @@ structure BTrace :> BTRACE = struct
 
     val registry = ControlRegistry.new { help = "instrumentation" }
 
-    val _ = BasicControl.nest (prefix, registry)
+    val _ = BasicControl.nest (prefix, registry, priority)
 
-    val bool_cvt = { tyName = "bool",
-		     fromString = Bool.fromString,
-		     toString = Bool.toString }
+    val bool_cvt = ControlUtil.Cvt.bool
+
+    val nextpri = ref 0
 
     val enabled = let
 	val r = ref false
+	val p = !nextpri
 	val ctl = Controls.control { name = "btrace-mode",
-				     pri = priority,
+				     pri = [p],
 				     obscurity = obscurity,
 				     help = "backtrace instrumentation mode",
 				     ctl = r }
     in
+	nextpri := p + 1;
 	ControlRegistry.register
 	    registry
 	    { ctl = Controls.stringControl bool_cvt ctl,

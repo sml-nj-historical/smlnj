@@ -11,21 +11,14 @@ structure StdConfig = struct
 	val obscurity = 2
 	val prefix = "cm"
 
-	fun uc #"-" = #"_"
-	  | uc c = Char.toUpper c
-	fun en n = SOME ("CM_" ^ String.map uc n)
-
 	val registry = ControlRegistry.new
 			   { help = "Compilation Manager (CM)" }
 
-	val _ = BasicControl.nest (prefix, registry)
+	val _ = BasicControl.nest (prefix, registry, priority)
 
-	val bool_cvt = { tyName = "bool",
-			 fromString = Bool.fromString,
-			 toString = Bool.toString }
-	val int_cvt = { tyName = "int",
-			fromString = Int.fromString,
-			toString = Int.toString }
+	val bool_cvt = ControlUtil.Cvt.bool
+	val int_cvt = ControlUtil.Cvt.int
+
 	val sot_cvt =
 	    { tyName = "string",	(* string option thunk *)
 	      fromString = fn s => SOME (fn () => SOME s),
@@ -33,22 +26,24 @@ structure StdConfig = struct
 				       SOME s => s
 				     | NONE => "(not set)") }
 
-	val string_cvt = { tyName = "string",
-			   fromString = SOME,
-			   toString = fn x => x }
+	val string_cvt = ControlUtil.Cvt.string
+
+	val nextpri = ref 0
 
 	fun new (c, n, h, d) = let
 	    val r = ref d
+	    val p = !nextpri
 	    val ctl = Controls.control { name = n,
-					 pri = priority,
+					 pri = [p],
 					 obscurity = obscurity,
 					 help = h,
 					 ctl = r }
 	in
+	    nextpri := p + 1;
 	    ControlRegistry.register
 		registry
 		{ ctl = Controls.stringControl c ctl,
-		  envName = en n };
+		  envName = SOME (ControlUtil.EnvName.toUpper "CM_" n) };
 	    { set = fn x => r := x,
 	      get = fn () => !r }
 	end

@@ -27,42 +27,12 @@ autoload $/smlnj-lib.cm
 # The "Regular Expression Matching" portion of the SML/NJ library
 #autoload $/regexp-lib.cm
 
-# The "Reactive Programming" portion of the SML/NJ library
-#autoload $/reactive-lib.cm
-
-# The "Hash Consing" portion of the SML/NJ library
-#autoload $/hash-cons-lib.cm
-
-# The "Unix Utilities" portion of the SML/NJ library
-#autoload $/unix-lib.cm
-
-# The "Socket Utils" portion of the SML/NJ library
-#autoload $/inet-lib.cm
-
 # The "Configurable Controls" portion of the SML/NJ library
 #autoload $/controls-lib.cm
 
 # The "HTML" portion of the SML/NJ library
 #autoload $/html-lib.cm
 
-
-################# FOR CML PROGRAMMERS #################################
-
-# Concurrent ML (CML)
-#autoload $cml/cml.cm
-
-# The CML (thread-safe) version of $/basis.cm
-# (Do not preload $/basis.cm if you preload this.)
-#autoload $cml/basis.cm
-
-# The CML version of the SML/NJ "Util" library.
-#autoload $cml-lib/smlnj-lib.cm
-
-# The Trace-CML facility:
-#autoload $cml-lib/trace-cml.cm
-
-# The eXene toolkit for X windows programming (based on CML).
-#autoload $/eXene.cm
 
 ################## FOR SML/NJ COMPILER HACKERS ########################
 

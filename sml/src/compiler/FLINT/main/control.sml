@@ -10,46 +10,41 @@ struct
        val registry = ControlRegistry.new
 			  { help = "optimizer (FLINT) settings" }
 
-       val _ = BasicControl.nest (prefix, registry)
+       val _ = BasicControl.nest (prefix, registry, priority)
 
-       val flag_cvt = { tyName = "bool",
-			fromString = Bool.fromString,
-			toString = Bool.toString }
-       val int_cvt = { tyName = "int",
-		       fromString = Int.fromString,
-		       toString = Int.toString }
-       val sl_cvt =
-	   { tyName = "string list",
-	     fromString = SOME o String.tokens Char.isSpace,
-	     toString = concat o foldr (fn (s, r) => " " :: s :: r) [] }
+       val flag_cvt = ControlUtil.Cvt.bool
+       val int_cvt = ControlUtil.Cvt.int
+       val sl_cvt = ControlUtil.Cvt.stringList
 
+       val nextpri = ref 0
 
-       fun new (c, n, e, h, d) = let
+       fun new (c, n, h, d) = let
 	   val r = ref d
+	   val p = !nextpri
 	   val ctl = Controls.control { name = n,
-					pri = priority,
+					pri = [p],
 					obscurity = obscurity,
 					help = h,
 					ctl = r }
        in
+	   nextpri := p + 1;
 	   ControlRegistry.register
 	       registry
 	       { ctl = Controls.stringControl c ctl,
-		 envName = SOME ("FLINT_" ^ e) };
+		 envName = SOME (ControlUtil.EnvName.toUpper "FLINT_" n) };
 	   r
        end
    in
 
-    val print	        = new (flag_cvt, "print", "PRINT", "show IR", false)
-    val printPhases	= new (flag_cvt, "print-phases", "PRINT_PHASES",
-			       "show phases", false)
-    val printFctTypes   = new (flag_cvt, "print-fct-types", "PRINT_FCT_TYPES",
+    val print	        = new (flag_cvt, "print", "show IR", false)
+    val printPhases	= new (flag_cvt, "print-phases", "show phases", false)
+    val printFctTypes   = new (flag_cvt, "print-fct-types",
 			       "show function types", false)
     (* `split' should probably be called just after `fixfix' since
      * fcontract might eliminate some uncurry wrappers which are
      * locally unused but could be cross-module inlined. *)
     val phases =
-	new (sl_cvt, "phases", "PHASES", "FLINT phases",
+	new (sl_cvt, "phases", "FLINT phases",
 	     ["lcontract", (* Cruder but quicker than fcontract *)
 	      "fixfix", "fcontract",
 	      "specialize",
@@ -57,35 +52,32 @@ struct
 	      "wrap", "fcontract", "reify",
 	      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"])
 			  
-    val inlineThreshold = new (int_cvt, "inline-theshold", "INLINE_THRESHOLD",
+    val inlineThreshold = new (int_cvt, "inline-theshold",
 			       "inline threshold", 16)
     (* val splitThreshold  = ref 0 *)
-    val unrollThreshold = new (int_cvt, "unroll-threshold", "UNROLL_THRESHOLD",
+    val unrollThreshold = new (int_cvt, "unroll-threshold",
 			       "unroll threshold", 20)
-    val maxargs = new (int_cvt, "maxargs", "MAXARGS",
-		       "max number of arguments", 6)
-    val dropinvariant = new (flag_cvt, "dropinvariant", "DROPINVARIANT",
-			     "dropinvariant", true)
+    val maxargs = new (int_cvt, "maxargs", "max number of arguments", 6)
+    val dropinvariant = new (flag_cvt, "dropinvariant", "dropinvariant", true)
 			      
-    val specialize = new (flag_cvt, "specialize", "SPECIALIZE",
+    val specialize = new (flag_cvt, "specialize",
 			  "whether to specialize", true)
     (* val liftLiterals	= ref false *)
-    val sharewrap = new (flag_cvt, "sharewrap", "SHAREWRAP",
+    val sharewrap = new (flag_cvt, "sharewrap",
 			 "whether to share wrappers", true)
-    val saytappinfo = new (flag_cvt, "saytappinfo", "SAYTAPPINFO",
+    val saytappinfo = new (flag_cvt, "saytappinfo",
 			   "whether to show typelifting stats", false)
 				  
     (* only for temporary debugging *)
     val misc = ref 0
 			  
     (* FLINT internal type-checking controls *)
-    val check = new (flag_cvt, "check", "CHECK",
-		     "whether to typecheck the IR", false)
+    val check = new (flag_cvt, "check", "whether to typecheck the IR", false)
         (* fails on MLRISC/*/*RegAlloc.sml *)
-    val checkDatatypes = new (flag_cvt, "check-datatypes", "CHECK_DATATYPES",
+    val checkDatatypes = new (flag_cvt, "check-datatypes",
 			      "typecheck datatypes", false)
 	(* loops on the new cm.sml *)
-    val checkKinds = new (flag_cvt, "check-kinds", "CHECK_KINDS",
+    val checkKinds = new (flag_cvt, "check-kinds",
 			  "check kinding information", true)
 
     (* non-exported crap *)

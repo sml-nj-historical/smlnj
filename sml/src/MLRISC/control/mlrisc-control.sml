@@ -1,5 +1,8 @@
 signature MLRISC_CONTROL =
 sig
+    val registry : ControlRegistry.registry
+    val prefix : string
+    val priority : Controls.priority
 
     type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
 
@@ -7,16 +10,16 @@ sig
     val mlrisc_phases : string list ref        (* the optimization phases *)
     val debug_stream  : TextIO.outstream ref   (* debugging output goes here *)
 
-    type 'a entry = { stem: string, descr: string, cell: 'a ref }
+    type 'a set = ('a, 'a ref) ControlSet.control_set
 
         (* Flags and counters *)
-    val counters    : int entry list ref
-    val ints        : int entry list ref
-    val flags       : bool entry list ref
-    val reals       : real entry list ref
-    val strings     : string entry list ref
-    val stringLists : string list entry list ref
-    val timings     : cpu_time entry list ref
+    val counters    : int set
+    val ints        : int set
+    val flags       : bool set
+    val reals       : real set
+    val strings     : string set
+    val stringLists : string list set
+    val timings     : cpu_time set
 
     val mkCounter    : string * string -> int ref
     val mkInt        : string * string -> int ref
@@ -47,57 +50,78 @@ sig
 end
 
 structure MLRiscControl : MLRISC_CONTROL = struct
+
+    val priority = [10, 3]
+    val obscurity = 3
+    val prefix = "mlrisc"
+
+    val registry = ControlRegistry.new { help = "MLRISC" }
+
     type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
 
-    val mlrisc        = ref false
-    val mlrisc_phases = ref [] : string list ref
-    val debug_stream  = ref TextIO.stdOut
+    type 'a set = ('a, 'a ref) ControlSet.control_set
 
-    type 'a entry = { stem: string, descr: string, cell: 'a ref }
+    val counters      = ControlSet.new () : int set
+    val ints          = ControlSet.new () : int set
+    val flags         = ControlSet.new () : bool set
+    val reals         = ControlSet.new () : real set
+    val strings       = ControlSet.new () : string set
+    val stringLists   = ControlSet.new () : string list set
+    val timings       = ControlSet.new () : cpu_time set
 
-    val counters      = ref [] : int entry list ref
-    val ints          = ref [] : int entry list ref
-    val flags         = ref [{ stem = "mlrisc", descr = "?", cell = mlrisc }]
-    val reals         = ref [] : real entry list ref
-    val strings       = ref [] : string entry list ref
-    val stringLists   = ref [{ stem = "phases", descr = "MLRISC Phases",
-			       cell = mlrisc_phases }]
-    val timings       = ref [] : cpu_time entry list ref
     local
-	fun mk (list, fallback) (stem' : string, descr) = let
-	    fun loop [] =
-		let val cell = ref fallback
+	val timing =
+	    { tyName = "timing",
+	      fromString = fn _ => (NONE : cpu_time option),
+	      toString = fn _ => "<timing>" }
+
+	fun no x = NONE
+	fun yes x =
+	    SOME (ControlUtil.EnvName.toUpper "MLRISC_" (Controls.name x))
+
+	val nextpri = ref 0
+
+	fun mk (set, cvt, fallback, en) (stem, descr) =
+	    case ControlSet.find (set, Atom.atom stem) of
+		SOME { ctl, info = cell } => cell
+	      | NONE => let
+		    val cell = ref fallback
+		    val p = !nextpri
+		    val ctl = Controls.control { name = stem,
+						 pri = [p],
+						 obscurity = obscurity,
+						 help = descr,
+						 ctl = cell }
 		in
-		    list := { stem = stem', descr = descr, cell = cell }
-			    :: !list;
-	            cell
+		    nextpri := p + 1;
+		    ControlRegistry.register registry
+			{ ctl = Controls.stringControl cvt ctl,
+			  envName = en ctl };
+		    ControlSet.insert (set, ctl, cell);
+		    cell
 		end
-	      | loop ({ stem, descr, cell } :: t) =
-		if stem = stem' then cell else loop t
-	in
-	    loop (!list)
-	end
     in
-        fun mkCounter x = mk (counters, 0) x
-	fun mkInt x = mk (ints, 0) x
-	fun mkFlag x = mk (flags, false) x
-	fun mkReal x = mk (reals, 0.0) x
-	fun mkString x = mk (strings, "") x
-	fun mkStringList x = mk (stringLists, []) x
-	fun mkTiming x = mk (timings, {gc =Time.zeroTime,
-                                       usr=Time.zeroTime,
-                                       sys=Time.zeroTime}) x
+        fun mkCounter x = mk (counters, ControlUtil.Cvt.int, 0, no) x
+	fun mkInt x = mk (ints, ControlUtil.Cvt.int, 0, yes) x
+	fun mkFlag x = mk (flags, ControlUtil.Cvt.bool, false, yes) x
+	fun mkReal x = mk (reals, ControlUtil.Cvt.real, 0.0, yes) x
+	fun mkString x = mk (strings, ControlUtil.Cvt.string, "", yes) x
+	fun mkStringList x =
+	    mk (stringLists, ControlUtil.Cvt.stringList, [], yes) x
+	fun mkTiming x = mk (timings, timing, {gc =Time.zeroTime,
+					       usr=Time.zeroTime,
+					       sys=Time.zeroTime}, no) x
+
+	val mlrisc = mkFlag ("mlrisc", "?")
+	val mlrisc_phases = mkStringList ("phases", "MLRISC phases")
+	val debug_stream  = ref TextIO.stdOut
     end
 
     local
-	fun find list stem' = let
-	    fun loop [] =
-		raise Fail ("Control.MLRISC: no such control: " ^ stem')
-	      | loop ({ stem, descr, cell } :: t) =
-		if stem = stem' then cell else loop t
-	in
-	    loop (!list)
-	end
+	fun find set stem =
+	    case ControlSet.find (set, Atom.atom stem) of
+		SOME { ctl, info = cell } => cell
+	      | NONE => raise Fail ("Control.MLRISC: no such control: " ^ stem)
     in
         val counter = find counters
 	val int = find ints

@@ -23,49 +23,44 @@ structure Control_Print : PRINTCONTROL = struct
 
     val registry = ControlRegistry.new { help = "compiler print settings" }
 
-    val _ = BasicControl.nest (prefix, registry)
+    val _ = BasicControl.nest (prefix, registry, priority)
 
-    val bool_cvt = { tyName = "bool",
-		     fromString = Bool.fromString,
-		     toString = Bool.toString }
-    val int_cvt = { tyName = "int",
-		    fromString = Int.fromString,
-		    toString = Int.toString }
+    val bool_cvt = ControlUtil.Cvt.bool
+    val int_cvt = ControlUtil.Cvt.int
 
-    fun new (c, n, e, h, d) = let
+    val nextpri = ref 0
+
+    fun new (c, n, h, d) = let
 	val r = ref d
+	val p = !nextpri
 	val ctl = Controls.control { name = n,
-				     pri = priority,
+				     pri = [p],
 				     obscurity = obscurity,
 				     help = h,
 				     ctl = r }
     in
+	nextpri := p + 1;
 	ControlRegistry.register
 	    registry
 	    { ctl = Controls.stringControl c ctl,
-	      envName = SOME ("PRINT_" ^ e) };
+	      envName = SOME (ControlUtil.EnvName.toUpper "PRINT_" n) };
 	r
     end
 
-    val printDepth =
-	new (int_cvt, "depth", "DEPTH", "max print depth", 5)
-    val printLength =
-	new (int_cvt, "length", "LENGTH", "max print length", 12)
+    val printDepth = new (int_cvt, "depth", "max print depth", 5)
+    val printLength = new (int_cvt, "length", "max print length", 12)
     val stringDepth =
-	new (int_cvt, "string-depth", "STRING_DEPTH",
-	     "max string print depth", 70)
-    val printLoop =
-	new (bool_cvt, "loop", "LOOP", "print loop", true) (* ? *)
+	new (int_cvt, "string-depth", "max string print depth", 70)
+    val printLoop = new (bool_cvt, "loop", "print loop", true) (* ? *)
     val signatures =
-	new (int_cvt, "signatures", "SIGNATURES",
-	     "max signature expansion depth", 2) (* ? *)
-    val printOpens = new (bool_cvt, "opens", "OPENS", "print `open'", true)
+	new (int_cvt, "signatures", "max signature expansion depth", 2) (* ? *)
+    val printOpens = new (bool_cvt, "opens", "print `open'", true)
     val out = ref{
 		  say = fn s => TextIO.output(TextIO.stdOut,s),
 		  flush = fn () => TextIO.flushOut TextIO.stdOut
 		  }
-    val linewidth = new (int_cvt, "linewidth", "LINEWIDTH",
-			 "line-width hint for pretty printer", 79)
+    val linewidth =
+	new (int_cvt, "linewidth", "line-width hint for pretty printer", 79)
     fun say s = #say (!out) s
     fun flush() = #flush (!out) ()
 end

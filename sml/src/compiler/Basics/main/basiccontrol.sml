@@ -10,7 +10,7 @@ signature BASIC_CONTROL = sig
     val topregistry : ControlRegistry.registry
 
     (* nest a tier-2 registry within the top-level registry *)
-    val nest : string * ControlRegistry.registry -> unit
+    val nest : string * ControlRegistry.registry * Controls.priority -> unit
 end
 
 structure BasicControl : BASIC_CONTROL = struct
@@ -19,27 +19,22 @@ structure BasicControl : BASIC_CONTROL = struct
 
     val registry = ControlRegistry.new { help = "compiler settings" }
 
-    fun nest (prefix, reg) =
+    fun nest (prefix, reg, pri) =
 	ControlRegistry.nest topregistry { prefix = SOME prefix,
-					   pri = [],
+					   pri = pri,
 					   obscurity = 0,
 					   reg = reg }
 
-    val _ = nest ("basic", registry)
+    val _ = nest ("basic", registry, [10, 10, 1])
 
     val printWarnings = let
 	val r = ref true
 	val ctl = Controls.control { name = "print-warnings",
-				     pri = [10, 10, 1],
+				     pri = [0],
 				     obscurity = 1,
 				     help = "whether warnings get generated",
 				     ctl = r }
-	val sctl = Controls.stringControl
-		       { tyName = "bool",
-			 fromString = Bool.fromString,
-			 toString = Bool.toString }
-		       ctl
-		   
+	val sctl = Controls.stringControl ControlUtil.Cvt.bool ctl
     in
 	ControlRegistry.register registry
 	    { ctl = sctl, envName = SOME "PRINT_CONTROL" };

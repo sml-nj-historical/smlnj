@@ -14,6 +14,24 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/20 22:25:00 EDT
+Tag: blume-20020520-controls
+Description:
+
+- Added ControlUtil structure to control-lib.cm.
+- Use it throughout.
+- Used Controls facility to define MLRISC controls (as opposed to
+  registering MLRISC control ref cells with Controls after the fact)
+- Fixed messed-up controls priorities.
+
+* Removed again all the stuff from config/preloads that one wouldn't
+  be able to preload at the time the initial heap image is built.
+  (Many libraries, e.g., CML, do not exist yet at this time.  The
+   only libraries that can be preloaded via config/preloads are those
+   that come bundled with the bootfiles.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/05/20 10:59:00 EDT
 Tag: blume-20020520-preloads
 Description:

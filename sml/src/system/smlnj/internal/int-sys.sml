@@ -1,6 +1,7 @@
 (* Copyright 1997 by AT&T Bell Laboratories *)
 (* Copyright 1998 by Lucent Technologies *)
 (* Copyright 1999 by Lucent Technologies *)
+(* Copyright 2002 by Lucent Technologies *)
 (* int-sys.sml *)
 
 (* 
@@ -40,69 +41,13 @@ structure InteractiveSystem : sig end = struct
 	 Signals.overrideHandler (Signals.sigTERM, Signals.HANDLER handleTERM);
 	 ifSignal ("QUIT", handleTERM))
 
+    (* install "use" functionality *)
     val _ = UseHook.useHook := Backend.Interact.useFile
 
-    local
-	(* register the MLRISC controls with the central controls
-	 * facility... *)
-	structure C = Controls
-	structure CR = ControlRegistry
-
-	val priority = [10, 3]
-	val obscurity = 3
-	val prefix = "mlrisc"
-
-	val registry = CR.new { help = "MLRISC" }
-
-	val _ = BasicControl.nest (prefix, registry)
-
-	fun uc #"-" = #"_"
-	  | uc c = Char.toUpper c
-	fun en n = SOME ("MLRISC_" ^ String.map uc n)
-
-	fun reg0 en c { cell, descr, stem } = let
-	    val ctl = C.control { name = stem,
-				  pri = priority,
-				  obscurity = obscurity,
-				  help = descr,
-				  ctl = cell }
-	in
-	    CR.register registry { ctl = C.stringControl c ctl,
-				   envName = en stem }
-	end
-
-	fun reg x = reg0 en x
-	fun reg' x = reg0 (fn _ => NONE) x
-
-	val int_cvt = { tyName = "int",
-			fromString = Int.fromString,
-			toString = Int.toString }
-	val flag_cvt = { tyName = "bool",
-			 fromString = Bool.fromString,
-			 toString = Bool.toString }
-	val real_cvt = { tyName = "real",
-			 fromString = Real.fromString,
-			 toString = Real.toString }
-	val string_cvt = { tyName = "string",
-			   fromString = SOME,
-			   toString = fn x => x }
-	val stringList_cvt = { tyName = "string list",
-			       fromString = SOME o String.tokens Char.isSpace,
-			       toString = concat o
-			                foldr (fn (s, r) => " " :: s :: r) [] }
-	val timing_cvt =
-	    { tyName = "timing",
-	      fromString = fn _ => (NONE : Control.MLRISC.cpu_time option),
-	      toString = fn _ => "<timing>" }
-    in
-	val _ = app (reg' int_cvt) (!Control.MLRISC.counters)
-	val _ = app (reg int_cvt) (!Control.MLRISC.ints)
-	val _ = app (reg flag_cvt) (!Control.MLRISC.flags)
-	val _ = app (reg real_cvt) (!Control.MLRISC.reals)
-	val _ = app (reg string_cvt) (!Control.MLRISC.strings)
-	val _ = app (reg stringList_cvt) (!Control.MLRISC.stringLists)
-	val _ = app (reg' timing_cvt) (!Control.MLRISC.timings)
-    end
+    (* put MLRISC controls into the main hierarchy of controls *)
+    val _ = BasicControl.nest (Control.MLRISC.prefix,
+			       Control.MLRISC.registry,
+			       Control.MLRISC.priority)
 
     (* add cleanup code that resets the internal timers and stats
      * when resuming from exportML... *)

@@ -10,28 +10,30 @@ structure ElabDataControl : ELABDATA_CONTROL = struct
 
     val registry = ControlRegistry.new { help = "elaborator datastructures" }
 
-    val _ = BasicControl.nest (prefix, registry)
+    val _ = BasicControl.nest (prefix, registry, priority)
 
-    val bool_cvt = { tyName = "bool",
-		     fromString = Bool.fromString,
-		     toString = Bool.toString }
+    val bool_cvt = ControlUtil.Cvt.bool
 
-    fun new (n, e, h, d) = let
+    val nextpri = ref 0
+
+    fun new (n, h, d) = let
 	val r = ref d
+	val p = !nextpri
 	val ctl = Controls.control { name = n,
-				     pri = priority,
+				     pri = [p],
 				     obscurity = obscurity,
 				     help = h,
 				     ctl = r }
     in
+	nextpri := p + 1;
 	ControlRegistry.register
 	    registry
 	    { ctl = Controls.stringControl bool_cvt ctl,
-	      envName = SOME ("ED_" ^ e) };
+	      envName = SOME (ControlUtil.EnvName.toUpper "ED_" n) };
 	r
     end
 
-    val saveLvarNames = new ("save-lvar-names", "SAVE_LVAR_NAMES", "?", false)
-    val eedebugging = new ("ee-debugging", "EE_DEBUGGING", "?", false)
-    val mudebugging = new ("mu-debugging", "MU_DEBUGGING", "?", false)
+    val saveLvarNames = new ("save-lvar-names", "?", false)
+    val eedebugging = new ("ee-debugging", "?", false)
+    val mudebugging = new ("mu-debugging", "?", false)
 end

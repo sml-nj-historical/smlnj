@@ -22,50 +22,46 @@ structure ParserControl : PARSER_CONTROL = struct
 
     val registry = ControlRegistry.new { help = "parser settings" }
 
-    val _ = BasicControl.nest (prefix, registry)
+    val _ = BasicControl.nest (prefix, registry, priority)
 
-    val string_cvt = { tyName = "string",
-		       fromString = SOME,
-		       toString = fn x => x }
+    val string_cvt = ControlUtil.Cvt.string
+    val flag_cvt = ControlUtil.Cvt.bool
 
-    val flag_cvt = { tyName = "bool",
-		     fromString = Bool.fromString,
-		     toString = Bool.toString }
+    val nextpri = ref 0
 
-
-    fun new (c, n, e, h, d) = let
+    fun new (c, n, h, d) = let
 	val r = ref d
+	val p = !nextpri
 	val ctl = Controls.control { name = n,
-				     pri = priority,
+				     pri = [p],
 				     obscurity = obscurity,
 				     help = h,
 				     ctl = r }
     in
+	nextpri := p + 1;
 	ControlRegistry.register
 	    registry
 	    { ctl = Controls.stringControl c ctl,
-	      envName = SOME ("PARSER_" ^ e) };
+	      envName = SOME (ControlUtil.EnvName.toUpper "PARSER_" n) };
 	r
     end
 
 
     val primaryPrompt =
-	new (string_cvt, "primary-prompt", "PRIMARY_PROMPT",
-	     "primary prompt", "- ")
+	new (string_cvt, "primary-prompt", "primary prompt", "- ")
 
     val secondaryPrompt =
-	new (string_cvt, "secondary-prompt", "SECONDARY_PROMPT",
-	     "secondary prompt","= ")
+	new (string_cvt, "secondary-prompt", "secondary prompt","= ")
 
     val lazysml =
-	new (flag_cvt, "lazy-keyword", "LAZY_KEYWORD",
+	new (flag_cvt, "lazy-keyword",
 	     "whether `lazy' is considered a keyword", false)
 
     val overloadKW =
-	new (flag_cvt, "overload", "OVERLOAD",
+	new (flag_cvt, "overload",
 	     "whether (_)overload keyword is enabled", false)
 
     val quotation =
-	new (flag_cvt, "quotations", "QUOTATION",
+	new (flag_cvt, "quotations",
 	     "whether (anti-)quotations are recognized", false)
 end
