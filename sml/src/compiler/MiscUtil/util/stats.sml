@@ -216,8 +216,9 @@ structure Stats :> STATS =
 
     fun showPhaseSp(PHASE{name,this,accum}) = let
 	  val {usr,sys,gc} = !this +++ !accum
-          in if (usr++sys++gc) = T.zeroTime then ()
-             else 
+          in case T.compare(usr++sys++gc, T.zeroTime)
+	     of EQUAL => ()
+	      | _ => 
                (sayfield(40,name); 
     	        say(timeToStr (usr++sys)); say "u  ";
 (*	        say(timeToStr sys); say "s  "; *)

@@ -3,8 +3,7 @@
 # build script for ml-lex under the new runtime system.
 #
 # options:
-#   -arch arch		-- specify the architecture, "heap" is the default.
-#   -o image		-- specify the name of the heap image, "ml-lex.ARCH"
+#   -o image		-- specify the name of the heap image, "ml-lex"
 #			   is the default.
 #   -sml path		-- specify the path to the sml executable, "../../bin/sml"
 #			   is the default.
@@ -13,19 +12,9 @@ CMD="build"
 
 ROOT="ml-lex"
 HEAP_IMAGE=""
-ARCH="heap"
-BIN="${INSTALLDIR:-../..}/bin"
-SML="$BIN/sml"
-
-#
-# determine the host architecture
-#
-ARCH_N_OPSYS=`$BIN/.arch-n-opsys`
-if [ $? != "0" ]; then
-  echo "$CMD: unable to determine architecture/operating system"
-  exit 1
-fi
-eval $ARCH_N_OPSYS
+TWOUP=`pwd`/../../
+BIN=${INSTALLDIR:-$TWOUP}/bin
+SML=$BIN/sml
 
 #
 # process command-line options
@@ -36,13 +25,6 @@ do
     arg=$1
     shift
     case $arg in
-	-arch)
-	    if [ "$#" = "0" ]; then
-		echo "$CMD: must supply architecture for -arch option"
-		exit 1
-	    fi
-	    ARCH=$1; shift
-	;;
 	-o)
 	    if [ "$#" = "0" ]; then
 		echo "$CMD: must supply image name for -o option"
@@ -68,8 +50,7 @@ if [ "$HEAP_IMAGE" = "" ]; then
 fi
 
 $SML $ARGS <<ZZZ
-  use "lexgen.sml";
-  use "export-lex.sml";
-  export "$HEAP_IMAGE" : unit;
+  CM.make "ml-lex.cm";
+  ExportLexGen.export "$HEAP_IMAGE" : unit;
 ZZZ
 

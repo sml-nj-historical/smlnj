@@ -25,8 +25,8 @@ struct
 
 local
     structure F  = FLINT
-    structure S = IntBinarySet
-    structure M = IntBinaryMap
+    structure S = IntRedBlackSet
+    structure M = IntRedBlackMap
     structure PP = PPFlint
     structure LT = LtyExtern
     structure LK = LtyKernel

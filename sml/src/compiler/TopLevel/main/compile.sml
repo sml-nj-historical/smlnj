@@ -54,6 +54,7 @@ type pid        = PS.persstamp         (* persistant id *)
 type import     = pid * CB.importTree  (* import specification *)
 type pickle     = CC.pickle            (* pickled format *)
 type hash       = CC.hash              (* environment hash id *)
+type newContext = CC.newContext	       (* reduced context after pickling *)
 
 fun fail s = raise (Compile s)
 
@@ -89,9 +90,11 @@ fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} =
       val (absyn, nenv) = ElabTop.elabTop(ast, bsenv, cinfo)
       val (absyn, nenv) = 
         if anyErrors (cinfo) then (A.SEQdec nil, SE.empty) else (absyn, nenv)
-      val {hash,pickle,exportLvars,exportPid,newenv} = pickUnpick(senv,nenv)
+      val { hash, pickle, exportLvars, exportPid, newenv, ctxt } =
+	  pickUnpick(senv,nenv)
    in {absyn=absyn, newstatenv=toCM newenv, exportPid=exportPid, 
-       exportLvars=exportLvars, staticPid = hash, pickle=pickle}
+       exportLvars=exportLvars, staticPid = hash, pickle=pickle,
+       ctxt = ctxt }
   end (* function elaborate *)
 
 val elaborate = ST.doPhase(ST.makePhase "Compiler 030 elaborate") elaborate
@@ -180,7 +183,8 @@ val codegen = ST.doPhase (ST.makePhase "Compiler 140 CodeGen") codegen
 fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv, 
              compInfo=cinfo, checkErr=check, runtimePid=runtimePid, 
              splitting=splitting} = 
-  let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle} =
+  let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle,
+	   ctxt} =
         (elaborate {ast=ast, statenv=oldstatenv, compInfo=cinfo}) 
                  before (check "elaborate")
 
@@ -194,14 +198,43 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
                     compInfo=cinfo})
               before check "translate"
 
-      (** the following is a special hook for the case of linking the
-          runtime vector when compiling PervEnv/core.sml. (ZHONG)
+      (* The following is a special hook for the case of linking the
+       * runtime vector when compiling PervEnv/core.sml. (ZHONG)
+       *
+       * Made more robust by looking up the dynamic pid for the runtime
+       * Assembly structure. Now core.sml can import any number of 
+       * modules. (Lal and Dave)
        *)          
       val imports =
-        (case (runtimePid, imports)
-          of (NONE, _) => imports
-	   | (SOME p, [(_,tr)]) => [(p, tr)]
-           | _ => raise Compile "core compilation failed")
+        (case runtimePid
+          of NONE => imports
+	   | SOME runP => let
+	       (* compiling core.sml *)
+	       val asmSym = Symbol.strSymbol "Assembly"
+             in
+	       case StaticEnv.look(CC.fromCM oldstatenv, asmSym)
+	       of Bindings.STRbind str =>
+		  (case str
+		   of Modules.STR{access, ...} => 
+		      (case access
+		       of DA.PATH(DA.EXTERN ps,_) => 
+			  let
+			    fun repl(x as (p,tr)) = 
+			      (case PersStamps.compare(ps, p)
+			       of EQUAL => (runP, tr)
+				| _ => x
+			      (*esac*))
+			  in map repl imports
+			  end
+		       | _ => raise Compile ("imports: " ^ DA.prAcc access)
+		      (*esac*))
+		    | Modules.STRSIG _ => raise Compile "STRSIG"
+		    | Modules.ERRORstr => raise Compile "ERRORstr"
+                  (*esac*))
+	       | _ => raise Compile "core compilation failed"
+	     end
+	(*esac*))
+
 
       val { csegments, inlineExp, imports = revisedImports } = 
 	  codegen { flint = flint, imports = imports, symenv = symenv, 
@@ -223,7 +256,8 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
 	staticPid = staticPid,
 	pickle = pickle,
 	inlineExp = inlineExp,
-	imports = revisedImports }
+	imports = revisedImports,
+	ctxt = ctxt }
   end (* function compile *)
 
 (*****************************************************************************

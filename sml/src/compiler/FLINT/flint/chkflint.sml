@@ -25,6 +25,7 @@ local structure LT = LtyExtern
       structure DI = DebIndex
       structure PP = PPFlint
       structure PO = PrimOp
+      structure S  = Intset
       open FLINT
 
 fun bug s = ErrorMsg.impossible ("ChkFlint: "^s)
@@ -92,12 +93,12 @@ fun check phase envs lexp = let
      * illegal).  Note that lvars and tvars actually share the same
      * namespace!   --league, 11 April 1998
      *)
-  val definedLvars = Intset.new()
+  val definedLvars = S.new()
   fun lvarDef le (lvar:lvar) = 
-      if Intset.mem definedLvars lvar then
+      if S.mem definedLvars lvar then
           errMsg (le, ("lvar " ^ (LambdaVar.prLvar lvar) ^ " redefined"), ())
       else
-          Intset.add definedLvars lvar
+          S.add definedLvars lvar
 
   val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
   val ltTAppChk =

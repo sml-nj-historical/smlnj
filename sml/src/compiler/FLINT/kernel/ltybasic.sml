@@ -271,13 +271,13 @@ val tcInsert = LK.tcInsert
  ***************************************************************************)
 
 (** utility values and functions on ltyEnv *)
-type ltyEnv = (lty * DebIndex.depth) IntBinaryMap.map
+type ltyEnv = (lty * DebIndex.depth) IntRedBlackMap.map
 
 exception ltUnbound
-val initLtyEnv : ltyEnv = IntBinaryMap.empty
+val initLtyEnv : ltyEnv = IntRedBlackMap.empty
 
 fun ltLookup (venv, lv, nd) = 
-  (case IntBinaryMap.find(venv, lv)
+  (case IntRedBlackMap.find(venv, lv)
      of NONE  => 
 	  (say "**** hmmm, I didn't find the variable ";
 	   say (Int.toString lv); say "\n";
@@ -288,7 +288,7 @@ fun ltLookup (venv, lv, nd) =
 	       else ltc_env(lt, 0, nd - d, LK.initTycEnv)
   (*easc*))
 
-fun ltInsert (venv, lv, lt, d) = IntBinaryMap.insert(venv, lv, (lt, d))
+fun ltInsert (venv, lv, lt, d) = IntRedBlackMap.insert(venv, lv, (lt, d))
 
 end (* top-level local *)
 end (* structure LtyBasic *)

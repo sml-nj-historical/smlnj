@@ -63,18 +63,18 @@ fun RETv (v) = RET [v]
 type hdr = value -> lexp
 type hdrOp = hdr option
 
-type wpCache = (lty * hdrOp) list IntBinaryMap.map
+type wpCache = (lty * hdrOp) list IntRedBlackMap.map
 type wpEnv = (fundec list ref * wpCache ref) list
 
-val initWpCache : wpCache = IntBinaryMap.empty
+val initWpCache : wpCache = IntRedBlackMap.empty
 fun initWpEnv () = [(ref [], ref initWpCache)]
 
 fun wcEnter([], t, x) = bug "unexpected wenv in wcEnter"
   | wcEnter((_, z as ref m)::_, t, x) =
       let val h = lt_key t
        in z := 
-	    IntBinaryMap.insert
-	      (m, h, (t,x)::(Option.getOpt(IntBinaryMap.find(m,h), nil)))
+	    IntRedBlackMap.insert
+	      (m, h, (t,x)::(Option.getOpt(IntRedBlackMap.find(m,h), nil)))
       end
 
 fun wcLook([], t) = bug "unexpected wenv in wcLook"
@@ -82,7 +82,7 @@ fun wcLook([], t) = bug "unexpected wenv in wcLook"
        let fun loop((t',x)::rest) = if lt_eqv(t,t') then SOME x else loop rest
              | loop [] = NONE
 	in 
-	  case IntBinaryMap.find(m, lt_key t)
+	  case IntRedBlackMap.find(m, lt_key t)
 	    of SOME x => loop x
              | NONE => NONE
         end

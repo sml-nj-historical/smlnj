@@ -133,6 +133,11 @@ structure Memo :> sig
     val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
 end =
 struct
+    structure TcDict = RedBlackMapFn
+                           (struct
+                               type ord_key = tyc
+                               val compare = LK.tc_cmp
+                           end)
 
     type dict = (tkind * tkind) list TcDict.map ref
     val newDict : unit -> dict = ref o (fn () => TcDict.empty)

@@ -1,5 +1,5 @@
 (* These files are to be replaced with  equivalent versions from
- * smlnj-lib or moved to smlnj-lib/Util.  
+ * smlnj-lib or moved to smlnj-lib/Util.
  *)
 
 Library
@@ -11,6 +11,7 @@ Library
 	signature UNPICKLE_UTIL
 
 	structure Intmap
+	structure Intset
 	structure CRC
 	structure SortedList
 	structure UnpickleUtil
@@ -19,10 +20,11 @@ Library
 	functor SCCUtilFun
 is
 
+intset.sml
 intmap.sig
 intmap.sml
-crc.sml			
-scc.sml			
+crc.sml
+scc.sml
 sortedlist.sml
 pickle-util.sml
 unpickle-util.sml

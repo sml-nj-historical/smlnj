@@ -12,8 +12,8 @@ struct
 
 local
     structure F  = FLINT
-    structure S  = IntBinarySet
-    structure M  = IntBinaryMap
+    structure S  = IntRedBlackSet
+    structure M  = IntRedBlackMap
     structure O  = Option
     structure OU = OptUtils
     structure FU = FlintUtil

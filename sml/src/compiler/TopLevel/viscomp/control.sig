@@ -185,6 +185,7 @@ sig
   val preserveLvarNames : bool ref
   val markabsyn : bool ref
   val trackExn : bool ref
+  val polyEqWarn : bool ref
   val indexing : bool ref
   val instSigs : bool ref
   val quotation : bool ref

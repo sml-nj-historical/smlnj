@@ -22,11 +22,11 @@ sig
    * free variables remain unchanged except for the renaming specified
    * in the first (types) and second (values) argument *)
   val copy : (FLINT.tvar * FLINT.tyc) list ->
-             FLINT.lvar IntBinaryMap.map ->
+             FLINT.lvar IntRedBlackMap.map ->
              FLINT.lexp -> FLINT.lexp
   val copyfdec : FLINT.fundec -> FLINT.fundec
 
-  val freevars : FLINT.lexp -> IntBinarySet.set
+  val freevars : FLINT.lexp -> IntRedBlackSet.set
 
   val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
 
@@ -40,10 +40,10 @@ local structure EM = ErrorMsg
       structure LT = LtyExtern
       structure PO = PrimOp
       structure DA = Access
-      structure M  = IntBinaryMap
+      structure M  = IntRedBlackMap
       structure A  = Access
       structure O  = Option
-      structure S  = IntBinarySet
+      structure S  = IntRedBlackSet
       structure F  = FLINT
       open FLINT
 in 

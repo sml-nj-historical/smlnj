@@ -1057,7 +1057,7 @@ fun tc_unroll_fix tyc =
  * supports making and checking these inductive assumptions.
  * Furthermore, we need to avoid unrolling any FIX more than once.
  *)
-structure TcDict = BinaryMapFn
+structure TcDict = RedBlackMapFn
                        (struct
                            type ord_key = tyc
                            val compare = tc_cmp

@@ -14,6 +14,8 @@ local structure DI = DebIndex
       structure LT = LtyExtern
       structure FU = FlintUtil
       structure PO = PrimOp
+      structure S  = Intset
+      structure M  = Intmap
       open FLINT
 in
 
