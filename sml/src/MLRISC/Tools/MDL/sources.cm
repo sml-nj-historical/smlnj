@@ -19,7 +19,6 @@ Group
 	signature MLRISC_DEFS
 	signature MLRISC_TYPES
 	signature MLTREE
-	signature MLTREE_ANNOTATIONS
 	signature MLTREE_BASIS
 	signature MLTREE_EXTENSION
 	signature MLTREE_FOLD
@@ -59,7 +58,6 @@ Group
 	structure MDLTyping
 	structure MLRiscDefs
 	structure MLRiscTypes
-	structure MLTreeAnnotations
 	structure MLTreeBasis
 	functor CellsCommon
 	functor InstructionStream
@@ -127,8 +125,6 @@ is
 	../../instructions/labels.sml
 	../../instructions/labelExp.sml
 	../../instructions/pseudoOps.sig
-	../../mltree/mltree-annotations.sig
-	../../mltree/mltree-annotations.sml
 	../../mltree/mltree-basis.sig
 	../../mltree/mltree-basis.sml
 	../../mltree/mltree-extension.sig
