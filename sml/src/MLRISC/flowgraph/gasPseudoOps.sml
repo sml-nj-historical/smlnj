@@ -102,8 +102,8 @@ struct
 	      | 128 => ".extended "
             (*easc*)) :: f)
 
-    | toString(PB.IMPORT labs) = decls(".global %s\n", labs)
-    | toString(PB.EXPORT labs) = decls(".extern %s\n", labs)
+    | toString(PB.IMPORT labs) = decls(".extern %s\n", labs)
+    | toString(PB.EXPORT labs) = decls(".global %s\n", labs)
 
     | toString(PB.EXT _) = error "EXT"
 
