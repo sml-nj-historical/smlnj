@@ -14,8 +14,8 @@ signature CM_SEMANT = sig
 
     type group
 
-    type perms
-    type permspec
+    type privileges
+    type privilegespec
     type aexp
     type exp
     type members			(* still conditional *)
@@ -33,14 +33,18 @@ signature CM_SEMANT = sig
     val ml_funsig : string -> ml_symbol
 
     (* getting the full analysis for a group/library *)
-    val emptyGroup : group
-    val group : permspec * exports option * members -> group
-    val library : permspec * exports * members -> group
+    val emptyGroup : pathname -> group
+    val group :
+	pathname * privilegespec * exports option * members * complainer
+	-> group
+    val library :
+	pathname * privilegespec * exports * members * complainer
+	-> group
 
-    (* assembling permission lists *)
-    val initialPermSpec : permspec
-    val require : permspec * cm_symbol * complainer -> permspec
-    val grant : permspec * cm_symbol * complainer -> permspec
+    (* assembling privilege lists *)
+    val initialPrivilegeSpec : privilegespec
+    val require : privilegespec * cm_symbol * complainer -> privilegespec
+    val grant : privilegespec * cm_symbol * complainer -> privilegespec
 
     (* constructing member collections *)
     val emptyMembers : members
@@ -96,12 +100,16 @@ structure CMSemant :> CM_SEMANT = struct
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
 
-    type group = Dummy.t
+    type privileges = StringSet.set
+    type privilegespec = { required : privileges, granted : privileges }
+
+    datatype group =
+	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
+		   islib: bool,
+		   privileges: privilegespec,
+		   grouppath: AbsPath.t }
 
     type environment = MemberCollection.collection
-
-    type perms = StringSet.set
-    type permspec = { required : perms, granted : perms }
 
     type aexp = environment -> int
     type exp = environment -> bool
@@ -126,33 +134,41 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun applyTo mc e = e mc
 
-    val emptyGroup = Dummy.v
+    fun emptyGroup path =
+	GROUP { exports = SymbolMap.empty,
+	        islib = false,
+		privileges = { required = StringSet.empty,
+			       granted = StringSet.empty },
+		grouppath = path }
+	
 
-    fun group (p: permspec, e: exports option, m) = let
+    fun group (g, p, e, m, error) = let
 	val mc = applyTo MemberCollection.empty m
-	val exports = Option.map (applyTo mc) e
+	val filter = Option.map (applyTo mc) e
+	val exports = MemberCollection.build (mc, filter, error)
     in
-	ignore (MemberCollection.build mc);
-	Dummy.v
+	GROUP { exports = exports, islib = false,
+	        privileges = p, grouppath = g }
     end
 
-    fun library (p: permspec, e: exports, m) = let
+    fun library (g, p, e, m, error) = let
 	val mc = applyTo MemberCollection.empty m
-	val exports = applyTo mc e
+	val filter = applyTo mc e
+	val exports = MemberCollection.build (mc, SOME filter, error)
     in
-	ignore (MemberCollection.build mc);
-	Dummy.v
+	GROUP { exports = exports, islib = true,
+	        privileges = p, grouppath = g }
     end
 
     local
 	val isMember = StringSet.member
 	fun sanity ({ required, granted }, s, error) =
 	    if isMember (required, s) orelse isMember (granted, s) then
-		error ("duplicate permission name: " ^ s)
+		error ("duplicate privilege name: " ^ s)
 	    else ()
     in
-	val initialPermSpec = { required = StringSet.empty,
-			     granted = StringSet.empty }
+	val initialPrivilegeSpec = { required = StringSet.empty,
+				     granted = StringSet.empty }
 	fun require (a as ({ required, granted }, s, _)) =
 	    (sanity a;
 	     { required = StringSet.add (required, s), granted = granted })
@@ -162,7 +178,9 @@ structure CMSemant :> CM_SEMANT = struct
     end
 
     (* get the export map from a group *)
-    fun getExports (g: group) = (ignore Dummy.v; SymbolMap.empty)
+    fun getExports (GROUP { exports, islib, ... }) =
+	{ imports = exports,
+	  gimports = if islib then SymbolMap.empty else exports }
 
     fun emptyMembers env = env
     fun member rparse arg env = let

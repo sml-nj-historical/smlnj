@@ -8,7 +8,6 @@
 structure DependencyGraph = struct
 
     type symbol = Symbol.symbol
-    type groupinfo = Dummy.t
     type primitive = Primitive.primitive
 
     type filter = SymbolSet.set option
@@ -43,6 +42,8 @@ structure DependencyGraph = struct
       | LAYER of env * env
 
     withtype value = env
+
+    type impexp = farsbnode * env
 
     fun describeSBN (SB_BNODE (PNODE p)) = Primitive.toString p
       | describeSBN (SB_BNODE (BNODE { bininfo = i, ... })) =

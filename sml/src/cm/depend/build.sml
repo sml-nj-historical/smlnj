@@ -1,10 +1,15 @@
 signature BUILDDEPEND = sig
-    val build : { subexports: (DependencyGraph.farsbnode * DependencyGraph.env)
-		                SymbolMap.map,
-		  smlfiles: SmlInfo.info list,
-		  localdefs: SmlInfo.info SymbolMap.map }
-	-> { nodemap: DependencyGraph.snode SymbolMap.map,
-	     rootset: DependencyGraph.snode list }
+    type impexp = DependencyGraph.impexp
+
+    val build :
+	{ imports: impexp SymbolMap.map,
+	  gimports: impexp SymbolMap.map,
+	  smlfiles: SmlInfo.info list,
+	  localdefs: SmlInfo.info SymbolMap.map }
+	* SymbolSet.set option		(* filter *)
+	* (string -> unit)		(* error *)
+	->
+	impexp SymbolMap.map		(* exports *)
 end
 
 structure BuildDepend :> BUILDDEPEND = struct
@@ -16,6 +21,8 @@ structure BuildDepend :> BUILDDEPEND = struct
     structure DG = DependencyGraph
     structure EM = GenericVC.ErrorMsg
     structure SP = GenericVC.SymPath
+
+    type impexp = DG.impexp
 
     fun look otherwise DG.EMPTY s = otherwise s
       | look otherwise (DG.BINDING (s', v)) s =
@@ -29,7 +36,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 	S.nameSpaceToString (S.nameSpace s) :: " " ::
 	S.name s :: r
 
-    fun build { subexports, smlfiles, localdefs } = let
+    fun build (coll, fopt, error) = let
+	val { imports, gimports, smlfiles, localdefs } = coll
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)
@@ -127,7 +135,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 	     * global imports. *)
 	    fun lookimport s = let
 		fun lookfar () =
-		    case SM.find (subexports, s) of
+		    case SM.find (imports, s) of
 			SOME (farn, e) => (globalImport farn; e)
 		      | NONE => (SmlInfo.error i
 				  (concat (AbsPath.spec f ::
@@ -247,14 +255,91 @@ structure BuildDepend :> BUILDDEPEND = struct
 	 * and the root set to be updated accordingly *)
 	fun doSmlFile i = ignore (getResult (i, []))
 
-	(* converting smlinfos to nodes *)
-	val i2n = #1 o valOf o valOf o fetch
-    in
+	(* converting smlinfos to sbnodes * env *)
+	fun i2sbn i = let
+	    val (sn, e) = valOf (valOf (fetch i))
+	in
+	    (DG.SB_SNODE sn, e)
+	end
+
 	(* run the analysis *)
-	app doSmlFile smlfiles;
-	(* generate map from export symbol to node and
-	 * also return the root set *)
-	{ nodemap = SM.map i2n localdefs,
-	  rootset = map i2n (AbsPathMap.listItems (!rs)) }
+	val _ = app doSmlFile smlfiles
+
+	fun addDummyFilt (sbn, e) = ((NONE, sbn), e)
+
+	(* First we make a map of all locally defined symbols to
+	 * the local "far sb node"
+	 * but with only a dummy filter attached.
+	 * This makes it consistent with the current state
+	 * of "imports" and "gimports" where there can be filters, but
+	 * where those filters are not yet strengthened according to fopt *)
+	val localmap = SM.map (addDummyFilt o i2sbn) localdefs
+
+	val exports =
+	    case fopt of
+		NONE =>
+		    (* There is no filter -- so we are in an ordinary
+		     * group and should export all gimports as well as
+		     * all local definitions.
+		     * No filter strengthening is necessary. *)
+		    SM.unionWith #1 (localmap, gimports)
+	      | SOME ss => let
+		    (* There is a filter.
+		     * We export only the things in the filter.
+		     * They can be taken from either localmap or else from
+		     * imports.  In either case, it is necessary to strengthen
+		     * the filter attached to each node. *)
+		    fun strengthen ((fopt', sbn), e) = let
+			exception Unbound
+			fun addB (s, e') = let
+			    val v = look (fn _ => raise Unbound) e s
+			in
+			    DG.LAYER (DG.BINDING (s, v), e')
+			end handle Unbound => e'
+			val new_e = SS.foldl addB DG.EMPTY ss
+			val new_fopt =
+			    case fopt' of
+				NONE => fopt
+			      | SOME ss' => SOME (SS.intersection (ss, ss'))
+		    in
+			((new_fopt, sbn), new_e)
+		    end
+		    val availablemap = SM.unionWith #1 (localmap, imports)
+		    fun addNodeFor (s, m) =
+			case SM.find (availablemap, s) of
+			    SOME n => SM.insert (m, s, strengthen n)
+			  | NONE => (error 
+				      (concat ("exported " ::
+					       symDesc (s, [" not defined"])));
+				     m)
+		in
+		    SS.foldl addNodeFor SM.empty ss
+		end
+
+	(* Find dangling (unreachable) nodes.
+	 * For this, we first build an AbsPathSet.set of all the SNODEs in the
+	 * exporct map.  Then we build another such set that is the domain of
+	 * the root set.  By subtracting the former from the latter we get
+	 * the set of dangling nodes. *)
+	fun addR (p, _, s) = AbsPathSet.add (s, p)
+	val rootPathSet = AbsPathMap.foldli addR AbsPathSet.empty (!rs)
+
+	fun addE (((_, DG.SB_SNODE (DG.SNODE { smlinfo =i, ... })), _), s) =
+	    AbsPathSet.add (s, SmlInfo.sourcepath i)
+	  | addE (_, s) = s
+	val exportPathSet = SM.foldl addE AbsPathSet.empty exports
+
+	val danglingPaths = AbsPathSet.difference (rootPathSet, exportPathSet)
+
+	fun complainDangle p = let
+	    val i = valOf (AbsPathMap.find (!rs, p))
+	in
+	    SmlInfo.error i
+	        (concat ["compilation unit ", AbsPath.spec p, " unreachable"])
+	        EM.nullErrorBody
+	end
+    in
+	AbsPathSet.app complainDangle danglingPaths;
+	exports
     end
 end

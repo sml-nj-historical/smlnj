@@ -57,10 +57,10 @@ structure CMParse :> CMPARSE = struct
 	 * This function is used to parse aliases and sub-groups. *)
 	fun recParse (p1, p2) p =
 	    (case parse' (p, (group, (source, p1, p2)) :: groupstack) of
-		 NONE => (#anyErrors source := true; CMSemant.emptyGroup)
+		 NONE => (#anyErrors source := true; CMSemant.emptyGroup group)
 	       | SOME res => res)
 	    handle exn as IO.Io _ => (error (p1, p2) (General.exnMessage exn);
-				      CMSemant.emptyGroup)
+				      CMSemant.emptyGroup group)
 
 	fun doMember (p, p1, p2, c, e) =
 	    CMSemant.member (recParse (p1, p2))
@@ -166,7 +166,7 @@ structure CMParse :> CMPARSE = struct
 	val (parseResult, _) =
 	    CMParse.parse (lookAhead, tokenStream,
 			   fn (s,p1,p2) => error (p1, p2) s,
-			   (context, error', error, recParse, doMember))
+			   (group, context, error', error, recParse, doMember))
     in
 	TextIO.closeIn stream;
 	if !(#anyErrors source) then NONE

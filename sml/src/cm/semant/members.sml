@@ -13,12 +13,12 @@ signature MEMBERCOLLECTION = sig
 
     type symbol = Symbol.symbol
     type smlinfo = SmlInfo.info
+    type impexp = DependencyGraph.impexp
 
     type collection
 
-    type farlooker =
-	AbsPath.t ->
-	(DependencyGraph.farsbnode * DependencyGraph.env) SymbolMap.map
+    type farlooker = AbsPath.t ->
+	{ imports: impexp SymbolMap.map, gimports: impexp SymbolMap.map }
 
     val empty : collection
 
@@ -28,10 +28,8 @@ signature MEMBERCOLLECTION = sig
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
-    val build : collection
-	-> { nodemap: DependencyGraph.snode SymbolMap.map,
- 	     rootset: DependencyGraph.snode list }
-	
+    val build : collection * SymbolSet.set option * (string -> unit)
+	-> impexp SymbolMap.map
 
     val num_look : collection -> string -> int
     val ml_look : collection -> symbol -> bool
@@ -46,18 +44,20 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
+    type impexp = DG.impexp
 
     datatype collection =
-	COLLECTION of { subexports: (DG.farsbnode * DG.env) SymbolMap.map,
+	COLLECTION of { imports: impexp SymbolMap.map,
+		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map }
 
-    type farlooker =
-	AbsPath.t ->
-	(DependencyGraph.farsbnode * DependencyGraph.env) SymbolMap.map
+    type farlooker = AbsPath.t ->
+	{ imports: impexp SymbolMap.map, gimports: impexp SymbolMap.map }
 
     val empty =
-	COLLECTION { subexports = SymbolMap.empty,
+	COLLECTION { imports = SymbolMap.empty,
+		     gimports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty }
 
@@ -86,12 +86,13 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	in
 	    Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
 	end
-	fun se_error (s, x as (fn1, _), (fn2, _)) =
+	fun i_error (s, x as (fn1, _), (fn2, _)) =
 	    (error (concat (describeSymbol
 			    (s, [" imported from ", DG.describeFarSBN fn1,
 				 " and also from ", DG.describeFarSBN fn2])));
 	     x)
-	val se_union = SymbolMap.unionWithi se_error
+	val i_union = SymbolMap.unionWithi i_error
+	val gi_union = SymbolMap.unionWith #1
 	fun ld_error (s, f1, f2) =
 	    (error (concat (describeSymbol
 			    (s, [" defined in ", SmlInfo.spec f1,
@@ -99,7 +100,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	     f1)
 	val ld_union = SymbolMap.unionWithi ld_error
     in
-	COLLECTION { subexports = se_union (#subexports c1, #subexports c2),
+	COLLECTION { imports = i_union (#imports c1, #imports c2),
+		     gimports = gi_union (#gimports c1, #gimports c2),
 		     smlfiles = #smlfiles c1 @ #smlfiles c2,
 		     localdefs = ld_union (#localdefs c1, #localdefs c2) }
     end
@@ -108,10 +110,12 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	fun noPrimitive () = let
 	    fun e0 s = error s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
-	    fun exp2coll (PrivateTools.GROUP p) =
-		COLLECTION { subexports = gexports p,
-			     smlfiles = [],
-			     localdefs = SymbolMap.empty }
+	    fun exp2coll (PrivateTools.GROUP p) = let
+		    val { imports = i, gimports = gi } = gexports p
+	        in
+		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
+				 localdefs = SymbolMap.empty }
+	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
 		    val i =  SmlInfo.info
@@ -123,7 +127,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
 		    val ld = SymbolSet.foldl addLD SymbolMap.empty exports
 		in
-		    COLLECTION { subexports = SymbolMap.empty,
+		    COLLECTION { imports = SymbolMap.empty,
+				 gimports = SymbolMap.empty,
 				 smlfiles = [i],
 				 localdefs = ld }
 		end
@@ -144,22 +149,23 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		in
 		    SymbolMap.insert (m, s, (fsbn, env))
 		end
-		val se = SymbolSet.foldl addFN SymbolMap.empty exports
+		val imp = SymbolSet.foldl addFN SymbolMap.empty exports
 	    in
-		COLLECTION { subexports = se,
+		COLLECTION { imports = imp,
+			     gimports = SymbolMap.empty,
 			     smlfiles = [],
 			     localdefs = SymbolMap.empty }
 	    end
 	  | NONE => noPrimitive ()
     end
 
-    fun build (COLLECTION c) = BuildDepend.build c
+    fun build (COLLECTION c, fopt, error) = BuildDepend.build (c, fopt, error)
 
     fun num_look (c: collection) (s: string) = 0
 
     fun cm_look (c: collection) (s: string) = false
 
-    fun ml_look (COLLECTION { subexports, localdefs, ... }) s =
-	isSome (SymbolMap.find (subexports, s)) orelse
+    fun ml_look (COLLECTION { imports, localdefs, ... }) s =
+	isSome (SymbolMap.find (imports, s)) orelse
 	isSome (SymbolMap.find (localdefs, s))
 end

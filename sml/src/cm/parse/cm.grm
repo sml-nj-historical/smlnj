@@ -30,7 +30,7 @@ structure S = CMSemant
 %nonterm description of S.group
        | alias of S.group
        | group of S.group
-       | permspec of S.permspec
+       | privspec of S.privilegespec
        | opt_exports of S.exports option
        | exports of S.exports
        | export of S.exports
@@ -52,7 +52,8 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (context, error', error, recParse, doMember) :
+%arg (grouppath, context, error', error, recParse, doMember) :
+    S.pathname *
     S.context *
     (pos * pos -> string -> (PrettyPrint.ppstream -> unit) -> unit) *
     (pos * pos -> string -> unit) *
@@ -88,17 +89,23 @@ alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
 						 pathname)
 
-group : permspec GROUP opt_exports IS members	(S.group
-						 (permspec, opt_exports,
-						  members))
-      | permspec LIBRARY exports IS members     (S.library
-						 (permspec, exports, members))
+group : privspec GROUP opt_exports IS members   (S.group
+						 (grouppath,
+						  privspec, opt_exports,
+						  members,
+						  error (opt_exportsleft,
+							 opt_exportsright)))
+      | privspec LIBRARY exports IS members     (S.library
+						 (grouppath,
+						  privspec, exports, members,
+						  error (exportsleft,
+							 exportsright)))
 
-permspec : (* empty *)                          (S.initialPermSpec)
-      | permspec word                           (S.require (permspec, word,
+privspec : (* empty *)                          (S.initialPrivilegeSpec)
+         | privspec word                        (S.require (privspec, word,
 							    error (wordleft,
 								   wordright)))
-      | permspec LPAREN word RPAREN             (S.grant (permspec, word,
+         | privspec LPAREN word RPAREN          (S.grant (privspec, word,
 							  error (wordleft,
 								 wordright)))
 
