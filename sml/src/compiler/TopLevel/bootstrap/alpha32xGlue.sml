@@ -4,11 +4,14 @@
  *
  *)
 
-structure IntAlpha32X = IntShare(structure VC=Alpha32XVisComp)
+local
+    (* force this module to be dependent on CM module (Blume) *)
+    structure CM = Alpha32XCM
+    structure CMB = Alpha32XCMB
+in
+    structure IntAlpha32X = IntShare (structure VC = Alpha32XVisComp)
+end
 
 (*
- * $Log: alpha32xGlue.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -1058,11 +1058,6 @@ struct
 end
 
 (*
- * $Log: rs6000.sml,v $
- * Revision 1.2  1998/05/20 18:35:53  george
- *     Turn off the capability of processing non-zero OFFSET objects  -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:49  george
- * Version 110.5
+ * $Log$
  *
  *)

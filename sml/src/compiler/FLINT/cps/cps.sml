@@ -248,14 +248,5 @@ end (* top-level local *)
 end (* structure CPS *)
 
 (*
- * $Log: cps.sml,v $
- * Revision 1.3  1998/05/22 00:58:32  jhr
- *   Bug fix for literal liftinh code.
- *
- * Revision 1.2  1998/05/20 18:33:36  george
- *     Fixing a potential bug on cps types
- *
- * Revision 1.1.1.1  1998/04/08 18:39:47  george
- * Version 110.5
- *
+ * $Log$
  *)

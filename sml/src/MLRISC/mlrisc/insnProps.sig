@@ -77,11 +77,5 @@ end
 
 
 (*
- * $Log: insnProps.sig,v $
- * Revision 1.2  1998/05/19 15:48:00  george
- *   Added a whole bunch of functions to support global scheduling.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
+ * $Log$
  *)

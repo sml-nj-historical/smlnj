@@ -47,11 +47,5 @@ end
 
 
 (*
- * $Log: hppaMask.sml,v $
- * Revision 1.2  1998/05/08 10:52:24  george
- *   The exhausted register has been made optional -- leung
- *
- * Revision 1.1.1.1  1998/04/08 18:39:55  george
- * Version 110.5
- *
+ * $Log$
  *)

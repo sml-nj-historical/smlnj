@@ -377,8 +377,5 @@ fun consolidateLazy (env as TABLE(_,EMPTY)) = env
 end (* structure Env *)
 
 (*
- * $Log: env.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:34  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -201,11 +201,5 @@ end
 
 
 (*
- * $Log: hppaProps.sml,v $
- * Revision 1.2  1998/05/19 15:45:40  george
- *   Added a whole bunch of functions to support global scheduling.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:01  george
- * Version 110.5
- *
+ * $Log$
  *)

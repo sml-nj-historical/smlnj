@@ -240,8 +240,5 @@ structure Word8Array : MONO_ARRAY =
 
 
 (*
- * $Log: word8-array.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:03  george
- * Version 110.5
- *
+ * $Log$
  *)

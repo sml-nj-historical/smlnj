@@ -177,11 +177,6 @@ end (* local *)
 end (* structure PPVal *)
 
 (*
- * $Log: ppval.sml,v $
- * Revision 1.2  1998/05/15 03:22:17  dbm
- *   Added lazyp parameter to ppDebugDcon.  Add printing of lazyp field.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:17  george
- * Version 110.5
+ * $Log$
  *
  *)

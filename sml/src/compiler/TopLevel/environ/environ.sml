@@ -157,27 +157,42 @@ fun copystat([], senv) = senv
 fun filterStaticEnv(static: staticEnv, symbols: S.symbol list) : staticEnv =
       copystat(getbindings(static, symbols), SE.empty)
 
-fun filterEnv({static, dynamic, symbolic}: environment, symbols) =
-  let val sbindings = getbindings (static, symbols)
-      fun copydynsym ([], denv, syenv) = (denv, syenv)
-	| copydynsym ((_, b) :: l, denv, syenv) =
-	      (case stampOf b
-		of NONE => copydynsym (l, denv, syenv)
-		 | SOME pid =>
+local
+    fun copydynsym (bindings, dynamic, symbolic) = let
+	fun loop ([], denv, syenv) = (denv, syenv)
+	  | loop ((_, b) :: l, denv, syenv) =
+	    (case stampOf b
+		 of NONE => loop (l, denv, syenv)
+	       | SOME pid =>
 		     let val dy = DE.look dynamic pid
-		         val denv = DE.bind (pid, dy, denv)
-		         val sy = SY.look symbolic pid
-		         val syenv = case sy
-		                      of NONE => syenv
-				       | SOME sy => SY.bind (pid, sy, syenv)
-		      in copydynsym (l, denv, syenv)
+			 val denv = DE.bind (pid, dy, denv)
+			 val sy = SY.look symbolic pid
+			 val syenv = case sy
+			     of NONE => syenv
+			   | SOME sy => SY.bind (pid, sy, syenv)
+		     in loop (l, denv, syenv)
 		     end)
-      val senv = copystat(sbindings, SE.empty) 
-      val (denv, syenv) = copydynsym(sbindings, DE.empty, SY.empty)
-   in {static =senv, dynamic = denv, symbolic = syenv}
-  end
+    in
+	loop (bindings, DE.empty, SY.empty)
+    end
+in
+    fun filterEnv({static, dynamic, symbolic}: environment, symbols) =
+	let val sbindings = getbindings (static, symbols)
+	    val senv = copystat(sbindings, SE.empty) 
+	    val (denv, syenv) = copydynsym(sbindings, dynamic, symbolic)
+	in {static =senv, dynamic = denv, symbolic = syenv}
+	end
 
-fun catalogEnv static : S.symbol list = map #1 (SE.sort static)
+    fun catalogEnv static : S.symbol list = map #1 (SE.sort static)
+
+    fun trimEnv { static, dynamic, symbolic } = let
+	val syms = catalogEnv static
+	val (dynamic, symbolic) =
+	    copydynsym (getbindings (static, syms), dynamic, symbolic)
+    in
+	{ static = static, dynamic = dynamic, symbolic = symbolic }
+    end
+end
 
 (* CM-style environment lookup *)
 datatype cmEnv
@@ -253,8 +268,5 @@ end (* structure Environment *)
 
 
 (*
- * $Log: environ.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

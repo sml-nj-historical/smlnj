@@ -1253,17 +1253,5 @@ end (* structure UnpickleMod *)
 
 
 (*
- * $Log: unpickmod.sml,v $
- * Revision 1.3  1998/05/20 18:39:34  george
- *   As a result of the new linkage conventions, we no longer need
- *   the LT_PST type. Certain utility functions on FLINT types are
- *   significantly simplified.
- * 						-- zsh
- *
- * Revision 1.2  1998/05/15 03:45:50  dbm
- *   Added lazyp field as appropriate.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:34  george
- * Version 110.5
- *
+ * $Log$
  *)

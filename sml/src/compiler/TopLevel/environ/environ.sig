@@ -28,6 +28,9 @@ sig
   val consolidateStatic : staticEnv -> staticEnv
   val consolidateSymbolic: symenv -> symenv
 
+  (* reduce dynamic and symbolic part to what's actually needed *)
+  val trimEnv: environment -> environment
+
   val catalogEnv : staticEnv -> Symbol.symbol list
 
   (* CM-style environment lookup *)
@@ -46,8 +49,5 @@ end (* signature ENVIRONMENT *)
 
 
 (*
- * $Log: environ.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

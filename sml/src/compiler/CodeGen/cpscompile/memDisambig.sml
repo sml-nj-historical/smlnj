@@ -197,11 +197,5 @@ end
 
 
 (*
- * $Log: memDisambig.sml,v $
- * Revision 1.2  1998/05/19 15:33:12  george
- *   uses new MEM cellclass from cells
- *
- * Revision 1.1.1.1  1998/04/08 18:39:54  george
- * Version 110.5
- *
+ * $Log$
  *)

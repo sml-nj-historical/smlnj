@@ -125,12 +125,6 @@ functor Alpha32Rewrite(Instr : ALPHA32INSTR) = struct
 end
 
 (*
- * $Log: alpha32Rewrite.sml,v $
- * Revision 1.2  1998/05/08 10:53:59  george
- *   The exhausted register has been made optional -- leung
- *
- * Revision 1.1.1.1  1998/04/08 18:39:01  george
- * Version 110.5
- *
+ * $Log$
  *)
 

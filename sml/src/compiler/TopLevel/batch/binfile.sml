@@ -504,11 +504,5 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 end
 
 (*
- * $Log: binfile.sml,v $
- * Revision 1.1  1998/05/22 15:14:58  jhr
- *   Changed name of batchutil.{sig,sml} to binfile.{sig,sml}
- *
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -337,11 +337,5 @@ end (* toplevel local *)
 end (* structure Equal *)
 
 (*
- * $Log: pequal.sml,v $
- * Revision 1.2  1998/05/15 03:14:53  dbm
- *   Added lazyp flags.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:42  george
- * Version 110.5
- *
+ * $Log$
  *)

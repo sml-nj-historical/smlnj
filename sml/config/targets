@@ -19,21 +19,6 @@ TARGETS="sml"
 #
 #TARGETS="$TARGETS sml-full"
 
-# build the sml compiler with CM pre-loaded; this is required for using
-# any of the libraries.
-#
-TARGETS="$TARGETS sml-cm"
-
-# Set this flag to TRUE, if you want to have both sml and sml-cm available.
-# Otherwise, the sml heap images will be replaced by links to the corresponding
-# sml-cm heap images.
-#
-#INSTALL_SML_AND_CM="TRUE"
-
-# build the testbed compiler; useful for compiler-development work
-#
-#TARGETS="$TARGETS sml-full-cm"
-
 # build ML-Yacc
 #
 TARGETS="$TARGETS ml-yacc"
@@ -77,7 +62,7 @@ TARGETS="$TARGETS eXene"
 
 # If this flag is set to TRUE, then autoloading is enabled in CM.
 #
-ENABLE_AUTOLOADING=TRUE
+#ENABLE_AUTOLOADING=TRUE
 
 # build a version of sml-cm with CML autoloading available.  This
 # is called cml-cm.  Eventually, this will evolve into a proper

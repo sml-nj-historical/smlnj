@@ -270,11 +270,6 @@ structure Core =
   end
 
 (*
- * $Log: core.sml,v $
- * Revision 1.2  1998/05/15 03:28:53  dbm
- *   Revised comments relating to lazysml.
- *
- * Revision 1.1.1.1  1998/04/08 18:40:05  george
- * Version 110.5
+ * $Log$
  *
  *)

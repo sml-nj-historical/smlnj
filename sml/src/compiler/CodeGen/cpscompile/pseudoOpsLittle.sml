@@ -107,14 +107,5 @@ end
 	
 
 (*
- * $Log: pseudoOpsLittle.sml,v $
- * Revision 1.3  1998/05/08 10:52:22  george
- *   The exhausted register has been made optional -- leung
- *
- * Revision 1.2  1998/04/17 19:24:29  george
- *   Bug fix for bug 1364 -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:54  george
- * Version 110.5
- *
+ * $Log$
  *)

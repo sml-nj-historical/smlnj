@@ -42,7 +42,6 @@ sig
 			end
 *)
   structure PrintHooks : PRINTHOOKS
-  structure Boot : sig val coreEnvRef : CMEnv.Env.environment ref end
   val version : {
           system : string,      	(* the system title *)
 	  version_id : int list,	(* the version number *)
@@ -54,14 +53,5 @@ end
 
 
 (*
- * $Log: viscomp.sig,v $
- * Revision 1.3  1998/05/21 17:54:49  jhr
- *   Merging in Matthias's changes.
- *
- * Revision 1.2  1998/05/15 03:54:08  dbm
- *   Eliminate FixityParse and LazyComp.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:14  george
- * Version 110.5
- *
+ * $Log$
  *)

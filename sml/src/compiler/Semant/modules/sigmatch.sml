@@ -1471,12 +1471,7 @@ end (* structure SigMatch *)
 
 
 (*
- * $Log: sigmatch.sml,v $
- * Revision 1.2  1998/05/15 03:44:34  dbm
- *   Fix for bug 1369 (EntityEnv.Unbound exception).
- *
- * Revision 1.1.1.1  1998/04/08 18:39:28  george
- * Version 110.5
+ * $Log$
  *
  *)
 

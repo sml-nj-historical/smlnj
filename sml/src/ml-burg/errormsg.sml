@@ -3,11 +3,8 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
- * Revision 1.1.1.3  1998/05/12 21:56:17  monnier
- * *** empty log message ***
- *
- * Revision 1.1.1.1  1998/04/08 18:40:05  george
- * Version 110.5
+ * Revision 1.1.1.4  1998/06/05 19:39:46  monnier
+ * 110.7
  *
  * Revision 1.1.1.1  1997/01/14 01:37:59  george
  *   Version 109.24

@@ -52,8 +52,5 @@ structure OS_Process : OS_PROCESS =
   end
 
 (*
- * $Log: os-process.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:58  george
- * Version 110.5
- *
+ * $Log$
  *)

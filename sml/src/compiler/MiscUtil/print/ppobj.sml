@@ -570,11 +570,5 @@ end (* structure PPObj *)
 
 
 (*
- * $Log: ppobj.sml,v $
- * Revision 1.2  1998/05/15 03:20:58  dbm
- *   Added lazyp parameter for dtmemberToTycon.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:16  george
- * Version 110.5
- *
+ * $Log$
  *)

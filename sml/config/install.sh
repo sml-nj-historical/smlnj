@@ -70,6 +70,17 @@ LEXPATH=$BINDIR/ml-lex
 BURGPATH=$BINDIR/ml-burg
 
 #
+# set the CM configuration variables (these are environment variables
+# that will be queried by the bootstrap code)
+#  -M.Blume (5/1998)
+#
+CM_YACC_DEFAULT=$YACCPATH
+CM_LEX_DEFAULT=$LEXPATH
+CM_BURG_DEFAULT=$BURGPATH
+CM_PATH_DEFAULT=.:$LIBDIR
+export CM_YACC_DEFAULT CM_LEX_DEFAULT CM_BURG_DEFAULT CM_PATH_DEFAULT 
+
+#
 # the release version that we are installing
 #
 VERSION=`cat $CONFIGDIR/version`
@@ -255,47 +266,6 @@ XXXX
 	  fi
 	fi
       ;;
-      sml-cm)
-	$CONFIGDIR/unpack.sh CM $SRCDIR cm $ROOT/$VERSION-cm.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/cm
-	./build -yacc $YACCPATH -lex $LEXPATH -burg $BURGPATH -L ".:$LIBDIR"
-        if [ -r $TARGET ]; then
-	  mv $TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-        else
-	  echo "!!! build of $TARGET failed"
-	  exit 1
-        fi
-	if [ "$INSTALL_SML_AND_CM" != "TRUE" ]; then
-	  cd $HEAPDIR
-	  rm -f sml.$HEAP_SUFFIX
-	  ln -s sml-cm.$HEAP_SUFFIX sml.$HEAP_SUFFIX
-	fi
-      ;;
-      sml-full-cm)
-	$CONFIGDIR/unpack.sh CM $SRCDIR cm $ROOT/$VERSION-cm.tar
-        if [ "$?" != "0" ]; then
-	  exit $?
-        fi
-        cd $SRCDIR/cm
-	./build -yacc $YACCPATH -lex $LEXPATH -burg $BURGPATH -L ".:$LIBDIR" -sml $BINDIR/sml-full -o $TARGET
-        if [ -r $TARGET ]; then
-	  mv $TARGET $HEAPDIR
-	  if [ ! -f $BINDIR/$i ]; then
-	    cd $BINDIR
-	    ln -s .run-sml $i
-	  fi
-        else
-	  echo "!!! build of $TARGET failed"
-	  exit 1
-        fi
-      ;;
       ml-yacc)
         $CONFIGDIR/unpack.sh ML-Yacc $SRCDIR ml-yacc $ROOT/$VERSION-ml-yacc.tar
         if [ "$?" != "0" ]; then
@@ -357,28 +327,28 @@ XXXX
         fi
       # make the Util library
         cd $SRCDIR/smlnj-lib/Util
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/smlnj-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/Util/sources.cm" > smlnj-lib.cm
 	fi
       # make the Unix library
         cd $SRCDIR/smlnj-lib/Unix
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/unix-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/Unix/sources.cm" > unix-lib.cm
 	fi
       # make the HTML library
         cd $SRCDIR/smlnj-lib/HTML
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/html-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/HTML/sources.cm" > html-lib.cm
 	fi
       # make the Reactive library
         cd $SRCDIR/smlnj-lib/Reactive
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/reactive-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/Reactive/sources.cm" > reactive-lib.cm
@@ -390,7 +360,7 @@ XXXX
 	  exit $?
         fi
         cd $SRCDIR/ml-yacc/lib
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/ml-yacc-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/ml-yacc/lib/sources.cm" > ml-yacc-lib.cm
@@ -402,7 +372,7 @@ XXXX
 	  exit $?
         fi
         cd $SRCDIR/cml/src
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/cml.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/cml/src/sources.cm" > cml.cm
@@ -414,7 +384,7 @@ XXXX
 	  exit $?
         fi
         cd $SRCDIR/cml/cml-lib
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/cml-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/cml/cml-lib/sources.cm" > cml-lib.cm
@@ -430,7 +400,7 @@ XXXX
 	  CMD="$CMD CM.autoload'(\"$LIBDIR/eXene.cm\");"
 	fi
 	cd $ROOT
-	$BINDIR/sml-cm <<XXXX
+	$BINDIR/sml <<XXXX
 	  $CMD
 	  val _ = (SMLofNJ.exportML "$i";
 		print CML.banner;
@@ -453,7 +423,7 @@ XXXX
 	  exit $?
         fi
         cd $SRCDIR/eXene
-        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/eXene.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/eXene/sources.cm" > eXene.cm
@@ -489,14 +459,14 @@ if [ "$ENABLE_AUTOLOADING" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/reactive-lib.cm\");"
   fi
   cd $ROOT
-  $BINDIR/sml-cm <<XXXX
+  $BINDIR/sml <<XXXX
     $CMD
-    val _ = (SMLofNJ.exportML "sml-cm";
+    val _ = (SMLofNJ.exportML "sml";
              print Compiler.banner;
              print " [CM; autoload enabled]\n");
 XXXX
-  if [ -r sml-cm.$HEAP_SUFFIX ]; then
-    mv sml-cm.$HEAP_SUFFIX $HEAPDIR
+  if [ -r sml.$HEAP_SUFFIX ]; then
+    mv sml.$HEAP_SUFFIX $HEAPDIR
   else
     echo "!!! unable to build SML with autoloading"
     exit 1

@@ -48,9 +48,6 @@ signature SML90 =
   end;
 
 (*
- * $Log: sml90.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:40:04  george
- * Version 110.5
- *
+ * $Log$
  *)
 
