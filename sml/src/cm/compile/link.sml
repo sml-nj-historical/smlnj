@@ -1,3 +1,11 @@
+(*
+ * Link traversals.
+ *   - manages shared state
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph

@@ -19,6 +19,7 @@ local
     structure E = GenericVC.Environment
 
     type recomp = GP.info -> GG.group -> bool
+
     type pid = Pid.persstamp
 in
 
@@ -451,8 +452,7 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	    GG.STABLELIB => SOME g
 	  | GG.NOLIB => EM.impossible "stabilize: no library"
 	  | GG.LIB wrapped =>
-		if not (recomp gp g) then
-		    (anyerrors := true; NONE)
+		if not (recomp gp g) then (anyerrors := true; NONE)
 		else let
 		    fun notStable (GG.GROUP { kind, ... }) =
 			case kind of GG.STABLELIB => false | _ => true
@@ -724,7 +724,8 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 			       closeIt = BinIO.closeIn,
 			       work = work,
 			       cleanup = fn () => () })
-	handle Format => NONE
+	handle Format => (error ["file is corrupted (old version?)"];
+			  NONE)
              | IO.Io _ => NONE
     end
 end

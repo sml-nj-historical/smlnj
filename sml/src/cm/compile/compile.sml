@@ -1,3 +1,10 @@
+(*
+ * Compilation traversals.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph
@@ -15,6 +22,7 @@ local
     type ed = { ii: IInfo.info, ctxt: statenv }
 in
     signature COMPILE = sig
+
 	type bfc
 
 	(* reset internal persistent state *)
@@ -29,6 +37,7 @@ in
 	val getBFC : SmlInfo.info -> bfc
 
 	val evict : SmlInfo.info -> unit
+	val evictAll : unit -> unit
 
 	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
 
@@ -66,11 +75,11 @@ in
 	val filtermap = ref (FilterMap.empty: pid FilterMap.map)
 
 	(* more persistent state! *)
-	val globalmap = ref (SmlInfoMap.empty: memo SmlInfoMap.map)
+	val globalstate = ref (SmlInfoMap.empty: memo SmlInfoMap.map)
 
 	fun reset () =
 	    (filtermap := FilterMap.empty;
-	     globalmap := SmlInfoMap.empty)
+	     globalstate := SmlInfoMap.empty)
 
 	fun isValidMemo (memo: memo, provided, smlinfo) =
 	    not (TStamp.needsUpdate { source = SmlInfo.lastseen smlinfo,
@@ -166,7 +175,7 @@ in
 	end
 
 	fun mkTraversal notify = let
-	    val localmap = ref SmlInfoMap.empty
+	    val localstate = ref SmlInfoMap.empty
 
 	    fun pervenv (gp: GP.info) = let
 		val e = #pervasive (#param gp)
@@ -256,13 +265,11 @@ in
 			in
 			    SmlInfo.forgetParsetree i;
 			    save bfc;
-			    globalmap :=
-			      SmlInfoMap.insert (!globalmap, i, memo);
-			    SOME (memo2ed memo)
+			    SOME memo
 			end
 		end (* compile *)
 		fun notlocal () = let
-		    (* Ok, it is not in the local map, so we first have
+		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
 		    val k = #keep_going (#param gp)
 		    fun loc li_n = Option.map nofilter (snode gp li_n)
@@ -288,6 +295,8 @@ in
 						   name = binname,
 						   senv = stat },
 					 ts)
+					before
+					Say.vsay ["[", binname, " loaded]\n"]
 				in
 				    SOME (SafeIO.perform
 					  { openIt = openIt,
@@ -305,30 +314,36 @@ in
 						     ts = ts }
 				    in
 					if isValidMemo (memo, pids, i) then
-					    (globalmap :=
-					     SmlInfoMap.insert
-					     (!globalmap, i, memo);
-					     SOME (memo2ed memo))
+					    SOME memo
 					else compile (stat, sym, pids)
 				    end
 			    end (* fromfile *)
+			    fun notglobal () =
+				case fromfile () of
+				    NONE => NONE
+				  | SOME memo =>
+					(globalstate :=
+					 SmlInfoMap.insert (!globalstate, i,
+							    memo);
+					 SOME memo)
 			in
-			    case SmlInfoMap.find (!globalmap, i) of
-				NONE => fromfile ()
+			    case SmlInfoMap.find (!globalstate, i) of
+				NONE => notglobal ()
 			      | SOME memo =>
 				    if isValidMemo (memo, pids, i) then
-					SOME (memo2ed memo)
-				    else fromfile ()
+					SOME memo
+				    else notglobal ()
 			end
 		end (* notlocal *)
 	    in
-		case SmlInfoMap.find (!localmap, i) of
-		    SOME edopt => edopt
+		case SmlInfoMap.find (!localstate, i) of
+		    SOME mopt => Option.map memo2ed mopt
 		  | NONE => let
-			val edopt = notlocal ()
+			val mopt = notlocal ()
 		    in
-			localmap := SmlInfoMap.insert (!localmap, i, edopt);
-			edopt
+			localstate :=
+			  SmlInfoMap.insert (!localstate, i, mopt);
+			Option.map memo2ed mopt
 		    end
 	    end (* snode *)
 
@@ -370,7 +385,7 @@ in
 	end
 
 	local
-	    fun get i =	valOf (SmlInfoMap.find (!globalmap, i))
+	    fun get i = valOf (SmlInfoMap.find (!globalstate, i))
 	in
 	    fun sizeBFC i = BF.size { content = #bfc (get i), nopickle = true }
 	    fun writeBFC s i = BF.write { content = #bfc (get i),
@@ -379,8 +394,10 @@ in
 	    fun getBFC i = #bfc (get i)
 
 	    fun evict i =
-		(globalmap := #1 (SmlInfoMap.remove (!globalmap, i)))
+		(globalstate := #1 (SmlInfoMap.remove (!globalstate, i)))
 		handle LibBase.NotFound => ()
+
+	    fun evictAll () = globalstate := SmlInfoMap.empty
 	end
     end
 end
