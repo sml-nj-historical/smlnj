@@ -30,17 +30,26 @@ fun reduce ty =
     | ty => ty
 
 fun notconst(_,true,_) = false
+(*
   | notconst(_,_,CONty(_,[t,_])) = 
       (case (reduce t) 
         of CONty(RECORDtyc nil,_) => false
          | _ => true)
+*)
   | notconst _ = true
+
+(* 
+ * fun show((sym,_,_)::syms, r::rs) = 
+ *      (print(Symbol.name sym); print ":   "; 
+ *      PPBasics.ppRep r; print "\n"; show(syms,rs))
+ *   | show _ = (print "\n")
+ *)
 
 (* the first argument indicates whether this is a recursive datatypes *)
 fun infer false ([(_, false, CONty(_,[ty,_]))]) = 
       (case (reduce ty) 
-        of (CONty(RECORDtyc nil, _)) => ([CONSTANT 0], CSIG (0,1))
-         | _ => ([UNTAGGED], CSIG(1,0)) (* [TRANSPARENT] *)) 
+        of (* (CONty(RECORDtyc nil, _)) => ([CONSTANT 0], CSIG (0,1))
+         | *) _ => ([UNTAGGED], CSIG(1,0)) (* [TRANSPARENT] *)) 
       (* The TRANSPARENT conrep is temporarily turned off;
          it should be working very soon. Ask zsh. *)
 
@@ -54,9 +63,11 @@ fun infer false ([(_, false, CONty(_,[ty,_]))]) =
 
 	    | decide (ctag,vtag, (_,false,CONty(_,[ty,_]))::rest, reps) =
 		(case (reduce ty, multiple)
-		  of (CONty(RECORDtyc nil,_),_) => 
-                       decide(ctag+1, vtag, rest, (CONSTANT ctag) :: reps)
-                   | (_, true) =>  
+		  of (*
+                     (CONty(RECORDtyc nil,_),_) => 
+		       decide(ctag+1, vtag, rest, (CONSTANT ctag) :: reps)
+                   | *)
+                     (_, true) =>  
                        decide(ctag, vtag+1, rest, (TAGGED vtag) :: reps)
                    | (_, false) => 
                        decide(ctag, vtag+1, rest, (UNTAGGED :: reps)))
@@ -66,39 +77,15 @@ fun infer false ([(_, false, CONty(_,[ty,_]))]) =
        in decide(0, 0, cons, [])
       end
 
-(** rebind infer for debugging purpose **)
-local
-    val pps = PrettyPrint.mk_ppstream 
-                  {consumer=TextIO.print,
-                   linewidth=80,
-                   flush = fn() => TextIO.flushOut TextIO.stdOut}
-
-    fun show((sym,_,_)::syms, r::rs) = 
-        (print(Symbol.name sym); print ":   "; 
-         PPVal.ppRep pps r; print "\n"; show(syms,rs))
-      | show _ = (print "\n")
-
-    fun dbg flag cons = 
-        let val result = infer flag cons
-        in
-            if !Control.CG.etdebugging then 
-                show(cons, #1 result)
-            else ();
-            result
-        end
-in
-    val infer = dbg
-end (* local debugging *)
-
+(*** val infer = fn l => let val l' = infer l in show(l,l'); l' end ***)
 
 end (* local *)
-
 end (* structure ConRep *)
 
 
 (*
  * $Log: conrep.sml,v $
- * Revision 1.1.1.1  1997/01/14  01:38:09  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
  *
  *)

@@ -287,6 +287,7 @@ fun tcLexp (kenv : kenv) (tc : tyc) =
 			    val test = ieqLexp(e, tcode_realN 2)
 			 in COND(test, tcode_fpair, tcode_pair)
 			end)
+	   | (TC_TUPLE (_, [])) => tcode_void
 	   | (TC_TUPLE (_, ts)) => tcode_record
 	   | (TC_ARROW (_,tc1,tc2)) => tcode_void
 	   | (TC_ABS tx) => loop tx
@@ -388,6 +389,7 @@ fun tcTag (kenv, tc) =
 	  of (TC_PRIM pt) => if PT.unboxed pt then NO else YES
                 (* if PT.ubxupd pt then YES else NO *)
 		    (* this is just an approximation *)
+	   | (TC_TUPLE (_, [])) => YES
 	   | (TC_TUPLE (_, ts)) => NO
 	   | (TC_ARROW (_,tc1,tc2)) => YES (* NO *)
 	   | (TC_ABS tx) => loop tx
@@ -706,3 +708,10 @@ end (* toplevel local *)
 end (* structure TypeOper *)
 
 
+
+(*
+ * $Log: typeoper.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:44  george
+ * Version 110.5
+ *
+ *)
