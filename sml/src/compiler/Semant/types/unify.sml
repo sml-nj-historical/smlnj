@@ -100,8 +100,8 @@ fun eqLitKind (lk : T.litKind) =
  * necessarily the second)  Because of this, it is currently necessary to
  * expand DEFtyc's before checking for equality types.
  *)
-fun tyconEqprop (GENtyc{eq,...}) =
-      (case !eq of ABS => NO | ep => ep)
+fun tyconEqprop (GENtyc { eq, ... }) =
+    (case !eq of ABS => NO | ep => ep)
   | tyconEqprop (RECORDtyc _)  = YES
   | tyconEqprop (DEFtyc _) = bug "tyconEqprop: DEFtyc"
   | tyconEqprop (ERRORtyc) = bug "tyconEqprop: ERRORtyc"
@@ -167,7 +167,8 @@ fun adjustType (var,depth,eq,ty) =
 		      (* check if eq is compatible *)
 		      if eq andalso not(eqLitKind k)
 		      then raise Unify EQ
-		      else ())
+		      else ()
+		  | LBOUND _ => bug "unify:adjustType:LBOUND")
 	  | iter eq (ty as CONty(DEFtyc _, args)) =
 	      iter eq (TU.headReduceType ty)
  	  | iter eq (CONty(tycon,args)) =

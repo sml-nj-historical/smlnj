@@ -3,9 +3,7 @@
 
 signature PRIM_ENV = 
 sig 
-
   val primEnv : StaticEnv.staticEnv
-
 end (* signature PRIM_ENV *)
 
 
@@ -91,22 +89,28 @@ val primTypes =
       val allElements = tycElements@conElements
       val allSymbols = map #1 allElements
 
-      val entities = foldr (fn ((_,M.TYCspec{spec,entVar,repl,scope}),r) =>
-			         EE.bind(entVar,M.TYCent spec,r)) 
-                          EE.empty tycElements
+      val entities = let
+	  fun f ((_,M.TYCspec{spec,entVar,repl,scope}),r) =
+	      EE.bind(entVar,M.TYCent spec,r)
+	    | f _ = ErrorMsg.impossible "primTypes:entities"
+      in
+          foldr f EE.empty tycElements
+      end
 
       val entities = EntityEnv.mark(fn _ => ST.special"primEntEnv", entities)
 
-   in M.STR{sign=M.SIG{name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
-		       fctflag=false, stamp=ST.special "PrimTypesSig",
-                       symbols=allSymbols,elements=allElements,
-		       typsharing=nil,strsharing=nil,
-		       boundeps=ref (SOME []), lambdaty=ref(NONE)},
+   in M.STR{sign=M.SIG {stamp=ST.special "PrimTypesSig",
+			name=SOME(S.sigSymbol "PRIMTYPES"), closed=true,
+			fctflag=false,
+			symbols=allSymbols,elements=allElements,
+			typsharing=nil,strsharing=nil,
+			boundeps=ref (SOME []), lambdaty=ref(NONE),
+			stub = NONE},
 	    rlzn={stamp=ST.special "PrimTypesStr",
+		  stub=NONE,
 		  entities=entities,
 		  lambdaty=ref NONE, 
 		  rpath=IP.IPATH[S.strSymbol "primTypes"]},
-
 	    access=A.nullAcc, info=II.mkStrInfo []}
 
   end (* primTypes *)
@@ -475,17 +479,18 @@ val uList =
               mkConElement("::", BT.uconsDcon)]
       val allSymbols = map #1 allElements
 
-   in M.STR{sign=M.SIG{name=NONE, closed=true, 
-                       fctflag=false, stamp=ST.special "uListSig",
-                       symbols=allSymbols, elements=allElements,
-                       typsharing=nil, strsharing=nil,
-                       boundeps=ref (SOME []), lambdaty=ref NONE}, 
-
+   in M.STR{sign=M.SIG{stamp=ST.special "uListSig",
+		       name=NONE, closed=true, 
+		       fctflag=false,
+		       symbols=allSymbols, elements=allElements,
+		       typsharing=nil, strsharing=nil,
+		       boundeps=ref (SOME []), lambdaty=ref NONE,
+		       stub = NONE},
             rlzn={stamp=ST.special "uListStr",
-                  entities=EE.bind(ev,M.TYCent BT.ulistTycon,EE.empty),
-                  lambdaty=ref(NONE),
-                  rpath=IP.IPATH[S.strSymbol "uList"]},
-
+		  stub=NONE,
+		  entities=EE.bind(ev,M.TYCent BT.ulistTycon,EE.empty),
+		  lambdaty=ref(NONE),
+		  rpath=IP.IPATH[S.strSymbol "uList"]},
             access=A.nullAcc, info=II.mkStrInfo[]}
   end
 
@@ -515,16 +520,18 @@ val inLine =
       val (allSymbols, allElements, infList) = 
             (rev allSymbols, rev allElements, rev infList)
 
-   in M.STR{sign=M.SIG{name=NONE, closed=true, 
-                       fctflag=false, stamp=ST.special "inLineSig",
-                       symbols=allSymbols, elements=allElements,
-                       typsharing=nil, strsharing=nil,
-                       boundeps=ref (SOME []), lambdaty=ref NONE},
-
-            rlzn={stamp=ST.special "inLineStr", entities=EE.empty,
-                  lambdaty=ref(NONE),
-                  rpath=IP.IPATH[S.strSymbol "inLine"]},
-
+   in M.STR{sign=M.SIG{stamp=ST.special "inLineSig",
+		       name=NONE, closed=true, 
+		       fctflag=false,
+		       symbols=allSymbols, elements=allElements,
+		       typsharing=nil, strsharing=nil,
+		       boundeps=ref (SOME []), lambdaty=ref NONE,
+		       stub = NONE},
+            rlzn={stamp=ST.special "inLineStr",
+		  stub=NONE,
+		  entities=EE.empty,
+		  lambdaty=ref(NONE),
+		  rpath=IP.IPATH[S.strSymbol "inLine"]},
 	    access=A.nullAcc, info=(II.mkStrInfo infList)}
   end
 
@@ -539,9 +546,12 @@ val primEnv =
   	     SE.bind(nameofPT,B.STRbind primTypes,
                 MU.openStructure(SE.empty,primTypes))))
 
+val primEnv = let
+    val { hash, pickle, ... } =
+	PickMod.pickleEnv (PickMod.INITIAL ModuleId.emptyTmap) primEnv
+in
+    UnpickMod.unpickleEnv (fn _ => ModuleId.emptyTmap) (hash, pickle)
+end
 
 end (* local *)
 end (* structure PrimEnv *)
-
-
-

@@ -29,7 +29,8 @@ val empty = M.NILeenv
 fun mark(_,e as M.MARKeenv _) = e
   | mark(_,e as M.NILeenv) = e
   | mark(_,e as M.ERReenv) = e
-  | mark(mkStamp,env) = M.MARKeenv(mkStamp(),env)
+  | mark(mkStamp,env) =
+    M.MARKeenv { stamp = mkStamp(), env = env, stub = NONE }
 
 fun bind(v, e, M.BINDeenv(d, env)) = M.BINDeenv(ED.insert(d, v, e), env)
   | bind(v, e, env) = M.BINDeenv(ED.insert(ED.empty, v, e), env)
@@ -37,29 +38,30 @@ fun bind(v, e, M.BINDeenv(d, env)) = M.BINDeenv(ED.insert(d, v, e), env)
 fun atop(_, M.ERReenv) = M.ERReenv
   | atop(M.ERReenv, _) = M.ERReenv
   | atop(e1, M.NILeenv) = e1
-  | atop(M.MARKeenv(_,r),e2) = atop(r,e2)
+  | atop(M.MARKeenv { env, ...}, e2) = atop (env, e2)
   | atop(M.BINDeenv(d,e1),e2) = M.BINDeenv(d,atop(e1,e2))
   | atop(M.NILeenv, e2) = e2
 
 fun atopSp(_, M.ERReenv) = M.ERReenv
   | atopSp(M.ERReenv, _) = M.ERReenv
   | atopSp(e1, M.NILeenv) = e1
-  | atopSp(M.MARKeenv(_,r),e2) = atopSp(r,e2)
+  | atopSp(M.MARKeenv { env, ... }, e2) = atopSp (env, e2)
   | atopSp(M.BINDeenv(d,e1),e2) = atopMerge(d,atop(e1,e2))
   | atopSp(M.NILeenv, e2) = e2
 
 and atopMerge(d, M.NILeenv) = M.BINDeenv(d, M.NILeenv)
-  | atopMerge(d, M.BINDeenv(d', e)) = M.BINDeenv(ED.unionWith #1 (d,d'),e)
-  | atopMerge(d, M.MARKeenv(_,r)) = atopMerge(d, r)
+  | atopMerge(d, M.BINDeenv(d', e)) = M.BINDeenv (ED.unionWith #1 (d,d'),e)
+  | atopMerge(d, M.MARKeenv { env, ... }) = atopMerge (d, env)
+  | atopMerge (d, M.ERReenv) = M.ERReenv
 
-fun toList (M.MARKeenv(_,ee)) = toList ee
+fun toList (M.MARKeenv { env, ... }) = toList env
   | toList (M.BINDeenv(d, ee)) = (*ED.fold((op ::), toList ee, d)*)
      ED.foldri (fn (key, value, base) => (key,value)::base) (toList ee) d
   | toList M.NILeenv = nil
   | toList M.ERReenv = nil
 
 fun look(env,v) =
-    let fun scan(M.MARKeenv(_,r)) = scan r
+    let fun scan(M.MARKeenv { env, ... }) = scan env
 	  | scan(M.BINDeenv(d, rest)) = 
               (case ED.find(d, v)
                 of SOME e => e
@@ -100,7 +102,7 @@ fun lookEP(entEnv,[]) = bug "lookEP.1"
   | lookEP(entEnv,[v]) = look(entEnv,v)
   | lookEP(entEnv,ep as (v::rest)) =
      (case look(entEnv,v)
-	of M.STRent{entities,stamp,...} => lookEP(entities,rest)
+	of M.STRent { entities, ... } => lookEP (entities,rest)
 	 | M.ERRORent => M.ERRORent
 	 | ent =>
 	     (say "lookEnt.1: expected STRent\n";

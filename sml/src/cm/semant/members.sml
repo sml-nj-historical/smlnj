@@ -26,8 +26,11 @@ signature MEMBERCOLLECTION = sig
 	GeneralParams.info *
 	(SrcPath.t -> GroupGraph.group) *
 	(SrcPath.context -> string -> bool)
-	-> { name: string, mkpath: string -> SrcPath.t,
-	     group: SrcPath.t * region, class: string option,
+	-> { name: string,
+	     mkpath: string -> SrcPath.t,
+	     group: SrcPath.t * region,
+	     class: string option,
+	     tooloptions: string list option,
 	     context: SrcPath.context }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
@@ -48,7 +51,6 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     structure DG = DependencyGraph
     structure EM = GenericVC.ErrorMsg
-    structure CBE = GenericVC.BareEnvironment
     structure E = GenericVC.Environment
     structure SS = SymbolSet
     structure GG = GroupGraph
@@ -65,6 +67,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			localdefs: smlinfo SymbolMap.map,
 			subgroups: (SrcPath.t * GG.group) list,
 			reqpriv: GG.privileges }
+      | ERRORCOLLECTION
 
     val empty =
 	COLLECTION { imports = SymbolMap.empty,
@@ -75,7 +78,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     reqpriv = StringSet.empty }
 
     fun implicit init_group = let
-	val (GG.GROUP { grouppath, ... }) = init_group
+	val { grouppath, ... } =
+	    case init_group of
+		GG.GROUP x => x
+	      | GG.ERRORGROUP =>
+		EM.impossible "members.sml: implicit: bad init group"
     in
 	(* This is a collection that is an implicit member of every
 	 * library -- the "init" group which exports the pervasive env. *)
@@ -87,62 +94,69 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     reqpriv = StringSet.empty }
     end
 
-    fun sequential (COLLECTION c1, COLLECTION c2, error) = let
-	fun describeSymbol (s, r) = let
-	    val ns = Symbol.nameSpace s
+    fun sequential (COLLECTION c1, COLLECTION c2, error) =
+	let fun describeSymbol (s, r) = let
+		val ns = Symbol.nameSpace s
+	    in
+		Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
+	    end
+	    fun i_error (s, x as ((f, sbn), e), ((f', sbn'), e')) = let
+		fun complain () =
+		    error (concat (describeSymbol
+				       (s, [" imported from ",
+					    DG.describeSBN sbn,
+					    " and also from ",
+					    DG.describeSBN sbn'])))
+		fun union (NONE, _) = NONE
+		  | union (_, NONE) = NONE
+		  | union (SOME f, SOME f') = SOME (SymbolSet.union (f, f'))
+	    in
+		if DG.sbeq (sbn, sbn') then
+		    ((union (f, f'), sbn), DAEnv.LAYER (e, e'))
+		else (complain (); x)
+	    end
+	    val i_union = SymbolMap.unionWithi i_error
+	    val gi_union = SymbolMap.unionWith #1
+	    fun ld_error (s, f1, f2) =
+		(error (concat (describeSymbol
+				    (s, [" defined in ", SmlInfo.spec f1,
+					 " and also in ", SmlInfo.spec f2])));
+		 f1)
+	    val ld_union = SymbolMap.unionWithi ld_error
 	in
-	    Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
+	    COLLECTION { imports = i_union (#imports c1, #imports c2),
+			 gimports = gi_union (#gimports c1, #gimports c2),
+			 smlfiles = #smlfiles c1 @ #smlfiles c2,
+			 localdefs = ld_union (#localdefs c1, #localdefs c2),
+			 subgroups = #subgroups c1 @ #subgroups c2,
+			 reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
 	end
-	fun i_error (s, x as ((f, sbn), e), ((f', sbn'), e')) = let
-	    fun complain () =
-		error (concat (describeSymbol
-			       (s, [" imported from ", DG.describeSBN sbn,
-				    " and also from ", DG.describeSBN sbn'])))
-	    fun union (NONE, _) = NONE
-	      | union (_, NONE) = NONE
-	      | union (SOME f, SOME f') = SOME (SymbolSet.union (f, f'))
-	in
-	    if DG.sbeq (sbn, sbn') then
-		((union (f, f'), sbn), DAEnv.LAYER (e, e'))
-	    else (complain (); x)
-	end
-	val i_union = SymbolMap.unionWithi i_error
-	val gi_union = SymbolMap.unionWith #1
-	fun ld_error (s, f1, f2) =
-	    (error (concat (describeSymbol
-			    (s, [" defined in ", SmlInfo.spec f1,
-				 " and also in ", SmlInfo.spec f2])));
-	     f1)
-	val ld_union = SymbolMap.unionWithi ld_error
-    in
-	COLLECTION { imports = i_union (#imports c1, #imports c2),
-		     gimports = gi_union (#gimports c1, #gimports c2),
-		     smlfiles = #smlfiles c1 @ #smlfiles c2,
-		     localdefs = ld_union (#localdefs c1, #localdefs c2),
-		     subgroups = #subgroups c1 @ #subgroups c2,
-		     reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
-    end
+      | sequential _ = ERRORCOLLECTION
 
     fun expandOne (gp, rparse, load_plugin) arg = let
-	val { name, mkpath, group, class, context } = arg
+	val { name, mkpath, group, class, tooloptions, context } = arg
 	val class = Option.map (String.map Char.toLower) class
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
 	fun w0 s = error EM.WARN s EM.nullErrorBody
 	val { smlfiles, cmfiles } =
 	    PrivateTools.expand { error = e0,
-				  spec = (name, mkpath, class),
+				  spec = (name, mkpath, class, tooloptions),
 				  context = context,
 				  load_plugin = load_plugin }
-	fun g_coll p = let
-	    val g as GG.GROUP { exports = i, kind, required, ... } = rparse p
-	    val gi = case kind of GG.NOLIB _ => i | _ => SymbolMap.empty
-	in
-	    COLLECTION { imports = i, gimports = gi, smlfiles = [],
-			 localdefs = SymbolMap.empty,
-			 subgroups = [(p, g)],
-			 reqpriv = required }
-	end
+	fun g_coll p =
+	    case rparse p of
+		g as GG.GROUP { exports = i, kind, required,
+				grouppath, sublibs } => let
+		    val gi =
+			case kind of GG.NOLIB _ => i | _ => SymbolMap.empty
+		in
+		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
+				 localdefs = SymbolMap.empty,
+				 subgroups = [(p, g)],
+				 reqpriv = required }
+		end
+	      | GG.ERRORGROUP => ERRORCOLLECTION
 	fun s_coll (p, s) = let
 	    val i =
 		SmlInfo.info gp { sourcepath = p, group = group, sh_spec = s }
@@ -172,8 +186,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     fun build (COLLECTION c, fopt, gp, perv_fsbnode) =
 	BuildDepend.build (c, fopt, gp, perv_fsbnode)
+      | build (ERRORCOLLECTION, _, _, _) =
+	(SymbolMap.empty, StringSet.empty)
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
+      | subgroups ERRORCOLLECTION = []
 
     local
 	fun symenv_look (gp: GeneralParams.info) (c: collection) s =
@@ -186,4 +203,5 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     fun ml_look (COLLECTION { imports, localdefs, ... }) s =
 	isSome (SymbolMap.find (imports, s)) orelse
 	isSome (SymbolMap.find (localdefs, s))
+      | ml_look ERRORCOLLECTON _ = true
 end

@@ -6,25 +6,18 @@ sig
   exception SilentException
   
   type statenv = StaticEnv.staticEnv
-  type cmstatenv
-  val toCM : statenv -> cmstatenv
-  val fromCM : cmstatenv -> statenv
    
   type pickle
   type hash
-  type newContext
   type lvar = Access.lvar
   type pid = PersStamps.persstamp
 
-  val pickUnpick : cmstatenv * statenv ->
-      { hash: hash,
-        pickle: pickle,
-	exportLvars: lvar list,
-	exportPid: pid option,
-	newenv: statenv,
-	ctxt: newContext }
+  val pickUnpick : { context: statenv, env: statenv } ->
+		   { hash: hash,
+		     pickle: pickle,
+		     exportLvars: lvar list,
+		     exportPid: pid option,
+		     newenv: statenv }
 
-  val mkMkStamp : unit -> (unit -> Stamps.stamp)
-
+  val mkMkStamp : unit -> Stamps.generator
 end (* signature CCONFIG *)
-

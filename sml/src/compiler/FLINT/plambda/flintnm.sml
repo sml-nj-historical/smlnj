@@ -62,11 +62,12 @@ fun flint_prim (po as (d, p, lt, ts), vs, v, e) =
                must be unit ***)
           let fun fix t = 
                 LT.ltw_arrow(t, 
-                 fn (ff,[t1],ts2) => 
-                   (if LT.tc_eqv(t1, LT.tcc_unit) 
-                    then LT.ltc_tyc(LT.tcc_arrow(ff, [], ts2))
-                    else bug "unexpected zero-args prims 1 in flint_prim"),
-                 fn _ => bug "unexpected zero-args prims 2 in flint_prim")
+		(fn (ff,[t1],ts2) => 
+		    (if LT.tc_eqv(t1, LT.tcc_unit) 
+		     then LT.ltc_tyc(LT.tcc_arrow(ff, [], ts2))
+		     else bug "unexpected zero-args prims 1 in flint_prim")
+		  | _ => bug "flint_prim:t1"),
+                fn _ => bug "unexpected zero-args prims 2 in flint_prim")
               val nlt = 
                 LT.ltw_ppoly(lt, 
                    fn (ks, t) => LT.ltc_ppoly(ks, fix t),
@@ -226,7 +227,8 @@ and tolexp (venv,d) lexp =
 	    in tovalue(venv, d, le,
 		       fn (v, lty) =>
 		       let val default = Option.map (#1 o tolexp(venv,d)) default
-			   val conlexps as ((_,lty)::_) = map f conlexps
+			   val conlexps = map f conlexps
+			   val lty = #2 (List.hd conlexps)
 		       in (F.SWITCH(v, acs, map #1 conlexps, default), lty)
 		       end)
 	    end

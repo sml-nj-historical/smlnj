@@ -41,32 +41,23 @@ datatype binding
   | FIXbind of Fixity.fixity
 
 (* used for statenv sorting in env/statenv.sml *)
-fun binderGt(bind1: S.symbol * binding,
-	     bind2: S.symbol * binding) =
-    case (bind1,bind2)
-     of ((n1,FIXbind _),(n2,FIXbind _)) => S.symbolGt(n1,n2)
-      | ((_,FIXbind _),_) => true
-      | (_,(_,FIXbind _)) => false
-      | ((n1,VALbind _),(n2,VALbind _)) => S.symbolGt(n1,n2)
-      | ((_,VALbind _),_) => true
-      | (_,(_,VALbind _)) => false
-      | ((n1,CONbind _),(n2,CONbind _)) => S.symbolGt(n1,n2)
-      | ((_,CONbind _),_) => true
-      | (_,(_,CONbind _)) => false
-      | ((n1,TYCbind _),(n2,TYCbind _)) => S.symbolGt(n1,n2)
-      | ((_,TYCbind _),_) => true
-      | (_,(_,TYCbind _)) => false
-      | ((n1,STRbind _),(n2,STRbind _)) => S.symbolGt(n1,n2)
-      | ((_,STRbind _),_) => true
-      | (_,(_,STRbind _)) => false
-      | ((n1,FCTbind _),(n2,FCTbind _)) => S.symbolGt(n1,n2)
-      | ((_,FCTbind _),_) => true
-      | (_,(_,FCTbind _)) => false
-      | ((n1,SIGbind _),(n2,SIGbind _)) => S.symbolGt(n1,n2)
-      | ((_,SIGbind _),_) => true
-      | (_,(_,SIGbind _)) => false
-      | ((n1,FSGbind _), (n2,FSGbind _)) => S.symbolGt(n1,n2)
+fun binderGt ((s1, rb1), (s2, rb2)) = let
+    (* hopefully the following gets optimized into an identity function
+     * on tags... *)
+    fun bnum (VALbind _) = 0
+      | bnum (CONbind _) = 1
+      | bnum (TYCbind _) = 2
+      | bnum (SIGbind _) = 3
+      | bnum (STRbind _) = 4
+      | bnum (FSGbind _) = 5
+      | bnum (FCTbind _) = 6
+      | bnum (FIXbind _) = 7
+in
+    case Int.compare (bnum rb1, bnum rb2) of
+	EQUAL => S.symbolGt (s1, s2)
+      | GREATER => true
+      | LESS => false
+end
 
 end (* local *)
 end (* structure Bindings *)
-

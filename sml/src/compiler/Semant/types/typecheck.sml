@@ -701,6 +701,7 @@ and decType0(decl,occ,region) : dec =
 			| f _ = bug "typecheck.823"
                    in f(exp,region,funty)		      
                   end
+		 | setType _ = bug "setType"
 
 	      (* Second, go through and type-check the right-hand-side
 	         expressions (function bodies) *)
@@ -740,11 +741,15 @@ and decType0(decl,occ,region) : dec =
        | SEQdec(decls) => 
            SEQdec(map (fn decl => decType0(decl,occ,region)) decls)
        | ABSTYPEdec{abstycs,withtycs,body} => 
-	   let fun makeAbstract(GENtyc{stamp,arity,eq,path,kind}) = (eq := ABS)
+	   let fun makeAbstract(GENtyc { eq, ... }) = eq := ABS
 		 | makeAbstract _ = bug "makeAbstract"
 	       fun redefineEq(DATATYPEdec{datatycs,...}) =
-		    (app (fn GENtyc{eq,...} => eq := DATA) datatycs;
-		     EqTypes.defineEqProps(datatycs,nil,EntityEnv.empty))
+		   let fun setDATA (GENtyc { eq, ... }) = eq := DATA
+			 | setDATA _ = ()
+		   in
+		       app setDATA datatycs;
+		       EqTypes.defineEqProps(datatycs,nil,EntityEnv.empty)
+		   end
 	         | redefineEq(SEQdec decs) = app redefineEq decs
 	         | redefineEq(LOCALdec(din,dout)) =
 		    (redefineEq din; redefineEq dout)

@@ -9,10 +9,8 @@
 local
     structure EM = GenericVC.ErrorMsg
     structure E = GenericVC.Environment
-    structure SE = GenericVC.CMStaticEnv
-    structure BE = GenericVC.BareEnvironment
+    structure SE = GenericVC.StaticEnv
     structure PS = GenericVC.PersStamps
-    structure CoerceEnv = GenericVC.CoerceEnv
     structure GG = GroupGraph
     structure DG = DependencyGraph
 in
@@ -38,6 +36,7 @@ end = struct
     fun init_servers (GG.GROUP { grouppath, ... }) =
 	Servers.cmb { archos = archos,
 		      root = SrcPath.descr grouppath }
+      | init_servers GG.ERRORGROUP = ()
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
 				   val compile_there =
@@ -130,7 +129,7 @@ end = struct
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)
 
-	val param_nocore = mkParam BE.emptyEnv
+	val param_nocore = mkParam E.emptyEnv
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
@@ -151,10 +150,9 @@ end = struct
 		 * brewed pervasive env, core env, and primitives *)
 		val core = valOf (sbnode ginfo_nocore core_n)
 		val corenv =
-		    BE.mkenv { static = CoerceEnv.es2bs
-			                  (#env (#statenv core ())),
-			       symbolic = #symenv core (),
-			       dynamic = emptydyn }
+		    E.mkenv { static = #statenv core (),
+			      symbolic = #symenv core (),
+			      dynamic = emptydyn }
 
 		(* The following is a bit of a hack (but corenv is a hack
 		 * anyway): As soon as we have core available, we have to
@@ -170,9 +168,11 @@ end = struct
 		val pervasive = rt perv_n
 
 		fun rt2ie (n, ii: IInfo.info) = let
-		    val bs = CoerceEnv.es2bs (#env (#statenv ii ()))
-		    val (dae, mkDomain) = Statenv2DAEnv.cvt bs
+		    val s = #statenv ii ()
+		    val (dae, mkDomain) = Statenv2DAEnv.cvt s
 		in
+		    (* Link path info = NONE, will be reset at import
+		     * time (in members.sml). *)
 		    { ie = ((NONE, n), dae), mkDomain = mkDomain }
 		end
 		
@@ -213,16 +213,17 @@ end = struct
 		  | SOME (g as GG.GROUP { exports, ... }) => 
 			(case SymbolMap.find (exports, coresym) of
 			     SOME ((_, DG.SB_BNODE (_, ii)), _) => let
-				 val stat = #env (#statenv ii ())
+				 val stat = #statenv ii ()
 				 val sym = #symenv ii ()
 				 val corenv =
-				     BE.mkenv { static = CoerceEnv.es2bs stat,
-					        symbolic = sym,
-						dynamic = emptydyn }
+				     E.mkenv { static = stat,
+					       symbolic = sym,
+					       dynamic = emptydyn }
 			     in
 				 SOME (g, corenv)
 			     end
 			   | _ => NONE)
+		  | SOME GG.ERRORGROUP => NONE
 	    end
 		    
 	    (* Don't try to load the stable init group. Instead, recompile

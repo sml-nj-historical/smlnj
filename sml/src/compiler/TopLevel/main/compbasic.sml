@@ -26,10 +26,11 @@ type compInfo   = {mkStamp: unit -> Stamps.stamp,
 
 fun mkCompInfo(source: source, coreEnv: StaticEnv.staticEnv,
 	       transform : absyn -> absyn, 
-               mkMkStamp : unit -> (unit -> Stamps.stamp)) : compInfo = 
+               mkMkStamp : unit -> Stamps.generator) : compInfo = 
   let val {error,errorMatch,anyErrors} = ErrorMsg.errors source
       val _ = LambdaVar.clear()
-   in {mkStamp = mkMkStamp(),
+      val g = mkMkStamp ()
+   in {mkStamp = fn () => Stamps.fresh g,
        mkLvar = (fn NONE => LambdaVar.mkLvar ()
                   | SOME sym => LambdaVar.namedLvar sym),
        error = error,

@@ -13,7 +13,6 @@ local structure SP = SymPath
       structure A = Access
       structure V = VarCon
       structure B = Bindings
-      structure E = Env
       structure SE = StaticEnv
       structure EM = ErrorMsg
       structure S = Symbol
@@ -38,27 +37,27 @@ val bogusVAL = V.VAL V.ERRORvar
 
 (*** look for a fixity binding ***)
 fun lookFix (env,id) : Fixity.fixity =
-  let val b = case E.look(env,id)
+  let val b = case SE.look(env,id)
 	       of B.FIXbind fixity => fixity
 	        | _ => bug "lookFIX"
    in b
-  end handle E.Unbound => Fixity.NONfix
+  end handle SE.Unbound => Fixity.NONfix
 
 (*** look for a signature ***)
 fun lookSig (env,id,err) : M.Signature = 
-  let val b = case Env.look(env,id) 
+  let val b = case SE.look(env,id) 
                of B.SIGbind sign => sign
                 | _ => bug "lookSIG"
    in b
-  end handle Env.Unbound => (unboundError(id,"",err); M.ERRORsig)
+  end handle SE.Unbound => (unboundError(id,"",err); M.ERRORsig)
 
 (*** look for a functor signature ***)
 fun lookFsig (env,id,err) : M.fctSig = 
-  let val b = case Env.look(env,id) 
+  let val b = case SE.look(env,id) 
                of B.FSGbind fs => fs
                 | _ => bug "lookFSIG"
    in b
-  end handle Env.Unbound => (unboundError(id,"",err); M.ERRORfsig)
+  end handle SE.Unbound => (unboundError(id,"",err); M.ERRORfsig)
 
 (*** look for a variable or a constructor bound to a symbol ***)
 fun lookValSym (env,sym,err) : V.value = 
@@ -78,21 +77,21 @@ fun lookValSym (env,sym,err) : V.value =
  *   2. actual structure environments
  *   3. signature parsing environments 
  *)
-fun lookGen(env,spath as SP.SPATH(first::rest),outBind,getPath,errorVal,err) =
-      (case spath
-        of SP.SPATH [id] =>
-            (outBind(SE.look(env,id))
-	    handle SE.Unbound => (unboundError(id,spmsg spath,err); errorVal))
-         | SP.SPATH(first::rest) =>
-	    ((case SE.look(env,first)
-	       of B.STRbind str =>
-		   (getPath(str,SP.SPATH rest,spath)
-		    handle MU.Unbound sym =>
+fun lookGen(env,spath,outBind,getPath,errorVal,err) =
+    case spath of
+	SP.SPATH [id] =>
+        (outBind(SE.look(env,id))
+	 handle SE.Unbound => (unboundError(id,spmsg spath,err); errorVal))
+      | SP.SPATH(first::rest) =>
+	((case SE.look(env,first)
+	   of B.STRbind str =>
+	      (getPath(str,SP.SPATH rest,spath)
+	       handle MU.Unbound sym =>
 		      (unboundError(sym,spmsg spath,err); errorVal))
-	        | _ =>  bug "lookGen1")
-	    handle SE.Unbound => (unboundError(first,spmsg spath,err); 
-                                  errorVal)))
-  | lookGen _ = bug "lookGen2"
+	    | _ =>  bug "lookGen1")
+	 handle SE.Unbound => (unboundError(first,spmsg spath,err); 
+                               errorVal))
+      | SP.SPATH [] => bug "lookGen:SP.SPATH[]"
 
 (*** look for a variable or a constructor (complete path) ***)
 fun lookVal(env,path,err) : V.value = 
@@ -111,8 +110,10 @@ fun lookStr(env,path,err) : M.Structure =
 
 (*** look for a strDef; used in elabsig.sml ***)
 fun lookStrDef(env,path,err) : M.strDef = 
-  let fun outSD(B.STRbind(M.STRSIG{sign,entPath})) = M.VARstrDef(sign,entPath)
-        | outSD(B.STRbind s) = M.CONSTstrDef s
+  let fun outSD(B.STRbind s) =
+	  (case s of
+	       M.STRSIG{sign,entPath} => M.VARstrDef(sign,entPath)
+             | sv => M.CONSTstrDef sv)
         | outSD _ = bug "lookStrDef"
    in lookGen(env,path,outSD,MU.getStrDef,M.CONSTstrDef bogusSTR,err)
   end

@@ -116,8 +116,7 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 				 add_break ppstrm (1,0);
 				 add_string ppstrm ": "; 
 			 	 ppType static ppstrm ty)
-
-                       | _ => add_string ppstrm "<PPDec.getVal failure>")
+		       | _ => add_string ppstrm "<PPDec.getVal failure>")
                
            (*** | PRIMOP _ => add_string ppstrm "<primop>" *)
  	        | _ => ErrorMsg.impossible "ppDec.ppVb.ppBind.VARpat";
@@ -145,74 +144,87 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
        and ppRvb (RVB{var, ...}) = ppVar var
 
        and ppTb(DEFtyc{path,...}) =
-	    let val DEFtyc{path,tyfun=TYFUN{arity,body},...} = trueTycon path
-	     in begin_block ppstrm CONSISTENT 0;
-		 begin_block ppstrm INCONSISTENT 2;
+	    let val {path,tyfun=TYFUN{arity,body},...} =
+		    case trueTycon path of
+			DEFtyc x => x
+		      | _ => bug "ppTb:trueTycon"
+	    in
+		begin_block ppstrm CONSISTENT 0;
+		begin_block ppstrm INCONSISTENT 2;
+		add_string ppstrm "type"; 
+		ppFormals ppstrm arity; 
+		add_break ppstrm (1,0);
+		ppSym ppstrm (InvPath.last path); 
+		add_string ppstrm " ="; 
+		add_break ppstrm (1,0);
+		ppType static ppstrm body;
+		end_block ppstrm;
+	        add_newline ppstrm;
+		end_block ppstrm
+	    end
+	 | ppTb _ = bug "ppTb:DEFtyc"
+
+	and ppAbsTyc(GENtyc { path, arity, eq, ... }) =
+	    (case !eq of
+		 ABS =>
+		 (begin_block ppstrm CONSISTENT 0;
+		  begin_block ppstrm INCONSISTENT 2;
 		  add_string ppstrm "type"; 
 		  ppFormals ppstrm arity; 
 		  add_break ppstrm (1,0);
 		  ppSym ppstrm (InvPath.last path); 
-		  add_string ppstrm " ="; 
-		  add_break ppstrm (1,0);
-		  ppType static ppstrm body;
-		 end_block ppstrm;
-	         add_newline ppstrm;
-		end_block ppstrm
-	    end
-
-	and ppAbsTyc(GENtyc{path, arity, eq=ref(ABS), ...}) =
-	      (begin_block ppstrm CONSISTENT 0;
-	         begin_block ppstrm INCONSISTENT 2;
-	         add_string ppstrm "type"; 
-	         ppFormals ppstrm arity; 
-	         add_break ppstrm (1,0);
-	         ppSym ppstrm (InvPath.last path); 
-	         end_block ppstrm;
-               add_newline ppstrm;
-	        end_block ppstrm)
-          | ppAbsTyc(GENtyc{path, arity, eq=ref _, ...}) =
-	      (begin_block ppstrm CONSISTENT 0;
-	         begin_block ppstrm INCONSISTENT 2;
-	         add_string ppstrm "type"; 
-	         ppFormals ppstrm arity; 
-	         add_break ppstrm (1,0);
-	         ppSym ppstrm (InvPath.last path); 
-	         end_block ppstrm;
-               add_newline ppstrm;
-	        end_block ppstrm)
+		  end_block ppstrm;
+		  add_newline ppstrm;
+		  end_block ppstrm)
+	       | _ => 
+		 (begin_block ppstrm CONSISTENT 0;
+	          begin_block ppstrm INCONSISTENT 2;
+	          add_string ppstrm "type"; 
+	          ppFormals ppstrm arity; 
+	          add_break ppstrm (1,0);
+	          ppSym ppstrm (InvPath.last path); 
+	          end_block ppstrm;
+		  add_newline ppstrm;
+	          end_block ppstrm))
           | ppAbsTyc _ = bug "unexpected case in ppAbsTyc"
 
-	and ppDataTyc(GENtyc{path, arity,
-                             kind=DATATYPE{index, freetycs, family={members, ...},...}, ...}) =
+	and ppDataTyc (GENtyc { path, arity,
+				kind = DATATYPE{index, freetycs,
+						family={members, ...},...},
+				... }) =
 	    let fun ppDcons nil = ()
 		  | ppDcons (first::rest) =
-		     let fun ppDcon ({name,domain,rep}) =
-			     (ppSym ppstrm name; 
-			      case domain
-				of SOME dom =>
-			            (add_string ppstrm " of ";
-				     ppDconDomain (members,freetycs) static ppstrm dom)
-			         | NONE => ())
-		      in add_string ppstrm "= "; ppDcon first;
-			 app (fn d => (add_break ppstrm (1,0);
-				       add_string ppstrm "| "; ppDcon d))
-			 rest
-		     end
+		    let fun ppDcon ({name,domain,rep}) =
+			    (ppSym ppstrm name; 
+			     case domain
+			      of SOME dom =>
+			         (add_string ppstrm " of ";
+				  ppDconDomain (members,freetycs)
+					       static ppstrm dom)
+			       | NONE => ())
+		    in
+			add_string ppstrm "= "; ppDcon first;
+			app (fn d => (add_break ppstrm (1,0);
+				      add_string ppstrm "| "; ppDcon d))
+			    rest
+		    end
 		val {tycname,dcons,...} = Vector.sub(members,index)
-	     in begin_block ppstrm CONSISTENT 0;
-		 begin_block ppstrm CONSISTENT 0;
-		  add_string ppstrm "datatype";
-		  ppFormals ppstrm arity;
-		  add_string ppstrm " ";
-		  ppSym ppstrm (InvPath.last path); 
-		  add_break ppstrm (1,2);
-		  begin_block ppstrm CONSISTENT 0;
-		   ppDcons dcons;
-		  end_block ppstrm;
-		 end_block ppstrm;
-		 add_newline ppstrm;
+	    in
+		begin_block ppstrm CONSISTENT 0;
+		begin_block ppstrm CONSISTENT 0;
+		add_string ppstrm "datatype";
+		ppFormals ppstrm arity;
+		add_string ppstrm " ";
+		ppSym ppstrm (InvPath.last path); 
+		add_break ppstrm (1,2);
+		begin_block ppstrm CONSISTENT 0;
+		ppDcons dcons;
+		end_block ppstrm;
+		end_block ppstrm;
+		add_newline ppstrm;
 		end_block ppstrm
 	    end
+	  | ppDataTyc _ = bug "unexpected case in ppDataTyc"
 
 	and ppEb(EBgen{exn=DATACON{name,...},etype,...}) =
 	      (begin_block ppstrm CONSISTENT 0;
@@ -263,7 +275,7 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 
         and ppSigb sign = 
 	    let val name = case sign 
-                            of M.SIG{name=SOME s, ...} => s
+                            of M.SIG { name, ... } => getOpt (name, anonSym)
                              | _ => anonSym
 
              in (begin_block ppstrm CONSISTENT 0;

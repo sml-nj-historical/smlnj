@@ -33,10 +33,11 @@ val dollarSym    = varSymbol "$"     (* LAZY *)
 infix -->
 val arrowStamp = Stamps.special "->"
 val arrowTycon =
-    GENtyc{stamp = arrowStamp, path = IP.IPATH [tycSymbol "->"],
-	   arity = 2, eq = ref NO, kind = PRIMITIVE(PT.ptc_arrow)}
+    GENtyc { stamp = arrowStamp, path = IP.IPATH [tycSymbol "->"],
+	     arity = 2, eq = ref NO, kind = PRIMITIVE(PT.ptc_arrow),
+	     stub = NONE}
 fun t1 --> t2 = CONty(arrowTycon,[t1,t2])
-fun isArrowType(CONty(GENtyc{stamp,...},_)) = Stamps.eq(stamp,arrowStamp)
+fun isArrowType(CONty(GENtyc { stamp, ... }, _)) = Stamps.eq(stamp, arrowStamp)
   | isArrowType(VARty(ref(INSTANTIATED ty))) = isArrowType ty
   | isArrowType _ = false
 fun domain(CONty(_,[ty,_])) = ty
@@ -49,7 +50,8 @@ fun range(CONty(_,[_,ty])) = ty
 
 fun mkpt (sym,arity,eqprop,pt) =
     GENtyc{stamp = Stamps.special sym, path = IP.IPATH[tycSymbol sym],
-	   arity = arity, eq = ref eqprop, kind = PRIMITIVE pt}
+	   arity = arity, eq = ref eqprop, kind = PRIMITIVE pt,
+	   stub = NONE}
 
 val intTycon = mkpt ("int", 0, YES, PT.ptc_int31)
 val intTy = CONty(intTycon, nil)
@@ -142,7 +144,7 @@ val kind =
 
 val boolTycon =
     GENtyc{stamp = boolStamp, path = IP.IPATH[boolSym],
-	   arity = 0, eq = booleq, kind = kind}
+	   arity = 0, eq = booleq, kind = kind, stub = NONE}
 val boolTy = CONty(boolTycon,nil)
 val falseDcon = 
     DATACON
@@ -178,7 +180,7 @@ val kind =
 
 val refTycon =
     GENtyc{stamp = refStamp, path = IP.IPATH[refTycSym],
-	   arity = 1, eq = refEq, kind = kind}
+	   arity = 1, eq = refEq, kind = kind, stub = NONE}
 val refTyfun = TYFUN{arity = 1, body = alpha --> CONty(refTycon, [alpha])}
 val refDcon = 
     DATACON
@@ -209,7 +211,7 @@ val kind =
 
 val listTycon =
     GENtyc{stamp = listStamp, path = IP.IPATH[listSym], arity = 1,
-	   eq = listeq, kind = kind}
+	   eq = listeq, kind = kind, stub = NONE}
 val consDcon =
     DATACON 
       {name = consSym,
@@ -250,7 +252,7 @@ val kind =
 
 val ulistTycon =
     GENtyc{stamp = ulistStamp, path = IP.IPATH[listSym], arity = 1,
-	   eq = ulistEq, kind = kind}
+	   eq = ulistEq, kind = kind, stub = NONE}
 
 val uconsDcon =
    DATACON 
@@ -298,7 +300,7 @@ val kind =
  * the SMLofNJ structure *)
 val fragTycon =
     GENtyc{stamp = fragStamp, path = IP.IPATH[fragSym,strSymbol "SMLofNJ"],
-	   arity = 1, eq = frageq, kind = kind}
+	   arity = 1, eq = frageq, kind = kind, stub = NONE}
 val ANTIQUOTEDcon =
     DATACON
       {name = antiquoteSym,
@@ -340,7 +342,7 @@ val kind =
 
 val suspTycon =
     GENtyc{stamp = suspStamp, path = IP.IPATH[suspSym],
-           arity = 1, eq = suspEq, kind = kind}
+           arity = 1, eq = suspEq, kind = kind, stub = NONE}
 val suspTyfun = 
     TYFUN{arity = 1, body = dollarDom --> CONty(suspTycon, [alpha])}
 val dollarDcon =

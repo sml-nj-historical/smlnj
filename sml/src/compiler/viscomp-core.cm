@@ -27,6 +27,7 @@ Group (smlnj/viscomp/core.cm)
 	structure UnpickleSymPid
 	structure PickMod
 	structure UnpickMod
+	structure GenModIdMap
 	structure CompBasic
 
 	structure FLINT
@@ -71,15 +72,12 @@ TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
 TopLevel/batch/smlfile.sml
-TopLevel/batch/envcvt.sml
 TopLevel/environ/dynenv.sig
 TopLevel/environ/dynenv.sml
 TopLevel/environ/environ.sig
 TopLevel/environ/environ.sml
 TopLevel/environ/envref.sml
 TopLevel/environ/persmap.sml
-TopLevel/environ/cmenviron.sig
-TopLevel/environ/cmenviron.sml
 TopLevel/environ/symenv.sig
 TopLevel/environ/symenv.sml
 TopLevel/interact/evalloop.sig
@@ -124,6 +122,7 @@ Semant/basics/persstamps.sig
 Semant/basics/persstamps.sml
 Semant/basics/stamps.sig
 Semant/basics/stamps.sml
+Semant/basics/stampmap.sml
 Semant/basics/symbol.sig
 Semant/basics/symbol.sml
 Semant/basics/sympaths.sig
@@ -167,8 +166,7 @@ Semant/statenv/bindings.sml
 Semant/statenv/lookup.sig
 Semant/statenv/lookup.sml
 Semant/statenv/prim.sml
-Semant/statenv/cmstatenv.sig
-Semant/statenv/cmstatenv.sml
+Semant/statenv/genmap.sml
 Semant/statenv/statenv.sig
 Semant/statenv/statenv.sml
 Semant/types/basictypes.sig

@@ -28,39 +28,44 @@ type compInfo   = CompBasic.compInfo   (* general compilation utilities *)
 val mkCompInfo  : source * statenv * (absyn -> absyn) -> compInfo
 val anyErrors   : compInfo -> bool
 
-type cmstatenv                         (* compressed static environment *)
-val toCM        : statenv -> cmstatenv   
-val fromCM      : cmstatenv -> statenv 
-
 type lvar       = Access.lvar          (* local id *)
 type pid        = PersStamps.persstamp (* persistant id *)
 type import     = pid * CompBasic.importTree  (* import specification *)
 type pickle                            (* pickled format *)
 type hash                              (* environment hash id *)
-type newContext			       (* reduced context after pickling *)
 
 (** take the input source and turn it into the concrete syntax *)
 val parseOne    : source -> unit -> ast option (* incremental version *)
 val parse       : source -> ast
 
 (** take ast, do semantic checks, then output the new env, absyn and pickles *)
-val elaborate   : {ast: ast, statenv: cmstatenv, compInfo: compInfo} 
-                   -> {absyn: absyn, newstatenv: cmstatenv,
+(*
+ * "statenv" must be the combination of all import environments.
+ * Each individual import environment must have been treated by
+ * GenLinkPath.start prior to being put into "statenv".
+ * "getMap" fetches the linkpath map to be used for pickling.
+ * "getEnv" fetches back environments during unpickling.  (We should not
+ * use "statenv" here because the linkpath generator will cause it to 
+ * be a partial copy of the original environments.)
+ *)
+val elaborate   : {ast: ast,
+		   statenv: statenv,
+		   compInfo: compInfo} 
+                   -> {absyn: absyn, newstatenv: statenv,
  	               exportLvars: lvar list, exportPid: pid option,
-		       staticPid: hash, pickle: pickle,
-		       ctxt: newContext}
+		       staticPid: hash, pickle: pickle }
 
 (** elaborate as above, then keep on to compile into the binary code *)
-val compile     : {source: source, ast: ast, statenv: cmstatenv, 
+val compile     : {source: source, ast: ast,
+		   statenv: statenv,
                    symenv: symenv, compInfo: compInfo, 
-                   checkErr: string -> unit, runtimePid: pid option, 
+                   checkErr: string -> unit,
                    splitting: bool}
-                   -> {csegments: csegments, newstatenv: cmstatenv,
+                   -> {csegments: csegments, newstatenv: statenv,
                        absyn: absyn (* for pretty printing only *),
                        exportPid: pid option, exportLvars: lvar list,
                        staticPid: hash, pickle: pickle, 
-                       inlineExp: flint option, imports: import list,
-		       ctxt: newContext}
+                       inlineExp: flint option, imports: import list }
 
 (** build the new symbolic environment *)
 val mksymenv    : pid option * flint option -> symenv 
@@ -77,11 +82,7 @@ val execute     : {executable: executable, imports: import list,
 
 end (* signature COMPILE0 *)
 
-signature COMPILE = COMPILE0 where type cmstatenv = CMStaticEnv.staticEnv
-                               and type pickle = Word8Vector.vector
+signature COMPILE = COMPILE0 where type pickle = Word8Vector.vector
                                and type hash = PersStamps.persstamp
 
-signature TOP_COMPILE = COMPILE0 where type cmstatenv = StaticEnv.staticEnv
-
-
-
+signature TOP_COMPILE = COMPILE0

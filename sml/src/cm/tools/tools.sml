@@ -29,10 +29,15 @@ signature CORETOOLS = sig
 
     type pathmaker = string -> srcpath
 
+    (* case-by-case parameters that can be passed to tools... *)
+    type toolopts = string list option
+
+    type tooloptcvt = toolopts -> toolopts
+
     (* A member specification consists of the actual string, an optional
-     * class name, and a function to convert a string to its corresponding
-     * srcpath. *)
-    type spec = string * pathmaker * class option
+     * class name, (optional) tool options, and a function to convert a
+     * string to its correspondin gsrcpath. *)
+    type spec = string * pathmaker * class option * toolopts
 
     (* The goal of applying tools to members is to obtain an "expansion",
      * i.e., a list of ML-files and a list of .cm-files. *)
@@ -75,13 +80,15 @@ signature CORETOOLS = sig
     (* make a classifier which looks for a specific file name suffix *)
     val stdSfxClassifier : { sfx: string , class: class } -> classifier
 
-    (* two standard ways of dealing with filename extensions... *)
+    (* two standard ways of dealing with filename extensions...
+     * (Tool options can be calculated from the options that we have.) *)
     datatype extensionStyle =
-	EXTEND of (string * class option) list
-      | REPLACE of string list * (string * class option) list
+	EXTEND of (string * class option * tooloptcvt) list
+      | REPLACE of string list * (string * class option * tooloptcvt) list
 
     (* perform filename extension *)
-    val extend : extensionStyle -> string -> (string * class option) list
+    val extend : extensionStyle ->
+		 (string * toolopts) -> (string * class option * toolopts) list
 
     (* check for outdated files; the pathname strings must be in
      * native syntax! *)
@@ -106,16 +113,32 @@ end
 signature TOOLS = sig
     include CORETOOLS
 
+    (* CM's say and vsay functions *)
+    val say : string list -> unit
+    val vsay : string list -> unit
+
+    (* Get an anchor-configurable command name. *)
+    val mkCmdName : string -> string
+
     (* Register a "standard" tool based on some shell command. *)
     val registerStdShellCmdTool : { tool: string,
 				    class: string,
 				    suffixes: string list,
 				    cmdStdPath: string,
 				    extensionStyle: extensionStyle,
-				    template: string option } -> unit
+				    template: string option,
+				    dflopts: toolopts } -> unit
 
     (* query default class *)
     val defaultClassOf : string -> class option
+
+    (* parse keyword tool options *)
+    val parseOptions :
+	{ tool : string, keywords : string list, options : string list } ->
+	{ matches : string -> string option, restoptions : string list }
+
+    (* tokenization by whitespace; backslash is escape character *)
+    val tokenize : string -> string list
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -130,7 +153,11 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type pathmaker = string -> srcpath
 
-    type spec = string * pathmaker * class option
+    type toolopts = string list option
+
+    type tooloptcvt = toolopts -> toolopts
+
+    type spec = string * pathmaker * class option * toolopts
 
     type expansion = { smlfiles: (srcpath * Sharing.request) list,
 		       cmfiles: srcpath list }
@@ -156,14 +183,15 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
 
     datatype extensionStyle =
-	EXTEND of (string * class option) list
-      | REPLACE of string list * (string * class option) list
+	EXTEND of (string * class option * tooloptcvt) list
+      | REPLACE of string list * (string * class option * tooloptcvt) list
 
-    fun extend (EXTEND l) f = map (fn (s, co) => (concat [f, ".", s], co)) l
-      | extend (REPLACE (ol, nl)) f = let
+    fun extend (EXTEND l) (f, too) =
+	map (fn (s, co, toc) => (concat [f, ".", s], co, toc too)) l
+      | extend (REPLACE (ol, nl)) (f, too) = let
 	    val { base, ext } = OS.Path.splitBaseExt f
-	    fun join b (e, co) =
-		(OS.Path.joinBaseExt { base = b, ext = SOME e }, co)
+	    fun join b (e, co, toc) =
+		(OS.Path.joinBaseExt { base = b, ext = SOME e }, co, toc too)
 	    fun gen b = map (join b) nl
 	    fun sameExt (e1: string) (e2: string) = e1 = e2
 	in
@@ -227,10 +255,26 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	  | NONE => gen_loop (!gen_classifiers)
     end
 
-    fun smlrule srq { spec = (name, mkpath, _), context, mkNativePath } =
+    fun smlrule { spec, context, mkNativePath } = let
+	val (name, mkpath, _, oto) = spec
+	val srq = case oto of
+		      NONE => Sharing.DONTCARE
+		    | SOME [] => Sharing.DONTCARE
+		    | SOME ["shared"] => Sharing.SHARED
+		    | SOME ["private"] => Sharing.PRIVATE
+		    | SOME l =>
+		      raise ToolError { tool = "sml",
+					msg = concat ("invalid option(s): " ::
+						      foldr (fn (s, r) =>
+								" " :: s :: r)
+						            ["\n"] l) }
+    in
 	({ smlfiles = [(mkpath name, srq)], cmfiles = [] }, [])
-    fun cmrule { spec = (name, mkpath, _), context, mkNativePath } =
+    end
+    fun cmrule { spec = (name, mkpath, _, NONE), context, mkNativePath } =
 	({ smlfiles = [], cmfiles = [mkpath name] }, [])
+      | cmrule _ = raise ToolError { tool = "cm",
+				     msg = "superfluous option specified" }
 
     fun expand { error, spec, context, load_plugin } = let
 	fun mkNativePath s = SrcPath.native { context = context, spec = s }
@@ -242,7 +286,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 						       ext = SOME "cm" }
 		    fun complain () =
 			(error (concat ["unknown class \"", class, "\""]);
-			 smlrule Sharing.DONTCARE)
+			 smlrule)
 		in
 		    if load_plugin context plugin then
 			case StringMap.find (!classes, class) of
@@ -251,14 +295,14 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		    else complain ()
 		end
 
-	fun expand1 (spec as (name, _, co)) = let
+	fun expand1 (spec as (name, _, co, _)) = let
 	    val rule =
 		case co of
 		    SOME c0 => class2rule (String.map Char.toLower c0)
 		  | NONE =>
 			(case defaultClassOf (load_plugin context) name of
 			     SOME c => class2rule c
-			   | NONE => smlrule Sharing.DONTCARE)
+			   | NONE => smlrule)
 	    fun rcontext rf = let
 		val dir = SrcPath.contextName context
 		val cwd = OS.FileSys.getDir ()
@@ -267,13 +311,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 				 closeIt = fn () => OS.FileSys.chDir cwd,
 				 work = rf,
 				 cleanup = fn _ => () }
-		handle ToolError { tool, msg } =>
-		    (error (concat ["tool \"", tool, "\" failed: ", msg]);
-		     ({ smlfiles = [], cmfiles = [] }, []))
 	    end
 	in
 	    rule { spec = spec, context = rcontext,
 		   mkNativePath = mkNativePath }
+	    handle ToolError { tool, msg } =>
+		   (error (concat ["tool \"", tool, "\" failed: ", msg]);
+		    ({ smlfiles = [], cmfiles = [] }, []))
 	end
 	fun loop (expansion, []) = expansion
 	  | loop ({ smlfiles, cmfiles }, item :: items) = let
@@ -290,9 +334,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerClass ("sml", smlrule Sharing.DONTCARE)
-	val _ = registerClass ("shared", smlrule Sharing.SHARED)
-	val _ = registerClass ("private", smlrule Sharing.PRIVATE)
+	val _ = registerClass ("sml", smlrule)
 	val _ = registerClass ("cm", cmrule)
 
 	val _ = sfx ("sml", "sml")
@@ -303,64 +345,81 @@ end
 
 functor ToolsFn (val load_plugin : string -> bool
 		 val mkStdSrcPath : string -> SrcPath.t) : TOOLS = struct
+
     open PrivateTools
     val defaultClassOf = defaultClassOf load_plugin
 
+    val say = Say.say
+    val vsay = Say.vsay
+
+    fun mkCmdName cmdStdPath = let
+	(* It is not enough to turn the string into a SrcPath.t
+	 * once.  This is because if there was no anchor in the
+	 * beginning, later additions of an anchor will go unnoticed.
+	 * This is different from how other files (ML source files)
+	 * behave: They, once the are found to be unanchored, should
+	 * never become anchored later (although an existing anchor
+	 * is allowed to change). *)
+	val p = mkStdSrcPath cmdStdPath
+	val n = SrcPath.osstring p
+    in
+	(* If the resulting path is not absolute, then it cannot have
+	 * been anchored (configured). In this case we just use the
+	 * given string as-is. *)
+	if OS.Path.isAbsolute n then n else cmdStdPath
+    end
+
     fun registerStdShellCmdTool args = let
-	val { tool, class, suffixes, cmdStdPath, extensionStyle, template } =
-	    args
+	val { tool, class, suffixes, cmdStdPath,
+	      extensionStyle, template, dflopts } = args
+	val dflopts = getOpt (dflopts, [])
 	val template = getOpt (template, "%c %s")
-	fun mkCmdName () = let
-	    (* It is not enough to turn the string into a SrcPath.t
-	     * once.  This is because if there was no anchor in the
-	     * beginning, later additions of an anchor will go unnoticed.
-	     * This is different from how other files (ML source files)
-	     * behave: They, once the are found to be unanchored, should
-	     * never become anchored later (although an existing anchor
-	     * is allowed to change). *)
-	    val p = mkStdSrcPath cmdStdPath
-	    val n = SrcPath.osstring p
-	in
-	    (* If the resulting path is not absolute, then it cannot have
-	     * been anchored (configured). In this case we just use the
-	     * given string as-is. *)
-	    if OS.Path.isAbsolute n then n else cmdStdPath
-	end
-	fun rule { spec = (name, mkpath, _), context, mkNativePath } = let
+	fun rule { spec = (name, mkpath, _, oto), context, mkNativePath } = let
+	    val opts = getOpt (oto, dflopts)
 	    val nativename = nativeSpec (mkpath name)
-	    val targetfiles = extend extensionStyle nativename
+	    val tfiles = extend extensionStyle (nativename, oto)
 	    val partial_expansion =
 		({ smlfiles = [], cmfiles = [] },
-		 map (fn (f, co) => (f, mkNativePath, co)) targetfiles)
+		 map (fn (f, co, too) => (f, mkNativePath, co, too)) tfiles)
 	    fun runcmd () = let
-		val cmdname = mkCmdName ()
+		val cmdname = mkCmdName cmdStdPath
 		fun fill ([], sl) = concat (rev sl)
 		  | fill (#"%" :: #"%" :: t, sl) = fill (t, "%" :: sl)
 		  | fill (#"%" :: #"c" :: t, sl) = fill (t, cmdname :: sl)
 		  | fill (#"%" :: #"s" :: t, sl) = fill (t, nativename :: sl)
-		  | fill (#"%" :: t, sl) = let
-			fun finish (n, t) =
-			    fill (t, #1 (List.nth (targetfiles, n-1)) :: sl)
-			    handle General.Subscript =>
-				   fill (t, Int.toString n :: "%" :: sl)
-			fun loop (n, []) = finish (n, [])
-			  | loop (n, t as (c :: t')) =
-			    if c >= #"0" andalso c < #"9" then
-				loop (n * 10 + Char.ord c - Char.ord #"0", t')
-			    else finish (n, t)
+		  | fill (#"%" :: t, sl0) = let
+			val o0 = Char.ord #"0"
+			fun select (0, cl, sl, ol, sel) =
+			    fill (cl, foldl (fn (x, l) => sel x :: " " :: l)
+					    sl0 ol)
+			  | select (n, cl, sl, ol, sel) =
+			    (fill (cl, sel (List.nth (ol, n-1)) :: sl0)
+			     handle General.Subscript => fill (cl, sl))
+			fun loop (n, [], sl) = fill ([], sl)
+			  | loop (n, t as (c :: t'), sl) =
+			    if c >= #"0" andalso c <= #"9" then
+				loop (n * 10 + Char.ord c - o0,
+				      t', String.str c :: sl)
+			    else let
+				val sl = String.str c :: sl
+			    in
+				case c of
+				    #"o" => select (n, t', sl, opts, fn x => x)
+				  | #"t" => select (n, t', sl, tfiles, #1)
+				  | _ => fill (t', sl)
+			    end
 		    in
-			loop (0, t)
+			loop (0, t, "%" :: sl0)
 		    end
 		  | fill (c :: t, sl) = fill (t, String.str c :: sl)
 		val cmd = fill (String.explode template, [])
-		val _ = Say.vsay ["[", cmd, "]\n"]
 	    in
+		Say.vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
 		else raise ToolError { tool = tool, msg = cmd }
 	    end
 	    fun rulefn () =
-		(if outdated tool (map #1 targetfiles, nativename) then
-		     runcmd ()
+		(if outdated tool (map #1 tfiles, nativename) then runcmd ()
 		 else ();
 		 partial_expansion)
 	in
@@ -371,5 +430,46 @@ functor ToolsFn (val load_plugin : string -> bool
     in
 	registerClass (class, rule);
 	app sfx suffixes
+    end
+
+    fun parseOptions { tool, keywords, options } = let
+	fun match s = let
+	    fun loop [] = NONE
+	      | loop (kw0 :: kws) =
+		if String.isPrefix (kw0 ^ "=") s then
+		    SOME (kw0, String.extract (s, size kw0 + 1, NONE))
+		else loop kws
+	in
+	    loop keywords
+	end
+	fun loop ([], m) = (m, [])
+	  | loop (l as (h :: t), m) =
+	    (case match h of
+		 NONE => (m, l)
+	       | SOME (kw, value) =>
+		 (case StringMap.find (m, kw) of
+		      SOME _ =>
+		      raise ToolError
+				{ tool = tool,
+				  msg = concat ["keyword option `", kw,
+						"' specified more than once"] }
+		    | NONE => loop (t, StringMap.insert (m, kw, value))))
+	val (m, ro) = loop (options, StringMap.empty)
+    in
+	{ restoptions = ro, matches = fn kw => StringMap.find (m, kw) }
+    end
+
+    (* Tokenization of a "options=" value (or similar). Tokens are delimited
+     * by whitespace, but delimters can be protected using backslash. *)
+    fun tokenize s = let
+	fun add ([], tl) = tl
+	  | add (cl, tl) = implode (rev cl) :: tl
+	fun loop ([], cl, tl) = rev (add (cl, tl))
+	  | loop (#"\\" :: c :: cs, cl, tl) = loop (cs, c :: cl, tl)
+	  | loop (c :: cs, cl, tl) =
+	    if Char.isSpace c then loop (cs, [], add (cl, tl))
+	    else loop (cs, c :: cl, tl)
+    in
+	loop (explode s, [], [])
     end
 end

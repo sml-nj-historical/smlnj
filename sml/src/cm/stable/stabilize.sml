@@ -17,6 +17,7 @@ local
     structure P = PickMod
     structure UP = UnpickMod
     structure E = GenericVC.Environment
+    structure MI = GenericVC.ModuleId
 in
 
 signature STABILIZE = sig
@@ -119,6 +120,7 @@ struct
 	  | oneB _ (_, _, m) = m
 	fun oneSL ((p, g as GG.GROUP { exports, ... }), m) =
 	    SymbolMap.foldli (oneB p) m exports
+	  | oneSL (_, m) = m
 	val im = foldl oneSL StableMap.empty sublibs
 	fun look i =
 	    case StableMap.find (im, i) of
@@ -252,7 +254,6 @@ struct
 
 	    fun list m r = UU.r_list session m r
 	    val string = UU.r_string session
-	    val stringlist = list stringListM string
 
 	    fun option m r = UU.r_option session m r
 	    val int = UU.r_int session
@@ -261,6 +262,8 @@ struct
 	    fun nonshare r = UU.nonshare session r
 	    val bool = UU.r_bool session
 	    val pid = UnpickleSymPid.r_pid (session, string)
+
+	    val stringlist = list stringListM string
 
 	    fun list2path sl =
 		SrcPath.unpickle pcmode (sl, group)
@@ -287,28 +290,38 @@ struct
 		    val sublibm =
 			foldl SrcPathMap.insert' SrcPathMap.empty sublibs
 
-		    (* Now that we have the list of sublibs, we can build the
-		     * environment for unpickling the environment list.
-		     * We will need the environment list when unpickling the
-		     * export list (making SB_BNODES). *)
-		    fun node_context (sl, sy) = let
-			val GG.GROUP { exports = slexp, ... } =
-			    valOf (SrcPathMap.find (sublibm, list2path sl))
-		    in
-			case SymbolMap.find (slexp, sy) of
-			    SOME ((_, DG.SB_BNODE (_, x)), _) =>
-				SOME (#env (#statenv x ()))
-			  | _ => NONE
-		    end handle _ => NONE
+		    val mm = ref MI.emptyTmap
 
-		    val { symenv, env, symbol, symbollist } =
-			UP.mkUnpicklers session
-			   { node_context = node_context,
-			     prim_context = E.primEnv,
-			     stringlist = stringlist }
+		    fun resetMM () = mm := MI.emptyTmap
+
+		    fun addStatEnv se = let
+			val m = GenModIdMap.mkMap' (se, !mm)
+		    in
+			mm := m; m
+		    end
+
+		    fun context NONE = raise Format
+		      | context (SOME (sl, sy)) = let
+			    val ap = list2path sl
+			in
+			    case getGroup' ap of
+				GG.ERRORGROUP =>
+				  EM.impossible "loadStable: ERRORGROUP"
+			      | GG.GROUP { exports, ... } =>
+				(case SymbolMap.find (exports, sy) of
+				     SOME ((_, DG.SB_BNODE (_, x)), _) =>
+				       addStatEnv (#statenv x ())
+				   | _ => raise Format)
+			end
+
+		    val { symenv, statenv, symbol, symbollist } =
+			UP.mkUnpicklers
+			{ session = session,
+			  stringlist = stringlist }
+			context
 
 		    val lazy_symenv = UU.r_lazy session symenv
-		    val lazy_env = UU.r_lazy session env
+		    val lazy_statenv = UU.r_lazy session statenv
 
 		    fun symbolset () = let
 			fun s #"s" =
@@ -372,9 +385,10 @@ struct
 			fun sbn' #"2" = let
 				val p = abspath ()
 				val sy = symbol ()
-				val GG.GROUP { exports = slexp, ... } =
-				    valOf (SrcPathMap.find (sublibm, p))
-				    handle _ => raise Format
+				val { exports = slexp, ... } =
+				    case SrcPathMap.find (sublibm, p) of
+					SOME (GG.GROUP x) => x
+				      | _ => raise Format
 			    in
 				case SymbolMap.find (slexp, sy) of
 				    SOME ((_, DG.SB_BNODE(n, _)), _) => n
@@ -400,16 +414,13 @@ struct
 			    let val sy = symbol ()
 				(* really reads farbnodes! *)
 				val (f, n) = fsbn ()
-				val ge = lazy_env ()
-				fun bs2es { env, ctxt } =
-				    { env = GenericVC.CoerceEnv.bs2es env,
-				      ctxt = ctxt }
-				val ge' = bs2es o ge
+				val ge = lazy_statenv ()
+				fun ge' () = ge () before resetMM ()
 				val ii = { statenv = Memoize.memoize ge',
 					   symenv = lazy_symenv (),
 					   statpid = pid (),
 					   sympid = pid () }
-				val e = Statenv2DAEnv.cvtMemo (#env o ge)
+				val e = Statenv2DAEnv.cvtMemo ge
 				(* put a filter in front to avoid having the
 				 * FCTENV being queried needlessly (this
 				 * avoids spurious module loadings) *)
@@ -465,7 +476,8 @@ struct
              | IO.Io _ => NONE
     end
 
-    fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
+    fun stabilize _ { group = GG.ERRORGROUP, ... } = NONE
+      | stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
 	val policy = #fnpolicy (#param gp)
 
@@ -563,19 +575,18 @@ struct
 
 	    (* Collect all BNODEs that we see and build
 	     * a context suitable for P.envPickler. *)
-	    fun mkContext () = let
+	    val libctxt = let
 		fun lst f [] k s = k s
 		  | lst f (h :: t) k s = f h (lst f t k) s
 
 		fun sbn n k (s as (bnodes, snodes)) =
 		    case n of
 			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
-			    val { statenv, ... } = ii
 			    val (p, sy) = inverseMap i
 			    val pl = path2list p
 			    val bnodes' =
 				StableMap.insert (bnodes, i,
-						  ((pl, sy), #env o statenv))
+						  ((pl, sy), #statenv ii))
 			in
 			    k (bnodes', snodes)
 			end
@@ -606,31 +617,17 @@ struct
 
 		val bnodel = StableMap.listItems bnodes
 
-		fun cvt lk id = let
-		    fun nloop [] = NONE
-		      | nloop ((k, ge) :: t) =
-			(case lk (ge ()) id of
-			     SOME _ => SOME (P.NodeKey k)
-			   | NONE => nloop t)
-		in
-		    case lk E.primEnv id of
-			SOME _ => SOME P.PrimKey
-		      | NONE => nloop bnodel
-		end
+		fun libArg ([], _) = []
+		  | libArg ((lsm, ge) :: t, m) = let
+			val m' = GenModIdMap.mkMap' (ge (), m)
+		    in
+			(SOME lsm, m') :: libArg (t, m')
+		    end
 	    in
-		{ lookSTR = cvt GenericVC.CMStaticEnv.lookSTR,
-		  lookSIG = cvt GenericVC.CMStaticEnv.lookSIG,
-		  lookFCT = cvt GenericVC.CMStaticEnv.lookFCT,
-		  lookFSIG = cvt GenericVC.CMStaticEnv.lookFSIG,
-		  lookTYC = cvt GenericVC.CMStaticEnv.lookTYC,
-		  lookEENV = cvt GenericVC.CMStaticEnv.lookEENV }
+		libArg (bnodel, MI.emptyTmap)
 	    end
 
-	    (* make the picklers for static and symbolic environments;
-	     * lift them so we can use them here... *)
-	    val envContext = mkContext ()
-
-	    val env_orig = P.envPickler envContext
+	    val env_orig = P.envPickler (fn _ => ()) (P.LIBRARY libctxt)
 	    val env = PU.lift_pickler lifter env_orig
 	    val symenv_orig = P.symenvPickler
 	    val symenv = PU.lift_pickler lifter symenv_orig
@@ -724,11 +721,9 @@ struct
 			(_, DG.SB_BNODE (_, ii)) => ii
 		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
 			    getII smlinfo
-		fun es2bs { env, ctxt } =
-		    { env = GenericVC.CoerceEnv.es2bs env, ctxt = ctxt }
 	    in
 		"i" $ [symbol s, fsbn n,
-		       lazy_env (es2bs o statenv),
+		       lazy_env statenv,
 		       lazy_symenv symenv,
 		       pid statpid,
 		       pid sympid]
@@ -825,7 +820,8 @@ struct
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
 		      fun notStable (_, GG.GROUP { kind, ... }) =
-			  case kind of GG.STABLELIB _ => false | _ => true
+			  (case kind of GG.STABLELIB _ => false | _ => true)
+			| notStable _ = true
 		  in
 		    case List.filter notStable (#sublibs grec) of
 			[] => doit (wrapped, bfc_acc)

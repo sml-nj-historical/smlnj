@@ -8,8 +8,8 @@ signature PROF_ENV =
   sig
     val prof: TellEnv.env -> string 
     val replace: {
-	    get: unit -> CMEnv.Env.environment,
-	    set: CMEnv.Env.environment -> unit
+	    get: unit -> Environment.environment,
+	    set: Environment.environment -> unit
 	  } -> unit
   end
 
@@ -78,9 +78,9 @@ struct
 
   fun replace {get,set} = 
    let val e0 = get ()
-       val s = prof (CMEnv.Env.staticPart e0)
+       val s = prof (Environment.staticPart e0)
        val e1 = Interact.evalStream(TextIO.openString s, e0)
-    in set (CMEnv.Env.concatEnv(e1,e0))
+    in set (Environment.concatEnv(e1,e0))
    end
 
 

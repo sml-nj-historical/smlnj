@@ -53,7 +53,9 @@ fun C f x y = f y x
 val nullFix = INfix(0,0)
 val infFix = INfix(1000000,100000)
 fun strongerL(INfix(_,m),INfix(n,_)) = m >= n
+  | strongerL _ = false			(* should not matter *)
 fun strongerR(INfix(_,m),INfix(n,_)) = n > m
+  | strongerR _ = true			(* should not matter *)
 
 fun prpos(ppstrm: PrettyPrint.ppstream,
           source: Source.inputSource, charpos: int) =
@@ -223,7 +225,9 @@ and ppDconPat(env,ppstrm) =
      in ppDconPat'
     end
 
-fun trim [x] = nil | trim (a::b) = a::trim b
+fun trim [x] = []
+  | trim (a::b) = a::trim b
+  | trim [] = []
 
 fun ppExp (context as (env,source_opt)) ppstrm =
     let val ppsay = add_string ppstrm
@@ -475,128 +479,137 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	   ppvlist ppstrm ("val rec ","and ",
 	     (fn ppstrm => fn rvb => ppRVB context ppstrm (rvb,d-1)),rvbs);
 	   end_block ppstrm)
-        | ppDec'(TYPEdec tycs,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("type "," and ",
-	    (fn ppstrm =>
-	     (fn (DEFtyc{path, tyfun=TYFUN{arity,body},...}) =>
-		 (case arity
+        | ppDec'(TYPEdec tycs,d) = let
+	      fun f ppstrm (DEFtyc{path, tyfun=TYFUN{arity,body},...}) =
+		  (case arity
 		    of 0 => ()
 		     | 1 => (ppsay "'a ")
 		     | n => (ppTuple ppstrm add_string (typeFormals n); 
                              ppsay " ");
-		  ppSym ppstrm (InvPath.last path);
-		  ppsay " = "; ppType env ppstrm body)
-	       | _ => bug "ppDec'(TYPEdec)")),
-	     tycs);
-	   end_block ppstrm)
-        | ppDec'(DATATYPEdec{datatycs,withtycs},d) =
-	  (* could call PPDec.ppDec here *)
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("datatype ","and ",
-	    (fn ppstrm =>
-	     (fn GENtyc{path, arity, kind=DATATYPE(_),...} =>
-		 (case arity
+		   ppSym ppstrm (InvPath.last path);
+		   ppsay " = "; ppType env ppstrm body)
+		| f _ _ = bug "ppDec'(TYPEdec)"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("type "," and ", f, tycs);
+	      end_block ppstrm
+	  end
+        | ppDec'(DATATYPEdec{datatycs,withtycs},d) = let
+	      fun ppDATA ppstrm (GENtyc { path, arity, kind, ... }) =
+		  (case kind of
+		       DATATYPE(_) =>
+		       (case arity
+			 of 0 => ()
+			  | 1 => (ppsay "'a ")
+			  | n => (ppTuple ppstrm add_string (typeFormals n); 
+				  ppsay " ");
+			ppSym ppstrm (InvPath.last path); ppsay " = ..."(*;
+		        ppSequence ppstrm
+			{sep=(fn ppstrm => (add_string ppstrm " |";
+					    add_break ppstrm (1,0))),
+			 pr=(fn ppstrm => fn (DATACON{name,...}) =>  
+					     ppSym ppstrm name),
+			 style=INCONSISTENT}
+			dcons*))
+		     | _ => bug "ppDec'(DATATYPEdec) 1.1")
+		| ppDATA _ _ = bug "ppDec'(DATATYPEdec) 1.2"
+	      fun ppWITH ppstrm (DEFtyc{path, tyfun=TYFUN{arity,body},...}) =
+		  (case arity
 		    of 0 => ()
 		     | 1 => (ppsay "'a ")
 		     | n => (ppTuple ppstrm add_string (typeFormals n); 
                              ppsay " ");
-		  ppSym ppstrm (InvPath.last path); ppsay " = ..."(*;
-		  ppSequence ppstrm
-		    {sep=(fn ppstrm => (add_string ppstrm " |";
-					add_break ppstrm (1,0))),
-		     pr=(fn ppstrm => fn (DATACON{name,...}) =>  
-                             ppSym ppstrm name),
-		     style=INCONSISTENT}
-		    dcons*))
-	       | _ => bug "ppDec'(DATATYPEdec) 1")),
-	     datatycs);
-	   add_newline ppstrm;
-	   ppvlist ppstrm ("withtype ","and ",
-	    (fn ppstrm =>
-	     (fn (DEFtyc{path, tyfun=TYFUN{arity,body},...}) =>
-		 (case arity
-		    of 0 => ()
-		     | 1 => (ppsay "'a ")
-		     | n => (ppTuple ppstrm add_string (typeFormals n); 
-                             ppsay " ");
-		  ppSym ppstrm (InvPath.last path);
-		  ppsay " = "; ppType env ppstrm body)
-	       | _ => bug "ppDec'(DATATYPEdec) 2")),
-	     withtycs);
-	   end_block ppstrm)
+		   ppSym ppstrm (InvPath.last path);
+		   ppsay " = "; ppType env ppstrm body)
+		| ppWITH _ _ = bug "ppDec'(DATATYPEdec) 2"
+	  in
+	      (* could call PPDec.ppDec here *)
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("datatype ","and ", ppDATA, datatycs);
+	      add_newline ppstrm;
+	      ppvlist ppstrm ("withtype ","and ", ppWITH, withtycs);
+	      end_block ppstrm
+	  end
         | ppDec'(ABSTYPEdec _,d) = ppsay "abstype"
 
-        | ppDec'(EXCEPTIONdec ebs,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("exception ","and ",
-	    (fn ppstrm =>
-	     (fn (EBgen{exn=DATACON{name,...},etype,...}) =>
-		   (ppSym ppstrm name;
-		    case etype
-		      of NONE => ()
-		       | SOME ty' =>
-			  (ppsay " of "; ppType env ppstrm ty'))
-	       | (EBdef{exn=DATACON{name,...},edef=DATACON{name=dname,...}}) =>
-		   (ppSym ppstrm name; ppsay "="; ppSym ppstrm dname))),
-	     ebs);
-	   end_block ppstrm)
-
-        | ppDec'(STRdec sbs,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("structure ","and ",
-	    (fn ppstrm =>
-	     (fn (STRB{name, str=M.STR{access,...}, def}) =>
-		 (ppSym ppstrm name; ppAccess ppstrm access; ppsay " = ";
-		  add_break ppstrm (1,2); ppStrexp context ppstrm (def,d-1)))),
-	     sbs);
-	   end_block ppstrm)
-
-        | ppDec'(ABSdec sbs,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("abstraction ","and ",
-	    (fn ppstrm =>
-	     (fn (STRB{name, str=M.STR{access, ...}, def}) =>
-		 (ppSym ppstrm name; ppAccess ppstrm access; ppsay " = ";
-		  add_break ppstrm (1,2); ppStrexp context ppstrm (def,d-1)))),
-	     sbs);
-	   end_block ppstrm)
-
-        | ppDec'(FCTdec fbs,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppvlist ppstrm ("functor ","and ",
-	    (fn ppstrm =>
- 	     (fn (FCTB{name=fname, fct=M.FCT{access=fctAcc,...}, def}) => 
-                 (ppSym ppstrm fname; ppAccess ppstrm fctAcc; ppsay " = "; 
-		    add_break ppstrm (1, 2); 
-		    ppFctexp context ppstrm (def,d-1)))),
-            fbs);
-           end_block ppstrm)
-
-        | ppDec'(SIGdec sigvars,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppSequence ppstrm
-	     {sep=add_newline,
-	      pr=(fn ppstrm => fn M.SIG{name, ...} =>
-		    (ppsay "signature "; 
-                     case name of SOME s => ppSym ppstrm s
-                                | NONE => ppsay "ANONYMOUS")),
-	      style=CONSISTENT}
-	     sigvars;
-	   end_block ppstrm)
-
-        | ppDec'(FSIGdec sigvars,d) =
-	  (begin_block ppstrm CONSISTENT 0;
-	   ppSequence ppstrm
-	     {sep=add_newline,
-	      pr=(fn ppstrm => fn M.FSIG{kind, ...} =>
-		    (ppsay "funsig "; 
-                     case kind of SOME s => ppSym ppstrm s
-                                | NONE => ppsay "ANONYMOUS")),
-	      style=CONSISTENT}
-	     sigvars;
-	   end_block ppstrm)
-
+        | ppDec'(EXCEPTIONdec ebs,d) = let
+	      fun f ppstrm (EBgen{exn=DATACON{name,...},etype,...}) =
+		  (ppSym ppstrm name;
+		   case etype
+		    of NONE => ()
+		     | SOME ty' => (ppsay " of "; ppType env ppstrm ty'))
+		| f ppstrm (EBdef{exn=DATACON{name,...},
+				  edef=DATACON{name=dname,...}}) =
+		  (ppSym ppstrm name; ppsay "="; ppSym ppstrm dname)
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("exception ","and ", f, ebs);
+	      end_block ppstrm
+	  end
+        | ppDec'(STRdec sbs,d) = let
+	      fun f ppstrm (STRB{name, str=M.STR { access, ... }, def}) =
+		  (ppSym ppstrm name;
+		   ppAccess ppstrm access;
+		   ppsay " = ";
+		   add_break ppstrm (1,2);
+		   ppStrexp context ppstrm (def,d-1))
+		| f _ _ = bug "ppDec:STRdec:STRB"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("structure ","and ", f, sbs);
+	      end_block ppstrm
+	  end
+        | ppDec'(ABSdec sbs,d) = let
+	      fun f ppstrm (STRB{name, str=M.STR { access, ... }, def}) =
+		  (ppSym ppstrm name;
+		   ppAccess ppstrm access;
+		   ppsay " = ";
+		   add_break ppstrm (1,2);
+		   ppStrexp context ppstrm (def,d-1))
+		| f _ _ = bug "ppDec':ABSdec"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("abstraction ","and ", f, sbs);
+	      end_block ppstrm
+	  end
+        | ppDec'(FCTdec fbs,d) = let
+	      fun f ppstrm (FCTB{name=fname, fct=M.FCT { access, ... }, def}) =
+                  (ppSym ppstrm fname;
+		   ppAccess ppstrm access;
+		   ppsay " = "; 
+		   add_break ppstrm (1, 2); 
+		   ppFctexp context ppstrm (def,d-1))
+		| f _ _ = bug "ppDec':FCTdec"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppvlist ppstrm ("functor ","and ", f, fbs);
+              end_block ppstrm
+	  end
+        | ppDec'(SIGdec sigvars,d) = let
+	      fun f ppstrm (M.SIG { name, ... }) =
+		  (ppsay "signature "; 
+		   case name of
+		       SOME s => ppSym ppstrm s
+                     | NONE => ppsay "ANONYMOUS")
+		| f _ _ = bug "ppDec':SIGdec"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppSequence ppstrm {sep=add_newline, pr=f,
+				 style=CONSISTENT} sigvars;
+	      end_block ppstrm
+	  end
+        | ppDec'(FSIGdec sigvars,d) = let
+	      fun f ppstrm (M.FSIG{kind, ...}) =
+		  (ppsay "funsig "; 
+                   case kind of SOME s => ppSym ppstrm s
+                              | NONE => ppsay "ANONYMOUS")
+		| f _ _ = bug "ppDec':FSIGdec"
+	  in
+	      begin_block ppstrm CONSISTENT 0;
+	      ppSequence ppstrm
+			 {sep=add_newline, pr = f, style = CONSISTENT} sigvars;
+	      end_block ppstrm
+	  end
         | ppDec'(LOCALdec(inner,outer),d) =
 	  (begin_block ppstrm CONSISTENT 0;
 	   ppsay "local"; nl_indent ppstrm 2;
@@ -605,7 +618,6 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	   ppDec'(outer,d-1); add_newline ppstrm;
 	   ppsay "end";
 	   end_block ppstrm)
-
         | ppDec'(SEQdec decs,d) =
 	  (begin_block ppstrm CONSISTENT 0;
 	   ppSequence ppstrm
@@ -614,7 +626,6 @@ and ppDec (context as (env,source_opt)) ppstrm =
 	      style=CONSISTENT}
 	     decs;
 	   end_block ppstrm)
-
         | ppDec'(FIXdec {fixity,ops},d) =
 	  (begin_block ppstrm CONSISTENT 0;
 	   case fixity
@@ -664,13 +675,11 @@ and ppStrexp (context as (_,source_opt)) ppstrm =
   let val ppsay = add_string ppstrm
       fun ppStrexp'(_,0) = ppsay "<strexp>"
 
-	| ppStrexp'(VARstr (M.STR{access, ...}), d) = 
-              ppAccess ppstrm access
+	| ppStrexp'(VARstr (M.STR { access, ... }), d) = ppAccess ppstrm access
 
-	| ppStrexp'(APPstr{oper=M.FCT{access=facc,...}, 
-                             arg=M.STR{access=sacc, ...}, ...}, d) =
-	      (ppAccess ppstrm facc; ppsay"(";
-	       ppAccess ppstrm sacc; ppsay")")
+	| ppStrexp'(APPstr{oper=M.FCT { access = fa, ... },
+			   arg=M.STR { access = sa, ... }, ...}, d) =
+	      (ppAccess ppstrm fa; ppsay"("; ppAccess ppstrm sa; ppsay")")
         | ppStrexp'(STRstr bindings, d) =
               (begin_block ppstrm CONSISTENT 0;
                ppsay "struct"; nl_indent ppstrm 2;
@@ -710,13 +719,12 @@ and ppFctexp (context as (_,source_opt)) ppstrm =
   let val ppsay = add_string ppstrm
 
       fun ppFctexp'(_, 0) = ppsay "<fctexp>"
-        | ppFctexp'(VARfct (M.FCT{access, ...}), d) = 
-            ppAccess ppstrm access
+        | ppFctexp'(VARfct (M.FCT { access, ... }), d) = ppAccess ppstrm access
 
-        | ppFctexp'(FCTfct{param=M.STR{access=strAcc, ...},  
-                                  def, ...}, d) =
+        | ppFctexp'(FCTfct{param=M.STR { access, ... }, def, ...}, d) =
             (ppsay " FCT("; 
-	     ppAccess ppstrm strAcc; ppsay ") => "; add_newline ppstrm;
+	     ppAccess ppstrm access;
+	     ppsay ") => "; add_newline ppstrm;
  	     ppStrexp context ppstrm (def,d-1))
 
         | ppFctexp'(LETfct(dec,body),d) =

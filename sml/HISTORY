@@ -13,6 +13,80 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/03/30 18:00:00 JST
+Tag: blume_main_v110p26p2_0
+Description:
+
+!!!!! WARNING !!!!!!
+!!  New binfiles  !!
+!!!!!!!!!!!!!!!!!!!!
+
+This update contains:
+
+1. Moderate changes to CM:
+
+   - Changes to CM's tools mechanism.  In particular, it is now possible
+   to have tools that accept additional "command line" parameters
+   (specified in the .cm file at each instance where the tool's class is
+   used).
+
+   This was done to accomodate the new "make" and "shell" tools which
+   facilitate fairly seemless hookup to portions of code managed using
+   Makefiles or Shell scripts.
+
+   There are no classes "shared" or "private" anymore.  Instead, the
+   sharing annotation is now a parameter to the "sml" class.
+
+   There is a bit of generic machinery for implementing one's own
+   tools that accept command-line parameters.  However, I am not yet fully
+   satisfied with that part, so expect changes here in the future.
+
+   All existing tools are described in the CM manual.
+
+   - Slightly better error handling.  (CM now surpresses many followup
+   error messages that tended to be more annoying than helpful.)
+
+2. Major changes to the compiler's static environment data structures.
+
+   - no CMStaticEnv anymore.
+        - no CMEnv, no "BareEnvironment" (actually, _only_ BareEnvironment,
+          but it is called Environment), no conversions between different
+          kinds of static environments
+
+   - There is still a notion of a "modmap", but such modmaps are generated
+     on demand at the time when they are needed.  This sounds slow, but I
+     sped up the code that generates modmaps enough for this not to lead to
+     a slowdown of the compiler (at least I didn't detect any).
+
+   - To facilitate rapid modmap generation, static environments now
+     contain an (optional) "modtree" structure.  Modtree annotations are
+     constructed by the unpickler during unpickling.  (This means that
+     the elaborator does not have to worry about modtrees at all.)
+     Modtrees have the advantage that they are compositional in the same
+     way as the environment data structure itself is compositional.
+     As a result, modtrees never hang on to parts of an environment that
+     has already been rendered "stale" by filtering or rebinding.
+
+   - I went through many, many trials and errors before arriving at the
+     current solution.  (The initial idea of "linkpaths" did not work.)
+     But the result of all this is that I have touched a lot of files that
+     depend on the "modules" and "types" data structures (most of the
+     elaborator). There were a lot of changes during my "linkpath" trials
+     that could have been reverted to their original state but weren't.
+     Please, don't be too harsh on me for messing with this code a bit more
+     than what was strictly necessary...  (I _did_ resist the tempation
+     of doing any "global reformatting" to avoid an untimely death at
+     Dave's hands. :)
+
+   - One positive aspect of the previous point:  At least I made sure that
+     all files that I touched now compile without warnings (other than
+     "polyEqual").
+
+   - compiler now tends to run "leaner" (i.e., ties up less memory in
+     redundant modmaps)
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/03/29 18:00:00
 Tag: leunga-20000327-mlriscGen_hppa_alpha_x86

@@ -10,7 +10,7 @@ local
     structure DG = DependencyGraph
     structure GG = GroupGraph
     structure E = GenericVC.Environment
-    structure BE = GenericVC.BareEnvironment
+    structure SE = GenericVC.StaticEnv
     structure Pid = GenericVC.PersStamps
     structure DE = GenericVC.DynamicEnv
     structure PP = PrettyPrint
@@ -96,7 +96,7 @@ in
 				      target = #ts memo })
 	    andalso PidSet.equal (provided, #cmdata memo)
 
-	fun memo2ii (memo: memo) = #ii memo 
+	fun memo2ii (memo: memo) = #ii memo
 
 	fun memo2ed memo = memo2ii memo
 
@@ -114,8 +114,9 @@ in
 
 	fun nofilter (ed: envdelta) = let
 	    val { statenv, symenv, statpid, sympid } = ed
+	    val statenv' = Memoize.memoize statenv
 	in
-	    { envs = fn () => { stat = #env (statenv ()), sym = symenv () },
+	    { envs = fn () => { stat = statenv' (), sym = symenv () },
 	      pids = pidset (statpid, sympid) }
 	end
 
@@ -124,34 +125,29 @@ in
 
 	fun filter (ii, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
-	    val { env = ste, ctxt } = statenv ()
+	    val ste = statenv ()
 	in
 	    if exportsNothingBut s ste then
 		{ envs = fn () => { stat = ste, sym = symenv () },
 		  pids = pidset (statpid, sympid) }
 	    else let
-		val ste' = E.filterStaticEnv (ste, SymbolSet.listItems s)
-		val key = (statpid, s)
-		val statpid' =
-		    case FilterMap.find (!filtermap, key) of
-			SOME statpid' => statpid'
-		      | NONE => let
-			    (* We re-pickle the filtered ste relative to
-			     * the original one.  This should give a fairly
-			     * minimal pickle. *)
-			    val statpid' = GenericVC.Rehash.rehash
-				{ context = ctxt,
-				  env = GenericVC.CoerceEnv.es2bs ste',
-				  orig_hash = statpid }
-			in
-			    filtermap :=
-			      FilterMap.insert (!filtermap, key, statpid');
-			    statpid'
-			end
-	    in
-		{ envs = fn () => { stat = ste', sym = symenv () },
-		  pids = pidset (statpid', sympid) }
-	    end
+		    val ste' = E.filterStaticEnv (ste, SymbolSet.listItems s)
+		    val key = (statpid, s)
+		    val statpid' =
+			case FilterMap.find (!filtermap, key) of
+			    SOME statpid' => statpid'
+			  | NONE => let
+				val statpid' = GenericVC.Rehash.rehash
+					{ env = ste', orig_hash = statpid }
+			    in
+				filtermap :=
+				  FilterMap.insert (!filtermap, key, statpid');
+				statpid'
+			    end
+		in
+		    { envs = fn () => { stat = ste', sym = symenv () },
+		      pids = pidset (statpid', sympid) }
+		end
 	end
 
 	local
@@ -248,15 +244,14 @@ in
 			     * earlier run) *)
 			    val _ = #anyErrors source := false
 			    val bfc = BF.create
-				{ runtimePid = NONE,
-				  splitting = split,
+				{ splitting = split,
 				  cmData = cmData,
 				  ast = ast,
 				  source = source,
 				  senv = stat,
-				  symenv = BE.layerSymbolic
-				               (sym, BE.symbolicPart corenv),
-				  corenv = BE.staticPart corenv }
+				  symenv = E.layerSymbolic
+				               (sym, E.symbolicPart corenv),
+				  corenv = E.staticPart corenv }
 			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
 			    save bfc;
@@ -388,29 +383,32 @@ in
 	    { sbnode = sbnode, impexp = impexp }
 	end
 
-	fun newTraversal (notify, storeBFC, g) = let
-	    val GG.GROUP { exports, ... } = g
-	    val um = Indegree.indegrees g
-	    fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
-	    val { impexp, ... } = mkTraversal (notify, storeBFC, getUrgency)
-	    fun group gp = let
-		val eo_cl =
-		    map (fn x => Concur.fork (fn () => impexp gp x))
-		        (SymbolMap.listItems exports)
-		val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
+	fun newTraversal (_, _, GG.ERRORGROUP) =
+	    { group = fn _ => NONE, exports = SymbolMap.empty }
+	  | newTraversal (notify, storeBFC, g as GG.GROUP grec) = let
+		val { exports, ... } = grec
+		val um = Indegree.indegrees g
+		fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
+		val { impexp, ... } =
+		    mkTraversal (notify, storeBFC, getUrgency)
+		fun group gp = let
+		    val eo_cl =
+			map (fn x => Concur.fork (fn () => impexp gp x))
+		            (SymbolMap.listItems exports)
+		    val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
+		in
+		    case eo of
+			NONE => (Servers.reset false; NONE)
+		      | SOME e => SOME (#envs e ())
+		end handle Abort => (Servers.reset false; NONE)
+		fun mkExport ie gp =
+		    case impexp gp ie handle Abort => NONE of
+			NONE => (Servers.reset false; NONE)
+		      | SOME e => SOME (#envs e ())
 	    in
-		case eo of
-		    NONE => (Servers.reset false; NONE)
-		  | SOME e => SOME (#envs e ())
-	    end handle Abort => (Servers.reset false; NONE)
-	    fun mkExport ie gp =
-		case impexp gp ie handle Abort => NONE of
-		    NONE => (Servers.reset false; NONE)
-		  | SOME e => SOME (#envs e ())
-	in
-	    { group = group,
-	      exports = SymbolMap.map mkExport exports }
-	end
+		{ group = group,
+		  exports = SymbolMap.map mkExport exports }
+	    end
 
 	fun newSbnodeTraversal () = let
 	    val { sbnode, ... } =

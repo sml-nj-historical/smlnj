@@ -1,11 +1,10 @@
 (* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
 (* binfile.sml *)
 
-functor BinfileFun (C : COMPILE
-		    where type newContext = ModuleId.Set.set) : BINFILE =
+functor BinfileFun (C : COMPILE) : BINFILE =
 struct
     structure Pid = PersStamps
-    structure Env = CMEnv.Env
+    structure Env = Environment
     structure Err = ErrorMsg
     structure CB = CompBasic
 
@@ -51,7 +50,7 @@ struct
 		imports: C.import list,
 		exportPid: pid option,
 		cmData: pid list,
-		senv: { env: senv, ctxt: ModuleId.Set.set } pData,
+		senv: senv pData,
 		lambda: lambda option pData,
 		csegments: csegments,
 		executable: executable option ref
@@ -380,7 +379,9 @@ struct
 	      end
     in
 	fun read args = let
-	    val { name, stream = s, senv = context } = args
+	    val { name, stream = s, senv } = args
+	    val m = GenModIdMap.mkMap senv
+	    fun context _ = m
 	    val { nExports = ne, lambdaSz = sa2,
 		  res1Sz, res2Sz, codeSz = cs, envSz = es,
 		  imports, exportPid, cmData,
@@ -398,23 +399,16 @@ struct
 			then () else error "non-zero reserved size"
 	    val code = readCodeList (s, name, cs)
 	    val (senv, penv) =
-		if es = 0 then (fn () => { env = CMStaticEnv.empty,
-					   ctxt = ModuleId.Set.empty },
+		if es = 0 then (fn () => StaticEnv.empty,
 				Word8Vector.fromList [])
 		else let
 		    val penv = bytesIn (s, es)
 		    val _ =
 			if Word8Vector.length penv = es then ()
 			else error "missing bytes in bin file"
-		    fun bs2es { env, ctxt } =
-			{ env = CMStaticEnv.CM env, ctxt = ctxt }
 		    val mkSenv =
-			delay (fn () =>
-			       bs2es
-			        (UnpickMod.unpickleEnv
-				 { context = context,
-				   hash = staticPid,
-				   pickle = penv }))
+			delay (fn () => UnpickMod.unpickleEnv
+					    context (staticPid, penv))
 		in
 		    (mkSenv, penv)
 		end
@@ -511,8 +505,8 @@ struct
 	end
 
 	fun create args = let
-	    val { runtimePid, splitting, cmData,
-		  ast, source, corenv, senv, symenv } = args
+	    val { splitting, cmData, ast, source, corenv, senv, symenv } =
+		args
 	    val errors = Err.errors source
 	    fun check phase =
 		if Err.anyErrors errors then raise Compile (phase ^ " failed") 
@@ -520,10 +514,10 @@ struct
 	    val cinfo = C.mkCompInfo (source, corenv, fn x => x)
 
 	    val { csegments=code, newstatenv, exportPid, staticPid, imports,
-		  pickle=envPickle, inlineExp, ctxt, ...} = 
+		  pickle=envPickle, inlineExp, ...} = 
 		C.compile { source=source, ast=ast, statenv=senv, 
 			    symenv=symenv, compInfo=cinfo, checkErr=check, 
-			    runtimePid=runtimePid, splitting=splitting}
+			    splitting=splitting}
 	    val {hash = lambdaPid, pickle} = PickMod.pickleFLINT inlineExp
 	    fun pd (u, p, x) =
 		{ unpickled = fn () => u, pid = p, pickled = x }
@@ -531,8 +525,7 @@ struct
 	    BFC { imports = imports,
 		  exportPid = exportPid,
 		  cmData = cmData,
-		  senv = pd ({ env = newstatenv, ctxt = ctxt },
-			     staticPid, envPickle),
+		  senv = pd (newstatenv, staticPid, envPickle),
 		  lambda = pd (inlineExp, lambdaPid, pickle),
 		  csegments = code,
 		  executable = ref NONE }

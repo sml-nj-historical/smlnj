@@ -275,9 +275,10 @@ fun TUPLEpat l =
 fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
   let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, 
              nvars) = 
-        let val nv = newVALvar(sym, mkv)
-         in ((v, nv, sym)::nvars)
-        end
+          let val nv = newVALvar(sym, mkv)
+          in ((v, nv, sym)::nvars)
+          end
+	| g _ = bug "wrapRECdecGen:RVB"
       val vars = foldr g [] rvbs
       val odec = VALRECdec rvbs
 
@@ -319,7 +320,7 @@ fun wrapRECdec0 (rvbs, compInfo) =
 
 fun wrapRECdec (rvbs, compInfo) = 
   let val (vars, ndec) = wrapRECdecGen(rvbs, compInfo)
-      fun h((v, nv, sym), env) = Env.bind(sym, B.VALbind nv, env)
+      fun h((v, nv, sym), env) = SE.bind(sym, B.VALbind nv, env)
       val nenv = foldl h SE.empty vars
    in (ndec, nenv)
   end
@@ -339,8 +340,7 @@ fun FUNdec (completeMatch, fbl, region,
 		  | doclause ({pats,exp,resultty=SOME ty}) =
 			      RULE(not1(TUPLEpat,pats),CONSTRAINTexp(exp,ty))
 
-	        fun last[x] = x | last (a::r) = last r
-		val mark =  case (hd clauses, last clauses)
+		val mark =  case (hd clauses, List.last clauses)
 	                     of ({exp=MARKexp(_,(a,_)),...},
 				 {exp=MARKexp(_,(_,b)),...}) =>
 			         (fn e => MARKexp(e,(a,b)))

@@ -50,24 +50,25 @@ datatype tyc_compat = KEEP_OLD | REPLACE | INCOMPATIBLE
 
 fun compatible(newtyc,oldtyc) =
   if TU.tyconArity newtyc <> TU.tyconArity oldtyc then INCOMPATIBLE
-  else (case (newtyc,oldtyc)
-         of (GENtyc{kind=FORMAL,...}, GENtyc{kind=FORMAL,...}) => KEEP_OLD
-          | (_, GENtyc{kind=FORMAL,...}) => REPLACE
-          | _ => INCOMPATIBLE)
+  else case (newtyc,oldtyc) of
+	   (GENtyc { kind, ... }, GENtyc { kind = kind', ... }) =>
+	   (case (kind, kind') of
+		(FORMAL, FORMAL) => KEEP_OLD
+	      | (_, FORMAL) => REPLACE
+	      | _ => INCOMPATIBLE)
+	 | _ => INCOMPATIBLE
 
 fun specified(symbol,elements) =
       List.exists (fn (n,_) => S.eq(symbol,n)) elements
 
 (*** elaborating IncludeSpec in signatures ***)                 
 (* BUG! currently doesn't deal with general sigexp case (e.g. sigid where ...) *)
-fun elabInclude(SIG{elements=newElements, symbols=newSymbols, 
-                    boundeps, lambdaty, typsharing, strsharing, 
-                    name, closed, fctflag, stamp},
+fun elabInclude(SIG {stamp, elements=newElements, symbols=newSymbols, 
+		     boundeps, lambdaty, typsharing, strsharing, 
+		     name, closed, fctflag, stub},
                 oldEnv, oldElements, oldSymbols, oldSlots,
                 region, compInfo as {mkStamp,error,...} : EU.compInfo) =
-let 
-
-val err = error region
+let val err = error region
 
 (*
  * When including a list of specs into the current signature; some tycon's
@@ -120,15 +121,19 @@ fun adjustTyc(tycon,[]) = tycon
  * signature maching operations.
  *)
 and adjustSig(sign,[]) = sign
-  | adjustSig(sign as SIG{name, closed, fctflag, 
-                          stamp, elements, symbols, boundeps,
-                          lambdaty, typsharing, strsharing}, tycmap) =
-      (if closed then sign
-       else SIG{name=name, closed=false, fctflag=fctflag,
-                stamp= mkStamp(), boundeps=ref NONE, 
-		lambdaty=ref NONE, elements=adjustElems(elements,tycmap), 
-		symbols=symbols, typsharing=typsharing, 
-		strsharing=strsharing})
+  | adjustSig(sign as SIG {stamp, name, closed, fctflag, 
+			   elements, symbols, boundeps,
+			   lambdaty, typsharing, strsharing, stub},
+	      tycmap) =
+    if closed then sign
+    else SIG{stamp = mkStamp(),
+	     name=name, closed=false, fctflag=fctflag,
+             boundeps=ref NONE, 
+	     lambdaty=ref NONE, elements=adjustElems(elements,tycmap), 
+	     symbols=symbols, typsharing=typsharing, 
+	     strsharing=strsharing,
+	     stub = NONE}
+  | adjustSig _ = bug "adjustSig"
 
 and adjustFsig(sign as FSIG{kind,paramsig,bodysig,paramvar,paramsym},tycmap) =
       let val paramsig' = adjustSig(paramsig,tycmap)
@@ -136,6 +141,7 @@ and adjustFsig(sign as FSIG{kind,paramsig,bodysig,paramvar,paramsym},tycmap) =
        in FSIG{kind=kind,paramsig=paramsig',bodysig=bodysig',
                paramvar=paramvar,paramsym=paramsym}
       end
+  | adjustFsig _ = bug "adjustFsig"
 
 and adjustElems(elements,tycmap) = map (adjustElem tycmap) elements
 
@@ -161,8 +167,10 @@ and adjustElem tycmap (sym,spec) =
 fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
   case nspec
    of TYCspec{spec=tc, entVar=ev, repl=r, scope=s} =>
-       (let val TYCspec{spec=otc,entVar=oev,repl=or,scope=os} =
-	        MU.getSpec(elems,name)
+      (let val {spec=otc,entVar=oev,repl=or,scope=os} =
+	       case MU.getSpec(elems,name) of
+		   TYCspec x => x
+		 | _ => bug "addElem:TYCspec"
          in case compatible(tc,otc)
              of KEEP_OLD => 
                   let val ntc = PATHtyc{arity=TU.tyconArity otc,

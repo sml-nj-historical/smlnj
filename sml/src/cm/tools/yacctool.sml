@@ -12,6 +12,8 @@ structure YaccTool = struct
 	  suffixes = ["grm", "y"],
 	  cmdStdPath = "ml-yacc",
 	  template = NONE,
-	  extensionStyle = Tools.EXTEND [("sig", SOME "sml"),
-					 ("sml", SOME "sml")] }
+	  extensionStyle =
+	      Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
+			    ("sml", SOME "sml", fn too => too)],
+	  dflopts = NONE }
 end

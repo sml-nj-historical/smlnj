@@ -23,16 +23,7 @@ in
 type sharespec = SP.path list  (* only internal sharing *)
 
 datatype Signature
-  = SIG of {name : S.symbol option,
-	    closed : bool,
-            fctflag : bool,
-            stamp : ST.stamp,  
-            symbols : S.symbol list,
-            elements : (S.symbol * spec) list,
-            boundeps : (EP.entPath * LT.tkind) list option ref,
-            lambdaty : (LT.lty * DI.depth) option ref,
-            typsharing: sharespec list,
-            strsharing: sharespec list}
+  = SIG of sigrec
   | ERRORsig
 
 (*
@@ -60,16 +51,16 @@ and spec
 
 and fctSig 
   = FSIG of {kind     : S.symbol option,
-             paramsig : Signature,
-             paramvar : EP.entVar,
-             paramsym : S.symbol option,
-             bodysig  : Signature}  
+	     paramsig : Signature,
+	     paramvar : EP.entVar,
+	     paramsym : S.symbol option,
+	     bodysig  : Signature}
   | ERRORfsig
 
 and extDef
   = TYCdef of
       {path : SymPath.path,
-       tyc : Types.tycon,
+       tyc : T.tycon,
        relative : bool} (* does tyc contain entity paths *)
   | STRdef of SP.path * strDef
 
@@ -80,14 +71,12 @@ and strDef
 (* ------------------------- structures and functors ---------------------- *)
 
 and Structure
-  = STR of {sign : Signature, rlzn : strEntity, 
-            access: A.access, info : II.inl_info}
+  = STR of strrec
   | STRSIG of {sign: Signature, entPath : EP.entPath}
   | ERRORstr
 
 and Functor
-  = FCT of {sign : fctSig, rlzn : fctEntity, 
-            access: A.access, info : II.inl_info}
+  = FCT of fctrec
   | ERRORfct
 
 (* ----------------------- entity-related definitions -------------------- *)
@@ -103,14 +92,14 @@ and fctClosure (* realization for functors *)
   = CLOSURE of {param : EP.entVar, body : strExp, env : entityEnv}
 
 and stampExp
-  = CONST of ST.stamp  (* an existing stamp *)
-  | GETSTAMP of strExp
+  = (* CONST of ST.stamp  (* an existing stamp *)
+  | *) GETSTAMP of strExp
   | NEW                (* generate a new stamp *)
 
 and tycExp (* expression evaluating to a TYCentity *)
   = VARtyc of EP.entPath                          (* selection from cur-EE *)
-  | CONSTtyc of Types.tycon                       (* actual tycon *)
-  | FORMtyc of Types.tycon                        (* formal tycon *)
+  | CONSTtyc of T.tycon                       (* actual tycon *)
+  | FORMtyc of T.tycon                        (* formal tycon *)
 
 and strExp 
   = VARstr of EP.entPath       (* selection from current entityEnv *)
@@ -151,21 +140,68 @@ and entityDec
   | EMPTYdec
 
 and entityEnv 
-  = MARKeenv of ST.stamp * entityEnv
+  = MARKeenv of envrec
   | BINDeenv of entity EP.EvDict.map * entityEnv
   | NILeenv
   | ERReenv
 
-withtype strEntity = {stamp : ST.stamp,
-                      entities : entityEnv,
-                      lambdaty : (LT.lty * DI.depth) option ref,
-                      rpath : IP.path}
+and modtree =
+    TYCNODE of Types.gtrec
+  | SIGNODE of sigrec
+  | STRNODE of strrec
+  | FCTNODE of fctrec
+  | ENVNODE of envrec
+  | BRANCH of modtree list
 
-and fctEntity = {stamp : ST.stamp,
-                 closure : fctClosure,
-                 lambdaty : (LT.lty * DI.depth) option ref,
-                 tycpath : T.tycpath option,
-                 rpath : IP.path}
+withtype stubinfo =
+    {owner : PersStamps.persstamp,
+     lib   : bool,
+     tree  : modtree}
+
+and sigrec =
+    {stamp      : ST.stamp,
+     name       : S.symbol option,
+     closed     : bool,
+     fctflag    : bool,
+     symbols    : S.symbol list,
+     elements   : (S.symbol * spec) list,
+     boundeps   : (EP.entPath * LT.tkind) list option ref,
+     lambdaty   : (LT.lty * DI.depth) option ref,
+     typsharing : sharespec list,
+     strsharing : sharespec list,
+     stub       : stubinfo option}
+
+and envrec =
+    {stamp : ST.stamp,
+     env   : entityEnv,
+     stub  : stubinfo option}
+
+and strEntity =
+    {stamp    : ST.stamp,
+     entities : entityEnv,
+     lambdaty : (LT.lty * DI.depth) option ref,
+     rpath    : IP.path,
+     stub     : stubinfo option}
+
+and strrec =
+    {sign   : Signature,
+     rlzn   : strEntity,
+     access : A.access,
+     info   : II.inl_info}
+
+and fctEntity =
+    {stamp    : ST.stamp,
+     closure  : fctClosure,
+     lambdaty : (LT.lty * DI.depth) option ref,
+     tycpath  : T.tycpath option,
+     rpath    : IP.path,
+     stub     : stubinfo option}
+
+and fctrec =
+    {sign   : fctSig,
+     rlzn   : fctEntity, 
+     access : A.access,
+     info   : II.inl_info}
 
 (* the stamp and arith inside T.tycon are critical *)  
 and tycEntity = T.tycon
@@ -183,22 +219,25 @@ val bogusSigStamp = ST.special "bogusSig"
 val bogusRpath = IP.IPATH[S.strSymbol "Bogus"]
 
 val bogusStrEntity : strEntity =
-      {stamp = bogusStrStamp, entities = ERReenv, 
-       lambdaty = ref NONE, rpath = bogusRpath}
+    { stamp = bogusStrStamp, 
+      entities = ERReenv, lambdaty = ref NONE, rpath = bogusRpath,
+      stub = NONE}
 
 val bogusSig : Signature = 
-       SIG {name=NONE, closed=true, fctflag=false,
-            stamp=bogusSigStamp, symbols=[], 
-            elements=[], boundeps=ref NONE, lambdaty=ref NONE,
-            typsharing=[], strsharing=[]}
+    SIG {stamp = bogusSigStamp,
+	 name=NONE, closed=true, fctflag=false,
+	 symbols=[], 
+	 elements=[], boundeps=ref NONE, lambdaty=ref NONE,
+	 typsharing=[], strsharing=[],
+	 stub = NONE}
 
 val bogusFctEntity : fctEntity =
-      {stamp = bogusFctStamp,
-       closure = CLOSURE{param=EP.bogusEntVar,
-                         body= CONSTstr bogusStrEntity,
-                         env=NILeenv},
-       tycpath=NONE, lambdaty = ref NONE, rpath = bogusRpath}
+    {stamp = bogusFctStamp,
+     closure = CLOSURE{param=EP.bogusEntVar,
+		       body= CONSTstr bogusStrEntity,
+		       env=NILeenv},
+     tycpath=NONE, lambdaty = ref NONE, rpath = bogusRpath,
+     stub = NONE}
 
 end (* local *)
 end (* structure Modules *)
-

@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature STATENV2DAENV = sig
-    val cvt : GenericVC.BareEnvironment.staticEnv ->
+    val cvt : GenericVC.Environment.staticEnv ->
 	DAEnv.env * (unit -> SymbolSet.set)
 
     (* The thunk passed to cvtMemo will not be called until the first
@@ -16,18 +16,18 @@ signature STATENV2DAENV = sig
      * to avoid queries that are known in advance to be unsuccessful
      * because they would needlessly cause the thunk to be called. *)
     val cvtMemo :
-	(unit -> GenericVC.BareEnvironment.staticEnv) ->
+	(unit -> GenericVC.Environment.staticEnv) ->
 	DAEnv.env
 end
 
 structure Statenv2DAEnv :> STATENV2DAENV = struct
 
-    structure BE = GenericVC.BareEnvironment
+    structure E = GenericVC.Environment
 
     fun cvt_fctenv look = DAEnv.FCTENV (cvt_result o look)
 
-    and cvt_result (BE.CM_ENV { look, ... }) = SOME (cvt_fctenv look)
-      | cvt_result BE.CM_NONE = NONE
+    and cvt_result (E.CM_ENV { look, ... }) = SOME (cvt_fctenv look)
+      | cvt_result E.CM_NONE = NONE
 
     fun cvt sb = let
 	fun l2s l = let
@@ -40,8 +40,8 @@ structure Statenv2DAEnv :> STATENV2DAENV = struct
 	in
 	    foldl addModule SymbolSet.empty l
 	end
-	val dae = cvt_fctenv (BE.cmEnvOfModule sb)
-	fun mkDomain () = l2s (BE.catalogEnv sb)
+	val dae = cvt_fctenv (E.cmEnvOfModule sb)
+	fun mkDomain () = l2s (E.catalogEnv sb)
     in
 	(dae, mkDomain)
     end
@@ -49,7 +49,7 @@ structure Statenv2DAEnv :> STATENV2DAENV = struct
     fun cvtMemo getSB = let
 	val l = ref (fn s => raise Fail "se2dae: uninitialized")
 	fun looker s = let
-	    fun getCME () = BE.cmEnvOfModule (getSB ())
+	    fun getCME () = E.cmEnvOfModule (getSB ())
 	    val lk = cvt_result o (getCME ())
 	in
 	    l := lk;

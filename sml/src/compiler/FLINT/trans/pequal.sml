@@ -100,8 +100,9 @@ fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
                val s = Vector.sub(stamps, i)
             in GENtyc{stamp=s,arity=arity,eq=ref(YES), 
 		      kind=DATATYPE{index=i, family=family,root=NONE,
-                                    stamps=stamps, freetycs=freetycs},
-		      path=InvPath.IPATH[tycname]}
+				    stamps=stamps, freetycs=freetycs},
+		      path=InvPath.IPATH[tycname],
+		      stub = NONE}
 	   end
         | g (FREEtyc i) = List.nth(freetycs, i)
         | g x = x
@@ -233,88 +234,102 @@ fun test(ty, 0) = raise Poly
                    eqv
                end)
 
-        | CONty(tyc as GENtyc{kind=PRIMITIVE _,eq=ref YES,...}, tyl) =>
-            atomeq (tyc, ty)
+	| CONty (tyc as GENtyc { kind, eq, stamp, arity, path, ... }, tyl) =>
+	  (case (!eq, kind) of
+	       (YES, PRIMITIVE _) => atomeq (tyc, ty)
 
-        | CONty(GENtyc{eq=ref ABS,stamp,arity,kind,path}, tyl) =>
-            test(TU.mkCONty(GENtyc{eq=ref YES,stamp=stamp,arity=arity,
-                                   kind=kind,path=path}, tyl), depth)
-            (* assume that an equality datatype has been converted
-               to an abstract type in an abstype declaration *)
+             | (ABS,_) =>
+               test(TU.mkCONty(GENtyc{eq=ref YES,stamp=stamp,arity=arity,
+                                      kind=kind,path=path,stub=NONE}, tyl),
+		    depth)
+             (* assume that an equality datatype has been converted
+	      * to an abstract type in an abstype declaration *)
 
-        | CONty(tyc as GENtyc{kind=DATATYPE{index,family as {members,...},
-                                            freetycs,stamps,...},
-                              ...}, tyl) =>
-            let val {dcons=dcons0,...} = Vector.sub(members,index)
-                fun expandRECdcon{domain=SOME x, rep, name} = 
-                     {domain=SOME(expandREC (family, stamps, freetycs) x),
-                      rep=rep,name=name}
-                  | expandRECdcon z = z
+             | (_,DATATYPE{index,family as {members,...},
+                           freetycs,stamps,...}) =>
+               let val {dcons=dcons0,...} = Vector.sub(members,index)
+                   fun expandRECdcon{domain=SOME x, rep, name} = 
+                       {domain=SOME(expandREC (family, stamps, freetycs) x),
+			rep=rep,name=name}
+                     | expandRECdcon z = z
 
-             in case map expandRECdcon dcons0
-                 of [{rep=REF,...}] => atomeq(tyc, ty)
-                  | dcons =>                          
-                     (find ty handle Notfound =>
-                       let val v = mkv() and x=mkv() and y=mkv()
-                           val (eqv, patch) = enter ty
-                           fun inside ({name,rep,domain}, ww, uu) = 
-                             (case domain 
-                               of NONE => trueLexp
-                                | SOME dom => 
-                                    (case reduceTy dom
-                                      of (CONty(RECORDtyc [], _)) => trueLexp
-                                       | _ => 
-                                          (let val argt = argType(dom, tyl)
-                                            in APP(test(argt, depth-1),
-                                                   RECORD[VAR ww, VAR uu])
-                                           end)))
-                           val lt = toLty ty
-                           val argty = LT.ltc_tuple [lt,lt]
-                           val pty = LT.ltc_parrow(argty, boolty)
+               in
+		   case map expandRECdcon dcons0
+                    of [{rep=REF,...}] => atomeq(tyc, ty)
+                     | dcons =>                          
+                       (find ty
+			handle Notfound => let
+		          val v = mkv()
+			  val x=mkv()
+			  val y=mkv()
+			  val (eqv, patch) = enter ty
+			  fun inside ({name,rep,domain}, ww, uu) = 
+			      case domain of
+				  NONE => trueLexp
+				| SOME dom => 
+				  (case reduceTy dom
+				    of (CONty(RECORDtyc [], _)) =>
+				       trueLexp
+				     | _ => let
+					   val argt = argType(dom, tyl)
+				       in
+					   APP(test(argt, depth-1),
+					       RECORD[VAR ww, VAR uu])
+				       end)
+			  val lt = toLty ty
+			  val argty = LT.ltc_tuple [lt,lt]
+			  val pty = LT.ltc_parrow(argty, boolty)
  
-                           val body = 
-                             case dcons
-                              of [] => bug "empty data types"
-(*                             | [dcon] => inside dcon       *)
-                               | _ =>
-                                  let (** this is somewhat a hack !!!! *)
-                                      (* val sign = map #rep dcons *)
-                                      fun isConst(DA.CONSTANT _) = true
-                                        | isConst(DA.LISTNIL) = true
-                                        | isConst _ = false
+			  val body = 
+			      case dcons
+			       of [] => bug "empty data types"
+(*                              | [dcon] => inside dcon       *)
+				| _ => let
+				      (* this is somewhat a hack !! *)
+				      (* val sign = map #rep dcons *)
+				      fun isConst(DA.CONSTANT _) =
+					  true
+					| isConst(DA.LISTNIL) = true
+					| isConst _ = false
 
-                                      fun getCsig({rep=a,domain,name}::r,c,v)= 
-                                           if isConst a then getCsig(r, c+1, v)
-                                           else getCsig(r, c, v+1)
-                                        | getCsig([], c, v) = DA.CSIG(v,c)
+				      fun getCsig({rep=a,domain,name}::r,c,v)= 
+					  if isConst a then getCsig(r, c+1, v)
+					  else getCsig(r, c, v+1)
+					| getCsig([], c, v) = DA.CSIG(v,c)
 
-                                      val sign = getCsig(dcons,0,0)
+				      val sign = getCsig(dcons,0,0)
 
-                                      fun concase dcon = 
-                                        let val tcs = map toTyc tyl
-                                            val ww = mkv() and uu = mkv()
-                                            val dc = transDcon(tyc,dcon,toTcLc)
-                                            val dconx = DATAcon(dc, tcs, ww)
-                                            val dcony = DATAcon(dc, tcs, uu)
-                                         in (dconx,
-                                             SWITCH(VAR y, sign, 
-                                              [(dcony, inside(dcon,ww,uu))],
-                                               SOME(falseLexp)))
-                                        end
-                                   in SWITCH(VAR x, sign, 
-                                        map concase dcons, NONE)
-                                  end
+				      fun concase dcon = 
+					  let val tcs = map toTyc tyl
+					      val ww = mkv()
+					      val uu = mkv()
+					      val dc =
+						  transDcon(tyc,dcon,toTcLc)
+					      val dconx = DATAcon(dc, tcs, ww)
+					      val dcony = DATAcon(dc, tcs, uu)
+					  in
+					      (dconx,
+					       SWITCH(VAR y, sign, 
+						      [(dcony,
+							inside(dcon,ww,uu))],
+						      SOME(falseLexp)))
+					  end
+				  in
+				      SWITCH(VAR x, sign, 
+					     map concase dcons, NONE)
+				  end
 
-                           val root = APP(PRIM(PO.PTREQL, pty, []), 
-                                          RECORD[VAR x, VAR y])
-                           val nbody = COND(root, trueLexp, body)
-                        in patch := FN(v, argty,
-                                     LET(x, SELECT(0, VAR v),
-                                      LET(y, SELECT(1, VAR v), nbody)));
-                           eqv
-                       end)
-            end
-
+                          val root = APP(PRIM(PO.PTREQL, pty, []), 
+                                         RECORD[VAR x, VAR y])
+                          val nbody = COND(root, trueLexp, body)
+                      in
+			  patch := FN(v, argty,
+				      LET(x, SELECT(0, VAR v),
+					  LET(y, SELECT(1, VAR v), nbody)));
+			  eqv
+		      end)
+               end
+	     | _ => raise Poly)
         | _ => raise Poly)
 
 val body = test(concreteType, 10)

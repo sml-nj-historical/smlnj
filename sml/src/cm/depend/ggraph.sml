@@ -26,6 +26,7 @@ structure GroupGraph = struct
 		   required: privileges,
 		   grouppath: SrcPath.t,
 		   sublibs: subgrouplist }
+      | ERRORGROUP
 
     withtype subgrouplist = (SrcPath.t * group) list
     (* Note: "sublibs" consists of (srcpath, group) pairs where

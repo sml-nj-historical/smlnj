@@ -10,9 +10,15 @@ sig
   val isEmpty : context -> bool
   val enterOpen : context * EntPath.entVar option -> context
   val enterClosed : context -> context
-  val lookPath : context * ModuleId.modId -> EntPath.entPath option
-  val bindPath : context * ModuleId.modId * EntPath.entVar -> unit
-  val bindLongPath : context * ModuleId.modId * EntPath.entPath -> unit
+  val lookTycPath : context * ModuleId.tycId -> EntPath.entPath option
+  val lookStrPath : context * ModuleId.strId -> EntPath.entPath option
+  val lookFctPath : context * ModuleId.fctId -> EntPath.entPath option
+  val bindTycPath : context * ModuleId.tycId * EntPath.entVar -> unit
+  val bindStrPath : context * ModuleId.strId * EntPath.entVar -> unit
+  val bindFctPath : context * ModuleId.fctId * EntPath.entVar -> unit
+  val bindTycLongPath : context * ModuleId.tycId * EntPath.entPath -> unit
+  val bindStrLongPath : context * ModuleId.strId * EntPath.entPath -> unit
+  val bindFctLongPath : context * ModuleId.fctId * EntPath.entPath -> unit
 
 end  (* signature ENT_PATH_CONTEXT *)
 
@@ -25,16 +31,7 @@ local structure ST = Stamps
       structure MI = ModuleId
 in
 
-structure Key = 
-  struct 
-    type ord_key = MI.modId
-    val compare = MI.cmp
-  end
-   
-structure D = RedBlackMapFn(Key)
-
-type entPathR = EP.entVar list  
-type pathmap = entPathR D.map 
+type pathmap = EP.rEntPath MI.umap
 
 (* 
  * A structure body (struct decls end) is "closed" if 
@@ -51,7 +48,7 @@ datatype context
   = EMPTY
   | LAYER of {locals: pathmap ref, 
               lookContext: EP.entPath,
-              bindContext: entPathR,
+              bindContext: EP.rEntPath,
               outer: context}
 
 val initContext : context = EMPTY
@@ -64,8 +61,8 @@ fun isEmpty(EMPTY : context) = true
  * be accessed from outside (hence the null bindContext) 
  *)
 fun enterClosed epc = 
-  LAYER {locals=ref(D.empty), lookContext=[],
-         bindContext=[], outer=epc}
+  LAYER {locals=ref(MI.emptyUmap), lookContext=EP.epnil,
+         bindContext=EP.repnil, outer=epc}
 
 (*
  * called on entering an open structure scope (claim: this is always an
@@ -76,7 +73,7 @@ fun enterOpen (EMPTY, _) = EMPTY
   | enterOpen (epc, NONE) = epc
   | enterOpen (LAYER{locals,lookContext,bindContext,outer}, SOME ev) = 
       LAYER{locals=locals, lookContext=lookContext@[ev],
-            bindContext=ev::bindContext, outer=outer}
+            bindContext=EP.repcons (ev, bindContext), outer=outer}
 
 (* relative(path,ctx) - subtract common prefix of path and ctx from path *)
 fun relative([],_) = []
@@ -84,33 +81,41 @@ fun relative([],_) = []
   | relative(p as (x::rest),y::rest') = 
       if EP.eqEntVar(x,y) then relative(rest,rest') else p
 
-fun lookPath (EMPTY, _) = NONE
-  | lookPath (LAYER{locals,lookContext,bindContext,outer}, id: MI.modId) 
-          : entPathR option =
-      (case D.find(!locals,id) 
-        of NONE => lookPath(outer,id)
-         | SOME rp => SOME(relative(rev rp, lookContext)))
+fun lookPath find (EMPTY, _) = NONE
+  | lookPath find (LAYER { locals, lookContext, bindContext, outer }, id) =
+    (case find (!locals, id) of
+	 NONE => lookPath find (outer, id)
+       | SOME rp => SOME (relative (EP.rep2ep rp, lookContext)))
+
+val lookTycPath = lookPath MI.uLookTyc
+val lookStrPath = lookPath MI.uLookStr
+val lookFctPath = lookPath MI.uLookFct
 
 (* probe(ctx,s) checks whether a stamp has already be bound before *)
-fun probe (EMPTY, s) = false
-  | probe (LAYER{locals, outer, ...}, s) = 
-      (case D.find(!locals, s)
-        of NONE => probe(outer, s)
+fun probe find (EMPTY, s) = false
+  | probe find (LAYER{locals, outer, ...}, s) = 
+      (case find(!locals, s) of
+	   NONE => probe find (outer, s)
          | _ => true)
 
-fun bindPath (EMPTY, _, _) = ()
-  | bindPath (xx as LAYER {locals, bindContext, ...}, s, ev) =
-      if probe(xx, s) then () 
-      else (locals := D.insert(!locals, s, ev::bindContext))
+fun bindPath (find, insert) (EMPTY, _, _) = ()
+  | bindPath (find, insert) (xx as LAYER { locals, bindContext, ... }, s, ev) =
+    if probe find (xx, s) then ()
+    else (locals := insert (!locals, s, EP.repcons (ev, bindContext)))
 
-fun bindLongPath(EMPTY, _, _) = ()
-  | bindLongPath(xx as LAYER {locals, bindContext, ...}, s, ep) = 
-      let fun h(a::r, p) = h(r, a::p)
-            | h([], p) = p
-       in if probe(xx, s) then ()
-          else (locals := D.insert(!locals, s, h(ep,bindContext)))
-      end
+val bindTycPath = bindPath (MI.uLookTyc, MI.uInsertTyc)
+val bindStrPath = bindPath (MI.uLookStr, MI.uInsertStr)
+val bindFctPath = bindPath (MI.uLookFct, MI.uInsertFct)
+
+fun bindLongPath (find, insert) (EMPTY, _, _) = ()
+  | bindLongPath (find, insert)
+		 (xx as LAYER { locals, bindContext, ... }, s, ep) =
+    if probe find (xx, s) then ()
+    else (locals := insert (!locals, s, EP.ep2rep (ep, bindContext)))
+
+val bindTycLongPath = bindLongPath (MI.uLookTyc, MI.uInsertTyc)
+val bindStrLongPath = bindLongPath (MI.uLookStr, MI.uInsertStr)
+val bindFctLongPath = bindLongPath (MI.uLookFct, MI.uInsertFct)
 
 end (* local *)
 end (* structure EntPathContext *)
-

@@ -82,7 +82,7 @@ fun join(UNDEF,YES) = YES
      (say(String.concat[TU.eqpropToString e1,",",TU.eqpropToString e2,"\n"]);
       raise INCONSISTENT)
 
-fun objectTyc(GENtyc{eq=ref OBJ,...}) = true
+fun objectTyc (GENtyc { eq = ref OBJ, ... }) = true
   | objectTyc _ = false
 
 (* calculating eqtypes in toplevel signatures *)
@@ -98,15 +98,22 @@ exception UnboundStamp
  *)
 
 fun eqAnalyze(str,localStamp : Stamps.stamp -> bool,err : EM.complainer) =
-let val tycons: tycon list stampMap = newMap UnboundStamp
-    val depend: stamp list stampMap = newMap UnboundStamp
-    val dependr: stamp list stampMap = newMap UnboundStamp
-    val eqprop: eqprop stampMap = newMap UnboundStamp
+let val tycons = ref StampMap.empty
+    val depend = ref StampMap.empty
+    val dependr = ref StampMap.empty
+    val eqprop = ref StampMap.empty
     val dependsInd = ref false
     val tycStampsRef : stamp list ref = ref nil
 
-    fun applyMap' x = applyMap x handle UnboundStamp => []
-    fun applyMap'' x = applyMap x handle UnboundStamp => UNDEF
+    fun dflApply dfl (mr, k) =
+	case StampMap.find (!mr, k) of
+	    NONE => dfl
+	  | SOME x => x
+
+    fun applyMap' x = dflApply [] x
+    fun applyMap'' x = dflApply UNDEF x
+
+    fun updateMap mr (k, v) = mr := StampMap.insert (!mr, k, v)
 
     val err = fn s => err EM.COMPLAIN s EM.nullErrorBody
 
@@ -118,16 +125,16 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
 	    val dependsInd = ref false
 	    fun member(stamp,[]) = false
 	      | member(st,st'::rest) = Stamps.eq(st,st') orelse member(st,rest)
-	    fun eqtyc(tyc as GENtyc{stamp,eq,...}) =
+	    fun eqtyc(tyc as GENtyc { stamp, eq, ... }) =
 		(case !eq
-		   of YES => ()
-		    | OBJ => ()
-		    | (NO | ABS) => raise NOT_EQ
-		    | IND => dependsInd := true
-		    | (DATA | UNDEF) =>
-			if member(stamp,!depend) 
-			    orelse Stamps.eq(stamp,datatycStamp) then ()
-			else depend := stamp :: !depend)
+		  of YES => ()
+		   | OBJ => ()
+		   | (NO | ABS) => raise NOT_EQ
+		   | IND => dependsInd := true
+		   | (DATA | UNDEF) =>
+		     if member(stamp,!depend) 
+			orelse Stamps.eq(stamp,datatycStamp) then ()
+		     else depend := stamp :: !depend)
 	      | eqtyc(RECORDtyc _) = ()
 	      | eqtyc _ = bug "eqAnalyze.eqtyc"
 	    and eqty(VARty(ref(INSTANTIATED ty))) 
@@ -140,8 +147,9 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
                                   bug "unexpected freetycs in eqty")
                            | _ => tyc)
                    in (case ntyc
-  		        of GENtyc{eq=ref OBJ,...} => ()
-  		         | tyc' as GENtyc _ => (eqtyc tyc'; app eqty args)
+  		        of GENtyc _ =>
+			   (if objectTyc ntyc then ()
+			    else (eqtyc ntyc; app eqty args))
 		         | DEFtyc{tyfun,...} => eqty(headReduceType ty)
 		         | RECtyc i =>
 		            let val stamp = Vector.sub(stamps,i)
@@ -165,47 +173,54 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
 	end
 	handle NOT_EQ => (NO,[])
 
-    fun addstr(str as M.STR{sign,rlzn={entities,...},...}) =
-	let fun addtyc (tyc as (GENtyc{stamp, eq, kind, path, ...})) =
-		 if localStamp stamp  (* local spec *)
-		 then ((updateMap tycons (stamp,tyc::applyMap'(tycons,stamp));
-                        tycStampsRef := stamp :: !tycStampsRef;
-                        case kind
-                         of DATATYPE{index,stamps,family={members,...},
-                                     root,freetycs} =>
-                             let val dcons = #dcons(Vector.sub(members,index))
-                                 val eqOrig = !eq
-                                 val (eqpCalc,deps) =
-                                   case eqOrig
-                                    of DATA => 
-                                       checkdcons(stamp,MU.transType entities,
-                                                  dcons,stamps,members,freetycs)
-                                     | e => (e,[])
-                                            (* ASSERT: e = YES or NO *)
-                                 val eq' = join(join(eqOrig,
-                                                     applyMap''(eqprop,stamp)),
-                                                eqpCalc)
-                              in eq := eq';
-                                 updateMap eqprop (stamp,eq');
-                                 app (fn s => updateMap dependr
-                                     (s, stamp :: applyMap'(dependr,s))) deps;
-                                 updateMap depend
-                                   (stamp, deps @ applyMap'(depend,stamp))
-                             end
-                          | (FLEXTYC _ | ABSTRACT _ | PRIMITIVE _) =>
+    fun addstr(str as M.STR { sign, rlzn = {entities,...}, ... }) =
+	let fun addtyc (tyc as (GENtyc { stamp, eq, kind, path, ... })) =
+		if localStamp stamp  (* local spec *)
+		then ((updateMap tycons
+				 (stamp,tyc::applyMap'(tycons,stamp));
+				 tycStampsRef := stamp :: !tycStampsRef;
+		       case kind
+                        of DATATYPE{index,stamps,family={members,...},
+                                       root,freetycs} =>
+                              let val dcons = #dcons(Vector.sub(members,index))
+				  val eqOrig = !eq
+				  val (eqpCalc,deps) =
+                                      case eqOrig
+                                       of DATA => 
+					  checkdcons(stamp,
+						     MU.transType entities,
+                                                     dcons,stamps,members,
+						     freetycs)
+					| e => (e,[])
+                                  (* ASSERT: e = YES or NO *)
+                                  val eq' =
+				      join(join(eqOrig,
+                                                applyMap''(eqprop,stamp)),
+                                           eqpCalc)
+                              in
+				  eq := eq';
+                                  updateMap eqprop (stamp,eq');
+                                  app (fn s => updateMap dependr
+				      (s, stamp :: applyMap'(dependr,s))) deps;
+                                  updateMap depend
+					(stamp, deps @ applyMap'(depend,stamp))
+                              end
+                            | (FLEXTYC _ | ABSTRACT _ | PRIMITIVE _) =>
                               let val eq' = join(applyMap''(eqprop,stamp), !eq)
-                               in eq := eq';
+                              in
+				  eq := eq';
                                   updateMap eqprop (stamp,eq')
                               end
-                          | _ => bug "eqAnalyze.scan.tscan")
-                       handle INCONSISTENT => 
-                                       err "inconsistent equality properties")
-                 else () (* external -- assume eqprop already defined *)
+                            | _ => bug "eqAnalyze.scan.tscan")
+			  handle INCONSISTENT => 
+                                 err "inconsistent equality properties")
+                else () (* external -- assume eqprop already defined *)
               | addtyc _ = ()
-	 in if localStamp(MU.getStrStamp str) then
+	 in
+	    if localStamp(MU.getStrStamp str) then
                 (List.app (fn s => addstr s) (MU.getStrs str);
                  List.app (fn t => addtyc t) (MU.getTycs str))
-        (* BUG? - why can we get away with ignoring functor elements??? *)
+            (* BUG? - why can we get away with ignoring functor elements??? *)
             else ()
 	end
       | addstr _ = ()   (* must be external or error structure *)
@@ -227,7 +242,7 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
 
     (* propagate the NO eqprop forward and the YES eqprop backward *)
     fun propagate_YES_NO(stamp) =
-      let fun earlier s = Stamps.cmp(s,stamp) = LESS
+      let fun earlier s = Stamps.compare(s,stamp) = LESS
        in case applyMap''(eqprop,stamp)
 	   of YES => 
                propagate (YES,(fn s => applyMap'(depend,s)),earlier) stamp
@@ -238,7 +253,7 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
     (* propagate the IND eqprop *)
     fun propagate_IND(stamp) =
       let fun depset s = applyMap'(dependr,s)
-	  fun earlier s = Stamps.cmp(s,stamp) = LESS
+	  fun earlier s = Stamps.compare(s,stamp) = LESS
        in case applyMap''(eqprop,stamp)
 	   of UNDEF => (updateMap eqprop (stamp,IND);
 		        propagate (IND,depset,earlier) stamp)
@@ -249,7 +264,7 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
     (* phase 0: scan signature strenv, joining eqprops of shared tycons *)
     val _ = addstr str
     val tycStamps = 
-      ListMergeSort.sort (fn xy => Stamps.cmp xy = GREATER) (!tycStampsRef)
+      ListMergeSort.sort (fn xy => Stamps.compare xy = GREATER) (!tycStampsRef)
  in 
     (* phase 1: propagate YES backwards and NO forward *)
     app propagate_YES_NO tycStamps;
@@ -262,7 +277,9 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
           let val eqp = case applyMap''(eqprop,s)
 			  of DATA => YES
 			   | e => e
-           in app (fn tyc as GENtyc{eq,...} => eq := eqp) (applyMap(tycons,s)) 
+	      fun set (GENtyc { eq, ... }) = eq := eqp
+		| set _ = ()
+           in app set (applyMap'(tycons,s)) 
           end)
     tycStamps
 end
@@ -288,9 +305,15 @@ fun defineEqProps (datatycs,sigContext,sigEntEnv) =
 let val names = map TU.tycName datatycs
     val _ = debugmsg (">>defineEqProps: "^ namesToString names)
     val n = List.length datatycs
-    val GENtyc{kind=DATATYPE{family={members,...},
-               freetycs,...},...}::_ = datatycs
-    val eqs = map (fn GENtyc{eq,...} => eq) datatycs
+    val {family={members,...}, freetycs,...} =
+	case List.hd datatycs of
+	    GENtyc { kind = DATATYPE x, ...} => x
+	  | _ => bug "defineEqProps (List.hd datatycs)"
+    val eqs =
+	let fun get (GENtyc { eq, ... }) = eq
+	      | get _ = bug "eqs:get"
+	in map get datatycs
+	end
     fun getEq i = 
            !(List.nth(eqs,i))
             handle Subscript => 
@@ -307,124 +330,146 @@ let val names = map TU.tycName datatycs
 	raise Subscript))
      val visited = ref([]: int list)
 
-     fun checkTyc (tyc0 as GENtyc{eq as ref DATA,kind=DATATYPE{index,...},path,
-			     ...}) =
-       let val _ = debugmsg (">>checkTyc: "^Symbol.name(IP.last path)^" "^
-				  Int.toString index)
-	 fun eqtyc(GENtyc{eq=ref DATA,kind=DATATYPE{index,...},path,...}) =
-	      (debugmsg ("eqtyc[GENtyc(DATA)]: " ^ Symbol.name(IP.last path) ^
-				 " " ^ Int.toString index);
-		       (* ASSERT: argument tycon is a member of datatycs *)
-		       checkDomains index)
-	   | eqtyc(GENtyc{eq=ref UNDEF,path,...}) =
-	      (debugmsg ("eqtyc[GENtyc(UNDEF)]: " ^ Symbol.name(IP.last path));
-		       IND)
-	  | eqtyc(GENtyc{eq=ref eqp,path,...}) =
-		  (debugmsg ("eqtyc[GENtyc(_)]: " ^ Symbol.name(IP.last path) ^
-				 " " ^ TU.eqpropToString eqp);
-		       eqp)
-	  | eqtyc(RECtyc i) = 
+     fun checkTyc (tyc0 as GENtyc { eq, kind, path, ... }) =
+	 (case (!eq, kind) of
+	      (DATA, DATATYPE { index, ... }) =>
+	      let val _ = debugmsg (">>checkTyc: "^
+				    Symbol.name(IP.last path)^" "^
+				    Int.toString index)
+		  fun eqtyc (GENtyc { eq = e', kind = k', path, ... }) =
+		      (case (!e', k')
+			of (DATA,DATATYPE{index,...}) =>
+			   (debugmsg ("eqtyc[GENtyc(DATA)]: " ^
+				      Symbol.name(IP.last path) ^
+				      " " ^ Int.toString index);
+			   (* ASSERT: argument tycon is a member of datatycs *)
+			    checkDomains index)
+			 | (UNDEF,_) =>
+			   (debugmsg ("eqtyc[GENtyc(UNDEF)]: " ^
+				      Symbol.name(IP.last path));
+			    IND)
+			 | (eqp,_) =>
+			   (debugmsg ("eqtyc[GENtyc(_)]: " ^
+				      Symbol.name(IP.last path) ^
+				      " " ^ TU.eqpropToString eqp);
+			    eqp))
+		    | eqtyc(RECtyc i) = 
 		      (debugmsg ("eqtyc[RECtyc]: " ^ Int.toString i);
 		       checkDomains i)
-	  | eqtyc(RECORDtyc _) = YES
-	  | eqtyc(ERRORtyc) = IND
-	  | eqtyc(FREEtyc i) = bug "eqtyc - FREEtyc"
-	  | eqtyc(PATHtyc _) = bug "eqtyc - PATHtyc"
-	  | eqtyc(DEFtyc _) = bug "eqtyc - DEFtyc"
+		    | eqtyc(RECORDtyc _) = YES
+		    | eqtyc(ERRORtyc) = IND
+		    | eqtyc(FREEtyc i) = bug "eqtyc - FREEtyc"
+		    | eqtyc(PATHtyc _) = bug "eqtyc - PATHtyc"
+		    | eqtyc(DEFtyc _) = bug "eqtyc - DEFtyc"
 
-	and checkDomains i =
-	    if member(i,!visited) then getEq i
-	    else let val _ = visited := i :: !visited
-		     val {tycname,dcons,...} : dtmember
-                           = Vector.sub(members,i)
-                           handle Subscript => 
-               (say (String.concat["$getting member ",Int.toString i," from ",
-					Int.toString(Vector.length members),"\n"]);
-		     raise Subscript)
-			     val _ = debugmsg("checkDomains: visiting "
-					      ^ Symbol.name tycname ^ " "
-					      ^ Int.toString i)
-			     val domains = 
-				   map (fn {domain=SOME ty,name,rep} => ty
-					 | {domain=NONE,name,rep} => unitTy)
-				       dcons
-			     val eqp = eqtylist(domains)
-			  in setEq(i,eqp);
-			     debugmsg ("checkDomains: setting "^Int.toString i^
-				       " to "^TU.eqpropToString eqp);
-			     eqp
-			 end
+		  and checkDomains i =
+		      if member(i,!visited) then getEq i
+		      else let
+			  val _ = visited := i :: !visited
+			  val {tycname,dcons,...} : dtmember
+			    = Vector.sub(members,i)
+			      handle Subscript => 
+				     (say (String.concat
+					       ["$getting member ",
+						Int.toString i,
+						" from ",
+						Int.toString(Vector.length members),"\n"]);
+				      raise Subscript)
+			  val _ = debugmsg("checkDomains: visiting "
+					   ^ Symbol.name tycname ^ " "
+					   ^ Int.toString i)
+			  val domains = 
+			      map (fn {domain=SOME ty,name,rep} => ty
+				    | {domain=NONE,name,rep} => unitTy)
+				  dcons
+			  val eqp = eqtylist(domains)
+			  in
+			      setEq(i,eqp);
+			      debugmsg ("checkDomains: setting "^
+					Int.toString i^
+					" to "^TU.eqpropToString eqp);
+			      eqp
+			  end
 
-	and eqty(VARty(ref(INSTANTIATED ty))) =   (* shouldn't happen *)
+		  and eqty(VARty(ref(INSTANTIATED ty))) =
+		      (* shouldn't happen *)
 		      eqty ty
-	  | eqty(CONty(tyc,args)) =
-	      (case ExpandTycon.expandTycon(tyc,sigContext,sigEntEnv)
-		 of FREEtyc i =>
-                      let val _ = 
-                            debugmsg ("eqtyc[FREEtyc]: " ^ Int.toString i)
-                          val tc = (List.nth(freetycs,i) handle _ =>
-                                          bug "unexpected freetycs 343")
-                       in eqty(CONty(tc, args))
-                      end
-                  | DEFtyc{tyfun,...} =>
-		     (* shouldn't happen - type abbrevs in domains
-		      * should have been expanded *)
-		     eqty(applyTyfun(tyfun,args))
-		  | tyc => 
-		     (case eqtyc tyc
-			of (NO | ABS) => NO
-			 | OBJ => YES
-			 | YES => eqtylist(args)
-			 | DATA =>
-			  (case eqtylist(args) of YES => DATA | e => e)
-			 | IND => IND
-			 | UNDEF => 
-			    bug ("defineEqTycon.eqty: UNDEF - " ^
-				 Symbol.name(TU.tycName tyc))))
-	  | eqty _ = YES
+		    | eqty(CONty(tyc,args)) =
+		      (case ExpandTycon.expandTycon(tyc,sigContext,sigEntEnv)
+			of FREEtyc i =>
+			   let val _ = 
+				debugmsg ("eqtyc[FREEtyc]: " ^ Int.toString i)
+                               val tc = (List.nth(freetycs,i)
+					 handle _ =>
+						bug "unexpected freetycs 343")
+			   in
+			       eqty(CONty(tc, args))
+			   end
+			 | DEFtyc{tyfun,...} =>
+			   (* shouldn't happen - type abbrevs in domains
+			    * should have been expanded *)
+			   eqty(applyTyfun(tyfun,args))
+			 | tyc => 
+			   (case eqtyc tyc
+			     of (NO | ABS) => NO
+			      | OBJ => YES
+			      | YES => eqtylist(args)
+			      | DATA =>
+				(case eqtylist(args) of YES => DATA | e => e)
+			      | IND => IND
+			      | UNDEF => 
+				bug ("defineEqTycon.eqty: UNDEF - " ^
+				     Symbol.name(TU.tycName tyc))))
+		    | eqty _ = YES
 
-	and eqtylist(tys) =
-	    let fun loop([],eqp) = eqp
-		  | loop(ty::rest,eqp) =
-		      case eqty ty
-			of (NO | ABS) => NO  (* return NO immediately;
-				      no further checking *)
-			 | YES => loop(rest,eqp)
-			 | IND => loop(rest,IND)
-			 | DATA => 
-			     (case eqp
-				of IND => loop(rest,IND)
-				 | _ => loop(rest,DATA))
-			 | _ => bug "defineEqTycon.eqtylist"
-	     in loop(tys,YES)
-	    end
+		  and eqtylist(tys) =
+		      let fun loop([],eqp) = eqp
+			    | loop(ty::rest,eqp) =
+			      case eqty ty
+			       of (NO | ABS) => NO  (* return NO immediately;
+			      no further checking *)
+				| YES => loop(rest,eqp)
+				| IND => loop(rest,IND)
+				| DATA => 
+				  (case eqp
+				    of IND => loop(rest,IND)
+				     | _ => loop(rest,DATA))
+				| _ => bug "defineEqTycon.eqtylist"
+		      in loop(tys,YES)
+		      end
 
-     in case eqtyc tyc0
-	  of YES => app (fn i =>
-		          case getEq i
-			   of DATA => setEq(i,YES)
-			    | _ => ()) (!visited)
-	   | DATA => app (fn i =>
-		           case getEq i
-			    of DATA => setEq(i,YES)
-			     | _ => ()) (!visited)
-	   | NO => app (fn i =>
-		          if i > index
-		          then case getEq i
- 		     		of IND => setEq(i,DATA)
-			         | _ => ()
-	                  else ()) (!visited)
-	(* have to be reanalyzed, throwing away information ??? *)
-	   | IND => ()
-	   | _ => bug "defineEqTycon";
-	(* ASSERT: eqprop of tyc0 is YES, NO, or IND *)
-       case !eq
-        of (YES | NO | IND) => ()
-         | DATA => bug ("checkTyc[=>DATA]: "^Symbol.name(IP.last path))
-         | UNDEF => bug ("checkTyc[=>other]: "^Symbol.name(IP.last path))	   end
-  | checkTyc _ = ()
-  in List.app checkTyc datatycs
- end
+	      in
+		  case eqtyc tyc0
+		   of YES => app (fn i =>
+				     case getEq i
+				      of DATA => setEq(i,YES)
+				       | _ => ()) (!visited)
+		    | DATA => app (fn i =>
+				      case getEq i
+				       of DATA => setEq(i,YES)
+					| _ => ()) (!visited)
+		    | NO => app (fn i =>
+				    if i > index
+				    then case getEq i
+ 		     			  of IND => setEq(i,DATA)
+					   | _ => ()
+				    else ()) (!visited)
+		    (* have to be reanalyzed, throwing away information ??? *)
+		    | IND => ()
+		    | _ => bug "defineEqTycon";
+		  (* ASSERT: eqprop of tyc0 is YES, NO, or IND *)
+		  case !eq
+		   of (YES | NO | IND) => ()
+		    | DATA =>
+		      bug ("checkTyc[=>DATA]: "^Symbol.name(IP.last path))
+		    | _ =>
+		      bug ("checkTyc[=>other]: "^Symbol.name(IP.last path))
+	      end
+	    | _ => ())
+       | checkTyc _ = ()
+in
+    List.app checkTyc datatycs
+end
 
 fun isEqType ty =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
@@ -432,7 +477,7 @@ fun isEqType ty =
 	      if eq then ()
 	      else raise CHECKEQ
 	  | eqty(CONty(DEFtyc{tyfun,...}, args)) = eqty(applyTyfun(tyfun,args))
-	  | eqty(CONty(GENtyc{eq,...}, args)) =
+	  | eqty(CONty(GENtyc { eq, ... }, args)) =
 	      (case !eq
 		 of OBJ => ()
 		  | YES => app eqty args
@@ -448,7 +493,7 @@ fun checkEqTySig(ty, sign: polysign) =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
 	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
 	      eqty(applyTyfun(tyfun,args))
-	  | eqty(CONty(GENtyc{eq,...}, args)) =
+	  | eqty(CONty(GENtyc { eq, ... }, args)) =
 	      (case !eq
 		 of OBJ => ()
 		  | YES => app eqty args
@@ -466,7 +511,7 @@ fun checkEqTySig(ty, sign: polysign) =
 
 fun replicate(0,x) = nil | replicate(i,x) = x::replicate(i-1,x)
 
-fun isEqTycon(GENtyc{eq,...}) =
+fun isEqTycon(GENtyc { eq, ... }) =
       (case !eq
 	 of YES => true
 	  | OBJ => true

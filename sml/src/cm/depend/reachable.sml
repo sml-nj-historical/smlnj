@@ -77,17 +77,19 @@ structure Reachable :> REACHABLE = struct
 
 	fun reachable (GG.GROUP { exports, ... }) =
 	              reachable' (map (#2 o #1) (SymbolMap.listItems exports))
+	  | reachable GG.ERRORGROUP = (SmlInfoSet.empty, StableSet.empty)
 
 	fun snodeMap g = let
-	    fun snm (g, (a, seen)) = let
-		val GG.GROUP { exports, sublibs, grouppath, ... } = g
-	    in
-		if SrcPathSet.member (seen, grouppath) then (a, seen)
-		else foldl (fn ((_, g), x) => snm (g, x))
-		           (snodeMap' (exports, a),
-			    SrcPathSet.add (seen, grouppath))
-			   sublibs
-	    end
+	    fun snm (GG.ERRORGROUP, x) = x
+	      | snm (g as GG.GROUP grec, (a, seen)) = let
+		    val { exports, sublibs, grouppath, ... } = grec
+		in
+		    if SrcPathSet.member (seen, grouppath) then (a, seen)
+		    else foldl (fn ((_, g), x) => snm (g, x))
+		               (snodeMap' (exports, a),
+				SrcPathSet.add (seen, grouppath))
+			       sublibs
+		end
 	in
 	    #1 (snm (g, (SrcPathMap.empty, SrcPathSet.empty)))
 	end
@@ -96,37 +98,43 @@ structure Reachable :> REACHABLE = struct
 	    fun subgroups (GG.GROUP { kind = GG.NOLIB x, ... }) = #subgroups x
 	      | subgroups (GG.GROUP { kind = GG.LIB x, ... }) = #subgroups x
 	      | subgroups _ = []
-	    fun go (g as GG.GROUP { grouppath, ... }, a) = let
-		val sgl = subgroups g
-		fun sl ((p, g as GG.GROUP { kind = GG.NOLIB _, ... }), a) =
-		    if SrcPathSet.member (a, p) then a else go (g, a)
-		  | sl (_, a) = a
-	    in
-		SrcPathSet.add (foldl sl a sgl, grouppath)
-	    end
+	    fun go (GG.ERRORGROUP, a) = a
+	      | go (g as GG.GROUP { grouppath, ... }, a) = let
+		    val sgl = subgroups g
+		    fun sl ((p, g as GG.GROUP { kind = GG.NOLIB _, ... }), a) =
+			if SrcPathSet.member (a, p) then a else go (g, a)
+		      | sl (_, a) = a
+		in
+		    SrcPathSet.add (foldl sl a sgl, grouppath)
+		end
 	in
 	    go (g, SrcPathSet.empty)
 	end
 
-	fun stableLibsOf (g as GG.GROUP { grouppath, ... }) = let
-	    fun slo ((p, g), (seen, res)) = let
-		val GG.GROUP { kind, sublibs, ... } = g
+	fun stableLibsOf GG.ERRORGROUP = SrcPathMap.empty
+	  | stableLibsOf (g as GG.GROUP { grouppath, ... }) = let
+		fun slo ((_, GG.ERRORGROUP), x) = x
+		  | slo ((p, g as GG.GROUP grec), (seen, res)) = let
+			val { kind, sublibs, ... } = grec
+		    in
+			if SrcPathSet.member (seen, p) then (seen, res)
+			else
+			    let
+				val (seen, res) = foldl slo (seen, res) sublibs
+				val seen = SrcPathSet.add (seen, p)
+			    in
+				case kind of
+				    GG.STABLELIB _ =>
+				    (seen, SrcPathMap.insert (res, p, g))
+				  | _ => (seen, res)
+			    end
+		    end
 	    in
-		if SrcPathSet.member (seen, p) then (seen, res)
-		else let
-		    val (seen, res) = foldl slo (seen, res) sublibs
-		    val seen = SrcPathSet.add (seen, p)
-		in
-		    case kind of
-			GG.STABLELIB _ => (seen, SrcPathMap.insert (res, p, g))
-		      | _ => (seen, res)
-		end
+		#2 (slo ((grouppath, g), (SrcPathSet.empty, SrcPathMap.empty)))
 	    end
-	in
-	    #2 (slo ((grouppath, g), (SrcPathSet.empty, SrcPathMap.empty)))
-	end
 
-	fun frontier inSet (GG.GROUP { exports, ... }) = let
+	fun frontier _ GG.ERRORGROUP = StableSet.empty
+	  | frontier inSet (GG.GROUP { exports, ... }) = let
 	    fun bnode (DG.BNODE n, (seen, f)) = let
 		val i = #bininfo n
 		val li = #localimports n

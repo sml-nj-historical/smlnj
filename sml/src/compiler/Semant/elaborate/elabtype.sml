@@ -138,7 +138,7 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
 	fun bindDconslist ((r1 as (name,_,_))::l1,r2::l2) =
 	      let val dcon = bindDcons (r1,r2)
 		  val (dcl,e2) = bindDconslist (l1,l2)
-	       in (dcon::dcl,Env.bind(name,B.CONbind dcon,e2))
+	       in (dcon::dcl,SE.bind(name,B.CONbind dcon,e2))
 	      end
 	  | bindDconslist ([],[]) = ([],SE.empty)
 	  | bindDconslist _ = bug "elabDB.bindDconslist"
@@ -190,10 +190,10 @@ fun elabTBlist(tbl:Ast.tb list,notwith:bool,env0,rpath,region,
 	      | MarkTb(tb',region') => elabTB(tb',env,region')
 	fun loop(nil,tycons,names,env) = (rev tycons,rev names,env)
 	  | loop(tb::rest,tycons,names,env) =
-	      let val env' = if notwith then env0 else Env.atop(env,env0)
+	      let val env' = if notwith then env0 else SE.atop(env,env0)
 		  val (tycon,name) = elabTB(tb,env',region)
 	       in loop(rest,tycon::tycons,name::names,
-		       Env.bind(name,B.TYCbind tycon,env))
+		       SE.bind(name,B.TYCbind tycon,env))
 	      end
      in loop(tbl,nil,nil,SE.empty)
     end
@@ -224,7 +224,9 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		val tyc = GENtyc{path=IP.extend(rpath,strictName),
 				 arity=length tyvars,
 				 stamp=mkStamp(),
-				 eq=ref DATA,kind=TEMP}
+				 eq=ref DATA,
+				 kind = TEMP,
+				 stub = NONE}
 		val binddef =
 		    if lazyp then
 			   DEFtyc{stamp=mkStamp(),
@@ -298,14 +300,16 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
            in h (ss, n)
           end
 
-	fun transTyc (tyc as GENtyc{kind=TEMP,...}) =
-	      let fun g(tyc,i,x::rest) =
-		        if eqTycon(tyc,x) then RECtyc i
-                        else g(tyc,i+1,rest)
-		    | g(tyc,_,nil) = tyc
-	       in g(tyc,0,prelimDtycs)
-              end
-	  | transTyc (tyc as (GENtyc _ | DEFtyc _ | PATHtyc _)) = 
+	fun transTyc (tyc as GENtyc { kind = TEMP, ... }) =
+	    let fun g(tyc,i,x::rest) =
+		    if eqTycon(tyc,x) then RECtyc i
+                    else g(tyc,i+1,rest)
+		  | g(tyc,_,nil) = tyc
+	    in g(tyc,0,prelimDtycs)
+	    end
+	  | transTyc (tyc as GENtyc _) = 
+	    if isFree tyc then regFree tyc else tyc
+	  | transTyc (tyc as (DEFtyc _ | PATHtyc _)) = 
               if isFree tyc then regFree tyc else tyc
           | transTyc tyc = tyc
 
@@ -348,13 +352,13 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	val dbs' = rev dbs'
         val _ = debugmsg "--elabDATATYPEdec: RHS elaborated"
 
-        fun mkMember{name,dcons,dconDescs,tyc=GENtyc{stamp,arity,eq,...},
+        fun mkMember{name,dcons=DATACON { sign, ... } :: _,
+		     dconDescs, tyc=GENtyc { stamp, arity, eq, ... },
 		     dconNames,index,lazyp,strictName} =
-	    let val DATACON{sign,...}::_ = dcons
-		     (* extract common sign from first datacon *)
-	     in (stamp, {tycname=strictName,dcons=dconDescs,arity=arity,
-                         eq=eq,lazyp=lazyp,sign=sign})
-	    end
+    (* extract common sign from first datacon *)
+	    (stamp, {tycname=strictName,dcons=dconDescs,arity=arity,
+                     eq=eq,lazyp=lazyp,sign=sign})
+	  | mkMember _ = bug "mkMember"
 
         val (mstamps, members) = ListPair.unzip (map mkMember dbs')
 
@@ -370,16 +374,19 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
           end
         val _ = debugmsg "--elabDATATYPEdec: members defined"
 
-        fun fixDtyc{name,index,tyc as GENtyc{path,arity,stamp,eq,kind},
+        fun fixDtyc{name,index,
+		    tyc as GENtyc {path,arity,stamp,eq,kind,stub},
 		    dconNames,dcons,dconDescs,lazyp,strictName} =
 	    {old=tyc,
 	     name=strictName,
 	     new=GENtyc{path=path,arity=arity,stamp=stamp,eq=eq,
+			stub=NONE,
 			kind=DATATYPE{index=index,
-                                      stamps=nstamps,
-                                      family=nfamily,
-                                      freetycs=nfreetycs,
-                                      root=NONE}}}
+				      stamps=nstamps,
+				      family=nfamily,
+				      freetycs=nfreetycs,
+				      root=NONE}}}
+	  | fixDtyc _ = bug "fixDtyc"
 
         val dtycmap = map fixDtyc dbs'  (* maps prelim to final datatycs *)
         val _ = debugmsg "--elabDATATYPEdec: fixDtycs done"
@@ -391,8 +398,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: defineEqProps done"
 
         fun applyMap m =
-            let fun sameTyc(GENtyc{stamp=s1,...},GENtyc{stamp=s2,...}) =
-                      Stamps.eq(s1,s2)
+            let fun sameTyc(GENtyc g1, GENtyc g2) =
+		    Stamps.eq(#stamp g1, #stamp g2)
                   | sameTyc(tyc1 as DEFtyc _, tyc2 as DEFtyc _) =
 		      equalTycon(tyc1, tyc2)  
                   | sameTyc _ = false
@@ -415,6 +422,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	     new=DEFtyc{tyfun=TYFUN{arity=arity,body=applyMap tycmap body},
 			strict=strict,stamp=stamp,path=path}}
 	    :: tycmap
+	  | augTycmap _ = bug "augTycMap"
 
         (* use foldl to process the withtycs in their original order *)
         val alltycmap = foldl augTycmap dtycmap withtycs

@@ -15,6 +15,7 @@ structure MkList :> sig
 end = struct
 
     structure DG = DependencyGraph
+    structure GG = GroupGraph
 
     fun stab_isreg ((bs, ss), i) = StableSet.member (bs, i)
     fun sml_isreg ((bs, ss), i) = SmlInfoSet.member (ss, i)
@@ -24,8 +25,9 @@ end = struct
     fun do_list do_elem [] k m = k m
       | do_list do_elem (h :: t) k m = do_elem h (do_list do_elem t k) m
 
-    fun group { bininfo, smlinfo, Cons, Nil } g = let
-	val GroupGraph.GROUP { exports, ... } = g
+    fun group { Nil, ... } GG.ERRORGROUP = Nil
+      | group x (g as GG.GROUP { exports, ... }) = let
+	val { bininfo, smlinfo, Cons, Nil } = x
 	fun bnode (DG.BNODE n) k m = let
 	    val { bininfo = i, localimports = l, globalimports = g } = n
 	    fun k' m = Cons (bininfo i, k (stab_reg (m, i)))

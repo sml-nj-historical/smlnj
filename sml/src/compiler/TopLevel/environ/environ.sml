@@ -57,12 +57,11 @@ fun root(A.EXTERN pid) = SOME pid
   | root _ = NONE
 
 (* getting the stamp from a binding *)
-fun stampOf(B.VALbind(V.VALvar {access=a, ...})) = root a
-  | stampOf(B.CONbind(T.DATACON {rep=A.EXN a, ...})) = root a
-  | stampOf(B.STRbind(M.STR {access=a, ...})) = root a
-  | stampOf(B.FCTbind(M.FCT {access=a, ...})) = root a
+fun stampOf(B.VALbind (V.VALvar {access=a, ...})) = root a
+  | stampOf(B.CONbind (T.DATACON {rep=A.EXN a, ...})) = root a
+  | stampOf(B.STRbind (M.STR { access, ... })) = root access
+  | stampOf(B.FCTbind (M.FCT { access, ... })) = root access
   | stampOf _ = NONE
-
 
 (* functions to collect stale dynamic pids for unbinding in concatEnv *)
 
@@ -208,8 +207,8 @@ fun lookElems elements sym =
           | _ => CM_NONE)
       handle MU.Unbound _ => CM_NONE
 
-and sigenv (s as M.SIG{elements, ...}) = 
-      CM_ENV {look = lookElems(elements), 
+and sigenv (s as M.SIG {elements,...}) =
+      CM_ENV {look = lookElems elements,
               symbols = (fn () => MU.getSigSymbols s)}
   | sigenv _ = CM_NONE
 
@@ -223,21 +222,21 @@ and sigenv (s as M.SIG{elements, ...}) =
  * don't have to write the following ugly sigenvSp function. 
  * 
  *)
-and sigenvSp (M.SIG{elements=[(sym,M.STRspec{sign,...})],...}) = 
-      if S.name sym = "<resultStr>" then sigenv sign
-      else bug "unexpected case <resultStr> in sigenvSp"
-  | sigenvSp (M.SIG{elements=[(sym,M.FCTspec{sign,...})],...}) = 
-      if S.name sym = "<functor>" then fsgenv sign
-      else bug "unexpected case <functtor> in sigenvSp"
+and sigenvSp (M.SIG {elements=[(sym,M.STRspec{sign,...})],...}) =
+    if S.name sym = "<resultStr>" then sigenv sign
+    else bug "unexpected case <resultStr> in sigenvSp"
+  | sigenvSp (M.SIG {elements=[(sym,M.FCTspec{sign,...})],...}) =
+    if S.name sym = "<functor>" then fsgenv sign
+    else bug "unexpected case <functtor> in sigenvSp"
   | sigenvSp _ = bug "unexpected case in signenvSp"
 
 and fsgenv (M.FSIG{bodysig,...}) = sigenvSp bodysig
   | fsgenv _ = CM_NONE
 
-fun strenv(M.STR{sign,...}) = sigenv sign
-  | strenv M.ERRORstr = CM_NONE
+fun strenv(M.STR { sign, ... }) = sigenv sign
+  | strenv _ = CM_NONE
 
-fun fctenv(M.FCT{sign,...}) = fsgenv sign
+fun fctenv(M.FCT { sign, ... }) = fsgenv sign
   | fctenv _ = CM_NONE
 
 fun cmEnvOfModule env sym =

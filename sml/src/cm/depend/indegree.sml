@@ -19,7 +19,8 @@ in
 
     structure Indegree :> INDEGREE = struct
 	
-	fun indegrees (GG.GROUP { exports, ... }) = let
+	fun indegrees GG.ERRORGROUP = M.empty
+	  | indegrees (GG.GROUP { exports, ... }) = let
 	    fun fsb sn ((_, DG.SB_SNODE n), m) = sn (n, m)
 	      | fsb _ (_, m) = m
 

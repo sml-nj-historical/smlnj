@@ -76,7 +76,7 @@ val ppFormals = PPType.ppFormals
 
 val resultId = S.strSymbol "<resultStr>"
 
-fun strToEnv(M.SIG{elements,...},entities) =
+fun strToEnv(M.SIG {elements,...},entities) =
     let fun bindElem ((sym,spec), env) =
 	    case spec
               of M.TYCspec{entVar,...} => 
@@ -86,7 +86,8 @@ fun strToEnv(M.SIG{elements,...},entities) =
 	       | M.STRspec{entVar,sign,...} =>
 		  let val strEnt = EE.lookStrEnt(entities,entVar)
 		   in SE.bind(sym,B.STRbind(M.STR{sign=sign,rlzn=strEnt,
-                                      access=A.nullAcc, info=II.nullInfo}),env)
+                                      access=A.nullAcc, info=II.nullInfo}),
+			      env)
 		  end
 	       | M.CONspec{spec=dcon, ...} => SE.bind(sym,B.CONbind dcon,env)
 	       | _ => env
@@ -94,7 +95,7 @@ fun strToEnv(M.SIG{elements,...},entities) =
     end
   | strToEnv _ = SE.empty
 
-fun sigToEnv(M.SIG{elements,...}) =
+fun sigToEnv(M.SIG {elements,...}) =
     let fun bindElem ((sym,spec), env) =
 	  (case spec
             of M.TYCspec{spec,...} => SE.bind(sym,B.TYCbind spec,env)
@@ -104,6 +105,7 @@ fun sigToEnv(M.SIG{elements,...}) =
 	     | _ => env)
      in foldl bindElem SE.empty elements
     end
+  | sigToEnv _ = bug "sigToEnv"
 
 (* 
  * Support for a hack to make sure that non-visible ConBindings don't
@@ -162,8 +164,8 @@ fun ppTycExp ppstrm (tycExp,depth) =
 fun ppStructureName ppstrm (str,env) =
     let val rpath =
 	    case str
-	      of M.STR{rlzn={rpath,...},...} => rpath
-	       | _ => bug "ppStructureName"
+	     of M.STR { rlzn, ... } => #rpath rlzn
+	      | _ => bug "ppStructureName"
 	fun look a = LU.lookStr(env,a,(fn _ => raise Env.Unbound))
 	fun check str' = MU.eqOrigin(str',str)
 	val (syms,found) = findPath(rpath,check,look)
@@ -215,9 +217,9 @@ fun ppConBinding ppstrm =
 fun ppStructure ppstrm (str,env,depth) =
     let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
      in case str
-	  of M.STR {sign, rlzn as {entities,...}, ...} =>
-	       (if !internals 
-		then (begin_block CONSISTENT 2;
+	  of M.STR { sign, rlzn as { entities, ... }, ... } =>
+	     (if !internals 
+	      then (begin_block CONSISTENT 2;
 		       pps "STR";
 		       nl_indent ppstrm 2;
 		       begin_block CONSISTENT 0;
@@ -231,21 +233,19 @@ fun ppStructure ppstrm (str,env,depth) =
 		       end_block();
 		      end_block())
 		else case sign
-		       of M.SIG{name,...} =>
-			   (case name
-			      of SOME sym =>
-				  ((if MU.eqSign
-				       (sign,
-					LU.lookSig
-					 (env,sym,(fn _ => raise Env.Unbound)))
-				    then ppSym ppstrm sym
-				    else (ppSym ppstrm sym; pps "?"))
-				   handle Env.Unbound =>
-				     (ppSym ppstrm sym; pps "?"))
-			       | NONE =>
-				  if depth <= 1 then pps "<sig>"
-				  else ppSignature0 ppstrm
-				        (sign,env,depth-1,SOME entities))
+		       of M.SIG { name = SOME sym, ... } =>
+			  ((if MU.eqSign
+				   (sign,
+				    LU.lookSig
+					(env,sym,(fn _ => raise Env.Unbound)))
+			    then ppSym ppstrm sym
+			    else (ppSym ppstrm sym; pps "?"))
+			   handle Env.Unbound =>
+				  (ppSym ppstrm sym; pps "?"))
+			| M.SIG { name = NONE, ... } => 
+			  if depth <= 1 then pps "<sig>"
+			  else ppSignature0 ppstrm
+				            (sign,env,depth-1,SOME entities)
 			| M.ERRORsig => pps "<error sig>")
 	   | M.STRSIG _ => pps "<strsig>"
 	   | M.ERRORstr => pps "<error str>"
@@ -264,7 +264,10 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		    case entityEnvOp
 		      of NONE => ppSignature0 ppstrm (sign,env,depth-1,NONE)
 		       | SOME eenv =>
-			  let val M.STRent{entities,...} = EE.look(eenv,entVar)
+			  let val {entities,...} =
+				  case EE.look(eenv,entVar) of
+				      M.STRent e => e
+				    | _ => bug "ppElements:STRent"
 			   in ppSignature0 ppstrm 
 			        (sign,env,depth-1,SOME entities)
 			  end;
@@ -300,7 +303,8 @@ and ppElements (env,depth,entityEnvOp) ppstrm elements =
 		      | SOME eenv =>
 			 (case EE.look(eenv,entVar)
 			    of M.TYCent tyc => ppTycBind ppstrm (tyc,env)
-			     | M.ERRORent => add_string ppstrm "<ERRORent>");
+			     | M.ERRORent => add_string ppstrm "<ERRORent>"
+			     | _ => bug "ppElements:TYCent");
 		   if !internals
 		   then (add_newline ppstrm;
 			 add_string ppstrm "entVar: ";
@@ -362,13 +366,13 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 	then pps "<sig>"
 	else
 	case sign
-	  of M.SIG {name,stamp,elements,typsharing,strsharing,...} =>
+	  of M.SIG {stamp,name,elements,typsharing,strsharing,...} =>
 	     if !internals then 
 	       (begin_block CONSISTENT 0;
 		 pps "SIG:";
 		 nl_indent ppstrm 2;
 		 begin_block CONSISTENT 0;
-		  pps "stamp: "; pps (Stamps.stampToShortString stamp);
+		  pps "stamp: "; pps (Stamps.toShortString stamp);
 		  add_newline();
 		  pps "name: ";
 		  case name
@@ -419,11 +423,11 @@ and ppSignature0 ppstrm (sign,env,depth,entityEnvOp) =
 
 and ppFunsig ppstrm (sign,env,depth) =
     let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
-	fun trueBodySig(orig as M.SIG{elements=[(sym,M.STRspec{sign,...})],...}) =
-    	      if Symbol.eq(sym,resultId)
-	      then sign
-	      else orig
-	  | trueBodySig sign = sign
+	fun trueBodySig (orig as M.SIG { elements =
+					 [(sym, M.STRspec { sign, ... })],
+					 ... }) =
+	    if Symbol.eq (sym, resultId) then sign else orig
+	  | trueBodySig orig = orig
      in if depth<=0 then pps "<fctsig>"
 	else case sign
 	       of M.FSIG {paramsig,paramvar,paramsym,bodysig, ...} => 
@@ -463,7 +467,7 @@ and ppFunsig ppstrm (sign,env,depth) =
     end
 
 
-and ppStrEntity ppstrm ({stamp,entities,lambdaty,rpath},env,depth) =
+and ppStrEntity ppstrm ({stamp,entities,lambdaty,rpath,stub},env,depth) =
     let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
      in if depth <= 1 
 	then pps "<structure entity>"
@@ -475,7 +479,7 @@ and ppStrEntity ppstrm ({stamp,entities,lambdaty,rpath},env,depth) =
 		pps (IP.toString rpath);
 		add_newline();
 		pps "stamp: ";
-		pps (Stamps.stampToShortString stamp);
+		pps (Stamps.toShortString stamp);
 		add_newline();
 		pps "entities:";
 		nl_indent ppstrm 2;
@@ -488,9 +492,10 @@ and ppStrEntity ppstrm ({stamp,entities,lambdaty,rpath},env,depth) =
 	      end_block ())
     end
 
-and ppFctEntity ppstrm ({stamp,closure,lambdaty,tycpath,rpath},env,depth) =
+and ppFctEntity ppstrm ({stamp,closure,lambdaty,tycpath,rpath,stub},
+			env, depth) =
     let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
-     in if depth <= 1 
+    in if depth <= 1 
 	then pps "<functor entity>"
 	else (begin_block CONSISTENT 0;
 	       pps "fctEntity:";
@@ -500,7 +505,7 @@ and ppFctEntity ppstrm ({stamp,closure,lambdaty,tycpath,rpath},env,depth) =
 		pps (IP.toString rpath);
 		add_newline();
 		pps "stamp: ";
-		pps (Stamps.stampToShortString stamp);
+		pps (Stamps.toShortString stamp);
 		add_newline();
 		pps "closure:";
 		add_break (1,2);
@@ -518,18 +523,18 @@ and ppFctEntity ppstrm ({stamp,closure,lambdaty,tycpath,rpath},env,depth) =
 
 and ppFunctor ppstrm =
     let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
-	fun ppF (M.FCT{sign,rlzn,...},env,depth) =
-	     if depth <= 1 
-	     then pps "<functor>"
-	     else (begin_block CONSISTENT 0;
-		    pps "sign:";
-		    nl_indent ppstrm 2;
-		    ppFunsig ppstrm (sign,env,depth-1);
-		    add_newline();
-		    pps "rlzn:";
-		    nl_indent ppstrm 2;
-		    ppFctEntity ppstrm (rlzn,env,depth-1);
-		   end_block ())
+	fun ppF (M.FCT { sign, rlzn, ... }, env, depth) =
+		if depth <= 1 
+		then pps "<functor>"
+		else (begin_block CONSISTENT 0;
+		      pps "sign:";
+		      nl_indent ppstrm 2;
+		      ppFunsig ppstrm (sign,env,depth-1);
+		      add_newline();
+		      pps "rlzn:";
+		      nl_indent ppstrm 2;
+		      ppFctEntity ppstrm (rlzn,env,depth-1);
+		      end_block ())
 	  | ppF (M.ERRORfct,_,_) = pps "<error functor>"
      in ppF
     end
@@ -589,22 +594,25 @@ and ppTycBind ppstrm (tyc,env) =
 	then (begin_block CONSISTENT 0;
 	       pps "type "; ppTycon env ppstrm tyc;
 	      end_block())
-	else case tyc
-	       of T.GENtyc{path, arity, eq=ref T.ABS,...} =>
-		   (* abstype *)
-		   (begin_block CONSISTENT 0;
-		     pps "type";
-		     ppFormals ppstrm arity; 
-		     pps " ";
-		     ppSym ppstrm (IP.last path);
-		    end_block())
-		| T.GENtyc{path, arity, eq,
-			   kind=T.DATATYPE{index,family={members,...},...}, ...} =>
-		   (* ordinary datatype *)
-		    let val {dcons,...} = Vector.sub(members,index)
-			val visdcons = visibleDcons(tyc,dcons)
-			val incomplete = length visdcons < length dcons
-		     in begin_block CONSISTENT 0;
+	else
+	    case tyc of
+		T.GENtyc { path, arity, eq, kind, ... } =>
+		(case (!eq, kind) of
+		     (T.ABS, _) =>
+		     (* abstype *)
+		     (begin_block CONSISTENT 0;
+		      pps "type";
+		      ppFormals ppstrm arity; 
+		      pps " ";
+		      ppSym ppstrm (IP.last path);
+		      end_block())
+		   | (_, T.DATATYPE{index,family={members,...},...}) =>
+		     (* ordinary datatype *)
+		     let val {dcons,...} = Vector.sub(members,index)
+			 val visdcons = visibleDcons(tyc,dcons)
+			 val incomplete = length visdcons < length dcons
+		     in
+			 begin_block CONSISTENT 0;
 			 pps "datatype";
 			 ppFormals ppstrm arity;
 			 pps " ";
@@ -623,28 +631,28 @@ and ppTycBind ppstrm (tyc,env) =
 				end_block());
 			end_block()
 		    end
-	       | T.GENtyc{path,arity,...} =>
-		   (begin_block CONSISTENT 0;
-		     if EqTypes.isEqTycon tyc
-		     then pps "eqtype" 
-		     else pps "type";
-		     ppFormals ppstrm arity; 
-		     pps " ";
-		     ppSym ppstrm (IP.last path);
-		    end_block())
-	       | T.DEFtyc{path,tyfun=T.TYFUN{arity,body},...} =>
-		   (begin_block INCONSISTENT 2;
-		     pps "type"; 
-		     ppFormals ppstrm arity; 
-		     add_break (1,0);
-		     ppSym ppstrm (InvPath.last path); 
-		     pps " ="; 
-		     add_break (1,0);
-		     ppType env ppstrm body;
-		    end_block ())
-	       | tycon =>
-		  (pps "strange tycon: ";
-		   ppTycon env ppstrm tycon)
+		   | _ =>
+		     (begin_block CONSISTENT 0;
+		      if EqTypes.isEqTycon tyc
+		      then pps "eqtype" 
+		      else pps "type";
+		      ppFormals ppstrm arity; 
+		      pps " ";
+		      ppSym ppstrm (IP.last path);
+		      end_block()))
+	      | T.DEFtyc{path,tyfun=T.TYFUN{arity,body},...} =>
+		(begin_block INCONSISTENT 2;
+		 pps "type"; 
+		 ppFormals ppstrm arity; 
+		 add_break (1,0);
+		 ppSym ppstrm (InvPath.last path); 
+		 pps " ="; 
+		 add_break (1,0);
+		 ppType env ppstrm body;
+		 end_block ())
+	      | tycon =>
+		(pps "strange tycon: ";
+		 ppTycon env ppstrm tycon)
     end (* ppTycBind *)
 
 and ppEntity ppstrm (entity,env,depth) =
@@ -701,9 +709,9 @@ and ppStrExp ppstrm (strExp,depth) =
       of M.VARstr ep =>
 	  (add_string ppstrm "SE.V:"; add_break ppstrm (1,1); 
            ppEntPath ppstrm ep)
-       | M.CONSTstr {stamp,rpath,...} =>
-	  (add_string ppstrm "SE.C:"; add_break ppstrm (1,1);
-	   ppInvPath ppstrm rpath)
+       | M.CONSTstr { stamp, rpath, ... } =>
+	 (add_string ppstrm "SE.C:"; add_break ppstrm (1,1);
+	  ppInvPath ppstrm rpath)
        | M.STRUCTURE{stamp,entDec} =>
 	  (add_string ppstrm "SE.S:"; add_break ppstrm (1,1);
 	   ppEntDec ppstrm (entDec,depth-1))
@@ -751,7 +759,7 @@ and ppFctExp ppstrm (fctExp,depth) =
     case fctExp
       of M.VARfct ep =>
 	  (add_string ppstrm "FE.V:"; ppEntPath ppstrm ep)
-       | M.CONSTfct {rpath,...} =>
+       | M.CONSTfct { rpath, ... } =>
 	  (add_string ppstrm "FE.C:"; ppInvPath ppstrm rpath)
        | M.LAMBDA_TP {param, body, ...} =>
 	  (begin_block ppstrm CONSISTENT 0;
@@ -862,7 +870,7 @@ and ppEnv ppstrm (env,topenv,depth,boundsyms) =
 	    case boundsyms
 	      of NONE => SE.sort env
 	       | SOME l => foldr (fn (x,bs) =>
-				    ((x,Env.look(env,x))::bs
+				    ((x,SE.look(env,x))::bs
 				     handle Env.Unbound => bs))
 				[] l
 	val pp_env = Env.atop(env,topenv)
@@ -882,18 +890,16 @@ fun ppOpen ppstrm (path,str,env,depth) =
 	  ppSymPath ppstrm path;
 	  if depth < 1 then ()
           else (case str
-		  of M.STR {sign, rlzn as {entities,...}, ...} =>
-		      (case sign
-			 of M.SIG {elements,...} =>
-			     (case elements
-				of nil => ()
-				 | _ => 
-				    (add_newline ();		       
-				     begin_block CONSISTENT 0;
-				     ppElements (SE.atop(sigToEnv sign, env),
-						 depth,SOME entities)
-				                ppstrm elements;
-				     end_block ()))
+		  of M.STR { sign, rlzn as {entities,...}, ... } =>
+		     (case sign
+			 of M.SIG {elements = [],...} => ()
+			  | M.SIG {elements,...} => 
+			    (add_newline ();		       
+			     begin_block CONSISTENT 0;
+			     ppElements (SE.atop(sigToEnv sign, env),
+					 depth,SOME entities)
+				        ppstrm elements;
+			     end_block ())
 			  | M.ERRORsig => ())
 		   | M.ERRORstr => ()
 		   | M.STRSIG _ => bug "ppOpen");

@@ -39,6 +39,11 @@ is
          * from there. *)
 	mlburg-tool.cm
 	burg-ext.cm
+	(* Register the make tool here. (Kinda unrealistic to hope that
+	 * Unix' make suddenly comes with a CM plugin... *)
+	make-tool.cm
+	(* Same for shell tool... *)
+	shell-tool.cm
 
 # if not defined(LIGHT)
 	smlnj/compiler/all.cm

@@ -1,67 +1,62 @@
 (*
  * The revised pickler using the new "generic" pickling facility.
  *
- * July 1999, Matthias Blume
+ * March 2000, Matthias Blume
  *)
 signature PICKMOD = sig
 
-    (* "context keys": PrimKey indicates some kind of "primitive" context
-     * (e.g., the primitive environment), and NodeKey specifies a module
-     * of a library.  The library is given by the string list (CM's "pickle"
-     * representation of the abstract path) and the module is given by
-     * a representative export symbol.
-     * But these are details that we don't concern us here.  We just have
-     * to write this info to a pickle. *)
-    datatype ckey =
-	PrimKey
-      | NodeKey of string list * Symbol.symbol
+    (* There are three possible reasons to run the pickler.  Each form
+     * of context (see datatype context below) corresponds to one of them:
+     *
+     *  1. The initial pickle.  This is done right after a new static
+     *     environment has been constructed by the elaborator.  The context
+     *     is used to identify those identifiers (ModuleId.<xxx>Id) that
+     *     correspond to stubs.  Only the domain of the given map is relevant
+     *     here, but since we (usually) need the full map right afterwards
+     *     for unpickling, there is no gain in using a set.
+     *
+     *  2. Pickling a previously pickled-and-unpickled environment from
+     *     which some parts may have been pruned.  This is used to calculate
+     *     a new hash value that is equal to the hash obtained from an initial
+     *     pickle (1.) of the environment if it had been pruned earlier.
+     *     (This is used by the compilation manager's cutoff recompilation
+     *     system.  Pickles obtained here are never unpickled.)
+     *     No actual context is necessary because stubification info is
+     *     fully embedded in the environment to be pickled.  However, we
+     *     must provide the original pid obtained from the first pickling
+     *     because occurences of that pid have to be treated the same way
+     *     it was treated in step 1.
+     *
+     *  3. A set of environments that have already gone through an initial
+     *     pickling-and-unpickling is pickled as part of a stable library.
+     *     The context is a sequence of maps together with information of
+     *     how to get hold of the same map later during unpickling.
+     *     (The full context of a stable library is a set of other stable
+     *     libraries, but during unpickling we want to avoid unpickling
+     *     all of these other libraries in full.)  *)
+    datatype context =
+	INITIAL of ModuleId.tmap
+      | REHASH of PersStamps.persstamp
+      | LIBRARY of ((string list * Symbol.symbol) option * ModuleId.tmap) list
 
-    type 'a context =
-	{ lookSTR: ModuleId.modId -> 'a,
-	  lookSIG: ModuleId.modId -> 'a,
-	  lookFCT: ModuleId.modId -> 'a,
-	  lookFSIG: ModuleId.modId -> 'a,
-	  lookTYC: ModuleId.modId -> 'a,
-	  lookEENV: ModuleId.modId -> 'a }
+    type map
+    val emptyMap : map
 
-    (* All we really need here is a "bool context", but passing the whole
-     * CMStaticEnv.staticEnv is more convenient (and backward-compatible). *)
-    val pickleEnv :
-	{ context: CMStaticEnv.staticEnv, env: StaticEnv.staticEnv  }
-	-> { hash: PersStamps.persstamp,
-	     pickle: Word8Vector.vector, 
-	     exportLvars: Access.lvar list,
-	     exportPid: PersStamps.persstamp option }
+    val envPickler : (Access.lvar -> unit) ->
+		     context ->
+		     (map, StaticEnv.staticEnv) PickleUtil.pickler
 
-    (* Re-pickling is done for the purpose of getting the hash value
-     * of a "reduced" (filtered) version of another environment that
-     * has been pickled before.  During re-pickling, the LOCAL->GLOBAL
-     * translation for stamps and the LVAR->EXTERN translation for
-     * accesses is undone so that the resulting hash value is the
-     * same that one would have gotten if the current environment
-     * was pickled using "pickleEnv". The context for repickling is
-     * specified using a set of module IDs instead of an entire
-     * context environment.  The set will have to be obtained from the
-     * unpickling process of the original pickle. *)
-    val repickleEnvHash :
-	{ context: ModuleId.Set.set,
-	  env: StaticEnv.staticEnv,
-	  orig_hash: PersStamps.persstamp } -> PersStamps.persstamp
+    val pickleEnv : context ->
+		    StaticEnv.staticEnv ->
+		    { hash: PersStamps.persstamp,
+		      pickle: Word8Vector.vector, 
+		      exportLvars: Access.lvar list,
+		      exportPid: PersStamps.persstamp option }
 
     val pickleFLINT:
         CompBasic.flint option
 	-> { hash: PersStamps.persstamp,
 	     pickle: Word8Vector.vector }
-
-    (* The following is low-level interface so this pickler can be part
-     * of another, bigger, pickler. *)
-    type map
-    val emptyMap : map
-
-    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
-
-    val envPickler :
-	ckey option context -> (map, env'n'ctxt) PickleUtil.pickler
 
     val symenvPickler : (map, SymbolicEnv.symenv) PickleUtil.pickler
 
@@ -78,6 +73,11 @@ local
     structure IntMap = IntRedBlackMap
 in
   structure PickMod :> PICKMOD = struct
+
+    datatype context =
+	INITIAL of ModuleId.tmap
+      | REHASH of PersStamps.persstamp
+      | LIBRARY of ((string list * Symbol.symbol) option * ModuleId.tmap) list
 
     (* to gather some statistics... *)
     val addPickles = Stats.addStat (Stats.makeStat "Pickle Bytes")
@@ -119,36 +119,8 @@ in
 	(struct type ord_key = LK.tyc val compare = LK.tc_cmp end)
     structure TKMap = MapFn
 	(struct type ord_key = LK.tkind val compare = LK.tk_cmp end)
-    local
-	structure StampMap = MapFn
-	    (struct type ord_key = Stamps.stamp val compare = Stamps.cmp end)
-    in
-	structure DTMap = StampMap
-	structure MBMap = StampMap
-    end
-
-
-    type pid = PS.persstamp
-    type mi = MI.modId * pid option
-
-    fun mi_cmp ((mi, po), (mi', po')) = let
-	fun po_cmp (NONE, NONE) = EQUAL
-	  | po_cmp (NONE, SOME _) = LESS
-	  | po_cmp (SOME _, NONE) = GREATER
-	  | po_cmp (SOME p, SOME p') = PS.compare (p, p')
-    in
-	case MI.cmp (mi, mi') of
-	    EQUAL => po_cmp (po, po')
-	  | unequal => unequal
-    end
-
-    fun acc_pid (A.LVAR _) = NONE
-      | acc_pid (A.EXTERN p) = SOME p
-      | acc_pid (A.PATH (a, _)) = acc_pid a
-      | acc_pid A.NO_ACCESS = NONE
-
-    structure MIMap = MapFn
-	(struct type ord_key = mi val compare = mi_cmp end)
+    structure DTMap = StampMap
+    structure MBMap = StampMap
 
     structure PU = PickleUtil
     structure PSymPid = PickleSymPid
@@ -159,10 +131,10 @@ in
 	  tk: PU.id TKMap.map,
 	  dt: PU.id DTMap.map,
 	  mb: PU.id MBMap.map,
-	  mi: PU.id MIMap.map }
+	  mi: PU.id MI.umap }
 
     val emptyMap = { lt = LTMap.empty, tc = TCMap.empty, tk = TKMap.empty,
-		     dt = DTMap.empty, mb = MBMap.empty, mi = MIMap.empty }
+		     dt = DTMap.empty, mb = MBMap.empty, mi = MI.emptyUmap }
 
     (* type info *)
     val (NK, AO, CO, PO, CS, A, CR, LT, TC, TK,
@@ -170,13 +142,13 @@ in
 	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH) =
+	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55)
+	 50, 51, 52, 53, 54, 55, 56, 57)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -220,14 +192,46 @@ in
 			     dt = dt,
 			     mb = MBMap.insert (mb, x, v),
 			     mi = mi } }
-    fun MIs x = { find = fn (m: map, _) => MIMap.find (#mi m, x),
-		  insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
-		           { lt = lt,
-			     tc = tc,
-			     tk = tk,
-			     dt = dt,
-			     mb = mb,
-			     mi = MIMap.insert (mi, x, v) } }
+    fun TYCs id = { find = fn (m: map, _) => MI.uLookTyc (#mi m, id),
+		    insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+				{ lt = lt,
+				  tc = tc,
+				  tk = tk,
+				  dt = dt,
+				  mb = mb,
+				  mi = MI.uInsertTyc (mi, id, v) } }
+    val SIGs = { find = fn (m: map, r) => MI.uLookSig (#mi m, MI.sigId r),
+		 insert = fn ({ lt, tc, tk, dt, mb, mi }, r, v) =>
+			     { lt = lt,
+			       tc = tc,
+			       tk = tk,
+			       dt = dt,
+			       mb = mb,
+			       mi = MI.uInsertSig (mi, MI.sigId r, v) } }
+    fun STRs i = { find = fn (m: map, _) => MI.uLookStr (#mi m, i),
+		   insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+			       { lt = lt,
+				 tc = tc,
+				 tk = tk,
+				 dt = dt,
+				 mb = mb,
+				 mi = MI.uInsertStr (mi, i, v) } }
+    fun FCTs i = { find = fn (m: map, _) => MI.uLookFct (#mi m, i),
+		   insert = fn ({ lt, tc, tk, dt, mb, mi }, _, v) =>
+			       { lt = lt,
+				 tc = tc,
+				 tk = tk,
+				 dt = dt,
+				 mb = mb,
+				 mi = MI.uInsertFct (mi, i, v) } }
+    val ENVs = { find = fn (m: map, r) => MI.uLookEnv (#mi m, MI.envId r),
+		 insert = fn ({ lt, tc, tk, dt, mb, mi }, r, v) =>
+			     { lt = lt,
+			       tc = tc,
+			       tk = tk,
+			       dt = dt,
+			       mb = mb,
+			       mi = MI.uInsertEnv (mi, MI.envId r, v) } }
 
     infix 3 $
 
@@ -631,65 +635,120 @@ in
     fun symenvPickler sye =
 	list (pair (pid, flint)) (SymbolicEnv.listItemsi sye)
 
-    datatype ckey =			(* context key *)
-	PrimKey
-      | NodeKey of string list * Symbol.symbol
-
-    type 'a context =
-	{ lookSTR: ModuleId.modId -> 'a,
-	  lookSIG: ModuleId.modId -> 'a,
-	  lookFCT: ModuleId.modId -> 'a,
-	  lookFSIG: ModuleId.modId -> 'a,
-	  lookTYC: ModuleId.modId -> 'a,
-	  lookEENV: ModuleId.modId -> 'a }
-
-    datatype stubinfo =
-	NoStub
-      | SimpleStub
-      | PrimStub
-      | NodeStub of string list * Symbol.symbol
-
     (* the environment pickler *)
-    fun mkEnvPickler (context0: stubinfo context, isLocalPid) = let
+    fun envPickler registerLvar context = let
+	val { tycStub, sigStub, strStub, fctStub, envStub,
+	      isLocalPid, isLib } =
+	    case context of
+		INITIAL tmap => let
+		    fun stub (xId, freshX, lookX) r = let
+			val id = xId r
+		    in
+			if freshX id then NONE
+			else if isSome (lookX (tmap, id)) then SOME (NONE, id)
+			else NONE
+		    end
+		in
+		    { tycStub = stub (MI.tycId, MI.freshTyc, MI.lookTyc),
+		      sigStub = stub (MI.sigId, MI.freshSig, MI.lookSig),
+		      strStub = stub (MI.strId, MI.freshStr, MI.lookStr),
+		      fctStub = stub (MI.fctId, MI.freshFct, MI.lookFct),
+		      envStub = stub (MI.envId, MI.freshEnv, MI.lookEnv),
+		      isLocalPid = fn _ => false,
+		      isLib = false }
+		end
+	      | REHASH myPid => let
+		    fun isLocalPid p = PersStamps.compare (p, myPid) = EQUAL
+		    fun stub (idX, stubX, owner) r =
+			case stubX r of
+			    NONE => bug "REHASH:no stubinfo"
+			  | SOME stb =>
+			    if isLocalPid (owner stb) then SOME (NONE, idX r)
+			    else NONE
+		in
+		    { tycStub = stub (MI.tycId, #stub, #owner),
+		      sigStub = stub (MI.sigId, #stub, #owner),
+		      strStub = stub (MI.strId, #stub o #rlzn, #owner),
+		      fctStub = stub (MI.fctId, #stub o #rlzn, #owner),
+		      envStub = stub (MI.envId, #stub, #owner),
+		      isLocalPid = isLocalPid,
+		      isLib = false }
+		end
+	      | LIBRARY l => let
+		    fun stub (idX, stubX, lookX, lib) r = let
+			fun get id = let
+			    fun loop [] =
+				bug "LIBRARY:import info missing"
+			      | loop ((lms, m) :: t) =
+				if isSome (lookX (m, id)) then lms else loop t
+			in
+			    loop l
+			end
+		    in
+			case stubX r of
+			    NONE => bug "LIBRARY:no stubinfo"
+			  | SOME stb => let
+				val id = idX r
+			    in
+				if lib stb then SOME (get id, id) else NONE
+			    end
+		    end
+		in
+		    { tycStub = stub (MI.tycId, #stub, MI.lookTyc, #lib),
+		      sigStub = stub (MI.sigId, #stub, MI.lookSig, #lib),
+		      strStub = stub (MI.strId, #stub o #rlzn,
+				      MI.lookStr, #lib),
+		      fctStub = stub (MI.fctId, #stub o #rlzn,
+				      MI.lookFct, #lib),
+		      envStub = stub (MI.envId, #stub, MI.lookEnv, #lib),
+		      isLocalPid = fn _ => false,
+		      isLib = true }
+		end
 
-	val { lookTYC, lookSIG, lookFSIG, lookSTR, lookFCT, lookEENV } =
-	    context0
+	(* Owner pids of stubs are pickled only in the case of libraries,
+	 * otherwise they are ignored completely. *)
+	fun libPid x =
+	    if isLib then
+		case x of
+		    (NONE, _) => []
+		  | (SOME stb, ownerOf) => [pid (ownerOf stb)]
+	    else []
 
-	val alphaConvert = mkAlphaConvert ()
+	fun libModSpec lms = option (pair (list string, symbol)) lms
 
-	fun stamp (Stamps.STAMP { scope, count }) = let
+	val stampConverter = Stamps.newConverter ()
+
+	fun stamp s = let
 	    val op $ = PU.$ ST
 	in
-	    case scope of
-		Stamps.LOCAL => "A" $ [int (alphaConvert count)]
-	      | Stamps.GLOBAL p =>
-		    if isLocalPid p then "A" $ [int count]
-		    else "B" $ [pid p, int count]
-	      | Stamps.SPECIAL s => "C" $ [string s, int count]
+	    Stamps.Case	stampConverter s
+		{ fresh = fn i => "A" $ [int i],
+		  global = fn { pid = p, cnt } =>"B" $ [pid p, int cnt],
+		  special = fn s => "C" $ [string s] }
 	end
+
+	val tycId = stamp
+	val sigId = stamp
+	fun strId { sign, rlzn } = let
+	    val op $ = PU.$ STRID
+	in
+	    "D" $ [stamp sign, stamp rlzn]
+	end
+	fun fctId { paramsig, bodysig, rlzn } = let
+	    val op $ = PU.$ FCTID
+	in
+	    "E" $ [stamp paramsig, stamp bodysig, stamp rlzn]
+	end
+	val envId = stamp
 
 	val entVar = stamp
 	val entPath = list entVar
 
-	val op $ = PU.$ MI
-	fun modId (MI.STRid { rlzn, sign }) = "1" $ [stamp rlzn, stamp sign]
-	  | modId (MI.SIGid s) = "2" $ [stamp s]
-	  | modId (MI.FCTid { rlzn, sign }) = "3" $ [stamp rlzn, modId sign]
-	  | modId (MI.FSIGid { paramsig, bodysig }) =
-	    "4" $ [stamp paramsig, stamp bodysig]
-	  | modId (MI.TYCid a) = "5" $ [stamp a]
-	  | modId (MI.EENVid s) = "6" $ [stamp s]
-
-	val lvcount = ref 0
-	val lvlist = ref []
-
-	fun anotherLvar v = let
-	    val j = !lvcount
-	in
-	    lvlist := v :: !lvlist;
-	    lvcount := j + 1;
-	    j
-	end
+	val anotherLvar =
+	    let val lvcount = ref 0
+	    in (fn v => let val j = !lvcount
+			in registerLvar v; lvcount := j + 1; j end)
+	    end
 
 	val { access, conrep } = mkAccess { lvar = int o anotherLvar,
 					    isLocalPid = isLocalPid }
@@ -775,29 +834,26 @@ in
 
 	and tycon arg = let
 	    val op $ = PU.$ TYCON
-	    fun tc (T.GENtyc x) =
-		let val id = MI.TYCid (#stamp x)
-		    fun gt_raw { stamp = s, arity, eq = ref eq, kind, path } =
-			case lookTYC id of
-			    SimpleStub => "A" $ [modId id]
-			  | NoStub => "B" $ [stamp s, int arity, eqprop eq,
-					     tyckind kind, ipath path]
-			  | PrimStub => "I" $ [modId id]
-			  | NodeStub (sl, s) =>
-			    "J" $ [list string sl, symbol s, modId id]
+	    fun tc (tyc as T.GENtyc g) =
+		let fun gt_raw (g as { stamp = s, arity, eq = ref eq, kind,
+				       path, stub }) =
+			case tycStub g of
+			    SOME (l, i) => "A" $ [libModSpec l, tycId i]
+			  | NONE => "B" $ ([stamp s, int arity, eqprop eq,
+					    tyckind kind, ipath path]
+					   @ libPid (stub, #owner))
 		in
-		    share (MIs (id, NONE)) gt_raw x
+		    share (TYCs (MI.tycId g)) gt_raw g
 		end
-	      | tc (T.DEFtyc x) = let
-		    fun dt_raw x = let
-			val { stamp = s, tyfun, strict, path } = x
+	      | tc (tyc as T.DEFtyc dt) = let
+		    fun dt_raw { stamp = s, tyfun, strict, path } = let
 			val T.TYFUN { arity, body } = tyfun
 		    in
 			"C" $ [stamp s, int arity, ty body,
 			       list bool strict, ipath path]
 		    end
 		in
-		    share (MIs (MI.TYCid (#stamp x), NONE)) dt_raw x
+		    share (TYCs (MI.tycId' tyc)) dt_raw dt
 		end
 	      | tc (T.PATHtyc { arity, entPath = ep, path }) =
 		"D" $ [int arity, entPath ep, ipath path]
@@ -845,12 +901,6 @@ in
 	    "o" $ [ty indicator, var variant]
 	end
 
-	fun fsigId (M.FSIG { paramsig = M.SIG { stamp = ps, ... },
-			     bodysig = M.SIG { stamp = bs, ... },
-			     ... }) =
-	    MI.FSIGid { paramsig = ps, bodysig = bs }
-	  | fsigId _ = bug "unexpected functor signature in fsigId"
-
 	fun strDef arg = let
 	    val op $ = PU.$ SD
 	    fun sd (M.CONSTstrDef s) = "C" $ [Structure s]
@@ -866,31 +916,31 @@ in
 	and Signature arg = let
 	    val op $ = PU.$ SG
 	    fun sg  M.ERRORsig = "A" $ []
-	      | sg (M.SIG x) = let
-		    val id = MI.SIGid (#stamp x)
-		    fun sig_raw x = let
-			val { name, closed, fctflag, stamp = sta, symbols,
-			      elements, boundeps = ref b, lambdaty = _,
-			      typsharing, strsharing } = x
-			val b = NONE		(* currently turned off *)
-		    in
-			case lookSIG id of
-			    SimpleStub => "B" $ [modId id]
-			  | NoStub =>
-				"C" $ [option symbol name, bool closed,
-				       bool fctflag, stamp sta,
-				       list symbol symbols,
-				       list (pair (symbol, spec)) elements,
-				       option (list (pair (entPath, tkind))) b,
-				       list (list spath) typsharing,
-				       list (list spath) strsharing]
-			  | PrimStub => "D" $ [modId id]
-			  | NodeStub (sl, s) =>
-			    "E" $ [list string sl, symbol s, modId id]
-		    end
-		in
-		    share (MIs (id, NONE)) sig_raw x
-		end
+	      | sg (M.SIG s) =
+		(case sigStub s of
+		     SOME (l, i) => "B" $ [libModSpec l, sigId i]
+		   | NONE => let
+			 fun sig_raw (s: M.sigrec) = let
+			     val { stamp = sta, name, closed,
+				   fctflag, symbols, elements,
+				   boundeps = ref b,
+				   lambdaty = _, stub,
+				   typsharing, strsharing } = s
+			     val b = NONE (* currently turned off *)
+			 in
+			     "C" $ ([stamp sta,
+				     option symbol name, bool closed,
+				     bool fctflag,
+				     list symbol symbols,
+				     list (pair (symbol, spec)) elements,
+				     option (list (pair (entPath, tkind))) b,
+				     list (list spath) typsharing,
+				     list (list spath) strsharing]
+				    @ libPid (stub, #owner))
+			 end
+		     in
+			 share SIGs sig_raw s
+		     end)
 	in
 	    sg arg
 	end
@@ -898,25 +948,11 @@ in
 	and fctSig arg = let
 	    val op $ = PU.$ FSG
 	    fun fsg M.ERRORfsig = "a" $ []
-	      | fsg (fs as M.FSIG x) = let
-		    val id = fsigId fs
-		    fun fsig_raw x = let
-			val { kind, paramsig, paramvar, paramsym, bodysig } = x
-		    in
-			case lookFSIG id of
-			    SimpleStub => "b" $ [modId id]
-			  | NoStub =>
-				"c" $ [option symbol kind, Signature paramsig,
-				       entVar paramvar,
-				       option symbol paramsym,
-				       Signature bodysig]
-			  | PrimStub => "d" $ [modId id]
-			  | NodeStub (sl, s) => "e" $ [list string sl,
-						       symbol s, modId id]
-		    end
-		in
-		    share (MIs (id, NONE)) fsig_raw x
-		end
+	      | fsg (M.FSIG { kind, paramsig, paramvar, paramsym, bodysig }) =
+		"c" $ [option symbol kind, Signature paramsig,
+		       entVar paramvar,
+		       option symbol paramsym,
+		       Signature bodysig]
 	in
 	    fsg arg
 	end
@@ -958,23 +994,17 @@ in
 	    fun str (M.STRSIG { sign, entPath = p }) =
 		"A" $ [Signature sign, entPath p]
 	      | str M.ERRORstr = "B" $ []
-	      | str (M.STR (x as { sign = M.SIG sign, ... })) = let
-		    val id = MI.STRid { rlzn = #stamp (#rlzn x),
-				        sign = #stamp sign }
-		    fun s_raw { sign, rlzn, access = a, info } =
-			case lookSTR id of
-			    SimpleStub => "C" $ [modId id, access a]
-			  | NoStub =>
-				"D" $ [Signature sign, strEntity rlzn,
-				       access a, inl_info info]
-			  | PrimStub => "I" $ [modId id]
-			  | NodeStub (sl, s) =>
-			    "J" $ [list string sl, symbol s, modId id,
-				   access a]
-		in
-		    share (MIs (id, acc_pid (#access x))) s_raw x
-		end
-	      | str _ = bug "unexpected structure in pickmod"
+	      | str (M.STR (s as { sign, rlzn, access = a, info })) =
+		(case strStub s of
+		     (* stub represents just the strerec suspension! *)
+		     SOME (l, i) => "C" $ [Signature sign,
+					   libModSpec l,
+					   strId i,
+					   access a,
+					   inl_info info]
+		   | NONE => "D" $ [Signature sign,
+				    shStrEntity (MI.strId s) rlzn,
+				    access a, inl_info info])
 	in
 	    str arg
 	end
@@ -982,28 +1012,22 @@ in
 	and Functor arg = let
 	    val op $ = PU.$ F
 	    fun fct M.ERRORfct = "E" $ []
-	      | fct (M.FCT x) = let
-		    val id = MI.FCTid { rlzn = #stamp (#rlzn x),
-				        sign = fsigId (#sign x) }
-		    fun f_raw { sign, rlzn, access = a, info } =
-			case lookFCT id of
-			    SimpleStub => "F" $ [modId id, access a]
-			  | NoStub =>
-			    "G" $ [fctSig sign, fctEntity rlzn,
-				   access a, inl_info info]
-			  | PrimStub => "H" $ [modId id]
-			  | NodeStub (sl, s) =>
-			    "I" $ [list string sl, symbol s, modId id,
-				   access a]
-		in
-		    share (MIs (id, acc_pid (#access x))) f_raw x
-		end
+	      | fct (M.FCT (f as { sign, rlzn, access = a, info })) =
+		(case fctStub f of
+		     SOME (l, i) => "F" $ [fctSig sign,
+					   libModSpec l,
+					   fctId i,
+					   access a,
+					   inl_info info]
+		   | NONE => "G" $ [fctSig sign,
+				    shFctEntity (MI.fctId f) rlzn,
+				    access a, inl_info info])
 	in
 	    fct arg
 	end
 
-	and stampExp (M.CONST s) = PU.$ STE ("a", [stamp s])
-	  | stampExp (M.GETSTAMP s) = PU.$ STE ("b", [strExp s])
+	and (* stampExp (M.CONST s) = PU.$ STE ("a", [stamp s])
+	  | *) stampExp (M.GETSTAMP s) = PU.$ STE ("b", [strExp s])
 	  | stampExp M.NEW = "c" $ []
 
         and tycExp (M.CONSTtyc t) = PU.$ TCE ("d", [tycon t])
@@ -1063,37 +1087,39 @@ in
 	    ed arg
 	end
 
-        and entityEnv (M.MARKeenv (s, r)) =
- 	    let val op $ = PU.$ EEV
-		val id = MI.EENVid s
-		fun mee_raw (s, r) =
-		    case lookEENV id of
-			SimpleStub => "D" $ [modId id]
-		      | NoStub => "E" $ [stamp s, entityEnv r]
-		      | PrimStub => "F" $ [modId id]
-		      | NodeStub (sl, s) =>
-			"G" $ [list string sl, symbol s, modId id]
-	    in
-		share (MIs (id, NONE)) mee_raw (s, r)
-	    end
+        and entityEnv (M.MARKeenv m) =
+	    (case envStub m of
+		 SOME (l, i) => "D" $ [libModSpec l, envId i]
+	       | NONE => let
+		     fun mee_raw { stamp = s, env, stub } =
+			 "E" $ ([stamp s, entityEnv env]
+				@ libPid (stub: M.stubinfo option, #owner))
+		 in
+		     share ENVs mee_raw m
+		 end)
 	  | entityEnv (M.BINDeenv (d, r)) =
 	    PU.$ EEV ("A", [list (pair (entVar, entity)) (ED.listItemsi d),
 		           entityEnv r])
 	  | entityEnv M.NILeenv = "B" $ []
 	  | entityEnv M.ERReenv = "C" $ []
 
-        and strEntity { stamp = s, entities, lambdaty = _, rpath } = let
-	    val op $ = PU.$ SEN
-	in
-	    "s" $ [stamp s, entityEnv entities, ipath rpath]
-	end
+        and strEntity { stamp = s, entities, lambdaty = _, rpath, stub } =
+	    let val op $ = PU.$ SEN
+	    in
+		"s" $ ([stamp s, entityEnv entities, ipath rpath]
+		       @ libPid (stub: M.stubinfo option, #owner))
+	    end
 
-        and fctEntity fe = let
-	    val op $ = PU.$ FEN
-	    val { stamp = s, closure, lambdaty = _, tycpath = _, rpath } = fe
-	in
-	    "f" $ [stamp s, fctClosure closure, ipath rpath]
-	end
+	and shStrEntity id = share (STRs id) strEntity
+
+        and fctEntity { stamp = s, closure, lambdaty, tycpath, rpath, stub } =
+	    let val op $ = PU.$ FEN
+	    in
+		"f" $ ([stamp s, fctClosure closure, ipath rpath]
+		       @ libPid (stub: M.stubinfo option, #owner))
+	    end
+
+	and shFctEntity id = share (FCTs id) fctEntity
 
         and tycEntity x = tycon x
 
@@ -1112,38 +1138,21 @@ in
 
 	fun env e = let
 	    val syms = ListMergeSort.uniqueSort symCmp (Env.symbols e)
-	    val pairs = map (fn s => (s, Env.look (e, s))) syms
+	    val pairs = map (fn s => (s, StaticEnv.look (e, s))) syms
 	in
 	    list (pair (symbol, binding)) pairs
 	end
-
-	fun env'n'ctxt { env = e, ctxt } =
-	    pair (env, list modId) (e, ModuleId.Set.listItems ctxt)
     in
-	{ pickler = env, pickler' = env'n'ctxt,
-	  exportLvarsGetter = fn () => rev (!lvlist) }
+	env
     end
 
-    fun pickleEnv { context, env } = let
-	fun cvt lk i =
-	    case lk context i of
-		SOME _ => SimpleStub
-	      | NONE => NoStub
-
-	val c = { lookSTR = cvt CMStaticEnv.lookSTR,
-		  lookSIG = cvt CMStaticEnv.lookSIG,
-		  lookFCT = cvt CMStaticEnv.lookFCT,
-		  lookFSIG = cvt CMStaticEnv.lookFSIG,
-		  lookTYC = cvt CMStaticEnv.lookTYC,
-		  lookEENV = cvt CMStaticEnv.lookEENV }
-
-	val { pickler, exportLvarsGetter, ... } =
-	    mkEnvPickler (c, fn _ => false)
-	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler env))
-	val exportLvars = exportLvarsGetter ()
-
+    fun pickleEnv context e = let
+	val lvlist = ref []
+	fun registerLvar v = lvlist := v :: !lvlist
+	val pickler = envPickler registerLvar context
+	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler e))
+	val exportLvars = rev (!lvlist)
 	val hash = pickle2hash pickle
-
 	val exportPid =
 	    case exportLvars of
 		[] => NONE
@@ -1152,39 +1161,6 @@ in
 	addPickles (Word8Vector.length pickle);
 	{ hash = hash, pickle = pickle, exportLvars = exportLvars,
 	  exportPid = exportPid }
-    end
-
-    fun repickleEnvHash { context, env, orig_hash } = let
-	fun lk i =
-	    if ModuleId.Set.member (context, i) then SimpleStub else NoStub
-	val c = { lookSTR = lk, lookSIG = lk, lookFCT = lk,
-		  lookFSIG = lk, lookTYC = lk, lookEENV = lk }
-	fun isLocalPid p = PersStamps.compare (p, orig_hash) = EQUAL
-	val { pickler, ... } = mkEnvPickler (c, isLocalPid)
-	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler env))
-    in
-	pickle2hash pickle
-    end
-
-    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
-
-    fun envPickler context = let
-	val { lookSTR, lookSIG, lookFCT, lookFSIG, lookTYC, lookEENV } =
-	    context
-	fun cvt lk i =
-	    case lk i of
-		SOME PrimKey => PrimStub
-	      | SOME (NodeKey (sl, s)) => NodeStub (sl, s)
-	      | NONE => NoStub
-	val c = { lookSTR = cvt lookSTR,
-		  lookSIG = cvt lookSIG,
-		  lookFCT = cvt lookFCT,
-		  lookFSIG = cvt lookFSIG,
-		  lookTYC = cvt lookTYC,
-		  lookEENV = cvt lookEENV }
-	val { pickler', ... } = mkEnvPickler (c, fn _ => false)
-    in
-	pickler'
     end
 
     (* the dummy environment pickler *)
@@ -1204,61 +1180,62 @@ in
 	val syms = ListMergeSort.uniqueSort symCmp (Env.symbols senv)
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding (sym, (i, env, lvars)) =
-	    case Env.look (senv, sym) of
+	    case StaticEnv.look (senv, sym) of
 		B.VALbind (V.VALvar {access=a, info=z, path=p, typ= ref t }) =>
-		    (case a of
-			 A.LVAR k => 
-			     (i+1,
-			      Env.bind (sym,
-					B.VALbind (V.VALvar
-						   { access = newAccess i,
-						     info = z, path = p,
-						     typ = ref t}),
-					env),
-			      k :: lvars)
-		       | _ => bug ("dontPickle 1: " ^ A.prAcc a))
-	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, info =z}) =>
-		     (case a of
-			  A.LVAR k => 
-			      (i+1,
-			       Env.bind (sym,
-					 B.STRbind (M.STR
-						    { access = newAccess i,
-						      sign = s, rlzn = r,
-						      info = z}),
-					 env),
-			       k :: lvars)
-			| _ => bug ("dontPickle 2" ^ A.prAcc a))
-	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, info=z }) =>
-		      (case a of
-			   A.LVAR k => 
-			       (i+1,
-				Env.bind (sym,
-					  B.FCTbind (M.FCT
+		(case a of
+		     A.LVAR k =>
+		     (i+1,
+		      StaticEnv.bind (sym,
+				      B.VALbind (V.VALvar
+						     { access = newAccess i,
+						       info = z, path = p,
+						       typ = ref t}),
+				      env),
+		      k :: lvars)
+		   | _ => bug ("dontPickle 1: " ^ A.prAcc a))
+	      | B.STRbind (M.STR { sign = s, rlzn = r, access = a, info =z }) =>
+		(case a of
+		     A.LVAR k => 
+		     (i+1,
+		      StaticEnv.bind (sym,
+				      B.STRbind (M.STR
 						     { access = newAccess i,
 						       sign = s, rlzn = r,
-						       info = z}),
-					  env),
-				k :: lvars)
-			 | _ => bug ("dontPickle 3" ^ A.prAcc a))
+						       info = z }),
+				env),
+		      k :: lvars)
+		   | _ => bug ("dontPickle 2" ^ A.prAcc a))
+	      | B.FCTbind (M.FCT { sign = s, rlzn = r, access = a, info=z }) =>
+		(case a of
+		     A.LVAR k => 
+		     (i+1,
+		      StaticEnv.bind (sym,
+				      B.FCTbind (M.FCT
+						     { access = newAccess i,
+						       sign = s, rlzn = r,
+						       info = z }),
+				      env),
+		      k :: lvars)
+		   | _ => bug ("dontPickle 3" ^ A.prAcc a))
 	      | B.CONbind (T.DATACON { name = n, const = c, typ = t, sign = s,
 				       lazyp= false, rep as (A.EXN a) }) => let
 		    val newrep = A.EXN (newAccess i)
 		in
 		    case a of
 			A.LVAR k =>
-			    (i+1,
-			     Env.bind (sym,
-				       B.CONbind (T.DATACON
-						  { rep = newrep, name = n,
-						    lazyp = false,
-						    const = c, typ = t,
-						    sign = s }),
-				       env),
-			     k :: lvars)
+			(i+1,
+			 StaticEnv.bind (sym,
+					 B.CONbind (T.DATACON
+							{ rep = newrep,
+							  name = n,
+							  lazyp = false,
+							  const = c, typ = t,
+							  sign = s }),
+				   env),
+			 k :: lvars)
 		      | _ => bug ("dontPickle 4" ^ A.prAcc a)
 		end
-	      | binding =>  (i, Env.bind (sym, binding, env), lvars)
+	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
 	val exportPid =
 	    case lvars of

@@ -35,8 +35,9 @@ struct
 			      ErrorMsg.nullErrorBody;
 	 raise ErrorMsg.Error)
 
-  val global_pp_table: (PrettyPrint.ppstream->object->unit) Stamps.stampMap =
-      Stamps.newMap(PP_NOT_INSTALLED)
+  local
+      val global_pp_table = ref StampMap.empty
+  in
 
   fun make_path([s],p) = SymPath.SPATH(rev(Symbol.tycSymbol(s)::p))
     | make_path(s::r,p) = make_path(r,Symbol.strSymbol(s)::p)
@@ -49,12 +50,17 @@ struct
 		sym_path,
 		ErrorMsg.errorNoFile(ErrorMsg.defaultConsumer(),ref false) (0,0))
        in case tycon
-	    of Types.GENtyc{stamp,...} => Stamps.updateMap global_pp_table (stamp,p)
+	    of Types.GENtyc { stamp, ... } =>
+	       global_pp_table := StampMap.insert (!global_pp_table, stamp, p)
 	     | _ => error "install_pp: nongenerative type constructor"
       end
 
   fun pp_object ppstrm (s: Stamps.stamp) (obj:object) =
-      Stamps.applyMap(global_pp_table,s) ppstrm obj
+      case StampMap.find (!global_pp_table, s) of
+	  SOME p => p ppstrm obj
+	| NONE => raise PP_NOT_INSTALLED
+
+  end
 
 end (* structure PPTABLE *)
 

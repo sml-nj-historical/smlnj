@@ -14,7 +14,7 @@ structure GeneralParams = struct
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
 		   keep_going: bool,
-		   corenv: GenericVC.BareEnvironment.environment }
+		   corenv: GenericVC.Environment.environment }
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,

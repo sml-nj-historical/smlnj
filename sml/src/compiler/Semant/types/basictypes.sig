@@ -4,6 +4,7 @@
 signature BASICTYPES =
 sig
 
+  val arrowStamp : Stamps.stamp
   val arrowTycon : Types.tycon 
   val --> : Types.ty * Types.ty -> Types.ty
   val isArrowType : Types.ty -> bool

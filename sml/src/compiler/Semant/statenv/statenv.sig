@@ -4,8 +4,14 @@
 signature STATICENV =
 sig
 
+    (* Static environments now optionally contain modtrees anchored at
+     * bindings.  This allows for rapid on-demand construction of
+     * modmaps (= pickling/unpickling contexts).
+     *
+     * March 2000, Matthias Blume  *)
   type staticEnv
   type binding
+  type real_binding = binding * Modules.modtree option
   exception Unbound  
   exception SpecialEnv
 
@@ -22,6 +28,8 @@ sig
   val map: (binding -> binding) -> staticEnv -> staticEnv
   val fold: ((Symbol.symbol * binding) * 'a -> 'a) -> 'a -> staticEnv -> 'a
   val sort: staticEnv -> (Symbol.symbol * binding) list
+
+  val bind0: Symbol.symbol * real_binding * staticEnv -> staticEnv
 
 end (* signature STATICENV *)
 

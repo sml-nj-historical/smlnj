@@ -777,12 +777,12 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
                  end)
   end 
 
-fun mkStr (s as M.STR{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
+fun mkStr (s as M.STR { access, info, ... }, d) =
+    mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
-fun mkFct (f as M.FCT{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => fctLty(f, d, compInfo), NONE)
+fun mkFct (f as M.FCT { access, info, ... }, d) =
+    mkAccInfo(access, info, fn () => fctLty(f, d, compInfo), NONE)
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
@@ -790,10 +790,10 @@ fun mkBnd d =
         | g (B.STRbind s) = mkStr(s, d)
         | g (B.FCTbind f) = mkFct(f, d)
         | g (B.CONbind (TP.DATACON{rep=(DA.EXN acc), name, typ, ...})) =
-              let val nt = toDconLty d typ
-                  val (argt,_) = LT.ltd_parrow nt
-               in mkAccT (acc, LT.ltc_etag argt, SOME name)
-              end
+          let val nt = toDconLty d typ
+              val (argt,_) = LT.ltd_parrow nt
+          in mkAccT (acc, LT.ltc_etag argt, SOME name)
+          end
         | g _ = bug "unexpected bindings in mkBnd"
    in g
   end
@@ -920,14 +920,18 @@ and mkStrexp (se, d) =
 
 and mkFctexp (fe, d) = 
   let fun g (VARfct f) = mkFct(f, d)
-        | g (FCTfct{param as M.STR{access=DA.LVAR v, ...}, argtycs, def}) = 
-              let val knds = map tpsKnd argtycs
-                  val nd = DI.next d
-                  val body = mkStrexp (def, nd)
-                  val hdr = buildHdr v
-                  (* binding of all v's components *)
-               in TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
-              end
+        | g (FCTfct {param as M.STR { access, ... }, argtycs, def }) =
+	  (case access of
+	       DA.LVAR v =>
+               let val knds = map tpsKnd argtycs
+                   val nd = DI.next d
+                   val body = mkStrexp (def, nd)
+                   val hdr = buildHdr v
+               (* binding of all v's components *)
+               in
+		   TFN(knds, FN(v, strLty(param, nd, compInfo), hdr body))
+               end
+	     | _ => bug "mkFctexp: unexpected access")
         | g (LETfct (dec, b)) = mkDec (dec, d) (g b)
         | g (MARKfct (b, reg)) = withRegion reg g b
         | g _ = bug "unexpected functor expressions in mkFctexp"
@@ -936,26 +940,30 @@ and mkFctexp (fe, d) =
   end
 
 and mkStrbs (sbs, d) =
-  let fun g (STRB{str=M.STR{access=DA.LVAR v, ...}, def, ...}, b) = 
+  let fun g (STRB{str=M.STR { access, ... }, def, ... }, b) =
+	  (case access of
+	       DA.LVAR v =>
                let val hdr = buildHdr v 
-                   (* binding of all v's components *)
-                in LET(v, mkStrexp(def, d), hdr b)
+               (* binding of all v's components *)
+               in
+		   LET(v, mkStrexp(def, d), hdr b)
                end
-
+	     | _ => bug "mkStrbs: unexpected access")
         | g _ = bug "unexpected structure bindings in mkStrbs"
-
-   in fold g sbs
+  in fold g sbs
   end
 
 and mkFctbs (fbs, d) = 
-  let fun g (FCTB{fct=M.FCT{access=DA.LVAR v, ...}, def, ...}, b) = 
+  let fun g (FCTB{fct=M.FCT { access, ... }, def, ... }, b) =
+	  (case access of
+	       DA.LVAR v =>
                let val hdr = buildHdr v
-                in LET(v, mkFctexp(def, d), hdr b)
+               in
+		   LET(v, mkFctexp(def, d), hdr b)
                end
-
+	     | _ => bug "mkFctbs: unexpected access")
         | g _ = bug "unexpected functor bindings in mkStrbs"
-
-   in fold g fbs
+  in fold g fbs
   end
 
 
@@ -982,12 +990,12 @@ and mkDec (dec, d) =
               end
         | g (OPENdec xs) = 
               let (* special hack to make the import tree simpler *)
-                  fun mkos (_, s as M.STR{access=acc, ...}) =
-                        if extern acc then 
+                  fun mkos (_, s as M.STR { access = acc, ... }) =
+                      if extern acc then 
                           let val _ = mkAccT(acc, strLty(s, d, compInfo), NONE)
-                           in ()
+                          in ()
                           end
-                        else ()
+                      else ()
                     | mkos _ = ()
                in app mkos xs; ident
               end

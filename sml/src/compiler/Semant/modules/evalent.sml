@@ -53,44 +53,50 @@ fun evalTyc (entv, tycExp, entEnv, epc, rpath,
              compInfo as {mkStamp,...}: EU.compInfo) =
       case tycExp
        of CONSTtyc tycon => tycon
-        | FORMtyc (T.GENtyc {kind=T.DATATYPE{index=0, stamps, freetycs,
-                                              family, root=NONE},
-                              arity, eq, path, ...}) =>
-            let val viztyc = MU.transTycon entEnv
-                val nstamps = Vector.map (fn _ => mkStamp()) stamps
-                val nst = Vector.sub(nstamps,0)
-                val nfreetycs = map viztyc freetycs
-                val _ = EPC.bindPath(epc,MI.TYCid(nst),entv)
-
-             in T.GENtyc{stamp=nst, arity=arity, eq=eq,
-                         kind=T.DATATYPE{index=0, stamps=nstamps, root=NONE,
-                                         freetycs=nfreetycs, family=family},
-                         path=IP.append(rpath,path)}
-            end
-        | FORMtyc (T.GENtyc {kind=T.DATATYPE{index=i, root=SOME rtev, ...},
-                             arity, eq, path, ...}) => 
-            let val (nstamps, nfreetycs, nfamily) = 
-                  case EE.lookTycEnt(entEnv, rtev)
-                   of (T.GENtyc{kind=T.DATATYPE{stamps,freetycs,family,...},
-                                ...}) =>
-                        (stamps, freetycs, family)
-                    | _ => bug "unexpected case in evalTyc-FMGENtyc"
-                val nst = Vector.sub(nstamps,i)
-                val _ = EPC.bindPath(epc,MI.TYCid(nst),entv)
-
-             in T.GENtyc{stamp=nst, arity=arity,
-                         kind=T.DATATYPE{index=i, stamps=nstamps, root=NONE,
-                                         freetycs=nfreetycs, family=nfamily},
-                         path=IP.append(rpath,path), eq=eq} 
-            end
+        | FORMtyc (T.GENtyc { kind, arity, eq, path, ... }) =>
+	  (case kind of
+	       T.DATATYPE{index=0, stamps, freetycs, family, root=NONE} =>
+               let val viztyc = MU.transTycon entEnv
+                   val nstamps = Vector.map (fn _ => mkStamp()) stamps
+                   val nst = Vector.sub(nstamps,0)
+                   val nfreetycs = map viztyc freetycs
+                   val _ = EPC.bindTycPath (epc, nst, entv)
+               in
+		   T.GENtyc{stamp=nst, arity=arity, eq=eq,
+                            kind=T.DATATYPE{index=0, stamps=nstamps,
+					    root=NONE,
+					    freetycs=nfreetycs,
+					    family=family},
+                            path=IP.append(rpath,path), stub=NONE}
+               end
+             | T.DATATYPE{index=i, root=SOME rtev, ...} =>
+               let val (nstamps, nfreetycs, nfamily) = 
+                       case EE.lookTycEnt(entEnv, rtev)
+			of T.GENtyc { kind = T.DATATYPE dt, ... } =>
+			   (#stamps dt, #freetycs dt, #family dt)
+			 | _ => bug "unexpected case in evalTyc-FMGENtyc (2)"
+                   val nst = Vector.sub(nstamps,i)
+                   val _ = EPC.bindTycPath (epc, nst, entv)
+               in
+		   T.GENtyc{stamp=nst, arity=arity,
+                            kind=T.DATATYPE{index=i, stamps=nstamps,
+					    root=NONE,
+					    freetycs=nfreetycs,
+					    family=nfamily},
+                            path=IP.append(rpath,path),
+			    eq=eq, stub=NONE}
+               end
+	     | _ => bug "unexpected GENtyc in evalTyc")
         | FORMtyc (T.DEFtyc{stamp,tyfun=T.TYFUN{arity, body},strict,path}) =>
-            let val nst = mkStamp()
-                val _ = EPC.bindPath(epc,MI.TYCid(nst),entv)
-             in T.DEFtyc{stamp = nst,
-		         tyfun=T.TYFUN{arity=arity, 
- 				       body=MU.transType entEnv body}, 
-		         strict=strict, path=IP.append(rpath,path)}
-            end
+          let val nst = mkStamp()
+	      (* tycId=stamp (this should perhaps be more abstract some day) *)
+	      val _ = EPC.bindTycPath (epc, nst, entv)
+	  in
+	      T.DEFtyc{stamp = nst,
+		       tyfun=T.TYFUN{arity=arity, 
+ 				     body=MU.transType entEnv body}, 
+		       strict=strict, path=IP.append(rpath,path)}
+          end
         | VARtyc entPath => 
 	    (debugmsg (">>evalTyc[VARtyc]: "^EP.entPathToString entPath);
 	     EE.lookTycEP(entEnv,entPath))
@@ -110,8 +116,10 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
             let val epc = EPC.enterOpen(epc, entsv)
                 val stp = evalStp(stamp, depth, epc, entEnv, compInfo) 
                 val env = evalDec(entDec, depth, epc, entEnv, rpath, compInfo)
-	     in ({stamp = stp, entities = env,
-    	          lambdaty = ref NONE, rpath = rpath}, entEnv)
+	    in
+		({stamp = stp, entities=env, lambdaty=ref NONE,
+		  rpath = rpath, stub = NONE},
+		 entEnv)
             end
 
         | APPLY (fctExp, strExp) =>
@@ -147,8 +155,8 @@ and evalStr(strExp, depth, epc, entsv, entEnv, rpath,
                    we have to bind them to the epcontext.
                  *)
                 val epc = EPC.enterOpen(epc, entsv)
-                fun h (T.GENtyc{stamp, ...}, ep) = 
-                         EPC.bindLongPath(epc,MI.TYCid(stamp),ep)
+                fun h (T.GENtyc gt, ep) =
+		    EPC.bindTycLongPath (epc, MI.tycId gt, ep)
                   | h _ = ()
                 val _ = ListPair.app h (abstycs, tyceps)
 	     in (rlzn, entEnv1)
@@ -182,8 +190,12 @@ and evalFct (fctExp, depth, epc, entEnv,
 
         | LAMBDA{param, body} => 
             let val clos = CLOSURE{param=param, body=body, env=entEnv}
-	     in ({stamp=mkStamp(), closure=clos, lambdaty=ref NONE,
-  	          tycpath=NONE, rpath=IP.IPATH[anonFctSym]}, entEnv)
+	     in ({stamp = mkStamp (),
+		  closure=clos, lambdaty=ref NONE,
+  		  tycpath=NONE,
+		  rpath=IP.IPATH[anonFctSym],
+		  stub=NONE},
+		 entEnv)
             end
 
         | LAMBDA_TP{param, body, sign as FSIG{paramsig, bodysig, ...}} =>
@@ -206,8 +218,11 @@ and evalFct (fctExp, depth, epc, entEnv,
                    in T.TP_FCT(paramTps, bodyTps)
                   end
 
-             in ({stamp=mkStamp(), closure=clos, lambdaty=ref NONE,
-                 tycpath=SOME tps, rpath=IP.IPATH[anonFctSym]}, entEnv)
+             in ({stamp = mkStamp(),
+		  closure=clos, lambdaty=ref NONE,
+		  tycpath=SOME tps, rpath=IP.IPATH[anonFctSym],
+		  stub = NONE},
+		 entEnv)
             end
 
         | LETfct (entDec, fctExp) =>
@@ -220,10 +235,10 @@ and evalFct (fctExp, depth, epc, entEnv,
 
         | _ => bug "unexpected cases in evalFct"
 
-and evalApp(fctRlzn as {closure=CLOSURE{param, body, env}, tycpath, ...} : 
-            Modules.fctEntity, argRlzn, depth, epc, rpath,
+and evalApp(fctRlzn : Modules.fctEntity, argRlzn, depth, epc, rpath,
             compInfo as {mkStamp, ...} : EU.compInfo) = 
-      let val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
+      let val {closure=CLOSURE{param, body, env}, tycpath, ...} = fctRlzn
+	  val nenv = EE.mark(mkStamp, EE.bind(param, STRent argRlzn, env))
           val  _ = debugmsg ("[Inside EvalAPP] ......")
        in case (body, tycpath)
            of (FORMstr(FSIG{paramsig, bodysig, ...}), SOME tp) => 
@@ -240,8 +255,8 @@ and evalApp(fctRlzn as {closure=CLOSURE{param, body, env}, tycpath, ...} :
                                    rpath=rpath, region=S.nullRegion,
                                    compInfo=compInfo}
 
-                   fun h (T.GENtyc{stamp, ...}, ep) = 
-                           EPC.bindLongPath(epc,MI.TYCid(stamp),ep)
+                   fun h (T.GENtyc gt, ep) = 
+                       EPC.bindTycLongPath (epc, MI.tycId gt, ep)
                      | h _ = ()
                    val _ = ListPair.app h (abstycs, tyceps)
                 in rlzn
@@ -305,14 +320,10 @@ and evalDec(dec, depth, epc, entEnv, rpath,
 and evalStp (stpExp, depth, epc, entEnv, 
              compInfo as {mkStamp,...}: EU.compInfo) =
       case stpExp
-       of CONST stamp     => stamp
-        | NEW             => mkStamp()
-        | GETSTAMP strExp => 
-            let val (strEnt, _) = 
-                  evalStr(strExp, depth, epc, NONE,
-                          entEnv, IP.empty, compInfo)
-             in #stamp(strEnt)
-            end
+       of (* CONST stamp     => stamp
+        | *) NEW             => mkStamp()
+        | GETSTAMP strExp => #stamp (#1 (evalStr(strExp, depth, epc, NONE,
+						 entEnv, IP.empty, compInfo)))
 
 (*
 val evalApp = Stats.doPhase(Stats.makePhase "Compiler 044 x-evalApp") evalApp
@@ -320,4 +331,3 @@ val evalApp = Stats.doPhase(Stats.makePhase "Compiler 044 x-evalApp") evalApp
 
 end (* toplevel local *)
 end (* structure EvalEntity *)
-

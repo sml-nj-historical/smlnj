@@ -49,11 +49,11 @@ val checkPathSig : Modules.Signature * SymPath.path -> Symbol.symbol option
 val eqSign : Modules.Signature * Modules.Signature -> bool
 val eqOrigin : Modules.Structure * Modules.Structure -> bool
 
-val tycId : Types.tycon -> ModuleId.modId
-val strId: Modules.Structure -> ModuleId.modId
-val strId2: Modules.Signature * Modules.strEntity -> ModuleId.modId
-val fctId: Modules.Functor -> ModuleId.modId
-val fctId2: Modules.fctSig * Modules.fctEntity -> ModuleId.modId
+val tycId : Types.tycon -> ModuleId.tycId
+val strId: Modules.Structure -> ModuleId.strId
+val strId2: Modules.Signature * Modules.strEntity -> ModuleId.strId
+val fctId: Modules.Functor -> ModuleId.fctId
+val fctId2: Modules.fctSig * Modules.fctEntity -> ModuleId.fctId
 
 (*** translate tycon or type in an entityEnv ***)
 val transTycon : Modules.entityEnv -> Types.tycon -> Types.tycon

@@ -20,12 +20,9 @@ signature GENERIC_VC = sig
     structure SymPath : SYMPATH
     structure StaticEnv : STATICENV
     structure DynamicEnv : DYNENV
-    structure BareEnvironment : ENVIRONMENT
-    structure Environment : ENVIRONMENT = CMEnv.Env
-    structure CoerceEnv : COERCE_ENV
+    structure Environment : ENVIRONMENT
     structure EnvRef : ENVREF
     structure ModuleId : MODULE_ID
-    structure CMStaticEnv : CMSTATICENV
     structure PersStamps : PERSSTAMPS
     structure PrettyPrint : PRETTYPRINT
     structure PPTable : sig
@@ -35,10 +32,9 @@ signature GENERIC_VC = sig
     structure Ast : AST
     structure SmlFile : SMLFILE
     structure Rehash : sig
-	val rehash : { context: ModuleId.Set.set,
-		       env: StaticEnv.staticEnv,
-		       orig_hash: PersStamps.persstamp }
-	    -> PersStamps.persstamp
+	val rehash : { env: StaticEnv.staticEnv,
+		       orig_hash: PersStamps.persstamp } ->
+		     PersStamps.persstamp
     end
 
     structure PrintHooks : PRINTHOOKS

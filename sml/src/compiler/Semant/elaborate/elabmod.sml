@@ -149,12 +149,13 @@ val mapPathsPhase = (Stats.makePhase "Compiler 033 1-mapPaths")
 and mapPaths x = Stats.doPhase mapPathsPhase mapPaths0 x
 *)
 
-fun mapPaths(epc, STR{sign, rlzn, ...}, flex) = mapEPC(epc, sign, rlzn, flex)
+fun mapPaths(epc, STR { sign, rlzn, ... }, flex) =
+    mapEPC(epc, sign, rlzn, flex)
   | mapPaths _ = ()
 
-and mapEPC(epc, sign as SIG{elements,...}, 
-                rlzn as {entities, ...} : M.strEntity, flex) = 
-      let fun doElem(_,TYCspec{entVar=ev, ...}) =
+and mapEPC(epc, sign as SIG { elements, ... }, rlzn: M.strEntity, flex) = 
+      let val { entities, ... } = rlzn
+	  fun doElem(_,TYCspec{entVar=ev, ...}) =
                 (* 
                  * bind only if tycon is flexible -- have to pass flexibility
                  * tester  -- but wait! what about a rigid structure with a
@@ -168,7 +169,7 @@ and mapEPC(epc, sign as SIG{elements,...},
 			   | _ =>
 			      let val stamp = TU.tycStamp tyc
 			      in if flex stamp
-				 then EPC.bindPath(epc,MI.TYCid(stamp),ev)
+				 then EPC.bindTycPath(epc, MI.tycId' tyc, ev)
 				 else ()
 			      end)
 	            | ERRORent => ()
@@ -184,9 +185,9 @@ and mapEPC(epc, sign as SIG{elements,...},
 		     (case EE.look(entities,ev)
 			of STRent nr =>
 			    let val i = MU.strId2(s,nr)
-			    in case EPC.lookPath(epc, i)
+			    in case EPC.lookStrPath (epc, i)
 				 of SOME _ => ()
-				  | _ => (EPC.bindPath(epc,i,ev);
+				  | _ => (EPC.bindStrPath (epc,i,ev);
 					  mapEPC(EPC.enterOpen(epc,SOME ev),
 						 s,nr,flex))
 			    end
@@ -201,7 +202,7 @@ and mapEPC(epc, sign as SIG{elements,...},
 		     (case EE.look(entities,ev)
 			of FCTent nr =>
 			    let val i = MU.fctId2(s,nr)
-			     in EPC.bindPath(epc,i,ev)
+			     in EPC.bindFctPath(epc,i,ev)
 			    end
 		         | ERRORent => ()
 			 | _ => bug "mapEPC 3")
@@ -249,46 +250,56 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
            (* this is ok because epContext has state; a bit ugly *)
           val ndtycs =
             (case dtycs
-              of ((T.GENtyc{kind=T.DATATYPE{index=0,family,freetycs,
-                                            stamps, root}, ...})::_) =>  
-                   let val rootev = mkStamp()
-                       val rtevOp = SOME rootev
-                       val nfreetycs = map viztc freetycs
-                       val nstamps = Vector.map (fn _ => mkStamp()) stamps
+	      of (T.GENtyc { kind, ... } :: _) =>
+		 (case kind
+		   of T.DATATYPE{index=0,family,freetycs, stamps, root} =>
+                      let val rootev = mkStamp()
+			  val rtevOp = SOME rootev
+			  val nfreetycs = map viztc freetycs
+			  val nstamps = Vector.map (fn _ => mkStamp()) stamps
 
-                       fun newdt (dt as T.GENtyc{kind=T.DATATYPE{index=i,...},
-                                                 arity, eq, path, ...}) =
-                            let val (ev, rtev) = 
-                                  if i=0 then (rootev, NONE)
-                                  else (mkStamp(), rtevOp)
+			  fun newdt (dt as T.GENtyc {kind,arity,eq,path,...})=
+			      (case kind of
+				   T.DATATYPE{index=i,...} =>
+				   let val (ev, rtev) = 
+					   if i=0 then (rootev, NONE)
+					   else (mkStamp(), rtevOp)
 
-                                val nkind = 
-                                  T.DATATYPE{index=i, stamps=nstamps,
-                                             freetycs=nfreetycs,root=rtev,
-                                             family=family}
-                                (* the rtev field in DATATYPE indicates
-                                   how to discover the new stamps when 
-                                   such datatypes are being evalent-ed *)
+                                       val nkind = 
+					   T.DATATYPE{index=i, stamps=nstamps,
+						      freetycs=nfreetycs,
+						      root=rtev,
+						      family=family}
+                                       (* the rtev field in DATATYPE indicates
+					* how to discover the new stamps when 
+					* such datatypes get evalent-ed *)
 
-                                val ndt =
-                                  T.GENtyc{arity=arity, eq=eq, kind=nkind,
-                                           path=stripPath path, 
-                                           stamp=Vector.sub(nstamps,i)}
+                                       val ndt =
+					   T.GENtyc{arity=arity, eq=eq,
+						    kind=nkind,
+						    path=stripPath path, 
+						    stamp=
+						      Vector.sub(nstamps,i),
+						    stub=NONE}
 
-                                val _ = EPC.bindPath(epctxt, MU.tycId dt, ev)
-                             in (ev, dt, M.FORMtyc ndt)
-                            end
-                         | newdt _ = bug "unexpected case in newdtyc"
-                    in map newdt dtycs
-                   end
-               | [] => []
-               | _ => bug "unexpected tycs in bindNewTycs")
+                                       val _ = 
+					   EPC.bindTycPath(epctxt,
+							   MU.tycId dt, ev)
+				   in (ev, dt, M.FORMtyc ndt)
+				   end
+				 | _ => bug "unexpected case in newdtyc (1)")
+                            | newdt _ = bug "unexpected case in newdtyc (2)"
+                      in map newdt dtycs
+                      end
+		    | _ => bug "unexpected tycs in bindNewTycs (1)")
+	       | [] => []
+	       | _ => bug "unexpected tycs in bindNewTycs (2)")
 
           val nwtycs = 
             let fun newtc (tc as T.DEFtyc{stamp, tyfun=T.TYFUN{arity,body}, 
                                           strict, path}) =
                      let val ev = mkStamp()
-                         val _ = EPC.bindPath(epctxt, MU.tycId tc, ev)
+                         val _ = EPC.bindTycPath(epctxt, MU.tycId tc, ev)
 			 val ntc = 
                            T.DEFtyc{stamp=mkStamp(), strict=strict, 
 				    path=stripPath path,
@@ -330,8 +341,8 @@ fun bindNewTycs(EU.INFCT _, epctxt, mkStamp, dtycs, wtycs, rpath, err) =
  ***************************************************************************)
 fun extractSig (env, epContext, context, 
                 compInfo as {mkStamp,...} : EU.compInfo) =
-  let fun getEpOp modId =
-        case context of EU.INFCT _ => EPC.lookPath(epContext, modId)
+  let fun getEpOp (look, modId) =
+        case context of EU.INFCT _ => look (epContext, modId)
                       | _ => NONE
       val relativize =
         case context
@@ -370,9 +381,9 @@ fun extractSig (env, epContext, context,
                in (elements', entEnv, entDecl, trans', slotCount', fctflag)
               end
 
-          | B.STRbind(str as STR{sign,rlzn,...}) =>
-              let val epOp = getEpOp(MU.strId str)  
-                  val (ev, entEnv', entDecl') =
+          | B.STRbind(str as STR { sign, rlzn, ... }) =>
+	    let val epOp = getEpOp (EPC.lookStrPath, MU.strId str)  
+                val (ev, entEnv', entDecl') =
                     case epOp
                      of SOME [x] => (x, entEnv, entDecl)
                       | _ => 
@@ -396,15 +407,15 @@ fun extractSig (env, epContext, context,
                   val elements' = addElems((sym, spec), elements)
                   val fctflag' = 
                     (case sign 
-                      of SIG{fctflag=bb, ...} => fctflag orelse bb
+                      of SIG sg => fctflag orelse #fctflag sg
                        | _ => fctflag)
                in (elements', entEnv', entDecl', binding::trans, 
                    slotCount+1, fctflag')
               end
 
-          | B.FCTbind(fct as FCT{sign, rlzn, ...}) =>
-              let val epOp = getEpOp(MU.fctId fct)
-                  val (ev, entEnv', entDecl') =
+          | B.FCTbind(fct as FCT {sign, rlzn, ...}) =>
+	    let val epOp = getEpOp(EPC.lookFctPath, MU.fctId fct)
+                val (ev, entEnv', entDecl') =
                     case epOp
                      of SOME [x] => (x, entEnv, entDecl)
                       | _ => 
@@ -433,7 +444,7 @@ fun extractSig (env, epContext, context,
               let val epOp = 
 		      case tyc
 			of T.ERRORtyc => NONE
-			 | _ => getEpOp(MU.tycId tyc)
+			 | _ => getEpOp(EPC.lookTycPath, MU.tycId tyc)
                   val (ev, entEnv', entDecl') =
                     case epOp
                      of SOME [x] => (x, entEnv, entDecl)
@@ -566,21 +577,23 @@ fun elab (BaseStr decl, env, entEnv, region) =
           val resStr = 
             let val symbols = map #1 elements
                 val sign = 
-                  M.SIG{name=NONE, closed=false, fctflag=fctflag,
-                        stamp=mkStamp(), elements=elements, 
+                  M.SIG{stamp = mkStamp (),
+			name=NONE, closed=false, fctflag=fctflag,
+                        elements=elements, 
                         symbols=symbols, boundeps=ref(NONE), 
                         lambdaty=ref(NONE),
-                        typsharing=nil, strsharing=nil}
+                        typsharing=nil, strsharing=nil,
+			stub=NONE}
  
                 val strRlzn =
-                  {stamp=mkStamp(), (* generate structure stamp *)
-                   entities=EE.mark(mkStamp,EE.atop(entEnvLocal,entEnv)),
-                   lambdaty=ref NONE, rpath=rpath}
+                    { stamp = mkStamp(), (* generate structure stamp *)
+		      entities=EE.mark(mkStamp,EE.atop(entEnvLocal, entEnv)),
+		      lambdaty=ref NONE, rpath=rpath, stub = NONE}
 
                 val dacc = DA.namedAcc(tempStrId, mkv)
                 val dinfo = II.mkStrInfo (map MU.extractInfo locations)
 
-             in M.STR {sign=sign, rlzn=strRlzn, access=dacc, info=dinfo}
+            in M.STR {sign=sign, rlzn=strRlzn, access=dacc, info=dinfo}
             end
           
           val resDec = 
@@ -620,12 +633,12 @@ fun elab (BaseStr decl, env, entEnv, region) =
 	    of ((M.ERRORfct,_) | (_,M.ERRORstr)) =>
 		(debugmsg "<<elab[AppStr-one]: error fct or arg";
 		 (A.SEQdec[], M.ERRORstr, M.CONSTstr(M.bogusStrEntity), EE.empty))
-	     | (M.FCT{rlzn=fctEnt,...},M.STR{rlzn=argEnt,...}) => 
-		let val resDee =
-		        EE.mark(mkStamp, EE.bind(entv, M.STRent argEnt, argDee))
+	     | (M.FCT { rlzn = fctEnt, ... }, M.STR { rlzn = argEnt, ... }) =>
+	       let val resDee =
+		       EE.mark(mkStamp, EE.bind(entv, M.STRent argEnt, argDee))
 		        (* the argument structure should be bound to entv *)
 		    val fctExp = 
-			case EPC.lookPath(epContext, MU.fctId fct)
+			case EPC.lookFctPath(epContext, MU.fctId fct)
 			  of SOME ep => VARfct ep
 			   | NONE => CONSTfct fctEnt
 		    val {resDec, resStr, resExp} = 
@@ -639,6 +652,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 		    val _ = debugmsg "<<elab[AppStr-one]"
 		 in (A.SEQdec [argDec, resDec], resStr, resExp, resDee)
 		end
+	     | _ => bug "AppStrI:one arg"
       end (* AppStrI - one arg *)
 
   | elab (AppStrI(spath,arg :: larg), env, entEnv, region) =
@@ -660,13 +674,13 @@ fun elab (BaseStr decl, env, entEnv, region) =
 *)
           val strRlzn = 
 		case str
-		  of STR{rlzn,...} => rlzn
+		  of STR { rlzn, ... } => rlzn
 		   | _ => M.bogusStrEntity  (* error recovery *)
           val resExp =
 	        case str
 		  of STR _ =>
 		      ((* debugmsg "--elab[VarStr]: resExp/STR"; *)
-		       case EPC.lookPath(epContext,MU.strId str) 
+		       case EPC.lookStrPath(epContext,MU.strId str) 
 			 of NONE => M.CONSTstr strRlzn
 			  | SOME ep => M.VARstr ep)
 		   | _ => M.CONSTstr M.bogusStrEntity (* error recovery *)
@@ -738,7 +752,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
                  (case evOp
                    of SOME tmpev =>
                        let val strEnt =
-                             case str of M.STR{rlzn,...} => rlzn
+                             case str of M.STR { rlzn, ... } => rlzn
                                        | _ => M.bogusStrEntity
                         in (EE.bind(tmpev, M.STRent strEnt, deltaEntEnv))
                        end
@@ -804,12 +818,11 @@ case fctexp
 		(A.SEQdec [], fct, CONSTfct(M.bogusFctEntity), EE.empty)
 	     | _ =>
 		let val uncoercedExp = 
-		        (case EPC.lookPath(epContext, MU.fctId fct)
+		        (case EPC.lookFctPath(epContext, MU.fctId fct)
 			   of SOME ep => VARfct ep
 			    | NONE =>
-			       let val rlzn = case fct
-						of FCT{rlzn, ...} => rlzn
-						 | _ => M.bogusFctEntity
+			       let val rlzn = case fct of FCT ft => #rlzn ft
+							| _ => M.bogusFctEntity
 			        in CONSTfct rlzn
 			       end)
 
@@ -875,7 +888,7 @@ case fctexp
              of EU.INFCT {flex=f,depth=d} => (f, d) 
               | _ => (*** Entering functor for first time ***) 
                  let val base = mkStamp() 
-                     fun h s = (case Stamps.cmp(base,s)
+                     fun h s = (case Stamps.compare(base,s)
                                  of LESS => true
                                   | _ => false)
                   in (h, DI.top)
@@ -932,7 +945,7 @@ case fctexp
 
           (* fill in pathEnv with paths for elements of paramStr *)
           val _ = mapPaths(EPC.enterOpen(epContext', SOME paramEntVar),paramStr,flex)
-          val _ = EPC.bindPath(epContext',MU.strId paramStr,paramEntVar)
+          val _ = EPC.bindStrPath(epContext',MU.strId paramStr,paramEntVar)
           val _ = debugmsg "--elabFct[BaseFct]: epContext initialized"
 
           (* must elaborate result signature before the body is elaborated
@@ -976,7 +989,7 @@ case fctexp
           val fctExp = M.LAMBDA{param=paramEntVar,body=bodyExp'}
 
           val resFct = 
-            let val bodySig' = case bodyStr' of STR{sign, ...} => sign
+            let val bodySig' = case bodyStr' of STR { sign, ... } => sign
 		                              | _ => ERRORsig
 
                 val fctSig = 
@@ -984,12 +997,14 @@ case fctexp
                          bodysig=bodySig', paramvar=paramEntVar, 
                          paramsym=paramNameOp}
 
-                val rlzn = {stamp=mkStamp(),
-                            closure=M.CLOSURE{param=paramEntVar,
-                                              body=bodyExp',
-                                              env=entEnv},
-                            (* Closure: Using the old entity environment !! *)
-                            tycpath=NONE, lambdaty=ref NONE, rpath=rpath}
+                val rlzn = { stamp = mkStamp(),
+			     closure=M.CLOSURE{param=paramEntVar,
+					       body=bodyExp',
+					       env=entEnv},
+		(* Closure: Using the old entity environment !! *)
+			     tycpath=NONE, lambdaty=ref NONE,
+			     rpath=rpath,
+			     stub = NONE}
 
                 val dacc = DA.namedAcc(name, mkv)
 
@@ -1152,7 +1167,7 @@ fun loop([], decls, entDecls, env, entEnv) =
                of (NONE, NONE) => deltaEntEnv
                 | (SOME ev, SOME _) =>
                     (case str 
-                      of M.STR{rlzn,...} => 
+                      of M.STR { rlzn, ... } =>
                           EE.bind(ev, M.STRent rlzn, deltaEntEnv)
                        | _ =>
                           EE.bind(ev, M.STRent M.bogusStrEntity, deltaEntEnv))
@@ -1170,10 +1185,10 @@ fun loop([], decls, entDecls, env, entEnv) =
            *)
           val (bindStr, strEnt) = 
             case resStr
-             of STR{rlzn, sign, access, info} =>
-                  (STR{rlzn = rlzn, sign = sign, 
-                       access = DA.namedAcc(name, mkv),info = info},
-                   M.STRent rlzn)
+             of STR { rlzn, sign, access, info } =>
+                (STR{rlzn = rlzn, sign = sign,
+		     access = DA.namedAcc(name, mkv),info = info},
+                 M.STRent rlzn)
               | _ => (resStr, M.STRent M.bogusStrEntity)
 
           val _ = showStr("--elabStrbs: bindStr: ",bindStr,env)
@@ -1201,9 +1216,9 @@ fun loop([], decls, entDecls, env, entEnv) =
           val _ = debugmsg "--elabStrbs: mapPaths bindStr done"
                        val _ = 
                          (case bindStr
-                           of STR{rlzn, sign, ...} =>
-                                EPC.bindPath(epContext, 
-                                             MU.strId2(sign,rlzn), entv)
+                           of STR { sign, rlzn, ... } =>
+                              EPC.bindStrPath(epContext, 
+                                              MU.strId2(sign,rlzn), entv)
                             | _ => ())
 
                     in (entEnv3, ((M.STRdec(entv, resExp, name))::entDecls))
@@ -1292,10 +1307,10 @@ and elabDecl0
                       *)
                      val (bindFct, fctEnt) = 
                        case fct
-			 of FCT{rlzn, sign, access, info} =>
-                             (FCT{rlzn = rlzn, sign = sign, info = info,
-                                  access = DA.namedAcc(name, mkv)},
-                              FCTent rlzn)
+			 of FCT {rlzn, sign, access, info} =>
+			    (FCT{rlzn = rlzn, sign = sign, info = info,
+                                 access = DA.namedAcc(name, mkv)},
+			     FCTent rlzn)
 			  | ERRORfct => (fct, ERRORent)
 
                      val fb = A.FCTB{name = name, fct = bindFct, 
@@ -1308,7 +1323,7 @@ and elabDecl0
                             (let val entVar = mkStamp()
                                  val _ = case bindFct
 				           of FCT _ =>
-					       EPC.bindPath(epContext, 
+					       EPC.bindFctPath(epContext, 
                                                  MU.fctId bindFct, entVar)
 					    | ERRORfct => ()
                                  val entEnv1 = EE.atopSp(deltaEntEnv, entEnv)
@@ -1481,7 +1496,7 @@ and elabDecl0
                     (case context 
                       of EU.INFCT _ =>
                           (fn tyc => 
-                            (case EPC.lookPath(epContext, MU.tycId tyc)
+                            (case EPC.lookTycPath(epContext, MU.tycId tyc)
                               of SOME _ => true 
                                | _ => false))
                        | _ => (fn _ => false))
@@ -1497,9 +1512,15 @@ and elabDecl0
 	       in (resDec, entDec, env, entEnv)
 	      end
 
-	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
- 	      (case withtycs
-		of _::_ => 
+	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) => let
+		fun no_datatype () =
+		    (error region EM.COMPLAIN
+			   "rhs of datatype replication not a datatype"
+			   EM.nullErrorBody;
+		     (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty))
+	    in
+ 		case withtycs
+		 of _::_ => 
                     (error region EM.COMPLAIN
 		        "withtype not allowed in datatype replication"
 			 EM.nullErrorBody;
@@ -1507,38 +1528,41 @@ and elabDecl0
 		 | [] =>
 		     let val tyc = L.lookTyc(env0, SP.SPATH syms, error region)
 		      in case tyc
-			  of T.GENtyc{kind=T.DATATYPE _,...} =>
-			       let val dcons = TU.extractDcons tyc
-				   val envDcons =
-				    foldl (fn (d as T.DATACON{name,...},e)=>
-						  SE.bind(name,B.CONbind d, e))
- 				      SE.empty dcons
-				   val env = SE.bind(name, B.TYCbind tyc, 
-                                                     envDcons)
-				   val ev = mkStamp()
-				   val tyc_id = MU.tycId tyc
-				   val (ee_dec,ee_env) =
+			  of T.GENtyc { kind = T.DATATYPE _, ... } =>
+			     let val dcons = TU.extractDcons tyc
+				 val envDcons =
+				     foldl (fn (d as T.DATACON{name,...},
+						e)=>
+					       SE.bind(name,
+						       B.CONbind d, e))
+ 					   SE.empty dcons
+				 val env = SE.bind(name, B.TYCbind tyc, 
+						   envDcons)
+				 val ev = mkStamp()
+				 val tyc_id = MU.tycId tyc
+				 val (ee_dec,ee_env) =
 				     case context
 				      of EU.INFCT _ => let
-				         val texp =
-					   case EPC.lookPath(epContext,tyc_id)
-					    of NONE => M.CONSTtyc tyc
-					     | SOME entPath => M.VARtyc entPath
+					     val texp =
+						 case EPC.lookTycPath(epContext,tyc_id)
+						  of NONE => M.CONSTtyc tyc
+						   | SOME entPath =>
+						     M.VARtyc entPath
 			                 in (M.TYCdec(ev,texp),
-					     EE.bind(ev,M.TYCent tyc,EE.empty))
+					     EE.bind(ev,M.TYCent tyc,
+						     EE.empty))
 					 end
-				        | _ => (M.EMPTYdec,EE.empty)
-				   val resDec = A.DATATYPEdec{datatycs=[tyc],
-							      withtycs=[]}
-				in EPC.bindPath(epContext, tyc_id, ev);
-				   (resDec, ee_dec, env, ee_env)
-			       end
-			    | _ => 
-			     (error region EM.COMPLAIN
-			      "rhs of datatype replication not a datatype"
-			      EM.nullErrorBody;
-			      (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty))
-		     end)
+				       | _ => (M.EMPTYdec,EE.empty)
+				 val resDec =
+				     A.DATATYPEdec{datatycs=[tyc],
+						   withtycs=[]}
+			     in
+				 EPC.bindTycPath(epContext, tyc_id, ev);
+				 (resDec, ee_dec, env, ee_env)
+			     end
+			   | _ => no_datatype ()
+		     end
+	    end
 
 	  | _ => (error region EM.COMPLAIN
 		   "argument type variables in datatype replication"
@@ -1550,15 +1574,17 @@ and elabDecl0
               (case context 
                 of EU.INFCT _ =>
                      (fn tyc => 
-                       (case EPC.lookPath(epContext, MU.tycId tyc)
+                       (case EPC.lookTycPath(epContext, MU.tycId tyc)
                          of SOME _ => true 
                           | _ => false))
                  | _ => (fn _ => false))
 
-            val (decl as A.ABSTYPEdec{abstycs,withtycs,...}, env') =
-              EC.elabABSTYPEdec(x, env0, context, isFree, 
-                                rpath, region, compInfo)
-
+            val (decl, env', abstycs, withtycs) =
+		case  EC.elabABSTYPEdec(x, env0, context, isFree, 
+					rpath, region, compInfo) of
+		    (d as A.ABSTYPEdec x, e) =>
+		    (d, e, #abstycs x, #withtycs x)
+		  | _ => bug "elabDecl0:AbstypeDec"
             (*
              * Potential bug: what about other datatype declarations within
              * the body of ABSTYPEdec ? they are local declarations; but
@@ -1586,7 +1612,7 @@ and elabDecl0
              (case context 
                of EU.INFCT _ =>
                     (fn tyc => 
-                       (case EPC.lookPath(epContext, MU.tycId tyc)
+                       (case EPC.lookTycPath(epContext, MU.tycId tyc)
                          of SOME _ => true 
                           | _ => false))
                       | _ => (fn _ => false))

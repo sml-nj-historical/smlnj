@@ -30,6 +30,7 @@ fun parse {apply,pair} =
 	      ("expression or pattern begins with infix identifier \"" 
 	       ^ Symbol.name sym ^ "\"") EM.nullErrorBody;
 	       NONf(e,p))
+	| ensureNONf _ = EM.impossible "precedence:ensureNONf"
 
       fun start token = ensureNONf(token,NILf)
 
@@ -70,12 +71,14 @@ fun parse {apply,pair} =
 
             fun endloc[{region=(_,x),item,fixity}] = error(x,x)
               | endloc(_::a) = endloc a
+	      | endloc _ = EM.impossible "precedence:endloc"
 	      
             fun loop(state, a::rest) = loop(parse(state,getfix a),rest)
               | loop(state,nil) = finish(state, endloc items)
 
          in loop(start(getfix item1), items')
         end
+       | _ => EM.impossible "precedence:parse"
   end
 
 end (* local *)

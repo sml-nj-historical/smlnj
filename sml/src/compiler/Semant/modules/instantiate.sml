@@ -135,18 +135,15 @@ fun push(r,x) = (r := x::(!r))
 fun pathName (path: IP.path) : string = 
     SP.toString(ConvertPaths.invertIPath path)
 
-(* module utility functions (should be in ModuleUtil?) *)
-fun eqOrigin(STR{rlzn={stamp=s1,...},...},STR{rlzn={stamp=s2,...},...}) =
-    ST.eq(s1,s2)
+val eqOrigin = MU.eqOrigin
+val eqSig = MU.eqSign
 
-fun eqSig(SIG{stamp,...}, SIG{stamp=stamp',...}) = Stamps.eq (stamp,stamp')
+fun sameStructure (STR { sign = sg1, rlzn = { stamp = s1, ... }, ... },
+		   STR { sign = sg2, rlzn = { stamp = s2, ... }, ... }) =
+    eqSig (sg1, sg2) andalso ST.eq (s1, s2)
+  | sameStructure _ = false
 
-fun sameStructure(STR{sign=sign1,rlzn={stamp=stamp1,...},...},
-		  STR{sign=sign2,rlzn={stamp=stamp2,...},...}) =
-    MU.eqSign(sign1,sign2) andalso ST.eq(stamp1,stamp2)
-
-fun signName (SIG{name=SOME sym,...}) = S.name sym
-  | signName (SIG{name=NONE,...}) = "Anonymous"
+fun signName (SIG { name, ... }) = getOpt (Option.map S.name name, "Anonymous")
   | signName ERRORsig = "ERRORsig"
 
 
@@ -312,27 +309,27 @@ fun lookSlot((ev,slot)::rest,ev') =
  * Get slot for signature element (tycon or structure) --- 
  * Lookup sym in sign, get entVar, lookup this entVar in slotEnv 
  *)
-fun getElemSlot(sym,SIG{elements,...},slotEnv) : slot =
-    case MU.getSpecVar(MU.getSpec(elements,sym))
+fun getElemSlot(sym, SIG {elements,...}, slotEnv) : slot =
+    (case MU.getSpecVar(MU.getSpec(elements,sym))
       of SOME v => lookSlot(slotEnv,v)
-       | NONE => bug "getElemSlot"
+       | NONE => bug "getElemSlot (1)")
+  | getElemSlot _ = bug "getElemSlot (2)"
 
-fun getElemSlots(SIG{elements,...},slotEnv) : (S.symbol * slot) list =
+fun getElemSlots(SIG {elements,...}, slotEnv) : (S.symbol * slot) list =
     let fun f (sym,spec) = 
 	    case MU.getSpecVar spec
 	      of SOME v => SOME(sym,lookSlot(slotEnv,v))
 	       | NONE => NONE
      in List.mapPartial f elements
     end
+  | getElemSlots _ = bug "getElemSlots"
 
 (* Retrieves all [formal] substructure components from a signature *)
-fun getSubSigs sign = 
-    case sign 
-     of SIG{elements,...} => 
-	  List.mapPartial
-	      (fn (sym,STRspec{sign,entVar,...}) => SOME(sym,entVar,sign)
-		| _ => NONE) elements
-      | _ => []
+fun getSubSigs (SIG {elements,...}) =
+    List.mapPartial
+	(fn (sym,STRspec{sign,entVar,...}) => SOME(sym,entVar,sign)
+	  | _ => NONE) elements
+  | getSubSigs _ = []
 
 
 (* translate a tycon to a tycInst *)
@@ -352,27 +349,32 @@ fun extTycToTycInst tyc =
 fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
     let val comps = 
 	     (case strDef
-	       of CONSTstrDef(STR{sign=SIG{elements,...},
-				  rlzn={entities,...},...}) =>
-		   List.mapPartial
+	       of CONSTstrDef (STR {sign = SIG {elements,...},
+				    rlzn as {entities,...}, ... }) =>
+		  List.mapPartial
 		   (fn (sym,STRspec{sign,entVar,def,slot}) =>
-		       (debugmsg (">>getElemDefs.C: STRspec " ^ Symbol.name sym);
+		       (debugmsg (">>getElemDefs.C: STRspec " ^
+				  Symbol.name sym);
 			SOME(sym,SDEFINE(CONSTstrDef(
 					  STR{sign=sign,
-					      rlzn=EE.lookStrEnt(entities,entVar),
-					      access=A.nullAcc, info=II.nullInfo}),
+					      rlzn=EE.lookStrEnt(entities,
+								 entVar),
+					      access=A.nullAcc,
+					      info=II.nullInfo}),
 					 depth))
-			before debugmsg ("<<getElemDefs.C: STRspec " ^ Symbol.name sym))
+			before debugmsg ("<<getElemDefs.C: STRspec " ^
+					 Symbol.name sym))
 		     | (sym,TYCspec{spec=tyc,entVar,repl,scope}) =>
-		       (debugmsg (">>getElemDefs.C: TYCspec " ^ Symbol.name sym);
+		       (debugmsg (">>getElemDefs.C: TYCspec " ^
+				  Symbol.name sym);
 			let val tyc' = EE.lookTycEnt(entities,entVar)
 			    val tycInst = extTycToTycInst tyc'
 			 in debugType("#getElemDefs:TYCspec",tyc');
 			    SOME(sym,TDEFINE(tycInst,depth))
 			end)
 		     | _ => NONE)
-		    elements
-		| VARstrDef(SIG{elements,...},entPath) =>
+		   elements
+		| VARstrDef(SIG {elements,...},entPath) =>
 		   List.mapPartial
 		   (fn (sym,STRspec{sign,entVar,def,slot}) =>
 		       (debugmsg (">>getElemDefs.V: STRspec " ^ Symbol.name sym
@@ -390,7 +392,8 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
 					 depth)))
 		     | _ => NONE)
 		   elements
-		| CONSTstrDef ERRORstr => nil)
+		| CONSTstrDef ERRORstr => nil
+		| _ => bug "getElemDefs")
       in ListMergeSort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) comps
      end
 
@@ -404,8 +407,9 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
  *   added to the inherited slotEnv, bound the corresponding element's
  *   entityVar, and the augmented slotEnv is returned
  *)
-fun mkElemSlots(SIG{elements,...},slotEnv,rpath,epath,sigDepth) =
-    let fun mkSlot((sym,STRspec{sign as SIG{closed,...},entVar,def,...}),slotEnv) = 
+fun mkElemSlots(SIG {elements,...},slotEnv,rpath,epath,sigDepth) =
+    let fun mkSlot((sym,STRspec{sign as SIG {closed,...},
+				entVar,def,...}),slotEnv) = 
 	     (* a definitional structure spec is translated into a SDEFINE
 	      * constraint *)
 	     let val constraints =
@@ -427,7 +431,8 @@ fun mkElemSlots(SIG{elements,...},slotEnv,rpath,epath,sigDepth) =
 		of DEFtyc{stamp,path,tyfun=TYFUN{arity,...},...} => 
 		    (* translate a DEFtyc spec into a TDEFINE constraint *)
 		    let val tycon' = GENtyc{stamp=stamp,arity=arity,path=path,
-					    eq=ref(IND),kind=FORMAL}
+					    eq=ref(IND),kind=FORMAL,
+					    stub = NONE}
 		     in SOME(entVar,
 			     ref(InitialTyc
 				  {tycon=tycon',
@@ -593,7 +598,8 @@ fun distributeS (sign as SIG {strsharing,...}, slotEnv, entEnv, sigDepth) =
  ****************************************************************************)
 exception DistributeT
 
-fun distributeT (sign as SIG{typsharing,...}, slotEnv, entEnv, mkStamp, sigDepth) =
+fun distributeT (sign as SIG {typsharing,...},
+		 slotEnv, entEnv, mkStamp, sigDepth) =
      let fun stepPath(SP.SPATH[sym]) =
                let val slot = getElemSlot(sym,sign,slotEnv)
                 in case !slot
@@ -759,7 +765,9 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 			   EM.nullErrorBody
 		       else ()
 		    | NONE =>
-		       let val PartialStr{comps,...} = !oldSlot
+		       let val comps = case !oldSlot of
+					   PartialStr x => #comps x
+					 | _ => bug "constrain:PartialStr"
 			in classDef := SOME(strDef,depth);
 			   propDefs (comps,getElemDefs(strDef,mkStamp,depth))
 		       end)
@@ -813,7 +821,9 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		*)
 	       | SHARE{my_path=SP.SPATH(sym::rest),
 		       its_ancestor, its_path, depth} =>
-		 let val SIG{elements,...} = sign
+		 let val { elements, ... } =
+			 case sign of SIG s => s
+				    | _ => bug "instantiate:constrain:SIG"
 		  in case MU.getSpec(elements,sym)
 		       of TYCspec{spec=tycon,entVar,repl,scope} => 
 			   (* ASSERT: rest = nil *)
@@ -853,9 +863,10 @@ let val class = ref ([this_slot] : slot list) (* the equivalence class *)
 		 | NONE =>
 		    let val finalEnt =
 			    case !classDef
-			      of SOME(CONSTstrDef(STR{sign=sign',rlzn,...}),_) =>
-				  if eqSig(sign,sign') then CONST_ENT rlzn
-				  else GENERATE_ENT true
+			      of SOME(CONSTstrDef(STR{sign=sign',
+						      rlzn, ... }),_) =>
+				 if eqSig(sign,sign') then CONST_ENT rlzn
+				 else GENERATE_ENT true
 			       | SOME(VARstrDef(sign',entPath),_) =>
 				  (* if eqSig(sign,sign') then PATH_ENT(entPath)
 				   * else ...
@@ -979,8 +990,8 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 
       val newTycKind = 
         case instKind
-         of INST_ABSTR({entities, ...} : M.strEntity) =>
-              (fn (ep,_) => T.ABSTRACT(EE.lookTycEP(entities, ep)))
+         of INST_ABSTR {entities,...} =>
+	    (fn (ep,_) => T.ABSTRACT(EE.lookTycEP (entities, ep)))
           | INST_PARAM depth => 
               (fn (ep,tk) => 
                   T.FLEXTYC(T.TP_VAR{depth=depth, num=cnt, kind=tk}))
@@ -1066,6 +1077,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
                     let fun isvars(IBOUND n ::rest,m) =
                                if n = m then isvars(rest,m+1) else false
                            | isvars (nil,_) = true
+			   | isvars _ = bug "simplify:isvars"
                      in if length args = arity andalso
                                   isvars(map TU.prune args,0)
                         then simplify tyc else tyc0
@@ -1097,38 +1109,44 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 	  let fun loop(ERRORtyc,epath,arity,eqprop,(tyc,ep)::rest) =
 	            (* initialization *)
 		    (case tyc
-		      of GENtyc{arity,eq,...} =>
-			  loop(tyc,ep,arity,!eq,rest)
+		      of GENtyc { arity, eq, ... } =>
+			 loop(tyc,ep,arity,!eq,rest)
 		       | ERRORtyc =>
 			  loop(tyc,ep,0,IND,rest)
 		       | DEFtyc{tyfun=TYFUN{arity,...},path,...} =>
 			  bug "scanForRep 0"
 		       | _ => bug "scanForRep 1")
 
-		| loop(tyc as GENtyc{kind as DATATYPE _, path,...}, epath,
-		       arity, eqprop,
-		       (tyc', _)::rest) =
-		   (case tyc'
-		      of GENtyc{kind,arity=arity',eq,path=path',...} =>
-			  (checkArity(arity,arity',path,path');
-			   loop(tyc,epath,arity,eqMax(eqprop,!eq),rest))
-		       | ERRORtyc => loop(tyc,epath,arity,eqprop,rest)
-		       | DEFtyc{tyfun=TYFUN{arity=arity',...},path=path',...} =>
-			  bug "scanForRep 2")
+		| loop(tyc as GENtyc { kind, path = path, ... },
+		       epath, arity, eqprop, (tyc', epath') :: rest) =
+		  (case kind of
+		       DATATYPE _ =>
+		       (case tyc'
+			 of GENtyc {kind,arity=arity',eq,path=path',...} =>
+			    (checkArity(arity,arity',path,path');
+			     loop(tyc,epath,arity,eqMax(eqprop,!eq),rest))
+			  | ERRORtyc => loop(tyc,epath,arity,eqprop,rest)
+			  | DEFtyc{tyfun=TYFUN{arity=arity',...},
+				   path=path',...} =>
+			    bug "scanForRep 2"
+			  | _ => bug "scanForRep 2.1")
 
-		| loop(tyc as GENtyc{kind=FORMAL,path,...}, epath, arity, eqprop,
-		       (tyc', epath')::rest) =
-		   (case tyc'
-		      of GENtyc{kind,arity=arity',eq,path=path',...} =>
-			  (checkArity(arity,arity',path,path');
-			   case kind
-			     of DATATYPE _ =>
-				 loop(tyc',epath',arity,eqMax(eqprop,!eq),rest)
-			      | _ => loop(tyc,epath,arity,eqMax(eqprop,!eq),rest))
-		       | ERRORtyc => loop(tyc,epath,arity,eqprop,rest)
-		       | DEFtyc{tyfun=TYFUN{arity=arity',...},path=path',...} =>
-			  bug "scanForRep 3")
-
+		     | FORMAL =>
+		       (case tyc'
+			 of GENtyc {kind,arity=arity',eq,path=path',...} =>
+			    (checkArity(arity,arity',path,path');
+			     case kind
+			      of DATATYPE _ =>
+				 loop(tyc',epath',arity,
+				      eqMax(eqprop,!eq),rest)
+			       | _ => loop(tyc,epath,arity,
+					   eqMax(eqprop,!eq),rest))
+			  | ERRORtyc => loop(tyc,epath,arity,eqprop,rest)
+			  | DEFtyc{tyfun=TYFUN{arity=arity',...},
+				   path=path',...} =>
+			    bug "scanForRep 3"
+			  | _ => bug "scanForRep 3.1")
+		     | _ => bug "scanForRep 8")
 		| loop(tyc,epath,arity,eprop,nil) = (tyc,epath,eprop)
 
 		| loop _ = bug "scanForRep 4"
@@ -1138,31 +1156,36 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 		    of [(tyc,epath)] => 
 			let val eqprop =
 			    case tyc
-			      of GENtyc{arity,eq,...} => !eq
+			      of GENtyc {eq, ...} => !eq
 			       | DEFtyc{tyfun=TYFUN{arity,...},...} => IND
 			       | ERRORtyc => IND
 			       | _ => bug "scanForRep 5"
 			 in (tyc,epath,eqprop)
 			end
 		     | _ => loop(ERRORtyc,nil,0,IND,tyc_eps)
-	   in case reptyc
-	       of GENtyc{kind=FORMAL, arity=arity, eq, path=path, ...} =>
-		    let val tk = LT.tkc_int(arity)
-			val knd = newTycKind(epath,tk)
-			val tyc = GENtyc{stamp=mkStamp(), arity=arity,
-					 path=IP.append(rpath,path),
-					 kind=knd, eq=ref(eqprop)}
-		     in (FinalTyc(ref(INST tyc)), SOME(tyc,(epath,tk)))
-		    end
-		| GENtyc{kind as DATATYPE _, arity=arity, eq, path=path, ...} =>
-		    let val tyc = GENtyc{stamp=mkStamp(), kind=kind, arity=arity,
-					 eq=ref(eqprop), path=path}
-		     in (FinalTyc(ref(NOTINST tyc)), NONE)
-			(* domains of dataconstructors will be instantiated
-			 * in instToTyc *)
-		    end
-		| ERRORtyc =>
-		    (FinalTyc(ref(INST ERRORtyc)), NONE)
+	  in
+	      case reptyc
+	       of GENtyc {kind,arity,eq,path,...} =>
+		  (case kind
+		    of FORMAL =>
+		       let val tk = LT.tkc_int(arity)
+			   val knd = newTycKind(epath,tk)
+			   val tyc = GENtyc{stamp=mkStamp(), arity=arity,
+					    path=IP.append(rpath,path),
+					    kind=knd, eq=ref(eqprop),
+					    stub = NONE}
+		       in (FinalTyc(ref(INST tyc)), SOME(tyc,(epath,tk)))
+		       end
+		     | DATATYPE _ =>
+		       let val tyc = GENtyc{stamp=mkStamp(), kind=kind,
+					    arity=arity, stub = NONE,
+					    eq=ref(eqprop), path=path}
+		       in (FinalTyc(ref(NOTINST tyc)), NONE)
+		       (* domains of dataconstructors will be instantiated
+			* in instToTyc *)
+		       end
+		     | _ => bug "scanForRep 9")
+		| ERRORtyc => (FinalTyc(ref(INST ERRORtyc)), NONE)
 		| DEFtyc _ => bug "scanForRep 6"
 		| _ => bug "scanForRep 7"
 	  end
@@ -1296,35 +1319,36 @@ fun get_stamp_info instance =
 fun instToStr (instance, entEnv, instKind, cnt, addRes, rpath: IP.path, err,
                compInfo as {mkStamp, ...}: EU.compInfo)
               : M.strEntity =
-let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
+let fun instToStr' (instance as (FinalStr{sign as SIG {closed, elements,... },
 					  slotEnv,finalEnt,stamp,...}),
                     entEnv, rpath: IP.path, failuresSoFar: int)
               : M.strEntity * int =
-    (debugmsg (">>instToStr': " ^ IP.toString rpath);
-     case !finalEnt
-       of CONST_ENT strEnt => (strEnt,failuresSoFar)  (* already visited *)
-	| PATH_ENT ep =>
-	   (let val strEnt = EE.lookStrEP(entEnv,ep)
-	     in finalEnt := CONST_ENT strEnt;
-		(strEnt,failuresSoFar)
-	    end
-	    handle EE.Unbound =>
-	      (debugmsg ("instToStr':PATH_ENT failed: "^EP.entPathToString ep);
-	       raise EE.Unbound))
-	| GENERATE_ENT closedDef =>
-	    let 
-		(* Gets the stamp of an instance -- generates one if 
-		 * one is not already built. *)
-		fun getStamp instance : Stamps.stamp = 
-		  let val stamp = get_stamp_info instance
-		   in case (!stamp)
-			of STAMP s => (debugmsg "getStamp:STAMP"; s)
-			 | PATH ep =>
-			   (debugmsg ("getStamp:PATH "^EntPath.entPathToString ep);
-			    (let val {stamp=s,...} = EE.lookStrEP(entEnv,ep)
+ 	(debugmsg (">>instToStr': " ^ IP.toString rpath);
+	 case !finalEnt
+	  of CONST_ENT strEnt => (strEnt,failuresSoFar)  (* already visited *)
+	   | PATH_ENT ep =>
+	     (let val strEnt = EE.lookStrEP(entEnv,ep)
+	      in finalEnt := CONST_ENT strEnt;
+	      (strEnt,failuresSoFar)
+	      end
+		  handle EE.Unbound =>
+			 (debugmsg ("instToStr':PATH_ENT failed: "^
+				    EP.entPathToString ep);
+			  raise EE.Unbound))
+	   | GENERATE_ENT closedDef =>
+	     let 
+		 (* Gets the stamp of an instance -- generates one if 
+		  * one is not already built. *)
+		 fun getStamp instance : Stamps.stamp = 
+		     let val stamp = get_stamp_info instance
+		     in case (!stamp)
+			 of STAMP s => (debugmsg "getStamp:STAMP"; s)
+			  | PATH ep =>
+			    (debugmsg ("getStamp:PATH "^EntPath.entPathToString ep);
+			     (let val {stamp=s,...} = EE.lookStrEP(entEnv,ep)
 			      in stamp := STAMP s; s
-			     end
-			     handle EE.Unbound => (debugmsg "getStamp:PATH failed";
+			      end
+				  handle EE.Unbound => (debugmsg "getStamp:PATH failed";
 						   raise EE.Unbound)))
 			 | GENERATE =>
 			    let val s = mkStamp()
@@ -1335,15 +1359,19 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
 
 		val newFctBody = 
 		  (case instKind
-		    of INST_ABSTR({entities, ...} : M.strEntity) =>
-		       (fn (sign as FSIG{paramvar, bodysig, ...}, ep, _, _) =>
-			 let val fctEnt = EE.lookFctEP(entities, ep)
-			     val bodyExp = 
-				   M.ABSstr (bodysig, APPLY(CONSTfct fctEnt, 
-							 VARstr [paramvar]))
-			  in (bodyExp, NONE)
-			 end)
-
+		    of INST_ABSTR {entities,...} =>
+		       let fun f (sign as FSIG{paramvar,bodysig,...},ep,_,_) =
+			       let val fctEnt = EE.lookFctEP (entities, ep)
+				   val bodyExp = 
+				       M.ABSstr (bodysig,
+						 APPLY(CONSTfct fctEnt, 
+						       VARstr [paramvar]))
+			       in (bodyExp, NONE)
+			       end
+			     | f _ = bug "newFctBody:INST_ABSTR"
+		       in
+			   f
+		       end
 		     | INST_FMBD tps =>
 		       (fn (sign, _, _, _) => 
 			 let val i = cnt()
@@ -1364,8 +1392,13 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
 
 		fun instToTyc(ref(INST tycon),_) = tycon 
 		      (* already instantiated *)
-		  | instToTyc(r as ref(NOTINST tycon), entEnv) =
-		    (case tycon
+		  | instToTyc(r as ref(NOTINST tycon), entEnv) = let
+			fun badtycon () =(* bogus tycon *)
+			    (debugType("#instToTyc(NOTINST/bogus)",tycon);
+			     r := INST ERRORtyc;
+			     ERRORtyc)
+		    in
+		     case tycon
 		       of T.DEFtyc{tyfun=T.TYFUN{arity, body},strict,
 				   stamp,path} =>
 			   (* DEFtyc body gets instantiated here *)
@@ -1391,62 +1424,72 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
 			     (debugmsg "#instToTyc(NOTINST/DEFtyc) failed";
 			      raise EE.Unbound))
 
-			| T.GENtyc{stamp, arity, eq, path, 
-				   kind=z as T.DATATYPE {index,freetycs,stamps,
-                                                         family, root}} =>
-			  (* no coordination of stamps between mutually
-			   * recursive families of datatypes? *)
-			  (let val nstamps = 
-                                (case root
-                                  of NONE => (* this is the lead dt of family *)
-                                       Vector.map (fn _ => mkStamp()) stamps
-                                   | SOME rootev =>
-				       (* this is a secondary dt of a family,
-					* find the stamp vector for the root
-					* dt of the family, which should already
-					* have been instantiated *)
-                                       (case EE.lookTycEnt(entEnv, rootev)
-                                         of (T.GENtyc{kind=
-                                             T.DATATYPE{stamps, ...}, ...}) =>
-                                             stamps
-                                          | T.ERRORtyc => 
-					     Vector.map (fn _ => mkStamp()) stamps
-                                          | _ => 
-					    (* oops, the root instantiation
-					     * is not a datatype (see bug 1414) *)
-                                             bug "unexpected DATATYPE 354"))
-                               val s = Vector.sub(nstamps, index)
-                               val nfreetycs = 
-                                 map (MU.transTycon entEnv) freetycs
+			| T.GENtyc {stamp,arity,eq,path,kind,...} =>
+			  (case kind of
+			       z as T.DATATYPE {index,freetycs,stamps,
+                                                family, root} =>
+			       (let
+			       (* no coordination of stamps between mutually
+				* recursive families of datatypes? *)
+				   val nstamps = 
+				       (case root
+					 of NONE =>
+					    (* this is the lead dt of family *)
+					    Vector.map
+						(fn _ => mkStamp()) stamps
+					  | SOME rootev =>
+				      (* this is a secondary dt of a family,
+				       * find the stamp vector for the root
+				       * dt of the family, which should already
+				       * have been instantiated *)
+					    (case EE.lookTycEnt(entEnv, rootev)
+                                              of T.GENtyc { kind =
+						      T.DATATYPE{stamps, ...},
+							    ... } => stamps
+                                               | T.ERRORtyc => 
+						 Vector.map
+						     (fn _ => mkStamp()) stamps
+                                               | _ => 
+					(* oops, the root instantiation
+					 * is not a datatype (see bug 1414) *)
+					      bug "unexpected DATATYPE 354"))
+				   val s = Vector.sub(nstamps, index)
+				   val nfreetycs = 
+                                       map (MU.transTycon entEnv) freetycs
 
-                               val nkind = T.DATATYPE{index=index,
-                                      family=family, stamps=nstamps,
-                                      freetycs=nfreetycs, root=NONE} (* root ??? *)
+				   val nkind =
+				       T.DATATYPE{index=index,
+						  family=family,
+						  stamps=nstamps,
+						  freetycs=nfreetycs,
+						  root=NONE} (* root ??? *)
 
-			       val tc = T.GENtyc{stamp=s, arity=arity,
-					 eq=eq, path=IP.append(rpath,path),
-					 kind=nkind}
+				   val tc =
+				       T.GENtyc{stamp=s, arity=arity, eq=eq,
+						path=IP.append(rpath,path),
+						kind=nkind,stub=NONE}
 
-			    in r := INST tc;
-			       tc
-			   end
-			   handle EE.Unbound =>
-			     (debugmsg "#instToTyc(NOTINST/DATA) failed";
-			      raise EE.Unbound))
+				in
+				    r := INST tc;
+				    tc
+				end handle EE.Unbound =>
+				   (debugmsg "#instToTyc(NOTINST/DATA) failed";
+				    raise EE.Unbound))
+			     | _ => badtycon ())
 			| PATHtyc{entPath,...} =>
-			  (let val _ = debugmsg ("#instToTyc(NOTINST/PATHtyc): "^
-						 EP.entPathToString entPath)
+			  (let val _ =
+				   debugmsg ("#instToTyc(NOTINST/PATHtyc): "^
+					     EP.entPathToString entPath)
 			       val tyc = EE.lookTycEP(entEnv,entPath)
-			    in r := INST tyc;
+			   in
+			       r := INST tyc;
 			       tyc
 			   end
 			   handle EE.Unbound =>
 			     (debugmsg "#instToTyc(NOTINST/PATHtyc) failed";
 			      raise EE.Unbound))
-			| tyc => (* bogus tycon *)
-			    (debugType("#instToTyc(NOTINST/bogus)",tyc);
-			     r := INST ERRORtyc;
-			     ERRORtyc))
+			| _ => badtycon ()
+		    end
 
 		(* 
 		 * Creates an entity from the instance node found 
@@ -1470,20 +1513,23 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
 		      | FinalFct{sign as FSIG{paramvar,...},
 				 def, epath, path} =>
 			 (case !def
-			   of SOME(FCT{rlzn,...}) => FCTent rlzn 
+			   of SOME(FCT { rlzn, ... }) => FCTent rlzn
 				(*** would this case ever occur ??? ***)
 
 			    | NONE =>
-				(let val stamp = mkStamp()
-				     val (bodyExp, tpOp) =
-					 newFctBody(sign, epath, path, entEnv)
-				     val cl = CLOSURE{param=paramvar,
-						      body=bodyExp,
-						      env=entEnv}
-				  in FCTent{stamp=stamp, rpath=path,
-					    closure=cl, lambdaty=ref NONE,
-					    tycpath=tpOp}
-				 end)
+			      let val stamp = mkStamp()
+				  val (bodyExp, tpOp) =
+				      newFctBody(sign, epath, path, entEnv)
+				  val cl = CLOSURE{param=paramvar,
+						   body=bodyExp,
+						   env=entEnv}
+			      in FCTent {stamp = stamp,
+					 rpath=path,
+					 closure=cl,
+					 lambdaty=ref NONE,
+					 tycpath=tpOp,
+					 stub=NONE}
+			      end
 
 			    | _ => bug "unexpected functor def in instToStr",
 			   failuresSoFar)
@@ -1500,15 +1546,20 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
 		  * in checkTycBinding in SigMatch.  Fixes bugs 1364 and
 		  * 1432. [DBM]
 		  *)
-		 fun fixUpTycEnt (TYCspec{spec=GENtyc{kind=DATATYPE _,...},...},
-				  TYCent(tyc)) =
-		       (* possible indirect datatype repl.  See bug1432.7.sml *)
-		       TYCent(TU.unWrapDefStar tyc)
-		   | fixUpTycEnt (TYCspec{repl=true,...}, TYCent(tyc)) =
+		fun fixUpTycEnt (TYCspec { spec = GENtyc { kind, ...},
+					   repl, ... },
+				 ent as TYCent tyc) =
+		    let fun unwrap () = TYCent (TU.unWrapDefStar tyc)
+		    in
+			case kind of
+			    DATATYPE _ => unwrap ()
+		      (* possible indirect datatype repl.  See bug1432.7.sml *)
+			  | _ => if repl then unwrap ()
 		       (* direct or indirect datatype repl.  Original spec
 			* was a datatype spec. See bug1432.1.sml *)
-		       TYCent(TU.unWrapDefStar tyc)
-		   | fixUpTycEnt (_,ent) = ent
+				 else ent
+		    end
+		  | fixUpTycEnt (_, ent) = ent
 
 		 fun mkEntEnv (baseEntC) = 
 		     foldl (fn ((sym,spec),(env,failCount)) => 
@@ -1536,13 +1587,19 @@ let fun instToStr' (instance as (FinalStr{sign as SIG{closed,elements,...},
                         end)
                   else (let val _ = debugmsg "mkEntEnv: not closed";
                             val baseEntC = 
-                              (MARKeenv(mkStamp(),entEnv),failuresSoFar)
+                              (MARKeenv{stamp = mkStamp(),
+					env = entEnv,
+					stub = NONE },
+			       failuresSoFar)
                             val (ee, fc) = mkEntEnv(baseEntC)
                          in (ee, fc)
                         end)
 
-		 val strEnt={stamp=getStamp instance, rpath=rpath,
-			     entities=entEnv', lambdaty=ref NONE}
+		 val strEnt={stamp =getStamp instance,
+			     rpath=rpath,
+			     entities=entEnv',
+			     lambdaty=ref NONE,
+			     stub=NONE}
 		 val _ = debugmsg (String.concat["--instToStr': failuresSoFar = ",
 						 Int.toString failuresSoFar,
 						 ", failCount = ",
@@ -1584,22 +1641,25 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
              rpath, compInfo as {mkStamp, ...} : EU.compInfo} = 
       let val (arg_eps, res_eps) =
            (case (paramsig, bodysig)  
-             of (SIG{boundeps=ref (SOME x), ...},
-                 SIG{boundeps=ref (SOME y), ...}) => (x, y)
+             of (SIG psg, SIG bsg) =>
+		(case (psg, bsg)
+		  of ({boundeps=ref (SOME x), ...},
+                      {boundeps=ref (SOME y), ...}) => (x, y)
 
-              | (SIG{boundeps=ref _, ...}, SIG{boundeps=ref z, ...}) =>
-                   let val region=SourceMap.nullRegion
-                       val (rlzn, _, _, args, _) = 
-                        instGeneric{sign=paramsig, entEnv=entEnv, rpath=rpath, 
-                                    instKind=INST_PARAM (DI.top), 
-                                    region=region, compInfo=compInfo}
+		   | ({boundeps=ref _, ...}, {boundeps=ref z, ...}) =>
+                     let val region=SourceMap.nullRegion
+			 val (rlzn, _, _, args, _) = 
+                             instGeneric{sign=paramsig, entEnv=entEnv,
+					 rpath=rpath, 
+					 instKind=INST_PARAM (DI.top), 
+					 region=region, compInfo=compInfo}
                                      (*
                                       * We use DI.top temporarily,
                                       * the tycpath result is discarded 
                                       * anyway. (ZHONG)
                                       *)
 
-                    in (case z 
+                     in (case z 
                          of SOME u => (args, u)
                           | NONE =>
                              let val entEnv' = 
@@ -1619,7 +1679,7 @@ and getTkFct{sign as M.FSIG{paramvar, paramsig, bodysig, ...}, entEnv,
 
                               in (args, res)
                              end)
-                   end
+                     end)
               | _ => ([], []))
 
           val arg_tks = map #2 arg_eps
@@ -1662,9 +1722,11 @@ and instGeneric{sign, entEnv, instKind, rpath, region,
 
       (* let's memoize the resulting boundeps list *)
       val _ = case sign 
-               of M.SIG{boundeps as ref NONE, ...} => 
-                    (boundeps := SOME all_eps)
-                | _ => ()
+               of M.SIG {boundeps,...} =>
+		  (case boundeps of
+		       r as ref NONE => r := SOME all_eps
+		     | _ => ())
+		| _ => ()
 
    (* SML96: eliminate eqAnalyze -- not required 
       (* the eqAnalyze code needs major clean-up ! *)
@@ -1720,7 +1782,7 @@ fun instParam{sign, entEnv, depth, rpath, region, compInfo} =
         = instGeneric{sign=sign, entEnv=entEnv, instKind=INST_PARAM depth,
                       rpath=rpath, region=region, compInfo=compInfo}
 
-      fun h1(T.GENtyc{kind=T.FLEXTYC tp, ...}) = tp
+      fun h1(T.GENtyc { kind = T.FLEXTYC tp, ... }) = tp
         | h1 _ = bug "unexpected h1 in instParam"
 
       val tps = (map h1 tycs) @ fcttps
@@ -1728,11 +1790,11 @@ fun instParam{sign, entEnv, depth, rpath, region, compInfo} =
   end
 
 (*** fetching the list of tycpaths for a particular structure ***)
-fun getTycPaths{sign as M.SIG{boundeps, ...}, 
-                rlzn as {entities, ...}: M.strEntity, entEnv,
+fun getTycPaths{sign as M.SIG {boundeps,...}, rlzn : M.strEntity, entEnv,
 	        compInfo as {error,...}: EU.compInfo} =
-      let val epslist = 
-            case (!boundeps)
+      let val { entities, ... } = rlzn
+	  val epslist = 
+           case !boundeps
              of SOME x => x
               | NONE => 
                   let val (_, _, _, all_eps, _) = 
@@ -1751,11 +1813,9 @@ fun getTycPaths{sign as M.SIG{boundeps, ...},
           fun getTps (ep, _) = 
             let val ent = EE.lookEP(entities, ep)
              in case ent
-                 of M.TYCent (T.GENtyc{kind=T.FLEXTYC tp, ...}) => tp
+                 of M.TYCent (T.GENtyc { kind = T.FLEXTYC tp, ... }) => tp
                   | M.TYCent tyc => T.TP_TYC tyc
-                  | M.FCTent {tycpath=SOME tp, ...} => tp
-                  | M.FCTent {tycpath=NONE, ...} =>
-                      bug "unexpected functor entity in getTps"
+		  | M.FCTent {tycpath = SOME tp,...} => tp
                   | M.ERRORent => T.TP_TYC T.ERRORtyc
                   | _ => bug "unexpected entities in getTps"
             end

@@ -2,6 +2,12 @@ BOOT: the location of the latest boot files.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 00/03/30 18:00:00
+Tag: blume_main_v110p26p2_0
+Version: 110.26.2
+Location: ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.26.2-autofetch/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 00/03/09 10:23:53
 Tag: blume_main_v110p26p1_0
 Version: 110.26.1

@@ -32,7 +32,7 @@ and tvKind
   | OPEN of
      {depth: int, eq: bool, kind: openTvKind} 
   | UBOUND of (* explicit type variables *)
-     {depth: int, eq: bool, name: Symbol.symbol}
+     {depth: int, eq: bool, name: S.symbol}
   | LITERAL of (* type of a literal *)
      {kind: litKind, region: SourceMap.region}
   | SCHEME of bool (* overloaded operator type scheme variable
@@ -60,12 +60,7 @@ and tyckind
   | TEMP                          (* used only during datatype elaborations *)
 
 and tycon
-  = GENtyc of
-      {stamp : ST.stamp, 
-       arity : int, 
-       eq    : eqprop ref,
-       kind  : tyckind, 
-       path  : IP.path}
+  = GENtyc of gtrec
   | DEFtyc of
       {stamp : ST.stamp, 
        tyfun : tyfun, 
@@ -113,6 +108,18 @@ and dtypeFamily =
    members: dtmember vector,
    lambdatyc: (LT.tyc * DI.depth) option ref}
 
+and stubinfo =
+    {owner : PersStamps.persstamp,
+     lib   : bool}
+
+and gtrec =
+    {stamp : ST.stamp, 
+     arity : int, 
+     eq    : eqprop ref,
+     kind  : tyckind,
+     path  : IP.path,
+     stub  : stubinfo option}
+
 fun mkTyvar(kind: tvKind) : tyvar = ref kind
 
 fun copyTyvar(tv: tyvar) = ref(!tv)
@@ -130,5 +137,3 @@ datatype datacon (* data constructors *)
 
 end (* local *)
 end (* structure Types *)
-
-

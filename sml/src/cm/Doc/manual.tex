@@ -13,7 +13,7 @@ Kyoto University}
 
 \title{{\bf CM}\\
 The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version 110.26 and later)} \\
+{\it\small (for SML/NJ version 110.27 and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
@@ -768,53 +768,51 @@ The autoloader plays a central role for the interactive system.
 Unlike in earlier versions, it cannot be turned off since it provides
 many of the standard pre-defined top-level bindings.
 
-The autoloader is a convenient tool for virtually ``loading'' an
+The autoloader is a convenient mechanism for virtually ``loading'' an
 entire library without incurring an undue increase in memory
 consumption for library modules that are not actually being used.
 
 \subsection{Sharing of state}
 \label{sec:sharing}
 
-Whenever it is legal, CM lets multiple invocations of {\tt CM.make} or
-{\tt CM.autoload} share dynamic state created by link-time effects.
-Of course, sharing is not possible (and hence not ``legal'') if the
-compilation unit in question has recently been recompiled or depends
-on another compilation unit whose code has recently been re-executed.
-The programmer can explicitly mark certain ML files as {\em shared},
-in which case CM will issue a warning whenever the unit's code has to
-be re-executed.
+Whenever it is legal to do so, CM lets multiple invocations of {\tt
+CM.make} or {\tt CM.autoload} share dynamic state created by link-time
+effects.  Of course, sharing is not possible (and hence not ``legal'')
+if the compilation unit in question has recently been recompiled or
+depends on another compilation unit whose code has recently been
+re-executed.  The programmer can explicitly mark certain ML files as
+{\em shared}, in which case CM will issue a warning whenever the
+unit's code has to be re-executed.
 
 State created by compilation units marked as {\em private} is never
 shared across multiple calls to {\tt CM.make} or {\tt CM.autoload}.
-However, each such call incurs an associated {\em traversal} of the
-dependency graph, and during such a traversal each compilation unit
-will be executed at most once.  In other words, the same ``program''
-will not see multiple instantiations of the same compilation unit
-(where ``program'' refers to the code managed by one call to {\tt
-CM.make} or {\tt CM.autoload}).
+To understand this behavior it is useful to introduce the notion of a
+{\em traversal}.  A traversal is the process of traversing the
+dependency graph on behalf of {\tt CM.make} or {\tt CM.autoload}.
+Several traversals can be executed interleaved with each other because
+a {\tt CM.autoload} traversal normally stays suspended and is
+performed incrementally driven by input from the interactive top level
+loop.
 
-As long as only {\tt CM.make} is involved, this behavior is not
-difficult to describe since each traversal will have completed when
-the call to {\tt CM.make} returns.  However, that is not true in the
-case of {\tt CM.autoload}.  Like {\tt CM.make}, {\tt CM.autoload}
-initiates a traversal. But unlike in the case of {\tt CM.make}, that
-traversal remains ``suspended'' and will be performed incrementally as
-necessary---driven by code entered at the interactive top level.  And
-yet, it is still the case that each compilation unit will be linked at
-most once during this traversal and private state will not be confused
-with private state of other traversals that might be active at the
-same time.
+As far as sharing is concerned, the rule is that during one traversal
+each compilation unit will be executed at most once.  In other words,
+the same ``program'' will not see multiple instantiations of the same
+compilation unit (where ``program'' refers to the code managed by one
+call to {\tt CM.make} or {\tt CM.autoload}).  Each compilation unit
+will be linked at most once during a traversal and private state
+will not be confused with private state of other traversals that might
+be active at the same time.
 
 % Need a good example here.
 
 \subsubsection*{Sharing annotations}
 
-ML source files can be specified as being either {\em private} or {\em
-shared}.  This is done by adding a {\em member class} specification
+ML source files can be specified as being {\em private} or {\em
+shared}.  This is done by adding a {\em tool parameter} specification
 for the file in the library- or group description file (see
 Section~\ref{sec:classes}).  In other words, to mark an ML file as
-{\em private}, follow the file name with a colon {\bf :} and the word
-{\tt private}.  For {\em shared} ML files, replace {\tt private} with
+{\em private}, follow the file name with the word {\tt private} in
+parentheses.  For {\em shared} ML files, replace {\tt private} with
 {\tt shared}.
 
 An ML source file that is not annotated will typically be treated as
@@ -825,10 +823,10 @@ private} source.
 \subsubsection*{Sharing with the interactive system}
 
 The SML/NJ interactive system, which includes the compiler, is itself
-created by linking various libraries, and some of these libraries can
-also be used in user programs.  Examples are the Standard ML Basis
-Library {\tt basis.cm}, the SML/NJ library {\tt smlnj-lib.cm}, and the
-ML-Yacc library {\tt ml-yacc-lib.cm}.
+created by linking modules from various libraries. Some of these
+libraries can also be used in user programs.  Examples are the
+Standard ML Basis Library {\tt basis.cm}, the SML/NJ library {\tt
+smlnj-lib.cm}, and the ML-Yacc library {\tt ml-yacc-lib.cm}.
 
 If a module from a library is used by both the interactive system and
 a user program running under control of the interactive system, then
@@ -837,47 +835,250 @@ CM will let them share code and dynamic state.
 \section{Member classes and tools}
 \label{sec:classes}
 
-In addition to using existing ML source files, CM can also invoke
-tools that generate ML source code.  Examples are
-program-generating programs such as ML-Yacc~\cite{tarditi90:yacc} or
-ML-Lex~\cite{appel89:lex}, literate programming tools like
-noweb~\cite{ramsey:simplified}, but also more generic ``generators''
-such as the checkout program {\bf co} for RCS archives.
-(Currently, CM knows ML-Yacc, ML-Lex, and ML-Burg, but other tools can
-be added easily.)
+Most members of groups and libraries are either plain ML files or
+other description files.  However, it is possible to incorporate other
+types of files---as long as their contents can in some way be expanded
+into ML code or CM descriptions.  The expansion is carried out by CM's
+{\it tools} facility.
 
-Typically, CM determines which tool to use by looking at clues like
-the file name suffix.  However, it is also possible to explicitly tell
-CM which tool to use by specifying the {\em member class} of the
-source in the description file.  For this, the file name is followed
-by a colon {\bf :} and the name of the member class.  Class names are
-case-insensitive.
+CM maintains an internal registry of {\em classes} and associated {\em
+rules}.  Each class represents the set of source files that its
+corresponding rule is applicable to.  For example, the class {\tt
+mlyacc} is responsible for files that contain input for the parser
+generator ML-Yacc~\cite{tarditi90:yacc}.  The rule for {\tt mlyacc}
+takes care of expanding an ML-Yacc specifications {\tt foo.grm} by
+invoking the auxiliary program {\tt ml-yacc}.  The resulting ML files
+{\tt foo.grm.sig} and {\tt foo.grm.sml} are then used as if their
+names had directly been specified in place of {\tt foo.grm}.
 
-In addition to genuine tool classes, there are a few member classes
+CM knows a small number of built-in classes.  In many situations these
+classes will be sufficient, but in more complicated cases it may be
+worthwhile to add a new class.  Since class rules are programmed in
+ML, adding a class is not as simple a matter as writing a rule for
+{\sc Unix}' {\tt make} program~\cite{feldman79}.  Of course,
+using ML has also advantages because it keeps CM extremely flexible in
+what rules can do.  Moreover, it is not necessary to learn yet another
+``little language'' in order to be able to program CM's tool facility.
+
+When looking at the member of a description file, CM determines which
+tool to use by looking at clues like the file name suffix.  However,
+it is also possible to specify the class of a member explicitly.  For
+this, the member name is followed by a colon {\bf :} and the name of
+the member class.  All class names are case-insensitive.
+
+In addition to genuine tool classes, there are two member classes
 that refer to facilities internal to CM: {\tt sml} is the class of
-ordinary ML source files without sharing annotation, {\tt shared} is
-the class of ML source files whose dynamic state must be shared across
-invocations of {\tt CM.make} or {\tt CM.autoload}, {\tt private} is
-the class of ML source files whose dynamic state cannot be shared
-across invocations of {\tt CM.make} or {\tt CM.autoload}, and {\tt cm}
-is the class of CM library or group description files.  Known tool
-classes currently are {\tt mlyacc} for ML-Yacc sources, {\tt mllex}
-for ML-Lex sources, and {\tt mlburg} for ML-Burg
-sources~\cite{mlburg93}.
+ordinary ML source files and {\tt cm} is the class of CM library or
+group description files.
 
-CM automatically classifies file with a {\tt .sml} or {\tt .sig} suffix
-as (unannotated) ML-source, file names ending in {\tt .cm}] as CM
-descriptions, {\tt .grm} or {\tt .y} files as input to ML-Yacc, {\tt
-.lex} or {\tt .l} as input to ML-Lex, and file names ending in {\tt
-.burg} as ML-Burg specifications.
+CM automatically classifies file with a {\tt .sml} or {\tt .sig}
+suffix as ML-source, file names ending in {\tt .cm}] as CM
+descriptions.
+
+\subsection{Tool parameters}
+
+In many cases the name of the member that caused a rule to be invoked
+is the only input to that rule.  However, rules can be written in such
+a way that they take additional parameters.  Those parameters, if
+present, must be specified in the CM description file between
+parentheses following the name of the member and the optional member
+class.
+
+As far as CM's core tool mechanism is concerned, tool parameters are
+uninterpreted---they are just list of strings.  Each rule is
+responsible for assigning meaning to its own parameters.
+
+The {\tt sml} class accepts one parameter which must be either the
+word {\tt shared} or the word {\tt private}.  If {\tt shared} is
+specified, then dynamic state created by the compilation unit at
+link-time must be shared across invocations of {\tt CM.make} or {\tt
+CM.autoload}.  As explained earlier (Section~\ref{sec:sharing}), the
+{\tt private} annotation means that dynamic state cannot be shared
+across such calls to {\tt CM.make} or {\tt CM.autoload}.
+
+The {\tt cm} class does not accept any parameters.
+
+\subsection{Built-in tools}
+
+\subsubsection*{The ML-Yacc tool}
+
+The ML-Yacc tool is responsible for files that are input to the
+ML-Yacc parser generator.  Its class name is {\tt mlyacc}.  Recognized
+file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
+$f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
+both of which are always treated as ML source files.  Parameters are
+passed on without change to the $f${\tt .sml} file but not to the
+$f${\tt .sig} file.
+
+The tool invokes the {\tt ml-yacc} command if the targets are
+``outdated''.  A target is outdated if it is missing or older than the
+source.  Unless anchored using the path anchor mechanism (see
+Section~\ref{sec:anchors}), the command {\tt ml-yacc} will be located
+using the operating system's path search mechanism (e.g., the {\tt
+\$PATH} environment variable).
+
+\subsubsection*{ML-Lex}
+
+The ML-Lex tool governs files that are input to the ML-Lex lexical
+analyzer generator~\cite{appel89:lex}.  Its class name is {\tt mllex}.
+Recognized file name suffixes are {\tt .lex} and {\tt .l}.  For a
+source file $f$, the tool produces one targets $f${\tt .sml} which
+will always be treated as ML source code.  Tool parameters are passed
+on without change to that file.
+
+The tool invokes the {\tt ml-lex} command if the target is outdated
+(just like in the case of ML-Yacc).  Unless anchored using the path
+anchor mechanism (see Section~\ref{sec:anchors}), the command {\tt
+ml-lex} will be located using the operating system's path search
+mechanism (e.g., the {\tt \$PATH} environment variable).
+
+\subsubsection*{ML-Burg}
+
+The ML-Burg tool deals with files that are input to the ML-Burg
+code-generater generator~\cite{mlburg93}.  Its class name is {\tt
+mlburg}.  The only recognized file name suffix is {\tt .burg}.  For a
+source file $f${\tt .burg}, the tool produces one targets $f${\tt
+.sml} which will always be treated as ML source code.  Any tool
+parameters are passed on without change to the target.
+
+The tool invokes the {\tt ml-burg} command if the target is outdated.
+Unless anchored using the path anchor mechanism (see
+Section~\ref{sec:anchors}), the command {\tt ml-lex} will be located
+using the operating system's path search mechanism (e.g., the {\tt
+\$PATH} environment variable).
+
+\subsubsection*{Shell}
+
+The Shell tool can be used to specify arbitrary shell commands to be
+invoked on behalf of a given file.  The name of the class is {\tt
+shell}.  There are no recognized file name suffixes.  This means that
+in order to use the shell tool one must always specify the {\tt shell}
+member class explicitly.
+
+The rule for the {\tt shell} class relies on tool parameters.  The
+parameter list must be given in parentheses and follow the {\tt shell}
+class specification.
+
+Consider the following example:
+
+\begin{verbatim}
+  foo.pp : shell (target=foo.sml options=shared
+                        /lib/cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+This member specification says that file {\tt foo.sml} can be obtained
+from {\tt foo.pp} by running it through the C preprocessor {\tt cpp}.
+The fact that the target file is given as a tool parameter implies
+that the member itself is the source.  The {\tt options=} parameter
+lists the tool parameters to be used for that target.  The command
+line itself is given by the remaining non-keyword parameters.  Here, a
+single {\bf \%s} is replaced by the source file name, and a single {\bf
+\%t} is replaced by the target file name.
+
+In the specification one can swap the positions of source and target
+(i.e., let member name be the target) by using a {\tt source=}
+parameter:
+
+\begin{verbatim}
+  foo.sml : shell (source=foo.pp options=shared
+                         /lib/cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+Exactly one of the {\tt source=} and {\tt target=} parameters must be
+specified; the other one is taken to be the member name itself.  The
+target class can be given by writing a {\tt class=} parameter.
+
+If the member name is written using {\em native path syntax}, then the
+source- or target-name in the parameter list is also considered to be
+using native syntax.  Although it is possible to enclose tool
+parameters in double quotes to avoid tokenization at delimiting
+characters, in this case this does not have the effect of switching
+from standard to native syntax.
+
+For example, if one were working on a Win32 system and the target file
+is supposed to be in the root directory on volume {\tt D:},
+then one must use native syntax to write it.  One way of doing this
+would be:
+
+\begin{verbatim}
+  "D:\\foo.sml" : shell (source=foo.pp options=shared
+                               cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+\noindent As a result, {\tt foo.pp} is also interpreted as a native
+path name (although in this case it does not make a difference).  Had
+we used the {\tt target=} version from above, it would {\em not} be
+sufficient to do the following:
+
+\begin{verbatim}
+  foo.pp : shell ("target=D:\\foo.sml" options=shared
+                                 cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+\noindent Since the member name {\tt foo.pp} is in standard syntax,
+the target name will also be interpreted this way regardless of the
+fact that the parameter uses double quotes.  The correct specification
+is:
+
+\begin{verbatim}
+  "foo.pp" : shell ("target=D:\\foo.sml" options=shared
+                                cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+\noindent Notice that double quotes around the target parameter are still
+necessary because the name contains delimiters.
+
+The shell tool invokes its command whenever the target is outdated
+with respect to the source.
+
+\subsubsection*{Make}
+
+The Make tool (class {\tt make}) can (almost) be seen as a specialized
+version of the Shell tool.  It has no source and one target (the
+member itself) which is always considered outdated.  As with the Shell
+tool, it is possible to specify target class and parameters using the
+{\tt class=} and {\tt options=} keyword parameters.
+
+The tool invokes the shell command {\tt make} on the target.  Unless
+anchored using the path anchor mechanism~\ref{sec:anchors}, the
+command will be located using the operating system's path search
+mechanism (e.g., the {\tt \$PATH} environment variable).
+
+Any tool parameters beyond the initial {\tt class=} and {\tt options=}
+are given as additional command line arguments to {\tt make}.  The
+target name is always the last command line argument.
+
+Example:
+
+\begin{verbatim}
+  bar-grm : make (class=mlyacc -f bar-grm.mk)
+\end{verbatim}
+
+Here, file {\tt bar-grm} is generated (and kept up-to-date) by
+invoking the command:
+\begin{verbatim}
+make -f bar-grm.mk bar-grm
+\end{verbatim}
+\noindent The target file is then treated as input for {\tt ml-yacc}.
+
+Cascading Shell- and Make-tools is tricky but possible.  Here is an
+example that first uses Make to build {\tt bar.pp} and then filters
+the contens of {\tt bar.pp} through the C preprocessor to arrive at
+{\tt bar.sml}:
+
+\begin{verbatim}
+  bar.pp : make (class=shell
+                     "options=target=bar.sml cpp -Dbar=baz %s %t"
+                 -f bar-pp.mk)
+\end{verbatim}
 
 \section{Conditional compilation}
 \label{sec:preproc}
 
-In its description files, CM offers a simple conditional
-compilation facility inspired by the pre-processor for the C
-language~\cite{k&r2}.  However, it is not really a pre-processor, and
-the syntax of the controlling expressions is borrowed from SML.
+In its description files, CM offers a simple conditional compilation
+facility inspired by the pre-processor for the C language~\cite{k&r2}.
+However, it is not really a {\it pre}-processor, and the syntax of the
+controlling expressions is borrowed from SML.
 
 Sequences of members can be guarded by {\tt \#if}-{\tt \#endif}
 brackets with optional {\tt \#elif} and {\tt \#else} lines in between.
@@ -1174,8 +1375,10 @@ val _ = Tools.registerStdShellCmdTool
     suffixes = ["ngrm", "ny"],
     cmdStdPath = "new-ml-yacc",
     template = NONE,
-    extensionStyle = Tools.EXTEND [("sig", SOME "sml"),
-                                   ("sml", SOME "sml")] }
+    extensionStyle =
+        Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
+                      ("sml", SOME "sml", fn x => x)],
+    dflopts = NONE }
 \end{verbatim}
 
 This code can either be packaged as a CM library or entered at the
@@ -1207,13 +1410,21 @@ The string is taken verbatim except for embedded \% format specifiers:
   \begin{description}\setlength{\itemsep}{0pt}
   \item[\%c] the command name (i.e., the elaboration of {\tt cmdStdPath})
   \item[\%s] the source file name in native pathname syntax
-  \item[\%$n$] the $n$-th target file in native pathname syntax; \\
+  \item[\%$n$t] the $n$-th target file in native pathname syntax; \\
     ($n$ is specified as a decimal number, counting starts at $1$, and
     each target file name is constructed from the corresponding {\tt
-    extensionStyle} entry; if $n$ exceeds the number of targets then
-    \%$n$ expands into itself) 
+    extensionStyle} entry; if $n$ is $0$ (or missing), then all
+    targets---separated by single spaces---are inserted;
+    if $n$ is not in the range between $0$ and the number of available
+    targets, then {\bf \%$n$t} expands into itself) 
+  \item[\%$n$o] the $n$-th option; \\
+    ($n$ is specified as a decimal number, counting starts at $1$;
+     if $n$ is $0$ (or missing), then all options---separated by single
+     spaces---are inserted;
+     if $n$ is not in the range between $0$ and the number of available
+     options, then {\bf \%$n$o} expands into itself) 
   \item[\%$x$] the character $x$ (where $x$ is neither {\bf c}, nor
-    {\bf s}, nor any decimal digit)
+    {\bf s}, {\bf t}, or {\bf o})
   \end{description}
 If no template string is given it defaults to {\tt "\%c \%s"}.
 \item[extensionStyle] a specification of how the names of files
@@ -1222,11 +1433,13 @@ Currently, there are two possible cases:
 \begin{enumerate}
 \item ``{\tt Tools.EXTEND} $l$'' says that if the tool source file is
 {\it file} then for each suffix {\it sfx} in {\tt (map \#1 $l$)} there
-will be one tool output file named {\it file}{\tt .}{\it sfx}.
-The list $l$ consists of pairs where the first component specifies the
-suffix string and where the second component can be used to
-(optionally) specify the member class name of the corresponding
-derived file.
+will be one tool output file named {\it file}{\tt .}{\it sfx}.  The
+list $l$ consists of triplets where the first component specifies the
+suffix string, where the second component optionally specifies the
+member class name of the corresponding derived file, and where the
+third component is a function to calculate tool options for the 
+target from those of the source. (Argument and result type of these
+functions is {\tt string list option}.)
 \item ``{\tt Tools.REPLACE }$(l_1, l_2)$'' specifies that given the
 base name {\it base} there will be one tool output file {\it base}{\tt
 .}{\it sfx} for each suffix {\it sfx} in {\tt (map \#1 $l_2$)}.  Here,
@@ -1236,8 +1449,13 @@ the name without that suffix.  Otherwise, the whole file name is taken
 as {\it base} (just like in the case of {\tt Tools.EXTEND}).  As with
 {\tt Tools.EXTEND}, the second components of the elements of $l_2$ can
 optionally specify the member class name of the corresponding derived
-file.
+file and the third component maps source options to target options.
 \end{enumerate}
+\item[dflopts] an optional list of strings which is used for
+substituting {\bf \%$n$o} fields in {\tt template} (see above) if no
+options were specified.  (Note that the value of {\tt dflopts} is never
+passed to the option mappers in {\tt Tools.EXTEND} or {\tt
+Tools.REPLACE}.)
 \end{description}
 
 Less common kinds of rules can also be defined using the generic

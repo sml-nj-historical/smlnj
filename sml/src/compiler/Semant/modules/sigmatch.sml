@@ -110,6 +110,9 @@ fun bug msg = EM.impossible ("SigMatch:" ^ msg)
 val nth = List.nth
 fun for l f = app f l
 
+fun unTYCent (TYCent x) = x
+  | unTYCent _ = bug "unTYCent"
+
 fun symbolsToString []  = ""
   | symbolsToString [n] = S.name n
   | symbolsToString (n::r) =
@@ -222,16 +225,15 @@ fun eqvTnspTy (spec, actual, dinfo) : (ty list * tyvar list) =
  *          produce an entPath.                                           *
  *                                                                        *
  **************************************************************************)
-fun matchStr1(specSig as SIG{closed, fctflag, stamp=sigStamp, elements=sigElements, ...},
-              str as STR{sign = SIG{elements=strElements, 
-                                    stamp=strSigStamp, ...},
-                         rlzn = {stamp=strStamp, entities=strEntEnv, ...}, 
-                         access = rootAcc, info=rootInfo},
+fun matchStr1(specSig as SIG{stamp=sigStamp,closed,fctflag,
+			     elements=sigElements,...},
+              str as STR { sign = SIG{stamp=strSigStamp,
+				      elements=strElements,...},
+			   rlzn as {stamp=strStamp,entities=strEntEnv,...},
+			   access = rootAcc, info = rootInfo },
               strName : S.symbol, depth, matchEntEnv, 
               epath: EP.entVar list, rpath: IP.path, statenv, region,
-	      compInfo as {mkStamp, mkLvar=mkv, error, ...}: EU.compInfo) =
-
-let 
+	      compInfo as {mkStamp, mkLvar=mkv, error, ...}: EU.compInfo) = let
 
 val err = error region
 val _ = let fun h pps sign =PPModules.ppSignature pps (sign,statenv,6)
@@ -282,7 +284,10 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
   | checkTycBinding(specTycon,strTycon,entEnv) =
   let val specName = S.name(TU.tycName specTycon)
    in case specTycon
-       of GENtyc{stamp=s,arity,kind=specKind,eq=ref eqprop,...} =>
+       of GENtyc {stamp=s,arity,kind=specKind,eq=ref eqprop,...} => let
+	      fun no_datatype () =
+		  complain'("type "^specName^" must be a datatype")
+	  in
             if arity <> TU.tyconArity strTycon
             then complain' ("tycon arity for " ^ specName
                             ^ " does not match specified arity")
@@ -298,25 +303,28 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
 		      * The unwrapping of datatype relicants should be
 		      * performed in Instantiate, not here.
 		      *)
-                   of (DATATYPE{index,family={members,...} ,...},
-                       GENtyc{arity=a',kind=DATATYPE{index=index',
-                              family={members=members',...}, ...},
-                              ...}) =>
-                         let val specDconSig = #dcons(Vector.sub(members,index))
-                             val strDconSig = #dcons(Vector.sub(members',index'))
-                             val specnames = map #name specDconSig
-                             val strnames = map #name strDconSig
+                   of (DATATYPE{index,family={members,...},...},
+		       GENtyc {arity=a',kind,...}) =>
+		   (case kind of
+			DATATYPE{index=index', family={members=members',...},
+				 ...} =>
+			let val specDconSig = #dcons(Vector.sub(members,index))
+                            val strDconSig =
+				#dcons(Vector.sub(members',index'))
+                            val specnames = map #name specDconSig
+                            val strnames = map #name strDconSig
 
-                             val _ = app (fn s => 
+                            val _ = app (fn s => 
                                             (debugmsg (S.name s))) specnames
-                             val _ = debugmsg "******"
-                             val _ = app (fn s => 
+                            val _ = debugmsg "******"
+                            val _ = app (fn s => 
                                             (debugmsg (S.name s))) strnames
 
-                          in case compareDcons (specnames, strnames)
-                              of ([],[]) => ()
-                               | (s_only, a_only) =>
-                                   complain'(concat(List.concat
+                        in
+			    case compareDcons (specnames, strnames)
+                             of ([],[]) => ()
+                              | (s_only, a_only) =>
+                                complain'(concat(List.concat
                                     [["datatype ",specName,
                                       " does not match specification"],
                                      case s_only
@@ -329,9 +337,9 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
                                        | _  => 
                                           ["\n   constructors in actual only: ",
                                            symbolsToString a_only]]))
-                         end
-                    | (DATATYPE _, _) => 
-                         complain'("type "^specName^" must be a datatype")
+                        end
+		      | _ => no_datatype ())
+                    | (DATATYPE _, _) => no_datatype ()
                     | (FORMAL, _) =>
                          if eqprop=YES andalso not(EqTypes.isEqTycon strTycon)
                          then complain'("type " ^ specName ^
@@ -343,7 +351,7 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
                           debugPrint(debugging)("strTycon: ",
                           PPType.ppTycon statenv, strTycon);
                           bug "checkTycBinding 1" ))
-
+	  end
         | DEFtyc{tyfun=TYFUN{arity,body},strict,stamp,path} => 
             let val ntyfun = TYFUN{arity=arity,body=MU.transType entEnv body}
                 val specTycon' = DEFtyc{tyfun=ntyfun,strict=strict,
@@ -375,8 +383,10 @@ fun lookStr (elements,entEnv) (SP.SPATH spath) : (M.Signature * M.entity) =
             ((case MU.getSpec(elements,sym)
                of STRspec{sign=SIG{elements,...},entVar,...} =>
                     (case EE.look(entEnv,entVar)
-                      of STRent{entities,...} => 
-                   (debugmsg ("$lookStr.2: "^S.name sym^", "^EP.entVarToString entVar);			  loop(rest,elements,entities))
+                      of STRent {entities,...} =>
+			 (debugmsg ("$lookStr.2: "^S.name sym^", "^
+				    EP.entVarToString entVar);
+		          loop(rest,elements,entities))
 		       | ERRORent => (ERRORsig,ERRORent)
                        | _ => bug "lookStr 2a")
                 | _ => bug "lookStr 2b")
@@ -402,7 +412,7 @@ fun lookTyc (elements,entEnv) (SP.SPATH spath) : T.tycon =
             ((case MU.getSpec(elements,sym)
                of STRspec{sign=SIG{elements,...},entVar,...} =>
                  (case EE.look(entEnv,entVar)
-                   of STRent{entities,...} => loop(rest,elements,entities)
+                   of STRent {entities,...} => loop(rest,elements,entities)
 		    | ERRORent => ERRORtyc
                     | _ => bug "lookTyc 2a")
                 | _ => bug "lookTyc 2b")
@@ -416,8 +426,7 @@ fun lookTyc (elements,entEnv) (SP.SPATH spath) : T.tycon =
 (*** verify whether all the sharing constraints are satisfied ***)
 fun checkSharing(sign as ERRORsig, entEnv) = ()
       (* don't do anything if an error has occured, resulting in an ERRORsig *)
-  | checkSharing(sign as SIG{elements, typsharing, strsharing,...},
-		 entEnv) =
+  | checkSharing(sign as SIG{elements,typsharing,strsharing,...}, entEnv) =
       let fun errmsg sp x = SP.toString x ^ " # " ^ SP.toString sp
 
 	  fun eqTyc(_,ERRORtyc) = true
@@ -427,8 +436,10 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
           val lookStr = lookStr (elements,entEnv)
 
 
-	  fun commonElements(SIG{elements=elems1,...},SIG{elements=elems2,...}) =
-	      let fun elemGt ((s1,_),(s2,_)) = S.symbolGt(s1,s2)
+	  fun commonElements(SIG sg1, SIG sg2) =
+	      let val elems1 = #elements sg1
+		  val elems2 = #elements sg2
+		  fun elemGt ((s1,_),(s2,_)) = S.symbolGt(s1,s2)
 		  val elems1 = ListMergeSort.sort elemGt elems1
 	          val elems2 = ListMergeSort.sort elemGt elems2
 		  fun intersect(e1 as ((s1,spec1)::rest1),
@@ -449,55 +460,60 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 	  fun compStr((p1,(sign1,ent1)),
 		      (p2,(sign2,ent2))) = 
 	       (case (ent1,ent2)
-		  of (STRent{stamp=s1,entities=ee1,...},
-		      STRent{stamp=s2,entities=ee2,...}) =>
-		      if ST.eq(s1,s2) then () (* shortcut! *)
-		      else if MU.eqSign(sign1,sign2) then
-			     let val _ = debugmsg "$compStr: equal signs"
-				 val SIG{elements,...} = sign1
-			      in for elements (fn 
-				    (sym,TYCspec{entVar,...}) => 
-				      let val TYCent tyc1 = EE.look(ee1,entVar)
-				          val TYCent tyc2 = EE.look(ee2,entVar)
-				       in if eqTyc(tyc1,tyc2) then ()
-					  else complain(
-					        concat["implied type sharing violation: ",
-						       errmsg (SP.extend(p1,sym))
+		  of (STRent {stamp = s1, entities = ee1, ... },
+		      STRent {stamp = s2, entities = ee2, ... }) =>
+		     if ST.eq(s1,s2) then () (* shortcut! *)
+		     else if MU.eqSign(sign1,sign2) then
+			 let val _ = debugmsg "$compStr: equal signs"
+			     val { elements, ... } =
+				 case sign1 of SIG sg => sg
+					     | _ => bug "compStr:SIG"
+			 in for elements (fn 
+				(sym,TYCspec{entVar,...}) => 
+				let val tyc1 =
+					unTYCent (EE.look(ee1,entVar))
+				    val tyc2 =
+					unTYCent (EE.look(ee2,entVar))
+				in if eqTyc(tyc1,tyc2) then ()
+				   else complain(
+				     concat["implied type sharing violation: ",
+					    errmsg (SP.extend(p1,sym))
+						   (SP.extend(p2,sym))])
+				end
+			      | (sym,STRspec{entVar,sign,...}) => 
+				let val ent1' = EE.look(ee1,entVar)
+				    val ent2' = EE.look(ee2,entVar)
+				in compStr((SP.extend(p1,sym),(sign,ent1')),
+					   (SP.extend(p2,sym),(sign,ent2')))
+				end
+			      | _ => ())
+			 end
+		     else
+			 let val _ = debugmsg "$compStr: unequal signs"
+			     val common = commonElements(sign1,sign2)
+			 in for common (fn 
+			      (sym,TYCspec{entVar=v1,...},
+			       TYCspec{entVar=v2,...}) =>
+			      let val tyc1 = unTYCent (EE.look(ee1,v1))
+				  val tyc2 = unTYCent (EE.look(ee2,v2))
+			      in if eqTyc(tyc1,tyc2) then ()
+				 else complain(
+					   concat["type sharing violation: ",
+						  errmsg (SP.extend(p1,sym))
 						         (SP.extend(p2,sym))])
-				      end
-				  | (sym,STRspec{entVar,sign,...}) => 
-				      let val ent1' = EE.look(ee1,entVar)
-				          val ent2' = EE.look(ee2,entVar)
-				       in compStr((SP.extend(p1,sym),(sign,ent1')),
-						  (SP.extend(p2,sym),(sign,ent2')))
-				      end
-				  | _ => ())
-			     end
-			   else
-			     let val _ = debugmsg "$compStr: unequal signs"
-				 val common = commonElements(sign1,sign2)
-			      in for common (fn 
-				   (sym,TYCspec{entVar=v1,...},
-				        TYCspec{entVar=v2,...}) =>
-				      let val TYCent tyc1 = EE.look(ee1,v1)
-				          val TYCent tyc2 = EE.look(ee2,v2)
-				       in if eqTyc(tyc1,tyc2) then ()
-					  else complain(
-					        concat["type sharing violation: ",
-						       errmsg (SP.extend(p1,sym))
-						         (SP.extend(p2,sym))])
-				      end
-				 | (sym,STRspec{entVar=v1,sign=sign1',...},
-				        STRspec{entVar=v2,sign=sign2',...}) =>
-				      let val str1 = EE.look(ee1,v1)
-				          val str2 = EE.look(ee2,v2)
-				       in compStr((SP.extend(p1,sym),(sign1',str1)),
-						  (SP.extend(p2,sym),(sign2',str2)))
-				      end
-				 | _ => ()) (* values, constructors, functors *)
-			     end
+			      end
+			    | (sym,STRspec{entVar=v1,sign=sign1',...},
+			       STRspec{entVar=v2,sign=sign2',...}) =>
+			      let val str1 = EE.look(ee1,v1)
+				  val str2 = EE.look(ee2,v2)
+			      in compStr((SP.extend(p1,sym),(sign1',str1)),
+					 (SP.extend(p2,sym),(sign2',str2)))
+			      end
+			    | _ => ()) (* values, constructors, functors *)
+			 end
 		   | (ERRORent,_) => ()  (* error upstream *)
-		   | (_,ERRORent) => ()) (* error upstream *)
+		   | (_,ERRORent) => () (* error upstream *)
+		   | _ => bug "compStr")
 	   
           fun checkStr (paths) =
 	      let val pathstrs = map (fn p => (p,lookStr p)) paths
@@ -515,6 +531,7 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
             end
 
           fun checkTyc (sp::rest) = checkTyc0(sp,rest)
+	    | checkTyc _ = bug "checkSharing:checkTyc"
 
        in app checkStr strsharing;
           app checkTyc typsharing
@@ -553,13 +570,19 @@ fun matchDefStr0(sigElements,signD,rlznD,signM,rlznM) =
 	fun elemGt ((s1,_),(s2,_)) = S.symbolGt(s1,s2)
 	val commonDM =
 	    if MU.eqSign(signD,signM) then
-	      let val SIG{elements=elems,...} = signD
+	      let val { elements = elems, ... } =
+		      case signD of SIG sg => sg
+				  | _ => bug "matchDefStr0:SIG(1)"
 	          val elems = ListMergeSort.sort elemGt (dropVals elems)
 	       in map (fn (s,spec) => (s,spec,spec)) elems
 	      end
 	    else
-	      let val SIG{elements=elemsD,...} = signD
-		  val SIG{elements=elemsM,...} = signM
+	      let val { elements = elemsD, ...} =
+		      case signD of SIG sg => sg
+				  | _ => bug "matchDefStr0:SIG(2)"
+		  val { elements = elemsM, ...} =
+		      case signM of SIG sg => sg
+				  | _ => bug "matchDefStr0:SIG(3)"
 		  val elemsD = ListMergeSort.sort elemGt (dropVals elemsD)
 		  val elemsM = ListMergeSort.sort elemGt (dropVals elemsM)
 		  fun intersect(e1 as ((s1,spec1)::rest1),
@@ -584,37 +607,43 @@ fun matchDefStr0(sigElements,signD,rlznD,signM,rlznM) =
 	  | loop ((sym,spec,specD,specM)::rest) =
 	    (case spec
 	       of TYCspec _ =>
-		   let val TYCspec{entVar=evD,...} = specD
-		       val TYCspec{entVar=evM,...} = specM
+		   let fun unTYCspec (TYCspec x) = x
+			 | unTYCspec _ = bug "matchStr:unTYCspec"
+		       val {entVar=evD,...} = unTYCspec specD
+		       val {entVar=evM,...} = unTYCspec specM
 		       val {entities=eeD,...} = rlznD
 		       val {entities=eeM,...} = rlznM
-		       val TYCent tycD = EE.look(eeD,evD)
-		       val TYCent tycM = EE.look(eeM,evM)
+		       val tycD = unTYCent (EE.look(eeD,evD))
+		       val tycM = unTYCent (EE.look(eeM,evM))
 		    in TU.equalTycon(tycD,tycM)
 		   end
-		| STRspec{sign=SIG{elements,...},...} =>
-		   let val STRspec{entVar=evD,sign=signD',...} = specD
-		       val STRspec{entVar=evM,sign=signM',...} = specM
+		| STRspec{sign=SIG {elements,...},...} =>
+		   let fun unSTRspec (STRspec x) = x
+			 | unSTRspec _ = bug "strMatch:unSTRspec"
+		       val {entVar=evD,sign=signD',...} = unSTRspec specD
+		       val {entVar=evM,sign=signM',...} = unSTRspec specM
 		       val {entities=eeD,...} = rlznD
 		       val {entities=eeM,...} = rlznM
-		       val STRent rlznD' = EE.look(eeD,evD)
-		       val STRent rlznM' = EE.look(eeM,evM)
+		       fun unSTRent (STRent x) = x
+			 | unSTRent _ = bug "matchStr:unSTRent"
+		       val rlznD' = unSTRent (EE.look(eeD,evD))
+		       val rlznM' = unSTRent (EE.look(eeM,evM))
 		    in matchDefStr0(elements,signD',rlznD',signM',rlznM')
 		   end
 		| _ => bug "matchStr")
      in loop common
     end
 
-fun matchDefStr(sigElements,specStr,matchStr) =
-    case (specStr,matchStr)
-      of (STR{sign=signD,rlzn=rlznD,...},STR{sign=signM,rlzn=rlznM,...}) =>
-	  let val {stamp=sD,...} = rlznD
-	      val {stamp=sM,...} = rlznM
-	   in if ST.eq(sD,sM) (* eqOrigin *)
-	      then true
-	      else matchDefStr0(sigElements,signD,rlznD,signM,rlznM)
-	  end
-       | _ => bug "matchDefStr"
+fun matchDefStr (sigElements, STR {sign=signD,rlzn=rlznD,...},
+		              STR {sign=signM,rlzn=rlznM,...}) =
+    let	val sD = #stamp rlznD
+	val sM = #stamp rlznM
+    in
+	if ST.eq(sD,sM) (* eqOrigin *)
+	then true
+	else matchDefStr0(sigElements,signD,rlznD,signM,rlznM)
+    end
+  | matchDefStr _ = bug "matchDefStr (2)"
 
 fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
       (entEnv, rev entDecs, rev decs, rev bindings, succeed)
@@ -659,7 +688,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
           of TYCspec{spec=specTycon,entVar,repl,scope} =>
               (let val _ = debugmsg(String.concat[">>matchElems TYCspec: ",
                                                   S.name sym, ", ",
-                                                  ST.stampToString entVar])
+                                                  ST.toString entVar])
                    val (strTycon, strEntVar) =
                           MU.getTyc(strElements, strEntEnv, sym)
                           handle EE.Unbound =>
@@ -669,7 +698,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                               strEntEnv); raise EE.Unbound)
 
                    val _ = debugmsg ("--matchElems TYCspec - strEntVar: "^
-                                     ST.stampToString strEntVar)
+                                     ST.toString strEntVar)
 
                    (*** DAVE: please check the following ! ***)
                    val tycEntExp = 
@@ -689,11 +718,11 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                             (debugmsg ("$matchElems(TYCspec): "^S.name sym);
                              raise EE.Unbound))
 
-           | STRspec{sign=thisSpecSig as SIG{elements=thisElements,...},
-		     entVar, def, ...} =>
-              (let val _ = debugmsg(String.concat["--matchElems STRspec: ",
+           | STRspec{sign=thisSpecSig as SIG sg, entVar, def, ...} =>
+              (let val thisElements = #elements sg
+		   val _ = debugmsg(String.concat["--matchElems STRspec: ",
                                                   S.name sym,", ",
-                                                  ST.stampToString entVar])
+                                                  ST.toString entVar])
                    val (strStr, strEntVar) = 
                      MU.getStr(strElements, strEntEnv, sym, rootAcc, rootInfo)
 
@@ -730,7 +759,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
 
                    val entEnv' = 
                      let val strEnt = 
-                           case thinStr of M.STR{rlzn, ...} => rlzn
+                           case thinStr of M.STR { rlzn, ... } => rlzn
                                          | _ => M.bogusStrEntity
                       in EE.bind(entVar, M.STRent strEnt, entEnv)
                      end
@@ -745,7 +774,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
            | FCTspec{sign=specSig, entVar, ...} => 
               (let val _ = debugmsg(String.concat["--matchElems FCTspec: ",
                                                   S.name sym,", ",
-                                                  ST.stampToString entVar])
+                                                  ST.toString entVar])
 
                    val (strFct, fctEntVar) = 
                      MU.getFct(strElements, strEntEnv, sym, rootAcc, rootInfo)
@@ -757,7 +786,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
 
                    val entEnv' = 
                      let val fctEnt = 
-                           case thinFct of M.FCT{rlzn, ...} => rlzn
+                           case thinFct of M.FCT { rlzn, ... } => rlzn
                                          | _ => M.bogusFctEntity
                       in EE.bind(entVar, M.FCTent fctEnt, entEnv)
                      end
@@ -858,7 +887,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                                    val con = DATACON{typ=acttyp, name=name,
                                                      const=const, rep=nrep,
                                                      sign=sign, lazyp=lazyp}
-                                in (B.CONbind(con)) :: bindings
+                                in (B.CONbind con) :: bindings
                                end
 
                     in matchElems(elems, entEnv, entDecs, decs, bindings', succeed)
@@ -872,6 +901,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
               handle MU.Unbound sym => 
                      if DA.isExn specrep then matchErr(SOME "exception")
                      else matchErr(SOME "constructor"))
+	   | _ => bug "matchElems"
 
      end (* function matchElems *)
 
@@ -890,11 +920,13 @@ fun matchIt entEnv =
 	    val _ = debugmsg "--matchIt: sharing checked"
 
 	    val resStr =
-	      let val strEnt = {stamp = strStamp, entities = resultEntEnv, 
-				lambdaty = ref NONE, rpath=rpath}
+	      let val strEnt = {stamp = strStamp,
+				entities = resultEntEnv, 
+				lambdaty = ref NONE, rpath=rpath,
+				stub = NONE}
 		  val dacc = DA.newAcc(mkv)
 		  val dinfo = II.mkStrInfo (map MU.extractInfo bindings)
-	       in M.STR{sign=specSig, rlzn=strEnt, access=dacc, info=dinfo}
+	      in M.STR {sign=specSig, rlzn=strEnt, access=dacc, info=dinfo }
 	      end
 
 	    val resDec = 
@@ -922,8 +954,7 @@ in
     if (ST.eq(sigStamp, strSigStamp)) andalso closed andalso (not fctflag)
     then (A.SEQdec [], str, M.VARstr (rev epath))    (* short-cut matching *)
     else matchIt (if closed then EE.empty else matchEntEnv)
-end 
-
+end
 | matchStr1 _ = (A.SEQdec [], ERRORstr, bogusStrExp)
 (* end of matchStr1 *)
 
@@ -982,7 +1013,7 @@ and matchStr {sign, str, strExp, evOp, depth, entEnv, rpath, statenv, region,
  ***************************************************************************)
 and matchFct1(specSig as FSIG{paramsig=fsigParamSig,paramvar=fsigParamVar,
                               paramsym,bodysig=fsigBodySig,...},
-              fct as FCT{rlzn=fctRlzn, ...}, fctName : S.symbol,
+              fct as FCT { rlzn = fctRlzn, ... }, fctName : S.symbol,
               depth, entEnv, uncoercedFct, rpath, statenv, region,
               compInfo as {mkStamp, mkLvar=mkv,...}: EU.compInfo)
               : A.dec * M.Functor * M.fctExp =
@@ -1028,9 +1059,9 @@ val {resDec=resDec2, resStr=resStr2, resExp=resExp2} =
 (*** constructing the tycpath for the resulting functor ***)
 val resTps = 
   case resStr2 
-   of M.STR{rlzn, sign, ...} => 
-        INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
-                        compInfo=compInfo}
+   of M.STR { sign, rlzn, ... } =>
+      INS.getTycPaths{sign=sign, rlzn=rlzn, entEnv=fsigBodySigEnv, 
+                      compInfo=compInfo}
     | _ => []
 
 (*** the resulting coerced functor ***)
@@ -1040,12 +1071,13 @@ val resFct =
       val resClosure = CLOSURE{param=paramId, body=resExp3, env=entEnv}
       val tps = T.TP_FCT(paramTps, resTps)
 
-      val resRlzn = {stamp = (#stamp fctRlzn), (*** DAVE ? ***)
-                     closure = resClosure, rpath=rpath,
-                     tycpath=SOME tps, lambdaty=ref NONE}
+      val resRlzn = {stamp = #stamp fctRlzn, (*** DAVE ? ***)
+		     closure = resClosure, rpath=rpath,
+		     tycpath=SOME tps, lambdaty=ref NONE,
+		     stub = NONE}
 
-   in FCT{sign = specSig, rlzn = resRlzn,
-          access = DA.newAcc(mkv), info = II.nullInfo}
+   in M.FCT{sign = specSig, rlzn = resRlzn,
+            access = DA.newAcc(mkv), info = II.nullInfo}
   end
 
 (*** the resulting functor absyn ***)
@@ -1115,15 +1147,15 @@ and matchFct{sign, fct, fctExp, depth, entEnv, rpath,
  *                 region * EU.compInfo -> A.dec * M.Structure            *
  *                                                                        *
  **************************************************************************)
-and packStr1(specSig as M.SIG {elements=sigElements, ...},
-             resRlzn as {entities=resEntEnv, ...},
-             str as M.STR {rlzn=srcRlzn as {entities=srcEntEnv, ...},
-                           access=rootAcc, info=rootInfo, ...},
+and packStr1(specSig as M.SIG {elements=sigElements,...},
+	     resRlzn as {entities=resEntEnv,...},
+	     str as M.STR {access=rootAcc,
+			   rlzn=srcRlzn as {entities=srcEntEnv,...},
+			   info=rootInfo, ... },
              abstycs, strName, depth, entEnv, rpath, statenv, region, 
              compInfo as {mkLvar=mkv, error, ...}: EU.compInfo) 
-             : Absyn.dec * M.Structure = 
-
-let 
+             : Absyn.dec * M.Structure =
+let
 
 fun typeInRes (kind,typ) = 
       (MU.transType resEntEnv typ) 
@@ -1156,7 +1188,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 
                          val entEnv' = 
                            let val strEnt = 
-                                case thinStr of M.STR{rlzn, ...} => rlzn
+                                case thinStr of M.STR { rlzn, ... } => rlzn
                                               | _ => M.bogusStrEntity
                             in EE.bind(ev, M.STRent strEnt, entEnv)
                            end
@@ -1172,9 +1204,10 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
            | FCTspec{sign=thisSpecsig, entVar=ev, slot=s} => 
               (case (EE.look(resEntEnv, ev), EE.look(srcEntEnv, ev))
 		 of (M.FCTent resFctRlzn, M.FCTent srcFctRlzn) =>
-		     let val srcFct = M.FCT{sign=thisSpecsig, rlzn=srcFctRlzn,
-					    access=DA.selAcc(rootAcc,s),
-					    info=II.selInfo(rootInfo,s)}  
+		     let val srcFct =
+			     M.FCT {sign=thisSpecsig, rlzn=srcFctRlzn,
+				    access=DA.selAcc(rootAcc,s),
+				    info=II.selInfo(rootInfo,s)}
 
 			 val rpath' = IP.extend(rpath, sym)
 
@@ -1185,7 +1218,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
 
                          val entEnv' = 
                            let val fctEnt = 
-                                 case thinFct of M.FCT{rlzn, ...} => rlzn
+                                 case thinFct of M.FCT { rlzn, ... } => rlzn
                                                | _ => M.bogusFctEntity
                             in EE.bind(ev, M.FCTent fctEnt, entEnv)
                            end
@@ -1301,7 +1334,7 @@ and packStr {sign, str, strExp, depth, entEnv, rpath,
   let val _ = debugmsg ">>>packStr"
 
       val {rlzn=resRlzn, abstycs=abstycs, tyceps=_} = 
-        let val srcRlzn = case str of M.STR{rlzn, ...} => rlzn
+        let val srcRlzn = case str of M.STR { rlzn, ... } => rlzn
                                     | _ => M.bogusStrEntity
          in INS.instAbstr {sign=sign, entEnv=entEnv, srcRlzn=srcRlzn,
                            rpath=rpath, region=region, compInfo=compInfo}
@@ -1332,7 +1365,7 @@ and packStr {sign, str, strExp, depth, entEnv, rpath,
  *                                                                         *
  ***************************************************************************)
 and packFct1(specSig as FSIG{paramsig, paramvar, bodysig, ...}, resFctRlzn,
-             srcFct as FCT {rlzn=srcFctRlzn, ...},
+             srcFct as FCT { rlzn = srcFctRlzn, ... },
              abstycs1, fctName, depth, entEnv, rpath, statenv, region,
              compInfo as {mkStamp, mkLvar=mkv, error, ...}: EU.compInfo)
              : Absyn.dec * M.Functor = 
@@ -1357,7 +1390,7 @@ val {resDec=rdec1, resStr=bodyStr, resExp=_} =
 
 (* val bodyRlzn = EV.evalApp(srcFctRlzn, paramEnt, depth', epc, compInfo) *)
 val bodyRlzn = 
-  case bodyStr of M.STR {rlzn, ...} => rlzn
+  case bodyStr of M.STR { rlzn, ... } => rlzn
                 | _ => M.bogusStrEntity
 
 val {rlzn=resRlzn, abstycs=abstycs2, tyceps=_} = 
@@ -1377,7 +1410,8 @@ val (rdec2, resStr) =
 
 val resFct = 
   let val resDacc = DA.newAcc(mkv)
-   in M.FCT{sign=specSig, rlzn=resFctRlzn, access=resDacc, info=II.nullInfo}
+   in M.FCT{sign=specSig, rlzn=resFctRlzn, access=resDacc,
+	    info=II.nullInfo}
   end
 
 val resDec = 
@@ -1418,14 +1452,12 @@ end (* function packFct1 *)
  * functor closure; this is where the paramsig must be interpreted.        *
  *                                                                         *
  ***************************************************************************)
-and applyFct{fct as FCT{sign=FSIG{paramsig, bodysig, ...}, 
-                        rlzn = fctRlzn as {closure=CLOSURE{env=fctEntEnv,  
-                                                           ...}, ...},
-                          ...},
+and applyFct{fct as FCT {sign=FSIG{paramsig, bodysig, ...},
+			 rlzn = fctRlzn, ... },
              fctExp, argStr, argExp, evOp, epc, depth, statenv, rpath, region,
-             compInfo as {mkStamp, mkLvar=mkv, ...}} = 
-
-  let val _ = debugmsg ">>applyFct"
+             compInfo as {mkStamp, mkLvar=mkv, ...}} =
+  let val {closure=CLOSURE {env=fctEntEnv, ... }, ... } = fctRlzn
+      val _ = debugmsg ">>applyFct"
 
       (*** step #1: match the argument structure against paramSig ***)
       val {resDec=argDec1, resStr=argStr1, resExp=argExp1} =  
@@ -1434,7 +1466,7 @@ and applyFct{fct as FCT{sign=FSIG{paramsig, bodysig, ...},
                   statenv=statenv, region=region, compInfo=compInfo}
 
       (*** step #2: do the functor application ***)
-      val argRlzn = case argStr1 of M.STR{rlzn, ...} => rlzn
+      val argRlzn = case argStr1 of M.STR { rlzn, ... } => rlzn
                                   | _ => M.bogusStrEntity 
       val bodyRlzn = EV.evalApp(fctRlzn, argRlzn, depth, epc, rpath, compInfo)
       val resStr = 
@@ -1457,12 +1489,10 @@ and applyFct{fct as FCT{sign=FSIG{paramsig, bodysig, ...},
 
    in {resDec=resDec, resStr=resStr, resExp=resExp}
   end
-
-  | applyFct {fct=ERRORfct, ...} = 
+| applyFct {fct=ERRORfct, ...} = 
       {resDec=A.STRdec [], resStr=M.ERRORstr, 
        resExp=M.CONSTstr M.bogusStrEntity}
-  | applyFct _ = bug "unexpected case in applyFct"
-
+| applyFct _ = bug "applyFct:bad functor"
 
 (*** top leve wrappers: used for profiling the compilation time *)
 (*
@@ -1481,5 +1511,3 @@ val applyFct =
 
 end (* local *)
 end (* structure SigMatch *)
-
-

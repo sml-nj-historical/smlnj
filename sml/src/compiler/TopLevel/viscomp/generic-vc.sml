@@ -15,12 +15,9 @@ structure GenericVC : GENERIC_VC = struct
     structure SymPath = SymPath
     structure StaticEnv = StaticEnv
     structure DynamicEnv = DynamicEnv
-    structure BareEnvironment = Environment
-    structure Environment = CMEnv.Env
-    structure CoerceEnv = CoerceEnv
+    structure Environment = Environment
     structure EnvRef = EnvRef
     structure ModuleId = ModuleId
-    structure CMStaticEnv = CMStaticEnv
     structure PersStamps = PersStamps
     structure PrettyPrint = PrettyPrint
     structure PPTable =	struct
@@ -31,7 +28,8 @@ structure GenericVC : GENERIC_VC = struct
     structure Ast = Ast
     structure SmlFile = SmlFile
     structure Rehash = struct
-	val rehash = PickMod.repickleEnvHash
+        fun rehash { env, orig_hash } =
+	    #hash (PickMod.pickleEnv (PickMod.REHASH orig_hash) env)
     end
 
     structure PrintHooks : PRINTHOOKS = struct

@@ -10,14 +10,14 @@ structure DependencyGraph = struct
 
     type filter = SymbolSet.set option
 
-    type 'n filtered = filter * 'n
+    type 'n far = filter * 'n
 
     datatype bnode =
 	BNODE of { bininfo: BinInfo.info,
 		   localimports: bnode list,
 		   globalimports: farbnode list }
 
-    withtype farbnode = bnode filtered
+    withtype farbnode = bnode far
 
     datatype snode =
 	SNODE of { smlinfo: SmlInfo.info,
@@ -28,7 +28,7 @@ structure DependencyGraph = struct
 	SB_BNODE of bnode * IInfo.info
       | SB_SNODE of snode
 
-    withtype farsbnode = sbnode filtered
+    withtype farsbnode = sbnode far
 
     type impexp = farsbnode * DAEnv.env
 

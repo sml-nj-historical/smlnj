@@ -47,12 +47,7 @@ and tyckind
   | TEMP                   
 
 and tycon
-  = GENtyc of
-      {stamp : Stamps.stamp, 
-       arity : int, 
-       eq    : eqprop ref,
-       kind  : tyckind, 
-       path  : InvPath.path}
+  = GENtyc of gtrec
   | DEFtyc of
       {stamp : Stamps.stamp, 
        tyfun : tyfun, 
@@ -98,6 +93,24 @@ and dtypeFamily =
    members: dtmember vector,
    lambdatyc: (PLambdaType.tyc * DebIndex.depth) option ref}
 
+and stubinfo =
+    {owner : PersStamps.persstamp,
+     lib   : bool}
+
+(* The "stub" field will be set for any GENtyc that comes out of the
+ * unpickler.  The stub owner pid is the pid of the compilation unit on whose
+ * behalf this GENtyc was pickled.  Normally, this is expected to be the
+ * same as the pid in the (global) "stamp", but there are odd cases related
+ * to recursive types where this assumption breaks.  (Is there a way of
+ * fixing this? -M.) *)
+and gtrec =
+    {stamp : Stamps.stamp, 
+     arity : int, 
+     eq    : eqprop ref,
+     kind  : tyckind,
+     path  : InvPath.path,
+     stub  : stubinfo option}
+
 val infinity : int
 val mkTyvar  : tvKind -> tyvar
 val copyTyvar : tyvar -> tyvar
@@ -112,5 +125,3 @@ datatype datacon                    (* data constructors *)
        sign   : Access.consig}
 
 end (* signature TYPES *)
-
-

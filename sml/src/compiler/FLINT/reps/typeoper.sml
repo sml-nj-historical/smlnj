@@ -516,20 +516,25 @@ fun arrUpd(tc, kenv, po, blt, rlt) =
       val rnt = rlt
    in (case isFloat(kenv,tc)
         of NO => (fn vs => updLexp(po, vs, nt))
-         | YES => (fn [x,y,z] => 
-                     let val nz = mkv()
-                      in LET([nz], UNWRAPg(LT.tcc_real, true, RET[z]),
-                             rupdLexp([x,y,VAR nz], rnt))
-                     end)
+         | YES => let fun f [x,y,z] =
+			  let val nz = mkv()
+			  in LET([nz], UNWRAPg(LT.tcc_real, true, RET[z]),
+				 rupdLexp([x,y,VAR nz], rnt))
+			  end
+			| f _ = bug "arrUpd:YES"
+		  in f
+		  end
          | MAYBE z => 
              (let val test = ieqLexp(z, tcode_real)
-               in (fn (vs as [x,y,z]) => 
-                     COND(test, 
-                          let val nz = mkv()
+                  fun f (vs as [x,y,z]) =
+                      COND(test, 
+                           let val nz = mkv()
                            in LET([nz], UNWRAPg(LT.tcc_real, true, RET[z]),
                                   rupdLexp([x,y,VAR nz], rnt))
-                          end,
-                          updLexp(po, vs, nt)))
+                           end,
+                           updLexp(po, vs, nt))
+		    | f _ = bug "arrUpd:MAYBE"
+	      in f
               end))
   end
 
@@ -540,23 +545,31 @@ fun arrNew(tc, pv, rv, kenv) =
                  in LET([x], APPg(RET[VAR pv], tsLexp(kenv, [tc])),
                         APP(VAR x, vs))
                 end) 
-     | YES => (fn (vs as [x,y]) => 
-                let val z = mkv()
-                 in LET([z], UNWRAPg(LT.tcc_real, true, RET[y]),
-                        APP(VAR rv, [x, VAR z]))
-                end)
+     | YES => let
+	   fun f (vs as [x,y]) =
+               let val z = mkv()
+               in LET([z], UNWRAPg(LT.tcc_real, true, RET[y]),
+                      APP(VAR rv, [x, VAR z]))
+               end
+	     | f _ = bug "arrNew:YES"
+       in
+	   f
+       end
      | MAYBE z => 
          (let val test = ieqLexp(z, tcode_real)
-           in (fn (vs as [x,y]) =>
-                 COND(test, 
-                      let val z = mkv()
+              fun f (vs as [x,y]) =
+                  COND(test, 
+                       let val z = mkv()
                        in LET([z], UNWRAPg(LT.tcc_real, true, RET[y]),
                               APP(VAR rv, [x, VAR z]))
-                      end,
-                      let val z= mkv()
+                       end,
+                       let val z= mkv()
                        in LET([z], APPg(RET[VAR pv], tsLexp(kenv, [tc])),
-                          APP(VAR z, vs))
-                      end))
+                              APP(VAR z, vs))
+                       end)
+		| f _ = bug "arrNew:MAYBE"
+	  in
+	      f
           end))
 
 end (* toplevel local *)

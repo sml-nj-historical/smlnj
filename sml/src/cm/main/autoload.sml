@@ -8,7 +8,6 @@
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph
-    structure BE = GenericVC.BareEnvironment
     structure ER = GenericVC.EnvRef
     structure GG = GroupGraph
     structure E = GenericVC.Environment
@@ -42,39 +41,40 @@ functor AutoLoadFn (structure C : COMPILE
 
     fun reset () = pending := SymbolMap.empty
 
-    fun register (ter: ER.envref, g as GG.GROUP { exports, ... }) = let
-	val te = #get ter ()
-	(* toplevel bindings (symbol set) ... *)
-	val tss = foldl SymbolSet.add' SymbolSet.empty
-	    (BE.catalogEnv (BE.staticPart te))
-	(* "new" bindings (symbol set) ... *)
-	val nss = SymbolMap.foldli (fn (i, _, s) => SymbolSet.add (s, i))
-	    SymbolSet.empty exports
-	(* to-be-retained bindings ... *)
-	val rss = SymbolSet.difference (tss, nss)
-	(* getting rid of unneeded bindings... *)
-	val te' = BE.filterEnv (te, SymbolSet.listItems rss)
-	(* make traversal states *)
-	val { store, get } = BFC.new ()
-	val { exports = cTrav, ... } = C.newTraversal (L.evict, store, g)
-	val { exports = lTrav, ... } = L.newTraversal (g, get)
-	fun combine (ss, d) gp =
-	    case ss gp of
-		SOME { stat, sym } =>
+    fun register (_, GG.ERRORGROUP) = ()
+      | register (ter: ER.envref, g as GG.GROUP { exports, ... }) = let
+	    val te = #get ter ()
+	    (* toplevel bindings (symbol set) ... *)
+	    val tss = foldl SymbolSet.add' SymbolSet.empty
+			    (E.catalogEnv (E.staticPart te))
+	    (* "new" bindings (symbol set) ... *)
+	    val nss = SymbolMap.foldli (fn (i, _, s) => SymbolSet.add (s, i))
+				       SymbolSet.empty exports
+	    (* to-be-retained bindings ... *)
+	    val rss = SymbolSet.difference (tss, nss)
+	    (* getting rid of unneeded bindings... *)
+	    val te' = E.filterEnv (te, SymbolSet.listItems rss)
+	    (* make traversal states *)
+	    val { store, get } = BFC.new ()
+	    val { exports = cTrav, ... } = C.newTraversal (L.evict, store, g)
+	    val { exports = lTrav, ... } = L.newTraversal (g, get)
+	    fun combine (ss, d) gp =
+		case ss gp of
+		    SOME { stat, sym } =>
 		    (case d gp of
 			 SOME dyn => SOME (E.mkenv { static = stat,
 						     symbolic = sym,
 						     dynamic = dyn })
 		       | NONE => NONE)
-	      | NONE => NONE
-	fun mkNode (sy, ie) =
-	    (ie, combine (valOf (SymbolMap.find (cTrav, sy)),
-			  valOf (SymbolMap.find (lTrav, sy))))
-	val newNodes = SymbolMap.mapi mkNode exports
-    in
-	#set ter te';
-	pending := SymbolMap.unionWith #1 (newNodes, !pending)
-    end
+		  | NONE => NONE
+	    fun mkNode (sy, ie) =
+		(ie, combine (valOf (SymbolMap.find (cTrav, sy)),
+			      valOf (SymbolMap.find (lTrav, sy))))
+	    val newNodes = SymbolMap.mapi mkNode exports
+	in
+	    #set ter te';
+	    pending := SymbolMap.unionWith #1 (newNodes, !pending)
+	end
 
     fun mkManager { get_ginfo, dropPickles } (ast, ter: ER.envref) = let
 
@@ -85,21 +85,17 @@ functor AutoLoadFn (structure C : COMPILE
 	      | one ((_, tr), SOME e) =
 		(case tr gp of
 		     NONE => NONE
-		   | SOME e' => let
-			 val be = GenericVC.CoerceEnv.e2b e'
-		     in
-			 SOME (BE.concatEnv (be, e))
-		     end)
+		   | SOME e' => SOME (E.concatEnv (e', e)))
 	in
 	    (* make sure that there are no stale value around... *)
 	    L.cleanup gp;
-	    SymbolMap.foldl one (SOME BE.emptyEnv) m
+	    SymbolMap.foldl one (SOME E.emptyEnv) m
 	end
 
 	val { skeleton, ... } =
 	    SkelCvt.convert { tree = ast, err = fn _ => fn _ => fn _ => () }
 	val te = #get ter ()
-	val ste = BE.staticPart te
+	val ste = E.staticPart te
 
 	(* First, we get rid of anything in "pending" that has
 	 * meanwhile been added to the toplevel. *)
@@ -170,7 +166,7 @@ functor AutoLoadFn (structure C : COMPILE
 		work = fn _ =>
 	          (case loadit loadmap of
 		       SOME e =>
-			   (#set ter (BE.concatEnv (e, te));
+			   (#set ter (E.concatEnv (e, te));
 			    pending := noloadmap;
 			    Say.say ["[autoloading done]\n"])
 		     | NONE => raise Fail "unable to load module(s)") }

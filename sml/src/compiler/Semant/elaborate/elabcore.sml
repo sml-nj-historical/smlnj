@@ -122,15 +122,15 @@ fun elabABSTYPEdec({abstycs,withtycs,body},env,context,isFree,
                            [], EE.empty, isFree, rpath, region, compInfo)
 
       val (body,env2) = 
-        elabDec(body,Env.atop(env1,env),isFree,rpath,region,compInfo)
+        elabDec(body,SE.atop(env1,env),isFree,rpath,region,compInfo)
 
       (* datatycs will be changed to abstycs during type checking
 	 by changing the eqprop field *)
-      fun bind (x, e) = Env.bind(TU.tycName x, B.TYCbind x, e)
-      val envt = foldl bind (foldl bind Env.empty datatycs) withtycs 
+      fun bind (x, e) = SE.bind(TU.tycName x, B.TYCbind x, e)
+      val envt = foldl bind (foldl bind SE.empty datatycs) withtycs 
 
    in (ABSTYPEdec{abstycs=datatycs,withtycs=withtycs,body=body},
-       Env.atop(env2,envt))
+       SE.atop(env2,envt))
   end (* function elabABSTYPEdec *)
 
 
@@ -229,7 +229,7 @@ let
 			     rep=EXN(LVAR(mkv(SOME id))), sign=CNIL}
 		in ([EBgen{exn=exn, etype=NONE, 
                            ident=STRINGexp(S.name id)}], 
-		    Env.bind(id, B.CONbind exn, Env.empty),TS.empty)
+		    SE.bind(id, B.CONbind exn, SE.empty),TS.empty)
 	       end
 	   | EbGen{exn=id,etype=SOME typ} =>
 	       let val (ty,vt) = ET.elabType(typ,env,error,region)
@@ -238,7 +238,7 @@ let
 			     rep=EXN(LVAR(mkv(SOME id))), sign=CNIL}
 		in ([EBgen{exn=exn,etype=SOME ty,
 			   ident=STRINGexp(S.name id)}],
-		    Env.bind(id,B.CONbind exn, Env.empty),vt) 
+		    SE.bind(id,B.CONbind exn, SE.empty),vt) 
 	       end
 	   | EbDef{exn=id,edef=qid} =>
 	       let val edef as DATACON{const,typ,sign,...} =
@@ -247,7 +247,7 @@ let
 	           val exn = DATACON{name=id, const=const, typ=typ, lazyp=false,
                                      sign=sign, rep=nrep}
 		in ([EBdef{exn=exn,edef=edef}],
-		    Env.bind(id,B.CONbind exn,Env.empty),TS.empty)
+		    SE.bind(id,B.CONbind exn,SE.empty),TS.empty)
 	       end
 	   | MarkEb(eb,region) => elabEb region env eb
 
@@ -256,10 +256,10 @@ let
 	      foldl
 		(fn (exc1,(ebs1,env1,vt1)) =>
 		   let val (eb2,env2,vt2) = elabEb region env exc1
-		    in (eb2@ebs1, Env.atop(env2,env1),
+		    in (eb2@ebs1, SE.atop(env2,env1),
                         union(vt1,vt2,error region))
 		   end)
-		 ([],Env.empty,TS.empty) excbinds
+		 ([],SE.empty,TS.empty) excbinds
 	    fun getname(EBgen{exn=DATACON{name,...},...}) = name
 	      | getname(EBdef{exn=DATACON{name,...},...}) = name
 	 in EU.checkUniq (error region, "duplicate exception declaration",
@@ -387,7 +387,11 @@ let
 		    in IntStrMap.app (checkComplete (length pats)) tbl;
 		       pats
 		   end (* freeOrVars *)
-	       val (pat::pats) = freeOrVars ps
+		 | freeOrVars _ = bug "freeOrVars"
+	       val (pat, pats) =
+		   case freeOrVars ps of
+		       (h::t) => (h, t)
+		     | _ => bug "elabPat:no free or vars"
 	       fun foldOr (p, []) = p
 		 | foldOr (p, p'::r) = ORpat(p, foldOr(p', r))
 	    in (foldOr(pat, pats), tyv)
@@ -520,7 +524,7 @@ let
 	   | LetExp {dec,expr} => 
 	       let val (d1,e1,tv1,updt1) =
 			  elabDec'(dec,env,IP.IPATH[],region)
-		   val (e2,tv2,updt2) = elabExp(expr,Env.atop(e1,env),region)
+		   val (e2,tv2,updt2) = elabExp(expr,SE.atop(e1,env),region)
 		   fun updt tv = (updt1 tv;updt2 tv)
 		in (LETexp(d1,e2), union(tv1,tv2,error region),updt)
 	       end
@@ -621,7 +625,7 @@ let
     and elabRule(Rule{pat,exp},env,region)  =
 	let val region' = case pat of MarkPat (p,reg) => reg | _ => region
 	    val (p,tv1) = elabPat(pat, env, region)
-	    val env' = Env.atop(bindVARp ([p],error region'), env)
+	    val env' = SE.atop(bindVARp ([p],error region'), env)
 	    val (e,tv2,updt) = elabExp(exp,env',region)
 	 in (RULE(p,e),union(tv1,tv2,error region),updt)
 	end
@@ -688,8 +692,8 @@ let
 	   | OpenDec ds => elabOPENdec(ds,env,region)
 	   | FixDec (ds as {fixity,ops}) => 
 	       let val env = 
-		 foldr (fn (id,env) => Env.bind(id,B.FIXbind fixity,env))
-			Env.empty ops
+		 foldr (fn (id,env) => SE.bind(id,B.FIXbind fixity,env))
+			SE.empty ops
 		in (FIXdec ds,env,TS.empty,no_updt)
 	       end
 	   | OvldDec dec  => elabOVERLOADdec(dec,env,rpath,region)
@@ -722,7 +726,7 @@ let
 	    fun updt tv: unit = app (fn f => f tv) exps3
 	    val ovldvar = OVLDvar{name=id,scheme=scheme,
 				  options=ref(map option exps1)}
-	 in (OVLDdec ovldvar, Env.bind(id,B.VALbind ovldvar,Env.empty),
+	 in (OVLDdec ovldvar, SE.bind(id,B.VALbind ovldvar,SE.empty),
              TS.empty, updt)
 	end
 
@@ -731,7 +735,7 @@ let
     and elabLOCALdec((ldecs1,ldecs2),env,rpath:IP.path,region) =
 	let val (ld1,env1,tv1,updt1) = elabDec'(ldecs1,env,IP.IPATH[],region)
 	    val (ld2,env2,tv2,updt2) =
-		  elabDec'(ldecs2,Env.atop(env1,env),rpath,region)
+		  elabDec'(ldecs2,SE.atop(env1,env),rpath,region)
 	    fun updt tv = (updt1 tv;updt2 tv)
 	 in (LOCALdec(ld1,ld2), env2,union(tv1,tv2,error region),updt)
 	end
@@ -892,14 +896,14 @@ let
 		  let val v = newVALvar var
                       val nv = newVALvar var (* DBM: what is this for? *)
 		   in (* checkBoundConstructor(env,var,error region); -- fix bug 1357 *)
-		      env' := Env.bind(var,B.VALbind v,!env');
+		      env' := SE.bind(var,B.VALbind v,!env');
 		      (v, p)
 		  end
 	      | makevar _ (p as MarkRvb(rvb,region)) = 
 		  let val (v,_) = makevar region rvb in (v,p) end
 
 	    val rvbs' = map (makevar region) rvbs
-	    val env'' = Env.atop(!env', env)
+	    val env'' = SE.atop(!env', env)
 	    val (rvbs,tyvars,updts)=
 		foldl (fn((v,rvb1),(rvbs1,tvs1,updt1)) =>
 			   let val (rvb2,tv2,updt2) =
@@ -949,7 +953,7 @@ let
 
 	    fun elabFn((exp,lazyp),(fexps,tvs,updts)) =
 		let val (p,tv1) = elabPat(argpat, env, region)
-		    val env' = Env.atop(bindVARp ([p],error region), env)
+		    val env' = SE.atop(bindVARp ([p],error region), env)
 		    val (e,tv2,updt) = elabExp(exp,env',region)
 		in (FNexp(completeMatch[RULE(p,if lazyp then e else delayExp e)],
 			  UNDEFty)::fexps,
@@ -992,6 +996,7 @@ let
 
 	    fun zip3(x::xs,y::ys,z::zs) = (x,y,z)::zip3(xs,ys,zs)
 	      | zip3(nil,_,_) = nil
+	      | zip3 _ = bug "zip3"
 
 	    val (vbs,vars) =
 		foldr forceStrict ([],[]) (zip3(lhsSyms,lhsVars,map #2 exps))
@@ -1037,7 +1042,8 @@ let
 			       error region EM.COMPLAIN
 				 ("infix operator \"" ^ S.name sym ^
 				  "\" used without \"op\" in fun dec")
-				 EM.nullErrorBody;
+				 EM.nullErrorBody
+			    | _ => bug "ensureNonfix";
 			  item)
 
 		     fun getname(MarkPat(p,region),_) = getname(p,region)
@@ -1061,6 +1067,7 @@ let
 		       | parse' ((a as {region,...}) :: rest) =
 			   (getname(ensureNonfix a, region), 
 			    map ensureNonfix rest)
+		       | parse' [] = bug "parse':[]"
 
 		     fun parse({item=MarkPat(p,_),region,fixity}::rest) = 
 			   parse({item=p,region=region,fixity=fixity}::rest)
@@ -1078,8 +1085,10 @@ let
 			      resultty=resultty,exp=exp}
 			 end
 
-		     val clauses as {funsym=var,...}::_ = 
-                         map parseClause clauses
+		     val (clauses, var) = 
+                         case map parseClause clauses of
+			     [] => bug "elabcore:no clauses"
+			   | (l as ({funsym=var,...}::_)) => (l,var)
 
 		     val _ = if List.exists (fn {funsym,...} => 
 					not(S.eq(var,funsym))) clauses
@@ -1141,16 +1150,16 @@ let
 						     map VarExp outerargs)}
 			   in ((lv,innerclauses,region)::(v,[outerclause],region)
 			       ::lcl,
-			       Env.bind(var,B.VALbind v,
-					Env.bind(lazyvar,B.VALbind lv, env')))
+			       SE.bind(var,B.VALbind v,
+					SE.bind(lazyvar,B.VALbind lv, env')))
 			  end
-		     else ((v,clauses,region)::lcl,Env.bind(var,B.VALbind v,env'))
+		     else ((v,clauses,region)::lcl,SE.bind(var,B.VALbind v,env'))
 		 end (* makevar *)
-	    val (fundecs,env') = foldl (makevar region) ([],Env.empty) fb
-	    val env'' = Env.atop(env',env)
+	    val (fundecs,env') = foldl (makevar region) ([],SE.empty) fb
+	    val env'' = SE.atop(env',env)
 	    fun elabClause(region,({kind,argpats,resultty,exp,funsym})) =
 		let val (pats,tv1) = elabPatList(argpats, env, region)
-                    val nenv = Env.atop(bindVARp(pats,error region), env'')
+                    val nenv = SE.atop(bindVARp(pats,error region), env'')
 		    val (exp,tv2,updt) = elabExp(exp, nenv,region)
 		    (* LAZY: wrap delay or force around rhs as appropriate*)
 		    val exp = 
@@ -1208,11 +1217,11 @@ let
 	      foldl 
 	       (fn (decl2,(ds2,env2,tvs2,updt2)) =>
 		  let val (d3,env3,tvs3,updt3) =
-			   elabDec'(decl2,Env.atop(env2,env),rpath,region)
-		   in (d3::ds2, Env.atop(env3,env2), 
+			   elabDec'(decl2,SE.atop(env2,env),rpath,region)
+		   in (d3::ds2, SE.atop(env3,env2), 
                        union(tvs3,tvs2,error region), updt3::updt2)
 		  end)
-	       ([],Env.empty,TS.empty,[]) ds 
+	       ([],SE.empty,TS.empty,[]) ds 
 	    fun updt tv : unit = app (fn f => f tv) updt1
 	 in (SEQdec(rev ds1),env1,tv1,updt)
 	end

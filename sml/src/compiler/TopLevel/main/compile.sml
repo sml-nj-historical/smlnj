@@ -45,16 +45,11 @@ type compInfo   = CB.compInfo          (* general compilation utilities *)
 fun mkCompInfo (s, se, tr)  = CB.mkCompInfo (s, se, tr, CC.mkMkStamp)
 val anyErrors   = CB.anyErrors
 
-type cmstatenv  = CC.cmstatenv         (* compressed static environment *)
-val toCM        = CC.toCM
-val fromCM      = CC.fromCM
-
 type lvar       = DA.lvar              (* local id *)
 type pid        = PS.persstamp         (* persistant id *)
 type import     = pid * CB.importTree  (* import specification *)
 type pickle     = CC.pickle            (* pickled format *)
 type hash       = CC.hash              (* environment hash id *)
-type newContext = CC.newContext	       (* reduced context after pickling *)
 
 fun fail s = raise (Compile s)
 
@@ -80,22 +75,16 @@ val pickUnpick =
   ST.doPhase (ST.makePhase "Compiler 036 pickunpick") CC.pickUnpick
 
 (** take ast, do semantic checks, and output the new env, absyn and pickles *)
-fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = 
-  let (** the following should go away soon; it needs clean up **)
-      val bsenv = fromCM senv
-(* lazycomp folded into elaborate phase
-      val ast = fixityparse {ast=ast,env=bsenv,error=#error cinfo}
-      val ast = lazycomp ast
-*)
-      val (absyn, nenv) = ElabTop.elabTop(ast, bsenv, cinfo)
+fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = let
+
+      val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
       val (absyn, nenv) = 
         if anyErrors (cinfo) then (A.SEQdec nil, SE.empty) else (absyn, nenv)
-      val { hash, pickle, exportLvars, exportPid, newenv, ctxt } =
-	  pickUnpick(senv,nenv)
-   in {absyn=absyn, newstatenv=toCM newenv, exportPid=exportPid, 
-       exportLvars=exportLvars, staticPid = hash, pickle=pickle,
-       ctxt = ctxt }
-  end (* function elaborate *)
+      val { hash, pickle, exportLvars, exportPid, newenv } =
+	  pickUnpick { context = senv, env = nenv }
+   in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
+       exportLvars=exportLvars, staticPid = hash, pickle=pickle }
+end (* function elaborate *)
 
 val elaborate = ST.doPhase(ST.makePhase "Compiler 030 elaborate") elaborate
 
@@ -118,7 +107,7 @@ val instrument = ST.doPhase (ST.makePhase "Compiler 039 instrument") instrument
 (** take the abstract syntax tree, generate the flint intermediate code *)
 fun translate{absyn, exportLvars, newstatenv, oldstatenv, compInfo} =
   (*** statenv used for printing Absyn in messages ***)
-  let val statenv = SE.atop (fromCM newstatenv, fromCM oldstatenv)
+  let val statenv = SE.atop (newstatenv, oldstatenv)
       val {flint, imports} = 
 	    Translate.transDec(absyn, exportLvars, statenv, compInfo)
    in {flint=flint, imports=imports} 
@@ -180,85 +169,42 @@ val codegen = ST.doPhase (ST.makePhase "Compiler 140 CodeGen") codegen
  * used by interact/evalloop.sml, batch/batchutil.sml, batch/cmsa.sml only   * 
  *****************************************************************************)
 (** compiling the ast into the binary code = elab + translate + codegen *)
-fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv, 
-             compInfo=cinfo, checkErr=check, runtimePid=runtimePid, 
-             splitting=splitting} = 
-  let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle,
-	   ctxt} =
-        (elaborate {ast=ast, statenv=oldstatenv, compInfo=cinfo}) 
-                 before (check "elaborate")
+fun compile {source=source, ast=ast, statenv, symenv=symenv, 
+             compInfo=cinfo, checkErr=check, splitting=splitting} = 
+    let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle } =
+            elaborate {ast=ast, statenv=statenv, compInfo=cinfo }
+            before (check "elaborate")
 
-      val absyn = 
-        (instrument {source=source, compInfo=cinfo} absyn)
-                 before (check "instrument")
+	val absyn = instrument {source=source, compInfo=cinfo} absyn
+                    before (check "instrument")
 
-      val {flint, imports} = 
-        (translate {absyn=absyn, exportLvars=exportLvars, 
-                    newstatenv=newstatenv, oldstatenv=oldstatenv, 
-                    compInfo=cinfo})
-              before check "translate"
+	val {flint, imports} = 
+            translate {absyn=absyn, exportLvars=exportLvars, 
+                       newstatenv=newstatenv, oldstatenv=statenv, 
+                       compInfo=cinfo}
+            before check "translate"
 
-      (* The following is a special hook for the case of linking the
-       * runtime vector when compiling PervEnv/core.sml. (ZHONG)
-       *
-       * Made more robust by looking up the dynamic pid for the runtime
-       * Assembly structure. Now core.sml can import any number of 
-       * modules. (Lal and Dave)
-       *)          
-      val imports =
-        (case runtimePid
-          of NONE => imports
-	   | SOME runP => let
-	       (* compiling core.sml *)
-	       val asmSym = Symbol.strSymbol "Assembly"
-             in
-	       case StaticEnv.look(CC.fromCM oldstatenv, asmSym)
-	       of Bindings.STRbind str =>
-		  (case str
-		   of Modules.STR{access, ...} => 
-		      (case access
-		       of DA.PATH(DA.EXTERN ps,_) => 
-			  let
-			    fun repl(x as (p,tr)) = 
-			      (case PersStamps.compare(ps, p)
-			       of EQUAL => (runP, tr)
-				| _ => x
-			      (*esac*))
-			  in map repl imports
-			  end
-		       | _ => raise Compile ("imports: " ^ DA.prAcc access)
-		      (*esac*))
-		    | Modules.STRSIG _ => raise Compile "STRSIG"
-		    | Modules.ERRORstr => raise Compile "ERRORstr"
-                  (*esac*))
-	       | _ => raise Compile "core compilation failed"
-	     end
-	(*esac*))
-
-
-      val { csegments, inlineExp, imports = revisedImports } = 
-	  codegen { flint = flint, imports = imports, symenv = symenv, 
-		    splitting = splitting, compInfo = cinfo }
-	  before (check "codegen")
-          (*
-           * interp mode was currently turned off.
-           *
-           * if !Control.interp then Interp.interp flint
-           *  else codegen {flint=flint, splitting=splitting, compInfo=cinfo})
-           *)
-
-  in
-      { csegments = csegments,
-        newstatenv = newstatenv,
-	absyn = absyn,
-	exportPid = exportPid,
-	exportLvars = exportLvars,
-	staticPid = staticPid,
-	pickle = pickle,
-	inlineExp = inlineExp,
-	imports = revisedImports,
-	ctxt = ctxt }
-  end (* function compile *)
+	val { csegments, inlineExp, imports = revisedImports } = 
+	    codegen { flint = flint, imports = imports, symenv = symenv, 
+		      splitting = splitting, compInfo = cinfo }
+	    before (check "codegen")
+    (*
+     * interp mode was currently turned off.
+     *
+     * if !Control.interp then Interp.interp flint
+     *  else codegen {flint=flint, splitting=splitting, compInfo=cinfo})
+     *)
+    in
+	{ csegments = csegments,
+          newstatenv = newstatenv,
+	  absyn = absyn,
+	  exportPid = exportPid,
+	  exportLvars = exportLvars,
+	  staticPid = staticPid,
+	  pickle = pickle,
+	  inlineExp = inlineExp,
+	  imports = revisedImports }
+    end (* function compile *)
 
 (*****************************************************************************
  *                        OTHER UTILITY FUNCTIONS                            *

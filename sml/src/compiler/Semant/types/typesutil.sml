@@ -89,41 +89,35 @@ fun mkMETAty() = mkMETAtyBounded infinity
 (*************** primitive operations on tycons ***************)
 fun bugTyc (s: string, tyc) =
   case tyc
-   of (GENtyc{path,...}) =>
-         bug (s ^ " GENtyc " ^ S.name(IP.last path))
-    | (DEFtyc{path,...}) =>
-         bug (s ^ " DEFtyc " ^ S.name(IP.last path))
-    | (RECORDtyc _) => bug (s ^ " RECORDtyc")
-    | (PATHtyc{path,...}) =>
-	 bug (s ^ " PATHtyc " ^ S.name(IP.last path))
-    | (RECtyc _) => bug (s ^ " RECtyc")
-    | (FREEtyc _) => bug (s ^ " FREEtyc")
-    | (ERRORtyc) => bug (s ^ " ERRORtyc")
+   of GENtyc { path, ... } => bug (s ^ " GENtyc " ^ S.name (IP.last path))
+    | DEFtyc {path,...} => bug (s ^ " DEFtyc " ^ S.name(IP.last path))
+    | RECORDtyc _ => bug (s ^ " RECORDtyc")
+    | PATHtyc{path,...} => bug (s ^ " PATHtyc " ^ S.name(IP.last path))
+    | RECtyc _ => bug (s ^ " RECtyc")
+    | FREEtyc _ => bug (s ^ " FREEtyc")
+    | ERRORtyc => bug (s ^ " ERRORtyc")
 
 (* short (single symbol) name of tycon *)
-fun tycName(GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) = IP.last path
-  | tycName(RECORDtyc _) = S.tycSymbol "<RECORDtyc>"
-  | tycName(RECtyc _) = S.tycSymbol "<RECtyc>"
-  | tycName(FREEtyc _) = S.tycSymbol "<FREEtyc>"
+fun tycName (GENtyc { path, ... } | DEFtyc{path,...} | PATHtyc{path,...}) =
+    IP.last path
+  | tycName (RECORDtyc _) = S.tycSymbol "<RECORDtyc>"
+  | tycName (RECtyc _) = S.tycSymbol "<RECtyc>"
+  | tycName (FREEtyc _) = S.tycSymbol "<FREEtyc>"
   | tycName ERRORtyc = S.tycSymbol "<ERRORtyc>"
 
 (* get the stamp of a tycon *)
-fun tycStamp(GENtyc{stamp,...}) = stamp
-  | tycStamp(DEFtyc{stamp,...}) = stamp
+fun tycStamp (GENtyc { stamp, ... } | DEFtyc { stamp, ... }) = stamp
   | tycStamp tycon = bugTyc("tycStamp",tycon)
 
 (* full path name of tycon, an InvPath.path *)
-fun tycPath (GENtyc{path,...}) : IP.path = path
-  | tycPath (DEFtyc{path,...}) = path
-  | tycPath (PATHtyc{path, ...}) = path
+fun tycPath (GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) = path
   | tycPath ERRORtyc = IP.IPATH[S.tycSymbol "error"]
   | tycPath tycon  = bugTyc("tycPath",tycon)
 
 fun tycEntPath(PATHtyc{entPath,...}) = entPath
   | tycEntPath tycon = bugTyc("tycEntPath",tycon)
 
-fun tyconArity(GENtyc{arity,...}) = arity
-  | tyconArity(PATHtyc{arity,...}) = arity
+fun tyconArity(GENtyc { arity, ... } | PATHtyc{arity,...}) = arity
   | tyconArity(DEFtyc{tyfun=TYFUN{arity,...},...}) = arity
   | tyconArity(RECORDtyc l) = length l
   | tyconArity(ERRORtyc) = 0
@@ -131,15 +125,16 @@ fun tyconArity(GENtyc{arity,...}) = arity
 
 fun setTycPath(tycon,path) =
     case tycon
-     of GENtyc{stamp,arity,eq,kind,...} =>
-          GENtyc{stamp=stamp,path=path,arity=arity,eq=eq,kind=kind}
-      | DEFtyc{tyfun,strict,stamp,...} =>
+     of GENtyc { stamp, arity, eq, kind, path = _, stub = _ } =>
+	GENtyc { stamp = stamp, arity = arity, eq = eq, kind = kind,
+		 path = path, stub = NONE }
+      | DEFtyc{tyfun,strict,stamp,path=_} =>
           DEFtyc{tyfun=tyfun,path=path,strict=strict,stamp=stamp}
       | _ => bugTyc("setTycName",tycon)
 
-fun eqTycon(GENtyc{stamp=s,...},GENtyc{stamp=s',...}) = Stamps.eq(s,s')
-  | eqTycon(ERRORtyc,_) = true
-  | eqTycon(_,ERRORtyc) = true
+fun eqTycon (GENtyc g, GENtyc g') = Stamps.eq (#stamp g, #stamp g')
+  | eqTycon (ERRORtyc,_) = true
+  | eqTycon (_,ERRORtyc) = true
   (* this rule for PATHtycs is conservatively correct, but is only an
      approximation *)
   | eqTycon(PATHtyc{entPath=ep,...},PATHtyc{entPath=ep',...}) =
@@ -181,6 +176,7 @@ fun bindTyvars1(tyvars: tyvar list) : Types.polysign =
 	  | loop((tv as ref(UBOUND{eq,...}))::rest,n) =
 	       (tv := INSTANTIATED (IBOUND n);
 	        eq :: loop(rest,n+1))
+	  | loop _ = bug "bindTyvars1:UBOUND"
      in loop(tyvars,0)
     end
 
@@ -262,7 +258,7 @@ local
     fun makeDummyType() =
 	CONty(GENtyc{stamp = Stamps.special "dummy",
 		     path = IP.IPATH[S.tycSymbol "dummy"],
-		     arity = 0, eq = ref YES, 
+		     arity = 0, eq = ref YES, stub = NONE,
                      kind = PRIMITIVE (PrimTyc.ptc_void)},[])
          (*
           * Making dummy type is a temporary hack ! pt_void is not used
@@ -435,7 +431,7 @@ fun checkEqTySig(ty, sign: polysign) =
     let fun eqty(VARty(ref(INSTANTIATED ty))) = eqty ty
 	  | eqty(CONty(DEFtyc{tyfun,...}, args)) =
 	      eqty(applyTyfun(tyfun,args))
-	  | eqty(CONty(GENtyc{eq,...}, args)) =
+	  | eqty(CONty(GENtyc { eq, ... }, args)) =
 	     (case !eq
 		of OBJ => ()
 		 | YES => app eqty args
@@ -514,10 +510,12 @@ fun tyvarType (VARty (tv as ref(OPEN _))) = tv
  *)
 fun getRecTyvarMap(n,ty) =
     let val s = Array.array(n,false)
-	fun special(GENtyc{arity=0,...}) = false
+	fun notArrow tyc = not (eqTycon (tyc, BT.arrowTycon))
+	                  (* orelse eqTycon(tyc,contTycon) *)
+	fun special (tyc as GENtyc { arity, ... }) =
+	    arity <> 0 andalso notArrow tyc
 	  | special(RECORDtyc _) = false
-	  | special tyc = not(eqTycon(tyc,BT.arrowTycon))
-				   (* orelse eqTycon(tyc,contTycon) *)
+	  | special tyc = notArrow tyc
 
 	fun scan(b,(IBOUND n)) = if b then (update(s,n,true)) else ()
 	  | scan(b,CONty(tyc,args)) = 
@@ -645,9 +643,12 @@ fun mapUnZip f nil = (nil,nil)
 fun foldTypeEntire f =
     let fun foldTc (tyc, b0) = 
           case tyc
-           of GENtyc{kind=DATATYPE{family={members=ms,...},...},...} => b0
+           of GENtyc { kind, ... } =>
+	      (case kind of
+		   DATATYPE{family={members=ms,...},...} => b0
 (*             foldl (fn ({dcons, ...},b) => foldl foldDcons b dcons) b0 ms *)
-            | GENtyc{kind=ABSTRACT tc, ...} => foldTc(tc, b0)
+		 | ABSTRACT tc => foldTc (tc, b0)
+		 | _ => b0)
             | DEFtyc{tyfun=TYFUN{arity,body}, ...} => foldTy(body, b0)
             | _ => b0
 
@@ -679,9 +680,9 @@ fun mapTypeEntire f =
 
         and mapTc tyc = 
           case tyc
-           of GENtyc{stamp, arity, eq, 
-                     kind=DATATYPE{index,family={members,...},...},
-                     path} => tyc
+	   of GENtyc { stamp, arity, eq, path, kind, stub = _ } =>
+	      (case kind of
+                   DATATYPE{index,family={members,...},...} => tyc
 (*
  *  The following code needs to be rewritten !!! (ZHONG)
 
@@ -689,12 +690,14 @@ fun mapTypeEntire f =
                        kind=DATATYPE {index=index, members=map mapMb members, 
                                       lambdatyc = ref NONE}}
 *)
-            | GENtyc{stamp, arity, eq, kind=ABSTRACT tc, path} =>
-                GENtyc{stamp=stamp, arity=arity, eq=eq, path=path,
-                       kind=ABSTRACT (mapTc tc)}
-            | DEFtyc{stamp, strict, tyfun, path} => 
-                DEFtyc{stamp=stamp, strict=strict, tyfun=mapTf tyfun,
-                       path=path}
+		 | ABSTRACT tc =>
+		   GENtyc {stamp=stamp, arity=arity, eq=eq, path=path,
+			   kind= ABSTRACT (mapTc tc),
+			   stub = NONE}
+		 | _ => tyc)
+	    | DEFtyc{stamp, strict, tyfun, path} => 
+              DEFtyc{stamp=stamp, strict=strict, tyfun=mapTf tyfun,
+                     path=path}
             | _ => tyc
 
          and mapMb {tycname, stamp, arity, dcons, lambdatyc} = 
@@ -717,20 +720,18 @@ fun mapTypeEntire f =
  * I am using a binary dictionary instead. (ZHONG)
  *)
 local
-  structure TycSet = RedBlackMapFn(struct type ord_key = ST.stamp
-					val compare = ST.cmp
-				 end)
+  structure TycSet = StampMap
 in
   type tycset = tycon TycSet.map
 
   val mkTycSet = fn () => TycSet.empty
 
-  fun addTycSet(tyc as GENtyc{stamp, ...}, tycset) = 
-        TycSet.insert(tycset, stamp, tyc)
+  fun addTycSet(tyc as GENtyc { stamp, ... }, tycset) = 
+      TycSet.insert (tycset, stamp, tyc)
     | addTycSet _ = bug "unexpected tycons in addTycSet"
 
-  fun inTycSet(tyc as GENtyc{stamp, ...}, tycset) =
-        (case TycSet.find(tycset, stamp) of SOME _ => true | _ => false)
+  fun inTycSet(tyc as GENtyc { stamp, ... }, tycset) =
+      isSome (TycSet.find(tycset, stamp))
     | inTycSet _ = false
 
   fun filterSet(ty, tycs) = 
@@ -755,16 +756,26 @@ end (* local TycSet *)
  *)
 fun reformat (ty, tycs, depth) = 
   let fun h ([], i, ks, ps, nts) = (rev ks, rev ps, rev nts)
-        | h ((tc as GENtyc{stamp, arity, eq, 
-                           kind=ABSTRACT itc, path})::rest, i, ks, ps, nts) =
-            let val tk = LT.tkc_int arity
-                val tps = TP_VAR{depth=depth, num=i, kind=tk}
-                val nkind = FLEXTYC tps
-                val ntc = GENtyc{stamp=stamp, arity=arity, eq=eq, 
-                                 kind=nkind, path=path}
-             in h(rest, i+1, tk::ks, (TP_TYC itc)::ps, ntc::nts)
-            end
-        | h (_, _, _, _, _) = bug "non-abstract tycons seen in TU.reformat"
+	| h (tc :: rest, i, ks, ps, nts) = let
+	      fun noabs () = bug "non-abstract tycons seen in TU.reformat"
+	  in
+	      case tc
+	       of GENtyc { stamp, arity, eq, path, kind, stub } =>
+		  (case kind of
+		       ABSTRACT itc => let
+			   val tk = LT.tkc_int arity
+			   val tps = TP_VAR{depth=depth, num=i, kind=tk}
+			   val nkind = FLEXTYC tps
+			   val ntc =
+			       GENtyc { stamp = stamp, arity = arity,
+					eq = eq, kind = nkind, path = path,
+					stub = NONE}
+		       in
+			   h (rest, i+1, tk::ks, (TP_TYC itc)::ps, ntc::nts)
+		       end
+		     | _ => noabs ())
+		| _ => noabs ()
+	  end
 
       val (tks, tps, ntycs) = h(tycs, 0, [], [], [])
 
@@ -781,15 +792,23 @@ fun reformat (ty, tycs, depth) =
 
 val reformat = Stats.doPhase(Stats.makePhase "Compiler 047 reformat") reformat
 
-fun dtSibling(n,tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
-                                   family as {members,...}},...}) =
-    if n = index then tyc
-    else let val {tycname,arity,dcons,eq,lazyp,sign} = Vector.sub(members,n)
-             val stamp= Vector.sub(stamps,n)
-	  in GENtyc{stamp=stamp,arity=arity,eq=eq,path=IP.IPATH[tycname],
-		    kind=DATATYPE{index=n,stamps=stamps,freetycs=freetycs,
-                                  root=NONE (*!*),family=family}}
-	 end
+fun dtSibling(n,tyc as GENtyc { kind = DATATYPE dt, ... }) =
+    let val {index,stamps,freetycs,root, family as {members,...} } = dt
+    in
+	if n = index then tyc
+	else let val {tycname,arity,dcons,eq,lazyp,sign} =
+		     Vector.sub(members,n)
+		 val stamp= Vector.sub(stamps,n)
+	     in
+		 GENtyc {stamp=stamp,
+			 arity=arity,eq=eq,path=IP.IPATH[tycname],
+			 kind=DATATYPE{index=n,stamps=stamps,
+				       freetycs=freetycs,
+				       root=NONE (*!*),
+				       family=family},
+			 stub = NONE}
+	     end
+    end
   | dtSibling _ = bug "dtSibling"
 
 (* NOTE: this only works (perhaps) for datatype declarations, but not 
@@ -797,16 +816,15 @@ fun dtSibling(n,tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
    recursive datatype specifications together, its information cannot be
    fully recovered in dtSibling. (ZHONG)
  *)
-fun extractDcons(tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
-                                             family as {members,...}}, ...}
-		 (* , sigContext,sigEntEnv *)) =
-    let val {dcons,sign,lazyp,...} = Vector.sub(members,index)
-	fun expandTyc(PATHtyc _) = 
-               bug "expandTyc:PATHtyc" (* use expandTycon? *)
+fun extractDcons (tyc as GENtyc { kind = DATATYPE dt, ... }) =
+    let val {index,stamps,freetycs,root,family as {members,...}} = dt
+	val {dcons,sign,lazyp,...} = Vector.sub(members,index)
+	fun expandTyc(PATHtyc _) =
+	    bug "expandTyc:PATHtyc" (* use expandTycon? *)
 	  | expandTyc(RECtyc n) = dtSibling(n,tyc)
           | expandTyc(FREEtyc n) = 
-               ((List.nth(freetycs,n)) handle _ => 
-                   bug "unexpected freetycs in extractDcons")
+	    ((List.nth(freetycs,n))
+	     handle _ => bug "unexpected freetycs in extractDcons")
 	  | expandTyc tyc = tyc
 
 	fun expand ty = mapTypeFull expandTyc ty
@@ -816,7 +834,7 @@ fun extractDcons(tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
 		    typ = dconType(tyc, Option.map expand domain),
 		    const = case domain of NONE => true | _ => false}
 
-     in map mkDcon dcons
+    in map mkDcon dcons
     end
   | extractDcons _ = bug "extractDcons"
 
@@ -857,7 +875,8 @@ fun dummyTyGen () : unit -> Types.ty =
 	     in CONty(GENtyc{stamp = ST.special name,
 			     path = IP.IPATH[S.tycSymbol name],
 			     arity = 0, eq = ref NO,
-			     kind = ABSTRACT BasicTypes.boolTycon},
+			     kind = ABSTRACT BasicTypes.boolTycon,
+			     stub = NONE},
 		      [])
 	    end
      in nextTy

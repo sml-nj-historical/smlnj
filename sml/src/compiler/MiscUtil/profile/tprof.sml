@@ -74,10 +74,11 @@ fun tmpvar(str,ty,mkv) =
     end
 
 fun varexp(v as VALvar{typ=ref ty,path,...}) =
-    case TypesUtil.headReduceType ty
+    (case TypesUtil.headReduceType ty
       of POLYty _ =>
-	   bug ("poly["^SP.toString path^"] in Prof")
-       | ty' => VARexp(ref v, []) (* VARexp(ref v, SOME ty') *)
+	 bug ("poly["^SP.toString path^"] in Prof")
+       | ty' => VARexp(ref v, [])) (* VARexp(ref v, SOME ty') *)
+  | varexp _ = bug "090924 in prof"
 
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
@@ -92,15 +93,24 @@ fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
      val currentvar = tmpvar("profCurrent",CONty(refTycon,[intTy]), mkv)
      val currentexp = varexp currentvar
      
-     val V.VAL register = Lookup.lookVal
-	 (coreEnv,
-	  SP.SPATH [S.strSymbol "Core",
-			 S.varSymbol "profile_register"],
-	  fn _ => fn s => fn _ => bug "222 in prof")
+     val register =
+	 case Lookup.lookVal
+		  (coreEnv,
+		   SP.SPATH [S.strSymbol "Core",
+			     S.varSymbol "profile_register"],
+		   fn _ => fn s => fn _ => bug "222 in prof") of
+	     V.VAL r => r
+	   | _ => bug "09824 in prof"
 
-     local val VALvar{typ=ref ty,...} = register
-           val CONty(reff,[ty']) = TypesUtil.headReduceType ty
-      in val profDerefTy = ty'
+     local
+	 val ty = case register of
+		      VALvar { typ = ref ty, ... } => ty
+		    | _ => bug "298374 in prof"
+     in
+         val profDerefTy =
+	     case TypesUtil.headReduceType ty of
+		 CONty (_, [ty']) => ty'
+	       | _ => bug "298342 in prof"
      end
 
      val entries = ref (nil: string list)
@@ -306,11 +316,15 @@ fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
                            val ccvara' = makeEntry(name)
                            val lvar = tmpvar("fnvar",t,mkv);
 
-                           val V.CON exnMatch = Lookup.lookVal
-                                  (coreEnv, SP.SPATH [S.strSymbol "Core", 
-                                                      S.varSymbol "Match"],
-                                   fn _ => fn s => fn _ => 
-                                           bug "250 in prof")
+                           val exnMatch =
+			       case Lookup.lookVal
+					(coreEnv,
+					 SP.SPATH [S.strSymbol "Core", 
+						   S.varSymbol "Match"],
+					 fn _ => fn s => fn _ => 
+							    bug "250 in prof")
+				of V.CON e => e
+				 | _ => bug "no CON for exnMatch"
 
                            val RULE(_,special) = List.last l
                         in FNexp ([RULE(VARpat(lvar), 

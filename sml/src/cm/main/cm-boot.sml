@@ -1,6 +1,6 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find in full-cm.cm.  A "minimal" structure
+ * structure CM that people find in smlnj/cm/full.cm.  A "minimal" structure
  * CM is defined in CmHook, but it needs to be initialized at bootstrap
  * time.
  *
@@ -17,15 +17,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure DE = DynamicEnv
       structure SE = GenericVC.StaticEnv
       structure ER = GenericVC.EnvRef
-      structure BE = GenericVC.BareEnvironment
-      structure CMSE = GenericVC.CMStaticEnv
       structure S = GenericVC.Symbol
-      structure CoerceEnv = GenericVC.CoerceEnv
       structure EM = GenericVC.ErrorMsg
       structure BF = HostMachDepVC.Binfile
       structure P = OS.Path
       structure F = OS.FileSys
       structure DG = DependencyGraph
+      structure GG = GroupGraph
 
       val os = SMLofNJ.SysInfo.getOSKind ()
       val my_archos =
@@ -57,8 +55,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       val mkBootList = #l o MkBootList.group (fn p => p)
 
-      fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
+      fun init_servers (GG.GROUP { grouppath, ... }) =
 	  Servers.cm { archos = my_archos, project = SrcPath.descr grouppath }
+	| init_servers GG.ERRORGROUP = ()
 
       fun recomp_runner gp g = let
 	  val _ = init_servers g
@@ -72,17 +71,18 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       (* This function combines the actions of "recompile" and "exec".
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
-      fun make_runner add_bindings gp g = let
-	  val { store, get } = BFC.new ()
-	  val _ = init_servers g
-	  val { group = c_group, ... } =
-	      Compile.newTraversal (Link.evict, store, g)
-	  val { group = l_group, ... } = Link.newTraversal (g, get)
-	  val GroupGraph.GROUP { required = rq, ... } = g
-      in
-	  case Servers.withServers (fn () => c_group gp) of
-	      NONE => false
-	    | SOME { stat, sym} =>
+      fun make_runner _ _ GG.ERRORGROUP = false
+	| make_runner add_bindings gp (g as GG.GROUP grec) = let
+	      val { required = rq, ... } = grec
+	      val { store, get } = BFC.new ()
+	      val _ = init_servers g
+	      val { group = c_group, ... } =
+		  Compile.newTraversal (Link.evict, store, g)
+	      val { group = l_group, ... } = Link.newTraversal (g, get)
+	  in
+	      case Servers.withServers (fn () => c_group gp) of
+		  NONE => false
+		| SOME { stat, sym} =>
 		  (* Before executing the code, we announce the privileges
 		   * that are being invoked.  (For the time being, we assume
 		   * that everybody has every conceivable privilege, but at
@@ -100,16 +100,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 							  symbolic = sym,
 							  dynamic = dyn }
 				    val base = #get ER.topLevel ()
-				    val new =
-					BE.concatEnv (CoerceEnv.e2b delta,
-						      base)
+				    val new = E.concatEnv (delta, base)
 				in
 				    #set ER.topLevel new;
 				    Say.vsay ["[New bindings added.]\n"]
 				end
 			    else ();
 			    true))
-      end
+	  end
 
       val al_greg = GroupReg.new ()
 
@@ -139,8 +137,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       local
 	  type kernelValues =
-	      {	corenv : BE.environment,
-		init_group : GroupGraph.group }
+	       { corenv : E.environment, init_group : GG.group }
 
 	  val fnpolicy = FilenamePolicy.colocate
 	      { os = os, arch = HostMachDepVC.architecture }
@@ -362,7 +359,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      pcmode = pcmode,
 				      symval = SSV.symval,
 				      keep_going = false,
-				      corenv = BE.emptyEnv },
+				      corenv = E.emptyEnv },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer () }
 	      fun loadInitGroup () =
@@ -405,9 +402,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      val pervdyn = doTrav perv_lt
 
 		      val corenv =
-			  BE.mkenv { static = CoerceEnv.es2bs corestat,
-				     symbolic = coresym,
-				     dynamic = coredyn }
+			  E.mkenv { static = corestat,
+				    symbolic = coresym,
+				    dynamic = coredyn }
 		      val core_symdyn =
 			  E.mkenv { static = E.staticPart E.emptyEnv,
 				    dynamic = coredyn, symbolic = coresym }
@@ -427,9 +424,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      val standard_preload =
 			  Preload.preload { make = make, autoload = autoload }
 		  in
-		      #set ER.core (BE.staticPart corenv);
+		      #set ER.core (E.staticPart corenv);
 		      #set ER.pervasive (E.layerEnv (pervasive, core_symdyn));
-		      #set ER.topLevel BE.emptyEnv;
+		      #set ER.topLevel E.emptyEnv;
 		      theValues := SOME { corenv = corenv,
 					  init_group = init_group };
 		      case er of

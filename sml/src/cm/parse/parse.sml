@@ -50,6 +50,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     fun cachedStable (p, ig as GG.GROUP { grouppath, ... }) =
 	if SrcPath.compare (p, grouppath) = EQUAL then SOME ig
 	else SrcPathMap.find (!sgc, p)
+      | cachedStable (_, GG.ERRORGROUP) = NONE
 
     (* When an entry A vanishes from the stable cache (this only happens in
      * paranoid mode), then all the other ones that refer to A must
@@ -57,25 +58,26 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
      * had been unpickled before A became invalid they will point to
      * invalid data.  By removing them from the cache we force them to
      * be re-read and re-unpickled.  This restores sanity. *)
-    fun delCachedStable (p, GG.GROUP { grouppath = igp, ... }) = let
-	val changed = ref true
-	fun canStay (GG.GROUP { sublibs, ... }) = let
-	    fun goodSublib (p, GG.GROUP { kind = GG.STABLELIB _, ... }) =
-		SrcPath.compare (p, igp) = EQUAL orelse
-		SrcPathMap.inDomain (!sgc, p)
-	      | goodSublib _ = true
-	    val cs = List.all goodSublib sublibs
+    fun delCachedStable (p, GG.GROUP { grouppath = igp, ... }) =
+	let val changed = ref true
+	    fun canStay GG.ERRORGROUP = true (* doesn't matter *)
+	      | canStay (GG.GROUP { sublibs, ... }) = let
+		  fun goodSublib (p, GG.GROUP { kind = GG.STABLELIB _, ... }) =
+		      SrcPath.compare (p, igp) = EQUAL orelse
+		      SrcPathMap.inDomain (!sgc, p)
+		    | goodSublib _ = true
+		  val cs = List.all goodSublib sublibs
+		in
+		    if cs then () else changed := true;
+		    cs
+		end
 	in
-	    if cs then () else changed := true;
-	    cs
+	    (sgc := #1 (SrcPathMap.remove (!sgc, p)))
+	    handle LibBase.NotFound => ();
+	    while !changed do
+               (changed := false; sgc := SrcPathMap.filter canStay (!sgc))
 	end
-
-    in
-	(sgc := #1 (SrcPathMap.remove (!sgc, p)))
-	     handle LibBase.NotFound => ();
-	while !changed do
-             (changed := false; sgc := SrcPathMap.filter canStay (!sgc))
-    end
+      | delCachedStable (_, GG.ERRORGROUP) = ()
 
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
@@ -94,7 +96,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	val { load_plugin, gr, param, stabflag, group,
 	      init_group, paranoid } = args
 
-	val GroupGraph.GROUP { grouppath = init_gname, ... } = init_group
+	val { grouppath = init_gname, ... } =
+	    case init_group of
+		GG.GROUP x => x
+	      | GG.ERRORGROUP =>
+		EM.impossible "parse.sml: parse: bad init group"
 
 	val stabthis = isSome stabflag
 	val staball = stabflag = SOME true
@@ -102,6 +108,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	val groupreg = gr
 	val errcons = EM.defaultConsumer ()
 	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
+	val keep_going = #keep_going param
 
 	(* The "group cache" -- we store "group options";  having
 	 * NONE registered for a group means that a previous attempt
@@ -112,16 +119,18 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	val em = ref StableMap.empty
 
-	fun update_em (GG.GROUP ns_g, GG.GROUP s_g) = let
-	    val s_e = #exports s_g
-	    fun add (sy, ((_ , DG.SB_SNODE (DG.SNODE sn)), _)) =
-		(case SymbolMap.find (s_e, sy) of
-		     SOME ((_, DG.SB_BNODE (DG.BNODE bn, _)), _) =>
+	fun update_em (GG.GROUP ns_g, GG.GROUP s_g) =
+	    let val s_e = #exports s_g
+		fun add (sy, ((_ , DG.SB_SNODE (DG.SNODE sn)), _)) =
+		    (case SymbolMap.find (s_e, sy) of
+			 SOME ((_, DG.SB_BNODE (DG.BNODE bn, _)), _) =>
 			 em := StableMap.insert (!em, #bininfo bn, #smlinfo sn)
-		   | _ => ())
-	      | add _ = ()
-	in SymbolMap.appi add (#exports ns_g)
-	end
+		       | _ => ())
+		  | add _ = ()
+	    in
+		SymbolMap.appi add (#exports ns_g)
+	    end
+	  | update_em _ = ()
 
 	fun registerNewStable (p, g) =
 	    (sgc := SrcPathMap.insert (!sgc, p, g);
@@ -217,7 +226,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    fun stabilize NONE = NONE
 	      | stabilize (SOME g) =
 		(case g of
-		     GG.GROUP { kind = GG.LIB _, ... } => let
+		     GG.ERRORGROUP => NONE
+		   | GG.GROUP { kind = GG.LIB _, ... } => let
 			 val go = Stabilize.stabilize ginfo
 			     { group = g, anyerrors = pErrFlag }
 		     in
@@ -296,21 +306,26 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     * "anyErrors" flag of the parent group. *)
 		    fun recParse (p1, p2) curlib p = let
 			val gs' = (group, (source, p1, p2)) :: groupstack
-			val myErrorFlag = #anyErrors source
+			(* my error flag *)
+			val mef = #anyErrors source
 		    in
-			case mparse (p, gs', myErrorFlag, staball, curlib) of
-			    NONE => (myErrorFlag := true;
-				     CMSemant.emptyGroup group)
-			  | SOME res => res
+			(* unless we are in keep-going mode we do no further
+			 * recursive traversals once there was an error on
+			 * this group. *)
+			if !mef andalso not keep_going then GG.ERRORGROUP
+			else case mparse (p, gs', mef, staball, curlib) of
+				 NONE => (mef := true; GG.ERRORGROUP)
+			       | SOME res => res
 		    end
 	            handle exn as IO.Io _ =>
 			(error (p1, p2) (General.exnMessage exn);
-			 CMSemant.emptyGroup group)
+			 GG.ERRORGROUP)
 
-		    fun doMember ({ name, mkpath }, p1, p2, c) =
+		    fun doMember ({ name, mkpath }, p1, p2, c, oto) =
 			CMSemant.member (ginfo, recParse (p1, p2), load_plugin)
 			  { name = name, mkpath = mkpath,
-			    class = c, group = (group, (p1, p2)),
+			    class = c, tooloptions = oto,
+			    group = (group, (p1, p2)),
 			    context = context }
 
 		    (* Build the argument for the lexer; the lexer's local

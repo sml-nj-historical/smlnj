@@ -35,8 +35,8 @@ fun lookEntVar(ev,(_,s as (M.TYCspec{entVar,...} | M.STRspec{entVar,...}))::rest
 
 fun findContext(ev,context as elements0::outer) =
       (case lookEntVar(ev, elements0)
-	 of SOME(M.STRspec{sign as M.SIG{elements,...},...}) =>
-	     elements::context
+	 of SOME(M.STRspec{sign as M.SIG {elements,...},...}) =>
+	    elements :: context
 	  | NONE => findContext(ev,outer)
 	  | _ => bug "findContext - bad element")
   | findContext(ev,nil) = raise OUTER
@@ -49,7 +49,8 @@ fun expandTycon(tycon,context,entEnv) =
 			of T.GENtyc _ => spec
 			 | T.DEFtyc{stamp,strict,path,tyfun} =>
 			     T.DEFtyc{stamp=stamp,strict=strict,path=path,
-				      tyfun=expandTyfun(tyfun,context)})
+				      tyfun=expandTyfun(tyfun,context)}
+			 | _ => bug "expandTycon 2")
 		  | NONE => (* try outer context *)
 		     expandTycVar(ev,outer)
 		  | _ => bug "expandTycon 1")

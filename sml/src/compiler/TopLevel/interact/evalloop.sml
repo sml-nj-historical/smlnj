@@ -9,7 +9,6 @@ local open Environment
       structure CB = CompBasic
       structure EM = ErrorMsg
       structure E  = Environment
-      structure CMS = CMStaticEnv      
       structure PP = PrettyPrint
       structure T = Time
       structure U = Unsafe
@@ -20,9 +19,9 @@ exception Interrupt
 type lvar = Access.lvar
 
 type interactParams = 
-   {compManagerHook : (CB.ast * EnvRef.CMenvref 
-                                           * EnvRef.envref -> unit) option ref,
-          baseEnvRef      : EnvRef.CMenvref,
+   {compManagerHook :
+    (CB.ast * EnvRef.envref * EnvRef.envref -> unit) option ref,
+          baseEnvRef      : EnvRef.envref,
           localEnvRef     : EnvRef.envref,
           transform       : CB.absyn -> CB.absyn,
           instrument      : {source: CB.source,
@@ -76,7 +75,6 @@ fun evalLoop ({compManagerHook, baseEnvRef, localEnvRef, perform,
 
 let val parser = C.parseOne source
     val cinfo = C.mkCompInfo(source,#get EnvRef.core (),transform)
-    val baseEnvRefunCM = EnvRef.unCM baseEnvRef
 
     fun checkErrors s = 
         if C.anyErrors cinfo then raise EM.Error else ()
@@ -90,14 +88,16 @@ let val parser = C.parseOne source
                   | SOME cm => cm (ast, baseEnvRef, localEnvRef)
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
-                  E.layerEnv(#get localEnvRef (), #get baseEnvRefunCM ())
+                  E.layerEnv(#get localEnvRef (), #get baseEnvRef ())
 
                 val splitting = !Control.lambdaSplitEnable
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
                      imports, inlineExp, ...} = 
-                  C.compile {source=source, ast=ast, statenv=statenv, 
-                             symenv=symenv, compInfo=cinfo, 
-                             checkErr=checkErrors, runtimePid=NONE, 
+                  C.compile {source=source, ast=ast,
+			     statenv=statenv,
+                             symenv=symenv,
+			     compInfo=cinfo, 
+                             checkErr=checkErrors,
                              splitting=splitting}
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 
@@ -121,7 +121,7 @@ let val parser = C.parseOne source
 
              in PrettyPrint.with_pp (#errConsumer source)
                 (fn ppstrm => printer 
-                  (E.layerEnv(newLocalEnv, #get baseEnvRefunCM ()))
+                  (E.layerEnv(newLocalEnv, #get baseEnvRef ()))
                   ppstrm (absyn, exportLvars));
                 #set localEnvRef newLocalEnv
             end

@@ -40,6 +40,12 @@ Matthias Blume.
 \newblock {\em ACM Trans. on Programming Languages and Systems},
   21(4):813--846, July 1999.
 
+\bibitem[Fel79]{feldman79}
+S.~I. Feldman.
+\newblock Make -- a program for maintaining computer programs.
+\newblock In {\em Unix Programmer's Manual, Seventh Edition, Volume 2A}. Bell
+  Laboratories, 1979.
+
 \bibitem[GG93]{mlburg93}
 Florent Guillaume and Lal George.
 \newblock {\em {ML-Burg} Documentation}.
@@ -67,11 +73,6 @@ Brian~W. Kernighan and Dennis~M. Ritchie.
 Robin Milner, Mads Tofte, Robert Harper, and David MacQueen.
 \newblock {\em The Definition of {Standard ML} (Revised)}.
 \newblock MIT Press, Cambridge, MA, 1997.
-
-\bibitem[Ram94]{ramsey:simplified}
-Norman Ramsey.
-\newblock Literate programming simplified.
-\newblock {\em IEEE Software}, 11(5):97--105, September 1994.
 
 \bibitem[RG99]{reppy99:basis}
 John Reppy and Emden Gansner.

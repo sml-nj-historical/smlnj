@@ -10,7 +10,7 @@
 signature TELL_ENV =
 sig
   type symbol
-  type env = CMStaticEnv.staticEnv
+  type env = StaticEnv.staticEnv
   type binding
   type ty
   val name : symbol -> string
@@ -23,7 +23,7 @@ end
 structure TellEnv :> TELL_ENV =
 struct
   type symbol = Symbol.symbol
-  type env = CMStaticEnv.staticEnv
+  type env = StaticEnv.staticEnv
   type binding = Bindings.binding
   type ty = Types.ty
   val name = Symbol.name

@@ -19,3 +19,5 @@ mllex-tool.cm		../cm/tools
 lex-ext.cm		../cm/tools
 mlburg-tool.cm		../cm/tools
 burg-ext.cm		../cm/tools
+make-tool.cm		../cm/tools
+shell-tool.cm		../cm/tools

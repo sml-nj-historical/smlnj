@@ -35,7 +35,6 @@ signature CM_SEMANT = sig
     val class : cm_symbol -> cm_class
 
     (* getting the full analysis for a group/library *)
-    val emptyGroup : pathname -> group
     val group :
 	pathname * privilegespec * exports option * members *
 	GeneralParams.info * pathname option * pathname option * complainer *
@@ -57,8 +56,11 @@ signature CM_SEMANT = sig
     val member :
 	GeneralParams.info * (pathname option -> pathname -> group) *
 	                     (SrcPath.context -> string -> bool)
-	-> { name: string, mkpath: string -> pathname,
-	     group: pathname * region, class: cm_class option,
+	-> { name: string,
+	     mkpath: string -> pathname,
+	     group: pathname * region,
+	     class: cm_class option,
+	     tooloptions: string list option,
 	     context: SrcPath.context }
 	-> members
     val members : members * members -> members
@@ -144,21 +146,15 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun applyTo mc e = e mc
 
-    fun emptyGroup path =
-	GG.GROUP { exports = SymbolMap.empty,
-		   kind = GG.NOLIB { subgroups = [], owner = NONE },
-		   required = StringSet.empty,
-		   grouppath = path,
-		   sublibs = [] }
-
     fun sgl2sll subgroups = let
 	fun sameSL (p, g) (p', g') = SrcPath.compare (p, p') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
 	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
-	    case kind of
-		GG.NOLIB _ => foldl add l sublibs
-	      | _ => add (x, l)
+	    (case kind of
+		 GG.NOLIB _ => foldl add l sublibs
+	       | _ => add (x, l))
+	  | oneSG (_, l) = l
     in
 	foldl oneSG [] subgroups
     end
@@ -167,7 +163,11 @@ structure CMSemant :> CM_SEMANT = struct
 	val mc = applyTo (MemberCollection.implicit init_group, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val pfsbn = let
-	    val GroupGraph.GROUP { exports, ... } = init_group
+	    val { exports, ... } =
+		case init_group of
+		    GG.GROUP x => x
+		  | GG.ERRORGROUP =>
+		    EM.impossible "semant.sml: grouplib: bad init group"
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervCoreAccess.pervStrSym)))
 	end
@@ -227,8 +227,7 @@ structure CMSemant :> CM_SEMANT = struct
 		  | eq _ = false
 	    in
 		if eq (curlib, owner) then ()
-		else e0 (concat ["owner of subgroup (",
-				 libname owner,
+		else e0 (concat ["owner of subgroup (", libname owner,
 				 ") does not match current library (",
 				 libname curlib, ")"])
 	    end

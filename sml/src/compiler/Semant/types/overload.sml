@@ -67,8 +67,8 @@ fun softUnify(ty1: ty, ty2: ty): unit =
 			   then (case tycon
 			           of DEFtyc _ => 
 				       scan eq (TU.headReduceType ty)
-		                    | GENtyc{eq=eqp,...} =>
-				       (case !eqp
+		                    | GENtyc gt =>
+				       (case ! (#eq gt)
                                           of YES => app (scan eq) args
 					   | OBJ => app (scan false) args
 					      (* won't happen *)

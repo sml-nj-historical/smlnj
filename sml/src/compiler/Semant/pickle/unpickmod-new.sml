@@ -1,39 +1,43 @@
 (*
  * The new unpickler (based on the new generic unpickling facility).
  *
- * July 1999, Matthias Blume
+ * The unpickler embeds a "modtree" into the unpickled environment.
+ * The modtree allows for very rapid construction of modmaps so that
+ * modmaps do not have to be stored permanently but can be built on-demand.
+ * (Permanently stored modmaps incur space problems: one has to be careful
+ * that they don't hang on to bindings that no longer exist, and because
+ * of sharing there can be significant overlap--and space overhead--in what
+ * each such map points to.  Modtrees do not have these problems.)
+ *
+ * March 2000, Matthias Blume
  *)
 signature UNPICKMOD = sig
 
-    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
+    type context = (string list * Symbol.symbol) option -> ModuleId.tmap
 
-    val unpickleEnv :
-	{ context: CMStaticEnv.staticEnv,
-	  hash: PersStamps.persstamp,
-	  pickle: Word8Vector.vector }
-	-> env'n'ctxt
+    val unpickleEnv : context ->
+		      PersStamps.persstamp * Word8Vector.vector ->
+		      StaticEnv.staticEnv
 
     val unpickleFLINT : Word8Vector.vector -> CompBasic.flint option
 
-    (*
-     * The env unpickler resulting from "mkUnpicklers" cannot be used for
+    (* The env unpickler resulting from "mkUnpicklers" cannot be used for
      * "original" environments that come out of the elaborator.  For those,
      * continue to use "unpickleEnv".  "mkUnpicklers" is intended to be
-     * used by CM's stable library mechanism.
-     *)
+     * used by CM's stable library mechanism. *)
     val mkUnpicklers :
-	UnpickleUtil.session ->
-	{ prim_context: CMStaticEnv.staticEnv,
-	  node_context:
-	       string list * Symbol.symbol -> CMStaticEnv.staticEnv option,
-	  stringlist: string list UnpickleUtil.reader }
-	-> { symenv: SymbolicEnv.symenv UnpickleUtil.reader,
-	     env: env'n'ctxt UnpickleUtil.reader,
-	     symbol: Symbol.symbol UnpickleUtil.reader,
-	     symbollist: Symbol.symbol list UnpickleUtil.reader }
+	{ session: UnpickleUtil.session,
+	  stringlist: string list UnpickleUtil.reader } ->
+	context ->
+	{ symenv: SymbolicEnv.symenv UnpickleUtil.reader,
+	  statenv: StaticEnv.staticEnv UnpickleUtil.reader,
+	  symbol: Symbol.symbol UnpickleUtil.reader,
+	  symbollist: Symbol.symbol list UnpickleUtil.reader }
 end
 
 structure UnpickMod : UNPICKMOD = struct
+
+    type context = (string list * Symbol.symbol) option -> ModuleId.tmap
 
     structure A = Access
     structure DI = DebIndex
@@ -55,8 +59,6 @@ structure UnpickMod : UNPICKMOD = struct
 
     structure UU = UnpickleUtil
     exception Format = UU.Format
-
-    type env'n'ctxt = { env: StaticEnv.staticEnv, ctxt: ModuleId.Set.set }
 
     (* The order of the entries in the following tables
      * must be coordinated with pickmod! *)
@@ -134,6 +136,20 @@ structure UnpickMod : UNPICKMOD = struct
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]
+
+    fun & c (x, t) = (c x, t)
+
+    fun branch l = let
+	fun loop ([], [x]) = x
+	  | loop ([], l) = M.BRANCH l
+	  | loop (M.BRANCH [] :: t, l) = loop (t, l)
+	  | loop (M.BRANCH [x] :: t, l) = loop (t, x :: l) (* never occurs! *)
+	  | loop (x :: t, l) = loop (t, x :: l)
+    in
+	loop (l, [])
+    end
+
+    val notree = M.BRANCH []
 
     fun mkSharedStuff (session, lvar) = let
 
@@ -268,14 +284,24 @@ structure UnpickMod : UNPICKMOD = struct
 	  tkind = tkind, tkindlist = tkindlist }
     end
 
-    fun mkEnvUnpickler arg = let
-	val (session, symbollist, stringlist,
-	     sharedStuff, context0, globalPid) = arg
+    fun mkEnvUnpickler extraInfo sessionInfo context = let
+	val { globalPid, symbollist, sharedStuff, lib } = extraInfo
+	val { session, stringlist } = sessionInfo
 
-	val { lookTYC, lookSIG, lookFSIG, lookSTR, lookFCT, lookEENV,
-	      lookTYCp, lookSIGp, lookFSIGp, lookSTRp, lookFCTp, lookEENVp,
-	      lookTYCn, lookSIGn, lookFSIGn, lookSTRn, lookFCTn, lookEENVn } =
-	    context0
+	local
+	    fun look lk (m, i) =
+		case lk (context m, i) of
+		    SOME x => x
+		  | NONE =>
+		    (ErrorMsg.impossible "UnpickMod: stub lookup failed";
+		     raise Format)
+	in
+	    val lookTyc = look MI.lookTyc
+	    val lookSig = look MI.lookSig
+	    val lookStr = look MI.lookStr
+	    val lookFct = look MI.lookFct
+	    val lookEnv = look MI.lookEnv
+	end
 
 	fun list m r = UU.r_list session m r
 	fun option m r = UU.r_option session m r
@@ -289,9 +315,10 @@ structure UnpickMod : UNPICKMOD = struct
 	(* The following maps all acquire different types by being used
 	 * in different contexts: *)
 	val stampM = UU.mkMap ()
+	val strIdM = UU.mkMap ()
+	val fctIdM = UU.mkMap ()
 	val stampOptionM = UU.mkMap ()
 	val stampListM = UU.mkMap ()
-	val modIdM = UU.mkMap ()
 	val symbolOptionM = UU.mkMap ()
 	val symbolListM = UU.mkMap ()
 	val spathListM = UU.mkMap ()
@@ -341,7 +368,6 @@ structure UnpickMod : UNPICKMOD = struct
 	val edListM = UU.mkMap ()
 	val eenvBindM = UU.mkMap ()
 	val envM = UU.mkMap ()
-	val milM = UU.mkMap ()
 	val spathM = UU.mkMap ()
 	val ipathM = UU.mkMap ()
 	val symSpecPM = UU.mkMap ()
@@ -349,46 +375,54 @@ structure UnpickMod : UNPICKMOD = struct
 	val sdIntPM = UU.mkMap ()
 	val evEntPM = UU.mkMap ()
 	val symBindPM = UU.mkMap ()
-	val envMilPM = UU.mkMap ()
+	val pidOptionM = UU.mkMap ()
+	val lmsOptM = UU.mkMap ()
+	val lmsPairM = UU.mkMap ()
 
 	val { pid, string, symbol, access, conrep, consig,
 	      primop, boollist, tkind, tkindlist } = sharedStuff
 
+	fun libModSpec () =
+	    option lmsOptM (pair lmsPairM (stringlist, symbol)) ()
+
 	fun stamp () = let
-	    fun st #"A" = Stamps.STAMP { scope = Stamps.GLOBAL (globalPid ()),
-					 count = int () }
-	      | st #"B" = Stamps.STAMP { scope = Stamps.GLOBAL (pid ()),
-					 count = int () }
-	      | st #"C" = Stamps.STAMP { scope = Stamps.SPECIAL (string ()),
-					 count = int () }
+	    fun st #"A" = Stamps.global { pid = globalPid (),
+					  cnt = int () }
+	      | st #"B" = Stamps.global { pid = pid (),
+					  cnt = int () }
+	      | st #"C" = Stamps.special (string ())
 	      | st _ = raise Format
 	in
 	    share stampM st
+	end    
+
+	val tycId = stamp
+	val sigId = stamp
+	fun strId () = let
+	    fun si #"D" = { sign = stamp (), rlzn = stamp () }
+	      | si _ = raise Format
+	in
+	    share strIdM si
 	end
+	fun fctId () = let
+	    fun fi #"E" = { paramsig = stamp (), bodysig = stamp (),
+			    rlzn = stamp () }
+	      | fi _ = raise Format
+	in
+	    share fctIdM fi
+	end
+	val envId = stamp
 
 	val stamplist = list stampListM stamp
 	val stampoption = option stampOptionM stamp
+	val pidoption = option pidOptionM pid
 
 	val entVar = stamp
 	val entVarOption = stampoption
 	val entPath = stamplist
 
-	fun modId () = let
-	    fun mi #"1" = MI.STRid { rlzn = stamp (), sign = stamp () }
-	      | mi #"2" = MI.SIGid (stamp ())
-	      | mi #"3" = MI.FCTid { rlzn = stamp (), sign = modId () }
-	      | mi #"4" = MI.FSIGid { paramsig = stamp (),
-				      bodysig  = stamp () }
-	      | mi #"5" = MI.TYCid (stamp ())
-	      | mi #"6" = MI.EENVid (stamp ())
-	      | mi _ = raise Format
-	in
-	    share modIdM mi
-	end
-
 	val symbollist = list symbolListM symbol
 	val symboloption = option symbolOptionM symbol
-
 
 	fun spath () = let
 	    fun sp #"s" = SP.SPATH (symbollist ())
@@ -418,11 +452,19 @@ structure UnpickMod : UNPICKMOD = struct
 	    nonshare eqp
 	end
 
-	fun datacon () = let
+	fun datacon' () = let
 	    fun d #"c" =
-		T.DATACON { name = symbol (), const = bool (), typ = ty (),
-			    rep = conrep (), sign = consig (),
-			    lazyp = bool () }
+		let val n = symbol ()
+		    val c = bool ()
+		    val (t, ttr) = ty' ()
+		    val r = conrep ()
+		    val s = consig ()
+		    val l = bool ()
+		in
+		    (T.DATACON { name = n, const = c, typ = t,
+				 rep = r, sign = s, lazyp = l },
+		     ttr)
+		end
 	      | d _ = raise Format
 	in
 	    share dataconM d
@@ -487,10 +529,15 @@ structure UnpickMod : UNPICKMOD = struct
 	and nrdlist () = list nrdListM nameRepDomain ()
 
 	and tycon () = let
-	    fun tyc #"A" = lookTYC (modId ())
-	      | tyc #"B" = T.GENtyc { stamp = stamp (), arity = int (),
-				      eq = ref (eqprop ()), kind = tyckind (),
-				      path = ipath () }
+	    fun tyc #"A" = T.GENtyc (lookTyc (libModSpec (), tycId ()))
+	      | tyc #"B" = T.GENtyc { stamp = stamp (),
+				      arity = int (),
+				      eq = ref (eqprop ()),
+				      kind = tyckind (),
+				      path = ipath (),
+				      stub = SOME { owner = if lib then pid ()
+							    else globalPid (),
+						    lib = lib } }
 	      | tyc #"C" = T.DEFtyc { stamp = stamp (),
 				      tyfun = T.TYFUN { arity = int (),
 						        body = ty () },
@@ -502,30 +549,55 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tyc #"F" = T.RECtyc (int ())
 	      | tyc #"G" = T.FREEtyc (int ())
 	      | tyc #"H" = T.ERRORtyc
-	      | tyc #"I" = lookTYCp (modId ())
-	      | tyc #"J" = lookTYCn (stringlist (), symbol(), modId ())
 	      | tyc _ = raise Format
 	in
 	    share tyconM tyc
 	end
 
+	and tycon' () = let
+	    val tyc = tycon ()
+	    val tree =
+		case tyc of
+		    T.GENtyc r => M.TYCNODE r
+		  | _ => notree
+	in
+	    (tyc, tree)
+	end
+
 	and tyconlist () = list tyconListM tycon ()
 
-	and ty () = let
-	    fun t #"a" = T.CONty (tycon (), tylist ())
-	      | t #"b" = T.IBOUND (int ())
-	      | t #"c" = T.WILDCARDty
-	      | t #"d" = T.POLYty { sign = boollist (),
-				    tyfun = T.TYFUN { arity = int (),
-					 	      body = ty () } }
-	      | t #"e" = T.UNDEFty
+	and ty' () = let
+	    fun t #"a" =
+		let val (tyc, tyctr) = tycon' ()
+		    val (tyl, tyltr) = tylist' ()
+		in (T.CONty (tyc, tyl), branch [tyctr, tyltr])
+		end
+	      | t #"b" = (T.IBOUND (int ()), notree)
+	      | t #"c" = (T.WILDCARDty, notree)
+	      | t #"d" =
+		let val s = boollist ()
+		    val ar = int ()
+		    val (b, btr) = ty' ()
+		in
+		    (T.POLYty { sign = s, tyfun = T.TYFUN { arity = ar,
+							    body = b } },
+		     btr)
+		end
+	      | t #"e" = (T.UNDEFty, notree)
 	      | t _ = raise Format
 	in
 	    share tyM t
 	end
 
+	and ty () = #1 (ty' ())
+
 	and tyoption () = option tyOptionM ty ()
-	and tylist () = list tyListM ty ()
+
+	and tylist' () = let
+	    val (l, trl) = ListPair.unzip (list tyListM ty' ())
+	in
+	    (l, branch trl)
+	end
 
 	and inl_info () = let
 	    fun ii #"A" = II.INL_PRIM (primop (), tyoption ())
@@ -538,27 +610,51 @@ structure UnpickMod : UNPICKMOD = struct
 
 	and iilist () = list iiListM inl_info ()
 
-	and var () = let
-	    fun v #"1" = V.VALvar { access = access (), info = inl_info (),
-				    path = spath (), typ = ref (ty ()) }
-	      | v #"2" = V.OVLDvar { name = symbol (),
-				     options = ref (overldlist ()),
-				     scheme = T.TYFUN { arity = int (),
-						        body = ty () } }
-	      | v #"3" = V.ERRORvar
+	and var' () = let
+	    fun v #"1" =
+		let val a = access ()
+		    val i = inl_info ()
+		    val p = spath ()
+		    val (t, tr) = ty' ()
+		in
+		    (V.VALvar { access = a, info = i, path = p, typ = ref t },
+		     tr)
+		end
+	      | v #"2" =
+		let val n = symbol ()
+		    val (ol, oltr) = overldlist' ()
+		    val ar = int ()
+		    val (b, btr) = ty' ()
+		in
+		    (V.OVLDvar { name = n,
+				 options = ref ol,
+				 scheme = T.TYFUN { arity = ar, body = b } },
+		     branch [oltr, btr])
+		end
+	      | v #"3" = (V.ERRORvar, notree)
 	      | v _ = raise Format
 	in
 	    share vM v
 	end
 
-	and overld () = let
-	    fun ov #"o" = { indicator = ty (), variant = var () }
+	and overld' () = let
+	    fun ov #"o" =
+		let val (t, ttr) = ty' ()
+		    val (v, vtr) = var' ()
+		in
+		    ({ indicator = t, variant = v },
+		     branch [ttr, vtr])
+		end
 	      | ov _ = raise Format
 	in
 	    share overldM ov
 	end
 
-	and overldlist () = list olListM overld ()
+	and overldlist' () = let
+	    val (l, trl) = ListPair.unzip (list olListM overld' ())
+	in
+	    (l, branch trl)
+	end
 
 	fun strDef () = let
 	    fun sd #"C" = M.CONSTstrDef (Structure ())
@@ -568,161 +664,293 @@ structure UnpickMod : UNPICKMOD = struct
 	    share sdM sd
 	end
 
-	and Signature () = let
-	    fun sg #"A" = M.ERRORsig
-	      | sg #"B" = lookSIG (modId ())
-	      | sg #"C" = M.SIG { name = symboloption (),
-				  closed = bool (),
-				  fctflag = bool (),
-				  stamp = stamp (),
-				  symbols = symbollist (),
-				  elements = list elementsM
-				            (pair symSpecPM (symbol, spec)) (),
-				  boundeps =
-				    ref (option bepsOM
-					 (list bepsLM
-					  (pair epTkPM (entPath, tkind))) ()),
-				  lambdaty = ref NONE,
-				  typsharing = spathlistlist (),
-				  strsharing = spathlistlist () }
-	      | sg #"D" = lookSIGp (modId ())
-	      | sg #"E" = lookSIGn (stringlist (), symbol (), modId ())
+	and Signature' () = let
+	    fun sg #"A" = (M.ERRORsig, notree)
+	      | sg #"B" =
+		let val sr = lookSig (libModSpec (), sigId ())
+		in
+		    (M.SIG sr, M.SIGNODE sr)
+		end
+	      | sg #"C" =
+		let val s = stamp ()
+		    val n = symboloption ()
+		    val c = bool ()
+		    val ff = bool ()
+		    val sl = symbollist ()
+		    val (el, eltrl) =
+			ListPair.unzip
+			    (map (fn (sy, (sp, tr)) => ((sy, sp), tr))
+			         (list elementsM
+				  (pair symSpecPM (symbol, spec')) ()))
+		    val beps = option bepsOM
+				      (list bepsLM
+					    (pair epTkPM (entPath, tkind))) ()
+		    val ts = spathlistlist ()
+		    val ss = spathlistlist ()
+		    val r = { stamp = s,
+			      name = n,
+			      closed = c,
+			      fctflag = ff,
+			      symbols = sl,
+			      elements = el,
+			      boundeps = ref beps,
+			      lambdaty = ref NONE,
+			      typsharing = ts,
+			      strsharing = ss,
+			      stub = SOME { owner = if lib then pid ()
+						    else globalPid (),
+					    tree = branch eltrl,
+					    lib = lib } }
+		in
+		    (M.SIG r, M.SIGNODE r)
+		end
 	      | sg _ = raise Format
 	in
 	    share sigM sg
 	end
 
-	and fctSig () = let
-	    fun fsg #"a" = M.ERRORfsig
-	      | fsg #"b" = lookFSIG (modId ())
-	      | fsg #"c" = M.FSIG { kind = symboloption (),
-				    paramsig = Signature (),
-				    paramvar = entVar (),
-				    paramsym = symboloption (),
-				    bodysig = Signature () }
-	      | fsg #"d" = lookFSIGp (modId ())
-	      | fsg #"e" = lookFSIGn (stringlist (), symbol (), modId ())
+	and Signature () = #1 (Signature' ())
+
+	and fctSig' () = let
+	    fun fsg #"a" = (M.ERRORfsig, notree)
+	      | fsg #"c" =
+		let val k = symboloption ()
+		    val (ps, pstr) = Signature' ()
+		    val pv = entVar ()
+		    val psy = symboloption ()
+		    val (bs, bstr) = Signature' ()
+		in
+		    (M.FSIG { kind = k, paramsig = ps,
+			      paramvar = pv, paramsym = psy,
+			      bodysig = bs },
+		     branch [pstr, bstr])
+		end
 	      | fsg _ = raise Format
 	in
 	    share fsigM fsg
 	end
 
-	and spec () = let
+	and spec' () = let
 	    val intoption = option ioM int
-	    fun sp #"1" = M.TYCspec { spec = tycon (), entVar = entVar (),
-				      repl = bool (), scope = int () }
-	      | sp #"2" = M.STRspec { sign = Signature (), slot = int (),
-				      def = option spDefM
-				               (pair sdIntPM (strDef, int)) (),
-				      entVar = entVar () }
-	      | sp #"3" = M.FCTspec { sign = fctSig (), slot = int (),
-				      entVar = entVar () }
-	      | sp #"4" = M.VALspec { spec = ty (), slot = int () }
-	      | sp #"5" = M.CONspec { spec = datacon (), slot = intoption () }
+	    fun sp #"1" =
+		let val (t, ttr) = tycon' ()
+		in
+		    (M.TYCspec { spec = t, entVar = entVar (),
+				 repl = bool (), scope = int () },
+		     ttr)
+		end
+	      | sp #"2" =
+		let val (s, str) = Signature' ()
+		in
+		    (M.STRspec { sign = s, slot = int (),
+				 def = option spDefM
+				              (pair sdIntPM (strDef, int)) (),
+				 entVar = entVar () },
+		     str)
+		end
+	      | sp #"3" =
+		let val (f, ftr) = fctSig' ()
+		in
+		    (M.FCTspec { sign = f, slot = int (), entVar = entVar () },
+		     ftr)
+		end
+	      | sp #"4" =
+		let val (t, ttr) = ty' ()
+		in
+		    (M.VALspec { spec = t, slot = int () }, ttr)
+		end
+	      | sp #"5" =
+		let val (d, dtr) = datacon' ()
+		in
+		    (M.CONspec { spec = d, slot = intoption () }, dtr)
+		end
 	      | sp _ = raise Format
 	in
 	    share spM sp
 	end
 
-	and entity () = let
-	    fun en #"A" = M.TYCent (tycEntity ())
-	      | en #"B" = M.STRent (strEntity ())
-	      | en #"C" = M.FCTent (fctEntity ())
-	      | en #"D" = M.ERRORent
+	and entity' () = let
+	    fun en #"A" = & M.TYCent (tycEntity' ())
+	      | en #"B" = & M.STRent (strEntity' ())
+	      | en #"C" = & M.FCTent (fctEntity' ())
+	      | en #"D" = (M.ERRORent, notree)
 	      | en _ = raise Format
 	in
 	    share enM en
 	end
 
-	and fctClosure () = let
-	    fun f #"f" =M.CLOSURE { param = entVar (), body = strExp (),
-				    env = entityEnv () }
+	and fctClosure' () = let
+	    fun f #"f" =
+		let val p = entVar ()
+		    val (b, btr) = strExp' ()
+		    val (e, etr) = entityEnv' ()
+		in
+		    (M.CLOSURE { param = p, body = b, env = e },
+		     branch [btr, etr])
+		end
 	      | f _ = raise Format
 	in
 	    share fctcM f
 	end
 
-	and Structure () = let
-	    fun stracc (M.STR { sign, rlzn, info, ... }) =
-		M.STR { sign = sign, rlzn = rlzn, info = info,
-		        access = access () }
-	      | stracc _ = raise Format
-	    fun str #"A" = M.STRSIG { sign = Signature (),
-				      entPath = entPath () }
-	      | str #"B" = M.ERRORstr
-	      | str #"C" = stracc (lookSTR (modId ()))
-	      | str #"D" = M.STR { sign = Signature (), rlzn = strEntity (),
-				   access = access (), info = inl_info () }
-	      | str #"I" = stracc (lookSTRp (modId ()))
-	      | str #"J" = stracc (lookSTRn (stringlist (), symbol (), modId ()))
+	(* The construction of the STRNODE in the modtree deserves some
+	 * comment:  Even though it contains the whole strrec, it does
+	 * _not_ take care of the Signature contained therein.  The reason
+	 * why STRNODE has the whole strrec and not just the strEntity that
+	 * it really guards is that the identity of the strEntity is not
+	 * fully recoverable without also having access to the Signature.
+	 * The same situation occurs in the case of FCTNODE. *)
+	and Structure' () = let
+	    fun str #"A" =
+		let val (s, str) = Signature' ()
+		in
+		    (M.STRSIG { sign = s, entPath = entPath () }, str)
+		end
+	      | str #"B" = (M.ERRORstr, notree)
+	      | str #"C" =
+		let val (s, str) = Signature' ()
+		    val r = { sign = s,
+			      rlzn = lookStr (libModSpec (), strId ()),
+			      access = access (),
+			      info = inl_info () }
+		in
+		    (M.STR r, branch [str, M.STRNODE r])
+		end
+	      | str #"D" =
+		let val (s, str) = Signature' ()
+		    val r = { sign = s,
+			      rlzn = strEntity (),
+			      access = access (),
+			      info = inl_info () }
+		in
+		    (M.STR r, branch [str, M.STRNODE r])
+		end
 	      | str _ = raise Format
 	in
 	    share strM str
 	end
 
-	and Functor () = let
-	    fun fctacc (M.FCT { sign, rlzn, info, ... }) =
-		M.FCT { sign = sign, rlzn = rlzn, info = info,
-		        access = access () }
-	      | fctacc _ = raise Format
-	    fun fct #"E" = M.ERRORfct
-	      | fct #"F" = fctacc (lookFCT (modId ()))
-	      | fct #"G" = M.FCT { sign = fctSig (), rlzn = fctEntity (),
-				   access = access (), info = inl_info () }
-	      | fct #"H" = fctacc (lookFCTp (modId ()))
-	      | fct #"I" = fctacc (lookFCTn (stringlist (), symbol (),
-					     modId ()))
+	and Structure () = #1 (Structure' ())
+
+	(* See the comment about STRNODE, strrec, Signature, and strEntity
+	 * in front of Structure'.  The situation for FCTNODE, fctrec,
+	 * fctSig, and fctEntity is analogous. *)
+	and Functor' () = let
+	    fun fct #"E" = (M.ERRORfct, notree)
+	      | fct #"F" =
+		let val (s, str) = fctSig' ()
+		    val r = { sign = s,
+			      rlzn = lookFct (libModSpec (), fctId ()),
+			      access = access (),
+			      info = inl_info () }
+		in
+		    (M.FCT r, branch [str, M.FCTNODE r])
+		end
+	      | fct #"G" =
+		let val (s, str) = fctSig' ()
+		    val r = { sign = s,
+			      rlzn = fctEntity (),
+			      access = access (),
+			      info = inl_info () }
+		in
+		    (M.FCT r, branch [str, M.FCTNODE r])
+		end
 	      | fct _ = raise Format
 	in
 	    share fctM fct
 	end
 
 	and stampExp () = let
-	    fun ste #"a" = M.CONST (stamp ())
-	      | ste #"b" = M.GETSTAMP (strExp ())
+	    fun ste #"b" = M.GETSTAMP (strExp ())
 	      | ste #"c" = M.NEW
 	      | ste _ = raise Format
 	in
 	    share steM ste
 	end
 
-	and tycExp () = let
-	    fun tce #"d" = M.CONSTtyc (tycon ())
-	      | tce #"e" = M.FORMtyc (tycon ())
-	      | tce #"f" = M.VARtyc (entPath ())
+	and tycExp' () = let
+	    fun tce #"d" = & M.CONSTtyc (tycon' ())
+	      | tce #"e" = (M.FORMtyc (tycon ()), notree) (* ? *)
+	      | tce #"f" = (M.VARtyc (entPath ()), notree)
 	      | tce _ = raise Format
 	in
 	    share tceM tce
 	end
 
-	and strExp () = let
-	    fun stre #"g" = M.VARstr (entPath ())
-	      | stre #"h" = M.CONSTstr (strEntity ())
-	      | stre #"i" = M.STRUCTURE { stamp = stampExp (),
-					  entDec = entityDec () }
-	      | stre #"j" = M.APPLY (fctExp (), strExp ())
-	      | stre #"k" = M.LETstr (entityDec (), strExp ())
-	      | stre #"l" = M.ABSstr (Signature (), strExp ())
-	      | stre #"m" = M.CONSTRAINstr { boundvar = entVar (),
-					     raw = strExp (),
-					     coercion = strExp () }
-	      | stre #"n" = M.FORMstr (fctSig ())
+	and tycExp () = #1 (tycExp' ())
+
+	and strExp' () = let
+	    fun stre #"g" = (M.VARstr (entPath ()), notree)
+	      | stre #"h" = & M.CONSTstr (strEntity' ())
+	      | stre #"i" =
+		let val s = stampExp ()
+		    val (d, dtr) = entityDec' ()
+		in
+		    (M.STRUCTURE { stamp = s, entDec = d }, dtr)
+		end
+	      | stre #"j" =
+		let val (f, ftr) = fctExp' ()
+		    val (s, str) = strExp' ()
+		in
+		    (M.APPLY (f, s), branch [ftr, str])
+		end
+	      | stre #"k" =
+		let val (d, dtr) = entityDec' ()
+		    val (s, str) = strExp' ()
+		in
+		    (M.LETstr (d, s), branch [dtr, str])
+		end
+	      | stre #"l" =
+		let val (s, str) = Signature' ()
+		    val (e, etr) = strExp' ()
+		in
+		    (M.ABSstr (s, e), branch [str, etr])
+		end
+	      | stre #"m" =
+		let val bv = entVar ()
+		    val (r, rtr) = strExp' ()
+		    val (c, ctr) = strExp' ()
+		in
+		    (M.CONSTRAINstr { boundvar = bv, raw = r, coercion = c },
+		     branch [rtr, ctr])
+		end
+	      | stre #"n" = & M.FORMstr (fctSig' ())
 	      | stre _ = raise Format
 	in
 	    share streM stre
 	end
 
-	and fctExp () = let
-	    fun fe #"o" = M.VARfct (entPath ())
-	      | fe #"p" = M.CONSTfct (fctEntity ())
-	      | fe #"q" = M.LAMBDA { param = entVar (), body = strExp () }
-	      | fe #"r" = M.LAMBDA_TP { param = entVar (), body = strExp (),
-				        sign = fctSig () }
-	      | fe #"s" = M.LETfct (entityDec (), fctExp ())
+	and strExp () = #1 (strExp' ())
+
+	and fctExp' () = let
+	    fun fe #"o" = (M.VARfct (entPath ()), notree)
+	      | fe #"p" = & M.CONSTfct (fctEntity' ())
+	      | fe #"q" =
+		let val p = entVar ()
+		    val (b, btr) = strExp' ()
+		in
+		    (M.LAMBDA { param = p, body = b }, btr)
+		end
+	      | fe #"r" =
+		let val p = entVar ()
+		    val (b, btr) = strExp' ()
+		    val (s, str) = fctSig' ()
+		in
+		    (M.LAMBDA_TP { param = p, body = b, sign = s },
+		     branch [btr, str])
+		end
+	      | fe #"s" =
+		let val (d, dtr) = entityDec' ()
+		    val (f, ftr) = fctExp' ()
+		in
+		    (M.LETfct (d, f), branch [dtr, ftr])
+		end
 	      | fe _ = raise Format
 	in
 	    share feM fe
 	end
+
+	and fctExp () = #1 (fctExp' ())
 
 	and entityExp () = let
 	    fun ee #"t" = M.TYCexp (tycExp ())
@@ -735,60 +963,127 @@ structure UnpickMod : UNPICKMOD = struct
 	    share eeM ee
 	end
 
-	and entityDec () = let
-	    fun ed #"A" = M.TYCdec (entVar (), tycExp ())
-	      | ed #"B" = M.STRdec (entVar (), strExp (), symbol ())
-	      | ed #"C" = M.FCTdec (entVar (), fctExp ())
-	      | ed #"D" = M.SEQdec (entityDecList ())
-	      | ed #"E" = M.LOCALdec (entityDec (), entityDec ())
-	      | ed #"F" = M.ERRORdec
-	      | ed #"G" = M.EMPTYdec
+	and entityDec' () = let
+	    fun ed #"A" =
+		let val v = entVar ()
+		    val (e, etr) = tycExp' ()
+		in
+		    (M.TYCdec (v, e), etr)
+		end
+	      | ed #"B" =
+		let val v = entVar ()
+		    val (e, etr) = strExp' ()
+		    val s = symbol ()
+		in
+		    (M.STRdec (v, e, s), etr)
+		end
+	      | ed #"C" =
+		let val v = entVar ()
+		    val (e, etr) = fctExp' ()
+		in
+		    (M.FCTdec (v, e), etr)
+		end
+	      | ed #"D" = & M.SEQdec (entityDecList' ())
+	      | ed #"E" =
+		let val (d1, d1tr) = entityDec' ()
+		    val (d2, d2tr) = entityDec' ()
+		in
+		    (M.LOCALdec (d1, d2), branch [d1tr, d2tr])
+		end
+	      | ed #"F" = (M.ERRORdec, notree)
+	      | ed #"G" = (M.EMPTYdec, notree)
 	      | ed _ = raise Format
 	in
 	    share edM ed
 	end
 
-	and entityDecList () = list edListM entityDec ()
+	and entityDecList' () = let
+	    val (l, trl) = ListPair.unzip (list edListM entityDec' ())
+	in
+	    (l, branch trl)
+	end
 
-	and entityEnv () = let
+	and entityEnv' () = let
 	    fun eenv #"A" =
-		let
-		    val l = list eenvBindM (pair evEntPM (entVar, entity)) ()
+		let val l = list eenvBindM (pair evEntPM (entVar, entity')) ()
+		    val l' = map (fn (v, (e, tr)) => ((v, e), tr)) l
+		    val (l'', trl) = ListPair.unzip l'
 		    fun add ((v, e), z) = ED.insert (z, v, e)
-		    val ed = foldr add ED.empty l
+		    val ed = foldr add ED.empty l''
+		    val (e, etr) = entityEnv' ()
 		in
-		    M.BINDeenv (ed, entityEnv ())
+		    (M.BINDeenv (ed, e), branch (etr :: trl))
 		end
-	      | eenv #"B" = M.NILeenv
-	      | eenv #"C" = M.ERReenv
-	      | eenv #"D" = lookEENV (modId ())
-	      | eenv #"E" = M.MARKeenv (stamp (), entityEnv ())
-	      | eenv #"F" = lookEENVp (modId ())
-	      | eenv #"G" = lookEENVn (stringlist (), symbol (), modId ())
+	      | eenv #"B" = (M.NILeenv, notree)
+	      | eenv #"C" = (M.ERReenv, notree)
+	      | eenv #"D" =
+		let val r = lookEnv (libModSpec (), envId ())
+		in
+		    (M.MARKeenv r, M.ENVNODE r)
+		end
+	      | eenv #"E" =
+		let val s = stamp ()
+		    val (e, etr) = entityEnv' ()
+		    val r = { stamp = s,
+			      env = e,
+			      stub = SOME { owner = if lib then pid ()
+						    else globalPid (),
+					    tree = etr,
+					    lib = lib } }
+		in
+		    (M.MARKeenv r, M.ENVNODE r)
+		end
 	      | eenv _ = raise Format
 	in
 	    share eenvM eenv
 	end
 
-	and strEntity () = let
+	and strEntity' () = let
 	    fun s #"s" =
-		{ stamp = stamp (), entities = entityEnv (), rpath = ipath (),
-		  lambdaty = ref NONE }
+		let val s = stamp ()
+		    val (e, etr) = entityEnv' ()
+		in
+		    ({ stamp = s,
+		       entities = e,
+		       rpath = ipath (),
+		       lambdaty = ref NONE,
+		       stub = SOME { owner = if lib then pid ()
+					     else globalPid (),
+				     tree = etr,
+				     lib = lib } },
+		     etr)
+		end
 	      | s _ = raise Format
 	in
 	    share senM s
 	end
 
-	and fctEntity () = let
+	and strEntity () = #1 (strEntity' ())
+
+	and fctEntity' () = let
 	    fun f #"f" =
-		{ stamp = stamp (), closure = fctClosure (), rpath = ipath (),
-		  lambdaty = ref NONE, tycpath = NONE }
+		let val s = stamp ()
+		    val (c, ctr) = fctClosure' ()
+		in
+		    ({ stamp = s,
+		       closure = c,
+		       rpath = ipath (),
+		       lambdaty = ref NONE,
+		       tycpath = NONE,
+		       stub = SOME { owner = if lib then pid ()
+					     else globalPid (),
+				     tree = ctr,
+				     lib = lib } },
+		     ctr)
+		end
 	      | f _ = raise Format
 	in
 	    share fenM f
 	end
 
-	and tycEntity () = tycon ()
+	and fctEntity () = #1 (fctEntity' ())
+
+	and tycEntity' () = tycon' ()
 
 	fun fixity () = let
 	    fun fx #"N" = Fixity.NONfix
@@ -798,77 +1093,48 @@ structure UnpickMod : UNPICKMOD = struct
 	    share fxM fx
 	end
 
-	fun binding () = let
-	    fun b #"1" = B.VALbind (var ())
-	      | b #"2" = B.CONbind (datacon ())
-	      | b #"3" = B.TYCbind (tycon ())
-	      | b #"4" = B.SIGbind (Signature ())
-	      | b #"5" = B.STRbind (Structure ())
-	      | b #"6" = B.FSGbind (fctSig ())
-	      | b #"7" = B.FCTbind (Functor ())
-	      | b #"8" = B.FIXbind (fixity ())
+	fun binding' () = let
+	    fun b #"1" = & B.VALbind (var' ())
+	      | b #"2" = & B.CONbind (datacon' ())
+	      | b #"3" = & B.TYCbind (tycon' ())
+	      | b #"4" = & B.SIGbind (Signature' ())
+	      | b #"5" = & B.STRbind (Structure' ())
+	      | b #"6" = & B.FSGbind (fctSig' ())
+	      | b #"7" = & B.FCTbind (Functor' ())
+	      | b #"8" = (B.FIXbind (fixity ()), notree)
 	      | b _ = raise Format
 	in
 	    share bM b
 	end
 
 	fun env () = let
-	    val bindlist = list envM (pair symBindPM (symbol, binding)) ()
-	    fun bind ((s, b), e) = Env.bind (s, b, e)
+	    val bindlist = list envM (pair symBindPM (symbol, binding')) ()
+	    fun bind ((s, (b, t)), e) = StaticEnv.bind0 (s, (b, SOME t), e)
 	in
-	    Env.consolidate (foldl bind Env.empty bindlist)
-	end
-
-	fun env' () = let
-	    val (e, mil) = pair envMilPM (env, list milM modId) ()
-	    val ctxt = ModuleId.Set.addList (ModuleId.Set.empty, mil)
-	in
-	    { env = e, ctxt = ctxt }
+	    Env.consolidate (foldl bind StaticEnv.empty bindlist)
 	end
     in
-	{ envUnpickler = env, envUnpickler' = env' }
+	env
     end
 
-    fun unpickleEnv { context, hash, pickle } = let
-	val cs = ref ModuleId.Set.empty
-	fun cvt lk i =
-	    case lk context i of
-		SOME v => (cs := ModuleId.Set.add (!cs, i); v)
-	      | NONE => raise Format
-	fun dont _ = raise Format
-	val c = { lookSTR = cvt CMStaticEnv.lookSTR,
-		  lookSIG = cvt CMStaticEnv.lookSIG,
-		  lookFCT = cvt CMStaticEnv.lookFCT,
-		  lookFSIG = cvt CMStaticEnv.lookFSIG,
-		  lookTYC = cvt CMStaticEnv.lookTYC,
-		  lookEENV = cvt CMStaticEnv.lookEENV,
-		  lookSTRp = dont,
-		  lookSIGp = dont,
-		  lookFCTp = dont,
-		  lookFSIGp = dont,
-		  lookTYCp = dont,
-		  lookEENVp = dont,
-		  lookSTRn = dont,
-		  lookSIGn = dont,
-		  lookFCTn = dont,
-		  lookFSIGn = dont,
-		  lookTYCn = dont,
-		  lookEENVn = dont }
+    fun unpickleEnv context (hash, pickle) = let
 	val session =
 	    UU.mkSession (UU.stringGetter (Byte.bytesToString pickle))
 	fun import i = A.PATH (A.EXTERN hash, i)
-	val sharedStuff as { symbol, string, ... } =
-	    mkSharedStuff (session, import)
-	val symbolListM = UU.mkMap ()
-	val symbollist = UU.r_list session symbolListM symbol
-	val stringListM = UU.mkMap ()
-	val stringlist = UU.r_list session stringListM string
-	val { envUnpickler, ... } =
-	    mkEnvUnpickler (session, symbollist, stringlist, sharedStuff,
-			    c, fn () => hash)
+	val slM = UU.mkMap ()
+	val sloM = UU.mkMap ()
+	val sylM = UU.mkMap ()
+	val sharedStuff = mkSharedStuff (session, import)
+	val stringlist = UU.r_list session slM (#string sharedStuff)
+	val symbollist = UU.r_list session sylM (#symbol sharedStuff)
+	val extraInfo = { globalPid = fn () => hash,
+			  symbollist = symbollist,
+			  sharedStuff = sharedStuff,
+			  lib = false }
+	val sessionInfo = { session = session, stringlist = stringlist }
+	val unpickle = mkEnvUnpickler extraInfo sessionInfo context
     in
-	(* order of evaluation is important here! *)
-	{ env = envUnpickler (), ctxt = !cs }
+	unpickle ()
     end
 
     fun mkFlintUnpickler (session, sharedStuff) = let
@@ -1107,53 +1373,29 @@ structure UnpickMod : UNPICKMOD = struct
 	UU.r_option session foM flint ()
     end
 
-    fun mkUnpicklers session contexts = let
-	val { prim_context, node_context, stringlist } = contexts
-	fun cvtP lk id =
-	    case lk prim_context id of
-		SOME v => v
-	      | NONE => raise Format
-	fun cvtN lk (sl, s, id) =
-	    case node_context (sl, s) of
-		NONE => raise Format
-	      | SOME e => (case lk e id of SOME v => v | NONE => raise Format)
-	fun dont i = raise Format
-	val c = { lookSTRn = cvtN CMStaticEnv.lookSTR,
-		  lookSIGn = cvtN CMStaticEnv.lookSIG,
-		  lookFCTn = cvtN CMStaticEnv.lookFCT,
-		  lookFSIGn = cvtN CMStaticEnv.lookFSIG,
-		  lookTYCn = cvtN CMStaticEnv.lookTYC,
-		  lookEENVn = cvtN CMStaticEnv.lookEENV,
-		  lookSTRp = cvtP CMStaticEnv.lookSTR,
-		  lookSIGp = cvtP CMStaticEnv.lookSIG,
-		  lookFCTp = cvtP CMStaticEnv.lookFCT,
-		  lookFSIGp = cvtP CMStaticEnv.lookFSIG,
-		  lookTYCp = cvtP CMStaticEnv.lookTYC,
-		  lookEENVp = cvtP CMStaticEnv.lookEENV,
-		  lookSTR = dont,
-		  lookSIG = dont,
-		  lookFCT = dont,
-		  lookFSIG = dont,
-		  lookTYC = dont,
-		  lookEENV = dont }
-	val sharedStuff as { symbol, pid, ... } =
-	    mkSharedStuff (session, A.LVAR)
-	val symbolListM = UU.mkMap ()
-	val symbollist = UU.r_list session symbolListM symbol
-	val { envUnpickler', ... } =
-	    mkEnvUnpickler (session, symbollist, stringlist, sharedStuff,
-			    c, fn () => raise Format)
+    fun mkUnpicklers sessionInfo context = let
+	val { session, stringlist } = sessionInfo
+	val sharedStuff = mkSharedStuff (session, A.LVAR)
+	val { symbol, pid, ... } = sharedStuff
+	val sylM = UU.mkMap ()
+	val symbollist = UU.r_list session sylM symbol
+	val extraInfo = { globalPid = fn () => raise Format,
+			  symbollist = symbollist,
+			  sharedStuff = sharedStuff,
+			  lib = true }
+	val statenv = mkEnvUnpickler extraInfo sessionInfo context
 	val flint = mkFlintUnpickler (session, sharedStuff)
 	val pidFlintPM = UU.mkMap ()
 	val symbind = UU.r_pair session pidFlintPM (pid, flint)
 	val sblM = UU.mkMap ()
 	val sbl = UU.r_list session sblM symbind
-	fun symenvUnpickler () = SymbolicEnv.fromListi (sbl ())
+	fun symenv () = SymbolicEnv.fromListi (sbl ())
     in
-	{ symenv = symenvUnpickler, env = envUnpickler',
+	{ symenv = symenv, statenv = statenv,
 	  symbol = symbol, symbollist = symbollist }
     end
 
     val unpickleEnv =
-	Stats.doPhase (Stats.makePhase "Compiler 087 unpickleEnv") unpickleEnv
+	fn c => Stats.doPhase (Stats.makePhase "Compiler 087 unpickleEnv")
+			      (unpickleEnv c)
 end

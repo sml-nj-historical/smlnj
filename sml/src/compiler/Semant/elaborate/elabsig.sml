@@ -78,8 +78,8 @@ fun lookStrDef(env,spath,epContext,err) =
 	   | CONSTstrDef str =>
 	     (case str
 		of M.ERRORstr => strDef
-	         | M.STR{sign,...} =>
-		    (case EPC.lookPath(epContext,MU.strId str) 
+	         | M.STR { sign, ... } =>
+		    (case EPC.lookStrPath(epContext,MU.strId str) 
 		       of NONE => strDef
 			| SOME entPath => VARstrDef(sign,entPath))
 		 | M.STRSIG _ => bug "lookStrDef")
@@ -115,15 +115,18 @@ fun pushDefs(elements,defs,error,mkStamp) =
 		      (sortdefs this,(rev others@(item::defs)))
 		    else loop(defs,this,item::others)
                   | loop(nil,this,others) = (sortdefs this,rev others)
+		  | loop _ = bug "pushDefs:findDefs:loop"
              in loop(defs,nil,nil)
 	    end
 	fun applyTycDef(tspec as TYCspec{entVar,spec,...},
 			TYCdef{path=spath,tyc,...}) =
-	    case spec
-	      of T.GENtyc{kind=T.FORMAL,arity,eq=eqp,path=tpath,...} =>
-		  if TU.tyconArity tyc = arity
-		  then TYCspec{entVar=entVar, spec=tyc, repl=false,
-			       scope=SP.length spath}
+	    (case spec
+	      of T.GENtyc {kind,arity,eq=eqp,path=tpath,...} =>
+		 (case kind
+		   of T.FORMAL =>
+		      if TU.tyconArity tyc = arity
+		      then TYCspec{entVar=entVar, spec=tyc, repl=false,
+				   scope=SP.length spath}
 		      (* DBM: we should check at this point that the
 		       * definition represented by TYCdef#tyc has the
 		       * appropriate equality property to match the
@@ -131,10 +134,10 @@ fun pushDefs(elements,defs,error,mkStamp) =
 		       * without excessive work.  The problem is computing
 		       * whether tyc is an equality tycon, when it contains
 		       * PATHtycs, as in bug1433.2.sml. *)
-		  else (error ("where type definition has wrong arity: " ^
-			       SP.toString spath);
-			tspec)
-               | T.GENtyc{kind=T.DATATYPE _,arity,...} =>
+		      else (error ("where type definition has wrong arity: " ^
+				   SP.toString spath);
+			    tspec)
+		    | T.DATATYPE _ =>
 		  (* We allow a where type defn to constrain a datatype spec,
 		   * if rhs datatype is "compatible" with spec.  We use
 		   * an extremely weak notion of compatibility -- same arity.
@@ -145,16 +148,19 @@ fun pushDefs(elements,defs,error,mkStamp) =
                   (* tyc is DEFtyc! This will have to be unwrapped when the
                    * signature is instantiated (bugs 1364, 1432).
 		   *)
-		   if arity = TU.tyconArity tyc
-		   then TYCspec{entVar=entVar, spec=tyc, repl=true,
-				scope=SP.length spath (* ??? *)}
-		   else (error ("where type definition has wrong arity: " ^
-				SP.toString spath);
-			 tspec)
+		      if arity = TU.tyconArity tyc
+		      then TYCspec{entVar=entVar, spec=tyc, repl=true,
+				   scope=SP.length spath (* ??? *)}
+		      else (error ("where type definition has wrong arity: " ^
+				   SP.toString spath);
+			    tspec)
+		    | _ => bug "elabsig: GENtyc is neither FORMAL nor DATA")
 	       | T.DEFtyc _ =>
 		  (error ("where type defn applied to definitional spec: " ^
 			  SP.toString spath);
  		   tspec)
+	       | _ => bug "applyTycDef (1)")
+	  | applyTycDef _ = bug "applyTycDef (2)"
 	fun applyStrDefs(spec as STRspec{entVar,sign,def,slot},defs) =
 	    (* in the case where the where def has a different signature,
 	     * could propagate defs in to the components, as is done currently
@@ -181,6 +187,7 @@ fun pushDefs(elements,defs,error,mkStamp) =
 		       | _ => STRspec{entVar=entVar,def=NONE,slot=slot,
 				      sign=addWhereDefs(sign,defs,NONE,
 							error,mkStamp)}))
+	  | applyStrDefs _ = bug "applyStrDefs"
 	fun loop(nil,defs,elems) =  (* all elements processed *)
 	      (case defs
 		 of nil => rev elems  (* all defs consumed *)
@@ -222,22 +229,26 @@ fun pushDefs(elements,defs,error,mkStamp) =
 
 (* does this belong in ModuleUtil or ElabUtil? DBM *)
 and addWhereDefs(sign,nil,nameOp,error,mkStamp) = bug "addWhereDefs"
-  | addWhereDefs(sign as SIG{name,closed,fctflag,stamp,
-                 symbols,elements,boundeps,lambdaty,typsharing,strsharing},
+  | addWhereDefs(sign as SIG {stamp,name,closed,fctflag,stub,
+			      symbols,elements,boundeps,lambdaty,
+			      typsharing,strsharing},
 		 whereDefs,nameOp,error,mkStamp) =
-    SIG{name=case nameOp
-	       of SOME _ => nameOp (* new name provided *)
-		| NONE => name, (* retain old name (?) *)
+    SIG{stamp = mkStamp(),
+	(* give modified sig a new stamp 
+	 * -- could stack stamps *)
+	name=case nameOp
+	      of SOME _ => nameOp (* new name provided *)
+	       | NONE => name, (* retain old name (?) *)
 	closed=closed andalso closedDefs whereDefs,
         fctflag=fctflag,
-	stamp=mkStamp(), (* give modified sig a new stamp 
-                             -- could stack stamps *)
 	symbols=symbols,
 	elements=pushDefs(elements,whereDefs,error,mkStamp),
 	boundeps=ref NONE,
         lambdaty=ref NONE,
 	typsharing=typsharing,
-	strsharing=strsharing}
+	strsharing=strsharing,
+	stub = NONE}
+  | addWhereDefs _ = bug "addWhereDefs"
 
 fun localPath(p,elements) =
       (MU.getSpec(elements,SP.first p); true) handle MU.Unbound _ => false
@@ -299,10 +310,10 @@ fun elabWhere (sigexp,env,epContext,mkStamp,error,region) =
 			  val strDef = 
                               (* remove access & inline info (bug 1201) *)
 			      case strDef
-				of CONSTstrDef(STR{sign,rlzn,...}) =>
-				    CONSTstrDef(STR{sign=sign,rlzn=rlzn,
-						    access=Access.nullAcc,
-						    info=InlInfo.nullInfo})
+				of CONSTstrDef(STR {sign,rlzn,...}) =>
+				   CONSTstrDef(STR{sign=sign,rlzn=rlzn,
+						   access=Access.nullAcc,
+						   info=InlInfo.nullInfo})
 				 | _ => strDef
 		       in loop1(rest,STRdef(lhspath,strDef)::defs)
 		      end
@@ -363,10 +374,11 @@ fun elabTYPEspec(tspecs, env, elements, symbols, eqspec, region) =
                                      strict=EU.calc_strictness(arity,ty),
                                      tyfun=T.TYFUN{arity=arity,body=nty}}
                         end
-                    | NONE => T.GENtyc{stamp = mkStamp(),
-                                       path = IP.IPATH [name],
-                                       arity = arity, eq = ref eqprop, 
-                                       kind = T.FORMAL}
+                    | NONE => T.GENtyc {stamp = mkStamp(),
+					path = IP.IPATH [name],
+					arity = arity, eq = ref eqprop, 
+					kind = T.FORMAL,
+					stub = NONE}
 
                 val ev = mkStamp()
                 val etyc = T.PATHtyc{arity=arity,entPath=[ev],
@@ -389,163 +401,177 @@ fun allButLast l = List.take(l,List.length l - 1)
  *  Need to check that this will do the "right thing" in instantiate. *)
 fun elabDATArepl(name,syms,env,elements,symbols,region) =
     let val tyc = Lookup.lookTyc(env, SP.SPATH syms, error region)
+	(* rhs is not local to current (outermost) signature *)
+	fun no_datatype () =
+	    (error region EM.COMPLAIN 
+	           "rhs of datatype replication spec not a datatype"
+		   EM.nullErrorBody;
+		   (env,elements,symbols))
      in case tyc
           of T.PATHtyc{entPath,arity,...} =>
 	      (* local to current outermost signature *)
 	      (* get the spec, using expandTycon. check it is a datatype *)
 	      let val sigContext = elements::sctxt
 		  val tyc' = EX.expandTycon(tyc,sigContext,entEnv)
-	       in case tyc'
-                   of T.GENtyc{kind=T.DATATYPE{index, family as {members,...},
-                                               stamps, freetycs, ...}, ...} => 
-		        let val stamp = Vector.sub(stamps,index)
-                            val {tycname, arity, dcons, sign, lazyp, ...} =
-			         Vector.sub(members,index)
-			    (* add the type *)
-			    val ev = mkStamp()
-			    (* spec uses wrapped version of the PATHtyc!! *)
-			    val tspec = TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
-						entVar=ev,repl=true,scope=0}
-			    val elements' = 
-                              add(name,tspec,elements,error region)
-			    val etyc = T.PATHtyc{arity=arity,entPath=[ev],
-						 path=IP.IPATH[name]}
-			    val env' = SE.bind(name, B.TYCbind etyc, env)
-			    val symbols' = name::symbols
+	      in case tyc'
+                   of T.GENtyc { kind, ... } =>
+		      (case kind of
+			   T.DATATYPE{index, family as {members,...},
+                                      stamps, freetycs, ...} =>
+		           let val stamp = Vector.sub(stamps,index)
+                               val {tycname, arity, dcons, sign, lazyp, ...} =
+			           Vector.sub(members,index)
+			       (* add the type *)
+			       val ev = mkStamp()
+			       (* spec uses wrapped version of the PATHtyc!! *)
+			       val tspec = TYCspec{spec=TU.wrapDef(tyc,
+								   mkStamp()),
+						   entVar=ev,repl=true,scope=0}
+			       val elements' = 
+				   add(name,tspec,elements,error region)
+			       val etyc = T.PATHtyc{arity=arity,entPath=[ev],
+						    path=IP.IPATH[name]}
+			       val env' = SE.bind(name, B.TYCbind etyc, env)
+			       val symbols' = name::symbols
 			    (* unlike normal case (rhs=Constrs), won't bother
 			       to re-register the tyc in epContext *)
 
-			    val prefix = allButLast entPath
-			    fun expandTyc(tyc as T.PATHtyc{entPath=ep,
-                                                           arity,path}) =
-				 (* see if the path ep is defined externally
-				  * in the entEnv *)
-				 ((EE.look(entEnv,hd ep);
-				   tyc) (* external tyc *)
-				  handle EE.Unbound => 
-                                    (* tyc is local to sig *)
-				    T.PATHtyc{entPath=prefix @ ep,arity=arity,
-					      path=path})
-                              | expandTyc(T.FREEtyc n) = 
-                                  ((List.nth(freetycs,n)) handle _ => 
-                                     bug "unexpected freetycs in expandTyc")
-			      | expandTyc(T.RECtyc n) =
-				  if n = index then etyc
-				      (* could equivalently be tyc? *)
-				  else let val stamp = Vector.sub(stamps,n)
-                                           val {tycname,arity,...} =
-  					     Vector.sub(members,n)
-					   val tyc_id = ModuleId.TYCid stamp
+			       val prefix = allButLast entPath
+			       fun expandTyc(tyc as T.PATHtyc{entPath=ep,
+                                                              arity,path}) =
+				   (* see if the path ep is defined externally
+				    * in the entEnv *)
+				   ((EE.look(entEnv,hd ep);
+				     tyc) (* external tyc *)
+				    handle EE.Unbound => 
+					   (* tyc is local to sig *)
+					   T.PATHtyc{entPath=prefix @ ep,
+						     arity=arity,
+						     path=path})
+				 | expandTyc(T.FREEtyc n) = 
+                                   ((List.nth(freetycs,n))
+				    handle _ => 
+					bug "unexpected freetycs in expandTyc")
+				 | expandTyc(T.RECtyc n) =
+				   if n = index then etyc
+				   (* could equivalently be tyc? *)
+				   else let val stamp = Vector.sub(stamps,n)
+                                            val {tycname,arity,...} =
+  						Vector.sub(members,n)
 					in T.PATHtyc{arity=arity,
 						     entPath=prefix@[stamp],
 						     path=IP.IPATH[tycname]}
-				       end
-				   (* reconstructing the entPath for sibling
-				    * datatypes using the fact that the entVar
-				    * for a datatype spec is the same as the
-				    * stamp of the datatype.
-				    * See elabDATATYPEspec0 *)
-			      | expandTyc tyc = tyc
+					end
+				 (* reconstructing the entPath for sibling
+				  * datatypes using the fact that the entVar
+				  * for a datatype spec is the same as the
+				  * stamp of the datatype.
+				  * See elabDATATYPEspec0 *)
+				 | expandTyc tyc = tyc
 
-			    val expand = TU.mapTypeFull expandTyc
+			       val expand = TU.mapTypeFull expandTyc
 
-			    fun addDcons([], elems, syms) = (elems, syms)
-			      | addDcons((d as {name,rep,domain})::dds,
-					 elems, syms) = 
-				  let val typ =
-		                      TU.dconType(tyc,Option.map expand domain)
-				      val const = case domain
+			       fun addDcons([], elems, syms) = (elems, syms)
+				 | addDcons((d as {name,rep,domain})::dds,
+					    elems, syms) = 
+				   let val typ =
+				      TU.dconType(tyc,Option.map expand domain)
+				       val const = case domain
 						    of NONE => true
 						     | _ => false
-				      val nd = T.DATACON {name=name,rep=rep,
-							  const=const,
-							  lazyp=lazyp,
-                                                          sign=sign,
-							  typ=typ}
- 			              val dspec = CONspec{spec=nd, slot=NONE}
-			              val elems' = add(name, dspec, elems, 
-                                                       error region)
+				       val nd = T.DATACON {name=name,rep=rep,
+							   const=const,
+							   lazyp=lazyp,
+                                                           sign=sign,
+							   typ=typ}
+ 			               val dspec = CONspec{spec=nd, slot=NONE}
+			               val elems' = add(name, dspec, elems, 
+							error region)
 				   in addDcons(dds, elems', name::syms)
-				  end
-			    val (elements'', symbols'') =
-				addDcons(dcons, elements', symbols')
+				   end
+			       val (elements'', symbols'') =
+				   addDcons(dcons, elements', symbols')
 
-			 in (env', elements'', symbols'')
-			end
-		     | _ => (* rhs does not denote a datatype *)
-			(error region EM.COMPLAIN
-			  "rhs of datatype replication spec not a datatype"
-			  EM.nullErrorBody;
-			 (env,elements,symbols))
+			   in (env', elements'', symbols'')
+			   end
+			 | _ => no_datatype ())
+		    | _ => no_datatype ()
 	      end
-	   | T.GENtyc{arity,kind=T.DATATYPE _,...} =>
-	      (* rhs is not local to current outermost signature *)
-	      let val (tyc',_) = MU.relativizeTyc epContext tyc
-	       in case tyc'
-		    of T.PATHtyc{entPath,arity,...} => 
-			(* outside current sig but local to enclosing functor *)
-			let (* add the type *)
-			    val ev = mkStamp()
-			    (* spec uses wrapped version of the PATHtyc!! *)
-			    val tspec = TYCspec{spec=TU.wrapDef(tyc',mkStamp()),
-						entVar=ev,repl=true,scope=0}
-			    val elements' = add(name,tspec,elements,error region)
-			    val etyc = T.PATHtyc{arity=arity,entPath=[ev],
-						 path=IP.IPATH[name]}
-			    val env' = SE.bind(name, B.TYCbind etyc, env)
-			    val symbols' = name::symbols
+	   | T.GENtyc {arity,kind,...} =>
+	     (case kind
+	       of T.DATATYPE _ =>
+		  (* rhs is not local to current outermost signature *)
+		  let val (tyc',_) = MU.relativizeTyc epContext tyc
+		  in case tyc'
+		      of T.PATHtyc{entPath,arity,...} => 
+		(* outside current sig but local to enclosing functor *)
+			 let (* add the type *)
+			     val ev = mkStamp()
+			     (* spec uses wrapped version of the PATHtyc!! *)
+			     val tspec =
+				 TYCspec{spec=TU.wrapDef(tyc',mkStamp()),
+					 entVar=ev,repl=true,scope=0}
+			     val elements' =
+				 add(name,tspec,elements,error region)
+			     val etyc = T.PATHtyc{arity=arity,entPath=[ev],
+						  path=IP.IPATH[name]}
+			     val env' = SE.bind(name, B.TYCbind etyc, env)
+			     val symbols' = name::symbols
 				
-			    (* get the dcons -- quick and dirty (buggy?) hack *)
-			    val dcons = TU.extractDcons tyc
-			    fun addDcons([], elems, syms) = (elems, syms)
-			      | addDcons((d as T.DATACON{name,rep,const,lazyp,sign,
-							 typ})::ds,
-					 elems, syms) = 
-				  let val nd =
-				         T.DATACON {name=name,rep=rep,lazyp=lazyp,
+			   (* get the dcons -- quick and dirty (buggy?) hack *)
+			     val dcons = TU.extractDcons tyc
+			     fun addDcons([], elems, syms) = (elems, syms)
+			       | addDcons((d as T.DATACON{name,rep,const,
+							  lazyp,sign,
+							  typ})::ds,
+					  elems, syms) = 
+				 let val nd =
+				         T.DATACON {name=name,rep=rep,
+						    lazyp=lazyp,
 						    const=const,sign=sign,
-						    typ= #1(MU.relativizeType epContext typ)}
-				      val dspec = CONspec{spec=nd, slot=NONE}
-				      val elems' = add(name, dspec, elems, error region)
-				   in addDcons(ds, elems', name::syms)
-				  end
+						    typ= #1(MU.relativizeType
+								epContext typ)}
+				     val dspec = CONspec{spec=nd, slot=NONE}
+				     val elems' =
+					 add(name, dspec, elems, error region)
+				 in addDcons(ds, elems', name::syms)
+				 end
 
-			    val (elements'', symbols'') =
-				addDcons(dcons, elements', symbols')
+			     val (elements'', symbols'') =
+				 addDcons(dcons, elements', symbols')
 			 in (env', elements'', symbols'')
-			    
-			end
-		     | _ => (* fixed global *)
-			let (* add the type *)
-			    val ev = mkStamp()
-			    val tspec = M.TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
-						  entVar=ev,repl=true,scope=0}
-				(* put in the constant tyc
-				   how to treat this in instantiate?*)
-			    val elements' = add(name,tspec,elements,error region)
-			    val etyc = T.PATHtyc{arity=arity,entPath=[ev],
-						 path=IP.IPATH[name]}
-			    val env' = SE.bind(name, B.TYCbind etyc, env)
-			    val symbols' = name::symbols
+			 end
+		       | _ => (* fixed global *)
+			 let (* add the type *)
+			     val ev = mkStamp()
+			     val tspec =
+				 M.TYCspec{spec=TU.wrapDef(tyc,mkStamp()),
+					   entVar=ev,repl=true,scope=0}
+			     (* put in the constant tyc
+					   how to treat this in instantiate?*)
+			     val elements' =
+				 add(name,tspec,elements,error region)
+			     val etyc = T.PATHtyc{arity=arity,entPath=[ev],
+						  path=IP.IPATH[name]}
+			     val env' = SE.bind(name, B.TYCbind etyc, env)
+			     val symbols' = name::symbols
 
-			    val dcons = TU.extractDcons tyc
-			    fun addDcons([], elems, syms) = (elems, syms)
-			      | addDcons((dc as T.DATACON{name,...})::dcs,
-					 elems, syms) = 
-				  let val dspec = CONspec{spec=dc, slot=NONE}
-				      val elems' = add(name, dspec, elems, error region)
-				   in addDcons(dcs, elems', name::syms)
-				  end
-			    val (elements'', symbols'') =
-				addDcons(dcons, elements', symbols')
+			     val dcons = TU.extractDcons tyc
+			     fun addDcons([], elems, syms) = (elems, syms)
+			       | addDcons((dc as T.DATACON{name,...})::dcs,
+					  elems, syms) = 
+				 let val dspec = CONspec{spec=dc, slot=NONE}
+				     val elems' =
+					 add(name, dspec, elems, error region)
+				 in addDcons(dcs, elems', name::syms)
+				 end
+			     val (elements'', symbols'') =
+				 addDcons(dcons, elements', symbols')
 		         in (env', elements'', symbols'')
-			end
-	      end
-	   | _ => (* rhs is not local to current (outermost) signature *)
-	     (error region EM.COMPLAIN 
-	        "rhs of datatype replication spec not a datatype"
-		EM.nullErrorBody;
-	      (env,elements,symbols))
+			 end
+		  end
+		| _ => no_datatype ())
+	   | _ => no_datatype ()
     end
 
 
@@ -560,7 +586,7 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
 
       fun isFree (T.PATHtyc _) = true
         | isFree tc =
-            (case EPC.lookPath(epContext, MU.tycId tc)
+            (case EPC.lookTycPath(epContext, MU.tycId tc)
               of SOME _ => true 
                | _ => false)
 
@@ -580,47 +606,57 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
       val viztc = (fn tc => #1(MU.relativizeTyc epContext tc))
       val ndtycs = 
         (case dtycs
-          of ((T.GENtyc{kind=T.DATATYPE{index=0,family,freetycs,
-                                        stamps, root}, stamp, ...})::_) =>  
-               let (* MAJOR GROSS HACK: use the stamp of the type as its 
-                    * entVar. This makes possible to reconstruct the entPath 
-                    * associated with a RECty when translating the types of 
-                    * domains in elabDATArepl.  See >>HACK<< signs.
-                    *)
-                   val rtev = stamp (* mkStamp() >>HACK<< *)
-                   val nfreetycs = map viztc freetycs
-                   fun newdt (dt as T.GENtyc{kind=T.DATATYPE{index=i,...},
-                                             arity, eq, path, ...}) =
-                         let val s = Vector.sub(stamps, i)
-                             val (ev, rt) = 
-                               if i=0 then (rtev, NONE)
-                               else (s (* mkStamp() >>HACK<< *), SOME rtev)
-                             val nkind = 
-                               T.DATATYPE{index=i, stamps=stamps,
-                                          freetycs=nfreetycs,root=rt,
-                                          family=family}
-                             val ndt =
-                               T.GENtyc{arity=arity, eq=eq, kind=nkind,
-                                        path=path, stamp=s}
-
-                             val _ = EPC.bindPath(epContext, MU.tycId ndt, ev)
-                          in (ev, arity, ndt)
-                         end
-                    | newdt _ = bug "unexpected case in newdtyc"
-               in map newdt dtycs
-              end
-          | _ => bug "unexpected tycs in bindNewTycs")
+          of (T.GENtyc { stamp, kind, ... } :: _) =>
+	     (case kind of
+		  T.DATATYPE{index=0,family,freetycs, stamps, root} =>
+		  let (* MAJOR GROSS HACK: use the stamp of the type as its 
+                       * entVar. This makes possible to reconstruct the
+		       * entPath associated with a RECty when translating the
+		       * types of domains in elabDATArepl.  See >>HACK<< signs.
+                       *)
+                      val rtev = stamp (* mkStamp() >>HACK<< *)
+                      val nfreetycs = map viztc freetycs
+                      fun newdt (dt as T.GENtyc {kind,arity,eq,path,...}) =
+			  (case kind of
+			       T.DATATYPE{index=i,...} =>
+                               let val s = Vector.sub(stamps, i)
+				   val (ev, rt) = 
+				       if i=0 then (rtev, NONE)
+				       else (s (* mkStamp() >>HACK<< *),
+					     SOME rtev)
+				   val nkind = 
+				       T.DATATYPE{index=i, stamps=stamps,
+						  freetycs=nfreetycs,root=rt,
+						  family=family}
+				   val ndt =
+				       T.GENtyc{arity=arity, eq=eq,
+						kind=nkind,
+						stub=NONE,
+						path=path, stamp=s}
+				  
+				   val _ =
+				       EPC.bindTycPath(epContext,
+						       MU.tycId ndt, ev)
+                               in (ev, arity, ndt)
+                               end
+			     | _ => bug "unexpected case in newdtyc (1)")
+			| newdt _ = bug "unexpected case in newdtyc (2)"
+		  in map newdt dtycs
+		  end
+		| _ => bug "unexpected tycs in bindNewTycs (1)")
+           | _ => bug "unexpected tycs in bindNewTycs (2)")
 
       val nwtycs =  
         let fun newwt (T.DEFtyc{stamp, tyfun=T.TYFUN{arity,body}, 
                                 strict, path}) = 
-              let val ev = stamp (* mkStamp()   >>HACK<< *)
-                  val nwt = 
-                    T.DEFtyc{stamp=stamp,strict=strict,path=path,
-                             tyfun=T.TYFUN{arity=arity, body=vizty body}}
-                  val _ = EPC.bindPath(epContext, MU.tycId nwt, ev)
-               in (ev, arity, nwt)
-              end
+		let val ev = stamp (* mkStamp()   >>HACK<< *)
+                    val nwt = 
+			T.DEFtyc{stamp=stamp,strict=strict,path=path,
+				 tyfun=T.TYFUN{arity=arity, body=vizty body}}
+                    val _ = EPC.bindTycPath(epContext, MU.tycId nwt, ev)
+		in (ev, arity, nwt)
+		end
+	      | newwt _ = bug "newwt"
          in map newwt wtycs
         end
 
@@ -694,11 +730,13 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
 					   epContext, region, compInfo)
 
 			      val sign' = 
-				SIG{name=NONE, closed=false,fctflag=fflag',
-				    stamp=mkStamp(), symbols=symbols', 
+				SIG{stamp = mkStamp(),
+				    name=NONE, closed=false,fctflag=fflag',
+				    symbols=symbols', 
 				    elements=elements', boundeps=ref NONE,
 				    lambdaty=ref NONE, typsharing=tycShare', 
-				    strsharing=strShare'}
+				    strsharing=strShare',
+				    stub = NONE}
 
 			   in sign'
 			  end
@@ -739,7 +777,7 @@ fun elabSTRspec((name,sigexp,defOp), env, elements, syms, slots, region) =
       val elements' = add(name, strspec, elements, err)
       val _ = debugmsg "<<elabSTRspec"
 
-      val fflag = case sign of SIG{fctflag=ff,...} => ff
+      val fflag = case sign of SIG {fctflag,...} => fctflag
                              | _ => false
 
    in (env', elements', name::syms, fflag)
@@ -1048,18 +1086,19 @@ let val region0 = region
                               region, compInfo)
 		 val _ = debugmsg "--elabSig: after elabBody"
 
-		 val sign=SIG{name = nameOp,
+		 val sign=SIG{stamp = mkStamp(),
+			      name = nameOp,
 			      closed = case nameOp
-					 of SOME _ => true
-					  | NONE => false,
-                              fctflag=fflag,
-			      stamp = mkStamp(),
+					of SOME _ => true
+					 | NONE => false,
+			      fctflag=fflag,
 			      symbols = syms,
 			      elements = elements,
 			      boundeps = ref NONE,
-                              lambdaty = ref NONE,
+			      lambdaty = ref NONE,
 			      typsharing = tycShare,
-			      strsharing = strShare}
+			      strsharing = strShare,
+			      stub = NONE}
 
 	      in debugPrint("--elabSig: returned signature:",
 		   (fn pps => fn s => PPModules.ppSignature pps (s,env,6)),sign);
@@ -1069,6 +1108,7 @@ let val region0 = region
 
 	 | MarkSig(sigexp',region') => bug "elabSig0"
 	     (* elabWhere should have stripped this *)
+	 | _ => bug "elabSig0:sigexp"
 
     val sign =
 	case sign

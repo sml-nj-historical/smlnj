@@ -78,13 +78,14 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 	isValid
     end
 
-    fun verify gp em (group as GG.GROUP g) = let
-	val { exports, grouppath, sublibs, ... } = g
-	val groups = Reachable.groupsOf group
-    in
-	verify' gp em (grouppath,
-		       map (#2 o #1) (SymbolMap.listItems exports),
-		       sublibs, groups)
-    end
+    fun verify _ _ GG.ERRORGROUP = false
+      | verify gp em (group as GG.GROUP g) = let
+	    val { exports, grouppath, sublibs, ... } = g
+	    val groups = Reachable.groupsOf group
+	in
+	    verify' gp em (grouppath,
+			   map (#2 o #1) (SymbolMap.listItems exports),
+			   sublibs, groups)
+	end
 end
 end

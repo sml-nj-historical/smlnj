@@ -79,7 +79,8 @@ fun getStr (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
  	  of STRent entity => 
                (STR{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.selInfo(dinfo, slot)}, entVar)
+                    info = II.selInfo(dinfo, slot)},
+		entVar)
 	   | _ => bug "getStr: bad entity")
      | _ => bug "getStr: wrong spec"
 
@@ -90,45 +91,53 @@ fun getFct (elements, entEnv, sym, dacc, dinfo) =
         (case EE.look(entEnv,entVar)
           of FCTent entity => 
                (FCT{sign = sign, rlzn = entity, access = A.selAcc(dacc,slot),
-                    info = II.selInfo(dinfo, slot)}, entVar)
+                    info = II.selInfo(dinfo, slot)},
+		entVar)
            | _ => bug "getFct: bad entity")
      | _ => bug "getFct: wrong spec"
 
 val errorStrStamp = ST.special "ERRORstr"
 val errorStrName = InvPath.IPATH[S.strSymbol "ERRORstr"]
 
-fun getStrStamp(STR{rlzn={stamp,...},...}) = stamp
+fun getStrStamp(STR { rlzn = {stamp, ...}, ... }) = stamp
   | getStrStamp ERRORstr = errorStrStamp
   | getStrStamp _ = bug "getStrStamp"
 
-fun getStrName(STR{rlzn={rpath,...},...}) = rpath
+fun getStrName(STR { rlzn = {rpath,...}, ... }) = rpath
   | getStrName ERRORstr = errorStrName
   | getStrName _ = bug "getStrName"
 
-fun getStrs(STR{sign=SIG{elements,...},rlzn={entities,...}, access, info}) =
-      List.mapPartial
-        (fn (sym,STRspec{sign,slot,def,entVar}) =>
-             SOME(STR{sign = sign, 
-                      rlzn = EE.lookStrEnt(entities,entVar),
-                      access = A.selAcc(access, slot), 
-                      info = II.selInfo(info, slot)})
-          | _ => NONE) elements
+fun getStrs (STR { sign = SIG sg, rlzn = {entities,...}, access,info,...}) =
+    let val elements = #elements sg
+    in
+	List.mapPartial
+	    (fn (sym,STRspec{sign,slot,def,entVar}) =>
+		SOME(STR{sign = sign,
+			 rlzn = EE.lookStrEnt(entities,entVar),
+			 access = A.selAcc(access, slot), 
+			 info = II.selInfo(info, slot)})
+	       | _ => NONE)
+	    elements
+    end
   | getStrs ERRORstr = nil
   | getStrs _ = bug "getStrs"
 
-fun getTycs(STR{sign=SIG{elements,...},rlzn={entities,...},...}) =
-      let val tycvars = List.mapPartial
+fun getTycs (STR { sign = SIG sg, rlzn = {entities,...}, ... }) =
+    let val elements = #elements sg
+	val tycvars = List.mapPartial
                           (fn (sym,TYCspec{entVar,...}) => SOME entVar
-		            | _ => NONE) elements
-       in List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
-      end
+			    | _ => NONE)
+			  elements
+    in
+	List.map (fn tycVar => EE.lookTycEnt(entities,tycVar)) tycvars
+    end
   | getTycs ERRORstr = nil
-  | getTycs _ = bug "getTycs"
+  | getTycs _ = bug "getTycs (2)"
 
-fun getSigSymbols(SIG{symbols,...}) = symbols
+fun getSigSymbols(SIG {symbols,...}) = symbols
   | getSigSymbols _ = nil
 
-fun getStrSymbols(STR{sign,...}) = getSigSymbols sign
+fun getStrSymbols(STR { sign, ... }) = getSigSymbols sign
   | getStrSymbols _ = nil
 
 (*** Translate a tycon in a given entityEnv ***)
@@ -165,8 +174,8 @@ val transType =
 
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
-      STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
-          access=A.nullAcc, info=II.nullInfo}
+    STR{sign=sign,rlzn=EE.lookStrEP(entEnv,entPath),
+        access=A.nullAcc, info=II.nullInfo}
 
 (* 
  * two pieces of essential structure information gathered during
@@ -178,23 +187,23 @@ datatype strInfo = SIGINFO of EP.entPath  (* reverse order! *)
 
 val bogusInfo = STRINFO (bogusStrEntity, A.nullAcc, II.nullInfo)
 
-fun getStrElem (sym, sign as SIG{elements,...}, sInfo) = 
-      (case getSpec(elements,sym)
+fun getStrElem (sym, sign as SIG {elements,...}, sInfo) = 
+      (case getSpec (elements,sym)
         of STRspec{sign=subsig, slot, def, entVar} =>
             (let val newInfo = 
                   case sInfo
                    of SIGINFO ep => SIGINFO (entVar::ep)
-                    | STRINFO (rlzn as {entities,...}, dacc, dinfo) => 
-                          STRINFO(EE.lookStrEnt(entities,entVar), 
-                                  A.selAcc(dacc,slot), II.selInfo(dinfo,slot))
+                    | STRINFO ({entities,...}, dacc, dinfo) =>
+                      STRINFO(EE.lookStrEnt(entities,entVar), 
+                              A.selAcc(dacc,slot), II.selInfo(dinfo,slot))
               in (subsig, newInfo)
              end)
          | _ => bug "getStrElem: wrong spec case")
 
   | getStrElem (sym, sign, _) = (sign, bogusInfo)
 
-fun getFctElem(sym, sign as SIG{elements,...}, 
-               sinfo as STRINFO(rlzn as {entities,...}, dacc, dinfo)) = 
+fun getFctElem(sym, sign as SIG {elements,...},
+	       sinfo as STRINFO(rlzn as {entities,...}, dacc, dinfo)) = 
       (case getSpec(elements, sym)
         of FCTspec{sign=subfsig, entVar, slot} =>
              FCT{sign=subfsig, rlzn=EE.lookFctEnt(entities,entVar),
@@ -203,43 +212,41 @@ fun getFctElem(sym, sign as SIG{elements,...},
 
   | getFctElem _ = ERRORfct
 
-fun mkTyc(sym, sp, SIG{elements,...}, sInfo) =
+fun mkTyc(sym, sp, SIG {elements,...}, sInfo) =
       (case getSpec (elements, sym)
         of TYCspec{spec,entVar=ev,repl,scope} => 
              (case sInfo
                of SIGINFO ep => 
                     T.PATHtyc{arity=TU.tyconArity spec, entPath=rev(ev::ep),
 			      path=CVP.invertSPath sp}
-                | STRINFO (rlzn as {entities,...}, _, _) =>
-                    EE.lookTycEnt(entities, ev))
+                | STRINFO ({entities,...}, _, _) =>
+		  EE.lookTycEnt(entities, ev))
  
          | _ => bug "mkTyc: wrong spec case")
 
   | mkTyc _ = T.ERRORtyc
 
-fun mkVal(sym, sp, sign as SIG{elements,...}, 
-                   sInfo as STRINFO({entities,...}, dacc, dinfo)) : V.value = 
-      (case getSpec(elements, sym)
-        of VALspec{spec,slot} =>
-             V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
-                            info = II.selInfo(dinfo,slot), path = sp,
-                            typ = ref(transType entities spec)})
-
-         | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp}, slot} =>
-             let val newrep =
-                   case (rep, slot)
-                    of (A.EXN _, SOME i) => A.EXN (A.selAcc(dacc,i))
-                     | _ => rep
-
-              in V.CON(T.DATACON{rep=newrep, name=name,
-                                 typ=transType entities typ, 
-                                 const=const, sign=sign, lazyp=lazyp})
-             end
-
-         | _ => bug "mkVal: wrong spec")
-
+fun mkVal(sym, sp, sign as SIG {elements,...},
+	  sInfo as STRINFO({entities,...}, dacc, dinfo)) : V.value =
+    (case getSpec(elements, sym) of
+	 VALspec{spec,slot} =>
+         V.VAL(V.VALvar{access = A.selAcc(dacc,slot), 
+			info = II.selInfo(dinfo,slot), path = sp,
+			typ = ref(transType entities spec)})
+       | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp},
+		 slot} =>
+         let val newrep =
+                 case (rep, slot)
+                  of (A.EXN _, SOME i) => A.EXN (A.selAcc(dacc,i))
+                   | _ => rep
+			     
+         in
+	     V.CON(T.DATACON{rep=newrep, name=name,
+                             typ=transType entities typ, 
+                             const=const, sign=sign, lazyp=lazyp})
+         end
+       | _ => bug "mkVal: wrong spec")
   | mkVal _ = V.VAL(V.ERRORvar)
-
 
 fun mkStrBase(sym, sign, sInfo) = 
   let val (newsig, newInfo) = getStrElem(sym, sign, sInfo)
@@ -248,7 +255,7 @@ fun mkStrBase(sym, sign, sInfo) =
 	| _ =>
 	  (case newInfo
 	     of STRINFO(newrlzn, newacc, newinfo) => 
-		 STR{sign=newsig, rlzn=newrlzn, access=newacc, info=newinfo}
+		STR{sign=newsig, rlzn=newrlzn, access=newacc, info=newinfo}
 	      | SIGINFO ep => STRSIG{sign=newsig, entPath=rev ep})
   end
 
@@ -277,8 +284,8 @@ fun getPath makeIt (str, SP.SPATH spath, fullsp) =
         | loop _ = bug "getPath.loop"
 
    in case str 
-       of STR{sign, rlzn, access, info} =>
-            loop(spath, sign, STRINFO(rlzn, access, info))
+       of STR { sign, rlzn, access, info } =>
+          loop(spath, sign, STRINFO(rlzn, access, info))
         | STRSIG{sign, entPath} => 
             loop(spath, sign, SIGINFO (rev entPath))
         | _ => loop(spath, ERRORsig, bogusInfo)
@@ -297,7 +304,8 @@ val getStrDef : M.Structure * SP.path * SP.path -> M.strDef =
 
 fun checkPathSig(sign: M.Signature, spath: SP.path) : S.symbol option =
     let val str = STRSIG{sign=sign,entPath=[]:EP.entPath}
-        fun checkLast(sym,_,SIG{elements,...},_) = (getSpec(elements,sym);())
+        fun checkLast(sym,_,SIG {elements,...},_) =
+	    (getSpec(elements,sym); ())
           | checkLast(sym,_,ERRORsig,_) = ()
      in getPath checkLast (str,spath,SP.empty);
 	NONE
@@ -305,48 +313,36 @@ fun checkPathSig(sign: M.Signature, spath: SP.path) : S.symbol option =
     handle Unbound sym => SOME sym
 
 fun errBinding sym =
-  case S.nameSpace sym
-   of S.VALspace => B.VALbind V.ERRORvar
-    | S.TYCspace => B.TYCbind T.ERRORtyc
-    | S.STRspace => B.STRbind M.ERRORstr
-    | S.FCTspace => B.FCTbind M.ERRORfct
-    | _ => raise (Unbound sym)
+    case S.nameSpace sym
+     of S.VALspace => B.VALbind V.ERRORvar
+      | S.TYCspace => B.TYCbind T.ERRORtyc
+      | S.STRspace => B.STRbind M.ERRORstr
+      | S.FCTspace => B.FCTbind M.ERRORfct
+      | _ => raise (Unbound sym)
 
-fun eqSign(SIG{stamp=s1,closed=true, ...},
-           SIG{stamp=s2,closed=true, ...}) = ST.eq(s1,s2)
+fun eqSign (SIG { stamp = s1, closed = true, ... },
+	    SIG { stamp = s2, closed = true, ... }) = ST.eq (s1, s2)
   | eqSign _ = false
 
-fun eqOrigin(STR{rlzn={stamp=s1,...},...},
-             STR{rlzn={stamp=s2,...},...}) = ST.eq(s1,s2)
+fun eqOrigin(STR s1, STR s2) = ST.eq (#stamp (#rlzn s1), #stamp (#rlzn s2))
   | eqOrigin _ = false
-
 
 (* 
  * The following functions are used in CMStaticEnv and module elaboration
  * for building EntPathContexts.  They extract module ids from modules. 
  *)
-fun tycId(T.GENtyc{stamp,...}) = ModuleId.TYCid stamp
-  | tycId(T.DEFtyc{stamp,...}) = ModuleId.TYCid stamp
-  | tycId _ = bug "tycId"
+val tycId = MI.tycId'
 
-fun strId(STR{rlzn={stamp=rlznst,...},sign=SIG{stamp=sigst,...},...}) =
-      MI.STRid{rlzn=rlznst,sign=sigst}
+fun strId (STR sa) = MI.strId sa
   | strId _ = bug "strId"
 
-fun strId2(SIG{stamp=sigst,...}, {stamp=rlznst,...} : strEntity) =  
-      MI.STRid{rlzn=rlznst,sign=sigst}
+fun strId2(SIG sa, rlzn : strEntity) = MI.strId2 (sa, rlzn)
   | strId2 _ = bug "strId2"
 
-fun fsigId(FSIG{paramsig=SIG{stamp=sp,...},bodysig=SIG{stamp=sb,...},...}) =
-      MI.FSIGid{paramsig=sp,bodysig=sb}
-  | fsigId _ = bug "fsigId"
-
-fun fctId(FCT{rlzn={stamp,...},sign, ...}) =
-      MI.FCTid{rlzn=stamp,sign=fsigId sign}
+fun fctId (FCT fa) = MI.fctId fa
   | fctId _ = bug "fctId"
 
-fun fctId2(sign, {stamp,...} : fctEntity) = 
-      MI.FCTid{rlzn=stamp,sign=fsigId sign}
+fun fctId2(sign, rlzn : fctEntity) = MI.fctId2 (sign, rlzn)
 
 (*
  * The reason that relativizeType does not need to get inside 
@@ -355,31 +351,35 @@ fun fctId2(sign, {stamp,...} : fctEntity) =
  * otherwise, this DEFtyc must be a rigid tycon.
  *)
 fun relativizeTyc epContext : T.tycon -> T.tycon * bool = 
-  let fun mapTyc(tyc as (T.GENtyc{stamp,...} | T.DEFtyc{stamp,...})) = 
-	    let val tyc_id = ModuleId.TYCid stamp
-	     in debugmsg ("mapTyc: "^ModuleId.idToString tyc_id);
-	        case EPC.lookPath(epContext,tyc_id)
-		  of NONE => (debugmsg "tyc not mapped 1"; (tyc,false))
-		   | SOME entPath =>
-		     let val tyc' = T.PATHtyc{arity=TU.tyconArity tyc,
-					      entPath=entPath,
-					      path=TU.tycPath tyc}
-		      in debugmsg("tyc mapped: "^
-				 Symbol.name(TypesUtil.tycName tyc'));
-			 (tyc',true)
-		     end
-	    end
+    let fun stamped tyc = let
+	    val tyc_id = MI.tycId' tyc
+	in
+	    (* debugmsg ("mapTyc: "^ModuleId.idToString tyc_id); *)
+	    case EPC.lookTycPath(epContext,tyc_id)
+	     of NONE => (debugmsg "tyc not mapped 1"; (tyc,false))
+	      | SOME entPath =>
+		let val tyc' = T.PATHtyc{arity=TU.tyconArity tyc,
+					 entPath=entPath,
+					 path=TU.tycPath tyc}
+		in
+		    debugmsg("tyc mapped: "^
+			     Symbol.name(TypesUtil.tycName tyc'));
+		    (tyc',true)
+		end
+	end
+
+	fun mapTyc (tyc as (T.GENtyc _ | T.DEFtyc _)) = stamped tyc
 	  | mapTyc(tyc as T.PATHtyc _) =
              (* assume this is a local tycon within the current signature *)
 	     (debugmsg "tyc not mapped 2";
 	      (tyc,true))
 	  | mapTyc tyc = (debugmsg "tyc not mapped 3"; (tyc,false))
 
-       fun mapTyc' tyc = 
+	fun mapTyc' tyc = 
 	    (debugmsg("mapTyc': "^(Symbol.name(TypesUtil.tycName tyc)));
 	     mapTyc tyc)
-   in mapTyc'
-  end
+    in mapTyc'
+    end
         
 fun relativizeType epContext ty : T.ty * bool =
     let val relative = ref false
@@ -405,33 +405,35 @@ val relativizeType =
  *  - used only inside the function openStructure
  *  - raises ModuleUtil.Unbound if sym not found in sig 
  *)
-fun getBinding (sym, str as STR{sign as SIG{elements,...},
-                                rlzn as {entities,...}, 
-                                access=dacc, info=dinfo}) = 
-     let val sinfo = STRINFO(rlzn, dacc, dinfo)
-      in case S.nameSpace sym
-          of S.VALspace => 
-               (case mkVal(sym, SP.SPATH[sym], sign, sinfo)
-                 of V.VAL v => B.VALbind v
-                  | V.CON d => B.CONbind d)
-
-           | S.TYCspace => B.TYCbind(mkTyc(sym, SP.SPATH[sym], sign, sinfo))
-           | S.STRspace => B.STRbind(mkStrBase(sym, sign, sinfo))
-           | S.FCTspace => B.FCTbind(getFctElem(sym, sign, sinfo))
-           | sp => (debugmsg ("getBinding: "^S.symbolToString sym);
-  		    raise (Unbound sym))
-     end
-
-  | getBinding (sym, STRSIG{sign as SIG{elements, ...},entPath=ep}) = 
+fun getBinding (sym, str as STR st) =
+    (case st of
+	 {sign as SIG _, rlzn, access=dacc, info=dinfo} =>
+	 let val sinfo = STRINFO(rlzn, dacc, dinfo)
+	     val entities = #entities rlzn
+	 in
+	     case S.nameSpace sym
+	      of S.VALspace => 
+		 (case mkVal(sym, SP.SPATH[sym], sign, sinfo)
+                   of V.VAL v => B.VALbind v
+		    | V.CON d => B.CONbind d)
+	       | S.TYCspace =>
+		 B.TYCbind (mkTyc(sym, SP.SPATH[sym], sign, sinfo))
+	       | S.STRspace => B.STRbind (mkStrBase(sym, sign, sinfo))
+	       | S.FCTspace => B.FCTbind (getFctElem(sym, sign, sinfo))
+	       | sp => (debugmsg ("getBinding: "^S.symbolToString sym);
+  			raise (Unbound sym))
+	 end
+       | { sign = ERRORsig, ... } => errBinding sym)
+  | getBinding (sym, STRSIG{sign as SIG _,entPath=ep}) = 
      let val sinfo = SIGINFO(rev ep)
-      in case S.nameSpace sym
-          of S.TYCspace => B.TYCbind(mkTyc(sym, SP.SPATH[sym], sign, sinfo))
-           | S.STRspace => B.STRbind(mkStrBase(sym, sign, sinfo))
+     in
+	 case S.nameSpace sym
+          of S.TYCspace =>
+	     B.TYCbind (mkTyc(sym, SP.SPATH[sym], sign, sinfo))
+           | S.STRspace => B.STRbind (mkStrBase(sym, sign, sinfo))
            | _ => (debugmsg ("getBinding: "^S.symbolToString sym);
                    raise (Unbound sym))
      end 
-         
-  | getBinding (sym, STR{sign=ERRORsig,...}) = errBinding sym
   | getBinding (sym, ERRORstr) = errBinding sym
   | getBinding _ = bug "getBinding - bad arg"
 
@@ -444,20 +446,19 @@ fun openStructure(env: SE.staticEnv, str) =
   end
 
 (** extract inl_info from a list of bindings *)
-fun extractInfo(B.STRbind(M.STR{info, ...})) = info
-  | extractInfo(B.FCTbind(M.FCT{info, ...})) = info
-  | extractInfo(B.VALbind(V.VALvar{info, ...})) = info
+fun extractInfo(B.STRbind (M.STR { info, ... })) = info
+  | extractInfo(B.FCTbind (M.FCT { info, ... })) = info
+  | extractInfo(B.VALbind (V.VALvar {info, ...})) = info
   | extractInfo(B.CONbind _) = II.nullInfo
-  | extractInfo(B.STRbind _) = II.nullInfo
-  | extractInfo(B.FCTbind _) = II.nullInfo
   | extractInfo _ = bug "unexpected binding in extractInfo"
 
 (* extract all signature names from a structure --
  *  doesn't look into functor components *)
-fun getSignatureNames(STR{sign,...} | STRSIG{sign,...}) =
-    let fun sigNames(SIG{name,elements,...},names) =
+fun getSignatureNames s = let
+    fun fromSig sign = let
+	fun sigNames(SIG {name,elements,...}, names) =
 	    foldl (fn ((_,STRspec{sign,...}),ns) =>
-		       sigNames(sign, ns)
+		      sigNames(sign, ns)
 		    | (_,ns) => ns)
 		  (case name of SOME n => n::names | NONE => names)
 		  elements
@@ -466,10 +467,14 @@ fun getSignatureNames(STR{sign,...} | STRSIG{sign,...}) =
 	    if S.eq(x,y) then removeDups(rest,z) else removeDups(rest,x::z)
 	  | removeDups (x::nil,z) = x::z
 	  | removeDups (nil,z) = z
-     in removeDups(ListMergeSort.sort S.symbolGt(sigNames(sign,nil)), nil)
+    in removeDups(ListMergeSort.sort S.symbolGt(sigNames(sign,nil)), nil)
     end
-  | getSignatureNames(ERRORstr) = nil
-
+in
+    case s of
+	STR { sign, ... } => fromSig sign
+      | STRSIG { sign, ... } => fromSig sign
+      | ERRORstr => nil
+end
 end (* local *)
 end (* structure ModuleUtil *)
 

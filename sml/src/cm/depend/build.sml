@@ -182,13 +182,13 @@ structure BuildDepend :> BUILDDEPEND = struct
 			 *  calculate "union", see if there is a change,
 			 *  and if so, replace the filter *)
 			fun replace filt =
-			    gi := (filt, n) :: List.filter (not o sameN) (!gi)
+			    gi := (filt, n) ::
+				  List.filter (not o sameN) (!gi)
 		    in
 			case f of
 			    NONE => replace NONE
-			  | SOME f =>
-				if SS.equal (f, f') then ()
-				else replace (SOME (SS.union (f, f')))
+			  | SOME f => if SS.equal (f, f') then ()
+				      else replace (SOME (SS.union (f, f')))
 		    end
 	    end
 
@@ -251,6 +251,9 @@ structure BuildDepend :> BUILDDEPEND = struct
 	(* run the analysis *)
 	val _ = app doSmlFile smlfiles
 
+	(* We add NONE as link path info here.  In general, this is
+	 * not always the correct info, but the correct info will
+	 * become available upon _import_ (and not now, during export). *)
 	fun addDummyFilt (sbn, e) = ((NONE, sbn), e)
 
 	(* First we make a map of all locally defined symbols to

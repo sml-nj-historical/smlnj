@@ -108,6 +108,7 @@ fun annotate (name,annotation,depthOp) =
 fun tyvarPrintname (tyvar as ref info) =
     case info
       of INSTANTIATED(VARty(tyvar)) => tyvarPrintname tyvar
+       | INSTANTIATED _ => "<INSTANTIATED ?>"
        | OPEN{depth,eq,kind} =>
 	  tvHead(eq, annotate(metaTyvarName tyvar,
 			      case kind of META => "M" | FLEX _ => "F",
@@ -135,9 +136,8 @@ fun ppkind ppstrm kind =
 	  | DATATYPE _ => "D" | TEMP => "T")
 
 fun effectivePath(path,tyc,env) : string =
-    let fun tycPath (GENtyc{path,...}) = SOME path
-	  | tycPath (DEFtyc{path,...}) = SOME path
-	  | tycPath (PATHtyc{path, ...}) = SOME path
+    let fun tycPath (GENtyc{path,...} | DEFtyc{path,...} | PATHtyc{path,...}) =
+	    SOME path
 	  | tycPath _ = NONE
 	fun find(path,tyc) =
 	    (findPath(path,
@@ -165,17 +165,17 @@ fun effectivePath(path,tyc,env) : string =
 	else "?."^name
     end
 
-val GENtyc{stamp=arrowStamp,...} = BT.arrowTycon
+val arrowStamp = BT.arrowStamp
 
 fun strength(ty) =
     case ty
       of VARty(ref(INSTANTIATED ty')) => strength(ty')
        | CONty(tycon, args) =>
 	   (case tycon
- 	      of GENtyc{kind=PRIMITIVE _, stamp,...} => 
-		   if Stamps.eq(stamp,arrowStamp) then 0 else 2
+ 	      of GENtyc { stamp, kind = PRIMITIVE _, ... } =>
+		 if Stamps.eq(stamp,arrowStamp) then 0 else 2
 	       | RECORDtyc (_::_) =>  (* excepting type unit *)
-		   if Tuples.isTUPLEtyc(tycon) then 1 else 2
+		 if Tuples.isTUPLEtyc(tycon) then 1 else 2
 	       | _ => 2)
        | _ => 2
 
@@ -196,18 +196,18 @@ fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
 
 fun ppTycon1 env ppstrm membersOp =
     let val {begin_block,end_block,pps,add_break,...} = en_pp ppstrm
-	fun ppTyc (tyc as GENtyc{path,stamp,eq,kind,...}) =
-	     if !internals
-	     then (begin_block PP.INCONSISTENT 1;
-		    ppInvPath ppstrm path;
-		    pps "[";
-		    pps "G"; ppkind ppstrm kind; pps ";"; 
-		    pps (Stamps.stampToShortString stamp);
-		    pps ";";
-		    ppEqProp ppstrm (!eq);
-		    pps "]";
-		   end_block())
-	     else pps(effectivePath(path,tyc,env))
+	fun ppTyc (tyc as GENtyc { path, stamp, eq, kind, ... }) =
+	    if !internals
+	    then (begin_block PP.INCONSISTENT 1;
+		  ppInvPath ppstrm path;
+		  pps "[";
+		  pps "G"; ppkind ppstrm kind; pps ";"; 
+		  pps (Stamps.toShortString stamp);
+		  pps ";";
+		  ppEqProp ppstrm (!eq);
+		  pps "]";
+		  end_block())
+	    else pps(effectivePath(path,tyc,env))
 	  | ppTyc(tyc as DEFtyc{path,tyfun=TYFUN{body,...},...}) =
 	     if !internals
 	     then (begin_block PP.INCONSISTENT 1;
@@ -270,40 +270,46 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 		                handle Subscript => false
 		    in pps (tvHead(eq,(boundTyvarName n)))
 		   end
-	       | CONty(tycon, args) =>
-		   (case tycon
-		      of GENtyc{kind=PRIMITIVE _, stamp,...} => 
-			   if Stamps.eq(stamp,arrowStamp)
-			   then case args
-			         of [domain,range] =>
-				    (begin_block PP.CONSISTENT 0;
-				     if strength domain = 0
-				     then (begin_block PP.CONSISTENT 1;
-					   pps "(";
-					   prty domain;
-					   pps ")";
-					   end_block())
-				     else prty domain;
-				     add_break(1,0);
-				     pps "-> ";
-				     prty range;
-				     end_block())
-				  | _ => bug "CONty:arity"
-			   else (begin_block PP.INCONSISTENT 2;
-                                 ppTypeArgs args;
-                                 add_break(0,0);
-                                 ppTycon1 env ppstrm membersOp tycon;
-                                 end_block())
+	       | CONty(tycon, args) => let
+		     fun otherwise () =
+			 (begin_block PP.INCONSISTENT 2;
+			  ppTypeArgs args; 
+			  add_break(0,0);
+			  ppTycon1 env ppstrm membersOp tycon;
+			  end_block())
+		 in
+		     case tycon
+		      of GENtyc { stamp, kind, ... } =>
+			 (case kind of
+			      PRIMITIVE _ =>
+			      if Stamps.eq(stamp,arrowStamp)
+			      then case args
+			            of [domain,range] =>
+				       (begin_block PP.CONSISTENT 0;
+					if strength domain = 0
+					then (begin_block PP.CONSISTENT 1;
+					      pps "(";
+					      prty domain;
+					      pps ")";
+					      end_block())
+					else prty domain;
+					add_break(1,0);
+					pps "-> ";
+					prty range;
+					end_block())
+				     | _ => bug "CONty:arity"
+			      else (begin_block PP.INCONSISTENT 2;
+                                    ppTypeArgs args;
+                                    add_break(0,0);
+                                    ppTycon1 env ppstrm membersOp tycon;
+                                    end_block())
+			    | _ => otherwise ())
 		       | RECORDtyc labels =>
-			   if Tuples.isTUPLEtyc(tycon)
-			   then ppTUPLEty args
-			   else ppRECORDty(labels, args)
-		       | _ =>
-			   (begin_block PP.INCONSISTENT 2;
-			    ppTypeArgs args; 
-			    add_break(0,0);
-			    ppTycon1 env ppstrm membersOp tycon;
-			    end_block()))
+			 if Tuples.isTUPLEtyc(tycon)
+			 then ppTUPLEty args
+			 else ppRECORDty(labels, args)
+		       | _ => otherwise ()
+		 end
 	       | POLYty{sign,tyfun=TYFUN{arity,body}} => 
                         ppType1 env ppstrm (body,sign, membersOp)
 	       | WILDCARDty => pps "_"
@@ -424,18 +430,21 @@ fun ppFormals ppstrm =
      in ppF
     end
 
-fun ppDataconTypes env ppstrm (GENtyc{kind=DATATYPE{index,freetycs,family={members,...},...},...}) =
-    let val {begin_block, end_block, pps, add_break,...} = en_pp ppstrm
+fun ppDataconTypes env ppstrm (GENtyc { kind = DATATYPE dt, ... }) =
+    let val {index,freetycs,family={members,...},...} = dt
+	val {begin_block, end_block, pps, add_break,...} = en_pp ppstrm
 	val {dcons,...} = Vector.sub(members,index)
-     in begin_block PP.CONSISTENT 0;
+    in
+	begin_block PP.CONSISTENT 0;
 	app (fn {name,domain,...} =>
-	       (pps (Symbol.name name); pps ":";
-		case domain
-		  of SOME ty => ppType1 env ppstrm (ty,[],SOME (members,freetycs))
+		(pps (Symbol.name name); pps ":";
+		 case domain
+		  of SOME ty =>
+		     ppType1 env ppstrm (ty,[],SOME (members,freetycs))
 		   | NONE => pps "CONST";
-		add_break(1,0)))
+		 add_break(1,0)))
 	    dcons;
-	end_block()
+	    end_block()
     end
   | ppDataconTypes env ppstrm _ = bug "ppDataconTypes"
 

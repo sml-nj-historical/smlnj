@@ -7,16 +7,7 @@ sig
 type sharespec = SymPath.path list
 
 datatype Signature
-  = SIG of {name : Symbol.symbol option,
-	    closed : bool,
-            fctflag : bool,
-            stamp : Stamps.stamp,  
-            symbols : Symbol.symbol list, 
-            elements : (Symbol.symbol * spec) list,
-            boundeps : (EntPath.entPath * PLambdaType.tkind) list option ref,
-            lambdaty : (PLambdaType.lty * DebIndex.depth) option ref,
-            typsharing: sharespec list,
-            strsharing: sharespec list}
+  = SIG of sigrec
   | ERRORsig
 
 and spec
@@ -36,10 +27,10 @@ and spec
 
 and fctSig 
   = FSIG of {kind     : Symbol.symbol option,
-             paramsig : Signature,
-             paramvar : EntPath.entVar,
-             paramsym : Symbol.symbol option,
-             bodysig  : Signature}  
+	     paramsig : Signature,
+	     paramvar : EntPath.entVar,
+	     paramsym : Symbol.symbol option,
+	     bodysig  : Signature}
   | ERRORfsig
 
 and extDef
@@ -57,14 +48,12 @@ and strDef
 (* ------------------------- structures and functors ---------------------- *)
 
 and Structure
-  = STR of {sign : Signature, rlzn : strEntity, access : Access.access,
-            info : InlInfo.inl_info}
+  = STR of strrec
   | STRSIG of {sign: Signature, entPath : EntPath.entPath}
   | ERRORstr
 
 and Functor
-  = FCT of {sign : fctSig, rlzn : fctEntity, access: Access.access, 
-            info : InlInfo.inl_info}
+  = FCT of fctrec
   | ERRORfct
 
 (* ----------------------- entity-related definitions -------------------- *)
@@ -80,8 +69,8 @@ and fctClosure (* realization for functors *)
   = CLOSURE of {param : EntPath.entVar, body : strExp, env : entityEnv}
 
 and stampExp
-  = CONST of Stamps.stamp  (* an existing stamp *)
-  | GETSTAMP of strExp
+  = (* CONST of Stamps.stamp  (* an existing stamp *)
+  | *) GETSTAMP of strExp
   | NEW                (* generate a new stamp *)
 
 and tycExp (* expression evaluating to a TYCentity *)
@@ -127,21 +116,68 @@ and entityDec
   | EMPTYdec
 
 and entityEnv 
-  = MARKeenv of Stamps.stamp * entityEnv
+  = MARKeenv of envrec
   | BINDeenv of entity EntPath.EvDict.map * entityEnv
   | NILeenv
   | ERReenv
 
-withtype strEntity = {stamp : Stamps.stamp,
-                      entities : entityEnv,
-                      lambdaty : (PLambdaType.lty * DebIndex.depth) option ref,
-                      rpath : InvPath.path}
+and modtree =
+    TYCNODE of Types.gtrec
+  | SIGNODE of sigrec
+  | STRNODE of strrec
+  | FCTNODE of fctrec
+  | ENVNODE of envrec
+  | BRANCH of modtree list
 
-and fctEntity = {stamp : Stamps.stamp,
-                 closure : fctClosure,
-                 lambdaty : (PLambdaType.lty * DebIndex.depth) option ref,
-                 tycpath : Types.tycpath option,
-                 rpath : InvPath.path}
+withtype stubinfo =
+    {owner : PersStamps.persstamp,
+     lib   : bool,
+     tree  : modtree}
+
+and sigrec =
+    {stamp      : Stamps.stamp,
+     name       : Symbol.symbol option,
+     closed     : bool,
+     fctflag    : bool,
+     symbols    : Symbol.symbol list, 
+     elements   : (Symbol.symbol * spec) list,
+     boundeps   : (EntPath.entPath * PLambdaType.tkind) list option ref,
+     lambdaty   : (PLambdaType.lty * DebIndex.depth) option ref,
+     typsharing : sharespec list,
+     strsharing : sharespec list,
+     stub       : stubinfo option}
+
+and envrec =
+    {stamp : Stamps.stamp,
+     env   : entityEnv,
+     stub  : stubinfo option}
+
+and strEntity =
+    {stamp    : Stamps.stamp,
+     entities : entityEnv,
+     lambdaty : (PLambdaType.lty * DebIndex.depth) option ref,
+     rpath    : InvPath.path,
+     stub     : stubinfo option}
+
+and strrec =
+    {sign   : Signature,
+     rlzn   : strEntity,
+     access : Access.access,
+     info   : InlInfo.inl_info}
+
+and fctEntity =
+    {stamp    : Stamps.stamp,
+     closure  : fctClosure,
+     lambdaty : (PLambdaType.lty * DebIndex.depth) option ref,
+     tycpath  : Types.tycpath option,
+     rpath    : InvPath.path,
+     stub     : stubinfo option}
+
+and fctrec =
+    {sign   : fctSig,
+     rlzn   : fctEntity,
+     access : Access.access, 
+     info   : InlInfo.inl_info}
 
 (* the stamp and arith inside Types.tycon are critical *)  
 and tycEntity = Types.tycon
@@ -157,5 +193,3 @@ val bogusStrEntity : strEntity
 val bogusFctEntity : fctEntity
 
 end (* signature MODULES *)
-
-
