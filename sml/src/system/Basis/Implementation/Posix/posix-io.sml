@@ -52,55 +52,28 @@ structure POSIX_IO =
 
     val read' : int * int -> Word8Vector.vector = cfun "read"
     val readbuf' : int * Word8Array.array * int * int -> int = cfun "readbuf"
-    fun readArr (fd, {buf, i, sz=NONE}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso i <= alen
-              then readbuf'(FS.intOf fd, buf, alen - i, i)
-              else raise Subscript
-          end
-      | readArr (fd, {buf, i, sz=SOME sz}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= alen
-              then readbuf'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
+    fun readArr (fd, asl) = let
+	val (buf, i, len) = Word8ArraySlice.base asl
+    in
+	readbuf' (FS.intOf fd, buf, len, i)
+    end
     fun readVec (fd,cnt) = 
-          if cnt < 0 then raise Subscript else read'(FS.intOf fd, cnt)
+          if cnt < 0 then raise Size else read'(FS.intOf fd, cnt)
 
     val writevec' : (int * Word8Vector.vector * int * int) -> int = cfun "writebuf"
     val writearr' : (int * Word8Array.array * int * int) -> int = cfun "writebuf"
-    fun writeArr (fd,{buf, i, sz=NONE}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso i <= alen
-              then writearr'(FS.intOf fd, buf, alen-i, i)
-              else raise Subscript
-          end
-      | writeArr (fd,{buf, i, sz=SOME sz}) = let
-          val alen = Word8Array.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= alen
-              then writearr'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
-    
-    fun writeVec (fd,{buf, i, sz=NONE}) = let
-          val vlen = Word8Vector.length buf
-          in
-            if 0 <= i andalso i <= vlen
-              then writevec'(FS.intOf fd, buf, vlen-i, i)
-              else raise Subscript
-          end
-      | writeVec (fd,{buf, i, sz=SOME sz}) = let
-          val vlen = Word8Vector.length buf
-          in
-            if 0 <= i andalso 0 <= sz andalso i + sz <= vlen
-              then writevec'(FS.intOf fd, buf, sz, i)
-              else raise Subscript
-          end
-    
+    fun writeArr (fd, asl) = let
+	val (buf, i, len) = Word8ArraySlice.base asl
+    in
+	writearr' (FS.intOf fd, buf, len, i)
+    end
+
+    fun writeVec (fd, vsl) = let
+	val (buf, i, len) = Word8VectorSlice.base vsl
+    in
+	writevec' (FS.intOf fd, buf, len, i)
+    end
+
     datatype whence = SEEK_SET | SEEK_CUR | SEEK_END
     val seek_set = osval "SEEK_SET"
     val seek_cur = osval "SEEK_CUR"
@@ -116,34 +89,26 @@ structure POSIX_IO =
     
     structure FD =
       struct
-        datatype flags = FDF of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = FDF w
-        fun toWord (FDF w) = w
-
-        fun flags ms = FDF(List.foldl (fn (FDF m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (FDF m, FDF m') = (m & m') <> 0w0
-        fun allSet (FDF m, FDF m') = (m & m') = m
-
-        val cloexec = FDF(w_osval "cloexec")
+        val cloexec = fromWord (w_osval "cloexec")
       end
 
     structure O =
       struct
-        datatype flags = FS of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = FS w
-        fun toWord (FS w) = w
-
-        fun flags ms = FS(List.foldl (fn (FS m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (FS m, FS m') = (m & m') <> 0w0
-        fun allSet (FS m, FS m') = (m & m') = m
-
-        val append   = FS(w_osval "append")
-        val dsync    = FS(w_osval "dsync")
-        val nonblock = FS(w_osval "nonblock")
-        val rsync    = FS(w_osval "rsync")
-        val sync     = FS(w_osval "sync")
+        val append   = fromWord (w_osval "append")
+        val dsync    = fromWord (w_osval "dsync")
+        val nonblock = fromWord (w_osval "nonblock")
+        val rsync    = fromWord (w_osval "rsync")
+        val sync     = fromWord (w_osval "sync")
       end
 
     val fcntl_d   : s_int * s_int -> s_int = cfun "fcntl_d"
@@ -152,14 +117,14 @@ structure POSIX_IO =
     val fcntl_gfl : s_int -> (word * word) = cfun "fcntl_gfl"
     val fcntl_sfl : (s_int * word) -> unit = cfun "fcntl_sfl"
     fun dupfd {old, base} = FS.fd (fcntl_d (FS.intOf old, FS.intOf base))
-    fun getfd fd = FD.FDF (fcntl_gfd (FS.intOf fd))
-    fun setfd (fd, FD.FDF fl) = fcntl_sfd(FS.intOf fd, fl)
+    fun getfd fd = FD.fromWord (fcntl_gfd (FS.intOf fd))
+    fun setfd (fd, fl) = fcntl_sfd(FS.intOf fd, FD.toWord fl)
     fun getfl fd = let
           val (sts, omode) = fcntl_gfl (FS.intOf fd)
           in
-            (O.FS sts, FS.omodeFromWord omode)
+            (O.fromWord sts, FS.omodeFromWord omode)
           end
-    fun setfl (fd, O.FS sts) = fcntl_sfl (FS.intOf fd, sts)
+    fun setfl (fd, sts) = fcntl_sfl (FS.intOf fd, O.toWord sts)
 
     datatype lock_type = F_RDLCK | F_WRLCK | F_UNLCK
 

@@ -123,7 +123,15 @@ structure Stats :> STATS =
               else {usr=usr--u,sys=sys--s,gc=gc--g}
 
     local
-      fun gettime () = Timer.checkCPUTimer(Timer.totalCPUTimer())
+      fun gettime () = let
+	  val { nongc, gc } =
+	      Timer.checkGCTime(Timer.totalCPUTimer())
+      in
+	  (* This is a hack.
+	   * (This module deserves a complete rewrite!!) *)
+	  { usr = #usr nongc, sys = Time.+ (#sys nongc, #sys gc),
+	    gc = #usr gc }
+      end
       val last = ref (gettime())
     in 
     fun reset() = (

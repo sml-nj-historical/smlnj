@@ -3,7 +3,6 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-
 structure Word8Imp : WORD =
   struct
 
@@ -66,6 +65,7 @@ structure Word8Imp : WORD =
     val op < : word * word -> bool = W8.<
     val op <= : word * word -> bool = W8.<=
 
+    val ~ : word -> word = ~
     fun min (w1, w2) = if (w1 < w2) then w1 else w2
     fun max (w1, w2) = if (w1 > w2) then w1 else w2
 
@@ -86,5 +86,3 @@ structure Word8Imp : WORD =
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
   end  (* structure Word8 *)
-
-

@@ -43,6 +43,7 @@ signature WORD =
     val <  : word * word -> bool
     val <= : word * word -> bool
 
+    val ~   : word -> word
     val min : (word * word) -> word
     val max : (word * word) -> word
 

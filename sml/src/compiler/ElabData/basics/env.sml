@@ -98,8 +98,6 @@ struct
 
      in Vector.tabulate(Array.length a1, fn i => Array.sub(a1,i))
     end
-    handle Div => (ErrorMsg.impossible "IntStrMapV.new raises Div";
-		   raise Div)
 
 end (* structure IntStrMapV *)
 
@@ -113,9 +111,6 @@ datatype 'b env
   | SPECIAL of (Symbol.symbol -> 'b) * (unit -> Symbol.symbol list) * 'b env
          (* for, e.g., debugger *)
 
-exception SpecialEnv 
-  (* raised by app when it encounters a SPECIAL env *)
-
 val empty = EMPTY
 
 fun look (env,sym as Symbol.SYMBOL(is as (i,s))) = 
@@ -128,8 +123,6 @@ fun look (env,sym as Symbol.SYMBOL(is as (i,s))) =
   end
 
 fun bind (Symbol.SYMBOL(i,s),binding,env) = BIND (i,s,binding,env)
-
-exception NoSymbolList
 
 fun special (look', getSyms) =
   let val memo_env = ref empty

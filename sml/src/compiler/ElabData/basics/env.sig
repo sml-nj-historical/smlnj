@@ -5,14 +5,12 @@ signature ENV = sig
 
   type 'b env
   exception Unbound  
-  exception SpecialEnv
 
   val empty: 'b env
   val look: 'b env * Symbol.symbol -> 'b
   val bind: Symbol.symbol * 'b * 'b env -> 'b env
 
   val special: (Symbol.symbol -> 'b) * (unit -> Symbol.symbol list) -> 'b env
-      (* Note: special(f,NONE) means Don't Memoize! *)
 
   val atop: 'b env * 'b env -> 'b env
       (* atop(e1,e2): place e1 on top of e2 *)

@@ -1,4 +1,4 @@
-(* pre-sock.sml
+(* pre-soc.ksml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -6,14 +6,12 @@
  * structure is called Sock, so that the signatures will compile.
  *
  *)
-
 local
     structure SysWord = SysWordImp
     structure Word8 = Word8Imp
     structure Word = WordImp
 in
-structure PreSock =
-  struct
+structure Socket = struct
 
   (* the raw representation address data *)
     type addr = Word8Vector.vector
@@ -21,25 +19,40 @@ structure PreSock =
   (* the raw representation of an address family *)
     type af = CInterface.system_const
 
-  (* the raw representation of a socket (a file descriptor for now) *)
-    type socket = int
-
-  (* an internet address; this is here because it is abstract in the
-   * NetHostDB and IP structures.
-   *)
-    datatype in_addr = INADDR of addr
-
-  (* an address family *)
-    datatype addr_family = AF of af
-
-  (* socket types *)
-    datatype sock_type = SOCKTY of CInterface.system_const
+  (* the raw representation of a socket:
+   *   a file descriptor for now and a mutable flag indicating
+   *   (with a value of true) if the socket is currently set
+   *   to non-blocking *)
+    type sockFD = int
+    type socket = { fd: sockFD, nb: bool ref }
 
   (* sockets are polymorphic; the instantiation of the type variables
    * provides a way to distinguish between different kinds of sockets.
    *)
     datatype ('sock, 'af) sock = SOCK of socket
     datatype 'af sock_addr = ADDR of addr
+
+  (* witness types for the socket parameter *)
+    datatype dgram = DGRAM
+    datatype 'a stream = STREAM
+    datatype passive = PASSIVE
+    datatype active = ACTIVE
+
+    structure AF = struct
+        datatype addr_family = AF of af
+    end
+
+    structure SOCK = struct
+        (* socket types *)
+        datatype sock_type = SOCKTY of CInterface.system_const
+    end
+
+    datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
+    type sock_desc = OS.IO.iodesc
+
+  (* Sock I/O option types *)
+    type out_flags = {don't_route : bool, oob : bool}
+    type in_flags = {peek : bool, oob : bool}
 
   (** Utility functions for parsing/unparsing network addresses **)
     local
@@ -101,12 +114,3 @@ structure PreSock =
 
   end (* PreSock *)
 end
-
-(* We alias this structure to Socket so that the signature files will compile.
- * We also need to keep the PreSock structure visible, so that structures
- * compiled after the real Sock structure still have access to the representation
- * types.
- *)
-structure Socket = PreSock;
-
-

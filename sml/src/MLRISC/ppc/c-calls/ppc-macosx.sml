@@ -47,6 +47,8 @@
  *    Function arguments:
  *	* arguments (except for floating-point values) are passed in
  *	  registers GPR3-GPR10
+ *
+ * Note also that stack frames are supposed to be 16-byte aligned.
  *)
 
 (* we extend the interface to support generating the stubs needed for
@@ -56,6 +58,23 @@
 signature PPC_MACOSX_C_CALLS =
   sig
     include C_CALLS
+
+(*
+    val genStub : {
+	    name  : T.rexp,
+            proto : CTypes.c_proto,
+	    paramAlloc : {szb : int, align : int} -> bool,
+            structRet : {szb : int, align : int} -> T.rexp,
+	    saveRestoreDedicated :
+	      T.mlrisc list -> {save: T.stm list, restore: T.stm list},
+	    callComment : string option,
+            args : c_arg list
+	  } -> {
+	    callseq : T.stm list,
+	    result: T.mlrisc list
+	  }
+*)
+
   end;
 
 functor PPCMacOSX_CCalls (
@@ -92,83 +111,141 @@ functor PPCMacOSX_CCalls (
     val maxRegArgs = 6
     val paramAreaOffset = 68
 
-    fun LI i = T.LI (T.I.fromInt (32, i))
+    fun LI i = T.LI(T.I.fromInt (32, i))
 
-    val GP = C.GPReg
-    val FP = C.FPReg
+    fun reg r = C.GPReg r
+    fun freg r = C.FPReg r
 
-    fun greg r = GP r
-    fun oreg r = GP (r + 8)
-    fun freg r = FP r
+    fun reg32 r = T.REG(32, r)
+    fun freg64 r = T.FREG(64, r)
 
-    fun reg32 r = T.REG (32, r)
-    fun freg64 r = T.FREG (64, r)
-
-    val sp = oreg 6
-    val spreg = reg32 sp
+  (* stack pointer *)
+    val sp = reg1
+    val spR = reg32 sp
 
     fun addli (x, 0) = x
       | addli (x, d) = let
-	    val d' = T.I.fromInt (32, d)
-	in
-	    case x of
-		T.ADD (_, r, T.LI d) =>
-		T.ADD (32, r, T.LI (T.I.ADD (32, d, d')))
+	  val d' = T.I.fromInt (32, d)
+	  in
+	    case x
+	     of T.ADD (_, r, T.LI d) =>
+		  T.ADD (32, r, T.LI (T.I.ADD (32, d, d')))
 	      | _ => T.ADD (32, x, T.LI d')
-	end
+	    (* end case *)
+	  end
 
     fun argaddr n = addli (spreg, paramAreaOffset + 4*n)
 
-    (* temp location for transfers through memory *)
-    val tmpaddr = argaddr 1
+  (* layout information for C types; note that stack and struct alignment
+   * are different for some types
+   *)
+    type layout_info = {
+	sz : int,
+	stkAlign : int,
+	structAlign : int
+      }
 
     fun roundup (i, a) = a * ((i + a - 1) div a)
 
-    (* calculate size and alignment for a C type *)
-    fun szal (Ty.C_void | Ty.C_float | Ty.C_PTR |
-	      Ty.C_signed (Ty.I_int | Ty.I_long) |
-	      Ty.C_unsigned (Ty.I_int | Ty.I_long)) = (4, 4)
-      | szal (Ty.C_double |
-	      Ty.C_signed Ty.I_long_long |
-	      Ty.C_unsigned Ty.I_long_long) = (8, 8)
-      | szal (Ty.C_long_double) = (16, 8)
-      | szal (Ty.C_signed Ty.I_char | Ty.C_unsigned Ty.I_char) = (1, 1)
-      | szal (Ty.C_signed Ty.I_short | Ty.C_unsigned Ty.I_short) = (2, 2)
-      | szal (Ty.C_ARRAY (t, n)) = let val (s, a) = szal t in (n * s, a) end
-      | szal (Ty.C_STRUCT l) =
-	let (* i: next free memory address (relative to struct start);
-	     * a: current total alignment,
-	     * l: list of struct member types *)
-	    fun pack (i, a, []) =
-		(* when we are done with all elements, the total size
-		 * of the struct must be padded out to its own alignment *)
-		(roundup (i, a), a)
-	      | pack (i, a, t :: tl) = let
-		    val (ts, ta) = szal t (* size and alignment for member *)
-		in
-		    (* member must be aligned according to its own
-		     * alignment requirement; the next free position
-		     * is then at "aligned member-address plus member-size";
-		     * new total alignment is max of current alignment
-		     * and member alignment (assuming all alignments are
-		     * powers of 2) *)
-		    pack (roundup (i, ta) + ts, Int.max (a, ta), tl)
-		end
-	in
-	    pack (0, 1, l)
-	end
+  (* layout information for integer types *)
+    local
+      fun layout n = {sz = n, stkAlign = n, structAlign = n}
 
-    fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
-		  callComment, args } = let
-	val { conv, retTy, paramTys } = proto
-	val _ = case conv of
-		    ("" | "ccall") => ()
-		  | _ => error (concat ["unknown calling convention \"",
-					String.toString conv, "\""])
-	val res_szal =
-	    case retTy of
-		(Ty.C_long_double | Ty.C_STRUCT _) => SOME (szal retTy)
-	      | _ => NONE
+      fun intSizeAndAlign Ty.I_char = layout 1
+	| intSizeAndAlign Ty.I_short = layout 2
+	| intSizeAndAlign Ty.I_int = layout 4
+	| intSizeAndAlign Ty.I_long = layout 4
+	| intSizeAndAlign Ty.I_long_long = {sz = 8, stkAlign = 8, structAlign = 4}
+
+    in
+
+  (* calculate size and alignment for a C type *)
+    fun szal (T.C_unsigned ty) = intSizeAndAlign ty
+      | szal (T.C_signed ty) = intSizeAndAlign ty
+      | szal Ty.C_void = raise Fail "unexpected void type"
+      | szal Ty.C_float = layout 4
+      | szal Ty.C_PTR = layout 4
+      | szal Ty.C_double = {sz = 8, stkAlign = 8, structAlign = 4}
+      | szal (Ty.C_long_double) = {sz = 8, stkAlign = 8, structAlign = 4}
+      | szal (Ty.C_ARRAY(t, n)) = let
+	  val a = szal t
+	  in
+	    {sz = n * #sz a, stkAlign = ?, structAlign = #structAlign a}
+	  end
+      | szal (Ty.C_STRUCT l) = let
+(* FIXME: the rules for structs are more complicated (and they also depend
+ * on the alignment mode).  In Power alignment, 8-byte quantites like
+ * long long and double are 4-byte aligned in structs.
+ *)
+	(* i: next free memory address (relative to struct start);
+	 * a: current total alignment,
+	 * l: list of struct member types
+	 *)
+	  fun pack (i, a, []) =
+	    (* when we are done with all elements, the total size
+	     * of the struct must be padded out to its own alignment
+	     *)
+		(roundup (i, a), a)
+	    | pack (i, a, t :: tl) = let
+		val (ts, ta) = szal t (* size and alignment for member *)
+		in
+		(* member must be aligned according to its own
+		 * alignment requirement; the next free position
+		 * is then at "aligned member-address plus member-size";
+		 * new total alignment is max of current alignment
+		 * and member alignment (assuming all alignments are
+		 * powers of 2) *)
+		  pack (roundup (i, ta) + ts, Int.max (a, ta), tl)
+		end
+	  in
+	    pack (0, 1, l)
+	  end
+    end
+
+    fun assignIntLoc (ty, gprs, offset) = let
+	  val {sz, alignStk, alignStruct} = szal ty
+	  val offset = align(offset, alignStk)
+	  in
+	    case (sz, gprs)
+	     of (_, []) => ({offset = offset, loc = ARG(??)}, offset+sz, [])
+	      | (8, [r]) =>
+	      | (8, r1::r2::rs) =>
+	      | (_, r::rs) =>({offset = offset, loc = GPR r}, offset+sz, rs)
+	    (* end case *)
+	  end
+
+    fun genCall {
+	  name, proto, paramAlloc, structRet, saveRestoreDedicated,
+	  callComment, args
+	} = let
+	  val {conv, retTy, paramTys} = proto
+	  val callseq = List.concat [
+		  sp_sub,
+		  copycode,
+		  argsetupcode,
+		  sretsetup,
+		  save,
+		  [call],
+		  srethandshake,
+		  restore,
+		  sp_add
+		]
+	  in
+	  (* check calling convention *)
+	    case conv
+	     of ("" | "ccall") => ()
+	      | _ => error (concat [
+		    "unknown calling convention \"",
+		    String.toString conv, "\""
+		  ])
+	    (* end case *);
+	    {callseq = callseq, result = result}
+	  end
+
+(******
+	val res_szal = (case retTy
+	       of (Ty.C_long_double | Ty.C_STRUCT _) => SOME(szal retTy)
+		| _ => NONE
 
 	val nargwords = let
 	    fun loop ([], n) = n
@@ -467,4 +544,6 @@ functor PPCMacOSX_CCalls (
     in
 	{ callseq = callseq, result = result }
     end
-end
+*****)
+
+  end

@@ -369,8 +369,8 @@ functor BinIOFn (
 	    closed : bool ref,
 	    bufferMode : IO.buffer_mode ref,
 	    writer : writer,
-	    writeArr : {buf : A.array, i : int, sz : int option} -> unit,
-	    writeVec : {buf : V.vector, i : int, sz : int option} -> unit,
+	    writeArr : AS.slice -> unit,
+	    writeVec : VS.slice -> unit,
 	    cleanTag : CleanIO.tag
 	  }
 
@@ -385,7 +385,7 @@ functor BinIOFn (
 	      case !pos
 	       of 0 => ()
 		| n => ((
-		    writeArr {buf=buf, i=0, sz=SOME n}; pos := 0)
+		    writeArr (AS.slice (buf, 0, SOME n)); pos := 0)
 		      handle ex => outputExn (strm, mlOp, ex))
 	      (* end case *))
 
@@ -393,14 +393,15 @@ functor BinIOFn (
 	      val _ = isClosedOut (strm, "output")
 	      val {buf, pos, bufferMode, ...} = os
 	      fun flush () = flushBuffer (strm, "output")
-	      fun flushAll () = (#writeArr os {buf=buf, i=0, sz=NONE}
+	      fun flushAll () = (#writeArr os (AS.full buf)
 		    handle ex => outputExn (strm, "output", ex))
 	      fun writeDirect () = (
 		    case !pos
 		     of 0 => ()
-		      | n => (#writeArr os {buf=buf, i=0, sz=SOME n}; pos := 0)
+		      | n => (#writeArr os (AS.slice (buf, 0, SOME n));
+			      pos := 0)
 		    (* end case *);
-		    #writeVec os {buf=v, i=0, sz=NONE})
+		    #writeVec os (VS.full v))
 		      handle ex => outputExn (strm, "output", ex)
 	      fun insert copyVec = let
 		    val bufLen = A.length buf
@@ -442,7 +443,7 @@ functor BinIOFn (
 	      case !bufferMode
 	       of IO.NO_BUF => (
 		    arrUpdate (buf, 0, elem);
-		    writeArr {buf=buf, i=0, sz=SOME 1}
+		    writeArr (AS.slice (buf, 0, SOME 1))
 		      handle ex => outputExn (strm, "output1", ex))
 		| _ => let val i = !pos val i' = i+1
 		    in
@@ -467,42 +468,23 @@ functor BinIOFn (
 
 	fun mkOutstream (wr as PIO.WR{chunkSize, writeArr, writeVec, ...}, mode) =
 	      let
-	      fun iterate f (buf, i, sz) = let
-		    fun lp (_, 0) = ()
-		      | lp (i, n) = let val n' = f{buf=buf, i=i, sz=SOME n}
-			  in lp (i+n', n-n') end
-		    in
-		      lp (i, sz)
-		    end
+		  fun iterate (f, size, subslice) = let
+		      fun lp sl =
+			  if size sl = 0 then ()
+			  else let val n = f sl
+			       in
+				   lp (subslice (sl, n, NONE))
+			       end
+		  in
+		      lp
+		  end
 	      val writeArr' = (case writeArr
 		     of NONE => (fn _ => raise IO.BlockingNotSupported)
-		      | (SOME f) => let
-			  fun write {buf, i, sz} = let
-				val len = (case sz
-				       of NONE => A.length buf - i
-					| (SOME n) => n
-				      (* end case *))
-				in
-				  iterate f (buf, i, len)
-				end
-			  in
-			    write
-			  end
+		      | (SOME f) => iterate (f, AS.length, AS.subslice)
 		    (* end case *))
 	      val writeVec' = (case writeVec
 		     of NONE => (fn _ => raise IO.BlockingNotSupported)
-		      | (SOME f) => let
-			  fun write {buf, i, sz} = let
-				val len = (case sz
-				       of NONE => V.length buf - i
-					| (SOME n) => n
-				      (* end case *))
-				in
-				  iterate f (buf, i, len)
-				end
-			  in
-			    write
-			  end
+		      | (SOME f) => iterate (f, VS.length, VS.subslice)
 		    (* end case *))
 	    (* install a dummy cleaner *)
 	      val tag = CleanIO.addCleaner {

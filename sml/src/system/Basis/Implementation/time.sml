@@ -3,8 +3,13 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-structure TimeImp : TIME =
-  struct
+structure TimeImp : sig
+    include TIME
+    (* export these for the benefit of, e.g., Posix.ProcEnv.times: *)
+    val fractionsPerSecond : LargeInt.int
+    val toFractions   : time -> LargeInt.int
+    val fromFractions : LargeInt.int -> time
+end = struct
 
     structure PB = PreBasis
     structure LInt = LargeIntImp
@@ -23,6 +28,10 @@ structure TimeImp : TIME =
 
     val zeroTime = PB.TIME { usec = 0 }
 
+    val fractionsPerSecond : LargeInt.int = 1000000
+    fun toFractions (PB.TIME { usec }) = usec
+    fun fromFractions usec = (PB.TIME { usec = usec })
+
     (* rounding is towards ZERO *)
     fun toSeconds (PB.TIME { usec }) = usec quot 1000000
     fun fromSeconds sec = PB.TIME { usec = sec * 1000000 }
@@ -30,6 +39,8 @@ structure TimeImp : TIME =
     fun fromMilliseconds msec = PB.TIME { usec = msec * 1000 }
     fun toMicroseconds (PB.TIME { usec }) = usec
     fun fromMicroseconds usec = PB.TIME { usec = usec }
+    fun toNanoseconds (PB.TIME { usec }) = usec * 1000
+    fun fromNanoseconds nsec = PB.TIME { usec = nsec quot 1000 }
 
     fun fromReal rsec =
 	PB.TIME { usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
@@ -55,7 +66,8 @@ structure TimeImp : TIME =
 	fun fmtSec (neg, i) = fmtInt (if neg then ~i else i)
 	fun isEven i = LInt.rem (i, 2) = 0
     in
-	if prec <= 0 then
+	if prec < 0 then raise General.Size
+	else if prec = 0 then
 	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
 		val sec =
 		    case LInt.compare (usec, 500000) of

@@ -15,7 +15,6 @@ type real_binding = binding * M.modtree option
 type staticEnv = real_binding E.env
 
 exception Unbound = E.Unbound
-exception SpecialEnv = E.SpecialEnv
 
 fun aug x = (x, NONE)
 fun strip (rb: real_binding) = #1 rb

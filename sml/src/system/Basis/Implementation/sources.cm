@@ -45,6 +45,7 @@ Group (../basis.cm)
 	signature PACK_WORD
 	signature TEXT
 	signature SML90
+	signature BIT_FLAGS
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -144,6 +145,7 @@ Group (../basis.cm)
 	signature NET_PROT_DB
 	signature NET_SERV_DB
 
+	signature SYNCHRONOUS_SOCKET
 	signature SOCKET
 	signature INET_SOCK
 	signature GENERIC_SOCK
@@ -158,7 +160,6 @@ Group (../basis.cm)
 
 #if defined(OPSYS_UNIX)
 	(* Posix *)
-	signature POSIX_FLAGS
 	signature POSIX_ERROR
 	signature POSIX_SIGNAL
 	signature POSIX_PROCESS
@@ -353,10 +354,12 @@ is
 	bind-math-32.sml
 	bind-largereal-32.sml
 
+	bit-flags.sig
+	bit-flags-fn.sml
+
 #if defined(OPSYS_UNIX)
 	Unix/pre-os.sml
 	Posix/posix-prelude.sml
-	Posix/posix-flags.sig
 	Posix/posix-error.sig
 	Posix/posix-error.sml
 	Posix/posix-signal.sig
@@ -448,6 +451,7 @@ is
 	Sockets/serv-db.sig
 	Sockets/serv-db.sml
 	Sockets/socket.sig
+	Sockets/socket.sml
 	Sockets/generic-sock.sig
 	Sockets/inet-sock.sig
 	Sockets/inet-sock.sml
@@ -456,11 +460,11 @@ is
 #if defined(OPSYS_UNIX)
 	Sockets/net-db.sig
 	Sockets/net-db.sml
-	Sockets/unix-socket.sml
 	Sockets/unix-sock.sig
 	Sockets/unix-generic-sock.sml
 	Sockets/unix-sock.sml
+	Sockets/unix-details.sml
 #elif defined(OPSYS_WIN32)
-	Sockets/win32-socket.sml
 	Sockets/win32-generic-sock.sml
+	Sockets/win32-details.sml
 #endif

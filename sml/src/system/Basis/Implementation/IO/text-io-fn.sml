@@ -435,8 +435,8 @@ functor TextIOFn (
 	    closed : bool ref,
 	    bufferMode : IO.buffer_mode ref,
 	    writer : writer,
-	    writeArr : {buf : A.array, i : int, sz : int option} -> unit,
-	    writeVec : {buf : V.vector, i : int, sz : int option} -> unit,
+	    writeArr : AS.slice -> unit,
+	    writeVec : VS.slice -> unit,
 	    cleanTag : CleanIO.tag
 	  }
 
@@ -453,9 +453,8 @@ functor TextIOFn (
 	fun flushBuffer (strm as OSTRM{buf, pos, writeArr, ...}, mlOp) = (
 	      case !pos
 	       of 0 => ()
-		| n => ((
-		    writeArr {buf=buf, i=0, sz=SOME n}; pos := 0)
-		      handle ex => outputExn (strm, mlOp, ex))
+		| n => ((writeArr (AS.slice (buf, 0, SOME n)); pos := 0)
+			handle ex => outputExn (strm, mlOp, ex))
 	      (* end case *))
 
       (* A version of copyVec that checks for newlines, while it is copying.
@@ -488,9 +487,10 @@ functor TextIOFn (
 	      fun writeDirect () = (
 		    case !pos
 		     of 0 => ()
-		      | n => (#writeArr os {buf=buf, i=0, sz=SOME n}; pos := 0)
+		      | n => (#writeArr os (AS.slice (buf, 0, SOME n));
+			      pos := 0)
 		    (* end case *);
-		    #writeVec os {buf=v, i=0, sz=NONE})
+		    #writeVec os (VS.full v))
 		      handle ex => outputExn (strm, "output", ex)
 	      fun insert copyVec = let
 		    val bufLen = A.length buf
@@ -507,7 +507,7 @@ functor TextIOFn (
 				val _ =
 				    AS.copyVec { src=VS.slice(v,0,SOME avail),
 						 dst=buf, di=i }
-				val _ = #writeArr os {buf=buf, i=0, sz=NONE}
+				val _ = #writeArr os (AS.full buf)
 				      handle ex => (
 					pos := bufLen;
 					outputExn (strm, "output", ex))
@@ -539,7 +539,7 @@ functor TextIOFn (
 	      case !bufferMode
 	       of IO.NO_BUF => (
 		    arrUpdate (buf, 0, elem);
-		    writeArr {buf=buf, i=0, sz=SOME 1}
+		    writeArr (AS.slice (buf, 0, SOME 1))
 		      handle ex => outputExn (strm, "output1", ex))
 		| IO.LINE_BUF => let val i = !pos val i' = i+1
 		    in
@@ -571,42 +571,23 @@ functor TextIOFn (
 
 	fun mkOutstream (wr as PIO.WR{chunkSize, writeArr, writeVec, ...}, mode) =
 	      let
-	      fun iterate f (buf, i, sz) = let
-		    fun lp (_, 0) = ()
-		      | lp (i, n) = let val n' = f{buf=buf, i=i, sz=SOME n}
-			  in lp (i+n', n-n') end
-		    in
-		      lp (i, sz)
-		    end
+		  fun iterate (f, size, subslice) sl = let
+		      fun lp sl =
+			  if size sl = 0 then ()
+			  else let val n = f sl
+			       in
+				   lp (subslice (sl, n, NONE))
+			       end
+		  in
+		      lp sl
+		  end
 	      val writeArr' = (case writeArr
 		     of NONE => (fn _ => raise IO.BlockingNotSupported)
-		      | (SOME f) => let
-			  fun write {buf, i, sz} = let
-				val len = (case sz
-				       of NONE => A.length buf - i
-					| (SOME n) => n
-				      (* end case *))
-				in
-				  iterate f (buf, i, len)
-				end
-			  in
-			    write
-			  end
+		      | (SOME f) => iterate (f, AS.length, AS.subslice)
 		    (* end case *))
 	      val writeVec' = (case writeVec
 		     of NONE => (fn _ => raise IO.BlockingNotSupported)
-		      | (SOME f) => let
-			  fun write {buf, i, sz} = let
-				val len = (case sz
-				       of NONE => V.length buf - i
-					| (SOME n) => n
-				      (* end case *))
-				in
-				  iterate f (buf, i, len)
-				end
-			  in
-			    write
-			  end
+		      | (SOME f) => iterate (f, VS.length, VS.subslice)
 		    (* end case *))
 	    (* install a dummy cleaner *)
 	      val tag = CleanIO.addCleaner {
@@ -672,10 +653,11 @@ functor TextIOFn (
 	      fun writeDirect () = (
 		    case !pos
 		     of 0 => ()
-		      | n => (#writeArr os {buf=buf, i=0, sz=SOME n}; pos := 0)
+		      | n => (#writeArr os (AS.slice (buf, 0, SOME n));
+			      pos := 0)
 		    (* end case *);
-		    #writeVec os {buf=v, i=dataStart, sz=SOME dataLen})
-		      handle ex => outputExn (strm, "outputSubstr", ex)
+		    #writeVec os (VS.slice (v, dataStart, SOME dataLen)))
+		  handle ex => outputExn (strm, "outputSubstr", ex)
 	      fun insert copyVec = let
 		    val bufLen = A.length buf
 		    in
@@ -691,7 +673,7 @@ functor TextIOFn (
 				    AS.copyVec { src = VS.slice
 						   (v,dataStart,SOME avail),
 						 dst = buf, di = i }
-				val _ = #writeArr os {buf=buf, i=0, sz=NONE}
+				val _ = #writeArr os (AS.full buf)
 				      handle ex => (
 					pos := bufLen;
 					outputExn (strm, "outputSubstr", ex))

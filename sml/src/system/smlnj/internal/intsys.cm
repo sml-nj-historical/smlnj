@@ -23,6 +23,7 @@ Library
 	structure MakeTool
 	structure ShellTool
 	structure DirTool
+	structure LibInstall (* $smlnj/installer.cm *)
 
 # if not defined(LIGHT)
 	(* export one representative from $smlnj/compiler/all.cm *)
@@ -70,6 +71,10 @@ is
 	(* Register the "dir" tool.  Its classifier (but not the tool
 	 * itself) is always "plugged-in". *)
 	$/dir-tool.cm
+
+	(* The next is the installer.  It just needs to get compiled
+	 * so we know it is in sync with the rest of the code... *)
+	$smlnj/installer.cm
 
 # if not defined(LIGHT)
 	$smlnj/compiler/all.cm

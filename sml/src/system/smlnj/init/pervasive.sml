@@ -12,6 +12,8 @@ infix 0 before
 
 datatype bool = datatype PrimTypes.bool
 
+val op o : ('b -> 'c) * ('a -> 'b) -> ('a -> 'c) = InlineT.compose
+
 local
     structure I31 = InlineT.Int31
     structure I32 = InlineT.Int32
@@ -31,6 +33,13 @@ local
     val w8times = w8adapt W8.*
 
     fun w8mod (a, b) = w8minus (a, w8times (W8.div (a, b), b))
+
+    val w8neg = InlineT.Int31.trunc_word8 o InlineT.Int31.~ o
+		InlineT.Int31.extend_word8
+    val w31neg = InlineT.Word31.copyf_int31 o InlineT.Int31.~ o
+		 InlineT.Word31.copyt_int31
+    val w32neg = InlineT.Word32.copyf_int32 o InlineT.Int32.~ o
+		 InlineT.Word32.copyt_int32
 
     fun stringlt (a, b) = let
 	val al = CV.length a
@@ -54,7 +63,7 @@ local
     fun stringge (a, b) = stringle (b, a)
 in
 overload ~ :   ('a -> 'a)
-   as  I31.~ and I32.~ and R64.~ and CII.~
+   as  I31.~ and I32.~ and CII.~ and w8neg and w31neg and w32neg and R64.~
 overload + :   ('a * 'a -> 'a)
   as I31.+ and I32.+ and CII.+ and w8plus and W31.+ and W32.+ and R64.+
 overload - :   ('a * 'a -> 'a)
@@ -116,7 +125,6 @@ open PrePervasive
 val ! = InlineT.!
 val op := = InlineT.:=
 
-val op o : ('b -> 'c) * ('a -> 'b) -> ('a -> 'c) = InlineT.compose
 val op before : ('a * unit) -> 'a = InlineT.before
 val ignore : 'a -> unit = InlineT.ignore
 
@@ -153,7 +161,7 @@ type word = PrimTypes.word
 (* Real *)
 type real = PrimTypes.real
 
-val real = InlineT.real
+val real = InlineT.Real64.from_int31
 fun floor x =
     if R64.< (x, 1073741824.0) andalso R64.>= (x, ~1073741824.0) then
 	Assembly.A.floor x
@@ -193,7 +201,7 @@ end
 fun l1 @ l2 = foldr (op ::) l2 l1
 fun app f = let
     fun a2 [] = ()
-      | a2 (h :: t) = (f h; a2 t)
+      | a2 (h :: t) = (f h : unit; a2 t)
 in
     a2
 end

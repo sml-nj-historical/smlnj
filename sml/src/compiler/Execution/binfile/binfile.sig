@@ -59,5 +59,5 @@ signature BINFILE = sig
     (* Given a dynamic environment, link the code object contained in
      * some given binfile contents. The result is the delta environment
      * containing the bindings (if any) resulting from this link operation. *)
-    val exec : bfContents * DynamicEnv.env -> DynamicEnv.env
+    val exec : bfContents * DynamicEnv.env * (exn -> exn) -> DynamicEnv.env
 end

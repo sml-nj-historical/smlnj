@@ -17,3 +17,4 @@ CFUNC("get_environment_variable",_ml_win32_PS_get_environment_variable,"string->
 CFUNC("create_process",_ml_win32_PS_create_process,"string->word32")
 CFUNC("wait_for_single_object",_ml_win32_PS_wait_for_single_object,"word32->word32 option")
 
+CFUNC("sleep",_ml_win32_PS_sleep,"word32->unit")

@@ -50,6 +50,7 @@ in
 	exception Link of exn
 
 	structure BF = Binfile
+	structure EX = Execute
 
 	type bfc = BF.bfContents
 	type bfcGetter = SmlInfo.info -> bfc
@@ -103,7 +104,7 @@ in
 			    else (evict gp i; false)
 			end
 	in
-	    app (visit o #1) (SmlInfoMap.listItemsi (!smlmap))
+	    app (ignore o visit o #1) (SmlInfoMap.listItemsi (!smlmap))
 	end
 
 	fun newTraversal0 (GG.ERRORGROUP, _) =
@@ -132,8 +133,8 @@ in
 		    handle exn => exn_err ("unable to load library module",
 					   error, descr, exn)
 	    in
-		BF.exec (bfc, de)
-		handle exn =>
+		BF.exec (bfc, de, Link)
+		handle Link exn =>
 		    exn_err ("link-time exception in library code",
 			     error, descr, exn)
 	    end
@@ -145,8 +146,8 @@ in
 		    case getE gp of
 			NONE => NONE
 		      | SOME e =>
-			    (SOME (BF.exec (bfc, e))
-			     handle exn =>
+			    (SOME (BF.exec (bfc, e, Link))
+			     handle Link exn =>
 				exn_err ("link-time exception in user program",
 					 SmlInfo.error gp i EM.COMPLAIN,
 					 SmlInfo.descr i,
@@ -351,7 +352,7 @@ in
 	    and fsbn (_, n) = sbn n
 
 	    fun impexp (nth, _, _) gp = #1 (fsbn (nth ())) gp
-		handle Link exn => raise exn
+		handle Link exn => raise EX.Link
 
 	    val exports' = SymbolMap.map impexp exports
 

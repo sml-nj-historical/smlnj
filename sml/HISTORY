@@ -7,10 +7,316 @@ description.
 
 The form of an entry should be:
 
-Name: 
+Name:
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/03/19 14:40:00 EST
+Tag: leunga-20040319-cygwin-nlffi
+Description:
+
+Fixed the runtime so that ml-nlffi-lib runs on the cygwin version
+of SML/NJ.  The problem is that
+
+   lib = dlopen(NULL, ...)
+   f   = dlsym(lib, "malloc");
+
+does not work on Windows unless we explicitly export symbols 
+such as 'malloc' during linking.  We fixed this by explicitly 
+exporting the required symbols with the magic gcc incantation:
+
+    -Wl,--export-all cygwin.def
+
+where cygwin.def is a file containing all the symbols that
+we wish to export.   
+
+I suspect this is a Windows problem and we'll have to 
+do the same (somehow with windows compilers) when 
+we build the native win32 version with the system
+calls LoadLibrary/GetProcAddress. 
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/03/04 16:35:00 CST
+Tag: blume-20040304-intinf-fmt
+Description:
+
+Fixed problem with IntInf.fmt (sign would show up on the right instead
+of on the left for BIN, OCT, and HEX).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/03/04 11:25:00 CST
+Tag: blume-20040304-symlinks
+Description:
+
+Fixed problem with installer script (unix only) where bin/ml-yacc and
+friends pointed (via symlinks) to absolute locations instead of just
+.run-sml.  This was reported by Vesa A Norrman.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/02/13 14:50:00 CST
+Tag: Release_110_45
+Description:
+
+New working version (110.45). New bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/01/26 15:15:15 CST
+Tag: blume-20040126-toplevel
+Description:
+
+Improved handling of exceptions at the interactive toplevel.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/01/26 11:25:00
+Tag: blume-20040126-app
+Description:
+
+Type of top-level "app" corrected.
+Added code for setting vp_limitPtrMask to Win32-specific runtime.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/18 17:10 CST
+Tag: blume-20031118-basis-fiddle
+Description:
+
+- changed Timer interface to what might become the spec
+- POSIX_FLAGS -> BIT_FLAGS according to spec
+- some other minor discrepancies wrt. spec eliminated
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/06 12:00:00 CST
+Tag: Release_110_44
+Description:
+
+New working version (110.44). New bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/04 11:50:00 CST
+Tag: blume-20031104-move-libraries
+Description:
+
+Eliminated the "dont_move_libraries" directive in config/targets.
+(The mechanism was broken and could not be fixed easily.  Moreover,
+there does not seem to be any reason not to move all libraries into
+lib during installation.  I originally implemented this directive as a
+backward-compatibility feature when I first introduced the new CM.
+Now that things have been stable for a long time and going back to the
+old CM is not an option, there is no reason to keep it around.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/03 16:00:00 CST
+Tag: blume-20031103-installdir
+Description:
+
+Made installer honor INSTALLDIR variable again.  (Thanks to Chris
+Richards for pointing out the problem and providing the solution.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/10/01 17:05:00 CDT
+Tag: blume-20031001-lal-mlrisc
+Description:
+
+MLRISC bug fix from Lal.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/30 16:10:00 CDT
+Tag: blume-20030930-primio-bat
+Description:
+
+1. Added openVector, nullRd, and nullWr to PRIM_IO.
+2. Improved .bat files (for Win32 port) to make things work under Win95.
+   (thanks to Aaron S. Hawley for this one)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 16:05:00 CDT
+Tag: blume-20030926-wrappriv
+Description:
+
+Added missing wrapper for privilege "primitive" in $smlnj/viscomp/core.cm.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 15:00:00 CDT
+Tag: blume-20030926-110_43_3
+Description:
+
+- additional cleanup
+- version number bump, NEW BOOTFILES
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 12:00:00 CDT
+Tag: blume-20030926-ppautoload
+Description:
+
+I modified the read-eval-print loop so that the autoloader gets
+invoked whenever the prettyprinter tries to look up a symbol that
+is not currently defined in the toplevel environment but which
+appears in CM's autoload registry.  As a result, we see far fewer of
+those ?.Foo.Bar.xxx names in the prettyprinter's output.
+
+In addition to this I tried to clean up some pieces of the Basis
+implementation (e.g., Socket, Word8Array) in order to prevent other
+instances of these ?.Foo.Bar.xxx names from being printed.
+
+The mechanism that picks names for types still needs some work, though.
+(Right now it seems that if there is a type A.t which is defined to
+be B.u, but B is unavailable at toplevel, then A.t gets printed as
+"?.B.u" although the perhaps more sensible solution would be to use
+"A.t" in this case.  In other words, the prettyprinter should follow
+a chain of DEFtycs not farther than there are corresponding toplevel
+names in the current environment.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/24 16:31:00 CDT
+Tag: blume-20030924-installer
+Description:
+
+Another installer tweak:  All the ML code for the installer is now
+compiled during CMB.make and put into a little library called
+$smlnj/installer.cm.  The installation then simply invokes
+
+   sml -m $smlnj/installer.cm
+
+and everything happens automagically.
+
+Win32:  ML code senses value of environment variable SMLNJ_HOME.
+Unix:   ML code senses values of environment variables ROOT, CONFIGDIR,
+        and BINDIR.
+
+The new scheme guarantees that the ML code responsible for the installation
+is in sync with the APIs of the main system.  Also, the installer is
+somewhat faster because the installer script is precompiled.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/24 15:35:00 CDT
+Tag: blume-20030924-synsock
+Description:
+
+Added a signature SYNCHRONOUS_SOCKET to basis.cm.  This is like SOCKET
+but excludes all non-blocking operations.  Defined SOCKET (in Basis)
+and CML_SOCKET in terms of SYNCHRONOUS_SOCKET.  Removed superfluous
+implementations of non-blocking operations from CML's Socket
+structure.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/24 15:10:05 CDT
+Tag: blume-20030924-sockets
+Description:
+
+1. Fixed SOCKET API and implementation to match Basis spec.
+   This required changing the internal representation of sockets to one
+   that remembers (for each socket file descriptor) whether it is currently
+   blocking or non-blocking.  This state is maintained lazily (i.e., a system
+   call is made only if the state actually needs to change).
+
+2. OS-specific details of sockets were moved into separate files, thus
+   making it possible to unify the bulk of the socket implementations
+   between Unix and Win32.
+
+3. CML's socket API changed accordingly.
+   (Note that we need to remove non-blocking functions from this API
+   since they are redundant in the case of CML!)
+
+4. CML's socket implementation now makes use of non-blocking functions
+   provided by Basis, thus removing all OS-dependent code from this part
+   of CML.
+
+5. Changed Real64.precision from 52 to 53.  Minor cleanup in Real64 code.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/22 12:10:00 CDT
+Tag: blume-20030922-110_43_2
+Description:
+
+Made a new interim version and bootfiles for developer's bootstrapping
+convenience.
+
+   110.43.2 -- NEW BOOTFILES
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/19 15:55:00 CDT
+Tag: blume-20030919-cmdir
+Description:
+
+1. new-install.sh -> install.sh
+2. changed default CM "metadata" directory name to ".cm" (instead of "CM")
+3. tweaked installer so that another name instead of .cm can be chosen
+   at install time (by setting the CM_DIR_ARC environment variable
+   during installation); once installation is complete, the name is
+   fixed
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/18 16:00:00 CDT
+Tag: blume-20030918-110_43_1
+Description:
+
+Made a new interim version and bootfiles for developer's bootstrapping
+convenience.
+
+   110.43.1 -- NEW BOOTFILES
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/18 15:20:00 CDT
+Tag: blume-20030918-misc
+Description:
+
+1. Exported fractionsPerSecond etc. from TimeImp (but not from Time as
+   this seems to be controversial at the moment) and used those in
+   Posix.ProcEnv.times.
+
+2. Added Time.{from,to}Nanoseconds to Time.
+
+3. Improved Real.{from,to}LargeInt by avoiding needless calculations.
+   For example, fromLargeInt never needs to look at more than 3 "big
+   digits" to get its 53 bits of precision.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/17 16:30:00 CDT
+Tag: blume-20030917-real32-slices
+Description:
+
+Added an entry to the primitive environment
+(compiler/Semant/statenv/prim.sml) for int32->real64 conversion and
+added code to compiler/CodeGen/main/mlriscGen.sml to implement it.
+
+Removed some of the "magic" constants in real64.sml and replaced them
+with code that generates these values from their corresponding
+integer counterparts.
+
+Made all(?) the slice-related changes to the Basis and made everything
+compile again...
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/15 17:45:00 CDT
+Tag: blume-20030915-rbase
+Description:
+
+Fixed bug in Real.fromLargeInt.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)

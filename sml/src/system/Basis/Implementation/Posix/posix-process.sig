@@ -34,7 +34,7 @@ signature POSIX_PROCESS =
     
     structure W :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
 
         val untraced : flags
       end

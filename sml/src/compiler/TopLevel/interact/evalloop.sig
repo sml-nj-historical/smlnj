@@ -8,6 +8,9 @@ sig
   val interact    : unit -> unit
   val evalStream  : string * TextIO.instream -> unit
 
-  val installCompManager : (Ast.dec * EnvRef.envref -> unit) -> unit
+  val installCompManagers:
+      { manageImport : Ast.dec * EnvRef.envref -> unit,
+	managePrint : Symbol.symbol * EnvRef.envref -> unit,
+	getPending : unit -> Symbol.symbol list } -> unit
 
 end (* signature EVALLOOP *)

@@ -20,9 +20,15 @@ in
 exception Interrupt
 type lvar = Access.lvar
 
-val compManagerHook : (Ast.dec * EnvRef.envref -> unit) ref = ref (fn _ => ())
+val compManagerHook :
+    { manageImport : Ast.dec * EnvRef.envref -> unit,
+      managePrint :  Symbol.symbol * EnvRef.envref -> unit,
+      getPending : unit -> Symbol.symbol list } ref =
+    ref { manageImport = fn _ => (),
+	  managePrint = fn _ => (),
+	  getPending = fn () => [] }
 
-fun installCompManager cm = compManagerHook := cm
+fun installCompManagers cm = compManagerHook := cm
 
 val say = Control.Print.say
 
@@ -37,6 +43,8 @@ fun interruptable f x =
         (f x before U.topLevelCont := oldcont)
         handle e => (U.topLevelCont := oldcont; raise e)
     end
+
+exception ExnDuringExecution of exn
 
 (* 
  * The baseEnv and localEnv are purposely refs so that a top-level command
@@ -60,10 +68,12 @@ fun evalLoop source = let
 	  | SOME ast => let
 		val loc = EnvRef.loc ()
 		val base = EnvRef.base ()
-		val _ = !compManagerHook (ast, loc)
+		val _ = #manageImport (!compManagerHook) (ast, loc)
+
+		fun getenv () = E.layerEnv (#get loc (), #get base ())
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
-                    E.layerEnv (#get loc (), #get base ())
+		    getenv ()
 
                 val splitting = Control.LambdaSplitting.get ()
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
@@ -80,13 +90,16 @@ fun evalLoop source = let
                     fixed in the long run. (ZHONG)
                  *)
 
-                val executable = Execute.mkexec csegments before checkErrors ()
+                val executable = Execute.mkexec
+				     { cs = csegments,
+				       exnwrapper = ExnDuringExecution }
+				 before checkErrors ()
                 val executable = Isolate.isolate (interruptable executable)
 
                 val _ = (PC.current := Profile.otherIndex)
                 val newdynenv = 
-                    Execute.execute{executable=executable, imports=imports,
-				    exportPid=exportPid, dynenv=dynenv}
+                    Execute.execute { executable=executable, imports=imports,
+				      exportPid=exportPid, dynenv=dynenv }
                 val _ = (PC.current := Profile.compileIndex)
 
                 val newenv =
@@ -130,7 +143,40 @@ fun evalLoop source = let
                             PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
                      in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
                     end
-		    
+
+		(* we install the new local env first before we go about
+		 * printing, otherwise we find ourselves in trouble if
+		 * the autoloader changes the the contents of loc under
+		 * our feet... *)
+
+		val _ = #set loc newLocalEnv
+
+		fun look_and_load sy = let
+		    fun look () = StaticEnv.look (E.staticPart (getenv ()), sy)
+		in
+		    look ()
+		    handle StaticEnv.Unbound =>
+			   (#managePrint (!compManagerHook) (sy, loc);
+			    look ())
+		end
+
+		(* Notice that even through several potential rounds
+		 * the result of get_symbols is constant (up to list
+		 * order), so memoization (as performed by
+		 * StaticEnv.special) is ok. *)
+		fun get_symbols () = let
+		    val se = E.staticPart (getenv ())
+		    val othersyms = #getPending (!compManagerHook) ()
+		in
+		    StaticEnv.symbols se @ othersyms
+		end
+
+		val ste1 = StaticEnv.special (look_and_load, get_symbols)
+
+		val e0 = getenv ()
+		val e1 = E.mkenv { static = ste1,
+				   symbolic = E.symbolicPart e0,
+				   dynamic = E.dynamicPart e0 }
             in
 		(* testing code to print ast *)
 		ppAstDebug("AST::",ast);
@@ -139,10 +185,7 @@ fun evalLoop source = let
 
 		PP.with_pp
 		    (#errConsumer source)
-		    (fn ppstrm => PPDec.ppDec 
-			(E.layerEnv(newLocalEnv, #get base ()))
-			ppstrm (absyn, exportLvars));
-                    #set loc newLocalEnv
+		    (fn ppstrm => PPDec.ppDec e1 ppstrm (absyn, exportLvars))
             end
 
     fun loop() = (oneUnit(); loop())
@@ -163,17 +206,6 @@ fun interact () = let
 	fun flush() = (#anyErrors source := false; 
                        flush'() handle IO.Io _ => ())
 
-        local val p1 = Substring.isPrefix "TopLevel/interact/evalloop.sml:"
-              val p2 = Substring.isPrefix "TopLevel/main/compile.sml:"
-              val p3 = Substring.isPrefix "MiscUtil/util/stats.sml:"
-           in fun edit [s] = [s]
-                | edit nil = nil
-                | edit (s::r) = 
-                   let val s' = Substring.all s
-                    in if p1 s' orelse p2 s' orelse p3 s'
-                       then edit r else s :: edit r
-                   end
-          end
 
 	fun showhist' [s] = say(concat["  raised at: ", s, "\n"])
           | showhist' (s::r) = (showhist' r; 
@@ -181,47 +213,56 @@ fun interact () = let
           | showhist' [] = ()
 
 	fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
-          | exnMsg (Isolate.TopLevelException e) = exnMsg e
           | exnMsg exn = General.exnMessage exn
 
-	fun showhist (Isolate.TopLevelException e) = showhist e
-          | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
+	fun showhist e = showhist' (SMLofNJ.exnHistory e)
 
 	fun loop () = let
+	    fun user_hdl (ExnDuringExecution exn) = user_hdl exn
+	      | user_hdl exn = let
+		    val msg = exnMsg exn
+		    val name = exnName exn
+		in
+		    if msg = name then
+			say (concat ["\nuncaught exception ", name, "\n"])
+		    else say (concat ["\nuncaught exception ",
+				      name, " [", msg, "]\n"]);
+		    showhist exn;
+		    flush(); 
+		    loop()
+		end
+
+	    fun bug_hdl exn = let
+		val msg = exnMsg exn
+		val name = exnName exn
+	    in
+		say (concat ["\nunexpected exception (bug?) in SML/NJ: ",
+			     name," [", msg, "]\n"]);
+		showhist exn;
+		flush(); 
+		loop()
+	    end
+
 	    fun non_bt_hdl e =
 		case e of
 		    EndOfFile => (say "\n")
-                  | Interrupt => (say "\nInterrupt\n"; 
-				  flush(); loop())
+                  | (Interrupt | ExnDuringExecution Interrupt) =>
+		      (say "\nInterrupt\n"; flush(); loop())
                   | EM.Error => (flush(); loop())
                   | CompileExn.Compile "syntax error" => (flush(); loop())
                   | CompileExn.Compile s =>
                     (say(concat["\nuncaught exception Compile: \"",
 				s,"\"\n"]);
                      flush(); loop())
-                  | Isolate.TopLevelException Isolate.TopLevelCallcc =>
-                    (say("Error: throw from one top-level expression \
-			 \into another\n");
-                     flush (); loop ())
-                  | Isolate.TopLevelException EM.Error =>
-                    (flush (); loop ())
-                  | Isolate.TopLevelException exn => let
-			val msg = exnMsg exn
-			val name = exnName exn
-                    in
-			if msg = name then
-			    say (concat ["\nuncaught exception ", name, "\n"])
-			else say (concat ["\nuncaught exception ", name,
-					  " [", msg, "]\n"]);
-			showhist exn;
-			flush(); 
-			loop()
-                    end
-                  | exn => (say (concat["\nuncaught exception ", 
-					exnMsg exn, "\n"]);
-			    showhist exn;
-			    flush();
-			    loop())
+                  | Isolate.TopLevelCallcc =>
+                      (say("Error: throw from one top-level expression \
+			   \into another\n");
+                       flush (); loop ())
+		  | (Execute.Link | ExnDuringExecution Execute.Link) =>
+		      (flush (); loop ())
+		  | ExnDuringExecution exn => user_hdl exn
+		  | exn => bug_hdl exn
+
 	    fun bt_hdl (e, []) = non_bt_hdl e
 	      | bt_hdl (e, hist) =
 		(say (concat ("\n*** BACK-TRACE ***\n" :: hist));
@@ -261,7 +302,6 @@ in
     handle exn => (Source.closeSource source;
 		   case exn of
 		       EndOfFile => () 
-		     | Isolate.TopLevelException e => raise e
 		     | _ => raise exn)
 end
 

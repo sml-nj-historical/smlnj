@@ -129,7 +129,7 @@ structure Math64 : MATH =
 	           then Assembly.A.floor x
 		  else if isNan x then raise General.Domain
 		  else raise General.Overflow
-    val real = InlineT.real
+    val real = InlineT.Real64.from_int31
 
   (* This is the IEEE double-precision maxint; won't work accurately on VAX *)
     val maxint = 4503599627370496.0

@@ -17,6 +17,8 @@ structure OS_Process : OS_PROCESS =
 	val success = W32G.Word.fromInt 0
 	val failure = W32G.Word.fromInt 1
 
+	fun isSuccess x = W32G.Word.toInt x = 0
+
 	val system = W32P.system'
 
 	val atExit = AtExit.atExit
@@ -27,5 +29,6 @@ structure OS_Process : OS_PROCESS =
 	fun terminate code = W32P.exitProcess code
 
 	val getEnv = W32P.getEnvironmentVariable'
-    end
 
+	val sleep = W32P.sleep
+    end

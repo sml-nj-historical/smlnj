@@ -81,19 +81,16 @@ structure POSIX_ProcEnv =
 
     val ticksPerSec = IntImp.toLarge (SysWord.toIntX (sysconf "CLK_TCK"))
 
-    (* The following code assumes that 1 microsecond is equal or shorter
-     * than the the resolution of Time.time values.  The code is most
-     * efficient if it is equal.... *)
     val ticksToTime =
-	case IntInfImp.quotRem (1000000, ticksPerSec) of
+	case IntInfImp.quotRem (TimeImp.fractionsPerSecond, ticksPerSec) of
 	    (factor, 0) =>
-	      (fn ticks => Time.fromMicroseconds
+	      (fn ticks => Time.fromFractions
 			       (factor * Int32Imp.toLarge ticks))
-	  | _ => (* 1000000 not a multiple of ticksPerSec, so we
-		  * have to do it the hard way... *)
+	  | _ =>
 	      (fn ticks =>
-		  Time.fromMicroseconds
-		      (IntInfImp.quot (1000000 * Int32Imp.toLarge ticks,
+		  Time.fromFractions
+		      (IntInfImp.quot (TimeImp.fractionsPerSecond
+				       * Int32Imp.toLarge ticks,
 				       ticksPerSec)))
 
     fun times () = let

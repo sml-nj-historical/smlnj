@@ -53,6 +53,7 @@ structure Word31Imp : WORD =
     val op < : word * word -> bool = W31.<
     val op <= : word * word -> bool = W31.<=
 
+    val ~ : word -> word = ~
     val min : word * word -> word = W31.min
     val max : word * word -> word = W31.max
 

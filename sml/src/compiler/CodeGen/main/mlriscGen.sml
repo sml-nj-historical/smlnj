@@ -1494,6 +1494,9 @@ struct
             | gen(PURE(P.real{fromkind=P.INT 31, tokind=P.FLOAT 64},  
                        [v], x, _, e), hp) = 
                 treeifyDefF64(x,M.CVTI2F(fty,ity,untagSigned(v)), e, hp)
+	    | gen(PURE(P.real{fromkind=P.INT 32, tokind=P.FLOAT 64},
+		       [v], x, _, e), hp) =
+	        treeifyDefF64(x,M.CVTI2F(fty,ity,regbind v), e, hp)
             | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v], x, _, e), hp) = let
                 val r = fregbind v
               in
@@ -2008,6 +2011,21 @@ struct
                 (*esac*)) 
               then gen(e, hp)
               else gen(d, hp)
+            | gen(BRANCH(P.cmp{oper,kind=P.INT 32},[INT32 v,INT32 k],_,e,d), hp) = let
+		val v' = Word32.toLargeIntX v
+		val k' = Word32.toLargeIntX k
+		in
+		  if (case oper
+                       of P.> => v>k 
+                	| P.>= => v>=k 
+                	| P.< => v<k 
+                	| P.<= => v<=k
+                	| P.eql => v=k 
+                	| P.neq => v<>k
+		      (* end case *))
+		    then gen(e, hp)
+		    else gen(d, hp)
+		end
             | gen(BRANCH(P.cmp{oper, kind=P.INT 31}, vw, p, e, d), hp) = 
                 branch(p, signedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.cmp{oper,kind=P.UINT 31},[INT v', INT k'],_,e,d),hp)=

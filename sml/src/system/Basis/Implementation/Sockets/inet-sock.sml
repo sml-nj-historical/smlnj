@@ -3,38 +3,35 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-
-local
-    structure Socket = SocketImp
-in
 structure INetSock : INET_SOCK =
   struct
-    structure SOCK = Socket.SOCK
+    structure SOCK = SocketImp.SOCK
 
     fun sockFn x = CInterface.c_function "SMLNJ-Sockets" x
 
     datatype inet = INET
 
     type 'a sock = (inet, 'a) Socket.sock
-    type 'a stream_sock = 'a Socket.stream sock
-    type dgram_sock = Socket.dgram sock
+    type 'a stream_sock = 'a SocketImp.stream sock
+    type dgram_sock = SocketImp.dgram sock
 
     type sock_addr = inet Socket.sock_addr
 
-    val inetAF = Option.valOf(Socket.AF.fromString "INET")
+    val inetAF = Option.valOf(SocketImp.AF.fromString "INET")
 
     local
-      val toInetAddr : (PreSock.addr * int) -> PreSock.addr = sockFn "toInetAddr"
-      val fromInetAddr : PreSock.addr -> (PreSock.addr * int) = sockFn "fromInetAddr"
-      val inetAny  : int -> PreSock.addr = sockFn "inetany"
+      val toInetAddr : (Socket.addr * int) -> Socket.addr = sockFn "toInetAddr"
+      val fromInetAddr : Socket.addr -> (Socket.addr * int) = sockFn "fromInetAddr"
+      val inetAny  : int -> Socket.addr = sockFn "inetany"
     in
-    fun toAddr (PreSock.INADDR a, port) = PreSock.ADDR(toInetAddr(a, port))
-    fun fromAddr (PreSock.ADDR addr) = let
+    fun toAddr (ina, port) =
+	Socket.ADDR(toInetAddr(NetHostDBInternal.unINADDR ina, port))
+    fun fromAddr (Socket.ADDR addr) = let
 	  val (a, port) = fromInetAddr addr
 	  in
-	    (PreSock.INADDR a, port)
+	    (NetHostDBInternal.INADDR a, port)
 	  end
-    fun any port = PreSock.ADDR(inetAny port)
+    fun any port = Socket.ADDR(inetAny port)
     end
 
     structure UDP =
@@ -51,10 +48,10 @@ structure INetSock : INET_SOCK =
 	local
 	  val ctlDELAY : (int * bool option) -> bool = sockFn "ctlNODELAY"
 	in
-	fun getNODELAY (PreSock.SOCK fd) = ctlDELAY(fd, NONE)
-	fun setNODELAY (PreSock.SOCK fd, flg) = ignore(ctlDELAY(fd, SOME flg))
+	fun getNODELAY (Socket.SOCK { fd, ... }) =
+	    ctlDELAY(fd, NONE)
+	fun setNODELAY (Socket.SOCK { fd, ... }, flg) =
+	    ignore(ctlDELAY(fd, SOME flg))
 	end (* local *)
       end
   end
-end
-

@@ -75,7 +75,7 @@ link() {
 	    mkdir $2
 	fi
 	cd $1
-	for i in * ; do
+	for i in * .[a-zA-Z0-9]* ; do
 	    link $i $2/$i
 	done
 	cd ..

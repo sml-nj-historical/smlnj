@@ -15,7 +15,6 @@ sig
   type real_binding = binding * Modules.modtree option
 
   exception Unbound  
-  exception SpecialEnv
 
   val empty: staticEnv
   val look: staticEnv * Symbol.symbol -> binding

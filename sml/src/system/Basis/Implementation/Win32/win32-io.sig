@@ -16,12 +16,10 @@ signature WIN32_IO =
 	val FILE_CURRENT : Win32_General.word
         val FILE_END : Win32_General.word
 
-	val readVec : (hndl * int) -> Word8Vector.vector
-	val readArr : (hndl * {buf:Word8Array.array, i:int, sz:int option})
-	              -> int
-	val readVecTxt : (hndl * int) -> CharVector.vector
-	val readArrTxt : (hndl * {buf:CharArray.array, i:int, sz:int option})
-	                 -> int
+	val readVec : hndl * int -> Word8Vector.vector
+	val readArr : hndl * Word8ArraySlice.slice -> int
+	val readVecTxt : hndl * int -> CharVector.vector
+	val readArrTxt : hndl * CharArraySlice.slice -> int
 
 	val close : hndl -> unit
 
@@ -52,14 +50,10 @@ signature WIN32_IO =
 			  mode:Win32_General.word,
 			  attrs:Win32_General.word} -> hndl
 
-	val writeVec : (hndl * {buf:Word8Vector.vector,i:int,sz:int option})
-	               -> int
-	val writeArr : (hndl * {buf:Word8Array.array,i:int,sz:int option}) 
-	               -> int
-	val writeVecTxt : (hndl * {buf:CharVector.vector,i:int,sz:int option})
-	                  -> int
-	val writeArrTxt : (hndl * {buf:CharArray.array,i:int,sz:int option}) 
-	                  -> int
+	val writeVec : hndl * Word8VectorSlice.slice -> int
+	val writeArr : hndl * Word8ArraySlice.slice -> int
+	val writeVecTxt : hndl * CharVectorSlice.slice -> int
+	val writeArrTxt : hndl * CharArraySlice.slice -> int
 
 	val STD_INPUT_HANDLE : Win32_General.word
 	val STD_OUTPUT_HANDLE : Win32_General.word

@@ -17,10 +17,6 @@ structure POSIX_Process =
 
     structure Sig = POSIX_Signal
 
-    val ++ = SysWord.orb
-    val & = SysWord.andb
-    infix ++ &
-
     type word = SysWord.word
     type s_int = SysInt.int
 
@@ -85,32 +81,27 @@ structure POSIX_Process =
       | mkExitStatus (_,s) = W_STOPPED (Sig.SIG s)
 
 
-    val wnohang = w_osval "WNOHANG"
-    structure W =
-      struct
-        datatype flags = WF of word
-
-        fun fromWord w = WF w
-        fun toWord (WF w) = w
-
-        fun flags ms = WF(List.foldl (fn (WF m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (WF m, WF m') = (m & m') <> 0w0
-        fun allSet (WF m, WF m') = (m & m') = m
-
-        fun orF (WF f,acc) = f ++ acc
+    structure W = struct
+        local structure W0 = BitFlagsFn ()
+	in
+	    open W0
+	end
 
         val untraced =
-          WF(sysconf "JOB_CONTROL"; w_osval "WUNTRACED") handle _ => WF 0w0
-      end
+            fromWord ((sysconf "JOB_CONTROL"; w_osval "WUNTRACED")
+		      handle _ => 0w0)
+    end
+
+    val wnohang = W.fromWord (w_osval "WNOHANG")
 
     fun waitpid (arg,flags) = let
-          val (pid,status,sv) = waitpid'(argToInt arg, List.foldl W.orF 0w0 flags)
-          in
-            (PID pid, mkExitStatus(status,sv))
-          end
+        val (pid,status,sv) = waitpid'(argToInt arg, W.toWord (W.flags flags))
+    in
+        (PID pid, mkExitStatus(status,sv))
+    end
 
     fun waitpid_nh (arg,flags) =
-          case waitpid'(argToInt arg, List.foldl W.orF wnohang flags) of
+        case waitpid'(argToInt arg, W.toWord (W.flags (wnohang :: flags))) of
             (0,_,_) => NONE
           | (pid,status,sv) => SOME(PID pid, mkExitStatus(status,sv))
 
