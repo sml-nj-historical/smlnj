@@ -69,8 +69,12 @@
 /usr/local/sml/testing/bugs/tests/bug1499.1.sml
 /usr/local/sml/testing/bugs/tests/bug1501.1.sml
 /usr/local/sml/testing/bugs/tests/bug1509.1.sml
-/usr/local/sml/testing/bugs/tests/bug1510.1.sml
-/usr/local/sml/testing/bugs/tests/bug1511.1.sml
 /usr/local/sml/testing/bugs/tests/bug1522.1.sml
 /usr/local/sml/testing/bugs/tests/bug1529.1.sml
+/usr/local/sml/testing/bugs/tests/bug1541.1.sml
+/usr/local/sml/testing/bugs/tests/bug1542.1.sml
+/usr/local/sml/testing/bugs/tests/bug1542.2.sml
+/usr/local/sml/testing/bugs/tests/bug1548.1.sml
+/usr/local/sml/testing/bugs/tests/bug1551.1.sml
+/usr/local/sml/testing/bugs/tests/bug1553.1.sml
 /usr/local/sml/testing/bugs/tests/bug627.sml
