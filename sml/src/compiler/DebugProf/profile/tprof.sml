@@ -122,14 +122,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
      val currentvar = tmpvar("profCurrent",CONty(refTycon,[intTy]), mkv)
      val currentexp = varexp currentvar
      
-     val register =
-	 case Lookup.lookVal
-		  (env,
-		   SP.SPATH [CoreSym.coreSym,
-			     S.varSymbol "profile_register"],
-		   fn _ => fn s => fn _ => bug "222 in prof") of
-	     V.VAL r => r
-	   | _ => bug "09824 in prof"
+     val register = CoreAccess.getVar (env, "profile_register")
 
      local
 	 val ty = case register of
@@ -345,15 +338,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                            val ccvara' = makeEntry(name)
                            val lvar = tmpvar("fnvar",t,mkv);
 
-                           val exnMatch =
-			       case Lookup.lookVal
-					(env,
-					 SP.SPATH [CoreSym.coreSym,
-						   S.varSymbol "Match"],
-					 fn _ => fn s => fn _ => 
-							    bug "250 in prof")
-				of V.CON e => e
-				 | _ => bug "no CON for exnMatch"
+                           val exnMatch = CoreAccess.getCon (env, "Match")
 
                            val RULE(_,special) = List.last l
                         in FNexp ([RULE(VARpat(lvar), 

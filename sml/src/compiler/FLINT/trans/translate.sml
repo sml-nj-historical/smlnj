@@ -289,23 +289,24 @@ fun mkAcc (p, nameOp) =
  * clean up this is to put all the core constructors and primitives into
  * the primitive environment. (ZHONG)
  *)
+exception NoCore
+
 fun coreExn id =
-  ((case coreLookup(id, env)
-     of V.CON(TP.DATACON{name, rep as DA.EXN _, typ, ...}) => 
-          let val nt = toDconLty DI.top typ
-              val nrep = mkRep(rep, nt, name)
-           in CON'((name, nrep, nt), [], unitLexp)
-          end
-      | _ => bug "coreExn in translate")
-   handle NoCore => (say "WARNING: no Core access \n"; INT 0))
+    (case CoreAccess.getCon' (fn () => raise NoCore) (env, id) of
+	 TP.DATACON { name, rep as DA.EXN _, typ, ... } =>
+         let val nt = toDconLty DI.top typ
+             val nrep = mkRep(rep, nt, name)
+         in CON'((name, nrep, nt), [], unitLexp)
+         end
+       | _ => bug "coreExn in translate")
+    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 and coreAcc id =
-  ((case coreLookup(id, env)
-     of V.VAL(V.VALvar{access, typ, path, ...}) => 
-           mkAccT(access, toLty DI.top (!typ), getNameOp path)
-      | _ => bug "coreAcc in translate")
-   handle NoCore => (say "WARNING: no Core access \n"; INT 0))
-
+    (case CoreAccess.getVar' (fn () => raise NoCore) (env, id) of
+	 V.VALvar { access, typ, path, ... } =>
+	 mkAccT(access, toLty DI.top (!typ), getNameOp path)
+       | _ => bug "coreAcc in translate")
+    handle NoCore => (say "WARNING: no Core access\n"; INT 0)
 
 (** expands the flex record pattern and convert the EXN access pat *)
 (** internalize the conrep's access, always exceptions *)

@@ -200,10 +200,7 @@ val registerTy =
 					       (tupleTy[alpha,intTy] 
 						--> alpha)])}}
 
-val V.VAL registerVar = Lookup.lookVal
-    (env,
-     SP.SPATH [CoreSym.coreSym, Symbol.varSymbol "profile_sregister"],
-     fn _ => fn s => fn _ => err "222 in sprof")
+val registerVar = CoreAccess.getVar "profile_sregister"
 
 val absyn' =instrdec((0,0),nil,absyn) 
 

@@ -186,7 +186,7 @@ let
 
 	    (* capture Match exn from coreEnv as a random exn for use internally
 	       in the Y combinator definition *)
-	    val exn = CoreAccess.getExn(env,"Match")
+	    val exn = CoreAccess.getExn (env,"Match")
 
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 

@@ -28,8 +28,6 @@ end
 
 structure BTrace :> BTRACE = struct
 
-    exception NoCore
-
     fun impossible s = EM.impossible ("BTrace: " ^ s)
 
     infix -->
@@ -78,22 +76,8 @@ structure BTrace :> BTRACE = struct
 	    else if Symbol.eq (s, s') then (s, m+1) :: t
 	    else (s, 0) :: l
 
-	fun getCore s = let
-	    fun err _ _ _ = raise NoCore
-	in
-	    Lookup.lookVal (senv, SP.SPATH [CoreSym.coreSym,
-					    Symbol.varSymbol s], err)
-	end
-
-	fun getCoreVal s =
-	    case getCore s of
-		VC.VAL r => r
-	      | _ => impossible "getCoreVal"
-
-	fun getCoreCon s =
-	    case getCore s of
-		VC.CON c => c
-	      | _ => impossible "getCoreCon"
+	fun getCoreVal s = CoreAccess.getVar (senv, s)
+	fun getCoreCon s = CoreAccess.getCon (senv, s)
 
 	val bt_reserve = getCoreVal "bt_reserve"
 	val bt_register = getCoreVal "bt_register"

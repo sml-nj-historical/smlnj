@@ -245,21 +245,6 @@ fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(left,_)))] =
 fun completeMatch' (RULE(p,e)) =
     completeMatch'' (fn marker => RULE(p,marker e))
 
-(*
-fun getCoreExn(env,name) = 
-    (case LU.lookVal(env,SP.SPATH[CoreSym.coreSym, varSymbol name],
-		     fn _ => fn s => fn _ => raise NoCore)
-       of V.CON x => x
-        | _ => bogusExn)
-    handle NoCore => bogusExn
-
-fun getCoreVar(env,name) =
-    (case LU.lookVal(env,SP.SPATH[CoreSym.coreSym, varSymbol name],
-		     fn _ => fn _ => fn _ => raise NoCore)
-      of V.VAL v => v
-       | _ => raise Fail ("getCoreVar: not found: " ^ name))
-*)
-
 fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
