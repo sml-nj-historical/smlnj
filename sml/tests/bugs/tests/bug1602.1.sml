@@ -4,10 +4,10 @@ signature SSS =
 sig
   structure A : Absyn
   val foo : A.foo -> A.bar
-end;
+end
 
 structure sss : SSS =
 struct
   structure A = Absyn
   fun foo x = x
-end;
+end
