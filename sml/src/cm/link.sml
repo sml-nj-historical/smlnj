@@ -155,8 +155,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				    ctxt = GenericVC.CMStaticEnv.empty } }
 		  end
 		  val primconf = Primitive.configuration [bpspec]
-		  val pcmode = PathConfig.hardwire
-		      [("smlnj-lib.cm", "/home/blume/ML/current/lib")]
+		  val pcmode = PathConfig.new ()
+		  val _ = PathConfig.set (pcmode,
+					  "smlnj-lib.cm",
+					  "/home/blume/ML/current/lib")
 		  val fnpolicy =
 		      FilenamePolicy.colocate
 		          { os = os, arch = HostMachDepVC.architecture }

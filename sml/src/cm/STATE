@@ -1,0 +1,11 @@
+FullPersstateFn : reset
+CompileGenericFn : resetAll
+RecompPersstateFn : reset
+RecompFn : reset
+ExecFn : reset
+AutoLoad : reset
+SrcPath : sync
+SmlInfo : forgetAllBut <- needs work (?)
+
+
+

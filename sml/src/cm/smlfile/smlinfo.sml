@@ -75,8 +75,8 @@ structure SmlInfo :> SMLINFO = struct
 		      
     datatype info =
 	INFO of { sourcepath: SrcPath.t,
-		  skelname: string,
-		  binname: string,
+		  mkSkelname: unit -> string,
+		  mkBinname: unit -> string,
 		  persinfo: persinfo,
 		  share: bool option,
 		  split: bool }
@@ -84,8 +84,8 @@ structure SmlInfo :> SMLINFO = struct
     type ord_key = info
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
-    fun skelname (INFO { skelname = sn, ... }) = sn
-    fun binname (INFO { binname = bn, ... }) = bn
+    fun skelname (INFO { mkSkelname = msn, ... }) = msn ()
+    fun binname (INFO { mkBinname = mbn, ... }) = mbn ()
     fun share (INFO { share = s, ... }) = s
     fun split (INFO { split = s, ... }) = s
 
@@ -130,8 +130,8 @@ structure SmlInfo :> SMLINFO = struct
     fun info (gp: GeneralParams.info) arg = let
 	val { sourcepath, group = gr as (group, region), share, split } = arg
 	val policy = #fnpolicy (#param gp)
-	val skelname = FNP.mkSkelName policy sourcepath
-	val binname = FNP.mkBinName policy sourcepath
+	fun mkSkelname () = FNP.mkSkelName policy sourcepath
+	fun mkBinname () = FNP.mkBinName policy sourcepath
 	val groupreg = #groupreg gp
 	fun newpersinfo () = let
 	    val ts = SrcPath.tstamp sourcepath
@@ -166,8 +166,8 @@ structure SmlInfo :> SMLINFO = struct
 		    else (validate (sourcepath, pi); pi)
     in
 	INFO { sourcepath = sourcepath,
-	       skelname = skelname,
-	       binname = binname,
+	       mkSkelname = mkSkelname,
+	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
 	       share = share,
 	       split = split }
@@ -207,35 +207,38 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let
-	val { sourcepath, skelname, persinfo = PERS pir, ... } = ir
+	val { sourcepath, mkSkelname, persinfo = PERS pir, ... } = ir
 	val { skeleton, lastseen, ... } = pir
     in
 	case !skeleton of
 	    SOME sk => SOME sk
-	  | NONE =>
-		(case SkelIO.read (skelname, !lastseen) of
-		     SOME sk => (skeleton := SOME sk; SOME sk)
-		   | NONE =>
-			 (case getParseTree gp (i, false, noerrors) of
-			      SOME (tree, source) => let
-				  fun err sv region s =
-				      EM.error source region sv s
-				               EM.nullErrorBody
-				  val { skeleton = sk, complain } =
-				      SkelCvt.convert { tree = tree,
-						        err = err }
-			      in
-				  if noerrors then () else complain ();
+	  | NONE => let
+		val skelname = mkSkelname ()
+	    in
+		case SkelIO.read (skelname, !lastseen) of
+		    SOME sk => (skeleton := SOME sk; SOME sk)
+		  | NONE =>
+			(case getParseTree gp (i, false, noerrors) of
+			     SOME (tree, source) => let
+				 fun err sv region s =
+				     EM.error source region sv s
+				              EM.nullErrorBody
+				 val { skeleton = sk, complain } =
+				     SkelCvt.convert { tree = tree,
+						       err = err }
+			     in
+				 if noerrors then () else complain ();
 				  if EM.anyErrors (EM.errors source) then
-				      if noerrors then ()
-				      else error gp i EM.COMPLAIN
+					 if noerrors then ()
+					 else error gp i EM.COMPLAIN
 					         "error(s) in ML source file"
 						 EM.nullErrorBody
 				  else (SkelIO.write (skelname, sk, !lastseen);
 					skeleton := SOME sk);
 				  SOME sk
-			      end
-			    | NONE => NONE))
+			     end
+			   | NONE => NONE)
+	    end
     end
 
     fun skeleton0 noerrors gp i = getSkeleton gp (i, noerrors)

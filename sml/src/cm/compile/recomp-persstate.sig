@@ -27,4 +27,6 @@ signature RECOMP_PERSSTATE = sig
 
     (* ... and this one is for stabilize (cache pre-warming) ... *)
     val pid_fetch_sml : SmlInfo.info -> GenericVC.PersStamps.persstamp option
+
+    val reset : unit -> unit
 end

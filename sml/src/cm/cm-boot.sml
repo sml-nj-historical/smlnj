@@ -126,11 +126,23 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val fnpolicy = FilenamePolicy.colocate
 	      { os = os, arch = HostMachDepVC.architecture }
 
-	  val pcmodeRef = ref (PathConfig.hardwire [])
+	  val pcmode = PathConfig.new ()
 
 	  val theValues = ref (NONE: kernelValues option)
 
       in
+	  fun initPaths () = let
+	      val p =
+		  case OS.Process.getEnv "HOME" of
+		      NONE => []
+		    | SOME h => [OS.Path.concat (h, ".smlnj-pathconfig")]
+	      val p = EnvConfig.getSet StdConfig.pathcfgspec NONE :: p
+	      fun processOne f = PathConfig.processSpecFile (pcmode, f)
+		  handle _ => ()
+	  in
+	      app processOne p
+	  end
+
 	  fun param () = let
 	      val v = valOf (!theValues)
 		  handle Option =>
@@ -138,7 +150,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  in
 	      { primconf = #primconf v,
 	        fnpolicy = fnpolicy,
-		pcmode = !pcmodeRef,
+		pcmode = pcmode,
 		symenv = SSV.env,
 		keep_going = EnvConfig.getSet StdConfig.keep_going NONE,
 		pervasive = #pervasive v,
@@ -148,7 +160,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun autoload s = let
 	      val c = SrcPath.cwdContext ()
-	      val pcmode = !pcmodeRef
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
 	      case Parse.parse (SOME al_greg) (param ()) NONE p of
@@ -168,8 +179,31 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
 
 	  fun initTheValues bootdir = let
-	      val pcmode = PathConfig.bootcfg bootdir
-	      val _ = pcmodeRef := pcmode
+	      val _ = let
+		  fun listDir ds = let
+		      fun loop l =
+			  case OS.FileSys.readDir ds of
+			      "" => l
+			    | x => loop (x :: l)
+		  in
+		      loop []
+		  end
+		  val fileList = SafeIO.perform
+		      { openIt = fn () => OS.FileSys.openDir bootdir,
+		        closeIt = OS.FileSys.closeDir,
+			work = listDir,
+			cleanup = fn () => () }
+		  fun isDir x =
+		      OS.FileSys.isDir x handle _ => false
+		  fun subDir x = let
+		      val d = OS.Path.concat (bootdir, x)
+		  in
+		      if isDir d then SOME (x, d) else NONE
+		  end
+		  val pairList = List.mapPartial subDir fileList
+	      in
+		  app (fn (x, d) => PathConfig.set (pcmode, x, d)) pairList
+	      end
 	      val initgspec =
 		  SrcPath.standard pcmode { context = SrcPath.cwdContext (),
 					    spec = BtNames.initgspec }
@@ -268,7 +302,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     fun init (bootdir, de) =
 	(warmup_hook := SOME de;
 	 initTheValues bootdir;
-	 warmup_hook := NONE)
+	 warmup_hook := NONE;
+	 Cleanup.install initPaths)
   end
 end
 

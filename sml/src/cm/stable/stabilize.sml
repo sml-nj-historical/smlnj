@@ -319,7 +319,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val sz = size pickle
 	    val offset_adjustment = sz + 4
 
-	    fun mkStableGroup sname = let
+	    fun mkStableGroup mksname = let
 		val m = ref SmlInfoMap.empty
 		fun sn (DG.SNODE (n as { smlinfo, ... })) =
 		    case SmlInfoMap.find (!m, smlinfo) of
@@ -337,7 +337,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val locs = SmlInfo.errorLocation gp smlinfo
 			    val error = EM.errorNoSource grpSrcInfo locs
 			    val i = BinInfo.new { group = grouppath,
-						  stablename = sname,
+						  mkStablename = mksname,
 						  spec = spec,
 						  offset = offset,
 						  share = share,
@@ -376,19 +376,20 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val memberlist = rev (!members)
 
 	    val gpath = #grouppath grec
-	    val sname = FilenamePolicy.mkStableName policy gpath
+	    fun mksname () = FilenamePolicy.mkStableName policy gpath
 	    fun work outs =
 		(Say.vsay ["[stabilizing ", SrcPath.descr gpath, "]\n"];
 		 writeInt32 (outs, sz);
 		 BinIO.output (outs, Byte.stringToBytes pickle);
 		 app (cpb outs) memberlist;
-		 mkStableGroup sname)
+		 mkStableGroup mksname)
 	in
-	    SOME (SafeIO.perform { openIt = fn () => AutoDir.openBinOut sname,
+	    SOME (SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
 				   closeIt = BinIO.closeOut,
 				   work = work,
 				   cleanup = fn () =>
-				    (OS.FileSys.remove sname handle _ => ()) })
+				    (OS.FileSys.remove (mksname ())
+				     handle _ => ()) })
 	    handle exn => NONE
 	end
     in
@@ -454,7 +455,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
 	val primconf = #primconf (#param gp)
-	val sname = FilenamePolicy.mkStableName policy group
+	fun mksname () = FilenamePolicy.mkStableName policy group
 	val _ = Say.vsay ["[checking stable ", gdescr, "]\n"]
 
 	fun work s = let
@@ -609,7 +610,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val error = EM.errorNoSource grpSrcInfo locs
 	    in
 		BinInfo.new { group = group,
-			      stablename = sname,
+			      mkStablename = mksname,
 			      error = error,
 			      spec = spec,
 			      offset = offset,
@@ -693,7 +694,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		       sublibs = sublibs }
 	end
     in
-	SOME (SafeIO.perform { openIt = fn () => BinIO.openIn sname,
+	SOME (SafeIO.perform { openIt = BinIO.openIn o mksname,
 			       closeIt = BinIO.closeIn,
 			       work = work,
 			       cleanup = fn () => () })

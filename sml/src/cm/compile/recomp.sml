@@ -59,6 +59,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     (* persistent state! *)
     val filtermap = ref (FilterMap.empty: pid FilterMap.map)
 
+    fun reset () = (filtermap := FilterMap.empty)
+
     fun blayer (be, be') = fn () => E.layerStatic (be (), be' ())
 
     fun layer ({ envs = e, pids = p }, { envs = e', pids = p' }) =

@@ -9,11 +9,12 @@ structure StdConfig = struct
     local
 	val bool = EnvConfig.new Bool.fromString
 	val int = EnvConfig.new Int.fromString
+	val string = EnvConfig.new SOME
     in
 	val verbose = bool ("VERBOSE", true)
 	val debug = bool ("DEBUG", false)
 	val keep_going = bool ("KEEP_GOING", false)
-
-	val parse_caching = int ("PARSE_CACHING", 100)
+	val pathcfgspec = string ("PATHCONFIG", "/usr/lib/smlnj-pathconfig")
     end
 end
+

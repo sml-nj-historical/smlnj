@@ -34,4 +34,6 @@ signature COMPILATION_TYPE = sig
 	-> envdelta option
 
     val dosml :	SmlInfo.info * env * GeneralParams.info -> envdelta option
+
+    val reset : unit -> unit
 end

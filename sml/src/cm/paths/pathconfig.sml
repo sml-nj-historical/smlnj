@@ -10,11 +10,12 @@ signature PATHCONFIG = sig
 
     type mode
 
-    val hardwire : (string * string) list -> mode
-    val envcfg : (string * string EnvConfig.getterSetter) list -> mode
-    val bootcfg : string -> mode
+    val new : unit -> mode
+    val set : mode * string * string -> unit
 
     val configAnchor : mode -> string -> (unit -> string) option
+
+    val processSpecFile : mode * string -> unit
 end
 
 (*
@@ -24,23 +25,37 @@ end
  *)
 structure PathConfig :> PATHCONFIG = struct
 
-    type mode = string -> (unit -> string) option
+    type mode = string StringMap.map ref
 
-    fun hardwire [] (a: string) = NONE
-      | hardwire ((a', v) :: t) a =
-	if a = a' then SOME (fn () => v) else hardwire t a
+    fun set (m, a, s) = m := StringMap.insert (!m, a, s)
 
-    fun envcfg [] (a: string) = NONE
-      | envcfg ((a', gs) :: t) a =
-	if a = a' then SOME (fn () => EnvConfig.getSet gs NONE)
-	else envcfg t a
+    fun new () = ref (StringMap.empty)
 
-    fun bootcfg bootdir a = let
-	fun isDir x = OS.FileSys.isDir x handle _ => false
-	val d = OS.Path.concat (bootdir, a)
+    fun configAnchor m s =
+	case StringMap.find (!m, s) of
+	    NONE => NONE
+	  | SOME _ => SOME (fn () => valOf (StringMap.find (!m, s)))
+
+    fun processSpecFile (m, f) = let
+	fun work s = let
+	    fun loop () = let
+		val line = TextIO.inputLine s
+	    in
+		if line = "" then ()
+		else case String.tokens Char.isSpace line of
+		    [a, d] => (set (m, a, d);
+			       Say.vsay ["PathConfig: ", a, " -> ", d, "\n"];
+			       loop ())
+		  | _ => (Say.say [f, ": malformed line (ignored)\n"];
+			  loop ())
+	    end
+	in
+	    loop ()
+	end
     in
-	if isDir d then SOME (fn () => d) else NONE
+	SafeIO.perform { openIt = fn () => TextIO.openIn f,
+			 closeIt = TextIO.closeIn,
+			 work = work,
+			 cleanup = fn () => () }
     end
-
-    fun configAnchor m s = m s
 end

@@ -22,6 +22,8 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     type envdelta = env
     type result = E.dynenv
 
+    fun reset () = ()
+
     fun layer ((d, sl, bl), (d', sl', bl')) =
 	(fn () => DE.atop (d (), d' ()), sl @ sl', bl @ bl')
 

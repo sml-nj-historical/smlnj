@@ -12,6 +12,8 @@ signature AUTOLOAD = sig
     val mkManager : (DependencyGraph.impexp SymbolMap.map ->
 		     GenericVC.BareEnvironment.environment option)
 	-> GenericVC.Ast.dec * GenericVC.EnvRef.envref -> unit
+
+    val reset : unit -> unit
 end
 
 structure AutoLoad :> AUTOLOAD = struct
@@ -25,6 +27,8 @@ structure AutoLoad :> AUTOLOAD = struct
      * change to the topLevel env.  However, it means that any addition
      * to "pending" must be subtracted from the topLevel env. *)
     val pending = ref (SymbolMap.empty: DG.impexp SymbolMap.map)
+
+    fun reset () = pending := SymbolMap.empty
 
     fun register (ter: ER.envref, GroupGraph.GROUP { exports, ... }) = let
 	val te = #get ter ()

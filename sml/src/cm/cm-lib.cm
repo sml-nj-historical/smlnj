@@ -71,6 +71,7 @@ is
 	main/symval.sml
 	main/specific-symval-fn.sml
 	main/autoload.sml
+	main/cleanup.sml
 
 	(* pathname abstraction *)
 	paths/sources.cm

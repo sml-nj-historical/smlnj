@@ -78,27 +78,8 @@ end = struct
 	val pidfile = OS.Path.joinDirFile { dir = bootdir, file = "RTPID" }
 	val listfile = OS.Path.joinDirFile { dir = bootdir, file = "BINLIST" }
 
-	val pcmode = let
-	    fun work s = let
-		fun loop l = let
-		    val line = TextIO.inputLine s
-		in
-		    if line = "" then PathConfig.hardwire l
-		    else case String.tokens Char.isSpace line of
-			[a, s] => loop ((a, s) :: l)
-		      | _ => (Say.say [pcmodespec,
-				       ": malformed line (ignored)\n"];
-			      loop l)
-		end
-	    in
-		loop []
-	    end
-	in
-	    SafeIO.perform { openIt = fn () => TextIO.openIn pcmodespec,
-			     closeIt = TextIO.closeIn,
-			     work = work,
-			     cleanup = fn () => () }
-	end
+	val pcmode = PathConfig.new ()
+	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
 
 	fun stdpath s = SrcPath.standard pcmode { context = ctxt, spec = s }
 
