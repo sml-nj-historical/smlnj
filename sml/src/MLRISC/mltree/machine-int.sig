@@ -59,6 +59,11 @@ sig
    val signed   : sz * machine_int -> IntInf.int
    val unsigned : sz * machine_int -> IntInf.int
 
+    (* Split a machine_int of length sz into words of word sizes.
+     * The least significant word is at the front of the list
+     *)
+   val split : {sz:sz, wordSize:sz, i:machine_int} -> machine_int list
+
    (* queries *)
    val isNeg    : machine_int -> bool
    val isPos    : machine_int -> bool

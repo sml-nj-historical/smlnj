@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/01/30
+Tag: leunga-20020130-nowhere-bug-fix
+Description:
+
+   MLRISC bug fixes:
+   1. Fixed a bindings computation bug in the 'nowhere' program generator tool.
+   2. MachineInt.fromString was negating its value.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/29
 Tag: blume-20020129-INSTALL

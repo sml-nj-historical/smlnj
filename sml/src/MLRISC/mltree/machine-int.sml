@@ -53,8 +53,9 @@ struct
    val int_0x10000 = I.fromInt 0x10000
 
    (* Precompute some tables for faster arithmetic *)
+   local
    val pow2table = Array.tabulate(maxSz,fn n => I.<<(int_1,itow n))  (* 2^n *)
-   val maskTable = Array.tabulate(maxSz,
+   val masktable = Array.tabulate(maxSz,
                        fn n => I.-(I.<<(int_1,itow n),int_1))      (* 2^n-1 *)
    val maxtable  = Array.tabulate(maxSz+1, 
                     fn 0 => int_0
@@ -62,10 +63,17 @@ struct
    val mintable  = Array.tabulate(maxSz+1, 
                     fn 0 => int_0
                      | n => I.~(I.<<(int_1,itow(n-1))))   (* -2^{n-1} *)
+   in
 
-   fun pow2 i = Array.sub(pow2table, i) 
-   fun maxOfSize sz = Array.sub(maxtable, sz)
-   fun minOfSize sz = Array.sub(mintable, sz)
+   fun pow2 i       = if i < maxSz then Array.sub(pow2table, i) 
+                      else I.<<(int_1,itow i)
+   fun maskOf sz    = if sz < maxSz then Array.sub(masktable, sz)
+                      else I.-(I.<<(int_1,itow sz),int_1)
+   fun maxOfSize sz = if sz < maxSz then Array.sub(maxtable, sz) 
+                      else I.-(I.<<(int_1,itow(sz-1)),int_1)
+   fun minOfSize sz = if sz < maxSz then Array.sub(mintable, sz)
+                      else I.~(I.<<(int_1,itow(sz-1)))
+   end
 
    (* queries *)
    fun isNeg(i)    = I.sign i < 0
@@ -83,7 +91,7 @@ struct
    fun signed(sz, i) = if I.>(i, maxOfSize sz) then I.-(i, pow2 sz) else i
 
    (* Narrow to the representation of a given type *)
-   fun narrow(sz, i) = signed(sz, I.andb(i, Array.sub(maskTable,sz)))
+   fun narrow(sz, i) = signed(sz, I.andb(i, maskOf sz))
 
    (* Recognize 0x and 0b prefix and do the right thing *)
    fun fromString(sz, s) = 
@@ -101,8 +109,8 @@ struct
            else if S.sub(s, 0) = #"~" then conv(1, true)
            else conv(0, false)
    in  case (result, negate) of
-         (SOME n, true) => SOME(narrow(sz, n))
-       | (SOME n, false) => SOME(narrow(sz, I.~ n))
+         (SOME n, true) => SOME(narrow(sz, I.~ n))
+       | (SOME n, false) => SOME(narrow(sz, n))
        | (NONE, _) => NONE
    end
 
@@ -227,6 +235,21 @@ struct
    fun GTU(sz,i,j) = I.>(unsigned(sz, i),unsigned(sz, j))
    fun LEU(sz,i,j) = I.<=(unsigned(sz, i),unsigned(sz, j))
    fun GEU(sz,i,j) = I.>=(unsigned(sz, i),unsigned(sz, j))
+
+   (*
+    * Split an integer "i" of size "sz" into words of size "wordSize"
+    *)
+   fun split{sz, wordSize, i} =
+   let fun loop(sz, i, ws) =
+           if sz <= 0 then rev ws
+           else
+           let val w = narrow(wordSize, i)
+               val i = IntInf.~>>(i, Word.fromInt wordSize)
+           in  loop(sz - wordSize, i, w::ws)
+           end
+   in  loop(sz, unsigned(sz, i), [])
+   end
+
 end
 
 end
