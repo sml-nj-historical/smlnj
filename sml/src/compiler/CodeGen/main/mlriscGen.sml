@@ -1494,6 +1494,9 @@ struct
             | gen(PURE(P.real{fromkind=P.INT 31, tokind=P.FLOAT 64},  
                        [v], x, _, e), hp) = 
                 treeifyDefF64(x,M.CVTI2F(fty,ity,untagSigned(v)), e, hp)
+	    | gen(PURE(P.real{fromkind=P.INT 32, tokind=P.FLOAT 64},
+		       [v], x, _, e), hp) =
+	        treeifyDefF64(x,M.CVTI2F(fty,ity,regbind v), e, hp)
             | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v], x, _, e), hp) = let
                 val r = fregbind v
               in
