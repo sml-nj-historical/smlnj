@@ -13,10 +13,7 @@ structure StdConfig = struct
 	val verbose = bool ("VERBOSE", true)
 	val debug = bool ("DEBUG", true)
 	val keep_going = bool ("KEEP_GOING", true)
-	val show_exports = bool ("SHOW_EXPORTS", true)
 
 	val parse_caching = int ("PARSE_CACHING", 100)
     end
 end
-
-

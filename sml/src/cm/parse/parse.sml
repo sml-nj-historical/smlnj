@@ -6,7 +6,9 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature CMPARSE = sig
-    val parse : GeneralParams.param -> AbsPath.t -> CMSemant.group option
+    val parse :
+	GeneralParams.param -> AbsPath.t
+	-> (CMSemant.group * GeneralParams.info) option
 end
 
 structure CMParse :> CMPARSE = struct
@@ -30,7 +32,10 @@ structure CMParse :> CMPARSE = struct
 	val groupreg = GroupReg.new ()
 	val ginfo = { param = param, groupreg = groupreg }
 
-	val gc = ref AbsPathMap.empty	(* the "group cache" *)
+	(* The "group cache" -- we store "group options";  having
+	 * NONE registered for a group means that a previous attempt
+	 * to parse it had failed. *)
+	val gc = ref (AbsPathMap.empty: CMSemant.group option AbsPathMap.map)
 
 	fun mparse (group, groupstack) =
 	    case AbsPathMap.find (!gc, group) of
@@ -113,6 +118,9 @@ structure CMParse :> CMPARSE = struct
 		                    { sourcepath = p, class = c,
 				      group = (group, (p1, p2)) }
 
+		(* Build the argument for the lexer; the lexer's local
+		 * state is encapsulated here to make sure the parser
+		 * is re-entrant. *)
 		val lexarg = let
 		    (* local state *)
 		    val depth = ref 0
@@ -194,7 +202,10 @@ structure CMParse :> CMPARSE = struct
 	      | [] => normal_processing ()
 	end
 
+	fun finalResult g =
+	    (SmlInfo.forgetAllBut (Reachable.reachable g);
+	     (g, ginfo))
     in
-	mparse (group, [])
+	Option.map finalResult (mparse (group, []))
     end
 end

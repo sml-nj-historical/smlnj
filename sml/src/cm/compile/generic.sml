@@ -49,7 +49,7 @@ in
 		loop i l
 	    end
 
-	fun bnode (gp: GP.info) = let
+	fun bnode (gp: GP.info) n = let
 
 	    val (glob, loc) = let
 		val globf = farbnode gp
@@ -69,7 +69,8 @@ in
 		    CT.dostable (bininfo, mkenv, gp)
 		end
 	in
-	    bn
+	    (* don't eta-reduce this -- it'll lead to an infinite loop! *)
+	    bn n
 	end
 
 	and farbnode gp (f, n) =
@@ -91,7 +92,10 @@ in
 	    end
 
 	    val { smlinfo, localimports = li, globalimports = gi } = n
-	    val e = loc (glob (SOME (CT.pervasive gp)) gi) li
+	    val desc = SmlInfo.fullSpec smlinfo
+	    val pe = SOME (CT.pervasive gp)
+	    val ge = glob pe gi
+	    val e = loc ge li
 	in
 	    case e of
 		NONE => NONE

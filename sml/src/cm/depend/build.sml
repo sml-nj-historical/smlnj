@@ -13,12 +13,14 @@ signature BUILDDEPEND = sig
 	  gimports: impexp SymbolMap.map,
 	  smlfiles: SmlInfo.info list,
 	  localdefs: SmlInfo.info SymbolMap.map,
-	  subgroups: GroupGraph.group list }
+	  subgroups: GroupGraph.group list,
+	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
 	* (string -> unit)		(* error *)
 	* GeneralParams.info
 	->
 	impexp SymbolMap.map		(* exports *)
+	* GroupGraph.privileges		(* required privileges (aggregate) *)
 end
 
 structure BuildDepend :> BUILDDEPEND = struct
@@ -48,7 +50,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
     fun build (coll, fopt, error, gp) = let
-	val { imports, gimports, smlfiles, localdefs, subgroups } = coll
+	val { imports, gimports, smlfiles, localdefs, subgroups, reqpriv } =
+	    coll
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)
@@ -132,8 +135,6 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    val f = SmlInfo.sourcepath i
 	    fun isSelf i' = SmlInfo.eq (i, i')
 
-	    exception Lookup
-
 	    (* lookup function for things not defined in the same ML file.
 	     * As a side effect, this function registers local and
 	     * global imports. *)
@@ -141,12 +142,13 @@ structure BuildDepend :> BUILDDEPEND = struct
 		fun lookfar () =
 		    case SM.find (imports, s) of
 			SOME (farn, e) => (globalImport farn; e)
-		      | NONE => (SmlInfo.error gp i EM.COMPLAIN
-				  (concat (AbsPath.spec f ::
-					   ": reference to unknown " ::
-					   symDesc (s, [])))
-				  EM.nullErrorBody;
-				 raise Lookup)
+		      | NONE =>
+			    (* We could complain here about an undefined
+			     * name.  However, since CM doesn't have the
+			     * proper source locations available, it is
+			     * better to handle this case silently and
+			     * have the compiler catch the problem later. *)
+			    DE.EMPTY
 	    in
 		case SM.find (localdefs, s) of
 		    SOME i' =>
@@ -161,29 +163,18 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    end
 
 	    (* build the lookup function for DG.env *)
-	    val lookup_exn = look lookimport
+	    val lookup = look lookimport
 
 	    fun lookSymPath e (SP.SPATH []) = DE.EMPTY
 	      | lookSymPath e (SP.SPATH (p as (h :: t))) = let
-		    fun dotPath [] = []
-		      | dotPath [s] = [S.name s]
-		      | dotPath (h :: t) = S.name h :: "." :: dotPath t
-		    fun complain s =
-			(SmlInfo.error gp i EM.COMPLAIN
-			  (concat
-			   (AbsPath.spec f ::
-			    ": undefined " ::
-			    symDesc (s, " in path " :: dotPath p)))
-			  EM.nullErrorBody;
-			 raise Lookup)
-		    val lookup_exn' = look complain
+		    (* again, if we don't find it here we just ignore
+		     * the problem and let the compiler catch it later *)
+		    val lookup' = look (fn _ => DE.EMPTY)
 		    fun loop (e, []) = e
-		      | loop (e, h :: t) = loop (lookup_exn' e h, t)
+		      | loop (e, h :: t) = loop (lookup' e h, t)
 		in
-		    loop (lookup_exn e h, t) handle Lookup => DE.EMPTY
+		    loop (lookup e h, t)
 		end
-
-	    fun lookup e s = lookup_exn e s handle Lookup => DE.EMPTY
 
 	    (* "eval" -- compute the export environment of a skeleton *)
 	    fun eval sk = let
@@ -218,7 +209,10 @@ structure BuildDepend :> BUILDDEPEND = struct
 		evalDecl DE.EMPTY sk
 	    end
 
-	    val e = eval (SmlInfo.skeleton gp i)
+	    val e = case SmlInfo.skeleton gp i of
+		SOME sk => eval sk
+	      | NONE => DE.EMPTY
+
 	    val n = DG.SNODE { smlinfo = i,
 			       localimports = !li,
 			       globalimports = !gi }
@@ -284,6 +278,6 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    SS.foldl addNodeFor SM.empty ss
 		end
     in
-	exports
+	(exports, reqpriv)
     end
 end

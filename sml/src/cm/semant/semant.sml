@@ -146,22 +146,26 @@ structure CMSemant :> CM_SEMANT = struct
     fun group (g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
-	val exports = MemberCollection.build (mc, filter, error, gp)
+	val (exports, rp) = MemberCollection.build (mc, filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
+	val { required = rp', granted } = p
+	val p' = { required = StringSet.union (rp, rp'), granted = granted }
     in
 	GG.GROUP { exports = exports, islib = false,
-		   privileges = p, grouppath = g,
+		   privileges = p', grouppath = g,
 		   subgroups = subgroups }
     end
 
     fun library (g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = applyTo mc e
-	val exports = MemberCollection.build (mc, SOME filter, error, gp)
+	val (exports, rp) = MemberCollection.build (mc, SOME filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
+	val { required = rp', granted } = p
+	val p' = { required = StringSet.union (rp, rp'), granted = granted }
     in
 	GG.GROUP { exports = exports, islib = true,
-		   privileges = p, grouppath = g,
+		   privileges = p', grouppath = g,
 		   subgroups = subgroups }
     end
 

@@ -31,9 +31,16 @@ signature SMLINFO = sig
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
-    val exports : GeneralParams.info -> info  -> SymbolSet.set
-    val skeleton : GeneralParams.info -> info -> Skeleton.decl
+    val exports : GeneralParams.info -> info  -> SymbolSet.set option
+    val skeleton : GeneralParams.info -> info -> Skeleton.decl option
     val share : info -> bool option
+    val lastseen : info -> TStamp.t
+
+    (* forget a parse tree that we are done with *)
+    val forgetParsetree : info -> unit
+
+    (* evict all but the reachable nodes in the cache *)
+    val forgetAllBut : AbsPathSet.set -> unit
 
     (* different ways of describing an sml file using group and source *)
     val spec : info -> string		(* sspec *)
@@ -79,6 +86,9 @@ structure SmlInfo :> SMLINFO = struct
 	AbsPath.compare (p, p')
     fun eq (i, i') = compare (i, i') = EQUAL
 
+    fun lastseen (INFO { persinfo = PERS { lastseen, ... }, ... }) =
+	!lastseen
+
     (* If files change their file ids, then CM will be seriously
      * disturbed because the ordering relation will change.
      * We'll asume that this won't happen in general.  However, we provide
@@ -91,6 +101,19 @@ structure SmlInfo :> SMLINFO = struct
     in
 	AbsPath.newEra ();		(* force recalculation of file ids *)
 	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
+    end
+
+    fun forgetParsetree (INFO { persinfo = PERS { parsetree, ... }, ... }) =
+	parsetree := NONE
+
+    fun forgetAllBut reachable = let
+	val m0 = !knownInfo
+	fun retain (p, m) =
+	    case AbsPathMap.find (m0, p) of
+		NONE => m
+	      | SOME pi => AbsPathMap.insert (m, p, pi)
+    in
+	knownInfo := AbsPathSet.foldl retain AbsPathMap.empty reachable
     end
 
     fun info (gp: GeneralParams.info) arg = let
@@ -183,13 +206,13 @@ structure SmlInfo :> SMLINFO = struct
 	val { skeleton, lastseen, ... } = pir
     in
 	case !skeleton of
-	    SOME sk => sk
+	    SOME sk => SOME sk
 	  | NONE => let
 		val policy = #fnpolicy (#param gp)
 		val skelpath = FNP.mkSkelPath policy sourcepath
 	    in
 		case SkelIO.read (skelpath, !lastseen) of
-		    SOME sk => (skeleton := SOME sk; sk)
+		    SOME sk => (skeleton := SOME sk; SOME sk)
 		  | NONE =>
 			(case getParseTree gp (i, false, noerrors) of
 			     SOME (tree, source) => let
@@ -207,9 +230,9 @@ structure SmlInfo :> SMLINFO = struct
 					   EM.nullErrorBody
 				 else (SkelIO.write (skelpath, sk);
 				       skeleton := SOME sk);
-				 sk
+				 SOME sk
 			     end
-			   | NONE => Skeleton.Ref SymbolSet.empty)
+			   | NONE => NONE)
 	    end
     end
 
@@ -217,10 +240,12 @@ structure SmlInfo :> SMLINFO = struct
     fun skeleton0 noerrors gp i = (validate i; getSkeleton gp (i, noerrors))
  
     (* we only complain at the time of getting the exports *)
-    fun exports gp i = SkelExports.exports (skeleton0 false gp i)
+    fun exports gp i = Option.map SkelExports.exports (skeleton0 false gp i)
     val skeleton = skeleton0 true
 
-    fun parsetree gp i = getParseTree gp (i, true, true)
+    fun parsetree gp i =
+	(validate i;
+	 getParseTree gp (i, true, true))
 
     fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
     fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =

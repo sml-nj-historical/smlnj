@@ -16,8 +16,7 @@ signature PRIMITIVE = sig
     val fromString : string -> primitive option
     val toString : primitive -> string
 
-    val pervasive : configuration -> GenericVC.Environment.environment
-    val corenv : configuration -> GenericVC.BareEnvironment.staticEnv
+    val reqpriv : primitive -> StringSet.set
 
     (* the domain of (lookup p) must always properly include (exports p) *)
     val exports : configuration -> primitive -> SymbolSet.set
@@ -59,8 +58,9 @@ structure Primitive :> PRIMITIVE = struct
 
     fun toString BASIS = "basis"
 
-    fun pervasive c = Dummy.f ()
-    fun corenv c = Dummy.f ()
+    val reqpriv_basis = StringSet.empty
+
+    fun reqpriv BASIS = reqpriv_basis
 
     fun exports (cfg: configuration) p = #exports (cfg p)
     fun lookup (cfg: configuration) p = #lookup (cfg p)
@@ -100,5 +100,12 @@ structure Primitive :> PRIMITIVE = struct
     in
 	cfg
     end
-    fun pidInfo c _ = Dummy.f ()
+    (* this doesn't make much sense yet -- there aren't any singular
+     * pids describing the basis *)
+    fun pidInfo c BASIS = let
+	val p = GenericVC.PersStamps.fromBytes
+	    (Byte.stringToBytes "0123456789abcdef")
+    in
+	{ statpid = p, sympid = p, ctxt = GenericVC.CMStaticEnv.empty }
+    end
 end

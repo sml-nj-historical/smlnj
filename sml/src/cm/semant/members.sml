@@ -29,7 +29,7 @@ signature MEMBERCOLLECTION = sig
     val build :
 	collection * SymbolSet.set option * (string -> unit) *
 	GeneralParams.info
-	-> impexp SymbolMap.map
+	-> impexp SymbolMap.map * GroupGraph.privileges
 
     val subgroups : collection -> GroupGraph.group list
 
@@ -56,14 +56,16 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map,
-			subgroups: GG.group list }
+			subgroups: GG.group list,
+			reqpriv: GG.privileges }
 
     val empty =
 	COLLECTION { imports = SymbolMap.empty,
 		     gimports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty,
-		     subgroups = [] }
+		     subgroups = [],
+		     reqpriv = StringSet.empty }
 
     fun sequential (COLLECTION c1, COLLECTION c2, error) = let
 	fun describeSymbol (s, r) = let
@@ -89,7 +91,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     gimports = gi_union (#gimports c1, #gimports c2),
 		     smlfiles = #smlfiles c1 @ #smlfiles c2,
 		     localdefs = ld_union (#localdefs c1, #localdefs c2),
-		     subgroups = #subgroups c1 @ #subgroups c2 }
+		     subgroups = #subgroups c1 @ #subgroups c2,
+		     reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
     end
 
     fun expandOne (gp, rparse) arg = let
@@ -101,22 +104,29 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    fun w0 s = error EM.WARN s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
 	    fun exp2coll (PrivateTools.GROUP p) = let
-		    val g as GG.GROUP { exports = i, islib, ... } = rparse p
+		    val g as GG.GROUP { exports = i, islib, privileges, ... } =
+			rparse p
 		    val gi = if islib then SymbolMap.empty else i
 	        in
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
-				 subgroups = [g] }
+				 subgroups = [g],
+				 reqpriv = #required privileges }
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
-		    val i =  SmlInfo.info gp
+		    val i = SmlInfo.info gp
 			{ sourcepath = p,
 			  group = group,
 			  share = s }
-		    val exports = SmlInfo.exports gp i
-		    val _ = if SS.isEmpty exports then w0 "no module exports"
-			    else ()
+		    val exports =
+			case SmlInfo.exports gp i of
+			    NONE => SS.empty
+			  | SOME ex => (if SS.isEmpty ex then
+					    w0 ("no module exports from " ^
+						AbsPath.name p)
+					else ();
+					ex)
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
 		    val ld = SS.foldl addLD SymbolMap.empty exports
 		in
@@ -124,7 +134,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				 gimports = SymbolMap.empty,
 				 smlfiles = [i],
 				 localdefs = ld,
-				 subgroups = [] }
+				 subgroups = [],
+				 reqpriv = StringSet.empty }
 		end
 	    val collections = map exp2coll expansions
 	    fun combine (c1, c2) = sequential (c2, c1, e0)
@@ -149,7 +160,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			     gimports = SymbolMap.empty,
 			     smlfiles = [],
 			     localdefs = SymbolMap.empty,
-			     subgroups = [] }
+			     subgroups = [],
+			     reqpriv = Primitive.reqpriv p }
 	    end
 	  | NONE => noPrimitive ()
     end

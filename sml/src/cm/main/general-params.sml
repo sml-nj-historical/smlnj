@@ -11,7 +11,6 @@ structure GeneralParams = struct
 
     type param = { primconf : Primitive.configuration,
 		   fnpolicy: FilenamePolicy.policy,
-		   groupreg: GroupReg.groupreg,
 		   keep_going: bool,
 		   pervasive: GenericVC.Environment.environment,
 		   corenv: GenericVC.BareEnvironment.staticEnv }

@@ -129,13 +129,13 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	    end
 	in
 	    SOME (load ()) handle exn => let
-		fun pphist pps =
+		fun ppb pps =
 		    (PP.add_string pps (General.exnMessage exn);
 		     PP.add_newline pps)
 	    in
 		BinIO.closeIn s;
 		BinInfo.error gp i EM.COMPLAIN
-		       "unable to load stable library module" pphist;
+		       "unable to load stable library module" ppb;
 		NONE
 	    end
 	end
@@ -163,30 +163,37 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    fun writer () = BF.write { stream = s, content = bfc,
 					       keep_code = true }
 		in
-		    Interrupt.guarded writer
-		    handle exn => (BinIO.closeOut s; raise exn);
-			BinIO.closeOut s;
-			Say.vsay (concat ["wrote ", binname, "]\n"])
+		    Interrupt.guarded writer handle exn =>
+			(BinIO.closeOut s; raise exn);
+		    BinIO.closeOut s;
+		    Say.vsay (concat ["[wrote ", binname, "]\n"])
 		end handle e as Interrupt.Interrupt => (delete (); raise e)
 	                 | exn => let
-			       fun pphist pps =
+			       fun ppb pps =
 				   (PP.add_string pps (General.exnMessage exn);
 				    PP.add_newline pps)
 			   in
 			       delete ();
 			       SmlInfo.error gp i EM.WARN
-			               ("failed to write " ^ binname) pphist
+			               ("failed to write " ^ binname) ppb
 			   end
 
 		fun load () = let
-		    val s = AbsPath.openBinIn binpath
-		    fun read () = BF.read { stream = s, name = binname,
-					    senv = stat,keep_code = true }
+		    val bin_ts = AbsPath.tstamp binpath
 		in
-		    SOME (Interrupt.guarded read)
-		    handle exn => (BinIO.closeIn s; raise exn)
-		end handle e as Interrupt.Interrupt => raise e
-	                 | _ => NONE
+		    if TStamp.earlier (bin_ts, SmlInfo.lastseen i) then
+			NONE
+		    else let
+			val s = AbsPath.openBinIn binpath
+			fun read () = BF.read { stream = s, name = binname,
+					        senv = stat, keep_code = true }
+		    in
+			(SOME (Interrupt.guarded read)
+			 before SmlInfo.forgetParsetree i)
+			handle exn => (BinIO.closeIn s; raise exn)
+		    end handle e as Interrupt.Interrupt => raise e
+		             | _ => NONE
+		end
 
 		fun compile () =
 		    case SmlInfo.parsetree gp i of
@@ -195,8 +202,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			    val _ = Say.vsay (concat ["[compiling ",
 						      SmlInfo.name i, " -> ",
 						      binname, "...]\n"])
-			    val corenv =
-				Primitive.corenv (#primconf (#param gp))
+			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    val bfc = BF.create { runtimePid = NONE,
 						  splitting = true,
@@ -208,11 +214,24 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 						  corenv = corenv }
 			    val memo = { bfc = bfc, ctxt = stat }
 			in
+			    SmlInfo.forgetParsetree i;
 			    save bfc;
 			    PS.recomp_memo_sml (i, memo);
 			    SOME (memo2envdelta memo)
 			end handle e as Interrupt.Interrupt => raise e
-		                 | _ => NONE
+			         | BF.Compile _ => NONE
+		                 | e => let
+				       fun ppb pps =
+					   (PP.add_string pps
+					        (General.exnMessage e);
+					    PP.add_newline pps)
+				   in
+				       SmlInfo.error gp i EM.COMPLAIN
+				          ("exception raised while compiling "
+					   ^ SmlInfo.name i)
+					  ppb;
+				       NONE
+				   end
 
 		fun isValid x =
 		    PidSet.equal (PidSet.addList (PidSet.empty, BF.cmDataOf x),

@@ -72,10 +72,10 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	    case DTS.can'tShare dts of
 		NONE => doit ()
 	      | SOME sl => let
-		    fun pphist [] pps = ()
+		    fun pphist [] pps = PP.add_newline pps
 		      | pphist (h :: t) pps =
-			(PP.add_string pps h;
-			 PP.add_newline pps;
+			(PP.add_newline pps;
+			 PP.add_string pps h;
 			 pphist t pps)
 		in
 		    error

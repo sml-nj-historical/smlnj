@@ -25,6 +25,7 @@ is
 	depend/build.sml
 	depend/da-env.sml
 	depend/ggraph.sml
+	depend/reachable.sml
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml
