@@ -56,7 +56,7 @@
  *) 
 
 local
-   val debug = false         (* set this to true to debug this module 
+   val debug = true         (* set this to true to debug this module 
                               * set this to false for production use.
                               *) 
    val debugLiveness = true (* debug liveness analysis *)
@@ -1798,7 +1798,7 @@ struct
                    | [r] => ST.push(stack, CB.registerNum r)
                    | _   => 
                      error "can't return more than one fp argument (yet)";
-                   DONE code
+                   FINISH code
                end
 	       fun x86trans instr =
                 (case instr 
