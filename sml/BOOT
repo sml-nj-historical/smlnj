@@ -1,6 +1,12 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/07/10 17:30:00 EDT
+Tag: Release_110_34
+Version: 110.34
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.34/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/23 14:30:00 EDT
 Tag: Release_110_33
 Version: 110.33
