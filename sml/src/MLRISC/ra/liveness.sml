@@ -21,14 +21,17 @@ signature LIVENESS = sig
 
   structure CFG : CONTROL_FLOW_GRAPH
 
-  type live_in_table = CellsBasis.SortedCells.sorted_cells IntHashTable.hash_table
+  type liveness_table = 
+         CellsBasis.SortedCells.sorted_cells IntHashTable.hash_table
 
   val liveness : {
 	  defUse : CFG.I.instruction
 			-> (CellsBasis.cell list * CellsBasis.cell list),
 	  getCell    : CellsBasis.CellSet.cellset -> CellsBasis.cell list 
 	} -> CFG.cfg 
-	    -> live_in_table
+	    -> {liveIn  : liveness_table,
+                liveOut : liveness_table
+               }
 
 end
 
@@ -41,7 +44,7 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
   structure HT  = IntHashTable
   structure G   = Graph
 
-  type live_in_table = SC.sorted_cells HT.hash_table
+  type liveness_table = SC.sorted_cells HT.hash_table
 
   fun error msg = MLRiscErrorMsg.error("Liveness",msg)
 
@@ -154,11 +157,10 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
       fun repeat n = if bottomup() then repeat(n+1) else (n+1)
 
     in 
-      init(); repeat 0; liveIn
+      init(); repeat 0; {liveIn=liveIn, liveOut=liveOut}
     end  
 
   in dataflow
   end
 end
-
 

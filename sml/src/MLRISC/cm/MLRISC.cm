@@ -42,6 +42,7 @@ Library
 	signature OMIT_FRAME_POINTER
 	signature POINTS_TO
 (*	signature PRINT_CLUSTER			*)
+	signature PRINT_FLOWGRAPH
 	signature PSEUDO_OPS
 	signature RA
 	signature RA_CORE
@@ -99,6 +100,7 @@ Library
 	functor MemoryRA
 	functor NoDelaySlots
 (*	functor PrintCluster		*)
+	functor PrintFlowgraph
 	functor RADeadCodeElim
 	functor RASpill
 	functor RASpillTypes
@@ -183,6 +185,7 @@ is
 	../flowgraph/cfg.sml
 	../flowgraph/cfg-optimization.sig
 	../flowgraph/cfgExpandCopies.sml
+	../flowgraph/printFlowgraph.sml
 (*	../cluster/flowgraph.sml	*)
 (*	../cluster/clustergen.sml	*)
 (*	../cluster/printCluster.sml	*)
