@@ -29,7 +29,7 @@ structure CompilerVersion : sig
 
     val banner = concat (
 	    #system version :: "v" :: 
-	    f (#version_id version, [" built: ", #date version]))
+	    f (#version_id version, [" [built: ", #date version, "]"]))
 
   end
 

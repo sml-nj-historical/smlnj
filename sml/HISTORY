@@ -14,6 +14,32 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/29 14:00:00 CDT
+Tag: blume-20040929-autoversion
+Description:
+
+Implemented some CM magic to have
+    file src/compiler/TopLevel/main/version.sml
+generated automagically.
+The version is taken from two files: config/version and config/release.
+The first is expected to contain a two-part version number such as 110.49.
+The second should contain a single number, but it may be missing.
+
+If the environment variable VERSIONTOOL_BUMP_RELEASE is defined at the
+time the version tool is loaded (which is the first time you say CMB.make),
+then the tool will increment the value stored in config/release every
+time CMB.make is invoked.
+
+The binfile format is now insensitive to anything beyond the first
+two components of a version number, so bumping the release does not render
+binfiles incompatible.  Auto-bumping can be used to keep track of versions
+during development without invalidating existing binfiles.
+
+In any case, every CMB.make updates the date information in version.sml.
+(This is the date that is printed in the banner.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/28 10:53:00 CDT
 Tag: blume-20040928-controls
 Description:

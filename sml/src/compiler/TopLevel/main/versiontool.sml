@@ -63,13 +63,15 @@ structure VersionTool = struct
 	      | month Date.Dec = "December"
 	    val i = Int.toString
 	    fun si x = if x >= 0 then "+" ^ i x else "-" ^ i (~x)
+	    fun dd x =
+		if x < 10 then "0" ^ i x else i x
 	in
 	    concat [month (Date.month d), " ",
 		    i (Date.day d), ", ",
 		    i (Date.year d), " ",
-		    i (Date.hour d), ":",
-		    i (Date.minute d), ":",
-		    i (Date.second d), " (",
+		    dd (Date.hour d), ":",
+		    dd (Date.minute d), ":",
+		    dd (Date.second d), " (",
 		    si (LargeInt.toInt (Time.toSeconds (Date.localOffset ()))
 			div 3600), ")"]
 	end
