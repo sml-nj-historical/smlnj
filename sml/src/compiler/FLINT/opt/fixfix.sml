@@ -98,7 +98,7 @@ fun fexp mf depth lexp = let
     fun fdcon (fv,(s,Access.EXN(Access.LVAR lv),lty)) = addv(fv, F.VAR lv)
       | fdcon (fv,_) = fv
 
-    (* recognize the curried essence of a function.
+    (* Recognize the curried essence of a function.
      * - hd:fkind option identifies the head of the curried function
      * - na:int gives the number of args still allowed *)
     fun curry (hd,na)
@@ -106,18 +106,17 @@ fun fexp mf depth lexp = let
 			    F.RET[F.VAR lv]))) =
 	if lv = f andalso na >= length args then
 	    case (hd,fk)
-	     of ((* (SOME{isrec=NONE,...},{isrec=SOME _,...}) | *)
-		 (SOME{cconv=F.CC_FCT,...},{cconv=F.CC_FUN _,...}) |
+	     (* recursive functions are only accepted for uncurrying
+	      * if they are the head of the function or if the head
+	      * is already recursive *)
+	     of ((SOME{isrec=NONE,...},{isrec=SOME _,...}) |
+		 (SOME{cconv=F.CC_FCT,...},{cconv=F.CC_FUN (LK.FF_VAR _),...}) |
 		 (SOME{cconv=F.CC_FUN _,...},{cconv=F.CC_FCT,...})) =>
 		([], le)
-	      (* | ((NONE,_) |
-	            (SOME{isrec=SOME _,...},_) |
-	            (SOME{isrec=NONE,...},{isrec=NONE,...})) => *)
-	      (* recursive functions are only accepted for uncurrying
-	       * if they are the head of the function or if the head
-	       * is already recursive *)
 	      | _ =>
-		let val (funs,body) = curry (SOME fk, na - (length args)) body
+		let val (funs,body) =
+			curry (case hd of NONE => SOME fk | _ => hd,
+			       na - (length args)) body
 		in ((fk,f,args)::funs,body)
 		end
 	else
@@ -138,9 +137,13 @@ fun fexp mf depth lexp = let
 			     | _ => bug "strange isrec") rtys
 
 	    (* create the new fkinds *)
-	    val ncconv = case #cconv(#1(List.last args)) of
-		F.CC_FUN(LK.FF_VAR(_,raw)) => F.CC_FUN(LK.FF_VAR(true, raw))
-	      | cconv => cconv
+	    val ncconv =
+		case #cconv(#1(hd args))
+		 of F.CC_FCT => F.CC_FCT
+		  | _ => case #cconv(#1(List.last args))
+			  of F.CC_FUN(LK.FF_VAR(_,raw)) =>
+			     F.CC_FUN(LK.FF_VAR(true, raw))
+			   | cconv => cconv
 	    val (nfk,nfk') = OU.fk_wrap(fk, foldl getrtypes NONE args)
 	    val nfk' = {inline= #inline nfk', isrec= #isrec nfk',
 			known= #known nfk', cconv= ncconv}
@@ -202,7 +205,8 @@ in case lexp
        in (s1 + s2, S.union(rmvs(fvl, lvs), fvb), F.LET(lvs, nbody, nle))
        end
      | F.FIX (fdecs,le) =>
-       let val funs = S.addList(S.empty, map #2 fdecs) (* set of funs defined by the FIX *)
+       let (* set of funs defined by the FIX *)
+	   val funs = S.addList(S.empty, map #2 fdecs)
 
 	   (* create call-counters for each fun and add them to fm *)
 	   val (fs,mf) = foldl (fn ((fk,f,args,body),(fs,mf)) =>
@@ -223,7 +227,8 @@ in case lexp
 			   uncurry(args,body)
 		       (* add the wrapper function *)
 		       val cs = map (fn _ => ref(0,0)) fargs
-		       val nm = M.insert(m, f, ([f'], 1, fk, fargs, fbody, cf, cs))
+		       val nm = M.insert(m, f,
+					 ([f'], 1, fk, fargs, fbody, cf, cs))
 		   (* now, retry ffun with the uncurried function *)
 		   in ffun((fk', f', fargs', fbody', ref 1),
 			   (s+1, fv, S.add(funs, f'), nm))
@@ -236,14 +241,17 @@ in case lexp
 		       val (mf,cs) = foldr (fn ((v,t),(m,cs)) =>
 					    let val c = ref(0, 0)
 					    in (M.insert(m, v, Arg(newdepth, c)),
-						c::cs) end)
+						c::cs)
+					    end)
 					   (mf,[]) args
 		       val (fs,ffv,body) = fexp mf newdepth body
 		       val ffv = rmvs(ffv, map #1 args) (* fun's freevars *)
-		       val ifv = S.intersection(ffv, funs) (* set of rec funs ref'ed *)
+		       (* set of rec funs ref'ed *)
+		       val ifv = S.intersection(ffv, funs)
 		   in
 		       (fs + s, S.union(ffv, fv), funs,
-			M.insert(m,f,(S.listItems ifv, fs, fk, args, body, cf, cs)))
+			M.insert(m, f,
+				 (S.listItems ifv, fs, fk, args, body, cf, cs)))
 		   end
 
 	   (* process the main lexp and make it into a dummy function.
@@ -254,9 +262,9 @@ in case lexp
 	   val (s,fv,le) = fexp mf depth le
 	   val lename = LambdaVar.mkLvar()
 	   val m = M.insert(M.empty,
-			    lename, 
+			    lename,
 			    (S.listItems(S.intersection(fv, funs)), 0,
-			     {inline=F.IH_SAFE, isrec=NONE, 
+			     {inline=F.IH_SAFE, isrec=NONE,
 			      known=true,cconv=F.CC_FCT},
 			     [], le, ref 0, []))
 
@@ -353,7 +361,7 @@ in case lexp
 	       let val (s,fv,le) = loop le in (s, fv, (dc, le)) end
 	   val narms = length arms
 	   val (s,smax,fv,arms) =
-	       foldl (fn ((s1,fv1,arm),(s2,smax,fv2,arms)) =>
+	       foldr (fn ((s1,fv1,arm),(s2,smax,fv2,arms)) =>
 		      (s1+s2, Int.max(s1,smax), S.union(fv1, fv2), arm::arms))
 		     (narms, 0, S.empty, []) (map farm arms)
        in (case lookup v
