@@ -293,9 +293,12 @@ PrintRegionMap(rp);
   /* write out the arenas */
     for (p = arenaHdrs, i = 0;  i < heap->numGens;  i++) {
 	for (j = 0;  j < NUM_ARENAS;  j++) {
-SayDebug("write %d,%d: %d bytes [%#x..%#x) @ %#x\n",
-i+1, j, p->info.o.sizeB, p->info.o.baseAddr, p->info.o.baseAddr+p->info.o.sizeB,
-p->offset);
+	    if (GCMessages) {
+		SayDebug("write %d,%d: %d bytes [%#x..%#x) @ %#x\n",
+		    i+1, j, p->info.o.sizeB,
+		    p->info.o.baseAddr, p->info.o.baseAddr+p->info.o.sizeB,
+		    p->offset);
+	    }
 	    if (p->info.o.sizeB > 0) {
 		WR_Seek(wr, p->offset);
 		WR_Write(wr, (void *)(p->info.o.baseAddr), p->info.o.sizeB);
@@ -313,8 +316,11 @@ p->offset);
 	    if (p->info.bo.numBigObjs > 0) {
 		hdrSizeB = p->info.bo.numBigObjs * sizeof(bigobj_hdr_t);
 		hdr = (bigobj_hdr_t *) MALLOC (hdrSizeB);
-SayDebug("write %d,%d: %d big objects (%d pages) @ %#x\n",
-i+1, j, p->info.bo.numBigObjs, p->info.bo.numBOPages, p->offset);
+		if (GCMessages) {
+		    SayDebug("write %d,%d: %d big objects (%d pages) @ %#x\n",
+			i+1, j, p->info.bo.numBigObjs, p->info.bo.numBOPages,
+			p->offset);
+		}
 	      /* initialize the big-object headers */
 		q = hdr;
 		for (bdp = heap->gen[i]->bigObjs[j];  bdp != NIL(bigobj_desc_t *);  bdp = bdp->next) {
