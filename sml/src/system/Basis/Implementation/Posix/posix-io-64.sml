@@ -1,11 +1,10 @@
-(* posix-io.sml
+(* posix-io-64.sml
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *
  * Structure for POSIX 1003.1 primitive I/O operations
- *
+ * Using 64-bit positions.
  *)
-
 local
     structure SysWord = SysWordImp
     structure Int = IntImp
@@ -13,6 +12,9 @@ local
 in
 structure POSIX_IO =
   struct
+
+    val splitpos = InlineT.Int64.extern
+    val joinpos  = InlineT.Int64.intern
 
     structure FS = POSIX_FileSys
 
@@ -147,9 +149,13 @@ structure POSIX_IO =
         fun pid (FLOCK fv) = #pid fv
       end
 
-    type flock_rep = s_int * s_int * Int31.int * Int31.int * s_int
+    type flock_rep = s_int *
+		     s_int *
+		     Word32.word * Word32.word *
+		     Word32.word * Word32.word *
+		     s_int
 
-    val fcntl_l : s_int * s_int * flock_rep -> flock_rep = cfun "fcntl_l"
+    val fcntl_l : s_int * s_int * flock_rep -> flock_rep = cfun "fcntl_l_64"
     val f_getlk = osval "F_GETLK"
     val f_setlk = osval "F_SETLK"
     val f_setlkw = osval "F_SETLKW"
@@ -161,10 +167,12 @@ structure POSIX_IO =
           fun ltypeOf F_RDLCK = f_rdlck
             | ltypeOf F_WRLCK = f_wrlck
             | ltypeOf F_UNLCK = f_unlck
+	  val (shi, slo) = splitpos start
+	  val (lhi, llo) = splitpos len
           in
-            (ltypeOf ltype,whToWord whence, start, len, 0)
+            (ltypeOf ltype,whToWord whence, shi, slo, lhi, llo, 0)
           end
-    fun flockFromRep (usepid,(ltype,whence,start,len,pid)) = let
+    fun flockFromRep (usepid,(ltype,whence,shi,slo,lhi,llo,pid)) = let
           fun ltypeOf ltype = 
                 if ltype = f_rdlck then F_RDLCK
                 else if ltype = f_wrlck then F_WRLCK
@@ -174,8 +182,8 @@ structure POSIX_IO =
             FLock.FLOCK { 
               ltype = ltypeOf ltype,
               whence = whFromWord whence,
-              start = start,
-              len = len,
+              start = joinpos (shi, slo),
+              len = joinpos (lhi, llo),
               pid = if usepid then SOME(POSIX_Process.PID pid) else NONE
             }
           end
@@ -187,8 +195,13 @@ structure POSIX_IO =
     fun setlkw (fd, flock) =
           flockFromRep(false,fcntl_l(FS.intOf fd,f_setlkw,flockToRep flock))
 
-    val lseek' : s_int * Int31.int * s_int -> Int31.int = cfun "lseek"
-    fun lseek (fd,offset,whence) = lseek'(FS.intOf fd,offset, whToWord whence)
+    val lseek' :
+	s_int * Word32.word * Word32.word * s_int -> Word32.word * Word32.word =
+	cfun "lseek_64"
+    fun lseek (fd,offset,whence) =
+	let val (ohi, olo) = splitpos offset
+	in joinpos (lseek'(FS.intOf fd, ohi, olo, whToWord whence))
+	end
 
     val fsync' : s_int -> unit = cfun "fsync"
     fun fsync fd = fsync' (FS.intOf fd)
@@ -269,7 +282,7 @@ structure POSIX_IO =
 	    fun avail () =
 		if !closed then SOME 0
 		else if isReg then
-		    SOME(Position.-(FS.ST.size(FS.fstat fd), !pos))
+		    SOME(Position.toInt (FS.ST.size(FS.fstat fd) - !pos))
 		else NONE
 	in
 	    mkRD { name = name,

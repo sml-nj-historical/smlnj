@@ -14,6 +14,31 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/24 14:30:00 CST
+Tag: blume-20041124-position
+Description:
+
+The compiler can now be compiled in a mode that makes structure Position
+equal to Int64.  The default, however, is unchanged (Position = Int31)
+for the time being.
+
+To enable 64-bit positions, use the following procedure:
+
+1. Start sml
+2. Autoload $smlnj/cmb.cm (if not already autoloaded)
+3. Type
+      #set (CMB.symval "USE_64_BIT_POSITIONS") (SOME 1);
+4. Run CMB.make() as usual.
+
+This is barely tested.  The only test so far was a little SML program
+counting the number of characters in an 8-gigabyte file by
+reading it character-by-character.  That test was successful.
+
+In support of 64-bit positions, a number of new functions have been
+added to the runtime system.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/03 14:45:00 CST
 Tag: blume-20041103-useFile
 Description:

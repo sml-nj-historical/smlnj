@@ -33,6 +33,10 @@ structure POSIX_FileSys =
     fun fdToWord (FD{fd,...}) = SysWord.fromInt fd
     fun wordToFD fd = FD{fd = SysWord.toInt fd}
 
+    (*  Position.int <-> hi & lo parts *)
+    val splitpos = InlineT.Int64.extern
+    val joinpos  = InlineT.Int64.intern
+
   (* conversions between OS.IO.iodesc values and Posix file descriptors. *)
     fun fdToIOD (FD{fd,...}) = OS.IO.IODesc fd
     fun iodToFD (OS.IO.IODesc fd) = SOME(FD{fd = fd})
@@ -171,8 +175,11 @@ structure POSIX_FileSys =
     val rmdir : string -> unit = cfun "rmdir"
     val readlink : string -> string = cfun "readlink"
 
-    val ftruncate' : s_int * Int31Imp.int -> unit = cfun "ftruncate"
-    fun ftruncate (FD{fd,...}, len) = ftruncate' (fd, len);
+    val ftruncate' : s_int * word * word -> unit = cfun "ftruncate_64"
+    fun ftruncate (FD{fd,...}, len) =
+	let val (lhi, llo) = splitpos len
+	in ftruncate' (fd, lhi, llo)
+	end
 
     datatype dev = DEV of word
     fun devToWord (DEV i) = i
@@ -230,30 +237,31 @@ structure POSIX_FileSys =
       * word			(* nlink *)
       * word			(* uid *)
       * word			(* gid *)
-      * Int31.int		(* size *)
+      * word                    (* sizehi *)
+      * word			(* sizelo *)
       * Int32.int		(* atime *)
       * Int32.int		(* mtime *)
       * Int32.int		(* ctime *)
       )
-    fun mkStat (sr : statrep) = ST.ST{
-	    ftype = #1 sr,
-            mode = S.fromWord (#2 sr),
-            ino = INO (#3 sr),
-            dev = DEV (#4 sr),
-            nlink = SysWord.toInt(#5 sr),	(* probably should be an int in
+    fun mkStat ((ft, m, ino, devno, nlink, uid, gid,
+		 szhi, szlo, at, mt, ct) : statrep) =
+	ST.ST { ftype = ft,
+		mode = S.fromWord m,
+		ino = INO ino,
+		dev = DEV devno,
+		nlink = SysWord.toInt nlink,	(* probably should be an int in
 						 * the run-time too.
 						 *)
-            uid = UID(#6 sr),
-            gid = GID(#7 sr),
-            size = #8 sr,
-            atime = Time.fromSeconds (Int32Imp.toLarge (#9 sr)),
-            mtime = Time.fromSeconds (Int32Imp.toLarge (#10 sr)),
-            ctime = Time.fromSeconds (Int32Imp.toLarge (#11 sr))
-          }
+		uid = UID uid,
+		gid = GID gid,
+		size = joinpos (szhi, szlo),
+		atime = Time.fromSeconds (Int32Imp.toLarge at),
+		mtime = Time.fromSeconds (Int32Imp.toLarge mt),
+		ctime = Time.fromSeconds (Int32Imp.toLarge ct) }
 
-    val stat' : string -> statrep = cfun "stat"
-    val lstat' : string -> statrep = cfun "lstat"
-    val fstat' : s_int -> statrep = cfun "fstat"
+    val stat' : string -> statrep = cfun "stat_64"
+    val lstat' : string -> statrep = cfun "lstat_64"
+    val fstat' : s_int -> statrep = cfun "fstat_64"
     fun stat fname = mkStat (stat' fname)
     fun lstat fname = mkStat (lstat' fname) (* POSIX 1003.1a *)
     fun fstat (FD{fd}) = mkStat (fstat' fd)

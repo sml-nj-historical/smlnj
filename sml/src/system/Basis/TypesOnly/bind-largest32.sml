@@ -15,5 +15,3 @@ structure LargeWord = Word32
 structure Real = Real64
 structure LargeReal = Real64
 structure SysWord = Word32
-structure Position = Int31
-

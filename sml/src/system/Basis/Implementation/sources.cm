@@ -361,10 +361,15 @@ is
 	bind-fixedint-32.sml
 	bind-largeword-32.sml
 	bind-sysword-32.sml
-	bind-position-32.sml
 	bind-real-32.sml
 	bind-math-32.sml
 	bind-largereal-32.sml
+
+#if defined(USE_64_BIT_POSITIONS)
+	bind-position-64.sml
+#else
+	bind-position-31.sml
+#endif
 
 	bit-flags.sig
 	bit-flags-fn.sml
@@ -379,9 +384,14 @@ is
 	Posix/posix-process.sig
 	Posix/posix-process.sml
 	Posix/posix-filesys.sig
-	Posix/posix-filesys.sml
 	Posix/posix-io.sig
+#if defined(USE_64_BIT_POSITIONS)
+	Posix/posix-filesys-64.sml
+	Posix/posix-io-64.sml
+#else
+	Posix/posix-filesys.sml
 	Posix/posix-io.sml
+#endif
 	Posix/posix-procenv.sig
 	Posix/posix-procenv.sml
 	Posix/posix-sysdb.sig

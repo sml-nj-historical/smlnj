@@ -9,7 +9,7 @@ signature SEEK = sig
 
     exception UnableToSeek
 
-    val seek : BinIO.instream * int -> unit
+    val seek : BinIO.instream * Position.int -> unit
 end
 
 structure Seek :> SEEK = struct

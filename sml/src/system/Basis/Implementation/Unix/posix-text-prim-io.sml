@@ -11,6 +11,7 @@
 local
     structure String = StringImp
     structure Int = IntImp
+    structure Position = PositionImp
 in
 structure PosixTextPrimIO : sig
 
@@ -96,7 +97,8 @@ structure PosixTextPrimIO : sig
 	  val closed = ref false
 	  fun checkClosed () = if !closed then raise IO.ClosedStream else ()
 	  val len = String.size src
-	  fun avail () = (len - !pos)
+	  val plen = Position.fromInt len
+	  fun avail () = len - !pos
 	  fun readV n = let
 		val p = !pos
 		val m = Int.min(n, len-p)
@@ -118,7 +120,11 @@ structure PosixTextPrimIO : sig
 		    dst = buf, di = i };
 	      m
 	  end
-	  fun getPos () = (checkClosed(); !pos)
+	  fun getPos () = (checkClosed(); Position.fromInt (!pos))
+	  fun setPos p =
+	      (checkClosed ();
+	       if p < 0 orelse p > plen then raise Subscript
+	       else pos := Position.toInt p)
 	  in
 	    PrimIO.RD{
 		name      = "<string>", 
@@ -131,13 +137,8 @@ structure PosixTextPrimIO : sig
 		canInput  = SOME(fn () => (checkClosed(); true)),
 		avail     = SOME o avail,
 		getPos    = SOME getPos,
-		setPos    = SOME(fn i => (
-				checkClosed();
-				if (i < 0) orelse (len < i)
-				  then raise Subscript
-				  else ();
-				pos := i)),
-        	endPos    = SOME(fn () => (checkClosed(); len)),
+		setPos    = SOME setPos,
+        	endPos    = SOME(fn () => (checkClosed(); plen)),
 		verifyPos = SOME getPos,
 		close     = fn () => closed := true,
 		ioDesc    = NONE

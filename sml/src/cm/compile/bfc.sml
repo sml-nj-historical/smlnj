@@ -60,7 +60,7 @@ struct
 
     fun getStable { stable, offset, descr } = let
 	fun work s =
-	    (Seek.seek (s, offset);
+	    (Seek.seek (s, Position.fromInt offset);
 	     (* We can use an empty static env because no
 	      * unpickling will be done. *)
 	     #contents (BF.read { arch = arch, version = version,

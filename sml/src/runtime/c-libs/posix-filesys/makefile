@@ -36,12 +36,14 @@ OBJS =	posix-filesys-lib.o \
         rmdir.o \
         readlink.o \
         stat.o \
+        stat_64.o \
         access.o \
         chmod.o \
         fchmod.o \
         chown.o \
         fchown.o \
         ftruncate.o \
+        ftruncate_64.o \
         utime.o \
         opendir.o \
         readdir.o \

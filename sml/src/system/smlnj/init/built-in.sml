@@ -163,8 +163,8 @@ in
 
     structure Word64 =
       struct
-        val extern : word64 -> word32 * word32 = InLine.cast
-	val intern : word32 * word32 -> word64 = InLine.cast
+        val extern : word64 -> word32 * word32 = InLine.w64p
+	val intern : word32 * word32 -> word64 = InLine.p64w
       end
 
     structure Int32 =
@@ -292,8 +292,8 @@ in
 
     structure Int64 =
       struct
-        val extern : int64 -> word32 * word32 = InLine.cast
-	val intern : word32 * word32 -> int64 = InLine.cast
+        val extern : int64 -> word32 * word32 = InLine.i64p
+	val intern : word32 * word32 -> int64 = InLine.p64i
       end
 
     structure Word8 =

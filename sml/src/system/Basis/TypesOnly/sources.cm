@@ -11,3 +11,9 @@ Group is
 	basis-structs.sml
 	basis-time.sml
 	bind-largest32.sml
+
+#if defined(USE_64_BIT_POSITIONS)
+	bind-position-64.sml
+#else
+	bind-position-31.sml
+#endif
