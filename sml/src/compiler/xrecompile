@@ -5,4 +5,5 @@
 mv bin.x86-unix bin.x86-unix.$$ &&
 ./xrun sml-cm <<EOF
 	CMB.make();
+	Compiler.Stats.summary();
 EOF
