@@ -12,6 +12,7 @@ is
 
 	memory.sig
 	linkage.sig
+	bitop-fn.sml
 # if (defined(ARCH_X86) orelse defined(ARCH_SPARC)) andalso defined(OPSYS_UNIX)
 	linkage-dlopen.sml
 	mlrep-i32f64.sml	(lambdasplit:infinity)

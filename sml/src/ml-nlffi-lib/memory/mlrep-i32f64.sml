@@ -18,4 +18,14 @@ structure MLRep = struct
     structure ULong = Word32
     structure Float = Real
     structure Double = Real
+
+    (* word-style bit-operations on integers... *)
+    structure SCharBitops = IntBitOps
+				(structure I = SChar structure W = UChar)
+    structure SIntBitops = IntBitOps
+			       (structure I = SInt structure W = UInt)
+    structure SShortBitops = IntBitOps
+				 (structure I = SShort structure W = UShort)
+    structure SLongBitops = IntBitOps
+				(structure I = SLong structure W = ULong)
 end

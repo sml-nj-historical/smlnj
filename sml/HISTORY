@@ -15,6 +15,22 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/18
+Tag: blume-20020118-more-ffifiddle
+Description:
+
+Today's FFI fiddling:
+
+  - Provided a structure CGetSet with "convenient" versions of C.Get.* and
+    C.Set.* that use concrete (MLRep.*) arguments and results instead
+    of abstract ones.
+
+  - Provided word-style bit operations etc. for "int" representation
+    types in MLRep.S<Foo>Bitops where <Foo> ranges over Char, Int, Short,
+    and Long.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
 Tag: blume-20020118-use-x86-fp
 Description:
 

@@ -36,6 +36,9 @@ Library
 	signature POINTER_TO_INCOMPLETE_TYPE
 	functor PointerToCompleteType
 	functor PointerToIncompleteType
+
+	signature C_GETSET
+	structure CGetSet
 is
 	$/basis.cm
 
@@ -58,3 +61,6 @@ is
 	../iptr.sig	(lambdasplit:infinity)
 	c-iptr-fn.sml	(lambdasplit:infinity)
 	i-iptr-fn.sml	(lambdasplit:infinity)
+
+	../getset.sig	(lambdasplit:infinity)
+	getset.sml	(lambdasplit:infinity)
