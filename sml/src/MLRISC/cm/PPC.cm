@@ -18,6 +18,7 @@ Library
 	functor PPCRewrite
 	functor PPCShuffle
 	functor PPCSpillInstr
+	functor PPCMacOSX_CCalls
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -46,6 +47,7 @@ is
 	Control.cm
 	Lib.cm
 #endif
+        ../ppc/c-calls/ppc-macosx.sml
 	../ppc/instructions/ppcCells.sml
 	../ppc/instructions/ppcInstr.sml
 	../ppc/instructions/ppcShuffle.sig

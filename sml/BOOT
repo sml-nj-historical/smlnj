@@ -1,6 +1,12 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2004/07/12 22:50:00 CST
+Tag: blume-110_46_1-macosx-nlffi
+Version: 110.46.1
+Location: http://smlnj.cs.uchicago.edu/dist/working/110.46.1/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2004/06/17 18:15:00 CST
 Tag: Release_110_46
 Version: 110.46

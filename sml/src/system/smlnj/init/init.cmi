@@ -153,7 +153,9 @@ ifdef ARCH_X86 \
 	bind rawmem = rawmem.sml (core, primitive, xcore)
 ifdef ARCH_SPARC \
 	bind rawmem = rawmem.sml (core, primitive, xcore)
-ifndef ARCH_X86 ifndef ARCH_SPARC \
+ifdef ARCH_PPC \
+	bind rawmem = rawmem.sml (core, primitive, xcore)
+ifndef ARCH_X86 ifndef ARCH_SPARC ifndef ARCH_PPC \
 	bind rawmem = rawmem-dummy.sml (core, primitive, xcore)
 
 bind pp = pre-perv.sml (built-in, order, xcore)

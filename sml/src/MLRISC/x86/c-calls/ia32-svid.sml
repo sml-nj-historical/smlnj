@@ -115,7 +115,7 @@ functor IA32SVID_CCalls (
       val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
     in
   (* List of registers defined by a C Call; this is the result registers
-   * plus the caller save registers.
+   * plus the caller-save registers.
    * Multiple returns have most significant register first.
    *)
     fun resultsAndDefs (Ty.C_void) = ([], callerSaves)
@@ -134,6 +134,31 @@ functor IA32SVID_CCalls (
       | resultsAndDefs (Ty.C_PTR) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_ARRAY _) = (oneRes, callerSaves)
       | resultsAndDefs (Ty.C_STRUCT _) = (oneRes, callerSaves)
+
+(**** START NEW CODE ****)
+
+  (* the location of arguments/parameters; offsets are given with respect to the
+   * low end of the parameter area (see paramAreaOffset above).
+   *)
+    datatype arg_location
+      = Reg of T.ty * T.reg * T.I.machine_int option
+					(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg * T.I.machine_int option
+					(* floating-point argument in register *)
+      | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
+      | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
+      | Args of arg_location list
+
+    fun layout {conv, retTy, paramTys} = let
+	  in
+	    raise Fail "layout not implemented yet"
+	  end
+
+  (* C callee-save registers *)
+    val calleeSaveRegs = [C.ebx, C.esi, C.edi]	(* C callee-save registers *)
+    val calleeSaveFRegs = []			(* C callee-save floating-point registers *)
+
+(**** END NEW CODE ****)
 
     fun fstp (32, f) = T.EXT(ix(IX.FSTPS(f)))
       | fstp (64, f) = T.EXT(ix(IX.FSTPL(f)))

@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/12 22:50:00 CDT
+Tag: blume-110_46_1-macosx-nlffi
+Description:
+
+NLFFI under Mac OS X now working (sort of).  This is largely untested,
+though.
+
+Note:  1. You have to make a new, clean build of the runtime system.
+       2. There are new BOOTFILES, you have to use them!
+          (Doing the bootstrap process yourself would be *very* painful!
+           If you absolutely have to do it, build the system under
+           a different architecture and then cross-compile.)
+
+Version bumped to 110.46.1 to account for runtime data format changes.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/06/18 14:30:00 CDT
 Tag: blume-20040618-unix
 Description:

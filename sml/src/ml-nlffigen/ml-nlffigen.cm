@@ -27,6 +27,7 @@ is
 
 	sizes-sparc.sml
 	sizes-x86.sml
+	sizes-ppc.sml
 
 	endian-little.sml
 	endian-big.sml
@@ -51,6 +52,13 @@ is
 	default-name-x86-win32.sml
 #   else
 #       error Operating system for X86 is neither UNIX nor WIN32!
+#   endif
+# elif defined (ARCH_PPC)
+	default-sizes-ppc.sml
+#   if defined (OPSYS_UNIX)
+	default-name-ppc-unix.sml
+#   else
+#	error Operating system for PPC is not UNIX!
 #   endif
 # else
 #       error Architecture not defined or not (yet) supported!

@@ -758,6 +758,9 @@ PPC.cm:
 	Control.cm
 	Lib.cm
 
+        (* c calls *)
+        ../ppc/c-calls/ppc-macosx.sml
+
 	(* PowerPC specific backend *)
 	../ppc/instructions/ppcCells.sml
 	../ppc/instructions/ppcInstr.sml

@@ -14,14 +14,16 @@ structure PPCCG =
     structure Asm        = PPCAsmEmitter
     structure Shuffle    = PPCShuffle
 
-    structure CCalls     = DummyCCallsFn (PPCMLTree)
+    structure CCalls     =
+      PPCMacOSX_CCalls (structure T = PPCMLTree  fun ix x = x)
+      (* DummyCCallsFn (PPCMLTree) *)
 
     structure OmitFramePtr = struct
-      exception NotImplemented
       structure CFG=PPCCFG
       structure I=PPCInstr
       val vfp = PPCCpsRegs.vfp
-      fun omitframeptr _ = raise NotImplemented
+      (* no rewriting necessary, backend does not change sp *)
+      fun omitframeptr _ = ()
     end
 
     structure MLTreeComp=
