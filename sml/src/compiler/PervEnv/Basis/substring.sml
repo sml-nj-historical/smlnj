@@ -4,8 +4,10 @@
  *
  *)
 
-structure Substring :> SUBSTRING =
-  struct
+structure Substring :> SUBSTRING
+    where type char = PrimTypes.char
+    where type string = PrimTypes.string
+  = struct
 
     structure W = InlineT.DfltWord
 
@@ -22,6 +24,8 @@ structure Substring :> SUBSTRING =
     fun rev ([], l) = l
       | rev (x::r, l) = rev (r, x::l)
 
+    type char = PrimTypes.char
+    type string = PrimTypes.string
     datatype substring = SS of (string * int * int)
 
     fun base (SS arg) = arg

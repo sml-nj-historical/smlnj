@@ -20,6 +20,7 @@ structure Char : sig
     val ctoi : char -> int = InlineT.cast
 
     type char = PrimTypes.char
+    type string = PrimTypes.string
 
     val minChar : char	= C.chr 0
     val maxChar	: char	= C.chr C.maxOrd

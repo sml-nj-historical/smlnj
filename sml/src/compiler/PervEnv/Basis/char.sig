@@ -8,6 +8,7 @@ signature CHAR =
   sig
 
     eqtype char
+    eqtype string
 
     val chr : int -> char
     val ord : char -> int
@@ -27,10 +28,10 @@ signature CHAR =
     val compare : (char * char) -> order
 
     val scan : (char, 'a) StringCvt.reader -> (char, 'a) StringCvt.reader
-    val fromString  : string -> char option
-    val toString    : char -> string
-    val fromCString : string -> char option
-    val toCString   : char -> string
+    val fromString  : String.string -> char option
+    val toString    : char -> String.string
+    val fromCString : String.string -> char option
+    val toCString   : char -> String.string
 
     val contains : string -> char -> bool
     val notContains : string -> char -> bool

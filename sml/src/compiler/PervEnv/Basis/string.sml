@@ -20,7 +20,8 @@ structure String : STRING =
     fun rev ([], l) = l
       | rev (x::r, l) = rev (r, x::l)
 
-    type string = string
+    type char = PrimTypes.char
+    type string = PrimTypes.string
 
     val maxSize = Core.max_length
 

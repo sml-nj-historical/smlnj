@@ -7,6 +7,7 @@ signature MONO_ARRAY2 =
   sig
 
     eqtype array
+    type vector
     type elem
     type region = {
 	base : array,
@@ -14,9 +15,6 @@ signature MONO_ARRAY2 =
 	nrows : int option, ncols : int option
       }
     datatype traversal = datatype Array2.traversal
-
-    structure Vector : MONO_VECTOR
-      sharing type elem = Vector.elem
 
     val array : (int * int * elem) -> array
     val fromList : elem list list -> array
@@ -26,8 +24,8 @@ signature MONO_ARRAY2 =
     val dimensions : array -> (int * int)
     val nCols : array -> int
     val nRows : array -> int
-    val row : (array * int) -> Vector.vector
-    val column : (array * int) -> Vector.vector
+    val row : (array * int) -> vector
+    val column : (array * int) -> vector
     val copy : {
 	    src : region, dst : array, dst_row : int, dst_col : int
 	  } -> unit

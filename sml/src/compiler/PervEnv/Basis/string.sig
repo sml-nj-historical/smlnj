@@ -1,12 +1,12 @@
 (* string.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
- *
  *)
 
 signature STRING =
   sig
-    type string
+    eqtype char
+    eqtype string
 
     val maxSize : int
 
@@ -20,10 +20,10 @@ signature STRING =
     val implode   : char list -> string
     val explode   : string -> char list
 
-    val fromString  : string -> string option
-    val toString    : string -> string
-    val fromCString : string -> string option
-    val toCString   : string -> string
+    val fromString  : String.string -> string option
+    val toString    : string -> String.string
+    val fromCString : String.string -> string option
+    val toCString   : string -> String.string
 
     val map       : (char -> char) -> string -> string
     val translate : (char -> string) -> string -> string

@@ -58,6 +58,10 @@ structure StringCvt =
     type ('a, 'b) reader = 'b -> ('a * 'b) option
   end;
 
+structure String =
+  struct
+    type string = PrimTypes.string
+  end
 
 (*
  * $Log$
