@@ -495,7 +495,7 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
 	       | VECTORexp (el, _) => app findexp el
 	       | PACKexp (e, _, _) => findexp e
 	       | (CONexp _ | INTexp _ | WORDexp _ | REALexp _ | STRINGexp _ |
-		  CHARexp _) => ())
+		  CHARexp _ | STAMPexp _) => ())
 
           and finddec d =
             (case d

@@ -568,6 +568,7 @@ fun isValue { ii_ispure } = let
       | isval (WORDexp _) = true
       | isval (REALexp _) = true
       | isval (STRINGexp _) = true
+      | isval (STAMPexp _) = true
       | isval (CHARexp _) = true
       | isval (FNexp _) = true
       | isval (RECORDexp fields) =

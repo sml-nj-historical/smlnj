@@ -244,6 +244,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	  | ppExp'(WORDexp(w,t),_,_) = ppsay(IntInf.toString w)
 	  | ppExp'(REALexp r,_,_) = ppsay r
 	  | ppExp'(STRINGexp s,_,_) = pp_mlstr ppstrm s
+	  | ppExp'(STAMPexp _,_,_) = ppsay "<stamp>" (* FIXME *)
 	  | ppExp'(CHARexp s,_,_) = (ppsay "#"; pp_mlstr ppstrm s)
 	  | ppExp'(r as RECORDexp fields,_,d) =
 	      if isTUPLEexp r

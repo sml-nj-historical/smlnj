@@ -13,8 +13,8 @@ val quoteDcon = [strSymbol "SMLofNJ", varSymbol "QUOTE"]
 val antiquoteDcon = [strSymbol "SMLofNJ", varSymbol "ANTIQUOTE"]
 val arrowTycon = tycSymbol "->"
 val exnID = Symbol.tycSymbol "exn"
+val pluginID = Symbol.varSymbol "<plugin>"
 val bogusID = varSymbol "BOGUS"
-val pluginID = varSymbol "<plugin>"
 val itsym = [varSymbol "it"]
 
 fun checkFix (i, err) =

@@ -56,6 +56,8 @@ datatype ptyc
 
   | PT_INTINF
 
+  | PT_PLUGIN
+
 (** the primtive type constructor *)
 type primtyc = ptyc * int * int
 
@@ -86,6 +88,7 @@ val ptc_barray = (PT_BARRAY,0, PTN.ptn_barray)
 val ptc_rarray = (PT_RARRAY,0, PTN.ptn_rarray)
 val ptc_slock  = (PT_SLOCK, 0, PTN.ptn_slock)
 val ptc_intinf = (PT_INTINF,0, PTN.ptn_intinf)
+val ptc_plugin = (PT_PLUGIN,0, PTN.ptn_plugin)
 
 
 (** get the arity of a particular primitive tycon *)
@@ -101,7 +104,7 @@ val pt_fromint = let
 	 ptc_ref, ptc_list, ptc_etag, ptc_cont, ptc_ccont,
 	 ptc_arrow, ptc_option, ptc_boxed, ptc_tgd, ptc_utgd,
 	 ptc_tnsp, ptc_dyn, ptc_obj, ptc_cfun, ptc_barray,
-	 ptc_rarray, ptc_slock, ptc_intinf]
+	 ptc_rarray, ptc_slock, ptc_intinf, ptc_plugin]
     fun gt ((_, _, n1), (_, _, n2)) = n1 > n2
     val ptvec = Vector.fromList (ListMergeSort.sort gt ptlist)
 in
@@ -137,6 +140,7 @@ fun pt_print (pt, _, _) =
         | g (PT_RARRAY) = "RA"
         | g (PT_SLOCK)  = "SL"
 	| g (PT_INTINF) = "II"
+	| g PT_PLUGIN = "PL"
    in g pt
   end
 

@@ -17,7 +17,7 @@ signature CCONFIG = sig
 	exportLvars: Access.lvar list,
 	exportPid: pid option,
 	newenv: StaticEnv.staticEnv,
-	stampConverter: Stamps.converter }
+	stamp2string: Stamps.stamp -> string }
 
   val mkMkStamp : unit -> Stamps.generator
 end (* signature CCONFIG *)

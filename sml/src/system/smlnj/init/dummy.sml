@@ -1,7 +1,7 @@
 (* Copyright 1996 by Bell Laboratories *)
 (* dummy.sml *)
 
-structure Assembly :> ASSEMBLYBOXED =
+structure Assembly :> ASSEMBLYBOXED where type object = object =
   struct
     type object = object
     datatype 'a option = NONE | SOME of 'a

@@ -9,6 +9,7 @@ sig
 		   exportLvars: Access.lvar list,
                    env: StaticEnv.staticEnv,
 		   cproto_conv: string,
+		   stamp2string: Stamps.stamp -> string,
 		   compInfo: Absyn.dec CompInfo.compInfo }
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
@@ -93,7 +94,7 @@ exception NoCore
  ****************************************************************************)
 
 fun transDec
-	{ rootdec, exportLvars, env, cproto_conv,
+	{ rootdec, exportLvars, env, cproto_conv, stamp2string,
 	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo } =
 let 
 
@@ -129,13 +130,6 @@ fun toDconLty d ty =
                                               body=BT.-->(BT.unitTy, body)}})
      | _ => if BT.isArrowType ty then toLty d ty
             else toLty d (BT.-->(BT.unitTy, ty)))
-
-(** the special lookup functions for the Core environment *)
-fun coreLookup(id, env) = 
-  let val sp = SymPath.SPATH [CoreSym.coreSym, S.varSymbol id]
-      val err = fn _ => fn _ => fn _ => raise NoCore
-   in Lookup.lookVal(env, sp, err)
-  end
 
 fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
   | CON' ((_, DA.SUSP (SOME(DA.LVAR d, _)), lt), ts, e) =
@@ -1144,6 +1138,11 @@ and mkExp (exp, d) =
 
         | g (REALexp s) = REAL s
         | g (STRINGexp s) = STRING s
+	| g (STAMPexp s) = let val s' = stamp2string s
+			   in
+			       print (concat ["STAMP: ", s', "\n"]);
+			       STRING s'
+			   end
         | g (CHARexp s) = INT (Char.ord(String.sub(s, 0)))
              (** NOTE: the above won't work for cross compiling to 
                        multi-byte characters **)

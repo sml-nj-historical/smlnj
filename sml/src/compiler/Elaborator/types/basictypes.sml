@@ -98,6 +98,10 @@ val arrayTycon = (* mkpt("array", 1, OBJ, PTN.ptn_array) *) CBT.arrayTycon
 val vectorTycon = (* mkpt("vector", 1, YES, PTN.ptn_vector) *) CBT.vectorTycon
 
 val objectTycon = mkpt("object", 0, NO, PTN.ptn_obj)
+val objectTy = CONty (objectTycon, [])
+
+val pluginTycon = mkpt ("plugin", 0, NO, PTN.ptn_plugin)
+val pluginTy = CONty (pluginTycon, [])
 
 val c_functionTycon = mkpt("c_function", 0, NO, PTN.ptn_cfun)
 

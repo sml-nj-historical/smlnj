@@ -29,7 +29,7 @@ signature COMPILE0 = sig
 			 exportPid: pid option,
 			 staticPid: hash,
 			 pickle: pickle,
-			 stampConverter: Stamps.converter }
+			 stamp2string: Stamps.stamp -> string }
 
     (** elaborate as above, then keep on to compile into the binary code *)
     val compile : { source: Source.inputSource,

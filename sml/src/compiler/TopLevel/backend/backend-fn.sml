@@ -17,6 +17,9 @@ functor BackendFn (structure M : CODEGENERATOR
 		       type pickle = unit
 		       type hash = unit
 		       type pid = PersStamps.persstamp
+		       val stampGen = Stamps.newGenerator ()
+		       val stampConv = Stamps.newConverter ()
+		       fun mkMkStamp () = stampGen (* always the same *)
 		       type guid = unit
 		       local
 			   val topCount = ref 0
@@ -24,10 +27,18 @@ functor BackendFn (structure M : CODEGENERATOR
 		           fun pickUnpick { context, env = newenv, guid } = let
 			       val _ = topCount := !topCount + 1
 			       val { newenv = newenv', hash,
-				     exportLvars, hasExports,
-				     stampConverter } = 
+				     exportLvars, hasExports } =
 				   PickMod.dontPickle { env = newenv,
 							count = !topCount }
+			       fun stamp2string s =
+				   Stamps.Case stampConv s
+				    { fresh = fn i =>
+						 "toplevel::" ^ Int.toString i,
+				      global = fn { pid, cnt } =>
+						  concat [PersStamps.toHex pid,
+							  ":",
+							  Int.toString cnt],
+				      special = fn s => s }
 			   in
 			       { pid = (),
 				 pickle = (),
@@ -35,15 +46,10 @@ functor BackendFn (structure M : CODEGENERATOR
 				 exportPid = if hasExports then SOME hash
 					     else NONE,
 				 newenv = newenv',
-				 stampConverter = stampConverter }
+				 stamp2string = stamp2string }
 			   end
 		       end
 
-		       local
-			   val stampGen = Stamps.newGenerator ()
-		       in
-		           fun mkMkStamp () = stampGen (* always the same *)
-		       end
 		   end)))
 
     structure Compile =
@@ -67,13 +73,24 @@ functor BackendFn (structure M : CODEGENERATOR
 		      val pid = Rehash.addGUID { hash = hash, guid = guid }
 		      val newenv' =
 			  UnpickMod.unpickleEnv up_context (pid, pickle)
+		      fun stamp2string s =
+			  let fun pair (pid, i) =
+				  concat [PersStamps.toHex pid, ":",
+					  Int.toString i]
+			  in
+			      Stamps.Case stampConverter s
+					  { fresh = fn i => pair (pid, i),
+					    global = fn { pid, cnt } =>
+							pair (pid, cnt),
+					    special = fn s => s }
+			  end
 		  in
 		      { pid = pid,
 			pickle = pickle,
 			exportLvars = exportLvars,
 			exportPid = if hasExports then SOME pid else NONE,
 			newenv = newenv',
-			stampConverter = stampConverter }
+			stamp2string = stamp2string }
 		  end
 
 		  val mkMkStamp = Stamps.newGenerator

@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
 
-structure Object :> UNSAFE_OBJECT =
+structure Object :> UNSAFE_OBJECT where type object = Core.Assembly.object =
   struct
     type object = Core.Assembly.object
 

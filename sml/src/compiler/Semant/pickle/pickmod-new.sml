@@ -65,8 +65,7 @@ signature PICKMOD = sig
     val dontPickle : 
 	{ env: StaticEnv.staticEnv, count: int } ->
         { newenv: StaticEnv.staticEnv, hash: PersStamps.persstamp,
-	  exportLvars: Access.lvar list, hasExports: bool,
-	  stampConverter: Stamps.converter }
+	  exportLvars: Access.lvar list, hasExports: bool }
 end
 
 local
@@ -1308,8 +1307,7 @@ in
 	val hasExports = not (List.null lvars)
     in
 	{ newenv = newenv, hash = hash,
-	  exportLvars = rev lvars, hasExports = hasExports,
-	  stampConverter = Stamps.newConverter () }
+	  exportLvars = rev lvars, hasExports = hasExports }
     end
   end
 end

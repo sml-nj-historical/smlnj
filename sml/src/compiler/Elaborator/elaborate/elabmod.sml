@@ -720,31 +720,45 @@ fun elab (BaseStr decl, env, entEnv, region) =
        in (resDec, bodyStr, resExp, EE.mark(mkStamp,EE.atopSp(bodyDee,entEnv')))
       end
   | elab (PluginStr { def, sgn }, env, entEnv, region) = let
-	(* FIXME FIXME FIXME *)
 	val sg = LU.lookSig (env, sgn, error region)
-	val { rlzn, tycpaths } =
-	    (* ??? What do we do with tycpaths? *)
+	val { rlzn, ... } =
 	    INS.instParam { sign = sg,
 			    entEnv = entEnv,
-			    depth = depth, (* ?? *)
+			    (* After consultation with Zhong, we agreed
+			     * that the depth parameter should not matter
+			     * since the signature to be instantiated is
+			     * a top-level signature which does not refer
+			     * to any functor-parameter-bound types: *)
+			    depth = DI.top, (* ok, according to Zhong *)
 			    rpath = rpath,
 			    region = region,
 			    compInfo = compInfo }
     in
-	case LU.lookVal (env, SP.SPATH [def], error region) of
-	    V.VAL (V.VALvar { access, typ, ... }) => let
-		(* !!! typ must be "plugin * stamp" *)
-		val resStr = M.STR { sign = sg,
-				     rlzn = rlzn,
-				     (* This is definitely the wrong access:
-				      * We need to fish out the stamp and check
-				      * it.  Then we need to fish out the
-				      * structure access and use that.
-				      * FIXME!!! *)
-				     access = access,
-				     info = II.Null }
+	case (sg, LU.lookVal (env, SP.SPATH [def], error region)) of
+	    (M.SIG { stamp, ... },
+	     V.VAL (pv as V.VALvar { access, typ, ... })) => let
+		val tmpsy = Symbol.varSymbol "<plugin>"
+		val a = Access.namedAcc (tmpsy, mkv)
+		val tmpv =
+		    V.VALvar
+			{ access = a, info = II.Null, path = SP.SPATH [tmpsy],
+			  typ = ref BasicTypes.pluginTy }
+
+		(* a plugin is a pair of "stamp" * "structure" *)
+		val resStr = M.STR { sign = sg, rlzn = rlzn,
+				     access = a, info = II.Null }
+
+		val gtp = CoreAccess.getVar (env, "getplugin")
 	    in
-		(A.SEQdec [], resStr, M.CONSTstr rlzn, EE.empty)
+		(A.SEQdec [A.VALdec
+			       [A.VB { pat = A.VARpat tmpv,
+				       exp = A.APPexp (A.VARexp (ref gtp, []),
+						       EU.TUPLEexp
+							   [A.STAMPexp stamp,
+							    A.VARexp (ref pv, [])]),
+				       boundtvs = [],
+				       tyvars = ref [] }]],
+		 resStr, M.CONSTstr rlzn, EE.empty)
 	    end
 	  | _ => bug "elabmod:PluginStr:lookVal"
     end

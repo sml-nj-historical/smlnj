@@ -624,6 +624,8 @@ in
            let val (rules',ty,rty) = matchType(rules,occ,region)
             in (FNexp(rules',ty),rty)
            end
+       | STAMPexp _ =>
+	   (exp, stringTy)
        | MARKexp(e,region) => 
            let val (e',et) = expType(e,occ,region)
             in (MARKexp(e',region),et)

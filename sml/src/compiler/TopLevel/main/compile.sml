@@ -42,11 +42,11 @@ struct
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
-	val { pid, pickle, exportLvars, exportPid, newenv, stampConverter } =
+	val { pid, pickle, exportLvars, exportPid, newenv, stamp2string } =
 	    pickUnpick { context = senv, env = nenv, guid = guid }
     in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
 	exportLvars=exportLvars, staticPid = pid, pickle = pickle,
-	stampConverter = stampConverter }
+	stamp2string = stamp2string }
     end (* function elaborate *)
 
     val elaborate =
@@ -87,7 +87,8 @@ struct
      *************************************************************************)
 
     (** take the abstract syntax tree, generate the flint intermediate code *)
-    fun translate{absyn, exportLvars, newstatenv, oldstatenv, compInfo} =
+    fun translate{absyn, exportLvars, newstatenv, oldstatenv,
+		  stamp2string, compInfo} =
 	(*** statenv used for printing Absyn in messages ***)
 	let val statenv = StaticEnv.atop (newstatenv, oldstatenv)
 	in
@@ -95,6 +96,7 @@ struct
 				 exportLvars = exportLvars,
 				 env = statenv,
 				 cproto_conv = cproto_conv,
+				 stamp2string = stamp2string,
 				 compInfo = compInfo }
 	end
 
@@ -144,7 +146,7 @@ struct
     fun compile {source, ast, statenv, symenv, compInfo=cinfo,
 		 checkErr=check, splitting, guid } = 
 	let val {absyn, newstatenv, exportLvars, exportPid,
-		 staticPid, pickle, stampConverter } =
+		 staticPid, pickle, stamp2string } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
 			   guid = guid}
 		before (check "elaborate")
@@ -156,7 +158,7 @@ struct
 	    val {flint, imports} = 
 		translate {absyn=absyn, exportLvars=exportLvars, 
 			   newstatenv=newstatenv, oldstatenv=statenv, 
-			   compInfo=cinfo}
+			   compInfo=cinfo, stamp2string=stamp2string}
 		before check "translate"
 
 	    val { csegments, inlineExp, imports = revisedImports } = 

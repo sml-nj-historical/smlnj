@@ -26,6 +26,7 @@ signature PRIM_TYC_NUM = sig
     val ptn_rarray : int
     val ptn_slock : int
     val ptn_intinf : int
+    val ptn_plugin : int
 end
 
 structure PrimTycNum : PRIM_TYC_NUM = struct
@@ -54,7 +55,8 @@ structure PrimTycNum : PRIM_TYC_NUM = struct
     val ptn_rarray = ptn 14
     val ptn_slock = ptn 15
     val ptn_intinf = ptn 16
+    val ptn_plugin = ptn 17
 
-    val next_free_ptn = ptn 17
+    val next_free_ptn = ptn 18
     end
 end

@@ -32,7 +32,8 @@ datatype exp
   | FNexp of rule list * Types.ty         
   | LETexp of dec * exp
   | SEQexp of exp list
-  | CONSTRAINTexp of exp * Types.ty         
+  | CONSTRAINTexp of exp * Types.ty
+  | STAMPexp of Stamps.stamp		(* string corresponding to stamp *)
   | MARKexp of exp * region
 
 and rule = RULE of pat * exp

@@ -26,6 +26,7 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
   | expType(INTexp _) = intTy
   | expType(WORDexp _) = wordTy
   | expType(STRINGexp _) = stringTy
+  | expType(STAMPexp _) = stringTy
   | expType(CHARexp _) = charTy
   | expType(REALexp _) = realTy
   | expType(RECORDexp fields) =

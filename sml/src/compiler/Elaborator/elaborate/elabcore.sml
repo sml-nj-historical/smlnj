@@ -599,9 +599,31 @@ let
 		end,
 		TS.empty, no_updt)
 	   | FlatAppExp items => elabExp(expParse(items,env,error),env,region)
-	   (* FIXME: *)
+
 	   | StructurePluginExp { str, sgn } =>
-	       raise Fail "elabcore:StructurePluginExp:not yet implemented")
+	     let fun errcase () = (TUPLEexp [], TS.empty, no_updt)
+	     in
+		 case LU.lookSig (env, sgn, error region) of
+		     M.SIG { stamp, ... } =>
+		       (case LU.lookStr (env, SP.SPATH str, error region) of
+			    M.STR { access, ... } => let
+				val mkp = CoreAccess.getVar (env, "mkplugin")
+				val a =
+				    VALvar { path = SP.SPATH [],
+					     typ = ref (T.CONty
+							 (BT.objectTycon, [])),
+					     access = access,
+					     info = II.Null }
+			    in
+				(APPexp (VARexp (ref mkp, []),
+					 TUPLEexp [STAMPexp stamp,
+						   VARexp (ref a, [])]),
+				 TS.empty, no_updt)
+			    end
+			  | M.STRSIG _ => bug "StructurePluginExp:STRSIG"
+			  | M.ERRORstr => errcase ())
+		   | M.ERRORsig => errcase ()
+	     end)
 
     and elabELabel(labs,env,region) =
 	let val (les1,lvt1,updt1) =

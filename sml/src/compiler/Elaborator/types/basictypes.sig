@@ -49,6 +49,11 @@ sig
   val vectorTycon : Types.tycon
 
   val objectTycon : Types.tycon
+  val objectTy : Types.ty
+
+  val pluginTycon : Types.tycon
+  val pluginTy : Types.ty
+
   val c_functionTycon : Types.tycon
   val word8arrayTycon : Types.tycon
   val real64arrayTycon : Types.tycon

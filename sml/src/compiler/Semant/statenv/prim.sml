@@ -72,6 +72,7 @@ val primTypes =
              ("array", BT.arrayTycon) :-:
              ("vector", BT.vectorTycon) :-:
              ("object", BT.objectTycon) :-:
+	     ("plugin", BT.pluginTycon) :-:
              ("c_function", BT.c_functionTycon) :-:
              ("word8array", BT.word8arrayTycon) :-:
              ("real64array", BT.real64arrayTycon) :-:
