@@ -48,7 +48,7 @@ sig
           edges           : unit -> 'e edge list,
           order           : unit -> int,	(* # nodes *)
           size            : unit -> int,	(* # edges *)
-          capacity        : unit -> int,
+          capacity        : unit -> int,	(* max. node_id < capacity *)
           succ            : node_id -> node_id list,
           pred            : node_id -> node_id list,
           out_edges       : node_id -> 'e edge list,
