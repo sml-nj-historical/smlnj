@@ -1,0 +1,61 @@
+(*
+ * This library implements various compiler data structures and graphs.
+ *)
+
+Library
+	signature CONTROL_DEPENDENCE_GRAPH
+	functor ControlDependenceGraphFn
+	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
+	functor ControlFlowGraphRestructureFn
+	signature COMPUTE_FREQUENCIES
+	functor ComputeFrequenciesFn
+	signature COMPUTE_FREQUENCIES2
+	functor ComputeFrequencies2Fn
+	signature DERIVED_GRAPH
+	functor DerivedGraphFn
+	signature DJ_GRAPH
+	functor DJGraphFn
+	signature DOMINANCE_FRONTIERS
+	functor DominanceFrontiersFn
+	signature DOMINATOR_TREE
+	functor DominatorTreeFn
+	signature IDEFS
+	structure IDefs
+	signature LOOP_STRUCTURE
+	functor LoopStructureFn
+	signature REDUCIBILITY
+	functor ReducibilityFn
+	signature STATIC_SINGLE_ASSIGNMENT_FORM
+	functor StaticSingleAssignmentFormFn
+is
+	basis.cm
+	comp-lib.cm
+	smlnj-lib.cm
+	MLRISC-Lib.cm
+	MLRISC-Graphs.cm
+
+	ir/cdg.sig
+	ir/cdg.sml
+	ir/cfg-restructure.sig
+	ir/cfg-restructure.sml
+	ir/compute-freq.sig
+	ir/compute-freq.sml
+	ir/compute-freq2.sig
+	ir/compute-freq2.sml
+	ir/derived-graph.sig
+	ir/derived-graph.sml
+	ir/djgraph.sig
+	ir/djgraph.sml
+	ir/dominance-frontier.sig
+	ir/dominance-frontier.sml
+	ir/dominator.sig
+	ir/dominator.sml
+	ir/idefs2.sig
+	ir/idefs2.sml
+	ir/loop-structure.sig
+	ir/loop-structure.sml
+	ir/reducibility.sig
+	ir/reducibility.sml
+	ir/ssa.sig
+	ir/ssa.sml
+

@@ -1,0 +1,47 @@
+(* ALPHA-MLRISC.cm
+ *
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * Alpha specific modules for MLRISC code generation framework.
+ *)
+
+Library
+
+	signature ALPHACELLS
+	structure AlphaCells
+	signature ALPHAINSTR
+	functor AlphaInstr
+	signature ALPHASHUFFLE
+	functor AlphaShuffle
+	functor AlphaProps
+	functor AlphaFreqProps
+	functor AlphaAsmEmitter
+	functor AlphaMCEmitter
+	functor AlphaJumps
+	signature ALPHA_PSEUDO_INSTR
+	functor Alpha
+	functor AlphaRewrite
+is
+
+#if defined(NEW_CM)
+	basis.cm
+#endif
+	MLRISC.cm
+	MLRISC-Lib.cm
+	smlnj-lib.cm
+
+	comp-lib.cm	(* should get rid of this eventually *)
+
+	(* Alpha specific backend *)
+	alpha/instructions/alphaCells.sml
+	alpha/instructions/alphaInstr.sml
+	alpha/instructions/alphaShuffle.sig
+	alpha/instructions/alphaShuffle.sml
+	alpha/instructions/alphaProps.sml
+	alpha/instructions/alphaFreqProps.sml
+	alpha/emit/alphaAsm.sml
+	alpha/emit/alphaMC.sml
+	alpha/backpatch/alphaJumps.sml
+	alpha/mltree/alphaPseudoInstr.sig
+	alpha/mltree/alpha.sml
+	alpha/ra/alphaRewrite.sml

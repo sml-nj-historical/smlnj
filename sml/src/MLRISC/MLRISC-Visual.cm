@@ -1,0 +1,26 @@
+(*
+ * This library implements visualization of graphs
+ *)
+
+Library
+	functor AllDisplaysFn
+	structure daVinci
+	structure Dot
+	signature GRAPH_DISPLAY
+	structure GraphLayout
+	signature GRAPH_VIEWER
+	functor GraphViewerFn
+	structure VCG
+is
+	basis.cm
+	MLRISC-Lib.cm
+	MLRISC-Graphs.cm
+
+	visualization/allDisplays.sml
+	visualization/daVinci.sml
+	visualization/dot.sml
+	visualization/graphDisplay.sig
+	visualization/graphLayout.sml
+	visualization/graphViewer.sig
+	visualization/graphViewer.sml
+	visualization/vcg.sml
