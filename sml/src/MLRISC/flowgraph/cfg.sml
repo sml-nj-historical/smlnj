@@ -272,9 +272,23 @@ struct
         jmp
     end
 
+   local
+     fun getNode (G.GRAPH{node_info, ...}, id) = (id, node_info id)
+   in
+   fun entryId (G.GRAPH{entries, ...}) = (case entries()
+	   of [id] => id
+	    | _ => error "no unique entry block"
+	  (* end case *))
+   fun entry cfg = getNode(cfg, entryId cfg)
+   fun exitId (G.GRAPH{exits, node_info, ...}) = (case exits()
+	   of [id] => id
+	    | _ => error "no unique exit block"
+	  (* end case *))
+   fun exit cfg = getNode(cfg, exitId cfg)
+   end
 
-  exception Can'tMerge
-  exception NotFound
+   exception Can'tMerge
+   exception NotFound
 
    fun labelOf(G.GRAPH cfg) node = defineLabel(#node_info cfg node)
 

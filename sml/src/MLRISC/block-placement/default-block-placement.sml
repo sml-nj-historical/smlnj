@@ -35,14 +35,8 @@ functor DefaultBlockPlacement (CFG : CONTROL_FLOW_GRAPH) : BLOCK_PLACEMENT =
 		else ()
 	(* special case the entry and exit blocks *)
 	  fun getBlk id = (id, #node_info graph id)
-	  val entry = (case #entries graph ()
-		 of [id] => (mark id; getBlk id)
-		  | _ => error "entry block"
-		(* end case *))
-	  val exit = (case #exits graph ()
-		 of [id] => (mark id; getBlk id)
-		  | _ => error "exit block"
-		(* end case *))
+	  val entry = CFG.entry cfg
+	  val exit = CFG.exit cfg
 	(* return true if the edge must connect adjacent nodes *)
 	  fun adjEdge (_, _, CFG.EDGE{k=CFG.FALLSTHRU, ...}) = true
 	    | adjEdge (_, _, CFG.EDGE{k=CFG.BRANCH false, ...}) = true

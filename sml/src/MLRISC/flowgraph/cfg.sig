@@ -157,6 +157,10 @@ sig
    val setBranch      : cfg * Graph.node_id * bool -> I.instruction
    val edgeDir        : edge_info Graph.edge -> bool option
 
+   val entryId : cfg -> Graph.node_id	(* the unique entry node ID *)
+   val exitId : cfg -> Graph.node_id	(* the unique exit node ID *)
+   val entry : cfg -> node		(* the unique entry node *)
+   val exit : cfg -> node		(* the unique exit node *)
 
    (*=======================================================================
     *
