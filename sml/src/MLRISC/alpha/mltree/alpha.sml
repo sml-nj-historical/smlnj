@@ -1352,7 +1352,7 @@ struct
                 | (T.NE,(true,e),ONE)  => (I.CMOVLBC,expr e,x,y)
                      (* signed  *)
                 | (T.EQ,_,_)           => (I.CMOVEQ,sub(a,b),x,y)
-                | (T.NE,_,_)           => (I.CMOVEQ,cmp(T.EQ,a,b),y,x)
+                | (T.NE,_,_)           => (I.CMOVNE,sub(a,b),x,y)
                 | (T.GT,_,_)           => (I.CMOVGT,sub(a,b),x,y)
                 | (T.GE,_,_)           => (I.CMOVGE,sub(a,b),x,y)
                 | (T.LT,_,_)           => (I.CMOVLT,sub(a,b),x,y)

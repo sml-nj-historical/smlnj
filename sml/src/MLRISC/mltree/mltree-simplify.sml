@@ -1329,7 +1329,7 @@ struct
                                   let val n = v_2
                                       and ty = v_1
                                       and ty' = v_0
-                                  in T.LI (I.SX (ty, ty', n))
+                                  in T.LI (I.ZX (ty, ty', n))
                                   end
                                 | _ => state_193 v_3
                                 ))

@@ -11,6 +11,16 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/02/27 23:07:00 EST
+Tag: leunga-20010227-minor-stuff
+
+1. Alpha bug fix for CMOVNE
+2. Handle mltree COND(..,FCMP ...,...)
+3. Bug fix in simplifier
+
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/01/30 17:50:00 EST

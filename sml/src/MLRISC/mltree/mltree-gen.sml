@@ -115,6 +115,13 @@ struct
        | T.COND(ty,T.CMP(t,cc,e1,e2),x as (T.LI 0 | T.LI32 0w0),y) => 
            T.COND(ty,T.CMP(t,T.Basis.negateCond cc,e1,e2),y,T.LI 0)
            (* we'll let others strength reduce the multiply *)
+       | T.COND(ty,cc as T.FCMP _, yes, no) =>
+         let val tmp = C.newReg()
+         in  T.LET(T.SEQ[T.MV(ty, tmp, no),
+                         T.IF(cc, T.MV(ty, tmp, yes), T.SEQ [])],
+                   T.REG(ty,tmp)
+                  )
+         end
        | T.COND(ty,cc,e1,(T.LI 0 | T.LI32 0w0)) => 
            T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),e1)
        | T.COND(ty,cc,T.LI m,T.LI n) =>
