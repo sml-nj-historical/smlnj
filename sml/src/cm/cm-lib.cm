@@ -84,13 +84,27 @@ is
 	(* CM-internal libraries *)
 	util/sources.cm
 
+#if defined(NEW_CM)
+	basis.cm
+
+	(* compiler libraries *)
+	viscomp-lib.cm
+	comp-lib.cm
+
+	(* auxiliary libraries *)
+	ml-yacc-lib.cm
+#else
 	(* compiler libraries *)
 	../compiler/viscomp-lib.cm
 	../comp-lib/UTIL.cm
 
 	(* auxiliary libraries *)
 	../ml-yacc/lib/sources.cm
+#endif
 
 	(* dummy modules for testing *)
 	dummy.sml
 	link.sml
+
+	(* just a test... *)
+	sparc.sml

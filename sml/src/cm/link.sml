@@ -171,12 +171,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	structure BootstrapCompile =
 	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
 				val os = os)
-	fun make () =
+	fun make st =
 	    BootstrapCompile.compile
 	        { binroot = "xxx.bin.xxx",
 		  pcmodespec = "pathconfig",
 		  initgspec = "Init/spec.cmi",
-		  maingspec = "Libs/main.cm" }
+		  maingspec = "Libs/main.cm",
+		  stabilize = st }
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()
 	fun make' _ = ()

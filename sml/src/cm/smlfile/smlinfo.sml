@@ -259,12 +259,12 @@ structure SmlInfo :> SMLINFO = struct
 
     fun parsetree gp i = getParseTree gp (i, true, true)
 
-    fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
+    fun spec (INFO { sourcepath, ... }) = AbsPath.specOf sourcepath
     fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [AbsPath.spec (#1 group), "(", AbsPath.spec sourcepath, ")"]
+	concat [AbsPath.specOf (#1 group), "(", AbsPath.specOf sourcepath, ")"]
     fun name (INFO { sourcepath, ... }) = AbsPath.name sourcepath
     fun fullName (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
-	concat [AbsPath.name (#1 group), "(", AbsPath.spec sourcepath, ")"]
+	concat [AbsPath.name (#1 group), "(", AbsPath.specOf sourcepath, ")"]
 
     fun errorLocation (gp: GeneralParams.info) (INFO i) = let
 	val { persinfo = PERS { group = (group, reg), ... }, ... } = i

@@ -36,6 +36,11 @@ is
 	tstamp.sml
 	seek.sml
 
+#if defined(NEW_CM)
+	basis.cm
+	viscomp-lib.cm
+	smlnj-lib.cm
+#else
 	../../compiler/viscomp-lib.cm
-
 	../../smlnj-lib/Util/sources.cm
+#endif

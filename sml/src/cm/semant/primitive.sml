@@ -109,6 +109,6 @@ structure Primitive :> PRIMITIVE = struct
 	     i + 1)
 	val (sm, sl, _) = foldr one (StringMap.empty, [], 0) l
     in
-	(sm, Vector.fromList sl)
+	(sm, Vector.fromList (rev sl))
     end
 end

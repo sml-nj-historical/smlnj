@@ -65,7 +65,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 			in
 			    PrettyPrint.add_string pps s;
 			    PrettyPrint.add_string pps ": importing ";
-			    PrettyPrint.add_string pps (AbsPath.spec g0);
+			    PrettyPrint.add_string pps (AbsPath.specOf g0);
 			    PrettyPrint.add_newline pps;
 			    loop (g, t)
 			end
@@ -76,7 +76,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    in
 		EM.error s (p1, p2) EM.COMPLAIN
 		           ("group hierarchy forms a cycle with " ^
-			    AbsPath.spec group)
+			    AbsPath.specOf group)
 			   pphist
 	    end
 
@@ -99,7 +99,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
-		val context = AbsPath.relativeContext (AbsPath.dir group)
+		val context = AbsPath.sameDirContext group
 		val filename = AbsPath.name group
 		val _ = Say.vsay ["[scanning ", filename, "]\n"]
 

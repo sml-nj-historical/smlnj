@@ -53,7 +53,8 @@ structure SymVal :> SYMVAL = struct
 			      (size_sym, 1),
 			      (os_sym, 1),
 			      (major_sym, major),
-			      (minor_sym, minor)]
+			      (minor_sym, minor),
+			      ("NEW_CM", 1)]
 
 	val alldefs =
 	    case extra_arch of

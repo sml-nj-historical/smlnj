@@ -73,11 +73,19 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	in
 	    Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
 	end
-	fun i_error (s, x as (fn1, _), (fn2, _)) =
-	    (error (concat (describeSymbol
-			    (s, [" imported from ", DG.describeFarSBN fn1,
-				 " and also from ", DG.describeFarSBN fn2])));
-	     x)
+	fun i_error (s, x as ((f, sbn), e), ((f', sbn'), e')) = let
+	    fun complain () =
+		error (concat (describeSymbol
+			       (s, [" imported from ", DG.describeSBN sbn,
+				    " and also from ", DG.describeSBN sbn'])))
+	    fun union (NONE, _) = NONE
+	      | union (_, NONE) = NONE
+	      | union (SOME f, SOME f') = SOME (SymbolSet.union (f, f'))
+	in
+	    if DG.sbeq (sbn, sbn') then
+		((union (f, f'), sbn), DAEnv.LAYER (e, e'))
+	    else (complain (); x)
+	end
 	val i_union = SymbolMap.unionWithi i_error
 	val gi_union = SymbolMap.unionWith #1
 	fun ld_error (s, f1, f2) =
@@ -146,7 +154,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	end
     in
 	if isSome class then noPrimitive ()
-	else case Primitive.fromString primconf (AbsPath.spec sourcepath) of
+	else case Primitive.fromString primconf (AbsPath.specOf sourcepath) of
 	    SOME p => let
 		val exports = Primitive.exports primconf p
 		val env = Primitive.da_env primconf p

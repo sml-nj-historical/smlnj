@@ -11,7 +11,7 @@ signature FILENAMEPOLICY = sig
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
     val colocate : policyMaker
-    val separate : AbsPath.t -> policyMaker
+    val separate : string -> policyMaker
 
     val mkBinPath : policy -> AbsPath.t -> AbsPath.t
     val mkSkelPath : policy -> AbsPath.t -> AbsPath.t
@@ -49,7 +49,6 @@ functor FilenamePolicyFn (val cmdir : string
     val colocate = mkPolicy (fn p => p)
 
     fun separate root = let
-	val root = AbsPath.relativeContext root
 	fun shift p =
 	    case AbsPath.reAnchor (p, root) of
 		SOME p' => p'

@@ -34,7 +34,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
 
-	val context = AbsPath.relativeContext (AbsPath.dir specgroup)
+	val context = AbsPath.sameDirContext specgroup
 	val specname = AbsPath.name specgroup
 	val _ = Say.vsay ["[reading init spec from ", specname, "]\n"]
 

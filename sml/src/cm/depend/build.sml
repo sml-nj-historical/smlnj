@@ -74,7 +74,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 			fun recur (_, []) = () (* shouldn't happen *)
 			  | recur (n'', (s, i') :: r) = let
 				val f' = SmlInfo.sourcepath i'
-				val n' = AbsPath.spec f'
+				val n' = AbsPath.specOf f'
 				val _ =
 				    if SmlInfo.eq (i, i') then ()
 				    else recur (n', r)
@@ -87,7 +87,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 			    end
 		    in
 			PrettyPrint.add_newline pps;
-			recur (AbsPath.spec f, history)
+			recur (AbsPath.specOf f, history)
 		    end
 		in
 		    SmlInfo.error gp i EM.COMPLAIN

@@ -163,8 +163,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 				   cleanup = fn () => () })
 	    handle exn => let
 		fun ppb pps =
-		    (PP.add_string pps (General.exnMessage exn);
-		     PP.add_newline pps)
+		    (PP.add_newline pps;
+		     PP.add_string pps (General.exnMessage exn))
 	    in
 		BinInfo.error i EM.COMPLAIN
 		       "unable to load stable library module" ppb;
@@ -204,8 +204,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 				     cleanup = cleanup }
 		    handle exn => let
 			fun ppb pps =
-			    (PP.add_string pps (General.exnMessage exn);
-			     PP.add_newline pps)
+			    (PP.add_newline pps;
+			     PP.add_string pps (General.exnMessage exn))
 		    in
 			SmlInfo.error gp i EM.WARN
 			         ("failed to write " ^ binname) ppb

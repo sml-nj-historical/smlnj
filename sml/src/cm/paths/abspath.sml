@@ -15,21 +15,23 @@ signature ABSPATH = sig
     val newEra : unit -> unit
 
     val cwdContext: unit -> context
-    val relativeContext: t -> context
+    val sameDirContext: t -> context
 
     val name : t -> string
     val compare : t * t -> order
-    val context : t -> context
-    val spec : t -> string
+    val contextOf : t -> context
+    val specOf : t -> string
     val contextName : context -> string
 
     (* Replace the anchor context in the path argument with the
      * given context. Returns NONE if there was no anchor context. *)
-    val reAnchor : t * context -> t option
+    val reAnchor : t * string -> t option
 
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
+    (* the second path argument is the path of the group spec that
+     * pickling is based upon. *)
     val pickle : (bool -> unit) -> t * t -> string list
     val unpickle : PathConfig.mode -> string list * t -> t option
 
@@ -85,11 +87,11 @@ structure AbsPath :> ABSPATH = struct
     type cwdinfo = { stamp: unit ref, name: string, id: id }
 
     datatype context =
-	CUR of cwdinfo
+	THEN_CWD of cwdinfo
       | CONFIG_ANCHOR of { fetch: unit -> string,
 			   cache: elaboration option ref,
 			   config_name: string }
-      | RELATIVE of t
+      | DIR_OF of t
       | ROOT
 
     and t =
@@ -117,7 +119,6 @@ structure AbsPath :> ABSPATH = struct
 	val cwdStamp = #stamp o cwdInfo
 	val cwdName = #name o cwdInfo
 	val cwdId = #id o cwdInfo
-	fun invalidateCwdInfo () = cwdInfoCache := NONE
     in
 	(* start a new era (i.e., invalidate all previous elaborations) *)
 	fun newEra () = elabStamp := ref ()
@@ -138,10 +139,9 @@ structure AbsPath :> ABSPATH = struct
 		end
 
 	fun cwdContext () =
-	    CUR { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
+	    THEN_CWD { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
 
-	fun relativeContext (p as PATH { context, spec, ... }) =
-	    if spec = OS.Path.currentArc then context else RELATIVE p
+	fun sameDirContext p = DIR_OF p
 
 	fun mkElab (cache, name) = let
 	    val e : elaboration =
@@ -155,33 +155,35 @@ structure AbsPath :> ABSPATH = struct
 	    if stamp = !elabStamp then SOME e else NONE
 
 	val rootName = P.toString { isAbs = true, arcs = [], vol = "" }
+	val rootId = ref (NONE: id option)
 
 	fun elabContext c =
 	    case c of
-		CUR { stamp, name, id } =>
+		THEN_CWD { stamp, name, id } =>
 		    { stamp = !elabStamp, id = ref (SOME id),
-		      name = if stamp = cwdStamp () orelse 
-		                name = cwdName ()
+		      name = if stamp = cwdStamp () orelse name = cwdName ()
 			     then P.currentArc else name }
 	      | CONFIG_ANCHOR { fetch, cache, config_name } =>
 		    (case validElab (!cache) of
 			 SOME e => e
 		       | NONE => mkElab (cache, fetch ()))
-	      | RELATIVE p => elab p
-	      | ROOT => mkElab (ref NONE, rootName)
+	      | DIR_OF p => let
+		    val { name, stamp, ... } = elab p
+		in 
+		    { name = P.dir name, stamp = stamp, id = ref NONE }
+		end
+	      | ROOT => { stamp = !elabStamp, name = rootName, id = rootId }
 
 	and elab (PATH { context, spec, cache }) =
-	    (case validElab (!cache) of
-		 SOME e => e
-	       | NONE => let
-		     val name =
-			 if P.isAbsolute spec then spec
-			 else P.mkCanonical
-			     (P.concat (#name (elabContext context),
-					spec))
-		 in
-		     mkElab (cache, name)
-		 end)
+	    case validElab (!cache) of
+		SOME e => e
+	      | NONE => let
+		    val name = P.mkCanonical
+			(P.concat (#name (elabContext context),
+				   spec))
+		in
+		    mkElab (cache, name)
+		end
 
 	(* get the file id (calls elab, so don't cache externally!) *)
 	fun id p = let
@@ -200,11 +202,11 @@ structure AbsPath :> ABSPATH = struct
 	fun name p = #name (elab p)
 
 	(* get the context back *)
-	fun context (PATH { context = c, ... }) = c
+	fun contextOf (PATH { context = c, ... }) = c
 	fun contextName c = #name (elabContext c)
 
 	(* get the spec back *)
-	fun spec (PATH { spec = s, ... }) = s
+	fun specOf (PATH { spec = s, ... }) = s
 
 	(* compare pathnames efficiently *)
 	fun compare (p1, p2) = compareId (id p1, id p2)
@@ -227,8 +229,8 @@ structure AbsPath :> ABSPATH = struct
 	      | delim #"\\" = true		(* accept DOS-style, too *)
 	      | delim _ = false
 
-	    fun transl ".." = OS.Path.parentArc
-	      | transl "." = OS.Path.currentArc
+	    fun transl ".." = P.parentArc
+	      | transl "." = P.currentArc
 	      | transl arc = arc
 
 	    fun mk (arcs, context) =
@@ -237,8 +239,9 @@ structure AbsPath :> ABSPATH = struct
 				    arcs = map transl arcs })
 	in
 	    case String.fields delim spec of
-		"" :: arcs => mk (arcs, ROOT)
-	      | [] => mk ([], context) (* shouldn't happen *)
+		[""] => impossible "AbsPath.standard: zero-length name"
+	      | "" :: arcs => mk (arcs, ROOT)
+	      | [] => impossible "AbsPath.standard: no fields"
 	      | arcs as (arc1 :: _) =>
 		    (case PathConfig.configAnchor mode arc1 of
 			 NONE => mk (arcs, context)
@@ -253,37 +256,37 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* make a pickle-string *)
-	fun pickle warn (path, gdir) = let
-	    val warned = ref false
-	    fun warn_once abs =
-		if !warned then () else (warned := true; warn abs)
-	    fun check_abs spec =
-		if OS.Path.isAbsolute spec then warn_once true else ()
-	    fun p_p (p as PATH { context, spec, ... }) =
-		if compare (p, gdir) = EQUAL then (warn_once false; ["r"])
-		else (check_abs spec; spec :: p_c context)
-	    and p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
-	      | p_c (RELATIVE p) = p_p p
-	      | p_c _ = impossible "AbsPath.pickle"
+	fun pickle warn (path, gpath) = let
+	    fun p_p (PATH { spec, context, ... }) =
+		spec :: p_c context
+	    and p_c ROOT = (warn true; ["r"])
+	      | p_c (THEN_CWD _) = impossible "AbsPath.pickle: THEN_CWD"
+	      | p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
+	      | p_c (DIR_OF p) =
+		if compare (p, gpath) = EQUAL then (warn false; ["c"])
+		else p_p p
 	in
 	    p_p path
 	end
 
-	fun unpickle mode (l, gdir) = let
-	    exception Format
-	    fun u_p ["r"] = gdir
-	      | u_p (h :: t) =
-		PATH { context = u_c t, spec = h, cache = ref NONE }
-	      | u_p [] = raise Format
-	    and u_c [n, "a"] =
+	fun unpickle mode (l, gpath) = let
+	    fun u_p (s :: l) =
+		Option.map
+		   (fn c => PATH { spec = s, context = c, cache = ref NONE })
+		(u_c l)
+	      | u_p [] = NONE
+	    and u_c ["r"] = SOME ROOT
+	      | u_c ["c"] = SOME (DIR_OF gpath)
+	      | u_c [n, "a"] =
 		(case PathConfig.configAnchor mode n of
-		     NONE => raise Format
-		   | SOME fetch => CONFIG_ANCHOR { fetch = fetch,
-						   cache = ref NONE,
-						   config_name = n })
-	      | u_c l = RELATIVE (u_p l)
+		     NONE => NONE
+		   | SOME fetch =>
+			 SOME (CONFIG_ANCHOR { config_name = n,
+					       fetch = fetch,
+					       cache = ref NONE }))
+	      | u_c l = Option.map DIR_OF (u_p l)
 	in
-	    SOME (u_p l) handle Format => NONE
+	    u_p l
 	end
 
 	(* . and .. are not permitted as file parameter *)
@@ -327,9 +330,9 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	fun setTime (p, TStamp.NOTSTAMP) = ()
-	  | setTime (p, TStamp.TSTAMP t) = OS.FileSys.setTime (name p, SOME t)
+	  | setTime (p, TStamp.TSTAMP t) = F.setTime (name p, SOME t)
 
-	fun delete p = OS.FileSys.remove (name p) handle _ => ()
+	fun delete p = F.remove (name p) handle _ => ()
 
 	fun openOut fileopener ap = let
 	    val p = name ap
@@ -355,17 +358,19 @@ structure AbsPath :> ABSPATH = struct
 	val openBinOut = openOut BinIO.openOut
     end
 
-    fun reAnchor (p, c) = let
-	fun ctxt (CONFIG_ANCHOR { config_name, ... }) =
-	    SOME (relativeContext (native { context = c, spec = config_name }))
-	  | ctxt (RELATIVE t) = Option.map RELATIVE (path t)
-	  | ctxt (CUR _) = NONE
-	  | ctxt ROOT = NONE
-	and path (PATH { context, spec, ... }) = let
-	    fun p c = PATH { context = c, spec = spec, cache = ref NONE }
+    fun reAnchor (p, dirstring) = let
+	fun path (PATH { context, spec, ... }) = let
+	    fun mk c = PATH { context = c, spec = spec, cache = ref NONE }
 	in
-	    Option.map p (ctxt context)
+	    Option.map mk (ctxt context)
 	end
+	and ctxt (CONFIG_ANCHOR { config_name = n, ... }) =
+	    SOME (CONFIG_ANCHOR { config_name = n,
+				  fetch = fn () => P.concat (dirstring, n),
+				  cache = ref NONE })
+	  | ctxt (DIR_OF p) = Option.map DIR_OF (path p)
+	  | ctxt (THEN_CWD _) = NONE
+	  | ctxt ROOT = NONE
     in
 	path p
     end

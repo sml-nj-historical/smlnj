@@ -40,16 +40,16 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize)
 
-    fun compile { binroot, pcmodespec, initgspec, maingspec } = let
+    fun compile { binroot, pcmodespec, initgspec, maingspec, stabilize } = let
 
 	val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 
 	val ctxt = AbsPath.cwdContext ()
 
 	val pcmodespec = AbsPath.native { context = ctxt, spec = pcmodespec }
-	val binroot = AbsPath.native { context = ctxt, spec = binroot }
-	val pidfile = AbsPath.joinDirFile { dir = binroot, file = "RTPID" }
-	val listfile = AbsPath.joinDirFile { dir = binroot, file = "BINLIST" }
+	val binrootp = AbsPath.native { context = ctxt, spec = binroot }
+	val pidfile = AbsPath.joinDirFile { dir = binrootp, file = "RTPID" }
+	val listfile = AbsPath.joinDirFile { dir = binrootp, file = "BINLIST" }
 
 	val pcmode = let
 	    fun work s = let
@@ -170,8 +170,9 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 					     #2 (#sym pervasive),
 					     #2 (#stat core)]) }
 		        { corenv = corenv }
+	    val stableflag = if stabilize then SOME true else NONE
 	in
-	    case Parse.parse param NONE maingspec of
+	    case Parse.parse param stableflag maingspec of
 		NONE => false
 	      | SOME (g, gp) =>
 		    if recomp gp g then let

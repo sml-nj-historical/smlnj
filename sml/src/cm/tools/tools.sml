@@ -234,7 +234,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	end
 
 	fun expand0 (ap, NONE) =
-	    expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+	    expand' (AbsPath.contextOf ap) [((AbsPath.specOf ap, NONE), [])]
 	  | expand0 (ap, SOME class0) = let
 		(* classes are case-insensitive, internally we use lowercase *)
 		val class = String.map Char.toLower class0
@@ -246,11 +246,11 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		  | ISGROUP =>
 			[GROUP ap]
 		  | ISTOOL (class, rule) => let
-			val c = AbsPath.context ap
-			val l = apply (rule, AbsPath.spec ap, c)
+			val c = AbsPath.contextOf ap
+			val l = apply (rule, AbsPath.specOf ap, c)
 			val l' = map (fn i => (i, [class])) l
 		    in
-			expand' (AbsPath.context ap) l'
+			expand' (AbsPath.contextOf ap) l'
 		    end
 	    end
     in

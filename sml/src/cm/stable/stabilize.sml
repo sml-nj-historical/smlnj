@@ -77,7 +77,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val policy = #fnpolicy (#param gp)
 
 	val grouppath = #grouppath grec
-	val groupdir = AbsPath.dir grouppath
 
 	fun doit wrapped = let
 
@@ -228,7 +227,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 * within libraries.  However, the spec in BinInfo.info
 		 * is only used for diagnostics and has no impact on the
 		 * operation of CM itself. *)
-		val spec = AbsPath.spec (SmlInfo.sourcepath i)
+		val spec = AbsPath.specOf (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
 	    in
@@ -264,7 +263,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    fun w_abspath p k m =
-		w_list w_string (AbsPath.pickle (warn_relabs p) (p, groupdir))
+		w_list w_string (AbsPath.pickle (warn_relabs p) (p, grouppath))
 		                k m
 
 	    fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
@@ -322,7 +321,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val sourcepath = SmlInfo.sourcepath smlinfo
 			    (* FIXME: see the comment near the other
 			     * occurence of AbsPath.spec... *)
-			    val spec = AbsPath.spec sourcepath
+			    val spec = AbsPath.specOf sourcepath
 			    val offset =
 				getOffset smlinfo + offset_adjustment
 			    val share = SmlInfo.share smlinfo
@@ -391,7 +390,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    (anyerrors := true; NONE)
 		else let
 		    fun notStable (_, GG.GROUP { kind, ... }) =
-			case kind of GG.STABLELIB _ => true | _ => false
+			case kind of GG.STABLELIB _ => false | _ => true
 		in
 		    case List.filter notStable (#sublibs grec) of
 			[] => doit wrapped
@@ -430,7 +429,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
     fun loadStable (gp, getGroup, anyerrors) group = let
 
-	val groupdir = AbsPath.dir group
 	fun bn2env n = Statenv2DAEnv.cvtMemo (fn () => bn2statenv gp n)
 
 	val errcons = #errcons gp
@@ -543,7 +541,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    fun r_abspath () =
-		case AbsPath.unpickle pcmode (r_list r_string (), groupdir) of
+		case AbsPath.unpickle pcmode (r_list r_string (), group) of
 		    SOME p => p
 		  | NONE => raise Format
 
@@ -551,7 +549,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		fun r_symbol_raw () = let
 		    val (ns, first) =
 			case rd () of
-			    #"`" => (Symbol.sigSymbol, rd ())
+			    #"'" => (Symbol.sigSymbol, rd ())
 			  | #"(" => (Symbol.fctSymbol, rd ())
 			  | #")" => (Symbol.fsigSymbol, rd ())
 			  | c => (Symbol.strSymbol, c)
