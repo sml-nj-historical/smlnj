@@ -261,7 +261,7 @@ structure BTrace :> BTRACE = struct
 		    val A.RULE (_, lst) = List.last rl
 		    val t = Reconstruct.expType lst
 		in
-		    A.RAISEexp (A.CONexp (matchcon, []), t)
+		    A.RAISEexp (A.CONexp (matchcon, Types.UNDEFty), t)
 		end
 	    in
 		A.FNexp([A.RULE(A.VARpat arg,

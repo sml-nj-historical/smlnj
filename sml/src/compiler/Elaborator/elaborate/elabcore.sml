@@ -89,7 +89,7 @@ fun stripExpAst(MarkExp(e,r'),r) = stripExpAst(e,r')
 val internalSym = SpecialSymbols.internalVarId
 
 val dummyFNexp =
-    FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,[]),UNDEFty))],UNDEFty)
+    FNexp([RULE(WILDpat,RAISEexp(CONexp(V.bogusEXN,UNDEFty),UNDEFty))],UNDEFty)
 
 (* LAZY *)
 (* clauseKind: used for communicating information about lazy fun decls
@@ -173,7 +173,7 @@ let
 	end
 
     fun delayExp e = 
-	APPexp(CONexp(BT.dollarDcon,[]), e)
+	APPexp(CONexp(BT.dollarDcon,UNDEFty), e)
 
     (* lrvbMakeY n: build declaration of n-ary Y combinator for lazy val rec *)
     fun lrvbMakeY n =
@@ -199,8 +199,8 @@ let
 	    val dvar  = newVALvar(S.varSymbol "d$")
 
 	    (* "ref($(raise Match))" *)
-	    fun rdrExp _ = APPexp(CONexp(BT.refDcon,[]),
-				  delayExp(RAISEexp(CONexp(exn,[]),UNDEFty)))
+	    fun rdrExp _ = APPexp(CONexp(BT.refDcon,UNDEFty),
+				  delayExp(RAISEexp(CONexp(exn,UNDEFty),UNDEFty)))
 	    val rpat  = TUPLEpat (map VARpat rvars)
 	    val rexp  = TUPLEexp (repeat rdrExp)
 	    val rdec  = VALdec([VB{pat=rpat, exp=rexp, boundtvs=[], tyvars=ref[]}])
@@ -463,16 +463,16 @@ let
 		  of V.VAL v => VARexp(ref v,UNDEFty)
 		   | V.CON(d as DATACON{lazyp,const,...}) =>
 		      if lazyp then  (* LAZY *)
-		        if const then delayExp(CONexp(d,[]))
+		        if const then delayExp(CONexp(d,UNDEFty))
 			else let val var = newVALvar(S.varSymbol "x")
 			      in FNexp(completeMatch
 				        [RULE(VARpat(var),
 					      delayExp(
-					        APPexp(CONexp(d,[]),
+					        APPexp(CONexp(d,UNDEFty),
 						       VARexp(ref(var),UNDEFty))))],
 				       UNDEFty (* DBM: ? *))
 			     end
-		      else CONexp(d, [])), 
+		      else CONexp(d,UNDEFty)), 
 		TS.empty, no_updt)
 	   | IntExp s => 
                (INTexp(s,TU.mkLITERALty(T.INT,region)),TS.empty,no_updt)

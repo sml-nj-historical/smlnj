@@ -21,10 +21,12 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),ty')) = ty'
 	   | _ => ty)
 *)
   | expType(VARexp _) = bug "varexp"
-  | expType(CONexp(DATACON{typ,...},insttys)) =
+  | expType(CONexp(DATACON{typ,...},ty')) = ty'
+(* PRIMOP
      (case typ
 	  of POLYty{tyfun,...} => TU.applyTyfun(tyfun,insttys)
 	   | _ => typ)
+*)
   | expType(INTexp _) = intTy
   | expType(WORDexp _) = wordTy
   | expType(STRINGexp _) = stringTy

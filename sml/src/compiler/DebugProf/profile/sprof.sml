@@ -172,7 +172,7 @@ and instrexp(line,names) =
 	       | _ => e)
        | iexp e = e 
 
-     and etaexpand(e as CONexp(_,t)) = 
+     and etaexpand(e as CONexp _) = 
 	 let val v = VALvar{access=LVAR(mkLvar()), 
                             path=SP.SPATH [xsym], 
 	                    typ=ref Types.UNDEFty}

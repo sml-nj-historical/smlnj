@@ -85,14 +85,14 @@ val bogusExnID = S.varSymbol "*Bogus*"
 
 
 val TRUEpat = CONpat(trueDcon,[])
-val TRUEexp = CONexp(trueDcon,[])
+val TRUEexp = CONexp(trueDcon,UNDEFty)
 val FALSEpat = CONpat(falseDcon,[])
-val FALSEexp = CONexp(falseDcon,[])
+val FALSEexp = CONexp(falseDcon,UNDEFty)
 
 val NILpat = CONpat(nilDcon,[])
-val NILexp = CONexp(nilDcon,[])
+val NILexp = CONexp(nilDcon,UNDEFty)
 val CONSpat = fn pat => APPpat(consDcon,[],pat)
-val CONSexp = CONexp(consDcon,[])
+val CONSexp = CONexp(consDcon,UNDEFty)
 
 val unitExp = AbsynUtil.unitExp
 val unitPat = RECORDpat{fields = nil, flex = false, typ = ref UNDEFty}
@@ -249,7 +249,7 @@ fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),[]),
+	       marker(RAISEexp(CONexp(CoreAccess.getExn(env,name),UNDEFty),
 			       UNDEFty))))
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")

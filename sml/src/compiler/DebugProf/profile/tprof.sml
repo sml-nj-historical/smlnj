@@ -360,7 +360,7 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                                          instrrules (instrexp (anonSym::names,
                                                         ccvara') true) l,
                                               true)])),
-                                   RULE(WILDpat,RAISEexp(CONexp(exnMatch,[]),
+                                   RULE(WILDpat,RAISEexp(CONexp(exnMatch,UNDEFty),
                                                  Reconstruct.expType special))
                                   ], t)
                        end

@@ -1,6 +1,11 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* translate.sml *)
 
+(* PRIMOP:
+ * mkVE and mkCE now take instantiated type as second argument rather than
+ *  instantiation lists
+ *)
+
 signature TRANSLATE = 
 sig
 
@@ -1122,8 +1127,8 @@ and mkExp (exp, d) =
 
       and g (VARexp (ref v, ty)) = mkVE(v, ty, d)
 
-        | g (CONexp (dc, ts)) = mkCE(dc, ts, NONE, d)
-        | g (APPexp (CONexp(dc, ts), e2)) = mkCE(dc, ts, SOME(g e2), d)
+        | g (CONexp (dc, ty)) = mkCE(dc, ty, NONE, d)
+        | g (APPexp (CONexp(dc, ty), e2)) = mkCE(dc, ty, SOME(g e2), d)
 
         | g (INTexp (s, t)) =
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
@@ -1254,8 +1259,8 @@ and transIntInf d s =
      * no indication within the program that we are really
      * dealing with a constant value that -- in principle --
      * could be subject to such things as constant folding. *)
-    let val consexp = CONexp (BT.consDcon, [BT.wordTy])
-	fun build [] = CONexp (BT.nilDcon, [BT.wordTy])
+    let val consexp = CONexp (BT.consDcon, [BT.wordTy])   (* PRIMOP unfinished *)
+	fun build [] = CONexp (BT.nilDcon, [BT.wordTy])   (* PRIMOP unfinished *)
 	  | build (d :: ds) = let
 		val i = Word.toIntX d
 	    in
