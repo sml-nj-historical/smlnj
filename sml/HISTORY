@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/07/22 23:30:00 JST
+Tag: blume-20000722-urlupdate
+Description:
+
+Changed BOOT and config/srcarchiveurl to point to BL server:
+
+    ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.29/
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/07/18 18:00:00 JST
 Tag: blume-20000718-Version_110_29
 Description:
