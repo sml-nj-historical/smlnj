@@ -6,7 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	structure SparcCM
 	functor LinkCM
 
 	(* dummy stuff *)
@@ -105,6 +104,3 @@ is
 	(* dummy modules for testing *)
 	dummy.sml
 	link.sml
-
-	(* just a test... *)
-	sparc.sml
