@@ -1,0 +1,13 @@
+(cm-init)
+Library
+	signature CM
+	structure CM
+is
+	(* we refer to minimal-cm.cm here to avoid having to mention it
+	 * in intsys.cm where it would cause a clash with ourselves.
+	 * This is a bit clutchy, but it avoids an additional administrative
+	 * library. *)
+	minimal-cm.cm
+
+	host-compiler-0.cm
+	fetch-full-cm.sml

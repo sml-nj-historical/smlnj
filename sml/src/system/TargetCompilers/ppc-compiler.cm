@@ -1,0 +1,6 @@
+Library
+	structure PPCCompiler
+is
+	viscomp-core.cm
+	viscomp-ppc.cm
+	ppc-compiler.sml
