@@ -23,6 +23,7 @@ Group (../../system/smlnj/viscomp/elabdata.cm)
 	signature BINDINGS
 	signature STATICENV
 	signature CORE_PRIM_TYC_NUM
+	signature ENTITY_ENV
 
 	structure ElabDataControl
 	structure Access

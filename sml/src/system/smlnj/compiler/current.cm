@@ -32,6 +32,19 @@ Library
 	signature BINFILE
 	signature FLINT
 
+	signature TYPES
+	signature ENTITY_ENV
+	signature MODULES
+	signature STAMPS
+	signature BINDINGS
+	signature TYPESUTIL
+	signature VARCON
+	signature MODULEUTIL
+	signature BASICTYPES
+	signature PPTYPE
+	signature ACCESS
+	signature UNIFY
+
 	(* frontend stuff *)
 	structure Stats
 	structure Control
@@ -65,6 +78,20 @@ Library
 	structure CompileExn
 	structure CoreSym
 	structure FLINT
+
+        structure Types
+        structure EntityEnv
+        structure Modules
+        structure Stamps
+        structure Bindings
+        structure TypesUtil
+        structure VarCon
+        structure ModuleUtil
+        structure II
+        structure BasicTypes
+        structure PPType
+        structure Access
+        structure Unify
 
 	(* the current backend *)
 	structure Backend

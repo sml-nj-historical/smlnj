@@ -14,6 +14,7 @@ Group (../../system/smlnj/viscomp/elaborate.cm)
 	signature INSTANTIATE
 	signature EVALENTITY
 	signature ELABTOP
+	signature UNIFY
 
 	functor InstantiateFn
 	functor EvalEntityFn
@@ -28,6 +29,7 @@ Group (../../system/smlnj/viscomp/elaborate.cm)
 	structure ElabUtil
 	structure SpecialSymbols
 	structure ElabDebug
+	structure Unify
 
 	signature PPUTIL
 	signature PPTYPE
