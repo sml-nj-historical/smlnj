@@ -37,7 +37,7 @@ vsay() {
 #   $3 - remote directory
 #
 askurl() {
-    echo "this: Please, fetch $1 archive"
+    echo "$this: Please, fetch $1 archive"
     echo ' ('$2.'*' or $VERSION-$2.'*)'
     echo " from $3"
     echo " and then re-run this script!"

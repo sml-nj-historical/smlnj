@@ -36,10 +36,6 @@ If you are running Win32, see WININSTALL.
    - Run the installer, it will automatically fetch all other necessary
      tarballs:
 
-      $ config/new-install.sh
-
-     or, if this should fail for any reason(*),
-
       $ config/install.sh
 
      If the installer complains about not being able to fetch those
@@ -52,8 +48,7 @@ If you are running Win32, see WININSTALL.
    -------------------------------------------------
 
    - Use some other means of downloading the necessary tarballs.  Store
-     them in directory $d.  Then run the installer (config/new-install.sh
-     or config/install.sh).
+     them in directory $d.  Then run the installer (config/install.sh).
 
      Here is a table that shows which packages you will need to download
      depending on what you select in config/targets.  Take the union of
@@ -123,8 +118,7 @@ If you are running Win32, see WININSTALL.
       directory), you can customize the set of libraries that are
       pre-loaded (either directly or via CM's "autoload" mechanism).
 
-      For this, edit config/preloads before running config/new-install.sh
-      (or config/install.sh).
+      For this, edit config/preloads before running config/install.sh.
 
    2.3.  Using a different ftp server (for a step-1.-like installation)
    --------------------------------------------------------------------
@@ -133,7 +127,7 @@ If you are running Win32, see WININSTALL.
       then you can speed up installation by pointing the automatic URL
       fetch mechanism there.  The URL of the repository is stored in
       config/srcarchiveurl.  Edit this file before running
-      config/new-install.sh (or config/install.sh).
+      config/install.sh.
 
    2.4.  Using locally stored tarballs
    -----------------------------------
@@ -196,11 +190,10 @@ If you are running Win32, see WININSTALL.
    2.8 Forcing the installer to use a particular URL getter program
    ----------------------------------------------------------------
 
-   By default, config/new-install.sh (and config/install.sh) will
-   attempt to use wget, curl, and lynx (in that order).  If you
-   already know which of these programs you want
-   the installer to use, then set the environment variable URLGETTER
-   to "wget", "curl", or "lynx", respectively.
+   By default, config/install.sh will attempt to use wget, curl, and
+   lynx (in that order).  If you already know which of these programs
+   you want the installer to use, then set the environment variable
+   URLGETTER to "wget", "curl", or "lynx", respectively.
 
    You can also set URLGETTER to any other command "foo" as long as
    it can be invoked as
@@ -209,6 +202,24 @@ If you are running Win32, see WININSTALL.
 
    where <source> is the URL you want to fetch and <destination> is
    the file name where the result will be stored.
+
+   2.9 Where are those "CM" directories?
+   -------------------------------------
+
+   CM metadata (source skeletons, compiled files, stable libraries, GUIDs,
+   ...) are now stored under a directory called ".cm".  We changed this
+   from the original "CM" because of name clashes on case-insensitive
+   file systems.  However, SML/NJ itself can work with any (reasonable)
+   choice of name for the metadata directory -- but for consistency the
+   choice has to be made at installation time.
+
+   To choose a different name for metadata directories, run
+   config/install.sh in the presence of an environment variable
+   CM_DIR_ARC.  For example, if you want to have all these directories
+   be named "FOOBAR", then run the installer (assuming a Bourne-ish
+   shell) as
+
+      $ CM_DIR_ARC=FOOBAR config/install.sh
 
 3. Troubleshooting:
 -------------------
@@ -232,14 +243,10 @@ If you are running Win32, see WININSTALL.
       "xget".  You could then make a shell script that wraps xget, e.g.
       using a shell script "myxget" consisting of the single line:
 
-          exec xget -nv -O $2 $1
+         $ exec xget -nv -O $2 $1
 
       Once you have myxget, simply run:
 
-          URLGETTER=myxget config/install.sh  
+         $ URLGETTER=myxget config/install.sh  
 
 ----------------------------------------------------------------------------
-(*) config/new-install.sh is a newer version of our installer with
-    major parts written in SML rather than as a shell script.
-    Since it is fairly new it may still have some problems -- in which
-    case you can fall back to the old config/install.sh.

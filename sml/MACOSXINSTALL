@@ -19,8 +19,7 @@ and follow the instructions in file INSTALL beginning *after* the
 point where it asks you to gunzip and untar config.tgz.
 
 For example, if you are in a hurry and have good network connectivity,
-simply edit config/targets and then run config/new-install.sh (or
-config/install.sh).
+simply edit config/targets and then run config/install.sh.
 
 Once the installer finishes, you only need to keep the "bin" and "lib"
 subdirectories.  You can move them wherever you like (together!) as

@@ -24,13 +24,14 @@ signature FILENAMEPOLICY = sig
     val mkIndexName : policy -> SrcPath.file -> string
 
     val kind2name : SMLofNJ.SysInfo.os_kind -> string
+
+    val cm_dir_arc : string
 end
 
 functor FilenamePolicyFn (val cmdir : string
 			  val versiondir: Version.t -> string
 			  val skeldir : string
 			  val guiddir : string
-			  val icprefix : string
 			  val indexdir : string) :> FILENAMEPOLICY = struct
 
     type policy = { bin: SrcPath.file -> string,
@@ -57,7 +58,6 @@ functor FilenamePolicyFn (val cmdir : string
 	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
 	val archos = concat [arch, "-", os]
-	val archosidcache = concat [icprefix, "-", arch, "-", os]
 	val stable0 = cmname [archos] o shiftstable
 	val stable =
 	    if ignoreversion then stable0 o #1
@@ -105,12 +105,14 @@ functor FilenamePolicyFn (val cmdir : string
     fun mkGUidName (p: policy) s = #guid p s
     fun mkStableName (p: policy) (s, v) = #stable p (s, v)
     fun mkIndexName (p: policy) s = #index p s
+
+    val cm_dir_arc = cmdir
 end
 
 structure FilenamePolicy =
-    FilenamePolicyFn (val cmdir = "CM"
+    FilenamePolicyFn (val cmdir = Option.getOpt
+				      (OS.Process.getEnv "CM_DIR_ARC", ".cm")
 		      val skeldir = "SKEL"
 		      val guiddir = "GUID"
-		      val icprefix = "IC"
 		      val indexdir = "INDEX"
 		      val versiondir = Version.toString)

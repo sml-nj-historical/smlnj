@@ -869,6 +869,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	structure Graph = struct
 	    val graph = to_portable
 	end
+
+	val cm_dir_arc = FilenamePolicy.cm_dir_arc
     end
 
     structure Tools = ToolsFn (val load_plugin' = load_plugin'

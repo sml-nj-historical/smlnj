@@ -229,8 +229,8 @@ end = struct
 	    val finalanchor = getOpt (altanchor, anchor)
 	    val { dir = nreldir, file = relbase } = P.splitDirFile nrelname
 	    val relloc =
-		P.concat (nreldir, P.concat ("CM",
-					    P.concat (arch_oskind, relbase)))
+		P.concat (nreldir, P.concat (CM.cm_dir_arc,
+					     P.concat (arch_oskind, relbase)))
 	    val srcfinalloc = P.concat (adir, relloc)
 	    val (finalloc, finalconfigpath) =
 		if move_libraries then
