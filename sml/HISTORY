@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lal George
+Date: 2002/02/07 15:34:13 EST 2002
+Tag: <none>
+Description:
+
+Compilers that generate assembly code may produce  global labels 
+whose value is resolved at link time. The various peephole optimization
+modules did not take this in account.
+
+TODO. The Labels.addrOf function should really return an option
+type so that clients are forced to deal with this issue, rather
+than an exception being raised.
+
+----------------------------------------------------------------------
+Name: Lal George
 Date: 2002/02/06 13:55:02 EST
 Tag: george-20020206-ra-breakup
 Description:

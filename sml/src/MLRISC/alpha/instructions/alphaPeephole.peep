@@ -16,7 +16,7 @@ struct
 
    (* IMPORTANT: instructions are now given in forward order *)
    fun peephole instrs =
-   let fun isZero(I.LABop le) = Eval.valueOf le = 0
+   let fun isZero(I.LABop le) = ((Eval.valueOf le = 0) handle _ => false)
          | isZero(I.REGop r) = CB.registerNum r = 31 
          | isZero(I.IMMop i) = i = 0
          | isZero _ = false
@@ -37,7 +37,7 @@ struct
        fun sameOperand (I.REGop r1, I.REGop r2) = CB.sameColor(r1,r2)
          | sameOperand (I.IMMop i1, I.IMMop i2) = i1 = i2
          | sameOperand (I.LABop l1, I.LABop l2) = 
-                Eval.valueOf l1 = Eval.valueOf l2
+                (Eval.valueOf l1 = Eval.valueOf l2) handle _ => false
          | sameOperand _ = false
 
        fun loop(current, instrs) = 

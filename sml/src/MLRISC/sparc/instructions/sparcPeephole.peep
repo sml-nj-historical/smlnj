@@ -18,7 +18,7 @@ struct
 
    (* IMPORTANT: instructions are now given in forward order *)
    fun peephole instrs =
-   let fun isZero(I.LAB le)  = Eval.valueOf le = 0
+   let fun isZero(I.LAB le)  = ((Eval.valueOf le = 0) handle _ => false)
          | isZero(I.REG r)   = CB.registerNum r = 0
          | isZero(I.IMMED i) = i = 0
          | isZero _ = false
