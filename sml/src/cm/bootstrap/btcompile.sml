@@ -13,8 +13,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	{ dirbase: string,
 	  pcmodespec: string,
 	  initgspec: string,
-	  maingspec: string,
-	  stabilize: bool }
+	  maingspec: string }
 	-> bool
 
 end = struct
@@ -52,7 +51,21 @@ end = struct
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize)
 
-    fun compile { dirbase, pcmodespec, initgspec, maingspec, stabilize } = let
+    fun listName p =
+	case OS.Path.fromString p of
+	    { vol = "", isAbs = false, arcs = _ :: arc1 :: arcn } => let
+		fun win32name () =
+		    concat (arc1 ::
+			    foldr (fn (a, r) => "\\" :: a :: r) [] arcn)
+	    in
+		case os of
+		    SMLofNJ.SysInfo.WIN32 => win32name ()
+		  | _ => OS.Path.toString { isAbs = false, vol = "",
+					    arcs = arc1 :: arcn }
+	    end
+	  | _ => raise Fail "BootstrapCompile:listName: bad name"
+
+    fun compile { dirbase, pcmodespec, initgspec, maingspec } = let
 
 	val arch = MachDepVC.architecture
 	val osname = FilenamePolicy.kind2name os
@@ -152,7 +165,7 @@ end = struct
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
-	    val core = valOf (RT.snode ginfo_nocore core)
+	    val core = valOf (RT.sbnode ginfo_nocore core)
 	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
 	    val core_sym = #1 (#sym core)
 
@@ -164,7 +177,7 @@ end = struct
 	    val ginfo_justcore = { param = param_justcore, groupreg = groupreg,
 				   errcons = errcons }
 
-	    fun rt n = valOf (RT.snode ginfo_justcore n)
+	    fun rt n = valOf (RT.sbnode ginfo_justcore n)
 	    val rts = rt rts
 	    val pervasive = rt pervasive
 
@@ -198,9 +211,8 @@ end = struct
 					     #2 (#stat core)]),
 			  fnpolicy = mainfnpolicy }
 		        { corenv = corenv }
-	    val stableflag = if stabilize then SOME true else NONE
 	in
-	    case Parse.parse NONE param stableflag maingspec of
+	    case Parse.parse NONE param (SOME true) maingspec of
 		NONE => false
 	      | SOME (g, gp) =>
 		    if recomp gp g then let
@@ -212,7 +224,8 @@ end = struct
 			    fun offset NONE = ["\n"]
 			      | offset (SOME i) = ["@", Int.toString i, "\n"]
 			    fun showBootFile (p, off) =
-				TextIO.output (s, concat (p :: offset off))
+				TextIO.output (s, concat (listName p ::
+							  offset off))
 			in
 			    app showBootFile bootfiles
 			end

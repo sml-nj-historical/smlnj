@@ -96,6 +96,10 @@ structure Primitive :> PRIMITIVE = struct
     end
 
     fun configuration l = let
+	(* First we make the list into a map to become independent of the
+	 * order of the elements. *)
+	val m = foldl (fn (x: pspec, m) => StringMap.insert (m, #name x, x))
+	              StringMap.empty l
 	fun gen_pinfo ({ name, env, pidInfo }, i) = let
 	    val es2bs = GenericVC.CoerceEnv.es2bs
 	    val (da_env, mkExports) =
@@ -109,7 +113,7 @@ structure Primitive :> PRIMITIVE = struct
 	    (StringMap.insert (sm, #name ps, gen_pinfo (ps, i)),
 	     #name ps :: sl,
 	     i + 1)
-	val (sm, sl, _) = foldr one (StringMap.empty, [], 0) l
+	val (sm, sl, _) = StringMap.foldl one (StringMap.empty, [], 0) m
     in
 	(sm, Vector.fromList (rev sl))
     end

@@ -14,10 +14,10 @@
 
 signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> SrcPath.t ->
-	{ rts: DependencyGraph.snode,
-	  core: DependencyGraph.snode,
-	  pervasive: DependencyGraph.snode,
-	  primitives: (string * DependencyGraph.snode) list,
+	{ rts: DependencyGraph.sbnode,
+	  core: DependencyGraph.sbnode,
+	  pervasive: DependencyGraph.sbnode,
+	  primitives: (string * DependencyGraph.sbnode) list,
 	  binpaths: string list } option
 end
 
@@ -86,11 +86,6 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				       | NONE => (error ("undefined: " ^ n);
 						  DG.SB_SNODE (bogus n)))
 
-			fun look_snode n =
-			    case look n of
-				DG.SB_SNODE n => n
-			      | _ => (error ("illegal: " ^ n); bogus n)
-
 			fun node (name, file, args) = let
 			    fun one (arg, (li, gi)) =
 				case look arg of
@@ -119,11 +114,11 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			  | ("bind" :: name :: file :: args)  =>
 				node (name, file, args)
 			  | ("return" :: core :: rts :: pervasive :: prims) =>
-				SOME { rts = look_snode rts,
-				       core = look_snode core,
-				       pervasive = look_snode pervasive,
+				SOME { rts = look rts,
+				       core = look core,
+				       pervasive = look pervasive,
 				       primitives =
-				         map (fn n => (n, look_snode n)) prims,
+				              map (fn n => (n, look n)) prims,
 				       binpaths = rev (getOpt (bnl, [])) }
 			  | _ => (error "malformed line"; NONE)
 		    end

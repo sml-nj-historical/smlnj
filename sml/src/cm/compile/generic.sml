@@ -22,9 +22,9 @@ in
 	val impexpmap :
 	    GP.info -> DependencyGraph.impexp SymbolMap.map -> result option
 
-	(* if you go through the "snode" interface, then
+	(* If you go through the "sbnode" interface, then
 	 * you must reset explicitly when you are done. *)
-	val snode : GP.info -> DG.snode -> envdelta option
+	val sbnode : GP.info -> DG.sbnode -> envdelta option
 	val reset : unit -> unit
 
 	val resetAll : unit -> unit
