@@ -247,7 +247,7 @@
 (defconst sml-pipehead-re
   (concat
    "|\\S.\\|"
-   (sml-syms-re "fun" "fn" "and" "handle" "datatype" "abstype"))
+   (sml-syms-re "of" "fun" "fn" "and" "handle" "datatype" "abstype"))
   "A `|' corresponds to one of these.")
 
 (provide 'sml-defs)

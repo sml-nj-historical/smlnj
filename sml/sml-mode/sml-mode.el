@@ -1,7 +1,5 @@
 ;;; sml-mode.el --- Major mode for editing (Standard) ML
 
-(defconst rcsid-sml-mode "@(#)$Name$:$Id$")
-
 ;; Copyright (C) 1989       Lars Bo Nielsen
 ;; Copyright (C) 1994-1997  Matthew J. Morley
 ;; Copyright (C) 1999-2000  Stefan Monnier
@@ -335,7 +333,7 @@ Depending on the context insert the name of function, a \"=>\" etc."
 			    (string-match "^'" sym))
 		  (sml-forward-spaces))
 		(concat sym "  = "))
-	       ((member sym '("case" "handle" "fn")) " => ")
+	       ((member sym '("case" "handle" "fn" "of")) " => ")
 	       ((member sym '("abstype" "datatype")) "")
 	       (t (error "Wow, now, there's a bug")))))))
 
