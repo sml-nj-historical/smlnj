@@ -1,0 +1,13 @@
+1998-10-27  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* lsplit/ls-inline.sml: don't call lcontract anymore.
+
+1998-10-26  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* cps/cpstrans.sml (spillOut): fix from Zhong.
+
+	* cpsopt/cpsopt.sml: use Control.CG.cpsopt and fold over it.
+
+	* main/flintcomp.sml: use Control.FLINT.phases and fold over it.
+
+	* opt/fixfix.sml (curry): use Control.FLINT.maxargs to bound the uncurrying
