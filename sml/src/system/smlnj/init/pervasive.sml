@@ -21,6 +21,7 @@ local
     structure W31 = InlineT.Word31
     structure W32 = InlineT.Word32
     structure CW64 = CoreWord64
+    structure CI64 = CoreInt64
     structure R64 = InlineT.Real64
     structure CV = InlineT.CharVector
     structure PV = InlineT.PolyVector
@@ -56,55 +57,55 @@ local
     fun stringge (a, b) = stringle (b, a)
 in
 overload ~ :   ('a -> 'a)
-   as  I31.~ and I32.~ and CII.~
+   as  I31.~ and I32.~ and CI64.~ and CII.~
    and w8neg and W31.~ and W32.~ and CW64.~
    and R64.~
 overload + :   ('a * 'a -> 'a)
-  as  I31.+ and I32.+ and CII.+
+  as  I31.+ and I32.+ and CI64.+ and CII.+
   and w8plus and W31.+ and W32.+ and CW64.+
   and R64.+
 overload - :   ('a * 'a -> 'a)
-  as  I31.- and I32.- and CII.-
+  as  I31.- and I32.- and CI64.- and CII.-
   and w8minus and W31.- and W32.- and CW64.-
   and R64.-
 overload * :   ('a * 'a -> 'a)
-  as  I31.* and I32.* and CII.*
+  as  I31.* and I32.* and CI64.* and CII.*
   and w8times and W31.* and W32.* and CW64.*
   and R64.*
 overload / : ('a * 'a -> 'a)
   as R64./
 overload div : ('a * 'a -> 'a)
-  as  I31.div and I32.div and CII.div
+  as  I31.div and I32.div and CI64.div and CII.div
   and W8.div and W31.div and W32.div and CW64.div
 overload mod : ('a * 'a -> 'a)
-  as  I31.mod and I32.mod and CII.mod
+  as  I31.mod and I32.mod and CI64.mod and CII.mod
   and W8.mod and W31.mod and W32.mod and CW64.mod
 overload < :   ('a * 'a -> bool)
-  as  I31.< and I32.< and CII.<
+  as  I31.< and I32.< and CI64.< and CII.<
   and W8.< and W31.< and W32.< and CW64.<
   and R64.<
   and InlineT.Char.<
   and stringlt
 overload <= :   ('a * 'a -> bool)
-  as  I31.<= and I32.<= and CII.<=
+  as  I31.<= and I32.<= and CI64.<= and CII.<=
   and W8.<= and W31.<= and W32.<= and CW64.<=
   and R64.<=
   and InlineT.Char.<=
   and stringle
 overload > :   ('a * 'a -> bool)
-  as  I31.> and I32.> and CII.>
+  as  I31.> and I32.> and CI64.> and CII.>
   and W8.> and W31.> and W32.> and CW64.>
   and R64.>
   and InlineT.Char.>
   and stringgt
 overload >= :   ('a * 'a -> bool)
-  as  I31.>= and I32.>= and CII.>=
+  as  I31.>= and I32.>= and CI64.>= and CII.>=
   and W8.>= and W31.>= and W32.>= and CW64.>=
   and R64.>=
   and InlineT.Char.>=
   and stringge
 overload abs : ('a -> 'a)
-  as I31.abs and I32.abs and CII.abs and R64.abs
+  as I31.abs and I32.abs and CI64.abs and CII.abs and R64.abs
 
 type unit = PrimTypes.unit
 type exn = PrimTypes.exn

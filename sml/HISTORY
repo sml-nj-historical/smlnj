@@ -13,6 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Date: 2004/11/11 17:30:00 CST
+Tag: blume-20041111-more64
+Description:
+
+All the pieces of Word64 are now there, with the exception of the
+conversions from and to LargeWord. (Eventually these need to be identities,
+but for the time being they don't even make sense because LargeWord is
+32-bit wide.)
+
+Also started to add similar support for Int64, but major pieces of that
+are still missing.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/11 00:15:00 CST
 Tag: blume-20041111-word64

@@ -1,10 +1,14 @@
+(* core-word64.sml
+ *
+ *   Basic (simulated) 64-bit word support.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 structure CoreWord64 = struct
 
   local
-      fun notyet () = raise Assembly.Overflow
-
-      type w32 = PrimTypes.word32
-
       infix o val op o = InLine.compose
       val not = InLine.inlnot
       infix 7 * val op * = InLine.w32mul
@@ -52,17 +56,20 @@ structure CoreWord64 = struct
 	  in (hi, lo)
 	  end
 
-      fun div64 (_, (0w0, 0w0)) = raise Assembly.Div
-	| div64 ((0w0: w32, lo1), (0w0: w32, lo2)) = (0w0: w32, InLine.w32div (lo1, lo2))
-	| div64 _ = notyet ()
-	  
+      local structure CII = CoreIntInf
+	    val up = CII.copyInf64 val dn = CII.truncInf64
+      in
+      (* This is even more inefficient than doing it the hard way,
+       * but I am lazy... *)
+      fun div64 (x, y) = dn (CII.div (up x, up y))
+      end
+  
       fun mod64 (x, y) = sub64 (x, mul64 (div64 (x, y), y))
 
       fun swap (x, y) = (y, x)
 
       fun lt64 ((hi1, lo1), (hi2, lo2)) =
-	  InLine.w32lt (hi1, hi2) orelse
-	  (InLine.w32eq (hi1, hi2) andalso InLine.w32lt (lo1, lo2))
+	  hi1 < hi2 orelse (InLine.w32eq (hi1, hi2) andalso lo1 < lo2)
       val gt64 = lt64 o swap
       val le64 = not o gt64
       val ge64 = not o lt64

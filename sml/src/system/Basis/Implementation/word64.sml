@@ -9,13 +9,11 @@
 structure Word64 : WORD = struct
 
     structure W32 = Word32Imp
-    structure II = IntInfImp
-    structure W64 = InlineT.Word64
 
     type word = Word64.word
 
-    val extern = W64.extern
-    val intern = W64.intern
+    val extern = InlineT.Word64.extern
+    val intern = InlineT.Word64.intern
 
     val wordSize = 64
 
@@ -25,16 +23,9 @@ structure Word64 : WORD = struct
     val toLargeWordX = unimplemented
     val fromLargeWord = unimplemented
 
-    fun toLargeInt w =
-	let val (hi, lo) = extern w
-	in II.orb (II.<< (W32.toLargeInt hi, 0w32), W32.toLargeInt lo)
-	end
-    fun toLargeIntX w =
-	let val (hi, lo) = extern w
-	in II.orb (II.<< (W32.toLargeIntX hi, 0w32), W32.toLargeInt lo)
-	end
-    fun fromLargeInt i =
-	intern (W32.fromLargeInt (II.~>> (i, 0w32)), W32.fromLargeInt i)
+    val toLargeInt = CoreIntInf.copyInf64 o extern
+    val toLargeIntX = CoreIntInf.extendInf64 o extern
+    val fromLargeInt = intern o CoreIntInf.truncInf64
 
     fun toInt w =
 	case extern w of
@@ -58,12 +49,11 @@ structure Word64 : WORD = struct
     fun compare (w1, w2) =
 	let val (hi1, lo1) = extern w1
 	    val (hi2, lo2) = extern w2
-	in
-	    if hi1 > hi2 then GREATER
-	    else if hi1 < hi2 then LESS
-	    else if lo1 > lo2 then GREATER
-	    else if lo1 < lo2 then LESS
-	    else EQUAL
+	in if hi1 > hi2 then GREATER
+	   else if hi1 < hi2 then LESS
+	   else if lo1 > lo2 then GREATER
+	   else if lo1 < lo2 then LESS
+	   else EQUAL
 	end
 
     fun << (w64, w) =
@@ -119,10 +109,18 @@ structure Word64 : WORD = struct
 	       in w32bin hi ^ (StringCvt.padLeft #"0" 32 (w32bin lo))
 	       end)
       | fmt StringCvt.HEX w = toString w
-      | fmt rdx w = (* I am lazy *) II.fmt rdx (toLargeInt w)
+      | fmt rdx w = (* I am lazy *) IntInfImp.fmt rdx (toLargeInt w)
 
-    fun scan rdx rdr s = unimplemented ()
-    val fromString = unimplemented
+    (* piggy-back on intinf... *)
+    fun scan rdx rdr s =
+	case IntInfImp.scan rdx rdr s of
+	    SOME (i, s') =>
+	      if i < 0 then NONE
+	      else if i > 0xffffffffffffffff then raise Overflow
+	      else SOME (fromLargeInt i, s')
+	  | NONE =>  NONE
+
+    val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
     val op * : word * word -> word = op *
     val op + : word * word -> word = op +
