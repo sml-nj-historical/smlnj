@@ -170,16 +170,22 @@ and tolexp (venv,d) lexp =
 
       | L.FIX (lvs,ltys,lexps,lexp) =>
             (* first, let's setup the enriched environment with those funs *)
-            let val venv' = foldl (fn ((lv,lty),ve) =>
+            let val venv' = ListPair.foldl (fn (lv,lty,ve) =>
                                    LT.ltInsert(ve, lv, lty, d))
-                                  venv (ListPair.zip(lvs, ltys))
+                                  venv (lvs, ltys)
+
+		fun map3 _ ([], _, _) = []
+		  | map3 _ (_, [], _) = []
+		  | map3 _ (_, _, []) = []
+		  | map3 f (x :: xs, y :: ys, z :: zs) =
+		      f (x, y, z) :: map3 f (xs, ys, zs)
 
                 (* then translate each function in turn *)
-                val funs = map (fn ((f_lv,f_lty),L.FN(arg_lv,arg_lty,body)) =>
+                val funs = map3 (fn (f_lv,f_lty,L.FN(arg_lv,arg_lty,body)) =>
                                 #1(tofundec(venv', d, 
 					    f_lv, arg_lv, arg_lty, body, true))
 				 | _ => bug "non-function in L.FIX")
-                               (ListPair.zip(ListPair.zip(lvs,ltys),lexps))
+				(lvs, ltys, lexps)
 
                 (* finally, translate the lexp *)
                 val (lexp',lty) = tolexp (venv',d) lexp

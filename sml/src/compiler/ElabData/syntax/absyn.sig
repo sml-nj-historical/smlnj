@@ -25,6 +25,10 @@ datatype exp
   | HANDLEexp of exp * handler
   | RAISEexp of exp * Types.ty              
   | CASEexp of exp * rule list * bool
+  | IFexp of { test: exp, thenCase: exp, elseCase: exp }
+  | ANDALSOexp of exp * exp
+  | ORELSEexp of exp * exp
+  | WHILEexp of { test: exp, expr: exp }
   | FNexp of rule list * Types.ty         
   | LETexp of dec * exp
   | SEQexp of exp list

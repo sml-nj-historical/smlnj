@@ -254,13 +254,6 @@ fun completeMatch(env,name) =
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
-
-(* Transform a while loop in a call to a recursive function *)
-val whileSym = S.varSymbol "while"
-
-fun IFexp (a,b,c) =
-    CASEexp(a, trivialCompleteMatch [RULE(TRUEpat,b), RULE(FALSEpat,c)],true)
-
 val TUPLEpat = AbsynUtil.TUPLEpat
 (*
 fun TUPLEpat l =
@@ -271,8 +264,7 @@ fun TUPLEpat l =
 *)
 
 fun wrapRECdecGen (rvbs, compInfo as {mkLvar=mkv, ...} : compInfo) = 
-  let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, 
-             nvars) = 
+  let fun g (RVB{var=v as VALvar{path=SP.SPATH [sym], ...}, ...}, nvars) = 
           let val nv = newVALvar(sym, mkv)
           in ((v, nv, sym)::nvars)
           end
@@ -361,30 +353,6 @@ fun FUNdec (completeMatch, fbl, region,
 	    end
           | fb2rvb _ = bug "FUNdec"
      in wrapRECdec (map fb2rvb fbl, compInfo)
-    end
-
-fun WHILEexp (a, b, compInfo as {mkLvar=mkv, ...} : compInfo) =
-    let val fvar = newVALvar(whileSym, mkv)
-	val id = fn x => x
-	val (markdec,markall,markend,markbody) =
-	    case (a,b)
-	      of (MARKexp(_,(a1,a2)), MARKexp(_,(b1,b2))) =>
-		    (fn e => MARKdec(e,(a1,b2)), fn e => MARKexp(e,(a1,b2)),
-		     fn e => MARKexp(e,(b2,b2)), fn e => MARKexp(e,(b1,b2)))
-	       | _ => (id,id,id,id)
-	val body = 
-	    markbody(SEQexp[b, APPexp(markend(VARexp(ref fvar,[])), 
-				      markend unitExp)])
-	val loop = markall(IFexp(a,body, markend unitExp))
-	val fnloop = markall(FNexp(trivialCompleteMatch
-				     [RULE(unitPat,loop)],UNDEFty))
-
-        val (nvar, ndec) = 
-          wrapRECdec0([RVB{var=fvar, exp=fnloop, resultty = NONE, 
-                           boundtvs=[], tyvars = ref []}], compInfo)
-     in markall 
-	 (LETexp(markdec ndec,
-	    APPexp(markall(VARexp (ref nvar, [])), markend unitExp)))
     end
 
 fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
@@ -506,6 +474,7 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
             (case e
               of VARexp (ref(V.VALvar{access=A.LVAR x, ...}), _) =>
                    if v=x then raise IsRec else ()
+	       | VARexp _ => ()
                | RECORDexp l => app (fn (lab, x)=>findexp x) l
                | SEQexp l => app findexp l
                | APPexp (a,b) => (findexp a; findexp b)
@@ -515,9 +484,18 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
                | LETexp (d, x) => (finddec d; findexp x)
                | CASEexp (x, l, _) => 
                    (findexp x; app (fn RULE (_, x) => findexp x) l)
+	       | IFexp { test, thenCase, elseCase } =>
+		   (findexp test; findexp thenCase; findexp elseCase)
+	       | (ANDALSOexp (e1, e2) | ORELSEexp (e1, e2) |
+		  WHILEexp { test = e1, expr = e2 }) =>
+		   (findexp e1; findexp e2)
                | FNexp (l, _) =>  app (fn RULE (_, x) => findexp x) l
                | MARKexp (x, _) => findexp x
-               | _ => ())
+	       | SELECTexp (_, e) => findexp e
+	       | VECTORexp (el, _) => app findexp el
+	       | PACKexp (e, _, _) => findexp e
+	       | (CONexp _ | INTexp _ | WORDexp _ | REALexp _ | STRINGexp _ |
+		  CHARexp _) => ())
 
           and finddec d =
             (case d

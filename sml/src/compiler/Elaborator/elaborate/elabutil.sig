@@ -36,8 +36,6 @@ sig
   val TUPLEexp : Absyn.exp list -> Absyn.exp
   val TPSELexp : Absyn.exp * int -> Absyn.exp
   val TUPLEpat : Absyn.pat list -> Absyn.pat
-  val WHILEexp : Absyn.exp * Absyn.exp * compInfo -> Absyn.exp
-  val IFexp : Absyn.exp * Absyn.exp * Absyn.exp -> Absyn.exp
   val unitExp : Absyn.exp
   val unitPat : Absyn.pat
   val bogusExp: Absyn.exp

@@ -386,6 +386,21 @@ fun patType(pat: pat, depth, region) : pat * ty =
        | p => bug "patType -- unexpected pattern"
 
 fun expType(exp: exp, occ: occ, region) : exp * ty =
+let fun boolUnifyErr { ty, name, message } =
+	unifyErr { ty1 = ty, name1 = name, ty2 = boolTy, name2 = "",
+		   message = message, region = region, kind = ppExp,
+		   kindname = "expression", phrase = exp }
+    fun boolshortcut (con, what, e1, e2) =
+	let val (e1', t1) = expType (e1, occ, region)
+	    val (e2', t2) = expType (e2, occ, region)
+	    val m = String.concat ["operand of ", what, " is not of type bool"]
+	in
+	    if boolUnifyErr { ty = t1, name = "operand", message = m }
+	    andalso boolUnifyErr { ty = t2, name = "operand", message = m }
+	    then (con (e1', e2'), boolTy)
+	    else (exp, WILDCARDty)
+	end
+in
      case exp
       of VARexp(r as ref(VALvar{typ, info, ...}), _) =>
 	 (case ii2ty info of
@@ -568,6 +583,42 @@ fun expType(exp: exp, occ: occ, region) : exp * ty =
 	   end
 		 (* this causes case to behave differently from let, i.e.
 		    bound variables do not have generic types *)
+       | IFexp { test, thenCase, elseCase } =>
+	   let val (test', tty) = expType (test, occ, region)
+	       val (thenCase', tct) = expType (thenCase, occ, region)
+	       val (elseCase', ect) = expType (elseCase, occ, region)
+	   in
+	       if boolUnifyErr
+		      { ty = tty, name = "test expression",
+			message="test expression in if is not of type bool" }
+	       andalso
+	          unifyErr { ty1 = tct, name1 = "then branch",
+			     ty2 = ect, name2 = "else branch",
+			     message="types of if branches do not agree",
+			     region = region, kind = ppExp,
+			     kindname = "expression", phrase = exp }
+	       then
+		   (IFexp { test = test', thenCase = thenCase',
+			    elseCase = elseCase' },
+		    tct)
+	       else
+		   (exp, WILDCARDty)
+	   end
+       | ANDALSOexp (e1, e2) =>
+	   boolshortcut (ANDALSOexp, "andalso", e1, e2)
+       | ORELSEexp (e1, e2) =>
+	   boolshortcut (ORELSEexp, "orelse", e1, e2)
+       | WHILEexp { test, expr } =>
+	   let val (test', tty) = expType (test, occ, region)
+	       val (expr', _) = expType (expr, occ, region)
+	   in
+	       if boolUnifyErr { ty = tty, name = "test expression",
+				 message = "test expression in while is not of type bool" }
+	       then
+		   (WHILEexp { test = test', expr = expr' }, unitTy)
+	       else
+		   (exp, WILDCARDty)
+	   end
        | FNexp(rules,_) => 
            let val (rules',ty,rty) = matchType(rules,occ,region)
             in (FNexp(rules',ty),rty)
@@ -577,6 +628,7 @@ fun expType(exp: exp, occ: occ, region) : exp * ty =
             in (MARKexp(e',region),et)
            end
        | _ => bug "exptype -- bad expression"
+end
 
 and ruleType(RULE(pat,exp),occ,region) =  
  let val occ = Abstr occ

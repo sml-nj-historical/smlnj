@@ -352,6 +352,63 @@ fun ppExp (context as (env,source_opt)) ppstrm =
                   trim rules);
 	       rparen();
 	       end_block ppstrm)
+	  | ppExp' (IFexp { test, thenCase, elseCase },atom,d) =
+	      (begin_block ppstrm CONSISTENT 0;
+	       lpcond(atom);
+	       ppsay "if ";
+	       begin_block ppstrm CONSISTENT 0;
+	        ppExp' (test, false, d-1);
+	       end_block ppstrm;
+	       add_break ppstrm (1, 0);
+	       ppsay "then ";
+	       begin_block ppstrm CONSISTENT 0;
+	        ppExp' (thenCase, false, d-1);
+	       end_block ppstrm;
+	       add_break ppstrm (1, 0);
+	       ppsay "else ";
+	       begin_block ppstrm CONSISTENT 0;
+	        ppExp' (elseCase, false, d-1);
+	       end_block ppstrm;
+	       rpcond(atom);
+	       end_block ppstrm)
+	  | ppExp' (ANDALSOexp (e1, e2),atom,d) =
+	      (begin_block ppstrm CONSISTENT 0;
+	       lpcond(atom);
+	       begin_block ppstrm CONSISTENT 0;
+	       ppExp' (e1,true,d-1);
+	       end_block ppstrm;
+	       add_break ppstrm (1, 0);
+	       ppsay "andalso ";
+	       begin_block ppstrm CONSISTENT 0;
+	       ppExp' (e2,true,d-1);
+	       end_block ppstrm;
+	       rpcond(atom);
+	       end_block ppstrm)
+	  | ppExp' (ORELSEexp (e1, e2),atom,d) =
+	      (begin_block ppstrm CONSISTENT 0;
+	       lpcond(atom);
+	       begin_block ppstrm CONSISTENT 0;
+	       ppExp' (e1,true,d-1);
+	       end_block ppstrm;
+	       add_break ppstrm (1, 0);
+	       ppsay "orelse ";
+	       begin_block ppstrm CONSISTENT 0;
+	       ppExp' (e2,true,d-1);
+	       end_block ppstrm;
+	       rpcond(atom);
+	       end_block ppstrm)
+	  | ppExp' (WHILEexp { test, expr },atom,d) =
+	      (begin_block ppstrm CONSISTENT 0;
+	       ppsay "while ";
+	       begin_block ppstrm CONSISTENT 0;
+	        ppExp'(test,false,d-1);
+	       end_block ppstrm;
+	       add_break ppstrm (1, 0);
+	       ppsay "do ";
+	       begin_block ppstrm CONSISTENT 0;
+	         ppExp'(expr,false,d-1);
+	       end_block ppstrm;
+	       end_block ppstrm)
 	  | ppExp'(FNexp(rules,_),_,d) =
 	      (begin_block ppstrm CONSISTENT 0;
 	       ppvlist ppstrm ("(fn ","  | ",

@@ -418,11 +418,13 @@ val lt_tup = LT.ltc_tuple
 val lt_int = LT.ltc_int
 val lt_int32 = LT.ltc_int32
 val lt_bool = LT.ltc_bool
+val lt_unit = LT.ltc_unit
 
 val lt_ipair = lt_tup [lt_int, lt_int]
 val lt_icmp = lt_arw (lt_ipair, lt_bool)
 val lt_ineg = lt_arw (lt_int, lt_int)
 val lt_intop = lt_arw (lt_ipair, lt_int)
+val lt_u_u = lt_arw (lt_unit, lt_unit)
 
 val boolsign = BT.boolsign
 val (trueDcon', falseDcon') = 
@@ -1112,6 +1114,26 @@ and mkExp (exp, d) =
                  then MC.matchCompile (env, l', f, rootv, toTcLt d, complain)
                  else MC.bindCompile (env, l', f, rootv, toTcLt d, complain)
              end
+
+	| g (IFexp { test, thenCase, elseCase }) =
+	    COND (g test, g thenCase, g elseCase)
+
+	| g (ANDALSOexp (e1, e2)) =
+	    COND (g e1, g e2, falseLexp)
+
+	| g (ORELSEexp (e1, e2)) =
+	    COND (g e1, trueLexp, g e2)
+
+	| g (WHILEexp { test, expr }) =
+	    let val fv = mkv ()
+		val body =
+		    FN (mkv (), lt_unit,
+			COND (g test,
+			      LET (mkv (), g expr, APP (VAR fv, unitLexp)),
+			      unitLexp))
+	    in
+		FIX ([fv], [lt_u_u], [body], APP (VAR fv, unitLexp))
+	    end
 
         | g (LETexp (dc, e)) = mkDec (dc, d) (g e)
 

@@ -13,6 +13,24 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/05/17 10:20:00 CDT
+Tag: blume-20030517-absyn
+Description:
+
+1. Added cases for IF, WHILE, ANDALSO, and ORELSE to Absyn.
+
+   This mainly affects the quality of error messages.  However, some
+   of the code is now more straightforward than before. (Treatment of
+   the above four constructs in translate.sml is much simpler than
+   the "macro-expansion" that was going on before.  Plus, the mach-
+   compiler no longer gets invoked just to be able to compile an
+   if-expression.)
+
+2. The ErrorMsg.Error exception is now caught and absorbed by the
+   interactive loop.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2003/05/16 13:05:00 CDT
 Tag: leunga-20030516-cygwin-runtime

@@ -151,7 +151,7 @@ fun interact () = let
 		    EndOfFile => (say "\n")
                   | Interrupt => (say "\nInterrupt\n"; 
 				  flush(); loop())
-                  (* | EM.Error => (flush(); loop()) *)
+                  | EM.Error => (flush(); loop())
                   | CompileExn.Compile "syntax error" => (flush(); loop())
                   | CompileExn.Compile s =>
                     (say(concat["\nuncaught exception Compile: \"",

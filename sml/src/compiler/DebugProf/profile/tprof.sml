@@ -275,6 +275,18 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
                         in SEQexp (seq l)
                        end
 
+		   | IFexp { test, thenCase, elseCase } =>
+		       IFexp { test = iinstr test,
+			       thenCase = instr thenCase,
+			       elseCase = instr elseCase }
+
+		   | ANDALSOexp (e1, e2) =>
+		       ANDALSOexp (iinstr e1, instr e2)
+		   | ORELSEexp (e1, e2) =>
+		       ORELSEexp (iinstr e1, instr e2)
+		   | WHILEexp { test, expr } =>
+		       WHILEexp { test = iinstr test, expr = iinstr expr }
+
                    | exp as APPexp (f,a) =>
                        let fun safe(VARexp(ref(VALvar{info, ...}), _)) =
                                if II.isSimple info then

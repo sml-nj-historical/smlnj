@@ -242,6 +242,17 @@ structure BTrace :> BTRACE = struct
 	    A.RAISEexp (i_exp false loc e, t)
 	  | i_exp tail loc (A.CASEexp (e, rl, b)) =
 	    A.CASEexp (i_exp false loc e, map (i_rule tail loc) rl, b)
+	  | i_exp tail loc (A.IFexp { test, thenCase, elseCase }) =
+	      A.IFexp { test = i_exp false loc test,
+			thenCase = i_exp tail loc thenCase,
+			elseCase = i_exp tail loc elseCase }
+	  | i_exp tail loc (A.ANDALSOexp (e1, e2)) =
+	      A.ANDALSOexp (i_exp false loc e1, i_exp tail loc e2)
+	  | i_exp tail loc (A.ORELSEexp (e1, e2)) =
+	      A.ORELSEexp (i_exp false loc e1, i_exp tail loc e2)
+	  | i_exp _ loc (A.WHILEexp { test, expr }) =
+	      A.WHILEexp { test = i_exp false loc test,
+			   expr = i_exp false loc expr }
 	  | i_exp tail loc (A.FNexp (rl, t)) = let
 		val addexp = mkadd (mkDescr (loc, "FN"))
 		val arg = tmpvar ("fnvar", t)

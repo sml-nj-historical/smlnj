@@ -548,7 +548,7 @@ let
 		   and (e2,tv2,updt2) = elabExp(thenCase,env,region)
 		   and (e3,tv3,updt3) = elabExp(elseCase,env,region)
 		   fun updt tv = (updt1 tv;updt2 tv;updt3 tv)
-		in (IFexp(e1,e2,e3),
+		in (Absyn.IFexp { test = e1, thenCase = e2, elseCase = e3 },
 		    union(tv1,union(tv2,tv3,error region),error region),
 		    updt)
 	       end
@@ -556,19 +556,19 @@ let
 	       let val (e1,tv1,updt1) = elabExp(exp1,env,region)
 		   and (e2,tv2,updt2) = elabExp(exp2,env,region)
 		   fun updt tv = (updt1 tv;updt2 tv)
-		in (IFexp(e1, e2, FALSEexp), union(tv1,tv2,error region),updt)
+		in (ANDALSOexp(e1, e2), union(tv1,tv2,error region),updt)
 	       end
 	   | OrelseExp (exp1,exp2) =>
 	       let val (e1,tv1,updt1) = elabExp(exp1,env,region)
 		   and (e2,tv2,updt2) = elabExp(exp2,env,region)
 		   fun updt tv = (updt1 tv;updt2 tv)
-		in (IFexp(e1 ,TRUEexp, e2), union(tv1,tv2,error region),updt)
+		in (ORELSEexp(e1, e2), union(tv1,tv2,error region),updt)
 	       end
 	   | WhileExp {test,expr} =>
 	       let val (e1,tv1,updt1) = elabExp(test,env,region)
 		   and (e2,tv2,updt2) = elabExp(expr,env,region)
 		   fun updt tv = (updt1 tv;updt2 tv)
-		in (WHILEexp(e1,e2,compInfo), 
+		in (Absyn.WHILEexp { test = e1, expr = e2 },
                     union(tv1,tv2,error region), updt)
 	       end
 	   | FnExp rules => 
