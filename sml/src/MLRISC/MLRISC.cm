@@ -89,6 +89,8 @@ Library
 	signature SDI_JUMPS
 	signature MC_EMIT
 	functor BackPatch
+
+# if not defined (LIGHT) orelse defined (ARCH_SPARC)
 	signature SPARCCELLS
 	structure SparcCells
 	signature SPARCINSTR
@@ -105,6 +107,9 @@ Library
 	functor SparcRewrite
 	functor SparcRegAlloc
 	functor SparcDelaySlots
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_HPPA)
 	signature HPPACELLS
 	structure HppaCells
 	signature HPPAINSTR
@@ -118,10 +123,13 @@ Library
 	functor HppaDelaySlots
 	functor HppaJumps
 	signature HPPA_MILLICODE
-	signature LABEL_COMP
 	functor Hppa
 	functor HppaRewrite
 	functor HppaRegAlloc
+	signature LABEL_COMP
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_ALPHA32)
 	signature ALPHACELLS
 	structure AlphaCells
 	signature ALPHAINSTR
@@ -137,6 +145,9 @@ Library
 	functor Alpha
 	functor AlphaRewrite
 	functor AlphaRegAlloc
+# endif
+
+# if not defined (LIGHT) orelse defined (ARCH_X86)
 	signature X86CELLS
 	structure X86Cells
 	signature X86INSTR
@@ -157,6 +168,9 @@ Library
 	functor X86RewritePseudo
 	functor X86Jumps
 	functor X86
+# endif
+
+# if not defined(LIGHT) orelse defined (ARCH_PPC)
 	signature PPCCELLS
 	structure PPCCells
 	signature PPCINSTR
@@ -173,6 +187,8 @@ Library
 	functor PPC
 	functor PPCRewrite
 	functor PPCRegAlloc
+# endif
+
 is
 
 	basis.cm

@@ -21,7 +21,7 @@
  */
 ml_val_t _ml_NetDB_gethostbyaddr (ml_state_t *msp, ml_val_t arg)
 {
-    ASSERT (sizeof(struct in_addr) == OBJ_LEN(arg));
+    ASSERT (sizeof(struct in_addr) == GET_SEQ_LEN(arg));
 
     return _util_NetDB_mkhostent (
 	msp,

@@ -38,7 +38,9 @@ ml_val_t _util_NetDB_mkhostent (ml_state_t *msp, struct hostent *hentry)
 	for (nAddrs = 0;  hentry->h_addr_list[nAddrs] != NIL(char *);  nAddrs++)
 	    continue;
 	for (i = nAddrs, addrs = LIST_nil;  --i >= 0;  ) {
-	    addr = ML_CData(msp, hentry->h_addr_list[i], hentry->h_length);
+	    addr = ML_AllocString (msp, hentry->h_length);
+	    memcpy (GET_SEQ_DATAPTR(void, addr), hentry->h_addr_list[i],
+		hentry->h_length);
 	    LIST_cons(msp, addrs, addr, addrs);
 	}
 	REC_ALLOC4 (msp, res, name, aliases, af, addrs);

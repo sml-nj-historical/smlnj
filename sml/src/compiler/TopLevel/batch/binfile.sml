@@ -47,7 +47,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
     datatype bfContent =
 	BFC of {
 		imports: C.import list,
-		hasExports: bool,
+		exportPid: pid option,
 		cmData: pid list,
 		senv: senv pData,
 		lambda: lambda option pData,
@@ -56,12 +56,11 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	       }
 
     fun staticPidOf (BFC { senv = { pid, ... }, ... }) = pid
-    fun exportPidOf (bfc as BFC { hasExports, ... }) =
-	if hasExports then SOME (staticPidOf bfc) else NONE
+    fun exportPidOf (bfc as BFC { exportPid, ... }) = exportPid
     fun lambdaPidOf (BFC { lambda = { pid, ... }, ... }) = pid
     fun cmDataOf (BFC { cmData, ... }) = cmData
     fun senvOf (BFC { senv = { unpickled, ... }, ... }) = unpickled ()
-    fun symenvOf (bfc as BFC { senv, lambda, hasExports, ... }) =
+    fun symenvOf (bfc as BFC { senv, lambda, ... }) =
 	C.mksymenv (exportPidOf bfc, #unpickled lambda ())
 
     local
@@ -413,11 +412,10 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		in
 		    (mkSenv, penv)
 		end
-	    val hasExports = isSome exportPid
 	    fun pd (u, p, pk) = { unpickled = u, pid = p, pickled = pk }
         in
 	    BFC { imports = imports,
-		  hasExports = hasExports,
+		  exportPid = exportPid,
 		  cmData = cmData,
 		  senv = pd (senv, staticPid, penv),
 		  lambda = pd (lambda_i, lambdaPid, plambda),
@@ -436,11 +434,12 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	 * It calculates the number of bytes written by a corresponding
 	 * call to "write". *)
 	fun size { content = bfc, nopickle } = let
-	    val BFC { imports, hasExports, senv, cmData, lambda,  ... } = bfc
+	    val BFC { imports, exportPid, senv, cmData, lambda,  ... } = bfc
 	    val { unpickled = lut, pickled = lambdaP, ... } = lambda
 	    val pidSz = Word8Vector.length (Pid.toBytes (#pid senv))
 	    val (_, picki) = pickleImports imports
 	    val csegs = codeSegments bfc
+	    val hasExports = isSome exportPid
 	in
 	    magicBytes +
 	    9 * 4 +
@@ -455,7 +454,7 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    
 	(* Keep this in sync with "size" (see above). *)
 	fun write { stream = s, content = bfc, nopickle } = let
-	    val BFC { imports, hasExports, cmData, senv, lambda, ... } = bfc
+	    val BFC { imports, exportPid, cmData, senv, lambda, ... } = bfc
 	    val { pickled = senvP, pid = staticPid, ... } = senv
 	    val { pickled = lambdaP, pid = lambdaPid, unpickled = lut } =
 		lambda
@@ -463,7 +462,10 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    val envPids = staticPid :: lambdaPid :: cmData
 	    val (leni, picki) = pickleImports imports
 	    val importSzB = Word8Vector.length picki
-	    val (ne, epl) = if hasExports then (1, [staticPid]) else (0, [])
+	    val (ne, epl) =
+		case exportPid of
+		    NONE => (0, [])
+		  | SOME p => (1, [p])
 	    val nei = length envPids
 	    val cmInfoSzB = nei * bytesPerPid
 	    val sa2 =
@@ -517,12 +519,11 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 			    symenv=symenv, compInfo=cinfo, checkErr=check, 
 			    runtimePid=runtimePid, splitting=splitting}
 	    val {hash = lambdaPid, pickle} = PickMod.pickleFLINT inlineExp
-	    val hasExports = isSome exportPid
 	    fun pd (u, p, x) =
 		{ unpickled = fn () => u, pid = p, pickled = x }
 	in
 	    BFC { imports = imports,
-		  hasExports = hasExports,
+		  exportPid = exportPid,
 		  cmData = cmData,
 		  senv = pd (newstatenv, staticPid, envPickle),
 		  lambda = pd (inlineExp, lambdaPid, pickle),

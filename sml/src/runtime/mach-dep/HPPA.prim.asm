@@ -140,9 +140,6 @@ ML_CODE_HDR(sigh_return_a)
 
 ENTRY(sigh_resume)
 	ldi	REQ_SIG_RESUME, tmp2
-	ldi	0+ML_unit, stdlink
- 	ldi	0+ML_unit, stdclos
-	ldi	0+ML_unit, pc
 	b,n	set_request
 
 
@@ -156,9 +153,6 @@ ML_CODE_HDR(pollh_return_a)
 
 ENTRY(pollh_resume)
 	ldi	REQ_POLL_RESUME, tmp2
-	ldi	0+ML_unit, stdlink
- 	ldi	0+ML_unit, stdclos
-	ldi	0+ML_unit, pc
 	b,n	set_request
 
 

@@ -460,13 +460,13 @@ ml_val_t ML_SysConstList (ml_state_t *msp, sysconst_tbl_t *tbl)
 
 /* ML_CData:
  *
- * Allocate a Word8Vector.vector.
+ * Allocate a 64-bit aligned raw data object (to store abstract C data).
  */
 ml_val_t ML_AllocCData (ml_state_t *msp, int nbytes)
 {
     ml_val_t	obj;
 
-    obj = ML_AllocString (msp, nbytes);
+    obj = ML_AllocRaw64 (msp, (nbytes+7)>>2);
 
     return obj;
 
@@ -475,20 +475,19 @@ ml_val_t ML_AllocCData (ml_state_t *msp, int nbytes)
 
 /* ML_CData:
  *
- * Allocate a Word8Vector.vector and initialize it to the given C data.
+ * Allocate a 64-bit aligned raw data object and initialize it to the given C data.
  */
 ml_val_t ML_CData (ml_state_t *msp, void *data, int nbytes)
 {
     ml_val_t	obj;
 
     if (nbytes == 0)
-	return ML_string0;
+	return ML_unit;
     else {
-	obj = ML_AllocString (msp, nbytes);
-	memcpy (GET_SEQ_DATAPTR(void, obj), data, nbytes);
+	obj = ML_AllocRaw64 (msp, (nbytes+7)>>2);
+	memcpy (PTR_MLtoC(void, obj), data, nbytes);
 
 	return obj;
     }
 
 } /* end of ML_CData */
-

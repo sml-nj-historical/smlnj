@@ -59,24 +59,24 @@ PVT void ShowPerID (char *buf, pers_id_t *perID);
 
 /* BootML:
  *
- * Boot the system using the .bin files from binDir.
- */
-void BootML (const char *binDir, heap_params_t *heapParams,
-	     const char *rtpid_spec)
+* Boot the system using the .bin files from binDir.
+*/
+void BootML (const char *binDir, heap_params_t *heapParams, const char *rtPID)
 {
     ml_state_t	*msp;
     char	fname[512];
 
-    if (rtpid_spec) {
-      int i, l = strlen (rtpid_spec);
-      for (i = 0; i < PERID_LEN; i++) {
-	int i2 = 2 * i;
-	if (i2 + 1 < l) {
-	  int c1 = rtpid_spec [i2];
-	  int c2 = rtpid_spec [i2 + 1];
-	  RunTimePerID.bytes[i] = HEX (c1) * 16 + HEX (c2);
-	}
-      }
+    if (rtPID != NIL(char *)) {
+	int i, l = strlen (rtPID);
+	for (i = 0; i < PERID_LEN; i++) {
+	    int i2 = 2 * i;
+	    if (i2 + 1 < l) {
+		int c1 = rtPID[i2];
+		int c2 = rtPID[i2 + 1];
+/* what if upper-case digits are used?? */
+		RunTimePerID.bytes[i] = (HEX(c1) << 4) + HEX(c2);
+	    }
+        }
     }
 
     msp = AllocMLState (TRUE, heapParams);
@@ -341,21 +341,21 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
     Int32_t         thisSzB;
-    size_t          archive_offset;
+    size_t          archiveOffset;
     char            *atptr, *colonptr;
     char            *objname = fname;
     
 
     if ((atptr = strchr (fname, '@')) == NULL)
-      archive_offset = 0;
+	archiveOffset = 0;
     else {
-      if ((colonptr = strchr (atptr + 1, ':')) != NULL) {
-	objname = colonptr + 1;
-	*colonptr = '\0';
-      }
+	if ((colonptr = strchr (atptr + 1, ':')) != NULL) {
+	    objname = colonptr + 1;
+	    *colonptr = '\0';
+	}
       /* not a lot of extensive checking here... */
-      archive_offset = strtoul (atptr + 1, NULL, 0);
-      *atptr = '\0';
+	archiveOffset = strtoul (atptr + 1, NULL, 0);
+	*atptr = '\0';
     }
 
     Say ("[Loading %s]\n", objname);
@@ -367,11 +367,13 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 
   /* if an offset is given (i.e., we are probably dealing with a stable
    * archive), then seek to the beginning of the section that contains
-   * the binfile */
-    if (archive_offset)
-      if (fseek (file, archive_offset, SEEK_SET) == -1)
-	Die ("cannot seek on archive file \"%s%c%s@%ul\"",
-	     binDir, PATH_ARC_SEP, fname, (unsigned long) archive_offset);
+   * the binfile
+   */
+    if (archiveOffset != 0) {
+	if (fseek (file, archiveOffset, SEEK_SET) == -1)
+	    Die ("cannot seek on archive file \"%s%c%s@%ul\"",
+		binDir, PATH_ARC_SEP, fname, (unsigned long) archiveOffset);
+    }
 
   /* get the header */
     ReadBinFile (file, &hdr, sizeof(binfile_hdr_t), binDir, fname);
@@ -420,7 +422,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 
   /* seek to code section */
     {
-	long	    off = archive_offset
+	long	    off = archiveOffset
 	                + sizeof(binfile_hdr_t)
 			+ hdr.importSzB
 	                + exportSzB
