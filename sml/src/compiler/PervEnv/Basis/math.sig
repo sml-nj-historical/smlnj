@@ -1,0 +1,36 @@
+(* math.sig
+ *
+ * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ *
+ *)
+
+signature MATH =
+  sig
+    type real
+
+    val pi : real
+    val e  : real
+    val sqrt  : real -> real
+    val sin   : real -> real
+    val cos   : real -> real
+    val tan   : real -> real
+    val asin  : real -> real
+    val acos  : real -> real
+    val atan  : real -> real
+    val atan2 : real * real -> real
+    val exp   : real -> real
+    val pow   : real * real -> real
+    val ln    : real -> real
+    val log10 : real -> real
+    val sinh  : real -> real
+    val cosh  : real -> real
+    val tanh  : real -> real
+  end
+
+
+(*
+ * $Log: math.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:04  george
+ * Version 110.5
+ *
+ *)
