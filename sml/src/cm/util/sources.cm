@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (../cm-lib.cm)
+Group (smlnj/internal/cm-lib.cm)
 	structure StringSet
 	structure StringMap
 	structure Symbol
@@ -54,5 +54,5 @@ is
 	int-set.sml
 
 	basis.cm
-	viscomp-core.cm
+	smlnj/viscomp/core.cm
 	smlnj-lib.cm

@@ -71,9 +71,10 @@ mv $HEAP_FILE $MAIN_HEAP_DIR/sml.$ARCH-$OPSYS
 
 # Moving each individual library...
 cd $LIB_DIR
-list=`echo *.cm`
-for lib in init.cmi $list ; do
-    move $lib $MAIN_LIB_DIR/$lib
+for anchor in * ; do
+    if [ -d $anchor ] ; then
+	move $anchor $MAIN_LIB_DIR/$anchor
+    fi
 done
 cd ..
 

@@ -51,6 +51,32 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	if SrcPath.compare (p, grouppath) = EQUAL then SOME ig
 	else SrcPathMap.find (!sgc, p)
 
+    (* When an entry A vanishes from the stable cache (this only happens in
+     * paranoid mode), then all the other ones that refer to A must
+     * vasish, too.  They might still be valid themselves, but if they
+     * had been unpickled before A became invalid they will point to
+     * invalid data.  By removing them from the cache we force them to
+     * be re-read and re-unpickled.  This restores sanity. *)
+    fun delCachedStable (p, GG.GROUP { grouppath = igp, ... }) = let
+	val changed = ref true
+	fun canStay (GG.GROUP { sublibs, ... }) = let
+	    fun goodSublib (p, GG.GROUP { kind = GG.STABLELIB _, ... }) =
+		SrcPath.compare (p, igp) = EQUAL orelse
+		SrcPathMap.inDomain (!sgc, p)
+	      | goodSublib _ = true
+	    val cs = List.all goodSublib sublibs
+	in
+	    if cs then () else changed := true;
+	    cs
+	end
+
+    in
+	(sgc := #1 (SrcPathMap.remove (!sgc, p)))
+	     handle LibBase.NotFound => ();
+	while !changed do
+             (changed := false; sgc := SrcPathMap.filter canStay (!sgc))
+    end
+
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
     fun dropPickles () = let
@@ -222,7 +248,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 					reg (case try_s () of
 						 NONE => SOME g
 					       | SOME g' => SOME g')
-				    else proc_n (SOME g)
+				    else (delCachedStable (group, init_group);
+					  proc_n (SOME g))
 			    in
 				case gopt' of
 				    NONE => NONE

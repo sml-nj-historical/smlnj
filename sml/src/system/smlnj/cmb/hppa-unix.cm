@@ -1,0 +1,8 @@
+Library
+	structure HppaUnixCMB
+is
+	basis.cm
+	smlnj/internal/cm-lib.cm
+	smlnj/cm/full.cm
+	smlnj/viscomp/hppa.cm
+	hppa-unix.sml

@@ -4,9 +4,13 @@
  * This is the part of what used to be viscomp-lib.cm that is specific to
  * to HPPAs.
  *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/hppa.cm.
+ *   M.Blume (03/2000)
  *)
 
-Library
+Group (smlnj/viscomp/hppa.cm)
 	structure HppaVisComp
         structure HppaCG
         structure HppaCpsRegs
@@ -25,9 +29,9 @@ CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
 
 basis.cm
-viscomp-core.cm
+smlnj/viscomp/core.cm
 comp-lib.cm
-MLRISC-Control.cm
-MLRISC.cm
-MLRISC-HPPA.cm
+MLRISC/Control.cm
+MLRISC/MLRISC.cm
+MLRISC/HPPA.cm
 

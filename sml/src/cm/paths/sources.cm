@@ -5,7 +5,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (../cm-lib.cm)
+Group (smlnj/internal/cm-lib.cm)
 	signature PATHCONFIG
 	structure PathConfig
 	signature SRCPATH
@@ -24,4 +24,4 @@ is
 	../util/sources.cm
 	../concur/sources.cm
 	basis.cm
-	viscomp-core.cm
+	smlnj/viscomp/core.cm

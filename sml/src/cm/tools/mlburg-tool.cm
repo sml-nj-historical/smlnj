@@ -8,5 +8,5 @@
 Library
 	structure BurgTool
 is
-	cm-tools.cm
+	smlnj/cm/tools.cm
 	burgtool.sml

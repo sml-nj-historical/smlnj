@@ -4,4 +4,4 @@
 Group
 	structure InteractiveSystem
 is
-	intsys.cm
+	smlnj/internal/intsys.cm

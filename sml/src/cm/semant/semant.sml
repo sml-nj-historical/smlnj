@@ -146,7 +146,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun emptyGroup path =
 	GG.GROUP { exports = SymbolMap.empty,
-		   kind = GG.NOLIB [],
+		   kind = GG.NOLIB { subgroups = [], owner = NONE },
 		   required = StringSet.empty,
 		   grouppath = path,
 		   sublibs = [] }
@@ -163,7 +163,7 @@ structure CMSemant :> CM_SEMANT = struct
 	foldl oneSG [] subgroups
     end
 
-    fun grouplib (islib, g, p, e, m, gp, curlib, init_group) = let
+    fun grouplib (isgroup, g, p, e, m, gp, curlib, init_group) = let
 	val mc = applyTo (MemberCollection.implicit init_group, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val pfsbn = let
@@ -177,33 +177,24 @@ structure CMSemant :> CM_SEMANT = struct
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
 	GG.GROUP { exports = exports,
-		   kind = if islib then GG.LIB (wr, subgroups)
-			  else (if StringSet.isEmpty wr then ()
-				else EM.impossible
-				    "group with wrapped privilege";
-				GG.NOLIB subgroups),
+		   kind = case isgroup of
+			      NONE => GG.LIB { wrapped = wr,
+					       subgroups = subgroups }
+			    | SOME owner => 
+			      (if StringSet.isEmpty wr then ()
+			       else EM.impossible
+					"group with wrapped privilege";
+					GG.NOLIB { subgroups = subgroups,
+						   owner = owner }),
 		   required = rp'',
 		   grouppath = g,
 		   sublibs = sgl2sll subgroups }
     end
 
-    fun group (g, p, e, m, gp, curlib, owner, error, init_group) = let
-	fun libname NONE = "<toplevel>"
-	  | libname (SOME p) = SrcPath.descr p
-	fun eq (NONE, NONE) = true
-	  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL
-	  | eq _ = false
-	fun checkowner () =
-	    if eq (curlib, owner) then ()
-	    else error (concat ["owner specified as ",
-				libname owner, " but found to be ",
-				libname curlib])
-    in
-	checkowner ();
-	grouplib (false, g, p, e, m, gp, curlib, init_group)
-    end
+    fun group (g, p, e, m, gp, curlib, owner, error, init_group) =
+	grouplib (SOME owner, g, p, e, m, gp, curlib, init_group)
     fun library (g, p, e, m, gp, init_group) =
-	grouplib (true, g, p, SOME e, m, gp, SOME g, init_group)
+	grouplib (NONE, g, p, SOME e, m, gp, SOME g, init_group)
 
     local
 	val isMember = StringSet.member
@@ -228,7 +219,22 @@ structure CMSemant :> CM_SEMANT = struct
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
+	fun checkowner (_, GG.GROUP { kind = GG.NOLIB { owner, ... }, ...}) =
+	    let	fun libname NONE = "<toplevel>"
+		  | libname (SOME p) = SrcPath.descr p
+		fun eq (NONE, NONE) = true
+		  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL
+		  | eq _ = false
+	    in
+		if eq (curlib, owner) then ()
+		else e0 (concat ["owner of subgroup (",
+				 libname owner,
+				 ") does not match current library (",
+				 libname curlib])
+	    end
+	  | checkowner _ = ()
     in
+	app checkowner (MemberCollection.subgroups coll);
 	MemberCollection.sequential (env, coll, e0)
     end
     fun members (m1, m2) (env, curlib) = m2 (m1 (env, curlib), curlib)

@@ -1,7 +1,7 @@
 Compiler Hacker's Guide to the new CM...
 ========================================
 
-Last change: 2/2000
+Last change: 3/2000
 
 * Libraries
 -----------
@@ -19,52 +19,62 @@ At the moment, the following libraries are constructed when compiling
 the compiler ("*" means that I consider the library potentially useful
 in its own right):
 
-	* basis.cm	- The SML'97 basis library
-	- cm-hook.cm	- an internal library for organizational purposes
-	- cm-lib.cm	- the library that implements CM's functionality
-	* comp-lib.cm	- a helper library for the compiler, MLRISC, and CM
-	* full-cm.cm	- the library that exports the public interface to
-			  the compilation manager (i.e., structure CM)
-	* minimal-cm.cm - exports a reduced version of structure CM;
-			  this one is pre-registered at the top level
-	* host-cmb.cm	- the library that exports the public interface to
-			  the bootstrap compiler (i.e., structure CMB)
-	- host-compiler-0.cm
-			- an internal library for organizational purposes
-	* host-compiler.cm
-			- the library that exports the public interface to
-			  the visible compiler (i.e., structure Compiler)
-	- intsys.cm	- an internal library for organizational purposes
-			  (In fact, its the "root" of the main hierarchy.)
-	* ml-yacc-lib.cm - needs no further comment
-	* smlnj-lib.cm	- needs no further comment
-	* <arch>-compiler.cm - exports the Compiler structure for the
-			   given architecture (<Arch>Compiler).
-	* <arch>-<os>.cm - exports <Arch><OS>CMB for the given architecture-
-			   OS combination.
-	* target-compilers.cm
-			- library exporting target-specific versions of
-			  structure Compiler and of structure CMB.
-			  This is a summary of all the <arch>-compiler.cm
-			  and <arch>-<os>.cm libraries above.
-			  (The existence of these libraries is the moral
-			   equivalent of "CMB.retarget" in the old CM.)
-	* viscomp-core.cm - library that implements the machine-independent
-			  core of the compiler.
-	* viscomp-<arch>.cm - library that implements the visible compiler
-			   for a given architecture.
+  * basis.cm				SML'97 Basis Library (pre-loaded)
+  * smlnj-lib.cm			SML/NJ Utility Library
+  * html-lib.cm				SML/NJ HTML Library
+  * pp-lib.cm				SML/NJ Pretty-print Library
+
+  * ml-yacc-lib.cm			SML/NJ ML-Yacc runtime library
+
+  * smlnj/compiler/{alpha32,hppa,ppc,sparc,x86}.cm
+					cross-compiler libraries, exporting
+					structure <Arch>Compiler
+  * smlnj/compiler/current.cm		structure Compiler (current arch)
+  * smlnj/compiler/all.cm		all cross-compilers and all cross-CMBs
+
+  * smlnj/cm/minimal.cm			minimal CM (pre-loaded)
+  * smlnj/cm/full.cm			full structure CM (see manual)
+  * smlnj/cm/tools.cm			CM tools library
+
+  * smlnj/cmb/{alpha32,hppa,ppc,sparc,x86}-unix.cm
+					cross-bootstrap-compilers for Unix
+					(structure <Arch>UnixCMB)
+  * smlnj/cmb/ppc-macos.cm		...for Mac (structure PPCMacosCMB)
+  * smlnj/cmb/x86-win32.cm		...for Windoze (structure X86Win32CMB)
+  * smlnj/cmb/current.cm		structure CMB (current arch/os)
+
+  * smlnj/compiler.cm			abbrev. for smlnj/compiler/current.cm
+  * smlnj/cm.cm				abbrev. for smlnj/cm/full.cm
+  * smlnj/cmb.cm			abbrev. for smlnj/cmb/current.cm
+
+  * comp-lib.cm				Utility library for compiler
+
+  - smlnj/viscomp/core.cm		Compiler core functionality
+  - smlnj/viscomp/{alpha32,hppa,ppc,sparc,x86}.cm
+					Machine-specific parts of compiler
+
+  - smlnj/internal/{intsys,cm-lib,cm-hook,host-compiler-0}.cm
+					Glue that holds the interactive system
+					together
+
+  * MLRISC/{MLRISC,Control,Lib,ALPHA,HPPA,PPC,SPARC,IA32}.cm
+					Various MLRISC bits
+
+  * {mlyacc,mllex,mlburg}-tool.cm	CM plug-in libraries for common tools
+  * {grm,lex,burg}-ext.cm		CM plug-in libraries for common file
+					extensions
 
 * Before you can use the bootstrap compiler (CMB)...
 ----------------------------------------------------
 
 To be able to use CMB at all, you must first say
 
-	CM.autoload "host-cmb.cm";
+	CM.autoload "smlnj/cmb.cm";
 
 after you start sml.  Alternatively -- and perhaps more conveniently --
 you can provide "host-cmb.cm" as a command-line argument to sml:
 
-      $ sml host-cmb.cm
+      $ sml smlnj/cmb.cm
 
 * Compiling the compiler
 ------------------------
@@ -179,10 +189,10 @@ to replace your existing compiler with the one you just built and tested.
 * Cross-compiling
 -----------------
 
-All cross-compilers live in the "target-compilers.cm" library.  You
+All cross-compilers live in the "smlnj/compiler/all.cm" library.  You
 must first say
 
-	CM.autoload "target-compilers.cm";
+	CM.autoload "smlnj/compiler/all.cm";
 
 before you can access them.  (This step corresponds to the old
 CMB.retarget call.)  After that, _all_ cross-compilers are available
@@ -209,19 +219,20 @@ exported by target-compilers.cm are:
 implementation of the basis library for the MacOS.)
 
 Alternatively, you can select just the one single structure that you
-are interested in by auto-loading <arch>-compiler.cm or <arch>-<os>.cm.
+are interested in by auto-loading smlnj/compiler/<arch>.cm or
+smlnj/cmb/<arch>-<os>.cm.
 <arch> currently ranges over "alpha32", "hppa", "ppc", "sparc", and "x86.
 <os> can be either "unix" or "macos" or "win32".
 (Obviously, not all combinations are valid.)
 
-Again, as with host-cmb.cm, you can specify the .cm file as an
+Again, as with smlnj/cmb.cm, you can specify the .cm file as an
 argument to the sml command:
 
-    $ sml target-compilers.cm
+    $ sml smlnj/compiler/all.cm
 
 or
 
-    $ sml alpha32-unix.cm
+    $ sml smlnj/cmb/alpha32-unix.cm
 
 * Path configuration
 --------------------
@@ -327,17 +338,15 @@ Once I have new heap image and libraries working, I replace the old
 
   mv <image>.<arch>-<osvariant> ../../bin/.heap/sml.<arch>-<osvariant>
 
-and then:
+After this you must also move all libraries from <image>.libs/* to their
+corresponding position in ../../lib.
 
-  rm -r ../../lib/*.cm
-  mv <image>.libs/*.cm ../../lib
-
-For convenience, there is a script called "installml" that automates
-this task.  Using the script has the added advantage that it will not
-clobber libraries that belong to other than the current architecture.
-(The rather heavy-handed "rm/mv" approach above will delete all stable
-libraries for all architectures.)  "installml" also patches the
-../../lib/pathconfig file as necessary.
+Since this is cumbersome to do by hand, there is a script called
+"installml" that automates this task.  Using the script has the added
+advantage that it will not clobber libraries that belong to other than
+the current architecture.  (A rather heavy-handed "rm/mv" approach
+will delete all stable libraries for all architectures.)
+"installml" also patches the ../../lib/pathconfig file as necessary.
 
 Of course, you can organize things differently for yourself -- the
 path configuration mechanism should be sufficiently flexible.
@@ -403,17 +412,17 @@ CM cannot automatically determine dependencies (or exports) for the
 init group source files, but it still does use its regular cutoff
 recompilation mechanism.  Therefore, dependencies must be given
 explicitly.  This is done by a special description file which
-currently lives in Init/init.cmi.  See the long comment at the
-beginning of that file for more details.
+currently lives in ../system/smlnj/init/init.cmi.  See the long comment
+at the beginning of that file for more details.
 
-After it is built, init.cmi can be used as an "ordinary" library by
-other libraries.  (This is done, for example, by the implementation of
-the Basis library.)  Access to "init.cmi" is protected by the
+After it is built, smlnj/init/init.cmi can be used as an "ordinary" library
+by other libraries.  (This is done, for example, by the implementation of
+the Basis library.)  Access to "smlnj/init/init.cmi" is protected by the
 privilege named "primitive".  Also, note that the .cmi-file is not
 automatically recognized as as CM description file.  Therefore, it
 must be given an explicit member class:
 
-     init.cmi : cm
+     smlnj/init/init.cmi : cm
 
 * Autoloader
 ------------
@@ -441,11 +450,14 @@ Here are some other useful libraries that are not pre-registered but
 which can easily be made accessible via CM.autoload (or, non-lazily,
 via CM.make):
 
-	full-cm.cm		- provides the actual ("full") structure CM
+	smlnj/cm.cm		- provides the actual ("full") structure CM
 				  as described in the CM manual
-	host-compiler.cm	- provides "structure Compiler"
-	host-cmb.cm		- provides "structure CMB"
-	target-compilers.cm	- provides "structure <Arch>Compiler" and
+        smlnj/cm/full.cm	- same as smlnj/cm.cm
+	smlnj/compiler.cm	- provides "structure Compiler"
+        smlnj/compiler/current.cm - same as smlnj/compiler.cm
+	smlnj/cmb.cm		- provides "structure CMB"
+	smlnj/cmb/current.cm    - same as smlnj/cmb.cm
+	smlnj/compiler/all.cm	- provides "structure <Arch>Compiler" and
 				  "structure <Arch><OS>CMB" for various
 				  values of <Arch> and <OS>
 	smlnj-lib.cm		- the SML/NJ library
@@ -551,6 +563,17 @@ big loss because path anchors make up for most of it.  Moreover,
 stable libraries can now easily be moved to convenient locations
 without having to move large source trees at the same time. (See my
 new build/install.sh script for examples of that.)
+
+It is possible to simulate aliases (in a way that is safer than the
+original alias mechanism).  For example, the root.cm file (which is the
+root of the whole system as far as CMB.make is concerned) acts as an
+alias for smlnj/internal/intsys.cm.  In this case, root.cm is a group
+to avoid having a (trivial) stable library file built for it.
+
+A library can act as an "alias" for another library if it has a
+verbatim copy of the export list and mentions the other library as its
+only member.  Examples for this are smlnj/cm.cm (for smlnj/cm/full.cm),
+smlnj/compiler.cm (for smlnj/compiler/current.cm), etc.
 
 * Don't use relative or absolute pathnames to refer to libraries
 ----------------------------------------------------------------

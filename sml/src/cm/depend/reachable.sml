@@ -93,8 +93,8 @@ structure Reachable :> REACHABLE = struct
 	end
 
 	fun groupsOf g = let
-	    fun subgroups (GG.GROUP { kind = GG.NOLIB sg, ... }) = sg
-	      | subgroups (GG.GROUP { kind = GG.LIB (_, sg), ... }) = sg
+	    fun subgroups (GG.GROUP { kind = GG.NOLIB x, ... }) = #subgroups x
+	      | subgroups (GG.GROUP { kind = GG.LIB x, ... }) = #subgroups x
 	      | subgroups _ = []
 	    fun go (g as GG.GROUP { grouppath, ... }, a) = let
 		val sgl = subgroups g

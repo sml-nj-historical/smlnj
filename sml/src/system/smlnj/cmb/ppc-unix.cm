@@ -1,0 +1,8 @@
+Library
+	structure PPCUnixCMB
+is
+	basis.cm
+	smlnj/internal/cm-lib.cm
+	smlnj/cm/full.cm
+	smlnj/viscomp/ppc.cm
+	ppc-unix.sml

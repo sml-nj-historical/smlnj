@@ -7,4 +7,4 @@
 # author: Matthias Blume (blume@cs.princeton.edu)
 #
 make basis.cm
-make host-compiler.cm
+make smlnj/compiler.cm

@@ -367,15 +367,15 @@ but will otherwise be ignored.
 
 Functions that control CM's operation are accessible as members of a
 structure named {\tt CM}.  This structure itself is exported from a
-library called {\tt full-cm.cm}.  Other libraries can exploit CM's
-functionality simply by putting a {\tt full-cm.cm} entry into their
-own description file.  Section~\ref{sec:dynlink} shows one
-interesting use of this feature.
+library called {\tt smlnj/cm/full.cm} (or, alternatively, {\tt
+smlnj/cm.cm}).  Other libraries can exploit CM's functionality simply
+by putting a {\tt smlnj/cm/full.cm} entry into their own description file.
+Section~\ref{sec:dynlink} shows one interesting use of this feature.
 
 Initially, only a ``minimal'' version of structure {\tt CM} (exported
-by library {\tt minimal-cm.cm}) is pre-registered at the interactive
+by library {\tt smlnj/cm/minimal.cm}) is pre-registered at the interactive
 prompt.  To make the full version of structure {\tt CM} available, one
-must explicitly load {\tt full-cm.cm} using {\tt CM.autoload} or {\tt
+must explicitly load {\tt smlnj/cm/full.cm} using {\tt CM.autoload} or {\tt
 CM.make}, both of which are also available in the minimal version.
 (The minimal structure {\tt CM} contains four members: {\tt
 CM.recomp}, {\tt CM.stabilize}, {\tt CM.make}, and {\tt CM.autoload}.)
@@ -1068,7 +1068,7 @@ Note that privileges cannot be wrapped at the level of CM groups.
 Access control is a new feature. At the moment, only the basic
 mechanisms are implemented, but there is no enforcement.  In other
 words, everybody is assumed to have every possible privilege.  CM
-merely reports which privileges "would have been required".
+merely reports which privileges ``would have been required''.
 
 \section{The pervasive environment}
 
@@ -1152,7 +1152,7 @@ gets replaced by an older version of itself.
 
 CM's tool set is extensible: new tools can be added by writing a few
 lines of ML code.  The necessary hooks for this are provided by a
-structure {\tt Tools} which is exported by the {\tt cm-tools.cm}
+structure {\tt Tools} which is exported by the {\tt smlnj/cm/tools.cm}
 library.
 
 If the tool is implemented as a ``typical'' shell command, then all
@@ -1178,7 +1178,7 @@ val _ = Tools.registerStdShellCmdTool
 \end{verbatim}
 
 This code can either be packaged as a CM library or entered at the
-interactive top level after loading the {\tt cm-tools.cm} library
+interactive top level after loading the {\tt smlnj/cm/tools.cm} library
 (via {\tt CM.make} or {\tt CM.load\_plugin}).
 
 In our example, the shell command name for our tool is {\tt
@@ -1497,8 +1497,8 @@ of {\tt F.f}.
 For the new {\tt f.sml} to be compiled successfully it must be placed
 into a library {\tt f.cm} that mentions {\tt f-hook.cm} and {\tt
 full-cm.cm}.  As we have seen, {\tt f-hook.cm} exports {\tt F\_Hook.f}
-and {\tt full-cm.cm} is needed\footnote{The reduced version of
-structure {\tt CM} as exported by library {\tt minimal-cm.cm} would
+and {\tt smlnj/cm/full.cm} is needed\footnote{The reduced version of
+structure {\tt CM} as exported by library {\tt smlnj/cm/minimal.cm} would
 have been sufficient, too.}  because it exports {\tt CM.make}:
 \begin{verbatim}
 Library
@@ -1506,10 +1506,10 @@ Library
 is
         f.sml
         f-hook.cm
-        full-cm.cm
+        smlnj/cm/full.cm
 \end{verbatim}
 
-\noindent{\bf Beware!}  This solution makes use of {\tt full-cm.cm}
+\noindent{\bf Beware!}  This solution makes use of {\tt smlnj/cm/full.cm}
 which in turn requires the SML/NJ compiler to be present.  Therefore,
 is worthwhile only for really large program modules where the benefits
 of their absence are not outweighed be the need for the compiler.

@@ -4,9 +4,13 @@
  * This is the part of what used to be viscomp-lib.cm that is specific to
  * to PPCs.
  *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/ppc.cm.
+ *   M.Blume (03/2000)
  *)
 
-Library
+Group (smlnj/viscomp/ppc.cm)
 	structure PPCVisComp
         structure PPCCG
         structure PPCCpsRegs
@@ -24,9 +28,9 @@ CodeGen/ppc/ppcgen.sml
 CodeGen/ppc/ppcspec.sml
 
 basis.cm
-viscomp-core.cm
+smlnj/viscomp/core.cm
 comp-lib.cm
-MLRISC-Control.cm
-MLRISC.cm
-MLRISC-PPC.cm
+MLRISC/Control.cm
+MLRISC/MLRISC.cm
+MLRISC/PPC.cm
 

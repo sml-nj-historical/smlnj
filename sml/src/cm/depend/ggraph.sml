@@ -11,8 +11,8 @@ structure GroupGraph = struct
     type privileges = StringSet.set
 
     datatype kind =
-	NOLIB of subgrouplist
-      | LIB of privileges * subgrouplist (* wrapped privileges *)
+	NOLIB of { owner: SrcPath.t option, subgroups: subgrouplist }
+      | LIB of { wrapped: privileges, subgroups: subgrouplist }
       | STABLELIB of unit -> unit	(* pickle dropper *)
 
     (* the "required" field includes everything:

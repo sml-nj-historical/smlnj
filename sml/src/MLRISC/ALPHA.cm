@@ -26,9 +26,9 @@ is
 #if defined(NEW_CM)
 	basis.cm
 #endif
-	MLRISC.cm
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
+	MLRISC/MLRISC.cm
+	MLRISC/Control.cm
+	MLRISC/Lib.cm
 	smlnj-lib.cm
 
 	(* Alpha specific backend *)

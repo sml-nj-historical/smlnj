@@ -1,0 +1,5 @@
+Library
+	structure Compiler
+is
+	smlnj/compiler/current.cm
+

@@ -4,8 +4,8 @@
 #   either "autoload" or "make" and where "libname" is suitable as an
 #   argument to CM.autoload or CM.make.
 #
-# Make sure that at least one of {minimal-cm.cm,full-cm.cm} is being
+# Make sure that at least one of smlnj/cm/{minimal,full}.cm is being
 # registered here.
 #
 autoload basis.cm
-autoload minimal-cm.cm
+autoload smlnj/cm/minimal.cm

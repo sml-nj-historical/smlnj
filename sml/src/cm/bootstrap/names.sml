@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure BtNames = struct
-    val initgspec = "init.cmi"
+    val initgspec = "smlnj/init/init.cmi" (* standard path syntax ok! *)
     val maingspec = "root.cm"
     val dirbaseDefault = "sml"
     val pcmodespec = "pathconfig"

@@ -4,9 +4,13 @@
  * This is the part of what used to be viscomp-lib.cm that is specific to
  * to Sparcs.
  *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/sparc.cm.
+ *   M.Blume (03/2000)
  *)
 
-Library
+Group (smlnj/viscomp/sparc.cm)
 	structure SparcVisComp
         structure SparcCG
         structure SparcCpsRegs
@@ -26,8 +30,8 @@ CodeGen/sparc/sparcgen.sml
 CodeGen/sparc/sparcspec.sml
 
 basis.cm
-viscomp-core.cm
+smlnj/viscomp/core.cm
 comp-lib.cm
-MLRISC-Control.cm
-MLRISC.cm
-MLRISC-SPARC.cm
+MLRISC/Control.cm
+MLRISC/MLRISC.cm
+MLRISC/SPARC.cm

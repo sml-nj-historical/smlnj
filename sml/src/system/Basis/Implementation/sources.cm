@@ -179,7 +179,7 @@ Group (basis.cm)
 #endif
 
 is
-	init.cmi : cm
+	smlnj/init/init.cmi : cm
 
 	../TypesOnly/sources.cm
 

@@ -1,0 +1,8 @@
+Library
+	structure SparcUnixCMB
+is
+	basis.cm
+	smlnj/internal/cm-lib.cm
+	smlnj/cm/full.cm
+	smlnj/viscomp/sparc.cm
+	sparc-unix.sml

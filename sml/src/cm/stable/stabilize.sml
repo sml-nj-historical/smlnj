@@ -820,7 +820,7 @@ struct
 	case #kind grec of
 	    GG.STABLELIB _ => SOME g
 	  | GG.NOLIB _ => EM.impossible "stabilize: no library"
-	  | GG.LIB (wrapped, _) =>
+	  | GG.LIB { wrapped, ... } =>
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let

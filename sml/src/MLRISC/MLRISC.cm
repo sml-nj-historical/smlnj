@@ -106,8 +106,8 @@ is
 #endif
 	smlnj-lib.cm
 	
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
+	MLRISC/Control.cm
+	MLRISC/Lib.cm
 
 	(* Core definitions. These are required *)
 	instructions/cells.sig

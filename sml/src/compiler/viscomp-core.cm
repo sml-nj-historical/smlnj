@@ -7,9 +7,13 @@
  * It is now reduced to the machine-independent core part of the
  * library.  Machine-dependent parts are in viscomp-<arch>.cm.
  *   M.Blume (11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/core.cm.
+ *   M.Blume (03/2000)
  *)
 
-Library
+Group (smlnj/viscomp/core.cm)
 	signature GENERIC_VC
 	signature MACHDEP_VC
 
@@ -346,5 +350,5 @@ ml-yacc-lib.cm
 smlnj-lib.cm
 comp-lib.cm
 pp-lib.cm
-MLRISC-Control.cm
-MLRISC.cm
+MLRISC/Control.cm
+MLRISC/MLRISC.cm

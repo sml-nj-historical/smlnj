@@ -4,9 +4,13 @@
  * This is the part of what used to be viscomp-lib.cm that is specific to
  * to Alphas.
  *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/alpha32.cm.
+ *   M.Blume (03/2000)
  *)
 
-Library
+Group (smlnj/viscomp/alpha32.cm)
 	structure Alpha32VisComp
         structure Alpha32CG
         structure Alpha32CpsRegs
@@ -24,9 +28,8 @@ CodeGen/alpha32/alpha32gen.sml
 CodeGen/alpha32/alpha32spec.sml
 
 basis.cm
-viscomp-core.cm
+smlnj/viscomp/core.cm
 comp-lib.cm
-MLRISC-Control.cm
-MLRISC.cm
-MLRISC-ALPHA.cm
-
+MLRISC/Control.cm
+MLRISC/MLRISC.cm
+MLRISC/ALPHA.cm

@@ -8,5 +8,5 @@
 Library
 	structure LexTool
 is
-	cm-tools.cm
+	smlnj/cm/tools.cm
 	lextool.sml

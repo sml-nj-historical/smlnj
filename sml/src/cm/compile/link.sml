@@ -47,6 +47,8 @@ in
 	where type bfc = BFC.bfc =
     struct
 
+	exception Link of exn
+
 	structure BF = MachDepVC.Binfile
 
 	type bfc = BF.bfContent
@@ -116,7 +118,7 @@ in
 		     PP.add_newline pps)
 	    in
 		error (concat [msg, " ", descr]) ppb;
-		raise exn
+		raise Link exn
 	    end
 
 	    (* We invoke mk_de here and only if we don't have the value
@@ -164,7 +166,8 @@ in
 					 SmlInfo.error gp i EM.COMPLAIN,
 					 SmlInfo.descr i,
 					 exn))
-		end handle _ => NONE
+		end handle exn as Link _ => raise exn
+			 | _ => NONE
 	    in
 		case SmlInfo.sh_mode i of
 		    Sharing.SHARE _ =>
@@ -295,9 +298,9 @@ in
 
 	    fun sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)) = let
 		    val b = valOf (StableMap.find (!stablemap, bininfo))
-		    fun th gp =
-			SOME (bnode b gp)
-			handle exn => NONE
+		    fun th gp = SOME (bnode b gp)
+			handle exn as Link _ => raise exn
+			     | _ => NONE
 		in
 		    (th, [])
 		end
@@ -327,7 +330,8 @@ in
 
 	    and fsbn (_, n) = sbn n
 
-	    fun impexp (n, _) = #1 (fsbn n)
+	    fun impexp (n, _) gp = #1 (fsbn n) gp
+		handle Link exn => raise exn
 
 	    val exports' = SymbolMap.map impexp exports
 

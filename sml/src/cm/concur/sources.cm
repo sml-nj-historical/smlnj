@@ -8,7 +8,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (../cm-lib.cm) is
+Group (smlnj/internal/cm-lib.cm) is
 	concur.sml
 	servers.sig
 # if defined (OPSYS_UNIX)

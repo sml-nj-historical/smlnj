@@ -26,7 +26,7 @@ is
 	basis.cm
 #endif
 	smlnj-lib.cm
-	MLRISC-Control.cm
+	MLRISC/Control.cm
 
 	library/annotations.sig
 	library/annotations.sml

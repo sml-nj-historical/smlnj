@@ -191,7 +191,8 @@ end = struct
 		end
 	    in
 		(GG.GROUP { exports = foldl add_exports special_exports others,
-			    kind = GroupGraph.LIB (StringSet.empty, []),
+			    kind = GroupGraph.LIB { wrapped = StringSet.empty,
+						    subgroups = [] },
 			    required = StringSet.singleton "primitive",
 			    grouppath = initgspec,
 			    sublibs = [] },

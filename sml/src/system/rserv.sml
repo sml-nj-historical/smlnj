@@ -1,5 +1,5 @@
-CM.autoload "full-cm.cm";
-CM.autoload "host-cmb.cm";
+CM.autoload "smlnj/cm.cm";
+CM.autoload "smlnj/cmb.cm";
 fun serv p n =
     CM.Server.start { name = n, pref = p, pathtrans = NONE,
 	 	      cmd = ("/usr/bin/rsh",

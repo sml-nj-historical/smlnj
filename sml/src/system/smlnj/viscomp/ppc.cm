@@ -1,0 +1,20 @@
+(* smlnj/viscomp/ppc.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to PPCs.
+ *   (M.Blume, 11/1999)
+ *
+ * Moved to smlnj/viscomp for better path-anchor organization.
+ *   M.Blume (03/2000)
+ *)
+Library
+	structure PPCVisComp
+        structure PPCCG
+        structure PPCCpsRegs
+        structure PPCInstr
+	structure PPCProps
+	structure PPCFlowGraph
+	structure PPCAsmEmitter
+is
+	compiler/viscomp-ppc.cm

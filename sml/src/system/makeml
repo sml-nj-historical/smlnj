@@ -153,9 +153,11 @@ if [ $bare = no ] ; then
 
     cd $BOOT_DIR
 
-    for i in init.cmi *.cm ; do
-	link $i $LIB_DIR/$i
-	echo $i $i
+    for anchor in * ; do
+	if [ -d $anchor ] ; then
+	    link $anchor $LIB_DIR/$anchor
+	    echo $anchor $anchor
+	fi
     done >$LIB_DIR/pathconfig
 
     cd $here

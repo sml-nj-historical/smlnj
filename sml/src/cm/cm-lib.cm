@@ -5,8 +5,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-(cm-hook)
-Library
+Group (smlnj/internal/cm-lib.cm)
 	signature CM
 
 	functor LinkCM
@@ -96,11 +95,11 @@ is
 	basis.cm
 
 	(* compiler libraries *)
-	viscomp-core.cm
+	smlnj/viscomp/core.cm
 	comp-lib.cm
 
 	(* auxiliary libraries *)
 	ml-yacc-lib.cm
 
 	(* refer to hook module to break static dependencies *)
-	cm-hook.cm
+	smlnj/internal/cm-hook.cm

@@ -1,0 +1,14 @@
+(*
+ * Library exporting the "minimal" structure CM.
+ *
+ * (C) 2000 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+(cm-hook)
+Library
+	signature MINIMAL_CM
+	structure CM
+is
+	smlnj/internal/cm-hook.cm
+	fetch-minimal-cm.sml

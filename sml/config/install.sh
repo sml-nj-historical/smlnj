@@ -57,6 +57,8 @@ LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
+URLGETTER=unknown
+
 #
 # the path to the dir where ml-yacc, ml-burg, ml-lex, and ml-build live
 #
@@ -91,6 +93,12 @@ VERSION=`cat $CONFIGDIR/version`
 echo Installing version $VERSION.
 
 #
+# the URL for the (usually remote) source archive
+#
+SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
+echo URL of source archive is $SRCARCHIVEURL.
+
+#
 # Function to make a directory (and advertise such action).
 #
 makedir() {
@@ -106,6 +114,75 @@ makedir() {
 }
 
 #
+# Function for asking user to fetch source archive.
+#   $1 - descriptive name
+#   $2 - base name without extension, without version, and without dir
+#   $3 - remote directory
+#
+askurl() {
+    echo Please, fetch $1 archive '('$VERSION-$2.'*)' from
+    echo '  ' $3
+    echo "and then re-run this script!"
+    exit 1
+}
+
+#
+# Function for fetching source archives automatically using wget or lynx.
+#   $1 - command to actually get the stuff
+#   $2 - descriptive name
+#   $3 - base name without extension, without version, and without dir
+#   $4 - remote directory
+#
+fetchurl() {
+    getter=$1 ; shift
+    echo Fetching $1 from $2. Please stand by...
+    fetched=no
+    for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
+	try=$VERSION-$2.$ext
+	echo Trying $try ...
+	if $getter $3 $try $ROOT/$try ; then
+	    fetched=yes
+	    echo Success.
+	    break
+	else
+	    rm -f $ROOT/$try
+	fi
+    done
+    if [ $fetched = no ] ; then
+	echo No success.  You should try to do it manually now.
+	askurl "$1" "$2" "$3"
+    fi
+}
+
+usewget() {
+    wget -nv -O $3 $1/$2
+}
+
+uselynx() {
+    lynx -source $1/$2 >$3
+}
+
+testurlgetter() {
+    (exec >/dev/null 2>&1 ; exec $*)
+}
+
+#
+# Function to check whether wget or lynx is available.
+# Set URLGETTER accordingly.
+#
+urlgetter() {
+    if [ "$URLGETTER" = unknown ] ; then
+	if testurlgetter wget --help ; then
+	    URLGETTER="fetchurl usewget"
+	elif testurlgetter lynx -help ; then
+	    URLGETTER="fetchurl uselynx"
+	else
+	    URLGETTER="askurl"
+	fi
+    fi
+}
+
+#
 # Function to unpack a source archive.
 #
 # $1: descriptive name of the sources to be unpacked
@@ -114,32 +191,76 @@ makedir() {
 # $4: the basename of the source archive (the script will check several
 #     different suffixes to determine what kind of de-compression is to
 #     be used)
+#
+# fetch_n_unpack is the helper function that does the real work.  If
+# on archive is found locally, it invokes $URLGETTER and tries again.
+# The variable $tryfetch is used to make sure this happens only once.
+fetch_n_unpack() {
+    larc=$ROOT/$VERSION-$4
+    cd $2
+    if [ -r $larc.tar.Z ] ; then
+	echo "Un-compress-ing and un-tar-ing $1 archive."
+	zcat $larc.tar.Z | tar -xf -
+    elif [ -r $larc.tar ] ; then
+	echo "Un-tar-ing $1 archive."
+	tar -xf $larc.tar
+    elif [ -r $larc.tar.gz ] ; then
+	echo "Un-gzip-ing and un-tar-ing $1 archive."
+	gunzip -c $larc.tar.gz | tar -xf -
+    elif [ -r $larc.tar.bz2 ] ; then
+	echo "Un-bzip2-ing and un-tar-ing $1 archive."
+	bunzip2 -c $larc.tar.bz2 | tar -xf -
+    elif [ -r $larc.tgz ] ; then
+	echo "Un-gzip-ing and un-tar-ing $1 archive."
+	gunzip -c $larc.tgz | tar -xf -
+    elif [ -r $larc.tz ] ; then
+	echo "Un-compress-ing and un-tar-ing $1 archive."
+	zcat $larc.tz | tar -xf -
+    elif [ $tryfetch = yes ] ; then
+	urlgetter
+	$URLGETTER "$1" $4 $SRCARCHIVEURL
+	tryfetch=no
+	fetch_n_unpack "$1" "$2" "$3" "$4"
+    fi
+}
+
+#
+# The main "unpack" driver function that invokes the above helper.
+#
 unpack() {
+    tryfetch=yes
     if [ -d $2/$3 ]; then
-	echo "The $1 source tree already exists."
+	echo "The $1 tree already exists."
     else
-	echo "Unpacking $1 source archive."
-	cd $2
-	if [ -r $4.tar.Z ] ; then
-	    zcat $4.tar.Z | tar -xf -
-	elif [ -r $4.tar ] ; then
-	    tar -xf $4.tar
-	elif [ -r $4.tar.gz ] ; then
-	    gunzip -c $4.tar.gz | tar -xf -
-	elif [ -r $4.tar.bz2 ] ; then
-	    bunzip2 -c $4.tar.bz2 | tar -xf -
-	elif [ -r $4.tgz ] ; then
-	    gunzip -c $4.tgz | tar -xf -
-	elif [ -r $4.tz ] ; then
-	    zcat $4.tz | tar -xf -
-	else
-	    echo "!!! The $1 source archive is missing."
-	    exit 1
+	fetch_n_unpack "$1" "$2" "$3" "$4"
+    fi
+    if [ ! -d $2/$3 ]; then
+	echo "!!! Unable to unpack $1 archive."
+	exit 1
+    fi
+}
+
+# A function to move all stable library files to a parallel directory
+# hierarchy.
+# The first argument must be a simple path (no / inside), and
+# the second argument must be an absolute path.
+move() {
+    if [ -d $1 ] ; then
+	if [ ! -d $2 ] ; then
+	    if [ -f $2 ] ; then
+		echo install.sh: $2 exists as a non-directory.
+		exit 1
+	    fi
+	    mkdir $2
 	fi
-	if [ ! -d $2/$3 ]; then
-	    echo "!!! Unable to unpack $1 source archive."
-	    exit 1
-	fi
+	cd $1
+	for i in * ; do
+	    move $i $2/$i
+	done
+	cd ..
+    elif [ -f $1 ] ; then
+	rm -f $2
+	mv $1 $2
     fi
 }
 
@@ -223,7 +344,7 @@ standalone() {
 	echo Target $TARGET already exists.
     else
 	echo Building $TARGET.
-	unpack $2 $SRCDIR $1 $ROOT/$VERSION-$1
+	unpack $2 $SRCDIR $1 $1
 	cd $SRCDIR/$1
 	./build
 	if [ -r $TARGETLOC ] ; then
@@ -343,7 +464,7 @@ BOOT_FILES=sml.boot.$ARCH-unix
 #
 # build the run-time system
 #
-unpack "run-time" $SRCDIR runtime $ROOT/$VERSION-runtime
+unpack "run-time" $SRCDIR runtime runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
     echo Run-time system already exists.
 else
@@ -366,7 +487,7 @@ cd $SRCDIR
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
     echo Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
-    unpack bin $ROOT $BOOT_FILES $ROOT/$VERSION-$BOOT_FILES
+    unpack bin $ROOT $BOOT_FILES $BOOT_FILES
     cd $ROOT/$BOOT_FILES
     if $BINDIR/.link-sml @SMLheap=$ROOT/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
     then
@@ -380,12 +501,15 @@ else
 	    # the pathconfig file.
 	    #
 	    cd $ROOT/$BOOT_FILES
-	    for lib in *.cm ; do
-		echo $lib $LIBDIR/$lib >>$CM_PATHCONFIG_DEFAULT
-		movelibs $ROOT/$BOOT_FILES/$lib $lib
+	    for anchor in * ; do
+		if [ -d $anchor ] ; then
+		    echo $anchor $anchor >>$CM_PATHCONFIG_DEFAULT
+		    move $anchor $LIBDIR/$anchor
+		fi
 	    done
 	    cd $ROOT
-	    # rm -rf $BOOT_FILES
+	    # $BOOT_FILES is now only an empty skeleton, let's get rid of it.
+	    rm -rf $BOOT_FILES
 
 	else
 	    echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."
@@ -414,7 +538,7 @@ for i in $TARGETS ; do
       src-smlnj)
 	for src in compiler cm MLRISC smlnj-lib ml-yacc system
 	do
-	    unpack $src $ROOT/src $src $ROOT/$VERSION-$src
+	    unpack $src $ROOT/src $src $src
         done
 	;;
       ml-yacc)
@@ -430,7 +554,7 @@ for i in $TARGETS ; do
 	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       smlnj-lib)
-        unpack "SML/NJ Library" $SRCDIR smlnj-lib $ROOT/$VERSION-smlnj-lib
+        unpack "SML/NJ Library" $SRCDIR smlnj-lib smlnj-lib
 
 	# Don't make the Util library -- it came pre-made and has been
 	# installed when making the base system.  In other words, don't do...
@@ -449,21 +573,21 @@ for i in $TARGETS ; do
 	    reglib reactive-lib.cm smlnj-lib/Reactive
 	;;
       cml)
-        unpack CML $SRCDIR cml $ROOT/$VERSION-cml
+        unpack CML $SRCDIR cml cml
 	reglib core-cml.cm cml/src/core-cml
 	reglib cml.cm cml/src
 	reglib cml-basis.cm cml
 	;;
       cml-lib)
-        unpack CML $SRCDIR cml $ROOT/$VERSION-cml
+        unpack CML $SRCDIR cml cml
 	reglib cml-lib.cm cml/cml-lib
 	;;
       eXene)
-        unpack EXene $SRCDIR eXene $ROOT/$VERSION-eXene
+        unpack EXene $SRCDIR eXene eXene
 	reglib eXene.cm eXene
 	;;
       doc)
-	unpack Doc $ROOT doc $ROOT/$VERSION-doc
+	unpack Doc $ROOT doc doc
         cd $ROOT/doc
 	build $ROOT
 	;;

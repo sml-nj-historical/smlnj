@@ -1,0 +1,37 @@
+Library
+	structure Alpha32UnixCMB
+	structure HppaUnixCMB
+	structure PPCMacOSCMB
+	structure PPCUnixCMB
+	structure SparcUnixCMB
+	structure X86UnixCMB
+	structure X86Win32CMB
+
+	structure Alpha32Compiler
+	structure HppaCompiler
+	structure PPCCompiler
+	structure SparcCompiler
+	structure X86Compiler
+(*
+	structure MipsLittleUnixCMB
+	structure MipsBigUnixCMB
+	structure RS6000UnixCMB
+
+	structure MipsLittleCompiler
+	structure MipsBigCompiler
+	structure RS6000Compiler
+*)
+is
+	smlnj/compiler/alpha32.cm
+	smlnj/compiler/hppa.cm
+	smlnj/compiler/ppc.cm
+	smlnj/compiler/sparc.cm
+	smlnj/compiler/x86.cm
+
+	smlnj/cmb/alpha32-unix.cm
+	smlnj/cmb/hppa-unix.cm
+	smlnj/cmb/ppc-macos.cm
+	smlnj/cmb/ppc-unix.cm
+	smlnj/cmb/sparc-unix.cm
+	smlnj/cmb/x86-unix.cm
+	smlnj/cmb/x86-win32.cm
