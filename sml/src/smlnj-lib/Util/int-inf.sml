@@ -203,8 +203,27 @@ structure IntInf :> INT_INF =
     		    else NONE
     		end
     	  (* end case *))
-    
-        fun scanHex getc cs = (case (scanPrefix getc cs)
+
+      (* consume a possible "0x" or "0X" prefix on a hex literal *)
+	fun scan0x getc NONE = NONE
+	  | scan0x getc (orig as SOME{neg, next, rest}) =
+	      if (next = 0w0)
+		then (case getc rest
+		   of SOME((#"x" | #"X"), rest1) => (case getc rest1
+			 of SOME(c, rest2) => let
+			      val d = code c
+			      in
+				if (d < 0w16)
+				  then SOME{neg=neg, next=d, rest=rest2}
+				  else orig
+			      end
+			  | NONE => orig
+			(* end case *))
+		    | _ => orig
+		  (* end case *))
+		else orig
+
+        fun scanHex getc cs = (case scan0x getc (scanPrefix getc cs)
     	   of NONE => NONE
     	    | (SOME{neg, next, rest}) => let
     		fun isDigit (d : Word32.word) = (d < 0w16)
