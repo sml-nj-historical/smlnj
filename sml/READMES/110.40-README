@@ -48,6 +48,8 @@ Libraries:
 
    * fixed bug in outputSubstr (in TextIO)
 
+   * new scrollbar implementation (eXene) courtesy of Allen Stoughton
+
 Basis:
 
    * implemented Knuth-Morris-Pratt string matching and used it
