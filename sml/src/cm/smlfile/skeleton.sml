@@ -10,7 +10,7 @@
  *)
 structure Skeleton = struct
 
-    type symbol = GenericVC.Symbol.symbol
+    type symbol = Symbol.symbol
     type sympath = GenericVC.SymPath.path
 
     datatype decl =

@@ -19,14 +19,14 @@ structure SkelCvt :> SKELCVT = struct
 
     open GenericVC.Ast Skeleton
 
-    structure S = GenericVC.Symbol
+    structure S = Symbol
     structure SP = GenericVC.SymPath
     structure SS = SymbolSet
     structure EM = GenericVC.ErrorMsg
 
     val symbolModPath = SP.SPATH
 
-    type symbol = GenericVC.Symbol.symbol
+    type symbol = Symbol.symbol
     type path = symbol list
 
     fun allButLast lst =

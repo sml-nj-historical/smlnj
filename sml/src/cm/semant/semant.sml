@@ -89,7 +89,6 @@ end
 
 structure CMSemant :> CM_SEMANT = struct
 
-    structure Symbol = GenericVC.Symbol
     structure SymPath = GenericVC.SymPath
 
     type pathname = AbsPath.t

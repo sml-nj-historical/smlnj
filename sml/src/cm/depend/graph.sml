@@ -7,6 +7,7 @@
  *)
 structure DependencyGraph = struct
 
+    type symbol = Symbol.symbol
     type groupinfo = Dummy.t
     type primitive = Primitive.primitive
 
@@ -29,6 +30,15 @@ structure DependencyGraph = struct
 		   exports: farnode SymbolMap.map,
 		   dangling: node list }
 
+    (* environments used for dependency analysis *)
+    datatype env =
+	EMPTY
+      | FCTENV of { looker: symbol -> value option,
+		    domain: unit -> SymbolSet.set }
+      | BINDING of symbol * value
+      | LAYER of env * env
+
+    withtype value = env
 
     fun describeNode (PNODE p) = Primitive.toString p
       | describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo

@@ -11,42 +11,69 @@
  *)
 signature MEMBERCOLLECTION = sig
 
-    type symbol = GenericVC.Symbol.symbol
+    type symbol = Symbol.symbol
     type smlinfo = SmlInfo.info
 
     type collection
 
+    type farlooker =
+	AbsPath.t ->
+	(DependencyGraph.farnode * DependencyGraph.env) SymbolMap.map
+
     val empty : collection
 
-    val expandOne : (AbsPath.t -> DependencyGraph.farnode SymbolMap.map)
+    val expandOne : farlooker
 	-> { sourcepath: AbsPath.t, group: AbsPath.t, class: string option,
 	     error : string -> (PrettyPrint.ppstream -> unit) -> unit }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
     val num_look : collection -> string -> int
-    val ml_look : collection -> GenericVC.Symbol.symbol -> bool
+    val ml_look : collection -> symbol -> bool
     val cm_look : collection -> string -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
 
     structure DG = DependencyGraph
-    structure Symbol = GenericVC.Symbol
     structure EM = GenericVC.ErrorMsg
+    structure CBE = GenericVC.BareEnvironment
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
 
     datatype collection =
-	COLLECTION of { subexports: DG.farnode SymbolMap.map,
+	COLLECTION of { subexports: (DG.farnode * DG.env) SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map }
+
+    type farlooker =
+	AbsPath.t ->
+	(DependencyGraph.farnode * DependencyGraph.env) SymbolMap.map
 
     val empty =
 	COLLECTION { subexports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty }
+
+    fun convertEnv cmenv = let
+	fun modulesOnly sl = let
+	    fun addModule (sy, set) =
+		case Symbol.nameSpace sy of
+		    (Symbol.STRspace | Symbol.SIGspace |
+		     Symbol.FCTspace | Symbol.FSIGspace) =>
+			SymbolSet.add (set, sy)
+		  | _ => set
+	in
+	    foldl addModule SymbolSet.empty sl
+	end
+	fun cvt CBE.CM_NONE = NONE
+	  | cvt (CBE.CM_ENV { look, symbols }) =
+	    SOME (DG.FCTENV { looker = cvt o look,
+			      domain = modulesOnly o symbols })
+    in
+	valOf (cvt cmenv)
+    end
 
     fun sequential (COLLECTION c1, COLLECTION c2, error) = let
 	fun describeSymbol (s, r) = let
@@ -54,7 +81,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	in
 	    Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
 	end
-	fun se_error (s, x as (_, n1), (_, n2)) =
+	fun se_error (s, x as ((_, n1), _), ((_, n2), _)) =
 	    (error (concat (describeSymbol
 			    (s, [" imported from ", DG.describeNode n1,
 				 " and also from ", DG.describeNode n2])));
@@ -105,8 +132,12 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	else case Primitive.fromString (AbsPath.spec sourcepath) of
 	    SOME p => let
 		val exports = Primitive.exports p
-		fun addFN (s, m) =
-		    SymbolMap.insert (m, s, (NONE, DG.PNODE p))
+		fun addFN (s, m) = let
+		    val cmenv = Primitive.lookup p s
+		    val env = convertEnv cmenv
+		in
+		    SymbolMap.insert (m, s, ((NONE, DG.PNODE p), env))
+		end
 		val se = SymbolSet.foldl addFN SymbolMap.empty exports
 	    in
 		COLLECTION { subexports = se,

@@ -15,7 +15,7 @@ structure SkelIO :> SKELIO = struct
 
     structure SK = Skeleton
     structure SS = SymbolSet
-    structure S = GenericVC.Symbol
+    structure S = Symbol
     structure SP = GenericVC.SymPath
 
     exception InternalError

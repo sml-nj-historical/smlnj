@@ -11,10 +11,12 @@ Library
 	signature PATHCONFIG
 	structure PathConfig
 	structure AbsPathMap
+	structure AbsPathSet
 is
 	abspath.sml
 	pathconfig.sml
 	abspathmap.sml
+	abspathset.sml
 
 	../util/sources.cm
 	../../smlnj-lib/Util/sources.cm

@@ -9,14 +9,17 @@
 Library
 	structure StringSet
 	structure StringMap
+	structure Symbol
 	structure SymbolSet
 	structure SymbolMap
 	signature INTERRUPT
 	structure Interrupt
 	structure TStamp
+	structure LibBase	(* from SML/NJ library *)
 is
 	stringset.sml
 	stringmap.sml
+	symbol.sml
 	symbolordkey.sml
 	symbolset.sml
 	symbolmap.sml

@@ -1,33 +1,44 @@
 structure BuildDepend = struct
 
-    structure S = GenericVC.Symbol
+    structure S = Symbol
     structure SS = SymbolSet
+    structure SM = SymbolMap
     structure SK = Skeleton
     structure DG = DependencyGraph
 
-    datatype env =
-	IMPORTS
-      | FCTENV of { looker: S.symbol -> value option,
-		    domain: SS.set }
-      | BINDING of S.symbol * value
-      | LAYER of env * env
-    withtype value = env
-
+    fun look otherwise DG.EMPTY s = otherwise s
+      | look otherwise (DG.BINDING (s', v)) s =
+	if S.eq (s, s') then v else otherwise s
+      | look otherwise (DG.LAYER (e, e')) s = look (look otherwise e') e s
+      | look otherwise (DG.FCTENV { looker, domain }) s =
+	(case looker s of NONE => otherwise s | SOME v => v)
+		 
     fun build { subexports, smlfiles, localdefs } = let
-	val results = ref AbsPathMap.empty
-	fun lock i =
-	    results :=
-	    AbsPathMap.insert (!results, SmlInfo.sourcepath i, NONE)
-	fun release (i, r) =
-	    (results :=
-	        AbsPathMap.insert (!results, SmlInfo.sourcepath i, SOME r);
-	    r)
-	fun fetch i = AbsPathMap.find (!results, SmlInfo.sourcepath i)
 
+	(* the "blackboard" where analysis results are announced *)
+	(* (also used for cycle detection) *)
+	val bb = ref AbsPathMap.empty
+	fun lock i = bb := AbsPathMap.insert (!bb, SmlInfo.sourcepath i, NONE)
+	fun release (i, r) =
+	    (bb := AbsPathMap.insert (!bb, SmlInfo.sourcepath i, SOME r); r)
+	fun fetch i = AbsPathMap.find (!bb, SmlInfo.sourcepath i)
+
+	(* the "root set" *)
+	val rs = ref AbsPathSet.empty
+	fun addRoot i = rs := AbsPathSet.add (!rs, SmlInfo.sourcepath i)
+	fun delRoot i =
+	    (rs := AbsPathSet.delete (!rs, SmlInfo.sourcepath i))
+	    handle LibBase.NotFound => ()
+
+	(* - get the result from the blackboard if it is there *)
+	(* - otherwise trigger analysis *)
+	(* - detect cycles using locking *)
+	(* - maintain root set *)
 	fun getResult (i, history) =
 	    case fetch i of
-		NONE => (lock i; release (i, doSmlfile (i, history)))
-	      | SOME NONE => let
+		NONE => (lock i; addRoot i; release (i, analyze (i, history)))
+	      | SOME (SOME r) => (delRoot i; r)
+	      | SOME NONE => let	(* cycle found --> error message *)
 		    val f = SmlInfo.sourcepath i
 		    fun symDesc (s, r) =
 			S.nameSpaceToString (S.nameSpace s) :: " " ::
@@ -36,7 +47,7 @@ structure BuildDepend = struct
 			fun recur [] = () (* shouldn't happen *)
 			  | recur ((s, i') :: r) = let
 				val f' = SmlInfo.sourcepath i'
-				val () =
+				val _ =
 				    if AbsPath.compare (f, f') = EQUAL then ()
 				    else recur r
 				val n' = AbsPath.name f'
@@ -55,9 +66,25 @@ structure BuildDepend = struct
 		in
 		    SmlInfo.error i "cyclic ML dependencies" pphist
 		end
-	      | SOME (SOME r) => r
 
-	and doSmlfile (i, history) = Dummy.f ()
+	and analyze (i, history) = let
+(*	    fun lookimport s =
+		case SM.find (localdefs, s) of
+		    SOME i' => let
+			val (_, e) = getResult (i', (s, i) :: history)
+		    in
+			e
+		    end
+		  | NONE => 
+
+	    val lookup = look lookimport *)
+	in
+	    Dummy.f ()
+	end
+
+	(* run the analysis on one ML file -- causing the blackboard
+	 * and the root set to be updated accordingly *)
+	fun doSmlFile i = ignore (getResult (i, []))
     in
 	Dummy.f ()
     end
