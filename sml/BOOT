@@ -3,7 +3,7 @@ BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/05/02 14:00 EDT
-Tag: dbm-20000501-Version_110_28
+Tag: dbm-20000502-Version_110_28
 Version: 110.28
 Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.28/
 ----------------------------------------------------------------------
