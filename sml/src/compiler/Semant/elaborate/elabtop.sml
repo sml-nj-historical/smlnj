@@ -61,7 +61,8 @@ fun makeOpenDecls (str, spath) =
                in case v
                    of V.VAL(V.VALvar _) => 
                         ValDec([Vb{pat=VarPat[name],
-				   exp=VarExp([localStrName,name])}],
+				   exp=VarExp([localStrName,name]),
+				   lazyp=false}],
 			       nil)
 			 :: dl
 		      (* here is the source of bug 788.  If name is bound
@@ -205,6 +206,9 @@ end (* structure ElabTop *)
 
 (*
  * $Log: elabtop.sml,v $
+ * Revision 1.2  1998/05/15 03:32:45  dbm
+ *   Added lazyp flag where appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:26  george
  * Version 110.5
  *
