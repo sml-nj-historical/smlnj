@@ -1,7 +1,0 @@
-Group
-	structure PPCUnixCMB
-	structure PPCCompiler
-is
-	../viscomp-lib.cm
-	../../cm/cm-lib.cm
-	ppc-unix.sml
