@@ -49,14 +49,17 @@ functor LeftPriorityQFn (P : PRIORITY) : MONO_PRIORITYQ =
       | isEmpty _ = false
 
     fun fromList [] = empty
-      | fromList [x] = Q (1, singleton x)
+      | fromList [x] = Q(1, singleton x)
       | fromList l = let
+	  fun init ([], n, items) = (n, items)
+	    | init (x::r, n, items) = init (r, n+1, singleton x :: items)
 	  fun merge ([], [h]) = h
 	    | merge ([], hl) = merge (hl, [])
 	    | merge ([h], hl) = merge (h::hl, [])
 	    | merge (h1::h2::r, l) = merge (r, mergeHeap(h1, h2) :: l)
+	  val (len, hs) = init (l, 0, [])
 	  in
-	    Q(List.length l, merge (List.map singleton l, []))
+	    Q(len, merge (hs, []))
 	  end
 
   end;

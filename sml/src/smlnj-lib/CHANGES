@@ -3,8 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
-[2002-02-12]
-	Applied bug fix (sent in by Chris Okasaki) to PQ implementation.
+[2002-02-21]
+	Fixed infinite loop in LeftPriorityQFn.fromList when given a
+	singleton list as input (Chris Okasaki provided the fix).
 
 [2002-02-12]
 	Added implementation of priority queues to Util library (using
