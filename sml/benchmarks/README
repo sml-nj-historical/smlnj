@@ -1,0 +1,27 @@
+						March 2, 1998.
+
+
+This directory contains a collections of benchmarks that have
+frequently been used to evaluate the performance of SML/NJ. 
+The directories SML97 and 93 refer to versions of the benchmarks that
+run under the SML'97 (vesion 110 and higer) and version 93 release of
+SML/NJ.   
+
+Each directory contains a script called runit. To invoke it, the shell
+variable SML must be set to the path for the SML/NJ compiler. 'runit'
+executed at the top level will create a file called LOG that contains
+the results of compiling and running each benchmark. 
+
+Executing 
+	runit -help 
+
+will show command line options.
+
+If you know of other benchmarks that would be useful to add to this
+suite, please let me know. 
+
+						Lal George
+						george@research.bell-labs.com
+
+
+

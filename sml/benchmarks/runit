@@ -1,0 +1,137 @@
+#!/bin/ksh
+#
+# Usage: speed [options] [benchmarks]
+#
+#set -x
+
+CMD=$0
+
+SML=${SML:=/usr/local/bin/sml}
+SRC=`pwd`
+NRUNS=6
+OUT_FILE=LOG
+ALLOC=512k
+
+
+FP_TESTS="simple mandelbrot ray barnes-hut"
+ALL_TESTS="boyer life knuth-bendix lexgen mlyacc vliw $FP_TESTS"
+NEW_TESTS="fft logic tsp"
+ALL_TESTS="$ALL_TESTS $NEW_TESTS"
+
+
+#
+# process arguments
+#
+while [ "$#" != "0" ]
+do
+    arg=$1; shift
+    case $arg in
+      -sml)
+        if [ "$#" = "0" ]; then
+          echo "$CMD must supply argument for -sml option"
+          exit 1
+        fi
+        SML=$1; shift
+        ;;
+      -out)
+        if [ "$#" = "0" ]; then
+          echo "$CMD must supply file name with -out option"
+          exit 1
+        fi
+        OUT_FILE=$1; shift
+        ;;
+      -alloc)
+        if [ "$#" = "0" ]; then
+          echo "$CMD must supply allocation size with -alloc option"
+          exit 1
+        fi
+        ALLOC=$1; shift
+        ;;
+      *)
+        echo "$CMD Usage: runit [-sml <sml-path>] [-out <file>] [-alloc <size>]"
+	exit 1
+	;;
+    esac
+done
+
+SML="$SML @SMLalloc=$ALLOC"
+echo Using $SML ...
+#
+# run the tests
+#
+
+/bin/rm -rf programs/CM
+echo "[" >> $OUT_FILE
+for prog in $ALL_TESTS; do
+  if [[ $prog = "knuth-bendix" ]]
+  then
+    name=knuthBendix
+  elif [[ $prog = "barnes-hut" ]]
+  then
+    name=barnesHut
+  else
+    name=$prog
+  fi
+
+  echo $name
+#
+# measure interactive compile time
+#
+  echo "    compiling ..."
+  echo "{Bmark=\"$name\"," >> $OUT_FILE
+  $SML <<EOF  1>/dev/null 2>&1
+    use "programs/timeit.sml";
+    val outstrm = TextIO.openAppend("$OUT_FILE");
+    fun compileIt (n, outstrm, fname) = let
+	  
+          fun loop 0 = ()
+	    | loop i = let
+	        val t0 = Timing.start()
+	      in
+		use fname;
+		Timing.output(outstrm, Timing.stop t0); 
+		TextIO.output(outstrm, if i>1 then ",\n" else "\n");
+		TextIO.flushOut outstrm;
+		loop (i-1)
+              end
+	  in
+	    TextIO.output(outstrm, "    Compiles=[\n");
+	    TextIO.output(TextIO.stdOut, "in compileIt\n");
+	    loop n;
+	    TextIO.output(outstrm, "\t],\n")
+	  end;
+     
+    Compiler.Control.MC.matchRedundantError := false;
+    OS.FileSys.chDir "programs/$prog";
+    compileIt(1, outstrm, "load");
+    TextIO.flushOut outstrm;
+    TextIO.closeOut outstrm;
+EOF
+
+#
+# measure execution time
+#
+    echo "    running ..."
+   /bin/rm -rf programs/$prog/CM
+    $SML <<EOF  1>/dev/null 2>&1
+	Compiler.Control.MC.matchRedundantError := false;
+	OS.FileSys.chDir "programs/$prog";
+	CM.make();
+EOF
+
+#
+# run it.
+#
+    $SML <<EOF  1>/dev/null 2>&1
+	val outstrm = TextIO.openAppend("$OUT_FILE");
+	OS.FileSys.chDir "programs/$prog";
+	CM.make();
+	Timing.time($NRUNS, outstrm, Main.doit);
+	TextIO.output(outstrm, "};\n");
+	TextIO.output(outstrm, "\n"); TextIO.flushOut outstrm;
+	TextIO.closeOut outstrm;
+EOF
+  /bin/rm -rf programs/$prog/CM
+done
+echo "{Bmark=\"$OUT_FILE\", Compiles=[], Runs=[]}]" >> $OUT_FILE
+/bin/rm -rf programs/CM
