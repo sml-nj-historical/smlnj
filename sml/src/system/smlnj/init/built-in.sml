@@ -62,6 +62,8 @@ in
     val recordSub	: ('a * int) -> 'b = InLine.recordSub
     val raw64Sub	: ('a * int) -> real = InLine.raw64Sub
 
+    val ptreql          : 'a * 'a -> bool = InLine.ptreql
+
     structure Real64 =
       struct
         val op +   : real * real -> real = InLine.f64add

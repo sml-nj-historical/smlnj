@@ -7,10 +7,19 @@ description.
 
 The form of an entry should be:
 
-Name:
+Name: 
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/27 17:20:00 CDT
+Tag: blume-20040827-ptreql
+Description:
+
+Added ptreql primop to structure InlineT (upon request from Larry
+Paulson).
 
 ----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
@@ -39,7 +48,7 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
-Date: 2004/10/04 12:00:00 CDT
+Date: 2004/08/10 12:00:00 CDT
 Tag: Release_110_48
 Description:
 
