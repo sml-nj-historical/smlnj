@@ -1,0 +1,1 @@
+CM.make "test.cm";
