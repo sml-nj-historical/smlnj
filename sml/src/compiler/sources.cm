@@ -1,0 +1,10 @@
+(* Copyright YALE FLINT PROJECT 1997 *)
+(* sources.cm *)
+
+(*
+ * This file only exists to make it possible to run CM.make();
+ * There is no other difference to the more appropriately-named
+ * "viscomp-lib.cm".  (Blume, 5/28/98)
+ *)
+
+Alias viscomp-lib.cm
