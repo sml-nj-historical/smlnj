@@ -20,7 +20,7 @@ structure Servers :> SERVERS = struct
     val all = ref (StringMap.empty: server StringMap.map)
 
     val idle = ref ([]: server list)
-    val someIdle = ref (Concur.ucond ())
+    val someIdle = ref (Concur.pcond ())
 
     fun fname (n, S { pt = NONE, ... }) = n
       | fname (n, S { pt = SOME f, ... }) =
@@ -61,7 +61,7 @@ structure Servers :> SERVERS = struct
 		(Say.dsay ["Scheduler: taking last idle slave (",
 			   servName only, ").\n"];
 		 idle := [];
-		 someIdle := Concur.ucond ();
+		 someIdle := Concur.pcond ();
 		 only)
 	  | first :: more => let
 		fun best (b, [], rest) = (b, rest)
@@ -159,7 +159,7 @@ structure Servers :> SERVERS = struct
 	    send (s, "ping\n");
 	    loop ()
 	end
-	val si = Concur.ucond ()
+	val si = Concur.pcond ()
     in
 	if List.null al then ()
 	else (Concur.signal si;
