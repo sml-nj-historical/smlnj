@@ -110,6 +110,7 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist)
     char	nameBuf[MAX_BOOT_PATH_LEN];
     ml_val_t	fileList;
 
+    numFiles = 0;
     listF = OpenBinFile (bootlist, FALSE);
     if (listF != NULL) {
       /* read in the file names, converting them to ML strings. */
