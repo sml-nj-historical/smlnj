@@ -58,7 +58,12 @@ val cm_ids = [("Group", Tokens.GROUP),
 	      ("LIBRARY", Tokens.LIBRARY),
 	      ("library", Tokens.LIBRARY),
 	      ("IS", Tokens.IS),
-	      ("is", Tokens.IS)]
+	      ("is", Tokens.IS),
+	      ("*", Tokens.STAR),
+	      ("-", Tokens.DASH),
+	      ("Source", Tokens.SOURCE),
+	      ("SOURCE", Tokens.SOURCE),
+	      ("source", Tokens.SOURCE)]
 
 val ml_ids = [("structure", Tokens.STRUCTURE),
 	      ("signature", Tokens.SIGNATURE),

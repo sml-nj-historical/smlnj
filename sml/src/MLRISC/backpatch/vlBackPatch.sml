@@ -69,8 +69,6 @@ struct
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
-  val Asm.S.STREAM{emit,...} = Asm.makeStream []
-
   fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
     val blocks = map #2 (Placement.blockPlacement cfg)
     fun bytes([], p) = p
@@ -99,7 +97,7 @@ struct
   end
 
   
-  fun finish() = let
+  fun finish () = let
     val iter = ref 0 (* iteration count *)
     fun labels (BYTES(s,rest), pos, chgd) = labels(rest, pos+W8V.length s, chgd)
       | labels (SDI(instr, r as ref size, rest), pos, chgd) = 
@@ -214,4 +212,3 @@ struct
   end (* finish *)
 
 end (* functor BackPatch *)
-

@@ -20,7 +20,7 @@ signature MEMBERCOLLECTION = sig
 
     type collection
 
-    val empty : collection
+    val emptycollection : collection
 
     val implicit : GeneralParams.info -> GroupGraph.group -> collection
 
@@ -40,7 +40,7 @@ signature MEMBERCOLLECTION = sig
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build :
-	collection * SymbolSet.set option * GeneralParams.info *
+	collection * SymbolSet.set * GeneralParams.info *
 	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges * SymbolSet.set
 
@@ -54,7 +54,15 @@ signature MEMBERCOLLECTION = sig
     val cm_look : GeneralParams.info -> collection -> string -> bool
     val ml_look : collection -> symbol -> bool
 
-    val has_smlfiles : collection -> bool
+    val smlexports :
+	collection * SrcPath.file option * (string -> unit) -> SymbolSet.set
+    val groupexports :
+	collection * SrcPath.file option * (string -> unit) -> SymbolSet.set
+    val libraryexports :
+	collection * SrcPath.file * (string -> unit)
+	* bool * (unit -> collection)
+	-> SymbolSet.set
+
     val is_errorcollection : collection -> bool
 end
 
@@ -63,6 +71,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     structure DG = DependencyGraph
     structure EM = ErrorMsg
     structure SS = SymbolSet
+    structure SM = SymbolMap
     structure GG = GroupGraph
     structure V = Version
 
@@ -73,26 +82,24 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     type subgroups = (SrcPath.file * GG.group * SrcPath.rebindings) list
 
     datatype collection =
-	COLLECTION of { imports: impexp SymbolMap.map,
-		        gimports: impexp SymbolMap.map,
-		        smlfiles: smlinfo list,
-			localdefs: smlinfo SymbolMap.map,
-			subgroups: subgroups,
-			sources:
-			       { class: string, derived: bool } SrcPathMap.map,
-			reqpriv: GG.privileges }
+	COLLECTION of
+	    { imports: impexp SM.map,
+	      smlfiles: (smlinfo * SymbolSet.set) list,
+	      localdefs: smlinfo SM.map,
+	      subgroups: subgroups,
+	      sources: { class: string, derived: bool } SrcPathMap.map,
+	      reqpriv: GG.privileges }
       | ERRORCOLLECTION
 
-    fun empty' sources =
-	COLLECTION { imports = SymbolMap.empty,
-		     gimports = SymbolMap.empty,
+    fun empty sources =
+	COLLECTION { imports = SM.empty,
 		     smlfiles = [],
-		     localdefs = SymbolMap.empty,
+		     localdefs = SM.empty,
 		     subgroups = [],
 		     sources = sources,
 		     reqpriv = StringSet.empty }
 
-    val empty = empty' SrcPathMap.empty
+    val emptycollection = empty SrcPathMap.empty
 
     fun implicit (gp: GeneralParams.info) init_group = let
 	val { grouppath, ... } =
@@ -105,10 +112,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     in
 	(* This is a collection that is an implicit member of every
 	 * library -- the "init" group which exports the pervasive env. *)
-	COLLECTION { imports = SymbolMap.empty,
-		     gimports = SymbolMap.empty,
+	COLLECTION { imports = SM.empty,
 		     smlfiles = [],
-		     localdefs = SymbolMap.empty,
+		     localdefs = SM.empty,
 		     subgroups = [(grouppath, init_group, [])],
 		     sources = sm,
 		     reqpriv = StringSet.empty }
@@ -131,28 +137,26 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 					    DG.describeSBN sbn'])))
 		fun union (NONE, _) = NONE
 		  | union (_, NONE) = NONE
-		  | union (SOME f, SOME f') = SOME (SymbolSet.union (f, f'))
+		  | union (SOME f, SOME f') = SOME (SS.union (f, f'))
 	    in
 		if DG.sbeq (sbn, sbn') then
 		    let val fsbn = (union (f, f'), sbn)
 		    in
 			(fn () => fsbn, DAEnv.LAYER (e, e'),
-			 SymbolSet.union (allsyms, allsyms'))
+			 SS.union (allsyms, allsyms'))
 		    end
 		else (complain (); x)
 	    end
-	    val i_union = SymbolMap.unionWithi i_error
-	    val gi_union = SymbolMap.unionWith #1
+	    val i_union = SM.unionWithi i_error
 	    fun ld_error (s, f1, f2) =
 		(error (concat (describeSymbol
 				    (s, [" defined in ", SmlInfo.descr f1,
 					 " and also in ", SmlInfo.descr f2])));
 		 f1)
-	    val ld_union = SymbolMap.unionWithi ld_error
+	    val ld_union = SM.unionWithi ld_error
 	    val s_union = SrcPathMap.unionWith #1
 	in
 	    COLLECTION { imports = i_union (#imports c1, #imports c2),
-			 gimports = gi_union (#gimports c1, #gimports c2),
 			 smlfiles = #smlfiles c1 @ #smlfiles c2,
 			 localdefs = ld_union (#localdefs c1, #localdefs c2),
 			 subgroups = #subgroups c1 @ #subgroups c2,
@@ -182,14 +186,14 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 					      fn s => #get (#symval (#param gp) s) (),
 					      archos = #archos (#param gp) } }
 	val msources = foldl SrcPathMap.insert' SrcPathMap.empty sources
-	fun g_coll (p, v, rb) =
+	fun g_coll (p, { version = v, rebindings = rb }) =
 	    case rparse (p, v, rb) of
 		g as GG.GROUP { exports = i, kind, required, sources,
 				grouppath, sublibs } => let
-		    val (gi, ver) =
+		    val ver =
 			case kind of
-			    GG.NOLIB _ => (i, NONE)
-			  | GG.LIB l => (SymbolMap.empty, #version l)
+			    GG.NOLIB _ => NONE
+			  | GG.LIB l => #version l
 		in
 		    case (v, ver) of
 			(NONE, _) => ()
@@ -204,17 +208,19 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				  GREATER =>
 				   w0 "library is slightly newer than expected"
 				| _ => e0 "library is newer than expected"));
-		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
-				 localdefs = SymbolMap.empty,
+		    COLLECTION { imports = i, smlfiles = [],
+				 localdefs = SM.empty,
 				 subgroups = [(p, g, rb)],
 				 sources = SrcPathMap.empty,
 				 reqpriv = required }
 		end
 	      | GG.ERRORGROUP => ERRORCOLLECTION
-	fun s_coll (p, s, setup, split) = let
+	fun s_coll (p, sparams) = let
+	    val { share = s, setup, split, locl } = sparams
 	    val i =
 		SmlInfo.info split gp { sourcepath = p, group = group,
-					sh_spec = s, setup = setup }
+					sh_spec = s, setup = setup,
+					locl = locl }
 	    val exports =
 		case SmlInfo.exports gp i of
 		    NONE => SS.empty
@@ -223,12 +229,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 					SrcPath.descr p)
 				else ();
 				ex)
-	    fun addLD (s, m) = SymbolMap.insert (m, s, i)
-	    val ld = SS.foldl addLD SymbolMap.empty exports
+	    fun addLD (s, m) = SM.insert (m, s, i)
+	    val ld = SS.foldl addLD SM.empty exports
 	in
-	    COLLECTION { imports = SymbolMap.empty,
-			 gimports = SymbolMap.empty,
-			 smlfiles = [i],
+	    COLLECTION { imports = SM.empty,
+			 smlfiles = [(i, exports)],
 			 localdefs = ld,
 			 subgroups = [],
 			 sources = SrcPathMap.empty,
@@ -237,13 +242,13 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	val collections = map g_coll cmfiles @ map s_coll smlfiles
 	fun combine (c1, c2) = sequential (c2, c1, e0)
     in
-	foldl combine (empty' msources) collections
+	foldl combine (empty msources) collections
     end
 
-    fun build (COLLECTION c, fopt, gp, perv_fsbnode) =
-	BuildDepend.build (c, fopt, gp, perv_fsbnode)
+    fun build (COLLECTION c, filter, gp, perv_fsbnode) =
+	BuildDepend.build (c, filter, gp, perv_fsbnode)
       | build (ERRORCOLLECTION, _, _, _) =
-	(SymbolMap.empty, StringSet.empty, SymbolSet.empty)
+	(SM.empty, StringSet.empty, SS.empty)
 
     fun mkIndex (gp, g, COLLECTION c) = Index.mkIndex (gp, g, c)
       | mkIndex _ = ()
@@ -263,14 +268,81 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     end
 
     fun ml_look (COLLECTION { imports, localdefs, ... }) s =
-	isSome (SymbolMap.find (imports, s)) orelse
-	isSome (SymbolMap.find (localdefs, s))
+	isSome (SM.find (imports, s)) orelse
+	isSome (SM.find (localdefs, s))
       | ml_look ERRORCOLLECTON _ = true
 
-    fun has_smlfiles (COLLECTION { smlfiles = [], ... }) = false
-      | has_smlfiles ERRORCOLLECTION = false
-      | has_smlfiles _ = true
+    fun smlexports (ERRORCOLLECTION, _, _) = SS.empty
+      | smlexports (COLLECTION { smlfiles, ... }, NONE, _) =
+	foldl (fn ((i, s), s') =>
+		  if SmlInfo.is_local i then s' else SS.union (s, s'))
+	      SS.empty smlfiles
+      | smlexports (COLLECTION { smlfiles, ... }, SOME p, error) = let
+	    fun samepath (i, _) =
+		SrcPath.compare (SmlInfo.sourcepath i, p) = EQUAL
+	in
+	    case List.find samepath smlfiles of
+		SOME (_, e) => e
+	      | NONE => (error ("no such source file: " ^ SrcPath.descr p);
+			 SS.empty)
+	end
 
+    local
+	fun samepathas p (p', _, _) = SrcPath.compare (p, p') = EQUAL
+
+	fun addDomain (m, s) = SS.addList (s, SM.listKeys m)
+	fun domainOf m = addDomain (m, SS.empty)
+    in
+	fun libraryexports (ERRORCOLLECTION, _, _, _, _) = SS.empty
+	  | libraryexports (COLLECTION { subgroups, ... }, p, error,
+			    hasoptions, elab) = let
+		fun err m = (error m; SS.empty)
+	    in
+		case List.find (samepathas p) subgroups of
+		    SOME (_, GG.GROUP { kind = GG.LIB _, exports, ... }, _) =>
+		    (if hasoptions then
+			 err (SrcPath.descr p ^
+			      " cannot have options because it is already\
+			      \ listed as a member")
+		     else domainOf exports)
+		  | SOME _ => err (SrcPath.descr p ^
+				   " is a subgroup, not a library")
+		  | NONE =>
+		    (case elab () of
+			 ERRORCOLLECTION => SS.empty
+		       | COLLECTION { smlfiles = [],
+				      subgroups = [(_, GG.GROUP
+					{ kind = GG.LIB _, exports, ... }, _)],
+				      ... } =>
+			 domainOf exports
+		       | COLLECTION { smlfiles, subgroups, ... } =>
+			 (app (fn (p, _, _) => print (SrcPath.descr p ^ "\n"))
+			      subgroups;
+			  app (fn (i, _) => print (SmlInfo.descr i ^ "\n"))
+			      smlfiles;
+			  err "precisely one library must be named here"))
+	    end
+
+	fun groupexports (ERRORCOLLECTION, _, _) = SS.empty
+	  | groupexports (COLLECTION { subgroups, ... }, NONE, _) = let
+		fun sgexp ((_, GG.GROUP { kind = GG.NOLIB _, exports, ... },
+			    _), s) =
+		    addDomain (exports, s)
+		  | sgexp (_, s) = s
+	    in
+		foldl sgexp SS.empty subgroups
+	    end
+	  | groupexports (COLLECTION { subgroups, ... }, SOME p, error) =
+	    (case List.find (samepathas p) subgroups of
+		 SOME (_, GG.GROUP { kind = GG.NOLIB _, exports, ... }, _) =>
+		 domainOf exports
+	       | SOME _ => (error (SrcPath.descr p ^
+				   " is a library, not a subgroup");
+			    SS.empty)
+	       | NONE => (error ("no such subgroup: " ^ SrcPath.descr p);
+			  SS.empty))
+    end
+	
     fun is_errorcollection ERRORCOLLECTION = true
       | is_errorcollection (COLLECTION _) = false
 end

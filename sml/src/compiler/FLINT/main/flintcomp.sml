@@ -1,8 +1,9 @@
 (* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* flintcomp.sml *)
 
-functor FLINTComp (structure Gen: MACHINE_GEN
-                   val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
+functor FLINTComp
+	    (structure Gen: MACHINE_GEN
+             val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
 struct
 
 local structure MachSpec = Gen.MachSpec
@@ -215,7 +216,7 @@ fun flintcomp
                   val carg = spill carg
                   val (carg, limit) = limit carg
                in codegen { funcs = carg, limits = limit, err = err,
-			    srcname = src };
+			    source = src };
                   collect ()
               end
 

@@ -730,7 +730,8 @@ struct
    
       and emitTrap() = emit(I.TW{to=31,ra=zeroR,si=I.ImmedOp 0}) 
 
-        val beginCluster = fn _ => (trapLabel := NONE; beginCluster(0))
+        val beginCluster = fn _ =>
+	   (trapLabel := NONE; beginCluster 0)
         val endCluster = fn a =>
            (case !trapLabel of 
               SOME label => 

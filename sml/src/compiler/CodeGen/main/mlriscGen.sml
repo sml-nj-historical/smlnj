@@ -13,8 +13,7 @@ sig
   val codegen : { funcs: CPS.function list,
 		  limits:  CPS.lvar -> int * int,
 		  err: ErrorMsg.complainer,
-(* FIXME: srcname should be used to emit the name string for the code object *)
-		  srcname: string }
+		  source: string }
 		-> unit
 end
 
@@ -214,8 +213,8 @@ struct
   let 
       val { funcs : CPS.function list,
 	    limits:CPS.lvar -> (int*int),
-	    err,
-	    srcname } = args
+	    err, source } =
+	  args
       val maxAlloc = #1 o limits
       val splitEntry = !splitEntry
 
@@ -2087,7 +2086,7 @@ struct
   in  
     app mkGlobalTables funcs;
     app genCluster (Cluster.cluster funcs);
-    finishCompilationUnit "interactive"	(* blume?? *)
+    finishCompilationUnit source
   end (* codegen *)
 end (* MLRiscGen *)
 

@@ -312,7 +312,7 @@ struct
 
 
 
-  fun finish() = let
+  fun finish () = let
     fun labels(PSEUDO pOp::rest, pos) = 
           (P.adjustLabels(pOp, pos); labels(rest, pos+P.sizeOf(pOp,pos)))
       | labels(LABEL lab::rest, pos) = 
@@ -378,7 +378,8 @@ struct
     in if adjust(zl, 0, false) then fixpoint zl else size
     end
 
-    val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} = E.makeStream []
+    val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} =
+	E.makeStream []
     fun emitCluster(CLUSTER{comp},loc) = let
 	  val emitInstrs = app emit 
 	  fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc+P.sizeOf(pOp,loc))

@@ -334,7 +334,7 @@ structure Binfile :> BINFILE = struct
 	     executable = ref NONE }
 
     (* must be called with second arg >= 0 *)
-    fun readCodeList (strm, name, nbytes) = let
+    fun readCodeList (strm, nbytes) = let
 	fun readCode 0 = []
 	  | readCode n = let
 		val sz = readInt32 strm
@@ -342,7 +342,7 @@ structure Binfile :> BINFILE = struct
 	    in
 		if n' < 0 then
 		    error "code size"
-		else CodeObj.input(strm, sz, SOME name) :: readCode n'
+		else CodeObj.input(strm, sz) :: readCode n'
 	    end
 	val dataSz = readInt32 strm
 	val n' = nbytes - dataSz - 4
@@ -353,7 +353,7 @@ structure Binfile :> BINFILE = struct
 	  | [] => error "missing code objects"
     end
 
-    fun read { arch, version, name, stream = s } = let
+    fun read { arch, version, stream = s } = let
 	val MAGIC = mkMAGIC (arch, version)
 	val magic = bytesIn (s, magicBytes)
 	val _ = if magic = MAGIC then () else error "bad magic number"
@@ -386,7 +386,7 @@ structure Binfile :> BINFILE = struct
 	(* skip padding *)
 	val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
 	(* now get the code *)
-	val code = readCodeList (s, name, cs)
+	val code = readCodeList (s, cs)
 	val penv = bytesIn (s, es)
     in
 	{ contents = create { imports = imports,

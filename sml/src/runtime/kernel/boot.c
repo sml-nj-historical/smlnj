@@ -501,23 +501,10 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 	InvokeGCWithRoots (msp, 0, &BinFileList, &val, NIL(ml_val_t *));
 
     while (remainingCode > 0) {
-	int		strLen, padLen, extraLen;
 
       /* read the size for this code object */
 	ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
 	thisSzB = BIGENDIAN_TO_HOST(thisSzB);
-
-      /* We use one byte for the length, so the longest string is 255
-       * characters.  We need padding so that the code + string +
-       * length byte is WORD_SZB bytes.  The padding is inserted between
-       * the code and the string.
-       */
-	strLen = strlen(objname);
-	if (strLen > 255)
-	    strLen = 255;
-	extraLen = strLen+1;  /* include byte for length */
-	padLen = ROUNDUP(thisSzB+extraLen, WORD_SZB) - (thisSzB+extraLen);
-	extraLen += padLen;
 
       /* how much more? */
 	remainingCode -= thisSzB + sizeof(Int32_t);
@@ -525,13 +512,9 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 	  Die ("format error (code size mismatch) in bin file \"%s\"", fname);
 
       /* allocate space and read code object */
-	codeObj = ML_AllocCode (msp, thisSzB+extraLen);
+	codeObj = ML_AllocCode (msp, thisSzB);
 	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, fname);
 
-      /* tack on the bin-file name as a comment string. */
-	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, objname, strLen);
-	*(PTR_MLtoC(Byte_t, codeObj)+thisSzB+extraLen-1) = (Byte_t)strLen;
-	
 	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);
       
       /* create closure */

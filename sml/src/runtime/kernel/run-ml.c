@@ -142,12 +142,11 @@ SayDebug ("run-ml: poll event\n");
 
 	      case REQ_FAULT: { /* a hardware fault */
 		    ml_val_t	loc, traceStk, exn;
-		    char	buf1[128];
-		    if (BO_AddrToCodeObjTag(msp->ml_faultPC, buf1, sizeof(buf1))
-		      != NIL(char *))
+		    char *namestring;
+		    if ((namestring = BO_AddrToCodeObjTag(msp->ml_faultPC)) != NIL(char *))
 		    {
 			char	buf2[192];
-			sprintf(buf2, "<file %s>", buf1);
+			sprintf(buf2, "<file %.184s>", namestring);
 			loc = ML_CString(msp, buf2);
 		    }
 		    else

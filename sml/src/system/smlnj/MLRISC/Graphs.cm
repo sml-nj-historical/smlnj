@@ -12,7 +12,7 @@
  * author: Lal George (george@lucent.com)
  *)     
 Library
-	(* this is a proxy library; exports taken from only member *)
+	library($SMLNJ-MLRISC/Graphs.cm)
 is
 	$SMLNJ-MLRISC/Graphs.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)

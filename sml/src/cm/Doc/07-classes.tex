@@ -76,8 +76,9 @@ tool options.  If the list contains precisely one element, then its
 parentheses may be omitted.
 
 \subsubsection{Parameters for class {\tt sml}}
+\label{sec:toolparam:sml}
 
-The {\tt sml} class accepts three optional parameters.  One is the {\em
+The {\tt sml} class accepts four optional parameters.  One is the {\em
 sharing annotation} that was explained earlier (see
 Section~\ref{sec:sharing}).  The sharing annotation must be one of the
 two strings {\tt shared} and {\tt private}.  If {\tt shared} is
@@ -119,7 +120,7 @@ erased.  This means that setup code for other files {\em cannot} refer
 to them, and neither can code that in the future might be entered at
 top level.
 
-Finally, the third possible parameter for class {\tt sml} is a
+The third possible parameter for class {\tt sml} is a
 sub-option labelled {\tt lambdasplit}.  It controls the cross-module
 inlining mechanism of SML/NJ.\footnote{The label is named after the
 technique (``$\lambda$-splitting''~\cite{blume97:lsplit}) used to
@@ -147,6 +148,11 @@ engine.
 {\tt Default (SOME $m$)} & $m$ & $m$    & $-1$      & $\infty$       & $n$
 \end{tabular}
 \end{center}
+
+Finally, the last possible parameter for class {\tt sml} is the string
+{\tt local}.  A file marked {\tt local} will be ignored when
+calculating the symbol set for an occurence of {\tt source(-)} within
+the export list (see section~\ref{sec:exportcalculus}).
 
 \subsubsection{Parameters for class {\tt cm}}
 \label{sec:toolparam:cm}

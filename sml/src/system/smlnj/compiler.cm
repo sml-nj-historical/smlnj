@@ -6,6 +6,6 @@
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 Library
-	(* this is a proxy library; exports taken from only member *)
+	library($smlnj/compiler/current.cm)
 is
 	$smlnj/compiler/current.cm

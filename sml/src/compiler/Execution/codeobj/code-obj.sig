@@ -21,14 +21,12 @@ signature CODE_OBJ =
     exception FormatError
 	(* raised by input when there are insufficient bytes *)
 
-    val alloc : (int * string option) -> code_object
+    val alloc : int -> code_object
 	(* Allocate an unintialized code object of the given number of bytes.
-	 * The second argument is the optional name of the object.
 	 *)
-    val input : (BinIO.instream * int * string option) -> code_object
+    val input : (BinIO.instream * int) -> code_object
 	(* Allocate a code object of the given size and initialize it
-	 * from the input stream.  The third argument is the optional
-	 * name of the object.
+	 * from the input stream.
 	 *)
     val output : (BinIO.outstream * code_object) -> unit
 	(* Output a code object to the given output stream *)

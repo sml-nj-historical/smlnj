@@ -40,7 +40,7 @@ end = struct
 	(handleInterrupt parse_gen; OS.Process.success)
 	handle Interrupt => OS.Process.failure
 	     | ex => (err (String.concat ["? ml-yacc: uncaught exception ",
-					  exnMessage ex, "\n"]);
+					  General.exnMessage ex, "\n"]);
 		      OS.Process.failure)
     end
 end

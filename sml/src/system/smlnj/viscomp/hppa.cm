@@ -9,6 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/backend-hppa.cm)
 is
 	$compiler/backend-hppa.cm

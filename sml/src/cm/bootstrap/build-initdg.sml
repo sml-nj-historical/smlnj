@@ -89,7 +89,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			      { sourcepath = p,
 			        group = (specgroup, (pos, newpos)),
 				sh_spec = Sharing.DONTCARE,
-				setup = (NONE, NONE) }
+				setup = (NONE, NONE),
+				locl = false }
 			end
 			fun bogus n = 
 			    DG.SNODE { smlinfo = sml (n, LSC.UseDefault, NONE,

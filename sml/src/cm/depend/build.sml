@@ -10,13 +10,12 @@ signature BUILDDEPEND = sig
 
     val build :
 	{ imports: impexp SymbolMap.map,
-	  gimports: impexp SymbolMap.map,
-	  smlfiles: SmlInfo.info list,
+	  smlfiles: (SmlInfo.info * SymbolSet.set) list,
 	  localdefs: SmlInfo.info SymbolMap.map,
 	  subgroups: 'a,
 	  sources: 'b,
 	  reqpriv: GroupGraph.privileges }
-	* SymbolSet.set option		(* filter *)
+	* SymbolSet.set			(* filter *)
 	* GeneralParams.info
 	* DependencyGraph.farsbnode	(* pervasive env *)
 	->
@@ -113,9 +112,13 @@ structure BuildDepend :> BUILDDEPEND = struct
     fun symDesc (s, r) =
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
-    fun build (coll, fopt, gp, perv_fsbnode) = let
-	val { imports, gimports, smlfiles, localdefs, subgroups,
+    fun build (coll, filter, gp, perv_fsbnode) = let
+	val { imports, smlfiles, localdefs, subgroups,
 	      sources, reqpriv } = coll
+
+	val per_file_exports =
+	    foldl (fn ((p, s), m) => SmlInfoMap.insert (m, p, s))
+		  SmlInfoMap.empty smlfiles
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)
@@ -248,7 +251,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 
 	(* run the analysis on one ML file -- causing the blackboard
 	 * to be updated accordingly *)
-	fun doSmlFile i = ignore (getResult (i, []))
+	fun doSmlFile (i, _) = ignore (getResult (i, []))
 
 	(* run the analysis *)
 	val _ = app doSmlFile smlfiles
@@ -267,7 +270,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 	fun addDummyFilt i = let
 	    val (sn, e) = valOf (valOf (fetch i))
 	    val sbn = DG.SB_SNODE sn
-	    val fsbn = (NONE, sbn)
+	    val fsbn = (SmlInfoMap.find (per_file_exports, i), sbn)
 	in
 	    (* We also thunkify the fsbn so that the result is an impexp. *)
 	    (fn () => fsbn, e, valOf (SmlInfoMap.find (ilocaldefs, i)))
@@ -277,54 +280,43 @@ structure BuildDepend :> BUILDDEPEND = struct
 	 * the local "far sb node"
 	 * but with only a dummy filter attached.
 	 * This makes it consistent with the current state
-	 * of "imports" and "gimports" where there can be filters, but
-	 * where those filters are not yet strengthened according to fopt *)
+	 * of "imports" where there can be filters, but
+	 * where those filters are not yet strengthened according to
+	 * filter *)
 	val localmap = SM.map addDummyFilt localdefs
 
-	val exports =
-	    case fopt of
-		NONE => let
-		    (* There is no filter -- so we are in an ordinary
-		     * group and should export all gimports as well as
-		     * all local definitions.
-		     * No filter strengthening is necessary. *)
-		    fun add (s, b, m) =
-			if SM.inDomain (localmap, s) then m
-			else (add_gi_sym s; SM.insert (m, s, b))
-		in
-		     SM.foldli add localmap gimports
-		end
-	      | SOME ss => let
-		    (* There is a filter.
-		     * We export only the things in the filter.
-		     * They can be taken from either localmap or else from
-		     * imports.  In either case, it is necessary to strengthen
-		     * the filter attached to each node. *)
-		    fun strengthen (nth, e, allsyms) = let
-			val (fopt', sbn) = nth ()
-			val new_fopt =
-			    case fopt' of
-				NONE => fopt
-			      | SOME ss' => SOME (SS.intersection (ss, ss'))
-			fun nth' () = (new_fopt, sbn)
-		    in
-			(nth', DE.FILTER (ss, e), SS.intersection (allsyms,ss))
-		    end
-		    fun addNodeFor (s, m) =
-			case SM.find (localmap, s) of
-			    SOME n => SM.insert (m, s, strengthen n)
-			  | NONE =>
-			    (case SM.find (imports, s) of
-				 SOME n => (add_gi_sym s;
-					    SM.insert (m, s, strengthen n))
-			       | NONE => 
-				 (* This should never happen since we
-				  * checked beforehand during
-				  * parsing/semantic analysis *)
-				 EM.impossible "build: undefined export")
-		in
-		    SS.foldl addNodeFor SM.empty ss
-		end
+	val exports = let
+	    val ss = filter
+	    (* We now always have a filter.
+	     * We export only the things in the filter.
+	     * They can be taken from either localmap or else from
+	     * imports.  In either case, it is necessary to strengthen
+	     * the filter attached to each node. *)
+	    fun strengthen (nth, e, allsyms) = let
+		val (fopt', sbn) = nth ()
+		val new_fopt =
+		    case fopt' of
+			NONE => SOME ss
+		      | SOME ss' => SOME (SS.intersection (ss, ss'))
+		fun nth' () = (new_fopt, sbn)
+	    in
+		(nth', DE.FILTER (ss, e), SS.intersection (allsyms,ss))
+	    end
+	    fun addNodeFor (s, m) =
+		case SM.find (localmap, s) of
+		    SOME n => SM.insert (m, s, strengthen n)
+		  | NONE =>
+		    (case SM.find (imports, s) of
+			 SOME n => (add_gi_sym s;
+				    SM.insert (m, s, strengthen n))
+		       | NONE => 
+			 (* This should never happen since we
+			  * checked beforehand during
+			  * parsing/semantic analysis *)
+			 EM.impossible "build: undefined export")
+	in
+	    SS.foldl addNodeFor SM.empty ss
+	end
     in
 	CheckSharing.check (exports, gp);
 	(exports, reqpriv, !gi_syms)

@@ -23,7 +23,7 @@ extern bool_t NeedGC (ml_state_t *msp, Word_t nbytes);
 extern int GetObjGen (ml_val_t obj);
 extern ml_val_t RecordConcat (ml_state_t *msp, ml_val_t r1, ml_val_t r2);
 
-char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz);
+char *BO_AddrToCodeObjTag (Word_t pc);
 
 #ifdef HEAP_MONITOR
 extern status_t HeapMon_Init (heap_t *heap);

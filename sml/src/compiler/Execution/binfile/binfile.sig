@@ -41,8 +41,7 @@ signature BINFILE = sig
 		   csegments: CodeObj.csegments } -> bfContents
 
     (* read binfile contents from an IO stream *)
-    val read : { arch: string, version: int list,
-		 name: string, stream: BinIO.instream }
+    val read : { arch: string, version: int list, stream: BinIO.instream }
 	       -> { contents: bfContents, stats: stats }
 
     (* write binfile contents to an IO stream *)

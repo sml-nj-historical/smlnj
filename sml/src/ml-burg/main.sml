@@ -3,6 +3,12 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  * $Log$
+ * Revision 1.4  2001/11/21 21:03:16  blume
+ * Release 110.37 -- see HISTORY
+ *
+ * Revision 1.3.4.1  2001/11/17 03:14:16  blume
+ * fixed uses of exnMessage in standalone programs
+ *
  * Revision 1.3  2000/06/01 18:33:42  monnier
  * bring revisions from the vendor branch to the trunk
  *
@@ -62,7 +68,8 @@ structure Main = struct
 			in
 			  BurgEmit.emit (s_in, (fn () => (TextIO.openOut outname)))
 			end) 
-			  handle err => (TextIO.output (TextIO.stdErr, exnMessage err^"\n");
+			  handle err => (TextIO.output (TextIO.stdErr,
+							General.exnMessage err^"\n");
 					 raise err)
 		  in
 		    app emit names;

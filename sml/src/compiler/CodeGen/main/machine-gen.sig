@@ -16,7 +16,7 @@ signature MACHINE_GEN = sig
   val codegen : { funcs: CPS.function list,
 		  limits: CPS.lvar -> int * int,
 		  err: ErrorMsg.complainer,
-		  srcname: string }
+		  source: string }
 		-> unit
 end (* MACHINE_GEN *)
 

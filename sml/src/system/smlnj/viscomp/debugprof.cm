@@ -5,7 +5,7 @@
  * Debugging and profiling instrumentation phases.
  *)
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/DebugProf/debugprof.cm)
 is
 	(* reference to our only group... *)
 	$compiler/DebugProf/debugprof.cm

@@ -5,7 +5,7 @@
  * A library defining data structures used by the SML/NJ elaborator.
  *)
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/ElabData/elabdata.cm)
 is
 	(* reference to our only group... *)
 	$compiler/ElabData/elabdata.cm

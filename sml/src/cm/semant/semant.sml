@@ -44,12 +44,13 @@ signature CM_SEMANT = sig
     (* getting the full analysis for a group/library *)
     val group : { path: SrcPath.file,
 		  privileges: privilegespec,
-		  exports: exports option,
+		  exports: exports,
 		  members: members,
 		  gp: GeneralParams.info,
 		  curlib: SrcPath.file option,
 		  owner: SrcPath.file option,
 		  initgroup: group } -> group
+
     val library : { path: SrcPath.file,
 		    privileges: privilegespec,
 		    exports: exports,
@@ -57,10 +58,6 @@ signature CM_SEMANT = sig
 		    members: members,
 		    gp: GeneralParams.info,
 		    initgroup: group } -> group
-    val proxy : { path: SrcPath.file,
-		  privileges: privilegespec,
-		  members: members,
-		  error: complainer } -> group
 
     (* assembling privilege lists *)
     val initialPrivilegeSpec : privilegespec
@@ -88,12 +85,23 @@ signature CM_SEMANT = sig
 	exp * (members * members) * (string -> unit) -> members
     val error_member : (unit -> unit) -> members
 
+    (* constructing symbol sets *)
+    val export : ml_symbol * complainer -> exports
+    val union : exports * exports -> exports
+    val difference : exports * exports -> exports
+    val intersection : exports * exports -> exports
+    val exportsource : SrcPath.file option * complainer -> exports
+    val exportgroup : SrcPath.file option * complainer -> exports
+    val exportlibrary : SrcPath.file * complainer *
+			{ hasoptions: bool,
+			  elab: unit -> members,
+			  curlib: SrcPath.file option }
+			-> exports
+
     (* constructing export lists *)
     val emptyExports : exports
-    val export : ml_symbol * complainer -> exports
-    val exports : exports * exports -> exports
-    val guarded_exports :
-	exp * (exports * exports) * (string -> unit) -> exports
+    val guarded_exports : exp * (exports * exports) * complainer -> exports
+    val default_group_exports : exports
     val error_export : (unit -> unit) -> exports
 
     (* groups of operator symbols (to make grammar smaller) *)
@@ -144,6 +152,7 @@ structure CMSemant :> CM_SEMANT = struct
     structure SymPath = SymPath
     structure EM = ErrorMsg
     structure GG = GroupGraph
+    structure MC = MemberCollection
 
     type context = SrcPath.dir
     type region = SourceMap.region
@@ -155,13 +164,13 @@ structure CMSemant :> CM_SEMANT = struct
     type group = GG.group
     type privilegespec = { required: GG.privileges, wrapped: GG.privileges }
 
-    type environment = MemberCollection.collection
+    type environment = MC.collection
+
+    type exports = environment -> (environment -> unit) SymbolMap.map
 
     type aexp = environment -> int
     type exp = environment -> bool
-    type members =
-	 environment * SrcPath.file option -> MemberCollection.collection
-    type exports = environment -> SymbolSet.set
+    type members = environment * SrcPath.file option -> MC.collection
 
     type toolopt = PrivateTools.toolopt
     type toolregistry = PrivateTools.registry
@@ -230,11 +239,16 @@ structure CMSemant :> CM_SEMANT = struct
     val \/ = StringSet.union
     infix \/
 
+    fun getExports (mc, e) =
+	SymbolMap.foldli (fn (sy, c, s) => (c mc; SymbolSet.add (s, sy)))
+			 SymbolSet.empty
+			 (applyTo mc e)
+
     fun group arg = let
 	val { path = g, privileges = p, exports = e, members = m,
 	      gp, curlib, owner, initgroup } = arg
-	val mc = applyTo (MemberCollection.implicit gp initgroup, curlib) m
-	val filter = Option.map (applyTo mc) e
+	val mc = applyTo (MC.implicit gp initgroup, curlib) m
+	val filter = getExports (mc, e)
 	val pfsbn = let
 	    val { exports, ... } =
 		case initgroup of
@@ -244,28 +258,27 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val _ = MemberCollection.mkIndex (gp, g, mc)
+	val _ = MC.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
-	    MemberCollection.build (mc, filter, gp, pfsbn ())
-	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
+	    MC.build (mc, filter, gp, pfsbn ())
+	val subgroups = filt_th_sgl (MC.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
     in
 	if StringSet.isEmpty wr then ()
 	else EM.impossible "group with wrapped privileges";
 	GG.GROUP { exports = exports,
-		   kind = GG.NOLIB { subgroups = subgroups, owner = owner,
-				     explicit = Option.isSome e },
+		   kind = GG.NOLIB { subgroups = subgroups, owner = owner },
 		   required = rp' \/ rp \/ wr,
 		   grouppath = g,
-		   sources = MemberCollection.sources mc,
+		   sources = MC.sources mc,
 		   sublibs = sgl2sll subgroups }
     end
 
     fun library arg = let
 	val { path = g, privileges = p, exports = e, members = m,
 	      version, gp, initgroup } = arg
-	val mc = applyTo (MemberCollection.implicit gp initgroup, SOME g) m
-	val filter = SOME (applyTo mc e)
+	val mc = applyTo (MC.implicit gp initgroup, SOME g) m
+	val filter = getExports (mc, e)
 	val pfsbn = let
 	    val { exports, ... } =
 		case initgroup of
@@ -275,10 +288,10 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val _ = MemberCollection.mkIndex (gp, g, mc)
+	val _ = MC.mkIndex (gp, g, mc)
 	val (exports, rp, isl) =
-	    MemberCollection.build (mc, filter, gp, pfsbn ())
-	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
+	    MC.build (mc, filter, gp, pfsbn ())
+	val subgroups = filt_th_sgl (MC.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
     in
 	GG.GROUP { exports = exports,
@@ -287,46 +300,8 @@ structure CMSemant :> CM_SEMANT = struct
 							 wrapped = wr } },
 		   required = rp' \/ rp \/ wr,
 		   grouppath = g,
-		   sources = MemberCollection.sources mc,
+		   sources = MC.sources mc,
 		   sublibs = sgl2sll subgroups }
-    end
-
-    fun proxy arg = let
-	val { path = g, members = m, error, privileges = p } = arg
-	val { required = rp', wrapped = wr } = p
-	val mc = applyTo (MemberCollection.empty, SOME g) m
-	fun notone () =
-	    (error "precisely one sub-group or sub-library required";
-	     GG.ERRORGROUP)
-	fun notexplicit () =
-	    (error "proxy for component without explicit export list";
-	     GG.ERRORGROUP)
-    in
-	if MemberCollection.is_errorcollection mc then GG.ERRORGROUP
-	else if MemberCollection.has_smlfiles mc then notone ()
-	else
-	    case MemberCollection.subgroups mc of
-		[(_, GG.ERRORGROUP, _)] => GG.ERRORGROUP
-	      | [(p, sg as GG.GROUP grec, rb)] => let
-		    val { exports, kind, required = rp, ... } = grec
-		    val sgl = [(p, fn () => sg, rb)]
-		    fun doit () = let
-			val lk = GG.DEVELOPED { subgroups = sgl, wrapped = wr }
-		    in
-			GG.GROUP { exports = exports,
-				   kind = GG.LIB { version = NONE, kind = lk },
-				   required = rp \/ rp' \/ wr,
-				   grouppath = g,
-				   sources = MemberCollection.sources mc,
-				   sublibs = sgl2sll sgl }
-		    end					    
-		in
-		    case kind of
-			GG.LIB _ => doit ()
-		      | GG.NOLIB { explicit = true, ... } => doit ()
-		      | _ => notexplicit ()
-		end
-	      | l => notone ()
     end
 
     local
@@ -348,7 +323,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun emptyMembers (env, _) = env
     fun member { gp, rparse, load_plugin } arg (env, curlib) = let
-	val coll = MemberCollection.expandOne
+	val coll = MC.expandOne
 		       { gp = gp, rparse = rparse curlib,
 			 load_plugin = load_plugin }
 		       arg
@@ -370,25 +345,70 @@ structure CMSemant :> CM_SEMANT = struct
 	    end
 	  | checkowner _ = ()
     in
-	app checkowner (MemberCollection.subgroups coll);
-	MemberCollection.sequential (env, coll, e0)
+	app checkowner (MC.subgroups coll);
+	MC.sequential (env, coll, e0)
     end
     fun members (m1, m2) (env, curlib) = m2 (m1 (env, curlib), curlib)
     fun guarded_members (c, (m1, m2), error) (env, curlib) =
 	if saveEval (c, env, error) then m1 (env, curlib) else m2 (env, curlib)
     fun error_member thunk (env, _) = (thunk (); env)
 
-    fun emptyExports env = SymbolSet.empty
-    fun export (s, error) env =
-	if MemberCollection.ml_look env s then SymbolSet.singleton s
-	else (error (concat ["exported ",
-			     Symbol.nameSpaceToString (Symbol.nameSpace s),
-			     " not defined: ", Symbol.name s]);
-	      SymbolSet.empty)
-    fun exports (e1, e2) env = SymbolSet.union (e1 env, e2 env)
+    fun symerr s = concat ["exported ",
+			   Symbol.nameSpaceToString (Symbol.nameSpace s),
+			   " not defined: ", Symbol.name s]
+
+    fun export (s, error) env = let
+	fun check final_env =
+	    if MC.ml_look final_env s then ()
+	    else error (symerr s)
+    in
+	SymbolMap.singleton (s, check)
+    end
+
+    fun union (x, y) env = SymbolMap.unionWith #1 (x env, y env)
+    fun difference (x, y) env = let
+	val ymap = y env
+	fun inY (s, _) = SymbolMap.inDomain (ymap, s)
+    in
+	SymbolMap.filteri (not o inY) (x env)
+    end
+    fun intersection (x, y) env = SymbolMap.intersectWith #1 (x env, y env)
+
+    local
+	fun withCheckers (ss, error) = let
+	    fun add1 (s, m) = let
+		fun check final_env =
+		    if MC.ml_look final_env s then ()
+		    else error (symerr s)
+	    in
+		SymbolMap.insert (m, s, check)
+	    end
+	in
+	    SymbolSet.foldl add1 SymbolMap.empty ss
+	end
+	fun exportfile F (fopt, error: string -> unit) (env: environment) =
+	    withCheckers (F (env, fopt, error), error)
+    in
+        val exportsource =
+	    exportfile MC.smlexports
+	val exportgroup =
+	    exportfile MC.groupexports
+	fun exportlibrary (p, error, { hasoptions, elab, curlib }) env = let
+	    fun elab' () = elab () (MC.emptycollection, curlib)
+	    val raw = MC.libraryexports (env, p, error, hasoptions, elab')
+	in
+	    withCheckers (raw, error)
+	end
+    end
+
+    fun emptyExports env = SymbolMap.empty
     fun guarded_exports (c, (e1, e2), error) env =
 	if saveEval (c, env, error) then e1 env else e2 env
-    fun error_export thunk env = (thunk (); SymbolSet.empty)
+    fun default_group_exports env =
+	union (exportsource (NONE, fn s => ()),
+	       exportgroup (NONE, fn s => ()))
+	      env
+    fun error_export thunk env = (thunk (); SymbolMap.empty)
 
     datatype addsym = PLUS | MINUS
     datatype mulsym = TIMES | DIV | MOD
@@ -396,7 +416,7 @@ structure CMSemant :> CM_SEMANT = struct
     datatype ineqsym = GT | GE | LT | LE
 
     fun number i _ = i
-    fun variable gp v e = MemberCollection.num_look gp e v
+    fun variable gp v e = MC.num_look gp e v
     fun add (e1, PLUS, e2) e = e1 e + e2 e
       | add (e1, MINUS, e2) e = e1 e - e2 e
     fun mul (e1, TIMES, e2) e = e1 e * e2 e
@@ -406,8 +426,8 @@ structure CMSemant :> CM_SEMANT = struct
       | sign (MINUS, ex) e = ~(ex e)
     fun negate ex e = ~(ex e)
 
-    fun ml_defined s e = MemberCollection.ml_look e s
-    fun cm_defined gp s e = MemberCollection.cm_look gp e s
+    fun ml_defined s e = MC.ml_look e s
+    fun cm_defined gp s e = MC.cm_look gp e s
     fun conj (e1, e2) e = e1 e andalso e2 e
     fun disj (e1, e2) e = e1 e orelse e2 e
     fun beq (e1: exp, EQ, e2) e = e1 e = e2 e

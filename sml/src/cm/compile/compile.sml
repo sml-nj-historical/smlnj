@@ -400,8 +400,7 @@ in
 					val { contents, stats } =
 					    BF.read { arch = arch,
 						      version = version,
-						      stream = s,
-						      name = binname }
+						      stream = s }
 				    in
 					(contents, ts, stats)
 				    end

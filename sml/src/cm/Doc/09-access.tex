@@ -26,8 +26,8 @@ In CM's access control model it is possible for a library to ``wrap''
 privileges.  If a privilege $P$ has been wrapped, then the user of the
 library does not need to have privilege $P$ even though the library is
 using another library that requires privilege $P$.  In essence, the
-library acts as a ``proxy'' who provides the necessary credentials for
-privilege $P$ to the sub-library.
+library acts as a go-between who provides the necessary credentials
+for privilege $P$ to the sub-library.
 
 Of course, not everybody can be allowed to establish a library with
 such a ``wrapped'' privilege $P$.  The programmer who does that should at

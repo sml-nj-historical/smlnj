@@ -5,7 +5,7 @@
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
 Library
-	(* this is a proxy library; exports taken from its (only) member *)
+	group($compiler/Basics/basics.cm)
 is
 	(* reference to our only group... *)
 	$compiler/Basics/basics.cm

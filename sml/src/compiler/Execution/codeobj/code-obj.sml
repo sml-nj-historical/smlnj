@@ -13,8 +13,7 @@ structure CodeObj :> CODE_OBJ =
     type object = Unsafe.Object.object
 
     datatype code_object = C of {
-	obj : Word8Array.array,
-	name : string option
+	obj : Word8Array.array
       }
 
     type csegments = {
@@ -31,27 +30,25 @@ structure CodeObj :> CODE_OBJ =
     local
       structure CI = Unsafe.CInterface
     in
-    val allocCode : (int * string option) -> W8A.array =
+    val allocCode : int -> W8A.array =
 	  CI.c_function "SMLNJ-RunT" "allocCode"
     val mkLiterals : W8V.vector -> object = CI.c_function "SMLNJ-RunT" "mkLiterals"
     val mkExec : W8A.array -> executable = CI.c_function "SMLNJ-RunT" "mkExec"
     end (* local *)
 
-  (* Allocate an unintialized code object of the given number of bytes.
-   * The second argument is the optional name of the object.
+  (* Allocate an uninitialized code object.
    *)
-    fun alloc (n, optName) = (
-	  if (n <= 0) then raise Size else ();
-	  C{obj = allocCode (n, optName), name = optName})
+    fun alloc n =
+	(if (n <= 0) then raise Size else ();
+	 C { obj = allocCode n })
 
   (* Allocate a code object of the given size and initialize it
-   * from the input stream.  The third argument is the optional
-   * name of the object.
+   * from the input stream.
    * NOTE: someday, we might read the data directly into the code
    * object, but this will require hacking around with the reader.
    *)
-    fun input (inStrm, sz, optName) = let
-	  val (co as C{obj, ...}) = alloc (sz, optName)
+    fun input (inStrm, sz) = let
+	  val (co as C{obj, ...}) = alloc sz
 	  val data = BinIO.inputN (inStrm, sz)
 	  in
 	    if (W8V.length data < sz)
@@ -83,4 +80,3 @@ structure CodeObj :> CODE_OBJ =
     fun size (C{obj, ...}) = W8A.length obj
 
   end;
-

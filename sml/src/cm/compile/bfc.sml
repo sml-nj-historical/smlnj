@@ -43,7 +43,7 @@ struct
 		    val binname = SmlInfo.binname i
 		    fun reader s = let
 			val x = BF.read { arch = arch, version = version,
-					  stream = s, name = binname }
+					  stream = s }
 		    in
 			store (i, x);
 			x
@@ -64,7 +64,7 @@ struct
 	     (* We can use an empty static env because no
 	      * unpickling will be done. *)
 	     #contents (BF.read { arch = arch, version = version,
-				  stream = s, name = descr }))
+				  stream = s }))
     in
 	SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 			 closeIt = BinIO.closeIn,

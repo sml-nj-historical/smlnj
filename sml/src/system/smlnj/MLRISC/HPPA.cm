@@ -12,7 +12,7 @@
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)     
 Library
-	(* this is a proxy library; exports taken from only member *)
+	library($SMLNJ-MLRISC/HPPA.cm)
 is
 	$SMLNJ-MLRISC/HPPA.cm
                 (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)

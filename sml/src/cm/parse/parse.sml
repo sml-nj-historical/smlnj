@@ -448,11 +448,19 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun inputc k = TextIO.input stream
 
 		    val tokenStream = CMParse.makeLexer inputc lexarg
+		    val parsearg =
+			{ grouppath = group,
+			  context = context,
+			  obsolete = obsolete,
+			  error = error,
+			  doMember = doMember,
+			  curlib = curlib,
+			  gp = ginfo,
+			  ig = init_group }
 		    val (parseResult, _) =
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
-				       (group, context, obsolete, error,
-					doMember, curlib, ginfo, init_group))
+				       parsearg)
 		in
 		    if !(#anyErrors source) then NONE
 		    else SOME parseResult

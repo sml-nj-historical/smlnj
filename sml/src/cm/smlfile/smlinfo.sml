@@ -28,7 +28,8 @@ signature SMLINFO = sig
 	{ sourcepath: SrcPath.file,
 	  group: SrcPath.file * region,
 	  sh_spec: Sharing.request,
-	  setup: string option * string option }
+	  setup: string option * string option,
+	  locl: bool }
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
@@ -66,6 +67,7 @@ signature SMLINFO = sig
     val attribs : info -> attribs
     val lastseen : info -> TStamp.t
     val setup : info -> string option * string option
+    val is_local : info -> bool
 
     (* forget a parse tree that we are done with *)
     val forgetParsetree : info -> unit
@@ -113,7 +115,8 @@ structure SmlInfo :> SMLINFO = struct
     type info_args = { sourcepath: SrcPath.file,
 		       group: SrcPath.file * region,
 		       sh_spec: Sharing.request,
-		       setup: string option * string option }
+		       setup: string option * string option,
+		       locl: bool }
 
     type generation = unit ref
 
@@ -134,7 +137,8 @@ structure SmlInfo :> SMLINFO = struct
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
 		  attribs: attribs,
-		  setup: string option * string option }
+		  setup: string option * string option,
+		  locl:  bool }
 
     type ord_key = info
 
@@ -154,6 +158,7 @@ structure SmlInfo :> SMLINFO = struct
 	sh_mode := m
     fun attribs (INFO { attribs = a, ... }) = a
     fun setup (INFO { setup = s, ... }) = s
+    fun is_local (INFO { locl, ... }) = locl
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
@@ -212,7 +217,8 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun info' attribs (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), sh_spec, setup } = arg
+	val { sourcepath, group = gr as (group, region), sh_spec, setup, locl }
+	    = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
@@ -257,7 +263,8 @@ structure SmlInfo :> SMLINFO = struct
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,
 	       attribs = attribs,
-	       setup = setup }
+	       setup = setup,
+	       locl = locl }
     end
 
     fun info split = info' { split = split, extra_compenv = NONE,

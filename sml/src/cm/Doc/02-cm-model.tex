@@ -44,12 +44,13 @@ relation for ML definitions~\cite{blume:depend99}.)
 
 Technically, a CM library is a (possibly empty) collection of ML
 source files and may also contain references to other libraries.  Each
-library comes with an explicit export interface which lists all
+library comes with an export interface which specifies the set of all
 toplevel-defined symbols of the library that shall be exported to its
-clients.  A library is described by the contents of its {\em
-description file}.\footnote{The description file may also contain
-references to input files for {\em tools} like {\tt ml-lex} or {\tt
-ml-yacc} that produce ML source files.  See section~\ref{sec:classes}.}
+clients (see section~\ref{sec:exportcalculus}).  A library is
+described by the contents of its {\em description file}.\footnote{The
+description file may also contain references to input files for {\em
+tools} like {\tt ml-lex} or {\tt ml-yacc} that produce ML source
+files.  See section~\ref{sec:classes}.}
 
 \noindent Example:
 
@@ -224,13 +225,15 @@ It is followed by the name of the surrounding library's description
 file in parentheses.
 \item The export list can be left empty, in which case CM will provide
 a default export list: all exports from ML source files plus all
-exports from subcomponents of the component.  Imports from other
-libraries will not be re-exported in this case.  (Notice that an
-export list that is not {\em syntactically} empty but which
-effectively contains zero symbols because of conditional
-compilation---see Section~\ref{sec:preproc}---does not count as being
-``left empty'' in the above sense.  Instead, the result would be an
-almost certainly useless component with truly no exports.)
+exports from subcomponents of the component. from other libraries will
+not be re-exported in this case.\footnote{This default can be spelled
+out as {\tt source(-) group(-)}.  See
+section~\ref{sec:exportcalculus}.}  (Notice that an export list that
+is not {\em syntactically} empty but which effectively contains zero
+symbols because of conditional compilation---see
+Section~\ref{sec:preproc}---does not count as being ``left empty'' in
+the above sense.  Instead, the result would be an almost certainly
+useless component with truly no exports.)
 \item There are some small restrictions on access control
 specifications (see Section~\ref{sec:access}).
 \end{itemize}
@@ -338,29 +341,3 @@ Such groups must omit the parenthetical library specification and then
 cannot also be used within libraries. One could think of the top level
 itself as a ``virtual unnamed library'' whose components are these
 top-level groups.
-
-\subsection{Proxy libraries}
-\label{sec:proxies}
-
-There is some syntactic support for setting up ``proxy'' libraries.  A
-proxy library $A$ is a library with a single member which is another
-library $B$ so that the export lists of $A$ and $B$ coincide.  Proxy
-libraries are mainly used for the purpose of managing anchor names and
-anchor environments (see Section~\ref{sec:anchor:env}).
-
-To avoid the need for cumbersome repetition of long export lists, a
-proxy library can be set up by writing a description file which almost
-looks like a regular library description---the only exception being
-that the export list is syntactically empty.  Moreover, there are a
-some additional conditions:
-\begin{itemize}
-\item The proxy library cannot have a version number of its own.
-\item The proxy library must effectively (after conditional
-compilation) have precisely one member.
-\item The single member must either be a CM library (possibly another
-proxy) or a library component.
-\item In the case of the member being a library component (group),
-this group must have an explicit export list.  (CM insists on having
-the export list of each library be spelled out explicitly at least
-once, hence this rule.)
-\end{itemize}

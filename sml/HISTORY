@@ -13,6 +13,37 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/11/21 16:10:00 EST
+Tag: Release_110_37
+Description:
+
+1. Modifications to the SML/NJ code generator and to the runtime system
+   so that code object name strings are directly inserted into code
+   objects at code generation time.  The only business the runtime system
+   has with this is now to read the name strings on occasions.
+   (The encoding of the name string has also changed somewhat.)
+
+2. CM now implements a simple "set calculus" for specifying export lists.
+   In particular, it is now possible to refer to the export lists of
+   other libraries/groups/sources and form unions as well as differences.
+   See the latest CM manual for details.
+
+3. An separate notion of "proxy" libraries has again be eliminated from
+   CM's model.  (Proxy libraries are now simply a special case of using
+   the export list calculus.)
+
+4. Some of the existing libraries now take advantage of the new set
+   calculus.
+   (Notice that not all libraries have been converted because some
+   of the existing .cm-files are supposed to be backward compatible
+   with 110.0.x.)
+
+5. Some cleanup in stand-alone programs.  (Don't use "exnMessage" -- use
+   "General.exnMessage"!  The former relies on a certain hook to be
+   initialized, and that often does not happen in the stand-alone case.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/11/21  13:56:18 EST
 Tag: george-2001121-pseudo-ops
