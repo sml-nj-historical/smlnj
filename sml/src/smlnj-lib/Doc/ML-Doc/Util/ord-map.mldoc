@@ -32,16 +32,18 @@ description of applicative-style maps on a linearly ordered key type.
     <SPEC>
       <VAL>empty<TY>'a map
         <COMMENT>
-        <PP>
-        The empty map.
+          <PP>
+          The empty map.
+        </COMMENT>
     <SPEC>
       <VAL>singleton<TY>(Key.ord_key * 'a) -> 'a map
 	<COMMENT>
           <PROTOTY>
           singleton (<ARG/k/, <ARG/a/)
-          <PROTO>
+          </PROTOTY>
 	  returns the singleton map that maps the key <ARG/k/ to the
 	  value <ARG/a/.
+        </COMMENT>
     <SPEC>
       <VAL>insert<TY>('a map * Key.ord_key * 'a) -> 'a map
       <VAL>insert'<TY>((Key.ord_key * 'a) * 'a map) -> 'a map
@@ -52,6 +54,7 @@ description of applicative-style maps on a linearly ordered key type.
           insert' ((<ARG/k/, <ARG/a/), <ARG/ma/)
           </PROTOTY>
           creates a new map by inserting the key-value pair into <ARG/ma/.
+        </COMMENT>
     <SPEC>
       <VAL>inDomain<TY>('a map * Key.ord_key) -> bool
         <COMMENT>
@@ -83,14 +86,14 @@ description of applicative-style maps on a linearly ordered key type.
       <VAL>first<TY>'a map -> 'a option
       <VAL>firsti<TY>'a map -> (Key.ord_key * 'a option)
         <COMMENT>
-	  <PROTY>
+	  <PROTOTY>
 	    first <ARG/ma/
-	  </PROTY>
+	  </PROTOTY>
 	  returns the first element of the map <ARG/ma/ (as defined by
 	  the ordering on the keys).
-	  <PROTY>
+	  <PROTOTY>
 	    firsti <ARG/ma/
-	  </PROTY>
+	  </PROTOTY>
 	  returns the first element of the map <ARG/ma/ and its key.
 
 	  Both of these functions return

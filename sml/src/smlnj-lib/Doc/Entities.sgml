@@ -8,9 +8,8 @@
 <!ENTITY SMLNJ-DOC  SDATA "SML-of-NJ-Doc">
 
 <!-- Util library file entities -->
-<!ENTITY RAND SDATA "rand-sig.sml">
-<!ENTITY RANDOM SDATA "random-sig.sml">
 <!ENTITY ARRAY-SORT SDATA "array-sort-sig.sml">
+<!ENTITY ATOM SDATA "atom-sig.sml">
 <!ENTITY CHAR-MAP SDATA "char-map-sig.sml">
 <!ENTITY FIFO SDATA "fifo-sig.sml">
 <!ENTITY ITERATE SDATA "iterate-sig.sml">
@@ -19,6 +18,8 @@
 <!ENTITY LIST-XPROD SDATA "list-xprod-sig.sml">
 <!ENTITY ORD-SET SDATA "ord-set-sig.sml">
 <!ENTITY ORD-KEY SDATA "ord-key-sig.sml">
+<!ENTITY RAND SDATA "rand-sig.sml">
+<!ENTITY RANDOM SDATA "random-sig.sml">
 <!ENTITY SPLAY-TREE SDATA "splaytree-sig.sml">
 <!ENTITY QUEUE SDATA "queue-sig.sml">
 <!ENTITY MONO-ARRAY-SORT SDATA "mono-array-sort-sig.sml">

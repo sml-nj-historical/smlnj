@@ -67,7 +67,10 @@ linear congruential generator, specifically
           randInt <ARG/s/
           </PROTOTY>
           generates random integers uniformly in the range
-          <MATH/[<CD/Int.minInt/,<CD/Int.maxInt/]/ based on the
+          <MATH>
+	    [<MTEXT><VALREF STRID="Int" DOCUMENT=SML-BASIS-DOC>Int.minInt</VALREF></MTEXT>,
+	     <MTEXT><VALREF STRID="Int" DOCUMENT=SML-BASIS-DOC>Int.maxInt</VALREF></MTEXT>]
+	  </MATH> based on the
           information in <ARG/s/. As a side-effect, the function updates
           the internal state of <ARG/s/.
     <SPEC>
@@ -77,7 +80,10 @@ linear congruential generator, specifically
           randNat <ARG/s/
           </PROTOTY>
           generates random integers uniformly in the range
-          <MATH/[<CD/0/,<CD/Int.maxInt/]/ based on the
+          <MATH>
+	    [0,
+	     <MTEXT><VALREF STRID="Int" DOCUMENT=SML-BASIS-DOC>Int.maxInt</VALREF></MTEXT>]
+	  </MATH> based on the
           information in <ARG/s/. As a side-effect, the function updates
           the internal state of <ARG/s/.
     <SPEC>

@@ -2,6 +2,16 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+
+[2000-11-17]
+	Added where clause to GraphSCCFn result signature (Blume).
+
+[2000-10-20]
+	Made the result signature of the RegExpFn functor be opaque.
+
+[2000-09-28]
+	SML/NJ 110.0.7 release.
+
 [2000-09-02]
 	Added Word versions of hash tables (WordHashTable), finite
 	maps (WordRedBlackMap), and sets (WordRedBlackSet).

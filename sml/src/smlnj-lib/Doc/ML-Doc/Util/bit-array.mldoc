@@ -148,7 +148,7 @@ of applicative operations.
           </PROTOTY>
           creates a new array by inserting <ARG/n/ 0's on the right 
           of <ARG/arr/. The new array has 
-          length <MATH/<ARG/n/ + <CD/length/ <ARG/arr//.
+          length <MATH/<ARG/n/ + <MTEXT><VALREF>length</VALREF></MTEXT> <ARG/arr//.
           Raises <EXNREF STRID="General" DOCUMENT=SML-BASIS-DOC/Fail/ if <ARG/n/ is negative.
     <SPEC>
       <VAL>rshift<TY>(array * int) -> array
@@ -158,9 +158,9 @@ of applicative operations.
           rshift (<ARG/arr/, <ARG/n/)
           </PROTOTY>
           creates a new array of 
-          length <MATH/max(0,<CD/length/ <ARG/arr/ - <ARG/n/)/ consisting 
-          of bits <MATH/n,n+1,...,<CD/length/ <ARG/arr/ - 1/ of <ARG/arr/. 
-          If <MATH/<ARG/n/ &GREATEREQ; <CD/length/ <ARG/arr//, the new array 
+          length <MATH/max(0,<MTEXT><VALREF>length</VALREF></MTEXT> <ARG/arr/ - <ARG/n/)/ consisting 
+          of bits <MATH/n,n+1,...,<MTEXT><VALREF>length</VALREF></MTEXT> <ARG/arr/ - 1/ of <ARG/arr/. 
+          If <MATH/<ARG/n/ &GREATEREQ; <MTEXT><VALREF>length</VALREF></MTEXT> <ARG/arr//, the new array 
           has length 0.
     <SPEC>
       <VAL>setBit<TY>(array * int) -> unit
@@ -181,7 +181,7 @@ of applicative operations.
           </CODE>
           respectively. Raises <EXNREF STRID="General" DOCUMENT=SML-BASIS-DOC/Subscript/ if 
           <ARG/i/ is negative 
-          or <MATH/<ARG/i/ $GREATEREQ; <CD/length/ <ARG/arr//. 
+          or <MATH/<ARG/i/ $GREATEREQ; <MTEXT><VALREF>length</VALREF></MTEXT> <ARG/arr//. 
     <SPEC>
       <VAL>union<TY>array -> array -> unit
       <VAL>intersection<TY>array -> array -> unit

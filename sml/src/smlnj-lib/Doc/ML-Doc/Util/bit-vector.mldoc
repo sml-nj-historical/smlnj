@@ -145,7 +145,7 @@ used to implement sets of integers. Member testing takes constant time.
           </PROTOTY>
           creates a new vector by inserting <ARG/n/ 0's on the right 
           of <ARG/vec/. The new vector has 
-          length <MATH/<ARG/n/ + <CD/length/ <ARG/vec//.
+          length <MATH/<ARG/n/ + <MTEXT><VALREF>length</VALREF></MTEXT> <ARG/vec//.
           Raises <EXNREF STRID="General" DOCUMENT=SML-BASIS-DOC/Fail/ if <ARG/n/ is negative.
     <SPEC>
       <VAL>rshift<TY>(vector * int) -> vector
@@ -155,9 +155,9 @@ used to implement sets of integers. Member testing takes constant time.
           rshift (<ARG/vec/, <ARG/i/)
           </PROTOTY>
           creates a new vector of 
-          length <MATH/max(0,<CD/length/ <ARG/vec/ - <ARG/n/)/ consisting 
-          of bits <MATH/n,n+1,...,<CD/length/ <ARG/vec/ - 1/ of <ARG/vec/. 
-          If <MATH/<ARG/n/ &GREATEREQ; <CD/length/ <ARG/vec//, the new vector 
+          length <MATH/max(0,<MTEXT><VALREF>length</VALREF></MTEXT> <ARG/vec/ - <ARG/n/)/ consisting 
+          of bits <MATH/n,n+1,...,<MTEXT><VALREF>length</VALREF></MTEXT> <ARG/vec/ - 1/ of <ARG/vec/. 
+          If <MATH/<ARG/n/ &GREATEREQ; <MTEXT><VALREF>length</VALREF></MTEXT> <ARG/vec//, the new vector 
           has length 0.
 </STRUCTURE>
 
