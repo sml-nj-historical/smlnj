@@ -340,9 +340,10 @@ in
     fun ccall_type t =
     let val op $ = PU.$ CCALL_TYPE
     in  case t of
-          P.CCALL_INT32  => "\000" $ [] 
-        | P.CCALL_REAL64 => "\001" $ []
-        | P.CCALL_ML_PTR => "\002" $ []
+          P.CCI32 => "\000" $ [] 
+        | P.CCI64 => "\001" $ []
+        | P.CCR64 => "\002" $ []
+        | P.CCML  => "\003" $ []
     end
 
     fun ccall_info { c_proto = { conv, retTy, paramTys },
@@ -386,7 +387,7 @@ in
 	      | P.RAW_LOAD kind => ?116 $ [numkind kind]
 	      | P.RAW_STORE kind => ?117 $ [numkind kind]
 	      | P.RAW_CCALL (SOME i) => ?118 $ [ccall_info i]
-	      | P.RAW_RECORD{tag,sz} => ?119 $ [bool tag,int sz]
+	      | P.RAW_RECORD { fblock } => ?119 $ [bool fblock]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1

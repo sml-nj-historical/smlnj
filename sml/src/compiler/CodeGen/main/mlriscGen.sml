@@ -1663,7 +1663,7 @@ struct
             | gen(PURE(P.rawrecord NONE, [INT n], x, _, e), hp) =
                 (* allocate space for CPS spilling *)
                 treeifyAlloc(x, hp, e, hp+n*4) (* no tag! *)
-            | gen(PURE(P.rawrecord(SOME rk), [INT n], x, _, e), hp) = 
+            | gen(PURE(P.rawrecord (SOME rk), [INT n], x, _, e), hp) = 
                 (* allocate an uninitialized record with a tag *)
               let val (tag, fp) = (* tagged version *)
                     case rk of

@@ -230,12 +230,17 @@ datatype primop
                  } option
    (* Allocate uninitialized storage on the heap.
     * The record is meant to hold short-lived C objects, i.e., they
-    * are not ML pointers.  With the tag, the representation is 
-    * the same as RECORD with tag tag_raw32 (sz=4), or tag_fblock (sz=8)
+    * are not ML pointers.  The representation is 
+    * the same as RECORD with tag tag_raw32 (fblock = false),
+    * or tag_fblock (fblock = true).
     *)
-  | RAW_RECORD of {tag:bool,sz:int} 
-and ccall_type = CCALL_INT32 | CCALL_REAL64 | CCALL_ML_PTR
+  | RAW_RECORD of { fblock: bool }
 
+and ccall_type =
+    CCI32 |				(* passed as int32 *)
+    CCI64 |				(* int64, currently unused *)
+    CCR64 |				(* passed as real64 *)
+    CCML				(* passed as Unsafe.Object.object *)
 
 val IADD : primop  (* default integer addition *)
 val ISUB : primop  (* default integer subtraction *)

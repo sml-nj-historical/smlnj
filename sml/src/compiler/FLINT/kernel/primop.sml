@@ -112,12 +112,12 @@ datatype primop
                  } option
    (* Allocate uninitialized storage on the heap.
     * The record is meant to hold short-lived C objects, i.e., they
-    * are not ML pointers.  With the tag, the representation is 
-    * the same as RECORD with tag tag_raw32.  
+    * are not ML pointers.  The representation is 
+    * the same as RECORD with tag tag_raw32 or tag_fblock.
     *)
-  | RAW_RECORD of {tag:bool,sz:int}
+  | RAW_RECORD of { fblock: bool }
 
-and ccall_type = CCALL_INT32 | CCALL_REAL64 | CCALL_ML_PTR
+and ccall_type = CCI32 | CCI64 | CCR64 | CCML
 
 (** default integer arithmetic and comparison operators *)
 val IADD = ARITH{oper=op +, overflow=true, kind=INT 31}
@@ -269,8 +269,8 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (RAW_LOAD nk) = concat ["raw_load(", prNumkind nk, ")"]
   | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
   | prPrimop (RAW_CCALL _) = "raw_ccall"
-  | prPrimop (RAW_RECORD{tag,sz}) = 
-       "raw_record"^Int.toString sz^(if tag then "" else "_notag")
+  | prPrimop (RAW_RECORD { fblock }) = 
+    concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
 
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)

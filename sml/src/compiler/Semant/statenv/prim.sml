@@ -297,15 +297,10 @@ val cc_b = binp BT.charTy
  * type that encodes the type of the actual C function in order to be able to
  * generate code according to the C calling convention.
  * (In other words, 'b will be a completely ad-hoc encoding of a CTypes.c_proto
- * value in ML types.)
- *
- * The reentrant version of the operator has an extra bool type parameter.
- * Its value is ignored. 
+ * value in ML types.  The encoding also contains information about
+ * the intended re-entrancy of the call.)
  *)
 val rccType = p3(ar(tp(w32,v1,v2),v3))
-val rccType' = p3(ar(tp(s,v1,v2),v3))
-val reentrantRccType = p3(ar(BT.tupleTy[w32,v1,v2,bo],v3))
-val reentrantRccType' = p3(ar(BT.tupleTy[s,v1,v2,bo],v3))
 
 in
 
@@ -697,11 +692,6 @@ val allPrimops =
        ("rawf32s",      P.RAW_STORE (P.FLOAT 32), w32f64_u) :-:
        ("rawf64s",      P.RAW_STORE (P.FLOAT 64), w32f64_u) :-:
        ("rawccall",     P.RAW_CCALL NONE,         rccType) :-:
-       ("rawccall_direct", P.RAW_CCALL NONE,      rccType') :-:
-
-          (* Support for experimental reentrant C calls *)
-       ("rawccall_reentrant",  P.RAW_CCALL NONE,  reentrantRccType) :-:
-       ("rawccall_reentrant_direct",  P.RAW_CCALL NONE,  reentrantRccType') :-:
 
           (* Support for direct construction of C objects on ML heap.
            * rawrecord builds a record holding C objects on the heap.
@@ -711,10 +701,8 @@ val allPrimops =
            * the record as a ML object, in case it passes thru a gc boundary.
            * rawupdatexxx writes to the record.
            *) 
-       ("rawrecord",    P.RAW_RECORD{tag=true,sz=4}, i_x) :-:
-       ("rawrecord_notag",P.RAW_RECORD{tag=false,sz=4}, i_x) :-:
-       ("rawrecord64",    P.RAW_RECORD{tag=true,sz=8}, i_x) :-:
-       ("rawrecord64_notag",P.RAW_RECORD{tag=false,sz=8}, i_x) :-:
+       ("rawrecord",    P.RAW_RECORD { fblock = false }, i_x) :-:
+       ("rawrecord64",  P.RAW_RECORD { fblock = true }, i_x) :-:
 
        ("rawselectw8",  P.RAW_LOAD (P.UINT 8), xw32_w32) :-:
        ("rawselecti8",  P.RAW_LOAD (P.INT 8), xw32_i32) :-:

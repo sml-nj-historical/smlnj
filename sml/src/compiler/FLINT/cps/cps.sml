@@ -84,7 +84,7 @@ structure P = struct
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
       | getseqdata | recsubscript | raw64subscript | newarray0
-      | rawrecord of record_kind option 
+      | rawrecord of record_kind option
          (* allocate uninitialized words from the heap *)
       | condmove of branch
 

@@ -294,9 +294,10 @@ structure UnpickMod : UNPICKMOD = struct
 	and ctypelist () = list ctypeListM ctype ()
 
         fun ccalltype() = let
-            fun ct #"\000" = P.CCALL_INT32
-              | ct #"\001" = P.CCALL_REAL64
-              | ct #"\002" = P.CCALL_ML_PTR
+            fun ct #"\000" = P.CCI32
+              | ct #"\001" = P.CCI64
+              | ct #"\002" = P.CCR64
+	      | ct #"\003" = P.CCML
               | ct _       = raise Format
         in  nonshare ct
         end
@@ -343,7 +344,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | po #"\116" = P.RAW_LOAD (numkind ())
 	      | po #"\117" = P.RAW_STORE (numkind ())
 	      | po #"\118" = P.RAW_CCALL (SOME (ccall_info ()))
-	      | po #"\119" = P.RAW_RECORD{tag=bool (),sz=int ()}
+	      | po #"\119" = P.RAW_RECORD { fblock = bool () }
 	      | po c =
 		Vector.sub (primop_table, Char.ord c)
 		handle General.Subscript => raise Format

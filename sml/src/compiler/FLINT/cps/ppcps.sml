@@ -137,8 +137,8 @@ fun pureName P.length = "length"
   | pureName P.recsubscript = "recsubscript"
   | pureName P.raw64subscript = "raw64subscript"
   | pureName P.newarray0 = "newarray0"
-  | pureName (P.rawrecord rk) = "rawrecord"^
-                    (case rk of NONE => "" | SOME rk => rkstring rk)
+  | pureName (P.rawrecord rk) =
+    "rawrecord_"^getOpt(Option.map rkstring rk, "notag")
   | pureName (P.condmove b) = "condmove "^branchName b
 
 and rkstring rk = (case rk 

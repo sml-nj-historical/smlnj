@@ -228,9 +228,8 @@ fun map_primop p =
 
      | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
      | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
-     | AP.RAW_RECORD{tag=false,sz=4} => PKP (P.rawrecord NONE)
-     | AP.RAW_RECORD{tag=true,sz=4} => PKP (P.rawrecord(SOME RK_I32BLOCK))
-     | AP.RAW_RECORD{tag=true,sz=8} => PKP (P.rawrecord(SOME RK_FBLOCK))
+     | AP.RAW_RECORD{ fblock = false } => PKP (P.rawrecord (SOME RK_I32BLOCK))
+     | AP.RAW_RECORD{ fblock = true } => PKP (P.rawrecord (SOME RK_FBLOCK))
      
      | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
 
@@ -610,9 +609,10 @@ fun convert fdec =
 
 	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),f::a::_::_,v,e) => let
 		val { c_proto = p, ml_args, ml_res_opt, reentrant } = i
-		fun cty AP.CCALL_REAL64 = FLTt
-		  | cty AP.CCALL_INT32 = INT32t
-		  | cty AP.CCALL_ML_PTR = BOGt
+		fun cty AP.CCR64 = FLTt
+		  | cty AP.CCI32 = INT32t
+		  | cty AP.CCML = BOGt
+		  | cty AP.CCI64 = bug "CCI64 calling convention unimplemented"
 		val a' = lpvar a
                 val rcckind = if reentrant then REENTRANT_RCC else FAST_RCC
 		fun rcc args = let
