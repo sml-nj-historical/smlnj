@@ -233,6 +233,7 @@ val b_b = unf bo
 
 val f64_i = p0(ar(f64,i))
 val i_f64 = p0(ar(i,f64))
+val i32_f64 = p0(ar(i32,f64))
 
 val w32_i = p0(ar(w32,i))
 val i32_i = p0(ar(i32,i))
@@ -386,6 +387,8 @@ val allPrimops =
                                tokind=P.INT 31},      	f64_i) :-:
        ("real",          P.REAL{fromkind=P.INT 31,
                               tokind=P.FLOAT 64},      	i_f64) :-:
+       ("real32",        P.REAL{fromkind=P.INT 32,
+				tokind=P.FLOAT 64},     i32_f64) :-:
        			 
        ("ordof",         P.NUMSUBSCRIPT{kind=P.INT 8,
                                       checked=false,
