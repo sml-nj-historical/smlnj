@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/04/12 13:52:00 JST
+Tag: blume_main_v110p27_1
+Description:
+
+Changed install.sh script to handle archive files without version number
+and to use "boot.<arch>-<os>" instead of "sml.boot.<arch>-<os>" for the
+name of the boot file archive.
+
+----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/04/09 14:00 EDT
 Tag: dbm-20000410-Version_110_27

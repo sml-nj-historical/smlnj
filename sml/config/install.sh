@@ -122,9 +122,10 @@ makedir() {
 #   $3 - remote directory
 #
 askurl() {
-    echo $this: Please, fetch $1 archive '('$VERSION-$2.'*)' from
-    echo '  ' $3
-    echo "and then re-run this script!"
+    echo "$this: Please, fetch $1 archive"
+    echo ' ('$2.'*' or $VERSION-$2.'*)'
+    echo " from $3"
+    echo " and then re-run this script!"
     exit 1
 }
 
@@ -132,23 +133,25 @@ askurl() {
 # Function for fetching source archives automatically using wget or lynx.
 #   $1 - command to actually get the stuff
 #   $2 - descriptive name
-#   $3 - base name without extension, without version, and without dir
+#   $3 - base name without extension and without dir
 #   $4 - remote directory
 #
 fetchurl() {
     getter=$1 ; shift
     echo $this: Fetching $1 from $3. Please stand by...
     fetched=no
-    for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
-	try=$VERSION-$2.$ext
-	echo $this: Trying $try ...
-	if $getter $3 $try $ROOT/$try ; then
-	    fetched=yes
-	    echo $this: Fetching $try was a success.
-	    break
-	else
-	    rm -f $ROOT/$try
-	fi
+    for base in $2 $VERSION-$2 ; do
+	for ext in tar.gz tgz tar.Z tz tar tar.bz2 ; do
+	    try=$base.$ext
+	    echo $this: Trying $try ...
+	    if $getter $3 $try $ROOT/$try ; then
+		fetched=yes
+		echo $this: Fetching $try was a success.
+		break 2		# get out of both for-loops
+	    else
+		rm -f $ROOT/$try
+	    fi
+	done
     done
     if [ $fetched = no ] ; then
 	echo $this: Fetching $try was no success.
@@ -185,6 +188,37 @@ urlgetter() {
     fi
 }
 
+un_tar() {
+    echo "$this: Un-TAR-ing $1 archive."
+    tar -xf $2
+}
+
+un_tar_Z() {
+    echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
+    zcat $2 | tar -xf -
+}
+
+un_tar_gz() {
+    echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
+    gunzip -c $2 | tar -xf -
+}
+
+un_tar_bz2() {
+    echo "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
+    bunzip2 -c $2 | tar -xf -
+}
+
+unarchive() {
+    # $1: descriptive string, $2: archive, $3: unpacker
+    if [ -r $ROOT/$2 ] ; then
+	$3 "$1" $ROOT/$2
+    elif [ -r $ROOT/$VERSION-$2 ]; then
+	$3 "$1" $ROOT/$VERSION-$2
+    else
+	return 1
+    fi
+}
+
 #
 # Function to unpack a source archive.
 #
@@ -199,26 +233,15 @@ urlgetter() {
 # no archive is found locally, it invokes $URLGETTER and tries again.
 # The variable $tryfetch is used to make sure this happens only once.
 fetch_n_unpack() {
-    larc=$ROOT/$VERSION-$4
     cd $2
-    if [ -r $larc.tar.Z ] ; then
-	echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
-	zcat $larc.tar.Z | tar -xf -
-    elif [ -r $larc.tar ] ; then
-	echo "$this: Un-TAR-ing $1 archive."
-	tar -xf $larc.tar
-    elif [ -r $larc.tar.gz ] ; then
-	echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
-	gunzip -c $larc.tar.gz | tar -xf -
-    elif [ -r $larc.tar.bz2 ] ; then
-	echo "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
-	bunzip2 -c $larc.tar.bz2 | tar -xf -
-    elif [ -r $larc.tgz ] ; then
-	echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
-	gunzip -c $larc.tgz | tar -xf -
-    elif [ -r $larc.tz ] ; then
-	echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
-	zcat $larc.tz | tar -xf -
+    if unarchive "$1" $4.tar.gz un_tar_gz ||
+       unarchive "$1" $4.tgz un_tar_gz ||
+       unarchive "$1" $4.tar.Z un_tar_Z ||
+       unarchive "$1" $4.tar un_tar ||
+       unarchive "$1" $4.tar.bz1 un_tar_bz2 ||
+       unarchive "$1" $4.tz un_tar_Z
+    then
+	: we are done
     elif [ $tryfetch = yes ] ; then
 	urlgetter
 	$URLGETTER "$1" $4 $SRCARCHIVEURL
@@ -466,7 +489,8 @@ esac
 #
 # the name of the bin files directory
 #
-BOOT_FILES=sml.boot.$ARCH-unix
+BOOT_ARCHIVE=boot.$ARCH-unix
+BOOT_FILES=sml.$BOOT_ARCHIVE
 
 #
 # build the run-time system
@@ -494,7 +518,7 @@ cd $SRCDIR
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
     echo $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
-    unpack bin $ROOT $BOOT_FILES $BOOT_FILES
+    unpack bin $ROOT $BOOT_FILES $BOOT_ARCHIVE
     cd $ROOT/$BOOT_FILES
     if $BINDIR/.link-sml @SMLheap=$ROOT/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
     then
@@ -533,7 +557,7 @@ fi
 #
 cd $ROOT
 rm -f $LOCALPATHCONFIG $LIBLIST
-echo 'OS.Process.exit (if true' >$LIBLIST
+echo 'ignore (OS.Process.exit (if true' >$LIBLIST
 
 #
 # now build (or prepare to build) the individual targets
@@ -611,7 +635,7 @@ done
 #
 
 echo $this: Compiling library code.
-echo 'then OS.Process.success else OS.Process.failure);' >>$LIBLIST
+echo 'then OS.Process.success else OS.Process.failure));' >>$LIBLIST
 if CM_LOCAL_PATHCONFIG=$LOCALPATHCONFIG $BINDIR/sml <$LIBLIST ; then
     echo $this: Libraries compiled successfully.
 else
