@@ -30,10 +30,6 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     type envdelta = { stat: statenv wpid, sym: symenv wpid, ctxt: statenv }
 
-    datatype lookstable_result =
-	FOUND of envdelta
-      | NOTFOUND of benv option
-
     type memorecord = { bfc: BF.bfContent, ctxt: statenv }
 
     structure FilterMap = BinaryMapFn
@@ -103,81 +99,100 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  sym = (BF.symenvOf bfc, BF.lambdaPidOf bfc),
 	  ctxt = ctxt }
 
-    fun lookstable (i, mkenv, gp) =
-	case PS.recomp_look_stable i of
-	    SOME memo => FOUND (memo2envdelta memo)
-	  | NONE => NOTFOUND (mkenv ())
-
-    fun dostable (i, be, gp: GeneralParams.params) = let
-	val fnp = #fnpolicy gp
-	val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
-	val os = BinInfo.offset i
-	val descr = BinInfo.describe i
-	val _ = Say.vsay (concat ["[consulting ", descr, "]\n"])
-	val s = AbsPath.openBinIn stable
-	fun load () = let
-	    val _ = Seek.seek (s, os)
-	    val bfc = BF.read { stream = s, name = descr, senv = be,
-			        keep_code = true }
-	    val memo = { bfc = bfc, ctxt = be }
-	in
-	    BinIO.closeIn s;
-	    PS.recomp_memo_stable (i, memo);
-	    memo2envdelta memo
-	end
-    in
-	SOME (load ()) handle exn => let
-	    fun pphist pps =
-		(PP.add_string pps (General.exnMessage exn);
-		 PP.add_newline pps)
-	in
-	    BinIO.closeIn s;
-	    BinInfo.error gp i EM.COMPLAIN
-	         "unable to load stable library module" pphist;
-	    NONE
-	end
-    end
-
-    fun looksml (i, e: env, gp) =
-	Option.map memo2envdelta (PS.recomp_look_sml (i, #pids e, gp))
-
-    fun dosml (i, { stat, sym, pids }, gp) = let
-
-	val mkBinPath = FilenamePolicy.mkBinPath (#fnpolicy gp)
-	val binpath = mkBinPath (SmlInfo.sourcepath i)
-	val binname = AbsPath.name binpath
-	fun delete () = OS.FileSys.remove binname handle _ => ()
-
-	fun save bfc = let
-	    val s = AbsPath.openBinOut binpath
-	    fun writer () =
-		BF.write { stream = s, content = bfc, keep_code = true }
-	in
-	    Interrupt.guarded writer
-	    handle exn => (BinIO.closeOut s; raise exn);
-	    BinIO.closeOut s;
-	    Say.vsay (concat ["wrote ", binname, "]\n"])
-	end handle e as Interrupt.Interrupt => (delete (); raise e)
-	         | exn => let
-		       fun pphist pps =
-			   (PP.add_string pps (General.exnMessage exn);
-			    PP.add_newline pps)
-		   in
-		       delete ();
-		       SmlInfo.error gp i EM.WARN
-		                     ("failed to write " ^ binname) pphist
-		   end
-
-	fun load () = let
-	    val s = AbsPath.openBinIn binpath
-	    fun read () = BF.read { stream = s, name = binname, senv = stat,
+    fun dostable (i, mkenv, gp) = let
+	fun load be = let
+	    val fnp = #fnpolicy gp
+	    val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
+	    val os = BinInfo.offset i
+	    val descr = BinInfo.describe i
+	    val _ = Say.vsay (concat ["[consulting ", descr, "]\n"])
+	    val s = AbsPath.openBinIn stable
+	    fun load () = let
+		val _ = Seek.seek (s, os)
+		val bfc = BF.read { stream = s, name = descr, senv = be,
 				    keep_code = true }
+		val memo = { bfc = bfc, ctxt = be }
+	    in
+		BinIO.closeIn s;
+		PS.recomp_memo_stable (i, memo);
+		memo2envdelta memo
+	    end
 	in
-	    SOME (Interrupt.guarded read)
-	    handle exn => (BinIO.closeIn s; raise exn)
-	end handle e as Interrupt.Interrupt => raise e
-                 | _ => NONE
+	    SOME (load ()) handle exn => let
+		fun pphist pps =
+		    (PP.add_string pps (General.exnMessage exn);
+		     PP.add_newline pps)
+	    in
+		BinIO.closeIn s;
+		BinInfo.error gp i EM.COMPLAIN
+		       "unable to load stable library module" pphist;
+		NONE
+	    end
+	end
     in
-	Dummy.f ()
+	case PS.recomp_look_stable i of
+	    SOME memo => SOME (memo2envdelta memo)
+	  | NONE =>
+		(case mkenv () of
+		     NONE => NONE
+		   | SOME be => load be)
     end
+
+    fun dosml (i, { stat, sym, pids }, gp) =
+	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
+	    SOME d => SOME d
+	  | NONE => let
+		val mkBinPath = FilenamePolicy.mkBinPath (#fnpolicy gp)
+		val binpath = mkBinPath (SmlInfo.sourcepath i)
+		val binname = AbsPath.name binpath
+		fun delete () = OS.FileSys.remove binname handle _ => ()
+
+		fun save bfc = let
+		    val s = AbsPath.openBinOut binpath
+		    fun writer () = BF.write { stream = s, content = bfc,
+					       keep_code = true }
+		in
+		    Interrupt.guarded writer
+		    handle exn => (BinIO.closeOut s; raise exn);
+			BinIO.closeOut s;
+			Say.vsay (concat ["wrote ", binname, "]\n"])
+		end handle e as Interrupt.Interrupt => (delete (); raise e)
+	                 | exn => let
+			       fun pphist pps =
+				   (PP.add_string pps (General.exnMessage exn);
+				    PP.add_newline pps)
+			   in
+			       delete ();
+			       SmlInfo.error gp i EM.WARN
+			               ("failed to write " ^ binname) pphist
+			   end
+
+		fun load () = let
+		    val s = AbsPath.openBinIn binpath
+		    fun read () = BF.read { stream = s, name = binname,
+					    senv = stat,keep_code = true }
+		in
+		    SOME (Interrupt.guarded read)
+		    handle exn => (BinIO.closeIn s; raise exn)
+		end handle e as Interrupt.Interrupt => raise e
+	                 | _ => NONE
+
+		fun compile () = Dummy.f ()
+
+		fun isValid x =
+		    PidSet.equal (PidSet.addList (PidSet.empty, BF.cmDataOf x),
+				  pids)
+	    in
+		case load () of
+		    NONE => compile ()
+		  | SOME bfc =>
+			if isValid bfc then let
+			    val memo = { bfc = bfc, ctxt = stat }
+			in
+			    Say.vsay (concat ["[", binname, " loaded]\n"]);
+			    PS.recomp_memo_sml (i, memo);
+			    SOME (memo2envdelta memo)
+			end
+			else compile ()
+	    end
 end

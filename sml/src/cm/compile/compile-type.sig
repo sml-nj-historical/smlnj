@@ -11,10 +11,6 @@ signature COMPILATION_TYPE = sig
     type benv
     type envdelta
 
-    datatype lookstable_result =
-	FOUND of envdelta
-      | NOTFOUND of benv option
-
     val layer : env * env -> env
     val blayer : benv * benv -> benv
 
@@ -26,16 +22,10 @@ signature COMPILATION_TYPE = sig
 
     val primitive : Primitive.configuration -> Primitive.primitive -> envdelta
 
-    val lookstable :
-	BinInfo.info * (unit -> benv option) * GeneralParams.params
-	-> lookstable_result
     val dostable:
-	BinInfo.info * benv * GeneralParams.params
+	BinInfo.info * (unit -> benv option) * GeneralParams.params
 	-> envdelta option
 
-    val looksml :
-	SmlInfo.info * env * GeneralParams.params
-	-> envdelta option
     val dosml :
 	SmlInfo.info * env * GeneralParams.params
 	-> envdelta option

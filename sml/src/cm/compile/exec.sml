@@ -22,10 +22,6 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     type benv = env
     type envdelta = env
 
-    datatype lookstable_result =
-	FOUND of envdelta
-      | NOTFOUND of benv option
-
     fun layer ({ dyn = d, dts = s }, { dyn = d', dts = s' }) =
 	{ dyn = fn () => DE.atop (d (), d' ()), dts = DTS.join (s, s') }
 
@@ -41,14 +37,6 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	  dts = DTS.ancient }
 
     fun thunkify { dyn, dts } = { dyn = fn () => dyn, dts = dts }
-
-    fun lookstable (i, mkenv, gp) =
-	case mkenv () of
-	    NONE => NOTFOUND NONE
-	  | SOME (e as { dyn, dts }) =>
-		(case PS.exec_look_stable (i, dts, gp) of
-		     SOME memo => FOUND (thunkify memo)
-		   | NONE => NOTFOUND (SOME e))
 
     fun execute (bfc, { dyn = mkdyn, dts }, share, error, descr, memo) = let
 	val (tryshare, mustshare) =
@@ -91,20 +79,28 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	else doit ()
     end
 
-    fun dostable (i, e, gp) =
-	execute (PS.bfc_fetch_stable i, e,
-		 BinInfo.share i,
-		 BinInfo.error gp i EM.COMPLAIN,
-		 BinInfo.describe i,
-		 fn m => PS.exec_memo_stable (i, m))
+    fun dostable (i, mkenv, gp) =
+	case mkenv () of
+	    NONE => NONE
+	  | SOME (e as { dyn, dts }) =>
+		(case PS.exec_look_stable (i, dts, gp) of
+		     SOME memo => SOME (thunkify memo)
+		   | NONE => execute (PS.bfc_fetch_stable i, e,
+				      BinInfo.share i,
+				      BinInfo.error gp i EM.COMPLAIN,
+				      BinInfo.describe i,
+				      fn m => PS.exec_memo_stable (i, m)))
 
-    fun looksml (i, { dyn, dts }, gp) =
-	Option.map thunkify (PS.exec_look_sml (i, dts, gp))
-
-    fun dosml (i, e, gp) =
-	execute (PS.bfc_fetch_sml i, e,
-		 SmlInfo.share i,
-		 SmlInfo.error gp i EM.COMPLAIN,
-		 SmlInfo.name i,
-		 fn m => PS.exec_memo_sml (i, m))
+    fun dosml (i, e as { dyn, dts }, gp) = let
+	fun looksml () =
+	    Option.map thunkify (PS.exec_look_sml (i, dts, gp))
+    in
+	case looksml () of
+	    SOME d => SOME d
+	  | NONE => execute (PS.bfc_fetch_sml i, e,
+			     SmlInfo.share i,
+			     SmlInfo.error gp i EM.COMPLAIN,
+			     SmlInfo.name i,
+			     fn m => PS.exec_memo_sml (i, m))
+    end
 end
