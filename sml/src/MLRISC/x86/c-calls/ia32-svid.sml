@@ -332,7 +332,7 @@ functor IA32SVID_CCalls (
 					  val tmp = C.newReg()
 					  val stms =
 						T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
-						  :: T.MV(ty, tmp, addr(offset - baseOffset))
+						  :: T.MV(ty, tmp, T.LOAD (ty, addr(offset - baseOffset), stack))
 						  :: stms
 					  in
 					    copy (locs, stms)
