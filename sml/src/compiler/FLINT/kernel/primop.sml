@@ -241,7 +241,9 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (GET_SEQ_DATA) = "getseqdata"
   | prPrimop (SUBSCRIPT_REC) = "subscriptrec"
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
-  | prPrimop _ = "**!!UNKNOWN!!**"
+
+  (* These ones were strangely missing.  Maybe they should never happen? *)
+  | prPrimop UNBOXEDASSIGN = "**!!UNEXPECTED!!**"
 
 
 val purePrimop =
