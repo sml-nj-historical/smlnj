@@ -123,6 +123,13 @@ struct
     | Ast.Ellipses => false
 *)
 
+
+(* nch fix: 
+    hasKnownStorageSize should reuse some code from
+    sizeof -- same kinds of checks and memoization 
+*)
+
+
    fun hasKnownStorageSize (tidtab: Tables.tidtab) ty =
     case ty
       of Ast.Void => false

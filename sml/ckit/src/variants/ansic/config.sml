@@ -34,7 +34,7 @@ struct
     val pointer_compatibility_quals = true             (* ansic *)
     val undeclared_id_error = true                     (* ansic *)
     val undeclared_fun_error = true                    (* ansic *)
-    val convert_function_args_to_pointers = false   (* true *)   (* ansic *)
+    val convert_function_args_to_pointers = true       (* ansic *)
     val storage_size_check = true                      (* ansic *)
     val perform_type_checking = true                   (* do type checking *)
     val ISO_bitfield_restrictions = false              (* allow char, short, long in bitfields *)

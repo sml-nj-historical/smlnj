@@ -1001,3 +1001,42 @@ gives type error
      error: Type Error: operand of unary op ! must be a number.
 
 
+----------------------------------------------------------------------
+NUMBER: 14
+SUBMITTER: Alexey Loginov <alexey@cs.wisc.edu>
+DATE: 4/17/00
+TEST: a240.c
+STATUS: fixed 16/June/00
+FIX:
+There is a flag to control this behaviour in config.sml:
+ Config.TypeCheckControl.convert_function_args_to_pointers
+
+It should be set to true for standard behaviour (but was set to false
+for some reason -- maybe temporarily for debugging something else, and then
+not reverted back to true??).
+
+This is actually an ambiguous case: a strict reading of the standard would
+suggest that this should be flagged as a type error, but most
+compilers allow it, so it is "standard".
+
+DESCRIPTION: array formals
+
+This one is similar to the ?: bug we reported earlier (Bug number 8).
+
+void foo(int a[]);
+
+int main() {
+  int * ip;
+  foo(ip);
+}
+
+Output:
+
+"tt.c":5.3-10: error: Bad function call:
+               arg 1 has type int * but fn parameter has type int []
+
+Correct C output is still produced but the implicit type of ip inside
+the call to foo has int array type.  This is a problem for our
+instrumentation.
+
+

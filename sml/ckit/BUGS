@@ -33,33 +33,6 @@ Kathleen indicates she can't reproduce this behaviour.
 
 
 ----------------------------------------------------------------------
-NUMBER: 14
-SUBMITTER: Alexey Loginov <alexey@cs.wisc.edu>
-DATE: 4/17/00
-TEST: 
-STATUS: open
-DESCRIPTION: array formals
-
-This one is similar to the ?: bug we reported earlier (Bug number 8).
-
-void foo(int a[]);
-
-int main() {
-  int * ip;
-  foo(ip);
-}
-
-Output:
-
-"tt.c":5.3-10: error: Bad function call:
-               arg 1 has type int * but fn parameter has type int []
-
-Correct C output is still produced but the implicit type of ip inside
-the call to foo has int array type.  This is a problem for our
-instrumentation.
-
-
-----------------------------------------------------------------------
 NUMBER: 15
 SUBMITTER: Alexey Loginov <alexey@cs.wisc.edu>
 DATE: 4/17/00

@@ -2733,6 +2733,7 @@ end old code ******)
 				val sizeOpt = 
 				  case expr of
 				    PT.EmptyExpr => NONE
+				      (* nch: fix: check bitfield types -- see checks in sizeof *)
 				  | _ => (case evalExpr expr of
 					    (SOME i, _, _, false) => SOME i
 					  | (SOME i, _, _, true) => 
