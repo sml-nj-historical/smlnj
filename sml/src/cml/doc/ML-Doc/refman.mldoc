@@ -12,5 +12,6 @@
 
 <INCLFILE FILE="basics">
 <INCLFILE FILE="core-cml">
-<INCLFILE FILE="lib/cml-lib">
+<INCLFILE FILE="cml-lib">
+<!-- <INCLFILE FILE="lib/cml-lib"> -->
 

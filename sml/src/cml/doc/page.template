@@ -4,6 +4,7 @@
 <TITLE>&title;</TITLE>
 <BODY>
 <A NAME="top"></A>
+<HR>
 <H1 align=center>The Concurrent ML Reference Manual</H1>
 <HR>
 &body;

@@ -8,7 +8,10 @@ ML-Doc/sync-var.mldoc
 ML-Doc/os.mldoc
 ML-Doc/os-process.mldoc
 ML-Doc/os-io.mldoc
-ML-Doc/lib/cml-lib.mldoc
-ML-Doc/lib/multicast.mldoc
-ML-Doc/lib/trace-cml.mldoc
+#ML-Doc/lib/cml-lib.mldoc
+#ML-Doc/lib/multicast.mldoc
+#ML-Doc/lib/trace-cml.mldoc
+ML-Doc/cml-lib.mldoc
+ML-Doc/multicast.mldoc
+ML-Doc/trace-cml.mldoc
 
