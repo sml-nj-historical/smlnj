@@ -20,6 +20,7 @@ general-purpose programming tools\footnote{Recall that anchored paths
 of the form {\tt \$$/x[/\cdots]$} act as an abbreviation for {\tt
 \$$x/x[/\cdots]$}.}:
 
+\begin{small}
 \begin{center}
 \begin{tabular}{p{2.3in}||p{2.8in}|c|c}
 name & description & installed & loaded \\
@@ -48,6 +49,7 @@ optional & no \\
 {\tt \$/html-lib.cm} & SML/NJ HTML handling library & always & no
 \end{tabular}
 \end{center}
+\end{small}
 
 \subsection{Libraries for controlling SML/NJ's operation}
 
@@ -55,6 +57,7 @@ The following table lists those libraries that provide access to the
 so-called {\em visible compiler} infrastructure and to the compilation
 manager API.
 
+\begin{small}
 \begin{center}
 \begin{tabular}{p{2.3in}||p{2.5in}|c|c}
 name & description & installed & loaded \\
@@ -100,6 +103,7 @@ on demand \\
 & on demand \\
 \end{tabular}
 \end{center}
+\end{small}
 
 \subsection{Libraries for SML/NJ compiler hackers}
 
@@ -109,8 +113,9 @@ the compilation manager.  In addition to being able to recompile
 SML/NJ for the ``host'' system there are also cross-compilers that
 can target all of SML/NJ's supported platforms.
 
+\begin{small}
 \begin{center}
-\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+\begin{tabular}{p{2.2in}||p{3in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
 {\tt \$smlnj/cmb.cm} \newline
@@ -153,17 +158,19 @@ Sparc-specific cross-compiler & always & no \\
 {\tt \$smlnj/compiler/x86.cm} & visible compiler for
 IA32-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/all.cm} & visible compilers for all
-architecture-specific cross-compilers and all cross-compilation
-bootstrap compilers & always & no \\
+{\tt \$smlnj/compiler/all.cm} & visible compilers and
+bootstrap compilers for all architectures
+visible compilers for all & always & no \\
 \end{tabular}
 \end{center}
+\end{small}
 
 \subsection{Internal libraries}
 
 For completeness, here is the list of other libraries that are part of
 SML/NJ's implementation:
 
+\begin{small}
 \begin{center}
 \begin{tabular}{p{2.9in}||p{2.2in}|c|c}
 name & description & installed & loaded \\
@@ -217,15 +224,16 @@ CMB} & always & no \\
 ``source path'' abstraction used by the compilation manager & always &
 no \\
 \hline
-{\tt \$smlnj/internal/cm-lib.cm} & implementation of compilation
-manager (not yet specialized to specific backends) & always & no \\
+{\tt \$smlnj/internal/cm-lib.cm} & implementation of CM 
+(not yet specialized to specific backends) & always & no \\
 \hline
 {\tt \$smlnj/internal/host-compiler-0.cm} & selection of host-specific
 visible compiler and specialization of compilation manager & always &
 no \\
 \hline
-{\tt \$smlnj/internal/intsys.cm} & root library implementing the
-interactive system and glueing all the other parts together & always &
+{\tt \$smlnj/internal/intsys.cm} & root library, containing
+interactive system and glue for all the other parts & always &
 no
 \end{tabular}
 \end{center}
+\end{small}

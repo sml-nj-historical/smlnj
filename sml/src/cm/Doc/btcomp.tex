@@ -1,3 +1,4 @@
+% -*- latex -*-
 \documentclass[titlepage,letterpaper]{article}
 \usepackage{times}
 
@@ -13,19 +14,13 @@
 Research Institute for Mathematical Sciences \\
 Kyoto University}
 
-\title{{\bf CM}\\
-The SML/NJ Compilation and Library Manager \\
+\title{{\bf CMB}\\
+The SML/NJ Bootstrap Compiler \\
 {\it\small (for SML/NJ version \smlmj.\smlmn~and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt plus 3pt minus 2pt}
-
-\newcommand{\nt}[1]{{\it #1}}
-\newcommand{\tl}[1]{{\underline{\bf #1}}}
-\newcommand{\ttl}[1]{{\underline{\tt #1}}}
-\newcommand{\ar}{$\rightarrow$\ }
-\newcommand{\vb}{~$|$~}
 
 \begin{document}
 
@@ -39,34 +34,14 @@ User Manual}
 
 \pagebreak
 
-\input{00-intro}
-\input{01-cm-model}
-\input{02-naming}
-\input{03-usage}
-\input{04-versions}
-\input{05-classes}
-\input{06-condcomp}
-\input{07-access}
-\input{08-pervenv}
-\input{09-files}
-\input{10-moretools}
-\input{11-parallel}
-\input{12-smlcmdline}
-\input{13-scripts}
-\input{14-dynlink}
-\input{15-history}
+\input{01-bt-intro}
+\input{02-bt-diffs}
 
 \pagebreak
 
-\appendix
+%\appendix
 
-\input{A-syntax}
-\input{B-cmsig}
-\input{C-predef}
-\input{D-envvar}
-\input{E-classes}
-\input{F-libraries}
-\input{G-toolslib}
+%\input{A-bt-xxx}
 
 \pagebreak
 

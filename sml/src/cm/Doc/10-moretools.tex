@@ -125,8 +125,8 @@ style (see section~\ref{sec:builtin-tools}).
 \subsection{Adding other classes}
 
 Adding a new class whose behavior is not covered by the mechanism
-described in section~\ref{sec:addshellclass} is also not complicated,
-but it requires a bit more code.
+described in section~\ref{sec:addshellclass} is not complicated
+either, but it requires a bit more code.
 
 \subsubsection{Adding a class and its rule}
 
@@ -137,32 +137,33 @@ Tools.registerClass}:
   val registerClass : class * rule -> unit
 \end{verbatim}
 
-Here, the type {\tt class} is simply synonymous to {\tt string}; a
-class string is the name of the class to be registered.  It may not
-contain upper-case letters:
+Here, type {\tt class} is simply synonymous to {\tt string}; a class
+string is the name of the class to be registered.  It must not contain
+upper-case letters:
 
 \begin{verbatim}
   type class = string
 \end{verbatim}
 
 Type {\tt rule} is a function type.  It describes the rule function
-that CM will invoke for every member of the new class.  In essence,
-this function maps the {\em specification} of the given member to its
-(partial) {\em expansion}:
+that CM will invoke for every member of the new class. The rule
+function is responsible for invoking the auxiliary mechanism necessary
+to bring its targets up-to-date.  The function result of the rule
+function describes to CM what the targets are.  Thus, the function
+maps the {\em specification} of the given member to its (partial) {\em
+expansion}:
 
 \begin{verbatim}
   type rule =
-    { spec: spec,
-      mkNativePath: pathmaker,
-      context: rulecontext } ->
+    { spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
     partial_expansion
 \end{verbatim}
 
-The specification {\tt spec} is the name of the member together with a
-function to convert the name to an abstract path, the member's
-optional class (in case it had been given explicitly), its tool
-options, and a boolean flag that tells whether this member was the
-result of another tool:
+The specification {\tt spec} consists of the name of the member
+together with a function to convert it to an abstract path (should
+that be necessary), the member's optional class (in case it had been
+given explicitly), its tool options, and a boolean flag that tells
+whether this member was the result of another tool:
 
 \begin{verbatim}
   type spec = { name: string,
@@ -175,17 +176,19 @@ result of another tool:
 \begin{description}
 \item[name:] The name is the verbatim member string from the
 description file.  Be sure not to use this string directly as a file
-name.  Instead, first convert it to an abstract path (see {\tt mkpath}
-below) and convert back to a {\em native} file name string using one
-of:
+name (although some tools might use it directly for purposes other
+than file names).  Instead, first convert it to an abstract path (see
+{\tt mkpath} below) and convert back to a {\em native} file name
+string using one of:
 \begin{verbatim}
   val nativeSpec : srcpath -> string
   val nativePre : presrcpath -> string
 \end{verbatim}
-\item[mkpath] This is a function that converts the name string to an
-abstract path name.  (The same string can denote different paths
-depending on whether it was specified using CM's standard path name
-syntax or the underlying operating system's native syntax.)
+\item[mkpath] This is a function of type {\tt pathmaker} that converts
+the name string to an abstract path name.  CM will pass in different
+functions here depending on whether {\tt name} was given in CM's
+standard path name syntax or in the underlying operating system's
+native syntax.
 \begin{verbatim}
   type pathmaker = string -> presrcpath
 \end{verbatim}
@@ -200,7 +203,7 @@ This function enforces CM's rule that there has to be at least one arc
 in every such name (i.e., that it cannot be just an anchor).
 \item[class:] This argument carries the class name if such a class
 name was explicitly specified.  If the class was inferred from the
-member name, then this argument is {\tt NONE}.
+member name, then it will be set to {\tt NONE}.
 \item[opts:] Tool options are represented by a data structure
 resembling Lisp lists:
 \begin{verbatim}
@@ -209,30 +212,33 @@ resembling Lisp lists:
     | SUBOPTS of { name: string, opts: toolopts }
   withtype toolopts = toolopt list
 \end{verbatim}
+The nesting of {\tt SUBOPTS} reflects the nesting of sub-option lists
+in the member's tool option specification.
 \item[derived:] This flag is set to {\tt true} if the source file
 represented by the specification is the result of a another, earlier
 tool invocation.
 \end{description}
 
-The other two arguments ({\tt mkNativePath} and {\tt context}) of a
-rule function are:
+The other two arguments of a rule function are {\tt mkNativePath} and
+{\tt context}:
 
 \begin{description}
-\item[mkNativePath:] This is a function like {\tt mkpath} above.  When
-the rule constructs the specification for result files, it must also
-provide the corresponding {\tt mkpath} function.  Since most tools
-internally operate on native path names (for example, because they
-pass these names to other, external programs), this {\tt mkpath}
-function will have to be {\tt mkNativePath}.
-\item[context:] The context represents the directory that contains the
-CM description file on whose behalf the rule was invoked.  It is
-represented as a higher-order function that invokes its function
-argument after temporarily setting the working directory to the
-context directory and returns the result of this function invocation
-after restoring the original working directory.  Not all rules
-require such a temporary change of directories, but those that do
-should encapsulate all their work into a local function and then pass
-this function to the context.
+\item[mkNativePath:] This is a function of the same type as {\tt
+mkpath} above.  When the rule constructs the specifications for its
+result files, it must provide the corresponding {\tt mkpath} function
+for those.  Since most tools internally operate on native path names
+(for example, because they pass these names to other, external
+programs), this {\tt mkpath} function will have to be {\tt
+mkNativePath}.
+\item[context:] The context argument of a rule represents the
+directory that contains the CM description file on whose behalf the
+rule was invoked.  It is represented as a higher-order function that
+invokes its function argument after temporarily setting the working
+directory to the context directory and returns the result of this
+invocation after restoring the original working directory.  Not all
+rules require such a temporary change of directories, but those that
+do should encapsulate all their work into a local function and then
+pass this function to the context.
 \begin{verbatim}
   type rulefn = unit -> partial_expansion
   type rulecontext = rulefn -> partial_expansion
@@ -260,17 +266,19 @@ specification becomes empty.
 Most rules (except those for classes {\tt sml} and {\tt cm}) leave the
 lists {\tt smlfiles} and {\tt cmfiles} empty.  A tool that produces an
 ML source file or a CM description file as output should put a
-specification for it into the specification list of a partial
-expansion and let the rules for {\tt sml} and {\tt cm} take care of
-the rest.  At this point we will therefore not dwell on explanations
-for the types of these two values.
+specification for this file into the specification list of a partial
+expansion, letting the rules for classes {\tt sml} and {\tt cm} take
+care of the rest.  At this point we will therefore not dwell on
+explanations for the types of these two fields.
 
-The {\tt sources} list is used to implement {\tt CM.sources} (see
+The {\tt sources} field is used to implement {\tt CM.sources} (see
 section~\ref{sec:makedepend:support}).  Therefore, the rule should
-include here every file that it consumes and that its implementer
-wishes to be reported by {\tt CM.sources}. However, do not include
-source files that are {\em produced} by the rule because those will be
-reported by subsequent rules.
+include here every file that it consumes if its implementer wishes to
+have it reported by {\tt CM.sources}.  (Do not include source files
+that are {\em produced} by the rule because those will be reported by
+subsequent rules.)
+
+\subsubsection{Reporting errors from tools}
 
 When a rule encounters an error, it should raise the following
 exception, setting {\tt tool} to a string describing the current tool
@@ -284,8 +292,9 @@ error:
 \subsubsection{Adding a classifier}
 
 A classifier is a mechanism that enables CM to infer a member's class
-form its name.  CM supports two kinds of classifiers: suffix
-classifiers and general classifiers.
+form its name.  Classifiers are invoked if no explicit class was
+given.  CM supports two kinds of classifiers: suffix classifiers and
+general classifiers.
 
 \begin{verbatim}
   datatype classifier =
@@ -294,14 +303,15 @@ classifiers and general classifiers.
 \end{verbatim}
 
 Most of the time, classifiers look at the file name suffix as the only
-clue.  This is captured by {\tt SFX\_CLASSIFIER} which carries a
+clue.  This idea is captured by {\tt SFX\_CLASSIFIER} which carries a
 partial function from suffixes to class names.  The function should
 return {\tt NONE} if it does not know about the given argument suffix.
 
-The {\tt GEN\_CLASSIFIER} carries a similar function---the only
-difference being that the entire member name is passed to it.  (Suffix
-classifiers could be implemented as general classifiers, but using
-{\tt SFX\_CLASSIFIER} for them is slightly more efficient.)
+The {\tt GEN\_CLASSIFIER} constructor carries a similar function---the
+only difference being that the entire member name is passed to it.
+(Suffix classifiers could be implemented as general classifiers, but
+using {\tt SFX\_CLASSIFIER} for them is slightly more efficient
+because CM will extract the suffix from the name only once.)
 
 Function {\tt Tools.stdSfxClassifier} is a simple wrapper around {\tt
 SFX\_CLASSIFIER} and produces a classifier that looks for precisely
@@ -338,7 +348,7 @@ values of type {\tt extensionStyle}:
 
 These values can not only be passed to {\tt
 Tools.registerStdShellCmdTool} but also be used to let CM perform name
-extension directly.  This is done by invoking function {\tt
+extension directly.  To do so, one must invoke function {\tt
 Tools.extend}:
 
 \begin{verbatim}
@@ -354,8 +364,8 @@ source file is older than all of its corresponding target files.
   val outdated : string -> string list * string -> bool
 \end{verbatim}
 
-Here, the first (curried) argument is the name of the tool, the string
-list is the list of targets (as native file names), and other string
+In a call {\tt (Tools.outdated $t$ ($l$, $s$))}, $t$ is the name of
+the tool, $l$ is the list of targets (as native file names), and $s$
 is the source (also as a native file name).
 
 An alternative way of checking for outdated sources (in the style of
@@ -382,8 +392,8 @@ when they do not already exist, use {\tt Tools.openTextOut}:
   val openTextOut : string -> TextIO.outstream
 \end{verbatim}
 
-To create the directories without opening the file (and without even
-creating it if it does not exist), one can use function {\tt
+To create the same directories without opening the file (and without
+even creating it if it does not exist), use function {\tt
 Tools.makeDirs}:
 
 \begin{verbatim}
@@ -394,7 +404,7 @@ Note that the string passed to {\tt makeDirs} is still the name of a
 file!
 
 \noindent{\bf Option processing:}  For simple tools, the following
-function for ``parsing'' tool options can come in handy:
+function for ``parsing'' tool options can be useful:
 
 \begin{verbatim}
   val parseOptions :
@@ -404,17 +414,19 @@ function for ``parsing'' tool options can come in handy:
 
 Given a list of accepted keywords, this function scans the tool
 options and collects occurrences of sub-option lists labelled by one
-of these keywords.  Any sub-option list that that is not recognized
-and any keyword that occurs more than once will be rejected with an
-error.  The result consists of a function {\tt matches} that can be
-uses to query each of the keywords and a list of simple rest options.
+of these keywords.  Any sub-option list that is not recognized and any
+keyword that occurs more than once will be rejected as an error.  The
+result consists of a function {\tt matches} that can be uses to query
+each of the keywords.  The function also collects and returns all the
+{\tt STRING} options.
 
-\noindent{\bf Issuing diagnostics:}  Functions {\tt Tools.say} and
-{\tt Tools.vsay} both take a list of strings and output the
-concatenation of these strings to {\tt TextIO.stdOut}.  The difference
-between {\tt say} and {\tt vsay} is that the former works
-unconditionally while the latter is controlled by {\tt
-CM.Control.verbose} (see section~\ref{sec:registers}).
+\noindent{\bf Issuing diagnostics:} Functions {\tt Tools.say} and {\tt
+Tools.vsay} both take a list of strings and output the concatenation
+of these strings to the compiler's standard control output stream
+(i.e., usually {\tt TextIO.stdOut}).  The difference between {\tt say}
+and {\tt vsay} is that the former works unconditionally while the
+latter is controlled by {\tt CM.Control.verbose} (see
+section~\ref{sec:registers}).
 
 \noindent{\bf Anchor-configurable strings:} Mainly for the purpose of
 implementing anchor-configurable names for auxiliary shell commands
@@ -428,8 +440,8 @@ If $m$ is a path anchor that points to $d$, then {\tt (mkCmdName $m$)}
 returns $d${\tt /}$m$; otherwise it returns $m$.
 
 \noindent{\bf Querying the default class of a member:} One can
-directly invoke CM's internal classification mechanism using {\tt
-Tools.defaultClassOf}:
+directly invoke CM's internal classification mechanism, taking
+advantage of any registered classifiers:
 
 \begin{verbatim}
   val defaultClassOf : string -> class option
@@ -438,27 +450,29 @@ Tools.defaultClassOf}:
 \subsection{Plug-in Tools}
 \label{sec:plugintools}
 
-\subsubsection{Automatically-loaded, global plug-in tools}
+\subsubsection{Automatically loaded, global plug-in tools}
 
-If CM comes across a member class name $c$ that it does not know
-about, then it tries to load a plugin module named {\tt \$/}$c${\tt
+If CM encounters a member class name $c$ that it does not know about,
+then it tries to load a plugin module named {\tt \$/}$c${\tt
 -tool.cm}.  If it sees a file whose name ends in suffix $s$ for which
 no explicit member class has been specified in the CM description file
-and for which automatic member classification fails, then it tries to
+and for which automatic member classification fails, it will try to
 load a plugin module named {\tt \$/}$s${\tt -ext.cm}.  The so-loaded
-module can then register the required tool which enables CM to
+module can then register the required tool, thereby enabling CM to
 successfully deal with the previously unknown member.
 
 This mechanism makes it possible for new tools to be added by simply
-placing appropriately-named plug-in libraries in some convenient place
+placing appropriately named plug-in libraries in some convenient place
 and making the corresponding adjustments to the anchor environment.
 In other words, description files {\tt \$/}$c${\tt -tool.cm} and {\tt
 \$/}$s${\tt -ext.cm} that correspond to general-purpose tools should
-be registered using the path anchor mechanism.  If this is done,
-actual description files for the tools' implementations can be placed
-in arbitrary locations.
+be registered by modifying either the global or the local path
+configuration file (or by directly invoking functon {\tt
+CM.Anchor.anchor}; see section~\ref{sec:api:anchors}).  If this is
+done, actual description files for the tools' implementations can be
+placed in arbitrary locations.
 
-\subsubsection{Explicitly-loaded, local plug-in tools}
+\subsubsection{Explicitly loaded, local plug-in tools}
 \label{sec:localtools}
 
 Some projects might want to use their own special-purpose tools for
@@ -493,7 +507,11 @@ The effect of registering classes and classifiers using class {\tt
 tool} lasts until the end of the current description file and is
 restricted to that file.  This means that other description files that
 also want to use class {\tt bar} will have to have their own {\tt
-tool} entry.
+tool} entry.\footnote{Note that CM cannot enforce that the tool
+library actually register a class or a classifier.  Any side-effects
+other than registering classes or classifiers are beyond CM's control
+and will not be undone once processing the current description file is
+complete.}
 
 Local tool classes and suffixes temporarily override any equally-named
 global classes or suffixes, respectively.
@@ -502,14 +520,14 @@ global classes or suffixes, respectively.
 \label{sec:localsuffixes}
 
 It is sometimes convenient to locally add another recognized filename
-suffix to an already registered class.  This is done by using the
+suffix to an already registered class.  This is the purpose of the
 special tool class {\tt suffix}.  For example, a programmer who has
-named all her ML files in such a way that they end in {\tt .ml}
-could write near the beginning of her description file:
+named all ML files in such a way that file names end in {\tt .ml}
+could write near the beginning of the description file:
 
 \begin{verbatim}
     ml : suffix (sml)
 \end{verbatim}
 
 For the remainder of the current description file, all such {\tt
-.ml}-files will now be classified under {\tt sml}.
+.ml}-files will now be treated as members of class {\tt sml}.
