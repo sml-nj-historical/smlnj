@@ -10,9 +10,10 @@ struct
      * locally unused but could be cross-module inlined. *)
     val phases = ref ["lcontract", (* Cruder but quicker than fcontract *)
 		      "fixfix", "fcontract",
-		      "specialize", (* "fixfix", "split", *) "fcontract",
-		      "wrap", "loopify", "fixfix", "fcontract", "reify",
-		      "fcontract", "fixfix", "fcontract+eta"]
+		      "specialize",
+		      "loopify", "fixfix", (* "split", *) "fcontract",
+		      "wrap", "fcontract", "reify",
+		      (* "abcopt", *) "fcontract", "fixfix", "fcontract+eta"]
 			  
     val inlineThreshold = ref 16
     val splitThreshold  = ref 0

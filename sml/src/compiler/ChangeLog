@@ -1,3 +1,10 @@
+2000-04-22  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* TopLevel/viscomp/control.sml (cpsopt): Add `zeroexpand' to reduce
+	RA-blowup when compiling ml.grm.sml.
+
+	* viscomp-core.cm: Add FLINT.opt/abcopt.sml.
+
 2000-04-20  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* TopLevel/viscomp/control.sml (cpsopt): Use last_contract rather than

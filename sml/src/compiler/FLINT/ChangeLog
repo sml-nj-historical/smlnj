@@ -1,3 +1,17 @@
+2000-04-22  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/flintopt.txt: New file.
+
+	* opt/abcopt.sml: New file.
+
+	* main/flintcomp.sml: Change `Compiler' to `FLINT' or `CPS' in the
+	name of phases printed by Compiler.Stats.
+	(abcopt): New phase.
+
+	* main/control.sml (phases): Move loopify+fixfix to before wrap.
+
+	* cpsopt/cpsopt.sml (zeroexpand): New function.
+
 2000-04-19  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* reps/typeoper.sml (tkAbsGen): Remove.

@@ -84,6 +84,10 @@ fun expand(f,n,unroll) =
        f'
    end)
 
+fun zeroexpand f = Expand.expand{function=f, click=click, bodysize=0,
+				 afterClosure=afterClosure, table=table,
+				 unroll=false, do_headers=false}
+
 fun flatten f =
   (clicked := 0;
    if not(!CG.flattenargs) then f else
@@ -186,6 +190,7 @@ in  (if rounds < 0 then function
 		| apply ("cycle_expand",f)  = cycle(rounds, not(!CG.unroll), f)
 		| apply ("contract",f)      = contract false f
 		| apply ("flatten",f)       = flatten f
+		| apply ("zeroexpand",f)    = zeroexpand f
 		| apply ("expand",f)        = expand(f, bodysize, false)
 		| apply ("print",f)	    = (PPCps.printcps0 f; f)
 		| apply (p,f) = (say("\n!! Unknown cps phase '"^p^"' !!\n"); f)
