@@ -11,6 +11,9 @@ struct
          | isZero(I.ImmedLabel le) = I.LabelExp.valueOf le = 0
          | isZero _ = false
 
+       fun isZeroOpt NONE = true
+         | isZeroOpt (SOME opn) = isZero opn
+
        fun loop(code, instrs) = 
            (case code of
              [] => rev instrs
@@ -27,7 +30,8 @@ struct
                     loop(rest, instrs)
                else loop(rest, i::instrs)
 
-             (*   subl 4, %esp
+             (* push folding:
+              *   subl 4, %esp
               *   movl src, 0(%esp)  (where src <> %esp !!! )
               * => 
               *   pushl src
@@ -57,6 +61,17 @@ struct
                 loop(rest, I.BINARY{binOp=I.XORL, src=dst, dst=dst}::instrs)
              else
                 loop(rest, i::instrs)
+
+             (* 
+              *   addl N, %esp
+              *   ret
+              * => 
+              *   ret N
+              *)
+           | (i as I.RET operand)::(j as I.BINARY{binOp=I.ADDL, src, dst}):: 
+           rest => if isStackPtr dst andalso isZeroOpt operand 
+                     then loop(rest, I.RET (SOME src)::instrs)
+                   else loop(rest, j::i::instrs)
 
            | i::rest => loop(rest, i::instrs)
            )

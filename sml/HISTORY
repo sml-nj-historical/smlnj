@@ -12,6 +12,13 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/06/15 00:38:00
+Tag: leunga-20000615-x86-peephole
+
+x86 Peephole fix by Fermin.  Affects c-- and moby only.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/06/12 11:40:00
 Tag: blume-20000612-parmakefix
