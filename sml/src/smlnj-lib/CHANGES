@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2000-12-13]
+	Added most of the bit operations to the IntInf module (Leung).
+
 [2000-11-17]
 	Added where clause to GraphSCCFn result signature (Blume).
 
