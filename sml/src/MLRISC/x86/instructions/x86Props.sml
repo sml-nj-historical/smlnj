@@ -132,7 +132,8 @@ struct
 
   fun negateConditional (I.ANNOTATION{i,a}, lab) =
 	I.ANNOTATION{i=negateConditional(i,lab), a=a}
-    | negateConditional (I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}), lab) = let
+    | negateConditional (I.INSTR(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}), lab) =
+	let
 	val cond' = (case cond
 	       of I.EQ => I.NE
 		| I.NE => I.EQ
@@ -152,7 +153,7 @@ struct
 		| I.NO => I.O
 	      (* end case *))
 	in
-	  I.INSTR(I.JCC{cond=cond', opnd=I.ImmedLabel lab})
+	  I.INSTR(I.JCC{cond=cond', opnd=I.ImmedLabel(T.LABEL lab)})
 	end
     | negateConditional _ = error "negateConditional"
 
