@@ -365,7 +365,12 @@ inferior-sml-mode-hook.
 
 ;;; CODE
 
-(defvar inferior-sml-mode-map nil)
+(defmap inferior-sml-mode-map
+  '(("\C-c\C-s"	. run-sml)
+    ("\t"	. comint-dynamic-complete))
+  "Keymap for inferior-sml mode"
+  :inherit (list sml-bindings comint-mode-map))
+
 
 ;; buffer-local
 
@@ -662,6 +667,12 @@ With a prefix argument switch to the sml buffer as well
     (sml-send-region (point) (mark)))
   (if and-go (switch-to-sml nil)))
 
+(defvar sml-source-modes '(sml-mode) 
+  "*Used to determine if a buffer contains ML source code. 
+If it's loaded into a buffer that is in one of these major modes, it's
+considered an ML source file by `sml-load-file'. Used by these commands
+to determine defaults.")
+
 ;;;###autoload 
 (defun sml-send-buffer (&optional and-go)
   "Send buffer to inferior shell running ML process. 
@@ -694,20 +705,6 @@ With a prefix argument switch to the sml buffer as well
   "Returns the current ML process buffer's frame, or creates one first."
   (let ((buffer (sml-proc-buffer)))
     (window-frame (display-buffer buffer))))
-
-;;(defun sml-pop-to-buffer (warp)
-;;  "(Towards) handling multiple frames properly.
-;;Raises the frame, and warps the mouse over there, only if WARP is non-nil."
-;;  (let ((current (window-frame (selected-window)))
-;;        (buffer  (sml-proc-buffer)))
-;;    (let ((frame (sml-proc-frame)))
-;;      (if (eq current frame)
-;;          (pop-to-buffer buffer)           ; stay on the same frame.
-;;        (select-frame frame)               ; XEmacs sometimes moves focus.
-;;        (select-window (get-buffer-window buffer)) ; necc. for XEmacs
-;;        ;; (raise-frame frame)
-;;        (if warp (sml-warp-mouse frame))))))
-
 
 ;;; H A C K   A T T A C K !   X E M A C S   V E R S U S   E M A C S
 
@@ -761,12 +758,6 @@ undisturbed once this operation is completed."
 
 
 ;;; LOADING AND IMPORTING SOURCE FILES:
-
-(defvar sml-source-modes '(sml-mode) 
-  "*Used to determine if a buffer contains ML source code. 
-If it's loaded into a buffer that is in one of these major modes, it's
-considered an ML source file by `sml-load-file'. Used by these commands
-to determine defaults.")
 
 (defvar sml-prev-l/c-dir/file nil
   "Caches the (directory . file) pair used in the last `sml-load-file'
@@ -895,7 +886,7 @@ the output\) of the last error. This odd behaviour may have a use...?"
   (error msg))
 
 (defun sml-do-next-error ()
-  "The buisiness end of `sml-next-error' (qv)"
+  "The business end of `sml-next-error' (qv)"
   (let ((case-fold-search nil)
         ;; set this variable iff we called sml-next-error in a SML buffer
         (sml-window (if (memq major-mode sml-source-modes) (selected-window)))
@@ -968,14 +959,6 @@ the output\) of the last error. This odd behaviour may have a use...?"
   (if (memq major-mode sml-source-modes) (sml-error-overlay 'undo))
   (sml-update-cursor (sml-proc-buffer))
   (if (eq major-mode 'sml-inferior-mode) (goto-char (point-max))))
-
-;;; Set up the inferior mode keymap, using sml-mode bindings...
-
-(cond ((not inferior-sml-mode-map)
-       (setq inferior-sml-mode-map (nconc (make-sparse-keymap) comint-mode-map))
-       (install-sml-keybindings inferior-sml-mode-map)
-       (define-key inferior-sml-mode-map "\C-c\C-s" 'run-sml)
-       (define-key inferior-sml-mode-map "\t"       'comint-dynamic-complete)))
 
 ;;; H A C K   A T T A C K !   X E M A C S   /   E M A C S   K E Y S
 

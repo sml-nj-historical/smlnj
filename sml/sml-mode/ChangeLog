@@ -1,3 +1,22 @@
+1999-05-29  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-defs.el (sml-mode-syntax-table): added ~ of prefix-syntax.
+
+	* sml-mode.el (sml-find-match-indent): (nilp sml-type-of-indent) is only
+	  applied if the `let' is alone at the end of the line.
+	(sml-type-of-indent): default changed to `nil'.
+
+1999-05-28  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-font-lock-keywords): changed _ and ' back to word
+	  syntax for font-locking.
+
+1999-05-27  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-font-lock-syntactic-keywords): finally got the
+	  matching of let...end working.
+	  (sml-electric-pipe): take a fun sexp (symbol) rather than a fun word.
+
 1998-10-26  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-mode.el (sml-font-lock-syntactic-keywords): added syntactic-keywords

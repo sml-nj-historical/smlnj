@@ -1,0 +1,106 @@
+-*- sml -*-
+
+* make `end' align on `in' when possible
+
+* if indentation is non-obvious, return a list of possible indentations
+  and choose the first unless the current is one of the possible choices.
+
+* M-| with datatypes gives "|  => " instead of "|  of "
+
+* tab at end or beginning of buffer infinite-loop
+
+* ignore warnings in C-c `
+
+* improve the run-sml to allow running on another machine and to take args
+
+* C-c ` tends to switch to another window
+
+* sample problematic indentations:
+
+let fun toStringFKind {isrec,cconv,inline,...} =
+	(if isSome isrec then "R" else "")^
+	(if cconv = F.CC_FCT then "FCT" else "FUN")^
+	(foo)
+	
+      | toStringFKind =
+	let fun cfun (fk,f,args,body) = let 
+	    in (fk, f, args, loop body)
+	    end
+	    fun foo x = let
+		val 
+	    in 
+		
+		let f
+		in if 2 then
+		       ~3
+		   else 
+		       asdf
+		end
+		    
+		    (
+		     if foo then 1 else 2;
+		     ())
+	    end
+	end
+      | toStringFKind =
+	let bla
+	in foooooooooo;
+	   faaaaaaaaaaa
+	end
+	    
+	    
+	    let bla
+	    in (fn toto => 1,
+		fn tata => 2)
+	    end
+	    
+	    let
+	    in clet1 (fn [nv] => (Conlv, nv, ndc),
+		      fn ([nv],nle) => F.CON(dcon, tycs, nv, lv, nle))
+		     (lv,[v],le)
+	    end
+	    
+	    let
+	    in a d
+		 awsdfg
+		 sadf
+		 (fn bla =>
+		     gfsse
+		   | ss => 
+		     asdf)
+	    end
+	    (* sadgasgf *) 
+	    app (fn (fk,f,args,body as F.APP(F.VAR g,vs)) =>
+		    if not C.escaping f
+		       orelse vs = (map (F.VAR o #1) args) andalso
+			      not (C.escaping g)
+		    then
+			let val g = F.VAR g
+			in substitute(f, val2sval g, g)
+			end
+			handle NotFound =>
+			       addbind (f, Fun(f, body, args, fk, od))
+		    else addbind (f, Fun(f, body, args, fk, od))
+		  | (fk,f,args,body) =>
+		    addbind (f, Fun(f, body, args, fk, od)))
+	    
+	    (if 1 then 1 + 2 else
+	     if
+		 1 then
+		 1
+		 + df
+	     else
+		 hell
+		     de
+		     der
+		     +1)
+	    
+	    case
+		case a
+		 of 2 =>
+		    1
+		    + 2
+		  |  => 
+	     of 1 =>
+		sd
+	      |  => 

@@ -1,0 +1,5 @@
+* in SML `!' is like a single-char symbol (not an operator).
+  sml-mode considers it as a tightly-binding prefix.  A similar problem
+  happens with `~'.
+
+* `raise', `div' and `mod' should not be treated like functions.

@@ -1,11 +1,33 @@
 \input texinfo @c -*-texinfo-*-
 
-@c $Id$	
+@comment "@(#)$Name$:$Id$"
 
-@c %**start of header
+@comment Documentation for the GNU Emacs SML mode.
+@comment Copyright (C) 1999 (Anon)
+
+@comment This file is part of the pcl-cvs distribution.
+
+@comment sml-mode is free software; you can redistribute it and/or modify
+@comment it under the terms of the GNU General Public License as published by
+@comment the Free Software Foundation; either version 2 of the License,
+@comment or (at your option) any later version.
+
+@comment sml-mode is distributed in the hope that it will be useful,
+@comment but WITHOUT ANY WARRANTY; without even the implied warranty of
+@comment MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+@comment GNU General Public License for more details.
+
+@comment You should have received a copy of the GNU General Public License
+@comment along with sml-mode; see the file COPYING.  If not, write to
+@comment the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
 @setfilename sml-mode.info
-@settitle @it{SML mode, Version 3.3}
-@c %**end of header
+@settitle SML mode - The Emacs SML editing mode
+@dircategory Editors
+@direntry
+* sml:(sml-mode).	Emacs mode for editing SML
+@end direntry
+@setchapternewpage on
 
 @titlepage
 @sp 5
