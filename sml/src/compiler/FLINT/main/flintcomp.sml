@@ -37,7 +37,7 @@ val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
 (*  val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract *)
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fcontract o fcollect
+val fcontract = fn opts => fcontract opts o fcollect
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
 
@@ -109,7 +109,10 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	      (say("\n!! "^p^" cannot be applied to the DeBruijn form !!\n");
 	       (f, fi, fk, l))
 
-	    | ("fcontract",_)		=> (fcontract f,  fi, fk, p)
+	    | ("fcontract",_)		=>
+	      (fcontract {etaSplit=false, tfnInline=false} f,  fi, fk, p)
+	    | ("fcontract+eta",_)	=>
+	      (fcontract {etaSplit=true, tfnInline=false} f,  fi, fk, p)
 	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
 	    | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)

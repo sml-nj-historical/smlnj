@@ -3,10 +3,12 @@
 
 signature FCONTRACT =
 sig
+
+    type options = {etaSplit : bool, tfnInline : bool}
     
     (* needs Collect to be setup properly *)
-    val contract : FLINT.prog -> FLINT.prog
-	
+    val contract : options -> FLINT.prog -> FLINT.prog
+
 end
 
 (* All kinds of beta-reductions.  In order to do as much work per pass as
@@ -191,7 +193,7 @@ local
     structure CTRL = FLINT_Control
 in
 
-val say = Control_Print.say
+fun say s = (Control_Print.say s; Control_Print.flush())
 fun bug msg = ErrorMsg.impossible ("FContract: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; bug msg)
@@ -201,10 +203,12 @@ fun bugval (msg,v) = (say "\n"; PP.printSval v; bug msg)
 val cplv = LambdaVar.dupLvar
 val mklv = LambdaVar.mkLvar
 
+type options = {etaSplit : bool, tfnInline : bool}
+
 datatype sval
   = Val    of F.value			(* F.value should never be F.VAR lv *)
   | Fun    of F.lvar * F.lexp * (F.lvar * F.lty) list * F.fkind * sval list list ref
-  | TFun   of F.lvar * F.lexp * (F.tvar * F.tkind) list
+  | TFun   of F.lvar * F.lexp * (F.tvar * F.tkind) list * F.tfkind
   | Record of F.lvar * sval list
   | Con    of F.lvar * sval * F.dcon * F.tyc list
   | Decon  of F.lvar * sval * F.dcon * F.tyc list
@@ -279,7 +283,7 @@ fun inScope m lv = (M.lookup m lv; true) handle M.IntmapF => false
 fun click s c = (if !CTRL.misc = 1 then say s else ();
 		 c := !c + 1 (* Stats.addCounter c 1 *) )
 
-fun contract (fdec as (_,f,_,_)) = let
+fun contract {etaSplit,tfnInline} (fdec as (_,f,_,_)) = let
 
     val c_dummy = ref 0 (* Stats.newCounter[] *)
     val c_miss = ref 0 (* Stats.newCounter[] *)
@@ -637,7 +641,7 @@ fun fcFix (fs,le) =
 			     dropargs (fn xs => OU.filter used xs))
 				
 			(* eta-split: add a wrapper for escaping uses *)
-			else if C.escaping gi then
+			else if etaSplit andalso C.escaping gi then
 			    (* like dropargs but keeping all args *)
 			    (click_etasplit(); dropargs (fn x => x))
 			    
@@ -698,7 +702,7 @@ fun fcApp (f,vs) =
 	   let val gi = C.get g
 	       fun noinline () =
 		   (actuals := svs :: (!actuals);
-		    cont(m,F.APP(sval2val svf, map sval2val svs)))
+		    cont(m, F.APP(sval2val svf, map sval2val svs)))
 	       fun simpleinline () =
 		   (* simple inlining:  we should copy the body and then
 		    * kill the function, but instead we just move the body
@@ -752,19 +756,76 @@ fun fcApp (f,vs) =
 		  in if s > min then copyinline() else noinline()
 		  end
 	   end
-	 | sv => cont(m,F.APP(sval2val svf, map sval2val svs))
+	 | sv => cont(m, F.APP(sval2val svf, map sval2val svs))
     end
 
 fun fcTfn ((tfk,f,args,body),le) =
     let val fi = C.get f
     in if C.dead fi then (click_deadlexp(); loop m le cont) else
-	let val nbody = fcexp ifs m body #2
-	    val nm = addbind(m, f, TFun(f, nbody, args))
+	let val saved_ic = inline_count()
+	    val nbody = fcexp ifs m body #2
+	    val ntfk =
+		if inline_count() = saved_ic then tfk else {inline=F.IH_SAFE}
+	    val nm = addbind(m, f, TFun(f, nbody, args, tfk))
 	    val nle = loop nm le cont
 	in
 	    if C.dead fi then nle else F.TFN((tfk, f, args, nbody), nle)
 	end
     end
+
+fun fcTapp (f,tycs) =
+    let val svf = val2sval m f
+    (* F.TAPP inlining (if any) *)
+
+	fun noinline () = (cont(m, F.TAPP(sval2val svf, tycs)))
+
+	fun specialize (g,tfk,args,body,tycs) =
+	    let val prog =
+		    ({cconv=F.CC_FCT,inline=F.IH_SAFE,isrec=NONE,known=false},
+		     mklv(), [],
+		     F.TFN((tfk, g, args, body), F.TAPP(F.VAR g, tycs)))
+		val F.LET(_,nprog,F.RET _) = #4(Specialize.specialize prog)
+	    in PP.printLexp nprog; nprog end
+
+    in case (tfnInline,svf)
+	of (true,TFun(g,body,args,tfk as {inline,...})) =>
+	   let val gi = C.get g
+	       fun simpleinline () =
+		   (* simple inlining:  we should copy the body and then
+		    * kill the function, but instead we just move the body
+		    * and kill only the function name.
+		    * This inlining strategy looks inoffensive enough,
+		    * but still requires some care: see comments at the
+		    * begining of this file and in cfun *)
+		   (click_simpleinline();
+		    (*  say("simpleinline "^(C.LVarString g)^"\n"); *)
+		    ignore(C.unuse true gi);
+		    loop m (specialize(g, tfk, args, body, tycs)) cont)
+	       fun copyinline () =
+		   (* aggressive inlining.  We allow pretty much
+		    * any inlinling, but we detect and reject inlining
+		    * recursively which would else lead to infinite loop *)
+		   let val nle = (F.TFN((tfk, g, args, body),
+					F.TAPP(F.VAR g, tycs)))
+		       val nle = C.copylexp M.empty nle
+		   in
+		       click_copyinline();
+		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
+		       unusecall m g;
+		       fcexp (S.add(g, ifs)) m nle cont
+		   end
+
+	   in if C.usenb gi = 1 andalso not(S.member ifs g)
+	      then noinline() (* simpleinline() *)
+	      else case inline of
+		  F.IH_ALWAYS =>
+		  if S.member ifs g then noinline() else copyinline()
+		| _ => noinline()
+	   end
+	 | sv => noinline()
+    end
+
+    
 
 fun fcSwitch (v,ac,arms,def) =
     let fun fcsCon (lvc,svc,dc1:F.dcon,tycs1) =
@@ -964,7 +1025,8 @@ in case le
       | F.FIX x => fcFix x
       | F.APP x => fcApp x
       | F.TFN x => fcTfn x
-      | F.TAPP (f,tycs) => cont(m, F.TAPP(substval f, tycs))
+      (* | F.TAPP (f,tycs) => cont(m, F.TAPP(substval f, tycs)) *)
+      | F.TAPP x => fcTapp x
       | F.SWITCH x => fcSwitch x
       | F.CON x => fcCon x
       | F.RECORD x => fcRecord x

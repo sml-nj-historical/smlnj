@@ -42,7 +42,7 @@ sig
     val dropinvariant	: bool ref
 
     val specialize	: bool ref
-    val liftLiterals	: bool ref
+    (* val liftLiterals	: bool ref *)
     val sharewrap	: bool ref
     val saytappinfo	: bool ref	(* for verbose typelifting *)
 

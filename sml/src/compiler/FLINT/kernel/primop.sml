@@ -177,6 +177,7 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
 
   | prPrimop DEREF = "!"
   | prPrimop ASSIGN = ":="
+  | prPrimop UNBOXEDASSIGN = "(unboxed):="
   | prPrimop BOXED = "boxed"
   | prPrimop UNBOXED = "unboxed"
   | prPrimop CAST = "cast"
@@ -241,9 +242,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (GET_SEQ_DATA) = "getseqdata"
   | prPrimop (SUBSCRIPT_REC) = "subscriptrec"
   | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
-
-  (* These ones were strangely missing *)
-  | prPrimop UNBOXEDASSIGN = "unboxedassign"
 
 
 val purePrimop =
