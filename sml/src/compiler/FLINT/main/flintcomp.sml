@@ -224,7 +224,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
              of (fun0 :: funn) => (gen fun0, map gen funn, data)
               | [] => bug "unexpected case on gen in flintcomp"
         end
-   in ({c0=nc0, cn=ncn, data=dseg}, fi)
+   in ({c0=nc0, cn=ncn, data=dseg}, O.map names2deb fi)
   end (* function flintcomp *)
 
 val flintcomp = phase "FLINT 050 flintcomp" flintcomp
