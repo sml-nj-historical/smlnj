@@ -28,4 +28,15 @@ structure CTypes =
       | I_long
       | I_long_long
 
+
+  (* multiple calling conventions on a single architecture *)
+    type calling_convention = string
+
+  (* prototype describing C function *)
+    type c_proto = {
+	conv : calling_convention,
+	retTy : c_type,
+	paramTys : c_type list
+      }
+
   end

@@ -44,7 +44,7 @@
 functor IA32SVID_CCalls
   (structure T : MLTREE
    val ix : (T.stm,T.rexp,T.fexp,T.ccexp) X86InstrExt.sext -> T.sext
-  ) : C_CALL =
+  ) : C_CALLS =
 struct
   structure T  = T
   structure Ty = CTypes
@@ -52,18 +52,6 @@ struct
   structure IX = X86InstrExt
 
   fun error msg = MLRiscErrorMsg.error ("X86CompCCalls", msg)
-
-  (* multiple calling conventions on a single architecture *)
-  type calling_convention = unit
-
-  (* prototype describing C function *)
-  type  c_proto = 
-    { (* conv : calling_convention, *)
-      retTy : CTypes.c_type,
-      paramTys : CTypes.c_type list
-     }
-
-  exception ArgParamMismatch
 
   datatype  c_arg 
     = ARG of T.rexp	    
@@ -73,24 +61,34 @@ struct
   val mem = T.Region.memory
   val stack = T.Region.memory
 
-  fun intSize(Ty.I_char) = 8
-    | intSize(Ty.I_short) = 16
-    | intSize(Ty.I_int) = 32
-    | intSize(Ty.I_long) = 32
-    | intSize(Ty.I_long_long) = 64
+  (* map C integer types to their MLRisc type *)
+  fun intTy (Ty.I_char) = 8
+    | intTy (Ty.I_short) = 16
+    | intTy (Ty.I_int) = 32
+    | intTy (Ty.I_long) = 32
+    | intTy (Ty.I_long_long) = 64
 
-  fun sizeOf(Ty.C_void) = 32
-    | sizeOf(Ty.C_float) = 32
-    | sizeOf(Ty.C_double) = 64
-    | sizeOf(Ty.C_long_double) = 80	(* no padding required *)
-    | sizeOf(Ty.C_unsigned i) = intSize i
-    | sizeOf(Ty.C_signed i) = intSize i
-    | sizeOf(Ty.C_PTR) = 32
-    | sizeOf(Ty.C_ARRAY _) = 32
-    | sizeOf(Ty.C_STRUCT fields) = structSz fields
+  (* size in bytes of C integer type *)
+  fun intSize (Ty.I_char) = 1
+    | intSize (Ty.I_short) = 2
+    | intSize (Ty.I_int) = 4
+    | intSize (Ty.I_long) = 4
+    | intSize (Ty.I_long_long) = 8
 
+  (* size in bytes of C type *)
+  fun sizeOf (Ty.C_void) = 4
+    | sizeOf (Ty.C_float) = 4
+    | sizeOf (Ty.C_double) = 8
+    | sizeOf (Ty.C_long_double) = 12	(* no padding required *)
+    | sizeOf (Ty.C_unsigned i) = intSize i
+    | sizeOf (Ty.C_signed i) = intSize i
+    | sizeOf (Ty.C_PTR) = 4
+    | sizeOf (Ty.C_ARRAY _) = 4
+    | sizeOf (Ty.C_STRUCT fields) = structSz fields
+
+  (* size in bytes of C struct type *)
   and structSz fields = 
-    List.foldl  (fn (fld, sum) => sizeOf fld + sum) 0 fields
+	List.foldl  (fn (fld, sum) => sizeOf fld + sum) 0 fields
 
   val sp = C.esp
 
@@ -111,8 +109,8 @@ struct
       | results(Ty.C_long_double) = [fpr(80, st0)]
       | results(Ty.C_unsigned(Ty.I_long_long)) = pair
       | results(Ty.C_signed(Ty.I_long_long)) =  pair
-      | results(Ty.C_unsigned i) = eax(intSize i)
-      | results(Ty.C_signed i) = eax(intSize i)
+      | results(Ty.C_unsigned i) = eax(intTy i)
+      | results(Ty.C_signed i) = eax(intTy i)
       | results(Ty.C_PTR) = eax32
       | results(Ty.C_ARRAY _) = eax32
       | results(Ty.C_STRUCT _) = eax32
@@ -138,7 +136,7 @@ struct
       | copyOut _ = error "copyOut"
   end
 
-  fun genCall{name, proto={retTy, paramTys}, structRet, args} = let
+  fun genCall{name, proto={conv="", retTy, paramTys}, structRet, args} = let
     fun push signed {sz, e} = let
       fun pushl rexp = T.EXT(ix(IX.PUSHL(rexp)))
       fun signExtend(e) = 
@@ -169,7 +167,7 @@ struct
 	  fun nextL stmt = pushArgs (r1, r2, stmt@stmts)
 	  (* struct arguments are padded to word boundaries. *)
 	  fun pad16(fields, stmts) = let
-	    val sz = Int.quot(structSz fields, 8)
+	    val sz = structSz fields
           in
 	    case Word.andb(Word.fromInt sz, 0w1)
 	     of 0w0 => stmts
@@ -188,10 +186,7 @@ struct
 		  fun load (bits, bytes) =
 		    mkArgs(rest, i+bytes, 
 			   ARG(T.LOAD(bits, ea(), mem))::acc)
-		  fun intSz(cint) = let
-		    val sz = intSize cint
-		  in (sz, Int.quot(sz, 8))
-		  end
+		  fun intSz cint = (intTy cint, intSize cint)
 		in
 		  case ty
 		  of Ty.C_void => error "STRUCT: void field"
@@ -277,36 +272,52 @@ struct
 		    end (* pushStruct *)
 	     in pushArgs(r1, r2, pad16(fields, pushStruct(fields, args, stmts)))
 	     end
-	   | _ => raise ArgParamMismatch
+	   | _ => error "argument/parameter mismatch"
 	 (* end case *)
 	end
-      | pushArgs _ = raise ArgParamMismatch
+      | pushArgs _ = error "argument/parameter mismatch"
 
     (* struct return address is an implicit 0th argument*)
     fun pushStructRetAddr (acc) = 
      (case retTy
       of Ty.C_STRUCT fields => let
-	   val sz = structSz fields
-	   val addr = structRet{szb=Int.quot(sz, 8), align=0}
+	   val addr = structRet{szb=structSz fields, align=0}
 	 in unsigned{sz=32, e=addr}::acc
 	 end
        | _ => acc
      (*esac*))
 
     (* call defines callersave registers and uses result registers. *)
-    fun mkCall ret = let
+    fun mkCall uses = let
       val defs = [T.GPR(T.REG(32,C.ecx)), T.GPR(T.REG(32,C.edx))]
-      val uses = ret
     in T.CALL{funct=name, targets=[], defs=defs, uses=uses, 
               cdefs=[], cuses=[], region=T.Region.memory}
     end
 
+    (* size to pop off on return *)
+    fun argsSz(Ty.C_STRUCT fields::rest) = let
+          val sz = structSz fields
+	  fun pad16 bytes = 
+	    (case Word.andb(Word.fromInt sz, 0w1)
+	     of 0w0 => sz
+	      | 0w1 => sz+1
+	    (*esac*))
+        in pad16 sz + argsSz(rest)
+        end
+      | argsSz(ty::rest) = sizeOf(ty)+argsSz(rest)
+      | argsSz [] = 0
+
+    
     val c_rets = results(retTy)
     val (retRegs, cpyOut) = copyOut(c_rets, [], [])
-    val call = mkCall(c_rets)::cpyOut
+    val popArgs = T.MV(32, sp, T.ADD(32, T.REG(32,sp), T.LI(argsSz paramTys)))
+    val call = mkCall(c_rets)::popArgs::cpyOut
     val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
   in {callseq=callSeq, result=retRegs}
   end
+    | genCall {proto={conv, ...}, ...} =
+	error(concat["unknown calling convention \"", String.toString conv, "\""])
+
 end
 
      

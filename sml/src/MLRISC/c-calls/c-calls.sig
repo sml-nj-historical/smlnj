@@ -1,29 +1,23 @@
-signature C_CALL = sig
+(* c-calls.sig
+ *
+ * COPYRIGHT (c) 2000 Bell Labs, Lucent Technologies
+ *)
 
-  structure T : MLTREE
+signature C_CALLS =
+  sig
 
-  (* multiple calling conventions on a single architecture *)
-(*  type calling_convention *)
+    structure T : MLTREE
 
-  (* prototype describing C function *)
-  type  c_proto = 
-    { (* conv : calling_convention, *)
-      retTy : CTypes.c_type,
-      paramTys : CTypes.c_type list
-     }
-
-  exception ArgParamMismatch
-
-  datatype  c_arg 
-    = ARG of T.rexp	
-	(* rexp specifies integer or pointer; if the 
-         * corresponding parameter is a C struct, then 
-	 * this argument is the address of the struct. 
-	 *)
-    | FARG of T.fexp
-	(* fexp specifies floating-point argument *)
-    | ARGS of c_arg list
-	(* list of arguments corresponding to  contents of a C struct *)
+    datatype c_arg 
+      = ARG of T.rexp	
+	  (* rexp specifies integer or pointer; if the 
+           * corresponding parameter is a C struct, then 
+	   * this argument is the address of the struct. 
+	   *)
+      | FARG of T.fexp
+	  (* fexp specifies floating-point argument *)
+      | ARGS of c_arg list
+	  (* list of arguments corresponding to the contents of a C struct *)
 
   (* translate a C function call with the given argument list into
    * a MLRISC statement list.  The structRet function is called
@@ -34,14 +28,14 @@ signature C_CALL = sig
    * but some conventions may flatten larger arguments into multiple
    * registers (e.g., a register pair for long long results).
    *)
-  val genCall :
-      { name  : T.rexp,
-        proto : c_proto,
-        structRet :  {szb : int, align : int} -> T.rexp,
-        args : c_arg list
-       }
-      ->
-      { callseq : T.stm list,
-        result: T.mlrisc list
-       }
-end
+    val genCall : {
+	    name  : T.rexp,
+            proto : CTypes.c_proto,
+            structRet : {szb : int, align : int} -> T.rexp,
+            args : c_arg list
+	  } -> {
+	    callseq : T.stm list,
+	    result: T.mlrisc list
+	  }
+
+  end
