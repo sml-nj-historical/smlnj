@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/11 16:37:00 CDT
+Tag: blume-20041011-regions
+Description:
+
+Made some minor modifications to elabcore.sml to have source regions
+be propagated more tightly -- resulting in better (i.e., smaller)
+regions being reported in error- and debug messages.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/08 22:50:00 CDT
 Tag: blume-20041008-cmkw
 Description:

@@ -317,9 +317,11 @@ fun wrapRECdec (rvbs, compInfo) =
 
 val argVarSym = S.varSymbol "arg"
 
+fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
+
 fun FUNdec (completeMatch, fbl, region, 
             compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
-    let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars}) =
+    let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars,region}) =
 	    let fun getvar _ =  newVALvar(argVarSym, mkv)
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
@@ -346,7 +348,7 @@ fun FUNdec (completeMatch, fbl, region,
                                          true))
 				vars
 	     in RVB {var=var,
-		     exp=makeexp vars,
+		     exp=cMARKexp (makeexp vars, region),
                      boundtvs=[],
 		     resultty=NONE,
 		     tyvars=tyvars}
