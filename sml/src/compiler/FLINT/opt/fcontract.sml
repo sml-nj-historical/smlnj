@@ -265,9 +265,6 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 	 of F.VAR lv => lv
 	  | v => bugval ("unexpected val", v)
 
-    fun unuseval f (F.VAR lv) = ignore((C.unuse f false lv) handle x => raise x)
-      | unuseval f _ = ()
-
     (* called when a variable becomes dead.
      * it simply adjusts the use-counts *)
     fun undertake m lv =
@@ -276,10 +273,14 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 	    of Var {1=nlv,...}	 => ()
 	     | Val v		 => ()
 	     | Fun (lv,le,args,_,_) =>
-	       (#2 (C.unuselexp undertake)) (lv, map #1 args, le)
-	     | TFun{1=lv,2=le,...} => (#2 (C.unuselexp undertake)) (lv, [], le)
-	     | (Select {2=v,...} | Con {2=v,...}) => unuseval undertake v
-	     | Record {2=vs,...} => app (unuseval undertake) vs
+	       C.unuselexp undertake
+			   (F.LET(map #1 args,
+				  F.RET (map (fn _ => F.INT 0) args),
+				  le))
+	     | TFun{1=lv,2=le,...} =>
+	       C.unuselexp undertake le
+	     | (Select {2=v,...} | Con {2=v,...}) => unuseval m v
+	     | Record {2=vs,...} => app (unuseval m) vs
 	     (* decon's are implicit so we can't get rid of them *)
 	     | Decon _ => ()
 	end
@@ -288,12 +289,19 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		     | x =>
 		       (say("while undertaking "^(C.LVarString lv)^"\n"); raise x)
 
+    and unuseval m (F.VAR lv) =
+	if (C.unuse false (C.get lv)) then undertake m lv else ()
+      | unuseval f _ = ()
+    fun unusecall m lv = 
+	if (C.unuse true (C.get lv)) then undertake m lv else ()
+
+
     fun addbind (m,lv,sv) = M.add(m, lv, sv)
 
     (* substitute a value sv for a variable lv and unuse value v. *)
     fun substitute (m, lv1, sv, v) =
 	(case sval2val sv of F.VAR lv2 => C.transfer(lv1,lv2) | v2 => ();
-	 unuseval (undertake m) v;
+	 unuseval m v;
 	 addbind(m, lv1, sv)) handle x =>
 	     (say ("while substituting "^
 		   (C.LVarString lv1)^
@@ -336,7 +344,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		  * looks inoffensive enough, but still requires some care:
 		  * see comments at the begining of this file and in cfun *)
 		 (inlineWitness := true;
-		  C.unuse (fn _ => ()) true g;
+		  ignore(C.unuse true (C.get g));
 		  ASSERT(not (used g), "killed");
 		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
 		 
@@ -354,8 +362,8 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		 in
 		     inlineWitness := true;
 		     (*  say ("\nInlining "^(C.LVarString g)); *)
-		     (app (unuseval (undertake m)) vs) handle x => raise x;
-		     (C.unuse (undertake m) true g) handle x => raise x;
+		     (app (unuseval m) vs) handle x => raise x;
+		     unusecall m g;
 		     (SOME(nle, od),
 		      (* gross hack: to prevent further unrolling,
 		       * I pretend that the rest is not inside the body *)
@@ -492,7 +500,7 @@ in
 			   (* I could almost reuse `substitute' but the
 			    * unuse in substitute assumes the val is escaping *)
 			   C.transfer(f, g);
-			   C.unuse (undertake m) true g;
+			   unusecall m g;
 			   (addbind(m, f, svg), fs, f::hs)
 		       end
 		       (* the default case could ensure the inline *)
@@ -635,9 +643,9 @@ in
       | F.SWITCH (v,ac,arms,def) =>
 	(case ((val2sval m v) handle x => raise x)
 	  of sv as Con (lvc,v,dc1,tycs1) =>
-	     let fun killle le = ((#1 (C.unuselexp (undertake m))) le) handle x => raise x
+	     let fun killle le = C.unuselexp (undertake m) le
 		 fun kill lv le =
-		     ((#1 (C.unuselexp (undertake (addbind(m,lv,Var(lv,NONE)))))) le) handle x => raise x
+		     C.unuselexp (undertake (addbind(m,lv,Var(lv,NONE)))) le
 		 fun killarm (F.DATAcon(_,_,lv),le) = kill lv le
 		   | killarm _ = buglexp("bad arm in switch(con)", le)
 
@@ -658,7 +666,7 @@ in
 	     end
 
 	   | sv as Val v =>
-	     let fun kill le = ((#1 (C.unuselexp (undertake m))) le) handle x => raise x
+	     let fun kill le = C.unuselexp (undertake m) le
 		 fun carm ((con,le)::tl) =
 		     if eqConV(con, v) then
 			  (map (kill o #2) tl;
@@ -684,11 +692,11 @@ in
 		  in
 		      if used lv then
 			  F.SWITCH(nv,ac,[(F.DATAcon(ndc,tycs,lv),nle)],NONE)
-		      else (unuseval (undertake m) nv; nle)
+		      else (unuseval m nv; nle)
 		  end
 		| (([(_,le)],NONE) | ([],SOME le)) =>
 		  (* This should never happen, but we can optimize it away *)
-		  (unuseval (undertake m) (sval2val sv); loop m le cont)
+		  (unuseval m (sval2val sv); loop m le cont)
 		| _ =>
 		  let fun carm (F.DATAcon(dc,tycs,lv),le) =
 			  let val ndc = cdcon dc
@@ -767,7 +775,7 @@ in
 		of SOME v => 
 		   let val sv = (val2sval m v) handle x => raise x
 		   in loop (substitute(m, lv, sv, F.INT 0)) le cont
-			   before app (unuseval (undertake m)) vs
+			   before app (unuseval m) vs
 		   end
 		 | _ => 
 		   let val nvs = map sval2val svs

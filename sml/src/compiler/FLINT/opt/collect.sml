@@ -19,14 +19,14 @@ sig
 
     (* inc the "true=call,false=use" count *)
     val use    : FLINT.value list option -> info -> unit
-    (* dec the "true=call,false=use" count and call the function (and return true) if zero *)
-    val unuse  : (FLINT.lvar -> unit) -> bool -> FLINT.lvar -> bool
+    (* dec the "true=call,false=use" count and return true if zero *)
+    val unuse  : bool -> info -> bool
     (* transfer the counts of var1 to var2 *)
     val transfer : FLINT.lvar * FLINT.lvar -> unit
     (* add the counts of var1 to var2 *)
     (*  val addto  : info * info -> unit *)
     (* delete the last reference to a variable *)
-    val kill   : FLINT.lvar -> unit
+    (*  val kill   : FLINT.lvar -> unit *)
     (* create a new var entry (SOME arg list if fun) initialized to zero *)
     val new    : FLINT.lvar list option -> FLINT.lvar -> info
 
@@ -34,12 +34,8 @@ sig
     (* val copy   : FLINT.lvar * FLINT.lvar -> unit *)
 
     (* fix up function to keep counts up-to-date when getting rid of code.
-     * the arg is only called for *free* variables becoming dead.
-     * the first function returned just unuses an exp, while the
-     * second unuses a function declaration (f,args,body) *)
-    val unuselexp : (FLINT.lvar -> unit) -> 
-	((FLINT.lexp -> unit) *
-         ((FLINT.lvar * FLINT.lvar list * FLINT.lexp) -> unit))
+     * the arg is called for *free* variables becoming dead. *)
+    val unuselexp : (FLINT.lvar -> unit) -> FLINT.lexp -> unit
     (* function to collect info about a newly created lexp *)
     val uselexp : FLINT.lexp -> unit
     (* function to copy (and collect info) a lexp *)
@@ -91,14 +87,10 @@ fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun ASSERT (true,_) = ()
   | ASSERT (FALSE,msg) = bug ("assertion "^msg^" failed")
 
-exception UnexpectedTransfer
-
-datatype info
-  (* for functions we keep track of calls and escaping uses *)
-  = Fun of {calls: int ref, uses: int ref,
-	    args: (FLINT.lvar * (FLINT.value option)) option list ref}
-  | Var of int ref	(* for other vars, a simple use count is kept *)
-  | Transfer of FLINT.lvar	(* for vars which have been transfered *)
+type info
+  (* we keep track of calls and escaping uses *)
+  = {calls: int ref, uses: int ref,
+     args: (FLINT.lvar * (FLINT.value option)) option list ref option}
     
 exception NotFound
 	      
@@ -111,48 +103,34 @@ fun get lv = (M.map m lv)
 			(LV.lvarName lv)^
 			". Pretending dead...\n");
 		   (*  raise x; *)
-		   Var (ref 0))
+		   {uses=ref 0, calls=ref 0, args=NONE})
 
 fun LVarString lv =
-    (LV.lvarName lv)^
-    ((case get lv of
-	 Var uses => "{"^(Int.toString (!uses))^"}"
-       | Fun {calls,uses,...} =>
-	 concat ["{", Int.toString (!uses), ",", Int.toString (!calls), "}"]
-       | Transfer lv => "{->"^(LVarString lv)^"}")
-	 handle NotFound => "{?}")
-
-fun get' lv = case get lv of Transfer nlv => get' nlv | i => i
-
+    let val {uses=ref uses,calls=ref calls,...} = get lv
+    in (LV.lvarName lv)^
+	"{"^(Int.toString uses)^
+	(if calls > 0 then ","^(Int.toString calls) else "")^"}"
+    end
+	
 fun new args lv =
-    let val i =
-	    case args
-	     of SOME args => Fun{calls=ref 0, uses=ref 0,
-				 args=ref (map (fn a => SOME(a, NONE)) args)}
-	      | NONE => Var(ref 0)
+    let val i = {uses=ref 0, calls=ref 0,
+		 args=case args
+		       of SOME args => SOME(ref(map (fn a => SOME(a, NONE)) args))
+			| NONE => NONE}
     in M.add m (lv, i); i
     end
 
 (* adds the counts of lv1 to those of lv2 *)
-fun addto (info1,info2) =
-    case info1
-     of Var uses1 =>
-	(case info2
-	  of Var uses2 => uses2 := !uses2 + !uses1
-	   | Fun {uses=uses2,...} => uses2 := !uses2 + !uses1
-	   | Transfer _ => raise UnexpectedTransfer)
-      | Fun {uses=uses1,calls=calls1,...} =>
-	(case info2
-	  of Fun {uses=uses2,calls=calls2,...} =>
-	     (uses2 := !uses2 + !uses1; calls2 := !calls2 + !calls1)
-	   | Var uses2 => uses2 := !uses2 + !uses1
-	   | Transfer _ => raise UnexpectedTransfer)
-      | Transfer _ => raise UnexpectedTransfer
-
+fun addto ({uses=uses1,calls=calls1,...}:info,{uses=uses2,calls=calls2,...}:info) =
+    (uses2 := !uses2 + !uses1; calls2 := !calls2 + !calls1)
+	    
 fun transfer (lv1,lv2) =
-    (addto(get lv1, get lv2);
-     (* note the transfer *)
-     M.add m (lv1, Transfer lv2)) handle x => raise x
+    let val i1 = get lv1
+	val i2 = get lv2
+    in addto(i1, i2);
+	(* note the transfer by redirecting the map *)
+	M.add m (lv1, i2)
+    end
 	       
 fun inc ri = (ri := !ri + 1)
 fun dec ri = (ri := !ri - 1)
@@ -166,47 +144,38 @@ fun mergearg (NONE,a) = NONE
   | mergearg (SOME(fv,SOME b),a) =
     if a = b orelse a = F.VAR fv then SOME(fv,SOME b) else NONE
 
-fun actuals (Var _) = bug "can't query actuals of a var" (* (LVarString lv) *)
-  | actuals (Transfer lv) = raise UnexpectedTransfer
-  | actuals (Fun{args,...}) = map (fn SOME(_,v) => v | _ => NONE) (!args)
+fun actuals ({args=NONE,...}:info) = bug "can't query actuals of a var"
+  | actuals {args=SOME args,...} = map (fn SOME(_,v) => v | _ => NONE) (!args)
 
-fun use call (Var uses) = inc uses
-  | use call (Transfer lv) = raise UnexpectedTransfer
-  | use call (Fun {uses,calls,args,...}) =
-    case call of
-	NONE => (inc uses; args := map (fn _ => NONE) (!args))
-      | SOME vals => 
-	(inc calls; inc uses; args := ListPair.map mergearg (!args, vals))
+fun use call ({uses,calls,args,...}:info) =
+    (inc uses;
+     case call
+      of NONE => (case args of SOME args => args := map (fn _ => NONE) (!args)
+			     | _ => ())
+      | SOME vals =>
+	(inc calls;
+	 case args of SOME args => args := ListPair.map mergearg (!args, vals)
+		    | _ => ()))
 
-fun unuse undertaker call lv =
-    let fun check uses =
-	    if !uses < 0 then
-		bugval("decrementing too much", F.VAR lv)
-	    else if !uses = 0 then
-		(undertaker lv; true)
-	    else false
-    in case get' lv
-	of Var uses => (dec uses; check uses)
-	 | Fun {uses,calls,...} =>
-	   (dec uses; if (call andalso !calls > 0) then dec calls else ASSERT(!uses >= !calls, "unknown sanity"); check uses)
-	 | Transfer lv => bug "transfer"
-    end handle x => raise x
+fun unuse call ({uses,calls,...}:info) =
+    (* notice the calls could be dec'd to negative values because a
+     * use might be turned from escaping to known between the census
+     * and the unuse.  We can't easily detect such changes, but
+     * we can detect it happened when we try to go below zero. *)
+    (dec uses;
+     if (call andalso !calls > 0) then dec calls
+     else ASSERT(!uses >= !calls, "unknown sanity");
+     if !uses < 0 then bug "decrementing too much" (* F.VAR lv) *)
+     else !uses = 0)
 
-fun usenb (Fun{uses=uses,...} | Var uses) = !uses
-  | usenb (Transfer _) = (raise UnexpectedTransfer; 0)
-fun used i      = usenb i > 0
-
-fun escaping (Fun{uses,calls,...}) = !uses > !calls
-  | escaping (Var us) = !us > 0 (* arbitrary, but hopefully "safe" *)
-  | escaping (Transfer lv) = raise UnexpectedTransfer
-
-fun called (Fun{calls,...}) = !calls > 0
-  | called (Var us) = false (* arbitrary, but consistent with escaping *)
-  | called (Transfer lv) = raise UnexpectedTransfer
+fun usenb ({uses=ref uses,...}:info) = uses
+fun used ({uses,...}:info) = !uses > 0
+fun escaping ({uses,calls,...}:info) = !uses > !calls
+fun called ({calls,...}:info) = !calls > 0
 
 (* Ideally, we should check that usenb = 1, but we may have been a bit
  * conservative when keeping the counts uptodate *)
-fun kill lv = (ASSERT(usenb(get' lv) >= 1, "usenb "^(LVarString lv)^" >= 1 ");
+fun kill lv = (ASSERT(usenb(get lv) >= 1, "usenb "^(LVarString lv)^" >= 1 ");
 	       M.rmv m lv)
 
 (* ********************************************************************** *)
@@ -234,8 +203,8 @@ fun impurePO po = true		(* if a PrimOP is pure or not *)
 
 val census = let
     (* val use = if inc then use else unuse *)
-    fun call args lv = use args (get' lv)
-    val use = fn F.VAR lv => use NONE (get' lv) | _ => ()
+    fun call args lv = use args (get lv)
+    val use = fn F.VAR lv => use NONE (get lv) | _ => ()
     fun newv lv = new NONE lv
     fun newf args lv = new args lv
     fun id x = x
@@ -338,9 +307,10 @@ end
  * is indeed exactly 1 (accomplished by the "kill" calls) *)
 fun unuselexp undertaker = let
     (* val use = if inc then use else unuse *)
-    fun uncall lv = ignore(unuse undertaker true lv)
-    val unuse = fn F.VAR lv => ignore(unuse undertaker false lv) | _ => ()
-    fun def lv = (use NONE (get lv)) handle x => raise x
+    fun uncall lv = if unuse true (get lv) then undertaker lv else ()
+    val unuse = fn F.VAR lv => if unuse false (get lv) then undertaker lv else ()
+		 | _ => ()
+    fun def i = (use NONE i)
     fun id x = x
 
     fun cpo (NONE:F.dict option,po,lty,tycs) = ()
@@ -349,21 +319,22 @@ fun unuselexp undertaker = let
     fun cdcon (s,Access.EXN(Access.LVAR lv),lty) = unuse(F.VAR lv)
       | cdcon _ = ()
 
-    fun cfun (f,args,body) = (* census of a fundec *)
-	(app def args; cexp body; app kill args) handle x => raise x
+    fun cfun (args,body) = (* census of a fundec *)
+	(app (def o get) args; cexp body; app kill args) handle x => raise x
 
     and cexp lexp =
 	(case lexp
 	 of F.RET vs => app unuse vs
 
 	  | F.LET (lvs,le1,le2) =>
-	    (app def lvs; cexp le2; cexp le1; app kill lvs)
+	    (app (def o get) lvs; cexp le2; cexp le1; app kill lvs)
 
 	  | F.FIX (fs,le) =>
-	    let val usedfs = (List.filter ((used o get o #2) handle x => raise x) fs)
-	    in app (def o #2) fs;
+	    let val fs = map (fn (_,f,args,body) => (get f, f, args, body)) fs
+		val usedfs = (List.filter (used o #1) fs)
+	    in app (def o #1) fs;
 		cexp le;
-		app (fn (_,lv,args,le) => cfun(lv, map #1 args, le)) usedfs;
+		app (fn (_,_,args,le) => cfun(map #1 args, le)) usedfs;
 		app (kill o #2) fs
 	    end
 	       
@@ -371,8 +342,10 @@ fun unuselexp undertaker = let
 	    (uncall f; app unuse vs)
 
 	  | F.TFN ((tf,args,body),le) =>
-	    (if used(get tf) then cexp body else ();
-	     def tf; cexp le; kill tf)
+	     let val tfi = get tf
+	     in if used tfi then cexp body else ();
+		 def tfi; cexp le; kill tf
+	     end
 
 	  | F.TAPP (F.VAR tf,tycs) => uncall tf
 
@@ -381,21 +354,27 @@ fun unuselexp undertaker = let
 	     (* here we don't absolutely have to keep track of vars bound within
 	      * each arm since these vars can't be eliminated anyway *)
 	     app (fn (F.DATAcon(dc,_,lv),le) =>
-		  (cdcon dc; def lv; cexp le; kill lv)
+		  (cdcon dc; def(get lv); cexp le; kill lv)
 		   | (_,le) => cexp le)
 		 arms)
 		
 	  | F.CON (dc,_,v,lv,le) =>
-	    (cdcon dc; if used(get lv) then unuse v else ();
-	     def lv; cexp le; kill lv)
+	    let val lvi = get lv
+	    in cdcon dc; if used lvi then unuse v else ();
+		def lvi; cexp le; kill lv
+	    end
 
 	  | F.RECORD (_,vs,lv,le) =>
-	    (if used(get lv) then app unuse vs else ();
-	     def lv; cexp le; kill lv)
+	    let val lvi = get lv
+	    in if used lvi then app unuse vs else ();
+		def lvi; cexp le; kill lv
+	    end
 
 	  | F.SELECT (v,_,lv,le) =>
-	    (if used(get lv) then unuse v else ();
-	     def lv; cexp le; kill lv)
+	    let val lvi = get lv
+	    in if used lvi then unuse v else ();
+		def lvi; cexp le; kill lv
+	    end
 
 	  | F.RAISE (v,_) => unuse v
 	  | F.HANDLE (le,v) => (unuse v; cexp le)
@@ -404,14 +383,16 @@ fun unuselexp undertaker = let
 	    (app unuse vs; cpo po; cexp le1; cexp le2)
 	  
 	  | F.PRIMOP (po,vs,lv,le) =>
-	    (if impurePO po orelse used(get lv) then
-		 (cpo po; app unuse vs)
-	     else ();
-	     def lv; cexp le; kill lv)
+	    let val lvi = get lv
+	    in if impurePO po orelse used lvi
+	       then (cpo po; app unuse vs)
+	       else ();
+	       def lvi; cexp le; kill lv
+	    end
 
 	  | le => buglexp("unexpected lexp", le)) handle x => raise x
 in
-    (cexp, cfun)
+    cexp
 end
 
 val uselexp = census All

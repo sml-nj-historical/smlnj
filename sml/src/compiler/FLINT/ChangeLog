@@ -1,3 +1,11 @@
+1998-11-11  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/collect.sml: switched back to a read-only collect phase.  Also try
+	  to export the info to allow fcontract to circumvent some of the get calls.
+	(info): got rid of Transfer by using the intmap for redirection.
+	(unuselexp): junk the fundec part.
+	(unuse): return a boolean instead of calling an undertaker.
+
 1998-11-09  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/fcontract.sml: take advantage of single-arm SWITCH (aka decon)
