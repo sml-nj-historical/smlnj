@@ -1,4 +1,4 @@
-functor SparcPeepHole(SparcInstr : SPARCINSTR) : PEEPHOLE =
+functor SparcPeephole(SparcInstr : SPARCINSTR) : PEEPHOLE =
 struct
    structure I = SparcInstr
 

@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/09 19:09:00 EST
+Tag: leunga-20000409-misc
+Description:
+
+1.  Yet another fix for x86 assembly for idivl, imull, mull and friends.
+
+2.  Miscellaneous improvements to MLRISC (unused in sml/nj)  
+
+----------------------------------------------------------------------
 Name: Stefan
 Date: 2000/04/07 10:00:00 EDT
 Tag: monnier-20000406-branch-handling

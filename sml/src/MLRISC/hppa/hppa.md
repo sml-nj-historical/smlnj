@@ -221,10 +221,14 @@ struct
           map COMICLR_LDO3 comparisons
 
       (* Integer branching instructions *)
-      fun COMBT cmp {r1,r2,t} = if cmp($r[r1],$r[r2]) then Jmp(%%t) else ()
-      fun COMBF cmp {r1,r2,t} = if cmp($r[r1],$r[r2]) then () else Jmp(%%t)
-      fun COMIBT cmp {i,r2,t} = if cmp(immed i,$r[r2]) then Jmp(%%t) else ()
-      fun COMIBF cmp {i,r2,t} = if cmp(immed i,$r[r2]) then () else Jmp(%%t)
+      fun COMBT cmp {r1,r2,t} = 
+           (if cmp($r[r1],$r[r2]) then Jmp(%%t) else ()) || $ctrl[0] := ?
+      fun COMBF cmp {r1,r2,t} = 
+           (if cmp($r[r1],$r[r2]) then () else Jmp(%%t)) || $ctrl[0] := ?
+      fun COMIBT cmp {i,r2,t} = 
+           (if cmp(immed i,$r[r2]) then Jmp(%%t) else ()) || $ctrl[0] := ?
+      fun COMIBF cmp {i,r2,t} = 
+           (if cmp(immed i,$r[r2]) then () else Jmp(%%t)) || $ctrl[0] := ?
       rtl COMBT_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
           map COMBT comparisons
       rtl COMBF_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
@@ -238,10 +242,12 @@ struct
       rtl BV{x,b}  = Jmp($r[x] << 2 + $r[b])
            (* BB,< branch on bit set *)
       rtl BB_BSET{p,r,t} = 
-            if andb($r[r],1 << (31 - immed p)) <> 0 then Jmp(%%t) else ()
+           (if andb($r[r],1 << (31 - immed p)) <> 0 then Jmp(%%t) else ())
+         || $ctrl[0] := ?
            (* BB,>= branch on bit clear *)
       rtl BB_BCLR{p,r,t} = 
-            if andb($r[r],1 << (31 - immed p)) == 0 then Jmp(%%t) else ()
+           (if andb($r[r],1 << (31 - immed p)) == 0 then Jmp(%%t) else ())
+         || $ctrl[0] := ?
 
       rtl BLE{d,b,defs,uses,mem} = 
           Call($r[b] + %d)    || (* call *)

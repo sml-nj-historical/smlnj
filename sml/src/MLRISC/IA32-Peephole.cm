@@ -6,7 +6,7 @@
  *)
 
 Library 
-	functor X86PeepHole
+	functor X86Peephole
 is
 
 #if defined(NEW_CM)

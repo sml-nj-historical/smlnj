@@ -308,7 +308,8 @@ struct
           (*esac*)
        end
      | I.MULTDIV{multDivOp, src} => let
-         val mulOp = (case multDivOp of I.UMUL => 4 | I.IDIV => 7 | I.UDIV => 6)
+         val mulOp = 
+             (case multDivOp of I.MULL => 4 | I.IDIVL => 7 | I.DIVL => 6)
        in eBytes(0wxf7 :: eImmedExt(mulOp, src))
        end
      | I.MUL3{dst, src1, src2} => let

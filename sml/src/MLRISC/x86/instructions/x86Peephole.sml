@@ -1,4 +1,4 @@
-functor X86PeepHole(X86Instr : X86INSTR) : PEEPHOLE =
+functor X86Peephole(X86Instr : X86INSTR) : PEEPHOLE =
 struct
    structure I = X86Instr
 

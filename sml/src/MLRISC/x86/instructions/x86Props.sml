@@ -134,8 +134,8 @@ struct
       val uses = operandUse src
     in
       case multDivOp
-       of (I.IDIV | I.UDIV) => (eaxPair, C.edx::C.eax::uses)
-        | I.UMUL => (eaxPair, C.eax::uses)
+       of (I.IDIVL | I.DIVL) => (eaxPair, C.edx::C.eax::uses)
+        | I.MULL => (eaxPair, C.eax::uses)
     end
 
     fun unary opnd = (operandDef opnd, operandUse opnd)

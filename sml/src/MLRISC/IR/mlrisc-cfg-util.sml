@@ -118,20 +118,32 @@ struct
        val _  = case !d2 of [] => () | _ => raise Can'tMerge
        val CFG.BLOCK{data=d1,insns=i1,annotations=a1,...} = 
               #node_info cfg i
-          (* If both blocks have annotations then don't merge them *)
-       val _ = case (!a1, !a2) of
-                 (_::_, _::_) => raise Can'tMerge
-               | _ => ()
+          (* If both blocks have annotations then don't merge them.
+           * But instead, just try to removed the jump instruction instead.
+           *)
+       val canMerge = case (!a1, !a2) of
+                 (_::_, _::_) => false
+               | _ => true
        val insns1 = case !i1 of
                       [] => []
                     | insns as jmp::rest => 
                         if InsnProps.instrKind jmp = InsnProps.IK_JUMP 
                         then rest else insns
-   in  i1 := !i2 @ insns1;
-       a1 := !a1 @ !a2;
-       #set_out_edges cfg (i,map (fn (_,j',e) => (i,j',e)) (#out_edges cfg j));
-       #remove_node cfg j;
-       updateJumpLabel CFG i;
+   in  if canMerge then
+        (i1 := !i2 @ insns1;
+         a1 := !a1 @ !a2;
+         #set_out_edges cfg 
+           (i,map (fn (_,j',e) => (i,j',e)) (#out_edges cfg j));
+         #remove_node cfg j;
+         updateJumpLabel CFG i
+        )
+       else (* Just eliminate the jump instruction at the end *)
+         (i1 := insns1;
+          #set_out_edges cfg 
+            (i,map (fn (i,j,CFG.EDGE{w,a,...}) => 
+                  (i,j,CFG.EDGE{k=CFG.FALLSTHRU,w=w,a=a}))
+                     (#out_edges cfg i))
+         );
        true
    end handle Can'tMerge => false
 
@@ -215,11 +227,13 @@ struct
     *
     *=====================================================================*)
    fun splitAllCriticalEdges (CFG as G.GRAPH cfg) =
-       (#forall_edges cfg (fn e => if isCriticalEdge CFG e then
-          (splitEdge CFG {edge=e,kind=CFG.NORMAL,jump=false}; ())
-                                  else ());
-        CFG.changed CFG
-       )
+   let val changed = ref false
+   in  #forall_edges cfg 
+         (fn e => if isCriticalEdge CFG e then
+           (splitEdge CFG {edge=e,kind=CFG.NORMAL,jump=false}; changed := true)
+            else ());
+       if !changed then CFG.changed CFG else ()
+   end 
 
    (*=====================================================================
     *

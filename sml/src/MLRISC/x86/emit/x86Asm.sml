@@ -127,9 +127,9 @@ struct
      | asm_binaryOp (I.SARB) = "sarb"
      | asm_binaryOp (I.SHRB) = "shrb"
    and emit_binaryOp x = emit (asm_binaryOp x)
-   and asm_multDivOp (I.UMUL) = "umul"
-     | asm_multDivOp (I.IDIV) = "idiv"
-     | asm_multDivOp (I.UDIV) = "udiv"
+   and asm_multDivOp (I.MULL) = "mull"
+     | asm_multDivOp (I.IDIVL) = "idivl"
+     | asm_multDivOp (I.DIVL) = "divl"
    and emit_multDivOp x = emit (asm_multDivOp x)
    and asm_unaryOp (I.DECL) = "decl"
      | asm_unaryOp (I.INCL) = "incl"
@@ -412,7 +412,7 @@ struct
         )
       | I.MULTDIV{multDivOp, src} => 
         ( emit_multDivOp multDivOp; 
-        emit "l\t"; 
+        emit "\t"; 
         emit_src src )
       | I.MUL3{dst, src2, src1} => 
         (

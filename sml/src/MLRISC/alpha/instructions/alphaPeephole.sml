@@ -1,4 +1,4 @@
-functor AlphaPeepHole(AlphaInstr : ALPHAINSTR) : PEEPHOLE =
+functor AlphaPeephole(AlphaInstr : ALPHAINSTR) : PEEPHOLE =
 struct
    structure I = AlphaInstr
 

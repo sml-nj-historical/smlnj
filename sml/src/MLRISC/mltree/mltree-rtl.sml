@@ -212,12 +212,33 @@ struct
      and cell rw (CELL(k,t,e,r)) = CELL(k,t,#rexp rw e,r)
     )
 
-   val A_TRAPPING   = W.<<(0w1,0w1)
-   val A_PINNED     = W.<<(0w1,0w2)
-   val A_SIDEEFFECT = W.<<(0w1,0w3)
+   structure Fold = MLTreeFold
+    (structure T = T
+     fun rext fold (_,FETCH l,x) = loc fold (l,x)
+       | rext fold (_,FORALL e,x) = #rexp fold (e,x)
+       | rext fold (_,OP(m, es),x) = foldl (#rexp fold) x es
+       | rext fold (_,SLICE(sl, ty, e),x) =
+            foldl (fn ({from,to},x) => #rexp fold (from, #rexp fold (to, x)))
+               (#rexp fold (e,x)) sl
+       | rext fold (_,_,x) = x
+     and sext fold (ASSIGN(l, e),x) = loc fold (l, #rexp fold (e,x))
+       | sext fold (PAR(a,b), x)    = #stm fold (b, #stm fold (a,x))
+     and fext fold (_,_,x) = x
+     and ccext fold (_,_,x) = x
+     and loc fold (AGG(t1,t2,c),x) = cell fold (c,x)
+     and cell (fold as {stm, rexp, fexp, ccexp}) (CELL(k,t,e,r),x) = rexp (e,x)
+    )
+
+   (*
+    * Attributes
+    *)
+   val A_TRAPPING   = W.<<(0w1,0w1)  (* may cause traps *)
+   val A_PINNED     = W.<<(0w1,0w2)  (* cannot be moved *)
+   val A_SIDEEFFECT = W.<<(0w1,0w3)  (* has side effect *)
    val A_MUTATOR    = W.<<(0w1,0w4)
    val A_LOOKER     = W.<<(0w1,0w5)
-   val A_BRANCH     = W.<<(0w1,0w6)
+   val A_BRANCH     = W.<<(0w1,0w6)  (* conditional branch *)
+   val A_JUMP       = W.<<(0w1,0w7)  (* has control flow *)
    val A_PURE       = 0wx0
 
    (* 
@@ -273,24 +294,60 @@ struct
    in  #stm(Rewrite.rewrite{rexp=rexp,fexp=NIL,stm=stm,ccexp=ccexp}) rtl
    end
 
+   infix ||
+   val op || = W.orb 
+ 
+   (*
+    * Collect attributes
+    *)
+   fun attribsOf rtl = 
+   let fun stm(T.STORE _,a)     = a || (A_SIDEEFFECT || A_MUTATOR)
+         | stm(T.JMP _, a)      = a || (A_JUMP || A_SIDEEFFECT)
+         | stm(T.IF _, a)       = a || (A_BRANCH || A_JUMP || A_SIDEEFFECT)
+         | stm(T.RET _, a)      = a || (A_JUMP || A_SIDEEFFECT)
+         | stm(T.CALL _, a)     = a || A_SIDEEFFECT
+         | stm(T.EXT(ASSIGN(AGG(_,_,CELL("MEM",_,_,_)),_)),a) = 
+             a || (A_SIDEEFFECT || A_MUTATOR)
+         | stm(T.PINNED _,a) = a || A_PINNED
+         | stm(_, a) = a
+       fun rexp(T.ADDT _,a) = a || A_TRAPPING
+         | rexp(T.SUBT _,a) = a || A_TRAPPING
+         | rexp(T.MULT _,a) = a || A_TRAPPING
+         | rexp(T.DIVT _,a) = a || A_TRAPPING
+         | rexp(T.REMT _,a) = a || A_TRAPPING
+         | rexp(T.LOAD _,a) = a || A_LOOKER
+         | rexp(_, a) = a
+       fun fexp(_, a) = a
+       fun ccexp(_, a) = a
+   in  #stm (Fold.fold{stm=stm,rexp=rexp, fexp=fexp, ccexp=ccexp}) rtl
+   end
+
+   (* Query functions *)
+   fun isOn(a,flag) = Word.andb(a,flag) <> 0w0
+   fun can'tMoveUp rtl = true
+   fun can'tMoveDown rtl = true
+   fun hasSideEffect(T.RTL{attribs, ...}) = isOn(attribs, A_SIDEEFFECT)
+     | hasSideEffect _ = false
+   fun can'tBeRemoved(T.RTL{attribs, ...}) = 
+         isOn(attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP)
+     | can'tBeRemoved _ = false
+   fun isConditionalBranch(T.RTL{attribs, ...}) = isOn(attribs,A_BRANCH)
+     | isConditionalBranch _ = false
+
    (*
     * Create a uniq RTL 
     *)
-    
-   fun new(action) = 
-   let val action = reduce action
-       val attribs = A_PURE
-   in  case action of
-         T.COPY _ => action
-       | _ => T.RTL{e=action,hash=ref(newHash()),attribs=attribs} : rtl
+   fun new(rtl) = 
+   let val rtl = reduce rtl
+       val attribs = attribsOf(rtl, A_PURE)
+       val rtl = 
+         case rtl of
+           T.COPY _ => rtl
+         | _ => T.RTL{e=rtl,hash=ref(newHash()),attribs=attribs}
+   in  rtl 
    end
 
    val COPY = T.COPY(0,[],[])
-   val JMP  = T.JMP([],T.REG(0,0),[])
-
-   (* Query functions *)
-   fun can'tMoveUp rtl = true
-   fun can'tMoveDown rtl = true
-   fun hasSideEffect rtl = true
+   val JMP  = new(T.JMP([],T.REG(0,0),[]))
 
 end

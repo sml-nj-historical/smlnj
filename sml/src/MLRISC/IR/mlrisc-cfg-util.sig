@@ -9,6 +9,11 @@ sig
    structure CFG : CONTROL_FLOW_GRAPH
 
    (*=======================================================================
+    * Get a label from a block
+    *=======================================================================*)
+   val labelOf : CFG.cfg -> Graph.node_id -> Label.label
+
+   (*=======================================================================
     *  Update the label of the branch instruction in a block
     *  to be consistent with the control flow edges.  
     *  This is an NOP if the CFG is already consistent.

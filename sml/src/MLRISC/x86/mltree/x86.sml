@@ -455,8 +455,8 @@ struct
               fun divrem(signed, overflow, e1, e2, resultReg) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
                   val _ = move(opnd1, eax)
-                  val oper = if signed then (emit(I.CDQ); I.IDIV)
-                             else (zero edx; I.UDIV)
+                  val oper = if signed then (emit(I.CDQ); I.IDIVL)
+                             else (zero edx; I.DIVL)
               in  mark(I.MULTDIV{multDivOp=oper, src=regOrMem opnd2},an);
                   move(resultReg, rdOpnd);
                   if overflow then trap() else ()
@@ -509,7 +509,7 @@ struct
               fun uMultiply(e1, e2) = 
                   (* note e2 can never be (I.Direct edx) *)
                   (move(operand e1, eax);
-                   mark(I.MULTDIV{multDivOp=I.UMUL, 
+                   mark(I.MULTDIV{multDivOp=I.MULL, 
                                   src=regOrMem(operand e2)},an);
                    move(eax, rdOpnd)
                   )
@@ -673,17 +673,26 @@ struct
         
               fun unknownExp exp = doExpr(Gen.compileRexp exp, rd, an) 
 
-                  (* Generate addition *)
-              fun addition(e1, e2) =
-                (dstMustBeReg(fn (dstR, _) => 
-                    mark(I.LEA{r32=dstR, addr=address(exp, readonly)}, an))
-                handle EA => binaryComm(I.ADDL, e1, e2))
-
                   (* Add n to rd *)
               fun addN n =
               let val n = operand n
                   val src = if isMemReg rd then immedOrReg n else n
               in  mark(I.BINARY{binOp=I.ADDL, src=src, dst=rdOpnd}, an) end
+
+                  (* Generate addition *)
+              fun addition(e1, e2) =
+                  case e1 of
+                    T.REG(_,rs) => if rs = rd then addN e2 else addition1(e1,e2)
+                  | _ => addition1(e1,e2)
+              and addition1(e1, e2) =
+                  case e2 of
+                    T.REG(_,rs) => if rs = rd then addN e1 else addition2(e1,e2)
+                  | _ => addition2(e1,e2) 
+              and addition2(e1,e2) =     
+                (dstMustBeReg(fn (dstR, _) => 
+                    mark(I.LEA{r32=dstR, addr=address(exp, readonly)}, an))
+                handle EA => binaryComm(I.ADDL, e1, e2))
+
 
           in  case exp of
                T.REG(_,rs) => 
@@ -709,10 +718,6 @@ struct
              | T.ADD(32, (T.LI 1|T.LI32 0w1), e) => unary(I.INCL, e)
              | T.ADD(32, e, T.LI ~1) => unary(I.DECL, e)
              | T.ADD(32, T.LI ~1, e) => unary(I.DECL, e)
-             | T.ADD(32, e1 as T.REG(_, rs), e2) =>
-                  if rs = rd then addN e2 else addition(e1, e2)
-             | T.ADD(32, e1, e2 as T.REG(_,rs)) =>
-                  if rs = rd then addN e1 else addition(e1, e2)
              | T.ADD(32, e1, e2) => addition(e1, e2)
 
                (* 32-bit subtraction *)

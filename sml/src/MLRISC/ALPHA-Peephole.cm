@@ -1,5 +1,5 @@
 Library 
-	functor AlphaPeepHole
+	functor AlphaPeephole
 is
 
 #if defined(NEW_CM)

@@ -21,15 +21,17 @@ sig
    (* Return the RTL describing the semantics of an instruction *)
    val rtl : I.instruction -> RTL.rtl  
 
-   (* Return the def/use of an instruction *) 
+   (* Return the def/use of an instruction.  *) 
    val defUse : { immed   : int -> C.cell, 
                   label   : Label.label -> C.cell,
                   operand : I.operand -> C.cell
                 } -> 
-                I.instruction -> 
-                C.cell list * C.cell list (* dst/src *)
+                I.instruction -> C.cell list * C.cell list (* dst/src *)
 
-   (* Return the def/use of an instruction with cellkind information *) 
+   (* Return the def/use of an instruction with cellkind information 
+    * This function works the same way as the above.  But with cellkind
+    * information attached.
+    *) 
    val defUseWithCellKind : 
                 { immed   : int -> C.cell, 
                   label   : Label.label -> C.cell,

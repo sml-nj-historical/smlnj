@@ -32,6 +32,7 @@ struct
        val Dom as G.GRAPH dom   = IR.dom  IR
        val Loop as G.GRAPH loop = IR.loop IR
        val dominates            = Dom.dominates Dom
+       val labelOf              = Util.labelOf CFG
        val changed              = ref false
 
        exception GiveUp
@@ -57,7 +58,14 @@ struct
             ([e1 as (_,j,CFG.EDGE{w=w1,k=k1 as CFG.BRANCH b1,a=a1}),
               e2 as (_,k,CFG.EDGE{w=w2,k=k2 as CFG.BRANCH b2,a=a2})], 
               branch::rest) =>
-             if should_flip(e1,e2) then 
+             if j = k then (* targets are the same *)
+             let val a = ref(!a1 @ !a2)
+             in  #set_out_edges cfg 
+                    (i, [(i,j,CFG.EDGE{w=ref(!w1 + !w2),k=CFG.JUMP,a=a})]);
+                 insns := InsnProps.jump(labelOf j)::rest;
+                 changed := true
+             end
+             else if should_flip(e1,e2) then 
                 let val branch' = InsnProps.negateConditional branch
                 in  if b1 andalso not(can_fallsthru j) orelse
                        b2 andalso not(can_fallsthru k) then

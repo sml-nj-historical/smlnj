@@ -64,8 +64,11 @@ sig
    val COPY   : rtl
    val JMP    : rtl 
 
-   val can'tMoveUp    : rtl -> bool
-   val can'tMoveDown  : rtl -> bool
-   val hasSideEffect  : rtl -> bool
+   (* Queries *)
+   val can'tMoveUp         : rtl -> bool
+   val can'tMoveDown       : rtl -> bool
+   val hasSideEffect       : rtl -> bool
+   val isConditionalBranch : rtl -> bool
+   val can'tBeRemoved      : rtl -> bool
 
 end 

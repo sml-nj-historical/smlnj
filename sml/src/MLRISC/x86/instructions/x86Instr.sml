@@ -70,9 +70,9 @@ sig
    | SARB
    | SHRB
    datatype multDivOp =
-     UMUL
-   | IDIV
-   | UDIV
+     MULL
+   | IDIVL
+   | DIVL
    datatype unaryOp =
      DECL
    | INCL
@@ -273,9 +273,9 @@ struct
    | SARB
    | SHRB
    datatype multDivOp =
-     UMUL
-   | IDIV
-   | UDIV
+     MULL
+   | IDIVL
+   | DIVL
    datatype unaryOp =
      DECL
    | INCL
