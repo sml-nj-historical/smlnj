@@ -70,11 +70,6 @@ MLRISC:
   * The representation of a program point never expected to see more 
     than 65536 instructions in a basic block!  Fixed.
 
-  * Changed the machine description files to support printing of 
-    local and global labels in assembly code, based on host assembler
-    conventions.
-  (*** subsumed by other pseudo-op changes?)
-
 CM:
 
   * avoid "/../" in filenames as much as possible (but only where it is safe)
