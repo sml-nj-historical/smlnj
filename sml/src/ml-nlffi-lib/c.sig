@@ -21,7 +21,7 @@ signature C = sig
      * type (sint, rw) ptr.
      * However, in the case of the "light" version of this object (see below),
      * the object type is ((sint, rw) ptr, ro) obj' while fetching
-     * from this object gives a value of type (sint, rw) ptr'.
+n     * from this object gives a value of type (sint, rw) ptr'.
      * (In other words, we use the "heavy" versions of value types as witness
      * types -- even in the "light" case.) *)
     type ('t, 'c) obj
@@ -142,6 +142,39 @@ signature C = sig
 
     (* bitfields aren't "ordinary objects", so they have their own type *)
     eqtype 'c sbf and 'c ubf
+
+    structure W : sig
+	(* conversion "witness" values *)
+	type ('from, 'to) witness
+	
+	(* A small calculus for generating new witnesses.
+	 * Since the only witness constructors that do anything real are
+	 * rw and ro, all this calculus gives you is a way of changing
+	 * "const" attributes at any level within a bigger type.
+	 *
+	 * (The calculus can express nonsensical witnesses -- which
+	 * fortunately are harmless because they can't be applied to any
+	 * values.) *)
+	val trivial : ('t, 't) witness
+
+	val pointer : ('from, 'to) witness ->
+		      ('from ptr, 'to ptr) witness
+	val object  : ('st, 'tt) witness ->
+		      (('st, 'c) obj, ('tt, 'c) obj) witness
+	val arr     : ('st, 'tt) witness ->
+		      (('st, 'n) arr, ('tt, 'n) arr) witness
+
+	val ro      : ('st, 'tt) witness ->
+		      (('st, 'c) obj, ('tt, ro) obj) witness
+	val rw      : ('st, 'tt) witness ->
+		      (('st, 'sc) obj, ('tt, 'tc) obj) witness
+    end
+
+    (* Object conversions that rely on witnesses: *)
+    val convert : (('st, 'sc) obj, ('tt, 'tc) obj) W.witness ->
+		  ('st, 'sc) obj -> ('tt, 'tc) obj
+    val convert' : (('st, 'sc) obj, ('tt, 'tc) obj) W.witness ->
+		   ('st, 'sc) obj' -> ('tt, 'tc) obj'
 
     (*
      * A family of types and corresponding values representing natural numbers.
@@ -423,7 +456,10 @@ signature C = sig
      * Concretely, we make both operations polymorphic in the argument
      * constness.  Moreover, the second (unsafe) direction is also
      * polymorphic in the result.  This can be used to effectively
-     * implement a conversion to "whatever the context wants":
+     * implement a conversion to "whatever the context wants".
+     *
+     * Note: fun ro x = convert (W.ro W.trivial) x
+     *       etc.
      *)
     val ro : ('t, 'c) obj  -> ('t, ro) obj
     val rw : ('t, 'sc) obj -> ('t, 'tc) obj
@@ -508,7 +544,15 @@ signature C = sig
 	(* alt; needs explicit size (for element) *)
 	val sub' : 't S.size -> ('t, 'c) obj ptr' * int -> ('t, 'c) obj'
 
-	(* constness manipulation for pointers *)
+	(* conversions that rely on witnesses *)
+	val convert : (('st, 'sc) obj ptr, ('tt, 'tc) obj ptr) W.witness ->
+		      ('st, 'sc) obj ptr -> ('tt, 'tc) obj ptr
+	val convert' : (('st, 'sc) obj ptr, ('tt, 'tc) obj ptr) W.witness ->
+		       ('st, 'sc) obj ptr' -> ('tt, 'tc) obj ptr'
+
+	(* constness manipulation for pointers
+	 * Note: fun ro x = convert (W.pointer (W.ro W.trivial)) x
+	 *       etc. *)
 	val ro : ('t, 'c) obj ptr    -> ('t, ro) obj ptr
 	val rw : ('t, 'sc) obj ptr   -> ('t, 'tc) obj ptr
 	val ro' : ('t, 'c) obj ptr'  -> ('t, ro) obj ptr'

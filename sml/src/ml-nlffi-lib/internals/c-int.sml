@@ -125,6 +125,20 @@ structure C :> C_INT = struct
     type 'c ubf = bf
     type 'c sbf = bf
 
+    structure W = struct
+        type ('from, 'to) witness = unit
+
+	val trivial = ()
+	fun pointer () = ()
+	fun object () = ()
+	fun arr () = ()
+	fun ro () = ()
+	fun rw () = ()
+    end
+
+    fun convert w x = x
+    fun convert' w x = x
+
     (*
      * A family of types and corresponding values representing natural numbers.
      *   (An encoding in SML without using dependent types.)
@@ -442,6 +456,9 @@ structure C :> C_INT = struct
 
 	val ro' = addr_id
 	val rw' = addr_id
+
+	fun convert w x = x
+	fun convert' w x = x
     end
 
     structure Arr = struct

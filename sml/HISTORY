@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/19 16:37:00 EST
+Tag: blume-20020319-witnesses
+Description:
+
+Added a structure C.W and functions convert/Ptr.convert to ml-nlffi-lib.
+
+This implements a generic mechanism for changing constness qualifiers
+anywhere within big C types without resorting to outright "casts".
+(So far, functions such as C.rw/C.ro or C.Ptr.rw/C.Ptr.ro only let you
+modify the constness at the outermost level.)
+The implementation of "convert" is based on the idea of "witness"
+values -- values that are not used by the operation but whose types
+"testify" to their applicability.  On the implementation side, "convert"
+is simply a projection (returning its second curried argument).  With
+cross-module inlining, it should not result in any machine code being
+generated.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/15 16:40:00 EST
 Tag: blume-20020315-basis
 Description:
