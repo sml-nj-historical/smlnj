@@ -1,0 +1,31 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ *
+ * Sources file for Pretty Printing Library.
+ *)
+
+Group (../pp-lib.cm)
+
+  signature PP_DEVICE
+  signature PP_TOKEN
+  signature PP_STREAM
+
+  functor PPStreamFn
+  functor PPDebugFn
+
+is
+#if defined(NEW_CM)
+  $/basis.cm
+  $/smlnj-lib.cm
+#else
+  ../../Util/smlnj-lib.cm
+#endif
+
+  pp-device-sig.sml
+  pp-token-sig.sml
+  pp-desc.sml
+  pp-stream-sig.sml
+  pp-stream-fn.sml
+  pp-debug-fn.sml
+

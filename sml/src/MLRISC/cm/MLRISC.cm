@@ -1,0 +1,214 @@
+(* This file is created by makeallcm *)
+Library
+	signature ASM_FORMAT_UTIL
+	signature ASM_STREAM
+	signature ASSEMBLY_EMITTER
+	signature BBSCHED
+	signature CELLS
+	signature CELLS_BASIS
+	signature CELLS_COMMON
+	signature CLUSTER_OPTIMIZATION
+	signature CODE_STRING
+	signature CONSTANT
+	signature C_CALLS
+	signature DELAY_SLOT_PROPERTIES
+	signature FLOWGRAPH
+	signature FLOWGRAPH_GEN
+	signature FREQUENCY_PROPERTIES
+	signature GC_CELLS
+	signature GC_TYPE
+	signature GETREG
+	signature INSN_PROPERTIES
+	signature INSTRUCTIONS
+	signature INSTRUCTION_EMITTER
+	signature INSTRUCTION_STREAM
+	signature LABEL
+	signature LABELEXP
+	signature LIVENESS
+	signature MACHINE_INT
+	signature MC_EMIT
+	signature MLRISC_ANNOTATIONS
+	signature MLRISC_OPTIMIZATION
+	signature MLRISC_REGION
+	signature MLTREE
+	signature MLTREECOMP
+	signature MLTREEGEN
+	signature MLTREE_BASIS
+	signature MLTREE_EXTENSION
+	signature MLTREE_EXTENSION_COMP
+	signature MLTREE_MULT_DIV
+	signature MLTREE_SIZE
+	signature POINTS_TO
+	signature PRINT_CLUSTER
+	signature PSEUDO_OPS
+	signature RA
+	signature RA_CORE
+	signature RA_FLOWGRAPH
+	signature RA_FLOWGRAPH_PARTITIONER
+	signature RA_GRAPH
+	signature RA_PRIORITY_QUEUE
+	signature RA_SPILL
+	signature RA_SPILL_HEURISTICS
+	signature REGION
+	signature REWRITE_INSTRUCTIONS
+	signature SDI_JUMPS
+	signature SHUFFLE
+	structure AsmFormatUtil
+	structure AsmStream
+	structure CTypes
+	structure CellsBasis
+	structure CellsInternal
+	structure ChaitinSpillHeur
+	structure ChowHennessySpillHeur
+	structure Label
+	structure MLRiscAnnotations
+	structure MLRiscRegion
+	structure MLTreeBasis
+	structure MachineInt
+	structure PointsTo
+	structure RACore
+	structure RAGraph
+	functor BBSched2
+	functor BackPatch
+	functor CellsCommon
+	functor ClusterCountCopies
+	functor ClusterEmit
+	functor ClusterGen
+	functor ClusterPartitioner
+	functor ClusterRA
+	functor FlowGraph
+	functor FreqProps
+	functor GCCells
+	functor GetReg
+	functor GetReg2
+	functor InstructionStream
+	functor LabelExp
+	functor Liveness
+	functor MLTreeF
+	functor MLTreeGen
+	functor MLTreeMult
+	functor MLTreeSize
+	functor MemoryRA
+	functor NoDelaySlots
+	functor PrintCluster
+	functor RADeadCodeElim
+	functor RASpill
+	functor RASpillTypes
+	functor RISC_RA
+	functor RegionBasedRA
+	functor RegisterAllocator
+	functor Shuffle
+	functor SpanDependencyResolution
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#endif
+	../instructions/cells.sig
+	../instructions/cells.sml
+	../instructions/cells-basis.sig
+	../instructions/cells-basis.sml
+	../instructions/rewrite.sig
+	../instructions/insnProps.sig
+	../instructions/stream.sig
+	../instructions/stream.sml
+	../instructions/instructions.sig
+	../instructions/shuffle.sig
+	../instructions/shuffle.sml
+	../instructions/constant.sig
+	../instructions/labels.sml
+	../instructions/pseudoOps.sig
+	../instructions/region.sig
+	../instructions/freqProps.sig
+	../instructions/freqProps.sml
+	../instructions/mlriscAnnotations.sig
+	../instructions/mlriscAnnotations.sml
+	../instructions/mlriscOptimization.sig
+	../aliasing/mlriscRegion.sig
+	../aliasing/mlriscRegion.sml
+	../aliasing/pointsTo.sig
+	../aliasing/pointsTo.sml
+	../mltree/mltree-extension.sig
+	../mltree/mltree-basis.sig
+	../mltree/mltree-basis.sml
+	../mltree/mltree.sig
+	../mltree/mltree.sml
+	../mltree/mltreecomp.sig
+	../mltree/mltree-gen.sig
+	../mltree/mltree-gen.sml
+	../mltree/mltree-size.sig
+	../mltree/mltree-size.sml
+	../mltree/flowgen.sig
+	../mltree/mltree-mult.sig
+	../mltree/mltree-mult.sml
+	../mltree/mltree-labexp.sig
+	../mltree/mltree-labexp.sml
+	../mltree/machine-int.sig
+	../mltree/machine-int.sml
+	../cluster/flowgraph.sml
+	../cluster/clustergen.sml
+	../cluster/printCluster.sml
+	../cluster/clusterOptimization.sig
+	../cluster/clusterCountCopies.sml
+	../ra/getreg.sig
+	../ra/getreg.sml
+	../ra/getreg2.sml
+	../ra/liveness.sml
+        ../ra/chaitin-spillheur.sml
+        ../ra/chow-hennessy-spillheur.sml
+        ../ra/ra-graph.sig
+        ../ra/ra-graph.sml
+        ../ra/ra-core.sig
+        ../ra/ra-core.sml
+        ../ra/ra-spill-types.sml
+        ../ra/ra-spill.sig
+        ../ra/ra-spill.sml
+        ../ra/ra-spillheur.sig
+        ../ra/ra-flowgraph.sig
+        ../ra/ra-flowgraph-part.sig
+        ../ra/ra.sig
+        ../ra/ra.sml
+	../ra/ra-deadCodeE.sml
+	../ra/ra-priqueue.sig
+	../ra/mem-ra.sml
+	../ra/region-based-ra.sml
+	../ra/risc-ra.sml
+        ../ra/cluster-ra.sml
+        ../ra/cluster-partitioner.sml
+	../emit/instruction-emitter.sig
+	../emit/asmEmit.sig 
+	../emit/asmStream.sml
+	../emit/asmUtil.sml
+	../emit/clusterEmit.sml
+	../emit/code-string.sig
+	../gc-safety/gc-cells.sig
+	../gc-safety/gc-cells.sml
+	../gc-safety/gc-type.sig
+	../backpatch/backpatch.sml
+	../backpatch/bbsched.sig
+	../backpatch/spanDep.sml
+	../backpatch/delaySlotProps.sig
+	../backpatch/noDelaySlots.sml
+	../backpatch/sdi-jumps.sig
+	../backpatch/vlBackPatch.sml
+        ../c-calls/c-types.sml
+        ../c-calls/c-calls.sig

@@ -1,0 +1,80 @@
+(* This file is created by makeallcm *)
+Library
+	signature APT_GRAPH
+	signature COMPUTE_FREQUENCIES
+	signature COMPUTE_FREQUENCIES2
+	signature CONTROL_DEPENDENCE_GRAPH
+	signature DERIVED_GRAPH
+	signature DJ_DATAFLOW
+	signature DJ_GRAPH
+	signature DOMINANCE_FRONTIERS
+	signature DOMINATOR_TREE
+	signature LOOP_STRUCTURE
+	signature REDUCIBILITY
+	signature STATIC_SINGLE_ASSIGNMENT_FORM
+	functor APTGraph
+	functor CompressedDJGraph
+	functor ComputeFrequencies
+	functor ComputeFrequencies2
+	functor ControlDependenceGraph
+	functor DJDataflow
+	functor DJGraph
+	functor DerivedGraph
+	functor DominanceFrontiers
+	functor DominatorTree
+	functor LoopStructure
+	functor Reducibility
+	functor StaticSingleAssignmentForm
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
+	../ir/apt.sig
+	../ir/apt.sml
+	../ir/cdg.sig
+	../ir/cdg.sml
+	../ir/compute-freq.sig
+	../ir/compute-freq.sml
+	../ir/compute-freq2.sig
+	../ir/compute-freq2.sml
+	../ir/comp-djgraph.sml
+	../ir/derived-graph.sig
+	../ir/derived-graph.sml
+	../ir/dj-dataflow.sig
+	../ir/dj-dataflow.sml
+	../ir/djgraph.sig
+	../ir/djgraph.sml
+	../ir/dominance-frontier.sig
+	../ir/dominance-frontier.sml
+	../ir/dominator.sig
+	../ir/dominator.sml
+	../ir/reducibility.sig
+	../ir/reducibility.sml
+	../ir/loop-structure.sig
+	../ir/loop-structure.sml
+	../ir/ssa.sig
+	../ir/ssa.sml

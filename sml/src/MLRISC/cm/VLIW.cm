@@ -1,0 +1,150 @@
+(* This file is created by makeallcm *)
+Library
+	signature C6CELLS
+	signature C6DATAPATHS
+	signature C6FUNITS
+	signature C6INSTR
+	signature C6INSTRCLASS
+	signature C6INTRINSICS
+	signature C6PSEUDO_OPS
+	signature C6SHUFFLE
+	signature DATAPATHS
+	signature DECISION_TREES
+	signature FUNITS
+	signature HYPERBLOCK
+	signature HYPERBLOCK_SCHEDULING
+	signature IF_CONVERSION
+	signature MODULO_RESERVATION_TABLE
+	signature MODULO_SCHEDULING
+	signature MODULO_SCHEDULING_ALGORITHM
+	signature PREDICATED_DDG
+	signature PREDICATED_DDG_BUILDER
+	signature PREDICATED_INSTRUCTIONS
+	signature PREDICATED_VLIW_INSTRUCTIONS
+	signature PREDICATION_PROPERTIES
+	signature PRE_MODULO_SCHEDULING
+	signature RANKING_ALGORITHM
+	signature VLIW_INSTRUCTIONS
+	signature VLIW_PROPERTIES
+	signature VLIW_SCHEDULING_AUTOMATON
+	signature VLIW_SCHEDULING_PROPERTIES
+	structure C6Cells
+	structure C6Datapaths
+	structure C6Funits
+	structure C6Intrinsics
+	structure DecisionTrees
+	functor C6AsmEmitter
+	functor C6Instr
+	functor C6InstrClass
+	functor C6PredicationProps
+	functor C6Props
+	functor C6PseudoOps
+	functor C6SchedulingProps
+	functor C6Shuffle
+	functor C6VLIWProps
+	functor CriticalPath
+	functor Hyperblock
+	functor HyperblockScheduling
+	functor IfConversion
+	functor IteratedModuloScheduling
+	functor ModuloReservationTable
+	functor ModuloScheduling
+	functor PreModuloScheduling
+	functor PredicatedDDG
+	functor PredicatedDDGBuilder
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/Visual.cm
+	$/ir.cm
+	$/MLRISC.cm
+	$/IR.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+#endif
+	../instructions/funits.sig
+	../instructions/datapaths.sig
+	../instructions/pred-instructions.sig
+	../instructions/vliw-instructions.sig
+	../instructions/pred-vliw-instructions.sig
+	../instructions/predicationProps.sig
+	../instructions/vliwProps.sig
+	../hyperblock/decision-trees.sig
+	../hyperblock/decision-trees.sml
+	../hyperblock/hyperblock.sig
+	../hyperblock/hyperblock.sml
+	../hyperblock/hyperblock-ddg.sig
+	../hyperblock/hyperblock-ddg.sml
+	../hyperblock/if-conversion.sig
+	../hyperblock/if-conversion.sml
+	../hyperblock/predicated-ddg.sig
+	../hyperblock/predicated-ddg.sml
+	../hyperblock-scheduling/critical-path.sml
+	../hyperblock-scheduling/hyperblock-scheduling.sig
+	../hyperblock-scheduling/hyperblock-scheduling.sml
+	../hyperblock-scheduling/rank-algorithm.sig
+	../hyperblock-scheduling/vliwSchedulingProps.sig
+	../hyperblock-scheduling/vliwSchedulingAutomaton.sig
+	../modulo-scheduling/iterated-modulo-scheduling.sml
+	../modulo-scheduling/modulo-scheduling-algo.sig
+	../modulo-scheduling/modulo-scheduling.sig
+	../modulo-scheduling/modulo-scheduling.sml
+	../modulo-scheduling/mrt.sig
+	../modulo-scheduling/mrt.sml
+	../modulo-scheduling/pre-modulo-scheduling.sig
+	../modulo-scheduling/pre-modulo-scheduling.sml
+	../C6/instructions/C6Cells.sig
+	../C6/instructions/C6Cells.sml
+	../C6/instructions/C6Datapaths.sig
+	../C6/instructions/C6Datapaths.sml
+	../C6/instructions/C6Funits.sig
+	../C6/instructions/C6Funits.sml
+	../C6/instructions/C6Instr.sig
+	../C6/instructions/C6Instr.sml
+	../C6/instructions/C6InstrClass.sig
+	../C6/instructions/C6InstrClass.sml
+	../C6/instructions/C6Intrinsics.sig
+	../C6/instructions/C6Intrinsics.sml
+	../C6/instructions/C6PredicationProps.sml
+	../C6/instructions/C6Props.sml
+	../C6/instructions/C6PseudoOps.sig
+	../C6/instructions/C6PseudoOps.sml
+	../C6/instructions/C6Shuffle.sig
+	../C6/instructions/C6Shuffle.sml
+	../C6/instructions/C6VLIWProps.sml
+	../C6/emit/C6Asm.sml
+	../C6/scheduling/C6SchedulingProps.sml
