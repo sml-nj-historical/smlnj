@@ -9,7 +9,7 @@
 structure PrettyPrint = struct
 
     structure PP = PPStreamFn (structure Token = StringToken
-			       structure Device = SimpleTextIODev)
+			       structure Device = CPIFDev)
 
     datatype mltype =
 	ARROW of mltype * mltype

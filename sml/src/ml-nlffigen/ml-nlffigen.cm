@@ -18,6 +18,7 @@ is
 	$/regexp-lib.cm
 
 	spec.sml
+	cpif-dev.sml
 	pp.sml
 	gen.sml
 	ast-to-spec.sml

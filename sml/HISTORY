@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/15 12:08:00 EST
+Tag: blume-20020215-iptrs
+Description:
+
+Two improvements to ml-nlffigen:
+
+  1. Write files only if they do not exist or if their current contents
+     do not coincide with what's being written.  (That is, avoid messing
+     with the time stamps unless absolutely necessary.)
+
+  2. Implement a "repository" mechanism for generated files related
+     to "incomplete pointer types".   See the README file for details.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/14 11:50:00 EST
 Tag: blume-20020214-quote
 Description:

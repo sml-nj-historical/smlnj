@@ -19,6 +19,7 @@ structure Gen :> sig
 		match: string -> bool,
 		mkidlsource: string -> string,
 		dirname: string,
+		iptr_repository: (string * string) option,
 		cmfile: string,
 		prefix: string,
 		gensym_stem: string,
@@ -109,7 +110,8 @@ end = struct
 
     fun gen args = let
 	val { cfiles, match, mkidlsource, gensym_stem,
-	      dirname, cmfile, prefix, extramembers, libraryhandle, complete,
+	      dirname, iptr_repository,
+	      cmfile, prefix, extramembers, libraryhandle, complete,
 	      allSU, lambdasplit,
 	      wid,
 	      weightreq,
@@ -119,11 +121,13 @@ end = struct
 	val hash_cft = Hash.mkFHasher ()
 	val hash_mltype = Hash.mkTHasher ()
 
-	val (gensym_prefix, gensym_suffix) =
-	    if gensym_stem = "" then ("", "")
-	    else (gensym_stem ^ "_", "_" ^ gensym_stem)
-	val isu_prefix = if complete then gensym_prefix else ""
-	fun isu_id (K, tag) = concat [isu_prefix, prefix, "I", K, "_", tag]
+	val (iptrdir, iptranchor) =
+	    case iptr_repository of
+		NONE => (dirname, NONE)
+	      | SOME (d, a) => (d, SOME a)
+
+	val gensym_suffix = if gensym_stem = "" then "" else "_" ^ gensym_stem
+	fun isu_id (K, tag) = concat [prefix, "I", K, "_", tag]
 
 	fun SUstruct K t = concat [prefix, K, "_", t]
 	val Sstruct = SUstruct "S"
@@ -162,38 +166,63 @@ end = struct
 
 	val { structs, unions, gvars, gfuns, gtys, enums } = spec
 
-	val do_dir = let
+	fun do_dir dir = let
 	    val done = ref false
 	    fun doit () =
 		if !done then ()
 		else (done := true;
-		      if OS.FileSys.isDir dirname handle _ => false then ()
-		      else OS.FileSys.mkDir dirname)
+		      if OS.FileSys.isDir dir handle _ => false then ()
+		      else OS.FileSys.mkDir dir)
 	in
 	    doit
 	end
+
+	val do_main_dir = do_dir dirname
+	val do_iptr_dir = do_dir iptrdir
 
 	val files = ref extramembers	(* all files that should go
 					 * into the .cm description *)
 	val exports = ref []
 
+	(* we don't want apostrophes in file names -> turn them into minuses *)
+	fun noquotes x = String.translate(fn #"'" => "-" | c => String.str c) x
+
 	fun smlfile x = let
-	    (* we don't want apostrophes in file names -> turn them into
-	     * minuses... *)
-	    val x = String.translate (fn #"'" => "-" | c => String.str c) x
-	    val file = OS.Path.joinBaseExt { base = x, ext = SOME "sml" }
+	    val nqx = noquotes x
+	    val file = OS.Path.joinBaseExt { base = nqx, ext = SOME "sml" }
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
 	in
 	    files := file :: !files;
-	    do_dir ();
+	    do_main_dir ();
 	    result
 	end
 
 	fun descrfile file = let
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
 	in
-	    do_dir ();
+	    do_main_dir ();
 	    result
+	end
+
+	fun iptrdescrfile nqx = let
+	    val file = OS.Path.joinBaseExt { base = nqx, ext = SOME "cm" }
+	    val path = OS.Path.joinDirFile { dir = iptrdir, file = file }
+	    val apath = case iptranchor of
+			    SOME a => concat [a, "/", file]
+			  | NONE => file
+	in
+	    (path, apath)
+	end
+
+	fun iptrfiles (x, report_only) = let
+	    val nqx = noquotes x
+	    val (d, da) = iptrdescrfile nqx
+	    val f = OS.Path.joinBaseExt { base = nqx, ext = SOME "sml" }
+	    val p = OS.Path.joinDirFile { dir = iptrdir, file = f }
+	in
+	    if report_only then () else files := da :: !files;
+	    do_iptr_dir ();
+	    (f, p, d)
 	end
 
 	val structs =
@@ -499,10 +528,10 @@ end = struct
 	      | NONE => raise Fail "missing fptr_type (mkcall)"
 	end
 
-	fun openPP0 nocredits (f, src) = let
-	    val dst = TextIO.openOut f
-	    val stream = PP.openStream (SimpleTextIODev.openDev
-					    { dst = dst, wid = wid })
+	fun openPP (f, src) = let
+	    val device = CPIFDev.openOut (f, wid)
+	    val stream = PP.openStream device
+
 	    fun nl () = PP.newline stream
 	    fun str s = PP.string stream s
 	    fun sp () = PP.space stream 1
@@ -527,17 +556,16 @@ end = struct
 		 str connector; sp (); ppty t; endBox ())
 	    val pr_tdef = pr_decl ("type", "=")
 	    val pr_vdecl = pr_decl ("val", ":")
-	    fun closePP () = (PP.closeStream stream; TextIO.closeOut dst)
+	    fun closePP () = (PP.closeStream stream; CPIFDev.closeOut device)
 	in
-	    if nocredits then ()
-	    else (str dontedit;
-		  case src of
-		      NONE => ()
-		    | SOME s =>
-		      (nl (); str (concat ["(* [from code at ", s, "] *)"]));
-		  line credits;
-		  line commentsto;
-		  nl ());
+	    str dontedit;
+	    case src of
+		NONE => ()
+	      | SOME s =>
+		(nl (); str (concat ["(* [from code at ", s, "] *)"]));
+	    line credits;
+	    line commentsto;
+	    nl ();
 	    { stream = stream,
 	      nl = nl, str = str, sp = sp, nsp = nsp, Box = Box, HVBox = HVBox,
 	      HBox = HBox, HOVBox = HOVBox, VBox = VBox, endBox = endBox,
@@ -547,8 +575,6 @@ end = struct
 	      closePP = closePP
 	      }
 	end
-
-	fun openPP x = openPP0 false x
 
 	val get_callop = let
 	    val ncallops = ref 0
@@ -1118,21 +1144,32 @@ end = struct
 	end
 
 	fun do_iptrs report_only = let
-	    val file = smlfile "iptrs"
-	    val { closePP, str, nl, ... } = openPP0 report_only (file, NONE)
-	    fun pr_isu_def K tag = let
+	    fun pr_isu_def (K, k) tag = let
+		val (sfile, spath, dpath) =
+		    iptrfiles (concat ["i", k, "-", tag], report_only)
+		val spp = openPP (spath, NONE)
+		val dpp = openPP (dpath, NONE)
 		val istruct = "structure " ^ isu_id (K, tag)
 	    in
-		if report_only then str "(* "
-		else exports := istruct :: !exports;
-		str (istruct ^ " = PointerToIncompleteType ()");
-		if report_only then str " *)" else ();
-		nl ()
+		#str spp (istruct ^ " = PointerToIncompleteType ()");
+		#nl spp ();
+		#closePP spp ();
+		if report_only then () else exports := istruct :: !exports;
+		#str dpp "library";
+		#VBox dpp 4;
+		#line dpp istruct;
+		#endBox dpp ();
+		#nl dpp ();
+		#str dpp "is";
+		#VBox dpp 4;
+		app (#line dpp) ["$/c.cm", sfile];
+		#endBox dpp ();
+		#nl dpp ();
+		#closePP dpp ()
 	    end
 	in
-	    SS.app (pr_isu_def "S") incomplete_structs;
-	    SS.app (pr_isu_def "U") incomplete_unions;
-	    closePP ()
+	    SS.app (pr_isu_def ("S", "s")) incomplete_structs;
+	    SS.app (pr_isu_def ("U", "u")) incomplete_unions
 	end
 
 	fun do_cmfile () = let

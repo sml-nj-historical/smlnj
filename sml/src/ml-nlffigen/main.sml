@@ -47,6 +47,7 @@ structure Main = struct
 	end
 
 	val dir = ref "NLFFI-Generated"
+	val iptr_rep = ref NONE
 	val cmf = ref "nlffi-generated.cm"
 	val prefix = ref ""
 	val gstem = ref ""
@@ -96,6 +97,7 @@ structure Main = struct
 		      match = match,
 		      mkidlsource = mkidlsource,
 		      dirname = !dir,
+		      iptr_repository = !iptr_rep,
 		      cmfile = !cmf,
 		      prefix = !prefix,
 		      gensym_stem = !gstem,
@@ -134,6 +136,7 @@ structure Main = struct
 	  | proc ("-prefix" :: p :: l) = (prefix := p; proc l)
 	  | proc ("-gensym" :: g :: l) = (gstem := g; proc l)
 	  | proc ("-dir" :: d :: l) = (dir := d; proc l)
+	  | proc ("-iptr" :: d :: a :: l) = (iptr_rep := SOME (d, a); proc l)
 	  | proc ("-cmfile" :: f :: l) = (cmf := f; proc l)
 	  | proc ("-cppopt" :: opt :: l) = (addcppopt opt; proc l)
 	  | proc ("-version" :: _) =
