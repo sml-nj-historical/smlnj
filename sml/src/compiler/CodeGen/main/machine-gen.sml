@@ -63,10 +63,15 @@ struct
           (structure CFG = CFG 
 	   structure Props = InsnProps)
 
+   (* After experimentation, some architecture specific control
+    * may be needed for chainEscapes.
+    *)
    structure JumpChaining = 
       JumpChainElimFn			     
 	  (structure CFG = CFG
-	   structure InsnProps = InsnProps)
+	   structure InsnProps = InsnProps
+	   val chainEscapes = ref false
+	   val reverseDirection = ref false)
 
    structure InvokeGC =
       InvokeGC
