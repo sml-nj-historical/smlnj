@@ -4,13 +4,20 @@
 ;; Copyright (C) 1994-1997  Matthew J. Morley
 ;; Copyright (C) 1999-2000  Stefan Monnier
 
+;; Author: Lars Bo Nielsen
+;;      Olin Shivers
+;;	Fritz Knabe (?)
+;;	Steven Gilmore (?)
+;;	Matthew Morley <mjm@scs.leeds.ac.uk> (aka <matthew@verisity.com>)
+;;	Matthias Blume <blume@cs.princeton.edu> (aka <blume@kurims.kyoto-u.ac.jp>)
+;;      (Stefan Monnier) monnier@cs.yale.edu
+;; Maintainer: (Stefan Monnier) monnier+lists/emacs/sml@flint.cs.yale.edu
+;; Keywords: SML
 ;; $Revision$
 ;; $Date$
 
 ;; This file is not part of GNU Emacs, but it is distributed under the
 ;; same conditions.
-
-;; ====================================================================
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -26,11 +33,7 @@
 ;; along with GNU Emacs; see the file COPYING. If not, write to the
 ;; Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;; ====================================================================
-
-
 ;;; Commentary:
-;; 
 
 ;;; HISTORY
 
@@ -43,16 +46,6 @@
 ;; font-lock patterns, some of Steven Gilmore's (reduced) easy-menus,
 ;; and numerous bugs and bug-fixes.
 
-;; Author: Lars Bo Nielsen
-;;      Olin Shivers
-;;	Fritz Knabe (?)
-;;	Steven Gilmore (?)
-;;	Matthew Morley <mjm@scs.leeds.ac.uk> (aka <matthew@verisity.com>)
-;;	Matthias Blume <blume@cs.princeton.edu> (aka <blume@kurims.kyoto-u.ac.jp>)
-;;      (Stefan Monnier) monnier@cs.yale.edu
-;; Maintainer: (Stefan Monnier) monnier+lists/emacs/sml@tequila.cs.yale.edu
-;; Keywords: SML
-
 ;;; DESCRIPTION
 
 ;; See accompanying info file: sml-mode.info
@@ -62,25 +55,11 @@
 ;; If sml-mode.el lives in some non-standard directory, you must tell
 ;; emacs where to get it. This may or may not be necessary:
 
-;; (setq load-path (cons (expand-file-name "~jones/lib/emacs") load-path))
+;; (add-to-list 'load-path "~jones/lib/emacs/")
 
 ;; Then to access the commands autoload sml-mode with that command:
 
-;; (autoload 'sml-mode "sml-mode" "Major mode for editing ML programs." t)
-;;
-;; If files ending in ".sml" or ".ML" are hereafter considered to contain
-;; Standard ML source, put their buffers into sml-mode automatically:
-
-;; (setq auto-mode-alist
-;;       (cons '(("\\.sml$" . sml-mode)
-;;               ("\\.ML$"  . sml-mode)) auto-mode-alist))
-
-;; Here's an example of setting things up in the sml-mode-hook:
-
-;; (setq sml-mode-hook
-;;       '(lambda() "ML mode hacks"
-;;          (setq sml-indent-level 2         ; conserve on horiz. space
-;;                indent-tabs-mode nil)))    ; whatever
+;; (load "sml-mode-startup")
 
 ;; sml-mode-hook is run whenever a new sml-mode buffer is created.
 
@@ -162,7 +141,6 @@ See doc for the variable `sml-mode-info'."
        "This function is part of sml-proc, and has not yet been loaded.
 Full documentation will be available after autoloading the function."))
 
-  (autoload 'run-sml		"sml-proc"   sml-no-doc t)
   (autoload 'sml-compile	"sml-proc"   sml-no-doc t)
   (autoload 'sml-load-file	"sml-proc"   sml-no-doc t)
   (autoload 'switch-to-sml	"sml-proc"   sml-no-doc t)
@@ -224,9 +202,9 @@ Full documentation will be available after autoloading the function."))
 (defvar font-lock-interface-def-face 'font-lock-interface-def-face
   "Face name to use for interface definitions.")
 
-;;; 
+;;;
 ;;; Code to handle nested comments and unusual string escape sequences
-;;; 
+;;;
 
 (defsyntax sml-syntax-prop-table
   '((?\\ . ".") (?* . "."))
@@ -258,8 +236,36 @@ Full documentation will be available after autoloading the function."))
 
 (defconst sml-font-lock-defaults
   '(sml-font-lock-keywords nil nil ((?_ . "w") (?' . "w")) nil
-			   (font-lock-syntactic-keywords . sml-font-lock-syntactic-keywords)))
+    (font-lock-syntactic-keywords . sml-font-lock-syntactic-keywords)))
 
+;;;;
+;;;; Imenu support
+;;;;
+
+(defvar sml-imenu-regexp
+  (concat "^[ \t]*\\(let[ \t]+\\)?"
+	  (regexp-opt (append sml-module-head-syms
+			      '("and" "fun" "datatype" "abstype" "type")) t)
+	  "\\>"))
+
+(defun sml-imenu-create-index ()
+  (let (alist)
+    (goto-char (point-max))
+    (while (re-search-backward sml-imenu-regexp nil t)
+      (save-excursion
+	(let ((kind (match-string 2))
+	      (column (progn (goto-char (match-beginning 2)) (current-column)))
+	      (location
+	       (progn (goto-char (match-end 0)) (sml-forward-spaces) (point)))
+	      (name (sml-forward-sym)))
+	  ;; Eliminate trivial renamings.
+	  (when (or (not (member kind '("structure" "signature")))
+		    (progn (search-forward "=")
+			   (sml-forward-spaces)
+			   (looking-at "sig\\|struct")))
+	    (push (cons (concat (make-string (/ column 2) ?\ ) name) location)
+		  alist)))))
+    alist))
 
 ;;; MORE CODE FOR SML-MODE
 
@@ -273,6 +279,8 @@ This mode runs `sml-mode-hook' just before exiting.
 \\{sml-mode-map}"
   (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults)
   (set (make-local-variable 'outline-regexp) sml-outline-regexp)
+  (set (make-local-variable 'imenu-create-index-function)
+       'sml-imenu-create-index)
   (set (make-local-variable 'add-log-current-defun-function)
        'sml-current-fun-name)
   ;; forward-sexp-function is an experimental variable in my hacked Emacs.
@@ -630,7 +638,7 @@ Optional argument STYLE is currently ignored"
 
 (defun sml-beginning-of-defun ()
   (let ((sym (sml-find-matching-starter sml-starters-syms)))
-    (if (member sym '("fun" "functor" "signature" "structure"
+    (if (member sym '("fun" "and" "functor" "signature" "structure"
 		      "abstraction" "datatype" "abstype"))
 	(save-excursion (sml-forward-sym) (sml-forward-spaces)
 			(sml-forward-sym))
@@ -807,9 +815,9 @@ See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
     (message "Macro bound to %s" fsym)
     (add-to-list 'sml-forms-alist (cons name fsym))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;  SML/NJ's Compilation Manager support  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;
+;;;;  SML/NJ's Compilation Manager support
+;;;;
 
 ;;;###autoload
 (add-to-list 'completion-ignored-extensions "CM/")
@@ -824,6 +832,98 @@ See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
   (list (lambda () (local-set-key "\C-c\C-c" 'sml-compile)))
   "Generic mode for SML/NJ's Compilation Manager configuration files.")
 
+;;;;
+;;;; ML-Yacc (and ML-lex) support
+;;;;
+
+;; That seems to be good enough for now ;-)
+;;;###autoload
+(define-derived-mode sml-lex-mode sml-mode "SML-Lex")
+
+(defface sml-yacc-bnf-face
+  '((t (:foreground "darkgreen")))
+  "Face used to highlight (non)terminals in `sml-yacc-mode'.")
+(defvar sml-yacc-bnf-face 'sml-yacc-bnf-face)
+
+(defcustom sml-yacc-indent-action 16
+  "Indentation column of the opening paren of actions."
+  :group 'sml
+  :type 'integer)
+
+(defcustom sml-yacc-indent-pipe nil
+  "Indentation column of the pipe char in the BNF.
+If nil, align it with `:' or with previous cases."
+  :group 'sml
+  :type 'integer)
+
+(defcustom sml-yacc-indent-term nil
+  "Indentation column of the (non)term part.
+If nil, align it with previous cases."
+  :group 'sml
+  :type 'integer)
+
+(defvar sml-yacc-font-lock-keywords
+  (cons '("^\\(\\sw+\\s-*:\\|\\s-*|\\)\\(\\s-*\\sw+\\)*"
+	  (0 (save-excursion
+	       (save-match-data
+		 (goto-char (match-beginning 0))
+		 (unless (or (re-search-forward "\\<of\\>" (match-end 0) 'move)
+			     (progn (sml-forward-spaces)
+				    (not (looking-at "("))))
+		   sml-yacc-bnf-face)))))
+	sml-font-lock-keywords))
+(defconst sml-yacc-font-lock-defaults
+  (cons sml-yacc-font-lock-keywords (cdr sml-font-lock-defaults)))
+
+(defun sml-yacc-bnf-p ()
+  
+
+(defun sml-yacc-indent-line ()
+  "Indent current line of ML-Yacc code."
+  (let ((savep (> (current-column) (current-indentation)))
+	(indent (max (or (ignore-errors (sml-yacc-indentation)) 0) 0)))
+    (if savep
+	(save-excursion (indent-line-to indent))
+      (indent-line-to indent))))
+
+(defun sml-yacc-indentation ()
+  (save-excursion
+    (back-to-indentation)
+    (or (and (looking-at "%\\|\\(\\sw\\|\\s_\\)+\\s-*:") 0)
+	(when (save-excursion
+		(condition-case nil (progn (up-list -1) nil) (scan-error t)))
+	  ;; We're outside an action.
+	  (cond
+	   ;; Special handling of indentation inside %term and %nonterm
+	   ((save-excursion
+	      (and (re-search-backward "^%\\(\\sw+\\)" nil t)
+		   (member (match-string 1) '("term" "nonterm"))))
+	    (if (numberp sml-yacc-indent-term) sml-yacc-indent-term
+	      (let ((offset (if (looking-at "|") -2 0)))
+		(forward-line -1)
+		(looking-at "\\s-*\\(%\\sw*\\||\\)?\\s-*")
+		(goto-char (match-end 0))
+		(+ offset (current-column)))))
+	   ((looking-at "(") sml-yacc-indent-action)
+	   ((looking-at "|")
+	    (if (numberp sml-yacc-indent-pipe) sml-yacc-indent-pipe
+	      (backward-sexp 1)
+	      (while (progn (sml-backward-spaces)
+			    (/= 0 (skip-syntax-backward "w_"))))
+	      (sml-backward-spaces)
+	      (if (not (looking-at "\\s-$"))
+		  (1- (current-column))
+		(skip-syntax-forward " ")
+		(- (current-column) 2))))))
+	;; default to SML rules
+	(sml-calculate-indentation))))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.grm\\'" . sml-yacc-mode))
+;;;###autoload
+(define-derived-mode sml-yacc-mode sml-mode "SML-Yacc"
+  (set (make-local-variable 'indent-line-function) 'sml-yacc-indent-line)
+  (set (make-local-variable 'font-lock-defaults) sml-yacc-font-lock-defaults))
 
 (provide 'sml-mode)
 
