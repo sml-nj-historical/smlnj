@@ -19,27 +19,27 @@ structure CMStaticEnv : CMSTATICENV = struct
 
 	structure Key = struct
 	    type ord_key = I.modId
-	    val cmpKey = I.cmp
+	    val compare = I.cmp
 	end
 
-	structure D = BinaryDict (Key)
+	structure D = BinaryMapFn (Key)
 
-	type modmap = { strD : M.Structure D.dict,
-		        sigD : M.Signature D.dict,
-			fctD : M.Functor D.dict,
-			tycD : T.tycon D.dict,
-			eenvD : M.entityEnv D.dict }
+	type modmap = { strD : M.Structure D.map,
+		        sigD : M.Signature D.map,
+			fctD : M.Functor D.map,
+			tycD : T.tycon D.map,
+			eenvD : M.entityEnv D.map }
 
 	type modmaps = modmap list
 
 	type staticEnv = SE.staticEnv * modmaps
 
 	val emptyModmap : modmap =
-	    { strD = D.mkDict (),
-	      sigD = D.mkDict (),
-	      fctD = D.mkDict (),
-	      tycD = D.mkDict (),
-	      eenvD = D.mkDict () }
+	    { strD = D.empty,
+	      sigD = D.empty,
+	      fctD = D.empty,
+	      tycD = D.empty,
+	      eenvD = D.empty }
 
 	fun unCM (se, _) = se
 
@@ -59,7 +59,7 @@ structure CMStaticEnv : CMSTATICENV = struct
 	fun mkLook sel (se: staticEnv) mid = let
 		fun look [] = NONE
 		  | look (mm :: mms) =
-		    case D.peek (sel mm, mid) of
+		    case D.find (sel mm, mid) of
 			NONE => look mms
 		      | SOME x => SOME x
 	in
@@ -109,7 +109,7 @@ structure CMStaticEnv : CMSTATICENV = struct
 	      eenvD = D.insert (eenvD, i, b) }
 
 	fun enter (sel, add) (i, b, go_inside) (table: modmap) =
-	    case D.peek (sel table, i) of
+	    case D.find (sel table, i) of
 		SOME _ => table
 	      | NONE => go_inside (add (i, b) table)
 
@@ -207,7 +207,7 @@ structure CMStaticEnv : CMSTATICENV = struct
 	and entityEnv (e as M.MARKeenv(s, rest)) =
 	    enterEENV (I.EENVid s, e, fn x => entityEnv rest x)
 	  | entityEnv (M.BINDeenv (d, rest)) =
-	    (list (map (entity o #2) (ED.members d))) o entityEnv rest
+	    (list (map (entity o #2) (ED.listItemsi d))) o entityEnv rest
 	  | entityEnv M.NILeenv = nothing
 	  | entityEnv M.ERReenv = nothing
 
@@ -237,6 +237,11 @@ end (* structure CMStaticEnv *)
 
 (*
  * $Log: cmstatenv.sml,v $
+ * Revision 1.2  1998/10/16 14:03:41  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

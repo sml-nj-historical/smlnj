@@ -1,20 +1,29 @@
 Group is
 
-binary-dict.sml
-crc.sml
-dynamic.sml
+(* ordkey.sig *)
+(* binary-dict.sml replaced with BinaryMapFn in binary-map-fn.sml *)
+(* dynamic.sml  replaced with DynamicArrayFn in dynamic-array-fn.sml*)
+(* mapf.sml 	replaced with BinaryMapFn    in binary-map-fn.sml *)
+(* sort.sml	relpaced with ListMergeSort  in list-mergesort.sml *)
+(* intmapf.sml	replaced with IntBinaryMap   in int-binary-map.sml *)
+(* strghash.sml	replaced with HashString     in hash-string.sml *)
+
 intmap.sig
 intmap.sml
-intmapf.sml
-intset.sml
 intsetf.sml
-intstrmap.sig
-intstrmap.sml
-mapf.sml
-ordkey.sig
+intset.sml
+
+(* move to smlnj-lib *)
+crc.sml			
+scc.sml			
+sortedlist.sml
+
+(* generalized in library or moved to static env *)
+intstrmap.sig		
+intstrmap.sml		
+
+(* replace with library version *)
 pp.sml
 ppqueue.sml
-scc.sml
-sortedlist.sml
-sort.sml
-strghash.sml
+
+../smlnj-lib/Util/sources.cm

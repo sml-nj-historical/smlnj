@@ -1,4 +1,10 @@
 (* Copyright 1989 by AT&T Bell Laboratories *)
+(* replaced with int-binary-set.sml
+  new == fn () => empty
+  add s x == add(s,x)
+  rmv s x == delete(s,x)
+  mem s x == member(s,x)
+ *)
 structure Intset : sig type intset
 		        val new : unit -> intset
 		        val add : intset -> int -> unit
@@ -31,6 +37,10 @@ struct
 end
 
 
+
 (*
- * $Log$
+ * $Log: intset.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
  *)
