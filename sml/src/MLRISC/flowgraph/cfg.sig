@@ -177,6 +177,7 @@ sig
    *========================================================================*)
    val show_block : Annotations.annotations -> block -> string 
    val show_edge  : edge_info -> string 
+   val dumpBlock : (TextIO.outstream * cfg) -> node -> unit
    val dump : (TextIO.outstream * string * cfg) -> unit
 
 end

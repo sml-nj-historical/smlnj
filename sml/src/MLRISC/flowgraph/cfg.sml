@@ -317,15 +317,14 @@ struct
               (String.tokens (fn #" " => true | _ => false) text)
 	  end
 
-    fun dump (outS, title, cfg as G.GRAPH g) = let
+    fun dumpBlock (outS, cfg as G.GRAPH g) = let
 	  fun pr str = TextIO.output(outS, str)
 	  fun prList [] = ()
 	    | prList [i] = pr i
 	    | prList (h::t) = (pr (h ^ ", "); prList t)
-	  val annotations = !(annotations cfg)
-	  val Asm.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
-        	AsmStream.withStream outS Asm.makeStream annotations
-	  fun showFreq (ref w) = F.format "[%s]" [F.STR(W.toString w)] 
+	  val Asm.S.STREAM{emit,defineLabel,annotation,...} = 
+        	AsmStream.withStream outS Asm.makeStream []
+	  fun showFreq (ref w) = F.format "[%s]" [F.STR(W.toString w)]
 	  fun showEdge (blknum,e) = 
 		F.format "%d:%s" [F.INT blknum, F.STR(show_edge e)]
 	  fun showSucc (_, x, e) = showEdge(x,e)
@@ -349,11 +348,20 @@ struct
 	      ) = (
 	       pr (F.format "BLOCK %d %s\n" [F.INT id, F.STR(showFreq freq)]);
 	       case !align of NONE => () | SOME p => (pr (P.toString p ^ "\n"));
-               app annotation (!annotations);
-               app defineLabel (!labels);
+               List.app annotation (!annotations);
+               List.app defineLabel (!labels);
                showSuccs id;
                showPreds id;
                List.app emit (List.rev (!insns)))
+	  in
+	    printBlock
+	  end
+
+    fun dump (outS, title, cfg as G.GRAPH g) = let
+	  fun pr str = TextIO.output(outS, str)
+	  val annotations = !(annotations cfg)
+	  val Asm.S.STREAM{annotation, ...} = 
+        	AsmStream.withStream outS Asm.makeStream annotations
 	  fun printData () = let
         	val INFO{data, ...} = #graph_info g
 		in
@@ -363,7 +371,7 @@ struct
 	    pr(F.format "[ %s ]\n" [F.STR title]);
 	    List.app annotation annotations;
 	    (* printBlock entry; *)
-	    AsmStream.withStream outS (#forall_nodes g) printBlock;
+	    AsmStream.withStream outS (#forall_nodes g) (dumpBlock (outS, cfg));
 	    (* printBlock exit; *)
 	    AsmStream.withStream outS printData ();
 	    TextIO.flushOut outS
