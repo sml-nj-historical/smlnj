@@ -1,0 +1,203 @@
+\maybeclearpage
+\section{The {\cf Trace\-CML} structure}
+
+
+The {\cf \small Trace\-CML} structure provides rudimentary debugging support in the form of mechanisms to control debugging output, and to monitor thread termination. This version of this module is adapted from Cliff Krumvieda's utility for tracing CML programs. It provides three facilities: trace modules, for controlling debugging output; thread watching, for detecting thread termination; and a mechanism for reporting uncaught exceptions on a per thread basis.
+
+Trace modules provide a hierarchical name space, which is used to control the granularity of debugging output. The trace module operations have been implemented in such a way that they can be invoked independent of whether CML is currently running. This allows the trace hierarchy to be setup statically.
+
+The {\cf \small Trace\-CML} also provides hooks to detect unexpected termination of threads. Support is provided to watch for a thread's termination (useful for monitoring servers that are never supposed to terminate). Hooks are also provided to specify the action taken when a thread terminates because of an uncaught exception.
+\begin{synopsis}
+\item {\kw{signature}} \textcf{TRACE\_\linebreak[0]CML}\label{sig-TRACE_CML}
+\item {\STRUCTURE} \textcf{TraceCML: TRACE\_\linebreak[0]CML}\label{str-TraceCML}
+\end{synopsis}
+
+\begin{interface}
+\Nopagebreak
+\item {\index{trace_module@trace\_\linebreak[0]module!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{type}} \textcf{trace\_\linebreak[0]module}
+\Nopagebreak
+\item {\index{trace_to@trace\_\linebreak[0]to!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{datatype}} \textcf{trace\_\linebreak[0]to}\begin{minipage}[t]{4in}\raggedright
+\mbox{\cf \ = TraceToOut}{\index{TraceToOut@TraceToOut!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToErr}{\index{TraceToErr@TraceToErr!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToNull}{\index{TraceToNull@TraceToNull!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToFile of \(\mbox{\cf{}string}\)}{\index{TraceToFile@TraceToFile!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToStream of \(\mbox{\cf{}TextIO}.\mbox{\cf{}outstream}\)}{\index{TraceToStream@TraceToStream!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\end{minipage}
+\Nopagebreak
+\item {\index{setTraceFile@setTraceFile!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setTraceFile: \(\mbox{\cf{}trace\_to}\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{traceRoot@traceRoot!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceRoot: \(\mbox{\cf{}trace\_module}\)}
+
+\Nopagebreak
+\item {\index{NoSuchModule@NoSuchModule!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{exception}} \textcf{NoSuchModule}
+
+\Nopagebreak
+\item {\index{traceModule@traceModule!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceModule: \((\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}string})\rightarrow \mbox{\cf{}trace\_module}\)}
+
+\Nopagebreak
+\item {\index{nameOf@nameOf!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf nameOf: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}string}\)}
+
+\Nopagebreak
+\item {\index{moduleOf@moduleOf!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf moduleOf: \(\mbox{\cf{}string}\rightarrow \mbox{\cf{}trace\_module}\)}
+
+\Nopagebreak
+\item {\index{traceOn@traceOn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOn: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{traceOff@traceOff!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOff: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{traceOnly@traceOnly!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOnly: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{amTracing@amTracing!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf amTracing: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}bool}\)}
+
+\Nopagebreak
+\item {\index{status@status!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf status: \(\mbox{\cf{}trace\_module}\rightarrow(\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}bool})\;\mbox{\cf{}list}\)}
+
+\Nopagebreak
+\item {\index{trace@trace!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf trace: \((\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,(\mbox{\cf{}unit}\rightarrow \mbox{\cf{}string}\;\mbox{\cf{}list}))\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{watcher@watcher!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf watcher: \(\mbox{\cf{}trace\_module}\)}
+
+\Nopagebreak
+\item {\index{watch@watch!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf watch: \((\mbox{\cf{}string}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}CML}.\mbox{\cf{}thread\_id})\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{unwatch@unwatch!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf unwatch: \(\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{setUncaughtFn@setUncaughtFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setUncaughtFn: \(((\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}exn})\rightarrow \mbox{\cf{}unit})\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{setHandleFn@setHandleFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setHandleFn: \(((\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}exn})\rightarrow \mbox{\cf{}bool})\rightarrow \mbox{\cf{}unit}\)}
+
+\Nopagebreak
+\item {\index{resetUncaughtFn@resetUncaughtFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf resetUncaughtFn: \(\mbox{\cf{}unit}\rightarrow \mbox{\cf{}unit}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{trace_module@trace\_\linebreak[0]module!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{type}} \textcf{trace\_\linebreak[0]module}\label{ty-TRACE_CML.trace_module}
+
+\begin{speccomment}
+\item 
+
+	A {\cf \small trace{\tt\_}\linebreak[0]module} is an element in a hierarchical 	name space, which is used to control debugging output.     \end{speccomment}
+\item {\index{trace_to@trace\_\linebreak[0]to!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{datatype}} \textcf{trace\_\linebreak[0]to}\label{ty-TRACE_CML.trace_to}\begin{minipage}[t]{4in}\raggedright
+\mbox{\cf \ = TraceToOut\label{con-TRACE_CML.TraceToOut}}{\index{TraceToOut@TraceToOut!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToErr\label{con-TRACE_CML.TraceToErr}}{\index{TraceToErr@TraceToErr!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToNull\label{con-TRACE_CML.TraceToNull}}{\index{TraceToNull@TraceToNull!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToFile\label{con-TRACE_CML.TraceToFile} of \(\mbox{\cf{}string}\)}{\index{TraceToFile@TraceToFile!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\mbox{\cf \ $|\,$ TraceToStream\label{con-TRACE_CML.TraceToStream} of \(\mbox{\cf{}TextIO}.\mbox{\cf{}outstream}\)}{\index{TraceToStream@TraceToStream!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}
+\end{minipage}
+
+\begin{speccomment}
+\item 
+
+	The various destinations of trace output.     \end{speccomment}
+\item {\index{setTraceFile@setTraceFile!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setTraceFile: \(\mbox{\cf{}trace\_to}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.setTraceFile}
+
+
+\begin{speccomment}
+\item {\cf \small set\-Trace\-File \mbox{\cf \small \textit{tt}}           } 
+Direct the destination of trace output. 	  Note: {\cf \small Trace\-To\-Stream} can only be specified as a 	  destination if CML is running.     \end{speccomment}
+\item {\index{traceRoot@traceRoot!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceRoot: \(\mbox{\cf{}trace\_module}\)}\label{val-TRACE_CML.traceRoot}
+
+
+\begin{speccomment}
+\item {\cf \small trace\-Root           } 
+is the root module of the trace hierarchy     \end{speccomment}
+\item {\index{traceModule@traceModule!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceModule: \((\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}string})\rightarrow \mbox{\cf{}trace\_module}\)}\label{val-TRACE_CML.traceModule}
+
+
+\begin{speccomment}
+\item {\cf \small trace\-Module (\mbox{\cf \small \textit{tm}}, \mbox{\cf \small \textit{s}})           } 
+creates a new trace module that is a child of \mbox{\cf \small \textit{tm}} and 	  has the label \mbox{\cf \small \textit{s}}. 	  If such a module exists, it just returns the existing module.     \end{speccomment}
+\item {\index{nameOf@nameOf!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf nameOf: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}string}\)}\label{val-TRACE_CML.nameOf}
+
+
+\begin{speccomment}
+\item {\cf \small name\-Of \mbox{\cf \small \textit{tm}}           } 
+returns the full name of the module \mbox{\cf \small \textit{tm}}.     \end{speccomment}
+\item {\index{moduleOf@moduleOf!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf moduleOf: \(\mbox{\cf{}string}\rightarrow \mbox{\cf{}trace\_module}\)}\label{val-TRACE_CML.moduleOf}
+
+
+\begin{speccomment}
+\item {\cf \small module\-Of \mbox{\cf \small \textit{name}}           } 
+returns the trace module named by \mbox{\cf \small \textit{name}}. 	  Trace module names are written in the style of Unix pathnames 	  (e.\-g., using {\cf \small "/"} as a separator).     \end{speccomment}
+\item {\index{traceOn@traceOn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOn: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.traceOn}
+
+
+\begin{speccomment}
+\item {\cf \small trace\-On \mbox{\cf \small \textit{tm}}           } 
+turns tracing on for moduel \mbox{\cf \small \textit{tm}} and its descendents.     \end{speccomment}
+\item {\index{traceOff@traceOff!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOff: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.traceOff}
+
+
+\begin{speccomment}
+\item {\cf \small trace\-Off \mbox{\cf \small \textit{tm}}           } 
+turns tracing off for moduel \mbox{\cf \small \textit{tm}} and its descendents.     \end{speccomment}
+\item {\index{traceOnly@traceOnly!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf traceOnly: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.traceOnly}
+
+
+\begin{speccomment}
+\item {\cf \small trace\-Only \mbox{\cf \small \textit{tm}}           } 
+turn tracing on for module \mbox{\cf \small \textit{tm}}, but not for its descendents.     \end{speccomment}
+\item {\index{amTracing@amTracing!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf amTracing: \(\mbox{\cf{}trace\_module}\rightarrow \mbox{\cf{}bool}\)}\label{val-TRACE_CML.amTracing}
+
+
+\begin{speccomment}
+\item {\cf \small am\-Tracing \mbox{\cf \small \textit{tm}}           } 
+returns {\cf \small true} if tracing is enabled for module \mbox{\cf \small \textit{tm}}.     \end{speccomment}
+\item {\index{status@status!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf status: \(\mbox{\cf{}trace\_module}\rightarrow(\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}bool})\;\mbox{\cf{}list}\)}\label{val-TRACE_CML.status}
+
+
+\begin{speccomment}
+\item {\cf \small status \mbox{\cf \small \textit{tm}}           } 
+returns a pre-order list of the modules rooted at \mbox{\cf \small \textit{tm}}, along 	  with their status (enabled or disabled).     \end{speccomment}
+\item {\index{trace@trace!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf trace: \((\mbox{\cf{}trace\_module}\mtoksep{}\verb,*,(\mbox{\cf{}unit}\rightarrow \mbox{\cf{}string}\;\mbox{\cf{}list}))\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.trace}
+
+
+\begin{speccomment}
+\item {\cf \small trace (\mbox{\cf \small \textit{tm}}, \mbox{\cf \small \textit{f}})           } 
+explain the use and semantics of trace HERE.     \end{speccomment}
+\item {\index{watcher@watcher!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf watcher: \(\mbox{\cf{}trace\_module}\)}\label{val-TRACE_CML.watcher}
+
+
+\begin{speccomment}
+\item {\cf \small watcher           } 
+is a trace module that is used to control the printing of thread 	  termination messages. 	  Its name is {\cf \small "/Thread\-Watcher/"}, and by default it is enabled.     \end{speccomment}
+\item {\index{watch@watch!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf watch: \((\mbox{\cf{}string}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}CML}.\mbox{\cf{}thread\_id})\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.watch}
+
+
+\begin{speccomment}
+\item {\cf \small watch (\mbox{\cf \small \textit{name}}, \mbox{\cf \small \textit{tid}})           } 
+watch the thread named by \mbox{\cf \small \textit{tid}} for unexpected termination. 	  If the thread terminates, then a trace message is generated 	  (see {\cf \small watcher}). 	  The string \mbox{\cf \small \textit{name}} is used to identify the thread in the 	  termination message.     \end{speccomment}
+\item {\index{unwatch@unwatch!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf unwatch: \(\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.unwatch}
+
+
+\begin{speccomment}
+\item {\cf \small unwatch \mbox{\cf \small \textit{tid}}           } 
+stop watching the thread named by \mbox{\cf \small \textit{tid}}.     \end{speccomment}
+\item {\index{setUncaughtFn@setUncaughtFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setUncaughtFn: \(((\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}exn})\rightarrow \mbox{\cf{}unit})\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.setUncaughtFn}
+
+
+\begin{speccomment}
+\item {\cf \small set\-Uncaught\-Fn \mbox{\cf \small \textit{f}}           } 
+sets the default uncaught exception action to \mbox{\cf \small \textit{f}}.     \end{speccomment}
+\item {\index{setHandleFn@setHandleFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf setHandleFn: \(((\mbox{\cf{}CML}.\mbox{\cf{}thread\_id}\mtoksep{}\verb,*,\mtoksep{}\mbox{\cf{}exn})\rightarrow \mbox{\cf{}bool})\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.setHandleFn}
+
+
+\begin{speccomment}
+\item {\cf \small set\-Handle\-Fn \mbox{\cf \small \textit{f}}           } 
+adds the function \mbox{\cf \small \textit{f}} as an additional uncaught exception action. 	  If the action returns {\cf \small true}, then no further action is taken. 	  This can be used to handle application specific exceptions.     \end{speccomment}
+\item {\index{resetUncaughtFn@resetUncaughtFn!TRACE_CML@\textcf{TRACE\_\linebreak[0]CML}}}{\kw{val}} {\cf resetUncaughtFn: \(\mbox{\cf{}unit}\rightarrow \mbox{\cf{}unit}\)}\label{val-TRACE_CML.resetUncaughtFn}
+
+
+\begin{speccomment}
+\item {\cf \small reset\-Uncaught\-Fn \mbox{\cf \small \textit{()}}           } 
+resets the default uncaught exception action to the system default, 	  and removes any layered actions.\end{speccomment}
+\end{descr}

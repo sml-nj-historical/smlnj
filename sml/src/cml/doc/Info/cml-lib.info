@@ -1,0 +1,7 @@
+@FILES
+  {@EMPTY "cml-lib"; "CML Library Reference";
+    @SECTION "CML Library Reference" {
+       @FILE "multicast"
+       @FILE "trace-cml"
+    }
+  }
