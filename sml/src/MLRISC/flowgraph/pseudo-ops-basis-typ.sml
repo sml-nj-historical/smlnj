@@ -31,10 +31,11 @@ structure PseudoOpsBasisTyp = struct
 	    * Sections are not allowed inside a text segment 
             *)
    | DATA_READ_ONLY
-   | DATA
+   | DATA 
+   | BSS
    | TEXT
    | SECTION of Atom.atom 
-
+   
 	  (*
 	   * May have to rethink this one!
 	   * For now, all instructions following a NOREORDER pseudo-op
@@ -57,6 +58,11 @@ structure PseudoOpsBasisTyp = struct
 	  *)
    | ASCII of string
    | ASCIIZ of string
+
+         (* 
+          * allocate uninitialized data space with size in bytes
+	  *)
+   | SPACE of int 			
 
 	 (*
           * Constant real data

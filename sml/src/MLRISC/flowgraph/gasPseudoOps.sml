@@ -72,6 +72,7 @@ struct
     | toString(PB.DATA_LABEL lab) = Label.fmt labFmt lab ^ ":"
     | toString(PB.DATA_READ_ONLY) = ".section      .rodata"
     | toString(PB.DATA)	          = ".data"
+    | toString(PB.BSS)		  = ".section      .bss"
     | toString(PB.TEXT)	          = ".text"
     | toString(PB.SECTION at)     = ".section     " ^ Atom.toString at
 
@@ -89,6 +90,8 @@ struct
 
     | toString(PB.ASCII s)        = Fmt.format ".ascii \"%s\"" [Fmt.STR s]
     | toString(PB.ASCIIZ s)       = Fmt.format ".asciiz \"%s\"" [Fmt.STR s]
+
+    | toString(PB.SPACE sz)	  = Fmt.format ".space %d" [Fmt.INT sz]
 
     | toString(PB.FLOAT{sz, f})   = 
          String.concat 
