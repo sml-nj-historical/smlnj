@@ -692,7 +692,8 @@ functor TextIOFn (
 				      handle ex => (
 					pos := bufLen;
 					outputExn (strm, "outputSubstr", ex))
-				val needsFlush = copyVec(v, avail, dataLen-avail, buf, 0)
+				val needsFlush =
+				    copyVec(v, dataStart+avail, dataLen-avail, buf, 0)
 				in
 				  pos := dataLen-avail;
 				  if needsFlush then flush() else ()

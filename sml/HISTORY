@@ -14,6 +14,33 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/10 16:40:00 EDT
+Tag: blume-20020510-erg-textio
+Description:
+
+Applied the following bugfix provided by Emden Gansner:
+
+    Output is corrupted when outputSubstr is used rather than output.
+
+    The problem occurs when a substring 
+
+	ss = (s, dataStart, dataLen)
+
+    where dataStart > 0, fills a stream buffer with avail bytes left. 
+    avail bytes of s, starting at index dataStart, are copied into the 
+    buffer, the buffer is flushed, and then the remaining dataLen-avail
+    bytes of ss are copied into the beginning of the buffer. Instead of 
+    starting this copy at index dataStart+avail in s, the current code 
+    starts the copy at index avail.
+
+    Fix:
+    In text-io-fn.sml, change line 695 from
+	 val needsFlush = copyVec(v, avail, dataLen-avail, buf, 0)
+    to     
+	 val needsFlush = copyVec(v, dataStart+avail, dataLen-avail, buf, 0)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/04/12 13:55:00 EDT
 Tag: blume-20020412-assyntax
 Description:
