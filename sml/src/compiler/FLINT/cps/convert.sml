@@ -390,7 +390,7 @@ fun convert fdec =
 			val kont = makmc (fn vs => APP(VAR k, vs), res_ctys f)
 			val (vl,body) =
 			    case fk
-			     of {isrec=SOME(_,F.LK_WHILE),...} => let
+			     of {isrec=SOME(_,F.LK_TAIL),...} => let
 				 (* for tail recursive loops, we create a
 				  * local function that takes its continuation
 				  * from the environment *)

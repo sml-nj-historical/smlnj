@@ -793,23 +793,23 @@ fun intersect(nil, _:tvar list) = nil
           | GREATER => intersect(s1, t2)
           | EQUAL => (h1,n) :: intersect(t1, t2)
 
-val s_iter = Stats.makeStat "Cvt Iterations"
-val s_hits = Stats.makeStat "Cvt Hits in dict"
-val s_cuts = Stats.makeStat "Cvt Freevar cutoffs"
+(* val s_iter = Stats.makeStat "Cvt Iterations" *)
+(* val s_hits = Stats.makeStat "Cvt Hits in dict" *)
+(* val s_cuts = Stats.makeStat "Cvt Freevar cutoffs" *)
 
-val s_tvoffs = Stats.makeStat "Cvt tvoffs length"
-val s_nvars = Stats.makeStat "Cvt free nvars length"
+(* val s_tvoffs = Stats.makeStat "Cvt tvoffs length" *)
+(* val s_nvars = Stats.makeStat "Cvt free nvars length" *)
 
 fun tc_nvar_cvt_gen() = let
     val dict = ref (TcDict.mkDict())
 
     fun tc_nvar_cvt (tvoffs:tvoffs) d tyc = 
-        (Stats.addStat s_iter 1;
-         Stats.addStat s_tvoffs (length tvoffs);
-         Stats.addStat s_nvars (length (LK.tc_nvars tyc));
+        ((* Stats.addStat s_iter 1; *)
+         (* Stats.addStat s_tvoffs (length tvoffs); *)
+         (* Stats.addStat s_nvars (length (LK.tc_nvars tyc)); *)
         (* check if substitution overlaps with free vars list *)
         case intersect(tvoffs, LK.tc_nvars tyc) of
-            [] => (Stats.addStat s_cuts 1;
+            [] => ((* Stats.addStat s_cuts 1; *)
                    tyc           (* nothing to cvt *)
                    )
           | tvoffs => 
@@ -819,7 +819,7 @@ fun tc_nvar_cvt_gen() = let
         val tycdepth = tcc_proj (tyc, d)
     in
         case TcDict.peek(!dict, tycdepth) of
-            SOME t => (Stats.addStat s_hits 1;
+            SOME t => ((* Stats.addStat s_hits 1; *)
                        t                 (* hit! *)
                        )
           | NONE => let                 (* must recompute *)

@@ -94,8 +94,6 @@ val say = Control.Print.say
 fun bug msg = ErrorMsg.impossible ("Collect: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
-fun ASSERT (true,_) = ()
-  | ASSERT (FALSE,msg) = bug ("assertion "^msg^" failed")
 
 datatype info
   (* we keep track of calls and escaping uses *)
@@ -112,12 +110,12 @@ fun new args lv =
 
 (* map related helper functions *)
 fun get lv = (M.map m lv)
-		  handle x as NotFound =>
+		  (* handle x as NotFound =>
 		  (say ("Collect: ERROR: get unknown var "^
 			(LV.lvarName lv)^
 			". Pretending dead...\n");
 		   (*  raise x; *)
-		   new NONE lv)
+		   new NONE lv) *)
 
 fun LVarString lv =
     let val Info{uses=ref uses,calls=ref calls,...} = get lv
@@ -164,7 +162,7 @@ fun unuse call (Info{uses,calls,...}) =
      * we can detect it happened when we try to go below zero. *)
     (dec uses;
      if (call (*  andalso !calls > 0 *)) then dec calls
-     else ASSERT(!uses >= !calls, "unknown sanity");
+     else ();
      if !uses < 0 then bug "decrementing too much" (* F.VAR lv) *)
      else !uses = 0)
 
@@ -180,8 +178,7 @@ fun ireset (Info{int,...}) = int := (0,0)
 
 (* Ideally, we should check that usenb = 1, but we may have been a bit
  * conservative when keeping the counts uptodate *)
-fun kill lv = (ASSERT(usenb(get lv) >= 1, "usenb "^(LVarString lv)^" >= 1 ");
-	       M.rmv m lv)
+fun kill lv = (M.rmv m lv)
 
 (* ********************************************************************** *)
 (* ********************************************************************** *)
@@ -227,7 +224,7 @@ val census = let
      * `uvs' is an optional list of booleans representing which of 
      * the return values are actually used *)
     fun cexp lexp =
-	(case lexp
+	case lexp
 	 of F.RET vs => app use vs
 
 	  | F.LET (lvs,le1,le2) =>
@@ -300,7 +297,7 @@ val census = let
 		if impurePO po orelse used lvi then (cpo po; app use vs) else ()
 	    end
 	  
-	  | le => buglexp("unexpected lexp", le)) handle x => raise x
+	  | le => buglexp("unexpected lexp", le)
 in
     cexp
 end
@@ -328,10 +325,10 @@ fun unuselexp undertaker = let
       | cdcon _ = ()
 
     fun cfun (args,body) = (* census of a fundec *)
-	(app (def o get) args; cexp body; app kill args) handle x => raise x
+	(app (def o get) args; cexp body; app kill args)
 
     and cexp lexp =
-	(case lexp
+	case lexp
 	 of F.RET vs => app unuse vs
 
 	  | F.LET (lvs,le1,le2) =>
@@ -398,7 +395,7 @@ fun unuselexp undertaker = let
 	       def lvi; cexp le; kill lv
 	    end
 
-	  | le => buglexp("unexpected lexp", le)) handle x => raise x
+	  | le => buglexp("unexpected lexp", le)
 in
     cexp
 end
@@ -412,7 +409,7 @@ fun copylexp alpha le =
 fun collect (fdec as (_,f,_,_)) =
     ((*  say "Entering Collect...\n"; *)
      M.clear m;				(* start from a fresh state *)
-     PP.LVarString := LVarString;
+     (* PP.LVarString := LVarString; *)
      uselexp (F.FIX([fdec], F.RET[F.VAR f]));
      (*  say "...Collect Done.\n"; *)
      fdec)

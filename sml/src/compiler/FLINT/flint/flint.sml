@@ -33,7 +33,7 @@ datatype ilhint
 datatype loopkind
   = LK_UNKNOWN				(* something else *)
   | LK_LOOP				(* loop wrapped in a preheader *)
-  | LK_WHILE				(* properly tail-recursive *)
+  | LK_TAIL				(* properly tail-recursive *)
 
 (* calling convention *)
 datatype cconv

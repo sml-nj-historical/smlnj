@@ -184,7 +184,8 @@ in case lexp
 					[], le))
 
 	   (* process each fun *)
-	   fun ffun (fdec as (fk,f,args,body):F.fundec,(s,fv,funs,m)) =
+	   fun ffun (fdec as (fk as {isrec,...},f,args,body):F.fundec,
+		     (s,fv,funs,m)) =
 	       case curry (true,false,!maxargs) (F.FIX([fdec], F.RET[F.VAR f]))
 		of (args as _::_::_,body) => (* curried function *)
 		   let val ((fk,f,fargs,fbody),(fk',f',fargs',fbody')) =
@@ -199,6 +200,9 @@ in case lexp
 		   let val (fs,ffv,body) = fexp(S.empty, body)
 		       val ffv = rmvs(ffv, map #1 args) (* fun's freevars *)
 		       val ifv = S.inter(ffv, funs) (* set of rec funs ref'ed *)
+		       val fs = fs div (case isrec of SOME(_,F.LK_TAIL) => 3
+						    | SOME(_,F.LK_LOOP) => 1
+						    | _ => 1)
 		   in
 		       (fs + s, S.union(ffv, fv), funs,
 			M.add(m, f, (S.members ifv, fs, fk, args, body)))
@@ -235,7 +239,7 @@ in case lexp
 				* This heuristic is pretty bad since it doesn't
 				* take the number of rec-calls into account *)
 			       case (isrec,inline)
-				of (SOME(_,(F.LK_LOOP|F.LK_WHILE)),F.IH_SAFE) =>
+				of (SOME(_,(F.LK_LOOP|F.LK_TAIL)),F.IH_SAFE) =>
 				   if s < !CTRL.unrollThreshold then
 				       {inline=F.IH_UNROLL, isrec=isrec,
 					cconv=cconv, known=known}

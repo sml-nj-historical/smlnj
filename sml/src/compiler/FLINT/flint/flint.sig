@@ -27,7 +27,7 @@ datatype ilhint
 datatype loopkind
   = LK_UNKNOWN				(* something else *)
   | LK_LOOP				(* loop wrapped in a preheader *)
-  | LK_WHILE				(* like LK_LOOP but tail-recursive *)
+  | LK_TAIL				(* like LK_LOOP but tail-recursive *)
 
 (* calling convention *)
 datatype cconv

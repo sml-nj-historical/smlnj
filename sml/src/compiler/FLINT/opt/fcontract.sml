@@ -211,6 +211,8 @@ datatype sval
 fun sval2lty (Var(_,x)) = x
   | sval2lty (Decon(_,_,(_,_,lty),tycs)) =
     SOME(hd(#2 (LT.ltd_arrow (hd(LT.lt_inst(lty, tycs))))))
+  | sval2lty (Select(_,sv,i)) =
+    (case sval2lty sv of SOME lty => SOME(LT.lt_select(lty, i)) | _ => NONE)
   | sval2lty _ = NONE
 
 fun tycs_eq ([],[]) = true
@@ -262,18 +264,10 @@ fun contract (fdec as (_,f,_,_), counter) = let
     fun click_unroll       () = (click "u" c_inline)
     fun inline_count () = Stats.getCounter c_inline
 
-(* cfg: is used for deBruijn renumbering when inlining at different depths
- * ifs (inlined functions): records which functions we're currently inlining
- *     in order to detect loops
- * m: is a map lvars to their defining expressions (svals) *)
-fun cexp ifs m le cont = let
-
-    val loop = cexp ifs
-
     fun used lv = (C.usenb(C.get lv) > 0)
-		      handle x =>
+		      (* handle x =>
 		      (say("while in FContract.used "^(C.LVarString lv)^"\n");
-		       raise x)
+		       raise x) *)
     
     fun impurePO po = true		(* if a PrimOP is pure or not *)
 
@@ -298,16 +292,16 @@ fun cexp ifs m le cont = let
 	  | Val v => v
 			 
     fun val2sval m (F.VAR ov) = 
-	((lookup m ov) handle x =>
-	 (say("val2sval "^(C.LVarString ov)^"\n"); raise x))
+	((lookup m ov) (* handle x =>
+	 (say("val2sval "^(C.LVarString ov)^"\n"); raise x) *) )
       | val2sval m v = Val v
 
     fun bugsv (msg,sv) = bugval(msg, sval2val sv)
 
     fun subst m ov = sval2val (lookup m ov)
-    val substval = sval2val o (val2sval m)
-    fun substvar lv =
-	case substval(F.VAR lv)
+    fun substval m = sval2val o (val2sval m)
+    fun substvar m lv =
+	case substval m (F.VAR lv)
 	 of F.VAR lv => lv
 	  | v => bugval ("unexpected val", v)
 
@@ -349,92 +343,42 @@ fun cexp ifs m le cont = let
     fun substitute (m, lv1, sv, v) =
 	(case sval2val sv of F.VAR lv2 => C.transfer(lv1,lv2) | v2 => ();
 	 unuseval m v;
-	 addbind(m, lv1, sv)) handle x =>
+	 addbind(m, lv1, sv)) (* handle x =>
 	     (say ("while substituting "^
 		   (C.LVarString lv1)^
 		   " -> ");
 	      PP.printSval (sval2val sv);
-	      raise x)
+	      raise x) *)
 
     (* common code for primops *)
-    fun cpo (SOME{default,table},po,lty,tycs) =
-	(SOME{default=substvar default,
-	      table=map (fn (tycs,lv) => (tycs, substvar lv)) table},
+    fun cpo m (SOME{default,table},po,lty,tycs) =
+	(SOME{default=substvar m default,
+	      table=map (fn (tycs,lv) => (tycs, substvar m lv)) table},
 	 po,lty,tycs)
-      | cpo po = po
+      | cpo _ po = po
 
-    fun cdcon (s,Access.EXN(Access.LVAR lv),lty) =
-	(s, Access.EXN(Access.LVAR(substvar lv)), lty)
-      | cdcon dc = dc
+    fun cdcon m (s,Access.EXN(Access.LVAR lv),lty) =
+	(s, Access.EXN(Access.LVAR(substvar m lv)), lty)
+      | cdcon _ dc = dc
 
-    fun zip ([],[]) = []
-      | zip (x::xs,y::ys) = (x,y)::(zip(xs,ys))
-      | zip _ = bug "bad zip"
-
-    (* F.APP inlining (if any)
-     * `ifs' is the set of function we are currently inlining
-     * `f' is the function, `vs' its arguments.
-     * return either (NONE, ifs) if inlining cannot be done or
-     * (SOME lexp, nifs) where `lexp' is the expansion of APP(f,vs) and
-     * `nifs' is the new set of functions we are currently inlining.
-     *)
-    fun inline ifs (f,vs) =
-	case ((val2sval m f) handle x => raise x)
-	 of Fun(g,body,args,{inline,...}) =>
-	    (if ((C.usenb(C.get g))handle x => raise x) = 1 andalso not(S.member ifs g) then
-							 
-		 (* simple inlining:  we should copy the body and then
-		  * kill the function, but instead we just move the body
-		  * and kill only the function name.  This inlining strategy
-		  * looks inoffensive enough, but still requires some care:
-		  * see comments at the begining of this file and in cfun *)
-		 (click_simpleinline();
-		  ignore(C.unuse true (C.get g));
-		  (SOME(F.LET(map #1 args, F.RET vs, body)), ifs))
-		 
-	     (* aggressive inlining (but hopefully safe).  We allow
-	      * inlining for mutually recursive functions (isrec)
-	      * despite the potential risk.  The reason is that it can
-	      * happen that a wrapper (that should be inlined) has to be made
-	      * mutually recursive with its main function.  On another hand,
-	      * self recursion (C.recursive) is too dangerous to be inlined
-	      * except for loop unrolling *)
-	     (* unrolling is not as straightforward as it seems:
-	      * if you inline the function you're currently fcontracting,
-	      * you're asking for trouble: there is a hidden assumption
-	      * in the counting that the old code will be replaced by the new
-	      * code (and is hence dead).  If the function to be unrolled
-	      * has the only call to function f, then f might get simpleinlined
-	      * before unrolling, which means that unrolling will introduce
-	      * a second occurence of the `only call' but at that point f
-	      * has already been killed. *)
-	     else if (inline = F.IH_ALWAYS andalso not(S.member ifs g)) (*orelse
-		 (inline = F.IH_UNROLL andalso (S.member ifs g)) *) then
-		 let val nle =
-			 C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
-		 in
-		     (*  say ("\nInlining "^(C.LVarString g)); *)
-		     (app (unuseval m) vs) handle x => raise x;
-		     unusecall m g;
-		     (SOME nle,
-		      (* gross hack: to prevent further unrolling,
-		       * I pretend that the rest is not inside the body *)
-		      if inline = F.IH_UNROLL
-		      then (click_unroll(); S.rmv(g, ifs))
-		      else (click_copyinline(); S.add(g, ifs)))
-		 end
-	     else (NONE, ifs))
-	  | sv => (NONE, ifs)
-in
-    case le
-     of F.RET vs => cont(m, F.RET(map substval vs) handle x => raise x)
+(* cfg: is used for deBruijn renumbering when inlining at different depths
+ * ifs (inlined functions): records which functions we're currently inlining
+ *     in order to detect loops
+ * m: is a map lvars to their defining expressions (svals) *)
+fun cexp ifs m le cont = let
+    val loop = cexp ifs
+    val substval = substval m
+    val cdcon = cdcon m
+    val cpo = cpo m
+in case le
+     of F.RET vs => cont(m, F.RET(map substval vs))
 
       | F.LET (lvs,le,body) =>
 	let fun clet () =
 		loop m le
 		     (fn (m,F.RET vs) =>
 		      let fun simplesubst (lv,v,m) =
-			      let val sv = (val2sval m v) handle x => raise x
+			      let val sv = val2sval m v
 			      in substitute(m, lv, sv, sval2val sv)
 			      end
 			  val nm = (ListPair.foldl simplesubst m (lvs, vs))
@@ -449,7 +393,7 @@ in
 					    else F.LET(lvs, nle, F.RET vs)
 			      | nbody => F.LET(lvs, nle, nbody)
 			 end)
-	in case le
+	in (* case le
 	    of F.BRANCH (po,vs,le1,le2) =>
 	       (* this is a hack originally meant to cleanup the BRANCH mess
 		* introduced in flintnm (where each branch returns just true or
@@ -483,7 +427,7 @@ in
  		      cassoc(lv, v, le, fn le => F.LET(lvs,le,rest))
  		    | _ => clet()
  	       end
-	     | _ => clet()
+	     | _ => *) clet()
 	end
 
       | F.FIX (fs,le) =>
@@ -513,7 +457,7 @@ in
 				   inline=if inline_count() = saved_ic
 					  then inline
 					  else F.IH_SAFE}
-			(* update the binding in the map.  This step is not
+			(* update the binding in the map.  This step is
 			 * not just a mere optimization but is necessary
 			 * because if we don't do it and the function
 			 * gets inlined afterwards, the counts will reflect the
@@ -526,13 +470,15 @@ in
 		end
 
 	    (* check for eta redex *)
-	    fun ceta (fdec as (fk,f,args,F.APP(g,vs)):F.fundec,(m,fs,hs)) =
-		if vs = (map (F.VAR o #1) args) andalso
-		    (* don't forget to check that g is not one of the args
-		     * and not f itself either *)
-		    (List.find (fn v => v = g) (F.VAR f::vs)) = NONE
+	    fun ceta (fdec as (fk,f,args,F.APP(F.VAR g,vs)):F.fundec,
+		      (m,fs,hs)) =
+		if List.length args = List.length vs andalso
+		    OU.ListPair_all (fn (v,(lv,t)) =>
+				     case v of F.VAR v => v = lv andalso lv <> g
+					     | _ => false)
+				    (vs, args)
 		then
-		    let val svg = val2sval m g
+		    let val svg = lookup m g
 			val g = case sval2val svg
 				 of F.VAR g => g
 				  | v => bugval("not a variable", v)
@@ -645,10 +591,47 @@ in
 	end
 	    
       | F.APP (f,vs) =>
-	let val nvs = ((map substval vs) handle x => raise x)
-	in case inline ifs (f, nvs)
-	    of (SOME le,nifs) => cexp nifs m le cont
-	     | (NONE,_) => cont(m,F.APP((substval f) handle x => raise x, nvs))
+	let val nvs = map substval vs
+	    val svf = val2sval m f
+	(* F.APP inlining (if any) *)
+	in case svf
+	    of Fun(g,body,args,{inline,...}) =>
+	       if (C.usenb(C.get g)) = 1 andalso not(S.member ifs g) then
+		   
+		   (* simple inlining:  we should copy the body and then
+		    * kill the function, but instead we just move the body
+		    * and kill only the function name.
+		    * This inlining strategy looks inoffensive enough,
+		    * but still requires some care: see comments at the
+		    * begining of this file and in cfun *)
+		   (click_simpleinline();
+		    ignore(C.unuse true (C.get g));
+		    loop m (F.LET(map #1 args, F.RET vs, body)) cont)
+		   
+	       (* aggressive (but safe) inlining.  We allow pretty much
+		* any inlinling, but we detect and reject inlining
+		* recursively which would else lead to infinite loop *)
+	       (* unrolling is not as straightforward as it seems:
+		* if you inline the function you're currently
+		* fcontracting, you're asking for trouble: there is a
+		* hidden assumption in the counting that the old code
+		* will be replaced by the new code (and is hence dead).
+		* If the function to be unrolled has the only call to
+		* function f, then f might get simpleinlined before
+		* unrolling, which means that unrolling will introduce
+		* a second occurence of the `only call' but at that point
+		* f has already been killed. *)
+	       else if (inline = F.IH_ALWAYS andalso not(S.member ifs g)) then
+		   let val nle =
+			   C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
+		   in
+		       click_copyinline();
+		       (app (unuseval m) vs);
+		       unusecall m g;
+		       cexp (S.add(g, ifs)) m nle cont
+		   end
+	       else cont(m,F.APP(sval2val svf, nvs))
+	     | sv => cont(m,F.APP(sval2val svf, nvs))
 	end
 	    
       | F.TFN ((f,args,body),le) =>
@@ -674,10 +657,10 @@ in
 		     inlineWitness := true;
 		     ignore(C.unuse true (C.get g));
 		 end *)
-	cont(m, F.TAPP((substval f) handle x => raise x, tycs))
+	cont(m, F.TAPP(substval f, tycs))
 
       | F.SWITCH (v,ac,arms,def) =>
-	(case ((val2sval m v) handle x => raise x)
+	(case val2sval m v
 	  of sv as Con (lvc,svc,dc1,tycs1) =>
 	     let fun killle le = C.unuselexp (undertake m) le
 		 fun kill lv le =
@@ -723,7 +706,7 @@ in
 		      val slv = Decon(lv, sv, ndc, tycs)
 		      val nm = addbind(m, lv, slv)
 		      (* see below *)
-		      val nm = addbind(nm, lvc, Con(lvc, slv, ndc, tycs))
+		      (* val nm = addbind(nm, lvc, Con(lvc, slv, ndc, tycs)) *)
 		      val nle = loop nm le cont
 		      val nv = sval2val sv
 		  in
@@ -752,7 +735,7 @@ in
 			       * - it seems to be a good idea, but it can hide
 			       *   other opt-opportunities since it hides the
 			       *   previous binding. *)
-			      val nm = addbind(nm, lvc, Con(lvc,slv,ndc,tycs))
+			      (* val nm = addbind(nm, lvc, Con(lvc,slv,ndc,tycs)) *)
 			  in (F.DATAcon(ndc, tycs, lv), loop nm le #2)
 			  end
 			| carm (con,le) = (con, loop m le #2)
@@ -774,7 +757,7 @@ in
 		    in if C.dead lvi then nle
 		       else F.CON(ndc, tycs1, sval2val sv, lv, nle)
 		    end
-	    in case ((val2sval m v) handle x => raise x)
+	    in case val2sval m v
 		of sv as (Decon (lvd,sv',dc2,tycs2)) =>
 		   if FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) then
 		       (click_con();
@@ -807,7 +790,7 @@ in
 		    in g'(1,ss)
 		    end
 		  | g _ = NONE
-		val svs = ((map (val2sval m) vs) handle x => raise x)
+		val svs = map (val2sval m) vs
 	    in case g svs
 		of SOME sv => (click_record();
 			       loop (substitute(m, lv, sv, F.INT 0)) le cont
@@ -824,7 +807,7 @@ in
       | F.SELECT (v,i,lv,le) =>
 	let val lvi = C.get lv
 	in if C.dead lvi then (click_deadval(); loop m le cont) else
-	    (case ((val2sval m v) handle x => raise x)
+	    (case val2sval m v
 	      of Record (lvr,svs) =>
 		 let val sv = List.nth(svs, i)
 		 in click_select();
@@ -839,13 +822,13 @@ in
 	end
 		     
       | F.RAISE (v,ltys) =>
-	cont(m, F.RAISE((substval v) handle x => raise x, ltys))
+	cont(m, F.RAISE(substval v, ltys))
 
       | F.HANDLE (le,v) =>
-	cont(m, F.HANDLE(loop m le #2, (substval v) handle x => raise x))
+	cont(m, F.HANDLE(loop m le #2, substval v))
 
       | F.BRANCH (po,vs,le1,le2) =>
-	let val nvs = ((map substval vs) handle x => raise x)
+	let val nvs = map substval vs
 	    val npo = cpo po
 	    val nle1 = loop m le1 #2
 	    val nle2 = loop m le2 #2
@@ -856,7 +839,7 @@ in
 	let val lvi = C.get lv
 	    val pure = not(impurePO po)
 	in if pure andalso C.dead lvi then (click_deadval();loop m le cont) else
-	    let val nvs = ((map substval vs) handle x => raise x)
+	    let val nvs = map substval vs
 		val npo = cpo po
 		val nm = addbind(m, lv, Var(lv,NONE))
 		val nle = loop nm le cont

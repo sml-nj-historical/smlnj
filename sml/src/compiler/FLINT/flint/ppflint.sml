@@ -38,8 +38,8 @@ struct
 		      | F.IH_SAFE => "")^
 	     (case isrec
 	       of SOME(_,F.LK_UNKNOWN) => "R"
-		| SOME(_,F.LK_LOOP) => "L"
-		| SOME(_,F.LK_WHILE) => "W"
+		| SOME(_,F.LK_LOOP) => "LR"
+		| SOME(_,F.LK_TAIL) => "TR"
 		| NONE => "")^
 		  (case cconv
 		    of F.CC_FCT => "FCT"
