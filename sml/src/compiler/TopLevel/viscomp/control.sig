@@ -43,9 +43,6 @@ sig
     val check		: bool ref
     val checkDatatypes	: bool ref
     val checkKinds	: bool ref
-
-    (* debugging *)
-    val debugFContract	: bool ref
 end
 
 signature CGCONTROL =
