@@ -70,7 +70,8 @@ structure PosixTextPrimIO : sig
 	  val closed = ref false
 	  fun checkClosed () = if !closed then raise IO.ClosedStream else ()
 	  val len = String.size src
-	  fun avail () = (len - !pos)
+	  val plen = Position.fromInt len
+	  fun avail () = len - !pos
 	  fun readV n = let
 		val p = !pos
 		val m = Int.min(n, len-p)
@@ -92,7 +93,11 @@ structure PosixTextPrimIO : sig
 			dst = buf, di = i };
 		  m
 		end
-	  fun getPos () = (checkClosed(); !pos)
+	  fun getPos () = (checkClosed(); Position.fromInt (!pos))
+	  fun setPos p =
+	      (checkClosed ();
+	       if p < 0 andalso p > plen then raise Subscript
+	       else pos := Position.toInt p)
 	  in
 	    PrimIO.RD{
 		name        = "<string>", 
@@ -103,13 +108,8 @@ structure PosixTextPrimIO : sig
 		readArrEvt  = withLock(CML.alwaysEvt o readA),
 		avail       = SOME o avail,
 		getPos      = SOME(withLock getPos),
-		setPos	    = SOME(withLock(fn i => (
-				checkClosed();
-				if (i < 0) orelse (len < i)
-				  then raise Subscript
-				  else ();
-				pos := i))),
-        	endPos      = SOME(withLock(fn () => (checkClosed(); len))),
+		setPos	    = SOME(withLock setPos),
+        	endPos      = SOME(withLock(fn () => (checkClosed(); plen))),
 		verifyPos   = SOME(withLock getPos),
 		close       = withLock(fn () => closed := true),
 		ioDesc      = NONE

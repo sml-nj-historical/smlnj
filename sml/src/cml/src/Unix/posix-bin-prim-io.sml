@@ -106,7 +106,7 @@ structure PosixBinPrimIO : OS_PRIM_IO =
 	  fun avail () = if !closed
 		  then SOME 0
 		else if isReg
-		  then SOME(Position.-(PF.ST.size(PF.fstat fd), !pos))
+		  then SOME(Position.toInt (PF.ST.size(PF.fstat fd) - !pos))
 		  else NONE
 	  in
 	    BinPrimIO.RD{

@@ -1,6 +1,10 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2004-11-24]
+        Made the IO implementation agnostic of size of Position.int.
+        (Now compiles with either Position = Int31 or Position = Int64.)
+
 [2003-09-23]
 	Accounted for changes to socket API in Basis. (Non-blocking
 	behavior is no longer a stateful property of a socket.  Instead,

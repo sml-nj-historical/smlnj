@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/24 22:15:00 CST
+Tag: blume-20041124-cml
+Description:
+
+Made sure CML compiles when Position = Int64.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/24 14:30:00 CST
 Tag: blume-20041124-position
 Description:

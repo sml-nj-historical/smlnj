@@ -269,7 +269,7 @@ structure POSIX_IO =
 	    fun avail () =
 		if !closed then SOME 0
 		else if isReg then
-		    SOME(Position.-(FS.ST.size(FS.fstat fd), !pos))
+		    SOME(Position.toInt (FS.ST.size(FS.fstat fd) - !pos))
 		else NONE
 	in
 	    mkRD { name = name,
