@@ -25,12 +25,10 @@ signature SERVERS = sig
     val cm : SrcPath.t -> unit
 
     (* signal all servers that we are starting with a new CMB.make *)
-    val cmb : string -> unit
+    val cmb : { archos: string, dirbase: string } -> unit
 
     (* schedule a compilation *)
     val compile : SrcPath.t -> bool
-
-    val evict : SmlInfo.info -> unit
 
     val withServers : (unit -> 'a) -> 'a
 end

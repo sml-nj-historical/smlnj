@@ -7,14 +7,15 @@
  *)
 structure CMBSlaveHook = struct
     local
-	type res =
-	    GroupGraph.group *
-	    (DependencyGraph.sbnode -> bool) *
-	    (SmlInfo.info -> unit)
-	fun placeholder (s: string) = (NONE: res option)
-	val r = ref placeholder
+	type slave =
+	    string ->
+	    (GroupGraph.group * (DependencyGraph.sbnode -> bool)) option
+	val m = ref (StringMap.empty: slave StringMap.map)
     in
-	fun init f = r := f
-	fun slave s = !r s
+	fun init arch f = m := StringMap.insert (!m, arch, f)
+	fun slave arch s =
+	    case StringMap.find (!m, arch) of
+		NONE => NONE
+	      | SOME f => f s
     end
 end

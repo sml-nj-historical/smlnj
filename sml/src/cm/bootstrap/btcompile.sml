@@ -6,8 +6,8 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
-			    val os: SMLofNJ.SysInfo.os_kind) :> sig
+functor BootstrapCompileFn (structure MachDepVC : MACHDEP_VC
+			    val os : SMLofNJ.SysInfo.os_kind) :> sig
     val make' : string option -> bool
     val make : unit -> bool
     val deliver' : string option -> bool
@@ -28,6 +28,10 @@ end = struct
     structure F = OS.FileSys
     structure BF = MachDepVC.Binfile
 
+    val arch = MachDepVC.architecture
+    val osname = FilenamePolicy.kind2name os
+    val archos = concat [arch, "-", osname]
+
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
 				   val compile_there = Servers.compile)
 
@@ -35,9 +39,7 @@ end = struct
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (fun destroy_state _ i =
-			 (Compile.evict i;
-			  Servers.evict i)
+	StabilizeFn (fun destroy_state _ i = Compile.evict i
 		     structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
@@ -96,10 +98,8 @@ end = struct
 	val initgspec = BtNames.initgspec
 	val maingspec = BtNames.maingspec
 
-	val arch = MachDepVC.architecture
-	val osname = FilenamePolicy.kind2name os
-	val bindir = concat [dirbase, ".bin.", arch, "-", osname]
-	val bootdir = concat [dirbase, ".boot.", arch, "-", osname]
+	val bindir = concat [dirbase, ".bin.", archos]
+	val bootdir = concat [dirbase, ".boot.", archos]
 
 	fun listName (p, copy) =
 	    case P.fromString p of
@@ -237,7 +237,7 @@ end = struct
 	    val stab =
 		if deliver then SOME true else NONE
 	in
-	    Servers.cmb dirbase;
+	    Servers.cmb { archos = archos, dirbase = dirbase };
 	    case Parse.parse NONE param stab maingspec of
 		NONE => NONE
 	      | SOME (g, gp) => let
@@ -312,7 +312,11 @@ end = struct
     fun compile deliver dbopt =
 	case mk_compile deliver dbopt of
 	    NONE => false
-	  | SOME (_, thunk) => thunk () before Servers.reset ()
+	  | SOME (_, thunk) =>
+		SafeIO.perform { openIt = fn () => (),
+				 closeIt = Servers.reset,
+				 work = thunk,
+				 cleanup = fn () => () }
 
     local
 	fun slave dirbase =
@@ -322,10 +326,10 @@ end = struct
 		    val trav = Compile.newSbnodeTraversal () gp
 		    fun trav' sbn = isSome (trav sbn)
 		in
-		    SOME (g, trav', Compile.evict)
+		    SOME (g, trav')
 		end
     in
-	val _ = CMBSlaveHook.init slave
+	val _ = CMBSlaveHook.init archos slave
     end
 
     fun reset () =

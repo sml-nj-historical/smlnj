@@ -116,7 +116,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       end
 		       fun destroy_state gp i =
 			   (Compile.evict i;
-			    Servers.evict i;
 			    Link.evict gp i)
 		       val getII = Compile.getII)
 
@@ -215,8 +214,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
 		| SOME (g, gp) =>
-		      (f gp g
-		       before Servers.reset ())
+		      SafeIO.perform { openIt = fn () => (),
+				       closeIt = Servers.reset,
+				       work = fn () => f gp g,
+				       cleanup = fn () => () }
 	  end
 
 	  val listLibs = Parse.listLibs
@@ -237,6 +238,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun shutdown () = OS.Process.exit OS.Process.success
 	      fun say_ok () = Say.say ["SLAVE: ok\n"]
 	      fun say_error () = Say.say ["SLAVE: error\n"]
+
+	      val touch = HostMachDepVC.Interact.useStream o TextIO.openString 
 		  
 	      fun waitForStart () = let
 		  val line = TextIO.inputLine TextIO.stdIn
@@ -244,22 +247,23 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  if line = "" then shutdown ()
 		  else case String.tokens Char.isSpace line of
 		      ["cm", d, f] => do_cm (d, f)
-		    | ["cmb", d, db] => do_cmb (d, db)
+		    | ["cmb", archos, d, db] => do_cmb (archos, d, db)
 		    | ["shutdown"] => shutdown ()
 		    | _ => (say_error (); waitForStart ())
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and do_cmb (d, db) = let
+	      and do_cmb (archos, d, db) = let
 		  val _ = OS.FileSys.chDir d
 		  val c = SrcPath.cwdContext ()
+		  val slave = CMBSlave.slave { load = autoload, touch = touch }
 	      in
-		  case CMBSlave.slave make db of
+		  case slave archos db of
 		      NONE => (say_error (); waitForStart ())
-		    | SOME (g, trav, evict) => let
+		    | SOME (g, trav) => let
 			  val _ = say_ok ()
 			  val index = Reachable.snodeMap g
 		      in
-			  workLoop (index, trav, evict, c)
+			  workLoop (index, trav, c)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
@@ -276,11 +280,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  val trav = Compile.newSbnodeTraversal () gp
 			  fun trav' sbn = isSome (trav sbn)
 		      in
-			  workLoop (index, trav', Compile.evict, c)
+			  workLoop (index, trav', c)
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and workLoop (index, trav, evict, c) = let
+	      and workLoop (index, trav, c) = let
 		  fun f2sn f =
 		      SrcPathMap.find (index,
 				       SrcPath.native { context = c,
@@ -290,12 +294,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  in
 		      if line = "" then shutdown ()
 		      else case String.tokens Char.isSpace line of
-			  ["evict", f] =>
-			      (case f2sn f of
-				   NONE => loop ()
-				 | SOME (DG.SNODE { smlinfo, ... }) =>
-				       (evict smlinfo; loop ()))
-			| ["compile", f] => let
+			  ["compile", f] => let
 			      val p = SrcPath.native { context = c, spec = f }
 			  in
 			      case SrcPathMap.find (index, p) of
@@ -305,7 +304,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				  in
 				      if trav sbn then (say_ok (); loop ())
 				      else (say_error (); loop ())
-				  end
+				  end handle _ => (say_error (); loop ())
 			  end
 			| ["cm", d, f] => do_cm (d, f)
 			| ["finish"] => (say_ok (); waitForStart ())
@@ -317,7 +316,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      end
 	  in
 	      say_ok ();		(* announce readiness *)
-	      waitForStart ()
+	      waitForStart () handle _ => ();
+	      OS.Process.exit OS.Process.failure
 	  end
 
 	  fun reset () =

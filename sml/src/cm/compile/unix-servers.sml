@@ -10,7 +10,7 @@
 structure Servers :> SERVERS = struct
 
     type pathtrans = (string -> string) option
-    type server = (string * Unix.proc * string list ref) * pathtrans
+    type server = (string * Unix.proc) * pathtrans
 
     val enabled = ref false
     val nservers = ref 0
@@ -22,18 +22,15 @@ structure Servers :> SERVERS = struct
     fun fname (n, (_, NONE)) = n
       | fname (n, (_, SOME f)) = if OS.Path.isAbsolute n then f n else n
 
-    fun servName ((n, _, _), _) = n
+    fun servName ((n, _), _) = n
 
     fun send (s, msg) = let
-	val ((name, p, r as ref el), _) = s
+	val ((name, p), _) = s
 	val (_, outs) = Unix.streamsOf p
 	fun send0 m =
 	    (Say.dsay ["-> ", name, " : ", m];
 	     TextIO.output (outs, m))
-	fun ev x = send0 (concat ["evict ", x, "\n"])
     in
-	app ev el;
-	r := [];
 	send0 msg;
 	TextIO.flushOut outs
     end
@@ -69,7 +66,7 @@ structure Servers :> SERVERS = struct
 		 first)
 
     fun wait_status (s, echo) = let
-	val ((name, p, _), _) = s
+	val ((name, p), _) = s
 	val (ins, _) = Unix.streamsOf p
 
 	fun unexpected l = let
@@ -119,30 +116,28 @@ structure Servers :> SERVERS = struct
 	loop []
     end
 
-    fun stop name = let
+    fun shutdown (name, method) = let
 	val (m, s) = StringMap.remove (!all, name)
-	val ((_, p, _), _) = s
+	val ((_, p), _) = s
+	val (_, il) = List.partition (fn ((n, _), _) => name = n) (!idle)
     in
-	send (s, "shutdown\n");
+	method s;
 	ignore (Unix.reap p);
 	all := m;
-	nservers := !nservers - 1
+	nservers := !nservers - 1;
+	idle := il
     end handle LibBase.NotFound => ()
 
-    fun kill name = let
-	val (m, s) = StringMap.remove (!all, name)
-	val ((_, p, _), _) = s
-    in
-	Unix.kill (p, Posix.Signal.kill);
-	ignore (Unix.reap p);
-	all := m;
-	nservers := !nservers - 1
-    end handle LibBase.NotFound => ()
+    fun stop name =
+	shutdown (name, fn s => send (s, "shutdown\n"))
+
+    fun kill name =
+	shutdown (name, fn ((_, p), _) => Unix.kill (p, Posix.Signal.kill))
 
     fun start { name, cmd, pathtrans } = let
 	val _ = stop name
 	val p = Unix.execute cmd
-	val s : server = ((name, p, ref []), pathtrans)
+	val s : server = ((name, p), pathtrans)
     in
 	if wait_status (s, false) then
 	    (all := StringMap.insert (!all, name, s);
@@ -157,7 +152,7 @@ structure Servers :> SERVERS = struct
 	    val f = SrcPath.osstring p
 	    val s = grab ()
 	in
-	    Say.vsay ["(", servName s, "): compiling ", f, "\n"];
+	    Say.vsay ["[(", servName s, "): compiling ", f, "]\n"];
 	    send (s, concat ["compile ", fname (f, s), "\n"]);
 	    wait_status (s, true)
 	end
@@ -172,39 +167,35 @@ structure Servers :> SERVERS = struct
 	app w b
     end
 
+    fun startAll st = let
+	val _ = reset ()		(* redundant? *)
+	val l = !idle
+	val _ = idle := []
+    in
+	app st l
+    end
+
     fun cm p = let
 	val d = OS.FileSys.getDir ()
 	val f = SrcPath.osstring p
 	fun st s =
-	    (Say.vsay ["(", servName s, "): project ", f, "\n"];
+	    (Say.vsay ["[(", servName s, "): project ", f, "]\n"];
 	     send (s, concat ["cm ", fname (d, s), " ", fname (f, s), "\n"]);
 	     ignore (wait_status (s, false)))
-	val l = !idle
-	val _ = idle := []
-	val tl = map (fn s => Concur.fork (fn () => st s)) l
     in
-	app Concur.wait tl
+	startAll st
     end
 
-    fun cmb db = let
+    fun cmb { archos, dirbase = db } = let
 	val d = OS.FileSys.getDir ()
 	fun st s =
-	    (Say.vsay ["(", servName s, "): bootstrap compile ", db, "\n"];
-	     send (s, concat ["cmb ", fname (d, s), " ", db, "\n"]);
+	    (Say.vsay ["[(", servName s, "): btcompile for ", archos,
+		       ", dirbase = ", db, "]\n"];
+	     send (s, concat ["cmb ", archos, " ",
+			      fname (d, s), " ", db, "\n"]);
 	     ignore (wait_status (s, false)))
-	val l = !idle
-	val _ = idle := []
-	val tl = map (fn s => Concur.fork (fn () => st s)) l
     in
-	app Concur.wait tl
-    end
-
-    fun evict i = let
-	val p = SmlInfo.sourcepath i
-	val f = SrcPath.osstring p
-	fun ev (s as ((_, _, r), _)) = r := fname (f, s) :: !r
-    in
-	StringMap.app ev (!all)
+	startAll st
     end
 
     fun enable () = enabled := true

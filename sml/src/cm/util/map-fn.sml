@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor MapFn = BinaryMapFn
+functor MapFn = RedBlackMapFn

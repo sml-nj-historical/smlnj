@@ -336,11 +336,10 @@ in
 					    else otherwise ()
 					end
 				fun compile_again () =
-				    compile_here (stat, sym, pids)
+				    (Say.vsay ["[compiling ",
+					       SmlInfo.descr i, "]\n"];
+				     compile_here (stat, sym, pids))
 				fun compile () = let
-				    val _ =
-					Say.vsay ["[compiling ",
-						  SmlInfo.descr i, "]\n"]
 				    val sp = SmlInfo.sourcepath i
 				in
 				    if compile_there sp then

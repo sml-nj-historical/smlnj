@@ -17,13 +17,22 @@ end = struct
     fun fileExists n = F.access (n, []) handle _ => false
 
     fun openOut fileopener p = let
-	fun mkDir d = if fileExists d then () else F.mkDir d
+	fun mkDir d =
+	    F.mkDir d handle exn => (if fileExists d then () else raise exn)
 	fun generic (maker, pmaker, p) =
 	    maker p
 	    handle exn => let
 		val dir = P.dir p
 	    in
-		if dir = "" orelse fileExists dir then raise exn
+		(* If the parent dir exists, then we must consider
+		 * these cases:
+		 *   - non-parallel: we should signal an error
+		 *   - parallel: somebody else may have made this dir
+		 *      in the meantime, so we should try again
+		 * Both cases can be handled by simply calling maker
+		 * again.  (It will fail in the non-parallel case, but
+		 * that's actually what we want.) *)
+		if dir = "" orelse fileExists dir then maker p
 		else (pmaker dir; maker p)
 	    end
 	fun makedirs dir = generic (mkDir, makedirs, dir)
