@@ -108,12 +108,21 @@ functor AutoLoadFn (structure C : COMPILE
 	val _ = pending := pend
 	val (dae, _) = Statenv2DAEnv.cvt ste
 	val load = ref SymbolMap.empty
+	val announce = let
+	    val announced = ref false
+	in
+	    fn () =>
+	    (if !announced then ()
+	     else (announced := true;
+		   Say.say ["[autoloading]\n"]))
+	end
 	fun lookpend sy = let
 	    fun otherwise _ = EM.impossible "Autoload:lookpend"
 	in
 	    case SymbolMap.find (pend, sy) of
 		SOME (x as ((_, e), _)) =>
-		    (load := SymbolMap.insert (!load, sy, x);
+		    (announce ();
+		     load := SymbolMap.insert (!load, sy, x);
 		     BuildDepend.look otherwise e sy)
 	      | NONE => DAEnv.EMPTY
 	end
@@ -156,8 +165,7 @@ functor AutoLoadFn (structure C : COMPILE
     in
 	if SymbolMap.isEmpty loadmap then ()
 	else
-	    (Say.say ["[autoloading]\n"];
-	     SrcPath.revalidateCwd ();
+	    (SrcPath.revalidateCwd ();
 	     (* We temporarily turn verbosity off, so we need to wrap this
 	      * with a SafeIO.perform... *)
 	     SafeIO.perform

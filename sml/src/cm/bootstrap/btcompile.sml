@@ -33,7 +33,7 @@ end = struct
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (fun destroy_state _ _ = ()
+	StabilizeFn (fun destroy_state _ i = Compile.evict i
 		     structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()

@@ -211,7 +211,15 @@ in
 			 * it only happens when a stable library is
 			 * replaced by a different one. *)
 			SOME { ii = ii, ctxt = #statenv ii }
-		  | DG.SB_SNODE n => snode gp n
+		  | DG.SB_SNODE n =>
+			(case snode gp n of
+			     NONE => NONE
+			   | SOME { ii, ... } =>
+				 (* Now, unfortunately, because of the
+				  * hack above (ctxt = ste) we must
+				  * do the same thing here or we end up
+				  * not being consistent. *)
+				 SOME { ii = ii, ctxt = #statenv ii })
 
 	    and fsbnode gp (f, n) =
 		case (sbnode gp n, f) of

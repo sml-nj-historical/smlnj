@@ -17,6 +17,19 @@ local
     structure P = PickMod
     structure UP = UnpickMod
     structure E = GenericVC.Environment
+
+    fun memoize thunk = let
+	val r = ref (fn () => raise Fail "Stabilize:delay")
+	fun firsttime () = let
+	    val v = thunk ()
+	in
+	    r := (fn () => v);
+	    v
+	end
+    in
+	r := firsttime;
+	(fn () => !r ())
+    end
 in
 
 signature STABILIZE = sig
@@ -694,7 +707,8 @@ struct
 		    let val sy = symbol ()
 			val (f, n) = fsbn () (* really reads farbnodes! *)
 			val ge = lazy_env ()
-			val ii = { statenv = GenericVC.CoerceEnv.bs2es o ge,
+			val ge' = GenericVC.CoerceEnv.bs2es o ge
+			val ii = { statenv = memoize ge',
 				   symenv = lazy_symenv (),
 				   statpid = pid (),
 				   sympid = pid () }
