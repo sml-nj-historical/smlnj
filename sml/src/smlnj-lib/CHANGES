@@ -1,6 +1,15 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
+[2004-12-09]
+	Added two simple statistics modules:
+	* RealOrderStats implements selection of arbitrary order
+          statistics as well as the median of an array of reals
+	  in randomized linear time.
+	* UnivariateStats implements mean, variance, standard and average
+	  deviation, skew, kurtosis, and median of a univariate sample
+	  (i.e., a set of reals).
+
 [2004-11-29]
 	Added HashString.hashString' for substrings.
 	Hand-inlined CharVector.fold into HashString for efficiency.

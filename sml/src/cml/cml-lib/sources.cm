@@ -119,6 +119,9 @@ Group
   structure WordRedBlackSet
   structure PrimeSizes
 
+  structure RealOrderStats
+  structure UnivariateStats
+
   functor ArrayQSortFn
   functor BSearchFn
   functor BinaryMapFn

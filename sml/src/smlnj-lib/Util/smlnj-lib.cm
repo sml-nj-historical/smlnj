@@ -96,6 +96,8 @@ structure URef
 structure WordHashTable
 structure WordRedBlackMap
 structure WordRedBlackSet
+structure RealOrderStats
+structure UnivariateStats
 
 functor ArrayQSortFn
 functor BSearchFn
@@ -231,3 +233,5 @@ uref.sml
 word-hash-table.sml
 word-redblack-map.sml
 word-redblack-set.sml
+real-order-stats.sml
+univariate-stats.sml

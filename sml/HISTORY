@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/12/09 16:30:00 CST
+Tag: blume-20041209-statistics
+Description:
+
+Added two simple but potentially useful statistics modules to SML/NJ Library.
+(See CHANGES file there.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/01 16:50:00 CST
 Tag: blume-20041201-atom
 Description:
