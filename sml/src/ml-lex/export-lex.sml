@@ -1,11 +1,8 @@
 (* export-lex.sml
  *
  * $Log$
- * Revision 1.1.1.3  1998/05/12 21:56:18  monnier
- * *** empty log message ***
- *
- * Revision 1.1.1.1  1998/04/08 18:40:10  george
- * Version 110.5
+ * Revision 1.1.1.4  1998/06/05 19:39:48  monnier
+ * 110.7
  *
  * Revision 1.2  1997/03/03 17:10:35  george
  * moved callcc related functions to SMLofNJ.Cont

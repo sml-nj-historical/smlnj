@@ -21,7 +21,7 @@
 
 /** The names of the boot and binary file lists **/
 PVT char	*FileLists[] = {
-	"BOOTLIST", "PERVLIST", "BINLIST"
+	"BOOTLIST", "PERVLIST", "COMPLIST"
     };
 #define NUM_FILE_LISTS	(sizeof(FileLists) / sizeof(char *))
 

@@ -129,11 +129,5 @@ end (* functor CMSAFun *)
 
 
 (*
- * $Log: cmsa.sml,v $
- * Revision 1.2  1998/05/21 17:54:46  jhr
- *   Merging in Matthias's changes.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:16  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -48,8 +48,5 @@ end
 
 
 (*
- * $Log: alpha32Cells.sig,v $
- * Revision 1.1  1998/05/19 15:48:49  george
- *   Version 110.5
- *
+ * $Log$
  *)

@@ -13,7 +13,7 @@ CMD="build"
 ROOT="ml-burg"
 HEAP_IMAGE=""
 BIN="../../bin"
-SML="$BIN/sml-cm"
+SML="$BIN/sml"
 
 #
 # process command-line options

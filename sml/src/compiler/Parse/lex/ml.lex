@@ -1,28 +1,11 @@
 (* ml.lex
  *
  * Copyright 1989 by AT&T Bell Laboratories
- *
- * $Log: ml.lex,v $
- * Revision 1.1.1.1  1998/04/08 18:39:19  george
- * Version 110.5
- *
- * Revision 1.6  1998/02/10 21:10:20  jhr
- *   Changes in the way that syntatic extensions (overload, lazy and quotation)
- *   are controlled.
- *
- * Revision 1.5  1997/11/13 19:52:45  jhr
- *   Modified lexer to recognize Windows and MacOS end-of-line disciplines.
- *
- * Revision 1.4  1997/08/26  19:25:26  jhr
- *   Keyword clean-up: abstraction is gone; overload is _overload; lazy is _lazy.
- *
- * Revision 1.3  1997/05/22  20:17:22  jhr
- * Changed lexer to accept "1e1" style floating-point literals.
- *
- * Revision 1.2  1997/01/28  23:20:40  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
+ *)
+
+
+(*
+ * $Log$
  *)
 
 open ErrorMsg;
@@ -294,4 +277,3 @@ hexnum=[0-9a-fA-F]+;
 		       ("ml lexer: bad character after antiquote "^yytext)
 		       nullErrorBody;
                     Tokens.AQID(FastSymbol.rawSymbol(0,""),yypos,yypos));
-

@@ -535,11 +535,5 @@ end (* structure LtyExtern *)
 
 
 (*
- * $Log: ltyextern.sml,v $
- * Revision 1.2  1998/05/20 18:38:00  george
- * NT/kernel/ltydef.sml
- *
- * Revision 1.1.1.1  1998/04/08 18:39:40  george
- * Version 110.5
- *
+ * $Log$
  *)

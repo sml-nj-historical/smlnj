@@ -82,14 +82,5 @@ end (* structure UnRebind *)
 
 
 (*
- * $Log: unrebind.sml,v $
- * Revision 1.2  1998/05/20 18:30:44  george
- *   New code that avoids sharing a single closure among
- *   mututually recursive functions. This way, we'll no longer
- *   have pointers that point to the middle of a record.
- * 						-- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:46  george
- * Version 110.5
- *
+ * $Log$
  *)

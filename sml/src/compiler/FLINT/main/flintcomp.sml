@@ -143,11 +143,5 @@ end (* local *)
 end (* structure FLINTComp *)
 
 (*
- * $Log: flintcomp.sml,v $
- * Revision 1.2  1998/05/20 18:34:48  george
- *   Add new literal splitting phase. -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:40  george
- * Version 110.5
- *
+ * $Log$
  *)

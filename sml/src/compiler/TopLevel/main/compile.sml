@@ -162,7 +162,8 @@ val translate = ST.doPhase (ST.makePhase "Compiler 040 translate") translate
 
 (** take the flint code and generate the machine binary code *)
 local
-  fun inline (flint, imports, symenv) = flint
+    val inline = LSplitInline.inline
+    (* fun inline (flint, imports, symenv) = flint *)
 (*
     let val importExps = map (SymbolicEnv.look symenv) (map #1 imports)
      in (* optimize flint based on the knowledge of importExps *)
@@ -183,17 +184,18 @@ local
 
   val addCode = ST.addStat (ST.makeStat "Code Size")
 in
-fun codegen {flint: flint, imports: import list, symenv: symenv, 
-             splitting: bool, compInfo: compInfo} =
-  let (* hooks for cross-module inlining and specialization *)
-      val flint = inline (flint, imports, symenv)
-      val (flint, inlineExp : flint option) = split(flint, splitting)
-      
-      (* from optimized FLINT code, generate the machine code *)
-      val csegs = M.flintcomp(flint, compInfo)
-   in addCode(csegsize csegs); 
-      {csegments=csegs, inlineExp=inlineExp}
-  end 
+    fun codegen { flint: flint, imports: import list, symenv: symenv,
+		  splitting: bool, compInfo: compInfo } = let
+	(* hooks for cross-module inlining and specialization *)
+	val (flint, revisedImports) = inline (flint, imports, symenv)
+	val (flint, inlineExp : flint option) = split(flint, splitting)
+
+	(* from optimized FLINT code, generate the machine code *)
+	val csegs = M.flintcomp(flint, compInfo)
+    in
+	addCode(csegsize csegs); 
+	{ csegments=csegs, inlineExp=inlineExp, imports = revisedImports }
+    end 
 end (* local codegen *)
 
 (*
@@ -232,10 +234,10 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
 	   | (SOME p, [(_,tr)]) => [(p, tr)]
            | _ => raise Compile "core compilation failed")
 
-      val {csegments, inlineExp} = 
-        (codegen {flint=flint, imports=imports, symenv=symenv, 
-                  splitting=splitting, compInfo=cinfo})
-                 before (check "codegen")
+      val { csegments, inlineExp, imports = revisedImports } = 
+	  codegen { flint = flint, imports = imports, symenv = symenv, 
+		    splitting = splitting, compInfo = cinfo }
+	  before (check "codegen")
           (*
            * interp mode was currently turned off.
            *
@@ -243,9 +245,16 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
            *  else codegen {flint=flint, splitting=splitting, compInfo=cinfo})
            *)
 
-   in {csegments=csegments, newstatenv=newstatenv, absyn=absyn,
-       exportPid=exportPid, exportLvars=exportLvars, staticPid=staticPid,
-       pickle=pickle, inlineExp=inlineExp, imports=imports}
+  in
+      { csegments = csegments,
+        newstatenv = newstatenv,
+	absyn = absyn,
+	exportPid = exportPid,
+	exportLvars = exportLvars,
+	staticPid = staticPid,
+	pickle = pickle,
+	inlineExp = inlineExp,
+	imports = revisedImports }
   end (* function compile *)
 
 (*****************************************************************************
@@ -338,21 +347,5 @@ end (* local of exception Compile *)
 
 
 (*
- * $Log: compile.sml,v $
- * Revision 1.3  1998/05/20 18:40:34  george
- *   We now use a new cross-module linkage conventions; the import
- *   list of each module is now described as a tree which specifies
- *   in details about which component of a structure is imported.
- *   Also, each compilation unit now has a new data segment area,
- *   this also affects the changes on linking conventions and the
- *   binfile format. The new bin file format is described in
- *   batch/batchutil.sml.
- * 						-- zsh
- *
- * Revision 1.2  1998/05/15 03:51:37  dbm
- *   Eliminate calls to fixityparse and lazycomp (which no longer exist).
- *
- * Revision 1.1.1.1  1998/04/08 18:39:15  george
- * Version 110.5
- *
+ * $Log$
  *)

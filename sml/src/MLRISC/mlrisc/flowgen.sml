@@ -255,11 +255,5 @@ struct
 end
 
 (*
- * $Log: flowgen.sml,v $
- * Revision 1.2  1998/05/19 15:47:47  george
- *   addCCreg defined in terms of Cells.addCell.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
+ * $Log$
  *)

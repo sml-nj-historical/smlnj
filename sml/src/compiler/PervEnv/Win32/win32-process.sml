@@ -21,8 +21,5 @@ structure Win32_Process : WIN32_PROCESS =
     end
 
 (*
- * $Log: win32-process.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:03  george
- * Version 110.5
- *
+ * $Log$
  *)

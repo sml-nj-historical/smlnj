@@ -1168,22 +1168,5 @@ end (* structure Translate *)
 
 
 (*
- * $Log: translate.sml,v $
- * Revision 1.3  1998/05/20 18:40:37  george
- *   We now use a new cross-module linkage conventions; the import
- *   list of each module is now described as a tree which specifies
- *   in details about which component of a structure is imported.
- *   Also, each compilation unit now has a new data segment area,
- *   this also affects the changes on linking conventions and the
- *   binfile format. The new bin file format is described in
- *   batch/batchutil.sml.
- * 						-- zsh
- *
- * Revision 1.2  1998/05/15 03:16:35  dbm
- *   Eliminate test of Control.Lazy.earlyDT (no longer exists).
- *   Added lazyp flags where appropriate.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:40  george
- * Version 110.5
- *
+ * $Log$
  *)

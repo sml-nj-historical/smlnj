@@ -445,11 +445,6 @@ end (* structure ElabType *)
 
 
 (*
- * $Log: elabtype.sml,v $
- * Revision 1.2  1998/05/15 03:34:52  dbm
- *   Added elaboration of datatype lazy decls.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:24  george
- * Version 110.5
+ * $Log$
  *
  *)

@@ -133,11 +133,5 @@ end (* structure Types *)
 
 
 (*
- * $Log: types.sml,v $
- * Revision 1.2  1998/05/15 03:49:10  dbm
- *   Added lazyp fields.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:36  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -32,11 +32,5 @@ signature PROFILE =
   end;
 
 (*
- * $Log: profile.sig,v $
- * Revision 1.2  1998/04/14 14:23:09  george
- *   Removed extra log message
- *
- * Revision 1.1.1.1  1998/04/08 18:39:18  george
- * Version 110.5
- *
+ * $Log$
  *)

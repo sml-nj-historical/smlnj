@@ -574,11 +574,6 @@ end (* structure ElabUtil *)
 
 
 (*
- * $Log: elabutil.sml,v $
- * Revision 1.2  1998/05/15 03:37:55  dbm
- *   Revised to support elaboration of lazy decls.  Added getCoreExn.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:25  george
- * Version 110.5
+ * $Log$
  *
  *)

@@ -277,21 +277,5 @@ end
 
 
 (*
- * $Log: callgc.sml,v $
- * Revision 1.5  1998/05/21 17:54:42  jhr
- *   Merging in Matthias's changes.
- *
- * Revision 1.4  1998/05/19 15:34:37  george
- *   Removed live variables with type int32t from the def/use list
- *   of the call to gc. This frustrates induction variable elimination.
- *
- * Revision 1.3  1998/05/08 10:52:20  george
- *   The exhausted register has been made optional -- leung
- *
- * Revision 1.2  1998/04/17 19:24:29  george
- *   Bug fix for bug 1364 -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:54  george
- * Version 110.5
- *
+ * $Log$
  *)

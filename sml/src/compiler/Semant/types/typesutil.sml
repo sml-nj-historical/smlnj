@@ -866,11 +866,5 @@ end (* structure TypesUtil *)
 
 
 (*
- * $Log: typesutil.sml,v $
- * Revision 1.2  1998/05/15 03:50:32  dbm
- *   Added lazyp field as appropriate.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:36  george
- * Version 110.5
- *
+ * $Log$
  *)

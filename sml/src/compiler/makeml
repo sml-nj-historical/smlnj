@@ -1,7 +1,6 @@
 #!/bin/ksh
 #
 
-ELAB=""
 FULL=""
 ALLOC=1M
 
@@ -13,6 +12,7 @@ HEAP_IMAGE=""
 RUN=""
 RUN_ARGS=""
 SET_FLAGS=""
+REBUILD=""
 
 #
 # use the arch-n-opsys script to determine the ARCH/OS if possible
@@ -28,8 +28,14 @@ while [ "$#" != "0" ]
 do
   arg=$1; shift
   case $arg in
-    -elab) ELAB="@SMLelab" ;;
     -full) FULL="@SMLfull" ;;
+    -rebuild)
+      if [ "$#" = "0" ]; then
+        echo "makeml: missing argument for \"-rebuild\" option"
+	exit 1
+      fi
+      REBUILD="@SMLrebuild=$1"; shift
+    ;;
     -arch)
       if [ "$#" = "0" ]; then
         echo "makeml: missing argument for \"-arch\" option"
@@ -117,14 +123,15 @@ if [ ! -d ./bin.$ARCH-unix ]; then
   ln -s $BOOT_DIR ./bin.$ARCH-unix
 fi
 
-#echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL -b $BOOT_DIR"
-#$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL -b $BOOT_DIR <<XXXX
-echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL"
-      $RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL <<XXXX
+#echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $FULL -b $BOOT_DIR"
+#$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $FULL -b $BOOT_DIR <<XXXX
+echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $FULL $REBUILD"
+      $RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $FULL $REBUILD <<XXXX
 $SET_FLAGS
 val use = Compiler.Interact.useFile;
 val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
-	 print Compiler.banner; print "\n");
+	 print Compiler.banner;
+         print "\n");
 XXXX
 
 if [ -L ./bin.$ARCH-unix ]; then

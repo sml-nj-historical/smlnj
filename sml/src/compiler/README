@@ -16,29 +16,70 @@ all-files.cm
    all-files.cm is designed for bootstrapping the compiler itself
    only (i.e., CMB.make). The resulting binfiles from doing CMB.make 
    are placed in a single bin directory, eg. bin.x86-unix or 
-   bin.sparc-unix. Right now, the list in all-files.cm is just the
-   list in sources.cm plus all the glue files in the TopLevel/bootstrap
-   directory (which are used to bootstrap the interactive compiler).
+   bin.sparc-unix.
+
+   CM's preprocessor directives are used in such a way that the compiler,
+   the compilation manager, and the batch compilation manager
+   for the current architecture will be built.
+
+   In addition to that, it is possible to also build additional binfiles
+   that are useful for "retargeting" the compiler.  This is optional (and
+   turned off by default), because it is not strictly necessary.  If the
+   binfiles for the cross-compiler are not present at the time of
+   CMB.retarget, then CMB.retarget will create them.
 
 sources.cm
-   This file contains the usual makefile for CM.make. It is not
-   used to build up the interactive compiler. But it can be
-   useful for debugging purpose. For example, you can type CM.make() 
+   This file is and alias for viscomp-lib.cm and makes it possible to
+   use CMB.CM.make (); for experimenting with the compiler.
+   (Don't use CM.make because it has a different idea of where the binfiles
+    live.)
+   This can be useful for debugging purpose. You can type CMB.CM.make() 
    to immediately build up a new, interactive visible compiler. To
    access the newly built compiler, you use the 
        "XXXVisComp.Interact.useFile"
-   function to compile ML programs. Notice all the bootstrap glue 
-   files are not in sources.cm.
+   function to compile ML programs. Notice none of the bootstrap glue
+   is in sources.cm (viscomp-lib.cm).
 
-makeml* [-full] [-elab]
+viscomp-lib.cm
+   This file specifies the "library" of visible compilers for various
+   supported architectures.
+
+compman-lib.cm
+   This file specifies the "library" of compilation managers for various
+   supported architectures.
+
+makeml* [-full] [-rebuild dir]
    A script for building the interactive compiler. The default path
    of bin files is ./bin.$arch-$os. There are two command-line options:
    if you add the "-full" option, it will build a compiler whose 
-   components are visible to the top-level interactive environment;
-   if you add the "-elab" option, it will re-elaborate all the ML 
-   programs to recreate the static environments (this is useful, if
+   components are visible to the top-level interactive environment.
+
+   If you add the "-rebuild dir" option, it will recompile the compiler,
+   using "dir" as the new binfile directory.  It then proceeds by loading
+   the static and symbolic environments from the newly created batch of
+   binfiles.  (This supercedes the -elab option and is useful, if
    your new compiler has changed the representations of the bindings
-   in the static environments).
+   in the environments.  Other than with -elab, there will be a fresh set
+   of usable binfiles ready after such a "rebuild".)
+
+   There are some environment variables that are sensed during bootstrap.
+   They determine the defaults for various parameters used by the compilation
+   manager.  Internal "fallback" defaults are used for variables that are
+   not defined at the time of bootstrap.
+      CM_YACC_DEFAULT  -- shell command to run ml-yacc
+      CM_LEX_DEFAULT   -- shell command to run ml-lex
+      CM_BURG_DEFAULT  -- shell command to run ml-burg
+      CM_RCSCO_DEFAULT -- shell command to checkout a file under RCS
+      CM_PATH_DEFAULT  -- ':'-separated list of directories that are on
+                          CM's search path
+      ...
+
+Retarget/<arch>-<os>.{cm,sml}
+   WARNING!
+     After you do a 'CMB.retarget { cpu = "<arch>", os = "<os>" };'
+     you can access the "CMB" structure for the newly-loaded cross compiler
+     as <Arch><Os>CMB.  The original structure CMB will *not* be redefined!
+   For further details on retargeting see Retarget/README.
 
 ============================================================================
 Tips:

@@ -81,12 +81,5 @@ struct
 end
 
 (*
- * $Log: hppaRegAlloc.sml,v $
- * Revision 1.2  1998/05/19 15:45:55  george
- *   The instructions properties now exports a generic defUse function that is
- *   curried over the cellclass, i.e., defUseR and defUseF are gone.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:01  george
- * Version 110.5
- *
+ * $Log$
  *)

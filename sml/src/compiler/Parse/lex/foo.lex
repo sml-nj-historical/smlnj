@@ -2,10 +2,7 @@
  *
  * Copyright 1989 by AT&T Bell Laboratories
  *
- * $Log: foo.lex,v $
- * Revision 1.1.1.1  1998/04/08 18:39:19  george
- * Version 110.5
- *
+ * $Log: ml.lex,v $
  * Revision 1.6  1998/02/10 21:10:20  jhr
  *   Changes in the way that syntatic extensions (overload, lazy and quotation)
  *   are controlled.

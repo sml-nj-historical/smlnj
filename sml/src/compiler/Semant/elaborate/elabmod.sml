@@ -1622,11 +1622,6 @@ end (* structure ElabMod *)
 
 
 (*
- * $Log: elabmod.sml,v $
- * Revision 1.2  1998/05/15 03:31:15  dbm
- *   Added lazyp flag.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:22  george
- * Version 110.5
+ * $Log$
  *
  *)

@@ -49,11 +49,5 @@ struct
 end
 
 (*
- * $Log: hppaMillicode.sml,v $
- * Revision 1.2  1998/05/19 15:33:18  george
- *   minor cleanup
- *
- * Revision 1.1.1.1  1998/04/08 18:39:55  george
- * Version 110.5
- *
+ * $Log$
  *)

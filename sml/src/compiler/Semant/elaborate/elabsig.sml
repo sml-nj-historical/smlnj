@@ -1078,11 +1078,6 @@ end (* local *)
 end (* structure ElabSig *)
 
 (*
- * $Log: elabsig.sml,v $
- * Revision 1.2  1998/05/15 03:32:05  dbm
- *   Added lazyp flag where appropriate.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:24  george
- * Version 110.5
+ * $Log$
  *
  *)

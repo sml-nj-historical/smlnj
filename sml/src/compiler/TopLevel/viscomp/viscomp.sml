@@ -48,7 +48,6 @@ struct
       val print = AllocProf.print_profile_info
     end
 *)
-  structure Boot = struct val coreEnvRef = ref(CMEnv.Env.emptyEnv) end
   val version = Version.version
   val banner = Version.banner
   val architecture = Machm.architecture
@@ -56,14 +55,5 @@ end (* functor VisComp *)
 
 
 (*
- * $Log: viscomp.sml,v $
- * Revision 1.3  1998/05/21 17:54:51  jhr
- *   Merging in Matthias's changes.
- *
- * Revision 1.2  1998/05/15 03:54:31  dbm
- *   Eliminate FixityParse and LazyComp.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:14  george
- * Version 110.5
- *
+ * $Log$
  *)

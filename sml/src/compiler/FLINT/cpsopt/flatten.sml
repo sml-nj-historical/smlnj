@@ -316,8 +316,5 @@ end (* toplevel local *)
 end (* functor Flatten *)
 
 (*
- * $Log: flatten.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:46  george
- * Version 110.5
- *
+ * $Log$
  *)

@@ -37,8 +37,5 @@ struct
 end (* structure IntConfig *)
 
 (*
- * $Log: intconfig.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:16  george
- * Version 110.5
- *
+ * $Log$
  *)
