@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/12/17 16:12:00 EST
+Tag: leunga-20041217-cygwin-smlnj-home
+Description:
+
+    The Unix I/O library of SML/NJ on cygwin does not understand 
+Windows style pathname, so problems arise when SMLNJ_HOME is set 
+to a Windows style pathname.  _run-sml now converts SMLNJ_HOME 
+to a POSIX pathname on cygwin.  
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/16 13:35:00 CST
 Tag: Release_110_52

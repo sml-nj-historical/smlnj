@@ -20,6 +20,16 @@ unset ENV
 # SITE SPECIFIC CONFIGURATION INFO
 #
 
+# On cygwin, make sure SMLNJ_HOME is given a POSIX-style pathname.
+if [ x"$SMLNJ_HOME" != x ] ; then
+   if [ x"$SMLNJ_CYGWIN_RUNTIME" != x ] ; then 
+      if [ "`uname -o`" = "Cygwin" ] ; then
+         # Convert to Unix style, absolute pathname.
+         SMLNJ_HOME=`cygpath -u -a "$SMLNJ_HOME"`
+      fi
+   fi
+fi
+
 # the path of the directory in which executables (like this file) are kept.
 if [ x"$SMLNJ_HOME" = x ] ; then
     BIN_DIR="@BINDIR@"
