@@ -2011,6 +2011,21 @@ struct
                 (*esac*)) 
               then gen(e, hp)
               else gen(d, hp)
+            | gen(BRANCH(P.cmp{oper,kind=P.INT 32},[INT32 v,INT32 k],_,e,d), hp) = let
+		val v' = Word32.toLargeIntX v
+		val k' = Word32.toLargeIntX k
+		in
+		  if (case oper
+                       of P.> => v>k 
+                	| P.>= => v>=k 
+                	| P.< => v<k 
+                	| P.<= => v<=k
+                	| P.eql => v=k 
+                	| P.neq => v<>k
+		      (* end case *))
+		    then gen(e, hp)
+		    else gen(d, hp)
+		end
             | gen(BRANCH(P.cmp{oper, kind=P.INT 31}, vw, p, e, d), hp) = 
                 branch(p, signedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.cmp{oper,kind=P.UINT 31},[INT v', INT k'],_,e,d),hp)=
