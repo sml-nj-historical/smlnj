@@ -52,5 +52,5 @@ is
 	int-set.sml
 
 	basis.cm
-	viscomp-lib.cm
+	viscomp-core.cm
 	smlnj-lib.cm

@@ -98,7 +98,7 @@ is
 	basis.cm
 
 	(* compiler libraries *)
-	viscomp-lib.cm
+	viscomp-core.cm
 	comp-lib.cm
 
 	(* auxiliary libraries *)
