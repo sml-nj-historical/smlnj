@@ -18,7 +18,7 @@ CONFIGDIR=$ROOT/config
 SRCDIR=$ROOT/src
 
 VERSION=`cat $CONFIGDIR/version`
-SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
+. $CONFIGDIR/srcarchiveurl
 
 vsay() {
     if [ x${INSTALL_DEBUG} = xtrue ] ; then

@@ -14,6 +14,28 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/28 10:45:00 CDT
+Tag: Release_110_50
+Description:
+
+New working version (110.50).  NEW BOOTFILES!
+
+             =====================
+
+Also:
+
+  - Changend config/srcarchiveurl from a file just
+    containing the URL string into a file containing
+    shell script code.  The code has access to the $VERSION variable.
+  - Made corresponding changes to config/install.sh and config/unpack.
+  - Default contents of config/srcarchiveurl uses $VERSION and
+    normally does not have to be edited to reflect a version change.
+
+  (As a result, a version change can be done by just editing
+   config/version, the rest is now automatic.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/27 17:50:00 CDT
 Tag: blume-20041027-btrace-msg
 Description:
@@ -242,11 +264,11 @@ Tag: blume-20040930-version
 Description:
 
 * Moved the "version" magic into its own little library under
-src/system/smlnj/internal.  This avoids expensive reconstruction
-of a stable src/compiler/core.cm.
+  src/system/smlnj/internal.  This avoids expensive reconstruction of
+  a stable src/compiler/core.cm.
 
-* At the same time, structure CompilerVersion is now known as structure
-SMLNJVersion.
+* At the same time, structure CompilerVersion is now known as
+  structure SMLNJVersion.
 
 * Arranged for the version tool to NOT kick in when rebuilding the system
   (makeml -rebuild, fixpt).  Otherwise one would never reach a fixpoint.

@@ -102,7 +102,7 @@ vsay $this: Installing version $VERSION.
 #
 # the URL for the (usually remote) source archive
 #
-SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
+. $CONFIGDIR/srcarchiveurl
 vsay $this: URL of source archive is $SRCARCHIVEURL.
 
 #
