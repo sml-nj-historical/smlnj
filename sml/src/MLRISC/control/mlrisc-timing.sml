@@ -1,3 +1,8 @@
+(* mlrisc-timing.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 signature MLRISC_TIMING =
 sig
 
@@ -8,7 +13,8 @@ structure MLRiscTiming : MLRISC_TIMING =
 struct
 
    fun timePhase name f =
-   let val timing as ref {gc,usr,sys} = MLRiscControl.getTiming name
+   let val timing = MLRiscControl.timing name
+       val { gc, usr, sys } = !timing
        fun run x = 
        let val timer = Timer.startCPUTimer()
            fun update timer = 

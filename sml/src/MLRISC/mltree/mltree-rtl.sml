@@ -35,7 +35,7 @@ struct
    type hasher   = T.hasher
    type equality = T.equality
    type printer  = T.printer
- 
+   type div_rounding_mode = T.div_rounding_mode
 
    val hashRTL     = Util.hashStm
    val eqRTL       = Util.eqStm
@@ -87,7 +87,6 @@ struct
          | rexp(T.SUBT _,a) = a || A_TRAPPING
          | rexp(T.MULT _,a) = a || A_TRAPPING
          | rexp(T.DIVT _,a) = a || A_TRAPPING
-         | rexp(T.REMT _,a) = a || A_TRAPPING
          | rexp(T.LOAD _,a) = a || A_LOOKER
          | rexp(T.$(_,C.MEM,_),a) = a || A_LOOKER
          | rexp(_, a) = a
@@ -170,16 +169,14 @@ struct
          | rhs(T.SUB(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.MULS(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.MULU(_,x,y), d, u) = binOp(x, y, d, u)
-         | rhs(T.DIVS(_,x,y), d, u) = binOp(x, y, d, u)
+         | rhs(T.DIVS(_,_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.DIVU(_,x,y), d, u) = binOp(x, y, d, u)
-         | rhs(T.QUOTS(_,x,y), d, u) = binOp(x, y, d, u)
-         | rhs(T.REMS(_,x,y), d, u) = binOp(x, y, d, u)
+         | rhs(T.REMS(_,_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.REMU(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.ADDT(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.SUBT(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.MULT(_,x,y), d, u) = binOp(x, y, d, u)
-         | rhs(T.DIVT(_,x,y), d, u) = binOp(x, y, d, u)
-         | rhs(T.REMT(_,x,y), d, u) = binOp(x, y, d, u)
+         | rhs(T.DIVT(_,_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.SLL(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.SRL(_,x,y), d, u) = binOp(x, y, d, u)
          | rhs(T.SRA(_,x,y), d, u) = binOp(x, y, d, u)

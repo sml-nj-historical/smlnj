@@ -8,6 +8,7 @@
 #include "ml-osdep.h"
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <stdio.h>
 #include "ml-base.h"
 #include "ml-limits.h"
 #include "ml-state.h"

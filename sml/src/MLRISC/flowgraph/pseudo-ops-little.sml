@@ -57,6 +57,8 @@ struct
       | PB.ASCII s => String.size s 
       | PB.ASCIIZ s => String.size s + 1
 
+      | PB.SPACE(sz)  => sz
+
       | PB.FLOAT{sz, f} => length(f) * bytesIn sz
 
       | PB.EXT _ => error "sizeOf: EXT"
@@ -130,6 +132,7 @@ struct
 
      | PB.FLOAT{sz, f} => error "emitValue: FLOAT - not implemented"
      | PB.EXT _ => error "emitValue: EXT"
+     | PB.SPACE _ => error "emitValue: SPACE"
      | _ => ()
   end
 end

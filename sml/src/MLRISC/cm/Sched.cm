@@ -39,7 +39,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	RTL.cm
 	IR.cm
@@ -49,7 +49,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/Visual.cm
-	$/ir.cm
+	$/ir-archive.cm
 	$/MLRISC.cm
 	$/RTL.cm
 	$/IR.cm
@@ -61,7 +61,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	RTL.cm
 	IR.cm
@@ -72,7 +72,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLRISC.cm
 	RTL.cm
 	IR.cm

@@ -122,14 +122,14 @@ structure List : LIST =
                          else (genfn n)::(loop(n+1))
             in loop 0 end
 
-    fun collate ecmp = let
+    fun collate compare = let
 	fun loop ([], []) = EQUAL
 	  | loop ([], _) = LESS
 	  | loop (_, []) = GREATER
 	  | loop (x :: xs, y :: ys) =
-	    case ecmp (x, y) of
-		EQUAL => loop (xs, ys)
-	      | unequal => unequal
+	    (case compare (x, y) of
+		 EQUAL => loop (xs, ys)
+	       | unequal => unequal)
     in
 	loop
     end

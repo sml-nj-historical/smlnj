@@ -37,7 +37,7 @@
 #    include <sys/stack.h>
 #    include <sys/trap.h>
 #  endif
-#  define GLOBAL(ID)	.global	CSYM(ID)
+#  define CGLOBAL(ID)	.global	CSYM(ID)
 #  define LABEL(ID)	ID:
 #  define ALIGN4        .align 4
 #  define WORD(W)       .word W
@@ -60,7 +60,7 @@
 #  else
 #    include <regdef.h>
 #  endif
-#  define GLOBAL(ID)	.globl	CSYM(ID)
+#  define CGLOBAL(ID)	.globl	CSYM(ID)
 #  define LABEL(ID)	ID:
 #  define ALIGN4        .align 2
 #  define WORD(W)       .word W
@@ -71,7 +71,7 @@
 
 #elif defined(HOST_ALPHA32)
 #  include <regdef.h>
-#  define GLOBAL(ID)	.globl  CSYM(ID)
+#  define CGLOBAL(ID)	.globl  CSYM(ID)
 #  define LABEL(ID)	ID:
 #  define ALIGN4	.align 2
 #  define WORD(W)	.word W
@@ -81,7 +81,7 @@
 #  define END_PROC(P)	.end CSYM(P)
 
 #elif defined(HOST_HPPA)
-#  define GLOBAL(ID)    .export ID,DATA
+#  define CGLOBAL(ID)    .export ID,DATA
 #  define LABEL(ID)     .label ID
 #  define ALIGN4        .align 8
 #  define BEGIN_PROC(P)
@@ -92,7 +92,10 @@
 #  if defined(OPSYS_AIX)
 #    define CFUNSYM(ID)	CONCAT(.,ID)
 #    define USE_TOC
+#   if defined(HOST_RS6000)
 #    define GLOBAL(ID)	.globl CSYM(ID)
+#   endif
+#    define CGLOBAL(ID)	.globl CSYM(ID)
 #    define TEXT	.csect [PR]
 #    define DATA	.csect [RW]
 #    define RO_DATA	.csect [RO]
@@ -103,7 +106,7 @@
 
 #  elif (defined(OPSYS_LINUX) && defined(TARGET_PPC))
 #    define CFUNSYM(ID)	ID
-#    define GLOBAL(ID)	.globl CSYM(ID)
+#    define CGLOBAL(ID)	.globl CSYM(ID)
 #    define TEXT	.section ".text"
 #    define DATA	.section ".data"
 #    define RO_DATA	.section ".rodata"
@@ -114,7 +117,7 @@
 
 #  elif (defined(OPSYS_DARWIN) && defined(TARGET_PPC))
 #    define CFUNSYM(ID) CSYM(ID)
-#    define GLOBAL(ID)  .globl  CSYM(ID)
+#    define CGLOBAL(ID)  .globl  CSYM(ID)
 #    define TEXT        .text
 #    define DATA        .data
 #    define RO_DATA     .data
@@ -134,7 +137,7 @@
 #    include "x86-masm.h"
 #    define WORD(W)     WORD32(W)
 #  else
-#    define GLOBAL(ID)	  .globl	CSYM(ID)
+#    define CGLOBAL(ID)	  GLOBAL CSYM(ID)
 #    define LABEL(ID)	  CONCAT(ID,:)
 #    define IMMED(ID)	  CONCAT($,ID)
 #    define ALIGN4        .align 2
@@ -157,11 +160,11 @@
 #endif
 
 #define ENTRY(ID)				\
-    GLOBAL(ID) __SC__				\
+    CGLOBAL(ID) __SC__				\
     LABEL(CSYM(ID))
 
 #define ML_CODE_HDR(name)			\
-	    GLOBAL(name) __SC__		\
+	    CGLOBAL(name) __SC__		\
 	    ALIGN4 __SC__			\
     LABEL(CSYM(name))
 

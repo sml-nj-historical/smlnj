@@ -2,30 +2,37 @@
  * 
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
+functor BackendFn (structure M : CODEGENERATOR
+		   val cproto_conv : string) : BACKEND = struct
     structure Interact =
     Interact
 	(EvalLoopF
 	     (CompileF
-		  (structure M = M
+		  (val cproto_conv = cproto_conv
+		   structure M = M
 		   structure CC : CCONFIG = struct
 		       (* configuration for interactive toplevel:
 			* no real pickling/unpickling, pids are
 			* assigned randomly *)
 		       type pickle = unit
 		       type hash = unit
+		       type pid = PersStamps.persstamp
+		       type guid = unit
 		       local
 			   val topCount = ref 0
 		       in
-		           fun pickUnpick { context, env = newenv } = let
+		           fun pickUnpick { context, env = newenv, guid } = let
 			       val _ = topCount := !topCount + 1
-			       val (newenv', hash, exportLvars, exportPid) = 
-				   PickMod.dontPickle (newenv, !topCount)
+			       val { newenv = newenv', hash,
+				     exportLvars, hasExports } = 
+				   PickMod.dontPickle { env = newenv,
+							count = !topCount }
 			   in
-			       { hash = (),
+			       { pid = (),
 				 pickle = (),
 				 exportLvars = exportLvars,
-				 exportPid = exportPid,
+				 exportPid = if hasExports then SOME hash
+					     else NONE,
 				 newenv = newenv' }
 			   end
 		       end
@@ -38,26 +45,30 @@ functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
 		   end)))
 
     structure Compile =
-    CompileF (structure M = M
+    CompileF (val cproto_conv = cproto_conv
+              structure M = M
 	      structure CC : CCONFIG = struct
 	          (* compiler configuration for batch compilation
 		   * (under control of CM); real pickling, unpickling, and
 		   * pid-generation *)
 	          type pickle = Word8Vector.vector
 		  type hash = PersStamps.persstamp
+		  type pid = hash
+		  type guid = string
 
-		  fun pickUnpick { context, env = newenv } = let
+		  fun pickUnpick { context, env = newenv, guid } = let
 		      val m = GenModIdMap.mkMap context
 		      fun up_context _ = m
-		      val { hash, pickle, exportLvars, exportPid } = 
+		      val { hash, pickle, exportLvars, hasExports } = 
 			  PickMod.pickleEnv (PickMod.INITIAL m) newenv
+		      val pid = Rehash.addGUID { hash = hash, guid = guid }
 		      val newenv' =
-			  UnpickMod.unpickleEnv up_context (hash, pickle)
+			  UnpickMod.unpickleEnv up_context (pid, pickle)
 		  in
-		      { hash = hash,
+		      { pid = pid,
 			pickle = pickle,
 			exportLvars = exportLvars,
-			exportPid = exportPid,
+			exportPid = if hasExports then SOME pid else NONE,
 			newenv = newenv' }
 		  end
 

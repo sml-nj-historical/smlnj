@@ -1,15 +1,16 @@
 % -*- latex -*-
 
 \section{The {\tt sml} command line}
+\label{sec:cmdline}
 
 The SML/NJ interactive system---including CM---is started from the
 operating system shell by invoking the command {\tt sml}.
 This section describes those arguments accepted by {\tt sml} that
 are related to (and processed by) CM.
 
-CM accepts {\em file names}, {\em mode switching flags}, and {\em
-preprocessor definitions} as arguments.  All these arguments are
-processed one-by-one from left to right.
+CM accepts {\em file names}, {\em mode switching flags}, {\em
+preprocessor definitions}, and {\em control parameters} as arguments.
+All these arguments are processed one-by-one from left to right.
 
 \subsection{File arguments}
 
@@ -56,4 +57,26 @@ in the interactive system.
 \item[{\tt -D$v$=$n$}] acts like {\tt (\#set (CM.symval "$v$") (SOME $n$))}.
 \item[{\tt -D$v$}] is equivalent to {\tt -D$v$=1}.
 \item[{\tt -U$v$}] acts like {\tt (\#set (CM.symval "$v$") NONE)}.
+\end{description}
+
+\subsection{Control Parameters}
+
+There are three kinds of control parameters:
+
+\begin{description}
+\item[{\bf help}] A request of help is one of {\tt -h},
+{\tt -h}{\it num}, or {\tt -H}.  In general, {\tt -h}{\it num}
+produces a help listing with all configurable controls up to obscurity
+level {\it num}.  If {\it num} is omitted, it defaults to 0.  The
+{\tt -H} flag requests a full help listing with all controls.
+\item[{\bf current settings}] This is similar to requesting
+help---except {\tt -h} and {\tt -H} are replaced with {\tt -s} and
+{\tt -S}, respectively.  Instead of showing the help message
+associated with each control, this requests showing the current
+settings.
+\item[{\bf set a control}] A control value can be set using an
+argument of the form {\tt -C}{\it control}{\tt =}{\it value}, where
+{\it control} is the name of a control and {\tt value} is a string
+that can be parsed and converted to a new value appropriate for the
+type of the control.
 \end{description}

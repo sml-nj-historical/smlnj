@@ -1,3 +1,8 @@
+(* ppcProps.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 functor PPCProps
    ( structure PPCInstr : PPCINSTR
      structure MLTreeEval : MLTREE_EVAL where T = PPCInstr.T
@@ -20,73 +25,123 @@ struct
   (* This stupid architecture doesn't really have a dedicated zero register *)
   fun zeroR() = C.Reg CB.GP 0
 
-  fun instrKind(I.BC _) = IK_JUMP
-    | instrKind(I.BCLR _) = IK_JUMP
-    | instrKind(I.B _) = IK_JUMP
-    | instrKind(I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) = 
-         if CB.registerId rt = 0 andalso CB.registerId ra = 0 then IK_NOP
-         else IK_INSTR
+  fun instrKind(I.ANNOTATION{i, ...}) = instrKind i
     | instrKind(I.COPY _) = IK_COPY
-    | instrKind(I.FCOPY _) = IK_COPY
-    | instrKind(I.CALL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
-    | instrKind(I.CALL _) = IK_CALL
-    | instrKind(I.PHI _)    = IK_PHI
-    | instrKind(I.SOURCE _) = IK_SOURCE
-    | instrKind(I.SINK _)   = IK_SINK
-    | instrKind(I.ANNOTATION{i,...}) = instrKind i
-    | instrKind _ = IK_INSTR
+    | instrKind(I.INSTR instr) = let
+	fun eqTest to = Word.andb(Word.fromInt to, 0w4) <> 0w0
+	fun trapAlways{to, ra, si} = 
+	  (case si
+	    of I.RegOp rb => 
+	       if CellsBasis.sameColor(ra,rb) andalso eqTest(to) then IK_JUMP
+	       else IK_INSTR
+             | I.ImmedOp 0 =>
+	       if CellsBasis.registerId ra = 0 andalso eqTest(to) then IK_JUMP
+	       else IK_INSTR
+          (*esac*))
+      in
+	case instr
+	 of (I.BC _) => IK_JUMP
+	  | (I.BCLR _) => IK_JUMP
+	  | (I.B _) => IK_JUMP
+	  | (I.TW t) => trapAlways(t)
+	  | (I.TD t) => trapAlways(t)
+	  | (I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) => 
+	       if CB.registerId rt = 0 andalso CB.registerId ra = 0 then IK_NOP
+	       else IK_INSTR
+	  | (I.CALL{cutsTo=_::_,...}) => IK_CALL_WITH_CUTS
+	  | (I.CALL _) => IK_CALL
+	  | (I.PHI _)    => IK_PHI
+	  | (I.SOURCE _) => IK_SOURCE
+	  | (I.SINK _)   => IK_SINK
+	  |  _ => IK_INSTR
+        (*esac*)
+      end
+    | instrKind _ = error "instrKind"
 
   fun moveInstr(I.COPY _) = true
-    | moveInstr(I.FCOPY _) = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr  _ = false
 
-  fun nop () = I.ARITHI{oper=I.ORI, rt=zeroR(), ra=zeroR(), im=I.ImmedOp 0}
+  fun nop () = I.arithi{oper=I.ORI, rt=zeroR(), ra=zeroR(), im=I.ImmedOp 0}
 
-  fun moveTmpR(I.COPY{tmp as SOME(I.Direct r), ...}) = SOME r
-    | moveTmpR(I.FCOPY{tmp as SOME(I.FDirect f), ...}) = SOME f
+  fun moveTmpR(I.COPY{tmp, ...}) = 
+      (case tmp 
+	of SOME(I.Direct r) => SOME r
+	 | SOME(I.FDirect f) => SOME f
+	 | _ => NONE
+      (*esac*))
     | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
-  fun moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
-    | moveDstSrc(I.FCOPY{src, dst, ...}) = (dst, src)
+  fun moveDstSrc(I.COPY{dst,src,...}) = (dst,src)
     | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
 
-  fun branchTargets(I.BC{bo=I.ALWAYS, addr,  ...}) = 
+
+  fun branchTargets(I.INSTR(I.BC{bo=I.ALWAYS, addr,  ...})) = 
       (case addr
         of I.LabelOp(T.LABEL lab) => [LABELLED lab]
          | _ => error "branchTargets:BC:ALWAYS"
       (*esac*))
-    | branchTargets(I.BC{addr, ...}) = 
+    | branchTargets(I.INSTR(I.BC{addr, ...})) = 
       (case addr
         of I.LabelOp(T.LABEL lab) => [LABELLED lab, FALLTHROUGH]
          | _ => error "branchTargets:BC"
       (*esac*))
-    | branchTargets(I.BCLR{labels, bo=I.ALWAYS, ...}) = 
+    | branchTargets(I.INSTR(I.BCLR{labels, bo=I.ALWAYS, ...})) = 
       (case labels of [] => [ESCAPES] | _ => map LABELLED labels)
-    | branchTargets(I.BCLR{labels,  ...}) = 
+    | branchTargets(I.INSTR(I.BCLR{labels,  ...})) = 
       (case labels of [] => [ESCAPES, FALLTHROUGH] | _ => map LABELLED labels)
-    | branchTargets(I.B{addr=I.LabelOp(T.LABEL lab), LK}) = [LABELLED lab]
-    | branchTargets(I.CALL{cutsTo, ...}) = FALLTHROUGH::map LABELLED cutsTo
+    | branchTargets(I.INSTR(I.B{addr=I.LabelOp(T.LABEL lab), LK})) = [LABELLED lab]
+    | branchTargets(I.INSTR(I.CALL{cutsTo, ...})) = FALLTHROUGH::map LABELLED cutsTo
+    | branchTargets(I.INSTR(I.TD _)) = [ESCAPES]
+    | branchTargets(I.INSTR(I.TW _)) = [ESCAPES]
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
-  fun jump lab = I.B{addr=I.LabelOp(T.LABEL lab), LK=false}
+  fun labelOp l = I.LabelOp(T.LABEL l)
+
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.BC{bo as I.ALWAYS, bf, bit, addr, fall, LK}), lab) = 
+        I.bc{bo=bo, bf=bf, bit=bit, fall=fall, LK=LK, addr=labelOp lab}
+    | setJumpTarget(I.INSTR(I.B{addr, LK}), lab) = I.b{addr=labelOp(lab), LK=LK}
+    | setJumpTarget _ = error "setJumpTarget"
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+        I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.BC{bo=I.ALWAYS, bf, bit, addr, fall, LK}), ...} = 
+        error "setBranchTargets"
+    | setBranchTargets{i=I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), t, f} = 
+        I.bc{bo=bo, bf=bf, bit=bit, LK=LK, addr=labelOp t, fall=labelOp f}
+    | setBranchTargets _ = error "setBranchTargets"
+
+  fun jump lab = I.b{addr=I.LabelOp(T.LABEL lab), LK=false}
+
+  fun negateConditional(I.ANNOTATION{a,i}, l) = 
+        I.ANNOTATION{a=a, i=negateConditional(i, l)}
+    | negateConditional(I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), lab) = let
+       val bo' = (case bo 
+	 of I.TRUE => I.FALSE
+	  | I.FALSE => I.TRUE
+	  | I.ALWAYS => error "negateCondtional: ALWAYS"
+	  | I.COUNTER{eqZero, cond=NONE} => I.COUNTER{eqZero=not eqZero, cond=NONE}
+	  | I.COUNTER{eqZero, cond=SOME b} => error "negateConditional: COUNTER"
+        (*esac*))
+      in 
+	  I.bc{bo=bo', bf=bf, bit=bit, addr=labelOp lab, fall=fall, LK=LK}
+      end
+    | negateConditional _ = error "negateConditional"
 
   val immedRange = {lo= ~32768, hi=32767}
 
   fun loadImmed{immed,t} = 
-       I.ARITHI
+       I.arithi
          {oper=I.ADDI, rt=t, ra=zeroR(), 
           im=if #lo immedRange <= immed andalso immed <= #hi immedRange
              then I.ImmedOp immed else I.LabelOp(I.T.LI(IntInf.fromInt immed))}
   fun loadOperand{opn,t} = 
-       I.ARITHI{oper=I.ADDI, rt=t, ra=zeroR(), im=opn}
+       I.arithi{oper=I.ADDI, rt=t, ra=zeroR(), im=opn}
 
-  fun setTargets _ = error " setTargets"
-
-  fun negateConditional _ = error "negateConditional"
 
   fun hashOpn(I.RegOp r) = CB.hashCell r
     | hashOpn(I.ImmedOp i) = Word.fromInt i
@@ -97,57 +152,70 @@ struct
     | eqOpn _ = false
 
   fun defUseR instr = let
-    fun operand(I.RegOp r,use) = r::use
-      | operand(_,use) = use
+    fun ppcDU instr = let
+      fun operand(I.RegOp r,use) = r::use
+	| operand(_,use) = use
+    in
+      case instr
+      of I.L{rt, ra, d, ...} => ([rt], operand(d,[ra]))
+       | I.LF{ra, d, ...} => ([], operand(d,[ra]))
+       | I.ST{rs, ra, d, ...} => ([], operand(d,[rs,ra]))
+       | I.STF{ra, d, ...} => ([], operand(d,[ra]))
+       | I.UNARY{rt, ra, ...} => ([rt], [ra])
+       | I.ARITH{rt, ra, rb, ...} => ([rt], [ra,rb])
+       | I.ARITHI{rt, ra, im, ...} => ([rt], operand(im,[ra]))
+       | I.ROTATE{ra, rs, sh, ...} => ([ra], [rs,sh])
+       | I.ROTATEI{ra, rs, sh, ...} => ([ra], operand(sh,[rs]))
+       | I.COMPARE{ra, rb, ...} => ([], operand(rb,[ra]))
+       | I.MTSPR{rs, ...} => ([], [rs])
+       | I.MFSPR{rt, ...} => ([rt], [])
+       | I.TW{to, ra, si} => ([], operand(si,[ra]))
+       | I.TD{to, ra, si} => ([], operand(si,[ra]))
+       | I.CALL{def, use, ...} => (C.getReg def, C.getReg use)
+       | _ => ([], [])
+    end
   in
     case instr
-    of I.L{rt, ra, d, ...} => ([rt], operand(d,[ra]))
-     | I.LF{ra, d, ...} => ([], operand(d,[ra]))
-     | I.ST{rs, ra, d, ...} => ([], operand(d,[rs,ra]))
-     | I.STF{ra, d, ...} => ([], operand(d,[ra]))
-     | I.UNARY{rt, ra, ...} => ([rt], [ra])
-     | I.ARITH{rt, ra, rb, ...} => ([rt], [ra,rb])
-     | I.ARITHI{rt, ra, im, ...} => ([rt], operand(im,[ra]))
-     | I.ROTATE{ra, rs, sh, ...} => ([ra], [rs,sh])
-     | I.ROTATEI{ra, rs, sh, ...} => ([ra], operand(sh,[rs]))
-     | I.COMPARE{ra, rb, ...} => ([], operand(rb,[ra]))
-     | I.MTSPR{rs, ...} => ([], [rs])
-     | I.MFSPR{rt, ...} => ([rt], [])
-     | I.TW{to, ra, si} => ([], operand(si,[ra]))
-     | I.TD{to, ra, si} => ([], operand(si,[ra]))
-     | I.CALL{def, use, ...} => (C.getReg def, C.getReg use)
-     | I.COPY{dst, src, tmp, ...} => 
-        (case tmp
-	  of NONE => (dst, src)
-	   | SOME(I.Direct r) => (r::dst, src)
-	(* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
-	 (*esac*))
-     | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
-       let val (d,u) = defUseR i in (defs@d, u@uses) end
-     | I.ANNOTATION{a, i, ...} => defUseR i
-     | _ => ([], [])
+     of I.ANNOTATION{i, ...} => defUseR i
+      | I.LIVE{regs, ...} => ([], C.getReg regs)
+      | I.KILL{regs, ...} => (C.getReg regs, [])
+      | I.INSTR(i) => ppcDU(i)
+      | I.COPY{k, dst, src, tmp, ...} => let
+	   val (d,u) = case k of CB.GP => (dst, src) | _ => ([], [])
+	 in
+	     case tmp 
+	     of SOME(I.Direct r) => (r::d, u)
+	      | SOME(I.Displace{base, ...}) => (d, base::u)
+	      | _ => (d,u)
+	 end
   end
 
-  fun defUseF instr = 
-   (case instr
-    of I.LF{ft, ...} => ([ft],[])
-     | I.STF{fs, ...} => ([], [fs])
-     | I.FCOMPARE{fa, fb, ...}  => ([], [fa, fb])
-     | I.FUNARY{ft, fb, ...}  => ([ft], [fb])
-     | I.FARITH{ft, fa, fb, ...}  => ([ft], [fa, fb])
-     | I.FARITH3{ft, fa, fb, fc, ...}  => ([ft], [fa, fb, fc])
-     | I.CALL{def, use, ...} => (C.getFreg def,C.getFreg use)
-     | I.FCOPY{dst, src, tmp, ...} => 
-        (case tmp
-	  of SOME(I.FDirect f) => (f::dst, src)
-	   | _ => (dst, src)
-	 (*esac*))
-     | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
-       let val (d,u) = defUseF i in (defs@d, u@uses) end
-     | I.ANNOTATION{a, i, ...} => defUseF i
-     | _ => ([], [])
-    (*esac*))
-
+  fun defUseF instr = let
+    fun ppcDU instr = 
+     (case instr
+      of I.LF{ft, ...} => ([ft],[])
+       | I.STF{fs, ...} => ([], [fs])
+       | I.FCOMPARE{fa, fb, ...}  => ([], [fa, fb])
+       | I.FUNARY{ft, fb, ...}  => ([ft], [fb])
+       | I.FARITH{ft, fa, fb, ...}  => ([ft], [fa, fb])
+       | I.FARITH3{ft, fa, fb, fc, ...}  => ([ft], [fa, fb, fc])
+       | I.CALL{def, use, ...} => (C.getFreg def,C.getFreg use)
+       | _ => ([], [])
+      (*esac*))
+  in
+    case instr
+     of I.ANNOTATION{i, ...} => defUseF i
+      | I.LIVE{regs, ...} => ([], C.getFreg regs)
+      | I.KILL{regs, ...} => (C.getFreg regs, [])
+      | I.INSTR(i) => ppcDU(i)
+      | I.COPY{k, dst, src, tmp, ...} => let
+	   val (d, u) = case k of CB.FP => (dst, src) | _ => ([],[])
+         in
+	     case tmp
+	      of SOME(I.FDirect f) => (f::d, u)
+	       | _ => (d, u)
+         end
+  end
   fun defUseCC instr = error "defUseCC: not implemented"
 
   fun defUse CB.GP = defUseR
@@ -167,11 +235,8 @@ struct
    *  Replicate an instruction
    *========================================================================*)
   fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
-    | replicate(I.COPY{tmp=SOME _, dst, src, impl}) =  
-        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
-    | replicate(I.FCOPY{tmp=SOME _, dst, src, impl}) = 
-        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), 
-                dst=dst, src=src, impl=ref NONE}
+    | replicate(I.COPY{k, sz, tmp=SOME _, dst, src}) =  
+        I.COPY{k=k, sz=sz, tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src}
     | replicate i = i
 end
 

@@ -38,4 +38,5 @@ is
 	$/ml-yacc-lib.cm
 
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 	$/basis.cm

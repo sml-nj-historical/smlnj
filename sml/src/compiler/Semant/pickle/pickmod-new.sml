@@ -51,7 +51,7 @@ signature PICKMOD = sig
 		    { hash: PersStamps.persstamp,
 		      pickle: Word8Vector.vector, 
 		      exportLvars: Access.lvar list,
-		      exportPid: PersStamps.persstamp option }
+		      hasExports: bool }
 
     val pickleFLINT: FLINT.prog option -> { hash: PersStamps.persstamp,
 					    pickle: Word8Vector.vector }
@@ -61,9 +61,9 @@ signature PICKMOD = sig
     val pickle2hash: Word8Vector.vector -> PersStamps.persstamp
 	
     val dontPickle : 
-        StaticEnv.staticEnv * int
-                  -> StaticEnv.staticEnv * PersStamps.persstamp *
-	             Access.lvar list * PersStamps.persstamp option
+	{ env: StaticEnv.staticEnv, count: int } ->
+        { newenv: StaticEnv.staticEnv, hash: PersStamps.persstamp,
+	  exportLvars: Access.lvar list, hasExports: bool }
 end
 
 local
@@ -140,13 +140,14 @@ in
 	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE) =
+	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE,
+         CCALL_TYPE) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59)
+	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -291,6 +292,9 @@ in
 	  | arithopc P.FSIN = "\014"
 	  | arithopc P.FCOS = "\015"
 	  | arithopc P.FTAN = "\016"
+	  | arithopc P.REM = "\017"
+	  | arithopc P.DIV = "\018"
+	  | arithopc P.MOD = "\019"
     in
 	arithopc oper $ []
     end
@@ -332,17 +336,27 @@ in
 	  | CTypes.C_signed CTypes.I_long => %?12
 	  | CTypes.C_signed CTypes.I_long_long => %?13
 	  | CTypes.C_PTR => %?14
-
 	  | CTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
 	  | CTypes.C_STRUCT l => ?21 $ [list ctype l]
     end
 
+    fun ccall_type t =
+    let val op $ = PU.$ CCALL_TYPE
+    in  case t of
+          P.CCI32 => "\000" $ [] 
+        | P.CCI64 => "\001" $ []
+        | P.CCR64 => "\002" $ []
+        | P.CCML  => "\003" $ []
+    end
+
     fun ccall_info { c_proto = { conv, retTy, paramTys },
-		     ml_flt_args, ml_flt_res_opt } = let
-	val op $ = PU.$ CCI
+		     ml_args, ml_res_opt, reentrant } = let
+	val op $ = PU.$ CCI 
     in
 	"C" $ [string conv, ctype retTy, list ctype paramTys,
-	       list bool ml_flt_args, option bool ml_flt_res_opt]
+	       list ccall_type ml_args, option ccall_type ml_res_opt,
+               bool reentrant
+              ]
     end
 	    
     fun primop p = let
@@ -376,6 +390,11 @@ in
 	      | P.RAW_LOAD kind => ?116 $ [numkind kind]
 	      | P.RAW_STORE kind => ?117 $ [numkind kind]
 	      | P.RAW_CCALL (SOME i) => ?118 $ [ccall_info i]
+	      | P.RAW_RECORD { fblock } => ?119 $ [bool fblock]
+
+	      | P.INLMIN kind => ?120 $ [numkind kind]
+	      | P.INLMAX kind => ?121 $ [numkind kind]
+	      | P.INLABS kind => ?122 $ [numkind kind]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
@@ -423,25 +442,20 @@ in
 	      | P.GETSPECIAL => %?40
 	      | P.USELVAR => %?41
 	      | P.DEFLVAR => %?42
-	      | P.INLDIV => %?43
-	      | P.INLMOD => %?44
-	      | P.INLREM => %?45
-	      | P.INLMIN => %?46
-	      | P.INLMAX => %?47
-	      | P.INLABS => %?48
-	      | P.INLNOT => %?49
-	      | P.INLCOMPOSE => %?50
-	      | P.INLBEFORE => %?51
-	      | P.INL_ARRAY => %?52
-	      | P.INL_VECTOR => %?53
-	      | P.ISOLATE => %?54
-	      | P.WCAST => %?55
-	      | P.NEW_ARRAY0 => %?56
-	      | P.GET_SEQ_DATA => %?57
-	      | P.SUBSCRIPT_REC => %?58
-	      | P.SUBSCRIPT_RAW64 => %?59
-	      | P.UNBOXEDASSIGN => %?60
-	      | P.RAW_CCALL NONE => %?61
+	      | P.INLNOT => %?43
+	      | P.INLCOMPOSE => %?44
+	      | P.INLBEFORE => %?45
+	      | P.INL_ARRAY => %?46
+	      | P.INL_VECTOR => %?47
+	      | P.ISOLATE => %?48
+	      | P.WCAST => %?49
+	      | P.NEW_ARRAY0 => %?50
+	      | P.GET_SEQ_DATA => %?51
+	      | P.SUBSCRIPT_REC => %?52
+	      | P.SUBSCRIPT_RAW64 => %?53
+	      | P.UNBOXEDASSIGN => %?54
+	      | P.RAW_CCALL NONE => %?55
+	      | P.INLIGNORE => %?56
     end
 
     fun consig arg = let
@@ -1200,18 +1214,15 @@ in
 	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler e))
 	val exportLvars = rev (!lvlist)
 	val hash = pickle2hash pickle
-	val exportPid =
-	    case exportLvars of
-		[] => NONE
-	      | _ => SOME hash
+	val hasExports = not (List.null exportLvars)
     in
 	addPickles (Word8Vector.length pickle);
 	{ hash = hash, pickle = pickle, exportLvars = exportLvars,
-	  exportPid = exportPid }
+	  hasExports = hasExports }
     end
 
     (* the dummy environment pickler *)
-    fun dontPickle (senv : StaticEnv.staticEnv, count) = let
+    fun dontPickle { env = senv, count } = let
 	val hash = let
 	    val toByte = Word8.fromLargeWord o Word32.toLargeWord
 	    val >> = Word32.>>
@@ -1284,12 +1295,10 @@ in
 		end
 	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
-	val exportPid =
-	    case lvars of
-		[] => NONE
-	      | _ => SOME hash
+	val hasExports = not (List.null lvars)
     in
-	(newenv, hash, rev lvars, exportPid)
+	{ newenv = newenv, hash = hash,
+	  exportLvars = rev lvars, hasExports = hasExports }
     end
   end
 end

@@ -36,7 +36,7 @@ struct
             val spillSavings = RACore.moveSavings graph
             val lookupSpan = IntHashTable.find (Option.valOf(!span))
             val lookupSpan = 
-                fn r => case lookupSpan r of SOME s => s | NONE => 0
+                fn r => case lookupSpan r of SOME s => s | NONE => 0.0
             val _          = span := NONE
             fun loop([], L, pruned) = (L, pruned)
               | loop(node::rest, L, pruned) = 
@@ -52,7 +52,7 @@ struct
                           val spillCost = !pri
                           val totalCost = spillCost - savings
                           (*val rank = ((real totalCost)+0.01) / real(span)*)
-                          val rank = (real totalCost + 0.5) / real(span+deg)
+                          val rank = (totalCost + 0.5) / (span + real deg)
                       in  loop(rest, (node, rank)::L, false) end
                   in  case (!defs, !uses) of
                         (_, []) =>  (* one def no use *)

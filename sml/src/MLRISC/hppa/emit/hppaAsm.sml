@@ -21,10 +21,7 @@ struct
    structure P  = S.P
    structure Constant = I.Constant
    
-   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
-   val show_region  = MLRiscControl.getFlag "asm-show-region"
-   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
-   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
+   open AsmFlags
    
    fun error msg = MLRiscErrorMsg.error("HppaAsmEmitter",msg)
    
@@ -49,10 +46,10 @@ struct
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^"\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
-       fun annotation a = (comment(Annotations.toString a); nl())
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"); nl())
+       fun annotation a = comment(Annotations.toString a)
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun fail _ = raise Fail "AsmEmitter"
@@ -257,11 +254,11 @@ struct
      | emit_operand (I.HILabExp(labexp, field_selector)) = emit_labexp labexp
      | emit_operand (I.LOLabExp(labexp, field_selector)) = emit_labexp labexp
 
-(*#line 637.7 "hppa/hppa.mdl"*)
+(*#line 647.7 "hppa/hppa.mdl"*)
    fun emit_n false = ()
      | emit_n true = emit ",n"
 
-(*#line 638.7 "hppa/hppa.mdl"*)
+(*#line 648.7 "hppa/hppa.mdl"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
    fun emitInstr' instr = 
@@ -575,28 +572,37 @@ struct
            emit ", "; 
            emit_int code2 )
        | I.NOP => emit "nop"
-       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
-            src=src, dst=dst})
-       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            src=src, dst=dst})
-       | I.ANNOTATION{i, a} => 
-         ( comment (Annotations.toString a); 
-           nl (); 
-           emitInstr i )
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstr,
                 endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,

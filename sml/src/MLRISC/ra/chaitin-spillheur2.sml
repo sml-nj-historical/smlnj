@@ -34,7 +34,7 @@ struct
         fun moveSavings(NODE{movecnt=ref 0, ...}) = 0.0
           | moveSavings(NODE{movelist, ...}) = 
             let fun loop([], savings) = 
-                     real(foldr (fn ((_,a),b) => Int.max(a,b)) 0 savings)
+                     foldr (fn ((_,a),b) => Real.max(a,b)) 0.0 savings
                   | loop(MV{status=ref(WORKLIST | GEORGE_MOVE | BRIGGS_MOVE),
                             dst, src, cost, ...}::mvs, savings) = 
                     let fun add(c,[]) = [(c,cost)]
@@ -70,7 +70,7 @@ struct
                             degree=ref deg, color=ref PSEUDO,...} => 
                let fun cost() = 
                    let val moveSavings = moveRatio * moveSavings(node)
-                   in  (real(!pri) + moveSavings) / real deg end
+                   in  (!pri + moveSavings) / real deg end
                    val cost = 
                       case (!defs, !uses) of
                         (_,[]) => (* defs but no use *)

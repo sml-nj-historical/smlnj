@@ -21,10 +21,7 @@ struct
    structure P  = S.P
    structure Constant = I.Constant
    
-   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
-   val show_region  = MLRiscControl.getFlag "asm-show-region"
-   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
-   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
+   open AsmFlags
    
    fun error msg = MLRiscErrorMsg.error("AlphaAsmEmitter",msg)
    
@@ -49,10 +46,10 @@ struct
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^"\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
-       fun annotation a = (comment(Annotations.toString a); nl())
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"); nl())
+       fun annotation a = comment(Annotations.toString a)
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun fail _ = raise Fail "AsmEmitter"
@@ -278,16 +275,12 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 483.7 "alpha/alpha.mdl"*)
+(*#line 479.7 "alpha/alpha.mdl"*)
    fun isZero (I.LABop le) = (MLTreeEval.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 
        (case instr of
-         I.DEFFREG FP => 
-         ( emit "/* deffreg\t"; 
-           emitCell FP; 
-           emit " */" )
-       | I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
+         I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
             b)))
             then ()
             else 
@@ -399,7 +392,7 @@ struct
            emit_label lab )
        | I.OPERATE{oper, ra, rb, rc} => 
          let 
-(*#line 578.15 "alpha/alpha.mdl"*)
+(*#line 568.15 "alpha/alpha.mdl"*)
              fun disp () = 
                  ( emit_operate oper; 
                    emit "\t"; 
@@ -444,10 +437,6 @@ struct
            emit ", "; 
            emitCell rc; 
            emit_cellset ("tmps", tmps))
-       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
-            dst=dst, src=src})
-       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            dst=dst, src=src})
        | I.FUNARY{oper, fb, fc} => 
          ( emit_funary oper; 
            emit "\t"; 
@@ -482,24 +471,37 @@ struct
        | I.CALL_PAL{code, def, use} => 
          ( emit "call_pal "; 
            emit_osf_user_palcode code )
-       | I.ANNOTATION{i, a} => 
-         ( comment (Annotations.toString a); 
-           nl (); 
-           emitInstr i )
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstr,
                 endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,

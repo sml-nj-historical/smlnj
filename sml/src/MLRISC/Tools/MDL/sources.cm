@@ -1,3 +1,10 @@
+(* Important NOTE: we absolutely do not want to use the version of MLRISC
+ * that is in the compiler.  Otherwise, when we change MLRISC, we will not
+ * be able to compile/run this tool until we've bootstrapped a new compiler. 
+ *
+ * -- Allen
+ *)
+
 Group 
 	signature CELLS
 	signature CELLS_BASIS 
@@ -84,44 +91,28 @@ is
 	$/ml-yacc-lib.cm
 	$smlnj/compiler.cm
 
-        (* MLRISC libraries
-	 *	We use the libraries that are already part of SML/NJ anyway.
-	 *      For sharing purposes, we must therefore instruct RTL.cm
-	 *      that _it_ uses these libraries as well; that's what
-	 *      the "bind" directives are for. *)
-	$smlnj/MLRISC/Control.cm
-	$smlnj/MLRISC/Lib.cm
-	$smlnj/MLRISC/MLRISC.cm
-	$smlnj/MLRISC/MLTREE.cm
-	../../cm/RTL.cm
-                (bind:(anchor:Control.cm value:$smlnj/MLRISC)
-                 bind:(anchor:Lib.cm value:$smlnj/MLRISC)
-                 bind:(anchor:MLTREE.cm value:$smlnj/MLRISC)
-                 bind:(anchor:MLRISC.cm value:$smlnj/MLRISC))
 #else
 	basis.cm
 	smlnj-lib.cm
 	ml-yacc-lib.cm
 	host-compiler.cm
 
-        (* MLRISC libraries *)
-	../../cm/Control.cm
-	../../cm/Lib.cm
-	../../cm/MLRISC.cm:
-	../../cm/MLTREE.cm
-	../../cm/RTL.cm
 #endif
 #else
 	smlnj-lib.cm
 	ml-yacc-lib.cm
 
-        (* MLRISC libraries *)
-	../../cm/Control.cm
-	../../cm/Lib.cm
-	../../cm/MLRISC.cm:
-	../../cm/MLTREE.cm
-	../../cm/RTL.cm
 #endif
+
+
+
+        (* MLRISC libraries [NEVER share the version in the compiler] *)
+        ../../cm/Graphs.cm
+        ../../cm/Control.cm
+        ../../cm/Lib.cm
+        ../../cm/MLRISC.cm
+        ../../cm/MLTREE.cm
+        ../../cm/RTL.cm
 
 	(* Pretty printer *)
 	../PP/sources.cm
@@ -137,8 +128,9 @@ is
 	../Parser/sources.cm
 
         (* Required MLRISC sources *)
-(* from $smlnj/MLRISC/MLRISC.cm:
-
+(*
+        ../../library/annotations.sig
+        ../../library/annotations.sml
 	../../instructions/cells-basis.sig
 	../../instructions/cells-basis.sml
 	../../instructions/cells.sig
@@ -147,7 +139,8 @@ is
 	../../instructions/stream.sml
 	../../instructions/region.sig
 	../../instructions/constant.sig
-	../../instructions/labels.sml
+	../../instructions/label-sig.sml
+	../../instructions/label.sml
 	../../instructions/pseudoOps.sig
 	../../mltree/mltree-basis.sig
 	../../mltree/mltree-basis.sml
@@ -156,9 +149,7 @@ is
 	../../mltree/mltree.sml
 	../../mltree/machine-int.sig
 	../../mltree/machine-int.sml
-*)
 
-(* from $smlnj/MLRISC/MLTREE.cm:
 
 	../../mltree/mltree-utils.sig
 	../../mltree/mltree-utils.sml
@@ -166,9 +157,7 @@ is
 	../../mltree/mltree-rewrite.sml
 	../../mltree/mltree-fold.sig
 	../../mltree/mltree-fold.sml
-*)
 
-(* from ../../cm/RTL.cm:
 	../../mltree/mltree-rtl.sig
 	../../mltree/mltree-rtl.sml
 	../../mltree/rtl-build.sig

@@ -4,6 +4,8 @@
 structure SparcCG = 
   MachineGen
   ( structure MachSpec   = SparcSpec
+    structure T          = SparcMLTree
+    structure CB	 = CellsBasis
     structure ClientPseudoOps = SparcClientPseudoOps
     structure PseudoOps  = SparcPseudoOps
     structure Ext        = Sparc_SMLNJMLTreeExt(* sparc specific *)
@@ -50,7 +52,6 @@ structure SparcCG =
     structure BackPatch =
        SpanDependencyResolution
          (structure CFG	      = SparcCFG
-	  structure Placement = DefaultBlockPlacement(SparcCFG) 
           structure Jumps     = Jumps
           structure Emitter   = SparcMCEmitter
           structure DelaySlot = SparcDelaySlots
@@ -62,9 +63,10 @@ structure SparcCG =
     structure RA = 
        RISC_RA
          (structure I         = SparcInstr
-          structure Flowgraph = SparcCFG
+          structure CFG       = SparcCFG
           structure InsnProps = InsnProps 
           structure Rewrite   = SparcRewrite(SparcInstr)
+	  structure SpillInstr= SparcSpillInstr(SparcInstr)
           structure Asm       = SparcAsmEmitter
           structure SpillHeur = ChaitinSpillHeur
           structure Spill     = RASpill(structure InsnProps = InsnProps
@@ -73,48 +75,31 @@ structure SparcCG =
           structure SpillTable = SpillTable(SparcSpec)
           val fp = I.C.frameptrR
           val spill = CPSRegions.spill
-          val beginRA = SpillTable.spillInit
+	  datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	  type spill_info = unit
+          fun beforeRA _ = SpillTable.spillInit()
+
           val architecture = SparcSpec.architecture
          
           fun pure(I.ANNOTATION{i,...}) = pure i
-            | pure(I.LOAD _) = true
-            | pure(I.FLOAD _) = true
-            | pure(I.SETHI _) = true
-            | pure(I.SHIFT _) = true
-            | pure(I.FPop1 _) = true
-            | pure(I.FPop2 _) = true
+            | pure(I.INSTR(I.LOAD _)) = true
+            | pure(I.INSTR(I.FLOAD _)) = true
+            | pure(I.INSTR(I.SETHI _)) = true
+            | pure(I.INSTR(I.SHIFT _)) = true
+            | pure(I.INSTR(I.FPop1 _)) = true
+            | pure(I.INSTR(I.FPop2 _)) = true
             | pure _ = false
 
-          (* make copy *)
+          (* make copy *) 
           structure Int = 
           struct
              val avail     = SparcCpsRegs.availR
              val dedicated = SparcCpsRegs.dedicatedR
 
-             fun copy((rds as [_], rss as [_]), _) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-               | copy((rds, rss), I.COPY{tmp, ...}) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-
-
-             (* spill copy temp *)
-             fun spillCopyTmp(_, I.COPY{dst,src,tmp,impl},loc) =
-                 I.COPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=fp, 
-                                            disp=SpillTable.getRegLoc loc })}
-
-             (* spill register *)
-             fun spillInstr{src,spilledCell,an,spillLoc} =
-                 [I.STORE{s=I.ST,r=fp,
-                          i=I.IMMED(SpillTable.getRegLoc spillLoc), 
-                          d=src, mem=spill}]
-
-             (* reload register *)
-             fun reloadInstr{dst,spilledCell,an,spillLoc} =
-                 [I.LOAD{l=I.LD, r=fp, 
-                         i=I.IMMED(SpillTable.getRegLoc spillLoc), 
-                         d=dst, mem=spill}
-                 ]
+	     fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getRegLoc loc))
+             fun spillLoc{info, an, cell, id} = 
+		  {opnd=I.Displace{base=fp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		   kind=SPILL_LOC}
 
              val mode = RACore.NO_OPTIMIZATION
           end
@@ -124,26 +109,10 @@ structure SparcCG =
              val avail     = SparcCpsRegs.availF
              val dedicated = SparcCpsRegs.dedicatedF
 
-             fun copy((fds as [_], fss as [_]), _) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-               | copy((fds, fss), I.FCOPY{tmp, ...}) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+	      fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getFregLoc loc))
 
-             fun spillCopyTmp(_, I.FCOPY{dst,src,tmp,impl},loc) =
-                 I.FCOPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=fp, 
-                                            disp=SpillTable.getFregLoc loc })}
-   
-             fun spillInstr(_, d,loc) =
-                 [I.FSTORE{s=I.STDF, r=fp,
-                           i=I.IMMED(SpillTable.getFregLoc loc),
-                           d=d, mem=spill}]
-   
-             fun reloadInstr(_, d,loc) =
-                 [I.FLOAD{l=I.LDDF, r=fp, 
-                          i=I.IMMED(SpillTable.getFregLoc loc),
-                          d=d, mem=spill}
-                 ]
+             fun spillLoc(S, an, loc) = 
+		I.Displace{base=fp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
 
              val mode = RACore.NO_OPTIMIZATION
           end

@@ -4,23 +4,21 @@ functor AlphaShuffle(I:ALPHAINSTR) : ALPHASHUFFLE = struct
 
   type t = {tmp:I.ea option, dst:CellsBasis.cell list, src:CellsBasis.cell list}
 
-  val mem=I.Region.memory
-
   val zeroR = I.REGop(Option.valOf(I.C.zeroReg CellsBasis.GP))
 
   fun move{src=I.Direct rs, dst=I.Direct rd} = 
-        [I.OPERATE{oper=I.BIS, ra=rs, rb=zeroR, rc=rd}]
-    | move{src=I.Direct rs, dst=I.Displace{base, disp}} = 
-	[I.STORE{stOp=I.STL, r=rs, b=base, d=I.IMMop disp, mem=mem}]
-    | move{src=I.Displace{base, disp}, dst=I.Direct rt} = 
-	[I.LOAD{ldOp=I.LDL, r=rt, b=base, d=I.IMMop disp, mem=mem}]
+        [I.operate{oper=I.BIS, ra=rs, rb=zeroR, rc=rd}]
+    | move{src=I.Direct rs, dst=I.Displace{base, disp, mem}} = 
+	[I.store{stOp=I.STL, r=rs, b=base, d=I.LABop disp, mem=mem}]
+    | move{src=I.Displace{base, disp, mem}, dst=I.Direct rt} = 
+	[I.load{ldOp=I.LDL, r=rt, b=base, d=I.LABop disp, mem=mem}]
 
   fun fmove{src=I.FDirect fs, dst=I.FDirect fd} = 
-        [I.FOPERATE{oper=I.CPYS, fa=fs, fb=fs, fc=fd}]
-    | fmove{src=I.FDirect fs, dst=I.Displace{base, disp}} = 
-	[I.FSTORE{stOp=I.STT, r=fs, b=base, d=I.IMMop disp, mem=mem}]
-    | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} =
-	[I.FLOAD{ldOp=I.LDT, r=ft, b=base, d=I.IMMop disp, mem=mem}]
+        [I.foperate{oper=I.CPYS, fa=fs, fb=fs, fc=fd}]
+    | fmove{src=I.FDirect fs, dst=I.Displace{base, disp, mem}} = 
+	[I.fstore{stOp=I.STT, r=fs, b=base, d=I.LABop disp, mem=mem}]
+    | fmove{src=I.Displace{base, disp, mem}, dst=I.FDirect ft} =
+	[I.fload{ldOp=I.LDT, r=ft, b=base, d=I.LABop disp, mem=mem}]
 
   val shuffle = Shuffle.shuffle {mvInstr=move, ea=I.Direct}
 

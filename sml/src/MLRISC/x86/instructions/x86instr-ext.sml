@@ -24,4 +24,5 @@ structure X86InstrExt = struct
     | RET of 'r
 
     | LOCK_CMPXCHGL of ('r * 'r)
+
 end

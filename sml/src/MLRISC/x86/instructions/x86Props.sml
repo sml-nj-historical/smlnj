@@ -24,83 +24,148 @@ struct
  (*========================================================================
   *  Instruction Kinds
   *========================================================================*)
-  fun instrKind (I.JMP _) = IK_JUMP
-    | instrKind (I.JCC _) = IK_JUMP
+  fun instrKind (I.ANNOTATION{i, ...}) = instrKind i
     | instrKind (I.COPY _) = IK_COPY
-    | instrKind (I.FCOPY _) = IK_COPY
-    | instrKind (I.CALL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
-    | instrKind (I.CALL _) = IK_CALL
-    | instrKind (I.PHI _)    = IK_PHI
-    | instrKind (I.SOURCE _) = IK_SOURCE
-    | instrKind (I.SINK _)   = IK_SINK
-    | instrKind (I.RET _) = IK_JUMP
-    | instrKind (I.ANNOTATION{i,...}) = instrKind i
+    | instrKind (I.INSTR i)  = 
+       (case i 
+	 of I.JMP _ => IK_JUMP
+	  | I.JCC _ => IK_JUMP
+	  | I.CALL{cutsTo=_::_,...} => IK_CALL_WITH_CUTS
+	  | I.CALL _ => IK_CALL
+	  | I.PHI _    => IK_PHI
+	  | I.SOURCE _ => IK_SOURCE
+	  | I.SINK _   => IK_SINK
+	  | I.RET _ => IK_JUMP
+	  | I.INTO => IK_JUMP
+	  | _ => IK_INSTR)
     | instrKind _ = IK_INSTR
 
+  fun moveInstr(I.ANNOTATION{i, ...}) = moveInstr i
+    | moveInstr(I.LIVE _) = false
+    | moveInstr(I.KILL _) = false
+    | moveInstr(I.COPY _) = true
+    | moveInstr(I.INSTR i)  = 
+       (case i
+         of I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...} => true
+	  | I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...} => true
+	  | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...} => true
+	  | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...} => true
+	  | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...} => true
+	  | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...} => true
+	  | _ => false )
 
-  fun moveInstr(I.COPY _) = true
-    | moveInstr(I.FCOPY _) = true
-    | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...}) = true
-    | moveInstr(I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...}) = true
-    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...}) = true
-    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...}) = true
-    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...}) = true
-    | moveInstr(I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...}) = true
-    | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
-    | moveInstr _ = false 
 
-  val nop = fn () => I.NOP
+  fun isMemMove(I.INSTR(i)) = 
+      (case i
+	of I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...} => true
+	 | I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...} => true
+	 | _ => false 
+      (*esac*))
+    | isMemMove _ = false
+
+
+  fun memMove(I.INSTR(i)) = 
+      (case i
+        of I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...} => ([rd], [rs])
+	 | I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 |  _ => error "memMove: INSTR"
+      (*esac*))
+    | memMove _ = error "memMove"
+	
+    val nop = fn () => I.nop
 
 
  (*========================================================================
   *  Parallel Move
   *========================================================================*)
-  fun moveTmpR(I.COPY{tmp=SOME(I.Direct r), ...}) = SOME r
-    | moveTmpR(I.FCOPY{tmp=SOME(I.FDirect f), ...}) = SOME f
-    | moveTmpR(I.FCOPY{tmp=SOME(I.FPR f), ...}) = SOME f
-    | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
+  fun moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
+    | moveTmpR(I.COPY{k=CB.GP, tmp=SOME(I.Direct r), ...}) = SOME r
+    | moveTmpR(I.COPY{k=CB.FP, tmp=SOME(I.FDirect f), ...}) = SOME f
+    | moveTmpR(I.COPY{k=CB.FP, tmp=SOME(I.FPR f), ...}) = SOME f 
     | moveTmpR _ = NONE
 
-  fun moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
-    | moveDstSrc(I.FCOPY{src, dst, ...}) = (dst, src)
-    | moveDstSrc(I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.FMOVE{src=I.FPR rs, dst=I.FDirect rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.FMOVE{src=I.FDirect rs, dst=I.FDirect rd, ...}) = ([rd], [rs])
-    | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
-    | moveDstSrc _ = error "moveDstSrc"
-
+  fun moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
+    | moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
+    | moveDstSrc(I.INSTR i) = 
+      (case i
+        of I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...} => ([rd], [rs])
+	 | I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 |  _ => error "moveDstSrc")
+    | moveDstSrc _ = error "moveDstSrc2"
  (*=====================================================================
   *  Branches and Calls/Returns
   *=====================================================================*)
-  fun branchTargets(I.JMP(_, [])) = [ESCAPES]
-    | branchTargets(I.JMP(_, labs)) = map LABELLED labs
-    | branchTargets(I.RET _) = [ESCAPES]
-    | branchTargets(I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...}) = 
-        [FALLTHROUGH, LABELLED lab]
-    | branchTargets(I.CALL{cutsTo, ...}) = FALLTHROUGH :: map LABELLED cutsTo
-    | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
+  fun branchTargets(I.ANNOTATION{i,...}) = branchTargets i
+    | branchTargets(I.INSTR i) = 
+      (case i
+        of I.JMP(_, []) => [ESCAPES]
+	 | I.JMP(_, labs) => map LABELLED labs
+	 | I.RET _ => [ESCAPES]
+	 | I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...} => 
+	     [FALLTHROUGH, LABELLED lab]
+	 | I.CALL{cutsTo, ...} => FALLTHROUGH :: map LABELLED cutsTo
+	 | I.INTO => [ESCAPES]
+	 |  _ => error "branchTargets")
     | branchTargets _ = error "branchTargets"
 
-  fun jump label = I.JMP (I.ImmedLabel(T.LABEL label), [label])
+  fun jump label = I.jmp (I.ImmedLabel(T.LABEL label), [label])
 
   exception NotImplemented
-  fun setTargets(I.JMP(I.ImmedLabel _,_),[l]) = jump l
-    | setTargets(I.JMP(opnd,_),_) = error "setTargets"
-    | setTargets(I.JCC{cond,opnd=I.ImmedLabel _},[f,t]) =
-        I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
-    | setTargets(I.JCC _,_) = error "setTargets"
-    | setTargets(I.ANNOTATION{i,a},l) = I.ANNOTATION{i=setTargets(i,l),a=a}
-    | setTargets(i,_) = i
-  fun negateConditional _ = raise NotImplemented
+
+  fun setJumpTarget(I.ANNOTATION{a,i}, l) = I.ANNOTATION{a=a, i=setJumpTarget(i,l)}
+    | setJumpTarget(I.INSTR(I.JMP(I.ImmedLabel _, _)), lab) = jump lab
+    | setJumpTarget _ = error "setJumpTarget"
+
+  fun setBranchTargets{i=I.ANNOTATION{a,i}, t, f} = 
+        I.ANNOTATION{a=a, i=setBranchTargets{i=i, t=t, f=f}}
+    | setBranchTargets{i=I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}), t, ...} = 
+        I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
+    | setBranchTargets _ = error "setBranchTargets"
+
+  fun negateConditional (I.ANNOTATION{i,a}, lab) =
+	I.ANNOTATION{i=negateConditional(i,lab), a=a}
+    | negateConditional (I.INSTR(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}), lab) =
+	let
+	val cond' = (case cond
+	       of I.EQ => I.NE
+		| I.NE => I.EQ
+		| I.LT => I.GE
+		| I.LE => I.GT
+		| I.GT => I.LE
+		| I.GE => I.LT
+		| I.B => I.AE
+		| I.BE => I.A
+		| I.A => I.BE
+		| I.AE => I.B
+		| I.C => I.NC
+		| I.NC => I.C
+		| I.P => I.NP
+		| I.NP => I.P
+		| I.O => I.NO
+		| I.NO => I.O
+	      (* end case *))
+	in
+	  I.INSTR(I.JCC{cond=cond', opnd=I.ImmedLabel(T.LABEL lab)})
+	end
+    | negateConditional _ = error "negateConditional"
 
   val immedRange={lo= ~1073741824, hi=1073741823}
   val toInt32 = Int32.fromLarge o Int.toLarge
   fun loadImmed{immed,t} =
-      I.MOVE{mvOp=I.MOVL,src=I.Immed(toInt32 immed),dst=I.Direct t}
-  fun loadOperand{opn,t} = I.MOVE{mvOp=I.MOVL,src=opn,dst=I.Direct t}
+      I.move{mvOp=I.MOVL,src=I.Immed(toInt32 immed),dst=I.Direct t}
+  fun loadOperand{opn,t} = I.move{mvOp=I.MOVL,src=opn,dst=I.Direct t}
 
  (*=====================================================================
   *  Hashing and Equality on operands
@@ -151,144 +216,175 @@ struct
       | operandAcc(I.Indexed{base=NONE, index, ...}, acc) = index::acc
       | operandAcc(_, acc) = acc
 
-    fun operandUse opnd = operandAcc(opnd, [])
+    fun x86DefUseR instr = let
+      fun operandUse opnd = operandAcc(opnd, [])
 
-    fun operandUse2(src1, src2) = ([], operandAcc(src1, operandUse src2))
-    fun operandUse3(x, y, z) = ([], operandAcc(x, operandAcc(y, operandUse y)))
+      fun operandUse2(src1, src2) = ([], operandAcc(src1, operandUse src2))
+      fun operandUse3(x, y, z) = ([], operandAcc(x, operandAcc(y, operandUse y)))
 
-    fun operandDef(I.Direct r) = [r]
-      | operandDef(I.MemReg r) = [r]
-      | operandDef _ = []
+      fun operandDef(I.Direct r) = [r]
+	| operandDef(I.MemReg r) = [r]
+	| operandDef _ = []
 
-    fun multdiv{src, multDivOp} = let
-      val uses = operandUse src
+      fun multdiv{src, multDivOp} = let
+	val uses = operandUse src
+      in
+	case multDivOp
+	 of (I.IDIVL1 | I.DIVL1) => (eaxPair, C.edx::C.eax::uses)
+	  | (I.IMULL1 | I.MULL1) => (eaxPair, C.eax::uses)
+      end
+
+      fun unary opnd = (operandDef opnd, operandUse opnd)
+      fun cmptest{lsrc, rsrc} = ([], operandAcc(lsrc, operandUse rsrc))
+      fun espOnly()  = let val sp = [C.stackptrR] in (sp, sp) end
+      fun push arg = ([C.stackptrR], operandAcc(arg, [C.stackptrR]))
+      fun float opnd = ([], operandUse opnd)
     in
-      case multDivOp
-       of (I.IDIVL1 | I.DIVL1) => (eaxPair, C.edx::C.eax::uses)
-        | I.MULL1 => (eaxPair, C.eax::uses)
-    end
+      case instr
+       of I.JMP(opnd, _)        => ([], operandUse opnd)
+	| I.JCC{opnd, ...}      => ([], operandUse opnd)
+	| I.CALL{opnd,defs,uses,...} => 
+	     (C.getReg defs, operandAcc(opnd, C.getReg uses))
+	| I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
+	| I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
+	| I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
+	| I.LEA{r32, addr}      => ([r32], operandUse addr)
+	| ( I.CMPL arg | I.CMPW arg | I.CMPB arg
+	  | I.TESTL arg | I.TESTW arg | I.TESTB arg ) => cmptest arg 
+	| I.BITOP{lsrc, rsrc, ...} => cmptest{lsrc=lsrc,rsrc=rsrc}
+	| I.BINARY{binOp=I.XORL,src=I.Direct rs,dst=I.Direct rd,...} =>   
+	     if CB.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
+	| I.BINARY{src,dst,...} =>   
+	     (operandDef dst, operandAcc(src, operandUse dst))
+	| I.SHIFT{src,dst,count,...} =>   
+	     (operandDef dst, 
+              operandAcc(count, operandAcc(src, operandUse dst)))
+	| I.CMPXCHG{src, dst, ...} =>
+	     (C.eax::operandDef dst, C.eax::operandAcc(src, operandUse dst))
+	| I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
+	| I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
+	| I.MULTDIV arg	      => multdiv arg
+	| I.MUL3{src1, dst, ...}=> ([dst], operandUse src1)
 
-    fun unary opnd = (operandDef opnd, operandUse opnd)
-    fun cmptest{lsrc, rsrc} = ([], operandAcc(lsrc, operandUse rsrc))
-    fun espOnly()  = let val sp = [C.stackptrR] in (sp, sp) end
-    fun push arg = ([C.stackptrR], operandAcc(arg, [C.stackptrR]))
-    fun float opnd = ([], operandUse opnd)
+	| I.UNARY{opnd, ...}    => unary opnd
+	| I.SET{opnd, ...}      => unary opnd
+	| ( I.PUSHL arg | I.PUSHW arg | I.PUSHB arg ) => push arg
+	| I.POP arg	      => (C.stackptrR::operandDef arg, [C.stackptrR])
+	| I.PUSHFD	      => espOnly()
+	| I.POPFD		      => espOnly()
+	| I.CDQ		      => ([C.edx], [C.eax])
+	| I.FSTPT opnd	      => float opnd
+	| I.FSTPL opnd	      => float opnd
+	| I.FSTPS opnd	      => float opnd 
+	| I.FSTL opnd	      => float opnd
+	| I.FSTS opnd	      => float opnd 
+	| I.FLDL opnd	      => float opnd
+	| I.FLDS opnd	      => float opnd
+	| I.FILD opnd           => float opnd
+	| I.FILDL opnd          => float opnd
+	| I.FILDLL opnd         => float opnd
+	| I.FBINARY{src, ...}   => ([], operandUse src)
+	| I.FIBINARY{src, ...}  => ([], operandUse src)
+	| I.FENV{opnd, ...}     => ([], operandUse opnd)
+	| I.FNSTSW	      => ([C.eax], [])
+	| I.FUCOM opnd          => float opnd
+	| I.FUCOMP opnd         => float opnd
+	| I.FCOMI opnd          => float opnd
+	| I.FCOMIP opnd         => float opnd
+	| I.FUCOMI opnd         => float opnd
+	| I.FUCOMIP opnd        => float opnd
+
+	| I.FMOVE{src, dst, ...} => operandUse2(src, dst) 
+	| I.FILOAD{ea, dst, ...} => operandUse2(ea, dst) 
+	| I.FCMP{lsrc, rsrc, ...} => operandUse2(lsrc, rsrc)
+	| I.FBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
+	| I.FIBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
+	| I.FUNOP{src, dst, ...} => operandUse2(src, dst)
+
+	| I.SAHF		      => ([], [C.eax])
+	| I.LAHF		      => ([C.eax], [])
+	  (* This sets the low order byte, 
+	   * do potentially it may define *and* use 
+	   *)
+	| I.CMOV{src,dst,...} => ([dst], operandAcc(src, [dst]))
+	| _		      => ([], [])
+    end 
   in
-    case instr
-     of I.JMP(opnd, _)        => ([], operandUse opnd)
-      | I.JCC{opnd, ...}      => ([], operandUse opnd)
-      | I.CALL{opnd,defs,uses,...} => 
-           (C.getReg defs, operandAcc(opnd, C.getReg uses))
-      | I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
-      | I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
-      | I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
-      | I.LEA{r32, addr}      => ([r32], operandUse addr)
-      | ( I.CMPL arg | I.CMPW arg | I.CMPB arg
-        | I.TESTL arg | I.TESTW arg | I.TESTB arg ) => cmptest arg 
-      | I.BITOP{lsrc, rsrc, ...} => cmptest{lsrc=lsrc,rsrc=rsrc}
-      | I.BINARY{binOp=I.XORL,src=I.Direct rs,dst=I.Direct rd,...} =>   
-           if CB.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
-      | I.BINARY{src,dst,...} =>   
-           (operandDef dst, operandAcc(src, operandUse dst))
-      | I.CMPXCHG{src, dst, ...} =>
-           (C.eax::operandDef dst, C.eax::operandAcc(src, operandUse dst))
-      | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
-      | I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
-      | I.MULTDIV arg	      => multdiv arg
-      | I.MUL3{src1, dst, ...}=> ([dst], operandUse src1)
-
-      | I.UNARY{opnd, ...}    => unary opnd
-      | I.SET{opnd, ...}      => unary opnd
-      | ( I.PUSHL arg | I.PUSHW arg | I.PUSHB arg ) => push arg
-      | I.POP arg	      => (C.stackptrR::operandDef arg, [C.stackptrR])
-      | I.PUSHFD	      => espOnly()
-      | I.POPFD		      => espOnly()
-      | I.CDQ		      => ([C.edx], [C.eax])
-
-      | I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)
-      | I.COPY{dst, src, ...} => (dst, src)
-      | I.FSTPT opnd	      => float opnd
-      | I.FSTPL opnd	      => float opnd
-      | I.FSTPS opnd	      => float opnd 
-      | I.FSTL opnd	      => float opnd
-      | I.FSTS opnd	      => float opnd 
-      | I.FLDL opnd	      => float opnd
-      | I.FLDS opnd	      => float opnd
-      | I.FILD opnd           => float opnd
-      | I.FILDL opnd          => float opnd
-      | I.FILDLL opnd         => float opnd
-      | I.FBINARY{src, ...}   => ([], operandUse src)
-      | I.FIBINARY{src, ...}  => ([], operandUse src)
-      | I.FENV{opnd, ...}     => ([], operandUse opnd)
-      | I.FNSTSW	      => ([C.eax], [])
-      | I.FUCOM opnd          => float opnd
-      | I.FUCOMP opnd         => float opnd
-
-      | I.FMOVE{src, dst, ...} => operandUse2(src, dst) 
-      | I.FILOAD{ea, dst, ...} => operandUse2(ea, dst) 
-      | I.FCMP{lsrc, rsrc, ...} => operandUse2(lsrc, rsrc)
-      | I.FBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
-      | I.FIBINOP{lsrc, rsrc, dst, ...} => operandUse3(lsrc, rsrc, dst)
-      | I.FUNOP{src, dst, ...} => operandUse2(src, dst)
-
-      | I.SAHF		      => ([], [C.eax])
-      | I.LAHF		      => ([C.eax], [])
-        (* This sets the low order byte, 
-         * do potentially it may define *and* use 
-         *)
-      | I.CMOV{src,dst,...} => ([dst], operandAcc(src, [dst]))
-      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
-        let val (d,u) = defUseR i in (defs@d, u@uses) end
-      | I.ANNOTATION{a, i, ...} => defUseR i
-      | _		      => ([], [])
-  end (* defUseR *)
+      case instr
+       of I.ANNOTATION{i, ...} => defUseR i
+	| I.LIVE{regs, ...} => ([], C.getReg regs)
+	| I.KILL{regs, ...} => (C.getReg regs, [])
+	| I.COPY{k=CB.GP, dst, src, tmp, ...} => 
+	  (case tmp
+	    of NONE => (dst, src)
+             | SOME(I.Direct r) => (r::dst, src)
+	     | SOME(I.MemReg r) => (r::dst, src)
+	     | SOME(ea) => (dst, operandAcc(ea, src))
+          (*esac*))
+	| I.COPY _ => ([], [])
+	| I.INSTR i  => x86DefUseR(i)
+  end
 
   fun defUseF instr = let
-    fun operand(I.FDirect f) = [f]
-      | operand(I.FPR f) = [f]
-      | operand _ = []
 
-    fun operandAcc(I.FDirect f, acc) = f::acc
-      | operandAcc(I.FPR f, acc) = f::acc
-      | operandAcc(_ , acc) = acc
+    fun x86DefUseF instr = let
+      fun operand(I.FDirect f) = [f]
+	| operand(I.FPR f) = [f]
+	| operand _ = []
 
-    fun fbinop(lsrc, rsrc, dst) = 
-    let val def = operand dst
-        val use = operandAcc(lsrc, operand rsrc)
-    in  (def, use) 
+      fun operandAcc(I.FDirect f, acc) = f::acc
+	| operandAcc(I.FPR f, acc) = f::acc
+	| operandAcc(_ , acc) = acc
+
+      fun fbinop(lsrc, rsrc, dst) = 
+      let val def = operand dst
+	  val use = operandAcc(lsrc, operand rsrc)
+      in  (def, use) 
+      end
+
+      val fcmpTmp = [C.ST 0]
+
+    in
+      case instr
+       of I.FSTPT opnd          => (operand opnd, [])  
+	| I.FSTPL opnd		=> (operand opnd, [])
+	| I.FSTPS opnd		=> (operand opnd, [])
+	| I.FSTL opnd		=> (operand opnd, [])
+	| I.FSTS opnd		=> (operand opnd, [])
+	| I.FLDT opnd		=> ([], operand opnd)
+	| I.FLDL opnd		=> ([], operand opnd)
+	| I.FLDS opnd		=> ([], operand opnd)
+	| I.FUCOM opnd          => ([], operand opnd)
+	| I.FUCOMP opnd         => ([], operand opnd)
+	| I.FCOMI opnd          => ([], operand opnd)
+	| I.FCOMIP opnd         => ([], operand opnd)
+	| I.FUCOMI opnd         => ([], operand opnd)
+	| I.FUCOMIP opnd        => ([], operand opnd)
+	| I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
+	| I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
+
+	| I.FMOVE{src, dst, ...} => (operand dst, operand src) 
+	| I.FILOAD{ea, dst, ...} => (operand dst, []) 
+	| I.FCMP{lsrc, rsrc, ...} => (fcmpTmp, operandAcc(lsrc, operand rsrc))
+	| I.FBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
+	| I.FIBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
+	| I.FUNOP{src, dst, ...} => (operand dst, operand src)
+	| _  => ([], [])
     end
-
-    val fcmpTmp = [C.ST 0]
-
-  in
-    case instr
-     of I.FSTPT opnd            => (operand opnd, [])  
-      | I.FSTPL opnd		=> (operand opnd, [])
-      | I.FSTPS opnd		=> (operand opnd, [])
-      | I.FSTL opnd		=> (operand opnd, [])
-      | I.FSTS opnd		=> (operand opnd, [])
-      | I.FLDT opnd		=> ([], operand opnd)
-      | I.FLDL opnd		=> ([], operand opnd)
-      | I.FLDS opnd		=> ([], operand opnd)
-      | I.FUCOM opnd            => ([], operand opnd)
-      | I.FUCOMP opnd           => ([], operand opnd)
-      | I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
-      | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
-      | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
-      | I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)
-      | I.FCOPY{dst, src, ...}  => (dst, src)
-
-      | I.FMOVE{src, dst, ...} => (operand dst, operand src) 
-      | I.FILOAD{ea, dst, ...} => (operand dst, []) 
-      | I.FCMP{lsrc, rsrc, ...} => (fcmpTmp, operandAcc(lsrc, operand rsrc))
-      | I.FBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
-      | I.FIBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
-      | I.FUNOP{src, dst, ...} => (operand dst, operand src)
-
-      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
-        let val (d,u) = defUseF i in (defs@d, u@uses) end
-      | I.ANNOTATION{a, i, ...} => defUseF i
-      | _  => ([], [])
+  in 
+     case instr
+     of (I.ANNOTATION{i, ...}) => defUseF(i)
+      | I.LIVE{regs, ...} => ([], C.getFreg regs)
+      | I.KILL{regs, ...} => (C.getFreg regs, [])
+      | I.COPY{k=CB.FP, dst, src, tmp, ...} => 
+	(case tmp
+	  of NONE => (dst, src)
+	   | SOME(I.FDirect f) => (f::dst, src)
+	   | SOME(I.FPR f) => (f::dst, src)
+	   | _ => (dst, src)
+        (*esac*))
+      | I.COPY _  => ([], [])
+      | (I.INSTR i) => x86DefUseF(i)
   end
 
   fun defUse CB.GP = defUseR
@@ -301,16 +397,19 @@ struct
   fun getAnnotations(I.ANNOTATION{i,a}) = 
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
+
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
   (*========================================================================
    *  Replicate an instruction
    *========================================================================*)
   fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+(*
     | replicate(I.COPY{tmp=SOME _, dst, src}) =  
         I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src}
     | replicate(I.FCOPY{tmp=SOME _, dst, src}) = 
         I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), dst=dst, src=src}
+*)
     | replicate i = i
 end
 

@@ -1,4 +1,7 @@
-(*
+(* ra-graph.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *
  * This is the new interference graph used by the new register allocator.
  * 
  * -- Allen
@@ -7,27 +10,16 @@
 signature RA_GRAPH = 
 sig
 
-   structure C : CELLS_BASIS
-
+  structure C : CELLS_BASIS
+  structure BM : RA_BITMATRIX = RaBitmatrix
   (*
    * The following are the data structures used in the register allocator.
    *)
-
-  (* A new bit matrix datatype.
-   * We use the small representation whenever possible to save space.
-   *)
-  datatype bitMatrix = BM of {table:hashTable, 
-                              elems:int ref,
-                              edges:int}
-  and hashTable = SMALL of word list Array.array ref * word
-                | LARGE of bucket Array.array ref * word
-             (* | BITMATRIX of Word8Array.array *)
-  and bucket = NIL | B of int * int * bucket 
-
+  
   exception Nodes
 
-  type priority = int     
-  type cost = int         
+  type priority = real
+  type cost = real         
 
   (*
    * The following represent a program point in the program.
@@ -57,7 +49,7 @@ sig
 
   datatype interferenceGraph = 
      GRAPH of 
-     { bitMatrix    : bitMatrix ref,
+     { bitMatrix    : BM.bitMatrix ref,
        nodes        : node IntHashTable.hash_table,
        K            : int,
        firstPseudoR : int,
@@ -91,13 +83,12 @@ sig
        spillLoc     : int ref,
 
        (* span indexed by node id *)
-       span         : int IntHashTable.hash_table option ref,
+       span         : cost IntHashTable.hash_table option ref,
 
        (* mode *)
        mode         : mode,
 
-       pseudoCount  : int ref,
-       blockedCount : int ref
+       pseudoCount  : int ref
      }
 
   and moveStatus = BRIGGS_MOVE             (* not yet coalesceable *)
@@ -110,7 +101,7 @@ sig
   and move = 
     MV of {src    : node,  		(* source register of move *)
 	   dst    : node,		(* destination register of move *)
-           (*kind   : moveKind, *)      (* kind of move *)
+(*           kind   : moveKind,           (* kind of move *) *)
            cost   : cost,               (* cost *)
 	   status : moveStatus ref,     (* coalesced? *)
            hicount: int ref             (* neighbors of high degree *)
@@ -122,6 +113,10 @@ sig
                | PAIR_TO_PAIR    (* register pair to register pair *)
                | REG_TO_EVEN     (* register to even register in pair *)
                | REG_TO_ODD      (* register to odd register in pair *)
+(*  and moveKind = REGmvk		 (* register-register move *)
+               | MEMREGmvk       (* move involving memReg  *)
+ 
+*)
 
   and nodeStatus =
         PSEUDO                (* pseudo register *)
@@ -157,7 +152,7 @@ sig
   and trailInfo = END | UNDO of node * moveStatus ref * trailInfo
 
   (* Create a new bitMatrix *)
-  val newBitMatrix : {edges : int, maxRegs : int} -> bitMatrix
+  val newBitMatrix : {edges : int, maxRegs : int} -> BM.bitMatrix
 
   (* Create a new interference graph *)
   val newGraph : { nodes        : node IntHashTable.hash_table,

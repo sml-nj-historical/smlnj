@@ -71,8 +71,8 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
     BinFileList = BuildFileList (msp, bootlist, &max_boot_path_len);
 
   /* this space is ultimately wasted */
-    if ((fname = malloc (max_boot_path_len)) == NULL)
-      Die ("unable to allocate space for boot file names");
+    if ((fname = MALLOC (max_boot_path_len)) == NULL)
+	Die ("unable to allocate space for boot file names");
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
@@ -80,28 +80,29 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
        * going to scribble into it */
 	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
 	BinFileList = LIST_tl(BinFileList);
-	if (fname[0] == '#')
-	  if (rts_init)
-	    Die ("runtime system registered more than once\n");
-	  else {
-	    /* register the runtime system under the given pers id */
-	    pers_id_t pid;
-	    int i, l = strlen (fname + 1);
-	    for (i = 0; i < PERID_LEN; i++) {
-	      int i2 = 2 * i;
-	      if (i2 + 1 < l) {
-		int c1 = fname[i2+1];
-		int c2 = fname[i2+2];
-		pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
-	      }
+	if (fname[0] == '#') {
+	    if (rts_init)
+		Die ("runtime system registered more than once\n");
+	    else {
+	      /* register the runtime system under the given pers id */
+		pers_id_t pid;
+		int i, l = strlen (fname + 1);
+		for (i = 0; i < PERID_LEN; i++) {
+		    int i2 = 2 * i;
+		    if (i2 + 1 < l) {
+			int c1 = fname[i2+1];
+			int c2 = fname[i2+2];
+			pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
+		    }
+		}
+		if (!SilentLoad)
+		    Say ("[Registering runtime system as %s]\n", fname+1);
+		EnterPerID (msp, &pid, RunTimeCompUnit);
+		rts_init = 1;	/* make sure we do this only once */
 	    }
-	    if (!SilentLoad)
-	      Say ("[Registering runtime system as %s]\n", fname+1);
-	    EnterPerID (msp, &pid, RunTimeCompUnit);
-	    rts_init = 1;	/* make sure we do this only once */
-	  }
+	}
 	else
-	  LoadBinFile (msp, fname);
+	    LoadBinFile (msp, fname);
     }
 
 } /* end of BootML */
@@ -130,30 +131,32 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist, int *mbplp)
     listF = OpenBinFile (bootlist, FALSE);
 
     if (listF != NULL) {
-      c = getc (listF);
-      if (c == EOF)
-	Die ("bootlist file \"%s\" is empty", bootlist);
-      if (c == '%') {
-	if (fgets (sizeBuf, SIZE_BUF_LEN, listF) != NIL(char *)) {
-	  /* hardly any checking here... */
-	  char *space = strchr (sizeBuf, ' ');
-	  *space = '\0';
-	  max_num_boot_files = strtoul (sizeBuf, NULL, 0);
-	  max_boot_path_len = strtoul (space+1, NULL, 0) + 2;
-	} else
-	  Die ("unable to read first line in \"%s\" after %%", bootlist);
-      } else {
-	/* size spec is missing -- use defaults */
-	ungetc (c, listF);
-      }
+	c = getc (listF);
+	if (c == EOF)
+	    Die ("bootlist file \"%s\" is empty", bootlist);
+	if (c == '%') {
+	    if (fgets (sizeBuf, SIZE_BUF_LEN, listF) != NIL(char *)) {
+	      /* hardly any checking here... */
+		char *space = strchr (sizeBuf, ' ');
+		*space = '\0';
+		max_num_boot_files = strtoul(sizeBuf, NULL, 0);
+		max_boot_path_len = strtoul(space+1, NULL, 0) + 2;
+	    }
+	    else
+		Die ("unable to read first line in \"%s\" after %%", bootlist);
+	}
+	else {
+	  /* size spec is missing -- use defaults */
+	    ungetc (c, listF);
+	}
 
-      *mbplp = max_boot_path_len; /* tell the calling function... */
+	*mbplp = max_boot_path_len; /* tell the calling function... */
 
-      if ((nameBuf = malloc (max_boot_path_len)) == NULL)
-	Die ("unable to allocate space for boot file names");
+	if ((nameBuf = MALLOC(max_boot_path_len)) == NIL(char *))
+	    Die ("unable to allocate space for boot file names");
 
-      if ((fileNames = malloc (max_num_boot_files * sizeof (char *))) == NULL)
-	Die ("unable to allocate space for boot file name table");
+	if ((fileNames = MALLOC(max_num_boot_files * sizeof(char *))) == NULL)
+	    Die ("unable to allocate space for boot file name table");
 
       /* read in the file names, converting them to ML strings. */
 	while (fgets (nameBuf, max_boot_path_len, listF) != NIL(char *)) {
@@ -174,9 +177,9 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist, int *mbplp)
 
     /* these guys are no longer needed from now on */
     if (fileNames)
-      free (fileNames);
+	FREE (fileNames);
     if (nameBuf)
-      free (nameBuf);
+	FREE (nameBuf);
 
     return fileList;
 
@@ -277,10 +280,12 @@ PVT FILE *OpenBinFile (const char *fname, bool_t isBinary)
  *  the data segment will not contain executable code at all but some form
  *  of bytecode that is to be interpreted separately.)
  *
- *  In the binfile, each code segment is represented by its size s (in
- *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
- *  machine- (or byte-) code. The total length of all code segments
- *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *  In the binfile, each code segment is represented by its size s and its
+ *  entry point offset (in bytes -- written as 4-byte big-endian integers)
+ *  followed by s bytes of machine- (or byte-) code. The total length of all
+ *  code segments (including the bytes spent on representing individual sizes
+ *  and entry points) is codeSzB.  The entrypoint field for the data segment
+ *  is currently ignored (and should be 0).
  *
  * LINKING CONVENTIONS:
  *
@@ -370,7 +375,7 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     ml_val_t	    codeObj, importRec, closure, val;
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
-    Int32_t         thisSzB;
+    Int32_t         thisSzB, thisEntryPoint;
     size_t          archiveOffset;
     char            *atptr, *colonptr;
     char            *objname = fname;
@@ -464,18 +469,17 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     }
 
   /* Read code objects and run them.  The first code object will be the
-   * data segment.  We add a comment string to each code object to mark
-   * which bin file it came from.  This code should be the same as that
-   * in ../c-libs/smlnj-runtime/mkcode.c.
-   */
+   * data segment.  */
 
     remainingCode = hdr.codeSzB;
 
-  /* read the size for the data object */
+  /* read the size and the dummy entry point for the data object */
     ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
     thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+    ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
+    /* thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint); */
 
-    remainingCode -= thisSzB + sizeof(Int32_t);
+    remainingCode -= thisSzB + 2 * sizeof(Int32_t);
     if (remainingCode < 0)
 	Die ("format error (data size mismatch) in bin file \"%s\"", fname);
 
@@ -502,12 +506,14 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
     while (remainingCode > 0) {
 
-      /* read the size for this code object */
+      /* read the size and entry point for this code object */
 	ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
 	thisSzB = BIGENDIAN_TO_HOST(thisSzB);
+	ReadBinFile (file, &thisEntryPoint, sizeof(Int32_t), fname);
+	thisEntryPoint = BIGENDIAN_TO_HOST(thisEntryPoint);
 
       /* how much more? */
-	remainingCode -= thisSzB + sizeof(Int32_t);
+	remainingCode -= thisSzB + 2 * sizeof(Int32_t);
 	if (remainingCode < 0)
 	  Die ("format error (code size mismatch) in bin file \"%s\"", fname);
 
@@ -517,8 +523,9 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 
 	FlushICache (PTR_MLtoC(char, codeObj), thisSzB);
       
-      /* create closure */
-	REC_ALLOC1 (msp, closure, codeObj);
+      /* create closure (taking entry point into account) */
+	REC_ALLOC1 (msp, closure,
+		    PTR_CtoML (PTR_MLtoC (char, codeObj) + thisEntryPoint));
 
       /* apply the closure to the import PerID vector */
 	SaveCState (msp, &BinFileList, NIL(ml_val_t *));

@@ -10,6 +10,8 @@ is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
 	$/basis.cm
+	$/smlnj-lib.cm
+	$/controls-lib.cm
 #if defined(UNSHARED_MLRISC)
 #else
 #endif
@@ -17,6 +19,8 @@ is
 	basis.cm
 #endif
 #else
+	smlnj-lib.cm
+	controls-lib.cm
 #endif
         ../control/mlriscErrormsg.sml
         ../control/mlrisc-control.sml

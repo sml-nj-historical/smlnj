@@ -37,7 +37,7 @@ structure Word32Imp : WORD =
     val op + : word * word -> word = W32.+
     val op - : word * word -> word = W32.-
     val op div : word * word -> word = W32.div
-    fun op mod(a:word,b:word):word = a-(a div b)*b
+    val op mod : word * word -> word = W32.mod
 
     fun compare (w1, w2) =
 	  if (W32.<(w1, w2)) then LESS
@@ -52,8 +52,8 @@ structure Word32Imp : WORD =
     val >>   = W32.chkRshiftl
     val ~>>  = W32.chkRshift 
 
-    fun min (w1, w2) = if (w1 < w2) then w1 else w2
-    fun max (w1, w2) = if (w1 > w2) then w1 else w2
+    val min : word * word -> word = W32.min
+    val max : word * word -> word = W32.max
 
     val fmt = NumFormat.fmtWord
     val toString = fmt StringCvt.HEX

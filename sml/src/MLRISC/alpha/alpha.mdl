@@ -45,9 +45,6 @@ struct
      infix 2 := 
      infix 3 << >> ~>>
 
-     (* rtl COPY{dst,src} = $r[forall dst] := $r[forall src]
-     rtl FCOPY{dst,src} = $f[forall dst] := $f[forall src] *)
-
      (* How to align addresses *)
      fun align4 addr      = andb(addr,notb 3)
      fun align8 addr      = andb(addr,notb 7)
@@ -180,7 +177,6 @@ struct
          map branch comparisons
  
      (* Floating point operators *)
-     rtl DEFFREG{FP} = Kill $f[FP]
 
      val SU = ()
      val SUD = ()
@@ -289,7 +285,7 @@ struct
       datatype ea = 
           Direct of $GP 
         | FDirect of $FP         
-        | Displace of {base: $GP, disp:int}
+        | Displace of {base: $GP, disp: T.labexp, mem: Region.region}
     
       datatype operand = 
           REGop of $GP          ``<GP>''          rtl: $r[GP]
@@ -493,14 +489,8 @@ struct
     *) 
    instruction 
 
-        (* Pseudo instruction for the register allocator *)
-     DEFFREG of $FP                  (* define a floating point register *)
-     asm: ``/* deffreg\t<FP> */''
-     mc:  ()                         (* do nothing when emitting code *) 
-     rtl: ``DEFFREG''
- 
    (* Load/Store *)
-   | LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
+     LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
      asm: if isZero d andalso CellsBasis.sameCell(r,b) then ()
           else (``lda\t<r>, <d>''; 
                 if CellsBasis.registerId b = 31 then () else ``(<b>)''
@@ -607,17 +597,6 @@ struct
      asm: ``<oper>\t<ra>, <rb>, <rc><emit_cellset("tmps",tmps)>''
      rtl: ``PSEUDOARITH_<oper>''
  
-   (* Copy instructions *)
-   | COPY of {dst: $GP list, src: $GP list, 
-              impl:instruction list option ref, tmp: ea option}
-     asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-     rtl: ``COPY''
-
-   | FCOPY of {dst: $FP list, src: $FP list, 
-               impl:instruction list option ref, tmp: ea option}
-     asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-     rtl: ``FCOPY''
- 
    (* Floating Point Unary Operation *)
    | FUNARY of {oper:funary, fb: $FP, fc: $FP}
      asm: ``<oper>\t<fb>, <fc>''
@@ -655,11 +634,6 @@ struct
      asm: ``call_pal <code>''
      mc:  Pal{func=emit_osf_user_palcode code}
      rtl: ``CALL_PAL_<code>''
-
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
-     asm: (comment(Annotations.toString a); nl(); emitInstr i)
-     mc:  (emitInstr i)
-     (* rtl: [[ #i ]] *)
 
    | SOURCE of {}
      asm: ``source''

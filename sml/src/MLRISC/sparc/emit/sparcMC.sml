@@ -504,8 +504,6 @@ struct
      | emitInstr (I.FCMP{cmp, r1, r2, nop}) = 
        ( fcmp {opf=cmp, rs1=r1, rs2=r2}; 
          delay {nop=nop})
-     | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
-     | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.SAVE{r, i, d}) = save {r=r, i=i, d=d}
      | emitInstr (I.RESTORE{r, i, d}) = restore {r=r, i=i, d=d}
      | emitInstr (I.RDY{d}) = rdy {d=d}
@@ -515,7 +513,6 @@ struct
             then r31
             else r15), i=I.IMMED 8}; 
          delay {nop=nop})
-     | emitInstr (I.ANNOTATION{i, a}) = emitInstr i
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()
      | emitInstr (I.PHI{}) = ()
@@ -523,9 +520,15 @@ struct
            emitInstr instr
        end
    
+   fun emitInstruction(I.ANNOTATION{i, ...}) = emitInstruction(i)
+     | emitInstruction(I.INSTR(i)) = emitter(i)
+     | emitInstruction(I.LIVE _)  = ()
+     | emitInstruction(I.KILL _)  = ()
+   | emitInstruction _ = error "emitInstruction"
+   
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstruction,
                 endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,

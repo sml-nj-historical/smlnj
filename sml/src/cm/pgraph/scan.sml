@@ -142,6 +142,11 @@ end = struct
 					 env = e, syms = ss },
 			     s)
                     end
+		    fun sym ns = let
+                        val (n, s) = string s
+                    in
+                        def (P.SYM (ns, n), s)
+                    end
                 in
                     case f of
                         "syms" => let
@@ -168,12 +173,9 @@ end = struct
                         in
                             def (P.FILTER { env = e, syms = ss }, s)
                         end
-                      | "sym" => let
-                            val (ns, s) = string s
-                            val (n, s) = string s
-                        in
-                            def (P.SYM (ns, n), s)
-                        end
+		      | "sgn" => sym P.SGN
+		      | "str" => sym P.STR
+		      | "fct" => sym P.FCT
                       | x => raise ParseError ("unknown function: " ^ x)
                 end
               | _ => NONE
@@ -190,7 +192,8 @@ end = struct
         fun graph s = let
             val s = allof [#2 o S.inputLine, expectId "fn"] s
             val (imports, s) = varlist s
-            val s = allof [expect #"=", expect #">", expectId "let"] s
+            val s = allof [expect #"=", expect #">", expectId "let",
+			   expectId "open", expectId "PGOps"] s
             val (defs, s) = deflist s
             val s = allof [expectId "in", expectId "export", expectId "c"] s
               val (export, s) = ident s

@@ -7,23 +7,22 @@ struct
   type t = {tmp:I.ea option, dst:CB.cell list, src:CB.cell list}
 
   fun error msg = MLRiscErrorMsg.error("SparcShuffle",msg)
-  val mem = I.Region.memory
   val zeroR = Option.valOf(I.C.zeroReg CB.GP)
 
   fun move{src=I.Direct rs, dst=I.Direct rt} = 
-       [I.ARITH{a=I.OR, r=zeroR, i=I.REG rs, d=rt}]
-    | move{src=I.Displace{base, disp}, dst=I.Direct rt} =
-       [I.LOAD{l=I.LD, r=base, i=I.IMMED disp, d=rt, mem=mem}] 
-    | move{src=I.Direct rs, dst=I.Displace{base, disp}} = 
-       [I.STORE{s=I.ST, r=base, i=I.IMMED disp, d=rs, mem=mem}] 
+       [I.arith{a=I.OR, r=zeroR, i=I.REG rs, d=rt}]
+    | move{src=I.Displace{base, disp, mem}, dst=I.Direct rt} =
+       [I.load{l=I.LD, r=base, i=I.LAB disp, d=rt, mem=mem}] 
+    | move{src=I.Direct rs, dst=I.Displace{base, disp, mem}} = 
+       [I.store{s=I.ST, r=base, i=I.LAB disp, d=rs, mem=mem}] 
     | move _ = error "move"
 
   fun fmove{src=I.FDirect fs, dst=I.FDirect fd} = 
-       [I.FPop1{a=I.FMOVd, r=fs, d=fd}] 
-    | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} = 
-       [I.FLOAD{l=I.LDDF, r=base, i=I.IMMED disp, d=ft, mem=mem}] 
-    | fmove{src=I.FDirect fs, dst=I.Displace{base, disp}} = 
-       [I.FSTORE{s=I.STDF, r=base, i=I.IMMED disp, d=fs, mem=mem}] 
+       [I.fpop1{a=I.FMOVd, r=fs, d=fd}] 
+    | fmove{src=I.Displace{base, disp, mem}, dst=I.FDirect ft} = 
+       [I.fload{l=I.LDDF, r=base, i=I.LAB disp, d=ft, mem=mem}] 
+    | fmove{src=I.FDirect fs, dst=I.Displace{base, disp, mem}} = 
+       [I.fstore{s=I.STDF, r=base, i=I.LAB disp, d=fs, mem=mem}] 
     | fmove _ = error "fmove"
 
   val shuffle = Shuffle.shuffle{mvInstr = move, ea=I.Direct}

@@ -49,8 +49,6 @@
  * Note
  * ----
  * 1. This module should be run after floating point register allocation.
- * 2. Due to the extra complication of critical edge splitting, the cellset
- *    and frequency info are not preserved.
  * 
  * -- Allen Leung (leunga@cs.nyu.edu)
  *) 
@@ -88,14 +86,15 @@ struct
    structure CB = CellsBasis
    structure SL = CB.SortedCells
    structure HT = IntHashTable
+   structure IM = IntRedBlackMap
 
    type flowgraph = CFG.cfg
    type an = An.annotations
 
    val name = "X86 floating point rewrite"
 
-   val debugOn = MLRiscControl.getFlag "x86-fp-debug"
-   val traceOn = MLRiscControl.getFlag "x86-fp-trace"
+   val debugOn = MLRiscControl.mkFlag ("x86-fp-debug", "x86 fp debug mode")
+   val traceOn = MLRiscControl.mkFlag ("x86-fp-trace", "x86 fp trace mode")
 
    fun error msg = MLRiscErrorMsg.error("X86FP",msg)
    fun pr msg = TextIO.output(!MLRiscControl.debug_stream,msg)
@@ -105,8 +104,6 @@ struct
    (*
     * No overflow checking is needed for integer arithmetic in this module
     *)
-   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
-   fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
 
    fun celllistToCellset l = List.foldr CB.CellSet.add CB.CellSet.empty l
    fun celllistToString l = CB.CellSet.toString(celllistToCellset l)
@@ -144,21 +141,21 @@ struct
      | invert _ = error "invert"
 
    (* Pseudo instructions *)
-   fun FLD(I.FP32, ea) = I.FLDS ea
-     | FLD(I.FP64, ea) = I.FLDL ea
-     | FLD(I.FP80, ea) = I.FLDT ea
+   fun FLD(I.FP32, ea) = I.flds ea
+     | FLD(I.FP64, ea) = I.fldl ea
+     | FLD(I.FP80, ea) = I.fldt ea
 
    fun FILD(I.I8, ea) = error "FILD"
-     | FILD(I.I16, ea) = I.FILD ea
-     | FILD(I.I32, ea) = I.FILDL ea
-     | FILD(I.I64, ea) = I.FILDLL ea
+     | FILD(I.I16, ea) = I.fild ea
+     | FILD(I.I32, ea) = I.fildl ea
+     | FILD(I.I64, ea) = I.fildll ea
 
-   fun FSTP(I.FP32, ea) = I.FSTPS ea
-     | FSTP(I.FP64, ea) = I.FSTPL ea
-     | FSTP(I.FP80, ea) = I.FSTPT ea
+   fun FSTP(I.FP32, ea) = I.fstps ea
+     | FSTP(I.FP64, ea) = I.fstpl ea
+     | FSTP(I.FP80, ea) = I.fstpt ea
 
-   fun FST(I.FP32, ea) = I.FSTS ea
-     | FST(I.FP64, ea) = I.FSTL ea
+   fun FST(I.FP32, ea) = I.fsts ea
+     | FST(I.FP64, ea) = I.fstl ea
      | FST(I.FP80, ea) = error "FSTT"
 
    (*-----------------------------------------------------------------------
@@ -422,11 +419,11 @@ struct
                    A.sub(stTable, n) 
                   )
        
-       fun FXCH n = I.FXCH{opnd=C.ST n} 
+       fun FXCH n = I.fxch{opnd=C.ST n} 
 
        val ST0 = ST 0 
        val ST1 = ST 1
-       val POP_ST = I.FSTPL ST0 (* Instruction to pop an entry *)
+       val POP_ST = I.fstpl ST0 (* Instruction to pop an entry *)
 
        (* Dump instructions *)
        fun dump instrs =
@@ -523,6 +520,8 @@ struct
            addEdgesToSplit(target,(source,target,e)::lookupEdgesToSplit target)
           )
 
+       fun computeFreq(_,_,CFG.EDGE{w,...}) = !w
+
        (* Given a cellset, return a sorted and unique 
         * list of elements with all non-physical registers removed
         *)
@@ -572,7 +571,7 @@ struct
                         )
                       else (ST.xch(stack,0,i);
                             ST.pop stack;
-                            loop(0, depth-1, I.FSTPL(ST i)::code)
+                            loop(0, depth-1, I.fstpl(ST i)::code)
                            )
                      )
                end
@@ -757,7 +756,7 @@ struct
                * try to match the bindings of the successor if it exist.
                *)
            fun matchIt succ = 
-           let val (succBlock, target) = find(succ, ~1, ~1, NONE) 
+           let val (succBlock, target) = find(succ, ~1.0, ~1, NONE) 
            in  splitAllEdgesExcept(succ, succBlock);
                case target of
                  SOME stackIn => match(stackOut, stackIn)
@@ -823,7 +822,7 @@ struct
            val pred = #in_edges cfg b 
 
            val (stackIn, stackOut, code) =  
-               case find(pred, ~1, NONE) of
+               case find(pred, ~1.0, NONE) of
                  NONE => (splitAllDoneEdges(pred); fromLiveIn())
                | SOME stackIn' => 
                  (case pred of
@@ -885,51 +884,13 @@ struct
         *       consistent with the order of the id.
         *------------------------------------------------------------------*)
        fun repairCriticalEdges(Cfg as G.GRAPH cfg) =
-       let (* Data structure for recording critical edge splitting info *) 
-           datatype compensationCode = 
-             NEWEDGE of 
-                {label:L.label,               (* label of new block *)
-                 entries:CFG.edge list ref,   (* edges going into this code *)
-                 code:I.instruction list,     (* code *)
-                 comment:an 
-                } 
-
+       let 
            val cleanup = [#create MLRiscAnnotations.COMMENT "cleanup edge"]
            val critical = [#create MLRiscAnnotations.COMMENT "critical edge"]
 
-           exception Nothing
-
-           (* Repair code table; mapping from block id -> compensation code *)
-           val repairCodeTable  = IntHashTable.mkTable(32, Nothing)
-           val addRepairCode    = IntHashTable.insert repairCodeTable
-           fun lookupRepairCode b = 
-                getOpt(IntHashTable.find repairCodeTable b,[])
-
-           (* Repair code table; mapping from block id -> compensation code
-            * These must be relocated ...
-            *)
-           val repairCodeTable'  = IntHashTable.mkTable(32, Nothing)
-           val addRepairCode'    = IntHashTable.insert repairCodeTable'
-           fun lookupRepairCode' b = 
-                getOpt(IntHashTable.find repairCodeTable' b,[])
-
-           (* Does the given block falls thru from the previous block? 
-            * If the previous block is ENTRY then also consider this to be true
-            *)
-           fun isFallsThru b =
-               case #in_edges cfg b of
-                  [(b',_,_)] => (case CFG.fallsThruTo(Cfg,b') of
-                                   SOME b'' => b'' = b
-                                 | NONE => b' = ENTRY
-                                )
-               | _ => false
-
-           (* Create jump instruction to a block *)
-           fun jump(CFG.BLOCK{labels, ...}) = 
-               (case !labels of 
-                 []   => error "no label to target of critical edge!"
-               | l::_ => P.jump l
-               )
+           fun annotate(gen, an) =
+             app (fn ((_,CFG.BLOCK{annotations, ...}),_) => annotations := an)
+                 gen
 
            (* 
             * Special case: target block has stack depth of 0.
@@ -938,342 +899,99 @@ struct
             * all the critical edges.
             *)
            fun genPoppingCode(_, []) = ()
-             | genPoppingCode(targetBlk, edges as (_,target,_)::_) = 
-           let val entries = 
-                  map (fn edge as (source, _, _) =>
-                      let val n  = ST.depth(valOf(A.sub(bindingsOut,source)))
-                      in  (n, edge) end
-                      ) edges
-
-               (* Ordered by increasing stack height *)
-               val entries = 
-                   ListMergeSort.sort (fn ((n,_),(m,_)) => n > m) entries
-
-               val relocate = isFallsThru target
-
-               fun pop(0, code) = code
-                 | pop(n, code) = pop(n-1,POP_ST::code)
-
-               fun makeCode(popCount, rest) = 
-                   let val code = pop(popCount, [])
-                   in  case rest of
-                         [] => if relocate then 
-                                  jump(#node_info cfg target)::code
-                               else code
-                       | _  => code
-                   end
-
-               (* Generate code, share code between edges that
-                * have to pop the same number of elements 
+             | genPoppingCode(targetId, edges) =
+           let (* Edges annotated with the source stack depth 
+                * Ordered by increasing stack height 
                 *)
-               fun gen([], h, code) = code
-                 | gen((n,e)::rest, _, []) = 
-                     gen(rest, n,
-                        [NEWEDGE{label=L.anon(), 
-                                 entries=ref [e],
-                                 code=makeCode(n,rest), 
-                                 comment=cleanup
-                                }
-                        ])
-                 | gen((n,e)::rest, h, all as (NEWEDGE{entries, ...}::_)) = 
-                     gen(rest,h,
-                         if n = h then 
-                           (entries := e :: !entries; all)
-                         else
-                           NEWEDGE{label=L.anon(), 
-                                   entries=ref [e],
-                                   code=makeCode(n-h,rest),
-                                   comment=cleanup
-                                  }::all
-                        )
-               val repairCode = gen(entries, 0, []) 
-           in  (if relocate then addRepairCode' else addRepairCode)
-                 (target, repairCode)
-           end
+               val edges = 
+                 IM.listItemsi
+                  (foldr (fn (edge as (sourceId, _, _), M) =>
+                    let val n = ST.depth(valOf(A.sub(bindingsOut,sourceId)))
+                    in  IM.insert(M, n, edge :: getOpt(IM.find(M, n), [])) 
+                    end) IM.empty edges)
 
-           (* The general case:  
-            *   Remove dead values, then
-            *   Shuffle.
-            *)
-           fun genRepairCode(target, targetBlk, stackIn, edges) =
-           let val repairList = ref []
-               val repairCount = ref 0 
-               val SOME stackIn = A.sub(bindingsIn, target)
-               fun repair(edge as (source, _, _)) =
-               let val SOME stackOut' = A.sub(bindingsOut, source)
-                   fun createNewRepairEdge() = 
-                   let val stackOut = ST.copy stackOut'
-                       val liveIn = IntHashTable.lookup liveInTable target
-                       val liveInSet = removeNonPhysical liveIn
-                       val _ = 
-                          if debug then
-                              pr("LiveIn = "^celllistToString liveIn^"\n")
-                          else ()
+               (* Generate n pops *)
+               fun pops(0, code) = code
+                 | pops(n, code) = pops(n-1, POP_ST::code)
 
-                       (* deallocate unused values *)
-                       val code = removeDeadValues(stackOut, liveInSet, [])
-                       (* shuffle values  *)
-                       val code = shuffle(stackOut, stackIn, code)
-                       fun addNewEdge() =
-                       let (* Do we need to relocate this block? *)
-                           val relocate = !repairCount > 0 orelse
-                                          isFallsThru target
-                                          andalso source + 1 <> target  
- 
-                           (* add a jump to the target block *)
-                           val code = if relocate then jump targetBlk::code 
-                                      else code
-  
-                           val repairCode = 
-                               NEWEDGE{label=L.anon(), 
-                                       entries=ref [edge], 
-                                       code=code, 
-                                       comment=critical
-                                      }
-                       in  repairCount := !repairCount + 1;
-                           repairList := (repairCode, stackOut') 
-                                            :: !repairList;
-                           if relocate then 
-                              addRepairCode'(target, 
-                                  repairCode::lookupRepairCode' target)
-                           else
-                              addRepairCode(target,
-                                 repairCode::lookupRepairCode target)
-                       end
-                   in  case #out_edges cfg source of
-                         [(_,j,_)] =>
-                         if j = target then (*insert code at predecessor*)
-                            let val CFG.BLOCK{insns,...} = 
-                                  #node_info cfg source 
-                            in  insns := insertAtEnd(!insns, code)
-                            end
-                         else
-                            addNewEdge()
-                       | _ => addNewEdge()
+               (* Create the chain of blocks *)
+               fun makeChain(depth, [], chain) = chain
+                 | makeChain(depth, (d, es)::es', chain) =
+                   let val code = pops(d - depth, [])
+                   in  makeChain(d, es', (es, code)::chain)
                    end
 
-                   fun shareRepairEdge [] = false
-                     | shareRepairEdge
-                        ((NEWEDGE{entries,...},stackOut'')::rest) =
-                        if ST.equal(stackOut'', stackOut') then
-                            (entries := edge :: !entries; true)
-                        else shareRepairEdge rest 
+               val chain = makeChain(0, edges, [])
 
-               in  if shareRepairEdge(!repairList) then ()
-                   else createNewRepairEdge()
-               end
-           in  app repair edges
+           in  annotate(CFG.splitEdges Cfg {groups=chain, jump=false}, cleanup)
            end
-
-           (*
-            * Code to split critical edges entering block target
-            *)
-           fun split(target, edges) = 
-               let val SOME stackIn = A.sub(bindingsIn,target)
-                   fun log(s, t, e) = 
-                   let val SOME stackOut = A.sub(bindingsOut,s)
-                   in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
-                          ST.stackToString stackOut^"->"^
-                          ST.stackToString stackIn^"\n")
-                   end
-                   val _ = if debug andalso !traceOn then app log edges else ()
-                   val targetBlk = #node_info cfg target
-               in  if ST.depth stackIn = 0 then genPoppingCode(targetBlk,edges)
-                   else genRepairCode(target, targetBlk, stackIn, edges)
-               end
-
-
-           (*
-            * Create a new empty cfg with the same graph info as the old one.
-            *)
-           val Cfg' as G.GRAPH cfg' = CFG.cfg (#graph_info cfg)
 
            (* 
-            * Renumber all the blocks and insert compensation code at the
-            * right places.
+            * Generate repair code.
             *)
-           fun renumberBlocks() = 
-           let (* Mapping from label to new node ids *)
-               val labelMap = HashTable.mkTable (L.hash,L.same) (32, Nothing)
-               val mapLabelToId = HashTable.insert labelMap
+           fun genRepairCode(targetId, stackIn, edges) =
+           let val liveIn = IntHashTable.lookup liveInTable targetId
+               val liveInSet = removeNonPhysical liveIn
+               val _ = if debug then
+                          pr("LiveIn = "^celllistToString liveIn^"\n")
+                      else ()
 
-               (* Mapping from old id to new id *)
-               val idMap = IntHashTable.mkTable (32, Nothing)
-               val mapOldIdToNewId = IntHashTable.insert idMap
-               val oldIdToNewId = IntHashTable.lookup idMap
-
-               (* Retarget a jump instruction to label l *)
-               fun retargetJump(I.JMP(I.ImmedLabel(T.LABEL _), [_]), l) = 
-                     I.JMP(I.ImmedLabel(T.LABEL l), [l])
-                 | retargetJump(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)},l)=
-                     I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}
-                 | retargetJump(I.ANNOTATION{i,a},l) =
-                     I.ANNOTATION{i=retargetJump(i,l),a=a}
-                 | retargetJump(_,l) = error "retargetJump"
-
-               (* 
-                * Given a candidate edge, generate compensation code.
+               (* Group all edges whose output stack configurations
+                * are the same.  Each group is merged together into
+                * a single compensation block
                 *)
-               fun transRepair(n, []) = n
-                 | transRepair(n, NEWEDGE{label,entries,code,comment}::rest) =
-                   let val this =
-                           CFG.BLOCK{id=n, 
-                                     kind=CFG.NORMAL,
-                                     freq=ref 0, (* XXX Wrong frequency! *)
-                                     labels=ref [label],
-                                     insns=ref code,
-                                     annotations=ref comment,
-				     align=ref NONE
-                                    }
-
-                       (*
-                        * Update the instructions to predecessors of this edge.
-                        *)
-                       fun retarget(CFG.BLOCK{kind=CFG.START,...}) = ()
-                         | retarget(CFG.BLOCK{insns as ref(jmp::rest), ...}) = 
-                            insns := retargetJump(jmp, label)::rest
-                         | retarget _ = error "retarget"
-
-                       fun retargetEntries(pred,_,CFG.EDGE{a,...}) = 
-                             (retarget(#node_info cfg pred);
-                              a := TargetMovedTo n :: !a
-                             )
-
-                   in  if debug andalso !traceOn then
-                           pr("Inserting critical edge at block "^i2s n^" "^
-                               L.toString label^"\n")
-                       else ();
-                       #add_node cfg' (n, this);  (* insert block *)
-                       mapLabelToId(label, n);
-                       app retargetEntries (!entries);
-                       transRepair(n+1, rest)
-                   end
- 
-               (* 
-                * Renumber all the blocks and insert repair code.
-                *)
-               fun renumber(n, [], repairCode') =  transRepair(n, repairCode')
-                 | renumber(n, (blknum, block as 
-                                 CFG.BLOCK{kind,annotations,insns,freq,align,labels, ...})::rest,
-                           repairCode') =
-                   let (* If we have outstanding repair code and this is
-                        * NOT a fallsthru entry, then insert them here.
-                        *)
-                       val (n, repairCode') =
-                          case repairCode' of
-                            [] => (n, [])
-                          | _  => if isFallsThru blknum then
-                                    (n, repairCode')
-                                  else
-                                    (transRepair(n, repairCode'), [])
-
-                       (*  Insert non-relocatable repair code *)
-                       val repairCode = lookupRepairCode blknum
-                       val n = transRepair(n, repairCode)
-
-                       (*  Create this block *)
-                       val this = CFG.BLOCK{id=n, 
-                                            kind=kind,
-                                            freq=freq,
-                                            align=align,
-                                            labels=labels,
-                                            insns=insns,
-                                            annotations=annotations
-                                           }
-
-                       (*  Insert new relocatable repair code *)
-                       val repairCode' = repairCode' @ 
-                                           lookupRepairCode' blknum
-
-                       (*  Insert labels that map to this block *)
-                       val _ = app (fn l => mapLabelToId(l, n)) (!labels)
-
-                       (*  Insert block *)
-                       val _ = #add_node cfg' (n, this)
-                       val _ = mapOldIdToNewId(blknum, n)
-
-                   in  case kind of
-                          CFG.START => #set_entries cfg' [n]
-                       |  CFG.STOP  => #set_exits cfg' [n]
-                       |  _         => ();
-                       renumber(n+1, rest, repairCode')
+               fun partition([], S) = S
+                 | partition((e as (src,_,_))::es, S) =
+                   let val stackOut = ST.copy(valOf(A.sub(bindingsOut,src)))
+                       fun find([], S) = partition(es, ([e],stackOut)::S)
+                         | find((x as (es',st'))::S', S) =
+                           if ST.equal(stackOut,st') then 
+                              partition(es, (e::es',st')::S' @ S)
+                           else
+                              find(S', x::S)
+                   in  find(S, [])
                    end
 
-               (* Do all the blocks *)
-               val n = renumber(0, #nodes cfg (), [])
+               (* Partition by the source bindings *) 
+               val S = partition(edges, [])
 
-               val [newExit] = #exits cfg' ()
+               (* Compute frequencies *)
+               val S = map (fn (es,st) => (CFG.sumEdgeFreqs es,es,st)) S
 
-               (*
-                * Given a label, finds out which block it targets.
-                * If not found then it means the block is escaping.
-                *)
-               val findLabel = HashTable.find labelMap
-               fun labelToBlockId l = getOpt(findLabel l, newExit)
+               (* Ordered by non-increasing frequencies *)
+               val S = ListMergeSort.sort (fn ((x,_,_),(y,_,_)) => x < y) S
 
-               fun hasJump x = 
-               let val CFG.BLOCK{insns, ...} = #node_info cfg' x
-               in  case !insns of
-                     [] => false
-                   | jmp::_ => P.instrKind jmp = P.IK_JUMP 
+               (* Generate code *)
+               fun gen(freq, edges, stackOut) =
+               let     (* deallocate unused values *)
+                   val code = removeDeadValues(stackOut,liveInSet,[])
+                       (* shuffle values  *)
+                   val code = shuffle(stackOut, stackIn, code)
+               in  annotate(
+                      CFG.splitEdges Cfg {groups=[(edges,code)], jump=false},
+                            critical)
                end
 
-               (*
-                * Now rebuild all the old edges.
-                * For each edge, makes sure the target hasn't been moved.
-                *)
-               fun renameEdge(x, y, e as CFG.EDGE{a,k,w,...}) =
-               let val x = oldIdToNewId x
-                   val (z, e) =
-                   case !a of
-                      TargetMovedTo z::an => 
-                      let val e = 
-                          case k of
-                             (CFG.FALLSTHRU | CFG.BRANCH false) =>
-                                if hasJump x then 
-                                  CFG.EDGE{a=a, w=w, k=CFG.JUMP}
-                                else e
-                          | _ => e
-                      in  a := an;   (* remove the marker *)
-                          (z, e)
-                      end 
-                   |   _ => (oldIdToNewId y, e)
-               in  #add_edge cfg' (x,z,e)
+           in  app gen S
+           end
+
+           (* Split all edges entering targetId *)
+           fun split(targetId, edges) = 
+           let val stackIn = valOf(A.sub(bindingsIn,targetId))
+               fun log(s, t, e) = 
+               let val SOME stackOut = A.sub(bindingsOut,s)
+               in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
+                      ST.stackToString stackOut^"->"^
+                      ST.stackToString stackIn^"\n")
                end
- 
-               val _ = #forall_edges cfg renameEdge
-
-               (*
-                * Now add new edges x->y where x is a new compensation block
-                *) 
-               fun addNewEdge(NEWEDGE{label, code, entries, ...}) = 
-               let val x = labelToBlockId label
-                   val (y, k) = 
-                      case code of
-                        [] => (x + 1, CFG.FALLSTHRU) (* next block *)
-                      | jmp::_ => 
-                         if P.instrKind jmp = P.IK_JUMP then
-                            (case P.branchTargets jmp of
-                              [P.LABELLED l] => (labelToBlockId l, CFG.JUMP)
-                            | _ => error "addNewEdge where is the target?"
-                            )
-                         else 
-                            (x + 1, CFG.FALLSTHRU)
-                   (* compute weight *)
-                   val w = List.foldr (fn ((_,_,CFG.EDGE{w,...}),n) => !w+n)
-                              0 (!entries)
-               in  #add_edge cfg' (x, y, CFG.EDGE{a=ref [], w=ref w, k=k})
-               end
-
-               val addNewEdges = app addNewEdge
-               val _ = IntHashTable.app addNewEdges repairCodeTable 
-               val _ = IntHashTable.app addNewEdges repairCodeTable'
-
-           in  Cfg'
+               val _ = if debug andalso !traceOn then app log edges else ()
+           in  if ST.depth stackIn = 0 then genPoppingCode(targetId, edges)
+               else genRepairCode(targetId, stackIn, edges)
            end
 
        in  IntHashTable.appi split edgesToSplit;
-           renumberBlocks()
+           CFG.changed Cfg;
+           Cfg
        end 
 
        (*------------------------------------------------------------------ 
@@ -1336,10 +1054,7 @@ struct
            let (* Call this continuation when done with code generation *)
                fun FINISH code = loop(stamp+1, rest, lastUses, code) 
 
-               (* Call this continuation when done with floating point 
-                * code generation.  Remove all dead code first. 
-                *)
-               fun DONE code = 
+               fun KILL_THE_DEAD(dead, code) =
                let fun kill([], code) = FINISH code
                      | kill(f::fs, code) = 
                        let val fx = CB.registerNum f 
@@ -1360,12 +1075,17 @@ struct
                                  (ST.pop stack; kill(fs, POP_ST::code))
                                else 
                                  (ST.xch(stack,0,i); ST.pop stack;
-                                  kill(fs, I.FSTPL(ST i)::code)
+                                  kill(fs, I.fstpl(ST i)::code)
                                  )
                            end
                        end
                in  kill(dead, code) 
                end
+
+               (* Call this continuation when done with floating point 
+                * code generation.  Remove all dead code first. 
+                *)
+               fun DONE code = KILL_THE_DEAD(dead, code)
 
                (* Is this the last use of register f? *)
                fun isLastUse f = A.sub(lastUseTbl, f) = stamp
@@ -1410,7 +1130,7 @@ struct
                          * set fd to %st(0) 
                          *)
                       let val code = alloc(fd, code) 
-                      in  DONE(mark(I.FLDL(ST ss),an)::code)
+                      in  DONE(mark(I.fldl(ST ss),an)::code)
                       end
                end
 
@@ -1429,11 +1149,11 @@ struct
                fun xch(n) = (ST.xch(stack,0,n); FXCH n)
 
                (* push %st(n) onto the stack *)
-               fun push(n) = (ST.push(stack,~2); I.FLDL(ST n))
+               fun push(n) = (ST.push(stack,~2); I.fldl(ST n))
 
 
                (* push mem onto the stack *)
-               fun pushmem(src) = (ST.push(stack,~2); I.FLDL(src))
+               fun pushmem(src) = (ST.push(stack,~2); I.fldl(src))
 
                (* register -> memory move.
                 * Use pop version of the opcode if it is the last use.
@@ -1463,7 +1183,7 @@ struct
                    end
                  | fiload{isize,ea,dst} = 
                    let val code = mark(FILD(isize,ea),an)::code
-                       val code = I.FSTPL(dst)::code (* XXX *)
+                       val code = I.fstpl(dst)::code (* XXX *)
                    in  DONE code
                    end
 
@@ -1492,7 +1212,7 @@ struct
                (* Floating point unary operator *)
                fun funop{fsize,unOp,src,dst} = 
                    let val code = movetotop(fsize, src, code)
-                       val code = mark(I.FUNARY unOp,an)::code
+                       val code = mark(I.funary unOp,an)::code
 
                        (* Moronic hack to deal with partial tangent! *)
                        val code = 
@@ -1518,7 +1238,7 @@ struct
                    (* op2 := op1 - op2 *)
                    fun oper(binOp,op1,op2,n,code) = 
                    let val code = 
-                        mark(I.FBINARY{binOp=binOp,src=op1,dst=op2},an)
+                        mark(I.fbinary{binOp=binOp,src=op1,dst=op2},an)
                            ::code
                    in  storeResult(I.FP64, dst, n, code)
                    end
@@ -1607,7 +1327,7 @@ struct
                (* Floating point binary operator with integer conversion *)
                fun fibinop{isize,binOp,lsrc,rsrc,dst} = 
                let fun oper(binOp,src,code) = 
-                   let val code = mark(I.FIBINARY{binOp=binOp,src=src},an)
+                   let val code = mark(I.fibinary{binOp=binOp,src=src},an)
                                      ::code
                    in  storeResult(I.FP64, dst, 0, code)
                    end
@@ -1629,17 +1349,24 @@ struct
                 * So we can always use it as temporary space if we
                 * have run out.
                 *)
-               fun fcmp{fsize,lsrc,rsrc} = 
-               let fun fucompp() = 
-                       (ST.pop stack; ST.pop stack; mark(I.FUCOMPP,an))
+               fun fcmp{i,fsize,lsrc,rsrc} = 
+               let fun fucompp code = 
+                      (ST.pop stack; ST.pop stack; 
+                       if i then 
+                          POP_ST ::  mark(I.fucomip(ST 1), an) :: code
+                        else
+                          mark(I.fucompp,an) :: code
+                      )
                    fun fucomp(n) = 
-                       (ST.pop stack; mark(I.FUCOMP(ST n),an))
-                   fun fucom(n) = mark(I.FUCOM(ST n),an)
+                       (ST.pop stack; 
+                        mark((if i then I.fucomip else I.fucomp)(ST n),an))
+                   fun fucom(n) = 
+                        mark((if i then I.fucomi else I.fucom)(ST n),an)
 
                    fun genmemcmp() =
                        let val code = movememtotop(fsize, rsrc, code)
                            val code = movememtotop(fsize, lsrc, code)
-                       in  FINISH(fucompp()::code)
+                       in  FINISH(fucompp(code))
                        end
 
                    fun genmemregcmp(lsrc, fy) = 
@@ -1650,7 +1377,7 @@ struct
                        | (true, n) => 
                          let val code = if n = 0 then code else xch n::code
                              val code = movememtotop(fsize, lsrc, code)
-                         in  FINISH(fucompp()::code)
+                         in  FINISH(fucompp(code))
                          end 
 
                    fun genregmemcmp(fx, rsrc) =
@@ -1665,7 +1392,7 @@ struct
                                let val code = movememtotop(fsize, rsrc, code)
                                in  push(n+1)::code
                                end
-                   in  FINISH(fucompp()::code)
+                   in  FINISH(fucompp(code))
                    end
 
                    (* Deal with the special case when both sources are
@@ -1687,7 +1414,7 @@ struct
                        let val (dx, sx) = getfs fx
                            val (dy, sy) = getfs fy
                            fun fstp(n) = 
-                               (ST.xch(stack,n,0); ST.pop stack; I.FSTPL(ST n))
+                               (ST.xch(stack,n,0); ST.pop stack; I.fstpl(ST n))
                        in  if sx = sy then regsame(dx, sx) (* same register!*)
                            else
                                (* first, move sx to %st(0) *)
@@ -1697,13 +1424,11 @@ struct
                                      xch sx::code)
 
                                (* Generate the appropriate comparison op *)
-                               val (sy, cmp, popY) = 
+                               val (sy, code, popY) = 
                                    case (dx, dy, sy) of
-                                     (true, true, 0) => (~1, fucompp(), false)
-                                   | (true, _, _)    => (sy-1, fucomp sy, dy)
-                                   | (false, _, _)   => (sy, fucom sy, dy)
-
-                               val code = cmp::code
+                                     (true, true, 0) => (~1,fucompp code, false)
+                                   | (true, _, _)  => (sy-1,fucomp sy::code,dy)
+                                   | (false, _, _) => (sy, fucom sy::code, dy)
 
                                (* Pop fy if it is dead and hasn't already
                                 * been popped.
@@ -1733,7 +1458,7 @@ struct
                 * If a source is a last and unique use, then we
                 * can simply rename it to appropriate destination register.
                 *)
-               fun fcopy{dst,src,tmp} =
+               fun fcopy(I.COPY{dst,src,tmp,...}) =
                let fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
                        let val fsx = CB.registerNum fs
@@ -1755,7 +1480,7 @@ struct
                      | genCopy((fd, fs)::copies, code) = 
                        let val ss   = ST.fp(stack, CB.registerNum fs)
                            val _    = ST.push(stack, CB.registerNum fd)
-                           val code = I.FLDL(ST ss)::code 
+                           val code = I.fldl(ST ss)::code 
                        in  genCopy(copies, code) end
 
                    (* perform the renaming; it must be done in parallel! *)
@@ -1790,48 +1515,52 @@ struct
                end
 
                fun call(instr, return) = let 
-		 val code = mark(instr, an)::code
+		 val code = mark(I.INSTR instr, an)::code
 		 val returnSet = SL.return(SL.uniq(getCell return))
                in
 		 case returnSet of
                      [] => ()
-                   | [r] => ST.push(stack, CB.registerNum r)
+                   | [r] => ST.push(stack, CB.registerNum r) 
                    | _   => 
                      error "can't return more than one fp argument (yet)";
-                   DONE code
+                 KILL_THE_DEAD(List.filter isDead returnSet, code)
                end
+	       fun x86trans instr =
+                (case instr 
+		  of I.FMOVE x   => (log(); fmove x)
+		   | I.FBINOP x  => (log(); fbinop x)
+		   | I.FIBINOP x => (log(); fibinop x)
+		   | I.FUNOP x   => (log(); funop x)
+		   | I.FILOAD x  => (log(); fiload x)
+		   | I.FCMP x    => (log(); fcmp x)
 
-           in  case instr of
-                 (* annotation handling *)
-                 I.ANNOTATION{i,a} => 
-                     trans(stamp, i, a::an, rest, dead, lastUses, code)
+		     (* handle calling convention *)
+		   | I.CALL{return, ...}    => (log(); call(instr,return))
 
-                 (* handle floating point stuff *)
-               | I.FMOVE x   => (log(); fmove x)
-               | I.FBINOP x  => (log(); fbinop x)
-               | I.FIBINOP x => (log(); fibinop x)
-               | I.FUNOP x   => (log(); funop x)
-               | I.FILOAD x  => (log(); fiload x)
-               | I.FCMP x    => (log(); fcmp x)
-               | I.FCOPY x   => (log(); fcopy x)
+		      (* 
+		       * Catch instructions that absolutely 
+		       * should not have been generated at this point.
+		       *)
+		   | (I.FLD1 | I.FLDL2E | I.FLDLG2 | I.FLDLN2 | I.FLDPI |
+		      I.FLDZ | I.FLDL _ | I.FLDS _ | I.FLDT _ | 
+		      I.FILD _ | I.FILDL _ | I.FILDLL _ | 
+		      I.FENV _ | I.FBINARY _ | I.FIBINARY _ | I.FUNARY _ |
+		      I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ |
+                      I.FCOMI _ | I.FCOMIP _ | I.FUCOMI _ | I.FUCOMIP _ |
+		      I.FSTPL _ | I.FSTPS _ | I.FSTPT _ | I.FSTL _ | I.FSTS _ 
+		     ) => bug("Illegal FP instructions")
 
-                 (* handle calling convention *)
-               | I.CALL{return, ...}    => (log(); call(instr,return))
-
-                  (* 
-                   * Catch instructions that absolutely 
-                   * should not have been generated at this point.
-                   *)
-               | (I.FLD1 | I.FLDL2E | I.FLDLG2 | I.FLDLN2 | I.FLDPI |
-                  I.FLDZ | I.FLDL _ | I.FLDS _ | I.FLDT _ | 
-                  I.FILD _ | I.FILDL _ | I.FILDLL _ | 
-                  I.FENV _ | I.FBINARY _ | I.FIBINARY _ | I.FUNARY _ |
-                  I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ | 
-                  I.FSTPL _ | I.FSTPS _ | I.FSTPT _ | I.FSTL _ | I.FSTS _ 
-                 ) => bug("Illegal FP instructions")
-
-                  (* Other instructions are untouched *)
-               | instr => FINISH(mark(instr, an)::code)
+		      (* Other instructions are untouched *)
+		   | instr => FINISH(mark(I.INSTR instr, an)::code)
+               (*esac*))
+           in  
+	       case instr
+	       of I.ANNOTATION{a,i} =>
+		      trans(stamp, i, a::an, rest, dead, lastUses, code)
+		| I.COPY{k=CB.FP, ...} => (log(); fcopy instr)
+		| I.LIVE _ => DONE(mark(instr, an)::code)
+		| I.INSTR instr => x86trans(instr)
+		| _  => FINISH(mark(instr, an)::code)
            end (* trans *)
 
            (*
@@ -1842,38 +1571,46 @@ struct
            let val n = ref(ST.depth stackIn)
                fun push() = n := !n + 1
                fun pop() = n := !n - 1
-               fun scan(I.FBINARY{binOp, ...}) = 
+               fun scan(I.INSTR(I.FBINARY{binOp, ...})) = 
                       (case binOp of 
                         ( I.FADDP | I.FSUBP | I.FSUBRP | I.FMULP
                         | I.FDIVP | I.FDIVRP) => pop()
                       | _ => ()
                       )
-                 | scan(I.FIBINARY{binOp, ...}) = ()
-                 | scan(I.FUNARY I.FPTAN) = push()
-                 | scan(I.FUNARY _) = ()
-                 | scan(I.FLDL(I.ST n)) = push()
-                 | scan(I.FLDL mem) = push()
-                 | scan(I.FLDS mem) = push()
-                 | scan(I.FLDT mem) = push()
-                 | scan(I.FSTL(I.ST n)) = ()
-                 | scan(I.FSTPL(I.ST n)) = pop()
-                 | scan(I.FSTL mem) = ()
-                 | scan(I.FSTS mem) = ()
-                 | scan(I.FSTPL mem) = pop()
-                 | scan(I.FSTPS mem) = pop()
-                 | scan(I.FSTPT mem) = pop()
-                 | scan(I.FXCH{opnd=i,...}) = ()
-                 | scan(I.FUCOM _) = ()
-                 | scan(I.FUCOMP _) = pop()
-                 | scan(I.FUCOMPP) = (pop(); pop())
-                 | scan(I.FILD mem) = push()
-                 | scan(I.FILDL mem) = push()
-                 | scan(I.FILDLL mem) = push()
+                 | scan(I.INSTR(I.FIBINARY{binOp, ...})) = ()
+                 | scan(I.INSTR(I.FUNARY I.FPTAN)) = push()
+                 | scan(I.INSTR(I.FUNARY _)) = ()
+                 | scan(I.INSTR(I.FLDL(I.ST n))) = push()
+                 | scan(I.INSTR(I.FLDL mem)) = push()
+                 | scan(I.INSTR(I.FLDS mem)) = push()
+                 | scan(I.INSTR(I.FLDT mem)) = push()
+                 | scan(I.INSTR(I.FSTL(I.ST n))) = ()
+                 | scan(I.INSTR(I.FSTPL(I.ST n))) = pop()
+                 | scan(I.INSTR(I.FSTL mem)) = ()
+                 | scan(I.INSTR(I.FSTS mem)) = ()
+                 | scan(I.INSTR(I.FSTPL mem)) = pop()
+                 | scan(I.INSTR(I.FSTPS mem)) = pop()
+                 | scan(I.INSTR(I.FSTPT mem)) = pop()
+                 | scan(I.INSTR(I.FXCH{opnd=i,...})) = ()
+                 | scan(I.INSTR(I.FUCOM _)) = ()
+                 | scan(I.INSTR(I.FUCOMP _)) = pop()
+                 | scan(I.INSTR(I.FUCOMPP)) = (pop(); pop())
+                 | scan(I.INSTR(I.FILD mem)) = push()
+                 | scan(I.INSTR(I.FILDL mem)) = push()
+                 | scan(I.INSTR(I.FILDLL mem)) = push()
+                 | scan(I.INSTR(I.CALL{return, ...})) = 
+                   (n := 0; (* clear the stack *)
+                    (* Simulate the pushing of arguments *)
+                    let val returnSet = SL.return(SL.uniq(getCell return))
+                    in  app (fn _ => push()) returnSet
+                    end
+                   )
                  | scan _ = ()
                val _ = app scan (rev insns);  
                val n = !n
                val m = ST.depth stackOut
-           in  if n <> m then
+           in
+	       if n <> m then
                   (dump(insns);
                    bug("Bad translation n="^i2s n^ " expected="^i2s m^"\n")
                   )

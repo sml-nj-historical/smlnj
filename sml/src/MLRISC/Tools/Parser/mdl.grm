@@ -99,8 +99,11 @@ fun enumExp'(err, loc, es, id) =
                   | e => (err(loc,"bad expression "^PP.text(AstPP.exp e)); e)
                 ) es
 
-fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
-  | clause(pats, guard, SOME x, e) = CLAUSE(pats, guard, CONTexp(e, x))
+fun clause(pats, guard, exn, return_ty, e) = 
+    let val e = case exn of NONE => e | SOME x => CONTexp(e, x) 
+        val e = case return_ty of NONE => e | SOME ty => TYPEDexp(e,ty)
+    in  CLAUSE(pats, guard, e)
+    end
 
 fun seqdecl [d] = d
   | seqdecl ds  = SEQdecl ds
@@ -122,7 +125,7 @@ fun idty(IDENT([],"unit")) = TUPLEty []
 %name	MDL
 %term	ARCHITECTURE | END | LOCAL | IN | OF | CASE | DATATYPE |
 	TYPE | EQ  | DOLLAR | TIMES | AND |  DEREF | NOT | CONCAT |
-	LLBRACKET | RRBRACKET |
+	LLBRACKET | RRBRACKET | LHASHBRACKET |
         LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE | SEMICOLON |
         LDQUOTE | RDQUOTE | LMETA | RMETA |
 	CELLSET | FN | STORAGE | LOCATIONS | HASH |
@@ -223,6 +226,7 @@ fun idty(IDENT([],"unit")) = TUPLEty []
 	 labpats of (id * pat) list  * bool|
 	 of_ty of ty option |
 	 ty of ty |
+	 return_ty of ty option |
 	 aty of ty |
 	 appty of ty |
 	 tys2 of ty list |
@@ -769,6 +773,7 @@ aexp:		literal			(LITexp literal)
 |		LPAREN exps2 RPAREN	(TUPLEexp exps2)
 |		LPAREN expseq2 RPAREN	(SEQexp expseq2)
 |		LBRACKET exps RBRACKET	(LISTexp(exps,NONE))
+|		LHASHBRACKET exps RBRACKET  (VECTORexp exps)
 |		LBRACE labexps0 RBRACE	(RECORDexp labexps0)
 |		DOLLAR id LBRACKET exp region RBRACKET (LOCexp(id,exp,region))
 |		LLBRACKET rtlterms RRBRACKET (RTLexp(rtlterms))
@@ -845,6 +850,7 @@ apat:		ident2				(CONSpat(ident2,NONE))
 |		WILD				(WILDpat)
 |		LPAREN RPAREN			(TUPLEpat [])
 |		LBRACKET pats RBRACKET		(LISTpat(pats,NONE))
+|		LHASHBRACKET pats RBRACKET	(VECTORpat pats)
 |		LPAREN pats2 RPAREN		(TUPLEpat pats2)
 |		LPAREN orpats2 RPAREN		(ORpat orpats2)
 |		LPAREN andpats2 RPAREN		(ANDpat andpats2)
@@ -920,7 +926,7 @@ labpat:		sym		(sym,IDpat sym)
 			(sym,NESTEDpat(IDpat sym,typedexp,typedpat))
 
 clause:		typedpat guard cont DARROW exp	
-			(clause([typedpat],guard,cont,exp))
+			(clause([typedpat],guard,cont,NONE,exp))
 
 cont:				(NONE)
 |		EXCEPTION id	(SOME id) 
@@ -931,17 +937,20 @@ guard:				(NONE)
 clauses:	clause			([clause])
 |		clause BAR clauses	(clause::clauses)
 
-funclause:	apppat funguard cont EQ typedexp	
+funclause:	apppat funguard return_ty cont EQ typedexp	
                 (let val loc = SourceMapping.location srcMap (apppatleft,typedexpright)
                  in case parseFunPat precStack err loc apppat of
-                      (SOME f,ps) => (f,clause(ps,funguard,cont,typedexp))
+                      (SOME f,ps) => (f,clause(ps,funguard,cont,return_ty,typedexp))
                     | (NONE,ps) => 
                       (err(loc,
                            "in clause "^
                              PP.text(AstPP.clause (CLAUSE(ps,funguard,typedexp))));
-                       ("dummy",clause(ps,funguard,cont,typedexp)))
+                       ("dummy",clause(ps,funguard,cont,return_ty,typedexp)))
                  end
                 )
+
+return_ty:			(NONE)
+|		COLON ty	(SOME ty)
 
 funguard:				(NONE)
 |		WHERE LPAREN typedexp RPAREN (SOME typedexp)

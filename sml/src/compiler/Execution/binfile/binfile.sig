@@ -29,6 +29,8 @@ signature BINFILE = sig
     val senvPickleOf   : bfContents -> pickle
     val lambdaPickleOf : bfContents -> pickle
 
+    val guidOf         : bfContents -> string
+
     (* calculate the size in bytes occupied by some binfile contents *)
     val size : { contents: bfContents, nopickle: bool } -> int
 
@@ -38,7 +40,11 @@ signature BINFILE = sig
 		   cmData: pid list,
 		   senv: pickle,
 		   lambda: pickle,
+		   guid: string,
 		   csegments: CodeObj.csegments } -> bfContents
+
+    (* read just the guid *)
+    val readGUid : BinIO.instream -> string
 
     (* read binfile contents from an IO stream *)
     val read : { arch: string, version: int list, stream: BinIO.instream }

@@ -132,6 +132,7 @@ datatype arithop
   | ABS | FSQRT | FSIN | FCOS | FTAN		(* floating point only *)
   | LSHIFT | RSHIFT | RSHIFTL			(* int only *)
   | ANDB | ORB | XORB | NOTB			(* int only *)
+  | REM | DIV | MOD			        (* int only *)
 
 datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
 
@@ -197,11 +198,13 @@ datatype primop
   | SETSPECIAL                 (* set the state of a special object *)
   | GETSPECIAL                 (* get the state of a special object *)
   | USELVAR | DEFLVAR
-  | INLDIV | INLMOD | INLREM   (* inline interger arithmetic *)
-  | INLMIN |INLMAX | INLABS    (* inline interger arithmetic *) 
+  | INLMIN of numkind          (* inline min *)
+  | INLMAX of numkind          (* inline max *)
+  | INLABS of numkind          (* inline abs *)
   | INLNOT                     (* inline bool not operator *)
   | INLCOMPOSE                 (* inline compose "op o"  operator *)
   | INLBEFORE                  (* inline "before" operator *) 
+  | INLIGNORE		       (* inline "ignore" function *)
   | INL_ARRAY                  (* inline polymorphic array allocation *)
   | INL_VECTOR                 (* inline polymorphic vector allocation *)
   | INL_MONOARRAY of numkind   (* inline monomorphic array allocation *)
@@ -224,9 +227,23 @@ datatype primop
      * information is for use by the backend, ML information is for
      * use by the CPS converter. *)
   | RAW_CCALL of { c_proto: CTypes.c_proto,
-		   ml_flt_args: bool list,
-		   ml_flt_res_opt: bool option } option
+		   ml_args: ccall_type list,
+		   ml_res_opt: ccall_type option,
+                   reentrant : bool
+                 } option
+   (* Allocate uninitialized storage on the heap.
+    * The record is meant to hold short-lived C objects, i.e., they
+    * are not ML pointers.  The representation is 
+    * the same as RECORD with tag tag_raw32 (fblock = false),
+    * or tag_fblock (fblock = true).
+    *)
+  | RAW_RECORD of { fblock: bool }
 
+and ccall_type =
+    CCI32 |				(* passed as int32 *)
+    CCI64 |				(* int64, currently unused *)
+    CCR64 |				(* passed as real64 *)
+    CCML				(* passed as Unsafe.Object.object *)
 
 val IADD : primop  (* default integer addition *)
 val ISUB : primop  (* default integer subtraction *)

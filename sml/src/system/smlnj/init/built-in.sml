@@ -54,6 +54,7 @@ in
     val setvar		: 'a -> unit = InLine.setvar
     val compose 	: ('b -> 'c) * ('a -> 'b) -> ('a -> 'c) = InLine.compose
     val op before	: ('a * 'b) -> 'a = InLine.before
+    val ignore          : 'a -> unit = InLine.ignore
     val gettag		: 'a -> int = InLine.gettag
     val setmark 	: 'a -> unit = InLine.setmark 
     val dispose 	: 'a -> unit = InLine.dispose 
@@ -69,6 +70,8 @@ in
         val op *    : int * int -> int  = InLine.i31mul
         val op quot : int * int -> int  = InLine.i31quot
         val op rem  : int * int -> int  = InLine.i31rem
+        val op div  : int * int -> int  = InLine.i31div
+        val op mod  : int * int -> int  = InLine.i31mod
         val op +    : int * int -> int  = InLine.i31add
         val op -    : int * int -> int  = InLine.i31sub
         val ~       : int -> int = InLine.i31neg
@@ -87,8 +90,6 @@ in
         val ltu     : int * int -> bool = InLine.i31ltu
         val geu     : int * int -> bool = InLine.i31geu
   
-        val op mod  : int * int -> int  = InLine.i31mod
-        val op div  : int * int -> int  = InLine.i31div
         val min     : int * int -> int  = InLine.i31min
         val max     : int * int -> int  = InLine.i31max
         val abs     : int -> int = InLine.i31abs
@@ -103,6 +104,9 @@ in
 
         val op *    : int32 * int32 -> int32  = InLine.i32mul
         val op quot : int32 * int32 -> int32  = InLine.i32quot  
+        val op rem  : int32 * int32 -> int32  = InLine.i32rem  
+        val op div  : int32 * int32 -> int32  = InLine.i32div  
+        val op mod  : int32 * int32 -> int32  = InLine.i32mod  
         val op +    : int32 * int32 -> int32  = InLine.i32add  
         val op -    : int32 * int32 -> int32  = InLine.i32sub
         val ~       : int32 -> int32 = InLine.i32neg 
@@ -117,6 +121,10 @@ in
         val op >=   : int32 * int32 -> bool = InLine.i32ge
         val op =    : int32 * int32 -> bool = InLine.i32eq
         val op <>   : int32 * int32 -> bool = InLine.i32ne
+
+        val min     : int32 * int32 -> int32  = InLine.i32min
+        val max     : int32 * int32 -> int32  = InLine.i32max
+        val abs     : int32 -> int32 = InLine.i32abs
       end
 
 
@@ -134,6 +142,9 @@ in
         val op <   : real * real -> bool = InLine.f64lt
         val ~      : real -> real = InLine.f64neg
         val abs    : real -> real = InLine.f64abs
+
+        val min    : real * real -> real  = InLine.f64min
+        val max    : real * real -> real  = InLine.f64max
       end
 
     structure Word32 =
@@ -155,6 +166,7 @@ in
         val op +    : word32 * word32 -> word32 = InLine.w32add
         val op -    : word32 * word32 -> word32 = InLine.w32sub
         val op div  : word32 * word32 -> word32 = InLine.w32div
+        val op mod  : word32 * word32 -> word32 = InLine.w32mod
         val op >    : word32 * word32 -> bool   = InLine.w32gt
         val op >=   : word32 * word32 -> bool   = InLine.w32ge
         val op <    : word32 * word32 -> bool   = InLine.w32lt
@@ -166,6 +178,9 @@ in
 	val chkLshift  : word32 * word -> word32 = InLine.w32ChkLshift
 	val chkRshift  : word32 * word -> word32 = InLine.w32ChkRshift
 	val chkRshiftl : word32 * word -> word32 = InLine.w32ChkRshiftl
+
+        val min     : word32 * word32 -> word32  = InLine.w32min
+        val max     : word32 * word32 -> word32  = InLine.w32max
       end
 
     structure Word31 =
@@ -187,6 +202,7 @@ in
         val op +    : word * word -> word = InLine.w31add
         val op -    : word * word -> word = InLine.w31sub
         val op div  : word * word -> word = InLine.w31div
+        val op mod  : word * word -> word = InLine.w31mod
         val op >    : word * word -> bool   = InLine.w31gt
         val op >=   : word * word -> bool   = InLine.w31ge
         val op <    : word * word -> bool   = InLine.w31lt
@@ -198,6 +214,9 @@ in
 	val chkRshift  : word * word -> word = InLine.w31ChkRshift
 	val chkRshiftl : word * word -> word = InLine.w31ChkRshiftl
         val notb    : word -> word = InLine.w31notb
+
+        val min     : word * word -> word  = InLine.w31min
+        val max     : word * word -> word  = InLine.w31max
       end
 
     structure Word8 =

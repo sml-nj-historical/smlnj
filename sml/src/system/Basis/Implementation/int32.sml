@@ -18,6 +18,9 @@ structure Int32Imp : INTEGER =
 
     val op *    : int * int -> int  = I32.*
     val op quot : int * int -> int  = I32.quot
+    val op rem  : int * int -> int  = I32.rem
+    val op div  : int * int -> int  = I32.div
+    val op mod  : int * int -> int  = I32.mod
     val op +    : int * int -> int  = I32.+
     val op -    : int * int -> int  = I32.-
     val ~       : int -> int = I32.~
@@ -27,32 +30,9 @@ structure Int32Imp : INTEGER =
     val op >=   : int * int -> bool = I32.>=
     val op =    : int * int -> bool = I32.=
     val op <>   : int * int -> bool = I32.<>
-
-  (* min, max, abs, rem, div, and mod should be inlined. 
-   *     ... but this is not the time!
-   *)
-    fun min(a:int, b:int):int = if I32.<(a,b) then a else b
-    fun max(a:int, b:int):int = if I32.>(a,b) then a else b
-    fun op rem(a:int,b:int):int =  I32.-(a, I32.*(b, I32.quot(a, b)))
-    fun abs(a:int):int = if I32.<(a, 0) then I32.~(a) else a
-
-    fun op div(a:int, b:int):int = if I32.>=(b, 0)
-	  then if I32.>=(a, 0)
-	    then I32.quot(a, b) 
-	    else I32.-(I32.quot(I32.+(a, 1), b), 1)
-	  else if I32.>(a,0)
-	    then I32.-(I32.quot(I32.-(a, 1), b), 1)
-	    else I32.quot(a, b)
-
-    fun op mod(a:int, b:int):int = if I32.>=(b, 0)
-	  then if I32.>=(a, 0)
-	    then I32.-(a, I32.*(I32.quot(a, b), b))
-	    else I32.+(I32.-(a, I32.*(I32.quot(I32.+(a,1), b), b)), b)
-	  else if I32.>(a, 0)
-	    then I32.+(I32.-(a, I32.*(I32.quot(I32.-(a,1), b), b)), b)
-	  else if I32.=(a, ~2147483648) andalso I32.=(b, ~1)
-	    then 0
-	    else I32.-(a, I32.*(I32.quot(a, b), b))
+    val min     : int * int -> int = I32.min
+    val max     : int * int -> int = I32.max
+    val abs     : int -> int = I32.abs
 
     fun sign(0) = 0
       | sign i = if I32.<(i, 0) then ~1 else 1

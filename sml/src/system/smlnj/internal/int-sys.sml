@@ -1,6 +1,7 @@
 (* Copyright 1997 by AT&T Bell Laboratories *)
 (* Copyright 1998 by Lucent Technologies *)
 (* Copyright 1999 by Lucent Technologies *)
+(* Copyright 2002 by Lucent Technologies *)
 (* int-sys.sml *)
 
 (* 
@@ -40,8 +41,13 @@ structure InteractiveSystem : sig end = struct
 	 Signals.overrideHandler (Signals.sigTERM, Signals.HANDLER handleTERM);
 	 ifSignal ("QUIT", handleTERM))
 
+    (* install "use" functionality *)
     val _ = UseHook.useHook := Backend.Interact.useFile
 
+    (* put MLRISC controls into the main hierarchy of controls *)
+    val _ = BasicControl.nest (Control.MLRISC.prefix,
+			       Control.MLRISC.registry,
+			       Control.MLRISC.priority)
 
     (* add cleanup code that resets the internal timers and stats
      * when resuming from exportML... *)
@@ -52,6 +58,9 @@ structure InteractiveSystem : sig end = struct
     in
         val _ = C.addCleaner ("initialize-timers-and-stats", [C.AtInit], reset)
     end
+
+    (* initialize control *)
+    val _ = ControlRegistry.init BasicControl.topregistry
 
     (* launch interactive loop *)
     val _ = (Control.Print.say "Generating heap image...\n";

@@ -23,7 +23,7 @@ CFUNC("exportFn",	_ml_RunT_export_fun,	"(string * (string list -> unit)) -> unit
 CFUNC("gcControl",	_ml_RunT_gc_ctl,	"(string * int ref) list -> unit")
 CFUNC("intervalTick",	_ml_RunT_itick,		"unit -> (int * int)")
 CFUNC("allocCode",	_ml_RunT_alloc_code,	"")
-CFUNC("mkExec",		_ml_RunT_mkexec,	"")
+CFUNC("mkExec",		_ml_RunT_mkexec,	"Word8Vector * int -> object -> object")
 CFUNC("mkLiterals",	_ml_RunT_mkliterals,	"Word8Vector.vector -> ovec")
 CFUNC("sysInfo",	_ml_RunT_sysinfo,	"string -> string option")
 CFUNC("record1",	_ml_RunT_record1,	"object -> object")

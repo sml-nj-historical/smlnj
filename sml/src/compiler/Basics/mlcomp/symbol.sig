@@ -21,6 +21,7 @@ signature SYMBOL = sig
     and number: symbol -> word
     val nameSpace : symbol -> namespace
     val nameSpaceToString : namespace -> string
+    val describe : symbol -> string
     val symbolToString : symbol -> string
 
 (* Probably should merge STRspace and FCTspace into one namespace.

@@ -68,7 +68,7 @@ struct
       datatype ea = 
           Direct of $GP
         | FDirect of $FP
-        | Displace of {base: $GP, disp:operand} (* RegOp illegal as operand *)
+        | Displace of {base: $GP, disp: T.labexp, mem: Region.region} 
    
       (* Load/store operators that have the E suffix means that 64-bit
        * addressing is used.  Note: the x suffix is implicitly added if rb is a
@@ -717,20 +717,6 @@ struct
 	``blrl<mem><emit_defs(def)><emit_uses(use)><emit_cutsTo cutsTo>''
         bclr{bo=I.ALWAYS,bi=0w0,lk=true}
     
-     | COPY of {dst: $GP list, src: $GP list, 
-		impl:instruction list option ref,
-                tmp: ea option}
-	asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-     | FCOPY of {dst: $FP list, src: $FP list, 
-		 impl:instruction list option ref,
-                 tmp: ea option}
-	asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-
-     | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-        mc:  emitInstr i
-
      | SOURCE of {}
         asm: ``source''
         mc:  ()

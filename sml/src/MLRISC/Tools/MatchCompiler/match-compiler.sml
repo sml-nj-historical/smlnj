@@ -1088,7 +1088,7 @@ struct
                         val (s, h) = visit(dfa, union(PVs, patvars))
                         val variables = vars subst
                         val s' = union(s, variables)
-                        val s' = diff(s', patvars)
+                        val s' = diff(s', patvars) 
                     in  occurs s'; 
                         (set(freeVars, s'), setH(height, h + 1))
                     end
@@ -1138,8 +1138,9 @@ struct
                     let val (s, h) = visit(x, PVs)
                         val s  = add(s, PVAR p)
                         val bs = foldr (fn ((p,_),S) => add(S,PVAR p)) s bs 
+                        val fvs = diff(s, bs)
                     in  occurs bs; 
-                        (set(freeVars, s), setH(height,h+1)) 
+                        (set(freeVars, fvs), setH(height,h+1)) 
                     end 
                   | CONT(k, x) =>
                     let val (s, h) = visit(x, PVs)

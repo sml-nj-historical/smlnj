@@ -23,13 +23,6 @@
  * Indeed 96% of the  files in the compiler reach a fix point within
  * 13 iterations.
  *)
-signature MC_EMIT = sig
-  structure I : INSTRUCTIONS
-
-  val emitInstr : I.instruction -> Word8Vector.vector
-end
-
-  
 functor BackPatch
   (structure CodeString : CODE_STRING
    structure Jumps      : SDI_JUMPS 
@@ -40,9 +33,7 @@ functor BackPatch
    structure CFG        : CONTROL_FLOW_GRAPH
                         where I = Emitter.I
    structure Asm        : INSTRUCTION_EMITTER
-                        where I = CFG.I
-   structure Placement  : BLOCK_PLACEMENT
-                        where CFG = CFG)  : BBSCHED = 
+                        where I = CFG.I) =
 struct 
   structure I   = Jumps.I
   structure C   = I.C
@@ -60,7 +51,10 @@ struct
 
   datatype cluster = CLUSTER of {cluster: desc}
 
-  val maxIter = MLRiscControl.getInt "variable-length-backpatch-iterations"
+  val maxIter = MLRiscControl.mkInt
+		    ("variable-length-backpatch-iterations",
+		     "number of variable-length backpath iterations")
+
   val _ = maxIter := 40
  
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
@@ -69,13 +63,12 @@ struct
   val dataList : P.pseudo_op list ref = ref []
   fun cleanUp() = (clusterList := []; dataList := [])
 
-  fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
-    val blocks = map #2 (Placement.blockPlacement cfg)
+  fun bbsched(G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}, blocks) = let
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
 
-    fun f(CFG.BLOCK{align, labels, insns, ...}::rest) = let
+    fun f((_, CFG.BLOCK{align, labels, insns, ...})::rest) = let
          fun instrs([], b) = bytes(rev b, f rest)
            | instrs(i::rest, b) = 
              if Jumps.isSdi i then 

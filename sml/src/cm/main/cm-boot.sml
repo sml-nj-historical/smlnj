@@ -50,8 +50,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
           BfcFn (val arch = HostBackend.architecture)
 
       structure Link =
-	  LinkFn (val x = 1		(* ***** *)
-                  structure BFC = BFC
+	  LinkFn (structure BFC = BFC
 		  val system_values = system_values)
 
       structure AutoLoad = AutoLoadFn
@@ -169,15 +168,19 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	        (SrcPath.standard { err = fn s => raise Fail s, env = penv }
 				  { context = SrcPath.cwd (), spec = s })
 
-	  fun getPending () = let
-	      fun one (s, _) = let
-		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
-		  val n = Symbol.name s
-	      in
-		  concat ["  ", nss, " ", n, "\n"]
-	      end
+	  fun getPending () =
+	      map (Symbol.describe o #1)
+		  (SymbolMap.listItemsi (AutoLoad.getPending ()))
+
+	  fun showBindings () = let
+	      val loaded = map Symbol.describe (EnvRef.listBoundSymbols ())
+	      val pending = getPending ()
+	      fun pr s = Say.say [s, "\n"]
 	  in
-	      map one (SymbolMap.listItemsi (AutoLoad.getPending ()))
+	      Say.say ["\n*** Symbols bound at toplevel:\n"];
+	      app pr loaded;
+	      Say.say ["\n*** Symbols registered for autoloading:\n"];
+	      app pr pending
 	  end
 
 	  fun initPaths () = let
@@ -203,12 +206,13 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  fun getTheValues () = valOf (!theValues)
 	      handle Option => raise Fail "CMBoot: theParam not initialized"
 
-	  fun param () =
+	  fun param slave_mode =
 	      { fnpolicy = fnpolicy,
 		penv = penv,
 		symval = SSV.symval,
 		archos = my_archos,
-		keep_going = #get StdConfig.keep_going () }
+		keep_going = #get StdConfig.keep_going (),
+		slave_mode = slave_mode }
 
 	  val init_group = #init_group o getTheValues
 
@@ -217,10 +221,14 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		  Parse.dropPickles ()
 	      else ()
 
-	  fun parse_arg (gr, sflag, p) =
-	      { load_plugin = load_plugin, gr = gr, param = param (),
+	  fun parse_arg0 slave_mode (gr, sflag, p) =
+	      { load_plugin = load_plugin, gr = gr, param = param slave_mode,
 	        stabflag = sflag, group = p,
 		init_group = init_group (), paranoid = false }
+
+	  and parse_arg x = parse_arg0 false x
+
+	  and slave_parse_arg x = parse_arg0 true x
 
 	  and autoload s = let
 	      val p = mkStdSrcPath s
@@ -415,7 +423,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
 	  fun slave () = let
 	      val gr = GroupReg.new ()
-	      fun parse p = Parse.parse (parse_arg (gr, NONE, p))
+	      fun parse p = Parse.parse (slave_parse_arg (gr, NONE, p))
 	  in
 	      Slave.slave { penv = penv,
 			    parse = parse,
@@ -457,7 +465,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		 | _ => (Say.say ["bad arguments to @CMbuild\n"];
 			 OS.Process.failure))
 
-	  fun al_ginfo () = { param = param (),
+	  fun al_ginfo () = { param = param false,
 			      groupreg = al_greg,
 			      errcons = EM.defaultConsumer (),
 			      youngest = ref TStamp.ancient }
@@ -548,7 +556,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				      penv = penv,
 				      symval = SSV.symval,
 				      archos = my_archos,
-				      keep_going = false },
+				      keep_going = false,
+				      slave_mode = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer (),
 			    youngest = ref TStamp.ancient }
@@ -629,31 +638,150 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      | p (f, mk, "cm") = mk f
 	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
 					"' (unknown extension `", e, "')\n"]
-	    fun badopt opt f () =
-		Say.say ["!* bad ", opt, " option: `", f, "'\n"]
-	    fun carg ("-D", f, _) =
-		let val bad = badopt "-D" f
+	    fun inc n = n + 1
+
+	    fun show_controls (getarg, getval, padval) level = let
+		fun walk indent (ControlRegistry.RTree rt) = let
+		    open FormatComb
+		    val { help, ctls, subregs, path } = rt
+
+		    fun one c = let
+			val arg = concat (foldr (fn (s, r) => s :: "." :: r)
+						[getarg c] path)
+			val value = getval c
+			val sz = size value
+			val lw = !Control_Print.linewidth
+			val padsz = lw - 6 - size arg - indent
+		    in
+			if padsz < sz then
+			    let val padsz' = Int.max (lw, sz + 8 + indent)
+			    in
+				format' Say.say (sp (indent + 6) o
+						 text arg o nl o
+						 padval padsz' (text value) o
+						 nl)
+			    end
+			else format' Say.say (sp (indent + 6) o
+					      text arg o
+					      padval padsz (text value) o
+					      nl)
+		    end
 		in
-		    case String.fields (fn c => c = #"=")
-				       (String.extract (f, 2, NONE)) of
-			"" :: _ => bad ()
-		      | [var, num] =>
-			(case Int.fromString num of
-			     SOME i => #set (SSV.symval var) (SOME i)
-			   | NONE => bad ())
-		      | [var] => #set (SSV.symval var) (SOME 1)
-		      | _ => bad ()
+		    case (ctls, subregs) of
+			([], []) => ()
+		      | _ => (format' Say.say
+				      (sp indent o text help o text ":" o nl);
+			      app one ctls;
+			      app (walk (indent + 1)) subregs)
+		end
+	    in
+		walk 2 (ControlRegistry.controls
+			    (BasicControl.topregistry, Option.map inc level))
+	    end
+
+	    fun help level =
+	       (Say.say
+		    ["sml [rtsargs] [options] [files]\n\
+		     \\n\
+		     \  rtsargs:\n\
+		     \    @SMLload=<h>     (start specified heap image)\n\
+		     \    @SMLalloc=<s>    (specify size of allocation area)\n\
+		     \    @SMLcmdname=<n>  (set command name)\n\
+		     \    @SMLquiet        (load heap image silently)\n\
+		     \    @SMLverbose      (show heap image load progress)\n\
+		     \    @SMLobjects      (show list of executable objects)\n\
+		     \    @SMLdebug=<f>    (write debugging info to file)\n\
+		     \\n\
+		     \  files:\n\
+		     \    <file>.cm        (CM.make or CM.autoload)\n\
+		     \    -m               (switch to CM.make)\n\
+		     \    -a               (switch to CM.autoload; default)\n\
+		     \    <file>.sig       (use)\n\
+		     \    <file>.sml       (use)\n\
+		     \    <file>.fun       (use)\n\
+		     \\n\
+		     \  options:\n\
+		     \    -D<name>=<v>     (set CM variable to given value)\n\
+		     \    -D<name>         (set CM variable to 1)\n\
+		     \    -Uname           (unset CM variable)\n\
+		     \    -C<control>=<v>  (set named control)\n\
+		     \    -H               (produce complete help listing)\n\
+		     \    -h               (produce minimal help listing)\n\
+		     \    -h<level>        (help with obscurity limit)\n\
+		     \    -S               (list all current settings)\n\
+		     \    -s<level>        (limited list of settings)\n\n"];
+		show_controls (Controls.name,
+			       fn c => concat ["(", #help (Controls.info c),
+					       ")"],
+			       FormatComb.pad FormatComb.left)
+			      level)
+
+	    fun showcur level = let
+		fun nopad (_, s) = s
+	    in
+		show_controls (fn c => (Controls.name c ^ "="),
+			       fn c => Controls.get c,
+			       fn _ => fn ff => ff)
+			      level
+	    end
+
+	    fun badopt opt f () =
+		Say.say ["!* bad ", opt, " option: `", f, "'\n",
+			 "!* try `-h' or `-h<level>' for help\n"]
+	    fun carg (opt as ("-C" | "-D"), f, _) =
+		let val bad = badopt opt f
+		    val spec = Substring.extract (f, 2, NONE)
+		    val is_config = opt = "-C"
+		    val (name, value) =
+			Substring.splitl (fn c => c <> #"=") spec
+		    val name = Substring.string name
+		    val value = Substring.string
+				    (if Substring.size value > 0 then
+					 Substring.slice (value, 1, NONE)
+				     else value)
+		in
+		    if name = "" then bad ()
+		    else if is_config then
+			let val names = String.fields (fn c => c = #".") name
+			    val look = ControlRegistry.control
+					   BasicControl.topregistry
+			in
+			    case look names of
+				NONE => Say.say ["!* no such control: ",
+						 name, "\n"]
+			      | SOME sctl =>
+				(Controls.set (sctl, value)
+				 handle Controls.ValueSyntax vse =>
+					Say.say ["!* unable to parse value `",
+						 #value vse, "' for ",
+						 #ctlName vse, " : ",
+						 #tyName vse, "\n"])
+			end
+		    else if value = "" then #set (SSV.symval name) (SOME 1)
+		    else (case Int.fromString value of
+			      SOME i => #set (SSV.symval name) (SOME i)
+			    | NONE => bad ())
 		end
 	      | carg ("-U", f, _) =
 		(case String.extract (f, 2, NONE) of
 		     "" => badopt "-U" f ()
 		   | var => #set (SSV.symval var) NONE)
+	      | carg ("-h", f, _) =
+		(case String.extract (f, 2, NONE) of
+		     "" => help (SOME 0)
+		   | level => help (Int.fromString level))
+	      | carg ("-s", f, _) =
+		(case String.extract (f, 2, NONE) of
+		     "" => showcur (SOME 0)
+		   | level => showcur (Int.fromString level))
 	      | carg (_, f, mk) = p (f, mk,
 				 String.map Char.toLower
 					    (getOpt (OS.Path.ext f, "<none>")))
 
 	    fun args ("-a" :: rest, _) = args (rest, autoload)
 	      | args ("-m" :: rest, _) = args (rest, make)
+	      | args ("-H" :: rest, mk) = (help NONE; args (rest, mk))
+	      | args ("-S" :: rest, mk) = (showcur NONE; args (rest, mk))
 	      | args ("@CMbuild" :: rest, _) = mlbuild rest
 	      | args (f :: rest, mk) =
 		(carg (String.substring (f, 0, 2), f, mk)
@@ -704,6 +832,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	    val synchronize = SrcPath.sync
 	    val reset = reset
 	    val pending = getPending
+	    val showBindings = showBindings
 	end
 
 	structure Server = struct

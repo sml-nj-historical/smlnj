@@ -7,6 +7,7 @@
 structure HppaMC = 
   FLINTComp(
     structure Gen = HppaCG
-    fun collect name = (HppaCG.finish name; CodeString.getCodeString()))
+    fun collect epthunk = (HppaCG.finish ();
+			   CodeString.getCodeString (epthunk ())))
 
 

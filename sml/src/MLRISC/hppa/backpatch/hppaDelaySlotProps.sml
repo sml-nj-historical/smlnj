@@ -36,40 +36,40 @@ struct
 
    fun delaySlot{instr, backward} =
        case instr of
-         I.BCOND{nop,n,...} => 
+         I.INSTR(I.BCOND{nop,n,...}) => 
              {nop=nop, n=n, nOn=if backward then D_TAKEN else D_FALLTHRU, 
               nOff=D_ALWAYS}
-       | I.BCONDI{nop,n,...} => 
+       | I.INSTR(I.BCONDI{nop,n,...}) => 
              {nop=nop, n=n, nOn=if backward then D_TAKEN else D_FALLTHRU, 
               nOff=D_ALWAYS}
-       | I.BB{nop,n,...} =>
+       | I.INSTR(I.BB{nop,n,...}) =>
              {nop=nop, n=n, nOn=if backward then D_TAKEN else D_FALLTHRU, 
               nOff=D_ALWAYS}
-       | I.B{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-       | I.LONGJUMP{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-       | I.BV{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-       | I.BE{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-       | I.BLR{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
-       | I.BL{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.B{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.LONGJUMP{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.BV{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.BE{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.BLR{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.INSTR(I.BL{n,...}) => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.ANNOTATION{i,...} => delaySlot{instr=i,backward=backward}
        | _ => {n=false,nOn=D_ERROR,nOff=D_NONE,nop=false}
 
    fun enableDelaySlot{instr, n, nop} =
        case (instr,nop) of
-         (I.BCOND{cmp,bc,r1,r2,t,f,...},_) => 
-             I.BCOND{cmp=cmp,bc=bc,nop=nop,n=n,r1=r1,r2=r2,t=t,f=f}
-       | (I.BCONDI{cmpi,bc,i,r2,t,f,...},_) => 
-             I.BCONDI{cmpi=cmpi,bc=bc,nop=nop,n=n,i=i,r2=r2,t=t,f=f}
-       | (I.BB{bc,p,r,t,f,...},_) => 
-             I.BB{bc=bc,p=p,nop=nop,n=n,r=r,t=t,f=f}
-       | (I.B{lab,...},false) => I.B{lab=lab,n=n}
-       | (I.BV{labs,b,x,...},false) => I.BV{labs=labs,b=b,x=x,n=n}
-       | (I.BE{labs,b,d,sr,...},false) => I.BE{labs=labs,b=b,d=d,sr=sr,n=n}
-       | (I.BLR{x,t,labs,...},false) => I.BLR{x=x,t=t,labs=labs,n=n}
-       | (I.BL{lab,t,defs,uses,cutsTo,mem,...},false) => 
-            I.BL{lab=lab,t=t,defs=defs,uses=uses,cutsTo=cutsTo,mem=mem,n=n}
-       | (I.LONGJUMP{lab,tmp,tmpLab,...},false) => 
-            I.LONGJUMP{lab=lab,tmp=tmp,tmpLab=tmpLab,n=n}
+         (I.INSTR(I.BCOND{cmp,bc,r1,r2,t,f,...}),_) => 
+             I.bcond{cmp=cmp,bc=bc,nop=nop,n=n,r1=r1,r2=r2,t=t,f=f}
+       | (I.INSTR(I.BCONDI{cmpi,bc,i,r2,t,f,...}),_) => 
+             I.bcondi{cmpi=cmpi,bc=bc,nop=nop,n=n,i=i,r2=r2,t=t,f=f}
+       | (I.INSTR(I.BB{bc,p,r,t,f,...}),_) => 
+             I.bb{bc=bc,p=p,nop=nop,n=n,r=r,t=t,f=f}
+       | (I.INSTR(I.B{lab,...}),false) => I.b{lab=lab,n=n}
+       | (I.INSTR(I.BV{labs,b,x,...}),false) => I.bv{labs=labs,b=b,x=x,n=n}
+       | (I.INSTR(I.BE{labs,b,d,sr,...}),false) => I.be{labs=labs,b=b,d=d,sr=sr,n=n}
+       | (I.INSTR(I.BLR{x,t,labs,...}),false) => I.blr{x=x,t=t,labs=labs,n=n}
+       | (I.INSTR(I.BL{lab,t,defs,uses,cutsTo,mem,...}),false) => 
+            I.bl{lab=lab,t=t,defs=defs,uses=uses,cutsTo=cutsTo,mem=mem,n=n}
+       | (I.INSTR(I.LONGJUMP{lab,tmp,tmpLab,...}),false) => 
+            I.longjump{lab=lab,tmp=tmp,tmpLab=tmpLab,n=n}
        | (I.ANNOTATION{i,a},_) => 
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
@@ -101,24 +101,25 @@ struct
         end
 
     fun delaySlotCandidate{jmp,delaySlot=
-             (I.BCOND _ | I.BCONDI _ | I.BB _ | I.FBRANCH _ | I.BV _ | I.BE _ |
-              I.COMCLR_LDO _ | I.COMICLR_LDO _ | I.B _ | I.LONGJUMP _ |
-              I.BLR _ | I.BL _ | I.BLE _)} = false
+             (  I.INSTR(I.BCOND _) | I.INSTR(I.BCONDI _) | I.INSTR(I.BB _) | I.INSTR(I.FBRANCH _) 
+              | I.INSTR(I.BV _) | I.INSTR(I.BE _) | I.INSTR(I.COMCLR_LDO _) | I.INSTR(I.COMICLR_LDO _) 
+	      | I.INSTR(I.B _) | I.INSTR(I.LONGJUMP _) | I.INSTR(I.BLR _) | I.INSTR(I.BL _) 
+	      | I.INSTR(I.BLE _))} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}
       | delaySlotCandidate{jmp,delaySlot=I.ANNOTATION{i,...}} = 
            delaySlotCandidate{jmp=jmp,delaySlot=i}
       | delaySlotCandidate _ = true
 
-   fun setTarget(I.BCOND{n,nop,r1,r2,cmp,bc,t,f,...},lab) = 
-         I.BCOND{cmp=cmp,bc=bc,nop=nop,n=n,r1=r1,r2=r2,t=lab,f=f}
-     | setTarget(I.BCONDI{n,nop,i,r2,cmpi,bc,t,f,...},lab) = 
-         I.BCONDI{cmpi=cmpi,bc=bc,nop=nop,n=n,i=i,r2=r2,t=lab,f=f}
-     | setTarget(I.BB{bc,r,p,n,nop,t,f,...},lab) = 
-         I.BB{bc=bc,p=p,nop=nop,n=n,r=r,t=lab,f=f}
-     | setTarget(I.B{n,...},lab) = I.B{n=n,lab=lab}
-     | setTarget(I.LONGJUMP{n, tmp, tmpLab, ...},lab) = 
-         I.LONGJUMP{n=n, tmp=tmp, tmpLab=tmpLab, lab=lab}
+   fun setTarget(I.INSTR(I.BCOND{n,nop,r1,r2,cmp,bc,t,f,...}), lab) = 
+         I.bcond{cmp=cmp,bc=bc,nop=nop,n=n,r1=r1,r2=r2,t=lab,f=f}
+     | setTarget(I.INSTR(I.BCONDI{n,nop,i,r2,cmpi,bc,t,f,...}), lab) = 
+         I.bcondi{cmpi=cmpi,bc=bc,nop=nop,n=n,i=i,r2=r2,t=lab,f=f}
+     | setTarget(I.INSTR(I.BB{bc,r,p,n,nop,t,f,...}), lab) = 
+         I.bb{bc=bc,p=p,nop=nop,n=n,r=r,t=lab,f=f}
+     | setTarget(I.INSTR(I.B{n,...}), lab) = I.b{n=n,lab=lab}
+     | setTarget(I.INSTR(I.LONGJUMP{n, tmp, tmpLab, ...}), lab) = 
+         I.longjump{n=n, tmp=tmp, tmpLab=tmpLab, lab=lab}
      | setTarget(I.ANNOTATION{i,a},lab) = I.ANNOTATION{i=setTarget(i,lab),a=a}
      | setTarget _ = error "setTarget"
 

@@ -18,7 +18,9 @@ structure X86CG =
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
 
-    val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
+    val fast_floating_point =
+	MLRiscControl.mkFlag ("x86-fast-fp",
+			      "whether to use the fast-fp backend (x86)")
 
     structure CCalls     = 
       IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x
@@ -65,6 +67,7 @@ structure X86CG =
                 structure T = X86MLTree
 		structure CFG = X86CFG
 		structure TS = X86MLTreeStream
+		val fast_fp = fast_floating_point
                ) 
 	   structure MLTreeStream = X86MLTreeStream
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
@@ -72,7 +75,7 @@ structure X86CG =
            fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
 	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
            in
-               {instrs  = [I.MOVE{mvOp=I.MOVL, src=src, dst=tempMem}],
+               {instrs  = [I.move{mvOp=I.MOVL, src=src, dst=tempMem}],
                 tempMem = tempMem,
                 cleanup = []
                }
@@ -91,11 +94,9 @@ structure X86CG =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
-		 structure Placement=DefaultBlockPlacement(X86CFG)
 		 structure CFG = X86CFG
                  structure Asm=X86AsmEmitter
                  structure CodeString=CodeString)
-
 
     structure RA = 
       X86RA

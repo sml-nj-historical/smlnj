@@ -203,8 +203,27 @@ structure IntInf :> INT_INF =
     		    else NONE
     		end
     	  (* end case *))
-    
-        fun scanHex getc cs = (case (scanPrefix getc cs)
+
+      (* consume a possible "0x" or "0X" prefix on a hex literal *)
+	fun scan0x getc NONE = NONE
+	  | scan0x getc (orig as SOME{neg, next, rest}) =
+	      if (next = 0w0)
+		then (case getc rest
+		   of SOME((#"x" | #"X"), rest1) => (case getc rest1
+			 of SOME(c, rest2) => let
+			      val d = code c
+			      in
+				if (d < 0w16)
+				  then SOME{neg=neg, next=d, rest=rest2}
+				  else orig
+			      end
+			  | NONE => orig
+			(* end case *))
+		    | _ => orig
+		  (* end case *))
+		else orig
+
+        fun scanHex getc cs = (case scan0x getc (scanPrefix getc cs)
     	   of NONE => NONE
     	    | (SOME{neg, next, rest}) => let
     		fun isDigit (d : Word32.word) = (d < 0w16)
@@ -523,6 +542,14 @@ structure IntInf :> INT_INF =
               val (qt,rm') = divl m'
               val (rm,_(*0*)) = divmodd (rm',scale)
               in (qt,rm) end
+
+	fun eq ([], []) = true
+	  | eq ((i : int)::ri,j::rj) = (i = j) andalso eq(ri, rj)
+	  | eq _ = false
+
+	fun neq ([], []) = false
+	  | neq ((i : int)::ri,j::rj) = (i <> j) orelse neq(ri, rj)
+	  | neq _ = true
 
 	fun cmp ([],[]) = EQUAL
 	  | cmp (_,[]) = GREATER
@@ -1001,6 +1028,14 @@ structure IntInf :> INT_INF =
     val xorb   = BitOps.xorb
     val <<     = BitOps.<<
     val ~>>    = BitOps.~>>
+
+  (* these are not in the BASIS signature, but they are useful since IntInf.int
+   * is not a builtin type yet.
+   *)
+    fun == (BI{sign=s1, digits=d1}, BI{sign=s2, digits=d2}) =
+	  (s1 = s2) andalso BN.eq(d1, d2)
+    fun != (BI{sign=s1, digits=d1}, BI{sign=s2, digits=d2}) =
+	  (s1 <> s2) orelse BN.neq(d1, d2)
 
   end (* structure IntInf *)
 

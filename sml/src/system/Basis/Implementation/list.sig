@@ -58,5 +58,7 @@ signature LIST =
 
     val tabulate : (int * (int -> 'a)) -> 'a list   (* raises Size *)
 
+    val collate : ('a * 'a -> order) -> 'a list * 'a list -> order
+
   end (* signature LIST *)
 

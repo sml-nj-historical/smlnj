@@ -4,6 +4,8 @@
 structure HppaCG = 
   MachineGen
   ( structure MachSpec   = HppaSpec
+    structure T          = HppaMLTree
+    structure CB         = CellsBasis
     structure ClientPseudoOps = HppaClientPseudoOps
     structure PseudoOps  = HppaPseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)
@@ -49,7 +51,6 @@ structure HppaCG =
     structure BackPatch =
        SpanDependencyResolution
          (structure CFG = HppaCFG
-	  structure Placement = DefaultBlockPlacement(HppaCFG)
           structure Jumps     = Jumps
           structure Emitter   = HppaMCEmitter
           structure DelaySlot = HppaDelaySlots
@@ -61,9 +62,10 @@ structure HppaCG =
     structure RA = 
        RISC_RA
          (structure I         = HppaInstr
-          structure Flowgraph = HppaCFG
+          structure CFG       = HppaCFG
           structure InsnProps = InsnProps 
           structure Rewrite   = HppaRewrite(HppaInstr) 
+	  structure SpillInstr= HppaSpillInstr(HppaInstr)
           structure Asm       = HppaAsmEmitter
           structure SpillHeur = ChaitinSpillHeur
           structure Spill     = RASpill(structure InsnProps = InsnProps
@@ -73,7 +75,10 @@ structure HppaCG =
            *)
           structure SpillTable = SpillTable(HppaSpec)
 
-          val beginRA = SpillTable.spillInit
+	  datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	  type spill_info = unit
+
+          fun beforeRA _ = SpillTable.spillInit()
 
           val architecture = HppaSpec.architecture
 
@@ -85,15 +90,15 @@ structure HppaCG =
           fun low11(n)  = wtoi(Word.andb(itow n, 0wx7ff))
           fun high21(n) = wtoi(Word.~>>(itow n, 0w11))
 
-          fun pure(I.LOAD _) = true
-            | pure(I.LOADI _) = true
-            | pure(I.FLOAD _) = true
-            | pure(I.FLOADX _) = true
-            | pure(I.ARITH _) = true
-            | pure(I.ARITHI _) = true
-            | pure(I.FARITH _) = true
-            | pure(I.FUNARY _) = true
-            | pure(I.FCNV _) = true
+          fun pure(I.INSTR(I.LOAD _)) = true
+            | pure(I.INSTR(I.LOADI _)) = true
+            | pure(I.INSTR(I.FLOAD _)) = true
+            | pure(I.INSTR(I.FLOADX _)) = true
+            | pure(I.INSTR(I.ARITH _)) = true
+            | pure(I.INSTR(I.ARITHI _)) = true
+            | pure(I.INSTR(I.FARITH _)) = true
+            | pure(I.INSTR(I.FUNARY _)) = true
+            | pure(I.INSTR(I.FCNV _)) = true
             | pure(I.ANNOTATION{i,...}) = pure i
             | pure _ = false
  
@@ -103,29 +108,10 @@ structure HppaCG =
              val avail = HppaCpsRegs.availR
              val dedicated = HppaCpsRegs.dedicatedR
 
-             fun copy((rds as [_], rss as [_]), _) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-               | copy((rds, rss), I.COPY{tmp, ...}) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-
-             (* spill copy temp *) 
-             fun spillCopyTmp(_, I.COPY{dst,src,tmp,impl},loc) =
-                 I.COPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                           disp= ~(SpillTable.getRegLoc loc)})}
-
-             (* spill register *) 
-             fun spillInstr{src,spilledCell,spillLoc,an} =
-                 [I.STORE{st=I.STW, b=sp, 
-                          d=I.IMMED(~(SpillTable.getRegLoc spillLoc)), 
-                          r=src, mem=spill}]
-
-             (* reload register *) 
-             fun reloadInstr{dst,spilledCell,spillLoc,an} =
-                 [I.LOADI{li=I.LDW, 
-                          i=I.IMMED(~(SpillTable.getRegLoc spillLoc)), 
-                          r=sp, t=dst, mem=spill}
-                 ]
+	     fun mkDisp loc = T.LI(T.I.fromInt(32, ~(SpillTable.getRegLoc loc)))
+             fun spillLoc{info, an, cell, id} = 
+		  {opnd=I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		   kind=SPILL_LOC}
 
              val mode = RACore.NO_OPTIMIZATION
           end
@@ -135,31 +121,9 @@ structure HppaCG =
              val avail = HppaCpsRegs.availF
              val dedicated = HppaCpsRegs.dedicatedF
  
-             fun copy((fds as [_], fss as [_]), _) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-               | copy((fds, fss), I.FCOPY{tmp, ...}) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
-   
-             fun spillCopyTmp(_,I.FCOPY{dst,src,tmp,impl},loc) =
-                 I.FCOPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                        disp= ~(SpillTable.getFregLoc loc)})}
-   
-             fun spillInstr(_,r,loc) =
-             let val offset = SpillTable.getFregLoc loc
-             in  [I.LDIL{i=I.IMMED(high21(~offset)), t=tmpR},
-                  I.LDO{i=I.IMMED(low11(~offset)), b=tmpR, t=tmpR},
-                  I.FSTOREX{fstx=I.FSTDX, b=sp, x=tmpR, r=r, mem=spill}
-                 ]
-             end
-   
-             fun reloadInstr(_,t,loc) =
-             let val offset = SpillTable.getFregLoc loc
-             in  [I.LDIL{i=I.IMMED(high21(~offset)), t=tmpR}, 
-                  I.LDO{i=I.IMMED(low11(~offset)), b=tmpR, t=tmpR},
-                  I.FLOADX{flx=I.FLDDX, b=sp, x=tmpR, t=t, mem=spill} 
-                 ]
-             end
+	     fun mkDisp loc = T.LI (T.I.fromInt(32,  ~(SpillTable.getFregLoc loc)))
+ 	     fun spillLoc(S, an, loc) = 
+		I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
 
              val mode = RACore.NO_OPTIMIZATION
           end

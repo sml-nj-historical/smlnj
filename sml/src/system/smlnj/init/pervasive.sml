@@ -28,27 +28,7 @@ local
     val w8minus = w8adapt W8.-
     val w8times = w8adapt W8.*
 
-    fun i32div (a, b) =
-	if I32.>= (b, 0) then
-	    if I32.>= (a, 0) then I32.quot (a, b)
-	    else I32.- (I32.quot (I32.+ (a, 1), b), 1)
-	else if I32.>(a,0) then
-	    I32.- (I32.quot (I32.- (a, 1), b), 1)
-	else I32.quot(a, b)
-
-    fun i32mod (a, b) =
-	if I32.>= (b, 0) then
-	    if I32.>= (a, 0) then
-		I32.- (a, I32.* (I32.quot (a, b), b))
-	    else I32.+ (I32.- (a, I32.* (I32.quot (I32.+ (a,1), b), b)), b)
-	else if I32.> (a, 0) then
-	    I32.+ (I32.- (a, I32.* (I32.quot (I32.- (a, 1), b), b)), b)
-	else if I32.= (a, ~2147483648) andalso I32.=(b, ~1) then 0
-	else I32.- (a, I32.* (I32.quot (a, b), b))
-
     fun w8mod (a, b) = w8minus (a, w8times (W8.div (a, b), b))
-    fun w31mod (a, b) = W31.- (a, W31.* (W31.div (a, b), b))
-    fun w32mod (a, b) = W32.- (a, W32.* (W32.div (a, b), b))
 
     fun stringlt (a, b) = let
 	val al = CV.length a
@@ -70,8 +50,6 @@ local
     fun stringle (a, b) = if stringlt (b, a) then false else true
     fun stringgt (a, b) = stringlt (b, a)
     fun stringge (a, b) = stringle (b, a)
-
-    fun i32abs a = if I32.< (a, 0) then I32.~ a else a
 in
 overload ~ :   ('a -> 'a)
    as  I31.~ and I32.~ and R64.~
@@ -84,9 +62,9 @@ overload * :   ('a * 'a -> 'a)
 overload / : ('a * 'a -> 'a)
   as R64./
 overload div : ('a * 'a -> 'a)
-  as  I31.div and i32div and W8.div and W31.div and W32.div
+  as  I31.div and I32.div and W8.div and W31.div and W32.div
 overload mod : ('a * 'a -> 'a)
-  as  I31.mod and i32mod and w8mod and w31mod and w32mod
+  as  I31.mod and I32.mod and w8mod and W31.mod and W32.mod
 overload < :   ('a * 'a -> bool)
   as  I31.< and I32.< and W8.< and W31.< and W32.< and R64.<
   and InlineT.Char.<
@@ -104,7 +82,7 @@ overload >= :   ('a * 'a -> bool)
   and InlineT.Char.>=
   and stringge
 overload abs : ('a -> 'a)
-  as I31.abs and i32abs and R64.abs
+  as I31.abs and I32.abs and R64.abs
 
 type unit = PrimTypes.unit
 type exn = PrimTypes.exn
@@ -138,7 +116,7 @@ val op := = InlineT.:=
 
 val op o : ('b -> 'c) * ('a -> 'b) -> ('a -> 'c) = InlineT.compose
 val op before : ('a * unit) -> 'a = InlineT.before
-fun ignore _ = ()
+val ignore : 'a -> unit = InlineT.ignore
 
 (* top-level types *)
 

@@ -1,4 +1,7 @@
-(*
+(* graph.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  *  A generic directed graph data structure.  
  *  Implemented in an ``object oriented style''
  *  All graphs are based on this interface.
@@ -43,9 +46,9 @@ sig
           (* selectors *)
           nodes           : unit -> 'n node list,
           edges           : unit -> 'e edge list,
-          order           : unit -> int,
-          size            : unit -> int,
-          capacity        : unit -> int,
+          order           : unit -> int,	(* # nodes *)
+          size            : unit -> int,	(* # edges *)
+          capacity        : unit -> int,	(* max. node_id < capacity *)
           succ            : node_id -> node_id list,
           pred            : node_id -> node_id list,
           out_edges       : node_id -> 'e edge list,

@@ -8,16 +8,16 @@ sml} command is invoked.  Each such parameter has a default setting.
 Default settings are determined at bootstrap time, i.e., the time when
 the heap image for SML/NJ's interactive system is
 built.\footnote{Normally this is the same as installation time, but
-for SML/NJ compiler hackers there is also a {\tt makeml} script for the
-purpose of bootstrapping.}  At bootstrap time, it is possible to
-adjust defaults by using a different set of environment variables
-$v_b$.  If neither $v_s$ nor $v_b$ were set, a hard-wired fallback
-value will be used.
+for SML/NJ compiler hackers there is also a {\tt makeml} script for
+the purpose of bootstrapping.}  At bootstrap time, it is possible to
+adjust defaults by using a set of environment variables $v_b$.  In the
+current version of CM it is always the case that $v_s = v_b$.  (In
+older versions this was not the case.) If neither $v_s$ nor $v_b$ were
+set, a hard-wired fallback value will be used.
 
-The rule for constructing (the names of) $v_s$ and $v_b$ is the
+The rule for constructing the name $v_s$ (and $v_b$) is the
 following: For each adjustable parameter $x$ there is a {\em name
-stem}.  If the stem for $x$ is $s$, then $v_s = \mbox{\tt CM\_}s$ and
-$v_b = v_s\mbox{\tt \_DEFAULT}$.
+stem}.  If the stem for $x$ is $s$, then $v_s = v_b = \mbox{\tt CM\_}s$.
 
 Since the normal installation procedure for SML/NJ sets some of the
 $v_b$ variables at bootstrap time, there are two columns with default
@@ -29,8 +29,7 @@ user will actually see.
 To save space, the table lists the stem but not the names for its
 associated (longer) $v_s$ and $v_b$.  For example, since the the table
 shows {\tt VERBOSE} in the row for {\tt CM.Control.verbose}, CM's
-per-session verbosity can be adjusted using {\tt CM\_VERBOSE} and the
-boot-time default can be set using {\tt CM\_VERBOSE\_DEFAULT}.
+per-session verbosity can be adjusted using {\tt CM\_VERBOSE}.
 
 \begin{center}
 \begin{small}
@@ -67,3 +66,6 @@ installation directory) instead.
 The default for the ``local'' path configuration file is {\tt
 .smlnj-pathconfig}. This file is located in the user's home directory
 (given by the environment variable {\tt \$HOME}).
+
+Control parameters can also be set using command-line parameters (see
+section~\ref{sec:cmdline}).

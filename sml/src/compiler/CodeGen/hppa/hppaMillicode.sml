@@ -18,8 +18,9 @@ struct
   val mulOffset = ~24
   val muluOffset = ~112
   val cvti2dOffset = ~4
-  fun copyTmp() = SOME(I.Direct(C.newReg()))
 
+  fun copy {dst, src} = 
+      I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=SOME(I.Direct(C.newReg()))}
 
   fun doMilliCall offset {rs, rt, rd} = let
     fun addList([], cs) = cs
@@ -28,11 +29,11 @@ struct
     val defs = addList([rv,ra], C.empty)
     val uses = C.addReg(arg1, C.addReg(arg2, C.empty))
   in 
-    [I.COPY{dst=[arg1, arg2], src=[rs, rt], impl=ref NONE, tmp=copyTmp()},
-     I.LOADI{li=I.LDW, r=C.stackptrR, i=I.IMMED offset, t=tmpR, mem=stack},
-     I.BLE{t=C.GPReg 31, cutsTo=[],
+    [copy{dst=[arg1, arg2], src=[rs, rt]},
+     I.loadi{li=I.LDW, r=C.stackptrR, i=I.IMMED offset, t=tmpR, mem=stack},
+     I.ble{t=C.GPReg 31, cutsTo=[],
            b=tmpR, sr=5, d=I.IMMED 0, defs=defs, uses=uses, mem=stack},
-     I.COPY{dst=[rd], src=[rv], impl=ref NONE, tmp=copyTmp()}]
+     copy{dst=[rd], src=[rv]}]
   end
 
   val divu = doMilliCall udivOffset
@@ -42,9 +43,9 @@ struct
 
   fun cvti2real fcnv {rs,fd} =
   let val tmpF = C.newFreg()
-  in  [I.STORE{st=I.STW, b=C.stackptrR, d=I.IMMED cvti2dOffset,r=rs, mem=stack},
-       I.FLOAD{fl=I.FLDWS, b=C.stackptrR, d=cvti2dOffset, t=tmpF, mem=stack},
-       I.FCNV{fcnv=fcnv, f=tmpF, t=fd}
+  in  [I.store{st=I.STW, b=C.stackptrR, d=I.IMMED cvti2dOffset,r=rs, mem=stack},
+       I.fload{fl=I.FLDWS, b=C.stackptrR, d=cvti2dOffset, t=tmpF, mem=stack},
+       I.fcnv{fcnv=fcnv, f=tmpF, t=fd}
       ]
   end
 

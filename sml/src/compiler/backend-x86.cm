@@ -8,7 +8,8 @@
  * file in system/smlnj/viscomp/x86.cm.
  *)
 Group (../system/smlnj/viscomp/x86.cm)
-	structure X86Backend
+	structure X86StdCallBackend
+	structure X86CCallBackend
 
         structure X86CG
         structure X86CpsRegs
@@ -18,7 +19,8 @@ Group (../system/smlnj/viscomp/x86.cm)
 	structure X86AsmEmitter
 is
 
-TopLevel/backend/x86.sml
+TopLevel/backend/x86-stdcall.sml
+TopLevel/backend/x86-ccall.sml
 
 CodeGen/x86/x86CG.sml
 CodeGen/x86/x86CpsRegs.sml

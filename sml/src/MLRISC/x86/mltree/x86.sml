@@ -1,4 +1,4 @@
-(*
+(* x86.sml
  *
  * COPYRIGHT (c) 1998 Bell Laboratories.
  * 
@@ -12,7 +12,7 @@
  *
  * Some changes:
  *
- *  1.  REMU/REMS/REMT are now supported 
+ *  1.  REMU/REMS are now supported 
  *  2.  COND is supported by generating SETcc and/or CMOVcc; this
  *      may require at least a Pentium II to work.
  *  3.  Division by a constant has been optimized.   Division by
@@ -82,6 +82,7 @@ struct
  
   structure Gen = MLTreeGen
      (structure T = T
+      structure Cells = C
       val intTy = 32
       val naturalWidths = [32]
       datatype rep = SE | ZE | NEITHER
@@ -131,9 +132,11 @@ struct
    *)
   fun selectInstructions 
        (instrStream as
-        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
-                 beginCluster,endCluster,exitBlock,comment,...}) =
-  let exception EA
+        TS.S.STREAM{emit=emitInstruction,defineLabel,entryLabel,pseudoOp,
+		    annotation,getAnnotations,beginCluster,endCluster,exitBlock,comment,...}) =
+  let 
+      val emit = emitInstruction o I.INSTR
+      exception EA
 
       (* label where a trap is generated -- one per cluster *)
       val trapLabel = ref (NONE: (I.instruction * Label.label) option)
@@ -147,14 +150,17 @@ struct
 
       (* Add an overflow trap *)
       fun trap() =
-      let val jmp = 
+      let 
+	  val jmp = 
             case !trapLabel of 
               NONE => let val label = Label.label "trap" ()
-                          val jmp   = I.JCC{cond=I.O, 
-                                            opnd=I.ImmedLabel(T.LABEL label)}
+                          val jmp   = 
+			      I.ANNOTATION{i=I.jcc{cond=I.O, 
+						   opnd=I.ImmedLabel(T.LABEL label)},
+					   a=MLRiscAnnotations.BRANCHPROB (Probability.unlikely)}
                       in  trapLabel := SOME(jmp, label); jmp end
             | SOME(jmp, _) => jmp
-      in  emit jmp end
+      in  emitInstruction jmp end
 
       val newReg  = C.newReg
       val newFreg = C.newFreg
@@ -165,13 +171,13 @@ struct
         | fsize _  = error "fsize"
 
       (* mark an expression with a list of annotations *) 
-      fun mark'(i,[]) = i 
+      fun mark'(i,[]) = emitInstruction(i)
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an) 
 
       (* annotate an expression and emit it *)
-      fun mark(i,an) = emit(mark'(i,an))
+      fun mark(i,an) = mark'(I.INSTR i,an)
 
-      val emits = app emit
+      val emits = app emitInstruction
 
       (* emit parallel copies for integers 
        * Translates parallel copies that involve memregs into 
@@ -182,13 +188,13 @@ struct
           let fun mvInstr{dst as I.MemReg rd, src as I.MemReg rs} = 
                   if CB.sameColor(rd,rs) then [] else
                   let val tmpR = I.Direct(newReg())
-                  in  [I.MOVE{mvOp=I.MOVL, src=src, dst=tmpR},
-                       I.MOVE{mvOp=I.MOVL, src=tmpR, dst=dst}]
+                  in  [I.move{mvOp=I.MOVL, src=src, dst=tmpR},
+                       I.move{mvOp=I.MOVL, src=tmpR, dst=dst}]
                   end
                 | mvInstr{dst=I.Direct rd, src=I.Direct rs} = 
                     if CB.sameColor(rd,rs) then [] 
-                    else [I.COPY{dst=[rd], src=[rs], tmp=NONE}]
-                | mvInstr{dst, src} = [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}]
+                    else [I.COPY{k=CB.GP, sz=32, dst=[rd], src=[rs], tmp=NONE}]
+                | mvInstr{dst, src} = [I.move{mvOp=I.MOVL, src=src, dst=dst}]
           in
              emits (Shuffle.shuffle{mvInstr=mvInstr, ea=IntReg}
                {tmp=SOME(I.Direct(newReg())),
@@ -249,9 +255,9 @@ struct
        *)
       fun fcopy'(fty, [], [], _) = ()
         | fcopy'(fty, dst as [_], src as [_], an) = 
-            mark(I.FCOPY{dst=dst,src=src,tmp=NONE}, an)
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=NONE}, an)
         | fcopy'(fty, dst, src, an) = 
-            mark(I.FCOPY{dst=dst,src=src,tmp=SOME(I.FDirect(newFreg()))}, an)
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=SOME(I.FDirect(newFreg()))}, an)
 
       (* emit parallel copies for floating point.
        * Fast version.
@@ -263,7 +269,7 @@ struct
         | fcopy''(fty, dst, src, an) = 
           if true orelse isAnyFMemReg dst orelse isAnyFMemReg src then
           let val fsize = fsize fty
-              fun mvInstr{dst, src} = [I.FMOVE{fsize=fsize, src=src, dst=dst}]
+              fun mvInstr{dst, src} = [I.fmove{fsize=fsize, src=src, dst=dst}]
           in
               emits (Shuffle.shuffle{mvInstr=mvInstr, ea=RealReg}
                 {tmp=case dst of
@@ -272,7 +278,8 @@ struct
                  dst=dst, src=src})
           end
           else
-            mark(I.FCOPY{dst=dst,src=src,tmp=
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,
+			src=src,tmp=
                          case dst of
                            [_] => NONE
                          | _   => SOME(I.FPR(newFreg()))}, an)
@@ -286,13 +293,14 @@ struct
         | cond T.EQ = I.EQ | cond T.NE  = I.NE
         | cond T.GE = I.GE | cond T.GEU = I.AE
         | cond T.GT = I.GT | cond T.GTU = I.A
+	| cond cc = error(concat["cond(", T.Basis.condToString cc, ")"])
 
       fun zero dst = emit(I.BINARY{binOp=I.XORL, src=dst, dst=dst})
 
       (* Move and annotate *) 
       fun move'(src as I.Direct s, dst as I.Direct d, an) =
           if CB.sameColor(s,d) then ()
-          else mark(I.COPY{dst=[d], src=[s], tmp=NONE}, an)
+          else mark'(I.COPY{k=CB.GP, sz=32, dst=[d], src=[s], tmp=NONE}, an)
         | move'(I.Immed 0, dst as I.Direct d, an) = 
             mark(I.BINARY{binOp=I.XORL, src=dst, dst=dst}, an)
         | move'(src, dst, an) = mark(I.MOVE{mvOp=I.MOVL, src=src, dst=dst}, an)
@@ -532,7 +540,7 @@ struct
                         )
               end
         
-                  (* Division or remainder: divisor must be in %edx:%eax pair *)
+              (* Division or remainder: divisor must be in %edx:%eax pair *)
               fun divrem(signed, overflow, e1, e2, resultReg) =
               let val (opnd1, opnd2) = (operand e1, operand e2)
                   val _ = move(opnd1, eax)
@@ -542,50 +550,183 @@ struct
                   move(resultReg, rdOpnd);
                   if overflow then trap() else ()
               end
-       
-                  (* Optimize the special case for division *) 
-              fun divide(signed, overflow, e1, e2 as T.LI n') = let
-		  val n = toInt32 n'
-                  val w = T.I.toWord32(32, n')
-                  fun isPowerOf2 w = W32.andb((w - 0w1), w) = 0w0 
-                  fun log2 n =  (* n must be > 0!!! *)
-                      let fun loop(0w1,pow) = pow
-                            | loop(w,pow) = loop(W32.>>(w, 0w1),pow+1)
-                      in loop(n,0) end
-              in  if n > 1 andalso isPowerOf2 w then 
-                     let val pow = T.LI(T.I.fromInt(32,log2 w))
-                     in  if signed then 
-                         (* signed; simulate round towards zero *)
-                         let val label = Label.anon()
-                             val reg1  = expr e1
-                             val opnd1 = I.Direct reg1
-                         in  if setZeroBit e1 then ()
-                             else emit(I.CMPL{lsrc=opnd1, rsrc=I.Immed 0});
-                             emit(I.JCC{cond=I.GE, opnd=immedLabel label});
-                             emit(if n = 2 then
-                                     I.UNARY{unOp=I.INCL, opnd=opnd1}
-                                  else
-                                     I.BINARY{binOp=I.ADDL, 
-                                              src=I.Immed(n - 1),
-                                              dst=opnd1});
-                             defineLabel label;
-                             shift(I.SARL, T.REG(32, reg1), pow)
-                         end
-                         else (* unsigned *)
-                            shift(I.SHRL, e1, pow)
-                     end
-                  else
-                       (* note the only way we can overflow is if
-                        * n = 0 or n = -1
-                        *)
-                     divrem(signed, overflow andalso (n = ~1 orelse n = 0), 
-                            e1, e2, eax)
-              end
-                | divide(signed, overflow, e1, e2) = 
-                    divrem(signed, overflow, e1, e2, eax)
 
-              fun rem(signed, overflow, e1, e2) = 
-                    divrem(signed, overflow, e1, e2, edx)
+	      (* division with rounding towards negative infinity *)
+	      fun divinf0 (overflow, e1, e2) = let
+		  val o1 = operand e1
+		  val o2 = operand e2
+		  val l = Label.anon ()
+	      in
+		  move (o1, eax);
+		  emit I.CDQ;
+		  mark (I.MULTDIV { multDivOp = I.IDIVL1, src = regOrMem o2 },
+			an);
+		  if overflow then trap() else ();
+		  app emit [I.CMPL { lsrc = edx, rsrc = I.Immed 0 },
+			    I.JCC { cond = I.EQ, opnd = immedLabel l },
+			    I.BINARY { binOp = I.XORL,
+				       src = regOrMem o2,
+				       dst = edx },
+			    I.JCC { cond = I.GE, opnd = immedLabel l },
+			    I.UNARY { unOp = I.DECL, opnd = eax }];
+		  defineLabel l;
+		  move (eax, rdOpnd)
+	      end
+
+	      (* analyze for power-of-two-ness *)
+	      fun analyze i' = let
+		  val i = toInt32 i'
+	      in
+		  let val (isneg, a, w) =
+			  if i >= 0 then (false, i, T.I.toWord32 (32, i'))
+			  else (true, ~i, T.I.toWord32 (32, T.I.NEG (32,  i')))
+		      fun log2 (0w1, p) = p
+			| log2 (w, p) = log2 (W32.>> (w, 0w1), p + 1)
+		  in
+		      if w > 0w1 andalso W32.andb (w - 0w1, w) = 0w0 then
+			  (i, SOME (isneg, a,
+				    T.LI (T.I.fromInt32 (32, log2 (w, 0)))))
+		      else (i, NONE)
+		  end handle _ => (i, NONE)
+	      end
+
+	      (* Division by a power of two when rounding to neginf is the
+	       * same as an arithmetic right shift. *)
+	      fun divinf (overflow, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, NONE) => divinf0 (overflow, e1, e2)
+		     | (_, SOME (false, _, p)) =>
+		       shift (I.SARL, T.REG (32, expr e1), p)
+		     | (_, SOME (true, _, p)) => let
+			   val reg = expr e1
+		       in
+			  emit(I.UNARY { unOp = I.NEGL, opnd = I.Direct reg });
+			  shift (I.SARL, T.REG (32, reg), p)
+		       end)
+		| divinf (overflow, e1, e2) = divinf0 (overflow, e1, e2)
+
+	      fun reminf0 (e1, e2) = let
+		  val o1 = operand e1
+		  val o2 = operand e2
+		  val l = Label.anon ()
+	      in
+		  move (o1, eax);
+		  emit I.CDQ;
+		  mark (I.MULTDIV { multDivOp = I.IDIVL1, src = regOrMem o2 },
+			an);
+		  app emit [I.CMPL { lsrc = edx, rsrc = I.Immed 0 },
+			    I.JCC { cond = I.EQ, opnd = immedLabel l }];
+		  move (edx, eax);
+		  app emit [I.BINARY { binOp = I.XORL,
+				       src = regOrMem o2, dst = eax },
+			    I.JCC { cond = I.GE, opnd = immedLabel l },
+			    I.BINARY { binOp = I.ADDL,
+				       src = regOrMem o2, dst = edx }];
+		  defineLabel l;
+		  move (edx, rdOpnd)
+	      end
+
+	      (* n mod (power-of-2) corresponds to a bitmask (AND). 
+	       * If the power is negative, then we must first negate
+	       * the argument and then again negate the result. *)
+	      fun reminf (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, NONE) => reminf0 (e1, e2)
+		     | (_, SOME (false, a, _)) =>
+		       binaryComm (I.ANDL, e1,
+				           T.LI (T.I.fromInt32 (32, a - 1)))
+		     | (_, SOME (true, a, _)) => let
+			   val r1 = expr e1
+			   val o1 = I.Direct r1
+		       in
+			   emit (I.UNARY { unOp = I.NEGL, opnd = o1 });
+			   emit (I.BINARY { binOp = I.ANDL,
+					    src = I.Immed (a - 1),
+					    dst = o1 });
+			   unary (I.NEGL, T.REG (32, r1))
+		       end)
+		| reminf (e1, e2) = reminf0 (e1, e2)
+
+              (* Optimize the special case for division *) 
+              fun divide (signed, overflow, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (n, SOME (isneg, a, p)) =>
+		       if signed then
+			   let val label = Label.anon ()
+			       val reg1 = expr e1
+			       val opnd1 = I.Direct reg1
+			   in
+			       if isneg then
+				   emit (I.UNARY { unOp = I.NEGL,
+						   opnd = opnd1 })
+			       else if setZeroBit e1 then ()
+			       else emit (I.CMPL { lsrc = opnd1,
+						   rsrc = I.Immed 0 });
+			       emit (I.JCC { cond = I.GE,
+					     opnd = immedLabel label });
+			       emit (if a = 2 then
+					 I.UNARY { unOp = I.INCL,
+						   opnd = opnd1 }
+				     else
+					 I.BINARY { binOp = I.ADDL,
+						    src = I.Immed (a - 1),
+						    dst = opnd1 });
+			       defineLabel label;
+			       shift (I.SARL, T.REG (32, reg1), p)
+			   end
+		       else shift (I.SHRL, e1, p)
+		     | (n, NONE) =>
+		       divrem(signed, overflow andalso (n = ~1 orelse n = 0),
+			      e1, e2, eax))
+		| divide (signed, overflow, e1, e2) =
+		  divrem (signed, overflow, e1, e2, eax)
+
+	      (* rem never causes overflow *)
+              fun rem (signed, e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (n, SOME (isneg, a, _)) =>
+		       if signed then
+			   (* The following logic should work uniformely
+			    * for both isneg and not isneg.  It only uses
+			    * the absolute value (a) of the divisor.
+			    * Here is the formula:
+			    *    let p be a power of two and a = abs(p):
+			    *
+			    *    x % p = x - ((x < 0 ? x + a - 1 : x) & (-a))
+			    *
+			    * (That's what GCC seems to do.)
+			    *)
+			   let val r1 = expr e1
+			       val o1 = I.Direct r1
+			       val rt = newReg ()
+			       val tmp = I.Direct rt
+			       val l = Label.anon ()
+			   in
+			       move (o1, tmp);
+			       if setZeroBit e1 then ()
+			       else emit (I.CMPL { lsrc = o1,
+						   rsrc = I.Immed 0 });
+			       emit (I.JCC { cond = I.GE,
+					     opnd = immedLabel l });
+			       emit (I.BINARY { binOp = I.ADDL,
+						src = I.Immed (a - 1),
+						dst = tmp });
+			       defineLabel l;
+			       emit (I.BINARY { binOp = I.ANDL,
+						src = I.Immed (~a),
+						dst = tmp });
+			       binary (I.SUBL, T.REG (32, rt), T.REG (32, r1))
+			   end
+		       else
+			   if isneg then
+			       (* this is really strange... *)
+			       divrem (false, false, e1, e2, edx)
+			   else
+			       binaryComm (I.ANDL, e1,
+					   T.LI (T.I.fromInt32 (32, n - 1)))
+		     | (_, NONE) => divrem (signed, false, e1, e2, edx))
+		| rem(signed, e1, e2) =
+                  divrem(signed, false, e1, e2, edx)
 
                   (* Makes sure the destination must be a register *)
               fun dstMustBeReg f = 
@@ -596,7 +737,7 @@ struct
                   else f(rd, rdOpnd)
 
                   (* unsigned integer multiplication *)
-              fun uMultiply(e1, e2) = 
+              fun uMultiply0 (e1, e2) = 
                   (* note e2 can never be (I.Direct edx) *)
                   (move(operand e1, eax);
                    mark(I.MULTDIV{multDivOp=I.MULL1, 
@@ -604,6 +745,13 @@ struct
                    move(eax, rdOpnd)
                   )
         
+	      fun uMultiply (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, SOME (false, _, p)) => shift (I.SHLL, e1, p)
+		     | _ => uMultiply0 (e1, e2))
+		| uMultiply (e1 as T.LI _, e2) = uMultiply (e2, e1)
+		| uMultiply (e1, e2) = uMultiply0 (e1, e2)
+
                   (* signed integer multiplication: 
                    * The only forms that are allowed that also sets the 
                    * OF and CF flags are:
@@ -616,7 +764,7 @@ struct
                    *      imul r32, r32/m32
                    * Note: destination must be a register!
                    *)
-              fun multiply(e1, e2) = 
+              fun multiply (e1, e2) = 
               dstMustBeReg(fn (rd, rdOpnd) =>
               let fun doit(i1 as I.Immed _, i2 as I.Immed _) =
                       (move(i1, rdOpnd);
@@ -647,6 +795,21 @@ struct
               in  doit(opnd1, opnd2)
               end
               )
+
+	      fun multiply_notrap (e1, e2 as T.LI n') =
+		  (case analyze n' of
+		       (_, SOME (isneg, _, p)) => let
+			   val r1 = expr e1
+			   val o1 = I.Direct r1
+		       in
+			   if isneg then
+			       emit (I.UNARY { unOp = I.NEGL, opnd = o1 })
+			   else ();
+			   shift (I.SHLL, T.REG (32, r1), p)
+		       end
+		     | _ => multiply (e1, e2))
+		| multiply_notrap (e1 as T.LI _, e2) = multiply_notrap (e2, e1)
+		| multiply_notrap (e1, e2) = multiply (e1, e2)
 
                  (* Emit a load instruction; makes sure that the destination
                   * is a register 
@@ -757,7 +920,8 @@ struct
               let fun genCmov(dstR, _) = 
                   let val _ = doExpr(no, dstR, []) (* false branch *)
                       val cc = cmp(true, ty, cc, t1, t2, [])  (* compare *)
-                  in  mark(I.CMOV{cond=cond cc, src=operand yes, dst=dstR}, an) 
+                  in  mark(I.CMOV{cond=cond cc, src=regOrMem(operand yes), 
+                                  dst=dstR}, an) 
                   end
               in  dstMustBeReg genCmov
               end
@@ -866,17 +1030,19 @@ struct
 
              | T.MULU(32, x, y) => uMultiply(x, y)
              | T.DIVU(32, x, y) => divide(false, false, x, y)
-             | T.REMU(32, x, y) => rem(false, false, x, y)
+             | T.REMU(32, x, y) => rem(false, x, y)
 
-             | T.MULS(32, x, y) => multiply(x, y)
-             | T.DIVS(32, x, y) => divide(true, false, x, y)
-             | T.REMS(32, x, y) => rem(true, false, x, y)
+             | T.MULS(32, x, y) => multiply_notrap (x, y)
+             | T.DIVS(T.DIV_TO_ZERO, 32, x, y) => divide(true, false, x, y)
+	     | T.DIVS(T.DIV_TO_NEGINF, 32, x, y) => divinf (false, x, y)
+             | T.REMS(T.DIV_TO_ZERO, 32, x, y) => rem(true, x, y)
+	     | T.REMS(T.DIV_TO_NEGINF, 32, x, y) => reminf (x, y)
 
              | T.ADDT(32, x, y) => (binaryComm(I.ADDL, x, y); trap())
              | T.SUBT(32, x, y) => (binary(I.SUBL, x, y); trap())
-             | T.MULT(32, x, y) => (multiply(x, y); trap())
-             | T.DIVT(32, x, y) => divide(true, true, x, y)
-             | T.REMT(32, x, y) => rem(true, true, x, y)
+             | T.MULT(32, x, y) => (multiply (x, y); trap ())
+             | T.DIVT(T.DIV_TO_ZERO, 32, x, y) => divide(true, true, x, y)
+	     | T.DIVT(T.DIV_TO_NEGINF, 32, x, y) => divinf (true, x, y)
 
              | T.ANDB(32, x, y) => binaryComm(I.ANDL, x, y)
              | T.ORB(32, x, y)  => binaryComm(I.ORL, x, y)
@@ -896,8 +1062,11 @@ struct
              | T.ZX(32,8,T.LOAD(8,ea,mem)) => load8(ea, mem)
              | T.ZX(32,16,T.LOAD(16,ea,mem)) => load16(ea, mem)
 
-             | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI yes, T.LI no) => 
-                 setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
+             | T.COND(32, T.CMP(ty, cc, t1, t2), y as T.LI yes, n as T.LI no) =>
+                (case !arch of (* PentiumPro and higher has CMOVcc *)
+                  Pentium => setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
+                | _ => cmovcc(ty, cc, t1, t2, y, n)
+                )
              | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) => 
                 (case !arch of (* PentiumPro and higher has CMOVcc *)
                    Pentium => unknownExp exp
@@ -1113,6 +1282,11 @@ struct
 
           (* generate code for floating point compare and branch *)
       and fbranch(fty, fcc, t1, t2, lab, an) = 
+          let fun j cc = mark(I.JCC{cond=cc, opnd=immedLabel lab},an)
+          in  fbranching(fty, fcc, t1, t2, j)
+          end
+
+      and fbranching(fty, fcc, t1, t2, j) = 
           let fun ignoreOrder (T.FREG _) = true
                 | ignoreOrder (T.FLOAD _) = true
                 | ignoreOrder (T.FMARK(e,_)) = ignoreOrder e
@@ -1134,7 +1308,10 @@ struct
                       val rsrc = foperand(fty, t2)
                       val fsize = fsize fty
                       fun cmp(lsrc, rsrc, fcc) =
-                          (emit(I.FCMP{fsize=fsize,lsrc=lsrc,rsrc=rsrc}); fcc)
+                      let val i = !arch <> Pentium    
+                      in  emit(I.FCMP{i=i,fsize=fsize,lsrc=lsrc,rsrc=rsrc});
+                          fcc
+                      end
                   in  case (lsrc, rsrc) of
                          (I.FPR _, I.FPR _) => cmp(lsrc, rsrc, fcc)
                        | (I.FPR _, mem) => cmp(mem,lsrc,T.Basis.swapFcond fcc)
@@ -1155,30 +1332,73 @@ struct
               fun testil i = emit(I.TESTL{lsrc=eax,rsrc=I.Immed(i)})
               fun xoril i = emit(I.BINARY{binOp=I.XORL,src=I.Immed(i),dst=eax})
               fun cmpil i = emit(I.CMPL{rsrc=I.Immed(i), lsrc=eax})
-              fun j(cc, lab) = mark(I.JCC{cond=cc, opnd=immedLabel lab},an)
               fun sahf() = emit(I.SAHF)
               fun branch(fcc) =
                   case fcc
-                  of T.==   => (andil 0x4400; xoril 0x4000; j(I.EQ, lab))
-                   | T.?<>  => (andil 0x4400; xoril 0x4000; j(I.NE, lab))
-                   | T.?    => (sahf(); j(I.P,lab))
-                   | T.<=>  => (sahf(); j(I.NP,lab))
-                   | T.>    => (testil 0x4500;  j(I.EQ,lab))
-                   | T.?<=  => (testil 0x4500;  j(I.NE,lab))
-                   | T.>=   => (testil 0x500; j(I.EQ,lab))
-                   | T.?<   => (testil 0x500; j(I.NE,lab))
-                   | T.<    => (andil 0x4500; cmpil 0x100; j(I.EQ,lab))
-                   | T.?>=  => (andil 0x4500; cmpil 0x100; j(I.NE,lab))
-                   | T.<=   => (andil 0x4100; cmpil 0x100; j(I.EQ,lab);
-                                cmpil 0x4000; j(I.EQ,lab))
-                   | T.?>   => (sahf(); j(I.P,lab); testil 0x4100; j(I.EQ,lab))
-                   | T.<>   => (testil 0x4400; j(I.EQ,lab))
-                   | T.?=   => (testil 0x4400; j(I.NE,lab))
-                   | _      => error "fbranch"
+                  of T.==   => (andil 0x4400; xoril 0x4000; j(I.EQ))
+                   | T.?<>  => (andil 0x4400; xoril 0x4000; j(I.NE))
+                   | T.?    => (sahf(); j(I.P))
+                   | T.<=>  => (sahf(); j(I.NP))
+                   | T.>    => (testil 0x4500;  j(I.EQ))
+                   | T.?<=  => (testil 0x4500;  j(I.NE))
+                   | T.>=   => (testil 0x500; j(I.EQ))
+                   | T.?<   => (testil 0x500; j(I.NE))
+                   | T.<    => (andil 0x4500; cmpil 0x100; j(I.EQ))
+                   | T.?>=  => (andil 0x4500; cmpil 0x100; j(I.NE))
+                   | T.<=   => (andil 0x4100; cmpil 0x100; j(I.EQ);
+                                cmpil 0x4000; j(I.EQ))
+                   | T.?>   => (sahf(); j(I.P); testil 0x4100; j(I.EQ))
+                   | T.<>   => (testil 0x4400; j(I.EQ))
+                   | T.?=   => (testil 0x4400; j(I.NE))
+                   | _      => error(concat[
+				  "fbranch(", T.Basis.fcondToString fcc, ")"
+				])
                  (*esac*)
+
+              (*
+               *             P  Z  C
+               * x < y       0  0  1
+               * x > y       0  0  0
+               * x = y       0  1  0
+               * unordered   1  1  1
+               * When it's unordered, all three flags, P, Z, C are set.
+               *)
+                
+              fun fast_branch(fcc) =
+                  case fcc
+                  of T.==   => orderedOnly(I.EQ)
+                   | T.?<>  => (j(I.P); j(I.NE))
+                   | T.?    => j(I.P)
+                   | T.<=>  => j(I.NP)
+                   | T.>    => orderedOnly(I.A)
+                   | T.?<=  => j(I.BE)
+                   | T.>=   => orderedOnly(I.AE)
+                   | T.?<   => j(I.B)
+                   | T.<    => orderedOnly(I.B)
+                   | T.?>=  => (j(I.P); j(I.AE))
+                   | T.<=   => orderedOnly(I.BE)
+                   | T.?>   => (j(I.P); j(I.A))
+                   | T.<>   => orderedOnly(I.NE)
+                   | T.?=   => j(I.EQ)
+                   | _      => error(concat[
+				  "fbranch(", T.Basis.fcondToString fcc, ")"
+				])
+                 (*esac*)
+              and orderedOnly fcc =
+              let val label = Label.anon()
+              in  emit(I.JCC{cond=I.P, opnd=immedLabel label});
+                  j fcc;
+                  defineLabel label
+              end
+ 
               val fcc = compare() 
-          in  emit I.FNSTSW;   
-              branch(fcc)
+          in  if !arch <> Pentium andalso
+                 (enableFastFPMode andalso !fast_floating_point) then
+                fast_branch(fcc)
+              else
+                (emit I.FNSTSW;   
+                 branch(fcc)
+                )
           end
 
       (*========================================================
@@ -1256,7 +1476,7 @@ struct
           (* generate floating point expression and put the result in fd *)
       and doFexpr'(fty, T.FREG(_, fs), fd, an) = 
             (if CB.sameColor(fs,fd) then () 
-             else mark(I.FCOPY{dst=[fd], src=[fs], tmp=NONE}, an)
+             else mark'(I.COPY{k=CB.FP, sz=64, dst=[fd], src=[fs], tmp=NONE}, an)
             )
         | doFexpr'(_, T.FLOAD(fty, ea, mem), fd, an) = 
             fload'(fty, ea, mem, fd, an)
@@ -1505,7 +1725,7 @@ struct
       and fbinop(targetFty, 
                  binOp, binOpR, ibinOp, ibinOpR, lsrc, rsrc, fd, an) = 
               (* Put the mem operand in rsrc *)
-          let val _ = floatingPointUsed := true;
+          let 
               fun isMemOpnd(T.FREG(_, f)) = isFMemReg f
                 | isMemOpnd(T.FLOAD _) = true
                 | isMemOpnd(T.CVTI2F(_, (16 | 32), _)) = true
@@ -1546,6 +1766,7 @@ struct
           end
 
       and doFexpr''(fty, e, fd, an) = 
+         (floatingPointUsed := true;
           case e of
             T.FREG(_,fs) => if CB.sameColor(fs,fd) then () 
                             else fcopy''(fty, [fd], [fs], an)
@@ -1587,6 +1808,7 @@ struct
           | T.FEXT fexp =>
              ExtensionComp.compileFext (reducer()) {e=fexp, fd=fd, an=an}
           | _ => error("doFexpr''")
+         )
 
        (*========================================================
         * Tie the two styles of fp code generation together
@@ -1762,7 +1984,7 @@ struct
                     operand       = operand,
                     reduceOperand = reduceOpnd,
                     addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
-                    emit          = mark,
+                    emit          = mark',
                     instrStream   = instrStream, 
                     mltreeStream  = self() 
                    }

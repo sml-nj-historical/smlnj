@@ -3,6 +3,48 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2002-05-20]
+	Fixed bug in IntInf module: scanning of hex literals was not
+	handling "0x" prefixes.
+
+[2002-05-20]
+	Added ControlUtil module and stringControls function.
+
+[2002-05-17]
+	Added tyName field to ValueSyntax exception in Controls module
+	and path field to registry tree in ControlRegistry module.
+
+[2002-05-17]
+	Added == and != operators to INT_INF interface.  These are a
+	placeholder until IntInf moves into the SML/NJ compiler.
+
+[2002-05-16]
+	Added mergeWith function to ORD_MAP interface.
+
+[2002-05-15]
+	Revised Controls library.
+
+[2002-04-17]
+	Added Matthias Blume's implementation of Danvey-style format
+	combinators to the Util library.
+
+[2002-03-14]
+	Merged in Matthias Blume's Controls library.  Warning: the API
+	to this library is likely to change as we get some experience
+	with it.
+
+[2002-03-11]
+	Added consR1 .. consR5 functions to HashCons library.  These
+	can be used to hash-cons record types.
+
+[2002-02-21]
+	Fixed infinite loop in LeftPriorityQFn.fromList when given a
+	singleton list as input (Chris Okasaki provided the fix).
+
+[2002-02-12]
+	Added implementation of priority queues to Util library (using
+	Okasaki's leftist-tree implementation).
+
 [2001-10-19]
 	Added new HashCons library.
 

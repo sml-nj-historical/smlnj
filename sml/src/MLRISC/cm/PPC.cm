@@ -9,6 +9,7 @@ Library
 	functor PPCAsmEmitter
 	functor PPCDelaySlots
 	functor PPCFreqProps
+	functor PPCDarwinPseudoOps
 	functor PPCGasPseudoOps
 	functor PPCInstr
 	functor PPCJumps
@@ -16,6 +17,7 @@ Library
 	functor PPCProps
 	functor PPCRewrite
 	functor PPCShuffle
+	functor PPCSpillInstr
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -54,7 +56,10 @@ is
 	../ppc/emit/ppcMC.sml
 	../ppc/backpatch/ppcDelaySlots.sml
 	../ppc/backpatch/ppcJumps.sml
+	../ppc/flowgraph/ppcDarwinPseudoOps.sml
 	../ppc/flowgraph/ppcGasPseudoOps.sml
 	../ppc/mltree/ppcPseudoInstr.sig
 	../ppc/mltree/ppc.sml 
 	../ppc/ra/ppcRewrite.sml
+	../ppc/ra/ppcSpillInstr.sml
+

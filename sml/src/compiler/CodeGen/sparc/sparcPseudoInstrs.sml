@@ -29,33 +29,45 @@ struct
   val native = true  (* use native versions of the instructions? *)
 
   fun umul_native({r, i, d}, reduceOpnd) =
-      [I.ARITH{a=I.UMUL,r=r,i=i,d=d}]
+      [I.arith{a=I.UMUL,r=r,i=i,d=d}]
 
-  val TNE = I.Ticc{t=I.BNE,cc=I.ICC,r=C.r0,i=I.IMMED 7}
-  val TVS = I.Ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}
+  val TNE = I.ticc{t=I.BNE,cc=I.ICC,r=C.r0,i=I.IMMED 7}
+  val TVS = I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}
 
       (* overflows iff Y != (d ~>> 31) *)
-  fun smul_native({r, i, d}, reduceOpnd) =
+  fun smult_native({r, i, d}, reduceOpnd) =
       let val t1 = C.newReg()
           val t2 = C.newReg()
-      in  [I.ARITH{a=I.SMUL,r=r,i=i,d=d},
-           I.SHIFT{s=I.SRA,r=d,i=I.IMMED 31,d=t1},
-           I.RDY{d=t2},
-           I.ARITH{a=I.SUBCC,r=t1,i=I.REG t2,d=C.r0},
+      in  [I.arith{a=I.SMUL,r=r,i=i,d=d},
+           I.shift{s=I.SRA,r=d,i=I.IMMED 31,d=t1},
+           I.rdy{d=t2},
+           I.arith{a=I.SUBCC,r=t1,i=I.REG t2,d=C.r0},
            TNE
           ] 
       end
+
+  fun smul_native({r, i, d}, reduceOpnd) =
+      [I.arith{a=I.SMUL,r=r,i=i,d=d}]
+
   fun udiv_native({r,i,d},reduceOpnd) = 
-      [I.WRY{r=C.r0,i=I.REG C.r0},
-       I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
+      [I.wry{r=C.r0,i=I.REG C.r0},
+       I.arith{a=I.UDIV,r=r,i=i,d=d}]
 
    (* May overflow if MININT div -1 *)
-  fun sdiv_native({r,i,d},reduceOpnd) = 
+  fun sdivt_native({r,i,d},reduceOpnd) = 
       let val t1 = C.newReg()
-      in  [I.SHIFT{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
-           I.WRY{r=t1,i=I.REG C.r0},
-           I.ARITH{a=I.SDIVCC,r=r,i=i,d=d},
+      in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.wry{r=t1,i=I.REG C.r0},
+           I.arith{a=I.SDIVCC,r=r,i=i,d=d},
            TVS
+          ]
+      end
+
+  fun sdiv_native({r,i,d},reduceOpnd) =
+      let val t1 = C.newReg()
+      in  [I.shift{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.wry{r=t1,i=I.REG C.r0},
+           I.arith{a=I.SDIV,r=r,i=i,d=d}
           ]
       end
 
@@ -70,13 +82,14 @@ struct
   let val addr = C.newReg()
       val defs = C.addReg(r10,C.empty) 
       val uses = C.addReg(r10,C.addReg(r11,C.empty))
+      fun copy{dst, src, tmp} = 
+	  I.COPY{k=CellsBasis.GP, sz=32, dst=dst, src=src, tmp=tmp}
   in
-      [I.COPY{src=[r,reduceOpnd i],dst=[r10,r11],
-                   tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
-       I.LOAD{l=I.LD,r=C.frameptrR,i=offset,d=addr,mem=stack},
-       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
+      [copy{src=[r,reduceOpnd i],dst=[r10,r11],tmp=SOME(I.Direct(C.newReg()))},
+       I.load{l=I.LD,r=C.frameptrR,i=offset,d=addr,mem=stack},
+       I.jmpl{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
               cutsTo=[],nop=true,mem=stack},
-       I.COPY{src=[r10],dst=[d],tmp=NONE,impl=ref NONE}
+       copy{src=[r10],dst=[d],tmp=NONE}
       ]
   end
 
@@ -86,23 +99,25 @@ struct
   fun sdivtrap({r, i, d}, reduceOpnd) = callRoutine(sdivOffset,reduceOpnd,r,i,d)
 
   fun cvti2d({i, d}, reduceOpnd) = 
-      [I.STORE{s=I.ST,r=C.frameptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
-       I.FLOAD{l=I.LDF,r=C.frameptrR,i=floatTmpOffset,d=d,mem=stack},
-       I.FPop1{a=I.FiTOd,r=d,d=d}
+      [I.store{s=I.ST,r=C.frameptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
+       I.fload{l=I.LDF,r=C.frameptrR,i=floatTmpOffset,d=d,mem=stack},
+       I.fpop1{a=I.FiTOd,r=d,d=d}
       ]
   fun cvti2s _ = error "cvti2s"
   fun cvti2q _ = error "cvti2q"
 
      (* Generate native versions of the instructions *)
   val umul32 = if native then umul_native else umul
-  fun smul32 _ = error "smul32"
-  val smul32trap = if native then smul_native else smultrap
+  val smul32 : format1 =
+      if native then smul_native else (fn _ => error "smul32")
+  val smul32trap = if native then smult_native else smultrap
   val udiv32 = if native then udiv_native else udiv
-  fun sdiv32 _ = error "sdiv32"
-  val sdiv32trap = if native then sdiv_native else sdivtrap
+  val sdiv32 : format1 =
+      if native then sdiv_native else (fn _ => error "sdiv32")
+  val sdiv32trap = if native then sdivt_native else sdivtrap
 
   val overflowtrap32 = (* tvs 0x7 *)
-                       [I.Ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]
+                       [I.ticc{t=I.BVS,cc=I.ICC,r=C.r0,i=I.IMMED 7}]
   val overflowtrap64 = [] (* not needed *)
 
 

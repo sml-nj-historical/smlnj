@@ -221,6 +221,8 @@ CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/cluster.sml
 CodeGen/cpscompile/cps-aliasing.sml
+CodeGen/cpscompile/cps-c-calls.sml
+CodeGen/cpscompile/cpsBranchProb.sml
 CodeGen/cpscompile/cpsRegions.sig
 CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
@@ -238,7 +240,7 @@ CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/smlnj-pseudoOps.sml
-CodeGen/cpscompile/spill.sml
+CodeGen/cpscompile/spill-new.sml
 CodeGen/main/clusterAnnotation.sml    (* temporary hack; see comment in file *)
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig
@@ -277,8 +279,10 @@ $smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/Graphs.cm			
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/Visual.cm
 
 (* Other libaries. *)
 $/basis.cm
 $/smlnj-lib.cm
+$/controls-lib.cm
 $/pickle-lib.cm

@@ -31,10 +31,11 @@ structure PseudoOpsBasisTyp = struct
 	    * Sections are not allowed inside a text segment 
             *)
    | DATA_READ_ONLY
-   | DATA
+   | DATA 
+   | BSS
    | TEXT
    | SECTION of Atom.atom 
-
+   
 	  (*
 	   * May have to rethink this one!
 	   * For now, all instructions following a NOREORDER pseudo-op
@@ -58,6 +59,11 @@ structure PseudoOpsBasisTyp = struct
    | ASCII of string
    | ASCIIZ of string
 
+         (* 
+          * allocate uninitialized data space with size in bytes
+	  *)
+   | SPACE of int 			
+
 	 (*
           * Constant real data
 	  *)
@@ -68,7 +74,7 @@ structure PseudoOpsBasisTyp = struct
          *)
    | IMPORT of Label.label list
    | EXPORT of Label.label list
-
+   | COMMENT of string
 	(*
          * Client specific pseudo-ops
 	 * All these pseudo-ops must be related to data

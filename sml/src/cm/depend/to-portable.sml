@@ -157,10 +157,11 @@ end = struct
 		    SOME v => v
 		  | NONE => let val (p, ns) =
 				    case Symbol.nameSpace s of
-					Symbol.SIGspace => ("sig", "SIG")
-				      | Symbol.STRspace => ("str", "STR")
-				      | Symbol.FCTspace => ("fct", "FCT")
-				      | Symbol.FSIGspace => ("fsg", "FSIG")
+					Symbol.SIGspace => ("sgn", P.SGN)
+				      | Symbol.STRspace => ("str", P.STR)
+				      | Symbol.FCTspace => ("fct", P.FCT)
+				      | Symbol.FSIGspace =>
+					raise Fail "funsig not permitted in portable graphs"
 				      | _ => raise Fail "unexpected namespace"
 				val v = gensym p
 			    in

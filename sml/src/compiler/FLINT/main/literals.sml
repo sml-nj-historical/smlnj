@@ -464,9 +464,9 @@ fun liftlits (body, root, offset) =
                let val (nl, hh) = lpvs ul
                 in hh(PURE(p, nl, v, t, loop e))
                end
-	   | RCC (p, ul, v, t, e) =>
+	   | RCC (k, l, p, ul, v, t, e) =>
 	       let val (nl, hh) = lpvs ul
-	        in hh(RCC(p, nl, v, t, loop e))
+	        in hh(RCC(k, l, p, nl, v, t, loop e))
 	       end)
 
       val newbody = loop body

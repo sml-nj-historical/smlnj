@@ -40,7 +40,7 @@ struct
 
    type stream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
-   val debug = Control.MLRISC.getFlag "debug-gc";
+   val debug = Control.MLRISC.mkFlag ("debug-gc", "GC invocation debug mode")
 
    val addrTy = C.addressWidth
 
@@ -140,7 +140,8 @@ struct
        (* what type of comparison to use for GC test? *)
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
 
-   val unlikely = #create MLRiscAnnotations.BRANCH_PROB 0
+   val unlikely =
+       #create MLRiscAnnotations.BRANCH_PROB Probability.unlikely
 
    val normalTestLimit =
        T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))

@@ -172,7 +172,8 @@ struct
        | LOCK_XADDL "lock\n\txaddl"
    
       (* One operand opcodes *)  
-      datatype multDivOp! = MULL1 "mull" | IDIVL1 "idivl" | DIVL1 "divl"
+      datatype multDivOp! = 
+               IMULL1 "imull" | MULL1 "mull" | IDIVL1 "idivl" | DIVL1 "divl"
     
       datatype unaryOp! = DECL | INCL | NEGL | NOTL 
                         | DECW | INCW | NEGW | NOTW
@@ -181,6 +182,8 @@ struct
                         | LOCK_INCL "lock\n\tincl"
                         | LOCK_NEGL "lock\n\tnegl"
                         | LOCK_NOTL "lock\n\tnotl"
+
+      datatype shiftOp! = SHLDL | SHRDL 
     
       datatype bitOp! = BTW       
                       | BTL 
@@ -602,6 +605,7 @@ struct
       val emit_addr = emit_operand
       val emit_src1 = emit_operand
       val emit_ea = emit_operand
+      val emit_count = emit_operand
   end (* Assembly *)
 
 
@@ -709,6 +713,11 @@ struct
              | _ => ``<binOp>\t<src>, <dst>''
              )
 	(*rtl: ``<binOp>''*)
+    | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
+        asm: (case count of (* must be %ecx if it is a register *)
+                I.Direct ecx => ``<shiftOp>\t<src>, <dst>''
+              | _            => ``<shiftOp>\t<src>, <count>, <dst>''
+             )
 
     | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
 	asm: (if lock then ``lock\n\t'' else ();
@@ -725,7 +734,7 @@ struct
 
     | MUL3 of {dst: $GP, src2: Int32.int, src1:operand}
         (* Fermin: constant operand must go first *)
-        asm: ``imul\t$<emitInt32 src2>, <src1>, <dst>''
+        asm: ``imull\t$<emitInt32 src2>, <src1>, <dst>''
 
     | UNARY of {unOp:unaryOp, opnd:operand}
 	asm: ``<unOp>\t<opnd>''
@@ -774,16 +783,7 @@ struct
     | INTO
 	``into''
 
-   (* parallel copies *)
-    | COPY of {dst: $GP list, src: $GP list, tmp:operand option}
-	asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-	mc:  emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-    | FCOPY of {dst: $FP list, src: $FP list, tmp:operand option}
-	asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-	mc:  emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-   (* floating *)
+    (* floating *)
     | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
 	asm: (emit_fbinaryOp(binOp,src,dst))
 
@@ -804,6 +804,18 @@ struct
 
     | FCOMPP
 	``fcompp''
+
+    | FCOMI of operand
+	``fcomi\t<operand>''
+
+    | FCOMIP of operand
+	``fcomip\t<operand>''
+
+    | FUCOMI of operand
+	``fucomi\t<operand>''
+
+    | FUCOMIP of operand
+	``fucomip\t<operand>''
 
     | FXCH of {opnd: $FP}
 	``fxch\t<opnd>''
@@ -898,8 +910,8 @@ struct
 	``<unOp><fsize>\t<src>, <dst>''
         (* rtl: [[unOp fsize]] *)
 
-    | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
-	``fcmp<fsize>\t<lsrc>, <rsrc>''
+    | FCMP of {i:bool,fsize:fsize, lsrc:operand, rsrc:operand}
+	asm: (if i then ``fcmpi'' else ``fcmp''; ``<fsize>\t<lsrc>, <rsrc>'')
         (* rtl: [["FCMP" fsize]] *)
 
    (* misc *)
@@ -908,10 +920,6 @@ struct
 
     | LAHF	  (* %ah -> %flags *)
 	``lahf''
-
-   (* annotations *)
-    | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
 
     | SOURCE of {}
         asm: ``source''

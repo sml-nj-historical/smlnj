@@ -46,7 +46,12 @@ optional & no \\
 \hline
 {\tt \$/pp-lib.cm} & SML/NJ pretty-printing library & always & no \\
 \hline
-{\tt \$/html-lib.cm} & SML/NJ HTML handling library & always & no
+{\tt \$/html-lib.cm} & SML/NJ HTML handling library & always & no \\
+\hline
+{\tt \$/controls-lib.cm} & SML/NJ library for configurable
+``controls'' & always & no \\
+\hline
+{\tt \$/hash-cons-lib.cm} & SML/NJ hash-consing library & optional & no
 \end{tabular}
 \end{center}
 \end{small}
@@ -164,7 +169,13 @@ Sparc-specific cross-compiler & always & no \\
 IA32-specific cross-compiler & always & no \\
 \hline
 {\tt \$smlnj/compiler/all.cm} & visible compiler, backends and
-bootstrap compilers for all architectures & always & no
+bootstrap compilers for all architectures & always & no \\
+\hline
+{\tt \$/pgraph.cm} & definition of ``portable dependency graph'' data
+structure & always & no \\
+\hline
+{\tt \$/pgraph-util.cm} & utility routines for use with portable
+dependency graphs & optional & no
 \end{tabular}
 \end{center}
 \end{small}
@@ -179,24 +190,32 @@ SML/NJ's implementation:
 \begin{tabular}{p{2.5in}||p{2.6in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
-{\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
+{\tt \$SMLNJ-MLRISC/Lib.cm} & utility library for MLRISC backend & always &
 no \\
 \hline 
-{\tt \$MLRISC/Control.cm} & control facilities for MLRISC backend &
+{\tt \$SMLNJ-MLRISC/Control.cm} & control facilities for MLRISC backend &
 always & no \\
 \hline
-{\tt \$MLRISC/MLRISC.cm} & architecture-neutral core of MLRISC backend
+{\tt \$SMLNJ-MLRISC/Graphs.cm} & control flow graphs for MLRISC backend &
+always & no \\
+\hline
+{\tt \$SMLNJ-MLRISC/Visual.cm} & visualization for MLRISC & always & no \\
+\hline
+{\tt \$SMLNJ-MLRISC/MLRISC.cm} & architecture-neutral core of MLRISC backend
 & always & no \\
 \hline
-{\tt \$MLRISC/ALPHA.cm} & Alpha-specific MLRISC backend & always & no \\
+{\tt \$SMLNJ-MLRISC/MLTREE.cm} & utility routines for dealing with
+mltree data structures & always & no \\
 \hline
-{\tt \$MLRISC/HPPA.cm} & HP-PA-specific MLRISC backend & always & no \\
+{\tt \$SMLNJ-MLRISC/ALPHA.cm} & Alpha-specific MLRISC backend & always & no \\
 \hline
-{\tt \$MLRISC/PPC.cm} & PowerPC-specific MLRISC backend & always & no \\
+{\tt \$SMLNJ-MLRISC/HPPA.cm} & HP-PA-specific MLRISC backend & always & no \\
 \hline
-{\tt \$MLRISC/SPARC.cm} & Sparc-specific MLRISC backend & always & no \\
+{\tt \$SMLNJ-MLRISC/PPC.cm} & PowerPC-specific MLRISC backend & always & no \\
+\hline
+{\tt \$SMLNJ-MLRISC/SPARC.cm} & Sparc-specific MLRISC backend & always & no \\
 \hline 
-{\tt \$MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
+{\tt \$SMLNJ-MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
 \hline\hline
 {\tt \$/pickle-lib.cm} & utility library for compiler and CM & always & no \\
 \hline
@@ -241,3 +260,19 @@ no
 \end{tabular}
 \end{center}
 \end{small}
+
+Libraries for the MLRISC backend have internal dependencies.  However,
+when referring to a {\tt \$SMLNJ-MLRISC/{\it lib}.cm} library, all
+anchor names that correspond to these dependencies are still unbound.
+Thus, a client would have to provide its own bindings for
+them.\footnote{The anchor names coincide with the {\it lib}{\tt .cm}
+components of the above names.} There is an analogous set of library
+names of the form {\tt \$smlnj/MLRISC/}{\it lib}{\tt .cm} which
+provides the SML/NJ-specific bindings for all the anchors.  In
+practice this means that if one refers to, e.g., {\tt
+\$smlnj/MLRISC/MLRISC.cm}, one will implicitly pick up {\tt
+\$smlnj/MLRISC/Graphs.cm}, and the {\tt \$Graphs.cm} anchor within the
+former will be resolved to the latter.  On the other hand, when
+referring directly to the ``raw'' library {\tt
+\$SMLNJ-MLRISC/MLRISC.cm}, one still can (and must) provide one's own
+binding for {\tt \$Graphs.cm}.

@@ -138,7 +138,8 @@ ml_val_t		MathVec = ML_unit;
 #endif
 
 /* aggregate structures of length zero */
-ml_val_t _ML_string0[3]		= {DESC_string, ML_unit, INT_CtoML(0)};
+const char _ML_string0_data[1]  = {0};
+ml_val_t _ML_string0[3]		= {DESC_string, PTR_CtoML(_ML_string0_data), INT_CtoML(0)};
 ml_val_t _ML_vector0[3]		= {DESC_polyvec, ML_unit, INT_CtoML(0)};
 
 ML_EXNID(_Div,"Div");

@@ -21,6 +21,7 @@ signature SMLINFO = sig
     type attribs =
 	{ split: splitrequest,
 	  is_rts: bool,
+	  noguid: bool,
 	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: StaticEnv.staticEnv option }
 
@@ -48,7 +49,7 @@ signature SMLINFO = sig
      * now which means that the file used to be in another group). *)
     val newGeneration : unit -> unit
 
-    val info : splitrequest -> GeneralParams.info -> info_args -> info
+    val info : splitrequest * bool -> GeneralParams.info -> info_args -> info
 
     val info' : attribs -> GeneralParams.info -> info_args -> info
 
@@ -68,6 +69,8 @@ signature SMLINFO = sig
     val lastseen : info -> TStamp.t
     val setup : info -> string option * string option
     val is_local : info -> bool
+    val setguid : info * string -> unit
+    val guid : info -> string
 
     (* forget a parse tree that we are done with *)
     val forgetParsetree : info -> unit
@@ -109,6 +112,7 @@ structure SmlInfo :> SMLINFO = struct
 
     type attribs = { split: splitrequest,
 		     is_rts: bool,
+		     noguid: bool,
 		     explicit_core_sym: Symbol.symbol option,
 		     extra_compenv: StaticEnv.staticEnv option }
 
@@ -128,7 +132,9 @@ structure SmlInfo :> SMLINFO = struct
 		  lastseen: TStamp.t ref,
 		  parsetree: (ast * source) option ref,
 		  skeleton: Skeleton.decl option ref,
-		  sh_mode: Sharing.mode ref }
+		  sh_mode: Sharing.mode ref,
+		  setguid: string -> unit,
+		  guid: unit -> string }
 		      
     datatype info =
 	INFO of { sourcepath: SrcPath.file,
@@ -204,7 +210,8 @@ structure SmlInfo :> SMLINFO = struct
     fun validate (sourcepath, PERS pir) = let
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
-	val { group, lastseen, parsetree, skeleton, sh_mode, generation } = pir
+	val { group, lastseen, parsetree, skeleton,
+	      sh_mode, generation, guid, setguid } = pir
 	val ts = !lastseen
 	val nts = SrcPath.tstamp sourcepath
     in
@@ -222,13 +229,63 @@ structure SmlInfo :> SMLINFO = struct
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
+	fun mkguidname () = FNP.mkGUidName policy sourcepath
 	val groupreg = #groupreg gp
+	val (getguid, setguid) =
+	    if #noguid attribs then (fn () => "", fn _ => ())
+	    else let
+	        val guid_cache = ref NONE
+		fun frombin () =
+		    SafeIO.perform { openIt =
+				       fn () => BinIO.openIn (mkBinname ()),
+				     closeIt = BinIO.closeIn,
+				     work = SOME o Binfile.readGUid,
+				     cleanup = fn _ => () }
+		    handle IO.Io _ => NONE
+		fun fromfile () =
+		    SafeIO.perform { openIt =
+				       fn () => TextIO.openIn (mkguidname ()),
+				     closeIt = TextIO.closeIn,
+				     work = SOME o TextIO.inputAll,
+				     cleanup = fn _ => () }
+		    handle IO.Io _ => NONE
+		fun tofile g = let
+		    val gf = mkguidname ()
+		in
+		    SafeIO.perform { openIt = fn () => AutoDir.openTextOut gf,
+				     closeIt = TextIO.closeOut,
+				     work = fn s => TextIO.output (s, g),
+				     cleanup = fn _ => OS.FileSys.remove gf }
+		end
+		fun setguid g = (guid_cache := SOME g; tofile g)
+		fun saveguid g = (setguid g; g)
+		fun getguid () = let
+		    fun newguid () =
+			concat ["guid-", SrcPath.descr sourcepath, "-",
+				Time.toString (Time.now ()), "\n"]
+		in
+		    case !guid_cache of
+			SOME g => g
+		      | NONE =>
+			(case frombin () of
+			     SOME g => saveguid g
+			   | NONE =>
+			     (case fromfile () of
+				  SOME g => g
+				| NONE => saveguid (newguid ())))
+		end
+	    in
+		(getguid, setguid)
+	    end
+
 	fun newpersinfo () = let
 	    val ts = SrcPath.tstamp sourcepath
 	    val pi = PERS { group = gr, lastseen = ref ts,
 			    parsetree = ref NONE, skeleton = ref NONE,
 			    sh_mode = ref (Sharing.SHARE false),
-			    generation = ref (now ()) }
+			    generation = ref (now ()),
+			    setguid = setguid,
+			    guid = getguid }
 	in
 	    knownInfo := SrcPathMap.insert (!knownInfo, sourcepath, pi);
 	    pi
@@ -267,8 +324,10 @@ structure SmlInfo :> SMLINFO = struct
 	       locl = locl }
     end
 
-    fun info split = info' { split = split, extra_compenv = NONE,
-			     is_rts = false, explicit_core_sym = NONE }
+    fun info (split, noguid) =
+	info' { split = split, extra_compenv = NONE,
+		is_rts = false, noguid = noguid,
+		explicit_core_sym = NONE }
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)
@@ -392,4 +451,8 @@ structure SmlInfo :> SMLINFO = struct
     in
 	EM.matchErrorString (GroupReg.lookup (#groupreg gp) group) reg
     end
+
+    fun guid (INFO { persinfo = PERS { guid = g, ... }, ... }) = g ()
+
+    fun setguid (INFO { persinfo = PERS { setguid = sg, ... }, ... }, g) = sg g
 end

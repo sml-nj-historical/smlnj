@@ -34,7 +34,6 @@ is
 	../mips/instructions/mipsShuffle.sml
 	../mips/instructions/mipsProps.sml
 	../mips/instructions/mipsFreqProps.sml
-	../mips/instructions/mipsExpandCopies.sml
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
 	../mips/backpatch/mipsDelaySlotProps.sml

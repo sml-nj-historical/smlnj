@@ -110,7 +110,7 @@ PVT status_t MapMemory (mem_obj_t *obj, Addr_t szb)
   /* insure BIBOP_PAGE_SZB alignment */
     offset = BIBOP_PAGE_SZB - (addr & (BIBOP_PAGE_SZB-1));
 #ifdef HAS_PARTIAL_MUNMAP
-    if (offset != 0) {
+    if (offset != BIBOP_PAGE_SZB) {
       /* align addr and discard unused portions of memory */
 	munmap ((void *)addr, offset);
 	addr += offset;

@@ -13,17 +13,15 @@ struct
 
   open G RACore
 
-  val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
-  val ra_spill_prop = MLRiscControl.getCounter "ra-spill-propagation"
+  val ra_spill_coal = MLRiscControl.mkCounter ("ra-spill-coalescing",
+					       "RA spill coalesce count")
+  val ra_spill_prop = MLRiscControl.mkCounter ("ra-spill-propagation",
+					       "RA spill propagation count")
 
   local
 
   fun error msg = MLRiscErrorMsg.error("RACore", msg)
  
-  (* No overflow checking necessary here *)
-  fun x + y = W.toIntX(W.+(W.fromInt x, W.fromInt y))
-  fun x - y = W.toIntX(W.-(W.fromInt x, W.fromInt y))
-
   fun concat([], b) = b
     | concat(x::a, b) = concat(a, x::b)
 
@@ -38,6 +36,7 @@ struct
     | isMemLoc(SPILL_LOC _) = true
     | isMemLoc(MEMREG _) = true
     | isMemLoc _ = false
+
   (*
    * Spill coalescing.
    * Coalesce non-interfering moves between spilled nodes, 
@@ -171,14 +170,14 @@ struct
                         (if debug then print "interfere\n" else (); 
                          moveSavings(mvs, pinned, total))
                       else if x = ~1 then 
-                        (if debug then print (Int.toString cost^"\n") else ();
+                        (if debug then print (Real.toString cost^"\n") else ();
                          moveSavings(mvs, pinned, total+cost))
                       else if pinned >= 0 andalso pinned <> x then 
                         (* already coalesced with another mem reg *)
                         (if debug then print "pinned\n" else ();
                          moveSavings(mvs, pinned, total))
                      else
-                        (if debug then print (Int.toString cost^"\n") else ();
+                        (if debug then print (Real.toString cost^"\n") else ();
                          moveSavings(mvs, x, total+cost))
 
                  val _ = if debug then
@@ -204,10 +203,10 @@ struct
           (* Find initial budget *)
           val _ = if debug then
                       print("Trying to propagate "^Int.toString me^
-                            " spill cost="^Int.toString spillcost^"\n")
+                            " spill cost="^Real.toString spillcost^"\n")
                   else ()
                   
-          val (pinned, savings) = moveSavings(!movelist, ~1, 0)
+          val (pinned, savings) = moveSavings(!movelist, ~1, 0.0)
           val budget = spillcost - savings
           val S      = [node]
 
@@ -241,7 +240,7 @@ struct
                    else ();
                   improve(L, pinned, budget, S))
               else
-              let val (pinned', savings) = moveSavings(!movelist, pinned, 0)
+              let val (pinned', savings) = moveSavings(!movelist, pinned, 0.0)
                   val defUseSavings = cost+cost
                   val spillcost     = !pri
                   val budget' = budget - savings - defUseSavings + spillcost
@@ -256,7 +255,7 @@ struct
                       improve(L, pinned, budget, S))
               end
 
-      in  if budget <= 0 then (budget, S)
+      in  if budget <= 0.0 then (budget, S)
           else improve(lookaheads(!movelist, []), pinned, budget, S)
       end
 
@@ -287,7 +286,7 @@ struct
                    spillNodes nodes
                   )
                     
-          in  if budget <= 0 
+          in  if budget <= 0.0
               then  (* propagate spill *)
                  (if debug then
                     (print("Propagating ");
@@ -430,7 +429,8 @@ struct
       fun spillIt{graph = G as GRAPH{mode, ...}, nodes,
                   copyInstr, spill, spillSrc, spillCopyTmp,
                   reload, reloadDst, renameSrc, cellkind} =
-      let val nodes = if isOn(mode,SPILL_PROPAGATION) then   
+      let 
+	  val nodes = if isOn(mode,SPILL_PROPAGATION) then   
                           spillPropagation G nodes else nodes
           val _ = if isOn(mode,SPILL_COALESCING) then 
                      spillCoalescing G nodes else ()

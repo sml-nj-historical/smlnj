@@ -45,9 +45,9 @@ sig
    val -     : ty -> RTL.exp * RTL.exp -> RTL.exp
    val muls  : ty -> RTL.exp * RTL.exp -> RTL.exp
    val mulu  : ty -> RTL.exp * RTL.exp -> RTL.exp
-   val divs  : ty -> RTL.exp * RTL.exp -> RTL.exp
+   val divs  : ty -> RTL.div_rounding_mode * RTL.exp * RTL.exp -> RTL.exp
    val divu  : ty -> RTL.exp * RTL.exp -> RTL.exp
-   val rems  : ty -> RTL.exp * RTL.exp -> RTL.exp
+   val rems  : ty -> RTL.div_rounding_mode * RTL.exp * RTL.exp -> RTL.exp
    val remu  : ty -> RTL.exp * RTL.exp -> RTL.exp
 
    val andb  : ty -> RTL.exp * RTL.exp -> RTL.exp

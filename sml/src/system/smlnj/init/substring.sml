@@ -1,3 +1,4 @@
+
 (* substring.sml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
@@ -61,9 +62,8 @@ structure Substring :> SUBSTRING
 	      else raise Core.Subscript
 	  end
       | extract (s, i, SOME n) = substring(s, i, n)
-
-    fun all s = SS(s, 0, stringSize s)
-    val full = all
+    fun full s = SS(s, 0, stringSize s)
+    val all = full 			(* deprecated *)
 
     fun isEmpty (SS(_, _, 0)) = true
       | isEmpty _ = false
@@ -107,6 +107,18 @@ structure Substring :> SUBSTRING
 	  PreString.revConcat (length (0, [], ssl))
 	end
 	  
+  (* concatenate a list of substrings, using the given string as the
+   * separator *)
+    fun concatWith _ [] = ""
+      | concatWith _ [x] = string x
+      | concatWith sep (h :: t) = let
+	    val sep' = full sep
+	    fun loop ([], l) = concat (rev (l, []))
+	      | loop (h :: t, l) = loop (t, h :: sep' :: l)
+	in
+	    loop (t, [h])
+	end
+
   (* explode a substring into a list of characters *)
     fun explode (SS(s, i, n)) = let
 	  fun f(l, j) = if (j < i)
@@ -118,6 +130,18 @@ structure Substring :> SUBSTRING
 
   (* Substring comparisons *)
     fun isPrefix s1 (SS(s2, i2, n2)) = PreString.isPrefix (s1, s2, i2, n2)
+    fun isSuffix s1 (SS(s2, i2, n2)) =
+	PreString.isPrefix (s1, s2, i2 + n2 - stringSize s1, n2)
+    fun isSubstring s = let
+	val stringsearch = PreString.kmp s
+	fun search (SS (s', i, n)) = let
+	    val epos = i + n
+	in
+	    stringsearch (s', i, epos) < epos
+	end
+    in
+	search
+    end
     fun compare (SS(s1, i1, n1), SS(s2, i2, n2)) =
 	  PreString.cmp (s1, i1, n1, s2, i2, n2)
     fun collate cmpFn (SS(s1, i1, n1), SS(s2, i2, n2)) =
@@ -154,22 +178,18 @@ structure Substring :> SUBSTRING
     val taker  = scanr (fn (s, i, n, k) => SS(s, i+k, n-k))
     end (* local *)
 	
-  (* find the position of the first occurrence of s in the substring.
-   * NOTE: some day we might want to implement KMP matching for this
-   *)
-    fun position s (SS (s', i, n)) = let
-	  val len = stringSize s
-	  fun eq (j, k) = (j >= len) orelse
-		((unsafeSub(s, j) = unsafeSub(s', k)) andalso eq (j+1, k+1))
-	  val stop = i+n-len
-	  fun cmp k =
-		if (k > stop) then i+n (* failure *)
-		else if eq(0, k) then k
-		else cmp(k+1)
-	  val indx = cmp i
-	  in
-	    (SS(s', i, indx-i), SS(s', indx, i+n-indx))
-	  end
+    (* This is using the KMP matcher from PreString. *)
+    fun position s = let
+	val stringsearch = PreString.kmp s
+	fun search (ss as SS (s', i, n)) = let
+	    val epos = i + n
+	    val match = stringsearch (s', i, epos)
+	in
+	    (SS (s', i, match - i), SS (s', match, epos - match))
+	end
+    in
+	search
+    end
 
     fun isSubstring "" _ = true
       | isSubstring s ss = size (#2 (position s ss)) <> 0

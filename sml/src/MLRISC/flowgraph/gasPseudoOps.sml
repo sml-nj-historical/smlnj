@@ -46,7 +46,8 @@ struct
         (prInt(T.Constant.valueOf c) handle _ => T.Constant.toString c)
     | toStr(T.LI i, _) = prIntInf i
     | toStr(T.MULS(_,lexp1, lexp2), _) = toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2)
-    | toStr(T.DIVS(_,lexp1, lexp2), _) =  toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2)
+    | toStr(T.DIVS(T.DIV_TO_ZERO,_,lexp1, lexp2), _) =
+      toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2) (* what if DIV_TO_NEGINF ?? *)
     | toStr(T.SLL(_,lexp, cnt), prec) = toStr(lexp,2) ^ "<<" ^ toStr(cnt,2)
     | toStr(T.SRL(_,lexp, cnt), prec) = toStr(lexp,2) ^ ">>" ^ toStr(cnt,2)
     | toStr(T.ANDB(_,lexp, mask), prec) = 
@@ -65,41 +66,58 @@ struct
     String.concat 
       (map (fn lab => (Fmt.format fmt [Fmt.STR (lexpToString(T.LABEL lab))])) labs)
 
-  fun toString(PB.ALIGN_SZ n)     = Fmt.format ".align %d" [Fmt.INT n]
-    | toString(PB.ALIGN_ENTRY)    = ".align 4"			(* 16 byte boundary *)
-    | toString(PB.ALIGN_LABEL)    = ".p2align 4,,7"
+  fun toString(PB.ALIGN_SZ n)     = Fmt.format "\t.align\t%d" [Fmt.INT n]
+    | toString(PB.ALIGN_ENTRY)    = "\t.align\t4"	(* 16 byte boundary *)
+    | toString(PB.ALIGN_LABEL)    = "\t.p2align\t4,,7"
 
     | toString(PB.DATA_LABEL lab) = Label.fmt labFmt lab ^ ":"
-    | toString(PB.DATA_READ_ONLY) = ".section      .rodata"
-    | toString(PB.DATA)	          = ".data"
-    | toString(PB.TEXT)	          = ".text"
-    | toString(PB.SECTION at)     = ".section     " ^ Atom.toString at
+    | toString(PB.DATA_READ_ONLY) = "\t.section\t.rodata"
+    | toString(PB.DATA)	          = "\t.data"
+    | toString(PB.BSS)		  = "\t.section\t.bss"
+    | toString(PB.TEXT)	          = "\t.text"
+    | toString(PB.SECTION at)     = "\t.section\t" ^ Atom.toString at
 
     | toString(PB.REORDER)        = ""
     | toString(PB.NOREORDER)      = ""
 
-    | toString(PB.INT{sz, i})     = 
-        String.concat
-           ((case sz
-	     of 8  => ".byte "
-              | 16 => ".short "
-              | 32 => ".int "
-              | 64 => error "INT64"
-	    (*esac*)) :: map (fn lexp => lexpToString lexp ^ " ") i)
+    | toString(PB.INT{sz, i})     = let
+	fun join [] = []
+	  | join [lexp] = [lexpToString lexp]
+	  | join (lexp::r) = lexpToString lexp :: "," :: join r
+	val pop = (case sz
+	       of 8 => "\t.byte\t"
+		| 16 => "\t.short\t"
+		| 32 => "\t.int\t"
+		| 64 => error "INT64"
+	      (* end case *))
+	in
+	  String.concat (pop :: join i)
+	end
 
-    | toString(PB.ASCII s)        = Fmt.format ".ascii \"%s\"" [Fmt.STR s]
-    | toString(PB.ASCIIZ s)       = Fmt.format ".asciiz \"%s\"" [Fmt.STR s]
+    | toString(PB.ASCII s)        =
+	Fmt.format "\t.ascii\t\"%s\"" [Fmt.STR(String.toCString s)]
+    | toString(PB.ASCIIZ s)       = 
+        Fmt.format "\t.asciz \"%s\"" [Fmt.STR(String.toCString s)]
 
-    | toString(PB.FLOAT{sz, f})   = 
-         String.concat 
-	   ((case sz
-	     of 32 => ".single "
-	      | 64 => ".double "
-	      | 128 => ".extended "
-            (*easc*)) :: f)
+    | toString(PB.SPACE sz)	  = Fmt.format "\t.space\t%d" [Fmt.INT sz]
 
-    | toString(PB.IMPORT labs) = decls(".global %s\n", labs)
-    | toString(PB.EXPORT labs) = decls(".extern %s\n", labs)
+    | toString(PB.FLOAT{sz, f})   = let
+	fun join [] = []
+	  | join [f] = [f]
+	  | join (f::r) = f :: "," :: join r
+	val pop = (case sz
+	       of 32 => "\t.single "
+		| 64 => "\t.double "
+		| 128 => "\t.extended "
+	      (* end case *))
+	in
+	  String.concat (pop :: join f)
+	end
+
+    | toString(PB.IMPORT labs) = decls("\t.extern\t%s", labs)
+    | toString(PB.EXPORT labs) = decls("\t.global\t%s", labs)
+    | toString(PB.COMMENT txt) = Fmt.format "/* %s */" [Fmt.STR txt]
+        
 
     | toString(PB.EXT _) = error "EXT"
 

@@ -1,4 +1,7 @@
-(*
+(* cluster-ra.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * This module provides services for the new RA when using the cluster
  * representation.  
  * The algorithm is adapted from
@@ -22,7 +25,6 @@ functor ClusterRA
 struct
    structure CFG    = Flowgraph
    structure I      = CFG.I
-   structure W      = CFG.W
    structure G      = RAGraph
    structure Props  = InsnProps
    structure Core   = RACore
@@ -36,7 +38,7 @@ struct
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
-   val dump_size = MLRiscControl.getFlag "ra-dump-size"
+   val dump_size = MLRiscControl.mkFlag ("ra-dump-size", "whether to show RA size")
 
    type flowgraph = CFG.cfg  (* flowgraph is a cluster *)
 
@@ -66,23 +68,15 @@ struct
    fun dumpFlowgraph(txt, cfg as Graph.GRAPH graph, outstrm) = let
      fun say txt = TextIO.output(outstrm, txt)
      fun sayPseudo p = (say(CFG.P.toString p); say "\n")
-     val labToString = CFG.P.Client.AsmPseudoOps.defineLabel
-     fun dump (nid, CFG.BLOCK{labels, align, insns, ...}) = 
-       (case !align of NONE => () | SOME p => sayPseudo p;
-	app (fn lab => say(labToString lab ^ "\n")) (!labels);
-        app emit (rev (!insns)))
      val CFG.INFO{data, ...} = #graph_info graph
-   in 
-       app dump (#nodes graph ());
+   in
+       CFG.dump(outstrm, txt, cfg);
        app sayPseudo (rev(!data))
-      
    end
 
    val annotations = CFG.annotations 
 
-   val dummyBlock =   CFG.newBlock(~1, ref 0)
-
-   fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
+   val dummyBlock =   CFG.newBlock(~1, ref 0.0)
 
    val uniq = ListMergeSort.uniqueSort 
                 (fn ({block=b1,insn=i1},{block=b2,insn=i2}) =>
@@ -109,10 +103,8 @@ struct
            (* blocks indexed by block id *)
        val blockTable = A.array(N, (#new_id graph (), dummyBlock))
 
-       fun fillBlockTable [] = ()
-         | fillBlockTable((b as (nid, _))::blocks) =
-             (UA.update(blockTable, nid, b); fillBlockTable blocks)
-       val _ = fillBlockTable blocks
+       (* fill block table *)
+       val _ = List.app (fn b as (nid, _) => Array.update(blockTable, nid, b)) blocks
 
        val EXIT = (case #exits graph () of [e] => e | _ => error "EXIT")
 
@@ -264,7 +256,7 @@ struct
    
                val useSites = uniq(!uses) 
                val trail    = initialize(v, v', useSites)
-               val span     = foreachUseSite (useSites, 0)
+               val span     = foreachUseSite (useSites, 0.0)
                val _        = cleanup trail
            in  
 	     span
@@ -333,8 +325,6 @@ struct
                in  (moves(dst, src, mv), tmps) end
                else (mv, tmps)
 
-
-
            (* Add the nodes first *)
            fun mkNodes([], mv, tmps) = (mv, tmps)
 	     | mkNodes((nid, blk)::blocks, mv, tmps) = let
@@ -380,7 +370,7 @@ struct
            val (moves, tmps) = mkNodes(blocks, [], [])
        in  
 	   IntHashTable.appi
-             (let val setSpan =
+             (let val setSpan : (int * real) -> unit =
                   if isOn(mode,Core.COMPUTE_SPAN) then
                   let val spanMap = IntHashTable.mkTable
                                         (IntHashTable.numItems nodes, NotThere)

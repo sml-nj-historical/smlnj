@@ -6,6 +6,7 @@ functor X86MLTreeExtComp
      structure CFG : CONTROL_FLOW_GRAPH 
 		    where I=I 
 		      and P = TS.S.P
+     val fast_fp : bool ref
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
@@ -24,8 +25,6 @@ struct
    type reducer = 
      (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
 
-   val fast_fp = MLRiscControl.getFlag "x86-fast-fp"
-
    fun unimplemented _ = MLRiscErrorMsg.impossible "X86MLTreeExtComp" 
 
    val compileSext  = X86CompInstrExt.compileSext
@@ -34,14 +33,14 @@ struct
    fun compileFext (TS.REDUCER{reduceFexp, emit, ...}:reducer) = let
      fun comp{e=(64, fexp), fd:CB.cell, an:T.an list} = let
            fun trig(f, foper) = 
-	     (reduceFexp f; emit(I.FUNARY foper, an))
+	     (reduceFexp f; emit(I.funary foper, an))
          in
 	   case fexp
 	   of Ext.FSINE f => trig(f, I.FSIN)
 	    | Ext.FCOSINE f => trig(f, I.FCOS)
 	    | Ext.FTANGENT f => 
 	       (trig(f, I.FPTAN); 
-		emit(I.FSTPL(I.ST(C.ST 0)), [])
+		emit(I.fstpl(I.ST(C.ST 0)), [])
                )
 	 end
        | comp _ = MLRiscErrorMsg.impossible "compileFext" 
@@ -56,7 +55,7 @@ struct
                        Ext.FSINE f => (I.FSIN, f)
                      | Ext.FCOSINE f => (I.FCOS, f)
                      | Ext.FTANGENT f => (I.FPTAN, f)
-         in  emit(I.FUNOP{fsize=I.FP64,
+         in  emit(I.funop{fsize=I.FP64,
                           unOp=unOp,src=Freg(reduceFexp f),dst=Freg fd}, an)
          end
        | fastComp _ = MLRiscErrorMsg.impossible "compileFext"

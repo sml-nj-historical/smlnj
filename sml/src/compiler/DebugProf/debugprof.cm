@@ -31,4 +31,5 @@ is
 	$smlnj/viscomp/elabdata.cm
 
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 	$/basis.cm

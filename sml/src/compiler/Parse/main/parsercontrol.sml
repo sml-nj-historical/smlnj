@@ -15,9 +15,53 @@ signature PARSER_CONTROL = sig
 end
 
 structure ParserControl : PARSER_CONTROL = struct
-    val primaryPrompt = ref "- "
-    val secondaryPrompt = ref "= "
-    val lazysml = ref false
-    val overloadKW = ref false
-    val quotation = ref false 
+
+    val priority = [10, 10, 3]
+    val obscurity = 3
+    val prefix = "parser"
+
+    val registry = ControlRegistry.new { help = "parser settings" }
+
+    val _ = BasicControl.nest (prefix, registry, priority)
+
+    val string_cvt = ControlUtil.Cvt.string
+    val flag_cvt = ControlUtil.Cvt.bool
+
+    val nextpri = ref 0
+
+    fun new (c, n, h, d) = let
+	val r = ref d
+	val p = !nextpri
+	val ctl = Controls.control { name = n,
+				     pri = [p],
+				     obscurity = obscurity,
+				     help = h,
+				     ctl = r }
+    in
+	nextpri := p + 1;
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl c ctl,
+	      envName = SOME (ControlUtil.EnvName.toUpper "PARSER_" n) };
+	r
+    end
+
+
+    val primaryPrompt =
+	new (string_cvt, "primary-prompt", "primary prompt", "- ")
+
+    val secondaryPrompt =
+	new (string_cvt, "secondary-prompt", "secondary prompt","= ")
+
+    val lazysml =
+	new (flag_cvt, "lazy-keyword",
+	     "whether `lazy' is considered a keyword", false)
+
+    val overloadKW =
+	new (flag_cvt, "overload",
+	     "whether (_)overload keyword is enabled", false)
+
+    val quotation =
+	new (flag_cvt, "quotations",
+	     "whether (anti-)quotations are recognized", false)
 end

@@ -3,6 +3,23 @@
 
 signature CPS = sig
 
+datatype record_kind
+  = RK_VECTOR
+  | RK_RECORD
+  | RK_SPILL
+  | RK_ESCAPE
+  | RK_EXN
+  | RK_CONT
+  | RK_FCONT
+  | RK_KNOWN
+  | RK_BLOCK
+  | RK_FBLOCK
+  | RK_I32BLOCK
+
+datatype pkind = VPT | RPT of int | FPT of int
+datatype cty = INTt | INT32t | PTRt of pkind
+         | FUNt | FLTt | CNTt | DSPt
+
 structure P : sig
 
     (* numkind includes kind and size *)
@@ -11,6 +28,7 @@ structure P : sig
     datatype arithop = + | - | * | / | ~ | abs 
                      | fsqrt | fsin | fcos | ftan 
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
+		     | rem | div | mod
 
     datatype cmpop = > | >= | < | <= | eql | neq
 
@@ -39,6 +57,7 @@ structure P : sig
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
       | rawstore of {kind: numkind}
+      | rawupdate of cty
 
     (* These fetch from the store, never have functions as arguments. *)
     datatype looker
@@ -64,6 +83,11 @@ structure P : sig
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
       | getseqdata | recsubscript | raw64subscript | newarray0
+      | rawrecord of record_kind option 
+           (* allocate uninitialized words from the heap; optionally
+            * initialize the tag.
+            *)
+      | condmove of branch (* conditional move *)
 
     val opp : branch -> branch
 
@@ -125,23 +149,6 @@ datatype fun_kind
   | ESCAPE         
   | NO_INLINE_INTO 
 
-datatype record_kind
-  = RK_VECTOR
-  | RK_RECORD
-  | RK_SPILL
-  | RK_ESCAPE
-  | RK_EXN
-  | RK_CONT
-  | RK_FCONT
-  | RK_KNOWN
-  | RK_BLOCK
-  | RK_FBLOCK
-  | RK_I32BLOCK
-
-datatype pkind = VPT | RPT of int | FPT of int
-datatype cty = INTt | INT32t | PTRt of pkind
-             | FUNt | FLTt | CNTt | DSPt
-
 datatype cexp
   = RECORD of record_kind * (value * accesspath) list * lvar * cexp
   | SELECT of int * value * lvar * cty * cexp
@@ -155,13 +162,21 @@ datatype cexp
   | ARITH of P.arith * value list * lvar * cty * cexp
   | PURE of P.pure * value list * lvar * cty * cexp
   (* experimental "raw C call" (Blume, 1/2001) *)
-  | RCC of CTypes.c_proto * value list * lvar * cty * cexp
+  (* When non-empty, the string contains the linkage info, which
+   * is a string of the form:
+   *      shared library name/name of the C function. 
+   *) 
+  | RCC of rcc_kind * string * CTypes.c_proto * value list * lvar * cty * cexp
+and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 val combinepaths : accesspath * accesspath -> accesspath
 val lenp : accesspath -> int
 val ctyToString : cty -> string
 val hasRCC : cexp -> bool
+val sizeOf : cty -> int   (* size of its representation in bits *)
+val isFloat : cty -> bool (* is it a floating point type? *)
+val isTagged : cty -> bool 
 
 val BOGt : cty
 

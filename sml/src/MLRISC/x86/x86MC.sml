@@ -1,4 +1,4 @@
-(* X86MC.sml
+(*
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -9,6 +9,7 @@
 functor X86MCEmitter
   (structure Instr : X86INSTR
    structure Shuffle : X86SHUFFLE where I = Instr
+   structure MLTreeEval : MLTREE_EVAL where T = Instr.T
    structure MemRegs : MEMORY_REGISTERS where I = Instr
    val memRegBase : CellsBasis.cell option
    structure AsmEmitter : INSTRUCTION_EMITTER where I = Instr) : MC_EMIT = 
@@ -20,12 +21,7 @@ struct
   structure W8 = Word8
   structure W = LargeWord
   structure CB = CellsBasis
-  structure LE = 
-    MLTreeEval
-      (structure T = I.T
-       fun eq _ _ = false 
-       val eqSext = eq  val eqRext = eq
-       val eqFext = eq val eqCCext = eq)
+  structure LE = MLTreeEval 
 
   val itow  = Word.fromInt
   val wtoi  = Word.toInt
@@ -65,11 +61,11 @@ struct
 
   fun emitInstrs(instrs) = Word8Vector.concat(map emitInstr instrs)
 
-  and emitInstr(instr) = let
+  and emitX86Instr(instr: I.instr) = let
     val error = 
         fn msg =>
            let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
-           in  emit instr; error msg end
+           in  emit (I.INSTR instr); error msg end
 
     val rNum = CB.physicalRegisterNum 
     val fNum = CB.physicalRegisterNum 
@@ -262,7 +258,7 @@ struct
              | _ => 
                 eBytes[Word8.+(0wx70,code), Word8.fromInt(i-2)]
        end 
-     | I.CALL{opnd=I.Relative _, ...} => error "CALL: Not implemented"
+     | I.CALL{opnd=I.Relative i,...} => eBytes(0wxe8::eLong(Int32.fromInt(i-5)))
      | I.CALL{opnd, ...} => encode(0wxff, 2, opnd)
      | I.RET NONE => eByte 0xc3
      (* integer *)
@@ -310,6 +306,10 @@ struct
                | _ => error "MOV[SZ]X"
        in  eBytes(0wx0f :: byte2 :: eImmedExt(rNum r, src)) end
      | I.MOVE _ => error "MOVE"
+     | I.CMOV{cond,src,dst} => 
+       let val cond = condCode cond
+       in  eBytes(0wx0f :: Word8.+(cond,0wx40) :: eImmedExt(rNum dst, src))
+       end
      | I.LEA{r32, addr} => encodeReg(0wx8d, r32, addr)
      | I.CMPL{lsrc, rsrc} => arith(0wx38, 7) (rsrc, lsrc)
      | (I.CMPW _ | I.CMPB _) => error "CMP"
@@ -392,12 +392,6 @@ struct
      | I.POP(opnd) => encode(0wx8f, 0, opnd)
      | I.CDQ => eByte(0x99)
      | I.INTO => eByte(0xce)
-
-     | I.COPY{dst, src, tmp, ...} => 
-          emitInstrs(Shuffle.shuffle {tmp=tmp, dst=dst, src=src})
-
-     | I.FCOPY{dst, src, tmp, ...} => 
-          emitInstrs(Shuffle.shufflefp {tmp=tmp, dst=dst, src=src})
 
      (* floating *)
      | I.FBINARY{binOp, src=I.ST src, dst=I.ST dst} =>    
@@ -498,6 +492,10 @@ struct
      | I.FUCOM(I.ST n) => encodeST(0wxdd, 28, n)
      | I.FUCOMP(I.ST n) => encodeST(0wxdd, 29, n)
      | I.FUCOMPP => eBytes[0wxda, 0wxe9]
+     | I.FCOMI(I.ST n) => encodeST(0wxdb, 0x1e, n)
+     | I.FCOMIP(I.ST n) => encodeST(0wxdf, 0x1e, n)
+     | I.FUCOMI(I.ST n) => encodeST(0wxdb, 0x1d, n)
+     | I.FUCOMIP(I.ST n) => encodeST(0wxdf, 0x1d, n)
 
      | I.FSTS opnd  => encode(0wxd9, 2, opnd)
      | I.FSTL(I.ST n) => encodeST(0wxdd, 26, n)
@@ -528,7 +526,17 @@ struct
 
      (* misc *)
      | I.SAHF => eByte(0x9e)
-     | I.ANNOTATION{i,...} => emitInstr i
      | _ => error "emitInstr"
   end 
+  and emitInstr (I.LIVE _) = Word8Vector.fromList []
+    | emitInstr (I.KILL _) = Word8Vector.fromList []
+    | emitInstr(I.COPY{k, dst, src, tmp, ...}) = 
+      (case k 
+       of CB.GP => emitInstrs(Shuffle.shuffle {tmp=tmp, dst=dst, src=src})
+	| CB.FP => emitInstrs(Shuffle.shufflefp {tmp=tmp, dst=dst, src=src})
+	| _ => error "COPY"
+      (*esac*))
+    | emitInstr (I.INSTR instr) = emitX86Instr instr
+    | emitInstr (I.ANNOTATION{i,...}) = emitInstr i
+
 end

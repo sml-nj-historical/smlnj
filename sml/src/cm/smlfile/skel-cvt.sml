@@ -399,7 +399,9 @@ structure SkelCvt :> SKELCVT = struct
 	local_dl (dec_dl (bdg, []), dec_dl (body, []), d)
       | dec_dl (SeqDec l, d) = foldr dec_dl d l
       | dec_dl (OpenDec l, d) = parcons (map (Open o Var o SP.SPATH) l, d)
-      | dec_dl ((OvldDec _ | FixDec _), d) = d
+      | dec_dl (OvldDec (_, t, l), d) = dl_addS (ty_s (t, SS.empty),
+						 foldl exp_dl d l)
+      | dec_dl (FixDec _, d) = d
       | dec_dl (MarkDec (arg, _), d) = dec_dl (arg, d)
 
     fun c_dec d = seq (dec_dl (d, []))

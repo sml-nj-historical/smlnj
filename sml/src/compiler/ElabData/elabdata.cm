@@ -56,6 +56,7 @@ Group (../../system/smlnj/viscomp/elabdata.cm)
 	structure CoreAccess
 	structure BrowseStatEnv
 is
+	main/edcontrol.sig
 	main/edcontrol.sml
 	main/compinfo.sml
 
@@ -110,4 +111,5 @@ is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 	$/basis.cm

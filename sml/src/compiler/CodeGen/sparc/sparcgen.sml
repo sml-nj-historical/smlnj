@@ -6,6 +6,7 @@
 structure SparcMC = 
   FLINTComp(
     structure Gen=SparcCG
-    fun collect name = (SparcCG.finish name; CodeString.getCodeString()))
+    fun collect epthunk = (SparcCG.finish ();
+			   CodeString.getCodeString (epthunk ())))
 
 

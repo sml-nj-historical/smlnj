@@ -78,6 +78,8 @@ struct
     | eqMlriscs _ = false
 
   and eq2((a,b,c),(d,e,f)) = a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
+  and eq3((m,a,b,c),(n,d,e,f)) =
+      m = n andalso a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
 
   and eqRexp(T.REG(a,b),T.REG(c,d)) = a=c andalso eqCell(b,d)
     | eqRexp(T.LI a,T.LI b) = a=b 
@@ -88,9 +90,8 @@ struct
     | eqRexp(T.ADD x,T.ADD y) = eq2(x,y)
     | eqRexp(T.SUB x,T.SUB y) = eq2(x,y)
     | eqRexp(T.MULS x,T.MULS y) = eq2(x,y)
-    | eqRexp(T.DIVS x,T.DIVS y) = eq2(x,y)
-    | eqRexp(T.QUOTS x,T.QUOTS y) = eq2(x,y)
-    | eqRexp(T.REMS x,T.REMS y) = eq2(x,y)
+    | eqRexp(T.DIVS x,T.DIVS y) = eq3(x,y)
+    | eqRexp(T.REMS x,T.REMS y) = eq3(x,y)
     | eqRexp(T.MULU x,T.MULU y) = eq2(x,y)
     | eqRexp(T.DIVU x,T.DIVU y) = eq2(x,y)
     | eqRexp(T.REMU x,T.REMU y) = eq2(x,y)
@@ -98,9 +99,7 @@ struct
     | eqRexp(T.ADDT x,T.ADDT y) = eq2(x,y)
     | eqRexp(T.SUBT x,T.SUBT y) = eq2(x,y)
     | eqRexp(T.MULT x,T.MULT y) = eq2(x,y)
-    | eqRexp(T.DIVT x,T.DIVT y) = eq2(x,y)
-    | eqRexp(T.QUOTT x,T.QUOTT y) = eq2(x,y)
-    | eqRexp(T.REMT x,T.REMT y) = eq2(x,y)
+    | eqRexp(T.DIVT x,T.DIVT y) = eq3(x,y)
     | eqRexp(T.ANDB x,T.ANDB y) = eq2(x,y)
     | eqRexp(T.ORB x,T.ORB y) = eq2(x,y)
     | eqRexp(T.XORB x,T.XORB y) = eq2(x,y)
@@ -194,7 +193,9 @@ struct
   exception NonConst
 
   fun eval{label, const} =
-  let fun rexp(T.LI i) = i
+  let fun drm T.DIV_TO_ZERO = I.DIV_TO_ZERO
+	| drm T.DIV_TO_NEGINF = I.DIV_TO_NEGINF
+      fun rexp(T.LI i) = i
 	| rexp(T.CONST c) = const c
 	| rexp(T.LABEL l) = IntInf.fromInt(label l)
 	| rexp(T.LABEXP e) = rexp e
@@ -204,9 +205,8 @@ struct
 	| rexp(T.SUB(sz,x,y)) = I.SUB(sz,rexp x,rexp y)
 
 	| rexp(T.MULS(sz,x,y)) = I.MULS(sz,rexp x,rexp y)
-	| rexp(T.DIVS(sz,x,y)) = I.DIVS(sz,rexp x,rexp y)
-	| rexp(T.QUOTS(sz,x,y)) = I.QUOTS(sz,rexp x,rexp y)
-	| rexp(T.REMS(sz,x,y)) = I.REMS(sz,rexp x,rexp y)
+	| rexp(T.DIVS(m,sz,x,y)) = I.DIVS(drm m,sz,rexp x,rexp y)
+	| rexp(T.REMS(m,sz,x,y)) = I.REMS(drm m,sz,rexp x,rexp y)
 
 	| rexp(T.MULU(sz,x,y)) = I.MULU(sz,rexp x,rexp y)
 	| rexp(T.DIVU(sz,x,y)) = I.DIVU(sz,rexp x,rexp y)
@@ -216,9 +216,7 @@ struct
 	| rexp(T.ADDT(sz,x,y)) = I.ADDT(sz,rexp x,rexp y)
 	| rexp(T.SUBT(sz,x,y)) = I.SUBT(sz,rexp x,rexp y)
 	| rexp(T.MULT(sz,x,y)) = I.MULT(sz,rexp x,rexp y)
-	| rexp(T.DIVT(sz,x,y)) = I.DIVT(sz,rexp x,rexp y)
-	| rexp(T.QUOTT(sz,x,y)) = I.QUOTT(sz,rexp x,rexp y)
-	| rexp(T.REMT(sz,x,y)) = I.REMT(sz,rexp x,rexp y)
+	| rexp(T.DIVT(m,sz,x,y)) = I.DIVT(drm m,sz,rexp x,rexp y)
 
 	| rexp(T.NOTB(sz,x)) = I.NOTB(sz,rexp x)
 	| rexp(T.ANDB(sz,x,y)) = I.ANDB(sz,rexp x,rexp y)

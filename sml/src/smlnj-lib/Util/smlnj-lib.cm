@@ -17,6 +17,7 @@ signature CHAR_MAP
 signature DYNAMIC_ARRAY
 signature FIFO
 signature FORMAT
+signature FORMAT_COMB
 signature GRAPH_SCC
 signature HASH_KEY
 signature HASH_TABLE
@@ -31,11 +32,13 @@ signature MONO_ARRAY_SORT
 signature MONO_DYNAMIC_ARRAY
 signature MONO_HASH_TABLE
 signature MONO_HASH2_TABLE
+signature MONO_PRIORITYQ
 signature ORD_KEY
 signature ORD_MAP
 signature ORD_SET
 signature PARSER_COMB
 signature PATH_UTIL
+signature PRIORITY
 signature PROP_LIST
 signature QUEUE
 signature RAND
@@ -61,6 +64,7 @@ structure CharMap
 structure DynamicArray
 structure Fifo
 structure Format
+structure FormatComb
 structure HashString
 structure HashTable
 structure IntBinaryMap		(* to be removed *)
@@ -102,6 +106,7 @@ functor GraphSCCFn
 functor HashTableFn
 functor Hash2TableFn
 functor KeywordFn
+functor LeftPriorityQFn
 functor ListMapFn
 functor ListSetFn
 functor MonoArrayFn
@@ -147,6 +152,8 @@ fifo.sml
 fmt-fields.sml
 format-sig.sml
 format.sml
+format-comb-sig.sml
+format-comb.sml
 graph-scc-sig.sml
 graph-scc.sml
 hash-key-sig.sml
@@ -170,6 +177,7 @@ io-util-sig.sml
 io-util.sml
 getopt-sig.sml
 getopt.sml
+left-priorityq-fn.sml
 lib-base-sig.sml
 lib-base.sml
 list-format-sig.sml
@@ -185,6 +193,7 @@ mono-array-sort-sig.sml
 mono-dynamic-array-sig.sml
 mono-hash-table-sig.sml
 mono-hash2-table-sig.sml
+mono-priorityq-sig.sml
 ord-key-sig.sml
 ord-map-sig.sml
 ord-set-sig.sml
@@ -195,6 +204,7 @@ path-util.sml
 plist-sig.sml
 plist.sml
 prime-sizes.sml
+priority-sig.sml
 queue-sig.sml
 queue.sml
 rand-sig.sml

@@ -17,6 +17,7 @@ Group (../system/smlnj/internal/cm-lib.cm)
 is
 	$/basis.cm
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -64,6 +65,7 @@ is
 	stable/verify.sml
 
 	(* tools for handling other source types *)
+	tools/main/lsplit-arg.sml
 	tools/main/core-tools.sig
 	tools/main/private-tools.sig
 	tools/main/public-tools.sig

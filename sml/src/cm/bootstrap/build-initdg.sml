@@ -83,7 +83,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 					  { context = context, spec = spec })
 			    val attribs =
 				{ split = s, is_rts = rts, extra_compenv = xe,
-				  explicit_core_sym = ecs }
+				  explicit_core_sym = ecs, noguid = false }
 			in
 			    SmlInfo.info' attribs gp
 			      { sourcepath = p,
@@ -118,8 +118,21 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			end
 			val looksb = DG.SB_SNODE o look
 
+			fun spl args = let
+			    fun invalid () =
+				(error "invalid split spec"; LSC.UseDefault)
+			in
+			    case args of
+				[] => LSC.UseDefault
+			      | [x] => 
+				(case LSplitArg.arg x of
+				     SOME ls => ls
+				   | NONE => invalid ())
+			      | _ => invalid ()
+			end
+
 			fun proc [] = loop (split, m, newpos)
-			  | proc ["split"] = loop (LSC.UseDefault, m, newpos)
+			  | proc ("split" :: arg) = loop (spl arg, m, newpos)
 			  | proc ["nosplit"] =
 			    loop (LSC.Suggest NONE, m, newpos)
 			  | proc ("bind" :: name :: file :: args)  =

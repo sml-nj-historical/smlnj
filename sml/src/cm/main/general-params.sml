@@ -14,19 +14,22 @@ structure GeneralParams = struct
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
 		   archos: string,
-		   keep_going: bool }
+		   keep_going: bool,
+		   slave_mode: bool }
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,
 		  errcons: PrettyPrint.ppconsumer,
 		  youngest: TStamp.t ref }
 
-    fun bind { param = { penv, archos, fnpolicy, symval, keep_going },
+    fun bind { param = { penv, archos, fnpolicy, symval,
+			 keep_going, slave_mode },
 		groupreg, errcons, youngest } rb =
 	{ param = { penv = SrcPath.bind penv rb,
 		    archos = archos,
 		    fnpolicy = fnpolicy,
 		    symval = symval,
-		    keep_going = keep_going },
+		    keep_going = keep_going,
+		    slave_mode = slave_mode },
 	  groupreg = groupreg, errcons = errcons, youngest = youngest }
 end

@@ -6,29 +6,26 @@
 
 #
 # But first, decide where you want to have stable libraries stored.
-# If you set $MOVE_LIBRARIES to true, then the install script will
+# If leave "dont_move_libraries" commented out, then the install script will
 # move all libraries out of the source tree and into the $LIBDIR
 # directory.  Thus, you can then delete the entire source tree without
-# losing functionality.  So choose one of these two:
+# losing functionality.  With "dont_move_libraries", libraries will stay
+# where they are (within the CM subdirectories of their respective source
+# directories).
 
-MOVE_LIBRARIES=true
-#MOVE_LIBRARIES=false
+#dont_move_libraries
 
-# Now let's get started with the target list...
-
-TARGETS=""
-
-# (Always: build the basic sml compiler. This is not reflected in $TARGETS.)
-
+# (The base system consisting of runtime, compiler, and basic libraries
+# will always be built.)
 
 # unpack the source code for the SML/NJ compiler; this is not required,
 # unless you are doing compiler hacking, but it may be interesting to look at.
 #
-#TARGETS="$TARGETS src-smlnj"
+#request src-smlnj
 
 # build ML-Yacc
 #
-TARGETS="$TARGETS ml-yacc"
+request ml-yacc
 
 # Always: install the pre-compiled ML-Yacc Library; this is necessary
 # to use parsers produced by ML-Yacc, but also to bootstrap the system
@@ -37,41 +34,43 @@ TARGETS="$TARGETS ml-yacc"
 
 # build ML-Lex
 #
-TARGETS="$TARGETS ml-lex"
+request ml-lex
 
 # Always: install the pre-compiled SML/NJ Library (necessary to bootstrap).
 
 
 # build ML-Burg
 #
-#TARGETS="$TARGETS ml-burg"
+#request ml-burg
 
 # pre-compile and install the remaining components of the SML/NJ library
 # (everything except smlnj-lib.cm, aka Util, itself)
-TARGETS="$TARGETS smlnj-lib"
+#
+request smlnj-lib
 
 # pre-compile and install CM "portable graph" utility library
-#TARGETS="$TARGETS pgraph-util"
+#
+#request pgraph-util
 
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #
-#TARGETS="$TARGETS cml"
+#request cml
 
 # pre-compile and install the CML Library, which provides some useful CML
 # modules.
 #
-#TARGETS="$TARGETS cml-lib"
+#request cml-lib
 
 # pre-compile and install eXene, which is a library for X-Windows programming.
 # EXene requires CML.
 #
-#TARGETS="$TARGETS eXene"
+#request eXene
 
 # pre-compile and install the C-Kit, which is a library for parsing and
 # type-checking C programs
 #
-#TARGETS="$TARGETS ckit"
+#request ckit
 
 # pre-compile and install the ML-NLFFI Library, which is the core of
 # a new foreign function interface (where "foreign" functions are
@@ -80,7 +79,7 @@ TARGETS="$TARGETS smlnj-lib"
 # the new FFI.
 # This preview release currently works only under X86/Linux.
 #
-#TARGETS="$TARGETS ml-nlffi-lib"
+#request ml-nlffi-lib
 
 # build ML-NLFFI-Gen, a program generator tool used in conjunction with
 # the new "NLFFI" foreign function interface.  The tool generates ML
@@ -88,17 +87,25 @@ TARGETS="$TARGETS smlnj-lib"
 # (Requires ckit!)
 # This preview release currently works only under X86/Linux.
 #
-#TARGETS="$TARGETS ml-nlffigen"
+#request ml-nlffigen
 
 # pre-compile and install the MLRISC Tools library.
 # This library is for parsing and pretty printing SML code.
 # It's used by various MLRISC code generator generator.
 #
-#TARGETS="$TARGETS mlrisc-tools"
+#request mlrisc-tools
+
+# Build and install the 'nowhere' program translator.
+# This tool translates programs with conditional patterns (where clauses) 
+# into legal SML code.  See MLRISC/Tools/Doc/nowhere.tex for its
+# (bad) documentation.
+# (Requires the mlrisc-tools library!)
+#
+#request nowhere
 
 # unpack and install the documentation directory.
 #
-#TARGETS="$TARGETS doc"
+#request doc
 
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading

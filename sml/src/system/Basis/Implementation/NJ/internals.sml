@@ -22,20 +22,16 @@ structure Internals : INTERNALS =
     val resetTimers = InternalTimer.resetTimers
 
     structure BTrace = struct
-        val mode = let
-	    val state = ref false
-	    fun access NONE = !state
-	      | access (SOME change) = !state before state := change
-	in
-	    access
-	end
 	local
-	    val hook = ref { reset = fn () => () }
+	    fun mode0 (_ : bool option) : bool =
+		raise Fail "no btrace module hooked in"
+	    val hook = ref { reset = fn () => (), mode = mode0 }
 	in
-	    fun install { corefns, reset } =
-		(hook := { reset = reset };
+	    fun install { corefns, reset, mode } =
+		(hook := { reset = reset, mode = mode };
 		 Core.bt_install corefns)
 	    fun reset () = #reset (!hook) ()
+	    fun mode x = #mode (!hook) x
 	end
 	fun report () = Core.bt_report () ()
 	fun save () = Core.bt_save () ()

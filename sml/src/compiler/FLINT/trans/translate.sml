@@ -5,8 +5,11 @@ signature TRANSLATE =
 sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
-  val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo
+  val transDec : { rootdec: Absyn.dec,
+		   exportLvars: Access.lvar list,
+                   env: StaticEnv.staticEnv,
+		   cproto_conv: string,
+		   compInfo: Absyn.dec CompInfo.compInfo }
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
                                * ImportTree.importTree) list}
@@ -88,8 +91,8 @@ exception NoCore
  ****************************************************************************)
 
 fun transDec
-	(rootdec, exportLvars, env,
-	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo) =
+	{ rootdec, exportLvars, env, cproto_conv,
+	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo } =
 let 
 
 (* We take mkLvar from compInfo.  This should answer Zhong's question... *)
@@ -441,14 +444,9 @@ fun composeNOT (eq, t) =
    in FN(v, argt, COND(APP(eq, VAR v), falseLexp, trueLexp))
   end
 
-fun intOp p = PRIM(p, lt_intop, [])
 fun cmpOp p = PRIM(p, lt_icmp, [])
 fun inegOp p = PRIM(p, lt_ineg, [])
 
-fun ADD(b,c) = APP(intOp(PO.IADD), RECORD[b, c])
-fun SUB(b,c) = APP(intOp(PO.ISUB), RECORD[b, c])
-fun MUL(b,c) = APP(intOp(PO.IMUL), RECORD[b, c])
-fun DIV(b,c) = APP(intOp(PO.IDIV), RECORD[b, c])
 val LESSU = PO.CMP{oper=PO.LTU, kind=PO.UINT 31}
 
 val lt_len = LT.ltc_poly([LT.tkc_mono], [lt_arw(LT.ltc_tv 0, lt_int)])
@@ -498,6 +496,59 @@ fun inlineShift(shiftOp, kind, clear) =
 			  RECORD [vw, vcnt])))))
   end
 
+fun inlops nk = let
+    val (lt_arg, zero, overflow) =
+	case nk of
+	    PO.INT 31 => (LT.ltc_int, INT 0, true)
+	  | PO.UINT 31 => (LT.ltc_int, WORD 0w0, false)
+	  | PO.INT 32 => (LT.ltc_int32, INT32 0, true)
+	  | PO.UINT 32 => (LT.ltc_int32, WORD32 0w0, false)
+	  | PO.FLOAT 64 => (LT.ltc_real, REAL "0.0", false)
+	  | _ => bug "inlops: bad numkind"
+    val lt_argpair = lt_tup [lt_arg, lt_arg]
+    val lt_cmp = lt_arw (lt_argpair, lt_bool)
+    val lt_neg = lt_arw (lt_arg, lt_arg)
+    val less = PRIM (PO.CMP { oper = PO.<, kind = nk }, lt_cmp, [])
+    val greater = PRIM (PO.CMP { oper = PO.>, kind = nk }, lt_cmp, [])
+    val negate =
+	PRIM (PO.ARITH { oper = PO.~, overflow = overflow, kind = nk },
+	      lt_neg, [])
+in
+    { lt_arg = lt_arg, lt_argpair = lt_argpair, lt_cmp = lt_cmp,
+      less = less, greater = greater,
+      zero = zero, negate = negate }
+end
+
+fun inlminmax (nk, ismax) = let
+    val { lt_argpair, less, greater, lt_cmp, ... } = inlops nk
+    val x = mkv () and y = mkv () and z = mkv ()
+    val cmpop = if ismax then greater else less
+    val elsebranch =
+	case nk of
+	    PO.FLOAT _ => let
+		(* testing for NaN *)
+		val fequal =
+		    PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
+	    in
+		COND (APP (fequal, RECORD [VAR y, VAR y]), VAR x, VAR y)
+	    end
+	  | _ => VAR y
+in
+    FN (z, lt_argpair,
+	LET (x, SELECT (0, VAR z),
+	     LET (y, SELECT (1, VAR z),
+		  COND (APP (cmpop, RECORD [VAR x, VAR y]),
+			VAR x, elsebranch))))
+end
+
+fun inlabs nk = let
+    val { lt_arg, greater, zero, negate, ... } = inlops nk
+    val x = mkv ()
+in
+    FN (x, lt_arg,
+	COND (APP (greater, RECORD [VAR x, zero]),
+	      VAR x, APP (negate, VAR x)))
+end
 
 fun transPrim (prim, lt, ts) = 
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
@@ -508,74 +559,10 @@ fun transPrim (prim, lt, ts) =
                in inlineShift(rshiftOp, k, clear)
               end
 
-        | g (PO.INLDIV) =  
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair, 
-                    LET(a, SELECT(0, VAR z),
-                      LET(b, SELECT(1, VAR z),
-                        COND(APP(cmpOp(PO.IGE), RECORD[VAR b, INT 0]),
-                          COND(APP(cmpOp(PO.IGE), RECORD[VAR a, INT 0]),
-                               DIV(VAR a, VAR b),
-                               SUB(DIV(ADD(VAR a, INT 1), VAR b), INT 1)),
-                          COND(APP(cmpOp(PO.IGT), RECORD[VAR a, INT 0]),
-                               SUB(DIV(SUB(VAR a, INT 1), VAR b), INT 1),
-                               DIV(VAR a, VAR b))))))
-              end 
+	| g (PO.INLMIN nk) = inlminmax (nk, false)
+	| g (PO.INLMAX nk) = inlminmax (nk, true)
+	| g (PO.INLABS nk) = inlabs nk
 
-        | g (PO.INLMOD) =
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(a,SELECT(0, VAR z),
-                      LET(b,SELECT(1,VAR z),
-                        COND(APP(cmpOp(PO.IGE), RECORD[VAR b, INT 0]),
-                          COND(APP(cmpOp(PO.IGE), RECORD[VAR a, INT 0]),
-                               SUB(VAR a, MUL(DIV(VAR a, VAR b), VAR b)),
-                               ADD(SUB(VAR a,MUL(DIV(ADD(VAR a,INT 1), VAR b),
-                                                 VAR b)), VAR b)),
-                          COND(APP(cmpOp(PO.IGT), RECORD[VAR a,INT 0]),
-                               ADD(SUB(VAR a,MUL(DIV(SUB(VAR a,INT 1), VAR b),
-                                                 VAR b)), VAR b),
-                               COND(APP(cmpOp(PO.IEQL),RECORD[VAR a,
-                                                         INT ~1073741824]),
-                                    COND(APP(cmpOp(PO.IEQL),
-                                             RECORD[VAR b,INT 0]), 
-                                         INT 0,
-                                         SUB(VAR a, MUL(DIV(VAR a, VAR b),
-                                                    VAR b))),
-                                    SUB(VAR a, MUL(DIV(VAR a, VAR b),
-                                                   VAR b))))))))
-              end
-
-        | g (PO.INLREM) =
-              let val a = mkv() and b = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(a, SELECT(0,VAR z),
-                      LET(b, SELECT(1,VAR z),
-                          SUB(VAR a, MUL(DIV(VAR a,VAR b),VAR b)))))
-              end
-
-        | g (PO.INLMIN) =
-              let val x = mkv() and y = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(x, SELECT(0,VAR z),
-                       LET(y, SELECT(1,VAR z),
-                         COND(APP(cmpOp(PO.ILT), RECORD[VAR x,VAR y]),
-                              VAR x, VAR y))))
-              end
-        | g (PO.INLMAX) =
-              let val x = mkv() and y = mkv() and z = mkv()
-               in FN(z, lt_ipair,
-                    LET(x, SELECT(0,VAR z),
-                       LET(y, SELECT(1,VAR z),
-                         COND(APP(cmpOp(PO.IGT), RECORD[VAR x,VAR y]),
-                              VAR x, VAR y))))
-              end
-        | g (PO.INLABS) =
-              let val x = mkv()
-               in FN(x, lt_int,
-                     COND(APP(cmpOp(PO.IGT), RECORD[VAR x,INT 0]),
-                          VAR x, APP(inegOp(PO.INEG), VAR x)))
-              end
         | g (PO.INLNOT) =
               let val x = mkv()
                in FN(x, lt_bool, COND(VAR x, falseLexp, trueLexp))
@@ -603,6 +590,12 @@ fun transPrim (prim, lt, ts) =
                   val x = mkv()
                in FN(x, argt, SELECT(0,VAR x))
               end
+	| g (PO.INLIGNORE) =
+	  let val argt =
+		  case ts of [a] => lt_tyc a
+			   | _ => bug "unexpected type for INLIGNORE"
+	  in FN (mkv (), argt, unitLexp)
+	  end
 
         | g (PO.INLSUBSCRIPTV) =
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
@@ -765,10 +758,9 @@ in
                   in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
                   end
 		| (PO.RAW_CCALL NONE, [a, b, c]) =>
-		  let val i = SOME { c_proto = CProto.decode b,
-				     ml_flt_args = CProto.flt_args a,
-				     ml_flt_res_opt = CProto.flt_res c }
-			  handle CProto.BadEncoding => NONE
+		  let val i = SOME (CProto.decode cproto_conv
+						  { fun_ty = a, encoding = b })
+			      handle CProto.BadEncoding => NONE
 		  in PRIM (PO.RAW_CCALL i, toLty d typ, map (toTyc d) ts)
 		  end
 		| _ => transPrim(p, (toLty d typ), map (toTyc d) ts)),
@@ -1206,5 +1198,3 @@ end (* function transDec *)
 
 end (* top-level local *)
 end (* structure Translate *)
-
-

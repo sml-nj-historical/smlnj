@@ -80,13 +80,6 @@ in
 		      | unequal => unequal
 	    end)
 
-	type bfinfo =
-	    { cmdata: PidSet.set,
-	      statenv: unit -> statenv,
-	      symenv: unit -> symenv,
-	      statpid: pid,
-	      sympid: pid }
-
 	type env = { envs: unit -> result, pids: PidSet.set }
 	type envdelta = IInfo.info
 
@@ -128,7 +121,8 @@ in
 	    val ii = { statenv = Memoize.memoize statenv,
 		       symenv = Memoize.memoize symenv,
 		       statpid = BF.staticPidOf bfc,
-		       sympid = BF.lambdaPidOf bfc }
+		       sympid = BF.lambdaPidOf bfc,
+		       guid = BF.guidOf bfc }
 	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
 	in
 	    { ii = ii, ts = ts, cmdata = cmdata }
@@ -137,7 +131,7 @@ in
 	fun pidset (p1, p2) = PidSet.add (PidSet.singleton p1, p2)
 
 	fun nofilter (ed: envdelta) = let
-	    val { statenv, symenv, statpid, sympid } = ed
+	    val { statenv, symenv, statpid, sympid, guid } = ed
 	    val statenv' = Memoize.memoize statenv
 	in
 	    { envs = fn () => { stat = statenv' (), sym = symenv () },
@@ -154,7 +148,7 @@ in
 	end
 
 	fun filter (ii, s) = let
-	    val { statenv, symenv, statpid, sympid } = ii
+	    val { statenv, symenv, statpid, sympid, guid } = ii
 	    val ste = statenv ()
 	in
 	    case requiredFiltering s ste of
@@ -168,7 +162,8 @@ in
 			    SOME statpid' => statpid'
 			  | NONE => let
 				val statpid' = Rehash.rehash
-					{ env = ste', orig_hash = statpid }
+					{ env = ste', orig_pid = statpid,
+					  guid = guid }
 			    in
 				filtermap :=
 				  FilterMap.insert (!filtermap, key, statpid');
@@ -213,6 +208,14 @@ in
 
 	fun mkTraversal (notify, storeBFC, getUrgency) = let
 	    val localstate = ref SmlInfoMap.empty
+
+	    fun storeBFC' (gp, i, x) = let
+		val src = SmlInfo.sourcepath i
+		val c = #contents x
+	    in
+		storeBFC (i, x)
+	    end
+		 
 
 	    fun sbnode gp (DG.SB_SNODE n) = snode gp n
 	      (* The beauty of this scheme is that we don't have
@@ -320,13 +323,15 @@ in
 			    val cinfo = C.mkCompInfo { source = source,
 						       transform = fn x => x }
 			    val splitting = Control.LambdaSplitting.get' split
+			    val guid = SmlInfo.guid i
 			    val { csegments, newstatenv, exportPid,
 				  staticPid, imports, pickle = senvP,
 				  inlineExp, ... } =
 				C.compile { source = source, ast = ast,
 					    statenv = stat, symenv = sym,
 					    compInfo = cinfo, checkErr = check,
-					    splitting = splitting }
+					    splitting = splitting,
+					    guid = guid }
 			    val { hash = lambdaPid, pickle = lambdaP } =
 				PickMod.pickleFLINT inlineExp
 			    val lambdaP = case inlineExp of
@@ -340,13 +345,15 @@ in
 						 pid = staticPid },
 					lambda = { pickle = lambdaP,
 						   pid = lambdaPid },
+					guid = guid,
 					csegments = csegments }
 			    val memo =
 				bfc2memo (bfc, SmlInfo.lastseen i, stat)
 			in
 			    perform_setup "post" post;
 			    #set topLevel toplenv;
-			    storeBFC (i, { contents = bfc, stats = save bfc });
+			    storeBFC' (gp, i,
+				       { contents = bfc, stats = save bfc });
 			    SOME memo
 			end handle (EM.Error | CompileExn.Compile _)
 				   (* At this point we handle only
@@ -402,6 +409,7 @@ in
 						      version = version,
 						      stream = s }
 				    in
+					SmlInfo.setguid (i, BF.guidOf contents);
 					(contents, ts, stats)
 				    end
 				in
@@ -422,7 +430,7 @@ in
 					in
 					    if isValidMemo (memo, pids, i) then
 						(report stats;
-						 storeBFC (i, contst);
+						 storeBFC' (gp, i, contst);
 						 SOME memo)
 					    else otherwise ()
 					end

@@ -11,7 +11,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLTREE.cm
 #else
 	$/smlnj-lib.cm
@@ -20,7 +20,7 @@ is
 	$/Lib.cm
 	$/Graphs.cm
 	$/Visual.cm
-	$/ir.cm
+	$/ir-archive.cm
 	$/MLTREE.cm
 #endif
 #else
@@ -31,7 +31,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLTREE.cm
 #endif
 #else
@@ -41,7 +41,7 @@ is
 	Lib.cm
 	Graphs.cm
 	Visual.cm
-	ir.cm
+	ir-archive.cm
 	MLTREE.cm
 #endif
 	../cluster/clusterGraph.sig
@@ -54,7 +54,6 @@ is
 	../IR/mlrisc-cfg-util.sig
 	../IR/mlrisc-cfg-util.sml
 	../IR/mlrisc-cpr.sml
-	../IR/mlrisc-format-insn.sml
 	../IR/idefs2.sig
 	../IR/idefs2.sml
 	../IR/mlrisc-idefs.sig

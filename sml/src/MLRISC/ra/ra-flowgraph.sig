@@ -14,7 +14,6 @@ sig
    structure C     : CELLS  
    structure G     : RA_GRAPH = RAGraph
    structure Spill : RA_SPILL
-   structure W     : FREQ
      sharing Spill.I = I
      sharing I.C = C 
 

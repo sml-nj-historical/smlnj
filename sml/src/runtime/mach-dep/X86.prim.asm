@@ -7,13 +7,13 @@
  * Completely rewritten and changed to use assyntax.h, by Lal George.
  */
 
+#include "assyntax.h"
 #include "ml-base.h"
 #include "asm-base.h"
 #include "ml-values.h"
 #include "tags.h"
 #include "ml-request.h"
 #include "ml-limits.h"
-#include "assyntax.h"
 	
 /*
  *

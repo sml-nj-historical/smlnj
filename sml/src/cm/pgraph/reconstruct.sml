@@ -34,8 +34,12 @@ end = struct
 	    ((i', d'), v)
 	end
 
-	fun Sym m (ns, s) =
-	    Bind (P.SYM (ns, s), m)
+	fun Sgn m s =
+	    Bind (P.SYM (P.SGN, s), m)
+	fun Str m s =
+	    Bind (P.SYM (P.STR, s), m)
+	fun Fct m s =
+	    Bind (P.SYM (P.FCT, s), m)
 	fun Syms m sl =
 	    Bind (P.SYMS sl, m)
 	fun Imp m (l, ss) =
@@ -52,7 +56,8 @@ end = struct
 	fun Exp (i, d) e =
 	    P.GRAPH { imports = imports, defs = rev d, export = e }
     in
-	gt { Ops = { Sym = Sym, Exp = Exp, Syms = Syms,
+	gt { Ops = { Sgn = Sgn, Str = Str, Fct = Fct,
+		     Exp = Exp, Syms = Syms,
 		     Imp = Imp, Com = Com, Fil = Fil, Mer = Mer },
 	     Misc = (nlibs, []) }
 	   imports

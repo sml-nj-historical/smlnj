@@ -89,4 +89,5 @@ is
 	$smlnj/MLRISC/MLRISC.cm
 
 	$/smlnj-lib.cm
+	$/controls-lib.cm
 	$/basis.cm

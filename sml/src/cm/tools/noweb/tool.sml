@@ -98,7 +98,7 @@ structure NowebTool = struct
 		fun runcmd () = let
 		    val cmdname = mkCmdName stdCmdPath
 		    fun number f = concat ["-L'", f, "' "]
-		    val nonumber = "-L'' "
+		    val nonumber = ""
 		    val fmtopt =
 			case lf of
 			    NONE => let
@@ -112,7 +112,7 @@ structure NowebTool = struct
 				  | NONE =>
 				    (case defaultClassOf tfns of
 					 SOME c => classNumbering c
-				       | NONE => "-L'' ")
+				       | NONE => nonumber)
 			    end
 			  | SOME f => number f
 		    val redirect = if cpif then "| cpif " else ">"

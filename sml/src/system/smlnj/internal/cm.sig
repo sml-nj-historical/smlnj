@@ -45,6 +45,7 @@ signature CM = sig
 	val synchronize : unit -> unit
 	val reset : unit -> unit
 	val pending : unit -> string list
+	val showBindings : unit -> unit
     end
 
     structure Server : sig

@@ -45,18 +45,23 @@ sig
    datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
    val branchTargets : I.instruction -> target list
 
-      (* Set the branch target; no effect if not a branch instruction *)
-   val setTargets : I.instruction * Label.label list -> I.instruction
+  (* Set the jump target; error if not a jump instruction.  *)
+   val setJumpTarget : I.instruction * Label.label -> I.instruction
+
+  (* Set the branch target; error if not a branch instruction, t=true, f=false case *)
+   val setBranchTargets : {i:I.instruction, t:Label.label, f:Label.label} -> I.instruction
  
       (* equality and hashing on operands *)
    val eqOpn      : I.operand * I.operand -> bool
    val hashOpn    : I.operand -> word
 
-      (* Negate the branching condition; raises NegateConditional
-       * if it is impossible to negate
-       *)
-   exception NegateConditional
-   val negateConditional : I.instruction -> I.instruction
+  (* Given a conditional jump instruction and label, return a conditional
+   * jump that has the complimentary condition and that targets the given
+   * label.  If the given instruction is not a conditional jump, then
+   * the NegateConditional exception is raised.
+   *)
+    exception NegateConditional
+    val negateConditional : (I.instruction * Label.label) -> I.instruction
 
      (* definition/use for the RA *)
    val defUse     : CellsBasis.cellkind -> 

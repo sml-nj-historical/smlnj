@@ -22,6 +22,7 @@ struct
    val dot  = !! "."
    val list = seq(!! "[",comma++goodBreak,!! "]")
    val tuple = seq(!! "(",comma++goodBreak,!! ")")
+   val vector = seq(!! "#[",comma++goodBreak,!! "]")
    val record = seq(!! "{",comma++goodBreak,!! "}")
    val bars = seq(settab,nl'(5,0) ++ tab' ~2 ++ ! "|" ++ tab,unindent)
    val ands = seq(settab,tab' ~4 ++ ! "and" ++ tab,unindent)
@@ -67,6 +68,7 @@ struct
            | _ => intinf i
            )
      | literal(INTlit i) = int i
+     | literal(INT32lit i) = int32 i
      | literal(STRINGlit s) = string s
      | literal(CHARlit c) = char c
      | literal(BOOLlit b) = bool b
@@ -81,6 +83,7 @@ struct
      | exp(LISTexp(es,SOME e)) = seq(nop,cons,cons) (map exp es) ++ exp e
      | exp(TUPLEexp [e]) = exp e
      | exp(TUPLEexp es) = tuple (map appexp es)
+     | exp(VECTORexp es) = vector (map appexp es)
      | exp(RECORDexp es) = record(map labexp es)
      | exp(SEQexp []) = ! "()"
      | exp(SEQexp [e]) = exp e
@@ -98,7 +101,7 @@ struct
                            block(line(! "then" ++ sp ++ exp y) ++
                                  tab ++ ! "else" ++ sp ++ exp z))
      | exp(RAISEexp e) = ! "raise" ++ exp e
-     | exp(HANDLEexp(e,c)) = exp e ++ ! "handle" ++ sp ++ clauses c
+     | exp(HANDLEexp(e,c)) = paren(exp e ++ sp ++ ! "handle" ++ sp ++ clauses c)
      | exp(CASEexp(e,c)) = 
            nl ++ line(! "(case" ++ sp ++ appexp e ++ sp ++ ! "of") 
            ++ tab' 2 ++ settab ++ block(clauses c) ++ unindent ++ tab ++ !!")"
@@ -159,6 +162,7 @@ struct
      | isParenedExp(TUPLEexp _) = true
      | isParenedExp(RECORDexp _) = true
      | isParenedExp(LISTexp _) = true
+     | isParenedExp(VECTORexp _) = true
      | isParenedExp _ = false
 
    and isSym "+" = true
@@ -183,6 +187,7 @@ struct
      | isSym "@" = true
      | isSym "andalso" = true
      | isSym "orelse" = true
+     | isSym "o" = true
      | isSym _ = false
 
    and locexp(id,e,region) = 
@@ -307,7 +312,7 @@ struct
      | ty(TYVARty tv) = tyvar tv
      | ty(APPty(id,[t])) = pty t ++ sp ++ ident id
      | ty(APPty(id,tys)) = tuple(map ty tys) ++ sp ++ ident id
-     | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ pty y
+     | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ fty y
      | ty(TUPLEty []) = ! "unit"
      | ty(TUPLEty [t]) = ty t
      | ty(TUPLEty tys) = seq(nop,!! " * ",nop) (map pty tys)
@@ -328,6 +333,9 @@ struct
                                  | "code" => int i) 
      | ty(LAMBDAty(vars,t)) = !!"\\" ++ tuple(map ty vars) ++ !!"." ++ ty t 
 
+   and fty(t as FUNty _) = ty t
+     | fty t = pty t
+
    and pty(t as FUNty _) = paren(ty t)
      | pty(TUPLEty[t]) = pty t
      | pty(t as TUPLEty []) = ty t
@@ -343,13 +351,14 @@ struct
 
    and pat(IDpat id)   = if isSym id then !"op" ++ !id else !(name id)
      | pat(WILDpat)    = ! "_"
-     | pat(ASpat(id,p)) = !id ++ !"as" ++ sp ++ pat p
+     | pat(ASpat(id,p)) = paren(!id ++ !"as" ++ sp ++ pat p)
      | pat(LITpat l)   = literal l
      | pat(LISTpat(ps,NONE)) = list(map pat ps)
      | pat(LISTpat([],SOME p)) = pat p 
      | pat(LISTpat(ps,SOME p)) = seq(nop,cons,cons) (map pat ps) ++ pat p
      | pat(TUPLEpat [p]) = pat p
      | pat(TUPLEpat ps) = tuple(map pat ps)
+     | pat(VECTORpat ps) = vector(map pat ps)
      | pat(RECORDpat(lps,flex)) = 
            record(map labpat lps @ (if flex then [! "..."] else []))
      | pat(TYPEDpat(p,t)) = paren(pat p ++ !! ":" ++ ty t)
@@ -361,7 +370,7 @@ struct
      | pat(ORpat ps) = 
           if length ps > 10 
           then nl ++ tab ++ seq(! "(",! "|"++nl++tab,! ")") (map pat ps)
-          else seq(!! "(", ! "|", !! ")") (map pat ps)
+          else seq(!! "(", ! "|"++sp, !! ")") (map pat ps)
      | pat(ANDpat [p]) = pat p
      | pat(ANDpat ps) = seq(!! "(",sp ++ !"and" ++ sp, !!")") (map pat ps)
      | pat(NOTpat p) = !"not" ++ sp ++ pat p

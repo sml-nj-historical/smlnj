@@ -19,6 +19,7 @@ Library
 	functor SparcProps
 	functor SparcRewrite
 	functor SparcShuffle
+	functor SparcSpillInstr
 	functor Sparc_CCalls
 is
 #if defined(NEW_CM)
@@ -63,5 +64,6 @@ is
 	../sparc/mltree/sparcPseudoInstr.sig
 	../sparc/mltree/sparc.sml 
 	../sparc/ra/sparcRewrite.sml
+	../sparc/ra/sparcSpillInstr.sml
 	../sparc/backpatch/sparcDelaySlotProps.sml
 	../sparc/c-calls/sparc-c-calls.sml

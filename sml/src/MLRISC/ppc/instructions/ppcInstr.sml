@@ -8,6 +8,7 @@
 signature PPCINSTR =
 sig
    structure C : PPCCELLS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -29,7 +30,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:operand}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype load =
      LBZ
    | LBZE
@@ -187,7 +188,7 @@ sig
    | OV32
    | CA32
    type cr_bit = (CellsBasis.cell) * bit
-   datatype instruction =
+   datatype instr =
      L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | ST of {st:store, rs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
@@ -219,20 +220,61 @@ sig
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
+   and instruction =
+     LIVE of {regs: C.cellset, spilled: C.cellset}
+   | KILL of {regs: C.cellset, spilled: C.cellset}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
+   | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | INSTR of instr
+   val l : {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region} -> instruction
+   val lf : {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region} -> instruction
+   val st : {st:store, rs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region} -> instruction
+   val stf : {st:fstore, fs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, 
+      mem:Region.region} -> instruction
+   val unary : {oper:unary, rt:CellsBasis.cell, ra:CellsBasis.cell, Rc:bool, 
+      OE:bool} -> instruction
+   val arith : {oper:arith, rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell, 
+      Rc:bool, OE:bool} -> instruction
+   val arithi : {oper:arithi, rt:CellsBasis.cell, ra:CellsBasis.cell, im:operand} -> instruction
+   val rotate : {oper:rotate, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:CellsBasis.cell, 
+      mb:int, me:int option} -> instruction
+   val rotatei : {oper:rotatei, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:operand, 
+      mb:int, me:int option} -> instruction
+   val compare : {cmp:cmp, l:bool, bf:CellsBasis.cell, ra:CellsBasis.cell, 
+      rb:operand} -> instruction
+   val fcompare : {cmp:fcmp, bf:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell} -> instruction
+   val funary : {oper:funary, ft:CellsBasis.cell, fb:CellsBasis.cell, Rc:bool} -> instruction
+   val farith : {oper:farith, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+      Rc:bool} -> instruction
+   val farith3 : {oper:farith3, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+      fc:CellsBasis.cell, Rc:bool} -> instruction
+   val ccarith : {oper:ccarith, bt:cr_bit, ba:cr_bit, bb:cr_bit} -> instruction
+   val mcrf : {bf:CellsBasis.cell, bfa:CellsBasis.cell} -> instruction
+   val mtspr : {rs:CellsBasis.cell, spr:CellsBasis.cell} -> instruction
+   val mfspr : {rt:CellsBasis.cell, spr:CellsBasis.cell} -> instruction
+   val tw : {to:int, ra:CellsBasis.cell, si:operand} -> instruction
+   val td : {to:int, ra:CellsBasis.cell, si:operand} -> instruction
+   val bc : {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand} -> instruction
+   val bclr : {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list} -> instruction
+   val b : {addr:operand, LK:bool} -> instruction
+   val call : {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region} -> instruction
+   val source : {} -> instruction
+   val sink : {} -> instruction
+   val phi : {} -> instruction
 end
 
 functor PPCInstr(T: MLTREE
                 ) : PPCINSTR =
 struct
    structure C = PPCCells
+   structure CB = CellsBasis
    structure T = T
    structure Region = T.Region
    structure Constant = T.Constant
@@ -252,7 +294,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:operand}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype load =
      LBZ
    | LBZE
@@ -410,7 +452,7 @@ struct
    | OV32
    | CA32
    type cr_bit = (CellsBasis.cell) * bit
-   datatype instruction =
+   datatype instr =
      L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | ST of {st:store, rs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
@@ -442,13 +484,45 @@ struct
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
+   and instruction =
+     LIVE of {regs: C.cellset, spilled: C.cellset}
+   | KILL of {regs: C.cellset, spilled: C.cellset}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
+   | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | INSTR of instr
+   val l = INSTR o L
+   and lf = INSTR o LF
+   and st = INSTR o ST
+   and stf = INSTR o STF
+   and unary = INSTR o UNARY
+   and arith = INSTR o ARITH
+   and arithi = INSTR o ARITHI
+   and rotate = INSTR o ROTATE
+   and rotatei = INSTR o ROTATEI
+   and compare = INSTR o COMPARE
+   and fcompare = INSTR o FCOMPARE
+   and funary = INSTR o FUNARY
+   and farith = INSTR o FARITH
+   and farith3 = INSTR o FARITH3
+   and ccarith = INSTR o CCARITH
+   and mcrf = INSTR o MCRF
+   and mtspr = INSTR o MTSPR
+   and mfspr = INSTR o MFSPR
+   and tw = INSTR o TW
+   and td = INSTR o TD
+   and bc = INSTR o BC
+   and bclr = INSTR o BCLR
+   and b = INSTR o B
+   and call = INSTR o CALL
+   and source = INSTR o SOURCE
+   and sink = INSTR o SINK
+   and phi = INSTR o PHI
 end
 

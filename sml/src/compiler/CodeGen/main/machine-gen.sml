@@ -47,6 +47,65 @@ struct
    structure MachSpec   = MachSpec
    structure MLTreeComp = MLTreeComp
 
+
+   structure CFGViewer = 
+     CFGViewer
+       (structure CFG = CFG
+	structure GraphViewer = GraphViewer(AllDisplays)
+	structure Asm = Asm)
+
+   (* expand copies into their primitive moves.
+    * Copies are no longer treated as span dependent, which was a hack.
+    *)
+   structure ExpandCpys = 
+      CFGExpandCopies
+	  (structure CFG = CFG   
+	   structure Shuffle = Shuffle)
+
+   structure LoopProbs = 
+      EstimateLoopProbsFn(structure CFG=CFG)
+
+   structure ComputeFreqs = 
+      ComputeFreqsFn(structure CFG=CFG)
+
+   structure BlockPlacement = 
+      BlockPlacement
+          (structure CFG = CFG 
+	   structure Props = InsnProps)
+
+   structure CheckPlacement = 
+      CheckPlacementFn
+          (structure CFG = CFG 
+	   structure InsnProps = InsnProps)
+
+   (* After experimentation, some architecture specific control
+    * may be needed for chainEscapes.
+    *)
+   structure JumpChaining = 
+      JumpChainElimFn			     
+	  (structure CFG = CFG
+	   structure InsnProps = InsnProps
+	   val chainEscapes = ref false
+	   val reverseDirection = ref false)
+
+   structure InvokeGC =
+      InvokeGC
+	  (structure C     = CpsRegs
+	   structure MS    = MachSpec
+	   structure CFG   = CFG
+	   structure TS    = MLTreeComp.TS
+	  )
+
+   val graphical_view = 
+      MLRiscControl.mkFlag
+         ("cfg-graphical-view", 
+	  "graphical view of cfg after block placement")
+			
+   val graphical_view_size = 
+      MLRiscControl.mkInt
+         ("cfg-graphical-view-size", 
+	  "minimium threshold for size of graphical view")
+			
    fun omitFramePointer(cfg as G.GRAPH graph) = let
      val CFG.INFO{annotations, ...} = #graph_info graph 
    in
@@ -57,60 +116,71 @@ struct
      else cfg
    end     
 
+   fun computeFreqs cfg = 
+     (LoopProbs.estimate cfg;   ComputeFreqs.compute cfg;   cfg)
+
    type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
    fun makePhase(name,f) = (name, phase name f)
 
-   val mc      = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
-   val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
-   val ra      = phase "MLRISC ra" RA.run
-   val omitfp  = phase "MLRISC omit frame pointer" omitFramePointer
-
+   val mc         = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
+   val placement  = phase "MLRISC Block placement" BlockPlacement.blockPlacement
+   val chainJumps = phase "MLRISC Jump chaining" JumpChaining.run
+   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish 
+   val compFreqs  = phase "MLRISC Compute frequencies" computeFreqs
+   val ra         = phase "MLRISC ra" RA.run
+   val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
+   val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
+   
    val raPhase = ("ra",ra)
 
-
    val optimizerHook = 
-     ref [("ra", ra),
-	  ("omitfp", omitfp)
+     ref [("compFreqs", compFreqs),
+	  ("ra", ra),
+	  ("omitfp", omitfp),
+	  ("expand copies", expandCpys)
 	 ]
 
-     
-   (* Flowgraph generation *)
-   structure FlowGraphGen =
-      BuildFlowgraph(
-         structure CFG = CFG
-	 structure Props = InsnProps
-	 structure Stream = MLTreeComp.TS.S)
+   fun compile cluster = let
+     fun runPhases([],cluster) = cluster
+       | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
 
-   (* GC Invocation *)
-   structure InvokeGC =
-      InvokeGC(structure C     = CpsRegs
-               structure MS    = MachSpec
-	       structure CFG   = CFG
-	       structure TS    = MLTreeComp.TS
-              )
-
-   fun compile cluster =
-   let fun runPhases([],cluster) = cluster
-         | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
-   in  mc(runPhases(!optimizerHook,cluster))
+     fun dumpBlocks cfg = let
+       val cbp as (cfg, blks) = chainJumps (placement cfg)
+       fun view () = 
+	   if !graphical_view andalso length blks >= !graphical_view_size 
+	   then CFGViewer.view cfg 
+	   else ()
+     in
+	CheckPlacement.check cbp;
+        view ();   
+	mc cbp
+     end
+   in  
+     dumpBlocks (runPhases(!optimizerHook,cluster))
    end
  
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =
-      MLRiscGen(structure MachineSpec=MachSpec
-                structure MLTreeComp=MLTreeComp
-		structure Ext = Ext
-                structure C=CpsRegs
-                structure InvokeGC=InvokeGC
-		structure ClientPseudoOps =ClientPseudoOps
-                structure PseudoOp=PseudoOps
-                structure Flowgen=FlowGraphGen
-		structure CCalls = CCalls
-		structure Cells = Cells
-                val compile = compile
-               )
+      MLRiscGen
+	  (structure MachineSpec=MachSpec
+           structure MLTreeComp=MLTreeComp
+	   structure Ext = Ext
+           structure C=CpsRegs
+	   structure ClientPseudoOps =ClientPseudoOps
+           structure PseudoOp=PseudoOps
+           structure InvokeGC=InvokeGC
+           structure Flowgen=
+	      BuildFlowgraph
+                  (structure CFG = CFG
+		   structure Props = InsnProps
+		   structure Stream = MLTreeComp.TS.S
+		  )
+	   structure CCalls = CCalls
+	   structure Cells = Cells
+           val compile = compile
+          )
 	       
 
    val gen = phase "MLRISC MLTreeGen.codegen" MLTreeGen.codegen
@@ -122,5 +192,4 @@ struct
         BackPatch.cleanUp(); 
         gen x
        )
-
 end

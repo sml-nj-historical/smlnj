@@ -41,7 +41,7 @@ struct
              (case chase node of
                node as NODE{number, pri, defs, uses,
                             degree=ref deg, color=ref PSEUDO,...} => 
-               let fun cost() = real(!pri) / real deg
+               let fun cost() = !pri / real deg
                    val cost = 
                       case (!defs, !uses) of
                         (_,[]) => (* defs but no use *)

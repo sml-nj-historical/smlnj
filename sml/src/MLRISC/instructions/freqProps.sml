@@ -1,17 +1,22 @@
-(*
+(* freqProps.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * Generic module for extracting the frequency information.
  *)
 
-functor FreqProps(Props : INSN_PROPERTIES) : FREQUENCY_PROPERTIES =
-struct
+functor FreqProps (Props : INSN_PROPERTIES) : FREQUENCY_PROPERTIES =
+  struct
 
-   structure I = Props.I
+    structure I = Props.I
 
-      (* Branch probability in percentage *)
-   fun branchProb instr =
-      case #get MLRiscAnnotations.BRANCH_PROB  
-           (#2(Props.getAnnotations instr)) of
-        SOME b => b
-      | NONE => 50
+    val fifty_fifty = Probability.prob(1, 2)
+    val get = #get MLRiscAnnotations.BRANCH_PROB
 
-end
+  (* Branch probability *)
+    fun branchProb instr = (case get(#2(Props.getAnnotations instr))
+	   of SOME b => b
+	    | NONE => fifty_fifty
+	  (* end case *))
+
+  end

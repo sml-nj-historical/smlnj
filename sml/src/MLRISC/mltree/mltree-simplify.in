@@ -40,6 +40,9 @@ struct
    fun simplify {addressWidth, signedAddress} = 
    let 
 
+   fun dm T.DIV_TO_ZERO = I.DIV_TO_ZERO
+     | dm T.DIV_TO_NEGINF = I.DIV_TO_NEGINF
+
    fun sim ==> exp =
    let  
    in (* perform algebraic simplification and constant folding *)
@@ -66,17 +69,13 @@ struct
       | T.MULS(ty,T.LI x,T.LI y) => T.LI(I.MULS(ty,x,y))
       | T.MULS(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.MULS(ty,x,y))
 
-      | T.DIVS(ty,a,T.LI 1i) => a
-      | T.DIVS(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.DIVS(ty,x,y))
-      | T.DIVS(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.DIVS(ty,x,y))
+      | T.DIVS(m,ty,a,T.LI 1i) => a
+      | T.DIVS(m,ty,T.LI x,T.LI y) where y <> zero => T.LI(I.DIVS(dm m,ty,x,y))
+      | T.DIVS(m,ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.DIVS(m,ty,x,y))
 
-      | T.QUOTS(ty,a,T.LI 1i) => a
-      | T.QUOTS(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.QUOTS(ty,x,y))
-      | T.QUOTS(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.QUOTS(ty,x,y))
-
-      | T.REMS(ty,a,T.LI 1i) => zeroT
-      | T.REMS(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.REMS(ty,x,y)) 
-      | T.REMS(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.REMS(ty,x,y))
+      | T.REMS(m,ty,a,T.LI 1i) => zeroT
+      | T.REMS(m,ty,T.LI x,T.LI y) where y <> zero => T.LI(I.REMS(dm m,ty,x,y))
+      | T.REMS(m,ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.REMS(m,ty,x,y))
 
       | T.MULU(ty,T.LI 0i,_) => zeroT
       | T.MULU(ty,_,T.LI 0i) => zeroT
@@ -115,17 +114,9 @@ struct
          (T.LI(I.MULT(ty,x,y)) handle Overflow => exp)
       | T.MULT(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.MULT(ty,x,y))
 
-      | T.DIVT(ty,a,T.LI 1i) => a
-      | T.DIVT(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.DIVT(ty,x,y)) 
-      | T.DIVT(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.DIVT(ty,x,y))
-
-      | T.QUOTT(ty,a,T.LI 1i) => a
-      | T.QUOTT(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.QUOTT(ty,x,y)) 
-      | T.QUOTT(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.QUOTT(ty,x,y))
-
-      | T.REMT(ty,a,T.LI 1i) => zeroT
-      | T.REMT(ty,T.LI x,T.LI y) where y <> zero => T.LI(I.REMT(ty,x,y)) 
-      | T.REMT(ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.REMT(ty,x,y))
+      | T.DIVT(m,ty,a,T.LI 1i) => a
+      | T.DIVT(m,ty,T.LI x,T.LI y) where y <> zero => T.LI(I.DIVT(dm m,ty,x,y))
+      | T.DIVT(m,ty,T.LABEXP x,T.LABEXP y) => T.LABEXP(T.DIVT(m,ty,x,y))
 
       | T.ANDB(_,_,b as T.LI 0i) => b
       | T.ANDB(_,a as T.LI 0i,_) => a

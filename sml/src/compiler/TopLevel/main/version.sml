@@ -15,8 +15,8 @@ structure CompilerVersion : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 37],
-	    date = "November 21, 2001"
+	    version_id = [110, 40],
+	    date = "May 21, 2002"
 	  }
 
     fun f ([], l) = l

@@ -1,6 +1,54 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/05/21 16:00:00 EST
+Tag: Release_110_40
+Version: 110.40
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.40/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/29 14:10:00 EST
+Tag: blume-20020329-inlprims
+Version: 110.39.3
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-110393/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/24 22:40:00
+Tag: blume-20020324-bootfiles
+Version: 110.39.2
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/leunga-20020324-bootfiles/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/12 22:03:00
+Tag: blume-20020312-version110392
+Version: 110.39.2
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-110392/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/08 16:05:00
+Tag: blume-20020308-entrypoints
+Version: 110.39.1
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-110391/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 16:00:00 EST
+Tag: Release_110_39
+Version: 110.39
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.39/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/08 15:00:00 EST
+Tag: blume-20020208-uniquepid
+Version: 110.38.1
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20020208-uniquepid/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28 12:00:00 EST
+Tag: Release_110_38
+Version: 110.38
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.38/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/11/21 16:10:00 EST
 Tag: Release_110_37
 Version: 110.37

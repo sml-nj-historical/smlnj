@@ -19,6 +19,7 @@ signature FILENAMEPOLICY = sig
 
     val mkBinName : policy -> SrcPath.file -> string
     val mkSkelName : policy -> SrcPath.file -> string
+    val mkGUidName : policy -> SrcPath.file -> string
     val mkStableName : policy -> SrcPath.file * Version.t option -> string
     val mkIndexName : policy -> SrcPath.file -> string
 
@@ -28,10 +29,13 @@ end
 functor FilenamePolicyFn (val cmdir : string
 			  val versiondir: Version.t -> string
 			  val skeldir : string
+			  val guiddir : string
+			  val icprefix : string
 			  val indexdir : string) :> FILENAMEPOLICY = struct
 
     type policy = { bin: SrcPath.file -> string,
 		    skel: SrcPath.file -> string,
+		    guid: SrcPath.file -> string,
 		    stable: SrcPath.file * Version.t option -> string,
 		    index: SrcPath.file -> string }
 
@@ -44,15 +48,16 @@ functor FilenamePolicyFn (val cmdir : string
       | kind2name SMLofNJ.SysInfo.WIN32 = "win32"
 
     fun mkPolicy (shiftbin, shiftstable, ignoreversion) { arch, os } = let
+        fun subDir (sd, d) = OS.Path.joinDirFile { dir = d, file = sd }
 	fun cmname dl s = let
 	    val { dir = d0, file = f } = OS.Path.splitDirFile s
 	    val d1 = OS.Path.joinDirFile { dir = d0, file = cmdir }
-	    fun subDir (sd, d) = OS.Path.joinDirFile { dir = d, file = sd }
 	    val d2 = foldl subDir d1 dl
 	in
 	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
 	val archos = concat [arch, "-", os]
+	val archosidcache = concat [icprefix, "-", arch, "-", os]
 	val stable0 = cmname [archos] o shiftstable
 	val stable =
 	    if ignoreversion then stable0 o #1
@@ -67,6 +72,7 @@ functor FilenamePolicyFn (val cmdir : string
 		     end)
     in
 	{ skel = cmname [skeldir] o SrcPath.osstring,
+	  guid = cmname [guiddir] o SrcPath.osstring,
 	  bin = cmname [archos] o shiftbin,
 	  stable = stable,
 	  index = cmname [indexdir] o SrcPath.osstring }
@@ -74,7 +80,8 @@ functor FilenamePolicyFn (val cmdir : string
 
     fun ungeneric g { arch, os } = g { arch = arch, os = kind2name os }
 
-    val colocate_generic = mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
+    val colocate_generic =
+	mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
 
     fun separate_generic { bindir, bootdir } = let
 	fun shiftname root p = let
@@ -95,6 +102,7 @@ functor FilenamePolicyFn (val cmdir : string
 
     fun mkBinName (p: policy) s = #bin p s
     fun mkSkelName (p: policy) s = #skel p s
+    fun mkGUidName (p: policy) s = #guid p s
     fun mkStableName (p: policy) (s, v) = #stable p (s, v)
     fun mkIndexName (p: policy) s = #index p s
 end
@@ -102,5 +110,7 @@ end
 structure FilenamePolicy =
     FilenamePolicyFn (val cmdir = "CM"
 		      val skeldir = "SKEL"
+		      val guiddir = "GUID"
+		      val icprefix = "IC"
 		      val indexdir = "INDEX"
 		      val versiondir = Version.toString)

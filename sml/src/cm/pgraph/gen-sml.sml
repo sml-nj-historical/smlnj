@@ -19,7 +19,8 @@ structure GenSML : sig
 		nativesrc: string -> string,
 		importstructs: string list,
 		outstream: TextIO.outstream,
-		exportprefix: string } -> unit
+		exportprefix: string,
+		use_toplocal: bool } -> unit
 end = struct
 
     type typ = string
@@ -57,7 +58,12 @@ end = struct
 	      nativesrc,
 	      importstructs,
 	      outstream = outs,
-	      exportprefix } = args
+	      exportprefix,
+	      use_toplocal } = args
+
+	val (xlocal, xin, xend) =
+	    if use_toplocal then ("local", "in", "end")
+	    else ("(* local *)", "(* in *)", "(* end *)")
 
 	fun out l = app (fn s => TextIO.output (outs, s)) l
 
@@ -116,12 +122,12 @@ end = struct
 		copy ()
 	    end
 	in
-	    out ["local\n"];
+	    out [xlocal, "\n"];
 	    SM.appi genimport e;
-	    out ["in\n"];
+	    out [xin, "\n"];
 	    copyfile src;
 	    genexport (oss, fmt)
-	    before out ["end\n"]
+	    before out [xend, "\n"]
 	end
 
 	fun filter (e, ss) = SM.filteri (fn (sy, _) => SS.member (ss, sy)) e
@@ -136,11 +142,9 @@ end = struct
 		ENV m => m
 	      | _ => raise TypeError ("env", v)
 
-	fun namespace "STR" = "structure"
-	  | namespace "SIG" = "signature"
-	  | namespace "FCT" = "functor"
-	  | namespace "FSIG" = "funsig"
-	  | namespace ns = raise Fail ("unknown namespace spec: " ^ ns)
+	fun namespace P.SGN = "signature"
+	  | namespace P.STR = "structure"
+	  | namespace P.FCT = "functor"
 
 	fun onedef (P.DEF { lhs, rhs }, dm) = let
 	    val get = get dm

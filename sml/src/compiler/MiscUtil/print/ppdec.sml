@@ -79,8 +79,8 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
        fun trueTycon (path: IP.path) =
 	    let val err = fn _ => fn _ => fn _ => (bug "trueTycon: unbound ")
 	     in case Lookup.lookTyc(static,ConvertPaths.invertIPath(path),err)
-		  of tyc as DEFtyc _ => tyc
-		   | _ => bug "trueTycon: not a DEFtyc"
+		  of DEFtyc x => SOME x
+		   | _ => NONE
 	    end
 
        fun isLazyBogus (SymPath.SPATH path) =
@@ -143,25 +143,23 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 
        and ppRvb (RVB{var, ...}) = ppVar var
 
-       and ppTb(DEFtyc{path,...}) =
-	    let val {path,tyfun=TYFUN{arity,body},...} =
-		    case trueTycon path of
-			DEFtyc x => x
-		      | _ => bug "ppTb:trueTycon"
-	    in
-		begin_block ppstrm CONSISTENT 0;
-		begin_block ppstrm INCONSISTENT 2;
-		add_string ppstrm "type"; 
-		ppFormals ppstrm arity; 
-		add_break ppstrm (1,0);
-		ppSym ppstrm (InvPath.last path); 
-		add_string ppstrm " ="; 
-		add_break ppstrm (1,0);
-		ppType static ppstrm body;
-		end_block ppstrm;
-	        add_newline ppstrm;
-		end_block ppstrm
-	    end
+       and ppTb (DEFtyc dt) =
+	   let val {path,tyfun=TYFUN{arity,body},...} =
+		   getOpt (trueTycon (#path dt), dt)
+	   in
+	       begin_block ppstrm CONSISTENT 0;
+	       begin_block ppstrm INCONSISTENT 2;
+	       add_string ppstrm "type"; 
+	       ppFormals ppstrm arity; 
+	       add_break ppstrm (1,0);
+	       ppSym ppstrm (InvPath.last path); 
+	       add_string ppstrm " ="; 
+	       add_break ppstrm (1,0);
+	       ppType static ppstrm body;
+	       end_block ppstrm;
+	       add_newline ppstrm;
+	       end_block ppstrm
+	   end
 	 | ppTb _ = bug "ppTb:DEFtyc"
 
 	and ppAbsTyc(GENtyc { path, arity, eq, ... }) =

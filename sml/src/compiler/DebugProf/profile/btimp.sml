@@ -18,6 +18,7 @@
  * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure BTImp : sig
+    val install : bool ref -> unit
 end = struct
 
     structure M = IntRedBlackMap
@@ -184,7 +185,9 @@ end = struct
 	do_report
     end
 
-    fun install () =
+    fun install enabled = let
+	fun mode x = !enabled before Option.app (fn new => enabled := new) x
+    in
 	SMLofNJ.Internals.BTrace.install
 	    { corefns = { save = save,
 			  push = push,
@@ -193,7 +196,7 @@ end = struct
 			  reserve = reserve,
 			  register = register,
 			  report = report },
-	      reset = reset }
-
-    val _ = install ()
+	      reset = reset,
+	      mode = mode }
+    end
 end

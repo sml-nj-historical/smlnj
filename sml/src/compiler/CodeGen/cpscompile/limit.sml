@@ -65,11 +65,13 @@ fun path escapes fl =
 	| g(d, PURE(P.newarray0,_,_,_,e)) = g(d+5, e)
 	| g(d, PURE(P.makeref, _, _, _, e)) = g(d+2, e)
 	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)
+        | g(d, PURE(P.rawrecord tag,[INT n],_,_,e)) = 
+             g(d+n+(case tag of SOME _ => 1 | NONE => 0), e)
         | g(d, LOOKER(P.numsubscript{kind=P.FLOAT 64},_,_,_,e)) = g(d+3, e)
         | g(d, SETTER(_,_,e)) = g(d,e)
         | g(d, LOOKER(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(_,_,_,_,e)) = g(d,e)
-	| g(d, RCC(_,_,_,_,e)) = g(d, e)
+	| g(d, RCC(_,_,_,_,_,_,e)) = g(d, e)
         | g(d, BRANCH(_,_,_,a,b)) = Int.max(g(d,a), g(d,b))
         | g(d, APP(LABEL w, _)) = 
              (case maxpath w
@@ -93,7 +95,7 @@ fun path escapes fl =
         | h(d, ARITH(_,_,_,_,e)) = h(d+1, e)      
         | h(d, PURE(_,_,_,_,e)) = h(d+1, e)      
         | h(d, LOOKER(_,_,_,_,e)) = h(d+1, e)
-	| h(d, RCC(_,_,_,_,e)) = h(d+1, e)
+	| h(d, RCC(_,_,_,_,_,_,e)) = h(d+1, e)
         | h(d, BRANCH(_,_,_,a,b)) = Int.max(h(d,a), h(d,b)) + 1
         | h(d, APP(LABEL w, _)) = 
              (case maxpath w of 
@@ -142,7 +144,7 @@ fun nolimit fl =
 		| edges (LOOKER(_,_,_,_,e)) = edges e
 		| edges (ARITH(_,_,_,_,e)) = edges e
 		| edges (PURE(_,_,_,_,e)) = edges e
-		| edges (RCC(_,_,_,_,e)) = edges e
+		| edges (RCC(_,_,_,_,_,_,e)) = edges e
 		| edges (BRANCH(_,_,_,a,b)) = edges a @ edges b
                 | edges (APP(LABEL w, _)) = (case escapes w of KNOWN => [w] 
 		                                             | _ => nil)

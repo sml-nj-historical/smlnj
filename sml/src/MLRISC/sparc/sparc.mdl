@@ -445,7 +445,7 @@ struct
    
       datatype ea = Direct of $GP
                   | FDirect of $GP
-                  | Displace of {base: $GP, disp: int}
+                  | Displace of {base: $GP, disp: T.labexp, mem: Region.region}
 
            (* used to encode the opf_low field V9 *)
       datatype fsize! = S 0b00100
@@ -815,16 +815,6 @@ struct
         delayslot candidate: false
         latency: 1
 
-   |  COPY of { dst: $GP list, src: $GP list, 
-                impl:instruction list option ref, tmp:ea option}
-        asm: emitInstrs (Shuffle.shuffle{tmp,src,dst})
-	rtl: ``COPY''
-
-   |  FCOPY of { dst: $FP list, src: $FP list, 
-                 impl:instruction list option ref, tmp:ea option}
-        asm: emitInstrs (Shuffle.shufflefp{tmp,src,dst})
-	rtl: ``FCOPY''
-
    |  SAVE of {r: $GP, i:operand, d: $GP}
         asm: ``save\t<r>, <i>, <d>'' 
         mc:  save{r,i,d}
@@ -849,11 +839,6 @@ struct
 	rtl: ``RET''
         padding: nop = true
         nullified: false
-
-   |  ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-        mc:  emitInstr i
-	(* rtl: [[#i ]] *)
 
    | SOURCE of {}
         asm: ``source''

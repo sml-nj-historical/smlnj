@@ -31,7 +31,7 @@ struct
         fun moveSavings(NODE{movecnt=ref 0, ...}) = 0.0
           | moveSavings(NODE{movelist, ...}) = 
             let fun loop([], savings) = 
-                     real(foldr (fn ((_,a),b) => Int.max(a,b)) 0 savings)
+                     foldr (fn ((_,a),b) => Real.max(a,b)) 0.0 savings
                   | loop(MV{status=ref(WORKLIST | GEORGE_MOVE | BRIGGS_MOVE),
                             dst, src, cost, ...}::mvs, savings) = 
                     let fun add(c,[]) = [(c,cost)]
@@ -60,7 +60,7 @@ struct
             val spillSavings = RACore.moveSavings graph
             val lookupSpan = IntHashTable.find (Option.valOf(!span))
             val lookupSpan = 
-                fn r => case lookupSpan r of SOME s => s | NONE => 0
+                fn r => case lookupSpan r of SOME s => s | NONE => 0.0
             val _          = span := NONE
             fun loop([], L, pruned) = (L, pruned)
               | loop(node::rest, L, pruned) = 
@@ -76,8 +76,8 @@ struct
                           val spillCost = !pri
                           val totalCost = spillCost - savings 
                           (*val rank = ((real totalCost)+0.01) / real(span)*)
-                          val rank = (real totalCost + 0.5 + moveSavings(node))
-                                        / real(span+deg)
+                          val rank = (totalCost + 0.5 + moveSavings(node))
+                                        / (span+ real deg)
                       in  loop(rest, (node, rank)::L, false) end
                   in  case (!defs, !uses) of
                         (_, []) =>  (* one def no use *)

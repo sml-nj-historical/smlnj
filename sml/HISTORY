@@ -8,9 +8,1853 @@ description.
 The form of an entry should be:
 
 Name: 
-Date:
+Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/31
+Tag: blume-20020531-btrace-mode
+Description:
+
+Resurrected SMLofNJ.Internals.BTrace.mode.  (It accidentally fell by
+the wayside when I switched over to using Controls everywhere.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/05/23 12:21:40 EDT
+Tag: george-20020523-visual-labels
+Description:
+
+Labels are now displayed in the graphical output to make
+the fall-through and target blocks obvious.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/22 11:03:00 EDT
+Tag: blume-20020522-shrink
+Description:
+
+John tweaked yesterday's fix for 1131 to handle an out-of-memory
+situation that comes up when allocating huge arrays.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/21 16:00:00 EDT
+Tag: Release_110_40
+Description:
+
+New working release (110.40).  New bootfiles.
+
+[Also: John Reppy fixed GC bug 1131.]
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/21 12:35:00 EDT
+Tag: blume-20020521-cmdoc
+Description:
+
+CM documentation update.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/21 10:55:00 EDT
+Tag: blume-20020521-misc
+Description:
+
+- John tweaked runtime to be silent on heap export (except when
+  GC messages are on).
+- I added a few more things (cross-compiling versions of CMB) to
+  config/preloads (as suggestions).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/20 22:25:00 EDT
+Tag: blume-20020520-controls
+Description:
+
+- Added ControlUtil structure to control-lib.cm.
+- Use it throughout.
+- Used Controls facility to define MLRISC controls (as opposed to
+  registering MLRISC control ref cells with Controls after the fact)
+- Fixed messed-up controls priorities.
+
+* Removed again all the stuff from config/preloads that one wouldn't
+  be able to preload at the time the initial heap image is built.
+  (Many libraries, e.g., CML, do not exist yet at this time.  The
+   only libraries that can be preloaded via config/preloads are those
+   that come bundled with the bootfiles.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/20 10:59:00 EDT
+Tag: blume-20020520-preloads
+Description:
+
+Added a lot of commented-out suggestions for things to be included
+in config/preloads.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/05/18 14:20:00 EDT
+Tag: leunga-20020518-mdl
+Description:
+
+o Made the mdl tool stuff compile and run again.
+o I've disabled all the stuff that depends on RTL specifications; they
+  are all badly broken anyway.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/17 16:49:00 EDT
+Tag: blume-20020517-controls
+Description:
+
+0. John Reppy made several modifications to the SML/NJ library.
+   In particular, there is a shiny new controls-lib.cm.
+
+1. Pushed new controls interface through compiler so that everything
+   compiles again.
+
+2. Added FormatComb and FORMAT_COMB to the CML version of the
+   SML/NJ library (so that CML compiles again).
+
+3. Modified init scripts because XXX_DEFAULT environment variables
+   are no longer with us.  (Boot-time initialization is now done
+   using the same environment variables that are also used for
+   startup-time initialization of controls.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/05/15 09:20:10 EDT
+Tag: george-20020515-pseudo-op-decls
+Description:
+
+	All pseudo-ops emitted before the first segment declaration
+such as TEXT, DATA, and BSS directives are assumed to be global
+declarations and are emitted first in the assembly file. This is
+useful in a number of situations where one has pseudo-ops that are not
+specific to any segment, and also works around the constraint that one
+cannot have client pseudo-ops in the TEXT segment.
+
+	Because no segment is associated with these declarations it is
+an error to allocate any space or objects before the first segment
+directive and an exception will be raised. However, we cannot make
+this check for client pseudo-ops.
+
+	These top level declarations are a field in the CFG graph_info.
+In theory you can continue to add to this field after the CFG has been
+built -- provided you know what you are doing;-)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/13 16:40:00 EDT
+Tag: blume-20020513-pp-etc
+Description:
+
+A few minor bugfixes:
+
+  - Stopgap measure for bug recently reported by Elsa Gunter (ppDec).
+    (Bogus printouts for redefined bindings still occur.  Compiler
+    bug should no longer occur now.  We need to redo the prettyprinter
+    from scratch.)
+
+  - CM pathname printer now also adds escape sequences for ( and )
+
+  - commend and docu fixes for ml-nlffi
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/10 16:40:00 EDT
+Tag: blume-20020510-erg-textio
+Description:
+
+Applied the following bugfix provided by Emden Gansner:
+
+    Output is corrupted when outputSubstr is used rather than output.
+
+    The problem occurs when a substring 
+
+	ss = (s, dataStart, dataLen)
+
+    where dataStart > 0, fills a stream buffer with avail bytes left. 
+    avail bytes of s, starting at index dataStart, are copied into the 
+    buffer, the buffer is flushed, and then the remaining dataLen-avail
+    bytes of ss are copied into the beginning of the buffer. Instead of 
+    starting this copy at index dataStart+avail in s, the current code 
+    starts the copy at index avail.
+
+    Fix:
+    In text-io-fn.sml, change line 695 from
+	 val needsFlush = copyVec(v, avail, dataLen-avail, buf, 0)
+    to     
+	 val needsFlush = copyVec(v, dataStart+avail, dataLen-avail, buf, 0)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/04/12 13:55:00 EDT
+Tag: blume-20020412-assyntax
+Description:
+
+1. Grabbed newer assyntax.h from the XFree86 project.
+2. Fiddled with how to compile X86.prim.asm without warnings.
+3. (Very) Minor cleanup in CM.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/04/01 (no joke!) 17:07:00 EST
+Tag: blume-20020401-x86div
+Description:
+
+Added full support for div/mod/rem/quot on the x86, using the machine
+instruction's two results (without clumsily recomputing the remainder)
+directly where appropriate.
+
+Some more extensive power-of-two support was added to the x86 instruction
+selector (avoiding expensive divs, mods, and muls where they can be
+replaced with cheaper shifts and masks).  However, this sort of thing
+ought to be done earlier, e.g., within the CPS optimizer so that
+all architectures benefit from it.
+
+The compiler compiles to a fixed point, but changes might be somewhat
+fragile nevertheless.  Please, report any strange things that you might
+see wrt. div/mod/quot/rem...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/29 17:22:00
+Tag: blume-20020329-div
+Description:
+
+Fixed my broken div/mod logic.  Unfortunately, this means that the
+inline code for div/mod now has one more comparison than before.
+Fast paths (quotient > 0 or remainder = 0) are not affected, though.
+The problem was with quotient = 0, because that alone does not tell
+us which way the rounding went.  One then has to look at whether
+remainder and divisor have the same sign...  :(
+
+Anyway, I replaced the bootfiles with fresh ones...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/29 14:10:00 EST
+Tag: blume-20020329-inlprims
+Description:
+
+NEW BOOTFILES!!!    Version number bumped to 110.39.3.
+
+Primops have changed. This means that the bin/boot-file formats have
+changed as well.
+
+To make sure that there is no confusion, I made a new version.
+
+
+CHANGES:
+
+* removed REMT from mltree (remainder should never overflow).
+
+* added primops to deal with divisions of all flavors to the frontend
+
+* handled these primops all the way through so they map to their respective
+  MLRISC support
+
+* used these primops in the implementation of Int, Int32, Word, Word32
+
+* removed INLDIV, INLMOD, and INLREM as they are no longer necessary
+
+* parameterized INLMIN, INLMAX, and INLABS by a numkind
+
+* translate.sml now deals with all flavors of INL{MIN,MAX,ABS}, including
+  floating point
+
+* used INL{MIN,MAX,ABS} in the implementation of Int, Int32, Word, Word32,
+  and Real (but Real.abs maps to a separate floating-point-only primop)
+
+
+TODO items:
+
+* Hacked Alpha32 instruction selection, disabling the selection of REMx
+  instructions because the machine instruction encoder cannot handle
+  them.  (Hppa, PPC, and Sparc instruction selection did not handle
+  REM in the first place, and REM is supported by the x86 machine coder.)
+
+* Handle DIV and MOD with DIV_TO_NEGINF directly in the x86 instruction
+  selection phase.  (The two can be streamlined because the hardware
+  delivers both quotient and remainder at the same time anyway.)
+
+* Think about what to do with "valOf(Int32.minInt) div ~1" and friends.
+  (Currently the behavior is inconsistent both across architectures and
+  wrt. the draft Basis spec.)
+
+* Word8 should eventually be handled natively, too.
+
+* There seems to be one serious bug in mltree-gen.sml.  It appears, though,
+  as if there currently is no execution path that could trigger it in
+  SML/NJ.  (The assumptions underlying functions arith and promotable do not
+  hold for things like multiplication and division.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/27 16:27:00 EST
+Tag: blume-20020327-mlrisc-divisions
+Description:
+
+Added support for all four division operations (ML's div, mod, quot,
+and rem) to MLRISC.  In the course of doing so, I also rationalized
+the naming (no more annoying switch-around of DIV and QUOT), by
+parameterizing the operation by div_rounding_mode (which can be either
+DIV_TO_ZERO or DIV_TO_NEGINF).
+
+The generic MLTreeGen functor takes care of compiling all four
+operations down to only round-to-zero div.
+
+Missing pieces:
+
+  * Doing something smarter than relying on MLTreeGen on architectures
+    like, e.g., the x86 where hardware division delivers both quotient and
+    remainder at the same time.  With this, the implementation of the
+    round-to-neginf operations could be further streamlined.
+
+  * Remove inlining support for div/mod/rem from the frontend and replace it
+    with primops that get carried through to the backend.  Do this for all
+    int and word types.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/25 17:25:00 EST
+Tag: blume-20020325-divmod
+Description:
+
+I improved (hopefully without breaking them) the implementation of Int.div,
+Int.mod, and Int.rem.   For this, the code in translate.sml now takes
+advantage of the following observations:
+
+  Let  q = x quot y      r = x rem y
+       d = x div  y      m = x mod y
+
+where "quot" is the round-to-zero version of integer division that
+hardware usually provides.  Then we have:
+
+     r = x - q * y        where neither the * nor the - will overflow
+     d = if q >= 0 orelse x = q * y then q else q - 1
+                          where neither the * nor the - will overflow
+     m = if q >= 0 orelse r = 0 then r else r + y
+                          where the + will not overflow
+
+This results in substantial simplification of the generated code.
+The following table shows the number of CFG nodes and edges generated
+for
+        fun f (x, y) = x OPER y
+        (* with OPER \in div, mod, quot, rem *)
+
+
+    OPER | nodes(old) | edges(old) | nodes(new) | edges(new)
+    --------------------------------------------------------
+     div |         24 |         39 |         12 |         16
+     mod |         41 |         71 |         12 |         16
+    quot |          8 |         10 |          8 |         10
+     rem |         10 |         14 |          8 |         10
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/25 22:06:00 EST
+Tag: blume-20020325-cprotobug
+Description:
+
+Fixed a bug in cproto (c prototype decoder).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/25 16:00:00 EST
+Tag: blume-20020325-raw-primops
+Description:
+
+I did some cleanup to Allen's new primop code and
+replaced yesterday's bootfiles with new ones.
+(But they are stored in the same place.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/24 22:40:00 EST
+Tag: blume-20020324-bootfiles
+Description:
+
+Made the bootfiles that Allen asked for.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/23 15:50:00 EST
+Tag: leunga-20020323-flint-cps-rcc-primops
+Description:
+
+  1. Changes to FLINT primops:
+
+    (* make a call to a C-function;
+     * The primop carries C function prototype information and specifies
+     * which of its (ML-) arguments are floating point. C prototype
+     * information is for use by the backend, ML information is for
+     * use by the CPS converter. *)
+  | RAW_CCALL of { c_proto: CTypes.c_proto,
+                   ml_args: ccall_type list,
+                   ml_res_opt: ccall_type option,
+                   reentrant : bool
+                 } option
+   (* Allocate uninitialized storage on the heap.
+    * The record is meant to hold short-lived C objects, i.e., they
+    * are not ML pointers.  With the tag, the representation is 
+    * the same as RECORD with tag tag_raw32 (sz=4), or tag_fblock (sz=8)
+    *)
+  | RAW_RECORD of {tag:bool,sz:int} 
+  and ccall_type = CCALL_INT32 | CCALL_REAL64 | CCALL_ML_PTR
+
+  2.  These CPS primops are now overloaded:
+
+       rawload of {kind:numkind}
+       rawstore of {kind:numkind}
+
+      The one argument form is:
+
+         rawload {kind} address
+
+      The two argument form is:
+       
+         rawload {kind} [ml object, byte-offset]
+
+  3. RAW_CCALL/RCC now takes two extra arguments:
+
+     a. The first is whether the C call is reentrant, i.e., whether
+        ML state should be saved and restored.
+     b. The second argument is a string argument specifying the name of
+        library and the C function.
+
+     These things are currently not handled in the code generator, yet.
+
+  4. In CProto,
+
+     An encoding type of "bool" means "ml object" and is mapped into 
+     C prototype of PTR.  Note that "bool" is different than "string", 
+     even though "string" is also mapped into PTR, because "bool"
+     is assigned an CPS type of BOGt, while "string" is assigned INT32t.
+
+  5. Pickler/unpicker
+
+     Changed to handle RAW_RECORD and newest RAW_CCALL
+
+  6. MLRiscGen,
+
+     1. Changed to handle the new rawload/rawstore/rawrecord operators.
+     2. Code for handling C Calls has been moved to a new module CPSCCalls,
+        in the file CodeGen/cpscompile/cps-c-calls.sml
+
+  7. Added the conditional move operator
+
+         condmove of branch
+
+     to cps.  Generation of this is still buggy so it is currently 
+     disabled.
+   
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/22 14:18:25 EST 
+Tag: george-20020322-cps-branch-prob
+Description:
+
+Implemented the Ball-Larus branch prediction-heuristics, and 
+incorporated graphical viewers for control flow graphs.
+
+Ball-Larus Heuristics:
+---------------------
+See the file compiler/CodeGen/cpscompile/cpsBranchProb.sml.
+
+By design it uses the Dempster-Shafer theory for combining
+probabilities.  For example, in the function:
+
+    fun f(n,acc) = if n = 0 then acc else f(n-1, n*acc)
+
+the ball-larus heuristics predicts that the n=0 is unlikely
+(OH-heuristic), and the 'then' branch is unlikely because of the
+RH-heuristic -- giving the 'then' branch an even lower combined
+probability using the Dempster-Shafer theory.
+
+Finally, John Reppy's loop analysis in MLRISC, further lowers the
+probability of the 'then' branch because of the loop in the else
+branch.
+
+
+Graphical Viewing:
+------------------ 
+I merely plugged in Allen's graphical viewers into the compiler. The
+additional code is not much. At the top level, saying:
+
+	Control.MLRISC.getFlag "cfg-graphical-view" := true;
+
+will display the graphical view of the control flow graph just before
+back-patching.  daVinci must be in your path for this to work. If
+daVinci is not available, then the default viewer can be changed
+using:
+
+	Control.MLRISC.getString "viewer"
+
+which can be set to "dot" or "vcg" for the corresponding viewers. Of
+course, these viewers must be in your path.
+
+The above will display the compilation unit at the level of clusters,
+many of which are small, boring, and un-interesting. Also setting:
+
+	Control.MLRISC.getInt "cfg-graphical-view_size"
+
+will display clusters that are larger than the value set by the above.
+
+ 
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/21 22:20:00 EST
+Tag: blume-20020321-kmp-bugfix
+Description:
+
+Changed the interface to the KMP routine in PreString and fixed
+a minor bug in one place where it was used.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/21 20:30:00 EST
+Tag: leunga-20020321-cfg
+Description:
+
+  Fixed a potential problem in cfg edge splitting.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/21 17:15:00 EST
+Tag: leunga-20020321-x86-fp-cfg
+Description:
+
+  1. Recoded the buggy parts of x86-fp. 
+
+     a. All the block reordering code has been removed.
+        We now depend on the block placement phases to do this work.
+
+     b. Critical edge splitting code has been simplified and moved into the
+        CFG modules, as where they belong.
+
+     Both of these were quite buggy and complex.  The code is now much, much
+     simpler.
+
+  2. X86 backend.
+
+     a. Added instructions for 64-bit support.  Instruction selection for
+        64-bit has not been committed, however, since that
+        requires changes to MLTREE which haven't been approved by 
+        Lal and John.
+
+     b. Added support for FUCOMI and FUCOMIP when generating code for 
+        PentiumPro and above.  We only generate these instructions in
+        the fast-fp mode.
+    
+     c. Added cases for JP and JNP in X86FreqProps. 
+
+  3. CFG
+
+     CFG now has a bunch of methods for edge splitting and merging.
+
+  4. Machine description.
+
+     John's simplification of MLTREE_BASIS.fcond broke a few machine
+     description things:
+
+     rtl-build.{sig,sml} and hppa.mdl fixed.
+
+     NOTE: the machine description stuff in the repository is still broken. 
+           Again, I can't put my fixes in because that involves 
+           changes to MLTREE. 
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/20 15:55:00 EST
+Tag: blume-20020320-kmp
+Description:
+
+Implemented Knuth-Morris-Pratt string matching in PreString and used
+it for String.isSubstring, Substring.isSubstring, and
+Substring.position.
+
+(Might need some stress-testing.  Simple examples worked fine.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/19 16:37:00 EST
+Tag: blume-20020319-witnesses
+Description:
+
+Added a structure C.W and functions convert/Ptr.convert to ml-nlffi-lib.
+
+This implements a generic mechanism for changing constness qualifiers
+anywhere within big C types without resorting to outright "casts".
+(So far, functions such as C.rw/C.ro or C.Ptr.rw/C.Ptr.ro only let you
+modify the constness at the outermost level.)
+The implementation of "convert" is based on the idea of "witness"
+values -- values that are not used by the operation but whose types
+"testify" to their applicability.  On the implementation side, "convert"
+is simply a projection (returning its second curried argument).  With
+cross-module inlining, it should not result in any machine code being
+generated.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/15 16:40:00 EST
+Tag: blume-20020315-basis
+Description:
+
+Provided (preliminary?) implementations for
+
+  {String,Substring}.{concatWith,isSuffix,isSubstring}
+
+and
+
+  Substring.full
+
+Those are in the Basis spec but they were missing in SML/NJ.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/14 21:30:00 EST
+Tag: blume-20020314-controls
+Description:
+
+Controls:
+---------
+
+1. Factored out the recently-added Controls : CONTROLS stuff and put
+   it into its own library $/controls-lib.cm.  The source tree for
+   this is under src/smlnj-lib/Controls.
+
+2. Changed the names of types and functions in this interface, so they
+   make a bit more "sense":
+
+      module -> registry
+      'a registry -> 'a group
+
+3. The interface now deals in ref cells only.  The getter/setter interface
+   is (mostly) gone.
+
+4. Added a function that lets one register an already-existing ref cell.
+
+5. Made the corresponding modifications to the rest of the code so that
+   everything compiles again.
+
+6. Changed the implementation of Controls.MLRISC back to something closer
+   to the original.  In particular, this module (and therefore MLRISC)
+   does not depend on Controls.  There now is some link-time code in
+   int-sys.sml that registers the MLRISC controls with the Controls
+   module.
+
+CM:
+---
+
+  * One can now specify the lambda-split aggressiveness in init.cmi.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/13 17:30:00 EST
+Tag: leunga-20020313-x86-fp-unary
+Description:
+
+Bug fix for:
+
+> leunga@weaselbane:~/Yale/tmp/sml-dist{21} bin/sml
+> Standard ML of New Jersey v110.39.1 [FLINT v1.5], March 08, 2002
+> - fun f(x,(y,z)) = Real.~ y;
+> [autoloading]
+> [autoloading done]
+>	fchsl	(%eax), 184(%esp)
+> Error: MLRisc bug: X86MCEmitter.emitInstr
+> 
+> uncaught exception Error
+>   raised at: ../MLRISC/control/mlriscErrormsg.sml:16.14-16.19
+
+The problem was that the code generator did not generate any fp registers
+in this case, and the ra didn't know that it needed to run the X86FP phase to
+translate the pseudo fp instruction.   This only happened with unary fp
+operators in certain situations.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/13 14:00:00 EST
+Tag: blume-20020313-overload-etc
+Description:
+
+1. Added _overload as a synonym for overload for backward compatibility.
+   (Control.overloadKW must be true for either version to be accepted.)
+
+2. Fixed bug in install script that caused more things to be installed
+   than what was requested in config/targets.
+
+3. Made CM aware of the (_)overload construct so that autoloading
+   works.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/12 22:03:00 EST
+Tag: blume-20020312-url
+Description:
+
+Forgot to update BOOT and srcarchiveurl.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/12 17:30:00 EST
+Tag: blume-20020312-version110392
+Description:
+
+Yet another version number bump (because of small changes to the
+binfile format).  Version number is now 110.39.2.  NEW BOOTFILES!
+
+Changes:
+
+  The new pid generation scheme described a few weeks ago was overly
+  complicated.  I implemented a new mechanism that is simpler and
+  provides a bit more "stability":  Once CM has seen a compilation
+  unit, it keeps its identity constant (as long as you do not delete
+  those crucial CM/GUID/* files).  This means that when you change
+  an interface, compile, then go back to the old interface, and
+  compile again, you arrive at the original pid.
+
+  There now also is a mechanism that instructs CM to use the plain
+  environment hash as a module's pid (effectively making its GUID
+  the empty string).  For this, "noguid" must be specified as an
+  option to the .sml file in question within its .cm file.
+  This is most useful for code that is being generated by tools such
+  as ml-nlffigen (because during development programmers tend to
+  erase the tool's entire output directory tree including CM's cached
+  GUIDs).  "noguid" is somewhat dangerous (since it can be used to locally
+  revert to the old, broken behavior of SML/NJ, but in specific cases
+  where there is no danger of interface confusion, its use is ok
+  (I think).
+
+  ml-nlffigen by default generates "noguid" annotations.  They can be
+  turned off by specifying -guid in its command line.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/12 12 14:42:36 EST
+Tag: george-20020312-frequency-computation
+Description:
+	
+Integrated jump chaining and static block frequency into the
+compiler. More details and numbers later.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/11 11 22:38:53 EST
+Tag: george-20020311-jump-chain-elim
+Description:
+
+Tested the jump chain elimination on all architectures (except the
+hppa).  This is on by default right now and is profitable for the
+alpha and x86, however, it may not be profitable for the sparc and ppc
+when compiling the compiler.
+
+The gc test will typically jump to a label at the end of the cluster, 
+where there is another jump to an external cluster containing the actual 
+code to invoke gc. This is to allow factoring of common gc invocation
+sequences. That is to say, we generate:
+
+	f:
+	   testgc
+	   ja	L1	% jump if above to L1
+
+	L1:
+	   jmp L2
+
+
+After jump chain elimination the 'ja L1' instructions is converted to
+'ja L2'. On the sparc and ppc, many of the 'ja L2' instructions may end
+up being implemented in their long form (if L2 is far away) using:
+
+	jbe	L3	% jump if below or equal to L3
+        jmp 	L2
+     L3:
+	...
+
+
+For large compilation units L2  may be far away.
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/11 13:30:00 EST
+Tag: blume-20020311-mltreeeval
+Description:
+
+A functor parameter was missing.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/11 10:30:00 EST
+Tag: leunga-20020311-runtime-string0
+Description:
+
+   The representation of the empty string now points to a 
+legal null terminated C string instead of unit.  It is now possible 
+to convert an ML string into C string with InlineT.CharVector.getData.  
+This compiles into one single machine instruction.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/10 23:55:00 EST
+Tag: leunga-20020310-x86-call
+Description:
+
+   Added machine generation for CALL instruction (relative displacement mode)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/08 16:05:00
+Tag: blume-20020308-entrypoints
+Description:
+
+Version number bumped to 110.39.1.  NEW BOOTFILES!
+
+Entrypoints: non-zero offset into a code object where execution should begin.
+
+- Added the notion of an entrypoint to CodeObj.
+- Added reading/writing of entrypoint info to Binfile.
+- Made runtime system bootloader aware of entrypoints.
+- Use the address of the label of the first function given to mlriscGen
+  as the entrypoint.  This address is currently always 0, but it will
+  not be 0 once we turn on block placement.
+- Removed the linkage cluster code (which was The Other Way(tm) of dealing
+  with entry points) from mlriscGen.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/07 20:45:00 EST
+Tag: leunga-20020307-x86-cmov
+Description:
+
+   Bug fixes for CMOVcc on x86.
+
+   1. Added machine code generation for CMOVcc
+   2. CMOVcc is now generated in preference over SETcc on PentiumPro or above.
+   3. CMOVcc cannot have an immediate operand as argument.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/07 16:15:00 EST
+Tag: blume-20020307-controls
+Description:
+
+This is a very large but mostly boring patch which makes (almost)
+every tuneable compiler knob (i.e., pretty much everything under
+Control.* plus a few other things) configurable via both the command
+line and environment variables in the style CM did its configuration
+until now.
+
+Try starting sml with '-h' (or, if you are brave, '-H')
+
+To this end, I added a structure Controls : CONTROLS to smlnj-lib.cm which
+implements the underlying generic mechanism.
+
+The interface to some of the existing such facilities has changed somewhat.
+For example, the MLRiscControl module now provides mkFoo instead of getFoo.
+(The getFoo interface is still there for backward-compatibility, but its
+use is deprecated.)
+
+The ml-build script passes -Cxxx=yyy command-line arguments through so
+that one can now twiddle the compiler settings when using this "batch"
+compiler.
+
+TODO items:
+
+We should go through and throw out all controls that are no longer
+connected to anything.  Moreover, we should go through and provide
+meaningful (and correct!) documentation strings for those controls
+that still are connected.
+
+Currently, multiple calls to Controls.new are accepted (only the first
+has any effect).  Eventually we should make sure that every control
+is being made (via Controls.new) exactly once.  Future access can then
+be done using Controls.acc.
+
+Finally, it would probably be a good idea to use the getter-setter
+interface to controls rather than ref cells.  For the time being, both
+styles are provided by the Controls module, but getter-setter pairs are
+better if thread-safety is of any concern because they can be wrapped.
+
+*****************************************
+
+One bug fix: The function blockPlacement in three of the MLRISC
+backpatch files used to be hard-wired to one of two possibilities at
+link time (according to the value of the placementFlag).  But (I
+think) it should rather sense the flag every time.
+
+*****************************************
+
+Other assorted changes (by other people who did not supply a HISTORY entry):
+
+1. the cross-module inliner now works much better (Monnier)
+2. representation of weights, frequencies, and probabilities in MLRISC
+   changed in preparation of using those for weighted block placement
+   (Reppy, George)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/07 14:44:24 EST 2002
+Tag: george-20020307-weighted-block-placement
+
+Tested the weighted block placement optimization on all architectures
+(except the hppa) using AMPL to generate the block and edge frequencies.
+Changes were required in the machine properties to correctly
+categorize trap instructions. There is an MLRISC flag 
+"weighted-block-placement" that can be used to enable weighted block 
+placement, but this will be ineffective without block/edge
+frequencies (coming soon).
+
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/05 17:24:48 EST 
+Tag: george-20020305-linkage-cluster
+
+In order to support the block placement optimization, a new cluster
+is generated as the very first cluster (called the linkage cluster).
+It contains a single jump to the 'real' entry point for the compilation 
+unit. Block placement has no effect on the linkage cluster itself, but
+all the other clusters  have full freedom in the manner in which they
+reorder blocks or functions.  
+
+On the x86 the typical linkage code that is generated is:
+   ----------------------
+	.align 2
+   L0:
+        addl    $L1-L0, 72(%esp)
+        jmp     L1
+
+
+        .align  2
+   L1:
+   ----------------------
+
+72(%esp) is the memory location for the stdlink register. This 
+must contain the address of the CPS function being called. In the
+above example, it contains the address of  L0; before
+calling L1 (the real entry point for the compilation unit), it
+must contain the address for L1, and hence
+
+	addl $L1-L0, 72(%esp)
+
+I have tested this on all architectures except the hppa.The increase
+in code size is of course negligible
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/03 13:20:00 EST
+Tag: leunga-20020303-mlrisc-tools
+
+  Added #[ ... ] expressions to mlrisc tools
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/27 12:29:00 EST
+Tag: blume-20020227-cdebug
+Description:
+
+- made types in structure C and C_Debug to be equal
+- got rid of code duplication (c-int.sml vs. c-int-debug.sml)
+- there no longer is a C_Int_Debug (C_Debug is directly derived from C)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/26 12:00:00 EST
+Tag: blume-20020226-ffi
+Description:
+
+1. Fixed a minor bug in CM's "noweb" tool:
+   If numbering is turned off, then truly don't number (i.e., do not
+   supply the -L option to noweb).  The previous behavior was to supply
+   -L'' -- which caused noweb to use the "default" line numbering scheme.
+   Thanks to Chris Richards for pointing this out (and supplying the fix).
+
+2. Once again, I reworked some aspects of the FFI:
+
+   A. The incomplete/complete type business:
+
+   - Signatures POINTER_TO_INCOMPLETE_TYPE and accompanying functors are
+     gone!
+   - ML types representing an incomplete type are now *equal* to
+     ML types representing their corresponding complete types (just like
+     in C).  This is still safe because ml-nlffigen will not generate
+     RTTI for incomplete types, nor will it generate functions that
+     require access to such RTTI.   But when ML code generated from both
+     incomplete and complete versions of the C type meet, the ML types
+     are trivially interoperable.
+
+     NOTE:  These changes restore the full generality of the translation
+     (which was previously lost when I eliminated functorization)!
+
+   B. Enum types:
+
+   - Structure C now has a type constructor "enum" that is similar to
+     how the "su" constructor works.  However, "enum" is not a phantom
+     type because each "T enum" has values (and is isomorphic to
+     MLRep.Signed.int).
+   - There are generic access operations for enum objects (using
+     MLRep.Signed.int).
+   - ml-nlffigen will generate a structure E_foo for each "enum foo".
+     * The structure contains the definition of type "mlrep" (the ML-side
+     representation type of the enum).  Normally, mlrep is the same
+     as "MLRep.Signed.int", but if ml-nlffigen was invoked with "-ec",
+     then mlrep will be defined as a datatype -- thus facilitating
+     pattern matching on mlrep values.
+     ("-ec" will be suppressed if there are duplicate values in an
+      enumeration.)
+     * Constructors ("-ec") or values (no "-ec") e_xxx of type mlrep
+     will be generated for each C enum constant xxx.
+     * Conversion functions m2i and i2m convert between mlrep and
+     MLRep.Signed.int.  (Without "-ec", these functions are identities.)
+     * Coversion functions c and ml convert between mlrep and "tag enum".
+     * Access functions (get/set) fetch and store mlrep values.
+   - By default (unless ml-nlffigen was invoked with "-nocollect"), unnamed
+     enumerations are merged into one single enumeration represented by
+     structure E_'.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/02/25 04:45:00 EST
+Tag: leunga-20020225-cps-spill
+
+This is a new implementation of the CPS spill phase.
+The new phase is in the new file compiler/CodeGen/cpscompile/spill-new.sml
+In case of problems, replace it with the old file spill.sml
+
+The current compiler runs into some serious performance problems when 
+constructing a large record.  This can happen when we try to compile a
+structure with many items.  Even a very simple structure like the following
+makes the compiler slow down.
+
+    structure Foo = struct
+       val x_1 = 0w1 : Word32.int
+       val x_2 = 0w2 : Word32.int
+       val x_3 = 0w3 : Word32.int
+       ...
+       val x_N = 0wN : Word32.int
+    end
+
+The following table shows the compile time, from N=1000 to N=4000, 
+with the old compiler:
+
+N
+1000   CPS 100 spill                           0.04u  0.00s  0.00g  
+       MLRISC ra                               0.06u  0.00s  0.05g  
+          (spills = 0 reloads = 0)
+       TOTAL                                   0.63u  0.07s  0.21g  
+
+1100   CPS 100 spill                           8.25u  0.32s  0.64g  
+       MLRISC ra                               5.68u  0.59s  3.93g  
+          (spills = 0 reloads = 0)
+       TOTAL                                   14.71u  0.99s  4.81g  
+
+1500   CPS 100 spill                           58.55u  2.34s  1.74g  
+       MLRISC ra                               5.54u  0.65s  3.91g  
+          (spills = 543 reloads = 1082)
+       TOTAL                                   65.40u  3.13s  6.00g  
+
+2000   CPS 100 spill                           126.69u  4.84s  3.08g  
+       MLRISC ra                               0.80u  0.10s  0.55g  
+          (spills = 42 reloads = 84)
+       TOTAL                                   129.42u  5.10s  4.13g 
+
+3000   CPS 100 spill                           675.59u  19.03s  11.64g  
+       MLRISC ra                               2.69u  0.27s  1.38g  
+          (spills = 62 reloads = 124)
+       TOTAL                                   682.48u  19.61s  13.99g  
+
+4000   CPS 100 spill                           2362.82u  56.28s  43.60g  
+       MLRISC ra                               4.96u  0.27s  2.72g  
+          (spills = 85 reloads = 170)
+       TOTAL                                   2375.26u  57.21s  48.00g  
+
+As you can see the old cps spill module suffers from some serious 
+performance problem.  But since I cannot decipher the old code fully, 
+instead of patching the problems up, I'm reimplementing it 
+with a different algorithm.  The new code is more modular, 
+smaller when compiled, and substantially faster 
+(O(n log n) time and O(n) space).  Timing of the new spill module: 
+
+4000  CPS 100 spill                           0.02u  0.00s  0.00g  
+      MLRISC ra                               0.25u  0.02s  0.15g  
+         (spills=1 reloads=3) 
+      TOTAL                                   7.74u  0.34s  1.62g 
+
+Implementation details:
+
+As far as I can tell, the purpose of the CPS spill module is to make sure the 
+number of live variables at any program point (the bandwidth) 
+does not exceed a certain limit, which is determined by the 
+size of the spill area.  
+
+When the bandwidth is too large, we decrease the register pressure by 
+packing live variables into spill records.  How we achieve this is
+completely different than what we did in the old code.
+
+First, there is something about the MLRiscGen code generator 
+that we should be aware of:
+
+o MLRiscGen performs code motion!
+ 
+   In particular, it will move floating point computations and
+   address computations involving only the heap pointer to 
+   their use sites (if there is only a single use).  
+   What this means is that if we have a CPS record construction
+   statement
+ 
+       RECORD(k,vl,w,e)
+ 
+   we should never count the new record address w as live if w 
+   has only one use (which is often the case).
+ 
+   We should do something similar to floating point, but the transformation
+   there is much more complex, so I won't deal with that.
+
+Secondly, there are now two new cps primops at our disposal:
+
+ 1. rawrecord of record_kind option 
+    This pure operator allocates some uninitialized storage from the heap.
+    There are two forms:
+ 
+     rawrecord NONE [INT n]  allocates a tagless record of length n
+     rawrecord (SOME rk) [INT n] allocates a tagged record of length n
+                                 and initializes the tag.
+ 
+ 2. rawupdate of cty
+      rawupdate cty (v,i,x) 
+      Assigns to x to the ith component of record v.
+      The storelist is not updated.
+ 
+We use these new primops for both spilling and increment record construction.
+ 
+ 1. Spilling.
+    
+    This is implemented with a linear scan algorithm (but generalized
+    to trees).  The algorithm will create a single spill record at the
+    beginning of the cps function and use rawupdate to spill to it,
+    and SELECT or SELp to reload from it.  So both spills and reloads
+    are fine-grain operations.  In contrast, in the old algorithm 
+    "spills" have to be bundled together in records.  
+ 
+    Ideally, we should sink the spill record construction to where
+    it is needed.  We can even split the spill record into multiple ones
+    at the places where they are needed.  But CPS is not a good
+    representation for global code motion, so I'll keep it simple and
+    am not attempting this.
+ 
+ 2. Incremental record construction (aka record splitting).
+
+    Long records with many component values which are simulatenously live
+    (recall that single use record addresses are not considered to 
+     be live) are constructed with rawrecord and rawupdate.
+    We allocate space on the heap with rawrecord first, then gradually
+    fill it in with rawupdate.  This is the technique suggested to me
+    by Matthias.
+ 
+    Some restrictions on when this is applicable:
+    1. It is not a VECTOR record.  The code generator currently does not handle
+       this case. VECTOR record uses double indirection like arrays.
+    2. All the record component values are defined in the same "basic block" 
+       as the record constructor.  This is to prevent speculative 
+       record construction. 
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/02/22 01:02:00 EST
+Tag: leunga-20020222-mlrisc-tools
+
+Minor bug fixes in the parser and rewriter
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/02/21 20:20:00 EST
+Tag: leunga-20020221-peephole
+
+Regenerated the peephole files.  Some contained typos in the specification
+and some didn't compile because of pretty printing bugs in the old version
+of 'nowhere'.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/02/19 20:20:00 EST
+Tag: leunga-20020219-mlrisc-tools
+Description:
+
+   Minor bug fixes to the mlrisc-tools library:
+
+   1.  Fixed up parsing colon suffixed keywords
+   2.  Added the ability to shut the error messages up
+   3.  Reimplemented the pretty printer and fixed up/improved
+       the pretty printing of handle and -> types.
+   4.  Fixed up generation of literal symbols in the nowhere tool.
+   5.  Added some SML keywords to to sml.sty
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/19 16:20:00 EST
+Tag: blume-20020219-cmffi
+Description:
+
+A wild mix of changes, some minor, some major:
+
+* All C FFI-related libraries are now anchored under $c:
+    $/c.cm      --> $c/c.cm
+    $/c-int.cm  --> $c/internals/c-int.cm
+    $/memory.cm --> $c/memory/memory.cm
+
+* "make" tool (in CM) now treats its argument pathname slightly
+  differently:
+    1. If the native expansion is an absolute name, then before invoking
+       the "make" command on it, CM will apply OS.Path.mkRelative
+       (with relativeTo = OS.FileSys.getDir()) to it.
+    2. The argument will be passed through to subsequent phases of CM
+       processing without "going native".  In particular, if the argument
+       was an anchored path, then "make" will not lose track of that anchor.
+
+* Compiler backends now "know" their respective C calling conventions
+  instead of having to be told about it by ml-nlffigen.  This relieves
+  ml-nlffigen from one of its burdens.
+
+* The X86Backend has been split into X86CCallBackend and X86StdCallBackend.
+
+* Export C_DEBUG and C_Debug from $c/c.cm.
+
+* C type encoding in ml-nlffi-lib has been improved to model the conceptual
+  subtyping relationship between incomplete pointers and their complete
+  counterparts.  For this, ('t, 'c) ptr has been changed to 'o ptr --
+  with the convention of instantiating 'o with ('t, 'c) obj whenever
+  the pointer target type is complete.  In the incomplete case, 'o
+  will be instantiated with some "'c iobj" -- a type obtained by
+  using one of the functors PointerToIncompleteType or PointerToCompleteType.
+
+  Operations that work on both incomplete and complete pointer types are
+  typed as taking an 'o ptr while operations that require the target to
+  be known are typed as taking some ('t, 'c) obj ptr.
+
+  voidptr is now a bit "more concrete", namely "type voidptr = void ptr'"
+  where void is an eqtype without any values.  This makes it possible
+  to work on voidptr values using functions meant to operate on light
+  incomplete pointers.
+
+* As a result of the above, signature POINTER_TO_INCOMPLETE_TYPE has
+  been vastly simplified.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/19 10:48:00 EST
+Tag: blume-20020219-pqfix
+Description:
+
+Applied Chris Okasaki's bug fix for priority queues.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 17:05:00
+Tag: Release_110_39
+Description:
+
+Last-minute retagging is becoming a tradition... :-(
+
+This is the working release 110.39.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 16:00:00 EST
+Tag: Release_110_39-orig
+Description:
+
+Working release 110.39.  New bootfiles.
+
+(Update: There was a small bug in the installer so it wouldn't work
+with all shells.  So I retagged. -Matthias)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 14:17:00 EST
+Tag: blume-20020215-showbindings
+Description:
+
+Added EnvRef.listBoundSymbols and CM.State.showBindings.  Especially
+the latter can be useful for exploring what bindings are available at
+the interactive prompt.  (The first function returns only the list
+of symbols that are really bound, the second prints those but also the
+ones that CM's autoloading mechanism knows about.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/15 12:08:00 EST
+Tag: blume-20020215-iptrs
+Description:
+
+Two improvements to ml-nlffigen:
+
+  1. Write files only if they do not exist or if their current contents
+     do not coincide with what's being written.  (That is, avoid messing
+     with the time stamps unless absolutely necessary.)
+
+  2. Implement a "repository" mechanism for generated files related
+     to "incomplete pointer types".   See the README file for details.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/14 11:50:00 EST
+Tag: blume-20020214-quote
+Description:
+
+Added a type 't t_' to tag.sml (in ml-nlffi-lib.cm).  This is required
+because of the new and improved tag generation scheme.  (Thanks to Allen
+Leung for pointing it out.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/02/14 09:55:27 EST 2002
+Tag: george-20020214-isabelle-bug
+Description: 
+
+Fixed the MLRISC bug sent by Markus Wenzel regarding the compilation
+of Isabelle on the x86.
+
+From Allen:
+-----------
+ I've found the problem:  
+
+     in ra-core.sml, I use the counter "blocked" to keep track of the
+     true number of elements in the freeze queue.  When the counter goes
+     to zero, I skip examining the queue.  But I've messed up the
+     bookkeeping in combine():
+
+         else ();
+         case !ucol of
+           PSEUDO => (if !cntv > 0 then 
+                 (if !cntu > 0 then blocked := !blocked - 1 else (); 
+                                    ^^^^^^^^^^^^^^^^^^^^^^^
+                  moveu := mergeMoveList(!movev, !moveu)
+                 )
+              else ();  
+             
+     combine() is called to coalesce two nodes u and v.
+     I think I was thinking that if the move counts of u and v are both
+     greater than zero then after they are coalesced then one node is
+     removed from the freeze queue.  Apparently I was thinking that
+     both u and v are of low degree, but that's clearly not necessarily true.
+ 
+
+02/12/2002:
+    Here's the patch.  HOL now compiles.
+
+    I don't know how this impact on performance (compile
+    time or runtime).  This bug caused the RA (especially on the x86) 
+    to go thru the potential spill phase when there are still nodes on the
+    freeze queue.
+
+
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/13 22:40:00 EST
+Tag: blume-20020213-fptr-rtti
+Description:
+
+Fixed a bug in ml-nlffigen that was introduced with one of the previous
+updates.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/13 16:41:00 EST
+Tag: blume-20020213-cmlpq
+Description:
+
+Added new priority queue export symbols (which have just been added to
+smlnj-lib.cm) to CML's version of smlnj-lib.cm.  (Otherwise CML would
+not compile and the installer would choke.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/13 16:15:00 EST
+Tag: blume-20020213-various
+Description:
+
+1. More tweaks to ml-nlffigen:
+
+   - better internal datastructures (resulting in slight speedup)
+   - "-match" option requires exact match
+   - "localized" gensym counters (untagged structs/unions nested within
+     other structs/unions or within typedefs get a fresh counter; their
+     tag will be prefixed by a concatenation of their parents' tags)
+   - bug fixes (related to calculation of transitive closure of types
+     to be included in the output)
+
+2. Minor Basis updates:
+
+   - added implementations for List.collate and Option.app
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/11 15:55:00 EST
+Tag: blume-20020211-gensym
+Description:
+
+Added a "-gensym" option to command line of ml-nlffigen.  This can be
+used to specify a "stem" -- a string that is inserted in all "gensym'd"
+names (ML structure names that correspond to unnamed C structs, unions,
+and enums), so that separate runs of ml-nlffigen do not clash.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/11 12:05:00 EST
+Tag: blume-20020211-gensml
+Description:
+
+A quick fix for a problem with GenSML (in the pgraph-util library):
+Make generation of toplevel "local" optional.  (Strictly speaking,
+signature definitions within "local" are not legal SML.)
+
+Other than that: updates to INSTALL and cm/TODO.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/08 15:00:00 EST
+Tag: blume-20020208-uniquepid
+Description:
+
+0. Version number has been bumped to 110.38.1.  NEW BOOTFILES!!!
+
+1. The installer (config/install.sh) has gotten smarter:
+
+     - Configuration options are a bit easier to specify now
+       (in config/targets).
+     - Bug in recognizing .tar.bz2 files fixed.
+     - Installer automatically resolves dependencies between
+       configuration options (e.g., if you ask for eXene, you will
+       also get cml -- regardless whether you asked for it or not).
+     - Installer can run in "quieter mode" by setting the environment
+       variable INSTALL_QUIETLY to "true".  "Quieter" does not mean
+       "completely silent", though.
+     - Build HashCons library as part of smlnj-lib.
+
+2. A new scheme for assigning persistent identifiers to compilation
+   units (and, by extension, to types etc.) has been put into place.
+   This fixes a long-standing bug where types and even dynamic values
+   can get internally confused, thereby compromising type safety
+   (abstraction) and dynamic correctness.  See
+
+     http://cm.bell-labs.com/cm/cs/who/blume/pid-confusion.tgz
+
+   for an example of how things could go wrong until now.
+
+   The downside of the new scheme is that pids are not quite as
+   persistent as they used to be: CM will generate a fresh pid
+   for every compilation unit that it thinks it sees for the first
+   time.  That means that if you compile starting from a clean, fresh
+   source tree at two different times, you end up with different
+   binaries.
+
+   Cutoff recompilation, however, has not been compromised because
+   CM keeps pid information in special caches between runs.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/02/07 15:34:13 EST 2002
+Tag: <none>
+Description:
+
+Compilers that generate assembly code may produce  global labels 
+whose value is resolved at link time. The various peephole optimization
+modules did not take this in account.
+
+TODO. The Labels.addrOf function should really return an option
+type so that clients are forced to deal with this issue, rather
+than an exception being raised.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/02/06 13:55:02 EST
+Tag: george-20020206-ra-breakup
+Description:
+
+1. A bug fix from Allen.
+
+    A typo causes extra fstp %st(0)'s to be generated at compensation
+    edges, which might cause stack underflow traps at runtime.  This
+    occurs in fft where there are extraneous fstps right before the 'into'
+    trap instruction (in this case they are harmless since none of the
+    integers overflow.)
+
+2. Pulled out various utility modules that were embedded in the modules
+   of the register allocator. I need these modules for other purposes, but
+   they are not complete enough to put into a library (just yet).
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/31 16:05:00 EST
+Tag: blume-20020131-sparc-ccalls
+Description:
+
+1. C-calls on Sparc needlessly allocated a huge chunk (96 bytes)
+   of extra stack space by mistake.  Fixed.
+
+2. Bug in logic of handling of command-line options in ml-nlffigen fixed.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/01/30
+Tag: leunga-20020130-nowhere-bug-fix
+Description:
+
+   MLRISC bug fixes:
+   1. Fixed a bindings computation bug in the 'nowhere' program generator tool.
+   2. MachineInt.fromString was negating its value.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/29
+Tag: blume-20020129-INSTALL
+Description:
+
+- Added somewhat detailed installation instructions (file INSTALL).
+- Fixed curl-detection bug in config/install.sh.
+- It is now possible to select the URL getter using the URLGETTER
+  environment variable:
+
+      not set / "unknown"      --> automatic detection (script tries wget,
+                                   curl, and lynx)
+      "wget" / "curl" / "lynx" --> use the specified program (script "knows"
+                                   how to properly invoke them)
+      other                    --> use $URLGETTER directly, it must take
+                                   precisely two command-line arguments
+                                   (source URL and destination file name)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28
+Tag: blume-20020128-sparc-ccalls
+Description:
+
+- Fixed problem with calculation of "used" registers in sparc-c-calls.
+- Make use of the allocParam argument in sparc-c-calls.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28
+Tag: blume-20020128-allocParam
+Description:
+
+John Reppy:  Changes c-calls API to accept client-callback for
+allocating extra stack space.
+me: Corresponding changes to mlriscGen (using a dummy argument that
+    does not change the current behavior).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28 12:00:00
+Tag: Release_110_38
+Description:
+
+This time for real!!!
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28 10:56:00 EST
+Tag: blume-20020128-retraction
+Description:
+
+0. Retracted earlier 110.38.  (The Release_110_38 tag has been replaced
+   with blume-Release_110_38-retracted.)
+
+1. Fixed a problem with incorrect rounding modes in real64.sml.
+   (Thanks to Andrew Mccreight <andrew.mccreight@yale.edu>.)
+
+2. A bug in ml-nlffigen related to the handling of unnamed structs, unions,
+   and enums fixed.  The naming of corresponding ML identifiers should 
+   now be consistent again.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/01/27 
+Tag: leunga-20020127-nowhere
+Description:
+
+   Added a target called nowhere in the configuration scripts.
+   Enabling this will build the MLRISC 'nowhere' tool (for translating 
+   programs with where-clauses into legal SML code) during installation.  
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/25 21:27:00 EST
+Tag: blume-Release_110_38-retracted
+Description:
+
+Call it a (working) release!  Version is 110.38. Bootfiles are ready.
+
+README will be added later.
+
+!!! NOTE:  Re-tagged as blume-Release_110_38-retracted. Original tag
+(Release_110_38) removed.  Reason: Last-minute bug fixes.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/25
+Tag: blume-20020125-ffi
+Description:
+
+A large number of tweaks and improvements to ml-nlffi-lib and
+ml-nlffigen:
+
+   - ML represenation types have been streamlined
+   - getter and setter functions work with concrete values, not abstract
+     ones where possible
+   - ml-nlffigen command line more flexible (see README file there)
+   - some bugs have been fixed (hopefully)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/01/24
+Tag: george-20020124-risc-ra-interface
+Description:
+
+   There is a dramatic simplification in the interface to the
+   register allocator for RISC architectures as a result of making 
+   parallel copy instructions explicit. 
+   
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/22
+Tag: blume-20020122-x86-ccalls
+Description:
+
+Bug fix for c-calls on x86 (having to do with how char- and
+short-arguments are being handled).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/21
+Tag: blume-20020121-ff
+Description:
+
+Another day of fiddling with the FFI...
+
+1. Bug fix/workaround:  CKIT does not complain about negative array
+   dimensions, so ml-nlffigen has to guard itself against this possibility.
+   (Otherwise a negative dimension would send it into an infinite loop.)
+
+2. Some of the abstract types (light objects, light pointers, most "base"
+   types) in structure C are now eqtypes.
+
+3. Added constructors and test functions for NULL function pointers.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
+Tag: blume-20020118-ready-for-new-release
+Description:
+
+Made config/srcarchiveurl point to a new place.  (Will provide boot
+files shortly.)
+
+Maybe we christen this to be 110.38?
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
+Tag: blume-20020118-more-ffifiddle
+Description:
+
+Today's FFI fiddling:
+
+  - Provided a structure CGetSet with "convenient" versions of C.Get.* and
+    C.Set.* that use concrete (MLRep.*) arguments and results instead
+    of abstract ones.
+
+  - Provided word-style bit operations etc. for "int" representation
+    types in MLRep.S<Foo>Bitops where <Foo> ranges over Char, Int, Short,
+    and Long.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
+Tag: blume-20020118-use-x86-fp
+Description:
+
+Now that x86-fast-fp seems to be working, I turned it back on again
+by default.  (Seems to work fine now, even with the FFI.)
+
+Other than that, I added some documentation about the FFI to
+src/ml-nlffigen/README and updated the FFI test examples in
+src/ml-nlffi-lib/Tests/*.
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/01/17
+Tag: leunga-20020117-x86-fast-fp-call
+Description:
+
+   1. Fixed a problem with handling return fp values when x86's fast fp
+      mode is turned on.  
+
+   2. Minor pretty printing fix for cellset.  Print %st(0) as %st(0) instead
+      of %f32.
+
+   3. Added a constructor INT32lit to the ast of MLRISC tools.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/16
+Tag: blume-20020116-ffifiddle
+Description:
+
+More fiddling with the FFI interface:
+
+ - Make constness 'c instead of rw wherever possible.  This eliminates
+   the need for certain explicit coercions.  (However, due to ML's
+   value polymorphism, there will still be many cases where explicit
+   coercions are necessary.  Phantom types are not the whole answer
+   to modeling a subtyping relationship in ML.)
+
+ - ro/rw coersions for pointers added.  (Avoids the detour through */&.)
+
+ - "printf" test example added to src/ml-nlffi-lib/Tests.  (Demonstrates
+   clumsy workaround for varargs problem.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/01/15
+Tag: <none>
+Description:
+
+1. Since COPY instructions are no longer native to the architecture, 
+   a generic functor can be used to implement the expandCopies function.
+
+2. Allowed EXPORT and IMPORT pseudo-op declarations to appear inside a
+   TEXT segment.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/15
+Tag: blume-20020115-ffiupdates
+Description:
+
+1. Fix for bug resulting in single-precision float values being returned
+   incorrectly from FFI calls.
+
+2. Small modifications to C FFI API:
+
+    - memory-allocation routines return straight objects (no options)
+      and raise an exception in out-of-memory situations
+    - unsafe extensions to cast between function pointers and pointers
+      from/to ints
+    - added structure C_Debug as an alternative to structure C where
+      pointer-dereferencing (|*| and |*!) always check for null-pointers
+    - added open_lib' to DynLinkage;  open_lib' works like open_lib
+      but also takes a (possibly empty) list of existing library handles
+      that the current library depends on
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/10
+Tag: blume-20020110-newffigen
+Description:
+
+1. Updates to portable graph code.
+
+2. Major update to ml-nlffigen and ml-nlffi-lib.  Things are much
+   more scalable now so that even huge interfaces such as the one
+   for GTK compile in finite time and space. :-)
+   See src/ml-nlffigen/README for details on what's new.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/01/09 14:31:35 EST 2002
+Tag: george-20011206-rm-native-copy
+Description:
+
+	Removed the native COPY and FCOPY instructions
+	from all the architectures and replaced it with the
+	explicit COPY instruction from the previous commit.
+
+	It is now possible to simplify many of the optimizations
+	modules that manipulate copies. This has not been
+	done in this change.
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/12/06 16:50:13 EST 2001
+Tag: george-20011206-mlrisc-instruction
+Description:
+
+Changed the representation of instructions from being fully abstract 
+to being partially concrete. That is to say: 
+
+  from
+	type instruction
+
+  to
+	type instr				(* machine instruction *)
+
+	datatype instruction = 	
+	    LIVE of {regs: C.cellset, spilled: C.cellset}
+          | KILL of {regs: C.cellset, spilled: C.cellset}
+          | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+          | ANNOTATION of {i: instruction, a: Annotations.annotation}
+          | INSTR of instr
+
+This makes the handling of certain special instructions that appear on
+all architectures easier and uniform.
+
+LIVE and KILL say that a list of registers are live or killed at the 
+program point where they appear. No spill code is generated when an
+element of the 'regs' field is spilled, but the register is moved to 
+the 'spilled' (which is present, more for debugging than anything else).
+
+LIVE replaces the (now deprecated) DEFFREG instruction on the alpha.
+We used to generate:
+
+	DEFFREG f1
+	f1 := f2 + f3
+        trapb
+
+but now generate:
+
+	f1 := f2 + f3
+	trapb
+	LIVE {regs=[f1,f2,f3], spilled=[]}
+
+Furthermore, the DEFFREG (hack) required that all floating point instruction
+use all registers mentioned in the instruction. Therefore f1 := f2 + f3, 
+defines f1 and uses [f1,f2,f3]! This hack is no longer required resulting 
+in a cleaner alpha implementation. (Hopefully, intel will not get rid of 
+this architecture).
+
+COPYXXX is intended to replace the parallel COPY and FCOPY  available on 
+all the architectures. This will result in further simplification of the
+register allocator that must be aware of them for coalescing purposes, and 
+will also simplify certain aspects of the machine description that provides
+callbacks related to parallel copies. 
+
+ANNOTATION should be obvious, and now INSTR represents the honest to God
+machine instruction set!
+
+The <arch>/instructions/<arch>Instr.sml files define certain utility 
+functions for making porting easier -- essentially converting upper case
+to lower case. All machine instructions (of type instr) are in upper case,
+and the lower case form generates an MLRISC instruction. For example on 
+the alpha we have:
+
+  datatype instr =
+     LDA of {r:cell, b:cell, d:operand}
+   | ...
+
+  val lda : {r:cell, b:cell, d:operand} -> instruction
+    ...
+
+where lda is just (INSTR o LDA), etc.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
@@ -269,7 +2113,6 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
->>>>>>> 1.169
 Date: 2001/09/18 15:35:00 EDT
 Tag: blume-20010918-readme11036
 Description:

@@ -28,15 +28,15 @@ struct
 	val returnPtr = C.GPReg 31
 	val defs = C.addReg(returnPtr, live(defs, C.empty))
 	val uses = live(uses, C.empty)
-      in emit(I.BLE{b=rexp funct, d=I.IMMED 0, sr=5, t=returnPtr, 
+      in emit(I.ble{b=rexp funct, d=I.IMMED 0, sr=5, t=returnPtr, 
                     defs=defs, uses=uses, cutsTo=[], mem=region})
       end
     | doCall _ = error "doCall"
 
   fun doJmp({stm,rexp,emit}:reduce, T.JMP(exp, labs)) =
     (case exp
-     of T.LABEL lab => emit(I.B{lab=lab,n=true})
-      | _ => emit(I.BV{b=rexp(exp), x=C.GPReg 0, labs=labs, n=true})
+     of T.LABEL lab => emit(I.b{lab=lab,n=true})
+      | _ => emit(I.bv{b=rexp(exp), x=C.GPReg 0, labs=labs, n=true})
     (*esac*))
 
 end

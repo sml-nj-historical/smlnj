@@ -159,6 +159,9 @@ struct arena {
 /* Return the amount of free space (in bytes) available in an arena */
 #define AVAIL_SPACE(a)		((Addr_t)((a)->tospTop) - (Addr_t)((a)->nextw))
 
+/* Return the amount of allocated space (in bytes) in an arena */
+#define USED_SPACE(a)		((Addr_t)((a)->nextw) - (Addr_t)((a)->tospBase))
+
 /* Return true if the address addr is an older object in this arena */
 #define isOLDER(a,addr)		((addr) < (a)->oldTop)
 

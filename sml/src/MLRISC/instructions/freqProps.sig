@@ -4,11 +4,11 @@
  *)
 
 signature FREQUENCY_PROPERTIES =
-sig
+  sig
 
-   structure I : INSTRUCTIONS
+    structure I : INSTRUCTIONS
 
-      (* Branch probability in percentage *)
-   val branchProb : I.instruction -> int
+  (* Branch probability *)
+    val branchProb : I.instruction -> Probability.prob
 
-end
+  end

@@ -1,6 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	functor X86LeafOpt
 	functor X86Peephole
 is
 #if defined(NEW_CM)
@@ -35,4 +34,3 @@ is
 	IA32.cm
 #endif
 	../x86/instructions/x86Peephole.sml
-	../x86/instructions/x86-leaf-opt.sml

@@ -58,6 +58,7 @@ struct
    and   literal = WORDlit of word
                  | WORD32lit of Word32.word
                  | INTlit of int
+                 | INT32lit of Int32.int
                  | INTINFlit of IntInf.int
                  | STRINGlit of string
                  | CHARlit of char
@@ -69,6 +70,7 @@ struct
                  | CONSexp of ident * exp option
                  | LISTexp of exp list * exp option
                  | TUPLEexp of exp list
+                 | VECTORexp of exp list
                  | RECORDexp of (id * exp) list
                  | APPexp of exp * exp
                  | IFexp of exp * exp * exp
@@ -120,6 +122,7 @@ struct
                     | LITpat of literal
                     | LISTpat of pat list * pat option
                     | TUPLEpat of pat list
+                    | VECTORpat of pat list
                     | RECORDpat of (id * pat) list * bool
                     | TYPEDpat of pat * ty
                     | NOTpat of pat

@@ -25,7 +25,7 @@ structure RaBitmatrix : RA_BITMATRIX = struct
        val mask = W.-(W.fromInt size, 0w1)
    in  W.toIntX(W.andb(h, mask)) end
 
-   val empty = BM{table=SMALL(ref(A.array(2, [])), 0w0), elems=ref 0, edges=0}
+   val empty = BM{table=SMALL(ref(A.array(0, [])), 0w0), elems=ref 0, edges=0}
 
    (*
    val indices = A.array(1024,0)

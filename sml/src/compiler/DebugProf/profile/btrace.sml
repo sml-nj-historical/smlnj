@@ -16,17 +16,47 @@ local
     structure VC = VarCon
     structure BT = CoreBasicTypes
     structure AU = AbsynUtil
-
-    structure Dummy = BTImp		(* mention it, so it gets made! *)
 in
 
 signature BTRACE = sig
+    val enabled : bool ref
     val instrument :
 	(Symbol.symbol -> bool) ->	(* isSpecial *)
 	SE.staticEnv * A.dec CompInfo.compInfo -> A.dec -> A.dec
 end
 
 structure BTrace :> BTRACE = struct
+
+    val priority = [10, 1]
+    val obscurity = 1
+    val prefix = "instrument"
+
+    val registry = ControlRegistry.new { help = "instrumentation" }
+
+    val _ = BasicControl.nest (prefix, registry, priority)
+
+    val bool_cvt = ControlUtil.Cvt.bool
+
+    val nextpri = ref 0
+
+    val enabled = let
+	val r = ref false
+	val p = !nextpri
+	val ctl = Controls.control { name = "btrace-mode",
+				     pri = [p],
+				     obscurity = obscurity,
+				     help = "backtrace instrumentation mode",
+				     ctl = r }
+    in
+	nextpri := p + 1;
+	ControlRegistry.register
+	    registry
+	    { ctl = Controls.stringControl bool_cvt ctl,
+	      envName = SOME "INSTUMENT_BTRACE_MODE" };
+	r
+    end
+
+    val _ = BTImp.install enabled
 
     fun impossible s = EM.impossible ("BTrace: " ^ s)
 
@@ -331,7 +361,7 @@ structure BTrace :> BTRACE = struct
     end
 
     fun instrument isSpecial params d =
-	if SMLofNJ.Internals.BTrace.mode NONE then
+	if !enabled then
 	    instrument0 isSpecial params d
 	    handle NoCore => d		(* this takes care of core.sml *)
 	else d

@@ -5,6 +5,7 @@
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
 Group (../../system/smlnj/viscomp/basics.cm)
+
 	signature BASIC_CONTROL
 	structure BasicControl
 
@@ -76,3 +77,4 @@ is
 	$/basis.cm
 	$/smlnj-lib.cm
 	$/pp-lib.cm
+	$/controls-lib.cm

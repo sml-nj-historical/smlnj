@@ -21,5 +21,11 @@ signature INT_INF =
     val <<   : int * Word.word -> int
     val ~>>  : int * Word.word -> int
 
+  (* these are not in the BASIS signature, but they are useful since IntInf.int
+   * is not a builtin type yet.
+   *)
+    val == : (int * int) -> bool
+    val != : (int * int) -> bool
+
   end (* signature INT_INF *)
 

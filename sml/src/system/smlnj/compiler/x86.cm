@@ -64,8 +64,9 @@ Library
 	structure CoreSym
 	structure FLINT
 
-	(* the x86 backend *)
-	structure X86Backend
+	(* the x86 backend(s) *)
+	structure X86StdCallBackend
+	structure X86CCallBackend
 is
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm

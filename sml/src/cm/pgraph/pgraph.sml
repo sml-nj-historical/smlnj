@@ -10,7 +10,7 @@ structure PortableGraph = struct
 
     type varname = string
 
-    type namespace = string (* SIG | STR | FCT or more *)
+    datatype namespace = SGN | STR | FCT
 
     datatype rhs =
 	SYM of namespace * string

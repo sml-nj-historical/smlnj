@@ -49,6 +49,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
+	   noguid: bool,
 	   locl: bool }
 
     type cmparams =
@@ -278,17 +279,19 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
-	val { name, mkpath, opts = oto, derived, ... } : spec = spec
+    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } =
+    let val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
 	val kw_setup = "setup"
 	val kw_lambdasplit = "lambdasplit"
+	val kw_noguid = "noguid"
 	val UseDefault = NONE
 	val Suggest = SOME
-	val (srq, setup, splitting) =
+	val (srq, setup, splitting, noguid, locl) =
 	    case oto of
-		NONE => (Sharing.DONTCARE, (NONE, NONE), UseDefault)
+		NONE => (Sharing.DONTCARE, (NONE, NONE), UseDefault,
+			 false, false)
 	      | SOME to => let
 		    val { matches, restoptions } =
 			parseOptions { tool = tool,
@@ -305,11 +308,18 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | ["shared"] => Sharing.SHARED
 			  | ["private"] => Sharing.PRIVATE
 			  | _ => err "invalid option(s)"
-		    val locl =
-			case restoptions of
-			    ["local"] => true
-			  | [] => false
-			  | _ => err "invalid option(s)"
+		    fun isKW kw s = String.compare (kw, s) = EQUAL
+		    val (locls, restoptions) =
+			List.partition (isKW "local") restoptions
+		    val (noguids, restoptions) =
+			List.partition (isKW "noguid") restoptions
+		    val locl = not (List.null locls)
+		    val noguid = not (List.null noguids)
+		    val _ = if List.null restoptions then ()
+			    else err (concat
+					  ("invalid option(s): " ::
+					   foldr (fn (x, l) => " " :: x :: l)
+						 [] restoptions))
 		    val setup =
 			case matches kw_setup of
 			    NONE => (NONE, NONE)
@@ -334,28 +344,23 @@ structure PrivateTools : PRIVATETOOLS = struct
 		    val splitting = let
 			fun invalid () = err "invalid lambdasplit spec"
 			fun spec (s: fnspec) =
-			    case #name s of
-				"default" => UseDefault
-			      | "on" => Suggest (SOME 0)
-			      | "off" => Suggest NONE
-			      | "infinity" => Suggest (SOME 100000000)
-			      | n =>
-				(case Int.fromString n of
-				     SOME i => Suggest (SOME i)
-				   | NONE => invalid ())
+			    case LSplitArg.arg (#name s) of
+				SOME ls => ls
+			      | NONE => invalid ()
 		    in
 			case matches kw_lambdasplit of
 			    NONE => UseDefault
 			  | SOME [] => Suggest (SOME 0)(* == "on" *)
 			  | SOME [STRING x] => spec x
-			  | _ => err "invalid lambdasplit spec"
+			  | _ => invalid ()
 		    end
 		in
-		    (srq, setup, splitting)
+		    (srq, setup, splitting, noguid, locl)
 		end
 	val p = srcpath (mkpath ())
 	val sparam = { share = srq, setup = setup, split = splitting,
-		       locl = false (* FIXME *) }
+		       noguid = noguid,
+		       locl = locl }
     in
 	({ smlfiles = [(p, sparam)],
 	   sources = [(p, { class = "sml", derived = derived })],

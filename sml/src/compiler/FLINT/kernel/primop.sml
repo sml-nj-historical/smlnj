@@ -15,6 +15,7 @@ datatype arithop
   | ABS | FSQRT	| FSIN | FCOS | FTAN		(* floating point only *)
   | LSHIFT | RSHIFT | RSHIFTL			(* int only *)
   | ANDB | ORB | XORB | NOTB			(* int only *)
+  | REM | DIV | MOD			        (* int only *)
 
 datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
 
@@ -79,11 +80,13 @@ datatype primop
   | SETSPECIAL                 (* set the state of a special object *)
   | GETSPECIAL                 (* get the state of a special object *)
   | USELVAR | DEFLVAR
-  | INLDIV | INLMOD | INLREM   (* inline interger arithmetic *)
-  | INLMIN |INLMAX | INLABS    (* inline interger arithmetic *) 
+  | INLMIN of numkind	       (* inline min *)
+  | INLMAX of numkind	       (* inline max *)
+  | INLABS of numkind	       (* inline abs *)
   | INLNOT                     (* inline bool not operator *)
   | INLCOMPOSE                 (* inline compose "op o"  operator *)
   | INLBEFORE                  (* inline "before" operator *) 
+  | INLIGNORE		       (* inline "ignore" function *)
   | INL_ARRAY                  (* inline polymorphic array allocation *)
   | INL_VECTOR                 (* inline polymorphic vector allocation *)
   | INL_MONOARRAY of numkind   (* inline monomorphic array allocation *)
@@ -106,9 +109,18 @@ datatype primop
      * information is for use by the backend, ML information is for
      * use by the CPS converter. *)
   | RAW_CCALL of { c_proto: CTypes.c_proto,
-		   ml_flt_args: bool list,
-		   ml_flt_res_opt: bool option } option
+		   ml_args: ccall_type list,
+		   ml_res_opt: ccall_type option,
+                   reentrant: bool
+                 } option
+   (* Allocate uninitialized storage on the heap.
+    * The record is meant to hold short-lived C objects, i.e., they
+    * are not ML pointers.  The representation is 
+    * the same as RECORD with tag tag_raw32 or tag_fblock.
+    *)
+  | RAW_RECORD of { fblock: bool }
 
+and ccall_type = CCI32 | CCI64 | CCR64 | CCML
 
 (** default integer arithmetic and comparison operators *)
 val IADD = ARITH{oper=op +, overflow=true, kind=INT 31}
@@ -150,7 +162,7 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
 	      | FSIN => "fsin" | FCOS => "fcos" | FTAN => "ftan"
 	      | LSHIFT => "lshift" | RSHIFT => "rshift" | RSHIFTL => "rshift_l"
               | ANDB => "andb" | ORB => "orb" | XORB => "xorb" | NOTB => "notb"
-	      | ABS => "abs",
+	      | ABS => "abs" | REM => "rem" | DIV => "div" | MOD => "mod",
 	    if overflow then "" else "n",
 	    prNumkind kind]
 
@@ -231,15 +243,13 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop GETSPECIAL = "getspecial"
   | prPrimop USELVAR = "uselvar"
   | prPrimop DEFLVAR = "deflvar"
-  | prPrimop INLDIV = "inldiv"
-  | prPrimop INLMOD = "inlmod"
-  | prPrimop INLREM = "inlrem"
-  | prPrimop INLMIN = "inlmin"
-  | prPrimop INLMAX = "inlmax"
-  | prPrimop INLABS = "inlabs"
+  | prPrimop (INLMIN nk) = concat ["inlmin(", prNumkind nk, ")"]
+  | prPrimop (INLMAX nk) = concat ["inlmax(", prNumkind nk, ")"]
+  | prPrimop (INLABS nk) = concat ["inlabs(", prNumkind nk, ")"]
   | prPrimop INLNOT = "inlnot"
   | prPrimop INLCOMPOSE = "inlcompose"
   | prPrimop INLBEFORE = "inlbefore"
+  | prPrimop INLIGNORE = "inlignore"
   | prPrimop (INL_ARRAY) = "inl_array"
   | prPrimop (INL_VECTOR) = "inl_vector"
   | prPrimop (INL_MONOARRAY kind) =
@@ -260,7 +270,8 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (RAW_LOAD nk) = concat ["raw_load(", prNumkind nk, ")"]
   | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
   | prPrimop (RAW_CCALL _) = "raw_ccall"
-
+  | prPrimop (RAW_RECORD { fblock }) = 
+    concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
 
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)
@@ -273,7 +284,7 @@ val effect =
   | (BOXED | UNBOXED) => false
   | (LENGTH | OBJLENGTH) => false
   | (CAST | WCAST) => false
-  | (INLMIN | INLMAX | INLNOT | INLCOMPOSE) => false
+  | (INLMIN _ | INLMAX _ | INLNOT | INLCOMPOSE | INLIGNORE) => false
   | (WRAP | UNWRAP) => false
   | _ => true
   

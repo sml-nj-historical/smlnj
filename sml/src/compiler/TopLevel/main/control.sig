@@ -11,7 +11,9 @@ sig
   val matchNonExhaustiveError : bool ref
   val matchRedundantWarn : bool ref
   val matchRedundantError : bool ref
+(*
   val expandResult : bool ref
+*)
 end
 
 signature FLINTCONTROL =
@@ -197,5 +199,9 @@ sig
 	val set : globalsetting -> unit
 	val get : unit -> int option
 	val get' : localsetting -> int option
+	val parse : string -> globalsetting option
+	val show : globalsetting -> string
   end
+
+    val btrace : bool ref
 end

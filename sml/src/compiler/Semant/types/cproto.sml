@@ -28,6 +28,7 @@
  * [long long]          = Int32.int list
  * [unsigned long long] = Word32.word list
  * [T*]                 = string
+ * ml object            = bool
  * [struct {}]          = exn
  * [struct{t1,...tn}]   = unit * [t1] * ... * [tn]
  * [void]               = unit
@@ -54,16 +55,20 @@
  *)
 structure CProto : sig
     exception BadEncoding
-    (* decode the encoding described above *)
-    val decode : Types.ty -> CTypes.c_proto
-
-    (* Construct an indicator list for the _actual_ ML arguments of
-     * a raw C call; the element is true if the corresponding argument
-     * is a floating-point argument. *)
-    val flt_args : Types.ty -> bool list
-
-    (* Figure out whether the result of a raw C call is floating-point. *)
-    val flt_res : Types.ty -> bool option
+    (* Decode the encoding described above.
+     * Construct an indicator list for the _actual_ ML arguments of
+     * a raw C call and the result type of a raw C call. 
+     * Each indicator specifies whether the arguments/result is
+     * passed as a 32-bit integer, a 64-bit integer (currently unused),
+     * a 64-bit floating point value, or an Unsafe.Object.object.
+     *)
+    val decode : string -> 
+                 { fun_ty : Types.ty, encoding : Types.ty }
+		 -> 
+                 { c_proto    : CTypes.c_proto,
+                   ml_args    : PrimOp.ccall_type list,
+                   ml_res_opt : PrimOp.ccall_type option,
+		   reentrant  : bool }
 
     (* formatting of C type info (for debugging purposes) *)
     val tshow : CTypes.c_type -> string
@@ -72,6 +77,7 @@ end = struct
     exception BadEncoding
 
     local
+	structure P = PrimOp
 	structure T = Types
 	structure BT = BasicTypes
 	structure CT = CTypes
@@ -84,29 +90,31 @@ end = struct
 	    if BT.isArrowType t then get t else NONE
 	end
 	fun bad () = raise BadEncoding
+	fun listTy t = T.CONty (BT.listTycon, [t])
     in
-        fun decode t = let
+        fun decode conv { encoding = t, fun_ty } = let
 	    (* The type-mapping table: *)
-	    fun listTy t = T.CONty (BT.listTycon, [t])
-	    val m = [(BT.intTy,           CT.C_signed   CT.I_int),
-		     (BT.wordTy,          CT.C_unsigned CT.I_int),
-		     (BT.stringTy,        CT.C_PTR),
-		     (BT.realTy,          CT.C_double),
-		     (listTy BT.realTy,   CT.C_float),
-		     (BT.charTy,          CT.C_signed   CT.I_char),
-		     (BT.word8Ty,         CT.C_unsigned CT.I_char),
-		     (BT.int32Ty,         CT.C_signed   CT.I_long),
-		     (BT.word32Ty,        CT.C_unsigned CT.I_long),
-		     (listTy BT.charTy,   CT.C_signed   CT.I_short),
-		     (listTy BT.word8Ty,  CT.C_unsigned CT.I_short),
-		     (listTy BT.int32Ty,  CT.C_signed   CT.I_long_long),
-		     (listTy BT.word32Ty, CT.C_unsigned CT.I_long_long),
-		     (listTy (listTy BT.realTy), CT.C_long_double),
-		     (BT.exnTy,           CT.C_STRUCT []),
-		     (BT.unitTy,          CT.C_void)]
+	    val m =
+		[(BT.intTy,           CT.C_signed   CT.I_int,       P.CCI32),
+		 (BT.wordTy,          CT.C_unsigned CT.I_int,       P.CCI32),
+		 (BT.stringTy,        CT.C_PTR,                     P.CCI32),
+		 (BT.boolTy,          CT.C_PTR,                     P.CCML),
+		 (BT.realTy,          CT.C_double,                  P.CCR64),
+		 (listTy BT.realTy,   CT.C_float,                   P.CCR64),
+		 (BT.charTy,          CT.C_signed   CT.I_char,      P.CCI32),
+		 (BT.word8Ty,         CT.C_unsigned CT.I_char,      P.CCI32),
+		 (BT.int32Ty,         CT.C_signed   CT.I_long,      P.CCI32),
+		 (BT.word32Ty,        CT.C_unsigned CT.I_long,      P.CCI32),
+		 (listTy BT.charTy,   CT.C_signed   CT.I_short,     P.CCI32),
+		 (listTy BT.word8Ty,  CT.C_unsigned CT.I_short,     P.CCI32),
+		 (listTy BT.int32Ty,  CT.C_signed   CT.I_long_long, P.CCI32),
+		 (listTy BT.word32Ty, CT.C_unsigned CT.I_long_long, P.CCI32),
+		 (listTy (listTy BT.realTy), CT.C_long_double,      P.CCR64),
+		 (BT.exnTy,           CT.C_STRUCT [],               P.CCI32)]
 
 	    fun look t =
-		Option.map #2 (List.find (fn (u, _) => TU.equalType (t, u)) m)
+		Option.map (fn (_, x, y) => (x, y))
+			   (List.find (fn (u, _, _) => TU.equalType (t, u)) m)
 
 	    fun unlist (T.VARty (ref (T.INSTANTIATED t)), i) = unlist (t, i)
 	      | unlist (t0 as T.CONty (tc, [t]), i) =
@@ -115,41 +123,49 @@ end = struct
 	      | unlist (t, i) = (t, i)
 
 	    (* Given [T] (see above), produce the CTypes.c_type value
-	     * corresponding to T. *)
+	     * and PrimOp.ccall_type corresponding to T: *)
 	    fun dt t =
 		case look t of
-		    SOME ct => ct
+		    SOME tt => tt
 		  | NONE =>
 		    (case BT.getFields t of
-			 SOME (_ :: fl) => CT.C_STRUCT (map dt fl)
+			 SOME (_ :: fl) =>
+			 (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
 		       | _ => bad ())
 
+	    fun rdt (t, ml_args) =
+		if TU.equalType (t, BT.unitTy) then
+		    (CT.C_void, NONE, ml_args)
+		else let val (ct, mt) = dt t
+		     in
+			 case ct of
+			     (CT.C_STRUCT _) => (ct, SOME mt, mt :: ml_args)
+			   | _ => (ct, SOME mt, ml_args)
+		     end
+
 	    val (fty, nlists) = unlist (t, 0)
+
+	    val reentrant = nlists > 1
 	in
 	    (* Get argument types and result type; decode them.
 	     * Construct the corresponding CTypes.c_proto value. *)
 	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-		{ conv = if nlists > 1 then "stdcall" else "ccall", 
-		  retTy = dt r,
-		  paramTys = if TU.equalType (d, BT.unitTy) then []
-			     else case BT.getFields d of
-				      SOME (_ :: fl) => map dt fl
-				    | _ => bad () }
-	end
-
-	local
-	    fun isFlt t = TU.equalType (t, BT.realTy)
-	in
-	    fun flt_res t =
-		if TU.equalType (t, BT.unitTy) then NONE
-		else SOME (isFlt t)
-	    fun flt_args t =
-		if TU.equalType (t, BT.unitTy) then [] (* no arg case *)
-		else case BT.getFields t of
-			 SOME fl => map isFlt fl       (* >1 arg case *)
-		       | NONE => [isFlt t]             (* 1 arg case *)
+                let val (argTys, argsML) =
+                        if TU.equalType (d, BT.unitTy) then ([], [])
+                        else case BT.getFields d of
+				 SOME (_ :: fl) => ListPair.unzip (map dt fl)
+			       | _ => bad ()
+		    val (retTy, retML, argsML) = rdt (r, argsML)
+                in
+		    { c_proto = { conv = conv,
+				  retTy = retTy,
+				  paramTys = argTys },
+                      ml_args = argsML,
+                      ml_res_opt = retML,
+		      reentrant = reentrant }
+                end
 	end
 
 	local

@@ -7,14 +7,31 @@ local structure PT = PrimTyc
       fun bug s = ErrorMsg.impossible ("CPS:" ^ s)
 in
 
-structure P = struct
+datatype record_kind
+  = RK_VECTOR
+  | RK_RECORD
+  | RK_SPILL
+  | RK_ESCAPE
+  | RK_EXN
+  | RK_CONT
+  | RK_FCONT
+  | RK_KNOWN
+  | RK_BLOCK
+  | RK_FBLOCK
+  | RK_I32BLOCK
 
+datatype pkind = VPT | RPT of int | FPT of int
+datatype cty = INTt | INT32t | PTRt of pkind
+             | FUNt | FLTt | CNTt | DSPt
+
+structure P = struct
     (* numkind includes kind and size *)
     datatype numkind = INT of int | UINT of int | FLOAT of int
 
     datatype arithop = + | - | * | / | ~ | abs 
                      | fsqrt | fsin | fcos | ftan 
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
+		     | rem | div | mod
 
     datatype cmpop = > | >= | < | <= | eql | neq
 
@@ -42,6 +59,7 @@ structure P = struct
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
       | rawstore of {kind: numkind}
+      | rawupdate of cty
 
   (* These fetch from the store, never have functions as arguments. *)
     datatype looker
@@ -67,6 +85,9 @@ structure P = struct
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
       | getseqdata | recsubscript | raw64subscript | newarray0
+      | rawrecord of record_kind option
+         (* allocate uninitialized words from the heap *)
+      | condmove of branch
 
     local 
       fun ioper (op > : cmpop)  = (op <= : cmpop)
@@ -164,23 +185,6 @@ datatype fun_kind
 		      should be performed; 
 		      does not occur after the closure phase *)
 
-datatype record_kind
-  = RK_VECTOR
-  | RK_RECORD
-  | RK_SPILL
-  | RK_ESCAPE
-  | RK_EXN
-  | RK_CONT
-  | RK_FCONT
-  | RK_KNOWN
-  | RK_BLOCK
-  | RK_FBLOCK
-  | RK_I32BLOCK
-
-datatype pkind = VPT | RPT of int | FPT of int
-datatype cty = INTt | INT32t | PTRt of pkind
-             | FUNt | FLTt | CNTt | DSPt
-
 datatype cexp
   = RECORD of record_kind * (value * accesspath) list * lvar * cexp
   | SELECT of int * value * lvar * cty * cexp
@@ -194,7 +198,8 @@ datatype cexp
   | ARITH of P.arith * value list * lvar * cty * cexp
   | PURE of P.pure * value list * lvar * cty * cexp
   (* experimental "raw C call" (Blume, 1/2001) *)
-  | RCC of CTypes.c_proto * value list * lvar * cty * cexp
+  | RCC of rcc_kind * string * CTypes.c_proto * value list * lvar * cty * cexp
+and rcc_kind = FAST_RCC | REENTRANT_RCC
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 fun hasRCC(cexp) = let
@@ -215,6 +220,15 @@ in
    | ARITH(_, _, _, _, e) => hasRCC(e)
    | PURE(_, _, _, _, e) => hasRCC(e)
 end
+
+fun sizeOf(FLTt) = 64 
+  | sizeOf(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = 32
+
+fun isFloat(FLTt) = true
+  | isFloat(INTt | INT32t | PTRt _ | FUNt | CNTt | DSPt) = false
+
+fun isTagged(FLTt | INT32t) = false
+  | isTagged(INTt | PTRt _ | FUNt | CNTt | DSPt) = true
 
 fun ctyToString(INTt) =  "[I]"
   | ctyToString(INT32t) =  "[I32]"

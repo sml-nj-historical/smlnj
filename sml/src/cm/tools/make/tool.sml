@@ -37,15 +37,23 @@ structure MakeTool = struct
 			 restoptions)
 		    end
 	    val p = srcpath (mkpath ())
-	    val tname = nativeSpec p
+	    val tname = nativeSpec p	(* for passing to "make" *)
 	    val partial_expansion =
 		(* The "make" class is odd in that it has only a target
-		 * but no sources. *)
+		 * but no sources.  We use "str" and "mkpath", that is,
+		 * we retain the distinction between native and standard
+		 * paths instead of going native in all cases. *)
 		({ smlfiles = [], cmfiles = [], sources = [] },
-		 [{ name = tname, mkpath = native2pathmaker tname,
+		 [{ name = str, mkpath = mkpath,
 		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () = let
 		val cmdname = mkCmdName stdCmdPath
+		val tname =
+		    if OS.Path.isAbsolute tname then
+			OS.Path.mkRelative
+			    { path = tname,
+			      relativeTo = OS.FileSys.getDir () }
+		    else tname
 		val cmd = concat (cmdname :: foldr (fn (x, l) => " " :: x :: l)
 				                   [" ", tname] mopts)
 	    in

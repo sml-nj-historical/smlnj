@@ -1,3 +1,8 @@
+(* x86GasPseudoOps.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
+ *)
 functor X86GasPseudoOps 
    ( structure T : MLTREE
      structure MLTreeEval : MLTREE_EVAL  where T = T

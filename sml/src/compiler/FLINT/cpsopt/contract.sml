@@ -158,10 +158,11 @@ fun equalUptoAlpha(ce1,ce2) =
 		   i=i' andalso all2 same (vl,vl') andalso samewith(w,w')(e,e')
 	      | (PURE(i,vl,w,_,e),PURE(i',vl',w',_,e')) =>
 		   i=i' andalso all2 same (vl,vl') andalso samewith(w,w')(e,e')
-	      | (RCC(p,vl,w,_,e),RCC(p',vl',w',_,e')) =>
+	      | (RCC(k,l,p,vl,w,_,e),RCC(k',l',p',vl',w',_,e')) =>
 		(* We don't need to compare protocol info:  The protocols are
 		 * the same iff the functions and arguments are the same. *)
-		all2 same (vl,vl') andalso samewith(w,w')(e,e')
+		k = k' andalso l = l' andalso
+                all2 same (vl,vl') andalso samewith(w,w')(e,e')
 	      | _ => false
         in  sameexp
         end
@@ -405,7 +406,7 @@ let val rec g1 =
   | PURE(p as P.fwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(p as P.funwrap,[u],w,_,e) => (use u; enterWRP(w,p,u); g1 e)
   | PURE(i,vl,w,_,e) => (app use vl; enterMISC0 w; g1 e)
-  | RCC(p,vl,w,t,e) => (app use vl; enterMISC0 w; g1 e)
+  | RCC(k,l,p,vl,w,t,e) => (app use vl; enterMISC0 w; g1 e)
 in  g1
 end
 
@@ -458,7 +459,7 @@ fun drop_body(APP(f,vl)) = (call_less f; app use_less vl)
   | drop_body(LOOKER(_,vl,_,_,e)) = (app use_less vl; drop_body e)
   | drop_body(ARITH(_,vl,_,_,e)) = (app use_less vl; drop_body e)
   | drop_body(PURE(_,vl,_,_,e)) = (app use_less vl; drop_body e)
-  | drop_body(RCC(_,vl,_,_,e)) = (app use_less vl; drop_body e)
+  | drop_body(RCC(_,_,_,vl,_,_,e)) = (app use_less vl; drop_body e)
 end (* local *)
 
 
@@ -882,11 +883,80 @@ let val rec g' =
 			else PURE(i, vl', w, t, e')
 		    end)
       end
-   | RCC(p,vl,w,t,e) =>
+   | RCC(k,l,p,vl,w,t,e) =>
      (* leave raw C calls alone *)
-     RCC (p, map ren vl, w, t, g' e)
+     RCC (k, l, p, map ren vl, w, t, g' e)
    | BRANCH(i,vl,c,e1,e2) =>
       let val vl' = map ren vl
+
+          (* Maximum number of speculatively executed conditional moves *)
+          val MAX_CONDMOVE_HOIST = 3
+
+          (* This function creates conditional move from 
+           * branches of the form:
+           *    BRANCH(i,vl,c,APP(f,[x1]),APP(f,[x2]))
+           *)
+          fun conditionalMove() = 
+              let (* Hoist conditional moves up from branches 
+                   * This will make them speculatively.
+                   * We limit this number to MAX_CONDMOVE_HOIST, so
+                   * that we don't speculatively execute everything.
+                   *)
+                  fun hoist(e, 0) = (fn k => k, e)
+                    | hoist(PURE(p as P.condmove _,vl,x,t,e), n) = 
+                      let val (k, e) = hoist(e, n-1)
+                          fun newK e = PURE(p,vl,x,t,k e)
+                      in  (newK, e)
+                      end 
+                    | hoist(e, _) = (fn k => k, e)
+                  val (k1, e1) = hoist(g' e1, MAX_CONDMOVE_HOIST)
+                  val (k2, e2) = hoist(g' e2, MAX_CONDMOVE_HOIST)
+
+                      (* The default does nothing *)
+                  fun default() = BRANCH(i, vl', c, k1 e1, k2 e2)
+
+                      (* detemine the type of conditional move *)
+                  fun findType(f,x,y) = 
+                  let fun getTy(x,again) =
+                         case x of
+                           STRING _ => SOME BOGt
+                         | LABEL _ => SOME BOGt
+                         | REAL _ => SOME FLTt
+                         | INT32 _ => SOME INT32t
+                         | INT _ => SOME BOGt
+                         | _ => again()
+                      fun findTy() =
+                          getTy(x, fn _ => getTy(y, fn _ => NONE))
+                  in  case #info(get f) of
+                         FNinfo{args=[f_arg], ...} =>
+                         (case #info(get f_arg) of
+                            MISCinfo t => SOME t (* found type *)
+                         | _ => findTy() 
+                         )
+                       |  _ => findTy() 
+                  end 
+ 
+              in  case (i, e1, e2) of
+                    (* String compares are complex, so we punt on them *)
+                    ((P.streq | P.strneq), _, _) => default()
+                  | (_, APP(VAR f, [x]), APP(VAR f', [y])) =>
+                      if f = f' then
+                      (case findType(f,x,y) of
+                           SOME t =>
+                           let val r = LV.mkLvar()
+                           in  say "COND MOVE\n";
+                               k1(k2(
+                                  PURE(P.condmove i,vl' @ [x,y],
+                                       r,t,APP(VAR f,[VAR r]))))
+                           end
+                      | _ => (say "COND MOVE failed\n"; default())
+                      )
+                      else default()
+                  | _ => default() 
+              end
+
+          fun noConditionalMove() = BRANCH(i, vl', c, g' e1, g' e2)
+ 
 	  fun h() = (if !CG.branchfold andalso equalUptoAlpha(e1,e2)
 		     then (click "z";
 			   app use_less vl';
@@ -904,7 +974,7 @@ let val rec g' =
 				     drop_body e1; 
 				     g' e2)
 		     else raise ConstFold)
-		 handle ConstFold => BRANCH(i, vl', c, g' e1, g' e2)
+		 handle ConstFold => noConditionalMove()
 	  fun getifidiom f =
 	    let val f' = ren f
 	    in  case f'
@@ -972,6 +1042,11 @@ end
      | (P.arith{oper=P./,...}, [INT i, INT 0]) => raise ConstFold
      | (P.arith{oper=P./,kind=P.INT 31}, [INT i, INT j]) =>
 		let val x = Int.quot(i, j) in x+x; click "L"; INT x end
+     | (P.arith{oper=P.div,...}, [v, INT 1]) => (click "K"; v)
+     | (P.arith{oper=P.div,...}, [INT i, INT 0]) => raise ConstFold
+     | (P.arith{oper=P.div,kind=P.INT 31}, [INT i, INT j]) =>
+		let val x = Int.div(i, j) in x+x; click "L"; INT x end
+     (* FIXME: should we do anything for mod or rem here? *)
      | (P.arith{oper=P.+,...}, [INT 0, v]) => (click "M"; v)
      | (P.arith{oper=P.+,...}, [v, INT 0]) => (click "N"; v)
      | (P.arith{oper=P.+,kind=P.INT 31}, [INT i, INT j]) =>

@@ -23,7 +23,6 @@ struct
    structure Asm = Asm
    structure CFG = CFG
    structure C   = CFG.I.C
-   structure W   = CFG.W
    structure Fmt = Format
 
    val i2s = Int.toString
@@ -43,7 +42,7 @@ struct
        val Asm.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
              AsmStream.withStream stream Asm.makeStream annotations
 
-       fun showFreq(ref w) = Fmt.format "[%s]" [Fmt.STR(W.toString w)] 
+       fun showFreq(ref w) = Fmt.format "[%f]" [Fmt.REAL w] 
        fun showEdge(blknum,e) = 
 	   Fmt.format "%d:%s" [Fmt.INT blknum, Fmt.STR(CFG.show_edge e)]
        fun showSucc(_, x, e) = showEdge(x,e)

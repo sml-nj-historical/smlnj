@@ -25,7 +25,7 @@
  *           24  4  size of import tree area in bytes (importSzB)
  *           28  4  size of CM-specific info in bytes (cmInfoSzB)
  *           32  4  size of pickled lambda-expression in bytes (lambdaSzB)
- *           36  4  size of reserved area in bytes (reserved)
+ *           36  4  size of GUID area in bytes (g)
  *           40  4  size of padding in bytes (pad)
  *           44  4  size of code area in bytes (codeSzB)
  *           48  4  size of pickled environment in bytes (envSzB)
@@ -38,7 +38,7 @@
  * ----END OF HEADER----
  *            0  h  HEADER (h = 52+cm+ex+i)
  *            h  l  pickle of exported lambda-expr. (l = lambdaSzB)
- *          l+h  r  reserved area (r = reserved)
+ *          l+h  g  GUID area (g = guid)
  *        r+l+h  p  padding (p = pad)
  *      p+r+l+h  c  code area (c = codeSzB) [Structured into several
  *                    segments -- see below.]
@@ -55,10 +55,6 @@
  *  Trees are written recursively -- (NODE l) is represented by n (= the
  *  length of l) followed by n (int * node) subcomponents.  Each component
  *  consists of the integer selector followed by the corresponding tree.
- *
- *  The size of the import tree area is only given implicitly. When reading
- *  this area, the reader must count the number of leaves and compare it
- *  with importCnt.
  *
  *  Integer values in the import tree area (lengths and selectors) are
  *  written in "packed" integer format. In particular, this means that
@@ -85,21 +81,23 @@
  *  two.  The very first segment is the "data" segment -- responsible for
  *  creating literal constants on the heap.  The idea is that code in the
  *  data segment will be executed only once at link-time. Thus, it can
- *  then be garbage-collected immediatly. (In the future it is possible that
- *  the data segment will not contain executable code at all but some form
- *  of bytecode that is to be interpreted separately.)
+ *  then be garbage-collected immediatly. (In fact, the data segment does
+ *  not consist of machine code but of code for an internal bytecode engine.)
  *
- *  In the binfile, each code segment is represented by its size s (in
- *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
- *  machine- (or byte-) code. The total length of all code segments
- *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *  In the binfile, each code segment is represented by its size s and its
+ *  entry point offset (in bytes -- written as 4-byte big-endian integers)
+ *  followed by s bytes of machine- (or byte-) code. The total length of all
+ *  code segments (including the bytes spent on representing individual sizes
+ *  and entry points) is codeSzB.  The entrypoint field for the data segment
+ *  is currently ignored (and should be 0).
  *
  * LINKING CONVENTIONS:
  *
  *  Linking is achieved by executing all code segments in sequential order.
  *
- *  The first code segment (i.e., the "data" segment) receives unit as
- *  its single argument.
+ *  Conceptually, the first code segment (i.e., the "data" segment) receives
+ *  unit as its single argument. (In reality this code segment consists of
+ *  bytecode which does not really receive any arguments.)
  *
  *  The second code segment receives a record as its single argument.
  *  This record has (importCnt+1) components.  The first importCnt
@@ -143,6 +141,7 @@ structure Binfile :> BINFILE = struct
 		cmData: pid list,
 		senv: pickle,
 		lambda: pickle,
+		guid: string,
 		csegments: csegments,
 		executable: executable option ref }
     fun unBF (BF x) = x
@@ -156,6 +155,8 @@ structure Binfile :> BINFILE = struct
     val staticPidOf = #pid o senvPickleOf
     val lambdaPickleOf = #lambda o unBF
     val lambdaPidOf = #pid o lambdaPickleOf
+
+    val guidOf = #guid o unBF
 
     fun error msg =
 	(Control_Print.say (concat ["binfile format error: ", msg, "\n"]);
@@ -296,18 +297,19 @@ structure Binfile :> BINFILE = struct
 	(* assert (Word8Vector.length (MAGIC <arch>) = magicBytes *)
     end
 
-    (* calculate size of code objects (including length fields) *)
+    (* calculate size of code objects (including lengths and entrypoints) *)
     fun codeSize (csegs: csegments) =
 	List.foldl
-	    (fn (co, n) => n + CodeObj.size co + 4)
-	    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
+	    (fn (co, n) => n + CodeObj.size co + 8)
+	    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 16)
 	    (#cn csegs)
 
     (* This function must be kept in sync with the "write" function below.
      * It calculates the number of bytes written by a corresponding
      * call to "write". *)
     fun size { contents, nopickle } = let
-	val { imports, exportPid, senv, cmData, lambda,  csegments, ... } =
+	val { imports, exportPid, senv, cmData, lambda,  csegments,
+	      guid, ... } =
 	    unBF contents
 	val (_, picki) = pickleImports imports
 	val hasExports = isSome exportPid
@@ -318,18 +320,20 @@ structure Binfile :> BINFILE = struct
 	9 * 4 +
 	Word8Vector.length picki +
 	(if hasExports then bytesPerPid else 0) +
-	bytesPerPid * (length cmData + 2) +
+	bytesPerPid * (length cmData + 2) + (* 2 extra: stat/sym *)
+	String.size guid +
 	pickleSize lambda +
 	codeSize csegments +
 	pickleSize senv
     end
 
-    fun create { imports, exportPid, cmData, senv, lambda, csegments } =
+    fun create { imports, exportPid, cmData, senv, lambda, csegments, guid } =
 	BF { imports = imports,
 	     exportPid = exportPid,
 	     cmData = cmData,
 	     senv = senv,
 	     lambda = lambda,
+	     guid = guid,
 	     csegments = csegments,
 	     executable = ref NONE }
 
@@ -338,19 +342,39 @@ structure Binfile :> BINFILE = struct
 	fun readCode 0 = []
 	  | readCode n = let
 		val sz = readInt32 strm
-		val n' = n - sz - 4
+		val ep = readInt32 strm
+		val n' = n - sz - 8
+		val cobj = if n' < 0 then error "code size"
+			   else CodeObj.input(strm, sz)
 	    in
-		if n' < 0 then
-		    error "code size"
-		else CodeObj.input(strm, sz) :: readCode n'
+		CodeObj.set_entrypoint (cobj, ep);
+		cobj :: readCode n'
 	    end
 	val dataSz = readInt32 strm
-	val n' = nbytes - dataSz - 4
+	val _ = readInt32 strm (* ignore entry point field for data segment *)
+	val n' = nbytes - dataSz - 8
 	val data = if n' < 0 then error "data size" else bytesIn (strm, dataSz)
     in
 	case readCode n' of
 	    (c0 :: cn) => { data = data, c0 = c0, cn = cn }
 	  | [] => error "missing code objects"
+    end
+
+    fun readGUid s = let
+	val _ = bytesIn (s, magicBytes)
+	val _ = readInt32 s
+	val ne = readInt32 s
+	val importSzB = readInt32 s
+	val cmInfoSzB = readInt32 s
+	val nei = cmInfoSzB div bytesPerPid
+	val lambdaSz = readInt32 s
+	val g = readInt32 s
+	val _ = bytesIn (s, importSzB + 3 * 4)
+	val _ = bytesIn (s, ne * bytesPerPid)
+	val _ = readPidList (s, nei)
+	val _ = bytesIn (s, lambdaSz)
+    in
+	Byte.bytesToString (bytesIn (s, g))
     end
 
     fun read { arch, version, stream = s } = let
@@ -363,7 +387,7 @@ structure Binfile :> BINFILE = struct
 	val cmInfoSzB = readInt32 s
 	val nei = cmInfoSzB div bytesPerPid
 	val lambdaSz = readInt32 s
-	val reserved = readInt32 s
+	val g = readInt32 s
 	val pad = readInt32 s
 	val cs = readInt32 s
 	val es = readInt32 s
@@ -379,10 +403,7 @@ structure Binfile :> BINFILE = struct
 		st :: lm :: cmData => (st, lm, cmData)
 	      | _ => error "env PID list"
 	val plambda = bytesIn (s, lambdaSz)
-	(* We could simply skip the reserved area if there is one,
-	 * but in that case there probably is something else seriously
-	 * wrong (wrong version, etc.), so we may as well complain... *)
-	val _ = if reserved = 0 then () else error "non-zero reserved size"
+	val guid = Byte.bytesToString (bytesIn (s, g))
 	(* skip padding *)
 	val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
 	(* now get the code *)
@@ -394,6 +415,7 @@ structure Binfile :> BINFILE = struct
 			      cmData = cmData,
 			      senv = { pid = staticPid, pickle = penv },
 			      lambda = { pid = lambdaPid, pickle = plambda },
+			      guid = guid,
 			      csegments = code },
 	  stats = { env = es, inlinfo = lambdaSz, code = cs,
 		    data = Word8Vector.length (#data code) } }
@@ -401,7 +423,8 @@ structure Binfile :> BINFILE = struct
 
     fun write { arch, version, stream = s, contents, nopickle } = let
 	(* Keep this in sync with "size" (see above). *)
-	val { imports, exportPid, cmData, senv, lambda, csegments, ... } =
+	val { imports, exportPid, cmData, senv, lambda,
+	      csegments, guid, ... } =
 	    unBF contents
 	val { pickle = senvP, pid = staticPid } = senv
 	val { pickle = lambdaP, pid = lambdaPid } = lambda
@@ -417,10 +440,12 @@ structure Binfile :> BINFILE = struct
 	fun pickleSize { pid, pickle } =
 	    if nopickle then 0 else Word8Vector.length pickle
 	val lambdaSz = pickleSize lambda
-	val reserved = 0		(* currently no reserved area *)
+	val g = String.size guid
 	val pad = 0			(* currently no padding *)
 	val cs = codeSize csegments
-	fun codeOut c = (writeInt32 s (CodeObj.size c); CodeObj.output (s, c))
+	fun codeOut c = (writeInt32 s (CodeObj.size c);
+			 writeInt32 s (CodeObj.entrypoint c);
+			 CodeObj.output (s, c))
 	val es = pickleSize senv
 	val writeEnv = if nopickle then fn () => ()
 		       else fn () => BinIO.output (s, senvP)
@@ -429,17 +454,19 @@ structure Binfile :> BINFILE = struct
     in
 	BinIO.output (s, MAGIC);
 	app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
-			    lambdaSz, reserved, pad, cs, es];
+			    lambdaSz, g, pad, cs, es];
 	BinIO.output (s, picki);
 	writePidList (s, epl);
 	(* arena1 *)
 	writePidList (s, envPids);
 	(* arena2 -- pickled flint stuff *)
 	if lambdaSz = 0 then () else BinIO.output (s, lambdaP);
-	(* arena3 is empty *)
-	(* arena4 is empty *)
+	(* GUID area *)
+	BinIO.output (s, Byte.stringToBytes guid);
+	(* padding area is currently empty *)
 	(* code objects *)
 	writeInt32 s datasz;
+	writeInt32 s 0;		(* dummy entry point for data segment *)
 	BinIO.output(s, #data csegments);
 	codeOut (#c0 csegments);
 	app codeOut (#cn csegments);

@@ -1,5 +1,6 @@
 (* This file is created by makeallcm *)
 Library
+	signature ARCH_SPILL_INSTR
 	signature ASM_FORMAT_UTIL
 	signature ASM_STREAM
 	signature ASSEMBLY_EMITTER
@@ -8,15 +9,15 @@ Library
 	signature CELLS
 	signature CELLS_BASIS
 	signature CFG_OPTIMIZATION
-	signature CFG_VIEW
+(*	signature CFG_VIEW *)
 	signature CLIENT_PSEUDO_OPS
 	signature CODE_STRING
+	signature COMPUTE_EXECUTION_FREQUENCIES
 	signature CONSTANT
 	signature CONTROL_FLOWGRAPH_GEN
 	signature CONTROL_FLOW_GRAPH
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
-	signature EXPAND_COPIES
 	signature FREQUENCY_PROPERTIES
 	signature GAS_PSEUDO_OPS
 	signature GC_CELLS
@@ -62,6 +63,7 @@ Library
 	signature REWRITE_INSTRUCTIONS
 	signature SDI_JUMPS
 	signature SHUFFLE
+	structure AsmFlags
 	structure AsmFormatUtil
 	structure AsmStream
 	structure CTypes
@@ -77,23 +79,30 @@ Library
 	structure PseudoOpsBasisTyp
 	structure RACore
 	structure RAGraph
+	structure RaBitmatrix
 	functor BBSched2
 	functor BackPatch
+	functor BlockPlacement
 	functor BuildFlowgraph
 	functor CFGCountCopies
 	functor CFGEmit
 	functor CFGExpandCopies
-	functor CFGView
+(*	functor CFGView *)
 	functor Cells
+	functor CheckPlacementFn
 	functor ClusterRA
+	functor CompleteProbsFn
+	functor ComputeFreqsFn
 	functor ControlFlowGraph
 	functor DefaultBlockPlacement
+	functor EstimateLoopProbsFn
 	functor FreqProps
 	functor GCCells
 	functor GasPseudoOps
 	functor GetReg
 	functor GetReg2
 	functor InstructionStream
+	functor JumpChainElimFn
 	functor Liveness
 	functor MLTreeEval
 	functor MLTreeF
@@ -109,6 +118,7 @@ Library
 	functor PseudoOpsBig
 	functor PseudoOpsLittle
 	functor RADeadCodeElim
+	functor RaPriQueue
 	functor RASpill
 	functor RASpillTypes
 	functor RISC_RA
@@ -116,6 +126,7 @@ Library
 	functor RegisterAllocator
 	functor Shuffle
 	functor SpanDependencyResolution
+	functor WeightedBlockPlacementFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -124,13 +135,11 @@ is
 	$/smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #else
 	$/smlnj-lib.cm
 	$/Control.cm
 	$/Graphs.cm
-	$/Visual.cm
 	$/Lib.cm
 #endif
 #else
@@ -138,21 +147,18 @@ is
 	smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #endif
 #else
 	smlnj-lib.cm
 	Control.cm
 	Graphs.cm
-	Visual.cm
 	Lib.cm
 #endif
 	../instructions/cells.sig
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
-	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig
@@ -198,8 +204,9 @@ is
 	../flowgraph/client-pseudo-ops.sig
 	../flowgraph/cfg.sig
 	../flowgraph/cfg.sml
-	../flowgraph/cfgView.sig
+(*	../flowgraph/cfgView.sig
 	../flowgraph/cfgView.sml
+*)
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
 	../flowgraph/gasPseudoOps.sml
@@ -211,12 +218,25 @@ is
 	../flowgraph/pseudo-ops-big.sml
 	../flowgraph/pseudo-ops-endian.sig
 	../flowgraph/pseudo-ops-little.sml
+	../frequencies/complete-probs-fn.sml
+	../frequencies/compute-execution-freqs.sig
+	../frequencies/compute-freqs-fn.sml
+	../frequencies/estimate-loop-probs-fn.sml
+	../ir-archive/dominator.sig
+	../ir-archive/dominator.sml
+	../ir-archive/loop-structure.sig
+	../ir-archive/loop-structure.sml
+	../ra/arch-spill-instr.sig
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml
 	../ra/liveness.sml
         ../ra/chaitin-spillheur.sml
         ../ra/chow-hennessy-spillheur.sml
+ 	../ra/raBitmatrix.sml
+	../ra/ra-bitmatrix.sig
+	../ra/ra-priqueue.sig
+	../ra/raPriQueue.sml
         ../ra/ra-graph.sig
         ../ra/ra-graph.sml
         ../ra/ra-core.sig
@@ -230,17 +250,18 @@ is
         ../ra/ra.sig
         ../ra/ra.sml
 	../ra/ra-deadCodeE.sml
-	../ra/ra-priqueue.sig
 	../ra/mem-ra.sml
 	../ra/region-based-ra.sml
 	../ra/risc-ra.sml
         ../ra/cluster-ra.sml
+	../emit/asm-flags.sml
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml
 	../emit/asmUtil.sml
 	../emit/cfgEmit.sml
 	../emit/code-string.sig
+	../emit/mc-emit.sig
 	../gc-safety/gc-cells.sig
 	../gc-safety/gc-cells.sml
 	../gc-safety/gc-type.sig
@@ -252,7 +273,11 @@ is
 	../backpatch/sdi-jumps.sig
 	../backpatch/vlBackPatch.sml
 	../block-placement/block-placement.sig
+	../block-placement/block-placement.sml
+	../block-placement/check-placement-fn.sml
 	../block-placement/default-block-placement.sml
+	../block-placement/weighted-block-placement-fn.sml
+	../block-placement/jump-chain-elim-fn.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
  	../omit-frameptr/omit-frame-pointer.sig

@@ -41,12 +41,16 @@ struct
    type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    structure Gen = MLTreeGen(structure T = T
+			     structure Cells = C
                              val intTy = 32
                              val naturalWidths = [32]
                              datatype rep = SE | ZE | NEITHER
                              val rep = NEITHER
                             )
-
+   fun mkcopy{dst, src, tmp} =
+       I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
+   fun mkfcopy{dst, src, tmp} =
+       I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
    structure W = Word32
    functor Multiply32 = MLTreeMult
     (structure I = I
@@ -56,11 +60,11 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d} = I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}
-     fun slli{r,i,d} = [I.SHIFT{s=I.ZDEP,r=r,p=31-i,len=32-i,t=d}]
-     fun srli{r,i,d} = [I.SHIFT{s=I.EXTRU,r=r,p=31-i,len=32-i,t=d}]
-     fun srai{r,i,d} = [I.SHIFT{s=I.EXTRS,r=r,p=31-i,len=32-i,t=d}]
+     fun mov{r,d} = mkcopy{dst=[d],src=[r],tmp=NONE}
+     fun add{r1,r2,d} = I.arith{a=I.ADD,r1=r1,r2=r2,t=d}
+     fun slli{r,i,d} = [I.shift{s=I.ZDEP,r=r,p=31-i,len=32-i,t=d}]
+     fun srli{r,i,d} = [I.shift{s=I.EXTRU,r=r,p=31-i,len=32-i,t=d}]
+     fun srai{r,i,d} = [I.shift{s=I.EXTRS,r=r,p=31-i,len=32-i,t=d}]
     )
 
    (* signed, trapping version of multiply and divide *)
@@ -68,27 +72,39 @@ struct
     (val trapping = true
      val multCost = costOfMultiply
      val divCost  = costOfDivision
-     fun addv{r1,r2,d} = [I.ARITH{a=I.ADDO,r1=r1,r2=r2,t=d}]
-     fun subv{r1,r2,d} = [I.ARITH{a=I.SUBO,r1=r1,r2=r2,t=d}]
-     val sh1addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH1ADDO,r1=r1,r2=r2,t=d}])
-     val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDO,r1=r1,r2=r2,t=d}])
-     val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDO,r1=r1,r2=r2,t=d}])
+     fun addv{r1,r2,d} = [I.arith{a=I.ADDO,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUBO,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH1ADDO,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH2ADDO,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH3ADDO,r1=r1,r2=r2,t=d}])
     )
     (val signed = true)
 
    (* unsigned, non-trapping version of multiply and divide *)
    structure Mulu32 = Multiply32
     (val trapping = false
-     val signed   = false
      val multCost = costOfMultiply
      val divCost  = costOfDivision
-     fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}]
-     fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r1=r1,r2=r2,t=d}]
-     val sh1addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH1ADDL,r1=r1,r2=r2,t=d}])
-     val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
-     val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
+     fun addv{r1,r2,d} = [I.arith{a=I.ADD,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUB,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH1ADDL,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
     )
     (val signed   = false)
+
+   (* signed, non-trapping version of multiply and divide *)
+   structure Muls32 = Multiply32
+    (val trapping = false
+     val multCost = costOfMultiply
+     val divCost  = costOfDivision
+     fun addv{r1,r2,d} = [I.arith{a=I.ADD,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUB,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH1ADDL,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.arith{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
+    )
+    (val signed   = true)
 
    fun error msg = MLRiscErrorMsg.error("Hppa",msg)
 
@@ -121,7 +137,7 @@ struct
 
    fun selectInstructions
         (instrStream as
-         TS.S.STREAM{emit, defineLabel, entryLabel, getAnnotations,
+         TS.S.STREAM{emit=emitInstruction, defineLabel, entryLabel, getAnnotations,
                   beginCluster, endCluster, annotation,
                   exitBlock, pseudoOp, comment, ...}) =
    let
@@ -137,13 +153,18 @@ struct
        val zeroImmed = I.IMMED 0
        val zeroOpn = zeroImmed
 
-       fun mark(i,an) =
-       let fun f(i,[]) = i
-             | f(i,a::an) = f(I.ANNOTATION{i=i,a=a},an)
-       in  emit(f(i,an)) end
- 
-       val ldLabelEA = LC.ldLabelEA emit
-       val ldLabelOpnd = LC.ldLabelOpnd emit
+       val emit = emitInstruction o I.INSTR
+
+       local 
+	   fun f(i,[]) = i
+	     | f(i, a::an) = f (I.ANNOTATION{i=i, a=a}, an)
+       in
+         fun mark(i, an) = emitInstruction(f(I.INSTR i, an))
+	 fun mark'(i, an) = emitInstruction(f(i, an))
+       end
+
+       val ldLabelEA = LC.ldLabelEA emitInstruction
+       val ldLabelOpnd = LC.ldLabelOpnd emitInstruction
 
        (* Check whether an expression is being multiplied by 2, 4, or 8 *)
        local
@@ -206,31 +227,29 @@ struct
  
        (* emit parallel copies *)
        fun copy(dst,src,an) =
-         mark(I.COPY{dst=dst,src=src,impl=ref NONE,
-                     tmp=case dst of [_] => NONE
-                                | _ => SOME(I.Direct(newReg()))},an)
+         mark'(mkcopy{dst=dst,src=src,
+                    tmp=case dst of [_] => NONE | _ => SOME(I.Direct(newReg()))},an)
        fun fcopy(dst,src,an) =
-         mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
-                      tmp=case dst of [_] => NONE
-                                  | _ => SOME(I.FDirect(newFreg()))},an)
+         mark'(mkfcopy{dst=dst,src=src,
+                     tmp=case dst of [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
  
        (* move register s to register t *)
        fun move(s,t,an) =
            if CB.sameColor(s,t) orelse CB.registerId t = 0 then ()
            else if CB.registerId s = 0 then
                 mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
-           else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+           else mark'(mkcopy{src=[s],dst=[t],tmp=NONE},an)
  
        (* move floating point register s to register t *)
        fun fmove(s,t,an) =
            if CB.sameColor(s,t) then ()
-           else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+           else mark'(mkfcopy{src=[s],dst=[t],tmp=NONE},an)
 
        (* generate millicode function call *)
        fun milliCall(milliFn, e1, e2, rd) =
        let val rs = expr e1 
            val rt = expr e2
-       in  app emit (milliFn{rs=rs,rt=rt,rd=rd}) end 
+       in  app emitInstruction (milliFn{rs=rs,rt=rt,rd=rd}) end 
 
        (* emit an arithmetic op with possible immediate mode 
         * The immed operand is the first operand on the HPPA! Arrrrggggghhhh!
@@ -565,7 +584,7 @@ struct
                | AMode(INDXSCALEDea(b,x)) => (b,x)
            in mark(I.BV{b=b,x=x,n=true,labs=labs},an) end
 
-       and call(s,an) = let val reduce = {stm=doStmt, rexp=expr, emit=emit}
+       and call(s,an) = let val reduce = {stm=doStmt, rexp=expr, emit=emitInstruction}
                         in  LC.doCall(reduce,s) end
 
            (* Optimize addition *)
@@ -586,12 +605,13 @@ struct
             * d <- if r >= 0 then r else d
             *)
        and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x
+       and divs32 x = Muls32.divide{mode=T.TO_ZERO,stm=doStmt} x
        and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x
        
        and muldiv(ty,genConst,milliFn,a,b,t,commute,an) =
            let fun const(a,i) =  
                let val r = expr a 
-               in  app emit (genConst{r=r,i=toInt i,d=t})
+               in  app emitInstruction (genConst{r=r,i=toInt i,d=t})
                       handle _ => milliCall(milliFn,T.REG(ty,r),T.LI i,t)
                end
            in  case (commute,a,b) of
@@ -732,9 +752,17 @@ struct
            | T.SRL(_,a,b)  => shift(I.EXTRU,I.VEXTRU,a,b,t,an)
            | T.SRA(_,a,b)  => shift(I.EXTRS,I.VEXTRS,a,b,t,an)
            | T.MULU(32,a,b) => muldiv(32,Mulu32.multiply,MC.mulu,a,b,t,true,an)
+           | T.MULS(32,a,b) => muldiv(32,Muls32.multiply,MC.mulu,a,b,t,true,an)
            | T.MULT(32,a,b) => muldiv(32,Mult32.multiply,MC.mulo,a,b,t,true,an)
            | T.DIVU(32,a,b)  => muldiv(32,divu32,MC.divu,a,b,t,false,an)
-           | T.DIVT(32,a,b)  => muldiv(32,divt32,MC.divo,a,b,t,false,an)
+(* FIXME: The following is a hack:  We use the trapping div in place of
+ *        the non-trapping since we currently expect that the non-trapping
+ *        div will only be used where there is some high-level reasoning
+ *        that the trapping div would in fact not trap.  *)
+           | T.DIVS(T.DIV_TO_ZERO,32,a,b) =>
+	                        muldiv(32,divs32,MC.divo,a,b,t,false,an)
+           | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
+	                        muldiv(32,divt32,MC.divo,a,b,t,false,an)
 
            | T.LOAD(8,ea,mem) => load(8,I.LDB,I.LDBX,I.LDBX,ea,t,mem,an)
            | T.LOAD(16,ea,mem) => load(16,I.LDH,I.LDHX,I.LDHX_S,ea,t,mem,an)
@@ -788,8 +816,8 @@ struct
                 | (64,64) => doFexpr(e,t,an)
                 | _ => error "CVTF2F"
                )
-           | T.CVTI2F(32,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
-           | T.CVTI2F(64,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
+           | T.CVTI2F(32,_,e) => app emitInstruction (MilliCode.cvti2s{rs=expr e,fd=t})
+           | T.CVTI2F(64,_,e) => app emitInstruction (MilliCode.cvti2d{rs=expr e,fd=t})
 
              (* negation is implemented as subtraction *)
            | T.FNEG(ty,a)    => doFexpr(T.FSUB(ty,T.FREG(ty,zeroF),a),t,an)
@@ -835,7 +863,7 @@ struct
 		     operand       = opn,
 		     reduceOperand = reduceOpn,
 		     addressOf     = addrOf,
-		     emit          = mark,
+		     emit          = mark',
 		     instrStream   = instrStream,
 		     mltreeStream  = self()
                    }

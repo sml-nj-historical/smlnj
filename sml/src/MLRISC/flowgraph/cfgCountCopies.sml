@@ -15,7 +15,7 @@ struct
 
    val name = "count copies"
 
-   val copies = MLRiscControl.getCounter "copies"
+   val copies = MLRiscControl.mkCounter ("copies", "copy count")
 
    fun run (cfg as G.GRAPH graph) = let
      val blocks = map #2 (#nodes graph ())
@@ -29,7 +29,7 @@ struct
      in  scan(!insns, n) 
      end
    in
-     copies := !copies + foldr count 0 blocks;
-     cfg
+       copies := !copies + foldr count 0 blocks;
+       cfg
    end
 end

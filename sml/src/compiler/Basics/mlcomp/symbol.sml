@@ -68,6 +68,8 @@ structure Symbol = struct
 	  | TYVspace => "type variable"
 	  | FSIGspace => "functor signature"
 
+  fun describe s = concat [nameSpaceToString (nameSpace s), " ", name s]
+
   fun symbolToString(SYMBOL(number,name)) : string =
         case number - HashString.hashString name
          of 0w0 => "VAL$"^name

@@ -15,6 +15,7 @@ struct
    type region  = T.rexp
    type cond    = T.cond
    type fcond   = T.fcond
+   type div_rounding_mode = T.div_rounding_mode
 
    fun error msg = MLRiscErrorMsg.error("RTLBuild",msg)
 
@@ -51,6 +52,7 @@ struct
    fun intConst ty i = T.LI(I.fromInt(ty, i))
    fun wordConst ty w = T.LI(I.fromWord32(ty, w))
 
+   fun ternaryOp oper ty (x, y, z) = oper(x, ty, y, z)
    fun binOp oper ty (x, y) = oper(ty,x,y)
    fun unaryOp oper ty x = oper(ty,x)
 
@@ -61,9 +63,8 @@ struct
    val op+   = binOp T.ADD
    val op-   = binOp T.SUB
    val muls  = binOp T.MULS
-   val divs  = binOp T.DIVS
-   val quots = binOp T.QUOTS
-   val rems  = binOp T.REMS
+   val divs  = ternaryOp T.DIVS
+   val rems  = ternaryOp T.REMS
    val mulu  = binOp T.MULU
    val divu  = binOp T.DIVU
    val remu  = binOp T.REMU
@@ -72,9 +73,7 @@ struct
    val addt  = binOp T.ADDT
    val subt  = binOp T.SUBT
    val mult  = binOp T.MULT
-   val divt  = binOp T.DIVT
-   val quott = binOp T.QUOTT
-   val remt  = binOp T.REMT
+   val divt  = ternaryOp T.DIVT
 
    val notb  = unaryOp T.NOTB
    val andb  = binOp T.ANDB
@@ -124,30 +123,17 @@ struct
    val fsqrt = funaryOp T.FSQRT
 
    val |?|     = fcmp T.?
-   val |!<=>|  = fcmp T.!<=>
    val |==|    = fcmp T.==
    val |?=|    = fcmp T.?=
-   val |!<>|   = fcmp T.!<>
-   val |!?>=|  = fcmp T.!?>=
    val |<|     = fcmp T.<
    val |?<|    = fcmp T.?<
-   val |!>=|   = fcmp T.!>=
-   val |!?>|   = fcmp T.!?>
    val |<=|    = fcmp T.<=
    val |?<=|   = fcmp T.?<=
-   val |!>|    = fcmp T.!>
-   val |!?<=|  = fcmp T.!?<=
    val |>|     = fcmp T.>
    val |?>|    = fcmp T.?>
-   val |!<=|   = fcmp T.!<=
-   val |!?<|   = fcmp T.!?<
    val |>=|    = fcmp T.>=
    val |?>=|   = fcmp T.?>=
-   val |!<|    = fcmp T.!<
-   val |!?=|   = fcmp T.!?=
    val |<>|    = fcmp T.<>
-   val |!=|    = fcmp T.!=
-   val |!?|    = fcmp T.!?
    val |<=>|   = fcmp T.<=>
    val |?<>|   = fcmp T.?<>
    val setfcc  = fcmp T.SETFCC

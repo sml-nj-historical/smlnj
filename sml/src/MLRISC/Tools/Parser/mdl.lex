@@ -219,6 +219,7 @@ end
 
 %header (functor MDLLexFun(Tokens : MDL_TOKENS));
 %arg ({srcMap,err,MDLmode});
+%reject
 
 alpha=[A-Za-z];
 digit=[0-9];
@@ -252,7 +253,6 @@ inf=i;
 <INITIAL,COMMENT,ASM>{ws}	=> (continue());
 <ASMQUOTE>\n		=> (err(yypos,yypos+size yytext,
                                 "newline in assembly text!"); continue());
-<INITIAL>\-\-.*\n	=> (continue());
 <INITIAL>"(*"		=> (commentLevel := 1; YYBEGIN COMMENT; continue());
 <INITIAL,ASM>{integer}	=> (decimal(err,yytext,yypos));
 <INITIAL,ASM>{hex}	=> (hex(err,yytext,yypos));
@@ -271,18 +271,26 @@ inf=i;
 <INITIAL,ASM>{real}	=> (real(err,yytext,yypos));
 <INITIAL,ASM>"$"	=> (if MDLmode then DOLLAR(yypos,yypos+1)
                             else SYMBOL("$",yypos,yypos+1));
-<INITIAL,ASM>"asm:"     => (ASM_COLON(yypos,yypos + size yytext));
-<INITIAL,ASM>"mc:"      => (MC_COLON(yypos,yypos + size yytext));
-<INITIAL,ASM>"rtl:"     => (RTL_COLON(yypos,yypos + size yytext));
-<INITIAL,ASM>"delayslot:" => (DELAYSLOT_COLON(yypos,size yytext));
-<INITIAL,ASM>"padding:" => (PADDING_COLON(yypos,size yytext));
-<INITIAL,ASM>"nullified:" => (NULLIFIED_COLON(yypos,size yytext));
-<INITIAL,ASM>"candidate:" => (CANDIDATE_COLON(yypos,size yytext));
+<INITIAL,ASM>"asm:"     => (if MDLmode then 
+                              ASM_COLON(yypos,yypos+size yytext) else REJECT());
+<INITIAL,ASM>"mc:"      => (if MDLmode then 
+                               MC_COLON(yypos,yypos+size yytext) else REJECT());
+<INITIAL,ASM>"rtl:"     => (if MDLmode then 
+                               RTL_COLON(yypos,yypos+size yytext) else REJECT());
+<INITIAL,ASM>"delayslot:" => (if MDLmode then
+                               DELAYSLOT_COLON(yypos,size yytext) else REJECT());
+<INITIAL,ASM>"padding:" => (if MDLmode then  
+                               PADDING_COLON(yypos,size yytext) else REJECT());
+<INITIAL,ASM>"nullified:" => (if MDLmode then
+                                NULLIFIED_COLON(yypos,size yytext) else REJECT());
+<INITIAL,ASM>"candidate:" => (if MDLmode then  
+                                CANDIDATE_COLON(yypos,size yytext) else REJECT());
 <INITIAL,ASM>{id}	=> (lookup(MDLmode,yytext,yypos));
 <INITIAL,ASM>{tyvar}	=> (TYVAR(yytext,yypos,yypos + size yytext));
 <INITIAL,ASM>"("	=> (LPAREN(yypos,yypos+1));
 <INITIAL,ASM>")"	=> (RPAREN(yypos,yypos+1));
 <INITIAL,ASM>"["	=> (LBRACKET(yypos,yypos+1));
+<INITIAL,ASM>"#["	=> (LHASHBRACKET(yypos,yypos+1));
 <INITIAL,ASM>"]"	=> (RBRACKET(yypos,yypos+1));
 <INITIAL,ASM>"{"	=> (LBRACE(yypos,yypos+1));
 <INITIAL,ASM>"}"	=> (RBRACE(yypos,yypos+1));

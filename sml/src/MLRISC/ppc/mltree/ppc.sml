@@ -1,4 +1,7 @@
-(*
+(* ppc.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * I've substantially modified this code generator to support the new MLTREE.
  * Please see the file README.hppa for the ugly details.
  *
@@ -42,6 +45,7 @@ struct
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
   structure Gen = MLTreeGen
     (structure T = T
+     structure Cells = C
      val intTy = intTy
      val naturalWidths = naturalWidths
      datatype rep = SE | ZE | NEITHER
@@ -57,8 +61,12 @@ struct
   val RET = I.BCLR{bo=I.ALWAYS, bf=CR0, bit=I.LT, LK=false, labels=[]}
   fun SLLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp i,mb=0,me=SOME(31-i)}
-  fun SRLI32{r,i,d} = 
-      I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(32-i),mb=i,me=SOME(31)}
+  fun SRLI32{r,i,d} = 			
+      I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(Int.mod(32-i,32)),mb=i,me=SOME(31)}
+  fun COPY{dst, src, tmp} = 
+      I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
+  fun FCOPY{dst, src, tmp} = 
+      I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
 
   (*  
    * Integer multiplication 
@@ -71,23 +79,34 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d}= I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
-     fun slli{r,i,d} = [SLLI32{r=r,i=i,d=d}]
-     fun srli{r,i,d} = [SRLI32{r=r,i=i,d=d}]
-     fun srai{r,i,d} = [I.ARITHI{oper=I.SRAWI,rt=d,ra=r,im=I.ImmedOp i}]
+     fun mov{r,d} = COPY{dst=[d],src=[r],tmp=NONE}
+     fun add{r1,r2,d}= I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
+     fun slli{r,i,d} = [I.INSTR(SLLI32{r=r,i=i,d=d})]
+     fun srli{r,i,d} = [I.INSTR(SRLI32{r=r,i=i,d=d})]
+     fun srai{r,i,d} = [I.arithi{oper=I.SRAWI,rt=d,ra=r,im=I.ImmedOp i}]
     )
 
   structure Mulu32 = Multiply32
     (val trapping = false
      val multCost = multCost
-     fun addv{r1,r2,d}=[I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
-     fun subv{r1,r2,d}=[I.ARITH{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
+     fun addv{r1,r2,d}=[I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
+     fun subv{r1,r2,d}=[I.arith{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
      val sh1addv = NONE
      val sh2addv = NONE
      val sh3addv = NONE
     )
     (val signed = false)
+
+  structure Muls32 = Multiply32
+    (val trapping = false
+     val multCost = multCost
+     fun addv{r1,r2,d}=[I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
+     fun subv{r1,r2,d}=[I.arith{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
+     val sh1addv = NONE
+     val sh2addv = NONE
+     val sh3addv = NONE
+    )
+    (val signed = true)
 
   structure Mult32 = Multiply32
     (val trapping = true
@@ -101,13 +120,17 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (TS.S.STREAM{emit,comment,getAnnotations,
+      (TS.S.STREAM{emit=emitInstruction,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
-                beginCluster,endCluster,exitBlock,...}) =
-  let (* mark an instruction with annotations *)
-      fun mark'(instr,[]) = instr
-        | mark'(instr,a::an) = mark'(I.ANNOTATION{i=instr,a=a},an)
-      fun mark(instr,an) = emit(mark'(instr,an))
+                beginCluster,endCluster,exitBlock,...}) = 
+  let 
+      val emit = emitInstruction o I.INSTR
+
+      (* mark an instruction with annotations *)
+      fun annotate(instr,[]) = instr
+        | annotate(instr,a::an) = annotate(I.ANNOTATION{i=instr,a=a},an)
+      fun mark'(instr, an) = emitInstruction(annotate(instr, an))
+      fun mark(instr,an) = emitInstruction(annotate(I.INSTR instr,an))
 
       (* Label where trap is generated.   
        * For overflow trapping instructions, we generate a branch 
@@ -139,23 +162,23 @@ struct
 
       fun move(rs,rd,an) =
         if CB.sameColor(rs,rd) then () 
-        else mark(I.COPY{dst=[rd],src=[rs],impl=ref NONE,tmp=NONE},an)
+        else mark'(COPY{dst=[rd],src=[rs],tmp=NONE},an)
 
       fun fmove(fs,fd,an) =
         if CB.sameColor(fs,fd) then () 
-        else mark(I.FCOPY{dst=[fd],src=[fs],impl=ref NONE,tmp=NONE},an)
+        else mark'(FCOPY{dst=[fd],src=[fs],tmp=NONE},an)
 
       fun ccmove(ccs,ccd,an) =
         if CB.sameColor(ccd,ccs) then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
 
       fun copy(dst, src, an) =
-          mark(I.COPY{dst=dst, src=src, impl=ref NONE, 
-                      tmp=case dst of [_] => NONE 
+          mark'(COPY{dst=dst, src=src,
+                     tmp=case dst of [_] => NONE 
                                     | _ => SOME(I.Direct(newReg()))},an)
       fun fcopy(dst, src, an) =
-          mark(I.FCOPY{dst=dst, src=src, impl=ref NONE, 
-                       tmp=case dst of [_] => NONE 
-                                     | _ => SOME(I.FDirect(newFreg()))},an)
+          mark'(FCOPY{dst=dst, src=src, 
+                      tmp=case dst of [_] => NONE 
+                                    | _ => SOME(I.FDirect(newFreg()))},an)
 
       fun emitBranch{bo, bf, bit, addr, LK} = 
       let val fallThrLab = Label.anon()
@@ -482,11 +505,11 @@ struct
           (* Generate optimized multiplication code *)
       and multiply(ty,oper,operi,genMult,e1,e2,rt,an) =
           let fun nonconst(e1,e2) = 
-                  [mark'( 
+                  [annotate( 
                      case commImmedOpnd signed16 (e1,e2) of
                        (ra,I.RegOp rb) => 
-                         I.ARITH{oper=oper,ra=ra,rb=rb,rt=rt,OE=false,Rc=false}
-                     | (ra,im) => I.ARITHI{oper=operi,ra=ra,im=im,rt=rt},
+                         I.arith{oper=oper,ra=ra,rb=rb,rt=rt,OE=false,Rc=false}
+                     | (ra,im) => I.arithi{oper=operi,ra=ra,im=im,rt=rt},
                      an)]
               fun const(e,i) =
                   let val r = expr e
@@ -498,9 +521,11 @@ struct
                    (_,T.LI i)   => const(e1,i)
                  | (T.LI i,_)   => const(e2,i)
                  | _            => nonconst(e1,e2)
-          in  app emit instrs end
+          in  app emitInstruction instrs end
 
       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x 
+
+      and divs32 x = Muls32.divide{mode=T.TO_ZERO,stm=doStmt} x
 
       and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
@@ -513,7 +538,7 @@ struct
                   )
               fun const(e,i) =
                   let val r = expr e
-                  in  app emit (genDiv{r=r,i=toInt(i),d=rt})
+                  in  app emitInstruction (genDiv{r=r,i=toInt(i),d=rt})
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
           in  case (e1,e2) of
@@ -582,10 +607,17 @@ struct
            | T.MULU(32, e1, e2) => multiply(32,I.MULLW,I.MULLI,
                                             Mulu32.multiply,e1,e2,rt,an)
            | T.DIVU(32, e1, e2) => divide(32,I.DIVWU,divu32,e1,e2,rt,false,an)
+
+	   | T.MULS(32, e1, e2) => multiply(32,I.MULLW,I.MULLI,
+					    Muls32.multiply,e1,e2,rt,an)
+	   | T.DIVS(T.DIV_TO_ZERO, 32, e1, e2) =>
+	                           divide(32,I.DIVW,divs32,e1,e2,rt,false,an)
+
            | T.ADDT(32, e1, e2) => arithTrapping(I.ADD, e1, e2, rt, an)
            | T.SUBT(32, e1, e2) => arithTrapping(I.SUBF, e2, e1, rt, an)
            | T.MULT(32, e1, e2) => arithTrapping(I.MULLW, e1, e2, rt, an)
-           | T.DIVT(32, e1, e2) => divide(32,I.DIVW,divt32,e1,e2,rt,true,an)
+           | T.DIVT(T.DIV_TO_ZERO, 32, e1, e2) =>
+	                           divide(32,I.DIVW,divt32,e1,e2,rt,true,an)
     
            | T.SRA(32, e1, e2)  => sra(I.SRAW, I.SRAWI, e1, e2, rt, an)
            | T.SRL(32, e1, e2)  => srl32(e1, e2, rt, an)
@@ -686,7 +718,7 @@ struct
           | T.FMUL(64, e1, e2) => fbinary(I.FMUL, e1, e2, ft, an)
           | T.FDIV(64, e1, e2) => fbinary(I.FDIV, e1, e2, ft, an)
           | T.CVTI2F(64,_,e) => 
-               app emit (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
+               app emitInstruction (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
 
             (* Single/double precision support *)
           | T.FABS((32|64), e) => funary(I.FABS, e, ft, an)

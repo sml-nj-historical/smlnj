@@ -5,8 +5,9 @@
  * 
  * -- Allen
  * 
- * Notes: places with optimizations are marked ***OPT***
+ * Notes: places with optimizations are marked ***OPT**n*
  *)
+
 
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR 
@@ -140,6 +141,52 @@ struct
   "OpenVMS Alpha Software" (Part II of the Alpha Architecture
   Manual).  This stuff should apply to Unix (OSF1) as well as VMS.
 
+
+
+
+
+
+
+		-------------------o*o----------------------
+			   LIVE/KILL instructions
+				 Nov 28, 2001
+				  Lal George
+
+  The mechanism described above is now obsolete. We no longer use
+  the DEFFREG instruction but the zero length LIVE instruction. 
+  Therefore the code that gets generated is something like;
+
+	f1 := f2 + f3
+        trap
+	LIVE f1, f2, f3
+
+  The live ranges for f1, f2, and f3 are extended by the LIVE
+  instruction, and are live simultaneously and therefore cannot
+  be allocated to the same register. 
+
+  Multiple floating point instructions should be surrounded
+  by parallel copies. That is to say, if we have:
+
+        f1 := f2 + f3
+	trapb
+        LIVE f1, f2, f3
+
+	f4 := f1 * f2
+	trapb
+	LIVE f1, f2, f4
+
+  Then the sequence above should be transformed to:
+
+        [f2', f3'] := [f1, f2] ; parallel copy
+        f1' := f2' + f3'
+	f4' := f1' * f2'
+        trapb
+	LIVE f1', f2', f3', f4'
+        [f4] := [f4']  ; copy assuming f4 is the only value live.
+
+  The parallel copies are to ensure that the primed variables will 
+  not spill, and there should never be more than K reigsters in the LIVE
+  instruction (K is the number of registers on the machine).
   ****************************************************************)
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
@@ -151,6 +198,7 @@ struct
    * This module is used to simulate operations of non-standard widths.
    *)
   structure Gen = MLTreeGen(structure T = T
+			    structure Cells = C
                             val intTy = 64
                             val naturalWidths = [32,64]
                             datatype rep = SE | ZE | NEITHER
@@ -179,18 +227,18 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d} = I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
+     fun mov{r,d}    = I.COPY{k=CB.GP, sz=intTy, dst=[d],src=[r],tmp=NONE}
+     fun add{r1,r2,d} = I.operate{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
      (*
       * How to left shift by a constant (32bits)
       *)
-     fun slli{r,i=1,d} = [I.OPERATE{oper=I.ADDL,ra=r,rb=I.REGop r,rc=d}]
-       | slli{r,i=2,d} = [I.OPERATE{oper=I.S4ADDL,ra=r,rb=zeroOpn,rc=d}]
-       | slli{r,i=3,d} = [I.OPERATE{oper=I.S8ADDL,ra=r,rb=zeroOpn,rc=d}]
+     fun slli{r,i=1,d} = [I.operate{oper=I.ADDL,ra=r,rb=I.REGop r,rc=d}]
+       | slli{r,i=2,d} = [I.operate{oper=I.S4ADDL,ra=r,rb=zeroOpn,rc=d}]
+       | slli{r,i=3,d} = [I.operate{oper=I.S8ADDL,ra=r,rb=zeroOpn,rc=d}]
        | slli{r,i,d}   = 
           let val tmp = C.newReg()
-          in  [I.OPERATE{oper=I.SLL,ra=r,rb=I.IMMop i,rc=tmp},
-               I.OPERATE{oper=I.ADDL,ra=tmp,rb=zeroOpn,rc=d}]
+          in  [I.operate{oper=I.SLL,ra=r,rb=I.IMMop i,rc=tmp},
+               I.operate{oper=I.ADDL,ra=tmp,rb=zeroOpn,rc=d}]
           end
 
      (* 
@@ -198,8 +246,8 @@ struct
       *)
      fun srli{r,i,d} =
          let val tmp = C.newReg()
-         in  [I.OPERATE{oper=I.ZAP,ra=r,rb=I.IMMop 0xf0,rc=tmp},
-              I.OPERATE{oper=I.SRL,ra=tmp,rb=I.IMMop i,rc=d}]
+         in  [I.operate{oper=I.ZAP,ra=r,rb=I.IMMop 0xf0,rc=tmp},
+              I.operate{oper=I.SRL,ra=tmp,rb=I.IMMop i,rc=d}]
          end
 
      (* 
@@ -207,8 +255,8 @@ struct
       *)
      fun srai{r,i,d} = 
          let val tmp = C.newReg()
-         in  [I.OPERATE{oper=I.ADDL,ra=r,rb=zeroOpn,rc=tmp},
-              I.OPERATE{oper=I.SRA,ra=tmp,rb=I.IMMop i,rc=d}]
+         in  [I.operate{oper=I.ADDL,ra=r,rb=zeroOpn,rc=tmp},
+              I.operate{oper=I.SRA,ra=tmp,rb=I.IMMop i,rc=d}]
          end 
     )
 
@@ -222,19 +270,19 @@ struct
      type arg  = {r1:CB.cell, r2:CB.cell, d:CB.cell}
      type argi = {r:CB.cell, i:int, d:CB.cell}
 
-     fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d}= I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
-     fun slli{r,i,d} = [I.OPERATE{oper=I.SLL,ra=r,rb=I.IMMop i,rc=d}]
-     fun srli{r,i,d} = [I.OPERATE{oper=I.SRL,ra=r,rb=I.IMMop i,rc=d}]
-     fun srai{r,i,d} = [I.OPERATE{oper=I.SRA,ra=r,rb=I.IMMop i,rc=d}]
+     fun mov{r,d}    = I.COPY{k=CB.GP, sz=intTy, dst=[d],src=[r],tmp=NONE}
+     fun add{r1,r2,d}= I.operate{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
+     fun slli{r,i,d} = [I.operate{oper=I.SLL,ra=r,rb=I.IMMop i,rc=d}]
+     fun srli{r,i,d} = [I.operate{oper=I.SRL,ra=r,rb=I.IMMop i,rc=d}]
+     fun srai{r,i,d} = [I.operate{oper=I.SRA,ra=r,rb=I.IMMop i,rc=d}]
     )
 
   (* signed, trapping version of multiply and divide *)
   structure Mult32 = Multiply32
     (val trapping = true
      val multCost = multCost
-     fun addv{r1,r2,d} = [I.OPERATEV{oper=I.ADDLV,ra=r1,rb=I.REGop r2,rc=d}]
-     fun subv{r1,r2,d} = [I.OPERATEV{oper=I.SUBLV,ra=r1,rb=I.REGop r2,rc=d}]
+     fun addv{r1,r2,d} = [I.operatev{oper=I.ADDLV,ra=r1,rb=I.REGop r2,rc=d}]
+     fun subv{r1,r2,d} = [I.operatev{oper=I.SUBLV,ra=r1,rb=I.REGop r2,rc=d}]
      val sh1addv = NONE
      val sh2addv = NONE
      val sh3addv = NONE
@@ -245,13 +293,13 @@ struct
   functor Mul32 = Multiply32
     (val trapping = false
      val multCost = multCost
-     fun addv{r1,r2,d} = [I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}]
-     fun subv{r1,r2,d} = [I.OPERATE{oper=I.SUBL,ra=r1,rb=I.REGop r2,rc=d}]
+     fun addv{r1,r2,d} = [I.operate{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}]
+     fun subv{r1,r2,d} = [I.operate{oper=I.SUBL,ra=r1,rb=I.REGop r2,rc=d}]
      val sh1addv = NONE
      val sh2addv = SOME(fn {r1,r2,d} => 
-                    [I.OPERATE{oper=I.S4ADDL,ra=r1,rb=I.REGop r2,rc=d}])
+                    [I.operate{oper=I.S4ADDL,ra=r1,rb=I.REGop r2,rc=d}])
      val sh3addv = SOME(fn {r1,r2,d} => 
-                    [I.OPERATE{oper=I.S8ADDL,ra=r1,rb=I.REGop r2,rc=d}])
+                    [I.operate{oper=I.S8ADDL,ra=r1,rb=I.REGop r2,rc=d}])
     )
   structure Mulu32 = Mul32(val signed = false)
   structure Muls32 = Mul32(val signed = true)
@@ -260,8 +308,8 @@ struct
   structure Mult64 = Multiply64
     (val trapping = true
      val multCost = multCost
-     fun addv{r1,r2,d} = [I.OPERATEV{oper=I.ADDQV,ra=r1,rb=I.REGop r2,rc=d}]
-     fun subv{r1,r2,d} = [I.OPERATEV{oper=I.SUBQV,ra=r1,rb=I.REGop r2,rc=d}]
+     fun addv{r1,r2,d} = [I.operatev{oper=I.ADDQV,ra=r1,rb=I.REGop r2,rc=d}]
+     fun subv{r1,r2,d} = [I.operatev{oper=I.SUBQV,ra=r1,rb=I.REGop r2,rc=d}]
      val sh1addv = NONE
      val sh2addv = NONE
      val sh3addv = NONE
@@ -272,13 +320,13 @@ struct
   functor Mul64 = Multiply64
     (val trapping = false
      val multCost = multCost
-     fun addv{r1,r2,d} = [I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}]
-     fun subv{r1,r2,d} = [I.OPERATE{oper=I.SUBQ,ra=r1,rb=I.REGop r2,rc=d}]
+     fun addv{r1,r2,d} = [I.operate{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}]
+     fun subv{r1,r2,d} = [I.operate{oper=I.SUBQ,ra=r1,rb=I.REGop r2,rc=d}]
      val sh1addv = NONE
      val sh2addv = SOME(fn {r1,r2,d} => 
-                    [I.OPERATE{oper=I.S4ADDQ,ra=r1,rb=I.REGop r2,rc=d}])
+                    [I.operate{oper=I.S4ADDQ,ra=r1,rb=I.REGop r2,rc=d}])
      val sh3addv = SOME(fn {r1,r2,d} => 
-                    [I.OPERATE{oper=I.S8ADDQ,ra=r1,rb=I.REGop r2,rc=d}])
+                    [I.operate{oper=I.S8ADDQ,ra=r1,rb=I.REGop r2,rc=d}])
     )
   structure Mulu64 = Mul64(val signed = false)
   structure Muls64 = Mul64(val signed = true)
@@ -294,15 +342,16 @@ struct
   val zeroFR = C.f31 
   val zeroEA = I.Direct zeroR
   val zeroT  = T.LI int_0
-  val trapb = [I.TRAPB]
+  val trapb = [I.trapb]
   val zeroImm = I.IMMop 0
 
   fun selectInstructions
         (instrStream as
-         TS.S.STREAM{emit,beginCluster,endCluster,getAnnotations,
+         TS.S.STREAM{emit=emitInstruction,beginCluster,endCluster,getAnnotations,
                      defineLabel,entryLabel,pseudoOp,annotation,
                      exitBlock,comment,...}) =
   let
+
       infix || && << >> ~>>
 
       val op ||  = W32.orb
@@ -313,6 +362,8 @@ struct
 
       val itow = Word.fromInt
       val wtoi = Word.toIntX
+
+      val emit = emitInstruction o I.INSTR
 
       val newReg = C.newReg
       val newFreg = C.newFreg
@@ -334,9 +385,9 @@ struct
       val (ADDSX,SUBSX,MULSX,DIVSX) =
             (I.ADDSSUD,I.SUBSSUD,I.MULSSUD,I.DIVSSUD)
   
-      fun mark'(i,[]) = i
-        | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
-      fun mark(i,an) = emit(mark'(i,an))
+      fun annotate(i, an) = List.foldl (fn (a, i) => I.ANNOTATION{i=i,a=a}) i an
+      fun mark'(i, an) = emitInstruction(annotate(i,an))
+      fun mark(i,an) = emitInstruction(annotate(I.INSTR i,an))
 
       (* Fit within 16 bits? *)
       fun literal16 n = ~32768 <= n andalso n < 32768
@@ -407,23 +458,23 @@ struct
 
       (* emit a copy *)
       and copy(dst,src,an) = 
-          mark(I.COPY{dst=dst,src=src,impl=ref NONE,
+          mark'(I.COPY{k=CB.GP, sz=32, dst=dst,src=src,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.Direct(newReg()))},an)
 
       (* emit a floating point copy *)
       and fcopy(dst,src,an) = 
-          mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
+          mark'(I.COPY{k=CB.FP, sz=64, dst=dst,src=src,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
       and move(s,d,an) = 
           if CB.sameCell(s,d) orelse CB.sameCell(d,zeroR) then () else 
-          mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
+          mark'(I.COPY{k=CB.GP, sz=32, dst=[d],src=[s],tmp=NONE},an)
 
       and fmove(s,d,an) = 
           if CB.sameCell(s,d) orelse CB.sameCell(d,zeroFR) then () else 
-          mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
+          mark'(I.COPY{k=CB.FP, sz=64, dst=[d],src=[s],tmp=NONE},an)
 
        (* emit an sign extension op *)
       and signExt32(r,d) =
@@ -695,13 +746,13 @@ struct
                   (i,I.REGop r) => gen{ra=r,rb=i,rc=rd}
                 | (I.REGop r,i) => gen{ra=r,rb=i,rc=rd}
                 | (r,i)         => gen{ra=reduceOpn r,rb=i,rc=rd}
-              in mark'(instr,an)::trapb end
+              in annotate(instr,an)::trapb end
               fun const(e,i) =
                   let val r = expr e
                   in  if !useMultByConst andalso 
 		           IntInf.>=(i, T.I.int_0) andalso 
 			   IntInf.<(i, T.I.int_0x100) then
-                         mark'(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
+                         annotate(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
                       else    
                          (genConst{r=r,i=toInt i,d=rd}@trapb
                           handle _ => nonconst(T.REG(ty,r),T.LI i))
@@ -711,7 +762,7 @@ struct
 		of (_, T.LI i) => const(e1, i)
 	         | (T.LI i, _) => const(e2, i)
 		 | _ => nonconst(e1, e2)
-          in  app emit instrs
+          in  app emitInstruction instrs
           end
 
           (* Round r towards zero.
@@ -747,7 +798,7 @@ struct
                   case e2 of
                      T.LI i   => const(e1,i)
                    | _        => nonconst(e1,e2)
-          in  app emit instrs
+          in  app emitInstruction instrs
           end
 
 
@@ -799,7 +850,7 @@ struct
 
       (* generate pseudo instruction *)
       and pseudo(instr,e1,e2,rc) =
-           app emit (instr({ra=expr e1,rb=opn e2,rc=rc}, reduceOpn))
+           app emitInstruction (instr({ra=expr e1,rb=opn e2,rc=rc}, reduceOpn))
 
       (* generate a load *)
       and load(ldOp,ea,d,mem,an) =
@@ -888,7 +939,7 @@ struct
 
       (* generate conversion from floating point to integer *)
       and cvtf2i(pseudo,rounding,e,rd,an) = 
-          app emit (pseudo{mode=rounding, fs=fexpr e, rd=rd})
+          app emitInstruction (pseudo{mode=rounding, fs=fexpr e, rd=rd})
 
       (* generate an expression and return the register that holds the result *)
       and expr(e) = let
@@ -945,22 +996,25 @@ struct
           | T.SUBT(32,a,b) => arithTrap(I.SUBLV,a,b,d,an)
           | T.MULT(32,a,b) => 
                multiply(32,
-                 fn{ra,rb,rc} => I.OPERATEV{oper=I.MULLV,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operatev{oper=I.MULLV,ra=ra,rb=rb,rc=rc},
                  Mult32.multiply,a,b,d,trapb,an) 
           | T.MULU(32,a,b) => 
                multiply(32,
-                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULL,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operate{oper=I.MULL,ra=ra,rb=rb,rc=rc},
                  Mulu32.multiply,a,b,d,[],an) 
           | T.MULS(32,a,b) => 
                multiply(32,
-                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULL,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operate{oper=I.MULL,ra=ra,rb=rb,rc=rc},
                  Muls32.multiply,a,b,d,[],an) 
-          | T.DIVT(32,a,b) => divide(32,P.divlv,Mult32.divide,a,b,d,an)
+          | T.DIVT(T.DIV_TO_ZERO,32,a,b) =>
+	                      divide(32,P.divlv,Mult32.divide,a,b,d,an)
           | T.DIVU(32,a,b) => divide(32,P.divlu,Mulu32.divide,a,b,d,an)
-          | T.DIVS(32,a,b) => divide(32,P.divl,Muls32.divide,a,b,d,an)
-          | T.REMT(32,a,b) => pseudo(P.remlv,a,b,d)
+          | T.DIVS(T.DIV_TO_ZERO,32,a,b) =>
+	                      divide(32,P.divl,Muls32.divide,a,b,d,an)
+(* FIXME: these two lines can go back in once the alphaMC can handle them:
           | T.REMU(32,a,b) => pseudo(P.remlu,a,b,d)
-          | T.REMS(32,a,b) => pseudo(P.reml,a,b,d)
+          | T.REMS(T.DIV_TO_ZERO,32,a,b) => pseudo(P.reml,a,b,d)
+*)
 
           | T.SLL(32,a,b) => sll32(a,b,d,an)
           | T.SRA(32,a,b) => sra(a,b,d,an)
@@ -973,22 +1027,25 @@ struct
           | T.SUBT(64,a,b) => arithTrap(I.SUBQV,a,b,d,an)
           | T.MULT(64,a,b) =>
                multiply(64,
-                 fn{ra,rb,rc} => I.OPERATEV{oper=I.MULQV,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operatev{oper=I.MULQV,ra=ra,rb=rb,rc=rc},
                  Mult64.multiply,a,b,d,trapb,an) 
           | T.MULU(64,a,b) => 
                multiply(64,
-                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operate{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
                  Mulu64.multiply,a,b,d,[],an) 
           | T.MULS(64,a,b) => 
                multiply(64,
-                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
+                 fn{ra,rb,rc} => I.operate{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
                  Muls64.multiply,a,b,d,[],an) 
-          | T.DIVT(64,a,b) => divide(64,P.divqv,Mult64.divide,a,b,d,an)
+          | T.DIVT(T.DIV_TO_ZERO,64,a,b) =>
+	                      divide(64,P.divqv,Mult64.divide,a,b,d,an)
           | T.DIVU(64,a,b) => divide(64,P.divqu,Mulu64.divide,a,b,d,an)
-          | T.DIVS(64,a,b) => divide(64,P.divq,Muls64.divide,a,b,d,an)
-          | T.REMT(64,a,b) => pseudo(P.remqv,a,b,d)
+          | T.DIVS(T.DIV_TO_ZERO,64,a,b) =>
+	                      divide(64,P.divq,Muls64.divide,a,b,d,an)
+(* FIXME: These two lines can go back in once the alphaMC can handle them:
           | T.REMU(64,a,b) => pseudo(P.remqu,a,b,d)
-          | T.REMS(64,a,b) => pseudo(P.remq,a,b,d)
+          | T.REMS(T.DIV_TO_ZERO,64,a,b) => pseudo(P.remq,a,b,d)
+*)
 
           | T.SLL(64,a,b) => sll64(a,b,d,an)
           | T.SRA(64,a,b) => sra(a,b,d,an)
@@ -1067,9 +1124,12 @@ struct
           let val fa = fexpr a
               val fb = fexpr b
           in  if SMLNJfloatingPoint then 
-                   (emit(I.DEFFREG d);
+                   ((* emit(I.DEFFREG d); *)
                     mark(I.FOPERATEV{oper=opcodeSMLNJ,fa=fa,fb=fb,fc=d},an);
-                    emit(I.TRAPB)
+                    emit(I.TRAPB);
+		    emitInstruction(I.LIVE{regs=List.foldl C.addFreg C.empty [fa,fb,d],
+					   spilled=[]})
+		    
                    )
               else mark(I.FOPERATE{oper=opcode,fa=fa,fb=fb,fc=d},an)
           end
@@ -1089,7 +1149,7 @@ struct
       (* generate an external floating point operation *) 
       and fcvti2f(pseudo,e,fd,an) =
           let val opnd = opn e
-          in  app emit (pseudo({opnd=opnd, fd=fd}, reduceOpn))
+          in  app emitInstruction (pseudo({opnd=opnd, fd=fd}, reduceOpn))
           end
 
       (* generate a floating point store *)
@@ -1191,22 +1251,28 @@ struct
                 val f2 = fexpr e2
                 fun bcc(cmp,br) = 
                 let val tmpR = C.newFreg()
-                in  emit(I.DEFFREG(tmpR));
+                in  (*emit(I.DEFFREG(tmpR));*)
                     emit(I.FOPERATE{oper=cmp,fa=f1,fb=f2,fc=tmpR});
                     emit(I.TRAPB);
+		    emitInstruction(I.LIVE{regs=List.foldl C.addFreg C.empty [f1,f2,tmpR],
+				spilled=[]});
                     mark(I.FBRANCH{b=br,f=tmpR,lab=lab},an)
                 end
                 fun fall(cmp1, br1, cmp2, br2) = 
                 let val tmpR1 = newFreg()
                     val tmpR2 = newFreg()
                     val fallLab = Label.anon()
-                in  emit(I.DEFFREG(tmpR1));
+                in  (*emit(I.DEFFREG(tmpR1));*)
                     emit(I.FOPERATE{oper=cmp1, fa=f1, fb=f2, fc=tmpR1});
                     emit(I.TRAPB);
+		    emitInstruction(I.LIVE{regs=List.foldl C.addFreg C.empty [f1,f2,tmpR1],
+				spilled=[]});
                     mark(I.FBRANCH{b=br1, f=tmpR1, lab=fallLab},an);
-                    emit(I.DEFFREG(tmpR2));
+                    (* emit(I.DEFFREG(tmpR2)); *)
                     emit(I.FOPERATE{oper=cmp2, fa=f1, fb=f2, fc=tmpR2});
                     emit(I.TRAPB);
+		    emitInstruction(I.LIVE{regs=List.foldl C.addFreg C.empty [f1,f2,tmpR2],
+				spilled=[]});
                     mark(I.FBRANCH{b=br2, f=tmpR2, lab=lab},an);
                     defineLabel fallLab
                 end
@@ -1467,6 +1533,8 @@ struct
           | T.DEFINE l => defineLabel l
           | T.ANNOTATION(s,a) => stmt(s,a::an)
           | T.EXT s => ExtensionComp.compileSext (reducer()) {stm=s,an=an}
+	  | T.LIVE rs => mark'(I.LIVE{regs=cellset rs, spilled=[]}, an)
+	  | T.KILL rs => mark'(I.KILL{regs=cellset rs, spilled=[]}, an)
           | s => doStmts (Gen.compileStm s)
 
       and reducer() =
@@ -1477,7 +1545,7 @@ struct
                      operand       = opn,
                      reduceOperand = reduceOpn,
                      addressOf     = addr,
-                     emit          = mark,
+                     emit          = emitInstruction o annotate,
                      instrStream   = instrStream,
                      mltreeStream  = self()
                     } 

@@ -2,7 +2,8 @@
 (* compile.sml *)
 
 functor CompileF(structure M  : CODEGENERATOR
-		 structure CC : CCONFIG) : COMPILE0 =
+		 structure CC : CCONFIG
+		 val cproto_conv : string) : COMPILE0 =
 struct
 
     fun mkCompInfo { source, transform } =
@@ -12,6 +13,8 @@ struct
 
     type pickle     = CC.pickle		(* pickled format *)
     type hash       = CC.hash		(* environment hash id *)
+    type pid        = CC.pid
+    type guid       = CC.guid
 
     (*************************************************************************
      *                             ELABORATION                               *
@@ -32,17 +35,17 @@ struct
 
     (** take ast, do semantic checks,
      ** and output the new env, absyn and pickles *)
-    fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = let
+    fun elaborate {ast, statenv=senv, compInfo=cinfo, guid} = let
 
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
-	val { hash, pickle, exportLvars, exportPid, newenv } =
-	    pickUnpick { context = senv, env = nenv }
+	val { pid, pickle, exportLvars, exportPid, newenv } =
+	    pickUnpick { context = senv, env = nenv, guid = guid }
     in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
-	exportLvars=exportLvars, staticPid = hash, pickle=pickle }
+	exportLvars=exportLvars, staticPid = pid, pickle = pickle }
     end (* function elaborate *)
 
     val elaborate =
@@ -87,7 +90,11 @@ struct
 	(*** statenv used for printing Absyn in messages ***)
 	let val statenv = StaticEnv.atop (newstatenv, oldstatenv)
 	in
-	    Translate.transDec(absyn, exportLvars, statenv, compInfo)
+	    Translate.transDec { rootdec = absyn,
+				 exportLvars = exportLvars,
+				 env = statenv,
+				 cproto_conv = cproto_conv,
+				 compInfo = compInfo }
 	end
 
     val translate =
@@ -133,10 +140,12 @@ struct
      * used by interact/evalloop.sml, cm/compile/compile.sml only            * 
      *************************************************************************)
     (** compiling the ast into the binary code = elab + translate + codegen *)
-    fun compile {source=source, ast=ast, statenv, symenv=symenv, 
-		 compInfo=cinfo, checkErr=check, splitting=splitting} = 
-	let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle } =
-		elaborate {ast=ast, statenv=statenv, compInfo=cinfo }
+    fun compile {source, ast, statenv, symenv, compInfo=cinfo,
+		 checkErr=check, splitting, guid } = 
+	let val {absyn, newstatenv, exportLvars, exportPid,
+		 staticPid, pickle } =
+		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
+			   guid = guid}
 		before (check "elaborate")
 
 	    val absyn = instrument {source=source, senv = statenv,

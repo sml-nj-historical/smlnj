@@ -70,7 +70,8 @@ fun evalLoop source = let
                                symenv=symenv,
 			       compInfo=cinfo, 
                                checkErr=checkErrors,
-                               splitting=splitting}
+                               splitting=splitting,
+			       guid = () }
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 
                     fixed in the long run. (ZHONG)

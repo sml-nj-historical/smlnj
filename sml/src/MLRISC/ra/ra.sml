@@ -95,15 +95,22 @@ struct
    (*
     * Debugging flags + counters
     *)
-   val cfg_before_ra     = MLRiscControl.getFlag "dump-cfg-before-ra"
-   val cfg_after_ra      = MLRiscControl.getFlag "dump-cfg-after-ra"
-   val cfg_after_spill   = MLRiscControl.getFlag "dump-cfg-after-spilling"
-   val cfg_before_ras    = MLRiscControl.getFlag "dump-cfg-before-all-ra"
-   val cfg_after_ras     = MLRiscControl.getFlag "dump-cfg-after-all-ra"
-   val dump_graph        = MLRiscControl.getFlag "dump-interference-graph"
-   val debug_spill       = MLRiscControl.getFlag "ra-debug-spilling"
-   val ra_count          = MLRiscControl.getCounter "ra-count"
-   val rebuild_count     = MLRiscControl.getCounter "ra-rebuild"
+   val cfg_before_ra     = MLRiscControl.mkFlag ("dump-cfg-before-ra",
+						 "whether CFG is shown before RA")
+   val cfg_after_ra      = MLRiscControl.mkFlag ("dump-cfg-after-ra",
+						 "whether CFG is shown after RA")
+   val cfg_after_spill   = MLRiscControl.mkFlag ("dump-cfg-after-spilling",
+						 "whether CFG is shown after spill phase")
+   val cfg_before_ras    = MLRiscControl.mkFlag ("dump-cfg-before-all-ra",
+						 "whether CFG is shown before all RA")
+   val cfg_after_ras     = MLRiscControl.mkFlag ("dump-cfg-after-all-ra",
+						 "whether CFG is shown after all RA")
+   val dump_graph        = MLRiscControl.mkFlag ("dump-interference-graph",
+						 "whether interference graph is shown")
+   val debug_spill       = MLRiscControl.mkFlag ("ra-debug-spilling",
+						 "debug mode for spill phase")
+   val ra_count          = MLRiscControl.mkCounter ("ra-count", "RA counter")
+   val rebuild_count     = MLRiscControl.mkCounter ("ra-rebuild", "RA build counter")
 
 (*
    val count_dead        = MLRiscControl.getFlag "ra-count-dead-code"
@@ -143,7 +150,7 @@ struct
        val spillLoc=ref 1
 
        (* How to dump the flowgraph *)
-       fun dumpFlowgraph(flag, title) =
+       fun dumpFlowgraph (flag, title) =
            if !flag then F.dumpFlowgraph(title, flowgraph,!debug_stream) else ()
 
        (* Main function *)
@@ -200,7 +207,7 @@ struct
                    (Core.initWorkLists G) {moves=moves} 
            in  logGraph("build",G);
                if debug then
-               let val G.GRAPH{bitMatrix=ref(G.BM{elems, ...}), ...} = G
+               let val G.GRAPH{bitMatrix=ref(G.BM.BM{elems, ...}), ...} = G
                in  print ("done: nodes="^i2s(IntHashTable.numItems nodes)^ 
                           " edges="^i2s(!elems)^
                           " moves="^i2s(length moves)^
@@ -292,7 +299,7 @@ struct
                val _ = dumpFlowgraph(cfg_after_spill,"after spilling")
            in  logGraph("rebuild",G);
                if debug then print "done\n" else ();
-               rebuild_count := !rebuild_count + 1;
+	       rebuild_count := !rebuild_count + 1;
                (simplifyWkl, moveWkl, freezeWkl, spillWkl, [])
            end
            
@@ -373,7 +380,7 @@ struct
            logGraph("done",G);
            Core.updateCellColors G;
            Core.markDeadCopiesAsSpilled G;
-           ra_count := !ra_count + 1;
+	   ra_count := !ra_count + 1;
            dumpFlowgraph(cfg_after_ra,"after register allocation");
            (* Clean up spilling *)
            SpillHeuristics.init() 

@@ -2033,10 +2033,10 @@ and close(ce,env,sn,csg,csf,ret) =
            val ne = close(e,augValue(w,t,env),sn,csg,csf,ret)
         in header(PURE(i,args,w,t,ne))
        end
-    | RCC(p,args,w,t,e) =>
+    | RCC(k,l,p,args,w,t,e) =>
        let val (env,header) = fixAccess(args,env)
 	   val ne = close(e,augValue(w,t,env),sn,csg,csf,ret)
-        in header(RCC(p,args,w,t,ne))
+        in header(RCC(k,l,p,args,w,t,ne))
        end
 
 (***************************************************************************

@@ -10,7 +10,7 @@ structure Cleanup = struct
 	structure C = SMLofNJ.Internals.CleanUp
 	val label = "CM-Cleanup"
 	fun atInit initPaths _ =
-	    (EnvConfig.init ();
+	    (ControlRegistry.init BasicControl.topregistry;
 	     initPaths ())
     in
 	fun install initPaths =

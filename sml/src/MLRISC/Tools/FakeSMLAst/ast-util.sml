@@ -36,6 +36,7 @@ struct
    fun BOOLexp x = LITexp(BOOLlit x)
    fun STRINGexp s = LITexp(STRINGlit s)
    fun INTexp x = LITexp(INTlit x)
+   fun INT32exp x = LITexp(INT32lit x)
    fun INTINFexp x = LITexp(INTINFlit x)
    fun CHARexp x = LITexp(CHARlit x)
    fun WORDexp x = LITexp(WORDlit x)
@@ -44,6 +45,7 @@ struct
    fun BOOLpat x = LITpat(BOOLlit x)
    fun STRINGpat s = LITpat(STRINGlit s)
    fun INTpat x = LITpat(INTlit x)
+   fun INT32pat x = LITpat(INT32lit x)
    fun INTINFpat x = LITpat(INTINFlit x)
    fun CHARpat x = LITpat(CHARlit x)
    fun WORDpat x = LITpat(WORDlit x)
@@ -87,7 +89,7 @@ struct
                                delayslot=NONE,
                                delaycand=NONE,sdi=NONE,latency=NONE,
                                pipeline=NONE, loc=SourceMapping.dummyLoc}
-   fun VAL(id,e) = VALdecl [VALbind(IDpat id,e)]
+   fun VAL(id,e) = VALdecl[VALbind(case id of "_" => WILDpat | _ => IDpat id,e)]
    fun FUN'(id,p,e) = FUNbind(id,[CLAUSE([p],NONE,e)])
    fun FUN(id,p,e) = FUNdecl [FUN'(id,p,e)]
    fun LET([],e) = e 
@@ -135,8 +137,10 @@ struct
          | kind(WORD32lit _) = 5
          | kind(INTINFlit _) = 6
          | kind(REALlit _) = 7
+         | kind(INT32lit _) = 8
    in  case (x, y) of
          (INTlit x,INTlit y) => Int.compare(x,y)
+       | (INT32lit x,INT32lit y) => Int32.compare(x,y)
        | (BOOLlit x,BOOLlit y) => if x = y then EQUAL 
                                   else if x = false then LESS else GREATER
        | (STRINGlit x,STRINGlit y) => String.compare(x,y)

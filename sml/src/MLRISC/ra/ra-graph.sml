@@ -9,18 +9,9 @@ struct
 
   structure C = CellsBasis
 
-  (* A new bit matrix datatype.
-   * We use the small representation whenever possible to save space.
-   *)
-  datatype bitMatrix = BM of {table:hashTable,
-                              elems:int ref,
-                              edges:int}
-  and hashTable = SMALL of word list Array.array ref * word
-                | LARGE of bucket Array.array ref * word
-             (* | BITMATRIX of Word8Array.array *)
-  and bucket = NIL | B of int * int * bucket
+  structure BM = RaBitmatrix
 
-  type priority = int
+  type priority = real
 
   type programPoint = {block:int, insn:int}
 
@@ -45,12 +36,12 @@ struct
         | sameKey _ = false
       )
 
-  type cost = int
+  type cost = real
 
   type mode = word
 
   datatype interferenceGraph = 
-   GRAPH of { bitMatrix    : bitMatrix ref,
+   GRAPH of { bitMatrix    : BM.bitMatrix ref,
               nodes        : node IntHashTable.hash_table,
               K            : int,
               firstPseudoR : int,
@@ -77,10 +68,9 @@ struct
               memRegs      : node list ref,
 
               spillLoc     : int ref,
-              span         : int IntHashTable.hash_table option ref,
+              span         : cost IntHashTable.hash_table option ref,
               mode         : mode,
-              pseudoCount  : int ref,
-              blockedCount : int ref
+              pseudoCount  : int ref
             }
 
   and moveStatus = BRIGGS_MOVE | GEORGE_MOVE
@@ -154,11 +144,11 @@ struct
           else *)
           let val (tableSize, shift) = roundSize edges
           in  if Word.fromInt maxRegs < max then
-                 SMALL(ref(Array.array(tableSize,[])),shift)
+                 BM.SMALL(ref(Array.array(tableSize,[])),shift)
               else  
-                 LARGE(ref(Array.array(tableSize,NIL)),shift)
+                 BM.LARGE(ref(Array.array(tableSize, BM.NIL)),shift)
           end
-  in  BM{table=table, elems=ref 0, edges=edges}
+  in  BM.BM{table=table, elems=ref 0, edges=edges}
   end
 
   (* Create a new interference graph *)
@@ -178,10 +168,10 @@ struct
                   let val id = C.registerId cell
                       val node = 
                       NODE{number=id,
-                           pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
+                           pri=ref 0.0,adj=ref [],degree=ref 0,movecnt=ref 0,
                            color=ref(MEMREG(id,cell)), 
                            defs=ref [], uses=ref [],
-                           movecost=ref 0,movelist=ref [], cell=cell}
+                           movecost=ref 0.0,movelist=ref [], cell=cell}
                   in  add(id, node); loop(cells, node::ns)
                   end
           in  loop(cells, [])
@@ -212,8 +202,7 @@ struct
              spillLoc     = spillLoc,
              span         = ref NONE,
              mode         = mode,
-             pseudoCount  = ref 0,
-             blockedCount = ref 0
+             pseudoCount  = ref 0
            }
   end
   

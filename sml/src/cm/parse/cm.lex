@@ -1,4 +1,6 @@
-(* -*- sml -*-
+(* -*- sml-lex -*-
+ *
+ * cm.lex
  *
  * lexical analysis (ML-Lex specification) for CM description files
  *

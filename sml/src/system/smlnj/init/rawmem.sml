@@ -24,4 +24,26 @@ structure RawMemInlineT = struct
     val f32s : word32 * real   -> unit    = InLine.rawf32s
     val f64s : word32 * real   -> unit    = InLine.rawf64s
     val rawccall : word32 * 'a * 'b -> 'c = InLine.rawccall
+
+    (* Allen Leung's additions... *)
+    val rawrecord : int -> 'a = InLine.rawrecord
+    val rawrecord64 : int -> 'a = InLine.rawrecord64
+
+    val subw8  : 'a * word32 -> word32 = InLine.rawselectw8
+    val subi8  : 'a * word32 -> int32  = InLine.rawselecti8
+    val subw16 : 'a * word32 -> word32 = InLine.rawselectw16
+    val subi16 : 'a * word32 -> int32  = InLine.rawselecti16
+    val subw32 : 'a * word32 -> word32 = InLine.rawselectw32
+    val subi32 : 'a * word32 -> int32  = InLine.rawselecti32
+    val subf32 : 'a * word32 -> real   = InLine.rawselectf32
+    val subf64 : 'a * word32 -> real   = InLine.rawselectf64
+
+    val updw8  : 'a * word32 * word32 -> unit = InLine.rawupdatew8
+    val updi8  : 'a * word32 * int32  -> unit = InLine.rawupdatei8
+    val updw16 : 'a * word32 * word32 -> unit = InLine.rawupdatew16
+    val updi16 : 'a * word32 * int32  -> unit = InLine.rawupdatei16
+    val updw32 : 'a * word32 * word32 -> unit = InLine.rawupdatew32
+    val updi32 : 'a * word32 * int32  -> unit = InLine.rawupdatei32
+    val updf32 : 'a * word32 * real   -> unit = InLine.rawupdatef32
+    val updf64 : 'a * word32 * real   -> unit = InLine.rawupdatef64
 end

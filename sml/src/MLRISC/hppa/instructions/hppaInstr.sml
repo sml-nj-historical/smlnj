@@ -8,6 +8,7 @@
 signature HPPAINSTR =
 sig
    structure C : HPPACELLS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -205,7 +206,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int
@@ -216,7 +217,7 @@ sig
      DISPea of CellsBasis.cell * operand
    | INDXea of CellsBasis.cell * CellsBasis.cell
    | INDXSCALEDea of CellsBasis.cell * CellsBasis.cell
-   datatype instruction =
+   datatype instr =
      LOADI of {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, mem:Region.region}
    | LOAD of {l:load, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell, 
         mem:Region.region}
@@ -260,20 +261,75 @@ sig
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
+   and instruction =
+     LIVE of {regs: C.cellset, spilled: C.cellset}
+   | KILL of {regs: C.cellset, spilled: C.cellset}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
+   | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | INSTR of instr
+   val loadi : {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, 
+      mem:Region.region} -> instruction
+   val load : {l:load, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell, 
+      mem:Region.region} -> instruction
+   val store : {st:store, b:CellsBasis.cell, d:operand, r:CellsBasis.cell, 
+      mem:Region.region} -> instruction
+   val arith : {a:arith, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val arithi : {ai:arithi, i:operand, r:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val comclr_ldo : {cc:bcond, r1:CellsBasis.cell, r2:CellsBasis.cell, t1:CellsBasis.cell, 
+      i:int, b:CellsBasis.cell, t2:CellsBasis.cell} -> instruction
+   val comiclr_ldo : {cc:bcond, i1:operand, r2:CellsBasis.cell, t1:CellsBasis.cell, 
+      i2:int, b:CellsBasis.cell, t2:CellsBasis.cell} -> instruction
+   val shiftv : {sv:shiftv, r:CellsBasis.cell, len:int, t:CellsBasis.cell} -> instruction
+   val shift : {s:shift, r:CellsBasis.cell, p:int, len:int, t:CellsBasis.cell} -> instruction
+   val bcond : {cmp:cmp, bc:bcond, r1:CellsBasis.cell, r2:CellsBasis.cell, 
+      n:bool, nop:bool, t:Label.label, f:Label.label} -> instruction
+   val bcondi : {cmpi:cmpi, bc:bcond, i:int, r2:CellsBasis.cell, n:bool, nop:bool, 
+      t:Label.label, f:Label.label} -> instruction
+   val bb : {bc:bitcond, r:CellsBasis.cell, p:int, n:bool, nop:bool, t:Label.label, 
+      f:Label.label} -> instruction
+   val b : {lab:Label.label, n:bool} -> instruction
+   val longjump : {lab:Label.label, n:bool, tmp:CellsBasis.cell, tmpLab:Label.label} -> instruction
+   val be : {b:CellsBasis.cell, d:operand, sr:int, n:bool, labs:Label.label list} -> instruction
+   val bv : {x:CellsBasis.cell, b:CellsBasis.cell, labs:Label.label list, n:bool} -> instruction
+   val blr : {x:CellsBasis.cell, t:CellsBasis.cell, labs:Label.label list, 
+      n:bool} -> instruction
+   val bl : {lab:Label.label, t:CellsBasis.cell, defs:C.cellset, uses:C.cellset, 
+      cutsTo:Label.label list, mem:Region.region, n:bool} -> instruction
+   val ble : {d:operand, b:CellsBasis.cell, sr:int, t:CellsBasis.cell, defs:C.cellset, 
+      uses:C.cellset, cutsTo:Label.label list, mem:Region.region} -> instruction
+   val ldil : {i:operand, t:CellsBasis.cell} -> instruction
+   val ldo : {i:operand, b:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val mtctl : {r:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val fstore : {fst:fstore, b:CellsBasis.cell, d:int, r:CellsBasis.cell, mem:Region.region} -> instruction
+   val fstorex : {fstx:fstorex, b:CellsBasis.cell, x:CellsBasis.cell, r:CellsBasis.cell, 
+      mem:Region.region} -> instruction
+   val fload : {fl:fload, b:CellsBasis.cell, d:int, t:CellsBasis.cell, mem:Region.region} -> instruction
+   val floadx : {flx:floadx, b:CellsBasis.cell, x:CellsBasis.cell, t:CellsBasis.cell, 
+      mem:Region.region} -> instruction
+   val farith : {fa:farith, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val funary : {fu:funary, f:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val fcnv : {fcnv:fcnv, f:CellsBasis.cell, t:CellsBasis.cell} -> instruction
+   val fbranch : {cc:fcond, fmt:fmt, f1:CellsBasis.cell, f2:CellsBasis.cell, 
+      t:Label.label, f:Label.label, n:bool, long:bool} -> instruction
+   val break : {code1:int, code2:int} -> instruction
+   val nop : instruction
+   val source : {} -> instruction
+   val sink : {} -> instruction
+   val phi : {} -> instruction
 end
 
 functor HppaInstr(T: MLTREE
                  ) : HPPAINSTR =
 struct
    structure C = HppaCells
+   structure CB = CellsBasis
    structure T = T
    structure Region = T.Region
    structure Constant = T.Constant
@@ -469,7 +525,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int
@@ -480,7 +536,7 @@ struct
      DISPea of CellsBasis.cell * operand
    | INDXea of CellsBasis.cell * CellsBasis.cell
    | INDXSCALEDea of CellsBasis.cell * CellsBasis.cell
-   datatype instruction =
+   datatype instr =
      LOADI of {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, mem:Region.region}
    | LOAD of {l:load, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell, 
         mem:Region.region}
@@ -524,13 +580,53 @@ struct
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
+   and instruction =
+     LIVE of {regs: C.cellset, spilled: C.cellset}
+   | KILL of {regs: C.cellset, spilled: C.cellset}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
+   | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | INSTR of instr
+   val loadi = INSTR o LOADI
+   and load = INSTR o LOAD
+   and store = INSTR o STORE
+   and arith = INSTR o ARITH
+   and arithi = INSTR o ARITHI
+   and comclr_ldo = INSTR o COMCLR_LDO
+   and comiclr_ldo = INSTR o COMICLR_LDO
+   and shiftv = INSTR o SHIFTV
+   and shift = INSTR o SHIFT
+   and bcond = INSTR o BCOND
+   and bcondi = INSTR o BCONDI
+   and bb = INSTR o BB
+   and b = INSTR o B
+   and longjump = INSTR o LONGJUMP
+   and be = INSTR o BE
+   and bv = INSTR o BV
+   and blr = INSTR o BLR
+   and bl = INSTR o BL
+   and ble = INSTR o BLE
+   and ldil = INSTR o LDIL
+   and ldo = INSTR o LDO
+   and mtctl = INSTR o MTCTL
+   and fstore = INSTR o FSTORE
+   and fstorex = INSTR o FSTOREX
+   and fload = INSTR o FLOAD
+   and floadx = INSTR o FLOADX
+   and farith = INSTR o FARITH
+   and funary = INSTR o FUNARY
+   and fcnv = INSTR o FCNV
+   and fbranch = INSTR o FBRANCH
+   and break = INSTR o BREAK
+   and nop = INSTR NOP
+   and source = INSTR o SOURCE
+   and sink = INSTR o SINK
+   and phi = INSTR o PHI
 end
 

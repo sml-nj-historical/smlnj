@@ -43,7 +43,6 @@ in
     end
 
     functor LinkFn (structure BFC : BFC where type bfc = Binfile.bfContents
-(***)		    val x : int
 		    val system_values : posmap SrcPathMap.map ref) :>
 	    LINK where type bfc = BFC.bfc =
     struct

@@ -12,10 +12,11 @@ signature STRING =
 
     val size      : string -> int
     val sub       : (string * int) -> char
-    val substring : (string * int * int) -> string
     val extract   : (string * int * int option) -> string
-    val concat    : string list -> string
+    val substring : (string * int * int) -> string
     val ^         : (string * string) -> string
+    val concat    : string list -> string
+    val concatWith : string -> string list -> string
     val str       : char -> string
     val implode   : char list -> string
     val explode   : string -> char list
@@ -30,7 +31,9 @@ signature STRING =
     val tokens    : (char -> bool) -> string -> string list
     val fields    : (char -> bool) -> string -> string list
 
-    val isPrefix : string -> string -> bool
+    val isPrefix    : string -> string -> bool
+    val isSubstring : string -> string -> bool
+    val isSuffix    : string -> string -> bool
     val compare  : (string * string) -> order
     val collate  : ((char * char) -> order) -> (string * string) -> order
 

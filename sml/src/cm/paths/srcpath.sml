@@ -202,7 +202,7 @@ structure SrcPath :> SRCPATH = struct
     val pre = pre0 o unintern
 
     fun encode0 bracket (pf: prefile) = let
-	fun needesc c = not (Char.isPrint c) orelse Char.contains "/:\\$%" c
+	fun needesc c = not (Char.isPrint c) orelse Char.contains "/:\\$%()" c
 	fun esc c =
 	    "\\" ^ StringCvt.padLeft #"0" 3 (Int.toString (Char.ord c))
 	fun tc c = if needesc c then esc c else String.str c
@@ -225,12 +225,12 @@ structure SrcPath :> SRCPATH = struct
 	  | e_ac (arcs, context, ctxt, a) =
 	    let val l = map arc arcs
 		val a0 = List.hd l
-		val l' = rev l
+		val l' = map arc (rev l)
 		val l'' = if ctxt andalso bracket then
 			      concat ["(", List.hd l', ")"] :: List.tl l'
 			else l'
-		val a' = foldl (fn (x, l) => arc x ::/:: l)
-			      (arc (List.hd l'') :: a) (List.tl l'')
+		val a' = foldl (fn (x, l) => x ::/:: l)
+			      (List.hd l'' :: a) (List.tl l'')
 	    in e_c (context, a', SOME a0)
 	    end
 	and e_c (ROOT "", a, _) = concat ("/" :: a)

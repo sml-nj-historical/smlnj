@@ -1,3 +1,8 @@
+(* mltree-basis.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 signature MLTREE_BASIS =
 sig
 
@@ -9,12 +14,33 @@ sig
                 | SETCC 
                 | MISC_COND of {name:string, hash:word, attribs:word ref}
 
-  datatype fcond = ? | !<=> | == | ?= | !<> | !?>= | < | ?< | !>= | !?> |
-                   <= | ?<= | !> | !?<= | > | ?> | !<= | !?< | >= | ?>= |
-                   !< | !?= | <> | != | !? | <=> | ?<> | SETFCC |
-                  MISC_FCOND of {name:string, hash:word, attribs:word ref}
+(* Floating-point conditions; the semantics follow the IEEE specification and
+ * are determined by four properties:  GT -- greater than, EQ -- equal,
+ * LT -- less than, UO -- unordered.  In the table below, we have a column
+ * for each of these properties and one for the negation of the operator.
+ *)
+  datatype fcond	(* GT   EQ   LT   UO   negation *)
+			(* ---  ---  ---  ---  -------- *)
+    = ==		(*  F    T    F    F      ?<>   *)
+    | ?<>		(*  T    F    T    T      ==    *)
+    | >			(*  T    F    F    F      ?<=   *)
+    | >=		(*  T    T    F    F      ?<    *)
+    | <			(*  F    F    F    F      ?>=   *)
+    | <=		(*  F    T    F    F      ?>    *)
+    | ?			(*  F    F    F    T      <=>   *)
+    | <>		(*  T    F    T    F      ?=    *)
+    | <=>		(*  T    T    T    F      ?     *)
+    | ?>		(*  T    F    F    T      <=    *)
+    | ?>=		(*  T    T    F    T      <     *)
+    | ?<		(*  F    F    F    T      >=    *)
+    | ?<=		(*  F    T    F    T      >     *)
+    | ?=		(*  F    T    F    T      <>    *)
+    | SETFCC
+    | MISC_FCOND of {name:string, hash:word, attribs:word ref}
 
   datatype rounding_mode = TO_NEAREST | TO_NEGINF | TO_POSINF | TO_ZERO
+
+  datatype div_rounding_mode = DIV_TO_NEGINF | DIV_TO_ZERO
 
   datatype ext = SIGN_EXTEND | ZERO_EXTEND
 

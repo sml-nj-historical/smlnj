@@ -69,6 +69,16 @@ signature ORD_MAP =
 	 * two input maps, using the supplied function to define the range.
 	 *)
 
+    val mergeWith : ('a option * 'b option -> 'c option)
+	  -> ('a map * 'b map) -> 'c map
+    val mergeWithi : (Key.ord_key * 'a option * 'b option -> 'c option)
+	  -> ('a map * 'b map) -> 'c map
+	(* merge two maps using the given function to control the merge. For
+	 * each key k in the union of the two maps domains, the function
+	 * is applied to the image of the key under the map.  If the function
+	 * returns SOME y, then (k, y) is added to the resulting map.
+	 *)
+
     val app  : ('a -> unit) -> 'a map -> unit
     val appi : ((Key.ord_key * 'a) -> unit) -> 'a map -> unit
 	(* Apply a function to the entries of the map in map order. *)

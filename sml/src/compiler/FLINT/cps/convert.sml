@@ -147,6 +147,9 @@ fun arithop AP.~ = P.~
   | arithop AP.FCOS = P.fcos
   | arithop AP.FTAN = P.ftan
   | arithop AP.NOTB = P.notb
+  | arithop AP.REM = P.rem
+  | arithop AP.DIV = P.div
+  | arithop AP.MOD = P.mod
   | arithop AP.+ = P.+
   | arithop AP.- = P.-
   | arithop AP.* = P.*
@@ -228,6 +231,8 @@ fun map_primop p =
 
      | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
      | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
+     | AP.RAW_RECORD{ fblock = false } => PKP (P.rawrecord (SOME RK_I32BLOCK))
+     | AP.RAW_RECORD{ fblock = true } => PKP (P.rawrecord (SOME RK_FBLOCK))
      
      | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
 
@@ -599,27 +604,34 @@ fun convert fdec =
                                            loop(e,c)))))))))
               end
 
-	  | F.PRIMOP ((_,AP.RAW_CCALL NONE,_,_),[_,_,a],v,e) =>
+	  | F.PRIMOP ((_,AP.RAW_CCALL NONE,_,_), _::_::a::_,v,e) =>
 	    (* code generated here should never be executed anyway,
 	     * so we just fake it... *)
 	    (print "*** pro-forma raw-ccall\n";
 	     newname (v, lpvar a); loop(e,c))
 
-	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),[f,a,_],v,e) => let
-		val { c_proto = p, ml_flt_args, ml_flt_res_opt } = i
-		fun cty true = FLTt
-		  | cty false = INT32t
+	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),f::a::_::_,v,e) => let
+		val { c_proto = p, ml_args, ml_res_opt, reentrant } = i
+		fun cty AP.CCR64 = FLTt
+		  | cty AP.CCI32 = INT32t
+		  | cty AP.CCML = BOGt
+		  | cty AP.CCI64 = bug "CCI64 calling convention unimplemented"
 		val a' = lpvar a
+                val rcckind = if reentrant then REENTRANT_RCC else FAST_RCC
 		fun rcc args = let
-		    val al = lpvar f :: map VAR args
-		in
-		    case ml_flt_res_opt of
-			NONE => RCC (p, al, v, INTt, loop (e, c))
+                    val al = map VAR args
+		    val (al,linkage) = 
+                        case f of 
+                          F.STRING linkage => (al, linkage)
+                        | _  => (lpvar f :: al, "")
+		in  case ml_res_opt of
+			NONE => RCC (rcckind, linkage, 
+                                     p, al, v, INTt, loop (e, c))
 		      | SOME rt => let
 			    val v' = mkv ()
 			    val res_cty = cty rt
 			in
-			    RCC (p, al, v', res_cty,
+			    RCC (rcckind, linkage, p, al, v', res_cty,
 				 PURE(primwrap res_cty, [VAR v'], v, BOGt,
 				      loop (e, c)))
 			end
@@ -633,7 +645,7 @@ fun convert fdec =
 			sel (i, a', v, t, build (ftl, v :: rvl, i + 1))
 		    end
 	    in
-		case ml_flt_args of
+		case ml_args of
 		    [ft] => let
 			(* if there is precisely one arg, then it will not
 			 * come packaged into a record *)
@@ -642,10 +654,16 @@ fun convert fdec =
 		    in
 			PURE (primunwrap t, [a'], v, t, rcc [v])
 		    end
-		  | _ => build (ml_flt_args, [], 0)
+		  | _ => build (ml_args, [], 0)
 	    end
 
 	  | F.PRIMOP ((_,AP.RAW_CCALL _,_,_),_,_,_) => bug "bad raw_ccall"
+
+          | F.PRIMOP ((_,AP.RAW_RECORD _,_,_),[x as F.VAR _],v,e) =>
+	    (* code generated here should never be executed anyway,
+	     * so we just fake it... *)
+	    (print "*** pro-forma raw-record\n";
+	     newname (v, lpvar x); loop(e,c))
 
           | F.PRIMOP(po as (_,p,lt,ts), ul, v, e) => 
               let val ct = 

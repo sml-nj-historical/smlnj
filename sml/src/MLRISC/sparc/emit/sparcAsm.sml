@@ -24,10 +24,7 @@ struct
    structure P  = S.P
    structure Constant = I.Constant
    
-   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
-   val show_region  = MLRiscControl.getFlag "asm-show-region"
-   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
-   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
+   open AsmFlags
    
    fun error msg = MLRiscErrorMsg.error("SparcAsmEmitter",msg)
    
@@ -52,10 +49,10 @@ struct
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
        fun paren f = (emit "("; f(); emit ")")
-       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^":\n")
+       fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^"\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */\n"))
-       fun annotation a = (comment(Annotations.toString a); nl())
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"); nl())
+       fun annotation a = comment(Annotations.toString a)
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun fail _ = raise Fail "AsmEmitter"
@@ -537,10 +534,6 @@ struct
            emit ", "; 
            emitCell r2; 
            emit_nop nop )
-       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
-            src=src, dst=dst})
-       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            src=src, dst=dst})
        | I.SAVE{r, i, d} => 
          ( emit "save\t"; 
            emitCell r; 
@@ -568,24 +561,37 @@ struct
          ( emit "ret"; 
            emit_leaf leaf; 
            emit_nop nop )
-       | I.ANNOTATION{i, a} => 
-         ( comment (Annotations.toString a); 
-           nl (); 
-           emitInstr i )
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstr,
                 endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
