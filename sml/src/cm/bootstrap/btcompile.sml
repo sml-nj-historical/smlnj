@@ -106,7 +106,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			     errcons = errcons }
 
 	fun main_compile arg = let
-	    val { rts, core, pervasive, primitives, filepaths } = arg
+	    val { rts, core, pervasive, primitives, binpaths } = arg
 
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
@@ -171,7 +171,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 		    if recomp gp g then
 			SOME { rtspid = PS.toHex (#2 (#stat rts)),
 			       bootfiles =
-			         map (fn x => (x, NONE)) filepaths @
+			         map (fn x => (x, NONE)) binpaths @
 				 MkBootList.group g }
 		    else NONE
 	end handle Option => (RT.clearFailures (); NONE)

@@ -18,7 +18,7 @@ signature BUILD_INIT_DG = sig
 	  core: DependencyGraph.snode,
 	  pervasive: DependencyGraph.snode,
 	  primitives: (string * DependencyGraph.snode) list,
-	  filepaths: AbsPath.t list } option
+	  binpaths: AbsPath.t list } option
 end
 
 structure BuildInitDG :> BUILD_INIT_DG = struct
@@ -57,7 +57,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	    else SOME (String.tokens sep line, newpos)
 	end
 
-	fun loop (split, m, pl, pos) =
+	fun loop (split, m, bpl, pos) =
 	    case lineIn pos of
 		NONE => (error (pos, pos) "unexpected end of file"; NONE)
 	      | SOME (line, newpos) => let
@@ -66,14 +66,13 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			val p = AbsPath.standard pcmode
 			    { context = context, spec = spec }
 		    in
-			(p,
-			 SmlInfo.info gp { sourcepath = p,
-					   group = (specgroup, (pos, newpos)),
-					   share = NONE,
-					   split = split })
+			SmlInfo.info gp { sourcepath = p,
+					  group = (specgroup, (pos, newpos)),
+					  share = NONE,
+					  split = split }
 		    end
 		    fun bogus n = 
-			DG.SNODE { smlinfo = #2 (sml (n, false)),
+			DG.SNODE { smlinfo = sml (n, false),
 				   localimports = [], globalimports = [] }
 		    fun look n =
 			case StringMap.find (m, n) of
@@ -95,24 +94,24 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				DG.SB_SNODE n => (n :: li, gi)
 			      | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
 			val (li, gi) = foldr one ([], []) args
-			val (p, i) = sml (file, split)
+			val i = sml (file, split)
 			val n = DG.SNODE { smlinfo = i,
 					   localimports = li,
 					   globalimports = gi }
-			val pl' =
-			    case pl of
+			val bpl' =
+			    case bpl of
 				NONE => NONE
-			      | SOME l => SOME (p :: l)
+			      | SOME l => SOME (SmlInfo.binpath i :: l)
 		    in
 			loop (split,
 			      StringMap.insert (m, name, DG.SB_SNODE n),
-			      pl', newpos)
+			      bpl', newpos)
 		    end
 		in
 		    case line of
-			[] => loop (split, m, pl, newpos)
-		      | ["split"] => loop (true, m, pl, newpos)
-		      | ["nosplit"] => loop (false, m, pl, newpos)
+			[] => loop (split, m, bpl, newpos)
+		      | ["split"] => loop (true, m, bpl, newpos)
+		      | ["nosplit"] => loop (false, m, bpl, newpos)
 		      | ["start"] => loop (split, m, SOME [], newpos)
 		      | ("bind" :: name :: file :: args)  =>
 			    node (name, file, args)
@@ -122,7 +121,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				   pervasive = look_snode pervasive,
 				   primitives =
 				         map (fn n => (n, look_snode n)) prims,
-				   filepaths = rev (getOpt (pl, [])) }
+				   binpaths = rev (getOpt (bpl, [])) }
 		      | _ => (error "malformed line"; NONE)
 		end
     in
