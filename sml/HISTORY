@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/01 11:45:00 EDT
+Tag: blume-20010501-pcedittmp
+Description:
+
+Changed install.sh to use the current working directory instead of
+/usr/tmp for a temporary file (pcedittmp).  The previous choice
+of /usr/tmp caused trouble with MacOS X because of file premission
+problems.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/04/20 11:10:00 EDT
 Tag: blume-20010420-inMLflag
 Description:

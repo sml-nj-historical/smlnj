@@ -70,7 +70,7 @@ TOOLDIR=$BINDIR
 #
 # A temporary file for post-editing the pathconfig file...
 #
-PCEDITTMP=/usr/tmp/pcedittmp.$$
+PCEDITTMP=$INSTALLDIR/pcedittmp.$$
 
 #
 # files to be deleted after we are done...
