@@ -112,7 +112,7 @@ Group (../basis.cm)
 	structure TextPrimIO
 	structure Date
 	structure Real64Array
-(*	structure Real64ArraySlice *)
+	structure Real64ArraySlice
 	structure Real64Vector
 	structure Real64VectorSlice
 	structure SML90
@@ -295,7 +295,7 @@ is
 	real64-vector.sml
 	real64-vector-slice.sml
 	real64-array.sml
-(*	real64-array-slice.sml *)
+	real64-array-slice.sml
 
 	char-array.sml
 	char-vector.sml

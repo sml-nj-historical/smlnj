@@ -94,6 +94,8 @@ structure CharArray : MONO_ARRAY =
 		    else newVec n
 	  end
 
+    fun vector a = extract (a, 0, NONE)
+
     fun copy {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
 		val srcLen = length src
