@@ -42,10 +42,7 @@ end
 
 (*
  * $Log: bigint.sml,v $
- * Revision 1.2  1997/01/31  20:39:40  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:12  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
  *
  *)

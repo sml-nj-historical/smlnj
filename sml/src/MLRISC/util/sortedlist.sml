@@ -54,3 +54,10 @@ fun difference(nil,_) = nil
 	else if a<c then a::difference(b,r)
 	else difference(l,d)	
 end
+
+(*
+ * $Log: sortedlist.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
+ *
+ *)

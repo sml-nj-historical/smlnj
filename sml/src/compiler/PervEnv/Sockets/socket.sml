@@ -348,16 +348,7 @@ structure Socket : SOCKET =
 
 (*
  * $Log: socket.sml,v $
- * Revision 1.3  1997/07/31 17:25:25  jhr
- *   We are now using 32-bit ints to represent the seconds portion of a
- *   time value.  This was required to handle the change in the type of
- *   Time.{to,from}{Seconds,Milliseconds,Microseconds}.
- *
- * Revision 1.2  1997/02/26  21:00:30  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:24  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:58  george
+ * Version 110.5
  *
  *)

@@ -261,19 +261,7 @@ end
 
 (*
  * $Log: rs6000mc.sml,v $
- * Revision 1.4  1998/02/12 20:48:44  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.3  1997/11/14 21:48:10  jhr
- *   Restored the support for the Power architecture; the PowerPC code
- *   generator will be MLRisc based.
- *
- * Revision 1.2  1997/08/25  16:43:35  jhr
- *   Replaced some old Power architecture instructions with PowerPC instructions.
- *   This means that the Power architecture is no longer supported by this
- *   code generator.  Also improved implementation of emitString.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:45  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:49  george
+ * Version 110.5
  *
  *)

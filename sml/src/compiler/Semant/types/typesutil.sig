@@ -108,24 +108,7 @@ end  (* signature TYPESUTIL *)
 
 (*
  * $Log: typesutil.sig,v $
- * Revision 1.6  1997/11/04  23:27:45  dbm
- *   Add function dummyTyGen used for instantiating nongeneralized type
- *   variables in top level declarations.
- *
- * Revision 1.5  1997/09/23  03:47:45  dbm
- *   Added function unWrapDef1, changed unWrapDef to unWrapDefStar.
- *
- * Revision 1.4  1997/07/15  15:49:24  dbm
- *   Added unWrapDef function, used in sigmatch.
- *
- * Revision 1.3  1997/03/22  17:58:48  dbm
- * Revision of type variables for better handling of literal overloading
- * and to fix bug 905/952.
- *
- * Revision 1.2  1997/03/17  18:47:10  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:11  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
  *
  *)

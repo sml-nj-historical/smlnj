@@ -107,27 +107,7 @@ end
 
 (*
  * $Log: mkRecord.sml,v $
- * Revision 1.7  1997/08/27 17:53:49  george
- *    More accurate memory disambiguation maintenance.
- *
- * Revision 1.6  1997/08/11  18:38:03  george
- *   Implemented correct but very conservative alias information for
- *   reference cells.
- *
- * Revision 1.5  1997/08/07  21:04:34  george
- *   fixed bugs in memory disambiguation
- *
- * Revision 1.4  1997/08/07  02:10:51  george
- *   Refined region information to the granularity of words  in the allocation space
- *
- * Revision 1.3  1997/08/03  14:16:00  george
- *    Allocation pointer increments are performed at function exit
- *    if possible.
- *
- * Revision 1.2  1997/07/28  20:04:58  george
- *   Added support for regions
- *
- * Revision 1.1.1.1  1997/01/14  01:38:34  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

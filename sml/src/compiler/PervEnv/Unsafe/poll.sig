@@ -1,4 +1,4 @@
-(* poll-sig.sml
+(* poll.sig
  *
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
@@ -12,3 +12,10 @@ signature POLL =
     val setFreq : int option -> unit
     val inqFreq : unit -> (int option)
   end
+
+(*
+ * $Log: poll.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
+ *)

@@ -92,10 +92,7 @@ end
 
 (*
  * $Log: sparseSet.sml,v $
- * Revision 1.2  1997/06/30 19:35:54  jhr
- *   Removed System structure; added Unsafe structure.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.1.1.1  1997/04/19  18:14:21  george
-#   Version 109.27
-#
  *)

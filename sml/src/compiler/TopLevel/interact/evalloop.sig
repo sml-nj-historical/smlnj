@@ -5,9 +5,9 @@ signature EVALLOOP =
 sig
   exception Interrupt 
   type interactParams = 
-         {compManagerHook : (CompBasic.ast * EnvRef.SCenvref 
+         {compManagerHook : (CompBasic.ast * EnvRef.CMenvref 
                                            * EnvRef.envref -> unit) option ref,
-          baseEnvRef      : EnvRef.SCenvref,
+          baseEnvRef      : EnvRef.CMenvref,
           localEnvRef     : EnvRef.envref,
           transform       : CompBasic.absyn -> CompBasic.absyn,
           instrument      : {source: CompBasic.source,
@@ -24,3 +24,10 @@ sig
 
 end (* signature EVALLOOP *)
 
+
+(*
+ * $Log: evalloop.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

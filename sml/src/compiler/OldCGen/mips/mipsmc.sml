@@ -225,13 +225,7 @@ end
 
 (*
  * $Log: mipsmc.sml,v $
- * Revision 1.3  1998/02/12 22:18:49  jhr
- *   Finished removing references to System.Tags in MIPS code generators.
- *
- * Revision 1.2  1997/08/25 16:42:14  jhr
- *   Improved implementation of emitString.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:39  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:48  george
+ * Version 110.5
  *
  *)

@@ -368,17 +368,7 @@ end (* structure TProf *)
 
 (*
  * $Log: tprof.sml,v $
- * Revision 1.4  1997/09/22  19:50:59  jhr
- *   Changed Profiling API to use separate compiler and timer modes.
- *
- * Revision 1.3  1997/06/30  19:37:45  jhr
- *   Removed System structure; added Unsafe structure.
- *
- * Revision 1.2  1997/01/28  23:20:48  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
  *
  *)

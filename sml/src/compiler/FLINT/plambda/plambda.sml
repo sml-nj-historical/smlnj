@@ -91,3 +91,10 @@ withtype dict = {default: lexp, table: (tyc list * lexp) list}
 end (* local *)
 end (* structure PLambda *)
 
+
+(*
+ * $Log: plambda.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
+ *
+ *)

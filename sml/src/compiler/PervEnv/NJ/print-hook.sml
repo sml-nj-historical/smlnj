@@ -17,8 +17,8 @@ structure PrintHook =
 
 (*
  * $Log: print-hook.sml,v $
- * Revision 1.1  1997/01/29 14:51:34  jhr
- * Added hook to allow dynamic rebinding of top-level print function.
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)
 

@@ -349,16 +349,7 @@ end
 
 (*
  * $Log: mipsdepend.sml,v $
- * Revision 1.3  1997/08/19 14:46:35  george
- *   Bug fix for bug 1222 (ref assignment not performed before overflow)
- *
- * Revision 1.2  1997/05/05  19:58:15  george
- *   Add the allocation pointer to the list of source registers for the
- *   tvs instruction. This fixed the subtle bug on interactions between
- *   the allocation-pointer-adjustment instruction and the addi
- *   instruction. -- george
- *
- * Revision 1.1.1.1  1997/01/14  01:38:38  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

@@ -280,22 +280,7 @@ struct
 
 (*
  * $Log: alpha32MC.sml,v $
- * Revision 1.6  1997/09/17 20:01:10  george
- *    Added support for S4ADDL and S8ADDL
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
-# Revision 1.5  1997/09/04  15:19:01  george
-#   Removed System.Tags which was never used.
-#
-# Revision 1.4  1997/08/29  10:59:27  george
-#   Added LDS, CVTLQ, DIVL and DIVLU instructions.
-#
-# Revision 1.3  1997/07/28  20:04:06  george
-#   Added support for regions
-#
-# Revision 1.2  1997/07/17  12:26:31  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

@@ -477,13 +477,7 @@ end (* structure EqTypes *)
 
 (*
  * $Log: eqtypes.sml,v $
- * Revision 1.3  1997/03/17  18:45:14  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.2  1997/02/26  15:29:40  dbm
- * Fix for bug 1141.  Added entityEnv parameter to defineEqProps.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:09  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
  *
  *)

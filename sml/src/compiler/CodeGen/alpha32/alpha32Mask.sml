@@ -48,13 +48,7 @@ end
 
 (*
  * $Log: alpha32Mask.sml,v $
- * Revision 1.2  1997/07/17 12:35:23  george
- *   The constant type used to specialize MLTrees is now done more compactly.
- *
-# Revision 1.1  1997/04/19  18:17:44  george
-#   Version 109.27
-#
- * Revision 1.1.1.1  1997/01/14  01:38:33  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

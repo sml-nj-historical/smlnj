@@ -114,17 +114,7 @@ end (* signature TYPES *)
 
 (*
  * $Log: types.sig,v $
- * Revision 1.4  1997/09/05  04:35:44  dbm
- *   Added new function copyTyvar used in the fix for bug 1244.
- *
- * Revision 1.3  1997/03/22  17:57:56  dbm
- * Revision of type variables for better handling of literal overloading
- * and to fix bug 905/952.
- *
- * Revision 1.2  1997/03/17  18:46:41  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:11  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
  *
  *)

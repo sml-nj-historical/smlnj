@@ -925,19 +925,7 @@ end (* functor X86CM *)
 
 (*
  * $Log: x86.sml,v $
- * Revision 1.5  1998/02/12 20:48:54  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.4  1997/12/05 06:35:14  george
- *   Fixed suprious overflows in subt. Fix sent in my Henry Cejtin
- *
- * Revision 1.3  1997/12/03 19:04:59  george
- *    removed rangeChk
- *
- * Revision 1.2  1997/05/20  12:29:53  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:50  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:49  george
+ * Version 110.5
  *
  *)

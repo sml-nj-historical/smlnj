@@ -307,12 +307,7 @@ in raise Fail msg end
 
 (*
  * $Log: internal-signals.sml,v $
- * Revision 1.2  1997/10/01 14:52:47  jhr
- *   Added some debugging code to try to catch rare error on Linux.
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
-# Revision 1.1  1997/09/04  19:42:08  jhr
-#   Split the Signal module into an internal and extarnal view.  Added hooks for
-#   initializing the signal handler tables, for programs (like CML) that need to
-#   bypass the standard clean-up mechanism.
-#
  *)

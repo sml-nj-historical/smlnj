@@ -140,7 +140,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
 (*
  * $Log: os-filesys.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:26  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

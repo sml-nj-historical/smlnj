@@ -17,6 +17,10 @@ if [ ! -d $SRCPATH ]; then
     cd $SRCDIR
     echo "unpacking $OBJECT source files"
     tar -xf $TARFILE
+  elif [ -r $TARFILE.gz ]; then
+    cd $SRCDIR
+    echo "unpacking $OBJECT source files"
+    gunzip -c $TARFILE.gz | tar -xf -
   else
     echo "!!! the $OBJECT source files are missing"
     exit 1

@@ -176,16 +176,7 @@ end (* structure CPStrans *)
 
 (*
  * $Log: cpstrans.sml,v $
- * Revision 1.2  1998/01/07 15:10:59  dbm
- *   Fixing bug 1323. Wrapping and unwrapping primitives were usually ignored
- *   in the cpstrans phase before we perform the cps optimization. Unfortunately,
- *   they could lead to ill-typed CPS programs. To resolve this, I turn those
- *   sensitive wrap and unwrap primitives into "casts"; I leave the casts in the
- *   code; the cps generic phase will generate a move for each cast. In the
- *   long term, we have to think thoroughly about the meanings of these wrapping
- *   primitives and how they interface with compile-time optimizations.
- *
- * Revision 1.1.1.1  1997/01/14 01:38:30  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

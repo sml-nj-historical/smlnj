@@ -189,10 +189,7 @@ end (* functor CPSopt *)
 
 (*
  * $Log: cpsopt.sml,v $
- * Revision 1.2  1997/08/22  18:34:56  george
- *   Add a new eta reduction phase in the end of the cps optimization. -- zsh
- *
- * Revision 1.1.1.1  1997/01/14  01:38:30  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

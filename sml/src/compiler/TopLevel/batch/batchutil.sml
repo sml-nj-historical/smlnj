@@ -4,7 +4,7 @@
 functor BatchUtilFun(C : COMPILE) : BATCHUTIL =
 struct
     structure Pid = PersStamps
-    structure Env = SCEnv.Env
+    structure Env = CMEnv.Env
     structure Err = ErrorMsg
 
     exception FormatError 
@@ -216,7 +216,7 @@ struct
 		else error "missing/excess bytes in bin file"
 	val b'senv = UnpickMod.unpickleEnv (context, { hash = staticPid,
 						       pickle = penv })
-        val senv = SCStaticEnv.SC b'senv
+        val senv = CMStaticEnv.CM b'senv
         in
 	  CU {
 	      imports = imports, exportPid = exportPid, references = iid,
@@ -333,3 +333,10 @@ struct
         end
 
 end (* functor BatchUtilFun *)
+
+(*
+ * $Log: batchutil.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

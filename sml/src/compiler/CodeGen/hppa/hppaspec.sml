@@ -22,11 +22,7 @@ end
 
 (*
  * $Log: hppaspec.sml,v $
- * Revision 1.2  1998/02/13 17:21:08  george
- *   Functorized pseudoOps over the machine spec to get access to the
- *   Tag structure.
- *
- * Revision 1.1.1.1  1997/01/14 01:38:38  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

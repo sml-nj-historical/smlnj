@@ -432,3 +432,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 end (* local *)
 end (* structure ElabType *)
 
+
+(*
+ * $Log: elabtype.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:24  george
+ * Version 110.5
+ *
+ *)

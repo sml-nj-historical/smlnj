@@ -237,10 +237,7 @@ end
 
 (*
  * $Log: sharewrite.sml,v $
- * Revision 1.2  1997/07/15  16:18:10  dbm
- *   Added Andrew's measurement code.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:43  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* posix-tty-sig.sml
+(* posix-tty.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -177,11 +177,8 @@ signature POSIX_TTY =
   end (* signature POSIX_TTY *)
 
 (*
- * $Log: posix-tty-sig.sml,v $
- * Revision 1.2  1997/06/07 15:27:42  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:23  george
- *   Version 109.24
+ * $Log: posix-tty.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

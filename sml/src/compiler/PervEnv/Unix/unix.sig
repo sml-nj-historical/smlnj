@@ -1,4 +1,4 @@
-(* unix-sig.sml
+(* unix.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -58,8 +58,8 @@ signature UNIX =
 
 
 (*
- * $Log: unix-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:25  george
- *   Version 109.24
+ * $Log: unix.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

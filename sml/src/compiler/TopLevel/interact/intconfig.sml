@@ -7,9 +7,9 @@ struct
   exception SilentException = BatchConfig.SilentException
   
   type statenv = StaticEnv.staticEnv
-  type scstatenv = StaticEnv.staticEnv
-  val toSC : statenv -> scstatenv = fn x => x
-  val fromSC : scstatenv -> statenv = fn x => x
+  type cmstatenv = StaticEnv.staticEnv
+  val toCM : statenv -> cmstatenv = fn x => x
+  val fromCM : cmstatenv -> statenv = fn x => x
    
   type pickle = unit
   type hash = unit
@@ -17,7 +17,7 @@ struct
   type pid = PersStamps.persstamp
 
   val topCount = ref 0
-  val pickUnpick : scstatenv * statenv ->
+  val pickUnpick : cmstatenv * statenv ->
                      {hash: hash, pickle: pickle, exportLvars: lvar list,
                       exportPid: pid option, newenv: statenv}
     = fn (compenv, newenv) =>
@@ -28,10 +28,17 @@ struct
 	    exportPid=exportPid,newenv=newenv'}
        end
 
-  val makePid : scstatenv * scstatenv -> pid 
+  val makePid : cmstatenv * cmstatenv -> pid 
     = fn _ => bug "unexpected call to makePid in IntConfig"
 
   val mkStamp = Stamps.new()
   val mkMkStamp : unit -> (unit -> Stamps.stamp) = fn () => mkStamp
 
 end (* structure IntConfig *)
+
+(*
+ * $Log: intconfig.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

@@ -38,3 +38,10 @@ structure Alignment = struct
   in SortedList.member (List.foldl doFunction [] cluster)
   end (* build *)
 end
+
+(*
+ * $Log: alignment.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
+ *)

@@ -137,26 +137,7 @@ end
 
 (*
  * $Log: alpha32Jumps.sml,v $
- * Revision 1.7  1998/02/16 13:57:43  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.6  1997/09/12 10:12:56  george
- *   added a signature constraint
- *
-# Revision 1.5  1997/08/27  17:51:50  george
-#   Fixed a bug in loading large constants.
-#
-# Revision 1.4  1997/07/28  20:04:03  george
-#   Added support for regions
-#
-# Revision 1.3  1997/07/17  12:26:20  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/03  13:53:27  george
-#   Added support for FCOPY.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

@@ -21,10 +21,7 @@ functor MipsCodeGen(Endian : ENDIAN) : CODEGENERATOR =
 
 (*
  * $Log: mipsgen.sml,v $
- * Revision 1.2  1998/02/12 22:18:48  jhr
- *   Finished removing references to System.Tags in MIPS code generators.
- *
- * Revision 1.1.1.1  1997/01/14 01:38:39  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

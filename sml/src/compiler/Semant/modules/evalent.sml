@@ -323,30 +323,7 @@ end (* structure EvalEntity *)
 
 (*
  * $Log: evalent.sml,v $
- * Revision 1.10  1997/11/24 19:57:42  dbm
- *   Localize resultId, returnId.
- *
- * Revision 1.9  1997/10/01  18:13:28  dbm
- *   Pass inherited rpath to local declarations of LETstr.
- *   Ignore <resultStr> and <returnStr> symbols when adding sym
- *     parameter of STRdec to inherited rpath.
- *
- * Revision 1.8  1997/09/23  03:54:40  dbm
- *   Changes for EntityEnv.Unbound fix (bugs 1270, 1271).
- *
- * Revision 1.6  1997/08/22  18:37:59  george
- *   Add evalStrI which treat the structure path specially. We also update the
- *   epcontext during the entity evaluation.
- *                         				-- zsh
- *
- * Revision 1.5  1997/04/02  04:05:04  dbm
- *   Fix for bug 12.  Added rpath parameter to most functions to support
- *   accurate assignment of paths to types created in functor applications.
- *
- * Revision 1.4  1997/03/17  18:50:35  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.3  1997/02/26  21:51:20  george
- * *** empty log message ***
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

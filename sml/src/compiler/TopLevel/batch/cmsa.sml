@@ -4,7 +4,7 @@
 functor CMSAFun (structure BU : BATCHUTIL
                  structure C  : COMPILE) :> CMSA = struct
 
-    structure E = SCEnv.Env
+    structure E = CMEnv.Env
     structure P = Control.Print
     structure S = Symbol
 
@@ -24,7 +24,7 @@ functor CMSAFun (structure BU : BATCHUTIL
     fun register e = let
 	val tl = EnvRef.topLevel
 	val base = #get tl ()
-	val new = Environment.concatEnv (SCEnv.unSC e, base)
+	val new = Environment.concatEnv (CMEnv.unCM e, base)
     in
 	    #set tl new
     end
@@ -128,3 +128,10 @@ end (* functor CMSAFun *)
 
 
 
+
+(*
+ * $Log: cmsa.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
+ *)

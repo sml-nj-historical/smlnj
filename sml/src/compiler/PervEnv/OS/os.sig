@@ -1,4 +1,4 @@
-(* os-sig.sml
+(* os.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -23,8 +23,8 @@ signature OS =
 
 
 (*
- * $Log: os-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:21  george
- *   Version 109.24
+ * $Log: os.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

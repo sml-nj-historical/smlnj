@@ -7,3 +7,10 @@ structure PersMap : MAPF =
           fun pid1 < pid2 = (PersStamps.compare(pid1, pid2) = LESS)
         end)
 
+
+(*
+ * $Log: persmap.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

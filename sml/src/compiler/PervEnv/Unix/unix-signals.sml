@@ -46,11 +46,7 @@ structure UnixSignals : UNIX_SIGNALS =
 
 (*
  * $Log: unix-signals.sml,v $
- * Revision 1.2  1997/02/26 21:00:33  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

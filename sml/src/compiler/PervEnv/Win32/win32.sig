@@ -1,4 +1,4 @@
-(* win32-sig.sml
+(* win32.sig
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -16,8 +16,8 @@ signature WIN32 =
 
 
 (*
- * $Log: win32-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:27  george
- *   Version 109.24
+ * $Log: win32.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
  *
  *)

@@ -15,8 +15,8 @@ structure Version : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110,4],
-	    date = "April 2, 1998"
+	    version_id = [110,5],
+	    date = "April 8, 1998"
 	  }
 
     fun f ([], l) = l
@@ -29,3 +29,10 @@ structure Version : sig
 
   end
 
+
+(*
+ * $Log: version.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
+ *
+ *)

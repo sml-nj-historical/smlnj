@@ -5,17 +5,15 @@
 
 Group is
 
-  Perv/bind-basis.sml
-  Perv/bind-smlnj.sml
-  Perv/bind-toplevel.sml
-  Perv/bind-overloads.sml
+  TopLevel/bind-basis.sml
+  TopLevel/bind-smlnj.sml
+  TopLevel/bind-toplevel.sml
+  TopLevel/bind-overloads.sml
 
 #if defined(OPSYS_UNIX)
-  Perv/bind-posix.sml
-  Perv/bind-unix.sml
-  Perv/bind-sockets.sml
-#elif defined(OPSYS_OS2)
-  OS2/bind-os2.sml
+  TopLevel/bind-posix.sml
+  TopLevel/bind-unix.sml
+  TopLevel/bind-sockets.sml
 #elif defined(OPSYS_WIN32)
-  Win32/bind-win32.sml
+  TopLevel/bind-win32.sml
 #endif

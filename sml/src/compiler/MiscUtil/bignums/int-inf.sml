@@ -858,10 +858,7 @@ structure IntInf : INT_INF =
 
 (*
  * $Log: int-inf.sml,v $
-# Revision 1.2  1997/08/27  00:25:30  jhr
-#   Fixed bug 1159 (extraneous types in top-level environment).
-#
-# Revision 1.1  1997/01/28  23:20:12  jhr
-# Added IntInf:INT_INF to represent literals.
-#
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
+ *
  *)

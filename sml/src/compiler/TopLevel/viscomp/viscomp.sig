@@ -18,11 +18,11 @@ sig
   structure StaticEnv : STATICENV
   structure DynamicEnv : DYNENV
   structure BareEnvironment : ENVIRONMENT
-  structure Environment : ENVIRONMENT = SCEnv.Env
+  structure Environment : ENVIRONMENT = CMEnv.Env
   structure CoerceEnv : COERCE_ENV
   structure EnvRef : ENVREF
   structure ModuleId : MODULE_ID
-  structure SCStaticEnv : SCSTATICENV
+  structure CMStaticEnv : CMSTATICENV
   structure Profile : PROFILE
   structure BatchUtil : BATCHUTIL
   structure CMSA: CMSA
@@ -44,7 +44,7 @@ sig
 			end
 *)
   structure PrintHooks : PRINTHOOKS
-  structure Boot : sig val coreEnvRef : SCEnv.Env.environment ref end
+  structure Boot : sig val coreEnvRef : CMEnv.Env.environment ref end
   val version : {
           system : string,      	(* the system title *)
 	  version_id : int list,	(* the version number *)
@@ -54,3 +54,10 @@ sig
   val architecture: string
 end  
 
+
+(*
+ * $Log: viscomp.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
+ *)

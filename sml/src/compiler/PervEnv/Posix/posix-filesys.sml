@@ -303,22 +303,7 @@ structure POSIX_FileSys =
 
 (*
  * $Log: posix-filesys.sml,v $
- * Revision 1.5  1997/12/16 16:17:50  jhr
- *   Name change: wordTo ==> fromWord in POSIX_FLAGS signature.
- *
- * Revision 1.4  1997/10/08  19:50:05  jhr
- *   Changed readDir and rewindDir to raise SysErr instead of Fail on closed
- *   directories (bug #1289).
- *
- * Revision 1.3  1997/07/31  17:25:22  jhr
- *   We are now using 32-bit ints to represent the seconds portion of a
- *   time value.  This was required to handle the change in the type of
- *   Time.{to,from}{Seconds,Milliseconds,Microseconds}.
- *
- * Revision 1.2  1997/06/07  15:27:39  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:22  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

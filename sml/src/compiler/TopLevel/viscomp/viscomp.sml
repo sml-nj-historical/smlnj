@@ -12,11 +12,11 @@ struct
   structure StaticEnv = StaticEnv
   structure DynamicEnv = DynamicEnv
   structure BareEnvironment = Environment
-  structure Environment = SCEnv.Env
+  structure Environment = CMEnv.Env
   structure CoerceEnv = CoerceEnv
   structure EnvRef = EnvRef
   structure ModuleId = ModuleId
-  structure SCStaticEnv = SCStaticEnv
+  structure CMStaticEnv = CMStaticEnv
   structure PersStamps = PersStamps
   structure PrettyPrint = PrettyPrint
   structure PPTable =
@@ -50,9 +50,16 @@ struct
       val print = AllocProf.print_profile_info
     end
 *)
-  structure Boot = struct val coreEnvRef = ref(SCEnv.Env.emptyEnv) end
+  structure Boot = struct val coreEnvRef = ref(CMEnv.Env.emptyEnv) end
   val version = Version.version
   val banner = Version.banner
   val architecture = Machm.architecture
 end (* functor VisComp *)
 
+
+(*
+ * $Log: viscomp.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
+ *)

@@ -36,9 +36,8 @@ structure AtExit : sig
 
 (*
  * $Log: at-exit.sml,v $
- * Revision 1.1  1997/08/20 13:09:43  jhr
- *   Lifted OS independent atExit code into its own module, and fixed an
- *   infinite loop that occurred when an atExit action called exit.
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)
 

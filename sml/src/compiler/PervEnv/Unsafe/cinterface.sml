@@ -43,13 +43,7 @@ structure CInterface :> CINTERFACE =
 
 (*
  * $Log: cinterface.sml,v $
- * Revision 1.2  1997/09/12 18:01:17  jhr
- *   Revealed the bindCFun function.
- *
-# Revision 1.1  1997/06/30  19:36:41  jhr
-#   Removed System structure; added Unsafe structure.
-#
- * Revision 1.1.1.1  1997/01/14  01:38:14  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

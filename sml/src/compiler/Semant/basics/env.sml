@@ -378,18 +378,7 @@ end (* structure Env *)
 
 (*
  * $Log: env.sml,v $
- * Revision 1.4  1997/08/15  20:38:54  dbm
- *   Added new consolidateLazy function.  Used in Environ.concatEnv and
- *   intended to cut down on overhead from consolidate in interactive
- *   top-level loop.
- *
- * Revision 1.3  1997/06/30  19:37:24  jhr
- *   Removed System structure; added Unsafe structure.
- *
- * Revision 1.2  1997/01/31  20:39:59  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:36  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* generic-sock-sig.sml
+(* generic-sock.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -31,8 +31,8 @@ signature GENERIC_SOCK =
   end
 
 (*
- * $Log: generic-sock-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:23  george
- *   Version 109.24
+ * $Log: generic-sock.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:58  george
+ * Version 110.5
  *
  *)

@@ -1151,19 +1151,7 @@ functor SparcCM (
 
 (*
  * $Log: sparc.sml,v $
- * Revision 1.5  1998/02/12 20:48:48  jhr
- *   Removed references to System.Tags.
- *
- * Revision 1.4  1997/12/03 19:04:58  george
- *    removed rangeChk
- *
- * Revision 1.3  1997/09/10  20:34:13  jhr
- *   Fixed heap limit check to use unsigned comparison.
- *
- * Revision 1.2  1997/05/20  12:29:07  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:45  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
  *
  *)

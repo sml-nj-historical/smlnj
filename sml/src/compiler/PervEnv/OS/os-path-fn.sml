@@ -234,10 +234,7 @@ functor OS_PathFn (OSPathBase : sig
 
 (*
  * $Log: os-path-fn.sml,v $
- * Revision 1.2  1997/11/19 17:40:05  jhr
- *   Fixed minor bugs in fromString and getParent.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:21  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

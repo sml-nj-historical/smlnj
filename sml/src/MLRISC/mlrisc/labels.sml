@@ -38,7 +38,7 @@ structure Label : LABEL =
 
 (*
  * $Log: labels.sml,v $
- * Revision 1.1.1.1  1997/04/19 18:14:20  george
- *   Version 109.27
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
  *)

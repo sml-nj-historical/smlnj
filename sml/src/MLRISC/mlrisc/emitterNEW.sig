@@ -33,10 +33,7 @@ end
 
 (*
  * $Log: emitterNEW.sig,v $
- * Revision 1.2  1997/07/17 12:28:55  george
- *   The regmap is now represented as an int map rather than using arrays.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.1.1.1  1997/04/19  18:14:20  george
-#   Version 109.27
-#
  *)

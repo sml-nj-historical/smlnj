@@ -142,14 +142,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
 (*
  * $Log: os-filesys.sml,v $
- * Revision 1.3  1997/06/07 15:27:51  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.2  1997/02/26  21:00:32  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:58  george
+ * Version 110.5
  *
  *)

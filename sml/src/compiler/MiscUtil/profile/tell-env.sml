@@ -10,7 +10,7 @@
 signature TELL_ENV =
 sig
   type symbol
-  type env = SCStaticEnv.staticEnv
+  type env = CMStaticEnv.staticEnv
   type binding
   type ty
   val name : symbol -> string
@@ -23,7 +23,7 @@ end
 structure TellEnv :> TELL_ENV =
 struct
   type symbol = Symbol.symbol
-  type env = SCStaticEnv.staticEnv
+  type env = CMStaticEnv.staticEnv
   type binding = Bindings.binding
   type ty = Types.ty
   val name = Symbol.name
@@ -61,10 +61,7 @@ end
 
 (*
  * $Log: tell-env.sml,v $
- * Revision 1.2  1997/01/31  20:40:07  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:17  george
+ * Version 110.5
  *
  *)

@@ -50,10 +50,7 @@ structure SysInfo : SYS_INFO =
 
 (*
  * $Log: sysinfo.sml,v $
- * Revision 1.2  1997/01/26 19:05:35  lorenz
- * add win32 mapping
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

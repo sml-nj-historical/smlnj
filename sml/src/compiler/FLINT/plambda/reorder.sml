@@ -257,15 +257,7 @@ end (* structure Reorder *)
 
 (*
  * $Log: reorder.sml,v $
- * Revision 1.2  1997/05/05  20:00:15  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:47  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* prof-control-sig.sml
+(* prof-control.sig
  *
  * COPYRIGHT (c) 1996 AT&T Research.
  *
@@ -53,14 +53,8 @@ signature PROF_CONTROL =
   end;
 
 (*
- * $Log: prof-control-sig.sml,v $
- * Revision 1.3  1997/09/22 19:51:04  jhr
- *   Changed Profiling API to use separate compiler and timer modes.
- *
- * Revision 1.2  1997/06/30  19:36:29  jhr
- *   Removed System structure; added Unsafe structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * $Log: prof-control.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

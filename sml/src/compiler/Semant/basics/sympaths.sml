@@ -102,13 +102,7 @@ end (* structure ConvertPaths *)
 
 (*
  * $Log: sympaths.sml,v $
- * Revision 1.3  1997/11/24 19:47:56  dbm
- *   Localize resultId, returnId.
- *
- * Revision 1.2  1997/09/23  03:46:52  dbm
- *   Fix for SymPath.toString, suppressing resultId, returnId symbols.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:11  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:35  george
+ * Version 110.5
  *
  *)

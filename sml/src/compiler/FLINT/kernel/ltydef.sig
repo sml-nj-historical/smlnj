@@ -336,3 +336,10 @@ val ltw_ppoly  : lty * (tkind list * lty -> 'a) * (lty -> 'a) -> 'a
 val ltw_pfct   : lty * (lty * lty -> 'a) * (lty -> 'a) -> 'a
 
 end (* signature LTYDEF *)
+
+(*
+ * $Log: ltydef.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
+ *
+ *)

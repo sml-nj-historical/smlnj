@@ -13,7 +13,7 @@ end
 
 (*
  * $Log: argPassing.sig,v $
- * Revision 1.1.1.1  1997/01/14 01:38:33  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* posix-sysdb-sig.sml
+(* posix-sysdb.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -41,8 +41,8 @@ signature POSIX_SYS_DB =
   end (* signature POSIX_SYS_DB *)
 
 (*
- * $Log: posix-sysdb-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:23  george
- *   Version 109.24
+ * $Log: posix-sysdb.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

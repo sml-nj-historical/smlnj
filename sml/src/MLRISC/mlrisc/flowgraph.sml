@@ -105,18 +105,7 @@ end
 
 (*
  * $Log: flowgraph.sml,v $
- * Revision 1.4  1997/09/17 17:13:49  george
- *   Removed the CODE constructor used for code compression and added
- *   and ENTRY and EXIT basic block. The cluster datatype has also been
- *   enriched.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.3  1997/07/17  12:29:25  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/10  04:01:18  george
-#   Added ORDERED as a new flowgraph constructor.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:20  george
-#   Version 109.27
-#
  *)

@@ -51,10 +51,7 @@ structure Win32_General : WIN32_GENERAL =
 
 (*
  * $Log: win32-general.sml,v $
- * Revision 1.2  1997/01/31 20:13:14  lorenz
- * turned off debug messages
- *
- * Revision 1.1.1.1  1997/01/14  01:38:27  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:02  george
+ * Version 110.5
  *
  *)

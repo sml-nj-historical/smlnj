@@ -444,33 +444,7 @@ end (* structure PPType *)
 
 (*
  * $Log: pptype.sml,v $
- * Revision 1.8  1997/10/01  18:15:26  dbm
- *   Added debugging and unalias flags to signature.
- *   unalias flag controls whether to unalias a DEFtyc if its path is
- *     not visible.
- *
- * Revision 1.7  1997/09/23  04:03:17  dbm
- *   More accurate type path printing (suppression of ?).
- *
- * Revision 1.6  1997/07/17  20:41:57  dbm
- *   Added ppDataconTypes for printing constructor domain types of a datatype.
- *
- * Revision 1.5  1997/05/22  03:31:16  dbm
- *   Changed internals printing of FLEXTYC variant of GENtyc to use letter
- *   "X" instead of "F", which was already assigned to FORMAL.
- *
- * Revision 1.4  1997/03/27  23:08:00  dbm
- *   Fixed bug 1176 by completing cases in tyvarPrintname.
- *
- * Revision 1.3  1997/03/22  18:20:15  dbm
- * Revised printing of type variables; required for revised representation
- * of type variables associated with improved literal overloading and fix
- * for bug 905/952.
- *
- * Revision 1.2  1997/03/17  18:59:42  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

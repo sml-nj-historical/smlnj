@@ -198,10 +198,7 @@ structure PosixBinPrimIO : OS_PRIM_IO =
 
 (*
  * $Log: posix-bin-prim-io.sml,v $
- * Revision 1.2  1997/06/07 15:27:52  jhr
- *   SML'97 Basis Library changes (phase 3; Posix changes)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:25  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
  *
  *)

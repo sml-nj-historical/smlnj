@@ -361,11 +361,7 @@ end (* structure TemplateExpansion *)
 
 (*
  * $Log: tempexpn.sml,v $
- * Revision 1.2  1997/01/28  23:20:50  jhr
- * Integer and word literals are now represented by IntInf.int (instead of
- * as strings).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:47  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:44  george
+ * Version 110.5
  *
  *)

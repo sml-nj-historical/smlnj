@@ -1,4 +1,4 @@
-(* object-sig.sml
+(* object.sig
  *
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
  *)
@@ -46,3 +46,10 @@ signature UNSAFE_OBJECT =
 
   end;
 
+
+(*
+ * $Log: object.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
+ *
+ *)

@@ -74,20 +74,7 @@ end
 
 (*
  * $Log: alpha32Cells.sml,v $
- * Revision 1.5  1998/02/17 02:47:36  george
- *   Added cellsetToRegs -- a mapping of cells to unique ids.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.4  1997/07/17 12:26:00  george
- *   The regmap is now represented as an int map rather than using arrays.
- *   All temporary registers are now unique and generated using one counter.
- *
-# Revision 1.3  1997/07/03  13:53:15  george
-#   Cells now requires a temporary for floating point register shuffling.
-#
-# Revision 1.2  1997/06/13  15:27:03  george
-#   Implemented the cellset2string function.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

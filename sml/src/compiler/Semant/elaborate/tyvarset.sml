@@ -80,21 +80,7 @@ end (* abstraction TyvarSet *)
 
 (*
  * $Log: tyvarset.sml,v $
- * Revision 1.5  1997/09/05  04:43:48  dbm
- *   Changes in names of exported values.  New function diffPure. (bug 1246)
- *
- * Revision 1.4  1997/04/14  21:31:43  dbm
- *   Added new function mktyvarset that was needed in ElabCore in the
- *   elaboration of explicit type variable bindings.
- *
- * Revision 1.3  1997/03/22  18:18:43  dbm
- * Modified for changes to tyvar representation introduced for better
- * handling of overloaded literals and fix for bug 905/952.
- *
- * Revision 1.2  1997/01/31  20:39:57  jhr
- * Replaced uses of "abstraction" with opaque signature matching.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:35  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
  *
  *)

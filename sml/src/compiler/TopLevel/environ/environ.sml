@@ -254,16 +254,7 @@ end (* structure Environment *)
 
 (*
  * $Log: environ.sml,v $
- * Revision 1.3  1997/12/03 05:10:22  dbm
- *   Fix for spurious error messages (e.g. testing/modules/tests/228.sml)
- *   caused by CM autoloading.  cmEnvOfModule changed to bypass <resultStr>
- *   and <functor> special bindings.
- *
- * Revision 1.2  1997/08/15  20:39:53  dbm
- *   Use new consolidateLazy in place of consolidate to reduce top-level
- *   loop overhead.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:36  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:15  george
+ * Version 110.5
  *
  *)

@@ -476,3 +476,10 @@ end (* toplevel local *)
 end (* structure TransTypes *)
 
 
+
+(*
+ * $Log: transtypes.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:42  george
+ * Version 110.5
+ *
+ *)

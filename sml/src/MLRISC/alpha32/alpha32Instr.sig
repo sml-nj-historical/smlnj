@@ -94,23 +94,7 @@ end
 
 (*
  * $Log: alpha32Instr.sig,v $
- * Revision 1.6  1998/02/16 13:57:42  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.5  1997/09/17 20:01:03  george
- *    Added support for S4ADDL and S8ADDL
- *
-# Revision 1.4  1997/08/29  10:59:03  george
-#   Added LDS, CVTLQ, DIVL and DIVLU instructions.
-#
-# Revision 1.3  1997/07/28  20:03:54  george
-#   Added a region component to all load and stores
-#
-# Revision 1.2  1997/05/22  03:19:40  dbm
-#   Required by SML '97 sharing.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

@@ -1,4 +1,4 @@
-(* posix-process-sig.sml
+(* posix-process.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -59,8 +59,8 @@ signature POSIX_PROCESS =
   end (* signature POSIX_PROCESS *)
 
 (*
- * $Log: posix-process-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:23  george
- *   Version 109.24
+ * $Log: posix-process.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
  *
  *)

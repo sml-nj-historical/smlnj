@@ -65,15 +65,7 @@ end
 
 (*
  * $Log: shuffle.sml,v $
- * Revision 1.3  1998/02/16 13:58:21  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
- * Revision 1.2  1997/07/03 13:55:56  george
- *   The shuffle routine now takes a temporary register so that it can be
- *   used for both general purpose and floating point shuffling.
- *
-# Revision 1.1.1.1  1997/04/19  18:14:21  george
-#   Version 109.27
-#
  *)

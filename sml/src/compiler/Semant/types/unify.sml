@@ -373,36 +373,8 @@ end (* structure Unify *)
 
 (*
  * $Log: unify.sml,v $
- * Revision 1.10  1997/12/02 05:29:34  dbm
- *   Fix for bug 1316.  Added an occurrence check when instantiating a
- *   SCHEME type variable.
- *
- * Revision 1.9  1997/09/15  15:56:08  dbm
- *   Changed two instances of "ety" to "ty" in instTyvar to fix problem
- *   of "?." appearing in non-exhaustive match warning messages.
- *
- * Revision 1.8  1997/04/18  15:48:16  george
- *   Cosmetic changes on some constructor names. Changed the shape for
- *   FIX type to potentially support shared dtsig. -- zsh
- *
- * Revision 1.7  1997/04/14  21:27:28  dbm
- *   Eliminated redundant rule in instTyvar.
- *
- * Revision 1.6  1997/04/10  14:33:00  dbm
- *   Fix for bug 1187.  Modified instTyvar FLEX case to propagate depth and
- *   eq.
- *
- * Revision 1.5  1997/04/02  03:53:23  dbm
- * Further simplification and fix for bug 1160.
- *
- * Revision 1.4  1997/03/22  18:02:38  dbm
- * Major rewrite for better handling of literal overloading and to
- * fix bug 905/952.  Varieties of type variables have multiplied for
- * more exact treatment of instantiation and generalization.
- *
- * Revision 1.3  1997/02/26  21:47:47  george
- *    Improve the type-checking error messages; fix BUG 1149, 1123
- *    reported by Allen Stoughton.
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
  *
  *)
 

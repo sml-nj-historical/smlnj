@@ -648,23 +648,7 @@ functor BinIOFn (
 
 (*
  * $Log: bin-io-fn.sml,v $
- * Revision 1.6  1997/07/15 15:52:49  dbm
- *   Change in where structure syntax.
- *
- * Revision 1.5  1997/05/20  12:12:12  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.4  1997/02/26  21:00:24  george
- *    Defined a new top level Option structure. All 'a option related
- *    functions have been moved out of General.
- *
- * Revision 1.3  1997/02/18  14:18:13  george
- *   Fixed bug related to random access (john)
- *
- * Revision 1.2  1997/01/28  23:12:47  jhr
- * Fixed bug in canInput, where an exception could escape.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:18  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

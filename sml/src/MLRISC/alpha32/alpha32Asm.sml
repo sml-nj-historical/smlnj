@@ -248,34 +248,7 @@ end
 
 (*
  * $Log: alpha32Asm.sml,v $
- * Revision 1.9  1998/02/16 13:57:42  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
+ * Revision 1.1.1.1  1998/04/08 18:39:00  george
+ * Version 110.5
  *
- * Revision 1.8  1997/09/17 20:01:01  george
- *    Added support for S4ADDL and S8ADDL
- *
-# Revision 1.7  1997/08/29  10:58:48  george
-#   Added LDS, CVTLQ, DIVL and DIVLU instructions.
-#
-# Revision 1.6  1997/08/27  17:51:01  george
-#   Increments (decrements) of the stack pointer by constants that evaluate
-#   to zero result in no code generated. An optimizations suggested by
-#   Andrew Bernard.
-#
-# Revision 1.5  1997/07/28  20:03:48  george
-#   Added support for printing regions in comment fields
-#
-# Revision 1.4  1997/07/17  12:25:02  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.3  1997/07/03  13:52:45  george
-#   Added support for FCOPY.
-#
-# Revision 1.2  1997/05/05  19:59:25  george
-# *** empty log message ***
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

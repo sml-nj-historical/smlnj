@@ -56,10 +56,7 @@ end (* signature PPUTIL *)
 
 (*
  * $Log: pputil.sig,v $
- * Revision 1.2  1997/09/23  04:04:03  dbm
- *   Change in type of findPath (for more accurate type path printing).
- *
- * Revision 1.1.1.1  1997/01/14  01:38:44  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

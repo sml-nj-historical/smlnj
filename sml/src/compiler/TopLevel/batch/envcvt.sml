@@ -5,25 +5,25 @@
  *)
 
 signature COERCE_ENV =
- sig val e2b : SCEnv.Env.environment -> Environment.environment
-     val es2bs : SCEnv.Env.staticEnv -> Environment.staticEnv
-     val b2e : Environment.environment -> SCEnv.Env.environment
-     val bs2es : Environment.staticEnv -> SCEnv.Env.staticEnv
+ sig val e2b : CMEnv.Env.environment -> Environment.environment
+     val es2bs : CMEnv.Env.staticEnv -> Environment.staticEnv
+     val b2e : Environment.environment -> CMEnv.Env.environment
+     val bs2es : Environment.staticEnv -> CMEnv.Env.staticEnv
      val debugging : bool ref
  end
 
 structure CoerceEnv : COERCE_ENV = 
 struct
-  val b2e = SCEnv.SC
-  val bs2es = SCStaticEnv.SC
-  val e2b = SCEnv.unSC
-  val es2bs = SCStaticEnv.unSC
-  val debugging = SCStaticEnv.debugging
+  val b2e = CMEnv.CM
+  val bs2es = CMStaticEnv.CM
+  val e2b = CMEnv.unCM
+  val es2bs = CMStaticEnv.unCM
+  val debugging = CMStaticEnv.debugging
 end
 
 (*
  * $Log: envcvt.sml,v $
- * Revision 1.1.1.1  1997/01/14  01:38:36  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
  *
  *)

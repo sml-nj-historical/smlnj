@@ -289,59 +289,7 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
- * Revision 1.14  1998/02/17 02:57:55  george
- *   The spill and reload functions take a register map, incase
- *   the instruction needs to be rewritten to use fresh temps.
- *
- * Revision 1.13  1998/02/16 13:58:29  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.12  1998/02/13 17:21:07  george
- *   Functorized pseudoOps over the machine spec to get access to the
- *   Tag structure.
- *
- * Revision 1.11  1997/09/29 20:58:45  george
- *   Propagate region information through instruction set
- *
-# Revision 1.10  1997/09/17  17:15:34  george
-#   dedicated registers are now part of the CPSREGS interface
-#
-# Revision 1.9  1997/08/29  11:05:27  george
-#   Spill area now starts at a new offset to account for the
-#   new mulu address on the stack.
-#
-# Revision 1.8  1997/07/28  20:05:06  george
-#   Added support for regions
-#
-# Revision 1.7  1997/07/17  12:37:33  george
-#   The constant type used to specialize MLTrees is now done more compactly.
-#
-# Revision 1.6  1997/07/15  16:08:06  dbm
-#   Change in where structure syntax.
-#
-# Revision 1.5  1997/07/03  13:56:49  george
-#   Added support for FCOPY.
-#
-# Revision 1.4  1997/07/02  13:25:38  george
-#   Generated better spill code, in which a new temporary is introduced
-#   to represent the register being spilled.
-#
-# Revision 1.3  1997/06/13  15:29:43  george
-#   Modified codegen to print flowgraph at the end of each phase -- leunga
-#
-# Revision 1.2  1997/05/20  12:21:50  dbm
-#   SML '97 sharing, where structure.
-#
-# Revision 1.1  1997/04/19  18:17:46  george
-#   Version 109.27
-#
- * Revision 1.2  1997/04/16  02:25:57  george
- *   Instruction selection is now parameterized over modules that
- *   describes how to generate millicalls, and translate trees
- *   involving labels.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:34  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

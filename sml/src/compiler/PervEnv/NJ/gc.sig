@@ -1,4 +1,4 @@
-(* gc-sig.sml
+(* gc.sig
  *
  * COPYRIGHT (c) 1997 AT&T Labs Research.
  *
@@ -13,3 +13,10 @@ signature GC =
 
   end
 
+
+(*
+ * $Log: gc.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
+ *
+ *)

@@ -39,11 +39,7 @@ end)
 
 (*
  * $Log: ieeereal.sml,v $
- * Revision 1.2  1997/08/21 09:00:13  george
- *    Fixed bug where literal ~0.0 was read as 0.0
- * 					-- appel
- *
- * Revision 1.1.1.1  1997/01/14  01:38:29  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:49  george
+ * Version 110.5
  *
  *)

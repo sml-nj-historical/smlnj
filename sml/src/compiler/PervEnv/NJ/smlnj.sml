@@ -32,17 +32,7 @@ structure SMLofNJ (* : SML_OF_NJ *) =
 
 (*
  * $Log: smlnj.sml,v $
- * Revision 1.4  1997/09/12 18:00:57  jhr
- *   Changes the definition of the 'a frag datatype so that it is the same as
- *   the primitive type.
- *
- * Revision 1.3  1997/06/02  19:15:48  jhr
- *   Added getCmdName function.
- *
- * Revision 1.2  1997/03/03  17:10:42  george
- * moved callcc related functions to SMLofNJ.Cont
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)

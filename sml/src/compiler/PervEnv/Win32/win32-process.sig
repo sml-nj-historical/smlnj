@@ -1,4 +1,4 @@
-(* win32-process-sig.sml
+(* win32-process.sig
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -14,8 +14,8 @@ signature WIN32_PROCESS =
     end
 
 (*
- * $Log: win32-process-sig.sml,v $
- * Revision 1.1.1.1  1997/01/14 01:38:27  george
- *   Version 109.24
+ * $Log: win32-process.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
  *
  *)

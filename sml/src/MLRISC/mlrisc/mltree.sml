@@ -103,19 +103,7 @@ end (* MLTree *)
 
 (*
  * $Log: mltree.sml,v $
- * Revision 1.5  1997/09/17 17:15:03  george
- *   added support for MLRisc ENTRYLABEL
+ * Revision 1.1.1.1  1998/04/08 18:39:02  george
+ * Version 110.5
  *
-# Revision 1.4  1997/07/28  20:04:25  george
-#   Added support for regions
-#
-# Revision 1.3  1997/07/17  12:29:43  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/10  04:02:00  george
-#   Added an ORDERED mltree constructor.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:21  george
-#   Version 109.27
-#
  *)

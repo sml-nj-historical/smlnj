@@ -81,20 +81,7 @@ end (* signature MODULEUTIL *)
 
 (*
  * $Log: moduleutil.sig,v $
- * Revision 1.5  1997/07/15  16:13:04  dbm
- *   Changed relativizeTyc and relativizeType to return a boolean indicating
- *   whether result contains PATHtycs.
- *   Added getSignatureNames, used in build/boot.sml to extract signature
- *   names from Compile structure so they can be bound in top-level environment.
- *
- * Revision 1.4  1997/05/20  12:24:00  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.3  1997/03/17  18:54:21  dbm
- * Changes in datatype representation to support datatype replication.
- *
- * Revision 1.2  1997/01/21  13:25:31  george
- *    Modify the entityExp definition to correctly implement the
- *    datatype generativity in functor body. -- from zsh
+ * Revision 1.1.1.1  1998/04/08 18:39:28  george
+ * Version 110.5
  *
  *)

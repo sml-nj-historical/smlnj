@@ -514,36 +514,7 @@ end
 
 (*
  * $Log: hppa.sml,v $
- * Revision 1.10  1998/02/17 02:49:44  george
- *   Added the nullify bit to all branch instructions -- leunga
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
  *
- * Revision 1.9  1998/02/16 13:58:11  george
- *   A register allocated temp is now associated with parallel COPYs
- *   instead of a dedicated register. The temp is used to break cycles.
- *
- * Revision 1.8  1997/09/29 20:58:26  george
- *   Propagate region information through instruction set
- *
-# Revision 1.7  1997/09/17  17:10:12  george
-#   added support for MLRisc ENTRYLABEL
-#
-# Revision 1.6  1997/09/12  10:12:57  george
-#   provided support for unsigned comparisons in sml/nj checklimit
-#
-# Revision 1.5  1997/08/29  11:01:08  george
-#   MULU is now implemented as millicode instead of floating
-#   point registers.
-#
-# Revision 1.4  1997/07/28  20:04:14  george
-#   Added support for regions in the MLTree language
-#
-# Revision 1.3  1997/07/17  12:26:59  george
-#   The regmap is now represented as an int map rather than using arrays.
-#
-# Revision 1.2  1997/07/10  04:00:03  george
-#   Added translation for MLTree.ORDERED.
-#
-# Revision 1.1.1.1  1997/04/19  18:14:22  george
-#   Version 109.27
-#
  *)

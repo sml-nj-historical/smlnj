@@ -1082,60 +1082,7 @@ end (* structure ElabSig *)
 
 (*
  * $Log: elabsig.sml,v $
- * Revision 1.17  1997/11/24 19:54:54  dbm
- *   Incorporate resultId, returnId transforms into elaborator.
- *   Ast constructor name changes.
- *
- * Revision 1.16  1997/10/26  23:11:31  dbm
- *   Fix to allow "include <sigexp>" syntax (bug 1207).  elabInclude simply
- *   does not check for "closed=true" in the argument pattern.
- *
- * Revision 1.15  1997/10/19  23:47:28  dbm
- *   (1) Fix for bug 1296 involving the hack of using the same stamp as
- *       the entVar of a spec and the stamp of the corresponding formal
- *       type.  This is to allow the reconstruction of the correct entityPath
- *       for turning RECtycs into PATHtycs in data constructor domains
- *       when elaborating datatype replication specs.
- *   (2) Zhong's fix for bug 1298, which relativizes dataconstructor
- *       domains for datatype specs.
- *
- * Revision 1.14  1997/09/23  03:50:57  dbm
- *   Change unWrapDef to unWrapDefStar.
- *
- * Revision 1.13  1997/09/10  22:12:08  dbm
- *   Fix secondary error and improve error messages for unbound paths in
- *   structure sharing specs.
- *
- * Revision 1.12  1997/09/05  04:39:29  dbm
- *   Changes is TyvarSet signature (bug 1246).
- *
- * Revision 1.11  1997/08/22  18:35:10  george
- *   Add code that maintains the fctflag field. -- zsh
- *
- * Revision 1.10  1997/08/15  20:37:11  dbm
- *   Added local version of lookStrDef and modified expandTyc inside of
- *   elabDATArepl to fix bug 1255.  Eliminated obsolete types varPath and
- *   pathLocality.
- *
- * Revision 1.9  1997/08/02  02:16:26  dbm
- *   Change in type of EPContext.enterClosed.  Partial implementation
- *   of "include <sigexp>".
- *
- * Revision 1.8  1997/07/15  16:05:31  dbm
- *   Change to push where defs into signatures to the spec they apply to.
- *
- * Revision 1.7  1997/05/20  12:19:08  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.6  1997/04/14  21:29:34  dbm
- *   Changed elaboration of AugSig to allow for simultaneous where defs.
- *
- * Revision 1.5  1997/03/17  18:49:08  dbm
- * Changes in datatype representation to support datatype replication.
- * Elaboration of datatype replication specifications.
- *
- * Revision 1.4  1997/02/26  21:49:33  george
- *    Fixing the secondary error message bug, BUG 1150, of fctId
- *    on "structure S = F()"  reported by Mikael Pettersson.
+ * Revision 1.1.1.1  1998/04/08 18:39:24  george
+ * Version 110.5
  *
  *)

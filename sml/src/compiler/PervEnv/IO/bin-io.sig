@@ -1,4 +1,4 @@
-(* bin-io-sig.sml
+(* bin-io.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -18,11 +18,8 @@ signature BIN_IO =
   and type StreamIO.pos = Position.int;
 
 (*
- * $Log: bin-io-sig.sml,v $
- * Revision 1.2  1997/05/20 12:12:43  dbm
- *   SML '97 sharing, where structure.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:18  george
- *   Version 109.24
+ * $Log: bin-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:55  george
+ * Version 110.5
  *
  *)

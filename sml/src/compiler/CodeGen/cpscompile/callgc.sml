@@ -264,25 +264,7 @@ end
 
 (*
  * $Log: callgc.sml,v $
- * Revision 1.7  1998/02/15 19:41:24  jhr
- *   Changed references to System.Tags to MachSpec.ObjDesc.
- *
- * Revision 1.6  1997/09/29 20:58:42  george
- *   Gc invocation code should have an edge from the ENTRY block
- *
- * Revision 1.5  1997/09/17  17:15:22  george
- *   included dedicated registers in ESCAPEBLOCK
- *
- * Revision 1.4  1997/09/12  10:13:02  george
- *   Checklimit must be done with unsigned comparisons
- *
- * Revision 1.3  1997/07/28  20:04:47  george
- *   Added support for regions
- *
- * Revision 1.2  1997/07/17  12:36:29  george
- *   The constant type used to specialize MLTrees is now done more compactly.
- *
- * Revision 1.1.1.1  1997/01/14  01:38:33  george
- *   Version 109.24
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
  *
  *)

@@ -1,4 +1,4 @@
-(* os-io-sig.sml
+(* os-io.sig
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
@@ -75,11 +75,8 @@ signature OS_IO =
 
 
 (*
- * $Log: os-io-sig.sml,v $
- * Revision 1.2  1997/06/02 19:16:03  jhr
- *   SML'97 Basis Library changes (phase 2)
- *
- * Revision 1.1.1.1  1997/01/14  01:38:20  george
- *   Version 109.24
+ * $Log: os-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
  *
  *)
