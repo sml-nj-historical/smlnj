@@ -15,5 +15,6 @@ signature PARSECONTROL =
 	val violation : string -> unit
 	val Dkeywords : bool
         val parseDirective : bool
+	val underscoreKeywords : bool
     end
 

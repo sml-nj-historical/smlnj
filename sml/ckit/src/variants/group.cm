@@ -1,4 +1,5 @@
-Group is 
+Group (../ckit-lib.cm)
+is 
  
 #if defined(NEW_CM)
 #if (SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11029)
