@@ -13,14 +13,26 @@ structure DependencyGraph = struct
 
     type filter = SymbolSet.set option
 
-    datatype node =
-	NODE of { smlinfo: SmlInfo.info,
-		  localimports: node list,
-		  globalimports: farnode list }
+    type 'n filtered = filter * 'n
 
-    and farnode =
-	FARNODE of filter * node
-      | PNODE of primitive
+    datatype bnode =
+	PNODE of primitive
+      | BNODE of { bininfo: Dummy.t, (* BinInfo.info *)
+		   localimports: bnode list,
+		   globalimports: farbnode list }
+
+    withtype farbnode = bnode filtered
+
+    datatype snode =
+	SNODE of { smlinfo: SmlInfo.info,
+		   localimports: snode list,
+		   globalimports: farsbnode list }
+
+    and sbnode =
+	SB_BNODE of bnode
+      | SB_SNODE of snode
+
+    withtype farsbnode = sbnode filtered
 
     (* environments used for dependency analysis *)
     datatype env =
@@ -32,7 +44,22 @@ structure DependencyGraph = struct
 
     withtype value = env
 
-    fun describeFarNode (FARNODE (f, NODE { smlinfo = i, ... })) =
+    fun describeSBN (SB_BNODE (PNODE p)) = Primitive.toString p
+      | describeSBN (SB_BNODE (BNODE { bininfo = i, ... })) =
+	(ignore Dummy.v; "bininfo")
+      | describeSBN (SB_SNODE (SNODE { smlinfo = i, ... })) =
 	SmlInfo.fullName i
-      | describeFarNode (PNODE p) = Primitive.toString p
+
+    fun describeFarSBN (_, sbn) = describeSBN sbn
+
+    (* comparing various nodes for equality *)
+    fun beq (PNODE p, PNODE p') = Primitive.eq (p, p')
+      | beq (BNODE { bininfo = i, ... }, BNODE { bininfo = i', ... }) =
+	(ignore Dummy.v; false)
+      | beq _ = false
+    fun seq (SNODE { smlinfo = i, ... }, SNODE { smlinfo = i', ... }) =
+	SmlInfo.eq (i, i')
+    fun sbeq (SB_BNODE bn, SB_BNODE bn') = beq (bn, bn')
+      | sbeq (SB_SNODE sn, SB_SNODE sn') = seq (sn, sn')
+      | sbeq _ = false
 end

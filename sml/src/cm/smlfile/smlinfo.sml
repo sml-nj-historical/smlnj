@@ -1,5 +1,7 @@
 (*
- * Bundling all information pertaining to one SML source file.
+ * Bundling information pertaining to one SML source file.
+ *   - only includes information that does not require running
+ *     the machine-dependent part of the compiler
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -11,8 +13,9 @@ signature SMLINFO = sig
 
     type policy = Policy.policy
     type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
+    type parsetree = GenericVC.Ast.dec
 
-    val resync : unit -> unit
+    val resync : unit -> unit		(* rebuild internal table *)
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
@@ -28,6 +31,7 @@ signature SMLINFO = sig
     val sourcepath : info -> AbsPath.t
     val error : info -> complainer
 
+    val parsetree : info -> parsetree option
     val exports : info  -> SymbolSet.set
     val skeleton : info -> Skeleton.decl
 
@@ -205,6 +209,8 @@ structure SmlInfo :> SMLINFO = struct
     (* we only complain at the time of getting the exports *)
     val exports = SkelExports.exports o (skeleton0 false)
     val skeleton = skeleton0 true
+
+    fun parsetree i = Option.map #tree (getParseTree (i, true, true))
 
     fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
     fun fullSpec (INFO { group, sourcepath, ... }) =

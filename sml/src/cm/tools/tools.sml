@@ -48,6 +48,17 @@ signature TOOLS = sig
 	EXTEND of string list
       | REPLACE of string list * string list
 
+    type cmdGetterSetter = string option -> string
+
+    val newCmdGetterSetter : string * string -> cmdGetterSetter
+
+    val registerStdShellCmdTool : { tool : string,
+				    class : string,
+				    suffixes : string list,
+				    command : cmdGetterSetter,
+				    extensionStyle : extensionStyle,
+				    sml : bool } -> unit
+
     (* perform filename extension *)
     val extend : extensionStyle -> fname -> fname list
 
@@ -249,7 +260,6 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	expand0
     end
 
-    (* make the most common kind of rule *)
     datatype extensionStyle =
 	EXTEND of string list
       | REPLACE of string list * string list
@@ -277,6 +287,40 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	handle _ => if fexists then true
 		    else raise ToolError { tool = tool,
 					   msg = "cannot access " ^ f }
+    end
+
+    type cmdGetterSetter = string option -> string
+
+    fun newCmdGetterSetter sp = EnvConfig.new SOME sp
+
+    fun registerStdShellCmdTool arg = let
+	val { tool, class, suffixes, command, extensionStyle, sml } = arg
+	fun rule (f, ctxt) = let
+	    val targetfiles = extend extensionStyle f
+	    val mkTarget =
+		if sml then (fn tf => (tf, SOME "sml"))
+		else (fn tf => (tf, NONE))
+	    val targets = map mkTarget targetfiles
+	    fun runcmd () = let
+		val cmd = concat [command NONE, " ", f]
+		val _ = Say.vsay (concat ["[", cmd, "]\n"])
+	    in
+		if OS.Process.system cmd = OS.Process.success then ()
+		else raise ToolError { tool = tool, msg = cmd }
+	    end
+	    fun rfun () =
+		(if outdated tool (targetfiles, f) then runcmd ()
+		 else ();
+		 targets)
+	in
+	    ctxt rfun
+	end
+
+	fun sfx s =
+	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
+    in
+	registerClass (class, rule);
+	app sfx suffixes
     end
 
     (* registering standard classes and classifiers *)

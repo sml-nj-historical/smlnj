@@ -5,10 +5,13 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure BurgTool =
-    StdShellCmdTool (val tool = "ML-Burg"
-		     val class = "mlburg"
-		     val suffixes = ["burg"]
-		     val command = ("BURG", "ml-burg")
-		     val extensionStyle = Tools.REPLACE (["burg"], ["sml"])
-		     val sml = true)
+structure BurgTool = struct
+    val command = Tools.newCmdGetterSetter ("BURG", "ml-burg")
+    val _ = Tools.registerStdShellCmdTool
+	{ tool = "ML-Burg",
+	  class = "mlburg",
+	  suffixes = ["burg"],
+	  command = command,
+	  extensionStyle = Tools.REPLACE (["burg"], ["sml"]),
+	  sml = true }
+end

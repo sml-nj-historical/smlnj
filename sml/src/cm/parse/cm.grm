@@ -31,7 +31,7 @@ structure S = CMSemant
        | alias of S.group
        | group of S.group
        | permspec of S.permspec
-       | lib_exports of S.exports
+       | opt_exports of S.exports option
        | exports of S.exports
        | export of S.exports
        | guarded_exports of S.exports * S.exports
@@ -88,11 +88,11 @@ alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
 						 pathname)
 
-group : permspec GROUP exports IS members	(S.group
-						 (permspec, exports, members))
-      | permspec LIBRARY lib_exports IS members (S.library
-						 (permspec, lib_exports,
+group : permspec GROUP opt_exports IS members	(S.group
+						 (permspec, opt_exports,
 						  members))
+      | permspec LIBRARY exports IS members     (S.library
+						 (permspec, exports, members))
 
 permspec : (* empty *)                          (S.initialPermSpec)
       | permspec word                           (S.require (permspec, word,
@@ -102,10 +102,11 @@ permspec : (* empty *)                          (S.initialPermSpec)
 							  error (wordleft,
 								 wordright)))
 
-lib_exports : export exports		        (S.exports (export, exports))
-
-exports : (* empty *)				(S.emptyExports)
+exports : export				(export)
 	| export exports			(S.exports (export, exports))
+
+opt_exports : (* empty *)                       (NONE)
+            | exports                           (SOME exports)
 
 export : ml_symbol				(S.export ml_symbol)
        | IF exp guarded_exports			(S.guarded_exports

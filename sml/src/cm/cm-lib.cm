@@ -33,7 +33,6 @@ is
 
 	(* tools for handling other source types *)
 	tools/tools.sml
-	tools/stdtool.sml
 	tools/yacctool.sml
 	tools/lextool.sml
 	tools/burgtool.sml

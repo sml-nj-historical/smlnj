@@ -56,9 +56,11 @@ structure CMParse :> CMPARSE = struct
 	 * call to parse.
 	 * This function is used to parse aliases and sub-groups. *)
 	fun recParse (p1, p2) p =
-	    case parse' (p, (group, (source, p1, p2)) :: groupstack) of
-		NONE => (#anyErrors source := true; CMSemant.emptyGroup)
-	      | SOME res => res
+	    (case parse' (p, (group, (source, p1, p2)) :: groupstack) of
+		 NONE => (#anyErrors source := true; CMSemant.emptyGroup)
+	       | SOME res => res)
+	    handle exn as IO.Io _ => (error (p1, p2) (General.exnMessage exn);
+				      CMSemant.emptyGroup)
 
 	fun doMember (p, p1, p2, c, e) =
 	    CMSemant.member (recParse (p1, p2))
@@ -80,7 +82,7 @@ structure CMParse :> CMPARSE = struct
 			    val s = EM.matchErrorString s (p1, p2)
 			in
 			    PrettyPrint.add_string pps s;
-			    PrettyPrint.add_string pps ": ";
+			    PrettyPrint.add_string pps ": importing ";
 			    PrettyPrint.add_string pps (AbsPath.spec g0);
 			    PrettyPrint.add_newline pps;
 			    loop (g, t)

@@ -18,7 +18,7 @@ signature MEMBERCOLLECTION = sig
 
     type farlooker =
 	AbsPath.t ->
-	(DependencyGraph.farnode * DependencyGraph.env) SymbolMap.map
+	(DependencyGraph.farsbnode * DependencyGraph.env) SymbolMap.map
 
     val empty : collection
 
@@ -29,8 +29,8 @@ signature MEMBERCOLLECTION = sig
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build : collection
-	-> { nodemap: DependencyGraph.node SymbolMap.map,
- 	     rootset: DependencyGraph.node list }
+	-> { nodemap: DependencyGraph.snode SymbolMap.map,
+ 	     rootset: DependencyGraph.snode list }
 	
 
     val num_look : collection -> string -> int
@@ -48,13 +48,13 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     type symbol = Symbol.symbol
 
     datatype collection =
-	COLLECTION of { subexports: (DG.farnode * DG.env) SymbolMap.map,
+	COLLECTION of { subexports: (DG.farsbnode * DG.env) SymbolMap.map,
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map }
 
     type farlooker =
 	AbsPath.t ->
-	(DependencyGraph.farnode * DependencyGraph.env) SymbolMap.map
+	(DependencyGraph.farsbnode * DependencyGraph.env) SymbolMap.map
 
     val empty =
 	COLLECTION { subexports = SymbolMap.empty,
@@ -88,8 +88,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	end
 	fun se_error (s, x as (fn1, _), (fn2, _)) =
 	    (error (concat (describeSymbol
-			    (s, [" imported from ", DG.describeFarNode fn1,
-				 " and also from ", DG.describeFarNode fn2])));
+			    (s, [" imported from ", DG.describeFarSBN fn1,
+				 " and also from ", DG.describeFarSBN fn2])));
 	     x)
 	val se_union = SymbolMap.unionWithi se_error
 	fun ld_error (s, f1, f2) =
@@ -140,8 +140,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		fun addFN (s, m) = let
 		    val cmenv = Primitive.lookup p s
 		    val env = convertEnv cmenv
+		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p))
 		in
-		    SymbolMap.insert (m, s, (DG.PNODE p, env))
+		    SymbolMap.insert (m, s, (fsbn, env))
 		end
 		val se = SymbolSet.foldl addFN SymbolMap.empty exports
 	    in

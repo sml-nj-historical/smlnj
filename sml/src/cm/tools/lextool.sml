@@ -5,10 +5,13 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure LexTool =
-    StdShellCmdTool (val tool = "ML-Lex"
-		     val class = "mllex"
-		     val suffixes = ["lex", "l"]
-		     val command = ("LEX", "ml-lex")
-		     val extensionStyle = Tools.EXTEND ["sml"]
-		     val sml = true)
+structure LexTool = struct
+    val command = Tools.newCmdGetterSetter ("LEX", "ml-lex")
+    val _ = Tools.registerStdShellCmdTool
+	{ tool = "ML-Lex",
+	  class = "mllex",
+	  suffixes = ["lex", "l"],
+	  command = command,
+	  extensionStyle = Tools.EXTEND ["sml"],
+	  sml = true }
+end

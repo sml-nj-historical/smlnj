@@ -1,10 +1,10 @@
 signature BUILDDEPEND = sig
-    val build : { subexports: (DependencyGraph.farnode * DependencyGraph.env)
+    val build : { subexports: (DependencyGraph.farsbnode * DependencyGraph.env)
 		                SymbolMap.map,
 		  smlfiles: SmlInfo.info list,
 		  localdefs: SmlInfo.info SymbolMap.map }
-	-> { nodemap: DependencyGraph.node SymbolMap.map,
-	     rootset: DependencyGraph.node list }
+	-> { nodemap: DependencyGraph.snode SymbolMap.map,
+	     rootset: DependencyGraph.snode list }
 end
 
 structure BuildDepend :> BUILDDEPEND = struct
@@ -74,15 +74,13 @@ structure BuildDepend :> BUILDDEPEND = struct
 			    end
 		    in
 			PrettyPrint.add_newline pps;
-			recur (AbsPath.spec f, history);
-			PrettyPrint.add_string pps "...";
-			PrettyPrint.add_newline pps
+			recur (AbsPath.spec f, history)
 		    end
 		in
 		    SmlInfo.error i "cyclic ML dependencies" pphist;
-		    release (i, (DG.NODE { smlinfo = i,
-					   localimports = [],
-					   globalimports = [] },
+		    release (i, (DG.SNODE { smlinfo = i,
+					    localimports = [],
+					    globalimports = [] },
 				 DG.EMPTY))
 		end
 
@@ -93,53 +91,31 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    val gi = ref []
 
 	    (* register a local import *)
-	    fun localImport (n as DG.NODE { smlinfo = i, ... }) = let
-		fun sameNode (DG.NODE { smlinfo = i', ... }) =
-		    SmlInfo.eq (i, i')
-	    in
-		if List.exists sameNode (!li) then ()
+	    fun localImport n =
+		if List.exists (fn n' => DG.seq (n, n')) (!li) then ()
 		else li := n :: !li
-	    end
 
 	    (* register a global import, maintain filter sets *)
-	    fun globalImport (farn as DG.PNODE p) = let
-		    fun sameFarNode (DG.FARNODE _) = false
-		      | sameFarNode (DG.PNODE p') = Primitive.eq (p, p')
-		in
-		    if List.exists sameFarNode (!gi) then ()
-		    else gi := farn :: !gi
-		end
-	      | globalImport (farn as DG.FARNODE (f, n)) = let
-		    fun sameFarNode (DG.PNODE _) = false
-		      | sameFarNode (DG.FARNODE (_, n')) = let
-			    val DG.NODE { smlinfo = i, ... } = n
-			    val DG.NODE { smlinfo = i', ... } = n'
-			in
-			    SmlInfo.eq (i, i')
-			end
-		in
-		    case List.find sameFarNode (!gi) of
-			NONE => gi := farn :: !gi (* brand new *)
-		      | SOME (DG.FARNODE (NONE, n')) => ()
-		        (* no filter before -> no change *)
-		      | SOME (DG.FARNODE (SOME f', n')) => let
-			(* there is a filter ...
-			 *   calculate "union-filter", see if there is
-			 *   a change, and if so, replace the filter *)
-			    fun replace filt =
-				gi :=
-				   (DG.FARNODE (filt, n)) ::
-				   (List.filter (not o sameFarNode) (!gi))
-			in
-			    case f of
-				NONE => replace NONE
-			      | SOME f =>
-				    if SS.equal (f, f') then ()
-				    else replace (SOME (SS.union (f, f')))
-			end
-			     
-		      | SOME (DG.PNODE _) => ()	(* cannot happen *)
-		end
+	    fun globalImport (f, n) = let
+		fun sameN (_, n') = DG.sbeq (n, n')
+	    in
+		case List.find sameN (!gi) of
+		    NONE => gi := (f, n) :: !gi (* brand new *)
+		  | SOME (NONE, n') => () (* no filter -> no change *)
+		  | SOME (SOME f', n') => let
+			(* there is a filter...
+			 *  calculate "union", see if there is a change,
+			 *  and if so, replace the filter *)
+			fun replace filt =
+			    gi := (filt, n) :: List.filter (not o sameN) (!gi)
+		    in
+			case f of
+			    NONE => replace NONE
+			  | SOME f =>
+				if SS.equal (f, f') then ()
+				else replace (SOME (SS.union (f, f')))
+		    end
+	    end
 
 	    val f = SmlInfo.sourcepath i
 	    fun isSelf i' = SmlInfo.eq (i, i')
@@ -260,9 +236,9 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    end
 
 	    val e = eval (SmlInfo.skeleton i)
-	    val n = DG.NODE { smlinfo = i,
-			      localimports = !li,
-			      globalimports = !gi }
+	    val n = DG.SNODE { smlinfo = i,
+			       localimports = !li,
+			       globalimports = !gi }
 	in
 	    (n, e)
 	end

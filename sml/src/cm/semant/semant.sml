@@ -34,7 +34,7 @@ signature CM_SEMANT = sig
 
     (* getting the full analysis for a group/library *)
     val emptyGroup : group
-    val group : permspec * exports * members -> group
+    val group : permspec * exports option * members -> group
     val library : permspec * exports * members -> group
 
     (* assembling permission lists *)
@@ -124,17 +124,25 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_functor = Symbol.fctSymbol
     val ml_funsig = Symbol.fsigSymbol
 
-    fun group0 islib (p: permspec, e: exports, m) = let
-	val mc = m MemberCollection.empty
-	val exports = e mc
-    in
-	ignore (MemberCollection.build mc);
-	if islib then Dummy.v else Dummy.v
-    end
+    fun applyTo mc e = e mc
 
     val emptyGroup = Dummy.v
-    val group = group0 false
-    val library = group0 true
+
+    fun group (p: permspec, e: exports option, m) = let
+	val mc = applyTo MemberCollection.empty m
+	val exports = Option.map (applyTo mc) e
+    in
+	ignore (MemberCollection.build mc);
+	Dummy.v
+    end
+
+    fun library (p: permspec, e: exports, m) = let
+	val mc = applyTo MemberCollection.empty m
+	val exports = applyTo mc e
+    in
+	ignore (MemberCollection.build mc);
+	Dummy.v
+    end
 
     local
 	val isMember = StringSet.member
