@@ -399,7 +399,6 @@ fun tk_injX t = look(tk_table, wtoi(tk_hash t), t, tkI_eq, tk_mk)
 fun tc_injX t = look(tc_table, wtoi(tc_hash t), t, tcI_eq, tc_mk)
 fun lt_injX t = look(lt_table, wtoi(lt_hash t), t, ltI_eq, lt_mk)
 
-
 (** key-comparison on tkind, tyc, lty *)
 fun tk_cmp (k1, k2) = cmp(tk_table, k1, k2)
 fun tc_cmp (t1, t2) = cmp(tc_table, t1, t2)
@@ -945,10 +944,10 @@ val lt_out = lt_outX o lt_whnm
  ***************************************************************************)
 
 (** testing the equality of values of tkind, tyc, lty *)
-fun eqlist (p, x::xs, y::ys) = (p(x,y)) andalso (eqlist(p, xs, ys))
-  | eqlist (p, [], []) = true
-  | eqlist _ = false
-
+fun eqlist p (x::xs, y::ys) = (p(x,y)) andalso (eqlist p (xs, ys))
+  | eqlist p ([], []) = true
+  | eqlist _ _ = false
+                      
 (** testing the "pointer" equality on normalized tkind, tyc, and lty *)
 fun tk_eq (x: tkind, y) = (x = y)
 fun tc_eq (x: tyc, y) = (x = y)
@@ -957,80 +956,222 @@ fun lt_eq (x: lty, y) = (x = y)
 (** testing the equivalence for arbitrary tkinds, tycs and ltys *)
 val tk_eqv = tk_eq       (* all tkinds are normalized *)
 
-(** tc_eqv_generator, invariant: t1 and t2 are in the wh-normal form *)
-fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) (t1, t2) = 
-  (case (tc_outX t1, tc_outX t2)
-    of (TC_FN(ks1, b1), TC_FN(ks2, b2)) =>
-         (eqlist(tk_eqv, ks1, ks2)) andalso (eqop2(b1, b2))
-     | (TC_APP(a1, b1), TC_APP(a2, b2)) =>
-         (eqop1(a1, a2)) andalso (eqlist(eqop2, b1, b2))
-     | (TC_SEQ ts1, TC_SEQ ts2) => eqlist(eqop1, ts1, ts2)
-     | (TC_SUM ts1, TC_SUM ts2) => eqlist(eqop1, ts1, ts2)
-     | (TC_TUPLE (_, ts1), TC_TUPLE (_, ts2)) => eqlist(eqop1, ts1, ts2)
-     | (TC_ABS a, TC_ABS b) => eqop1(a, b)
-     | (TC_ABS a, _) => eqop3(a, t2)
-     | (_, TC_ABS b) => eqop3(t1, b)
-     | (TC_BOX a, TC_BOX b) => eqop1(a, b)
-     | (TC_BOX a, _) => eqop3(a, t2)
-     | (_, TC_BOX b) => eqop3(t1, b)
-     | (TC_TOKEN(k1,t1), TC_TOKEN(k2,t2)) => 
-         (token_eq(k1,k2)) andalso (eqop1(t1,t2))
-     | (TC_PROJ(a1, i1), TC_PROJ(a2, i2)) =>
-         (i1 = i2) andalso (eqop1(a1, a2))
-     | (TC_ARROW(r1, a1, b1), TC_ARROW(r2, a2, b2)) => 
-         (r1 = r2) andalso (eqop4(a1, a2)) andalso (eqop4(b1, b2))
-     | (TC_PARROW(a1, b1), TC_PARROW(a2, b2)) => 
-         (eqop1(a1, a2)) andalso (eqop1(b1, b2))
-     | (TC_FIX((n1,tc1,ts1), i1), TC_FIX((n2,tc2,ts2), i2)) => 
-         true  (* INCORRECT: this is temporary (ZHONG) *)
-     | (TC_CONT ts1, TC_CONT ts2) => eqlist(eqop1, ts1, ts2)
-     | _ => false)
+local (* tyc equivalence utilities *)
+(* The efficiency of checking FIX equivalence could probably be
+ * improved somewhat, but it doesn't seem so bad for my purposes right
+ * now.  Anyway, somebody might eventually want to do some profiling
+ * and improve this.  --league, 24 March 1998
+ *)
+    
+(* Profiling code, temporary?? *)
+structure Click =
+struct
+    local
+        val s_unroll = Stats.makeStat "FIX unrolls"
+    in
+        fun unroll() = Stats.addStat s_unroll 1
+    end
+end (* Click *)
 
-fun tc_eqv (x as ref (_, _, AX_REG(true, _)), 
-            y as ref (_, _, AX_REG(true, _))) = tc_eq(x,y)
-  | tc_eqv (x, y) =
-      let val t1 = tc_whnm x
-          val t2 = tc_whnm y
-       in if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
-          else tc_eqv_gen (tc_eqv, tc_eqv, fn _ => false,
-                           fn (ts1, ts2) => eqlist(tc_eqv, ts1, ts2)) (t1, t2)
-      end (* function tc_eqv *)
+(** unrolling a fix, tyc -> tyc *)
+fun tc_unroll_fix tyc =
+    case tc_outX tyc of
+        (TC_FIX((n,tc,ts),i)) => let
+            fun genfix i = tcc_fix ((n,tc,ts),i)
+            val fixes = List.tabulate(n, genfix)
+            val mu = tc
+            val mu = if null ts then mu
+                     else tcc_app (mu,ts)
+            val mu = tcc_app (mu, fixes)
+            val mu = if n=1 then mu
+                     else tcc_proj (mu, i)
+        in
+            Click.unroll();
+            mu
+        end
+      | _ => bug "unexpected non-FIX in tc_unroll_fix"
 
-fun tc_eqv_x (x, y) =
+(* In order to check equality of two FIXes, we need to be able to
+ * unroll them once, and check equality on the unrolled version, with
+ * an inductive assumption that they ARE equal.  The following code
+ * supports making and checking these inductive assumptions.
+ * Furthermore, we need to avoid unrolling any FIX more than once.
+ *)
+structure TcDict = BinaryDict
+                       (struct
+                           type ord_key = tyc
+                           val cmpKey = tc_cmp
+                       end)
+(* for each tyc in this dictionary, we store a dictionary containing
+ * tycs that are assumed equivalent to it.
+ *)
+type eqclass = unit TcDict.dict
+type hyp = eqclass TcDict.dict
+
+(* the null hypothesis, no assumptions about equality *)
+val empty_eqclass : eqclass = TcDict.mkDict() 
+val null_hyp : hyp = TcDict.mkDict()
+
+(* add assumption t1=t2 to current hypothesis.  returns composite
+ * hypothesis.
+ *)
+fun assume_eq' (hyp, t1, t1eqOpt, t2) = let
+    val t1eq  = case t1eqOpt of SOME e => e | NONE => empty_eqclass
+    val t1eq' = TcDict.insert (t1eq, t2, ())
+    val hyp'  = TcDict.insert (hyp, t1, t1eq')
+in
+    hyp'
+end
+
+fun assume_eq (hyp, t1, t1eqOpt, t2, t2eqOpt) =
+    assume_eq' (assume_eq' (hyp, t1, t1eqOpt, t2),
+                t2, t2eqOpt, t1)
+
+(* check whether t1=t2 according to the hypothesis *)
+val eq_by_hyp : eqclass option * tyc -> bool
+    = fn (NONE, t2) => false
+       | (SOME eqclass, t2) =>
+         isSome (TcDict.peek (eqclass, t2))
+    
+(* have we made any assumptions about `t' already? *)
+val visited : eqclass option -> bool 
+  = isSome
+
+(* tc_eqv_generator, invariant: t1 and t2 are in the wh-normal form 
+ *     eqop1 is the default equality to be used for tycs
+ *     eqop2 is used for body of FN, arguments in APP,
+ *     eqop3 is used for ABS and BOX.
+ *     eqop4 is used for arrow arguments and results
+ * Each of these first takes the set of hypotheses.
+ *)
+fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) hyp (t1, t2) = 
+    case (tc_outX t1, tc_outX t2) of
+        (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) =>
+        if not (!Control.CG.checkDatatypes) then true 
+        else let 
+            val t1eqOpt = TcDict.peek (hyp, t1)
+        in
+            (* first check the induction hypothesis.  we only ever
+             * make hypotheses about FIX nodes, so this test is okay
+             * here.  if assume_eq appears in other cases, this 
+             * test should be lifted outside the switch.
+             *)
+            if eq_by_hyp (t1eqOpt, t2) then true
+            (* next try structural eq on the components.  i'm not sure why
+             * this part is necessary, but it does seem to be... --league,
+             * 23 March 1998
+             *)
+            else
+                (n1 = n2 andalso i1 = i2 andalso
+                 eqop1 hyp (tc1, tc2) andalso 
+                 eqlist (eqop2 hyp) (ts1, ts2)) orelse
+                (* not equal by inspection; we have to unroll it.
+                 * we prevent unrolling the same FIX twice by asking
+                 * the `visited' function.
+                 *)
+                if visited t1eqOpt then false 
+                else let
+                    val t2eqOpt = TcDict.peek (hyp, t2)
+                in
+                    if visited t2eqOpt then false 
+                    else eqop1 (assume_eq (hyp, t1, t1eqOpt,
+                                           t2, t2eqOpt))
+                               (tc_unroll_fix t1, tc_unroll_fix t2)
+                end
+        end
+      | (TC_FN(ks1, b1), TC_FN(ks2, b2)) =>
+        eqlist tk_eqv (ks1, ks2) andalso eqop2 hyp (b1, b2)
+      | (TC_APP(a1, b1), TC_APP(a2, b2)) =>
+        eqop1 hyp (a1, a2) andalso eqlist (eqop2 hyp) (b1, b2)
+      | (TC_SEQ ts1, TC_SEQ ts2) =>
+        eqlist (eqop1 hyp) (ts1, ts2)
+      | (TC_SUM ts1, TC_SUM ts2) =>
+        eqlist (eqop1 hyp) (ts1, ts2)
+      | (TC_TUPLE (_, ts1), TC_TUPLE (_, ts2)) =>
+        eqlist (eqop1 hyp) (ts1, ts2)
+      | (TC_ABS a, TC_ABS b) =>
+        eqop1 hyp (a, b)
+      | (TC_ABS a, _) =>
+        eqop3 hyp (a, t2)
+      | (_, TC_ABS b) =>
+        eqop3 hyp (t1, b)
+      | (TC_BOX a, TC_BOX b) =>
+        eqop1 hyp (a, b)
+      | (TC_BOX a, _) =>
+        eqop3 hyp (a, t2)
+      | (_, TC_BOX b) =>
+        eqop3 hyp (t1, b)
+      | (TC_TOKEN(k1,t1), TC_TOKEN(k2,t2)) => 
+        token_eq(k1,k2) andalso eqop1 hyp (t1,t2)
+      | (TC_PROJ(a1, i1), TC_PROJ(a2, i2)) =>
+        i1 = i2 andalso eqop1 hyp (a1, a2)
+      | (TC_ARROW(r1, a1, b1), TC_ARROW(r2, a2, b2)) => 
+        r1 = r2 andalso eqop4 hyp (a1, a2) andalso eqop4 hyp (b1, b2)
+      | (TC_PARROW(a1, b1), TC_PARROW(a2, b2)) => 
+        eqop1 hyp (a1, a2) andalso eqop1 hyp (b1, b2)
+      | (TC_CONT ts1, TC_CONT ts2) =>
+        eqlist (eqop1 hyp) (ts1, ts2)
+      | _ => false
+
+fun never h (t1,t2) = false
+
+(** general equality for tycs *)
+fun tc_eqv' hyp (x as ref (_, _, AX_REG(true, _)),
+                 y as ref (_, _, AX_REG(true, _))) = tc_eq(x,y)
+  | tc_eqv' hyp (x, y) = let
+        val t1 = tc_whnm x
+        val t2 = tc_whnm y
+    in
+        if tcp_norm t1 andalso tcp_norm t2 then tc_eq (t1, t2)
+        else    
+            tc_eqv_gen (tc_eqv', tc_eqv', never, eqlist o tc_eqv')
+                       hyp (t1, t2)
+    end (* tc_eqv' *)
+
+(* slightly relaxed constraints (???) *)
+fun tc_eqv_x' hyp (x, y) =
   let val t1 = tc_whnm x
       val t2 = tc_whnm y
    in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
        else false) orelse
-       (tc_eqv_gen (tc_eqv_x, tc_eqv_x, fn _ => false,
-                    fn (ts1, ts2) => eqlist(tc_eqv_x, ts1, ts2)) (t1, t2))
+       (tc_eqv_gen (tc_eqv_x', tc_eqv_x', never, eqlist o tc_eqv_x')
+                   hyp (t1, t2))
   end (* function tc_eqv_x *)
 
 (** testing the equivalence of two tycs with relaxed constraints *)
-fun tc_eqv_bx (x : tyc, y) =
+fun mkeqop4 eqop1 hyp (ts1, ts2) =
+    eqop1 hyp (tc_autotuple ts1, tc_autotuple ts2)
+                         
+fun tc_eqv_bx' hyp (x : tyc, y) =
   let val t1 = tc_whnm x
       val t2 = tc_whnm y
    in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
       else false) orelse 
-      (tc_eqv_gen (tc_eqv_bx, tc_eqv_sp, fn _ => false,
-                   fn (ts1, ts2) => tc_eqv_bx(tc_autotuple ts1,
-                                              tc_autotuple ts2)) (t1, t2))
+      (tc_eqv_gen (tc_eqv_bx', tc_eqv_sp', never,
+                   mkeqop4 tc_eqv_bx')
+                  hyp (t1, t2))
   end (* function tc_eqv_bx *)
 
-and tc_eqv_sp (x : tyc, y) = 
+and tc_eqv_sp' hyp (x : tyc, y) = 
   let val t1 = tc_whnm x
       val t2 = tc_whnm y
    in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
       else false) orelse
-      (tc_eqv_gen (tc_eqv_sp, tc_eqv_sp, tc_eqv_sp,
-                   fn (ts1, ts2) => tc_eqv_sp(tc_autotuple ts1,
-                                              tc_autotuple ts2)) (t1, t2))
+      (tc_eqv_gen (tc_eqv_sp', tc_eqv_sp', tc_eqv_sp',
+                   mkeqop4 tc_eqv_sp')
+                  hyp (t1, t2))
   end (* function tc_eqv_sp *)
 
-(* 
- * all the complexity of lt_eqv comes from the partial-structure (or
- * partial record) type (the LT_PST type). If we can remove LT_PST
- * type, then the following can be considerabily simplified. (ZHONG)
+in (* tyc equivalence utilities *)
+
+(* TODO: explain the precise difference between these three notions of
+ * equality!  --league
  *)
+val tc_eqv = tc_eqv' null_hyp
+val tc_eqv_x = tc_eqv_x' null_hyp
+val tc_eqv_bx = tc_eqv_bx' null_hyp
+
+end (* tyc equivalence utilities *)
 
 (** lt_eqv_generator, invariant: x and y are in the wh-normal form *)
 fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) = 
@@ -1050,15 +1191,15 @@ fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) =
       fun seq (t1, t2) = 
         (case (lt_outX t1, lt_outX t2)
           of (LT_POLY(ks1, b1), LT_POLY(ks2, b2)) =>
-               (eqlist(tk_eqv, ks1, ks2)) andalso (eqlist(eqop1, b1, b2))
+               (eqlist tk_eqv (ks1, ks2)) andalso (eqlist eqop1 (b1, b2))
            | (LT_FCT(as1, bs1), LT_FCT(as2, bs2)) => 
-               (eqlist(eqop1, as1, as2)) andalso (eqlist(eqop1, bs1, bs2))
+               (eqlist eqop1 (as1, as2)) andalso (eqlist eqop1 (bs1, bs2))
            | (LT_TYC a, LT_TYC b) => eqop2(a, b)
-           | (LT_STR s1, LT_STR s2) => eqlist(eqop1, s1, s2)
+           | (LT_STR s1, LT_STR s2) => eqlist eqop1 (s1, s2)
            | (LT_PST s1, LT_PST s2) => pp(s1, s2)
            | (LT_PST s1, LT_STR s2) => sp(s2, s1)
            | (LT_STR s1, LT_PST s2) => sp(s1, s2)
-           | (LT_CONT s1, LT_CONT s2) => eqlist(eqop1, s1, s2)
+           | (LT_CONT s1, LT_CONT s2) => eqlist eqop1 (s1, s2)
            | _ => false)
    in seq(x, y)
   end (* function lt_eqv_gen *)
