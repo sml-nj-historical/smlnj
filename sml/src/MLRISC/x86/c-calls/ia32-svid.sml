@@ -193,8 +193,16 @@ functor IA32SVID_CCalls (
 		  | Ty.C_float => (SOME(FReg(fltTy, st0, NONE)), NONE, 0)
 		  | Ty.C_double => (SOME(FReg(dblTy, st0, NONE)), NONE, 0)
 		  | Ty.C_long_double => (SOME(FReg(xdblTy, st0, NONE)), NONE, 0)
-		  | Ty.C_unsigned I_long_long => raise Fail "register pair"
-		  | Ty.C_signed I_long_long => raise Fail "register pair"
+		  | Ty.C_unsigned Ty.I_long_long => raise Fail "register pair"
+		  | Ty.C_signed Ty.I_long_long => raise Fail "register pair"
+		  | Ty.C_unsigned _ =>
+		      (* Should we distinguish between different word
+		       * sized here? -- Matthias *)
+		      (SOME(Reg(wordTy,eax,NONE)),NONE,0)
+		  | Ty.C_signed _ =>
+		      (* Should we distinguish between different int
+		       * sized here? -- Matthias *)
+		      (SOME(Reg(wordTy,eax,NONE)),NONE,0)
 		  | Ty.C_PTR => (SOME(Reg(wordTy, eax, NONE)), NONE, 0)
 		  | Ty.C_ARRAY _ => error "array return type"
 		  | Ty.C_STRUCT tys => let
