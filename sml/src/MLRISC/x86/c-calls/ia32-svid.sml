@@ -308,6 +308,10 @@ functor IA32SVID_CCalls (
 					:: stms
 				    end
 				| (ARG rexp, Args memLocs) => let
+				  (* addrR is used to address the source of the memory object
+				   * being passed to the memLocs.  loadAddr is the code to
+				   * initialize addrR.
+				   *)
 				    val (loadAddr, addrR) = (case rexp
 					   of T.REG _ => ([], rexp)
 					    | _ => let
@@ -318,13 +322,20 @@ functor IA32SVID_CCalls (
 					  (* end case *))
 				    fun addr 0 = addrR
 				      | addr offset = T.ADD(wordTy, addrR, T.LI offset)
+				  (* stack offset of first destination word *)
+				    val baseOffset = (case memLocs
+					   of Stk(ty, offset)::_ => offset
+					    | _ => error "bogus Args"
+					  (* end case *))
 				    fun copy ([], stms) = stms
 				      | copy (Stk(ty, offset)::locs, stms) = let
 					  val tmp = C.newReg()
+					  val stms =
+						T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
+						  :: T.MV(ty, tmp, addr(offset - baseOffset))
+						  :: stms
 					  in
-					    T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
-					      :: T.MV(ty, tmp, addr offset)
-					      :: stms
+					    copy (locs, stms)
 					  end
 				      | copy _ = error "bogus memory location"
 				    in
