@@ -15,6 +15,26 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/06/15 15:05:00 EDT
+Tag: blume-20010615-moresparc
+Description:
+
+Here is a short late-hour update related to Sparc c-calls:
+
+ -- made handling of double-word arguments a bit smarter
+
+ -- instruction selection phase tries to collapse certain clumsily
+    constructed ML-Trees; typical example:
+
+        ADD(ty,ADD(_,e,LI d1),LI d2)  ->  ADD(ty,e,LI(d1+d2))
+
+    This currently has no further impact on SML/NJ since mlriscGen does
+    not seem to generate such patterns in the first place, and c-calls
+    (which did generate them in the beginning) has meanwhile been fixed
+    so as to avoid them as well.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/15 15:05:00 EDT
 Tag: blume-20010615-sparc
 Description:
 

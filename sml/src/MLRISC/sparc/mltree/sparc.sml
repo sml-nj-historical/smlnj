@@ -355,7 +355,12 @@ struct
           mark(I.FPop2{a=a,r1=fexpr e1,r2=fexpr e2,d=d},an)
 
       (* convert an expression into an addressing mode *)
-      and addr(T.ADD(_,e,T.LI n)) = 
+      and addr(T.ADD(ty, (T.ADD (_, e, T.LI n)|
+			  T.ADD (_, T.LI n, e)), T.LI n')) =
+	  addr(T.ADD (ty, e, T.LI (T.I.ADD (ty, n, n'))))
+	| addr(T.ADD(ty, T.SUB (_, e, T.LI n), T.LI n')) =
+	  addr(T.ADD (ty, e, T.LI (T.I.SUB (ty, n', n))))
+	| addr(T.ADD(_,e,T.LI n)) = 
           if immed13 n then (expr e,I.IMMED(toInt n))
           else let val d = newReg()
                in  loadImmed(n,d,REG,[]); (d,opn e) end

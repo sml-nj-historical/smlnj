@@ -93,8 +93,10 @@ struct
 	      | _ => T.ADD (32, x, T.LI d')
 	end
 
+    fun argaddr n = addli (spreg, 68+4*n)
+
     (* temp location for transfers through memory *)
-    val tmpaddr = addli (spreg, 72)
+    val tmpaddr = argaddr 1
 
     fun roundup (i, a) = a * ((i + a - 1) div a)
 
@@ -245,7 +247,7 @@ struct
 	      | loop (t :: tl, a :: al, n, ss, asc, cpc) = let
 		    fun wordassign a =
 			if n < 6 then T.MV (32, oreg n, a)
-			else T.STORE (32, addli (spreg, 68+4*n), a, stack)
+			else T.STORE (32, argaddr n, a, stack)
 		    fun wordarg (a, cpc, ss) =
 			loop (tl, al, n + 1, ss, wordassign a :: asc, cpc)
 
@@ -254,12 +256,16 @@ struct
 			    T.MV (32, oreg n, T.LOAD (32, addr, region))
 			fun tomem (n, addr) =
 			    T.STORE (32,
-				     addli (spreg, 68+4*n),
+				     argaddr n,
 				     T.LOAD (32, addr, region),
 				     stack)
 			fun toany (n, addr) =
 			    if n < 6 then toreg (n, addr) else tomem (n, addr)
 		    in
+			(* if n < 6 andalso n div 2 = 0 then
+			 *     use ldd here once MLRISC gets its usage right
+			 * else
+			 *   ... *)
 			loop (tl, al, n+2, ss,
 			      tmpstore @
 			      toany (n, addr)
@@ -267,6 +273,13 @@ struct
 			      :: asc,
 			      cpc)
 		    end
+		    fun dwordarg mkstore =
+			if n > 6 andalso n div 2 = 1 then
+			    (* 8-byte aligned memory *)
+			    loop (tl, al, n+2, ss,
+				  mkstore (argaddr n) :: asc,
+				  cpc)
+			else dwordmemarg (tmpaddr, stack, [mkstore tmpaddr])
 		in
 		    case (t, a) of
 			((Ty.C_void | Ty.C_PTR | Ty.C_ARRAY _ |
@@ -286,9 +299,8 @@ struct
 			(case a of
 			     T.LOAD (_, addr, region) =>
 			     dwordmemarg (addr, region, [])
-			   | _ => dwordmemarg
-				      (tmpaddr, stack,
-				       [T.STORE (64, tmpaddr, a, stack)]))
+			   | _ => dwordarg (fn addr =>
+					       T.STORE (64, addr, a, stack)))
 		      | (Ty.C_float, FARG a) =>
 			(* we use the stack region reserved for storing
 			 * %o0-%o5 as temporary storage for transferring
@@ -305,12 +317,15 @@ struct
 				 loop (tl, al, n + 1, ss, cp :: ld :: asc, cpc)
 			     end
 			     else loop (tl, al, n + 1, ss,
-					T.FSTORE (32, addli (spreg, 68+4*n),
-						  a, stack) :: asc,
+					T.FSTORE (32, argaddr n, a, stack)
+					:: asc,
 					cpc))
 		      | (Ty.C_double, FARG a) =>
-			dwordmemarg (tmpaddr, stack,
-				     [T.FSTORE (64, tmpaddr, a, stack)])
+			(case a of
+			     T.FLOAD (_, addr, region) =>
+			     dwordmemarg (addr, region, [])
+			   | _ => dwordarg (fn addr =>
+					       T.FSTORE (64, addr, a, stack)))
 		      | (Ty.C_long_double, FARG a) => let
 			    (* Copy 128-bit floating point value (16 bytes)
 			     * into scratch space (aligned at 8-byte boundary).
