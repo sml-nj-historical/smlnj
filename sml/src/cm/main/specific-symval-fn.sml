@@ -18,7 +18,7 @@ functor SpecificSymValFn (val arch: string
 		  | "x86" => ("X86", false, 32)
 		  | "hppa" => ("HPPA", false, 32)
 		  | "rs6000" => ("RS6000", false, 32)
-		  | "ppc" => ("PPC", false, 32)
+		  | "ppc" => ("PPC", true, 32)
 		  | arch => ErrorMsg.impossible
 				("unknown architecture: " ^ arch)
 	    val env0 = SymVal.default

@@ -26,6 +26,7 @@ structure CMemAccess : CMEMACCESS = struct
     val short_size = 0w2
     val int_size = 0w4
     val long_size = 0w4
+    val longlong_size = 0w8
     val float_size = 0w4
     val double_size = 0w8
 
@@ -38,6 +39,8 @@ structure CMemAccess : CMEMACCESS = struct
     val load_sint = RawMemInlineT.i32l
     val load_ulong = RawMemInlineT.w32l
     val load_slong = RawMemInlineT.i32l
+    val load_ulonglong = InlineT.Word64.intern o MemAccess64.load2
+    val load_slonglong = InlineT.Int64.intern o MemAccess64.load2
     val load_float = RawMemInlineT.f32l
     val load_double = RawMemInlineT.f64l
 
@@ -50,6 +53,8 @@ structure CMemAccess : CMEMACCESS = struct
     val store_sint = RawMemInlineT.i32s
     val store_ulong = RawMemInlineT.w32s
     val store_slong = RawMemInlineT.i32s
+    fun store_ulonglong (a, x) = MemAccess64.store2 (a, InlineT.Word64.extern x)
+    fun store_slonglong (a, x) = MemAccess64.store2 (a, InlineT.Int64.extern x)
     val store_float = RawMemInlineT.f32s
     val store_double = RawMemInlineT.f64s
 
@@ -72,6 +77,8 @@ structure CMemAccess : CMEMACCESS = struct
     type cc_ushort = Word32.word
     type cc_slong = Int32.int
     type cc_ulong = Word32.word
+    type cc_slonglong = Int64.int
+    type cc_ulonglong = Word64.word
     type cc_float = Real.real
     type cc_double = Real.real
 
@@ -85,6 +92,8 @@ structure CMemAccess : CMEMACCESS = struct
     fun wrap_ushort (x : MLRep.Unsigned.word) = x : cc_ushort
     fun wrap_slong (x : MLRep.Signed.int) = x : cc_slong
     fun wrap_ulong (x : MLRep.Unsigned.word) = x : cc_ulong
+    fun wrap_slonglong (x: MLRep.LongLongSigned.int) = x : cc_slonglong
+    fun wrap_ulonglong (x: MLRep.LongLongUnsigned.word) = x : cc_ulonglong
     fun wrap_float (x : MLRep.Real.real) = x : cc_float
     fun wrap_double (x : MLRep.Real.real) = x : cc_double
 
@@ -97,6 +106,8 @@ structure CMemAccess : CMEMACCESS = struct
     fun unwrap_ushort (x : cc_ushort) = x : MLRep.Unsigned.word
     fun unwrap_slong (x : cc_slong) = x : MLRep.Signed.int
     fun unwrap_ulong (x : cc_ulong) = x : MLRep.Unsigned.word
+    fun unwrap_slonglong (x : cc_slonglong) = x : MLRep.LongLongSigned.int
+    fun unwrap_ulonglong (x : cc_ulonglong) = x : MLRep.LongLongUnsigned.word
     fun unwrap_float (x : cc_float) = x : MLRep.Real.real
     fun unwrap_double (x : cc_double) = x : MLRep.Real.real
 

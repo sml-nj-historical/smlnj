@@ -9,7 +9,9 @@
  *)
 structure MLRep = struct
     structure Signed = Int32
+    structure LongLongSigned = Int64
     structure Unsigned = Word32
+    structure LongLongUnsigned = Word64
     structure Real = Real64
 
     (* word-style bit-operations on integers... *)

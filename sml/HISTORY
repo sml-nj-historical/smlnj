@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/12/21 15:05:00 CST
+Tag: blume-20041221-longlong
+Description:
+
+* Implemented access to signed and unsigned long long data in NLFFI.
+(The parameter-passing part of the picture has not complete. But
+data structure access seems to work.)
+
+* Fixed CM's incorrect assumption that the PPC is little-endian.
+  (On the Mac, it is big-endian.  And that's currently our only
+  PPC platform.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/21 12:50:00 CST
 Tag: blume-20041221-memory
 Description:

@@ -283,6 +283,7 @@ end = struct
 		      | ty (S.UNIMPLEMENTED _) = ()
 		      | ty (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			    S.SLONGLONG | S.ULONGLONG |
 			    S.FLOAT | S.DOUBLE | S.VOIDPTR) = ()
 		    fun tloop [] = nextround ()
 		      | tloop (t :: ts) = (ty t; tloop ts)
@@ -310,6 +311,8 @@ end = struct
 	  | stem S.USHORT = "ushort"
 	  | stem S.SLONG = "slong"
 	  | stem S.ULONG = "ulong"
+	  | stem S.SLONGLONG = "slonglong"
+	  | stem S.ULONGLONG = "ulonglong"
 	  | stem S.FLOAT = "float"
 	  | stem S.DOUBLE = "double"
 	  | stem S.VOIDPTR = "voidptr"
@@ -324,8 +327,8 @@ end = struct
 	val (fptr_types,
 	     incomplete_structs, incomplete_unions, incomplete_enums) = let
 	    fun ty ((S.SCHAR | S.UCHAR | S.SINT | S.UINT |
-		     S.SSHORT | S.USHORT |
-		     S.SLONG | S.ULONG | S.FLOAT | S.DOUBLE |
+		     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+		     S.SLONGLONG | S.ULONGLONG | S.FLOAT | S.DOUBLE |
 		     S.VOIDPTR), a) = a
 	      | ty (S.STRUCT t, a as (f, s, u, e)) =
 		(case $? (structs, t) of
@@ -423,6 +426,7 @@ end = struct
 
 	and wtn_ty_p p (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			      S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			      S.SLONGLONG | S.ULONGLONG |
 			      S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 	    Type (stem t)
 	  | wtn_ty_p p (S.STRUCT t) = Con ("su", [St t])
@@ -441,11 +445,15 @@ end = struct
 
 	fun topfunc_ty p ({ args, res }, argnames) = let
 	    fun topty (S.SCHAR | S.SINT | S.SSHORT | S.SLONG) =
-		Type "MLRep.Signed.int"
+		  Type "MLRep.Signed.int"
+	      | topty S.SLONGLONG = 
+		  Type "MLRep.LongLongSigned.int"
 	      | topty (S.UCHAR | S.UINT | S.USHORT | S.ULONG) =
-		Type "MLRep.Unsigned.word"
+		  Type "MLRep.Unsigned.word"
+	      | topty S.ULONGLONG =
+		  Type "MLRep.LongLongUnsigned.word"
 	      | topty (S.FLOAT | S.DOUBLE) =
-		Type "MLRep.Real.real"
+		  Type "MLRep.Real.real"
 	      | topty (S.STRUCT t) = Con ("su_obj" ^ p, [St t, Type "'c"])
 	      | topty (S.UNION t) = Con ("su_obj" ^ p, [Un t, Type "'c"])
 	      | topty (S.ENUM _) = Type "MLRep.Signed.int"
@@ -497,6 +505,7 @@ end = struct
 	in
 	    fun rtti_val (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				S.SLONGLONG | S.ULONGLONG |
 				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 		simple (stem t)
 	      | rtti_val (S.STRUCT t) =
@@ -645,8 +654,8 @@ end = struct
 	    val E_ulong = Word32
 	    val E_sshort = List Char
 	    val E_ushort = List Word8
-	    val E_sllong = List Int32 (* not used yet *)
-	    val E_ullong = List Word32(* not used yet *)
+	    val E_sllong = List Int32
+	    val E_ullong = List Word32
 	    val E_ptr = String
 	    val E_nullstruct = Exn
 
@@ -660,6 +669,8 @@ end = struct
 	      | encode S.USHORT = E_ushort
 	      | encode S.SLONG = E_slong
 	      | encode S.ULONG = E_ulong
+	      | encode S.SLONGLONG = E_sllong
+	      | encode S.ULONGLONG = E_ullong
 	      | encode (S.PTR _ | S.VOIDPTR | S.FPTR _) = E_ptr
 	      | encode (S.UNIMPLEMENTED what) = unimp what
 	      | encode (S.ARR _) = raise Fail "unexpected array"
@@ -699,6 +710,7 @@ end = struct
 	     * low-level call operation *)
 	    fun mlty (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			    S.SLONGLONG | S.ULONGLONG |
 			    S.FLOAT | S.DOUBLE)) =
 		  Type ("CMemory.cc_" ^ stem t)
 	      | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _ | S.UNION _) =
@@ -739,6 +751,7 @@ end = struct
 		      | (S.ENUM _) => sel (ewrap p)
 		      | (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			 S.SLONGLONG | S.ULONGLONG |
 			 S.FLOAT | S.DOUBLE) => sel (wrap (p, stem h))
 		      | S.VOIDPTR => sel (vwrap p)
 		      | S.PTR _ => sel (pwrap p)
@@ -772,6 +785,7 @@ end = struct
 			    case t of
 				(S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				 S.SLONGLONG | S.ULONGLONG |
 				 S.FLOAT | S.DOUBLE) => unwrap (stem t)
 			      | S.VOIDPTR => punwrap "vcast"
 			      | S.FPTR _ => punwrap "fcast"
@@ -1190,10 +1204,11 @@ end = struct
 			 
 		fun oneArg (e, t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				     S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				     S.SLONGLONG | S.ULONGLONG |
 				     S.FLOAT | S.DOUBLE)) =
-		    EApp (EVar ("Cvt.c_" ^ stem t), e)
+		      EApp (EVar ("Cvt.c_" ^ stem t), e)
 		  | oneArg (e, (S.STRUCT _ | S.UNION _)) =
-		    EApp (EVar "ro'", light ("obj", e))
+		      EApp (EVar "ro'", light ("obj", e))
 		  | oneArg (e, S.ENUM ta) = EApp (EVar "Cvt.i2c_enum", e)
 		  | oneArg (e, S.PTR _) = light ("ptr", e)
 		  | oneArg (e, S.FPTR _) = light ("fptr", e)
@@ -1215,6 +1230,7 @@ end = struct
 		    case res of
 			SOME (t as (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 				    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+				    S.SLONGLONG | S.ULONGLONG |
 				    S.FLOAT | S.DOUBLE)) =>
 			  EApp (EVar ("Cvt.ml_" ^ stem t), call)
 		      | SOME (t as (S.STRUCT _ | S.UNION _)) =>

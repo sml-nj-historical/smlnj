@@ -163,9 +163,9 @@ structure AstToSpec = struct
 	  | valty C (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
 	  | valty C (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
 	  | valty C (A.Numeric (_, _, A.SIGNED, A.LONGLONG, _)) =
-	      Spec.UNIMPLEMENTED "long long"
+	      Spec.SLONGLONG
 	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONGLONG, _)) =
-	      Spec.UNIMPLEMENTED "unsigned long long"
+	      Spec.ULONGLONG
 	  | valty C (A.Numeric (_, _, _, A.LONGDOUBLE, _)) =
 	      Spec.UNIMPLEMENTED "long double"
 	  | valty C (A.Array (NONE, t)) = valty C (A.Pointer t)

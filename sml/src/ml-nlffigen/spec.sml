@@ -13,6 +13,7 @@ structure Spec = struct
 
     datatype ctype =
 	SCHAR | UCHAR | SINT | UINT | SSHORT | USHORT | SLONG | ULONG
+      | SLONGLONG | ULONGLONG
       | FLOAT | DOUBLE | VOIDPTR
       | STRUCT of tag
       | UNION of tag

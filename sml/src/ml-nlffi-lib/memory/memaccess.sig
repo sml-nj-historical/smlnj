@@ -23,6 +23,7 @@ signature CMEMACCESS = sig
     val short_size : word
     val int_size : word
     val long_size : word
+    val longlong_size : word
     val float_size : word
     val double_size : word
 
@@ -36,6 +37,8 @@ signature CMEMACCESS = sig
     val load_uint : addr -> MLRep.Unsigned.word
     val load_slong : addr -> MLRep.Signed.int
     val load_ulong : addr -> MLRep.Unsigned.word
+    val load_slonglong : addr -> MLRep.LongLongSigned.int
+    val load_ulonglong : addr -> MLRep.LongLongUnsigned.word
     val load_float : addr -> MLRep.Real.real
     val load_double : addr -> MLRep.Real.real
 
@@ -49,6 +52,8 @@ signature CMEMACCESS = sig
     val store_uint : addr * MLRep.Unsigned.word -> unit
     val store_slong : addr * MLRep.Signed.int -> unit
     val store_ulong : addr * MLRep.Unsigned.word -> unit
+    val store_slonglong : addr * MLRep.LongLongSigned.int -> unit
+    val store_ulonglong : addr * MLRep.LongLongUnsigned.word -> unit
     val store_float : addr * MLRep.Real.real -> unit
     val store_double : addr * MLRep.Real.real -> unit
 
@@ -64,6 +69,8 @@ signature CMEMACCESS = sig
     type cc_ushort
     type cc_slong
     type cc_ulong
+    type cc_slonglong
+    type cc_ulonglong
     type cc_float
     type cc_double
 
@@ -77,6 +84,8 @@ signature CMEMACCESS = sig
     val wrap_ushort : MLRep.Unsigned.word -> cc_ushort
     val wrap_slong : MLRep.Signed.int -> cc_slong
     val wrap_ulong : MLRep.Unsigned.word -> cc_ulong
+    val wrap_slonglong : MLRep.LongLongSigned.int -> cc_slonglong
+    val wrap_ulonglong : MLRep.LongLongUnsigned.word -> cc_ulonglong
     val wrap_float : MLRep.Real.real -> cc_float
     val wrap_double : MLRep.Real.real -> cc_double
 
@@ -89,6 +98,8 @@ signature CMEMACCESS = sig
     val unwrap_ushort : cc_ushort -> MLRep.Unsigned.word
     val unwrap_slong : cc_slong -> MLRep.Signed.int
     val unwrap_ulong : cc_ulong -> MLRep.Unsigned.word
+    val unwrap_slonglong : cc_slonglong -> MLRep.LongLongSigned.int
+    val unwrap_ulonglong : cc_ulonglong -> MLRep.LongLongUnsigned.word
     val unwrap_float : cc_float -> MLRep.Real.real
     val unwrap_double : cc_double -> MLRep.Real.real
 
