@@ -524,6 +524,14 @@ structure IntInf :> INT_INF =
               val (rm,_(*0*)) = divmodd (rm',scale)
               in (qt,rm) end
 
+	fun eq ([], []) = true
+	  | eq ((i : int)::ri,j::rj) = (i = j) andalso eq(ri, rj)
+	  | eq _ = false
+
+	fun neq ([], []) = false
+	  | neq ((i : int)::ri,j::rj) = (i <> j) orelse neq(ri, rj)
+	  | neq _ = true
+
 	fun cmp ([],[]) = EQUAL
 	  | cmp (_,[]) = GREATER
 	  | cmp ([],_) = LESS
@@ -1001,6 +1009,14 @@ structure IntInf :> INT_INF =
     val xorb   = BitOps.xorb
     val <<     = BitOps.<<
     val ~>>    = BitOps.~>>
+
+  (* these are not in the BASIS signature, but they are useful since IntInf.int
+   * is not a builtin type yet.
+   *)
+    fun == (BI{sign=s1, digits=d1}, BI{sign=s2, digits=d2}) =
+	  (s1 = s2) andalso BN.eq(d1, d2)
+    fun != (BI{sign=s1, digits=d1}, BI{sign=s2, digits=d2}) =
+	  (s1 <> s2) orelse BN.neq(d1, d2)
 
   end (* structure IntInf *)
 
