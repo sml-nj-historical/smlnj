@@ -739,7 +739,13 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	    fun badopt opt f () =
 		Say.say ["!* bad ", opt, " option: `", f, "'\n",
 			 "!* try `-h' or `-h<level>' for help\n"]
-	    fun carg (opt as ("-C" | "-D"), f, _) =
+
+	    fun quit () = OS.Process.exit OS.Process.success
+
+	    fun quit_if true = quit ()
+	      | quit_if false = ()
+
+	    fun carg (opt as ("-C" | "-D"), f, _, _) =
 		let val bad = badopt opt f
 		    val spec = Substring.extract (f, 2, NONE)
 		    val is_config = opt = "-C"
@@ -773,32 +779,39 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 			      SOME i => #set (SSV.symval name) (SOME i)
 			    | NONE => bad ())
 		end
-	      | carg ("-U", f, _) =
-		(case String.extract (f, 2, NONE) of
-		     "" => badopt "-U" f ()
-		   | var => #set (SSV.symval var) NONE)
-	      | carg ("-h", f, _) =
-		(case String.extract (f, 2, NONE) of
-		     "" => help (SOME 0)
-		   | level => help (Int.fromString level))
-	      | carg ("-s", f, _) =
-		(case String.extract (f, 2, NONE) of
-		     "" => showcur (SOME 0)
-		   | level => showcur (Int.fromString level))
-	      | carg (_, f, mk) = p (f, mk,
-				 String.map Char.toLower
-					    (getOpt (OS.Path.ext f, "<none>")))
+	      | carg ("-U", f, _, _) =
+		  (case String.extract (f, 2, NONE) of
+		       "" => badopt "-U" f ()
+		     | var => #set (SSV.symval var) NONE)
+	      | carg ("-h", f, _, last) =
+		  (case String.extract (f, 2, NONE) of
+		       "" => help (SOME 0)
+		     | level => help (Int.fromString level);
+		   quit_if last)
+	      | carg ("-s", f, _, last) =
+		  (case String.extract (f, 2, NONE) of
+		       "" => showcur (SOME 0)
+		     | level => showcur (Int.fromString level);
+		   quit_if last)
+	      | carg (_, f, mk, _) =
+		  p (f, mk, String.map Char.toLower
+				       (getOpt (OS.Path.ext f, "<none>")))
 
 	    fun args ("-a" :: rest, _) = args (rest, autoload)
 	      | args ("-m" :: rest, _) = args (rest, make)
-	      | args ("-H" :: rest, mk) = (help NONE; args (rest, mk))
-	      | args ("-S" :: rest, mk) = (showcur NONE; args (rest, mk))
+	      | args ("-H" :: rest, mk) = (help NONE; args_q (rest, mk))
+	      | args ("-S" :: rest, mk) = (showcur NONE; args_q (rest, mk))
+	      | args ("-q" :: _, _) = quit ()
 	      | args ("@CMbuild" :: rest, _) = mlbuild rest
 	      | args (f :: rest, mk) =
-		(carg (String.substring (f, 0, 2), f, mk)
-		 handle General.Subscript => ();
+		(carg (String.substring (f, 0, 2)
+		         handle General.Subscript => "",
+		       f, mk, List.null rest);
 		 args (rest, mk))
 	      | args ([], _) = ()
+
+	    and args_q ([], _) = quit ()
+	      | args_q (rest, f) = args (rest, f)
 	in
 	    case SMLofNJ.getArgs () of
 		["@CMslave"] => (#set StdConfig.verbose false; slave ())

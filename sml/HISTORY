@@ -13,6 +13,22 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/06 18:10:00 CDT
+Tag: blume-20040806-cmdline
+Description:
+
+Fiddled with handling of command-line options:
+
+  * sml now quits after processing the command line
+    if -H, -S, -h<n>, or -s<n> appears as the last
+    command-line argument
+  * a new option -q terminates the session when encountered on
+    the command line; subsequent arguments will be ignored
+  * bug fixes: short (erroneous) arguments are no longer ignored
+    completely
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/08/04 18:17:00 EST
 Tag: leunga-110_47-ppc-ibm-asm
