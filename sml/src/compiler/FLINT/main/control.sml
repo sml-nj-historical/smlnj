@@ -13,7 +13,7 @@ struct
 		      "specialize",
 		      "loopify", "fixfix", (* "split", *) "fcontract",
 		      "wrap", "fcontract", "reify",
-		      "abcopt", "fcontract", "fixfix", "fcontract+eta"]
+		      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"]
 			  
     val inlineThreshold = ref 16
     val splitThreshold  = ref 0

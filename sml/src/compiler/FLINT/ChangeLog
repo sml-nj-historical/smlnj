@@ -1,7 +1,6 @@
 2000-06-16  Yichen Xie <yichen.xie@yale.edu>
 	* opt/abcopt.sml: bug fix in hoist function. FLINT type check
 	error should be gone now.
-	* main/control.sml: abcopt phase is now turned on.
 
 2000-04-22  Stefan Monnier  <monnier@cs.yale.edu>
 
