@@ -1,5 +1,7 @@
 1998-11-11  Stefan Monnier  <monnier@cs.yale.edu>
 
+	* opt/fcontract.sml (sval): ref svals rather than going through F.value
+
 	* opt/collect.sml: switched back to a read-only collect phase.  Also try
 	  to export the info to allow fcontract to circumvent some of the get calls.
 	(info): got rid of Transfer by using the intmap for redirection.
@@ -33,7 +35,7 @@
 	(cexp): switched to a continuation passing style to implement the
 	  let-associativity rule in a better way.
 
-	* opt/fixfix.sml (curry): correctly handle "imposible" cases.
+	* opt/fixfix.sml (curry): correctly handle "impossible" cases.
 
 	* opt/collect.sml: completely revisited:  no distinction between
 	  internal/external uses, dead-code elimination done right away.  This

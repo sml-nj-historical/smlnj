@@ -1,3 +1,7 @@
+1998-11-12  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* MiscUtil/util/stats.sml: added counters.
+
 1998-11-09  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* TopLevel/viscomp/control.sml

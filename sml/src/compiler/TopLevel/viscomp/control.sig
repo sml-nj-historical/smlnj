@@ -31,6 +31,7 @@ end
 signature FLINTCONTROL =
 sig
     val print		: bool ref
+    val printPhases	: bool ref
     val inlineThreshold	: int ref
     val unrollThreshold	: int ref
     val specialize	: bool ref

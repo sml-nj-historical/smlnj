@@ -14,8 +14,15 @@ sig
     (* query functions *)
     val escaping  : info -> bool	(* non-call uses *)
     val called    : info -> bool	(* known call uses *)
-    val usenb     : info -> int	(* nb of non-recursive uses *)
+    val dead      : info -> bool	(* usenb = 0 ? *)
+    val usenb     : info -> int		(* total nb of uses *)
     val actuals   : info -> (FLINT.value option list) (* constant args *)
+
+    (* self-referential (i.e. internal) uses *)
+    val iusenb    : info -> int
+    val icallnb   : info -> int
+    (* reset to safe values (0 and 0) *)
+    val ireset    : info -> unit
 
     (* inc the "true=call,false=use" count *)
     val use    : FLINT.value list option -> info -> unit
@@ -53,8 +60,8 @@ end
  * beginning, tho).  This looks nice at first, but poses problems:
  * - when you do simple inlining (just moving the body of the procedure), you
  *   may inadvertently turn ext-uses into int-uses.  This only happens when
- *   inlining mutually recursive function, but this can be commen (thing of
- *   when fcontract undoes a useless uncurrying or a recursive function).  This
+ *   inlining mutually recursive function, but this can be commen (think of
+ *   when fcontract undoes a useless uncurrying of a recursive function).  This
  *   can be readily overcome by not using the `move body' optimization in
  *   dangerous cases and do the full copy+kill instead.
  * - you have to keep track of what is inside what.  The way I did it was to
@@ -65,9 +72,12 @@ end
  *   is unnecessary, but it is necessary when undertaking a function mutually
  *   recursive with a function in which you currently are when you detect the
  *   function's death.
- * rather than fix this last point, I decided to get rid of the distinction.
- * This makes the code simpler and less bug-prone at the cost of slightly
- * increasing the number of fcontract passes required.
+ * rather than fix this last point, I decided to give up on keeping internal
+ * counts up-to-date.  Instead, I just compute them once during collect and
+ * never touch them again:  this means that they should not be relied on in
+ * general.  More specifically, they become potentially invalid as soon as
+ * the body of the function is changed.  This still allows their use in
+ * many cases.
  *)
 
 structure Collect :> COLLECT =
@@ -87,14 +97,23 @@ fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun ASSERT (true,_) = ()
   | ASSERT (FALSE,msg) = bug ("assertion "^msg^" failed")
 
-type info
+datatype info
   (* we keep track of calls and escaping uses *)
-  = {calls: int ref, uses: int ref,
-     args: (FLINT.lvar * (FLINT.value option)) option list ref option}
+  = Info of {calls: int ref, uses: int ref, int: (int * int) ref,
+	     args: (FLINT.lvar * (FLINT.value option)) option list ref option}
     
 exception NotFound
 	      
 val m : info M.intmap = M.new(128, NotFound)
+
+fun new args lv =
+    let val i = Info{uses=ref 0, calls=ref 0, int=ref(0,0),
+		     args=case args
+			   of SOME args =>
+			      SOME(ref(map (fn a => SOME(a, NONE)) args))
+			    | NONE => NONE}
+    in M.add m (lv, i); i
+    end
 
 (* map related helper functions *)
 fun get lv = (M.map m lv)
@@ -103,25 +122,17 @@ fun get lv = (M.map m lv)
 			(LV.lvarName lv)^
 			". Pretending dead...\n");
 		   (*  raise x; *)
-		   {uses=ref 0, calls=ref 0, args=NONE})
+		   new NONE lv)
 
 fun LVarString lv =
-    let val {uses=ref uses,calls=ref calls,...} = get lv
+    let val Info{uses=ref uses,calls=ref calls,...} = get lv
     in (LV.lvarName lv)^
 	"{"^(Int.toString uses)^
 	(if calls > 0 then ","^(Int.toString calls) else "")^"}"
     end
 	
-fun new args lv =
-    let val i = {uses=ref 0, calls=ref 0,
-		 args=case args
-		       of SOME args => SOME(ref(map (fn a => SOME(a, NONE)) args))
-			| NONE => NONE}
-    in M.add m (lv, i); i
-    end
-
 (* adds the counts of lv1 to those of lv2 *)
-fun addto ({uses=uses1,calls=calls1,...}:info,{uses=uses2,calls=calls2,...}:info) =
+fun addto (Info{uses=uses1,calls=calls1,...},Info{uses=uses2,calls=calls2,...}) =
     (uses2 := !uses2 + !uses1; calls2 := !calls2 + !calls1)
 	    
 fun transfer (lv1,lv2) =
@@ -144,10 +155,10 @@ fun mergearg (NONE,a) = NONE
   | mergearg (SOME(fv,SOME b),a) =
     if a = b orelse a = F.VAR fv then SOME(fv,SOME b) else NONE
 
-fun actuals ({args=NONE,...}:info) = bug "can't query actuals of a var"
-  | actuals {args=SOME args,...} = map (fn SOME(_,v) => v | _ => NONE) (!args)
+fun actuals (Info{args=NONE,...}) = bug "no actuals (maybe a var?)"
+  | actuals (Info{args=SOME args,...}) = map (fn SOME(_,v) => v | _ => NONE) (!args)
 
-fun use call ({uses,calls,args,...}:info) =
+fun use call (Info{uses,calls,args,...}) =
     (inc uses;
      case call
       of NONE => (case args of SOME args => args := map (fn _ => NONE) (!args)
@@ -157,21 +168,25 @@ fun use call ({uses,calls,args,...}:info) =
 	 case args of SOME args => args := ListPair.map mergearg (!args, vals)
 		    | _ => ()))
 
-fun unuse call ({uses,calls,...}:info) =
+fun unuse call (Info{uses,calls,...}) =
     (* notice the calls could be dec'd to negative values because a
      * use might be turned from escaping to known between the census
      * and the unuse.  We can't easily detect such changes, but
      * we can detect it happened when we try to go below zero. *)
     (dec uses;
-     if (call andalso !calls > 0) then dec calls
+     if (call (*  andalso !calls > 0 *)) then dec calls
      else ASSERT(!uses >= !calls, "unknown sanity");
      if !uses < 0 then bug "decrementing too much" (* F.VAR lv) *)
      else !uses = 0)
 
-fun usenb ({uses=ref uses,...}:info) = uses
-fun used ({uses,...}:info) = !uses > 0
-fun escaping ({uses,calls,...}:info) = !uses > !calls
-fun called ({calls,...}:info) = !calls > 0
+fun usenb (Info{uses=ref uses,...}) = uses
+fun used (Info{uses,...}) = !uses > 0
+fun dead (Info{uses,...}) = !uses = 0
+fun escaping (Info{uses,calls,...}) = !uses > !calls
+fun called (Info{calls,...}) = !calls > 0
+fun iusenb (Info{int=ref(u,_),...}) = u
+fun icallnb (Info{int=ref(_,c),...}) = c
+fun ireset (Info{int,...}) = int := (0,0)
 
 (* Ideally, we should check that usenb = 1, but we may have been a bit
  * conservative when keeping the counts uptodate *)
@@ -221,31 +236,35 @@ val census = let
     (* the actual function:
      * `uvs' is an optional list of booleans representing which of 
      * the return values are actually used *)
-    fun cexp uvs lexp =
+    fun cexp lexp =
 	(case lexp
 	 of F.RET vs => app use vs
-(* 	    (case uvs *)
-(* 	      of SOME uvs => (* only count vals that are actually used *) *)
-(* 		 app (fn(v,uv)=>if uv then use v else ()) (ListPair.zip(vs,uvs)) *)
-(* 	       | NONE => app use vs) *)
 
 	  | F.LET (lvs,le1,le2) =>
 	    let val lvsi = map newv lvs
-	    in cexp uvs le2; cexp (usage(map used lvsi)) le1
+	    in cexp le2; cexp le1
 	    end
 
 	  | F.FIX (fs,le) =>
 	    let val fs = map (fn (_,f,args,body) =>
 			      (newf (SOME(map #1 args)) f,args,body))
 			     fs
-		fun cfun (_,args,body) = (* census of a fundec *)
-		    (app (fn (v,t) => ignore(newv v)) args; cexp All body)
+		fun cfun (Info{uses,calls, int, ...}, args,body) =
+		    (* census of a fundec.  We get the internal counts
+		     * by examining the count difference between before
+		     * and after census of the body. *)
+		    let val (euses,ecalls) = (!uses,!calls)
+		    in
+			app (fn (v,t) => ignore(newv v)) args;
+			cexp body;
+			int := (!uses - euses, !calls - ecalls)
+		    end
 		fun cfix fs =	(* census of a list of fundecs *)
 		    let val (ufs,nfs) = List.partition (used o #1) fs
 		    in if List.null ufs then ()
 		       else (app cfun ufs; cfix nfs)
 		    end
-	    in cexp uvs le; cfix fs
+	    in cexp le; cfix fs
 	    end
 	       
 	  | F.APP (F.VAR f,vs) =>
@@ -253,42 +272,41 @@ val census = let
 
 	  | F.TFN ((tf,args,body),le) =>
 	    let val tfi = newf NONE tf
-	    in cexp uvs le;
-		if used tfi then cexp All body else ()
+	    in cexp le; if used tfi then cexp body else ()
 	    end
 
 	  | F.TAPP (F.VAR tf,tycs) => call NONE tf
 
 	  | F.SWITCH (v,cs,arms,def) =>
-	    (use v; Option.map (cexp uvs) def;
-	     app (fn (F.DATAcon(dc,_,lv),le) => (cdcon dc; newv lv; cexp uvs le)
-		   | (_,le) => cexp uvs le)
+	    (use v; Option.map cexp def;
+	     app (fn (F.DATAcon(dc,_,lv),le) => (cdcon dc; newv lv; cexp le)
+		   | (_,le) => cexp le)
 		 arms)
 		
 	  | F.CON (dc,_,v,lv,le) =>
 	    let val lvi = newv lv
-	    in cdcon dc; cexp uvs le; if used lvi then use v else ()
+	    in cdcon dc; cexp le; if used lvi then use v else ()
 	    end
 
 	  | F.RECORD (_,vs,lv,le) =>
 	    let val lvi = newv lv
-	    in cexp uvs le; if used lvi then app use vs else ()
+	    in cexp le; if used lvi then app use vs else ()
 	    end
 
 	  | F.SELECT (v,_,lv,le) =>
 	    let val lvi = newv lv
-	    in cexp uvs le; if used lvi then use v else ()
+	    in cexp le; if used lvi then use v else ()
 	    end
 
 	  | F.RAISE (v,_) => use v
-	  | F.HANDLE (le,v) => (use v; cexp uvs le)
+	  | F.HANDLE (le,v) => (use v; cexp le)
 	  
 	  | F.BRANCH (po,vs,le1,le2) =>
-	    (app use vs; cpo po; cexp uvs le1; cexp uvs le2)
+	    (app use vs; cpo po; cexp le1; cexp le2)
 	  
 	  | F.PRIMOP (po,vs,lv,le) =>
 	    let val lvi = newv lv
-	    in cexp uvs le;
+	    in cexp le;
 		if impurePO po orelse used lvi then (cpo po; app use vs) else ()
 	    end
 	  
@@ -395,7 +413,7 @@ in
     cexp
 end
 
-val uselexp = census All
+val uselexp = census
 fun copylexp alpha le =
     let val nle = FU.copy alpha le
     in uselexp nle; nle

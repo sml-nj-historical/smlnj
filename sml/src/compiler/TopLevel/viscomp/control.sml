@@ -40,6 +40,7 @@ structure Control : CONTROL =
     structure FLINT =
     struct
 	val print	= ref false
+	val printPhases	= ref false
 	val inlineThreshold = ref 20
 	val unrollThreshold = ref 20
 	val specialize	= ref true

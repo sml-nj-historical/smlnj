@@ -5,7 +5,7 @@ signature FCONTRACT =
 sig
     
     (* needs Collect to be setup properly *)
-    val contract : FLINT.fundec -> FLINT.fundec
+    val contract : FLINT.fundec * Stats.counter -> FLINT.fundec
 	
 end
 
@@ -197,10 +197,10 @@ datatype sval
   = Val    of F.value			(* F.value should never be F.VAR lv *)
   | Fun    of F.lvar * F.lexp * (F.lvar * F.lty) list * F.fkind * DI.depth
   | TFun   of F.lvar * F.lexp * (F.tvar * F.tkind) list * DI.depth
-  | Record of F.lvar * F.value list
-  | Con    of F.lvar * F.value * F.dcon * F.tyc list
-  | Decon  of F.lvar * F.value * F.dcon * F.tyc list
-  | Select of F.lvar * F.value * int
+  | Record of F.lvar * sval list
+  | Con    of F.lvar * sval * F.dcon * F.tyc list
+  | Decon  of F.lvar * sval * F.dcon * F.tyc list
+  | Select of F.lvar * sval * int
   | Var    of F.lvar * F.lty option	(* cop out case *)
 
 fun sval2lty (Var(_,x)) = x
@@ -213,9 +213,51 @@ fun tycs_eq ([],[]) = true
     LT.tc_eqv(tyc1,tyc2) andalso tycs_eq(tycs1,tycs2)
   | tycs_eq _ = false
 
-fun contract (fdec as (_,f,_,_)) = let
+fun click s c = (if !CTRL.misc = 1 then say s else (); Stats.addCounter c 1)
 
-val inlineWitness = ref false
+(*  val c_inline	 = Stats.newCounter[] *)
+(*  val c_deadval	 = Stats.newCounter[] *)
+(*  val c_deadlexp	 = Stats.newCounter[] *)
+(*  val c_select	 = Stats.newCounter[] *)
+(*  val c_record	 = Stats.newCounter[] *)
+(*  val c_lacktype	 = Stats.newCounter[] *)
+(*  val c_con	 = Stats.newCounter[] *)
+(*  val c_switch	 = Stats.newCounter[] *)
+(*  val c_eta	 = Stats.newCounter[] *)
+(*  val c_etasplit	 = Stats.newCounter[] *)
+(*  val c_branch	 = Stats.newCounter[] *)
+(*  val c_cstargs	 = Stats.newCounter[] *)
+(*  val c_dropargs	 = Stats.newCounter[] *)
+
+fun contract (fdec as (_,f,_,_), counter) = let
+
+    val c_dummy = Stats.newCounter[]
+    val c_miss = Stats.newCounter[]
+
+    fun click_deadval  () = (click "d" counter)
+    fun click_deadlexp () = (click "D" counter)
+    fun click_select   () = (click "s" counter)
+    fun click_record   () = (click "r" counter)
+    fun click_con      () = (click "c" counter)
+    fun click_switch   () = (click "s" counter)
+    fun click_eta      () = (click "e" counter)
+    fun click_etasplit () = (click "E" counter)
+    fun click_branch   () = (click "b" counter)
+    fun click_cstargs  () = (click "A" counter)
+    fun click_dropargs () = (click "a" counter)
+
+    fun click_lacktype () = (click "t" c_miss)
+
+    (* this counters is actually *used* by fcontract.
+     * It's  not used just for statistics. *)
+    val c_inline	 = Stats.newCounter[counter]
+(*      val c_inline1	 = Stats.newCounter[c_inline] *)
+(*      val c_inline2	 = Stats.newCounter[c_inline] *)
+(*      val c_unroll	 = Stats.newCounter[c_inline] *)
+    fun click_simpleinline () = (click "i" c_inline)
+    fun click_copyinline   () = (click "I" c_inline)
+    fun click_unroll       () = (click "u" c_inline)
+    fun inline_count () = Stats.getCounter c_inline
 
 (* cfg: is used for deBruijn renumbering when inlining at different depths
  * ifs (inlined functions): records which functions we're currently inlining
@@ -253,7 +295,8 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 	  | Val v => v
 			 
     fun val2sval m (F.VAR ov) = 
-	((lookup m ov) handle x => ((*  PP.printSval(F.VAR ov); *) raise x))
+	((lookup m ov) handle x =>
+	 (say("val2sval "^(C.LVarString ov)^"\n"); raise x))
       | val2sval m v = Val v
 
     fun bugsv (msg,sv) = bugval(msg, sval2val sv)
@@ -279,8 +322,8 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 				  le))
 	     | TFun{1=lv,2=le,...} =>
 	       C.unuselexp undertake le
-	     | (Select {2=v,...} | Con {2=v,...}) => unuseval m v
-	     | Record {2=vs,...} => app (unuseval m) vs
+	     | (Select {2=sv,...} | Con {2=sv,...}) => unusesval m sv
+	     | Record {2=svs,...} => app (unusesval m) svs
 	     (* decon's are implicit so we can't get rid of them *)
 	     | Decon _ => ()
 	end
@@ -289,6 +332,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		     | x =>
 		       (say("while undertaking "^(C.LVarString lv)^"\n"); raise x)
 
+    and unusesval m sv = unuseval m (sval2val sv)
     and unuseval m (F.VAR lv) =
 	if (C.unuse false (C.get lv)) then undertake m lv else ()
       | unuseval f _ = ()
@@ -343,7 +387,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		  * and kill only the function name.  This inlining strategy
 		  * looks inoffensive enough, but still requires some care:
 		  * see comments at the begining of this file and in cfun *)
-		 (inlineWitness := true;
+		 (click_simpleinline();
 		  ignore(C.unuse true (C.get g));
 		  ASSERT(not (used g), "killed");
 		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
@@ -360,14 +404,15 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		 let val nle =
 			 C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
 		 in
-		     inlineWitness := true;
 		     (*  say ("\nInlining "^(C.LVarString g)); *)
 		     (app (unuseval m) vs) handle x => raise x;
 		     unusecall m g;
 		     (SOME(nle, od),
 		      (* gross hack: to prevent further unrolling,
 		       * I pretend that the rest is not inside the body *)
-		      if inline = F.IH_UNROLL then S.rmv(g, ifs) else S.add(g, ifs))
+		      if inline = F.IH_UNROLL
+		      then (click_unroll(); S.rmv(g, ifs))
+		      else (click_copyinline(); S.add(g, ifs)))
 		 end
 	     else (NONE, ifs))
 	  | sv => (NONE, ifs)
@@ -417,6 +462,7 @@ in
 						      body
  			       val nle2 = F.LET([nlv], le2, body2)
  			   in
+			       click_branch();
  			       loop m (wrap(F.BRANCH(po, vs, nle1, nle2))) cont
  			   end
  		       else
@@ -432,18 +478,18 @@ in
 	end
 
       | F.FIX (fs,le) =>
-	let (* register dump bindings *)
-	    val m = foldl (fn (fdec as (_,f,_,_),m) =>
-			   addbind(m, f, Var(f,NONE)))
-			  m fs
-
-	    (* The actual function contraction *)
+	let (* The actual function contraction *)
 	    fun cfun (m,[]:F.fundec list,acc) = acc
 	      | cfun (m,fdec as ({inline,cconv,known,isrec},f,args,body)::fs,acc) =
-		if used f then
+		let val fi = C.get f
+		in if C.dead fi then cfun(m, fs, acc)
+		   else if C.iusenb fi = C.usenb fi then
+		       (* we need to be careful that undertake not be called
+			* recursively *)
+		       (C.use NONE fi; undertake m f; cfun(m, fs, acc))
+		   else
 		    let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
-			val oldWitness =
-			    (!inlineWitness before inlineWitness := false)
+			val saved_ic = inline_count()
 			(* make up the bindings for args inside the body *)
 			fun addnobind ((lv,lty),m) =
 			    addbind(m, lv, Var(lv, SOME lty))
@@ -454,11 +500,10 @@ in
 			 * changed (read: bigger), so we have to reset the
 			 * `inline' bit *)
 			val nfk = {isrec=isrec, cconv=cconv,
-				   known=known orelse not(C.escaping(C.get f))handle x => raise x,
-				   inline=if !inlineWitness
-					  then F.IH_SAFE
-					  else (inline before
-						inlineWitness := oldWitness)}
+				   known=known orelse not(C.escaping fi),
+				   inline=if inline_count() = saved_ic
+					  then inline
+					  else F.IH_SAFE}
 			(* update the binding in the map.  This step is not
 			 * not just a mere optimization but is necessary
 			 * because if we don't do it and the function
@@ -469,7 +514,7 @@ in
 		    in cfun(nm, fs, (nfk, f, args, nbody)::acc)
 			   (*  before say ("\nExiting "^(C.LVarString f)) *)
 		    end
-		else cfun(m, fs, acc)
+		end
 
 	    (* check for eta redex *)
 	    fun ceta (fdec as (fk,f,args,F.APP(g,vs)):F.fundec,(m,fs,hs)) =
@@ -486,8 +531,10 @@ in
 		     * escaping one.  It's dangerous for optimisations based
 		     * on known functions (elimination of dead args, f.ex)
 		     * and could generate cases where call>use in collect *)
-		    in if not (((C.escaping(C.get f))handle x => raise x) andalso not (C.escaping(C.get g))handle x => raise x)
-		       then let
+		    in if (C.escaping(C.get f)) andalso not(C.escaping(C.get g))
+		       (* the default case could ensure the inline *)
+		       then (m, fdec::fs, hs)
+		       else let
 			   (* if an earlier function h has been eta-reduced
 			    * to f, we have to be careful to update its
 			    * binding to not refer to f any more since f
@@ -499,12 +546,11 @@ in
 		       in
 			   (* I could almost reuse `substitute' but the
 			    * unuse in substitute assumes the val is escaping *)
+			   click_eta();
 			   C.transfer(f, g);
 			   unusecall m g;
 			   (addbind(m, f, svg), fs, f::hs)
 		       end
-		       (* the default case could ensure the inline *)
-		       else (m, fdec::fs, hs)
 		    end
 		else (m, fdec::fs, hs)
 	      | ceta (fdec,(m,fs,hs)) = (m,fdec::fs,hs)
@@ -516,14 +562,15 @@ in
 		    val cst =
 			ListPair.map
 			    (fn (NONE,_) => false
-			      | (SOME v,(a,_)) =>
-				((case substval v
+			      | (SOME(F.VAR lv),(a,_)) =>
+				((case sval2val(lookup m lv)
 				  of F.VAR lv =>
 				     if used a andalso used lv then
 					 (C.use NONE (C.get lv); true)
 				     else false
-				   | _ => false)
-				    handle M.IntmapF => false))
+				   | _ => true)
+				    handle M.IntmapF => false)
+			      | (SOME v,(a,_)) => true)
 			    (actuals, args)
 		(* if all args are used, there's nothing we can do *)
 		in if List.all not cst then f else
@@ -540,14 +587,16 @@ in
 			    F.LET(map #1 (filter args),
 				  F.RET(map O.valOf (filter actuals)),
 				  body)
-		    in (fk, g, nargs, nbody)
+		    in click_cstargs();
+			(fk, g, nargs, nbody)
 		    end
 		end
 
 	    (* add wrapper for various purposes *)
 	    fun wrap (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec,fs) = f::fs
 	      | wrap (f as (fk as {isrec,...},g,args,body):F.fundec,fs) =
-		let fun dropargs filter =
+		let val gi = C.get g
+		    fun dropargs filter =
 			let val (nfk,nfk') = OU.fk_wrap(fk, O.map #1 isrec)
 			    val args' = filter args
 			    val ng = cplv g
@@ -558,31 +607,40 @@ in
 			    val nf' = (nfk', ng, args', body)
 
 			    val ngi = C.new (SOME(map #1 args')) ng
-			    val nargsi = map ((C.new NONE) o #1) nargs
 			in
+			    C.ireset gi;
+			    app (ignore o (C.new NONE) o #1) nargs;
 			    C.use (SOME appargs) ngi;
-			    app (C.use NONE) nargsi;
+			    app (C.use NONE o C.get) nargs';
 			    nf'::nf::fs
 			end
 		    val used = map (used o #1) args
-		in
-		    (* if some args are not used, let's drop them *)
-		    if not (List.all OU.id used) then
-			dropargs (fn xs => OU.filter(used, xs))
+		    in
+		    (* Don't introduce wrappers for escaping-only functions.
+		     * This is debatable since although wrappers are useless
+		     * on escaping-only functions, some of the escaping uses
+		     * might turn into calls in the course of fcontract, so
+		     * by not introducing wrappers here, we avoid useless work
+		     * but we also postpone useful work to later invocations. *)
+		    if C.called gi then
+			(* if some args are not used, let's drop them *)
+			if not (List.all OU.id used) then
+			    (click_dropargs();
+			     dropargs (fn xs => OU.filter(used, xs)))
 
-		    (* eta-split: add a wrapper for escaping uses *)
-		    else
-			let val gi = C.get g
-			in if ((C.escaping gi)handle x => raise x) andalso ((C.called gi)handle x => raise x) then
+			(* eta-split: add a wrapper for escaping uses *)
+			else if C.escaping gi then
 			    (* like dropargs but keeping all args *)
-			    dropargs OU.id
-
-			   else f::fs
-			end
+			    (click_etasplit(); dropargs OU.id)
+			    
+			else f::fs
+		    else f::fs
 		end
 
 	    (* junk unused funs *)
-	    val fs = List.filter (used o #2) fs
+	    val fs = List.filter (fn (_,f,_,_) =>
+				  used f orelse (click_deadlexp(); false))
+				 fs
 
 	    (* redirect cst args to their source value *)
 	    val fs = map cstargs fs
@@ -628,21 +686,33 @@ in
 	end
 	    
       | F.TFN ((f,args,body),le) =>
-	if used f then
+	let val fi = C.get f
+	in if C.dead fi then (click_deadlexp(); loop m le cont) else
 	    let val nbody = cexp (DI.next d, DI.next od) ifs m body #2
 		val nm = addbind(m, f, TFun(f, nbody, args, od))
 		val nle = loop nm le cont
 	    in
-		if used f then F.TFN((f, args, nbody), nle) else nle
+		if C.dead fi then nle else F.TFN((f, args, nbody), nle)
 	    end
-	else loop m le cont
+	end
 
       | F.TAPP(f,tycs) =>
+	(* (case val2sval m f
+	  of TFun(g,body,args,od) =>
+	     if d = od andalso C.usenb(C.get g) = 1 then
+		 let val (_,_,_,le) =
+			 ({inline=false,isrec=NONE,known=false,cconv=F.CC_FCT},
+			  LV.mkLvar(),[],
+			  F.TFN((g,args,body),TAPP(g,tycs)))
+		 in 
+		     inlineWitness := true;
+		     ignore(C.unuse true (C.get g));
+		 end *)
 	cont(m, F.TAPP((substval f) handle x => raise x, tycs))
 
       | F.SWITCH (v,ac,arms,def) =>
 	(case ((val2sval m v) handle x => raise x)
-	  of sv as Con (lvc,v,dc1,tycs1) =>
+	  of sv as Con (lvc,svc,dc1,tycs1) =>
 	     let fun killle le = C.unuselexp (undertake m) le
 		 fun kill lv le =
 		     C.unuselexp (undertake (addbind(m,lv,Var(lv,NONE)))) le
@@ -655,14 +725,14 @@ in
 		     if #2 dc1 = #2 (cdcon dc2) then
 			 (map killarm tl; (* kill the rest *)
 			  O.map killle def; (* and the default case *)
-			  loop (substitute(m, lv, val2sval m v, F.VAR lvc))
+			  loop (substitute(m, lv, svc, F.VAR lvc))
 			       le cont)
 		     else
 			 (* kill this arm and continue with the rest *)
 			 (kill lv le; carm tl)
 		   | carm [] = loop m (O.valOf def) cont
 		   | carm _ = buglexp("unexpected arm in switch(con,...)", le)
-	     in carm arms
+	     in click_switch(); carm arms
 	     end
 
 	   | sv as Val v =>
@@ -674,7 +744,7 @@ in
 			   loop m le cont)
 		     else (kill le; carm tl)
 		   | carm [] = loop m (O.valOf def) cont
-	     in carm arms
+	     in click_switch(); carm arms
 	     end
 
 	   | sv as (Var{1=lvc,...} | Select{1=lvc,...} | Decon{1=lvc, ...}
@@ -684,9 +754,10 @@ in
 		  (* this is a mere DECON, so we can push the let binding
 		   * (hidden in cont) inside and maybe even drop the DECON *)
 		  let val ndc = cdcon dc
-		      val nm = addbind(m, lv, Decon(lv, F.VAR lvc, ndc, tycs))
+		      val slv = Decon(lv, sv, ndc, tycs)
+		      val nm = addbind(m, lv, slv)
 		      (* see below *)
-		      val nm = addbind(nm, lvc, Con(lvc, F.VAR lv, ndc, tycs))
+		      val nm = addbind(nm, lvc, Con(lvc, slv, ndc, tycs))
 		      val nle = loop nm le cont
 		      val nv = sval2val sv
 		  in
@@ -696,12 +767,12 @@ in
 		  end
 		| (([(_,le)],NONE) | ([],SOME le)) =>
 		  (* This should never happen, but we can optimize it away *)
-		  (unuseval m (sval2val sv); loop m le cont)
+		  (unuseval m (sval2val sv); loop m le cont) 
 		| _ =>
 		  let fun carm (F.DATAcon(dc,tycs,lv),le) =
 			  let val ndc = cdcon dc
-			      val nm = addbind(m, lv,
-					       Decon(lv, F.VAR lvc, ndc, tycs))
+			      val slv = Decon(lv, sv, ndc, tycs)
+			      val nm = addbind(m, lv, slv)
 			      (* we can rebind lv to a more precise value
 			       * !!BEWARE!!  This rebinding is misleading:
 			       * - it gives the impression that `lvc' is built
@@ -715,8 +786,7 @@ in
 			       * - it seems to be a good idea, but it can hide
 			       *   other opt-opportunities since it hides the
 			       *   previous binding. *)
-			      val nm = addbind(nm, lvc,
-					       Con(lvc, F.VAR lv, ndc, tycs))
+			      val nm = addbind(nm, lvc, Con(lvc,slv,ndc,tycs))
 			  in (F.DATAcon(ndc, tycs, lv), loop nm le #2)
 			  end
 			| carm (con,le) = (con, loop m le #2)
@@ -729,77 +799,78 @@ in
 	     bugval("unexpected switch arg", sval2val sv))
 
       | F.CON (dc1,tycs1,v,lv,le) =>
-	if used lv then
+	let val lvi = C.get lv
+	in if C.dead lvi then (click_deadval(); loop m le cont) else
 	    let val ndc = cdcon dc1
 		fun ccon sv =
-		    let val nv = sval2val sv
-			val nm = addbind(m, lv, Con(lv, nv, ndc, tycs1))
+		    let val nm = addbind(m, lv, Con(lv, sv, ndc, tycs1))
 			val nle = loop nm le cont
-		    in if used lv then F.CON(ndc, tycs1, nv, lv, nle) else nle
+		    in if C.dead lvi then nle
+		       else F.CON(ndc, tycs1, sval2val sv, lv, nle)
 		    end
 	    in case ((val2sval m v) handle x => raise x)
-		of sv as (Decon (lvd,vc,dc2,tycs2)) =>
+		of sv as (Decon (lvd,sv',dc2,tycs2)) =>
 		   if FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) then
-		       let val sv = (val2sval m vc) handle x => raise x
-		       in loop (substitute(m, lv, sv, F.VAR lvd)) le cont
-		       end
+		       (click_con();
+			loop (substitute(m, lv, sv', F.VAR lvd)) le cont)
 		   else ccon sv
 		 | sv => ccon sv
 	    end
-	else loop m le cont
+	end
 
       | F.RECORD (rk,vs,lv,le) =>
 	(* g: check whether the record already exists *)
-	if used lv then
-	    let fun g (n,Select(_,v1,i)::ss) =
-		    if n = i then
-			(case ss
-			  of Select(_,v2,_)::_ =>
-			     if v1 = v2 then g(n+1, ss) else NONE
-			   | [] => 
-			     (case sval2lty (val2sval m v1)
-			       of SOME lty =>
-				  let val ltd = case rk
-						 of F.RK_STRUCT => LT.ltd_str
-						  | F.RK_TUPLE _ => LT.ltd_tuple
-						  | _ => buglexp("bogus rk",le)
-				  in if length(ltd lty) = n+1
-				     then SOME v1 else NONE
-				  end
-				| _ => NONE) (* sad case *)
-			   | _ => NONE)
-		    else NONE
+	let val lvi = C.get lv
+	in if C.dead lvi then (click_deadval(); loop m le cont) else
+	    let fun g (Select(_,sv,0)::ss) =
+		    let fun g' (n,Select(_,sv',i)::ss) =
+			    if n = i andalso (sval2val sv) = (sval2val sv')
+			    then g'(n+1,ss) else NONE
+			  | g' (n,[]) = 
+			    (case sval2lty sv
+			      of SOME lty =>
+				 let val ltd = case rk
+						of F.RK_STRUCT => LT.ltd_str
+						 | F.RK_TUPLE _ => LT.ltd_tuple
+						 | _ => buglexp("bogus rk",le)
+				 in if length(ltd lty) = n
+				    then SOME sv else NONE
+				 end
+			       | _ => (click_lacktype(); NONE)) (* sad *)
+			   | g' _ = NONE
+		    in g'(1,ss)
+		    end
 		  | g _ = NONE
 		val svs = ((map (val2sval m) vs) handle x => raise x)
-	    in case g (0,svs)
-		of SOME v => 
-		   let val sv = (val2sval m v) handle x => raise x
-		   in loop (substitute(m, lv, sv, F.INT 0)) le cont
-			   before app (unuseval m) vs
-		   end
-		 | _ => 
-		   let val nvs = map sval2val svs
-		       val nm = addbind(m, lv, Record(lv, nvs))
+	    in case g svs
+		of SOME sv => (click_record();
+			       loop (substitute(m, lv, sv, F.INT 0)) le cont
+				    before app (unuseval m) vs)
+		 | _ =>
+		   let val nm = addbind(m, lv, Record(lv, svs))
 		       val nle = loop nm le cont
-		   in if used lv then F.RECORD(rk, nvs, lv, nle) else nle
+		   in if C.dead lvi then nle
+		      else F.RECORD(rk, map sval2val svs, lv, nle)
 		   end
 	    end
-	else loop m le cont
+	end
 
       | F.SELECT (v,i,lv,le) =>
-	if used lv then
+	let val lvi = C.get lv
+	in if C.dead lvi then (click_deadval(); loop m le cont) else
 	    (case ((val2sval m v) handle x => raise x)
-	      of Record (lvr,vs) =>
-		 let val sv = (val2sval m (List.nth(vs, i))) handle x => raise x
-		 in loop (substitute(m, lv, sv, F.VAR lvr)) le cont
+	      of Record (lvr,svs) =>
+		 let val sv = List.nth(svs, i)
+		 in click_select();
+		     loop (substitute(m, lv, sv, F.VAR lvr)) le cont
 		 end
 	       | sv =>
-		 let val nv = sval2val sv
-		     val nm = addbind (m, lv, Select(lv, nv, i))
+		 let val nm = addbind (m, lv, Select(lv, sv, i))
 		     val nle = loop nm le cont
-		 in if used lv then F.SELECT(nv, i, lv, nle) else nle
+		 in if C.dead lvi then nle
+		    else F.SELECT(sval2val sv, i, lv, nle) 
 		 end)
-	else loop m le cont
+	end
 		     
       | F.RAISE (v,ltys) =>
 	cont(m, F.RAISE((substval v) handle x => raise x, ltys))
@@ -816,18 +887,17 @@ in
 	end
 
       | F.PRIMOP (po,vs,lv,le) =>
-	let val impure = impurePO po
-	in if impure orelse used lv then
+	let val lvi = C.get lv
+	    val pure = not(impurePO po)
+	in if pure andalso C.dead lvi then (click_deadval();loop m le cont) else
 	    let val nvs = ((map substval vs) handle x => raise x)
 		val npo = cpo po
 		val nm = addbind(m, lv, Var(lv,NONE))
 		val nle = loop nm le cont
 	    in
-		if impure orelse used lv
-		then F.PRIMOP(npo, nvs, lv, nle)
-		else nle
+		if pure andalso C.dead lvi then nle
+		else F.PRIMOP(npo, nvs, lv, nle)
 	    end
-	   else loop m le cont
 	end
 end
 		 

@@ -26,7 +26,7 @@ fun phase x = Stats.doPhase (Stats.makePhase x)
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fcontract o fcollect
+val fcontract = fn f => (lcontract f; fcontract(fcollect f, Stats.newCounter[]))
 
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -76,6 +76,8 @@ fun dumpTerm (printE, s, le) =
       done ()
   end (* function dumpTerm *)
 
+val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
+
 (** compiling FLINT code into the binary machine code *)
 fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) = 
   let fun err severity s =
@@ -91,6 +93,29 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
         check (ChkFlint.checkTop, PPFlint.printFundec, 
                "FLINT") (CTRL.check, b, s)
 
+      val fcing = ref (!fcs)
+				
+      (* fun fcontract f =
+	  case !fcing
+	   of fcontract::fcs => (fcing := fcs; fcontract f)
+	    | [] => let val fcc = Stats.newCounter[]
+			val fcname = "FContract-"^(Int.toString(length(!fcs)))
+			val coname = "FCollect-"^(Int.toString(length(!fcs)))
+			val lcname = "LContract-"^(Int.toString(length(!fcs)))
+			val fcstat = Stats.newStat(fcname, [fcc])
+			val fcphase = phase ("Compiler 052b "^fcname)
+					    FContract.contract
+			val cophase = phase ("Compiler 052a "^coname)
+					    Collect.collect
+			val lcphase = phase ("Compiler 052 "^lcname)
+					    LContract.lcontract
+			fun g c = (lcphase c; fcphase(cophase c,fcc))
+	      in
+		  Stats.registerStat fcstat;
+		  fcs := (!fcs) @ [g];
+		  g f
+	      end *)
+		  
       (* f:FLINT.prog	flint codee
        * r:boot		whether it has gone through reify yet
        * l:string	last phase through which it went *)
@@ -120,15 +145,15 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun check (f,r,l) = (chkF (r, l) f; (f, r, l))
 
       fun runphase' (arg as (p,{1=f,...})) =
-	  ((*  say("Phase "^p^"..."); *)
-	   (runphase arg) (*  before *)
-(*  	   say("..."^p^" Done.\n") *))
-	      handle x => (say ("\nwhile in "^p^" phase");
+	  (if !CTRL.printPhases then say("Phase "^p^"...") else ();
+	   ((check o print o runphase) arg) before
+  	   (if !CTRL.printPhases then say("..."^p^" Done.\n") else ()))
+	      handle x => (say ("\nwhile in "^p^" phase\n");
 			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
 			   raise x)
 
       (* the "id" phases is just added to do the print/check at the entrance *)
-      val (flint,r,_) = foldl (check o print o runphase')
+      val (flint,r,_) = foldl runphase'
 			      (flint,false,"flintnm")
 			      ((*  "id" :: *) !CTRL.phases)
       val flint = if r then flint else (say "\n!!Forgot reify!!\n"; reify flint)
