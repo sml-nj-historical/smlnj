@@ -1,12 +1,12 @@
 (* Uses the generated lexer and parser to export parsing functions 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:07  monnier
+ * *** empty log message ***
  *
-# Revision 1.1.1.1  1997/01/14  01:38:03  george
-#   Version 109.24
-#
+ * Revision 1.1.1.1  1997/01/14 01:38:03  george
+ *   Version 109.24
+ *
  * Revision 1.1.1.1  1996/01/31  16:01:39  george
  * Version 109
  * 

@@ -49,7 +49,7 @@ ml_val_t _ml_win32_PS_get_environment_variable(ml_state_t *msp, ml_val_t arg)
   ml_val_t ml_s,res = OPTION_NONE;
 
   if (ret > GEV_BUF_SZ) {
-    return  RaiseSysError(msp, NIL(char *));
+    return RAISE_SYSERR(msp,-1);
   }
   if (ret > 0) {
     ml_s = ML_CString(msp,buf);

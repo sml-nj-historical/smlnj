@@ -624,12 +624,8 @@ ML_CODE_HDR(create_v_a)
 
 
 /* floor : real -> int
- * Return the floor of the argument or else raise Float("floor") if out of range.
- * We implement the range check by using an integer comparison with the high 32
- * bits of the real value (which contains the biased exponent).
- * (double)(2^30)   == [0x41d00000, 0x0]
- * (double)(-2^30)  == [0xc1d00000, 0x0]
- */
+ * Return the floor of the argument ; do not check for out-of-range (it's
+ * the ML code's responsibility to check before calling. */
 ML_CODE_HDR(floor_a)
 	ld	[STDARG],%f0	    /* fetch arg into %f0, %f1. */
 	ld	[STDARG+4],%f1
@@ -638,20 +634,14 @@ ML_CODE_HDR(floor_a)
 	blt	1f
 	nop
 				/* handle positive case */
-	set	0x41d00000,TMPREG3	    /* tmpreg3 = 2^30 */
-	cmp	TMPREG2,TMPREG3		    /* if tmpreg2 >= 2^30 then range error */
-	bge	out_of_range
-	nop
 	fdtoi	%f0,%f2		    /* cvt to int (round towards 0) */
 	st	%f2,[%sp+FLOOR_OFFSET]
 	ld	[%sp+FLOOR_OFFSET],TMPREG2    /* tmpreg2 gets int result (via stack temp). */
-	ba	2f
-	nop
+	add	TMPREG2,TMPREG2,TMPREG2
+	add	TMPREG2,1,STDARG
+	CONTINUE
+	
 1:				/* handle negative case. */
-	set	0xc1d00000,TMPREG3	    /* tmpreg3 = -2^30 */
-	cmp	TMPREG2,TMPREG3		    /* if tmpreg2 < -2^30 then range error */
-	bge	out_of_range	    /* not bl because of sign. */
-	nop
 	fdtoi	%f0,%f2		    /* cvt to int (round towards 0) */
 	st	%f2,[%sp+FLOOR_OFFSET]
 	fitod	%f2,%f4		    /* cvt back to real to check for fraction */
@@ -664,11 +654,6 @@ ML_CODE_HDR(floor_a)
 	add	TMPREG2,TMPREG2,TMPREG2
 	add	TMPREG2,1,STDARG
 	CONTINUE
-
-out_of_range:			/* out of range */
-	t	ST_INT_OVERFLOW		/* generate an Overflow exn.  We do this */
-					/* via a trap to produce a SIGOVFL */
-
 
 /* logb : real -> int
  * Extract and unbias the exponent.

@@ -49,7 +49,7 @@ ml_val_t _ml_win32_IO_close(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_close: failing\n");
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 
@@ -142,7 +142,7 @@ ml_val_t _ml_win32_IO_read_vec(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_read_vec: failing %d %d\n",n,nbytes);
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 PVT void check_cntrl_c(BOOL read_OK,int bytes_read)
@@ -217,7 +217,7 @@ ml_val_t _ml_win32_IO_read_vec_txt(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_read_vec_txt: failing on handle %x\n",h);
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 /* _ml_win32_IO_read_arr : (word32*word8array.array*int*int) -> int
@@ -247,7 +247,7 @@ ml_val_t _ml_win32_IO_read_arr(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_read_arr: failing\n");
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 /* _ml_win32_IO_read_arr_txt : (word32*char8array.array*int*int) -> int
@@ -297,7 +297,7 @@ ml_val_t _ml_win32_IO_read_arr_txt(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_read_arr_txt: failing\n");
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 
@@ -350,7 +350,7 @@ ml_val_t _ml_win32_IO_write_buf(ml_state_t *msp, ml_val_t arg)
 #ifdef WIN32_DEBUG
   SayDebug("_ml_win32_IO_write_buf: failing\n");
 #endif
-  return RaiseSysError(msp, NIL(char *));
+  return RAISE_SYSERR(msp,-1);
 }
 
 ml_val_t _ml_win32_IO_write_vec(ml_state_t *msp, ml_val_t arg)

@@ -706,14 +706,6 @@ floor_MAXINT	.double 1073741824.0
 
 ML_CODE_HDR(floor_a)
 	fldds   0(stdarg), %fr4			/* fr4 := argument */
-    	ldil	L%floor_MAXINT, tmp1		/* fr5 get maxint */
-    	ldo	R%floor_MAXINT(tmp1), tmp1
-    	fldds	0(tmp1), %fr5
-    	fabs,dbl	%fr4, %fr4		/* fr4 := abs (argument) */
-    	fcmp,dbl,<	%fr4, %fr5		/* check for overflow */
-	fldds	0(stdarg), %fr4			/* reload argument */
-    	ftest
-    	b,n	floor_overflow
 
     	ldi	0x60e, tmp1		/* set rounding mode to -inf */
     	stw	tmp1, 0-4(sp)		/* store in temp scratch */
@@ -727,10 +719,6 @@ ML_CODE_HDR(floor_a)
     	add	stdarg, stdarg, stdarg
     	ldo	1(stdarg), stdarg
     	CONTINUE
-floor_overflow
-    	ldil	L%0x7fffffff,tmp1
-    	ldo	R%0x7fffffff(tmp1),tmp1
-    	addo	tmp1,tmp1,zero
 
 
 /* try_lock_a */
@@ -829,10 +817,8 @@ ENTRY(ml_div)
 	divByZeroCheck(noDivByZero)
 	comibf,= 	0-1, %r25, mlDivNoOverflow
 	nop
-	ldil	L%0x7fffffff,tmp1	/* raise overflow */
-	ldo		R%0x7fffffff(tmp1),tmp1
-	addo	tmp1,tmp1,zero
-	break	0,0			/* should never be executed */
+	ldo	0x1, tmp1
+	subo	%r26, tmp1, tmp1
 mlDivNoOverflow
 	InvokeMillicode(do_divI)
 

@@ -95,7 +95,7 @@ ml_val_t _ml_P_FileSys_stat (ml_state_t *msp, ml_val_t arg)
     sts = stat(path, &buf);
 
     if (sts < 0)
-      return RaiseSysError(msp, NIL(char*));
+	return RAISE_SYSERR(msp, sts);
 
     return (mkStatRep(msp, &buf));
 
@@ -114,7 +114,7 @@ ml_val_t _ml_P_FileSys_fstat (ml_state_t *msp, ml_val_t arg)
     sts = fstat(fd, &buf);
 
     if (sts < 0)
-      return RaiseSysError(msp, NIL(char*));
+	return RAISE_SYSERR(msp, sts);
 
     return (mkStatRep(msp, &buf));
 
@@ -134,7 +134,7 @@ ml_val_t _ml_P_FileSys_lstat (ml_state_t *msp, ml_val_t arg)
     sts = lstat(path, &buf);
 
     if (sts < 0)
-      return RaiseSysError(msp, NIL(char*));
+	return RAISE_SYSERR(msp, sts);
 
     return (mkStatRep(msp, &buf));
 

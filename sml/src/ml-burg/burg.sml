@@ -3,8 +3,11 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:22  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:04  monnier
+ * *** empty log message ***
+ *
+ * Revision 1.2  1997/10/28 15:02:45  george
+ *    Made compatible with new basis
  *
 # Revision 1.1.1.1  1997/01/14  01:37:59  george
 #   Version 109.24
@@ -884,8 +887,8 @@ structure BurgEmit : BURGEMIT =
 	    saynl "    datatype s_node =";
 	    iter (loop_node, !nb_t);
 	    saynl "    withtype s_tree = s_cost * s_rule * s_node * tree\n\n";
-	    saynl "    val sub = System.Unsafe.subscript";
-	    saynl "    val update = System.Unsafe.update"
+	    saynl "    val sub = Array.sub";
+	    saynl "    val update = Array.update"
 	  end
 
 

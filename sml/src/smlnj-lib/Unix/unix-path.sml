@@ -11,10 +11,7 @@
 structure UnixPath : UNIX_PATH =
   struct
 
-    structure FS : sig
-	datatype access_mode = A_READ | A_WRITE | A_EXEC
-      end = OS.FileSys
-    open FS
+    datatype access_mode = datatype OS.FileSys.access_mode
 
 (** WHAT IS THIS IN POSIX??? **)
     datatype file_type = F_REGULAR | F_DIR | F_SYMLINK | F_SOCK | F_CHR | F_BLK
@@ -33,13 +30,19 @@ structure UnixPath : UNIX_PATH =
 	  end (* getPath *)
 
     local
-      fun getFileTy path = Posix.FileSys.ST.fileType(Posix.FileSys.stat path)
-      fun isFileTy (path, F_REGULAR) = Posix.FileSys.isReg(getFileTy path)
-	| isFileTy (path, F_DIR) = Posix.FileSys.isDir(getFileTy path)
-	| isFileTy (path, F_SYMLINK) = Posix.FileSys.isLink(getFileTy path)
-	| isFileTy (path, F_SOCK) = Posix.FileSys.isSock(getFileTy path)
-	| isFileTy (path, F_CHR) = Posix.FileSys.isChr(getFileTy path)
-	| isFileTy (path, F_BLK) = Posix.FileSys.isBlk(getFileTy path)
+      structure ST = Posix.FileSys.ST
+      fun isFileTy (path, ty) = let
+	    val st = Posix.FileSys.stat path
+	    in
+	      case ty
+	       of F_REGULAR => ST.isReg st
+		| F_DIR => ST.isDir st
+		| F_SYMLINK => ST.isLink st
+		| F_SOCK => ST.isSock st
+		| F_CHR => ST.isChr st
+		| F_BLK => ST.isBlk st
+	      (* end case *)
+	    end
       fun access mode pathname = (OS.FileSys.access(pathname, mode))
       fun accessAndType (mode, ftype) pathname = (
 	    OS.FileSys.access(pathname, mode)

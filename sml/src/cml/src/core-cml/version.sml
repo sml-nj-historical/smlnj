@@ -13,8 +13,8 @@ structure Version : sig
 
     val version = {
 	    system = "Concurrent ML",
-	    version_id = [1, 0, 9],
-	    date = "September 1, 1997"
+	    version_id = [1, 0, 10],
+	    date = "September 15, 1997"
 	  }
 
     fun f ([], l) = l

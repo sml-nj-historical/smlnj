@@ -1,6 +1,15 @@
 /* poll.c
  *
  * COPYRIGHT (c) 1994 by AT&T Bell Laboratories.
+ *
+ * The run-time code for OS.IO.poll.  Note that this implementation should
+ * satisfy the following two properties:
+ *
+ *   1) the list of return items should be in the same order as the
+ *	corresponding list of arguments.
+ *
+ *   2) return items should contain no more information than was queried for
+ *	(this matters when the same descriptor is covered by multiple items).
  */
 
 #include "ml-unixdep.h"
@@ -98,10 +107,10 @@ PVT ml_val_t ML_Poll (ml_state_t *msp, ml_val_t pollList, struct timeval *timeou
 
     sts = poll (fds, nfds, tout);
 
-    FREE(fds);
-
-    if (sts < 0)
+    if (sts < 0) {
+	FREE(fds);
 	return RAISE_SYSERR(msp, sts);
+    }
     else {
 	for (i = nfds-1, l = LIST_nil;  i >= 0;  i--) {
 	    fdp = &(fds[i]);
@@ -117,6 +126,7 @@ PVT ml_val_t ML_Poll (ml_state_t *msp, ml_val_t pollList, struct timeval *timeou
 		LIST_cons(msp, l, item, l);
 	    }
 	}
+	FREE(fds);
 	return l;
     }
 
@@ -169,21 +179,38 @@ PVT ml_val_t ML_Poll (ml_state_t *msp, ml_val_t pollList, struct timeval *timeou
 
     if (sts < 0)
 	return RAISE_SYSERR(msp, sts);
+    else if (sts == 0)
+	return LIST_nil;
     else {
-	for (fd = maxFD, l = LIST_nil;  sts > 0;  fd--) {
-	    flag = 0;
-	    if ((rfds != NIL(fd_set *)) && FD_ISSET(fd, rfds))
-		flag |= RD_BIT;
-	    if ((wfds != NIL(fd_set *)) && FD_ISSET(fd, wfds))
-		flag |= WR_BIT;
-	    if ((efds != NIL(fd_set *)) && FD_ISSET(fd, efds))
-		flag |= ERR_BIT;
-	    if (flag != 0) {
-		sts--;
-		REC_ALLOC2 (msp, item, INT_CtoML(fd), INT_CtoML(flag));
-		LIST_cons (msp, l, item, l);
+	ml_val_t	*resVec = NEW_VEC(ml_val_t, sts);
+	int		i, resFlag;
+
+	for (i = 0, l = pollList;  l != LIST_nil;  l = LIST_tl(l)) {
+	    item	= LIST_hd(l);
+	    fd		= REC_SELINT(item, 0);
+	    flag	= REC_SELINT(item, 1);
+	    resFlag	= 0;
+	    if (((flag & RD_BIT) != 0) && FD_ISSET(fd, rfds))
+		resFlag |= RD_BIT;
+	    if (((flag & WR_BIT) != 0) && FD_ISSET(fd, wfds))
+		resFlag |= WR_BIT;
+	    if (((flag & ERR_BIT) != 0) && FD_ISSET(fd, efds))
+		resFlag |= ERR_BIT;
+	    if (resFlag != 0) {
+		REC_ALLOC2 (msp, item, INT_CtoML(fd), INT_CtoML(resFlag));
+		resVec[i++] = item;
 	    }
 	}
+
+	ASSERT(i == sts);
+
+	for (i = sts-1, l = LIST_nil;  i >= 0;  i--) {
+	    item = resVec[i];
+	    LIST_cons (msp, l, item, l);
+	}
+
+	FREE(resVec);
+
 	return l;
     }
 

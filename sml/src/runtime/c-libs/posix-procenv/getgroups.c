@@ -55,32 +55,33 @@ ml_val_t _ml_P_ProcEnv_getgroups (ml_state_t *msp, ml_val_t arg)
     ngrps = getgroups (NGROUPS_MAX, gidset);
 
     if (ngrps == -1) {
-      gid      *gp;
+	gid      *gp;
 
-        /* If the error was not due to too small buffer size,
-         * raise exception.
-         */
-      if (errno != EINVAL)
-        return RaiseSysError(msp, NIL(char *));
+      /* If the error was not due to too small buffer size,
+       * raise exception.
+       */
+	if (errno != EINVAL)
+	    return RAISE_SYSERR(msp, -1);
 
-        /* Find out how many groups there are and allocate enough space. */
-      ngrps = getgroups (0, gidset);
-      gp = (gid *)malloc(ngrps * (sizeof (gid)));
-      if (gp == 0) {
-        errno = ENOMEM;
-        return RaiseSysError(msp, NIL(char *));
-      }
+      /* Find out how many groups there are and allocate enough space. */
+	ngrps = getgroups (0, gidset);
+	gp = (gid *)MALLOC(ngrps * (sizeof (gid)));
+	if (gp == 0) {
+	    errno = ENOMEM;
+	    return RAISE_SYSERR(msp, -1);
+	}
 
-      ngrps = getgroups (ngrps, gp);
+	ngrps = getgroups (ngrps, gp);
 
-      if (ngrps == -1)
-        p = RaiseSysError(msp, NIL(char *));
-      else
-        p = mkList (msp, ngrps, gp);
+	if (ngrps == -1)
+	    p = RAISE_SYSERR(msp, -1);
+	else
+	    p = mkList (msp, ngrps, gp);
         
-      free ((void *)gp);
+	FREE ((void *)gp);
     }
-    else p = mkList (msp, ngrps, gidset);
+    else
+	p = mkList (msp, ngrps, gidset);
     
     return p;
 

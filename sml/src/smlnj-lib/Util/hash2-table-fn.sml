@@ -43,6 +43,10 @@ functor Hash2TableFn (
 	    n_items = ref 0
 	  }
 
+  (* remove all elements from the table *)
+    fun clear (TBL{tbl1, tbl2, n_items, ...}) = (
+	  HTRep.clear(!tbl1); HTRep.clear(!tbl2); n_items := 0)
+
   (* Remove an item, returning the item.  The table's exception is raised if
    * the item doesn't exist.
    *)

@@ -1,4 +1,4 @@
-<!-- mailbox.html -->
+<!-- HTML/mailbox.html -->
 
 <!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
 
@@ -8,8 +8,10 @@
 <TITLE>The Mailbox structure</TITLE>
 </HEAD>
 <BODY>
-<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
+
 
 <H3>The Mailbox structure</H3>
 <P>
@@ -78,7 +80,7 @@ returns the event value that represents the <A HREF="mailbox.html#SIG:MAILBOX.re
 
 <DT> <A NAME="SIG:MAILBOX.recvPoll:VAL"><CODE><B>val</B> recvPoll</CODE></A>
 <DD>
-This is the non-blocking version of <A HREF="mailbox.html#SIG:MAILBOX.recv:VAL:SPEC">recv</A>. 	If the corresponding blocking form would block (because the mailbox is 	empty), then this returns 	NONE, otherwise it returns 	SOME of the received 	message.     
+This is the non-blocking version of <A HREF="mailbox.html#SIG:MAILBOX.recv:VAL:SPEC">recv</A>. 	If the corresponding blocking form would block (because the mailbox is 	empty), then this returns 	<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>, otherwise it returns 	<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> of the received 	message.     
 <BR>
 <BR>
 
@@ -91,13 +93,20 @@ Note that mailbox buffers are unbounded, which means that there is no flow      
 <BLOCKQUOTE>
 <A HREF="cml.html#CML:STR:SPEC">CML</A>
 </BLOCKQUOTE>
+
+
 <HR>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="mailbox.html">TOP</A>
+<CENTER>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
    | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
    ]</B>
+</CENTER>
 <P>
 <I>Last Modified April 21, 1996</I><BR>
-Copyright &copy; 1996 AT&amp;T <BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+
 <HR>
 </BODY>
 </HTML>

@@ -280,7 +280,8 @@ extern void ScanWeakPtrs (heap_t *heap);
 extern bigobj_desc_t *BO_AllocRegion (heap_t *heap, Addr_t szB);
 extern bigobj_desc_t *BO_Alloc (heap_t *heap, int gen, Addr_t objSzB);
 extern void BO_Free (heap_t *heap, bigobj_desc_t *desc);
-bigobj_desc_t *BO_GetDesc (ml_val_t addr);
+extern bigobj_desc_t *BO_GetDesc (ml_val_t addr);
+extern char *BO_GetCodeObjTag (bigobj_desc_t *bdp, char *buf, int bufSz);
 
 #ifdef BO_DEBUG
 extern void PrintRegionMap (bigobj_region_t *r);

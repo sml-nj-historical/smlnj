@@ -24,7 +24,7 @@ ml_val_t _ml_P_ProcEnv_times (ml_state_t *msp, ml_val_t arg)
     t = times (&ts);
 
     if (t == -1)
-      return RaiseSysError(msp, NIL(char *));
+	return RAISE_SYSERR(msp, -1);
 
     INT32_ALLOC(msp, e, t);
     INT32_ALLOC(msp, u, ts.tms_utime);

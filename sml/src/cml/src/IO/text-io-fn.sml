@@ -331,7 +331,7 @@ functor TextIOFn (
 			else (SV.mPut(more, next); false)
 		    end
 	      (* end case *))
-	fun mkInstream (reader, optData) = let
+	fun mkInstream' (reader, optData) = let
 	      val PIO.RD{readVec, readVecEvt, getPos, setPos, ...} = reader
 	      val getPos = (case (getPos, setPos)
 		     of (SOME f, SOME _) => (fn () => SOME(f()))
@@ -360,6 +360,11 @@ functor TextIOFn (
 			    info=info, more=more}
 		    (* end case *))
 	      val strm =  ISTRM(buf, 0)
+	      in
+		(tag, strm)
+	      end
+        fun mkInstream arg = let
+	      val (tag, strm) = mkInstream' arg
 	      in
 		CleanIO.rebindCleaner (tag, fn () => closeIn strm);
 		strm
@@ -612,7 +617,7 @@ functor TextIOFn (
 		SV.mPut (strmMV, strm)
 	      end
 
-	fun mkOutstream (wr as PIO.WR{chunkSize, writeArr, writeVec, ...}, mode) =
+	fun mkOutstream' (wr as PIO.WR{chunkSize, writeArr, writeVec, ...}, mode) =
 	      let
 	      fun iterate f (buf, i, sz) = let
 		    fun lp (_, 0) = ()
@@ -649,6 +654,11 @@ functor TextIOFn (
 		      writeVec = writeVec',
 		      cleanTag = tag
 		    })
+	      in
+		(tag, strm)
+	      end
+	fun mkOutstream arg = let
+	      val (tag, strm) = mkOutstream' arg
 	      in
 		CleanIO.rebindCleaner (tag, fn () => closeOut strm);
 		strm
@@ -886,30 +896,27 @@ functor TextIOFn (
     local
       structure SIO = StreamIO
       fun mkStdIn rebind = let
-	    val strm = SIO.mkInstream(OSPrimIO.stdIn(), NONE)
-	    val SIO.ISTRM(SIO.IBUF{info=SIO.INFO{cleanTag, ...}, ...}, _) = strm
+	    val (tag, strm) = SIO.mkInstream'(OSPrimIO.stdIn(), NONE)
 	    in
 	      if rebind
-		then CleanIO.rebindCleaner (cleanTag, dummyCleaner)
+		then CleanIO.rebindCleaner (tag, dummyCleaner)
 		else ();
 	      strm
 	    end
       fun mkStdOut rebind = let
 	    val wr = OSPrimIO.stdOut()
-	    val strm = SIO.mkOutstream(wr, bufferMode wr)
-	    val SIO.OSTRM{cleanTag, ...} = SV.mGet strm
+	    val (tag, strm) = SIO.mkOutstream'(wr, bufferMode wr)
 	    in
 	      if rebind
-		then CleanIO.rebindCleaner (cleanTag, fn () => SIO.flushOut strm)
+		then CleanIO.rebindCleaner (tag, fn () => SIO.flushOut strm)
 		else ();
 	      strm
 	    end
       fun mkStdErr rebind = let
-	    val strm = SIO.mkOutstream(OSPrimIO.stdErr(), IO.NO_BUF)
-	    val SIO.OSTRM{cleanTag, ...} = SV.mGet strm
+	    val (tag, strm) = SIO.mkOutstream'(OSPrimIO.stdErr(), IO.NO_BUF)
 	    in
 	      if rebind
-		then CleanIO.rebindCleaner (cleanTag, fn () => SIO.flushOut strm)
+		then CleanIO.rebindCleaner (tag, fn () => SIO.flushOut strm)
 		else ();
 	      strm
 	    end
@@ -926,6 +933,22 @@ functor TextIOFn (
 	  in
 	    StreamIO.output (strm', s); StreamIO.flushOut strm';
 	    SV.mPut(stdOut, strm')
+	  end
+
+    fun scanStream scanFn = let
+	  val scan = scanFn StreamIO.input1
+	  fun doit strm = let
+		val instrm = getInstream strm
+		in
+		  case scan instrm
+		   of NONE => NONE
+		    | SOME(item, instrm') => (
+			setInstream(strm, instrm');
+			SOME item)
+		  (* end case *)
+		end
+	  in
+	    doit
 	  end
 
   (* Establish a hook function to rebuild the I/O stack *)

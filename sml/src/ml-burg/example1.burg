@@ -71,13 +71,14 @@ structure Example = struct
   structure Burm = BurmGen (In)
   open In
 
-  fun say s = String.print s
+  fun say s = print s
 
 
   local
     val num = ref 1
+    fun inc iref = iref := (!iref + 1)
   in
-    fun new s = (s^(makestring (!num)) before inc num)
+    fun new s = (s^(Int.toString (!num)) before inc num)
   end
 
 
@@ -153,7 +154,7 @@ structure Example = struct
 	let
 	  val con = new "con"
 	in
-	  say (con^" <- CNSTI "^(makestring i)^"\n"); con
+	  say (con^" <- CNSTI "^(Int.toString i)^"\n"); con
 	end
     | walk (Burm.con_I0I, _) =
 	let

@@ -21,7 +21,7 @@ ml_val_t _ml_P_IO_fcntl_gfd (ml_state_t *msp, ml_val_t arg)
     flag = fcntl(INT_MLtoC(arg), F_GETFD);
 
     if (flag == -1)
-        return RaiseSysError(msp, NIL(char *));
+        return RAISE_SYSERR(msp, flag);
     else {
         WORD_ALLOC (msp, v, flag);
         return v;

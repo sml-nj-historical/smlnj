@@ -3,12 +3,12 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:22  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:04  monnier
+ * *** empty log message ***
  *
-# Revision 1.1.1.1  1997/01/14  01:38:00  george
-#   Version 109.24
-#
+ * Revision 1.1.1.1  1997/01/14 01:38:00  george
+ *   Version 109.24
+ *
  * Revision 1.1.1.2  1997/01/11  18:52:32  george
  *   ml-burg Version 109.24
  *

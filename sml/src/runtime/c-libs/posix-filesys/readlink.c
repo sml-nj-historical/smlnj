@@ -41,37 +41,40 @@ ml_val_t _ml_P_FileSys_readlink (ml_state_t *msp, ml_val_t arg)
     len = readlink(path, buf, MAXPATHLEN);
 
     if (len < 0)
-      return RaiseSysError(msp, NIL(char *));
+	return RAISE_SYSERR(msp, len);
+    else if (len < MAXPATHLEN) {
+	buf[len] = '\0';
+	return ML_CString (msp, buf);
+    }
+    else {  /* buffer not big enough */
+	char         *nbuf;
+	ml_val_t     obj;
+	struct stat  sbuf;
+	int          res;
+	int          nlen;
 
-    if (len >= MAXPATHLEN) {    /* buffer not big enough */
-      char         *nbuf;
-      ml_val_t     obj;
-      struct stat  sbuf;
-      int          res;
-      int          nlen;
-
-        /* Determine how big the link text is and allocate a buffer */
-      res = lstat (path, &sbuf);
-      if (res < 0) return RaiseSysError(msp, NIL(char *));
-      nlen = sbuf.st_size + 1;
-      nbuf = malloc(nlen);
-      if (nbuf == 0) return RaiseSysError(msp, "out of malloc memory");
+      /* Determine how big the link text is and allocate a buffer */
+	res = lstat (path, &sbuf);
+	if (res < 0)
+	    return RAISE_SYSERR(msp, res);
+	nlen = sbuf.st_size + 1;
+	nbuf = MALLOC(nlen);
+	if (nbuf == 0)
+	    return RAISE_ERROR(msp, "out of malloc memory");
 
         /* Try the readlink again. Give up on error or if len is still bigger
          * than the buffer size.
          */
-      len = readlink(path, buf, len);
-      if (len < 0) return RaiseSysError(msp, NIL(char *));
-      if (len >= nlen) return RaiseSysError(msp, "readlink failure");
+	len = readlink(path, buf, len);
+	if (len < 0)
+	    return RAISE_SYSERR(msp, len);
+	else if (len >= nlen)
+	    return RAISE_ERROR(msp, "readlink failure");
 
-      nbuf[len] = '\0';
-      obj = ML_CString (msp, nbuf);
-      free (nbuf);
-      return obj;
+	nbuf[len] = '\0';
+	obj = ML_CString (msp, nbuf);
+	FREE (nbuf);
+	return obj;
     }
-
-    path[len] = '\0';
-
-    return ML_CString (msp, path);
 
 } /* end of _ml_P_FileSys_readlink */

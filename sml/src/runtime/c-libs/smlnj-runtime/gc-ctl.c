@@ -29,6 +29,8 @@ PVT void AllGC (ml_state_t *msp);
  *				  level.
  *   ("DoGC", ref n)		- does a GC of the first "n" generations
  *   ("AllGC", _)		- collects all generations.
+ *   ("Messages", ref 0)	- turn GC messages off
+ *   ("Messages", ref n)	- turn GC messages on (n > 0)
  */
 ml_val_t _ml_RunT_gc_ctl (ml_state_t *msp, ml_val_t arg)
 {
@@ -43,6 +45,12 @@ ml_val_t _ml_RunT_gc_ctl (ml_state_t *msp, ml_val_t arg)
 	    DoGC (msp, cell);
 	else if (STREQ("AllGC", oper))
 	    AllGC (msp);
+	else if (STREQ("Messages", oper)) {
+	    if (INT_MLtoC(DEREF(cell)) > 0)
+		GCMessages = TRUE;
+	    else
+		GCMessages = FALSE;
+	}
 
 	arg = LIST_tl(arg);
     }

@@ -121,7 +121,7 @@ PVT char *mk_strcpy(char *s)
 {
     char *p;
 
-    if ((p = (char *) malloc(strlen(s)+1)) == NULL)
+    if ((p = (char *) MALLOC(strlen(s)+1)) == NULL)
 	Die("couldn't make string copy during C call\n");
     return strcpy(p,s);
 }
@@ -132,7 +132,7 @@ Word_t *checked_memalign(int n,int align)
 
     if (align < sizeof(Word_t))
 	align = sizeof(Word_t);
-    if ((p = (Word_t *)malloc(n)) == NULL)
+    if ((p = (Word_t *)MALLOC(n)) == NULL)
 	Die("couldn't alloc memory for C call\n");
 
     ASSERT(((Word_t)p & (Word_t)(align-1)) != 0);
@@ -224,8 +224,8 @@ PVT void free_ptrlist()
     p = ptrlist;
     while (p != NULL) {
 	ptrlist = ptrlist->next;
-	free(p->ptr);               /* the block */
-	free(p);                    /* the block's descriptor */
+	FREE(p->ptr);               /* the block */
+	FREE(p);                    /* the block's descriptor */
 	p = ptrlist;
     }
 }
@@ -248,7 +248,7 @@ PVT ml_val_t ptrlist_to_MLlist(ml_state_t *msp)
 	ptrlist = p->next;
 	v = MK_CADDR(msp,p->ptr);
 	LIST_cons(msp, lp, v, lp);
-	free(p);
+	FREE(p);
 	p = ptrlist;
     }
 #ifdef DEBUG_C_CALLS
@@ -533,7 +533,7 @@ PVT char errbuf[100];
 PVT ml_val_t RaiseError(ml_state_t *msp,int err)
 {
     sprintf(errbuf,"SML/NJ-C-Interface: %s",errtbl[err]);
-    return RaiseSysError(msp,errbuf);
+    return RAISE_ERROR(msp, errbuf);
 }
 
 
@@ -1067,7 +1067,7 @@ ml_val_t ml_datumCtoML(ml_state_t *msp, ml_val_t arg)
     ml_val_t ret;
 
     ret = datumCtoML(msp,type,(Word_t) caddr,&arg);
-    free(type);
+    FREE(type);
     return ret;
 }
 

@@ -1,4 +1,4 @@
-<!-- os.html -->
+<!-- HTML/os.html -->
 
 <!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
 
@@ -8,8 +8,10 @@
 <TITLE>The OS structure</TITLE>
 </HEAD>
 <BODY>
-<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
+
 
 <H3>The <CODE>OS</CODE> structure</H3>
 <P>
@@ -24,38 +26,33 @@ The OS structure is a container for a collection of structures for interacting w
 <HR>
 <H4>Interface</H4>
 <BLOCKQUOTE>
-<CODE><B>include</B> <A NAME="SIG:CML_OS.OS:SIG:SPEC" HREF="#SIG:CML_OS.OS:SIG">OS</A><BR>
-<B>structure</B> <A NAME="SIG:CML_OS.Process:STR:SPEC" HREF="#SIG:CML_OS.Process:STR">Process</A> <B>:</B> CML_OS_PROCESS<BR>
-<B>structure</B> <A NAME="SIG:CML_OS.IO:STR:SPEC" HREF="#SIG:CML_OS.IO:STR">IO</A> <B>:</B> CML_OS_IO<BR>
+<CODE><B>include</B> <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#OS:SIG:SPEC">OS</A><BR>
+<B>structure</B> Process <B>:</B> <A HREF="os-process.html#CML_OS_PROCESS:SIG:SPEC">CML_OS_PROCESS</A><BR>
+<B>structure</B> IO <B>:</B> <A HREF="os-io.html#CML_OS_IO:SIG:SPEC">CML_OS_IO</A><BR>
 </CODE>
 </BLOCKQUOTE>
 <H4>Description</H4>
 <DL>
-<DT> <A NAME="SIG:CML_OS.OS:SIG"><CODE><B>include</B> OS</CODE></A>
-<DD>
-<BR>
-
-<DT> <A NAME="SIG:CML_OS.Process:STR"><CODE><B>structure</B> Process</CODE></A>
-<DD>
-<BR>
-
-<DT> <A NAME="SIG:CML_OS.IO:STR"><CODE><B>structure</B> IO</CODE></A>
-<DD>
-<BR>
-
 </DL>
 <HR>
 <H4>See Also</H4>
 <BLOCKQUOTE>
-OS, OS.FileSys, OS.Path, <A HREF="os.html#SIG:CML_OS.Process:STR:SPEC">OS.Process</A>, <A HREF="os.html#SIG:CML_OS.IO:STR:SPEC">OS.IO</A>
+<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#OS:SIG:SPEC">OS</A>, <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#SIG:OS.FileSys:STR:SPEC">OS.FileSys</A>, <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#SIG:OS.Path:STR:SPEC">OS.Path</A>, <A HREF="os.html#SIG:CML_OS.Process:STR:SPEC">OS.Process</A>, <A HREF="os.html#SIG:CML_OS.IO:STR:SPEC">OS.IO</A>
 </BLOCKQUOTE>
+
+
 <HR>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="os.html">TOP</A>
+<CENTER>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
    | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
    ]</B>
+</CENTER>
 <P>
 <I>Last Modified April 30, 1996</I><BR>
-Copyright &copy; 1996 AT&amp;T <BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+
 <HR>
 </BODY>
 </HTML>

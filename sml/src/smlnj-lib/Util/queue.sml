@@ -14,6 +14,8 @@ structure Queue :> QUEUE =
 
     fun mkQueue () = ref Fifo.empty
 
+    fun clear q = (q := Fifo.empty)
+
     fun enqueue (q,x) = q := (Fifo.enqueue (!q, x))
 
     fun dequeue q = let 

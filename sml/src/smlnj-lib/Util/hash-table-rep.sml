@@ -32,6 +32,9 @@ structure HashTableRep : sig
 	 * of items currently in the table.
 	 *)
 
+    val clear : ('a, 'b) table -> unit
+	(* remove all items *)
+
     val listItems  : (('a, 'b) table * int ref) -> 'b list
     val listItemsi : (('a, 'b) table * int ref) -> ('a * 'b) list
 
@@ -99,6 +102,9 @@ structure HashTableRep : sig
 		then (table := growTable (arr, sz+sz); true)
 		else false
 	    end
+
+  (* remove all items *)
+    fun clear table = Array.modify (fn _ => NIL) table
 
   (* return a list of the items in the table *)
     fun listItems (table, nItems) = let

@@ -139,7 +139,7 @@ void InitFaultHandlers (ml_state_t *msp)
   SIG_InitFPE ();
 }
 
-PVT bool_t fault_handler(int code)
+PVT bool_t fault_handler (int code, Word_t pc)
 {
   ml_state_t	    *msp = SELF_VPROC->vp_state;
   extern Word_t request_fault[];
@@ -150,13 +150,15 @@ PVT bool_t fault_handler(int code)
   /* Map the signal to the appropriate ML exception. */
   switch (code) {
     case EXCEPTION_INT_DIVIDE_BY_ZERO: 
-      msp->ml_faultExn = DivExn;
+      msp->ml_faultExn = DivId;
+      msp->ml_faultPC = pc;
       break;
     case EXCEPTION_INT_OVERFLOW:
-      msp->ml_faultExn = OverflowExn;
+      msp->ml_faultExn = OverflowId;
+      msp->ml_faultPC = pc;
       break;
     default:
-      Die ("win32:fault_handler: unexpected fault, code = %#x", code);
+      Die ("win32:fault_handler: unexpected fault @%#x, code = %#x", pc, code);
   }
   return TRUE;
 }
@@ -175,7 +177,7 @@ int restoreregs(ml_state_t *msp)
     request = asm_restoreregs(msp);
     return request;
 
-  } __except(fault_handler(GetExceptionCode()) ?
+  } __except(fault_handler(GetExceptionCode(), (Word_t *)(GetExceptionInformation())->ContextRecord->Eip) ?
 #ifdef HOST_X86
 	     ((Word_t *)(GetExceptionInformation())->ContextRecord->Eip = request_fault,
               EXCEPTION_CONTINUE_EXECUTION) :

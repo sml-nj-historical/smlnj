@@ -20,7 +20,7 @@ ml_val_t _ml_P_ProcEnv_ttyname (ml_state_t *msp, ml_val_t arg)
 
     name = ttyname(INT_MLtoC(arg));
     if (name == NIL(char *))
-        return RaiseSysError(msp, "not a terminal device");
+        return RAISE_ERROR(msp, "not a terminal device");
   
     return ML_CString (msp, name);
 

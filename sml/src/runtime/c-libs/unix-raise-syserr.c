@@ -43,9 +43,9 @@ PVT char *strerror (int errnum)
  * will be represented by an (int * string) pair.  If alt_msg is non-zero,
  * then use it as the error string and use NONE for the syserror.
  */
-ml_val_t RaiseSysError (ml_state_t *msp, const char *altMsg)
+ml_val_t RaiseSysError (ml_state_t *msp, const char *altMsg, const char *at)
 {
-    ml_val_t	    s, syserror, arg, exn;
+    ml_val_t	    s, atStk, syserror, arg, exn;
     const char	    *msg;
     char	    buf[32];
 
@@ -68,8 +68,14 @@ ml_val_t RaiseSysError (ml_state_t *msp, const char *altMsg)
 #endif
 
     s = ML_CString (msp, msg);
+    if (at != NIL(char *)) {
+	ml_val_t atMsg = ML_CString (msp, at);
+	LIST_cons(msp, atStk, atMsg, LIST_nil);
+    }
+    else
+	atStk = LIST_nil;
     REC_ALLOC2 (msp, arg, s, syserror);
-    EXN_ALLOC (msp, exn, PTR_CtoML(SysErrId), arg, LIST_nil);
+    EXN_ALLOC (msp, exn, PTR_CtoML(SysErrId), arg, atStk);
 
     RaiseMLExn (msp, exn);
 

@@ -1,8 +1,11 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:08  monnier
+ * *** empty log message ***
+ *
+ * Revision 1.2  1997/09/10 18:34:22  jhr
+ *   Changed "abstraction" to ":>".
  *
 # Revision 1.1.1.1  1997/01/14  01:38:04  george
 #   Version 109.24
@@ -19,7 +22,7 @@ functor ParserGen(structure LrTable : LR_TABLE
 		  structure Stream : STREAM) : LR_PARSER =
 *)
 
-abstraction LrParser : LR_PARSER =
+structure LrParser :> LR_PARSER =
  struct
      val print = fn s => output(std_out,s)
      val println = fn s => (print s; print "\n")

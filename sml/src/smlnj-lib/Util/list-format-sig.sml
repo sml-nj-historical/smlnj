@@ -7,7 +7,7 @@
 signature LIST_FORMAT =
   sig
 
-    val formatList : {
+    val fmt : {
 	    init : string,
 	    sep : string,
 	    final : string,
@@ -19,7 +19,10 @@ signature LIST_FORMAT =
 	 * ``init ^ (fmt a) ^ sep ^ (fmt b) ^ sep ^ ... ^ sep ^ (fmt c) ^ final.''
 	 *)
 
-    val scanList : {
+    val listToString : ('a -> string) -> 'a list -> string
+	(* formats a list in SML style (i.e., init="[", sep=",", final="]"). *)
+
+    val scan : {
 	    init : string,
 	    sep : string,
 	    final : string,

@@ -1,4 +1,4 @@
-<!-- sync-var.html -->
+<!-- HTML/sync-var.html -->
 
 <!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
 
@@ -8,8 +8,10 @@
 <TITLE>The SyncVar structure</TITLE>
 </HEAD>
 <BODY>
-<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
+
 
 <H3>The <CODE>SyncVar</CODE> structure</H3>
 <P>
@@ -42,6 +44,8 @@ The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory 
 <B>val</B> <A NAME="SIG:SYNC_VAR.mGetEvt:VAL:SPEC" HREF="#SIG:SYNC_VAR.mGetEvt:VAL">mGetEvt</A> <B>:</B> 'a mvar -&gt; 'a event         <BR>
 <B>val</B> <A NAME="SIG:SYNC_VAR.mTakePoll:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTakePoll:VAL">mTakePoll</A> <B>:</B> 'a mvar -&gt; 'a option       <BR>
 <B>val</B> <A NAME="SIG:SYNC_VAR.mGetPoll:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTakePoll:VAL">mGetPoll</A> <B>:</B> 'a mvar -&gt; 'a option         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mSwap:VAL:SPEC" HREF="#SIG:SYNC_VAR.mSwap:VAL">mSwap</A> <B>:</B> ('a mvar * 'a) -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mSwapEvt:VAL:SPEC" HREF="#SIG:SYNC_VAR.mSwapEvt:VAL">mSwapEvt</A> <B>:</B> ('a mvar * 'a) -&gt; 'a event         <BR>
 <B>val</B> <A NAME="SIG:SYNC_VAR.sameMVar:VAL:SPEC" HREF="#SIG:SYNC_VAR.sameMVar:VAL">sameMVar</A> <B>:</B> ('a mvar * 'a mvar) -&gt; bool         <BR>
 </CODE>
 </BLOCKQUOTE>
@@ -89,7 +93,7 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.i
 
 <DT> <A NAME="SIG:SYNC_VAR.iGetPoll:VAL"><CODE><B>val</B> iGetPoll</CODE></A>
 <DD>
-This is a non-blocking version of <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A>. 	  If the corresponding blocking form would block, then it returns 	  NONE; otherwise 	  it returns SOME 	  of the variable's contents.     
+This is a non-blocking version of <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A>. 	  If the corresponding blocking form would block, then it returns 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  it returns <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
 <BR>
 <BR>
 
@@ -163,7 +167,26 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.m
 <DT> <A NAME="SIG:SYNC_VAR.mTakePoll:VAL"><CODE><B>val</B> mTakePoll</CODE></A>
 <DT> <CODE><B>val</B> mGetPoll</CODE>
 <DD>
-These are non-blocking versions of <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> and 	  <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> (respectively). 	  If the corresponding blocking form would block, then they return 	  NONE; otherwise 	  they return SOME 	  of the variable's contents.     
+These are non-blocking versions of <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> and 	  <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> (respectively). 	  If the corresponding blocking form would block, then they return 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  they return <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mSwap:VAL"><CODE>mSwap (<VAR>mv</VAR>, <VAR>newV</VAR>)
+          </CODE></A>
+<DD>
+puts the value <VAR>newV</VAR> into the M-variable <VAR>mv</VAR> and returns 	  the previous contents. 	  If the variable is empty, then the thread blocks until 	  a value is available. 	  It is equivalent to the code: 	  
+<PRE>
+let val x = <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> <VAR>mv</VAR> in <A HREF="sync-var.html#SIG:SYNC_VAR.mPut:VAL:SPEC">mPut</A>(<VAR>mv</VAR>, <VAR>newV</VAR>); x end
+	  
+</PRE>
+ 	  except that <CODE>mSwap</CODE> is executed atomically.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mSwapEvt:VAL"><CODE>mSwapEvt <VAR>mv</VAR>
+          </CODE></A>
+<DD>
+returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.mSwap:VAL:SPEC">mSwap</A> 	  operation on <VAR>mv</VAR> and <VAR>newV</VAR>.     
 <BR>
 <BR>
 
@@ -185,13 +208,20 @@ I-variables provide a useful mechanism for implementing the       reply communic
 <BLOCKQUOTE>
 <A HREF="cml.html#CML:STR:SPEC">CML</A>
 </BLOCKQUOTE>
+
+
 <HR>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="sync-var.html">TOP</A>
+<CENTER>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
    | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
    ]</B>
+</CENTER>
 <P>
 <I>Last Modified November 16, 1995</I><BR>
-Copyright &copy; 1996 AT&amp;T <BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+
 <HR>
 </BODY>
 </HTML>

@@ -4,7 +4,6 @@
  */
 
 #include "ml-unixdep.h"
-#include <errno.h>
 #include <signal.h>
 #include "ml-base.h"
 #include "ml-values.h"
@@ -51,8 +50,7 @@ ml_val_t _ml_P_Signal_osval (ml_state_t *msp, ml_val_t arg)
     if (res)
 	return INT_CtoML(res->val);
     else {
-        errno = EINVAL;
-	return RaiseSysError(msp, NIL(char *));
+	return RAISE_ERROR(msp, "system constant not defined");
     }
 
 } /* end of _ml_P_Signal_osval */

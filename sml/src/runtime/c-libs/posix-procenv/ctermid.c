@@ -22,7 +22,7 @@ ml_val_t _ml_P_ProcEnv_ctermid (ml_state_t *msp, ml_val_t arg)
 
     sts = ctermid(name);
     if (sts == NIL(char *) || *sts == '\0')
-        return RaiseSysError(msp, "cannot determine controlling terminal");
+        return RAISE_ERROR(msp, "cannot determine controlling terminal");
   
     return ML_CString (msp, name);
 

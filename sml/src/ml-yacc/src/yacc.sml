@@ -1,12 +1,12 @@
 (* ML-Yacc Parser Generator (c) 1989, 1990 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:10  monnier
+ * *** empty log message ***
  *
-# Revision 1.2  1997/07/25  16:01:29  jhr
-#   Fixed bug with long constructor names (#1237).
-#
+ * Revision 1.2  1997/07/25 16:01:29  jhr
+ *   Fixed bug with long constructor names (#1237).
+ *
 # Revision 1.1.1.1  1997/01/14  01:38:06  george
 #   Version 109.24
 #

@@ -1,12 +1,12 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:09  monnier
+ * *** empty log message ***
  *
-# Revision 1.1.1.1  1997/01/14  01:38:05  george
-#   Version 109.24
-#
+ * Revision 1.1.1.1  1997/01/14 01:38:05  george
+ *   Version 109.24
+ *
  * Revision 1.3  1996/10/03  03:37:12  jhr
  * Qualified identifiers that are no-longer top-level (quot, rem, min, max).
  *

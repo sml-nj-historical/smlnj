@@ -24,7 +24,7 @@ ml_val_t _ml_P_Process_waitpid (ml_state_t *msp, ml_val_t arg)
     pid = waitpid(REC_SELINT(arg, 0), &status, REC_SELWORD(arg,1));
 
     if (pid < 0)
-	return RaiseSysError(msp, NIL(char *));
+	return RAISE_SYSERR(msp, pid);
 
     if (WIFEXITED(status)) {
 	how = 0;
@@ -39,7 +39,7 @@ ml_val_t _ml_P_Process_waitpid (ml_state_t *msp, ml_val_t arg)
 	val = WSTOPSIG(status);
     }
     else
-	return RaiseSysError(msp, "unknown child status");
+	return RAISE_ERROR(msp, "unknown child status");
 
     REC_ALLOC3(msp, r, INT_CtoML(pid), INT_CtoML(how), INT_CtoML(val));
 

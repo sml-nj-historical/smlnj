@@ -210,7 +210,6 @@ else
   $RUNDIR/run.$ARCH-$OPSYS @SMLboot=$ROOT/$BIN_FILES @SMLalloc=$ALLOC <<XXXX
     $SET_FLAGS
     val use = Compiler.Interact.useFile
-    val useStream = Compiler.Interact.useStream;
     val _ = (SMLofNJ.exportML "sml";
              print Compiler.banner;
              print "\n");
@@ -255,7 +254,6 @@ do
 	  $RUNDIR/run.$ARCH-$OPSYS @SMLfull @SMLboot=$ROOT/$BIN_FILES @SMLalloc=$ALLOC <<XXXX
 	    $SET_FLAGS
 	    val use = Compiler.Interact.useFile
-	    val useStream = Compiler.Interact.useStream;
 	    val _ = (SMLofNJ.exportML "sml-full";
 		     print Compiler.banner;
 		     print " [full]\n");

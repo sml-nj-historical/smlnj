@@ -56,13 +56,11 @@ functor RunCMLFn (G : OS_GLUE) : sig
 		  Sig.setHandler (Sig.sigINT, Sig.HANDLER(fn _ => interruptK)));
 		S.shutdownHook := doneK;
 		case tq of (SOME tq) => S.startTimer tq | _ => S.restartTimer();
-		CU.startServers();
 		CU.clean CU.AtInit;
 		CML.spawn initialProc;
-		CML.exit ()));
+		S.dispatch()))
 	  in
 	    CU.clean CU.AtShutdown;
-	    CU.shutdownServers();
 	    G.shutdown();
 	    S.stopTimer();
 	    Thread.reset false;

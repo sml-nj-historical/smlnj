@@ -2,9 +2,7 @@
  *
  * COPYRIGHT (c) 1996 AT&T REsearch.
  *
- * Pretty-print an HTML tree.  The print routine accepts optional header
- * and footer strings that are included at the beginning and end of the
- * page's body.
+ * Pretty-print an HTML tree.
  *)
 
 structure PrHTML : sig
@@ -12,11 +10,7 @@ structure PrHTML : sig
     val prHTML : {
 	    putc    : char -> unit,
 	    puts    : string -> unit
-	  } -> {
-	    html    : HTML.html,
-	    optHead : string option,
-	    optFoot : string option
-	  } -> unit
+	  } -> HTML.html -> unit
 
   end = struct
 
@@ -64,7 +58,7 @@ structure PrHTML : sig
 	    | fmtAttr _ = NONE
 	  val attrs = List.mapPartial fmtAttr attrs
 	  in
-	    ListFormat.formatList {
+	    ListFormat.fmt {
 		init = "<",
 		sep = " ",
 		final = ">",
@@ -417,6 +411,20 @@ structure PrHTML : sig
 
     and prPCData (strm, data) = puts (strm, data)
 
+    fun prBody (strm, HTML.BODY{
+	  background, bgcolor, text, link, vlink, alink, content
+	}) = (
+	  prTag (strm, "BODY", [
+	      ("BACKGROUND", CDATA background),
+	      ("BGCOLOR", CDATA bgcolor),
+	      ("TEXT", CDATA text),
+	      ("LINK", CDATA link),
+	      ("VLINK", CDATA vlink),
+	      ("ALINK", CDATA alink)
+	    ]);
+	  prBlock (strm, content);
+	  prEndTag (strm, "BODY"))
+
     fun prHeadElement strm elem = (case elem
 	   of (HTML.Head_TITLE pcdata) => (
 		prTag (strm, "TITLE", []);
@@ -450,11 +458,9 @@ structure PrHTML : sig
 	    | (HTML.Head_STYLE pcdata) => ()
 	  (* end case *))
 
-    fun prHTML {putc, puts} {html, optHead, optFoot} = let
+    fun prHTML {putc, puts} html = let
 	  val strm = OS{putc=putc, puts=puts}
 	  val HTML.HTML{head, body, version} = html
-	  fun prOpt NONE = ()
-	    | prOpt (SOME txt) = puts txt
 	  in
 	    case version
 	     of NONE => ()
@@ -466,11 +472,7 @@ structure PrHTML : sig
 	    puts "<HEAD>\n";
 	    List.app (prHeadElement strm) head;	
 	    puts "</HEAD>\n";
-	    puts "<BODY>\n";
-	    prOpt optHead;
-	    prBlock (strm, body);
-	    prOpt optFoot;
-	    puts "</BODY>\n";
+	    prBody (strm, body);
 	    puts "</HTML>\n"
 	  end
 

@@ -46,11 +46,8 @@ signature REACTIVE =
     val suspend : instruction
 
     val action : (machine -> unit) -> instruction
-    val exec   : {
-	    start : machine -> unit,
-	    stop  : machine -> unit,
-	    done  : machine -> bool
-	  } -> instruction
+    val exec   : (machine -> {stop : unit -> unit, done : unit -> bool})
+		  -> instruction
 
     val ifThenElse : ((machine -> bool) * instruction * instruction) -> instruction
     val repeat     : (int * instruction) -> instruction

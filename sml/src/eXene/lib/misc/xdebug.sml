@@ -105,6 +105,7 @@ structure XDebug =
 	  fun wrapf () = (let
 		val tid = getTid()
 		in
+		  TraceCML.watch (name, tid);
 		  trace (xspawnTM, fn () => [
 		      "xspawn ", name, " ", tidToString tid, "\n"
 		    ]);
@@ -132,10 +133,8 @@ structure XDebug =
 		      (* end case *);
 		      TraceCML.unwatch(getTid())
 		    end)
-	  val tid = spawn wrapf
 	  in
-	    TraceCML.watch (name, tid);
-	    tid
+	    spawn wrapf
 	  end
 
   (* wrapper to report uncaught exceptions *)

@@ -87,7 +87,7 @@ structure In = struct
   | DIV of tree * tree
   | NEG of tree
 
-  fun termchildren t =
+  fun opchildren t =
     case t of
       INT _ =>       (T_INT, [])
     | VAR _ =>       (T_VAR, [])
@@ -107,28 +107,29 @@ structure Example = struct
   structure Burm = BurmGen (In)
   open In
 
-  fun say s = String.print s
+  fun say s = print s
 
 
   local
     val num = ref 1
+    fun inc iref = iref := (!iref + 1)
   in
     fun resetreg () = (num := 1)
-    fun newreg () = ("r"^(makestring (!num)) before inc num)
+    fun newreg () = ("r"^(Int.toString (!num)) before inc num)
   end
 
 
   fun walk (Burm.R_reg_INT, INT n) =
         let val reg = newreg () in
-	  say ("ldi "^reg^","^(makestring (n+n+1))^"\n"); reg
+	  say ("ldi "^reg^","^(Int.toString (n+n+1))^"\n"); reg
 	end
     | walk (Burm.R_sreg_INT, INT n) =
 	let val reg = newreg () in
-	  say ("ldi "^reg^","^(makestring (n+n))^"\n"); reg
+	  say ("ldi "^reg^","^(Int.toString (n+n))^"\n"); reg
 	end
     | walk (Burm.R_ureg_INT, INT n) =
 	let val reg = newreg () in
-	  say ("ldi "^reg^","^(makestring n)^"\n"); reg
+	  say ("ldi "^reg^","^(Int.toString n)^"\n"); reg
 	end
     | walk (Burm.R_reg_VAR, VAR v) =
 	let val reg = newreg () in
@@ -156,27 +157,27 @@ structure Example = struct
 	end
     | walk (Burm.R_r_ADD_2i_r reg, ADD (INT n,_)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n))^"\n"); reg'
 	end
     | walk (Burm.R_r_ADD_r_2i reg, ADD (_,INT n)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n))^"\n"); reg'
 	end
     | walk (Burm.R_r_ADD_2ip_r reg, ADD (INT n,_)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n+1))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n+1))^"\n"); reg'
 	end
     | walk (Burm.R_r_ADD_r_2ip reg, ADD (_,INT n)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n+1))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n+1))^"\n"); reg'
 	end
     | walk (Burm.R_r_ADD_2im_r reg, ADD (INT n,_)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n-1))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n-1))^"\n"); reg'
 	end
     | walk (Burm.R_r_ADD_r_2im reg, ADD (_,INT n)) =
         let val reg' = walk reg in
-	  say ("addi "^reg'^","^(makestring (n+n-1))^"\n"); reg'
+	  say ("addi "^reg'^","^(Int.toString (n+n-1))^"\n"); reg'
 	end
     | walk (Burm.R_r_SUB_r_r (r1,r2), _) =
 	let val (r1',r2') = (walk r1, walk r2) in
@@ -184,21 +185,21 @@ structure Example = struct
 	end
     | walk (Burm.R_r_SUB_2ipp_r reg, SUB (INT n,_)) =
         let val reg' = walk reg val r = newreg () in
-	   say ("ldi "^r^","^(makestring (n+n+1))^"\n");
+	   say ("ldi "^r^","^(Int.toString (n+n+1))^"\n");
 	   say ("sub "^r^","^reg'^"\n");
 	   r
 	end
     | walk (Burm.R_r_SUB_r_2i reg, SUB (_,INT n)) =
         let val reg' = walk reg in
-	  say ("subi "^reg'^","^(makestring (n+n))^"\n"); reg'
+	  say ("subi "^reg'^","^(Int.toString (n+n))^"\n"); reg'
 	end
     | walk (Burm.R_r_SUB_r_2im reg, SUB (_,INT n)) =
         let val reg' = walk reg in
-	  say ("subi "^reg'^","^(makestring (n+n-1))^"\n"); reg'
+	  say ("subi "^reg'^","^(Int.toString (n+n-1))^"\n"); reg'
 	end
     | walk (Burm.R_r_SUB_r_2ip reg, SUB (_,INT n)) =
         let val reg' = walk reg in
-	  say ("subi "^reg'^","^(makestring (n+n+1))^"\n"); reg'
+	  say ("subi "^reg'^","^(Int.toString (n+n+1))^"\n"); reg'
 	end
     | walk (Burm.R_r_MUL_r_r (r1,r2), _) =
 	let val (r1',r2') = (walk r1, walk r2) in
@@ -206,19 +207,19 @@ structure Example = struct
 	end
     | walk (Burm.R_r_MUL_i_r reg, MUL (INT n,_)) =
         let val reg' = walk reg in
-	  say ("muli "^reg'^","^(makestring (n))^"\n"); reg'
+	  say ("muli "^reg'^","^(Int.toString (n))^"\n"); reg'
 	end
     | walk (Burm.R_r_MUL_r_i reg, MUL (_,INT n)) =
         let val reg' = walk reg in
-	  say ("muli "^reg'^","^(makestring (n))^"\n"); reg'
+	  say ("muli "^reg'^","^(Int.toString (n))^"\n"); reg'
 	end
     | walk (Burm.R_r_MUL_2i_r reg, MUL (INT n,_)) =
         let val reg' = walk reg in
-	  say ("muli "^reg'^","^(makestring (n+n))^"\n"); reg'
+	  say ("muli "^reg'^","^(Int.toString (n+n))^"\n"); reg'
 	end
     | walk (Burm.R_r_MUL_r_2i reg, MUL (_,INT n)) =
         let val reg' = walk reg in
-	  say ("muli "^reg'^","^(makestring (n+n))^"\n"); reg'
+	  say ("muli "^reg'^","^(Int.toString (n+n))^"\n"); reg'
 	end
     | walk (Burm.R_r_DIV_r_r (r1,r2), _) =
 	let val (r1',r2') = (walk r1, walk r2) in
@@ -226,7 +227,7 @@ structure Example = struct
 	end
     | walk (Burm.R_r_DIV_r_i reg, DIV (_,INT n)) =
         let val reg' = walk reg in
-	  say ("divi "^reg'^","^(makestring (n))^"\n"); reg'
+	  say ("divi "^reg'^","^(Int.toString (n))^"\n"); reg'
 	end
     | walk (Burm.R_r_NEG_r reg, _) =
         let val reg' = walk reg in

@@ -136,9 +136,9 @@ ml_val_t _ml_win32_get_const(ml_state_t *msp, ml_val_t arg)
       WORD_ALLOC(msp,v,res->data);
       return v;
     }
-    return RaiseSysError(msp, "win32_cconst: unknown constant");
+    return RAISE_ERROR(msp,"win32_cconst: unknown constant");
   }
-  return RaiseSysError(msp, "win32_cconst: unknown class");
+  return RAISE_ERROR(msp,"win32_cconst: unknown constant class");
 }
 
 /* end of win32-constants.c */

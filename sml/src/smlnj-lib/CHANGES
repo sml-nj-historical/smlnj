@@ -3,6 +3,30 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1997-12-07] 109.32 --> 110
+---------------------------
+
+Added a clear operation to the Queue and various hash table structures.
+
+Changed the ListFormat.formatList to ListFormat.fmt and ListFormat.scanList
+to ListFormat.scan.  Added the function ListFormat.listToString.
+
+Updated the HTML library to the final 3.2 specification.  This involved adding
+a new BODY element type (with attributes).  Also, removed the header/footer
+arguments to the pretty-printer (they were a gross hack).
+
+Added PathUtil structure to Util library.  This is a more general version
+of the old UnixPath module.
+
+
+--------------------------------------------------------------------------------
+[1997-10-01] 109.31 --> 109.32
+------------------------------
+
+Changed the type of the exec instruction in the Reactive library.
+
+
+--------------------------------------------------------------------------------
 [1997-09-09] 109.30 --> 109.31
 ------------------------------
 

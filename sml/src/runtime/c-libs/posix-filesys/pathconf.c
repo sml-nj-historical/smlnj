@@ -46,13 +46,13 @@ static ml_val_t mkValue (ml_state_t *msp, int val)
     ml_val_t    p, obj;
 
     if (val >= 0) {
-      WORD_ALLOC (msp, p, val);
-      OPTION_SOME(msp, obj, p);
+	WORD_ALLOC (msp, p, val);
+	OPTION_SOME(msp, obj, p);
     }
     else if (errno == 0)
-      obj = OPTION_NONE;
+	obj = OPTION_NONE;
     else
-      obj = RaiseSysError(msp, NIL(char *));
+	obj = RAISE_SYSERR(msp, val);
 
     return obj;
 
@@ -71,8 +71,8 @@ ml_val_t _ml_P_FileSys_pathconf (ml_state_t *msp, ml_val_t arg)
 
     attr = _ml_posix_nv_lookup (REC_SELPTR(char, arg, 1), values, NUMELMS);
     if (!attr) {
-      errno = EINVAL;
-      return RaiseSysError(msp, NIL(char *));
+	errno = EINVAL;
+	return RAISE_SYSERR(msp, -1);
     }
  
     errno = 0;
@@ -98,8 +98,8 @@ ml_val_t _ml_P_FileSys_fpathconf (ml_state_t *msp, ml_val_t arg)
 
     attr = _ml_posix_nv_lookup (REC_SELPTR(char, arg, 1), values, NUMELMS);
     if (!attr) {
-      errno = EINVAL;
-      return RaiseSysError(msp, NIL(char *));
+	errno = EINVAL;
+	return RAISE_SYSERR(msp, -1);
     }
  
     errno = 0;

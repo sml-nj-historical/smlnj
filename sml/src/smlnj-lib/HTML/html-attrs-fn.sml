@@ -277,6 +277,38 @@ functor HTMLAttrsFn (Err : HTML_ERROR) : HTML_ATTRS =
 	  end
     end (* local *)
 
+  (**** Element BODY ****)
+    local
+      val attrMap = mkAttrs [
+	      ("BACKGROUND",	AT_TEXT),
+	      ("BGCOLOR",	AT_TEXT),
+	      ("TEXT",		AT_TEXT),
+	      ("LINK",		AT_TEXT),
+	      ("VLINK",		AT_TEXT),
+	      ("ALINK",		AT_TEXT)
+	    ]
+      val getBACKGROUND	= getCDATA (attrMap, "BACKGROUND")
+      val getBGCOLOR	= getCDATA (attrMap, "BGCOLOR")
+      val getTEXT	= getCDATA (attrMap, "TEXT")
+      val getLINK	= getCDATA (attrMap, "LINK")
+      val getVLINK	= getCDATA (attrMap, "VLINK")
+      val getALINK	= getCDATA (attrMap, "ALINK")
+    in
+    fun mkBODY (ctx, attrs, blk) = let
+	  val attrVec = attrListToVec(ctx, attrMap, attrs)
+	  in
+	    HTML.BODY{
+		background = getBACKGROUND attrVec,
+		bgcolor = getBGCOLOR attrVec,
+		text = getTEXT attrVec,
+		link = getLINK attrVec,
+		vlink = getVLINK attrVec,
+		alink = getALINK attrVec,
+		content = blk
+	      }
+	  end
+    end (* local *)
+
   (**** Elements H1, H2, H3, H4, H5, H6 and P ****)
     local
       val attrMap = mkAttrs [

@@ -53,6 +53,16 @@ fun mkBlock blks = let
 	blockList(List.map f blks)
       end
 
+fun mkBody blks = HTML.BODY{
+	background = NONE,
+	bgcolor = NONE,
+	text = NONE,
+	link = NONE,
+	vlink = NONE,
+	alink = NONE,
+	content = mkBlock blks
+      }
+
 %%
 
 (* %pure *)
@@ -66,11 +76,12 @@ fun mkBlock blks = let
        | EndHEAD
        | HeadContents of HTML.head_content list
        | HeadElements of HTML.head_content list
-       | Body of HTML.block
+       | HeadElement of HTML.head_content
+       | Body of HTML.body
        | StartBODY
        | EndBODY
        | BodyContent of HTML.block
-       | BodyContent0 of HTML.block
+       | BodyContent0 of HTML.body
        | BodyContent1 of blklist_item list
        | BodyContent2 of blklist_item list
        | BodyElement of HTML.block
@@ -197,6 +208,7 @@ fun mkBlock blks = let
 %arg (ctx) : int -> HTMLAttrs.context
 
 %eop EOF
+%noshift EOF  (* avoids infinite loop in error recovery *)
 
 (** Some error-correction support **)
 %value START_A ([])
@@ -256,6 +268,7 @@ Document
 StartHTML
 	: (* empty *)		(NONE)
 	| START_HTML		(NONE)
+
 EndHTML
 	: (* empty *)		()
 	| END_HTML		()
@@ -269,10 +282,10 @@ Head
 
 StartHEAD
 	: (* empty *)		()
-	| START_HEAD		()
+	| START_HEAD 		()
 EndHEAD
 	: (* empty *)		()
-	| END_HEAD		()
+	| END_HEAD 		()
 
 HeadContents
 	: HeadElements START_TITLE PCData END_TITLE HeadElements
@@ -281,21 +294,25 @@ HeadContents
 HeadElements
 	: (* empty *)
 		([])
-	| TAG_META HeadElements
-		(HTMLAttrs.mkMETA(ctx TAG_METAleft, TAG_META) :: HeadElements)
-	| TAG_LINK HeadElements
-		(HTMLAttrs.mkLINK(ctx TAG_LINKleft, TAG_LINK) :: HeadElements)
-	| TAG_ISINDEX HeadElements
+	| HeadElement HeadElements
+		(HeadElement :: HeadElements)
+
+HeadElement
+	: TAG_META
+		(HTMLAttrs.mkMETA(ctx TAG_METAleft, TAG_META))
+	| TAG_LINK
+		(HTMLAttrs.mkLINK(ctx TAG_LINKleft, TAG_LINK))
+	| TAG_ISINDEX
 		(let val stuff =
 		    HTMLAttrs.mkISINDEX (ctx TAG_ISINDEXleft, TAG_ISINDEX)
-		  in HTML.Head_ISINDEX stuff :: HeadElements end
+		  in HTML.Head_ISINDEX stuff end
 		)
-	| TAG_BASE HeadElements
-		(HTMLAttrs.mkBASE(ctx TAG_BASEleft, TAG_BASE) :: HeadElements)
-	| START_STYLE PCData END_STYLE HeadElements
-		(HTML.Head_STYLE(PCData) :: HeadElements)
-	| START_SCRIPT PCData END_SCRIPT HeadElements
-		(HTML.Head_SCRIPT(PCData) :: HeadElements)
+	| TAG_BASE
+		(HTMLAttrs.mkBASE(ctx TAG_BASEleft, TAG_BASE))
+	| START_STYLE PCData END_STYLE
+		(HTML.Head_STYLE(PCData))
+	| START_SCRIPT PCData END_SCRIPT
+		(HTML.Head_SCRIPT(PCData))
 
 
 (*** Body content ***)
@@ -314,17 +331,17 @@ BodyContent
 
 BodyContent0
 	: START_BODY BodyContent
-		(BodyContent)
+		(HTMLAttrs.mkBODY(ctx START_BODYleft, START_BODY, BodyContent))
 	| TextWOScript BodyContent1
-		(mkBlock(consText(TextWOScript, BodyContent1)))
+		(mkBody(consText(TextWOScript, BodyContent1)))
 	| BodyElement BodyContent1
-		(mkBlock(consBlock(BodyElement, BodyContent1)))
+		(mkBody(consBlock(BodyElement, BodyContent1)))
 	| BlockWOIndex BodyContent1
-		(mkBlock(consBlock(BlockWOIndex, BodyContent1)))
+		(mkBody(consBlock(BlockWOIndex, BodyContent1)))
 	| Paragraph END_P BodyContent1
-		(mkBlock(consBlock(Paragraph, BodyContent1)))
+		(mkBody(consBlock(Paragraph, BodyContent1)))
 	| Paragraph BodyContent2
-		(mkBlock(consBlock(Paragraph, BodyContent2)))
+		(mkBody(consBlock(Paragraph, BodyContent2)))
 
 BodyContent1
 	: (* empty *)
@@ -670,3 +687,4 @@ PCDataElem
 		(CHAR_REF)
 	| ENTITY_REF
 		(ENTITY_REF)
+

@@ -14,7 +14,7 @@ cat > $TMP_FILE_C <<XXXX
 main () {}
 XXXX
 
-$CC -c -o $TMP_FILE $TMP_FILE_C
+$CC -o $TMP_FILE $TMP_FILE_C
 if [ "$?" != "0" ]; then
     rm -f $TMP_FILE $TMP_FILE_C
     exit 1

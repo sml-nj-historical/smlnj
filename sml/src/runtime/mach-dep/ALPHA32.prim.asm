@@ -639,15 +639,11 @@ ML_CODE_HDR(create_v_a)
  *	OVERFLOW/UNDERFLOW - (add,div,sub,mul) as appropriate
  *
  * floor raises integer overflow if the float is out of 32-bit range,
- * so the float is tested before conversion, to make sure it is in (31-bit)
- * range */
+ * Does not check for out-of-range ;  it's up to the ML code to do that first. */
 #ifdef NEW_FLOOR
 		DATA
 		.align 3
-floor_MAXINT:	.t_floating  1073741823.0
-floor_MININT:   .t_floating -1073741824.0
 floor_MAXFLOAT: .quad 0x4330080000000000
-ovfl_MAXINT: .long 0x7fffffff
 
 		.text
 
@@ -655,12 +651,6 @@ ML_CODE_HDR(floor_a)
 					/* check for overflow */
 	ldgp	gp, 0(STDLINK)
 	ldt	$f0, 0(STDARG)
-	ldt	$f1, floor_MAXINT
-	cmptle  $f0, $f1, $f1		/* f > maxint then overflow */
-	fbeq	$f1, floor_overflow
-	ldt	$f1, floor_MININT
-	cmptlt  $f0, $f1, $f1		/* f < minint then overflow */
-	fbne	$f1, floor_overflow
 
 	subq	$30, 16, $30		/* allocate stack space */
 				/* Do floor; neat thing is that this works
@@ -676,17 +666,10 @@ ML_CODE_HDR(floor_a)
 	addq	$30, 16, $30 	
 	CONTINUE
 
-floor_overflow:
-	ldl	ATMP1, ovfl_MAXINT
-	addlv	ATMP1, ATMP1, ATMP1
-	trapb
 #else /* !NEW_FLOOR */
 		DATA
 		.align 3
-floor_MAXINT:	.t_floating  1073741823.0
-floor_MININT:   .t_floating -1073741824.0
 floor_HALF:	.t_floating  0.5
-ovfl_MAXINT: .long 0x7fffffff
 
 		.text
 
@@ -697,11 +680,6 @@ ML_CODE_HDR(floor_a)
 	fblt	$f0, floor_negative_arg
 
 floor_positive_arg:
-					/* check for overflow */
-	ldt	$f1, floor_MAXINT
-	cmptle  $f0, $f1, $f1		/* f > maxint then overflow */
-	fbeq	$f1, floor_overflow
-
 	cvttqc	$f0, $f1
 	stt	$f1, 0($30)
 	ldl	ATMP1, 0($30)
@@ -711,24 +689,8 @@ floor_positive_arg:
 	addq	$30, 16, $30
 	CONTINUE
 
-/*  Alternative positive argument code - saves a load and compare.
-
-	cvttqvc	$f0, $f1
-	cvtqlv	$f1, $f1
-	sts	$f1, 0($30)
-	ldl	ATMP1, 0($30)
-	addlv	ATMP1, ATMP1, ATMP1
-	addl	ATMP1, 1, STDARG
-
-	addq	$30, 16, $30
-	CONTINUE
-*/	
 
 floor_negative_arg:
-					/* check for underflow */
-	ldt	$f1, floor_MININT
-	cmptlt  $f0, $f1, $f1		/* f < minint then overflow */
-	fbne	$f1, floor_overflow
 
 	/* cvttqm (x) = cvttq (2*x - 0.5) / 2 */
 	/* cvttq (x-0.5) loses for odd integers which IEEE round to evens */
@@ -745,11 +707,6 @@ floor_negative_arg:
 	addq	$30, 16, $30
 	CONTINUE
 
-floor_overflow:
-	addq	$30, 16, $30
-	ldl	ATMP1, ovfl_MAXINT
-	addlv	ATMP1, ATMP1, ATMP1
-	trapb
 #endif
 	
 

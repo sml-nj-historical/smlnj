@@ -30,7 +30,7 @@ ml_val_t _ml_P_ProcEnv_uname (ml_state_t *msp, ml_val_t arg)
     sts = uname (&name);
 
     if (sts == -1)
-      return RaiseSysError(msp, NIL(char *));
+	RAISE_SYSERR(msp, sts);
 
 /** NOTE: we should do something about possible GC!!! **/
 

@@ -32,9 +32,11 @@ ml_val_t _ml_P_TTY_tcsetattr (ml_state_t *msp, ml_val_t arg)
     data.c_lflag = REC_SELWORD(termio_rep, 3);
     memcpy (data.c_cc, REC_SELPTR(void, termio_rep, 4), NCCS);
     sts = cfsetispeed (&data, REC_SELWORD(termio_rep, 5));
-    if (sts < 0) return RaiseSysError (msp, NIL(char *));
+    if (sts < 0)
+	return RAISE_SYSERR(msp, sts);
     sts = cfsetospeed (&data, REC_SELWORD(termio_rep, 6));
-    if (sts < 0) return RaiseSysError (msp, NIL(char *));
+    if (sts < 0)
+	return RAISE_SYSERR(msp, sts);
 
     sts = tcsetattr(fd, action, &data);
 

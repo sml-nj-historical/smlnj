@@ -17,8 +17,7 @@ signature UNIX_PATH =
     val getPath : unit -> path_list
 	(* get the user's PATH environment variable. *)
 
-    datatype access_mode = A_READ | A_WRITE | A_EXEC
-      sharing type OS.FileSys.access_mode = access_mode
+    datatype access_mode = datatype OS.FileSys.access_mode
     datatype file_type = F_REGULAR | F_DIR | F_SYMLINK | F_SOCK | F_CHR | F_BLK
 (** what is the type in POSIX??? **)
 

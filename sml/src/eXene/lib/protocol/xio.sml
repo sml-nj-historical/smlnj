@@ -57,7 +57,7 @@ structure XIo : XIO =
     val bufSz = 2048
 
   (* time to wait before flushing a non-empty output buffer *)
-    val flushTimeOut = CML.timeOutEvt(Time.fromMilliseconds 100)
+    val flushTimeOut = CML.timeOutEvt(Time.fromMilliseconds 50)
 
   (* request messages sent to the sequencer by clients *)
     datatype req_msg
@@ -363,6 +363,7 @@ MLXError.impossible "[XIo.extractErr: bogus pending reply queue]"
     fun sequencer (reqCh, inCh, outCh, xevtCh, errCh) () = let
 	  fun quit () = (CML.send(outCh, OutQuit); CML.exit())
 	  val inEvt = CML.recvEvt inCh
+	  val reqEvt = CML.recvEvt reqCh
 	  fun doRequest (req, (lastIn, lastOut, pending)) = (
 		CML.send(outCh, OutMsg req);
 		(lastIn, lastOut+0w1, pending))
@@ -479,14 +480,13 @@ MLXError.impossible "[XIo.extractErr: bogus pending reply queue]"
 				  	    "[XIo.sequencer: misleading GraphicsExpose count]";
 					  rect::rl)
 				    (* end case *))
-				    val rects =
-					  pack ([], XReply.decodeGraphicsExpose msg)
-				    in
-				      ( seqn,
-					lastReqOut,
-					extractExpose(seqn, rects, pending)
-				      )
-				    end
+			      val rects = pack ([], XReply.decodeGraphicsExpose msg)
+			      in
+				( seqn,
+				  lastReqOut,
+				  extractExpose(seqn, rects, pending)
+				)
+			      end
 			  | 0w14 => let (* NoExpose event *)
 			      val seqn = getSeqN()
 			      in
@@ -503,7 +503,7 @@ MLXError.impossible "[XIo.extractErr: bogus pending reply queue]"
 		in
 		  loop (
 		    CML.select [
-			CML.wrap (CML.recvEvt reqCh, reqWrap),
+			CML.wrap (reqEvt, reqWrap),
 			CML.wrap (inEvt, inWrap)
 		      ])
 		end (* loop *)

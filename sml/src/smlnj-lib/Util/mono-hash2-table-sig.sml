@@ -23,6 +23,9 @@ signature MONO_HASH2_TABLE =
 	 * is to be raised by find.
 	 *)
 
+    val clear : 'a hash_table -> unit
+	(* remove all elements from the table *)
+
     val insert : 'a hash_table -> (Key1.hash_key * Key2.hash_key * 'a) -> unit
 	(* Insert an item.  If the key already has an item associated with it,
 	 * then the old item is discarded.

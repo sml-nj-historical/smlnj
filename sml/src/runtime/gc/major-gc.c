@@ -90,11 +90,11 @@ PVT void ScanMem (Word_t *start, Word_t *stop, int gen, int objKind)
 	      case OBJC_pair:
 	      case OBJC_string:
 	      case OBJC_array:
-	      case OBJC_unmapped:
 		break;
 	      default:
-		SayDebug ("** [%d/%d]: %#x --> %#x; strange object class %d\n",
-		  gen, objKind, start, w, EXTRACT_OBJC(id));
+		if (id != AID_UNMAPPED)
+		    SayDebug ("** [%d/%d]: %#x --> %#x; strange object class %d\n",
+			gen, objKind, start, w, EXTRACT_OBJC(id));
 		break;
 	    }
 	}
@@ -201,11 +201,13 @@ numBO1 = numBO2 = numBO3 = 0;
 #endif
 
 #ifndef PAUSE_STATS	/* don't do messages when collecting pause data */
-SayDebug ("GC #");
-for (i = heap->numGens-1;  i >= 0; i--) {
-    SayDebug ("%d.", heap->gen[i]->numGCs);
-}
-SayDebug ("%d:  ", heap->numMinorGCs);
+    if (GCMessages) {
+	SayDebug ("GC #");
+	for (i = heap->numGens-1;  i >= 0; i--) {
+	    SayDebug ("%d.", heap->gen[i]->numGCs);
+	}
+	SayDebug ("%d:  ", heap->numMinorGCs);
+    }
 #endif
 
     HeapMon_StartGC (heap, maxCollectedGen);
@@ -378,11 +380,13 @@ SayDebug ("bigobj stats: %d seen, %d lookups, %d forwarded\n",
 numBO1, numBO2, numBO3);
 #endif
 #ifndef PAUSE_STATS	/* don't do timing when collecting pause data */
-    {
+    if (GCMessages) {
 	long	gcTime;
 	StopGCTimer (msp->ml_vproc, &gcTime);
 	SayDebug (" (%d ms)\n", gcTime);
     }
+    else
+	StopGCTimer (msp->ml_vproc, NIL(long *));
 #endif
 
 #ifdef VM_STATS

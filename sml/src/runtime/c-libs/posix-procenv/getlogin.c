@@ -20,7 +20,7 @@ ml_val_t _ml_P_ProcEnv_getlogin (ml_state_t *msp, ml_val_t arg)
 
     name = getlogin();
     if (name == NIL(char *))
-        return RaiseSysError(msp, "no login name");
+        return RAISE_ERROR(msp, "no login name");
   
     return ML_CString (msp, name);
 

@@ -36,7 +36,7 @@ PVT ml_val_t FDSetToList (ml_state_t *msp, fd_set *fds, int width);
 ml_val_t _ml_IO_select (ml_state_t *msp, ml_val_t arg)
 {
 #if ((! defined(HAS_SELECT)) && (! defined(HAS_POLL)))
-    return RaiseSysError (msp, "SMLNJ-IO.select unsupported");
+    return RAISE_ERROR (msp, "SMLNJ-IO.select unsupported");
 #else
     ml_val_t	    rl = REC_SEL(arg, 0);
     ml_val_t	    wl = REC_SEL(arg, 1);
@@ -130,7 +130,7 @@ ml_val_t _ml_IO_select (ml_state_t *msp, ml_val_t arg)
 #ifdef HAS_POLL
 	FREE (fds);
 #endif
-	return RaiseSysError (msp, NIL(char *));
+	return RAISE_SYSERR (msp, sts);
     }
     else {
 	ml_val_t	    rfdl, wfdl, efdl, res;

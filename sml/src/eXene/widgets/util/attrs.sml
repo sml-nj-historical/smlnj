@@ -164,7 +164,7 @@ structure Attrs : ATTRS =
 	  val s = sstrip s
 	  fun split n = let
 		fun extract i =
-                      #1(valOf(Word.scan StringCvt.HEX SS.getc (SS.slice(s, i, n))))
+                      #1(valOf(Word.scan StringCvt.HEX SS.getc (SS.slice(s, i, SOME n))))
 		in
 		  EXeneBase.CMS_RGB{
 		      red = extract 1,
