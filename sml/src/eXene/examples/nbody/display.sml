@@ -14,10 +14,10 @@ struct
     val contr_size = 12
 
     val G = 6.67e~8
-    val dt = (* 500.0 *) 2000.0
+    val dt = 500.0 (* 2000.0 *)
     val max = 7.80e13 * 2.1
 
-    val N = (* 30 *) 15
+    val N = 30 (* 15 *)
 
     fun spacer n = Box.Glue { nat = n, min = n, max = SOME n }
     fun rubber n = Box.Glue { nat = n, min = 1, max = NONE }

@@ -10,6 +10,8 @@ structure AstToSpec = struct
     structure A = Ast
     structure B = Bindings
 
+    exception VoidType
+
     fun bug m = raise Fail ("AstToSpec: bug: " ^ m)
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
@@ -79,7 +81,7 @@ structure AstToSpec = struct
 		 end)
 	  | tagname (SOME n, _) = n
 
-	fun valty A.Void = err "void variable type"
+	fun valty A.Void = raise VoidType
 	  | valty A.Ellipses = err "ellipses variable type"
 	  | valty (A.Qual (q, t)) = valty t
 	  | valty (A.Numeric (_, _, A.SIGNED, A.CHAR, _)) = Spec.SCHAR
@@ -108,6 +110,8 @@ structure AstToSpec = struct
 	  | valty (A.TypeRef tid) =
 	    typeref (tid, fn _ => bug "missing typedef info")
 	  | valty A.Error = err "Error type"
+
+	and valty_nonvoid t = valty t handle VoidType => err "void variable type"
 
 	and typeref (tid, otherwise) =
 	    case Tidtab.find (tidtab, tid) of
@@ -266,19 +270,19 @@ structure AstToSpec = struct
 	    ty
 	end
 
-	and cobj t = (constness t, valty t)
+	and cobj t = (constness t, valty_nonvoid t)
 
 	and fptrty f = Spec.FPTR (cft f)
 
 	and cft (res, args) =
 	    { res = case getCoreType res of
 			A.Void => NONE
-		      | _ => SOME (valty res),
+		      | _ => SOME (valty_nonvoid res),
 	      args = case args of
 			 [arg] => (case getCoreType arg of
 				       A.Void => []
-				     | _ => [valty arg])
-		       | _ => map valty args }
+				     | _ => [valty_nonvoid arg])
+		       | _ => map valty_nonvoid args }
 
 	fun functionName (f: A.id) = let
 	    val n = Symbol.name (#name f)
@@ -313,7 +317,8 @@ structure AstToSpec = struct
 	fun declaration (A.TypeDecl { tid, ... }) =
 	    (* Spec.SINT is an arbitrary choice; the value gets
 	     * ignored anyway *)
-	    ignore (typeref (tid, fn _ => Spec.SINT))
+	    (ignore (typeref (tid, fn _ => Spec.SINT))
+	     handle VoidType => ())	(* ignore type aliases for void *)
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 
 	fun coreExternalDecl (A.ExternalDecl d) = declaration d

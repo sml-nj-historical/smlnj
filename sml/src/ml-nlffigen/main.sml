@@ -79,10 +79,11 @@ structure Main = struct
 		val cpp_tmpl = getOpt (OS.Process.getEnv "FFIGEN_CPP",
 				       "gcc -E -U__GNUC__ %s > %t")
 		val cpp = substitute (cpp_tmpl, hfile, ifile)
-		val sgf = getOpt (sgf, hfile ^ ".sig")
-		val stf = getOpt (stf, hfile ^ ".sml")
-		val cmf = getOpt (cmf, hfile ^ ".cm")
-		val (g_sgn, g_stn) = mangle hfile
+		val hfile_file = OS.Path.file hfile
+		val sgf = getOpt (sgf, hfile_file ^ ".sig")
+		val stf = getOpt (stf, hfile_file ^ ".sml")
+		val cmf = getOpt (cmf, hfile_file ^ ".cm")
+		val (g_sgn, g_stn) = mangle hfile_file
 		val sgn = getOpt (sgn, g_sgn)
 		val stn = getOpt (stn, g_stn)
 		val _ = if OS.Process.system cpp <> OS.Process.success then

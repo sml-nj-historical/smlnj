@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/25 12:05:00 EDT
+Tag: blume-20010625-nlffigen
+Description:
+
+This update fixes a number of minor bugs in ml-nlffigen as reported by
+Nick Carter <nbc@andrew.cmu.edu>.
+
+  1. Silly but ok typedefs of the form "typedef void myvoid;" are now accepted.
+  2. Default names for generated files are now derived from the name of
+     the C file *without its directory*.  In particular, this causes generated
+     files to be placed locally even if the C file is in some system directory.
+  3. Default names for generated signatures and structures are also derived
+     from the C file name without its directory.  This avoids silly things
+     like "structure GL/GL".
+     (Other silly names are still possible because ml-nlffigen does not do
+      a thorough check of whether generated names are legal ML identifiers.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/21 12:25:00 EDT
 Tag: blume-20010621-eXene
 Description:
