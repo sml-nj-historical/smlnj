@@ -17,7 +17,7 @@
 #define _ML_OSDEP_
 
 #if defined(OPSYS_UNIX)
-#  if (defined(OPSYS_SUNOS) || defined(OPSYS_IRIX4) || defined(OPSYS_LINUX) || defined(OPSYS_AIX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD))
+#  if (defined(OPSYS_SUNOS) || defined(OPSYS_IRIX4) || defined(OPSYS_LINUX) || defined(OPSYS_AIX) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_DARWIN))
 #     define GETPAGESIZE()	(getpagesize())
 #  else
    /* POSIX 1003.1b interface */

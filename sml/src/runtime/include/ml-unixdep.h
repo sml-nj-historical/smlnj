@@ -195,6 +195,15 @@ typedef int ssize_t;
 extern int	sys_nerr;
 extern char	*sys_errlist[];
 
+#elif defined(OPSYS_DARWIN) /** MacOS X **/
+#  define OS_NAME       "Darwin"
+#  define HAS_POSIX_LIBRARIES
+#  define HAS_SIGCONTEXT
+#  define HAS_POSIX_SIGS
+#  define HAS_STRERROR
+#  define HAS_SELECT
+#  define HAS_ANON_MMAP
+
 #elif defined(OPSYS_HPUX9)  /** HPUX 9.0 **/
 #  define OS_NAME       "HPUX"
 #  define HAS_POSIX_LIBRARIES

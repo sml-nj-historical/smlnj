@@ -51,6 +51,13 @@ case `uname -s` in
     OPSYS=aix
     ARCH=ppc
     ;;
+  Darwin)
+    OPSYS=darwin
+    case `uname -p` in
+      powerpc) ARCH=ppc;;
+      *) exit 1;;
+    esac
+    ;;
   OSF1)
     case `uname -m` in
       alpha)

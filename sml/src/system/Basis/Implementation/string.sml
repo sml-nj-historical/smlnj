@@ -246,6 +246,14 @@ structure StringImp : STRING =
     val fromCString = fromString' Char.scanC
     val toCString = translate Char.toCString
 
+    fun concatWith sep l = let
+	fun build [] = []
+	  | build [x] = [x]
+	  | build (x :: xs) = x :: sep :: build xs
+    in
+	concat (build l)
+    end
+
   end (* structure String *)	   
 
 

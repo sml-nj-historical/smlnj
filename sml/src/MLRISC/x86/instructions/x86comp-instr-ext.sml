@@ -40,7 +40,8 @@ struct
   val stackArea = I.Region.stack
 
   fun compileSext reducer {stm: stm, an:T.an list} = let
-    val T.REDUCER{operand, emit, reduceFexp, instrStream, ...} = reducer
+    val T.REDUCER{operand, emit, reduceFexp, instrStream, reduceOperand,
+                  ...} = reducer
     val T.Stream.STREAM{emit=emitI, ...} = instrStream
     fun fstp(sz, fstpInstr, fexp) = 
       (case fexp
@@ -60,5 +61,10 @@ struct
 
      | X.LEAVE	     => emit(I.LEAVE, an)
      | X.RET(rexp)   => emit(I.RET(SOME(operand rexp)), an)
+     | X.LOCK_CMPXCHGL(src, dst) =>
+       (* src must in a register *)
+       emit(I.CMPXCHG{lock=true,sz=I.I32, 
+                      src=I.Direct(reduceOperand(operand src)), 
+                      dst=operand dst},an)
   end
 end

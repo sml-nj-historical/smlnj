@@ -39,9 +39,13 @@
  * The prototype of a function taking arguments of types a1,...,an (n > 0)
  * and producing a result of type r is encoded as:
  *       (unit * [a1] * ... * [an] -> [r]) list
+ * We use
+ *       (unit * [a1] * ... * [an] -> [r]) list list
+ * to specify a "stdcall" calling convention used by, e.g., Win32.
+ * 
  * For n = 0 (C argument list is "(void)"), we use:
- *       (unit -> [r]) list
- * The list constructor here is a trick to avoid having to construct
+ *       (unit -> [r]) list     or      (unit -> [r]) list list
+ * The use of list constructor(s) here is a trick to avoid having to construct
  * an actual function value of the required type when invoking the RAW_CCALL
  * primop.  Instead, we just pass nil.  The code generator will throw away
  * this value anyway.
@@ -104,10 +108,11 @@ end = struct
 	    fun look t =
 		Option.map #2 (List.find (fn (u, _) => TU.equalType (t, u)) m)
 
-	    fun unlist (T.VARty (ref (T.INSTANTIATED t))) = unlist t
-	      | unlist (t0 as T.CONty (tc, [t])) =
-		if TU.equalTycon (tc, BT.listTycon) then unlist t else t0
-	      | unlist t = t
+	    fun unlist (T.VARty (ref (T.INSTANTIATED t)), i) = unlist (t, i)
+	      | unlist (t0 as T.CONty (tc, [t]), i) =
+		if TU.equalTycon (tc, BT.listTycon) then unlist (t, i + 1)
+		else (t0, i)
+	      | unlist (t, i) = (t, i)
 
 	    (* Given [T] (see above), produce the CTypes.c_type value
 	     * corresponding to T. *)
@@ -118,13 +123,15 @@ end = struct
 		    (case BT.getFields t of
 			 SOME (_ :: fl) => CT.C_STRUCT (map dt fl)
 		       | _ => bad ())
+
+	    val (fty, nlists) = unlist (t, 0)
 	in
 	    (* Get argument types and result type; decode them.
 	     * Construct the corresponding CTypes.c_proto value. *)
-	    case getDomainRange (unlist t) of
+	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-		{ conv = "SMLNJ", (* select special treatment for vregs etc. *)
+		{ conv = if nlists > 1 then "stdcall" else "ccall", 
 		  retTy = dt r,
 		  paramTys = if TU.equalType (d, BT.unitTy) then []
 			     else case BT.getFields d of

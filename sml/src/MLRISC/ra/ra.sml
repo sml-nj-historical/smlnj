@@ -62,7 +62,7 @@ struct
      spillProh    : C.cell list,            (* don't spill these *)
      memRegs      : C.cell list,            (* memory registers *)
      K            : int,                    (* number of colors *)
-     dedicated    : bool Array.array,       (* dedicated registers *)
+     dedicated    : int -> bool,            (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)
      copyInstr    : F.Spill.copyInstr,      (* how to make a copy *)
      spill        : F.Spill.spill,          (* spill callback *)

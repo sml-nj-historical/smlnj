@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2000 by Lucent Technologies, Bell Laboratories
  *
- * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ * Author: Matthias Blume
  *)
 signature SRCPATH = sig
 
@@ -142,18 +142,12 @@ structure SrcPath :> SRCPATH = struct
 		  valid: unit -> bool,
 		  reanchor: (anchor -> string) -> prepath option }
 
-    type anchorval = unit -> elab
-
-    type env =
-	 { get_free: anchor -> elab,
-	   set_free: anchor * prepath option -> unit,
-	   is_set: anchor -> bool,
-	   reset: unit -> unit,
-	   bound: anchorval StringMap.map }
+    type anchorval = (unit -> elab) * (bool -> string)
 
     datatype dir =
 	CWD of { name: string, pp: prepath }
-      | ANCHOR of { name: anchor, look: unit -> elab }
+      | ANCHOR of { name: anchor, look: unit -> elab,
+		    encode : bool -> string option }
       | ROOT of string
       | DIR of file0
 
@@ -169,13 +163,15 @@ structure SrcPath :> SRCPATH = struct
 
     type rebindings = { anchor: anchor, value: prefile } list
 
+    type env =
+	 { get_free: anchor -> elab,
+	   set_free: anchor * prepath option -> unit,
+	   is_set: anchor -> bool,
+	   reset: unit -> unit,
+	   bound: anchorval StringMap.map }
+
     type ord_key = file
 
-    fun mk_look (e: env, a) () =
-	case StringMap.find (#bound e, a) of
-	    SOME f => f ()
-	  | NONE => #get_free e a
-	
     (* stable comparison *)
     fun compare (f1: file, f2: file) = Int.compare (#2 f1, #2 f2)
 
@@ -201,7 +197,11 @@ structure SrcPath :> SRCPATH = struct
 
     fun unintern (f: file) = #1 f
 
-    fun encode0 bracket (p: file0) = let
+    fun pre0 (PATH { arcs, context, ... }) =
+	{ arcs = arcs, context = context, err = fn (_: string) => () }
+    val pre = pre0 o unintern
+
+    fun encode0 bracket (pf: prefile) = let
 	fun needesc c = not (Char.isPrint c) orelse Char.contains "/:\\$%" c
 	fun esc c =
 	    "\\" ^ StringCvt.padLeft #"0" 3 (Int.toString (Char.ord c))
@@ -212,41 +212,57 @@ structure SrcPath :> SRCPATH = struct
 	in
 	    (ta' ".", ta' "..")
 	end
+	infixr 5 ::/::
+	fun arc ::/:: [] = [arc]
+	  | arc ::/:: a = arc :: "/" :: a
 	fun arc a =
 	    if a = P.currentArc then "."
 	    else if a = P.parentArc then ".."
 	    else if a = "." then dot 
 	    else if a = ".." then dotdot
 	    else ta a
-	fun e_p (PATH { arcs = [], context, ... }, _, a) =
-	    e_c (context, a, NONE)
-	  | e_p (PATH { arcs, context, ... }, ctxt, a) =
+	fun e_ac ([], context, _, a) = e_c (context, a, NONE)
+	  | e_ac (arcs, context, ctxt, a) =
 	    let val l = map arc arcs
 		val a0 = List.hd l
 		val l' = rev l
 		val l'' = if ctxt andalso bracket then
 			      concat ["(", List.hd l', ")"] :: List.tl l'
 			else l'
-		val a' = foldl (fn (x, l) => arc x :: "/" :: l)
+		val a' = foldl (fn (x, l) => arc x ::/:: l)
 			      (arc (List.hd l'') :: a) (List.tl l'')
 	    in e_c (context, a', SOME a0)
 	    end
 	and e_c (ROOT "", a, _) = concat ("/" :: a)
-	  | e_c (ROOT vol, a, _) = concat ("%" :: ta vol :: "/" :: a)
+	  | e_c (ROOT vol, a, _) = concat ("%" :: ta vol ::/:: a)
 	  | e_c (CWD _, a, _) = concat a
-	  | e_c (ANCHOR x, a, NONE) = concat ("$" :: ta (#name x) :: "/" :: a)
-	  | e_c (ANCHOR x, a, SOME a1) = let
-		val a0 = ta (#name x)
-	    in
-		concat (if bracket andalso a0 = a1 then "$/" :: a
-			else "$" :: a0 :: "/" :: a)
-	    end
-	  | e_c (DIR p, a, _) = e_p (p, true, ":" :: a)
+	  | e_c (ANCHOR x, a, a1opt) =
+	    (case (#encode x bracket, a1opt) of
+		 (SOME ad, _) =>
+		 if not bracket then concat (ad ::/:: a)
+		 else concat ("$" :: ta (#name x) :: "(=" :: ad :: ")/" :: a)
+	       | (NONE, NONE) => concat ("$" :: ta (#name x) ::/:: a)
+	       | (NONE, SOME a1) => let
+		     val a0 = ta (#name x)
+		 in
+		     concat (if bracket andalso a0 = a1 then "$/" :: a
+			     else "$" :: a0 ::/:: a)
+		 end)
+	  | e_c (DIR (PATH { arcs, context, ... }), a, _) =
+	    e_ac (arcs, context, true, ":" :: a)
     in
-	e_p (p, false, [])
+	e_ac (#arcs pf, #context pf, false, [])
     end
 
-    val encode = encode0 false o unintern
+    fun mk_anchor (e: env, a) =
+	case StringMap.find (#bound e, a) of
+	    SOME (elaborate, encode) =>
+	    { name = a , look = elaborate, encode = SOME o encode }
+	  | NONE =>
+	    { name = a, look = fn () => #get_free e a, encode = fn _ => NONE }
+	
+    val encode_prefile = encode0 false
+    val encode = encode_prefile o pre
 
     val clients = ref ([] : (string -> unit) list)
     fun addClientToBeNotified c = clients := c :: !clients
@@ -260,10 +276,10 @@ structure SrcPath :> SRCPATH = struct
 	else (cwd_info := { name = n', pp = pp' };
 	      cwd_notify := true);
 	if !cwd_notify then
-	    let val p = PATH { arcs = rev (#revarcs pp),
-			       context = ROOT (#vol pp),
-			       elab = ref bogus_elab, id = ref NONE }
-		val ep = encode0 false p
+	    let val pf = { arcs = rev (#revarcs pp),
+			   context = ROOT (#vol pp),
+			   err = fn (_: string) => () }
+		val ep = encode_prefile pf
 	    in
 		app (fn c => c ep) (!clients);
 		cwd_notify := false
@@ -296,7 +312,7 @@ structure SrcPath :> SRCPATH = struct
 			       reanchor = reanchor }
 	    else { pp = pp, valid = fn () => true, reanchor = reanchor }
 	end
-      | elab_dir (ANCHOR { name, look }) = look ()
+      | elab_dir (ANCHOR { name, look, encode }) = look ()
       | elab_dir (ROOT vol) = absElab ([], vol)
       | elab_dir (DIR p) = dirElab (elab_file p)
 
@@ -365,7 +381,7 @@ structure SrcPath :> SRCPATH = struct
     fun osstring_prefile { context, arcs, err } =
 	pp2name (#pp (augElab arcs (elab_dir context)))
 
-    val descr = encode0 true o unintern
+    val descr = encode0 true o pre
 
     fun osstring_dir d =
 	case pp2name (#pp (elab_dir d)) of
@@ -491,15 +507,16 @@ structure SrcPath :> SRCPATH = struct
 	    else ANCHORED (String.extract (arc1, 1, NONE), arcn)
     end
 
-    fun bind env l = let
-	fun b ({ anchor, value = { arcs, context, err } }, e: env) =
-	    { get_free = #get_free e, set_free = #set_free e,
-	      reset = #reset e, is_set = #is_set e,
-	      bound = StringMap.insert
-			  (#bound e, anchor,
-			   fn () => augElab arcs (elab_dir context)) }
+    fun bind (env: env) l = let
+	fun b ({ anchor, value = pf as { arcs, context, err } }, m) =
+	    StringMap.insert (m, anchor,
+			      (fn () => augElab arcs (elab_dir context),
+			       fn brack => encode0 brack pf))
+			      
     in
-	foldl b env l
+	{ get_free = #get_free env, set_free = #set_free env,
+	  reset = #reset env, is_set = #is_set env,
+	  bound = foldl b (#bound env) l }
     end
 
     fun file0 ({ context, arcs, err }: prefile) =
@@ -512,13 +529,9 @@ structure SrcPath :> SRCPATH = struct
 			 | _ => arcs) }
 
     val file = intern o file0
-    fun pre0 (PATH { arcs, context, ... }) =
-	{ arcs = arcs, context = context, err = fn (_: string) => () }
-    val pre = pre0 o unintern
 
     fun prefile (c, l, e) = { context = c, arcs = l, err = e }
 
-    (* env argument is not used -- it's just there for uniformity *)
     fun native { err } { context, spec } =
 	case P.fromString spec of
 	    { arcs, vol, isAbs = true } => prefile (ROOT vol, arcs, err)
@@ -529,7 +542,7 @@ structure SrcPath :> SRCPATH = struct
 	    RELATIVE l => prefile (context, l, err)
 	  | ABSOLUTE l => prefile (ROOT "", l, err)
 	  | ANCHORED (a, l) =>
-	    prefile (ANCHOR { name = a, look = mk_look (env, a) }, l, err)
+	    prefile (ANCHOR (mk_anchor (env, a)), l, err)
 
     fun extend { context, arcs, err } morearcs =
 	{ context = context, arcs = arcs @ morearcs, err = err }
@@ -553,10 +566,9 @@ structure SrcPath :> SRCPATH = struct
 		     (* HACK! We are cheating here, turning the prefile into
 		      * a file even when there are no arcs.  This is ok
 		      * because of (bracket = false) for encode0. *)
-		     encode0 false (PATH { arcs = #arcs f,
-					   context = #context f,
-					   elab = ref bogus_elab,
-					   id = ref NONE }))
+		     encode_prefile { arcs = #arcs f,
+				      context = #context f,
+				      err = fn (_: string) => () })
 	fun p_p p = p_pf (pre0 p)
 	and p_pf { arcs, context, err } =
 	    P.toString { arcs = arcs, vol = "", isAbs = false } :: p_c context
@@ -579,7 +591,7 @@ structure SrcPath :> SRCPATH = struct
 	and u_p l = file0 (u_pf l)
 	and u_c [vol, "r"] = ROOT vol
 	  | u_c ["c"] = dir relativeTo
-	  | u_c [n, "a"] = ANCHOR { name = n, look = mk_look (env, n) }
+	  | u_c [n, "a"] = ANCHOR (mk_anchor (env, n))
 	  | u_c l = DIR (u_p l)
     in
 	u_pf pickled
@@ -618,8 +630,7 @@ structure SrcPath :> SRCPATH = struct
 			  | #"$" => let
 				val n = xtr ()
 			    in
-				file (ANCHOR { name = n,
-					       look = mk_look (env, n) }, arcs)
+				file (ANCHOR (mk_anchor (env, n)), arcs)
 			    end
 			  | _ => file (cwd (), arc arc0 :: arcs)
 		end

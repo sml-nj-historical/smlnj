@@ -14,7 +14,7 @@ val files =
  "HPPA.cm",
  "IA32.cm",
  "PPC.cm",
- (*"MIPS.cm", *)
+ "MIPS.cm", 
 
  "Peephole.cm",
  "ALPHA-Peephole.cm",

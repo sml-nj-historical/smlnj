@@ -333,7 +333,8 @@ struct
                | SOME tmp => 
                    if same(tmp, regToSpill)
                    then ((* spilledCopyTmps := !spilledCopyTmps + 1; *)
-                         [spillCopyTmp{copy=instr, spillLoc=spillLoc,
+                         [spillCopyTmp{copy=instr, reg=regToSpill,
+                                      spillLoc=spillLoc,
                                       annotations=annotations}])
                    else spillCopyDst(instr,regToSpill,spillLoc,kill,
                                       don'tOverwrite)

@@ -13,6 +13,581 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/27 15:10:00 EDT
+Tag: blume-20010627-concur
+Description:
+
+Fixed a small bug in CM's handling of parallel compilation.
+(You could observe the bug by Control-C-interrupting an ordinary
+CMB.make or CM.stabilize and then attaching some compile servers.
+The result was that all of a sudden the previously interrupted
+compilation would continue on its own.  This was because of
+an over-optimization: CM did not bother to clean out certain queues
+when no servers were attached "anyway", resulting in the contents
+of these queues to grab control when new servers did get attached.)
+
+There is also another minor update to the CM manual.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/26 16:15:00 EDT
+Tag: blume-20010626-cmdoc
+Description:
+
+Minor typo fixed in CM manual (syntax diagram for libraries).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/25 22:55:00 EDT
+Tag: blume-20010625-x86pc
+Description:
+
+Fixed a nasty bug in the X86 assembly code that caused signal
+handlers to fail (crash) randomly.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/25 12:05:00 EDT
+Tag: blume-20010625-nlffigen
+Description:
+
+This update fixes a number of minor bugs in ml-nlffigen as reported by
+Nick Carter <nbc@andrew.cmu.edu>.
+
+  1. Silly but ok typedefs of the form "typedef void myvoid;" are now accepted.
+  2. Default names for generated files are now derived from the name of
+     the C file *without its directory*.  In particular, this causes generated
+     files to be placed locally even if the C file is in some system directory.
+  3. Default names for generated signatures and structures are also derived
+     from the C file name without its directory.  This avoids silly things
+     like "structure GL/GL".
+     (Other silly names are still possible because ml-nlffigen does not do
+      a thorough check of whether generated names are legal ML identifiers.
+      When in doubt, use command line arguments to force particular names.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/21 12:25:00 EDT
+Tag: blume-20010621-eXene
+Description:
+
+eXene now compiles and (sort of) works again.
+
+The library name (for version > 110.33) is $/eXene.cm.
+
+I also added an new example in src/eXene/examples/nbody.  See the
+README file there for details.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/20 16:40:00 EDT
+Tag: blume-20010620-cml
+Description:
+
+CML now compiles and works again.
+
+Libraries (for version > 110.33):
+
+  $cml/cml.cm            Main CML library.
+  $cml/basis.cm          CML's version of $/basis.cm.
+  $cml/cml-internal.cm   Internal helper library.
+  $cml/core-cml.cm       Internal helper library.
+  $cml-lib/trace-cml.cm  Tracing facility.
+  $cml-lib/smlnj-lib.cm  CML's version of $/smlnj-lib.cm
+
+The installer (config/install.sh) has been taught how to properly
+install this stuff.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/19 17:55:00 EDT
+Tag: blume-20010619-instantiate
+Description:
+
+This un-breaks the fix for bug 1432.
+(The bug was originally fixed in 110.9 but I broke it again some
+time after that.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/19 17:25:00 EDT
+Tag: blume-20010619-signals
+Description:
+
+This should (hopefully) fix the long-standing signal handling bug.
+(The runtime system was constructing a continuation record with an
+incorrect descriptor which would cause the GC to drop data on the floor...)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/15 15:05:00 EDT
+Tag: blume-20010615-moresparc
+Description:
+
+Here is a short late-hour update related to Sparc c-calls:
+
+ -- made handling of double-word arguments a bit smarter
+
+ -- instruction selection phase tries to collapse certain clumsily
+    constructed ML-Trees; typical example:
+
+        ADD(ty,ADD(_,e,LI d1),LI d2)  ->  ADD(ty,e,LI(d1+d2))
+
+    This currently has no further impact on SML/NJ since mlriscGen does
+    not seem to generate such patterns in the first place, and c-calls
+    (which did generate them in the beginning) has meanwhile been fixed
+    so as to avoid them as well.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/15 15:05:00 EDT
+Tag: blume-20010615-sparc
+Description:
+
+The purpose of this update is to provide an implementation of NLFFI
+on Sparc machines.
+
+Here are the changes in detail:
+
+   * src/MLRISC/sparc/c-calls/sparc-c-calls.sml is a new file containing
+   the Sparc implementation of the c-calls API.
+   * The Sparc backend of SML/NJ has been modified to uniformely use %fp
+   for accessing the ML frame.  Thus, we have a real frame pointer and
+   can freely modify %sp without need for an omit-frame-ptr phase.
+   The vfp logic in src/compiler/CodeGen/* has been changed to accomodate
+   this case.
+   * ml-nlffigen has been taught to produce code for different architectures
+   and calling conventions.
+   * In a way similar to what was done in the x86 case, the Sparc
+   backend uses its own specific extension to mltree.  (For example,
+   it needs to be able to generate UNIMP instructions which are part
+   of the calling convention.)
+   * ml-nlffi-lib was reorganized to make it more modular (in particular,
+   to make it easier to plug in new machine- and os-dependent parts).
+
+There are some other fairly unrelated bug fixes and cleanups as well:
+
+   * I further hacked the .cm files for MLRISC tools (like MDLGen) so
+   that they properly share their libraries with existing SML/NJ libraries.
+   * I fixed a minor cosmetic bug in CM, supressing certain spurious
+   follow-up error messages.
+   * Updates to CM/CMB documentation.
+
+TODO items:
+
+   * MLRISC should use a different register as its asmTemp on the Sparc.
+     (The current %o2 is a really bad choice because it is part of the
+     calling conventions, so things might interfere in unexpected ways.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/07
+Tag: blume-20010607-calls
+Description:
+
+A number of internal changes related to C calls and calling conventions:
+
+1. ML-Tree CALL statements now carry a "pops" field.  It indicates the
+   number of bytes popped implicitly (by the callee).  In most cases
+   this field is 0 but on x86/win32 it is some non-zero value.  This
+   is information provided for the benefit of the "omit-frameptr" pass.
+2. The CALL instruction on the x86 carries a similar "pops" field.
+   The instruction selection phase copies its value from the ML-Tree
+   CALL statement.
+3. On all other architectures, the instruction selection phase checks
+   whether "pops=0" and complains if not.
+4. The c-calls implementation for x86 now accepts two calling conventions:
+   "ccall" and "stdcall".  When "ccall" is selected, the caller cleans
+   up after the call and pops is set to 0.  For "stdcall", the caller
+   does nothing, leaving the cleanup to the callee; pops is set to
+   the number of bytes that were pushed onto the stack.
+5. The cproto decoder (compiler/Semant/types/cproto.sml) now can
+   distinguish between "ccall" and "stdcall".
+6. The UNIMP instruction has been added to the supported Sparc instruction
+   set. (This is needed for implementing the official C calling convention
+   on this architecture.)
+7. I fixed some of the .cm files under src/MLRISC/Tools to make them
+   work with the latest CM.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/05 15:10:00 EDT
+Tag: blume-20010605-cm-index
+Description:
+
+0. The "lambdasplit" parameter for class "sml" in CM has been documented.
+
+1. CM can now generate "index files".  These are human-readable files
+   that list on a per-.cm-file basis each toplevel symbol defined or
+   imported.  The location of the index file for
+   <p>/<d>.cm is <p>/CM/INDEX/<d>.cm.
+   To enable index-file generation, set CM.Control.generate_index to true
+   or export an environment-symbol: export CM_GENERATE_INDEX=true.
+
+   The CM manual has been updated accordingly.
+
+2. I made some slight modifications to the c-calls API in MLRISC.
+
+     a) There is now a callback to support saving/restoring of
+        dedicated but caller-save registers around the actual call
+        instruction.
+     b) One can optionally specify a comment-annotation for the
+        call instruction.
+
+3. SML/NJ (mlriscGen.sml) uses this new API for the rawccall primop.
+   (For example, the comment annotation shows the C prototype of
+    the function being called.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/06/01 13:30:00 EDT
+Tag: blume-20010601-nlffi-cleanup
+Description:
+
+This is mostly a cleanup of MLFFI stuff:
+
+   - some signature files have been put into a more exposed place
+   - the ugly 'f type parameter is gone (simplifies types tremendously!)
+   - ml-nlffigen changed accordingly
+   - tutorial updated
+
+Other changes:
+
+   - author's affiliation in CM manual(s) updated
+   - some more recognized keywords added to Allen's sml.sty
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/25 15:30:00 EDT
+Tag: blume-20010525-iptr
+Description:
+
+  - put the official 110.33-README (as it appears on the ftp server) under
+    CVS
+  - fixed a small bug related to incomplete pointer types in
+    ml-nlffigen
+  - small cosmetic change to the ml-nlffi-lib's "arr" type constructor
+    (it does not need the 'f type parameter)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/23 14:30:00 EDT
+Tag: Release_110_33
+Description:
+
+New version number (110.33).  New bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/22 18:06:00 EDT
+Tag: blume-20010522-targets
+Description:
+
+Made install.sh use file config/targets.customized if it exists, falling
+back to config/targets if it doesn't.  This way one can have a customized
+version of the targets file without touching the "real thing", thus
+eliminating the constant fear of accidentally checking something bogus
+back into the CVS repository...  (File config/targets.customized must
+not be added to the repository!)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/22 16:30:00 EDT
+Tag: blume-20010522-minitut
+Description:
+
+1. Bug fix in ml-nlffigen; now (hopefully) correctly handling
+   struct returns.
+2. Added src/ml-nlffi-lib/Doc/mini-tutorial.txt.  This is some very
+   incomplete, preliminary documentation for NLFFI.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/14 11:30:00 EDT
+Tag: blume-20010514-script
+Description:
+
+Some bugs in install script fixed.
+
+In addition to that I also made a slight change to the NLFFI API:
+Functors generated by ml-nlffigen now take the dynamic library as a
+straight functor argument, not as a suspended one.  (The original
+functor code used to force the suspension right away anyway, so there
+was nothing gained by this complication of the interface.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/11 14:35:00 EDT
+Tag: blume-20010511-ml-nlffi
+Description:
+
+I finally took the plunge and added my new FFI code to the main
+repository.  For x86-linux it is now ready for prime-time.
+
+There are two new subdirectories of "src":
+
+  - ml-nlffi-lib:
+       The utility library for programs using the FFI interface.
+       Here is the implementation of $/c.cm and its associated low-level
+       partners $/c-int.cm and $/memory.cm.
+  - ml-nlffigen:
+       A stand-alone program for generating ML glue code from C source
+       code.
+
+Building ml-nlffigen requires $/ckit-lib.cm.
+
+The config/install.sh script has been updates to do the Right Thing
+(hopefully).
+
+Notice that the source tree for the C-Kit will not be put under "src"
+but directly under the installation root directory.  (This is the
+structure that currently exists on the CVS server when you check out
+module "sml".)  Fortunately, config/install.sh knows about this oddity.
+
+Bugs: No documentation yet.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/09 16:35:00 EDT
+Tag: blume-20010509-cpscontract
+Description:
+
+Fixed a bug in the accounting code in cpsopt/contract.sml.  (The
+wrapper/unwrapper elimination did not decrement usage counts and some
+dead variables got overlooked by the dead-up logic.)
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/05/08  17:26:09 EDT
+Tag: george-20010508-omit-frameptr
+Description:
+
+Changes to implement the omit-frame-pointer optimization to support 
+raw C calls. For now, there is only support on the Intel x86, but
+other architectures will follow as more experience is gained with this. 
+
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/07 14:40:00 EDT
+Tag: blume-20010507-proxies
+Description:
+
+I made into "proxy libraries" all libraries that qualify for such a
+change.  (A qualifying library is a library that has another library or
+groups as its sole member and repeats that member's export list
+verbatim.  A proxy library avoids this repetition by omitting its export
+list, effectively inheriting the list that its (only) member exports.
+See the CM manual for more explanation.)
+The main effect is that explicit export lists for these libraries
+do not have to be kepts in sync, making maintenance a bit easier.
+
+I also added copyright notices to many .cm-files.
+
+Last but not least, I made a new set of bootfiles.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/04 17:00:00 EDT
+Tag: blume-20010504-cm-lsplit
+Description:
+
+0. John merged pending changes to $/smlnj-lib.cm
+
+1. Allen's previous change accidentally backed out of one of Lal's
+   earlier changes.  I undid this mistake (re-introducing Lal's change).
+
+2. I used the new topOrder' function from graph-scc.sml (from $/smlnj-lib.cm)
+   within the compiler where applicable.  There is some code simplification
+   because of that.
+
+3. The "split" phase (in FLINT) is now part of the default list of phases.
+   Compiler.Control.LambdaSplitting.* can be used to globally control the
+   lambda-splitting (cross-module-inlining) engine.  In addition to that,
+   it can now also be controlled on a per-source basis: CM has been taught
+   a new tool parameter applicable to ML source files.
+
+   - To turn lambda-splitting off completely:
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set Off
+        end
+   - To make "no lambda-splitting" the global default (but allow per-source
+     overriding); this is the initial setting:
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set (Default NONE)
+        end
+   - To make "lambda-splitting with aggressiveness a" the global default
+     (and allow per-source overriding):
+        local open Compiler.Control.LambdaSplitting in
+            val _ = set (Default (SOME a))
+        end
+
+   - To turn lambda-splitting off for a given ML souce file (say: a.sml)
+     write (in the respective .cm-file):
+        a.sml (lambdasplitting:off)
+   - To turn lambda-splitting for a.sml on with minimal aggressiveness:
+        a.sml (lambdasplitting:on)
+   - To turn lambda-splitting for a.sml on with aggressiveness <a> (where
+     <a> is a decimal non-negative integer):
+        a.sml (lambdasplitting:<a>)
+   - To turn lambda-splitting for a.sml on with maximal aggressiveness:
+        a.sml (lambdasplitting:infinity)
+   - To use the global default for a.sml:
+        a.sml (lambdasplitting:default)
+     or simply
+        a.sml
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/05/04 01:57:00 EDT
+Tag: leunga-20010504-sync
+Description:
+
+  MLRISC features.
+
+  1. Fix to CMPXCHG instructions.
+  2. Changed RA interface to allow annotations in callbacks.
+  3. Added a new method to the stream interface to allow annotations updates.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/01 11:45:00 EDT
+Tag: blume-20010501-pcedittmp
+Description:
+
+Changed install.sh to use the current working directory instead of
+/usr/tmp for a temporary file (pcedittmp).  The previous choice
+of /usr/tmp caused trouble with MacOS X because of file premission
+problems.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/04/20 11:10:00 EDT
+Tag: blume-20010420-inMLflag
+Description:
+
+ - added vp_limitPtrMask to vproc-state.h
+   (for use by the raw-C-calls mechanism to implement proper interrupt
+    handling)
+ - made the ML compiler aware of various data-structure offsets so it
+   can generate code for accessing the vp_inML flag and vp_limitPtrMask
+ - tweaked mlriscGen.sml to have it emit interrupt-handling code for
+   raw C-calls
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/04/20 09:15:28 EDT
+Tag: george-20010420-macosX
+Description:
+
+ - Changes to port to Mac OS X; Darwin.
+
+ - In the process I found that sqrt was broken on the PPC, because the
+   fsqrt instruction is not implemented.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/04/18 12:45:00 EDT
+Tag: blume-20010418-ccalls
+Description:
+
+ - fixed two off-by-4 errors in the x86-specific c-calls implementation
+   (this bug prevented structure arguments containing pointers from being
+    passed correctly)
+ - changed the raw-C-call code in mlriscGen.sml in such a way that
+   structure arguments are represented as a pointer to the beginning
+   of the structure (instead of having a series of synthesized arguments,
+   one for each structure member)
+
+ - made makeml script's verbosity level configurable via environment
+   variable (MAKEML_VERBOSITY)
+
+ - eliminated placeholder implementations for f32l, w16s, i16s, and f32s
+   in rawmem-x86.sml; we are now using the real thing
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/22 16:25:00 EST
+Tag: blume-20010322-bootfiles
+Description:
+
+Created a new set of bootfiles (for your automatic installation convenience).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/22 15:10:00 EST
+Tag: blume-20010322-rawmem-parcm
+Description:
+
+1. All "raw memory access" primitives for the new FFI are implemented now
+   (at least on the x86).
+2. Some further cleanup of CM's parallel make mechanism.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/19 17:53:00 EST
+Tag: blume-20010319-parallel
+Description:
+
+Parallel make (using compile servers) now works again.
+
+To this end, CM.stabilize and CMB.make have been modified to work in
+two passes when compile servers are attached:
+   1. Compile everything, do not perform stabilization; this pass
+      uses compile servers
+   2. Stabilize everything; this pass does not use compile servers
+If there are no compile servers, the two passes are combined into one
+(as before).  Splitting the passes increases the inherent parallelism
+in the dependency graph because the entire graph including all
+libraries is available at the same time.  This, in turn, improves
+server utilization.  The downside is that the master process will
+have to do some extra work after compilation is done (because for
+technical reasons it must re-read all the binfiles during stabilization).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/16 12:22:00 EST
+Tag: blume-20010316-bootfiles
+Description:
+
+Created a new set of bootfiles (for your automatic installation convenience).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/16 11:00:00 EST
+Tag: blume-20010316-MLTREE-fixup
+Description:
+
+This is a minor fixup for an (untagged) earlier commit by Allen.
+(A file was missing).
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: Mon Mar  5 18:54:57 EST 2001
+Tag: leunga-20010305-cut-support
+
+1. New support for alternative control-flow in MLTREE. 
+   Currently we support 
+
+      FLOW_TO(CALL ...., [k1,...,kn])
+    
+   This is needed for 'cuts to' in C-- and try/handle-like constructs
+   in Moby
+
+   New assembler flag "asm-show-cutsto" to turn on control-flow debugging.
+
+2. Register Allocator
+
+   Changes in interface [from Fermin, John]
+
+3. Alpha 8-bit SLL support [Fermin]
+
+4. All architectures
+
+   A new module (ClusterExpandCopies) for expanding parallel copies.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2001/02/27 23:07:00 EST
 Tag: leunga-20010227-minor-stuff

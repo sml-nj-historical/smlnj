@@ -12,6 +12,9 @@ structure PropList :> PROP_LIST =
 
     fun newHolder() : holder = ref []
 
+    fun hasProps (ref []) = false
+      | hasProps _ = true
+
     fun clearHolder r = (r := [])
 
     fun sameHolder (r1 : holder, r2) = (r1 = r2)

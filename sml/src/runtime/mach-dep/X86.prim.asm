@@ -280,6 +280,9 @@ ENTRY(restoreregs)
 	/* vregs */
 	MOVE	(LinkRegOffMSP(temp),  temp2, stdlink)
 	MOVE	(StdClosOffMSP(temp),  temp2, stdclos)
+
+	/* PC */
+	MOVE    (PCOffMSP(temp), temp2, pc)
 #undef	temp2
 
 	/* Load ML registers. */

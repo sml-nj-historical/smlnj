@@ -49,6 +49,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
    
@@ -228,10 +229,10 @@ struct
      | emit_fsize (I.Q) = (0wx7 : Word32.word)
    fun opn {i} = 
        let 
-(*#line 477.11 "sparc/sparc.mdl"*)
+(*#line 478.11 "sparc/sparc.mdl"*)
            fun hi22 w = (itow w) ~>> 0wxa
 
-(*#line 478.11 "sparc/sparc.mdl"*)
+(*#line 479.11 "sparc/sparc.mdl"*)
            fun lo10 w = ((itow w) && 0wx3ff)
        in 
           (case i of
@@ -286,6 +287,10 @@ struct
        in eWord32 ((rd << 0wx19) + ((imm22 && 0wx3fffff) + 0wx1000000))
        end
    and NOP {} = eWord32 0wx1000000
+   and unimp {const22} = 
+       let val const22 = emit_int const22
+       in eWord32 const22
+       end
    and delay {nop} = (if nop
           then (NOP {})
           else ())
@@ -304,7 +309,7 @@ struct
            val d = emit_GP d
        in 
           let 
-(*#line 515.13 "sparc/sparc.mdl"*)
+(*#line 517.13 "sparc/sparc.mdl"*)
               val (op3, x) = s
           in 
              (case i of
@@ -444,10 +449,10 @@ struct
           )
        end
 
-(*#line 594.7 "sparc/sparc.mdl"*)
+(*#line 596.7 "sparc/sparc.mdl"*)
    fun disp label = (itow ((Label.addrOf label) - ( ! loc))) ~>> 0wx2
 
-(*#line 595.7 "sparc/sparc.mdl"*)
+(*#line 597.7 "sparc/sparc.mdl"*)
    val r15 = C.Reg C.GP 15
    and r31 = C.Reg C.GP 31
        fun emitter instr =
@@ -456,6 +461,7 @@ struct
      | emitInstr (I.STORE{s, d, r, i, mem}) = store {s=s, r=r, i=i, d=d}
      | emitInstr (I.FLOAD{l, r, i, d, mem}) = fload {l=l, r=r, i=i, d=d}
      | emitInstr (I.FSTORE{s, d, r, i, mem}) = fstore {s=s, r=r, i=i, d=d}
+     | emitInstr (I.UNIMP{const22}) = unimp {const22=const22}
      | emitInstr (I.SETHI{i, d}) = sethi {imm22=i, rd=d}
      | emitInstr (I.ARITH{a, r, i, d}) = arith {a=a, r=r, i=i, d=d}
      | emitInstr (I.SHIFT{s, r, i, d}) = shift {s=s, r=r, i=i, d=d}
@@ -475,10 +481,10 @@ struct
      | emitInstr (I.JMP{r, i, labs, nop}) = 
        ( jmp {r=r, i=i}; 
          delay {nop=nop})
-     | emitInstr (I.JMPL{r, i, d, defs, uses, nop, mem}) = 
+     | emitInstr (I.JMPL{r, i, d, defs, uses, cutsTo, nop, mem}) = 
        ( jmpl {r=r, i=i, d=d}; 
          delay {nop=nop})
-     | emitInstr (I.CALL{defs, uses, label, nop, mem}) = 
+     | emitInstr (I.CALL{defs, uses, label, cutsTo, nop, mem}) = 
        ( call {disp30=disp label}; 
          delay {nop=nop})
      | emitInstr (I.Ticc{t, cc, r, i}) = ticc {t=t, r=r, cc=cc, i=i}
@@ -523,7 +529,8 @@ struct
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                getAnnotations=getAnnotations
                }
    end
 end

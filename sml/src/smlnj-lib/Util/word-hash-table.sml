@@ -70,6 +70,18 @@ structure WordHashTable :> MONO_HASH_TABLE where type Key.hash_key = word =
 	    (* end case *)
 	  end
 
+  (* return true, if the key is in the domain of the table *)
+    fun inDomain (HT{table, ...}) key = let
+	  val arr = !table
+	  val hash = hashVal key
+	  val indx = index (hash, Array.length arr)
+	  fun look HTRep.NIL = false
+	    | look (HTRep.B(h, k, v, r)) = 
+		((hash = h) andalso sameKey(key, k)) orelse look r
+	  in
+	    look (Array.sub (arr, indx))
+	  end
+
   (* find an item, the table's exception is raised if the item doesn't exist *)
     fun lookup (HT{table, not_found, ...}) key = let
 	  val arr = !table

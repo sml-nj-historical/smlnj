@@ -112,7 +112,7 @@ Group (../basis.cm)
 	structure TextPrimIO
 	structure Date
 	structure Real64Array
-	structure Real64ArraySlice
+(*	structure Real64ArraySlice *)
 	structure Real64Vector
 	structure Real64VectorSlice
 	structure SML90
@@ -235,7 +235,7 @@ is
 	Unsafe/unsafe.sml
 
 	OS/os-sig.sml (* os.sig *)
-	OS/os-filesys-sig.sml (* os-filesys.sig *)
+	OS/os-file-sys-sig.sml (* os-filesys.sig *)
 	OS/os-path-sig.sml (* os-path.sig *)
 	OS/os-process-sig.sml (* os-process.sig *)
         OS/os-io-sig.sml (* new sig *) (*OS/os-io.sig *)
@@ -270,7 +270,7 @@ is
 	timer-sig.sml (* timer.sig *)
 	option-sig.sml (* option.sig *)
 	math-sig.sml (* math.sig *)
-	sml90-sig.sml (* sml90.sig *)
+	SML90-sig.sml (* sml90.sig *)
 
 	substring.sml
 	text.sml
@@ -295,7 +295,7 @@ is
 	real64-vector.sml
 	real64-vector-slice.sml
 	real64-array.sml
-	real64-array-slice.sml
+(*	real64-array-slice.sml *)
 
 	char-array.sml
 	char-vector.sml
@@ -312,14 +312,18 @@ is
 #if defined(ARCH_X86)
 	math64-x86.sml
 #elif defined(ARCH_ALPHA)
-	math64-alpha.sml
+	math64-none.sml
+#elif defined(ARCH_PPC)
+	math64-none.sml
 #else
-	math64-generic.sml
+	math64-sqrt.sml
 #endif
 	real-format.sml
 	word8.sml
 	word8-vector.sml
+	word8-vector-slice.sml
 	word8-array.sml
+	word8-array-slice.sml
 	time.sml
 	internal-timer.sml
 	timer.sml

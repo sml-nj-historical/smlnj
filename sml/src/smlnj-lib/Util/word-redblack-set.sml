@@ -358,6 +358,20 @@ structure WordRedBlackSet :> ORD_SET where type Key.ord_key = word =
 	    SET(n, linkAll result)
 	  end
 
+    fun partition pred (SET(_, t)) = let
+	  fun walk (E, n1, result1, n2, result2) = (n1, result1, n2, result2)
+	    | walk (T(_, a, x, b), n1, result1, n2, result2) = let
+		val (n1, result1, n2, result2) = walk(a, n1, result1, n2, result2)
+		in
+		  if (pred x)
+		    then walk(b, n1+1, addItem(x, result1), n2, result2)
+		    else walk(b, n1, result1, n2+1, addItem(x, result2))
+		end
+	  val (n1, result1, n2, result2) = walk (t, 0, ZERO, 0, ZERO)
+	  in
+	    (SET(n1, linkAll result1), SET(n2, linkAll result2))
+	  end
+
     fun exists pred = let
 	  fun test E = false
 	    | test (T(_, a, x, b)) = test a orelse pred x orelse test b

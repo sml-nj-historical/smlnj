@@ -314,25 +314,17 @@ structure Servers : SERVERS = struct
 	startAll st
     end
 
-    fun cmb { archos, root } = let
+    fun cmb { dirbase, archos, root } = let
 	fun st s =
-	    (send (s, concat ["cmb ", archos, " ", root, "\n"]);
+	    (send (s, concat ["cmb ", dirbase, " ", archos, " ", root, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st
     end
 
-    fun cmb_new { archos } = let
+    fun cmb_reset { archos } = let
 	fun st s =
-	    (send (s, concat ["cmb ", archos, "\n"]);
-	     ignore (wait_status (s, false)))
-    in
-	startAll st
-    end
-
-    fun dirbase db = let
-	fun st s =
-	    (send (s, concat ["dirbase ", db, "\n"]);
+	    (send (s, concat ["cmb_reset ", archos, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st

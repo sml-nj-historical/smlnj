@@ -12,7 +12,7 @@ It is further necessary to have all ML source code for the system
 available.  If the basic installation did not install this source
 code, then one must now fetch all source archives and unpack them.
 (There is an option for the SML/NJ installer that lets it install all
-source trees automaticall.  However, by default this feature is turned
+source trees automatically.  However, by default this feature is turned
 off.)
 
 The following list shows all required source packages.  (Path names
@@ -89,11 +89,12 @@ Standard ML of New Jersey ...
 
 \noindent{\it Note for frequent compiler hackers:} The {\tt makeml}
 script (see below) builds the the interactive system in such a way
-that {\tt \$smlnj/cmb.cm} is already pre-registered.  Therefore, when
-using a so-built interactive system there is no need for loading the
-bootstrap compiler explicitly.
+that {\tt \$smlnj/cmb.cm} is already pre-registered for autoloading.
+Therefore, when using an interactive system built by {\tt makeml}
+(as opposed to the original config/install.sh) there is no need
+for loading the bootstrap compiler explicitly.
 
-It this point one can invoke the bootstrap compiler by simply issuing
+At this point one can invoke the bootstrap compiler by simply issuing
 the command {\tt CMB.make()}:
 
 \begin{verbatim}
@@ -118,6 +119,21 @@ val it = true : bool
 - 
 \end{verbatim}
 
+The return value of {\tt true} indicates success.  This means that (as
+indicated by the message above the return value) a directory with
+stable libraries and some other special files that are needed for
+``booting'' a new interactive system has been created.
+
+The name of the boot directory depends on circumstances.  A part of it
+can be chosen freely, other parts depend on current architecture and
+operating system.  For example, on a Sparc system running some version
+of Unix, the default name of the directory is {\tt
+sml.boot.sparc-unix}.
+
+There is also a similarly-named {em binfile directory} which is used
+by {\tt CMB.make()} itself but which is not required for the purpose
+of subsequent ``boot'' steps.
+
 \subsection{Booting a new interactive system}
 
 Once {\tt CMB.make()} has completed its work successfully (indicated
@@ -135,9 +151,18 @@ Standard ML of New Jersey ...
 
 The {\tt makeml} command generates a new heap image and also prepares
 stable libraries to be used by this image.  Neither the heap image nor
-the libraries will at this time be installed for permanent use,
+the libraries will at this time be installed for permanent use
 though.  This means that invoking {\tt sml} still starts the old
 system.
+
+Again, the name of the generated heap image is variable and depends on
+programmer choice, current architecture, and current operating
+system.  For example, on an Intel x86 Linux machine, the default would
+be {\tt sml.x86-linux}.\footnote{The operating-system dependent
+portion of the name of a heap image is more discriminating than the
+operating-system dependent portion of boot- or binfile directories.
+On the same Intel x86 Linux machine, the name of the boot directory is
+{\tt sml.boot.x86-unix}.}
 
 \subsection{Testing the newly booted system}
 
@@ -150,7 +175,7 @@ $ ./testml
 %$emacs unconfuse
 
 This starts an interactive system in a way very similar to {\tt sml},
-but it uses heap image and libraries from a previous run of {\tt
+but it uses the heap image and libraries from a previous run of {\tt
 makeml}.
 
 \subsection{Installing a newly booted system}
@@ -189,7 +214,7 @@ $ cd ../..
 $ config/install.sh
 \end{verbatim}
 
-Since some changes to the compiler also render old binfiles ususable,
+Since some changes to the compiler also render old binfiles unusable,
 one will occasionally have to remove those first (prior to re-running
 {\tt config/install.sh}).  Binfiles for libraries unrelated to
 bootstrapping are handled by CM (and not CMB), so the usual CM rules
@@ -198,4 +223,4 @@ for {\tt $d$/$f$.sml} will be in
 {\tt $d$/CM/{\it arch}-{\it os}/$f$.sml}
 where {\it arch} is a string describing the CPU
 architecture and {\it os} is a string describing the operating system
-kind.)
+kind.  Example: {\tt x86-unix}.)

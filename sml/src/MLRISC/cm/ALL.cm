@@ -253,9 +253,13 @@ IA32.cm:
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 
         (* c calls *)
         ../x86/c-calls/ia32-svid.sml
+
+	(* omit frame pointer *)
+	../x86/omit-frameptr/x86omit-frameptr.sml
 
 	(* X86 specific backend *)
 	../x86/instructions/x86Cells.sml
@@ -267,6 +271,7 @@ IA32.cm:
 	../x86/instructions/x86Props.sml
 	../x86/instructions/x86MemRegs.sig
 	../x86/instructions/x86FreqProps.sml
+	../x86/instructions/x86ExpandCopies.sml
 	../x86/emit/x86Asm.sml
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
@@ -283,6 +288,8 @@ IA32.cm:
 
 	(* register allocator *)
 	../x86/ra/x86RA.sml
+
+
 IA32-GC.cm:
 
         smlnj-lib.cm
@@ -294,12 +301,14 @@ IA32-GC.cm:
 IA32-Peephole.cm:
 
         smlnj-lib.cm
+	Control.cm
 	MLRISC.cm
 	Peephole.cm
 	IA32.cm
 
 	(* x86 *)
 	../x86/instructions/x86Peephole.sml
+	../x86/instructions/x86-leaf-opt.sml
 
 IA32-RTL.cm:
 
@@ -515,13 +524,15 @@ MIPS.cm:
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig
 	../mips/instructions/mipsShuffle.sml
-	(*mips/instructions/mipsProps.sml
-	../mips/instructions/mipsFreqProps.sml*)
+	../mips/instructions/mipsProps.sml
+	../mips/instructions/mipsFreqProps.sml
+	../mips/instructions/mipsExpandCopies.sml
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
+	../mips/backpatch/mipsDelaySlotProps.sml
 	../mips/backpatch/mipsJumps.sml
-	(*mips/mltree/mipsPseudoInstr.sig*)
-	(*mips/mltree/mips.sml*)
+	../mips/mltree/mipsPseudoInstr.sig
+	../mips/mltree/mips.sml
 	../mips/ra/mipsRewrite.sml
 MLRISC.cm:
 (* MLRISC.cm
@@ -541,6 +552,7 @@ MLRISC.cm:
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
+	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig
@@ -589,6 +601,7 @@ MLRISC.cm:
 	../cluster/printCluster.sml
 	../cluster/clusterOptimization.sig
 	../cluster/clusterCountCopies.sml
+	../cluster/clusterExpandCopies.sml
 	
 	(* Core register allocator utilities *)
 	../ra/getreg.sig
@@ -648,6 +661,9 @@ MLRISC.cm:
         (* c calls *)
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
+
+ 	(* omit frame pointer optimization *)
+ 	../omit-frameptr/omit-frame-pointer.sig
 
 MLTREE.cm:
 (*

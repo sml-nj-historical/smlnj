@@ -6,10 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	signature SRCPATH
-	structure SrcPath
-	structure SrcPathMap
-	structure SrcPathSet
-	structure TStamp
+	(* this is a proxy library; exports taken from only member *)
 is
 	$cm/paths/srcpath-lib.cm

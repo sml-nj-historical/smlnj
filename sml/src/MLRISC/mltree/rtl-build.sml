@@ -157,7 +157,8 @@ struct
    fun Jmp ty addr = T.JMP(addr,[]) 
    fun Call ty addr = T.CALL{funct=addr, targets=[],
                              defs=[], uses=[], 
-                             region=T.Region.memory}
+                             region=T.Region.memory,
+			     pops=0}
    val Ret = T.RET([])
 
    fun If(T.TRUE, yes, no) = yes

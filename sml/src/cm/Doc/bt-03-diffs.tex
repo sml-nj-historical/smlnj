@@ -8,16 +8,16 @@ focuses on one particular aspect.
 
 \subsection{Code sharing}
 
-CM keeps compiled code within the same directory tree that also
-contains ML source code.  Thus, there is a fixed function that maps
-the names of source files to the names of corresponding binfiles and
-the names of CM description files (for libraries) to their
-corresponding stable files.
+CM keeps compiled code within the same directory tree that contains
+the corresponding ML source code.  Thus, there is a fixed function
+that maps the names of source files to the names of corresponding
+binfiles and the names of CM description files (for libraries) to
+their corresponding stable files.
 
 As a result, these files will be shared between programs that use the
 same libraries.  Moreover, CM will let different programs that are
 loaded into an interactive session at the same time share their
-in-memory copies of common source modules.  (There is also an issue of
+in-memory copies of common compiled modules.  (There is also an issue of
 state-sharing, but this does not concern CMB because the bootstrap
 compiler only compiles code without linking it.)
 
@@ -33,10 +33,12 @@ are constructed from three parts; the binfile directory's name is {\tt
 $u$.bin.{\it arch}-{\it os}} and the stablefile directory's name is
 {\tt $u$.boot.{\it arch}-{\it os}}.  As mentioned before, {\it arch}
 is a string describing the current CPU architecture and {\it os} is a
-string describing the current operating system kind. Component $u$ is a
-string that can be selected freely when the bootstrap compiler is
+string describing the current operating system kind. Component $u$ is
+a string that can be selected freely when the bootstrap compiler is
 invoked.  When using {\tt CMB.make} it defaults to {\tt sml},
-otherwise it is the argument given to {\tt CMB.make'}.
+otherwise it is the argument given to {\tt CMB.make'}.  (The $u$
+component is kept variable to make it possible to keep and use several
+compiled versions of the system at the same time.)
 
 The auxiliary script {\tt makeml} (which is responsible for
 bootstrapping a new system) also accepts a parameters to select $u$.
@@ -108,24 +110,30 @@ that it can do that---provided there is a special {\em bootlist}
 file that contains instructions about which modules to load in what
 order.
 
-For ordinary stand-alone programs, it is CM's job to construct the
-bootlist file; in the case of bootstrap compilation the bootlist file
-is constructed by CMB.  The name of the file is {\tt BOOTLIST}, and it
-is located at the root of the directory tree that contains stable
-files (i.e., its name is {\tt $u$.boot.{\it arch}-{\it os}/BOOTLIST}).
+The bootlist mechanism is not restricted to building SML/NJ.  Ordinary
+ML code can also be turned into stand-alone programs, and as far as the
+runtime system is concerned, the mechanisms are the same.  The
+bootlist file used by such ordinary stand-alone ML programs will be
+constructed by CM; only in the case of bootstrapping SML/NJ itself it
+will be constructed by CMB.
+
+The name of the bootlist file is {\tt BOOTLIST}, and it is located at
+the root of the directory tree that contains stable files (i.e., its
+name is {\tt $u$.boot.{\it arch}-{\it os}/BOOTLIST}).
 
 \subsection{PIDMAP file}
 
 The last file to be loaded by the bootstrap process contains
 module-level code which will trigger the self-initialization of the
 interactive system---including CM.  One job of CM is to manage sharing
-of link-time state.  Link-time state of a module used by the
-interactive system should be shared with any program using the same
-module.  The file {\tt $u$.boot.{\it arch}-{\it os}/PIDMAP} contains
-information that enables CM to relate existing link-time state to
-particular library modules and also to identify any link-time state
-that will never be shared and which can therefore be dropped.  It is
-CMB's responsibility to construct it.
+of link-time state (i.e., dynamic state created by module-level code
+at link time).  Link-time state of a module used by the interactive
+system should be shared with any program using the same module.  The
+file {\tt $u$.boot.{\it arch}-{\it os}/PIDMAP} contains information
+that enables CM to relate existing link-time state to particular
+library modules and also to identify any link-time state that will
+never be shared and which can therefore be dropped.  It is CMB's
+responsibility to construct the {\tt PIDMAP} file.
 
 \subsection{Cross-compiling}
 
@@ -138,7 +146,7 @@ structures---those corresponding to various cross-compilers.  All
 these structures share the same signature.
 
 The table also shows the names of libraries that the structures are
-exported from as well as those strings {\it arch} and {\it os} that
+exported from as well as those {\it arch} and {\it os} strings that
 are used to name binfile- and stablefile-directory.
 
 \begin{small}

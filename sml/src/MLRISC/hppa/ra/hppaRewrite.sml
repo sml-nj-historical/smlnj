@@ -46,11 +46,11 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
      | I.BE{b, d, sr, labs, n} => I.BE{b=replc b, d=d, sr=sr, labs=labs, n=n} 
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
-     | I.BLE{b, d, sr, t, defs, uses, mem} => 
+     | I.BLE{b, d, sr, t, defs, uses, cutsTo, mem} => 
 	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, 
-              uses=C.CellSet.map {from=rs,to=rt} uses, mem=mem} 
-     | I.BL{lab, t, defs, uses, mem, n} => 
-	I.BL{lab=lab, t=t, defs=defs, 
+              uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo, mem=mem} 
+     | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
+	I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo,
              uses=C.CellSet.map {from=rs,to=rt} uses, mem=mem, n=n} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
@@ -100,11 +100,12 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
-     | I.BLE{d, b, sr, t, defs, uses, mem} => 
+     | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, 
-              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
-     | I.BL{lab, t, defs, uses, mem, n} => 
-	I.BL{lab=lab, t=replc t, 
+              defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, 
+              cutsTo=cutsTo, mem=mem}
+     | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
+	I.BL{lab=lab, t=replc t, cutsTo=cutsTo,
               defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem, n=n} 
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
@@ -136,11 +137,11 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
          I.FBRANCH{cc=cc,fmt=fmt,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
      | I.FCOPY{dst, src, tmp, impl} => 
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
-     | I.BLE{d, b, sr, t, defs, uses, mem} => 
+     | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, 
-             uses=C.CellSet.map {from=fs,to=ft} uses, mem=mem}
-     | I.BL{lab, t, defs, uses, mem, n} => 
-	I.BL{lab=lab, t=t, defs=defs, 
+             uses=C.CellSet.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
+     | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
+	I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo, 
              uses=C.CellSet.map {from=fs,to=ft} uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=frewriteUse(i,fs,ft),
@@ -168,11 +169,11 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=f, t=replc t}
      | I.FCOPY{dst, src, impl, tmp} => 
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
-     | I.BLE{d, b, sr, t, defs, uses, mem} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, 
+     | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, cutsTo=cutsTo,
               defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem}
-     | I.BL{lab, t, defs, uses, mem, n} => 
-	I.BL{lab=lab, t=t, 
+     | I.BL{lab, t, defs, uses, mem, cutsTo, n} => 
+	I.BL{lab=lab, t=t, cutsTo=cutsTo, 
              defs=C.CellSet.map {from=fs,to=ft} defs, uses=uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=frewriteDef(i,fs,ft),

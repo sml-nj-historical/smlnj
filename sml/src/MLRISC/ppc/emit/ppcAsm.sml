@@ -20,6 +20,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
    val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("PPCAsmEmitter",msg)
@@ -49,6 +50,7 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
+       fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
@@ -64,6 +66,9 @@ struct
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
        fun emit_uses cellset = emit_cellset("uses: ",cellset)
+       val emit_cutsTo = 
+         if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit
+         else doNothing
        fun emitter instr =
        let
    fun asm_spr (I.XER) = "xer"
@@ -218,7 +223,7 @@ struct
      | asm_bit (I.OX) = "so"
    and emit_bit x = emit (asm_bit x)
 
-(*#line 563.7 "ppc/ppc.mdl"*)
+(*#line 570.7 "ppc/ppc.mdl"*)
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, (size s) - 1)) = #"e")
           then 
           ( emit (String.substring (s, 0, (size s) - 1)); 
@@ -228,17 +233,17 @@ struct
             emit "x" ))
      | emitx (s, _) = emit s
 
-(*#line 569.7 "ppc/ppc.mdl"*)
+(*#line 576.7 "ppc/ppc.mdl"*)
    fun eOERc {OE=false, Rc=false} = ()
      | eOERc {OE=false, Rc=true} = emit "."
      | eOERc {OE=true, Rc=false} = emit "o"
      | eOERc {OE=true, Rc=true} = emit "o."
 
-(*#line 573.7 "ppc/ppc.mdl"*)
+(*#line 580.7 "ppc/ppc.mdl"*)
    fun eRc false = ""
      | eRc true = "."
 
-(*#line 574.7 "ppc/ppc.mdl"*)
+(*#line 581.7 "ppc/ppc.mdl"*)
    fun cr_bit (cr, bit) = (4 * (C.physicalRegisterNum cr)) + 
        (case bit of
          I.LT => 0
@@ -255,18 +260,18 @@ struct
        | I.OX => 3
        )
 
-(*#line 581.7 "ppc/ppc.mdl"*)
+(*#line 588.7 "ppc/ppc.mdl"*)
    fun eCRbit x = emit (Int.toString (cr_bit x))
 
-(*#line 582.7 "ppc/ppc.mdl"*)
+(*#line 589.7 "ppc/ppc.mdl"*)
    fun eLK true = emit "l"
      | eLK false = ()
 
-(*#line 583.7 "ppc/ppc.mdl"*)
+(*#line 590.7 "ppc/ppc.mdl"*)
    fun eI (I.RegOp _) = ()
      | eI _ = emit "i"
 
-(*#line 584.7 "ppc/ppc.mdl"*)
+(*#line 591.7 "ppc/ppc.mdl"*)
    fun eBI (bo, bf, bit) = 
        (case (bo, C.physicalRegisterNum bf) of
          (I.ALWAYS, _) => ()
@@ -275,7 +280,7 @@ struct
        | (_, n) => emit ((("4*cr" ^ (Int.toString n)) ^ "+") ^ (asm_bit bit))
        )
 
-(*#line 590.7 "ppc/ppc.mdl"*)
+(*#line 597.7 "ppc/ppc.mdl"*)
    fun emit_bo bo = emit 
        (case bo of
          I.TRUE => "t"
@@ -291,13 +296,13 @@ struct
             else "f")
        )
 
-(*#line 601.7 "ppc/ppc.mdl"*)
+(*#line 608.7 "ppc/ppc.mdl"*)
    fun eME (SOME me) = 
        ( emit ", "; 
          emit_int me )
      | eME NONE = ()
 
-(*#line 604.7 "ppc/ppc.mdl"*)
+(*#line 611.7 "ppc/ppc.mdl"*)
    fun addr (ra, I.RegOp rb) = 
        ( emitCell ra; 
          emit ", "; 
@@ -492,11 +497,12 @@ struct
            eLK LK; 
            emit "\t"; 
            emit_operand addr )
-       | I.CALL{def, use, mem} => 
+       | I.CALL{def, use, cutsTo, mem} => 
          ( emit "blrl"; 
            emit_region mem; 
            emit_defs def; 
-           emit_uses use )
+           emit_uses use; 
+           emit_cutsTo cutsTo )
        | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
             dst=dst, src=src})
        | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
@@ -524,7 +530,8 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                annotation=annotation
+                annotation=annotation,
+                getAnnotations=getAnnotations
                }
    end
 end

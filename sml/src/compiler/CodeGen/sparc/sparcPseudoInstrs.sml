@@ -14,12 +14,15 @@ struct
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
 
-  (* runtime system dependent *)
-  val floatTmpOffset = I.IMMED 88
-  val umulOffset = I.IMMED 80
-  val smulOffset = I.IMMED 72
-  val udivOffset = I.IMMED 84
-  val sdivOffset = I.IMMED 76
+  val delta = SparcSpec.framesize	(* initial value of %fp - %sp *)
+
+  (* runtime system dependent; the numbers are relative to %sp but
+   * we need offsets relative to %fp, hence the adjustment by delta *)
+  val floatTmpOffset = I.IMMED (88 - delta)
+  val umulOffset = I.IMMED (80 - delta)
+  val smulOffset = I.IMMED (72 - delta)
+  val udivOffset = I.IMMED (84 - delta)
+  val sdivOffset = I.IMMED (76 - delta)
 
   val stack = CPSRegions.stack
 
@@ -70,8 +73,9 @@ struct
   in
       [I.COPY{src=[r,reduceOpnd i],dst=[r10,r11],
                    tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
-       I.LOAD{l=I.LD,r=C.stackptrR,i=offset,d=addr,mem=stack},
-       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,nop=true,mem=stack},
+       I.LOAD{l=I.LD,r=C.frameptrR,i=offset,d=addr,mem=stack},
+       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
+              cutsTo=[],nop=true,mem=stack},
        I.COPY{src=[r10],dst=[d],tmp=NONE,impl=ref NONE}
       ]
   end
@@ -82,8 +86,8 @@ struct
   fun sdivtrap({r, i, d}, reduceOpnd) = callRoutine(sdivOffset,reduceOpnd,r,i,d)
 
   fun cvti2d({i, d}, reduceOpnd) = 
-      [I.STORE{s=I.ST,r=C.stackptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
-       I.FLOAD{l=I.LDF,r=C.stackptrR,i=floatTmpOffset,d=d,mem=stack},
+      [I.STORE{s=I.ST,r=C.frameptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
+       I.FLOAD{l=I.LDF,r=C.frameptrR,i=floatTmpOffset,d=d,mem=stack},
        I.FPop1{a=I.FiTOd,r=d,d=d}
       ]
   fun cvti2s _ = error "cvti2s"

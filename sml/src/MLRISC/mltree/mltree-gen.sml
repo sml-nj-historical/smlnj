@@ -66,7 +66,7 @@ struct
        in  rightShift(W,f(W,T.SLL(W,a,shift),T.SLL(W,b,shift)),shift)
        end
 
-   fun promoteTy(e,ty) =
+   fun promoteTy(ty) =
    let fun loop([]) = 
            raise Unsupported("can't promote integer width "^Int.toString ty)
          | loop(t::ts) = if t > ty then t else loop ts
@@ -75,7 +75,7 @@ struct
    fun promotable rightShift (e, f, ty, a, b) =
        case naturalWidths of 
          [] => arith(rightShift,f,ty,a,b) 
-       | _  => f(promoteTy(e, ty), a, b)
+       | _  => f(promoteTy(ty), a, b)
 
    (*
     * Translate integer expressions of unknown types into the appropriate
@@ -165,9 +165,14 @@ struct
         * one of the naturally supported widths on the machine.
         *)
        | T.CVTF2I(ty,round,fty,e) => 
-         let val ty' = promoteTy(exp,ty)
+         let val ty' = promoteTy(ty)
          in  T.SX(ty,ty',T.CVTF2I(ty',round,fty,e))
          end
+
+         (* Promote to higher width and zero high bits *)
+       | T.SLL(ty, data, shift) => 
+         let val ty' = promoteTy(ty)
+         in  T.ZX(ty, ty', T.SLL(ty', data, shift)) end
 
        | exp => raise Unsupported("unknown expression")
 

@@ -9,12 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	structure X86VisComp
-        structure X86CG
-        structure X86CpsRegs
-        structure X86Instr
- 	structure X86Props
-	structure X86FlowGraph
-	structure X86AsmEmitter
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	$compiler/viscomp-x86.cm

@@ -14,12 +14,13 @@ struct
   val k = MS.numCalleeSaves
   val kf = MS.numFloatCalleeSaves
 
-  val stdlink = T.GPR C.stdlink
-  val stdclos = T.GPR C.stdclos
-  val stdarg = T.GPR C.stdarg
-  val stdcont = T.GPR C.stdcont
+  fun stdlink(vfp) = T.GPR (C.stdlink(vfp))
+  fun stdclos(vfp) = T.GPR (C.stdclos(vfp))
+  fun stdarg(vfp)  = T.GPR (C.stdarg(vfp))
+  fun stdcont(vfp) = T.GPR (C.stdcont(vfp))
 
-  val gpregs = stdlink::stdclos::stdarg::stdcont::map T.GPR C.miscregs
+  fun gpregs(vfp) = 
+    stdlink(vfp)::stdclos(vfp)::stdarg(vfp)::stdcont(vfp)::map T.GPR C.miscregs
   val fpregs = map T.FPR (C.savedfpregs @ C.floatregs)
 
   fun fromto(i, j, regs) = let
@@ -31,9 +32,9 @@ struct
     to(i, from(i,regs))
   end
 
-  fun gprfromto(i, j) = fromto(i, j, gpregs)
-  fun fprfromto(i, j) = fromto(i, j, fpregs)
-  val calleesaveregs = gprfromto(4, k+3) @ fprfromto(0, kf-1)
+  fun gprfromto(i, j, vfp) = fromto(i, j, gpregs(vfp))
+  fun fprfromto(i, j, vfp) = fromto(i, j, fpregs)
+  fun calleesaveregs(vfp) = gprfromto(4, k+3, vfp) @ fprfromto(0, kf-1, vfp)
 
   fun cut_head(n,l) = 
     if n = 0 then l
@@ -47,40 +48,33 @@ struct
       else (hd gp)::(scan(z,tl gp,fp))
     | scan([], _, _) = []
 
-  fun standardEscape args = let
+  fun standardEscape(vfp, args) = let
     val rest = cut_head(k+kf+3, args)
     val len = length(args)
-    val gpr = stdarg :: gprfromto(k+4, len)
-    val fpr = fprfromto(kf,len)
-  in stdlink::stdclos::stdcont::calleesaveregs @ scan(rest,gpr,fpr)
+    val gpr = stdarg(vfp) :: gprfromto(k+4, len, vfp)
+    val fpr = fprfromto(kf,len, vfp)
+  in stdlink(vfp)::stdclos(vfp)::stdcont(vfp)::calleesaveregs(vfp) @ scan(rest,gpr,fpr)
   end
 
-  fun standardCont args = let
+  fun standardCont(vfp, args) = let
     val rest = if k > 0 then cut_head(k+kf+1,args) else cut_head(2,args)
     val len = length(args)
-    val gpr = stdarg::gprfromto(k+4, 1+len)
-    val fpr = fprfromto(kf,len)
+    val gpr = stdarg(vfp)::gprfromto(k+4, 1+len, vfp)
+    val fpr = fprfromto(kf,len, vfp)
   in 
-   if k > 0 then stdcont::(calleesaveregs @ scan(rest,gpr,fpr))
-   else stdlink::stdcont::scan(rest,gpr,fpr)
+   if k > 0 then stdcont(vfp)::(calleesaveregs(vfp) @ scan(rest,gpr,fpr))
+   else stdlink(vfp)::stdcont(vfp)::scan(rest,gpr,fpr)
   end
   
-  fun standard(CPS.CNTt, tl) = standardCont tl 
-    | standard(_, tl) = standardEscape tl
-
-  (* known functions have parameters passed in fresh temporaries. *)
-  (*
-  fun known(CPS.FLTt::rest) = T.FPR(T.FREG(64,Cells.newFreg())):: known rest
-    | known(_::rest) = T.GPR(T.REG(32,Cells.newReg())):: known rest
-    | known [] = []
-   *)
+  fun standard{fnTy=CPS.CNTt, vfp, argTys} = standardCont(vfp, argTys)
+    | standard{vfp, argTys, ...} = standardEscape(vfp, argTys)
 
   (* use an arbitary but fixed set of registers. *)
-  fun fixed ctys = let
+  fun fixed{vfp, argTys} = let
     fun iter(CPS.FLTt::rest, regs, f::fregs) = f::iter(rest, regs, fregs)
       | iter(_::rest, r::regs, fregs) = r::iter(rest, regs, fregs)
       | iter([], _, _) = []
-  in iter(ctys, gpregs, fpregs)
+  in iter(argTys, gpregs(vfp), fpregs)
   end
 end
 

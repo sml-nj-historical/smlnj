@@ -61,8 +61,9 @@ struct
     | T.COPY(ty,dst,src) => 0w234 + w ty + wvs dst + wvs src
     | T.FCOPY(fty,dst,src) => 0w456 + w fty + wvs dst + wvs src
     | T.JMP(ea,labels) => 0w45 + hashRexp ea
-    | T.CALL{funct,targets,defs,uses,region} =>
+    | T.CALL{funct,targets,defs,uses,region,pops} =>
           hashRexp funct + hashMlriscs defs + hashMlriscs uses 
+    | T.FLOW_TO(stm, _) => hashStm stm
     | T.RET _ => 0w567
     | T.STORE(ty,ea,data,mem) => 0w888 + w ty + hashRexp ea + hashRexp data 
     | T.FSTORE(fty,ea,data,mem) => 0w7890 + w fty + hashRexp ea + hashFexp data
@@ -219,6 +220,8 @@ struct
     | eqStm(T.CALL{funct=a,defs=b,uses=c,...},
             T.CALL{funct=d,defs=e,uses=f,...}) =  
          eqRexp(a,d) andalso eqMlriscs(b,e) andalso eqMlriscs(c,f)
+    | eqStm(T.FLOW_TO(x,a), T.FLOW_TO(y,b)) =
+         eqStm(x,y) andalso eqLabels(a,b)
     | eqStm(T.RET _,T.RET _) = true
     | eqStm(T.STORE(a,b,c,_),T.STORE(d,e,f,_)) = 
          a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
@@ -432,8 +435,10 @@ struct
         | stm(T.COPY(ty,dst,src)) = copy(ty,dst,src)
         | stm(T.FCOPY(fty,dst,src)) = fcopy(fty,dst,src)
         | stm(T.JMP(ea,labels)) = "jmp "^rexp ea
-        | stm(T.CALL{funct,targets,defs,uses,region}) = 
+        | stm(T.CALL{funct,targets,defs,uses,region,pops}) = 
               "call "^rexp funct
+        | stm(T.FLOW_TO(s, targets)) =
+              stm s^" ["^listify' Label.nameOf targets^"]"
         | stm(T.RET(flow)) = "ret"
         | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
         | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)

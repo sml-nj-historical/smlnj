@@ -15,7 +15,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("X86Props",msg)
 
   datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
-                | IK_PHI | IK_SOURCE | IK_SINK
+                | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
  (*========================================================================
   *  Instruction Kinds
@@ -24,6 +24,7 @@ struct
     | instrKind (I.JCC _) = IK_JUMP
     | instrKind (I.COPY _) = IK_COPY
     | instrKind (I.FCOPY _) = IK_COPY
+    | instrKind (I.CALL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
     | instrKind (I.CALL _) = IK_CALL
     | instrKind (I.PHI _)    = IK_PHI
     | instrKind (I.SOURCE _) = IK_SOURCE
@@ -75,6 +76,7 @@ struct
     | branchTargets(I.RET _) = [ESCAPES]
     | branchTargets(I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...}) = 
         [FALLTHROUGH, LABELLED lab]
+    | branchTargets(I.CALL{cutsTo, ...}) = FALLTHROUGH :: map LABELLED cutsTo
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
@@ -158,19 +160,20 @@ struct
       val uses = operandUse src
     in
       case multDivOp
-       of (I.IDIVL | I.DIVL) => (eaxPair, C.edx::C.eax::uses)
-        | I.MULL => (eaxPair, C.eax::uses)
+       of (I.IDIVL1 | I.DIVL1) => (eaxPair, C.edx::C.eax::uses)
+        | I.MULL1 => (eaxPair, C.eax::uses)
     end
 
     fun unary opnd = (operandDef opnd, operandUse opnd)
     fun cmptest{lsrc, rsrc} = ([], operandAcc(lsrc, operandUse rsrc))
+    fun espOnly()  = let val sp = [C.stackptrR] in (sp, sp) end
     fun push arg = ([C.stackptrR], operandAcc(arg, [C.stackptrR]))
     fun float opnd = ([], operandUse opnd)
   in
     case instr
      of I.JMP(opnd, _)        => ([], operandUse opnd)
       | I.JCC{opnd, ...}      => ([], operandUse opnd)
-      | I.CALL(opnd,defs,uses,_)=> 
+      | I.CALL{opnd,defs,uses,...} => 
            (C.getReg defs, operandAcc(opnd, C.getReg uses))
       | I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
       | I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
@@ -183,16 +186,19 @@ struct
            if C.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
+      | I.CMPXCHG{src, dst, ...} =>
+           (C.eax::operandDef dst, C.eax::operandAcc(src, operandUse dst))
       | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.MULTDIV arg	      => multdiv arg
-      | I.MUL3{src1, src2=SOME _, dst}=> ([dst], operandUse src1)
-      | I.MUL3{src1, dst, ...}=> ([dst], dst::operandUse src1)
+      | I.MUL3{src1, dst, ...}=> ([dst], operandUse src1)
 
       | I.UNARY{opnd, ...}    => unary opnd
       | I.SET{opnd, ...}      => unary opnd
       | ( I.PUSHL arg | I.PUSHW arg | I.PUSHB arg ) => push arg
       | I.POP arg	      => (C.stackptrR::operandDef arg, [C.stackptrR])
+      | I.PUSHFD	      => espOnly()
+      | I.POPFD		      => espOnly()
       | I.CDQ		      => ([C.edx], [C.eax])
 
       | I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)
@@ -222,6 +228,7 @@ struct
       | I.FUNOP{src, dst, ...} => operandUse2(src, dst)
 
       | I.SAHF		      => ([], [C.eax])
+      | I.LAHF		      => ([C.eax], [])
         (* This sets the low order byte, 
          * do potentially it may define *and* use 
          *)
@@ -261,7 +268,7 @@ struct
       | I.FLDS opnd		=> ([], operand opnd)
       | I.FUCOM opnd            => ([], operand opnd)
       | I.FUCOMP opnd           => ([], operand opnd)
-      | I.CALL(_, defs, uses,_)	=> (C.getFreg defs, C.getFreg uses)
+      | I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)

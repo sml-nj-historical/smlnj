@@ -196,6 +196,7 @@ sig
    | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
    | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
    | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+   | UNIMP of {const22:int}
    | SETHI of {i:int, d:C.cell}
    | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
    | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}
@@ -211,9 +212,9 @@ sig
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
    | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
    | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, nop:bool, 
-        mem:Region.region}
    | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
    | FPop1 of {a:farith1, r:C.cell, d:C.cell}
    | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}
@@ -422,6 +423,7 @@ struct
    | STORE of {s:store, d:C.cell, r:C.cell, i:operand, mem:Region.region}
    | FLOAD of {l:fload, r:C.cell, i:operand, d:C.cell, mem:Region.region}
    | FSTORE of {s:fstore, d:C.cell, r:C.cell, i:operand, mem:Region.region}
+   | UNIMP of {const22:int}
    | SETHI of {i:int, d:C.cell}
    | ARITH of {a:arith, r:C.cell, i:operand, d:C.cell}
    | SHIFT of {s:shift, r:C.cell, i:operand, d:C.cell}
@@ -437,9 +439,9 @@ struct
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
    | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
    | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, nop:bool, 
-        mem:Region.region}
    | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
    | FPop1 of {a:farith1, r:C.cell, d:C.cell}
    | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}

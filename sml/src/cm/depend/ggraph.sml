@@ -36,11 +36,11 @@ structure GroupGraph = struct
 
     withtype subgrouplist =
 	(SrcPath.file * (unit -> group) * SrcPath.rebindings) list
-    (* Note: "sublibs" consists items where the SrcPath.file component
+    (* Note: "sublibs" consists of items where the SrcPath.file component
      * is equivalent -- but not necessarily identical -- to the "grouppath"
      * component of (the suspended) group.  The group might have
-     * been known before in which case "grouppath" would carry the
-     * path that was used back then to refer to the group.  But for
+     * been known before -- in which case "grouppath" would carry the
+     * path that was used back *then* to refer to the group.  But for
      * the purpose of stabilization we must know the abstract path
-     * that was used this time. *)
+     * that was used *this* time. *)
 end

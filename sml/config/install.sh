@@ -14,11 +14,14 @@ this=$0
 #
 # get the target list
 #
-if [ ! -r config/targets ]; then
+if [ -r config/targets.customized ] ; then
+    . config/targets.customized
+elif [ ! -r config/targets ]; then
     echo "$this: !!! File config/targets is missing."
     exit 1
+else
+    . config/targets
 fi
-. config/targets
 
 #
 # create the preloads.standard file
@@ -34,6 +37,12 @@ cp config/preloads preloads.standard
 # simply on the PATH:
 #
 MAKE=make
+
+#
+# Make sure we don't have any unpleasant surprises due to the installing
+# user's process environment:
+#
+unset CM_PATHCONFIG
 
 SHELL=/bin/sh
 echo $this: Using shell $SHELL.
@@ -56,6 +65,7 @@ RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
 SRCDIR=$ROOT/src		# where the source tree is rooted
 LIBDIR=$INSTALLDIR/lib		# where libraries live
 LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
+LATESTANDALONES=$ROOT/latestandalones # standalone programs to be built late
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
@@ -70,7 +80,7 @@ TOOLDIR=$BINDIR
 #
 # A temporary file for post-editing the pathconfig file...
 #
-PCEDITTMP=/usr/tmp/pcedittmp.$$
+PCEDITTMP=$INSTALLDIR/pcedittmp.$$
 
 #
 # files to be deleted after we are done...
@@ -78,6 +88,7 @@ PCEDITTMP=/usr/tmp/pcedittmp.$$
 tmpfiles=""
 tmpfiles="$tmpfiles $ROOT/preloads.standard"
 tmpfiles="$tmpfiles $LIBLIST"
+tmpfiles="$tmpfiles $LATESTANDALONES"
 tmpfiles="$tmpfiles $LOCALPATHCONFIG"
 tmpfiles="$tmpfiles $LIBMOVESCRIPT"
 tmpfiles="$tmpfiles $PCEDITTMP"
@@ -108,13 +119,18 @@ SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
 echo $this: URL of source archive is $SRCARCHIVEURL.
 
 #
-# Function to make a directory (and advertise such action).
+# Function to make a directory including its ancestors.
 #
 makedir() {
-    if [ ! -d $1 ] ; then
-	echo $this: Making directory $1
+    if [ x$1 = x ] ; then
+	:
+    elif [ -d $1 ] ; then
+	:
+    else
+	makedir `dirname $1`
+	echo "$this: Making directory $1"
 	if mkdir $1 ; then
-	    : everything is fine
+	    :
 	else
 	    echo "$this: !!! Unable to make directory $1!"
 	    exit 1
@@ -297,66 +313,61 @@ move() {
     fi
 }
 
-#
-# Move the stable archive of a library whose description file was $1/$2 to
-# $LIBDIR/$2/CM/$ARCH-unix/$2 so that it appears as if the description file
-# had been at $LIBDIR/$2/$2
-#
-# (This script will also move all other libraries that show up in
-#  $1/CM/$ARCH-unix because in the case of the boot directory this indicates
-#  that some library did not have its own path anchor but was specified
-#  relative to $1/$2. Still, don't rely on this to be robust -- rather make
-#  separate anchors for every library!)
-#
-movelibs() {
-    for lib in `/bin/ls $1/CM/$ARCH-unix` ; do
-	case $lib in
-	*.cm | *.cmi)
-	    if [ $lib != $2 ] ; then
-		echo "$this: Warning:" $lib specified relative to $2
-	    fi
-	    echo $this: Moving library $lib to $LIBDIR
-	    makedir $LIBDIR/$2
-	    makedir $LIBDIR/$2/CM
-	    makedir $LIBDIR/$2/CM/$ARCH-unix
-	    mv $1/CM/$ARCH-unix/$lib $LIBDIR/$2/CM/$ARCH-unix/$lib
-	    ;;
-	*)
-	    ;;
-	esac
-     done
+# move stable library file from $1 to $2
+movelib()
+{
+    SOURCE=$1
+    TARGET=$2
+    TARGETDIR=`dirname ${TARGET}`
+    if [ ! -d ${TARGETDIR} ] ; then
+	makedir ${TARGETDIR}
+    fi
+    mv ${SOURCE} ${TARGET}
 }
 
 # A shell function that registers a library for being built.
-# This function takes two arguments: 1. a name under which the library
-# is to be known later (something.cm) and 2. the path relative to $SRCDIR
-# that leads to the library's .cm file.  The library's .cm file must be the
-# same as $1.
+# This function takes 3 arguments:
+#   $1 = controlling anchor
+#   $2 = name relative to controlling anchor
+#   $3 = dir (relative to ${SRCDIR}) corresponding to $1
 #
 # This works by adding ML code to file $LIBLIST.  The code in this file
 # will be executed near the end of this script.  If $MOVE_LIBRARIES is
-# set to true, then reglib will also register a "movelibs" to be executed at
-# the end by putting a "movelibs" line into $LIBMOVESCRIPT.
-
+# set to true, then reglib will also register a "movelib" to be executed at
+# the end by putting a "movelib" line into $LIBMOVESCRIPT.
 reglib() {
+    ANCHOR=$1
+    RELNAME=$2
+    LIBNAME='$'${ANCHOR}/${RELNAME}
+    ADIR=${SRCDIR}/$3
+    RELDIR=`dirname $RELNAME`
+    RELBASE=`basename $RELNAME`
+    if [ x$RELDIR = x. ] ; then
+	RELDIR=
+    else
+	RELDIR=/$RELDIR
+    fi
+    RELLOC=${RELDIR}/CM/${ARCH}-unix/${RELBASE}
+    SRCFINALLOC=${ADIR}${RELLOC}
     if [ x$MOVE_LIBRARIES = xtrue ] ; then
-	FINALLOCATION=$LIBDIR/$1
-	FINALCONFIGPATH=$1
+	FINALLOC=${LIBDIR}/${ANCHOR}${RELLOC}
+	FINALCONFIGPATH=${ANCHOR}
     else
-	FINALLOCATION=$SRCDIR/$2
-	FINALCONFIGPATH=$FINALLOCATION
+	FINALLOC=${SRCFINALLOC}
+	FINALCONFIGPATH=${ADIR}
     fi
-    if [ -d $FINALLOCATION/CM/$ARCH-unix ] ; then
-	echo "$this: Library $1 already exists in $FINALLOCATION."
+    
+    if [ -f ${FINALLOC} ] ; then
+	echo "$this: Library ${LIBNAME} already exists in ${FINALLOC}"
     else
-        echo "$this: Scheduling library $1 to be built in $FINALLOCATION."
-        echo "  andalso CM.stabilize false \"\$/$1\"" >>$LIBLIST
-        echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
-        if [ x$MOVE_LIBRARIES = xtrue ] ; then
-	    echo movelibs $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
-        fi
+	echo "$this: Scheduling library ${LIBNAME} to be built as ${FINALLOC}."
+	echo "  andalso CM.stabilize false \"${LIBNAME}\"" >>${LIBLIST}
+	echo ${ANCHOR} ${ADIR} >>${LOCALPATHCONFIG}
+	if [ x$MOVE_LIBRARIES = xtrue ] ; then
+	    echo movelib ${SRCFINALLOC} ${FINALLOC} >>${LIBMOVESCRIPT}
+	fi
     fi
-    echo $1 $FINALCONFIGPATH >>$CM_PATHCONFIG_DEFAULT
+    echo ${ANCHOR} ${FINALCONFIGPATH} >>${CM_PATHCONFIG_DEFAULT}
 }
 
 #
@@ -381,7 +392,9 @@ standalone() {
 	echo $this: Building $TARGET.
 	unpack $2 $SRCDIR $1 $1
 	cd $SRCDIR/$1
-	./build
+	# build it, but make sure we don't pick up some (unrelated)
+	# local path configuration...
+	CM_LOCAL_PATHCONFIG=/dev/null ./build
 	if [ -r $TARGETLOC ] ; then
 	    mv $TARGETLOC $HEAPDIR/$TARGET
 	    if [ ! -f $BINDIR/$1 ] ; then
@@ -594,38 +607,54 @@ for i in $TARGETS ; do
 	standalone ml-burg ML-Burg
 	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
+      ml-nlffigen)
+        echo standalone ml-nlffigen ML-NLFFI-Gen >>$LATESTANDALONES
+	echo ml-nlffigen $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
+	;;
       smlnj-lib)
         unpack "SML/NJ Library" $SRCDIR smlnj-lib smlnj-lib
 
 	# Don't make the Util library -- it came pre-made and has been
 	# installed when making the base system.  In other words, don't do...
-	    #reglib smlnj-lib.cm smlnj-lib/Util
+	    #reglib smlnj-lib.cm smlnj-lib.cm smlnj-lib/Util
 	# ... and don't make the HTML library ...
-	    #reglib html-lib.cm smlnj-lib/HTML
+	    #reglib html-lib.cm html-lib.cm smlnj-lib/HTML
 	# ... and don't make the PP library ...
-	    #reglib pp-lib.cm smlnj-lib/PP
+	    #reglib pp-lib.cm pp-lib.cm smlnj-lib/PP
 	# make the Unix library
-	    reglib unix-lib.cm smlnj-lib/Unix
+	    reglib unix-lib.cm unix-lib.cm smlnj-lib/Unix
 	# make the INet library
-	    reglib inet-lib.cm smlnj-lib/INet
+	    reglib inet-lib.cm inet-lib.cm smlnj-lib/INet
 	# make the RegExp library
-	    reglib regexp-lib.cm smlnj-lib/RegExp
+	    reglib regexp-lib.cm regexp-lib.cm smlnj-lib/RegExp
 	# make the Reactive library
-	    reglib reactive-lib.cm smlnj-lib/Reactive
+	    reglib reactive-lib.cm reactive-lib.cm smlnj-lib/Reactive
 	;;
       cml)
         unpack CML $SRCDIR cml cml
-	reglib core-cml.cm cml/src/core-cml
-	reglib cml.cm cml/src
-	reglib cml-basis.cm cml
+	reglib cml core-cml.cm cml/src
+	reglib cml cml-internal.cm cml/src
+	reglib cml cml.cm cml/src
+	reglib cml basis.cm cml/src
 	;;
       cml-lib)
         unpack CML $SRCDIR cml cml
-	reglib cml-lib.cm cml/cml-lib
+	reglib cml-lib trace-cml.cm cml/cml-lib/cm
+	reglib cml-lib smlnj-lib.cm cml/cml-lib/cm ????
 	;;
       eXene)
         unpack EXene $SRCDIR eXene eXene
-	reglib eXene.cm eXene
+	reglib eXene.cm eXene.cm eXene
+	;;
+      ckit)
+        unpack "C-Kit" $ROOT ckit ckit
+	reglib ckit-lib.cm ckit-lib.cm ../ckit/src
+	;;
+      ml-nlffi-lib)
+        unpack "NLFFI Library" $SRCDIR ml-nlffi-lib ml-nlffi-lib
+	reglib memory.cm memory.cm ml-nlffi-lib/memory
+	reglib c-int.cm c-int.cm ml-nlffi-lib/internals
+	reglib c.cm c.cm ml-nlffi-lib
 	;;
       doc)
 	unpack Doc $ROOT doc doc
@@ -660,6 +689,16 @@ fi
 if [ -r $LIBMOVESCRIPT ] ; then
     echo $this: Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
+fi
+
+#
+# Build "late" standalone programs (i.e., those that must be built
+# after libraries are already in place):
+#
+
+if [ -r $LATESTANDALONES ] ; then
+    echo $this: Building late standalone programs.
+    . $LATESTANDALONES
 fi
 
 #

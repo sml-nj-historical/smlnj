@@ -67,4 +67,7 @@ struct
          
    val NO_BRANCH_CHAINING = A.new(SOME(fn () => "NO_BRANCH_CHAINING"))
 
+   val USES_VIRTUAL_FRAME_POINTER = A.new(SOME(fn () => "HAS_VIRTUAL_FRAME_POINTER"))
+
+   val RETURN_ARG = A.new(SOME(C.toString))
 end

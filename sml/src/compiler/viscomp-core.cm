@@ -68,6 +68,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	functor MachDepVCFun
 
 	functor DummyCCallsFn
+	structure ClusterAnnotation
 is
 
 TopLevel/batch/batchconfig.sml
@@ -295,6 +296,7 @@ CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/spill.sml
+CodeGen/main/clusterAnnotation.sml	(* temporary hack; see comment in file *)
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig
 CodeGen/main/machine-gen.sig
@@ -347,17 +349,11 @@ MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
 
-(* The following used to be in $/comp-lib.cm -- which I wanted to
- * get rid of.  Eventually, someone should clean up all uses of
- * structure SortedList -- either using IntListSet or IntRedBlackSet. *)
-(* MiscUtil/library/sortedlist.sml *)
-
 $/basis.cm
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/pickle-lib.cm
-$smlnj/MLRISC/Lib.cm
+$smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
-(* $smlnj/MLRISC/Lib.cm			(* provides SortedList *) *)
 $smlnj/MLRISC/MLRISC.cm
 $/pp-lib.cm

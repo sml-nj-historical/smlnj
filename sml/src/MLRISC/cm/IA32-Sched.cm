@@ -1,12 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature X86ARCHITECTURE
-	signature X86_RESERVATION_TABLE
-	structure X86PentiumII
-	structure X86PentiumPro
-	functor X86PairingRT
-	functor X86PipelineRT
-	functor X86SchedProps
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

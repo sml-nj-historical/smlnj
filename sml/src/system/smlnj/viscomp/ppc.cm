@@ -9,12 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	structure PPCVisComp
-        structure PPCCG
-        structure PPCCpsRegs
-        structure PPCInstr
-	structure PPCProps
-	structure PPCFlowGraph
-	structure PPCAsmEmitter
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	$compiler/viscomp-ppc.cm

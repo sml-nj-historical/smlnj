@@ -9,7 +9,7 @@ functor SparcAsmEmitter(structure Instr : SPARCINSTR
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
 
-(*#line 465.21 "sparc/sparc.mdl"*)
+(*#line 466.21 "sparc/sparc.mdl"*)
                         val V9 : bool
                        ) : INSTRUCTION_EMITTER =
 struct
@@ -23,6 +23,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
    val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("SparcAsmEmitter",msg)
@@ -52,6 +53,7 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
+       fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
@@ -67,6 +69,9 @@ struct
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
        fun emit_uses cellset = emit_cellset("uses: ",cellset)
+       val emit_cutsTo = 
+         if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit
+         else doNothing
        fun emitter instr =
        let
    fun asm_load (I.LDSB) = "ldsb"
@@ -243,19 +248,19 @@ struct
          emit_labexp labexp; 
          emit ")" )
 
-(*#line 468.7 "sparc/sparc.mdl"*)
+(*#line 469.7 "sparc/sparc.mdl"*)
    fun emit_leaf false = ()
      | emit_leaf true = emit "l"
 
-(*#line 469.7 "sparc/sparc.mdl"*)
+(*#line 470.7 "sparc/sparc.mdl"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
 
-(*#line 470.7 "sparc/sparc.mdl"*)
+(*#line 471.7 "sparc/sparc.mdl"*)
    fun emit_a false = ()
      | emit_a true = emit ",a"
 
-(*#line 471.7 "sparc/sparc.mdl"*)
+(*#line 472.7 "sparc/sparc.mdl"*)
    fun emit_cc false = ()
      | emit_cc true = emit "cc"
    fun emitInstr' instr = 
@@ -297,9 +302,12 @@ struct
            emit "], "; 
            emitCell d; 
            emit_region mem )
+       | I.UNIMP{const22} => 
+         ( emit "unimp "; 
+           emit_int const22 )
        | I.SETHI{i, d} => 
          let 
-(*#line 650.18 "sparc/sparc.mdl"*)
+(*#line 656.18 "sparc/sparc.mdl"*)
              val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxa))
          in 
             ( emit "sethi\t%hi(0x"; 
@@ -417,7 +425,7 @@ struct
            emit_operand i; 
            emit "]"; 
            emit_nop nop )
-       | I.JMPL{r, i, d, defs, uses, nop, mem} => 
+       | I.JMPL{r, i, d, defs, uses, cutsTo, nop, mem} => 
          ( emit "jmpl\t["; 
            emitCell r; 
            emit "+"; 
@@ -427,13 +435,15 @@ struct
            emit_region mem; 
            emit_defs defs; 
            emit_uses uses; 
+           emit_cutsTo cutsTo; 
            emit_nop nop )
-       | I.CALL{defs, uses, label, nop, mem} => 
+       | I.CALL{defs, uses, label, cutsTo, nop, mem} => 
          ( emit "call\t"; 
            emit_label label; 
            emit_region mem; 
            emit_defs defs; 
            emit_uses uses; 
+           emit_cutsTo cutsTo; 
            emit_nop nop )
        | I.Ticc{t, cc, r, i} => 
          ( emit "t"; 
@@ -447,7 +457,7 @@ struct
            emit_operand i )
        | I.FPop1{a, r, d} => 
          let 
-(*#line 755.18 "sparc/sparc.mdl"*)
+(*#line 763.18 "sparc/sparc.mdl"*)
              fun f (a, r, d) = 
                  ( emit a; 
                    emit "\t"; 
@@ -455,10 +465,10 @@ struct
                    emit ", "; 
                    emit (C.showFP d))
 
-(*#line 760.18 "sparc/sparc.mdl"*)
+(*#line 768.18 "sparc/sparc.mdl"*)
              fun g (a, r, d) = 
                  let 
-(*#line 761.22 "sparc/sparc.mdl"*)
+(*#line 769.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 
@@ -466,10 +476,10 @@ struct
                     f ("fmovs", r + 1, d + 1)
                  end
 
-(*#line 765.18 "sparc/sparc.mdl"*)
+(*#line 773.18 "sparc/sparc.mdl"*)
              fun h (a, r, d) = 
                  let 
-(*#line 766.22 "sparc/sparc.mdl"*)
+(*#line 774.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 
@@ -572,7 +582,8 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                annotation=annotation
+                annotation=annotation,
+                getAnnotations=getAnnotations
                }
    end
 end

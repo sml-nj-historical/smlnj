@@ -91,4 +91,13 @@ sig
      *)
    val NO_BRANCH_CHAINING : unit Annotations.property
 
+    (*
+     * Code has reference to a virtual (dedicated) frame pointer.
+     *)
+   val USES_VIRTUAL_FRAME_POINTER : unit Annotations.property
+
+    (* 
+     * Define return arguments of a call (hack for x86)
+     *)
+   val RETURN_ARG : C.cell Annotations.property
 end

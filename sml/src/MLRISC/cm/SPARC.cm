@@ -5,8 +5,11 @@ Library
 	signature SPARCSHUFFLE
 	signature SPARC_PSEUDO_INSTR
 	structure SparcCells
+	structure SparcInstrExt
+	functor Sparc_CCalls
 	functor Sparc
 	functor SparcAsmEmitter
+	functor SparcCompInstrExt
 	functor SparcDelaySlots
 	functor SparcFreqProps
 	functor SparcInstr
@@ -43,7 +46,10 @@ is
 	Control.cm
 	Lib.cm
 #endif
+	../sparc/c-calls/sparc-c-calls.sml
 	../sparc/instructions/sparcCells.sml
+	../sparc/instructions/sparcinstr-ext.sml
+	../sparc/instructions/sparccomp-instr-ext.sml
 	../sparc/instructions/sparcInstr.sml
 	../sparc/instructions/sparcShuffle.sig
 	../sparc/instructions/sparcShuffle.sml

@@ -30,6 +30,7 @@ functor MachineGen
       where F = BackPatch.F
    structure CCalls     : C_CALLS	       (* native C call generator *)
       where T = CpsRegs.T
+   structure OmitFramePtr : OMIT_FRAME_POINTER where F=BackPatch.F
   ) : MACHINE_GEN =
 struct
 
@@ -44,6 +45,13 @@ struct
    structure MachSpec  = MachSpec
    structure MLTreeComp= MLTreeComp
 
+   fun omitFramePointer(cluster as F.CLUSTER{annotations, ...}) =
+     if #contains MLRiscAnnotations.USES_VIRTUAL_FRAME_POINTER (!annotations) then 
+     	(OmitFramePtr.omitframeptr
+	     {vfp=CpsRegs.vfp, cl=cluster, idelta=SOME 0:Int32.int option};
+	 cluster)
+     else cluster
+
    type mlriscPhase = string * (F.cluster -> F.cluster) 
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
@@ -52,10 +60,17 @@ struct
    val mc      = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
    val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
    val ra      = phase "MLRISC ra" RA.run
+   val omitfp  = phase "MLRISC omit frame pointer" omitFramePointer
 
    val raPhase = ("ra",ra)
-   val optimizerHook = ref [raPhase]
 
+
+   val optimizerHook = 
+     ref [("ra", ra),
+	  ("omitfp", omitfp)
+	 ]
+
+     
    (* Flowgraph generation *)
    structure FlowGraphGen =
        ClusterGen(structure Flowgraph = F
@@ -70,11 +85,11 @@ struct
                structure MS    = MachSpec
               )
 
-   fun compile cluster = 
+   fun compile cluster =
    let fun runPhases([],cluster) = cluster
          | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
    in  mc(runPhases(!optimizerHook,cluster))
-   end 
+   end
  
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =
@@ -89,6 +104,7 @@ struct
 		structure CCalls = CCalls
                 val compile = compile
                )
+	       
 
    val gen = phase "MLRISC MLTreeGen.codegen" MLTreeGen.codegen
 

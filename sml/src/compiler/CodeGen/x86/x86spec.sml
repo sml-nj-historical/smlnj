@@ -14,4 +14,9 @@ struct
   val pseudoRegOffset = 136
   val constBaseRegOffset = 0
   val fixedArgPassing = false
+
+  val ML_STATE_OFFSET = 176
+  val VProcOffMSP = 4
+  val InMLOffVSP = 8
+  val LimitPtrMaskOffVSP = 200
 end

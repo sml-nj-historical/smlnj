@@ -11,7 +11,11 @@ signature PROP_LIST =
 
     val newHolder : unit -> holder 
 
+    val hasProps : holder -> bool
+	(* return true if the holder has any properties. *)
+
     val clearHolder : holder -> unit
+	(* remove all properties and flags from the holder *)
 
     val sameHolder : (holder * holder) -> bool
 	(* returns true, if two holders are the same *)

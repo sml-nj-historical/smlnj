@@ -15,15 +15,16 @@ struct
    let fun emit i = instrs := i :: !instrs 
        fun can'tUse _ = MLRiscErrorMsg.error("InstrGen","unimplemented")
    in  Stream.STREAM
-       { beginCluster = can'tUse,
-         endCluster   = can'tUse,
-         emit         = emit,
-         pseudoOp     = can'tUse,
-         defineLabel  = can'tUse,
-         entryLabel   = can'tUse,
-         comment      = can'tUse,
-         annotation   = can'tUse,
-         exitBlock    = can'tUse
+       { beginCluster   = can'tUse,
+         endCluster     = can'tUse,
+         emit           = emit,
+         pseudoOp       = can'tUse,
+         defineLabel    = can'tUse,
+         entryLabel     = can'tUse,
+         comment        = can'tUse,
+         annotation     = can'tUse,
+         getAnnotations = can'tUse,
+         exitBlock      = can'tUse
        }
    end 
 

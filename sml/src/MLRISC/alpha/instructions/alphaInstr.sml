@@ -226,8 +226,10 @@ sig
    | FLOAD of {ldOp:fload, r:C.cell, b:C.cell, d:operand, mem:Region.region}
    | FSTORE of {stOp:fstore, r:C.cell, b:C.cell, d:operand, mem:Region.region}
    | JMPL of ({r:C.cell, b:C.cell, d:int} * Label.label list)
-   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, mem:Region.region}
-   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, mem:Region.region}
+   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
+   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
    | RET of {r:C.cell, b:C.cell, d:int}
    | BRANCH of {b:branch, r:C.cell, lab:Label.label}
    | FBRANCH of {b:fbranch, f:C.cell, lab:Label.label}
@@ -470,8 +472,10 @@ struct
    | FLOAD of {ldOp:fload, r:C.cell, b:C.cell, d:operand, mem:Region.region}
    | FSTORE of {stOp:fstore, r:C.cell, b:C.cell, d:operand, mem:Region.region}
    | JMPL of ({r:C.cell, b:C.cell, d:int} * Label.label list)
-   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, mem:Region.region}
-   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, mem:Region.region}
+   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
+   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
    | RET of {r:C.cell, b:C.cell, d:int}
    | BRANCH of {b:branch, r:C.cell, lab:Label.label}
    | FBRANCH of {b:fbranch, f:C.cell, lab:Label.label}

@@ -1,30 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature APT_GRAPH
-	signature COMPUTE_FREQUENCIES
-	signature COMPUTE_FREQUENCIES2
-	signature CONTROL_DEPENDENCE_GRAPH
-	signature DERIVED_GRAPH
-	signature DJ_DATAFLOW
-	signature DJ_GRAPH
-	signature DOMINANCE_FRONTIERS
-	signature DOMINATOR_TREE
-	signature LOOP_STRUCTURE
-	signature REDUCIBILITY
-	signature STATIC_SINGLE_ASSIGNMENT_FORM
-	functor APTGraph
-	functor CompressedDJGraph
-	functor ComputeFrequencies
-	functor ComputeFrequencies2
-	functor ControlDependenceGraph
-	functor DJDataflow
-	functor DJGraph
-	functor DerivedGraph
-	functor DominanceFrontiers
-	functor DominatorTree
-	functor LoopStructure
-	functor Reducibility
-	functor StaticSingleAssignmentForm
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

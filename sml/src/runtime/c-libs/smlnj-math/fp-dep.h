@@ -164,6 +164,27 @@ PVT char *fesetround (char *rm)
 }
 #define RMODE_EQ(RM1, RM2)	(strcmp((RM1), (RM2)) == 0)
 
+#elif defined(OPSYS_DARWIN)
+/*
+ * For some reason cc does not like the __asm__ used in architecture/ppc/fp_regs.h
+ *
+#   include <architecture/ppc/fp_regs.h>
+#   define FE_TONEAREST RN_NEAREST
+#   define FE_UPWARD RN_TOWARD_PLUS
+#   define FE_DOWNWARD RN_TOWARD_MINUS
+#   define FE_TOWARDZERO RN_TOWARD_ZERO
+    typedef ppc_fp_rn_t  fe_rnd_mode_t;
+    PVT fe_rnd_mode_t fegetround() { return(get_fp_scr()).rn; }
+    PVT fe_rnd_mode_t fesetround(fe_rnd_mode_t rm) {
+	fe_rnd_mode_t old = fegetround();
+	
+	(get_fp_scr()).rn = rm;
+	return (old);
+    }
+ *
+ */
+#define NO_ROUNDING_MODE_CTL
+
 #else
 #  error do not know about FP dependencies
 #endif

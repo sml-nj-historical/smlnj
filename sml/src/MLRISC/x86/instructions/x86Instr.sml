@@ -56,6 +56,8 @@ sig
    | SHLL
    | SARL
    | SHRL
+   | MULL
+   | IMULL
    | ADCL
    | SBBL
    | ADDW
@@ -66,6 +68,8 @@ sig
    | SHLW
    | SARW
    | SHRW
+   | MULW
+   | IMULW
    | ADDB
    | SUBB
    | ANDB
@@ -74,6 +78,8 @@ sig
    | SHLB
    | SARB
    | SHRB
+   | MULB
+   | IMULB
    | BTSW
    | BTCW
    | BTRW
@@ -110,19 +116,22 @@ sig
    | LOCK_XADDB
    | LOCK_XADDW
    | LOCK_XADDL
-   | LOCK_CMPXCHGB
-   | LOCK_CMPXCHGW
-   | LOCK_CMPXCHGL
    datatype multDivOp =
-     MULL
-   | IDIVL
-   | DIVL
+     MULL1
+   | IDIVL1
+   | DIVL1
    datatype unaryOp =
      DECL
    | INCL
    | NEGL
    | NOTL
+   | DECW
+   | INCW
+   | NEGW
    | NOTW
+   | DECB
+   | INCB
+   | NEGB
    | NOTB
    | LOCK_DECL
    | LOCK_INCL
@@ -218,7 +227,8 @@ sig
      NOP
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
-   | CALL of (operand * C.cellset * C.cellset * Region.region)
+   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
@@ -232,14 +242,17 @@ sig
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
-   | MUL3 of {dst:C.cell, src2:Int32.int option, src1:operand}
+   | MUL3 of {dst:C.cell, src2:Int32.int, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:C.cell}
    | PUSHL of operand
    | PUSHW of operand
    | PUSHB of operand
+   | PUSHFD
+   | POPFD
    | POP of operand
    | CDQ
    | INTO
@@ -280,6 +293,7 @@ sig
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
    | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
+   | LAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}
@@ -335,6 +349,8 @@ struct
    | SHLL
    | SARL
    | SHRL
+   | MULL
+   | IMULL
    | ADCL
    | SBBL
    | ADDW
@@ -345,6 +361,8 @@ struct
    | SHLW
    | SARW
    | SHRW
+   | MULW
+   | IMULW
    | ADDB
    | SUBB
    | ANDB
@@ -353,6 +371,8 @@ struct
    | SHLB
    | SARB
    | SHRB
+   | MULB
+   | IMULB
    | BTSW
    | BTCW
    | BTRW
@@ -389,19 +409,22 @@ struct
    | LOCK_XADDB
    | LOCK_XADDW
    | LOCK_XADDL
-   | LOCK_CMPXCHGB
-   | LOCK_CMPXCHGW
-   | LOCK_CMPXCHGL
    datatype multDivOp =
-     MULL
-   | IDIVL
-   | DIVL
+     MULL1
+   | IDIVL1
+   | DIVL1
    datatype unaryOp =
      DECL
    | INCL
    | NEGL
    | NOTL
+   | DECW
+   | INCW
+   | NEGW
    | NOTW
+   | DECB
+   | INCB
+   | NEGB
    | NOTB
    | LOCK_DECL
    | LOCK_INCL
@@ -497,7 +520,8 @@ struct
      NOP
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
-   | CALL of (operand * C.cellset * C.cellset * Region.region)
+   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
@@ -511,14 +535,17 @@ struct
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
-   | MUL3 of {dst:C.cell, src2:Int32.int option, src1:operand}
+   | MUL3 of {dst:C.cell, src2:Int32.int, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
    | CMOV of {cond:cond, src:operand, dst:C.cell}
    | PUSHL of operand
    | PUSHW of operand
    | PUSHB of operand
+   | PUSHFD
+   | POPFD
    | POP of operand
    | CDQ
    | INTO
@@ -559,6 +586,7 @@ struct
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
    | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
+   | LAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
    | SINK of {}

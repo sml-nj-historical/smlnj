@@ -1,6 +1,36 @@
 BOOT: the location of the latest boot files.
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/23 14:30:00 EDT
+Tag: Release_110_33
+Version: 110.33
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.33/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/05/07 14:40:00 EDT
+Tag: blume-20010507-proxies
+Version: 110.32.2(+)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010507-proxies/
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/04/20 09:15:28 EDT
+Tag: george-20010420-macosX
+Version: 110.32.2
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/george-20010420-bootfiles/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/22 16:25:00 EST
+Tag: blume-20010322-bootfiles
+Version: 110.32.1(+++)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010322-bootfiles/
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/03/16 12:22:00 EST
+Tag: blume-20010316-bootfiles
+Version: 110.32.1(++)
+Location: ftp://ftp.research.bell-labs.com/dist/smlnj/working/bootfiles/blume-20010316-bootfiles/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/01/12 23:30:00 JST
 Tag: blume-20010112-bootfiles
 Version: 110.32.1(+)

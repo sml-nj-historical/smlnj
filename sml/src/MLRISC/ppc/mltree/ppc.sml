@@ -97,7 +97,7 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (S.STREAM{emit,comment,
+      (S.STREAM{emit,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,...}) =
   let (* mark an instruction with annotations *)
@@ -261,12 +261,11 @@ struct
           in  emit(MTLR(rs));
               mark(I.BCLR{bo=I.ALWAYS,bf=CR0,bit=I.LT,LK=false,labels=labs},an)
           end
-        | stmt(T.CALL{funct, targets, defs, uses, region, ...}, an) = 
-          let val defs=cellset(defs)
-              val uses=cellset(uses)
-           in emit(MTLR(expr funct));
-              mark(I.CALL{def=defs, use=uses, mem=region}, an)
-           end
+        | stmt(T.CALL{funct, targets, defs, uses, region, pops, ...}, an) = 
+            call(funct, targets, defs, uses, region, [], an, pops) 
+        | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, pops,...}, 
+                         cutTo), an) = 
+            call(funct, targets, defs, uses, region, cutTo, an, pops) 
         | stmt(T.RET flow,an) = mark(RET,an)
         | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)
         | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
@@ -274,6 +273,14 @@ struct
         | stmt(T.DEFINE l, _) = defineLabel l
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
         | stmt(s, _) = doStmts(Gen.compileStm s)
+
+      and call(funct, targets, defs, uses, region, cutsTo, an, 0) = 
+          let val defs=cellset(defs)
+              val uses=cellset(uses)
+          in  emit(MTLR(expr funct));
+              mark(I.CALL{def=defs, use=uses, cutsTo=cutsTo, mem=region}, an)
+          end
+	| call _ = error "pops<>0 not implemented"
 
       and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch"
         | branch(T.CMP(ty, cc, e1 as T.LI _, e2), lab, an) = 
@@ -648,10 +655,10 @@ struct
           | T.FADD(32,T.FMUL(32,a,c),b) => f3(I.FMADDS,a,b,c,ft,an)
           | T.FADD(32,b,T.FMUL(32,a,c)) => f3(I.FMADDS,a,b,c,ft,an)
           | T.FSUB(32,T.FMUL(32,a,c),b) => f3(I.FMSUBS,a,b,c,ft,an)
-          | T.FSUB(32,b,T.FMUL(32,a,c)) => f3(I.FNMADDS,a,b,c,ft,an)
-          | T.FNEG(32,T.FADD(32,T.FMUL(32,a,c),b)) => f3(I.FNMSUBS,a,b,c,ft,an)
-          | T.FNEG(32,T.FADD(32,b,T.FMUL(32,a,c))) => f3(I.FNMSUBS,a,b,c,ft,an)
-          | T.FSUB(32,T.FNEG(32,T.FMUL(32,a,c)),b) => f3(I.FNMSUBS,a,b,c,ft,an)
+          | T.FSUB(32,b,T.FMUL(32,a,c)) => f3(I.FNMSUBS,a,b,c,ft,an)
+          | T.FNEG(32,T.FADD(32,T.FMUL(32,a,c),b)) => f3(I.FNMADDS,a,b,c,ft,an)
+          | T.FNEG(32,T.FADD(32,b,T.FMUL(32,a,c))) => f3(I.FNMADDS,a,b,c,ft,an)
+          | T.FSUB(32,T.FNEG(32,T.FMUL(32,a,c)),b) => f3(I.FNMADDS,a,b,c,ft,an)
 
           | T.FADD(32, e1, e2) => fbinary(I.FADDS, e1, e2, ft, an)
           | T.FSUB(32, e1, e2) => fbinary(I.FSUBS, e1, e2, ft, an)
@@ -665,10 +672,10 @@ struct
           | T.FADD(64,T.FMUL(64,a,c),b) => f3(I.FMADD,a,b,c,ft,an)
           | T.FADD(64,b,T.FMUL(64,a,c)) => f3(I.FMADD,a,b,c,ft,an)
           | T.FSUB(64,T.FMUL(64,a,c),b) => f3(I.FMSUB,a,b,c,ft,an)
-          | T.FSUB(64,b,T.FMUL(64,a,c)) => f3(I.FNMADD,a,b,c,ft,an)
-          | T.FNEG(64,T.FADD(64,T.FMUL(64,a,c),b)) => f3(I.FNMSUB,a,b,c,ft,an)
-          | T.FNEG(64,T.FADD(64,b,T.FMUL(64,a,c))) => f3(I.FNMSUB,a,b,c,ft,an)
-          | T.FSUB(64,T.FNEG(64,T.FMUL(64,a,c)),b) => f3(I.FNMSUB,a,b,c,ft,an)
+          | T.FSUB(64,b,T.FMUL(64,a,c)) => f3(I.FNMSUB,a,b,c,ft,an)
+          | T.FNEG(64,T.FADD(64,T.FMUL(64,a,c),b)) => f3(I.FNMADD,a,b,c,ft,an)
+          | T.FNEG(64,T.FADD(64,b,T.FMUL(64,a,c))) => f3(I.FNMADD,a,b,c,ft,an)
+          | T.FSUB(64,T.FNEG(64,T.FMUL(64,a,c)),b) => f3(I.FNMADD,a,b,c,ft,an)
 
           | T.FADD(64, e1, e2) => fbinary(I.FADD, e1, e2, ft, an)
           | T.FSUB(64, e1, e2) => fbinary(I.FSUB, e1, e2, ft, an)
@@ -728,15 +735,16 @@ struct
            endCluster a)
 
    in  S.STREAM
-       { beginCluster = beginCluster,
-         endCluster   = endCluster,
-         emit         = doStmt,
-         pseudoOp     = pseudoOp,
-         defineLabel  = defineLabel,
-         entryLabel   = entryLabel,
-         comment      = comment,
-         annotation   = annotation,
-         exitBlock    = fn mlrisc => exitBlock(cellset mlrisc)
+       { beginCluster  = beginCluster,
+         endCluster    = endCluster,
+         emit          = doStmt,
+         pseudoOp      = pseudoOp,
+         defineLabel   = defineLabel,
+         entryLabel    = entryLabel,
+         comment       = comment,
+         annotation    = annotation,
+         getAnnotations=getAnnotations,
+         exitBlock     = fn mlrisc => exitBlock(cellset mlrisc)
        }
    end
     

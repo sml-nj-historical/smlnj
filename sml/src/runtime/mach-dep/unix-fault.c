@@ -71,7 +71,7 @@ PVT SigReturn_t FaultHandler (
     SigContext_t    *scp = &sc;
 #endif
     ml_state_t	    *msp = SELF_VPROC->vp_state;
-    extern Word_t   request_fault[];
+    extern Word_t   request_fault[]; 
     int		    code = SIG_GetCode(info, scp);
 
 #ifdef SIGNAL_DEBUG

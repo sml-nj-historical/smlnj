@@ -16,6 +16,8 @@ signature MACH_SPEC =
   sig
 
     val architecture : string
+
+    val framesize : int
    
   (* code generator flags *)
     val polling : bool
@@ -85,6 +87,16 @@ signature MACH_SPEC =
 
     val spillRematerialization : bool
     (* Whether rematerialization of spill locations is performed *)
+
+    (* for accessing the in_ML flag etc.;
+     * These values must be coordinated with their respective runtime
+     * counterparts in ?.prim.asm and mlstate-offsets.h! *)
+    val ML_STATE_OFFSET : int		(* within frame *)
+    val VProcOffMSP : int		(* within ML state struct *)
+    val InMLOffVSP : int		(* within VProc struct *)
+    val LimitPtrMaskOffVSP : int	(* within VProc struct *)
+
+    (* On machines with a real frame pointer, there is no point in
+     * attempting to omit a (virtual) frame pointer.  Example: Sparc *)
+    val framePtrNeverVirtual : bool	(* suppress omit-frame-ptr phase *)
   end (* MACH_SPEC *)
-
-

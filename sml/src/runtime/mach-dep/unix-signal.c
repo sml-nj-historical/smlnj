@@ -140,6 +140,11 @@ PVT SigReturn_t CSigHandler (
     EnqueueSignal(vsp, sig);
     vsp->vp_numPendingSysSigs++;
 
+    /* The following line is needed only when currently executing
+     * "pure" C code.  But doing it anyway in all other cases will
+     * not hurt... */
+    vsp->vp_limitPtrMask = 0;
+
     if (vsp->vp_inMLFlag && (! vsp->vp_handlerPending) && (! vsp->vp_inSigHandler)) {
 	vsp->vp_handlerPending = TRUE;
 #ifdef USE_ZERO_LIMIT_PTR_FN

@@ -177,8 +177,24 @@ structure Control : CONTROL =
     val saveCPSopt : bool ref = saveit
     val saveClosure : bool ref = saveit
 
-    val lambdaSplitEnable = ref false
-    val crossInlineEnable  = ref false
-end
-
-
+    structure LambdaSplitting = struct
+	datatype globalsetting = Off | Default of int option
+	type localsetting = int option option
+	val UseDefault : localsetting = NONE
+	fun Suggest s : localsetting = SOME s
+	local
+	    val state : globalsetting ref = ref (Default NONE)
+	in
+	    fun set s = state := s
+	    fun get () =
+		case !state of
+		    Off => NONE
+		  | Default d => d
+	    fun get' NONE = get ()
+	      | get' (SOME a) =
+		(case !state of
+		     Off => NONE
+		   | Default _ => a)
+	end
+    end
+  end

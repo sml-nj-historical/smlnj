@@ -136,9 +136,10 @@ struct
            *)
     
       datatype binaryOp! = 
-         ADDL | SUBL | ANDL | ORL | XORL | SHLL | SARL | SHRL | ADCL | SBBL 
-       | ADDW | SUBW | ANDW | ORW | XORW | SHLW | SARW | SHRW 
-       | ADDB | SUBB | ANDB | ORB | XORB | SHLB | SARB | SHRB
+         ADDL | SUBL | ANDL | ORL | XORL | SHLL | SARL | SHRL | MULL | IMULL
+       | ADCL | SBBL 
+       | ADDW | SUBW | ANDW | ORW | XORW | SHLW | SARW | SHRW | MULW | IMULW
+       | ADDB | SUBB | ANDB | ORB | XORB | SHLB | SARB | SHRB | MULB | IMULB
        | BTSW | BTCW | BTRW | BTSL | BTCL | BTRL 
        | ROLW | RORW | ROLL | RORL
        | XCHGB | XCHGW | XCHGL 
@@ -169,13 +170,13 @@ struct
        | LOCK_XADDB "lock\n\txaddb"
        | LOCK_XADDW "lock\n\txaddw"
        | LOCK_XADDL "lock\n\txaddl"
-       | LOCK_CMPXCHGB "lock\n\tcmpxchgb"
-       | LOCK_CMPXCHGW "lock\n\tcmpxchgw"
-       | LOCK_CMPXCHGL "lock\n\tcmpxchgl"
+   
+      (* One operand opcodes *)  
+      datatype multDivOp! = MULL1 "mull" | IDIVL1 "idivl" | DIVL1 "divl"
     
-      datatype multDivOp! = MULL | IDIVL | DIVL
-    
-      datatype unaryOp! = DECL | INCL | NEGL | NOTL | NOTW | NOTB 
+      datatype unaryOp! = DECL | INCL | NEGL | NOTL 
+                        | DECW | INCW | NEGW | NOTW
+                        | DECB | INCB | NEGB | NOTB 
                         | LOCK_DECL "lock\n\tdecl"
                         | LOCK_INCL "lock\n\tincl"
                         | LOCK_NEGL "lock\n\tnegl"
@@ -189,10 +190,10 @@ struct
       datatype move! = MOVL 
                      | MOVB             
                      | MOVW             
-                     | MOVSWL 
-                     | MOVZWL  (* word -> long *) 
-                     | MOVSBL 
-                     | MOVZBL  (* byte -> long *)
+                     | MOVSWL  (* sx(word) -> long *)
+                     | MOVZWL  (* zx(word) -> long *) 
+                     | MOVSBL  (* sx(byte) -> long *) 
+                     | MOVZBL  (* zx(byte) -> long *)
     
      (* The Intel manual is incorrect on the description of FDIV and FDIVR *)
       datatype fbinOp! = 
@@ -379,15 +380,15 @@ struct
 
      (* Multiplication/division *)
      rtl upperMultiply : #n bits * #n bits -> #n bits
-     rtl MULL{src}  = eax        := muls(eax, src) ||
-                      edx        := upperMultiply(eax, src) ||
-                      $eflags[0] := ???
-     rtl IDIVL{src} = eax := divs(eax, src) ||
-                      edx := rems(eax, src) ||
-                      $eflags[0] := ???
-     rtl DIVL{src}  = edx := divu(eax, src) ||
-                      edx := remu(eax, src) ||
-                      $eflags[0] := ???
+     rtl MULL1{src}  = eax        := muls(eax, src) ||
+                       edx        := upperMultiply(eax, src) ||
+                       $eflags[0] := ???
+     rtl IDIVL1{src} = eax := divs(eax, src) ||
+                       edx := rems(eax, src) ||
+                       $eflags[0] := ???
+     rtl DIVL1{src}  = edx := divu(eax, src) ||
+                       edx := remu(eax, src) ||
+                       $eflags[0] := ???
 
      (* test[b,w,l] *)
      rtl TESTB {lsrc,rsrc} = $eflags[0] := setFlag(andb(byte lsrc, rsrc))
@@ -415,10 +416,10 @@ struct
      fun jcc cc {opnd} = if cc then Jmp(long opnd) else ()
      rtl J^^     [EQ,NE,LT,LE,GT,GE,B,BE,A,AE,C,NC,P,NP,O,NO] = 
          map jcc [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
-     rtl CALL{operand,cellset1,cellset2} =
-         Call(long operand) ||
-         Kill $cellset[cellset1] || 
-         Use $cellset[cellset2] 
+     rtl CALL{opnd,defs,uses} =
+         Call(long opnd) ||
+         Kill $cellset[defs] || 
+         Use $cellset[uses] 
 
      (* semantics of floating point operators
       * The 3-address fake operators first. 
@@ -505,9 +506,10 @@ struct
    *------------------------------------------------------------------------*)
 
   functor Assembly
-     (structure MemRegs : MEMORY_REGISTERS where I = Instr) =
+     (structure MemRegs : MEMORY_REGISTERS where I = Instr
+      val memRegBase : MemRegs.I.C.cell option) =
   struct
-     val memReg = MemRegs.memReg 
+     fun memReg r = MemRegs.memReg {reg=r, base=Option.valOf memRegBase}
      fun emitInt32 i = 
      let val s = Int32.toString i
          val s = if i >= 0 then s else "-"^String.substring(s,1,size s-1)
@@ -576,15 +578,15 @@ struct
               | _ => fbinOp
           end
 
-      fun isST32 (I.ST r) = C.registerNum r = 32 
-        | isST32 _ = false
+      fun isST0 (I.ST r) = C.registerNum r = 0 
+        | isST0 _ = false
  
       (* Special syntax for binary operators *)
       fun emit_fbinaryOp(binOp,src,dst) =
           if isMemOpnd src then 
               (emit_fbinOp binOp; emit "\t"; emit_operand src)
           else (emit(chop(asm_fbinOp binOp)); emit "\t";
-                case (isST32 src, isST32 dst) of
+                case (isST0 src, isST0 dst) of
                   (_, true) => (emit_operand src; emit ", %st")
                 | (true, _) => (emit "%st, "; emit_operand dst)
                 | _ => error "emit_fbinaryOp"
@@ -644,10 +646,14 @@ struct
 	asm: ``j<cond>\t<stupidGas opnd>''
 	rtl: ``J<cond>''
 
-    | CALL of operand * $cellset * $cellset * Region.region
-	asm: ``call\t<stupidGas operand><region><
-          	emit_defs(cellset1)><
-          	emit_uses(cellset2)>''
+    | CALL of {opnd: operand, defs: $cellset, uses: $cellset,
+               return: $cellset, cutsTo: Label.label list, mem: Region.region,
+ 	       pops:Int32.int}
+	asm: ``call\t<stupidGas opnd><mem><
+          	emit_defs(defs)><
+          	emit_uses(uses)><
+          	emit_cellset("return",return)><
+                emit_cutsTo cutsTo>''
 	rtl: ``CALL''
 
     | ENTER of {src1:operand, src2:operand} 
@@ -701,17 +707,24 @@ struct
                 I.SARB | I.SHRB | I.SHLB)) => ``<binOp>\t%cl, <dst>''
              | _ => ``<binOp>\t<src>, <dst>''
              )
-	rtl: ``<binOp>''
+	(*rtl: ``<binOp>''*)
+
+    | CMPXCHG of {lock:bool, sz:isize, src: operand, dst:operand}
+	asm: (if lock then ``lock\n\t'' else ();
+              ``cmpxchg'';
+              case sz of
+                I.I8 => ``b''
+              | I.I16 => ``w''
+              | I.I32 => ``l'';
+              ``\t<src>, <dst>''
+             )
 
     | MULTDIV of {multDivOp:multDivOp, src:operand}
 	asm: ``<multDivOp>\t<src>''
 
-    | MUL3 of {dst: $GP, src2: Int32.int option, src1:operand}
+    | MUL3 of {dst: $GP, src2: Int32.int, src1:operand}
         (* Fermin: constant operand must go first *)
-        asm: (case src2 of 
-                NONE => ``imul\t<src1>, <dst>''
-              | SOME i => ``imul\t$<emitInt32 i>, <src1>, <dst>''
-             )
+        asm: ``imul\t$<emitInt32 src2>, <src1>, <dst>''
 
     | UNARY of {unOp:unaryOp, opnd:operand}
 	asm: ``<unOp>\t<opnd>''
@@ -743,6 +756,12 @@ struct
     | PUSHB of operand
 	asm: ``pushb\t<operand>''
 	rtl: ``PUSHB''
+
+    | PUSHFD     (* push $eflags onto stack *)
+	``pushfd''
+
+    | POPFD	(* pop $eflags onto stack *)
+	``popfd''
 
     | POP of operand
 	asm: ``popl\t<operand>''
@@ -883,8 +902,11 @@ struct
         (* rtl: [["FCMP" fsize]] *)
 
    (* misc *)
-    | SAHF
+    | SAHF        (* %flags -> %ah *)
 	``sahf''
+
+    | LAHF	  (* %ah -> %flags *)
+	``lahf''
 
    (* annotations *)
     | ANNOTATION of {i:instruction, a:Annotations.annotation}

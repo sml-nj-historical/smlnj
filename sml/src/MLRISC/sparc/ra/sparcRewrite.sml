@@ -21,12 +21,13 @@ struct
        | I.MOVfcc{b,i,d} => I.MOVfcc{b=b,i=O i,d=R d}
        | I.MOVR{rcond,r,i,d} => I.MOVR{rcond=rcond,r=R r,i=O i,d=R d}
        | I.JMP{r,i,labs,nop} => I.JMP{r=R r,i=O i,labs=labs,nop=nop}
-       | I.JMPL{r,i,d,defs,uses,nop,mem} => 
+       | I.JMPL{r,i,d,defs,uses,cutsTo,nop,mem} => 
             I.JMPL{r=R r,i=O i,d=d,defs=defs,
-                   uses=C.CellSet.map {from=rs,to=rt} uses,nop=nop,mem=mem}
-       | I.CALL{defs,uses,label,nop,mem} => 
+                   uses=C.CellSet.map {from=rs,to=rt} uses,
+                   cutsTo=cutsTo,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,cutsTo,nop,mem} => 
             I.CALL{defs=defs,uses=C.CellSet.map {from=rs,to=rt} uses,
-                   label=label,nop=nop,mem=mem}
+                   label=label,cutsTo=cutsTo,nop=nop,mem=mem}
        | I.SAVE{r,i,d} => I.SAVE{r=R r,i=O i,d=d}
        | I.RESTORE{r,i,d} => I.RESTORE{r=R r,i=O i,d=d}
        | I.WRY{r,i} => I.WRY{r=R r,i=O i}
@@ -56,12 +57,12 @@ struct
        | I.MOVicc{b,i,d} => I.MOVicc{b=b,i=i,d=R d}
        | I.MOVfcc{b,i,d} => I.MOVfcc{b=b,i=i,d=R d}
        | I.MOVR{rcond,r,i,d} => I.MOVR{rcond=rcond,r=r,i=i,d=R d}
-       | I.JMPL{r,i,d,defs,uses,nop,mem} => 
+       | I.JMPL{r,i,d,defs,uses,cutsTo,nop,mem} => 
             I.JMPL{r=r,i=i,d=R d,defs=C.CellSet.map {from=rs,to=rt} defs,
-                   uses=uses,nop=nop,mem=mem}
-       | I.CALL{defs,uses,label,nop,mem} => 
+                   uses=uses,cutsTo=cutsTo,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,cutsTo,nop,mem} => 
             I.CALL{defs=C.CellSet.map {from=rs,to=rt} defs,
-                   uses=uses,label=label,nop=nop,mem=mem}
+                   uses=uses,label=label,cutsTo=cutsTo,nop=nop,mem=mem}
        | I.SAVE{r,i,d} => I.SAVE{r=r,i=i,d=R d}
        | I.RESTORE{r,i,d} => I.RESTORE{r=r,i=i,d=R d}
        | I.RDY{d} => I.RDY{d=R d}
@@ -87,12 +88,13 @@ struct
        | I.FSTORE{s,r,i,d,mem} => I.FSTORE{s=s,r=r,i=i,d=R d,mem=mem}
        | I.FMOVicc{sz,b,r,d} => I.FMOVicc{sz=sz,b=b,r=R r,d=R d}
        | I.FMOVfcc{sz,b,r,d} => I.FMOVfcc{sz=sz,b=b,r=R r,d=R d}
-       | I.JMPL{r,i,d,defs,uses,nop,mem} =>
+       | I.JMPL{r,i,d,defs,uses,cutsTo,nop,mem} =>
            I.JMPL{r=r,i=i,d=d,defs=defs,
-                  uses=C.CellSet.map {from=rs,to=rt} uses,nop=nop,mem=mem}
-       | I.CALL{defs,uses,label,nop,mem} =>
+                  uses=C.CellSet.map {from=rs,to=rt} uses,
+                  cutsTo=cutsTo,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,cutsTo,nop,mem} =>
            I.CALL{defs=defs,uses=C.CellSet.map {from=rs,to=rt} uses,
-                  label=label,nop=nop,mem=mem}
+                  label=label,cutsTo=cutsTo,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=map R src,dst=dst,tmp=tmp,impl=impl}
        | I.ANNOTATION{i,a} => 
@@ -116,12 +118,12 @@ struct
        | I.FLOAD{l,r,i,d,mem} => I.FLOAD{l=l,r=r,i=i,d=R d,mem=mem}
        | I.FMOVicc{sz,b,r,d} => I.FMOVicc{sz=sz,b=b,r=r,d=R d}
        | I.FMOVfcc{sz,b,r,d} => I.FMOVfcc{sz=sz,b=b,r=r,d=R d}
-       | I.JMPL{r,i,d,defs,uses,nop,mem} =>
+       | I.JMPL{r,i,d,defs,uses,cutsTo,nop,mem} =>
            I.JMPL{r=r,i=i,d=d,defs=C.CellSet.map {from=rs,to=rt} defs,
-                  uses=uses,nop=nop,mem=mem}
-       | I.CALL{defs,uses,label,nop,mem} =>
+                  uses=uses,cutsTo=cutsTo,nop=nop,mem=mem}
+       | I.CALL{defs,uses,label,cutsTo,nop,mem} =>
            I.CALL{defs=C.CellSet.map {from=rs,to=rt} defs,
-                  uses=uses,label=label,nop=nop,mem=mem}
+                  uses=uses,label=label,cutsTo=cutsTo,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=src,dst=map R dst,tmp=ea tmp,impl=impl}
        | I.ANNOTATION{i,a}=> 

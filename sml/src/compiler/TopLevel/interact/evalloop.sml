@@ -90,7 +90,7 @@ let val parser = C.parseOne source
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
                   E.layerEnv(#get localEnvRef (), #get baseEnvRef ())
 
-                val splitting = !Control.lambdaSplitEnable
+                val splitting = Control.LambdaSplitting.get ()
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
                      imports, inlineExp, ...} = 
                   C.compile {source=source, ast=ast,

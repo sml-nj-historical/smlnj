@@ -166,14 +166,14 @@ structure PreString =
    * NOTE: some day we might want to implement KMP matching for this
    *)
     fun isSubstring (s1, s2) (* s2, i2, n2 *) =
-        let val n1 = stringSize s1
-            val n2 = stringSize s2
-	    fun eq (j, k) = (j >= len) orelse
-		((unsafeSub(s, j) = unsafeSub(s', k)) andalso eq (j+1, k+1))
+        let val n1 = size s1
+            val n2 = size s2
+	    fun eq (j, k) = (j >= n1) orelse
+		((unsafeSub(s1, j) = unsafeSub(s2, k)) andalso eq (j+1, k+1))
 	    val stop = n2-n1 (* i2 + n2 - n1 *)
 	    fun cmp k =
 		(k <= stop) andalso (eq(0, k) orelse cmp(k+1))
-	 in cmp i
+	 in cmp 0
 	end
 
     fun collate cmpFn (s1, i1, n1, s2, i2, n2) = let

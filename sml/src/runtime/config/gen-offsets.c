@@ -57,6 +57,7 @@ int main (void)
     PMOFFSET("InPollHandler", ml_inPollHandler);
 #endif
     PVOFFSET("InML", vp_inMLFlag);
+    PVOFFSET("LimitPtrMask", vp_limitPtrMask);
     PVOFFSET("HandlerPending", vp_handlerPending);
     PVOFFSET("InSigHandler", vp_inSigHandler);
     PVOFFSET("NPendingSys", vp_numPendingSysSigs);

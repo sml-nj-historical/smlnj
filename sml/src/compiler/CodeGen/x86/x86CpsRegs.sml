@@ -22,23 +22,31 @@ structure X86CpsRegs : CPSREGS = struct
   val edx = T.REG(32, C.edx)	val esi = T.REG(32, C.esi)
   val ebx = T.REG(32, C.ebx)	val edi = T.REG(32, C.edi)
 
-  fun regInMem i = 
-      T.LOAD(32, T.ADD(32, esp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
+  val vfp = C.newDedicatedCell C.GP ()
+  val vfptr = T.REG(32, vfp)
 
-  val allocptr 	= edi
-  val stdarg 	= ebp
-  val stdcont   = esi
-  val stackptr 	= esp
+  fun frameptr which = if which then vfptr else esp
 
-  val baseptr	= regInMem 4
-  val exnptr 	= regInMem 8
-  val limitptr 	= regInMem 12
-  val gcLink	= regInMem 16
-  val storeptr 	= regInMem 24
-  val varptr  	= regInMem 28
+  fun regInMem(which, i) = let
+    val fp = frameptr which
+  in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
+  end
 
-  val stdlink	= T.REG(32, GP 8) 	(* vreg 0 *)
-  val stdclos	= T.REG(32, GP 9) 	(* vreg 1 *)
+  val allocptr 	    = edi
+  val stackptr      = esp
+  fun stdarg _      = ebp
+  fun stdcont _     = esi
+
+
+  fun limitptr vfp 	= regInMem(vfp, 12)
+  fun baseptr  vfp	= regInMem(vfp, 4)
+  fun exnptr   vfp	= regInMem(vfp, 8)
+  fun gcLink   vfp	= regInMem(vfp, 16)
+  fun storeptr vfp 	= regInMem(vfp, 24)
+  fun varptr   vfp 	= regInMem(vfp, 28)
+
+  fun stdlink  _	= T.REG(32, GP 8) 	(* vreg 0 *)
+  fun stdclos  _	= T.REG(32, GP 9) 	(* vreg 1 *)
 
   fun mkVregList(n, 0) = []
     | mkVregList(n, cnt) = T.REG(32, GP n)::mkVregList(n+1, cnt-1)
@@ -47,18 +55,25 @@ structure X86CpsRegs : CPSREGS = struct
   val miscregs =
       ebx::ecx::edx::mkVregList(10, X86Runtime.numVregs - 2)
 
-  val calleesave = Array.fromList miscregs
-  val exhausted = NONE
+  val calleesave  = Array.fromList miscregs
+  val exhausted   = NONE
 
-  val floatregs = map (fn f => T.FREG(64,FP f)) (8 upto 31)
+  val floatregs   = map (fn f => T.FREG(64,FP f)) (8 upto 31)
   val savedfpregs = []
 
-  val availR = map (fn T.REG(_,r) => r) [ebp, esi, ebx, ecx, edx, eax]
-  val dedicatedR = map (fn T.REG(_,r) => r) [edi, esp]
+  local
+      fun unREG (T.REG (_, r)) = r
+	| unREG _ = raise Fail "x86CpsRegs:unREG"
+  in
+
+  val availR = map unREG [ebp, esi, ebx, ecx, edx, eax]
+  val dedicatedR = map unREG [edi, esp, vfptr]
   val availF = map FP (8 upto 31)
   val dedicatedF = [] (* map FP [0,1,2,3,4,5,6,7] *)
   val signedGCTest = false
   val addressWidth = 32
+
+  val ccallCallerSaveR = [unREG edi]
+  val ccallCallerSaveF = []
+  end (*local*)
 end
-
-

@@ -44,6 +44,8 @@ signature MEMBERCOLLECTION = sig
 	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges * SymbolSet.set
 
+    val mkIndex : GeneralParams.info * SrcPath.file * collection -> unit
+
     val subgroups : collection -> subgroups
     val sources : collection ->
 		  { class: string, derived: bool } SrcPathMap.map
@@ -53,6 +55,7 @@ signature MEMBERCOLLECTION = sig
     val ml_look : collection -> symbol -> bool
 
     val has_smlfiles : collection -> bool
+    val is_errorcollection : collection -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
@@ -206,10 +209,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 				 reqpriv = required }
 		end
 	      | GG.ERRORGROUP => ERRORCOLLECTION
-	fun s_coll (p, s, setup) = let
+	fun s_coll (p, s, setup, split) = let
 	    val i =
-		SmlInfo.info gp { sourcepath = p, group = group,
-				  sh_spec = s, setup = setup }
+		SmlInfo.info split gp { sourcepath = p, group = group,
+					sh_spec = s, setup = setup }
 	    val exports =
 		case SmlInfo.exports gp i of
 		    NONE => SS.empty
@@ -240,6 +243,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
       | build (ERRORCOLLECTION, _, _, _) =
 	(SymbolMap.empty, StringSet.empty, SymbolSet.empty)
 
+    fun mkIndex (gp, g, COLLECTION c) = Index.mkIndex (gp, g, c)
+      | mkIndex _ = ()
+
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
       | subgroups ERRORCOLLECTION = []
 
@@ -262,4 +268,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     fun has_smlfiles (COLLECTION { smlfiles = [], ... }) = false
       | has_smlfiles ERRORCOLLECTION = false
       | has_smlfiles _ = true
+
+    fun is_errorcollection ERRORCOLLECTION = true
+      | is_errorcollection (COLLECTION _) = false
 end

@@ -11,7 +11,7 @@ structure Real64VectorSlice : MONO_VECTOR_SLICE =
 struct
   structure V = InlineT.Real64Vector
 
-  type elem = 8.word
+  type elem = Real64.real
   type vector = Real64Vector.vector
   datatype slice = SL of {base: vector, start: int, stop: int}
 
@@ -124,9 +124,7 @@ struct
 (* val getItem : slice -> (elem * slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base,start+1,stop})
-			      
-  end
+      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
 
 (* val appi : (int * elem -> unit) -> slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -137,7 +135,7 @@ struct
       end
 
 (* val app  : (elem -> unit) -> slice -> unit *)
-  fun appi f (SL{base,start,stop} =
+  fun appi f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -145,7 +143,7 @@ struct
       end
 
 (* val mapi : (int * elem -> 'b) -> slice -> vector *)
-  fun mapi f (SL{base,start,stop} =
+  fun mapi f (SL{base,start,stop}) =
       let val len = stop - start
 	  fun mapf (i, l) = if (i < stop)
 		then mapf (i+1, f (i, sub'(base, i)) :: l)
@@ -156,7 +154,7 @@ struct
       end
 
 (* val map  : (elem -> 'b) -> slice -> vector *)
-  fun map f (SL{base,start,stop} =
+  fun map f (SL{base,start,stop}) =
       let val len = stop - start
 	  fun mapf (i, l) = if (i < stop)
 		then mapf (i+1, f (sub'(base, i)) :: l)
@@ -252,7 +250,7 @@ struct
       let fun cmp (i,i') =
 	      if (i < stop)
 	      then if (i' >= stop') then GREATER
-		   else case comp(sub'(base, i)),
+		   else case comp(sub'(base, i),
 		                  sub'(base', i'))
                           of EQUAL => cmp(i+1,i'+1)
 			   | x => x

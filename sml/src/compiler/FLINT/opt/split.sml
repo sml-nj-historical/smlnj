@@ -4,7 +4,7 @@
 signature FSPLIT =
 sig
     type flint = FLINT.prog
-    val split: flint -> flint * flint option
+    val split: flint * int option -> flint * flint option
 end
     
 structure FSplit :> FSPLIT =
@@ -42,7 +42,8 @@ fun rmvs (s,lvs) = foldl (fn (l,s) => S_rmv(l, s)) s lvs
 		   
 exception Unknown
 	  
-fun split (fdec as (fk,f,args,body)) = let
+fun split (fdec, NONE) = (fdec, NONE)
+  | split (fdec as (fk,f,args,body), SOME aggressiveness) = let
     val {getLty,addLty,...} = Recover.recover (fdec, false)
 
     val m = IntHashTable.mkTable(64, Unknown)
@@ -138,7 +139,7 @@ and sfix env (fdecs,le) =
     in case fdecs
 	of [({inline=inl as (F.IH_ALWAYS | F.IH_MAYBE _),...},f,args,body)] =>
 	   let val min = case inl of F.IH_MAYBE(n,_) => n | _ => 0
-	   in if not(S.member(fvI, f)) orelse min > !CTRL.splitThreshold
+	   in if not(S.member(fvI, f)) orelse min > aggressiveness (* !CTRL.splitThreshold *)
 	      then (nleE, leI, fvI, leRet)
 	      else (nleE, F.FIX(fdecs, leI),
 		    rmvs(S.union(fvI, FU.freevars body),

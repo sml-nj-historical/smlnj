@@ -50,7 +50,8 @@ struct
     | BCC     of ccexp * Label.label
     | CALL    of {funct:rexp, targets:controlflow,
                   defs:mlrisc list, uses:mlrisc list,
-                  region: Region.region} 
+                  region: Region.region, pops: Int32.int}
+    | FLOW_TO of stm * controlflow 
     | RET     of controlflow 
     | IF      of ccexp * stm * stm   
 

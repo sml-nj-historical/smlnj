@@ -22,6 +22,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
     structure EM = GenericVC.ErrorMsg
     structure SM = GenericVC.SourceMap
     structure DG = DependencyGraph
+    structure LSC = GenericVC.Control.LambdaSplitting
 
     fun build (gp: GeneralParams.info) specgroup = let
 	val penv = #penv (#param gp)
@@ -91,7 +92,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				setup = (NONE, NONE) }
 			end
 			fun bogus n = 
-			    DG.SNODE { smlinfo = sml (n, false, NONE,
+			    DG.SNODE { smlinfo = sml (n, LSC.UseDefault, NONE,
 						      false, NONE),
 				       localimports = [], globalimports = [] }
 			fun look n =
@@ -118,8 +119,9 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			val looksb = DG.SB_SNODE o look
 
 			fun proc [] = loop (split, m, newpos)
-			  | proc ["split"] = loop (true, m, newpos)
-			  | proc ["nosplit"] = loop (false, m, newpos)
+			  | proc ["split"] = loop (LSC.UseDefault, m, newpos)
+			  | proc ["nosplit"] =
+			    loop (LSC.Suggest NONE, m, newpos)
 			  | proc ("bind" :: name :: file :: args)  =
 			    node (name, file, args, false, NONE)
 			  | proc ("rts-placeholder" :: name :: file :: args) =
@@ -140,7 +142,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			proc line
 		    end
 	in
-	    loop (false, StringMap.empty, 1)
+	    loop (LSC.UseDefault, StringMap.empty, 1)
 	end
 	fun openIt () = TextIO.openIn (SrcPath.osstring specgroup)
     in

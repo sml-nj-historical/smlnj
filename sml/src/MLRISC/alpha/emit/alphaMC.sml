@@ -49,6 +49,7 @@ struct
        in loc := i + 1; CodeString.update(i,Word8.fromLargeWord w) end
    
        fun doNothing _ = ()
+       fun getAnnotations () = error "getAnnotations"
    
        fun pseudoOp pOp = P.emitValue{pOp=pOp, loc= !loc,emit=eByte}
    
@@ -376,21 +377,21 @@ struct
      | emitInstr (I.FSTORE{stOp, r, b, d, mem}) = FLoadStore {opc=emit_fstore stOp, 
           r=r, b=b, d=d}
      | emitInstr (I.JMPL({r, b, d}, list)) = Jump {h=0wx0, ra=r, rb=b, disp=d}
-     | emitInstr (I.JSR{r, b, d, defs, uses, mem}) = Jump {h=0wx1, ra=r, rb=b, 
-          disp=d}
-     | emitInstr (I.BSR{r, lab, defs, uses, mem}) = Bsr {ra=r, disp=disp lab}
+     | emitInstr (I.JSR{r, b, d, defs, uses, cutsTo, mem}) = Jump {h=0wx1, 
+          ra=r, rb=b, disp=d}
+     | emitInstr (I.BSR{r, lab, defs, uses, cutsTo, mem}) = Bsr {ra=r, disp=disp lab}
      | emitInstr (I.RET{r, b, d}) = Jump {h=0wx2, ra=r, rb=b, disp=d}
      | emitInstr (I.BRANCH{b, r, lab}) = Branch {opc=b, ra=r, disp=disp lab}
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = 
        let 
-(*#line 586.15 "alpha/alpha.mdl"*)
+(*#line 588.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = 
        let 
-(*#line 593.15 "alpha/alpha.mdl"*)
+(*#line 595.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
@@ -401,13 +402,13 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = 
        let 
-(*#line 622.15 "alpha/alpha.mdl"*)
+(*#line 624.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = 
        let 
-(*#line 630.15 "alpha/alpha.mdl"*)
+(*#line 632.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end
@@ -433,7 +434,8 @@ struct
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                getAnnotations=getAnnotations
                }
    end
 end

@@ -30,6 +30,9 @@ signature HASH_TABLE =
 	 * then the old item is discarded.
 	 *)
 
+    val inDomain : ('a, 'b) hash_table -> 'a -> bool
+	(* return true, if the key is in the domain of the table *)
+
     val lookup : ('a, 'b) hash_table -> 'a -> 'b
 	(* Find an item, the table's exception is raised if the item doesn't exist *)
 

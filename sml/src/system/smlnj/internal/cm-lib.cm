@@ -6,12 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	functor LinkCM
-	functor BootstrapCompileFn
-
-	signature VERSION
-	structure Version
-	structure Sharing
-	signature TOOLS
+	(* this is a proxy library; exports taken from only member *)
 is
 	$cm/cm-lib.cm

@@ -35,7 +35,8 @@ struct
     | CTRL = $ctrl[] asm: (fn (r,_) => "ctrl"^Int.toString r)
 
    locations
-       stackptrR = $r[14]
+       stackptrR = $r[14]    (* %o6 = %sp *)
+   and frameptrR = $r[30]    (* %i6 = %fp *)
    and asmTmpR   = $r[10]    (* %o2 *)
    and linkReg   = $r[15]
    and fasmTmp   = $f[30]
@@ -505,6 +506,7 @@ struct
    |  fstore{s:fstore,r,i,d} = rif{op1=0w3,op3=s,r,i,d} (* p97 *)
    |  sethi {op1:2=0, rd:GP 5, op2:3=0b100, imm22:int signed 22}  (* p104 *)
    |  NOP   {op1:2=0, rd:5=0, op2:3=0b100, imm22:22=0} (* p105 *)
+   |  unimp {op1:2=0, rd:5=0, op2:3=0, const22:int unsigned 22} (* p137 *)
    |  delay {nop} = if nop then NOP{} else () (* delay slot *)
    |  arith {a:arith,r,i,d} =                       (* p106 *)
         rir{op1=0w2,op3=a,r,i,d} 
@@ -646,6 +648,10 @@ struct
         mc:  fstore{s,r,i,d}
 	rtl: ``<s>''
 
+   |  UNIMP of { const22: int }
+	asm: ``unimp <const22>''
+	mc:  unimp{const22}
+
    |  SETHI of { i:int, d: $GP } 
         asm: let val i = Word32.toString(Word32.<<(Word32.fromInt i,0w10))
              in  ``sethi\t%hi(0x<emit i>), <d>'' 
@@ -725,9 +731,10 @@ struct
         delayslot candidate: false
 
    |  JMPL of { r: $GP, i:operand, d: $GP, 
-                defs: $cellset, uses: $cellset, nop:bool, mem:Region.region
+                defs: $cellset, uses: $cellset, 
+                cutsTo : Label.label list, nop:bool, mem:Region.region
               }
-        asm: ``jmpl\t[<r>+<i>], <d><mem><emit_defs defs><emit_uses uses><nop>'' 
+        asm: ``jmpl\t[<r>+<i>], <d><mem><emit_defs defs><emit_uses uses><emit_cutsTo cutsTo><nop>'' 
         mc:  (jmpl{r,i,d}; delay{nop})
 	rtl: ``JMPL''
         padding: nop = true
@@ -735,9 +742,10 @@ struct
         delayslot candidate: false
 
    |  CALL of  { defs: $cellset, uses: $cellset, 
-                 label:Label.label, nop:bool, mem:Region.region
+                 label:Label.label, cutsTo:Label.label list,
+                 nop:bool, mem:Region.region
                }  
-        asm: ``call\t<label><mem><emit_defs(defs)><emit_uses(uses)><nop>'' 
+        asm: ``call\t<label><mem><emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo><nop>'' 
         mc:  (call{disp30=disp label}; delay{nop})
 	rtl: ``CALL''
         padding: nop 

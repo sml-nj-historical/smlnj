@@ -214,7 +214,7 @@ sig
    | BC of {bo:bo, bf:C.cell, bit:bit, addr:operand, LK:bool, fall:operand}
    | BCLR of {bo:bo, bf:C.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
-   | CALL of {def:C.cellset, use:C.cellset, mem:Region.region}
+   | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
    | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
         tmp:ea option}
    | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
@@ -432,7 +432,7 @@ struct
    | BC of {bo:bo, bf:C.cell, bit:bit, addr:operand, LK:bool, fall:operand}
    | BCLR of {bo:bo, bf:C.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
-   | CALL of {def:C.cellset, use:C.cellset, mem:Region.region}
+   | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
    | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
         tmp:ea option}
    | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 

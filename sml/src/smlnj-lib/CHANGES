@@ -3,11 +3,30 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2001-05-04]
+	Modified GraphSCC module to support a list of roots (Blume).
+	The old interface still works, but will be dropped when we move
+	to the new Util library.
+
+[2001-04-06]
+	Added partition function to ORD_SET interface.
+
+[2001-04-05]
+	Added hasProps function to PropList module.
+
+[2001-03-16]
+	Minor bug fix in GetOpt: don't pad the help string, since it causes
+	line wraps when one of the help lines is longer than the screen
+	width.  It was also unneccesary.
+
+[2001-02-23]
+	Added inDomain function to the various kinds of hash tables.
+
 [2001-02-22]
 	Fixed bug in {Int,Word}RedBlackMapFn.insert (bug 1591).
 
 [2000-12-13]
-	Added most of the bit operations to the IntInf module (Leung).
+	Added the bit operations to the IntInf module (Leung).
 
 [2000-11-17]
 	Added where clause to GraphSCCFn result signature (Blume).

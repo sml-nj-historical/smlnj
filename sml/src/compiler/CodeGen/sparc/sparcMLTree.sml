@@ -11,7 +11,7 @@ structure SparcMLTree =
   MLTreeF(structure Constant=SMLNJConstant
 	  structure Region=CPSRegions
 	  structure Stream=SparcStream
-	  structure Extension=SMLNJMLTreeExt
+	  structure Extension=Sparc_SMLNJMLTreeExt
          )
 
 (* specialised sparc instruction set *)

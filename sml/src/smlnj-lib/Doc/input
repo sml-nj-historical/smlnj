@@ -11,6 +11,7 @@ ML-Doc/RegExp/syntax.mldoc
 ML-Doc/Util/array-qsort-fn.mldoc
 ML-Doc/Util/array-qsort.mldoc
 ML-Doc/Util/array-sort.mldoc
+ML-Doc/Util/atom.mldoc
 ML-Doc/Util/binary-map-fn.mldoc
 ML-Doc/Util/binary-set-fn.mldoc
 ML-Doc/Util/bit-array.mldoc
@@ -38,4 +39,5 @@ ML-Doc/Util/splay-map-fn.mldoc
 ML-Doc/Util/splay-set-fn.mldoc
 ML-Doc/Util/splaytree.mldoc
 ML-Doc/Util/util-lib-part.mldoc
-ML-Doc/Util/atom.mldoc
+ML-Doc/Util/uref.mldoc
+

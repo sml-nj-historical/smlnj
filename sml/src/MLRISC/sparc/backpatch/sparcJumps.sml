@@ -197,9 +197,9 @@ struct
     | (i as I.FBfcc _,8) => [i]
     | (i as I.BR _,8) => [i]
     | (i as I.BP _,8) => [i]
-    | (I.JMPL{r,i,d,defs,uses,nop,mem},(12 | 16)) => 
+    | (I.JMPL{r,i,d,defs,uses,cutsTo,nop,mem},(12 | 16)) => 
         expandImm(i,I.JMPL{r=r,i=I.REG C.asmTmpR,d=d,defs=defs,uses=uses,
-                           nop=nop,mem=mem})
+                           cutsTo=cutsTo,nop=nop,mem=mem})
     | (I.JMP{r,i,labs,nop},(12 | 16)) => 
         expandImm(i,I.JMP{r=r,i=I.REG C.asmTmpR,labs=labs,nop=nop})
     | (I.Ticc{t,cc,r,i},12) =>

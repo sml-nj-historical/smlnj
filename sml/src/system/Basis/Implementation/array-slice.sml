@@ -120,9 +120,7 @@ struct
 (* val getItem : 'a slice -> ('a * 'a slice) option *)
   fun getItem (SL{base,start,stop}) =
       if stop<=start then NONE
-      else SOME(sub'(base, j'), SL{base,start+1,stop})
-			      
-  end
+      else SOME(sub'(base, j'), SL{base=base,start=start+1,stop=stop})
 
 (* val appi : (int * 'a -> unit) -> 'a slice -> unit *)
   fun appi f (SL{base,start,stop}) =
@@ -133,7 +131,7 @@ struct
       end
 
 (* val app  : ('a -> unit) -> 'a slice -> unit *)
-  fun appi f (SL{base,start,stop} =
+  fun appi f (SL{base,start,stop}) =
       let fun app i = if (i < stop)
 	      then (f (sub'(base, i)); app(i+1))
 	      else ()
@@ -246,7 +244,7 @@ struct
       let fun cmp (i,i') =
 	      if (i < stop)
 	      then if (i' >= stop') then GREATER
-		   else case comp(sub'(base, i)),
+		   else case comp(sub'(base, i),
 		                  sub'(base', i'))
                           of EQUAL => cmp(i+1,i'+1)
 			   | x => x

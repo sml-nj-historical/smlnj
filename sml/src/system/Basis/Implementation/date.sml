@@ -209,7 +209,7 @@ structure Date : DATE =
 			  tm_year, tm_wday, tm_yday, tm_isdst},
 			 {tm_sec=tm_sec', tm_min=tm_min', tm_hour=tm_hour',
                           tm_mday=tm_mday', tm_mon=tm_mon', tm_year=tm_year',
-                          tm_wday=tm_wday', tm_yday=tm_yday', tm_isdst=tm_isdst')) = 
+                          tm_wday=tm_wday', tm_yday=tm_yday', tm_isdst=tm_isdst'}) = 
 	    {tm_sec=tm_sec', tm_min=tm_min', tm_hour=tm_hour', tm_mday=tm_mday',
              tm_mon=tm_mon', tm_year=tm_year', tm_wday=tm_wday', tm_yday=tm_yday',
              tm_isdst=tm_isdst}
@@ -332,7 +332,7 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 		   of SOME(ch',cs') => if ch = ch' then cs' else raise SCAN
 		    | NONE => raise SCAN)
 
-	    fun scanWeekDay cs
+	    fun scanWeekDay cs =
 		(case (getc )
 		   of (SOME(#"S", cs')) =>
 			(case (getc cs')
@@ -455,16 +455,16 @@ val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) optio
 	    val cs = scanSp cs
 	    val (year,cs) = scanNum(4,NONE,cs)
 
-	 in SOME({DATE {year = year,
-			month = month,
-			day = day,
-			hour = hour,
-			minute = minute,
-			second = second,
-			offset = NONE,  (* ??? *)
-			wday = wday,
-			yday = yday(month,day,year),
-			isDst = NONE},  (* ??? *)
+	 in SOME(DATE {year = year,
+		       month = month,
+		       day = day,
+		       hour = hour,
+		       minute = minute,
+		       second = second,
+		       offset = NONE,  (* ??? *)
+		       wday = wday,
+		       yday = yday(month,day,year),
+		       isDst = NONE},  (* ??? *)
 		  cs)
 	end
 	handle SCAN => NONE

@@ -70,10 +70,13 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 		    val (m, i) = Reachable.reachable' export_nodes
 		in
 		    (* The group itself is included in "groups"... *)
-		    not (SrcPathSet.exists (invalidGroup st) groups) andalso
-		    not (List.exists nonstabSublib sublibs) andalso
+		    not (SrcPathSet.exists (invalidGroup st) groups)
+		    andalso
+		    not (List.exists nonstabSublib sublibs)
+		    andalso
 		    validStamp ((grouppath, export_nodes, sublibs), version)
-		    andalso not (SmlInfoSet.exists (invalidMember st) m)
+		    andalso
+		    not (SmlInfoSet.exists (invalidMember st) m)
 		end
 	      | _ => false
     in

@@ -52,15 +52,20 @@ functor RISC_RA
                          RAGraph.spillLoc -> I.instruction
 
       (* This function is used to spill a register onto some stack offset 
-       * The 
        *)
-      val spillInstr : Annotations.annotations ref * I.C.cell * 
-                       RAGraph.spillLoc -> I.instruction list
+      val spillInstr : {an:Annotations.annotations ref, src:I.C.cell,
+			spilledCell:I.C.cell, spillLoc:RAGraph.spillLoc} 
+	               -> I.instruction list
+
       (*
        * This function is used to reload a register from some stack offset
        *)
-      val reloadInstr : Annotations.annotations ref * I.C.cell * 
-                        RAGraph.spillLoc -> I.instruction list
+      val reloadInstr : {an:Annotations.annotations ref, dst:I.C.cell,
+			 spilledCell:I.C.cell, spillLoc:RAGraph.spillLoc}
+	                -> I.instruction list
+
+      (* Mode for RA optimizations *)
+      val mode : RAGraph.mode
    end
 
    structure Float :
@@ -93,6 +98,9 @@ functor RISC_RA
        *)
       val reloadInstr : Annotations.annotations ref * I.C.cell * 
                         RAGraph.spillLoc -> I.instruction list
+
+      (* Mode for RA optimizations *)
+      val mode : RAGraph.mode
    end
   ) : CLUSTER_OPTIMIZATION =
 struct
@@ -126,24 +134,36 @@ struct
    fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
 
    (* GetReg specialized to integer and floating point registers *)
+   fun isDedicated (len, arr, others) r = 
+     (r < len andalso Array.sub(arr, r)) orelse List.exists (fn d => r = d) others
+
+   fun mark(arr, _, [], others) = others
+     | mark(arr, len, r::rs, others) = let
+	 val r = C.registerId r
+       in
+	 if r >= len then mark(arr, len, rs, r::others)
+	 else (Array.update(arr, r, true); mark(arr, len, rs, others))
+       end
+
+
+
    local
-      val {low,high} = C.cellRange C.GP
+       val {low,high} = C.cellRange C.GP
+       val arr = Array.array(high+1,false)
+       val others = mark(arr, high+1, Int.dedicated, [])
    in
        structure GR = GetReg(val first=low val nRegs=high-low+1 
                              val available=map C.registerId Int.avail)
-       val dedicatedR = Array.array(high+1,false)
-       val _ = app (fn r => Array.update(dedicatedR,C.registerId r,true)) 
-                            Int.dedicated
-
+       val dedicatedR : int -> bool = isDedicated (high+1, arr, others)
    end
    local 
       val {low,high} = C.cellRange C.FP
+      val arr = Array.array(high+1,false)
+      val others = mark(arr, high+1, Float.dedicated, [])
    in
       structure FR = GetReg(val first=low val nRegs=high-low+1 
                             val available=map C.registerId Float.avail)
-      val dedicatedF = Array.array(high+1,false)
-      val _ = app (fn r => Array.update(dedicatedF,C.registerId r,true)) 
-                      Float.dedicated
+      val dedicatedF : int -> bool = isDedicated(high+1, arr, others)
    end
 
    (* Spill integer register *)
@@ -156,16 +176,18 @@ struct
        let val _   = intSpillsCnt := !intSpillsCnt + 1
            val newR = C.newReg()
     	   val instr' = Rewrite.rewriteDef(instr, reg, newR)
-       in  {code=instr'::Int.spillInstr(annotations,newR,spillLoc), 
+       in  {code=instr'::Int.spillInstr{an=annotations,src=newR,
+					spilledCell=reg,spillLoc=spillLoc}, 
             proh=[newR], newReg=SOME newR}
        end
 
    fun spillReg{annotations,src,reg,spillLoc} =
        (intSpillsCnt := !intSpillsCnt + 1;
-        Int.spillInstr(annotations,src,spillLoc) 
+        Int.spillInstr{an=annotations,src=src,spilledCell=reg,
+		       spillLoc=spillLoc}
        )
 
-   fun spillTmp{annotations,copy,spillLoc} =
+   fun spillTmp{annotations,reg,copy,spillLoc} =
        (intSpillsCnt := !intSpillsCnt + 1;
         Int.spillCopyTmp(annotations,copy,spillLoc)
        )
@@ -188,7 +210,7 @@ struct
         Float.spillInstr(annotations,src,spillLoc)
        )
 
-   fun spillFtmp{annotations,copy,spillLoc} = 
+   fun spillFtmp{annotations,reg,copy,spillLoc} = 
        (floatSpillsCnt := !floatSpillsCnt + 1;
         Float.spillCopyTmp(annotations,copy,spillLoc) 
        )
@@ -205,13 +227,15 @@ struct
        let val _   = intReloadsCnt := !intReloadsCnt + 1
            val newR = C.newReg()
            val instr' = Rewrite.rewriteUse(instr, reg, newR)
-       in {code=Int.reloadInstr(annotations,newR,spillLoc) @ [instr'], 
+       in {code=Int.reloadInstr{an=annotations,dst=newR,spilledCell=reg,
+				spillLoc=spillLoc} @ [instr'], 
            proh=[newR], newReg=SOME newR}
        end
 
    fun reloadReg{annotations,reg,dst,spillLoc} = 
        (intReloadsCnt := !intReloadsCnt + 1;
-        Int.reloadInstr(annotations,dst,spillLoc) 
+        Int.reloadInstr{an=annotations,dst=dst,spilledCell=reg,
+			spillLoc=spillLoc}
        )
                    
    (* Rename floating point register *)
@@ -265,7 +289,7 @@ struct
             copyInstr    = fn i => [Int.copy i],
             spillProh    = [],
             memRegs      = [],
-            mode         = Ra.NO_OPTIMIZATION
+            mode         = Int.mode
           } : Ra.raClient,
           { cellkind     = I.C.FP,
             getreg       = FR.getreg,
@@ -280,7 +304,7 @@ struct
             copyInstr    = fn i => [Float.copy i],
             spillProh    = [],
             memRegs      = [],
-            mode         = Ra.NO_OPTIMIZATION
+            mode         = Float.mode
           } : Ra.raClient
        ] : Ra.raClient list
   
@@ -292,3 +316,4 @@ struct
       )
 
 end
+

@@ -123,8 +123,11 @@ struct
                     if mode = EMIT then APP("emit",e) else e
                fun asmToExp E (TEXTasm s) = emitIt(mkString s) 
                  | asmToExp E (EXPasm(IDexp(IDENT([],x)))) = 
-                    let val (e, ty) = E x
-                    in  emitTy(x, ty, e) end
+                    (let val (e, ty) = E x
+                     in  emitTy(x, ty, e) end
+                     handle e => 
+                        fail("unknown assembly field <"^x^">")
+                    )
                  | asmToExp E (EXPasm e) = 
                    let fun exp _ (ASMexp(STRINGasm s)) = emitIt(mkString s)
                          | exp _ (ASMexp(ASMasm a)) = SEQexp(map (asmToExp E) a)
@@ -175,6 +178,7 @@ struct
           "",
           "val show_cellset = MLRiscControl.getFlag \"asm-show-cellset\"",
           "val show_region  = MLRiscControl.getFlag \"asm-show-region\"",
+          "val show_cutsTo = MLRiscControl.getFlag \"asm-show-cutsto\"",
           "val indent_copies = MLRiscControl.getFlag \"asm-indent-copies\"",
           ""
         ],
@@ -205,6 +209,7 @@ struct
           "    fun entryLabel lab = defineLabel lab",
           "    fun comment msg = (tab(); emit(\"/* \" ^ msg ^ \" */\"))",
           "    fun annotation a = (comment(Annotations.toString a); nl())",
+          "    fun getAnnotations() = error \"getAnnotations\"",
           "    fun doNothing _ = ()",
           "    fun emit_region mem = comment(I.Region.toString mem)",
           "    val emit_region = ",
@@ -220,6 +225,9 @@ struct
           "      if !show_cellset then emit_cellset else doNothing",
           "    fun emit_defs cellset = emit_cellset(\"defs: \",cellset)",
           "    fun emit_uses cellset = emit_cellset(\"uses: \",cellset)",
+          "    val emit_cutsTo = ",
+          "      if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit",
+          "      else doNothing",
           "    fun emitter instr =",
           "    let"
          ],
@@ -241,7 +249,8 @@ struct
           "             entryLabel=entryLabel,",
           "             comment=comment,",
           "             exitBlock=doNothing,",
-          "             annotation=annotation",
+          "             annotation=annotation,",
+          "             getAnnotations=getAnnotations",
           "            }",
           "end"
          ]

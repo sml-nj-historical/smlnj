@@ -42,7 +42,7 @@ sig
    val emitModuleGC : stream -> unit
 
       (* generate the actual GC invocation code *)
-   val callGC : stream -> 
+   val callGC : stream ->
                 {regfmls : T.mlrisc list, 
                  regtys : CPS.cty list,
                  ret : T.stm

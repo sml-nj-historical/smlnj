@@ -72,6 +72,18 @@ structure HashTable : HASH_TABLE =
 	      | b => Array.update(arr, indx, b)
 	  end
 
+  (* return true, if the key is in the domain of the table *)
+    fun inDomain (HT{hash_fn, eq_pred, table, ...}) key = let
+	  val arr = !table
+	  val hash = hash_fn key
+	  val indx = index (hash, Array.length arr)
+	  fun look HTRep.NIL = false
+	    | look (HTRep.B(h, k, v, r)) = 
+		((hash = h) andalso eq_pred(key, k)) orelse look r
+	  in
+	    look (Array.sub (arr, indx))
+	  end
+
   (* find an item, the table's exception is raised if the item doesn't exist *)
     fun lookup (HT{hash_fn, eq_pred, table, not_found, ...}) key = let
 	  val arr = !table

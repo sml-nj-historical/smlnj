@@ -85,19 +85,45 @@ is
 	$/smlnj-lib.cm
 	$/ml-yacc-lib.cm
 	$smlnj/compiler.cm
+
+        (* MLRISC libraries
+	 *	We use the libraries that are already part of SML/NJ anyway.
+	 *      For sharing purposes, we must therefore instruct RTL.cm
+	 *      that _it_ uses these libraries as well; that's what
+	 *      the "bind" directives are for. *)
+	$smlnj/MLRISC/Control.cm
+	$smlnj/MLRISC/Lib.cm
+	$smlnj/MLRISC/MLRISC.cm
+	$smlnj/MLRISC/MLTREE.cm
+	../../cm/RTL.cm
+                (bind:(anchor:Control.cm value:$smlnj/MLRISC)
+                 bind:(anchor:Lib.cm value:$smlnj/MLRISC)
+                 bind:(anchor:MLTREE.cm value:$smlnj/MLRISC)
+                 bind:(anchor:MLRISC.cm value:$smlnj/MLRISC))
 #else
 	basis.cm
 	smlnj-lib.cm
 	ml-yacc-lib.cm
 	host-compiler.cm
+
+        (* MLRISC libraries *)
+	../../cm/Control.cm
+	../../cm/Lib.cm
+	../../cm/MLRISC.cm:
+	../../cm/MLTREE.cm
+	../../cm/RTL.cm
 #endif
 #else
 	smlnj-lib.cm
 	ml-yacc-lib.cm
-#endif
+
         (* MLRISC libraries *)
 	../../cm/Control.cm
 	../../cm/Lib.cm
+	../../cm/MLRISC.cm:
+	../../cm/MLTREE.cm
+	../../cm/RTL.cm
+#endif
 
 	(* Pretty printer *)
 	../PP/sources.cm
@@ -113,6 +139,8 @@ is
 	../Parser/sources.cm
 
         (* Required MLRISC sources *)
+(* from $smlnj/MLRISC/MLRISC.cm:
+
 	../../instructions/cells-basis.sig
 	../../instructions/cells-basis.sml
 	../../instructions/cells.sig
@@ -128,18 +156,26 @@ is
 	../../mltree/mltree-extension.sig
 	../../mltree/mltree.sig
 	../../mltree/mltree.sml
+	../../mltree/machine-int.sig
+	../../mltree/machine-int.sml
+*)
+
+(* from $smlnj/MLRISC/MLTREE.cm:
+
 	../../mltree/mltree-utils.sig
 	../../mltree/mltree-utils.sml
 	../../mltree/mltree-rewrite.sig
 	../../mltree/mltree-rewrite.sml
 	../../mltree/mltree-fold.sig
 	../../mltree/mltree-fold.sml
+*)
+
+(* from ../../cm/RTL.cm:
 	../../mltree/mltree-rtl.sig
 	../../mltree/mltree-rtl.sml
-	../../mltree/machine-int.sig
-	../../mltree/machine-int.sml
 	../../mltree/rtl-build.sig
 	../../mltree/rtl-build.sml
+*)
 
 	(* A simple environment abstract type *)
 	env.sml

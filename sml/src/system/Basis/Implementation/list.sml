@@ -29,7 +29,7 @@ structure List : LIST =
 
     datatype list = datatype list
 
-    exception Empty
+    exception Empty = Empty
 
     val null = null
     val hd = hd
@@ -121,6 +121,18 @@ structure List : LIST =
             fun loop n = if n = len then []
                          else (genfn n)::(loop(n+1))
             in loop 0 end
+
+    fun collate ecmp = let
+	fun loop ([], []) = EQUAL
+	  | loop ([], _) = LESS
+	  | loop (_, []) = GREATER
+	  | loop (x :: xs, y :: ys) =
+	    case ecmp (x, y) of
+		EQUAL => loop (xs, ys)
+	      | unequal => unequal
+    in
+	loop
+    end
 
   end (* structure List *)
 

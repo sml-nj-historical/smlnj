@@ -144,4 +144,4 @@ val localTime : Time_t -> Date_t = dummy
    are combined seconds/microseconds *)
 val getCPUTime : unit -> (Time_t * Time_t * Time_t) = dummy
 
-end (structure SMLBasis *)
+end (* structure SMLBasis *)

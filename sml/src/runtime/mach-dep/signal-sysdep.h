@@ -245,6 +245,26 @@ extern void SetFSR();
 	}
      typedef void SigReturn_t;
 
+#  elif defined(OPSYS_DARWIN)
+    /* PPC, Darwin */
+     typedef void SigReturn_t;
+     
+#    define SIG_InitFPE()        set_fsr()
+#    define SIG_ResetFPE(scp)    
+#    define SIG_FAULT1           SIGTRAP
+#    define INT_DIVZERO(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
+#    define INT_OVFLW(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
+#    define SIG_GetPC(scp)	 ((scp)->sc_ir)
+#    define SIG_SetPC(scp, addr) {(scp)->sc_ir = (int) addr;}
+     /* The offset of 17 is hardwired from reverse engineering the contents of
+      * sc_regs. 17 is the offset for register 15.
+      */
+#    define SIG_ZeroLimitPtr(scp)	\
+     {  int * regs = (scp)->sc_regs;    \
+	regs[17] = 0;                   \
+     }
+     /* info about siginfo_t is missing in the include files 4/17/2001 */
+#    define SIG_GetCode(info,scp) (info)
 #  elif defined(OPSYS_MKLINUX)
     /* RS6000, MkLinux */
 

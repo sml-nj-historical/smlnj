@@ -16,12 +16,19 @@ signature SMLINFO = sig
     type ast = GenericVC.Ast.dec
     type region = GenericVC.SourceMap.region
     type source = GenericVC.Source.inputSource
+    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
 
     type attribs =
-	{ split: bool,
+	{ split: splitrequest,
 	  is_rts: bool,
 	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: GenericVC.Environment.staticEnv option }
+
+    type info_args =
+	{ sourcepath: SrcPath.file,
+	  group: SrcPath.file * region,
+	  sh_spec: Sharing.request,
+	  setup: string option * string option }
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
@@ -40,19 +47,9 @@ signature SMLINFO = sig
      * now which means that the file used to be in another group). *)
     val newGeneration : unit -> unit
 
-    val info : GeneralParams.info ->
-	{ sourcepath: SrcPath.file,
-	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request,
-	  setup: string option * string option }
-	-> info
+    val info : splitrequest -> GeneralParams.info -> info_args -> info
 
-    val info' : attribs -> GeneralParams.info ->
-	{ sourcepath: SrcPath.file,
-	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request,
-	  setup: string option * string option }
-	-> info
+    val info' : attribs -> GeneralParams.info -> info_args -> info
 
     val sourcepath : info -> SrcPath.file
     val skelname : info -> string
@@ -104,14 +101,21 @@ structure SmlInfo :> SMLINFO = struct
     type source = Source.inputSource
     type ast = GenericVC.Ast.dec
     type region = GenericVC.SourceMap.region
+    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
 
     type complainer = EM.complainer
 
     type attribs =
-	{ split: bool,
+	{ split: splitrequest,
 	  is_rts: bool,
 	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: GenericVC.Environment.staticEnv option }
+
+    type info_args =
+	{ sourcepath: SrcPath.file,
+	  group: SrcPath.file * region,
+	  sh_spec: Sharing.request,
+	  setup: string option * string option }
 
     type generation = unit ref
 
@@ -258,8 +262,8 @@ structure SmlInfo :> SMLINFO = struct
 	       setup = setup }
     end
 
-    val info = info' { split = true, extra_compenv = NONE,
-		       is_rts = false, explicit_core_sym = NONE }
+    fun info split = info' { split = split, extra_compenv = NONE,
+			     is_rts = false, explicit_core_sym = NONE }
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)

@@ -18,5 +18,9 @@ struct
     val bigEndian	= true
     val startgcOffset	= ~28
     val constBaseRegOffset = 8192
-end
 
+    val ML_STATE_OFFSET = ~40
+    val VProcOffMSP = 4
+    val InMLOffVSP = 8
+    val LimitPtrMaskOffVSP = 200
+end

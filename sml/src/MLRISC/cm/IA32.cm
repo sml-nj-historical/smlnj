@@ -13,11 +13,13 @@ Library
 	functor X86
 	functor X86AsmEmitter
 	functor X86CompInstrExt
+	functor X86ExpandCopies
 	functor X86FP
 	functor X86FreqProps
 	functor X86Instr
 	functor X86Jumps
 	functor X86MCEmitter
+	functor X86OmitFramePointer
 	functor X86Props
 	functor X86RA
 	functor X86Rewrite
@@ -32,11 +34,13 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #else
 	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+	$/MLTREE.cm
 #endif
 #else
 	basis.cm
@@ -44,14 +48,17 @@ is
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #endif
 #else
 	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
+	MLTREE.cm
 #endif
         ../x86/c-calls/ia32-svid.sml
+	../x86/omit-frameptr/x86omit-frameptr.sml
 	../x86/instructions/x86Cells.sml
 	../x86/instructions/x86comp-instr-ext.sml
 	../x86/instructions/x86Instr.sml
@@ -61,6 +68,7 @@ is
 	../x86/instructions/x86Props.sml
 	../x86/instructions/x86MemRegs.sig
 	../x86/instructions/x86FreqProps.sml
+	../x86/instructions/x86ExpandCopies.sml
 	../x86/emit/x86Asm.sml
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig

@@ -177,12 +177,14 @@ structure SparcBackEnd =
                      tmp=SOME(I.Displace{base=sp, disp=get loc})}
        
           (* spill register *)
-          fun spillInstr(_, d,loc) =
-              [I.STORE{s=I.ST, r=sp, i=I.IMMED(get loc), d=d, mem=spill}]
+           fun spillInstr{an,src,spilledCell,spillLoc} =
+               [I.STORE{s=I.ST, r=sp, i=I.IMMED(get spillLoc), d=src, 
+                      mem=spill}]
            
           (* reload register *)
-          fun reloadInstr(_,d,loc) =
-               [I.LOAD{l=I.LD, r=sp, i=I.IMMED(get loc), d=d, mem=spill}]
+           fun reloadInstr{an,dst,spilledCell,spillLoc} =
+                [I.LOAD{l=I.LD, r=sp, i=I.IMMED(get spillLoc), d=dst, 
+                      mem=spill}]
        end
 
        structure Float = 

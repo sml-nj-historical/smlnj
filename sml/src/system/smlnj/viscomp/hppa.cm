@@ -9,12 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	structure HppaVisComp
-        structure HppaCG
-        structure HppaCpsRegs
-        structure HppaInstr
-	structure HppaProps
-	structure HppaFlowGraph
-	structure HppaAsmEmitter
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	$compiler/viscomp-hppa.cm

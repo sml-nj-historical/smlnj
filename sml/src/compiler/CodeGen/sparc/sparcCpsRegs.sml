@@ -15,56 +15,81 @@ struct
   fun REG r = T.REG(32,GP r) 
   fun FREG f = T.FREG(64,FP f)
 
-  val stdarg	= REG(24) (* %i0 *)
-  val stdcont	= REG(25) (* %i1 *)
-  val stdclos	= REG(26) (* %i2 *)
-  val stdlink	= REG(1)  (* %g1 *)
-  val baseptr	= REG(27) (* %i3 *)
+  val returnPtr		= GP 15        
 
-  val limitptr	= REG(4)  (* %g4 *)
-  val varptr	= REG(29) (* %i5 *)
-  val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
-  val storeptr	= REG(5)  (* %g5 *)
-  val allocptr	= REG(6)  (* %g6 *)
-  val exnptr	= REG(7)  (* %g7 *)
+  local
+      val stdarg0	= REG(24) (* %i0 *)
+      val stdcont0	= REG(25) (* %i1 *)
+      val stdclos0	= REG(26) (* %i2 *)
+      val stdlink0	= REG(1)  (* %g1 *)
+      val baseptr0	= REG(27) (* %i3 *)
+      val limitptr0	= REG(4)  (* %g4 *)
+      val varptr0	= REG(29) (* %i5 *)
+      val storeptr0	= REG(5)  (* %g5 *)
+      val exnptr0	= REG(7)  (* %g7 *)
+      val gcLink0	= T.REG(32,returnPtr) 
+      val frameptr0     = REG(30)
+  in
+      val vfp		= SparcCells.newReg()
+      val vfptr		= T.REG(32, vfp)
+  
+      fun stdarg _	= stdarg0
+      fun stdcont _	= stdcont0
+      fun stdclos _	= stdclos0
+      fun stdlink _	= stdlink0
+      fun baseptr _	= baseptr0
 
-  val returnPtr	= GP 15        
-  val gcLink	= T.REG(32,returnPtr) 
-  val stackptr	= REG(14)
+      fun limitptr _	= limitptr0
+      fun varptr _	= varptr0
+      val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
+      fun storeptr _	= storeptr0
+      val allocptr	= REG(6)  (* %g6 *)
+      fun exnptr _	= exnptr0
 
-   (* Warning %o2 is used as the asmTmp
-    *)    
-  val miscregs =
-    map REG
+      fun gcLink _	= gcLink0
+
+      fun frameptr _    = frameptr0
+
+      (* Warning %o2 is used as the asmTmp
+       *)    
+      val miscregs =
+	  map REG
               [2, 3,				(* %g2-%g3 *)
 	       8, 9,				(* %o0-%o1 *)
 	       16, 17, 18, 19, 20, 21, 22, 23,  (* %l0-%l7 *)
 	       28, 31,				(* %i4, %i6, %i7 *)
 	       11, 12, 13]			(* %o3-%o5 *)
-  val calleesave = Array.fromList miscregs
+      val calleesave = Array.fromList miscregs
 
-  (* Note: We need at least one register for shuffling purposes. *)
-  fun fromto(n, m, inc) = if n>m then [] else n :: fromto(n+inc, m, inc)
-  val floatregs = map FREG (fromto(0,31,2))
-  val savedfpregs = []
+      (* Note: We need at least one register for shuffling purposes. *)
+      fun fromto(n, m, inc) = if n>m then [] else n :: fromto(n+inc, m, inc)
+      val floatregs = map FREG (fromto(0,31,2))
+      val savedfpregs = []
 
-  val availR = 
-    map (fn T.REG(_,r) => r)
-        ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
+      local
+	  fun unREG (T.REG (_, r)) = r
+	    | unREG _ = raise Fail "sparcCpsRegs:unREG"
+	  structure SC = SparcCells.SortedCells
+	  val -- = SC.difference
+	  infix --
+      in
+          val availR =
+	      map unREG ([stdlink0, stdclos0, stdarg0, stdcont0, gcLink0]
+			 @ miscregs)
 
-  local
-      structure SC = SparcCells.SortedCells
-      val -- = SC.difference
-      infix --
-  in
-      val allRegs = map GP (fromto(0, 31, 1))
-      val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
+	  val allRegs = map GP (fromto(0, 31, 1))
+	  val dedicatedR = SC.return (SC.uniq allRegs -- SC.uniq availR)
 
-      val availF =  map FP (fromto(0, 30, 2))
-      val dedicatedF = []
-  end
+	  val availF =  map FP (fromto(0, 30, 2))
+	  val dedicatedF = []
 
-  val signedGCTest = false
-  val addressWidth = 32
+	  val signedGCTest = false
+	  val addressWidth = 32
+
+	  val ccallCallerSaveR =
+	      map unREG [limitptr0, storeptr0, exnptr0, allocptr]
+	  val ccallCallerSaveF = []
+      end (*local*)
+  end (* local *)
 end
 

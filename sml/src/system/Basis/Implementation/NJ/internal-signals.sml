@@ -278,21 +278,27 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
   (* Here is the ML handler that gets invoked by the run-time system.
    * It is responsible for dispatching the appropriate ML handler.
    *)
-    fun sigHandler (code, count, resume_k) = (
-	  case (Array.sub(!sigTbl, code))
-	    of (SOME{act=HANDLER handler, mask=0, signal}) =>
-		  handler(signal, count, resume_k)
+    fun sigHandler (code, count, resume_k) =
+	(case (Array.sub(!sigTbl, code))
+	  of (SOME{act=HANDLER handler, mask=0, signal}) =>
+	     handler(signal, count, resume_k)
 (*DEBUG
 	     | _ => raise Fail "inconsistent internal signal state"
 DEBUG*)
-| info => let val act = (case info
-of NONE => "NONE"
- | SOME{act=IGNORE, ...} => "IGNORE"
- | SOME{act=DEFAULT, ...} => "DEFAULT"
-(* end case *))
-val msg = concat["inconsistent state ", act, " for signal ", Int.toString code]
-in raise Fail msg end
-	  (* end case *))
+	   | info => let
+		 val act = (case info
+			     of NONE => "NONE"
+			      | SOME{act=IGNORE, ...} => "IGNORE"
+			      | SOME{act=DEFAULT, ...} => "DEFAULT"
+			      | SOME{act=HANDLER _, mask, ... } => 
+				concat ["HANDLER(mask=",Int.toString mask,
+					"<>0)"]
+				(*end case *))
+		 val msg = concat["inconsistent state ", act,
+				  " for signal ", Int.toString code]
+	     in raise Fail msg
+	     end
+	    (* end case *))
 
   (* Install the root handler *)
     val _ = (Assembly.sighandler := sigHandler)

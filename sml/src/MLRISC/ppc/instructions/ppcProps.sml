@@ -10,7 +10,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("PPCProps",msg)
 
   datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
-                | IK_PHI | IK_SOURCE | IK_SINK
+                | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
   (* This stupid architecture doesn't really have a dedicated zero register *)
@@ -24,6 +24,7 @@ struct
          else IK_INSTR
     | instrKind(I.COPY _) = IK_COPY
     | instrKind(I.FCOPY _) = IK_COPY
+    | instrKind(I.CALL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
     | instrKind(I.CALL _) = IK_CALL
     | instrKind(I.PHI _)    = IK_PHI
     | instrKind(I.SOURCE _) = IK_SOURCE
@@ -63,6 +64,7 @@ struct
     | branchTargets(I.BCLR{labels,  ...}) = 
       (case labels of [] => [ESCAPES, FALLTHROUGH] | _ => map LABELLED labels)
     | branchTargets(I.B{addr=I.LabelOp(T.LABEL lab), LK}) = [LABELLED lab]
+    | branchTargets(I.CALL{cutsTo, ...}) = FALLTHROUGH::map LABELLED cutsTo
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 

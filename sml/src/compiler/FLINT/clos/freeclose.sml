@@ -241,11 +241,9 @@ fun mkgraph f = let
     end
     val (follow_map, allset) = dofun (f, (IM.empty, IS.empty))
     val rootedges = IS.listItems allset
-    val root = (foldl Int.max 0 rootedges) + 1
-    val follow_map = IM.insert (follow_map, root, rootedges)
     fun follow v = valOf (IM.find (follow_map, v))
 in
-    { root = root, follow = follow }
+    { roots = rootedges, follow = follow }
 end
 
 fun assNum (SCC.SIMPLE v, (i, nm)) =
@@ -253,8 +251,7 @@ fun assNum (SCC.SIMPLE v, (i, nm)) =
   | assNum (SCC.RECURSIVE vl, (i, nm)) =
     (i + 1, foldl (fn (v, nm) => IM.insert (nm, v, i)) nm vl)
 
-(* first component is fake root node, it receives number ~1 *)
-val number_map = #2 (foldl assNum (~1, IM.empty) (SCC.topOrder (mkgraph fe')))
+val number_map = #2 (foldl assNum (0, IM.empty) (SCC.topOrder' (mkgraph fe')))
 
 fun sccnum x = valOf (IM.find (number_map, x))
 

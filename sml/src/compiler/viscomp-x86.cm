@@ -22,6 +22,7 @@ is
 TopLevel/viscomp/x86vis.sml
 CodeGen/x86/x86CG.sml
 CodeGen/x86/x86CpsRegs.sml
+CodeGen/x86/x86Emitters.sml
 CodeGen/x86/x86-mltreeext.sml
 CodeGen/x86/x86MLTree.sml
 CodeGen/x86/x86MLTreeExtComp.sml
@@ -36,4 +37,5 @@ $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
 $smlnj/MLRISC/IA32.cm

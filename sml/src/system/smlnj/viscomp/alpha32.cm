@@ -9,12 +9,6 @@
  *   M.Blume (03/2000)
  *)
 Library
-	structure Alpha32VisComp
-        structure Alpha32CG
-        structure Alpha32CpsRegs
-        structure Alpha32Instr
-	structure Alpha32Props
-	structure Alpha32FlowGraph
-	structure Alpha32AsmEmitter
+	(* this is a proxy library; exports taken from its (only) member *)
 is
 	$compiler/viscomp-alpha32.cm  

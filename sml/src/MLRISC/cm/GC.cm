@@ -1,15 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature GC_CALLBACK
-	signature GC_LIVENESS
-	signature GC_TYPEMAP
-	signature GC_TYPE_SYSTEM
-	structure DummyGCType
-	functor GCGen
-	functor GCInvariants
-	functor GCLiveness
-	functor GCTypeMap
-	functor GCTypeSystem
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

@@ -1,6 +1,6 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find in $smlnj/cm/full.cm.
+ * structure CM people find in $smlnj/cm/full.cm.
  *
  *   Copyright (c) 1999, 2000 by Lucent Bell Laboratories
  *
@@ -42,7 +42,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  CompileFn (structure MachDepVC = HostMachDepVC
 		     structure StabModmap = StabModmap
 		     val useStream = HostMachDepVC.Interact.useStream
-		     val compile_there = Servers.compile o SrcPath.descr)
+		     val compile_there = Servers.compile o SrcPath.encode)
 
       structure BFC =
 	  BfcFn (structure MachDepVC = HostMachDepVC)
@@ -60,7 +60,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val mkBootList = #l o MkBootList.group (fn p => p)
 
       fun init_servers (GG.GROUP { grouppath, ... }) =
-	  Servers.cm { archos = my_archos, project = SrcPath.descr grouppath }
+	  Servers.cm { archos = my_archos, project = SrcPath.encode grouppath }
 	| init_servers GG.ERRORGROUP = ()
 
       fun recomp_runner gp g = let
@@ -122,11 +122,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       structure StabModmap = StabModmap
 		       fun recomp gp g = let
 			   val { store, get } = BFC.new ()
-			   val _ = init_servers g
 			   val { group, ... } =
 			       Compile.newTraversal (Link.evict, store, g)
 		       in
-			   case Servers.withServers (fn () => group gp) of
+			   case group gp of
 			       NONE => NONE
 			     | SOME _ => SOME get
 		       end
@@ -271,13 +270,38 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun cwd_load_plugin x = load_plugin (SrcPath.cwd ()) x
 
-	  fun stabilize_runner gp g = true
+	  fun stabilize recursively root = let
+	      fun stabilize_recomp_runner gp g = let
+		  val _ = init_servers g
+		  val { allgroups, ... } =
+		      Compile.newTraversal (Link.evict, fn _ => (), g)
+	      in
+		  Servers.withServers (fn () => allgroups gp)
+	      end
+	      fun stabilize_dummy_runner gp g = true
+	      fun phase1 () = run mkStdSrcPath NONE
+				  stabilize_recomp_runner root
+	      fun phase2 () = (Compile.reset ();(* a bit too draconian? *)
+			       run mkStdSrcPath (SOME recursively)
+				   stabilize_dummy_runner root)
+	  in
+	      (* Don't bother with the 2-phase thing if there are
+	       * no compile servers attached.  (We still need
+	       * the "withServers" call to clean up our queues in case
+	       * of an interrupt or error.) *)
+	      if Servers.noServers () then Servers.withServers phase2
+	      else
+		  (* We do this in two phases:
+		   *    1. recompile everything without stabilization but
+		   *       potentially using compile servers
+		   *    2. do a local stabilization run (which should have
+		   *       no need to compile anything); don't use servers
+		   *)
+		  phase1 () andalso phase2 ()
+	  end
 
-	  fun stabilize recursively =
-	      run mkStdSrcPath (SOME recursively) stabilize_runner
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
-
 
 	  fun sources archos group = let
 	      val policy =
@@ -644,6 +668,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val warn_obsolete = StdConfig.warn_obsolete
 	    val debug = StdConfig.debug
 	    val conserve_memory = StdConfig.conserve_memory
+	    val generate_index = StdConfig.generate_index
 	end
 
 	structure Library = struct

@@ -25,5 +25,6 @@ structure StdConfig = struct
 			                 (OS.Process.getEnv "HOME"))
 	val warn_obsolete = bool ("WARN_OBSOLETE", true)
 	val conserve_memory = bool ("CONSERVE_MEMORY", false)
+	val generate_index = bool ("GENERATE_INDEX", false)
     end
 end

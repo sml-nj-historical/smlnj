@@ -26,7 +26,6 @@ structure X86Rewrite = X86Rewrite(X86Instr)
 
 structure X86Shuffle = X86Shuffle(X86Instr)
 
-structure X86MemRegs = X86MemRegs(X86Instr)
 
 (* Flowgraph data structure specialized to X86 instructions *)
 structure X86FlowGraph = 
@@ -34,20 +33,5 @@ structure X86FlowGraph =
 	    structure P=X86PseudoOps
            )
 
-
-(* Assembly code emmitter *)
-structure X86AsmEmitter=
-  X86AsmEmitter(structure Instr=X86Instr
-		structure PseudoOps=X86PseudoOps
-		structure Shuffle=X86Shuffle
-                structure Stream=X86Stream
-		structure MemRegs=X86MemRegs)
-  
-(* Machine code emitter *)
-structure X86MCEmitter = 
-  X86MCEmitter(structure Instr=X86Instr
-	       structure Shuffle=X86Shuffle
-	       structure AsmEmitter=X86AsmEmitter
-	       structure MemRegs=X86MemRegs)
 
 

@@ -10,6 +10,24 @@
 Library
 	(* bootstrap stuff *)
 	structure InteractiveSystem
+
+	(* export representatives for pro-forma libraries... *)
+	structure Compiler
+	structure CM
+	structure CMB
+	structure Tools
+	structure YaccTool
+	structure LexTool
+	structure BurgTool
+	structure NowebTool
+	structure MakeTool
+	structure ShellTool
+	structure DirTool
+
+# if not defined(LIGHT)
+	(* export one representative from $smlnj/compiler/all.cm *)
+	structure Alpha32UnixCMB
+# endif 
 is
 	$smlnj/init/init.cmi : cm
 

@@ -37,8 +37,8 @@ structure GetOpt :> GET_OPT =
 
 
     (* helper functions *)
-    fun sepBy (sep,[]) = ""
-      | sepBy (sep,x::xs) =
+    fun sepBy (sep, []) = ""
+      | sepBy (sep, x::xs) =
 	  concat (x::foldr (fn (elem,l) => sep::elem::l) [] xs)
 
     val breakeq = SS.splitl (fn #"=" => false | _ => true)
@@ -46,33 +46,32 @@ structure GetOpt :> GET_OPT =
 
     (* formatting of options *)
 
-    fun fmtShort (NoArg _) so = concat ["-",Char.toString so]
-      | fmtShort (ReqArg (_,ad)) so = concat ["-",Char.toString so," ",ad]
-      | fmtShort (OptArg (_,ad)) so = concat ["-",Char.toString so,"[",ad,"]"]
+    fun fmtShort (NoArg _) so = concat ["-", str so]
+      | fmtShort (ReqArg (_,ad)) so = concat ["-", str so," ",ad]
+      | fmtShort (OptArg (_,ad)) so = concat ["-", str so,"[",ad,"]"]
 
     fun fmtLong (NoArg _) lo = concat ["--",lo]
       | fmtLong (ReqArg (_,ad)) lo = concat ["--",lo,"=",ad]
       | fmtLong (OptArg (_,ad)) lo = concat ["--",lo,"[=",ad,"]"]
 
     fun fmtOpt {short=sos, long=los, desc=ad, help=descr} = (
-          sepBy (", ",map (fmtShort ad) (S.explode sos)),
-          sepBy (", ",map (fmtLong ad) los),
+          sepBy (", ", map (fmtShort ad) (S.explode sos)),
+          sepBy (", ", map (fmtLong ad) los),
           descr)
 
   (* Usage information *)
     fun usageInfo {header, options} = let
           fun unlines l = sepBy ("\n", l)
           val fmtOptions = map fmtOpt options
-          val (ms1,ms2,ms3) = foldl
-		(fn ((e1,e2,e3), (m1,m2,m3)) => (
-		    Int.max (size e1,m1), 
-                    Int.max (size e2,m2),
-                    Int.max (size e3,m3)
-		  )) (0,0,0) fmtOptions
+          val (ms1, ms2) = foldl
+		(fn ((e1,e2,_), (m1,m2)) => (
+		    Int.max (size e1, m1), 
+                    Int.max (size e2, m2)
+		  )) (0,0) fmtOptions
 	  val pad = StringCvt.padRight #" "
           val table = foldr
 		(fn ((e1,e2,e3),l) => concat [
-		      "  ", pad ms1 e1, "  ", pad ms2 e2, "  ", pad ms3 e3
+		      "  ", pad ms1 e1, "  ", pad ms2 e2, "  ", e3
 		    ] :: l
 		  ) [] fmtOptions
           in
@@ -142,38 +141,41 @@ structure GetOpt :> GET_OPT =
         	in
                   long (map #desc options, arg, rest)
         	end
-	(* handle short option *)
+	(* handle short option.  x is the option character, subs is the
+	 * rest of the option string, rest is the rest of the command-line
+	 * options.
+	 *)
 	  fun shortOpt (x, subs, rest, optDescr : 'a opt_descr list) = let 
         	val options =
 		      List.filter (fn {short,...} => Char.contains short x) optDescr
         	val ads = map #desc options
-        	val optStr = "-"^(Char.toString x)
-        	fun short (_::_::_, _, rest1) = (
-		      errAmbig optStr; (NonOpt optStr, rest1))
-        	  | short ((NoArg a)::_, y, rest') = 
-                      if (SS.isEmpty y)
-                	then (Opt(a()), rest')
-                	else (Opt(a()), ("-"^(SS.string y))::rest')
-        	  | short ((ReqArg (f,d))::_, y, []) = 
-                      if (SS.isEmpty y) 
-                	then (errReq(d, optStr); (NonOpt optStr, []))
-                	else (Opt(f (SS.string y)), [])
-        	  | short ((ReqArg(f,_))::_, y, rest' as (r::rs)) = 
-                      if (SS.isEmpty y)
-                	then (Opt(f r), rs)
-                	else (Opt(f (SS.string y)), rest')
-        	  | short ((OptArg(f,_))::_, y, rest') = 
-                      if (SS.isEmpty y)
-                	then (Opt(f NONE), rest')
-                	else (Opt(f (SOME (SS.string y))), rest')
-        	  | short ([], y, rest') =
-                      if (SS.isEmpty y)
-                	then (errUnrec optStr; (NonOpt optStr, rest'))
-                	else (
-			  errUnrec optStr;
-			  (NonOpt optStr, ("-" ^ SS.string y)::rest'))
+        	val optStr = "-"^(str x)
         	in
-        	  short (ads, subs, rest)
+		  case (ads, rest)
+		   of (_::_::_, rest1) => (errAmbig optStr; (NonOpt optStr, rest1))
+		    | ((NoArg a)::_, rest') =>
+                	if (SS.isEmpty subs)
+                	  then (Opt(a()), rest')
+                	  else (Opt(a()), ("-"^(SS.string subs))::rest')
+        	    | ((ReqArg(f,d))::_, []) => 
+                	if (SS.isEmpty subs) 
+                	  then (errReq(d, optStr); (NonOpt optStr, []))
+                	  else (Opt(f (SS.string subs)), [])
+        	    | ((ReqArg(f,_))::_, rest' as (r::rs)) => 
+                	if (SS.isEmpty subs)
+                	  then (Opt(f r), rs)
+                	  else (Opt(f (SS.string subs)), rest')
+        	    | ((OptArg(f,_))::_, rest') => 
+                	if (SS.isEmpty subs)
+                	  then (Opt(f NONE), rest')
+                	  else (Opt(f (SOME(SS.string subs))), rest')
+        	    | ([], rest') =>
+                	if (SS.isEmpty subs)
+                	  then (errUnrec optStr; (NonOpt optStr, rest'))
+                	  else (
+			    errUnrec optStr;
+			    (NonOpt optStr, ("-" ^ SS.string subs)::rest'))
+		  (* end case *)
         	end
 	(* take a look at the next command line argument and decide what to
 	 * do with it

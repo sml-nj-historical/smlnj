@@ -36,7 +36,8 @@ struct
                     )
        val {stream,next} = Builder.builder(!cfg)
        val S.STREAM{beginCluster,endCluster,pseudoOp,emit,exitBlock,
-                    comment,annotation,defineLabel,entryLabel,...} 
+                    getAnnotations,comment,annotation,
+                    defineLabel,entryLabel,...} 
                       = stream
        fun endCFG a = 
        let val _      = endCluster a
@@ -47,15 +48,16 @@ struct
            compile oldCFG
        end 
 
-   in  S.STREAM{beginCluster= beginCluster,
-                endCluster  = endCFG,
-                pseudoOp    = pseudoOp,
-                emit        = emit,
-                exitBlock   = exitBlock,
-                comment     = comment,
-                annotation  = annotation,
-                defineLabel = defineLabel,
-                entryLabel  = entryLabel
+   in  S.STREAM{beginCluster   = beginCluster,
+                endCluster     = endCFG,
+                pseudoOp       = pseudoOp,
+                emit           = emit,
+                exitBlock      = exitBlock,
+                comment        = comment,
+                annotation     = annotation,
+                getAnnotations = getAnnotations,
+                defineLabel    = defineLabel,
+                entryLabel     = entryLabel
                }
    end
 

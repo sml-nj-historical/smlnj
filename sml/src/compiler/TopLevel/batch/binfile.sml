@@ -528,7 +528,7 @@ struct
 		  pickle=envPickle, inlineExp, ...} = 
 		C.compile { source=source, ast=ast, statenv=senv, 
 			    symenv=symenv, compInfo=cinfo, checkErr=check, 
-			    splitting=splitting}
+			    splitting=Control.LambdaSplitting.get' splitting}
 	    val {hash = lambdaPid, pickle} = PickMod.pickleFLINT inlineExp
 	    fun pd (u, p, x) =
 		{ unpickled = fn () => u, pid = p, pickled = x }

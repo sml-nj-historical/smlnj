@@ -38,8 +38,8 @@ signature CHAR =
     val isPunct : char -> bool
     val isUpper : char -> bool
     val fromString : String.string -> char option
-    val scan       : (Char.char, 'a) StringCvt.reader
-                       -> (Char.char, 'a) StringCvt.reader
+    val scan       : (char, 'a) StringCvt.reader
+                       -> (char, 'a) StringCvt.reader
     val toString : char -> String.string
     val fromCString : String.string -> char option
     val toCString : char -> String.string

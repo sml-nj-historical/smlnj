@@ -5,19 +5,28 @@ structure SparcCG =
   MachineGen
   ( structure MachSpec   = SparcSpec
     structure PseudoOps  = SparcPseudoOps
-    structure Ext        = SMLNJMLTreeExt(* generic extension *)
+    structure Ext        = Sparc_SMLNJMLTreeExt(* sparc specific *)
     structure CpsRegs    = SparcCpsRegs
     structure InsnProps  = SparcProps
     structure Asm        = SparcAsmEmitter
     structure Shuffle    = SparcShuffle
 
-    structure CCalls     = DummyCCallsFn (SparcMLTree)
+    structure CCalls     =
+      Sparc_CCalls (structure T = SparcMLTree  fun ix x = x)
+
+    structure OmitFramePtr = struct
+      structure F=SparcFlowGraph
+      structure I=SparcInstr
+      val vfp = CpsRegs.vfp
+      (* no rewriting necessary, backend uses %fp instead of %sp *)
+      fun omitframeptr _ = ()
+    end
 
     structure MLTreeComp=
        Sparc(structure SparcInstr = SparcInstr
              structure SparcMLTree = SparcMLTree
              structure PseudoInstrs = SparcPseudoInstrs
-             structure ExtensionComp = SMLNJMLTreeExtComp
+             structure ExtensionComp = SparcMLTreeExtComp
                (structure I = SparcInstr
                 structure T = SparcMLTree
                )
@@ -57,7 +66,7 @@ structure SparcCG =
                                         structure Asm = SparcAsmEmitter)
 
           structure SpillTable = SpillTable(SparcSpec)
-          val sp = I.C.stackptrR
+          val fp = I.C.frameptrR
           val spill = CPSRegions.spill
           val beginRA = SpillTable.spillInit
           val architecture = SparcSpec.architecture
@@ -86,20 +95,23 @@ structure SparcCG =
              (* spill copy temp *)
              fun spillCopyTmp(_, I.COPY{dst,src,tmp,impl},loc) =
                  I.COPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                            disp=SpillTable.getRegLoc loc})}
+                        tmp=SOME(I.Displace{base=fp, 
+                                            disp=SpillTable.getRegLoc loc })}
 
              (* spill register *)
-             fun spillInstr(_, d,loc) =
-                 [I.STORE{s=I.ST, r=sp, i=I.IMMED(SpillTable.getRegLoc loc), 
-                          d=d, mem=spill}]
+             fun spillInstr{src,spilledCell,an,spillLoc} =
+                 [I.STORE{s=I.ST,r=fp,
+                          i=I.IMMED(SpillTable.getRegLoc spillLoc), 
+                          d=src, mem=spill}]
 
              (* reload register *)
-             fun reloadInstr(_, d,loc) =
-                 [I.LOAD{l=I.LD, r=sp, i=I.IMMED(SpillTable.getRegLoc loc), 
-                         d=d, mem=spill}
+             fun reloadInstr{dst,spilledCell,an,spillLoc} =
+                 [I.LOAD{l=I.LD, r=fp, 
+                         i=I.IMMED(SpillTable.getRegLoc spillLoc), 
+                         d=dst, mem=spill}
                  ]
 
+             val mode = RACore.NO_OPTIMIZATION
           end
 
           structure Float = 
@@ -114,19 +126,21 @@ structure SparcCG =
 
              fun spillCopyTmp(_, I.FCOPY{dst,src,tmp,impl},loc) =
                  I.FCOPY{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                            disp=SpillTable.getFregLoc loc})}
+                        tmp=SOME(I.Displace{base=fp, 
+                                            disp=SpillTable.getFregLoc loc })}
    
              fun spillInstr(_, d,loc) =
-                 [I.FSTORE{s=I.STDF, r=sp,
-                           i=I.IMMED(SpillTable.getFregLoc loc), 
+                 [I.FSTORE{s=I.STDF, r=fp,
+                           i=I.IMMED(SpillTable.getFregLoc loc),
                            d=d, mem=spill}]
    
              fun reloadInstr(_, d,loc) =
-                 [I.FLOAD{l=I.LDDF, r=sp, 
-                          i=I.IMMED(SpillTable.getFregLoc loc), 
+                 [I.FLOAD{l=I.LDDF, r=fp, 
+                          i=I.IMMED(SpillTable.getFregLoc loc),
                           d=d, mem=spill}
                  ]
+
+             val mode = RACore.NO_OPTIMIZATION
           end
          )
   )

@@ -396,6 +396,13 @@ functor BinarySetFn (K : ORD_KEY) : ORD_SET =
 	  foldl (fn (item, s) => if (pred item) then add(s, item) else s)
 	    empty set
 
+    fun partition pred set =
+	  foldl
+	    (fn (item, (s1, s2)) =>
+		if (pred item) then (add(s1, item), s2) else (s1, add(s2, item))
+	    )
+	      (empty, empty) set
+
     fun find p E = NONE
       | find p (T{elt,left,right,...}) = (case find p left
 	   of NONE => if (p elt)

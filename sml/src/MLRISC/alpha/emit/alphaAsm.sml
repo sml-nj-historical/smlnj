@@ -20,6 +20,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
    val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("AlphaAsmEmitter",msg)
@@ -49,6 +50,7 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
+       fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
        val emit_region = 
@@ -64,6 +66,9 @@ struct
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
        fun emit_uses cellset = emit_cellset("uses: ",cellset)
+       val emit_cutsTo = 
+         if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit
+         else doNothing
        fun emitter instr =
        let
    fun emit_operand (I.REGop GP) = emitCell GP
@@ -350,7 +355,7 @@ struct
            emit ", ("; 
            emitCell b; 
            emit ")" )
-       | I.JSR{r, b, d, defs, uses, mem} => 
+       | I.JSR{r, b, d, defs, uses, cutsTo, mem} => 
          ( emit "jsr\t"; 
            emitCell r; 
            emit ", ("; 
@@ -358,15 +363,17 @@ struct
            emit ")"; 
            emit_region mem; 
            emit_defs defs; 
-           emit_uses uses )
-       | I.BSR{r, lab, defs, uses, mem} => 
+           emit_uses uses; 
+           emit_cutsTo cutsTo )
+       | I.BSR{r, lab, defs, uses, cutsTo, mem} => 
          ( emit "bsr\t"; 
            emitCell r; 
            emit ", "; 
            emit_label lab; 
            emit_region mem; 
            emit_defs defs; 
-           emit_uses uses )
+           emit_uses uses; 
+           emit_cutsTo cutsTo )
        | I.RET{r, b, d} => 
          ( emit "ret\t"; 
            emitCell r; 
@@ -387,7 +394,7 @@ struct
            emit_label lab )
        | I.OPERATE{oper, ra, rb, rc} => 
          let 
-(*#line 576.15 "alpha/alpha.mdl"*)
+(*#line 578.15 "alpha/alpha.mdl"*)
              fun disp () = 
                  ( emit_operate oper; 
                    emit "\t"; 
@@ -493,7 +500,8 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                annotation=annotation
+                annotation=annotation,
+                getAnnotations=getAnnotations
                }
    end
 end

@@ -1,41 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature CFG2CLUSTER
-	signature CFG_UTIL
-	signature CLUSTER2CFG
-	signature CLUSTER_GRAPH
-	signature CLUSTER_VIEWER
-	signature CONTROL_FLOW_GRAPH
-	signature CONTROL_FLOW_GRAPH_GEN
-	signature DATAFLOW_ANALYZER
-	signature DATAFLOW_PROBLEM
-	signature FORMAT_INSTRUCTION
-	signature IDEFS
-	signature LIVENESS_ANALYSIS
-	signature MLRISC_GLUE
-	signature MLRISC_IDEFS
-	signature MLRISC_IR
-	signature MLRISC_IR_OPTIMIZATION
-	functor BranchChaining
-	functor CFG2Cluster
-	functor CFGGen
-	functor CFGUtil
-	functor Cluster2CFG
-	functor ClusterGraph
-	functor ClusterViewer
-	functor ComputeIDefs
-	functor ControlFlowGraph
-	functor ControlFlowGraphGen
-	functor CriticalPathReduction
-	functor Dataflow
-	functor FormatInstruction
-	functor IDefs
-	functor InsertPreheaders
-	functor LivenessAnalysis
-	functor MLRISCGlue
-	functor MLRISC_IR
-	functor ReshapeBranches
-	functor StaticBranchPrediction
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

@@ -17,7 +17,7 @@ struct
     val zeroR = Option.valOf(C.zeroReg C.GP)
 
     datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
-                  | IK_PHI | IK_SOURCE | IK_SINK
+                  | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
     datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
    (*========================================================================
@@ -28,8 +28,10 @@ struct
       | instrKind(I.JMPL _)    = IK_JUMP
       | instrKind(I.COPY _)    = IK_COPY
       | instrKind(I.FCOPY _)   = IK_COPY
-      | instrKind(I.JSR _)     = IK_CALL
-      | instrKind(I.BSR _)     = IK_CALL
+      | instrKind(I.JSR{cutsTo=[],...}) = IK_CALL
+      | instrKind(I.JSR _) = IK_CALL_WITH_CUTS
+      | instrKind(I.BSR{cutsTo=[],...}) = IK_CALL
+      | instrKind(I.BSR _) = IK_CALL_WITH_CUTS
       | instrKind(I.RET _)     = IK_JUMP
       | instrKind(I.PHI _)     = IK_PHI
       | instrKind(I.SOURCE _)  = IK_SOURCE
@@ -67,6 +69,8 @@ struct
       | branchTargets(I.JMPL(_,[]))       = [ESCAPES]
       | branchTargets(I.JMPL(_,labs))     = map LABELLED labs
       | branchTargets(I.RET _)            = [ESCAPES]
+      | branchTargets(I.JSR{cutsTo, ...}) = FALLTHROUGH::map LABELLED cutsTo
+      | branchTargets(I.BSR{cutsTo, ...}) = FALLTHROUGH::map LABELLED cutsTo
       | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
       | branchTargets _ = error "branchTargets"
 
