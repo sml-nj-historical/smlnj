@@ -288,10 +288,11 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    fun addNodeFor (s, m) =
 			case SM.find (availablemap, s) of
 			    SOME n => SM.insert (m, s, strengthen n)
-			  | NONE => (error 
-				      (concat ("exported " ::
-					       symDesc (s, [" not defined"])));
-				     m)
+			  | NONE =>
+				(* This should never happen since we
+				 * checked beforehand during
+				 * parsing/semantic analysis *)
+				EM.impossible "build: undefined export"
 		in
 		    SS.foldl addNodeFor SM.empty ss
 		end

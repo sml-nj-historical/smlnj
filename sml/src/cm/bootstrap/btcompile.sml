@@ -7,7 +7,17 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
-			    val os: SMLofNJ.SysInfo.os_kind) = struct
+			    val os: SMLofNJ.SysInfo.os_kind) :> sig
+
+    val compile : 
+	{ dirbase: string,
+	  pcmodespec: string,
+	  initgspec: string,
+	  maingspec: string,
+	  stabilize: bool }
+	-> bool
+
+end = struct
 
     structure EM = GenericVC.ErrorMsg
     structure E = GenericVC.Environment
@@ -36,18 +46,25 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
     (* instantiate Stabilize... *)
     structure Stabilize =
 	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
+		     val getPid = RecompPersstate.pid_fetch_sml
+		     fun warmup (i, p) = ()
 		     val recomp = recomp)
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize)
 
-    fun compile { binroot, pcmodespec, initgspec, maingspec, stabilize } = let
+    fun compile { dirbase, pcmodespec, initgspec, maingspec, stabilize } = let
+
+	val arch = MachDepVC.architecture
+	val osname = FilenamePolicy.kind2name os
+	val bindir = concat [dirbase, ".bin.", arch, "-", osname]
+	val bootdir = concat [dirbase, ".boot.", arch, "-", osname]
 
 	val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
 
 	val ctxt = SrcPath.cwdContext ()
 
-	val pidfile = OS.Path.joinDirFile { dir = binroot, file = "RTPID" }
-	val listfile = OS.Path.joinDirFile { dir = binroot, file = "BINLIST" }
+	val pidfile = OS.Path.joinDirFile { dir = bootdir, file = "RTPID" }
+	val listfile = OS.Path.joinDirFile { dir = bootdir, file = "BINLIST" }
 
 	val pcmode = let
 	    fun work s = let
@@ -76,11 +93,16 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	val initgspec = stdpath initgspec
 	val maingspec = stdpath maingspec
 
-	val fnpolicy =
-	    FilenamePolicy.separate binroot
-	        { arch = MachDepVC.architecture, os = os }
+	val initfnpolicy =
+	    FilenamePolicy.separate { bindir = bootdir, bootdir = bootdir }
+	        { arch = arch, os = os }
 
-	fun mkParam { primconf, pervasive, pervcorepids } { corenv } =
+	val mainfnpolicy =
+	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
+	        { arch = arch, os = os }
+
+	fun mkParam { primconf, pervasive, pervcorepids, fnpolicy }
+	            { corenv } =
 	    { primconf = primconf,
 	      fnpolicy = fnpolicy,
 	      pcmode = pcmode,
@@ -111,7 +133,8 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 
 	val mkInitParam = mkParam { primconf = primconf,
 				    pervasive = E.emptyEnv,
-				    pervcorepids = PidSet.empty }
+				    pervcorepids = PidSet.empty,
+				    fnpolicy = initfnpolicy }
 
 	val param_nocore = mkInitParam { corenv = BE.staticPart BE.emptyEnv }
 
@@ -172,7 +195,8 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			    PidSet.addList (PidSet.empty,
 					    [#2 (#stat pervasive),
 					     #2 (#sym pervasive),
-					     #2 (#stat core)]) }
+					     #2 (#stat core)]),
+			  fnpolicy = mainfnpolicy }
 		        { corenv = corenv }
 	    val stableflag = if stabilize then SOME true else NONE
 	in

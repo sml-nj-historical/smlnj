@@ -13,9 +13,11 @@ local
     structure SM = GenericVC.SourceMap
     structure GP = GeneralParams
     structure E = GenericVC.Environment
+    structure Pid = GenericVC.PersStamps
 
     type statenvgetter = GP.info -> DG.bnode -> E.staticEnv
     type recomp = GP.info -> GG.group -> bool
+    type pid = Pid.persstamp
 in
 
 signature STABILIZE = sig
@@ -30,7 +32,9 @@ signature STABILIZE = sig
 end
 
 functor StabilizeFn (val bn2statenv : statenvgetter
-		     val recomp: recomp) :> STABILIZE = struct
+		     val getPid : SmlInfo.info -> pid option
+		     val warmup : BinInfo.info * pid -> unit
+		     val recomp : recomp) :> STABILIZE = struct
 
     datatype pitem =
 	PSS of SymbolSet.set
@@ -273,10 +277,13 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    "b" :: w_int n (w_symbol sy k) m
 		end
 
+	    fun w_pid p = w_string (Byte.bytesToString (Pid.toBytes p))
+
 	    fun w_sn_raw (DG.SNODE n) k =
-		w_si (#smlinfo n)
-		     (w_list w_sn (#localimports n)
-		             (w_list w_fsbn (#globalimports n) k))
+		w_option w_pid (getPid (#smlinfo n))
+		         (w_si (#smlinfo n)
+			       (w_list w_sn (#localimports n)
+				       (w_list w_fsbn (#globalimports n) k)))
 
 	    and w_sn n = w_share w_sn_raw PSN n
 
@@ -460,6 +467,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val m = ref IntBinaryMap.empty
 	    val next = ref 0
 
+	    val pset = ref PidSet.empty
+
 	    fun bytesIn n = let
 		val bv = BinIO.inputN (s, n)
 	    in
@@ -628,12 +637,21 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		    end
 		  | _ => raise Format
 
+	    fun r_pid () = Pid.fromBytes (Byte.stringToBytes (r_string ()))
+
 	    (* this is the place where what used to be an
 	     * SNODE changes to a BNODE! *)
-	    fun r_sn_raw () =
-		DG.BNODE { bininfo = r_si (),
-			   localimports = r_list r_sn (),
-			   globalimports = r_list r_fsbn () }
+	    fun r_sn_raw () = let
+		val popt = r_option r_pid ()
+		val i = r_si ()
+		val n = DG.BNODE { bininfo = i,
+				   localimports = r_list r_sn (),
+				   globalimports = r_list r_fsbn () }
+	    in
+		case popt of
+		    NONE => n
+		  | SOME p => (warmup (i, p); n)
+	    end
 
 	    and r_sn () =
 		r_share r_sn_raw UBN (fn (UBN n) => n | _ => raise Format) ()

@@ -183,8 +183,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val _ = HostMachDepVC.Interact.installCompManager (SOME manager)
 
       (* Instantiate the stabilization mechanism. *)
-      structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
-					  val recomp = recomp_runner)
+      structure Stabilize =
+	  StabilizeFn (val bn2statenv = bn2statenv
+		       val getPid = FullPersstate.pid_fetch_sml
+		       fun warmup (i, p) = () (* FIXME *)
+		       val recomp = recomp_runner)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
@@ -227,9 +230,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				val os = os)
 	fun make st =
 	    BootstrapCompile.compile
-	        { binroot = "xxx.bin.xxx",
+	        { dirbase = "xxx",
 		  pcmodespec = "pathconfig",
-		  initgspec = "spec.cmi",
+		  initgspec = "init.cmi",
 		  maingspec = "root.cm",
 		  stabilize = st }
 	fun setRetargetPervStatEnv x = ()

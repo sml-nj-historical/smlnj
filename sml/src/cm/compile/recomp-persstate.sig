@@ -24,4 +24,7 @@ signature RECOMP_PERSSTATE = sig
      * an enclosing implementation of FULL_PERSSTATE *)
     val bfc_fetch_sml : SmlInfo.info -> MachDepVC.Binfile.bfContent
     val bfc_fetch_stable : BinInfo.info -> MachDepVC.Binfile.bfContent
+
+    (* ... and this one is for stabilize (cache pre-warming) ... *)
+    val pid_fetch_sml : SmlInfo.info -> GenericVC.PersStamps.persstamp option
 end

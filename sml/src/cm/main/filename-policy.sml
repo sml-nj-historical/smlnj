@@ -11,11 +11,13 @@ signature FILENAMEPOLICY = sig
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
     val colocate : policyMaker
-    val separate : string -> policyMaker
+    val separate : { bindir: string, bootdir: string } -> policyMaker
 
     val mkBinName : policy -> SrcPath.t -> string
     val mkSkelName : policy -> SrcPath.t -> string
     val mkStableName : policy -> SrcPath.t -> string
+
+    val kind2name : SMLofNJ.SysInfo.os_kind -> string
 end
 
 functor FilenamePolicyFn (val cmdir : string
@@ -32,7 +34,7 @@ functor FilenamePolicyFn (val cmdir : string
       | kind2name SMLofNJ.SysInfo.UNIX = "unix"
       | kind2name SMLofNJ.SysInfo.WIN32 = "win32"
 
-    fun mkPolicy shiftname { arch, os } = let
+    fun mkPolicy (shiftbin, shiftstable) { arch, os } = let
 	fun cmname d s = let
 	    val { dir = d0, file = f } = OS.Path.splitDirFile s
 	    val d1 = OS.Path.joinDirFile { dir = d0, file = cmdir }
@@ -41,23 +43,23 @@ functor FilenamePolicyFn (val cmdir : string
 	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
 	val archos = concat [arch, "-", kind2name os]
-	val skel = cmname skeldir o SrcPath.osstring
-	val archosdep = cmname archos o shiftname
     in
-	{ skel = skel, bin = archosdep, stable = archosdep }
+	{ skel = cmname skeldir o SrcPath.osstring,
+	  bin = cmname archos o shiftbin,
+	  stable = cmname archos o shiftstable }
     end
 
-    val colocate = mkPolicy SrcPath.osstring
+    val colocate = mkPolicy (SrcPath.osstring, SrcPath.osstring)
 
-    fun separate root = let
-	fun shiftname p =
+    fun separate { bindir, bootdir } = let
+	fun shiftname root p =
 	    case SrcPath.reAnchoredName (p, root) of
 		SOME s => s
 	      | NONE => (Say.say ["Failure: ", SrcPath.descr p,
 				  " is not an anchored path!\n"];
 			 raise Fail "bad path")
     in
-	mkPolicy shiftname
+	mkPolicy (shiftname bindir, shiftname bootdir)
     end
 
     fun mkBinName (p: policy) s = #bin p s

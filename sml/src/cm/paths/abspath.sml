@@ -165,13 +165,9 @@ structure AbsPath :> ABSPATH = struct
 	and elab (PATH { context, spec, cache }) =
 	    case validElab (!cache) of
 		SOME e => e
-	      | NONE => let
-		    val name = P.mkCanonical
-			(P.concat (#name (elabContext context),
-				   spec))
-		in
-		    mkElab (cache, name)
-		end
+	      | NONE => mkElab (cache,
+				P.mkCanonical (P.concat
+					 (#name (elabContext context), spec)))
 
 	(* get the file id (calls elab, so don't cache externally!) *)
 	fun id p = let
@@ -283,7 +279,7 @@ structure AbsPath :> ABSPATH = struct
 
 	fun descr (PATH { spec, context, ... }) = let
 	    fun dir (x, l) =
-		case OS.Path.dir x of
+		case P.dir x of
 		    "" => l
 		  | d => d :: "/" :: l
 	    fun d_c (CONFIG_ANCHOR { config_name = n, ... }, l) =
