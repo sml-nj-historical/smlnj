@@ -34,8 +34,9 @@ structure Alpha32MCEmitter =
 
 structure Alpha32MLTree = 
   MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure R=CPSRegions
-	  structure S=Alpha32Stream
+	  structure Region=CPSRegions
+	  structure Stream=Alpha32Stream
+	  structure Extension=SMLNJMLTreeExt
          )
 
 structure Alpha32PseudoInstrs =

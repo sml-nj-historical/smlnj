@@ -5,12 +5,13 @@
  *)
 
 signature MLTREE = sig
-  structure Constant : CONSTANT
-  structure LabelExp : LABELEXP
-  structure PseudoOp : PSEUDO_OPS
-  structure Region   : REGION
-  structure Stream   : INSTRUCTION_STREAM
-  structure Basis    : MLTREE_BASIS
+  structure Constant  : CONSTANT
+  structure LabelExp  : LABELEXP
+  structure PseudoOp  : PSEUDO_OPS
+  structure Region    : REGION
+  structure Stream    : INSTRUCTION_STREAM
+  structure Basis     : MLTREE_BASIS
+  structure Extension : MLTREE_EXTENSION
      sharing Stream.P = PseudoOp
      sharing Constant = LabelExp.Constant
 
@@ -30,7 +31,7 @@ signature MLTREE = sig
   (* phi-functions for SSA form *)
   datatype phi =
       RPHI  of ty * dst * src list 
-    | FPHI of fty * dst * src list 
+    | FPHI  of fty * dst * src list 
     | CCPHI of dst * src list 
 
   (* aliasing declarations 
@@ -44,48 +45,47 @@ signature MLTREE = sig
    *
    * Terms marked with rtl are used within the rtl language 
    *)
-  datatype ('s,'r,'f,'c) stm =
+  datatype stm =
       (* assignment *)
-      MV      of ty * dst * ('s,'r,'f,'c) rexp   (* rtl *)
-    | CCMV    of dst * ('s,'r,'f,'c) ccexp
-    | FMV     of fty * dst * ('s,'r,'f,'c) fexp	
+      MV      of ty * dst * rexp   (* rtl *)
+    | CCMV    of dst * ccexp
+    | FMV     of fty * dst * fexp	
 
       (* parallel copies *)
     | COPY    of ty * dst list * src list   (* rtl *)
     | FCOPY   of fty * dst list * src list
 
       (* control flow *)
-    | JMP     of ctrls * ('s,'r,'f,'c) rexp * controlflow (* rtl *)
-    | BCC     of ctrls * ('s,'r,'f,'c) ccexp * Label.label
-    | CALL    of ('s,'r,'f,'c) rexp * controlflow * ('s,'r,'f,'c) mlrisc list * ('s,'r,'f,'c) mlrisc list * 
+    | JMP     of ctrls * rexp * controlflow (* rtl *)
+    | BCC     of ctrls * ccexp * Label.label
+    | CALL    of rexp * controlflow * mlrisc list * mlrisc list * 
                  ctrls * ctrls * Region.region (* rtl *)
     | RET     of ctrls * controlflow (* rtl *)
     | JOIN    of ctrls
-    | IF      of ctrls * ('s,'r,'f,'c) ccexp * 
-                  ('s,'r,'f,'c) stm * ('s,'r,'f,'c) stm   (* rtl *)
+    | IF      of ctrls * ccexp * stm * stm   (* rtl *)
 
       (* memory update: ea, data *)
-    | STORE  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp * Region.region 
-    | FSTORE of fty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) fexp * Region.region 
+    | STORE  of ty * rexp * rexp * Region.region 
+    | FSTORE of fty * rexp * fexp * Region.region 
 
       (* control dependence *)
-    | REGION of ('s,'r,'f,'c) stm * ctrl
+    | REGION of stm * ctrl
 
-    | SEQ    of ('s,'r,'f,'c) stm list   (* sequencing *)
+    | SEQ    of stm list   (* sequencing *)
     | DEFINE of Label.label   (* define local label *)
 
-    | ANNOTATION of ('s,'r,'f,'c) stm * an
-    | EXT of 's    (* extension *)
+    | ANNOTATION of stm * an
+    | EXT of sext  (* extension *)
 
       (* RTL operators:
        * The following are used internally for describing instruction semantics.
        * The frontend must not use these.
        *)
     | PHI    of int                    (* a phi-function at some block id *)
-    | PINNED of ('s,'r,'f,'c) stm      (* pinned statement *)
-    | RTL    of {hash:word ref, attribs:Basis.attribs, e:('s,'r,'f,'c) stm}
+    | PINNED of stm      (* pinned statement *)
+    | RTL    of {hash:word ref, attribs:Basis.attribs, e:stm}
    
-  and ('s,'r,'f,'c) rexp = 
+  and rexp = 
       REG    of ty * reg            (* rtl *)
 
       (* sizes of constants are inferred by context *)
@@ -95,110 +95,113 @@ signature MLTREE = sig
     | LABEL  of LabelExp.labexp
     | CONST  of Constant.const
 
-    | NEG    of ty * ('s,'r,'f,'c) rexp                      
-    | ADD    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | SUB    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | NEG    of ty * rexp                      
+    | ADD    of ty * rexp * rexp    (* rtl *)
+    | SUB    of ty * rexp * rexp    (* rtl *)
 
       (* signed multiplication etc. *)
-    | MULS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | DIVS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | QUOTS  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | REMS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | MULS   of ty * rexp * rexp    (* rtl *)
+    | DIVS   of ty * rexp * rexp    (* rtl *)
+    | QUOTS  of ty * rexp * rexp    (* rtl *)
+    | REMS   of ty * rexp * rexp    (* rtl *)
 
       (* unsigned multiplication etc. *)
-    | MULU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | DIVU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | REMU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | MULU   of ty * rexp * rexp    (* rtl *)
+    | DIVU   of ty * rexp * rexp    (* rtl *)
+    | REMU   of ty * rexp * rexp    (* rtl *)
 
       (* trapping versions of above. These are all signed *)
-    | NEGT   of ty * ('s,'r,'f,'c) rexp                       
-    | ADDT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | SUBT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | MULT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | DIVT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | QUOTT  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | REMT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | NEGT   of ty * rexp                       
+    | ADDT   of ty * rexp * rexp    (* rtl *)
+    | SUBT   of ty * rexp * rexp    (* rtl *)
+    | MULT   of ty * rexp * rexp    (* rtl *)
+    | DIVT   of ty * rexp * rexp    (* rtl *)
+    | QUOTT  of ty * rexp * rexp    (* rtl *)
+    | REMT   of ty * rexp * rexp    (* rtl *)
 
       (* bit operations *)
-    | ANDB   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | ORB    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | XORB   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
-    | NOTB   of ty * ('s,'r,'f,'c) rexp              (* rtl *)
+    | ANDB   of ty * rexp * rexp    (* rtl *)
+    | ORB    of ty * rexp * rexp    (* rtl *)
+    | XORB   of ty * rexp * rexp    (* rtl *)
+    | NOTB   of ty * rexp              (* rtl *)
 
-    | SRA   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp	  (* value, shift *) (* rtl *)
-    | SRL   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp     (* rtl *)
-    | SLL   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp     (* rtl *)
+    | SRA   of ty * rexp * rexp	  (* value, shift *) (* rtl *)
+    | SRL   of ty * rexp * rexp     (* rtl *)
+    | SLL   of ty * rexp * rexp     (* rtl *)
 
       (* type promotion/conversion *)
-    | CVTI2I of ty * ext * ty * ('s,'r,'f,'c) rexp  (* signed extension *) (* rtl *)
-    | CVTF2I of ty * rounding_mode * fty * ('s,'r,'f,'c) fexp (* rtl *)
+    | CVTI2I of ty * ext * ty * rexp  (* signed extension *) (* rtl *)
+    | CVTF2I of ty * rounding_mode * fty * fexp (* rtl *)
 
       (* 
        * COND(ty,cc,e1,e2):
        * Evaluate into either e1 or e2, depending on cc.  
        * Both e1 and e2 are allowed to be evaluated eagerly.
        *)
-    | COND of ty * ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp  (* rtl *)
+    | COND of ty * ccexp * rexp * rexp  (* rtl *)
 
       (* integer load *)
-    | LOAD of ty * ('s,'r,'f,'c) rexp * Region.region (* rtl *)
+    | LOAD of ty * rexp * Region.region (* rtl *)
 
       (* predication *)
-    | PRED of ('s,'r,'f,'c) rexp * ctrl 
+    | PRED of rexp * ctrl 
 
-    | LET of ('s,'r,'f,'c) stm * ('s,'r,'f,'c) rexp
+    | LET of stm * rexp
 
-    | REXT of ty * 'r
+    | REXT of ty * rext
 
-    | MARK of ('s,'r,'f,'c) rexp * an
+    | MARK of rexp * an
 
-  and ('s,'r,'f,'c) fexp =
+  and fexp =
       FREG   of fty * src
-    | FLOAD  of fty * ('s,'r,'f,'c) rexp * Region.region 
+    | FLOAD  of fty * rexp * Region.region 
 
-    | FADD   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
-    | FMUL   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
-    | FSUB   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp 
-    | FDIV   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
-    | FABS   of fty * ('s,'r,'f,'c) fexp 
-    | FNEG   of fty * ('s,'r,'f,'c) fexp
-    | FSQRT  of fty * ('s,'r,'f,'c) fexp
-    | FCOND  of fty * ('s,'r,'f,'c) ccexp * 
-                ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
-    | FCOPYSIGN of fty * ('s,'r,'f,'c) fexp (*sign*) * 
-                         ('s,'r,'f,'c) fexp (*magnitude*)
+    | FADD   of fty * fexp * fexp
+    | FMUL   of fty * fexp * fexp
+    | FSUB   of fty * fexp * fexp 
+    | FDIV   of fty * fexp * fexp
+    | FABS   of fty * fexp 
+    | FNEG   of fty * fexp
+    | FSQRT  of fty * fexp
+    | FCOND  of fty * ccexp * 
+                fexp * fexp
+    | FCOPYSIGN of fty * fexp (*sign*) * fexp (*magnitude*)
 
-    | CVTI2F of fty * ty * ('s,'r,'f,'c) rexp  (* from signed integer *)
-    | CVTF2F of fty * fty * ('s,'r,'f,'c) fexp (* float to float conversion *)
+    | CVTI2F of fty * ty * rexp  (* from signed integer *)
+    | CVTF2F of fty * fty * fexp (* float to float conversion *)
 
-    | FPRED of ('s,'r,'f,'c) fexp * ctrl
+    | FPRED of fexp * ctrl
  
-    | FEXT of fty * 'f
+    | FEXT of fty * fext
 
-    | FMARK of ('s,'r,'f,'c) fexp * an
+    | FMARK of fexp * an
 
-  and ('s,'r,'f,'c) ccexp =
+  and ccexp =
       CC     of Basis.cond * src                        (* rtl *)
     | FCC    of Basis.fcond * src                       (* rtl *)
     | TRUE                                              (* rtl *)
     | FALSE                                             (* rtl *)
-    | NOT    of ('s,'r,'f,'c) ccexp                     (* rtl *)
-    | AND    of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
-    | OR     of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
-    | XOR    of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
-    | CMP    of ty * Basis.cond * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp(*rtl*)
-    | FCMP   of fty * Basis.fcond * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
-    | CCMARK of ('s,'r,'f,'c) ccexp * an
-    | CCEXT  of ty * 'c
+    | NOT    of ccexp                     (* rtl *)
+    | AND    of ccexp * ccexp   (* rtl *)
+    | OR     of ccexp * ccexp   (* rtl *)
+    | XOR    of ccexp * ccexp   (* rtl *)
+    | CMP    of ty * Basis.cond * rexp * rexp(*rtl*)
+    | FCMP   of fty * Basis.fcond * fexp * fexp
+    | CCMARK of ccexp * an
+    | CCEXT  of ty * ccext
 
-  and ('s,'r,'f,'c) mlrisc = 
-      CCR of ('s,'r,'f,'c) ccexp 
-    | GPR of ('s,'r,'f,'c) rexp 
-    | FPR of ('s,'r,'f,'c) fexp 
+  and mlrisc = 
+      CCR of ccexp 
+    | GPR of rexp 
+    | FPR of fexp 
 
   withtype controlflow = Label.label list (* control flow info *)
-       and ctrl = var                     (* control dependence info *)
-       and ctrls = ctrl list
+       and ctrl   = var                   (* control dependence info *)
+       and ctrls  = ctrl list
+       and sext   = (stm, rexp, fexp, ccexp) Extension.sx
+       and rext   = (stm, rexp, fexp, ccexp) Extension.rx
+       and fext   = (stm, rexp, fexp, ccexp) Extension.fx
+       and ccext  = (stm, rexp, fexp, ccexp) Extension.ccx
 
   (*
    * Instruction streams
@@ -206,43 +209,39 @@ signature MLTREE = sig
   type ('i,'regmap,'cellset) stream = 
        ('i -> unit,'regmap, an list, 'cellset, alias, phi) Stream.stream 
 
-  (* Extension mechanism *)
+  (* 
+   * Extension mechanism
+   *)
 
-  (* These functions are supplied by the instruction selection module *)
-  datatype ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c) 
-    reducer =
+  datatype ('instr,'regmap,'cellset,'operand,'addressing_mode) reducer =
     REDUCER of
-    { reduceRexp    : ('s,'r,'f,'c) rexp -> reg,
-      reduceFexp    : ('s,'r,'f,'c) fexp -> reg,
-      reduceCCexp   : ('s,'r,'f,'c) ccexp -> reg,
-      reduceStm     : ('s,'r,'f,'c) stm * an list -> unit,
-      operand       : ('s,'r,'f,'c) rexp -> 'operand,
+    { reduceRexp    : rexp -> reg,
+      reduceFexp    : fexp -> reg,
+      reduceCCexp   : ccexp -> reg,
+      reduceStm     : stm * an list -> unit,
+      operand       : rexp -> 'operand,
       reduceOperand : 'operand -> reg,
-      addressOf     : ('s,'r,'f,'c) rexp -> 'addressing_mode,
+      addressOf     : rexp -> 'addressing_mode,
       emit          : 'instr * an list -> unit,
       instrStream   : ('instr,'regmap,'cellset) stream,
-      mltreeStream  : 
-        (('s,'r,'f,'c) stm,'regmap,('s,'r,'f,'c) mlrisc list) stream
+      mltreeStream  : (stm,'regmap,mlrisc list) stream
     }
 
-
-  (* These functions should be provided by the client *)
-  datatype ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
-           extender =
-    EXTENDER of
-    { compileStm  :
-           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
-           reducer -> { stm : 's, an : an list} -> unit,
-      compileRexp :
-           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
-           reducer -> {e:ty * 'r, an:an list, rd:reg} -> unit,
-      compileFexp :
-           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
-           reducer -> {e:fty * 'f, an:an list, fd:reg} -> unit,
-      compileCCexp :
-           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
-           reducer -> {e:ty * 'c, an:an list, cd:reg} -> unit
-    }
+  (*
+   * Useful type abbreviations for working for MLTree.
+   *)
+  type rewriter =  (* rewriting functions *)
+    {stm:stm->stm, rexp:rexp->rexp, fexp:fexp->fexp, ccexp:ccexp->ccexp}
+  type 'a folder = (* aggregation functions *)
+    {stm:stm*'a->'a, rexp:rexp*'a->'a, fexp:fexp*'a->'a, ccexp:ccexp*'a->'a}
+  type hasher =    (* hashing functions *)
+    {stm:stm->word, rexp:rexp->word, fexp:fexp->word, ccexp:ccexp->word}
+  type equality =  (* comparison functions *)
+    {stm:stm * stm->bool, rexp:rexp * rexp->bool, 
+     fexp:fexp * fexp->bool, ccexp:ccexp * ccexp->bool}
+  type printer =   (* pretty printing functions *)
+    {stm:stm->string, rexp:rexp->string, fexp:fexp->string, ccexp:ccexp->string,
+     dstReg : ty * var -> string, srcReg : ty * var -> string}
 
 end (* MLTREE *)
 

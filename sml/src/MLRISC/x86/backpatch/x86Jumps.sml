@@ -44,8 +44,10 @@ struct
      | I.CMOV{src, dst, ...} => operand src 
      | (I.PUSHL opnd | I.PUSHW opnd | I.PUSHB opnd) => operand opnd
      | I.POP opnd =>  operand opnd
+     | I.FSTPT opnd => operand opnd
      | I.FSTPL opnd => operand opnd
      | I.FSTPS opnd => operand opnd
+     | I.FLDT opnd => operand opnd
      | I.FLDL opnd => operand opnd
      | I.FLDS opnd => operand opnd
      | I.FBINARY{src, dst, ...} => operand src orelse operand dst

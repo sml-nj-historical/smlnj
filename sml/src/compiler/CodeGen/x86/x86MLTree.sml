@@ -41,6 +41,7 @@ structure X86MCEmitter =
 (* MLTree specialization *)
 structure X86MLTree = 
   MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure R=CPSRegions
-	  structure S=X86Stream
+	  structure Region=CPSRegions
+	  structure Stream=X86Stream
+	  structure Extension=SMLNJMLTreeExt
          )

@@ -9,9 +9,11 @@ signature MACHINE = sig
   structure Asm : INSTRUCTION_EMITTER
         where I = F.I and  P = F.P 
 
-  val optimizerHook : (F.cluster -> F.cluster) option ref
-
-  val finish : unit -> unit
+  type mlriscPhase = string * (F.cluster -> F.cluster) 
+  val makePhase     : string * (F.cluster -> F.cluster) -> mlriscPhase
+  val raPhase       : mlriscPhase 
+  val optimizerHook : mlriscPhase list ref
+  val finish        : unit -> unit
 end (* MACHINE *)
 
 

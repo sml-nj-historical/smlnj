@@ -9,18 +9,14 @@ struct
   structure T = Alpha32MLTree
   structure SL = SortedList
 
-  type rexp = (unit, unit, unit, unit) T.rexp
-  type fexp = (unit, unit, unit, unit) T.fexp
-  type ccexp = (unit, unit, unit, unit) T.ccexp
-
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
 
   val GP = AlphaCells.GPReg
   val FP = AlphaCells.FPReg
 
-  fun REG r = T.REG(32, GP r) : rexp
-  fun FREG f = T.FREG(64, FP f) : fexp
+  fun REG r = T.REG(32, GP r)
+  fun FREG f = T.FREG(64, FP f) 
 
   val stdarg	= REG(0) 
   val stdcont  	= REG(1)
@@ -31,7 +27,7 @@ struct
   val limitptr 	= REG(9)
   val varptr	= REG(10)
   val exhaustedR = GP 11
-  val exhausted	= SOME(T.CC(T.GT,exhaustedR)) : ccexp option
+  val exhausted	= SOME(T.CC(T.GT,exhaustedR)) 
   val storeptr	= REG(12) 
   val allocptr 	= REG(13)
   val exnptr	= REG(14)

@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 164.7 "x86/x86.md"*)
+(*#line 171.7 "x86/x86.md"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -145,23 +145,35 @@ struct
      | asm_move (I.MOVZBL) = "movzbl"
    and emit_move x = emit (asm_move x)
    and asm_fbinOp (I.FADDP) = "faddp"
-     | asm_fbinOp (I.FADD) = "fadd"
-     | asm_fbinOp (I.FIADD) = "fiadd"
+     | asm_fbinOp (I.FADDS) = "fadds"
+     | asm_fbinOp (I.FIADDS) = "fiadds"
      | asm_fbinOp (I.FMULP) = "fmulp"
-     | asm_fbinOp (I.FMUL) = "fmul"
-     | asm_fbinOp (I.FIMUL) = "fimul"
+     | asm_fbinOp (I.FMULS) = "fmuls"
+     | asm_fbinOp (I.FIMULS) = "fimuls"
      | asm_fbinOp (I.FSUBP) = "fsubp"
-     | asm_fbinOp (I.FSUB) = "fsub"
-     | asm_fbinOp (I.FISUB) = "fisub"
+     | asm_fbinOp (I.FSUBS) = "fsubs"
+     | asm_fbinOp (I.FISUBS) = "fisubs"
      | asm_fbinOp (I.FSUBRP) = "fsubrp"
-     | asm_fbinOp (I.FSUBR) = "fsubr"
-     | asm_fbinOp (I.FISUBR) = "fisubr"
+     | asm_fbinOp (I.FSUBRS) = "fsubrs"
+     | asm_fbinOp (I.FISUBRS) = "fisubrs"
      | asm_fbinOp (I.FDIVP) = "fdivp"
-     | asm_fbinOp (I.FDIV) = "fdiv"
-     | asm_fbinOp (I.FIDIV) = "fidiv"
+     | asm_fbinOp (I.FDIVS) = "fdivs"
+     | asm_fbinOp (I.FIDIVS) = "fidivs"
      | asm_fbinOp (I.FDIVRP) = "fdivrp"
-     | asm_fbinOp (I.FDIVR) = "fdivr"
-     | asm_fbinOp (I.FIDIVR) = "fidivr"
+     | asm_fbinOp (I.FDIVRS) = "fdivrs"
+     | asm_fbinOp (I.FIDIVRS) = "fidivrs"
+     | asm_fbinOp (I.FADDL) = "faddl"
+     | asm_fbinOp (I.FIADDL) = "fiaddl"
+     | asm_fbinOp (I.FMULL) = "fmull"
+     | asm_fbinOp (I.FIMULL) = "fimull"
+     | asm_fbinOp (I.FSUBL) = "fsubl"
+     | asm_fbinOp (I.FISUBL) = "fisubl"
+     | asm_fbinOp (I.FSUBRL) = "fsubrl"
+     | asm_fbinOp (I.FISUBRL) = "fisubrl"
+     | asm_fbinOp (I.FDIVL) = "fdivl"
+     | asm_fbinOp (I.FIDIVL) = "fidivl"
+     | asm_fbinOp (I.FDIVRL) = "fdivrl"
+     | asm_fbinOp (I.FIDIVRL) = "fidivrl"
    and emit_fbinOp x = emit (asm_fbinOp x)
    and asm_funOp (I.FABS) = "fabs"
      | asm_funOp (I.FCHS) = "fchs"
@@ -182,16 +194,16 @@ struct
      | asm_fenvOp (I.FNSTENV) = "fnstenv"
    and emit_fenvOp x = emit (asm_fenvOp x)
 
-(*#line 166.6 "x86/x86.md"*)
+(*#line 173.6 "x86/x86.md"*)
    val memReg = MemRegs.memReg regmap
 
-(*#line 167.6 "x86/x86.md"*)
+(*#line 174.6 "x86/x86.md"*)
    fun emitInt32 i = let
 
-(*#line 168.10 "x86/x86.md"*)
+(*#line 175.10 "x86/x86.md"*)
           val s = Int32.toString i
 
-(*#line 169.10 "x86/x86.md"*)
+(*#line 176.10 "x86/x86.md"*)
           val s = (if (i >= 0)
                  then s
                  else ("-" ^ (String.substring (s, 1, (size s) - 1))))
@@ -199,7 +211,7 @@ struct
        end
 
 
-(*#line 172.6 "x86/x86.md"*)
+(*#line 179.6 "x86/x86.md"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -221,15 +233,8 @@ struct
       | I.Relative _ => error "emit_operand"
       | I.Direct r => emit_GP r
       | I.MemReg r => emit_operand (memReg opn)
-      | I.FDirect f => let
-
-(*#line 191.17 "x86/x86.md"*)
-           val f' = regmap f
-        in (if (f' < (32 + 8))
-              then (emit_FP f')
-              else (emit_operand (memReg opn)))
-        end
-
+      | I.ST f => emit_FP f
+      | I.FDirect f => emit_operand (memReg opn)
       | I.Displace{base, disp, mem, ...} => 
         ( emit_disp disp; 
         emit "("; 
@@ -260,30 +265,54 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 212.7 "x86/x86.md"*)
+(*#line 218.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas (I.LabelEA _) = error "stupidGas"
      | stupidGas opnd = emit_operand opnd
 
-(*#line 216.7 "x86/x86.md"*)
+(*#line 223.7 "x86/x86.md"*)
+   fun isMemOpnd (I.MemReg _) = true
+     | isMemOpnd (I.FDirect f) = true
+     | isMemOpnd (I.LabelEA _) = true
+     | isMemOpnd (I.Displace _) = true
+     | isMemOpnd (I.Indexed _) = true
+     | isMemOpnd _ = false
+
+(*#line 229.7 "x86/x86.md"*)
+   fun showFbinOp (fbinOp, src) = emit (if (isMemOpnd src)
+          then fbinOp
+          else let
+
+(*#line 233.15 "x86/x86.md"*)
+             val n = size fbinOp
+          in 
+             (
+              case String.sub (fbinOp, n - 1) of
+              (#"s" | #"t") => String.substring (fbinOp, 0, n - 1)
+            | _ => fbinOp
+             )
+          end
+)
+
+(*#line 239.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 217.7 "x86/x86.md"*)
+(*#line 240.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 218.7 "x86/x86.md"*)
+(*#line 241.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 219.7 "x86/x86.md"*)
+(*#line 242.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 220.7 "x86/x86.md"*)
+(*#line 243.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 221.7 "x86/x86.md"*)
+(*#line 244.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 222.7 "x86/x86.md"*)
+(*#line 245.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
    fun emitInstr instr = 
        ( tab (); 
@@ -424,7 +453,7 @@ struct
       | I.COPY{dst, src, tmp} => emitInstrs (Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src})
       | I.FCOPY{dst, src, tmp} => emitInstrs (Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src})
       | I.FBINARY{binOp, src, dst} => 
-        ( emit_fbinOp binOp; 
+        ( showFbinOp (asm_fbinOp binOp, src); 
         emit "\t"; 
         emit_src src; 
         emit ", "; 
@@ -444,11 +473,17 @@ struct
       | I.FSTPS operand => 
         ( emit "fstps\t"; 
         emit_operand operand )
+      | I.FSTPT operand => 
+        ( emit "fstps\t"; 
+        emit_operand operand )
       | I.FLDL operand => 
         ( emit "fldl\t"; 
         emit_operand operand )
       | I.FLDS operand => 
         ( emit "flds\t"; 
+        emit_operand operand )
+      | I.FLDT operand => 
+        ( emit "fldt\t"; 
         emit_operand operand )
       | I.FILD operand => 
         ( emit "fild\t"; 

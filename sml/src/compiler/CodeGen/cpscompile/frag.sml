@@ -7,7 +7,7 @@ functor Frag(MLTree:MLTREE) : FRAG = struct
   structure T = MLTree
   datatype generated =
       UNGEN of CPS.lvar * CPS.lvar list * CPS.cty list * CPS.cexp
-    | GEN of (unit, unit, unit, unit) T.mlrisc list
+    | GEN of T.mlrisc list
 
   datatype frag =
       STANDARD of {func: CPS.function option ref, 

@@ -8,6 +8,8 @@
 functor PPC
   (structure PPCInstr : PPCINSTR
    structure PPCMLTree : MLTREE 
+   structure ExtensionComp : MLTREE_EXTENSION_COMP
+      where I = PPCInstr and T = PPCMLTree
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
       sharing PPCMLTree.Region = PPCInstr.Region
       sharing PPCMLTree.LabelExp = PPCInstr.LabelExp
@@ -35,14 +37,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
 
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type ('s,'r,'f,'c) mltreeStream = 
-     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
-  type ('s,'r,'f,'c) reducer =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.reducer
-  type ('s,'r,'f,'c) extender =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.extender
+  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
   structure Gen = MLTreeGen
     (structure T = T
@@ -105,7 +100,6 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp, ...})
       (S.STREAM{emit,comment,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,phi,alias,...}) =

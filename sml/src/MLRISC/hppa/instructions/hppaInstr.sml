@@ -222,6 +222,8 @@ sig
    | ARITHI of {ai:arithi, i:operand, r:int, t:int}
    | COMCLR_LDO of {cc:bcond, r1:int, r2:int, t1:int, i:int, b:int, t2:int
      }
+   | COMICLR_LDO of {cc:bcond, i1:operand, r2:int, t1:int, i2:int, b:int
+     , t2:int}
    | SHIFTV of {sv:shiftv, r:int, len:int, t:int}
    | SHIFT of {s:shift, r:int, p:int, len:int, t:int}
    | BCOND of {cmp:cmp, bc:bcond, r1:int, r2:int, n:bool, nop:bool, t:Label.label
@@ -478,6 +480,8 @@ struct
    | ARITHI of {ai:arithi, i:operand, r:int, t:int}
    | COMCLR_LDO of {cc:bcond, r1:int, r2:int, t1:int, i:int, b:int, t2:int
      }
+   | COMICLR_LDO of {cc:bcond, i1:operand, r2:int, t1:int, i2:int, b:int
+     , t2:int}
    | SHIFTV of {sv:shiftv, r:int, len:int, t:int}
    | SHIFT of {s:shift, r:int, p:int, len:int, t:int}
    | BCOND of {cmp:cmp, bc:bcond, r1:int, r2:int, n:bool, nop:bool, t:Label.label

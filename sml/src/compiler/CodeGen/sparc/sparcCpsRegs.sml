@@ -10,15 +10,11 @@ struct
   structure SL = SortedList
   structure C = SparcCells
 
-  type rexp = (unit, unit, unit, unit) T.rexp
-  type fexp = (unit, unit, unit, unit) T.fexp
-  type ccexp = (unit, unit, unit, unit) T.ccexp
-
   val GP = C.GPReg
   val FP = C.FPReg
 
-  fun REG r = T.REG(32,GP r) : rexp
-  fun FREG f = T.FREG(64,FP f) : fexp
+  fun REG r = T.REG(32,GP r) 
+  fun FREG f = T.FREG(64,FP f)
 
   val stdarg	= REG(24) (* %i0 *)
   val stdcont	= REG(25) (* %i1 *)
@@ -34,7 +30,7 @@ struct
   val exnptr	= REG(7)  (* %g7 *)
 
   val returnPtr	= GP 15        
-  val gcLink	= T.REG(32,returnPtr) : rexp
+  val gcLink	= T.REG(32,returnPtr) 
   val stackptr	= REG(14)
 
    (* Warning %o2 is used as the asmTmp

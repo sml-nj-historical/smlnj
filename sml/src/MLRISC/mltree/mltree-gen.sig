@@ -15,35 +15,33 @@ sig
    (*
     * Return the size of an expression
     *)
-   val size  : ('s,'r,'f,'c) T.rexp -> T.ty
-   val fsize : ('s,'r,'f,'c) T.fexp -> T.ty
+   val size  : T.rexp -> T.ty
+   val fsize : T.fexp -> T.ty
 
-   val condOf : ('s,'r,'f,'c) T.ccexp -> T.Basis.cond
-   val fcondOf : ('s,'r,'f,'c) T.ccexp -> T.Basis.fcond
+   val condOf : T.ccexp -> T.Basis.cond
+   val fcondOf : T.ccexp -> T.Basis.fcond
 
    (* 
     * Perform simplification
     *)
-   val compileRexp : ('s,'r,'f,'c) T.rexp -> ('s,'r,'f,'c) T.rexp
-   val compileFexp : ('s,'r,'f,'c) T.fexp -> ('s,'r,'f,'c) T.fexp
-   val compileStm  : ('s,'r,'f,'c) T.stm  -> ('s,'r,'f,'c) T.stm list
+   val compileRexp : T.rexp -> T.rexp
+   val compileFexp : T.fexp -> T.fexp
+   val compileStm  : T.stm  -> T.stm list
   
    (*
     * Simulate conditional expression. 
     *)
    val compileCond : 
-       {exp : T.ty * ('s,'r,'f,'c) T.ccexp * 
-                     ('s,'r,'f,'c) T.rexp * ('s,'r,'f,'c) T.rexp,
+       {exp : T.ty * T.ccexp * T.rexp * T.rexp,
         an  : Annotations.annotations,
         rd : int
-       } -> ('s,'r,'f,'c) T.stm list
+       } -> T.stm list
 
    val compileFcond : 
-       {exp : T.fty * ('s,'r,'f,'c) T.ccexp * 
-                     ('s,'r,'f,'c) T.fexp * ('s,'r,'f,'c) T.fexp,
+       {exp : T.fty * T.ccexp * T.fexp * T.fexp,
         an  : Annotations.annotations,
         fd : int
-       } -> ('s,'r,'f,'c) T.stm list
+       } -> T.stm list
 
 
 end

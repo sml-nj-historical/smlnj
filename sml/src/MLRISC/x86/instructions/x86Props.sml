@@ -90,6 +90,7 @@ struct
      | hashOpn(I.LabelEA le) = LE.hash le + 0w44444
      | hashOpn(I.Direct r)  = Word.fromInt r
      | hashOpn(I.MemReg r)  = Word.fromInt r + 0w2123
+     | hashOpn(I.ST f) = Word.fromInt f + 0w88
      | hashOpn(I.FDirect f) = Word.fromInt f + 0w8888
      | hashOpn(I.Displace {base, disp, ...}) = 
          hashOpn disp + Word.fromInt base
@@ -101,6 +102,7 @@ struct
      | eqOpn(I.LabelEA a,I.LabelEA b) = LE.==(a,b)
      | eqOpn(I.Direct a,I.Direct b) = a = b
      | eqOpn(I.MemReg a,I.MemReg b) = a = b
+     | eqOpn(I.ST a,I.ST b) = a = b
      | eqOpn(I.FDirect a,I.FDirect b) = a = b
      | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
           a = c andalso eqOpn(b,d)
@@ -168,6 +170,7 @@ struct
 
       | I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)
       | I.COPY{dst, src, ...} => (dst, src)
+      | I.FSTPT opnd	      => float opnd
       | I.FSTPL opnd	      => float opnd
       | I.FSTPS opnd	      => float opnd 
       | I.FLDL opnd	      => float opnd
@@ -190,8 +193,10 @@ struct
       | operand _ = []
   in
     case instr
-     of I.FSTPL opnd		=> (operand opnd, [])
+     of I.FSTPT opnd            => (operand opnd, [])  
+      | I.FSTPL opnd		=> (operand opnd, [])
       | I.FSTPS opnd		=> (operand opnd, [])
+      | I.FLDT opnd		=> ([], operand opnd)
       | I.FLDL opnd		=> ([], operand opnd)
       | I.FLDS opnd		=> ([], operand opnd)
       | I.CALL(_, defs, uses,_)	=> (#2 defs, #2 uses)

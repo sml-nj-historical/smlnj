@@ -37,6 +37,7 @@ structure PPCMCEmitter =
 
 structure PPCMLTree = 
   MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure R=CPSRegions
-	  structure S=PPCStream
+	  structure Region=CPSRegions
+	  structure Stream=PPCStream
+	  structure Extension=SMLNJMLTreeExt
          )

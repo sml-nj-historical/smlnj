@@ -11,8 +11,9 @@ structure X86CG =
     structure MachSpec   = X86Spec
     structure PseudoOps  = X86PseudoOps
     structure CpsRegs    = X86CpsRegs
-    structure InsnProps  = X86Props(X86Instr)
+    structure InsnProps  = X86Props
     structure Asm        = X86AsmEmitter
+    structure Shuffle    = X86Shuffle
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 
@@ -23,6 +24,10 @@ structure X86CG =
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
            structure X86MLTree=X86MLTree
+           structure ExtensionComp = SMLNJMLTreeExtComp
+               (structure I = X86Instr
+                structure T = X86MLTree
+               )
            val tempMem=I.Displace{base=esp, disp=I.Immed 304, mem=stack}
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
            val arch = ref Pentium (* Lowest common denominator *)

@@ -51,12 +51,8 @@ struct
        val table = Liveness.liveness IR
        val instrStream = Gen.newStream{compile=fn _ => (), flowgraph=SOME IR}
        fun dummy _ = error "no extension" 
-       val extender = T.EXTENDER{compileStm=dummy,
-                                 compileRexp=dummy,
-                                 compileFexp=dummy,
-                                 compileCCexp=dummy}
        val stream as T.Stream.STREAM{beginCluster, endCluster, ...} = 
-           MLTreeComp.selectInstructions extender instrStream
+           MLTreeComp.selectInstructions instrStream
  
        (*
         * For each gc-point, invoke the callback to generate GC code.

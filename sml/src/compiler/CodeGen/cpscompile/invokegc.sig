@@ -17,12 +17,11 @@ sig
    structure Cells : CELLS
 
    type t = { maxAlloc : int,
-              regfmls  : (unit, unit, unit, unit) T.mlrisc list,
+              regfmls  : T.mlrisc list,
 	      regtys   : CPS.cty list,
-	      return   : (unit, unit, unit, unit) T.stm
+	      return   : T.stm
             }
-   type stream = ((unit, unit, unit, unit) T.stm, int Intmap.intmap,
-                  (unit, unit, unit, unit) T.mlrisc list) T.stream
+   type stream = (T.stm, int Intmap.intmap, T.mlrisc list) T.stream
 
       (* initialize the state before compiling a module *)
    val init : unit -> unit
@@ -44,9 +43,9 @@ sig
 
       (* generate the actual GC invocation code *)
    val callGC : stream -> 
-                {regfmls : (unit, unit, unit, unit) T.mlrisc list, 
+                {regfmls : T.mlrisc list, 
                  regtys : CPS.cty list,
-                 ret : (unit, unit, unit, unit) T.stm
+                 ret : T.stm
                 }  -> unit
 
 end

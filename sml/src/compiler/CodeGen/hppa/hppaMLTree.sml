@@ -41,7 +41,8 @@ structure HppaMCEmitter =
 
 structure HppaMLTree = 
   MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure R=CPSRegions
-	  structure S=HppaStream
+	  structure Region=CPSRegions
+	  structure Stream=HppaStream
+	  structure Extension=SMLNJMLTreeExt
          )
 

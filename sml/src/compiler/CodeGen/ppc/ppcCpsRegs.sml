@@ -11,19 +11,15 @@ struct
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
 
-  type rexp = (unit, unit, unit, unit) T.rexp
-  type fexp = (unit, unit, unit, unit) T.fexp
-  type ccexp = (unit, unit, unit, unit) T.ccexp
-
   val GP = PPCCells.GPReg
   val FP = PPCCells.FPReg
   val CC = PPCCells.Reg PPCCells.CC
 
-  fun REG r = T.REG(32, GP r) : rexp
-  fun FREG f = T.FREG(64, FP f) : fexp
+  fun REG r = T.REG(32, GP r) 
+  fun FREG f = T.FREG(64, FP f)
 
   val exhaustedR = CC 0
-  val exhausted	= SOME(T.CC(T.GTU,exhaustedR)) : ccexp option
+  val exhausted	= SOME(T.CC(T.GTU,exhaustedR)) 
 
   val allocptr 	= REG(14) 
   val limitptr 	= REG(15)
@@ -36,7 +32,7 @@ struct
   val varptr	= REG(22)
   val baseptr   = REG(23)
   val stackptr	= REG(1)
-  val gcLink	= T.REG(32,PPCCells.lr) : rexp 
+  val gcLink	= T.REG(32,PPCCells.lr) 
 
   val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13)) 
   val calleesave = Array.fromList(miscregs)

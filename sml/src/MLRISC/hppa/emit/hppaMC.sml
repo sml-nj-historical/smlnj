@@ -340,11 +340,17 @@ struct
        in eWord32 ((Op << 0wx1a) + ((t << 0wx15) + ((r << 0wx10) + ((rv << 0wxd) + (ext8 << 0wx5)))))
        end
 
-   and Compare {r2, r1, c, f, ext, t} = let
+   and CompareClear {r2, r1, c, f, ext, t} = let
           val r2 = emit_GP r2
           val r1 = emit_GP r1
           val t = emit_GP t
        in eWord32 ((r2 << 0wx15) + ((r1 << 0wx10) + ((c << 0wxd) + ((f << 0wxc) + ((ext << 0wx6) + (t + 0wx8000000))))))
+       end
+
+   and CompareImmClear {r, t, c, f, im11} = let
+          val r = emit_GP r
+          val t = emit_GP t
+       in eWord32 ((r << 0wx15) + ((t << 0wx10) + ((c << 0wxd) + ((f << 0wxc) + ((im11 && 0wx7ff) + 0wx90000000)))))
        end
 
    and CoProcShort {Op, b, im5, s, a, ls, uid, rt} = let
@@ -417,16 +423,16 @@ struct
    and FloatMultiOp {rm1, rm2, ta, ra, f, tm} = eWord32 ((rm1 << 0wx15) + ((rm2 << 0wx10) + ((ta << 0wxb) + ((ra << 0wx6) + ((f << 0wx5) + (tm + 0wx38000000))))))
    and FTest {} = eWord32 0wx30002420
 
-(*#line 606.7 "hppa/hppa.md"*)
+(*#line 639.7 "hppa/hppa.md"*)
    fun opn opnd = let
 
-(*#line 607.11 "hppa/hppa.md"*)
+(*#line 640.11 "hppa/hppa.md"*)
           fun hi21 n = (itow n) >> 0wxb
 
-(*#line 608.11 "hppa/hppa.md"*)
+(*#line 641.11 "hppa/hppa.md"*)
           fun hi21X n = (itow n) ~>> 0wxb
 
-(*#line 609.11 "hppa/hppa.md"*)
+(*#line 642.11 "hppa/hppa.md"*)
           fun lo11 n = (itow n) && 0wx7ff
        in 
           (
@@ -440,106 +446,106 @@ struct
        end
 
 
-(*#line 620.6 "hppa/hppa.md"*)
+(*#line 653.6 "hppa/hppa.md"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 8)) ~>> 0wx2
 
-(*#line 621.6 "hppa/hppa.md"*)
+(*#line 654.6 "hppa/hppa.md"*)
    fun low_sign_ext_im14 n = ((n && 0wx1fff) << 0wx1) || ((n && 0wx2000) >> 0wxd)
 
-(*#line 622.6 "hppa/hppa.md"*)
+(*#line 655.6 "hppa/hppa.md"*)
    fun low_sign_ext_im11 n = ((n && 0wx3ff) << 0wx1) || ((n && 0wx400) >> 0wxa)
 
-(*#line 623.6 "hppa/hppa.md"*)
+(*#line 656.6 "hppa/hppa.md"*)
    fun low_sign_ext_im5 n = ((n && 0wxf) << 0wx1) || ((n && 0wx10) >> 0wx4)
 
-(*#line 625.6 "hppa/hppa.md"*)
+(*#line 658.6 "hppa/hppa.md"*)
    fun assemble_3 n = let
 
-(*#line 626.10 "hppa/hppa.md"*)
+(*#line 659.10 "hppa/hppa.md"*)
           val w1 = (n && 0wx4) >> 0wx2
 
-(*#line 627.10 "hppa/hppa.md"*)
+(*#line 660.10 "hppa/hppa.md"*)
           val w2 = (n && 0wx3) << 0wx1
        in w1 || w2
        end
 
 
-(*#line 630.6 "hppa/hppa.md"*)
+(*#line 663.6 "hppa/hppa.md"*)
    fun assemble_12 n = let
 
-(*#line 631.10 "hppa/hppa.md"*)
+(*#line 664.10 "hppa/hppa.md"*)
           val w = (n && 0wx800) >> 0wxb
 
-(*#line 632.10 "hppa/hppa.md"*)
+(*#line 665.10 "hppa/hppa.md"*)
           val w1 = ((n && 0wx3ff) << 0wx1) || ((n && 0wx400) >> 0wxa)
        in (w1, w)
        end
 
 
-(*#line 635.6 "hppa/hppa.md"*)
+(*#line 668.6 "hppa/hppa.md"*)
    fun assemble_17 n = let
 
-(*#line 636.10 "hppa/hppa.md"*)
+(*#line 669.10 "hppa/hppa.md"*)
           val w = (n && 0wx10000) >> 0wx10
 
-(*#line 637.10 "hppa/hppa.md"*)
+(*#line 670.10 "hppa/hppa.md"*)
           val w1 = (n && 0wxf800) >> 0wxb
 
-(*#line 638.10 "hppa/hppa.md"*)
+(*#line 671.10 "hppa/hppa.md"*)
           val w2 = ((n && 0wx3ff) << 0wx1) || ((n && 0wx400) >> 0wxa)
        in (w, w1, w2)
        end
 
 
-(*#line 641.6 "hppa/hppa.md"*)
+(*#line 674.6 "hppa/hppa.md"*)
    fun assemble_21 disp = let
 
-(*#line 642.10 "hppa/hppa.md"*)
+(*#line 675.10 "hppa/hppa.md"*)
           val w = (((((disp && 0wx3) << 0wxc) || ((disp && 0wx7c) << 0wxe)) || ((disp && 0wx180) << 0wx7)) || ((disp && 0wxffe00) >> 0wx8)) || ((disp && 0wx100000) >> 0wx14)
        in w
        end
 
 
-(*#line 650.6 "hppa/hppa.md"*)
+(*#line 683.6 "hppa/hppa.md"*)
    fun branchLink (Op, t, lab, ext3, n) = let
 
-(*#line 651.10 "hppa/hppa.md"*)
+(*#line 684.10 "hppa/hppa.md"*)
           val (w, w1, w2) = assemble_17 (disp lab)
        in BranchAndLink {Op=Op, t=t, w1=w1, w2=w2, w=w, ext3=ext3, n=n}
        end
 
 
-(*#line 654.6 "hppa/hppa.md"*)
+(*#line 687.6 "hppa/hppa.md"*)
    fun bcond (cmp, bc, r1, r2, n, t, nop) = let
 
-(*#line 655.10 "hppa/hppa.md"*)
+(*#line 688.10 "hppa/hppa.md"*)
           val (w1, w) = assemble_12 (disp t)
        in ConditionalBranch {Op=emit_cmp cmp, c=bc, r1=r1, r2=r2, n=n, w=w, w1=w1}; 
           Nop {nop=nop}
        end
 
 
-(*#line 658.6 "hppa/hppa.md"*)
+(*#line 691.6 "hppa/hppa.md"*)
    fun bcondi (cmpi, bc, i, r2, n, t, nop) = let
 
-(*#line 659.10 "hppa/hppa.md"*)
+(*#line 692.10 "hppa/hppa.md"*)
           val (w1, w) = assemble_12 (disp t)
        in ConditionalBranchi {Op=emit_cmpi cmpi, c=bc, im5=low_sign_ext_im5 (itow i), r2=r2, n=n, w=w, w1=w1}; 
           Nop {nop=nop}
        end
 
 
-(*#line 663.6 "hppa/hppa.md"*)
+(*#line 696.6 "hppa/hppa.md"*)
    fun branchOnBit (bc, r, p, n, t, nop) = let
 
-(*#line 664.10 "hppa/hppa.md"*)
+(*#line 697.10 "hppa/hppa.md"*)
           val (w1, w) = assemble_12 (disp t)
        in BranchOnBit {p=p, r=r, c=emit_bitcond bc, w1=w1, n=n, w=w}; 
           Nop {nop=nop}
        end
 
 
-(*#line 668.6 "hppa/hppa.md"*)
+(*#line 701.6 "hppa/hppa.md"*)
    fun cmpCond cond = 
        (
         case cond of
@@ -557,7 +563,7 @@ struct
    fun emitInstr (I.LOADI{li, r, i, t, mem}) = Load {Op=emit_loadi li, b=r, im14=low_sign_ext_im14 (opn i), t=t}
      | emitInstr (I.LOAD{l, r1, r2, t, mem}) = let
 
-(*#line 694.18 "hppa/hppa.md"*)
+(*#line 728.18 "hppa/hppa.md"*)
           val (ext4, u, m) = emit_load l
        in IndexedLoad {Op=0wx3, b=r1, x=r2, ext4=ext4, u=u, t=t, m=m}
        end
@@ -570,7 +576,7 @@ struct
         I.ADDIL => LongImmed {Op=0wxa, r=r, im21=assemble_21 (opn i)}
       | _ => let
 
-(*#line 713.26 "hppa/hppa.md"*)
+(*#line 748.26 "hppa/hppa.md"*)
            val (Op, e) = emit_arithi ai
         in Arithi {Op=Op, r=r, t=t, im11=low_sign_ext_im11 (opn i), e=e}
         end
@@ -578,10 +584,18 @@ struct
        )
      | emitInstr (I.COMCLR_LDO{cc, r1, r2, t1, i, b, t2}) = let
 
-(*#line 730.17 "hppa/hppa.md"*)
+(*#line 765.17 "hppa/hppa.md"*)
           val (c, f) = cmpCond cc
-       in Compare {r1=r1, r2=r2, t=t1, c=c, f=f, ext=0wx22}; 
+       in CompareClear {r1=r1, r2=r2, t=t1, c=c, f=f, ext=0wx22}; 
           Load {Op=0wxd, b=b, im14=low_sign_ext_im14 (itow i), t=t2}
+       end
+
+     | emitInstr (I.COMICLR_LDO{cc, i1, r2, t1, i2, b, t2}) = let
+
+(*#line 778.17 "hppa/hppa.md"*)
+          val (c, f) = cmpCond cc
+       in CompareImmClear {r=r2, t=t1, c=c, f=f, im11=opn i1}; 
+          Load {Op=0wxd, b=b, im14=low_sign_ext_im14 (itow i2), t=t2}
        end
 
      | emitInstr (I.SHIFTV{sv, r, len, t}) = 
@@ -604,7 +618,7 @@ struct
      | emitInstr (I.B{lab, n}) = branchLink (0wx3a, 0, lab, 0wx0, n)
      | emitInstr (I.BE{b, d, sr, n, labs}) = let
 
-(*#line 805.18 "hppa/hppa.md"*)
+(*#line 853.18 "hppa/hppa.md"*)
           val (w, w1, w2) = assemble_17 (opn d)
        in BranchExternal {Op=0wx38, b=b, w1=w1, s=assemble_3 (itow sr), w2=w2, n=n, w=w}
        end
@@ -629,7 +643,7 @@ struct
        )
      | emitInstr (I.FSTOREX{fstx, b, x, r, mem}) = let
 
-(*#line 876.18 "hppa/hppa.md"*)
+(*#line 924.18 "hppa/hppa.md"*)
           val (Op, uid, u, m) = emit_fstorex fstx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx1, uid=uid, rt=r}
        end
@@ -642,7 +656,7 @@ struct
        )
      | emitInstr (I.FLOADX{flx, b, x, t, mem}) = let
 
-(*#line 893.18 "hppa/hppa.md"*)
+(*#line 942.18 "hppa/hppa.md"*)
           val (Op, uid, u, m) = emit_floadx flx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx0, uid=uid, rt=t}
        end
@@ -653,7 +667,7 @@ struct
         I.XMPYU => FloatOp3Maj0E {sop=0wx2, f=0wx1, r1=r1, r2=r2, t=t, r11=0wx0, r22=0wx0}
       | _ => let
 
-(*#line 902.25 "hppa/hppa.md"*)
+(*#line 952.25 "hppa/hppa.md"*)
            val (sop, fmt) = emit_farith fa
         in FloatOp3Maj0C {sop=sop, r1=r1, r2=r2, t=t, n=0wx0, fmt=fmt}
         end
@@ -661,14 +675,14 @@ struct
        )
      | emitInstr (I.FUNARY{fu, f, t}) = let
 
-(*#line 909.18 "hppa/hppa.md"*)
+(*#line 960.18 "hppa/hppa.md"*)
           val (sop, fmt) = emit_funary fu
        in FloatOp0Maj0C {r=f, t=t, sop=sop, fmt=fmt}
        end
 
      | emitInstr (I.FCNV{fcnv, f, t}) = let
 
-(*#line 916.18 "hppa/hppa.md"*)
+(*#line 967.18 "hppa/hppa.md"*)
           val (sop, sf, df) = emit_fcnv fcnv
        in FloatOp1Maj0E {r=f, t=t, sop=sop, sf=sf, df=df, r2=0wx1, t2=0wx0}
        end

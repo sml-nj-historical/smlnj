@@ -36,8 +36,11 @@ struct
        fun stripNL "" = ""
          | stripNL s =
        let fun f(0) = ""
-             | f(i) = if String.sub(s,i) = #"\n" then f(i-1)
-                      else String.extract(s,0,SOME(i+1))
+             | f(i) = 
+               case String.sub(s,i) of
+                 #"\n" => f(i-1)
+               | #" "  => f(i-1)
+               | _     => String.extract(s,0,SOME(i+1))
        in  f(size s - 1) end  
    in  stripNL text end
 

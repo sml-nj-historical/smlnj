@@ -17,7 +17,7 @@ sig
    val multiply : {r:C.cell,i:int,d:C.cell} -> I.instruction list 
 
    val divide   : { mode:T.Basis.rounding_mode,
-                    stm :('s,'r,'f,'c) T.stm -> unit
+                    stm :T.stm -> unit
                   } -> {r:C.cell,i:int,d:C.cell} -> I.instruction list
 
 end

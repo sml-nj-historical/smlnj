@@ -59,8 +59,10 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.POP opnd  => I.POP(operand opnd)
      | I.COPY{dst, src, tmp} => 
 	I.COPY{dst=dst, src=map replace src, tmp=tmp}
+     | I.FSTPT opnd => I.FSTPT(operand opnd)
      | I.FSTPL opnd => I.FSTPL(operand opnd)
      | I.FSTPS opnd => I.FSTPS(operand opnd)
+     | I.FLDT opnd => I.FLDT(operand opnd)
      | I.FLDL opnd => I.FLDL(operand opnd)
      | I.FLDS opnd => I.FLDS(operand opnd)
      | I.FENV{fenvOp,opnd} => I.FENV{fenvOp=fenvOp, opnd=operand opnd}
@@ -118,6 +120,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   in
     case instr
     of I.FCOPY{dst, src, tmp, ...} => I.FCOPY{dst=map replace dst, src=src, tmp=tmp}
+     | I.FSTPT opnd => I.FSTPT(foperand opnd)
      | I.FSTPL opnd => I.FSTPL(foperand opnd)
      | I.FSTPS opnd => I.FSTPS(foperand opnd)
      | I.CALL(opnd, (dr,df,dc), uses, mem) => 

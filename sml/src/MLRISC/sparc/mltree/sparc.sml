@@ -13,6 +13,8 @@ functor Sparc
   (structure SparcInstr : SPARCINSTR
    structure SparcMLTree : MLTREE 
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
+   structure ExtensionComp : MLTREE_EXTENSION_COMP
+      where I = SparcInstr and T = SparcMLTree 
       sharing SparcMLTree.Region = SparcInstr.Region
       sharing SparcMLTree.LabelExp = SparcInstr.LabelExp
       sharing PseudoInstrs.I = SparcInstr
@@ -50,14 +52,7 @@ struct
   structure A  = MLRiscAnnotations
 
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type ('s,'r,'f,'c) mltreeStream = 
-     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
-  type ('s,'r,'f,'c) reducer = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.reducer
-  type ('s,'r,'f,'c) extender =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.extender
+  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
   structure Gen = MLTreeGen(structure T = T
                             val intTy = if V9 then 64 else 32
@@ -154,7 +149,6 @@ struct
   fun error msg = MLRiscErrorMsg.error("Sparc",msg)
 
   fun selectInstructions
-       (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp,...})
        (instrStream as
         S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
                  beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
@@ -515,7 +509,7 @@ struct
         | stmt(T.BCC(ctrl,cc,lab),an) = branch(ctrl,cc,lab,an)
         | stmt(T.DEFINE l,_) = defineLabel l
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
-        | stmt(T.EXT s,an) = compileStm (reducer()) {stm=s, an=an}
+        | stmt(T.EXT s,an) = ExtensionComp.compileSext(reducer()) {stm=s, an=an}
         | stmt(s,an) = doStmts(Gen.compileStm s)
 
       and doStmt s = stmt(s,[])
@@ -614,7 +608,7 @@ struct
           | T.MARK(e,A.MARKREG f) => (f d; doExpr(e,d,cc,an))
           | T.MARK(e,a) => doExpr(e,d,cc,a::an)
           | T.PRED(e,c) => doExpr(e,d,cc,A.CTRLUSE c::an)
-          | T.REXT e => compileRexp (reducer()) {e=e, rd=d, an=an}
+          | T.REXT e => ExtensionComp.compileRext (reducer()) {e=e, rd=d, an=an}
           | e => doExpr(Gen.compileRexp e,d,cc,an)
 
          (* generate a comparison with zero *)
@@ -683,7 +677,7 @@ struct
           | T.FMARK(e,A.MARKREG f) => (f d; doFexpr(e,d,an))
           | T.FMARK(e,a) => doFexpr(e,d,a::an)
           | T.FPRED(e,c) => doFexpr(e,d,A.CTRLUSE c::an)
-          | T.FEXT e => compileFexp (reducer()) {e=e, fd=d, an=an}
+          | T.FEXT e => ExtensionComp.compileFext (reducer()) {e=e, fd=d, an=an}
           | e => doFexpr(Gen.compileFexp e,d,an)
 
       and doCCexpr(T.CMP(ty,cond,e1,e2),65,an) =
@@ -695,7 +689,7 @@ struct
         | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
         | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
         | doCCexpr(T.CCEXT e,d,an) =
-             compileCCexp (reducer()) {e=e, cd=d, an=an}
+             ExtensionComp.compileCCext (reducer()) {e=e, ccd=d, an=an}
         | doCCexpr e = error "doCCexpr"
 
       and ccExpr e = let val d = newReg() in doCCexpr(e,d,[]); d end

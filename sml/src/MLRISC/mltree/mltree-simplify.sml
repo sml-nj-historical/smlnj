@@ -1,16 +1,26 @@
 (*
  * Performs simple local optimizations.
  *)
-functor MLTreeSimplifier(T : MLTREE) : MLTREE_SIMPLIFIER =
+functor MLTreeSimplifier
+  (structure T : MLTREE
+   (* Extension *)
+   val sext : T.rewriter -> T.sext -> T.sext
+   val rext : T.rewriter -> T.rext -> T.rext
+   val fext : T.rewriter -> T.fext -> T.fext
+   val ccext : T.rewriter -> T.ccext -> T.ccext
+  ) : MLTREE_SIMPLIFIER =
 struct
 
    structure T  = T
    structure W  = Word32
    structure I  = Int32
    structure LE = T.LabelExp
-   structure R  = MLTreeRewrite(T)
+   structure R  = MLTreeRewrite
+     (structure T = T
+      val sext = sext and rext = rext and fext = fext and ccext = ccext
+     )
 
-   type ('s,'r,'f,'c) simplifier = ('s,'r,'f,'c) R.rewriters
+   type simplifier = T.rewriter
 
    datatype const = CONST of W.word | NONCONST
    datatype cond  = TRUE | FALSE | UNKNOWN
@@ -24,7 +34,7 @@ struct
 
    exception Precison
 
-   fun simplify {addressWidth} ext = 
+   fun simplify {addressWidth} = 
    let 
       (* Get constant value *)
    fun valOf(T.LI i) = CONST(W.fromInt i)
@@ -193,8 +203,20 @@ struct
       fun SHIFT(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
         | SHIFT(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
         | SHIFT(e,f,ty,a,b) = f(e,ty,a,b)
-      fun SX(e,ty,ty',a) = e
-      fun ZX(e,ty,ty',a) = e
+      fun identity_ext(8,T.SIGN_EXTEND,T.LI n) = ~128 <= n andalso n <= 127
+        | identity_ext(16,T.SIGN_EXTEND,T.LI n) = ~32768 <= n andalso n <= 32767
+        | identity_ext(ty,T.SIGN_EXTEND,T.LI n) = ty >= 32
+        | identity_ext(8,T.SIGN_EXTEND,T.LI32 n) = n <= 0w127
+        | identity_ext(16,T.SIGN_EXTEND,T.LI32 n) = n <= 0w32767
+        | identity_ext(ty,T.SIGN_EXTEND,T.LI32 n) = ty >= 32
+        | identity_ext(8,T.ZERO_EXTEND,T.LI n) = 0 <= n andalso n <= 255
+        | identity_ext(16,T.ZERO_EXTEND,T.LI n) = 0 <= n andalso n <= 65535
+        | identity_ext(ty,T.ZERO_EXTEND,T.LI n) = n >= 0 andalso ty >= 32
+        | identity_ext(8,T.ZERO_EXTEND,T.LI32 n) = n <= 0w255
+        | identity_ext(16,T.ZERO_EXTEND,T.LI32 n) = n <= 0w65535
+        | identity_ext(ty,T.ZERO_EXTEND,T.LI32 n) = ty >= 32
+        | identity_ext _ = false
+
    in (* perform algebraic simplification and constant folding *)
       case e of
         T.ADD(ty,a,b)  => ADD(e,add,ty,a,b)
@@ -229,8 +251,9 @@ struct
       | T.SRL(ty,a,b)  => SHIFT(e,srl,ty,a,b)
       | T.SLL(ty,a,b)  => SHIFT(e,sll,ty,a,b)
 
-      | T.CVTI2I(ty,T.SIGN_EXTEND,ty',a) => SX(e,ty,ty',a)
-      | T.CVTI2I(ty,T.ZERO_EXTEND,ty',a) => ZX(e,ty,ty',a)
+      | T.CVTI2I(_,_,_,e as (T.LI 0 | T.LI32 0w0)) => e
+      | cvt as T.CVTI2I(ty,ext,_,e) =>
+           if identity_ext(ty,ext,e) then e else cvt
 
       | T.COND(ty,cc,a,b) => 
           (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => e)
@@ -254,5 +277,5 @@ struct
        )
      | simCC ==> exp = exp
 
-   in R.rewrite ext {rexp=sim,fexp=simF,ccexp=simCC,stm=simStm} end
+   in R.rewrite {rexp=sim,fexp=simF,ccexp=simCC,stm=simStm} end
 end

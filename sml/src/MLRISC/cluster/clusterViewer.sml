@@ -33,10 +33,16 @@ struct
               [L.LABEL("entry"^title(blknum,freq))]
          | node(_,F.EXIT{blknum,freq,...})  = 
               [L.LABEL("exit"^title(blknum,freq))]
-         | node(_,F.BBLOCK{blknum,freq,insns,...}) =
+         | node(_,F.BBLOCK{annotations,blknum,freq,insns,...}) =
               [L.LABEL(title(blknum,freq)^"\n"^
+                 List.foldl(fn (a,l) => 
+                               "/* "^Annotations.toString a^" */\n"^l) ""
+                             (!annotations)^
                  (if !outline then "" else
-                 List.foldl (fn (i,t) => toString i^"\n"^t) "" (!insns)))]
+                 List.foldl (fn (i,t) => 
+                             let val text = toString i
+                             in  if text = "" then t else text^"\n"^t end
+                            ) "" (!insns)))]
          | node (_,_) = [L.LABEL "???"]
    in  GraphViewer.view
          (L.makeLayout{graph=graph, edge=edge, node=node} clusterGraph)

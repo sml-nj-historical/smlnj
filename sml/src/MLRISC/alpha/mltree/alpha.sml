@@ -12,6 +12,8 @@ functor Alpha
    (structure AlphaInstr : ALPHAINSTR
     structure AlphaMLTree : MLTREE 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
+    structure ExtensionComp : MLTREE_EXTENSION_COMP
+       where T = AlphaMLTree and I = AlphaInstr
        sharing AlphaMLTree.Region   = AlphaInstr.Region
        sharing AlphaMLTree.LabelExp = AlphaInstr.LabelExp
        sharing PseudoInstrs.I = AlphaInstr
@@ -140,15 +142,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type ('s,'r,'f,'c) mltreeStream = 
-     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
-  type ('s,'r,'f,'c) reducer = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.reducer
-  type ('s,'r,'f,'c) extender =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.extender
- 
+  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -291,7 +285,6 @@ struct
   datatype commutative = COMMUTE | NOCOMMUTE
 
   fun selectInstructions
-        (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp, ...})
         (instrStream as
          S.STREAM{emit,beginCluster,endCluster,
                   defineLabel,entryLabel,pseudoOp,annotation,
@@ -1020,7 +1013,7 @@ struct
           | T.CVTI2I(64, T.ZERO_EXTEND, 32, e) => doExpr(e, d, an)
 
           | T.PRED(e, c) => doExpr(e, d, A.CTRLUSE c::an)
-          | T.REXT e => compileRexp (reducer()) {e=e, an=an, rd=d}
+          | T.REXT e => ExtensionComp.compileRext (reducer()) {e=e, an=an, rd=d}
     
            (* Defaults *) 
           | e => doExpr(Gen.compileRexp e,d,an)
@@ -1124,7 +1117,7 @@ struct
           | T.FMARK(e,A.MARKREG f) => (f d; doFexpr(e,d,an))
           | T.FMARK(e,a) => doFexpr(e,d,a::an)
           | T.FPRED(e,c) => doFexpr(e, d, A.CTRLUSE c::an)
-          | T.FEXT e => compileFexp (reducer()) {e=e, fd=d, an=an}
+          | T.FEXT e => ExtensionComp.compileFext (reducer()) {e=e, fd=d, an=an}
           | _ => error "doFexpr"
 
           (* check whether an expression is andb(e,1) *)
@@ -1381,7 +1374,8 @@ struct
         | doCCexpr(T.FCMP(fty,cond,e1,e2),d,an) = error "doCCexpr"
         | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
         | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
-        | doCCexpr(T.CCEXT e,d,an) = compileCCexp (reducer()) {e=e, cd=d, an=an}
+        | doCCexpr(T.CCEXT e,d,an) = 
+             ExtensionComp.compileCCext (reducer()) {e=e, ccd=d, an=an}
         | doCCexpr _ = error "doCCexpr"
 
       and ccExpr(T.CC(_,r)) = r
@@ -1410,7 +1404,7 @@ struct
           | T.FSTORE(64,ea,data,mem) => fstore(I.STT,ea,data,mem,an)
           | T.DEFINE l => defineLabel l
           | T.ANNOTATION(s,a) => stmt(s,a::an)
-          | T.EXT s => compileStm (reducer()) {stm=s,an=an}
+          | T.EXT s => ExtensionComp.compileSext (reducer()) {stm=s,an=an}
           | s => doStmts (Gen.compileStm s)
 
       and reducer() =

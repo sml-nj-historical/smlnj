@@ -177,6 +177,9 @@ struct
       | I.COMCLR_LDO{r1, r2, b, t1, t2, ...}=> 
           if t1 = t2 then ([t1], [b, r1, r2])
           else ([t1, t2], [b, r1, r2, t2])
+      | I.COMICLR_LDO{i1, r2, b, t1, t2, ...}=> 
+          if t1 = t2 then ([t1], [b, r2])
+          else ([t1, t2], [b, r2, t2])
       | I.SHIFTV {r, t, ...}        => ([t], [r])
       | I.SHIFT {r, t, ...}         => ([t], [r])
       | I.BCOND {r1, r2, ...}       => ([],  [r1,r2])

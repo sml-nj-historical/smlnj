@@ -313,8 +313,10 @@ struct
 		    | f([], acc) = acc
 	        in f(shuffle (dst, src, tmp), acc)
 		end
+	      | I.FSTPT opnd => done(opnd, I.FSTPT, an)
 	      | I.FSTPL opnd => done(opnd, I.FSTPL, an)
 	      | I.FSTPS opnd => done(opnd, I.FSTPS, an)
+	      | I.FLDT opnd => done(opnd, I.FLDT, an)
 	      | I.FLDL opnd => done(opnd, I.FLDL, an)
 	      | I.FLDS opnd => done(opnd, I.FLDS, an)
 	      | I.FILD opnd => done(opnd, I.FILD, an)

@@ -23,6 +23,7 @@ struct
     | minSize(I.BLR{labs,...}) = 8 + 8 * length labs (* FCMP/FTEST/B *)
     | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize(I.COMCLR_LDO _) = 8
+    | minSize(I.COMICLR_LDO _) = 8
     | minSize _            = 4
   
   fun maxSize (I.BCOND _)  = 20
@@ -50,6 +51,7 @@ struct
      | I.STORE{d, ...}		=> opnd d
      | I.ARITHI{i, ...}		=> opnd i
      | I.LOADI{i, ...}          => opnd i
+     | I.COMICLR_LDO{i1, ...}   => opnd i1
      | I.FCOPY _		=> true
      | I.COPY _			=> true
      | I.ANNOTATION{i,...}	=> isSdi i
@@ -76,6 +78,8 @@ struct
      of I.LDO{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
       | I.LOADI{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
       | I.STORE{d=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
+      | I.COMICLR_LDO{i1=I.LabExp(lexp,_), ...} =>
+          if im11(LE.valueOf lexp) then 8 else 16
       | I.ARITHI{ai, i=I.LabExp(lexp,_), ...} => let
 	  fun arithImmed() = if im11(LE.valueOf lexp) then 4 else 12
 	in
@@ -146,12 +150,23 @@ struct
     | loadIndexed I.LDH = I.LDHX
     | loadIndexed I.LDB = I.LDBX
 
-  fun expand(I.LDO{i=I.LabExp lexp, t, b}, size, _) = 
+  fun expand(instr as I.LDO{i=I.LabExp lexp, t, b}, size, _) = 
       (case size 
-        of 4 => [I.LDO{i=I.LabExp lexp, b=b, t=t}]
+        of 4 => [instr]
          | 12 => [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
 	          I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
 		  I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=b, t=t}]
+      (*esac*))
+    | expand(instr as I.COMICLR_LDO{cc, i1=I.LabExp lexp, r2, t1, b, i2, t2},
+             size, _) =
+       (case size 
+        of 8 => [instr]
+         | 16 => 
+            [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
+	     I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
+             I.COMCLR_LDO{cc=cc, r1=C.asmTmpR, r2=r2, t1=t1, 
+                          b=b, i=i2, t2=t2} 
+            ]
       (*esac*))
     | expand(instr as I.STORE{st, d as I.LabExp lexp, b, r, mem}, size, _) = 
       (case size 

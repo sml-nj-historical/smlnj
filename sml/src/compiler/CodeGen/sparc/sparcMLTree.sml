@@ -43,8 +43,9 @@ structure SparcMCEmitter =
 
 structure SparcMLTree = 
   MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure R=CPSRegions
-	  structure S=SparcStream
+	  structure Region=CPSRegions
+	  structure Stream=SparcStream
+	  structure Extension=SMLNJMLTreeExt
          )
 
 

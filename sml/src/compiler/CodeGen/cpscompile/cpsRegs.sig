@@ -8,31 +8,28 @@
 
 signature CPSREGS = sig
   structure T : MLTREE
-  type rexp = (unit, unit, unit, unit) T.rexp
-  type fexp = (unit, unit, unit, unit) T.fexp
-  type ccexp = (unit, unit, unit, unit) T.ccexp
 
-  val allocptr 	: rexp	(* must be a regisiter, - T.REG(r) *)
-  val limitptr 	: rexp
-  val stdlink	: rexp
-  val stdclos	: rexp
-  val stdarg 	: rexp 
-  val stdcont 	: rexp 
-  val exnptr 	: rexp 
-  val varptr  	: rexp 
-  val baseptr	: rexp
-  val storeptr 	: rexp 
-  val stackptr 	: rexp 
-  val gcLink	: rexp 
+  val allocptr 	: T.rexp	(* must be a register, - T.REG(r) *)
+  val limitptr 	: T.rexp
+  val stdlink	: T.rexp
+  val stdclos	: T.rexp
+  val stdarg 	: T.rexp 
+  val stdcont 	: T.rexp 
+  val exnptr 	: T.rexp 
+  val varptr  	: T.rexp 
+  val baseptr	: T.rexp
+  val storeptr 	: T.rexp 
+  val stackptr 	: T.rexp 
+  val gcLink	: T.rexp 
   
-  val calleesave: rexp Array.array
-  val exhausted : ccexp option
+  val calleesave: T.rexp Array.array
+  val exhausted : T.ccexp option
   val signedGCTest : bool
   val addressWidth : int
 
-  val miscregs  : rexp list
-  val floatregs : fexp list
-  val savedfpregs : fexp list
+  val miscregs  : T.rexp list
+  val floatregs : T.fexp list
+  val savedfpregs : T.fexp list
 
   val dedicatedR : int list
   val availR     : int list

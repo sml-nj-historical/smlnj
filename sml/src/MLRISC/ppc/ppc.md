@@ -66,8 +66,8 @@ struct
       datatype spr! = XER | LR | CTR
     
       datatype operand = 
-          RegOp of $GP			``<GP>''	(emit_GP GP)
-        | ImmedOp of int			``<int>''	(itow int)
+          RegOp of $GP			``<GP>'' (emit_GP GP) rtl: $r[GP]
+        | ImmedOp of int		``<int>'' (itow int)  rtl: immed int
         | LabelOp of LabelExp.labexp	``<emit_labexp labexp>''
    					(itow(LabelExp.valueOf labexp))
 

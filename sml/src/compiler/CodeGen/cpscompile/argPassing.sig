@@ -6,8 +6,7 @@
  *)
 signature ARG_PASSING = sig
   structure T : MLTREE
-  val standard : CPS.cty * CPS.cty list -> 
-                      (unit, unit, unit, unit) T.mlrisc list  
+  val standard : CPS.cty * CPS.cty list -> T.mlrisc list  
   (*val known : CPS.cty list -> T.mlrisc list*)
-  val fixed : CPS.cty list -> (unit, unit, unit, unit) T.mlrisc list
+  val fixed : CPS.cty list -> T.mlrisc list
 end

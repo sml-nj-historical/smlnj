@@ -2,6 +2,31 @@
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *)
+
+(*
+ * This signature describes how MLTree extensions are compiled.
+ *)
+signature MLTREE_EXTENSION_COMP =
+sig
+   structure T : MLTREE
+   structure I : INSTRUCTIONS
+   structure C : CELLS
+      sharing T.LabelExp = I.LabelExp
+      sharing I.C = C
+
+   (* 
+    * The reducer is given to the client during the compilation of
+    * the user extensions.
+    *)
+   type reducer = 
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode) T.reducer
+
+   val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
+   val compileRext : reducer -> {e:T.ty * T.rext, rd:C.cell, an:T.an list} -> unit
+   val compileFext : reducer -> {e:T.ty * T.fext, fd:C.cell, an:T.an list} -> unit
+   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:C.cell, an:T.an list} -> unit
+end
+
 signature MLTREECOMP = 
 sig
    structure T : MLTREE 
@@ -13,14 +38,7 @@ sig
       sharing I.C = C
 
    type instrStream = (I.instruction,C.regmap,C.cellset) T.stream  
-   type ('s,'r,'f,'c) mltreeStream = 
-        (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream 
-   type ('s,'r,'f,'c) reducer = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.reducer
-   type ('s,'r,'f,'c) extender = 
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
-       T.extender
+   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream 
 
     (* 
      * The instruction selection phase converts an instruction stream
@@ -31,6 +49,5 @@ sig
      * Fo equivalent functionality, you can use the emit method 
      * of the instruction stream instead.
      *)
-   val selectInstructions : 
-        ('s,'r,'f,'c) extender -> instrStream -> ('s,'r,'f,'c) mltreeStream
+   val selectInstructions : instrStream -> mltreeStream
 end

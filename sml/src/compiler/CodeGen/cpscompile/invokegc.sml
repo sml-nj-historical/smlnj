@@ -28,18 +28,13 @@ struct
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
-   type mlrisc = (unit, unit, unit, unit) T.mlrisc
-   type stm    = (unit, unit, unit, unit) T.stm
-   type rexp   = (unit, unit, unit, unit) T.rexp
-   type fexp   = (unit, unit, unit, unit) T.fexp
-
    type t = { maxAlloc : int,
-              regfmls  : mlrisc list,
+              regfmls  : T.mlrisc list,
               regtys   : CPS.cty list,
-              return   : stm
+              return   : T.stm
             }
 
-   type stream = (stm,Cells.regmap,mlrisc list) T.stream
+   type stream = (T.stm,Cells.regmap,T.mlrisc list) T.stream
 
    val debug = Control.MLRISC.getFlag "debug-gc";
 
@@ -62,11 +57,11 @@ struct
         {known     : bool,            (* known function ? *)
          optimized : bool,            (* optimized? *)
          lab       : Label.label ref, (* labels to invoke GC *)
-         boxed     : rexp list,       (* locations with boxed objects *)
-         int32     : rexp list,       (* locations with int32 objects *)
-         float     : fexp list,       (* locations with float objects *)
-         regfmls   : mlrisc list,     (* all live registers *)
-         ret       : stm}             (* how to return *)
+         boxed     : T.rexp list,     (* locations with boxed objects *)
+         int32     : T.rexp list,     (* locations with int32 objects *)
+         float     : T.fexp list,     (* locations with float objects *)
+         regfmls   : T.mlrisc list,   (* all live registers *)
+         ret       : T.stm}           (* how to return *)
     | MODULE of
         {info: gcInfo,
          addrs: Label.label list ref} (* addrs associated with long jump *)
@@ -104,7 +99,7 @@ struct
    local val use = map T.GPR gcParamRegs 
          val def = case C.exhausted of NONE => use 
                                      | SOME cc => T.CCR cc::use
-   in  val gcCall : stm = 
+   in  val gcCall =
           T.ANNOTATION(
           T.CALL(
             T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
@@ -303,7 +298,7 @@ struct
        datatype binding =
          Reg     of Cells.cell               (* integer register *)
        | Freg    of Cells.cell               (* floating point register*)
-       | Mem     of rexp * R.region          (* integer memory register *)
+       | Mem     of T.rexp * R.region        (* integer memory register *)
        | Record  of {boxed: bool,            (* is it a boxed record *)
                      words:int,              (* how many words *)
                      reg: Cells.cell,        (* address of this record *)

@@ -31,15 +31,13 @@ in
 functor X86
   (structure X86Instr : X86INSTR
    structure X86MLTree : MLTREE
-  (* structure PseudoInstrs : X86_PSEUDO_INSTR *)
+   structure ExtensionComp : MLTREE_EXTENSION_COMP
+     where I = X86Instr and T = X86MLTree
      sharing X86MLTree.Region = X86Instr.Region
      sharing X86MLTree.LabelExp = X86Instr.LabelExp
-     (* sharing PseudoInstrs.I = X86Instr
-     sharing PseudoInstrs.T = X86MLTree *)
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val tempMem : X86Instr.operand (* temporary for CVTI2F *)
-    (* val memRegsUsed : word ref *)    (* bit mask of memRegs used *)
   ) : sig include MLTREECOMP 
           val rewriteMemReg : bool
       end = 
@@ -54,14 +52,7 @@ struct
   structure A = MLRiscAnnotations
 
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-  type ('s,'r,'f,'c) mltreeStream = 
-     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
-  type ('s,'r,'f,'c) reducer =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.reducer
-  type ('s,'r,'f,'c) extender =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.extender
+  type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
  
   structure Gen = MLTreeGen
      (structure T = T
@@ -79,11 +70,13 @@ struct
   val rewriteMemReg = rewriteMemReg
   fun isMemReg r = rewriteMemReg andalso r >= 8 andalso r < 32
 
+  val ST0 = C.ST 0
+  val ST7 = C.ST 7
+
   (* 
    * The code generator 
    *)
   fun selectInstructions 
-       (T.EXTENDER{compileStm,compileRexp,compileFexp,compileCCexp,...})
        (instrStream as
         S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
                  beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
@@ -368,6 +361,7 @@ struct
           | I.Indexed _  => true 
           | I.MemReg _   => true 
           | I.LabelEA _  => true 
+          | I.FDirect f  => true
           | _            => false
           )
       
@@ -741,7 +735,8 @@ struct
              | T.MARK(e, A.MARKREG f) => (f rd; doExpr(e, rd, an))
              | T.MARK(e, a) => doExpr(e, rd, a::an)
              | T.PRED(e,c) => doExpr(e, rd, A.CTRLUSE c::an)
-             | T.REXT e => compileRexp (reducer()) {e=e, rd=rd, an=an} 
+             | T.REXT e => 
+                 ExtensionComp.compileRext (reducer()) {e=e, rd=rd, an=an} 
                (* simplify and try again *)
              | exp => unknownExp exp
           end (* doExpr *)
@@ -802,7 +797,7 @@ struct
         | doCCexpr(T.CCMARK(e,A.MARKREG f),rd,an) = (f rd; doCCexpr(e,rd,an))
         | doCCexpr(T.CCMARK(e,a), rd, an) = doCCexpr(e,rd,a::an)
         | doCCexpr(T.CCEXT e, cd, an) = 
-           compileCCexp (reducer()) {e=e, cd=cd, an=an} 
+           ExtensionComp.compileCCext (reducer()) {e=e, ccd=cd, an=an} 
         | doCCexpr _ = error "doCCexpr"
 
      and ccExpr e = error "ccExpr"
@@ -943,10 +938,12 @@ struct
 
       and fld(32, opnd) = I.FLDS opnd
         | fld(64, opnd) = I.FLDL opnd
+        | fld(80, opnd) = I.FLDT opnd
         | fld _         = error "fld"
 
       and fstp(32, opnd) = I.FSTPS opnd
         | fstp(64, opnd) = I.FSTPL opnd
+        | fstp(80, opnd) = I.FSTPT opnd
         | fstp _         = error "fstp"
 
           (* generate code for floating point stores *)
@@ -980,8 +977,8 @@ struct
            * and put result in %ST(0).
            *)
       and reduceFexp(fty, fexp, an)  = 
-          let val ST = I.FDirect(C.ST 0)
-              val ST1 = I.FDirect(C.ST 1)
+          let val ST = I.ST(C.ST 0)
+              val ST1 = I.ST(C.ST 1)
 
               datatype su_numbers = 
                 LEAF of int 
@@ -1019,12 +1016,15 @@ struct
                 | suNumbering(T.FABS(_,t), _) = suUnary(t)
                 | suNumbering(T.FNEG(_,t), _) = suUnary(t)
                 | suNumbering(T.CVTI2F _, _) = UNARY(1, LEAF 0)
+                | suNumbering(T.CVTF2F(_,_,T.FLOAD _), _) = UNARY(1, LEAF 0)
                 | suNumbering(T.CVTF2F(_,_,t), _) = suUnary t
                 | suNumbering(T.FMARK(e,a),x) = suNumbering(e,x)
                 | suNumbering _ = error "suNumbering"
           
               fun leafEA(T.FREG(fty, f)) = (fty, I.FDirect f)
                 | leafEA(T.FLOAD(fty, ea, mem)) = (fty, address(ea, mem))
+                | leafEA(T.CVTF2F(_, _, T.FLOAD(fty, ea, mem))) = 
+                      (fty, address(ea, mem))
                 | leafEA _ = error "leafEA"
           
               fun cvti2d(t,an) =   
@@ -1048,19 +1048,29 @@ struct
                       fun sameEA(T.FREG(t1, f1), T.FREG(t2, f2)) = 
                             t1 = t2 andalso f1 = f2 
                         | sameEA _ = false
-                      fun doit(oper, t1, t2) = 
-                         (gencode(t1, su1, []); 
-                          mark(I.FBINARY{binOp=oper, 
-                                         src=if sameEA(t1, t2) then ST
-                                             else #2(leafEA t2), 
-                                         dst=ST}, an)
-                         )
+
+                      fun doit(oper32, oper64, t1, t2) = 
+                      let val _ = gencode(t1, su1, [])
+                          val (fty, src) = leafEA t2
+                      in  if sameEA(t1, t2) then 
+                             mark(I.FBINARY{binOp=oper64, src=ST, dst=ST}, an)
+                          else
+                             let val oper = 
+                                     if isMemOpnd src then
+                                         case fty of
+                                           32 => oper32
+                                         | 64 => oper64
+                                         | _  => error "gencode: binary"  
+                                     else oper64
+                             in mark(I.FBINARY{binOp=oper, src=src, dst=ST}, an)
+                             end
+                      end 
                   in
                     case t of 
-                       T.FADD(_, t1, t2) => doit(I.FADD, t1, t2)
-                     | T.FMUL(_, t1, t2) => doit(I.FMUL, t1, t2)
-                     | T.FSUB(_, t1, t2) => doit(I.FSUB, t1, t2)
-                     | T.FDIV(_, t1, t2) => doit(I.FDIV, t1, t2)
+                       T.FADD(_, t1, t2) => doit(I.FADDS,I.FADDL,t1,t2)
+                     | T.FMUL(_, t1, t2) => doit(I.FMULS,I.FMULL,t1,t2)
+                     | T.FSUB(_, t1, t2) => doit(I.FSUBS,I.FSUBL,t1,t2)
+                     | T.FDIV(_, t1, t2) => doit(I.FDIVS,I.FDIVL,t1,t2)
                      | _ => error "gencode.BINARY"
                   end
                 | gencode(fexp, BINARY(fty, su1, su2), an) = 
@@ -1090,10 +1100,10 @@ struct
                     end
                   in
                     case fexp
-                    of T.FADD(_, t1, t2) => doit(t1, t2,I.FADD,I.FADDP,I.FADDP)
-                     | T.FMUL(_, t1, t2) => doit(t1, t2,I.FMUL,I.FMULP,I.FMULP)
-                     | T.FSUB(_, t1, t2) => doit(t1, t2,I.FSUB,I.FSUBP,I.FSUBRP)
-                     | T.FDIV(_, t1, t2) => doit(t1, t2,I.FDIV,I.FDIVP,I.FDIVRP)
+                    of T.FADD(_, t1, t2) => doit(t1,t2,I.FADDL,I.FADDP,I.FADDP)
+                     | T.FMUL(_, t1, t2) => doit(t1,t2,I.FMULL,I.FMULP,I.FMULP)
+                     | T.FSUB(_, t1, t2) => doit(t1,t2,I.FSUBL,I.FSUBP,I.FSUBRP)
+                     | T.FDIV(_, t1, t2) => doit(t1,t2,I.FDIVL,I.FDIVP,I.FDIVRP)
                      | _ => error "gencode.BINARY"
                   end
                 | gencode(fexp, UNARY(_, LEAF 0), an) = 
@@ -1138,6 +1148,8 @@ struct
         | stmt(T.BCC(ctrl, cc, lab), an) = branch(cc, lab, an)
         | stmt(T.DEFINE l, _) = defineLabel l
         | stmt(T.ANNOTATION(s, a), an) = stmt(s, a::an)
+        | stmt(T.EXT s, an) =
+             ExtensionComp.compileSext (reducer()) {stm=s, an=an} 
         | stmt(s, _) = doStmts(Gen.compileStm s)
 
       and doStmt s = stmt(s, [])

@@ -8,12 +8,17 @@ structure PPCCG =
     structure CpsRegs    = PPCCpsRegs
     structure InsnProps  = PPCProps
     structure Asm        = PPCAsmEmitter
+    structure Shuffle    = PPCShuffle
 
     structure MLTreeComp=
        PPC(structure PPCInstr = PPCInstr
            structure PPCMLTree = PPCMLTree
            structure PseudoInstrs=
                PPCPseudoInstr(structure Instr=PPCInstr)
+           structure ExtensionComp = SMLNJMLTreeExtComp
+               (structure I = PPCInstr
+                structure T = PPCMLTree
+               )
            val bit64mode=false
            val multCost=ref 6 (* an estimate *)
          )

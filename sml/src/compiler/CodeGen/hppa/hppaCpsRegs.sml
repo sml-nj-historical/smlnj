@@ -9,10 +9,6 @@ struct
   structure T = HppaMLTree
   structure SL = SortedList
 
-  type rexp = (unit, unit, unit, unit) T.rexp
-  type fexp = (unit, unit, unit, unit) T.fexp
-  type ccexp = (unit, unit, unit, unit) T.ccexp
-
   (* HPPA register conventions 
      0     zero
      1	   caller-saves
@@ -32,8 +28,8 @@ struct
 
   val GP = HppaCells.GPReg
   val FP = HppaCells.FPReg
-  fun REG r = T.REG(32, GP r) : rexp
-  fun FREG f = T.FREG(64, FP f) : fexp
+  fun REG r = T.REG(32, GP r) 
+  fun FREG f = T.FREG(64, FP f)
 
   val stdarg	= REG(11)
   val stdcont	= REG(12)
@@ -49,12 +45,12 @@ struct
   val exnptr	= REG(6)
 
   val returnPtr	= GP 31
-  val gcLink	= T.REG(32,returnPtr) : rexp
+  val gcLink	= T.REG(32,returnPtr) 
   val stackptr	= REG(GP 30) 
 
   val miscregs =
     map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
-  val calleesave = Array.fromList miscregs : rexp Array.array
+  val calleesave = Array.fromList miscregs 
 
   (* Note: We need at least one register for shuffling purposes. *)
   fun fromto(n, m) = if n>m then [] else n :: fromto(n+1, m)

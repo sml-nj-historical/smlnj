@@ -53,10 +53,6 @@ struct
 
   structure MkRecord = MkRecord(C)
 
-  type rexp = (unit, unit, unit, unit) M.rexp
-  type fexp = (unit, unit, unit, unit) M.fexp
-  type mlrisc = (unit, unit, unit, unit) M.mlrisc
-
   (*
    * GC Safety 
    *)
@@ -94,7 +90,7 @@ struct
   (*
    * Dedicated registers.
    *)
-  val dedicated' : mlrisc list = 
+  val dedicated' =
     map (fn r => M.GPR(M.REG(ity,r))) C.dedicatedR @ 
     map (fn f => M.FPR(M.FREG(fty,f))) C.dedicatedF
 
@@ -128,11 +124,6 @@ struct
    *)
   val EMPTY_BLOCK = #create MLRiscAnnotations.EMPTY_BLOCK ()
   
-  fun dummy _ = error "no extension"
-
-  val extender = 
-      M.EXTENDER{compileStm=dummy,compileRexp=dummy,compileFexp=dummy,
-                 compileCCexp=dummy}
   (*
    * The codegen function.
    *)
@@ -149,7 +140,7 @@ struct
             annotation,    (* add an annotation *)
             ... } = 
             MLTreeComp.selectInstructions
-               extender (Flowgen.newStream{compile=compile, flowgraph=NONE})
+                (Flowgen.newStream{compile=compile, flowgraph=NONE})
       val maxAlloc = #1 o limits
       val instructionCount = #2 o limits
       val splitEntry = !splitEntry
@@ -268,8 +259,8 @@ struct
           (* 
            * {fp,gp}RegTbl -- mapping of lvars to registers  
            *)
-          val fpRegTbl : fexp Intmap.intmap = Intmap.new(2, RegMap)
-          val gpRegTbl : rexp Intmap.intmap = Intmap.new(32, RegMap)
+          val fpRegTbl : M.fexp Intmap.intmap = Intmap.new(2, RegMap)
+          val gpRegTbl : M.rexp Intmap.intmap = Intmap.new(32, RegMap)
           fun clearTables() =(Intmap.clear fpRegTbl; Intmap.clear gpRegTbl)
           val addExpBinding = Intmap.add gpRegTbl
           fun addRegBinding(x,r) = addExpBinding(x,M.REG(ity,r))

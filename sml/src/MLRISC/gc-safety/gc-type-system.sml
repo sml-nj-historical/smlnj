@@ -50,7 +50,7 @@ struct
          | T(T.COND(t,a,b,c)) = GC.TOP
          | T(T.PRED(e, _))    = T e
          | T(T.REXT(t,RTL.OP(misc_op,es))) = GC.INT
-         | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e))))) = GC.TOP
+         | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e,_))))) = GC.TOP
          | T(e) = error("typeOf: "^ #rexp (RTL.showRTL ([],[])) e)
  
        and binaryArith(t,a,b) = 
@@ -88,9 +88,10 @@ struct
          | E(T.EXT(RTL.ASSIGN(loc,exp)),e) = 
             let val t = typeOf lookup exp
             in  case loc of
-                  RTL.AGG(_,_,RTL.CELL("FP",_,T.REG(_,x))) => 
+                  RTL.AGG(_,_,RTL.CELL("FP",_,T.REG(_,x),_)) => 
                       update(x, GC.REAL64, e)
-                | RTL.AGG(_,_,RTL.CELL(_,_,T.REG(_,x))) => update(x, GC.TOP, e)
+                | RTL.AGG(_,_,RTL.CELL(_,_,T.REG(_,x),_)) => 
+                      update(x, GC.TOP, e)
                 | RTL.AGG(_,_,_) => e
             end
          | E(T.EXT(RTL.PAR(a,b)), e) = E(b,E(a,e))

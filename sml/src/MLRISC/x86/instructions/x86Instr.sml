@@ -18,6 +18,7 @@ sig
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | ST of int
    | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
    | Indexed of {base:int option, index:int, scale:int, disp:operand, mem:Region.region
@@ -89,23 +90,35 @@ sig
    | MOVZBL
    datatype fbinOp =
      FADDP
-   | FADD
-   | FIADD
+   | FADDS
+   | FIADDS
    | FMULP
-   | FMUL
-   | FIMUL
+   | FMULS
+   | FIMULS
    | FSUBP
-   | FSUB
-   | FISUB
+   | FSUBS
+   | FISUBS
    | FSUBRP
-   | FSUBR
-   | FISUBR
+   | FSUBRS
+   | FISUBRS
    | FDIVP
-   | FDIV
-   | FIDIV
+   | FDIVS
+   | FIDIVS
    | FDIVRP
-   | FDIVR
-   | FIDIVR
+   | FDIVRS
+   | FIDIVRS
+   | FADDL
+   | FIADDL
+   | FMULL
+   | FIMULL
+   | FSUBL
+   | FISUBL
+   | FSUBRL
+   | FISUBRL
+   | FDIVL
+   | FIDIVL
+   | FDIVRL
+   | FIDIVRL
    datatype funOp =
      FABS
    | FCHS
@@ -161,8 +174,10 @@ sig
    | FXCH of {opnd:int}
    | FSTPL of operand
    | FSTPS of operand
+   | FSTPT of operand
    | FLDL of operand
    | FLDS of operand
+   | FLDT of operand
    | FILD of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}
@@ -185,6 +200,7 @@ struct
    | LabelEA of LabelExp.labexp
    | Direct of int
    | FDirect of int
+   | ST of int
    | MemReg of int
    | Displace of {base:int, disp:operand, mem:Region.region}
    | Indexed of {base:int option, index:int, scale:int, disp:operand, mem:Region.region
@@ -256,23 +272,35 @@ struct
    | MOVZBL
    datatype fbinOp =
      FADDP
-   | FADD
-   | FIADD
+   | FADDS
+   | FIADDS
    | FMULP
-   | FMUL
-   | FIMUL
+   | FMULS
+   | FIMULS
    | FSUBP
-   | FSUB
-   | FISUB
+   | FSUBS
+   | FISUBS
    | FSUBRP
-   | FSUBR
-   | FISUBR
+   | FSUBRS
+   | FISUBRS
    | FDIVP
-   | FDIV
-   | FIDIV
+   | FDIVS
+   | FIDIVS
    | FDIVRP
-   | FDIVR
-   | FIDIVR
+   | FDIVRS
+   | FIDIVRS
+   | FADDL
+   | FIADDL
+   | FMULL
+   | FIMULL
+   | FSUBL
+   | FISUBL
+   | FSUBRL
+   | FISUBRL
+   | FDIVL
+   | FIDIVL
+   | FDIVRL
+   | FIDIVRL
    datatype funOp =
      FABS
    | FCHS
@@ -328,8 +356,10 @@ struct
    | FXCH of {opnd:int}
    | FSTPL of operand
    | FSTPS of operand
+   | FSTPT of operand
    | FLDL of operand
    | FLDS of operand
+   | FLDT of operand
    | FILD of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}

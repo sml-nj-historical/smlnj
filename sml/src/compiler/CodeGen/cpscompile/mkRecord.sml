@@ -21,11 +21,6 @@ struct
   val ity = 32
   val fty = 64
 
-  type rexp   = (unit, unit, unit, unit) T.rexp
-  type fexp   = (unit, unit, unit, unit) T.fexp
-  type stm    = (unit, unit, unit, unit) T.stm
-  type mlrisc = (unit, unit, unit, unit) T.mlrisc
-
   val T.REG(_, allocptrR) = C.allocptr
 
   fun ea(r, 0) = r

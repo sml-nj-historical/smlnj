@@ -97,24 +97,27 @@ struct
       rtl LDIL{i,t}  = $r[t] := %i << 11
       rtl MTCTL{r,t} = $cr[t] := $r[r]
 
-      rtl LDW{r,i,t}       = $r[t] := $m[disp(r,i)]
-      rtl LDH{r,i,t}       = $r[t] := zx(half $m[disp(r,i)])
-      rtl LDB{r,i,t}       = $r[t] := zx(byte $m[disp(r,i)])
-      rtl LDWX{r1,r2,t}    = $r[t] := $m[indexed(r1,r2)]
-      rtl LDWX_S{r1,r2,t}  = $r[t] := $m[scaled(r1,r2,2)]
-      rtl LDWX_M{r1,r2,t}  = $r[t] := $m[indexed(r1,r2)] || autoinc(r1,1)
-      rtl LDWX_SM{r1,r2,t} = $r[t] := $m[scaled(r1,r2,2)] || autoinc(r1,4)
-      rtl LDHX{r1,r2,t}    = $r[t] := zx(half $m[indexed(r1,r2)])
-      rtl LDHX_S{r1,r2,t}  = $r[t] := zx(half $m[scaled(r1,r2,1)])
-      rtl LDHX_M{r1,r2,t}  = $r[t] := zx(half $m[indexed(r1,r2)]) || autoinc(r1,1)
-      rtl LDHX_SM{r1,r2,t} = $r[t] := zx(half $m[scaled(r1,r2,1)]) || autoinc(r1,2)
-      rtl LDBX{r1,r2,t}    = $r[t] := zx(byte $m[indexed(r1,r2)])
-      rtl LDBX_M{r1,r2,t}  = $r[t] := zx(byte $m[indexed(r1,r2)]) || autoinc(r1,1)
+      rtl LDW{r,i,t,mem}       = $r[t] := $m[disp(r,i) : mem]
+      rtl LDH{r,i,t,mem}       = $r[t] := zx(half $m[disp(r,i):mem])
+      rtl LDB{r,i,t,mem}       = $r[t] := zx(byte $m[disp(r,i):mem])
+      rtl LDWX{r1,r2,t,mem}    = $r[t] := $m[indexed(r1,r2):mem]
+      rtl LDWX_S{r1,r2,t,mem}  = $r[t] := $m[scaled(r1,r2,2):mem]
+      rtl LDWX_M{r1,r2,t,mem}  = $r[t] := $m[indexed(r1,r2):mem] || autoinc(r1,1)
+      rtl LDWX_SM{r1,r2,t,mem} = $r[t] := $m[scaled(r1,r2,2):mem] || autoinc(r1,4)
+      rtl LDHX{r1,r2,t,mem}    = $r[t] := zx(half $m[indexed(r1,r2):mem])
+      rtl LDHX_S{r1,r2,t,mem}  = $r[t] := zx(half $m[scaled(r1,r2,1):mem])
+      rtl LDHX_M{r1,r2,t,mem}  = $r[t] := zx(half $m[indexed(r1,r2):mem]) || 
+                                 autoinc(r1,1)
+      rtl LDHX_SM{r1,r2,t,mem} = $r[t] := zx(half $m[scaled(r1,r2,1):mem]) || 
+                                 autoinc(r1,2)
+      rtl LDBX{r1,r2,t,mem}    = $r[t] := zx(byte $m[indexed(r1,r2):mem])
+      rtl LDBX_M{r1,r2,t,mem}  = $r[t] := zx(byte $m[indexed(r1,r2):mem]) || 
+                                 autoinc(r1,1)
 
       (* Integer stores *) 
-      rtl STW{b,d,r} = $m[disp(b,d)] := $r[r]
-      rtl STH{b,d,r} = $m[disp(b,d)] := half(zx $r[r])
-      rtl STB{b,d,r} = $m[disp(b,d)] := byte(zx $r[r])
+      rtl STW{b,d,r,mem} = $m[disp(b,d):mem] := $r[r]
+      rtl STH{b,d,r,mem} = $m[disp(b,d):mem] := half(zx $r[r])
+      rtl STB{b,d,r,mem} = $m[disp(b,d):mem] := byte(zx $r[r])
 
       (* Integer opcodes *)
       rtl ADD{r1,r2,t}     = $r[t] := $r[r1] + $r[r2]
@@ -186,6 +189,35 @@ struct
       rtl COMCLR_LDO3_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
           map COMCLR_LDO3 comparisons
 
+      (* COMICLR/LDO composite instruction:
+       *  COMICLR,cc i1, r2, t1
+       *  LDO        i(b), t2
+       *)
+      fun COMICLR_LDO cc {i1,r2,t1,i2,b,t2} =
+          if cc(%i1,$r[r2]) then $r[t1] := 0 else $r[t2] := $r[b] + immed i2
+      rtl COMICLR_LDO_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
+          map COMICLR_LDO comparisons
+
+      (* COMICLR/LDO composite instruction:
+       *  COMICLR,cc i1, r2, t
+       *  LDO        i(b), t
+       *  This version assumes that t1 = t2.
+       *)
+      fun COMICLR_LDO2 cc {i1,r2,t1,i2,b} =
+          if cc(%i1,$r[r2]) then $r[t1] := 0 else $r[t1] := $r[b] + immed i2
+      rtl COMICLR_LDO2_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
+          map COMICLR_LDO2 comparisons
+
+      (* COMICLR/LDO composite instruction:
+       *  COMICLR,cc i1, r2, %r0
+       *  LDO        i(b), t
+       *  This version assumes that t1 = %r0.
+       *)
+      fun COMICLR_LDO3 cc {i1,r2,t2,i2,b} =
+          if cc(%i1,$r[r2]) then () else $r[t2] := $r[b] + immed i2
+      rtl COMICLR_LDO3_ ^^ [EQ,  LT,  LE, LTU, LEU, NE, GE, GT, GTU, GEU] =
+          map COMICLR_LDO3 comparisons
+
       (* Integer branching instructions *)
       fun COMBT cmp {r1,r2,t} = if cmp($r[r1],$r[r2]) then Jmp(%%t) else ()
       fun COMBF cmp {r1,r2,t} = if cmp($r[r1],$r[r2]) then () else Jmp(%%t)
@@ -209,34 +241,35 @@ struct
       rtl BB_BCLR{p,r,t} = 
             if andb($r[r],1 << (31 - immed p)) == 0 then Jmp(%%t) else ()
 
-      rtl BLE{d,b,defs,uses} = 
+      rtl BLE{d,b,defs,uses,mem} = 
           Call($r[b] + %d)    || (* call *)
           $r[31] := ?         || (* return address *)
-          $cellset[defs] := $cellset[uses]
+          $cellset[defs] := $cellset[uses] ||
+          $m[? :mem] := ($m[? :mem] : #8 bits)
              
       (* Floating point loads *)
-      rtl FLDDS{b,d,t}    = $f[t] := $m[fdisp(b,d)]
-      rtl FLDWS{b,d,t}    = $f[t] := $m[fdisp(b,d)]
-      rtl FLDDX{b,x,t}    = $f[t] := $m[indexed(b,x)]
-      rtl FLDDX_S{b,x,t}  = $f[t] := $m[scaled(b,x,3)]
-      rtl FLDDX_M{b,x,t}  = $f[t] := $m[indexed(b,x)] || autoinc(b,8)
-      rtl FLDDX_SM{b,x,t} = $f[t] := $m[scaled(b,x,3)] || autoinc(b,8)
-      rtl FLDWX{b,x,t}    = $f[t] := $m[indexed(b,x)]
-      rtl FLDWX_S{b,x,t}  = $f[t] := $m[scaled(b,x,2)]
-      rtl FLDWX_M{b,x,t}  = $f[t] := $m[indexed(b,x)] || autoinc(b,4)
-      rtl FLDWX_SM{b,x,t} = $f[t] := $m[scaled(b,x,2)] || autoinc(b,4)
+      rtl FLDDS{b,d,t,mem}    = $f[t] := $m[fdisp(b,d):mem]
+      rtl FLDWS{b,d,t,mem}    = $f[t] := $m[fdisp(b,d):mem]
+      rtl FLDDX{b,x,t,mem}    = $f[t] := $m[indexed(b,x):mem]
+      rtl FLDDX_S{b,x,t,mem}  = $f[t] := $m[scaled(b,x,3):mem]
+      rtl FLDDX_M{b,x,t,mem}  = $f[t] := $m[indexed(b,x):mem] || autoinc(b,8)
+      rtl FLDDX_SM{b,x,t,mem} = $f[t] := $m[scaled(b,x,3):mem] || autoinc(b,8)
+      rtl FLDWX{b,x,t,mem}    = $f[t] := $m[indexed(b,x):mem]
+      rtl FLDWX_S{b,x,t,mem}  = $f[t] := $m[scaled(b,x,2):mem]
+      rtl FLDWX_M{b,x,t,mem}  = $f[t] := $m[indexed(b,x):mem] || autoinc(b,4)
+      rtl FLDWX_SM{b,x,t,mem} = $f[t] := $m[scaled(b,x,2):mem] || autoinc(b,4)
 
       (* Floating point stores *)
-      rtl FSTDS{b,d,r}    = $m[fdisp(b,d)] := $f[r] 
-      rtl FSTWS{b,d,r}    = $m[fdisp(b,d)] := $f[r]
-      rtl FSTDX{b,x,r}    = $m[indexed(b,x)] := $f[r] 
-      rtl FSTDX_S{b,x,r}  = $m[scaled(b,x,3)] := $f[r]  
-      rtl FSTDX_M{b,x,r}  = $m[indexed(b,x)] := $f[r] || autoinc(b,8)
-      rtl FSTDX_SM{b,x,r} = $m[scaled(b,x,3)] := $f[r] || autoinc(b,8)
-      rtl FSTWX{b,x,r}    = $m[indexed(b,x)] := $f[r] 
-      rtl FSTWX_S{b,x,r}  = $m[scaled(b,x,2)] := $f[r]  
-      rtl FSTWX_M{b,x,r}  = $m[indexed(b,x)] := $f[r] || autoinc(b,4)
-      rtl FSTWX_SM{b,x,r} = $m[scaled(b,x,2)] := $f[r] || autoinc(b,4)
+      rtl FSTDS{b,d,r,mem}    = $m[fdisp(b,d):mem] := $f[r] 
+      rtl FSTWS{b,d,r,mem}    = $m[fdisp(b,d):mem] := $f[r]
+      rtl FSTDX{b,x,r,mem}    = $m[indexed(b,x):mem] := $f[r] 
+      rtl FSTDX_S{b,x,r,mem}  = $m[scaled(b,x,3):mem] := $f[r]  
+      rtl FSTDX_M{b,x,r,mem}  = $m[indexed(b,x):mem] := $f[r] || autoinc(b,8)
+      rtl FSTDX_SM{b,x,r,mem} = $m[scaled(b,x,3):mem] := $f[r] || autoinc(b,8)
+      rtl FSTWX{b,x,r,mem}    = $m[indexed(b,x):mem] := $f[r] 
+      rtl FSTWX_S{b,x,r,mem}  = $m[scaled(b,x,2):mem] := $f[r]  
+      rtl FSTWX_M{b,x,r,mem}  = $m[indexed(b,x):mem] := $f[r] || autoinc(b,4)
+      rtl FSTWX_SM{b,x,r,mem} = $m[scaled(b,x,2):mem] := $f[r] || autoinc(b,4)
 
       (* Floating point binary operators *)
       rtl FADD_S{r1,r2,t} = $f[t] := fadd($f[r1], $f[r2])
@@ -509,7 +542,7 @@ struct
    
       datatype operand =
           REG of $GP   (* this is used only during instruction selection *)
-        | IMMED of int ``<int>''  
+        | IMMED of int ``<int>''  rtl: immed int
         | LabExp of LabelExp.labexp * field_selector ``<labexp>''
         | HILabExp of LabelExp.labexp * field_selector ``<labexp>''
         | LOLabExp of LabelExp.labexp * field_selector ``<labexp>''
@@ -559,8 +592,8 @@ struct
    | BranchOnBit{Op:6=0x31,p:int 5,r:GP 5,c:3,w1:11,n:bool 1,w:1}
 
    | MoveToControlReg{Op:6,t:CR 5,r:GP 5,rv:3,ext8:8,_:5=0}
-   | Compare{Op:6=0wx2,r2:GP 5,r1:GP 5,c:3,f:1,ext:6,_:1=0,t:GP 5}  
-
+   | CompareClear{Op:6=0wx2,r2:GP 5,r1:GP 5,c:3,f:1,ext:6,_:1=0,t:GP 5}  
+   | CompareImmClear{Op:6=0wx24,r:GP 5,t:GP 5,c:3,f:1,_:1=0,im11:signed 11}
 
      (* floating point loads and stores *)
    | CoProcShort{Op:6,b:GP 5,im5:5,s:2,a:1,_:1=1,cc:2=0,
@@ -688,6 +721,7 @@ struct
         asm: ``<li>\t<i>(<r>), <t><mem>'' 
         mc:  Load{Op=emit_loadi li,b=r,im14=low_sign_ext_im14(opn i),t=t}
         rtl: [[ li ]]
+	latency: 1
 
     | LOAD of {l:load, r1: $GP, r2: $GP, t: $GP, mem:Region.region}
         asm: ``<l>\t<r2>(<r1>), <t><mem>''
@@ -695,6 +729,7 @@ struct
              in  IndexedLoad{Op=0w3,b=r1,x=r2,ext4,u,t,m} 
              end
         rtl: [[ l ]]
+	latency: 1
 
     | STORE of {st:store,b: $GP,d:operand,r: $GP, mem:Region.region}
         asm: ``<st>\t<r>, <d>(<b>)<mem>''
@@ -728,12 +763,25 @@ struct
               ``ldo\t<i>(<b>), <t2>''
              )
         mc: let val (c,f) = cmpCond cc
-            in  Compare{r1,r2,t=t1,c,f,ext=0wx22};
+            in  CompareClear{r1,r2,t=t1,c,f,ext=0wx22};
                 Load{Op=0wx0d,b,im14=low_sign_ext_im14(itow i),t=t2}
             end
 	rtl: if t1 = t2 then [[ "COMCLR_LDO2_" cc ]]
 	     else if t1 = 0 then [[ "COMCLR_LDO3_" cc ]]
              else [[ "COMCLR_LDO_" cc ]]
+
+    | COMICLR_LDO of {cc:bcond, i1:operand, r2: $GP, t1 : $GP, 
+                      i2:int, b: $GP, t2: $GP}
+        asm: (``comiclr,<cc>\t<r2>, <i1>, <t1>\n\t'';
+              ``ldo\t<i2>(<b>), <t2>''
+             )
+        mc: let val (c,f) = cmpCond cc
+            in  CompareImmClear{r=r2,t=t1,c,f,im11=opn i1};
+                Load{Op=0wx0d,b,im14=low_sign_ext_im14(itow i2),t=t2}
+            end
+	rtl: if t1 = t2 then [[ "COMICLR_LDO2_" cc ]]
+	     else if t1 = 0 then [[ "COMICLR_LDO3_" cc ]]
+             else [[ "COMICLR_LDO_" cc ]]
 
     | SHIFTV  of {sv:shiftv, r: $GP, len:int, t: $GP}
         asm: ``<sv>\t<r>, <len>, <t>''
@@ -887,6 +935,7 @@ struct
                                       s=0w0,a=0w0,ls=0w0,uid=0w1,rt=t}
              )
         rtl: [[ fl ]]
+	latency: 1
 
     | FLOADX of {flx:floadx, b: $GP, x: $GP, t: $FP, mem:Region.region}
         asm: ``<flx>\t<x>(<b>), <t><mem>''
@@ -894,6 +943,7 @@ struct
              in  CoProcIndexed{Op=Op,b,x,s=0w0,u,m,ls=0w0,uid=uid,rt=t}
              end
         rtl: [[ flx ]]
+	latency: 1
 
     | FARITH of {fa:farith,r1: $FP, r2: $FP,t: $FP}
         asm: ``<fa>\t<r1>, <r2>, <t>''
@@ -903,6 +953,7 @@ struct
                     in  FloatOp3Maj0C{sop,r1,r2,t,n=0w0,fmt} end
              )
 	rtl: [[ fa ]]
+        latency: 1
 
     | FUNARY of {fu:funary,f: $FP, t: $FP}
         asm: ``<fu>\t<f>, <t>''

@@ -15,6 +15,8 @@
 functor Hppa
   (structure HppaInstr : HPPAINSTR
    structure HppaMLTree : MLTREE
+   structure ExtensionComp : MLTREE_EXTENSION_COMP
+      where I = HppaInstr and T = HppaMLTree
    structure MilliCode : HPPA_MILLICODE
       where I = HppaInstr
    structure LabelComp : LABEL_COMP where I = HppaInstr and T = HppaMLTree
@@ -35,14 +37,7 @@ struct
    structure A = MLRiscAnnotations
 
    type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
-   type ('s,'r,'f,'c) mltreeStream = 
-      (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
-   type ('s,'r,'f,'c) reducer =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.reducer
-   type ('s,'r,'f,'c) extender =
-     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
-       T.extender
+   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
@@ -105,7 +100,6 @@ struct
    val itow = W.fromInt
 
    fun selectInstructions
-        (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp,...})
         (instrStream as
          S.STREAM{emit, defineLabel, entryLabel, 
                   beginCluster, endCluster, annotation,
@@ -535,7 +529,8 @@ struct
          | stmt(T.BCC(ctrl,cc,lab),an) = branch(cc,lab,an)
          | stmt(T.DEFINE l,_) = defineLabel l
          | stmt(T.ANNOTATION(i,a),an) = stmt(i,a::an)
-         | stmt(T.EXT s,an) = compileStm (reducer()) {stm=s, an=an}
+         | stmt(T.EXT s,an) = 
+              ExtensionComp.compileSext (reducer()) {stm=s, an=an}
          | stmt(s,_) = doStmts(Gen.compileStm s)
 
        and doStmt s = stmt(s,[])
@@ -617,7 +612,7 @@ struct
                  mark(I.SHIFTV{sv=varShift,r=r1,len=32, t=t},an)
              end
 
-           (* Generate a COMCLR_LDO instruction sequence: 
+           (* Generate a COMCLR_LDO/COMICLR_LDO instruction sequence: 
             *  COMCLR,cond r1, r2, t1
             *  LDO i(b), t2 
             * 
@@ -640,8 +635,13 @@ struct
             *    COMCLR,cond r1, r2, 0
             *    LDO 0(t'), t
             *)
-       and comclr(cond,r1,r2,yes,no,t,an) = 
-           let val cc = case cond of
+       and comclr(cond,x,y,yes,no,t,an) = 
+           let val (cond, i1, r2) = 
+                   case (opn x, opn y) of
+                     (x, I.REG r2) => (cond, x, r2)
+                   | (I.REG r1, y) => (T.Basis.swapCond cond, y, r1)
+                   | (x, y)        => (cond, x, reduceOpn y)
+               val cc = case cond of
                           T.LT  => I.GE
                         | T.LE  => I.GT
                         | T.GT  => I.LE
@@ -667,7 +667,13 @@ struct
                   case no of
                    (T.LI 0 | T.LI32 0w0) => tmp (* false case is zero *)
                  | _ => (doExpr(no,tmp,[]); zeroR) (* move false case to tmp *)
-           in  mark(I.COMCLR_LDO{cc=cc,r1=r1,r2=r2,b=b,i=i,t1=t1,t2=tmp},an);
+
+               val instr =
+                  case i1 of
+                    I.REG r1 => 
+                      I.COMCLR_LDO{cc=cc,r1=r1,r2=r2,b=b,i=i,t1=t1,t2=tmp}
+                  | _ => I.COMICLR_LDO{cc=cc,i1=i1,r2=r2,b=b,i2=i,t1=t1,t2=tmp}
+           in  mark(instr, an);
                move(tmp, t, [])
            end
 
@@ -720,13 +726,13 @@ struct
            | T.LOAD(16,ea,mem) => load(16,I.LDH,I.LDHX,I.LDHX_S,ea,t,mem,an)
            | T.LOAD(32,ea,mem) => load(32,I.LDW,I.LDWX,I.LDWX_S,ea,t,mem,an)
 
-           | T.COND(_,T.CMP(_,cond,x,y),yes,no) => 
-                comclr(cond,expr x,expr y,yes,no,t,an)
+           | T.COND(_,T.CMP(_,cond,x,y),yes,no) => comclr(cond,x,y,yes,no,t,an)
            | T.LET(s,e) => (doStmt s; doExpr(e, t, an))
            | T.MARK(e,A.MARKREG f) => (f t; doExpr(e,t,an))
            | T.MARK(e,a) => doExpr(e,t,a::an)
            | T.PRED(e,c) => doExpr(e,t,A.CTRLUSE c::an)
-           | T.REXT e => compileRexp (reducer()) {e=e, rd=t, an=an}
+           | T.REXT e =>
+               ExtensionComp.compileRext (reducer()) {e=e, rd=t, an=an}
            | e => doExpr(Gen.compileRexp e,t,an)
  
            (* convert an expression into a floating point register *) 
@@ -777,7 +783,8 @@ struct
            | T.FMARK(e,A.MARKREG f) => (f t; doFexpr(e,t,an))
            | T.FMARK(e,a) => doFexpr(e,t,a::an)
            | T.FPRED(e,c) => doFexpr(e,t,A.CTRLUSE c::an)
-           | T.FEXT e => compileFexp (reducer()) {e=e, fd=t, an=an}
+           | T.FEXT e => 
+               ExtensionComp.compileFext (reducer()) {e=e, fd=t, an=an}
            | e => error "doFexpr"
  
        and doCCexpr(T.CC(_,r),t,an)  = move(r,t,an)
@@ -785,7 +792,8 @@ struct
          | doCCexpr(T.CMP(ty,cond,e1,e2),t,an) = error "doCCexpr"
          | doCCexpr(T.CCMARK(e,A.MARKREG f),t,an) = (f t; doCCexpr(e,t,an))
          | doCCexpr(T.CCMARK(e,a),t,an) = doCCexpr(e,t,a::an)
-         | doCCexpr(T.CCEXT e,t,an) = compileCCexp (reducer()) {e=e,cd=t,an=an}
+         | doCCexpr(T.CCEXT e,t,an) = 
+              ExtensionComp.compileCCext (reducer()) {e=e,ccd=t,an=an}
          | doCCexpr e = error "doCCexpr"
  
        and ccExpr(T.CC(_,r)) = r

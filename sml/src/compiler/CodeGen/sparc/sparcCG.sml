@@ -8,11 +8,16 @@ structure SparcCG =
     structure CpsRegs    = SparcCpsRegs
     structure InsnProps  = SparcProps
     structure Asm        = SparcAsmEmitter
+    structure Shuffle    = SparcShuffle
 
     structure MLTreeComp=
        Sparc(structure SparcInstr = SparcInstr
              structure SparcMLTree = SparcMLTree
              structure PseudoInstrs = SparcPseudoInstrs
+             structure ExtensionComp = SMLNJMLTreeExtComp
+               (structure I = SparcInstr
+                structure T = SparcMLTree
+               )
              val V9 = false
              val muluCost = ref 5
              val multCost = ref 3

@@ -277,7 +277,7 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 450.7 "alpha/alpha.md"*)
+(*#line 453.7 "alpha/alpha.md"*)
    fun isZero (I.LABop le) = (LabelExp.valueOf le) = 0
      | isZero _ = false
    fun emitInstr instr = 

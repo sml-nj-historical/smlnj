@@ -83,16 +83,16 @@ struct
       rtl SETHI{i,d} = $r[d] := immed i << 10
 
       (* Integer load/store *)
-      rtl LDSB{r,i,d} = $r[d] := sx(byte $m[disp(r,i)])
-      rtl LDSH{r,i,d} = $r[d] := sx(hword $m[disp(r,i)])
-      rtl LDUB{r,i,d} = $r[d] := zx(byte $m[disp(r,i)])
-      rtl LDUH{r,i,d} = $r[d] := zx(hword $m[disp(r,i)])
-      rtl LD{r,i,d}   = $r[d] := zx(word $m[disp(r,i)])
-      rtl LDX{r,i,d}  = $r[d] := zx(quad $m[disp(r,i)])
-      rtl STB{r,i,d}  = $m[disp(r,i)] := $r[d] at [0..7]
-      rtl STH{r,i,d}  = $m[disp(r,i)] := $r[d] at [0..15]
-      rtl ST{r,i,d}   = $m[disp(r,i)] := $r[d] at [0..31]
-      rtl STX{r,i,d}  = $m[disp(r,i)] := $r[d] at [0..63]
+      rtl LDSB{r,i,d,mem} = $r[d] := sx(byte $m[disp(r,i):mem])
+      rtl LDSH{r,i,d,mem} = $r[d] := sx(hword $m[disp(r,i):mem])
+      rtl LDUB{r,i,d,mem} = $r[d] := zx(byte $m[disp(r,i):mem])
+      rtl LDUH{r,i,d,mem} = $r[d] := zx(hword $m[disp(r,i):mem])
+      rtl LD{r,i,d,mem}   = $r[d] := zx(word $m[disp(r,i):mem])
+      rtl LDX{r,i,d,mem}  = $r[d] := zx(quad $m[disp(r,i):mem])
+      rtl STB{r,i,d,mem}  = $m[disp(r,i):mem] := $r[d] at [0..7]
+      rtl STH{r,i,d,mem}  = $m[disp(r,i):mem] := $r[d] at [0..15]
+      rtl ST{r,i,d,mem}   = $m[disp(r,i):mem] := $r[d] at [0..31]
+      rtl STX{r,i,d,mem}  = $m[disp(r,i):mem] := $r[d] at [0..63]
 
       (* Integer opcodes *)
 
@@ -187,15 +187,15 @@ struct
           map MOVR [(==), (<=), (<), (<>), (>), (>=)]
 
       (* Floating point load/store *)
-      rtl LDF{r,i,d}  = $f[d] := $m[disp(r,i)]
-      rtl LDDF{r,i,d} = $f[d] := $m[disp(r,i)]
-      rtl LDQF{r,i,d} = $f[d] := $m[disp(r,i)]
-      rtl STF{r,i,d}  = $m[disp(r,i)] := $f[d]
-      rtl STDF{r,i,d} = $m[disp(r,i)] := $f[d]
+      rtl LDF{r,i,d,mem}  = $f[d] := $m[disp(r,i):mem]
+      rtl LDDF{r,i,d,mem} = $f[d] := $m[disp(r,i):mem]
+      rtl LDQF{r,i,d,mem} = $f[d] := $m[disp(r,i):mem]
+      rtl STF{r,i,d,mem}  = $m[disp(r,i):mem] := $f[d]
+      rtl STDF{r,i,d,mem} = $m[disp(r,i):mem] := $f[d]
 
-      rtl LDFSR{r,i}  = $fsr[0] := $m[disp(r,i)] (* XXX *)
-      rtl LDXFSR{r,i} = $fsr[0] := $m[disp(r,i)] (* XXX *)
-      rtl STFSR{r,i}  = $m[disp(r,i)] := $fsr[0] (* XXX *)
+      rtl LDFSR{r,i,mem}  = $fsr[0] := $m[disp(r,i):mem] (* XXX *)
+      rtl LDXFSR{r,i,mem} = $fsr[0] := $m[disp(r,i):mem] (* XXX *)
+      rtl STFSR{r,i,mem}  = $m[disp(r,i):mem] := $fsr[0] (* XXX *)
 
       (* conversions *)
       rtl fitos fitod fitoq fstoi fdtoi fqtoi 
@@ -279,10 +279,15 @@ struct
 
       (* Jmps, calls and returns *)
       rtl JMP{r,i} = Jmp(disp(r,i))
-      rtl JMPL{r,i,d,defs,uses} = 
-            Call(disp(r,i)) || $r[d] := ? || $cellset[defs] := $cellset[uses]
-      rtl CALL{label,defs,uses} = 
-            Call(%%label) || $cellset[defs] := $cellset[uses]
+      rtl JMPL{r,i,d,defs,uses,mem} = 
+            Call(disp(r,i)) || 
+            $r[d] := ? || 
+            $cellset[defs] := $cellset[uses] ||
+            $m[? :mem] := ($m[? :mem] : #8 bits)
+      rtl CALL{label,defs,uses,mem} = 
+            Call(%%label) || 
+            $cellset[defs] := $cellset[uses] ||
+            $m[? :mem] := ($m[? :mem] : #8 bits)
       rtl RET{} = Ret
 
    end (* RTL *)
@@ -456,7 +461,7 @@ struct
    
       datatype operand =
          REG of $GP                    ``<GP>''     rtl: $r[GP] 
-       | IMMED of int                  ``<int>''     
+       | IMMED of int                  ``<int>''    rtl: immed int 
        | LAB of LabelExp.labexp        ``<labexp>'' 
        | LO of LabelExp.labexp         ``%lo(<labexp>)''
        | HI of LabelExp.labexp         ``%hi(<labexp>)''
@@ -607,6 +612,7 @@ struct
         asm: ``<l>\t[<r>+<i>], <d><mem>'' 
         mc:  load{l,r,i,d}
 	rtl: [[ l ]]
+	latency: 1
 
    |  STORE of { s:store, d: $GP, r: $GP, i:operand, mem:Region.region }
         asm: ``<s>\t<d>, [<r>+<i>]<mem>'' 
@@ -617,6 +623,7 @@ struct
         asm: ``<l>\t[<r>+<i>], <d><mem>'' 
         mc:  fload{l,r,i,d}
 	rtl: [[ l ]]
+	latency: 1
 
    |  FSTORE of { s:fstore, d: $FP, r: $GP, i:operand, mem:Region.region }
         asm: ``<s>\t[<r>+<i>], <d><mem>'' 
@@ -770,6 +777,7 @@ struct
         padding: nop = true
         nullified: false
         delayslot candidate: false
+        latency: 1
 
    |  COPY of { dst: $GP list, src: $GP list, 
                 impl:instruction list option ref, tmp:ea option}

@@ -9,11 +9,16 @@ structure Alpha32CG =
     structure CpsRegs    = Alpha32CpsRegs
     structure InsnProps  = Alpha32Props
     structure Asm        = Alpha32AsmEmitter
+    structure Shuffle    = Alpha32Shuffle
 
     structure MLTreeComp=
        Alpha(structure AlphaInstr = Alpha32Instr
              structure AlphaMLTree = Alpha32MLTree
              structure PseudoInstrs = Alpha32PseudoInstrs
+             structure ExtensionComp = SMLNJMLTreeExtComp
+               (structure I = Alpha32Instr
+                structure T = Alpha32MLTree
+               )
              val mode32bit = true (* simulate 32 bit mode *)
              val multCost = ref 8 (* just guessing *)
              val useMultByConst = ref false (* just guessing *)

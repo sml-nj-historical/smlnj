@@ -7,8 +7,8 @@
  *)
 
 Library 
-
-
+	signature C_CALL
+	structure CTypes
 	signature CELLS_BASIS
 	signature CELLS
 	functor CellsBasis
@@ -17,6 +17,7 @@ Library
 	signature INSTRUCTION_STREAM
 	functor InstructionStream
 	signature INSTRUCTIONS
+	signature SHUFFLE
 	functor Shuffle
 	signature CONSTANT
 	signature LABELEXP
@@ -29,17 +30,23 @@ Library
 	functor FreqProps
 	signature MLRISC_ANNOTATIONS
 	structure MLRiscAnnotations
-(*	signature INSTRUCTIONS_RTL *)
+(*	
+	signature INSTRUCTIONS_RTL 
+*)
 	signature MLRISC_REGION
 	structure MLRiscRegion
 	signature POINTS_TO
 	structure PointsTo
+	signature MLTREE_EXTENSION
 	signature MLTREE_BASIS
 	structure MLTreeBasis
 	signature MLTREE
 	functor MLTreeF
+	signature MLTREE_EXTENSION_COMP
+(*
 	signature MLTREE_UTIL
 	structure MLTreeUtil
+*)
 	signature MLTREECOMP
 	signature MLTREEGEN
 	functor MLTreeGen
@@ -110,6 +117,7 @@ is
 	instructions/stream.sig
 	instructions/stream.sml
 	instructions/instructions.sig
+	instructions/shuffle.sig
 	instructions/shuffle.sml
 	instructions/constant.sig
 	instructions/labelExp.sml
@@ -129,12 +137,15 @@ is
 	aliasing/pointsTo.sml
 	
 	(* Core definitions for the MLTREE language. These are required. *)
+	mltree/mltree-extension.sig
 	mltree/mltree-basis.sig
 	mltree/mltree-basis.sml
 	mltree/mltree.sig
 	mltree/mltree.sml
+(*
 	mltree/mltree-util.sig
 	mltree/mltree-util.sml
+*)
 	mltree/mltreecomp.sig
 	mltree/mltree-gen.sig
 	mltree/mltree-gen.sml
@@ -197,3 +208,7 @@ is
 	backpatch/noDelaySlots.sml
 	backpatch/sdi-jumps.sig
 	backpatch/vlBackPatch.sml
+
+	(* c calls *)
+	c-calls/c-types.sml
+	c-calls/c-calls.sig

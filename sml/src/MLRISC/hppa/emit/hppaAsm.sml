@@ -263,11 +263,11 @@ struct
      | emit_operand (I.HILabExp(labexp, field_selector)) = emit_labexp labexp
      | emit_operand (I.LOLabExp(labexp, field_selector)) = emit_labexp labexp
 
-(*#line 597.7 "hppa/hppa.md"*)
+(*#line 630.7 "hppa/hppa.md"*)
    fun emit_n false = ()
      | emit_n true = emit ",n"
 
-(*#line 598.7 "hppa/hppa.md"*)
+(*#line 631.7 "hppa/hppa.md"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
    fun emitInstr instr = 
@@ -333,6 +333,24 @@ struct
         
         ( emit "ldo\t"; 
         emit_int i; 
+        emit "("; 
+        emit_GP b; 
+        emit "), "; 
+        emit_GP t2 ) )
+      | I.COMICLR_LDO{cc, i1, r2, t1, i2, b, t2} => 
+        (
+        ( emit "comiclr,"; 
+        emit_bcond cc; 
+        emit "\t"; 
+        emit_GP r2; 
+        emit ", "; 
+        emit_operand i1; 
+        emit ", "; 
+        emit_GP t1; 
+        emit "\n\t" ); 
+        
+        ( emit "ldo\t"; 
+        emit_int i2; 
         emit "("; 
         emit_GP b; 
         emit "), "; 

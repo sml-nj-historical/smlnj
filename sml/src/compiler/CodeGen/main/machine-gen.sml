@@ -19,6 +19,8 @@ functor MachineGen
       where S = MLTreeComp.T.Stream
       where P = PseudoOps
       where I = MLTreeComp.I
+   structure Shuffle    : SHUFFLE              (* shuffling copies *) 
+      where I = MLTreeComp.I
    structure BackPatch  : BBSCHED              (* machine code emitter *)
       where F.P = PseudoOps
       where F.I = Asm.I
@@ -34,24 +36,22 @@ struct
    structure T         = MLTreeComp.T
    structure S         = T.Stream
    structure Asm       = Asm
+   structure Shuffle   = Shuffle
    structure MachSpec  = MachSpec
    structure MLTreeComp= MLTreeComp
 
-   val optimizerHook : (F.cluster -> F.cluster) option ref = ref NONE
+   type mlriscPhase = string * (F.cluster -> F.cluster) 
 
    fun phase x = Stats.doPhase (Stats.makePhase x)
+   fun makePhase(name,f) = (name, phase name f)
 
-   fun opt cluster =
-       case !optimizerHook of 
-         SOME f => f cluster 
-       | NONE => cluster
-      
-   val ra      = phase "MLRISC ra" RA.ra
-   val opt     = phase "MLRISC optimization" opt 
-   val bbsched = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
+   val mc      = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
    val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
+   val ra      = phase "MLRISC ra" RA.ra
 
- 
+   val raPhase = ("ra",ra)
+   val optimizerHook = ref [raPhase]
+
    (* Flowgraph generation *)
    structure FlowGraphGen =
        ClusterGen(structure Flowgraph = F
@@ -67,9 +67,10 @@ struct
               )
 
    fun compile cluster = 
-   let val cluster = opt cluster
-       val cluster = ra cluster
-   in  bbsched cluster end 
+   let fun runPhases([],cluster) = cluster
+         | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
+   in  mc(runPhases(!optimizerHook,cluster))
+   end 
  
    (* compilation of CPS to MLRISC *)
    structure MLTreeGen =

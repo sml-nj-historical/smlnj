@@ -26,6 +26,12 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
          else
          I.COMCLR_LDO{cc=cc, r1=replc r1, r2=replc r2, b=replc b, i=i, 
                       t1=t1, t2=t2}
+     | I.COMICLR_LDO{cc, i1, r2, b, i2, t1, t2} => 
+         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+            error "rewriteUse: COMICLR_LDO"
+         else
+         I.COMICLR_LDO{cc=cc, i1=i1, r2=replc r2, b=replc b, i2=i2, 
+                       t1=t1, t2=t2}
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=replc r, len=len, t=t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=replc r, p=p, len=len, t=t} 
      | I.BCOND{cmp, bc, r1, r2, t, f, n, nop} => 
@@ -72,6 +78,12 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
             error "rewriteDef: COMCLR_LDO"
          else
           I.COMCLR_LDO{cc=cc, r1=r1, r2=r2, b=b, i=i, t1=replc t1, t2=replc t2} 
+     | I.COMICLR_LDO{cc, i1, r2, b, i2, t1, t2} => 
+         if t1 <> 0 andalso t1 <> t2 andalso mapr t2 = rs then 
+            error "rewriteDef: COMICLR_LDO"
+         else
+          I.COMICLR_LDO{cc=cc, i1=i1, r2=r2, b=b, i2=i2, 
+                        t1=replc t1, t2=replc t2}
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 

@@ -312,8 +312,10 @@ functor X86Spill(structure Instr: X86INSTR
      | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
      | I.COPY _ => error "reload:COPY"
      | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
+     | I.FLDT opnd => reloadReal(I.FLDT, opnd, an)
      | I.FLDL opnd => reloadReal(I.FLDL, opnd, an)
      | I.FLDS opnd => reloadReal(I.FLDS, opnd, an)
+     | I.FSTPT opnd => reloadReal(I.FSTPT, opnd, an)
      | I.FSTPL opnd => reloadReal(I.FSTPL, opnd, an)
      | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
      | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
@@ -344,7 +346,8 @@ functor X86Spill(structure Instr: X86INSTR
   fun freload(instr, regmap, reg, spillLoc) = 
   let fun reloadIt(instr, an) = 
       (case instr of 
-         I.FLDL opnd => {code=[mark(I.FLDL spillLoc, an)], proh=[], newReg=NONE}
+         I.FLDT opnd => {code=[mark(I.FLDT spillLoc, an)], proh=[], newReg=NONE}
+       | I.FLDL opnd => {code=[mark(I.FLDL spillLoc, an)], proh=[], newReg=NONE}
        | I.FLDS opnd => {code=[mark(I.FLDS spillLoc, an)], proh=[], newReg=NONE}
        | I.FBINARY{binOp, src=I.FDirect f, dst} => 
 	   if regmap f = reg then 

@@ -73,28 +73,28 @@ struct
      rtl LDAH{r,b,d} = $r[r] := $r[b] + %d << 16
 
      (* Integer loads *)
-     rtl LDL{r,b,d}    = $r[r] := sx (dword $m[disp(b,d)])
-     rtl LDL_L{r,b,d}  = $r[r] := sx (dword $m[align4(disp(b,d))])
-     rtl LDQ{r,b,d}    = $r[r] := qword $m[disp(b,d)]
-     rtl LDQ_L{r,b,d}  = $r[r] := qword $m[align8(disp(b,d))]
-     rtl LDQ_U{r,b,d}  = $r[r] := qword $m[align8Upper(disp(b,d))]
+     rtl LDL{r,b,d,mem}    = $r[r] := sx (dword $m[disp(b,d):mem])
+     rtl LDL_L{r,b,d,mem}  = $r[r] := sx (dword $m[align4(disp(b,d)):mem])
+     rtl LDQ{r,b,d,mem}    = $r[r] := qword $m[disp(b,d):mem]
+     rtl LDQ_L{r,b,d,mem}  = $r[r] := qword $m[align8(disp(b,d)):mem]
+     rtl LDQ_U{r,b,d,mem}  = $r[r] := qword $m[align8Upper(disp(b,d)):mem]
 
      (* Integer stores *)
-     rtl STL{r,b,d}    = $m[disp(b,d)] := $r[r] at [0..31]
-     rtl STQ{r,b,d}    = $m[disp(b,d)] := $r[r] 
-     rtl STQ_U{r,b,d}  = $m[align8(disp(b,d))] := $r[r] 
+     rtl STL{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] at [0..31]
+     rtl STQ{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] 
+     rtl STQ_U{r,b,d,mem}  = $m[align8(disp(b,d)):mem] := $r[r] 
 
      (* Floating point loads *)
-     rtl LDF{r,b,d} = $f[r] := sx (float $m[disp(b,d)])
-     rtl LDG{r,b,d} = $f[r] := double $m[disp(b,d)] 
-     rtl LDS{r,b,d} = $f[r] := double $m[disp(b,d)] 
-     rtl LDT{r,b,d} = $f[r] := double $m[disp(b,d)]
+     rtl LDF{r,b,d,mem} = $f[r] := sx (float $m[disp(b,d):mem])
+     rtl LDG{r,b,d,mem} = $f[r] := double $m[disp(b,d):mem] 
+     rtl LDS{r,b,d,mem} = $f[r] := double $m[disp(b,d):mem] 
+     rtl LDT{r,b,d,mem} = $f[r] := double $m[disp(b,d):mem]
 
      (* Floating point stores *)
-     rtl STF{r,b,d} = $m[disp(b,d)] := float(sx $f[r])
-     rtl STG{r,b,d} = $m[disp(b,d)] := $f[r]
-     rtl STS{r,b,d} = $m[disp(b,d)] := $f[r]
-     rtl STT{r,b,d} = $m[disp(b,d)] := $f[r]
+     rtl STF{r,b,d,mem} = $m[disp(b,d):mem] := float(sx $f[r])
+     rtl STG{r,b,d,mem} = $m[disp(b,d):mem] := $f[r]
+     rtl STS{r,b,d,mem} = $m[disp(b,d):mem] := $f[r]
+     rtl STT{r,b,d,mem} = $m[disp(b,d):mem] := $f[r]
 
      (* Integer operators *)
      rtl ADDL{ra,rb,rc}   = $r[rc] := sx($r[ra] + %rb)
@@ -224,8 +224,11 @@ struct
          map fcmove [|==|,  |<|,  |<=|, |<>|, |>=|, |>|]
 
      (* Call/return *)
-     rtl JSR{r,b,defs,uses} = 
-         Jmp($r[b]) || $r[r] := ? || $cellset[defs] := $cellset[uses]
+     rtl JSR{r,b,defs,uses,mem} = 
+         Jmp($r[b]) || 
+         $r[r] := ? || 
+         $cellset[defs] := $cellset[uses] ||
+         $m[? :mem] := ($m[? :mem] : #8 bits)
      rtl RET{r,b} = Jmp($r[b]) || $r[r] := ?
      rtl JMPL{r,b} = Jmp($r[b]) || $r[r] := ?
      rtl TRAPB{} = ()
@@ -264,8 +267,8 @@ struct
         | Displace of {base: $GP, disp:int}
     
       datatype operand = 
-          REGop of $GP                      ``<GP>'' 
-        | IMMop of int                      ``<int>''
+          REGop of $GP                      ``<GP>''  rtl: $r[GP]
+        | IMMop of int                      ``<int>'' rtl: immed int
         | HILABop of LabelExp.labexp        ``hi(<labexp>)''
         | LOLABop of LabelExp.labexp        ``lo(<labexp>)''
         | LABop of LabelExp.labexp          ``<labexp>''
@@ -482,6 +485,7 @@ struct
      asm: ``<ldOp>\t<r>, <d>(<b>)<mem>''
      mc:  ILoadStore{opc=emit_load ldOp,r,b,d}
      rtl: [[ ldOp ]]
+     latency: 1
 
    | STORE of {stOp:store, r: $GP, b: $GP, d:operand, mem:Region.region}
      asm: ``<stOp>\t<r>, <d>(<b>)<mem>''
@@ -492,6 +496,7 @@ struct
      asm: ``<ldOp>\t<r>, <d>(<b>)<mem>''
      mc:  FLoadStore{opc=emit_fload ldOp,r,b,d}
      rtl: [[ ldOp ]]
+     latency: 1
 
    | FSTORE of {stOp:fstore, r: $FP, b: $GP, d:operand, mem:Region.region}
      asm: ``<stOp>\t<r>, <d>(<b>)<mem>''

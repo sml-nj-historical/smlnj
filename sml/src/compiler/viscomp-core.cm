@@ -51,6 +51,8 @@ Library
 	structure DefaultMachSpec
 	structure SMLNJConstant
 	structure SMLNJLabelExp
+	structure SMLNJMLTreeExt
+        functor   SMLNJMLTreeExtComp
 	structure CodeString
 
 	functor PseudoOpsBig
@@ -291,6 +293,7 @@ CodeGen/cpscompile/pseudoOpsLittle.sml
 CodeGen/cpscompile/smlnj-const.sml
 CodeGen/cpscompile/smlnj-gctype.sig
 CodeGen/cpscompile/smlnj-gctype.sml
+CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig

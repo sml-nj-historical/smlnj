@@ -379,7 +379,7 @@ struct
        end
 
      (* floating *)
-     | I.FBINARY{binOp, src=I.FDirect 32, dst=I.FDirect 33} => 
+     | I.FBINARY{binOp, src=I.ST 32, dst=I.ST 33} => 
        (case binOp
 	of I.FADDP => eBytes[0wxde, 0wxc1]
 	 | I.FMULP => eBytes[0wxde, 0wxc9]
@@ -388,26 +388,24 @@ struct
 	 | I.FSUBP => eBytes[0wxde, 0wxe1]
 	 | I.FSUBRP=> eBytes[0wxde, 0wxe9]
 
-	 | I.FADD  => eBytes[0wxdc, 0wxc1]
-	 | I.FMUL  => eBytes[0wxdc, 0wxc9]
-	 | I.FDIV  => eBytes[0wxdc, 0wxf1]
-	 | I.FDIVR => eBytes[0wxdc, 0wxf9]
-	 | I.FSUB  => eBytes[0wxdc, 0wxe1]
-	 | I.FSUBR => eBytes[0wxdc, 0wxe9]
+	 | I.FADDL  => eBytes[0wxdc, 0wxc1]
+	 | I.FMULL  => eBytes[0wxdc, 0wxc9]
+	 | I.FDIVL  => eBytes[0wxdc, 0wxf1]
+	 | I.FDIVRL => eBytes[0wxdc, 0wxf9]
+	 | I.FSUBL  => eBytes[0wxdc, 0wxe1]
+	 | I.FSUBRL => eBytes[0wxdc, 0wxe9]
        (*esac*))
-     | I.FBINARY{binOp, src, dst=I.FDirect 32} => let
+     | I.FBINARY{binOp, src, dst=I.ST 32} => let
 	 val code = 
 	   (case binOp
-	     of I.FADD => 0 | I.FMUL => 1 | I.FSUB => 4
-	      | I.FSUBR => 5 | I.FDIV => 6 | I.FDIVR => 7
+	     of I.FADDL => 0 | I.FMULL => 1 | I.FSUBL => 4 | I.FDIVL => 6
+	      | I.FSUBRL => 5 | I.FDIVRL => 7
 	      | _ =>  error "FBINARY:pop:dst=%st"
            (*esac*))
 	 val src' = 	   
 	   (case src
-	    of I.FDirect f => let 
-	         val f' = fNum f 
-	       in if f' < 40 then I.Direct(f'-fpoffset) else memReg src
-	       end
+	    of I.FDirect f => memReg src
+             | I.ST f => I.Direct(f-fpoffset)
 	     | mem => mem
 	    (*esac*))
        in eBytes(0wxdc :: eImmedExt(code, src'))

@@ -8,6 +8,7 @@ structure HppaCG =
     structure CpsRegs    = HppaCpsRegs
     structure InsnProps  = HppaProps
     structure Asm        = HppaAsmEmitter
+    structure Shuffle    = HppaShuffle
 
     structure HppaMillicode =
       HppaMillicode(structure MLTree=HppaMLTree
@@ -22,6 +23,10 @@ structure HppaCG =
             structure HppaMLTree = HppaMLTree
             structure MilliCode=HppaMillicode
             structure LabelComp=HppaLabelComp
+            structure ExtensionComp = SMLNJMLTreeExtComp
+               (structure I = HppaInstr
+                structure T = HppaMLTree
+               )
             val costOfMultiply = ref 7
             val costOfDivision = ref 7
            )

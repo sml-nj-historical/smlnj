@@ -3,9 +3,9 @@ signature LABEL_COMP = sig
   structure I : INSTRUCTIONS
     sharing T.LabelExp = I.LabelExp
 
-  type ('s,'r,'f,'c) reduce = 
-    {stm:('s,'r,'f,'c) T.stm -> unit, 
-     rexp:('s,'r,'f,'c) T.rexp -> int, 
+  type reduce = 
+    {stm: T.stm -> unit, 
+     rexp: T.rexp -> int, 
      emit:I.instruction -> unit 
     }
     (* functions to emit MLRISC statements or register expressions *)
@@ -19,10 +19,10 @@ signature LABEL_COMP = sig
        {label:I.LabelExp.labexp, pref:int option} -> I.operand
     (* generate a label operand to be used by immediate instructions *)
 
-  val doJmp : ('s,'r,'f,'c) reduce * ('s,'r,'f,'c) T.stm  -> unit
+  val doJmp : reduce * T.stm  -> unit
     (* compile a jump involving a label *)
 
-  val doCall : ('s,'r,'f,'c) reduce * ('s,'r,'f,'c) T.stm -> unit
+  val doCall : reduce * T.stm -> unit
     (* compile a call involving a label *)
 
 end

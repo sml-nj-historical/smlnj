@@ -3,7 +3,26 @@
  *
  * -- Allen 
  *)
-functor MLTreeUtils (T : MLTREE) : MLTREE_UTILS =
+functor MLTreeUtils
+  (structure T : MLTREE
+   (* Hashing extensions *)
+   val hashSext  : T.hasher -> T.sext -> word
+   val hashRext  : T.hasher -> T.rext -> word
+   val hashFext  : T.hasher -> T.fext -> word
+   val hashCCext : T.hasher -> T.ccext -> word
+
+   (* Equality extensions *)
+   val eqSext  : T.equality -> T.sext * T.sext -> bool
+   val eqRext  : T.equality -> T.rext * T.rext -> bool
+   val eqFext  : T.equality -> T.fext * T.fext -> bool
+   val eqCCext : T.equality -> T.ccext * T.ccext -> bool
+
+   (* Pretty printing extensions *)
+   val showSext  : T.printer -> T.sext -> string
+   val showRext  : T.printer -> T.ty * T.rext -> string
+   val showFext  : T.printer -> T.fty * T.fext -> string
+   val showCCext : T.printer -> T.ty * T.ccext -> string
+  ) : MLTREE_UTILS =
 struct
 
    structure T        = T
@@ -15,32 +34,6 @@ struct
 
    val w = W.fromInt
 
-   type ('s,'r,'f,'c) hasher =
-      {stm    : ('s,'r,'f,'c) T.stm -> word,
-       rexp   : ('s,'r,'f,'c) T.rexp -> word,
-       fexp   : ('s,'r,'f,'c) T.fexp -> word,
-       ccexp  : ('s,'r,'f,'c) T.ccexp -> word,
-       mlrisc : ('s,'r,'f,'c) T.mlrisc list -> word
-      }    
-
-   type ('s,'r,'f,'c) equality =
-      { stm    : ('s,'r,'f,'c) T.stm * ('s,'r,'f,'c) T.stm -> bool,
-        rexp   : ('s,'r,'f,'c) T.rexp * ('s,'r,'f,'c) T.rexp -> bool,
-        fexp   : ('s,'r,'f,'c) T.fexp * ('s,'r,'f,'c) T.fexp -> bool,
-        ccexp  : ('s,'r,'f,'c) T.ccexp * ('s,'r,'f,'c) T.ccexp -> bool,
-        mlrisc : ('s,'r,'f,'c) T.mlrisc list * ('s,'r,'f,'c) T.mlrisc list -> bool
-      } 
-
-   type ('s,'r,'f,'c) prettyPrinter =
-      { stm   : ('s,'r,'f,'c) T.stm -> string,
-        rexp  : ('s,'r,'f,'c) T.rexp -> string,
-        fexp  : ('s,'r,'f,'c) T.fexp -> string,
-        ccexp : ('s,'r,'f,'c) T.ccexp -> string,
-        mlrisc : ('s,'r,'f,'c) T.mlrisc list -> string,
-        srcReg : T.ty * T.var -> string,
-        dstReg : T.ty * T.var -> string
-      }
-
    fun error msg = MLRiscErrorMsg.error("MLTreeUtils",msg)
    fun ws is = 
    let fun f([],h) = h
@@ -50,15 +43,10 @@ struct
    (*
     * Hashing
     *)
-   fun hash {stm=hashSext, rexp=hashRext, fexp=hashFext, ccexp=hashCCext} =
-   let  
    fun hashLabel(Label.Label{id,...}) = w id
-
-   fun hashCtrls ctrl = ws ctrl
-   fun hashCtrl  ctrl = w ctrl
-   fun hasher() = 
-      {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp,
-       mlrisc=hashMlriscs}
+   and hashCtrls ctrl = ws ctrl
+   and hashCtrl  ctrl = w ctrl
+   and hasher() = {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp}
    and hashStm stm =
       case stm of  
       T.MV(t,dst,rexp) => 0w123 + w t + w dst + hashRexp rexp
@@ -188,24 +176,17 @@ struct
   and hashCCexps([],h) = h
     | hashCCexps(e::es,h) = hashCCexps(es,hashCCexp e + h)
 
-  in {stm=hashStm, rexp=hashRexp, fexp=hashFexp, ccexp=hashCCexp, 
-      mlrisc=hashMlriscs}
-  end
-
    (*
     * Equality
     *)
 
-  fun equal{stm=eqSext, rexp=eqRext, fexp=eqFext, ccexp=eqCCext} = 
-  let
   fun eqLabel(Label.Label{id=x,...},Label.Label{id=y,...}) = x=y 
-  fun eqLabels([],[]) = true
+  and eqLabels([],[]) = true
     | eqLabels(a::b,c::d) = eqLabel(a,c) andalso eqLabels(b,d)
     | eqLabels _ = false
 
   (* statements *)
-  fun equality() = {stm=eqStm, rexp=eqRexp, fexp=eqFexp, ccexp=eqCCexp,
-                    mlrisc=eqMlriscs}
+  and equality() = {stm=eqStm, rexp=eqRexp, fexp=eqFexp, ccexp=eqCCexp}
   and eqStm(T.MV(a,b,c),T.MV(d,e,f)) = b=e andalso a=d andalso eqRexp(c,f)
     | eqStm(T.CCMV(a,b),T.CCMV(c,d)) = a=c andalso eqCCexp(b,d)
     | eqStm(T.FMV(a,b,c),T.FMV(d,e,f)) = b=e andalso a=d andalso eqFexp(c,f)
@@ -349,14 +330,11 @@ struct
   and eqCCexps([],[]) = true
     | eqCCexps(a::b,c::d) = eqCCexp(a,c) andalso eqCCexps(b,d)
     | eqCCexps _ = false
-  in  {stm=eqStm, rexp=eqRexp, fexp=eqFexp, ccexp=eqCCexp, mlrisc=eqMlriscs} 
-  end
 
   (*
    * Pretty printing
    *)
-  fun show {stm=showStm, rexp=showRexp, fexp=showFexp, ccexp=showCCexp} 
-      (dst,src) =
+  fun show (dst,src) =
   let fun ty t = "."^Int.toString t
       fun fty 32 = ".s"
         | fty 64 = ".d"
@@ -409,7 +387,7 @@ struct
       fun fcopy(t,dst,src) = dstFregs(t, dst)^" := "^srcFregs(t, src)
 
       fun shower() = {stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp, 
-                      mlrisc=mlriscs, dstReg=dstReg, srcReg=srcReg}
+                      dstReg=dstReg, srcReg=srcReg}
           (* pretty print a statement *)
       and stm(T.MV(t,dst,e)) = dstReg(t,dst)^" := "^rexp e
         | stm(T.CCMV(dst,e)) = dstCCreg dst^" := "^ccexp e
@@ -433,7 +411,7 @@ struct
         | stm(T.PHI b) = "phi["^Int.toString b^"]"
         | stm(T.PINNED s) = "pinned "^stm s
         | stm(T.RTL{e,...}) = stm e
-        | stm(T.EXT x) = showStm (shower()) x
+        | stm(T.EXT x) = showSext (shower()) x
         | stm _ = error "stm"
 
       and stms(sep,[]) = ""
@@ -481,7 +459,7 @@ struct
         | rexp(T.LET(s, e)) = stm s^";"^rexp e
         | rexp(T.PRED(e, cr)) = rexp e^usectrl cr
         | rexp(T.MARK(e, _)) = rexp e
-        | rexp(T.REXT e) = showRexp (shower()) e
+        | rexp(T.REXT e) = showRext (shower()) e
 
       and slices sc = listify' (fn {from,to} => rexp from^".."^rexp to) sc
 
@@ -502,7 +480,7 @@ struct
         | fexp(T.CVTF2F(t, t', e)) = "cvtf2f"^fty t^fty t'^" "^fexp e
         | fexp(T.FPRED(e, cr)) = fexp e^usectrl cr
         | fexp(T.FMARK(e, _)) = fexp e
-        | fexp(T.FEXT e) = showFexp (shower()) e
+        | fexp(T.FEXT e) = showFext (shower()) e
 
       and ccexp(T.CC(cc,r)) = srcCCreg r^B.condToString cc
         | ccexp(T.FCC(fcc,r)) = srcCCreg r^B.fcondToString fcc
@@ -515,7 +493,7 @@ struct
         | ccexp(T.CCMARK(e, _)) = ccexp e
         | ccexp(T.TRUE) = "true"
         | ccexp(T.FALSE) = "false"
-        | ccexp(T.CCEXT(e)) = showCCexp (shower()) e
+        | ccexp(T.CCEXT(e)) = showCCext (shower()) e
 
       and mlrisc(T.GPR e) = rexp e
         | mlrisc(T.FPR e) = fexp e
@@ -554,11 +532,9 @@ struct
    in shower()
    end
 
-   fun noshow _ = error "no extension"
-   val noshows = {stm=noshow, rexp=noshow, fexp=noshow, ccexp=noshow}
-   fun stmToString s   = #stm(show noshows ([],[])) s
-   fun rexpToString s  = #rexp(show noshows ([],[])) s
-   fun fexpToString s  = #fexp(show noshows ([],[])) s
-   fun ccexpToString s = #ccexp(show noshows ([],[])) s
+   fun stmToString s   = #stm(show ([],[])) s
+   fun rexpToString s  = #rexp(show ([],[])) s
+   fun fexpToString s  = #fexp(show ([],[])) s
+   fun ccexpToString s = #ccexp(show ([],[])) s
 
 end 

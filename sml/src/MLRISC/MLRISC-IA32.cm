@@ -7,10 +7,14 @@
 
 Library
 
+	functor IA32SVID_CCalls
 	signature X86CELLS
 	structure X86Cells
+	signature X86COMP_INSTR_EXT
+	functor	X86CompInstrExt
 	signature X86INSTR
 	functor X86Instr
+	structure X86InstrExt
 	signature X86SHUFFLE
 	functor X86Shuffle
 	functor X86Props
@@ -36,9 +40,14 @@ is
 	MLRISC-Lib.cm
 	smlnj-lib.cm
 
+	(* c calls *)
+        x86/c-calls/ia32-svid.sml
+
 	(* X86 specific backend *)
 	x86/instructions/x86Cells.sml
+	x86/instructions/x86comp-instr-ext.sml 
 	x86/instructions/x86Instr.sml
+ 	x86/instructions/x86instr-ext.sml 
 	x86/instructions/x86Shuffle.sig
 	x86/instructions/x86Shuffle.sml
 	x86/instructions/x86Props.sml

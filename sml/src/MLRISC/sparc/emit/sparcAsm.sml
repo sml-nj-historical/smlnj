@@ -9,7 +9,7 @@ functor SparcAsmEmitter(structure Instr : SPARCINSTR
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
 
-(*#line 468.21 "sparc/sparc.md"*)
+(*#line 473.21 "sparc/sparc.md"*)
                         val V9 : bool
                        ) : INSTRUCTION_EMITTER =
 struct
@@ -264,19 +264,19 @@ struct
        emit_labexp labexp; 
        emit ")" )
 
-(*#line 471.7 "sparc/sparc.md"*)
+(*#line 476.7 "sparc/sparc.md"*)
    fun emit_leaf false = ()
      | emit_leaf true = emit "l"
 
-(*#line 472.7 "sparc/sparc.md"*)
+(*#line 477.7 "sparc/sparc.md"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
 
-(*#line 473.7 "sparc/sparc.md"*)
+(*#line 478.7 "sparc/sparc.md"*)
    fun emit_a false = ()
      | emit_a true = emit ",a"
 
-(*#line 474.7 "sparc/sparc.md"*)
+(*#line 479.7 "sparc/sparc.md"*)
    fun emit_cc false = ()
      | emit_cc true = emit "cc"
    fun emitInstr instr = 
@@ -323,7 +323,7 @@ struct
         emit_region mem )
       | I.SETHI{i, d} => let
 
-(*#line 627.18 "sparc/sparc.md"*)
+(*#line 634.18 "sparc/sparc.md"*)
            val i = Word32.toString (Word32  .<< (Word32.fromInt i, 0wxa))
         in 
            ( emit "sethi\t%hi(0x"; 
@@ -459,7 +459,7 @@ struct
         emit_operand i )
       | I.FPop1{a, r, d} => let
 
-(*#line 724.18 "sparc/sparc.md"*)
+(*#line 731.18 "sparc/sparc.md"*)
            fun f (a, r, d) = 
                ( emit a; 
                emit "\t"; 
@@ -467,10 +467,10 @@ struct
                emit ", "; 
                emit_FP d )
 
-(*#line 726.18 "sparc/sparc.md"*)
+(*#line 733.18 "sparc/sparc.md"*)
            fun g (a, r, d) = let
 
-(*#line 727.25 "sparc/sparc.md"*)
+(*#line 734.25 "sparc/sparc.md"*)
                   val r = regmap r
                   and d = regmap d
                in f (a, r, d); 
@@ -479,10 +479,10 @@ struct
                end
 
 
-(*#line 731.18 "sparc/sparc.md"*)
+(*#line 738.18 "sparc/sparc.md"*)
            fun h (a, r, d) = let
 
-(*#line 732.25 "sparc/sparc.md"*)
+(*#line 739.25 "sparc/sparc.md"*)
                   val r = regmap r
                   and d = regmap d
                in f (a, r, d); 
