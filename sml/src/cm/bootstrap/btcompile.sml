@@ -16,9 +16,10 @@ local
     structure GG = GroupGraph
     structure DG = DependencyGraph
 in
-functor BootstrapCompileFn (structure MachDepVC : MACHDEP_VC
-			    val os : SMLofNJ.SysInfo.os_kind
-			    val load_plugin : string -> bool) :> sig
+functor BootstrapCompileFn
+	    (structure MachDepVC : MACHDEP_VC
+	     val os : SMLofNJ.SysInfo.os_kind
+	     val load_plugin : SrcPath.context -> string -> bool) :> sig
     val make' : string option -> bool
     val make : unit -> bool
     val reset : unit -> unit

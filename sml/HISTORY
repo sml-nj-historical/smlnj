@@ -13,6 +13,27 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/03/14 14:15:32
+Tag: blume_main_v110p26p1_2
+Description:
+
+1. Tools.registerStdShellCmdTool (from smlnj/cm/tool.cm) takes an
+additional argument called "template" which is an optional string that
+specifiel the layout of the tool command line.  See the CM manual for
+explanation.
+
+2. A special-purpose tool can be "regisitered" by simply dropping the
+corresponding <...>-tool.cm (and/or <...>-ext.cm) into the same
+directory where the .cm file lives that uses this tool.  (The
+behavior/misfeature until now was to look for the tool description
+files in the current working directory.)  As before, tool description
+files could also be anchored -- in which case they can live anywhere
+they like.  Following the recent e-mail discussion, this change should
+make it easier to have special-purpose tools that are shipped together
+with the sources of the program that uses them.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/03/10 07:48:34
 Tag: blume_main_v110p26p1_1
 Description:

@@ -23,7 +23,9 @@ signature MEMBERCOLLECTION = sig
     val implicit : GroupGraph.group -> collection
 
     val expandOne :
-	GeneralParams.info * (SrcPath.t -> GroupGraph.group) * (string -> bool)
+	GeneralParams.info *
+	(SrcPath.t -> GroupGraph.group) *
+	(SrcPath.context -> string -> bool)
 	-> { name: string, mkpath: string -> SrcPath.t,
 	     group: SrcPath.t * region, class: string option,
 	     context: SrcPath.context }

@@ -137,7 +137,7 @@ askurl() {
 #
 fetchurl() {
     getter=$1 ; shift
-    echo $this: Fetching $1 from $2. Please stand by...
+    echo $this: Fetching $1 from $3. Please stand by...
     fetched=no
     for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
 	try=$VERSION-$2.$ext
@@ -196,28 +196,28 @@ urlgetter() {
 #     be used)
 #
 # fetch_n_unpack is the helper function that does the real work.  If
-# on archive is found locally, it invokes $URLGETTER and tries again.
+# no archive is found locally, it invokes $URLGETTER and tries again.
 # The variable $tryfetch is used to make sure this happens only once.
 fetch_n_unpack() {
     larc=$ROOT/$VERSION-$4
     cd $2
     if [ -r $larc.tar.Z ] ; then
-	echo "$this: Un-compress-ing and un-tar-ing $1 archive."
+	echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
 	zcat $larc.tar.Z | tar -xf -
     elif [ -r $larc.tar ] ; then
-	echo "$this: Un-tar-ing $1 archive."
+	echo "$this: Un-TAR-ing $1 archive."
 	tar -xf $larc.tar
     elif [ -r $larc.tar.gz ] ; then
-	echo "$this: Un-gzip-ing and un-tar-ing $1 archive."
+	echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
 	gunzip -c $larc.tar.gz | tar -xf -
     elif [ -r $larc.tar.bz2 ] ; then
-	echo "$this: Un-bzip2-ing and un-tar-ing $1 archive."
+	echo "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
 	bunzip2 -c $larc.tar.bz2 | tar -xf -
     elif [ -r $larc.tgz ] ; then
-	echo "$this: Un-gzip-ing and un-tar-ing $1 archive."
+	echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
 	gunzip -c $larc.tgz | tar -xf -
     elif [ -r $larc.tz ] ; then
-	echo "$this: Un-compress-ing and un-tar-ing $1 archive."
+	echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
 	zcat $larc.tz | tar -xf -
     elif [ $tryfetch = yes ] ; then
 	urlgetter
@@ -365,8 +365,7 @@ standalone() {
 #
 # create the various sub directories
 #
-for dir in $BINDIR $HEAPDIR $RUNDIR $LIBDIR $SRCDIR
-do
+for dir in $BINDIR $HEAPDIR $RUNDIR $LIBDIR $SRCDIR ; do
     makedir $dir
 done
 
@@ -435,6 +434,11 @@ case $ARCH in
 	ALLOC=1M
 	;;
     x86)
+	# The following is the _wrong_ value for many popular x86 chips
+	# (i.e., Celerons).  However, the optimal value for those is 32k,
+	# and such a small value is not enough for the runtime system's boot
+	# code.  Therefore, we use 256k here and re-set it to the proper
+	# value in .run-sml.
 	ALLOC=256k
 	;;
     alpha32)

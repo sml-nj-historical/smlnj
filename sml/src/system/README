@@ -72,7 +72,7 @@ To be able to use CMB at all, you must first say
 	CM.autoload "smlnj/cmb.cm";
 
 after you start sml.  Alternatively -- and perhaps more conveniently --
-you can provide "host-cmb.cm" as a command-line argument to sml:
+you can provide "smlnj/cmb.cm" as a command-line argument to sml:
 
       $ sml smlnj/cmb.cm
 

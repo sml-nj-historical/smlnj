@@ -3,4 +3,4 @@
 structure PPCUnixCMB =
     BootstrapCompileFn (structure MachDepVC = PPCVisComp
 			val os = SMLofNJ.SysInfo.UNIX
-			val load_plugin = CM.load_plugin)
+			val load_plugin = CM0.load_plugin)

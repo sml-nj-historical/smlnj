@@ -97,7 +97,7 @@ signature PRIVATETOOLS = sig
     val expand : { error: string -> unit,
 		   spec: spec,
 		   context: SrcPath.context,
-		   load_plugin: string -> bool }
+		   load_plugin: SrcPath.context -> string -> bool }
 	-> expansion
 
     val defaultClassOf : (string -> bool) -> string -> class option
@@ -111,7 +111,8 @@ signature TOOLS = sig
 				    class: string,
 				    suffixes: string list,
 				    cmdStdPath: string,
-				    extensionStyle: extensionStyle } -> unit
+				    extensionStyle: extensionStyle,
+				    template: string option } -> unit
 
     (* query default class *)
     val defaultClassOf : string -> class option
@@ -220,7 +221,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			 val plugin = OS.Path.joinBaseExt { base = e ^ "-ext",
 							    ext = SOME "cm" }
 		     in
-			 if load_plugin plugin then sfx_loop e else NONE
+			 if load_plugin plugin then sfx_loop e
+			 else NONE
 		     end)
 	  | NONE => gen_loop (!gen_classifiers)
     end
@@ -242,7 +244,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			(error (concat ["unknown class \"", class, "\""]);
 			 smlrule Sharing.DONTCARE)
 		in
-		    if load_plugin plugin then
+		    if load_plugin context plugin then
 			case StringMap.find (!classes, class) of
 			    SOME rule => rule
 			  | NONE => complain ()
@@ -254,7 +256,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		case co of
 		    SOME c0 => class2rule (String.map Char.toLower c0)
 		  | NONE =>
-			(case defaultClassOf load_plugin name of
+			(case defaultClassOf (load_plugin context) name of
 			     SOME c => class2rule c
 			   | NONE => smlrule Sharing.DONTCARE)
 	    fun rcontext rf = let
@@ -305,7 +307,9 @@ functor ToolsFn (val load_plugin : string -> bool
     val defaultClassOf = defaultClassOf load_plugin
 
     fun registerStdShellCmdTool args = let
-	val { tool, class, suffixes, cmdStdPath, extensionStyle } = args
+	val { tool, class, suffixes, cmdStdPath, extensionStyle, template } =
+	    args
+	val template = getOpt (template, "%c %s")
 	fun mkCmdName () = let
 	    (* It is not enough to turn the string into a SrcPath.t
 	     * once.  This is because if there was no anchor in the
@@ -329,7 +333,26 @@ functor ToolsFn (val load_plugin : string -> bool
 		({ smlfiles = [], cmfiles = [] },
 		 map (fn (f, co) => (f, mkNativePath, co)) targetfiles)
 	    fun runcmd () = let
-		val cmd = concat [mkCmdName (), " ", nativename]
+		val cmdname = mkCmdName ()
+		fun fill ([], sl) = concat (rev sl)
+		  | fill (#"%" :: #"%" :: t, sl) = fill (t, "%" :: sl)
+		  | fill (#"%" :: #"c" :: t, sl) = fill (t, cmdname :: sl)
+		  | fill (#"%" :: #"s" :: t, sl) = fill (t, nativename :: sl)
+		  | fill (#"%" :: t, sl) = let
+			fun finish (n, t) =
+			    fill (t, #1 (List.nth (targetfiles, n-1)) :: sl)
+			    handle General.Subscript =>
+				   fill (t, Int.toString n :: "%" :: sl)
+			fun loop (n, []) = finish (n, [])
+			  | loop (n, t as (c :: t')) =
+			    if c >= #"0" andalso c < #"9" then
+				loop (n * 10 + Char.ord c - Char.ord #"0", t')
+			    else finish (n, t)
+		    in
+			loop (0, t)
+		    end
+		  | fill (c :: t, sl) = fill (t, String.str c :: sl)
+		val cmd = fill (String.explode template, [])
 		val _ = Say.vsay ["[", cmd, "]\n"]
 	    in
 		if OS.Process.system cmd = OS.Process.success then ()

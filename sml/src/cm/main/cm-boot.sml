@@ -225,8 +225,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      before dropPickles ()
 	  end
 
-	  and run sflag f s = let
-	      val p = mkStdSrcPath s
+	  and run mkSrcPath sflag f s = let
+	      val p = mkSrcPath s
 	      val gr = GroupReg.new ()
 	  in
 	      (case Parse.parse (parse_arg (gr, sflag, p)) of
@@ -235,10 +235,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      before dropPickles ()
 	  end
 
-	  and load_plugin x = let
+	  and load_plugin context x = let
 	      val _ = Say.vsay ["[attempting to load plugin ", x, "]\n"]
+	      fun mkSrcPath s =
+		  SrcPath.standard pcmode { context = context, spec = s }
 	      val success =
-		  run NONE (make_runner false) x handle _ => false
+		  run mkSrcPath NONE (make_runner false) x handle _ => false
 	  in
 	      if success then
 		  Say.vsay ["[plugin ", x, " loaded successfully]\n"]
@@ -247,11 +249,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      success
 	  end
 
+	  fun cwd_load_plugin x = load_plugin (SrcPath.cwdContext ()) x
+
 	  fun stabilize_runner gp g = true
 
-	  fun stabilize recursively = run (SOME recursively) stabilize_runner
-	  val recomp = run NONE recomp_runner
-	  val make = run NONE (make_runner true)
+	  fun stabilize recursively =
+	      run mkStdSrcPath (SOME recursively) stabilize_runner
+	  val recomp = run mkStdSrcPath NONE recomp_runner
+	  val make = run mkStdSrcPath NONE (make_runner true)
 
 	  (* I would have liked to express this using "run", but "run"
 	   * thinks it has to return a bool... *)
@@ -519,11 +524,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val stabilize = stabilize
 
 	val symval = SSV.symval
-	val load_plugin = load_plugin
+	val load_plugin = cwd_load_plugin 
 	val mk_standalone = mk_standalone
     end
 
-    structure Tools = ToolsFn (val load_plugin = load_plugin
+    structure Tools = ToolsFn (val load_plugin = cwd_load_plugin
 			       val mkStdSrcPath = mkStdSrcPath)
+
+    val load_plugin = load_plugin
   end
 end

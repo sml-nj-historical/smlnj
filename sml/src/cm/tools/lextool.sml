@@ -11,5 +11,6 @@ structure LexTool = struct
 	  class = "mllex",
 	  suffixes = ["lex", "l"],
 	  cmdStdPath = "ml-lex",
+	  template = NONE,
 	  extensionStyle = Tools.EXTEND [("sml", SOME "sml")] }
 end

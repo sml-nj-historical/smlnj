@@ -56,7 +56,7 @@ signature CM_SEMANT = sig
     val emptyMembers : members
     val member :
 	GeneralParams.info * (pathname option -> pathname -> group) *
-	                     (string -> bool)
+	                     (SrcPath.context -> string -> bool)
 	-> { name: string, mkpath: string -> pathname,
 	     group: pathname * region, class: cm_class option,
 	     context: SrcPath.context }

@@ -3,6 +3,6 @@ Library
 is
 	basis.cm
 	smlnj/internal/cm-lib.cm
-	smlnj/cm/full.cm
+	smlnj/internal/host-compiler-0.cm
 	smlnj/viscomp/x86.cm
 	x86-unix.sml

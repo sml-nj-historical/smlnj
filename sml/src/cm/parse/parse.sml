@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature PARSE = sig
-    val parse : { load_plugin: string -> bool,
+    val parse : { load_plugin: SrcPath.context -> string -> bool,
 		  gr: GroupReg.groupreg,
 		  param: GeneralParams.param,
 		  stabflag: bool option,
