@@ -274,30 +274,39 @@ functor PPCMacOSX_CCalls (
 		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_long_double =>
 		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
-		  | CTy.C_unsigned isz =>
-		      assignGPR(sizeOfInt isz, tys, offset, availGPRs, availFPRs, layout)
-		  | CTy.C_signed isz =>
-		      assignGPR(sizeOfInt isz, tys, offset, availGPRs, availFPRs, layout)
+		  | (CTy.C_unsigned isz | CTy.C_signed isz) =>
+		      assignGPR([sizeOfInt isz], tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_PTR =>
-		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
+		      assignGPR([sizeOfPtr], tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_ARRAY _ =>
-		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
+		      assignGPR([sizeOfPtr], tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_STRUCT tys' =>
 		      assignMem(sizeOfStruct tys', tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_UNION tys' => 
 		      assignMem(sizeOfUnion tys', tys, offset, availGPRs, availFPRs, layout)
 		(* end case *))
 	(* assign a GP register and memory for an integer/pointer argument. *)
-	  and assignGPR ({sz, pad, ...}, args, offset, availGPRs, availFPRs, layout) = let
-		val (loc, availGPRs) = (case (sz, availGPRs)
-		       of (8, _) => raise Fail "register pairs not yet supported"
-			| (_, []) => (Stk(wordTy, offset), [])
-			| (_, r1::rs) => (Reg(wordTy, r1, SOME offset), rs)
-		      (* end case *))
-		val offset = offset + IntInf.fromInt(sz + pad)
-		in
-		  assign (args, offset, availGPRs, availFPRs, loc::layout)
+	  and assignGPR ([], args, offset, availGPRs, availFPRs, layout) =
+	        assign (args, offset, availGPRs, availFPRs, layout)
+	    | assignGPR ({ sz = 8, ... } :: szs,
+			 args, offset, availGPRs, availFPRs, layout) =
+	        (* The C compiler seems to treat "long long" arguments
+		 * as two individual 4-byte arguments.  There seems to be
+		 * no 8-byte alignment requirement, as far as I can tell.
+		 *   - Matthias *)
+	        assignGPR ({ sz = 4, pad = 0, align = 4 } ::
+			   { sz = 4, pad = 0, align = 4 } :: szs,
+			   args, offset, availGPRs, availFPRs, layout)
+	    | assignGPR ({ sz, pad, ... } :: szs,
+			 args, offset, availGPRs, availFPRs, layout) =
+	        let val (loc, availGPRs) =
+			case availGPRs
+			 of [] => (Stk(wordTy, offset), [])
+			  | r1 :: rs => (Reg(wordTy, r1, SOME offset), rs)
+		    val offset = offset + IntInf.fromInt (sz + pad)
+		in assignGPR (szs, args, offset, availGPRs, availFPRs, loc :: layout)
 		end
+								       
 	(* assign a FP register and memory/GPRs for double-precision argument. *)
 	  and assignFPR (args, offset, availGPRs, availFPRs, layout) = let
 		fun continue (availGPRs, availFPRs, loc) =

@@ -273,21 +273,29 @@ struct
 
        fun build_args vl = let 
            open CTypes
-           fun m (C_double, v :: vl) = (CCalls.FARG (fregbind v), vl)
+           fun m (C_double, v :: vl) = ([CCalls.FARG (fregbind v)], vl)
              | m (C_float, v :: vl) =
-                 (CCalls.FARG (M.CVTF2F (32, 64, fregbind v)), vl)
+                 ([CCalls.FARG (M.CVTF2F (32, 64, fregbind v))], vl)
              | m ((C_unsigned (I_char | I_short | I_int | I_long) |
                    C_signed (I_char | I_short | I_int | I_long) |
                    C_PTR),
-                  v :: vl) = (CCalls.ARG (regbind v), vl)
+                  v :: vl) = ([CCalls.ARG (regbind v)], vl)
              | m ((C_STRUCT _ | C_UNION _), v :: vl) =
                  (* pass struct using the pointer to its beginning *)
-                 (CCalls.ARG (regbind v), vl)
+                 ([CCalls.ARG (regbind v)], vl)
+	     | m ((C_signed I_long_long | C_unsigned I_long_long), v :: vl) =
+	         ([CCalls.ARG (M.LOAD (ity, ea (regbind v, 4), R.memory)),
+		   CCalls.ARG (M.LOAD (ity, regbind v, R.memory))],
+		  vl)
+	     | m (C_long_double, _) =
+	         error "RCC: unexpected long double argument"
+	     | m (C_ARRAY _, _) = error "RCC: unexpected array argument"
+	     | m (C_void, _) = error "RCC: unexpected void argument"
              | m (_, []) = error "RCC: not enough ML args"
-             | m _ = error "RCC: unexpected C-type"
+
            and ml (tl, vl) = let 
                   fun one (t, (ral, vl)) = let val (a, vl') = m (t, vl)
-                                           in (a :: ral, vl') end
+                                           in (a @ ral, vl') end
                   val (ral, vl') = foldl one ([], vl) tl
                in (rev ral, vl')
                end
