@@ -15,7 +15,7 @@ functor WeightedBlockPlacementFn (
     sharing CFG.I = InsnProps.I 
   ) : BLOCK_PLACEMENT = struct
 
-    structure CFG=CFG
+    structure CFG = CFG
     structure IP = InsnProps
     structure G = Graph
     structure ITbl = IntHashTable
@@ -35,23 +35,23 @@ functor WeightedBlockPlacementFn (
   (* a chain of blocks that should be placed in order *)
     datatype chain = CHAIN of {
 	blocks : CFG.node seq,
-	hd : block,
-	tl : block
+	hd : CFG.node,
+	tl : CFG.node
       }
 
     fun head (CHAIN{hd, ...}) = #1 hd
-    fun tail (CHAIN{tl, ...}) = #1 tail
+    fun tail (CHAIN{tl, ...}) = #1 tl
     fun id (CHAIN{hd, ...}) = #1 hd	(* use node ID of head to identify chains *)
     fun sameChain (CHAIN{hd=h1, ...}, CHAIN{hd=h2, ...}) = (h1 = h2)
 
   (* join two chains *)
-    fun joinChains (CHAIN{blocks=b1, hd, ...}, CHAIN{bocks=b2, tl, ...}) =
+    fun joinChains (CHAIN{blocks=b1, hd, ...}, CHAIN{blocks=b2, tl, ...}) =
 	  CHAIN{blocks=SEQ(b1, b2), hd=hd, tl=tl}
 
     val unifyChainPtrs = URef.unify joinChains
 
   (* chain pointers provide a union-find structure for chains *)
-    datatype chain_ptr = chain URef.uref
+    type chain_ptr = chain URef.uref
 
     type block_chain_tbl = chain_ptr ITbl.hash_table
 
@@ -80,8 +80,8 @@ functor WeightedBlockPlacementFn (
    *)
     fun mkChainPlacementGraph (tbl : block_chain_tbl) = let
 	  val gTbl = ITbl.mkTable (ITbl.numItems tbl, Fail "graph table")
-	  val find = ITbl.find tbl
-	  val insert = ITbl.insert tbl
+	  val find = ITbl.find gTbl
+	  val insert = ITbl.insert gTbl
 	(* given a block ID and the chain pointer corresponding to the block
 	 * add the chain node to the graph table (this may involve creating
 	 * the node if it doesn't already exist).
@@ -95,7 +95,7 @@ functor WeightedBlockPlacementFn (
 			val nd = mkNode chain
 			in
 			  insert (chainId, nd);
-			  if (blkId != chainId)
+			  if (blkId <> chainId)
 			    then insert (blkId, nd)
 			    else ();
 			  nd :: nodes
@@ -107,18 +107,18 @@ functor WeightedBlockPlacementFn (
 	    (ITbl.foldi blockToNd [] tbl, gTbl)
 	  end
 
-    fun blockPlacement (cfg as G.GRAPH graph) = let
+    fun blockPlacement (G.GRAPH graph) = let
 	(* a map from block IDs to their chain *)
 	  val blkTbl : chain_ptr ITbl.hash_table = let
 		val tbl = ITbl.mkTable (#size graph (), Fail "blkTbl")
 		val insert = ITbl.insert tbl
-		fun ins (b : CFG.node) =
-		      insert (#1 b, CHAIN{blocks = BLK b, hd = b, tl = b})
+		fun ins (b : CFG.node) = insert (#1 b,
+		      URef.uRef(CHAIN{blocks = ONE b, hd = b, tl = b}))
 		in
 		  #forall_nodes graph ins;
 		  tbl
 		end
-	  val lookupChain = ITbl.lookup
+	  val lookupChain = ITbl.lookup blkTbl
 	(* given an edge that connects two blocks, attempt to merge their chains.
 	 * We return true if a merge occurred.
 	 *)
@@ -129,24 +129,25 @@ functor WeightedBlockPlacementFn (
 		val chain2 = URef.!! cptr2
 		in
 		  if (tail chain1 = src) andalso (dst = head chain2)
-		    then
+		    then (
 		    (* the source block is the tail of its chain and the
 		     * destination block is the head of its chain, so we can
 		     * join the chains.
 		     *)
-		      ignore (unifyChainPtrs (cptr1, cptr2))
-		    else fase (* we cannot join these chains *)
+		      ignore (unifyChainPtrs (cptr1, cptr2));
+		      true)
+		    else false (* we cannot join these chains *)
 		end
 	(* merge chains until all of the edges have been examined; the remaining
 	 * edges cannot be fall-through.
 	 *)
 	  fun loop (pq, edges) = (case PQ.next pq
-		 of SOME(edge, pq) => if join edge;
+		 of SOME(edge, pq) => if join edge
 		      then loop (pq, edges)
 		      else loop (pq, edge::edges)
 		  | NONE => edges
 		(* end case *))
-	  val edges = loop (PQ.fromList (#nodes graph ()), [])
+	  val edges = loop (PQ.fromList (#edges graph ()), [])
 	(* construct a chain placement graph *)
 	  val (chainNodes, grTbl) = mkChainPlacementGraph blkTbl
 	  val lookupNd = ITbl.lookup grTbl
@@ -155,12 +156,12 @@ functor WeightedBlockPlacementFn (
 		 of CFG.SWITCH _ => ()
 		  | CFG.FLOWSTO => ()
 		  | _ => let
-		      val ND{chain=c1, kids} = lookupNd src
+		      val ND{chain=c1, kids, ...} = lookupNd src
 		      val dstNd as ND{chain=c2, ...} = lookupNd dst
 		      in
 			if sameChain(c1, c2)
 			  then ()
-			  else kids := mkEdge (w, dstNd) :: !kids
+			  else kids := mkEdge (!w, dstNd) :: !kids
 		      end
 		(* end case *))
 	  val _ = List.app addCFGEdge edges
@@ -183,7 +184,7 @@ functor WeightedBlockPlacementFn (
 		  chain
 		end
 	(* start with the entry node *)
-	  val chains = dfs (lookupNd(hd(#entries graph ())))
+	  val chains = dfs (lookupNd(hd(#entries graph ())), [])
 	(* place the rest of the nodes and add the exit node *)
 	  val chains = List.foldl dfs chains chainNodes
 	  val chains = exitChain :: chains
@@ -204,7 +205,7 @@ functor WeightedBlockPlacementFn (
 	(* map a block ID to a label *)
 	  fun labelOf blkId = (case #node_info graph blkId
 		 of CFG.BLOCK{labels=ref(lab::_), ...} => lab
-		  | CFG.BLOCK{labels, ...} = let
+		  | CFG.BLOCK{labels, ...} => let
 		      val lab = Label.anon()
 		      in
 			labels := [lab];
@@ -215,7 +216,7 @@ functor WeightedBlockPlacementFn (
 		(blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, ...}),
 		(next as (blkId', _)) :: rest
 	      ) = (case #out_edges graph blkId
-		 of [(_, dst, e as EDGE{k, w, a})] => (case (dst = blkId', k)
+		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (case (dst = blkId', k)
 		       of (false, CFG.FALLSTHRU) => (
 			    (* rewrite edge as JUMP and add jump insn *)
 			    setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
@@ -227,8 +228,9 @@ functor WeightedBlockPlacementFn (
 			    insns := tl(!insns))
 			| _ => ()
 		      (* end case *))
-		  | [(_, dst1, e1 as EDGE{k=CFG.BRANCH b, ...}), (_, dst2, e2)] => (
-		      case (dst1 = blkId', b)
+		  | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
+		      (_, dst2, e2)
+		    ] => (case (dst1 = blkId', b)
 		       of (true, true) => (
 			    setEdges (blkId, [
 				(blkId, dst1, updEdge(e1, CFG.BRANCH false)),
@@ -249,7 +251,7 @@ functor WeightedBlockPlacementFn (
 	    | patch (_, []) = ()
 	  in
 	    patch (hd blocks, tl blocks);
-	    blocks;
+	    blocks
 	  end
 
   end
