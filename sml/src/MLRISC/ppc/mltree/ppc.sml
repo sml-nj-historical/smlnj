@@ -61,8 +61,8 @@ struct
   val RET = I.BCLR{bo=I.ALWAYS, bf=CR0, bit=I.LT, LK=false, labels=[]}
   fun SLLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp i,mb=0,me=SOME(31-i)}
-  fun SRLI32{r,i,d} = 
-      I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(32-i),mb=i,me=SOME(31)}
+  fun SRLI32{r,i,d} = 			
+      I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(Int.mod(32-i,32)),mb=i,me=SOME(31)}
   fun COPY{dst, src, tmp} = 
       I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
   fun FCOPY{dst, src, tmp} = 
