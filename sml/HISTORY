@@ -14,6 +14,46 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 00/03/09 10:23:53
+Tag: blume_main_v110p26p1_0
+Description:
+
+* Complete re-organization of library names.  Many libraries have been
+consolidated so that they share the same path anchor.  For example,
+all MLRISC-related libraries are anchored at MLRISC, most libraries that
+are SML/NJ-specific are under "smlnj".  Notice that names like
+host-cmb.cm or host-compiler.cm no longer exist.  See system/README
+for a complete description of the new naming scheme.  Quick reference:
+
+   host-cmb.cm        -> smlnj/cmb.cm
+   host-compiler.cm   -> smlnj/compiler.cm
+   full-cm.cm         -> smlnj/cm.cm
+   <arch>-<os>.cm     -> smlnj/cmb/<arch>-<os>.cm
+   <arch>-compiler.cm -> smlnj/compiler/<arch>.cm
+
+* Bug fixes in CM.
+    - exceptions in user code are being passed through (i.e., reach top level)
+    - more bugs in paranoia mode fixed
+    - bug related to checking group owners fixed
+
+* New install.sh script that automagically fetches archive files:
+  The new file config/srcarchiveurl must contain the URL of the
+  (remote) directory that contains bin files (or other source archives).
+  If install.sh does not find the archive locally, it tries to get
+  it from that remote directory.
+  This should simplify installation further:  For machines that have
+  access to the internet, just fetch <version>-config.tgz, unpack it,
+  edit config/targets, and go (run config/install.sh).  The scipt will
+  fetch everything else that it might need all by itself.
+
+  For CVS users, this mechanism is not relevant for source archives, but
+  it is convenient for getting new sets of binfiles.
+
+  Archives should be tar files compressed with either gzip, compress, or
+  bzip2.  The script recognizes .tgz, .tar, tar.gz, tz, .tar.Z, and .tar.bz2.
+  
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/03/07 04:01:04
 Tag: blume_main_v110_26_2
 Description:
