@@ -58,7 +58,7 @@ Library
 	structure SmlFile
 	structure Binfile
 	structure PrintHooks
-	structure CompilerVersion
+	structure SMLNJVersion
 	structure CompInfo
 	structure CompileExn
 	structure CoreSym

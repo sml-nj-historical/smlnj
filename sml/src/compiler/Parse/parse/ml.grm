@@ -241,8 +241,8 @@ elabel	: selector EQUALOP exp	(selector,exp)
 elabels : elabel COMMA elabels	(elabel :: elabels)
 	| elabel	        ([elabel])
 
-exp_ps	: exp		        ([exp])
-	| exp SEMICOLON exp_ps	(exp :: exp_ps)
+exp_ps	: exp		        ([markexp (exp, expleft, expright)])
+	| exp SEMICOLON exp_ps	(markexp (exp, expleft, expright) :: exp_ps)
 
 exp	: exp HANDLE match	(HandleExp{expr=exp,rules=match})
 

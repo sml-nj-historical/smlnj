@@ -329,6 +329,7 @@ struct
 	      | SOME (g, gp) => let
 		    fun finish (g, gp) = let
 			val { l = bootitems, ss } = mkBootList g
+			val bootitems = map #2 bootitems
 			val stablelibs = Reachable.stableLibsOf g
 			fun inSet bi = StableSet.member (ss, bi)
 			val frontiers =
@@ -433,6 +434,7 @@ struct
 	fun slave NONE = (internal_reset (); NONE)
 	  | slave (SOME (dirbase, root)) =
 	    (StabModmap.reset ();
+	     #set (SSV.symval "CMB_SLAVE_MODE") (SOME 1);
 	     case mk_compile { master = false, root = SOME root,
 			       dirbase = SOME dirbase } of
 		 NONE => NONE

@@ -4,7 +4,7 @@
  *
  *)
 
-Group (../cml-internal.cm)
+Group
   signature CML_SOCKET
   structure PreSock
   structure CML_Socket

@@ -4,7 +4,7 @@
  * to avoid cycles.
  *)
 
-Group (../cml-internal.cm)
+Group
   signature OS_IO
   signature OS_PROCESS
   signature OS

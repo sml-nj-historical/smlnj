@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *)
 
-Group (../cml-internal.cm)
+Group
   signature CML_SOCKET
   signature GENERIC_SOCK
   signature INET_SOCK

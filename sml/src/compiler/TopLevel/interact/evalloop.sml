@@ -266,15 +266,21 @@ fun interact () = let
 		  | ExnDuringExecution exn => user_hdl exn
 		  | exn => bug_hdl exn
 
+(*
 	    fun bt_hdl (e, []) = non_bt_hdl e
 	      | bt_hdl (e, hist) =
 		(say (concat ("\n*** BACK-TRACE ***\n" :: hist));
 		 say "\n";
 		 non_bt_hdl e)
+*)
 	in
-	    SMLofNJ.Internals.BTrace.bthandle
+	    SMLofNJ.Internals.TDP.with_monitors (fn () => evalLoop source)
+	    handle e => non_bt_hdl e
+(*
+	    BackTrace.bthandle
 		{ work = fn () => evalLoop source,
 		  hdl = bt_hdl }
+*)
 	end
 in
     loop()

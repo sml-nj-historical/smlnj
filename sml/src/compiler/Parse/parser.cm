@@ -4,7 +4,7 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-Group (../../system/smlnj/viscomp/parser.cm)
+Group
 	signature PARSER_CONTROL
 	structure ParserControl
 

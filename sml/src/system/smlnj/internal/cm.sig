@@ -69,7 +69,10 @@ signature CM = sig
     val cm_dir_arc : string
 
     val mk_standalone : bool option ->
-			{ project: string, wrapper: string, target: string } ->
+			{ setup: string option,
+			  project: string,
+			  wrapper: string,
+			  target: string } ->
 			string list option
 
     structure Graph : sig

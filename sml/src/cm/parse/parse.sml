@@ -350,7 +350,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun obsolete r =
 			if #get StdConfig.warn_obsolete () then
 			    EM.error source r EM.WARN
-			      "old-style operator (obsolete)" EM.nullErrorBody
+			      "old-style feature (obsolete)" EM.nullErrorBody
 			else ()
 
 		    (* recParse returns a group (not an option).
@@ -467,7 +467,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			  newline = newline,
 			  obsolete = obsolete,
 			  error = error,
-			  sync = sync}
+			  sync = sync,
+			  in_section2 = ref false }
 		    end
 
 		    fun inputc k = TextIO.input stream

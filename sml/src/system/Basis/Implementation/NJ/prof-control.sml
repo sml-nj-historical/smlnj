@@ -91,18 +91,8 @@ structure ProfControl : PROF_CONTROL =
 	  }];
 
   (* count the number of newlines in a string *)
-    fun newlines s = let
-	  fun notNL #"\n" = false | notNL _ = true
-	  fun f (ss, count) = let
-		val ss = Substring.dropl notNL ss
-		in
-		  if Substring.isEmpty ss
-		    then count
-		    else f (Substring.triml 1 ss, count+1)
-		end
-	  in
-	    f (Substring.all s, 0)
-	  end
+    fun newlines s =
+	CharVector.foldl (fn (#"\n", n) => n + 1 | (_, n) => n) 0 s
 
     fun register names = let
 	val list = !units

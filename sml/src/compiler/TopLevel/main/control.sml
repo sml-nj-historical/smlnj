@@ -270,8 +270,7 @@ structure Control : CONTROL =
 	     "whether to generate code that tracks exceptions", true)
     (* warning message when call of polyEqual compiled: *)
     val polyEqWarn =
-	new ("poly-eq-warn",
-	     "wheter to warn when generating call of polyEqual", true)
+	new ("poly-eq-warn", "whether to warn about calls of polyEqual", true)
     val indexing = new ("indexing", "?", false)
     val instSigs = new ("inst-sigs", "?", true)
 
@@ -329,7 +328,7 @@ structure Control : CONTROL =
 		   | Default _ => a)
 	end
     end
-    val btrace = BTrace.enabled
+    val tdp_instrument = TDPInstrument.enabled
 
     end (* local *)
   end

@@ -14,6 +14,238 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/20 15:06:00 CDT
+Tag: blume-20041020-standalone-backtrace
+Description:
+
+Added a mechanism for getting back-trace information from standalone
+programs.  Here is how it works:
+
+   1. The part of the program from which you want to get backtrace
+      information (usually the whole program) should be wrapped with
+      BackTrace.monitor.  This is a (unit->'a)->'a function, and your
+      main program could be modified from something like
+
+         fun main (pgm, args) = ...
+
+     to
+
+        fun main (pgm, args) = BackTrace.monitor (fn () => ...)
+
+   2. To be able to access BackTrace.monitor, you have to add
+      library $smlnj-tdp/plugins.cm to the .cm file that contains your
+      main function.
+
+   3. Remove all compiled code (i.e., all the .cm/ subdirectories that
+      CM might have created in the past for your project).
+
+   4. Build the system using this command line:
+
+         ml-build -Ctdp.instrument=true \$smlnj-tdp/back-trace.cm \
+                  myprog.cm MyProg.main myprog
+
+      instead of the usual
+
+         ml-build myprog.cm MyProg.main myprog
+
+I changed a library name:
+
+   $/trace-debug-profile.cm --> $smlnj-tdp/plugins.cm
+
+New libraries:
+
+   $smlnj-tdp/back-trace.cm
+      -- when loaded causes the back-trace plugin to be installed
+   $smlnj-tdp/coverage.cm
+      -- when loaded causes the coverage plugin to be installed
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/18 16:45:00 CDT
+Tag: blume-20041018-groupowner
+Description:
+
+Added an "obsolete" warning for the "group owner" syntax to CM's parser.
+
+Eliminated group owner specs from .cm files throughout the source tree.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/15 15:45:00 CDT
+Tag: blume-20041015-coverage
+Description:
+
+* Test coverage tool added!
+* Further reorganization of tracing-, debugging-, and profiling support:
+
+    - moved original BTImp -- now called BackTrace -- into a separate
+      library called $/trace-debug-profile.cm
+    - eliminated all mentions of BTrace from SMLofNJ.Internals
+    - only the instrumentation mechanism is now left in the compiler proper
+    - BackTrace module is a plugin which is NOT plugged in by default
+    - Coverage module is another such plugin
+
+To get the benefits of any of these plugin modules, the code in
+question must be compiled with tdp instrumentation turned on.  This
+can be done by setting SMLofNJ.Internals.TDP.mode to true.
+(The ref cell is also controlled via the -Ctdp.instrument=... switch.)
+
+Plugins are selected at link time.  (Pre-compiled instrumented code
+can be re-loaded with different plugins in effect.)  When an
+instrumented module is linked, whatever plugins are at that time
+enabled will come into effect for that module.
+
+To enable the back-trace plugin, load library $/trace-debug-profile.cm
+and invoke BackTrace.install() (e.g., from the interactive prompt).
+To enable the coverage plugin, load the same library and invoke
+Coverage.install().
+
+Back-traces are generated automatically on uncaught exceptions and
+when the code in question explicitly invokes BackTrace.trigger().
+
+Coverage (and execution frequency-) information must be queried
+explicitly by calling Coverage.not_covered and Coverage.hot_spots.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/14 17:40:00 CDT
+Tag: blume-20041014-tdp-core
+Description:
+
+Snapshot of a significant overhaul of how the trace/debug/profile support
+is hooked into the system (specifically: Core and SMLofNJ.Internals).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/13 16:34:00 CDT
+Tag: blume-20041013-tdp
+Description:
+
+Some rationalization of names:
+
+   structure BTrace -> structure TDPInstrument
+   etc.
+
+This is is preparation of using the original back-trace
+instrumentation for other purposes.  "TDP" stands for
+Trace/Debug/Profile.
+
+The control flag controlling whether instrumentation is on or off is now
+registered under a different name, so instead of running sml as
+
+ sml -Cinstrument.btrace-mode=true
+
+one has to say
+
+ sml -Ctdp.instrument=true
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/11 16:37:00 CDT
+Tag: blume-20041011-regions
+Description:
+
+Made some minor modifications to elabcore.sml to have source regions
+be propagated more tightly -- resulting in better (i.e., smaller)
+regions being reported in error- and debug messages.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/08 22:50:00 CDT
+Tag: blume-20041008-cmkw
+Description:
+
+Fixed handling of keywords in .cm files: After seeing "is" the lexer
+treats subsequent occurrences of "group", "library", "source", "is",
+"*", and "-" as ordinary identifiers rather than keywords.
+
+Most seriously, this fixes a problem with CM's "shell" tool.  The tool
+is supposed to accept a tool argument called "source", but this did
+not work because of the clash with the keyword.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/07 16:00:00 CDT
+Tag: blume-20041007-cleanup
+Description:
+
+Assorted cleanup work:
+
+  - got rid of intstrmap in favor of using the library's
+    hash table implementation
+  - threw out most of the pathnames stuff, as it was not used anyway
+  - simplified tokentable implementation
+  - fixed some minor spelling errors
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/06 15:15:15 CDT
+Tag: blume-20041006-handler
+Description:
+
+Cleaned up the absyn to reflect the invariant that HANDLE always
+carries a FNexp as part of the type definition.  This eliminates some
+superfluous sanity checks at runtime down the road.
+
+Some minor cleanup of the btrace code.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/01 10:20:30 CDT
+Tag: blume-20041001-slave
+Description:
+
+Added hack to make slave mode work in the presence of the version
+tool.  (Still, since the master does two passes over the code for
+CMB.make, the release number gets bumped twice when slaves are
+attached.  I don't know if this is worth fixing...)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/30 10:55:00 CDT
+Tag: blume-20040930-version
+Description:
+
+* Moved the "version" magic into its own little library under
+src/system/smlnj/internal.  This avoids expensive reconstruction
+of a stable src/compiler/core.cm.
+
+* At the same time, structure CompilerVersion is now known as structure
+SMLNJVersion.
+
+* Arranged for the version tool to NOT kick in when rebuilding the system
+  (makeml -rebuild, fixpt).  Otherwise one would never reach a fixpoint.
+  Also, loading the versiontool does not work when rebuilding the system
+  because CM is not properly initialized at that time.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/29 14:00:00 CDT
+Tag: blume-20040929-autoversion
+Description:
+
+Implemented some CM magic to have
+    file src/compiler/TopLevel/main/version.sml
+generated automagically.
+The version is taken from two files: config/version and config/release.
+The first is expected to contain a two-part version number such as 110.49.
+The second should contain a single number, but it may be missing.
+
+If the environment variable VERSIONTOOL_BUMP_RELEASE is defined at the
+time the version tool is loaded (which is the first time you say CMB.make),
+then the tool will increment the value stored in config/release every
+time CMB.make is invoked.
+
+The binfile format is now insensitive to anything beyond the first
+two components of a version number, so bumping the release does not render
+binfiles incompatible.  Auto-bumping can be used to keep track of versions
+during development without invalidating existing binfiles.
+
+In any case, every CMB.make updates the date information in version.sml.
+(This is the date that is printed in the banner.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/28 10:53:00 CDT
 Tag: blume-20040928-controls
 Description:

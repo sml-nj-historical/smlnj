@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1996 AT&T Research.
  *)
 
-Group (../cml-internal.cm)
+Group
 is
 #if defined (NEW_CM)
   $cml/core-cml.cm

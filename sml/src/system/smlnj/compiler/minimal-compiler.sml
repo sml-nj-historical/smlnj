@@ -7,7 +7,7 @@
  * Compiler.version or Compiler.architecture.
  *)
 structure MinimalCompiler = struct
-    val version = CompilerVersion.version
+    val version = SMLNJVersion.version
     val architecture = Backend.architecture
 end
 

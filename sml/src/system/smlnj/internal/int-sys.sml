@@ -78,13 +78,13 @@ structure InteractiveSystem : sig end = struct
     (* launch interactive loop *)
     val _ = (Control.Print.say "Generating heap image...\n";
 	     if SMLofNJ.exportML heapfile then
-		 (print CompilerVersion.banner;
+		 (print SMLNJVersion.banner;
 		  print "\n";
 		  getOpt (procCmdLine, fn () => ()) ();
 		  Backend.Interact.interact ())
 	     else
 		 (print "This is...\n";
-		  print CompilerVersion.banner;
+		  print SMLNJVersion.banner;
 		  print "\n";
 		  OS.Process.exit OS.Process.success))
 end

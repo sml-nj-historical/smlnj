@@ -6,7 +6,7 @@
  *
  * This file is for use with the new CM.  The old CM cannot process it.
  *)
-Group (basis.cm)
+Group
 
     library($/basis.cm)
 

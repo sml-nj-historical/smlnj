@@ -8,7 +8,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/alpha32.cm.
  *)
-Group (../system/smlnj/viscomp/alpha32.cm)
+Group
 
 	structure Alpha32Backend
 

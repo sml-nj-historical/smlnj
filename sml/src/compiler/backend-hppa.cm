@@ -7,7 +7,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/hppa.cm.
  *)
-Group (../system/smlnj/viscomp/hppa.cm)
+Group
 
 	structure HppaBackend
 

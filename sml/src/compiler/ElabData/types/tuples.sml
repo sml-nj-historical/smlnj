@@ -39,9 +39,10 @@ structure TyconArray = DynamicArrayFn (
   end)
 
 exception New
-val tyconTable = IntStrMap.new(32,New) : tycon IntStrMap.intstrmap
-val tyconMap = IntStrMap.map tyconTable
-val tyconAdd = IntStrMap.add tyconTable
+structure Tbl = WordStringHashTable
+val tyconTable = Tbl.mkTable (32, New) : tycon Tbl.hash_table
+val tyconMap = Tbl.lookup tyconTable
+val tyconAdd = Tbl.insert tyconTable
 
 fun labelsToSymbol(labels: label list) : Symbol.symbol =
     let fun wrap [] = ["}"]
@@ -59,7 +60,7 @@ fun mkRECORDtyc labels =
      in tyconMap(number,name)
 	handle New =>
 	  let val tycon = RECORDtyc labels
-	   in tyconAdd(number,name,tycon);
+	   in tyconAdd((number,name),tycon);
 	      tycon
 	  end
     end

@@ -58,7 +58,7 @@ in
     struct
 
         val arch = Backend.architecture
-	val version = #version_id CompilerVersion.version
+	val version = #version_id SMLNJVersion.version
 
 	type notifier = GP.info -> SmlInfo.info -> unit
 

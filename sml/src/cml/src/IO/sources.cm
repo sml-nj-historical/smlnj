@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1996 AT&T Research.
  *)
 
-Group (../cml-internal.cm)
+Group
   signature CML_BIN_IO
   signature CML_IMPERATIVE_IO
   signature CML_STREAM_IO

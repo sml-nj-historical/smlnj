@@ -43,13 +43,19 @@ while [ $# != 0 ] ; do
     esac
 done
 
-if [ $# != 3 ] ; then
+if [ $# = 3 ] ; then
+    setup=
+    root=$1
+    main=$2
+    heap=$3
+elif [ $# = 4 ] ; then
+    setup=$1
+    root=$2
+    main=$3
+    heap=$4
+else
     usage wrong number of arguments
 fi
-
-root=$1
-main=$2
-heap=$3
 
 rare=XYZ_XXX_0123
 
@@ -65,7 +71,8 @@ EOF
 # Unless the heap image exists and is up-to-date CM will write the arguments
 # for the link script into $linkargsfile.
 # (See src/cm/main/cm-boot.sml [function "mlbuild"] for details.)
-if $SML $dulist @CMbuild $root $cmfile $heap $listfile $linkargsfile ; then
+if $SML $dulist @CMbuild $setup $root $cmfile $heap $listfile $linkargsfile
+then
     if [ -r $linkargsfile ]; then
 	$LINK `cat $linkargsfile`
     fi

@@ -388,7 +388,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      before dropPickles ()
 	  end
 
-	  fun mk_standalone sflag { project, wrapper, target } = let
+	  fun mk_standalone sflag { setup, project, wrapper, target } = let
 	      val hsfx = SMLofNJ.SysInfo.getHeapSuffix ()
 	      fun extendTarget () =
 		  OS.Path.joinBaseExt { base = target, ext = SOME hsfx }
@@ -397,16 +397,29 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		      { base, ext = NONE } => extendTarget ()
 		    | { base, ext = SOME e } =>
 		      if e = hsfx then target else extendTarget ()
+	      val spopt = Option.map mkStdSrcPath setup
 	      val pp = mkStdSrcPath project
 	      val wp = mkStdSrcPath wrapper
 	      val ts = TStamp.fmodTime target
 	      val gr = GroupReg.new ()
-	      fun do_wrapper () =
-		  case Parse.parse (parse_arg (gr, NONE, wp)) of
+	      fun do_cmfile p =
+		  case Parse.parse (parse_arg (gr, NONE, p)) of
 		      NONE => NONE
 		    | SOME (g, gp) =>
 		      if recomp_runner gp g then SOME (mkBootList g)
 		      else NONE
+	      val setup_list =
+		  case spopt of
+		      SOME sp => getOpt (do_cmfile sp, [])
+		    | NONE => []
+	      fun in_setup (i, _) =
+		  List.exists (MkBootList.same_info i o #1) setup_list
+	      fun do_wrapper () =
+		  case do_cmfile wp of
+		      NONE => NONE
+		    | SOME l =>
+		        SOME (map #2 (setup_list @
+				      List.filter (not o in_setup) l))
 	  in
 	      (case Parse.parse (parse_arg (gr, sflag, pp)) of
 		   NONE => NONE
@@ -425,6 +438,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      val gr = GroupReg.new ()
 	      fun parse p = Parse.parse (slave_parse_arg (gr, NONE, p))
 	  in
+	      #set (SSV.symval "CM_SLAVE_MODE") (SOME 1);
 	      Slave.slave { penv = penv,
 			    parse = parse,
 			    my_archos = my_archos,
@@ -437,42 +451,53 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	   * keeps ML code together.  (It used to be part of the
 	   * script, but that proved difficult to maintain.) *)
 	  fun mlbuild buildargs =
-	      OS.Process.exit
-	      (case buildargs of
-		   [root, cmfile, heap, listfile, linkargsfile] =>
-		   (case mk_standalone NONE { project = root,
-					      wrapper = cmfile,
-					      target = heap } of
-			NONE => (Say.say ["Compilation failed.\n"];
-				 OS.Process.failure)
-		     | SOME [] => (Say.say ["Heap was already up-to-date.\n"];
-				   OS.Process.success)
-		     | SOME l => let
-			   fun wrf (f, l) = let
-			       val s = TextIO.openOut f
-			       fun wr str = TextIO.output (s, str ^ "\n")
-			   in
-			       app (fn str => TextIO.output (s, str ^ "\n")) l;
-			       TextIO.closeOut s
-			   end
-				       
+	      let fun doit (setup, root, cmfile, heap, listfile, linkargsfile) =
+		      case mk_standalone NONE { setup = setup,
+						project = root,
+						wrapper = cmfile,
+						target = heap } of
+			  NONE => (Say.say ["Compilation failed.\n"];
+				   OS.Process.failure)
+			| SOME [] =>
+			    (Say.say ["Heap was already up-to-date.\n"];
+			     OS.Process.success)
+			| SOME l => let
+			      fun wrf (f, l) =
+				  let val s = TextIO.openOut f
+				      fun wr str =
+					  TextIO.output (s, str ^ "\n")
+				  in
+				      app wr l;
+				      TextIO.closeOut s
+				  end
 
-			   val s = TextIO.openOut listfile
-			   fun wr str = TextIO.output (s, str ^ "\n")
-			   val n = length l
-			   fun maxsz (s, n) = Int.max (size s, n)
-			   val m = foldl maxsz 0 l
-		       in
-			   wrf (listfile, concat ["%", Int.toString n, " ",
-						  Int.toString m]
-					  :: l);
-			   wrf (linkargsfile,
-				[concat [" @SMLboot=", listfile]]);
-			   OS.Process.success
-		       end
-		       handle _ => OS.Process.failure)
-		 | _ => (Say.say ["bad arguments to @CMbuild\n"];
-			 OS.Process.failure))
+			      val s = TextIO.openOut listfile
+			      fun wr str = TextIO.output (s, str ^ "\n")
+			      val n = length l
+			      fun maxsz (s, n) = Int.max (size s, n)
+			      val m = foldl maxsz 0 l
+			  in
+			      wrf (listfile,
+				   concat ["%", Int.toString n, " ",
+					   Int.toString m]
+				   :: l);
+			      wrf (linkargsfile,
+				   [concat [" @SMLboot=", listfile]]);
+			      OS.Process.success
+			  end handle _ => OS.Process.failure
+	      in
+		  OS.Process.exit
+		      (case buildargs of
+			   [root, cmfile, heap, listfile, linkargsfile] =>
+			     doit (NONE, root, cmfile, heap, listfile,
+				   linkargsfile)
+			 | [setup,
+			    root, cmfile, heap, listfile, linkargsfile] =>
+			     doit (SOME setup, root, cmfile, heap, listfile,
+				   linkargsfile)
+			 | _ => (Say.say ["bad arguments to @CMbuild\n"];
+				 OS.Process.failure))
+	      end
 
 	  fun al_ginfo () = { param = param false,
 			      groupreg = al_greg,

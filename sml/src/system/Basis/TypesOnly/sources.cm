@@ -1,4 +1,10 @@
-Group (../basis.cm) is
+(* sources.cm
+ *
+ *   The types-only core of the Basis implementation.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *)
+Group is
 
 	$smlnj/init/init.cmi : cm
 

@@ -22,14 +22,14 @@ datatype exp
   | VECTORexp of exp list * Types.ty        
   | PACKexp of exp * Types.ty * Types.tycon list
   | APPexp of exp * exp
-  | HANDLEexp of exp * handler
+  | HANDLEexp of exp * fnrules
   | RAISEexp of exp * Types.ty              
   | CASEexp of exp * rule list * bool
   | IFexp of { test: exp, thenCase: exp, elseCase: exp }
   | ANDALSOexp of exp * exp
   | ORELSEexp of exp * exp
   | WHILEexp of { test: exp, expr: exp }
-  | FNexp of rule list * Types.ty         
+  | FNexp of fnrules
   | LETexp of dec * exp
   | SEQexp of exp list
   | CONSTRAINTexp of exp * Types.ty
@@ -37,8 +37,6 @@ datatype exp
   | MARKexp of exp * region
 
 and rule = RULE of pat * exp
-
-and handler = HANDLER of exp
 
 and pat 
   = WILDpat
@@ -104,5 +102,7 @@ and eb = EBgen of {exn: VarCon.datacon, etype: Types.ty option, ident: exp}
 
 and strb = STRB of {name: Symbol.symbol, str: Modules.Structure, def: strexp}
 and fctb = FCTB of {name: Symbol.symbol, fct: Modules.Functor, def: fctexp}
+
+withtype fnrules = rule list * Types.ty
 
 end (* signature ABSYN *)

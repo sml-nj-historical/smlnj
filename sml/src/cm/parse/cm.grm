@@ -106,7 +106,9 @@ structure S = CMSemant
 description : group				(group)
 
 group : gprivspec LPAREN srcfile RPAREN opt_exports IS members
-                                                (S.group
+                                                (obsolete (LPARENleft,
+							   RPARENright);
+						 S.group
 						 { path = grouppath,
 						   privileges = gprivspec,
 						   exports = opt_exports,

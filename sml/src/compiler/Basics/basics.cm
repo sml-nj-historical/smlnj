@@ -1,10 +1,10 @@
 (* basics.cm
  *
- * Basic definitions and utilities used within the SML/NJ compiler.
+ *   Basic definitions and utilities used within the SML/NJ compiler.
  *
- * (C) 2001 Lucent Technologies, Bell Labs
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *)
-Group (../../system/smlnj/viscomp/basics.cm)
+Group
 
 	signature BASIC_CONTROL
 	structure BasicControl
@@ -35,7 +35,8 @@ Group (../../system/smlnj/viscomp/basics.cm)
 	structure PrettyPrint
 	structure Stats
 	structure PrintUtil
-	structure IntStrMap
+	structure WordStringHashTable
+	structure SymbolHashTable
 
 	signature PIDENV
 	functor PidEnvFn
@@ -58,7 +59,6 @@ is
 	source/source.sml
 	source/sourcemap.sig
 	source/sourcemap.sml
-	source/pathnames.sig
 	source/pathnames.sml
 
 	errormsg/errormsg.sig
@@ -71,8 +71,8 @@ is
 	print/printutil.sml
 	print/pp-init.sml
 
-	miscutil/intstrmap.sig
-	miscutil/intstrmap.sml
+	miscutil/wordstr-hashtable.sml
+	miscutil/symbol-hashtable.sml
 
 	$/basis.cm
 	$/smlnj-lib.cm

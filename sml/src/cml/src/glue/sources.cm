@@ -3,7 +3,7 @@
  * The sources file for the glue that holds CML together.
  *)
 
-Group (../cml-internal.cm)
+Group
   signature OS_GLUE
   functor RunCMLFn
 is

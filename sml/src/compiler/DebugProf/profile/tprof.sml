@@ -325,10 +325,10 @@ fun instrumDec' mayReturnMoreThanOnce (env, compInfo) absyn =
 
                    | CONSTRAINTexp(e,t) => CONSTRAINTexp(instr e, t)
 
-                   | HANDLEexp (e, HANDLER(FNexp(l,t)))=> 
+                   | HANDLEexp (e, (l,t)) =>
                        let fun rule(RULE(p,e)) = 
                              RULE(p,SEQexp[SETCURRENTexp ccvara, instr e])
-                        in HANDLEexp (instr e, HANDLER(FNexp(map rule l,t)))
+                        in HANDLEexp (instr e, (map rule l,t))
                        end
 
                    | RAISEexp(e, t) => RAISEexp(oinstr e, t)

@@ -30,14 +30,14 @@ datatype exp
   | VECTORexp of exp list * ty        
   | PACKexp of exp * ty * tycon list           (* abstraction packing *)
   | APPexp of exp * exp
-  | HANDLEexp of exp * handler
+  | HANDLEexp of exp * fnrules
   | RAISEexp of exp * ty              
   | CASEexp of exp * rule list * bool     (* true: match; false: bind *)
   | IFexp of { test: exp, thenCase: exp, elseCase: exp }
   | ANDALSOexp of exp * exp
   | ORELSEexp of exp * exp
   | WHILEexp of { test: exp, expr: exp }
-  | FNexp of rule list * ty         
+  | FNexp of fnrules
   | LETexp of dec * exp
   | SEQexp of exp list
   | CONSTRAINTexp of exp * ty
@@ -45,8 +45,6 @@ datatype exp
   | MARKexp of exp * region
 
 and rule = RULE of pat * exp
-
-and handler = HANDLER of exp
 
 and pat 
   = WILDpat
@@ -129,6 +127,8 @@ and eb = EBgen of {exn: datacon, etype: ty option, ident: exp}
 
 and strb = STRB of {name: S.symbol, str: Structure, def: strexp} 
 and fctb = FCTB of {name: S.symbol, fct: Functor, def: fctexp}
+
+withtype fnrules = rule list * Types.ty
 
 end (* local *)
 end

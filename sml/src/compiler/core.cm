@@ -15,7 +15,7 @@
  * The present file is a group which gets referred to by the actual library
  * file in system/smlnj/viscomp/core.cm.
  *)
-Group (../system/smlnj/viscomp/core.cm)
+Group
 	signature BACKEND
 
         (* To make it possible to dynamically link in the optimizer, 
@@ -68,7 +68,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure UnpickleSymPid
 	structure CompilerPPTable
 	structure PrintHooks
-	structure CompilerVersion
+	structure SMLNJVersion
 	structure CoreSym
 	structure FLINT
 
@@ -145,10 +145,8 @@ TopLevel/main/cconfig.sig
 TopLevel/main/code-generator.sig
 TopLevel/main/compile.sig
 TopLevel/main/compile.sml
-TopLevel/main/version.sml
 TopLevel/main/printhooks.sml
 TopLevel/main/pptable.sml
-
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
 Semant/basics/inlinfo.sig
@@ -329,3 +327,5 @@ $/controls-lib.cm
 $/pickle-lib.cm
 
 $smlnj/init/init.cmi : cm          (* to gain access at CoreIntInf *)
+
+$smlnj/internal/smlnj-version.cm

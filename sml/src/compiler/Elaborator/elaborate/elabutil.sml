@@ -233,11 +233,11 @@ fun TPSELexp(e, i) =
    KLUDGE! The debugger distinguishes marks in the default case by
      the fact that start and end locations for these marks 
      are the same! *)
-fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(left,_)))] =
-    [r, rule (fn exp => MARKexp(exp,(left,left)))]
+fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
+      [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule 
-                    [r as RULE(pat,CONSTRAINTexp(MARKexp(_,(left,_)),_))] =
-    [r, rule (fn exp => MARKexp(exp,(left,left)))]
+                    [r as RULE(pat,CONSTRAINTexp(MARKexp(_,(_,right)),_))] =
+      [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule [r] = [r,rule (fn exp => exp)]
   | completeMatch'' rule (a::r) = a :: completeMatch'' rule r
   | completeMatch'' _ _ = bug "completeMatch''"
@@ -317,9 +317,11 @@ fun wrapRECdec (rvbs, compInfo) =
 
 val argVarSym = S.varSymbol "arg"
 
-fun FUNdec (completeMatch, fbl, region, 
-            compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
-    let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars}) =
+fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
+
+fun FUNdec (completeMatch, fbl,
+	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
+    let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars,region}) =
 	    let fun getvar _ =  newVALvar(argVarSym, mkv)
 		val vars = map getvar pats
 		fun not1(f,[a]) = a
@@ -330,23 +332,26 @@ fun FUNdec (completeMatch, fbl, region,
 		  | doclause ({pats,exp,resultty=SOME ty}) =
 			      RULE(not1(TUPLEpat,pats),CONSTRAINTexp(exp,ty))
 
+(*  -- Matthias says: this seems to generate slightly bogus marks:
+ *
 		val mark =  case (hd clauses, List.last clauses)
 	                     of ({exp=MARKexp(_,(a,_)),...},
 				 {exp=MARKexp(_,(_,b)),...}) =>
 			         (fn e => MARKexp(e,(a,b)))
 			      | _ => fn e => e
+*)
 		fun makeexp [var] = 
                       FNexp(completeMatch(map doclause clauses),UNDEFty)
 		  | makeexp vars = 
                       foldr (fn (w,e) => 
-                             FNexp(completeMatch [RULE(VARpat w,mark e)],
+                             FNexp(completeMatch [RULE(VARpat w,(*mark*) e)],
                                    UNDEFty))
 				(CASEexp(TUPLEexp(map dovar vars),
 					 completeMatch (map doclause clauses),
                                          true))
 				vars
 	     in RVB {var=var,
-		     exp=makeexp vars,
+		     exp=cMARKexp (makeexp vars, region),
                      boundtvs=[],
 		     resultty=NONE,
 		     tyvars=tyvars}
@@ -359,7 +364,7 @@ fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
     let val v = newVALvar(exnID, mkv)
         val r = RULE(VARpat v, RAISEexp(VARexp(ref(v),[]),UNDEFty))
 	val rules = completeMatch' r rules 
-     in HANDLEexp(exp, HANDLER(FNexp(rules,UNDEFty))) 
+     in HANDLEexp(exp, (rules,UNDEFty))
     end
 
 
@@ -479,7 +484,8 @@ fun recDecs (rvbs as [RVB {var as V.VALvar{access=A.LVAR v, ...},
                | SEQexp l => app findexp l
                | APPexp (a,b) => (findexp a; findexp b)
                | CONSTRAINTexp (x,_) => findexp x
-               | HANDLEexp (x, HANDLER h) => (findexp x; findexp h)
+               | HANDLEexp (x, (l, _)) =>
+		   (findexp x; app (fn RULE (_, x) => findexp x) l)
                | RAISEexp (x, _) => findexp x
                | LETexp (d, x) => (finddec d; findexp x)
                | CASEexp (x, l, _) => 

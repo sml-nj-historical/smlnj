@@ -29,7 +29,7 @@ struct
     type bfc = BF.bfContents
     type stats = { env: int, inlinfo: int, data: int, code: int }
 
-    val version = #version_id CompilerVersion.version
+    val version = #version_id SMLNJVersion.version
 
     fun new () = let
 	val m = ref SmlInfoMap.empty

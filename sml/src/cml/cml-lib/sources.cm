@@ -10,7 +10,7 @@
  * refer to sources.cm (i.e., this file) directly.
  *)
 
-Group (cm-descr/smlnj-lib.cm)
+Group
 
 (** CML specific modules **)
   signature MULTICAST

@@ -58,12 +58,17 @@ local structure EM = ErrorMsg
       (* structure II = InlInfo *)
       structure A = Access
 
+      structure Tbl = SymbolHashTable
+
       open Absyn Ast BasicTypes Access ElabUtil Types VarCon
    (*
       open BasicTypes Symbol Absyn Ast PrintUtil AstUtil BasicTypes TyvarSet
            Types EqTypes TypesUtil Access ElabUtil
     *)
 in
+
+fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
+fun cMARKdec (d, r) = if !ElabControl.markabsyn then MARKdec (d, r) else d
 
 val say = Control_Print.say
 val debugging = ref false
@@ -295,11 +300,11 @@ let
 
     (**** PATTERNS ****)
 
-    fun apply_pat (MarkPat(c,(l1,r1)),MarkPat(p,(l2,r2))) = 
+    fun apply_pat (c as MarkPat(_,(l1,r1)),p as MarkPat(_,(l2,r2))) = 
 	  MarkPat(AppPat{constr=c, argument=p},(Int.min(l1,l2),Int.max(r1,r2)))
       | apply_pat (c ,p) = AppPat{constr=c, argument=p}
 
-    fun tuple_pat (MarkPat(a,(l,_)),MarkPat(b,(_,r))) =
+    fun tuple_pat (a as MarkPat(_,(l,_)),b as MarkPat(_,(_,r))) =
 	  MarkPat(TuplePat[a,b],(l,r))
       | tuple_pat (a,b) = TuplePat[a,b]
 
@@ -342,23 +347,13 @@ let
           *)
 	   let val (ps, tyv) = elabPatList(pats, env, region)
 	       fun freeOrVars (pat::pats) =
-		   let val tbl : (access * ty ref * int) IntStrMap.intstrmap =
-			   IntStrMap.new(16, FreeOrVars)
-		       fun symbToIntStr f symb =
-			   (f tbl (S.number symb, S.name symb))
-		       val ins =
-			   let val ins' = IntStrMap.add tbl
-			    in fn (symb, x) =>
-				 ins' (S.number symb, S.name symb, x)
-			   end
-		       val look =
-			   let val look' = IntStrMap.map tbl
-			    in fn symb => 
-			         look'(S.number symb, S.name symb)
-			   end
+		   let val tbl : (access * ty ref * int) Tbl.hash_table =
+			   Tbl.mkTable (16, FreeOrVars)
+		       fun ins kv = Tbl.insert tbl kv
+		       fun look k = Tbl.lookup tbl k
 		       fun errorMsg x = 
 			     error region EM.COMPLAIN
-			       ("variable " ^ x ^
+			       ("variable " ^ S.name x ^
 			        " does not occur in all branches of or-pattern")
 			       EM.nullErrorBody
 		       fun insFn (id, access, ty) =
@@ -368,13 +363,13 @@ let
 			     in ins (id, (access, ty, n+1)); (access,ty)
 			    end
 			    handle FreeOrVars => 
-				    (errorMsg(S.name id); (access0,ty0)))
+				    (errorMsg id; (access0,ty0)))
 		       fun checkFn (id, access0, ty0) = 
                            (let val (access, ty, _) = look id 
                              in (access, ty) 
                             end
 			    handle FreeOrVars => 
-				   (errorMsg(S.name id); (access0, ty0)))
+				   (errorMsg id; (access0, ty0)))
 		       fun doPat(insFn: (S.symbol*access*ty ref)
                                           ->access*ty ref) =
 			   let fun doPat' (VARpat(VALvar{access, info, path, 
@@ -405,11 +400,11 @@ let
 			      in doPat'
 			     end
 		     (* check that each variable occurs in each sub-pattern *)
-		       fun checkComplete m (_, id, (_, _, n:int)) =
+		       fun checkComplete m (id, (_, _, n:int)) =
 			   if (n = m) then () else (errorMsg id)
 		       val pats = (doPat insFn pat) :: 
                                       (map (doPat bumpFn) pats)
-		    in IntStrMap.app (checkComplete (length pats)) tbl;
+		    in Tbl.appi (checkComplete (length pats)) tbl;
 		       pats
 		   end (* freeOrVars *)
 		 | freeOrVars _ = bug "freeOrVars"
@@ -594,15 +589,14 @@ let
 	       end
 	   | MarkExp (exp,region) => 
 	       let val (e,tyv,updt) = elabExp(exp,env,region)
-		in (if !ElabControl.markabsyn then MARKexp(e,region) else e,
-                    tyv, updt)
+		in (cMARKexp(e,region), tyv, updt)
 	       end
 	   | SelectorExp s => 
 	       (let val v = newVALvar s
 		 in FNexp(completeMatch
 			  [RULE(RECORDpat{fields=[(s,VARpat v)], flex=true,
 					  typ= ref UNDEFty},
-				MARKexp(VARexp(ref v,[]),region))],UNDEFty)
+				cMARKexp(VARexp(ref v,[]),region))],UNDEFty)
 		end,
 		TS.empty, no_updt)
 	   | FlatAppExp items => elabExp(expParse(items,env,error),env,region)
@@ -765,8 +759,7 @@ let
 	   | OvldDec dec  => elabOVERLOADdec(dec,env,rpath,region)
 	   | MarkDec(dec,region') =>
 	       let val (d,env,tv,updt)= elabDec'(dec,env,rpath,region')
-		in (if !ElabControl.markabsyn then MARKdec(d,region') else d,
-		    env,tv,updt)
+		in (cMARKdec(d,region'), env,tv,updt)
 	       end
 
 	   (* FIXME: the following two need to be implemented... *)
@@ -838,7 +831,11 @@ let
 
     (****  VALUE DECLARATIONS ****)
     and elabVB (MarkVb(vb,region),etvs,env,_) =
-	  elabVB(vb,etvs,env,region)
+	let val (d, tvs, u) = elabVB(vb,etvs,env,region)
+	    val d' = cMARKdec (d, region)
+	in
+	    (d', tvs, u)
+	end
       | elabVB (Vb{pat,exp,lazyp},etvs,env,region) =
 	  let val (pat,pv) = elabPat(pat, env, region)
 	      val (exp,ev,updtExp) = elabExp(exp,env,region)
@@ -941,7 +938,12 @@ let
 	in (SEQdec ds, bindVARp (pats,error region), TS.empty, updt)
        end
 
-    and elabRVB(MarkRvb(rvb,region),env,_) = elabRVB(rvb,env,region)
+    and elabRVB(MarkRvb(rvb,region),env,_) =
+	let val ({ match, ty, name }, tvs, u) = elabRVB(rvb,env,region)
+	    val match' = cMARKexp (match, region)
+	in
+	    ({ match = match', ty = ty, name = name }, tvs, u)
+	end
       | elabRVB(Rvb{var,fixity,exp,resultty,lazyp},env,region) =
          (case stripExpAst(exp,region)
 	    of (FnExp _,region')=>
@@ -1103,8 +1105,8 @@ let
     and elabFUNdec(fb,etvs,env,rpath,region) =
 	let val etvs = TS.mkTyvarset(ET.elabTyvList(etvs,error,region))
             (* makevar: parse the function header to determine the function name *)
-	    fun makevar _ (MarkFb(fb,region),ctx) = makevar region (fb,ctx)
-	      | makevar region (Fb(clauses,lazyp),(lcl,env')) =
+	    fun makevar _ (MarkFb(fb,fbregion),ctx) = makevar fbregion (fb,ctx)
+	      | makevar fbregion (Fb(clauses,lazyp),(lcl,env')) =
 		 let fun getfix(SOME f) = LU.lookFix(env,f)
 		       | getfix NONE = Fixity.NONfix
 
@@ -1174,13 +1176,13 @@ let
 
 		     val _ = if List.exists (fn {funsym,...} => 
 					not(S.eq(var,funsym))) clauses
-			     then  error region EM.COMPLAIN 
+			     then  error fbregion EM.COMPLAIN 
 				     "clauses don't all have same function name"
 				     EM.nullErrorBody
 			     else ()
 
 (* DBM: fix bug 1357
-		     val _ = checkBoundConstructor(env,var,error region)
+		     val _ = checkBoundConstructor(env,var,error fbregion)
 *)
 		     val v = newVALvar var
 
@@ -1191,7 +1193,7 @@ let
 				 in if List.exists
 					(fn {argpats,...} => 
 					      len <> length argpats) rest
-				    then error region EM.COMPLAIN 
+				    then error fbregion EM.COMPLAIN 
 				   "clauses don't all have same number of patterns"
 					  EM.nullErrorBody
 				    else ();
@@ -1230,12 +1232,12 @@ let
 				   argpats=map VarPat outerargs,
 				   exp=curryApp(VarExp[lazyvar],
 						     map VarExp outerargs)}
-			   in ((lv,innerclauses,region)::(v,[outerclause],region)
+			   in ((lv,innerclauses,fbregion)::(v,[outerclause],fbregion)
 			       ::lcl,
 			       SE.bind(var,B.VALbind v,
 					SE.bind(lazyvar,B.VALbind lv, env')))
 			  end
-		     else ((v,clauses,region)::lcl,SE.bind(var,B.VALbind v,env'))
+		     else ((v,clauses,fbregion)::lcl,SE.bind(var,B.VALbind v,env'))
 		 end (* makevar *)
 	    val (fundecs,env') = foldl (makevar region) ([],SE.empty) fb
 	    val env'' = SE.atop(env',env)
@@ -1267,7 +1269,7 @@ let
 				  updt3::updt2)
 			     end) 
 			  ([],TS.empty,[]) clauses
-		 in ((var,rev cs1)::fs, union(tvs1,tvs,error region),
+		 in ((var,rev cs1,region)::fs, union(tvs1,tvs,error region),
                      updt1 @ updt)
 		end
 	    val (fbs1,ftyvars,updts) = foldl elabFundec ([],TS.empty,[]) fundecs
@@ -1280,15 +1282,15 @@ let
 		 in tvref := TS.elements localtyvars;
 		    app (fn f => f downtyvars) updts
 		end
-	    fun makefb (v as VALvar{path=SymPath.SPATH[_],...},cs) =
-		  ({var=v,clauses=cs, tyvars=tvref})
+	    fun makefb (v as VALvar{path=SymPath.SPATH[_],...},cs,r) =
+		  ({var=v,clauses=cs, tyvars=tvref,region=r})
 	      | makefb _ = bug "makeFUNdec.makefb"
 	 in EU.checkUniq(error region, "duplicate function names in fun dec",
-		      (map (fn (VALvar{path=SymPath.SPATH[x],...},_) => x
+		      (map (fn (VALvar{path=SymPath.SPATH[x],...},_,_) => x
 			     | _ => bug "makeFUNdec:checkuniq")
 			   fbs1));
 	    (let val (ndec, nenv) = 
-                   FUNdec(completeMatch,map makefb fbs1,region,compInfo)
+                   FUNdec(completeMatch,map makefb fbs1,compInfo)
               in showDec("elabFUNdec: ",ndec,nenv);
 		 (ndec, nenv, TS.empty, updt)
              end)

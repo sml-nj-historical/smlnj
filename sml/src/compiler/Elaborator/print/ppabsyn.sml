@@ -316,7 +316,7 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 	       ppType env ppstrm t;
 	       rpcond(atom);
 	      closeBox ppstrm)
-	  | ppExp'(HANDLEexp(exp, HANDLER(FNexp(rules,_))),atom,d) =
+	  | ppExp'(HANDLEexp(exp, (rules,_)),atom,d) =
 	     (openStyleBox CONSISTENT ppstrm (PP.Rel 0);
 	       lpcond(atom);
 	       ppExp'(exp,atom,d-1); newline ppstrm; ppsay "handle ";
@@ -325,8 +325,6 @@ fun ppExp (context as (env,source_opt)) ppstrm =
 		  (fn ppstrm => fn r => ppRule context ppstrm (r,d-1)), rules);
 	       rpcond(atom);
 	      closeBox ppstrm)
-	  | ppExp'(HANDLEexp(exp, HANDLER _),_,d) =
-	      bug "ppExp'(HANDLEexp)"
 	  | ppExp'(RAISEexp(exp,_),atom,d) = 
 	      (openStyleBox CONSISTENT ppstrm (PP.Rel 0);
 	       lpcond(atom);

@@ -6,8 +6,7 @@
  * features that need to be exposed outside the boot directory.
  *)
 
-structure Internals : INTERNALS =
-  struct
+structure Internals : INTERNALS = struct
 
     structure CleanUp = CleanUp
     structure ProfControl = ProfControl
@@ -21,41 +20,28 @@ structure Internals : INTERNALS =
 
     val resetTimers = InternalTimer.resetTimers
 
-    structure BTrace = struct
-	local
-	    fun mode0 (_ : bool option) : bool =
-		raise Fail "no btrace module hooked in"
-	    val hook = ref { reset = fn () => (), mode = mode0 }
-	in
-	    fun install { corefns, reset, mode } =
-		(hook := { reset = reset, mode = mode };
-		 Core.bt_install corefns)
-	    fun reset () = #reset (!hook) ()
-	    fun mode x = #mode (!hook) x
-	end
-	fun report () = Core.bt_report () ()
-	fun save () = Core.bt_save () ()
-	local
-	    exception BTraceTriggered of unit -> string list
-	in
-	    (* The following function must be compiled with BT-instrumentation
-	     * turned off because it relies on its exception handler to _not_
-	     * restore the bt-history! *)
-	    fun bthandle { work, hdl } = let
-		val restore = save ()
-	    in
-		work ()
-		handle e as BTraceTriggered do_report' =>
-		       (restore (); hdl (e, do_report' ()))
-		     | e => let
-			   val do_report = report ()
-		       in
-			   restore ();
-			   hdl (e, do_report ())
-		       end
-	    end
-	    fun trigger () = raise BTraceTriggered (report ())
-	end
-    end
+    structure TDP = struct
+        type plugin = Core.tdp_plugin
+	type monitor = { name: string, monitor: (unit -> unit) -> unit }
 
-  end;
+	val active_plugins = Core.tdp_active_plugins
+
+	val active_monitors = ref ([] : monitor list)
+
+	fun reserve n = Core.tdp_reserve n
+	fun reset () = Core.tdp_reset ()
+
+	val idk_entry_point = Core.tdp_idk_entry_point
+	val idk_tail_call = Core.tdp_idk_tail_call
+	val idk_non_tail_call = Core.tdp_idk_non_tail_call
+
+	val mode = ref false
+
+	fun with_monitors work =
+	    let fun loop [] = work ()
+		  | loop ({ name, monitor } :: ms) = monitor (fn () => loop ms)
+	    in
+		loop (!active_monitors)
+	    end
+    end
+end

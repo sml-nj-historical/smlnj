@@ -4,8 +4,7 @@
  *
  * Sources file for Pretty Printing Library.
  *)
-
-Group (../pp-lib.cm)
+Group
 
   signature PP_DEVICE
   signature PP_TOKEN
@@ -28,4 +27,3 @@ is
   pp-stream-sig.sml
   pp-stream-fn.sml
   pp-debug-fn.sml
-
