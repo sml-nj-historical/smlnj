@@ -8,6 +8,9 @@
 Library
 	signature CM
 	structure CM
+	structure CM'
 is
+	$smlnj/internal/cm-sig-lib.cm
 	$smlnj/internal/host-compiler-0.cm
 	fetch-full-cm.sml
+	cm-x.sml

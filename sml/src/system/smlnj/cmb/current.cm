@@ -1,6 +1,9 @@
 Library
+	signature CMB
 	structure CMB
 is
+	$smlnj/internal/cm-sig-lib.cm
+
 	(* based on current architecture and OS, select CMB *)
 
 # if defined(ARCH_ALPHA)

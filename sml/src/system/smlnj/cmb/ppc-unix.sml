@@ -1,6 +1,6 @@
 (* (C) 1999 Lucent Technologies, Bell Laboratories *)
 
-structure PPCUnixCMB =
+structure PPCUnixCMB : CMB =
     BootstrapCompileFn (structure MachDepVC = PPCVisComp
 			val useStream = Compiler.Interact.useStream
 			val os = SMLofNJ.SysInfo.UNIX

@@ -68,4 +68,3 @@ signature CM = sig
 			{ project: string, wrapper: string, target: string } ->
 			string list option
 end
-

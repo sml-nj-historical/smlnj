@@ -5,4 +5,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure CM = CM0.CM
+structure CM :> CM = CM0.CM

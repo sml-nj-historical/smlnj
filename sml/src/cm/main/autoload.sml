@@ -42,8 +42,8 @@ functor AutoLoadFn (structure C : COMPILE
     fun reset () = pending := SymbolMap.empty
 
     fun register (_, GG.ERRORGROUP) = ()
-      | register (ter: ER.envref, g as GG.GROUP { exports, ... }) = let
-	    val te = #get ter ()
+      | register (ter: ER.envref, g as GG.GROUP { exports, ... }) =
+	let val te = #get ter ()
 	    (* toplevel bindings (symbol set) ... *)
 	    val tss = foldl SymbolSet.add' SymbolSet.empty
 			    (E.catalogEnv (E.staticPart te))

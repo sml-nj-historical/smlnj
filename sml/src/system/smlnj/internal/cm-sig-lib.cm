@@ -1,5 +1,5 @@
 (*
- * Library exporting the "full" structure CM.
+ * Internal library exporting signatures for CM and CMB.
  *
  * (C) 2000 Lucent Technologies, Bell Laboratories
  *
@@ -7,7 +7,8 @@
  *)
 Library
 	signature CM
-	structure CM
-	structure CM'
+	signature CMB
 is
-	$smlnj/cm/full.cm
+	$/basis.cm
+	cm.sig
+	cmb.sig

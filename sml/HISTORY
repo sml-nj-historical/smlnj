@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/11/19 14:30:00 JST
+Tag:  blume-20001119-autoload
+Description:
+
+Some hacking to make autoloading faster.  Success for CMB, no success
+so far for CM.  There is a reduced structure CM' that autoloads faster.
+(This is a temporary, non-documented hack to be eliminated again when
+the general problem is solved.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/11/17 14:10:00 JST
 Tag: blume-20001117-pickle-lib
 Description:

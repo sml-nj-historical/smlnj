@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *)
 
-structure PPCMacOSCMB =
+structure PPCMacOSCMB : CMB =
     BootstrapCompileFn (structure MachDepVC = PPCVisComp
 			val useStream = Compiler.Interact.useStream
 			val os = SMLofNJ.SysInfo.MACOS

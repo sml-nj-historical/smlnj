@@ -1,6 +1,6 @@
 (* (C) 1999 Lucent Technologies, Bell Laboratories *)
 
-structure X86UnixCMB =
+structure X86UnixCMB : CMB =
     BootstrapCompileFn (structure MachDepVC = X86VisComp
 			val useStream = Compiler.Interact.useStream
 			val os = SMLofNJ.SysInfo.UNIX

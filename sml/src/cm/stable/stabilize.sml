@@ -682,7 +682,9 @@ struct
 		         #1
 		        (StableMap.empty, SmlInfoSet.empty)
 
-		val bnodel = StableMap.listItems bnodes
+		val bnodel = ListMergeSort.sort
+				 (fn (x, y) => (#1 (#1 x) > #1 (#1 y)))
+				 (StableMap.listItems bnodes)
 
 		fun libArg ([], _) = []
 		  | libArg ((lsm, ge) :: t, m) = let

@@ -6,8 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	signature CM
-
 	functor LinkCM
 	functor BootstrapCompileFn
 

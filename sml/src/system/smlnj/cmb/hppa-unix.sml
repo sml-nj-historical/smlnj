@@ -1,6 +1,6 @@
 (* (C) 1999 Lucent Technologies, Bell Laboratories *)
 
-structure HppaUnixCMB =
+structure HppaUnixCMB : CMB =
     BootstrapCompileFn (structure MachDepVC = HppaVisComp
 			val useStream = Compiler.Interact.useStream
 			val os = SMLofNJ.SysInfo.UNIX

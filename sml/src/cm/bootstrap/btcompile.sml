@@ -18,12 +18,8 @@ functor BootstrapCompileFn
 	    (structure MachDepVC : MACHDEP_VC
 	     val useStream : TextIO.instream -> unit
 	     val os : SMLofNJ.SysInfo.os_kind
-	     val load_plugin : SrcPath.dir -> string -> bool) :> sig
-    val make' : string option -> bool
-    val make : unit -> bool
-    val reset : unit -> unit
-    val symval : string -> { get: unit -> int option, set: int option -> unit }
-end = struct
+	     val load_plugin : SrcPath.dir -> string -> bool) =
+struct
     structure SSV = SpecificSymValFn (structure MachDepVC = MachDepVC
 				      val os = os)
     structure P = OS.Path

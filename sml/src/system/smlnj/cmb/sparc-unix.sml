@@ -1,6 +1,6 @@
 (* (C) 1999 Lucent Technologies, Bell Laboratories *)
 
-structure SparcUnixCMB =
+structure SparcUnixCMB : CMB =
     BootstrapCompileFn (structure MachDepVC = SparcVisComp
 			val useStream = Compiler.Interact.useStream
 			val os = SMLofNJ.SysInfo.UNIX

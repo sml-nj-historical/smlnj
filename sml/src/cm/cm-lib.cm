@@ -6,8 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Group (../system/smlnj/internal/cm-lib.cm)
-	signature CM
-
 	functor LinkCM
 	functor BootstrapCompileFn
 
@@ -16,6 +14,9 @@ Group (../system/smlnj/internal/cm-lib.cm)
 	structure Sharing
 	signature TOOLS
 is
+	$/basis.cm
+	$/smlnj-lib.cm
+
 	(* the CM description file parser *)
 	parse/parse.sml
 	parse/cm.grm
@@ -77,7 +78,6 @@ is
 	main/specific-symval-fn.sml
 	main/autoload.sml
 	main/cleanup.sml
-	main/cm.sig
 	main/slave.sml
 	main/preload.sml
 	main/cm-boot.sml
@@ -97,12 +97,9 @@ is
 	(* CM-internal libraries *)
 	util/sources.cm
 
-	$/basis.cm
-
 	(* compiler libraries *)
 	$smlnj/viscomp/core.cm
 	$/pickle-lib.cm
 
 	(* auxiliary libraries *)
 	$/ml-yacc-lib.cm
-	$/smlnj-lib.cm

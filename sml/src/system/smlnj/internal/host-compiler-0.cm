@@ -1,6 +1,5 @@
 cm-init
 Library
-	signature CM
 	structure Compiler
 	structure CM0
 is

@@ -602,7 +602,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				 procCmdLine))
     end
 
-    structure CM :> CM = struct
+    structure CM = struct
 	type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 
 	structure Anchor = struct
