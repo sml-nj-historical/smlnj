@@ -60,8 +60,12 @@ signature SMLINFO = sig
 
     (* Evict all elements that belong to a given group but which
      * are not of the current generation. "cleanGroup" should be
-     * called right after finishing to parse the group file. *)
-    val cleanGroup : SrcPath.t -> unit
+     * called right after finishing to parse the group file.
+     * If the boolean flag ("nowStable") is set to true, then all
+     * members of the group are dismissed regardless of their
+     * generation. This is used to get rid of the information for
+     * members of now-stable libraries. *)
+    val cleanGroup : bool -> SrcPath.t -> unit
 
     (* Delete all known info. *)
     val reset : unit -> unit
@@ -150,10 +154,11 @@ structure SmlInfo :> SMLINFO = struct
     fun forgetParsetree (INFO { persinfo = PERS { parsetree, ... }, ... }) =
 	parsetree := NONE
 
-    fun cleanGroup g = let
+    fun cleanGroup nowStable g = let
 	val n = now ()
 	fun isCurrent (PERS { generation = ref gen, group = (g', _), ... }) =
-	    gen = n orelse SrcPath.compare (g, g') <> EQUAL
+	    ((not nowStable) andalso gen = n)
+	    orelse SrcPath.compare (g, g') <> EQUAL
     in
 	knownInfo := SrcPathMap.filter isCurrent (!knownInfo)
     end

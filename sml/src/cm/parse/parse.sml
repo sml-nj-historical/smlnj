@@ -37,6 +37,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     val sgc = ref (SrcPathMap.empty: CMSemant.group SrcPathMap.map)
     fun reset () = sgc := SrcPathMap.empty
 
+    fun registerNewStable (p, g) =
+	(sgc := SrcPathMap.insert (!sgc, p, g);
+	 SrcPathSet.app (SmlInfo.cleanGroup true) (Reachable.groupsOf g))
+    fun cachedStable p = SrcPathMap.find (!sgc, p)
+
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
     fun dropPickles () = let
@@ -136,16 +141,14 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    case go of
 			NONE => NONE
 		      | SOME g => 
-			    (sgc := SrcPathMap.insert (!sgc, gpath, g);
+			    (registerNewStable (gpath, g);
 			     Say.vsay ["[library ", SrcPath.descr gpath,
 				       " is stable]\n"];
-			     SrcPathSet.app SmlInfo.cleanGroup
-			                    (Reachable.groupsOf g);
 			     SOME g)
 		end
 	    in
 		case findCycle (stablestack, []) of
-		    NONE => (case SrcPathMap.find (!sgc, gpath) of
+		    NONE => (case cachedStable gpath of
 				 SOME g => SOME g
 			       | NONE => load ())
 		  | SOME cyc => (report cyc; NONE)
@@ -161,7 +164,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 				 parse' (group, groupstack, pErrFlag,
 					 stabthis, curlib)
 			 in
-			     gc := SrcPathMap.insert (!gc, group, pres);
+			     case cachedStable group of
+				 NONE =>
+				     gc := SrcPathMap.insert (!gc, group, pres)
+			       | SOME _ => ();
 			     pres
 			 end)
 	end
@@ -172,8 +178,17 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	     * encompass the contents of its sub-groups
 	     * (but not sub-libraries!). *)
 	    fun stabilize (g as GG.GROUP { kind = GG.NOLIB, ... }) = SOME g
-	      | stabilize g =
-		Stabilize.stabilize ginfo { group = g, anyerrors = pErrFlag }
+	      | stabilize g = let
+		    val go = Stabilize.stabilize ginfo { group = g,
+							 anyerrors = pErrFlag }
+		in
+		    case go of
+			NONE => NONE
+		      | SOME g => (registerNewStable (group, g);
+				   (gc := #1 (SrcPathMap.remove (!gc, group))
+				    handle LibBase.NotFound => ());
+				   SOME g)
+		end
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
@@ -331,9 +346,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		case pro of
 		    NONE => NONE
 		  | SOME pr =>
-			(SmlInfo.cleanGroup group;
-			 if stabthis then stabilize pr
-			 else SOME pr)
+			if stabthis then stabilize pr
+			else (SmlInfo.cleanGroup false group; SOME pr)
 	    end
             handle LrParser.ParseError => NONE
 	in
