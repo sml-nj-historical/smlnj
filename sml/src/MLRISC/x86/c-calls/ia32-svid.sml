@@ -278,9 +278,9 @@ functor IA32SVID_CCalls (
 	  } = let
 	  val {argLocs, argMem, resLoc, structRetLoc} = layout proto
 	(* instruction to allocate space for arguments *)
-	  val argAlloc = if ((#szb argMem > 0) andalso paramAlloc argMem)
-		then [T.MV(wordTy, sp, T.SUB(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
-		else []
+	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
+		then []
+		else [T.MV(wordTy, sp, T.SUB(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
 	(* for functions that return a struct/union, pass the location
 	 * as an implicit first argument.
 	 *)
