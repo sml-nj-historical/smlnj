@@ -1,19 +1,38 @@
-SML=sml.x86-linux
-BINDIR=bin.x86-unix
+arch_n_opsys := $(shell ../../bin/.arch-n-opsys)
+ARCH := $(shell eval "$(arch_n_opsys)"; echo -n $$ARCH)
+HEAP_SUFFIX := $(shell eval "$(arch_n_opsys)"; echo -n $$HEAP_SUFFIX)
+BINDIR_SUFFIX=$(ARCH)-unix
+
+# don't ask me why bindir_suffix <> heap_suffix
+SML=sml.$(HEAP_SUFFIX)
+BINDIR=bin.$(BINDIR_SUFFIX)
 MLCMD=CMB.make()
+
+$(BINDIR).new:
+	if [ -d $(BINDIR) ]; then \
+	    mv $(BINDIR) $(BINDIR).new && mv $(BINDIR).old $(BINDIR) ;\
+	else \
+	    mkdir $(BINDIR).new ;\
+	fi
 
 $(SML): $(BINDIR)/COMPLIST
 	-rm -f $@
 	./xmakeml
 
-$(BINDIR)/COMPLIST:
-	[ -d $(BINDIR) -a -d $(BINDIR).old ] && \
-	mv $(BINDIR) $(BINDIR).new && \
-	mv $(BINDIR).old $(BINDIR)
+$(BINDIR)/COMPLIST: $(BINDIR).new
+
+cleannew: $(BINDIR).new
+	-rm $(BINDIR).new/*
 
 recompile: $(SML)
 	mv $(BINDIR) $(BINDIR).old && mv $(BINDIR).new $(BINDIR)
-	echo '$(MLCMD);Compiler.Stats.summary();' | ./xrun $(SML)
+	-echo '$(MLCMD); Compiler.Stats.summary();' | ./xrun sml
+	if [ -f $(BINDIR)/COMPLIST ]; then \
+	    mv $(SML) sml-old.$(HEAP_SUFFIX) &&\
+	    ./xmakeml &&\
+	    mv $(SML) sml-new.$(HEAP_SUFFIX) &&\
+	    mv sml-old.$(HEAP_SUFFIX) $(SML) ;\
+	fi
 	mv $(BINDIR) $(BINDIR).new && mv $(BINDIR).old $(BINDIR)
 
 run: $(SML)

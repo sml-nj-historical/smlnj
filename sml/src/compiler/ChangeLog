@@ -1,0 +1,5 @@
+1998-10-27  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* TopLevel/viscomp/control.sml (listLiterals): turned it back off because
+	  it increases the resulting heap size by more than 10%.
+

@@ -21,6 +21,7 @@ end
  * - several things not mentioned
  * - elimination of Con(Decon x)
  * - update counts when selecting a SWITCH alternative
+ * - contracting RECORD(R.1,R.2) => R  (only if the type is easily available)
  *)
 
 (* things that lcontract.sml does that fcontract doesn't do (yet):
@@ -43,12 +44,10 @@ end
 
 (* things that could also be added:
  * - elimination of dead vars in let (subsumes what lcontract does)
- * - elimination of Record(a.1, a.2, ...)
  *)
 
 (* things that would require some type info:
  * - dropping foo in LET vs = RAISE v IN foo
- * - contracting RECORD(R.1,R.2) => R
  *)
 
 (* eta-reduction is tricky:
@@ -533,13 +532,23 @@ in
 
       | F.SWITCH (v,ac,arms,def) =>
 	(case ((val2sval m v) handle x => raise x)
-	  of sv as (Var{1=lvc,...} | Select{1=lvc,...} | Record{1=lvc,...}
-	            | Decon{1=lvc, ...}) =>
+	  of sv as (Var{1=lvc,...} | Select{1=lvc,...} | Decon{1=lvc, ...}
+	            | (* will probably never happen *) Record{1=lvc,...}) =>
 	     let fun carm (F.DATAcon(dc,tycs,lv),le) =
 		      let val ndc = cdcon dc
-			  (* here I should try to extract the type of lv *)
 			  val nm = addbind(m, lv, Decon(lv, F.VAR lvc, ndc, tycs))
-			  (* we can rebind lv to a more precise value *)
+			  (* we can rebind lv to a more precise value
+			   * !!BEWARE!!  This rebinding is misleading:
+			   * - it gives the impression that `lvc' is built from
+			   *   `lv' although the reverse is true:  if `lvc' is
+			   *   undertaken, `lv's count should *not* be updated!
+			   *   Luckily, `lvc' will not become dead while rebound
+			   *   to Con(lv) because it's used by the SWITCH.
+			   *   All in all, it works fine, but it's not as
+			   *   straightforward as it seems.
+			   * - it seems to be a good idea, but it can hide
+			   *   other opt-opportunities since it hides the
+			   *   previous binding. *)
 			  val nm = addbind(nm, lvc, Con(lvc, F.VAR lv, ndc, tycs))
 		      in (F.DATAcon(ndc, tycs, lv), loop nm le)
 		      end

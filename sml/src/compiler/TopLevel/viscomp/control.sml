@@ -39,19 +39,23 @@ structure Control : CONTROL =
 
     structure FLINT =
     struct
-	val print		= ref false
-	val inlineThreshold	= ref 20
-	val specialize		= ref true
-	val liftLiterals	= ref true
-	val sharewrap		= ref true
+	val print	= ref false
+	val inlineThreshold = ref 20
+	val specialize	= ref true
+	val liftLiterals= ref false
+	val sharewrap	= ref true
+	val maxargs	= ref 10
+	val phases	= ref ["fcontract", "specialize", "fcontract",
+			       "fixfix", "fcontract", "wrap", "fcontract",
+			       "reify", "fcontract"]
 
 	(* only for temporary debugging *)
-	val misc		= ref 0
+	val misc	= ref 0
 
 	(* FLINT internal type-checking controls *)
-	val check		= ref true
-	val checkDatatypes	= ref true
-	val checkKinds		= ref true
+	val check	= ref true
+	val checkDatatypes = ref true
+	val checkKinds	= ref true
     end
 
     structure CG : CGCONTROL =
@@ -63,7 +67,8 @@ structure Control : CONTROL =
       val closureprint = ref false
       val closureStrategy = ref 0
       val lambdaopt = ref true
-      val cpsopt = ref true
+      val cpsopt = ref ["first_contract", "eta", "uncurry", "etasplit",
+			"cycle_expand", "eta", "last_contract"]
       val rounds = ref 10
       val path = ref false
       val betacontract = ref true

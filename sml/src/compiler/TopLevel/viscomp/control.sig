@@ -35,6 +35,8 @@ sig
     val specialize	: bool ref
     val liftLiterals	: bool ref
     val sharewrap	: bool ref
+    val maxargs		: int ref	(* to put a cap on arity raising *)
+    val phases		: string list ref
 
     (* only for temporary debugging *)
     val misc		: int ref
@@ -54,7 +56,7 @@ sig
   val closureprint : bool ref
   val closureStrategy : int ref
   val lambdaopt : bool ref
-  val cpsopt : bool ref
+  val cpsopt : string list ref		(* list of cpsopt phases *)
   val rounds : int ref
   val path : bool ref
   val betacontract : bool ref

@@ -14,6 +14,7 @@ local structure CB = CompBasic
       structure Closure = Closure(MachSpec)
       structure Spill = Spill(MachSpec)
       structure CpsSplit = CpsSplitFun (MachSpec) 
+      structure CTRL = Control.FLINT
 in 
 
 val architecture = Gen.MachSpec.architecture
@@ -22,7 +23,7 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-(*  val lcontract = phase "Compiler 052 lcontract" LContract.lcontract  *)
+val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
 val fcontract = phase "Compiler 052 fcontract" FContract.contract
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -56,7 +57,7 @@ val (prF, prC) =
         if !flag then (say ("\n[After " ^ s ^ " ...]\n\n"); printE e; 
                        say "\n"; e) 
         else e
-   in (prGen (Control.FLINT.print, PPFlint.printProg),
+   in (prGen (CTRL.print, PPFlint.printProg),
        prGen (Control.CG.printit, PPCps.printcps0))
   end
 
@@ -85,32 +86,60 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	 e)
       fun chkF (b, s) = 
         check (ChkFlint.checkTop, PPFlint.printFundec, 
-               "FLINT") (Control.FLINT.check, b, s)
+               "FLINT") (CTRL.check, b, s)
 
-      val _ = (chkF (false,"1") o prF "Translation/Normalization") flint
-      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
+      (* f:FLINT.prog	flint codee
+       * r:boot		whether it has gone through reify yet
+       * l:string	last phase through which it went *)
+      fun runphase (p as "fcontract",(f,r,l)) = (fcontract f, r, p)
+	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p)
+	| runphase (p as "fixfix",(f,r,l)) = (fixfix f, r, p)
+	| runphase (p as "wrap",(f,false,l)) = (wrapping f, false, p)
+	| runphase (p as "specialize",(f,false,l)) = (specialize f, false, p)
+	| runphase (p as "reify",(f,false,l)) = (reify f, true, p)
 
-      val flint =
-        if !Control.FLINT.specialize then
-           (chkF (false,"3") o prF "Specialization" o specialize) flint
-        else flint
-      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
+	(* pseudo FLINT phases *)
+	| runphase ("id",(f,r,l)) = (f,r,l)
+	| runphase (p as "print",(f,r,l)) =
+	  (say("\n[ After "^l^"... ]\n"); PPFlint.printFundec f; (f,r,l))
+	| runphase ("check",(f,r,l)) =
+	  (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
+		 (ref true, r, l) f; (f,r,l))
+	| runphase (p as ("reify"|"specialize"|"wrap"),(f,true,l)) =
+	  (say("\n"^p^"cannot be used after reify!\n"); (f,true,l))
+	| runphase (p,(f,r,l)) =
+	  (say("\n!! Unknown FLINT phase '"^p^"' !!\n"); (f,r,l))
+
+      fun print (f,r,l) = (prF l f; (f, r, l))
+      fun check (f,r,l) = (chkF (r, l) f; (f, r, l))
+
+      (* the "id" phases is just added to do the print/check at the entrance *)
+      val (flint,true,_) = foldl (check o print o runphase)
+				 (flint,false,"flintnm")
+				 ("id" :: !CTRL.phases)
+
+(*        val _ = (chkF (false,"1") o prF "Translation/Normalization") flint *)
+(*        val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint *)
+
+(*        val flint = *)
+(*          if !Control.FLINT.specialize then *)
+(*             (chkF (false,"3") o prF "Specialization" o specialize) flint *)
+(*          else flint *)
+(*        val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint *)
 
 (*        val flint = (chkF (false,"6") o prF "FixFix" o fixfix) flint *)
-      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
+(*        val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint *)
 
-      val flint = (chkF (false, "4") o prF "Wrapping" o wrapping) flint
-      val flint = (chkF (true, "5") o prF "Reify" o reify) flint
+(*        val flint = (chkF (false, "4") o prF "Wrapping" o wrapping) flint *)
+(*        val flint = (chkF (true, "5") o prF "Reify" o reify) flint *)
 
-      val flint = (chkF (true,"2") o prF "Fcontract" o fcontract) flint
+(*        val flint = (chkF (true,"2") o prF "Fcontract" o fcontract) flint *)
 
       val (nc0, ncn, dseg) = 
         let val function = convert flint
             val _ = prC "convert" function
             val function = (prC "cpstrans" o cpstrans) function
-            val function = 
-              if !Control.CG.cpsopt then cpsopt (function,NONE,false) 
-              else function
+            val function = cpsopt (function,NONE,false) 
             val _ = prC "cpsopt" function
 
             val (function, dlit) = litsplit function

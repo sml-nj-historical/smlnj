@@ -178,15 +178,24 @@ and unroll func =
        end
 
 in  (if rounds < 0 then function
-     else (let val function1 = first_contract function
-               val function2 = eta function1
-               val function3 = uncurry function2
-               val function4 = etasplit function3
-               val function5 = cycle(rounds, not(!CG.unroll), function4)
-               val function6 = eta function5 (* ZSH added this new phase *)
-               val function7 = last_contract function6
-            in function7
-           end))
+     else let fun apply ("first_contract",f)= first_contract f
+		| apply ("eta",f)	    = eta f
+		| apply ("uncurry",f)	    = uncurry f
+		| apply ("etasplit",f)	    = etasplit f
+		| apply ("last_contract",f) = last_contract f
+		| apply ("cycle_expand",f)  = cycle(rounds, not(!CG.unroll), f)
+		| apply ("print",f)	    = (PPCps.printcps0 f; f)
+		| apply (p,f) = (say("\n!! Unknown cps phase '"^p^"' !!\n"); f)
+     in foldl apply function (!CG.cpsopt)
+(*  val function1 = first_contract function *)
+(*                 val function2 = eta function1 *)
+(*                 val function3 = uncurry function2 *)
+(*                 val function4 = etasplit function3 *)
+(*                 val function5 = cycle(rounds, not(!CG.unroll), function4) *)
+(*                 val function6 = eta function5 (* ZSH added this new phase *) *)
+(*                 val function7 = last_contract function6 *)
+(*              in function7 *)
+           end)
     before (debugprint "\n"; debugflush())
 
 end (* fun reduce *)

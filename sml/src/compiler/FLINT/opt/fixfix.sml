@@ -40,6 +40,9 @@ fun assert p = if p then () else bug ("assertion failed")
 
 val cplv = LambdaVar.dupLvar
 
+(* to limit the amount of uncurrying *)
+val maxargs = Control.FLINT.maxargs
+
 structure SccNode = struct
     type node = LambdaVar.lvar
     val eq = (op =)
@@ -72,19 +75,24 @@ fun fexp (fv,lexp) = let
     fun fdcon (fv,(s,Access.EXN(Access.LVAR lv),lty)) = addv(fv, F.VAR lv)
       | fdcon (fv,_) = fv
 
-    (* recognize the curried essence of a function. *)
-    fun curry (head,r) (le as (F.FIX([(fk,f,args,body)], F.RET[F.VAR lv]))) =
+    (* recognize the curried essence of a function.
+     * - hd:bool identifies the head of the (potentially) curried function
+     * - r:bool indicates whether the head was recursive
+     * - na:int gives the number of args still allowed *)
+    fun curry (hd,r,na) (le as (F.FIX([(fk,f,args,body)], F.RET[F.VAR lv]))) =
 	if lv = f then
 	    case fk
 	     of F.FK_FCT => ([], le)	(* don't bother *)
 	      | F.FK_FUN {inline=true,...} => ([], le) (* don't bother *)
 	      | F.FK_FUN fk' =>
 		let val fisrec = isSome(#isrec fk')
-		in if head orelse r orelse not fisrec then
+		    val na = na - length args
+		in if na >= 0 andalso (hd orelse r orelse not fisrec) then
 		    (* recursive functions are only accepted for uncurrying
 		     * if they are the head of the function or if the head
 		     * is already recursive *)
-		    let val (funs,body) = curry (false, r orelse fisrec) body
+		    let val (funs,body) =
+			    curry (false, r orelse fisrec, na) body
 		    in ((fk,f,args)::funs,body)
 		    end
 		   else ([], le)
@@ -212,7 +220,7 @@ in case lexp
 
 	   (* process each fun *)
 	   fun ffun (fdec as (fk,f,args,body):F.fundec,(s,fv,funs,m)) =
-	       case curry (true,false) (F.FIX([fdec], F.RET[F.VAR f]))
+	       case curry (true,false,!maxargs) (F.FIX([fdec], F.RET[F.VAR f]))
 		of (args as _::_::_,body) => (* curried function *)
 		   let val ((fk,f,fargs,fbody),(fk',f',fargs',fbody')) =
 			   uncurry(args,body)
