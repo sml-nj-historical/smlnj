@@ -65,13 +65,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  handle Option => raise Fail "bn2statenv"
 
       (* exec_group is basically the same as ET.group with
-       * two additional actions to be taken:
-       *   1. Before executing the code, we announce the priviliges
+       * one additional actions to be taken:
+       *      Before executing the code, we announce the priviliges
        *      that are being invoked.  (For the time being, we assume
        *      that everybody has every conceivable privilege, but at the
-       *      very least we announce which ones are being made use of.)
-       *   2. After we are done we must make the values of "shared"
-       *      compilation units permanent. *)
+       *      very least we announce which ones are being made use of.) *)
       fun exec_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
 	  (if StringSet.isEmpty rq then ()
 	   else Say.say ("$Execute: required privileges are:\n" ::
