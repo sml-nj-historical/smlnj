@@ -152,6 +152,9 @@ struct
 
 (**** START NEW CODE ****)
 
+  (* shorts and chars are promoted to 32-bits *)
+    val naturalIntSz = 32
+
   (* the location of arguments/parameters; offsets are given with respect to the
    * low end of the parameter area (see paramAreaOffset above).
    *)

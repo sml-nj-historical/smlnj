@@ -105,6 +105,9 @@ functor PPCMacOSX_CCalls (
     val fltTy = 32	(* MLRISC type of float *)
     val dblTy = 64	(* MLRISC type of double *)
 
+  (* shorts and chars are promoted to 32-bits *)
+    val naturalIntSz = wordTy
+
   (* stack pointer *)
     val spReg = T.REG(wordTy, C.GPReg 1)
 

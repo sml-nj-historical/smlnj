@@ -72,6 +72,9 @@ functor IA32SVID_CCalls (
     val dblTy = 64
     val xdblTy = 80
 
+  (* shorts and chars are promoted to 32-bits *)
+    val naturalIntSz = wordTy
+
     val paramAreaOffset = 0 (* stack offset to param area *)
 
   (* This annotation is used to indicate that a call returns a fp value 
@@ -122,8 +125,6 @@ functor IA32SVID_CCalls (
 		{sz = alignAddr(offset, maxAlign), align = maxAlign}
 	    | ssz (ty::tys, maxAlign, offset) = let
 		  val {sz, align} = sizeOfTy ty
-(* FIXME: is the following correct? *)
-		  val align = Int.min(align, 4)
 		  val offset = alignAddr(offset, align)
 		  in
 		    ssz (tys, Int.max(maxAlign, align), offset+sz)
@@ -287,28 +288,17 @@ functor IA32SVID_CCalls (
 	  val copyArgs = let
 		fun offSP 0 = spR
 		  | offSP offset = T.ADD(wordTy, spR, T.LI offset)
-(* QUESTION: perhaps the specification should require that small signed ints have already
- * been sign extended to word size?
- *)
-	      (* sign/zero extension for small integer arguments *)
-		fun extend (_, 64, _) = raise Fail "long long not yet supported"
-		  | extend (Ty.C_signed _, mty, rexp) =
-		      if (mty < 32) then T.SX(wordTy, mty, rexp) else rexp
-		  | extend (Ty.C_unsigned _, mty, rexp) =
-		      if (mty < 32) then T.ZX(wordTy, mty, rexp) else rexp
-		  | extend (_, 32, rexp) = rexp
-		  | extend _ = raise Fail "bogus word size"
-		fun f ([], [], [], stms) = List.rev stms
-		  | f (cty::ctys, arg::args, loc::locs, stms) = let
+		fun f ([], [], stms) = List.rev stms
+		  | f (arg::args, loc::locs, stms) = let
 			val stms = (case (arg, loc)
 			       of (ARG(rexp as T.REG _), Stk(mty, offset)) =>
-				    T.STORE(mty, offSP offset, extend(cty, mty, rexp), stack)
+				    T.STORE(mty, offSP offset, rexp, stack)
 				      :: stms
 				| (ARG rexp, Stk(mty, offset)) => let
 				    val tmp = C.newReg()
 				    in
 				      T.STORE(wordTy, offSP offset, T.REG(wordTy, tmp), stack)
-					:: T.MV(wordTy, tmp, extend(cty, mty, rexp))
+					:: T.MV(wordTy, tmp, rexp)
 					:: stms
 				    end
 				| (ARG rexp, Args memLocs) => let
@@ -347,11 +337,11 @@ functor IA32SVID_CCalls (
 				| _ => error "impossible location"
 			      (* end case *))
 			in
-			  f (ctys, args, locs, stms)
+			  f (args, locs, stms)
 			end
 		  | f _ = error "argument arity error"
 		in
-		  f (#paramTys proto, args, argLocs, [])
+		  f (args, argLocs, [])
 		end
 	(* the SVID specifies that the caller pops arguments, but a the callee
 	 * pops the arguments in a stdcall on Windows.  I'm not sure what other
