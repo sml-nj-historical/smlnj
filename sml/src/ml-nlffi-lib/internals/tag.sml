@@ -34,6 +34,7 @@ structure Tag :> sig
 
     type s
     type u
+    type e
 end = struct
 
     type 't t_0 = unit type 't t_1 = unit type 't t_2 = unit type 't t_3 = unit
@@ -60,4 +61,5 @@ end = struct
 
     type s = unit
     type u = unit
+    type e = unit
 end

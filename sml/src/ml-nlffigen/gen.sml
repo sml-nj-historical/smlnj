@@ -19,19 +19,19 @@ structure Gen :> sig
 		match: string -> bool,
 		mkidlsource: string -> string,
 		dirname: string,
-		iptr_repository: (string * string) option,
 		cmfile: string,
 		prefix: string,
 		gensym_stem: string,
 		extramembers: string list,
 		libraryhandle: string,
-		complete: bool,
 
 		allSU: bool,
 		lambdasplit: string option,
 		wid: int,
 		weightreq: bool option,	(* true -> heavy, false -> light *)
 		namedargs: bool,
+		collect_enums: bool,
+		enumcons: bool,
 		target : { name  : string,
 			   sizes : Sizes.sizes,
 			   shift : int * int * word -> word } } -> unit
@@ -43,6 +43,9 @@ end = struct
     structure SS = StringSet
     structure SM = StringMap
     structure IM = IntRedBlackMap
+    structure LIS = RedBlackSetFn (type ord_key = LargeInt.int
+				   val compare = LargeInt.compare)
+
 
     structure P = PrettyPrint
     structure PP = P.PP
@@ -52,8 +55,6 @@ end = struct
     val Con = P.CON
     val Arrow = P.ARROW
     val Type = P.Type
-    val St = P.St
-    val Un = P.Un
     val Unit = P.Unit
     val ETuple = P.ETUPLE
     val EUnit = ETuple []
@@ -68,9 +69,13 @@ end = struct
     fun ELInt i = EVar (LargeInt.toString i)
     fun EString s = EVar (concat ["\"", String.toString s, "\""])
 
-    val writeto = "write_to"
+    fun warn m = TextIO.output (TextIO.stdErr, "warning: " ^ m)
 
-    val sint_ty = Type "MLRep.Signed.int"
+    fun unimp what = raise Fail ("unimplemented type: " ^ what)
+    fun unimp_arg what = raise Fail ("unimplemented argument type: " ^ what)
+    fun unimp_res what = raise Fail ("unimplemented result type: " ^ what)
+
+    val writeto = "write'to"
 
     val dontedit = "(* This file has been generated automatically. \
 		   \DO NOT EDIT! *)"
@@ -87,12 +92,12 @@ end = struct
     fun fptr_rtti_qid i = fptr_rtti_struct_id i ^ ".typ"
     fun fptr_mkcall_qid i = fptr_rtti_struct_id i ^ ".mkcall"
 
-    fun SUTstruct K t = concat [K, "T_", t]
-    val STstruct = SUTstruct "S"
-    val UTstruct = SUTstruct "U"
-    fun Styp t = STstruct t ^ ".typ"
-    fun Utyp t = UTstruct t ^ ".typ"
+    fun SUE_Tstruct K t = concat [K, "T_", t]
+    val STstruct = SUE_Tstruct "S"
+    val UTstruct = SUE_Tstruct "U"
 
+    fun SUE_tag K tag = Type (SUE_Tstruct K tag ^ ".tag")
+		   
     fun fieldtype_id n = "t_f_" ^ n
     fun fieldrtti_id n = "typ_f_" ^ n
     fun field_id (n, p) = concat ["f_", n, p]
@@ -100,7 +105,6 @@ end = struct
     fun arg_id s = "a_" ^ s
     fun enum_id n = "e_" ^ n
 
-    val $! = SS.exists
     val $? = SM.find
 
     val %? = IM.find
@@ -109,32 +113,38 @@ end = struct
 
     fun gen args = let
 	val { cfiles, match, mkidlsource, gensym_stem,
-	      dirname, iptr_repository,
-	      cmfile, prefix, extramembers, libraryhandle, complete,
+	      dirname,
+	      cmfile, prefix, extramembers, libraryhandle,
 	      allSU, lambdasplit,
 	      wid,
 	      weightreq,
 	      namedargs = doargnames,
+	      collect_enums, enumcons,
 	      target = { name = archos, sizes, shift } } = args
+
+	val St = SUE_tag "S"
+	val Un = SUE_tag "U"
+	fun En (tag, anon) =
+	    if collect_enums andalso anon then SUE_tag "E" "'"
+	    else SUE_tag "E" tag
 
 	val hash_cft = Hash.mkFHasher ()
 	val hash_mltype = Hash.mkTHasher ()
 
-	val (iptrdir, iptranchor) =
-	    case iptr_repository of
-		NONE => (dirname, NONE)
-	      | SOME (d, a) => (d, SOME a)
-
 	val gensym_suffix = if gensym_stem = "" then "" else "_" ^ gensym_stem
-	fun iobj_id (K, tag) = concat [prefix, "I", K, "_", tag]
 
-	fun SUstruct K t = concat [prefix, K, "_", t]
-	val Sstruct = SUstruct "S"
-	val Ustruct = SUstruct "U"
+	fun SUEstruct K t = concat [prefix, K, "_", t]
+	val Sstruct = SUEstruct "S"
+	val Ustruct = SUEstruct "U"
+	val Estruct = SUEstruct "E"
 	fun Tstruct n = concat [prefix, "T_", n]
 	fun Gstruct n = concat [prefix, "G_", n]
 	fun Fstruct n = concat [prefix, "F_", n]
-	fun Estruct n = concat [prefix, "E_", n]
+	fun Estruct' (n, anon) =
+	    Estruct (if anon andalso collect_enums then "'" else n)
+
+	fun Styp t = STstruct t ^ ".typ"
+	fun Utyp t = UTstruct t ^ ".typ"
 
 	val (doheavy, dolight) =
 	    case weightreq of
@@ -152,8 +162,14 @@ end = struct
 				     (sizes, State.INITIAL)
 				     idlsource
 		 val s' =
-		     AstToSpec.build (astbundle, sizes, cfiles, match,
-				      allSU, shift, gensym_suffix)
+		     AstToSpec.build { bundle = astbundle,
+				       sizes = sizes,
+				       collect_enums = collect_enums,
+				       cfiles = cfiles,
+				       match = match,
+				       allSU = allSU,
+				       eshift = shift,
+				       gensym_suffix = gensym_suffix }
 	     in
 		 S.join (s', s)
 	     end handle e => (OS.FileSys.remove idlsource handle _ => ();
@@ -165,19 +181,16 @@ end = struct
 
 	val { structs, unions, gvars, gfuns, gtys, enums } = spec
 
-	fun do_dir dir = let
+	val do_dir = let
 	    val done = ref false
 	    fun doit () =
 		if !done then ()
 		else (done := true;
-		      if OS.FileSys.isDir dir handle _ => false then ()
-		      else OS.FileSys.mkDir dir)
+		      if OS.FileSys.isDir dirname handle _ => false then ()
+		      else OS.FileSys.mkDir dirname)
 	in
 	    doit
 	end
-
-	val do_main_dir = do_dir dirname
-	val do_iptr_dir = do_dir iptrdir
 
 	val files = ref extramembers	(* all files that should go
 					 * into the .cm description *)
@@ -192,36 +205,15 @@ end = struct
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
 	in
 	    files := file :: !files;
-	    do_main_dir ();
+	    do_dir ();
 	    result
 	end
 
 	fun descrfile file = let
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
 	in
-	    do_main_dir ();
+	    do_dir ();
 	    result
-	end
-
-	fun iptrdescrfile nqx = let
-	    val file = OS.Path.joinBaseExt { base = nqx, ext = SOME "cm" }
-	    val path = OS.Path.joinDirFile { dir = iptrdir, file = file }
-	    val apath = case iptranchor of
-			    SOME a => concat [a, "/", file]
-			  | NONE => file
-	in
-	    (path, apath)
-	end
-
-	fun iptrfiles (x, report_only) = let
-	    val nqx = noquotes x
-	    val (d, da) = iptrdescrfile nqx
-	    val f = OS.Path.joinBaseExt { base = nqx, ext = SOME "sml" }
-	    val p = OS.Path.joinDirFile { dir = iptrdir, file = f }
-	in
-	    if report_only then () else files := da :: !files;
-	    do_iptr_dir ();
-	    (f, p, d)
 	end
 
 	val structs =
@@ -230,37 +222,40 @@ end = struct
 	val unions =
 	    foldl (fn (u, m) => SM.insert (m, #tag u, u)) SM.empty unions
 
-	val (structs, unions) = let
+	val enums =
+	    foldl (fn (e, m) => SM.insert (m, #tag e, e)) SM.empty enums
+
+	val (structs, unions, enums) = let
 	    val sdone = ref SS.empty
 	    val udone = ref SS.empty
+	    val edone = ref SS.empty
 	    val smap = ref SM.empty
 	    val umap = ref SM.empty
+	    val emap = ref SM.empty
 	    val tq = ref []
 	    fun ty_sched t = tq := t :: !tq
 	    fun fs_sched (S.OFIELD { spec = (_, t), ... }) = ty_sched t
 	      | fs_sched _ = ()
 	    fun f_sched { name, spec } = fs_sched spec
 
-	    fun senter t =
-		if $! (thetag t) (!sdone) then ()
-		else (sdone := SS.add (!sdone, t);
-		      case $? (structs, t) of
-			  SOME x => (smap := SM.insert (!smap, t, x);
-				     app f_sched (#fields x))
+	    fun xenter (xdone, xall, xmap, xfields) t =
+		if SS.member (!xdone, t) then ()
+		else (xdone := SS.add (!xdone, t);
+		      case $? (xall, t) of
+			  SOME x => (xmap := SM.insert (!xmap, t, x);
+				     app f_sched (xfields x))
 			| NONE => ())
 
-	    fun uenter t =
-		if $! (thetag t) (!udone) then ()
-		else (udone := SS.add (!udone, t);
-		      case $? (unions, t) of
-			  SOME x => (umap := SM.insert (!umap, t, x);
-				     app f_sched (#largest x :: #all x))
-			| NONE => ())
+	    val senter = xenter (sdone, structs, smap, #fields)
+	    val uenter = xenter (udone, unions, umap,
+				 fn u => (#largest u :: #all u))
+	    val eenter = xenter (edone, enums, emap, fn _ => [])
 
-	    fun sinclude (s: S.s) =
-		if #exclude s then () else senter (#tag s)
-	    fun uinclude (u: S.u) =
-		if #exclude u then () else uenter (#tag u)
+	    fun sinclude (s: S.s) = if #exclude s then () else senter (#tag s)
+	    fun uinclude (u: S.u) = if #exclude u then () else uenter (#tag u)
+	    fun einclude (e: S.enum) =
+		if #exclude e then () else eenter (#tag e)
+
 	    fun gty { src, name, spec } = ty_sched spec
 	    fun gvar { src, name, spec = (_, t) } = ty_sched t
 	    fun gfun { src, name, spec, argnames } = ty_sched (S.FPTR spec)
@@ -268,12 +263,16 @@ end = struct
 	      | loop tl = let
 		    fun ty (S.STRUCT t) = senter t
 		      | ty (S.UNION t) = uenter t
+		      | ty (S.ENUM (t, anon)) =
+			if collect_enums andalso anon then eenter "'"
+			else eenter t
 		      | ty (S.PTR (_, S.STRUCT t)) = ()
 		      | ty (S.PTR (_, S.UNION t)) = ()
 		      | ty (S.PTR (_, t)) = ty t
 		      | ty (S.FPTR { args, res }) =
 			(app ty args; Option.app ty res)
 		      | ty (S.ARR { t, ... }) = ty t
+		      | ty (S.UNIMPLEMENTED _) = ()
 		      | ty (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 			    S.FLOAT | S.DOUBLE | S.VOIDPTR) = ()
@@ -291,19 +290,8 @@ end = struct
 	    app gvar gvars;
 	    app gfun gfuns;
 	    nextround ();
-	    (!smap, !umap)
+	    (!smap, !umap, !emap)
 	end
-
-	exception Incomplete
-
-	fun get_struct t =
-	    case $? (structs, t) of
-		SOME x => x
-	      | NONE => raise Incomplete
-	fun get_union t =
-	    case $? (unions, t) of
-		SOME x => x
-	      | NONE => raise Incomplete
 
 	fun stem S.SCHAR = "schar"
 	  | stem S.UCHAR = "uchar"
@@ -319,34 +307,43 @@ end = struct
 	  | stem _ = raise Fail "bad stem"
 
 	fun taginsert (t, ss) =
-	    if $! (thetag t) ss then ss else SS.add (ss, t)
+	    if SS.member (ss, t) then ss else SS.add (ss, t)
 
 	(* We don't expect many different function pointer types or
 	 * incomplete types in any given C interface, so using linear
 	 * lists here is probably ok. *)
-	val (fptr_types, incomplete_structs, incomplete_unions) = let
+	val (fptr_types,
+	     incomplete_structs, incomplete_unions, incomplete_enums) = let
 	    fun ty ((S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 		     S.SSHORT | S.USHORT |
 		     S.SLONG | S.ULONG | S.FLOAT | S.DOUBLE |
 		     S.VOIDPTR), a) = a
-	      | ty (S.STRUCT t, a as (f, s, u)) =
-		((ignore (get_struct t); a)
-		 handle Incomplete => (f, taginsert (t, s), u))
-	      | ty (S.UNION t, a as (f, s, u)) =
-		((ignore (get_union t); a)
-		 handle Incomplete => (f, s, taginsert (t, u)))
+	      | ty (S.STRUCT t, a as (f, s, u, e)) =
+		(case $? (structs, t) of
+		     SOME _ => a
+		   | NONE => (f, taginsert (t, s), u, e))
+	      | ty (S.UNION t, a as (f, s, u, e)) =
+		(case $? (unions, t) of
+		     SOME _ => a
+		   | NONE => (f, s, taginsert (t, u), e))
+	      | ty (S.ENUM (t, anon), a as (f, s, u, e)) =
+		(if collect_enums andalso anon then a
+		 else case $? (enums, t) of
+			  SOME _ => a
+			| NONE => (f, s, u, taginsert (t, e)))
 	      | ty ((S.PTR (_, t) | S.ARR { t, ... }), a) = ty (t, a)
 	      | ty (S.FPTR (cft as { args, res }), a) = let
 		    val a' = foldl ty a args
 		    val a'' = case res of NONE => a'
 					| SOME t => ty (t, a')
-		    val (f, s, u) = a''
+		    val (f, s, u, e) = a''
 		    val cfth = hash_cft cft
 		    val i = IM.numItems f
 		in
-		    if IM.inDomain (f, cfth) then (f, s, u)
-		    else (IM.insert (f, cfth, (cft, i)), s, u)
+		    if IM.inDomain (f, cfth) then (f, s, u, e)
+		    else (IM.insert (f, cfth, (cft, i)), s, u, e)
 		end
+	      | ty (S.UNIMPLEMENTED _, a) = a
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
 	    fun f ({ name, spec }, a) = fs (spec, a)
@@ -363,7 +360,8 @@ end = struct
 			 (foldl gty
 				(SM.foldl
 				     u (SM.foldl
-					    s (IM.empty, SS.empty, SS.empty)
+					    s (IM.empty,
+					       SS.empty, SS.empty, SS.empty)
 					    structs)
 				     unions)
 				gtys)
@@ -371,15 +369,8 @@ end = struct
 		  gfuns
 	end
 
-	fun incomplete t = let
-	    fun decide (K, tag: Spec.tag, ss) =
-		if $! (thetag tag) ss then SOME (K, tag) else NONE
-	in
-	    case t of
-		S.STRUCT tag => decide ("S", tag, incomplete_structs)
-	      | S.UNION tag => decide ("U", tag, incomplete_unions)
-	      | _ => NONE
-	end
+	fun s_inc t = SS.member (incomplete_structs, t)
+	fun u_inc t = SS.member (incomplete_unions, t)
 
 	fun rwro S.RW = Type "rw"
 	  | rwro S.RO = Type "ro"
@@ -427,16 +418,13 @@ end = struct
 	    Type (stem t)
 	  | wtn_ty_p p (S.STRUCT t) = Con ("su", [St t])
 	  | wtn_ty_p p (S.UNION t) = Con ("su", [Un t])
+	  | wtn_ty_p p (S.ENUM ta) = Con ("enum", [En ta])
 	  | wtn_ty_p p (S.PTR (c, t)) =
-	    (case incomplete t of
-		 SOME (K, tag) =>
-		 Con ("ptr" ^ p,
-		      [Con (concat [iobj_id (K, tag), ".iobj"],
-			    [rwro c])])
-	       | NONE => Con ("ptr" ^ p, [Con ("obj", [wtn_ty t, rwro c])]))
+	    Con ("ptr" ^ p, [Con ("obj", [wtn_ty t, rwro c])])
 	  | wtn_ty_p p (S.ARR { t, d, ... }) =
 	    Con ("arr", [wtn_ty t, dim_ty d])
 	  | wtn_ty_p p (S.FPTR spec) = wtn_fptr_p p spec
+	  | wtn_ty_p _ (S.UNIMPLEMENTED what) = unimp what
 
 	and wtn_ty t = wtn_ty_p "" t
 
@@ -451,6 +439,7 @@ end = struct
 		Type "MLRep.Real.real"
 	      | topty (S.STRUCT t) = Con ("su_obj" ^ p, [St t, Type "'c"])
 	      | topty (S.UNION t) = Con ("su_obj" ^ p, [Un t, Type "'c"])
+	      | topty (S.ENUM _) = Type "MLRep.Signed.int"
 	      | topty t = wtn_ty_p p t
 	    val (res_t, extra_arg_t, extra_argname) =
 		case res of
@@ -458,12 +447,12 @@ end = struct
 		  | SOME (S.STRUCT t) => let
 			val ot = Suobj'rw p (St t)
 		    in
-			(ot, [ot], [writeto])(* FIXME -- check for nameclash *)
+			(ot, [ot], [writeto])
 		    end
 		  | SOME (S.UNION t) => let
 			val ot = Suobj'rw p (Un t)
 		    in
-			(ot, [ot], [writeto])(* FIXME *)
+			(ot, [ot], [writeto])
 		    end
 		  | SOME t => (topty t, [], [])
 	    val argtyl = map topty args
@@ -492,6 +481,8 @@ end = struct
 	    EApp (build n, EVar "dim")
 	end
 
+	exception Incomplete
+
 	local
 	    fun simple v = EVar ("T." ^ v)
 	in
@@ -499,8 +490,13 @@ end = struct
 				S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 				S.FLOAT | S.DOUBLE | S.VOIDPTR)) =
 		simple (stem t)
-	      | rtti_val (S.STRUCT t) = EVar (Styp t)
-	      | rtti_val (S.UNION t) = EVar (Utyp t)
+	      | rtti_val (S.STRUCT t) =
+		if s_inc t then raise Incomplete else EVar (Styp t)
+	      | rtti_val (S.UNION t) =
+		if u_inc t then raise Incomplete else EVar (Utyp t)
+	      | rtti_val (S.ENUM ta) =
+		EConstr (EVar "T.enum",
+			 Con ("T.typ", [Con ("enum", [En ta])]))
 	      | rtti_val (S.FPTR cft) = let
 		    val cfth = hash_cft cft
 		in
@@ -509,16 +505,12 @@ end = struct
 		      | NONE => raise Fail "fptr type missing"
 		end
 	      | rtti_val (S.PTR (S.RW, t)) =
-		(case incomplete t of
-		     SOME (K, tag) => EVar (iobj_id (K, tag) ^ ".typ'rw")
-		   | NONE => EApp (EVar "T.pointer", rtti_val t))
+		EApp (EVar "T.pointer", rtti_val t)
 	      | rtti_val (S.PTR (S.RO, t)) =
-		(case incomplete t of
-		     SOME (K, tag) => EVar (iobj_id (K, tag) ^ ".typ'ro")
-		   | NONE => EApp (EVar "T.ro",
-				   EApp (EVar "T.pointer", rtti_val t)))
+		EApp (EVar "T.ro", EApp (EVar "T.pointer", rtti_val t))
 	      | rtti_val (S.ARR { t, d, ... }) =
 		EApp (EVar "T.arr", ETuple [rtti_val t, dim_val d])
+	      | rtti_val (S.UNIMPLEMENTED what) = raise Incomplete
 	end
 
 	fun fptr_mkcall spec = let
@@ -660,11 +652,13 @@ end = struct
 	      | encode S.SLONG = E_slong
 	      | encode S.ULONG = E_ulong
 	      | encode (S.PTR _ | S.VOIDPTR | S.FPTR _) = E_ptr
+	      | encode (S.UNIMPLEMENTED what) = unimp what
 	      | encode (S.ARR _) = raise Fail "unexpected array"
+	      | encode (S.ENUM _) = E_sint
 	      | encode (S.STRUCT t) =
-		encode_fields (#fields (get_struct t))
+		encode_fields (#fields (valOf ($? (structs, t))))
 	      | encode (S.UNION t) =
-		encode_fields [#largest (get_union t)]
+		encode_fields [#largest (valOf ($? (unions, t)))]
 
 	    and encode_fields fields = let
 		fun f0 (S.ARR { t, d = 0, ... }, a) = a
@@ -696,6 +690,8 @@ end = struct
 		Type ("CMemory.cc_" ^ stem t)
 	      | mlty (S.VOIDPTR | S.PTR _ | S.FPTR _ | S.STRUCT _) =
 		Type "CMemory.cc_addr"
+	      | mlty (S.ENUM _) = Type "CMemory.cc_sint"
+	      | mlty (S.UNIMPLEMENTED what) = unimp what
 	      | mlty (S.ARR _ | S.UNION _) = raise Fail "unexpected type"
 
 	    fun wrap (e, n) =
@@ -712,6 +708,9 @@ end = struct
 
 	    fun suwrap e = pwrap (EApp (EVar "Ptr.|&!", e))
 
+	    fun ewrap e = EApp (EVar "CMemory.wrap_sint",
+				EApp (EVar "Cvt.c2i_enum", e))
+
 	    (* this code is for passing structures in pieces
 	     * (member-by-member); we don't use this and rather
 	     * provide a pointer to the beginning of the struct *)
@@ -724,12 +723,14 @@ end = struct
 		in
 		    case h of
 			(S.STRUCT _ | S.UNION _) => sel (suwrap p)
+		      | (S.ENUM _) => sel (ewrap p)
 		      | (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
 			 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 			 S.FLOAT | S.DOUBLE) => sel (wrap (p, stem h))
 		      | S.VOIDPTR => sel (vwrap p)
 		      | S.PTR _ => sel (pwrap p)
 		      | S.FPTR _ => sel (fwrap p)
+		      | S.UNIMPLEMENTED what => unimp_arg what
 		      | S.ARR _ => raise Fail "unexpected array argument"
 		end
 
@@ -751,6 +752,9 @@ end = struct
 			fun punwrap cast r =
 			    EApp (EVar cast,
 				  EApp (EVar "CMemory.unwrap_addr", r))
+			fun eunwrap r =
+			    EApp (EVar "Cvt.i2c_enum",
+				  EApp (EVar "CMemory.unwrap_sint", r))
 			val res_wrap =
 			    case t of
 				(S.SCHAR | S.UCHAR | S.SINT | S.UINT |
@@ -759,6 +763,8 @@ end = struct
 			      | S.VOIDPTR => punwrap "vcast"
 			      | S.FPTR _ => punwrap "fcast"
 			      | S.PTR _ => punwrap "pcast"
+			      | S.ENUM _ => eunwrap
+			      | S.UNIMPLEMENTED what => unimp_res what
 			      | (S.STRUCT _ | S.UNION _ | S.ARR _) =>
 				raise Fail "unexpected result type"
 		    in
@@ -795,11 +801,16 @@ end = struct
 	    nl (); str "end"; nl (); str "end"; nl (); closePP ()
 	end
 
-	fun pr_sut_structure (src, tag, anon, size, k, K) = let
+	datatype sue_szinfo =
+	    T_INC			(* generate no RTTI *)
+	  | T_SU of word		(* generate struct/union RTTI *)
+	  | T_E				(* generate enum RTTI *)
+
+	fun pr_sue_t_structure (src, tag, anon, tinfo, k, K) = let
 	    val file = smlfile (concat [k, "t-", tag])
 	    val { str, closePP, nl, Box, endBox, VBox, pr_tdef,
 		  pr_vdef, ... } =
-		openPP (file, SOME src)
+		openPP (file, src)
 	    fun build [] = Type k
 	      | build (h :: tl) = Con ("t_" ^ String.str h, [build tl])
 	    val (utildef, tag_t) =
@@ -814,7 +825,7 @@ end = struct
 	in
 	    str "local";
 	    Box 4;
-	    nl (); str (concat ["structure ", SUstruct K tag, " = struct"]);
+	    nl (); str (concat ["structure ", SUEstruct K tag, " = struct"]);
 	    Box 4;
 	    nl (); str "local";
 	    VBox 4;
@@ -825,33 +836,46 @@ end = struct
 	    pr_tdef ("tag", tag_t);
 	    endBox ();
 	    nl (); str "end";
-	    pr_vdef ("size",
-		     EConstr (EApp (EVar "C_Int.mk_su_size", EWord size),
-			      Con ("C.S.size",
-				   [Con ("C.su", [Type "tag"])])));
-	    pr_vdef ("typ",
-		     EApp (EVar "C_Int.mk_su_typ", EVar "size"));
+	    case tinfo of
+		T_INC => ()
+	      | T_SU size =>
+		(pr_vdef ("size",
+			  EConstr (EApp (EVar "C_Int.mk_su_size", EWord size),
+				   Con ("C.S.size",
+					[Con ("C.su", [Type "tag"])])));
+		 pr_vdef ("typ",
+			  EApp (EVar "C_Int.mk_su_typ", EVar "size")))
+	      | T_E => ();
 	    endBox ();
 	    nl (); str "end";
 	    endBox ();
 	    nl (); str "in";
 	    Box 4;
-	    nl (); str (concat ["structure ", SUTstruct K tag,
-				" = ", SUstruct K tag]);
+	    nl (); str (concat ["structure ", SUE_Tstruct K tag,
+				" = ", SUEstruct K tag]);
 	    endBox ();
 	    nl (); str "end"; nl ();
 	    closePP ()
 	end
 
 	fun pr_st_structure { src, tag, anon, size, fields, exclude } =
-	    pr_sut_structure (src, tag, anon, size, "s", "S")
+	    pr_sue_t_structure (SOME src, tag, anon, T_SU size, "s", "S")
 	fun pr_ut_structure { src, tag, anon, size, largest, all, exclude } =
-	    pr_sut_structure (src, tag, anon, size, "u", "U")
+	    pr_sue_t_structure (SOME src, tag, anon, T_SU size, "u", "U")
+	fun pr_et_structure { src, tag, anon, descr, spec, exclude } =
+	    pr_sue_t_structure (SOME src, tag, anon, T_E, "e", "E")
+
+	fun pr_sue_it_structure (tag, k, K) =
+	    pr_sue_t_structure (NONE, tag, false, T_INC, k, K)
+
+	fun pr_i_st_structure tag = pr_sue_it_structure (tag, "s", "S")
+	fun pr_i_ut_structure tag = pr_sue_it_structure (tag, "u", "U")
+	fun pr_i_et_structure tag = pr_sue_it_structure (tag, "e", "E")
 
 	fun pr_su_structure (src, tag, fields, k, K) = let
 
 	    val file = smlfile (concat [k, "-", tag])
-	    val { closePP, Box, endBox, str, nl,
+	    val { closePP, Box, endBox, str, nl, line,
 		  pr_tdef, pr_vdef, pr_fdef, ... } =
 		openPP (file, SOME src)
 
@@ -928,16 +952,21 @@ end = struct
 	      | pr_field_acc { name, spec = S.UBF bf } =
 		pr_bf_acc (name, "", "u", bf)
 
-	    val sustruct = "structure " ^ SUstruct K tag
+	    val sustruct = "structure " ^ SUEstruct K tag
+
+	    fun pr_one_field f = let
+		val _ = pr_field_typ f
+		val inc = (pr_field_rtti f; false) handle Incomplete => true
+	    in
+		if dolight orelse inc then pr_field_acc' f else ();
+		if doheavy andalso not inc then pr_field_acc f else ()
+	    end
 	in
 	    str "local open C.Dim C_Int in";
 	    nl (); str (sustruct ^ " = struct");
 	    Box 4;
-	    nl (); str ("open " ^ SUTstruct K tag);
-	    app pr_field_typ fields;
-	    app pr_field_rtti fields;
-	    if dolight then app pr_field_acc' fields else ();
-	    if doheavy then app pr_field_acc fields else ();
+	    nl (); str ("open " ^ SUE_Tstruct K tag);
+	    app pr_one_field fields;
 	    endBox ();
 	    nl (); str "end";
 	    nl (); str "end";
@@ -950,38 +979,158 @@ end = struct
 	fun pr_u_structure { src, tag, anon, size, largest, all, exclude } =
 	    pr_su_structure (src, tag, all, "u", "U")
 
-	fun pr_t_structure { src, name, spec } =
-	    case incomplete spec of
-		SOME _ => ()
-	      | NONE => let
-		    val file = smlfile ("t-" ^ name)
-		    val { closePP, Box, endBox, str, nl, pr_tdef,
-			  pr_vdef, ... } =
-			openPP (file, SOME src)
-		    val tstruct = "structure " ^ Tstruct name
+	fun pr_e_structure { src, tag, anon, descr, spec, exclude } = let
+	    val file = smlfile ("e-" ^ tag)
+	    val { closePP, str, Box, endBox, nl, line, sp,
+		  pr_fdef, pr_vdef, pr_tdef, ... } =
+		openPP (file, SOME src)
+	    val estruct = "structure " ^ Estruct' (tag, anon)
+	    fun no_duplicate_values () = let
+		fun loop ([], _) = true
+		  | loop ({ name, spec } :: l, s) =
+		    if LIS.member (s, spec) then
+			(warn (concat ["enum ", descr,
+				       " has duplicate values;\
+				       \ using sint,\
+				       \ not generating constructors\n"]);
+			 false)
+		    else loop (l, LIS.add (s, spec))
+	    in
+		loop (spec, LIS.empty)
+	    end
+	    val dodt = enumcons andalso no_duplicate_values ()
+
+	    fun dt_mlrep () = let
+		fun pcl () = let
+		    fun loop (_, []) = ()
+		      | loop (c, { name, spec } :: l) =
+			(str (c ^ enum_id name); nextround l)
+		    and nextround [] = ()
+		      | nextround l = (sp (); loop ("| ", l))
 		in
-		    str "local open C.Dim C in";
-		    nl (); str (tstruct ^ " = struct");
-		    Box 4;
-		    pr_tdef ("t", rtti_ty spec);
-		    pr_vdef ("typ", EConstr (rtti_val spec, Type "t"));
-		    endBox ();
-		    nl (); str "end";
-		    nl (); str "end";
-		    nl ();
-		    closePP ();
-		    exports := tstruct :: !exports
+		    Box 2; nl ();
+		    loop ("  ", spec);
+		    endBox ()
 		end
+		fun pfl (fname, arg, res, fini) = let
+		    fun loop (_, []) = ()
+		      | loop (pfx, v :: l) =
+			(line (concat [pfx, " ", arg v, " => ", res v]);
+			 loop ("  |", l))
+		in
+		    line (concat ["fun ", fname, " x ="]);
+		    Box 4;
+		    line ("case x of");
+		    loop ("   ", spec);
+		    fini ();
+		    endBox ()
+		end
+		fun cstr { name, spec } = enum_id name
+		fun vstr { name, spec } =
+		    LargeInt.toString spec ^ " : MLRep.Signed.int"
+	    in
+		line "datatype mlrep =";
+		pcl ();
+		pfl ("m2i", cstr, vstr, fn () => ());
+		pfl ("i2m", vstr, cstr,
+		     fn () => line "  | _ => raise General.Domain")
+	    end
+	    fun int_mlrep () = let
+		fun v { name, spec } =
+		    pr_vdef (enum_id name, EConstr (ELInt spec, Type "mlrep"))
+		val mlx = EConstr (EVar "x", Type "mlrep")
+		val ix = EConstr (EVar "x", Type "MLRep.Signed.int")
+	    in
+		pr_tdef ("mlrep", Type "MLRep.Signed.int");
+		app v spec;
+		pr_fdef ("m2i", [mlx], ix);
+		pr_fdef ("i2m", [ix], mlx)
+	    end
+	    fun getset p = let
+		fun constr c = Con ("enum_obj" ^ p, [Type "tag", Type c])
+	    in
+		pr_fdef ("get" ^ p,
+			 [EConstr (EVar "x", constr "'c")],
+			 EApp (EVar "i2m",
+			       EApp (EVar ("Get.enum" ^ p), EVar "x")));
+		pr_fdef ("set" ^ p,
+			 [ETuple [EConstr (EVar "x", constr "rw"), EVar "v"]],
+			 EApp (EVar ("Set.enum" ^ p),
+			       ETuple [EVar "x", EApp (EVar "m2i", EVar "v")]))
+	    end
+
+	in
+	    str "local open C in";
+	    line (estruct ^ " = struct");
+	    Box 4;
+	    line ("open " ^ SUE_Tstruct "E" tag);
+	    if dodt then dt_mlrep () else int_mlrep ();
+	    pr_fdef ("c", [EVar "x"],
+		     EConstr (EApp (EVar "Cvt.i2c_enum",
+				    EApp (EVar "m2i", EVar "x")),
+			      Con ("enum", [Type "tag"])));
+	    pr_fdef ("ml", [EConstr (EVar "x", Con ("enum", [Type "tag"]))],
+		     EApp (EVar "i2m",
+			   EApp (EVar "Cvt.c2i_enum", EVar "x")));
+	    if dolight then getset "'" else ();
+	    if doheavy then getset "" else ();
+	    endBox ();
+	    line "end"; line "end (* local *)";
+	    nl ();
+	    closePP ();
+	    exports := estruct :: !exports
+	end
+
+	fun pr_t_structure { src, name, spec } = let
+	    val rttiv = rtti_val spec
+	    val file = smlfile ("t-" ^ name)
+	    val { closePP, Box, endBox, str, nl, pr_tdef,
+		  pr_vdef, ... } =
+		openPP (file, SOME src)
+	    val tstruct = "structure " ^ Tstruct name
+	in
+	    str "local open C.Dim C in";
+	    nl (); str (tstruct ^ " = struct");
+	    Box 4;
+	    pr_tdef ("t", rtti_ty spec);
+	    pr_vdef ("typ", EConstr (rttiv, Type "t"))
+	    handle Incomplete => ();
+	    endBox ();
+	    nl (); str "end";
+	    nl (); str "end";
+	    nl ();
+	    closePP ();
+	    exports := tstruct :: !exports
+	end handle Incomplete => ()
 
 	fun pr_gvar { src, name, spec = (c, t) } = let
 	    val file = smlfile ("g-" ^ name)
 	    val { closePP, str, nl, Box, VBox, endBox,
 		  pr_fdef, pr_vdef, pr_tdef, ... } =
 		openPP (file, SOME src)
-	    val rwobj = EApp (EVar "mk_obj",
-			      ETuple [rtti_val t, EApp (EVar "h", EUnit)])
-	    val obj = case c of S.RW => rwobj
-			      | S.RO => EApp (EVar "ro", rwobj)
+	    fun doit () = let
+		val rwo = Type (case c of S.RW => "rw" | S.RO => "ro")
+		val _ = pr_tdef ("t", wtn_ty t)
+		val inc = (pr_vdef ("typ",
+				    EConstr (rtti_val t,
+					     Con ("T.typ", [Type "t"])));
+			   false)
+			  handle Incomplete => true
+		val obj' =
+		    EConstr (EApp (EVar "mk_obj'", EApp (EVar "h", EUnit)),
+			     Con ("obj'", [Type "t", rwo]))
+		val dolight = dolight orelse inc
+	    in
+		if dolight then pr_fdef ("obj'", [EUnit], obj') else ();
+		if doheavy andalso not inc then
+		    pr_fdef ("obj", [EUnit],
+			     EApp (EApp (EVar "Heavy.obj", EVar "typ"),
+				   if dolight then
+				       EApp (EVar "obj'", EUnit)
+				   else obj'))
+		else ()
+	    end
+
 	    val gstruct = "structure " ^ Gstruct name
 	in
 	    str (gstruct ^ " = struct");
@@ -993,10 +1142,7 @@ end = struct
 	    endBox ();
 	    nl (); str "in";
 	    VBox 4;
-	    pr_tdef ("t", wtn_ty t);
-	    pr_vdef ("typ", EConstr (rtti_val t, Con ("T.typ", [Type "t"])));
-	    pr_fdef ("obj", [EUnit],
-		     EConstr (obj, Con ("obj", [Type "t", rwro c])));
+	    doit ();
 	    endBox ();
 	    nl (); str "end";
 	    endBox ();
@@ -1012,7 +1158,7 @@ end = struct
 	    val { closePP, str, nl, pr_fdef, Box, endBox,
 		  pr_vdef, pr_vdecl, ... } =
 		openPP (file, SOME src)
-	    fun do_f is_light = let
+	    fun mk_do_f is_light = let
 		val ml_vars =
 		    rev (#1 (foldl (fn (_, (l, i)) =>
 				       (EVar ("x" ^ Int.toString i) :: l,
@@ -1032,9 +1178,11 @@ end = struct
 		    EApp (EVar ("Cvt.c_" ^ stem t), e)
 		  | oneArg (e, (S.STRUCT _ | S.UNION _)) =
 		    EApp (EVar "ro'", light ("obj", e))
+		  | oneArg (e, S.ENUM ta) = EApp (EVar "Cvt.i2c_enum", e)
 		  | oneArg (e, S.PTR _) = light ("ptr", e)
 		  | oneArg (e, S.FPTR _) = light ("fptr", e)
 		  | oneArg (e, S.VOIDPTR) = e
+		  | oneArg (e, S.UNIMPLEMENTED what) = unimp_arg what
 		  | oneArg (e, S.ARR _) = raise Fail "array argument type"
 		val c_exps = ListPair.map oneArg (ml_vars, args)
 		val (ml_vars, c_exps, extra_argname) =
@@ -1055,9 +1203,11 @@ end = struct
 			EApp (EVar ("Cvt.ml_" ^ stem t), call)
 		      | SOME (t as (S.STRUCT _ | S.UNION _)) =>
 			heavy ("obj", t, call)
+		      | SOME (S.ENUM ta) => EApp (EVar "Cvt.c2i_enum", call)
 		      | SOME (t as S.PTR _) => heavy ("ptr", t, call)
 		      | SOME (t as S.FPTR _) => heavy ("fptr", t, call)
 		      | SOME (S.ARR _) => raise Fail "array result type"
+		      | SOME (S.UNIMPLEMENTED what) => unimp_res what
 		      | (NONE | SOME S.VOIDPTR) => call
 		val argspat =
 		    case (doargnames, argnames) of
@@ -1066,7 +1216,8 @@ end = struct
 					       ml_vars))
 		      | _ => ETuple ml_vars
 	    in
-		pr_fdef (if is_light then "f'" else "f", [argspat], ml_res)
+		fn () =>
+		   pr_fdef (if is_light then "f'" else "f", [argspat], ml_res)
 	    end
 	    fun do_fsig is_light = let
 		val p = if is_light then "'" else ""
@@ -1074,6 +1225,9 @@ end = struct
 		pr_vdecl ("f" ^ p, topfunc_ty p (spec, argnames))
 	    end
 	    val fstruct = "structure " ^ Fstruct name
+	    val (do_f_heavy, inc) =
+		(if doheavy then mk_do_f false else (fn () => ()), false)
+		handle Incomplete => (fn () => (), true)
 	in
 	    str "local";
 	    Box 4;
@@ -1085,8 +1239,8 @@ end = struct
 	    Box 4;
 	    pr_vdecl ("typ", rtti_ty (S.FPTR spec));
 	    pr_vdecl ("fptr", Arrow (Unit, wtn_ty (S.FPTR spec)));
-	    if doheavy then do_fsig false else ();
-	    if dolight then do_fsig true else ();
+	    if doheavy andalso not inc then do_fsig false else ();
+	    if dolight orelse inc then do_fsig true else ();
 	    endBox ();
 	    nl (); str "end = struct";
 	    Box 4;
@@ -1096,58 +1250,12 @@ end = struct
 		     EApp (EVar "mk_fptr",
 			   ETuple [EVar (fptr_mkcall spec),
 				   EApp (EVar "h", EUnit)]));
-	    if doheavy then do_f false else ();
-	    if dolight then do_f true else ();
+	    do_f_heavy ();
+	    if dolight orelse inc then mk_do_f true () else ();
 	    endBox ();
 	    nl (); str "end"; nl (); str "end"; nl ();
 	    closePP ();
 	    exports := fstruct :: !exports
-	end
-
-	fun pr_enum { src, tag, spec } = let
-	    val file = smlfile ("e-" ^ tag)
-	    val { closePP, str, nl, pr_vdef, Box, endBox, ... } =
-		openPP (file, SOME src)
-	    fun v { name, spec } =
-		pr_vdef (enum_id name, EConstr (ELInt spec, sint_ty))
-	    val estruct = "structure " ^ Estruct tag
-	in
-	    str (estruct ^ " = struct");
-	    Box 4;
-	    app v spec;
-	    endBox ();
-	    nl (); str "end"; nl ();
-	    closePP ();
-	    exports := estruct :: !exports
-	end
-
-	fun do_iptrs report_only = let
-	    fun pr_iobj_def (K, k) tag = let
-		val (sfile, spath, dpath) =
-		    iptrfiles (concat ["i", k, "-", tag], report_only)
-		val spp = openPP (spath, NONE)
-		val dpp = openPP (dpath, NONE)
-		val istruct = "structure " ^ iobj_id (K, tag)
-	    in
-		#str spp (istruct ^ " = PointerToIncompleteType ()");
-		#nl spp ();
-		#closePP spp ();
-		if report_only then () else exports := istruct :: !exports;
-		#str dpp "library";
-		#VBox dpp 4;
-		#line dpp istruct;
-		#endBox dpp ();
-		#nl dpp ();
-		#str dpp "is";
-		#VBox dpp 4;
-		app (#line dpp) ["$c/c.cm", sfile];
-		#endBox dpp ();
-		#nl dpp ();
-		#closePP dpp ()
-	    end
-	in
-	    SS.app (pr_iobj_def ("S", "s")) incomplete_structs;
-	    SS.app (pr_iobj_def ("U", "u")) incomplete_unions
 	end
 
 	fun do_cmfile () = let
@@ -1170,23 +1278,20 @@ end = struct
 	    nl ();
 	    closePP ()
 	end
-	val needs_iptr =
-	    not (SS.isEmpty incomplete_structs andalso
-		 SS.isEmpty incomplete_unions)
     in
-
 	IM.app pr_fptr_rtti fptr_types;
 	SM.app pr_st_structure structs;
 	SM.app pr_ut_structure unions;
+	SM.app pr_et_structure enums;
+	SS.app pr_i_st_structure incomplete_structs;
+	SS.app pr_i_ut_structure incomplete_unions;
+	SS.app pr_i_et_structure incomplete_enums;
 	SM.app pr_s_structure structs;
 	SM.app pr_u_structure unions;
+	SM.app pr_e_structure enums;
 	app pr_t_structure gtys;
 	app pr_gvar gvars;
 	app pr_gfun gfuns;
-	app pr_enum enums;
-	if complete then
-	    if needs_iptr then do_iptrs false else ()
-	else do_iptrs true;
 	do_cmfile ()
     end
 end

@@ -25,7 +25,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	    BASE of word
 	  | PTR of objt
 	  | FPTR of Unsafe.Object.object (* == addr -> 'f *)
-	  | ARR of { typ: objt, n: word, esz: int, asz: word }
+	  | ARR of { typ: objt, n: word, esz: word, asz: word }
 
 	(* Bitfield: b bits wide, l bits from left corner, r bits from right.
 	 * The word itself is CMemory.int_bits wide and located at address a.
@@ -82,6 +82,8 @@ structure C_Debug :> C_INT_DEBUG = struct
 
     type 'tag su = unit
 
+    type 'tag enum = MLRep.Signed.int
+
     type schar = MLRep.Signed.int
     type uchar = MLRep.Unsigned.word
     type sint = MLRep.Signed.int
@@ -104,6 +106,7 @@ structure C_Debug :> C_INT_DEBUG = struct
     type 'c float_obj = (float, 'c) obj
     type 'c double_obj = (double, 'c) obj
     type 'c voidptr_obj = (voidptr, 'c) obj
+    type ('e, 'c) enum_obj = ('e enum, 'c) obj
     type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
     type ('s, 'c) su_obj = ('s su, 'c) obj
 
@@ -118,6 +121,7 @@ structure C_Debug :> C_INT_DEBUG = struct
     type 'c float_obj' = (float, 'c) obj'
     type 'c double_obj' = (double, 'c) obj'
     type 'c voidptr_obj' = (voidptr, 'c) obj'
+    type ('e, 'c) enum_obj' = ('e enum, 'c) obj'
     type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
@@ -195,6 +199,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val voidptr = CMemory.addr_size
 	val ptr = CMemory.addr_size
 	val fptr = CMemory.addr_size
+	val enum = CMemory.int_size
     end
 
     structure T = struct
@@ -219,7 +224,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	    val n = Word.fromInt (Dim.toInt d)
 	    val s = sizeof t
 	in
-	    ARR { typ = t, n = n, esz = Word.toInt s, asz = n * s }
+	    ARR { typ = t, n = n, esz = s, asz = n * s }
 	end
 	fun elem (ARR a) = #typ a
 	  | elem _ = bug "T.elem (non-array type)"
@@ -237,6 +242,8 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val double = BASE S.double
 
 	val voidptr = BASE S.voidptr
+
+	val enum = BASE S.sint
     end
 
     structure Light = struct
@@ -267,6 +274,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	fun c_ulong (l: ulong) = l
 	fun c_float (f: float) = f
 	fun c_double (d: double) = d
+	fun i2c_enum (e: 'e enum) = e
 
 	val ml_schar = c_schar
 	val ml_uchar = c_uchar
@@ -278,6 +286,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val ml_ulong = c_ulong
 	val ml_float = c_float
 	val ml_double = c_double
+	val c2i_enum = i2c_enum
     end
 
     structure Get = struct
@@ -291,6 +300,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val slong' = CMemory.load_slong
 	val float' = CMemory.load_float
 	val double' = CMemory.load_double
+	val enum' = CMemory.load_sint
 
 	val ptr' = CMemory.load_addr
 	val fptr' = CMemory.load_addr
@@ -307,6 +317,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val float = float' o strip_type
 	val double = double' o strip_type
 	val voidptr = voidptr' o strip_type
+	val enum = enum' o strip_type
 
 	fun ptr (a, PTR t) = (CMemory.load_addr a, t)
 	  | ptr _ = bug "Get.ptr (non-pointer)"
@@ -335,6 +346,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val slong' = CMemory.store_slong
 	val float' = CMemory.store_float
 	val double' = CMemory.store_double
+	val enum' = CMemory.store_sint
 
 	val ptr' = CMemory.store_addr
 	val fptr' = CMemory.store_addr
@@ -356,6 +368,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	    val float = float' $ strip_type
 	    val double = double' $ strip_type
 	    val voidptr = voidptr' $ strip_type
+	    val enum = enum' $ strip_type
 
 	    fun ptr_voidptr (x, p) = ptr_voidptr' (p_strip_type x, p)
 
@@ -399,7 +412,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val compare' = CMemory.compare
 
 	val inject' = addr_id
-	fun cast' (_ : objt) = addr_id
+	val cast' = addr_id
 
 	val inject = p_strip_type
 	fun cast (PTR t) (p : voidptr) = (p, t)
@@ -438,14 +451,14 @@ structure C_Debug :> C_INT_DEBUG = struct
 
     structure Arr = struct
         local
-	    fun asub (a, i, ARR { typ, n, esz, ... }) =
+	    fun asub (a, i, n, esz) =
 		(* take advantage of wrap-around to avoid the >= 0 test... *)
-		if Word.fromInt i < n then (a ++ (esz * i), typ)
+		if Word.fromInt i < n then a ++ (Word.toIntX esz * i)
 		else raise General.Subscript
-	      | asub _ = bug "Arr.sub(') (non-array)"
 	in
-            fun sub ((a, t), i) = asub (a, i, t)
-	    fun sub' t (a, i) = #1 (asub (a, i, t))
+	    fun sub ((a, ARR { typ, n, esz, ... }), i) = (asub (a, i, n, esz), typ)
+	      | sub _ = bug "Arr.sub (non-array)"
+	    fun sub' (s, d) (a, i) = asub (a, i, Word.fromInt (Dim.toInt d), s)
 	end
 
 	fun decay (a, ARR { typ, ... }) = (a, typ)
@@ -485,7 +498,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 
     (* ------------- internal stuff ------------- *)
 
-    fun mk_obj (t: objt, a: addr) = (a, t)
+    fun mk_obj' (a: addr) = a
     fun mk_voidptr (a : addr) = a
     fun mk_fptr (mkf, a) = (a, mkf a)
 

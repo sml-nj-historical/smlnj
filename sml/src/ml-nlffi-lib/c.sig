@@ -67,6 +67,9 @@ signature C = sig
 					 * 'tag is drawn from the types
 					 * defined in the Tag module *)
 
+    (* enumerations *)
+    eqtype 'tag enum
+
     (* primtypes (signed/unsigned char, int, short, long; float, double) *)
     eqtype schar  and uchar
     eqtype sint   and uint
@@ -79,28 +82,30 @@ signature C = sig
      * function pointers) *)
     structure Cvt : sig
 	(* ML -> C *)
-	val c_schar  : MLRep.Signed.int   -> schar
-	val c_uchar  : MLRep.Unsigned.word  -> uchar
+	val c_schar  : MLRep.Signed.int    -> schar
+	val c_uchar  : MLRep.Unsigned.word -> uchar
 	val c_sint   : MLRep.Signed.int    -> sint
-	val c_uint   : MLRep.Unsigned.word   -> uint
-	val c_sshort : MLRep.Signed.int  -> sshort
+	val c_uint   : MLRep.Unsigned.word -> uint
+	val c_sshort : MLRep.Signed.int    -> sshort
 	val c_ushort : MLRep.Unsigned.word -> ushort
-	val c_slong  : MLRep.Signed.int   -> slong
-	val c_ulong  : MLRep.Unsigned.word  -> ulong
-	val c_float  : MLRep.Real.real  -> float
-	val c_double : MLRep.Real.real -> double
+	val c_slong  : MLRep.Signed.int    -> slong
+	val c_ulong  : MLRep.Unsigned.word -> ulong
+	val c_float  : MLRep.Real.real     -> float
+	val c_double : MLRep.Real.real     -> double
+	val i2c_enum : MLRep.Signed.int    -> 'e enum
 
 	(* C -> ML *)
-	val ml_schar  : schar  -> MLRep.Signed.int
-	val ml_uchar  : uchar  -> MLRep.Unsigned.word
-	val ml_sint   : sint   -> MLRep.Signed.int
-	val ml_uint   : uint   -> MLRep.Unsigned.word
-	val ml_sshort : sshort -> MLRep.Signed.int
-	val ml_ushort : ushort -> MLRep.Unsigned.word
-	val ml_slong  : slong  -> MLRep.Signed.int
-	val ml_ulong  : ulong  -> MLRep.Unsigned.word
-	val ml_float  : float  -> MLRep.Real.real
-	val ml_double : double -> MLRep.Real.real
+	val ml_schar  : schar   -> MLRep.Signed.int
+	val ml_uchar  : uchar   -> MLRep.Unsigned.word
+	val ml_sint   : sint    -> MLRep.Signed.int
+	val ml_uint   : uint    -> MLRep.Unsigned.word
+	val ml_sshort : sshort  -> MLRep.Signed.int
+	val ml_ushort : ushort  -> MLRep.Unsigned.word
+	val ml_slong  : slong   -> MLRep.Signed.int
+	val ml_ulong  : ulong   -> MLRep.Unsigned.word
+	val ml_float  : float   -> MLRep.Real.real
+	val ml_double : double  -> MLRep.Real.real
+	val c2i_enum  : 'e enum -> MLRep.Signed.int
     end
 
     (* type-abbreviations for a bit more convenience. *)
@@ -115,6 +120,7 @@ signature C = sig
     type 'c float_obj = (float, 'c) obj
     type 'c double_obj = (double, 'c) obj
     type 'c voidptr_obj = (voidptr, 'c) obj
+    type ('e, 'c) enum_obj = ('e enum, 'c) obj
     type ('f, 'c) fptr_obj = ('f fptr, 'c) obj
     type ('s, 'c) su_obj = ('s su, 'c) obj
 
@@ -130,6 +136,7 @@ signature C = sig
     type 'c float_obj' = (float, 'c) obj'
     type 'c double_obj' = (double, 'c) obj'
     type 'c voidptr_obj' = (voidptr, 'c) obj'
+    type ('e, 'c) enum_obj' = ('e enum, 'c) obj'
     type ('f, 'c) fptr_obj' = ('f fptr, 'c) obj'
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
@@ -245,6 +252,7 @@ signature C = sig
 	val voidptr : voidptr size
 	val ptr : 'o ptr size
 	val fptr : 'f fptr size
+	val enum : 'tag enum size
     end
 
     (* sub-structure for dealing with run-time type info *)
@@ -284,6 +292,8 @@ signature C = sig
 	val double : double typ
 
 	val voidptr : voidptr typ
+
+	val enum : 'tag enum typ
     end
 
     (* convert from regular (heavy) to alternative (light) versions *)
@@ -318,6 +328,7 @@ signature C = sig
 	val ulong :  'c ulong_obj -> MLRep.Unsigned.word
 	val float :  'c float_obj -> MLRep.Real.real
 	val double : 'c double_obj -> MLRep.Real.real
+	val enum :   ('e, 'c) enum_obj -> MLRep.Signed.int
 
 	(* alt *)
 	val schar' :  'c schar_obj' -> MLRep.Signed.int
@@ -330,6 +341,7 @@ signature C = sig
 	val ulong' :  'c ulong_obj' -> MLRep.Unsigned.word
 	val float' :  'c float_obj' -> MLRep.Real.real
 	val double' : 'c double_obj' -> MLRep.Real.real
+	val enum' :   ('e, 'c) enum_obj' -> MLRep.Signed.int
 
 	(* fetching pointers; results have to be abstract *)
 	val ptr : ('o ptr, 'c) obj -> 'o ptr
@@ -359,6 +371,7 @@ signature C = sig
 	val ulong :  rw ulong_obj * MLRep.Unsigned.word -> unit
 	val float :  rw float_obj * MLRep.Real.real -> unit
 	val double : rw double_obj * MLRep.Real.real -> unit
+	val enum :   ('e, rw) enum_obj * MLRep.Signed.int -> unit
 
 	(* alt *)
 	val schar' :  rw schar_obj' * MLRep.Signed.int -> unit
@@ -371,6 +384,7 @@ signature C = sig
 	val ulong' :  rw ulong_obj' * MLRep.Unsigned.word -> unit
 	val float' :  rw float_obj' * MLRep.Real.real -> unit
 	val double' : rw double_obj' * MLRep.Real.real -> unit
+	val enum' :   ('e, rw) enum_obj' * MLRep.Signed.int -> unit
 
 	(* storing pointers; abstract *)
 	val ptr : ('o ptr, rw) obj * 'o ptr -> unit
@@ -447,8 +461,8 @@ signature C = sig
 	 * type (not the element type!) *)
 	val cast : 'o ptr T.typ -> voidptr -> 'o ptr
 
-	(* alt *)
-	val cast' : 'o ptr T.typ -> voidptr -> 'o ptr'
+	(* alt, needs explicit type constraint on result! *)
+	val cast' : voidptr -> 'o ptr'
 
 	(* NULL as void* *)
 	val vNull : voidptr
@@ -510,8 +524,8 @@ signature C = sig
 	 * for unchecked access, go through arr_decay and ptr_sub *)
 	val sub : (('t, 'n) arr, 'c) obj * int -> ('t, 'c) obj
 
-	(* alt; needs explicit type (for array) *)
-	val sub' : ('t, 'n) arr T.typ ->
+	(* alt; needs element size and array dimension *)
+	val sub' : 't S.size * 'n Dim.dim ->
 		   (('t, 'n) arr, 'c) obj' * int -> ('t, 'c) obj'
 
 	(* let an array object decay, yielding pointer to first element *)

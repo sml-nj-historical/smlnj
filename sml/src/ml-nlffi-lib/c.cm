@@ -23,10 +23,6 @@ Library
 	signature ZSTRING
 	structure ZString
 
-	signature POINTER_TO_INCOMPLETE_TYPE
-	functor PointerToCompleteType
-	functor PointerToIncompleteType
-
 	signature DYN_LINKAGE
 	structure DynLinkage
 is

@@ -46,6 +46,7 @@ end = struct
     fun mkFHasher () = let
 	val stab = ref SM.empty
 	val utab = ref SM.empty
+	val etab = ref SM.empty
 	val ltab = ref LM.empty
 
 	val next = ref 11
@@ -55,6 +56,7 @@ end = struct
 
 	fun hash (S.STRUCT t) = tlook stab t
 	  | hash (S.UNION t) = tlook utab t
+	  | hash (S.ENUM (t, _)) = tlook etab t
 	  | hash (S.FPTR x) = cfthash x
 	  | hash (S.PTR (c, ty)) = llook [1, conConId c, hash ty]
 	  | hash (S.ARR { t, d, esz }) = llook [2, hash t, d, esz]

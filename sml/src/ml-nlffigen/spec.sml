@@ -16,9 +16,11 @@ structure Spec = struct
       | FLOAT | DOUBLE | VOIDPTR
       | STRUCT of tag
       | UNION of tag
+      | ENUM of tag * bool
       | FPTR of cft
       | PTR of cobj
       | ARR of { t: ctype, d: int, esz: int }
+      | UNIMPLEMENTED of string
 
     withtype cft = { args: ctype list, res: ctype option }
 
@@ -49,7 +51,9 @@ structure Spec = struct
 
     type enumval = { name: string, spec: LargeInt.int }
 
-    type enum = { src: string, tag: tag, spec: enumval list }
+    type enum = { src: string,
+		  tag: tag, anon: bool, descr: string, spec: enumval list,
+		  exclude: bool }
 
     type spec = { structs: s list,
 		  unions: u list,

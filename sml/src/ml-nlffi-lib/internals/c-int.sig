@@ -26,9 +26,8 @@ signature C_INT = sig
      * implements the calling protocol *)
     val mk_fptr_typ : (addr -> 'a -> 'b) -> ('a -> 'b) fptr T.typ
 
-    (* mk_obj makes writable objects; if they are declared const, then
-     * function ro should be applied *)
-    val mk_obj : 't T.typ * addr -> ('t, rw) obj
+    (* mk_obj' makes light-weight objects *)
+    val mk_obj' : addr -> ('t, 'c) obj'
 
     (* make a void* from an address *)
     val mk_voidptr : addr -> voidptr

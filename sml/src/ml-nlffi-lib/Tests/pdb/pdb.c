@@ -120,3 +120,5 @@ int pppp (float f, struct entry e, double g)
   printf ("This is ppp(%g, ..., %g)\n", (double)f, g);
   return print (&e);
 }
+
+FILE* fileof (struct entry *e) { return e->f; }

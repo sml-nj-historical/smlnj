@@ -13,6 +13,61 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/26 12:00:00 EST
+Tag: blume-20020226-ffi
+Description:
+
+1. Fixed a minor bug in CM's "noweb" tool:
+   If numbering is turned off, then truly don't number (i.e., do not
+   supply the -L option to noweb).  The previous behavior was to supply
+   -L'' -- which caused noweb to use the "default" line numbering scheme.
+   Thanks to Chris Richards for pointing this out (and supplying the fix).
+
+2. Once again, I reworked some aspects of the FFI:
+
+   A. The incomplete/complete type business:
+
+   - Signatures POINTER_TO_INCOMPLETE_TYPE and accompanying functors are
+     gone!
+   - ML types representing an incomplete type are now *equal* to
+     ML types representing their corresponding complete types (just like
+     in C).  This is still safe because ml-nlffigen will not generate
+     RTTI for incomplete types, nor will it generate functions that
+     require access to such RTTI.   But when ML code generated from both
+     incomplete and complete versions of the C type meet, the ML types
+     are trivially interoperable.
+
+     NOTE:  These changes restore the full generality of the translation
+     (which was previously lost when I eliminated functorization)!
+
+   B. Enum types:
+
+   - Structure C now has a type constructor "enum" that is similar to
+     how the "su" constructor works.  However, "enum" is not a phantom
+     type because each "T enum" has values (and is isomorphic to
+     MLRep.Signed.int).
+   - There are generic access operations for enum objects (using
+     MLRep.Signed.int).
+   - ml-nlffigen will generate a structure E_foo for each "enum foo".
+     * The structure contains the definition of type "mlrep" (the ML-side
+     representation type of the enum).  Normally, mlrep is the same
+     as "MLRep.Signed.int", but if ml-nlffigen was invoked with "-ec",
+     then mlrep will be defined as a datatype -- thus facilitating
+     pattern matching on mlrep values.
+     ("-ec" will be suppressed if there are duplicate values in an
+      enumeration.)
+     * Constructors ("-ec") or values (no "-ec") e_xxx of type mlrep
+     will be generated for each C enum constant xxx.
+     * Conversion functions m2i and i2m convert between mlrep and
+     MLRep.Signed.int.  (Without "-ec", these functions are identities.)
+     * Coversion functions c and ml convert between mlrep and "tag enum".
+     * Access functions (get/set) fetch and store mlrep values.
+   - By default (unless ml-nlffigen was invoked with "-nocollect"), unnamed
+     enumerations are merged into one single enumeration represented by
+     structure E_'.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/02/25 04:45:00 EST
 Tag: leunga-20020225-cps-spill

@@ -17,13 +17,14 @@ structure AstToSpec = struct
 
     exception VoidType
     exception Ellipsis
+    exception Duplicate of string
 
     fun bug m = raise Fail ("AstToSpec: bug: " ^ m)
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
-    fun build (bundle, sizes: Sizes.sizes,
-	       cfiles, match, allSU, eshift, gensym_suffix) =
+    fun build { bundle, sizes: Sizes.sizes, collect_enums,
+		cfiles, match, allSU, eshift, gensym_suffix } =
     let
 
 	val curLoc = ref "?"
@@ -49,6 +50,7 @@ structure AstToSpec = struct
 	    match srcFile
 
 	fun includedSU (tag, loc) = (allSU orelse isThisFile loc)
+	fun includedEnum (tag, loc) = isThisFile loc
 
 	fun includedTy (n, loc) = isThisFile loc
 
@@ -82,7 +84,8 @@ structure AstToSpec = struct
 	val gtys = ref SM.empty
 	val gvars = ref SM.empty
 	val gfuns = ref SM.empty
-	val enums = ref SM.empty
+	val named_enums = ref SM.empty
+	val anon_enums = ref SM.empty
 
 	val seen_structs = ref SS.empty
 	val seen_unions = ref SS.empty
@@ -159,7 +162,12 @@ structure AstToSpec = struct
 	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONG, _)) = Spec.ULONG
 	  | valty C (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
 	  | valty C (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
-	  | valty C (A.Numeric _) = bug "numeric type not (yet) supported"
+	  | valty C (A.Numeric (_, _, A.SIGNED, A.LONGLONG, _)) =
+	    Spec.UNIMPLEMENTED "long long"
+	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONGLONG, _)) =
+	    Spec.UNIMPLEMENTED "unsigned long long"
+	  | valty C (A.Numeric (_, _, _, A.LONGDOUBLE, _)) =
+	    Spec.UNIMPLEMENTED "long double"
 	  | valty C (A.Array (NONE, t)) = valty C (A.Pointer t)
 	  | valty C (A.Array (SOME (n, _), t)) =
 	    let val d = Int.fromLarge n
@@ -175,24 +183,13 @@ structure AstToSpec = struct
 	  | valty C (A.Function f) = fptrty C f
 	  | valty C (A.StructRef tid) = typeref (tid, Spec.STRUCT, C)
 	  | valty C (A.UnionRef tid) = typeref (tid, Spec.UNION, C)
-	  | valty C (A.EnumRef tid) =
-	    typeref (tid, (* hack *) fn _ => Spec.SINT, C)
+	  | valty C (A.EnumRef tid) = typeref (tid, fn t => Spec.ENUM (t, false), C)
 	  | valty C (A.TypeRef tid) =
 	    typeref (tid, fn _ => bug "missing typedef info", C)
 	  | valty C A.Error = err "Error type"
 
 	and valty_nonvoid C t = valty C t
 	    handle VoidType => err "void variable type"
-
-(*
-	and valty_td (A.StructRef tid, tdname) =
-	    typeref (tid, Spec.STRUCT, tdname)
-	  | valty_td (A.UnionRef tid, tdname) =
-	    typeref (tid, Spec.UNION, tdname)
-	  | valty_td (A.EnumRef tid, tdname) =
-	    typeref (tid, fn _ => Spec.SINT, tdname)
-	  | valty_td (t, _) = valty t
-*)
 
 	and typeref (tid, otherwise, C) =
 	    case Tidtab.find (tidtab, tid) of
@@ -206,21 +203,10 @@ structure AstToSpec = struct
 		     structty (tid, name, C, members, location)
 		   | B.Union (tid, members) =>
 		     unionty (tid, name, C, members, location)
-		   | B.Enum (tid, edefs) => let
-			 fun one ({ name, uid, location, ctype, kind }, i) =
-			     { name = Symbol.name name, spec = i }
-			 val all = map one edefs
-			 val (tn, anon) = tagname (name, C, tid)
-			 val rtn = reported_tagname (tn, anon)
-		     in
-			 enums := SM.insert (!enums, rtn,
-					     { src = srcOf location,
-					       tag = rtn,
-					       spec = all });
-			 Spec.SINT
-		     end
+		   | B.Enum (tid, edefs) =>
+		     enumty (tid, name, C, edefs, location)
 		   | B.Typedef (_, t) => let
-			 val n = 
+			 val n =
 			     case name of
 				 NONE => bug "missing name in typedef"
 			       | SOME n => n
@@ -236,6 +222,23 @@ structure AstToSpec = struct
 			 else ();
 			 res
 		     end)
+
+	and enumty (tid, name, C, edefs, location) = let
+	    val (tag_stem, anon) = tagname (name, C, tid)
+	    val tag = reported_tagname (tag_stem, anon)
+	    fun one ({ name, uid, location, ctype, kind }, i) =
+		{ name = Symbol.name name, spec = i }
+	    val enums = if anon then anon_enums else named_enums
+	in
+	    enums := SM.insert (!enums, tag,
+				{ src = srcOf location,
+				  tag = tag,
+				  anon = anon,
+				  descr = tag,
+				  exclude = not (includedEnum (tag, location)),
+				  spec = map one edefs });
+	    Spec.ENUM (tag, anon)
+	end
 
 	and structty (tid, name, C, members, location) = let
 	    val (tag_stem, anon) = tagname (name, C, tid)
@@ -435,11 +438,13 @@ structure AstToSpec = struct
 		     end)
 	      | (A.AUTO | A.REGISTER | A.STATIC) => ()
 
-	fun declaration (A.TypeDecl { tid, ... }) =
+	fun dotid tid =
 	    (* Spec.SINT is an arbitrary choice; the value gets
 	     * ignored anyway *)
 	    (ignore (typeref (tid, fn _ => Spec.SINT, tl_context))
 	     handle VoidType => ())	(* ignore type aliases for void *)
+
+	fun declaration (A.TypeDecl { tid, ... }) = dotid tid
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 
 	fun coreExternalDecl (A.ExternalDecl d) = declaration d
@@ -453,13 +458,45 @@ structure AstToSpec = struct
 	    else ()
 
 	fun doast l = app externalDecl l
+
+	fun gen_enums () = let
+	    val ael = SM.listItems (!anon_enums)
+	    val nel = SM.listItems (!named_enums)
+	    infix $
+	    fun x $ [] = [x]
+	      | x $ y = x :: ", " :: y
+	    fun onev (v as { name, spec }, m) =
+		if SM.inDomain (m, name) then raise Duplicate name
+		else SM.insert (m, name, v)
+	    fun onee ({ src, tag, anon, spec, descr, exclude }, (m, sl)) =
+		(foldl onev m spec, src $ sl)
+	in
+	    if collect_enums then
+		let val (m, sl) = foldl onee (SM.empty, []) ael
+		in
+		    if SM.isEmpty m then nel
+		    else { src = concat (rev sl),
+			   tag = "'",
+			   anon = false,
+			   descr = "collected from unnamed enumerations",
+			   exclude = false,
+			   spec = SM.listItems m }
+			 :: nel
+		end handle Duplicate name =>
+			   (warn (concat ["constant ", name,
+					  " defined more than once;\
+					  \ disabling `-collect'\n"]);
+			    ael @ nel)
+	    else ael @ nel
+	end
     in
 	doast ast;
+	app (dotid o #1) (Tidtab.listItemsi tidtab);
 	{ structs = !structs,
 	  unions = !unions,
 	  gtys = SM.listItems (!gtys),
 	  gvars = SM.listItems (!gvars),
 	  gfuns = SM.listItems (!gfuns),
-	  enums = SM.listItems (!enums) } : Spec.spec
+	  enums = gen_enums () } : Spec.spec
     end
 end

@@ -32,10 +32,6 @@ Library
 
 	signature CMEMORY
 	structure CMemory
-
-	signature POINTER_TO_INCOMPLETE_TYPE
-	functor PointerToCompleteType
-	functor PointerToIncompleteType
 is
 	$/basis.cm
 
@@ -54,7 +50,3 @@ is
 
 	../zstring.sig	(lambdasplit:infinity)
 	zstring.sml	(lambdasplit:infinity)
-
-	../iptr.sig	(lambdasplit:infinity)
-	c-iptr-fn.sml	(lambdasplit:infinity)
-	i-iptr-fn.sml	(lambdasplit:infinity)

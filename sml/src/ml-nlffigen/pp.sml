@@ -21,6 +21,7 @@ structure PrettyPrint = struct
     fun Type t = CON (t, [])
     fun St tag = Type (concat ["ST_", tag, ".tag"])
     fun Un tag = Type (concat ["UT_", tag, ".tag"])
+    fun En tag = Type (concat ["ET_", tag, ".tag"])
 
     datatype tcontext = C_STAR | C_ARROW | C_COMMA | C_CON
 

@@ -43,19 +43,19 @@ structure Main = struct
 	end
 
 	val dir = ref "NLFFI-Generated"
-	val iptr_rep = ref NONE
 	val cmf = ref "nlffi-generated.cm"
 	val prefix = ref ""
 	val gstem = ref ""
 	val ems = ref []
 	val libh = ref "Library.libh"
-	val cmpl = ref true
 	val asu = ref false
 	val wid = ref NONE
 	val lsp = ref NONE
 	val target = ref default_target
 	val wrq = ref NONE
 	val namedargs = ref false
+	val collect_enums = ref true
+	val enumcons = ref false
 	val cppopts = ref ""
 	val regexp = ref NONE
 
@@ -93,18 +93,18 @@ structure Main = struct
 		      match = match,
 		      mkidlsource = mkidlsource,
 		      dirname = !dir,
-		      iptr_repository = !iptr_rep,
 		      cmfile = !cmf,
 		      prefix = !prefix,
 		      gensym_stem = !gstem,
 		      extramembers = !ems,
 		      libraryhandle = !libh,
-		      complete = !cmpl,
 		      allSU = !asu,
 		      lambdasplit = !lsp,
 		      weightreq = !wrq,
 		      wid = getOpt (!wid, 75),
 		      namedargs = !namedargs,
+		      collect_enums = !collect_enums,
+		      enumcons = !enumcons,
 		      target = !target };
 	    OS.Process.success
 	end
@@ -119,26 +119,42 @@ structure Main = struct
 			    "" => opt
 			  | opts => concat [opts, " ", opt])
 
-	fun proc ("-allSU" :: l) = (asu := true; proc l)
-	  | proc ("-width" :: i :: l) = (wid := Int.fromString i; proc l)
-	  | proc ("-lambdasplit" :: s :: l) = (lsp := SOME s; proc l)
-	  | proc ("-target" :: tg :: l) = (target := find_target tg; proc l)
-	  | proc ("-light" :: l) = (wrq := SOME false; proc l)
-	  | proc ("-heavy" :: l) = (wrq := SOME true; proc l)
-	  | proc ("-namedargs" :: l) = (namedargs := true; proc l)
-	  | proc ("-incomplete" :: l) = (cmpl := false; proc l)
-	  | proc ("-libhandle" :: lh :: l) = (libh := lh; proc l)
-	  | proc ("-include" :: es :: l) = (ems := es :: !ems; proc l)
-	  | proc ("-prefix" :: p :: l) = (prefix := p; proc l)
-	  | proc ("-gensym" :: g :: l) = (gstem := g; proc l)
-	  | proc ("-dir" :: d :: l) = (dir := d; proc l)
-	  | proc ("-iptr" :: d :: a :: l) = (iptr_rep := SOME (d, a); proc l)
-	  | proc ("-cmfile" :: f :: l) = (cmf := f; proc l)
-	  | proc ("-cppopt" :: opt :: l) = (addcppopt opt; proc l)
+	fun proc ("-allSU" :: l) =
+	    (asu := true; proc l)
+	  | proc (("-width" | "-w") :: i :: l) =
+	    (wid := Int.fromString i; proc l)
+	  | proc (("-lambdasplit" | "-ls") :: s :: l) =
+	    (lsp := SOME s; proc l)
+	  | proc (("-target" | "-t") :: tg :: l) =
+	    (target := find_target tg; proc l)
+	  | proc (("-light" | "-l") :: l) =
+	    (wrq := SOME false; proc l)
+	  | proc (("-heavy" | "-h") :: l) =
+	    (wrq := SOME true; proc l)
+	  | proc (("-namedargs" | "-na") :: l) =
+	    (namedargs := true; proc l)
+	  | proc (("-libhandle" | "-lh") :: lh :: l) =
+	    (libh := lh; proc l)
+	  | proc (("-include" | "-add") :: es :: l) =
+	    (ems := es :: !ems; proc l)
+	  | proc (("-prefix" | "-p") :: p :: l) =
+	    (prefix := p; proc l)
+	  | proc (("-gensym" | "-g") :: g :: l) =
+	    (gstem := g; proc l)
+	  | proc (("-dir" | "-d") :: d :: l) =
+	    (dir := d; proc l)
+	  | proc (("-cmfile" | "-cm") :: f :: l) =
+	    (cmf := f; proc l)
+	  | proc ("-cppopt" :: opt :: l) =
+	    (addcppopt opt; proc l)
+	  | proc ("-nocollect" :: l) =
+	    (collect_enums := false; proc l)
+	  | proc (("-ec" | "-enum-constructors") :: l) =
+	    (enumcons := true; proc l)
 	  | proc ("-version" :: _) =
 	    (TextIO.output (TextIO.stdOut, Gen.version ^ "\n");
 	     OS.Process.exit OS.Process.success)
-	  | proc ("-match" :: re :: l) =
+	  | proc (("-match" | "-m") :: re :: l) =
 	    (regexp := SOME (RE.compileString re); proc l)
 	  | proc ("--" :: cfiles) = finish cfiles
 	  | proc (l0 as (opt :: l)) =
