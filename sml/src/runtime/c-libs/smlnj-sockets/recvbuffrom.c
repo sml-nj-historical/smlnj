@@ -39,9 +39,10 @@ ml_val_t _ml_Sock_recvbuffrom (ml_state_t *msp, ml_val_t arg)
     if (n < 0)
 	return RAISE_SYSERR(msp, sts);
     else {
-	ml_val_t	addr = ML_CData (msp, addrBuf, addrLen);
-	ml_val_t	res;
+	ml_val_t	data = ML_CData (msp, addrBuf, addrLen);
+	ml_val_t	addr, res;
 
+	SEQHDR_ALLOC (msp, addr, DESC_word8vec, data, addrLen);
 	REC_ALLOC2(msp, res, INT_CtoML(n), addr);
 	return res;
     }

@@ -20,7 +20,7 @@
  */
 ml_val_t _ml_Sock_fromunixaddr (ml_state_t *msp, ml_val_t arg)
 {
-    struct sockaddr_un	*addr = PTR_MLtoC(struct sockaddr_un, arg);
+    struct sockaddr_un	*addr = GET_SEQ_DATAPTR(struct sockaddr_un, arg);
 
     ASSERT(addr->sun_family == AF_UNIX);
 

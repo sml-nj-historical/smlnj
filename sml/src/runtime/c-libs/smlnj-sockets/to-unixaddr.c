@@ -24,6 +24,7 @@ ml_val_t _ml_Sock_tounixaddr (ml_state_t *msp, ml_val_t arg)
     char		*path = STR_MLtoC(arg);
     struct sockaddr_un	addr;
     int			len;
+    ml_val_t		data, res;
 
     memset(&addr, 0, sizeof(struct sockaddr_un));
 
@@ -36,7 +37,10 @@ ml_val_t _ml_Sock_tounixaddr (ml_state_t *msp, ml_val_t arg)
     len = strlen(path)+sizeof(addr.sun_family);
 #endif
 
-    return ML_CData (msp, &addr, len);
+    data = ML_CData (msp, &addr, len);
+    SEQHDR_ALLOC (msp, res, DESC_word8vec, data, len);
+
+    return res;
 
 } /* end of _ml_Sock_tounixaddr */
 

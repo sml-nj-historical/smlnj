@@ -21,15 +21,23 @@
  */
 ml_val_t _ml_Sock_toinetaddr (ml_state_t *msp, ml_val_t arg)
 {
+    ml_val_t		inAddr = REC_SEL(arg, 0);
+    ml_val_t		data, res;
     struct sockaddr_in	addr;
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
 
     addr.sin_family = AF_INET;
-    memcpy (&addr.sin_addr, REC_SELPTR(char, arg, 0), sizeof(struct in_addr));
+    memcpy (
+	&addr.sin_addr,
+	GET_SEQ_DATAPTR(char, inAddr),
+	sizeof(struct in_addr));
     addr.sin_port = htons(REC_SELINT(arg, 1));
 
-    return ML_CData (msp, &addr, sizeof(struct sockaddr_in));
+    data = ML_CData (msp, &addr, sizeof(struct sockaddr_in));
+    SEQHDR_ALLOC (msp, res, DESC_word8vec, data, sizeof(struct sockaddr_in));
+
+    return res;
 
 } /* end of _ml_Sock_toinetaddr */
 

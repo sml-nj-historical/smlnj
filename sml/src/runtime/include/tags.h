@@ -89,6 +89,7 @@
 #define DESC_polyvec	MAKE_DESC(SEQ_poly, DTAG_vec_hdr)
 #define DESC_polyarr	MAKE_DESC(SEQ_poly, DTAG_arr_hdr)
 #define DESC_word8arr	MAKE_DESC(SEQ_word8, DTAG_arr_hdr)
+#define DESC_word8vec	MAKE_DESC(SEQ_word8, DTAG_vec_hdr)
 #define DESC_string	MAKE_DESC(SEQ_word8, DTAG_vec_hdr)
 #define DESC_real64arr	MAKE_DESC(SEQ_real64, DTAG_arr_hdr)
 

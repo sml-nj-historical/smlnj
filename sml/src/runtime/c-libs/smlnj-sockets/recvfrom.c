@@ -41,8 +41,8 @@ ml_val_t _ml_Sock_recvfrom (ml_state_t *msp, ml_val_t arg)
     if (n < 0)
 	return RAISE_SYSERR(msp, sts);
     else {
-	ml_val_t	addr = ML_CData (msp, addrBuf, addrLen);
-	ml_val_t	res;
+	ml_val_t	data = ML_CData (msp, addrBuf, addrLen);
+	ml_val_t	addr, res;
 
 	if (n == 0)
 	    res = ML_string0;
@@ -53,6 +53,7 @@ ml_val_t _ml_Sock_recvfrom (ml_state_t *msp, ml_val_t arg)
 	    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
 	}
 
+	SEQHDR_ALLOC (msp, addr, DESC_word8vec, data, addrLen);
 	REC_ALLOC2(msp, res, res, addr);
 
 	return res;

@@ -26,7 +26,11 @@ ml_val_t _ml_Sock_getsockname (ml_state_t *msp, ml_val_t arg)
 
     if (sts == -1)
 	return RAISE_SYSERR(msp, sts);
-    else
-	return ML_CData (msp, addrBuf, addrLen);
+    else {
+	ml_val_t	data = ML_CData (msp, addrBuf, addrLen);
+	ml_val_t	addr;
+	SEQHDR_ALLOC (msp, addr, DESC_word8vec, data, addrLen);
+	return addr;
+    }
 
 } /* end of _ml_Sock_getsockname */

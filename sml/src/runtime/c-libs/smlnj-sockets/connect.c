@@ -21,7 +21,10 @@ ml_val_t _ml_Sock_connect (ml_state_t *msp, ml_val_t arg)
     ml_val_t	addr = REC_SEL(arg, 1);
     int		sts;
 
-    sts = connect (sock, PTR_MLtoC(struct sockaddr, addr), OBJ_LEN(addr));
+    sts = connect (
+	sock,
+	GET_SEQ_DATAPTR(struct sockaddr, addr),
+	GET_SEQ_LEN(addr));
 
     CHK_RETURN_UNIT(msp, sts);
 

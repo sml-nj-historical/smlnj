@@ -22,6 +22,7 @@
 ml_val_t _ml_Sock_inetany (ml_state_t *msp, ml_val_t arg)
 {
     struct sockaddr_in	addr;
+    ml_val_t		data, res;
 
     memset(&addr, 0, sizeof(struct sockaddr_in));
 
@@ -29,7 +30,10 @@ ml_val_t _ml_Sock_inetany (ml_state_t *msp, ml_val_t arg)
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(INT_MLtoC(arg));
 
-    return ML_CData (msp, &addr, sizeof(struct sockaddr_in));
+    data = ML_CData (msp, &addr, sizeof(struct sockaddr_in));
+    SEQHDR_ALLOC (msp, res, DESC_word8vec, data, sizeof(struct sockaddr_in));
+
+    return res;
 
 } /* end of _ml_Sock_inetany */
 

@@ -35,7 +35,7 @@ ml_val_t _ml_Sock_sendbufto (ml_state_t *msp, ml_val_t arg)
 
     n = sendto (
 	sock, data, nbytes, flgs,
-	PTR_MLtoC(struct sockaddr, addr), OBJ_LEN(addr));
+	GET_SEQ_DATAPTR(struct sockaddr, addr), GET_SEQ_LEN(addr));
 
     CHK_RETURN (msp, n);
 

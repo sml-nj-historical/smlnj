@@ -27,9 +27,10 @@ ml_val_t _ml_Sock_accept (ml_state_t *msp, ml_val_t arg)
     if (newSock == -1)
 	return RAISE_SYSERR(msp, newSock);
     else {
-	ml_val_t	addr = ML_CData (msp, addrBuf, addrLen);
-	ml_val_t	res;
+	ml_val_t	data = ML_CData (msp, addrBuf, addrLen);
+	ml_val_t	addr, res;
 
+	SEQHDR_ALLOC(msp, addr, DESC_word8vec, data, addrLen);
 	REC_ALLOC2(msp, res, INT_CtoML(newSock), addr);
 	return res;
     }

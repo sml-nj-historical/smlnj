@@ -21,12 +21,13 @@
  */
 ml_val_t _ml_Sock_frominetaddr (ml_state_t *msp, ml_val_t arg)
 {
-    struct sockaddr_in	*addr = PTR_MLtoC(struct sockaddr_in, arg);
-    ml_val_t		inAddr, res;
+    struct sockaddr_in	*addr = GET_SEQ_DATAPTR(struct sockaddr_in, arg);
+    ml_val_t		data, inAddr, res;
 
     ASSERT (addr->sin_family == AF_INET);
 
-    inAddr = ML_CData (msp, &(addr->sin_addr), sizeof(struct in_addr));
+    data = ML_CData (msp, &(addr->sin_addr), sizeof(struct in_addr));
+    SEQHDR_ALLOC (msp, inAddr, DESC_word8vec, data, sizeof(struct in_addr));
     REC_ALLOC2 (msp, res, inAddr, INT_CtoML(ntohs(addr->sin_port)));
 
     return res;

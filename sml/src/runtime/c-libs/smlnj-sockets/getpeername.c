@@ -31,9 +31,10 @@ ml_val_t _ml_Sock_getpeername (ml_state_t *msp, ml_val_t arg)
 	ml_val_t	af = ML_SysConst (msp, &_Sock_AddrFamily,
 				ntohs(addr->sa_family));
 	ml_val_t	cdata = ML_CData(msp, addr, addrLen);
-	ml_val_t	res;
+	ml_val_t	addr, res;
 
-	REC_ALLOC2 (msp, res, af, cdata);
+	SEQHDR_ALLOC (msp, addr, DESC_word8vec, cdata, addrLen);
+	REC_ALLOC2 (msp, res, af, addr);
 	return res;
     }
 
