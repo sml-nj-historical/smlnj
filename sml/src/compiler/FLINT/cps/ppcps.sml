@@ -88,7 +88,9 @@ fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
 
 fun arithName (P.arith{oper,kind}) =
     ((case oper of  P.+ => "+" |  P.- => "-" |  P.* => "*"
-	          | P./ => "/" |  P.~ => "~" | P.abs => "abs"
+	          | P./ => "/" |  P.~ => "~" | P.abs => "abs" 
+	          | P.fsqrt => "fsqrt" 
+		  | P.fsin => "sin" | P.fcos => "cos" | P.ftan => "tan"
 		  | P.rshift => "rshift" | P.rshiftl => "rshiftl"
 	          | P.lshift => "lshift" | P.andb => "andb"
 		  | P.orb => "orb" | P.xorb => "xorb" | P.notb => "notb")

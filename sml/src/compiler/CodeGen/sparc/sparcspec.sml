@@ -8,7 +8,7 @@ structure SparcSpec : MACH_SPEC =
 struct
 
     open DefaultMachSpec
-
+   
     val architecture	= "sparc"
     val numRegs		= 18 
     val numFloatCalleeSaves = 0 

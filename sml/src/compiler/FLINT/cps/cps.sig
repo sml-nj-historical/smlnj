@@ -8,7 +8,8 @@ structure P : sig
     (* numkind includes kind and size *)
     datatype numkind = INT of int | UINT of int | FLOAT of int
 
-    datatype arithop = + | - | * | / | ~ | abs
+    datatype arithop = + | - | * | / | ~ | abs 
+                     | fsqrt | fsin | fcos | ftan 
 	             | lshift | rshift | rshiftl | andb | orb | xorb | notb
 
     datatype cmpop = > | >= | < | <= | eql | neq

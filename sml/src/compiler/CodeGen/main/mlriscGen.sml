@@ -19,6 +19,7 @@ functor MLRiscGen
     structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
     structure C          : CPSREGS where T.Region = CPSRegions 
                                    and   T.Constant = SMLNJConstant
+				   and   T.Extension =  SMLNJMLTreeExt 
     structure InvokeGC   : INVOKE_GC where T = C.T
     structure MLTreeComp : MLTREECOMP where T = C.T
     structure Flowgen    : FLOWGRAPH_GEN where T = C.T
@@ -30,6 +31,7 @@ functor MLRiscGen
 struct
 
   structure M  = C.T            (* MLTree *)
+  structure E  = SMLNJMLTreeExt (* Extensions *)
   structure P  = CPS.P          (* CPS primitive operators *)
   structure LE = M.LabelExp     (* Label Expression *)
   structure R  = CPSRegions     (* Regions *)
@@ -1008,6 +1010,13 @@ struct
               | _    => error "treeifyAlloc"
               )
 
+	  and computef64(x, e, k, hp) = let
+	    val f = newFreg REAL64
+          in
+	    addFregBinding(x, M.FREG(fty, f));  
+	    emit(M.FMV(fty, f, e));  
+	    gen(k, hp)
+          end
           (*
            * x <- e where e contains an floating-point value
            *)
@@ -1016,12 +1025,7 @@ struct
                 of DEAD => gen(k, hp)
                  | TREEIFY => (markAsTreeified x; 
                                addFregBinding(x,e); gen(k, hp))
-                 | COMPUTE => 
-                   let val f = newFreg REAL64
-                   in  addFregBinding(x, M.FREG(fty, f));  
-                       emit(M.FMV(fty, f, e));  
-                       gen(k, hp)
-                   end
+                 | COMPUTE => computef64(x, e, k, hp)
                  | _    => error "treeifyDefF64"
               (*esac*))
     
@@ -1314,6 +1318,31 @@ struct
               end
 
             (*** PURE ***)
+            | gen(PURE(P.real{fromkind=P.INT 31, tokind=P.FLOAT 64},  
+                       [v], x, _, e), hp) = 
+                treeifyDefF64(x,M.CVTI2F(fty,ity,untagSigned(v)), e, hp)
+            | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v], x, _, e), hp) = let
+                val r = fregbind v
+              in
+		case oper
+                of P.~ => treeifyDefF64(x, M.FNEG(fty,r), e, hp)
+                 | P.abs => treeifyDefF64(x, M.FABS(fty,r), e, hp)
+		 | P.fsqrt => treeifyDefF64(x, M.FSQRT(fty,r), e, hp)
+		 | P.fsin => computef64(x, M.FEXT(fty, E.FSINE r), e, hp)
+		 | P.fcos => computef64(x, M.FEXT(fty, E.FCOSINE r), e, hp)
+		 | P.ftan => computef64(x, M.FEXT(fty, E.FTANGENT r), e, hp)
+              end
+            | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v,w], x, _, e), hp) = 
+              let val v = fregbind v 
+                  val w = fregbind w
+                  val t =  
+                  case oper
+                    of P.+ => M.FADD(fty, v, w)
+                     | P.* => M.FMUL(fty, v, w)
+                     | P.- => M.FSUB(fty, v, w)
+                     | P./ => M.FDIV(fty, v, w)
+              in  treeifyDefF64(x, t, e, hp)
+              end
             | gen(PURE(P.pure_arith{oper=P.orb, kind}, [v,w], x, _, e), hp) = 
                 defWithKind(kind, x, M.ORB(ity, regbind v, regbind w), e, hp)
             | gen(PURE(P.pure_arith{oper=P.andb, kind}, [v,w], x, _, e), hp) = 
@@ -1400,15 +1429,6 @@ struct
                 | (n, m) => if n = m then copyM(m, x, v, e, hp) 
                             else error "gen:PURE:trunc"
                (*esac*))
-            | gen(PURE(P.real{fromkind=P.INT 31, tokind=P.FLOAT 64},  
-                       [v], x, _, e), hp) = 
-                treeifyDefF64(x,M.CVTI2F(fty,ity,untagSigned(v)), e, hp)
-            | gen(PURE(P.pure_arith{oper, kind=P.FLOAT 64}, [v], x, _, e), hp) =
-              let val r = fregbind v
-              in  case oper
-                    of P.~ => treeifyDefF64(x, M.FNEG(fty,r), e, hp)
-                     | P.abs => treeifyDefF64(x, M.FABS(fty,r), e, hp)
-              end
             | gen(PURE(P.objlength, [v], x, _, e), hp) = 
                 defI31(x, orTag(getObjLength(v)), e, hp)
             | gen(PURE(P.length, [v], x, t, e), hp) = select(1, v, x, t, e, hp)

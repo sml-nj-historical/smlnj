@@ -1062,6 +1062,10 @@ struct
             in  mark(fld(fty', ea), an); 
                 if fd = ST0 then () else emit(fstp(fty, I.FDirect fd))
             end
+	| doFexpr(fty, T.FEXT fexp, fd, an) = 
+	    (ExtensionComp.compileFext (reducer()) {e=fexp, fd=fd, an=an};
+	     if fd = ST0 then () else emit(fstp(fty, I.FDirect fd))
+	    )
         | doFexpr(fty, e, fd, an) =
             (reduceFexp(fty, e, []);
              if fd = ST0 then () else mark(fstp(fty, I.FDirect fd), an)

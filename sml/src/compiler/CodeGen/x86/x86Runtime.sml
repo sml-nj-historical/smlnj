@@ -10,4 +10,5 @@ structure X86Runtime = struct
   val regStart = 40			(* area for physcial registers *)
   val spillStart = X86Spec.initialSpillOffset (* spill area *)
   val spillAreaSz = X86Spec.spillAreaSz
+  val fpTempMemOff = 376 : Int32.int
 end

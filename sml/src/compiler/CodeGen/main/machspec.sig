@@ -16,7 +16,7 @@ signature MACH_SPEC =
   sig
 
     val architecture : string
-
+   
   (* code generator flags *)
     val polling : bool
     val unboxedFloats : bool

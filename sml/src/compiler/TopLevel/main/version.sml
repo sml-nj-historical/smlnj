@@ -15,8 +15,8 @@ structure Version : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 29, 2],
-	    date = "October 17, 2000"
+	    version_id = [110, 30],
+	    date = "November 3, 2000"
 	  }
 
     fun f ([], l) = l

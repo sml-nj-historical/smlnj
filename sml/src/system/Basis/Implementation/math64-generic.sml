@@ -389,24 +389,11 @@ in  fun atan y = (* miraculously handles inf's and nan's correctly *)
                  if y>=0.0 then atan2py(x,y) else ~(atan2py(x,~y))
 end
 
-    fun sqrt(x: real) = (* handles inf's and nan's correctly *)
-	  if x>zero
-	    then if x < plusInfinity
-             then let
-	      val k = 6 (* log base 2 of the precision *)
-	      val n = I.rshift(logb x, 1)
-	      val x = scalb(x, I.~(I.+(n, n)))
-	      fun iter(0, g) = g
-		| iter(i, g) = iter(I.-(i, 1), half * (g + x/g))
-	      in
-		scalb(iter(k,one),n)
-	      end
-	     else x
-	    else if x<zero then NaN else x
 
+ val sqrt = MathInlineT.sqrt
 
-  fun asin x = atan2(x, sqrt(1.0-x*x))
-  fun acos x = 2.0 * atan2(sqrt((1.0-x)/(1.0+x)),1.0)
+ fun asin x = atan2(x, sqrt(1.0-x*x))
+ fun acos x = 2.0 * atan2(sqrt((1.0-x)/(1.0+x)),1.0)
 
  fun cosh u = let val a = exp u in if a==0.0 
                     then plusInfinity

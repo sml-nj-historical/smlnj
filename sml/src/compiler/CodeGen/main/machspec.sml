@@ -8,6 +8,7 @@ structure DefaultMachSpec : MACH_SPEC =
  struct
 
     val architecture = ""
+
     val numRegs = 0
     val numFloatRegs = 0
     val bigEndian = false

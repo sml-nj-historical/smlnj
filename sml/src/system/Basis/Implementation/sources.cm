@@ -289,7 +289,13 @@ is
 	word31.sml
 	word32.sml
 	real64.sml
-	math64.sml
+#if defined(ARCH_X86)
+	math64-x86.sml
+#elif defined(ARCH_ALPHA)
+	math64-alpha.sml
+#else
+	math64-generic.sml
+#endif
 	real-format.sml
 	word8.sml
 	word8-vector.sml

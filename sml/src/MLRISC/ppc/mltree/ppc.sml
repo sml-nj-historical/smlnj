@@ -705,6 +705,8 @@ struct
             (* Single/double precision support *)
           | T.FABS((32|64), e) => funary(I.FABS, e, ft, an)
           | T.FNEG((32|64), e) => funary(I.FNEG, e, ft, an)
+	  | T.FSQRT(32, e)     => funary(I.FSQRTS, e, ft, an)
+	  | T.FSQRT(64, e)     => funary(I.FSQRT, e, ft, an)
 
             (* Misc *)
           | T.FMARK(e, a) => 

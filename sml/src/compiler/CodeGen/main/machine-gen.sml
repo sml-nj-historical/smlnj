@@ -8,22 +8,23 @@ functor MachineGen
    structure PseudoOps  : SMLNJ_PSEUDO_OP_TYPE (* pseudo ops *)
    structure CpsRegs    : CPSREGS              (* CPS registers *)
       where T.Region=CPSRegions
-      where T.Constant=SMLNJConstant 
-      where T.PseudoOp=PseudoOps
+        and T.Constant=SMLNJConstant 
+        and T.PseudoOp=PseudoOps
+        and T.Extension=SMLNJMLTreeExt
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
       where I.Constant = CpsRegs.T.Constant
    structure MLTreeComp : MLTREECOMP           (* instruction selection *)
       where T = CpsRegs.T
-      where I = InsnProps.I
+        and I = InsnProps.I
    structure Asm        : INSTRUCTION_EMITTER  (* assembly *)
       where S = MLTreeComp.T.Stream
-      where P = PseudoOps
-      where I = MLTreeComp.I
+        and P = PseudoOps
+        and I = MLTreeComp.I
    structure Shuffle    : SHUFFLE              (* shuffling copies *) 
       where I = MLTreeComp.I
    structure BackPatch  : BBSCHED              (* machine code emitter *)
       where F.P = PseudoOps
-      where F.I = Asm.I
+        and F.I = Asm.I
    structure RA         : REGALLOC             (* register allocator *)
       where F = BackPatch.F
   ) : MACHINE_GEN =

@@ -135,9 +135,6 @@ val word32 = word 32
 val word31 = word 31
 val word8  = word 8
 
-fun float size oper = P.ARITH{oper=oper, overflow=true, kind=P.FLOAT size}
-val float64 = float 64
-
 fun purefloat size oper = P.ARITH{oper=oper,overflow=false,kind=P.FLOAT size}
 val purefloat64 = purefloat 64	
 
@@ -355,10 +352,10 @@ val allPrimops =
         *)
 
        (*** float 64 primops ***)
-       ("f64add", 	 float64 (P.+),      NONE),
-       ("f64sub",	 float64 (P.-),      NONE),
-       ("f64div", 	 float64 (P./),      NONE),
-       ("f64mul",	 float64 (P.* ),     NONE),
+       ("f64add", 	 purefloat64 (P.+),      NONE),
+       ("f64sub",	 purefloat64 (P.-),      NONE),
+       ("f64div", 	 purefloat64 (P./),      NONE),
+       ("f64mul",	 purefloat64 (P.* ),     NONE),
        ("f64neg",	 purefloat64 P.~,      	NONE),
        ("f64ge",	 float64cmp (P.>=),  NONE),
        ("f64gt",	 float64cmp (P.>),   NONE),
@@ -367,6 +364,11 @@ val allPrimops =
        ("f64eq",	 float64cmp P.EQL,      NONE),
        ("f64ne",	 float64cmp P.NEQ,      NONE),
        ("f64abs",	 purefloat64 P.ABS,     NONE),
+
+       ("f64sin",	 purefloat64 P.FSIN,	NONE),
+       ("f64cos",	 purefloat64 P.FCOS,	NONE),
+       ("f64tan",	 purefloat64 P.FTAN,	NONE),
+       ("f64sqrt",	 purefloat64 P.FSQRT,     NONE),       
 
        (*** float64 array ***)	
        ("f64Sub",	 sub (P.FLOAT 64),        numSubTy),

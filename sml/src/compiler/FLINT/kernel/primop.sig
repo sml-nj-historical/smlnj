@@ -128,10 +128,10 @@ datatype numkind
   | FLOAT of int
  
 datatype arithop
-  = + | - | * | / | ~		(* int or float *)
-  | ABS				(* floating point only *)
-  | LSHIFT | RSHIFT | RSHIFTL	(* int only *)
-  | ANDB | ORB | XORB | NOTB	(* int only *)
+  = + | - | * | / | ~				(* int or float *)
+  | ABS | FSQRT | FSIN | FCOS | FTAN		(* floating point only *)
+  | LSHIFT | RSHIFT | RSHIFTL			(* int only *)
+  | ANDB | ORB | XORB | NOTB			(* int only *)
 
 datatype cmpop = > | >= | < | <= | LEU | LTU | GEU | GTU | EQL | NEQ
 

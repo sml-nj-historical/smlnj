@@ -24,7 +24,7 @@ structure X86CG =
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
            structure X86MLTree=X86MLTree
-           structure ExtensionComp = SMLNJMLTreeExtComp
+           structure ExtensionComp = X86MLTreeExtComp
                (structure I = X86Instr
                 structure T = X86MLTree
                )

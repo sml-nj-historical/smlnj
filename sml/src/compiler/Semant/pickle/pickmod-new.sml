@@ -289,6 +289,10 @@ in
 	  | arithopc P.ORB = "\010"
 	  | arithopc P.XORB = "\011"
 	  | arithopc P.NOTB = "\012"
+          | arithopc P.FSQRT = "\013"
+	  | arithopc P.FSIN = "\014"
+	  | arithopc P.FCOS = "\015"
+	  | arithopc P.FTAN = "\016"
     in
 	arithopc oper $ []
     end

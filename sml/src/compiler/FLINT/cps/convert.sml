@@ -142,6 +142,10 @@ fun primunwrap(INTt) = P.iunwrap
 (* arithop: AP.arithop -> P.arithop *)
 fun arithop AP.~ = P.~
   | arithop AP.ABS = P.abs
+  | arithop AP.FSQRT = P.fsqrt
+  | arithop AP.FSIN = P.fsin
+  | arithop AP.FCOS = P.fcos
+  | arithop AP.FTAN = P.ftan
   | arithop AP.NOTB = P.notb
   | arithop AP.+ = P.+
   | arithop AP.- = P.-

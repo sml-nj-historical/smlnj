@@ -23,6 +23,7 @@ TopLevel/viscomp/x86vis.sml
 CodeGen/x86/x86CG.sml
 CodeGen/x86/x86CpsRegs.sml
 CodeGen/x86/x86MLTree.sml
+CodeGen/x86/x86MLTreeExtComp.sml
 CodeGen/x86/x86MemRegs.sml
 CodeGen/x86/x86Runtime.sml
 CodeGen/x86/x86StackSpills.sml

@@ -449,7 +449,15 @@ struct
              | I.FIDIVRS => (0wxde, 7)
        in  eBytes(opc :: eImmedExt(code, src)) end
      | I.FUNARY unOp =>
-        eBytes[0wxd9, case unOp of I.FABS => 0wxe1 | I.FCHS => 0wxe0]
+        eBytes[0wxd9, 
+	       case unOp 
+                of I.FABS  => 0wxe1 
+	         | I.FCHS  => 0wxe0 
+		 | I.FSQRT => 0wxfa
+		 | I.FSIN  => 0wxfe
+		 | I.FCOS  => 0wxff
+		 | I.FTAN  => 0wxf2
+		 | I.FINCSTP => 0wxf7]
      | I.FXCH{opnd=33} => eBytes[0wxd9, 0wxc9]
      | I.FUCOMPP => eBytes[0wxda, 0wxe9]
      | I.FSTPL(f as I.FDirect _) => emitInstr(I.FSTPL(memReg f), regmap)
