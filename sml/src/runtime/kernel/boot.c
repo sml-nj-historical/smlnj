@@ -71,8 +71,8 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
     BinFileList = BuildFileList (msp, bootlist, &max_boot_path_len);
 
   /* this space is ultimately wasted */
-    if ((fname = malloc (max_boot_path_len)) == NULL)
-      Die ("unable to allocate space for boot file names");
+    if ((fname = MALLOC (max_boot_path_len)) == NULL)
+	Die ("unable to allocate space for boot file names");
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
@@ -80,28 +80,29 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
        * going to scribble into it */
 	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
 	BinFileList = LIST_tl(BinFileList);
-	if (fname[0] == '#')
-	  if (rts_init)
-	    Die ("runtime system registered more than once\n");
-	  else {
-	    /* register the runtime system under the given pers id */
-	    pers_id_t pid;
-	    int i, l = strlen (fname + 1);
-	    for (i = 0; i < PERID_LEN; i++) {
-	      int i2 = 2 * i;
-	      if (i2 + 1 < l) {
-		int c1 = fname[i2+1];
-		int c2 = fname[i2+2];
-		pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
-	      }
+	if (fname[0] == '#') {
+	    if (rts_init)
+		Die ("runtime system registered more than once\n");
+	    else {
+	      /* register the runtime system under the given pers id */
+		pers_id_t pid;
+		int i, l = strlen (fname + 1);
+		for (i = 0; i < PERID_LEN; i++) {
+		    int i2 = 2 * i;
+		    if (i2 + 1 < l) {
+			int c1 = fname[i2+1];
+			int c2 = fname[i2+2];
+			pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
+		    }
+		}
+		if (!SilentLoad)
+		    Say ("[Registering runtime system as %s]\n", fname+1);
+		EnterPerID (msp, &pid, RunTimeCompUnit);
+		rts_init = 1;	/* make sure we do this only once */
 	    }
-	    if (!SilentLoad)
-	      Say ("[Registering runtime system as %s]\n", fname+1);
-	    EnterPerID (msp, &pid, RunTimeCompUnit);
-	    rts_init = 1;	/* make sure we do this only once */
-	  }
+	}
 	else
-	  LoadBinFile (msp, fname);
+	    LoadBinFile (msp, fname);
     }
 
 } /* end of BootML */
@@ -130,30 +131,32 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist, int *mbplp)
     listF = OpenBinFile (bootlist, FALSE);
 
     if (listF != NULL) {
-      c = getc (listF);
-      if (c == EOF)
-	Die ("bootlist file \"%s\" is empty", bootlist);
-      if (c == '%') {
-	if (fgets (sizeBuf, SIZE_BUF_LEN, listF) != NIL(char *)) {
-	  /* hardly any checking here... */
-	  char *space = strchr (sizeBuf, ' ');
-	  *space = '\0';
-	  max_num_boot_files = strtoul (sizeBuf, NULL, 0);
-	  max_boot_path_len = strtoul (space+1, NULL, 0) + 2;
-	} else
-	  Die ("unable to read first line in \"%s\" after %%", bootlist);
-      } else {
-	/* size spec is missing -- use defaults */
-	ungetc (c, listF);
-      }
+	c = getc (listF);
+	if (c == EOF)
+	    Die ("bootlist file \"%s\" is empty", bootlist);
+	if (c == '%') {
+	    if (fgets (sizeBuf, SIZE_BUF_LEN, listF) != NIL(char *)) {
+	      /* hardly any checking here... */
+		char *space = strchr (sizeBuf, ' ');
+		*space = '\0';
+		max_num_boot_files = strtoul(sizeBuf, NULL, 0);
+		max_boot_path_len = strtoul(space+1, NULL, 0) + 2;
+	    }
+	    else
+		Die ("unable to read first line in \"%s\" after %%", bootlist);
+	}
+	else {
+	  /* size spec is missing -- use defaults */
+	    ungetc (c, listF);
+	}
 
-      *mbplp = max_boot_path_len; /* tell the calling function... */
+	*mbplp = max_boot_path_len; /* tell the calling function... */
 
-      if ((nameBuf = malloc (max_boot_path_len)) == NULL)
-	Die ("unable to allocate space for boot file names");
+	if ((nameBuf = MALLOC(max_boot_path_len)) == NIL(char *))
+	    Die ("unable to allocate space for boot file names");
 
-      if ((fileNames = malloc (max_num_boot_files * sizeof (char *))) == NULL)
-	Die ("unable to allocate space for boot file name table");
+	if ((fileNames = MALLOC(max_num_boot_files * sizeof(char *))) == NULL)
+	    Die ("unable to allocate space for boot file name table");
 
       /* read in the file names, converting them to ML strings. */
 	while (fgets (nameBuf, max_boot_path_len, listF) != NIL(char *)) {
@@ -174,9 +177,9 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist, int *mbplp)
 
     /* these guys are no longer needed from now on */
     if (fileNames)
-      free (fileNames);
+	FREE (fileNames);
     if (nameBuf)
-      free (nameBuf);
+	FREE (nameBuf);
 
     return fileList;
 
