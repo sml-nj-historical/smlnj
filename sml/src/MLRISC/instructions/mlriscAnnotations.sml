@@ -4,8 +4,7 @@
  * -- Allen
  *)
 
-structure MLRiscAnnotations : MLRISC_ANNOTATIONS =
-struct
+structure MLRiscAnnotations : MLRISC_ANNOTATIONS = struct
 
    structure A = Annotations
    structure C = CellsBasis

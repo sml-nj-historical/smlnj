@@ -7,7 +7,9 @@ Library
 	structure GraphLayout
 	structure VCG
 	structure daVinci
+	functor FormatInstruction
 	functor GraphViewer
+	functor CFGViewer
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -16,21 +18,29 @@ is
 	Control.cm
 	Lib.cm
 	Graphs.cm
+	MLRISC.cm
+	IR.cm
 #else
 	$/Control.cm
 	$/Lib.cm
 	$/Graphs.cm
+	$/MLRISC.cm
+
 #endif
 #else
 	basis.cm
 	Control.cm
 	Lib.cm
 	Graphs.cm
+	MLRISC.cm
+	IR.cm
 #endif
 #else
 	Control.cm
 	Lib.cm
 	Graphs.cm
+	MLRISC.cm
+	IR.cm
 #endif
 	../visualization/allDisplays.sml
 	../visualization/daVinci.sml
@@ -40,3 +50,6 @@ is
 	../visualization/graphViewer.sig
 	../visualization/graphViewer.sml
 	../visualization/vcg.sml
+	../visualization/cfgViewer.sml
+	../visualization/mlrisc-format-insn.sml
+
