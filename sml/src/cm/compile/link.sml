@@ -220,7 +220,11 @@ in
 			end
 		    in
 			case StableMap.find (!stablemap, i) of
-			    SOME (B (f, i, l)) => (f, SOME (i, l))
+			    SOME (B (f, i, [])) =>
+				(case BinInfo.sh_mode i of
+				     Sharing.DONTSHARE => (f, SOME (i, []))
+				   | _ => (f, NONE))
+			  | SOME (B (f, i, l)) => (f, SOME (i, l))
 			  | NONE =>
 				(case StableMap.find (!localmap, i) of
 				     SOME x => x
