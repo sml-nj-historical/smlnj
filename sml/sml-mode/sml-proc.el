@@ -208,18 +208,20 @@ specified when running the command \\[sml-cd].")
 
 (defvar sml-error-regexp-alist
   `( ;; Poly/ML messages
-    ("\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
+    ("^\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
     ;; Moscow ML
-    ("File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
-    ,@(if (not (fboundp 'compilation-fake-loc))
-	  ;; SML/NJ:  the file-pattern is anchored to avoid
-	  ;; pathological behavior with very long lines.
-	  '(
-	    ("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 3 4 6 7)
-	    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7))
-	'(("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warnin\\(g\\)\\): .*" 1 (3 . 6) (4 . 7) (9))
-	  ;; SML/NJ's exceptions:  see above.
-	  ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 (3 . 6) (4 . 7)))))
+    ("^File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
+    ;; SML/NJ:  the file-pattern is anchored to avoid
+    ;; pathological behavior with very long lines.
+    ("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warnin\\(g\\)\\): .*" 1
+     ,@(if (fboundp 'compilation-fake-loc) ;New compile.el.
+	   '((3 . 6) (4 . 7) (9))
+	 '(sml-make-error 3 4 6 7)))
+    ;; SML/NJ's exceptions:  see above.
+    ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2
+     ,@(if (fboundp 'compilation-fake-loc) ;New compile.el.
+	   '((3 . 6) (4 . 7))
+	 '(sml-make-error 3 4 6 7))))
   "Alist that specifies how to match errors in compiler output.
 See `compilation-error-regexp-alist' for a description of the format.")
 
@@ -624,7 +626,7 @@ non-nil.  With prefix arg, always prompts."
   (set-marker sml-error-cursor (1- (process-mark (sml-proc))))
   (setq sml-endof-error-alist nil)
   (compilation-forget-errors)
-  (if (fboundp 'compilation-fake-loc)
+  (if (and (fboundp 'compilation-fake-loc) sml-temp-file)
       (compilation-fake-loc (cdr sml-temp-file) (car sml-temp-file)))
   (if (markerp compilation-parsing-end)
       (set-marker compilation-parsing-end sml-error-cursor)
