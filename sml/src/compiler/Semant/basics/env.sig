@@ -14,7 +14,7 @@ sig
   val look: 'b env * Symbol.symbol -> 'b
   val bind: Symbol.symbol * 'b * 'b env -> 'b env
 
-  val special: (Symbol.symbol -> '_b) * (unit -> Symbol.symbol list) -> '_b env
+  val special: (Symbol.symbol -> 'b) * (unit -> Symbol.symbol list) -> 'b env
       (* Note: special(f,NONE) means Don't Memoize! *)
 
   val atop: 'b env * 'b env -> 'b env
@@ -23,7 +23,7 @@ sig
   val consolidate: 'b env -> 'b env
   val consolidateLazy: 'b env -> 'b env
   val app: (Symbol.symbol * 'b -> unit) -> 'b env -> unit
-  val map: ('1b -> '1b) -> '1b env -> '1b env
+  val map: ('b -> 'b) -> 'b env -> 'b env
   val fold: ((Symbol.symbol * 'b) * 'a -> 'a) -> 'a -> 'b env -> 'a
 
   val symbols : 'b env -> Symbol.symbol list 

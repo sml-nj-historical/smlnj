@@ -6,6 +6,8 @@
 
 signature SUBSTRING =
   sig
+    eqtype char
+    eqtype string
     type substring
 
     val base : substring -> (string * int * int)

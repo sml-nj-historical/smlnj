@@ -18,6 +18,7 @@ struct
   structure C = Alpha32Cells
   structure R = Alpha32CpsRegs
   structure MLTree = Alpha32MLTree
+  structure B = Alpha32MLTree.BNames
   structure Region = Alpha32Instr.Region
 
   fun error msg = ErrorMsg.impossible ("Alpha32CG." ^ msg)
@@ -89,7 +90,7 @@ struct
     fun mvInstr(rd, rs) = I.OPERATE{oper=I.BIS, ra=rs, rb=I.REGop 31, rc=rd} 
     fun fmvInstr(fd, fs) = I.FOPERATE{oper=I.CPYS, fa=fs, fb=fs, fc=fd} 
 
-    fun spill (stClass, stOp, getLoc, newReg, rewrite) {regmap, instr, reg} = let
+    fun spill (stClass, stOp, getLoc, newReg, rewrite) {regmap, instr, reg, id:B.name} = let
       val offset = getLoc(reg)
       fun spillInstr(src) = 
 	[stClass{stOp=stOp, r=src, b=C.stackptrR, d=I.IMMop offset, mem=stack}]
@@ -125,7 +126,7 @@ struct
     end
 
 
-    fun reload (ldClass, ldOp, getLoc, newReg, rewrite) {regmap, instr, reg} = let
+    fun reload (ldClass, ldOp, getLoc, newReg, rewrite) {regmap, instr, reg, id:B.name} = let
       val offset = I.IMMop (getLoc(reg))
       fun reloadInstr(dst, rest) =
 	ldClass{ldOp=ldOp, r=dst, b=C.stackptrR, d=offset, mem=stack}::rest
@@ -161,6 +162,7 @@ struct
       Alpha32Ra.IntRa
         (structure RaUser = struct
            structure I = Alpha32Instr
+	   structure B = B
 
 	   val getreg = GR.getreg
 	   val spill = spill(I.STORE, I.STL, getRegLoc, C.newReg, 
@@ -178,6 +180,7 @@ struct
       Alpha32Ra.FloatRa
         (structure RaUser = struct
 	   structure I = Alpha32Instr
+	   structure B = B
 
 	   val getreg = FR.getreg
 	   val spill = spill (I.FSTORE, I.STT, getFregLoc, C.newFreg,

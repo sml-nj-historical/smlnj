@@ -4,7 +4,7 @@
 signature INTSTRMAPV = 
 sig 
   type 'a intstrmap
-  val new : (int * string * '_a) list -> '_a intstrmap
+  val new : (int * string * 'a) list -> 'a intstrmap
 
   (* in case of duplicates, the element towards the head of the 
    * list is discarded,and the one towards the tail is kept.
@@ -199,9 +199,9 @@ struct
      in g(0,zero)
     end
 
-  fun new (bindings: (int*string*'_b) list) =
+  fun new (bindings: (int*string*'b) list) =
     let val n = List.length bindings
-        val a0 = Array.array(n,NIL: '_b bucket)
+        val a0 = Array.array(n,NIL: 'b bucket)
         val dups = ref 0
 
         fun add a (i,s,b) =
@@ -217,7 +217,7 @@ struct
         val _ = List.app (add a0) bindings
         val a1 = case !dups
                   of 0 => a0
-                   | d => let val a = Array.array(n-d, NIL: '_b bucket)
+                   | d => let val a = Array.array(n-d, NIL: 'b bucket)
                            in List.app (add a) bindings; a
                           end
 
