@@ -287,6 +287,7 @@ struct
 	 | PB.ASCII _  => chkAddData("ASCII")
 	 | PB.ASCIIZ _ => chkAddData("ASCIIZ")
 	 | PB.SPACE _  => chkAddData("SPACE")
+	 | PB.COMMENT _ => chkAddData("COMMENT")
 	 | PB.IMPORT _ => addData()
 	 | PB.EXPORT _ => addData()
 	 | PB.EXT _ => chkAddData("EXT")
