@@ -124,8 +124,11 @@
 #define 	atmp4 r13
 
 /* stackframe layout:
- * Note: 1. The offset of cvti2d tmp is used in rs6000.sml
- *          float load/store offset is hardwired in rs6000instr.sml
+ * Note: 1. cvti2d stuff is used in CodeGen/ppc/ppcPseudoInstr.sml.
+ *          (Orig: The offset of cvti2d tmp is used in rs6000.sml.)
+ *
+ *       2. Question: Where is the load/store offset used, if at all?
+ *          (Orig: float load/store offset is hardwired in rs6000instr.sml.)
  *
  * 	             +-------------------+
  *   sp--> 0(sp)     | mlstate addr      |
