@@ -25,5 +25,12 @@ structure GroupGraph = struct
 		   kind: kind,
 		   required: privileges,
 		   grouppath: SrcPath.t,
-		   sublibs: group list }
+		   sublibs: (SrcPath.t * group) list }
+    (* Note: "sublibs" consists of (srcpath, group) pairs where
+     * srcpath is equivalent -- but not necessarily identical -- to
+     * the "grouppath" component of "group".  The group might have
+     * been known before in which case "grouppath" would carry the
+     * path that was used back then to refer to the group.  But for
+     * the purpose of stabilization we must know the abstract path
+     * that was used this time. *)
 end

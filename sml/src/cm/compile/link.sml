@@ -271,7 +271,7 @@ in
 	in
 	    if SrcPathSet.member (!visited, grouppath) then ()
 	    else (visited := SrcPathSet.add (!visited, grouppath);
-		  app registerGroup sublibs;
+		  app (registerGroup o #2) sublibs;
 		  case kind of
 		      GG.STABLELIB => registerStableLib g
 		    | _ => ())

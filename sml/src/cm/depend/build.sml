@@ -13,7 +13,7 @@ signature BUILDDEPEND = sig
 	  gimports: impexp SymbolMap.map,
 	  smlfiles: SmlInfo.info list,
 	  localdefs: SmlInfo.info SymbolMap.map,
-	  subgroups: GroupGraph.group list,
+	  subgroups: 'a,
 	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
 	* GeneralParams.info

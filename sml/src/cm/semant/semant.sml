@@ -148,11 +148,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   sublibs = [] }
 
     fun sgl2sll subgroups = let
-	fun sameSL (GG.GROUP g) (GG.GROUP g') =
-	    SrcPath.compare (#grouppath g, #grouppath g') = EQUAL
+	fun sameSL (p, g) (p', g') = SrcPath.compare (p, p') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
-	fun oneSG (x as (GG.GROUP { kind, sublibs, ... }), l) =
+	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
 	    case kind of
 		GG.NOLIB => foldl add l sublibs
 	      | _ => add (x, l)

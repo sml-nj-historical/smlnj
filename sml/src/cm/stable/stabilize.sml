@@ -149,7 +149,7 @@ struct
 	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
 		StableMap.insert (m, #bininfo n, (i, sy))
 	      | oneB i (_, _, m) = m
-	    fun oneSL ((g as GG.GROUP { exports, ... }), (m, i)) =
+	    fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
 		(SymbolMap.foldli (oneB i) m exports, i + 1)
 	    val inverseMap = #1 (foldl oneSL (StableMap.empty, 0) sublibs)
 
@@ -378,7 +378,7 @@ struct
 	    fun privileges p = list string (StringSet.listItems p)
 
 	    fun group () = let
-		fun sg (GG.GROUP { grouppath, ... }) = abspath grouppath
+		fun sg (p, g) = abspath p
 	    in
 		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
@@ -481,7 +481,7 @@ struct
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
-		      fun notStable (GG.GROUP { kind, ... }) =
+		      fun notStable (_, GG.GROUP { kind, ... }) =
 			  case kind of GG.STABLELIB => false | _ => true
 		  in
 		    case List.filter notStable (#sublibs grec) of
@@ -490,9 +490,8 @@ struct
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
 				fun loop [] = ()
-				  | loop (GG.GROUP { grouppath, ... } :: t) =
-				    (PP.add_string pps
-				        (SrcPath.descr grouppath);
+				  | loop ((p, _) :: t) =
+				    (PP.add_string pps (SrcPath.descr p);
 				     PP.add_newline pps;
 				     loop t)
 			    in
@@ -565,7 +564,11 @@ struct
 		       (error ["configuration anchor \"", a, "\" undefined"];
 			raise Format)
 
-	    fun sg () = getGroup' (abspath ())
+	    fun sg () = let
+		val p = abspath ()
+	    in
+		(p, getGroup' p)
+	    end
 	    val sgListM = UU.mkMap ()
 	    val sublibs = list sgListM sg ()
 
@@ -580,7 +583,8 @@ struct
 					    (String.sub (s, 0))))))
 		handle _ => NONE
 	    fun node_context (n, sy) = let
-		val GG.GROUP { exports = slexp, ... } = List.nth (sublibs, n)
+		val (_, GG.GROUP { exports = slexp, ... }) =
+		    List.nth (sublibs, n)
 	    in
 		case SymbolMap.find (slexp, sy) of
 		    SOME ((_, DG.SB_BNODE (_, { statenv = ge, ... })), _) =>
@@ -679,7 +683,7 @@ struct
 		  | sbn' #"2" = let
 			val n = int ()
 			val sy = symbol ()
-			val GG.GROUP { exports = slexp, ... } =
+			val (_, GG.GROUP { exports = slexp, ... }) =
 			    List.nth (sublibs, n) handle _ => raise Format
 		    in
 			case SymbolMap.find (slexp, sy) of
