@@ -45,11 +45,7 @@ see the COPYRIGHT NOTICE for details and restrictions.
 		and characters.
 	02/08/95 (jhr) Modified to use new List module interface.
 	05/18/95 (jhr) changed Vector.vector to Vector.fromList
-*
- * $Log: lexgen.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:40:10  george
- * Version 110.5
- *
+ 
  * Revision 1.9  1998/01/06 19:23:53  appel
  *   added %posarg feature to permit position-within-file to be passed
  *   as a parameter to makeLexer
@@ -72,17 +68,6 @@ see the COPYRIGHT NOTICE for details and restrictions.
 # Revision 1.3  1997/10/04  03:52:13  dbm
 #   Fix to remove output file if ml-lex fails.
 #
-# Revision 1.2  1997/05/06  01:12:38  george
-# *** empty log message ***
-#
- * Revision 1.2  1996/02/26  15:02:27  george
- *    print no longer overloaded.
- *    use of makestring has been removed and replaced with Int.toString ..
- *    use of IO replaced with TextIO
- *
- * Revision 1.1.1.1  1996/01/31  16:01:15  george
- * Version 109
- * 
  *)
 
 (* Subject: lookahead in sml-lex

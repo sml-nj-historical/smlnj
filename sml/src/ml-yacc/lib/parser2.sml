@@ -1,37 +1,4 @@
-(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
- *
- * $Log$
- * Revision 1.3  2000/06/06 02:14:54  blume
- * merging changes from devel branch; new boot files
- *
- * Revision 1.1.1.11.2.1  2000/06/02 08:11:06  blume
- * added several appendices to CM manual;
- * merged recent changes to main trunk into devel branch
- *
- * Revision 1.2  2000/06/01 18:33:44  monnier
- * bring revisions from the vendor branch to the trunk
- *
- * Revision 1.1.1.11  1999/09/03 23:50:32  monnier
- * version 110.20
- *
- * Revision 1.2  1997/08/26 19:18:54  jhr
- *   Replaced used of "abstraction" with ":>".
- *
-# Revision 1.1.1.1  1997/01/14  01:38:04  george
-#   Version 109.24
-#
- * Revision 1.3  1996/10/03  03:36:58  jhr
- * Qualified identifiers that are no-longer top-level (quot, rem, min, max).
- *
- * Revision 1.2  1996/02/26  15:02:29  george
- *    print no longer overloaded.
- *    use of makestring has been removed and replaced with Int.toString ..
- *    use of IO replaced with TextIO
- *
- * Revision 1.1.1.1  1996/01/31  16:01:42  george
- * Version 109
- * 
- *)
+(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi *)
 
 (* parser.sml:  This is a parser driver for LR tables with an error-recovery
    routine added to it.  The routine used is described in detail in this

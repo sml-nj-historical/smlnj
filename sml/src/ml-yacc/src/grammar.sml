@@ -1,34 +1,4 @@
-(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
- *
- * $Log$
- * Revision 1.4  2000/06/06 02:14:55  blume
- * merging changes from devel branch; new boot files
- *
- * Revision 1.2.2.1  2000/06/02 08:11:06  blume
- * added several appendices to CM manual;
- * merged recent changes to main trunk into devel branch
- *
- * Revision 1.3  2000/06/01 18:33:44  monnier
- * bring revisions from the vendor branch to the trunk
- *
- * Revision 1.2  2000/01/09 09:59:14  blume
- * pickler bug fixes; some cosmetic changes
- *
- * Revision 1.1.1.10  1999/04/17 18:56:11  monnier
- * version 110.16
- *
- * Revision 1.1.1.1  1997/01/14 01:38:05  george
- *   Version 109.24
- *
- * Revision 1.2  1996/02/26  15:02:33  george
- *    print no longer overloaded.
- *    use of makestring has been removed and replaced with Int.toString ..
- *    use of IO replaced with TextIO
- *
- * Revision 1.1.1.1  1996/01/31  16:01:45  george
- * Version 109
- * 
- *)
+(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi *)
 
 structure Grammar : GRAMMAR =
 	struct

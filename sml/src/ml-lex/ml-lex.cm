@@ -3,7 +3,7 @@ Library
 is
 
 # if defined (NEW_CM)
-  basis.cm
+  $/basis.cm
 # endif
 
   lexgen.sml

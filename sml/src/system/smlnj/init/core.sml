@@ -263,27 +263,3 @@ structure Core =
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)
 
   end
-
-(*
- * $Log$
- * Revision 1.4  2000/06/06 02:14:56  blume
- * merging changes from devel branch; new boot files
- *
- * Revision 1.2.2.1  2000/06/02 08:11:07  blume
- * added several appendices to CM manual;
- * merged recent changes to main trunk into devel branch
- *
- * Revision 1.3  2000/06/01 18:34:02  monnier
- * bring revisions from the vendor branch to the trunk
- *
- * Revision 1.2  2000/03/09 15:23:51  blume
- * merging back changes from blume_devel_v110_26_2
- *
- * Revision 1.1.2.1  2000/03/08 09:59:16  blume
- * directories reorganized (system in particular); much fewer anchors
- *
- * Revision 1.3  1998/05/23 14:09:57  george
- *   Fixed RCS keyword syntax
- *
- *
- *)

@@ -3,8 +3,8 @@ Library
 is
 
 # if defined (NEW_CM)
-  basis.cm
-  ml-yacc-lib.cm
+  $/basis.cm
+  $/ml-yacc-lib.cm
 # else
   ../lib/ml-yacc-lib.cm
 # endif

@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/09 12:40:00
+Tag: blume-20000609-log
+Description:
+
+- Removed all(?) remaining RCS Log entries from sources.
+
+- Fixed bug in ml-yacc and ml-lex sources (use explicit anchors for
+  anchored paths).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/07 17:00:00 JST
 Tag: blume-20000607-no-implicit-anchors
 Description:

@@ -1,26 +1,4 @@
-(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
- *
- * $Log$
- * Revision 1.3  2000/06/06 02:14:54  blume
- * merging changes from devel branch; new boot files
- *
- * Revision 1.1.1.10.2.1  2000/06/02 08:11:06  blume
- * added several appendices to CM manual;
- * merged recent changes to main trunk into devel branch
- *
- * Revision 1.2  2000/06/01 18:33:44  monnier
- * bring revisions from the vendor branch to the trunk
- *
- * Revision 1.1.1.10  1999/04/17 18:56:10  monnier
- * version 110.16
- *
- * Revision 1.1.1.1  1997/01/14 01:38:04  george
- *   Version 109.24
- *
- * Revision 1.1.1.1  1996/01/31  16:01:42  george
- * Version 109
- * 
- *)
+(* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi *)
 
 (* base.sig: Base signature file for SML-Yacc.  This file contains signatures
    that must be loaded before any of the files produced by ML-Yacc are loaded
