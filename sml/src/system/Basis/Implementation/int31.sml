@@ -89,13 +89,15 @@ structure Int31Imp : INTEGER =
 		else let val c = ord (sub (s, i)) - z
 		     in
 			 if c < 0 orelse c > 9 then a
-			 else num (i ++ 1, 10 * a + c)
+			 else num (i ++ 1, 10 * a - c)
 		     end
-	    fun nonneg i =
+	    (* Do the arithmetic using the negated absolute to avoid
+	     * premature overflow on minInt. *)
+	    fun negabs i =
 		if i >= n then NONE
-		else let val c = ord (sub (s, i)) - z
+		else let val c = z - ord (sub (s, i))
 		     in
-			 if c < 0 orelse c > 9 then NONE
+			 if c > 0 orelse c < ~9 then NONE
 			 else SOME (num (i ++ 1, c))
 		     end
 	    fun skipwhite i =
@@ -104,8 +106,8 @@ structure Int31Imp : INTEGER =
 		     in
 			 if Char.isSpace c then skipwhite (i ++ 1)
 			 else if c = #"-" orelse c = #"~" then
-			     Option.map ~ (nonneg (i ++ 1))
-			 else nonneg i
+			     negabs (i ++ 1)
+			 else Option.map ~ (negabs i)
 		     end
 	in
 	    skipwhite 0
