@@ -16,7 +16,8 @@ structure SkelIO :> SKELIO = struct
     structure SS = SymbolSet
     structure S = Symbol
     structure SP = GenericVC.SymPath
-    structure PU = PickleUtil
+    structure PU = PickleUtilFn (type 'a map = unit val emptyMap = ())
+    structure PSym = PickleSymbolFn (structure PU = PU)
     structure UU = UnpickleUtil
 
     infix 3 $
@@ -47,7 +48,7 @@ structure SkelIO :> SKELIO = struct
 
     fun write_decl (s, d) = let
 
-	val symbol = PU.w_symbol
+	val symbol = PSym.w_symbol
 	val list = PU.w_list
 
 	fun path (SP.SPATH p) = list symbol p
@@ -76,7 +77,7 @@ structure SkelIO :> SKELIO = struct
 	    m arg
 	end
 
-	val pickle = s2b (PU.pickle () (decl d))
+	val pickle = s2b (PU.pickle (decl d))
     in
 	BinIO.output (s, Byte.stringToBytes version);
 	BinIO.output (s, pickle)
@@ -88,7 +89,8 @@ structure SkelIO :> SKELIO = struct
 
 	val session = UU.mkSession (UU.stringGetter (b2s (BinIO.inputAll s)))
 
-	val symbol = UU.r_symbol session
+	val string = UU.r_string session
+	val symbol = UnpickleSymbol.r_symbol (session, string)
 	fun list m r = UU.r_list session m r
 	fun share m f = UU.share session m f
 

@@ -35,17 +35,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		     val transfer_state : SmlInfo.info * BinInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
-    structure PU = PickleUtil
-    structure UU = UnpickleUtil
-
-    infix 3 $
-    infixr 4 &
-    val op & = PU.&
-    val % = PU.%
-
-    (* type info *)
-    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM) = (1, 2, 3, 4, 5, 6, 7, 8)
-
     structure SSMap = BinaryMapFn
 	(struct
 	     type ord_key = SymbolSet.set
@@ -62,6 +51,19 @@ functor StabilizeFn (val bn2statenv : statenvgetter
     type 'a maps = { ss: 'a SSMap.map, sn: 'a SNMap.map }
 
     val initMap = { ss = SSMap.empty, sn = SNMap.empty }
+
+    structure PU = PickleUtilFn (type 'a map = 'a maps val emptyMap = initMap)
+    structure PSym = PickleSymbolFn (structure PU = PU)
+    structure UU = UnpickleUtil
+
+    infix 3 $
+    infixr 4 &
+    val op & = PU.&
+    val % = PU.%
+
+    (* type info *)
+    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM) = (1, 2, 3, 4, 5, 6, 7, 8)
+
     val SSs = { find = fn (m: 'a maps, k) => SSMap.find (#ss m, k),
 	        insert = fn ({ ss, sn }, k, v) =>
 		             { sn = sn, ss = SSMap.insert (ss, k, v) } }
@@ -166,7 +168,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    val int = PU.w_int
-	    val symbol = PU.w_symbol
+	    val symbol = PSym.w_symbol
 	    val share = PU.ah_share
 	    val option = PU.w_option
 	    val list = PU.w_list
@@ -282,7 +284,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		list sg sublibs & w_exports exports & privileges required
 	    end
 
-	    val pickle = PU.pickle initMap (group ())
+	    val pickle = PU.pickle (group ())
 	    val sz = size pickle
 	    val offset_adjustment = sz + 4
 
@@ -455,7 +457,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun share m r = UU.share session m r
 	    fun nonshare r = UU.nonshare session r
 	    val string = UU.r_string session
-	    val symbol = UU.r_symbol session
+	    val symbol = UnpickleSymbol.r_symbol (session, string)
 	    val bool = UU.r_bool session
 
 	    val stringListM = UU.mkMap ()
