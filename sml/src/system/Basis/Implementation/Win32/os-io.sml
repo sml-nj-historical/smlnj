@@ -68,6 +68,7 @@ structure OS_IO : OS_IO =
 	fun pollOut (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=rd,wr=true,pri=pri})
 	fun pollPri (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=rd,wr=wr,pri=true})
 
+(* dbm: replace by SMLBasis.poll? 
 	local 
 	    val poll' : (word32 list * (int * word) list * (Int32.int * int) option -> (word32 list * (int * word) list)) = 
 		CInterface.c_function "WIN32-IO" "poll"
@@ -98,6 +99,8 @@ structure OS_IO : OS_IO =
 		    List.@ (List.map toPollInfoIO infoIO,List.map toPollInfoSock infoSock)
 		end
 	end
+*)
+        val poll = SMLBasis.poll (* ??? *)
 		    
 	fun isIn pd = raise Fail("isIn: "^noPolling)
 	fun isOut pd = raise Fail("isOut: "^noPolling)

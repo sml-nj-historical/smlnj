@@ -28,23 +28,20 @@ structure IEEEReal : IEEE_REAL =
       | TO_POSINF
       | TO_ZERO
 
-    val ctlRoundingMode : int option -> int =
-	    CInterface.c_function "SMLNJ-Math" "ctlRoundingMode"
-
-    fun intToRM 0 = TO_NEAREST
+    (* dbm: using original codes for rounding modes, not the ones used
+     *  in SMLBasis *)
+    fun intToRM (0: Int32.int) = TO_NEAREST
       | intToRM 1 = TO_ZERO
       | intToRM 2 = TO_POSINF
       | intToRM 3 = TO_NEGINF
       | intToRM _ = raise Match (* shut up compiler *)
 
-    fun setRoundingMode' m = (ctlRoundingMode (SOME m); ())
+    fun setRoundingMode TO_NEAREST	= SMLBasis.setRoundingMode 0
+      | setRoundingMode TO_ZERO		= SMLBasis.setRoundingMode 1
+      | setRoundingMode TO_POSINF	= SMLBasis.setRoundingMode 2
+      | setRoundingMode TO_NEGINF	= SMLBasis.setRoundingMode 3
 
-    fun setRoundingMode TO_NEAREST	= setRoundingMode' 0
-      | setRoundingMode TO_ZERO		= setRoundingMode' 1
-      | setRoundingMode TO_POSINF	= setRoundingMode' 2
-      | setRoundingMode TO_NEGINF	= setRoundingMode' 3
-
-    fun getRoundingMode () = intToRM (ctlRoundingMode NONE)
+    fun getRoundingMode () = intToRM (SMLBasis.getRoundingMode ())
 
     type decimal_approx = {
 	kind : float_class,

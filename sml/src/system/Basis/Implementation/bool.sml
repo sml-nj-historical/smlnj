@@ -10,17 +10,19 @@ structure Bool : BOOL =
 
     val not = InlineT.inlnot
 
-  (* NOTE: this should probably accept a wider range of arguments, but the
-   * spec hasn't been written yet.
+  (* DBM: generalized to be case insensitive, as per new Basis spec;
+   *   note spaces after "|" because of bug 1610.
    *)
     fun scan (getc : (char, 'a) StringCvt.reader) cs = (
 	  case (getc (PreBasis.skipWS getc cs))
-	   of (SOME(#"t", cs')) => (case (PreBasis.getNChars getc (cs', 3))
-		 of (SOME([#"r", #"u", #"e"], cs'')) => SOME(true, cs'')
+	   of (SOME((#"t"| #"T"), cs')) => (case (PreBasis.getNChars getc (cs', 3))
+		 of (SOME([(#"r"| "#R"), (#"u"| #"U"), (#"e"| #"E")], cs'')) =>
+                      SOME(true, cs'')
 		  | _ => NONE
 		(* end case *))
-	    | (SOME(#"f", cs')) => (case (PreBasis.getNChars getc (cs', 4))
-		 of (SOME([#"a", #"l", #"s", #"e"], cs'')) => SOME(false, cs'')
+	    | (SOME((#"f"| #"F"), cs')) => (case (PreBasis.getNChars getc (cs', 4))
+		 of (SOME([(#"a"| #"A"), (#"l"| #"L"), (#"s"| #"S"), (#"e"| #"E")], cs'')) =>
+                      SOME(false, cs'')
 		  | _ => NONE
 		(* end case *))
 	    | _ => NONE

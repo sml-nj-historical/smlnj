@@ -11,18 +11,10 @@ local
     structure Int = IntImp
     structure OS = OSImp
 in
-functor TextIOFn (
-
-    structure OSPrimIO : sig
-        include OS_PRIM_IO
-	val stdIn   : unit -> PrimIO.reader
-	val stdOut  : unit -> PrimIO.writer
-	val stdErr  : unit -> PrimIO.writer
-	val strReader : string -> PrimIO.reader
-      end
-      where PrimIO = TextPrimIO
-
-  ) : TEXT_IO = struct
+functor TextIOFn (structure OSPrimIO : OS_TEXT_PRIM_IO
+		                       where PrimIO = TextPrimIO)
+  : TEXT_IO =
+struct
 
     structure PIO = OSPrimIO.PrimIO
     structure A = CharArray

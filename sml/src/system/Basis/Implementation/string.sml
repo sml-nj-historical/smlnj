@@ -194,6 +194,12 @@ structure StringImp : STRING =
 
   (* String comparisons *)
     fun isPrefix s1 s2 = PreString.isPrefix (s1, s2, 0, size s2)
+    fun isSuffix s1 s2 = 
+        let val n1 = size s1
+	    val n2 = size s2
+         in PreString.isPrefix (s1, s2, n2-n1, n2)
+	end
+    fun isSubstring s1 s2 = PreString.isSubstring(s1,s2)
     fun compare (a, b) = PreString.cmp (a, 0, size a, b, 0, size b)
     fun collate cmpFn (a, b) = PreString.collate cmpFn (a, 0, size a, b, 0, size b)
 

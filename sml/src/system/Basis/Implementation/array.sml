@@ -180,6 +180,7 @@ structure Array : ARRAY =
 	      else raise Subscript
 	  end
 
+(* these operations moved to array-slice.sml
     fun appi f slice = let
 	  val (arr, start, stop) = chkSlice slice
 	  fun app i = if (i < stop)
@@ -218,7 +219,7 @@ structure Array : ARRAY =
 	  in
 	    modify' start
 	  end
-
+*)
   end (* structure Array *)
 
 

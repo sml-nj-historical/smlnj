@@ -57,7 +57,8 @@ structure Date : DATE =
 	 * tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday,
 	 * and tm_isdst.
 	 *)
-	type tm = (int * int * int * int * int * int * int * int * int)
+(*	type tm = (int * int * int * int * int * int * int * int * int) *)
+        type tm = SMLBasis.Date_t
 
 	(* wrap a C function call with a handler that maps SysErr exception into 
 	 * Date exceptions.
@@ -67,16 +68,16 @@ structure Date : DATE =
 	(* note: mkTime assumes the tm structure passed to it reflects
 	 * the local time zone
 	 *)
-	val ascTime : tm -> string
-	    = wrap (CInterface.c_function "SMLNJ-Date" "ascTime")
-	val localTime : Int32.int -> tm
-	    = wrap (CInterface.c_function "SMLNJ-Date" "localTime")
-	val gmTime : Int32.int -> tm
-	    = wrap (CInterface.c_function "SMLNJ-Date" "gmTime")
-	val mkTime : tm -> Int32.int
-	    = wrap (CInterface.c_function "SMLNJ-Date" "mkTime")
-	val strfTime : (string * tm) -> string
-	    = wrap (CInterface.c_function "SMLNJ-Date" "strfTime")
+	val ascTime : tm -> string = SMLBasis.ascTime  (* dbm: missing *)
+(*	    = wrap (CInterface.c_function "SMLNJ-Date" "ascTime") *)
+	val localTime : Int32.int -> tm = SMLBasis.localTime
+(*	    = wrap (CInterface.c_function "SMLNJ-Date" "localTime") *)
+	val gmTime : Int32.int -> tm = SMLBasis.gmTime
+(*	    = wrap (CInterface.c_function "SMLNJ-Date" "gmTime") *)
+	val mkTime : tm -> Int32.int = SMLBasis.mkTime  (* dbm: missing *)
+(*	    = wrap (CInterface.c_function "SMLNJ-Date" "mkTime") *)
+	val strfTime : (string * tm) -> string = SMLBasis.strfTime  (* dbm: missing *)
+(*	    = wrap (CInterface.c_function "SMLNJ-Date" "strfTime") *)
 
 	fun year (DATE{year, ...}) = year
 	fun month (DATE{month, ...}) = month
@@ -167,26 +168,27 @@ structure Date : DATE =
 		      wday = wday}
 	    end
 
-	fun toTM (DATE d) = (
-			     #second d,			(* tm_sec *)
-			     #minute d,			(* tm_min *)
-			     #hour d,			(* tm_hour *)
-			     #day d,			(* tm_mday *)
-			     monthToInt(#month d),	(* tm_mon *)
-			     #year d - baseYear,		(* tm_year *)
-			     dayToInt(#wday d),		(* tm_wday *)
-			     0,				(* tm_yday *)
-			     case (#isDst d)		(* tm_isdst *)
+	fun toTM (DATE d) = {
+			     tm_sec = #second d,	(* tm_sec *)
+			     tm_min = #minute d,	(* tm_min *)
+			     tm_hour = #hour d,		(* tm_hour *)
+			     tm_day = #day d,		(* tm_mday *)
+			     tm_mon = monthToInt(#month d),	(* tm_mon *)
+			     tm_year = #year d - baseYear,	(* tm_year *)
+			     tm_wday = dayToInt(#wday d),	(* tm_wday *)
+			     tm_yday = 0,		(* tm_yday *)
+			     tm_isdst =		        (* tm_isdst *)
+                               case (#isDst d)
 				 of NONE => ~1
 			       | (SOME false) => 0
 			       | (SOME true) => 1
 				     (* end case *)
-				     )
+				     }
 
-	fun fromTM (
+	fun fromTM {
 		    tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
 		    tm_year, tm_wday, tm_yday, tm_isdst
-		    ) offset = DATE{
+		    } offset = DATE{
 				    year = baseYear + tm_year,
 				    month = InlineT.PolyVector.sub(monthTbl, tm_mon),
 				    day = tm_mday,
@@ -203,12 +205,14 @@ structure Date : DATE =
 	 * its dst flag set to the first one's.
 	 * Used to compute local offsets 
 	 *)
-	fun toSameDstTM ((tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
-			  tm_year, tm_wday, tm_yday, tm_isdst),
-			 (tm_sec', tm_min', tm_hour', tm_mday', tm_mon',
-			  tm_year', tm_wday', tm_yday', tm_isdst')) = 
-	    (tm_sec', tm_min', tm_hour', tm_mday', tm_mon',
-	     tm_year', tm_wday', tm_yday', tm_isdst)
+	fun toSameDstTM ({tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
+			  tm_year, tm_wday, tm_yday, tm_isdst},
+			 {tm_sec=tm_sec', tm_min=tm_min', tm_hour=tm_hour',
+                          tm_mday=tm_mday', tm_mon=tm_mon', tm_year=tm_year',
+                          tm_wday=tm_wday', tm_yday=tm_yday', tm_isdst=tm_isdst')) = 
+	    {tm_sec=tm_sec', tm_min=tm_min', tm_hour=tm_hour', tm_mday=tm_mday',
+             tm_mon=tm_mon', tm_year=tm_year', tm_wday=tm_wday', tm_yday=tm_yday',
+             tm_isdst=tm_isdst}
 
 	(* a diff is +/- seconds between local time and gmt
 	 * what to add to local time to get gmt
@@ -289,26 +293,201 @@ structure Date : DATE =
 	    
 	fun fmt fmtStr d = strfTime (fmtStr, toTM d)
 	    
-	(**
-val fromString : string -> date option
+	exception SCAN
+
+        (**
 val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) option
 	 **)
+	fun scan getc charStrm =
+	    let val chrLE : (char * char) -> bool = 
+		    InlineT.cast InlineT.DfltInt.<=
+		fun isDigit c = (chrLE(#"0", c) andalso chrLE(c, #"9"))
+		fun incByDigit (n, c) = 
+		    10*n + Int.toLarge(Char.ord c - Char.ord #"0")
+	    fun scanDigits (0, n, cs) = (n, cs)
+	      | scanDigits (k, n, cs) = (* ASSERT: k > 0 *)
+		(case (getc cs)
+		   of NONE => raise SCAN
+		    | (SOME(d, cs')) =>
+			if (isDigit d)
+			then scanDigits(k-1,incByDigit(n, d), cs')
+			else raise SCAN
+		  (* end case *))
+	    fun scanNum (width,limitOp,cs) =
+		let val (n,cs) = scanDigits(width,0,cs)
+		 in case limitOp
+		      of SOME m => 
+			  if n < m then (n,cs)
+			  else raise SCAN
+		       | NONE => (n,cs)
+		end
 
+	    fun scanSp cs = (* check space *)
+		(case (getc cs)
+		   of SOME(#" ",cs') => cs'
+		    | _ => raise SCAN)
+
+	    fun scanCh (ch,cs) = (* check space *)
+		(case (getc cs)
+		   of SOME(ch',cs') => if ch = ch' then cs' else raise SCAN
+		    | NONE => raise SCAN)
+
+	    fun scanWeekDay cs
+		(case (getc )
+		   of (SOME(#"S", cs')) =>
+			(case (getc cs')
+			   of (#"u",cs'') => 
+			      (case (getc cs'')
+				 of (#"n",cs''') => (Sun,cs''')
+				  | _ => raise SCAN)
+			    | (#"a",cs'') => 
+			      (case (getc cs'')
+				 of (#"t",cs''') => (Sat,cs''')
+				  | _ => raise SCAN)
+			    | _ => raise SCAN
+			(* end case *))
+		    | (SOME(#"M", cs')) =>
+			(case (PreBasis.getNChars getc (cs', 2))
+			   of (SOME([#"o", #"n"], cs'')) => (Mon,cs'')
+			    | _ => raise SCAN
+			(* end case *))
+		    | (SOME(#"T", cs')) =>
+			(case (getc cs')
+			   of (#"u",cs'') => 
+			      (case (getc cs'')
+				 of (#"e",cs''') => (Tue,cs''')
+				  | _ => raise SCAN)
+			    | (#"h",cs'') => 
+			      (case (getc cs'')
+				 of (#"u",cs''') => (Thu,cs''')
+				  | _ => raise SCAN)
+			    | _ => raise SCAN
+			(* end case *))
+		    | (SOME(#"W", cs')) =>
+			(case (PreBasis.getNChars getc (cs', 2))
+			   of (SOME([#"e", #"d"], cs'')) => (Wed,cs'')
+			    | _ => raise SCAN
+			(* end case *))
+		    | (SOME(#"F", cs')) =>
+			(case (PreBasis.getNChars getc (cs', 2))
+			   of (SOME([#"r", #"i"], cs'')) => (Sun,cs'')
+			    | _ => raise SCAN
+			(* end case *))
+		    | _ => raise SCAN
+		  (* end case *))
+
+	    fun scanMonth cs =
+		(case (getc cs')
+		   of (SOME(#"J", cs')) =>
+		      (case (getc cs')
+			 of (#"a",cs'') => 
+			    (case (getc cs'')
+			       of (#"n",cs''') => (Jan,cs''')
+				| _ => raise SCAN)
+			  | (#"u",cs'') => 
+			    (case (getc cs'')
+			       of (#"n",cs''') => (Jun,cs''')
+				| (#"l",cs''') => (Jul,cs''')
+				| _ => raise SCAN)
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"F", cs')) =>
+		      (case (PreBasis.getNChars getc (cs', 2))
+			 of (SOME([#"e", #"b"], cs'')) => (Feb,cs'')
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"M", cs')) =>
+		      (case (getc cs')
+			 of (#"a",cs'') => 
+			    (case (getc cs'')
+			       of (#"r",cs''') => (Mar,cs''')
+				| (#"y",cs''') => (May,cs''')
+				| _ => raise SCAN)
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"A", cs')) =>
+		      (case (getc cs')
+			 of (#"p",cs'') => 
+			    (case (getc cs'')
+			       of (#"r",cs''') => (Apr,cs''')
+				| _ => raise SCAN)
+			  | (#"u",cs'') => 
+			    (case (getc cs'')
+			       of (#"g",cs''') => (Aug,cs''')
+				| _ => raise SCAN)
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"S", cs')) =>
+		      (case (PreBasis.getNChars getc (cs', 2))
+			 of (SOME([#"e", #"p"], cs'')) => (Sep,cs'')
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"O", cs')) =>
+		      (case (PreBasis.getNChars getc (cs', 2))
+			 of (SOME([#"c", #"t"], cs'')) => (Oct,cs'')
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"N", cs')) =>
+		      (case (PreBasis.getNChars getc (cs', 2))
+			 of (SOME([#"o", #"v"], cs'')) => (Nov,cs'')
+			  | _ => raise SCAN
+		      (* end case *))
+		  | (SOME(#"D", cs')) =>
+		      (case (PreBasis.getNChars getc (cs', 2))
+			 of (SOME([#"e", #"c"], cs'')) => (Dec,cs'')
+			  | _ => raise SCAN
+		      (* end case *))
+		  | _ => raise SCAN
+		(* end case *))
+
+	    val cs = (PreBasis.skipWS getc cs)
+	    val (wday,cs) = scanWeekDay cs
+	    val cs = scanSp cs
+	    val (month,cs) = scanMonth cs
+	    val cs = scanSp cs
+	    val (day,cs) = scanDay cs
+	    val cs = scanSp cs
+	    val (hour,cs) = scanNat(2,SOME 24,cs)
+	    val cs = scanChar #":" cs
+	    val (minute,cs) = scanNat(2,SOME 60,cs)
+	    val cs = scanChar #":" cs
+	    val (second,cs) = scanNat(2,SOME 60,cs)
+	    val cs = scanSp cs
+	    val (year,cs) = scanNum(4,NONE,cs)
+
+	 in SOME({DATE {year = year,
+			month = month,
+			day = day,
+			hour = hour,
+			minute = minute,
+			second = second,
+			offset = NONE,  (* ??? *)
+			wday = wday,
+			yday = yday(month,day,year),
+			isDst = NONE},  (* ??? *)
+		  cs)
+	end
+	handle SCAN => NONE
+
+	(**
+val fromString : string -> date option
+         **)
+        val fromString = PreBasis.scanString scan
 
 	(* comparison does not take into account the offset
 	 * thus, it does not compare dates in different time zones
 	 *)
-	fun compare (DATE d1, DATE d2) = let
-					     fun cmp (i1::r1, i2::r2) =
-						 if (i1 < i2) then LESS
-						 else if (i1 = i2) then cmp (r1, r2)
-						      else GREATER
-					       | cmp _ = EQUAL
-					 in
-					     cmp (
-						  [#year d1, monthToInt(#month d1), #day d1, #hour d1, #minute d1, #second d1],
-						  [#year d2, monthToInt(#month d2), #day d2, #hour d2, #minute d2, #second d2])
-					 end
+	fun compare (DATE d1, DATE d2) = 
+	    let fun cmp (i1::r1, i2::r2) =
+		      if (i1 < i2) then LESS
+		      else if (i1 = i2) then cmp (r1, r2)
+		      else GREATER
+		  | cmp _ = EQUAL
+	     in cmp ([#year d1, monthToInt(#month d1), #day d1, #hour d1,
+		      #minute d1, #second d1],
+                     [#year d2, monthToInt(#month d2), #day d2, #hour d2,
+		      #minute d2, #second d2])
+	    end
       
     end
 end

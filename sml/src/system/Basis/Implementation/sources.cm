@@ -1,7 +1,9 @@
 Group (../basis.cm)
 	signature ARRAY
+	signature ARRAY_SLICE
 	signature ARRAY2
 	signature VECTOR
+	signature VECTOR_SLICE
 	signature GENERAL
 	signature INTEGER
 	signature BOOL
@@ -11,8 +13,10 @@ Group (../basis.cm)
 	signature STRING_CVT
 	signature LIST
 	signature MONO_ARRAY
+	signature MONO_ARRAY_SLICE
 	signature MONO_ARRAY2
 	signature MONO_VECTOR
+	signature MONO_VECTOR_SLICE
 	signature WORD
 	signature BYTE
 	signature COMMAND_LINE
@@ -87,7 +91,9 @@ Group (../basis.cm)
 	structure Bool
 	structure Word8Imp
 	structure Word8Vector
+	structure Word8VectorSlice
 	structure Word8Array
+	structure Word8ArraySlice
 	structure SysWordImp
 	structure TimeImp
 	structure Timer
@@ -106,7 +112,9 @@ Group (../basis.cm)
 	structure TextPrimIO
 	structure Date
 	structure Real64Array
+	structure Real64ArraySlice
 	structure Real64Vector
+	structure Real64VectorSlice
 	structure SML90
 	structure ExnName
 
@@ -223,46 +231,49 @@ is
 	Unsafe/unsafe.sig
 	Unsafe/unsafe.sml
 
-	OS/os.sig
-	OS/os-filesys.sig
-	OS/os-path.sig
-	OS/os-process.sig
-	OS/os-io.sig
+	OS/os-sig.sml (* os.sig *)
+	OS/os-filesys-sig.sml (* os-filesys.sig *)
+	OS/os-path-sig.sml (* os-path.sig *)
+	OS/os-process-sig.sml (* os-process.sig *)
+        OS/os-io-sig.sml (* new sig *) (*OS/os-io.sig *)
 	OS/at-exit.sml
 	OS/os-path-fn.sml
 
 	pre-basis.sml
 	pre-string.sml
-	substring.sig
-	text.sig
+	substring-sig.sml (* substring.sig *)
+	text-sig.sml (* text.sig *)
 
-	general.sig
-	array.sig
-	array2.sig
-	vector.sig
-	integer.sig
-	bool.sig
-	char.sig
-	string.sig
-	string-cvt.sig
-	list.sig
-	list-pair.sig
-	word.sig
-	byte.sig
-	command-line.sig
-	date.sig
-	ieee-real.sig
-	real.sig
-	time.sig
-	timer.sig
-	option.sig
-	math.sig
-	sml90.sig
+	general.sig  (* not using new general-sig.sml *)
+	array-sig.sml
+	array-slice-sig.sml
+	array2-sig.sml (* array2.sig *)
+	vector-sig.sml (* vector.sig *)
+	vector-slice-sig.sml (* new *)
+	integer-sig.sml (* integer.sig *)
+	bool-sig.sml (* bool.sig *)
+	char-sig.sml (*	char.sig *)
+	string-sig.sml (* string.sig *)
+	string-cvt-sig.sml (* string-cvt.sig *)
+	list-sig.sml (* list.sig *)
+	list-pair-sig.sml (* list-pair.sig *)
+	word-sig.sml (* word.sig *)
+	byte-sig.sml (*	byte.sig *)
+	command-line-sig.sml (* command-line.sig *)
+	date-sig.sml (* date.sig *)
+	ieee-real-sig.sml (* ieee-real.sig *)
+	real-sig.sml (* real.sig *)
+	time-sig.sml (* time.sig *)
+	timer-sig.sml (* timer.sig *)
+	option-sig.sml (* option.sig *)
+	math-sig.sml (* math.sig *)
+	sml90-sig.sml (* sml90.sig *)
 
 	substring.sml
 	text.sml
 	general.sml
 	vector.sml
+        vector-slice.sml
 	string-cvt.sml
 	string.sml
 	char.sml
@@ -272,16 +283,22 @@ is
 	bool.sml
 	date.sml
 
-	mono-vector.sig
-	mono-array.sig
-	mono-array2.sig
+	mono-vector-sig.sml (* mono-vector.sig *)
+	mono-vector-slice-sig.sml
+	mono-array-sig.sml (* mono-array.sig *)
+	mono-array-slice-sig.sml
+	mono-array2-sig.sml (* mono-array2.sig *)
 
 	real64-vector.sml
+	real64-vector-slice.sml
 	real64-array.sml
+	real64-array-slice.sml
 
 	char-array.sml
 	char-vector.sml
+	char-vector-slice.sml
 	array.sml
+        array-slice.sml
 	array2.sml
 	ieee-real.sml
 	int31.sml
@@ -324,25 +341,25 @@ is
 	Unix/pre-os.sml
 	Posix/posix-prelude.sml
 	Posix/posix-flags.sig
-	Posix/posix-error.sig
+	Posix/posix-error-sig.sml (* posix-error.sig *)
 	Posix/posix-error.sml
-	Posix/posix-signal.sig
+	Posix/posix-signal-sig.sml (* posix-signal.sig *)
 	Posix/posix-signal.sml
-	Posix/posix-process.sig
+	Posix/posix-process-sig.sml (* posix-process.sig *)
 	Posix/posix-process.sml
-	Posix/posix-filesys.sig
+	Posix/posix-file-sys-sig.sml (* posix-filesys.sig *)
 	Posix/posix-filesys.sml
-	Posix/posix-io.sig
+	Posix/posix-io-sig.sml (* posix-io.sig *)
 	Posix/posix-io.sml
-	Posix/posix-procenv.sig
+	Posix/posix-proc-env-sig.sml (* posix-procenv.sig *)
 	Posix/posix-procenv.sml
-	Posix/posix-sysdb.sig
+	Posix/posix-sys-db-sig.sml (* posix-sysdb.sig *)
 	Posix/posix-sysdb.sml
-	Posix/posix-tty.sig
+	Posix/posix-tty-sig.sml (* posix-tty.sig *)
 	Posix/posix-tty.sml
-	Posix/posix.sig
+	Posix/posix-sig.sml (* posix.sig *)
 	Posix/posix.sml
-	Unix/unix-signals.sig
+	Unix/unix-signals.sig (* extra *)
 	Unix/unix-signals.sml
 
 	Unix/os-path.sml
@@ -355,7 +372,7 @@ is
 	Unix/posix-text-prim-io.sml
 	Unix/posix-bin-io.sml
 	Unix/posix-text-io.sml
-	Unix/unix.sig
+	Unix/unix-sig.sml (* unix.sig *)
 	Unix/unix.sml
 #elif defined(OPSYS_WIN32)
 	Win32/pre-os.sml
@@ -384,47 +401,47 @@ is
 # error OS not supported for this system
 #endif
 
-	pack-word.sig
+	pack-word-sig.sml (* pack-word.sig *)
 	pack-word-b16.sml
 	pack-word-l16.sml
 	pack-word-b32.sml
 	pack-word-l32.sml
 
-	IO/prim-io.sig
+	IO/prim-io-sig.sml (* prim-io.sig *)
 	IO/prim-io-fn.sml
 	IO/bin-prim-io.sml
 	IO/text-prim-io.sml
-	IO/io.sig
+	IO/io-sig.sml (* io.sig *)
 	IO/io.sml
 	IO/clean-io.sml
-	IO/stream-io.sig
+	IO/stream-io-sig.sml (* stream-io.sig *)
 	IO/text-stream-io.sig
-	IO/imperative-io.sig
-	IO/bin-io.sig
-	IO/text-io.sig
+	IO/imperative-io-sig.sml (* IO/imperative-io.sig *)
+	IO/bin-io-sig.sml (* bin-io.sig *)
+	IO/text-io-sig.sml (* text-io.sig *)
 	IO/os-prim-io.sig
 	IO/bin-io-fn.sml
 	IO/text-io-fn.sml
 
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
 	Sockets/pre-sock.sml
-	Sockets/prot-db.sig
+	Sockets/prot-db-sig.sml (* prot-db.sig *)
 	Sockets/prot-db.sml
-	Sockets/host-db.sig
+	Sockets/host-db-sig.sml (* host-db.sig *)
 	Sockets/host-db.sml
-	Sockets/serv-db.sig
+	Sockets/serv-db-sig.sml (* serv-db.sig *)
 	Sockets/serv-db.sml
-	Sockets/socket.sig
-	Sockets/generic-sock.sig
-	Sockets/inet-sock.sig
+	Sockets/socket-sig.sml  (* socket.sig *)
+	Sockets/generic-sock-sig.sml (*	generic-sock.sig *)
+	Sockets/inet-sock-sig.sml (* inet-sock.sig *)
 	Sockets/inet-sock.sml
 #endif
 
 #if defined(OPSYS_UNIX)
-	Sockets/net-db.sig
+	Sockets/net-db-sig.sml (* net-db.sig *)
 	Sockets/net-db.sml
 	Sockets/unix-socket.sml
-	Sockets/unix-sock.sig
+	Sockets/unix-sock-sig.sml (* unix-sock.sig *)
 	Sockets/unix-generic-sock.sml
 	Sockets/unix-sock.sml
 #elif defined(OPSYS_WIN32)

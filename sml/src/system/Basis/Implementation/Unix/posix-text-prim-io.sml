@@ -12,17 +12,8 @@ local
     structure String = StringImp
     structure Int = IntImp
 in
-structure PosixTextPrimIO : sig
-
-    include OS_PRIM_IO
-
-    val stdIn  : unit -> PrimIO.reader
-    val stdOut : unit -> PrimIO.writer
-    val stdErr : unit -> PrimIO.writer
-
-    val strReader : string -> PrimIO.reader
-
-  end = struct
+structure PosixTextPrimIO : OS_TEXT_PRIM_IO =
+struct
 
     structure PF = Posix.FileSys
     structure BinPrimIO = PosixBinPrimIO

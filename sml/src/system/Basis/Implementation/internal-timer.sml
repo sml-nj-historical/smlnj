@@ -21,6 +21,7 @@ structure InternalTimer : sig
       }
     datatype real_timer = RealT of PB.time
 
+(* replaced by SMLBasis.getCPUTime
     local
       val gettime' : unit -> (Int32.int * int * Int32.int * int * Int32.int * int) =
 	    CInterface.c_function "SMLNJ-Time" "gettime"
@@ -31,6 +32,12 @@ structure InternalTimer : sig
 	    { usr = mkTime(ts, tu), sys = mkTime(ss, su), gc = mkTime(gs, gu) }
 	  end
     end (* local *)
+*)
+
+    fun getTime () = 
+        let val (usr, sys, gc) = SMLBasis.getCPUTime ()
+	 in { usr = usr, sys = sys, gc = gc }
+	end
 
     fun startCPUTimer () = CPUT(getTime())
     fun checkCPUTimer (CPUT{usr=u0, sys=s0, gc=g0}) = let

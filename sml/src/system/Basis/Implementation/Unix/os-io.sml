@@ -80,6 +80,7 @@ structure OS_IO : OS_IO =
 	  PollDesc(iod, {rd=rd, wr=wr, pri=true})
 
   (* polling function *)
+(* replace with SMLBasis.poll
     local
       val poll' : ((int * word) list * (Int32.int * int) option) -> (int * word) list =
 	    CInterface.c_function "POSIX-OS" "poll"
@@ -105,6 +106,9 @@ structure OS_IO : OS_IO =
 	    List.map toPollInfo info
 	  end
     end (* local *)
+*)
+
+    val poll = SMLBasis.poll
 
   (* check for conditions *)
     fun isIn (PollInfo(_, flgs)) = #rd flgs
