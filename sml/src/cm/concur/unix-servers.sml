@@ -38,20 +38,20 @@ structure Servers :> SERVERS = struct
 
     local
 	val nservers = ref 0
-	val all = ref (IntRedBlackMap.empty: server IntRedBlackMap.map)
+	val all = ref (IntMap.empty: server IntMap.map)
     in
 	fun noServers () = !nservers = 0
-	fun allServers () = IntRedBlackMap.listItems (!all)
+	fun allServers () = IntMap.listItems (!all)
 	fun addServer s = let
 	    val ns = !nservers
 	in
 	    nservers := ns + 1;
-	    all := IntRedBlackMap.insert (!all, servId s, s)
+	    all := IntMap.insert (!all, servId s, s)
 	end
 	fun delServer s = let
 	    val ns = !nservers - 1
 	in
-	    all := #1 (IntRedBlackMap.remove (!all, servId s));
+	    all := #1 (IntMap.remove (!all, servId s));
 	    nservers := ns
 	end
     end

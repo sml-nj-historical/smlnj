@@ -17,5 +17,4 @@ Group (../cm-lib.cm) is
 	dummy-servers.sml
 # endif
 	basis.cm
-	smlnj-lib.cm
 	../util/sources.cm
