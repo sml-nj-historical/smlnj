@@ -33,8 +33,9 @@ signature STABILIZE = sig
     val loadStable :
 	{ getGroup: groupgetter, anyerrors: bool ref } -> groupgetter
 
-    val stabilize :
-	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
+    val stabilize : GP.info -> { group: GG.group, anyerrors: bool ref,
+				 rebindings: SrcPath.rebindings } ->
+		    GG.group option
 end
 
 functor StabilizeFn (structure MachDepVC : MACHDEP_VC
@@ -532,438 +533,447 @@ struct
     end
 
     fun stabilize _ { group = GG.ERRORGROUP, ... } = NONE
-      | stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
+      | stabilize gp { group = g as GG.GROUP grec, anyerrors, rebindings } =
+	let val policy = #fnpolicy (#param gp)
 
-	val policy = #fnpolicy (#param gp)
+	    fun doit (wrapped, getBFC, vers) = let
 
-	fun doit (wrapped, getBFC, vers) = let
+		val grouppath = #grouppath grec
+		val sublibs = #sublibs grec
+		val exports = #exports grec
 
-	    val grouppath = #grouppath grec
-	    val sublibs = #sublibs grec
-	    val exports = #exports grec
+		fun force f = f ()
 
-	    fun force f = f ()
+		val libstamp =
+		    libStampOf (grouppath,
+				map (#2 o force o #1)
+				    (SymbolMap.listItems exports),
+				    sublibs)
 
-	    val libstamp =
-		libStampOf (grouppath,
-			    map (#2 o force o #1)
-				(SymbolMap.listItems exports),
-			    sublibs)
+		fun writeBFC s i = ignore (BF.write { stream = s,
+						      content = getBFC i,
+						      nopickle = true })
+		fun sizeBFC i = BF.size { content = getBFC i, nopickle = true }
+		fun pidBFC i = BF.staticPidOf (getBFC i)
 
-	    fun writeBFC s i = ignore (BF.write { stream = s,
-						  content = getBFC i,
-						  nopickle = true })
-	    fun sizeBFC i = BF.size { content = getBFC i, nopickle = true }
-	    fun pidBFC i = BF.staticPidOf (getBFC i)
+		val _ =
+		    Say.vsay ["[stabilizing ", SrcPath.descr grouppath, "]\n"]
 
-	    val _ =
-		Say.vsay ["[stabilizing ", SrcPath.descr grouppath, "]\n"]
-
-	    val _ =
-		if StringSet.isEmpty wrapped then ()
-		else
-		    Say.say ("$Stabilize: wrapping the following privileges:\n"
+		val _ =
+		    if StringSet.isEmpty wrapped then ()
+		    else
+			Say.say
+			    ("$Stabilize: wrapping the following privileges:\n"
 			     :: map (fn s => ("  " ^ s ^ "\n"))
 			            (StringSet.listItems wrapped))
 
-	    val grpSrcInfo = (#errcons gp, anyerrors)
+		val grpSrcInfo = (#errcons gp, anyerrors)
 
-	    val required = StringSet.difference (#required grec, wrapped)
+		val required = StringSet.difference (#required grec, wrapped)
 
-	    (* The format of a stable archive is the following:
-	     *  - It starts with the size s of the pickled dependency
-	     *    graph. This size itself is written as four-byte string.
-	     *  - The size t of the pickled environment for the entire
-	     *    library (using the pickleEnvN interface of the pickler)
-	     *    in the same format as s.
-	     *  - The pickled dependency graph.  This graph contains
-	     *    integer offsets of the binfiles for the individual ML
-	     *    members. These offsets need to be adjusted by adding
-	     *    s + t + 8. The pickled dependency graph also contains integer
-	     *    offsets relative to other stable groups.  These offsets
-	     *    need no further adjustment.
-	     *  - Individual binfile contents (concatenated) but without
-	     *    their static environments.
-	     *)
+		(* The format of a stable archive is the following:
+		 *  - It starts with the size s of the pickled dependency
+		 *    graph. This size itself is written as four-byte string.
+		 *  - The size t of the pickled environment for the entire
+		 *    library (using the pickleEnvN interface of the pickler)
+		 *    in the same format as s.
+		 *  - The pickled dependency graph.  This graph contains
+		 *    integer offsets of the binfiles for the individual ML
+		 *    members. These offsets need to be adjusted by adding
+		 *    s + t + 8. The pickled dependency graph also contains
+		 *    integer offsets relative to other stable groups.  These
+		 *    offsets need no further adjustment.
+		 *  - Individual binfile contents (concatenated) but without
+		 *    their static environments. *)
 
-	    val inverseMap = mkInverseMap sublibs
+		val inverseMap = mkInverseMap sublibs
 
-	    val members = ref []
-	    val (registerOffset, getOffset) = let
-		val dict = ref SmlInfoMap.empty
-		val cur = ref 0
-		fun get0 i = SmlInfoMap.find (!dict, i)
-		fun reg (i, sz) =
-		    case get0 i of
-			(* This test is necessary because of a tiny chance
-			 * that a portion of a pickle needs to be re-done
-			 * by the pickler because it underestimated its
-			 * size during lazy pickling. Ideally, the pickler
-			 * should run without side-effects, but in the
-			 * present case all we need is idempotence. *)
-			SOME os => os
-		      | NONE => let
-			    val os = !cur
-			in
-			    cur := os + sz;
-			    dict := SmlInfoMap.insert (!dict, i, os);
-			    members := i :: (!members);
-			    os
-			end
-		val get = valOf o get0
-	    in
-		(reg, get)
-	    end
-
-	    fun prepath2list what p = let
-		fun warn_relabs (abs, descr) = let
-		    val (relabs, is) = if abs then ("absolute", "is: ")
-				       else ("relative", "was resolved as: ")
-		    fun ppb pps =
-			(PP.add_newline pps;
-			 PP.add_string pps (concat ["The ", what,
-						    "'s path ", is]);
-			 PP.add_string pps descr;
-			 PP.add_newline pps;
-			 PP.add_string pps
-    "(This means that in order to be able to use the result of stabilization,";
-                         PP.add_newline pps;
-			 PP.add_string pps
-    "objects referred to using this path must be in the same ";
-			 PP.add_string pps relabs;
-			 PP.add_newline pps;
-			 PP.add_string pps "location as they are now.)";
-			 PP.add_newline pps)
-		in
-		    EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
-				   EM.WARN
-				   (concat [SrcPath.descr grouppath,
-					    ": ", what, " referred to by ",
-					    relabs, " pathname."])
-				   ppb
-		end
-	    in
-		SrcPath.pickle { warn = warn_relabs }
-			       { file = p, relativeTo = grouppath }
-	    end
-
-	    (* Collect all BNODEs that we see and build
-	     * a context suitable for P.envPickler. *)
-	    val libctxt = let
-		fun lst f [] k s = k s
-		  | lst f (h :: t) k s = f h (lst f t k) s
-
-		fun sbn n k (s as (bnodes, snodes)) =
-		    case n of
-			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii, _) =>
-			let val (pos, sy) = inverseMap i
-			    val bnodes' =
-				StableMap.insert (bnodes, i,
-						  ((pos, sy), #statenv ii))
-			in
-			    k (bnodes', snodes)
-			end
-		      | DG.SB_SNODE n => sn n k s
-
-		and sn (DG.SNODE n) k (bnodes, snodes) = let
-		    val i = #smlinfo n
-		    val li = #localimports n
-		    val gi = #globalimports n
-		in
-		    if SmlInfoSet.member (snodes, i) then
-			k (bnodes, snodes)
-		    else let
-			val snodes' = SmlInfoSet.add (snodes, i)
-		    in
-			lst sn li (lst fsbn gi k) (bnodes, snodes')
-		    end
-		end
-
-		and fsbn (_, n) k s = sbn n k s
-
-		fun impexp (nth, _, _) k s = fsbn (nth ()) k s
-
-		val bnodes =
-		    lst impexp (SymbolMap.listItems exports)
-		         #1
-		        (StableMap.empty, SmlInfoSet.empty)
-
-		val bnodel = ListMergeSort.sort
-				 (fn (x, y) => (#1 (#1 x) > #1 (#1 y)))
-				 (StableMap.listItems bnodes)
-
-		fun libArg ([], _) = []
-		  | libArg ((lsm, ge) :: t, m) = let
-			val m' = GenModIdMap.mkMap' (ge (), m)
-		    in
-			(SOME lsm, m') :: libArg (t, m')
-		    end
-	    in
-		libArg (bnodel, MI.emptyTmap)
-	    end
-
-	    val env_orig = P.envPickler (fn _ => ()) (P.LIBRARY libctxt)
-	    val env = PU.lift_pickler lifter env_orig
-	    val symenv_orig = P.symenvPickler
-	    val symenv = PU.lift_pickler lifter symenv_orig
-	    val lazy_env = PU.w_lazy env
-	    val lazy_symenv = PU.w_lazy symenv
-
-	    val bool = PU.w_bool
-	    val int = PU.w_int
-	    val symbol = PickleSymPid.w_symbol
-	    val pid = PickleSymPid.w_pid
-	    val share = PU.ah_share
-	    val option = PU.w_option
-	    val list = PU.w_list
-	    val string = PU.w_string
-	    val bool = PU.w_bool
-	    val int = PU.w_int
-
-	    fun symbolset ss = let
-		val op $ = PU.$ SS
-		fun raw_ss ss = "s" $ [list symbol (SymbolSet.listItems ss)]
-	    in
-		share SSs raw_ss ss
-	    end
-
-	    val filter = option symbolset
-
-	    val op $ = PU.$ SHM
-	    fun shm (Sharing.SHARE true) = "a" $ []
-	      | shm (Sharing.SHARE false) = "b" $ []
-	      | shm Sharing.DONTSHARE = "c" $ []
-
-	    fun si i = let
-		(* FIXME: this is not a technical flaw, but perhaps one
-		 * that deserves fixing anyway:  If we only look at spec,
-		 * then we are losing information about sub-grouping
-		 * within libraries.  However, the spec in BinInfo.info
-		 * is only used for diagnostics and has no impact on the
-		 * operation of CM itself. *)
-		val spec = SrcPath.osstring_relative (SmlInfo.sourcepath i)
-		val locs = SmlInfo.errorLocation gp i
-		val offset = registerOffset (i, sizeBFC i)
-		val { is_rts, ... } = SmlInfo.attribs i
-		val sh_mode = SmlInfo.sh_mode i
-		val op $ = PU.$ SI
-		val rts_pid = if is_rts then SOME (pidBFC i) else NONE
-	    in
-		"s" $ [string spec, string locs, int offset,
-		       option pid rts_pid, shm sh_mode]
-	    end
-
-	    fun abspath p = let
-		val op $ = PU.$ AP
-	    in
-		"p" $ [list string (prepath2list "library" (SrcPath.pre p))]
-	    end
-
-	    fun sn n = let
-		val op $ = PU.$ SN
-		fun raw_sn (DG.SNODE n) =
-		    "a" $ [si (#smlinfo n), list sn (#localimports n),
-			   list lazy_fsbn' (#globalimports n)]
-	    in
-		share SNs raw_sn n
-	    end
-
-	    (* Here we ignore the interface info because we will not
-	     * need it anymore when we unpickle. *)
-	    and sbn x = let
-		val op $ = PU.$ SBN
-	    in
-		case x of
-		    DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _, _) => let
-			val (pos, sy) = inverseMap i
-		    in
-			"2" $ [int pos, symbol sy]
-		    end
-		  | DG.SB_SNODE n => "3" $ [sn n]
-	    end
-	
-	    and fsbn (f, n) = let
-		val op $ = PU.$ FSBN
-	    in
-		"f" $ [filter f, sbn n]
-	    end
-
-	    and lazy_fsbn arg = PU.w_lazy fsbn arg
-
-	    and lazy_fsbn' arg = lazy_fsbn (fn () => arg)
-
-	    (* Here is the place where we need to write interface info. *)
-	    fun impexp (s, (nth, _, allsyms)) = let
-		val op $ = PU.$ IMPEXP
-		val { statenv, symenv, statpid, sympid } =
-		    case nth () of
-			(_, DG.SB_BNODE (_, ii, _)) => ii
-		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
-			    getII smlinfo
-	    in
-		"i" $ [symbol s,
-		       lazy_fsbn nth,
-		       lazy_env statenv,
-		       lazy_symenv symenv,
-		       pid statpid,
-		       pid sympid,
-		       symbolset allsyms]
-	    end
-
-	    fun w_exports e = let
-		val op $ = PU.$ EXPORTS
-	    in
-		"e" $ [list impexp (SymbolMap.listItemsi e)]
-	    end
-
-	    fun privileges p = let
-		val op $ = PU.$ PRIV
-	    in
-		"p" $ [list string (StringSet.listItems p)]
-	    end
-
-	    fun version v = let
-		val op $ = PU.$ VERSION
-	    in
-		"v" $ [string (Version.toString v)]
-	    end
-
-	    fun rb { anchor, value } = let
-		val op $ = PU.$ RB
-	    in
-		"b" $ [string anchor,
-		       list string (prepath2list "anchor binding" value)]
-	    end
-
-	    fun sg (p, gth, rbl) = let
-		val op $ = PU.$ SG
-		val vo = case gth () of
-			     GG.GROUP { kind = GG.LIB x, ... } => #version x
-			   | _ => NONE
-	    in
-		"S" $ [abspath p, option version vo, list rb rbl]
-	    end
-
-	    fun group () = let
-		val op $ = PU.$ G
-	    in
-		(* Pickle the sublibs first because we need to already
-		 * have them back when we unpickle BNODEs. *)
-		"g" $ [option version vers,
-		       list sg sublibs,
-		       w_exports exports,
-		       privileges required]
-	    end
-
-	    val dg_pickle =
-		Byte.stringToBytes (PU.pickle emptyMap (group ()))
-
-	    val dg_sz = Word8Vector.length dg_pickle
-
-	    val offset_adjustment = dg_sz + 4 + libstamp_nbytes
-
-	    (* We could generate the graph for a stable group here directly
-	     * by transcribing the original graph.  However, it is cumbersome
-	     * and is likely to result in a larger memory footprint because
-	     * we don't get the benefit of lazy unpickling of environments.
-	     * It seems easier to simply rely on "loadStable" to re-fetch
-	     * the stable graph. *)
-	    fun refetchStableGroup () = let
-		fun getGroup (_, p, _, _) = let
-		    fun theSublib (q, _, _) = SrcPath.compare (p, q) = EQUAL
-		    fun force f = f ()
-		in
-		    Option.map (force o #2) (List.find theSublib sublibs)
-		end
-	    in
-		(* We don't need to worry about rebindings here. *)
-		loadStable { getGroup = getGroup, anyerrors = anyerrors }
-		           (gp, grouppath, NONE, [])
-	    end
-			        
-	    fun writeInt32 (s, i) = let
-		val a = Word8Array.array (4, 0w0)
-		val _ = Pack32Big.update (a, 0, LargeWord.fromInt i)
-	    in
-		BinIO.output (s, Word8Array.extract (a, 0, NONE))
-	    end
-	    val memberlist = rev (!members)
-
-	    (* We do not use version information for making the stable path! *)
-	    fun mksname () =
-		FilenamePolicy.mkStableName policy (grouppath, NONE)
-
-	    val libstamp_bytes = Pid.toBytes libstamp
-	    val _ =
-		if Word8Vector.length libstamp_bytes <> libstamp_nbytes then
-		    EM.impossible "stabilize: libstamp size wrong"
-		else ()
-	    fun work outs =
-		(BinIO.output (outs, libstamp_bytes);
-		 writeInt32 (outs, dg_sz);
-		 BinIO.output (outs, dg_pickle);
-		 app (writeBFC outs) memberlist)
-	in
-	   (SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
-			     closeIt = BinIO.closeOut,
-			     work = work,
-			     cleanup = fn _ =>
-				    (OS.FileSys.remove (mksname ())
-				     handle _ => ()) };
-	    refetchStableGroup ())
-	    handle exn =>
-		(EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
-		    EM.COMPLAIN
-		    (concat ["Exception raised while stabilizing ",
-			     SrcPath.descr grouppath])
-		    EM.nullErrorBody;
-		 NONE)
-	end
-    in
-	case #kind grec of
-	    GG.LIB { kind = GG.STABLE _, ... } => SOME g
-	  | GG.NOLIB _ => EM.impossible "stabilize: no library"
-	  | GG.LIB { kind = GG.DEVELOPED { wrapped, ... }, version } =>
-	     (case recomp gp g of
-		  NONE => (anyerrors := true; NONE)
-		| SOME bfc_acc => let
-		      fun notStable (_, gth, _) =
-			  case gth () of
-			      GG.GROUP { kind =
-					 GG.LIB { kind = GG.STABLE _,
-						  ... }, ... } =>
-			      false
-			    | _ => true
-		  in
-		    case List.filter notStable (#sublibs grec) of
-			[] => doit (wrapped, bfc_acc, version)
-		      | l => let
-			    val grammar = case l of [_] => " is" | _ => "s are"
-			    fun ppb pps = let
-				fun loop [] = ()
-				  | loop ((p, _, _) :: t) =
-				    (PP.add_string pps (SrcPath.descr p);
-				     PP.add_newline pps;
-				     loop t)
+		val members = ref []
+		val (registerOffset, getOffset) = let
+		    val dict = ref SmlInfoMap.empty
+		    val cur = ref 0
+		    fun get0 i = SmlInfoMap.find (!dict, i)
+		    fun reg (i, sz) =
+			case get0 i of
+			    (* This test is necessary because of a tiny chance
+			     * that a portion of a pickle needs to be re-done
+			     * by the pickler because it underestimated its
+			     * size during lazy pickling. Ideally, the pickler
+			     * should run without side-effects, but in the
+			     * present case all we need is idempotence. *)
+			    SOME os => os
+			  | NONE => let
+				val os = !cur
 			    in
-				PP.add_newline pps;
-				PP.add_string pps
+				cur := os + sz;
+				dict := SmlInfoMap.insert (!dict, i, os);
+				members := i :: (!members);
+				os
+			    end
+		    val get = valOf o get0
+		in
+		    (reg, get)
+		end
+
+		fun prepath2list what p = let
+		    fun warn_relabs (abs, descr) = let
+			val relabs = if abs then "absolute" else "relative"
+			fun ppb pps = let
+			    fun space () = PP.add_break pps (1, 0)
+			    fun string s = PP.add_string pps s
+			    fun ss s = (string s; space ())
+			    fun nl () = PP.add_newline pps
+			in
+			    nl ();
+			    app ss [what, descr, "specified", "using", relabs];
+			    string "path"; nl ();
+			    app ss ["(This", "means", "that", "in", "order",
+				    "to", "be", "able", "to", "use", "the",
+				    "result", "of", "stabilization,",
+				    "objects", "referred", "to", "using",
+				    "this", "path", "must", "be", "in", "the",
+				    "same"];
+			    ss relabs;
+			    app ss ["location", "as", "they", "are"];
+			    string "now.)";
+			    nl ()
+			end
+		    in
+			EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
+				       EM.WARN
+				       (concat [SrcPath.descr grouppath,
+						": ", what, " referred to by ",
+						relabs, " pathname."])
+				       ppb
+		    end
+		in
+		    SrcPath.pickle { warn = warn_relabs }
+				   { file = p, relativeTo = grouppath }
+		end
+
+		(* Collect all BNODEs that we see and build
+		 * a context suitable for P.envPickler. *)
+		val libctxt = let
+		    fun lst f [] k s = k s
+		      | lst f (h :: t) k s = f h (lst f t k) s
+
+		    fun sbn n k (s as (bnodes, snodes)) =
+			case n of
+			    DG.SB_BNODE (DG.BNODE { bininfo = i, ... },
+					 ii, _) =>
+			    let val (pos, sy) = inverseMap i
+				val bnodes' =
+				    StableMap.insert (bnodes, i,
+						      ((pos, sy), #statenv ii))
+			    in
+				k (bnodes', snodes)
+			    end
+			  | DG.SB_SNODE n => sn n k s
+
+		    and sn (DG.SNODE n) k (bnodes, snodes) = let
+			val i = #smlinfo n
+			val li = #localimports n
+			val gi = #globalimports n
+		    in
+			if SmlInfoSet.member (snodes, i) then
+			    k (bnodes, snodes)
+			else let
+				val snodes' = SmlInfoSet.add (snodes, i)
+			    in
+				lst sn li (lst fsbn gi k) (bnodes, snodes')
+			    end
+		    end
+
+		    and fsbn (_, n) k s = sbn n k s
+
+		    fun impexp (nth, _, _) k s = fsbn (nth ()) k s
+
+		    val bnodes =
+			lst impexp (SymbolMap.listItems exports)
+		            #1
+		            (StableMap.empty, SmlInfoSet.empty)
+
+		    val bnodel = ListMergeSort.sort
+				     (fn (x, y) => (#1 (#1 x) > #1 (#1 y)))
+				     (StableMap.listItems bnodes)
+
+		    fun libArg ([], _) = []
+		      | libArg ((lsm, ge) :: t, m) = let
+			    val m' = GenModIdMap.mkMap' (ge (), m)
+			in
+			    (SOME lsm, m') :: libArg (t, m')
+			end
+		in
+		    libArg (bnodel, MI.emptyTmap)
+		end
+
+		val env_orig = P.envPickler (fn _ => ()) (P.LIBRARY libctxt)
+		val env = PU.lift_pickler lifter env_orig
+		val symenv_orig = P.symenvPickler
+		val symenv = PU.lift_pickler lifter symenv_orig
+		val lazy_env = PU.w_lazy env
+		val lazy_symenv = PU.w_lazy symenv
+
+		val bool = PU.w_bool
+		val int = PU.w_int
+		val symbol = PickleSymPid.w_symbol
+		val pid = PickleSymPid.w_pid
+		val share = PU.ah_share
+		val option = PU.w_option
+		val list = PU.w_list
+		val string = PU.w_string
+		val bool = PU.w_bool
+		val int = PU.w_int
+
+		fun symbolset ss = let
+		    val op $ = PU.$ SS
+		    fun raw_ss ss =
+			"s" $ [list symbol (SymbolSet.listItems ss)]
+		in
+		    share SSs raw_ss ss
+		end
+
+		val filter = option symbolset
+
+		val op $ = PU.$ SHM
+		fun shm (Sharing.SHARE true) = "a" $ []
+		  | shm (Sharing.SHARE false) = "b" $ []
+		  | shm Sharing.DONTSHARE = "c" $ []
+
+		fun si i = let
+		    (* FIXME: this is not a technical flaw, but perhaps one
+		     * that deserves fixing anyway:  If we only look at spec,
+		     * then we are losing information about sub-grouping
+		     * within libraries.  However, the spec in BinInfo.info
+		     * is only used for diagnostics and has no impact on the
+		     * operation of CM itself. *)
+		    val spec = SrcPath.osstring_relative (SmlInfo.sourcepath i)
+		    val locs = SmlInfo.errorLocation gp i
+		    val offset = registerOffset (i, sizeBFC i)
+		    val { is_rts, ... } = SmlInfo.attribs i
+		    val sh_mode = SmlInfo.sh_mode i
+		    val op $ = PU.$ SI
+		    val rts_pid = if is_rts then SOME (pidBFC i) else NONE
+		in
+		    "s" $ [string spec, string locs, int offset,
+			   option pid rts_pid, shm sh_mode]
+		end
+
+		fun abspath p = let
+		    val op $ = PU.$ AP
+		in
+		    "p" $ [list string (prepath2list "library"
+						     (SrcPath.pre p))]
+		end
+
+		fun sn n = let
+		    val op $ = PU.$ SN
+		    fun raw_sn (DG.SNODE n) =
+			"a" $ [si (#smlinfo n), list sn (#localimports n),
+			       list lazy_fsbn' (#globalimports n)]
+		in
+		    share SNs raw_sn n
+		end
+
+		(* Here we ignore the interface info because we will not
+		 * need it anymore when we unpickle. *)
+		and sbn x = let
+		    val op $ = PU.$ SBN
+		in
+		    case x of
+			DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _, _) =>
+			let val (pos, sy) = inverseMap i
+			in
+			    "2" $ [int pos, symbol sy]
+			end
+		      | DG.SB_SNODE n => "3" $ [sn n]
+		end
+	
+		and fsbn (f, n) = let
+		    val op $ = PU.$ FSBN
+		in
+		    "f" $ [filter f, sbn n]
+		end
+
+		and lazy_fsbn arg = PU.w_lazy fsbn arg
+
+		and lazy_fsbn' arg = lazy_fsbn (fn () => arg)
+
+		(* Here is the place where we need to write interface info. *)
+		fun impexp (s, (nth, _, allsyms)) = let
+		    val op $ = PU.$ IMPEXP
+		    val { statenv, symenv, statpid, sympid } =
+			case nth () of
+			    (_, DG.SB_BNODE (_, ii, _)) => ii
+			  | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
+			    getII smlinfo
+		in
+		    "i" $ [symbol s,
+			   lazy_fsbn nth,
+			   lazy_env statenv,
+			   lazy_symenv symenv,
+			   pid statpid,
+			   pid sympid,
+			   symbolset allsyms]
+		end
+
+		fun w_exports e = let
+		    val op $ = PU.$ EXPORTS
+		in
+		    "e" $ [list impexp (SymbolMap.listItemsi e)]
+		end
+
+		fun privileges p = let
+		    val op $ = PU.$ PRIV
+		in
+		    "p" $ [list string (StringSet.listItems p)]
+		end
+
+		fun version v = let
+		    val op $ = PU.$ VERSION
+		in
+		    "v" $ [string (Version.toString v)]
+		end
+
+		fun rb { anchor, value } = let
+		    val op $ = PU.$ RB
+		in
+		    "b" $ [string anchor,
+			   list string (prepath2list "anchor binding" value)]
+		end
+
+		fun sg (p, gth, rbl) = let
+		    val op $ = PU.$ SG
+		    val vo = case gth () of
+				GG.GROUP { kind = GG.LIB x, ... } => #version x
+			      | _ => NONE
+		in
+		    "S" $ [abspath p, option version vo, list rb rbl]
+		end
+
+		fun group () = let
+		    val op $ = PU.$ G
+		in
+		    (* Pickle the sublibs first because we need to already
+		     * have them back when we unpickle BNODEs. *)
+		    "g" $ [option version vers,
+			   list sg sublibs,
+			   w_exports exports,
+			   privileges required]
+		end
+
+		val dg_pickle =
+		    Byte.stringToBytes (PU.pickle emptyMap (group ()))
+
+		val dg_sz = Word8Vector.length dg_pickle
+
+		val offset_adjustment = dg_sz + 4 + libstamp_nbytes
+
+		(* We could generate the graph for a stable group here directly
+		 * by transcribing the original graph.  However, it is
+		 * cumbersome and is likely to result in a larger memory
+		 * footprint because we don't get the benefit of lazy
+		 * unpickling of environments.
+		 * It seems easier to simply rely on "loadStable" to re-fetch
+		 * the stable graph. *)
+		fun refetchStableGroup () = let
+		    fun getGroup (_, p, _, _) = let
+			fun theSublib (q, _, _) =
+			    SrcPath.compare (p, q) = EQUAL
+			fun force f = f ()
+		    in
+			Option.map (force o #2) (List.find theSublib sublibs)
+		    end
+		in
+		    loadStable { getGroup = getGroup, anyerrors = anyerrors }
+		               (gp, grouppath, NONE, rebindings)
+		end
+			        
+		fun writeInt32 (s, i) = let
+		    val a = Word8Array.array (4, 0w0)
+		    val _ = Pack32Big.update (a, 0, LargeWord.fromInt i)
+		in
+		    BinIO.output (s, Word8Array.extract (a, 0, NONE))
+		end
+		val memberlist = rev (!members)
+
+		(* don't use version information for making the stable path! *)
+		fun mksname () =
+		    FilenamePolicy.mkStableName policy (grouppath, NONE)
+
+		val libstamp_bytes = Pid.toBytes libstamp
+		val _ =
+		    if Word8Vector.length libstamp_bytes <> libstamp_nbytes
+		    then EM.impossible "stabilize: libstamp size wrong"
+		    else ()
+		fun work outs =
+		    (BinIO.output (outs, libstamp_bytes);
+		     writeInt32 (outs, dg_sz);
+		     BinIO.output (outs, dg_pickle);
+		     app (writeBFC outs) memberlist)
+	    in
+		(SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
+				  closeIt = BinIO.closeOut,
+				  work = work,
+				  cleanup = fn _ =>
+					       (OS.FileSys.remove (mksname ())
+						handle _ => ()) };
+		 refetchStableGroup ())
+		handle exn =>
+		       (EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
+			   EM.COMPLAIN
+			   (concat ["Exception raised while stabilizing ",
+				    SrcPath.descr grouppath])
+			   EM.nullErrorBody;
+			   NONE)
+	    end
+	in
+	    case #kind grec of
+		GG.LIB { kind = GG.STABLE _, ... } => SOME g
+	      | GG.NOLIB _ => EM.impossible "stabilize: no library"
+	      | GG.LIB { kind = GG.DEVELOPED { wrapped, ... }, version } =>
+		(case recomp gp g of
+		     NONE => (anyerrors := true; NONE)
+		   | SOME bfc_acc => let
+			 fun notStable (_, gth, _) =
+			     case gth () of
+				 GG.GROUP { kind =
+					    GG.LIB { kind = GG.STABLE _,
+						     ... }, ... } =>
+				 false
+			       | _ => true
+		     in
+			 case List.filter notStable (#sublibs grec) of
+			     [] => doit (wrapped, bfc_acc, version)
+			   | l => let
+				 val grammar =
+				     case l of [_] => " is" | _ => "s are"
+				 fun ppb pps = let
+				     fun loop [] = ()
+				       | loop ((p, _, _) :: t) =
+					 (PP.add_string pps (SrcPath.descr p);
+					  PP.add_newline pps;
+					  loop t)
+				 in
+				     PP.add_newline pps;
+				     PP.add_string pps
 				    (concat ["because the following sub-group",
 					     grammar, " not stable:"]);
-				PP.add_newline pps;
-				loop l
-			    end
-			    val errcons = #errcons gp
-			    val gdescr = SrcPath.descr (#grouppath grec)
-			in
-			    EM.errorNoFile (errcons, anyerrors) SM.nullRegion
-			       EM.COMPLAIN
-			       (gdescr ^ " cannot be stabilized")
-			       ppb;
-			    NONE
-			end
-		  end)
-    end
+				     PP.add_newline pps;
+				     loop l
+				 end
+				 val errcons = #errcons gp
+				 val gdescr = SrcPath.descr (#grouppath grec)
+			     in
+				 EM.errorNoFile (errcons, anyerrors)
+					SM.nullRegion
+					EM.COMPLAIN
+					(gdescr ^ " cannot be stabilized")
+					ppb;
+				 NONE
+			     end
+		     end)
+	end
 end (* functor Stabilize *)
 
 end (* local *)

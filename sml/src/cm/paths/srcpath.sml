@@ -138,7 +138,9 @@ structure SrcPath :> SRCPATH = struct
      * and removing arcs at the end easier. *)
     type prepath = { revarcs: string list, vol: string, isAbs: bool }
 
-    type elab = { pp: prepath, valid: unit -> bool }
+    type elab = { pp: prepath,
+		  valid: unit -> bool,
+		  reanchor: (anchor -> string) -> prepath option }
 
     type anchorval = unit -> elab
 
@@ -148,6 +150,7 @@ structure SrcPath :> SRCPATH = struct
 	   is_set: anchor -> bool,
 	   reset: unit -> unit,
 	   bound: anchorval StringMap.map }
+
     datatype dir =
 	CWD of { name: string, pp: prepath }
       | ANCHOR of { name: anchor, look: unit -> elab }
@@ -177,7 +180,8 @@ structure SrcPath :> SRCPATH = struct
     fun compare (f1: file, f2: file) = Int.compare (#2 f1, #2 f2)
 
     val null_pp : prepath = { revarcs = [], vol = "", isAbs = false }
-    val bogus_elab : elab = { pp = null_pp, valid = fn _ => false }
+    val bogus_elab : elab =
+	{ pp = null_pp, valid = fn _ => false, reanchor = fn _ => NONE }
 
     fun string2pp n = let
 	val { arcs, vol, isAbs } = P.fromString n
@@ -193,7 +197,7 @@ structure SrcPath :> SRCPATH = struct
 
     fun absElab (arcs, vol) =
 	{ pp = { revarcs = rev arcs, vol = vol, isAbs = true },
-	  valid = fn () => true }
+	  valid = fn () => true, reanchor = fn _ => NONE }
 
     fun unintern (f: file) = #1 f
 
@@ -273,25 +277,31 @@ structure SrcPath :> SRCPATH = struct
 	{ revarcs = revarcs, vol = vol, isAbs = isAbs }
       | dirPP _ = impossible "dirPP"
 
-    fun dirElab { pp, valid } =	{ pp = dirPP pp, valid = valid }
+    fun dirElab { pp, valid, reanchor } =
+	{ pp = dirPP pp, valid = valid,
+	  reanchor = Option.map dirPP o reanchor }
 
     fun augPP arcs { revarcs, vol, isAbs } =
 	{ revarcs = List.revAppend (arcs, revarcs), vol = vol, isAbs = isAbs }
 
-    fun augElab arcs { pp, valid } = { pp = augPP arcs pp, valid = valid }
+    fun augElab arcs { pp, valid, reanchor } =
+	{ pp = augPP arcs pp, valid = valid,
+	  reanchor = Option.map (augPP arcs) o reanchor }
 
     fun elab_dir (CWD { name, pp }) =
 	let fun valid () = name = #name (!cwd_info)
+	    fun reanchor (a: anchor -> string) = NONE
 	in
-	    if valid () then { pp = null_pp, valid = valid }
-	    else { pp = pp, valid = fn () => true }
+	    if valid () then { pp = null_pp, valid = valid,
+			       reanchor = reanchor }
+	    else { pp = pp, valid = fn () => true, reanchor = reanchor }
 	end
       | elab_dir (ANCHOR { name, look }) = look ()
       | elab_dir (ROOT vol) = absElab ([], vol)
       | elab_dir (DIR p) = dirElab (elab_file p)
 
     and elab_file (PATH { context, arcs, elab, id }) =
-	let val e as { pp, valid } = !elab
+	let val e as { pp, valid, reanchor } = !elab
 	in
 	    if valid () then e
 	    else let val e' = augElab arcs (elab_dir context)
@@ -390,8 +400,9 @@ structure SrcPath :> SRCPATH = struct
 		end
 	fun get_free a = let
 	    val (pp, validity) = fetch a
+	    fun reanchor cvt = SOME (string2pp (cvt a))
 	in
-	    { pp = pp, valid = fn () => !validity }
+	    { pp = pp, valid = fn () => !validity, reanchor = reanchor }
 	end
 	fun set_free (a, ppo) = let
 	    val (_, validity) = fetch a
@@ -523,16 +534,8 @@ structure SrcPath :> SRCPATH = struct
     fun extend { context, arcs, err } morearcs =
 	{ context = context, arcs = arcs @ morearcs, err = err }
 
-    fun osstring_reanchored anchor f = let
-	fun path (PATH { context, arcs, ... }) =
-	    Option.map (augPP arcs) (ctxt context)
-	and ctxt (CWD _) = NONE
-	  | ctxt (ROOT _) = NONE
-	  | ctxt (DIR p) = Option.map dirPP (path p)
-	  | ctxt (ANCHOR { name, ... }) = SOME (string2pp (anchor name))
-    in
-	Option.map pp2name (path (unintern f))
-    end
+    fun osstring_reanchored cvt f =
+	Option.map pp2name (#reanchor (elab_file (unintern f)) cvt)
 
     fun osstring_prefile_relative (p as { arcs, context, ... }) =
 	case context of

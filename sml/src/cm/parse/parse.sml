@@ -239,13 +239,14 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		  | SOME cyc => (report cyc; NONE)
 	    end
 
-	    fun stabilize NONE = NONE
-	      | stabilize (SOME g) =
+	    fun stabilize (NONE, _) = NONE
+	      | stabilize (SOME g, rb) =
 		(case g of
 		     GG.ERRORGROUP => NONE
 		   | GG.GROUP { kind = GG.LIB _, ... } => let
 			 val go = Stabilize.stabilize ginfo
-			     { group = g, anyerrors = pErrFlag }
+			     { group = g, anyerrors = pErrFlag,
+			       rebindings = rb }
 		     in
 			 case go of
 			     NONE => NONE
@@ -263,7 +264,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun reg gopt =
 			(gc := SrcPathMap.insert (!gc, group, gopt); gopt)
 		    fun proc_n gopt =
-			reg (if stabthis then stabilize gopt
+			reg (if stabthis then stabilize (gopt, rb)
 			     else (SmlInfo.cleanGroup false group; gopt))
 		in
 		    if paranoid then

@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/12/22 21:20:00 JST
+Tag: blume-20001222-anchorenv
+Description:
+
+Fixed a CM problem related to anchor environments and their interaction
+with CMB.make.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/12/22 13:15:00 JST
 Tag: blume-20001222-cleanup
 Description:

@@ -240,7 +240,8 @@ struct
 	     * directly. *)
 	    fun dontLoadInitGroup () = let
 		val g0 = recompInitGroup ()
-		val stabarg = { group = g0, anyerrors = ref false }
+		val stabarg = { group = g0, anyerrors = ref false,
+				rebindings = [] }
 	    in
 		if deliver then
 		    case Stabilize.stabilize ginfo stabarg of
