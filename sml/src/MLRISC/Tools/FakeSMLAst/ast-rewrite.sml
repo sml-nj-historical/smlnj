@@ -126,6 +126,7 @@ struct
                 | TUPLEpat ps => TUPLEpat(map pat ps)
                 | RECORDpat(lps,flex) => 
                      RECORDpat(map (fn (l,p) => (l,pat p)) lps, flex)
+                | TYPEDpat(p,t) => TYPEDpat(pat p,ty t)
                 | CONSpat(id,NONE) => p
                 | CONSpat(id,SOME p) => CONSpat(id,SOME(pat p))
                 | ORpat ps => ORpat(map pat ps)

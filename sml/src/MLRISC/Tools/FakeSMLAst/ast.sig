@@ -125,6 +125,7 @@ sig
                     | LISTpat of pat list * pat option
                     | TUPLEpat of pat list
                     | RECORDpat of (id * pat) list * bool
+                    | TYPEDpat of pat * ty
                     | NOTpat of pat
                     | ORpat of pat list
                     | ANDpat of pat list

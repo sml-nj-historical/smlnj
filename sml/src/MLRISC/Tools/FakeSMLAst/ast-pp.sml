@@ -342,6 +342,7 @@ struct
      | pat(TUPLEpat ps) = tuple(map pat ps)
      | pat(RECORDpat(lps,flex)) = 
            record(map labpat lps @ (if flex then [! "..."] else []))
+     | pat(TYPEDpat(p,t)) = paren(pat p ++ !! ":" ++ ty t)
      | pat(CONSpat(id,NONE)) = ident id 
      | pat(CONSpat(IDENT([],"::"),SOME(TUPLEpat[x,y]))) = 
            paren(pat x ++ sp ++ !!"::" ++ sp ++ pat y)

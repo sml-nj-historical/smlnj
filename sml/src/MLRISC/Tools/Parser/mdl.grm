@@ -185,6 +185,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 	 aexp2 of exp Prec.token |
 	 appexp of exp Prec.token list |
 	 exp of exp |
+	 typedexp of exp |
 	 guard of exp option |
 	 funguard of exp option |
 	 cont of id option |
@@ -203,6 +204,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 	 apat2 of pat Prec.token |
 	 apppat of pat Prec.token list |
 	 pat of pat |
+	 typedpat of pat |
 	 pats of pat list |
 	 pats1 of pat list |
 	 pats2 of pat list |
@@ -732,7 +734,7 @@ funbind:	funclauses	(FUNbind funclauses)
 valbinds:	valbind			([valbind])
 |		valbind AND valbinds	(valbind::valbinds)
 
-valbind:	pat EQ exp		(VALbind(pat,exp))
+valbind:	pat EQ typedexp		(VALbind(pat,typedexp))
 
 literal:	word			(WORD32lit word)
 |		int			(INTlit int)	
@@ -747,10 +749,10 @@ aexp:		literal			(LITexp literal)
 |		HASH id			(TYPEexp(TYVARty(INTtv id))) 
 |		OP symb			(IDexp(IDENT([],symb)))
 |		LPAREN symb RPAREN	(IDexp(IDENT([],symb)))
-|		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))
+(*|		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))*)
 |		LDQUOTE asms RDQUOTE	(ASMexp(ASMasm asms))
 |		LPAREN RPAREN		(TUPLEexp [])
-|		LPAREN exp RPAREN	(exp)
+|		LPAREN typedexp RPAREN	(typedexp)
 |		LPAREN exps2 RPAREN	(TUPLEexp exps2)
 |		LPAREN expseq2 RPAREN	(SEQexp expseq2)
 |		LBRACKET exps RBRACKET	(LISTexp(exps,NONE))
@@ -794,7 +796,7 @@ labexps0:				([])
 labexps:	labexp			([labexp])
 |		labexp COMMA labexps	(labexp::labexps)
 
-labexp:		id EQ exp		(id,exp)
+labexp:		id EQ typedexp		(id,typedexp)
 |		id			(id,IDexp(IDENT([],id)))
 
 appexp:		aexp2			([aexp2])
@@ -802,21 +804,25 @@ appexp:		aexp2			([aexp2])
 
 exp: 		appexp			(parseExp precStack err 
                  (SourceMapping.location srcMap (appexpleft,appexpright)) appexp)
-|		IF exp THEN exp ELSE exp (IFexp(exp1,exp2,exp3))
-|		CASE exp OF clauses	(CASEexp(exp,clauses))
+|		IF typedexp THEN typedexp ELSE exp 
+			(IFexp(typedexp1,typedexp2,exp))
+|		CASE typedexp OF clauses	(CASEexp(typedexp,clauses))
 |		FN clauses		(LAMBDAexp clauses)
 |		exp HANDLE clauses	(HANDLEexp(exp,clauses))
 |		RAISE exp		(RAISEexp exp)
 
-expseq:		exp			([exp])
-|		exp SEMICOLON expseq	(exp::expseq)
+typedexp:	exp			(exp)
+|		typedexp COLON ty 	(TYPEDexp(typedexp,ty))
 
-expseq2:	exp SEMICOLON expseq	(exp::expseq)
+expseq:		typedexp			([typedexp])
+|		typedexp SEMICOLON expseq	(typedexp::expseq)
 
-exps1:		exp		([exp])
-|		exp COMMA exps1	(exp::exps1)
+expseq2:	typedexp SEMICOLON expseq	(typedexp::expseq)
 
-exps2:		exp COMMA exps1 (exp::exps1)
+exps1:		typedexp		([typedexp])
+|		typedexp COMMA exps1	(typedexp::exps1)
+
+exps2:		typedexp COMMA exps1 (typedexp::exps1)
 
 exps:			([])
 |		exps1	(exps1)
@@ -829,10 +835,11 @@ apat:		ident2				(CONSpat(ident2,NONE))
 |		LPAREN pats2 RPAREN		(TUPLEpat pats2)
 |		LPAREN orpats2 RPAREN		(ORpat orpats2)
 |		LPAREN andpats2 RPAREN		(ANDpat andpats2)
-|		LPAREN pat RPAREN		(pat)
-|		LPAREN pat WHERE exp RPAREN	(WHEREpat(pat,exp))
-|		LPAREN pat WHERE exp IN pat RPAREN	
-						(NESTEDpat(pat1,exp,pat2))
+|		LPAREN typedpat RPAREN		(typedpat)
+|		LPAREN typedpat WHERE typedexp RPAREN	
+			(WHEREpat(typedpat,typedexp))
+|		LPAREN typedpat WHERE typedexp IN typedpat RPAREN	
+			(NESTEDpat(typedpat1,typedexp,typedpat2))
 |		LBRACE labpats0 RBRACE		(RECORDpat(labpats0))
 |		sym CONCAT LBRACKET pats RBRACKET 
                 (let val loc = SourceMapping.location srcMap 
@@ -853,11 +860,11 @@ apat:		ident2				(CONSpat(ident2,NONE))
 		)
 
 
-orpats2:	pat BAR pat	([pat1,pat2])
-|		pat BAR orpats2	(pat::orpats2)
+orpats2:	typedpat BAR typedpat	([typedpat1,typedpat2])
+|		typedpat BAR orpats2	(typedpat::orpats2)
 
-andpats2:	pat AND pat		([pat1,pat2])
-|		pat AND andpats2	(pat::andpats2)
+andpats2:	typedpat AND typedpat		([typedpat1,typedpat2])
+|		typedpat AND andpats2	(typedpat::andpats2)
 
 apat2:		apat			(Prec.EXP apat)
 |		sym			(Prec.ID sym)
@@ -871,16 +878,19 @@ pat:		apppat		(parsePat precStack err
                                        (apppatleft,apppatright)) apppat)
 |		id AS pat	(ASpat(id,pat))
 
+typedpat:	pat			(pat)
+|		typedpat COLON ty 	(TYPEDpat(typedpat,ty)) 
+
 asapat:		apat		(apat)
 |		id AS asapat	(ASpat(id,asapat))
 
 pats:			([])
 |		pats1	(pats1)
 
-pats1:		pat		([pat])
-|		pat COMMA pats1	(pat::pats1)
+pats1:		typedpat		([typedpat])
+|		typedpat COMMA pats1	(typedpat::pats1)
 
-pats2:		pat COMMA pats1	(pat::pats1)
+pats2:		typedpat COMMA pats1	(typedpat::pats1)
 
 labpats0:			([],false)
 |		labpats		(labpats)
@@ -890,36 +900,38 @@ labpats:	labpat			([labpat],false)
 |		labpat COMMA labpats	(labpat:: #1 labpats, #2 labpats)
 
 labpat:		sym		(sym,IDpat sym)
-|		sym EQ pat	(sym,pat)
-|		sym AS pat 	(sym,ASpat(sym,pat))
-|		sym WHERE exp	(sym,WHEREpat(IDpat sym,exp))
-|		sym WHERE exp IN pat (sym,NESTEDpat(IDpat sym,exp,pat))
+|		sym EQ typedpat	(sym,typedpat)
+|		sym AS typedpat 	(sym,ASpat(sym,typedpat))
+|		sym WHERE typedexp	(sym,WHEREpat(IDpat sym,typedexp))
+|		sym WHERE typedexp IN typedpat 
+			(sym,NESTEDpat(IDpat sym,typedexp,typedpat))
 
-clause:		pat guard cont DARROW exp	(clause([pat],guard,cont,exp))
+clause:		typedpat guard cont DARROW exp	
+			(clause([typedpat],guard,cont,exp))
 
 cont:				(NONE)
 |		EXCEPTION id	(SOME id) 
 
 guard:				(NONE)
-|		WHERE exp	(SOME exp)
+|		WHERE typedexp	(SOME typedexp)
 
 clauses:	clause			([clause])
 |		clause BAR clauses	(clause::clauses)
 
-funclause:	apppat funguard cont EQ exp	
-                (let val loc = SourceMapping.location srcMap (apppatleft,expright)
+funclause:	apppat funguard cont EQ typedexp	
+                (let val loc = SourceMapping.location srcMap (apppatleft,typedexpright)
                  in case parseFunPat precStack err loc apppat of
-                      (SOME f,ps) => (f,clause(ps,funguard,cont,exp))
+                      (SOME f,ps) => (f,clause(ps,funguard,cont,typedexp))
                     | (NONE,ps) => 
                       (err(loc,
                            "in clause "^
-                             PP.text(AstPP.clause (CLAUSE(ps,funguard,exp))));
-                       ("dummy",clause(ps,funguard,cont,exp)))
+                             PP.text(AstPP.clause (CLAUSE(ps,funguard,typedexp))));
+                       ("dummy",clause(ps,funguard,cont,typedexp)))
                  end
                 )
 
 funguard:				(NONE)
-|		WHERE LPAREN exp RPAREN (SOME exp)
+|		WHERE LPAREN typedexp RPAREN (SOME typedexp)
 
 funclauses:	funclause		(#1 funclause,[#2 funclause])
 |		funclause BAR funclauses (#1 funclause,#2 funclause:: #2 funclauses)
