@@ -124,31 +124,17 @@ val translate = ST.doPhase (ST.makePhase "Compiler 040 translate") translate
 (** take the flint code and generate the machine binary code *)
 local
     val inline = LSplitInline.inline
-    (* fun inline (flint, imports, symenv) = flint *)
-(*
-    let val importExps = map (SymbolicEnv.look symenv) (map #1 imports)
-     in (* optimize flint based on the knowledge of importExps *)
-        bug "inline not implemented yet"
-    end
-*)
-
-  fun split (flint, enable) = 
-    if false (* enable *) then (case NONE (* FLINTSplit.split flint *)
-                                 of NONE => (flint, NONE)
-                                  | SOME x => x)
-    else (flint, NONE)
-
-
-  val addCode = ST.addStat (ST.makeStat "Code Size")
+    val addCode = ST.addStat (ST.makeStat "Code Size")
 in
     fun codegen { flint: flint, imports: import list, symenv: symenv,
 		  splitting: bool, compInfo: compInfo } = let
 	(* hooks for cross-module inlining and specialization *)
 	val (flint, revisedImports) = inline (flint, imports, symenv)
-	(* val (flint, inlineExp : flint option) = split(flint, splitting) *)
 
-	(* from optimized FLINT code, generate the machine code *)
+	(* from optimized FLINT code, generate the machine code.  *)
 	val (csegs,inlineExp) = M.flintcomp(flint, compInfo)
+	(* Obey the nosplit directive used during bootstrapping.  *)
+	val inlineExp = if splitting then inlineExp else NONE
 	val codeSz =
 	      List.foldl
 		(fn (co, n) => n + CodeObj.size co)
