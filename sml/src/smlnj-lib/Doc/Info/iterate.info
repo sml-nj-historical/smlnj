@@ -1,9 +1,0 @@
-@FILES
-  {"iterate"; "The Iterate structure";}
-@SIGNATURE ITERATE "iterate" {
-  @VALS 
-    repeat
-    for
-    iterate
-}
-@STRUCTURE Iterate "iterate" ITERATE

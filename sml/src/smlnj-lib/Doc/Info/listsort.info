@@ -1,9 +1,0 @@
-@FILES
-  {"listsort"; "The LIST_SORT signature";}
-@SIGNATURE LIST_SORT "listsort" {
-  @VALS 
-    sort
-    sorted
-    uniqueSort
-}
-@STRUCTURE ListMergeSort "listsort" LIST_SORT

@@ -1,6 +1,0 @@
-@FILES
-  {"splay-map-fn"; "The SplayMapFn functor";}
-@SIGNATURE ORD_MAP
-@SIGNATURE ORD_KEY
-@FUNCTOR SplayMapFn "splay-map-fn" ORD_KEY
-ORD_MAP
