@@ -1,9 +1,0 @@
-Group is
-	cm.grm
-	cm.lex
-
-	absyn.sml
-
-	errormsg.sml
-
-	ml-yacc-lib.cm

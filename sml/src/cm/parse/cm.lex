@@ -2,17 +2,36 @@
 
 type svalue = Tokens.svalue
 type pos = int
+
 type ('a, 'b) token = ('a, 'b) Tokens.token
 type lexresult = (svalue, pos) token
 
-fun err (p1, p2) = ErrorMsg.error p1
+type lexarg = {
+	       enterC: unit -> unit,
+	       leaveC: unit -> bool,
+	       newS: pos -> unit,
+	       addS: char -> unit,
+	       addSC: string * int -> unit,
+	       addSN: string * pos -> unit,
+	       getS: pos -> lexresult,
+	       handleEof: unit -> lexresult,
+	       newline: pos -> unit,
+	       error: pos -> string -> unit
+	      }
 
+type arg = lexarg
+	       
+fun eof (arg: lexarg) = (#handleEof arg ())
+
+(*
 local
     val depth = ref 0
     val curstring = ref ([]: char list)
     val startpos = ref 0
     val instring = ref false
 in
+
+
     fun resetAll () = (depth := 0; startpos := 0; instring := false)
 
     (* comment stuff *)
@@ -41,7 +60,7 @@ in
 	 Tokens.STRING (implode (rev (!curstring)), !startpos, endpos + 1))
 
     (* handling EOF *)
-    fun eof() = let
+    fun eof (arg: ) = let
 	val pos = ErrorMsg.lastLinePos ()
     in
 	if !depth > 0 then
@@ -53,6 +72,7 @@ in
 	Tokens.EOF(pos,pos)
     end
 end
+*)
 
 local
     val idlist = [("Alias", Tokens.ALIAS),
@@ -72,19 +92,46 @@ local
 in
     fun idToken (t, p) =
 	case List.find (fn (id, _) => id = t) idlist of
-	    NONE => Tokens.ID (t, p, p + size t)
+	    NONE => Tokens.FILE_STANDARD (t, p, p + size t)
 	  | SOME (_, tok) => tok (p, p + size t)
 end
 
-fun newLine p = ErrorMsg.newLine p
+(* states:
+
+     INITIAL -> C
+       |
+       +------> P -> PC
+       |        |
+       |        +--> PM -> PMC
+       |
+       +------> M -> MC
+       |
+       +------> S -> SS
+
+   "C"  -- COMMENT
+   "P"  -- PREPROC
+   "M"  -- MLSYMBOL
+   "S"  -- STRING
+   "SS" -- STRINGSKIP
+*)
 
 %%
-%s COMMENT STRING STRINGSKIP;
+
+%s C P PC PM PMC M MC S SS;
 
 %header(functor CMLexFun (structure Tokens: CM_TOKENS));
 
+%arg ({ enterC, leaveC,
+        newS, addS, addSC, addSN, getS,
+        handleEof,
+        newline,
+	error });
+
 idchars=[A-Za-z'_0-9];
 id=[A-Za-z]{idchars}*;
+cmextrachars=[!%&$+/<=>?@~|#*]|\-|\^;
+cmidchars={idchars}|{cmextrachars};
+cmid={cmextrachars}+;
 ws=("\012"|[\t\ ]);
 eol=("\013\010"|"\013"|"\010");
 sym=[!%&$+/:<=>?@~|#*]|\-|\^|"\\";
@@ -92,89 +139,129 @@ digit=[0-9];
 sharp="#";
 %%
 
-<COMMENT>"(*"		=> (enterC (); continue ());
-<COMMENT>"*)"		=> (if leaveC () then YYBEGIN INITIAL else ();
+<INITIAL>"(*"           => (enterC (); YYBEGIN C; continue ());
+<P>"(*"                 => (enterC (); YYBEGIN PC; continue ());
+<PM>"(*"                => (enterC (); YYBEGIN PMC; continue ());
+<M>"(*"                 => (enterC (); YYBEGIN MC; continue ());
+
+<C,PC,PMC,MC>"(*"       => (enterC (); continue ());
+
+<C>"*)"                 => (if leaveC () then YYBEGIN INITIAL else ();
 			    continue ());
-<COMMENT>{eol}		=> (newLine yypos; continue ());
-<COMMENT>.		=> (continue ());
+<PC>"*)"                => (if leaveC () then YYBEGIN P else ();
+			    continue ());
+<PMC>"*)"                => (if leaveC () then YYBEGIN PM else ();
+			    continue ());
+<MC>"*)"                => (if leaveC () then YYBEGIN M else ();
+			    continue ());
+<C,PC,PMC,MC>{eol}      => (newline yypos; continue ());
+<C,PC,PMC,MC>.          => (continue ());
 
-<STRING>"\\a"		=> (addS #"\a"; continue ());
-<STRING>"\\b"		=> (addS #"\b"; continue ());
-<STRING>"\\f"		=> (addS #"\f"; continue ());
-<STRING>"\\n"		=> (addS #"\n"; continue ());
-<STRING>"\\r"		=> (addS #"\r"; continue ());
-<STRING>"\\t"		=> (addS #"\t"; continue ());
-<STRING>"\\v"		=> (addS #"\v"; continue ());
+<INITIAL,P,PM,M>"*)"	=> (error yypos "unmatched comment delimiter";
+			    continue ());
 
-<STRING>"\\^"@		=> (addS (chr 0); continue ());
-<STRING>"\\^"[a-z]	=> (addSC (yytext, yypos, ord #"a"); continue ());
-<STRING>"\\^"[A-Z]	=> (addSC (yytext, yypos, ord #"A"); continue ());
-<STRING>"\\^["		=> (addS (chr 27); continue ());
-<STRING>"\\^\\"		=> (addS (chr 28); continue ());
-<STRING>"\\^]"		=> (addS (chr 29); continue ());
-<STRING>"\\^^"		=> (addS (chr 30); continue ());
-<STRING>"\\^_"		=> (addS (chr 31); continue ());
+<INITIAL>"\""		=> (YYBEGIN S; newS yypos; continue ());
 
-<STRING>"\\"[0-9][0-9][0-9]	=> (addSN (yytext, yypos); continue ());
+<S>"\\a"		=> (addS #"\a"; continue ());
+<S>"\\b"		=> (addS #"\b"; continue ());
+<S>"\\f"		=> (addS #"\f"; continue ());
+<S>"\\n"		=> (addS #"\n"; continue ());
+<S>"\\r"		=> (addS #"\r"; continue ());
+<S>"\\t"		=> (addS #"\t"; continue ());
+<S>"\\v"		=> (addS #"\v"; continue ());
 
-<STRING>"\\\""		=> (addS #"\""; continue ());
-<STRING>"\\\\"		=> (addS #"\\"; continue ());
+<S>"\\^"@		=> (addS (chr 0); continue ());
+<S>"\\^"[a-z]	        => (addSC (yytext, ord #"a"); continue ());
+<S>"\\^"[A-Z]	        => (addSC (yytext, ord #"A"); continue ());
+<S>"\\^["		=> (addS (chr 27); continue ());
+<S>"\\^\\"		=> (addS (chr 28); continue ());
+<S>"\\^]"		=> (addS (chr 29); continue ());
+<S>"\\^^"		=> (addS (chr 30); continue ());
+<S>"\\^_"		=> (addS (chr 31); continue ());
 
-<STRING>"\\"{eol}	=> (YYBEGIN STRINGSKIP; newLine yypos; continue ());
-<STRING>"\\"{ws}+	=> (YYBEGIN STRINGSKIP; continue ());
+<S>"\\"[0-9][0-9][0-9]	=> (addSN (yytext, yypos); continue ());
 
-<STRING>"\\".		=> (ErrorMsg.error yypos
+<S>"\\\""		=> (addS #"\""; continue ());
+<S>"\\\\"		=> (addS #"\\"; continue ());
+
+<S>"\\"{eol}	        => (YYBEGIN SS; newline (yypos + 1); continue ());
+<S>"\\"{ws}+	        => (YYBEGIN SS; continue ());
+
+<S>"\\".		=> (error yypos
 			     ("illegal escape character in string " ^ yytext);
 			    continue ());
 
-<STRING>"\""		=> (YYBEGIN INITIAL; getS yypos);
-<STRING>{eol}		=> (ErrorMsg.error yypos "illegal linebreak in string";
+<S>"\""		        => (YYBEGIN INITIAL; getS yypos);
+<S>{eol}		=> (newline yypos;
+			    error yypos "illegal linebreak in string";
 			    continue ());
-<STRING>.		=> (addS (String.sub (yytext, 0)); continue ());
 
-<STRINGSKIP>{eol}	=> (newLine yypos; continue ());
-<STRINGSKIP>{ws}+	=> (continue ());
-<STRINGSKIP>"\\"	=> (YYBEGIN STRING; continue ());
-<STRINGSKIP>.		=> (ErrorMsg.error yypos
+<S>.		        => (addS (String.sub (yytext, 0)); continue ());
+
+<SS>{eol}	        => (newline yypos; continue ());
+<SS>{ws}+	        => (continue ());
+<SS>"\\"	        => (YYBEGIN S; continue ());
+<SS>.		        => (error yypos
 			     ("illegal character in stringskip " ^ yytext);
 			    continue ());
 
-<INITIAL>"(*"		=> (YYBEGIN COMMENT; enterC (); continue ());
-<INITIAL>"*)"		=> (ErrorMsg.error yypos "unmatched comment delimiter";
-			    continue ());
-<INITIAL>"\""		=> (YYBEGIN STRING; newS yypos; continue ());
-
-<INITIAL>"("		=> (Tokens.LPAREN (yypos, yypos + 1));
-<INITIAL>")"		=> (Tokens.RPAREN (yypos, yypos + 1));
-<INITIAL>","		=> (Tokens.COMMA (yypos, yypos + 1));
+<INITIAL,P>"("		=> (Tokens.LPAREN (yypos, yypos + 1));
+<INITIAL,P>")"		=> (Tokens.RPAREN (yypos, yypos + 1));
 <INITIAL>":"		=> (Tokens.COLON (yypos, yypos + 1));
-<INITIAL>"+"		=> (Tokens.PLUS (yypos, yypos + 1));
-<INITIAL>"-"		=> (Tokens.MINUS (yypos, yypos + 1));
-<INITIAL>"*"		=> (Tokens.TIMES (yypos, yypos + 1));
-<INITIAL>"<>"		=> (Tokens.NE (yypos, yypos + 2));
-<INITIAL>"<="		=> (Tokens.LE (yypos, yypos + 2));
-<INITIAL>"<"		=> (Tokens.LT (yypos, yypos + 1));
-<INITIAL>">="		=> (Tokens.GE (yypos, yypos + 2));
-<INITIAL>">"		=> (Tokens.GT (yypos, yypos + 1));
-<INITIAL>"="		=> (Tokens.EQ (yypos, yypos + 1));
+<P>"+"		        => (Tokens.PLUS (yypos, yypos + 1));
+<P>"-"		        => (Tokens.MINUS (yypos, yypos + 1));
+<P>"*"		        => (Tokens.TIMES (yypos, yypos + 1));
+<P>"<>"		        => (Tokens.NE (yypos, yypos + 2));
+<P>"<="		        => (Tokens.LE (yypos, yypos + 2));
+<P>"<"		        => (Tokens.LT (yypos, yypos + 1));
+<P>">="		        => (Tokens.GE (yypos, yypos + 2));
+<P>">"		        => (Tokens.GT (yypos, yypos + 1));
+<P>"="		        => (Tokens.EQ (yypos, yypos + 1));
+<P>"~"		        => (Tokens.TILDE (yypos, yypos + 1));
 
-<INITIAL>{digit}+	=> (Tokens.NUMBER
+<P>{digit}+	        => (Tokens.NUMBER
 			     (valOf (Int.fromString yytext)
 			      handle _ =>
-				  (ErrorMsg.error yypos "number too large"; 0),
+				  (error yypos "number too large"; 0),
 			      yypos, yypos + size yytext));
-<INITIAL>{sym}+		=> (Tokens.ID (yytext, yypos, yypos + size yytext));
-<INITIAL>{id}		=> (idToken (yytext, yypos));
 
-<INITIAL>{eol}{sharp}{ws}*"if"	 => (Tokens.IF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"then" => (Tokens.THEN (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"elif" => (Tokens.ELIF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"else" => (Tokens.ELSE (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"endif" => (Tokens.ENDIF (yypos,
+<P>{id}                 => (Tokens.CM_ID (yytext, yypos, yypos + size yytext));
+
+<M>({id}|{sym}+)        => (YYBEGIN INITIAL;
+			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
+<PM>({id}|{sym}+)       => (YYBEGIN P;
+			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
+
+<INITIAL>{eol}{sharp}{ws}*"if"	 => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.IF (yypos, yypos + size yytext));
+<INITIAL>{eol}{sharp}{ws}*"then" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.THEN (yypos, yypos + size yytext));
+<INITIAL>{eol}{sharp}{ws}*"elif" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.ELIF (yypos, yypos + size yytext));
+<INITIAL>{eol}{sharp}{ws}*"else" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.ELSE (yypos, yypos + size yytext));
+<INITIAL>{eol}{sharp}{ws}*"endif" => (YYBEGIN P;
+				      newline yypos;
+				      Tokens.ENDIF (yypos,
 						    yypos + size yytext));
 
-<INITIAL>{eol}		=> (newLine yypos; continue ());
-<INITIAL>{ws}+		=> (continue ());
-<INITIAL>.		=> (ErrorMsg.error yypos
-			     ("illegal character " ^ yytext);
+<INITIAL,M,PM>{eol}     => (newline yypos; continue ());
+<P>{eol}                => (YYBEGIN INITIAL; newline yypos; continue ());
+
+<INITIAL,M,PM,P>{ws}+   => (continue ());
+
+<M,PM>.                 => (error yypos
+			    ("illegal character at start of ML symbol: " ^
+			     yytext);
+			    continue ());
+
+<INITIAL>{cmid}		=> (idToken (yytext, yypos));
+
+
+<INITIAL>.		=> (error yypos
+			    ("illegal character: " ^ yytext);
 			    continue ());
