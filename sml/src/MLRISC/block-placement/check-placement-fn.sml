@@ -51,7 +51,7 @@ functor CheckPlacementFn (
 		    else (
 		      anyErrors := true;
 		      say "********** Bogus block placement **********\n");
-		  say(concat("  "::msg))
+		  say(concat("** "::msg))
 		end
 	  fun reportNotAdjacent (src, dst) = let
 		fun b2s id = concat[
@@ -60,7 +60,7 @@ functor CheckPlacementFn (
 		in
 		  reportError [
 		      "Blocks ", b2s src, " and ", b2s dst,
-		      "are not adjacent\n"
+		      " are not adjacent\n"
 		    ]
 		end
 	(* return true if the edge must connect adjacent nodes *)
@@ -105,10 +105,16 @@ functor CheckPlacementFn (
 			]
 		      else ()
 		  | CFG.EXIT => if (dst <> exitId)
-		      then  reportError[
-			  "Block ", Int.toString src, " is not EXIT\n"
+		      then reportError[
+			  "Block ", Int.toString dst, " is not EXIT\n"
 			]
-		      else ()
+		      else (case getJumpTargets src
+			 of [IP.ESCAPES] => ()
+			  | _ => reportError [
+				"Block ", Int.toString src,
+				"doesn't end in an escaping jump\n"
+			      ]
+			(* end case *))
 		  | _ => () (* no checking for SWITCH or FLOWSTO *)
 		(* end case *))
 	  in
