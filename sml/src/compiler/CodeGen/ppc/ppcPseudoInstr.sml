@@ -6,8 +6,8 @@ struct
   structure C = Instr.C
 
   val stack = CPSRegions.stack
-  val cvti2dTmpOff = 16			(* runtime system dependent *)
-  val cvti2dConstOff = 8		(*            ''             *)
+  val cvti2dTmpOff = 4096+16			(* runtime system dependent *)
+  val cvti2dConstOff = 4096+8		(*            ''             *)
   val sp = C.stackptrR
 
   (* Cute little trick -- go figure *)

@@ -1,7 +1,7 @@
 (*
  * Primitives for "raw" memory access.
  *
- * x86/Sparc version:
+ * x86/Sparc/PPC version:
  *     addr char short  int  long float double
  *     4    1    2      4    4    4     8       (bytes)
  *

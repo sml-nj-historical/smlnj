@@ -729,6 +729,11 @@ struct
 	  | T.FSQRT(32, e)     => funary(I.FSQRTS, e, ft, an)
 	  | T.FSQRT(64, e)     => funary(I.FSQRT, e, ft, an)
 
+	  | T.CVTF2F(64,32,e)  => doFexpr(e,ft,an) (* 32->64 is a no-op *)
+	  | T.CVTF2F(32,32,e)  => doFexpr(e,ft,an)
+	  | T.CVTF2F(64,64,e)  => doFexpr(e,ft,an)
+	  | T.CVTF2F(32,64,e)  => funary(I.FRSP,e,ft,an)
+
             (* Misc *)
           | T.FMARK(e, A.MARKREG f) => (f ft; doFexpr(e,ft,an))
           | T.FMARK(e, a) => doFexpr(e,ft,a::an)

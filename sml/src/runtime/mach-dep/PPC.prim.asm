@@ -123,7 +123,7 @@
 #define       	atmp3 r31
 #define 	atmp4 r13
 
-/* stackframe layout:
+/* old stackframe layout -- NO LONGER VALID:
  * Note: 1. cvti2d stuff is used in CodeGen/ppc/ppcPseudoInstr.sml.
  *          (Orig: The offset of cvti2d tmp is used in rs6000.sml.)
  *
@@ -154,15 +154,49 @@
  *  argblock+92(sp)  |		    	 |
  */
 
+/* NEW stackframe layout -- with support for c-calls (nlffi):
+ *
+ * Note: cvti2d stuff is used in CodeGen/ppc/ppcPseudoInstr.sml.
+ *
+ *   sp--> 0(sp)     +-------------------+
+ *                   |                   |
+ *                   |   linkage area    |
+ *                   |                   |
+ * 	  24(sp)     +-------------------+
+ *                   |  4072 (=4096-24)  |
+ *                   |  bytes for c-call |
+ *                   |  arguments        |
+ *	             .		         .
+ *		     .		         .
+ * 	             +-------------------+
+ *      4096(sp)     | mlstate addr  (4) |
+ *	             +-------------------+
+ *	4100(sp)     | _startgc addr (4) |
+ *	             +-------------------+
+ *	4104(sp)     | cvti2d const  (8) |
+ *                   |                   |
+ *	             +-------------------+
+ *	4112(sp)     | cvti2d tmp2   (8) |
+ *                   |                   |
+ *		     +-------------------+
+ *	4120(sp)     | floor tmp     (8) |
+ *		     +-------------------+
+ *  argblock(sp)     | C calleesave regs |   (argblock = 4128, mult. of 16)
+ *	             .		         .
+ *		     .		         .
+ *		     +-------------------+
+ *  argblock+92(sp)  |		    	 |
+ */
+
 
 /** MLState offsets **/
-#define argblock 		48
+#define argblock 		4128
 #define savearea		(23*4+4)	/* lr,cr,1,2,13-31,padding */
-#define framesize		4096
-#define MLSTATE_OFFSET 		0	
-#define STARTGC_OFFSET		4
-#define CVTI2D_OFFSET		8
-#define FLOOR_OFFSET		32
+#define framesize		8192
+#define MLSTATE_OFFSET 		4096
+#define STARTGC_OFFSET		4100
+#define CVTI2D_OFFSET		4104
+#define FLOOR_OFFSET		4120
 
 /** offsets in condition register CR.0 **/
 
@@ -339,7 +373,7 @@ restore_c_regs:
 
 
 CENTRY(restoreregs)
-	addi	sp,sp,-framesize
+	stwu	sp,-framesize(sp)
 #if defined(USE_TOC)
 	lwz	r0,T.saveregs(2)
 #else

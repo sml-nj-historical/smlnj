@@ -343,6 +343,7 @@ functor PPCMacOSX_CCalls (
 		  | addArgReg ((Args locs')::locs, argRegs) =
 		      addArgReg (locs, addArgReg(locs', argRegs))
 		  | addArgReg (_::locs, argRegs) = addArgReg(locs, argRegs)
+		  | addArgReg ([], argRegs) = rev argRegs
 		val argRegs = addArgReg (locs, [])
 		in
 		  (argRegs, linkReg :: callerSaveRegs)
