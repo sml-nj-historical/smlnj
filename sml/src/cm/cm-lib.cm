@@ -1,0 +1,18 @@
+Group
+	(* for the time being leave this empty *)
+is
+	parse/cm.grm
+	parse/cm.lex
+
+	semant/modname.sig
+	semant/modname.sml
+	semant/semant.sml
+
+	paths/pathconfig.sml
+	paths/abspath.sml
+
+	util/sources.cm
+
+	../compiler/viscomp-lib.cm
+
+	ml-yacc-lib.cm

@@ -1,0 +1,1 @@
+structure Symbol = GenericVC.Symbol

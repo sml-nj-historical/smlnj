@@ -1,0 +1,44 @@
+<!-- HTML/running.html -->
+
+<!-- COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>Porting old programs</TITLE>
+</HEAD>
+<BODY><A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
+<HR>
+
+
+<H2><A NAME="section:0">Running CML programs</A></H2>
+<P>
+CML does not currently support executing CML code from the SML/NJ top-level loop. This restriction is because the SML/NJ compiler is not thread safe. Instead, one uses the RunCML.doit command to run programs. 
+<H3><A NAME="sec:using-cm">Using the compilation manager</A></H3>
+<P>
+The recommended way to compile CML programs is by using the SML/NJ <I>Compilation Manager</I> (CM).
+<H3><A NAME="section:2">The <TT>cml-cm</TT> command</A></H3>
+<P>
+The SML/NJ installation provides the option of building the <TT>cml-cm</TT> command. This is basically a version of SML/NJ that knows how to autoload CML components when compiling code that references them. When using <TT>cml-cm</TT>, it is still necessary to use RunCML.doit to execute your code.
+<P>
+Unfortunately, there have been problems with the way that the compilation manager initializes autoloaded modules, and thus  <TT>cml-cm</TT> has been broken in a number of released versions. Therefore, we recommend that you use the methods described in <B>[SECT]</B> above when working with CML
+
+
+<HR>
+<CENTER>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="basics.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
+   ]</B>
+</CENTER>
+<P>
+<I>Last Modified &date;</I><BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
+
+<HR>
+</BODY></HTML>
