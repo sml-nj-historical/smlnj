@@ -3,8 +3,12 @@
  * COPYRIGHT (c) 2000 by Lucent Technologies, Bell Laboratories
  */
 
-#include "ml-unixdep.h"
-#include <dlfcn.h>
+#ifdef OPSYS_WIN32
+# include <windows.h>
+#else
+# include "ml-unixdep.h"
+# include <dlfcn.h>
+#endif
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"
@@ -19,7 +23,11 @@ ml_val_t _ml_U_Dynload_dlclose (ml_state_t *msp, ml_val_t ml_handle)
 {
   void *handle = (void *) (WORD_MLtoC (ml_handle));
 
+#ifdef OPSYS_WIN32
+  (void) FreeLibrary (handle);
+#else
   (void) dlclose (handle);
+#endif
   
   return ML_unit;
 }
