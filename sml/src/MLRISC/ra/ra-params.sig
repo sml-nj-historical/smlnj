@@ -62,12 +62,15 @@ signature RA = sig
   structure F : FLOWGRAPH
   datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
 
-  val ra: mode -> F.cluster -> F.cluster
+  val ra: mode -> int list -> F.cluster -> F.cluster
 end 
 
 
 (*
  * $Log: ra-params.sig,v $
+ * Revision 1.1.1.1  1998/11/16 21:49:10  george
+ *   Version 110.10
+ *
  * Revision 1.2  1998/07/25 03:08:23  george
  *   added to support block names in MLRISC
  *

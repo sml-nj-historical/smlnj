@@ -150,49 +150,49 @@ struct
       end
 
   (* Expand a span dependent instruction *)
-  fun expand(I.COPY{impl=ref(SOME instrs),...},_) = instrs
-    | expand(I.FCOPY{impl=ref(SOME instrs),...},_) = instrs
-    | expand(instr,4) = [instr]
-    | expand(I.ARITH{a=I.OR,r=0,i,d,cc},8) =
+  fun expand(I.COPY{impl=ref(SOME instrs),...},_,_) = instrs
+    | expand(I.FCOPY{impl=ref(SOME instrs),...},_,_) = instrs
+    | expand(instr,4,_) = [instr]
+    | expand(I.ARITH{a=I.OR,r=0,i,d,cc},8,_) =
         let val {lo,hi} = split i
         in  [I.SETHI{i=hi,d=C.asmTmpR},
              I.ARITH{a=I.OR,cc=cc,r=C.asmTmpR,i=I.IMMED lo,d=d}
             ]
         end
-    | expand(I.ARITH{a,r,i,d,cc},12) =
+    | expand(I.ARITH{a,r,i,d,cc},12,_) =
         expandImm(i,I.ARITH{a=a,r=r,i=I.REG C.asmTmpR,d=d,cc=cc})
-    | expand(I.SHIFT{s,r,i,d},12) =
+    | expand(I.SHIFT{s,r,i,d},12,_) =
         expandImm(i,I.SHIFT{s=s,r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.SAVE{r,i,d},12) =
+    | expand(I.SAVE{r,i,d},12,_) =
         expandImm(i,I.SAVE{r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.RESTORE{r,i,d},12) =
+    | expand(I.RESTORE{r,i,d},12,_) =
         expandImm(i,I.RESTORE{r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.LOAD{l,r,i,d,mem},12) =  
+    | expand(I.LOAD{l,r,i,d,mem},12,_) =  
         expandImm(i,I.LOAD{l=l,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.STORE{s,r,i,d,mem},12) =
+    | expand(I.STORE{s,r,i,d,mem},12,_) =
         expandImm(i,I.STORE{s=s,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.FLOAD{l,r,i,d,mem},12) = 
+    | expand(I.FLOAD{l,r,i,d,mem},12,_) = 
         expandImm(i,I.FLOAD{l=l,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.FSTORE{s,r,i,d,mem},12) = 
+    | expand(I.FSTORE{s,r,i,d,mem},12,_) = 
         expandImm(i,I.FSTORE{s=s,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(i as I.JMPL _,8) = [i]
-    | expand(i as I.JMP _,8) = [i]
-    | expand(i as I.Bicc _,8) = [i]
-    | expand(i as I.FBfcc _,8) = [i]
-    | expand(I.JMPL{r,i,d,defs,uses,nop},(12 | 16)) = 
+    | expand(i as I.JMPL _,8,_) = [i]
+    | expand(i as I.JMP _,8,_) = [i]
+    | expand(i as I.Bicc _,8,_) = [i]
+    | expand(i as I.FBfcc _,8,_) = [i]
+    | expand(I.JMPL{r,i,d,defs,uses,nop},(12 | 16),_) = 
         expandImm(i,I.JMPL{r=r,i=I.REG C.asmTmpR,d=d,defs=defs,uses=uses,
                            nop=nop})
-    | expand(I.JMP{r,i,labs,nop},(12 | 16)) = 
+    | expand(I.JMP{r,i,labs,nop},(12 | 16),_) = 
         expandImm(i,I.JMP{r=r,i=I.REG C.asmTmpR,labs=labs,nop=nop})
-    | expand(I.Ticc{t,r,i},12) =
+    | expand(I.Ticc{t,r,i},12,_) =
         expandImm(i,I.Ticc{t=t,r=r,i=I.REG C.asmTmpR})
         (* 
          * The sparc uses 22bits signed extended displacement offsets
          * Let's hope it's enough
          *)
-    | expand(I.Bicc{b,a,label,nop},_) = error "Bicc"  
-    | expand(I.FBfcc{b,a,label,nop},_) = error "FBfcc" 
-    | expand(I.WRY{r,i},12) = expandImm(i,I.WRY{r=r,i=I.REG C.asmTmpR})
+    | expand(I.Bicc{b,a,label,nop},_,_) = error "Bicc"  
+    | expand(I.FBfcc{b,a,label,nop},_,_) = error "FBfcc" 
+    | expand(I.WRY{r,i},12,_) = expandImm(i,I.WRY{r=r,i=I.REG C.asmTmpR})
 (*
     | expand(I.ANNOTATION(i,a),size) = expand(i,size)
 *)
@@ -202,6 +202,9 @@ end
 
 (*
  * $Log: sparcJumps.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:27  george
+ *   Version 110.12
+ *
  * Revision 1.2  1998/08/12 13:36:23  leunga
  *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
  *

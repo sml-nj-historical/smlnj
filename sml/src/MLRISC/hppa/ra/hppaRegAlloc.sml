@@ -15,16 +15,11 @@ functor HppaRegAlloc(structure I : INSTRUCTIONS where C = HppaCells
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
-		     where type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
+		     where type B.name = F.B.name) : RA
+
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
-		     where type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
+		     where type B.name = F.B.name) : RA
    end=
 struct
 
@@ -80,6 +75,9 @@ end
 
 (*
  * $Log: hppaRegAlloc.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:28  george
+ *   Version 110.12
+ *
  * Revision 1.6  1998/10/06 14:04:36  george
  *   The instruction sequence FCMP, FTEST, FBCC is being replaced
  *   by the composite instruction FBRANCH.  This makes scheduling and

@@ -101,7 +101,7 @@ struct
   in (Word.toIntX high, Word.toIntX low)
   end
 
-  fun expand(instr, size) = 
+  fun expand(instr, size, _) = 
    (case instr
     of I.L{sz, rt, ra, d, mem} =>
        (case size

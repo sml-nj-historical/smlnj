@@ -1,7 +1,0 @@
-Group
-	structure SparcUnixCMB
-	structure SparcCompiler
-is
-	../viscomp-lib.cm
-	../../cm/cm-lib.cm
-	sparc-unix.sml

@@ -1,5 +1,0 @@
-Group 
-	structure X86Compiler
-is
-	../viscomp-lib.cm
-	x86-compiler.sml

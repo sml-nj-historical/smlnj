@@ -45,6 +45,7 @@ backpatch/bbsched.sig
 backpatch/delaySlotProps.sig
 backpatch/sdi-jumps.sig
 backpatch/spanDep.sml
+backpatch/vlBackPatch.sml
 
 library/annotations.sig
 library/annotations.sml
@@ -170,6 +171,24 @@ ppc/mltree/ppc.sml
 ppc/mltree/ppcPseudoInstr.sig
 ppc/ra/ppcRegAlloc.sml
 ppc/ra/ppcRewrite.sml
+
+x86/backpatch/x86Jumps.sml
+x86/emit/x86MC.sml
+x86/emit/x86Asm.sml
+x86/instructions/x86Cells.sig
+x86/instructions/x86Cells.sml
+x86/instructions/x86Instr.sig
+x86/instructions/x86Instr.sml
+x86/instructions/x86MemRegs.sig
+x86/instructions/x86Props.sml
+x86/instructions/x86Shuffle.sig
+x86/instructions/x86Shuffle.sml
+x86/mltree/x86.sml
+x86/ra/x86PseudoR.sml
+x86/ra/x86RegAlloc.sml
+x86/ra/x86Rewrite.sig
+x86/ra/x86Rewrite.sml
+x86/ra/x86Spill.sml
 
 Glue/mlrisc-glue.sig
 Glue/mlrisc-glue.sml

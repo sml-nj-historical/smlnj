@@ -18,7 +18,7 @@ local structure FE = FrontEnd
       structure DA = Access
       structure CB = CompBasic
       structure ST = Stats
-      structure CI = Unsafe.CInterface
+      structure Obj = Unsafe.Object
       structure W8V = Word8Vector
 in
 
@@ -265,18 +265,13 @@ fun mksymenv (NONE, _) = SymbolicEnv.empty
   | mksymenv (_, NONE) = SymbolicEnv.empty
   | mksymenv (SOME pid, SOME l) = SymbolicEnv.singleton (pid, l)
 
-(** NOTE: these should move to Unsafe.Object soon **)
-val record1 : object -> object =
-	CI.c_function "SMLNJ-RunT" "record1"
-val rConcat : (object * object) -> object =
-	CI.c_function "SMLNJ-RunT" "recordConcat"
-
 (** turn the byte-vector-like code segments into an executable closure *)
 fun mkexec (cs : CodeObj.csegments) = let
       val ex = CodeObj.exec (#c0 cs)
       val nex = if (W8V.length(#data cs) > 0)
-	    then fn ivec => ex(rConcat(ivec, record1(CodeObj.mkLiterals(#data cs))))
-	    else fn ivec => ex ivec
+	    then (fn ivec =>
+		ex (Obj.mkTuple(Obj.toTuple ivec @ [CodeObj.mkLiterals(#data cs)])))
+	    else (fn ivec => ex ivec)
       in
 	foldl (fn (c, r) => (CodeObj.exec c) o r) nex (#cn cs)
       end 
@@ -307,7 +302,7 @@ end (* local of cont_stack *)
 (** perform the execution of the excutable, output the new dynenv *)
 fun execute {executable, imports, exportPid, dynenv} = let
       val args : object = let
-            fun selObj (obj, i) = (Unsafe.Object.nth(obj, i)
+            fun selObj (obj, i) = (Obj.nth(obj, i)
 		  handle _ => bug "unexpected linkage interface in execute")
             fun getObj ((p, n), zs) = 
               let fun get (obj, CB.ITNODE [], z) = obj::z
@@ -321,15 +316,8 @@ fun execute {executable, imports, exportPid, dynenv} = let
                         fail "imported objects not found or inconsistent"))
                in get(obj, n, zs)
               end
-	    fun f [] = Unsafe.Object.toObject()
-	      | f [a] = record1 a
-	      | f [a, b] = Unsafe.Object.toObject(a, b)
-	      | f [a, b, c] = Unsafe.Object.toObject(a, b, c)
-	      | f [a, b, c, d] = Unsafe.Object.toObject(a, b, c, d)
-	      | f (a::b::c::d::r) =
-		    rConcat(Unsafe.Object.toObject(a, b, c, d), f r)
 	    in
-	      f (foldr getObj [] imports)
+	      Obj.mkTuple (foldr getObj [] imports)
             end
       val result : object = executable args
    in case exportPid 
@@ -347,6 +335,9 @@ end (* local of exception Compile *)
 
 (*
  * $Log: compile.sml,v $
+ * Revision 1.9  1998/12/30 20:21:30  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
  * Revision 1.8  1998/11/18 03:54:25  jhr
  *  New array representations.
  *

@@ -17,18 +17,13 @@ functor SparcRegAlloc(structure I : INSTRUCTIONS where C = SparcCells
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
 		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
+		       and type B.name = F.B.name) : RA
+
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where type I.operand = I.operand
 		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
-   end=
+		       and type B.name = F.B.name) : RA
+   end =
 struct
 
   structure C=I.C
@@ -83,6 +78,9 @@ end
 
 (*
  * $Log: sparcRegAlloc.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:27  george
+ *   Version 110.12
+ *
  * Revision 1.3  1998/10/06 14:06:27  george
  *  fixed up some machine description problems. [leunga]
  *

@@ -1,8 +1,0 @@
-This is ML-Burg.
-
-The file ``load'' can be used to load ML-Burg into an interactive session,
-or to create a stand-alone binary (see comments in the file).
-
-The directory ``doc'' contains documentation.
-
-

@@ -112,5 +112,6 @@ struct
 		tmp: ea option}
 
   fun mtlr r = MTSPR{rs=r, spr=8}
+  fun mflr r = MFSPR{rt=r, spr=8}
   fun ret() = BCLR{bo=ALWAYS, bf=0, bit=LT, LK=false, labels=[]}
 end

@@ -72,12 +72,12 @@ struct
   *)
   val zeroR = 31
 
-  fun expand(instr, size) = let
+  fun expand(instr, size, loc) = let
     fun load(ldClass, ldOp, r, b, d as I.CONSTop c, mem) = 
       (case size 
        of 4 => [ldClass{ldOp=ldOp, r=r, b=b, d=I.IMMop(Const.valueOf c), mem=mem}]
         | 12 => let
-            val instrs = expand(I.LDA{r=r, b=b, d=d}, 8)
+            val instrs = expand(I.LDA{r=r, b=b, d=d}, 8, loc)
           in instrs @ [ldClass{ldOp=ldOp, r=r, b=r, d=I.IMMop 0, mem=mem}]
           end)
 
@@ -85,7 +85,7 @@ struct
       (case size 
        of 4 => [stClass{stOp=stOp, r=r, b=b, d=I.IMMop(Const.valueOf c), mem=mem}]
         | 12 => let
-	    val instrs = expand(I.LDA{r=C.asmTmpR, b=b, d=d}, 8)
+	    val instrs = expand(I.LDA{r=C.asmTmpR, b=b, d=d}, 8, loc)
 	  in instrs @ [stClass{stOp=stOp, r=r, b=C.asmTmpR, d=I.IMMop 0, mem=mem}]
 	  end)
 
@@ -93,7 +93,7 @@ struct
       (case size
        of 4 => [opClass{oper=oper, ra=ra, rb=I.IMMop(Const.valueOf c), rc=rc}]
 	| 12 => let
-	    val instrs = expand(I.LDA{r=C.asmTmpR, b=zeroR, d=rb}, 8)
+	    val instrs = expand(I.LDA{r=C.asmTmpR, b=zeroR, d=rb}, 8, loc)
 	  in instrs @ [opClass{oper=oper, ra=ra, rb=I.REGop C.asmTmpR, rc=rc}]
 	  end)
   in
@@ -137,6 +137,9 @@ end
 
 (*
  * $Log: alpha32Jumps.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:55:13  george
+ *   Version 110.12
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

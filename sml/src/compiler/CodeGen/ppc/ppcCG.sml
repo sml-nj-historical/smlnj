@@ -212,10 +212,10 @@ struct
 	     I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
          end)
 
-    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION
-    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION
-    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION
-    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION
+    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION []
+    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION []
+    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION []
+    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION []
 
     fun ra cluster = let
       val pg = PrintFlowGraph.printCluster TextIO.stdOut

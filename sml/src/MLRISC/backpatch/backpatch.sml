@@ -108,29 +108,34 @@ struct
     in if adjust(zl, 0, false) then fixpoint zl else size
     end
 
-    fun emitCluster(CLUSTER{comp, regmap}) = let
-      fun emit(PSEUDO pOp) = E.pseudoOp pOp
-	| emit(LABEL lab) = E.defineLabel lab
-	| emit(CODE code) = let
-	    fun emitInstrs insns = app (fn i => E.emitInstr(i, regmap)) insns
-	    fun e(FIXED{insns, ...}) = emitInstrs insns
-	      | e(SDI{size, insn}) = emitInstrs(J.expand(insn, !size))
-	  in app e code
+    fun emitCluster(CLUSTER{comp, regmap}, loc) = let
+      fun emit(PSEUDO pOp, loc) = (E.pseudoOp pOp; loc + P.sizeOf(pOp, loc))
+	| emit(LABEL lab, loc) = (E.defineLabel lab; loc)
+	| emit(CODE code, loc) = let
+	    val emitInstrs = app (fn i => E.emitInstr(i, regmap))
+	    fun e(FIXED{insns, size, ...}, loc) = (emitInstrs insns; loc+size)
+	      | e(SDI{size, insn}, loc) = 
+	         (emitInstrs (J.expand(insn, !size, loc)); loc + !size)
+	  in List.foldl e loc code
 	  end
-    in app emit comp
+    in List.foldl emit loc comp
     end
 
     val compressed = (rev (!clusterList)) before cleanUp()
   in
     E.init(fixpoint compressed);
-    app emitCluster compressed
+    List.foldl  emitCluster 0 compressed;
+    ()
   end (*finish*)
 
 end (* bbsched2 *)
 
 
 (*
- * $Log: bbsched2.sml,v $
+ * $Log: backpatch.sml,v $
+ * Revision 1.1.1.1  1998/11/16 21:47:14  george
+ *   Version 110.10
+ *
  * Revision 1.2  1998/10/06 14:07:44  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.

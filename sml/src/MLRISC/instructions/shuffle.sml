@@ -25,6 +25,7 @@ struct
     | equal _ = false
 
   fun shuffle{mvInstr, ea} {regMap, temp, dst, src} = let
+    val mv = rev o mvInstr
     fun opnd (REG dst) = ea dst
       | opnd TEMP = Option.valOf temp
 
@@ -32,7 +33,7 @@ struct
     fun loop((p as (rd,rs))::rest, changed, used, done, instrs) = 
 	if List.exists (fn r => equal(r, rd)) used then
 	   loop(rest, changed, used, p::done, instrs)
-	else loop(rest, true, used, done, mvInstr{dst=opnd rd, src=opnd rs}@instrs)
+	else loop(rest, true, used, done, mv{dst=opnd rd, src=opnd rs}@instrs)
       | loop([], changed, _, done, instrs) = (changed, done, instrs)
 
     fun cycle([], instrs) = instrs
@@ -43,7 +44,7 @@ struct
 	   | (false, (rd,rs)::acc, instrs) => let
 	       fun rename(p as (a,b)) = if equal(rd, b) then (a, TEMP) else p
 	       val acc' = (rd, rs) :: map rename acc
-	       val instrs' = mvInstr{dst=Option.valOf temp, src=opnd rd}@instrs
+	       val instrs' = mv{dst=Option.valOf temp, src=opnd rd}@instrs
 	       val (_, acc'', instrs'') = 
 		 loop(acc', false, map #2 acc', [], instrs')
 	     in cycle(acc'', instrs'')
@@ -65,6 +66,9 @@ end
 
 (*
  * $Log: shuffle.sml,v $
+ * Revision 1.1.1.1  1998/11/16 21:48:41  george
+ *   Version 110.10
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

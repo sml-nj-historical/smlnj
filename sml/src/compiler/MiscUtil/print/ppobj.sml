@@ -212,28 +212,12 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 	   | T.POLYty{tyfun=T.TYFUN{body,arity},...} =>
               if arity=0
               then  ppVal'(obj, body,membersOp,depth,l,r,accu)
-              else
-               (let fun zeros n = if n < 1 then [] else 0::(zeros (n-1))
-                    val args = Vector.fromList (zeros arity)
-
-(*
-                 in (case (TU.headReduceType body) 
-                     of T.CONty(T.RECORDtyc _, []) =>
-                            bug "unexpected poly type in ppObj"
-                      | T.CONty(T.RECORDtyc _, _) =>
-                            add_string ppstrm "<poly-record>"
-                      | _ => 
-                            let val tobj : int Vector.vector -> object 
-                                       = Unsafe.cast obj
-                                val res = tobj args
-                             in ppVal'(res, body,membersOp,depth,l,r,accu)
-                            end)
-                end)
-*)
-                    val tobj : int Vector.vector -> object 
-                                = Unsafe.cast obj
-                    val res = tobj args
-                 in ppVal'(res, body,membersOp,depth,l,r,accu)
+              else (let
+                val args = Obj.mkTuple (List.tabulate(arity, fn i => Obj.toObject 0))
+		val tobj : object -> object = Unsafe.cast obj
+		val res = tobj args
+                in
+		  ppVal'(res, body, membersOp, depth, l, r, accu)
                 end)
 	
 
@@ -430,7 +414,7 @@ and ppList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
 	       | dcon => let val [a, b] = Obj.toTuple(decon(p, dcon))
 			  in SOME(a, b)
 			 end
-       
+ 
        fun ppTail(p, len) =
 	   case list_case p
 	     of NONE => ()
@@ -567,6 +551,9 @@ end (* structure PPObj *)
 
 (*
  * $Log: ppobj.sml,v $
+ * Revision 1.5  1998/11/18 03:53:25  jhr
+ *  New array representations.
+ *
  * Revision 1.4  1998/10/28 18:22:56  jhr
  *   New Unsafe.Object API.
  *
