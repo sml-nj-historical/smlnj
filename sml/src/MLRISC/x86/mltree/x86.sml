@@ -1053,7 +1053,7 @@ struct
        (* convert mlrisc to cellset:
         *)
        and cellset mlrisc =
-           let val addCCReg = C.CellSet.add 
+           let val addCCReg = CB.CellSet.add 
                fun g([],acc) = acc
                  | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
                  | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
@@ -1067,7 +1067,7 @@ struct
       let fun return(set, []) = set
             | return(set, a::an) =
               case #peek A.RETURN_ARG a of 
-                SOME r => return(C.CellSet.add(r, set), an)
+                SOME r => return(CB.CellSet.add(r, set), an)
               | NONE => return(set, an)
       in
 	  mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),

@@ -140,95 +140,16 @@ struct
         name := firstName
        )
 
-
-   structure CellSet =
-   struct
-      type cellset = (cellkindDesc * cell list) list
-      val empty = []
-
-      fun same(DESC{counter=c1,...}, DESC{counter=c2,...}) = c1=c2
-
-      fun descOf (CELL{desc, ...}) = desc 
-
-      fun add (r, cellset:cellset) =
-      let val k = descOf r
-          fun loop [] = [(k,[r])]
-            | loop((x as (k',s))::cellset) = 
-               if same(k,k') then (k',r::s)::cellset 
-               else x::loop cellset
-      in  loop cellset end
-
-      fun rmv (r, cellset:cellset) =
-      let val k = descOf r
-          val c = registerId r
-          fun filter [] = []
-            | filter(r::rs) = if registerId r = c then filter rs 
-                              else r::filter rs
-          fun loop [] = []
-            | loop((x as (k',s))::cellset) = 
-               if same(k,k') then (k',filter s)::cellset else x::loop cellset
-      in  loop cellset end
-
-      fun get' k (cellset:cellset) =
-      let fun loop [] = []
-            | loop((x as (k',s))::cellset) = 
-               if same(k,k') then s else loop cellset
-      in  loop cellset end
-
-      fun get (k: cellkind) = get'(desc k)
-
-      fun update' k (cellset:cellset,s) =
-      let fun loop [] = [(k,s)]
-            | loop((x as (k',_))::cellset) = 
-               if same(k,k') then (k',s)::cellset else x::loop cellset
-      in  loop cellset end
-
-      fun update k = update'(desc k)   
-
-      fun map {from,to} (cellset:cellset) =
-      let val CELL{desc=k,...} = from
-          val cf = registerId from 
-          fun trans r = if registerId r = cf then to else r
-          fun loop [] = []
-            | loop((x as (k',s))::cellset) = 
-               if same(k,k') then (k',List.map trans s)::cellset 
-               else x::loop cellset
-      in  loop cellset end
-
-      val toCellList : cellset -> cell list = 
-          List.foldr (fn ((_,S),S') => S @ S') [] 
-
-      (* Pretty print cellset *)
-      fun printSet(f,set,S) =
-      let fun loop([], S) = "}"::S
-            | loop([x], S) = f(chase x)::"}"::S
-            | loop(x::xs, S) = f(chase x)::" "::loop(xs, S)
-      in  "{"::loop(set, S) end
-
-      fun toString' cellset =
-      let fun pr cellset = 
-          let fun loop((DESC{kind, toString, ...},s)::rest, S)=
-                  (case s of
-                     [] => loop(rest, S)
-                   | _  => cellkindToString kind::"="::
-                           printSet(toString o registerId,s," "::loop(rest,S))
-                  )
-                | loop([],S) = S
-          in  String.concat(loop(cellset, [])) 
-          end
-      in  pr cellset end
-
-      val toString = toString'
-   end (* CellSet *)
-
    type cellset = CellSet.cellset
    val empty   = CellSet.empty
-   val getReg  = CellSet.get GP
-   val getFreg = CellSet.get FP
+   fun getCellsByKind (k : cellkind) = CellSet.get (desc k)
+   fun updateCellsByKind (k : cellkind) = CellSet.update (desc k)
+   val getReg  = getCellsByKind GP
+   val getFreg = getCellsByKind FP
    val addReg  = CellSet.add 
    val addFreg = CellSet.add 
    val rmvReg  = CellSet.rmv 
-   val rmvFreg = CellSet.rmv 
+   val rmvFreg = CellSet.rmv
 
   (* Misc *)
    fun zeroReg k = 

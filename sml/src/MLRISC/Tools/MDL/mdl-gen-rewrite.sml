@@ -22,7 +22,7 @@ struct
    fun howToRename cellkind = 
       $["fun rename r = if regmap r = rs then rt else r",
         "fun renamecellset cellset =",
-        "    C.CellSet.map C."^C.cellkindToString cellkind^" rename cellset"
+        "    CellsBasis.CellSet.map C."^C.cellkindToString cellkind^" rename cellset"
        ]
 
    (* Main function *)

@@ -54,8 +54,8 @@ struct
                                insns, annotations, ...}) = 
            (pr ("BLOCK " ^ Int.toString blknum ^ showFreq freq ^ "\n");
             app annotation (!annotations);
-            pr ("\tlive in:  " ^ C.CellSet.toString (!liveIn) ^ "\n");
-            pr ("\tlive out: " ^ C.CellSet.toString (!liveOut) ^ "\n");
+            pr ("\tlive in:  " ^ CellsBasis.CellSet.toString (!liveIn) ^ "\n");
+            pr ("\tlive out: " ^ CellsBasis.CellSet.toString (!liveOut) ^ "\n");
             pr ("\tsucc:     "); prList (map showEdge (!succ)); pr "\n";
             pr ("\tpred:     "); prList (map showEdge (!pred)); pr "\n";
             app emit (rev (!insns)))

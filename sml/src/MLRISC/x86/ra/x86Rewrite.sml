@@ -34,7 +34,7 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
      | I.JCC{cond, opnd} => I.JCC{cond=cond, opnd = operand opnd}
      | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
          I.CALL{opnd=operand opnd, defs=defs, return=return,
-                uses=C.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
+                uses=CB.CellSet.map {from=rs,to=rt} uses, cutsTo=cutsTo,
                 mem=mem, pops=pops}
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
          I.MOVE{mvOp=mvOp, src=operand src, dst=dst}
@@ -116,8 +116,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     case instr 
     of I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
          I.CALL{opnd=opnd, cutsTo=cutsTo, 
-                return=C.CellSet.map {from=rs,to=rt} return, pops=pops,
-                defs=C.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
+                return=CB.CellSet.map {from=rs,to=rt} return, pops=pops,
+                defs=CB.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
      | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
      | I.LEA{r32, addr} => I.LEA{r32=replace r32, addr=addr}
      | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
@@ -155,7 +155,7 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
      | I.FLDS opnd => I.FLDS(foperand opnd)
      | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
          I.CALL{opnd=opnd, defs=defs, return=return, cutsTo=cutsTo,
-                uses=C.CellSet.map {from=fs, to=ft} uses, mem=mem, pops=pops }
+                uses=CB.CellSet.map {from=fs, to=ft} uses, mem=mem, pops=pops }
      | I.FBINARY{binOp, src, dst} => 
 	 I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
      | I.FUCOM opnd => I.FUCOM(foperand opnd)
@@ -201,8 +201,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
      | I.FSTL opnd => I.FSTL(foperand opnd)
      | I.FSTS opnd => I.FSTS(foperand opnd)
      | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
-         I.CALL{opnd=opnd, defs=C.CellSet.map {from=fs, to=ft} defs, 
-                           return=C.CellSet.map {from=fs, to=ft} return,
+         I.CALL{opnd=opnd, defs=CB.CellSet.map {from=fs, to=ft} defs, 
+                           return=CB.CellSet.map {from=fs, to=ft} return,
                 uses=uses, cutsTo=cutsTo, mem=mem, pops=pops}
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}
 

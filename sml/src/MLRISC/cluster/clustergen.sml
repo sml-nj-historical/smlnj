@@ -55,8 +55,8 @@ struct
           F.BBLOCK{blknum      = n,
                    freq        = ref freq, 
                    annotations = ref (!blockNames),
-                   liveIn      = ref C.CellSet.empty,
-                   liveOut     = ref C.CellSet.empty,
+                   liveIn      = ref CellsBasis.CellSet.empty,
+                   liveOut     = ref CellsBasis.CellSet.empty,
                    succ        = ref [],
                    pred        = ref [],
                    insns       = ref insns

@@ -274,7 +274,7 @@ struct
            val newNodes   = Core.newNodes G
            val getnode    = IntHashTable.lookup nodes
            val insnDefUse = Props.defUse cellkind
-           val getCell    = C.CellSet.get cellkind
+           val getCell    = C.getCellsByKind cellkind
 
            fun isDedicated r = dedicated r
 

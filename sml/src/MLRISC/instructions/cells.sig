@@ -90,37 +90,21 @@ signature CELLS = sig
        (* Reset all counters. *) 
    val reset     : unit -> unit 
 
-   (* 
-    * Cell set represents a map from cellkind to sorted_cells.
-    *)
-   structure CellSet :
-   sig
-      type cellset 
-      (* cellset functions *)
-      val empty  : cellset
-      val add    : CellsBasis.cell * cellset -> cellset
-      val rmv    : CellsBasis.cell * cellset -> cellset
-      val get    : CellsBasis.cellkind -> cellset -> CellsBasis.cell list
-      val update : CellsBasis.cellkind -> cellset * CellsBasis.cell list -> cellset
-      val map    : {from:CellsBasis.cell, to:CellsBasis.cell} -> cellset -> cellset
-
-      (* convert cellset into a list of cells *)
-      val toCellList : cellset -> CellsBasis.cell list
-
-      (* pretty printing *)
-      val toString   : cellset -> string
-   end
-
        (* Abbreviations for cellsets *)
-   type cellset = CellSet.cellset 
+   type cellset = CellsBasis.CellSet.cellset 
 
-   val empty      : cellset
-   val getReg     : cellset -> CellsBasis.cell list 
-   val addReg     : CellsBasis.cell * cellset -> cellset 
-   val rmvReg     : CellsBasis.cell * cellset -> cellset
-   val getFreg    : cellset -> CellsBasis.cell list 
-   val addFreg    : CellsBasis.cell * cellset -> cellset
-   val rmvFreg    : CellsBasis.cell * cellset -> cellset
+   val empty          : cellset
+   val getReg         : cellset -> CellsBasis.cell list 
+   val addReg         : CellsBasis.cell * cellset -> cellset 
+   val rmvReg         : CellsBasis.cell * cellset -> cellset
+   val getFreg        : cellset -> CellsBasis.cell list 
+   val addFreg        : CellsBasis.cell * cellset -> cellset
+   val rmvFreg        : CellsBasis.cell * cellset -> cellset
+
+   val getCellsByKind    : CellsBasis.cellkind -> cellset -> CellsBasis.cell list
+   val updateCellsByKind : CellsBasis.cellkind
+			    -> cellset * CellsBasis.cell list
+			      -> cellset
 
        (* Return a register that is always zero on the architecture,
         * if one exists.  IMPORTANT: each call returns the same cell.

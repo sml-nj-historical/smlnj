@@ -64,7 +64,7 @@ struct
                                 (emit,formatAnnotations)
        fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
-         (nl(); comment(title^C.CellSet.toString cellset))
+         (nl(); comment(title^CellsBasis.CellSet.toString cellset))
        val emit_cellset = 
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)

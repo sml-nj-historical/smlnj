@@ -178,6 +178,27 @@ sig
     *)
    structure ColorTable : MONO_HASH_TABLE where type Key.hash_key = cell
 
+   (* 
+    * Cell set represents a map from cellkind to sorted_cells.
+    *)
+   structure CellSet :
+   sig
+      type cellset 
+      (* cellset functions *)
+      val empty  : cellset
+      val add    : cell * cellset -> cellset
+      val rmv    : cell * cellset -> cellset
+      val get    : cellkindDesc -> cellset -> cell list
+      val update : cellkindDesc -> cellset * cell list -> cellset
+      val map    : {from:cell, to:cell} -> cellset -> cellset
+
+      (* convert cellset into a list of cells *)
+      val toCellList : cellset -> cell list
+
+      (* pretty printing *)
+      val toString   : cellset -> string
+   end
+
     (*
      * These annotations adds extra definitions and uses to an instruction
      *)

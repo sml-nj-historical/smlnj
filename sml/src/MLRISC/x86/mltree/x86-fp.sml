@@ -391,7 +391,7 @@ struct
     *  5. Sacrifice a goat to make sure things don't go wrong.
     *-----------------------------------------------------------------------*)
    fun run(cluster as F.CLUSTER{blocks, blkCounter, ...}) = 
-   let val getCell = C.CellSet.get CB.FP (*extract the fp component of cellset*)
+   let val getCell = C.getCellsByKind CB.FP (*extract the fp component of cellset*)
 
        val stTable = A.tabulate(8, fn n => I.ST(C.ST n))
 
@@ -433,7 +433,7 @@ struct
         *------------------------------------------------------------------*) 
        val defUse = P.defUse CB.FP   (* def/use properties *)
        val _ = Liveness.liveness{defUse=defUse,
-                                 updateCell=C.CellSet.update CB.FP,
+                                 updateCell=C.updateCellsByKind CB.FP,
                                  getCell=getCell,
                                  blocks=blocks
                                 }
@@ -791,7 +791,7 @@ struct
                    case liveInSet of
                      [] => ST.stack0
                    | _  => 
-                     (pr("liveIn="^C.CellSet.toString (!liveIn)^"\n");
+                     (pr("liveIn="^CB.CellSet.toString (!liveIn)^"\n");
                       newStack liveInSet 
                      )
                val stackOut = ST.copy stackIn
@@ -972,7 +972,7 @@ struct
                        val _ = 
                           if debug then
                               pr("LiveIn = "^
-                                C.CellSet.toString (!liveIn)^
+                                CB.CellSet.toString (!liveIn)^
                                  "\n")
                           else ()
 
@@ -1821,7 +1821,7 @@ struct
            (* Dump the initial code *)
            val _ = if debug andalso !debugOn then
                     (pr("-------- block "^i2s blknum^" ----"^
-                         C.CellSet.toString (!liveIn)^" "^
+                         CB.CellSet.toString (!liveIn)^" "^
                          ST.stackToString stackIn^"\n");
                      dump (!insns)
                     )
@@ -1839,11 +1839,11 @@ struct
            (* Dump translation *)
            val _ = if debug andalso !debugOn then
                      (pr("-------- translation "^i2s blknum^"----"^
-                         C.CellSet.toString (!liveIn)^" "^
+                         CB.CellSet.toString (!liveIn)^" "^
                          ST.stackToString stackIn^"\n");
                       dump insns';
                       pr("-------- done "^i2s blknum^"----"^
-                         C.CellSet.toString (!liveOut)^" "^
+                         CB.CellSet.toString (!liveOut)^" "^
                          ST.stackToString stack^"\n")
                      )
                   else ()
