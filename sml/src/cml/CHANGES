@@ -1,6 +1,11 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-09-03]
+	Added *_SLICE signatures and *Slice structures (copied from
+	"normal" Basis into CML Basis).
+	Fixed code broken due to API changes (slices).
+
 [2003-05-09]
 	Added the missing implementation of StreamIO event constructors
 	(e.g., TextIO.StreamIO.inputEvt).  Note that if you use these

@@ -48,7 +48,7 @@ structure XRequest =
 
       fun putString (buf, i, s) = Byte.packString(v2a buf, i, Substring.all s)
       fun putData (buf, i, bv) = W8A.copyVec{
-	      dst=v2a buf, di=i, src=bv, si=0, len=NONE
+	      dst=v2a buf, di=i, src=bv
 	    }
 
       fun putBool (buf, i, false) = put8 (buf, i, 0w0)

@@ -19,7 +19,9 @@ functor BinIOFn (
 
     structure PIO = OSPrimIO.PrimIO
     structure A = Word8Array
+    structure AS = Word8ArraySlice
     structure V = Word8Vector
+    structure VS = Word8VectorSlice
     structure Pos = Position
 
     structure SV = SyncVar
@@ -30,7 +32,7 @@ functor BinIOFn (
   (* an element for initializing buffers *)
     val someElem = (0w0 : Word8.word)
 
-    val vecExtract = V.extract
+    val vecExtract = VS.vector o VS.slice
     val vecSub = V.sub
     val arrUpdate = A.update
     val empty = V.fromList[]
@@ -520,10 +522,10 @@ functor BinIOFn (
 		case !bufferMode
 		 of IO.NO_BUF => writeDirect ()
 		  | _ => let
-		      fun copyVec (src, srcI, srcLen, dst, dstI) = A.copyVec {
-			      src = src, si = srcI, len = SOME srcLen,
-			      dst = dst, di = dstI
-			    }
+		      fun copyVec (src, srcI, srcLen, dst, dstI) =
+			  AS.copyVec
+			      { src = VS.slice (src, srcI, SOME srcLen),
+				dst = dst, di = dstI }
 		      in
 			insert copyVec
 		      end

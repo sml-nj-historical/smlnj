@@ -25,7 +25,9 @@ functor TextIOFn (
 
     structure PIO = OSPrimIO.PrimIO
     structure A = CharArray
+    structure AS = CharArraySlice
     structure V = CharVector
+    structure VS = CharVectorSlice
 
     structure SV = SyncVar
 
@@ -35,7 +37,7 @@ functor TextIOFn (
   (* an element for initializing buffers *)
     val someElem = #"\000"
 
-    val vecExtract = V.extract
+    val vecExtract = VS.vector o VS.slice
     val vecSub = V.sub
     val arrUpdate = A.update
     val substringBase = Substring.base
@@ -565,9 +567,9 @@ functor TextIOFn (
 
       (* a version of copyVec for BLOCK_BUF output of strings and substrings. *)
 	fun blockBufCopyVec (src, srcI, srcLen, dst, dstI) = (
-	      A.copyVec {
-		  src = src, si = srcI, len = SOME srcLen, dst = dst, di = dstI
-		};
+	      AS.copyVec {
+                  src = VS.slice (src, srcI, SOME srcLen),
+		  dst = dst, di = dstI };
 	      false)
 
 	fun output (strmMV, v) = let
@@ -596,9 +598,10 @@ functor TextIOFn (
 			  in
 			    if (avail < dataLen)
 			      then let
-				val _ = A.copyVec{
-					src=v, si=0, len=SOME avail, dst=buf, di=i
-				      }
+				val _ =
+				    AS.copyVec
+					{ src = VS.slice (v, 0, SOME avail),
+					  dst = buf, di = i }
 				val _ = flushAll()
 				val needsFlush = copyVec(v, avail, dataLen-avail, buf, 0)
 				in
@@ -815,10 +818,10 @@ functor TextIOFn (
 			  in
 			    if (avail < dataLen)
 			      then let
-				val _ = A.copyVec{
-					src=v, si=dataStart, len=SOME avail,
-					dst=buf, di=i
-				      }
+				val _ =
+				    AS.copyVec { src = VS.slice (v, dataStart,
+								 SOME avail),
+						 dst = buf, di = i }
 				val _ = flushAll()
 				val needsFlush = copyVec(v, avail, dataLen-avail, buf, 0)
 				in
@@ -982,7 +985,9 @@ functor TextIOFn (
     structure ChanIO = ChanIOFn(
       structure PrimIO = PIO
       structure V = CharVector
-      structure A = CharArray)
+      structure A = CharArray
+      structure VS = CharVectorSlice
+      structure AS = CharArraySlice)
 
   (* open an instream that is connected to the output port of a channel. *)
     fun openChanIn ch =

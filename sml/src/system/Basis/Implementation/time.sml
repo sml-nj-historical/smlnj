@@ -3,7 +3,6 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-
 structure TimeImp : TIME =
   struct
 
@@ -19,223 +18,150 @@ structure TimeImp : TIME =
 
     exception Time
 
-    val zeroTime = PB.TIME{sec=0, usec=0}
+    infix quot
+    val op quot = LInt.quot
 
-    fun toSeconds (PB.TIME{sec, ...}) = sec
-    fun fromSeconds sec =
-	  if (sec < 0)
-	    then raise Time
-	    else PB.TIME{sec=sec, usec=0}
+    val zeroTime = PB.TIME { usec = 0 }
 
-    fun toMilliseconds (PB.TIME{sec, usec}) =
-	  (sec * 1000) + LInt.quot(usec, 1000)
-    fun fromMilliseconds msec =
-	  if (msec < 0)
-	    then raise Time
-	  else if (msec >= 1000)
-	    then PB.TIME{sec= LInt.quot(msec, 1000), usec= 1000*(LInt.rem(msec, 1000))}
-	    else PB.TIME{sec= 0, usec= 1000*msec}
+    (* rounding is towards ZERO *)
+    fun toSeconds (PB.TIME { usec }) = usec quot 1000000
+    fun fromSeconds sec = PB.TIME { usec = sec * 1000000 }
+    fun toMilliseconds (PB.TIME { usec }) = usec quot 1000
+    fun fromMilliseconds msec = PB.TIME { usec = msec * 1000 }
+    fun toMicroseconds (PB.TIME { usec }) = usec
+    fun fromMicroseconds usec = PB.TIME { usec = usec }
 
-    fun toMicroseconds (PB.TIME{sec, usec}) =
-	  (sec * 1000000) + usec
-    fun fromMicroseconds usec =
-	  if (usec < 0)
-	    then raise Time
-	  else if (usec >= 1000000)
-	    then PB.TIME{sec= LInt.quot(usec, 1000000), usec= LInt.rem(usec,  1000000)}
-	    else PB.TIME{sec=0, usec=usec}
+    fun fromReal rsec =
+	PB.TIME { usec = Real.toLargeInt IEEEReal.TO_ZERO (rsec * 1.0e6) }
+    fun toReal (PB.TIME { usec }) =
+	Real.fromLargeInt usec * 1.0e~6
 
     local
-    (* a floor function that produces a FixedInt.int *)
-      val floor = Real.toLargeInt IEEEReal.TO_NEGINF
-      val t2r = Real.fromLargeInt
-    in
-    fun fromReal rt = if (rt < 0.0)
-	  then raise Time
-	  else let
-	    val sec = floor rt
-	    in
-	      PB.TIME{sec=sec, usec=floor((rt - t2r sec) * 1000000.0)}
-	    end
-	      handle Overflow => raise Time
-
-    fun toReal (PB.TIME{sec, usec}) = (t2r sec) + ((t2r usec) * 0.000001)
-    end (* local *)
-
-    fun add (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) = let
-	  val s = s1 + s2
-	  val u = u1+u2
-	  in
-	    if (u >= 1000000)
-	      then PB.TIME{sec=s+1, usec=u-1000000}
-	      else PB.TIME{sec=s, usec=u}
-	  end
-    fun sub (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) = let
-	  val s = s1 - s2
-	  val u = u1 - u2
-	  val (s, u) = if (u < 0) then (s-1, u+1000000) else (s, u)
-	  in
-	    if (s < 0)
-	      then raise Time
-	      else PB.TIME{sec=s, usec=u}
-	  end
-
-    fun compare (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
-	  if (s1 < s2) then LESS
-	  else if (s1 = s2)
-	    then if (u1 < u2) then LESS
-	    else if (u1 = u2) then EQUAL
-	    else GREATER
-	  else GREATER
-
-    fun less (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
-	  (s1 < s2) orelse ((s1 = s2) andalso (u1 < u2))
-    fun lessEq (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
-	  (s1 < s2) orelse ((s1 = s2) andalso (u1 <= u2))
-
-    local
-      val gettimeofday : unit -> (Int32.int * int) =
+	val gettimeofday : unit -> (Int32.int * int) =
 	    CInterface.c_function "SMLNJ-Time" "timeofday"
     in
-    fun now () = let val (ts, tu) = gettimeofday()
-	  in
-	    PB.TIME{sec= Int32.toLarge ts, usec= Int.toLarge tu }
-	  end
+        fun now () = let
+	    val (ts, tu) = gettimeofday ()
+	in
+	    fromMicroseconds (1000000 * Int32.toLarge ts + Int.toLarge tu)
+	end
     end (* local *)
 
-    local
-      val zeros = "0000000000"
-      val numZeros = String.size zeros
-      fun pad 0 = []
-	| pad n = if (n <= numZeros)
-	    then [substring(zeros, 0, n)]
-	    else zeros :: pad(n - numZeros)
-      val rounding = #[
-	      PB.TIME{sec=0, usec= 50000},
-	      PB.TIME{sec=0, usec=  5000},
-	      PB.TIME{sec=0, usec=   500},
-	      PB.TIME{sec=0, usec=    50},
-	      PB.TIME{sec=0, usec=     5}
-	    ]
-      val fmtInt = IntInfImp.fmt StringCvt.DEC
-      fun fmtUSec usec = let
-	    val usec' = fmtInt usec
-	    in
-	      String.substring(zeros, 0, 6 - String.size usec') ^ usec'
-	    end
+    val rndv : LInt.int vector =  #[50000, 5000, 500, 50, 5]
+
+    fun fmt prec (PB.TIME { usec }) = let
+	val (neg, usec) = if usec < 0 then (true, ~usec) else (false, usec)
+	fun fmtInt i = LInt.fmt StringCvt.DEC i
+	fun fmtSec (neg, i) = fmtInt (if neg then ~i else i)
+	fun isEven i = LInt.rem (i, 2) = 0
     in
-    fun fmt prec = if (prec <= 0)
-	    then let
-	      fun fmt' t = let
-		    val PB.TIME{sec, ...} = add(t, PB.TIME{sec=0, usec=500000})
-		    in
-		      fmtInt sec
-		    end
-	      in
-		fmt'
-	      end
-	  else if (prec >= 6)
-	    then let
-	      fun fmt' (PB.TIME{sec, usec}) =
-		    String.concat(fmtInt sec :: "." :: fmtUSec usec :: pad(prec-6))
-	      in
-		fmt'
-	      end
-	    else let (* 0 < prec < 6 *)
-	      val amt = InlineT.PolyVector.sub(rounding, prec-1)
-	      fun fmt' t = let
-		    val PB.TIME{sec, usec} = add(t, amt)
-		    in
-		      String.concat[
-			  fmtInt sec, ".", String.substring(fmtUSec usec, 0, prec)
-			]
-		    end
-	      in
-		fmt'
-	      end
-(*
-    fun fmt prec (PB.TIME{sec, usec}) = let
-	  val sec' = fmtInt sec
-	  in
-	    if (prec <= 0)
-	      then sec'
-	      else let
-		val usec' = fmtInt usec
-		val frac = String.substring(zeros, 0, 6 - String.size usec') ^ usec'
-		in
-		  if (prec < 6)
-		    then String.concat [
-			sec', ".", String.substring(frac, 0, prec)
-		      ]
-		    else String.concat (sec' :: "." :: frac :: pad(prec-6))
-		end
-	  end
-*)
-    end (* local *)
+	if prec <= 0 then
+	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
+		val sec =
+		    case LInt.compare (usec, 500000) of
+			LESS => sec
+		      | GREATER => sec + 1
+		      | EQUAL => if isEven sec then sec else sec + 1
+	    in
+		fmtSec (neg, sec)
+	    end
+	else if prec >= 6 then
+	    let val (sec, usec) = IntInfImp.quotRem (usec, 1000000)
+	    in
+		concat [fmtSec (neg, sec), ".",
+			StringCvt.padLeft #"0" 6 (fmtInt usec),
+			StringCvt.padLeft #"0" (prec - 6) ""]
+	    end
+	else
+	    let	val rnd = Vector.sub (rndv, prec - 1)
+		val (whole, frac) = IntInfImp.quotRem (usec, 2 * rnd)
+		val whole =
+		    case LInt.compare (frac, rnd) of
+			LESS => whole
+		      | GREATER => whole + 1
+		      | EQUAL => if isEven whole then whole else whole + 1
+		val rscl = 2 * Vector.sub (rndv, 5 - prec)
+		val (sec, frac) = IntInfImp.quotRem (whole, rscl)
+	    in
+		concat [fmtSec (neg, sec), ".",
+			StringCvt.padLeft #"0" prec (fmtInt frac)]
+	    end
+    end
 
   (* scan a time value; this has the syntax:
    *
-   *  [0-9]+(.[0-9]+)? | .[0-9]+
+   *  [+-~]?([0-9]+(.[0-9]+)? | .[0-9]+)
    *)
-    fun scan getc charStrm = let
-	  val chrLE : (char * char) -> bool = InlineT.cast InlineT.DfltInt.<=
-	  fun isDigit c = (chrLE(#"0", c) andalso chrLE(c, #"9"))
-	  fun incByDigit (n, c) =
-	      10*n + Int.toLarge(Char.ord c - Char.ord #"0")
-	  fun scanSec (secs, cs) = (case (getc cs)
-		 of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
-		  | (SOME(#".", cs')) => (case (getc cs')
-		       of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
-			| (SOME(d, cs'')) => if (isDigit d)
-			    then scanUSec (secs, cs')
-			    else SOME(PB.TIME{sec=secs, usec=0}, cs)
-		      (* end case *))
-		  | (SOME(d, cs')) => if (isDigit d)
-		      then scanSec(incByDigit(secs, d), cs')
-		      else SOME(PB.TIME{sec=secs, usec=0}, cs)
-		(* end case *))
-	  and scanUSec (secs, cs) = let
-		fun normalize (usecs, 6) = usecs
-		  | normalize (usecs, n) = normalize(10*usecs, n+1)
-		fun scan' (usecs, 6, cs) = (case (getc cs)
-		       of NONE => (usecs, cs)
-			| (SOME(d, cs')) => if (isDigit d)
-			    then scan' (usecs, 6, cs')
-			    else (usecs, cs)
-		      (* end case *))
-		  | scan' (usecs, ndigits, cs) = (case (getc cs)
-		       of NONE => (normalize(usecs, ndigits), cs)
-			| (SOME(d, cs')) => if (isDigit d)
-			    then scan' (incByDigit(usecs, d), ndigits+1, cs')
-			    else (normalize(usecs, ndigits), cs)
-		      (* end case *))
-		val (usecs, cs) = scan' (0, 0, cs)
-		in
-		  SOME(PB.TIME{sec=secs, usec=usecs}, cs)
-		end
-	  val cs = PB.skipWS getc charStrm
-	  in
-	    case (getc cs)
-	     of NONE => NONE
-	      | (SOME(#".", cs')) => (case (getc cs')
-		   of NONE => NONE
-		    | (SOME(d, _)) =>
-			if (isDigit d) then scanUSec (0, cs') else NONE
-		  (* end case *))
-	      | (SOME(d, _)) => if (isDigit d) then scanSec(0, cs) else NONE
-	    (* end case *)
-	  end
+    fun scan getc s = let
+
+	fun digv c = Int.toLarge (Char.ord c - Char.ord #"0")
+
+	fun whole s = let
+	    fun loop (s, n, m, ret) =
+		case getc s of
+		    NONE => ret (n, s, m)
+		  | SOME (c, s') =>
+		      if Char.isDigit c then
+			  loop (s', 10 * n + digv c, m + 1, SOME)
+		      else ret (n, s, m)
+	in
+	    loop (s, 0, 0, fn _ => NONE)
+	end
+
+	fun time (negative, s) = let
+	    fun pow10 p = IntInfImp.pow (10, p)
+	    fun return (usec, s) =
+		SOME (fromMicroseconds (if negative then ~usec else usec), s)
+	    fun fractional (wh, s) =
+		case whole s of
+		    SOME (n, s, m) => let
+			fun done fr = return (wh * 1000000 + fr, s)
+		    in
+			if m > 6 then done (n div pow10 (m - 6))
+			else if m < 6 then done (n * pow10 (6 - m))
+			else done n
+		    end
+		  | NONE => NONE
+	    fun withwhole s =
+		case whole s of
+		    NONE => NONE
+		  | SOME (wh, s', _) =>
+		      (case getc s' of
+			   SOME (#".", s'') => fractional (wh, s'')
+			 | _ => return (wh * 1000000, s'))
+	in
+	    case getc s of
+		NONE => NONE
+	      | SOME (#".", s') => fractional (0, s')
+	      | _ => withwhole s
+	end
+
+	fun sign s =
+	    case getc s of
+		NONE => NONE
+	      | SOME ((#"-" | #"~"), s') => time (true, s')
+	      | SOME (#"+", s') => time (false, s')
+	      | _ => time (false, s)
+    in
+	sign (StringCvt.skipWS getc s)
+    end
 
     val toString   = fmt 3
     val fromString = PB.scanString scan
 
-    val (op +) = add
-    val (op -) = sub
+    local
+	fun binop usecoper (PB.TIME t1, PB.TIME t2) =
+	    usecoper (#usec t1, #usec t2)
+    in
 
-    val (op <)  = less
-    val (op <=) = lessEq
-    val (op >)  = Bool.not o lessEq
-    val (op >=) = Bool.not o less
+    val op + = binop (fromMicroseconds o op +)
+    val op - = binop (fromMicroseconds o op -)
+    val compare = binop LInt.compare
+    val op < = binop op <
+    val op <= = binop op <=
+    val op > = binop op >
+    val op >= = binop op >=
+
+    end
 
   end (* TIME *)
-

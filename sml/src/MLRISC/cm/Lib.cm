@@ -48,10 +48,15 @@ is
 	../library/bitset.sml
 	../library/cache.sml
 	../library/catlist.sml
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+        ../library/orig-dynamic-array.sml
+	../library/orig-hash-array.sml
+#else
 	../library/dynamic-array.sml
+	../library/hash-array.sml
+#endif
 	../library/freq.sig
 	../library/freq.sml
-	../library/hash-array.sml
 	../library/heap.sml
 	../library/line-break.sml
 	../library/priQueue.sig

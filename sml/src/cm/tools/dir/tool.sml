@@ -29,8 +29,8 @@ structure DirTool = struct
 		fun getfiles s = let
 		    fun loop l =
 			case OS.FileSys.readDir s of
-			    "" => rev l
-			  | f => let
+			    NONE => rev l
+			  | SOME f => let
 				val df = OS.Path.joinDirFile
 					     { dir = spec_d, file = f }
 				fun mkpath () = augment pre_d [f]

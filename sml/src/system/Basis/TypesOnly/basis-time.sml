@@ -9,7 +9,5 @@
 
 structure Time =
   struct
-    datatype time =
-	TIME of { sec: LargeInt.int, usec: LargeInt.int }
+    datatype time = TIME of { usec : LargeInt.int }
   end;
-

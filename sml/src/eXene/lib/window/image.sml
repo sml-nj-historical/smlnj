@@ -53,6 +53,8 @@ structure Image : sig
 
     exception BadImageData
 
+    val w8vextract = Word8VectorSlice.vector o Word8VectorSlice.slice
+
     datatype image = IMAGE of {
 	sz : Geometry.size,
 	data : Word8Vector.vector list list
@@ -285,7 +287,7 @@ structure Image : sig
 			    if (byteOffset = 0 andalso numBytes = W8V.length row)
 			      then row :: (extractRow(i-1, rest))
 			      else (
-				W8V.extract(row, byteOffset, SOME numBytes))
+				w8vextract(row, byteOffset, SOME numBytes))
 				  :: (extractRow (i-1, rest))
 			| extractRow (i,[]) = MLXError.impossible "Image: extractRow"
 		      in
@@ -397,7 +399,7 @@ structure Image : sig
 	  val linesPerPlane = #ht szinfo
 	  val bytesPerLine = roundUp (#wid szinfo, #bitmap_scanline_pad dpyInfo) div 8
 	  val bytesPerPlane = bytesPerLine * linesPerPlane
-	  fun doLine start = swapfn(W8V.extract(data, start, SOME bytesPerLine))
+	  fun doLine start = swapfn(w8vextract(data, start, SOME bytesPerLine))
 	  fun mkLine (i, start) =
 		if i = linesPerPlane
 		  then []

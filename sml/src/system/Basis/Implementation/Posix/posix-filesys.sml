@@ -75,7 +75,10 @@ structure POSIX_FileSys =
 	  }
     fun readdir (DS{dirStrm, isOpen = ref false}) =
 	  raise Assembly.SysErr("readdir on closed directory stream", NONE)
-      | readdir (DS{dirStrm, ...}) = readdir' dirStrm
+      | readdir (DS{dirStrm, ...}) =
+	  case readdir' dirStrm of
+	      "" => NONE
+	    | name => SOME name
     fun rewinddir (DS{dirStrm, isOpen = ref false}) =
 	  raise Assembly.SysErr("rewinddir on closed directory stream", NONE)
       | rewinddir (DS{dirStrm, ...}) = rewinddir' dirStrm

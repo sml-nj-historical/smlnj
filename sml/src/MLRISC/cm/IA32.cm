@@ -79,5 +79,9 @@ is
 	../x86/ra/x86SpillInstr.sml
 	../x86/backpatch/x86Jumps.sml 
 	../x86/mltree/x86.sml
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+	../x86/mltree/orig-x86-fp.sml
+#else
 	../x86/mltree/x86-fp.sml
+#endif
 	../x86/ra/x86RA.sml

@@ -973,7 +973,7 @@ struct
 		    val a = Word8Array.array (4, 0w0)
 		    val _ = Pack32Big.update (a, 0, LargeWord.fromInt i)
 		in
-		    BinIO.output (s, Word8Array.extract (a, 0, NONE))
+		    BinIO.output (s, Word8Array.vector a)
 		end
 		val memberlist = rev (!members)
 

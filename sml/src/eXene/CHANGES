@@ -2,6 +2,9 @@ eXene-1.0
 ------------------------
 
 GLOBAL CHANGES
+  - fixed code that broke because of Basis API changes (slices)
+    [2003-09-03]
+
   - compiles again under 110.33+ (library name is $/eXene.cm)
     [2001-06-20]
 

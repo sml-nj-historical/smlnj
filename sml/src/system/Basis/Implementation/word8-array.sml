@@ -10,11 +10,20 @@ structure Word8Array : MONO_ARRAY =
     structure A = InlineT.Word8Array
     structure V = InlineT.Word8Vector
 
+    (* fast add/subtract avoiding the overflow test *)
+    infix -- ++
+    fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
+					     InlineT.Word31.copyf_int31 y)
+    fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
+					     InlineT.Word31.copyf_int31 y)
+
+
   (* unchecked access operations *)
-    val unsafeUpdate = A.update
-    val unsafeSub = A.sub
-    val vecUpdate = V.update
-    val vecSub = V.sub
+    val uupd = A.update
+    val usub = A.sub
+    val vuupd = V.update
+    val vusub = V.sub
+    val vlength = V.length
 
     type array = A.array
     type elem = Word8.word
@@ -30,7 +39,7 @@ structure Word8Array : MONO_ARRAY =
 	    else let
 	      val arr = Assembly.A.create_b len
 	      fun init i = if (i < len)
-		    then (unsafeUpdate(arr, i, v); init(i+1))
+		    then (uupd(arr, i, v); init(i+1))
 		    else ()
 	      in
 		init 0; arr
@@ -42,7 +51,7 @@ structure Word8Array : MONO_ARRAY =
 	    else let
 	      val arr = Assembly.A.create_b len
 	      fun init i = if (i < len)
-		    then (unsafeUpdate(arr, i, f i); init(i+1))
+		    then (uupd(arr, i, f i); init(i+1))
 		    else ()
 	      in
 		init 0; arr
@@ -56,7 +65,7 @@ structure Word8Array : MONO_ARRAY =
 	  val _ = if (maxLen < len) then raise General.Size else ()
 	  val arr = Assembly.A.create_b len
 	  fun init ([], _) = ()
-	    | init (c::r, i) = (unsafeUpdate(arr, i, c); init(r, i+1))
+	    | init (c::r, i) = (uupd(arr, i, c); init(r, i+1))
 	  in
 	    init (l, 0); arr
 	  end
@@ -65,177 +74,154 @@ structure Word8Array : MONO_ARRAY =
     val sub    = A.chkSub
     val update = A.chkUpdate
 
-    fun extract (v, base, optLen) = let
-	  val len = length v
-	  fun newVec n = let
-		val newV : vector = V.create n
-		fun fill i = if (i < n)
-		      then (vecUpdate(newV, i, unsafeSub(v, base+i)); fill(i+1))
-		      else ()
-		in
-		  fill 0; newV
-		end
-	  in
-	    case (base, optLen)
-	     of (0, NONE) => if (0 < len) then newVec len else emptyV
-	      | (_, SOME 0) => if ((base < 0) orelse (len < base))
-		  then raise General.Subscript
-		  else emptyV
-	      | (_, NONE) => if ((base < 0) orelse (len < base))
-		    then raise General.Subscript
-		  else if (len = base)
-		    then emptyV
-		    else newVec (len - base)
-	      | (_, SOME n) =>
-		  if ((base < 0) orelse (n < 0) orelse (len < (base+n)))
-		    then raise General.Subscript
-		    else newVec n
-	    (* end case *)
-	  end
+    fun vector a =
+	case length a of
+	    0 => emptyV
+	  | len => let val v : Word8Vector.vector =
+			   InlineT.cast (Assembly.A.create_s len)
+		       fun fill i =
+			   if i >= len then ()
+			   else (vuupd (v, i, usub (a, i)); fill (i ++ 1))
+		   in
+		       fill 0; v
+		   end
 
-    fun copy {src, si, len, dst, di} = let
-	  val (sstop, dstop) = let
-		val srcLen = length src
-		in
-		  case len
-		   of NONE => if ((si < 0) orelse (srcLen < si))
-		        then raise Subscript
-		        else (srcLen, di+srcLen-si)
-		    | (SOME n) => if ((n < 0) orelse (si < 0) orelse (srcLen < si+n))
-		        then raise Subscript
-		        else (si+n, di+n)
-		  (* end case *)
-		end
-	  fun copyUp (j, k) = if (j < sstop)
-		then (
-		  unsafeUpdate(dst, k, unsafeSub(src, j));
-		  copyUp (j+1, k+1))
-		else ()
-	  fun copyDown (j, k) = if (si <= j)
-		then (
-		  unsafeUpdate(dst, k, unsafeSub(src, j));
-		  copyDown (j-1, k-1))
-		else ()
-	  in
-	    if ((di < 0) orelse (length dst < dstop))
-	      then raise Subscript
-	    else if (si < di)
-	      then copyDown (sstop-1, dstop-1)
-	      else copyUp (si, di)
-	  end
+    fun copy { src, dst, di } = let
+	val sl = length src
+	val de = sl + di
+	fun copyDn (s, d) =
+	    if s < 0 then () else (uupd (dst, d, usub (src, s));
+				   copyDn (s -- 1, d -- 1))
+    in
+	if di < 0 orelse de > length dst then raise Subscript
+	else copyDn (sl -- 1, de -- 1)
+    end
 
-    fun copyVec {src, si, len, dst, di} = let
-	  val (sstop, dstop) = let
-		val srcLen = V.length src
-		in
-		  case len
-		   of NONE => if ((si < 0) orelse (srcLen < si))
-		        then raise Subscript
-		        else (srcLen, di+srcLen-si)
-		    | (SOME n) => if ((n < 0) orelse (si < 0) orelse (srcLen < si+n))
-		        then raise Subscript
-		        else (si+n, di+n)
-		  (* end case *)
-		end
-	  fun copyUp (j, k) = if (j < sstop)
-		then (
-		  unsafeUpdate(dst, k, vecSub(src, j));
-		  copyUp (j+1, k+1))
-		else ()
-	  in
-	    if ((di < 0) orelse (length dst < dstop))
-	      then raise Subscript
-	      else copyUp (si, di)
-	  end
+    fun copyVec { src, dst, di } = let
+	val sl = vlength src
+	val de = sl + di
+	fun copyDn (s, d) =
+	    if s < 0 then () else (uupd (dst, d, vusub (src, s));
+				   copyDn (s -- 1, d -- 1))
+    in
+	if di < 0 orelse de > length dst then raise Subscript
+	else copyDn (sl -- 1, de -- 1)
+    end
+
+    fun appi f arr = let
+	val len = length arr
+	fun app i =
+	    if i >= len then () else (f (i, usub (arr, i)); app (i ++ 1))
+    in
+	app 0
+    end
 
     fun app f arr = let
-	  val len = length arr
-	  fun app i = if (i < len)
-		then (f (unsafeSub(arr, i)); app(i+1))
-		else ()
-	  in
-	    app 0
-	  end
+	val len = length arr
+	fun app i =
+	    if i >= len then () else (f (usub (arr, i)); app (i ++ 1))
+    in
+	app 0
+    end
+
+    fun modifyi f arr = let
+	val len = length arr
+	fun mdf i =
+	    if i >= len then ()
+	    else (uupd (arr, i, f (i, usub (arr, i))); mdf (i ++ 1))
+    in
+	mdf 0
+    end
+
+    fun modify f arr = let
+	val len = length arr
+	fun mdf i =
+	    if i >= len then ()
+	    else (uupd (arr, i, f (usub (arr, i))); mdf (i ++ 1))
+    in
+	mdf 0
+    end
+
+    fun foldli f init arr = let
+	val len = length arr
+	fun fold (i, a) =
+	    if i >= len then a else fold (i ++ 1, f (i, usub (arr, i), a))
+    in
+	fold (0, init)
+    end
 
     fun foldl f init arr = let
-	  val len = length arr
-	  fun fold (i, accum) = if (i < len)
-		then fold (i+1, f (unsafeSub(arr, i), accum))
-		else accum
-	  in
-	    fold (0, init)
-	  end
+	val len = length arr
+	fun fold (i, a) =
+	    if i >= len then a else fold (i ++ 1, f (usub (arr, i), a))
+    in
+	fold (0, init)
+    end
+
+    fun foldri f init arr = let
+	fun fold (i, a) =
+	    if i < 0 then a else fold (i -- 1, f (i, usub (arr, i), a))
+    in
+	fold (length arr -- 1, init)
+    end
 
     fun foldr f init arr = let
-	  fun fold (i, accum) = if (i >= 0)
-		then fold (i-1, f (unsafeSub(arr, i), accum))
-		else accum
-	  in
-	    fold (length arr - 1, init)
-	  end
+	fun fold (i, a) =
+	    if i < 0 then a else fold (i -- 1, f (usub (arr, i), a))
+    in
+	fold (length arr -- 1, init)
+    end
 
-   fun modify f arr = let
-	  val len = length arr
-	  fun modify' i = if (i < len)
-		then (
-		  unsafeUpdate(arr, i, f (unsafeSub(arr, i)));
-		  modify'(i+1))
-		else ()
-	  in
-	    modify' 0
-	  end
+    fun findi p arr = let
+	val len = length arr
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = usub (arr, i)
+		 in
+		     if p (i, x) then SOME (i, x) else fnd (i ++ 1)
+		 end
+    in
+	fnd 0
+    end
 
-    fun chkSlice (arr, i, NONE) = let val len = length arr
-	  in
-	    if (InlineT.DfltInt.ltu(len, i))
-	      then raise Subscript
-	      else (arr, i, len)
-	  end
-      | chkSlice (arr, i, SOME n) = let val len = length arr
-	  in
-	    if ((0 <= i) andalso (0 <= n) andalso (i+n <= len))
-	      then (arr, i, i+n)
-	      else raise Subscript
-	  end
+    fun find p arr = let
+	val len = length arr
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = usub (arr, i)
+		 in
+		     if p x then SOME x else fnd (i ++ 1)
+		 end
+    in
+	fnd 0
+    end
 
-    fun appi f slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun app i = if (i < stop)
-		then (f (i, unsafeSub(arr, i)); app(i+1))
-		else ()
-	  in
-	    app start
-	  end
+    fun exists p arr = let
+	val len = length arr
+	fun ex i = i < len andalso (p (usub (arr, i)) orelse ex (i ++ 1))
+    in
+	ex 0
+    end
 
-    fun foldli f init slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i < stop)
-		then fold (i+1, f (i, unsafeSub(arr, i), accum))
-		else accum
-	  in
-	    fold (start, init)
-	  end
+    fun all p arr = let
+	val len = length arr
+	fun al i = i >= len orelse (p (usub (arr, i)) andalso al (i ++ 1))
+    in
+	al 0
+    end
 
-    fun foldri f init slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
-		then fold (i-1, f (i, unsafeSub(arr, i), accum))
-		else accum
-	  in
-	    fold (stop - 1, init)
-	  end
-
-    fun modifyi f slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun modify' i = if (i < stop)
-		then (
-		  unsafeUpdate(arr, i, f (i, unsafeSub(arr, i)));
-		  modify'(i+1))
-		else ()
-	  in
-	    modify' start
-	  end
-
+    fun collate c (a1, a2) = let
+	val l1 = length a1
+	val l2 = length a2
+	val l12 = InlineT.Int31.min (l1, l2)
+	fun coll i =
+	    if i >= l12 then IntImp.compare (l1, l2)
+	    else case c (usub (a1, i), usub (a2, i)) of
+		     EQUAL => coll (i ++ 1)
+		   | unequal => unequal
+    in
+	coll 0
+    end
   end (* structure Word8Array *)
 
 

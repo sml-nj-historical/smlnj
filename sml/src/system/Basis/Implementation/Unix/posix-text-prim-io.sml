@@ -91,7 +91,9 @@ structure PosixTextPrimIO : sig
 		in
 		  checkClosed ();
 		  pos := p+m;
-		  CharArray.copyVec {src=src, si=p, len=SOME m, dst=buf, di=i};
+		  CharArraySlice.copyVec
+		      { src = CharVectorSlice.slice (src, p, SOME m),
+			dst = buf, di = i };
 		  m
 		end
 	  fun getPos () = (checkClosed(); !pos)

@@ -53,6 +53,8 @@ structure XReply =
       fun getWord (s, i) = Word.fromLargeWord(get32(s, i))
       fun getInt (s, i) = LargeWord.toIntX(Pack32Big.subVecX(s, i div 4))
 
+      val w8vextract = Word8VectorSlice.vector o Word8VectorSlice.slice
+
 fun wrapFn name f (s, i) = (f(s, i) handle ex => (
 XDebug.errTrace(fn () => ["**** ", name, "(", Int.toString(W8V.length s), ",",
 Int.toString i, ")\n"]); raise ex))
@@ -525,7 +527,7 @@ val getInt = wrapFn "getInt" getInt
 	      typ = getXAtom(buf, 8),
 	      value = XTy.RAW_DATA {
 		  format = getRawFormat(buf, 1),
-		  data = W8V.extract(buf, 12, SOME 20)
+		  data = w8vextract(buf, 12, SOME 20)
 		}
 	    }
       fun decodeMappingNotify buf = (case W8V.sub(buf, 4)
@@ -673,7 +675,7 @@ val getInt = wrapFn "getInt" getInt
     fun decodeGetImageReply msg = {
 	    depth = getInt8(msg, 1),
 	    visualid = getVisualIdOption(msg, 8),
-	    data = W8V.extract(msg, 32, SOME(4*getInt(msg, 4)))
+	    data = w8vextract(msg, 32, SOME(4*getInt(msg, 4)))
 	  }
 
     fun decodeGetInputFocusReply msg = {
@@ -696,7 +698,7 @@ val getInt = wrapFn "getInt" getInt
 	    bell_pct = getInt8(msg, 13),
 	    bell_pitch = getInt16(msg, 14),
 	    bell_duration = getInt16(msg, 16),
-	    auto_repeats = W8V.extract(msg, 20, SOME 32)
+	    auto_repeats = w8vextract(msg, 20, SOME 32)
 	  }
 
     fun decodeGetKeyboardMappingReply msg = let
@@ -770,7 +772,7 @@ val getInt = wrapFn "getInt" getInt
 		      bytes_after = getInt(msg, 12),
 		      value = XTy.RAW_DATA {
 			  format = fmt,
-			  data = W8V.extract(msg, 32, SOME nbytes)
+			  data = w8vextract(msg, 32, SOME nbytes)
 			}
 		    }
 		end)

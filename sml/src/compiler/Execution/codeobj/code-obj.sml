@@ -60,7 +60,7 @@ structure CodeObj :> CODE_OBJ =
 		  ]);
 		raise FormatError)
 	      else ();
-	    W8A.copyVec{src=data, si=0, len=NONE, dst=obj, di=0};
+	    W8A.copyVec{src=data, dst=obj, di=0};
 	    co
 	  end
 

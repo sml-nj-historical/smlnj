@@ -42,25 +42,38 @@ structure Date : DATE =
 	val monthTbl = #[Jan, Feb, Mar, Apr, May, Jun, Jul, 
 			 Aug, Sep, Oct, Nov, Dec]
 
-	fun dayToInt (d) = (case d
-				of Sun => 0 | Mon => 1 | Tue => 2 | Wed => 3
-			      | Thu => 4 | Fri => 5 | Sat => 6
-	(* end case *))
+	fun dayToInt Sun = 0
+	  | dayToInt Mon = 1
+	  | dayToInt Tue = 2
+	  | dayToInt Wed = 3
+	  | dayToInt Thu = 4
+	  | dayToInt Fri = 5
+	  | dayToInt Sat = 6
 
 	(* careful about this: the month numbers are 0-11 *)
-	fun monthToInt m = (case m
-				of Jan => 0 | Feb => 1 | Mar => 2 | Apr => 3 | May => 4 | Jun => 5
-			      | Jul => 6 | Aug => 7 | Sep => 8 | Oct => 9 | Nov => 10 | Dec => 11
-	(* end case *))
+	fun monthToInt Jan = 0
+	  | monthToInt Feb = 1
+	  | monthToInt Mar = 2
+	  | monthToInt Apr = 3
+	  | monthToInt May = 4
+	  | monthToInt Jun = 5
+	  | monthToInt Jul = 6
+	  | monthToInt Aug = 7
+	  | monthToInt Sep = 8
+	  | monthToInt Oct = 9
+	  | monthToInt Nov = 10
+	  | monthToInt Doc = 11
 
-	(* the tuple type used to communicate with C; this 9-tuple has the fields:
-	 * tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday,
-	 * and tm_isdst.
+	(* the tuple type used to communicate with C; this 9-tuple has the
+	 * fields:
+	 *   tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year,
+	 *   tm_wday, tm_yday,
+	 *   tm_isdst.
 	 *)
 	type tm = (int * int * int * int * int * int * int * int * int)
 
-	(* wrap a C function call with a handler that maps SysErr exception into 
-	 * Date exceptions.
+	(* wrap a C function call with a handler that maps SysErr
+	 * exception into Date exceptions.
 	 *)
 	fun wrap f x = (f x) handle _ => raise Date
 
@@ -78,9 +91,9 @@ structure Date : DATE =
 	val strfTime : (string * tm) -> string
 	    = wrap (CInterface.c_function "SMLNJ-Date" "strfTime")
 
-	val localTime = localTime' o Int32.fromLarge
-	val gmTime = gmTime' o Int32.fromLarge
-	val mkTime = Int32.toLarge o mkTime'
+	val localTime = localTime' o Int32.fromLarge o Time.toSeconds
+	val gmTime = gmTime' o Int32.fromLarge o Time.toSeconds
+	val mkTime = Time.fromSeconds o Int32.toLarge o mkTime'
 
 	fun year (DATE{year, ...}) = year
 	fun month (DATE{month, ...}) = month
@@ -93,6 +106,29 @@ structure Date : DATE =
 	fun isDst (DATE{isDst, ...}) = isDst
 	fun offset (DATE{offset,...}) = offset
 
+	(* takes two tm's and returns the second tm with 
+	 * its dst flag set to the first one's.
+	 * Used to compute local offsets 
+	 *)
+	fun withDst dst (tm2 : tm) : tm=
+	    (#1 tm2, #2 tm2, #3 tm2, #4 tm2, #5 tm2, #6 tm2, #7 tm2, #8 tm2,
+	     dst)
+
+	fun dstOf (tm : tm) = #9 tm
+
+	fun localOffset' () = let
+	    val t = Int32.fromLarge (Time.toSeconds (Time.now ()))
+	    val t_as_utc_tm = gmTime' t
+	    val t_as_loc_tm = localTime' t
+	    val loc_dst = dstOf t_as_loc_tm
+	    val t_as_utc_tm' = withDst loc_dst t_as_utc_tm
+	    val t' = mkTime' t_as_utc_tm'
+	    val time = Time.fromSeconds o Int32.toLarge
+	in
+	    (Time.- (time t', time t), loc_dst)
+	end
+
+	val localOffset = #1 o localOffset'
 
 	(* 
 	 * This code is taken from Reingold's paper
@@ -187,134 +223,190 @@ structure Date : DATE =
 				     (* end case *)
 				     )
 
-	fun fromTM (
-		    tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
-		    tm_year, tm_wday, tm_yday, tm_isdst
-		    ) offset = DATE{
-				    year = baseYear + tm_year,
-				    month = InlineT.PolyVector.sub(monthTbl, tm_mon),
-				    day = tm_mday,
-				    hour = tm_hour,
-				    minute = tm_min,
-				    second = tm_sec,
-				    wday = InlineT.PolyVector.sub(dayTbl, tm_wday),
-				    yday = tm_yday,
-				    isDst = if (tm_isdst < 0) then NONE else SOME(tm_isdst <> 0),
-				    offset = offset
-				    }
+	fun fromTM (tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
+		    tm_year, tm_wday, tm_yday, tm_isdst) offset =
+	    DATE { year = baseYear + tm_year,
+		   month = InlineT.PolyVector.sub (monthTbl, tm_mon),
+		   day = tm_mday,
+		   hour = tm_hour,
+		   minute = tm_min,
+		   second = tm_sec,
+		   wday = InlineT.PolyVector.sub (dayTbl, tm_wday),
+		   yday = tm_yday,
+		   isDst = if (tm_isdst < 0) then NONE
+			   else SOME(tm_isdst <> 0),
+		   offset = offset }
 
-	(* takes two tm's and returns the second tm with 
-	 * its dst flag set to the first one's.
-	 * Used to compute local offsets 
-	 *)
-	fun toSameDstTM ((tm_sec, tm_min, tm_hour, tm_mday, tm_mon,
-			  tm_year, tm_wday, tm_yday, tm_isdst),
-			 (tm_sec', tm_min', tm_hour', tm_mday', tm_mon',
-			  tm_year', tm_wday', tm_yday', tm_isdst')) = 
-	    (tm_sec', tm_min', tm_hour', tm_mday', tm_mon',
-	     tm_year', tm_wday', tm_yday', tm_isdst)
 
-	(* a diff is +/- seconds between local time and gmt
-	 * what to add to local time to get gmt
-	 *)
+	fun fromTimeLocal t = fromTM (localTime t) NONE
 
-	val secInDay : IntInf.int  = 60 * 60 * 24
-	val secInHDay : IntInf.int = 30 * 30 * 24
-(*
-	fun diffToOffset (d) =
-	    if (d<0) then Time.fromSeconds (secInDay+d)
-	    else Time.fromSeconds(d)
-*)
-	fun offsetToDiff (off) =
-	    let val s = Time.toSeconds (off)
-	    in
-		if (s>secInHDay) then secInHDay-s else s
-	    end
-
-	(* 
-	 * this function is meant as an analogue to 
-	 * mkTime, but constructs UTC time instead of localtime
-	 * idea:  mkTime (localtime(t))= t
-	 *        mkGMTime (gmtime(t))= t
-	 *)
-
-	fun localDiff (tm) = 
-	    let val t = mkTime (tm)
-		val loc = localTime (t)
-		val gmt = gmTime (t)
-	    in
-		mkTime (toSameDstTM(loc,gmt)) - mkTime(loc)
-	    end
-
-	fun mkGMTime (tm) = mkTime (toSameDstTM (localTime(mkTime(tm)),tm)) -
-	    localDiff (tm) 
-
-	fun toSeconds (d) = 
-	    let val tm = toTM (d)
-	    in
-		case (offset d) of
-		    NONE => mkTime (tm)
-		  | SOME (offsetV) =>
-		      mkGMTime (tm) + offsetToDiff (offsetV)
-	    end
-
-	val toTime = Time.fromSeconds o toSeconds
-
-	fun fromTimeLocal (t) =
-	    fromTM (localTime (Time.toSeconds (t))) NONE
+	fun fromTimeUniv t = fromTM (gmTime t) (SOME Time.zeroTime)
 
 	fun fromTimeOffset (t, offset) =
-	    fromTM (gmTime (Time.toSeconds (t) - Time.toSeconds(offset)))
-	    (SOME offset)
+	    fromTM (gmTime (Time.- (t, offset))) (SOME offset)
 
-	fun fromTimeUniv (t) = fromTimeOffset (t,Time.zeroTime)
+	val day_seconds = IntInfImp.fromInt (24 * 60 * 60)
+	val hday_seconds = IntInfImp.fromInt (12 * 60 * 60)
 
-	fun date {year,month,day,hour,minute,second,offset} = 
-	    let val d = DATE {second = second,
-			      minute = minute,
-			      hour = hour,
-			      year = year,
-			      month = month, 
-			      day = day,
-			      offset = offset,
-			      isDst = NONE,
-			      yday = 0,
-			      wday = Mon}
-		val canonicalDate = canonicalizeDate (d)
-		fun internalDate () = 
-		    (case (offset) of
-			 NONE => fromTimeLocal (toTime canonicalDate)
-		       | SOME (offsetV) => fromTimeOffset (toTime canonicalDate,
-							   offsetV))
+	fun canonicalOffset off = let
+	    val offs = Time.toSeconds off
+	    val offs' = offs mod day_seconds
+	    val offs'' = if offs' > hday_seconds then offs' - day_seconds
+			 else offs'
+	in
+	    Time.fromSeconds offs''
+	end
+
+	fun toTime d = let
+	    val tm = toTM d
+	in
+	    case offset d of
+		NONE => mkTime tm
+	      | SOME tm_utc_off => let
+		    val tm_utc_off = canonicalOffset tm_utc_off
+		    val (loc_utc_off, loc_dst) = localOffset' ()
+		    (* time west of here *)
+		    val tm_loc_off = Time.- (tm_utc_off, loc_utc_off)
+		in
+		    (* pretend tm refers to local time, then subtract
+		     * difference between dest. and local time *)
+		    Time.- (mkTime (withDst loc_dst tm), tm_loc_off)
+		end
+	end
+
+	fun date { year, month, day, hour, minute, second, offset } = let
+	    val d = DATE { second = second,
+			   minute = minute,
+			   hour = hour,
+			   year = year,
+			   month = month, 
+			   day = day,
+			   offset = offset,
+			   isDst = NONE,
+			   yday = 0,
+			   wday = Mon }
+	    val canonicalDate = canonicalizeDate d
+	    fun internalDate () =
+		case offset of
+		    NONE => fromTimeLocal (toTime canonicalDate)
+		  | SOME off => fromTimeOffset (toTime canonicalDate, off)
 	    in
 		internalDate () handle Date => d
 	    end
 
 	fun toString d = ascTime (toTM d)
-	    
 	fun fmt fmtStr d = strfTime (fmtStr, toTM d)
-	    
-	(**
-val fromString : string -> date option
-val scan       : (getc : (char, 'a) StringCvt.reader) -> 'a -> (date * 'a) option
-	 **)
 
+	fun scan getc s = let
+
+	    fun getword s = StringCvt.splitl Char.isAlpha getc s
+
+	    fun expect c s f =
+		case getc s of
+		    NONE => NONE
+		  | SOME (c', s') => if c = c' then f s' else NONE
+
+	    fun getdig s =
+		case getc s of
+		    NONE => NONE
+		  | SOME (c, s') =>
+		      if Char.isDigit c then
+			  SOME (Char.ord c - Char.ord #"0", s')
+		      else NONE
+
+	    fun get2dig s =
+		case getdig s of
+		    SOME (c1, s') =>
+		      (case getdig s' of
+			   SOME (c2, s'') => SOME (10 * c1 + c2, s'')
+			 | NONE => NONE)
+		  | NONE => NONE
+
+	    fun year0 (wday, mon, d, hr, mn, sc) s =
+		case IntImp.scan StringCvt.DEC getc s of
+		    NONE => NONE
+		  | SOME (yr, s') =>
+		      (SOME (date { year = yr,
+				    month = mon,
+				    day = d, hour = hr,
+				    minute = mn, second = sc,
+				    offset = NONE },
+			     s')
+		       handle _ => NONE)
+
+	    fun year args s = expect #" " s (year0 args)
+
+	    fun second0 (wday, mon, d, hr, mn) s =
+		case get2dig s of
+		    NONE => NONE
+		  | SOME (sc, s') => year (wday, mon, d, hr, mn, sc) s'
+
+	    fun second args s = expect #":" s (second0 args)
+
+	    fun minute0 (wday, mon, d, hr) s =
+		case get2dig s of
+		    NONE => NONE
+		  | SOME (mn, s') => second (wday, mon, d, hr, mn) s'
+
+	    fun minute args s = expect #":" s (minute0 args)
+
+	    fun time0 (wday, mon, d) s =
+		case get2dig s of
+		    NONE => NONE
+		  | SOME (hr, s') => minute (wday, mon, d, hr) s'
+
+	    fun time args s = expect #" " s (time0 args)
+
+	    fun mday0 (wday, mon) s =
+		case get2dig s of
+		    NONE => NONE
+		  | SOME (d, s') => time (wday, mon, d) s'
+
+	    fun mday args s = expect #" " s (mday0 args)
+
+	    fun month0 wday s =
+		case getword s of
+		    ("Jan", s') => mday (wday, Jan) s'
+		  | ("Feb", s') => mday (wday, Feb) s'
+		  | ("Mar", s') => mday (wday, Mar) s'
+		  | ("Apr", s') => mday (wday, Apr) s'
+		  | ("May", s') => mday (wday, May) s'
+		  | ("Jun", s') => mday (wday, Jun) s'
+		  | ("Jul", s') => mday (wday, Jul) s'
+		  | ("Aug", s') => mday (wday, Aug) s'
+		  | ("Sep", s') => mday (wday, Sep) s'
+		  | ("Oct", s') => mday (wday, Oct) s'
+		  | ("Nov", s') => mday (wday, Nov) s'
+		  | ("Dec", s') => mday (wday, Dec) s'
+		  | _ => NONE
+
+	    fun month wday s = expect #" " s (month0 wday)
+
+	    fun wday s =
+		case getword s of
+		    ("Sun", s') => month Sun s'
+		  | ("Mon", s') => month Mon s'
+		  | ("Tue", s') => month Tue s'
+		  | ("Wed", s') => month Wed s'
+		  | ("Thu", s') => month Thu s'
+		  | ("Fri", s') => month Fri s'
+		  | ("Sat", s') => month Sat s'
+		  | _ => NONE
+	in
+	    wday s
+	end
+
+	fun fromString s = StringCvt.scanString scan s
 
 	(* comparison does not take into account the offset
 	 * thus, it does not compare dates in different time zones
 	 *)
-	fun compare (DATE d1, DATE d2) = let
-					     fun cmp (i1::r1, i2::r2) =
-						 if (i1 < i2) then LESS
-						 else if (i1 = i2) then cmp (r1, r2)
-						      else GREATER
-					       | cmp _ = EQUAL
-					 in
-					     cmp (
-						  [#year d1, monthToInt(#month d1), #day d1, #hour d1, #minute d1, #second d1],
-						  [#year d2, monthToInt(#month d2), #day d2, #hour d2, #minute d2, #second d2])
-					 end
+	fun compare (d1, d2) = let
+	    fun list (DATE { year, month, day, hour, minute, second, ... }) =
+		[year, monthToInt month, day, hour, minute, second]
+	in
+	    List.collate Int.compare (list d1, list d2)
+	end
       
-    end
+  end
 end
-

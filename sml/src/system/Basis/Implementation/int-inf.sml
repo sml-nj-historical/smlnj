@@ -260,40 +260,21 @@ structure IntInfImp :> INT_INF = struct
 	    end
 
     fun startscan (doit, hex) getchar s = let
-
-	fun skipHexPrefix (neg, #"0", s) =
-	      (case getchar s of
-		   SOME ((#"x" | #"X"), s') =>
-		     (case getchar s' of
-			  NONE => doit (neg, #"0", s)
-			| SOME (c, s'') => doit (neg, c, s''))
-		 | _ => doit (neg, #"0", s))
-	  | skipHexPrefix arg = doit arg
-
-	val doPrefix =
-	    if hex then skipHexPrefix
-	    else doit
-
-	fun checkSign (c, s) = let
-	    fun next neg =
-		case getchar s of
-		    NONE => NONE
-		  | SOME (c, s') => doPrefix (neg, c, s')
-	in
-	    case c of
-		(#"~" | #"-") => next true
-	      | #"+" => next false
-	      | _ => doPrefix (false, c, s)
-	end
-
-	fun whiteloop s =
+	fun hexprefix (neg, s) =
+	    case getchar s of
+		SOME ((#"x" | #"X"), s') => doit (neg, s')
+	      | _ => doit (neg, s)
+	fun prefix (neg, s) =
+	    if hex then hexprefix (neg, s)
+	    else doit (neg, s)
+	fun sign s =
 	    case getchar s of
 		NONE => NONE
-	      | SOME (c, s') =>
-		  if Char.isSpace c then whiteloop s'
-		  else checkSign (c, s')
+	      | SOME ((#"-" | #"~"), s') => prefix (true, s')
+	      | SOME (#"+", s') => prefix (false, s')
+	      | _ => prefix (false, s)
     in
-	whiteloop s
+	sign (StringCvt.skipWS getchar s)
     end
 
     fun bitscan (bits, digVal, hex) getchar s = let
@@ -301,7 +282,7 @@ structure IntInfImp :> INT_INF = struct
 	fun dcons (0w0, []) = []
 	  | dcons (x, xs) = x :: xs
 
-	fun checkFirstDigit (neg, c, s) = let
+	fun checkFirstDigit (neg, s) = let
 	    val pos0 = CoreIntInf.baseBits - bits
 	    val maxVal = CoreIntInf.maxDigit
 
@@ -335,9 +316,12 @@ structure IntInfImp :> INT_INF = struct
 				      nat, s'))
 	    end
 	in
-	    case digVal c of
-		SOME v => digloop (v << pos0, pos0, [], s)
-	      | NONE => NONE
+	    case getchar s of
+		NONE => NONE
+	      | SOME (c, s') =>
+		  (case digVal c of
+		       SOME v => digloop (v << pos0, pos0, [], s')
+		     | NONE => NONE)
 	end
 				   
     in
@@ -383,10 +367,13 @@ structure IntInfImp :> INT_INF = struct
 	      | NONE => done ()
 	end
 
-	fun checkFirstDigit (negative, c, s) =
-	    case digVal c of
-		SOME v => digloop (negative, [], 0w10, v, s)
-	      | NONE => NONE
+	fun checkFirstDigit (negative, s) =
+	    case getchar s of
+		NONE => NONE
+	      | SOME (c, s') =>
+		  (case digVal c of
+		       SOME v => digloop (negative, [], 0w10, v, s')
+		     | NONE => NONE)
     in
 	startscan (checkFirstDigit, false) getchar s
     end

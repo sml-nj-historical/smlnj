@@ -8,8 +8,16 @@ functor PrimIO (
 
     structure Vector : MONO_VECTOR
     structure Array : MONO_ARRAY
-      sharing type Vector.vector = Array.vector
-      sharing type Vector.elem = Array.elem
+      where type vector = Vector.vector
+      where type elem = Vector.elem
+    structure VectorSlice : MONO_VECTOR_SLICE
+      where type vector = Vector.vector
+      where type elem = Vector.elem
+    structure ArraySlice : MONO_ARRAY_SLICE
+      where type elem = Vector.elem
+      where type array = Array.array
+      where type vector = Vector.vector
+      where type vector_slice = VectorSlice.slice
     val someElem : Vector.elem
     eqtype pos
     val compare : (pos * pos) -> order
@@ -17,7 +25,9 @@ functor PrimIO (
   ) : PRIM_IO = struct
 
     structure A = Array
+    structure AS = ArraySlice
     structure V = Vector
+    structure VS = VectorSlice
 
     type elem = A.elem
     type vector = V.vector
@@ -71,13 +81,13 @@ functor PrimIO (
 		val a = A.array(n, someElem)
 		val n = reada{buf=a, i=0, sz=NONE}
 		in
-		  A.extract(a, 0, SOME n)
+	          AS.vector (AS.slice (a, 0, SOME n))
 		end
 	  fun readaToReadvNB readaNB n = let
 		val a = A.array(n, someElem)
 		in
 		  case readaNB{buf=a, i=0, sz=NONE}
-		   of SOME n' => SOME(A.extract(a, 0, SOME n'))
+		   of SOME n' => SOME(AS.vector (AS.slice(a, 0, SOME n')))
 		    | NONE => NONE  
 		  (* end case *)
 		end
@@ -86,7 +96,7 @@ functor PrimIO (
 		val v = readv nelems
 		val len = V.length v
 		in
-		  A.copyVec {dst=buf, di=i, src=v, si=0, len=NONE};
+		  A.copyVec {dst=buf, di=i, src=v};
 		  len
 		end
 	  fun readvToReadaNB readvNB {buf, i, sz} = let
@@ -96,7 +106,7 @@ functor PrimIO (
 		   of SOME v => let
 			val len = V.length v
 			in
-			  A.copyVec {dst=buf, di=i, src=v, si=0, len=NONE};
+			  A.copyVec {dst=buf, di=i, src=v};
 			  SOME len
 			end
 		    | NONE => NONE
@@ -152,7 +162,7 @@ functor PrimIO (
 
     fun augmentWriter (WR wr) = let
 	  fun writevToWritea writev {buf, i, sz} = let
-		val v = A.extract(buf, i, sz)
+		val v = AS.vector (AS.slice (buf, i, sz))
 		in
 		  writev{buf=v, i=0, sz=NONE}
 		end
@@ -164,7 +174,9 @@ functor PrimIO (
 		    | _ => let
 			val a = A.array(n, V.sub(buf, i))
 			in
-			  A.copyVec {dst=a, di=1, src=buf, si=i+1, len=SOME(n-1)};
+			  AS.copyVec { src = VS.slice (buf, i+1, SOME (n - 1)),
+				       dst = a,
+				       di = 1 };
 			  writea {buf=a, i=0, sz=NONE}
 			end
 		  (* end case *)
@@ -177,7 +189,9 @@ functor PrimIO (
 		    | _ => let
 			val a = A.array(n, V.sub(buf, i))
 			in
-			  A.copyVec {dst=a, di=1, src=buf, si=i+1, len=SOME(n-1)};
+			  AS.copyVec { src = VS.slice (buf, i+1, SOME (n-1)),
+				       dst = a,
+				       di = 1 };
 			  writeaNB {buf=a, i=0, sz=NONE}
 			end
 		  (* end case *)

@@ -75,7 +75,7 @@ structure Random : RANDOM =
             P.update (arr, 1, LW.fromInt (!index));
             P.update (arr, 2, Word31.toLargeWord (!congx));
             fill (0,3);
-            Byte.bytesToString (W8A.extract (arr, 0, NONE))
+            Byte.bytesToString (W8A.vector arr)
           end
 
     fun fromString s = let

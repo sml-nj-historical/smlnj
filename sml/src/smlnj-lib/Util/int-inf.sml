@@ -1037,20 +1037,5 @@ structure IntInf :> INT_INF =
     fun != (BI{sign=s1, digits=d1}, BI{sign=s2, digits=d2}) =
 	  (s1 <> s2) orelse BN.neq(d1, d2)
 
-    (* for testing *)
-    fun sg2b POS = false
-      | sg2b NEG = true
-    fun b2sg false = POS
-      | b2sg true = NEG
-
-    fun toInternal (BI { sign, digits }) =
-	CoreIntInf.abstract (CoreIntInf.BI { negative = sg2b sign,
-					     digits = digits })
-    fun fromInternal i =
-	let val CoreIntInf.BI { negative, digits } = CoreIntInf.concrete i
-	in
-	    BI { sign = b2sg negative, digits = digits }
-	end
-
   end (* structure IntInf *)
 

@@ -121,7 +121,15 @@ Graphs.cm:
 	../graphs/bellman-ford.sml
 	../graphs/bigraph.sig
 	../graphs/closed-semi-ring.sig
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+        ../graphs/orig-digraph.sml
+	../graphs/orig-node-priqueue.sml
+	../graphs/orig-udgraph.sml
+#else
 	../graphs/digraph.sml
+	../graphs/node-priqueue.sml
+	../graphs/udgraph.sml
+#endif
 	../graphs/dijkstra.sml
 	../graphs/floyd-warshall.sml
 	../graphs/johnson.sml
@@ -157,7 +165,6 @@ Graphs.cm:
 	../graphs/no-exit.sml
 	../graphs/node-partition.sml
 	../graphs/node-priqueue.sig
-	../graphs/node-priqueue.sml
 	../graphs/printgraph.sml
 	../graphs/readonly.sml
 	../graphs/renamegraph.sml
@@ -175,7 +182,6 @@ Graphs.cm:
 	../graphs/ugraph.sml
 	../graphs/uniongraph.sml
 	../graphs/wrappers.sml
-	../graphs/udgraph.sml
 	../graphs/update-graph-info.sml
 
 HPPA.cm:
@@ -288,7 +294,11 @@ IA32.cm:
 	../x86/mltree/x86.sml
 
 	(* Floating Point Code Generation/Optimization *)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+	../x86/mltree/orig-x86-fp.sml
+#else
 	../x86/mltree/x86-fp.sml
+#endif
 
 	(* register allocator *)
 	../x86/ra/x86RA.sml
@@ -453,7 +463,13 @@ Lib.cm:
 	../library/bitset.sml
 	../library/cache.sml
 	../library/catlist.sml
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+        ../library/orig-dynamic-array.sml
+	../library/orig-hash-array.sml
+#else
 	../library/dynamic-array.sml
+	../library/hash-array.sml
+#endif
 (*
 	../library/dynamic-bitset.sml
 	../library/fixed-point.sig
@@ -461,7 +477,6 @@ Lib.cm:
  *)
 	../library/freq.sig
 	../library/freq.sml
-	../library/hash-array.sml
 (*
 	../library/hash-table.sig
 	../library/hash-table.sml

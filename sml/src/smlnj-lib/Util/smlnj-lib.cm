@@ -231,6 +231,3 @@ uref.sml
 word-hash-table.sml
 word-redblack-map.sml
 word-redblack-set.sml
-
-(* for testing intinf stuff *)
-$smlnj/init/init.cmi : cm

@@ -11,13 +11,21 @@ structure CharVector : MONO_VECTOR =
 
     structure String = StringImp
 
+    (* fast add/subtract avoiding the overflow test *)
+    infix -- ++
+    fun x -- y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x -
+					     InlineT.Word31.copyf_int31 y)
+    fun x ++ y = InlineT.Word31.copyt_int31 (InlineT.Word31.copyf_int31 x +
+					     InlineT.Word31.copyf_int31 y)
+
+(*
     val (op <)  = InlineT.DfltInt.<
     val (op >=) = InlineT.DfltInt.>=
     val (op +)  = InlineT.DfltInt.+
+*)
 
-  (* unchecked access operations *)
-    val unsafeUpdate = InlineT.CharVector.update
-    val unsafeSub = InlineT.CharVector.sub
+    val usub = InlineT.CharVector.sub
+    val uupd = InlineT.CharVector.update
 
     type elem = char
     type vector = string
@@ -28,107 +36,122 @@ structure CharVector : MONO_VECTOR =
 
     fun tabulate (0, _) = ""
       | tabulate (n, f) = let
-	  val _ = if (InlineT.DfltInt.ltu(maxLen, n)) then raise General.Size else ()
+	  val _ = if (InlineT.DfltInt.ltu(maxLen, n)) then raise General.Size
+		  else ()
 	  val ss = Assembly.A.create_s n
-	  fun fill i = if (i < n)
-		then (unsafeUpdate(ss, i, f i); fill(i+1))
-		else ()
+	  fun fill i =
+	      if i < n then (uupd (ss, i, f i); fill (i ++ 1))
+	      else ()
 	  in
 	    fill 0; ss
 	  end
 
     val length   = InlineT.CharVector.length
     val sub      = InlineT.CharVector.chkSub
-
-    val extract  = String.extract
     val concat   = String.concat
 
+    fun update (v, i, x) = tabulate (length v,
+				     fn i' => if i = i' then x
+					      else usub (v, i'))
+
+    fun appi f vec = let
+	val len = length vec
+	fun app i =
+	    if i >= len then () else (f (i, usub (vec, i)); app (i ++ 1))
+    in
+	app 0
+    end
+
     fun app f vec = let
-	  val len = length vec
-	  fun app i = if (i < len)
-		then (f (unsafeSub(vec, i)); app(i+1))
-		else ()
-	  in
-	    app 0
-	  end
+	val len = length vec
+	fun app i =
+	    if i >= len then () else (f (usub (vec, i)); app (i ++ 1))
+    in
+	app 0
+    end
+
+    fun mapi f vec = tabulate (length vec, fn i => f (i, usub (vec, i)))
 
     val map = String.map
 
+    fun foldli f init vec = let
+	val len = length vec
+	fun fold (i, a) =
+	    if i >= len then a else fold (i ++ 1, f (i, usub (vec, i), a))
+    in
+	fold (0, init)
+    end
+
+    fun foldri f init vec = let
+	fun fold (i, a) =
+	    if i < 0 then a else fold (i -- 1, f (i, usub (vec, i), a))
+    in
+	fold (length vec -- 1, init)
+    end
+
     fun foldl f init vec = let
-	  val len = length vec
-	  fun fold (i, accum) = if (i < len)
-		then fold (i+1, f (unsafeSub(vec, i), accum))
-		else accum
-	  in
-	    fold (0, init)
-	  end
+	val len = length vec
+	fun fold (i, a) =
+	    if i >= len then a else fold (i ++ 1, f (usub (vec, i), a))
+    in
+	fold (0, init)
+    end
 
     fun foldr f init vec = let
-	  fun fold (i, accum) = if (i >= 0)
-		then fold (i-1, f (unsafeSub(vec, i), accum))
-		else accum
-	  in
-	    fold (length vec - 1, init)
-	  end
+	fun fold (i, a) =
+	    if i < 0 then a else fold (i -- 1, f (usub (vec, i), a))
+    in
+	fold (length vec -- 1, init)
+    end
 
-    fun chkSlice (vec, i, NONE) = let val len = length vec
-	  in
-	    if (InlineT.DfltInt.ltu(len, i))
-	      then raise Subscript
-	      else (vec, i, len)
-	  end
-      | chkSlice (vec, i, SOME n) = let val len = length vec
-	  in
-	    if ((0 <= i) andalso (0 <= n) andalso (i+n <= len))
-	      then (vec, i, i+n)
-	      else raise Subscript
-	  end
+    fun findi p vec = let
+	val len = length vec
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = usub (vec, i)
+		 in
+		     if p (i, x) then SOME (i, x) else fnd (i ++ 1)
+		 end
+    in
+	fnd 0
+    end
 
-    fun appi f slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  fun app i = if (i < stop)
-		then (f (i, unsafeSub(vec, i)); app(i+1))
-		else ()
-	  in
-	    app start
-	  end
+    fun find p vec = let
+	val len = length vec
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = usub (vec, i)
+		 in
+		     if p x then SOME x else fnd (i ++ 1)
+		 end
+    in
+	fnd 0
+    end
 
-    fun mapi f slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  in
-	    case (stop - start)
-	     of 0 => ""
-	      | len => let
-		  val newVec = Assembly.A.create_s len
-		  fun mapf (i, j) = if (i < len)
-			then (
-			  unsafeUpdate(newVec, i, f(j, unsafeSub(vec, j)));
-			  mapf(i+1, j+1))
-			else ()
-		  in
-		    mapf (0, start); newVec
-		  end
-	    (* end case *)
-	  end
+    fun exists p vec = let
+	val len = length vec
+	fun ex i = i < len andalso (p (usub (vec, i)) orelse ex (i ++ 1))
+    in
+	ex 0
+    end
 
-    fun foldli f init slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i < stop)
-		then fold (i+1, f (i, unsafeSub(vec, i), accum))
-		else accum
-	  in
-	    fold (start, init)
-	  end
+    fun all p vec = let
+	val len = length vec
+	fun al i = i >= len orelse (p (usub (vec, i)) andalso al (i ++ 1))
+    in
+	al 0
+    end
 
-    fun foldri f init slice = let
-	  val (vec, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
-		then fold (i-1, f (i, unsafeSub(vec, i), accum))
-		else accum
-	  in
-	    fold (stop - 1, init)
-	  end
-
+    fun collate c (v1, v2) = let
+	val l1 = length v1
+	val l2 = length v2
+	val l12 = InlineT.Int31.min (l1, l2)
+	fun col i =
+	    if i >= l12 then IntImp.compare (l1, l2)
+	    else case c (usub (v1, i), usub (v2, i)) of
+		     EQUAL => col (i ++ 1)
+		   | unequal => unequal
+    in
+	col 0
+    end
   end (* CharVector *)
-
-

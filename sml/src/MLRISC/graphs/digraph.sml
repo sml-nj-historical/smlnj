@@ -42,7 +42,7 @@ struct
        fun garbage_collect () =
           (new_nodes := (!new_nodes) @ (!garbage_nodes); garbage_nodes := [])
        fun get_nodes() =
-          A.foldri(fn(i,SOME n,l) =>(i,n)::l|(_,_,l) => l) [] (nodes,0,NONE)
+          A.foldri(fn(i,SOME n,l) =>(i,n)::l|(_,_,l) => l) [] nodes
        fun get_edges() = List.concat(A.foldr op:: [] succ)
        fun order() = !node_count
        fun size()  = !edge_count
@@ -113,7 +113,7 @@ struct
                             SOME x => x 
                           | NONE => raise G.NotFound
        fun forall_nodes f = 
-           A.appi (fn (i,SOME x) => f(i,x) | _ => ()) (nodes,0,NONE)
+           A.appi (fn (i,SOME x) => f(i,x) | _ => ()) nodes
        fun forall_edges f = A.app (List.app f) succ
 
    in  G.GRAPH {

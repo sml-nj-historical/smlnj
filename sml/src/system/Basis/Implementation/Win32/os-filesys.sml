@@ -57,10 +57,12 @@ structure OS_FileSys : OS_FILE_SYS =
 
 	fun readDir (DS{isOpen=ref false,...}) = 
 	    rse "readDir" "stream not open"
-	  | readDir (DS{nextFile=ref NONE,...}) = ""
+	  | readDir (DS{nextFile=ref NONE,...}) = NONE
 	  | readDir (DS{hndlptr,nextFile=nF as ref (SOME name),...}) =
 	    (nF := W32FS.findNextFile (!hndlptr);
-	     name)
+	     case name of
+		 "" => NONE
+	       | _ => SOME name)
 	val readDir = (* OSPath.mkCanonical o *) readDir
 
 	fun closeDir (DS{isOpen=ref false,...}) = ()

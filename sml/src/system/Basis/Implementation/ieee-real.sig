@@ -37,6 +37,8 @@ signature IEEE_REAL =
 
     val toString   : decimal_approx -> string
     val fromString : string -> decimal_approx option
+    val scan : (char, 'a) StringCvt.reader ->
+	       (decimal_approx, 'a) StringCvt.reader
 
   end;
 

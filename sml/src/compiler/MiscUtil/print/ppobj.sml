@@ -196,7 +196,7 @@ fun transMembers(stamps: Stamps.stamp vector,
 				       stamps=stamps, freetycs=freetycs,
 				       root=root, family=family},
 		       stub = NONE } :: l
-     in (Vector.foldri dtmemberToTycon nil (members,0,NONE), 
+     in (Vector.foldri dtmemberToTycon nil members,
          freetycs)
     end
 

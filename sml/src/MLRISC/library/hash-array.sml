@@ -24,10 +24,6 @@ struct
 
     val maxLen   = A.maxLen
 
-    exception HashArrayUnimplemented
-
-    fun unimplemented _ = raise HashArrayUnimplemented
-
     fun array(n,d) = ARRAY(ref(A.array(16,[])),V d,ref n,ref 0)
     fun array'(n,f) = ARRAY(ref(A.array(16,[])),F f,ref n,ref 0)
     fun array''(n,f) = ARRAY(ref(A.array(16,[])),U f,ref n,ref 0)
@@ -39,7 +35,7 @@ struct
 
     fun copy_array(ARRAY(ref a,d,ref n,ref c)) = 
          let val a' = A.array(n,[])
-             val _  = A.copy{src=a,dst=a',si=0,di=0,len=NONE}
+             val _  = A.copy{src=a,dst=a',di=0}
          in  ARRAY(ref a',d,ref n,ref c)
          end
 
@@ -129,55 +125,61 @@ struct
     in  change(A.sub(a,pos),[])
     end
 
-    fun extract (a as ARRAY(_,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-        fun f(k,l) = if k < i then l else f(k-1,sub(a,k)::l)
-    in 
-        Vector.fromList(f(j-1,[]))
-    end
-
-    fun copy { src = src as ARRAY(_,_,ref n,_), si, len, dst, di } = 
-    let val j = case len of SOME len => si+len | NONE => n
-        fun f(k,k') = if k >= j then ()
-                      else (update(dst,k',sub(src,k)); f(k+1,k'+1))
-    in  f(si,di)
-    end
-
-    val copyVec = unimplemented
-
+    (* These seem bogus since they do not run in order *)
+    fun appi f (ARRAY(ref a,_,ref n,_)) = A.app (List.app f) a
     fun app f (ARRAY(ref a,_,_,_)) = A.app (List.app (fn (_,x) => f x)) a
+
+    fun copy { src, dst, di } =
+	appi (fn (i, x) => update (dst, i, x)) src
+
+    fun copyVec { src, dst, di } =
+	Vector.appi (fn (i, x) => update (dst, di + i, x)) src
+
+    (* These seem bogus since they do not run in order *)
+    fun foldli f e (ARRAY(ref a,_,_,_)) =
+	A.foldl (fn (l, e) => List.foldl (fn ((i,x),e) => f (i,x,e)) e l) e a
+    fun foldri f e (ARRAY(ref a,_,_,_)) =
+	A.foldr (fn (l, e) => List.foldr (fn ((i,x),e) => f (i,x,e)) e l) e a
+
     fun foldl f e (ARRAY(ref a,_,_,_)) =
        A.foldl (fn (l,e) => List.foldl (fn ((_,x),e) => f(x,e)) e l) e a
     fun foldr f e (ARRAY(ref a,_,_,_)) =
        A.foldr (fn (l,e) => List.foldr (fn ((_,x),e) => f(x,e)) e l) e a
 
+    fun modifyi f (ARRAY(ref a,_,_,_)) =
+	A.modify (List.map (fn (i,x) => (i, f (i, x)))) a
+
     fun modify f (ARRAY(ref a,_,_,_)) =
        A.modify (List.map (fn (i,x) => (i,f x))) a 
 
-    fun appi f (ARRAY(ref a,_,ref n,_),i,j) =
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.app (List.app 
-           (fn (k,x) => if k >= i andalso k < j then f(k,x) else ())) a
-    end
-    fun foldli f e (ARRAY(ref a,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.foldl (fn (l,e) => List.foldl 
-           (fn ((k,x),e) => if k >= i andalso k < j then f(k,x,e) else e) e l) 
-           e a
-    end
-    fun foldri f e (ARRAY(ref a,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.foldr (fn (l,e) => List.foldr 
-           (fn ((k,x),e) => if k >= i andalso k < j then f(k,x,e) else e) e l) 
-           e a
-    end
     fun dom(ARRAY(ref a,_,_,_)) = 
        A.foldl (fn (e,l) => List.foldr (fn ((i,_),l) => i::l) l e) [] a
 
-    fun modifyi f (ARRAY(ref a,_,ref n,_),i,j) =
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.modify (List.map(fn (k,x) => if k >= i andalso k < j then (k,f(k,x))
-                                       else (k,x))) a
+    fun findi p (ARRAY(ref a,_,_,_)) = let
+	val len = A.length a
+	fun fnd i =
+	    if i >= len then NONE
+	    else case List.find p (A.sub (a, i)) of
+		     NONE => fnd (i + 1)
+		   | some => some
+    in
+	fnd 0
     end
-end
 
+    fun find p (ARRAY(ref a,_,_,_)) = let
+	val len = A.length a
+	fun fnd i =
+	    if i >= len then NONE
+	    else case List.find (p o #2) (A.sub (a, i)) of
+		     NONE => fnd (i + 1)
+		   | SOME (_, x) => SOME x
+    in
+	fnd 0
+    end
+
+    fun exists p arr = isSome (find p arr)
+    fun all p arr = not (isSome (find (not o p) arr))
+    fun collate _ _ = raise Fail "HashArray.collate unimplemented"
+
+    fun vector arr = Vector.fromList (rev (foldl op :: [] arr))
+end

@@ -142,7 +142,7 @@ structure TxtWin : TXTWIN = struct
         end
 
         fun redraw (p, on_off) = (
-          text (PT{x=0,y=fonta}, CA.extract (buf, 0, NONE));
+          text (PT{x=0,y=fonta}, CA.vector buf);
 	        if on_off then cursor_on p else ()
         )
 

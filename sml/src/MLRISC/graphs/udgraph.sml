@@ -24,11 +24,11 @@ struct
        fun garbage_collect () =
           (new_nodes := (!new_nodes) @ (!garbage_nodes); garbage_nodes := [])
        fun get_nodes() =
-          A.foldri(fn(i,SOME n,l) =>(i,n)::l|(_,_,l) => l) [] (nodes,0,NONE)
+          A.foldri(fn(i,SOME n,l) =>(i,n)::l|(_,_,l) => l) [] nodes
        fun get_edges() = 
           A.foldri(fn (i,es,L) => foldr (fn ((j,e),L) => 
                 if i <= j then (i,j,e)::L else L) L es)
-              [] (adj,0,NONE)
+              [] adj
        fun order() = !node_count
        fun size()  = !edge_count
        fun capacity() = A.length nodes
@@ -77,10 +77,10 @@ struct
                             SOME x => x 
                           | NONE => raise G.NotFound
        fun forall_nodes f = 
-           A.appi (fn (i,SOME x) => f(i,x) | _ => ()) (nodes,0,NONE)
+           A.appi (fn (i,SOME x) => f(i,x) | _ => ()) nodes
        fun forall_edges f = A.appi (fn (i,es) => 
              app (fn (j,e) => if i <= j then f(i,j,e) else ()) es)
-                               (adj,0,NONE)
+                               adj
        fun none _ = []
 
    in  G.GRAPH {

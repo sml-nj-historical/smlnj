@@ -211,11 +211,6 @@ structure Real64Imp : REAL =
 	if negative then ~m else m
     end
 
-(*
-      (* bug: doesn't support full range of large ints *)
-    fun toLargeInt mode x = IntInfImp.fromInt(toInt mode x)
-*)
-
   (* whole and split could be implemented more efficiently if we had
    * control over the rounding mode; but for now we don't.
    *)
@@ -330,21 +325,6 @@ structure Real64Imp : REAL =
 			 IntInfImp.<< (iman, InlineT.Word31.copyf_int31 exp)
 		     end
 	     end
-(*
-(** NOTE logb and scalb are also defined in math64.sml; do we need both??? **)
-    fun logb x = (case Assembly.A.logb x
-	   of ~1023 => (* denormalized number *)
-		Assembly.A.logb(x * two_to_the_54) - 54
-	    | i => i
-	  (* end case *))
-
-    fun scalb (x, k) = if I.ltu (k+1022,2046)
-	  then Assembly.A.scalb(x,k)
-          else let val k1 = k div 2
-	    in
-	      scalb(scalb(x, k1), k - k1)
-	    end
-*)
   
     fun nextAfter _ = raise Fail "Real.nextAfter unimplemented"
 

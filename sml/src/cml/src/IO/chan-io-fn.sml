@@ -6,9 +6,12 @@
 functor ChanIOFn (
     structure PrimIO : PRIM_IO
     structure V : MONO_VECTOR
+    structure VS : MONO_VECTOR_SLICE
     structure A : MONO_ARRAY
-      sharing type A.array = PrimIO.array
-      sharing type A.vector = V.vector = PrimIO.vector
+    structure AS : MONO_ARRAY_SLICE
+      sharing type A.array = AS.array = PrimIO.array
+      sharing type A.vector = V.vector = AS.vector = VS.vector = PrimIO.vector
+      sharing type VS.slice = AS.vector_slice
   ) : sig
 
     structure PrimIO : PRIM_IO
@@ -21,6 +24,9 @@ functor ChanIOFn (
     structure SV = SyncVar
 
     structure PrimIO = PrimIO
+
+    val vextract = VS.vector o VS.slice
+    val aextract = AS.vector o AS.slice
 
   (* create a reader that is connected to the output port of a channel. *)
     fun mkReader ch = let
@@ -60,7 +66,7 @@ functor ChanIOFn (
 		      (* end case *))
 		in
 		  CML.wrap (readVecEvt n, fn v => (
-		    A.copyVec{dst=buf, di=i, src=v, si=0, len=NONE};
+		    A.copyVec{dst=buf, di=i, src=v};
 		    V.length v))
 		end
 	  fun close () = Mailbox.send(reqCh, CLOSE)
@@ -76,12 +82,13 @@ functor ChanIOFn (
 		      in
 			if (V.length v > n)
 			  then let
-			    val v' = V.extract(v, 0, SOME n)
+			    val v' = vextract (v, 0, SOME n)
 			    in
 			      CML.select [
 				  CML.wrap (nack, fn () => server(SOME v)),
 				  CML.wrap (CML.sendEvt(replCh, v),
-				    fn () => server(SOME(V.extract(v, n, NONE))))
+				    fn () =>
+				       server(SOME(vextract(v, n, NONE))))
 				]
 			    end
 			  else CML.select [
@@ -124,14 +131,14 @@ functor ChanIOFn (
 		  closedEvt
 		]
 	  fun msg extract {buf, i, sz} = extract(buf, i, sz)
-	  fun writeVecEvt arg = let val v = msg V.extract arg
+	  fun writeVecEvt arg = let val v = msg vextract arg
 		in
 		  CML.choose [
 		      closedEvt,
 		      CML.wrap (CML.sendEvt (ch', v), fn () => V.length v)
 		    ]
 		end
-	  fun writeArrEvt arg = let val v = msg A.extract arg
+	  fun writeArrEvt arg = let val v = msg aextract arg
 		in
 		  CML.choose [
 		      closedEvt,

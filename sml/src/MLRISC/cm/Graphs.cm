@@ -114,7 +114,15 @@ is
 	../graphs/bellman-ford.sml
 	../graphs/bigraph.sig
 	../graphs/closed-semi-ring.sig
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION < 11042
+        ../graphs/orig-digraph.sml
+	../graphs/orig-node-priqueue.sml
+	../graphs/orig-udgraph.sml
+#else
 	../graphs/digraph.sml
+	../graphs/node-priqueue.sml
+	../graphs/udgraph.sml
+#endif
 	../graphs/dijkstra.sml
 	../graphs/floyd-warshall.sml
 	../graphs/johnson.sml
@@ -150,7 +158,6 @@ is
 	../graphs/no-exit.sml
 	../graphs/node-partition.sml
 	../graphs/node-priqueue.sig
-	../graphs/node-priqueue.sml
 	../graphs/printgraph.sml
 	../graphs/readonly.sml
 	../graphs/renamegraph.sml
@@ -168,5 +175,4 @@ is
 	../graphs/ugraph.sml
 	../graphs/uniongraph.sml
 	../graphs/wrappers.sml
-	../graphs/udgraph.sml
 	../graphs/update-graph-info.sml

@@ -14,6 +14,47 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/09/04 16:30:00 CDT
+Tag: blume-20030928-slices-etc
+Description:
+
+  1. Changed interface to vectors and arrays in Basis to match
+     (draft) Basis spec.
+  2. Added signatures and implementations of slices according to
+     Basis spec.
+  3. Edited source code throughout the system to make it compile again
+     under 1. and 2.  (In some cases code had to be added to have it
+     match the new signatures.)
+  4. MLRISC should be backward-compatible: the copies of the originals
+     of files that needed to change under 3. were retained, the .cm files
+     check the compiler version number and use old versions when
+     appropriate.
+  5. Changed type of OS.FileSys.readDir and Posix.FileSys.readdir to
+     dirstream -> string option (in accordance with Basis spec).
+  6. When generating code that counts lines, ml-lex used function
+     CharVector.foldli, taking advantage of its old interface.
+     This has been replaced with the corresponding code from
+     CharVectorSlice.  (html-lex must be re-lexed!)
+  7. BitArray in smlnj-lib/Util has been extended/modified to match the
+     new MONO_ARRAY signature.  (Do we need BitArraySlice?)
+  8. Removed temporary additions (fromInternal, toInternal) from the
+     (now obsolete) IntInf in smlnj-lib/Util.
+  9. Cleaned up structure Byte.
+ 10. Added localOffset, scan, and fromString to Date (according to spec).
+     Cleaned/corrected implementation of Date.
+     (Still need to check for correctness; implement better canonicalizeDate.)
+ 11. Added "scan" to signature IEEE_REAL.
+ 12. Some improvements to IntInf [in particular: efficiency-hack for
+     mod and rem when second operand is 2 (for parity checks).]
+ 13. Changed representation of type Time.time, using a single IntInf.int
+     value counting microseconds.  This considerably simplified the
+     implementation of structure Time.  We now support negative time
+     values; scan and fromString handle signs.
+ 14. Functor PrimIO now takes two additional arguments (VectorSlice and
+     ArraySlice).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/08/28 17:00:00 CDT
 Tag: blume-20030828-intinf
 Description:

@@ -42,6 +42,9 @@ signature DATE =
 	(* return time west of UTC.  NONE is localtime, SOME(Time.zeroTime)
 	 * is UTC.
 	 *)
+    val localOffset : unit -> Time.time
+        (* offset from UTC for the local time zone
+	 *)
 
     val date : {
 	    year   : int,
@@ -72,10 +75,10 @@ signature DATE =
 
     val toString   : date -> string
     val fmt        : string -> date -> string
-(** not yet implemented **
+
     val fromString : string -> date option
-    val scan       : (char, 'a) StringCvt.reader -> (date, 'a) StringCvt.reader
-**)
+    val scan       : (char, 'a) StringCvt.reader ->
+		     (date, 'a) StringCvt.reader
 
     val compare : (date * date) -> order
 	(* returns the relative order of two dates. *)

@@ -11,6 +11,8 @@ structure TextWidget :> TEXT_WIDGET =
 
     open Geometry EXeneBase W
 
+    val caextract = CharArraySlice.vector o CharArraySlice.slice
+
     fun impossible (f,msg) = raise LibBase.Impossible("TextWidget."^f^": "^msg)
 
     datatype char_coord = ChrCrd of {col : int, row : int}
@@ -346,10 +348,10 @@ structure TextWidget :> TEXT_WIDGET =
        *)
 	fun explodeRow {text = TB{arr=text,...}, row, col, len} = (
 	      case (Array.sub(text, row))
-	       of TL(ba, []) => [CharArray.extract(ba, col, SOME len)]
+	       of TL(ba, []) => [caextract(ba, col, SOME len)]
 		| TL(ba, l) => let
 		    val endCol = col+len
-		    fun ext (col, len) = CharArray.extract(ba, col, SOME len)
+		    fun ext (col, len) = caextract(ba, col, SOME len)
 		    fun prefix [] = [ext (col, len)]
 		      | prefix ((c, n)::r) = let
 			  val endC = c+n

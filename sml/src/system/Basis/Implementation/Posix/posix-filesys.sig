@@ -22,7 +22,7 @@ signature POSIX_FILE_SYS =
     type dirstream
 
     val opendir   : string -> dirstream
-    val readdir   : dirstream -> string
+    val readdir   : dirstream -> string option
     val rewinddir : dirstream -> unit
     val closedir  : dirstream -> unit
 

@@ -139,7 +139,7 @@ structure POSIX_TTY =
               fun update (i, c) = WA.update(arr, i, B.charToByte c)
               in
                 List.app update l;
-                CC (WA.extract (arr, 0, NONE))
+                CC (WA.vector arr)
               end
 
         fun cc vals = mkCC (WA.array(nccs, 0w0), vals)

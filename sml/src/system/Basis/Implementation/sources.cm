@@ -1,7 +1,9 @@
 Group (../basis.cm)
 	signature ARRAY
+	signature ARRAY_SLICE
 	signature ARRAY2
 	signature VECTOR
+	signature VECTOR_SLICE
 	signature GENERAL
 	signature INTEGER
 	signature INT_INF
@@ -12,8 +14,10 @@ Group (../basis.cm)
 	signature STRING_CVT
 	signature LIST
 	signature MONO_ARRAY
+	signature MONO_ARRAY_SLICE
 	signature MONO_ARRAY2
 	signature MONO_VECTOR
+	signature MONO_VECTOR_SLICE
 	signature WORD
 	signature BYTE
 	signature COMMAND_LINE
@@ -64,12 +68,16 @@ Group (../basis.cm)
 
 	(* Basis *)
 	structure Vector
+	structure VectorSlice
 	structure General
 	structure StringCvt
+	structure CharVectorSlice
+	structure CharArraySlice
 	structure Text
 	structure List
 	structure ListPair
 	structure Array
+	structure ArraySlice
 	structure Array2
 	structure IEEEReal
 	structure IntImp
@@ -91,7 +99,9 @@ Group (../basis.cm)
 	structure Bool
 	structure Word8Imp
 	structure Word8Vector
+	structure Word8VectorSlice
 	structure Word8Array
+	structure Word8ArraySlice
 	structure SysWordImp
 	structure TimeImp
 	structure Timer
@@ -110,7 +120,9 @@ Group (../basis.cm)
 	structure TextPrimIO
 	structure Date
 	structure Real64Array
+	structure Real64ArraySlice
 	structure Real64Vector
+	structure Real64VectorSlice
 	structure SML90
 	structure ExnName
 
@@ -242,8 +254,10 @@ is
 
 	general.sig
 	array.sig
+	array-slice.sig
 	array2.sig
 	vector.sig
+	vector-slice.sig
 	integer.sig
 	bool.sig
 	char.sig
@@ -267,6 +281,7 @@ is
 	text.sml
 	general.sml
 	vector.sml
+	vector-slice.sml
 	string-cvt.sml
 	string.sml
 	char.sml
@@ -277,15 +292,22 @@ is
 	date.sml
 
 	mono-vector.sig
+	mono-vector-slice.sig
 	mono-array.sig
+	mono-array-slice.sig
 	mono-array2.sig
 
 	real64-vector.sml
+	real64-vector-slice.sml
 	real64-array.sml
+	real64-array-slice.sml
 
 	char-array.sml
+	char-array-slice.sml
 	char-vector.sml
+	char-vector-slice.sml
 	array.sml
+	array-slice.sml
 	array2.sml
 	ieee-real.sml
 	int31.sml
@@ -307,7 +329,9 @@ is
 	real-format.sml
 	word8.sml
 	word8-vector.sml
+	word8-vector-slice.sml
 	word8-array.sml
+	word8-array-slice.sml
 	time.sml
 	internal-timer.sml
 	timer.sml

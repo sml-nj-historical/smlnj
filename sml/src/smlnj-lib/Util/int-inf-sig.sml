@@ -27,9 +27,5 @@ signature INT_INF =
     val == : (int * int) -> bool
     val != : (int * int) -> bool
 
-  (* for testing *)
-    val fromInternal : CoreIntInf.intinf -> int
-    val toInternal : int -> CoreIntInf.intinf
-
   end (* signature INT_INF *)
 

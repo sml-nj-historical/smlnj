@@ -104,7 +104,7 @@ structure BitArray :> BIT_ARRAY =
                       end
                 in
                   (put(0,len-1)) handle _ => ();
-                  Byte.bytesToString (W8A.extract(buf,0,NONE))
+                  Byte.bytesToString (W8A.vector buf)
                 end
       
           fun bits (len,l) = let
@@ -556,7 +556,7 @@ structure BitArray :> BIT_ARRAY =
                        if i < last then loop (8,byte)
                        else loop (mask7 (nbits - 1) + 1, byte)
                 in
-                  W8A.appi f' (bits,0,NONE)
+                  W8A.appi f' bits
                 end
       
             (* FIX: Reimplement using W8A.foldi *)
@@ -594,8 +594,8 @@ structure BitArray :> BIT_ARRAY =
                   else len
       
             (* FIX: Reimplement using W8A.appi *)
-          fun appi f (BA{nbits=0,bits},_,_) = ()
-            | appi f (BA{nbits,bits},sbit,l) = let
+          fun appi' f (BA{nbits=0,bits},_,_) = ()
+            | appi' f (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 fun loop (_, 0) = ()
                   | loop (i, n) = let
@@ -609,7 +609,7 @@ structure BitArray :> BIT_ARRAY =
                 end
       
             (* FIX: Reimplement using W8A.foldi *)
-          fun foldli f a (BA{nbits,bits},sbit,l) = let
+          fun foldli' f a (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 val last = sbit+len
                 fun loop (i,a) =
@@ -624,7 +624,7 @@ structure BitArray :> BIT_ARRAY =
                 end
       
             (* FIX: Reimplement using W8A.foldr *)
-          fun foldri f a (BA{nbits,bits},sbit,l) = let
+          fun foldri' f a (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 fun loop (i,a) = 
                       if i < sbit then a
@@ -638,7 +638,7 @@ structure BitArray :> BIT_ARRAY =
                 end
       
             (* FIX: Reimplement using general-purpose copy *)
-          fun copy {src = src as BA{nbits,bits},si,len,dst,di} = let
+          fun copy' {src = src as BA{nbits,bits},si,len,dst,di} = let
                 val l = valid (nbits, si, len)
                 val BA{nbits=nbits',bits=bits'} = dst
                 val _ = if di < 0 orelse nbits' - di < l then raise Subscript
@@ -666,12 +666,12 @@ structure BitArray :> BIT_ARRAY =
                        if i < last then loop (8,byte,0w0,0w1)
                        else loop (mask7 (nbits - 1) + 1, byte,0w0,0w1)
                 in
-                  W8A.modifyi f' (bits,0,NONE)
+                  W8A.modifyi f' bits
                 end
       
             (* FIX: Reimplement using W8A.modifyi *)
-          fun modifyi f (BA{nbits=0,bits},sbit,l) = ()
-            | modifyi f (BA{nbits,bits},sbit,l) = let
+          fun modifyi' f (BA{nbits=0,bits},sbit,l) = ()
+            | modifyi' f (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 val last = sbit+len
                 fun loop i =
@@ -697,6 +697,69 @@ structure BitArray :> BIT_ARRAY =
 
     open Vector
     type array = vector
+
+    fun vector a = a
+
+    fun copy { src, dst, di } = copy' { src = src, dst = dst, di = di,
+					si = 0, len = NONE }
+
     val copyVec = copy
+
+    fun appi f a = appi' f (a, 0, NONE)
+    fun modifyi f a = modifyi' f (a, 0, NONE)
+    fun foldli f init a = foldli' f init (a, 0, NONE)
+    fun foldri f init a = foldri' f init (a, 0, NONE)
+
+    (* These are slow, pedestrian implementations.... *)
+    fun findi p a = let
+	val len = length a
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = sub (a, i)
+		 in
+		     if p (i, x) then SOME (i, x) else fnd (i + 1)
+		 end
+    in
+	fnd 0
+    end
+
+    fun find p a = let
+	val len = length a
+	fun fnd i =
+	    if i >= len then NONE
+	    else let val x = sub (a, i)
+		 in
+		     if p x then SOME x else fnd (i + 1)
+		 end
+    in
+	fnd 0
+    end
+
+    fun exists p a = let
+	val len = length a
+	fun ex i = i < len andalso (p (sub (a, i)) orelse ex (i + 1))
+    in
+	ex 0
+    end
+
+    fun all p a = let
+	val len = length a
+	fun al i = i >= len orelse (p (sub (a, i)) andalso al (i + 1))
+    in
+	al 0
+    end
+
+    fun collate c (a1, a2) = let
+	val l1 = length a1
+	val l2 = length a2
+	val l12 = Int.min (l1, l2)
+	fun col i =
+	    if i >= l12 then Int.compare (l1, l2)
+	    else case c (sub (a1, i), sub (a2, i)) of
+		     EQUAL => col (i + 1)
+		   | unequal => unequal
+    in
+	col 0
+    end
 
 end (* structure BitArray *)

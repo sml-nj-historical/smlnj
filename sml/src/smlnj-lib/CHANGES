@@ -1,6 +1,17 @@
 This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
+[2003-09-03]
+	Minor modifications to random.sml due to changes to some
+	Basis interfaces (slices).
+	Significant surgery on bit-array.sml to make it compile with
+	new signature MONO_ARRAY.  This will require further cleanup
+	in the future.
+
+[2003-08-28]
+	Made compilation of int-inf* conditional.  (The Basis now has
+	a spec-conforming implementation of IntInf, so the one here is
+	no longer needed.)  [-blume]
 
 [2003-07-31]
 	Added getDevice function to PP_STREAM signature.

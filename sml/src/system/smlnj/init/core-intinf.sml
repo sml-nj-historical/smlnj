@@ -515,9 +515,22 @@ end = struct
 	      end
 
     fun div' arg = #1 (divMod' arg)
-    fun mod' arg = #2 (divMod' arg)
     fun quot' arg = #1 (quotRem' arg)
-    fun rem' arg = #2 (quotRem' arg)
+
+    (* For div and mod we special-case a divisor of 2 (common even-odd test) *)
+    fun mod' (BI { digits = [], ... }, _) = zero
+      | mod' (BI { digits = low :: _, ... },
+	      BI { digits = [0w2], negative }) =
+	  if InLine.w31eq (InLine.w31andb (low, 0w1), 0w0) then zero
+	  else BI { digits = [0w1], negative = negative }
+      | mod' arg = #2 (divMod' arg)
+
+    fun rem' (BI { digits = [], ... }, _) = zero
+      | rem' (BI { digits = low :: _, negative },
+	      BI { digits = [0w2], ... }) =
+	  if InLine.w31eq (InLine.w31andb (low, 0w1), 0w0) then zero
+	  else BI { digits = [0w1], negative = negative }
+      | rem' arg = #2 (quotRem' arg)
 
     fun natpow (_, 0) = [0w1]
       | natpow ([], n) = if InLine.i31lt (n, 0) then raise Assembly.Div else []

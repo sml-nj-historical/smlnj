@@ -210,8 +210,8 @@ struct
       fun copy(STACK{st, fp, sp}) = 
       let val st' = A.array(8, ~1)
           val fp' = A.array(7, 16)
-      in  A.copy{src=st,dst=st',si=0,di=0,len=NONE};
-          A.copy{src=fp,dst=fp',si=0,di=0,len=NONE};
+      in  A.copy{src=st,dst=st',di=0};
+          A.copy{src=fp,dst=fp',di=0};
           STACK{st=st', fp=fp', sp=ref(!sp)}
       end
 

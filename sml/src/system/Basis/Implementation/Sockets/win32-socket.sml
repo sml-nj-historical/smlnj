@@ -107,12 +107,12 @@ structure SocketImp : SOCKET =
 	fun setDONTROUTE x = setOpt ctlDONTROUTE x
 	fun getLINGER sock = (case (getOpt ctlLINGER sock)
 	       of NONE => NONE
-		| (SOME t) => SOME(PreBasis.TIME{sec= Int.toLarge t, usec=0})
+		| (SOME t) => SOME (TimeImp.fromSeconds (Int.toLarge t))
 	      (* end case *))
 (* NOTE: probably shoud do some range checking on the argument *)
 	fun setLINGER (sock, NONE) = setOpt ctlLINGER (sock, NONE)
-	  | setLINGER (sock, SOME(PreBasis.TIME{sec, ...})) =
-	      setOpt ctlLINGER (sock, SOME(Int.fromLarge  sec))
+	  | setLINGER (sock, SOME t) =
+	      setOpt ctlLINGER (sock,SOME(Int.fromLarge(TimeImp.toSeconds t)))
 	fun getBROADCAST x = getOpt ctlBROADCAST x
 	fun setBROADCAST x = setOpt ctlBROADCAST x
 	fun getOOBINLINE x = getOpt ctlOOBINLINE x

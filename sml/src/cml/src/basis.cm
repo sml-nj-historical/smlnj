@@ -13,8 +13,10 @@ Library
 #if defined(NEW_CM)
 	(* Basis *)
 	signature ARRAY
+	signature ARRAY_SLICE
 	signature ARRAY2
 	signature VECTOR
+	signature VECTOR_SLICE
 	signature GENERAL
 	signature INTEGER
 	signature BOOL
@@ -24,8 +26,10 @@ Library
 	signature STRING_CVT
 	signature LIST
 	signature MONO_ARRAY
+	signature MONO_ARRAY_SLICE
 	signature MONO_ARRAY2
 	signature MONO_VECTOR
+	signature MONO_VECTOR_SLICE
 	signature BYTE
 	signature COMMAND_LINE
 	signature DATE
@@ -71,6 +75,7 @@ Library
 
 	(* Basis *)
 	structure Vector
+	structure VectorSlice
 	structure General
 	structure StringCvt
 	structure Substring
@@ -80,8 +85,11 @@ Library
 	structure List
 	structure ListPair
 	structure CharArray
+	structure CharArraySlice
 	structure CharVector
+	structure CharVectorSlice
 	structure Array
+	structure ArraySlice
 	structure Array2
 	structure IEEEReal
 	structure Int
@@ -101,7 +109,9 @@ Library
 	structure Bool
 	structure Word8
 	structure Word8Array
+	structure Word8ArraySlice
 	structure Word8Vector
+	structure Word8VectorSlice
 	structure CommandLine
 	structure Time
 	structure Timer
@@ -113,9 +123,13 @@ Library
 	structure Pack32Little
 	structure Date
 	structure RealArray
+	structure RealArraySlice
 	structure RealVector
+	structure RealVectorSlice
 	structure Real64Array
+	structure Real64ArraySlice
 	structure Real64Vector
+	structure Real64VectorSlice
 	structure Text
 	structure SML90
 

@@ -98,8 +98,12 @@ structure OS_IO : OS_IO =
     in
     fun poll (pds, timeOut) = let
 	  val timeOut = (case timeOut
-		 of SOME(PreBasis.TIME{sec, usec}) =>
-		      SOME(Int32.fromLarge sec, Int.fromLarge usec)
+		 of SOME t =>
+		    let val usec = TimeImp.toMicroseconds t
+			val (sec, usec) = IntInfImp.divMod (usec, 1000000)
+		    in
+			SOME (Int32.fromLarge sec, Int.fromLarge usec)
+		    end
 		  | NONE => NONE
 		(* end case *))
 	  val info = poll' (List.map fromPollDesc pds, timeOut)
