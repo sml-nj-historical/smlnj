@@ -95,7 +95,13 @@ is
 	sparc.sml
 # elif defined(ARCH_X86)
 	$smlnj/compiler/x86.cm
-	x86.sml
+#   if defined(OPSYS_UNIX)
+	x86-ccall.sml
+#   elif defined(OPSYS_WIN32)
+	x86-stdcall.sml
+#   else
+#	error Strange OS (for x86)!
+#   endif
 # else
 #   error Strange architecture!
 # endif

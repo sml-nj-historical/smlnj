@@ -1,55 +1,53 @@
 (*
  * iptr.sig   Interface to an "incomplete" C pointer type.
  *
- *   The code generated from a C interface (call it <A>) containing an
- *   "incomplete" type (i.e., a pointer to a named but otherwise undefined
- *   struct or union, call it <foo>) will be a functor that takes a structure
- *   argument representing this incomplete (pointer-)type.  The signature
- *   for this argument structure is POINTER_TO_INCOMPLETE_TYPE.
+ *     The idea is that 'c iobj stands for some (T su, 'c) obj.
+ *     However, since the struct/union in question has not yet been
+ *     declared, T is not yet known.  C does let you have pointers
+ *     to such "incomplete" types, and so do we:  It is ok to form
+ *     a 'c iobj ptr.  Many of the usual pointer operations are
+ *     possible, but there are some (subscript, pointer
+ *     arithmetic, dereferencing) that are not.
+ *     The C signature (in c.sig) expresses this by explicitly
+ *     contraining, e.g., the dereference operator |*| to an argument
+ *     of type ('t, 'c) obj ptr instead of the more general 'o ptr.
  *
- *   Therefore, for each incomplete struct <foo> there will be a functor
- *   argument
- *        structure I_S_<foo> : POINTER_TO_INCOMPLETE_TYPE
- *   and for each incomplete union <bar> there will be a functor argument
- *        structure I_U_<bar> : POINTER_TO_INCOMPLETE_TYPE
- *   in the definition of functor <A>.<A>Fn.
+ *   For each incomplete struct (union) <foo>, the ml-nlffigen tool will
+ *   generate code that refers to the ML type 'c IS_<foo>.iobj
+ *   ('c IU_<foo>iobj) where structure IS_<foo> (IU_<foo>) matches
+ *   signature POINTER_TO_INCOMPLETE_TYPE.
  *
- * Actual structures matching POINTER_TO_INCOMPLETE_TYPE can be generated
- * using the functors PointerToCompleteType (see c-iptr-fn.sml) and
- * PointerToIncompleteType (see i-iptr-fn.sml).
+ *   By default, the same tool will also generate definitions for these
+ *   ML structures, making each of the iobj types abstract (by invoking
+ *   functor PointerToIncompleteType from internals/i-iptr-fn.sml).
  *
- *   (C) 2001, Lucent Technologies, Bell Labs
+ *   If the complete definition of the corresponding S_<foo> (U_<foo>) is
+ *   available, one can alternatively define IS_<foo> (IU_<foo>) by invoking
+ *   functor PointerToCompleteType (internals/c-iptr-fn.sml).  This
+ *   functor reveals (and makes concrete) the conceptual type identity of
+ *
+ *      (S_<foo>.tag su, 'c) obj == 'c IS_<foo>.iobj
+ *   or
+ *      (U_<foo>.tag su, 'c) obj == 'c IU_<foo>.iobj
+ *
+ *   Use the "-incomplete" command line option of ml-nlffigen to suppress
+ *   automatic generation of definitions for abstract I{S|U}_<foo>.iobj types.
+ * 
+ *   If you do want to utilize automatic generation of such types but
+ *   want to share them across outputs of multiple invocations of
+ *   ml-nlffigen, use the "-iptr" command line option of ml-nlffigen.
+ *   (If you do not share these definitions in ML, fresh types well
+ *   up being generated for every C interface -- potentially rendering
+ *   the results incompatible with each other.)
+ *
+ *   (C) 2002, Lucent Technologies, Bell Labs
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 signature POINTER_TO_INCOMPLETE_TYPE = sig
-    type 'c iptr			(* = (? su, unit, 'c) ptr  *)
-    type 'c iptr'			(* = (? su, unit, 'c) ptr' *)
+    type 'c iobj
 
-    val typ'rw : C.rw iptr C.T.typ
-    val typ'ro : C.ro iptr C.T.typ
-
-    val light : 'c iptr -> 'c iptr'
-    val heavy : 'c iptr' -> 'c iptr
-
-    val get : ('pc iptr, 'c) C.obj -> 'pc iptr
-    val get' : ('pc iptr, 'c) C.obj' -> 'pc iptr'
-
-    val set : ('pc iptr, C.rw) C.obj * 'pc iptr -> unit
-    val set' : ('pc iptr, C.rw) C.obj' * 'pc iptr' -> unit
-
-    val set_voidptr : ('pc iptr, C.rw) C.obj * C.voidptr -> unit
-    val set_voidptr' : ('pc iptr, C.rw) C.obj' * C.voidptr -> unit
-
-    val compare : 'c iptr * 'c iptr -> order
-    val compare' : 'c iptr' * 'c iptr' -> order
-
-    val inject : 'c iptr -> C.voidptr
-    val inject' : 'c iptr' -> C.voidptr
-
-    val cast : 'c iptr C.T.typ -> C.voidptr -> 'c iptr
-    val cast' : 'c iptr C.T.typ -> C.voidptr -> 'c iptr'
-
-    val null : 'c iptr C.T.typ -> 'c iptr
-    val null' : 'c iptr'
+    (* RTTI for the _pointer_ types: *)
+    val typ'rw : C.rw iobj C.ptr C.T.typ
+    val typ'ro : C.ro iobj C.ptr C.T.typ
 end

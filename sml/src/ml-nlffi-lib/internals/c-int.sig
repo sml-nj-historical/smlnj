@@ -79,7 +79,7 @@ signature C_INT = sig
     val freveal : 'f fptr' -> addr
 
     val vcast : addr -> voidptr
-    val pcast : addr -> ('t, 'c) ptr'
+    val pcast : addr -> 'o ptr'
     val fcast : addr -> 'f fptr'
 
     (* unsafe low-level array subscript that does not require RTTI *)

@@ -12,20 +12,16 @@ structure Main = struct
         RegExpFn (structure P = AwkSyntax
 		  structure E = DfaEngine)
 
-    fun tgt (n, sz, sh, cc) =
-	{ name  = n, sizes = sz, shift = sh, stdcall = cc }
+    fun tgt (n, sz, sh) =
+	{ name  = n, sizes = sz, shift = sh }
 
     val default_target =
-	tgt (DefaultName.name,
-	     DefaultSizes.sizes, DefaultEndian.shift, DefaultCC.stdcall)
+	tgt (DefaultName.name, DefaultSizes.sizes, DefaultEndian.shift)
 
     val target_table =
-	[tgt ("sparc-unix",
-	      SizesSparc.sizes, EndianBig.shift, CC_ccall.stdcall),
-	 tgt ("x86-unix",
-	     SizesX86.sizes, EndianLittle.shift, CC_ccall.stdcall),
-	 tgt ("x86-win32",
-	      SizesX86.sizes, EndianLittle.shift, CC_stdcall.stdcall)
+	[tgt ("sparc-unix", SizesSparc.sizes, EndianBig.shift),
+	 tgt ("x86-unix", SizesX86.sizes, EndianLittle.shift),
+	 tgt ("x86-win32", SizesX86.sizes, EndianLittle.shift)
 	 (* needs to be extended ... *)
 	 ]
 

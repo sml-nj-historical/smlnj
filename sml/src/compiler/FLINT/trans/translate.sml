@@ -5,8 +5,11 @@ signature TRANSLATE =
 sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
-  val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * Absyn.dec CompInfo.compInfo
+  val transDec : { rootdec: Absyn.dec,
+		   exportLvars: Access.lvar list,
+                   env: StaticEnv.staticEnv,
+		   cproto_conv: string,
+		   compInfo: Absyn.dec CompInfo.compInfo }
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
                                * ImportTree.importTree) list}
@@ -88,8 +91,8 @@ exception NoCore
  ****************************************************************************)
 
 fun transDec
-	(rootdec, exportLvars, env,
-	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo) =
+	{ rootdec, exportLvars, env, cproto_conv,
+	 compInfo as {errorMatch,error,...}: Absyn.dec CompInfo.compInfo } =
 let 
 
 (* We take mkLvar from compInfo.  This should answer Zhong's question... *)
@@ -765,7 +768,7 @@ in
                   in GENOP (dict, p, toLty d typ, map (toTyc d) ts)
                   end
 		| (PO.RAW_CCALL NONE, [a, b, c]) =>
-		  let val i = SOME { c_proto = CProto.decode b,
+		  let val i = SOME { c_proto = CProto.decode cproto_conv b,
 				     ml_flt_args = CProto.flt_args a,
 				     ml_flt_res_opt = CProto.flt_res c }
 			  handle CProto.BadEncoding => NONE
@@ -1206,5 +1209,3 @@ end (* function transDec *)
 
 end (* top-level local *)
 end (* structure Translate *)
-
-

@@ -31,9 +31,6 @@ is
 	endian-little.sml
 	endian-big.sml
 
-	cc-ccall.sml
-	cc-stdcall.sml
-
 	string-key.sml
 	string-set.sml
 	string-map.sml
@@ -41,7 +38,6 @@ is
 
 # if defined (ARCH_SPARC)
 	default-sizes-sparc.sml
-	default-cc-ccall.sml
 #   if defined (OPSYS_UNIX)
 	default-name-sparc-unix.sml
 #   else
@@ -50,10 +46,8 @@ is
 # elif defined (ARCH_X86)
 	default-sizes-x86.sml
 #   if defined (OPSYS_UNIX)
-	default-cc-ccall.sml
 	default-name-x86-unix.sml
 #   elif defined (OPSYS_WIN32)
-	default-cc-stdcall.sml
 	default-name-x86-win32.sml
 #   else
 #       error Operating system for X86 is neither UNIX nor WIN32!

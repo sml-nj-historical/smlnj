@@ -39,7 +39,7 @@ Library
 is
 	$/basis.cm
 
-	$/memory.cm
+	$c/memory/memory.cm
 
 	tag.sml
 

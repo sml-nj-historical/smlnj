@@ -62,7 +62,6 @@ struct
   structure An = MLRiscAnnotations
   structure CB = CellsBasis
   
-
   structure ArgP =              (* Argument passing *)
     ArgPassing(structure Cells=Cells
                structure C=C

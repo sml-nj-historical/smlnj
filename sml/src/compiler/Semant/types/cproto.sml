@@ -55,7 +55,7 @@
 structure CProto : sig
     exception BadEncoding
     (* decode the encoding described above *)
-    val decode : Types.ty -> CTypes.c_proto
+    val decode : string -> Types.ty -> CTypes.c_proto
 
     (* Construct an indicator list for the _actual_ ML arguments of
      * a raw C call; the element is true if the corresponding argument
@@ -85,7 +85,7 @@ end = struct
 	end
 	fun bad () = raise BadEncoding
     in
-        fun decode t = let
+        fun decode conv t = let
 	    (* The type-mapping table: *)
 	    fun listTy t = T.CONty (BT.listTycon, [t])
 	    val m = [(BT.intTy,           CT.C_signed   CT.I_int),
@@ -124,14 +124,14 @@ end = struct
 			 SOME (_ :: fl) => CT.C_STRUCT (map dt fl)
 		       | _ => bad ())
 
-	    val (fty, nlists) = unlist (t, 0)
+	    val (fty, _) = unlist (t, 0)
 	in
 	    (* Get argument types and result type; decode them.
 	     * Construct the corresponding CTypes.c_proto value. *)
 	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-		{ conv = if nlists > 1 then "stdcall" else "ccall", 
+		{ conv = conv,
 		  retTy = dt r,
 		  paramTys = if TU.equalType (d, BT.unitTy) then []
 			     else case BT.getFields d of

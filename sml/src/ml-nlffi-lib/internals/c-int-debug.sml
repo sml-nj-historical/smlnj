@@ -69,15 +69,17 @@ structure C_Debug :> C_INT_DEBUG = struct
     type ro = unit
     type rw = unit
 
-    type ('t, 'c) ptr = addr * objt	(* RTTI for target value *)
-    type ('t, 'c) ptr' = addr
+    type 'o ptr = addr * objt		(* RTTI for target value *)
+    type 'o ptr' = addr
 
     type ('t, 'n) arr = unit
 
     type 'f fptr = addr * 'f
     type 'f fptr' = addr		(* does not carry function around *)
 
-    type voidptr = addr
+    type void = unit
+    type voidptr = void ptr'
+
     type 'tag su = unit
 
     type schar = MLRep.Signed.int
@@ -245,8 +247,8 @@ structure C_Debug :> C_INT_DEBUG = struct
 
     structure Heavy = struct
         val obj = pair_type_addr
-	val ptr = pair_type_addr
-
+	fun ptr (PTR t) p = (p, t)
+	  | ptr _ _ = bug "Heavy.ptr (non-object-pointer-type)"
 	fun fptr (FPTR mkf) p = (p, Unsafe.cast mkf p)
 	  | fptr _ _ = bug "Heavy.fptr (non-function-pointer-type)"
     end
@@ -477,8 +479,8 @@ structure C_Debug :> C_INT_DEBUG = struct
 
     structure U = struct
         fun fcast (f : 'a fptr') : 'b fptr' = f
-	fun p2i (a : voidptr) : ulong = CMemory.p2i a
-	fun i2p (a : ulong) : voidptr = CMemory.i2p a
+	fun p2i (a : 'o ptr') : ulong = CMemory.p2i a
+	fun i2p (a : ulong) : 'o ptr' = CMemory.i2p a
     end
 
     (* ------------- internal stuff ------------- *)

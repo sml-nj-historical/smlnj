@@ -33,15 +33,30 @@ signature C = sig
     (* constness property, to be substituted for 'c *)
     type ro and rw
 
-    (* things to be substituted for 't *)
-    type ('t, 'c) ptr			(* pointer to ('t, 'c) obj *)
+    (* Pointers come in two varieties in C:  Pointers to things we
+     * know and pointers to "incomplete" types.  The "ptr" type constructor
+     * below encodes both kinds using the following convention:
+     *   - in the case of complete target types, 'o will be instantiated
+     *     to some ('t, 'c) obj
+     *   - in the case of incomplete target types, 'o will be instantiated
+     *     to some fresh (abstract) type (see iptr.sig for what this will
+     *     look like in practice)
+     *)
+    type 'o ptr				(* pointer to 'o *)
     type ('t, 'n) arr			(* 'n-sized array with 't elements *)
 
     (* light-weight alternative *)
-    eqtype ('t, 'c) ptr'
+    eqtype 'o ptr'
 
-    (* void* and function pointers *)
-    eqtype voidptr			(* C's void* *)
+    eqtype void				(* no values, admits equality *)
+
+    (* void* is really a base type, but it happens to take the
+     * form of a light-weight pointer type (with an abstract target).
+     * This design makes it possible to use those ptr-related
+     * functions that "make sense" for void*. *)
+    type voidptr = void ptr'		(* C's void* *)
+
+    (* function pointers *)
     type 'f fptr			(* a function pointer *)
 
     (* alt *)
@@ -59,7 +74,9 @@ signature C = sig
     eqtype slong  and ulong
     type float    and double
 
-    (* going from abstract to concrete and vice versa *)
+    (* going from abstract to concrete and vice versa;
+     * (this shouldn't be needed except when calling functions through
+     * function pointers) *)
     structure Cvt : sig
 	(* ML -> C *)
 	val c_schar  : MLRep.Signed.int   -> schar
@@ -226,7 +243,7 @@ signature C = sig
 	val double : double size
 
 	val voidptr : voidptr size
-	val ptr : ('t, 'c) ptr size
+	val ptr : 'o ptr size
 	val fptr : 'f fptr size
     end
 
@@ -242,11 +259,11 @@ signature C = sig
 	val typeof : ('t, 'c) obj -> 't typ
 
 	(* constructing new RTTI from existing RTTI *)
-	val pointer : 't typ -> ('t, rw) ptr typ
-	val target  : ('t, 'c) ptr typ -> 't typ
+	val pointer : 't typ -> ('t, rw) obj ptr typ
+	val target  : ('t, 'c) obj ptr typ -> 't typ
 	val arr     : 't typ * 'n Dim.dim -> ('t, 'n) arr typ
 	val elem    : ('t, 'n) arr typ -> 't typ
-	val ro      : ('t, 'c) ptr typ -> ('t, ro) ptr typ
+	val ro      : ('t, 'c) obj ptr typ -> ('t, ro) obj ptr typ
 
 	(* calculating the size of an object given its RTTI *)
 	val sizeof : 't typ -> 't S.size
@@ -272,14 +289,14 @@ signature C = sig
     (* convert from regular (heavy) to alternative (light) versions *)
     structure Light : sig
 	val obj : ('t, 'c) obj -> ('t, 'c) obj'
-	val ptr : ('t, 'c) ptr -> ('t, 'c) ptr'
+	val ptr : 'o ptr -> 'o ptr'
 	val fptr : 'f fptr -> 'f fptr'
     end
 
     (* and vice versa *)
     structure Heavy : sig
 	val obj : 't T.typ -> ('t, 'c) obj' -> ('t, 'c) obj
-	val ptr : 't T.typ -> ('t, 'c) ptr' -> ('t, 'c) ptr
+	val ptr : 'o ptr T.typ -> 'o ptr' -> 'o ptr
 	val fptr : 'f fptr T.typ  -> 'f fptr' -> 'f fptr
     end
 
@@ -315,12 +332,12 @@ signature C = sig
 	val double' : 'c double_obj' -> MLRep.Real.real
 
 	(* fetching pointers; results have to be abstract *)
-	val ptr : (('t, 'pc) ptr, 'c) obj -> ('t, 'pc) ptr
+	val ptr : ('o ptr, 'c) obj -> 'o ptr
 	val fptr : ('f, 'c) fptr_obj -> 'f fptr
 	val voidptr : 'c voidptr_obj -> voidptr
 
 	(* alt *)
-	val ptr' : (('t, 'pc) ptr, 'c) obj' -> ('t, 'pc) ptr'
+	val ptr' : ('o ptr, 'c) obj' -> 'o ptr'
 	val fptr' : ('f, 'c) fptr_obj' -> 'f fptr'
 	val voidptr' : 'c voidptr_obj' -> voidptr
 
@@ -356,22 +373,22 @@ signature C = sig
 	val double' : rw double_obj' * MLRep.Real.real -> unit
 
 	(* storing pointers; abstract *)
-	val ptr : (('t, 'pc) ptr, rw) obj * ('t, 'pc) ptr -> unit
+	val ptr : ('o ptr, rw) obj * 'o ptr -> unit
 	val fptr : ('f, rw) fptr_obj * 'f fptr -> unit
 	val voidptr : rw voidptr_obj * voidptr -> unit
 
 	(* alt *)
-	val ptr' : (('t, 'pc) ptr, rw) obj' * ('t, 'pc) ptr' -> unit
+	val ptr' : ('o ptr, rw) obj' * 'o ptr' -> unit
 	val fptr' : ('f, rw) fptr_obj' * 'f fptr' -> unit
 	val voidptr' : rw voidptr_obj' * voidptr -> unit
 
 	(* When storing, voidptr is compatible with any ptr type
 	 * (just like in C).  This should eliminate most need for RTTI in
 	 * practice. *)
-	val ptr_voidptr : (('t, 'pc) ptr, rw) obj * voidptr -> unit
+	val ptr_voidptr : ('o ptr, rw) obj * voidptr -> unit
 
 	(* alt *)
-	val ptr_voidptr' : (('t, 'pc) ptr, rw) obj' * voidptr -> unit
+	val ptr_voidptr' : ('o ptr, rw) obj' * voidptr -> unit
 
 	(* bitfields; concrete *)
 	val sbf : rw sbf * MLRep.Signed.int -> unit
@@ -405,42 +422,42 @@ signature C = sig
     structure Ptr : sig
 
 	(* going from object to pointer and vice versa *)
-	val |&| : ('t, 'c) obj -> ('t, 'c) ptr
-	val |*| : ('t, 'c) ptr -> ('t, 'c) obj
+	val |&| : ('t, 'c) obj -> ('t, 'c) obj ptr
+	val |*| : ('t, 'c) obj ptr -> ('t, 'c) obj
 
 	(* alt *)
-	val |&! : ('t, 'c) obj' -> ('t, 'c) ptr'
-	val |*! : ('t, 'c) ptr' -> ('t, 'c) obj'
+	val |&! : ('t, 'c) obj' -> ('t, 'c) obj ptr'
+	val |*! : ('t, 'c) obj ptr' -> ('t, 'c) obj'
 
 	(* comparing pointers *)
-	val compare : ('t, 'c) ptr * ('t, 'c) ptr -> order
+	val compare : 'o ptr * 'o ptr -> order
 
 	(* alt *)
-	val compare' : ('t, 'c) ptr' * ('t, 'c) ptr' -> order
+	val compare' : 'o ptr' * 'o ptr' -> order
 
 	(* going from pointer to void*;  this also accounts for a conceptual
 	 * subtyping relation and is safe *)
-	val inject : ('t, 'c) ptr -> voidptr
+	val inject : 'o ptr -> voidptr
 
 	(* alt *)
-	val inject' : ('t, 'c) ptr' -> voidptr
+	val inject' : 'o ptr' -> voidptr
 
 	(* the opposite is not safe, but C makes it not only easy but also
 	 * almost necessary; we use our RTTI interface to specify the pointer
 	 * type (not the element type!) *)
-	val cast : ('t, 'c) ptr T.typ -> voidptr -> ('t, 'c) ptr
+	val cast : 'o ptr T.typ -> voidptr -> 'o ptr
 
 	(* alt *)
-	val cast' : ('t, 'c) ptr T.typ -> voidptr -> ('t, 'c) ptr'
+	val cast' : 'o ptr T.typ -> voidptr -> 'o ptr'
 
 	(* NULL as void* *)
 	val vNull : voidptr
 
 	(* projecting vNull to given pointer type *)
-	val null : ('t, 'c) ptr T.typ -> ('t, 'c) ptr
+	val null : 'o ptr T.typ -> 'o ptr
 
 	(* the "light" NULL pointer is simply a polymorphic constant *)
-	val null' : ('t, 'c) ptr'
+	val null' : 'o ptr'
 
 	(* fptr version of NULL *)
 	val fnull : 'f fptr T.typ -> 'f fptr
@@ -452,10 +469,10 @@ signature C = sig
 	val vIsNull : voidptr -> bool
 
 	(* combining inject and vIsNull for convenience *)
-	val isNull : ('t, 'c) ptr -> bool
+	val isNull : 'o ptr -> bool
 
 	(* alt *)
-	val isNull' : ('t, 'c) ptr' -> bool
+	val isNull' : 'o ptr' -> bool
 
 	(* checking a function pointer for NULL *)
 	val isFNull : 'f fptr -> bool
@@ -464,24 +481,24 @@ signature C = sig
 	val isFNull' : 'f fptr' -> bool
 
 	(* pointer arithmetic *)
-	val |+| : ('t, 'c) ptr * int -> ('t, 'c) ptr
-	val |-| : ('t, 'c) ptr * ('t, 'c) ptr -> int
+	val |+| : ('t, 'c) obj ptr * int -> ('t, 'c) obj ptr
+	val |-| : ('t, 'c) obj ptr * ('t, 'c) obj ptr -> int
 
 	(* alt; needs explicit size (for element) *)
-	val |+! : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) ptr'
-	val |-! : 't S.size -> ('t, 'c) ptr' * ('t, 'c) ptr' -> int
+	val |+! : 't S.size -> ('t, 'c) obj ptr' * int -> ('t, 'c) obj ptr'
+	val |-! : 't S.size -> ('t, 'c) obj ptr' * ('t, 'c) obj ptr' -> int
 
 	(* subscript through a pointer; this is unchecked *)
-	val sub : ('t, 'c) ptr * int -> ('t, 'c) obj
+	val sub : ('t, 'c) obj ptr * int -> ('t, 'c) obj
 
 	(* alt; needs explicit size (for element) *)
-	val sub' : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) obj'
+	val sub' : 't S.size -> ('t, 'c) obj ptr' * int -> ('t, 'c) obj'
 
 	(* constness manipulation for pointers *)
-	val ro : ('t, 'c) ptr    -> ('t, ro) ptr
-	val rw : ('t, 'sc) ptr   -> ('t, 'tc) ptr
-	val ro' : ('t, 'c) ptr'  -> ('t, ro) ptr'
-	val rw' : ('t, 'sc) ptr' -> ('t, 'tc) ptr'
+	val ro : ('t, 'c) obj ptr    -> ('t, ro) obj ptr
+	val rw : ('t, 'sc) obj ptr   -> ('t, 'tc) obj ptr
+	val ro' : ('t, 'c) obj ptr'  -> ('t, ro) obj ptr'
+	val rw' : ('t, 'sc) obj ptr' -> ('t, 'tc) obj ptr'
     end
 
     (* operations on (mostly) arrays *)
@@ -498,16 +515,18 @@ signature C = sig
 		   (('t, 'n) arr, 'c) obj' * int -> ('t, 'c) obj'
 
 	(* let an array object decay, yielding pointer to first element *)
-	val decay : (('t, 'n) arr, 'c) obj -> ('t, 'c) ptr
+	val decay : (('t, 'n) arr, 'c) obj -> ('t, 'c) obj ptr
 
 	(* alt *)
-	val decay' : (('t, 'n) arr, 'c) obj' -> ('t, 'c) ptr'
+	val decay' : (('t, 'n) arr, 'c) obj' -> ('t, 'c) obj ptr'
 
 	(* reconstruct an array object from the pointer to its first element *)
-	val reconstruct : ('t, 'c) ptr * 'n Dim.dim -> (('t, 'n) arr, 'c) obj
+	val reconstruct :
+	    ('t, 'c) obj ptr * 'n Dim.dim -> (('t, 'n) arr, 'c) obj
 
 	(* alt *)
-	val reconstruct': ('t, 'c) ptr' * 'n Dim.dim -> (('t, 'n) arr, 'c) obj'
+	val reconstruct':
+	    ('t, 'c) obj ptr' * 'n Dim.dim -> (('t, 'n) arr, 'c) obj'
 
 	(* dimension of array object *)
 	val dim : (('t, 'n) arr, 'c) obj -> 'n Dim.dim
@@ -526,16 +545,16 @@ signature C = sig
     val discard' : ('t, 'c) obj' -> unit
 
     (* allocating a dynamically-sized array *)
-    val alloc : 't T.typ -> word -> ('t, 'c) ptr
+    val alloc : 't T.typ -> word -> ('t, 'c) obj ptr
 
     (* alt *)
-    val alloc' : 't S.size -> word -> ('t, 'c) ptr'
+    val alloc' : 't S.size -> word -> ('t, 'c) obj ptr'
 
     (* freeing through pointers *)
-    val free : ('t, 'c) ptr -> unit
+    val free : 'o ptr -> unit
 
     (* alt *)
-    val free' : ('t, 'c) ptr' -> unit
+    val free' : 'o ptr' -> unit
 
     (* perform function call through function-pointer *)
     val call : ('a -> 'b) fptr * 'a -> 'b
@@ -546,7 +565,7 @@ signature C = sig
     (* completely unsafe stuff that every C programmer just *loves* to do *)
     structure U : sig
 	val fcast : 'a fptr' -> 'b fptr'
-	val p2i : voidptr -> ulong
-	val i2p : ulong -> voidptr
+	val p2i : 'o ptr' -> ulong
+	val i2p : ulong -> 'o ptr'
     end
 end

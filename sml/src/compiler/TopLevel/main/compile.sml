@@ -2,7 +2,8 @@
 (* compile.sml *)
 
 functor CompileF(structure M  : CODEGENERATOR
-		 structure CC : CCONFIG) : COMPILE0 =
+		 structure CC : CCONFIG
+		 val cproto_conv : string) : COMPILE0 =
 struct
 
     fun mkCompInfo { source, transform } =
@@ -90,7 +91,11 @@ struct
 	(*** statenv used for printing Absyn in messages ***)
 	let val statenv = StaticEnv.atop (newstatenv, oldstatenv)
 	in
-	    Translate.transDec(absyn, exportLvars, statenv, compInfo)
+	    Translate.transDec { rootdec = absyn,
+				 exportLvars = exportLvars,
+				 env = statenv,
+				 cproto_conv = cproto_conv,
+				 compInfo = compInfo }
 	end
 
     val translate =

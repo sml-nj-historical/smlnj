@@ -14,6 +14,56 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/19 16:20:00 EST
+Tag: blume-20020219-cmffi
+Description:
+
+A wild mix of changes, some minor, some major:
+
+* All C FFI-related libraries are now anchored under $c:
+    $/c.cm      --> $c/c.cm
+    $/c-int.cm  --> $c/internals/c-int.cm
+    $/memory.cm --> $c/memory/memory.cm
+
+* "make" tool (in CM) now treats its argument pathname slightly
+  differently:
+    1. If the native expansion is an absolute name, then before invoking
+       the "make" command on it, CM will apply OS.Path.mkRelative
+       (with relativeTo = OS.FileSys.getDir()) to it.
+    2. The argument will be passed through to subsequent phases of CM
+       processing without "going native".  In particular, if the argument
+       was an anchored path, then "make" will not lose track of that anchor.
+
+* Compiler backends now "know" their respective C calling conventions
+  instead of having to be told about it by ml-nlffigen.  This relieves
+  ml-nlffigen from one of its burdens.
+
+* The X86Backend has been split into X86CCallBackend and X86StdCallBackend.
+
+* Export C_DEBUG and C_Debug from $c/c.cm.
+
+* C type encoding in ml-nlffi-lib has been improved to model the conceptual
+  subtyping relationship between incomplete pointers and their complete
+  counterparts.  For this, ('t, 'c) ptr has been changed to 'o ptr --
+  with the convention of instantiating 'o with ('t, 'c) obj whenever
+  the pointer target type is complete.  In the incomplete case, 'o
+  will be instantiated with some "'c iobj" -- a type obtained by
+  using one of the functors PointerToIncompleteType or PointerToCompleteType.
+
+  Operations that work on both incomplete and complete pointer types are
+  typed as taking an 'o ptr while operations that require the target to
+  be known are typed as taking some ('t, 'c) obj ptr.
+
+  voidptr is now a bit "more concrete", namely "type voidptr = void ptr'"
+  where void is an eqtype without any values.  This makes it possible
+  to work on voidptr values using functions meant to operate on light
+  incomplete pointers.
+
+* As a result of the above, signature POINTER_TO_INCOMPLETE_TYPE has
+  been vastly simplified.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/19 10:48:00 EST
 Tag: blume-20020219-pqfix
 Description:

@@ -2,4 +2,4 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-structure Backend = X86Backend
+structure Backend = X86CCallBackend

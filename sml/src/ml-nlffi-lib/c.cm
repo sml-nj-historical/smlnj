@@ -17,6 +17,8 @@ Library
 
 	signature C
 	structure C
+	signature C_DEBUG
+	structure C_Debug
 
 	signature ZSTRING
 	structure ZString
@@ -28,4 +30,4 @@ Library
 	signature DYN_LINKAGE
 	structure DynLinkage
 is
-	$/c-int.cm
+	$c/internals/c-int.cm

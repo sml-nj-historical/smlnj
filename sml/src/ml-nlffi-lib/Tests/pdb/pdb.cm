@@ -3,7 +3,7 @@ library
 	structure PDBC
 is
 	$/basis.cm
-	$/c.cm
+	$c/c.cm
 	FFI/pdb.cm : make (-f pdb.make)
 
 	pdb-client.sml

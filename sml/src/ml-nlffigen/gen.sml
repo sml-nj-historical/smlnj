@@ -8,7 +8,7 @@
  *)
 local
     val program = "ml-nlffigen"
-    val version = "0.8"
+    val version = "0.9"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -34,8 +34,7 @@ structure Gen :> sig
 		namedargs: bool,
 		target : { name  : string,
 			   sizes : Sizes.sizes,
-			   shift : int * int * word -> word,
-			   stdcall : bool } } -> unit
+			   shift : int * int * word -> word } } -> unit
     val version : string
 end = struct
 
@@ -116,7 +115,7 @@ end = struct
 	      wid,
 	      weightreq,
 	      namedargs = doargnames,
-	      target = { name = archos, sizes, shift, stdcall } } = args
+	      target = { name = archos, sizes, shift } } = args
 
 	val hash_cft = Hash.mkFHasher ()
 	val hash_mltype = Hash.mkTHasher ()
@@ -127,7 +126,7 @@ end = struct
 	      | SOME (d, a) => (d, SOME a)
 
 	val gensym_suffix = if gensym_stem = "" then "" else "_" ^ gensym_stem
-	fun isu_id (K, tag) = concat [prefix, "I", K, "_", tag]
+	fun iobj_id (K, tag) = concat [prefix, "I", K, "_", tag]
 
 	fun SUstruct K t = concat [prefix, K, "_", t]
 	val Sstruct = SUstruct "S"
@@ -431,8 +430,10 @@ end = struct
 	  | wtn_ty_p p (S.PTR (c, t)) =
 	    (case incomplete t of
 		 SOME (K, tag) =>
-		 Con (concat [isu_id (K, tag), ".iptr", p], [rwro c])
-	       | NONE => Con ("ptr" ^ p, [wtn_ty t, rwro c]))
+		 Con ("ptr" ^ p,
+		      [Con (concat [iobj_id (K, tag), ".iobj"],
+			    [rwro c])])
+	       | NONE => Con ("ptr" ^ p, [Con ("obj", [wtn_ty t, rwro c])]))
 	  | wtn_ty_p p (S.ARR { t, d, ... }) =
 	    Con ("arr", [wtn_ty t, dim_ty d])
 	  | wtn_ty_p p (S.FPTR spec) = wtn_fptr_p p spec
@@ -509,11 +510,11 @@ end = struct
 		end
 	      | rtti_val (S.PTR (S.RW, t)) =
 		(case incomplete t of
-		     SOME (K, tag) => EVar (isu_id (K, tag) ^ ".typ'rw")
+		     SOME (K, tag) => EVar (iobj_id (K, tag) ^ ".typ'rw")
 		   | NONE => EApp (EVar "T.pointer", rtti_val t))
 	      | rtti_val (S.PTR (S.RO, t)) =
 		(case incomplete t of
-		     SOME (K, tag) => EVar (isu_id (K, tag) ^ ".typ'ro")
+		     SOME (K, tag) => EVar (iobj_id (K, tag) ^ ".typ'ro")
 		   | NONE => EApp (EVar "T.ro",
 				   EApp (EVar "T.pointer", rtti_val t)))
 	      | rtti_val (S.ARR { t, d, ... }) =
@@ -683,9 +684,7 @@ end = struct
 
 	    val e_arg = Tuple (Unit :: map encode args)
 	    val e_res = case res of NONE => Unit | SOME t => encode t
-	    val e_proto0 = Con ("list", [Arrow (e_arg, e_res)])
-	    val e_proto =
-		if stdcall then Con ("list", [e_proto0]) else e_proto0
+	    val e_proto = Con ("list", [Arrow (e_arg, e_res)])
 
 	    (* generating the call operation *)
 
@@ -710,10 +709,6 @@ end = struct
 	    fun pwrap e = EApp (EVar "CMemory.wrap_addr",
 				EApp (EVar "reveal",
 				      EApp (EVar "Ptr.inject'", e)))
-	    fun iwrap (K, tag, e) =
-		EApp (EVar "CMemory.wrap_addr",
-		      EApp (EVar "reveal",
-			    EApp (EVar (isu_id (K, tag) ^ ".inject'"), e)))
 
 	    fun suwrap e = pwrap (EApp (EVar "Ptr.|&!", e))
 
@@ -733,10 +728,7 @@ end = struct
 			 S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
 			 S.FLOAT | S.DOUBLE) => sel (wrap (p, stem h))
 		      | S.VOIDPTR => sel (vwrap p)
-		      | S.PTR (_, t) =>
-			(case incomplete t of
-			     SOME (K, tag) => sel (iwrap (K, tag, p))
-			   | NONE => sel (pwrap p))
+		      | S.PTR _ => sel (pwrap p)
 		      | S.FPTR _ => sel (fwrap p)
 		      | S.ARR _ => raise Fail "unexpected array argument"
 		end
@@ -759,10 +751,6 @@ end = struct
 			fun punwrap cast r =
 			    EApp (EVar cast,
 				  EApp (EVar "CMemory.unwrap_addr", r))
-			fun iunwrap (K, tag, t) r =
-			    EApp (EApp (EVar (isu_id (K, tag) ^ ".cast'"),
-					rtti_val t),
-				  punwrap "vcast" r)
 			val res_wrap =
 			    case t of
 				(S.SCHAR | S.UCHAR | S.SINT | S.UINT |
@@ -770,10 +758,7 @@ end = struct
 				 S.FLOAT | S.DOUBLE) => unwrap (stem t)
 			      | S.VOIDPTR => punwrap "vcast"
 			      | S.FPTR _ => punwrap "fcast"
-			      | t0 as S.PTR (_, t) =>
-				(case incomplete t of
-				     SOME (K, tag) => iunwrap (K, tag, t0)
-				   | NONE => punwrap "pcast")
+			      | S.PTR _ => punwrap "pcast"
 			      | (S.STRUCT _ | S.UNION _ | S.ARR _) =>
 				raise Fail "unexpected result type"
 		    in
@@ -1047,10 +1032,7 @@ end = struct
 		    EApp (EVar ("Cvt.c_" ^ stem t), e)
 		  | oneArg (e, (S.STRUCT _ | S.UNION _)) =
 		    EApp (EVar "ro'", light ("obj", e))
-		  | oneArg (e, S.PTR (_, t)) =
-		    (case incomplete t of
-			 SOME (K, tag) => app0 (isu_id (K, tag) ^ ".light", e)
-		       | NONE => light ("ptr", e))
+		  | oneArg (e, S.PTR _) = light ("ptr", e)
 		  | oneArg (e, S.FPTR _) = light ("fptr", e)
 		  | oneArg (e, S.VOIDPTR) = e
 		  | oneArg (e, S.ARR _) = raise Fail "array argument type"
@@ -1073,11 +1055,7 @@ end = struct
 			EApp (EVar ("Cvt.ml_" ^ stem t), call)
 		      | SOME (t as (S.STRUCT _ | S.UNION _)) =>
 			heavy ("obj", t, call)
-		      | SOME (S.PTR (_, t)) =>
-			(case incomplete t of
-			     SOME (K, tag) =>
-			     app0 (isu_id (K, tag) ^ ".heavy", call)
-			   | NONE => heavy ("ptr", t, call))
+		      | SOME (t as S.PTR _) => heavy ("ptr", t, call)
 		      | SOME (t as S.FPTR _) => heavy ("fptr", t, call)
 		      | SOME (S.ARR _) => raise Fail "array result type"
 		      | (NONE | SOME S.VOIDPTR) => call
@@ -1144,12 +1122,12 @@ end = struct
 	end
 
 	fun do_iptrs report_only = let
-	    fun pr_isu_def (K, k) tag = let
+	    fun pr_iobj_def (K, k) tag = let
 		val (sfile, spath, dpath) =
 		    iptrfiles (concat ["i", k, "-", tag], report_only)
 		val spp = openPP (spath, NONE)
 		val dpp = openPP (dpath, NONE)
-		val istruct = "structure " ^ isu_id (K, tag)
+		val istruct = "structure " ^ iobj_id (K, tag)
 	    in
 		#str spp (istruct ^ " = PointerToIncompleteType ()");
 		#nl spp ();
@@ -1162,14 +1140,14 @@ end = struct
 		#nl dpp ();
 		#str dpp "is";
 		#VBox dpp 4;
-		app (#line dpp) ["$/c.cm", sfile];
+		app (#line dpp) ["$c/c.cm", sfile];
 		#endBox dpp ();
 		#nl dpp ();
 		#closePP dpp ()
 	    end
 	in
-	    SS.app (pr_isu_def ("S", "s")) incomplete_structs;
-	    SS.app (pr_isu_def ("U", "u")) incomplete_unions
+	    SS.app (pr_iobj_def ("S", "s")) incomplete_structs;
+	    SS.app (pr_iobj_def ("U", "u")) incomplete_unions
 	end
 
 	fun do_cmfile () = let
@@ -1184,7 +1162,9 @@ end = struct
 	    endBox ();
 	    nl (); str "is";
 	    VBox 4;
-	    app line ["$/basis.cm", "$/c-int.cm", "$smlnj/init/init.cmi : cm"];
+	    app line ["$/basis.cm",
+		      "$c/internals/c-int.cm",
+		      "$smlnj/init/init.cmi : cm"];
 	    app line (!files);
 	    endBox ();
 	    nl ();

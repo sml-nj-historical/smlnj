@@ -2,12 +2,14 @@
  * 
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
+functor BackendFn (structure M : CODEGENERATOR
+		   val cproto_conv : string) : BACKEND = struct
     structure Interact =
     Interact
 	(EvalLoopF
 	     (CompileF
-		  (structure M = M
+		  (val cproto_conv = cproto_conv
+		   structure M = M
 		   structure CC : CCONFIG = struct
 		       (* configuration for interactive toplevel:
 			* no real pickling/unpickling, pids are
@@ -45,7 +47,8 @@ functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
 		   end)))
 
     structure Compile =
-    CompileF (structure M = M
+    CompileF (val cproto_conv = cproto_conv
+              structure M = M
 	      structure CC : CCONFIG = struct
 	          (* compiler configuration for batch compilation
 		   * (under control of CM); real pickling, unpickling, and

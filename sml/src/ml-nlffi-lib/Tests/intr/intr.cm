@@ -2,5 +2,5 @@ library
 	library(FFI/intr.cm)
 is
 	$/basis.cm
-	$/c.cm
+	$c/c.cm
 	FFI/intr.cm : make (-f intr.make)

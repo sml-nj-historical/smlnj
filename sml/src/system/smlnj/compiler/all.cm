@@ -69,7 +69,8 @@ Library
 	structure HppaBackend
 	structure PPCBackend
 	structure SparcBackend
-	structure X86Backend
+	structure X86StdCallBackend
+	structure X86CCallBackend
 (*
 	structure MipsLittleBackend
 	structure MipsBigBackend

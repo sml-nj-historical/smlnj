@@ -8,8 +8,8 @@
  *)
 signature ZSTRING = sig
 
-    type 'c zstring = (C.uchar, 'c) C.ptr
-    type 'c zstring' = (C.uchar, 'c) C.ptr'
+    type 'c zstring = (C.uchar, 'c) C.obj C.ptr
+    type 'c zstring' = (C.uchar, 'c) C.obj C.ptr'
 
     (* the C strlen function *)
     val length : 'c zstring -> int

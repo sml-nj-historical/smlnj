@@ -792,9 +792,9 @@ for i in $TARGETS ; do
 	;;
       ml-nlffi-lib)
         unpack "NLFFI Library" $SRCDIR ml-nlffi-lib ml-nlffi-lib
-	reglib memory.cm memory.cm ml-nlffi-lib/memory
-	reglib c-int.cm c-int.cm ml-nlffi-lib/internals
-	reglib c.cm c.cm ml-nlffi-lib
+	reglib c memory/memory.cm ml-nlffi-lib
+	reglib c internals/c-int.cm ml-nlffi-lib
+	reglib c c.cm ml-nlffi-lib
 	;;
       pgraph-util)
 	unpack "CM source code" $SRCDIR cm cm
