@@ -140,7 +140,7 @@ struct
        (* what type of comparison to use for GC test? *)
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
 
-   val unlikely = #create MLRiscAnnotations.BRANCH_PROB 0
+   val unlikely = #create MLRiscAnnotations.BRANCH_PROB Probability.never
 
    val normalTestLimit =
        T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))

@@ -32,7 +32,7 @@ struct
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.INSTR(i)) = sparcBranchProb(i)
-     | branchProb _ = 0
+     | branchProb(I.INSTR(i)) = Probability.percent (sparcBranchProb i)
+     | branchProb _ = Probability.never
 
 end

@@ -21,7 +21,7 @@ struct
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.INSTR(i)) = ppcBranchProb(i)
-     | branchProb _ = 0
+     | branchProb(I.INSTR(i)) = Probability.percent (ppcBranchProb i)
+     | branchProb _ = Probability.never
 
 end

@@ -21,7 +21,7 @@ struct
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb (I.INSTR i) = x86BranchProb i
-     | branchProb _ = 0
+     | branchProb (I.INSTR i) = Probability.percent (x86BranchProb i)
+     | branchProb _ = Probability.never
 end
 

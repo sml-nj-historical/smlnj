@@ -35,7 +35,7 @@ struct
             SOME b => b 
           | NONE => branchProb i
          )
-     | branchProb(I.INSTR(i)) = hppaBranchProb(i)
-     | branchProb _ = 0
+     | branchProb(I.INSTR(i)) = Probability.percent (hppaBranchProb i)
+     | branchProb _ = Probability.never
 
 end

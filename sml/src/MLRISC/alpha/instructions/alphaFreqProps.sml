@@ -26,6 +26,6 @@ struct
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.INSTR i) = alphaBranchProb(i)
-     | branchProb _ = 0			(* non-branch *)
+     | branchProb(I.INSTR i) = Probability.percent (alphaBranchProb i)
+     | branchProb _ = Probability.never			(* non-branch *)
 end
