@@ -1,16 +1,20 @@
 signature CM_SEMANT = sig
 
+    exception ExplicitError of string
+
     type pathname
     type ml_symbol
     type cm_symbol
 
     type group
 
-    type perm
+    type perms
     type aexp
     type exp
     type members			(* still conditional *)
     type exports			(* still conditional *)
+
+    type complainer = string -> unit
 
     val file_native : string * pathname -> pathname
     val file_standard : string * pathname -> pathname
@@ -21,21 +25,24 @@ signature CM_SEMANT = sig
     val ml_funsig : string -> ml_symbol
 
     val alias : pathname -> group
-    val group : perm list * exports * members -> group
-    val library : perm list * exports * members -> group
+    val group : perms * exports * members -> group
+    val library : perms * exports * members -> group
 
-    val require : cm_symbol -> perm
-    val grant : cm_symbol -> perm
+    val initialPerms : perms
+    val require : perms * cm_symbol * complainer -> perms
+    val grant : perms * cm_symbol * complainer -> perms
 
     val emptyMembers : members
     val member : pathname * cm_symbol option -> members
     val members : members * members -> members
     val guarded_members : exp * (members * members) -> members
+    val error_member : string -> members
 
     val emptyExports : exports
     val export : ml_symbol -> exports
     val exports : exports * exports -> exports
     val guarded_exports : exp * (exports * exports) -> exports
+    val error_export : string -> exports
 
     val number : int -> aexp
     val variable : cm_symbol -> aexp
@@ -64,8 +71,10 @@ end
 
 structure CMSemant :> CM_SEMANT = struct
 
+    exception ExplicitError of string
+
     type pathname = AbsPath.t
-    type ml_symbol = unit
+    type ml_symbol = ModName.t
     type cm_symbol = string
 
     type group = unit
@@ -75,39 +84,55 @@ structure CMSemant :> CM_SEMANT = struct
     fun ml_look () _ = false
     fun cm_look () _ = false
 
-    datatype perm =
-	REQUIRE of cm_symbol
-      | GRANT of cm_symbol
+    type perms = { required : StringSet.set, granted : StringSet.set }
 
     type aexp = environment -> int
     type exp = environment -> bool
     type members = unit
-    type exports = unit
+    type exports = environment -> ModName.set
+
+    type complainer = string -> unit
 
     fun file_native (s, d) = AbsPath.native { context = d, spec = s }
     fun file_standard (s, d) = AbsPath.standard { context = d, spec = s }
     fun cm_symbol s = s
-    fun ml_structure (s: string) = ()
-    fun ml_signature (s: string) = ()
-    fun ml_functor (s: string) = ()
-    fun ml_funsig (s: string) = ()
+    val ml_structure = ModName.structMN
+    val ml_signature = ModName.sigMN
+    val ml_functor = ModName.functMN
+    val ml_funsig = ModName.funsigMN
 
     fun alias (f: pathname) = ()
-    fun group (p: perm list, e: exports, m: members) = ()
-    fun library (p: perm list, e: exports, m: members) = ()
+    fun group (p: perms, e: exports, m: members) = ()
+    fun library (p: perms, e: exports, m: members) = ()
 
-    val require = REQUIRE
-    val grant = GRANT
+    local
+	val member = StringSet.member
+	fun sanity ({ required, granted }, s, error) =
+	    if member (required, s) orelse member (granted, s) then
+		error ("duplicate permission name: " ^ s)
+	    else ()
+    in
+	val initialPerms = { required = StringSet.empty,
+			     granted = StringSet.empty }
+	fun require (a as ({ required, granted }, s, _)) =
+	    (sanity a;
+	     { required = StringSet.add (required, s), granted = granted })
+	fun grant (a as ({ required, granted }, s, _)) =
+	    (sanity a;
+	     { required = required, granted = StringSet.add (granted, s) })
+    end
 
     val emptyMembers = ()
     fun member (f: pathname, c: cm_symbol option) = ()
     fun members (m1: members, m2: members) = ()
     fun guarded_members (c: exp, (m1: members, m2: members)) = ()
+    fun error_member (m: string) = ()
 
-    val emptyExports = ()
-    fun export (s: ml_symbol) = ()
-    fun exports (e1: exports, e2: exports) = ()
-    fun guarded_exports (c: exp, (e1: exports, e2: exports)) = ()
+    fun emptyExports env = ModName.empty
+    fun export s env = ModName.singleton s
+    fun exports (e1, e2) env = ModName.union (e1 env, e2 env)
+    fun guarded_exports (c, (e1, e2)) env = if c env then e1 env else e2 env
+    fun error_export m env = raise ExplicitError m
 
     fun number i _ = i
     fun variable v e = num_look e v

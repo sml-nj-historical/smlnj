@@ -1,0 +1,11 @@
+Library
+	signature SET
+	structure Set
+	structure StringSet
+is
+	set.sml
+	stringset.sml
+
+	smlnj-lib.cm
+
+

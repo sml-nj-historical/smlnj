@@ -9,11 +9,11 @@ type lexresult = (svalue, pos) token
 type lexarg = {
 	       enterC: unit -> unit,
 	       leaveC: unit -> bool,
-	       newS: pos -> unit,
+	       newS: pos * string -> unit,
 	       addS: char -> unit,
 	       addSC: string * int -> unit,
 	       addSN: string * pos -> unit,
-	       getS: pos -> lexresult,
+	       getS: pos * (string * pos * pos -> lexresult) -> lexresult,
 	       handleEof: unit -> lexresult,
 	       newline: pos -> unit,
 	       error: pos -> string -> unit
@@ -107,17 +107,21 @@ end
        +------> M -> MC
        |
        +------> S -> SS
+       |
+       +------> ES -> E
 
    "C"  -- COMMENT
    "P"  -- PREPROC
    "M"  -- MLSYMBOL
    "S"  -- STRING
    "SS" -- STRINGSKIP
+   "ES" -- ERRORSTART
+   "E"  -- ERROR
 *)
 
 %%
 
-%s C P PC PM PMC M MC S SS;
+%s C P PC PM PMC M MC S SS E ES;
 
 %header(functor CMLexFun (structure Tokens: CM_TOKENS));
 
@@ -160,7 +164,7 @@ sharp="#";
 <INITIAL,P,PM,M>"*)"	=> (error yypos "unmatched comment delimiter";
 			    continue ());
 
-<INITIAL>"\""		=> (YYBEGIN S; newS yypos; continue ());
+<INITIAL>"\""		=> (YYBEGIN S; newS (yypos, "string"); continue ());
 
 <S>"\\a"		=> (addS #"\a"; continue ());
 <S>"\\b"		=> (addS #"\b"; continue ());
@@ -191,7 +195,7 @@ sharp="#";
 			     ("illegal escape character in string " ^ yytext);
 			    continue ());
 
-<S>"\""		        => (YYBEGIN INITIAL; getS yypos);
+<S>"\""		        => (YYBEGIN INITIAL; getS (yypos, Tokens.FILE_NATIVE));
 <S>{eol}		=> (newline yypos;
 			    error yypos "illegal linebreak in string";
 			    continue ());
@@ -248,6 +252,16 @@ sharp="#";
 				      newline yypos;
 				      Tokens.ENDIF (yypos,
 						    yypos + size yytext));
+<INITIAL>{eol}{sharp}{ws}*"error" => (YYBEGIN ES; newline yypos;
+				      newS (yypos, "error"); continue ());
+<ES>{ws}+               => (continue ());
+<ES>{eol}               => (YYBEGIN INITIAL; newline yypos;
+			    getS (yypos, Tokens.ERROR));
+<ES>.                   => (YYBEGIN E;
+			    addS (String.sub (yytext, 0)); continue ());
+<E>{eol}                => (YYBEGIN INITIAL; newline yypos;
+			    getS (yypos, Tokens.ERROR));
+<E>.                    => (addS (String.sub (yytext, 0)); continue ());
 
 <INITIAL,M,PM>{eol}     => (newline yypos; continue ());
 <P>{eol}                => (YYBEGIN INITIAL; newline yypos; continue ());

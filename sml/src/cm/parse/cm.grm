@@ -13,6 +13,7 @@ structure S = CMSemant
     | ALIAS | GROUP | LIBRARY | IS
     | LPAREN | RPAREN | COLON
     | IF | THEN | ELIF | ELSE | ENDIF
+    | ERROR of string
     | STRUCTURE | SIGNATURE | FUNCTOR | FUNSIG
     | DEFINED
     | PLUS | MINUS | TIMES | DIV | MOD | TILDE
@@ -22,9 +23,8 @@ structure S = CMSemant
 %nonterm description of S.group
        | alias of S.group
        | group of S.group
-       | opt_perms of S.perm list
-       | perms of S.perm list
-       | perm of S.perm
+       | opt_perms of S.perms
+       | perms of S.perms
        | lib_exports of S.exports
        | exports of S.exports
        | export of S.exports
@@ -45,7 +45,7 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (currentDir) : S.pathname
+%arg (currentDir, error) : S.pathname * (pos * pos -> string -> unit)
 %start description
 %eop EOF
 %noshift EOF
@@ -80,14 +80,16 @@ group : GROUP
 						 (opt_perms, lib_exports,
 						  members))
 
-opt_perms : (* empty *)				([])
+opt_perms : (* empty *)				(S.initialPerms)
 	  | LPAREN perms RPAREN		        (perms)
 
-perms : perm                                    ([perm])
-      | perm perms                              (perm :: perms)
-
-perm : sym                                      (S.require sym)
-     | COLON sym                                (S.grant sym)
+perms : (* empty *)                             (S.initialPerms)
+      | perms sym                               (S.require (perms, sym,
+							    error (symleft,
+								   symright)))
+      | perms COLON sym                         (S.grant (perms, sym,
+							  error (symleft,
+								 symright)))
 
 lib_exports : export exports		        (S.exports (export, exports))
 
@@ -97,6 +99,7 @@ exports : (* empty *)				(S.emptyExports)
 export : ml_symbol				(S.export ml_symbol)
        | IF exp guarded_exports			(S.guarded_exports
 						  (exp, guarded_exports))
+       | ERROR                                  (S.error_export ERROR)
 
 guarded_exports : THEN exports else_exports	((exports, else_exports))
 
@@ -112,6 +115,7 @@ member : pathname				(S.member (pathname, NONE))
        | pathname COLON sym			(S.member (pathname, SOME sym))
        | IF exp guarded_members			(S.guarded_members
 						 (exp, guarded_members))
+       | ERROR                                  (S.error_member ERROR)
 
 guarded_members : THEN members else_members	((members, else_members))
 
