@@ -97,7 +97,7 @@ fun cmpop stuff =
 	       | c AP.<    = P.fLT
 	       | c AP.<=   = P.fLE
  	       | c AP.EQL  = P.fEQ
- 	       | c AP.NEQ  = P.fLG
+ 	       | c AP.NEQ  = P.fULG
  	       | c _ = bug "cmpop:kind=AP.FLOAT"
           in P.fcmp{oper= c oper, size=size}
          end
