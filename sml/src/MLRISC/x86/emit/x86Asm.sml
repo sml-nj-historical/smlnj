@@ -488,6 +488,12 @@ struct
       | I.FSTPT operand => 
         ( emit "fstps\t"; 
         emit_operand operand )
+      | I.FSTL operand => 
+        ( emit "fstl\t"; 
+        emit_operand operand )
+      | I.FSTS operand => 
+        ( emit "fsts\t"; 
+        emit_operand operand )
       | I.FLD1 => emit "fld1"
       | I.FLDL2E => emit "fldl2e"
       | I.FLDL2T => emit "fldl2t"

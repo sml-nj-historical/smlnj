@@ -73,7 +73,7 @@ sig
    val clearGraph : G.interferenceGraph -> unit
 
    (*
-    * Remove all adjacency lists from the nodes table
+    * Remove all adjacency lists from the nodes table.
     *)
    val clearNodes : G.interferenceGraph -> unit
 

@@ -19,22 +19,19 @@ functor Shuffle(I : INSTRUCTIONS) :
 	-> I.instruction list
   end = 
 struct
-  datatype reg = REG of int | TEMP
-  fun equal (REG r1, REG r2) = r1 = r2
-    | equal (TEMP, TEMP) = true
-    | equal _ = false
+  fun equal (r1 : int, r2 : int) = r1 = r2
 
   fun shuffle{mvInstr, ea} {regmap, tmp, dst, src} = let
-    val mv = rev o mvInstr
-    fun opnd (REG dst) = ea dst
-      | opnd TEMP = Option.valOf tmp
+    fun mv{dst, src, instrs} = List.revAppend(mvInstr{dst=dst,src=src}, instrs)
+    val TEMP = ~1
+    fun opnd dst = if dst = TEMP then Option.valOf tmp else ea dst
 
     (* perform unconstrained moves *)
     fun loop((p as (rd,rs))::rest, changed, used, done, instrs) = 
 	if List.exists (fn r => equal(r, rd)) used then
 	   loop(rest, changed, used, p::done, instrs)
 	else loop(rest, true, used, done,
-                  mv{dst=opnd rd, src=opnd rs}@instrs)
+                  mv{dst=opnd rd, src=opnd rs, instrs=instrs})
       | loop([], changed, _, done, instrs) = (changed, done, instrs)
 
     fun cycle([], instrs) = instrs
@@ -45,7 +42,7 @@ struct
 	   | (false, (rd,rs)::acc, instrs) => let
 	       fun rename(p as (a,b)) = if equal(rd, b) then (a, TEMP) else p
 	       val acc' = (rd, rs) :: map rename acc
-	       val instrs' = mv{dst=Option.valOf tmp, src=opnd rd}@instrs
+	       val instrs' = mv{dst=Option.valOf tmp,src=opnd rd,instrs=instrs}
 	       val (_, acc'', instrs'') = 
 		 loop(acc', false, map #2 acc', [], instrs')
 	     in cycle(acc'', instrs'')
@@ -53,15 +50,15 @@ struct
 	 (*esac*))
 
     (* remove moves that have been coalesced. *)
-    fun rmvCoalesced(rd::rds, rs::rss) = let
+    fun rmvCoalesced(rd::rds, rs::rss, mvs) = let
 	  val dst = regmap rd
 	  val src = regmap rs
 	in
-	  if dst = src then rmvCoalesced(rds, rss)
-	  else (REG dst, REG src)::rmvCoalesced(rds, rss)
+	  if dst = src then rmvCoalesced(rds, rss, mvs)
+	  else rmvCoalesced(rds, rss, (dst, src)::mvs)
 	end
-      | rmvCoalesced([], []) = []
-  in rev (cycle (rmvCoalesced(dst, src), []))
+      | rmvCoalesced([], [], mvs) = mvs
+  in rev (cycle (rmvCoalesced(dst, src, []), []))
   end
 end
 

@@ -187,7 +187,6 @@ struct
         | MUL(e,f,ty,(T.LI 1 | T.LI32 0w1),b) = b
         | MUL(e,f,ty,a,b) = f(e,ty,a,b)
       fun DIV(e,f,ty,a,(T.LI 1 | T.LI32 0w1)) = a
-        | DIV(e,f,ty,(T.LI 1 | T.LI32 0w1),b) = b
         | DIV(e,f,ty,a,b) = f(e,ty,a,b)
       fun REM(e,f,ty,a,b) = f(e,ty,a,b)
       fun ANDB(e,ty,a,b as (T.LI 0 | T.LI32 0w0)) = b

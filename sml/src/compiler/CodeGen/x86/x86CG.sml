@@ -98,7 +98,9 @@ structure X86CG =
             if isDeadInstr i then 
                ((* deadcode := !deadcode + 1; *) elim(instrs, code))
             else elim(instrs, i::code)
-      in if Intmap.elems affectedBlocks > 0 then scan blocks else ()
+      in if Intmap.elems affectedBlocks > 0 then 
+            (scan blocks; Intmap.clear deadRegs; Intmap.clear affectedBlocks)
+         else ()
       end
 
       (* This function finds out which pseudo memory registers are unused.

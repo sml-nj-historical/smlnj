@@ -776,7 +776,7 @@ struct
               ``ldo\t<i2>(<b>), <t2>''
              )
         mc: let val (c,f) = cmpCond cc
-            in  CompareImmClear{r=r2,t=t1,c,f,im11=opn i1};
+            in  CompareImmClear{r=r2,t=t1,c,f,im11=low_sign_ext_im11(opn i1)};
                 Load{Op=0wx0d,b,im14=low_sign_ext_im14(itow i2),t=t2}
             end
 	rtl: if t1 = t2 then [[ "COMICLR_LDO2_" cc ]]
@@ -910,7 +910,7 @@ struct
 	rtl: [[ "MTCTL" ]]
 
     | FSTORE  of {fst:fstore,b: $GP, d:int, r: $FP,mem:Region.region}
-        asm: ``<fst>\t<d>(<b>), <r><mem>''
+        asm: ``<fst>\t<r>, <d>(<b>)<mem>''
         mc: (case fst of
               I.FSTDS => CoProcShort{Op=0wxb,b,im5=low_sign_ext_im5(itow d),
                                      s=0w0,a=0w0,ls=0w1,uid=0w0,rt=r}
@@ -920,7 +920,7 @@ struct
         rtl: [[ fst ]]
 
     | FSTOREX of {fstx:fstorex, b: $GP, x: $GP,r: $FP,mem:Region.region}
-        asm: ``<fstx>\t<x>(<b>), <r><mem>''
+        asm: ``<fstx>\t<r>, <x>(<b>)<mem>''
         mc:  let val (Op,uid,u,m) = emit_fstorex fstx   
              in  CoProcIndexed{Op=Op,b,x,s=0w0,u,m,ls=0w1,uid=uid,rt=r}
              end

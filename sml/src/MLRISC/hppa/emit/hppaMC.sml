@@ -594,7 +594,7 @@ struct
 
 (*#line 778.17 "hppa/hppa.md"*)
           val (c, f) = cmpCond cc
-       in CompareImmClear {r=r2, t=t1, c=c, f=f, im11=opn i1}; 
+       in CompareImmClear {r=r2, t=t1, c=c, f=f, im11=low_sign_ext_im11 (opn i1)}; 
           Load {Op=0wxd, b=b, im14=low_sign_ext_im14 (itow i2), t=t2}
        end
 

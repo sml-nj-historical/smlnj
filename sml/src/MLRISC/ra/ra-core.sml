@@ -92,6 +92,12 @@ struct
   val COMPUTE_SPAN        = 0wx4
   val SAVE_COPY_TEMPS     = 0wx8 
   val HAS_PARALLEL_COPIES = 0wx10
+  val SPILL_COALESCING       = 0wx100
+  val SPILL_COLORING         = 0wx200
+  val SPILL_PROPAGATION      = 0wx400
+  val MEMORY_COALESCING      = 
+      SPILL_COALESCING + SPILL_COLORING + SPILL_PROPAGATION
+
 
   local
 
@@ -339,11 +345,11 @@ struct
 
   structure FZ = PriQueue
      (type elem=node 
-      fun less(NODE{movecost=ref p1,...}, NODE{movecost=ref p2,...}) = p1 < p2
+      fun less(NODE{movecost=ref p1,...}, NODE{movecost=ref p2,...}) = p1 <= p2
      )
   structure MV = PriQueue
      (type elem=G.move 
-      fun less(MV{cost=p1,...}, MV{cost=p2,...}) = p1 > p2
+      fun less(MV{cost=p1,...}, MV{cost=p2,...}) = p1 >= p2
      )
 
   type move_queue = MV.pri_queue
@@ -705,12 +711,14 @@ struct
    *  2.  The freeze list may have duplicates
    *)
   fun iteratedCoalescingPhases
-       (G as GRAPH{K, bitMatrix, spillFlag, trail, stamp, 
+       (G as GRAPH{K, bitMatrix, spillFlag, trail, stamp, mode,
                    pseudoCount, blockedCount, ...}) =
   let val member = BM.member(!bitMatrix)
       val addEdge = addEdge G
       val show = show G
-      val blocked = blockedCount
+      val memoryCoalescingOn = isOn(mode, MEMORY_COALESCING)
+
+      val blocked = blockedCount 
 
       (*
        * SIMPLIFY node:
@@ -984,8 +992,11 @@ struct
                    * New comment: with spill propagation, it is necessary
                    * to keep track of the spilled program points.
                    *)
-         defsu := concat(!defsu, !defsv); 
-         usesu := concat(!usesu, !usesv);
+         if memoryCoalescingOn then
+           (defsu := concat(!defsu, !defsv); 
+            usesu := concat(!usesu, !usesv)
+           )
+         else ();
          case !ucol of
            PSEUDO => 
              (if !cntv > 0 then 
@@ -1120,7 +1131,8 @@ struct
                     | NODE{movecnt as ref c, degree, ...} => (* pseudo *)
                         (movecnt := c - 1; 
                          if c = 1 andalso !degree < K then 
-                           (blocked := !blocked - 1; elimMoves(mvs, you::simp))
+                           (blocked := !blocked - 1; 
+                            elimMoves(mvs, you::simp))
                          else 
                             elimMoves(mvs, simp)
                         )
@@ -1172,7 +1184,7 @@ struct
                          (*val _ = 
                             if tally then good_freeze := !good_freeze + 1
                             else ()*)
-                         val _ = blocked := !blocked - 1;
+                         val _ = blocked := !blocked - 1; 
                          val (mv, fz, stack) = markAsFrozen(node, fz, stack)
                          val (fz, stack) = coalesce(mv, fz, stack)
                      in  if !blocked = 0 
@@ -1354,11 +1366,13 @@ struct
       case spills of
         [] => {spills=[]}
       | spills => 
-         (app (fn node as NODE{color,...} => color := PSEUDO) stack;
-          undoCoalesced (!trail);
-          trail := END;
-          {spills=spills}
-         )
+        let fun undo [] = ()
+              | undo(NODE{color,...}::nodes) = (color := PSEUDO; undo nodes)
+        in  undo stack;
+            undoCoalesced (!trail);
+            trail := END;
+            {spills=spills}
+        end
   end
 
   (*
@@ -1409,15 +1423,17 @@ struct
           then ()
           else addSavings(u, {pinned=v, cost=cost + c + c})
       end
-      fun computeSavings(MV{dst, src, cost, ...}) =
-      let val src as NODE{number=u, color=cu, ...} = chase src
-          val dst as NODE{number=v, color=cv, ...} = chase dst
-      in  case (!cu, !cv) of
-            (SPILLED _, PSEUDO) => incSavings(v, u, cost)
-          | (PSEUDO, SPILLED _) => incSavings(u, v, cost)
-          | _ => ()
-      end
-  in  app computeSavings (!memMoves);
+      fun computeSavings [] = ()
+        | computeSavings(MV{dst, src, cost, ...}::mvs) =
+          let val src as NODE{number=u, color=cu, ...} = chase src
+              val dst as NODE{number=v, color=cv, ...} = chase dst
+          in  case (!cu, !cv) of
+                (SPILLED _, PSEUDO) => incSavings(v, u, cost)
+              | (PSEUDO, SPILLED _) => incSavings(u, v, cost)
+              | _ => ();
+              computeSavings mvs
+          end
+  in  computeSavings (!memMoves);
       fn node => #cost(savings node)
   end
 

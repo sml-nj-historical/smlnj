@@ -458,8 +458,9 @@ struct
         * We'll just do it from scratch for now.
         *)
        fun rebuild(cellkind, G) = 
-           (Core.clearGraph G; Core.clearNodes G; 
-            buildIt(cellkind, Core.regmap G, G))
+           (Core.clearNodes G;
+            buildIt(cellkind, Core.regmap G, G)
+           )
 
        val regs = foldr(fn (r, "") => Int.toString r
                          | (r, l)  => Int.toString r^","^l) ""
@@ -470,7 +471,9 @@ struct
        fun spill{copyInstr, spill, spillSrc, spillCopyTmp, 
                  reload, reloadDst, renameSrc, graph as G.GRAPH{regmap, ...}, 
                  cellkind, nodes=nodesToSpill} = 
-       let
+       let (* Remove the interference graph now *)
+           val _ = Core.clearGraph graph
+
            (* maps program point to registers to be spilled *)
            val spillSet = Intmap.new(32, NotThere) : C.cell list Intmap.intmap
 
@@ -503,10 +506,13 @@ struct
            fun ins set = 
            let val add  = Intmap.add set
                val look = Intmap.mapWithDefault(set, [])
-           in  fn r => fn x =>
-               (add (x, r::look x);
-                addAffectedBlocks (blockNum x, true)
-               )
+               fun enter(r, []) = ()
+                 | enter(r, pt::pts) = 
+                   (add (pt, r::look pt);
+                    addAffectedBlocks (blockNum pt, true);
+                    enter(r, pts)
+                   )
+           in  enter
            end
 
            val insSpillSet  = ins spillSet
@@ -514,25 +520,29 @@ struct
            val insKillSet   = 
            let val add  = Intmap.add killSet
                val look = Intmap.mapWithDefault(killSet, [])
-           in  fn r => fn x => add (x, r::look x) end
+               fun enter(r, []) = ()
+                 | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
+           in  enter 
+           end
 
            (* Mark all spill/reload locations *)
-           val markSpills = app 
-              (fn G.NODE{color, number, defs=ref defs, uses=ref uses, ...} =>
+           fun markSpills [] = ()
+             | markSpills(
+                G.NODE{color, number, defs as ref d, uses as ref u, ...}::ns) =
                let fun spillIt(defs, uses) = 
-                       (app (insSpillSet number) defs;
-                        app (insReloadSet number) uses;
+                       (insSpillSet(number, defs);
+                        insReloadSet(number, uses);
                         (* Definitions but no use! *) 
                         case uses of
-                           [] => app (insKillSet number) defs
+                           [] => insKillSet(number, defs)
                          | _ => ()
                        )
                in  case !color of
-                     G.SPILLED c => spillIt(defs, uses)
-                   | G.PSEUDO => spillIt(defs, uses)
-                   | _ => ()
+                     G.SPILLED c => spillIt(d, u)
+                   | G.PSEUDO => spillIt(d, u)
+                   | _ => ();
+                   markSpills ns
                end
-             ) 
            val _ = markSpills nodesToSpill
 
            (* Print all spill/reload locations *)
@@ -582,12 +592,14 @@ struct
 
        in  Intmap.app rewriteAll affectedBlocks;
            let val spilledMarker = SPILLED ~2
-           in  app (fn G.NODE{number, color as ref(SPILLED c), ...} => 
-                        if number <> c then color := spilledMarker else ()
-                     | G.NODE{color as ref PSEUDO, ...} => 
-                        color := spilledMarker 
-                     | _ => ()
-                   ) nodesToSpill
+               fun mark [] = ()
+                 | mark(G.NODE{number, color as ref(SPILLED c), ...}::rest)= 
+                     (if number <> c then color := spilledMarker else ();
+                      mark rest)
+                 | mark(G.NODE{color as ref PSEUDO, ...}::rest) =
+                      (color := spilledMarker; mark rest)
+                 | mark(_::rest) = mark rest 
+           in  mark nodesToSpill
            end;
            rebuild(cellkind, graph)
        end

@@ -48,7 +48,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.MULTDIV{multDivOp, src} => 
 	I.MULTDIV{multDivOp=multDivOp, src=operand src}
      | I.MUL3{dst, src1, src2 as NONE} => 
-	I.MUL3{dst=if mapr dst=rs then rt else rs, src1=operand src1, src2=NONE}
+	I.MUL3{dst=replace dst, src1=operand src1, src2=NONE}
      | I.MUL3{dst, src1, src2} => 
 	I.MUL3{dst=dst, src1=operand src1, src2=src2}
      | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
@@ -62,6 +62,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FSTPT opnd => I.FSTPT(operand opnd)
      | I.FSTPL opnd => I.FSTPL(operand opnd)
      | I.FSTPS opnd => I.FSTPS(operand opnd)
+     | I.FSTL opnd => I.FSTL(operand opnd)
+     | I.FSTS opnd => I.FSTS(operand opnd)
      | I.FLDT opnd => I.FLDT(operand opnd)
      | I.FLDL opnd => I.FLDL(operand opnd)
      | I.FLDS opnd => I.FLDS(operand opnd)
@@ -125,6 +127,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FSTPT opnd => I.FSTPT(foperand opnd)
      | I.FSTPL opnd => I.FSTPL(foperand opnd)
      | I.FSTPS opnd => I.FSTPS(foperand opnd)
+     | I.FSTL opnd => I.FSTL(foperand opnd)
+     | I.FSTS opnd => I.FSTS(foperand opnd)
      | I.CALL(opnd, (dr,df,dc), uses, mem) => 
          I.CALL(opnd, (dr, map replace df, dc), uses, mem)
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}

@@ -320,6 +320,8 @@ functor X86Spill(structure Instr: X86INSTR
      | I.FSTPT opnd => reloadReal(I.FSTPT, opnd, an)
      | I.FSTPL opnd => reloadReal(I.FSTPL, opnd, an)
      | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
+     | I.FSTL opnd => reloadReal(I.FSTL, opnd, an)
+     | I.FSTS opnd => reloadReal(I.FSTS, opnd, an)
      | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
                                  I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
      | I.FBINARY{binOp, src, dst} => 
@@ -337,6 +339,8 @@ functor X86Spill(structure Instr: X86INSTR
       (case instr of 
          I.FSTPL _ => {proh=[], code=[mark(I.FSTPL spillLoc, an)], newReg=NONE}
        | I.FSTPS _ => {proh=[], code=[mark(I.FSTPS spillLoc, an)], newReg=NONE}
+       | I.FSTL _ => {proh=[], code=[mark(I.FSTL spillLoc, an)], newReg=NONE}
+       | I.FSTS _ => {proh=[], code=[mark(I.FSTS spillLoc, an)], newReg=NONE}
        | I.CALL(opnd, defs, uses, mem) =>
 	 {proh=[],
 	  code=[mark(I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem), an)],

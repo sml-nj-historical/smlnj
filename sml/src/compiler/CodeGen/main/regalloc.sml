@@ -252,7 +252,7 @@ struct
             copyInstr    = fn i => [copyR i],
             spillProh    = [],
             memRegs      = [],
-            mode         = Word.orb(Ra.SPILL_COLORING, Ra.HAS_PARALLEL_COPIES)
+            mode         = Ra.NO_OPTIMIZATION
           },
           { cellkind     = I.C.FP,
             getreg       = FR.getreg,

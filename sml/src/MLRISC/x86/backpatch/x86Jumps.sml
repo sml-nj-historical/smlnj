@@ -47,6 +47,8 @@ struct
      | I.FSTPT opnd => operand opnd
      | I.FSTPL opnd => operand opnd
      | I.FSTPS opnd => operand opnd
+     | I.FSTL opnd => operand opnd
+     | I.FSTS opnd => operand opnd
      | I.FLDT opnd => operand opnd
      | I.FLDL opnd => operand opnd
      | I.FLDS opnd => operand opnd

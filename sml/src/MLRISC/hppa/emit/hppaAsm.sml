@@ -480,20 +480,22 @@ struct
       | I.FSTORE{fst, b, d, r, mem} => 
         ( emit_fstore fst; 
         emit "\t"; 
+        emit_FP r; 
+        emit ", "; 
         emit_int d; 
         emit "("; 
         emit_GP b; 
-        emit "), "; 
-        emit_FP r; 
+        emit ")"; 
         emit_region mem )
       | I.FSTOREX{fstx, b, x, r, mem} => 
         ( emit_fstorex fstx; 
         emit "\t"; 
+        emit_FP r; 
+        emit ", "; 
         emit_GP x; 
         emit "("; 
         emit_GP b; 
-        emit "), "; 
-        emit_FP r; 
+        emit ")"; 
         emit_region mem )
       | I.FLOAD{fl, b, d, t, mem} => 
         ( emit_fload fl; 

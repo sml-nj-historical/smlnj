@@ -184,6 +184,8 @@ sig
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand
+   | FSTL of operand
+   | FSTS of operand
    | FLD1
    | FLDL2E
    | FLDL2T
@@ -384,6 +386,8 @@ struct
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand
+   | FSTL of operand
+   | FSTS of operand
    | FLD1
    | FLDL2E
    | FLDL2T

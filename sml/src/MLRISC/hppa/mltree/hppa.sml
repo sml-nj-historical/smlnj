@@ -705,7 +705,8 @@ struct
            | T.ADDT(_,a,b) => plus(timest,
                                  I.SH1ADDO,I.SH2ADDO,I.SH3ADDO,I.ADDO,I.ADDIO,
                                  a,b,t,an) 
-           | T.SUBT(_,a,T.LI n) => immedArith(I.ADDO,I.ADDIO,a,T.LI(~n),t,an)
+           | T.SUBT(_,a,T.LI n) => 
+                    commImmedArith(I.ADDO,I.ADDIO,a,T.LI(~n),t,an)
            | T.SUBT(_,a,b) => immedArith(I.SUBO,I.SUBIO,a,b,t,an)
 
            | T.ANDB(_,a,T.NOTB(_,b)) => arith(I.ANDCM,a,b,t,an)

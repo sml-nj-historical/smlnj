@@ -103,7 +103,7 @@ struct
 
     fun delaySlotCandidate{jmp,delaySlot=
              (I.BCOND _ | I.BCONDI _ | I.BB _ | I.FBRANCH _ | I.BV _ | I.BE _ |
-              I.COMCLR_LDO _ | I.COMICLR_LDO _ |
+              I.COMCLR_LDO _ | I.COMICLR_LDO _ | I.B _ |
               I.BLR _ | I.BL _ | I.BLE _)} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}

@@ -173,6 +173,8 @@ struct
       | I.FSTPT opnd	      => float opnd
       | I.FSTPL opnd	      => float opnd
       | I.FSTPS opnd	      => float opnd 
+      | I.FSTL opnd	      => float opnd
+      | I.FSTS opnd	      => float opnd 
       | I.FLDL opnd	      => float opnd
       | I.FLDS opnd	      => float opnd
       | I.FILD opnd           => float opnd
@@ -199,6 +201,8 @@ struct
      of I.FSTPT opnd            => (operand opnd, [])  
       | I.FSTPL opnd		=> (operand opnd, [])
       | I.FSTPS opnd		=> (operand opnd, [])
+      | I.FSTL opnd		=> (operand opnd, [])
+      | I.FSTS opnd		=> (operand opnd, [])
       | I.FLDT opnd		=> ([], operand opnd)
       | I.FLDL opnd		=> ([], operand opnd)
       | I.FLDS opnd		=> ([], operand opnd)

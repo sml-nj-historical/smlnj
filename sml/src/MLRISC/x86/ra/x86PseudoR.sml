@@ -316,6 +316,8 @@ struct
 	      | I.FSTPT opnd => done(opnd, I.FSTPT, an)
 	      | I.FSTPL opnd => done(opnd, I.FSTPL, an)
 	      | I.FSTPS opnd => done(opnd, I.FSTPS, an)
+	      | I.FSTL opnd => done(opnd, I.FSTL, an)
+	      | I.FSTS opnd => done(opnd, I.FSTS, an)
 	      | I.FLDT opnd => done(opnd, I.FLDT, an)
 	      | I.FLDL opnd => done(opnd, I.FLDL, an)
 	      | I.FLDS opnd => done(opnd, I.FLDS, an)
