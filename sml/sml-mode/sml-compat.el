@@ -61,7 +61,7 @@ If DIR-FLAG is non-nil, create a new empty directory instead of a file."
       ;; the file was somehow created by someone else between
       ;; `make-temp-name' and `write-region', let's try again.
       nil)
-    file))
+    file)))
 
 
 ;;
