@@ -24,14 +24,14 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     type statenv = E.staticEnv
     type symenv = E.symenv
 
-    type benv = statenv
+    type benv = unit -> statenv
     type result = { stat: statenv, sym: symenv }
-    type env = { envs: result, pids: PidSet.set }
+    type env = { envs: unit -> result, pids: PidSet.set }
 
     val empty = { stat = E.staticPart E.emptyEnv,
 		  sym = E.symbolicPart E.emptyEnv }
 
-    fun env2result (e: env) = #envs e
+    fun env2result (e: env) = #envs e ()
 
     fun rlayer (r, r') = let
 	fun r2e { stat, sym } = E.mkenv { static = stat, symbolic = sym,
@@ -59,43 +59,61 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     (* persistent state! *)
     val filtermap = ref (FilterMap.empty: pid FilterMap.map)
 
-    fun blayer (be, be') = E.layerStatic (be, be')
+    fun blayer (be, be') = fn () => E.layerStatic (be (), be' ())
 
-    fun layer ({ envs, pids }, { envs = e', pids = p' }) =
-	{ envs = rlayer (envs, e'), pids = PidSet.union (pids, p') }
+    fun layer ({ envs = e, pids = p }, { envs = e', pids = p' }) =
+	{ envs = fn () => rlayer (e (), e' ()),
+	  pids = PidSet.union (p, p') }
 
-    fun bfilter (d: envdelta, s) =
-	E.filterStaticEnv (#1 (#stat d), SymbolSet.listItems s)
+    fun exportsNothingBut set se =
+	List.all (fn sy => SymbolSet.member (set, sy)) (E.catalogEnv se)
+
+    fun bfilter (d: envdelta, s) = let
+	val se = #1 (#stat d)
+    in
+	if exportsNothingBut s se then (fn () => se)
+	else (fn () => E.filterStaticEnv (se, SymbolSet.listItems s))
+    end
 
     fun pidset (p1, p2) =
 	PidSet.add (PidSet.singleton p1, p2)
 
-    fun filter (d, s) = let
-	val stat = bfilter (d, s)
+    fun filter (d: envdelta, s) = let
+	val se = #1 (#stat d)
 	val (sym, sympid) = #sym d
 	val statpid = #2 (#stat d)
-	val ctxt = #ctxt d
-	val key = (statpid, s)
-	val statpid' =
-	    case FilterMap.find (!filtermap, key) of
-		SOME statpid' => statpid'
-	      | NONE => let
-		    val statpid' = GenericVC.MakePid.makePid (ctxt, stat)
-		in
-		    filtermap := FilterMap.insert (!filtermap, key, statpid');
-		    statpid'
-		end
     in
-	{ envs = { stat = stat, sym = sym }, pids = pidset (statpid', sympid) }
+	if exportsNothingBut s se then
+	    { envs = fn () => { stat = se, sym = sym },
+	      pids = pidset (statpid, sympid) }
+	else let
+	    val stat = E.filterStaticEnv (se, SymbolSet.listItems s)
+	    val ctxt = #ctxt d
+	    val key = (statpid, s)
+	    val statpid' =
+		case FilterMap.find (!filtermap, key) of
+		    SOME statpid' => statpid'
+		  | NONE => let
+			val statpid' = GenericVC.MakePid.makePid (ctxt, stat)
+		    in
+			filtermap :=
+			      FilterMap.insert (!filtermap, key, statpid');
+			statpid'
+		    end
+	in
+	    { envs = fn () => { stat = stat, sym = sym },
+	      pids = pidset (statpid', sympid) }
+	end
     end
 
-    fun bnofilter (d: envdelta) = #1 (#stat d)
+    fun bnofilter (d: envdelta) = (fn () => #1 (#stat d))
 
     fun nofilter (d: envdelta) = let
 	val (stat, statpid) = #stat d
 	val (sym, sympid) = #sym d
     in
-	{ envs = { stat = stat, sym = sym }, pids = pidset (statpid, sympid) }
+	{ envs = fn () => { stat = stat, sym = sym },
+	  pids = pidset (statpid, sympid) }
     end
 
     fun primitive (gp: GeneralParams.info) p = let
@@ -111,12 +129,12 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     fun pervasive (gp: GeneralParams.info) = let
 	val e = #pervasive (#param gp)
     in
-	{ envs = { stat = E.staticPart e, sym = E.symbolicPart e },
+	{ envs = fn () => { stat = E.staticPart e, sym = E.symbolicPart e },
 	  pids = PidSet.empty }
     end
 
     fun bpervasive (gp: GeneralParams.info) =
-	E.staticPart (#pervasive (#param gp))
+	(fn () => E.staticPart (#pervasive (#param gp)))
 
     fun memo2envdelta { bfc, ctxt } =
 	{ stat = (BF.senvOf bfc, BF.staticPidOf bfc),
@@ -159,10 +177,10 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  | NONE =>
 		(case mkenv () of
 		     NONE => NONE
-		   | SOME be => load be)
+		   | SOME be => load (be ()))
     end
 
-    fun dosml (i, { envs = { stat, sym }, pids }, gp) = let
+    fun dosml (i, { envs, pids }, gp) = let
 	val pids = PidSet.union (pids, #pervcorepids (#param gp))
     in
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
@@ -170,6 +188,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  | NONE => let
 		val binpath = SmlInfo.binpath i
 		val binname = AbsPath.name binpath
+		val { stat, sym } = envs ()
 
 		fun save bfc = let
 		    fun writer s =

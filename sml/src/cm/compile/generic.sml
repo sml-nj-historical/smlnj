@@ -17,15 +17,15 @@ in
 	type envdelta = CT.envdelta
 	type result = CT.result
 
-	(* "bnode" does not expect failures, and "group" automatically
-	 * clears failures... *)
 	val bnode : GP.info -> DG.bnode -> envdelta option
 	val group : GP.info -> GG.group -> result option
 
-	(* ... but if you go through the "snode" interface, then
-	 * you must clear failures explicitly when you are done. *)
+	(* if you go through the "snode" interface, then
+	 * you must reset explicitly when you are done. *)
 	val snode : GP.info -> DG.snode -> envdelta option
-	val clearFailures : unit -> unit
+	val reset : unit -> unit
+
+	val resetAll : unit -> unit
     end = struct
 
 	type envdelta = CT.envdelta
@@ -33,17 +33,10 @@ in
 	type benv = CT.benv
 	type result = CT.result
 
-	(* This is to prevent re-execution of dosml if the first one failed *)
-	local
-	    val failures = ref SmlInfoSet.empty
-	in
-	    fun dosml (i, e, gp) =
-		if SmlInfoSet.member (!failures, i) then NONE
-		else case CT.dosml (i, e, gp) of
-		    SOME r => SOME r
-		  | NONE => (failures := SmlInfoSet.add (!failures, i); NONE)
-	    fun clearFailures () = failures := SmlInfoSet.empty
-	end
+	val smlcache = ref (SmlInfoMap.empty: envdelta option SmlInfoMap.map)
+	val stablecache = ref (StableMap.empty: envdelta option StableMap.map)
+	fun reset () = smlcache := SmlInfoMap.empty
+	fun resetAll () = (reset (); stablecache := StableMap.empty)
 
 	(* To implement "keep_going" we have two different ways of
 	 * combining a "work" function with a "layer" function.
@@ -68,9 +61,18 @@ in
 	    fun bn (DG.PNODE p) = SOME (CT.primitive gp p)
 	      | bn (DG.BNODE n) = let
 		    val { bininfo, localimports = li, globalimports = gi } = n
-		    fun mkenv () = loc (glob (SOME (CT.bpervasive gp)) gi) li
 		in
-		    CT.dostable (bininfo, mkenv, gp)
+		    case StableMap.find (!stablecache, bininfo) of
+			SOME r => r
+		      | NONE => let
+			    fun mkenv () =
+				loc (glob (SOME (CT.bpervasive gp)) gi) li
+			    val r = CT.dostable (bininfo, mkenv, gp)
+			in
+			    stablecache :=
+			       StableMap.insert (!stablecache, bininfo, r);
+			    r
+			end
 		end
 	in
 	    (* don't eta-reduce this -- it'll lead to an infinite loop! *)
@@ -93,14 +95,20 @@ in
 				  Option.map CT.nofilter o snode gp))
 
 	    val { smlinfo, localimports = li, globalimports = gi } = n
-	    val desc = SmlInfo.fullSpec smlinfo
-	    val pe = SOME (CT.pervasive gp)
-	    val ge = glob pe gi
-	    val e = loc ge li
 	in
-	    case e of
-		NONE => NONE
-	      | SOME e => dosml (smlinfo, e, gp)
+	    case SmlInfoMap.find (!smlcache, smlinfo) of
+		SOME r => r
+	      | NONE => let
+		    val pe = SOME (CT.pervasive gp)
+		    val ge = glob pe gi
+		    val e = loc ge li
+		    val r = case e of
+			NONE => NONE
+		      | SOME e => CT.dosml (smlinfo, e, gp)
+		in
+		    smlcache := SmlInfoMap.insert (!smlcache, smlinfo, r);
+		    r
+		end
 	end
 
 	and sbnode gp (DG.SB_BNODE b) = bnode gp b
@@ -120,6 +128,6 @@ in
 			       impexp gp))
 	           (SOME CT.empty)
 		   (SymbolMap.listItems exports))
-	    before clearFailures ()
+	    before reset ()
     end
 end

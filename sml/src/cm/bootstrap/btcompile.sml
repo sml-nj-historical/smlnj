@@ -206,7 +206,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			true
 		    end
 		    else false
-	end handle Option => (RT.clearFailures (); false)
+	end handle Option => (RT.reset (); false)
 	    	   (* to catch valOf failures in "rt" *)
     in
 	case BuildInitDG.build ginfo_nocore initgspec of
