@@ -10,6 +10,7 @@ Library
 	structure StringSet
 	structure StringMap
 	structure Symbol
+	structure SymbolOrdKey
 	structure SymbolSet
 	structure SymbolMap
 	structure PidSet
@@ -21,6 +22,7 @@ Library
 	structure LibBase	(* from SML/NJ library *)
 	functor BinaryMapFn	(* from SML/NJ library *)
 	functor BinarySetFn	(* from SML/NJ library *)
+	structure IntBinaryMap	(* from SML/NJ library *)
 is
 	stringset.sml
 	stringmap.sml

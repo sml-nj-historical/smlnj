@@ -16,5 +16,6 @@ structure GroupGraph = struct
 		   islib: bool,
 		   privileges: privilegespec,
 		   grouppath: AbsPath.t,
-		   subgroups: group list }
+		   subgroups: group list,
+		   stableinfo: BinInfo.info IntBinaryMap.map option }
 end

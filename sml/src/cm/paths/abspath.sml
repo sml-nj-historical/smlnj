@@ -14,7 +14,7 @@ signature ABSPATH = sig
     val newEra : unit -> unit
 
     val cwdContext: unit -> context
-    val configContext: (unit -> string) -> context
+    val configContext: (unit -> string) * string -> context
     val relativeContext: t -> context
 
     val name : t -> string
@@ -22,9 +22,13 @@ signature ABSPATH = sig
     val context : t -> context
     val spec : t -> string
     val contextName : context -> string
+    val pickle : t -> string
+    val pickleSpec : t -> string
 
     val native : { context: context, spec: string } -> t
     val standard : { context: context, spec: string } -> t
+    val unpickle : string -> t
+    val unpickleSpec : { context: context, pickledSpec: string } -> t
 
     val joinDirFile : { dir: t, file: string } -> t
     val splitDirFile : t -> { dir: t, file: string }
@@ -78,12 +82,14 @@ structure AbsPath :> ABSPATH = struct
     datatype context =
 	CUR of cwdinfo
       | CONFIG_ANCHOR of { fetch: unit -> string,
-			   cache: elaboration option ref }
+			   cache: elaboration option ref,
+			   config_name: string }
       | RELATIVE of t
 
     and  t =
 	PATH of { context: context,
 		  spec: string,
+		  native: bool,
 		  cache: elaboration option ref }
 
     local
@@ -127,8 +133,8 @@ structure AbsPath :> ABSPATH = struct
 	fun cwdContext () =
 	    CUR { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
 
-	fun configContext fetch =
-	    CONFIG_ANCHOR { fetch = fetch, cache = ref NONE }
+	fun configContext (f, n) =
+	    CONFIG_ANCHOR { fetch = f, cache = ref NONE, config_name = n }
 
 	fun relativeContext p = RELATIVE p
 
@@ -150,13 +156,13 @@ structure AbsPath :> ABSPATH = struct
 		      name = if stamp = cwdStamp () orelse 
 		                name = cwdName ()
 			     then P.currentArc else name }
-	      | CONFIG_ANCHOR { fetch, cache } =>
+	      | CONFIG_ANCHOR { fetch, cache, config_name } =>
 		    (case validElab (!cache) of
 			 SOME e => e
 		       | NONE => mkElab (cache, fetch ()))
 	      | RELATIVE p => elab p
 
-	and elab (PATH { context, spec, cache }) =
+	and elab (PATH { context, spec, cache, native }) =
 	    (case validElab (!cache) of
 		 SOME e => e
 	       | NONE => let
@@ -192,14 +198,21 @@ structure AbsPath :> ABSPATH = struct
 	(* get the spec back *)
 	fun spec (PATH { spec = s, ... }) = s
 
+	(* make a pickle-string *)
+	fun pickle (PATH { context, spec, cache, native }) = Dummy.f ()
+	fun pickleSpec (PATH _) = Dummy.f ()
+	fun unpickle s = Dummy.f ()
+	fun unpickleSpec { context, pickledSpec } = Dummy.f ()
+
 	(* compare pathnames efficiently *)
 	fun compare (p1, p2) = compareId (id p1, id p2)
 
-	fun fresh (context, spec) =
-	    PATH { context = context, spec = spec, cache = ref NONE }
+	fun fresh (context, spec, native) =
+	    PATH { context = context, spec = spec, cache = ref NONE,
+		   native = native }
 
 	(* make an abstract path from a native string *)
-	fun native { spec, context } = fresh (context, spec)
+	fun native { spec, context } = fresh (context, spec, true)
 
 	(* make an abstract path from a standard string *)
 	fun standard { spec, context } = let
@@ -214,33 +227,36 @@ structure AbsPath :> ABSPATH = struct
 	    fun mk (isAbs, arcs, context) =
 		fresh (context,
 		       P.toString { isAbs = isAbs, vol = "",
-				    arcs = map transl arcs })
+				    arcs = map transl arcs },
+		       false)
 	in
 	    case String.fields delim spec of
 		"" :: arcs => mk (true, arcs, context)
 	      | [] => mk (false, [], context) (* shouldn't happen *)
 	      | [arc] => mk (false, [arc], context)
-	      | arcs as (arc1 :: arcn) =>
+	      | arcs as (arc1 :: _) =>
 		    (case PathConfig.configAnchor arc1 of
 			 NONE => mk (false, arcs, context)
 		       | SOME fetch => let
 			     val anchorcontext =
 				 CONFIG_ANCHOR { fetch = fetch,
-						 cache = ref NONE }
+						 cache = ref NONE,
+						 config_name = arc1 }
 			 in
-			     mk (false, arcn, anchorcontext)
+			     mk (false, arcs, anchorcontext)
 			 end)
 	end
 
 	(* . and .. are not permitted as file parameter *)
-	fun joinDirFile { dir = PATH { context, spec, ... }, file } =
+	fun joinDirFile { dir = PATH { context, spec, native, ... }, file } =
 	    if file = P.currentArc orelse file = P.parentArc then
 		raise Fail "AbsPath.joinDirFile: . or .."
-	    else fresh (context, P.joinDirFile { dir = spec, file = file })
+	    else fresh (context, P.joinDirFile { dir = spec, file = file },
+			native)
 
 	(* splitDirFile never walks past a context.
 	 * Moreover, it is an error to split something that ends in "..". *)
-	fun splitDirFile (PATH { context, spec, ... }) = let
+	fun splitDirFile (PATH { context, spec, native, ... }) = let
 	    fun loop "" =
 		raise Fail "AbsPath.splitDirFile: tried to split a context"
 	      | loop spec = let
@@ -254,7 +270,7 @@ structure AbsPath :> ABSPATH = struct
 	    val (dir, file) = loop spec
 	    val dir = if dir = "" then P.currentArc else dir
 	in
-	    { dir = fresh (context, dir), file = file }
+	    { dir = fresh (context, dir, native), file = file }
 	end
 
 	val dir = #dir o splitDirFile

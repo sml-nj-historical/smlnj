@@ -16,6 +16,9 @@ signature PRIMITIVE = sig
     val fromString : string -> primitive option
     val toString : primitive -> string
 
+    val toIdent : primitive -> char
+    val fromIdent : char -> primitive option
+
     val reqpriv : primitive -> StringSet.set
 
     (* the domain of (lookup p) must always properly include (exports p) *)
@@ -57,6 +60,11 @@ structure Primitive :> PRIMITIVE = struct
       | fromString _ = NONE
 
     fun toString BASIS = "basis"
+
+    fun toIdent BASIS = #"b"
+
+    fun fromIdent #"b" = SOME BASIS
+      | fromIdent _ = NONE
 
     val reqpriv_basis = StringSet.empty
 

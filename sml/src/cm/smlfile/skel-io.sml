@@ -9,6 +9,7 @@ signature SKELIO = sig
     exception InternalError
     val read : AbsPath.t * TStamp.t -> Skeleton.decl option
     val write : AbsPath.t * Skeleton.decl -> unit
+    val w_name : Symbol.symbol * string list -> string list
 end
 
 structure SkelIO :> SKELIO = struct
@@ -39,19 +40,19 @@ structure SkelIO :> SKELIO = struct
 	loop []
     end
 
-    fun write_decl (s, d) = let
+    (* We are consing up the whole output as a list of strings
+     * before concatenating it to form the final result and
+     * wrinting it out using one single `output' call. *)
+    fun w_name (n, r) =
+	(case S.nameSpace n of
+	     S.SIGspace => "'"		(* only tyvars could start like that *)
+	   | S.FCTspace => "("		(* no sym can start like that *)
+	   | S.FSIGspace => ")"		(* no sym can start like that *)
+	   | S.STRspace => ""		(* this should be safe now *)
+	   | _ => raise InternalError)
+	 :: S.name n :: "." :: r
 
-	(* We are consing up the whole output as a list of strings
-	 * before concatenating it to form the final result and
-	 * wrinting it out using one single `output' call. *)
-	fun w_name (n, r) =
-	    (case S.nameSpace n of
-		 S.SIGspace => "'"	(* only tyvars could start like that *)
-	       | S.FCTspace => "("	(* no sym can start like that *)
-	       | S.FSIGspace => ")"	(* no sym can start like that *)
-	       | S.STRspace => ""	(* this should be safe now *)
-	       | _ => raise InternalError)
-	    :: S.name n :: "." :: r
+    fun write_decl (s, d) = let
 
 	(* foldl means that last element appears first in output! *)
 	fun w_list w (l, r) = foldl w (";" :: r) l

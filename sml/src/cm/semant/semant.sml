@@ -140,7 +140,8 @@ structure CMSemant :> CM_SEMANT = struct
 		   privileges = { required = StringSet.empty,
 				  granted = StringSet.empty },
 		   grouppath = path,
-		   subgroups = [] }
+		   subgroups = [],
+		   stableinfo = NONE }
 	
 
     fun group (g, p, e, m, error, gp) = let
@@ -154,7 +155,8 @@ structure CMSemant :> CM_SEMANT = struct
     in
 	GG.GROUP { exports = exports, islib = false,
 		   privileges = p', grouppath = g,
-		   subgroups = subgroups }
+		   subgroups = subgroups,
+		   stableinfo = NONE }
     end
 
     fun library (g, p, e, m, error, gp) = let
@@ -167,7 +169,8 @@ structure CMSemant :> CM_SEMANT = struct
     in
 	GG.GROUP { exports = exports, islib = true,
 		   privileges = p', grouppath = g,
-		   subgroups = subgroups }
+		   subgroups = subgroups,
+		   stableinfo = NONE }
     end
 
     local
