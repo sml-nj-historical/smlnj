@@ -1,0 +1,6 @@
+library
+  structure RL
+is
+  $c/c.cm
+  readline.cm
+  rl.sml
