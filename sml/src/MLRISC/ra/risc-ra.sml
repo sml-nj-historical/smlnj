@@ -145,6 +145,9 @@ struct
 	 else (Array.update(arr, r, true); mark(arr, len, rs, others))
        end
 
+   fun annotate([], i) = i
+     | annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
+
 
 
    local
@@ -166,20 +169,42 @@ struct
       val dedicatedF : int -> bool = isDedicated(high+1, arr, others)
    end
 
-   (* Spill integer register *)
-   fun spillR{annotations,kill=true,reg,spillLoc,instr} = 
+   fun spillR{annotations, kill=true, reg, spillLoc, instr} = 
          if pure instr then {code=[], proh=[], newReg=NONE}
          else spillR{annotations=annotations,kill=false,
                      spillLoc=spillLoc,
                      reg=reg,instr=instr}
-     | spillR{annotations,kill,reg,spillLoc,instr} = 
-       let val _   = intSpillsCnt := !intSpillsCnt + 1
-           val newR = C.newReg()
-    	   val instr' = Rewrite.rewriteDef(instr, reg, newR)
-       in  {code=instr'::Int.spillInstr{an=annotations,src=newR,
-					spilledCell=reg,spillLoc=spillLoc}, 
-            proh=[newR], newReg=SOME newR}
-       end
+     | spillR{annotations, kill, reg, spillLoc, instr} = let
+	 fun annotate([], i) = i
+	   | annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
+
+	 (* preserve annotation on instruction *)
+	 fun spill(instrAn, I.ANNOTATION{a, i}) = spill(a::instrAn, i)
+	   | spill(instrAn, I.KILL{regs, spilled}) = 
+	      {code=
+	         [annotate
+		   (instrAn, 
+		    I.KILL {regs=C.rmvReg(reg, regs), 
+			    spilled=C.addReg(reg, spilled)})],
+	        proh = [], 
+		newReg=NONE}
+	   | spill(instrAn, I.LIVE _) = error "spillR: LIVE"
+	   | spill(_, I.COPYXXX _) = error "spillR: not supported"
+	   | spill(instrAn, I.INSTR _) = let
+	       val _   = intSpillsCnt := !intSpillsCnt + 1
+               val newR = C.newReg()
+    	       val instr' = Rewrite.rewriteDef(instr, reg, newR)
+	     in  {code=
+		    annotate(instrAn, instr')::
+		      Int.spillInstr
+			  {an=annotations,src=newR, 
+			   spilledCell=reg,spillLoc=spillLoc},
+		  proh=[newR], 
+		  newReg=SOME newR}
+	     end
+        in spill([], instr)
+        end
+
 
    fun spillReg{annotations,src,reg,spillLoc} =
        (intSpillsCnt := !intSpillsCnt + 1;
@@ -193,17 +218,35 @@ struct
        )
 
    (* Spill floating point register *)
-   fun spillF{annotations,kill=true,reg,spillLoc,instr} = 
+   fun spillF{annotations, kill=true, reg, spillLoc, instr} = 
          if pure instr then {code=[], proh=[], newReg=NONE}
-         else spillF{annotations=annotations,kill=false,
-                     spillLoc=spillLoc, reg=reg,instr=instr}
-     | spillF{annotations,kill,reg,spillLoc,instr} = 
-       let val _   = floatSpillsCnt := !floatSpillsCnt + 1
-           val newR = C.newFreg()
-    	   val instr' = Rewrite.frewriteDef(instr, reg, newR)
-       in {code=instr'::Float.spillInstr(annotations,newR,spillLoc), 
-           proh=[newR], newReg=SOME newR}
-       end
+         else spillF {annotations=annotations,kill=false,
+                      spillLoc=spillLoc, reg=reg,instr=instr}
+     | spillF{annotations, kill, reg, spillLoc, instr} = let
+	 (* preserve annotation on instruction *)
+	 fun spill(instrAn, I.ANNOTATION{a, i}) = spill(a::instrAn, i)
+	   | spill(instrAn, I.KILL{regs, spilled}) = 
+	      {code=
+  	         [annotate
+		   (instrAn, 
+		    I.KILL {regs=C.rmvFreg(reg, regs), 
+			    spilled=C.addFreg(reg, spilled)})],
+	        proh = [], 
+		newReg=NONE}
+	   | spill(instrAn, I.LIVE _) = error "spillF: LIVE"
+	   | spill(_, I.COPYXXX _) = error "spillF: COPY not supported"
+	   | spill(instrAn, I.INSTR _) = let
+	       val _   = floatSpillsCnt := !floatSpillsCnt + 1
+               val newR = C.newFreg()
+    	       val instr' = Rewrite.frewriteDef(instr, reg, newR)
+	     in  {code=
+		    annotate(instrAn, instr')::
+		      Float.spillInstr(annotations,newR,spillLoc), 
+		  proh=[newR], 
+		  newReg=SOME newR}
+	     end
+        in spill([], instr)
+        end
 
    fun spillFreg{annotations,reg,src,spillLoc} = 
        (floatSpillsCnt := !floatSpillsCnt + 1;
@@ -223,14 +266,23 @@ struct
        end
 
    (* Reload integer register *)
-   fun reloadR{annotations,reg,spillLoc,instr} = 
-       let val _   = intReloadsCnt := !intReloadsCnt + 1
+   fun reloadR{annotations, reg, spillLoc, instr} = let
+     fun reload(instrAn, I.ANNOTATION{a, i}) = reload(a::instrAn, i)
+       | reload(instrAn, I.LIVE{regs, spilled}) = 
+	  {code=[I.LIVE{regs=C.rmvReg(reg, regs), spilled=C.addReg(reg, spilled)}],
+	   proh=[],
+	   newReg=NONE}
+       | reload(_, I.KILL _) = error "reloadR: KILL"
+       | reload(instrAn, instr as I.INSTR _) = let
+	   val _   = intReloadsCnt := !intReloadsCnt + 1
            val newR = C.newReg()
-           val instr' = Rewrite.rewriteUse(instr, reg, newR)
-       in {code=Int.reloadInstr{an=annotations,dst=newR,spilledCell=reg,
+           val instr' = annotate(instrAn, Rewrite.rewriteUse(instr, reg, newR))
+         in {code=Int.reloadInstr{an=annotations,dst=newR,spilledCell=reg,
 				spillLoc=spillLoc} @ [instr'], 
-           proh=[newR], newReg=SOME newR}
-       end
+             proh=[newR], newReg=SOME newR}
+         end
+   in reload([], instr)
+   end
 
    fun reloadReg{annotations,reg,dst,spillLoc} = 
        (intReloadsCnt := !intReloadsCnt + 1;
@@ -246,13 +298,22 @@ struct
        end
 
    (* Reload floating point register *)
-   fun reloadF{annotations,reg,spillLoc,instr} =
-       let val _ = floatReloadsCnt := !floatReloadsCnt + 1
+   fun reloadF{annotations,reg,spillLoc,instr} = let
+     fun reload(instrAn, I.ANNOTATION{a,i}) = reload(a::instrAn, i)
+       | reload(instrAn, I.LIVE{regs, spilled}) = 
+	  {code=[I.LIVE{regs=C.rmvFreg(reg, regs), spilled=C.addFreg(reg, spilled)}],
+	   proh=[],
+	   newReg=NONE}
+       | reload(_, I.KILL _) = error "reloadF: KILL"
+       | reload(instrAn, instr as I.INSTR _) = let
+           val _ = floatReloadsCnt := !floatReloadsCnt + 1
            val newR = C.newFreg()
-           val instr' = Rewrite.frewriteUse(instr, reg, newR)
-       in  {code=Float.reloadInstr(annotations,newR,spillLoc) @ [instr'], 
-            proh=[newR], newReg=SOME newR}
-       end
+           val instr' = annotate(instrAn, Rewrite.frewriteUse(instr, reg, newR))
+         in  {code=Float.reloadInstr(annotations,newR,spillLoc) @ [instr'], 
+              proh=[newR], newReg=SOME newR}
+         end
+   in reload([], instr)
+   end
 
    fun reloadFreg{annotations,reg,dst,spillLoc} =
        (floatReloadsCnt := !floatReloadsCnt + 1;

@@ -183,6 +183,7 @@ struct
      | isSym "@" = true
      | isSym "andalso" = true
      | isSym "orelse" = true
+     | isSym "o" = true
      | isSym _ = false
 
    and locexp(id,e,region) = 

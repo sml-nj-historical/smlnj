@@ -19,17 +19,20 @@ struct
      | fcond I.FBNE = 90
      | fcond _      = 50
 
+   fun sparcBranchProb(I.Bicc{b,...}) = cond b
+     | sparcBranchProb(I.FBfcc{b,...}) = fcond b
+     | sparcBranchProb(I.BP{b,...}) = cond b
+     | sparcBranchProb(I.BR _) = 50
+     | sparcBranchProb(I.JMP _) = 100
+     | sparcBranchProb(I.RET _) = 100
+     | sparcBranchProb _ = 0 (* non-branch *)
+
    fun branchProb(I.ANNOTATION{a, i, ...}) =
         (case #peek MLRiscAnnotations.BRANCH_PROB a of
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.Bicc{b,...}) = cond b
-     | branchProb(I.FBfcc{b,...}) = fcond b
-     | branchProb(I.BP{b,...}) = cond b
-     | branchProb(I.BR _) = 50
-     | branchProb(I.JMP _) = 100
-     | branchProb(I.RET _) = 100
-     | branchProb _ = 0 (* non-branch *)
+     | branchProb(I.INSTR(i)) = sparcBranchProb(i)
+     | branchProb _ = 0
 
 end

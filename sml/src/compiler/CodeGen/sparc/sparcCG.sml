@@ -77,41 +77,41 @@ structure SparcCG =
           val architecture = SparcSpec.architecture
          
           fun pure(I.ANNOTATION{i,...}) = pure i
-            | pure(I.LOAD _) = true
-            | pure(I.FLOAD _) = true
-            | pure(I.SETHI _) = true
-            | pure(I.SHIFT _) = true
-            | pure(I.FPop1 _) = true
-            | pure(I.FPop2 _) = true
+            | pure(I.INSTR(I.LOAD _)) = true
+            | pure(I.INSTR(I.FLOAD _)) = true
+            | pure(I.INSTR(I.SETHI _)) = true
+            | pure(I.INSTR(I.SHIFT _)) = true
+            | pure(I.INSTR(I.FPop1 _)) = true
+            | pure(I.INSTR(I.FPop2 _)) = true
             | pure _ = false
 
-          (* make copy *)
+          (* make copy *) 
           structure Int = 
           struct
              val avail     = SparcCpsRegs.availR
              val dedicated = SparcCpsRegs.dedicatedR
 
              fun copy((rds as [_], rss as [_]), _) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-               | copy((rds, rss), I.COPY{tmp, ...}) =
-                 I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
+                 I.copy{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
+               | copy((rds, rss), I.INSTR(I.COPY{tmp, ...})) =
+                 I.copy{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
 
 
              (* spill copy temp *)
-             fun spillCopyTmp(_, I.COPY{dst,src,tmp,impl},loc) =
-                 I.COPY{dst=dst, src=src, impl=impl,
+             fun spillCopyTmp(_, I.INSTR(I.COPY{dst,src,tmp,impl}),loc) =
+                 I.copy{dst=dst, src=src, impl=impl,
                         tmp=SOME(I.Displace{base=fp, 
                                             disp=SpillTable.getRegLoc loc })}
 
              (* spill register *)
              fun spillInstr{src,spilledCell,an,spillLoc} =
-                 [I.STORE{s=I.ST,r=fp,
+                 [I.store{s=I.ST,r=fp,
                           i=I.IMMED(SpillTable.getRegLoc spillLoc), 
                           d=src, mem=spill}]
 
              (* reload register *)
              fun reloadInstr{dst,spilledCell,an,spillLoc} =
-                 [I.LOAD{l=I.LD, r=fp, 
+                 [I.load{l=I.LD, r=fp, 
                          i=I.IMMED(SpillTable.getRegLoc spillLoc), 
                          d=dst, mem=spill}
                  ]
@@ -125,22 +125,22 @@ structure SparcCG =
              val dedicated = SparcCpsRegs.dedicatedF
 
              fun copy((fds as [_], fss as [_]), _) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-               | copy((fds, fss), I.FCOPY{tmp, ...}) =
-                 I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
+                 I.fcopy{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
+               | copy((fds, fss), I.INSTR(I.FCOPY{tmp, ...})) =
+                 I.fcopy{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
 
-             fun spillCopyTmp(_, I.FCOPY{dst,src,tmp,impl},loc) =
-                 I.FCOPY{dst=dst, src=src, impl=impl,
+             fun spillCopyTmp(_, I.INSTR(I.FCOPY{dst,src,tmp,impl}),loc) =
+                 I.fcopy{dst=dst, src=src, impl=impl,
                         tmp=SOME(I.Displace{base=fp, 
                                             disp=SpillTable.getFregLoc loc })}
    
              fun spillInstr(_, d,loc) =
-                 [I.FSTORE{s=I.STDF, r=fp,
+                 [I.fstore{s=I.STDF, r=fp,
                            i=I.IMMED(SpillTable.getFregLoc loc),
                            d=d, mem=spill}]
    
              fun reloadInstr(_, d,loc) =
-                 [I.FLOAD{l=I.LDDF, r=fp, 
+                 [I.fload{l=I.LDDF, r=fp, 
                           i=I.IMMED(SpillTable.getFregLoc loc),
                           d=d, mem=spill}
                  ]

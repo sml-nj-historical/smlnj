@@ -31,18 +31,18 @@ struct
   val r0  = C.GPReg 0
 
   fun divlv({ra, rb, rc}, reduceOpnd) = 
-    [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
+    [I.copy{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
-     I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divlOffset, mem=stack},
-     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
-     I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
+     I.load{ldOp=I.LDL, r=r27, b=sp, d=divlOffset, mem=stack},
+     I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
+     I.copy{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
-    [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
+    [I.copy{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
-     I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
-     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
-     I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
+     I.load{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
+     I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
+     I.copy{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun unimplemented _ = error "unimplemented pseudo-instr"
   val divl  = unimplemented
@@ -58,9 +58,9 @@ struct
      
   fun cvtlt({opnd, fd}, reduceOpnd) = 
   let val ra = reduceOpnd opnd
-  in  [I.STORE{stOp=I.STQ, r=ra, b=sp, d=floatTmpOffset, mem=stack},
-       I.FLOAD{ldOp=I.LDT, r=fd, b=sp, d=floatTmpOffset, mem=stack},
-       I.FUNARY{oper=I.CVTQT, fb=fd, fc=fd}]
+  in  [I.store{stOp=I.STQ, r=ra, b=sp, d=floatTmpOffset, mem=stack},
+       I.fload{ldOp=I.LDT, r=fd, b=sp, d=floatTmpOffset, mem=stack},
+       I.funary{oper=I.CVTQT, fb=fd, fc=fd}]
   end
 
   val cvtls = unimplemented

@@ -909,10 +909,6 @@ struct
     | LAHF	  (* %ah -> %flags *)
 	``lahf''
 
-   (* annotations *)
-    | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-
     | SOURCE of {}
         asm: ``source''
         mc:  ()

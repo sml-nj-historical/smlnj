@@ -71,18 +71,18 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d}= I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
-     fun slli{r,i,d} = [SLLI32{r=r,i=i,d=d}]
-     fun srli{r,i,d} = [SRLI32{r=r,i=i,d=d}]
-     fun srai{r,i,d} = [I.ARITHI{oper=I.SRAWI,rt=d,ra=r,im=I.ImmedOp i}]
+     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun add{r1,r2,d}= I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
+     fun slli{r,i,d} = [I.INSTR(SLLI32{r=r,i=i,d=d})]
+     fun srli{r,i,d} = [I.INSTR(SRLI32{r=r,i=i,d=d})]
+     fun srai{r,i,d} = [I.arithi{oper=I.SRAWI,rt=d,ra=r,im=I.ImmedOp i}]
     )
 
   structure Mulu32 = Multiply32
     (val trapping = false
      val multCost = multCost
-     fun addv{r1,r2,d}=[I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
-     fun subv{r1,r2,d}=[I.ARITH{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
+     fun addv{r1,r2,d}=[I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
+     fun subv{r1,r2,d}=[I.arith{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
      val sh1addv = NONE
      val sh2addv = NONE
      val sh3addv = NONE
@@ -101,13 +101,16 @@ struct
     (val signed = true)
 
   fun selectInstructions
-      (TS.S.STREAM{emit,comment,getAnnotations,
+      (TS.S.STREAM{emit=emitInstruction,comment,getAnnotations,
                 defineLabel,entryLabel,pseudoOp,annotation,
-                beginCluster,endCluster,exitBlock,...}) =
-  let (* mark an instruction with annotations *)
+                beginCluster,endCluster,exitBlock,...}) = 
+  let 
+      val emit = emitInstruction o I.INSTR
+
+      (* mark an instruction with annotations *)
       fun mark'(instr,[]) = instr
         | mark'(instr,a::an) = mark'(I.ANNOTATION{i=instr,a=a},an)
-      fun mark(instr,an) = emit(mark'(instr,an))
+      fun mark(instr,an) = emitInstruction(mark'(I.INSTR instr,an))
 
       (* Label where trap is generated.   
        * For overflow trapping instructions, we generate a branch 
@@ -485,8 +488,8 @@ struct
                   [mark'( 
                      case commImmedOpnd signed16 (e1,e2) of
                        (ra,I.RegOp rb) => 
-                         I.ARITH{oper=oper,ra=ra,rb=rb,rt=rt,OE=false,Rc=false}
-                     | (ra,im) => I.ARITHI{oper=operi,ra=ra,im=im,rt=rt},
+                         I.arith{oper=oper,ra=ra,rb=rb,rt=rt,OE=false,Rc=false}
+                     | (ra,im) => I.arithi{oper=operi,ra=ra,im=im,rt=rt},
                      an)]
               fun const(e,i) =
                   let val r = expr e
@@ -498,7 +501,7 @@ struct
                    (_,T.LI i)   => const(e1,i)
                  | (T.LI i,_)   => const(e2,i)
                  | _            => nonconst(e1,e2)
-          in  app emit instrs end
+          in  app emitInstruction instrs end
 
       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
@@ -513,7 +516,7 @@ struct
                   )
               fun const(e,i) =
                   let val r = expr e
-                  in  app emit (genDiv{r=r,i=toInt(i),d=rt})
+                  in  app emitInstruction (genDiv{r=r,i=toInt(i),d=rt})
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
           in  case (e1,e2) of
@@ -686,7 +689,7 @@ struct
           | T.FMUL(64, e1, e2) => fbinary(I.FMUL, e1, e2, ft, an)
           | T.FDIV(64, e1, e2) => fbinary(I.FDIV, e1, e2, ft, an)
           | T.CVTI2F(64,_,e) => 
-               app emit (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
+               app emitInstruction (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
 
             (* Single/double precision support *)
           | T.FABS((32|64), e) => funary(I.FABS, e, ft, an)

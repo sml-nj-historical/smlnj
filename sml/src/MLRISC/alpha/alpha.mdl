@@ -180,7 +180,6 @@ struct
          map branch comparisons
  
      (* Floating point operators *)
-     rtl DEFFREG{FP} = Kill $f[FP]
 
      val SU = ()
      val SUD = ()
@@ -493,14 +492,8 @@ struct
     *) 
    instruction 
 
-        (* Pseudo instruction for the register allocator *)
-     DEFFREG of $FP                  (* define a floating point register *)
-     asm: ``/* deffreg\t<FP> */''
-     mc:  ()                         (* do nothing when emitting code *) 
-     rtl: ``DEFFREG''
- 
    (* Load/Store *)
-   | LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
+     LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
      asm: if isZero d andalso CellsBasis.sameCell(r,b) then ()
           else (``lda\t<r>, <d>''; 
                 if CellsBasis.registerId b = 31 then () else ``(<b>)''
@@ -655,11 +648,6 @@ struct
      asm: ``call_pal <code>''
      mc:  Pal{func=emit_osf_user_palcode code}
      rtl: ``CALL_PAL_<code>''
-
-   | ANNOTATION of {i:instruction, a:Annotations.annotation}
-     asm: (comment(Annotations.toString a); nl(); emitInstr i)
-     mc:  (emitInstr i)
-     (* rtl: [[ #i ]] *)
 
    | SOURCE of {}
      asm: ``source''

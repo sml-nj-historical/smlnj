@@ -77,11 +77,11 @@ struct
      type argi = {r:CB.cell,i:int,d:CB.cell}
   
      val intTy = 32    
-     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d} = I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}
-     fun slli{r,i,d} = [I.SHIFT{s=I.SLL,r=r,i=I.IMMED i,d=d}]
-     fun srli{r,i,d} = [I.SHIFT{s=I.SRL,r=r,i=I.IMMED i,d=d}]
-     fun srai{r,i,d} = [I.SHIFT{s=I.SRA,r=r,i=I.IMMED i,d=d}]
+     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun add{r1,r2,d} = I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}
+     fun slli{r,i,d} = [I.shift{s=I.SLL,r=r,i=I.IMMED i,d=d}]
+     fun srli{r,i,d} = [I.shift{s=I.SRL,r=r,i=I.IMMED i,d=d}]
+     fun srai{r,i,d} = [I.shift{s=I.SRA,r=r,i=I.IMMED i,d=d}]
     )
 
   functor Multiply64 = MLTreeMult
@@ -92,11 +92,11 @@ struct
      type argi = {r:CB.cell,i:int,d:CB.cell}
       
      val intTy = 64    
-     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
-     fun add{r1,r2,d} = I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}
-     fun slli{r,i,d} = [I.SHIFT{s=I.SLLX,r=r,i=I.IMMED i,d=d}]
-     fun srli{r,i,d} = [I.SHIFT{s=I.SRLX,r=r,i=I.IMMED i,d=d}]
-     fun srai{r,i,d} = [I.SHIFT{s=I.SRAX,r=r,i=I.IMMED i,d=d}]
+     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun add{r1,r2,d} = I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}
+     fun slli{r,i,d} = [I.shift{s=I.SLLX,r=r,i=I.IMMED i,d=d}]
+     fun srli{r,i,d} = [I.shift{s=I.SRLX,r=r,i=I.IMMED i,d=d}]
+     fun srai{r,i,d} = [I.shift{s=I.SRAX,r=r,i=I.IMMED i,d=d}]
     )
 
   (* signed, trapping version of multiply and divide *)
@@ -104,9 +104,9 @@ struct
     (val trapping = true
      val multCost = multCost 
      fun addv{r1,r2,d} = 
-         I.ARITH{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap32 
+         I.arith{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap32 
      fun subv{r1,r2,d} = 
-         I.ARITH{a=I.SUBCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap32 
+         I.arith{a=I.SUBCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap32 
      val sh1addv = NONE 
      val sh2addv = NONE 
      val sh3addv = NONE 
@@ -117,8 +117,8 @@ struct
   functor Mul32 = Multiply32
     (val trapping = false
      val multCost = muluCost
-     fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
-     fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r=r1,i=I.REG r2,d=d}]
+     fun addv{r1,r2,d} = [I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUB,r=r1,i=I.REG r2,d=d}]
      val sh1addv = NONE 
      val sh2addv = NONE 
      val sh3addv = NONE 
@@ -132,9 +132,9 @@ struct
     (val trapping = true
      val multCost = multCost 
      fun addv{r1,r2,d} = 
-         I.ARITH{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap64 
+         I.arith{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap64 
      fun subv{r1,r2,d} = 
-         I.ARITH{a=I.SUBCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap64 
+         I.arith{a=I.SUBCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap64 
      val sh1addv = NONE 
      val sh2addv = NONE 
      val sh3addv = NONE 
@@ -145,8 +145,8 @@ struct
   functor Mul64 = Multiply64
     (val trapping = false
      val multCost = muluCost
-     fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
-     fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r=r1,i=I.REG r2,d=d}]
+     fun addv{r1,r2,d} = [I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}]
+     fun subv{r1,r2,d} = [I.arith{a=I.SUB,r=r1,i=I.REG r2,d=d}]
      val sh1addv = NONE 
      val sh2addv = NONE 
      val sh3addv = NONE 
@@ -166,9 +166,10 @@ struct
 
   fun selectInstructions
        (instrStream as
-        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
+        TS.S.STREAM{emit=emitInstruction,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
                  beginCluster,endCluster,exitBlock,comment,...}) =
   let
+      val emit		 = emitInstruction o I.INSTR
       (* Flags *)
       val useBR          = !useBR
       val registerwindow = !registerwindow
@@ -231,7 +232,7 @@ struct
       fun mark'(i,[]) = i
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
 
-      fun mark(i,an) = emit(mark'(i,an)) 
+      fun mark(i,an) = emitInstruction(mark'(I.INSTR i,an)) 
 
       (* convert an operand into a register *)
       fun reduceOpn(I.REG r) = r
@@ -292,7 +293,7 @@ struct
           | (I.REG r,i,_)      => mark(I.ARITH{a=a,r=r,i=i,d=d},an)
           | (r,i,_)            => mark(I.ARITH{a=a,r=reduceOpn r,i=i,d=d},an)
           ;
-          case trap of [] => () | _ => app emit trap 
+          case trap of [] => () | _ => app emitInstruction trap 
       end   
 
       (* emit a shift op *)
@@ -318,7 +319,7 @@ struct
                    (_,e1,T.LI i) => const(e1,i)
                  | (COMMUTE,T.LI i,e2) => const(e2,i)
                  |  _ => nonconst(e1,e2)
-          in  app emit instrs; 
+          in  app emitInstruction instrs; 
               genCmp0(cc,d)
           end
 
@@ -327,21 +328,21 @@ struct
           let fun nonconst(e1,e2) = 
                  [mark'( 
                   case (opn e1,opn e2,comm) of
-                    (i,I.REG r,COMMUTE) => I.ARITH{a=a,r=r,i=i,d=d}
-                  | (I.REG r,i,_) => I.ARITH{a=a,r=r,i=i,d=d}
-                  | (r,i,_) => I.ARITH{a=a,r=reduceOpn r,i=i,d=d},an)
+                    (i,I.REG r,COMMUTE) => I.arith{a=a,r=r,i=i,d=d}
+                  | (I.REG r,i,_) => I.arith{a=a,r=r,i=i,d=d}
+                  | (r,i,_) => I.arith{a=a,r=reduceOpn r,i=i,d=d},an)
                  ]
               fun const(e,i) = 
                   let val r = expr e
                   in  genConst{r=r,i=toInt i,d=d}
-                      handle _ => [mark'(I.ARITH{a=a,r=r,i=opn(T.LI i),d=d},an)]
+                      handle _ => [mark'(I.arith{a=a,r=r,i=opn(T.LI i),d=d},an)]
                   end
               val instrs =
                  case (comm,e1,e2) of
                    (_,e1,T.LI i) => const(e1,i)
                  | (COMMUTE,T.LI i,e2) => const(e2,i)
                  |  _ => nonconst(e1,e2)
-          in  app emit instrs; 
+          in  app emitInstruction instrs; 
               genCmp0(cc,d)
           end
 
@@ -601,7 +602,7 @@ struct
               muldiv64(I.MULX,Muls64.multiply,a,b,d,cc,COMMUTE,an)
           | T.MULT(64,a,b) => 
               (muldiv64(I.MULX,Mult64.multiply,a,b,d,CC_REG,COMMUTE,an);
-               app emit trap64)
+               app emitInstruction trap64)
           | T.DIVU(64,a,b) => muldiv64(I.UDIVX,divu64,a,b,d,cc,NOCOMMUTE,an)
           | T.DIVS(64,a,b) => muldiv64(I.SDIVX,divs64,a,b,d,cc,NOCOMMUTE,an)
           | T.DIVT(64,a,b) => muldiv64(I.SDIVX,divt64,a,b,d,cc,NOCOMMUTE,an)
@@ -685,9 +686,9 @@ struct
               )
 
             (* integer to floating point *)
-          | T.CVTI2F(32,32,e) => app emit (P.cvti2s({i=opn e,d=d},reduceOpn))
-          | T.CVTI2F(64,32,e) => app emit (P.cvti2d({i=opn e,d=d},reduceOpn))
-          | T.CVTI2F(128,32,e) => app emit (P.cvti2q({i=opn e,d=d},reduceOpn))
+          | T.CVTI2F(32,32,e) => app emitInstruction (P.cvti2s({i=opn e,d=d},reduceOpn))
+          | T.CVTI2F(64,32,e) => app emitInstruction (P.cvti2d({i=opn e,d=d},reduceOpn))
+          | T.CVTI2F(128,32,e) => app emitInstruction (P.cvti2q({i=opn e,d=d},reduceOpn))
 
           | T.FMARK(e,A.MARKREG f) => (f d; doFexpr(e,d,an))
           | T.FMARK(e,a) => doFexpr(e,d,a::an)
@@ -728,7 +729,7 @@ struct
                     operand       = opn,
                     reduceOperand = reduceOpn,
                     addressOf     = addr,
-                    emit          = mark,
+                    emit          = emitInstruction o mark',
                     instrStream   = instrStream,
                     mltreeStream  = self()
                    }

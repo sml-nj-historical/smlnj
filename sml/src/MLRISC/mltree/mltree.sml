@@ -42,7 +42,7 @@ struct
     | COPY    of ty * dst list * src list   
     | FCOPY   of fty * dst list * src list
 
-      (* control flow *)
+      (* Control flow *)
     | JMP     of rexp * controlflow 
     | BCC     of ccexp * Label.label
     | CALL    of {funct:rexp, targets:controlflow,
@@ -64,6 +64,9 @@ struct
 
     | ANNOTATION of stm * an
     | EXT of sext  (* extension *)
+
+    | LIVE of mlrisc list
+    | KILL of mlrisc list
 
       (* RTL operators:
        * The following are used internally 

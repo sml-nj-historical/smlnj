@@ -23,13 +23,6 @@
  * Indeed 96% of the  files in the compiler reach a fix point within
  * 13 iterations.
  *)
-signature MC_EMIT = sig
-  structure I : INSTRUCTIONS
-
-  val emitInstr : I.instruction -> Word8Vector.vector
-end
-
-  
 functor BackPatch
   (structure CodeString : CODE_STRING
    structure Jumps      : SDI_JUMPS 

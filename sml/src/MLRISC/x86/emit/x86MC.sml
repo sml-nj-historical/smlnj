@@ -263,7 +263,6 @@ struct
      | emitInstr (I.FCMP{fsize, lsrc, rsrc}) = error "FCMP"
      | emitInstr (I.SAHF) = error "SAHF"
      | emitInstr (I.LAHF) = error "LAHF"
-     | emitInstr (I.ANNOTATION{i, a}) = error "ANNOTATION"
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()
      | emitInstr (I.PHI{}) = ()
@@ -271,9 +270,15 @@ struct
            emitInstr instr
        end
    
+   fun emitInstruction(I.ANNOTATION{i, ...}) = emitInstruction(i)
+     | emitInstruction(I.INSTR(i)) = emitter(i)
+     | emitinstruction(I.LIVE _)  = ()
+     | emitinstruction(I.KILL _)  = ()
+   | emitInstruction _ = error "emitInstruction"
+   
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstruction,
                 endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,

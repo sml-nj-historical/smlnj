@@ -241,6 +241,7 @@ is
 	../emit/asmUtil.sml
 	../emit/cfgEmit.sml
 	../emit/code-string.sig
+	../emit/mc-emit.sig
 	../gc-safety/gc-cells.sig
 	../gc-safety/gc-cells.sml
 	../gc-safety/gc-type.sig

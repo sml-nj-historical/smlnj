@@ -89,7 +89,7 @@ struct
   exception foo
   val shuffle =
     Shuffle.shuffle
-        {mvInstr=fn{dst, src} => [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}],
+        {mvInstr=fn{dst, src} => [I.move{mvOp=I.MOVL, src=src, dst=dst}],
 	 ea=I.Direct}
 
   (*
@@ -99,23 +99,27 @@ struct
   (* Note, this only works with double precision floating point *) 
   val shufflefpNormalAndSlow = 
     Shuffle.shuffle
-        {mvInstr=fn{dst, src} => [I.FLDL src, I.FSTPL dst],
+        {mvInstr=fn{dst, src} => [I.fldl src, I.fstpl dst],
 	 ea = I.FDirect}
 
   (* 
    * This version makes use of the x86 floating point stack for hardware
    * renaming! 
    *)
-  fun shufflefpNormal{tmp, src, dst} = 
-  let val n =  length src
-  in  if n <= 7 then 
-         let fun gen(s::ss, d::ds, pushes, pops) = 
-                 if CB.sameColor(s,d) then gen(ss, ds, pushes, pops)
-                 else gen(ss, ds, I.FLDL(I.FDirect s)::pushes, 
-                                      I.FSTPL(I.FDirect d)::pops)
-               | gen(_, _, pushes, pops) = List.revAppend(pushes, pops)
-         in  gen(src, dst, [], []) end
-      else shufflefpNormalAndSlow{tmp=tmp, src=src, dst=dst}
+  fun shufflefpNormal{tmp, src, dst} = let
+    val n =  length src
+  in 
+    if n <= 7 then let 
+	fun gen(s::ss, d::ds, pushes, pops) = 
+  	    if CB.sameColor(s,d) then gen(ss, ds, pushes, pops)
+	    else 
+	      gen(ss, ds, 
+		    I.fldl(I.FDirect s)::pushes,
+		    I.fstpl(I.FDirect d)::pops)
+	  | gen(_, _, pushes, pops) = List.revAppend(pushes, pops)
+      in  gen(src, dst, [], []) 
+      end
+    else shufflefpNormalAndSlow{tmp=tmp, src=src, dst=dst}
   end
 
   (*
@@ -125,7 +129,7 @@ struct
    *)
   val shufflefpFast = 
        Shuffle.shuffle
-         {mvInstr=fn{dst, src} => [I.FMOVE{fsize=I.FP64,src=src, dst=dst}],
+         {mvInstr=fn{dst, src} => [I.fmove{fsize=I.FP64,src=src, dst=dst}],
 	  ea = I.FPR}
 
   fun shufflefp(x as {tmp=SOME(I.FPR _), ...}) = shufflefpFast x

@@ -8,18 +8,20 @@ struct
 
    structure I = X86Instr
 
-   fun branchProb(I.ANNOTATION{a, i, ...}) =
+   fun x86BranchProb(I.JCC{cond=I.EQ,...}) = 10
+     | x86BranchProb(I.JCC{cond=I.O,...}) = 0 (* overflow *)
+     | x86BranchProb(I.JCC{cond=I.NE,...}) = 90
+     | x86BranchProb(I.JCC{cond=I.NO,...}) = 100
+     | x86BranchProb(I.JCC _) = 50 (* default *)
+     | x86BranchProb(I.JMP _) = 100 
+     | x86BranchProb _ = 0 (* non-branch *)
+
+   and branchProb(I.ANNOTATION{a, i, ...}) = 
         (case #peek MLRiscAnnotations.BRANCH_PROB a of
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.JCC{cond=I.EQ,...}) = 10
-     | branchProb(I.JCC{cond=I.O,...}) = 0 (* overflow *)
-     | branchProb(I.JCC{cond=I.NE,...}) = 90
-     | branchProb(I.JCC{cond=I.NO,...}) = 100
-     | branchProb(I.JCC _) = 50 (* default *)
-     | branchProb(I.JMP _) = 100 
-     | branchProb _ = 0 (* non-branch *)
-
+     | branchProb (I.INSTR i) = x86BranchProb i
+     | branchProb _ = 0
 end
 

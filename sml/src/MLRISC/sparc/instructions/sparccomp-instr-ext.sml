@@ -49,6 +49,6 @@ struct
     fun compileSext reducer { stm: stm, an: T.an list } = let
 	val TS.REDUCER { emit, ... } = reducer
     in
-	case stm of X.UNIMP i => emit (I.UNIMP {const22 = i}, an)
+	case stm of X.UNIMP i => emit (I.unimp {const22 = i}, an)
     end
 end

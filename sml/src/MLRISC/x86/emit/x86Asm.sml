@@ -710,24 +710,33 @@ struct
            emit_rsrc rsrc )
        | I.SAHF => emit "sahf"
        | I.LAHF => emit "lahf"
-       | I.ANNOTATION{i, a} => 
-         ( comment (Annotations.toString a); 
-           nl (); 
-           emitInstr i )
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstr,
                 endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,

@@ -7,7 +7,7 @@ functor X86ExpandCopies(X86Shuffle : X86SHUFFLE) : EXPAND_COPIES =
 struct
 
    structure I = X86Shuffle.I
-
+(*
    fun expandCopies(I.COPY{dst, src, tmp}) = 
          X86Shuffle.shuffle{tmp=tmp, dst=dst, src=src}
      | expandCopies(I.FCOPY{dst, src, tmp}) = 
@@ -18,5 +18,6 @@ struct
          | i::is => I.ANNOTATION{i=i,a=a}::is
          )
      | expandCopies i = [i]
-
+*)
+   fun expandCopies _ = MLRiscErrorMsg.error("X86ExpandCopies", "")
 end

@@ -228,6 +228,9 @@ struct
 
     structure X86Spill = X86Spill(structure Instr=I structure Props=InsnProps)
 
+   fun annotate([], i) = i
+     | annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
+
     (* 
      * Dead code elimination 
      *)
@@ -246,9 +249,9 @@ struct
             |  NONE   => false
         fun isAffected i = getOpt (IntHashTable.find affectedBlocks i, false)
         fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
-          | isDeadInstr(I.MOVE{dst=I.Direct rd, ...}) = isDead rd
-          | isDeadInstr(I.MOVE{dst=I.MemReg rd, ...}) = isDead rd
-          | isDeadInstr(I.COPY{dst=[rd], ...}) = isDead rd
+          | isDeadInstr(I.INSTR(I.MOVE{dst=I.Direct rd, ...})) = isDead rd
+          | isDeadInstr(I.INSTR(I.MOVE{dst=I.MemReg rd, ...})) = isDead rd
+          | isDeadInstr(I.INSTR(I.COPY{dst=[rd], ...})) = isDead rd
           | isDeadInstr _ = false
         fun scan [] = ()
           | scan((blknum, CFG.BLOCK{insns, ...})::rest) =
@@ -330,9 +333,9 @@ struct
      * Callbacks for floating point K=32 
      * -------------------------------------------------------------------*)
     fun copyInstrF((rds as [_], rss as [_]), _) =
-          I.FCOPY{dst=rds, src=rss, tmp=NONE}
-      | copyInstrF((rds, rss), I.FCOPY{tmp, ...}) = 
-          I.FCOPY{dst=rds, src=rss, tmp=tmp}
+          I.fcopy{dst=rds, src=rss, tmp=NONE}
+      | copyInstrF((rds, rss), I.INSTR(I.FCOPY{tmp, ...})) = 
+          I.fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF(x, I.ANNOTATION{i,a}) = 
           I.ANNOTATION{i=copyInstrF(x, i), a=a}
 
@@ -342,23 +345,23 @@ struct
       | getFregLoc(S, an, Ra.MEM_REG r) = I.FDirect r
 
     (* spill floating point *)
-    fun spillF S {instr, reg, spillLoc, kill, annotations=an} = 
-        (floatSpillCnt := !floatSpillCnt + 1;
-         X86Spill.fspill(instr, reg, getFregLoc(S, an, spillLoc)) 
-        )
+
+    fun spillF S {annotations=an, kill, reg, spillLoc, instr} = 
+	(floatSpillCnt := !floatSpillCnt + 1;
+	 X86Spill.fspill(instr, reg, getFregLoc(S, an, spillLoc)))
 
     fun spillFreg S {src, reg, spillLoc, annotations=an} = 
        (floatSpillCnt := !floatSpillCnt + 1;
-        let val fstp = [I.FSTPL(getFregLoc(S, an, spillLoc))]
+        let val fstp = [I.fstpl(getFregLoc(S, an, spillLoc))]
         in  if CB.sameColor(src,C.ST0) then fstp
-            else I.FLDL(I.FDirect(src))::fstp
+            else I.fldl(I.FDirect(src))::fstp
         end
        )
 
-   fun spillFcopyTmp S {copy=I.FCOPY{dst, src, ...}, spillLoc, reg,
+   fun spillFcopyTmp S {copy=I.INSTR(I.FCOPY{dst, src, ...}), spillLoc, reg,
                         annotations=an} =
         (floatSpillCnt := !floatSpillCnt + 1;
-         I.FCOPY{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
+         I.fcopy{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
         )
      | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, reg, annotations} =
         let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, reg=reg,
@@ -372,17 +375,16 @@ struct
         )
 
     (* reload floating point *)
-    fun reloadF S {instr, reg, spillLoc, annotations=an} = 
-        (floatReloadCnt := !floatReloadCnt + 1;
-         X86Spill.freload(instr, reg, getFregLoc(S, an, spillLoc))
-        )
+    fun reloadF S {annotations=an,reg,spillLoc,instr} = 
+	(floatReloadCnt := !floatReloadCnt + 1;
+	 X86Spill.freload(instr, reg, getFregLoc(S, an, spillLoc)))
 
     fun reloadFreg S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
          if CB.sameColor(dst,C.ST0) then 
-            [I.FLDL(getFregLoc(S, an, spillLoc))]
+            [I.fldl(getFregLoc(S, an, spillLoc))]
          else  
-            [I.FLDL(getFregLoc(S, an, spillLoc)), I.FSTPL(I.FDirect dst)]
+            [I.fldl(getFregLoc(S, an, spillLoc)), I.fstpl(I.FDirect dst)]
         )
 
     (* -------------------------------------------------------------------
@@ -394,9 +396,9 @@ struct
                     end
 
     fun copyInstrF'((rds as [d], rss as [s]), _) =
-         I.FMOVE{fsize=I.FP64,src=FMemReg s,dst=FMemReg d}
-      | copyInstrF'((rds, rss), I.FCOPY{tmp, ...}) = 
-         I.FCOPY{dst=rds, src=rss, tmp=tmp}
+         I.fmove{fsize=I.FP64,src=FMemReg s,dst=FMemReg d}
+      | copyInstrF'((rds, rss), I.INSTR(I.FCOPY{tmp, ...})) = 
+         I.fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF'(x, I.ANNOTATION{i, a}) =
          I.ANNOTATION{i=copyInstrF'(x,i), a=a}
 
@@ -404,7 +406,7 @@ struct
 
     fun spillFreg' S {src, reg, spillLoc, annotations=an} = 
         (floatSpillCnt := !floatSpillCnt + 1;
-         [I.FMOVE{fsize=I.FP64, src=FMemReg src, 
+         [I.fmove{fsize=I.FP64, src=FMemReg src, 
                   dst=getFregLoc(S, an,spillLoc)}]
         )
 
@@ -415,7 +417,7 @@ struct
 
     fun reloadFreg' S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
-         [I.FMOVE{fsize=I.FP64, dst=FMemReg dst, 
+         [I.fmove{fsize=I.FP64, dst=FMemReg dst, 
                   src=getFregLoc(S,an,spillLoc)}]
         )
  
@@ -424,8 +426,8 @@ struct
      * -------------------------------------------------------------------*)
     fun memToMemMove{dst, src} =
         let val tmp = I.C.newReg() 
-        in  [I.MOVE{mvOp=I.MOVL,src=src,dst=I.Direct tmp},
-             I.MOVE{mvOp=I.MOVL,src=I.Direct tmp,dst=dst}
+        in  [I.move{mvOp=I.MOVL,src=src,dst=I.Direct tmp},
+             I.move{mvOp=I.MOVL,src=I.Direct tmp,dst=dst}
             ]
         end
 
@@ -433,15 +435,15 @@ struct
         if CB.sameColor(d,s) then [] else 
         let val dx = CB.registerNum d and sx = CB.registerNum s
         in  case (dx >= 8 andalso dx < 32, sx >= 8 andalso sx < 32) of
-             (false, false) => [I.COPY{dst=rds, src=rss, tmp=NONE}]
-           | (true, false) => [I.MOVE{mvOp=I.MOVL,src=I.Direct s,
+             (false, false) => [I.copy{dst=rds, src=rss, tmp=NONE}]
+           | (true, false) => [I.move{mvOp=I.MOVL,src=I.Direct s,
                                       dst=I.MemReg d}]
-           | (false, true) => [I.MOVE{mvOp=I.MOVL,src=I.MemReg s,
+           | (false, true) => [I.move{mvOp=I.MOVL,src=I.MemReg s,
                                       dst=I.Direct d}]
            | (true, true) => memToMemMove{src=I.MemReg s, dst=I.MemReg d}
         end
-      | copyInstrR((rds, rss), I.COPY{tmp, ...}) = 
-         [I.COPY{dst=rds, src=rss, tmp=tmp}]
+      | copyInstrR((rds, rss), I.INSTR(I.COPY{tmp, ...})) = 
+         [I.copy{dst=rds, src=rss, tmp=tmp}]
       | copyInstrR(x, I.ANNOTATION{i, a}) = 
           copyInstrR(x, i) (* XXX *)
       
@@ -459,15 +461,15 @@ struct
     val K8 = length Int.avail
 
      (* register allocation for general purpose registers *)
-    fun spillR8 S {instr, reg, spillLoc, kill, annotations=an} = 
-        (case getRegLoc(S, an, reg, spillLoc) of
-          {opnd=spillLoc, kind=SPILL_LOC} => 
-           (intSpillCnt := !intSpillCnt + 1;
-            X86Spill.spill(instr, reg, spillLoc)
-           ) 
-        | _ => (* don't have to spill a constant *)
-           {code=[], newReg=NONE, proh=[]} 
-        )
+    fun spillR8 S {annotations=an, kill, reg, spillLoc, instr} = 
+	(case getRegLoc(S, an, reg, spillLoc) 
+	  of {opnd=spillLoc, kind=SPILL_LOC} => 
+		 ( intSpillCnt := !intSpillCnt + 1;
+		   X86Spill.spill(instr, reg, spillLoc)
+		  ) 
+	   | _ => (* don't have to spill a constant *)
+	         {code=[], newReg=NONE, proh=[]} 
+        (*esac*))
 
     fun isMemReg r = let val x = CB.registerNum r
                      in  x >= 8 andalso x < 32 end
@@ -479,15 +481,15 @@ struct
             val srcLoc = if isMemReg then I.MemReg src else I.Direct src
         in  if kind=CONST_VAL orelse InsnProps.eqOpn(srcLoc, dstLoc) then []
             else if isMemReg then memToMemMove{dst=dstLoc, src=srcLoc}
-            else [I.MOVE{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
+            else [I.move{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
         end
 
-    fun spillCopyTmp S {copy=I.COPY{src, dst,...}, 
+    fun spillCopyTmp S {copy=I.INSTR(I.COPY{src, dst,...}), 
                         reg, spillLoc, annotations=an} = 
         (case getRegLoc(S, an, reg, spillLoc) of
            {opnd=tmp, kind=SPILL_LOC} =>
             (intSpillCnt := !intSpillCnt + 1;
-             I.COPY{dst=dst, src=src, tmp=SOME tmp}
+             I.copy{dst=dst, src=src, tmp=SOME tmp}
             )
          | _ => error "spillCopyTmp"
         )
@@ -500,10 +502,10 @@ struct
          X86Spill.reload(instr, fromSrc, I.Direct toSrc)
         )
 
-    fun reloadR8 S {instr, reg, spillLoc, annotations=an} = 
-        (intReloadCnt := !intReloadCnt + 1;
-         X86Spill.reload(instr, reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
-        ) 
+    fun reloadR8 S {annotations=an, reg, spillLoc, instr} = 
+	( intReloadCnt := !intReloadCnt + 1;
+	  X86Spill.reload(instr, reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
+	 ) 
 
     fun reloadReg S {dst, reg, spillLoc, annotations=an} = 
         let val _ = intReloadCnt := !intReloadCnt + 1
@@ -512,7 +514,7 @@ struct
             val dstLoc = if isMemReg then I.MemReg dst else I.Direct dst
         in  if InsnProps.eqOpn(srcLoc,dstLoc) then []
             else if isMemReg then memToMemMove{dst=dstLoc, src=srcLoc}
-            else [I.MOVE{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
+            else [I.move{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
         end
 
     fun resetRA() = 

@@ -15,12 +15,13 @@ struct
     val tmpR = C.newReg()
     val tmpF = C.newFreg()
   in
-    [I.ARITHI{oper=I.XORIS, rt=tmpR, ra=reg, im=I.ImmedOp 32768},
-     I.ST{st=I.STW, rs=tmpR, ra=sp, d=I.ImmedOp(cvti2dTmpOff+4), mem=stack},
-     I.ARITHI{oper=I.ADDIS, rt=tmpR, ra=C.r0, im=I.ImmedOp(0x4330)},
-     I.ST{st=I.STW, rs=tmpR, ra=sp, d=I.ImmedOp(cvti2dTmpOff), mem=stack},
-     I.LF{ld=I.LFD, ft=fd, ra=sp, d=I.ImmedOp(cvti2dTmpOff), mem=stack},
-     I.LF{ld=I.LFD, ft=tmpF, ra=sp, d=I.ImmedOp(cvti2dConstOff), mem=stack},
-     I.FARITH{oper=I.FSUB, ft=fd, fa=fd, fb=tmpF, Rc=false}]
+    map I.INSTR
+      [I.ARITHI{oper=I.XORIS, rt=tmpR, ra=reg, im=I.ImmedOp 32768},
+       I.ST{st=I.STW, rs=tmpR, ra=sp, d=I.ImmedOp(cvti2dTmpOff+4), mem=stack},
+       I.ARITHI{oper=I.ADDIS, rt=tmpR, ra=C.r0, im=I.ImmedOp(0x4330)},
+       I.ST{st=I.STW, rs=tmpR, ra=sp, d=I.ImmedOp(cvti2dTmpOff), mem=stack},
+       I.LF{ld=I.LFD, ft=fd, ra=sp, d=I.ImmedOp(cvti2dTmpOff), mem=stack},
+       I.LF{ld=I.LFD, ft=tmpF, ra=sp, d=I.ImmedOp(cvti2dConstOff), mem=stack},
+       I.FARITH{oper=I.FSUB, ft=fd, fa=fd, fb=tmpF, Rc=false}]
   end
 end

@@ -20,7 +20,7 @@ structure PPCMLTreeHash =
         val hashRext = h	val hashFext = h
         val hashCCext = h       val hashSext = h)
 
-structure PPCGasPseudoOps = 
+structure PPCGasPseudoOps =
    PPCGasPseudoOps(structure T=PPCMLTree
 		   structure MLTreeEval=PPCMLTreeEval)
 

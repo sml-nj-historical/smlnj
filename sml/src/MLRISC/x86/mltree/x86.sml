@@ -131,9 +131,11 @@ struct
    *)
   fun selectInstructions 
        (instrStream as
-        TS.S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,getAnnotations,
-                 beginCluster,endCluster,exitBlock,comment,...}) =
-  let exception EA
+        TS.S.STREAM{emit=emitInstruction,defineLabel,entryLabel,pseudoOp,
+		    annotation,getAnnotations,beginCluster,endCluster,exitBlock,comment,...}) =
+  let 
+      val emit = emitInstruction o I.INSTR
+      exception EA
 
       (* label where a trap is generated -- one per cluster *)
       val trapLabel = ref (NONE: (I.instruction * Label.label) option)
@@ -150,11 +152,11 @@ struct
       let val jmp = 
             case !trapLabel of 
               NONE => let val label = Label.label "trap" ()
-                          val jmp   = I.JCC{cond=I.O, 
+                          val jmp   = I.jcc{cond=I.O, 
                                             opnd=I.ImmedLabel(T.LABEL label)}
                       in  trapLabel := SOME(jmp, label); jmp end
             | SOME(jmp, _) => jmp
-      in  emit jmp end
+      in  emitInstruction jmp end
 
       val newReg  = C.newReg
       val newFreg = C.newFreg
@@ -169,9 +171,9 @@ struct
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an) 
 
       (* annotate an expression and emit it *)
-      fun mark(i,an) = emit(mark'(i,an))
+      fun mark(i,an) = emitInstruction(mark'(I.INSTR i,an))
 
-      val emits = app emit
+      val emits = app emitInstruction
 
       (* emit parallel copies for integers 
        * Translates parallel copies that involve memregs into 
@@ -182,13 +184,13 @@ struct
           let fun mvInstr{dst as I.MemReg rd, src as I.MemReg rs} = 
                   if CB.sameColor(rd,rs) then [] else
                   let val tmpR = I.Direct(newReg())
-                  in  [I.MOVE{mvOp=I.MOVL, src=src, dst=tmpR},
-                       I.MOVE{mvOp=I.MOVL, src=tmpR, dst=dst}]
+                  in  [I.move{mvOp=I.MOVL, src=src, dst=tmpR},
+                       I.move{mvOp=I.MOVL, src=tmpR, dst=dst}]
                   end
                 | mvInstr{dst=I.Direct rd, src=I.Direct rs} = 
                     if CB.sameColor(rd,rs) then [] 
-                    else [I.COPY{dst=[rd], src=[rs], tmp=NONE}]
-                | mvInstr{dst, src} = [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}]
+                    else [I.copy{dst=[rd], src=[rs], tmp=NONE}]
+                | mvInstr{dst, src} = [I.move{mvOp=I.MOVL, src=src, dst=dst}]
           in
              emits (Shuffle.shuffle{mvInstr=mvInstr, ea=IntReg}
                {tmp=SOME(I.Direct(newReg())),
@@ -263,7 +265,7 @@ struct
         | fcopy''(fty, dst, src, an) = 
           if true orelse isAnyFMemReg dst orelse isAnyFMemReg src then
           let val fsize = fsize fty
-              fun mvInstr{dst, src} = [I.FMOVE{fsize=fsize, src=src, dst=dst}]
+              fun mvInstr{dst, src} = [I.fmove{fsize=fsize, src=src, dst=dst}]
           in
               emits (Shuffle.shuffle{mvInstr=mvInstr, ea=RealReg}
                 {tmp=case dst of
@@ -1762,7 +1764,7 @@ struct
                     operand       = operand,
                     reduceOperand = reduceOpnd,
                     addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
-                    emit          = mark,
+                    emit          = emitInstruction o mark',
                     instrStream   = instrStream, 
                     mltreeStream  = self() 
                    }

@@ -72,7 +72,7 @@ structure X86CG =
            fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
 	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
            in
-               {instrs  = [I.MOVE{mvOp=I.MOVL, src=src, dst=tempMem}],
+               {instrs  = [I.move{mvOp=I.MOVL, src=src, dst=tempMem}],
                 tempMem = tempMem,
                 cleanup = []
                }

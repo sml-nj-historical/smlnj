@@ -252,16 +252,16 @@ struct
        end
    and Split {le} = 
        let 
-(*#line 432.22 "alpha/alpha.mdl"*)
+(*#line 431.22 "alpha/alpha.mdl"*)
            val i = MLTreeEval.valueOf le
 
-(*#line 433.22 "alpha/alpha.mdl"*)
+(*#line 432.22 "alpha/alpha.mdl"*)
            val w = itow i
 
-(*#line 434.22 "alpha/alpha.mdl"*)
+(*#line 433.22 "alpha/alpha.mdl"*)
            val hi = w ~>> 0wx10
 
-(*#line 435.22 "alpha/alpha.mdl"*)
+(*#line 434.22 "alpha/alpha.mdl"*)
            val lo = w && 0wxffff
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -269,19 +269,19 @@ struct
        end
    and High {le} = 
        let 
-(*#line 438.21 "alpha/alpha.mdl"*)
+(*#line 437.21 "alpha/alpha.mdl"*)
            val (hi, _) = Split {le=le}
        in hi
        end
    and Low {le} = 
        let 
-(*#line 439.21 "alpha/alpha.mdl"*)
+(*#line 438.21 "alpha/alpha.mdl"*)
            val (_, lo) = Split {le=le}
        in lo
        end
    and LoadStore {opc, ra, rb, disp} = 
        let 
-(*#line 441.12 "alpha/alpha.mdl"*)
+(*#line 440.12 "alpha/alpha.mdl"*)
            val disp = 
                (case disp of
                  I.REGop rb => emit_GP rb
@@ -360,15 +360,14 @@ struct
        end
    and Pal {func} = eWord32 func
 
-(*#line 477.7 "alpha/alpha.mdl"*)
+(*#line 476.7 "alpha/alpha.mdl"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
 
-(*#line 478.7 "alpha/alpha.mdl"*)
+(*#line 477.7 "alpha/alpha.mdl"*)
    val zeroR = Option.valOf (C.zeroReg CellsBasis.GP)
        fun emitter instr =
        let
-   fun emitInstr (I.DEFFREG FP) = ()
-     | emitInstr (I.LDA{r, b, d}) = ILoadStore {opc=0wx8, r=r, b=b, d=d}
+   fun emitInstr (I.LDA{r, b, d}) = ILoadStore {opc=0wx8, r=r, b=b, d=d}
      | emitInstr (I.LDAH{r, b, d}) = ILoadStore {opc=0wx9, r=r, b=b, d=d}
      | emitInstr (I.LOAD{ldOp, r, b, d, mem}) = ILoadStore {opc=emit_load ldOp, 
           r=r, b=b, d=d}
@@ -387,13 +386,13 @@ struct
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = 
        let 
-(*#line 588.15 "alpha/alpha.mdl"*)
+(*#line 581.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = 
        let 
-(*#line 595.15 "alpha/alpha.mdl"*)
+(*#line 588.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
@@ -404,13 +403,13 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = 
        let 
-(*#line 624.15 "alpha/alpha.mdl"*)
+(*#line 617.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = 
        let 
-(*#line 632.15 "alpha/alpha.mdl"*)
+(*#line 625.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end
@@ -420,7 +419,6 @@ struct
           fa=fa, fb=fb, fc=fc}
      | emitInstr (I.TRAPB) = Memory_fun {opc=0wx18, ra=zeroR, rb=zeroR, func=0wx0}
      | emitInstr (I.CALL_PAL{code, def, use}) = Pal {func=emit_osf_user_palcode code}
-     | emitInstr (I.ANNOTATION{i, a}) = emitInstr i
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()
      | emitInstr (I.PHI{}) = ()
@@ -428,9 +426,15 @@ struct
            emitInstr instr
        end
    
+   fun emitInstruction(I.ANNOTATION{i, ...}) = emitInstruction(i)
+     | emitInstruction(I.INSTR(i)) = emitter(i)
+     | emitInstruction(I.LIVE _)  = ()
+     | emitInstruction(I.KILL _)  = ()
+   | emitInstruction _ = error "emitInstruction"
+   
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstruction,
                 endCluster=fail,
                 defineLabel=doNothing,
                 entryLabel=doNothing,

@@ -727,10 +727,6 @@ struct
                  tmp: ea option}
 	asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
 
-     | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-        mc:  emitInstr i
-
      | SOURCE of {}
         asm: ``source''
         mc:  ()

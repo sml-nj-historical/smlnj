@@ -71,6 +71,13 @@ signature MLTREE = sig
     | ANNOTATION of stm * an
     | EXT of sext  (* extension *)
 
+      (* synthetic instructions to indicated that the regs are live or
+       * killed at this program point. The spilled list must always
+       * start out as the empty list.
+       *)
+    | LIVE of mlrisc list
+    | KILL of mlrisc list
+
       (* RTL operators:
        * The following are used internally 
        * for describing instruction semantics.

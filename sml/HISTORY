@@ -8,9 +8,81 @@ description.
 The form of an entry should be:
 
 Name: 
-Date:
+Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/12/06 16:50:13 EST 2001
+Tag: george-20011206-mlrisc-instruction
+Description:
+
+Changed the representation of instructions from being fully abstract 
+to being partially concrete. That is to say: 
+
+  from
+	type instruction
+
+  to
+	type instr				(* machine instruction *)
+
+	datatype instruction = 	
+	    LIVE of {regs: C.cellset, spilled: C.cellset}
+          | KILL of {regs: C.cellset, spilled: C.cellset}
+          | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+          | ANNOTATION of {i: instruction, a: Annotations.annotation}
+          | INSTR of instr
+
+This makes the handling of certain special instructions that appear on
+all architectures easier and uniform.
+
+LIVE and KILL say that a list of registers are live or killed at the 
+program point where they appear. No spill code is generated when an
+element of the 'regs' field is spilled, but the register is moved to 
+the 'spilled' (which is present, more for debugging than anything else).
+
+LIVE replaces the (now deprecated) DEFFREG instruction on the alpha.
+We used to generate:
+
+	DEFFREG f1
+	f1 := f2 + f3
+        trapb
+
+but now generate:
+
+	f1 := f2 + f3
+	trapb
+	LIVE {regs=[f1,f2,f3], spilled=[]}
+
+Furthermore, the DEFFREG (hack) required that all floating point instruction
+use all registers mentioned in the instruction. Therefore f1 := f2 + f3, 
+defines f1 and uses [f1,f2,f3]! This hack is no longer required resulting 
+in a cleaner alpha implementation. (Hopefully, intel will not get rid of 
+this architecture).
+
+COPYXXX is intended to replace the parallel COPY and FCOPY  available on 
+all the architectures. This will result in further simplification of the
+register allocator that must be aware of them for coalescing purposes, and 
+will also simplify certain aspects of the machine description that provides
+callbacks related to parallel copies. 
+
+ANNOTATION should be obvious, and now INSTR represents the honest to God
+machine instruction set!
+
+The <arch>/instructions/<arch>Instr.sml files define certain utility 
+functions for making porting easier -- essentially converting upper case
+to lower case. All machine instructions (of type instr) are in upper case,
+and the lower case form generates an MLRISC instruction. For example on 
+the alpha we have:
+
+  datatype instr =
+     LDA of {r:cell, b:cell, d:operand}
+   | ...
+
+  val lda : {r:cell, b:cell, d:operand} -> instruction
+    ...
+
+where lda is just (INSTR o LDA), etc.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume

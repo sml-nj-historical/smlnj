@@ -144,21 +144,21 @@ struct
      | invert _ = error "invert"
 
    (* Pseudo instructions *)
-   fun FLD(I.FP32, ea) = I.FLDS ea
-     | FLD(I.FP64, ea) = I.FLDL ea
-     | FLD(I.FP80, ea) = I.FLDT ea
+   fun FLD(I.FP32, ea) = I.flds ea
+     | FLD(I.FP64, ea) = I.fldl ea
+     | FLD(I.FP80, ea) = I.fldt ea
 
    fun FILD(I.I8, ea) = error "FILD"
-     | FILD(I.I16, ea) = I.FILD ea
-     | FILD(I.I32, ea) = I.FILDL ea
-     | FILD(I.I64, ea) = I.FILDLL ea
+     | FILD(I.I16, ea) = I.fild ea
+     | FILD(I.I32, ea) = I.fildl ea
+     | FILD(I.I64, ea) = I.fildll ea
 
-   fun FSTP(I.FP32, ea) = I.FSTPS ea
-     | FSTP(I.FP64, ea) = I.FSTPL ea
-     | FSTP(I.FP80, ea) = I.FSTPT ea
+   fun FSTP(I.FP32, ea) = I.fstps ea
+     | FSTP(I.FP64, ea) = I.fstpl ea
+     | FSTP(I.FP80, ea) = I.fstpt ea
 
-   fun FST(I.FP32, ea) = I.FSTS ea
-     | FST(I.FP64, ea) = I.FSTL ea
+   fun FST(I.FP32, ea) = I.fsts ea
+     | FST(I.FP64, ea) = I.fstl ea
      | FST(I.FP80, ea) = error "FSTT"
 
    (*-----------------------------------------------------------------------
@@ -422,11 +422,11 @@ struct
                    A.sub(stTable, n) 
                   )
        
-       fun FXCH n = I.FXCH{opnd=C.ST n} 
+       fun FXCH n = I.fxch{opnd=C.ST n} 
 
        val ST0 = ST 0 
        val ST1 = ST 1
-       val POP_ST = I.FSTPL ST0 (* Instruction to pop an entry *)
+       val POP_ST = I.fstpl ST0 (* Instruction to pop an entry *)
 
        (* Dump instructions *)
        fun dump instrs =
@@ -572,7 +572,7 @@ struct
                         )
                       else (ST.xch(stack,0,i);
                             ST.pop stack;
-                            loop(0, depth-1, I.FSTPL(ST i)::code)
+                            loop(0, depth-1, I.fstpl(ST i)::code)
                            )
                      )
                end
@@ -1103,10 +1103,10 @@ struct
                val oldIdToNewId = IntHashTable.lookup idMap
 
                (* Retarget a jump instruction to label l *)
-               fun retargetJump(I.JMP(I.ImmedLabel(T.LABEL _), [_]), l) = 
-                     I.JMP(I.ImmedLabel(T.LABEL l), [l])
-                 | retargetJump(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)},l)=
-                     I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}
+               fun retargetJump(I.INSTR(I.JMP(I.ImmedLabel(T.LABEL _), [_])), l) = 
+                     I.jmp(I.ImmedLabel(T.LABEL l), [l])
+                 | retargetJump(I.INSTR(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}),l)=
+                     I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}
                  | retargetJump(I.ANNOTATION{i,a},l) =
                      I.ANNOTATION{i=retargetJump(i,l),a=a}
                  | retargetJump(_,l) = error "retargetJump"
@@ -1360,7 +1360,7 @@ struct
                                  (ST.pop stack; kill(fs, POP_ST::code))
                                else 
                                  (ST.xch(stack,0,i); ST.pop stack;
-                                  kill(fs, I.FSTPL(ST i)::code)
+                                  kill(fs, I.fstpl(ST i)::code)
                                  )
                            end
                        end
@@ -1410,7 +1410,7 @@ struct
                          * set fd to %st(0) 
                          *)
                       let val code = alloc(fd, code) 
-                      in  DONE(mark(I.FLDL(ST ss),an)::code)
+                      in  DONE(mark(I.fldl(ST ss),an)::code)
                       end
                end
 
@@ -1429,11 +1429,11 @@ struct
                fun xch(n) = (ST.xch(stack,0,n); FXCH n)
 
                (* push %st(n) onto the stack *)
-               fun push(n) = (ST.push(stack,~2); I.FLDL(ST n))
+               fun push(n) = (ST.push(stack,~2); I.fldl(ST n))
 
 
                (* push mem onto the stack *)
-               fun pushmem(src) = (ST.push(stack,~2); I.FLDL(src))
+               fun pushmem(src) = (ST.push(stack,~2); I.fldl(src))
 
                (* register -> memory move.
                 * Use pop version of the opcode if it is the last use.
@@ -1463,7 +1463,7 @@ struct
                    end
                  | fiload{isize,ea,dst} = 
                    let val code = mark(FILD(isize,ea),an)::code
-                       val code = I.FSTPL(dst)::code (* XXX *)
+                       val code = I.fstpl(dst)::code (* XXX *)
                    in  DONE code
                    end
 
@@ -1492,7 +1492,7 @@ struct
                (* Floating point unary operator *)
                fun funop{fsize,unOp,src,dst} = 
                    let val code = movetotop(fsize, src, code)
-                       val code = mark(I.FUNARY unOp,an)::code
+                       val code = mark(I.funary unOp,an)::code
 
                        (* Moronic hack to deal with partial tangent! *)
                        val code = 
@@ -1518,7 +1518,7 @@ struct
                    (* op2 := op1 - op2 *)
                    fun oper(binOp,op1,op2,n,code) = 
                    let val code = 
-                        mark(I.FBINARY{binOp=binOp,src=op1,dst=op2},an)
+                        mark(I.fbinary{binOp=binOp,src=op1,dst=op2},an)
                            ::code
                    in  storeResult(I.FP64, dst, n, code)
                    end
@@ -1607,7 +1607,7 @@ struct
                (* Floating point binary operator with integer conversion *)
                fun fibinop{isize,binOp,lsrc,rsrc,dst} = 
                let fun oper(binOp,src,code) = 
-                   let val code = mark(I.FIBINARY{binOp=binOp,src=src},an)
+                   let val code = mark(I.fibinary{binOp=binOp,src=src},an)
                                      ::code
                    in  storeResult(I.FP64, dst, 0, code)
                    end
@@ -1631,10 +1631,10 @@ struct
                 *)
                fun fcmp{fsize,lsrc,rsrc} = 
                let fun fucompp() = 
-                       (ST.pop stack; ST.pop stack; mark(I.FUCOMPP,an))
+                       (ST.pop stack; ST.pop stack; mark(I.fucompp,an))
                    fun fucomp(n) = 
-                       (ST.pop stack; mark(I.FUCOMP(ST n),an))
-                   fun fucom(n) = mark(I.FUCOM(ST n),an)
+                       (ST.pop stack; mark(I.fucomp(ST n),an))
+                   fun fucom(n) = mark(I.fucom(ST n),an)
 
                    fun genmemcmp() =
                        let val code = movememtotop(fsize, rsrc, code)
@@ -1687,7 +1687,7 @@ struct
                        let val (dx, sx) = getfs fx
                            val (dy, sy) = getfs fy
                            fun fstp(n) = 
-                               (ST.xch(stack,n,0); ST.pop stack; I.FSTPL(ST n))
+                               (ST.xch(stack,n,0); ST.pop stack; I.fstpl(ST n))
                        in  if sx = sy then regsame(dx, sx) (* same register!*)
                            else
                                (* first, move sx to %st(0) *)
@@ -1755,7 +1755,7 @@ struct
                      | genCopy((fd, fs)::copies, code) = 
                        let val ss   = ST.fp(stack, CB.registerNum fs)
                            val _    = ST.push(stack, CB.registerNum fd)
-                           val code = I.FLDL(ST ss)::code 
+                           val code = I.fldl(ST ss)::code 
                        in  genCopy(copies, code) end
 
                    (* perform the renaming; it must be done in parallel! *)
@@ -1790,7 +1790,7 @@ struct
                end
 
                fun call(instr, return) = let 
-		 val code = mark(instr, an)::code
+		 val code = mark(I.INSTR instr, an)::code
 		 val returnSet = SL.return(SL.uniq(getCell return))
                in
 		 case returnSet of
@@ -1800,38 +1800,40 @@ struct
                      error "can't return more than one fp argument (yet)";
                    DONE code
                end
+	       fun x86trans instr =
+                (case instr 
+		  of I.FMOVE x   => (log(); fmove x)
+		   | I.FBINOP x  => (log(); fbinop x)
+		   | I.FIBINOP x => (log(); fibinop x)
+		   | I.FUNOP x   => (log(); funop x)
+		   | I.FILOAD x  => (log(); fiload x)
+		   | I.FCMP x    => (log(); fcmp x)
+		   | I.FCOPY x   => (log(); fcopy x)
 
-           in  case instr of
-                 (* annotation handling *)
-                 I.ANNOTATION{i,a} => 
-                     trans(stamp, i, a::an, rest, dead, lastUses, code)
+		     (* handle calling convention *)
+		   | I.CALL{return, ...}    => (log(); call(instr,return))
 
-                 (* handle floating point stuff *)
-               | I.FMOVE x   => (log(); fmove x)
-               | I.FBINOP x  => (log(); fbinop x)
-               | I.FIBINOP x => (log(); fibinop x)
-               | I.FUNOP x   => (log(); funop x)
-               | I.FILOAD x  => (log(); fiload x)
-               | I.FCMP x    => (log(); fcmp x)
-               | I.FCOPY x   => (log(); fcopy x)
+		      (* 
+		       * Catch instructions that absolutely 
+		       * should not have been generated at this point.
+		       *)
+		   | (I.FLD1 | I.FLDL2E | I.FLDLG2 | I.FLDLN2 | I.FLDPI |
+		      I.FLDZ | I.FLDL _ | I.FLDS _ | I.FLDT _ | 
+		      I.FILD _ | I.FILDL _ | I.FILDLL _ | 
+		      I.FENV _ | I.FBINARY _ | I.FIBINARY _ | I.FUNARY _ |
+		      I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ | 
+		      I.FSTPL _ | I.FSTPS _ | I.FSTPT _ | I.FSTL _ | I.FSTS _ 
+		     ) => bug("Illegal FP instructions")
 
-                 (* handle calling convention *)
-               | I.CALL{return, ...}    => (log(); call(instr,return))
-
-                  (* 
-                   * Catch instructions that absolutely 
-                   * should not have been generated at this point.
-                   *)
-               | (I.FLD1 | I.FLDL2E | I.FLDLG2 | I.FLDLN2 | I.FLDPI |
-                  I.FLDZ | I.FLDL _ | I.FLDS _ | I.FLDT _ | 
-                  I.FILD _ | I.FILDL _ | I.FILDLL _ | 
-                  I.FENV _ | I.FBINARY _ | I.FIBINARY _ | I.FUNARY _ |
-                  I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ | 
-                  I.FSTPL _ | I.FSTPS _ | I.FSTPT _ | I.FSTL _ | I.FSTS _ 
-                 ) => bug("Illegal FP instructions")
-
-                  (* Other instructions are untouched *)
-               | instr => FINISH(mark(instr, an)::code)
+		      (* Other instructions are untouched *)
+		   | instr => FINISH(mark(I.INSTR instr, an)::code)
+               (*esac*))
+           in  
+	       case instr
+	       of I.ANNOTATION{a,i} =>
+		      trans(stamp, i, a::an, rest, dead, lastUses, code)
+		| I.INSTR instr => x86trans(instr)
+		| _  => error "trans"
            end (* trans *)
 
            (*
@@ -1842,38 +1844,39 @@ struct
            let val n = ref(ST.depth stackIn)
                fun push() = n := !n + 1
                fun pop() = n := !n - 1
-               fun scan(I.FBINARY{binOp, ...}) = 
+               fun scan(I.INSTR(I.FBINARY{binOp, ...})) = 
                       (case binOp of 
                         ( I.FADDP | I.FSUBP | I.FSUBRP | I.FMULP
                         | I.FDIVP | I.FDIVRP) => pop()
                       | _ => ()
                       )
-                 | scan(I.FIBINARY{binOp, ...}) = ()
-                 | scan(I.FUNARY I.FPTAN) = push()
-                 | scan(I.FUNARY _) = ()
-                 | scan(I.FLDL(I.ST n)) = push()
-                 | scan(I.FLDL mem) = push()
-                 | scan(I.FLDS mem) = push()
-                 | scan(I.FLDT mem) = push()
-                 | scan(I.FSTL(I.ST n)) = ()
-                 | scan(I.FSTPL(I.ST n)) = pop()
-                 | scan(I.FSTL mem) = ()
-                 | scan(I.FSTS mem) = ()
-                 | scan(I.FSTPL mem) = pop()
-                 | scan(I.FSTPS mem) = pop()
-                 | scan(I.FSTPT mem) = pop()
-                 | scan(I.FXCH{opnd=i,...}) = ()
-                 | scan(I.FUCOM _) = ()
-                 | scan(I.FUCOMP _) = pop()
-                 | scan(I.FUCOMPP) = (pop(); pop())
-                 | scan(I.FILD mem) = push()
-                 | scan(I.FILDL mem) = push()
-                 | scan(I.FILDLL mem) = push()
+                 | scan(I.INSTR(I.FIBINARY{binOp, ...})) = ()
+                 | scan(I.INSTR(I.FUNARY I.FPTAN)) = push()
+                 | scan(I.INSTR(I.FUNARY _)) = ()
+                 | scan(I.INSTR(I.FLDL(I.ST n))) = push()
+                 | scan(I.INSTR(I.FLDL mem)) = push()
+                 | scan(I.INSTR(I.FLDS mem)) = push()
+                 | scan(I.INSTR(I.FLDT mem)) = push()
+                 | scan(I.INSTR(I.FSTL(I.ST n))) = ()
+                 | scan(I.INSTR(I.FSTPL(I.ST n))) = pop()
+                 | scan(I.INSTR(I.FSTL mem)) = ()
+                 | scan(I.INSTR(I.FSTS mem)) = ()
+                 | scan(I.INSTR(I.FSTPL mem)) = pop()
+                 | scan(I.INSTR(I.FSTPS mem)) = pop()
+                 | scan(I.INSTR(I.FSTPT mem)) = pop()
+                 | scan(I.INSTR(I.FXCH{opnd=i,...})) = ()
+                 | scan(I.INSTR(I.FUCOM _)) = ()
+                 | scan(I.INSTR(I.FUCOMP _)) = pop()
+                 | scan(I.INSTR(I.FUCOMPP)) = (pop(); pop())
+                 | scan(I.INSTR(I.FILD mem)) = push()
+                 | scan(I.INSTR(I.FILDL mem)) = push()
+                 | scan(I.INSTR(I.FILDLL mem)) = push()
                  | scan _ = ()
                val _ = app scan (rev insns);  
                val n = !n
                val m = ST.depth stackOut
-           in  if n <> m then
+           in
+	       if n <> m then
                   (dump(insns);
                    bug("Bad translation n="^i2s n^ " expected="^i2s m^"\n")
                   )

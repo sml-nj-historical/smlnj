@@ -16,37 +16,37 @@ struct
 
    fun delaySlot{instr, backward} =
      case instr of
-       I.CALL{nop,...} => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
-     | I.JMP{nop,...}  => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
-     | I.JMPL{nop,...} => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
-     | I.RET{nop,...}  => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
-     | I.Bicc{b=I.BA,a,nop,...} => {n=false,nOn=D_NONE,nOff=D_ALWAYS,nop=nop}
-     | I.Bicc{a,nop,...} => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
-     | I.FBfcc{a,nop,...} => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
-     | I.BR{a,nop,...} => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
-     | I.BP{a,nop,...} => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
-     | I.FCMP{nop,...} => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
+       I.INSTR(I.CALL{nop,...}) => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.JMP{nop,...}) => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.JMPL{nop,...}) => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.RET{nop,...})  => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.Bicc{b=I.BA,a,nop,...}) => {n=false,nOn=D_NONE,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.Bicc{a,nop,...}) => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.FBfcc{a,nop,...}) => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.BR{a,nop,...}) => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.BP{a,nop,...}) => {n=a,nOn=D_TAKEN,nOff=D_ALWAYS,nop=nop}
+     | I.INSTR(I.FCMP{nop,...}) => {n=false,nOn=D_ERROR,nOff=D_ALWAYS,nop=nop}
      | I.ANNOTATION{i,...} => delaySlot{instr=i,backward=backward}
      | _ => {n=false,nOn=D_ERROR,nOff=D_NONE,nop=false}
 
    fun enableDelaySlot{instr, n, nop} =
        case (instr,n) of
-         (I.CALL{defs,uses,label,cutsTo,mem,...},false) => 
-	    I.CALL{defs=defs,uses=uses,label=label,cutsTo=cutsTo,
+         (I.INSTR(I.CALL{defs,uses,label,cutsTo,mem,...}),false) => 
+	    I.call{defs=defs,uses=uses,label=label,cutsTo=cutsTo,
                    nop=nop,mem=mem}
-       | (I.JMPL{r,i,d,defs,uses,mem,cutsTo,...},false) => 
-	    I.JMPL{r=r,i=i,d=d,defs=defs,uses=uses,cutsTo=cutsTo,
+       | (I.INSTR(I.JMPL{r,i,d,defs,uses,mem,cutsTo,...}),false) => 
+	    I.jmpl{r=r,i=i,d=d,defs=defs,uses=uses,cutsTo=cutsTo,
                    nop=nop,mem=mem}
-       | (I.JMP{r,i,labs,...},false) => 
-	    I.JMP{r=r,i=i,labs=labs,nop=nop}
-       | (I.RET{leaf,...},false) => I.RET{leaf=leaf,nop=nop}
-       | (I.Bicc{b,a,label,...},_) => I.Bicc{b=b,a=n,nop=nop,label=label}
-       | (I.FBfcc{b,a,label,...},_) => I.FBfcc{b=b,a=n,nop=nop,label=label}
-       | (I.BR{nop,label,p,r,rcond,...},_) =>
-            I.BR{rcond=rcond,r=r,a=n,nop=nop,label=label,p=p}
-       | (I.BP{nop,label,p,cc,b,...},_) =>
-            I.BP{b=b,cc=cc,a=n,nop=nop,label=label,p=p}
-       | (I.FCMP{cmp,r1,r2,...},false) => I.FCMP{cmp=cmp,r1=r1,r2=r2,nop=nop}
+       | (I.INSTR(I.JMP{r,i,labs,...}),false) => 
+	    I.jmp{r=r,i=i,labs=labs,nop=nop}
+       | (I.INSTR(I.RET{leaf,...}),false) => I.ret{leaf=leaf,nop=nop}
+       | (I.INSTR(I.Bicc{b,a,label,...}),_) => I.bicc{b=b,a=n,nop=nop,label=label}
+       | (I.INSTR(I.FBfcc{b,a,label,...}),_) => I.fbfcc{b=b,a=n,nop=nop,label=label}
+       | (I.INSTR(I.BR{nop,label,p,r,rcond,...}),_) =>
+            I.br{rcond=rcond,r=r,a=n,nop=nop,label=label,p=p}
+       | (I.INSTR(I.BP{nop,label,p,cc,b,...}),_) =>
+            I.bp{b=b,cc=cc,a=n,nop=nop,label=label,p=p}
+       | (I.INSTR(I.FCMP{cmp,r1,r2,...}),false) => I.fcmp{cmp=cmp,r1=r1,r2=r2,nop=nop}
        | (I.ANNOTATION{i,a},n) => 
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
@@ -74,23 +74,23 @@ struct
               | cc I.UMULCC = true
               | cc I.SMULCC = true
               | cc I.UDIVCC = true
-              | cc I.SDIVCC = true
+              | cc I.SDIVCC = true 
               | cc _ = false
-            fun defUseOther(I.Ticc _) = ([],psr)
-              | defUseOther(I.ARITH{a,...}) = 
+            fun defUseOther(I.INSTR(I.Ticc _)) = ([],psr)
+              | defUseOther(I.INSTR(I.ARITH{a,...})) = 
                   if cc a then (psr,[]) else ([],[])
-              | defUseOther(I.WRY _) = (y,[])
-              | defUseOther(I.RDY _) = ([],y)
-              | defUseOther(I.FCMP _) = (fsr,[])
-              | defUseOther(I.Bicc{b=I.BA,...}) = ([],[])
-              | defUseOther(I.Bicc _) = ([],psr)
-              | defUseOther(I.FBfcc _) = ([],fsr)
-              | defUseOther(I.MOVicc _) = ([],psr)
-              | defUseOther(I.MOVfcc _) = ([],fsr)
-              | defUseOther(I.FMOVicc _) = ([],psr)
-              | defUseOther(I.FMOVfcc _) = ([],fsr)
-              | defUseOther(I.CALL _) = (everything,[])
-              | defUseOther(I.JMPL _) = (everything,[])
+              | defUseOther(I.INSTR(I.WRY _)) = (y,[])
+              | defUseOther(I.INSTR(I.RDY _)) = ([],y)
+              | defUseOther(I.INSTR(I.FCMP _)) = (fsr,[])
+              | defUseOther(I.INSTR(I.Bicc{b=I.BA,...})) = ([],[])
+              | defUseOther(I.INSTR(I.Bicc _)) = ([],psr)
+              | defUseOther(I.INSTR(I.FBfcc _)) = ([],fsr)
+              | defUseOther(I.INSTR(I.MOVicc _)) = ([],psr)
+              | defUseOther(I.INSTR(I.MOVfcc _)) = ([],fsr)
+              | defUseOther(I.INSTR(I.FMOVicc _)) = ([],psr)
+              | defUseOther(I.INSTR(I.FMOVfcc _)) = ([],fsr)
+              | defUseOther(I.INSTR(I.CALL _)) = (everything,[])
+              | defUseOther(I.INSTR(I.JMPL _)) = (everything,[])
               | defUseOther(I.ANNOTATION{i,...}) = defUseOther i
               | defUseOther _ = ([],[])
             fun clash(defUse) =
@@ -114,21 +114,22 @@ struct
         end
 
     fun delaySlotCandidate{jmp,delaySlot=
-                         (I.CALL _ | I.Bicc _ | I.FBfcc _ | I.Ticc _ | I.BR _ 
-                         | I.JMP _ | I.JMPL _ | I.RET _ | I.BP _ )} = false
-      | delaySlotCandidate{jmp=I.FCMP _,delaySlot=I.FCMP _} = false
+              (  I.INSTR(I.CALL _) | I.INSTR(I.Bicc _) | I.INSTR(I.FBfcc _) 
+               | I.INSTR(I.Ticc _) | I.INSTR(I.BR _) | I.INSTR(I.JMP _) | I.INSTR(I.JMPL _) 
+	       | I.INSTR(I.RET _) | I.INSTR(I.BP _) )} = false
+      | delaySlotCandidate{jmp=I.INSTR(I.FCMP _),delaySlot=I.INSTR(I.FCMP _)} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}
       | delaySlotCandidate{jmp,delaySlot=I.ANNOTATION{i,...}} = 
            delaySlotCandidate{jmp=jmp,delaySlot=i}
       | delaySlotCandidate _ = true
 
-   fun setTarget(I.Bicc{b,a,nop,...},lab) = I.Bicc{b=b,a=a,nop=nop,label=lab}
-     | setTarget(I.FBfcc{b,a,nop,...},lab) = I.FBfcc{b=b,a=a,nop=nop,label=lab}
-     | setTarget(I.BR{rcond,p,r,a,nop,...},lab) = 
-          I.BR{rcond=rcond,p=p,r=r,a=a,nop=nop,label=lab}
-     | setTarget(I.BP{b,p,cc,a,nop,...},lab) = 
-          I.BP{b=b,p=p,cc=cc,a=a,nop=nop,label=lab}
+   fun setTarget(I.INSTR(I.Bicc{b,a,nop,...}),lab) = I.bicc{b=b,a=a,nop=nop,label=lab}
+     | setTarget(I.INSTR(I.FBfcc{b,a,nop,...}),lab) = I.fbfcc{b=b,a=a,nop=nop,label=lab}
+     | setTarget(I.INSTR(I.BR{rcond,p,r,a,nop,...}),lab) = 
+          I.br{rcond=rcond,p=p,r=r,a=a,nop=nop,label=lab}
+     | setTarget(I.INSTR(I.BP{b,p,cc,a,nop,...}),lab) = 
+          I.bp{b=b,p=p,cc=cc,a=a,nop=nop,label=lab}
      | setTarget(I.ANNOTATION{i,a},lab) = I.ANNOTATION{i=setTarget(i,lab),a=a}
      | setTarget _ = error "setTarget"
 

@@ -850,11 +850,6 @@ struct
         padding: nop = true
         nullified: false
 
-   |  ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-        mc:  emitInstr i
-	(* rtl: [[#i ]] *)
-
    | SOURCE of {}
         asm: ``source''
         mc:  ()

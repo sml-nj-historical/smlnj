@@ -278,16 +278,12 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 483.7 "alpha/alpha.mdl"*)
+(*#line 482.7 "alpha/alpha.mdl"*)
    fun isZero (I.LABop le) = (MLTreeEval.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 
        (case instr of
-         I.DEFFREG FP => 
-         ( emit "/* deffreg\t"; 
-           emitCell FP; 
-           emit " */" )
-       | I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
+         I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
             b)))
             then ()
             else 
@@ -399,7 +395,7 @@ struct
            emit_label lab )
        | I.OPERATE{oper, ra, rb, rc} => 
          let 
-(*#line 578.15 "alpha/alpha.mdl"*)
+(*#line 571.15 "alpha/alpha.mdl"*)
              fun disp () = 
                  ( emit_operate oper; 
                    emit "\t"; 
@@ -482,24 +478,33 @@ struct
        | I.CALL_PAL{code, def, use} => 
          ( emit "call_pal "; 
            emit_osf_user_palcode code )
-       | I.ANNOTATION{i, a} => 
-         ( comment (Annotations.toString a); 
-           nl (); 
-           emitInstr i )
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
        )
-          and emitInstr i = (tab(); emitInstr' i; nl())
-          and emitInstrIndented i = (indent(); emitInstr' i; nl())
-          and emitInstrs instrs =
+      in  tab(); emitInstr' instr; nl()
+      end (* emitter *)
+      and emitInstrIndented i = (indent(); emitInstr i; nl())
+      and emitInstrs instrs =
            app (if !indent_copies then emitInstrIndented
                 else emitInstr) instrs
-      in  emitInstr instr end
+   
+      and emitInstr(I.ANNOTATION{i,a}) =
+           ( comment(Annotations.toString a);
+              nl();
+              emitInstr i )
+        | emitInstr(I.LIVE{regs, spilled})  = 
+            comment("live= " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled= " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.KILL{regs, spilled})  = 
+            comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
+                    "spilled:: " ^ CellsBasis.CellSet.toString spilled)
+        | emitInstr(I.INSTR i) = emitter i
+        | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
-                emit=emitter,
+                emit=emitInstr,
                 endCluster=fail,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,

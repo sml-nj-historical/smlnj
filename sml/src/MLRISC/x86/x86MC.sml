@@ -65,11 +65,11 @@ struct
 
   fun emitInstrs(instrs) = Word8Vector.concat(map emitInstr instrs)
 
-  and emitInstr(instr) = let
+  and emitX86Instr(instr: I.instr) = let
     val error = 
         fn msg =>
            let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
-           in  emit instr; error msg end
+           in  emit (I.INSTR instr); error msg end
 
     val rNum = CB.physicalRegisterNum 
     val fNum = CB.physicalRegisterNum 
@@ -528,7 +528,12 @@ struct
 
      (* misc *)
      | I.SAHF => eByte(0x9e)
-     | I.ANNOTATION{i,...} => emitInstr i
      | _ => error "emitInstr"
   end 
+  and emitInstr (I.LIVE _) = Word8Vector.fromList []
+    | emitInstr (I.KILL _) = Word8Vector.fromList []
+    | emitInstr (I.COPYXXX _) = error "COPY not handled yet"
+    | emitInstr (I.INSTR instr) = emitX86Instr instr
+    | emitInstr (I.ANNOTATION{i,...}) = emitInstr i
+
 end

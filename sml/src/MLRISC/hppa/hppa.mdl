@@ -1172,11 +1172,6 @@ struct
 	rtl: ``FCOPY''
 	pipeline: ARITH
 
-    | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (comment(Annotations.toString a); nl(); emitInstr i)
-        mc:  emitInstr i
-	(* rtl: [[ #i ]] *)
-
     | SOURCE of {}
 	asm: ``source''
 	mc:  ()
