@@ -57,7 +57,11 @@ vsay $this: Using shell $SHELL.
 REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
 vsay $this: SML root is $ROOT.
-vsay $this: Installation directory is ${INSTALLDIR:=$ROOT}.
+
+cd ${INSTALLDIR:=$ROOT}
+INSTALLDIR=`pwd`
+cd $ROOT
+vsay $this: Installation directory is ${INSTALLDIR}.
 
 #
 # set the various directory and file pathname variables
@@ -379,7 +383,7 @@ cd $ROOT
 # Now do all the rest using the precompiled installer:
 #
 echo $this: Installing other libraries and programs:
-export ROOT CONFIGDIR BINDIR
+export ROOT INSTALLDIR CONFIGDIR BINDIR
 if $BINDIR/sml -m \$smlnj/installer.cm
 then
     vsay $this: Installation complete.

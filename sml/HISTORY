@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/03 16:00:00 CST
+Tag: blume-20031103-installdir
+Description:
+
+Made installer honor INSTALLDIR variable again.  (Thanks to Chris
+Richards for pointing out the problem and providing the solution.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/10/01 17:05:00 CDT
 Tag: blume-20031001-lal-mlrisc
 Description:

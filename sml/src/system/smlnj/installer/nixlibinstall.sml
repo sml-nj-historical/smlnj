@@ -9,15 +9,17 @@ structure UnixLibInstall : sig end = struct
 
     fun proc () = let
 	val home = valOf (OS.Process.getEnv "ROOT")
+	val installdir = getOpt (OS.Process.getEnv "INSTALLDIR", home)
 	val configdir = getOpt (OS.Process.getEnv "CONFIGDIR",
 				OS.Path.concat (home, "config"))
 	val unpack = OS.Path.concat (configdir, "unpack")
 	val bindir = getOpt (OS.Process.getEnv "BINDIR",
-			     OS.Path.concat (home, "bin"))
+			     OS.Path.concat (installdir, "bin"))
 	fun bincmd cmd = OS.Path.concat (bindir, cmd)
 	val runsml = bincmd ".run-sml"
     in
 	LibInstall.proc { smlnjroot = home,
+			  installdir = installdir,
 			  buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
 			  unpackcmd = SOME unpack,
 			  instcmd = fn target => let
