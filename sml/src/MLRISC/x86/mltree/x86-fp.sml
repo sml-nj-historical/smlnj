@@ -91,8 +91,6 @@ struct
    type flowgraph = CFG.cfg
    type an = An.annotations
 
-(*DEBUG*)fun valOf (SOME x) = x | valOf NONE = raise Option.Option
-
    val name = "X86 floating point rewrite"
 
    val debugOn = MLRiscControl.mkFlag ("x86-fp-debug", "x86 fp debug mode")
