@@ -21,7 +21,33 @@
 let datatype foobar
       = FooB of int
       | FooA of bool * int
+
+    datatype foo = FOO | BAR of baz
+         and baz = BAZ | QUUX of foo
+
+    datatype foo = FOO
+                 | BAR of baz
+         and baz = BAZ
+                 | QUUX of foo
+
+    datatype foo = datatype M.foo
+    val _ = 42
+
+    signature S = S' where type foo = int
+    val _ = 42
+
+    val foo = [ "blah"
+              , let val x = f 42 in g (x,x,44) end
+              , foldl (fn ((p,q),s) => g (p,q,Vector.length q) ^ ":" ^ s)
+                "" (Beeblebrox.masterCountList mlist2)
+              , if null mlist2 then ";" else ""
+              ]
 		
+    fun foo (true::rest)
+      = 1 + 2 * foo rest
+      | foo (false::rest)
+      = 0 + 2 * foo rest
+
     val x = if foo then
 		1
 	    else if bar then
@@ -48,6 +74,17 @@ end
 let
 in a;
    b
+end
+
+let
+in a
+; b
+end
+
+let
+in
+    a
+  ; b
 end
 
 let
