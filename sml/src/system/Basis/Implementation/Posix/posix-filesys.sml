@@ -75,7 +75,8 @@ structure POSIX_FileSys =
 	  }
     fun readdir (DS{dirStrm, isOpen = ref false}) =
 	  raise Assembly.SysErr("readdir on closed directory stream", NONE)
-      | readdir (DS{dirStrm, ...}) = readdir' dirStrm
+      | readdir (DS{dirStrm, ...}) =
+	(case readdir' dirStrm of "" => NONE | n => SOME n)
     fun rewinddir (DS{dirStrm, isOpen = ref false}) =
 	  raise Assembly.SysErr("rewinddir on closed directory stream", NONE)
       | rewinddir (DS{dirStrm, ...}) = rewinddir' dirStrm
@@ -99,7 +100,12 @@ structure POSIX_FileSys =
         fun fromWord w = MODE w
         fun toWord (MODE w) = w
 
+	val all = MODE (SysWord.notb 0w0)(* too much? *)
+
         fun flags ms = MODE(List.foldl (fn (MODE m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = MODE(List.foldl (fn (MODE m,acc) => m & acc)
+					   (SysWord.notb 0w0) ms)
+	fun clear (MODE m, MODE m') = MODE (SysWord.notb m & m')
         fun anySet (MODE m, MODE m') = (m & m') <> 0w0
         fun allSet (MODE m, MODE m') = (m & m') = m
  
@@ -127,7 +133,12 @@ structure POSIX_FileSys =
         fun fromWord w = OFL w
         fun toWord (OFL w) = w
 
+	val all = OFL (SysWord.notb 0w0)(* too much? *)
+
         fun flags ms = OFL(List.foldl (fn (OFL m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = OFL(List.foldl (fn (OFL m,acc) => m & acc)
+					  (SysWord.notb 0w0) ms)
+	fun clear (OFL m, OFL m') = OFL (SysWord.notb m & m')
         fun anySet (OFL m, OFL m') = (m & m') <> 0w0
         fun allSet (OFL m, OFL m') = (m & m') = m
 

@@ -38,6 +38,7 @@ functor OS_PathFn (OSPathBase : sig
     structure SS = Substring
 
     exception Path = P.Path
+    exception InvalidArc	(* FIXME: use this exception where appropriate! *)
 
     val arcSepStr = String.str P.arcSepChar
 
@@ -232,6 +233,9 @@ functor OS_PathFn (OSPathBase : sig
 		  then toString{isAbs=isAbs, vol=v1, arcs=concatArcs(al1, al2)}
 		  else raise Path
 	  (* end case *))
+
+    fun fromUnixPath _ = raise Fail "fromUnixPath not yet implemented"
+    fun toUnixPath _ = raise Fail "toUnixPath not yet implemented"
 
   end
 end

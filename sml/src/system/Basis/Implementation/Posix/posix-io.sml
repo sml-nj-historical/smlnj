@@ -121,7 +121,12 @@ structure POSIX_IO =
         fun fromWord w = FDF w
         fun toWord (FDF w) = w
 
+	val all = FDF (SysWord.notb 0w0)
+
         fun flags ms = FDF(List.foldl (fn (FDF m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = FDF(List.foldl (fn (FDF m,acc) => m & acc)
+					  (SysWord.notb 0w0) ms)
+	fun clear (FDF m, FDF m') = FDF (SysWord.notb m & m')
         fun anySet (FDF m, FDF m') = (m & m') <> 0w0
         fun allSet (FDF m, FDF m') = (m & m') = m
 
@@ -135,7 +140,12 @@ structure POSIX_IO =
         fun fromWord w = FS w
         fun toWord (FS w) = w
 
+	val all = FS (SysWord.notb 0w0)	(* too much?? *)
+
         fun flags ms = FS(List.foldl (fn (FS m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = FS(List.foldl (fn (FS m,acc) => m & acc)
+					 (SysWord.notb 0w0) ms)
+	fun clear (FS m, FS m') = FS (SysWord.notb m & m')
         fun anySet (FS m, FS m') = (m & m') <> 0w0
         fun allSet (FS m, FS m') = (m & m') = m
 
@@ -173,7 +183,9 @@ structure POSIX_IO =
              l_pid : pid option
            }
 
-        fun flock fv = FLOCK fv
+        fun flock { ltype, whence, start, len, pid } =
+	    FLOCK { l_type = ltype, l_whence = whence, l_start = start,
+		    l_len = len, l_pid = pid }
         fun ltype (FLOCK{l_type,...}) = l_type
         fun whence (FLOCK{l_whence,...}) = l_whence
         fun start (FLOCK{l_start,...}) = l_start
@@ -227,6 +239,10 @@ structure POSIX_IO =
     val fsync' : s_int -> unit = cfun "fsync"
     fun fsync fd = fsync' (FS.intOf fd)
 
+    fun mkBinReader _ = raise Fail "mkBinReader not implemented"
+    fun mkTextReader _ = raise Fail "mkTextReader not implemented"
+    fun mkBinWriter _ = raise Fail "mkBinWriter not implemented"
+    fun mkTextWriter _ = raise Fail "mkTextWriter not implemented"
+
   end (* structure POSIX_IO *)
 end
-

@@ -93,7 +93,12 @@ structure POSIX_Process =
         fun fromWord w = WF w
         fun toWord (WF w) = w
 
+	val all = WF (SysWord.notb 0w0)	(* too much? *)
+
         fun flags ms = WF(List.foldl (fn (WF m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = WF (List.foldl (fn (WF m, acc) => m & acc)
+					  (SysWord.notb 0w0) ms)
+	fun clear (WF m, WF m') = WF (SysWord.notb m & m')
         fun anySet (WF m, WF m') = (m & m') <> 0w0
         fun allSet (WF m, WF m') = (m & m') = m
 
@@ -135,6 +140,8 @@ structure POSIX_Process =
 
     val pause : unit -> unit = cfun "pause"
 
+    fun fromStatus 0 = W_EXITED
+      | fromStatus x = W_EXITSTATUS (Word8Imp.fromInt x)(* FIXME: information loss!!! *)
 
   end (* structure POSIX_Process *)
 end

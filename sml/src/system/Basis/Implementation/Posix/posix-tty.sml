@@ -36,7 +36,12 @@ structure POSIX_TTY =
         fun fromWord w = F w
         fun toWord (F w) = w
 
+	val all = F (SysWord.notb 0w0)	(* too much? *)
+
         fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = F(List.foldl (fn (F m,acc) => m & acc)
+					(SysWord.notb 0w0) ms)
+	fun clear (F m, F m') = F (SysWord.notb m & m')
         fun anySet (F m, F m') = (m & m') <> 0w0
         fun allSet (F m, F m') = (m & m') = m
 
@@ -60,7 +65,11 @@ structure POSIX_TTY =
         fun fromWord w = F w
         fun toWord (F w) = w
 
+	val all = F (SysWord.notb 0w0)
+
         fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = F(List.foldl (fn (F m,acc) => m & acc) (SysWord.notb 0w0) ms)
+	fun clear (F m, F m') = F (SysWord.notb m & m')
         fun anySet (F m, F m') = (m & m') <> 0w0
         fun allSet (F m, F m') = (m & m') = m
 
@@ -74,7 +83,11 @@ structure POSIX_TTY =
         fun fromWord w = F w
         fun toWord (F w) = w
 
+	val all = F (SysWord.notb 0w0)
+
         fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = F(List.foldl (fn (F m,acc) => m & acc) (SysWord.notb 0w0) ms)
+	fun clear (F m, F m') = F (SysWord.notb m & m')
         fun anySet (F m, F m') = (m & m') <> 0w0
         fun allSet (F m, F m') = (m & m') = m
 
@@ -98,7 +111,12 @@ structure POSIX_TTY =
         fun fromWord w = F w
         fun toWord (F w) = w
 
+	val all = F (SysWord.notb 0w0)	(* too much ? *)
+
         fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
+	fun intersect ms = F(List.foldl (fn (F m,acc) => m & acc)
+					(SysWord.notb 0w0) ms)
+	fun clear (F m, F m') = F (SysWord.notb m & m')
         fun anySet (F m, F m') = (m & m') <> 0w0
         fun allSet (F m, F m') = (m & m') = m
 
@@ -190,29 +208,31 @@ structure POSIX_TTY =
     fun getlflag (TIOS{lflag, ...}) = lflag
     fun getcc (TIOS{cc,...}) = cc
 
-    fun getospeed (TIOS{ospeed,...}) = ospeed
-    fun getispeed (TIOS{ispeed,...}) = ispeed
+    structure CF = struct
+        fun getospeed (TIOS{ospeed,...}) = ospeed
+	fun getispeed (TIOS{ispeed,...}) = ispeed
 
-    fun setospeed (TIOS r, ospeed) =
-          TIOS {
-            iflag = #iflag r,
-            oflag = #oflag r,
-            cflag = #cflag r,
-            lflag = #lflag r,
-            cc = #cc r,
-            ispeed = #ispeed r,
-            ospeed = ospeed
-          }
-    fun setispeed (TIOS r, ispeed) =
-          TIOS {
-            iflag = #iflag r,
-            oflag = #oflag r,
-            cflag = #cflag r,
-            lflag = #lflag r,
-            cc = #cc r,
-            ispeed = ispeed,
-            ospeed = #ospeed r
-          }
+	fun setospeed (TIOS r, ospeed) =
+            TIOS {
+		  iflag = #iflag r,
+		  oflag = #oflag r,
+		  cflag = #cflag r,
+		  lflag = #lflag r,
+		  cc = #cc r,
+		  ispeed = #ispeed r,
+		  ospeed = ospeed
+		  }
+	fun setispeed (TIOS r, ispeed) =
+            TIOS {
+		  iflag = #iflag r,
+		  oflag = #oflag r,
+		  cflag = #cflag r,
+		  lflag = #lflag r,
+		  cc = #cc r,
+		  ispeed = ispeed,
+		  ospeed = #ospeed r
+		  }
+    end
     
     structure TC =
       struct
@@ -234,58 +254,58 @@ structure POSIX_TTY =
         val iflush = QS (osval "TCIFLUSH")
         val oflush = QS (osval "TCOFLUSH")
         val ioflush = QS (osval "TCIOFLUSH")
-      end
 
-    type termio_rep = (
-           word *       	(* iflags *)
-           word *       	(* oflags *)
-           word *       	(* cflags *)
-           word *       	(* lflags *)
-           V.WV.vector *	(* cc *)
-           word *		(* inspeed *)
-	   word			(* outspeed *)
-         )
+	type termio_rep = (
+			   word *       	(* iflags *)
+			   word *       	(* oflags *)
+			   word *       	(* cflags *)
+			   word *       	(* lflags *)
+			   V.WV.vector *	(* cc *)
+			   word *		(* inspeed *)
+			   word			(* outspeed *)
+			   )
 
-    val tcgetattr : int -> termio_rep = cfun "tcgetattr"
-    fun getattr fd = let
-          val (ifs,ofs,cfs,lfs,cc,isp,osp) = tcgetattr (FS.intOf fd)
-          in
+	val tcgetattr : int -> termio_rep = cfun "tcgetattr"
+	fun getattr fd = let
+            val (ifs,ofs,cfs,lfs,cc,isp,osp) = tcgetattr (FS.intOf fd)
+        in
             TIOS {
-              iflag = I.F ifs,
-              oflag = O.F ofs,
-              cflag = C.F cfs,
-              lflag = L.F lfs,
-              cc = V.CC cc,
-              ispeed = B isp,
-              ospeed = B osp
-            }
-          end
+		  iflag = I.F ifs,
+		  oflag = O.F ofs,
+		  cflag = C.F cfs,
+		  lflag = L.F lfs,
+		  cc = V.CC cc,
+		  ispeed = B isp,
+		  ospeed = B osp
+		  }
+        end
 
-    val tcsetattr : int * s_int * termio_rep -> unit = cfun "tcsetattr"
-    fun setattr (fd, TC.SA sa, TIOS tios) = let
-          val (I.F iflag) = #iflag tios
-          val (O.F oflag) = #oflag tios
-          val (C.F cflag) = #cflag tios
-          val (L.F lflag) = #lflag tios
-          val (V.CC cc) = #cc tios
-          val (B ispeed) = #ispeed tios
-          val (B ospeed) = #ospeed tios
-          val trep = (iflag,oflag,cflag,lflag,cc,ispeed,ospeed)
-          in
+	val tcsetattr : int * s_int * termio_rep -> unit = cfun "tcsetattr"
+	fun setattr (fd, SA sa, TIOS tios) = let
+            val (I.F iflag) = #iflag tios
+            val (O.F oflag) = #oflag tios
+            val (C.F cflag) = #cflag tios
+            val (L.F lflag) = #lflag tios
+            val (V.CC cc) = #cc tios
+            val (B ispeed) = #ispeed tios
+            val (B ospeed) = #ospeed tios
+            val trep = (iflag,oflag,cflag,lflag,cc,ispeed,ospeed)
+        in
             tcsetattr (FS.intOf fd, sa, trep)
-          end
+        end
 
-    val tcsendbreak : int * int -> unit = cfun "tcsendbreak"
-    fun sendbreak (fd, duration) = tcsendbreak (FS.intOf fd, duration)
+	val tcsendbreak : int * int -> unit = cfun "tcsendbreak"
+	fun sendbreak (fd, duration) = tcsendbreak (FS.intOf fd, duration)
 
-    val tcdrain : int -> unit = cfun "tcdrain"
-    fun drain fd = tcdrain (FS.intOf fd)
+	val tcdrain : int -> unit = cfun "tcdrain"
+	fun drain fd = tcdrain (FS.intOf fd)
 
-    val tcflush : int * s_int -> unit = cfun "tcflush"
-    fun flush (fd, TC.QS qs) = tcflush (FS.intOf fd, qs)
+	val tcflush : int * s_int -> unit = cfun "tcflush"
+	fun flush (fd, QS qs) = tcflush (FS.intOf fd, qs)
 
-    val tcflow : int * s_int -> unit = cfun "tcflow"
-    fun flow (fd, TC.FA action) = tcflow (FS.intOf fd, action)
+	val tcflow : int * s_int -> unit = cfun "tcflow"
+	fun flow (fd, FA action) = tcflow (FS.intOf fd, action)
+      end
 
     val tcgetpgrp : int -> s_int = cfun "tcgetpgrp"
     fun getpgrp fd = P.PID(tcgetpgrp(FS.intOf fd))
