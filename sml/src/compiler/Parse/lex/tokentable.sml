@@ -132,11 +132,6 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
   end
 
 (*
- * $Log: tokentable.sml,v $
- * Revision 1.2  1998/05/15 03:25:57  dbm
- *   Control.Lazy.enabled replaced by Control.lazysml.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:19  george
- * Version 110.5
+ * $Log$
  *
  *)

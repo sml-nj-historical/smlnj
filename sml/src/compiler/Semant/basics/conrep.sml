@@ -84,11 +84,6 @@ end (* structure ConRep *)
 
 
 (*
- * $Log: conrep.sml,v $
- * Revision 1.2  1998/04/17 19:24:30  george
- *   Bug fix for bug 1364 -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:34  george
- * Version 110.5
+ * $Log$
  *
  *)

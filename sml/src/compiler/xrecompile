@@ -3,9 +3,9 @@
 eval $(../../bin/.arch-n-opsys)
 
 ./xmakeml &&
-./buildcm sml &&
+# ./buildcm sml &&
 mv bin.$ARCH-unix bin.$ARCH-unix.$$ &&
-./xrun sml-cm <<EOF
+./xrun sml <<EOF
 	CMB.make();
 	Compiler.Stats.summary();
 EOF

@@ -26,16 +26,13 @@
 	cvs rm $(cvs -q diff -s -r v110_6 | sed -n -e 's/^Index: //p')
 	cvs commit -m 'removed deleted files'
 	cvs tag v110_6
+	cd ..; rm -rf smlnj
 	
 	# check out a new copy, trying to merge the changes into the trunk
-	cd ..; cvs co -ko -P -jSMLNJ:yesterday -jSMLNJ flint; cd flint
+	cvs co -ko -P -jSMLNJ:yesterday -jSMLNJ flint; cd flint
 	# list the conflicts
 	find -type f | xargs grep '^>>>>'
 	<... solve the problems if any ...>
-	# check files that have been removed
-	changes=$(cvs -q diff -N -r v110_5_1 -r v110_6 | sed -n -e 's/^Index: //p')
-	cd ../110.6; for f in $changes; do if [ ! -f "$f" ]; then echo $f; fi; done
-	cd ../flint; cvs rm <..some or all of the above..>
 	# check correctness
 	link ../bin.x86-unix; config/install.sh
 	cd src/compiler; link ../../../bin.x86-unix; ./xrecompile; ./xrecompile

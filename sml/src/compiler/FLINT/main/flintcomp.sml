@@ -22,8 +22,6 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-val fcollect  = phase "Compiler 052 collect" (fn le => (Collect.collect le; le))
-(*  val fcontract = phase "Compiler 052 fcontract" FContract.contract *)
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -145,11 +143,5 @@ end (* local *)
 end (* structure FLINTComp *)
 
 (*
- * $Log: flintcomp.sml,v $
- * Revision 1.2  1998/05/20 18:34:48  george
- *   Add new literal splitting phase. -- zsh
- *
- * Revision 1.1.1.1  1998/04/08 18:39:40  george
- * Version 110.5
- *
+ * $Log$
  *)

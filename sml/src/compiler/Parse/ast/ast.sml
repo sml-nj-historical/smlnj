@@ -223,12 +223,6 @@ and ty
 end (* structure Ast *)
 
 (*
- * $Log: ast.sml,v $
- * Revision 1.2  1998/05/15 03:24:22  dbm
- *   Eliminated obsolete FixSpec and ImportDec constructors.
- *   Eliminated LVb, LRVb, LFb, LDb constructors.  Use lazyp flag instead.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:19  george
- * Version 110.5
+ * $Log$
  *
  *)
