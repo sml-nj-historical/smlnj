@@ -223,11 +223,7 @@ and stfn env (tfdec as (tfk,tf,args,body),le) =
 	val nenv = S.add(env, tf)
 	val (leE,leI,fvI,leRet) = sexp nenv le
     in case (bodyI, S.listItems(S.difference(fvbI, env)))
-	of ((F.RET _ | F.RECORD(_,_,_,F.RET _)),_) =>
-	   (* split failed *)
-	   (fn e => F.TFN((tfk, tf, args, bodyE bodyRet), leE e),
-	    leI, fvI, leRet)
-	 | (_,[]) =>
+	of (_,[]) =>
 	   (* everything was split out *)
 	   let val ntfdec = ({inline=F.IH_ALWAYS}, tf, args, bodyE bodyRet)
 	       val nlE = fn e => F.TFN(ntfdec, leE e)
@@ -235,6 +231,10 @@ and stfn env (tfdec as (tfk,tf,args,body),le) =
 	      else (nlE, F.TFN(ntfdec, leI),
 		    S_rmv(tf, S.union(fvI, fvbI)), leRet)
 	   end
+	 | ((F.RET _ | F.RECORD(_,_,_,F.RET _)),_) =>
+	   (* split failed *)
+	   (fn e => F.TFN((tfk, tf, args, bodyE bodyRet), leE e),
+	    leI, fvI, leRet)
 	 | (_,fvbIs) =>
 	   let (* tfdecE *)
 	       val tfE = cplv tf
