@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/10/28 09:50:00 EST
+Tag: blume-20021028-typecheck 
+Description:
+
+Exported structure Typecheck from $smlnj/viscomp/core.cm.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/10/17 09:10:00 EDT
 Tag: Release_110_42
 Description:

@@ -30,6 +30,8 @@ Group (../system/smlnj/viscomp/core.cm)
         structure CPSRegions
         structure SMLGCType
 
+	structure Typecheck
+
 	(* To be able to separate machine-dependent parts of viscomp-lib.cm
 	 * from machine-independent parts, we must also export the
 	 * the following things.... *)
