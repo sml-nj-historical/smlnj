@@ -413,6 +413,13 @@ and ppExp (context as (env, source_opt)) ppstrm =
 		     style=INCONSISTENT}
 		    exps
 	      end
+	 | ppExp' (StructurePluginExp { str, sgn },_,_) =
+	     (ppsay "(structure ";
+	      pp_symbol_list str;
+	      ppsay ": ";
+	      ppSym ppstrm sgn;
+	      ppsay ")")
+	     
 	 | ppExp'(MarkExp (exp,(s,e)),atom,d) =
 	      (case source_opt
 		of SOME source =>
@@ -423,6 +430,7 @@ and ppExp (context as (env, source_opt)) ppstrm =
 			   ppExp'(exp,false,d); ppsay ">")
 		     else ppExp'(exp,atom,d)
 	         | NONE => ppExp'(exp,atom,d))
+
 	 and ppAppExp (_,_,_,0) = PP.string ppstrm "<exp>"
 	   | ppAppExp arg =
 	    let val ppsay = PP.string ppstrm
@@ -1182,8 +1190,11 @@ and ppStrb (context as (_,source_opt)) ppstrm =
 	  | ppStrb'(Strb{name,def,constraint},d) = 
 	     (openHVBox ppstrm (PP.Rel 0);
 	      ppSym ppstrm name; PP.string ppstrm " :";
+	      (* ???? missing constraint *)
 	      break ppstrm {nsp=1,offset=2}; ppStrExp context ppstrm (def,d-1);
 	      closeBox ppstrm)
+	  | ppStrb' (StrPlugin{name,def,constraint},d) =
+	      PP.string ppstrm "<StrPlugin>" (* FIXME *)
 	  | ppStrb'(MarkStrb (t,r),d) = ppStrb context ppstrm (t,d)
     in
 	ppStrb'

@@ -59,8 +59,9 @@ datatype exp
   | OrelseExp of exp * exp	(* orelse (derived form) *)
   | WhileExp of {test:exp,expr:exp}
 				(* while (derived form) *)
-  | MarkExp of exp * region	(* mark an expression *)
   | VectorExp of exp list       (* vector *)
+  | StructurePluginExp of { str: path, sgn: symbol }
+  | MarkExp of exp * region	(* mark an expression *)
 
 (* RULE for case functions and exception handler *)
 and rule = Rule of {pat:pat,exp:exp}
@@ -194,6 +195,7 @@ and eb = EbGen of {exn: symbol, etype: ty option} (* Exception definition *)
 
 (* STRUCTURE BINDING *)
 and strb = Strb of {name: symbol,def: strexp,constraint: sigexp sigConst}
+         | StrPlugin of {name: symbol, def: exp, constraint: symbol}
 	 | MarkStrb of strb * region
 
 (* FUNCTOR BINDING *)

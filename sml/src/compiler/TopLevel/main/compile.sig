@@ -28,7 +28,8 @@ signature COMPILE0 = sig
  			 exportLvars: Access.lvar list,
 			 exportPid: pid option,
 			 staticPid: hash,
-			 pickle: pickle }
+			 pickle: pickle,
+			 stampConverter: Stamps.converter }
 
     (** elaborate as above, then keep on to compile into the binary code *)
     val compile : { source: Source.inputSource,

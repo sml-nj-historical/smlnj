@@ -777,7 +777,8 @@ struct
 		    libArg (bnodel, MI.emptyTmap)
 		end
 
-		val env_orig = P.envPickler (fn _ => ()) (P.LIBRARY libctxt)
+		val { pickler = env_orig, ... } =
+		    P.envPickler (fn _ => ()) (P.LIBRARY libctxt)
 		val env = PU.lift_pickler lifter env_orig
 		val symenv_orig = P.symenvPickler
 		val symenv = PU.lift_pickler lifter symenv_orig

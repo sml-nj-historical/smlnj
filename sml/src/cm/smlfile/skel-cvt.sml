@@ -158,14 +158,14 @@ structure SkelCvt :> SKELCVT = struct
     fun pat_s (VarPat p, set) = s_addMP (p, set)
       | pat_s (RecordPat { def, ... }, set) = foldl (pat_s o' #2) set def
       | pat_s ((ListPat l | TuplePat l | VectorPat l | OrPat l), set) =
-	foldl pat_s set l
+	  foldl pat_s set l
       | pat_s (FlatAppPat l, set) = foldl (pat_s o' #item) set l
       | pat_s (AppPat { constr, argument }, set) =
-	pat_s (constr, pat_s (argument, set))
+	  pat_s (constr, pat_s (argument, set))
       | pat_s (ConstraintPat { pattern, constraint }, set) =
-	pat_s (pattern, ty_s (constraint, set))
+	  pat_s (pattern, ty_s (constraint, set))
       | pat_s (LayeredPat { varPat, expPat }, set) =
-	pat_s (varPat, pat_s (expPat, set))
+	  pat_s (varPat, pat_s (expPat, set))
       | pat_s (MarkPat (arg, _), set) = pat_s (arg, set)
       | pat_s ((WildPat|IntPat _|WordPat _|StringPat _|CharPat _), set) = set
 
@@ -189,25 +189,27 @@ structure SkelCvt :> SKELCVT = struct
       | exp_dl (FnExp rl, d) = foldr rule_dl d rl
       | exp_dl (FlatAppExp l, d) = foldr (exp_dl o' #item) d l
       | exp_dl (AppExp { function, argument }, d) =
-	exp_dl (function, exp_dl (argument, d))
+	  exp_dl (function, exp_dl (argument, d))
       | exp_dl (CaseExp { expr, rules }, d) =
-	exp_dl (expr, foldr rule_dl d rules)
+	  exp_dl (expr, foldr rule_dl d rules)
       | exp_dl (LetExp { dec, expr }, d) =
-	local_dl (dec_dl (dec, []), exp_dl (expr, []), d)
+	  local_dl (dec_dl (dec, []), exp_dl (expr, []), d)
       | exp_dl ((SeqExp l | ListExp l | TupleExp l | VectorExp l), d) =
-	foldl exp_dl d l
+	  foldl exp_dl d l
       | exp_dl (RecordExp l, d) = foldl (exp_dl o' #2) d l
       | exp_dl (SelectorExp _, d) = d
       | exp_dl (ConstraintExp { expr, constraint }, d) =
-	dl_addS (ty_s (constraint, SS.empty), exp_dl (expr, d))
+	  dl_addS (ty_s (constraint, SS.empty), exp_dl (expr, d))
       | exp_dl (HandleExp { expr, rules }, d) =
-	exp_dl (expr, foldl rule_dl d rules)
+	  exp_dl (expr, foldl rule_dl d rules)
       | exp_dl (RaiseExp e, d) = exp_dl (e, d)
       | exp_dl (IfExp { test, thenCase, elseCase }, d) =
-	exp_dl (test, exp_dl (thenCase, exp_dl (elseCase, d)))
+	  exp_dl (test, exp_dl (thenCase, exp_dl (elseCase, d)))
       | exp_dl ((AndalsoExp (e1, e2) | OrelseExp (e1, e2)), d) =
-	exp_dl (e1, exp_dl (e2, d))
+	  exp_dl (e1, exp_dl (e2, d))
       | exp_dl (WhileExp { test, expr }, d) = exp_dl (test, exp_dl (expr, d))
+      | exp_dl (StructurePluginExp { str, sgn }, d) =
+	  dl_addP (str, dl_addSym (sgn, d))
       | exp_dl (MarkExp (arg, _), d) = exp_dl (arg, d)
       | exp_dl ((IntExp _|WordExp _|RealExp _|StringExp _|CharExp _), d) = d
 
@@ -359,6 +361,15 @@ structure SkelCvt :> SKELCVT = struct
 	    fun one (MarkStrb (arg, _), x) = one (arg, x)
 	      | one (Strb { name, def, constraint }, (s, bl)) = let
 		    val (s', e) = ign (strexp_p def, sigexpc_p constraint)
+		in
+		    (SS.union (s, s'), (name, e) :: bl)
+		end
+	      | one (StrPlugin { name, def, constraint }, (s, bl)) = let
+		    val (s', dl) = split_dl (exp_dl (def, []))
+		    val e =
+			case dl of
+			    [] =>  Var (SP.SPATH [constraint])
+			  | dl => Ign1 (Decl dl, Var (SP.SPATH [constraint]))
 		in
 		    (SS.union (s, s'), (name, e) :: bl)
 		end

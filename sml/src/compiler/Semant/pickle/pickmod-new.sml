@@ -44,14 +44,16 @@ signature PICKMOD = sig
 
     val envPickler : (Access.lvar -> unit) ->
 		     context ->
-		     (map, StaticEnv.staticEnv) PickleUtil.pickler
+		     { pickler: (map, StaticEnv.staticEnv) PickleUtil.pickler,
+		       stampConverter: Stamps.converter }
 
     val pickleEnv : context ->
 		    StaticEnv.staticEnv ->
 		    { hash: PersStamps.persstamp,
 		      pickle: Word8Vector.vector, 
 		      exportLvars: Access.lvar list,
-		      hasExports: bool }
+		      hasExports: bool,
+		      stampConverter: Stamps.converter }
 
     val pickleFLINT: FLINT.prog option -> { hash: PersStamps.persstamp,
 					    pickle: Word8Vector.vector }
@@ -63,7 +65,8 @@ signature PICKMOD = sig
     val dontPickle : 
 	{ env: StaticEnv.staticEnv, count: int } ->
         { newenv: StaticEnv.staticEnv, hash: PersStamps.persstamp,
-	  exportLvars: Access.lvar list, hasExports: bool }
+	  exportLvars: Access.lvar list, hasExports: bool,
+	  stampConverter: Stamps.converter }
 end
 
 local
@@ -1210,13 +1213,13 @@ in
 	    list (pair (symbol, binding)) pairs
 	end
     in
-	env
+	{ pickler = env, stampConverter = stampConverter }
     end
 
     fun pickleEnv context e = let
 	val lvlist = ref []
 	fun registerLvar v = lvlist := v :: !lvlist
-	val pickler = envPickler registerLvar context
+	val { pickler, stampConverter } = envPickler registerLvar context
 	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler e))
 	val exportLvars = rev (!lvlist)
 	val hash = pickle2hash pickle
@@ -1224,7 +1227,8 @@ in
     in
 	addPickles (Word8Vector.length pickle);
 	{ hash = hash, pickle = pickle, exportLvars = exportLvars,
-	  hasExports = hasExports }
+	  hasExports = hasExports,
+	  stampConverter = stampConverter }
     end
 
     (* the dummy environment pickler *)
@@ -1304,8 +1308,8 @@ in
 	val hasExports = not (List.null lvars)
     in
 	{ newenv = newenv, hash = hash,
-	  exportLvars = rev lvars, hasExports = hasExports }
+	  exportLvars = rev lvars, hasExports = hasExports,
+	  stampConverter = Stamps.newConverter () }
     end
   end
 end
-

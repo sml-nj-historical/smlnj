@@ -42,10 +42,11 @@ struct
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
-	val { pid, pickle, exportLvars, exportPid, newenv } =
+	val { pid, pickle, exportLvars, exportPid, newenv, stampConverter } =
 	    pickUnpick { context = senv, env = nenv, guid = guid }
     in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
-	exportLvars=exportLvars, staticPid = pid, pickle = pickle }
+	exportLvars=exportLvars, staticPid = pid, pickle = pickle,
+	stampConverter = stampConverter }
     end (* function elaborate *)
 
     val elaborate =
@@ -143,7 +144,7 @@ struct
     fun compile {source, ast, statenv, symenv, compInfo=cinfo,
 		 checkErr=check, splitting, guid } = 
 	let val {absyn, newstatenv, exportLvars, exportPid,
-		 staticPid, pickle } =
+		 staticPid, pickle, stampConverter } =
 		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
 			   guid = guid}
 		before (check "elaborate")

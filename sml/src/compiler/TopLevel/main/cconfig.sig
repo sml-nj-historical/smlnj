@@ -16,7 +16,8 @@ signature CCONFIG = sig
 	pickle: pickle,
 	exportLvars: Access.lvar list,
 	exportPid: pid option,
-	newenv: StaticEnv.staticEnv }
+	newenv: StaticEnv.staticEnv,
+	stampConverter: Stamps.converter }
 
   val mkMkStamp : unit -> Stamps.generator
 end (* signature CCONFIG *)

@@ -56,6 +56,7 @@ sig
     | VectorExp of exp list       (* vector *)
     | WhileExp of {test:exp,expr:exp}
 				  (* while (derived form) *)
+    | StructurePluginExp of { str: path, sgn: symbol }
     | MarkExp of exp * region	(* mark an expression *)
 
   (* RULE for case functions and exception handler *)
@@ -189,6 +190,7 @@ sig
 
   (* STRUCTURE BINDING *)
   and strb = Strb of {name: symbol,def: strexp,constraint: sigexp sigConst}
+           | StrPlugin of {name: symbol, def: exp, constraint: symbol}
 	   | MarkStrb of strb * region
 
   (* FUNCTOR BINDING *)

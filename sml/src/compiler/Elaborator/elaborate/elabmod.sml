@@ -104,19 +104,19 @@ open SpecialSymbols
 
 fun stripMarkSigb(MarkSigb(sigb',region'),region) =
       stripMarkSigb(sigb',region')
-  | stripMarkSigb x = x
+  | stripMarkSigb (Sigb x,region) = (x,region)
 
 fun stripMarkFsigb(MarkFsigb(fsigb',region'),region) =
       stripMarkFsigb(fsigb',region')
-  | stripMarkFsigb x = x
+  | stripMarkFsigb (Fsigb x, region) = (x, region)
 
 fun stripMarkFctb(MarkFctb(fctb',region'),region) =
       stripMarkFctb(fctb',region')
-  | stripMarkFctb x = x
+  | stripMarkFctb (Fctb x,region) = (x, region)
 
 fun stripMarkStrb(MarkStrb(strb',region'),region) =
       stripMarkStrb(strb',region')
-  | stripMarkStrb x = x
+  | stripMarkStrb (x, region) = (x, region)
 
 (* change of context on entering a structure *)
 fun inStr (EU.TOP) = EU.INSTR
@@ -1077,13 +1077,11 @@ fun loop([], decls, entDecls, env, entEnv) =
        in (resDec, entDec, env, entEnv)
       end
 
-  | loop(strb::rest, decls, entDecls, env, entEnv) = 
-      let val _ = debugmsg ">>elabStrbs"
-          val (name, constraint, def, region') =
-              case stripMarkStrb(strb,region)
-                of (Strb{name=n,constraint=c,def=d},r) => (n, c, d, r)
-                 | _ => bug "non structure bindings in elabStrbs"
-          val _ = debugmsg("--elabStrbs: structure "^S.name name)
+  | loop(strb::rest, decls, entDecls, env, entEnv) =
+    (debugmsg ">>elabStrbs";
+     case stripMarkStrb (strb, region) of
+      (Strb { name, constraint, def}, region') =>
+      let val _ = debugmsg("--elabStrbs: structure "^S.name name)
 
           (* make up an entity variable for the current str declaration *)
           val entv = mkStamp()   (* we don't always have to do this *)
@@ -1232,6 +1230,10 @@ fun loop([], decls, entDecls, env, entEnv) =
 
        in loop(rest, decls', entDecls', env', entEnv')
       end
+    | (StrPlugin { name, def, constraint }, region') =>
+      (* FIXME *)
+        raise Fail "elabmod:StrPlugin:not yet implemented"
+    | (MarkStrb _, _) => bug "stripMarkStrb")
 
  in loop(strbs, [], [], SE.empty, EE.empty)
       handle EE.Unbound => 
@@ -1287,10 +1289,7 @@ and elabDecl0
                  end
 
              | loop(fctb::rest, decls, entDecls, env, entEnv) = 
-                 let val (name, def, region') =
-                       case stripMarkFctb(fctb,region) 
-                        of (Fctb{name=n, def=d}, r) => (n, d, r)
-                         | _ => bug "non functor bindings for FctDec fctbs"
+                 let val ({name, def}, region') = stripMarkFctb(fctb,region)
                      val _ = debugmsg("--elabDecl0: functor "^S.name name)
 
                      (* dynamic access is already assigned in elabFct *)
@@ -1353,10 +1352,7 @@ and elabDecl0
                  end
 
              | loop (sigb::rest, sigs, env) =
-                 let val (name, def, region') =
-                       case stripMarkSigb(sigb,region)
-                        of (Sigb{name=n,def=d},r) => (n, d, r)
-                         | _ => bug "non signature bindings for SigDec sigbs"
+                 let val ({name, def}, region') = stripMarkSigb(sigb,region)
                      val _ = debugmsg("--elabDecl0: signature "^S.name name)
 
                      val s = 
@@ -1388,10 +1384,7 @@ and elabDecl0
                  end
 
              | loop (fsigb::rest, fsigs, env) =
-                 let val (name, def, region') =
-                       case stripMarkFsigb(fsigb,region)
-                         of (Fsigb{name=n,def=d},r) => (n, d, r)
-                          | _ => bug "non fctSig bindings for FsigDec fsigbs"
+                 let val ({name, def}, region') = stripMarkFsigb(fsigb,region)
                      val _ = debugmsg("--elabDecl0: fctsig "^S.name name)
 
                      val s = 

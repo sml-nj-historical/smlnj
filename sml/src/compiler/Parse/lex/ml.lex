@@ -95,7 +95,7 @@ hexnum=[0-9a-fA-F]+;
 <INITIAL>{ws}	=> (continue());
 <INITIAL>{eol}	=> (SourceMap.newline sourceMap yypos; continue());
 <INITIAL>"_overload" => (if !ParserControl.overloadKW then
-                             Tokens.OVERLOAD(yypos,yypos+1)
+                             Tokens.OVERLOAD(yypos,yypos+9)
                          else REJECT());
 <INITIAL>"_"	=> (Tokens.WILD(yypos,yypos+1));
 <INITIAL>","	=> (Tokens.COMMA(yypos,yypos+1));

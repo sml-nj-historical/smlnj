@@ -113,7 +113,9 @@ val quotedBogusString = "'BOGUS"
        | patheqn of (FastSymbol.raw_symbol ->symbol) -> symbol list list
        | whspec of wherespec list
        | sign of  sigexp
+       | sign' of  sigexp		(* no ident case *)
        | sigconstraint_op of  sigexp sigConst
+       | fsigconstraint_op of fsigexp sigConst
        | sigb of  sigb list
        | fsigb of  fsigb list
        | fsig of  fsigexp
@@ -261,7 +263,11 @@ exp	: exp HANDLE match	(HandleExp{expr=exp,rules=match})
 				   elseCase=markexp(exp3,exp3left,exp3right)})
 	 | RAISE exp	     (markexp(markexp(RaiseExp exp, expleft,expright),
 				      RAISEleft,expright))
-	 | LPAREN FUNCTOR qid COLON ident RPAREN (raise Fail "exp:functor")
+	 | LPAREN STRUCTURE qid COLON ident RPAREN
+		                (markexp(StructurePluginExp
+					 { str = qid strSymbol,
+					   sgn = sigSymbol ident },
+					 LPARENleft, RPARENright))
 
 app_exp	: aexp	        ([{item=markexp(aexp,aexpleft,aexpright),
 			   region=(aexpleft,aexpright), fixity=NONE}])
@@ -589,12 +595,18 @@ whspec  : whspec AND whspec     (whspec1 @ whspec2)
 
 sign	: ident			(MarkSig(VarSig (sigSymbol ident),
 				         (identleft,identright)))
-	| SIG spec_s END	(MarkSig(BaseSig(spec_s),(spec_sleft,spec_sright)))
+	| sign'                 (sign')
+
+sign'   : SIG spec_s END	(MarkSig(BaseSig(spec_s),(spec_sleft,spec_sright)))
         | sign WHERE whspec     (MarkSig(AugSig(sign,whspec),(signleft,whspecright)))
 
 sigconstraint_op :		(NoSig)
 	| COLON sign		(Transparent(sign))
  	| COLONGT sign		(Opaque(sign))
+
+fsigconstraint_op :		(NoSig)
+	| COLON ident		(Transparent(VarFsig (fsigSymbol ident)))
+ 	| COLONGT ident		(Opaque(VarFsig (fsigSymbol ident)))
 
 sigb	: sigb AND sigb		(sigb1 @ sigb2)
 	| ident EQUALOP sign	([Sigb{name=sigSymbol ident,def=sign}])
@@ -658,10 +670,27 @@ sdec	: SIGNATURE sigb	(SigDec sigb)
 				    markdec(sdecs2,sdecs2left,sdecs2right)))
 	| ldec			(markdec(ldec,ldecleft,ldecright))
 
-strb	: ident sigconstraint_op EQUALOP str
-	   		([MarkStrb(Strb{name = strSymbol ident,def = str, 
-					constraint=sigconstraint_op},
-				   (identleft,strright))])
+strb	: ident EQUALOP str
+	   	([MarkStrb(Strb{name = strSymbol ident,def = str, 
+				constraint=NoSig},
+			   (identleft,strright))])
+	| ident COLON sign EQUALOP str
+	   	([MarkStrb(Strb{name = strSymbol ident,def = str, 
+				constraint=Transparent sign},
+			   (identleft,strright))])
+	| ident COLONGT ident EQUALOP str
+	   	([MarkStrb(Strb{name = strSymbol ident1,def = str, 
+				constraint=Opaque (VarSig (sigSymbol ident2))},
+			   (ident1left,strright))])
+	| ident COLONGT sign' EQUALOP str
+	   	([MarkStrb(Strb{name = strSymbol ident,def = str, 
+				constraint=Opaque sign'},
+			   (identleft,strright))])
+	| ident COLONGT ident EQUALOP LINK_PLUGIN exp
+	        ([MarkStrb(StrPlugin{name = strSymbol ident1,
+				     def = exp,
+				     constraint = sigSymbol ident2},
+			   (ident1left,expright))])
 	| strb AND strb		(strb1 @ strb2)
 
 fparam	: ID COLON sign		((SOME(strSymbol ID),sign))
@@ -677,20 +706,10 @@ fctb	: ident fparamList sigconstraint_op EQUALOP str
                                  def = BaseFct{params=fparamList, body=str,	
 				              constraint=sigconstraint_op}},
 			   (identleft,strright))])
-	| ident EQUALOP fct_exp
+	| ident fsigconstraint_op EQUALOP fct_exp
 		([MarkFctb(Fctb {name=fctSymbol ident,
-				 def=fct_exp NoSig},
+				 def=fct_exp (fsigconstraint_op)},
 			   (identleft,fct_expright))])
-	| ident COLON ident EQUALOP fct_exp
-		([MarkFctb(Fctb {name=fctSymbol ident1,
-				 def=fct_exp (Transparent (VarFsig (fsigSymbol ident2)))},
-			   (ident1left,fct_expright))])
-	| ident COLONGT ident EQUALOP fct_exp
-		([MarkFctb(Fctb {name=fctSymbol ident1,
-				 def=fct_exp (Opaque (VarFsig (fsigSymbol ident2)))},
-			   (ident1left,fct_expright))])
-	| ident COLONGT ident EQUALOP LINK_PLUGIN exp
-		(raise Fail "link_plugin")
 	| fctb AND fctb	   (fctb1 @ fctb2)
 
 fct_exp: qid	(fn constraint => VarFct(qid fctSymbol,constraint))

@@ -154,6 +154,7 @@ sig
   (* provides: val primaryPrompt : string ref
 	       val secondaryPrompt : string ref
 	       val overloadKW : bool ref
+	       val linkPluginKW : bool ref
 	       val lazysml : bool ref
 	       val quotation : bool ref
    *)

@@ -598,8 +598,10 @@ let
 				MARKexp(VARexp(ref v,[]),region))],UNDEFty)
 		end,
 		TS.empty, no_updt)
-	   | FlatAppExp items => elabExp(expParse(items,env,error),env,region))
-
+	   | FlatAppExp items => elabExp(expParse(items,env,error),env,region)
+	   (* FIXME: *)
+	   | StructurePluginExp { str, sgn } =>
+	       raise Fail "elabcore:StructurePluginExp:not yet implemented")
 
     and elabELabel(labs,env,region) =
 	let val (les1,lvt1,updt1) =
@@ -722,9 +724,12 @@ let
 		in (if !ElabControl.markabsyn then MARKdec(d,region') else d,
 		    env,tv,updt)
 	       end
+
+	   (* FIXME: the following two need to be implemented... *)
 	   | StrDec _ => bug "strdec"
-	   | AbsDec _ => bug "absdec"
 	   | FctDec _ => bug "fctdec"
+
+	   | AbsDec _ => bug "absdec"
 	   | SigDec _ => bug "sigdec"
 	   | FsigDec _ => bug "fsigdec")
               

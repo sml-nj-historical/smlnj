@@ -10,6 +10,8 @@ signature PARSER_CONTROL = sig
     val lazysml : bool ref		(* default false *)
     (* controls "overload" as keyword *)
     val overloadKW : bool ref
+    (* controls "link_plugin" as keyword *)
+    val linkPluginKW : bool ref
     (* controls backquote quotation *)
     val quotation : bool ref
 end
@@ -60,6 +62,10 @@ structure ParserControl : PARSER_CONTROL = struct
     val overloadKW =
 	new (flag_cvt, "overload",
 	     "whether (_)overload keyword is enabled", false)
+
+    val linkPluginKW =
+	new (flag_cvt, "link-plugin",
+	     "whether link_plugin keyword is enabled", false)
 
     val quotation =
 	new (flag_cvt, "quotations",
