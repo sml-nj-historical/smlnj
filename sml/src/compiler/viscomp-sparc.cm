@@ -1,0 +1,32 @@
+(* viscomp-sparc.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to Sparcs.
+ *   (M.Blume, 11/1999)
+ *)
+
+Library
+	structure SparcVisComp
+        structure SparcCG
+        structure SparcCpsRegs
+        structure SparcInstr
+	structure SparcProps
+	structure SparcFlowGraph
+	structure SparcAsmEmitter
+is
+
+TopLevel/viscomp/sparcvis.sml
+
+CodeGen/sparc/sparcCG.sml
+CodeGen/sparc/sparcCpsRegs.sml
+CodeGen/sparc/sparcMLTree.sml
+CodeGen/sparc/sparcPseudoInstrs.sml
+CodeGen/sparc/sparcgen.sml
+CodeGen/sparc/sparcspec.sml
+
+basis.cm
+viscomp-core.cm
+comp-lib.cm
+MLRISC.cm
+MLRISC-SPARC.cm

@@ -1,0 +1,7 @@
+Library
+	structure Alpha32UnixCMB
+is
+	basis.cm
+	cm-lib.cm
+	viscomp-alpha32.cm
+	alpha32-unix.sml

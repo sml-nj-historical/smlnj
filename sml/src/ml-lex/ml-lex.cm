@@ -1,0 +1,10 @@
+Library
+	structure ExportLexGen
+is
+
+# if defined (NEW_CM)
+  basis.cm
+# endif
+
+  lexgen.sml
+  export-lex.sml

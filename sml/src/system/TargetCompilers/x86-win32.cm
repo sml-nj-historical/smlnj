@@ -1,0 +1,7 @@
+Library
+	structure X86Win32CMB
+is
+	basis.cm
+	cm-lib.cm
+	viscomp-x86.cm
+	x86-win32.sml

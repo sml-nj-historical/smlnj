@@ -1,0 +1,32 @@
+(* viscomp-hppa.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to HPPAs.
+ *   (M.Blume, 11/1999)
+ *)
+
+Library
+	structure HppaVisComp
+        structure HppaCG
+        structure HppaCpsRegs
+        structure HppaInstr
+	structure HppaProps
+	structure HppaFlowGraph
+	structure HppaAsmEmitter
+is
+TopLevel/viscomp/hppavis.sml
+CodeGen/hppa/hppaCG.sml
+CodeGen/hppa/hppaCpsRegs.sml
+CodeGen/hppa/hppaLabelComp.sml
+CodeGen/hppa/hppaMLTree.sml
+CodeGen/hppa/hppaMillicode.sml
+CodeGen/hppa/hppagen.sml
+CodeGen/hppa/hppaspec.sml
+
+basis.cm
+viscomp-core.cm
+comp-lib.cm
+MLRISC.cm
+MLRISC-HPPA.cm
+

@@ -1,0 +1,7 @@
+(cm-hook)
+Library
+	signature MINIMAL_CM
+	structure CM
+is
+	cm-hook.cm
+	fetch-minimal-cm.sml
