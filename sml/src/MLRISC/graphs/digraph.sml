@@ -1,4 +1,7 @@
-(*
+(* digraph.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  *  Directed graph in adjacency list format.
  *
  * -- Allen
