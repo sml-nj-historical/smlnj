@@ -126,7 +126,7 @@ val use = Compiler.Interact.useFile
 val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
 	 print Compiler.banner; print "\n");
 XXXX
-
+echo ""
 if [ -L ./bin.$ARCH-unix ]; then
   rm -f ./bin.$ARCH-unix
 fi

@@ -10,5 +10,8 @@ sig
     val printLexp  : FLINT.lexp -> unit
     val printFundec: FLINT.fundec -> unit
 
+    (* defaults to LV.lvarName *)
+    val LVarString  : (FLINT.lvar -> string) ref
+
 end (* signature PPFLINT *)
 

@@ -70,8 +70,9 @@ struct
       | toStringValue (F.STRING s) = PU.mlstr s
 
     val printSval = say o toStringValue
+    val LVarString = ref LV.lvarName
 
-    val printVar = say o LV.lvarName
+    fun printVar v = say (!LVarString v)
     val printTyc = say o LT.tc_print
     val printLty = say o LT.lt_print
     fun printTvTk (tv:LT.tvar,tk) = 
@@ -143,7 +144,7 @@ struct
 			    + 2		(* for the "[]" *)
 			    + (length vars) (* for each comma *)
 			    + (foldl	(* sum of varname lengths *)
-			       (fn (v,n) => n + (size (LV.lvarName v)))
+			       (fn (v,n) => n + (size (!LVarString v)))
 			       0 vars))
 	     in
 		 indent len;  pLexp lexp;  undent len
@@ -319,7 +320,7 @@ struct
 	      print "],"; newline();
 	      undent 2;  dent();
 	      pLexp body;
-	      undent 4)
+	      undent 4; say ")")
 
     and printCase (con, lexp) =
 	(printCon con;
