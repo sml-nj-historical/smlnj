@@ -192,7 +192,7 @@ end = struct
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
 	    val core = valOf (sbnode ginfo_nocore core)
-	    val corenv =  CoerceEnv.es2bs (#statenv core ())
+	    val corenv =  CoerceEnv.es2bs (#env (#statenv core ()))
 	    val core_sym = #symenv core ()
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
@@ -209,11 +209,13 @@ end = struct
 
 	    fun sn2pspec (name, n) = let
 		val { statenv, symenv, statpid, sympid } = rt n
+		val { env = static, ctxt } = statenv ()
 		val env =
-		    E.mkenv { static = statenv (),
+		    E.mkenv { static = static,
 			      symbolic = symenv (),
 			      dynamic = emptydyn }
-		val pidInfo = { statpid = statpid, sympid = sympid }
+		val pidInfo =
+		    { statpid = statpid, sympid = sympid, ctxt = ctxt }
 	    in
 		{ name = name, env = env, pidInfo = pidInfo }
 	    end
@@ -230,9 +232,10 @@ end = struct
 
 	    val param =
 		mkParam { primconf = Primitive.configuration pspecs,
-			  pervasive = E.mkenv { static = #statenv pervasive (),
-					        symbolic = perv_sym,
-						dynamic = emptydyn },
+			  pervasive =
+			  E.mkenv { static = #env (#statenv pervasive ()),
+				    symbolic = perv_sym,
+				    dynamic = emptydyn },
 			  pervcorepids =
 			    PidSet.addList (PidSet.empty,
 					    [#statpid pervasive,

@@ -180,7 +180,8 @@ struct
 		    case n of
 			DG.SB_BNODE (DG.PNODE p, { statenv, ... }) => let
 			    val str = String.str (Primitive.toIdent primconf p)
-			    val prims' = StringMap.insert (prims, str, statenv)
+			    val prims' =
+				StringMap.insert (prims, str, #env o statenv)
 			in
 			    k (prims', bnodes, snodes)
 			end
@@ -188,7 +189,8 @@ struct
 			    val { statenv, ... } = ii
 			    val nsy = valOf (StableMap.find (inverseMap, i))
 			    val bnodes' =
-				StableMap.insert (bnodes, i, (nsy, statenv))
+				StableMap.insert (bnodes, i,
+						  (nsy, #env o statenv))
 			in
 			    k (prims, bnodes', snodes)
 			end
@@ -365,9 +367,11 @@ struct
 			(_, DG.SB_BNODE (_, ii)) => ii
 		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
 			    getII smlinfo
+		fun es2bs { env, ctxt } =
+		    { env = GenericVC.CoerceEnv.es2bs env, ctxt = ctxt }
 	    in
 		"i" $ symbol s & fsbn n &
-		      lazy_env (GenericVC.CoerceEnv.es2bs o statenv) &
+		      lazy_env (es2bs o statenv) &
 		      lazy_symenv symenv &
 		      pid statpid &
 		      pid sympid
@@ -588,7 +592,7 @@ struct
 	    in
 		case SymbolMap.find (slexp, sy) of
 		    SOME ((_, DG.SB_BNODE (_, { statenv = ge, ... })), _) =>
-			SOME (ge ())
+			SOME (#env (ge ()))
 		  | _ => NONE
 	    end handle _ => NONE
 
@@ -711,12 +715,15 @@ struct
 		    let val sy = symbol ()
 			val (f, n) = fsbn () (* really reads farbnodes! *)
 			val ge = lazy_env ()
-			val ge' = GenericVC.CoerceEnv.bs2es o ge
+			fun bs2es { env, ctxt } =
+			    { env = GenericVC.CoerceEnv.bs2es env,
+			     ctxt = ctxt }
+			val ge' = bs2es o ge
 			val ii = { statenv = memoize ge',
 				   symenv = lazy_symenv (),
 				   statpid = pid (),
 				   sympid = pid () }
-			val e = Statenv2DAEnv.cvtMemo ge
+			val e = Statenv2DAEnv.cvtMemo (#env o ge)
 			(* put a filter in front to avoid having the FCTENV
 			 * being queried needlessly (this avoids spurious
 			 * module loadings) *)

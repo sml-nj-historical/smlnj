@@ -114,7 +114,7 @@ in
 	fun nofilter (ed: envdelta) = let
 	    val { statenv, symenv, statpid, sympid } = ed
 	in
-	    { envs = fn () => { stat = statenv (), sym = symenv () },
+	    { envs = fn () => { stat = #env (statenv ()), sym = symenv () },
 	      pids = pidset (statpid, sympid) }
 	end
 
@@ -123,7 +123,7 @@ in
 
 	fun filter (ii, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
-	    val ste = statenv ()
+	    val { env = ste, ctxt } = statenv ()
 	in
 	    if exportsNothingBut s ste then
 		{ envs = fn () => { stat = ste, sym = symenv () },
@@ -138,8 +138,10 @@ in
 			    (* We re-pickle the filtered ste relative to
 			     * the original one.  This should give a fairly
 			     * minimal pickle. *)
-			    val statpid' =
-				GenericVC.MakePid.makePid (ste, ste')
+			    val statpid' = GenericVC.Rehash.rehash
+				{ context = ctxt,
+				  env = GenericVC.CoerceEnv.es2bs ste',
+				  orig_hash = statpid }
 			in
 			    filtermap :=
 			      FilterMap.insert (!filtermap, key, statpid');
@@ -400,12 +402,12 @@ in
 		val eo = layerwork k Concur.wait (SOME emptyEnv) eo_cl
 	    in
 		case eo of
-		    NONE => NONE
+		    NONE => (Servers.reset false; NONE)
 		  | SOME e => SOME (#envs e ())
 	    end
 	    fun mkExport ie gp =
 		case impexp gp ie of
-		    NONE => NONE
+		    NONE => (Servers.reset false; NONE)
 		  | SOME e => SOME (#envs e ())
 	in
 	    { group = group,
@@ -416,8 +418,14 @@ in
 	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
 					       fn _ => (),
 					       fn _ => 0)
+	    fun sbn_trav gp g = let
+		val r = sbnode gp g
+	    in
+		if isSome r then () else Servers.reset false;
+		r
+	    end
 	in
-	    sbnode
+	    sbn_trav
 	end
 
 	fun evict i =

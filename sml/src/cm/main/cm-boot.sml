@@ -413,10 +413,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  val d = case Link.sysval (SOME statpid) of
 			      SOME d => d
 			    | NONE => emptydyn
-			  val env = E.mkenv { static = statenv (),
+			  val { env = static, ctxt } = statenv ()
+			  val env = E.mkenv { static = static,
 					      symbolic = symenv (),
 					      dynamic = d }
-			  val pidInfo = { statpid = statpid, sympid = sympid }
+			  val pidInfo =
+			      { statpid = statpid, sympid = sympid,
+			        ctxt = ctxt }
 		      in
 			  (env, pidInfo)
 		      end
