@@ -179,3 +179,64 @@ configuration file.
 \item Any other line is considered malformed and will cause a warning
 but will otherwise be ignored.
 \end{itemize}
+
+\subsection{When to use anchor environments}
+
+The following sample scenario for using anchor environments will
+provide some background on the reasons that led to the inclusion of
+this feature into CM.  In short, anchor environments will typically be
+used to disambiguate between two or more different uses of the same
+anchor name.  This is something that the root environment alone (i.e.,
+a fixed mapping from anchors to directory names) cannot do because the
+root environment binds each anchor to at most one ``meaning.''
+
+Suppose you are developing a project {\tt P.cm} for which you obtain
+two utility libraries {\tt A.cm} and {\tt B.cm} from other
+programmers.  Unfortunately, since these programmers did not
+coordinate their work (perhaps because they did not even know of each
+other), both {\tt A.cm} and {\tt B.cm} each uses its own helper
+library that is expected to be found under the name {\tt \$H/H.cm}.
+
+Your task is to put references to {\tt A.cm} and {\tt B.cm} into {\tt
+P.cm} so that everything ``works.''  Now, mentioning {\tt A.cm} and
+{\tt B.cm} is easy enough, but if you do so without special
+precautions, you arrive at a situation where both helpers end up being
+the same---no matter how you configure the binding for anchor {\tt
+\$H}.
+
+If you have access to the description files for {\tt A.cm} and {\tt
+B.cm}, you could work around this problem by changing the reference to
+{\tt \$H} in one of them into something else.  Remember, however, that
+in general you may not be able to do this because it could be that
+either you do not have permissions to change the description files, or
+you might not even have any description file that you could change
+because the two libraries were given to you in ``stable'' form.
+
+The correct solution is to add {\tt bind:}-directives where you {\em
+use} {\tt A.cm} and {\tt B.cm} in your own description file {\tt P.cm}.
+For example, you could write there:
+
+\begin{verbatim}
+  A.cm (bind:(anchor:H value:$AH))
+  B.cm (bind:(anchor:H value:$BH))
+\end{verbatim}
+
+With this, the two uses of anchor {\tt \$H} will occur in different
+{\em local} anchor environments.  In the example as shown, the first
+such local environment effectively renames {\tt \$H} into {\tt \$AH}
+while the second renames {\tt \$H} into {\tt \$BH}. Thus, you can put
+independent bindings for {\tt \$AH} and {\tt \$HB} into your root
+configuration, these independent bindings will propagate to the
+respective local environment, and the two uses of {\tt \$H} will be
+resolved differently---as was intended.
+
+Another situation where anchor name clashes would definitely happen is
+when two different version (i.e., development stages) of the same set
+of libraries is being used at the same time.  In this case, one should
+let the libraries refer to each other using anchored names and provide
+(different) bindings for these names using {\tt bind:}-directives from
+within their respective clients.
+
+A good way of encapsulating the construction of the required local
+anchor environment for a library is to create a {\em proxy} for it
+(see Section~\ref{sec:proxies}).

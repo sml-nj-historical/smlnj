@@ -73,8 +73,8 @@ in
 		  | SOME (g, gp) => let
 			val _ = say_ok ()
 			val index = Reachable.snodeMap g
-			val trav = sbtrav () gp
-			fun trav' sbn = isSome (trav sbn)
+			val trav = sbtrav ()
+			fun trav' sbn = isSome (trav sbn gp)
 		    in
 			workLoop (index, trav', penv)
 		    end

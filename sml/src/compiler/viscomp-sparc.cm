@@ -32,6 +32,6 @@ CodeGen/sparc/sparcspec.sml
 $/basis.cm
 $/smlnj-lib.cm
 $smlnj/viscomp/core.cm
-$MLRISC/Control.cm
-$MLRISC/MLRISC.cm
-$MLRISC/SPARC.cm
+$smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/SPARC.cm

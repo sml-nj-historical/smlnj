@@ -352,6 +352,6 @@ $/basis.cm
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/pickle-lib.cm
-$MLRISC/Control.cm
-$MLRISC/MLRISC.cm
+$smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/MLRISC.cm
 $/pp-lib.cm

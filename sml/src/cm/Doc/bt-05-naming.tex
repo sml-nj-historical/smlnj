@@ -41,13 +41,14 @@ time the policy which determines the names of binfiles
 and stablefiles is modified in such a way that all binfiles will be
 created in directory {\tt $u$.bin.{\it arch}-{\it os}} and all
 stablefiles will be created in {\tt $u$.boot.{\it arch}-{\it os}}.
-This means that the binfile for the ML source file
-{\tt \$$a$/$\cdots$/{\it file}.sml}
-will be created as
+In particular, if {\tt \$$a$} is the root anchor name controlling
+the path leading to an ML source file
+{\tt \$$a$/$\cdots$/{\it file}.sml},
+then the corresponding binfile will be created as
 {\tt $u$.bin.{\it arch}-{\it os}/$a$/$\cdots$/CM/{\it arch}-{\it os}/{\it file}.sml}.
 Similarly, the stablefile for the library description
-{\tt \$$a$/$\cdots$/{\it file}.cm}
-is written to
+{\tt \$$a$/$\cdots$/{\it file}.cm} controlled by root anchor {\tt \$$a$}
+gets written to
 {\tt $u$.bin.{\it arch}-{\it os}/$a$/$\cdots$/CM/{\it arch}-{\it os}/{\it file}.cm}.
 (Notice how the anchor name {\tt \$$a$} is being incorporated into the
 resulting pathnames.)

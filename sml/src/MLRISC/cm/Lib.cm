@@ -25,15 +25,16 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
         $/basis.cm
         $/smlnj-lib.cm
+	$/Control.cm
 #else
         basis.cm
         smlnj-lib.cm
+	Control.cm
 #endif
 #else
         smlnj-lib.cm
-#endif
-
 	Control.cm
+#endif
 
 	../library/annotations.sig
 	../library/annotations.sml

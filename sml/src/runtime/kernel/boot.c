@@ -95,7 +95,8 @@ void BootML (const char *bootlist, heap_params_t *heapParams)
 		pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
 	      }
 	    }
-	    Say ("[Registering runtime system as %s]\n", fname+1);
+	    if (!SilentLoad)
+	      Say ("[Registering runtime system as %s]\n", fname+1);
 	    EnterPerID (msp, &pid, RunTimeCompUnit);
 	    rts_init = 1;	/* make sure we do this only once */
 	  }
@@ -203,32 +204,34 @@ PVT FILE *OpenBinFile (const char *fname, bool_t isBinary)
 *************** The following really belongs in the header file ****************
  *  Every 4-byte integer field is stored in big-endian format.
  *
- *     Start Size Purpose
+ *       Start Size Purpose
  * ----BEGIN OF HEADER----
- *          0 16  magic string
- *         16  4  number of import values (importCnt)
- *         20  4  number of exports (exportCnt = currently always 0 or 1)
- *         24  4  size of CM-specific info in bytes (cmInfoSzB)
- *         28  4  size of pickled lambda-expression in bytes (lambdaSzB)
- *         32  4  size of reserved area 1 in bytes (reserved1)
- *         36  4  size of reserved area 2 in bytes (reserved2)
- *         40  4  size of code area in bytes (codeSzB)
- *         44  4  size of pickled environment in bytes (envSzB)
- *         48  i  import trees [This area contains pickled import trees --
- *                  see below.  The total number of leaves in these trees is
- *                  importCnt.  The size impSzB of this area depends on the
- *                  shape of the trees.]
- *       i+48 ex  export pids [Each export pid occupies 16 bytes. Thus, the
- *                  size ex of this area is 16*exportCnt (0 or 16).]
- *    ex+i+48 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
+ *            0 16  magic string
+ *           16  4  number of import values (importCnt)
+ *           20  4  number of exports (exportCnt = currently always 0 or 1)
+ *           24  4  size of import tree area in bytes (importSzB)
+ *           28  4  size of CM-specific info in bytes (cmInfoSzB)
+ *           32  4  size of pickled lambda-expression in bytes (lambdaSzB)
+ *           36  4  size of reserved area in bytes (reserved)
+ *           40  4  size of padding area in bytes (pad)
+ *           44  4  size of code area in bytes (codeSzB)
+ *           48  4  size of pickled environment in bytes (envSzB)
+ *           52  i  import trees [This area contains pickled import trees --
+ *                    see below.  The total number of leaves in these trees is
+ *                    importCnt.  The size impSzB of this area depends on the
+ *                    shape of the trees.]
+ *         i+52 ex  export pids [Each export pid occupies 16 bytes. Thus, the
+ *                    size ex of this area is 16*exportCnt (0 or 16).]
+ *      ex+i+52 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
  * ----END OF HEADER----
- *          0  h  HEADER (h = 48+cm+ex+i)
- *          h  l  pickle of exported lambda-expr. (l = lambdaSzB)
- *        l+h  r  reserved areas (r = reserved1+reserved2)
- *      r+l+h  c  code area (c = codeSzB) [Structured into several
- *                  segments -- see below.]
- *    c+r+l+h  e  pickle of static environment (e = envSzB)
- *  e+c+r+l+h  -  END OF BINFILE
+ *            0  h  HEADER (h = 52+cm+ex+i)
+ *            h  l  pickle of exported lambda-expr. (l = lambdaSzB)
+ *          l+h  r  reserved area (r = reserved)
+ *        r+l+h  p  padding (p = pad)
+ *      p+r+l+h  c  code area (c = codeSzB) [Structured into several
+ *                    segments -- see below.]
+ *    c+p+r+l+h  e  pickle of static environment (e = envSzB)
+ *  e+c+p+r+l+h  -  END OF BINFILE
  *
  * IMPORT TREE FORMAT description:
  *
@@ -385,7 +388,8 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 	*atptr = '\0';
     }
 
-    Say ("[Loading %s]\n", objname);
+    if (!SilentLoad)
+      Say ("[Loading %s]\n", objname);
 
   /* open the file */
     file = OpenBinFile (fname, TRUE);
@@ -411,8 +415,8 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
     hdr.importSzB	= BIGENDIAN_TO_HOST(hdr.importSzB);
     hdr.cmInfoSzB	= BIGENDIAN_TO_HOST(hdr.cmInfoSzB);
     hdr.lambdaSzB	= BIGENDIAN_TO_HOST(hdr.lambdaSzB);
-    hdr.reserved1	= BIGENDIAN_TO_HOST(hdr.reserved1);
-    hdr.reserved2	= BIGENDIAN_TO_HOST(hdr.reserved2);
+    hdr.reserved	= BIGENDIAN_TO_HOST(hdr.reserved);
+    hdr.pad             = BIGENDIAN_TO_HOST(hdr.pad);
     hdr.codeSzB		= BIGENDIAN_TO_HOST(hdr.codeSzB);
     hdr.envSzB		= BIGENDIAN_TO_HOST(hdr.envSzB);
 
@@ -452,7 +456,8 @@ PVT void LoadBinFile (ml_state_t *msp, char *fname)
 	                + exportSzB
 	                + hdr.cmInfoSzB
 			+ hdr.lambdaSzB
-			+ hdr.reserved1 + hdr.reserved2;
+			+ hdr.reserved
+	                + hdr.pad;
 
 	if (fseek(file, off, SEEK_SET) == -1)
 	    Die ("cannot seek on bin file \"%s\"", fname);

@@ -12,6 +12,25 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/12/30 22:10:00 JST
+Tag: blume-20001230-various
+Description:
+
+Added proxy libraries for MLRISC and let MLRISC libraries refer
+to each other using path anchors.  (See CM manual for explanation.)
+
+Updated CM documentation.
+
+Fixed some bugs in CM.
+
+Implemented "proxy" libraries (= syntactic sugar for CM).
+
+Added "-quiet" option to makeml and changed runtime system accordingly.
+
+Added cleanup handler for exportML to reset timers and compiler stats.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/12/22 22:22:58 EST 2000
 Tag: Release_110_32

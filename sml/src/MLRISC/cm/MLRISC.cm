@@ -116,17 +116,20 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
         $/basis.cm
         $/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
 #else
         basis.cm
         smlnj-lib.cm
+	Control.cm
+	Lib.cm
 #endif
 #else
         smlnj-lib.cm
-#endif
-	
 	Control.cm
 	Lib.cm
-
+#endif
+	
 	(* Core definitions. These are required *)
 	../instructions/cells.sig
 	../instructions/cells.sml

@@ -41,8 +41,8 @@ typedef struct {	    /* The header of a .bin file; note that the fields */
     Int32_t	importSzB;	/* size of import tree area */
     Int32_t	cmInfoSzB;	/* the size of the CM dependency information area */
     Int32_t	lambdaSzB;	/* the size of inlinable lambda expressions */
-    Int32_t	reserved1;	/* reserved for future use */
-    Int32_t	reserved2;	/* reserved for future use */
+    Int32_t	reserved;	/* reserved for future use */
+    Int32_t	pad;	        /* padding for code segment alignment */
     Int32_t	codeSzB;	/* the number of bytes of code */
     Int32_t	envSzB;		/* the size of the environment */
 } binfile_hdr_t;

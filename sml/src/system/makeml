@@ -16,6 +16,7 @@ fi
 ALLOC=1M
 ARCH=sparc
 HEAP="sml"
+VERBOSITY="@SMLverbose"
 ARGS=""
 MODE=""
 RUN=""
@@ -83,6 +84,12 @@ while [ "$#" != "0" ] ; do
 	bare=yes
 	MODE="@SMLbare"
 	;;
+    -quiet)
+	VERBOSITY="@SMLquiet"
+	;;
+    -verbose)
+	VERBOSITY="@SMLverbose"
+	;;
     -rebuild)
 	if [ "$#" = "0" ]; then
 	    echo "$this: missing argument for \"-rebuild\" option"
@@ -133,9 +140,11 @@ done
 cd $BOOT_DIR
 
 echo $LINK $RUN \
-    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC $ARGS $MODE
+    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC \
+    $VERBOSITY $ARGS $MODE
 if $LINK $RUN \
-    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC $ARGS $MODE
+    @SMLboot=BOOTLIST @SMLheap=$here/$HEAP @SMLalloc=$ALLOC \
+    $VERBOSITY $ARGS $MODE
 then
 #
 # If this was a -rebuild run, we have to quit now...

@@ -185,7 +185,7 @@ struct
 
 		val perv_fsbnode = (NONE, perv_n)
 
-		fun rt n = valOf (sbnode ginfo n)
+		fun rt n = valOf (sbnode n ginfo)
 		val pervasive = rt perv_n
 
 		fun rt2ie (n, ii: IInfo.info) = let
@@ -239,7 +239,14 @@ struct
 	    (* Don't try to load the stable init group. Instead, recompile
 	     * directly. *)
 	    fun dontLoadInitGroup () = let
-		val g0 = recompInitGroup ()
+		(* Function recompileInitGroup will not use servers (hence no
+		 * call to Servers.withServers), but since compile traversals
+		 * invoke the scheduler anyway, we must still clear pending
+		 * tasks when we hit an error or an interrupt. *)
+		val g0 = SafeIO.perform { openIt = fn () => (),
+					  closeIt = fn () => (),
+					  work = recompInitGroup,
+					  cleanup = Servers.reset }
 		val stabarg = { group = g0, anyerrors = ref false,
 				rebindings = [] }
 	    in
@@ -388,8 +395,8 @@ struct
 			      dirbase = SOME dirbase, paranoid = false } of
 		NONE => NONE
 	      | SOME ((g, gp, penv), _) => let
-		    val trav = Compile.newSbnodeTraversal () gp
-		    fun trav' sbn = isSome (trav sbn)
+		    val trav = Compile.newSbnodeTraversal ()
+		    fun trav' sbn = isSome (trav sbn gp)
 		in
 		    SOME (g, trav', penv)
 		end

@@ -42,12 +42,21 @@ structure InteractiveSystem : sig end = struct
 
     val _ = UseHook.useHook := Compiler.Interact.useFile
 
+
+    (* add cleanup code that resets the internal timers and stats
+     * when resuming from exportML... *)
+    local
+	structure I = SMLofNJ.Internals
+	structure C = I.CleanUp
+	fun reset _ = (I.resetTimers (); Compiler.Stats.reset ())
+    in
+        val _ = C.addCleaner ("initialize-timers-and-stats", [C.AtInit], reset)
+    end
+
     (* launch interactive loop *)
     val _ = (Compiler.Control.Print.say "Generating heap image...\n";
 	     if SMLofNJ.exportML heapfile then
-		 (SMLofNJ.Internals.resetTimers ();
-		  Compiler.Stats.reset ();
-		  print Compiler.banner;
+		 (print Compiler.banner;
 		  print "\n";
 		  getOpt (procCmdLine, fn () => ()) ();
 		  Compiler.Interact.interact ())

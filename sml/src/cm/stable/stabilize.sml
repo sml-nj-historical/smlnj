@@ -41,7 +41,9 @@ end
 functor StabilizeFn (structure MachDepVC : MACHDEP_VC
 		     structure StabModmap : STAB_MODMAP
 		     val recomp : GP.info -> GG.group ->
-			 (SmlInfo.info -> MachDepVC.Binfile.bfContent) option
+			 (SmlInfo.info ->
+			  { content: MachDepVC.Binfile.bfContent,
+			    stats: MachDepVC.Binfile.stats }) option
 		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
 struct
     type groupgetter =
@@ -550,11 +552,19 @@ struct
 				    (SymbolMap.listItems exports),
 				    sublibs)
 
-		fun writeBFC s i = ignore (BF.write { stream = s,
-						      content = getBFC i,
-						      nopickle = true })
-		fun sizeBFC i = BF.size { content = getBFC i, nopickle = true }
-		fun pidBFC i = BF.staticPidOf (getBFC i)
+		fun writeBFC s (i, { code, data, env, inlinfo }) = let
+		    val { content, stats } = getBFC i
+		    val { code = c, data = d, env = e, inlinfo = ii } = stats
+		in
+		    ignore (BF.write { stream = s, content = content,
+				       nopickle = true });
+		    { code = code + c, data = data + d,
+		      env = env + e, inlinfo = inlinfo + ii }
+		end
+
+		fun sizeBFC i =
+		    BF.size { content = #content (getBFC i), nopickle = true }
+		fun pidBFC i = BF.staticPidOf (#content (getBFC i))
 
 		val _ =
 		    Say.vsay ["[stabilizing ", SrcPath.descr grouppath, "]\n"]
@@ -914,7 +924,17 @@ struct
 		    (BinIO.output (outs, libstamp_bytes);
 		     writeInt32 (outs, dg_sz);
 		     BinIO.output (outs, dg_pickle);
-		     app (writeBFC outs) memberlist)
+		     let val { code, data, env, inlinfo } =
+			     foldl (writeBFC outs)
+				   { code = 0, data = 0, env = 0, inlinfo = 0 }
+				   memberlist
+		     in
+			 Say.vsay ["[code: ", Int.toString code,
+				   ", data: ", Int.toString data,
+				   ", inlinable: ", Int.toString inlinfo,
+				   ", env: ", Int.toString dg_sz,
+				   " bytes]\n"]
+		     end)
 	    in
 		(SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
 				  closeIt = BinIO.closeOut,

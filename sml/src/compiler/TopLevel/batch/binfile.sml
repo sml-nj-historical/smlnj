@@ -28,6 +28,8 @@ struct
     type csegments = C.csegments
     type executable = C.executable
 
+    type stats = { env: int, inlinfo: int, data: int, code: int }
+
     fun delay thunk = let
 	val f = ref (fn () => raise Fail "Binfile.delay not initialized")
 	fun first () = let
@@ -88,32 +90,33 @@ struct
  *
  *  Every 4-byte integer field is stored in big-endian format.
  *
- *     Start Size Purpose
+ *        Start Size Purpose
  * ----BEGIN OF HEADER----
- *          0 16  magic string
- *         16  4  number of import values (importCnt)
- *         20  4  number of exports (exportCnt = currently always 0 or 1)
- *         24  4  size of import tree area in bytes (importSzB)
- *         28  4  size of CM-specific info in bytes (cmInfoSzB)
- *         32  4  size of pickled lambda-expression in bytes (lambdaSzB)
- *         36  4  size of reserved area 1 in bytes (reserved1)
- *         40  4  size of reserved area 2 in bytes (reserved2)
- *         44  4  size of code area in bytes (codeSzB)
- *         48  4  size of pickled environment in bytes (envSzB)
- *         52  i  import trees [This area contains pickled import trees --
- *                  see below.  The total number of leaves in these trees is
- *                  importCnt and the size is equal to importSzB.]
- *       i+52 ex  export pids [Each export pid occupies 16 bytes. Thus, the
- *                  size ex of this area is 16*exportCnt (0 or 16).]
- *    ex+i+52 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
+ *            0 16  magic string
+ *           16  4  number of import values (importCnt)
+ *           20  4  number of exports (exportCnt = currently always 0 or 1)
+ *           24  4  size of import tree area in bytes (importSzB)
+ *           28  4  size of CM-specific info in bytes (cmInfoSzB)
+ *           32  4  size of pickled lambda-expression in bytes (lambdaSzB)
+ *           36  4  size of reserved area in bytes (reserved)
+ *           40  4  size of padding in bytes (pad)
+ *           44  4  size of code area in bytes (codeSzB)
+ *           48  4  size of pickled environment in bytes (envSzB)
+ *           52  i  import trees [This area contains pickled import trees --
+ *                    see below.  The total number of leaves in these trees is
+ *                    importCnt and the size is equal to importSzB.]
+ *         i+52 ex  export pids [Each export pid occupies 16 bytes. Thus, the
+ *                    size ex of this area is 16*exportCnt (0 or 16).]
+ *      ex+i+52 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
  * ----END OF HEADER----
- *          0  h  HEADER (h = 52+cm+ex+i)
- *          h  l  pickle of exported lambda-expr. (l = lambdaSzB)
- *        l+h  r  reserved areas (r = reserved1+reserved2)
- *      r+l+h  c  code area (c = codeSzB) [Structured into several
- *                  segments -- see below.]
- *    c+r+l+h  e  pickle of static environment (e = envSzB)
- *  e+c+r+l+h  -  END OF BINFILE
+ *            0  h  HEADER (h = 52+cm+ex+i)
+ *            h  l  pickle of exported lambda-expr. (l = lambdaSzB)
+ *          l+h  r  reserved area (r = reserved)
+ *        r+l+h  p  padding (p = pad)
+ *      p+r+l+h  c  code area (c = codeSzB) [Structured into several
+ *                    segments -- see below.]
+ *    c+p+r+l+h  e  pickle of static environment (e = envSzB)
+ *  e+c+p+r+l+h  -  END OF BINFILE
  *
  * IMPORT TREE FORMAT description:
  *
@@ -335,8 +338,8 @@ struct
 	    val cmInfoSzB = readInt32 s
 	    val nei = cmInfoSzB div bytesPerPid
 	    val sLam = readInt32 s
-	    val sa1 = readInt32 s
-	    val sa2 = readInt32 s
+	    val reserved = readInt32 s
+	    val pad = readInt32 s
 	    val cs = readInt32 s
 	    val es = readInt32 s
 	    val imports = readImports (s, leni)
@@ -350,8 +353,8 @@ struct
 	    case envPids of
 		st :: lm :: cmData =>
 		    { nExports = ne,
-		      lambdaSz = sLam,
-		      res1Sz = sa1, res2Sz = sa2, codeSz = cs, envSz = es,
+		      lambdaSz = sLam, reserved = reserved, pad = pad,
+		      codeSz = cs, envSz = es,
 		      imports = imports, exportPid = exportPid,
 		      cmData = cmData, staticPid = st, lambdaPid = lm }
 	      | _ => error "env PID list"
@@ -370,7 +373,8 @@ struct
 		    end
 	      val dataSz = readInt32 strm
 	      val n' = nbytes - dataSz - 4
-	      val data = if n' < 0 then error "data size" else bytesIn (strm, dataSz)
+	      val data = if n' < 0 then error "data size"
+			 else bytesIn (strm, dataSz)
 	      in
 		case readCode n'
 		 of (c0 :: cn) => {data = data, c0 = c0, cn = cn}
@@ -381,21 +385,25 @@ struct
 	fun read args = let
 	    val { name, stream = s, modmap = m } = args
 	    fun context _ = m
-	    val { nExports = ne, lambdaSz = sa2,
-		  res1Sz, res2Sz, codeSz = cs, envSz = es,
+	    val { nExports = ne, lambdaSz,
+		  reserved, pad, codeSz = cs, envSz = es,
 		  imports, exportPid, cmData,
 		  staticPid, lambdaPid } = readHeader s
 	    val (lambda_i, plambda) =
-		if sa2 = 0 then (fn () => NONE,
-				 Word8Vector.fromList [])
+		if lambdaSz = 0 then (fn () => NONE, Word8Vector.fromList [])
 		else let
-		    val bytes = bytesIn (s, sa2)
+		    val bytes = bytesIn (s, lambdaSz)
 		in
 		    (delay (fn () => UnpickMod.unpickleFLINT bytes),
 		     bytes)
 		end
-	    val _ = if res1Sz = 0 andalso res2Sz = 0
-			then () else error "non-zero reserved size"
+	    (* We could simply skip the reserved area if there is one,
+	     * but in that case there probably is something else seriously
+	     * wrong (wrong version, etc.), so we may as well complain... *)
+	    val _ = if reserved = 0 then () else error "non-zero reserved size"
+	    (* skip padding *)
+	    val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
+	    (* now get the code *)
 	    val code = readCodeList (s, name, cs)
 	    val (senv, penv) =
 		if es = 0 then (fn () => StaticEnv.empty,
@@ -413,13 +421,15 @@ struct
 		end
 	    fun pd (u, p, pk) = { unpickled = u, pid = p, pickled = pk }
         in
-	    BFC { imports = imports,
-		  exportPid = exportPid,
-		  cmData = cmData,
-		  senv = pd (senv, staticPid, penv),
-		  lambda = pd (lambda_i, lambdaPid, plambda),
-		  csegments = code,
-		  executable = ref NONE }
+	    { content = BFC { imports = imports,
+			      exportPid = exportPid,
+			      cmData = cmData,
+			      senv = pd (senv, staticPid, penv),
+			      lambda = pd (lambda_i, lambdaPid, plambda),
+			      csegments = code,
+			      executable = ref NONE },
+	      stats = { env = es, inlinfo = lambdaSz, code = cs,
+			data = Word8Vector.length (#data code) } }
         end
 
 	(* compute size of code objects (including length fields) *)
@@ -467,13 +477,13 @@ struct
 		  | SOME p => (1, [p])
 	    val nei = length envPids
 	    val cmInfoSzB = nei * bytesPerPid
-	    val sa2 =
+	    val lambdaSz =
 		(if nopickle then 0
 		 else case lut () of
 		     NONE => 0 
 		   | _ => Word8Vector.length lambdaP)
-	    val res1Sz = 0
-	    val res2Sz = 0
+	    val reserved = 0		(* currently no reserved area *)
+	    val pad = 0			(* currently no padding *)
 	    val csegs = codeSegments bfc
 	    val cs = codeSize csegs
 	    fun codeOut c = (
@@ -487,13 +497,13 @@ struct
 	in
 	    BinIO.output (s, MAGIC);
 	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
-				sa2, res1Sz, res2Sz, cs, es];
+				lambdaSz, reserved, pad, cs, es];
 	    BinIO.output (s, picki);
 	    writePidList (s, epl);
 	    (* arena1 *)
 	    writePidList (s, envPids);
 	    (* arena2 -- pickled flint stuff *)
-	    if sa2 = 0 then () else BinIO.output (s, lambdaP);
+	    if lambdaSz = 0 then () else BinIO.output (s, lambdaP);
 	    (* arena3 is empty *)
 	    (* arena4 is empty *)
 	    (* code objects *)
@@ -502,7 +512,7 @@ struct
 	    codeOut (#c0 csegs);
 	    app codeOut (#cn csegs);
 	    writeEnv ();
-	    { env = es, inlinfo = sa2, data = datasz, code = cs }
+	    { env = es, inlinfo = lambdaSz, data = datasz, code = cs }
 	end
 
 	fun create args = let

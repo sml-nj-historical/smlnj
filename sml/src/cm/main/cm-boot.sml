@@ -82,7 +82,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val _ = init_servers g
 	      val { group = c_group, ... } =
 		  Compile.newTraversal (Link.evict, store, g)
-	      val { group = l_group, ... } = Link.newTraversal (g, get)
+	      val { group = l_group, ... } =
+		  Link.newTraversal (g, #content o get)
 	  in
 	      case Servers.withServers (fn () => c_group gp) of
 		  NONE => false

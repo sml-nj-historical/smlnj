@@ -131,14 +131,17 @@ fun prNumkind (INT 31)      = ""
 fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
 
 fun prPrimop (ARITH{oper,overflow,kind}) =
-      ((case oper 
-         of op + => "+" |  op - => "-" |  op * => " *"
-          | op / => "/" |  op ~ => "~" | LSHIFT => "lshift" 
-          | RSHIFT => "rshift" | RSHIFTL => "rshift_l" | ABS => "abs"
-          | ANDB => "andb" | ORB => "orb" | XORB => "xorb" 
-          | NOTB => "notb")
-       ^ (if overflow then "" else "n")
-       ^ prNumkind kind)
+    concat [case oper  of
+		op + => "+" |  op - => "-"
+	      |  op * => " *" | op / => "/"
+	      |  op ~ => "~"
+	      | FSQRT => "fsqrt"
+	      | FSIN => "fsin" | FCOS => "fcos" | FTAN => "ftan"
+	      | LSHIFT => "lshift" | RSHIFT => "rshift" | RSHIFTL => "rshift_l"
+              | ANDB => "andb" | ORB => "orb" | XORB => "xorb" | NOTB => "notb"
+	      | ABS => "abs",
+	    if overflow then "" else "n",
+	    prNumkind kind]
 
   | prPrimop (INLLSHIFT kind) =  "inllshift"  ^ prNumkind kind
   | prPrimop (INLRSHIFT kind) =  "inlrshift"  ^ prNumkind kind

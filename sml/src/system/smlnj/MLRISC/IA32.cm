@@ -1,0 +1,42 @@
+(*
+ * This is library $smlnj/MLRISC/IA32.cm -- a proxy providing the
+ * services of $SMLNJ-MLRISC/IA32.cm.
+ *   The path anchor $SMLNJ-MLRISC points to (implementation of the)
+ *   version of MLRISC that is used by SML/NJ.
+ *   This proxy takes care of binding path anchors internal to MLRISC
+ *   in such a way that they consistently point to the same version
+ *   of MLRISC.
+ *
+ *   Copyright (c) 2000 by Lucent Bell Laboratories
+ *
+ * author: Matthias Blume (blume@cs.princeton.edu)
+ *)
+Library
+	signature MEMORY_REGISTERS
+	signature X86CELLS
+	signature X86COMP_INSTR_EXT
+	signature X86INSTR
+	signature X86REWRITE
+	signature X86SHUFFLE
+	signature X86SPILL
+	structure X86Cells
+	structure X86InstrExt
+	functor IA32SVID_CCalls
+	functor X86
+	functor X86AsmEmitter
+	functor X86CompInstrExt
+	functor X86FP
+	functor X86FreqProps
+	functor X86Instr
+	functor X86Jumps
+	functor X86MCEmitter
+	functor X86Props
+	functor X86RA
+	functor X86Rewrite
+	functor X86Shuffle
+	functor X86Spill
+is
+	$SMLNJ-MLRISC/IA32.cm
+		(bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+		 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+		 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))

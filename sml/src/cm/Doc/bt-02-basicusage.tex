@@ -60,8 +60,8 @@ working directory to {\tt src/system}:
 
 \begin{verbatim}
 $ cd src/system
-$
 \end{verbatim}
+%$emacs unconfuse
 
 The next step is to start the interactive system and load the
 bootstrap compiler.  This can be done in one of two ways:
@@ -130,8 +130,8 @@ $ ./makeml
 ...
 Standard ML of New Jersey ...
 ./makeml: Heap image generated.
-$
 \end{verbatim}
+%$emacs unconfuse
 
 The {\tt makeml} command generates a new heap image and also prepares
 stable libraries to be used by this image.  Neither the heap image nor
@@ -147,7 +147,7 @@ To test-drive a newly booted system without installing it, issue the
 \begin{verbatim}
 $ ./testml
 \end{verbatim}
-% $
+%$emacs unconfuse
 
 This starts an interactive system in a way very similar to {\tt sml},
 but it uses heap image and libraries from a previous run of {\tt
@@ -162,8 +162,8 @@ of {\tt makeml}.
 
 \begin{verbatim}
 $ ./installml
-$
 \end{verbatim}
+%$emacs unconfuse
 
 This command will replace the system's heap image in {\tt
 ../../bin/.heap} and its libraries in {\tt ../../lib}.  However, it
@@ -176,9 +176,7 @@ issuing the {\tt installml} command:
 \begin{verbatim}
 $ rm ../../lib/*
 $ ./installml
-$
 \end{verbatim}
-% $
 
 Libraries that were installed as part of the SML/NJ installation
 process but which are unrelated to bootstrap compilation (e.g., {\tt
@@ -189,10 +187,7 @@ removed) by going back to the installation directory and issuing the
 \begin{verbatim}
 $ cd ../..
 $ config/install.sh
-...
-$
 \end{verbatim}
-% $
 
 Since some changes to the compiler also render old binfiles ususable,
 one will occasionally have to remove those first (prior to re-running

@@ -34,13 +34,15 @@ signature BINFILE = sig
 		  symenv: symenv }
 	-> bfContent
 
+    type stats = { env: int, inlinfo: int, data: int, code: int }
+
     val read:
 	{ name: string, stream: BinIO.instream, modmap: ModuleId.tmap } ->
-	bfContent
+	{ content: bfContent, stats: stats }
 
     val write:
 	{ stream: BinIO.outstream, content: bfContent, nopickle: bool } ->
-	{ env: int, inlinfo: int, data: int, code: int }
+	stats
 
     val exec: bfContent * denv -> denv
 end (* signature BINFILE *)

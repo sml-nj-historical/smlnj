@@ -26,6 +26,7 @@ in
     signature COMPILE = sig
 
 	type bfc
+	type stats
 
 	(* reset internal persistent state *)
 	val reset : unit -> unit
@@ -34,14 +35,15 @@ in
 	type notifier = GP.info -> SmlInfo.info -> unit
 
 	(* type of a function to store away the binfile contents *)
-	type bfcReceiver = SmlInfo.info * bfc -> unit
+	type bfcReceiver =
+	     SmlInfo.info * { content: bfc, stats: stats } -> unit
 
 	val getII : SmlInfo.info -> IInfo.info
 
 	val evictStale : unit -> unit
 	val evictAll : unit -> unit
 
-	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
+	val newSbnodeTraversal : unit -> DG.sbnode -> GP.info -> ed option
 
 	val newTraversal : notifier * bfcReceiver * GG.group ->
 	    { group: GP.info -> result option,
@@ -52,7 +54,8 @@ in
 		       structure StabModmap : STAB_MODMAP
 		       val useStream : TextIO.instream -> unit
 		       val compile_there : SrcPath.file -> bool) :>
-	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
+	COMPILE where type bfc = MachDepVC.Binfile.bfContent
+	        where type stats = MachDepVC.Binfile.stats =
     struct
 
 	type notifier = GP.info -> SmlInfo.info -> unit
@@ -60,8 +63,10 @@ in
 	structure BF = MachDepVC.Binfile
 
 	type bfc = BF.bfContent
+	type stats = BF.stats
 
-	type bfcReceiver = SmlInfo.info * bfc -> unit
+	type bfcReceiver =
+	     SmlInfo.info * { content: bfc, stats: stats } -> unit
 
 	structure FilterMap = MapFn
 	    (struct
@@ -214,6 +219,27 @@ in
 		val youngest = #youngest gp
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
+		val descr = SmlInfo.descr i
+
+		fun pstats (s: BF.stats) = let
+		    fun info ((sel, lab), (l, t)) =
+			case sel s of
+			    0 => (l, t)
+			  | n => (lab :: ": " :: Int.toString n ::
+				  t :: " " :: l,
+				  ",")
+		in
+		    Say.vsay ("[" :: #1 (foldr info
+					       (["bytes]\n"], "")
+					       [(#code, "code"),
+						(#data, "data"),
+						(#env, "env"),
+						(#inlinfo, "inlinable")]))
+		end
+
+		fun ploaded _ = Say.vsay ["[loading ", descr, "]\n"]
+		fun preceived s =
+		    (Say.vsay ["[receiving ", descr, "]\n"]; pstats s)
 
 		fun fail () =
 		    if #keep_going (#param gp) then NONE else raise Abort
@@ -229,41 +255,29 @@ in
 			       cleanup = fn _ => () })
 		    fun save bfc = let
 			fun writer s = let
-			    val sz = BF.write { stream = s, content = bfc,
-						nopickle = false }
-			    fun info ((sel, lab), (l, t)) =
-				case sel sz of
-				    0 => (l, t)
-				  | n => (lab :: ": " :: Int.toString n ::
-					  t :: " " :: l,
-					  ",")
-			in
-			    Say.vsay ("[" ::
-				      #1 (foldr info
-						(["(bytes)]\n"], " ")
-						[(#code, "code"),
-						 (#data, "data"),
-						 (#env, "env"),
-						 (#inlinfo, "inlinable")]))
+			    val s = BF.write { stream = s, content = bfc,
+					       nopickle = false }
+			in pstats s; s
 			end
 			fun cleanup _ =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
 			notify gp i;
-			SafeIO.perform { openIt =
+			(SafeIO.perform { openIt =
 				           fn () => AutoDir.openBinOut binname,
-					 closeIt = BinIO.closeOut,
-					 work = writer,
-					 cleanup = cleanup }
+					  closeIt = BinIO.closeOut,
+					  work = writer,
+					  cleanup = cleanup }
+			 before TStamp.setTime (binname, SmlInfo.lastseen i))
 			handle exn => let
 			    fun ppb pps =
 				(PP.add_newline pps;
 				 PP.add_string pps (General.exnMessage exn))
 			in
 			    SmlInfo.error gp i EM.WARN
-			       ("failed to write " ^ binname) ppb
-			end;
-			TStamp.setTime (binname, SmlInfo.lastseen i)
+					  ("failed to write " ^ binname) ppb;
+			    { code = 0, env = 0, inlinfo = 0, data = 0 }
+			end
 		    end (* save *)
 		in
 		    case SmlInfo.parsetree gp i of
@@ -291,8 +305,7 @@ in
 			in
 			    perform_setup "post" post;
 			    #set GenericVC.EnvRef.topLevel toplenv;
-			    save bfc;
-			    storeBFC (i, bfc);
+			    storeBFC (i, { content = bfc, stats = save bfc });
 			    SOME memo
 			end handle (EM.Error | SF.Compile _)
 				   (* At this point we handle only
@@ -343,11 +356,12 @@ in
 				    fun reader s = let
 					val mm0 = StabModmap.get ()
 					val m = GenModIdMap.mkMap' (stat, mm0)
+					val { content, stats } =
+					    BF.read { stream = s,
+						      name = binname,
+						      modmap = m }
 				    in
-					(BF.read { stream = s,
-						   name = binname,
-						   modmap = m },
-					 ts)
+					(content, ts, stats)
 				    end
 					
 				in
@@ -358,16 +372,17 @@ in
 					    cleanup = fn _ => () })
 				    handle _ => NONE
 				end (* load *)
-				fun tryload (what, otherwise) =
+				fun tryload (report, otherwise) =
 				    case load () of
 					NONE => otherwise ()
-				      | SOME (bfc, ts) => let
+				      | SOME (bfc, ts, stats) => let
 					    val memo = bfc2memo (bfc, ts)
+					    val contst = { content = bfc,
+							   stats = stats }
 					in
 					    if isValidMemo (memo, pids, i) then
-						(Say.vsay ["[", binname,
-							   " ", what, "]\n"];
-						 storeBFC (i, bfc);
+						(report stats;
+						 storeBFC (i, contst);
 						 SOME memo)
 					    else otherwise ()
 					end
@@ -376,8 +391,7 @@ in
 				    Servers.allIdle () andalso
 				    Concur.noTasks ()
 				fun compile_again () =
-				    (Say.vsay ["[compiling ",
-					       SmlInfo.descr i, "]\n"];
+				    (Say.vsay ["[compiling ", descr, "]\n"];
 				     compile_here (stat, sym, pids, split))
 				fun compile_there' p =
 				    not (bottleneck ()) andalso
@@ -387,7 +401,7 @@ in
 				in
 				    youngest := TStamp.NOTSTAMP;
 				    if compile_there' sp then
-					tryload ("received", compile_again)
+					tryload (preceived, compile_again)
 				    else compile_again ()
 				end
 			    in
@@ -398,7 +412,7 @@ in
 				 * If the second load also goes wrong, we
 				 * compile locally to gather error messages
 				 * and make everything look "normal". *)
-				tryload ("loaded", compile)
+				tryload (ploaded, compile)
 			    end (* fromfile *)
 			    fun notglobal () =
 				case fromfile () of
@@ -476,8 +490,8 @@ in
 	fun newSbnodeTraversal () = let
 	    val { sbnode, ... } =
 		mkTraversal (fn _ => fn _ => (), fn _ => (), fn _ => 0)
-	    fun sbn_trav gp g = let
-		val r = sbnode gp g handle Abort => NONE
+	    fun sbn_trav n gp = let
+		val r = sbnode gp n handle Abort => NONE
 	    in
 		if isSome r then () else Servers.reset false;
 		r

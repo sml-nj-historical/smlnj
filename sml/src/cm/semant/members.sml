@@ -51,6 +51,8 @@ signature MEMBERCOLLECTION = sig
     val num_look : GeneralParams.info -> collection -> string -> int
     val cm_look : GeneralParams.info -> collection -> string -> bool
     val ml_look : collection -> symbol -> bool
+
+    val has_smlfiles : collection -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
@@ -256,4 +258,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	isSome (SymbolMap.find (imports, s)) orelse
 	isSome (SymbolMap.find (localdefs, s))
       | ml_look ERRORCOLLECTON _ = true
+
+    fun has_smlfiles (COLLECTION { smlfiles = [], ... }) = false
+      | has_smlfiles ERRORCOLLECTION = false
+      | has_smlfiles _ = true
 end

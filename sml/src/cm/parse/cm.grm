@@ -104,8 +104,6 @@ group : gprivspec owner opt_exports IS members (S.group
 						   gp = gp,
 						   curlib = curlib,
 						   owner = owner,
-						   error = error (ownerleft,
-								  ownerright),
 						   initgroup = ig })
       | lprivspec opt_version mand_exports IS members
                                                (S.library
@@ -116,6 +114,13 @@ group : gprivspec owner opt_exports IS members (S.group
 						   members = members,
 						   gp = gp,
 						   initgroup = ig })
+      | lprivspec IS members                   (S.proxy
+						 { path = grouppath,
+						   privileges = lprivspec,
+						   members = members,
+						   error =
+						     error (membersleft,
+							    membersright) } )
 
 opt_version : (* empty *)                      (NONE)
             | LPAREN version RPAREN            (SOME version)

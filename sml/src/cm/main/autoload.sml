@@ -25,9 +25,9 @@ signature AUTOLOAD = sig
     val reset : unit -> unit
 end
 
-functor AutoLoadFn (structure C : COMPILE
-		    structure L : LINK
+functor AutoLoadFn (structure L : LINK
 		    structure BFC : BFC
+		    structure C : COMPILE where type stats = BFC.stats
 		    sharing type C.bfc = L.bfc = BFC.bfc) :> AUTOLOAD = struct
 
     structure SE = GenericVC.StaticEnv
@@ -57,7 +57,7 @@ functor AutoLoadFn (structure C : COMPILE
 	    (* make traversal states *)
 	    val { store, get } = BFC.new ()
 	    val { exports = cTrav, ... } = C.newTraversal (L.evict, store, g)
-	    val { exports = lTrav, ... } = L.newTraversal (g, get)
+	    val { exports = lTrav, ... } = L.newTraversal (g, #content o get)
 	    fun combine (ss, d) gp =
 		case ss gp of
 		    SOME { stat, sym } =>

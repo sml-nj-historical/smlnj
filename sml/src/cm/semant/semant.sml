@@ -49,7 +49,6 @@ signature CM_SEMANT = sig
 		  gp: GeneralParams.info,
 		  curlib: SrcPath.file option,
 		  owner: SrcPath.file option,
-		  error: complainer,
 		  initgroup: group } -> group
     val library : { path: SrcPath.file,
 		    privileges: privilegespec,
@@ -58,6 +57,10 @@ signature CM_SEMANT = sig
 		    members: members,
 		    gp: GeneralParams.info,
 		    initgroup: group } -> group
+    val proxy : { path: SrcPath.file,
+		  privileges: privilegespec,
+		  members: members,
+		  error: complainer } -> group
 
     (* assembling privilege lists *)
     val initialPrivilegeSpec : privilegespec
@@ -224,9 +227,12 @@ structure CMSemant :> CM_SEMANT = struct
 	foldr add [] sgl
     end
 
+    val \/ = StringSet.union
+    infix \/
+
     fun group arg = let
 	val { path = g, privileges = p, exports = e, members = m,
-	      gp, curlib, owner, error, initgroup } = arg
+	      gp, curlib, owner, initgroup } = arg
 	val mc = applyTo (MemberCollection.implicit gp initgroup, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val pfsbn = let
@@ -242,13 +248,13 @@ structure CMSemant :> CM_SEMANT = struct
 	    MemberCollection.build (mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
-	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
 	if StringSet.isEmpty wr then ()
 	else EM.impossible "group with wrapped privileges";
 	GG.GROUP { exports = exports,
-		   kind = GG.NOLIB { subgroups = subgroups, owner = owner },
-		   required = rp'',
+		   kind = GG.NOLIB { subgroups = subgroups, owner = owner,
+				     explicit = Option.isSome e },
+		   required = rp' \/ rp \/ wr,
 		   grouppath = g,
 		   sources = MemberCollection.sources mc,
 		   sublibs = sgl2sll subgroups }
@@ -272,16 +278,52 @@ structure CMSemant :> CM_SEMANT = struct
 	    MemberCollection.build (mc, filter, gp, pfsbn ())
 	val subgroups = filt_th_sgl (MemberCollection.subgroups mc, isl)
 	val { required = rp', wrapped = wr } = p
-	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
 	GG.GROUP { exports = exports,
 		   kind = GG.LIB { version = version,
 				   kind = GG.DEVELOPED { subgroups = subgroups,
 							 wrapped = wr } },
-		   required = rp'',
+		   required = rp' \/ rp \/ wr,
 		   grouppath = g,
 		   sources = MemberCollection.sources mc,
 		   sublibs = sgl2sll subgroups }
+    end
+
+    fun proxy arg = let
+	val { path = g, members = m, error, privileges = p } = arg
+	val { required = rp', wrapped = wr } = p
+	val mc = applyTo (MemberCollection.empty, SOME g) m
+	fun notone () =
+	    (error "precisely one sub-group or sub-library required";
+	     GG.ERRORGROUP)
+	fun notexplicit () =
+	    (error "proxy for component without explicit export list";
+	     GG.ERRORGROUP)
+    in
+	if MemberCollection.has_smlfiles mc then notone ()
+	else
+	    case MemberCollection.subgroups mc of
+		[(_, GG.ERRORGROUP, _)] => GG.ERRORGROUP
+	      | [(p, sg as GG.GROUP grec, rb)] => let
+		    val { exports, kind, required = rp, ... } = grec
+		    val sgl = [(p, fn () => sg, rb)]
+		    fun doit () = let
+			val lk = GG.DEVELOPED { subgroups = sgl, wrapped = wr }
+		    in
+			GG.GROUP { exports = exports,
+				   kind = GG.LIB { version = NONE, kind = lk },
+				   required = rp \/ rp' \/ wr,
+				   grouppath = g,
+				   sources = MemberCollection.sources mc,
+				   sublibs = sgl2sll sgl }
+		    end					    
+		in
+		    case kind of
+			GG.LIB _ => doit ()
+		      | GG.NOLIB { explicit = true, ... } => doit ()
+		      | _ => notexplicit ()
+		end
+	      | l => notone ()
     end
 
     local
