@@ -1,4 +1,7 @@
-- Implement "init" modules.
+- Generating BOOTLIST (call it, e.g., LINKLIST) for user programs
+- ... make compiler bootstrapping just a special case of the above
+- Try to generalize CM by abstracting from programming language (and compiler),
+  so it can work with Twelf, TILT, or things like HOL
 - Generic notification architecture (ErrorMsg module, Say module, ...)
 - handling of non-generalizability move to later moment in time
 - lazy environment stubs
