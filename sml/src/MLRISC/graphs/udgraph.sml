@@ -68,7 +68,7 @@ struct
        fun set_exits ns = exits := ns
        fun get_entries()  = !entries
        fun get_exits()  = !exits
-       fun adj_edges i = map (fn (j,e) => (i,j,e)) (A.sub(adj,n))
+       fun adj_edges i = map (fn (j,e) => (i,j,e)) (A.sub(adj,i))
        fun neighbors i = map #1 (A.sub(adj,i))
        fun has_edge(i,j) = List.exists (fn (k,_) => j = k) (A.sub(adj,i))
        fun has_node n = case A.sub(nodes,n) of
