@@ -1395,18 +1395,13 @@ is missing, {\tt name} is used instead
 target's class
 \item[lineformat] a string that will be passed to the {\tt -L} command
 line option of {\tt notangle}
-\item[cpif] an optional boolean value (the word {\tt true} or {\tt
-false}); if set to {\tt true} then the target will not be overwritten
-if its contents would be unchanged\footnote{The tradeoff is between
-running {\tt notangle} too often or recompiling the result too
-often.}; default: {\tt true}
 \end{description}
 
 Example:
 
 \begin{verbatim}
-   project.nw (target:(name:main.sml options:(private) cpif:false)
-               target:(name:grammar class:mlyacc)
+   project.nw (target:(name:main.sml options:(private))
+               target:(name:grammar class:mlyacc witness:grammar.wtn)
                target:(name:parse.sml))
 \end{verbatim}
 
@@ -1435,6 +1430,54 @@ NowebTool.lineNumbering} controller function exported from library
 \begin{verbatim}
   val lineNumbering: string -> { get: unit -> string option,
                                  set: string option -> unit }
+\end{verbatim}
+
+The {\tt noweb} class accepts two other parameter besides {\tt
+target}:
+
+\begin{description}
+\item[subdir] specifies a sub-option that is used to specify a
+directory where derived files (i.e., target files and witness files as
+far as they have been specified using relative path names) are
+created.  If the {\tt subdir} option is missing, its value defaults to
+{\tt NW}.
+\item[witness] specifies an auxiliary derived file whose time stamp is
+used by CM to avoid recompiling extracted files whose contents have
+not changed.  If {\tt witness} has not been specified, then CM uses
+time stamps on extracted files directly to determine whether {\tt
+notangle} needs to be run.  Thus, with no witness, any change to the
+master file causes time stamps on all extracted files to be updated as
+well.  If a witness was specified, then CM will write over extracted
+files, causing their time stamps to change, only if their contents
+have also changed.  The {\tt subdir} specification also applies to the
+name of the witness file.
+\end{description}
+
+Example:
+
+\begin{verbatim}
+   foo.nw (subdir:NOWEBFILES
+           witness:foo.wtn
+           target:(name:main.sml))
+\end{verbatim}
+
+Here, the files named {\tt main.sml} and {\tt foo.wtn} will be
+created as
+\begin{verbatim}
+   NOWEBFILES/main.sml
+   NOWEBFILES/foo.wtn
+\end{verbatim}
+\noindent while without the {\tt subdir}-option it would have been
+\begin{verbatim}
+   NW/main.sml
+   NW/foo.wtn
+\end{verbatim}
+\noindent To avoid the creation of such a sub-directory, one can use
+the {\em current arc} ``{\bf .}'' and write:
+\begin{verbatim}
+   foo.nw (subdir:.
+           witness:foo.wtn
+           target:(name:main.sml))
 \end{verbatim}
 
 \section{Conditional compilation}

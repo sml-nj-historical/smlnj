@@ -22,7 +22,6 @@ structure Internals : INTERNALS =
     val resetTimers = InternalTimer.resetTimers
 
     structure BTrace = struct
-        exception BTrace of unit -> string list
         val mode = let
 	    val state = ref false
 	    fun access NONE = !state
@@ -39,8 +38,21 @@ structure Internals : INTERNALS =
 	    fun reset () = #reset (!hook) ()
 	end
 	fun report () = Core.bt_report () ()
-	fun trigger () = raise BTrace (report ())
 	fun save () = Core.bt_save () ()
+	(* The following function must be compiled with BT-instrumentation
+	 * turned off because it relies on its exception handler to _not_
+	 * restore the bt-history! *)
+	fun bthandle { work, hdl } = let
+	    val restore = save ()
+	in
+	    work ()
+	    handle e => let
+		       val do_report = report ()
+		   in
+		       restore ();
+		       hdl (e, do_report ())
+		   end
+	end
     end
 
   end;

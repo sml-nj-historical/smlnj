@@ -141,6 +141,12 @@ structure BTrace :> BTRACE = struct
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
 	  | is_prim_exp _ = false
 
+	fun is_raise_exp (A.RAISEexp _) = true
+	  | is_raise_exp (A.MARKexp (e, _) |
+			  A.CONSTRAINTexp (e, _) |
+			  A.SEQexp [e]) = is_raise_exp e
+	  | is_raise_exp _ = false
+
 	fun i_exp _ loc (A.RECORDexp l) =
 	    A.RECORDexp (map (fn (l, e) => (l, i_exp false loc e)) l)
 	  | i_exp _ loc (A.SELECTexp (l, e)) =
@@ -165,8 +171,9 @@ structure BTrace :> BTRACE = struct
 		end
 	  | i_exp tail loc (A.HANDLEexp (e, A.HANDLER (A.FNexp (rl, t)))) = let
 		val restore = tmpvar ("tmprestore", u_u_Ty)
-		fun rule (A.RULE (p, e)) =
-		    A.RULE (p, A.SEQexp [AUexp restore, i_exp tail loc e])
+		fun rule (r as A.RULE (p, e)) =
+		    if is_raise_exp e then r
+		    else A.RULE (p, A.SEQexp [AUexp restore, i_exp tail loc e])
 	    in
 		LETexp (restore, saveexp,
 			A.HANDLEexp (i_exp false loc e,

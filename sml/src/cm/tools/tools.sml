@@ -28,6 +28,8 @@ signature CORETOOLS = sig
 
     val nativeSpec : srcpath -> string
 
+    val nativePre : presrcpath -> string
+
     val srcpath : presrcpath -> srcpath
 
     exception ToolError of { tool: string, msg: string }
@@ -115,6 +117,22 @@ signature CORETOOLS = sig
      * native syntax! *)
     val outdated : string -> string list * string -> bool
 
+    (* Alternative way of checking for outdated-ness using a "witness"
+     * file.  The idea is that if both tgt (target) and wtn (witness)
+     * exist, then tgt is considered outdated if wtn is older than src.
+     * Otherwise, if tgt exists but wtn does not, then tgt is considered
+     * outdated if it is older than src.  If tgt does not exist, it is
+     * always considered outdated. *)
+    val outdated' : string ->
+		    { src: string, wtn: string, tgt: string } -> bool
+
+    (* open output file; make all necessary directories for it *)
+    val openTextOut : string -> TextIO.outstream
+
+    (* make all directories leading up to a given file; the file itself
+     * is to be left alone *)
+    val makeDirs : string -> unit
+
     (* install a classifier *)
     val registerClassifier : classifier -> unit
 
@@ -169,6 +187,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type rebindings = SrcPath.rebindings
 
     val nativeSpec = SrcPath.osstring_relative
+
+    val nativePre = SrcPath.osstring_prefile
 
     val srcpath = SrcPath.file
 
@@ -235,17 +255,39 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		    if List.exists (sameExt e) ol then gen base else gen f
 	end
 
-    fun outdated tool (l, f) = let
-	val (ftime, fexists) =
+    local
+	fun timex f =
 	    (OS.FileSys.modTime f, true)
 	    handle _ => (Time.zeroTime, false)
-	fun olderThan t f = Time.< (OS.FileSys.modTime f, t)
+	val op < = Time.<
+	fun olderThan t f = OS.FileSys.modTime f < t
+	fun cannotAccess tool f =
+	    raise ToolError { tool = tool, msg = "cannot access " ^ f }
     in
-	(List.exists (olderThan ftime) l)
-	handle _ => if fexists then true
-		    else raise ToolError { tool = tool,
-					   msg = "cannot access " ^ f }
+        fun outdated tool (l, f) = let
+	    val (ftime, fexists) = timex f
+	in
+	    (List.exists (olderThan ftime) l)
+	    handle _ => if fexists then true else cannotAccess tool f
+	end
+
+	fun outdated' tool { src, wtn, tgt } = let
+	    val (st, se) = timex src
+	    val (tt, te) = timex tgt
+	in
+	    if not se then
+		if te then false else cannotAccess tool src
+	    else if te then
+		let val (wt, we) = timex wtn
+		in
+		    if we then wt < st else tt < st
+		end
+	    else true
+	end
     end
+
+    val openTextOut = AutoDir.openTextOut
+    val makeDirs = AutoDir.makeDirs
 
     val sfx_classifiers : (string -> class option) list ref = ref []
     val gen_classifiers : (string -> class option) list ref = ref []
@@ -286,7 +328,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			     load_plugin plugin
 			 end
 		     in
-			 if try "$" orelse try "./" then sfx_loop e
+			 if try "$/" orelse try "./" then sfx_loop e
 			 else NONE
 		     end)
 	  | NONE => gen_loop (!gen_classifiers)

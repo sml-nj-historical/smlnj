@@ -13,6 +13,83 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/27 16:51:00 JST
+Tag: blume-20000627-noweb
+Description:
+
+Changes:
+
+ 1. Implemented "subdir" and "witness" options for noweb tool.
+    This caused some slight internal changes in CM's tool implementation.
+ 2. Fixed bug in "tool plugin" mechanism.  This is essentially cleaning
+    some remaining issues from earlier path anchor changes.
+ 3. Updated CM manual accordingly.
+
+ 4. Changed implementation of back-tracing so that I now consider it
+    ready for prime-time.
+
+    In particular, you don't have to explicitly trigger the back-trace
+    anymore.  Instead, if you are running BTrace-instrumented code and
+    there is an uncaught exception (regardless of whether or not it was
+    raised in instrumented code), the top-level evalloop will print
+    the back-trace.
+
+    Features:
+
+      - Instrumented and uninstrumented code work together seemlessly.
+        (Of course, uninstrumented code is never mentioned in actual
+         back-traces.)
+
+      - Asymptotic time- and space-complexity of instrumented code is
+        equal to that of uninstrumented code.  (This means that
+        tail-recursion is preserved by the instrumentation phase.)
+
+      - Modules whose code has been instrumented in different sessions
+        work together without problem.
+
+      - There is no penalty whatsoever on uninstrumented code.
+
+      - There is no penalty on "raise" expressions, even in
+        instrumented code.
+
+    A potential bug (or perhaps it is a feature, too):
+
+      A back-trace reaches no further than the outermost instrumented
+      non-trivial "raise".  Here, a "trivial" raise is one that is the
+      sole RHS of a "handle" rule.  Thus, back-traces reach trough
+
+           <exp> handle e => raise e
+
+      and even
+
+           <exp> handle Foo => raise Bar
+
+      and, of course, through
+
+           <exp> handle Foo => ...
+
+     if the exception was not Foo.
+
+     Back-traces always reach right through any un-instrumented code
+     including any of its "handle" expressions, trivial or not.
+
+   To try this out, do the following:
+
+     - Erase all existing binfiles for your program.
+       (You may keep binfiles for those modules where you think you
+        definitely don't need back-tracing.)
+     - Turn on back-trace instrumentation:
+          SMLofNJ.Internals.BTrace.mode (SOME true);
+     - Recompile your program.  (I.e., run "CM.make" or "use".)
+     - You may now turn instrumentation off again (if you want):
+          SMLofNJ.Internals.BTrace.mode (SOME false);
+     - Run your program as usual.  If it raises an exception that
+       reaches the interactive toplevel, then a back-trace will
+       automatically be printed.  After that, the toplevel loop
+       will print the exception history as usual.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/26 09:56:46 JST
 Tag: blume-20000626-setup
 Description:

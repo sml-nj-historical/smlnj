@@ -9,6 +9,7 @@
 structure AutoDir :> sig
     val openBinOut : string -> BinIO.outstream
     val openTextOut : string -> TextIO.outstream
+    val makeDirs : string -> unit
 end = struct
 
     structure P = OS.Path
@@ -16,10 +17,7 @@ end = struct
 
     fun fileExists n = F.access (n, []) handle _ => false
 
-    fun openOut fileopener p = let
-	fun fileopener' n =
-	    (if fileExists n then (F.remove n handle _ => ()) else ();
-	     fileopener n)
+    fun openEither fileopener p = let
 	fun mkDir d =
 	    F.mkDir d handle exn => (if fileExists d then () else raise exn)
 	fun generic (maker, pmaker, p) =
@@ -43,9 +41,29 @@ end = struct
 	    (Say.vsay ["[creating directory ", dir, " ...]\n"];
 	     makedirs dir)
     in
-	generic (fileopener', advertisemakedirs, p)
+	generic (fileopener, advertisemakedirs, p)
     end
+
+    (* In the open-for-output case we first get rid of the file if it
+     * already exsisted... *)
+    fun openOut fileopener =
+	openEither (fn n => (if fileExists n then (F.remove n handle _ => ())
+			     else ();
+			     fileopener n))
 
     val openTextOut = openOut TextIO.openOut
     val openBinOut = openOut BinIO.openOut
+
+    (* makeDirs is supposed to make all directories leading up to a
+     * given file.  The file itself is supposed to be left alone if
+     * it already existed.  The trick here is to (ab)use our openOut
+     * function with a "maker" parameter set to "BinIO.openIn".  This
+     * is pretty hack-ish, but it allows us to reuse the existing logic. *)
+    local
+	exception NonexistentFile
+	fun boi f = BinIO.openIn f handle _ => raise NonexistentFile
+    in
+        fun makeDirs f = BinIO.closeIn (openEither boi f)
+	    handle NonexistentFile => ()
+    end
 end

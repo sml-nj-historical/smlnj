@@ -78,6 +78,9 @@ signature SRCPATH = sig
     (* get name of dir *)
     val osstring_dir : dir -> string
 
+    (* get name of prefile *)
+    val osstring_prefile : prefile -> string
+
     (* get a human-readable (well, sort of) description *)
     val descr : file -> string
 
@@ -315,6 +318,9 @@ structure SrcPath :> SRCPATH = struct
     fun cwd () = (revalidateCwd (); CWD (!cwd_info))
 
     val osstring = pp2name o #pp o elab_file o unintern
+
+    fun osstring_prefile { context, arcs, err } =
+	pp2name (#pp (augElab arcs (elab_dir context)))
 
     val descr = encode0 true o unintern
 

@@ -20,12 +20,24 @@
 structure BTImp : sig
 end = struct
 
-    structure S = IntRedBlackSet
     structure M = IntRedBlackMap
+
+    (* Home-cooked set representation:
+     *  This relies on two things:
+     *   - we don't need a lookup operation
+     *   - we only join sets that are known to be disjoint *)
+    datatype set =
+	EMPTY
+      | SINGLETON of int
+      | UNION of set * set
+
+    fun fold f i EMPTY = i
+      | fold f i (SINGLETON x) = f (x, i)
+      | fold f i (UNION (x, y)) = fold f (fold f i y) x
 
     datatype descr =
 	STEP of int
-      | LOOP of S.set
+      | LOOP of set
 
     type stage = { num: int, descr: descr }
 
@@ -53,10 +65,10 @@ end = struct
     in
 	case M.find (map, i) of
 	    SOME num => let
-		fun toSet (STEP i) = S.singleton i
+		fun toSet (STEP i) = SINGLETON i
 		  | toSet (LOOP s) = s
-		fun join (set, d) = S.union (set, toSet d)
-		fun finish (stages, c, []) =
+		fun join (set, d) = UNION (set, toSet d)
+		fun finish (stages, c, EMPTY) =
 		    let val stage = { num = num, descr = LOOP (toSet c) }
 			val front' = { depth = depth,
 				       map = map,
@@ -64,22 +76,21 @@ end = struct
 		    in
 			cur := (front', back)
 		    end
-		  | finish (stages, c, l) =
-		    let val s0 = foldl S.union S.empty l
-			val stage = { num = num, descr = LOOP (join (s0, c)) }
+		  | finish (stages, c, set) =
+		    let	val stage = { num = num, descr = LOOP (join (set, c)) }
 			fun ins (i, m) = M.insert (m, i, num)
 			val front' = { depth = depth,
-				       map = S.foldl ins map s0,
+				       map = fold ins map set,
 				       stages = stage :: stages }
 		    in
 			cur := (front', back)
 		    end
-		fun loop ([], setl) = finish ([], LOOP S.empty, setl)
-		  | loop ({ num = n', descr = d' } :: t, setl) =
-		    if num = n' then finish (t, d', setl)
-		    else loop (t, toSet d' :: setl)
+		fun loop ([], set) = () (* cannot happen! *)
+		  | loop ({ num = n', descr = d' } :: t, set) =
+		    if num = n' then finish (t, d', set)
+		    else loop (t, join (set, d'))
 	    in
-		loop (stages, [])
+		loop (stages, EMPTY)
 	    end
 	  | NONE => let
 		val num = case stages of
@@ -130,7 +141,7 @@ end = struct
 		      | start (h :: t, a) =
 			loop (t, name ("    ", " /", h) :: a)
 		in
-		    start (S.listItems s, a)
+		    start (fold (op ::) [] s, a)
 		end
 	    fun jumps ([], a) = a
 	      | jumps ([n], a) = stage ("CALL", n, a)

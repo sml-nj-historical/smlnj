@@ -29,7 +29,6 @@ signature INTERNALS =
 
   (* back-tracing control (experimental; M.Blume, 06/2000) *)
     structure BTrace : sig
-	exception BTrace of unit -> string list
 	val install : { corefns: { save: unit -> unit -> unit,
 				   push: unit -> unit -> unit,
 				   add: int * int -> unit,
@@ -40,7 +39,8 @@ signature INTERNALS =
 		      -> unit
 	val mode : bool option -> bool	(* turn annotation pass on/off *)
 	val report : unit -> unit -> string list
-	val trigger : unit -> 'a
+	val bthandle : { work : unit -> 'a,
+			 hdl : exn * string list -> 'a } -> 'a
 	(* The following is needed in evalloop.sml (or any other module
 	 * that explicitly handles the BTrace exception but hasn't itself
 	 * been compiled with mode=true) to make sure that the call
