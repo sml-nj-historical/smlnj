@@ -139,19 +139,24 @@ structure SmlInfo :> SMLINFO = struct
 	    case AbsPathMap.find (!knownInfo, sourcepath) of
 		NONE => newpersinfo ()
 	      | SOME (pi as PERS { group = gr' as (g, r), ... }) =>
-		    if AbsPath.compare (group, g) <> EQUAL then
-			(if GroupReg.registered groupreg g then
-			     let val n = AbsPath.name sourcepath
-			     in gerror gp gr EM.COMPLAIN
-				 (concat ["ML source file ", n,
-					  " appears in more than one group"])
-				 EM.nullErrorBody;
-				gerror gp gr' EM.COMPLAIN
-				 (concat ["(previous occurence of ", n, ")"])
-				 EM.nullErrorBody
-			     end
-			 else ();
-			 newpersinfo ())
+		    if AbsPath.compare (group, g) <> EQUAL then let
+			val n = AbsPath.name sourcepath
+		    in
+			if GroupReg.registered groupreg g then
+			    (gerror gp gr EM.COMPLAIN
+			        (concat ["ML source file ", n,
+					 " appears in more than one group"])
+				EM.nullErrorBody;
+			     gerror gp gr' EM.COMPLAIN
+				(concat ["(previous occurence of ", n, ")"])
+				EM.nullErrorBody)
+			else
+			    gerror gp gr EM.WARN
+			        (concat ["ML source file ", n,
+					 " has switched groups"])
+				EM.nullErrorBody;
+			newpersinfo ()
+		    end
 		    else pi
     in
 	INFO { sourcepath = sourcepath,

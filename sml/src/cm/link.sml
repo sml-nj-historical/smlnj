@@ -130,8 +130,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val primconf = Primitive.configuration { basis = basis }
 	    val pcmode = PathConfig.hardwire
 		[("smlnj-lib.cm", "/home/blume/ML/current/lib")]
+	    val fnpolicy =
+		FilenamePolicy.colocate { os = SMLofNJ.SysInfo.getOSKind (),
+					  arch = HostMachDepVC.architecture }
 	    val param = { primconf = primconf,
-			  fnpolicy = FilenamePolicy.default,
+			  fnpolicy = fnpolicy,
 			  pcmode = pcmode,
 			  keep_going = true,
 			  pervasive = perv,

@@ -1,5 +1,3 @@
-(* just a placeholder so far *)
-
 (*
  * Configurable path anchors for new CM.
  *
