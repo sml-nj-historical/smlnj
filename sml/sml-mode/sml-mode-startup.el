@@ -15,7 +15,7 @@
 
 ;; the rest is the auto-generated autoloads
 
-;;;### (autoloads (sml-mode) "sml-mode" "sml-mode.el" (14190 21314))
+;;;### (autoloads (sml-mode) "sml-mode" "sml-mode.el" (14190 21870))
 ;;; Generated autoloads from sml-mode.el
 
 (autoload (quote sml-mode) "sml-mode" "\
@@ -26,7 +26,7 @@ Entry to this mode runs the hooks on sml-mode-hook.
 ;;;***
 
 ;;;### (autoloads (sml-load-file sml-send-buffer sml-send-region
-;;;;;;  switch-to-sml run-sml) "sml-proc" "sml-proc.el" (14187 25166))
+;;;;;;  switch-to-sml run-sml) "sml-proc" "sml-proc.el" (14192 10910))
 ;;; Generated autoloads from sml-proc.el
 
 (autoload (quote run-sml) "sml-proc" "\
@@ -71,3 +71,8 @@ the command to send to the ML process; a trailing \";\\n\" will be added
 automatically." t nil)
 
 ;;;***
+
+;;; Local Variables:
+;;; no-byte-compile: t
+;;; no-update-autoloads: t
+;;; End:
