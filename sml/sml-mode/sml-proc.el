@@ -280,7 +280,7 @@ buffer."
 	     ;; buffer-name returns nil if the buffer has been killed
 	     (and buf (buffer-name buf) buf)))
       ;; no buffer found, make a new one
-      (call-interactively 'run-sml)))
+      (save-excursion (call-interactively 'run-sml))))
 
 (defun sml-buffer (echo)
   "Make the current buffer the current `sml-buffer' if that is sensible.
