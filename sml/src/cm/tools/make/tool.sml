@@ -9,9 +9,10 @@ structure MakeTool = struct
     local
 	open Tools
 
+	structure C = StdConfig.MakeTool
+
 	val tool = "Make-Command"	(* the name of this tool *)
 	val class = "make"		(* the name of the class *)
-	val stdCmdPath = "make"		(* the shell command to invoke it *)
 	val kw_class = "class"
 	val kw_options = "options"
 
@@ -47,7 +48,13 @@ structure MakeTool = struct
 		 [{ name = str, mkpath = mkpath,
 		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () = let
-		val cmdname = mkCmdName stdCmdPath
+		val cmdname = mkCmdName (#get C.command ())
+		val bindir =
+		    if #get C.pass_bindir () then
+			case #get (CM.Anchor.anchor "bindir") () of
+			    NONE => ""
+			  | SOME d => " SMLNJ_BINDIR=" ^ d
+		    else ""
 		val tname =
 		    if OS.Path.isAbsolute tname then
 			OS.Path.mkRelative
@@ -55,7 +62,7 @@ structure MakeTool = struct
 			      relativeTo = OS.FileSys.getDir () }
 		    else tname
 		val cmd = concat (cmdname :: foldr (fn (x, l) => " " :: x :: l)
-				                   [" ", tname] mopts)
+				                   [bindir, " ", tname] mopts)
 	    in
 		vsay ["[", cmd, "]\n"];
 		if OS.Process.system cmd = OS.Process.success then ()
@@ -67,5 +74,6 @@ structure MakeTool = struct
 	end
     in
         val _ = registerClass (class, rule)
+	structure Control = C
     end
 end

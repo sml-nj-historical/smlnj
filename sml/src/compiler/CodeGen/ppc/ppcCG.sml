@@ -15,8 +15,7 @@ structure PPCCG =
     structure Shuffle    = PPCShuffle
 
     structure CCalls     =
-      PPCMacOSX_CCalls (structure T = PPCMLTree  fun ix x = x)
-      (* DummyCCallsFn (PPCMLTree) *)
+      PPCMacOSX_CCalls (structure T = PPCMLTree)
 
     structure OmitFramePtr = struct
       structure CFG=PPCCFG

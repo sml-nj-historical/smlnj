@@ -99,4 +99,7 @@ signature MACH_SPEC =
     (* On machines with a real frame pointer, there is no point in
      * attempting to omit a (virtual) frame pointer.  Example: Sparc *)
     val framePtrNeverVirtual : bool	(* suppress omit-frame-ptr phase *)
+
+    (* largest possible argument list size (in bytes) for C-calls *)
+    val ccall_maxargspace : int option
   end (* MACH_SPEC *)

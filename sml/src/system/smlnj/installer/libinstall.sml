@@ -287,6 +287,9 @@ end = struct
 		 write_cm_pathconfig (finalanchor, finalconfigpath))
 	end
 
+	fun command_pathconfig target =
+	    write_cm_pathconfig (target, P.concat (P.parentArc, "bin"))
+
 	(* build a standalone program, using auxiliary build script *)
 	fun standalone { target, optheapdir, optsrcdir } = let
 	    (* target: name of program; this is the same as the basename
@@ -331,7 +334,7 @@ end = struct
 			       " still missing.\n"]
 		 else
 		     fail ["Building ", target, " failed.\n"];
-		 write_cm_pathconfig (target, P.concat (P.parentArc, "bin"));
+		 command_pathconfig target;
 		 F.chDir smlnjroot)
 	end
 
@@ -412,7 +415,8 @@ end = struct
 			:: !salist
 	  | one module = fail ["unknown module: ", module, "\n"]
     in
-	(app one modules;
+	(command_pathconfig "bindir";	(* dummy -- for CM make tool *)
+	 app one modules;
 	 if dostabs () andalso domoves () andalso dolatesas () then
 	     uniqconfig ()
 	 else fail ["stabilization failed\n"])

@@ -226,7 +226,7 @@ functor PPCMacOSX_CCalls (
 			  else (SOME resRegLoc, argGPRs, NONE)
 		      end
 		(* end case *))
-	  fun assign ([], offset, _, _, layout) = List.rev layout
+	  fun assign ([], offset, _, _, layout) = (offset, List.rev layout)
 	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = (
 		case ty
 		 of CTy.C_void => error "unexpected void argument type"
@@ -237,6 +237,7 @@ functor PPCMacOSX_CCalls (
 			    assign (tys, offset+4, [], fprs, FReg(fltTy, fpr, SOME offset)::layout)
 			| ([], []) =>
 			    assign (tys, offset+4, [], [], FStk(fltTy, offset)::layout)
+			| _ => error "FPRs exhausted before GPRs"
 		      (* end case *))
 		  | CTy.C_double =>
 		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
@@ -273,10 +274,13 @@ functor PPCMacOSX_CCalls (
 		   of (_::_::gprs, fpr::fprs) => continue (gprs, fprs, freg fpr)
 		    | (_, fpr::fprs) => continue ([], fprs, freg fpr)
 		    | ([], []) => continue ([], [], FStk(dblTy, offset))
+		    | _ => error "FPRs exhausted before GPRs"
 		  (* end case *)
 		end
+	  val (sz, argLocs) = assign (paramTys, 0, argGPRs, argFPRs, [])
 	  in {
-	    argLocs = assign (paramTys, 0, argGPRs, argFPRs, []),
+	    argLocs = argLocs,
+	    argMem = {szb = IntInf.toInt sz, align = 4},
 	    resLoc = resLoc,
 	    structRetLoc = structRet
 	  } end
@@ -298,7 +302,11 @@ functor PPCMacOSX_CCalls (
 	  callComment, args
 	} = let
 	  val {conv, retTy, paramTys} = proto
-	  val {argLocs, resLoc, structRetLoc} = layout proto
+	  val {argLocs, argMem, resLoc, structRetLoc} = layout proto
+	(* inform the client of the size of the parameter area *)
+	  val _ = if not(paramAlloc argMem)
+		then raise Fail "parameter memory allocation not implemented yet"
+		else ()
 	(* generate code to assign the arguments to their locations *)
 	  fun assignArgs ([], [], stms) = stms
 	    | assignArgs (Reg(ty, r, _) :: locs, ARG exp :: args, stms) =

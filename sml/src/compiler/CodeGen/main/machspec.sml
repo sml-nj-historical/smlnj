@@ -70,5 +70,7 @@ structure DefaultMachSpec : MACH_SPEC =
     val LimitPtrMaskOffVSP = 200
 
     val framePtrNeverVirtual = false
+
+    val ccall_maxargspace = NONE
   end (* DefaultMachSpec *)
 

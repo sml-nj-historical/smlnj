@@ -31,8 +31,6 @@ structure StdConfig = struct
 				       SOME s => s
 				     | NONE => "(not set)") }
 
-	val string_cvt = ControlUtil.Cvt.string
-
 	val nextpri = ref 0
 
 	fun new (c, n, h, d) = let
@@ -85,5 +83,44 @@ structure StdConfig = struct
 	val generate_index = new (bool_cvt, "generate-index",
 				  "whether CM generates library indices",
 				  false)
+
+	(* controls for make tool *)
+	structure MakeTool = struct
+	local
+	    val priority = [1]
+	    val prefix = "make-tool"
+	    val obscurity = 2
+	    val mregistry = ControlRegistry.new { help = "CM Make Tool" }
+	    val _ = ControlRegistry.nest registry { prefix = SOME prefix,
+						    pri = priority,
+						    obscurity = 0,
+						    reg = mregistry }
+
+	    val nextpri = ref 0
+
+	    fun new (c, n, h, d) =
+		let val r = ref d
+		    val p = !nextpri
+		    val ctl = Controls.control { name = n, pri = [p],
+						 obscurity = obscurity,
+						 help = h, ctl = r }
+		in
+		    nextpri := p + 1;
+		    ControlRegistry.register mregistry
+			     { ctl = Controls.stringControl c ctl,
+			       envName = SOME (ControlUtil.EnvName.toUpper
+						   "CM_MAKE_" n) };
+		    { set = fn x => r := x,
+		      get = fn () => !r }
+	    end
+	in
+	    val command =
+		new (ControlUtil.Cvt.string, "command",
+		     "the shell-command", "make")
+	    val pass_bindir =
+		new (ControlUtil.Cvt.bool, "smlnj-bindir",
+		     "whether to pass SMLNJ_BINDIR to command", true)
+	end
+	end
     end
 end

@@ -5,4 +5,4 @@ HF = ../libh.sml
 CF = math.cm
 
 $(D)/$(CF): $(FILES)
-	ml-nlffigen -include $(HF) -libhandle $(H) -dir $(D) -cmfile $(CF) $^
+	$(SMLNJ_BINDIR)/ml-nlffigen -include $(HF) -libhandle $(H) -dir $(D) -cmfile $(CF) $^

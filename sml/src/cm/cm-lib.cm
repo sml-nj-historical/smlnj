@@ -14,6 +14,8 @@ Group (../system/smlnj/internal/cm-lib.cm)
 	structure Sharing
 	signature TOOLS
 	structure Subst
+
+	structure StdConfig
 is
 	$/basis.cm
 	$/smlnj-lib.cm
