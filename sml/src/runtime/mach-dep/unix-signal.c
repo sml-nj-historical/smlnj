@@ -123,16 +123,16 @@ int GetSignalState (vproc_state_t *vsp, int sigNum)
  */
 PVT SigReturn_t CSigHandler (
     int		    sig,
-#if defined(OPSYS_LINUX)
+#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     SigContext_t    sc)
-#elif defined(OPSYS_MKLINUX)
+#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
     SigContext_t    *scp)
 #else
     SigInfo_t	    info,
     SigContext_t    *scp)
 #endif
 {
-#if defined(OPSYS_LINUX) && defined(USE_ZERO_LIMIT_PTR_FN)
+#if defined(OPSYS_LINUX) && defined(TARGET_X86) && defined(USE_ZERO_LIMIT_PTR_FN)
     SigContext_t    *scp = &sc;
 #endif
     vproc_state_t   *vsp = SELF_VPROC;

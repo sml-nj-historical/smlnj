@@ -263,6 +263,25 @@ extern void SetFSR();
      typedef void SigReturn_t;
 
 #    define SIG_Flags		0
+#  elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
+    /* PPC, Linux */
+
+#    include <signal.h>
+     typedef struct sigcontext_struct SigContext_t; 
+
+#    define SIG_FAULT1          SIGTRAP
+
+#    define INT_DIVZERO(s, c)           (((s) == SIGTRAP) && (((c) == 0) || ((c) == 0x2000) || ((c) == 0x4000)))
+#    define INT_OVFLW(s, c)             (((s) == SIGTRAP) && (((c) == 0) || ((c) == 0x2000) || ((c) == 0x4000)))
+#    define SIG_GetPC(scp)              ((scp)->regs->nip)
+#    define SIG_SetPC(scp, addr)        { (scp)->regs->nip = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)       { ((scp)->regs->gpr[15] = 0); } /* limitptr = 15 (see src/runtime/mach-dep/PPC.prim.asm) */
+#    define SIG_GetCode(info,scp)       ((scp)->regs->gpr[PT_FPSCR])
+#    define SIG_ResetFPE(scp)           { (scp)->regs->gpr[PT_FPSCR] = 0x0; }
+     typedef void SigReturn_t;
+
+#    define SIG_Flags           0
+
 
 #  endif /* HOST_RS6000/HOST_PPC */
 
@@ -346,7 +365,7 @@ extern void SetFSR();
 extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 #  define SIG_InitFPE()    FPEEnable()
 
-#  if defined(OPSYS_LINUX)
+#  if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     /** X86, LINUX **/
 #    if (!defined(_SIGCONTEXT_H) && !defined(sigcontext_struct))
       /* older versions of Linux don't define this in <signal.h> */

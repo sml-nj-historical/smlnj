@@ -235,7 +235,7 @@ extern char     *sys_errlist[];
 extern int      sys_nerr;
 extern char     *sys_errlist[];
 
-#elif defined(OPSYS_LINUX)
+#elif (defined(TARGET_X86) && defined(OPSYS_LINUX))
 #  define OS_NAME	"Linux"
 #  define HAS_POSIX_LIBRARIES
 #  define HAS_POSIX_SIGS
@@ -249,8 +249,8 @@ extern char     *sys_errlist[];
 
 #include <features.h>
 
-#elif defined(OPSYS_MKLINUX)	/* micro-kernel linux */
-#  define OS_NAME	"MkLinux"
+#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
+#  define OS_NAME	"Linux"
 #  define HAS_POSIX_LIBRARIES
 #  define HAS_POSIX_SIGS
 #  define HAS_GETRUSAGE

@@ -75,7 +75,7 @@ case `uname -s` in
 	ARCH=ppc
 	case `uname -r` in
 	  *osfmach*) OPSYS=mklinux ;;
-	  *) exit 1 ;;
+	  *) ;;
 	esac
 	;;
       *) exit 1;;

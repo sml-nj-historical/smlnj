@@ -261,8 +261,10 @@ CENTRY(restoreregs)
 #if defined(USE_TOC)
 	lwz	0,T.saveregs(2)
 #else
-	lis	0, CSYM(saveregs)@ha		/* GPR0 <- addrof(saveregs) */
-	addi	0, 0, CSYM(saveregs)@l
+	lis	28, CSYM(saveregs)@ha		/* GPR0 <- addrof(saveregs) */
+	addi	28, 28, CSYM(saveregs)@l
+        li      0, 0
+        add     0, 28, 0
 #endif
 	stw	3, MLSTATE_OFFSET(sp)
 	stw	0, STARTGC_OFFSET(sp)
@@ -725,7 +727,7 @@ CENTRY(RestoreFPRegs)
 	lfd	31, 136(3)
 	blr
 
-#if defined(OPSYS_MKLINUX)
+#if (defined(OPSYS_LINUX) && defined(TARGET_PPC))
 
 #define CACHE_LINE_SZB		32
 #define CACHE_LINE_MASK		(CACHE_LINE_SZB-1)

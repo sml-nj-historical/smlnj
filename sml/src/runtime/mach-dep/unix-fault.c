@@ -58,16 +58,16 @@ void InitFaultHandlers (ml_state_t *msp)
  */
 PVT SigReturn_t FaultHandler (
     int		    signal,
-#if defined(OPSYS_LINUX)
+#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     SigContext_t    sc)
-#elif defined(OPSYS_MKLINUX)
+#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
     SigContext_t    *scp)
 #else
     SigInfo_t	    info,
     SigContext_t    *scp)
 #endif
 {
-#if defined(OPSYS_LINUX)
+#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     SigContext_t    *scp = &sc;
 #endif
     ml_state_t	    *msp = SELF_VPROC->vp_state;
@@ -83,12 +83,12 @@ PVT SigReturn_t FaultHandler (
 	Die ("bogus fault not in ML: (%d, %#x)\n", signal, SIG_GetCode(info, scp));
 
    /* Map the signal to the appropriate ML exception. */
-    if (INT_DIVZERO(signal, code)) {
-	msp->ml_faultExn = DivId;
+    if (INT_OVFLW(signal, code)) {
+	msp->ml_faultExn = OverflowId;
 	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
     }
-    else if (INT_OVFLW(signal, code)) {
-	msp->ml_faultExn = OverflowId;
+    else if (INT_DIVZERO(signal, code)) {
+	msp->ml_faultExn = DivId;
 	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
     }
     else
@@ -115,14 +115,14 @@ extern void PrintInstrHistory (FILE *);
  */
 PVT SigReturn_t PanicTrace (
     int		    signal,
-#if defined(OPSYS_LINUX)
+#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     SigContext_t    sc)
 #else
     SigInfo_t	    info,
     SigContext_t    *scp)
 #endif
 {
-#if defined(OPSYS_LINUX)
+#if (defined(TARGET_X86) && defined(OPSYS_LINUX))
     SigContext_t    *scp = &sc;
 #endif
 

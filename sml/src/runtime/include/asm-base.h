@@ -100,7 +100,7 @@
 #    define ALIGN8	.align 3
 #    define DOUBLE(V)	.double V
 #    define LABEL(ID)   ID:
-#  elif defined(OPSYS_MKLINUX)
+#  elif (defined(OPSYS_LINUX) && defined(TARGET_PPC))
 #    define CFUNSYM(ID)	ID
 #    define GLOBAL(ID)	.globl CSYM(ID)
 #    define TEXT	.section ".text"

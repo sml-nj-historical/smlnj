@@ -39,6 +39,9 @@
 #elif (defined(TARGET_SPARC) || defined(TARGET_ALPHA32) || defined(TARGET_HPPA) || defined(OPSYS_MKLINUX))
 extern FlushICache (void *addr, int nbytes);
 
+#elif (defined(TARGET_PPC) && defined(OPSYS_LINUX))
+extern FlushICache (void *addr, int nbytes);
+
 #else
 #  define FlushICache(addr, size)
 #endif
