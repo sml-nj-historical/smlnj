@@ -778,10 +778,10 @@ struct
    
       and emitTrap() = emit(I.TW{to=31,ra=zeroR,si=I.ImmedOp 0}) 
 
-      and beginCluster _ =
+      and beginCluster' _ =
 	   (trapLabel := NONE; beginCluster 0)
 
-      and endCluster a =
+      and endCluster' a =
            (case !trapLabel of 
               SOME label => 
               (defineLabel label; emitTrap(); trapLabel := NONE) 
@@ -802,8 +802,8 @@ struct
 	  }
        and self() = 
        TS.S.STREAM
-       { beginCluster  = beginCluster,
-         endCluster    = endCluster,
+       { beginCluster  = beginCluster',
+         endCluster    = endCluster',
          emit          = doStmt,
          pseudoOp      = pseudoOp,
          defineLabel   = defineLabel,
