@@ -1,7 +1,2 @@
 - Implement "init" modules.
-- Allow servers with equal names.
-- Correct handling of SmlInfo registry.
-  (dispose of entries that have been dropped from a group/library,
-   don't do the "reachable" thing or make it robust,
-   do correct error checking wrt. sml files in multiple groups)
 - Generic notification architecture (ErrorMsg module, Say module, ...)

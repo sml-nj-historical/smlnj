@@ -20,6 +20,20 @@ signature SMLINFO = sig
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
 
+    (* The idea behind "newGeneration" is the following:
+     * Before parsing .cm files (on behalf of CM.make/recomp or CMB.make etc.)
+     * we start a new generation.  While parsing, when we encounter a new
+     * SML source we re-use existing information and bump its generation
+     * number to "now".  After we are done with one group we can safely
+     * evict all info records for files in this group if their generation
+     * is not "now".
+     * Moreover, if we encounter an entry that has a different owner group,
+     * we can either signal an error (if the generation is "now" which means
+     * that the file was found in another group during the same parse) or
+     * issue a "switched groups" warning (if the generation is older than
+     * now which means that the file used to be in another group). *)
+    val newGeneration : unit -> unit
+
     val info : GeneralParams.info ->
 	{ sourcepath: SrcPath.t,
 	  group: SrcPath.t * region,
@@ -44,8 +58,13 @@ signature SMLINFO = sig
     (* forget a parse tree that we are done with *)
     val forgetParsetree : info -> unit
 
-    (* evict all but the reachable nodes in the cache *)
-    val forgetAllBut : SrcPathSet.set -> unit
+    (* Evict all elements that belong to a given group but which
+     * are not of the current generation. "cleanGroup" should be
+     * called right after finishing to parse the group file. *)
+    val cleanGroup : SrcPath.t -> unit
+
+    (* Delete all known info. *)
+    val reset : unit -> unit
 
     (* different ways of describing an sml file using group and source *)
     val spec : info -> string		(* sspec *)
@@ -69,10 +88,13 @@ structure SmlInfo :> SMLINFO = struct
 
     type complainer = EM.complainer
 
+    type generation = unit ref
+
     (* sh_mode is an elaboration of sh_spec;  it must be persistent
      * and gets properly re-computed when there is a new sh_spec *)
     datatype persinfo =
 	PERS of { group: SrcPath.t * region,
+		  generation: generation ref,
 		  lastseen: TStamp.t ref,
 		  parsetree: (ast * source) option ref,
 		  skeleton: Skeleton.decl option ref,
@@ -87,6 +109,13 @@ structure SmlInfo :> SMLINFO = struct
 		  split: bool }
 
     type ord_key = info
+
+    local
+	val generation = ref (ref ())
+    in
+	fun now () = !generation
+	fun newGeneration () = generation := ref ()
+    end
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun skelname (INFO { mkSkelname = msn, ... }) = msn ()
@@ -121,22 +150,27 @@ structure SmlInfo :> SMLINFO = struct
     fun forgetParsetree (INFO { persinfo = PERS { parsetree, ... }, ... }) =
 	parsetree := NONE
 
-    fun forgetAllBut reachable = let
-	fun isReachable (p, m) = SrcPathSet.member (reachable, p)
+    fun cleanGroup g = let
+	val n = now ()
+	fun isCurrent (PERS { generation = ref gen, group = (g', _), ... }) =
+	    gen = n orelse SrcPath.compare (g, g') <> EQUAL
     in
-	knownInfo := SrcPathMap.filteri isReachable (!knownInfo)
+	knownInfo := SrcPathMap.filter isCurrent (!knownInfo)
     end
+
+    fun reset () = knownInfo := SrcPathMap.empty
 
     (* check timestamp and throw away any invalid cache *)
     fun validate (sourcepath, PERS pir) = let
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
-	val { group, lastseen, parsetree, skeleton, sh_mode } = pir
+	val { group, lastseen, parsetree, skeleton, sh_mode, generation } = pir
 	val ts = !lastseen
 	val nts = SrcPath.tstamp sourcepath
     in
 	if TStamp.needsUpdate { source = nts, target = ts } then
 	    (lastseen := nts;
+	     generation := now ();
 	     parsetree := NONE;
 	     skeleton := NONE)
 	else ()
@@ -152,7 +186,8 @@ structure SmlInfo :> SMLINFO = struct
 	    val ts = SrcPath.tstamp sourcepath
 	    val pi = PERS { group = gr, lastseen = ref ts,
 			    parsetree = ref NONE, skeleton = ref NONE,
-			    sh_mode = ref (Sharing.SHARE false) }
+			    sh_mode = ref (Sharing.SHARE false),
+			    generation = ref (now ()) }
 	in
 	    knownInfo := SrcPathMap.insert (!knownInfo, sourcepath, pi);
 	    pi
@@ -160,11 +195,11 @@ structure SmlInfo :> SMLINFO = struct
 	fun persinfo () =
 	    case SrcPathMap.find (!knownInfo, sourcepath) of
 		NONE => newpersinfo ()
-	      | SOME (pi as PERS { group = gr' as (g, r), ... }) =>
+	      | SOME (pi as PERS { group = gr' as (g, r), generation, ... }) =>
 		    if SrcPath.compare (group, g) <> EQUAL then let
 			val n = SrcPath.descr sourcepath
 		    in
-			if GroupReg.registered groupreg g then
+			if !generation = now () then
 			    (gerror gp gr EM.COMPLAIN
 			        (concat ["ML source file ", n,
 					 " appears in more than one group"])

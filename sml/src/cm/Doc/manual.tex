@@ -102,8 +102,10 @@ words, there can be no top-level type-, value-, or infix-definitions.
 \item For a given symbol, there can be at most one ML source file per
 library (or---more correctly---one file per library component; see
 Section~\ref{sec:groups}) that defines the symbol at top level.
-\item For a given symbol, there can be at most one sub-library or one
-sub-group that exports that symbol.
+\item If more than one sub-library or sub-group is exporting the same
+symbol, then the definition (i.e., the ML source file that actually
+defines the symbol) must be identical in all cases.
+\label{rule:diamond}
 \item The use of ML's {\bf open} construct is not permitted at top
 level.
 \end{enumerate}
@@ -113,6 +115,17 @@ sub-libraries to be distinct from the exports of ML source files.
 Here, the disambiguating rule is that the definition from the ML
 source takes precedence over the definition imported from the group or
 library.
+
+Rule~\ref{rule:diamond} may come as a bit of a surprise considering
+that each ML source file can be a member of at most one group or
+library (see section~\ref{sec:multioccur}).  However, it is indeed
+possible for two libraries to export the ``same'' definition provided
+they both import that definition from a third library.  For example,
+let us assume that {\tt a.cm} exports a structure {\tt X} which was
+defined in {\tt x.sml}---one of {\tt a.cm}'s members.  Now, if both
+{\tt b.cm} and {\tt c.cm} re-export that same structure {\tt X} after
+importing it from {\tt a.cm}, it is legal for a fourth library {\tt
+d.cm} to import from both {\tt b.cm} and {\tt c.cm}.
 
 The full syntax for library description files also includes provisions
 for a simple ``conditional compilation'' facility (see
@@ -196,6 +209,7 @@ is
 \end{verbatim}
 
 \subsection{Multiple occurences of the same member}
+\label{sec:multioccur}
 
 The following rules apply to multiple occurences of the same ML source
 file, the same library, or the same group within a program:

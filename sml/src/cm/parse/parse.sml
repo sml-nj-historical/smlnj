@@ -320,8 +320,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		case pro of
 		    NONE => NONE
 		  | SOME pr =>
-			if stabthis then stabilize pr
-			else SOME pr
+			(SmlInfo.cleanGroup group;
+			 if stabthis then stabilize pr
+			 else SOME pr)
 	    end
             handle LrParser.ParseError => NONE
 	in
@@ -329,15 +330,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    else normal_processing ()
 	end
     in
+	SmlInfo.newGeneration ();
 	case mparse (group, [], ref false, stabthis, NONE) of
 	    NONE => NONE
-	  | SOME g => let
-		val reach1 = Reachable.reachable g
-		val reach2 = Reachable.reachable' (pending ())
-		val reach = SrcPathSet.union (reach1, reach2)
-	    in
-		SmlInfo.forgetAllBut reach;
-		SOME (g, ginfo)
-	    end
+	  | SOME g => SOME (g, ginfo)
     end
 end
