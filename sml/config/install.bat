@@ -35,5 +35,5 @@ for /D %%a in (*.*) do echo %%a %%a >>..\lib\pathconfig
 for /D %%a in (*.*) do move %%a ..\lib
 cd ..
 
-REM Do all the rest using libinstall.sml.
-%COMSPEC% /C "bin\sml config\libinstall.sml config\winlibinstall.sml"
+REM Do all the rest using the precompiled installer.
+%COMSPEC% /C "bin\sml config\libinstall.sml -m $smlnj/installer.cm"

@@ -376,23 +376,11 @@ fi
 cd $ROOT
 
 #
-# Now do all the rest using the libinstall.sml script:
+# Now do all the rest using the precompiled installer:
 #
 echo $this: Installing other libraries and programs:
-if $BINDIR/sml $CONFIGDIR/libinstall.sml <<EOF
-LibInstall.proc { smlnjroot = "${ROOT}",
-                  buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
-                  unpackcmd = SOME "$CONFIGDIR/unpack",
-                  instcmd = fn target => let
-                              val new = "$BINDIR/" ^ target
-                            in
-                               if OS.FileSys.access (new, []) then ()
-                               else
-                                 Posix.FileSys.symlink
-                                    { old = "$BINDIR/.run-sml",
-                                      new = new }
-                             end }
-EOF
+export ROOT CONFIGDIR BINDIR
+if $BINDIR/sml -m \$smlnj/installer.cm
 then
     vsay $this: Installation complete.
 else
