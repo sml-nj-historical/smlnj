@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/11/04 11:50:00 CST
+Tag: blume-20031104-move-libraries
+Description:
+
+Eliminated the "dont_move_libraries" directive in config/targets.
+(The mechanism was broken and could not be fixed easily.  Moreover,
+there does not seem to be any reason not to move all libraries into
+lib during installation.  I originally implemented this directive as a
+backward-compatibility feature when I first introduced the new CM.
+Now that things have been stable for a long time and going back to the
+old CM is not an option, there is no reason to keep it around.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/11/03 16:00:00 CST
 Tag: blume-20031103-installdir
 Description:
