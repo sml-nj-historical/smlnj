@@ -189,7 +189,7 @@ struct
 	        proh = [], 
 		newReg=NONE}
 	   | spill(instrAn, I.LIVE _) = error "spillR: LIVE"
-	   | spill(_, I.COPYXXX _) = error "spillR: not supported"
+	   | spill(_, I.COPY _) = error "spillR: COPY"
 	   | spill(instrAn, I.INSTR _) = let
 	       val _   = intSpillsCnt := !intSpillsCnt + 1
                val newR = C.newReg()
@@ -234,7 +234,7 @@ struct
 	        proh = [], 
 		newReg=NONE}
 	   | spill(instrAn, I.LIVE _) = error "spillF: LIVE"
-	   | spill(_, I.COPYXXX _) = error "spillF: COPY not supported"
+	   | spill(_, I.COPY _) = error "spillF: COPY"
 	   | spill(instrAn, I.INSTR _) = let
 	       val _   = floatSpillsCnt := !floatSpillsCnt + 1
                val newR = C.newFreg()

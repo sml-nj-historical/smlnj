@@ -12,10 +12,12 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
   fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
 
   fun rewriteUse(instr, rs, rt) = let
-    fun hppaUse(instr) = let
-      fun replc r = if CB.sameColor(r,rs) then rt else r
-    in
-      case instr
+    fun replc r = if CB.sameColor(r,rs) then rt else r
+    fun replcEA(SOME(I.Displace{base, disp})) = 
+	 SOME(I.Displace{base=replc base, disp=disp})
+      | replcEA ea  = ea
+    fun hppaUse(instr) = 
+     (case instr
       of I.STORE{st, b, d, r, mem} => 
 	  I.STORE{st=st, b=replc b, d=d, r=replc r, mem=mem} 
        | I.LOAD{l, r1, r2, t, mem} =>
@@ -56,8 +58,6 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	  I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo,
 	       uses=CS.map {from=rs,to=rt} uses, mem=mem, n=n} 
        | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
-       | I.COPY{dst, src, tmp, impl} => 
-	  I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
        | I.MTCTL{r, t} => I.MTCTL{r=replc r, t=t}
        | I.FSTORE{fst, b, d, r, mem} => 
 	  I.FSTORE{fst=fst, b=replc b, d=d, r=r, mem=mem} 
@@ -68,23 +68,24 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
        | I.FLOADX{flx, b, x, t, mem} =>
 	  I.FLOADX{flx=flx, b=replc b, x=replc x, t=t, mem=mem} 
        | _ => instr
-    end
+    (*esac*))
   in
       case instr
        of (I.ANNOTATION{i, ...}) => rewriteUse(i, rs, rt)
 	| I.LIVE{regs, spilled} => 
 	    I.LIVE{regs=C.addReg(rt, C.rmvReg(rs, regs)), spilled=spilled}
         | I.INSTR(i) => I.INSTR(hppaUse(i))
+        | I.COPY{k as CB.GP, sz, dst, src, tmp} => 
+	   I.COPY{k=k, sz=sz, dst=dst, src=map replc src, tmp=replcEA tmp}
 	| _ => error "rewriteUse"
   end
 
   fun rewriteDef(instr, rs, rt) = let
-    fun hppaDef(instr) = let
-      fun replc r = if CB.sameColor(r,rs) then rt else r
-      fun ea (SOME(I.Direct r)) = SOME(I.Direct (replc r))
-	| ea x = x
-    in
-      case instr
+    fun replc r = if CB.sameColor(r,rs) then rt else r
+    fun ea (SOME(I.Direct r)) = SOME(I.Direct (replc r))
+      | ea x = x
+    fun hppaDef(instr) = 
+     (case instr
       of I.ARITH{a, r1, r2, t} => I.ARITH{a=a, r1=r1, r2=r2, t=replc t} 
        | I.ARITHI{ai, i, r, t} => I.ARITHI{ai=ai, i=i, r=r, t=replc t}
        | I.LOAD{l, r1, r2, t, mem} => I.LOAD{l=l,r1=r1,r2=r2,t=replc t,mem=mem} 
@@ -114,25 +115,24 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 		defs=CS.map {from=rs,to=rt} defs, uses=uses, mem=mem, n=n} 
        | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
        | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
-       | I.COPY{dst, src, impl, tmp} =>
-	    I.COPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
        | _ => instr
-    end
+    (*esac*))
   in
       case instr
        of (I.ANNOTATION{i, ...}) => rewriteDef(i, rs, rt)
 	| I.KILL{regs, spilled} => 
 	    I.KILL{regs=C.addReg(rt, C.rmvReg(rs, regs)), spilled=spilled}
         | I.INSTR(i) => I.INSTR(hppaDef(i))
+        | I.COPY{k as CB.GP, sz, dst, src, tmp} =>
+	    I.COPY{k=k, sz=sz, dst=map replc dst, src=src, tmp=ea tmp}
 	| _ => error "rewriteDef"
   end
 
 
   fun frewriteUse(instr, fs, ft) = let
-    fun hppaUse(instr) = let
-      fun replc r = if CB.sameColor(r,fs) then ft else r
-    in
-      case instr
+    fun replc r = if CB.sameColor(r,fs) then ft else r
+    fun hppaUse(instr) = 
+     (case instr
       of I.FSTORE{fst, b, d, r, mem} =>
 	  I.FSTORE{fst=fst, b=b, d=d, r=replc r, mem=mem}
        | I.FSTOREX{fstx, b, x, r, mem} =>
@@ -143,8 +143,6 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
        | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=replc f, t=t} 
        | I.FBRANCH{cc,fmt,f1,f2,t,f,n,long} =>
 	   I.FBRANCH{cc=cc,fmt=fmt,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
-       | I.FCOPY{dst, src, tmp, impl} => 
-	  I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
        | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
 	  I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, 
 	       uses=CS.map {from=fs,to=ft} uses, cutsTo=cutsTo, mem=mem}
@@ -152,24 +150,25 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	  I.BL{lab=lab, t=t, defs=defs, cutsTo=cutsTo, 
 	       uses=CS.map {from=fs,to=ft} uses, mem=mem, n=n} 
        | _ => instr
-      (*esac*)
-    end
+    (*esac*))
   in
       case instr
        of (I.ANNOTATION{i, ...}) => frewriteUse(i, fs, ft)
         | I.INSTR(i) => I.INSTR(hppaUse(i))
 	| I.LIVE{regs, spilled} => 
 	    I.LIVE{regs=C.addFreg(ft, C.rmvFreg(fs, regs)), spilled=spilled}
+        | I.COPY{k as CB.FP, sz, dst, src, tmp} => 
+ 	  I.COPY{k=k, sz=sz, dst=dst, src=map replc src, tmp=tmp}
+
 	| _ => error "frewriteUse"
   end
 
   fun frewriteDef(instr, fs, ft) = let
-    fun hppaDef(instr) = let
-      fun replc r = if CB.sameColor(r,fs) then ft else r
-      fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(replc f))
-	| ea x  = x
-    in
-      case instr
+    fun replc r = if CB.sameColor(r,fs) then ft else r
+    fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(replc f))
+      | ea x  = x
+    fun hppaDef(instr) = 
+     (case instr
       of I.FLOAD{fl, b, d, t, mem} => 
 	   I.FLOAD{fl=fl, b=b, d=d, t=replc t,mem=mem}
        | I.FLOADX{flx, b, x, t, mem} => 
@@ -177,8 +176,6 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
        | I.FARITH {fa, r1, r2, t} => I.FARITH{fa=fa, r1=r1, r2=r2, t=replc t}
        | I.FUNARY{fu, f, t} => I.FUNARY{fu=fu, f=f, t=replc t}
        | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=f, t=replc t}
-       | I.FCOPY{dst, src, impl, tmp} => 
-	  I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
        | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
 	  I.BLE{d=d, b=b, sr=sr, t=replc t, cutsTo=cutsTo,
 		defs=CS.map {from=fs,to=ft} defs, uses=uses, mem=mem}
@@ -186,14 +183,15 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	  I.BL{lab=lab, t=t, cutsTo=cutsTo, 
 	       defs=CS.map {from=fs,to=ft} defs, uses=uses, mem=mem, n=n} 
        | _ => instr
-      (*esac*)
-    end
+    (*esac*))
   in
       case instr
        of (I.ANNOTATION{i, ...}) => frewriteDef(i, fs, ft)
         | I.INSTR(i) => I.INSTR(hppaDef(i))
         | I.KILL{regs, spilled} => 
 	    I.KILL{regs=C.addFreg(ft, C.rmvFreg(fs, regs)), spilled=spilled}
+        | I.COPY{k as CB.FP, sz, dst, src, tmp} => 
+	  I.COPY{k=k, sz=sz, dst=map replc dst, src=src, tmp=ea tmp}
 	| _ => error "frewriteDef"
   end
 end

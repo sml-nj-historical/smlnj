@@ -578,10 +578,6 @@ struct
            emit_operand operand )
        | I.CDQ => emit "cdq"
        | I.INTO => emit "into"
-       | I.COPY{dst, src, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, dst=dst, 
-            src=src})
-       | I.FCOPY{dst, src, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            dst=dst, src=src})
        | I.FBINARY{binOp, src, dst} => emit_fbinaryOp (binOp, src, dst)
        | I.FIBINARY{binOp, src} => 
          ( emit_fibinOp binOp; 
@@ -732,6 +728,10 @@ struct
             comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
                     "spilled:: " ^ CellsBasis.CellSet.toString spilled)
         | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
         | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,

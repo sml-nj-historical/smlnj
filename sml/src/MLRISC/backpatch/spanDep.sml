@@ -280,21 +280,24 @@ struct
 	  in  strategy1()
 	  end
 
-
-	  and process([],others) = others
-	    | process(instrs as jmp::body,others) = let
-               fun alignIt(chunks) = 
-	         (case !align of NONE => chunks | SOME p => PSEUDO(p)::chunks)
-              in
-		alignIt
-		   (map LABEL (!labels) @
-		      CODE
-		        (A.sub(labelMap, id),
-			 case Props.instrKind jmp 
-		          of Props.IK_JUMP => fitDelaySlot(jmp,body)
-			   | _	           => scan(instrs,[],0,[])
-	       	         )::others)
-              end
+	  and process(instrs, others) = let
+            fun alignIt(chunks) = 
+              (case !align of NONE => chunks | SOME p => PSEUDO(p)::chunks)
+	    val code =
+	      (case instrs
+		of [] => []
+		 | jmp::body => 
+		    (case Props.instrKind jmp
+		       of Props.IK_JUMP => fitDelaySlot(jmp, body)
+			| _ => scan(instrs, [], 0, [])
+		    (*esac*))
+	      (*esac*))
+	  in
+	      alignIt
+	        (map LABEL (!labels) @
+		   CODE (A.sub(labelMap, id), code) :: others)
+	    
+          end
 	in 
 	  process(!insns,compress rest)
 	end (* compress *) 
@@ -423,7 +426,10 @@ struct
 
     val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} =
 	E.makeStream []
-    fun emitCluster(CLUSTER{comp},loc) = let
+		    
+    val debug = MLRiscControl.getFlag "dump-cfg-after-spandep"
+
+    fun emitCluster (CLUSTER{comp},loc) = let
       val emitInstrs = app emit 
       fun nops 0 = ()
 	| nops n = if n < 0 then error "nops" else (emit(Props.nop()); nops(n-4))
@@ -445,7 +451,7 @@ struct
 	      | e(CANDIDATE{newInsns,oldInsns,fillSlot,...},loc) =
 		  foldl e loc (if !fillSlot then newInsns else oldInsns)
 	  in 
-              foldl e loc code
+	      foldl e loc code
 	  end
     in foldl process loc comp
     end

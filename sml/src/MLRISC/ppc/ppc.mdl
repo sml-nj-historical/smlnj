@@ -717,16 +717,6 @@ struct
 	``blrl<mem><emit_defs(def)><emit_uses(use)><emit_cutsTo cutsTo>''
         bclr{bo=I.ALWAYS,bi=0w0,lk=true}
     
-     | COPY of {dst: $GP list, src: $GP list, 
-		impl:instruction list option ref,
-                tmp: ea option}
-	asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-     | FCOPY of {dst: $FP list, src: $FP list, 
-		 impl:instruction list option ref,
-                 tmp: ea option}
-	asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-
      | SOURCE of {}
         asm: ``source''
         mc:  ()

@@ -178,7 +178,6 @@ functor X86Spill(structure Instr: X86INSTR
       | I.UNARY{unOp, opnd} => done(I.UNARY{unOp=unOp, opnd=spillLoc}, an)
       | I.SET{cond, opnd} => done(I.SET{cond=cond, opnd=spillLoc}, an)
       | I.POP _ => done(I.POP spillLoc, an)
-      | I.COPY _ => error "spill: COPY"
       | I.FNSTSW  => error "spill: FNSTSW"
       | _ => error "spill"
     end (* x86Spill *)
@@ -379,7 +378,6 @@ functor X86Spill(structure Instr: X86INSTR
        | I.PUSHL arg => reloadPush(I.PUSHL, arg, an)
        | I.PUSHW arg => reloadPush(I.PUSHW, arg, an)
        | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
-       | I.COPY _ => error "reload:COPY"
        | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
        | I.FILDL opnd => reloadReal(I.FILDL, opnd, an) 
        | I.FILDLL opnd => reloadReal(I.FILDLL, opnd, an) 

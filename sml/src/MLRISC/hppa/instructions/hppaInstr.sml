@@ -8,7 +8,7 @@
 signature HPPAINSTR =
 sig
    structure C : HPPACELLS
-   structure CB : CELLS_BASIS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -261,17 +261,17 @@ sig
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val loadi : {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, 
@@ -320,10 +320,6 @@ sig
       t:Label.label, f:Label.label, n:bool, long:bool} -> instruction
    val break : {code1:int, code2:int} -> instruction
    val nop : instruction
-   val copy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
-   val fcopy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
    val source : {} -> instruction
    val sink : {} -> instruction
    val phi : {} -> instruction
@@ -584,17 +580,17 @@ struct
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val loadi = INSTR o LOADI
@@ -629,8 +625,6 @@ struct
    and fbranch = INSTR o FBRANCH
    and break = INSTR o BREAK
    and nop = INSTR NOP
-   and copy = INSTR o COPY
-   and fcopy = INSTR o FCOPY
    and source = INSTR o SOURCE
    and sink = INSTR o SINK
    and phi = INSTR o PHI

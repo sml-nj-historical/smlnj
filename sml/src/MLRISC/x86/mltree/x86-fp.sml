@@ -1733,7 +1733,7 @@ struct
                 * If a source is a last and unique use, then we
                 * can simply rename it to appropriate destination register.
                 *)
-               fun fcopy{dst,src,tmp} =
+               fun fcopy(I.COPY{dst,src,tmp,...}) =
                let fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
                        let val fsx = CB.registerNum fs
@@ -1808,7 +1808,6 @@ struct
 		   | I.FUNOP x   => (log(); funop x)
 		   | I.FILOAD x  => (log(); fiload x)
 		   | I.FCMP x    => (log(); fcmp x)
-		   | I.FCOPY x   => (log(); fcopy x)
 
 		     (* handle calling convention *)
 		   | I.CALL{return, ...}    => (log(); call(instr,return))
@@ -1832,8 +1831,9 @@ struct
 	       case instr
 	       of I.ANNOTATION{a,i} =>
 		      trans(stamp, i, a::an, rest, dead, lastUses, code)
+		| I.COPY{k=CB.FP, ...} => (log(); fcopy instr)
 		| I.INSTR instr => x86trans(instr)
-		| _  => error "trans"
+		| _  => FINISH(mark(instr, an)::code)
            end (* trans *)
 
            (*

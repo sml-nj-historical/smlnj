@@ -47,6 +47,26 @@ struct
    structure MachSpec   = MachSpec
    structure MLTreeComp = MLTreeComp
 
+   (* expand copies into their primitive moves.
+    * Copies are no longer treated as span dependent, which was a hack.
+    *)
+   structure ExpandCpys = 
+     CFGExpandCopies 
+	 (structure CFG = CFG
+	  structure ExpandCopies = 
+	     struct
+		structure I = I
+		fun expandCopies(I.COPY{k, dst, src, tmp, ...}) = 
+		     (case k
+		       of CellsBasis.GP => Shuffle.shuffle{dst=dst, src=src, tmp=tmp} 
+			| CellsBasis.FP => Shuffle.shufflefp{dst=dst, src=src, tmp=tmp}
+			| _ => MLRiscErrorMsg.error ("MachineGen", "expandCopies")
+		     (*esac*))
+		  | expandCopies(I.ANNOTATION{i, ...}) = expandCopies(i)
+		  | expandCopies instr = [instr]
+	     end
+	  )
+
    fun omitFramePointer(cfg as G.GRAPH graph) = let
      val CFG.INFO{annotations, ...} = #graph_info graph 
    in
@@ -62,17 +82,19 @@ struct
    fun phase x = Stats.doPhase (Stats.makePhase x)
    fun makePhase(name,f) = (name, phase name f)
 
-   val mc      = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
-   val finish  = phase "MLRISC BackPatch.finish" BackPatch.finish
-   val ra      = phase "MLRISC ra" RA.run
-   val omitfp  = phase "MLRISC omit frame pointer" omitFramePointer
+   val mc         = phase "MLRISC BackPatch.bbsched" BackPatch.bbsched
+   val finish     = phase "MLRISC BackPatch.finish" BackPatch.finish
+   val ra         = phase "MLRISC ra" RA.run
+   val omitfp     = phase "MLRISC omit frame pointer" omitFramePointer
+   val expandCpys = phase "MLRISC expand copies" ExpandCpys.run
 
    val raPhase = ("ra",ra)
 
 
    val optimizerHook = 
      ref [("ra", ra),
-	  ("omitfp", omitfp)
+	  ("omitfp", omitfp),
+	  ("expand copies", expandCpys)
 	 ]
 
      

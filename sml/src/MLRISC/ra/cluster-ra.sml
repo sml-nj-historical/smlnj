@@ -333,8 +333,6 @@ struct
                in  (moves(dst, src, mv), tmps) end
                else (mv, tmps)
 
-
-
            (* Add the nodes first *)
            fun mkNodes([], mv, tmps) = (mv, tmps)
 	     | mkNodes((nid, blk)::blocks, mv, tmps) = let

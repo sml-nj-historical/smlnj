@@ -60,6 +60,10 @@ struct
   fun LI i = T.LI(T.I.fromInt(32, i))
   fun LT (n,m) = T.I.LT(32, n, m)
   fun LE (n,m) = T.I.LE(32, n, m)
+  fun COPY{dst, src, tmp} = 
+      I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
+  fun FCOPY{dst, src, tmp} = 
+      I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
 
   val intTy = if V9 then 64 else 32
   structure Gen = MLTreeGen(structure T = T
@@ -77,7 +81,7 @@ struct
      type argi = {r:CB.cell,i:int,d:CB.cell}
   
      val intTy = 32    
-     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d} = COPY{dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d} = I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}
      fun slli{r,i,d} = [I.shift{s=I.SLL,r=r,i=I.IMMED i,d=d}]
      fun srli{r,i,d} = [I.shift{s=I.SRL,r=r,i=I.IMMED i,d=d}]
@@ -92,7 +96,7 @@ struct
      type argi = {r:CB.cell,i:int,d:CB.cell}
       
      val intTy = 64    
-     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d} = COPY{dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d} = I.arith{a=I.ADD,r=r1,i=I.REG r2,d=d}
      fun slli{r,i,d} = [I.shift{s=I.SLLX,r=r,i=I.IMMED i,d=d}]
      fun srli{r,i,d} = [I.shift{s=I.SRLX,r=r,i=I.IMMED i,d=d}]
@@ -229,10 +233,10 @@ struct
         | fcond T.?=  = I.FBUE
         | fcond fc = error("fcond "^T.Basis.fcondToString fc)
 
-      fun mark'(i,[]) = i
-        | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
-
-      fun mark(i,an) = emitInstruction(mark'(I.INSTR i,an)) 
+      fun annotate(i,[]) = i
+        | annotate(i,a::an) = annotate(I.ANNOTATION{i=i,a=a},an)
+      fun mark'(i,an) = emitInstruction(annotate(i,an)) 
+      fun mark(i,an) = emitInstruction(annotate(I.INSTR i,an)) 
 
       (* convert an operand into a register *)
       fun reduceOpn(I.REG r) = r
@@ -243,23 +247,23 @@ struct
 
       (* emit parallel copies *)
       fun copy(dst,src,an) =
-         mark(I.COPY{dst=dst,src=src,impl=ref NONE,
+         mark'(COPY{dst=dst,src=src,
                     tmp=case dst of [_] => NONE
                                | _ => SOME(I.Direct(newReg()))},an)
       fun fcopy(dst,src,an) =
-         mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
+         mark'(FCOPY{dst=dst,src=src,
                      tmp=case dst of [_] => NONE
                                  | _ => SOME(I.FDirect(newFreg()))},an)
 
       (* move register s to register d *)
       fun move(s,d,an) =
           if CB.sameColor(s,d) orelse CB.registerId d = 0 then ()
-          else mark(I.COPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
+          else mark'(COPY{dst=[d],src=[s],tmp=NONE},an)
 
       (* move floating point register s to register d *)
       fun fmoved(s,d,an) =
           if CB.sameColor(s,d) then ()
-          else mark(I.FCOPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
+          else mark'(FCOPY{dst=[d],src=[s],tmp=NONE},an)
       fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
 
@@ -326,7 +330,7 @@ struct
       (* emit 64-bit multiply or division operation (V9) *)
       and muldiv64(a,genConst,e1,e2,d,cc,comm,an) =
           let fun nonconst(e1,e2) = 
-                 [mark'( 
+                 [annotate( 
                   case (opn e1,opn e2,comm) of
                     (i,I.REG r,COMMUTE) => I.arith{a=a,r=r,i=i,d=d}
                   | (I.REG r,i,_) => I.arith{a=a,r=r,i=i,d=d}
@@ -335,7 +339,7 @@ struct
               fun const(e,i) = 
                   let val r = expr e
                   in  genConst{r=r,i=toInt i,d=d}
-                      handle _ => [mark'(I.arith{a=a,r=r,i=opn(T.LI i),d=d},an)]
+                      handle _ => [annotate(I.arith{a=a,r=r,i=opn(T.LI i),d=d},an)]
                   end
               val instrs =
                  case (comm,e1,e2) of
@@ -729,7 +733,7 @@ struct
                     operand       = opn,
                     reduceOperand = reduceOpn,
                     addressOf     = addr,
-                    emit          = emitInstruction o mark',
+                    emit          = emitInstruction o annotate,
                     instrStream   = instrStream,
                     mltreeStream  = self()
                    }

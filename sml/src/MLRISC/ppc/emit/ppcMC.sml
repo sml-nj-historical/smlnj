@@ -724,8 +724,6 @@ struct
      | emitInstr (I.B{addr, LK}) = b {li=relative addr, aa=false, lk=LK}
      | emitInstr (I.CALL{def, use, cutsTo, mem}) = bclr {bo=I.ALWAYS, bi=0wx0, 
           lk=true}
-     | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
-     | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.SOURCE{}) = ()
      | emitInstr (I.SINK{}) = ()
      | emitInstr (I.PHI{}) = ()

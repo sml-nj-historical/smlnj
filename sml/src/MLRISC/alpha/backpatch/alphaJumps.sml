@@ -15,6 +15,7 @@ struct
   structure C = I.C
   structure Const = I.Constant
   structure Eval = MLTreeEval
+  structure CB   = CellsBasis
 
   fun error msg = MLRiscErrorMsg.error("AlphaJumps",msg)
 
@@ -23,6 +24,7 @@ struct
   fun isSdi(I.ANNOTATION{i,...}) = isSdi i
     | isSdi(I.LIVE _)		 = true
     | isSdi(I.KILL _)		 = true
+    | isSdi(I.COPY _)		 = true
     | isSdi(I.INSTR i) = 
       (case i
         of (I.LDA{d=I.LABop _, ...})      => true
@@ -33,16 +35,12 @@ struct
 	 | (I.OPERATE{rb=I.LABop _, ...}) => true
 	 | (I.OPERATEV{rb=I.LABop _, ...})=> true
 	 | (I.CMOVE{rb=I.LABop _, ...})   => true
-	 | (I.COPY _)		       => true
-	 | (I.FCOPY _)		       => true
 	 |  _ => false
       (*esac*))
-    | isSdi _ = error "isSdi"
 
-  fun minSize(I.INSTR(I.COPY _))    = 0
-    | minSize(I.INSTR(I.FCOPY _))   = 0
-    | minSize(I.LIVE _)		    = 0
+  fun minSize(I.LIVE _)		    = 0
     | minSize(I.KILL _)		    = 0
+    | minSize(I.COPY _)		    = 0
     | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize _            = 4
 
@@ -58,6 +56,10 @@ struct
   fun sdiSize(I.ANNOTATION{i,...},x,y) = sdiSize(i,x,y)
     | sdiSize(I.LIVE _, _, _) = 0
     | sdiSize(I.KILL _, _, _) = 0
+    | sdiSize(I.COPY{k=CB.GP, src, dst, tmp, ...}, _, _) =
+        4 * length(Shuffle.shuffle{tmp=tmp, dst=dst, src=src})
+    | sdiSize(I.COPY{k=CB.FP, src, dst, tmp, ...}, _, _) = 
+	4 * length(Shuffle.shufflefp{src=src, dst=dst, tmp=tmp})
     | sdiSize(I.INSTR instr, _, _) = 
       (case instr
 	of (I.LDA{d=I.LABop le, ...}) => im16load(Eval.valueOf le)
@@ -68,16 +70,6 @@ struct
 	| (I.OPERATE{rb=I.LABop le, ...}) => im8Oper le
 	| (I.OPERATEV{rb=I.LABop le, ...}) => im8Oper le
 	| (I.CMOVE{rb=I.LABop le, ...}) => im8Oper le
-	| (I.COPY{impl=ref(SOME l),...}) => 4 * length l
-	| (I.FCOPY{impl=ref(SOME l),...}) => 4 * length l
-	| (I.COPY{dst, src, impl as ref NONE, tmp}) => let
-	    val instrs = Shuffle.shuffle{tmp=tmp, dst=dst, src=src}
-	  in  impl := SOME instrs;  4 * length instrs
-	  end
-	| (I.FCOPY{dst, src, impl as ref NONE, tmp}) => let
-	    val instrs = Shuffle.shufflefp{tmp=tmp, dst=dst, src=src}
-	  in impl := SOME(instrs); 4 * length instrs
-	  end
 	|  _ => error "sdiSize"
        (*easc*))
     | sdiSize _ = error "sdiSize"
@@ -91,6 +83,10 @@ struct
   fun expand(I.ANNOTATION{i,...}, size, pos) = expand(i,size,pos)
     | expand(I.LIVE _, _, _) = []
     | expand(I.KILL _, _, _) = []
+    | expand(I.COPY{k=CB.GP, src, tmp, dst, ...}, _, _)  = 
+       Shuffle.shuffle{src=src, dst=dst, tmp=tmp}
+    | expand(I.COPY{k=CB.FP, src, tmp, dst, ...}, _, _)  = 
+       Shuffle.shufflefp{src=src, dst=dst, tmp=tmp}
     | expand(I.INSTR instr, size, pos) = let
 	fun load(ldClass, ldOp, r, b, d as I.LABop le, mem) = 
 	  (case size 
@@ -125,8 +121,6 @@ struct
 		     I.ldah{r=rd, b=rd, d=I.HILABop le}]
 	    | _  => error "expand:LDA"
 	   )
-	| I.COPY{impl=ref(SOME instrs),...} => instrs
-	| I.FCOPY{impl=ref(SOME instrs),...} => instrs
 	| I.LOAD{ldOp, r, b, d, mem} => load(I.load, ldOp, r, b, d, mem)
 	| I.FLOAD{ldOp, r, b, d, mem} => load(I.fload, ldOp, r, b, d, mem)
 	| I.STORE{stOp, r, b, d, mem} => store(I.store, stOp, r, b, d, mem)

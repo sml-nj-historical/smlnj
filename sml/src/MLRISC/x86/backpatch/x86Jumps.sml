@@ -24,6 +24,7 @@ struct
   fun isSdi(I.ANNOTATION{i, ...}) = isSdi i
     | isSdi(I.LIVE _)		  = true
     | isSdi(I.KILL _)		  = true
+    | isSdi(I.COPY _)		  = false
     | isSdi(I.INSTR instr) = let
 	  fun operand(I.ImmedLabel _) = true
 	    | operand(I.LabelEA _) = true
@@ -62,7 +63,6 @@ struct
 	   | I.FILDLL opnd => operand opnd
 	   | _ => false
       end
-    | isSdi _ = error "isSdi"
 
   fun minSize(I.ANNOTATION{i, ...}) = minSize i
     | minSize(I.LIVE _)  = 0
@@ -88,6 +88,7 @@ struct
   fun sdiSize(I.ANNOTATION{i, ...}, labmap, loc) = sdiSize(i, labmap, loc)
     | sdiSize(I.LIVE _, _, _) = 0
     | sdiSize(I.KILL _, _, _) = 0
+
     | sdiSize(I.INSTR instr, labmap, loc) = let
 	fun branch(opnd, short, long) = let
 	  val offset = operand opnd - loc

@@ -84,7 +84,7 @@ struct
   structure CB = CellsBasis
   structure Shuffle = Shuffle(I)
 
-  type t = {tmp:I.ea option, dst:CB.cell list, src:CB.cell list}
+  type t = {tmp:I.operand option, dst:CellsBasis.cell list, src:CellsBasis.cell list}
 
   exception foo
   val shuffle =

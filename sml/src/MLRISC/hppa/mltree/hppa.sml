@@ -46,7 +46,10 @@ struct
                              datatype rep = SE | ZE | NEITHER
                              val rep = NEITHER
                             )
-
+   fun mkcopy{dst, src, tmp} =
+       I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
+   fun mkfcopy{dst, src, tmp} =
+       I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
    structure W = Word32
    functor Multiply32 = MLTreeMult
     (structure I = I
@@ -56,7 +59,7 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d} = mkcopy{dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d} = I.arith{a=I.ADD,r1=r1,r2=r2,t=d}
      fun slli{r,i,d} = [I.shift{s=I.ZDEP,r=r,p=31-i,len=32-i,t=d}]
      fun srli{r,i,d} = [I.shift{s=I.EXTRU,r=r,p=31-i,len=32-i,t=d}]
@@ -211,25 +214,23 @@ struct
  
        (* emit parallel copies *)
        fun copy(dst,src,an) =
-         mark(I.COPY{dst=dst,src=src,impl=ref NONE,
-                     tmp=case dst of [_] => NONE
-                                | _ => SOME(I.Direct(newReg()))},an)
+         mark'(mkcopy{dst=dst,src=src,
+                    tmp=case dst of [_] => NONE | _ => SOME(I.Direct(newReg()))},an)
        fun fcopy(dst,src,an) =
-         mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
-                      tmp=case dst of [_] => NONE
-                                  | _ => SOME(I.FDirect(newFreg()))},an)
+         mark'(mkfcopy{dst=dst,src=src,
+                     tmp=case dst of [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
  
        (* move register s to register t *)
        fun move(s,t,an) =
            if CB.sameColor(s,t) orelse CB.registerId t = 0 then ()
            else if CB.registerId s = 0 then
                 mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
-           else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+           else mark'(mkcopy{src=[s],dst=[t],tmp=NONE},an)
  
        (* move floating point register s to register t *)
        fun fmove(s,t,an) =
            if CB.sameColor(s,t) then ()
-           else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+           else mark'(mkfcopy{src=[s],dst=[t],tmp=NONE},an)
 
        (* generate millicode function call *)
        fun milliCall(milliFn, e1, e2, rd) =

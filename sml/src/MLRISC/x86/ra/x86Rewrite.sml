@@ -64,8 +64,6 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
        | I.PUSHW opnd => I.PUSHW(operand opnd)
        | I.PUSHB opnd => I.PUSHB(operand opnd)
        | I.POP opnd  => I.POP(operand opnd)
-       | I.COPY{dst, src, tmp} => 
-	  I.COPY{dst=dst, src=map replace src, tmp=tmp}
        | I.FSTPT opnd => I.FSTPT(operand opnd)
        | I.FSTPL opnd => I.FSTPL(operand opnd)
        | I.FSTPS opnd => I.FSTPS(operand opnd)
@@ -110,6 +108,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 					 defs=defs}
 			    | _ => a}
       | f(I.INSTR i) = I.INSTR(rewriteX86Use(i))
+      | f(I.COPY{k as CB.GP, sz, dst, src, tmp}) = 
+	  I.COPY{k=k, sz=sz, dst=dst, src=map replace src, tmp=tmp}
       | f _  = error "rewriteUse:f"
   in f (instr:I.instruction)
   end
@@ -132,7 +132,6 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
        | I.MUL3{dst, src1, src2} => I.MUL3{dst=replace dst, src1=src1, src2=src2}
        | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
        | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}
-       | I.COPY{dst, src, tmp} => I.COPY{dst=map replace dst, src=src, tmp=tmp}
        | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=src, dst=replace dst}
        | _ => instr
     (*esac*))
@@ -145,6 +144,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 				 	   defs=map replace defs}
 			     | _ => a)}
       | f (I.INSTR i) = I.INSTR(rewriteX86Def(i))
+      | f (I.COPY{k as CB.GP, sz, dst, src, tmp}) =
+	  I.COPY{k=k, sz=sz, dst=map replace dst, src=src, tmp=tmp}
       | f _ = error "rewriteDef:f"
   in f(instr)
   end
@@ -159,8 +160,7 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     fun replace f = if CB.sameColor(f,fs) then ft else f
     fun frewriteX86Use(instr) = 
      (case instr
-      of I.FCOPY{dst, src, tmp,...} => I.FCOPY{dst=dst, src=map replace src, tmp=tmp}
-       | I.FLDL opnd => I.FLDL(foperand opnd)
+      of I.FLDL opnd => I.FLDL(foperand opnd)
        | I.FLDS opnd => I.FLDS(foperand opnd)
        | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} => 
 	   I.CALL{opnd=opnd, defs=defs, return=return, cutsTo=cutsTo,
@@ -194,6 +194,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 					 defs=defs}
 			    | _ => a}
       | f(I.INSTR i) = I.INSTR(frewriteX86Use(i))
+      | f(I.COPY{k as CB.FP, sz, dst, src, tmp}) = 
+	  I.COPY{k=k, sz=sz, dst=dst, src=map replace src, tmp=tmp}
       | f _ = error "frewrite"
   in f(instr)
   end
@@ -207,8 +209,7 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
     fun replace f = if CB.sameColor(f,fs) then ft else f
     fun frewriteX86Def(instr) = 
      (case instr
-      of I.FCOPY{dst, src, tmp, ...} => I.FCOPY{dst=map replace dst, src=src, tmp=tmp}
-       | I.FSTPT opnd => I.FSTPT(foperand opnd)
+      of I.FSTPT opnd => I.FSTPT(foperand opnd)
        | I.FSTPL opnd => I.FSTPL(foperand opnd)
        | I.FSTPS opnd => I.FSTPS(foperand opnd)
        | I.FSTL opnd => I.FSTL(foperand opnd)
@@ -241,6 +242,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 					 defs=map replace defs}
 			    | _ => a}
       | f(I.INSTR(i)) = I.INSTR(frewriteX86Def(i))
+      | f(I.COPY{k as CB.FP, dst, src, tmp, sz}) = 
+	  I.COPY{k=k, sz=sz, dst=map replace dst, src=src, tmp=tmp}
       | f _ = error "frewriteDef"
   in f(instr)
   end

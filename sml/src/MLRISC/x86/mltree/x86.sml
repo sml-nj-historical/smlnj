@@ -167,11 +167,11 @@ struct
         | fsize _  = error "fsize"
 
       (* mark an expression with a list of annotations *) 
-      fun mark'(i,[]) = i 
+      fun mark'(i,[]) = emitInstruction(i)
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an) 
 
       (* annotate an expression and emit it *)
-      fun mark(i,an) = emitInstruction(mark'(I.INSTR i,an))
+      fun mark(i,an) = mark'(I.INSTR i,an)
 
       val emits = app emitInstruction
 
@@ -189,7 +189,7 @@ struct
                   end
                 | mvInstr{dst=I.Direct rd, src=I.Direct rs} = 
                     if CB.sameColor(rd,rs) then [] 
-                    else [I.copy{dst=[rd], src=[rs], tmp=NONE}]
+                    else [I.COPY{k=CB.GP, sz=32, dst=[rd], src=[rs], tmp=NONE}]
                 | mvInstr{dst, src} = [I.move{mvOp=I.MOVL, src=src, dst=dst}]
           in
              emits (Shuffle.shuffle{mvInstr=mvInstr, ea=IntReg}
@@ -251,9 +251,9 @@ struct
        *)
       fun fcopy'(fty, [], [], _) = ()
         | fcopy'(fty, dst as [_], src as [_], an) = 
-            mark(I.FCOPY{dst=dst,src=src,tmp=NONE}, an)
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=NONE}, an)
         | fcopy'(fty, dst, src, an) = 
-            mark(I.FCOPY{dst=dst,src=src,tmp=SOME(I.FDirect(newFreg()))}, an)
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,src=src,tmp=SOME(I.FDirect(newFreg()))}, an)
 
       (* emit parallel copies for floating point.
        * Fast version.
@@ -274,7 +274,8 @@ struct
                  dst=dst, src=src})
           end
           else
-            mark(I.FCOPY{dst=dst,src=src,tmp=
+            mark'(I.COPY{k=CB.FP, sz=fty, dst=dst,
+			src=src,tmp=
                          case dst of
                            [_] => NONE
                          | _   => SOME(I.FPR(newFreg()))}, an)
@@ -294,7 +295,7 @@ struct
       (* Move and annotate *) 
       fun move'(src as I.Direct s, dst as I.Direct d, an) =
           if CB.sameColor(s,d) then ()
-          else mark(I.COPY{dst=[d], src=[s], tmp=NONE}, an)
+          else mark'(I.COPY{k=CB.GP, sz=32, dst=[d], src=[s], tmp=NONE}, an)
         | move'(I.Immed 0, dst as I.Direct d, an) = 
             mark(I.BINARY{binOp=I.XORL, src=dst, dst=dst}, an)
         | move'(src, dst, an) = mark(I.MOVE{mvOp=I.MOVL, src=src, dst=dst}, an)
@@ -1258,7 +1259,7 @@ struct
           (* generate floating point expression and put the result in fd *)
       and doFexpr'(fty, T.FREG(_, fs), fd, an) = 
             (if CB.sameColor(fs,fd) then () 
-             else mark(I.FCOPY{dst=[fd], src=[fs], tmp=NONE}, an)
+             else mark'(I.COPY{k=CB.FP, sz=64, dst=[fd], src=[fs], tmp=NONE}, an)
             )
         | doFexpr'(_, T.FLOAD(fty, ea, mem), fd, an) = 
             fload'(fty, ea, mem, fd, an)
@@ -1764,7 +1765,7 @@ struct
                     operand       = operand,
                     reduceOperand = reduceOpnd,
                     addressOf     = fn e => address(e, I.Region.memory), (*XXX*)
-                    emit          = emitInstruction o mark',
+                    emit          = mark',
                     instrStream   = instrStream, 
                     mltreeStream  = self() 
                    }

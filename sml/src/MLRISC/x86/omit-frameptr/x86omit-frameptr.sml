@@ -239,24 +239,6 @@ struct
 	   | I.PUSHW opnd => changedto(I.PUSHW(operand(opnd)), addToDelta(2))
 	   | I.PUSHB opnd => changedto(I.PUSHB(operand(opnd)), addToDelta(1))
 	   | I.POP opnd => changedto(I.POP(operand(opnd)), addToDelta(~4))
-	   | I.COPY{dst:CB.cell list, src:CB.cell list, tmp:I.operand option} => let
-	      (* the situation where SP <- FP is somewhat complicated.
-	       * The copy must be extracted, and a lea generated.
-	       * Should it be before or after the parallel copy? Depends on if SP is used. 
-	       * However, will such a thing ever exist in a parallel copy!?
-	       *)
-	      fun okay(s, d, acc) = 
-		(case (which s, which d) 
-		 of (FP, SP) => true
-		  | (SP, FP) => error "COPY:SP<-FP; lazy!"
-		  | (SP, OTHER) => error "COPY:SP<-OTHER"
-		  | (FP, OTHER) => error "COPY:FP<-OTHER"
-		  | (OTHER, SP) => error "COPY:OTHER<-SP"
-		  | (OTHER, FP)  => error "COPY:OTHER<-FP"
-		  | _ => acc
-		(*esac*))
-	     in changedto(instr, if ListPair.foldl okay false (dst, src) then SOME 0 else delta)
-	     end
 	   | I.FBINARY{binOp:I.fbinOp, src:I.operand, dst:I.operand} =>
 	      unchanged(I.FBINARY{binOp=binOp, src=operand(src), dst=operand(dst)})
 	   | I.FIBINARY{binOp:I.fibinOp, src:I.operand} =>
@@ -302,8 +284,26 @@ struct
 		of NONE => (NONE, delta)
 		 | SOME(i) => annotate(I.ANNOTATION{i=i, a=a}, delta)
 	     end	       
+	   | I.COPY{k=CB.GP, dst, src, ...} => let
+	      (* the situation where SP <- FP is somewhat complicated.
+	       * The copy must be extracted, and a lea generated.
+	       * Should it be before or after the parallel copy? Depends on if SP is used. 
+	       * However, will such a thing ever exist in a parallel copy!?
+	       *)
+	      fun okay(s, d, acc) = 
+		(case (which s, which d) 
+		 of (FP, SP) => true
+		  | (SP, FP) => error "COPY:SP<-FP; lazy!"
+		  | (SP, OTHER) => error "COPY:SP<-OTHER"
+		  | (FP, OTHER) => error "COPY:FP<-OTHER"
+		  | (OTHER, SP) => error "COPY:OTHER<-SP"
+		  | (OTHER, FP)  => error "COPY:OTHER<-FP"
+		  | _ => acc
+		(*esac*))
+	     in annotate(instr, if ListPair.foldl okay false (dst, src) then SOME 0 else delta)
+	     end
 	   | I.INSTR instr => doX86Instr instr
-	   | _ => error "doInstr"
+	   | _ => annotate(instr, delta)			(* unchanged *)
       end (*doInstr*)
 
       (* rewrite instructions *)

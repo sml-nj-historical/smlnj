@@ -393,12 +393,6 @@ struct
      | I.CDQ => eByte(0x99)
      | I.INTO => eByte(0xce)
 
-     | I.COPY{dst, src, tmp, ...} => 
-          emitInstrs(Shuffle.shuffle {tmp=tmp, dst=dst, src=src})
-
-     | I.FCOPY{dst, src, tmp, ...} => 
-          emitInstrs(Shuffle.shufflefp {tmp=tmp, dst=dst, src=src})
-
      (* floating *)
      | I.FBINARY{binOp, src=I.ST src, dst=I.ST dst} =>    
        let val src = W8.fromInt(fNum src)
@@ -532,7 +526,12 @@ struct
   end 
   and emitInstr (I.LIVE _) = Word8Vector.fromList []
     | emitInstr (I.KILL _) = Word8Vector.fromList []
-    | emitInstr (I.COPYXXX _) = error "COPY not handled yet"
+    | emitInstr(I.COPY{k, dst, src, tmp, ...}) = 
+      (case k 
+       of CB.GP => emitInstrs(Shuffle.shuffle {tmp=tmp, dst=dst, src=src})
+	| CB.FP => emitInstrs(Shuffle.shufflefp {tmp=tmp, dst=dst, src=src})
+	| _ => error "COPY"
+      (*esac*))
     | emitInstr (I.INSTR instr) = emitX86Instr instr
     | emitInstr (I.ANNOTATION{i,...}) = emitInstr i
 

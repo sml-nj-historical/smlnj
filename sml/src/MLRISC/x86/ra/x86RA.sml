@@ -251,7 +251,7 @@ struct
         fun isDeadInstr(I.ANNOTATION{i, ...}) = isDeadInstr i 
           | isDeadInstr(I.INSTR(I.MOVE{dst=I.Direct rd, ...})) = isDead rd
           | isDeadInstr(I.INSTR(I.MOVE{dst=I.MemReg rd, ...})) = isDead rd
-          | isDeadInstr(I.INSTR(I.COPY{dst=[rd], ...})) = isDead rd
+          | isDeadInstr(I.COPY{k=CB.GP, dst=[rd], ...}) = isDead rd
           | isDeadInstr _ = false
         fun scan [] = ()
           | scan((blknum, CFG.BLOCK{insns, ...})::rest) =
@@ -332,10 +332,13 @@ struct
     (* -------------------------------------------------------------------
      * Callbacks for floating point K=32 
      * -------------------------------------------------------------------*)
+    fun fcopy{dst, src, tmp} = 
+	I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
+
     fun copyInstrF((rds as [_], rss as [_]), _) =
-          I.fcopy{dst=rds, src=rss, tmp=NONE}
-      | copyInstrF((rds, rss), I.INSTR(I.FCOPY{tmp, ...})) = 
-          I.fcopy{dst=rds, src=rss, tmp=tmp}
+          fcopy{dst=rds, src=rss, tmp=NONE}
+      | copyInstrF((rds, rss), I.COPY{k=CB.FP, tmp, ...}) = 
+          fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF(x, I.ANNOTATION{i,a}) = 
           I.ANNOTATION{i=copyInstrF(x, i), a=a}
 
@@ -358,10 +361,10 @@ struct
         end
        )
 
-   fun spillFcopyTmp S {copy=I.INSTR(I.FCOPY{dst, src, ...}), spillLoc, reg,
+   fun spillFcopyTmp S {copy=I.COPY{k=CB.FP, dst, src, ...}, spillLoc, reg,
                         annotations=an} =
         (floatSpillCnt := !floatSpillCnt + 1;
-         I.fcopy{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
+         fcopy{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
         )
      | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, reg, annotations} =
         let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, reg=reg,
@@ -397,8 +400,8 @@ struct
 
     fun copyInstrF'((rds as [d], rss as [s]), _) =
          I.fmove{fsize=I.FP64,src=FMemReg s,dst=FMemReg d}
-      | copyInstrF'((rds, rss), I.INSTR(I.FCOPY{tmp, ...})) = 
-         I.fcopy{dst=rds, src=rss, tmp=tmp}
+      | copyInstrF'((rds, rss), I.COPY{k=CB.FP, tmp, ...}) = 
+         fcopy{dst=rds, src=rss, tmp=tmp}
       | copyInstrF'(x, I.ANNOTATION{i, a}) =
          I.ANNOTATION{i=copyInstrF'(x,i), a=a}
 
@@ -424,6 +427,7 @@ struct
     (* -------------------------------------------------------------------
      * Integer 8 stuff 
      * -------------------------------------------------------------------*)
+    fun copy{dst, src, tmp} = I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
     fun memToMemMove{dst, src} =
         let val tmp = I.C.newReg() 
         in  [I.move{mvOp=I.MOVL,src=src,dst=I.Direct tmp},
@@ -435,15 +439,15 @@ struct
         if CB.sameColor(d,s) then [] else 
         let val dx = CB.registerNum d and sx = CB.registerNum s
         in  case (dx >= 8 andalso dx < 32, sx >= 8 andalso sx < 32) of
-             (false, false) => [I.copy{dst=rds, src=rss, tmp=NONE}]
+             (false, false) => [copy{dst=rds, src=rss, tmp=NONE}]
            | (true, false) => [I.move{mvOp=I.MOVL,src=I.Direct s,
                                       dst=I.MemReg d}]
            | (false, true) => [I.move{mvOp=I.MOVL,src=I.MemReg s,
                                       dst=I.Direct d}]
            | (true, true) => memToMemMove{src=I.MemReg s, dst=I.MemReg d}
         end
-      | copyInstrR((rds, rss), I.INSTR(I.COPY{tmp, ...})) = 
-         [I.copy{dst=rds, src=rss, tmp=tmp}]
+      | copyInstrR((rds, rss), I.COPY{k=CB.GP, tmp, ...}) = 
+         [copy{dst=rds, src=rss, tmp=tmp}]
       | copyInstrR(x, I.ANNOTATION{i, a}) = 
           copyInstrR(x, i) (* XXX *)
       
@@ -484,12 +488,12 @@ struct
             else [I.move{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
         end
 
-    fun spillCopyTmp S {copy=I.INSTR(I.COPY{src, dst,...}), 
+    fun spillCopyTmp S {copy=I.COPY{k=CB.GP, src, dst,...}, 
                         reg, spillLoc, annotations=an} = 
         (case getRegLoc(S, an, reg, spillLoc) of
            {opnd=tmp, kind=SPILL_LOC} =>
             (intSpillCnt := !intSpillCnt + 1;
-             I.copy{dst=dst, src=src, tmp=SOME tmp}
+             copy{dst=dst, src=src, tmp=SOME tmp}
             )
          | _ => error "spillCopyTmp"
         )

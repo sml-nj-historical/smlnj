@@ -257,11 +257,11 @@ struct
      | emit_operand (I.HILabExp(labexp, field_selector)) = emit_labexp labexp
      | emit_operand (I.LOLabExp(labexp, field_selector)) = emit_labexp labexp
 
-(*#line 637.7 "hppa/hppa.mdl"*)
+(*#line 635.7 "hppa/hppa.mdl"*)
    fun emit_n false = ()
      | emit_n true = emit ",n"
 
-(*#line 638.7 "hppa/hppa.mdl"*)
+(*#line 636.7 "hppa/hppa.mdl"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
    fun emitInstr' instr = 
@@ -575,10 +575,6 @@ struct
            emit ", "; 
            emit_int code2 )
        | I.NOP => emit "nop"
-       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
-            src=src, dst=dst})
-       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            src=src, dst=dst})
        | I.SOURCE{} => emit "source"
        | I.SINK{} => emit "sink"
        | I.PHI{} => emit "phi"
@@ -601,6 +597,10 @@ struct
             comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
                     "spilled:: " ^ CellsBasis.CellSet.toString spilled)
         | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
         | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,

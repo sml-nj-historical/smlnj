@@ -21,6 +21,7 @@ struct
   fun zeroR() = C.Reg CB.GP 0
 
   fun instrKind(I.ANNOTATION{i, ...}) = instrKind i
+    | instrKind(I.COPY _) = IK_COPY
     | instrKind(I.INSTR instr) = 
 	(case instr
 	 of (I.BC _) => IK_JUMP
@@ -29,8 +30,6 @@ struct
 	  | (I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) => 
 	       if CB.registerId rt = 0 andalso CB.registerId ra = 0 then IK_NOP
 	       else IK_INSTR
-	  | (I.COPY _) => IK_COPY
-	  | (I.FCOPY _)			=> IK_COPY
 	  | (I.CALL{cutsTo=_::_,...}) => IK_CALL_WITH_CUTS
 	  | (I.CALL _) => IK_CALL
 	  | (I.PHI _)    => IK_PHI
@@ -39,24 +38,25 @@ struct
 	  |  _ => IK_INSTR)
     | instrKind _ = error "instrKind"
 
-  fun moveInstr(I.INSTR(I.COPY _)) = true
-    | moveInstr(I.INSTR(I.FCOPY _)) = true
-    | moveInstr(I.LIVE _) = false 
-    | moveInstr(I.KILL _) = false 
+  fun moveInstr(I.COPY _) = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr  _ = false
 
   fun nop () = I.arithi{oper=I.ORI, rt=zeroR(), ra=zeroR(), im=I.ImmedOp 0}
 
-  fun moveTmpR(I.INSTR(I.COPY{tmp as SOME(I.Direct r), ...})) = SOME r
-    | moveTmpR(I.INSTR(I.FCOPY{tmp as SOME(I.FDirect f), ...})) = SOME f
+  fun moveTmpR(I.COPY{tmp, ...}) = 
+      (case tmp 
+	of SOME(I.Direct r) => SOME r
+	 | SOME(I.FDirect f) => SOME f
+	 | _ => NONE
+      (*esac*))
     | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
-  fun moveDstSrc(I.INSTR(I.COPY{src, dst, ...})) = (dst, src)
-    | moveDstSrc(I.INSTR(I.FCOPY{src, dst, ...})) = (dst, src)
+  fun moveDstSrc(I.COPY{dst,src,...}) = (dst,src)
     | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
+
 
   fun branchTargets(I.INSTR(I.BC{bo=I.ALWAYS, addr,  ...})) = 
       (case addr
@@ -122,12 +122,6 @@ struct
        | I.TW{to, ra, si} => ([], operand(si,[ra]))
        | I.TD{to, ra, si} => ([], operand(si,[ra]))
        | I.CALL{def, use, ...} => (C.getReg def, C.getReg use)
-       | I.COPY{dst, src, tmp, ...} => 
-	  (case tmp
-	    of NONE => (dst, src)
-	     | SOME(I.Direct r) => (r::dst, src)
-	  (* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
-	   (*esac*))
        | _ => ([], [])
     end
   in
@@ -136,7 +130,14 @@ struct
       | I.LIVE{regs, ...} => ([], C.getReg regs)
       | I.KILL{regs, ...} => (C.getReg regs, [])
       | I.INSTR(i) => ppcDU(i)
-      | _ => error "defUseR"
+      | I.COPY{k, dst, src, tmp, ...} => let
+	   val (d,u) = case k of CB.GP => (dst, src) | _ => ([], [])
+	 in
+	     case tmp 
+	     of SOME(I.Direct r) => (r::d, u)
+	      | SOME(I.Displace{base, ...}) => (d, base::u)
+	      | _ => (d,u)
+	 end
   end
 
   fun defUseF instr = let
@@ -149,11 +150,6 @@ struct
        | I.FARITH{ft, fa, fb, ...}  => ([ft], [fa, fb])
        | I.FARITH3{ft, fa, fb, fc, ...}  => ([ft], [fa, fb, fc])
        | I.CALL{def, use, ...} => (C.getFreg def,C.getFreg use)
-       | I.FCOPY{dst, src, tmp, ...} => 
-	  (case tmp
-	    of SOME(I.FDirect f) => (f::dst, src)
-	     | _ => (dst, src)
-	   (*esac*))
        | _ => ([], [])
       (*esac*))
   in
@@ -162,8 +158,13 @@ struct
       | I.LIVE{regs, ...} => ([], C.getFreg regs)
       | I.KILL{regs, ...} => (C.getFreg regs, [])
       | I.INSTR(i) => ppcDU(i)
-      | _ => error "defUseF"
-
+      | I.COPY{k, dst, src, tmp, ...} => let
+	   val (d, u) = case k of CB.FP => (dst, src) | _ => ([],[])
+         in
+	     case tmp
+	      of SOME(I.FDirect f) => (f::d, u)
+	       | _ => (d, u)
+         end
   end
   fun defUseCC instr = error "defUseCC: not implemented"
 
@@ -184,11 +185,8 @@ struct
    *  Replicate an instruction
    *========================================================================*)
   fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
-    | replicate(I.INSTR(I.COPY{tmp=SOME _, dst, src, impl})) =  
-        I.copy{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
-    | replicate(I.INSTR(I.FCOPY{tmp=SOME _, dst, src, impl})) = 
-        I.fcopy{tmp=SOME(I.FDirect(C.newFreg())), 
-                dst=dst, src=src, impl=ref NONE}
+    | replicate(I.COPY{k, sz, tmp=SOME _, dst, src}) =  
+        I.COPY{k=k, sz=sz, tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src}
     | replicate i = i
 end
 

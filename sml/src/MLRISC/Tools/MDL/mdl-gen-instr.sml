@@ -18,7 +18,11 @@ struct
    $["and instruction =",
      "  LIVE of {regs: C.cellset, spilled: C.cellset}",
      "| KILL of {regs: C.cellset, spilled: C.cellset}",
-     "| COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}",
+     "| COPY of {k: CellsBasis.cellkind, ",
+     "           sz: int,          (* in bits *)", 
+     "           dst: CellsBasis.cell list,",
+     "           src: CellsBasis.cell list,", 
+     "           tmp: ea option (* NONE if |dst| = {src| = 1 *)}",
      "| ANNOTATION of {i:instruction, a:Annotations.annotation}",
      "| INSTR of instr"
     ]
@@ -56,7 +60,7 @@ struct
        (* The signature *)
        val sigBody =
           [$ ["structure C : "^Comp.signame md "CELLS",
-	      "structure CB : CELLS_BASIS",
+	      "structure CB : CELLS_BASIS = CellsBasis",
               "structure T : MLTREE",
               "structure Constant: CONSTANT",
               "structure Region : REGION",

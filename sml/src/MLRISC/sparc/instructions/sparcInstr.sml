@@ -8,7 +8,7 @@
 signature SPARCINSTR =
 sig
    structure C : SPARCCELLS
-   structure CB : CELLS_BASIS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -219,10 +219,6 @@ sig
    | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
    | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
    | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RDY of {d:CellsBasis.cell}
@@ -234,7 +230,11 @@ sig
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val load : {l:load, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region} -> instruction
@@ -265,10 +265,6 @@ sig
    val fpop1 : {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell} -> instruction
    val fpop2 : {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell} -> instruction
    val fcmp : {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool} -> instruction
-   val copy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
-   val fcopy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
    val save : {r:CellsBasis.cell, i:operand, d:CellsBasis.cell} -> instruction
    val restore : {r:CellsBasis.cell, i:operand, d:CellsBasis.cell} -> instruction
    val rdy : {d:CellsBasis.cell} -> instruction
@@ -492,10 +488,6 @@ struct
    | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
    | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
    | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RDY of {d:CellsBasis.cell}
@@ -507,7 +499,11 @@ struct
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val load = INSTR o LOAD
@@ -534,8 +530,6 @@ struct
    and fpop1 = INSTR o FPop1
    and fpop2 = INSTR o FPop2
    and fcmp = INSTR o FCMP
-   and copy = INSTR o COPY
-   and fcopy = INSTR o FCOPY
    and save = INSTR o SAVE
    and restore = INSTR o RESTORE
    and rdy = INSTR o RDY

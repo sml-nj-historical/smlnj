@@ -30,6 +30,7 @@ struct
     *========================================================================*)
   (* Note: BLE and BL used to implement calls are not view as branches *)
   fun instrKind(I.ANNOTATION{i, ...}) = instrKind i
+    | instrKind(I.COPY _) = IK_COPY
     | instrKind(I.INSTR instr) = 
       (case instr
 	of (I.BCOND _) => IK_JUMP
@@ -41,8 +42,6 @@ struct
 	 | (I.BV _)     => IK_JUMP
 	 | (I.BLR _)    => IK_JUMP
 	 | (I.NOP)      => IK_NOP
-	 | (I.COPY _)   => IK_COPY
-	 | (I.FCOPY _)  => IK_COPY
 	 | (I.BL{cutsTo=_::_,...}) => IK_CALL_WITH_CUTS
 	 | (I.BL  _)    => IK_CALL
 	 | (I.BLE{cutsTo=_::_,...}) => IK_CALL_WITH_CUTS
@@ -53,10 +52,7 @@ struct
 	 |  _	       => IK_INSTR)
     | instrKind _ = error "instrKind"
 
-  fun moveInstr(I.INSTR(I.COPY _))   = true
-    | moveInstr(I.INSTR(I.FCOPY _))  = true
-    | moveInstr(I.LIVE _)	     = false
-    | moveInstr(I.KILL _)	     = false
+  fun moveInstr(I.COPY _) 	     = true
     | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _ = false
 
@@ -65,13 +61,16 @@ struct
    (*========================================================================
     *  Parallel Move
     *========================================================================*)
-  fun moveTmpR(I.INSTR(I.COPY{tmp=SOME(I.Direct r), ...})) = SOME r
-    | moveTmpR(I.INSTR(I.FCOPY{tmp=SOME(I.FDirect f), ...})) = SOME f
+  fun moveTmpR(I.COPY{tmp, ...}) = 
+      (case tmp
+	of SOME(I.Direct r) => SOME r
+	 | SOME(I.FDirect f) => SOME f
+	 | _ => NONE
+      (*esac*))
     | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
-  fun moveDstSrc(I.INSTR(I.COPY{dst, src, ...})) = (dst, src)
-    | moveDstSrc(I.INSTR(I.FCOPY{dst, src, ...})) = (dst, src)
+  fun moveDstSrc(I.COPY{dst, src, ...}) = (dst, src)
     | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
 
@@ -227,8 +226,6 @@ struct
 	      (r31 :: t :: C.getReg defs, b :: C.getReg uses)
 	| I.LDIL{i, t}		    => ([t], [])
 	| I.LDO{b, t, ...}	    => ([t], [b])
-	| I.COPY{dst, src, tmp=SOME(I.Direct r), ...} => (r::dst, src)
-	| I.COPY{dst, src, ...}       => (dst, src)
 	| I.MTCTL{r, t}		    => ([],  [r])
 	| I.FSTORE {b, ...}	    => ([],  [b])
 	| I.FSTOREX {b, x, ...}  	    => ([],  [b,x])
@@ -242,7 +239,14 @@ struct
 	| I.LIVE{regs, ...} => ([], C.getReg regs)
 	| I.KILL{regs, ...} => (C.getReg regs, [])
 	| I.INSTR(i) => hppaDU(i)
-	| _ => error "defUseR"
+	| I.COPY{k, dst, src, tmp, ...} => let
+	    val (d,u) = case k of CB.GP => (dst, src) | _ => ([], [])
+          in
+	      case tmp 
+	      of SOME(I.Direct r) => (r::d, u)
+	       | SOME(I.Displace{base, ...}) => (* (d, base::u) *) (d, u)
+	       | _ => (d,u)
+          end
   end
 
   fun defUseF instr = let
@@ -258,8 +262,6 @@ struct
 	 | I.FBRANCH{f1, f2,...}	   => ([],  [f1, f2])
 	 | I.BL{defs, uses, ...}     => (C.getFreg defs, C.getFreg uses)
 	 | I.BLE{defs, uses, ...}    => (C.getFreg defs, C.getFreg uses)
-	 | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
-	 | I.FCOPY{dst, src, ...}    => (dst, src)
 	 | _ => ([],[])
   in 
       case instr
@@ -267,7 +269,13 @@ struct
 	| I.INSTR(i) => hppaDU(i)
 	| I.LIVE{regs, ...} => ([], C.getFreg regs)
 	| I.KILL{regs, ...} => (C.getFreg regs, [])
-	| _ => error "defUseR"
+        | I.COPY{k, dst, src, tmp, ...} => let
+	    val (d, u) = case k of CB.FP => (dst, src) | _ => ([],[])
+          in
+	     case tmp
+	      of SOME(I.FDirect f) => (f::d, u)
+	       | _ => (d, u)
+          end
   end
 
   fun defUse CB.GP = defUseR
@@ -286,11 +294,11 @@ struct
    *  Replicate an instruction
    *========================================================================*)
   fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
-    | replicate(I.INSTR(I.COPY{tmp=SOME _, dst, src, impl})) = 
-        I.copy{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
-    | replicate(I.INSTR(I.FCOPY{tmp=SOME _, dst, src, impl})) = 
-        I.fcopy{tmp=SOME(I.FDirect(C.newFreg())), 
-                dst=dst, src=src, impl=ref NONE}
+    | replicate(I.COPY{k, sz, tmp=SOME _, dst, src}) =  let
+	  val tmp = case k of CB.GP => C.newReg() | CB.FP => C.newFreg()
+      in
+        I.COPY{k=k, sz=sz, tmp=SOME(I.Direct(tmp)), dst=dst, src=src}
+      end
     | replicate i = i
 end
 

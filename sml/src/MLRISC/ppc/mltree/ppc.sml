@@ -59,6 +59,10 @@ struct
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp i,mb=0,me=SOME(31-i)}
   fun SRLI32{r,i,d} = 
       I.ROTATEI{oper=I.RLWINM,ra=d,rs=r,sh=I.ImmedOp(32-i),mb=i,me=SOME(31)}
+  fun COPY{dst, src, tmp} = 
+      I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
+  fun FCOPY{dst, src, tmp} = 
+      I.COPY{k=CB.FP, sz=64, dst=dst, src=src, tmp=tmp}
 
   (*  
    * Integer multiplication 
@@ -71,7 +75,7 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d} = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d} = COPY{dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d}= I.arith{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
      fun slli{r,i,d} = [I.INSTR(SLLI32{r=r,i=i,d=d})]
      fun srli{r,i,d} = [I.INSTR(SRLI32{r=r,i=i,d=d})]
@@ -108,9 +112,10 @@ struct
       val emit = emitInstruction o I.INSTR
 
       (* mark an instruction with annotations *)
-      fun mark'(instr,[]) = instr
-        | mark'(instr,a::an) = mark'(I.ANNOTATION{i=instr,a=a},an)
-      fun mark(instr,an) = emitInstruction(mark'(I.INSTR instr,an))
+      fun annotate(instr,[]) = instr
+        | annotate(instr,a::an) = annotate(I.ANNOTATION{i=instr,a=a},an)
+      fun mark'(instr, an) = emitInstruction(annotate(instr, an))
+      fun mark(instr,an) = emitInstruction(annotate(I.INSTR instr,an))
 
       (* Label where trap is generated.   
        * For overflow trapping instructions, we generate a branch 
@@ -142,23 +147,23 @@ struct
 
       fun move(rs,rd,an) =
         if CB.sameColor(rs,rd) then () 
-        else mark(I.COPY{dst=[rd],src=[rs],impl=ref NONE,tmp=NONE},an)
+        else mark'(COPY{dst=[rd],src=[rs],tmp=NONE},an)
 
       fun fmove(fs,fd,an) =
         if CB.sameColor(fs,fd) then () 
-        else mark(I.FCOPY{dst=[fd],src=[fs],impl=ref NONE,tmp=NONE},an)
+        else mark'(FCOPY{dst=[fd],src=[fs],tmp=NONE},an)
 
       fun ccmove(ccs,ccd,an) =
         if CB.sameColor(ccd,ccs) then () else mark(I.MCRF{bf=ccd, bfa=ccs},an)
 
       fun copy(dst, src, an) =
-          mark(I.COPY{dst=dst, src=src, impl=ref NONE, 
-                      tmp=case dst of [_] => NONE 
+          mark'(COPY{dst=dst, src=src,
+                     tmp=case dst of [_] => NONE 
                                     | _ => SOME(I.Direct(newReg()))},an)
       fun fcopy(dst, src, an) =
-          mark(I.FCOPY{dst=dst, src=src, impl=ref NONE, 
-                       tmp=case dst of [_] => NONE 
-                                     | _ => SOME(I.FDirect(newFreg()))},an)
+          mark'(FCOPY{dst=dst, src=src, 
+                      tmp=case dst of [_] => NONE 
+                                    | _ => SOME(I.FDirect(newFreg()))},an)
 
       fun emitBranch{bo, bf, bit, addr, LK} = 
       let val fallThrLab = Label.anon()
@@ -485,7 +490,7 @@ struct
           (* Generate optimized multiplication code *)
       and multiply(ty,oper,operi,genMult,e1,e2,rt,an) =
           let fun nonconst(e1,e2) = 
-                  [mark'( 
+                  [annotate( 
                      case commImmedOpnd signed16 (e1,e2) of
                        (ra,I.RegOp rb) => 
                          I.arith{oper=oper,ra=ra,rb=rb,rt=rt,OE=false,Rc=false}

@@ -504,8 +504,6 @@ struct
      | emitInstr (I.FCMP{cmp, r1, r2, nop}) = 
        ( fcmp {opf=cmp, rs1=r1, rs2=r2}; 
          delay {nop=nop})
-     | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
-     | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.SAVE{r, i, d}) = save {r=r, i=i, d=d}
      | emitInstr (I.RESTORE{r, i, d}) = restore {r=r, i=i, d=d}
      | emitInstr (I.RDY{d}) = rdy {d=d}

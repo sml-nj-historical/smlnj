@@ -8,7 +8,7 @@
 signature X86INSTR =
 sig
    structure C : X86CELLS
-   structure CB : CELLS_BASIS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -255,8 +255,6 @@ sig
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
@@ -299,7 +297,11 @@ sig
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val nop : instruction
@@ -334,8 +336,6 @@ sig
    val pop : operand -> instruction
    val cdq : instruction
    val into : instruction
-   val copy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option} -> instruction
-   val fcopy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option} -> instruction
    val fbinary : {binOp:fbinOp, src:operand, dst:operand} -> instruction
    val fibinary : {binOp:fibinOp, src:operand} -> instruction
    val funary : funOp -> instruction
@@ -626,8 +626,6 @@ struct
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
@@ -670,7 +668,11 @@ struct
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val nop = INSTR NOP
@@ -704,8 +706,6 @@ struct
    and pop = INSTR o POP
    and cdq = INSTR CDQ
    and into = INSTR INTO
-   and copy = INSTR o COPY
-   and fcopy = INSTR o FCOPY
    and fbinary = INSTR o FBINARY
    and fibinary = INSTR o FIBINARY
    and funary = INSTR o FUNARY

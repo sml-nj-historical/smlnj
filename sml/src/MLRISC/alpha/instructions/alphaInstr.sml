@@ -8,7 +8,7 @@
 signature ALPHAINSTR =
 sig
    structure C : ALPHACELLS
-   structure CB : CELLS_BASIS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -239,10 +239,6 @@ sig
    | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
    | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
         tmps:C.cellset}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATEV of {oper:foperateV, fa:CellsBasis.cell, fb:CellsBasis.cell, 
@@ -256,7 +252,11 @@ sig
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val lda : {r:CellsBasis.cell, b:CellsBasis.cell, d:operand} -> instruction
@@ -282,10 +282,6 @@ sig
    val cmove : {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell} -> instruction
    val pseudoarith : {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
       tmps:C.cellset} -> instruction
-   val copy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
-   val fcopy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
    val funary : {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell} -> instruction
    val foperate : {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell} -> instruction
    val foperatev : {oper:foperateV, fa:CellsBasis.cell, fb:CellsBasis.cell, 
@@ -531,10 +527,6 @@ struct
    | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
    | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
         tmps:C.cellset}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATEV of {oper:foperateV, fa:CellsBasis.cell, fb:CellsBasis.cell, 
@@ -548,7 +540,11 @@ struct
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val lda = INSTR o LDA
@@ -567,8 +563,6 @@ struct
    and operatev = INSTR o OPERATEV
    and cmove = INSTR o CMOVE
    and pseudoarith = INSTR o PSEUDOARITH
-   and copy = INSTR o COPY
-   and fcopy = INSTR o FCOPY
    and funary = INSTR o FUNARY
    and foperate = INSTR o FOPERATE
    and foperatev = INSTR o FOPERATEV

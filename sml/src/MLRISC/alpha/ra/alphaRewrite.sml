@@ -11,14 +11,17 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   fun error msg = MLRiscErrorMsg.error ("AlphaRewrite", msg)
 
   fun rewriteUse(instr, rs, rt) = let
+    fun match r = CB.sameColor(r,rs)
+    fun replace r = if match r then rt else r
+    fun replaceEA(SOME(I.Displace{base, disp})) = 
+	  SOME(I.Displace{base=replace base, disp=disp})
+      | replaceEA ea = ea
     fun alphaUse(instr) = let
-      fun match r = CB.sameColor(r,rs)
       fun isRegOp (I.REGop r) = match r
 	| isRegOp _ = false
       fun rwOperand(opnd as I.REGop r) = 
 	   if match r then I.REGop rt else opnd
 	| rwOperand opnd = opnd
-      fun replace r = if match r then rt else r
       fun load(ldClass, {ldOp, r, b, d, mem}) =
 	 if match b
 	 then ldClass{ldOp=ldOp, r=r, b=rt, d=d, mem=mem}
@@ -68,8 +71,6 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
        | I.OPERATEV arg => operate(I.OPERATEV, arg)
        | I.CMOVE{oper,ra,rb,rc} => 
 	   I.CMOVE{oper=oper,ra=replace ra,rb=rwOperand rb,rc=replace rc}
-       | I.COPY{dst, src, tmp, impl} => 
-	   I.COPY{dst=dst, src=map replace src, tmp=tmp, impl=impl}
        | I.CALL_PAL{code, def, use } => 
 	   I.CALL_PAL{code=code, def=def, use=CS.map {from=rs,to=rt} use}
        | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
@@ -83,14 +84,16 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	| I.LIVE{regs, spilled} => I.LIVE{regs=C.addReg(rt, C.rmvReg(rs, regs)),
 					   spilled=spilled}
         | I.INSTR(i) => I.INSTR(alphaUse(i))
+        | I.COPY{k as CB.GP, sz, dst, src, tmp} => 
+	   I.COPY{k=k, sz=sz, dst=dst, src=map replace src, tmp=replaceEA tmp}
 	| _ => error "rewriteUse"
   end
 
 
   fun frewriteUse(instr, fs, ft) = let
+    fun match f = CB.sameColor(f,fs)
+    fun replace f = if match f then ft else f
     fun alphaUse(instr) = let
-      fun match f = CB.sameColor(f,fs)
-      fun replace f = if match f then ft else f
       fun foperate(opClass, {oper, fa, fb, fc}) = 
 	if match fa then 
 	  opClass{oper=oper, fa=ft, fc=fc, fb=replace fb}
@@ -100,9 +103,6 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
       case instr
       of I.FBRANCH{b, f, lab} =>
 	 if match f then I.FBRANCH{b=b, f=ft, lab=lab} else instr
-       | I.FCOPY{dst, src, impl, tmp} => 
-	  I.FCOPY{dst=dst, src=map(fn f => if match f then ft else f) src, 
-		  tmp=tmp, impl=impl}
        | I.FSTORE{stOp, r, b, d, mem} => 
 	  if match r then I.FSTORE{stOp=stOp, r=ft, b=b, d=d, mem=mem} else instr
        | I.FOPERATE arg => foperate(I.FOPERATE, arg)
@@ -124,19 +124,20 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
     of I.ANNOTATION{i, ...} => frewriteUse(instr, fs, ft)
      | I.LIVE{regs, spilled} => I.LIVE{regs=C.addFreg(ft, C.rmvFreg(fs, regs)),
 					spilled=spilled}
+     | I.COPY{k as CB.FP, sz, dst, src, tmp} => 
+	  I.COPY{k=k, sz=sz, dst=dst, tmp=tmp, src=map replace src}
      | I.INSTR(i) => I.INSTR(alphaUse(i))
      | _ => error "frewriteUse"
   end
 
 
   fun rewriteDef(instr, rs, rt) = let
-    fun alphaDef(instr) = let
-      fun match r = CB.sameColor(r,rs)
-      fun rewrite r = if match r then rt else r
-      fun ea (SOME(I.Direct r)) = SOME(I.Direct (rewrite r))
-	| ea x = x
-    in
-      case instr
+    fun match r = CB.sameColor(r,rs)
+    fun rewrite r = if match r then rt else r
+    fun ea (SOME(I.Direct r)) = SOME(I.Direct (rewrite r))
+      | ea x = x
+    fun alphaDef(instr) =
+     (case instr
       of I.LDA{r, b, d} => if match r then I.LDA{r=rt, b=b, d=d} else instr
        | I.LDAH{r, b, d} => if match r then I.LDAH{r=rt, b=b, d=d} else instr
        | I.LOAD{ldOp, r, b, d, mem} => 
@@ -157,33 +158,31 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
        | I.OPERATEV{oper, ra, rb, rc} =>
 	 if match rc then I.OPERATEV{oper=oper, ra=ra, rb=rb, rc=rt} else instr
        | I.CMOVE{oper,ra,rb,rc} => I.CMOVE{oper=oper,ra=ra,rb=rb,rc=rewrite rc}
-       | I.COPY{dst, src, impl, tmp} =>
-	  I.COPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl}
        | I.CALL_PAL{code, def, use} => 
 	   I.CALL_PAL{code=code, def=CS.map {from=rs,to=rt} def, use=use}
        | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
 	   I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rewrite rc,
 			 tmps=CS.map {from=rs,to=rt} tmps}
        | _ => instr
-    end
+    (*esac*))
   in
       case instr
       of I.ANNOTATION{i, ...} => rewriteDef(i,rs,rt)
        | I.KILL{regs, spilled} => 
 	   I.KILL{regs=C.addReg(rt, C.rmvReg(rs, regs)), spilled=spilled}
        | I.INSTR(i) => I.INSTR(alphaDef(i))
+       | I.COPY{k as CB.GP, sz, dst, src, tmp} =>
+	  I.COPY{k=k, sz=sz, dst=map rewrite dst, src=src, tmp=ea tmp}
        | _ => error "rewriteDef"
   end
 
   fun frewriteDef(instr, fs, ft) = let
-    fun alphaDef(instr) = let
-
-      fun match f = CB.sameColor(f,fs)
-      fun rewrite f = if match f then ft else f
-      fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(rewrite f))
-	| ea x  = x
-    in
-      case instr
+    fun match f = CB.sameColor(f,fs)
+    fun rewrite f = if match f then ft else f
+    fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(rewrite f))
+      | ea x  = x
+    fun alphaDef(instr) = 
+     (case instr
       of I.FLOAD{ldOp, r, b, d, mem} => 
 	  if match r then I.FLOAD{ldOp=ldOp, r=ft, b=b, d=d, mem=mem} else instr
        | I.FOPERATE{oper, fa, fb, fc} =>
@@ -192,8 +191,6 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	  if match fc then I.FOPERATEV{oper=oper, fa=fa, fb=fb, fc=ft} else instr
        | I.FUNARY{oper,fb,fc} =>
 	  if match fc then I.FUNARY{oper=oper,fb=fb,fc=ft} else instr
-       | I.FCOPY{dst, src, tmp, impl} =>
-	  I.FCOPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl} 
        | I.FCMOVE{oper,fa,fb,fc} => I.FCMOVE{oper=oper,fa=fa,fb=fb,fc=rewrite fc}
        | I.JSR{r, b, d, defs, uses, cutsTo, mem} => 
 	  I.JSR{r=r, b=b, d=d, defs=CS.map {from=fs,to=ft} defs, 
@@ -205,12 +202,14 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	   I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rc, 
 			 tmps=CS.map {from=fs,to=ft} tmps}
        | _  => instr
-    end
+    (*esac*))
   in
       case instr
        of I.ANNOTATION{i,a} => frewriteDef(i, fs, ft)
         | I.KILL{regs, spilled} => 
 	   I.KILL{regs=C.addFreg(ft, C.rmvFreg(fs, regs)), spilled=spilled}
+        | I.COPY{k as CB.FP, sz, dst, src, tmp} =>
+	   I.COPY{k=k, sz=sz, dst=map rewrite dst, src=src, tmp=ea tmp}
 	| I.INSTR(i) => I.INSTR(alphaDef(i))
 	| _  => error "frewriteDef"
   end

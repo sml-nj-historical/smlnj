@@ -25,12 +25,11 @@ struct
   *  Instruction Kinds
   *========================================================================*)
   fun instrKind (I.ANNOTATION{i, ...}) = instrKind i
+    | instrKind (I.COPY _) = IK_COPY
     | instrKind (I.INSTR i)  = 
        (case i 
 	 of I.JMP _ => IK_JUMP
 	  | I.JCC _ => IK_JUMP
-	  | I.COPY _ => IK_COPY
-	  | I.FCOPY _ => IK_COPY
 	  | I.CALL{cutsTo=_::_,...} => IK_CALL_WITH_CUTS
 	  | I.CALL _ => IK_CALL
 	  | I.PHI _    => IK_PHI
@@ -43,41 +42,60 @@ struct
   fun moveInstr(I.ANNOTATION{i, ...}) = moveInstr i
     | moveInstr(I.LIVE _) = false
     | moveInstr(I.KILL _) = false
+    | moveInstr(I.COPY _) = true
     | moveInstr(I.INSTR i)  = 
        (case i
-         of I.COPY _ => true
-	  | I.FCOPY _ =>true
-	  | I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...} => true
+         of I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...} => true
 	  | I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...} => true
 	  | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...} => true
 	  | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...} => true
 	  | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...} => true
 	  | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...} => true
 	  | _ => false )
-    | moveInstr _ = false
 
 
-  val nop = fn () => I.nop
+  fun isMemMove(I.INSTR(i)) = 
+      (case i
+	of I.MOVE{mvOp=I.MOVL, src=I.Direct _, dst=I.MemReg _, ...} => true
+	 | I.MOVE{mvOp=I.MOVL, src=I.MemReg _, dst=I.Direct _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FPR _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FPR _,dst=I.FDirect _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FPR _, ...} => true
+	 | I.FMOVE{fsize=I.FP64,src=I.FDirect _,dst=I.FDirect _, ...} => true
+	 | _ => false 
+      (*esac*))
+    | isMemMove _ = false
+
+
+  fun memMove(I.INSTR(i)) = 
+      (case i
+        of I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...} => ([rd], [rs])
+	 | I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FPR rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 | I.FMOVE{src=I.FDirect rs, dst=I.FDirect rd, ...} => ([rd], [rs])
+	 |  _ => error "memMove: INSTR"
+      (*esac*))
+    | memMove _ = error "memMove"
+	
+    val nop = fn () => I.nop
 
 
  (*========================================================================
   *  Parallel Move
   *========================================================================*)
   fun moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
-    | moveTmpR(I.INSTR i) = 
-      (case i
-        of I.COPY{tmp=SOME(I.Direct r), ...} => SOME r
-	 | I.FCOPY{tmp=SOME(I.FDirect f), ...} => SOME f
-	 | I.FCOPY{tmp=SOME(I.FPR f), ...} => SOME f
-	 |  _ => NONE)
+    | moveTmpR(I.COPY{k=CB.GP, tmp=SOME(I.Direct r), ...}) = SOME r
+    | moveTmpR(I.COPY{k=CB.FP, tmp=SOME(I.FDirect f), ...}) = SOME f
+    | moveTmpR(I.COPY{k=CB.FP, tmp=SOME(I.FPR f), ...}) = SOME f 
     | moveTmpR _ = NONE
 
   fun moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
+    | moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
     | moveDstSrc(I.INSTR i) = 
       (case i
-        of I.COPY{src, dst, ...} => (dst, src)
-	 | I.FCOPY{src, dst, ...} => (dst, src)
-	 | I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...} => ([rd], [rs])
+        of I.MOVE{src=I.Direct rs, dst=I.MemReg rd, ...} => ([rd], [rs])
 	 | I.MOVE{src=I.MemReg rs, dst=I.Direct rd, ...} => ([rd], [rs])
 	 | I.FMOVE{src=I.FPR rs, dst=I.FPR rd, ...} => ([rd], [rs])
 	 | I.FMOVE{src=I.FDirect rs, dst=I.FPR rd, ...} => ([rd], [rs])
@@ -162,14 +180,14 @@ struct
   val eaxPair = [C.edx, C.eax]
 
   fun defUseR instr = let
-    fun x86DefUseR instr = let
-      fun operandAcc(I.Direct r, acc) = r::acc
-	| operandAcc(I.MemReg r, acc) = r::acc
-	| operandAcc(I.Displace{base, ...}, acc) = base::acc
-	| operandAcc(I.Indexed{base=SOME b, index, ...}, acc) = b::index::acc
-	| operandAcc(I.Indexed{base=NONE, index, ...}, acc) = index::acc
-	| operandAcc(_, acc) = acc
+    fun operandAcc(I.Direct r, acc) = r::acc
+      | operandAcc(I.MemReg r, acc) = r::acc
+      | operandAcc(I.Displace{base, ...}, acc) = base::acc
+      | operandAcc(I.Indexed{base=SOME b, index, ...}, acc) = b::index::acc
+      | operandAcc(I.Indexed{base=NONE, index, ...}, acc) = index::acc
+      | operandAcc(_, acc) = acc
 
+    fun x86DefUseR instr = let
       fun operandUse opnd = operandAcc(opnd, [])
 
       fun operandUse2(src1, src2) = ([], operandAcc(src1, operandUse src2))
@@ -223,9 +241,6 @@ struct
 	| I.PUSHFD	      => espOnly()
 	| I.POPFD		      => espOnly()
 	| I.CDQ		      => ([C.edx], [C.eax])
-
-	| I.COPY{dst, src, tmp=SOME(I.Direct r), ...}   => (r::dst, src)
-	| I.COPY{dst, src, ...} => (dst, src)
 	| I.FSTPT opnd	      => float opnd
 	| I.FSTPL opnd	      => float opnd
 	| I.FSTPS opnd	      => float opnd 
@@ -263,8 +278,15 @@ struct
        of I.ANNOTATION{i, ...} => defUseR i
 	| I.LIVE{regs, ...} => ([], C.getReg regs)
 	| I.KILL{regs, ...} => (C.getReg regs, [])
+	| I.COPY{k=CB.GP, dst, src, tmp, ...} => 
+	  (case tmp
+	    of NONE => (dst, src)
+             | SOME(I.Direct r) => (r::dst, src)
+	     | SOME(I.MemReg r) => (r::dst, src)
+	     | SOME(ea) => (dst, operandAcc(ea, src))
+          (*esac*))
+	| I.COPY _ => ([], [])
 	| I.INSTR i  => x86DefUseR(i)
-	| _ => error "defUseR"
   end
 
   fun defUseF instr = let
@@ -300,9 +322,6 @@ struct
 	| I.FUCOMP opnd           => ([], operand opnd)
 	| I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
 	| I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
-	| I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
-	| I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)
-	| I.FCOPY{dst, src, ...}  => (dst, src)
 
 	| I.FMOVE{src, dst, ...} => (operand dst, operand src) 
 	| I.FILOAD{ea, dst, ...} => (operand dst, []) 
@@ -315,10 +334,17 @@ struct
   in 
      case instr
      of (I.ANNOTATION{i, ...}) => defUseF(i)
-	| I.LIVE{regs, ...} => ([], C.getFreg regs)
-	| I.KILL{regs, ...} => (C.getFreg regs, [])
+      | I.LIVE{regs, ...} => ([], C.getFreg regs)
+      | I.KILL{regs, ...} => (C.getFreg regs, [])
+      | I.COPY{k=CB.FP, dst, src, tmp, ...} => 
+	(case tmp
+	  of NONE => (dst, src)
+	   | SOME(I.FDirect f) => (f::dst, src)
+	   | SOME(I.FPR f) => (f::dst, src)
+	   | _ => (dst, src)
+        (*esac*))
+      | I.COPY _  => ([], [])
       | (I.INSTR i) => x86DefUseF(i)
-      | _ =>  error "defUseF not implemented"
   end
 
   fun defUse CB.GP = defUseR

@@ -4,6 +4,7 @@
 structure HppaCG = 
   MachineGen
   ( structure MachSpec   = HppaSpec
+    structure CB         = CellsBasis
     structure ClientPseudoOps = HppaClientPseudoOps
     structure PseudoOps  = HppaPseudoOps
     structure Ext        = SMLNJMLTreeExt(* generic extension *)
@@ -103,16 +104,16 @@ structure HppaCG =
              val avail = HppaCpsRegs.availR
              val dedicated = HppaCpsRegs.dedicatedR
 
-             fun copy((rds as [_], rss as [_]), _) =
-                 I.copy{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
-               | copy((rds, rss), I.INSTR(I.COPY{tmp, ...})) =
-                 I.copy{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
+	     fun copy((rds, rss), I.COPY{k=CB.GP, sz, tmp, ...}) = let
+	       val tmp = (case (rds, rss) of ([_], [_]) => NONE | _ => tmp)
+	     in I.COPY{k=CB.GP, sz=sz, dst=rds, src=rss, tmp=tmp}
+	     end
 
-             (* spill copy temp *) 
-             fun spillCopyTmp(_, I.INSTR(I.COPY{dst,src,tmp,impl}),loc) =
-                 I.copy{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                           disp= ~(SpillTable.getRegLoc loc)})}
+	     (* spill copy temp *)
+	     fun spillCopyTmp(an, I.COPY{k=CB.GP, sz, tmp,dst,src, ...},loc) =
+		 I.COPY{k=CB.GP, sz=sz,  dst=dst,src=src,
+			tmp=SOME(I.Displace{base=sp, 
+					    disp= ~(SpillTable.getRegLoc loc)})}
 
              (* spill register *) 
              fun spillInstr{src,spilledCell,spillLoc,an} =
@@ -135,16 +136,16 @@ structure HppaCG =
              val avail = HppaCpsRegs.availF
              val dedicated = HppaCpsRegs.dedicatedF
  
-             fun copy((fds as [_], fss as [_]), _) =
-                 I.fcopy{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
-               | copy((fds, fss), I.INSTR(I.FCOPY{tmp, ...})) =
-                 I.fcopy{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
-   
-             fun spillCopyTmp(_,I.INSTR(I.FCOPY{dst,src,tmp,impl}),loc) =
-                 I.fcopy{dst=dst, src=src, impl=impl,
-                        tmp=SOME(I.Displace{base=sp, 
-                                        disp= ~(SpillTable.getFregLoc loc)})}
-   
+	     fun copy((fds, fss), I.COPY{k=CB.FP, sz, tmp, ...}) = let
+	       val tmp =(case (fds, fss) of ([_],[_]) => NONE | _ => tmp)
+	     in I.COPY{k=CB.FP, sz=sz, dst=fds, src=fss, tmp=tmp}
+	     end
+
+	     fun spillCopyTmp(an, I.COPY{k=CB.FP, sz, tmp,dst,src},loc) =
+		 I.COPY{k=CB.FP, sz=sz, dst=dst,src=src,
+			tmp=SOME(I.Displace{base=sp, disp= ~(SpillTable.getFregLoc loc)})}
+
+
              fun spillInstr(_,r,loc) =
              let val offset = SpillTable.getFregLoc loc
              in  [I.ldil{i=I.IMMED(high21(~offset)), t=tmpR},

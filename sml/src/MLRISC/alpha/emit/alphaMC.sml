@@ -252,16 +252,16 @@ struct
        end
    and Split {le} = 
        let 
-(*#line 431.22 "alpha/alpha.mdl"*)
+(*#line 428.22 "alpha/alpha.mdl"*)
            val i = MLTreeEval.valueOf le
 
-(*#line 432.22 "alpha/alpha.mdl"*)
+(*#line 429.22 "alpha/alpha.mdl"*)
            val w = itow i
 
-(*#line 433.22 "alpha/alpha.mdl"*)
+(*#line 430.22 "alpha/alpha.mdl"*)
            val hi = w ~>> 0wx10
 
-(*#line 434.22 "alpha/alpha.mdl"*)
+(*#line 431.22 "alpha/alpha.mdl"*)
            val lo = w && 0wxffff
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -269,19 +269,19 @@ struct
        end
    and High {le} = 
        let 
-(*#line 437.21 "alpha/alpha.mdl"*)
+(*#line 434.21 "alpha/alpha.mdl"*)
            val (hi, _) = Split {le=le}
        in hi
        end
    and Low {le} = 
        let 
-(*#line 438.21 "alpha/alpha.mdl"*)
+(*#line 435.21 "alpha/alpha.mdl"*)
            val (_, lo) = Split {le=le}
        in lo
        end
    and LoadStore {opc, ra, rb, disp} = 
        let 
-(*#line 440.12 "alpha/alpha.mdl"*)
+(*#line 437.12 "alpha/alpha.mdl"*)
            val disp = 
                (case disp of
                  I.REGop rb => emit_GP rb
@@ -360,10 +360,10 @@ struct
        end
    and Pal {func} = eWord32 func
 
-(*#line 476.7 "alpha/alpha.mdl"*)
+(*#line 473.7 "alpha/alpha.mdl"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
 
-(*#line 477.7 "alpha/alpha.mdl"*)
+(*#line 474.7 "alpha/alpha.mdl"*)
    val zeroR = Option.valOf (C.zeroReg CellsBasis.GP)
        fun emitter instr =
        let
@@ -386,30 +386,28 @@ struct
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = 
        let 
-(*#line 581.15 "alpha/alpha.mdl"*)
+(*#line 578.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = 
        let 
-(*#line 588.15 "alpha/alpha.mdl"*)
+(*#line 585.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
      | emitInstr (I.CMOVE{oper, ra, rb, rc}) = Operate {opc=0wx11, func=emit_cmove oper, 
           ra=ra, rb=rb, rc=rc}
      | emitInstr (I.PSEUDOARITH{oper, ra, rb, rc, tmps}) = error "PSEUDOARITH"
-     | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
-     | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = 
        let 
-(*#line 617.15 "alpha/alpha.mdl"*)
+(*#line 603.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = 
        let 
-(*#line 625.15 "alpha/alpha.mdl"*)
+(*#line 611.15 "alpha/alpha.mdl"*)
            val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end

@@ -14,35 +14,34 @@ struct
   structure I = Instr
   structure C = Instr.C
   structure Const = I.Constant
+  structure CB = CellsBasis
 
   fun error msg = MLRiscErrorMsg.error("HppaJumps",msg)
 
   val branchDelayedArch = false
 
-  fun minSize(I.INSTR(I.COPY _))    = 0
-    | minSize(I.INSTR(I.FCOPY _))   = 0
-    | minSize(I.INSTR(I.FBRANCH _)) = 12 (* FCMP/FTEST/B *)
+  fun minSize(I.INSTR(I.FBRANCH _)) = 12 (* FCMP/FTEST/B *)
     | minSize(I.INSTR(I.BLR{labs,...})) = 8 + 8 * length labs (* FCMP/FTEST/B *)
     | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize(I.LIVE _)  = 0
     | minSize(I.KILL _)  = 0
+    | minSize(I.COPY _)  = 0
     | minSize(I.INSTR(I.COMCLR_LDO _)) = 8
     | minSize(I.INSTR(I.COMICLR_LDO _)) = 8
-    | minSize _            = 4
+    | minSize _          = 4
   
   fun maxSize (I.INSTR(I.BCOND _))  = 16  (* BCOND+LONGJUMP *)
     | maxSize (I.INSTR(I.BCONDI _)) = 16  (* BCONDI+LONGJUMP *)
     | maxSize (I.INSTR(I.BB _))     = 16  (* BB+LONGJUMP *)
-    | maxSize (I.INSTR(I.B _))	   = 12  (* LONGJUMP *)
+    | maxSize (I.INSTR(I.B _))	    = 12  (* LONGJUMP *)
     | maxSize (I.INSTR(I.FBRANCH _))= 20
-    | maxSize (I.INSTR(I.COPY _))   = error "maxSize:COPY"
-    | maxSize (I.INSTR(I.FCOPY _))  = error "maxSize:FCOPY"
     | maxSize (I.ANNOTATION{i,...}) = maxSize i
-    | maxSize _		   = 4
+    | maxSize _			    = 4
 
-  fun isSdi(I.ANNOTATION{i,...}) =isSdi i
+  fun isSdi(I.ANNOTATION{i,...})  = isSdi i
     | isSdi(I.LIVE _)		  = true
     | isSdi(I.KILL _)		  = true
+    | isSdi(I.COPY _)		  = true  
     | isSdi(I.INSTR instr) = let
 
 	fun opnd (I.LabExp _) = true
@@ -60,11 +59,8 @@ struct
 	 | I.ARITHI{i, ...}	=> opnd i
 	 | I.LOADI{i, ...}      => opnd i
 	 | I.COMICLR_LDO{i1, ...} => opnd i1
-	 | I.FCOPY _		=> true
-	 | I.COPY _		=> true
 	 | _			=> false
       end
-    | isSdi _ = error "isSdi"
 
   fun im11 n = ~1024 <= n andalso n < 1024
   fun im12 n = ~2048 <= n andalso n < 2048
@@ -74,6 +70,10 @@ struct
   fun sdiSize(I.ANNOTATION{i, ...}, labMap, loc) = sdiSize(i, labMap, loc)
     | sdiSize(I.LIVE _, _, _) = 0
     | sdiSize(I.KILL _, _, _) = 0
+    | sdiSize(I.COPY{k=CB.GP, dst, src, tmp, ...}, _, _) = 
+        4 * length(Shuffle.shuffle{tmp=tmp, dst=dst, src=src})
+    | sdiSize(I.COPY{k=CB.FP, dst, src, tmp, ...}, _, _) = 
+        4 * length(Shuffle.shufflefp{tmp=tmp, dst=dst, src=src})
     | sdiSize(I.INSTR(instr), labMap, loc) = let
 	fun branchOffset lab = ((labMap lab) - loc - 8) div 4
 	fun branch(lab,nop) = let
@@ -113,16 +113,6 @@ struct
 		    not(im17(branchOffset t + n)) orelse badOffsets(ts,n+2)
 		| badOffsets([],n) = false
 	    in l + (if badOffsets(labs,2) then 20 else 8) 
-	    end
-	  | I.COPY{impl=ref(SOME l), ...} => 4 * length l
-	  | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
-	  | I.COPY{dst, src, impl, tmp} => let
-	      val instrs = Shuffle.shuffle {tmp=tmp, dst=dst, src=src}
-	    in impl := SOME(instrs); 4 * length instrs
-	    end
-	  | I.FCOPY{dst, src, impl, tmp} => let
-	      val instrs = Shuffle.shufflefp {tmp=tmp, dst=dst, src=src}
-	    in impl := SOME instrs;  4 * length instrs
 	    end
 	  | _  => error "sdiSize"
       end
@@ -172,6 +162,10 @@ struct
   fun expand(I.ANNOTATION{i,...},size,pos) = expand(i,size,pos)
     | expand(I.LIVE _, _, _) = []
     | expand(I.KILL _, _, _) = []
+    | expand(I.COPY{k=CB.GP, dst, src, tmp, ...}, _, _) = 
+        Shuffle.shuffle{tmp=tmp, dst=dst, src=src}
+    | expand(I.COPY{k=CB.FP, dst, src, tmp, ...}, _, _) = 
+        Shuffle.shufflefp{tmp=tmp, dst=dst, src=src}
     | expand(instr as I.INSTR(i), size, pos) =
       (case i
         of I.LDO{i=I.LabExp lexp, t, b} =>
@@ -280,9 +274,6 @@ struct
 		foldr (fn (l,is) => I.b{lab=l,n=true}::I.nop::is) [] labs
 	     else error "BLR"
 	    )
-	 | I.COPY{impl=ref(SOME instrs),...} => instrs
-
-	 | I.FCOPY{impl=ref(SOME instrs),...} => instrs
 	 | _ => error "expand")
     | expand _ = error "expand"
 end

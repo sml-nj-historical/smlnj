@@ -12,47 +12,17 @@ struct
   structure I = Instr
   structure C = Instr.C
   structure Const = I.Constant
+  structure CB = CellsBasis
 
   fun error msg = MLRiscErrorMsg.error("SparcJumps",msg)
 
   val branchDelayedArch = true
 
-  fun minSize(I.ANNOTATION{i,...}) = minSize i
-    | minSize(I.LIVE _)  = 0
-    | minSize(I.KILL _)  = 0
-    | minSize(I.INSTR instr) = 
-      (case instr
-        of (I.COPY _)  => 0
-	 | (I.FCOPY _) => 0
-	 | (I.Bicc{nop=true,...}) => 8
-	 | (I.FBfcc{nop=true,...}) => 8
-	 | (I.JMP{nop=true,...}) => 8
-	 | (I.JMPL{nop=true,...}) => 8
-	 | (I.CALL{nop=true,...}) => 8
-	 | (I.BR{nop=true,...}) => 8
-	 | (I.BP{nop=true,...}) => 8
-	 | (I.RET{nop=true,...}) => 8
-	 | (I.FCMP{nop=true,...}) => 8
-	 | (I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) => 8
-	 |  _          => 4
-      (*esac*))
-    | minSize _ = error "isSdi"
-
-  fun maxSize (I.INSTR(I.COPY _))   = error "maxSize:COPY"
-    | maxSize (I.INSTR(I.FCOPY _))  = error "maxSize:FCOPY"
-    | maxSize (I.INSTR(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...})) = 8
-    | maxSize (I.ANNOTATION{i,...}) = maxSize i
-    | maxSize _		   = 4
-
-  fun immed13 n = ~4096 <= n andalso n < 4096
-  fun immed22 n = ~0x200000 <= n andalso n < 0x1fffff
-  fun immed16 n = ~0x8000 <= n andalso n < 0x8000
-  fun immed19 n = ~0x40000 <= n andalso n < 0x40000
-  fun immed30 n = ~0x4000000 <= n andalso n < 0x3ffffff
 
   fun isSdi(I.ANNOTATION{i,...}) = isSdi i
     | isSdi(I.LIVE _)		  = true
     | isSdi(I.KILL _)		  = true
+    | isSdi(I.COPY _)		  = true
     | isSdi(I.INSTR instr) = let
 	fun oper(I.IMMED n) = false
 	      | oper(I.REG _) = false
@@ -78,13 +48,40 @@ struct
 	    | I.BP _ => true
 	    | I.Ticc{i,...} => oper i
 	    | I.WRY{i,...} => oper i
-	    | I.COPY _ => true
-	    | I.FCOPY _ => true
 	    | I.SAVE{i,...} => oper i
 	    | I.RESTORE{i,...} => oper i
+	    (* The following is only true of Version 8 *)
+	    | I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd), ...} => true
 	    | _ => false
 	end
-    | isSdi _ = error "isSdi"
+
+  fun minSize(I.ANNOTATION{i,...}) = minSize i
+    | minSize(I.LIVE _)  = 0
+    | minSize(I.KILL _)  = 0
+    | minSize(I.INSTR instr) = 
+      (case instr
+	of (I.Bicc{nop=true,...}) => 8
+	 | (I.FBfcc{nop=true,...}) => 8
+	 | (I.JMP{nop=true,...}) => 8
+	 | (I.JMPL{nop=true,...}) => 8
+	 | (I.CALL{nop=true,...}) => 8
+	 | (I.BR{nop=true,...}) => 8
+	 | (I.BP{nop=true,...}) => 8
+	 | (I.RET{nop=true,...}) => 8
+	 | (I.FCMP{nop=true,...}) => 8
+	 | (I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) => 8
+	 |  _          => 4
+      (*esac*))
+
+  fun maxSize (I.INSTR(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...})) = 8
+    | maxSize (I.ANNOTATION{i,...}) = maxSize i
+    | maxSize _		   = 4
+
+  fun immed13 n = ~4096 <= n andalso n < 4096
+  fun immed22 n = ~0x200000 <= n andalso n < 0x1fffff
+  fun immed16 n = ~0x8000 <= n andalso n < 0x8000
+  fun immed19 n = ~0x40000 <= n andalso n < 0x40000
+  fun immed30 n = ~0x4000000 <= n andalso n < 0x3ffffff
 
   fun instrLength([],n) = n
     | instrLength(I.INSTR(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...})::is,n) =
@@ -94,6 +91,12 @@ struct
   fun sdiSize(I.ANNOTATION{i, ...}, labmap, loc) = sdiSize(i, labmap, loc)
     | sdiSize(I.LIVE _, _, _) = 0
     | sdiSize(I.KILL _, _, _) = 0
+    | sdiSize(I.COPY{k=CB.GP, src, dst, tmp, ...}, _, _) =
+	      4 * length(Shuffle.shuffle{tmp=tmp, dst=dst, src=src})
+    | sdiSize(I.COPY{k=CB.FP, src, dst, tmp, ...}, _, _) = let
+		val instrs = Shuffle.shufflefp{src=src, dst=dst, tmp=tmp}
+            in instrLength(instrs, 0)
+            end
     | sdiSize(instr as I.INSTR i, labMap, loc) = let
 	  fun oper(I.IMMED n,_) = 4
 	    | oper(I.REG _,_) = 4
@@ -131,18 +134,7 @@ struct
 	  | I.BP{label,nop,...} => branch19 label + delaySlot nop
 	  | I.CALL{label,...} => call label
 	  | I.WRY{i,...} => oper(i,12)
-	  | I.COPY{impl=ref(SOME l), ...} => 4 * length l
-	  | I.FCOPY{impl=ref(SOME l), ...} => instrLength(l,0)
-	  | I.COPY{dst, src, impl, tmp} =>
-	    let val instrs = 
-	      Shuffle.shuffle{tmp=tmp,dst=dst,src=src}
-	    in impl := SOME(instrs); 4 * length instrs
-	    end
-	  | I.FCOPY{dst, src, impl, tmp} => 
-	    let val instrs = 
-	      Shuffle.shufflefp{tmp=tmp,dst=dst,src=src}
-	    in impl := SOME instrs; instrLength(instrs,0)
-	    end
+ 	  | I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...} => 8	    
 	  | _ => error "sdiSize"
       end
     | sdiSize _ = error "sdiSize"
@@ -171,11 +163,13 @@ struct
   fun expand(I.ANNOTATION{i, ...}, size, pos) = expand(i, size, pos)
     | expand(I.LIVE _, _, _) = []
     | expand(I.KILL _, _, _) = []
+    | expand(I.COPY{k=CB.GP, src, tmp, dst, ...}, _, _)  = 
+       Shuffle.shuffle{src=src, dst=dst, tmp=tmp}
+    | expand(I.COPY{k=CB.FP, src, tmp, dst, ...}, _, _)  = 
+       Shuffle.shufflefp{src=src, dst=dst, tmp=tmp}
     | expand(instr as (I.INSTR i), size, pos) = 
       (case (i,size) 
-       of (I.COPY{impl=ref(SOME instrs),...},_) => instrs
-	| (I.FCOPY{impl=ref(SOME instrs),...},_) => instrs
-	| (_,4) => [instr]
+       of (_,4) => [instr]
 	| (I.ARITH{a=I.OR,r,i,d},8) =>
 	    if CellsBasis.cellId r = 0 then
 	    let val {lo,hi} = split i
@@ -225,6 +219,22 @@ struct
 	     *)
 	| (I.Bicc{b,a,label,nop},_) => error "Bicc"  
 	| (I.FBfcc{b,a,label,nop},_) => error "FBfcc" 
+	| (I.FPop1{a, r, d}, _) => let
+	    fun nextRegNum c = C.FPReg(CellsBasis.registerNum c + 1)
+	    (* Note: if r=d then the move is not required.
+	     * This needs to be factored into the size before it
+	     * can be done here.
+	     *)
+	    fun doDouble(oper) = 
+	      [I.fpop1{a=oper, r=r, d=d},
+	       I.fpop1{a=I.FMOVs, r=nextRegNum r, d=nextRegNum d}]
+          in
+	    case a 
+             of I.FMOVd => doDouble(I.FMOVs)
+	      | I.FNEGd => doDouble(I.FNEGs)
+	      | I.FABSd => doDouble(I.FABSs)
+	      | _ => error "expand: FPop1"
+          end
 	| (I.WRY{r,i},12) => expandImm(i,I.WRY{r=r,i=I.REG C.asmTmpR})
 	|  _ => error "expand"
       (*esac*))

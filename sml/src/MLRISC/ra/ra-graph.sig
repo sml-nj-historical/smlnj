@@ -110,7 +110,7 @@ sig
   and move = 
     MV of {src    : node,  		(* source register of move *)
 	   dst    : node,		(* destination register of move *)
-           (*kind   : moveKind, *)      (* kind of move *)
+(*           kind   : moveKind,           (* kind of move *) *)
            cost   : cost,               (* cost *)
 	   status : moveStatus ref,     (* coalesced? *)
            hicount: int ref             (* neighbors of high degree *)
@@ -122,6 +122,10 @@ sig
                | PAIR_TO_PAIR    (* register pair to register pair *)
                | REG_TO_EVEN     (* register to even register in pair *)
                | REG_TO_ODD      (* register to odd register in pair *)
+(*  and moveKind = REGmvk		 (* register-register move *)
+               | MEMREGmvk       (* move involving memReg  *)
+ 
+*)
 
   and nodeStatus =
         PSEUDO                (* pseudo register *)

@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Lal George
+Date: 2001/01/09 14:31:35 EST 2002
+Tag: george-20011206-rm-native-copy
+Description:
+
+	Removed the native COPY and FCOPY instructions
+	from all the architectures and replaced it with the
+	explicit COPY instruction from the previous commit.
+
+	It is now possible to simplify many of the optimizations
+	modules that manipulate copies. This has not been
+	done in this change.
+
+----------------------------------------------------------------------
+Name: Lal George
 Date: 2001/12/06 16:50:13 EST 2001
 Tag: george-20011206-mlrisc-instruction
 Description:

@@ -5,8 +5,9 @@
  * 
  * -- Allen
  * 
- * Notes: places with optimizations are marked ***OPT***
+ * Notes: places with optimizations are marked ***OPT**n*
  *)
+
 
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR 
@@ -225,7 +226,7 @@ struct
      type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
      type argi = {r:CB.cell,i:int,d:CB.cell}
 
-     fun mov{r,d}    = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d}    = I.COPY{k=CB.GP, sz=intTy, dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d} = I.operate{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
      (*
       * How to left shift by a constant (32bits)
@@ -268,7 +269,7 @@ struct
      type arg  = {r1:CB.cell, r2:CB.cell, d:CB.cell}
      type argi = {r:CB.cell, i:int, d:CB.cell}
 
-     fun mov{r,d}    = I.copy{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun mov{r,d}    = I.COPY{k=CB.GP, sz=intTy, dst=[d],src=[r],tmp=NONE}
      fun add{r1,r2,d}= I.operate{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
      fun slli{r,i,d} = [I.operate{oper=I.SLL,ra=r,rb=I.IMMop i,rc=d}]
      fun srli{r,i,d} = [I.operate{oper=I.SRL,ra=r,rb=I.IMMop i,rc=d}]
@@ -456,23 +457,23 @@ struct
 
       (* emit a copy *)
       and copy(dst,src,an) = 
-          mark(I.COPY{dst=dst,src=src,impl=ref NONE,
+          mark'(I.COPY{k=CB.GP, sz=32, dst=dst,src=src,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.Direct(newReg()))},an)
 
       (* emit a floating point copy *)
       and fcopy(dst,src,an) = 
-          mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
+          mark'(I.COPY{k=CB.FP, sz=64, dst=dst,src=src,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
       and move(s,d,an) = 
           if CB.sameCell(s,d) orelse CB.sameCell(d,zeroR) then () else 
-          mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
+          mark'(I.COPY{k=CB.GP, sz=32, dst=[d],src=[s],tmp=NONE},an)
 
       and fmove(s,d,an) = 
           if CB.sameCell(s,d) orelse CB.sameCell(d,zeroFR) then () else 
-          mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
+          mark'(I.COPY{k=CB.FP, sz=64, dst=[d],src=[s],tmp=NONE},an)
 
        (* emit an sign extension op *)
       and signExt32(r,d) =

@@ -31,11 +31,8 @@ struct
   fun shuffle{mvInstr, ea} {tmp, dst, src} = let
     fun mv{dst, src, instrs} = List.revAppend(mvInstr{dst=dst,src=src}, instrs)
 
-    fun valOf(SOME x) = x
-      | valOf NONE = raise Option
-
     fun opnd dst = case dst of 
-                     TEMP     => valOf tmp 
+                     TEMP     => Option.valOf tmp 
                    | CELL dst => ea dst
 
     (* perform unconstrained moves *)
@@ -55,7 +52,7 @@ struct
 	       fun rename(p as (a,b)) =
                    if equalObj(rd, b) then (a, TEMP) else p
 	       val acc' = (rd, rs) :: map rename acc
-	       val instrs' = mv{dst=valOf tmp,src=opnd rd,instrs=instrs}
+	       val instrs' = mv{dst=Option.valOf tmp, src=opnd rd, instrs=instrs}
 	       val (_, acc'', instrs'') = 
 		 loop(acc', false, map #2 acc', [], instrs')
 	     in cycle(acc'', instrs'')

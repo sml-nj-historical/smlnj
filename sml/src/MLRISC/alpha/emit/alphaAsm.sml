@@ -278,7 +278,7 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 482.7 "alpha/alpha.mdl"*)
+(*#line 479.7 "alpha/alpha.mdl"*)
    fun isZero (I.LABop le) = (MLTreeEval.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 
@@ -395,7 +395,7 @@ struct
            emit_label lab )
        | I.OPERATE{oper, ra, rb, rc} => 
          let 
-(*#line 571.15 "alpha/alpha.mdl"*)
+(*#line 568.15 "alpha/alpha.mdl"*)
              fun disp () = 
                  ( emit_operate oper; 
                    emit "\t"; 
@@ -440,10 +440,6 @@ struct
            emit ", "; 
            emitCell rc; 
            emit_cellset ("tmps", tmps))
-       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {tmp=tmp, 
-            dst=dst, src=src})
-       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {tmp=tmp, 
-            dst=dst, src=src})
        | I.FUNARY{oper, fb, fc} => 
          ( emit_funary oper; 
            emit "\t"; 
@@ -500,6 +496,10 @@ struct
             comment("killed:: " ^ CellsBasis.CellSet.toString regs ^
                     "spilled:: " ^ CellsBasis.CellSet.toString spilled)
         | emitInstr(I.INSTR i) = emitter i
+        | emitInstr(I.COPY{k=CellsBasis.GP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shuffle{tmp=tmp, src=src, dst=dst})
+        | emitInstr(I.COPY{k=CellsBasis.FP, sz, src, dst, tmp}) =
+           emitInstrs(Shuffle.shufflefp{tmp=tmp, src=src, dst=dst})
         | emitInstr _ = error "emitInstr"
    
    in  S.STREAM{beginCluster=init,

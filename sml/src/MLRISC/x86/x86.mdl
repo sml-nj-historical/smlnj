@@ -774,16 +774,7 @@ struct
     | INTO
 	``into''
 
-   (* parallel copies *)
-    | COPY of {dst: $GP list, src: $GP list, tmp:operand option}
-	asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-	mc:  emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-    | FCOPY of {dst: $FP list, src: $FP list, tmp:operand option}
-	asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-	mc:  emitInstrs (Shuffle.shuffle{tmp,dst,src})
-
-   (* floating *)
+    (* floating *)
     | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
 	asm: (emit_fbinaryOp(binOp,src,dst))
 

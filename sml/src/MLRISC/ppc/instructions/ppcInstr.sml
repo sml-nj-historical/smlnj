@@ -8,7 +8,7 @@
 signature PPCINSTR =
 sig
    structure C : PPCCELLS
-   structure CB : CELLS_BASIS
+   structure CB : CELLS_BASIS = CellsBasis
    structure T : MLTREE
    structure Constant: CONSTANT
    structure Region : REGION
@@ -220,17 +220,17 @@ sig
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val l : {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region} -> instruction
@@ -265,10 +265,6 @@ sig
    val bclr : {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list} -> instruction
    val b : {addr:operand, LK:bool} -> instruction
    val call : {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region} -> instruction
-   val copy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
-   val fcopy : {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-      tmp:ea option} -> instruction
    val source : {} -> instruction
    val sink : {} -> instruction
    val phi : {} -> instruction
@@ -488,17 +484,17 @@ struct
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
-   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
-        tmp:ea option}
    | SOURCE of {}
    | SINK of {}
    | PHI of {}
    and instruction =
      LIVE of {regs: C.cellset, spilled: C.cellset}
    | KILL of {regs: C.cellset, spilled: C.cellset}
-   | COPYXXX of {k: CB.cellkind, dst: CB.cell list, src: CB.cell list}
+   | COPY of {k: CellsBasis.cellkind, 
+              sz: int,          (* in bits *)
+              dst: CellsBasis.cell list,
+              src: CellsBasis.cell list,
+              tmp: ea option (* NONE if |dst| = {src| = 1 *)}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | INSTR of instr
    val l = INSTR o L
@@ -525,8 +521,6 @@ struct
    and bclr = INSTR o BCLR
    and b = INSTR o B
    and call = INSTR o CALL
-   and copy = INSTR o COPY
-   and fcopy = INSTR o FCOPY
    and source = INSTR o SOURCE
    and sink = INSTR o SINK
    and phi = INSTR o PHI

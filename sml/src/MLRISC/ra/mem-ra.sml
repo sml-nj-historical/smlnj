@@ -38,6 +38,7 @@ struct
     | isMemLoc(SPILL_LOC _) = true
     | isMemLoc(MEMREG _) = true
     | isMemLoc _ = false
+
   (*
    * Spill coalescing.
    * Coalesce non-interfering moves between spilled nodes, 
@@ -430,7 +431,8 @@ struct
       fun spillIt{graph = G as GRAPH{mode, ...}, nodes,
                   copyInstr, spill, spillSrc, spillCopyTmp,
                   reload, reloadDst, renameSrc, cellkind} =
-      let val nodes = if isOn(mode,SPILL_PROPAGATION) then   
+      let 
+	  val nodes = if isOn(mode,SPILL_PROPAGATION) then   
                           spillPropagation G nodes else nodes
           val _ = if isOn(mode,SPILL_COALESCING) then 
                      spillCoalescing G nodes else ()

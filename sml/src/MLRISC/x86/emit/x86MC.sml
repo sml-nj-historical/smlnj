@@ -223,10 +223,6 @@ struct
      | emitInstr (I.POP operand) = error "POP"
      | emitInstr (I.CDQ) = error "CDQ"
      | emitInstr (I.INTO) = error "INTO"
-     | emitInstr (I.COPY{dst, src, tmp}) = emitInstrs (Shuffle.shuffle {tmp=tmp, 
-          dst=dst, src=src})
-     | emitInstr (I.FCOPY{dst, src, tmp}) = emitInstrs (Shuffle.shuffle {tmp=tmp, 
-          dst=dst, src=src})
      | emitInstr (I.FBINARY{binOp, src, dst}) = error "FBINARY"
      | emitInstr (I.FIBINARY{binOp, src}) = error "FIBINARY"
      | emitInstr (I.FUNARY funOp) = error "FUNARY"

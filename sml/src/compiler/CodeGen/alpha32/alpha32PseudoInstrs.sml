@@ -23,6 +23,7 @@ struct
   val defs = makeCellset (map C.GPReg [0, 23, 24, 25, 26, 28])
   val uses = makeCellset (map C.GPReg [16, 17])
   fun copyTmp() = SOME(I.Direct(C.newReg()))
+  fun copy{dst, src, tmp} = I.COPY{k=CB.GP, sz=32, dst=dst, src=src, tmp=tmp}
 
   val r16 = C.GPReg 16
   val r17 = C.GPReg 17
@@ -31,18 +32,16 @@ struct
   val r0  = C.GPReg 0
 
   fun divlv({ra, rb, rc}, reduceOpnd) = 
-    [I.copy{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
-	    tmp=copyTmp()},
+    [copy{dst=[r16, r17], src=[ra, reduceOpnd rb], tmp=copyTmp()},
      I.load{ldOp=I.LDL, r=r27, b=sp, d=divlOffset, mem=stack},
      I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
-     I.copy{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
+     copy{dst=[rc], src=[r0], tmp=NONE}]
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
-    [I.copy{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
-	    tmp=copyTmp()},
+    [copy{dst=[r16, r17], src=[ra, reduceOpnd rb],tmp=copyTmp()},
      I.load{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
      I.jsr{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
-     I.copy{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
+     copy{dst=[rc], src=[r0], tmp=NONE}]
 
   fun unimplemented _ = error "unimplemented pseudo-instr"
   val divl  = unimplemented

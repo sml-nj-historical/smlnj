@@ -45,9 +45,6 @@ struct
      infix 2 := 
      infix 3 << >> ~>>
 
-     (* rtl COPY{dst,src} = $r[forall dst] := $r[forall src]
-     rtl FCOPY{dst,src} = $f[forall dst] := $f[forall src] *)
-
      (* How to align addresses *)
      fun align4 addr      = andb(addr,notb 3)
      fun align8 addr      = andb(addr,notb 7)
@@ -599,17 +596,6 @@ struct
                      tmps: $cellset}
      asm: ``<oper>\t<ra>, <rb>, <rc><emit_cellset("tmps",tmps)>''
      rtl: ``PSEUDOARITH_<oper>''
- 
-   (* Copy instructions *)
-   | COPY of {dst: $GP list, src: $GP list, 
-              impl:instruction list option ref, tmp: ea option}
-     asm: emitInstrs (Shuffle.shuffle{tmp,dst,src})
-     rtl: ``COPY''
-
-   | FCOPY of {dst: $FP list, src: $FP list, 
-               impl:instruction list option ref, tmp: ea option}
-     asm: emitInstrs (Shuffle.shufflefp{tmp,dst,src})
-     rtl: ``FCOPY''
  
    (* Floating Point Unary Operation *)
    | FUNARY of {oper:funary, fb: $FP, fc: $FP}

@@ -70,13 +70,14 @@ struct
   let val addr = C.newReg()
       val defs = C.addReg(r10,C.empty) 
       val uses = C.addReg(r10,C.addReg(r11,C.empty))
+      fun copy{dst, src, tmp} = 
+	  I.COPY{k=CellsBasis.GP, sz=32, dst=dst, src=src, tmp=tmp}
   in
-      [I.copy{src=[r,reduceOpnd i],dst=[r10,r11],
-                   tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
+      [copy{src=[r,reduceOpnd i],dst=[r10,r11],tmp=SOME(I.Direct(C.newReg()))},
        I.load{l=I.LD,r=C.frameptrR,i=offset,d=addr,mem=stack},
        I.jmpl{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
               cutsTo=[],nop=true,mem=stack},
-       I.copy{src=[r10],dst=[d],tmp=NONE,impl=ref NONE}
+       copy{src=[r10],dst=[d],tmp=NONE}
       ]
   end
 

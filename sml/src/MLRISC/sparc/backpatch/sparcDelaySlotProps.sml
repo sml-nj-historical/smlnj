@@ -116,13 +116,12 @@ struct
     fun delaySlotCandidate{jmp,delaySlot=
               (  I.INSTR(I.CALL _) | I.INSTR(I.Bicc _) | I.INSTR(I.FBfcc _) 
                | I.INSTR(I.Ticc _) | I.INSTR(I.BR _) | I.INSTR(I.JMP _) | I.INSTR(I.JMPL _) 
-	       | I.INSTR(I.RET _) | I.INSTR(I.BP _) )} = false
-      | delaySlotCandidate{jmp=I.INSTR(I.FCMP _),delaySlot=I.INSTR(I.FCMP _)} = false
+	       | I.INSTR(I.RET _) | I.INSTR(I.BP _) | I.INSTR(I.FCMP _))} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}
       | delaySlotCandidate{jmp,delaySlot=I.ANNOTATION{i,...}} = 
            delaySlotCandidate{jmp=jmp,delaySlot=i}
-      | delaySlotCandidate _ = true
+      | delaySlotCandidate _ = true 
 
    fun setTarget(I.INSTR(I.Bicc{b,a,nop,...}),lab) = I.bicc{b=b,a=a,nop=nop,label=lab}
      | setTarget(I.INSTR(I.FBfcc{b,a,nop,...}),lab) = I.fbfcc{b=b,a=a,nop=nop,label=lab}
