@@ -18,7 +18,10 @@ struct
 			  ("weighted-block-placement",
 			   "whether MLRISC does weigted block placement")
 
-  fun blockPlacement cfg = 
-      if !placementFlag then WeightedPlacement.blockPlacement cfg
+  fun blockPlacement(cfg as Graph.GRAPH G) =
+  let val CFG.INFO{reorder, ...} = #graph_info G
+  in  if !placementFlag orelse !reorder
+      then WeightedPlacement.blockPlacement cfg
       else DefaultPlacement.blockPlacement cfg
+  end
 end

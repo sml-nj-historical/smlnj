@@ -13,10 +13,10 @@ functor X86AsmEmitter(structure S : INSTRUCTION_STREAM
                       structure MLTreeEval : MLTREE_EVAL
                          where T = Instr.T
 
-(*#line 509.7 "x86/x86.mdl"*)
+(*#line 512.7 "x86/x86.mdl"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
 
-(*#line 510.7 "x86/x86.mdl"*)
+(*#line 513.7 "x86/x86.mdl"*)
                       val memRegBase : CellsBasis.cell option
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -164,7 +164,8 @@ struct
      | asm_binaryOp (I.LOCK_XADDW) = "lock\n\txaddw"
      | asm_binaryOp (I.LOCK_XADDL) = "lock\n\txaddl"
    and emit_binaryOp x = emit (asm_binaryOp x)
-   and asm_multDivOp (I.MULL1) = "mull"
+   and asm_multDivOp (I.IMULL1) = "imull"
+     | asm_multDivOp (I.MULL1) = "mull"
      | asm_multDivOp (I.IDIVL1) = "idivl"
      | asm_multDivOp (I.DIVL1) = "divl"
    and emit_multDivOp x = emit (asm_multDivOp x)
@@ -185,6 +186,9 @@ struct
      | asm_unaryOp (I.LOCK_NEGL) = "lock\n\tnegl"
      | asm_unaryOp (I.LOCK_NOTL) = "lock\n\tnotl"
    and emit_unaryOp x = emit (asm_unaryOp x)
+   and asm_shiftOp (I.SHLDL) = "shldl"
+     | asm_shiftOp (I.SHRDL) = "shrdl"
+   and emit_shiftOp x = emit (asm_shiftOp x)
    and asm_bitOp (I.BTW) = "btw"
      | asm_bitOp (I.BTL) = "btl"
      | asm_bitOp (I.LOCK_BTW) = "lock\n\tbtw"
@@ -272,26 +276,26 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 512.6 "x86/x86.mdl"*)
+(*#line 515.6 "x86/x86.mdl"*)
    fun memReg r = MemRegs.memReg {reg=r, base=Option.valOf memRegBase}
 
-(*#line 513.6 "x86/x86.mdl"*)
+(*#line 516.6 "x86/x86.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 514.10 "x86/x86.mdl"*)
+(*#line 517.10 "x86/x86.mdl"*)
            val s = Int32.toString i
 
-(*#line 515.10 "x86/x86.mdl"*)
+(*#line 518.10 "x86/x86.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 518.6 "x86/x86.mdl"*)
+(*#line 521.6 "x86/x86.mdl"*)
    val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
-(*#line 520.6 "x86/x86.mdl"*)
+(*#line 523.6 "x86/x86.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -345,13 +349,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 565.7 "x86/x86.mdl"*)
+(*#line 568.7 "x86/x86.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 569.7 "x86/x86.mdl"*)
+(*#line 572.7 "x86/x86.mdl"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -359,10 +363,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 575.7 "x86/x86.mdl"*)
+(*#line 578.7 "x86/x86.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 576.15 "x86/x86.mdl"*)
+(*#line 579.15 "x86/x86.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -371,11 +375,11 @@ struct
           )
        end
 
-(*#line 582.7 "x86/x86.mdl"*)
+(*#line 585.7 "x86/x86.mdl"*)
    fun isST0 (I.ST r) = (CellsBasis.registerNum r) = 0
      | isST0 _ = false
 
-(*#line 586.7 "x86/x86.mdl"*)
+(*#line 589.7 "x86/x86.mdl"*)
    fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
           then 
           ( emit_fbinOp binOp; 
@@ -395,32 +399,35 @@ struct
             | _ => error "emit_fbinaryOp"
             )))
 
-(*#line 596.7 "x86/x86.mdl"*)
+(*#line 599.7 "x86/x86.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 597.7 "x86/x86.mdl"*)
+(*#line 600.7 "x86/x86.mdl"*)
    val emit_src = emit_operand
 
-(*#line 598.7 "x86/x86.mdl"*)
+(*#line 601.7 "x86/x86.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 599.7 "x86/x86.mdl"*)
+(*#line 602.7 "x86/x86.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 600.7 "x86/x86.mdl"*)
+(*#line 603.7 "x86/x86.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 601.7 "x86/x86.mdl"*)
+(*#line 604.7 "x86/x86.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 602.7 "x86/x86.mdl"*)
+(*#line 605.7 "x86/x86.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 603.7 "x86/x86.mdl"*)
+(*#line 606.7 "x86/x86.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 604.7 "x86/x86.mdl"*)
+(*#line 607.7 "x86/x86.mdl"*)
    val emit_ea = emit_operand
+
+(*#line 608.7 "x86/x86.mdl"*)
+   val emit_count = emit_operand
    fun emitInstr' instr = 
        (case instr of
          I.NOP => emit "nop"
@@ -516,6 +523,23 @@ struct
              emit ", "; 
              emit_dst dst )
          )
+       | I.SHIFT{shiftOp, src, dst, count} => 
+         (case count of
+           I.Direct ecx => 
+           ( emit_shiftOp shiftOp; 
+             emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_dst dst )
+         | _ => 
+           ( emit_shiftOp shiftOp; 
+             emit "\t"; 
+             emit_src src; 
+             emit ", "; 
+             emit_count count; 
+             emit ", "; 
+             emit_dst dst )
+         )
        | I.CMPXCHG{lock, sz, src, dst} => 
          ( (if lock
               then (emit "lock\n\t")
@@ -537,7 +561,7 @@ struct
            emit "\t"; 
            emit_src src )
        | I.MUL3{dst, src2, src1} => 
-         ( emit "imul\t$"; 
+         ( emit "imull\t$"; 
            emitInt32 src2; 
            emit ", "; 
            emit_src1 src1; 
@@ -589,6 +613,18 @@ struct
            emit_operand operand )
        | I.FUCOMPP => emit "fucompp"
        | I.FCOMPP => emit "fcompp"
+       | I.FCOMI operand => 
+         ( emit "fcomi\t"; 
+           emit_operand operand )
+       | I.FCOMIP operand => 
+         ( emit "fcomip\t"; 
+           emit_operand operand )
+       | I.FUCOMI operand => 
+         ( emit "fucomi\t"; 
+           emit_operand operand )
+       | I.FUCOMIP operand => 
+         ( emit "fucomip\t"; 
+           emit_operand operand )
        | I.FXCH{opnd} => 
          ( emit "fxch\t"; 
            emitCell opnd )
@@ -694,13 +730,16 @@ struct
            emit_src src; 
            emit ", "; 
            emit_dst dst )
-       | I.FCMP{fsize, lsrc, rsrc} => 
-         ( emit "fcmp"; 
-           emit_fsize fsize; 
-           emit "\t"; 
-           emit_lsrc lsrc; 
-           emit ", "; 
-           emit_rsrc rsrc )
+       | I.FCMP{i, fsize, lsrc, rsrc} => 
+         ( (if i
+              then (emit "fcmpi")
+              else (emit "fcmp")); 
+           
+           ( emit_fsize fsize; 
+             emit "\t"; 
+             emit_lsrc lsrc; 
+             emit ", "; 
+             emit_rsrc rsrc ) )
        | I.SAHF => emit "sahf"
        | I.LAHF => emit "lahf"
        | I.SOURCE{} => emit "source"

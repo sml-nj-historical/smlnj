@@ -492,6 +492,10 @@ struct
      | I.FUCOM(I.ST n) => encodeST(0wxdd, 28, n)
      | I.FUCOMP(I.ST n) => encodeST(0wxdd, 29, n)
      | I.FUCOMPP => eBytes[0wxda, 0wxe9]
+     | I.FCOMI(I.ST n) => encodeST(0wxdb, 0x1e, n)
+     | I.FCOMIP(I.ST n) => encodeST(0wxdf, 0x1e, n)
+     | I.FUCOMI(I.ST n) => encodeST(0wxdb, 0x1d, n)
+     | I.FUCOMIP(I.ST n) => encodeST(0wxdf, 0x1d, n)
 
      | I.FSTS opnd  => encode(0wxd9, 2, opnd)
      | I.FSTL(I.ST n) => encodeST(0wxdd, 26, n)

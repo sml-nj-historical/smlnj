@@ -246,6 +246,10 @@ struct
 	      unchanged(I.FIBINARY{binOp=binOp, src=operand(src)})
 	   | I.FUCOM opnd => unchanged(I.FUCOM(operand opnd))
 	   | I.FUCOMP opnd => unchanged(I.FUCOMP(operand (opnd)))
+	   | I.FCOMI opnd => unchanged(I.FCOMI(operand opnd))
+	   | I.FCOMIP opnd => unchanged(I.FCOMIP(operand (opnd)))
+	   | I.FUCOMI opnd => unchanged(I.FUCOMI(operand opnd))
+	   | I.FUCOMIP opnd => unchanged(I.FUCOMIP(operand (opnd)))
 	   | I.FSTPL opnd => float(I.FSTPL, opnd)
 	   | I.FSTPS opnd => float(I.FSTPS, opnd)
 	   | I.FSTPT opnd  => float(I.FSTPT, opnd)
@@ -272,8 +276,8 @@ struct
 	   | I.FUNOP{fsize:I.fsize, unOp:I.funOp, src:I.operand, dst:I.operand} =>
 	       unchanged(I.FUNOP{fsize=fsize, unOp=unOp, src=operand(src), 
 				 dst=operand(dst)})
-	   | I.FCMP{fsize:I.fsize, lsrc:I.operand, rsrc:I.operand} =>
-	       unchanged(I.FCMP{fsize=fsize, lsrc=operand(lsrc), rsrc=operand(rsrc)})
+	   | I.FCMP{i,fsize:I.fsize, lsrc:I.operand, rsrc:I.operand} =>
+	       unchanged(I.FCMP{i=i,fsize=fsize, lsrc=operand(lsrc), rsrc=operand(rsrc)})
 	   | _ => unchanged(instr)
          (*esac*))
       in

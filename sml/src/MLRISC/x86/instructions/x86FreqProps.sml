@@ -21,6 +21,8 @@ struct
      | x86BranchProb(I.JCC{cond=I.O,...}) = p0_001
      | x86BranchProb(I.JCC{cond=I.NE,...}) = p90
      | x86BranchProb(I.JCC{cond=I.NO,...}) = p100
+     | x86BranchProb(I.JCC{cond=I.P,...}) = p0_001 (* fp unordered test *)
+     | x86BranchProb(I.JCC{cond=I.NP,...}) =  p100
      | x86BranchProb(I.JCC _) = p50 (* default *)
      | x86BranchProb(I.JMP _) = p100 
      | x86BranchProb _ = Probability.never (* non-branch *)

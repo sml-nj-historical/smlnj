@@ -116,7 +116,8 @@ sig
    | LOCK_XADDW
    | LOCK_XADDL
    datatype multDivOp =
-     MULL1
+     IMULL1
+   | MULL1
    | IDIVL1
    | DIVL1
    datatype unaryOp =
@@ -136,6 +137,9 @@ sig
    | LOCK_INCL
    | LOCK_NEGL
    | LOCK_NOTL
+   datatype shiftOp =
+     SHLDL
+   | SHRDL
    datatype bitOp =
      BTW
    | BTL
@@ -241,6 +245,7 @@ sig
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -262,6 +267,10 @@ sig
    | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
+   | FCOMI of operand
+   | FCOMIP of operand
+   | FUCOMI of operand
+   | FUCOMIP of operand
    | FXCH of {opnd:CellsBasis.cell}
    | FSTPL of operand
    | FSTPS of operand
@@ -288,7 +297,7 @@ sig
    | FBINOP of {fsize:fsize, binOp:fbinOp, lsrc:operand, rsrc:operand, dst:operand}
    | FIBINOP of {isize:isize, binOp:fibinOp, lsrc:operand, rsrc:operand, dst:operand}
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
-   | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
+   | FCMP of {i:bool, fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -322,6 +331,7 @@ sig
    val testb : {lsrc:operand, rsrc:operand} -> instruction
    val bitop : {bitOp:bitOp, lsrc:operand, rsrc:operand} -> instruction
    val binary : {binOp:binaryOp, src:operand, dst:operand} -> instruction
+   val shift : {shiftOp:shiftOp, src:operand, dst:operand, count:operand} -> instruction
    val cmpxchg : {lock:bool, sz:isize, src:operand, dst:operand} -> instruction
    val multdiv : {multDivOp:multDivOp, src:operand} -> instruction
    val mul3 : {dst:CellsBasis.cell, src2:Int32.int, src1:operand} -> instruction
@@ -343,6 +353,10 @@ sig
    val fucomp : operand -> instruction
    val fucompp : instruction
    val fcompp : instruction
+   val fcomi : operand -> instruction
+   val fcomip : operand -> instruction
+   val fucomi : operand -> instruction
+   val fucomip : operand -> instruction
    val fxch : {opnd:CellsBasis.cell} -> instruction
    val fstpl : operand -> instruction
    val fstps : operand -> instruction
@@ -369,7 +383,7 @@ sig
    val fbinop : {fsize:fsize, binOp:fbinOp, lsrc:operand, rsrc:operand, dst:operand} -> instruction
    val fibinop : {isize:isize, binOp:fibinOp, lsrc:operand, rsrc:operand, dst:operand} -> instruction
    val funop : {fsize:fsize, unOp:funOp, src:operand, dst:operand} -> instruction
-   val fcmp : {fsize:fsize, lsrc:operand, rsrc:operand} -> instruction
+   val fcmp : {i:bool, fsize:fsize, lsrc:operand, rsrc:operand} -> instruction
    val sahf : instruction
    val lahf : instruction
    val source : {} -> instruction
@@ -487,7 +501,8 @@ struct
    | LOCK_XADDW
    | LOCK_XADDL
    datatype multDivOp =
-     MULL1
+     IMULL1
+   | MULL1
    | IDIVL1
    | DIVL1
    datatype unaryOp =
@@ -507,6 +522,9 @@ struct
    | LOCK_INCL
    | LOCK_NEGL
    | LOCK_NOTL
+   datatype shiftOp =
+     SHLDL
+   | SHRDL
    datatype bitOp =
      BTW
    | BTL
@@ -612,6 +630,7 @@ struct
    | TESTB of {lsrc:operand, rsrc:operand}
    | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
+   | SHIFT of {shiftOp:shiftOp, src:operand, dst:operand, count:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
@@ -633,6 +652,10 @@ struct
    | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
+   | FCOMI of operand
+   | FCOMIP of operand
+   | FUCOMI of operand
+   | FUCOMIP of operand
    | FXCH of {opnd:CellsBasis.cell}
    | FSTPL of operand
    | FSTPS of operand
@@ -659,7 +682,7 @@ struct
    | FBINOP of {fsize:fsize, binOp:fbinOp, lsrc:operand, rsrc:operand, dst:operand}
    | FIBINOP of {isize:isize, binOp:fibinOp, lsrc:operand, rsrc:operand, dst:operand}
    | FUNOP of {fsize:fsize, unOp:funOp, src:operand, dst:operand}
-   | FCMP of {fsize:fsize, lsrc:operand, rsrc:operand}
+   | FCMP of {i:bool, fsize:fsize, lsrc:operand, rsrc:operand}
    | SAHF
    | LAHF
    | SOURCE of {}
@@ -692,6 +715,7 @@ struct
    and testb = INSTR o TESTB
    and bitop = INSTR o BITOP
    and binary = INSTR o BINARY
+   and shift = INSTR o SHIFT
    and cmpxchg = INSTR o CMPXCHG
    and multdiv = INSTR o MULTDIV
    and mul3 = INSTR o MUL3
@@ -713,6 +737,10 @@ struct
    and fucomp = INSTR o FUCOMP
    and fucompp = INSTR FUCOMPP
    and fcompp = INSTR FCOMPP
+   and fcomi = INSTR o FCOMI
+   and fcomip = INSTR o FCOMIP
+   and fucomi = INSTR o FUCOMI
+   and fucomip = INSTR o FUCOMIP
    and fxch = INSTR o FXCH
    and fstpl = INSTR o FSTPL
    and fstps = INSTR o FSTPS

@@ -124,30 +124,17 @@ struct
    val fsqrt = funaryOp T.FSQRT
 
    val |?|     = fcmp T.?
-   val |!<=>|  = fcmp T.!<=>
    val |==|    = fcmp T.==
    val |?=|    = fcmp T.?=
-   val |!<>|   = fcmp T.!<>
-   val |!?>=|  = fcmp T.!?>=
    val |<|     = fcmp T.<
    val |?<|    = fcmp T.?<
-   val |!>=|   = fcmp T.!>=
-   val |!?>|   = fcmp T.!?>
    val |<=|    = fcmp T.<=
    val |?<=|   = fcmp T.?<=
-   val |!>|    = fcmp T.!>
-   val |!?<=|  = fcmp T.!?<=
    val |>|     = fcmp T.>
    val |?>|    = fcmp T.?>
-   val |!<=|   = fcmp T.!<=
-   val |!?<|   = fcmp T.!?<
    val |>=|    = fcmp T.>=
    val |?>=|   = fcmp T.?>=
-   val |!<|    = fcmp T.!<
-   val |!?=|   = fcmp T.!?=
    val |<>|    = fcmp T.<>
-   val |!=|    = fcmp T.!=
-   val |!?|    = fcmp T.!?
    val |<=>|   = fcmp T.<=>
    val |?<>|   = fcmp T.?<>
    val setfcc  = fcmp T.SETFCC

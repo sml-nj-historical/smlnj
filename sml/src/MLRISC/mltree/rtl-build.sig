@@ -93,30 +93,17 @@ sig
 
    (* Floating point comparisons *)
    val |?|     : ty -> exp * exp -> bool
-   val |!<=>|  : ty -> exp * exp -> bool
    val |==|    : ty -> exp * exp -> bool
    val |?=|    : ty -> exp * exp -> bool
-   val |!<>|   : ty -> exp * exp -> bool
-   val |!?>=|  : ty -> exp * exp -> bool
    val |<|     : ty -> exp * exp -> bool
    val |?<|    : ty -> exp * exp -> bool
-   val |!>=|   : ty -> exp * exp -> bool
-   val |!?>|   : ty -> exp * exp -> bool
    val |<=|    : ty -> exp * exp -> bool
    val |?<=|   : ty -> exp * exp -> bool
-   val |!>|    : ty -> exp * exp -> bool
-   val |!?<=|  : ty -> exp * exp -> bool
    val |>|     : ty -> exp * exp -> bool
    val |?>|    : ty -> exp * exp -> bool
-   val |!<=|   : ty -> exp * exp -> bool
-   val |!?<|   : ty -> exp * exp -> bool
    val |>=|    : ty -> exp * exp -> bool
    val |?>=|   : ty -> exp * exp -> bool
-   val |!<|    : ty -> exp * exp -> bool
-   val |!?=|   : ty -> exp * exp -> bool
    val |<>|    : ty -> exp * exp -> bool
-   val |!=|    : ty -> exp * exp -> bool
-   val |!?|    : ty -> exp * exp -> bool
    val |<=>|   : ty -> exp * exp -> bool
    val |?<>|   : ty -> exp * exp -> bool
    val setfcc  : ty -> exp * exp -> bool

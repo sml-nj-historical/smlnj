@@ -86,6 +86,7 @@ struct
    structure CB = CellsBasis
    structure SL = CB.SortedCells
    structure HT = IntHashTable
+   structure IM = IntRedBlackMap
 
    type flowgraph = CFG.cfg
    type an = An.annotations
@@ -883,52 +884,13 @@ struct
         *       consistent with the order of the id.
         *------------------------------------------------------------------*)
        fun repairCriticalEdges(Cfg as G.GRAPH cfg) =
-       let (* Data structure for recording critical edge splitting info *) 
-           datatype compensationCode = 
-             NEWEDGE of 
-                {label:L.label,               (* label of new block *)
-                 entries:CFG.edge list ref,   (* edges going into this code *)
-                 code:I.instruction list,     (* code *)
-                 freq:CFG.weight ref,
-                 comment:an 
-                } 
-
+       let 
            val cleanup = [#create MLRiscAnnotations.COMMENT "cleanup edge"]
            val critical = [#create MLRiscAnnotations.COMMENT "critical edge"]
 
-           exception Nothing
-
-           (* Repair code table; mapping from block id -> compensation code *)
-           val repairCodeTable  = IntHashTable.mkTable(32, Nothing)
-           val addRepairCode    = IntHashTable.insert repairCodeTable
-           fun lookupRepairCode b = 
-                getOpt(IntHashTable.find repairCodeTable b,[])
-
-           (* Repair code table; mapping from block id -> compensation code
-            * These must be relocated ...
-            *)
-           val repairCodeTable'  = IntHashTable.mkTable(32, Nothing)
-           val addRepairCode'    = IntHashTable.insert repairCodeTable'
-           fun lookupRepairCode' b = 
-                getOpt(IntHashTable.find repairCodeTable' b,[])
-
-           (* Does the given block falls thru from the previous block? 
-            * If the previous block is ENTRY then also consider this to be true
-            *)
-           fun isFallsThru b =
-               case #in_edges cfg b of
-                  [(b',_,_)] => (case CFG.fallsThruTo(Cfg,b') of
-                                   SOME b'' => b'' = b
-                                 | NONE => b' = ENTRY
-                                )
-               | _ => false
-
-           (* Create jump instruction to a block *)
-           fun jump(CFG.BLOCK{labels, ...}) = 
-               (case !labels of 
-                 []   => error "no label to target of critical edge!"
-               | l::_ => P.jump l
-               )
+           fun annotate(gen, an) =
+             app (fn ((_,CFG.BLOCK{annotations, ...}),_) => annotations := an)
+                 gen
 
            (* 
             * Special case: target block has stack depth of 0.
@@ -937,361 +899,99 @@ struct
             * all the critical edges.
             *)
            fun genPoppingCode(_, []) = ()
-             | genPoppingCode(targetBlk, edges as (_,target,_)::_) = 
-           let val entries = 
-                  map (fn edge as (source, _, _) =>
-                      let val n  = ST.depth(valOf(A.sub(bindingsOut,source)))
-                      in  (n, edge) end
-                      ) edges
-
-               (* Ordered by increasing stack height *)
-               val entries = 
-                   ListMergeSort.sort (fn ((n,_),(m,_)) => n > m) entries
-
-               val relocate = isFallsThru target
-
-               fun pop(0, code) = code
-                 | pop(n, code) = pop(n-1,POP_ST::code)
-
-               fun makeCode(popCount, rest) = 
-                   let val code = pop(popCount, [])
-                   in  case rest of
-                         [] => if relocate then 
-                                  jump(#node_info cfg target)::code
-                               else code
-                       | _  => code
-                   end
-
-               (* Generate code, share code between edges that
-                * have to pop the same number of elements 
+             | genPoppingCode(targetId, edges) =
+           let (* Edges annotated with the source stack depth 
+                * Ordered by increasing stack height 
                 *)
-               fun gen([], h, code) = code
-                 | gen((n,e)::rest, _, []) = 
-                   let val w = computeFreq e
-                   in  gen(rest, n,  
-                        [NEWEDGE{label=L.anon(), 
-                                 entries=ref [e],
-                                 code=makeCode(n,rest), 
-                                 freq=ref w,
-                                 comment=cleanup
-                                }
-                        ])
-                   end
-                 | gen((n,e)::rest, h,
-                        all as (NEWEDGE{entries, freq, ...}::_)) = 
-                   let val w = computeFreq e
-                   in  gen(rest,n,
-                         if n = h then 
-                           (entries := e :: !entries; 
-                            freq := !freq + w;
-                            all)
-                         else
-                           NEWEDGE{label=L.anon(), 
-                                   entries=ref [e],
-                                   code=makeCode(n-h,rest),
-                                   freq=ref w,
-                                   comment=cleanup
-                                  }::all
-                        )
-                    end
-               val repairCode = gen(entries, 0, []) 
+               val edges = 
+                 IM.listItemsi
+                  (foldr (fn (edge as (sourceId, _, _), M) =>
+                    let val n = ST.depth(valOf(A.sub(bindingsOut,sourceId)))
+                    in  IM.insert(M, n, edge :: getOpt(IM.find(M, n), [])) 
+                    end) IM.empty edges)
 
-               (* Add frequencies of fallsthru block *)
-               fun updateFreq(w, NEWEDGE{freq=w1, ...}::es) =
-                   let val w = w + !w1
-                   in  w1 := w; updateFreq(w, es)
-                   end
-                 | updateFreq(w, []) = ()
+               (* Generate n pops *)
+               fun pops(0, code) = code
+                 | pops(n, code) = pops(n-1, POP_ST::code)
 
-               val () = updateFreq(0.0, repairCode)
-           in  (if relocate then addRepairCode' else addRepairCode)
-                 (target, repairCode)
+               (* Create the chain of blocks *)
+               fun makeChain(depth, [], chain) = chain
+                 | makeChain(depth, (d, es)::es', chain) =
+                   let val code = pops(d - depth, [])
+                   in  makeChain(d, es', (es, code)::chain)
+                   end
+
+               val chain = makeChain(0, edges, [])
+
+           in  annotate(CFG.splitEdges Cfg {groups=chain, jump=false}, cleanup)
            end
-
-           (* The general case:  
-            *   Remove dead values, then
-            *   Shuffle.
-            *)
-           fun genRepairCode(target, targetBlk, stackIn, edges) =
-           let val repairList = ref []
-               val repairCount = ref 0 
-               val SOME stackIn = A.sub(bindingsIn, target)
-               fun repair(edge as (source, _, _)) =
-               let val SOME stackOut' = A.sub(bindingsOut, source)
-                   fun createNewRepairEdge() = 
-                   let val stackOut = ST.copy stackOut'
-                       val liveIn = IntHashTable.lookup liveInTable target
-                       val liveInSet = removeNonPhysical liveIn
-                       val _ = 
-                          if debug then
-                              pr("LiveIn = "^celllistToString liveIn^"\n")
-                          else ()
-
-                       (* deallocate unused values *)
-                       val code = removeDeadValues(stackOut, liveInSet, [])
-                       (* shuffle values  *)
-                       val code = shuffle(stackOut, stackIn, code)
-                       fun addNewEdge() =
-                       let (* Do we need to relocate this block? *)
-                           val relocate = !repairCount > 0 orelse
-                                          isFallsThru target
-                                          andalso source + 1 <> target  
- 
-                           (* add a jump to the target block *)
-                           val code = if relocate then jump targetBlk::code 
-                                      else code
-  
-                           val repairCode = 
-                               NEWEDGE{label=L.anon(), 
-                                       entries=ref [edge], 
-                                       code=code, 
-                                       freq=ref(computeFreq edge),
-                                       comment=critical
-                                      }
-                       in  repairCount := !repairCount + 1;
-                           repairList := (repairCode, stackOut') 
-                                            :: !repairList;
-                           if relocate then 
-                              addRepairCode'(target, 
-                                  repairCode::lookupRepairCode' target)
-                           else
-                              addRepairCode(target,
-                                 repairCode::lookupRepairCode target)
-                       end
-                   in  case #out_edges cfg source of
-                         [(_,j,_)] =>
-                         if j = target then (*insert code at predecessor*)
-                            let val CFG.BLOCK{insns,...} = 
-                                  #node_info cfg source 
-                            in  insns := insertAtEnd(!insns, code)
-                            end
-                         else
-                            addNewEdge()
-                       | _ => addNewEdge()
-                   end
-
-                   fun shareRepairEdge [] = false
-                     | shareRepairEdge
-                        ((NEWEDGE{entries,...},stackOut'')::rest) =
-                        if ST.equal(stackOut'', stackOut') then
-                            (entries := edge :: !entries; true)
-                        else shareRepairEdge rest 
-
-               in  if shareRepairEdge(!repairList) then ()
-                   else createNewRepairEdge()
-               end
-           in  app repair edges
-           end
-
-           (*
-            * Code to split critical edges entering block target
-            *)
-           fun split(target, edges) = 
-               let val SOME stackIn = A.sub(bindingsIn,target)
-                   fun log(s, t, e) = 
-                   let val SOME stackOut = A.sub(bindingsOut,s)
-                   in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
-                          ST.stackToString stackOut^"->"^
-                          ST.stackToString stackIn^"\n")
-                   end
-                   val _ = if debug andalso !traceOn then app log edges else ()
-                   val targetBlk = #node_info cfg target
-               in  if ST.depth stackIn = 0 then genPoppingCode(targetBlk,edges)
-                   else genRepairCode(target, targetBlk, stackIn, edges)
-               end
-
-
-           (*
-            * Create a new empty cfg with the same graph info as the old one.
-            *)
-           val Cfg' as G.GRAPH cfg' = CFG.cfg (#graph_info cfg)
 
            (* 
-            * Renumber all the blocks and insert compensation code at the
-            * right places.
+            * Generate repair code.
             *)
-           fun renumberBlocks() = 
-           let (* Mapping from label to new node ids *)
-               val labelMap = HashTable.mkTable (L.hash,L.same) (32, Nothing)
-               val mapLabelToId = HashTable.insert labelMap
+           fun genRepairCode(targetId, stackIn, edges) =
+           let val liveIn = IntHashTable.lookup liveInTable targetId
+               val liveInSet = removeNonPhysical liveIn
+               val _ = if debug then
+                          pr("LiveIn = "^celllistToString liveIn^"\n")
+                      else ()
 
-               (* Mapping from old id to new id *)
-               val idMap = IntHashTable.mkTable (32, Nothing)
-               val mapOldIdToNewId = IntHashTable.insert idMap
-               val oldIdToNewId = IntHashTable.lookup idMap
-
-               (* Retarget a jump instruction to label l *)
-               fun retargetJump(I.INSTR(I.JMP(I.ImmedLabel(T.LABEL _), [_])), l) = 
-                     I.jmp(I.ImmedLabel(T.LABEL l), [l])
-                 | retargetJump(I.INSTR(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}),l)=
-                     I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}
-                 | retargetJump(I.ANNOTATION{i,a},l) =
-                     I.ANNOTATION{i=retargetJump(i,l),a=a}
-                 | retargetJump(_,l) = error "retargetJump"
-
-               (* 
-                * Given a candidate edge, generate compensation code.
+               (* Group all edges whose output stack configurations
+                * are the same.  Each group is merged together into
+                * a single compensation block
                 *)
-               fun transRepair(n, []) = n
-                 | transRepair(n, 
-                        NEWEDGE{label,entries,code,freq,comment}::rest) =
-                   let val this =
-                           CFG.BLOCK{id=n, 
-                                     kind=CFG.NORMAL,
-                                     freq=ref(!freq), 
-                                     labels=ref [label],
-                                     insns=ref code,
-                                     annotations=ref comment,
-				     align=ref NONE
-                                    }
-
-                       (*
-                        * Update the instructions to predecessors of this edge.
-                        *)
-                       fun retarget(CFG.BLOCK{kind=CFG.START,...}) = ()
-                         | retarget(CFG.BLOCK{insns as ref(jmp::rest), ...}) = 
-                            insns := retargetJump(jmp, label)::rest
-                         | retarget _ = error "retarget"
-
-                       fun retargetEntries(pred,_,CFG.EDGE{a,...}) = 
-                             (retarget(#node_info cfg pred);
-                              a := TargetMovedTo n :: !a
-                             )
-
-                   in  if debug andalso !traceOn then
-                           pr("Inserting critical edge at block "^i2s n^" "^
-                               L.toString label^"\n")
-                       else ();
-                       #add_node cfg' (n, this);  (* insert block *)
-                       mapLabelToId(label, n);
-                       app retargetEntries (!entries);
-                       transRepair(n+1, rest)
-                   end
- 
-               (* 
-                * Renumber all the blocks and insert repair code.
-                *)
-               fun renumber(n, [], repairCode') =  transRepair(n, repairCode')
-                 | renumber(n, (blknum, block as 
-                                 CFG.BLOCK{kind,annotations,insns,freq,align,labels, ...})::rest,
-                           repairCode') =
-                   let (* If we have outstanding repair code and this is
-                        * NOT a fallsthru entry, then insert them here.
-                        *)
-                       val (n, repairCode') =
-                          case repairCode' of
-                            [] => (n, [])
-                          | _  => if isFallsThru blknum then
-                                    (n, repairCode')
-                                  else
-                                    (transRepair(n, repairCode'), [])
-
-                       (*  Insert non-relocatable repair code *)
-                       val repairCode = lookupRepairCode blknum
-                       val n = transRepair(n, repairCode)
-
-                       (*  Create this block *)
-                       val this = CFG.BLOCK{id=n, 
-                                            kind=kind,
-                                            freq=freq,
-                                            align=align,
-                                            labels=labels,
-                                            insns=insns,
-                                            annotations=annotations
-                                           }
-
-                       (*  Insert new relocatable repair code *)
-                       val repairCode' = repairCode' @ 
-                                           lookupRepairCode' blknum
-
-                       (*  Insert labels that map to this block *)
-                       val _ = app (fn l => mapLabelToId(l, n)) (!labels)
-
-                       (*  Insert block *)
-                       val _ = #add_node cfg' (n, this)
-                       val _ = mapOldIdToNewId(blknum, n)
-
-                   in  case kind of
-                          CFG.START => #set_entries cfg' [n]
-                       |  CFG.STOP  => #set_exits cfg' [n]
-                       |  _         => ();
-                       renumber(n+1, rest, repairCode')
+               fun partition([], S) = S
+                 | partition((e as (src,_,_))::es, S) =
+                   let val stackOut = ST.copy(valOf(A.sub(bindingsOut,src)))
+                       fun find([], S) = partition(es, ([e],stackOut)::S)
+                         | find((x as (es',st'))::S', S) =
+                           if ST.equal(stackOut,st') then 
+                              partition(es, (e::es',st')::S' @ S)
+                           else
+                              find(S', x::S)
+                   in  find(S, [])
                    end
 
-               (* Do all the blocks *)
-               val n = renumber(0, #nodes cfg (), [])
+               (* Partition by the source bindings *) 
+               val S = partition(edges, [])
 
-               val [newExit] = #exits cfg' ()
+               (* Compute frequencies *)
+               val S = map (fn (es,st) => (CFG.sumEdgeFreqs es,es,st)) S
 
-               (*
-                * Given a label, finds out which block it targets.
-                * If not found then it means the block is escaping.
-                *)
-               val findLabel = HashTable.find labelMap
-               fun labelToBlockId l = getOpt(findLabel l, newExit)
+               (* Ordered by non-increasing frequencies *)
+               val S = ListMergeSort.sort (fn ((x,_,_),(y,_,_)) => x < y) S
 
-               fun hasJump x = 
-               let val CFG.BLOCK{insns, ...} = #node_info cfg' x
-               in  case !insns of
-                     [] => false
-                   | jmp::_ => P.instrKind jmp = P.IK_JUMP 
+               (* Generate code *)
+               fun gen(freq, edges, stackOut) =
+               let     (* deallocate unused values *)
+                   val code = removeDeadValues(stackOut,liveInSet,[])
+                       (* shuffle values  *)
+                   val code = shuffle(stackOut, stackIn, code)
+               in  annotate(
+                      CFG.splitEdges Cfg {groups=[(edges,code)], jump=false},
+                            critical)
                end
 
-               (*
-                * Now rebuild all the old edges.
-                * For each edge, makes sure the target hasn't been moved.
-                *)
-               fun renameEdge(x, y, e as CFG.EDGE{a,k,w,...}) =
-               let val x = oldIdToNewId x
-                   val (z, e) =
-                   case !a of
-                      TargetMovedTo z::an => 
-                      let val e = 
-                          case k of
-                             (CFG.FALLSTHRU | CFG.BRANCH false) =>
-                                if hasJump x then 
-                                  CFG.EDGE{a=a, w=w, k=CFG.JUMP}
-                                else e
-                          | _ => e
-                      in  a := an;   (* remove the marker *)
-                          (z, e)
-                      end 
-                   |   _ => (oldIdToNewId y, e)
-               in  #add_edge cfg' (x,z,e)
+           in  app gen S
+           end
+
+           (* Split all edges entering targetId *)
+           fun split(targetId, edges) = 
+           let val stackIn = valOf(A.sub(bindingsIn,targetId))
+               fun log(s, t, e) = 
+               let val SOME stackOut = A.sub(bindingsOut,s)
+               in  pr("SPLIT "^i2s s^"->"^i2s t^" "^
+                      ST.stackToString stackOut^"->"^
+                      ST.stackToString stackIn^"\n")
                end
- 
-               val _ = #forall_edges cfg renameEdge
-
-               (*
-                * Now add new edges x->y where x is a new compensation block
-                *) 
-               fun addNewEdge(NEWEDGE{label, code, freq, entries, ...}) = 
-               let val x = labelToBlockId label
-                   val (y, k) = 
-                      case code of
-                        [] => (x + 1, CFG.FALLSTHRU) (* next block *)
-                      | jmp::_ => 
-                         if P.instrKind jmp = P.IK_JUMP then
-                            (case P.branchTargets jmp of
-                              [P.LABELLED l] => (labelToBlockId l, CFG.JUMP)
-                            | _ => error "addNewEdge where is the target?"
-                            )
-                         else 
-                            (x + 1, CFG.FALLSTHRU)
-                   (* compute weight *)
-                   val w = !freq
-               in  #add_edge cfg' (x, y, CFG.EDGE{a=ref [], w=ref w, k=k})
-               end
-
-               val addNewEdges = app addNewEdge
-               val _ = IntHashTable.app addNewEdges repairCodeTable 
-               val _ = IntHashTable.app addNewEdges repairCodeTable'
-
-           in  Cfg'
+               val _ = if debug andalso !traceOn then app log edges else ()
+           in  if ST.depth stackIn = 0 then genPoppingCode(targetId, edges)
+               else genRepairCode(targetId, stackIn, edges)
            end
 
        in  IntHashTable.appi split edgesToSplit;
-           renumberBlocks()
+           CFG.changed Cfg;
+           Cfg
        end 
 
        (*------------------------------------------------------------------ 
@@ -1649,17 +1349,24 @@ struct
                 * So we can always use it as temporary space if we
                 * have run out.
                 *)
-               fun fcmp{fsize,lsrc,rsrc} = 
-               let fun fucompp() = 
-                       (ST.pop stack; ST.pop stack; mark(I.fucompp,an))
+               fun fcmp{i,fsize,lsrc,rsrc} = 
+               let fun fucompp code = 
+                      (ST.pop stack; ST.pop stack; 
+                       if i then 
+                          POP_ST ::  mark(I.fucomip(ST 1), an) :: code
+                        else
+                          mark(I.fucompp,an) :: code
+                      )
                    fun fucomp(n) = 
-                       (ST.pop stack; mark(I.fucomp(ST n),an))
-                   fun fucom(n) = mark(I.fucom(ST n),an)
+                       (ST.pop stack; 
+                        mark((if i then I.fucomip else I.fucomp)(ST n),an))
+                   fun fucom(n) = 
+                        mark((if i then I.fucomi else I.fucom)(ST n),an)
 
                    fun genmemcmp() =
                        let val code = movememtotop(fsize, rsrc, code)
                            val code = movememtotop(fsize, lsrc, code)
-                       in  FINISH(fucompp()::code)
+                       in  FINISH(fucompp(code))
                        end
 
                    fun genmemregcmp(lsrc, fy) = 
@@ -1670,7 +1377,7 @@ struct
                        | (true, n) => 
                          let val code = if n = 0 then code else xch n::code
                              val code = movememtotop(fsize, lsrc, code)
-                         in  FINISH(fucompp()::code)
+                         in  FINISH(fucompp(code))
                          end 
 
                    fun genregmemcmp(fx, rsrc) =
@@ -1685,7 +1392,7 @@ struct
                                let val code = movememtotop(fsize, rsrc, code)
                                in  push(n+1)::code
                                end
-                   in  FINISH(fucompp()::code)
+                   in  FINISH(fucompp(code))
                    end
 
                    (* Deal with the special case when both sources are
@@ -1717,13 +1424,11 @@ struct
                                      xch sx::code)
 
                                (* Generate the appropriate comparison op *)
-                               val (sy, cmp, popY) = 
+                               val (sy, code, popY) = 
                                    case (dx, dy, sy) of
-                                     (true, true, 0) => (~1, fucompp(), false)
-                                   | (true, _, _)    => (sy-1, fucomp sy, dy)
-                                   | (false, _, _)   => (sy, fucom sy, dy)
-
-                               val code = cmp::code
+                                     (true, true, 0) => (~1,fucompp code, false)
+                                   | (true, _, _)  => (sy-1,fucomp sy::code,dy)
+                                   | (false, _, _) => (sy, fucom sy::code, dy)
 
                                (* Pop fy if it is dead and hasn't already
                                 * been popped.
@@ -1840,7 +1545,8 @@ struct
 		      I.FLDZ | I.FLDL _ | I.FLDS _ | I.FLDT _ | 
 		      I.FILD _ | I.FILDL _ | I.FILDLL _ | 
 		      I.FENV _ | I.FBINARY _ | I.FIBINARY _ | I.FUNARY _ |
-		      I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ | 
+		      I.FUCOMPP | I.FUCOM _ | I.FUCOMP _ | I.FCOMPP | I.FXCH _ |
+                      I.FCOMI _ | I.FCOMIP _ | I.FUCOMI _ | I.FUCOMIP _ |
 		      I.FSTPL _ | I.FSTPS _ | I.FSTPT _ | I.FSTL _ | I.FSTS _ 
 		     ) => bug("Illegal FP instructions")
 

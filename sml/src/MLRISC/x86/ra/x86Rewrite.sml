@@ -52,6 +52,9 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 	  I.BITOP{bitOp=bitOp, lsrc=operand lsrc, rsrc=operand rsrc}
        | I.BINARY{binOp, src, dst} => 
 	  I.BINARY{binOp=binOp, src=operand src, dst=operand dst}
+       | I.SHIFT{shiftOp, src, dst, count} => 
+	  I.SHIFT{shiftOp=shiftOp, src=operand src, dst=operand dst, 
+                  count=operand src}
        | I.CMPXCHG{lock, sz, src, dst} => 
 	  I.CMPXCHG{lock=lock, sz=sz, src=operand src, dst=operand dst}
        | I.MULTDIV{multDivOp, src} => 
@@ -74,6 +77,10 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
        | I.FLDS opnd => I.FLDS(operand opnd)
        | I.FUCOM opnd => I.FUCOM(operand opnd)
        | I.FUCOMP opnd => I.FUCOMP(operand opnd)
+       | I.FCOMI opnd => I.FCOMI(operand opnd)
+       | I.FCOMIP opnd => I.FCOMIP(operand opnd)
+       | I.FUCOMI opnd => I.FUCOMI(operand opnd)
+       | I.FUCOMIP opnd => I.FUCOMIP(operand opnd)
        | I.FENV{fenvOp,opnd} => I.FENV{fenvOp=fenvOp, opnd=operand opnd}
        | I.FBINARY{binOp, src, dst} => 
 	  I.FBINARY{binOp=binOp, src=operand src, dst=dst}
@@ -93,8 +100,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 		    lsrc=operand lsrc,rsrc=operand rsrc,dst=operand dst}
        | I.FUNOP{fsize,unOp,src,dst} =>
 	  I.FUNOP{fsize=fsize,unOp=unOp,src=operand src,dst=operand dst}
-       | I.FCMP{fsize,lsrc,rsrc} =>
-	  I.FCMP{fsize=fsize,lsrc=operand lsrc,rsrc=operand rsrc}
+       | I.FCMP{i,fsize,lsrc,rsrc} =>
+	  I.FCMP{i=i,fsize=fsize,lsrc=operand lsrc,rsrc=operand rsrc}
 
        | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
        | _ => instr
@@ -126,7 +133,10 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 		  defs=CB.CellSet.map {from=rs,to=rt} defs, uses=uses, mem=mem}
        | I.MOVE{mvOp, src, dst} => I.MOVE{mvOp=mvOp, src=src, dst=operand dst}
        | I.LEA{r32, addr} => I.LEA{r32=replace r32, addr=addr}
-       | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
+       | I.BINARY{binOp, src, dst} => 
+            I.BINARY{binOp=binOp, src=src, dst=operand dst}
+       | I.SHIFT{shiftOp, src, dst, count} => 
+            I.SHIFT{shiftOp=shiftOp, src=src, count=count, dst=operand dst}
        | I.CMPXCHG{lock, sz, src, dst} => 
 	  I.CMPXCHG{lock=lock, sz=sz, src=src, dst=operand dst}
        | I.MUL3{dst, src1, src2} => I.MUL3{dst=replace dst, src1=src1, src2=src2}
@@ -169,6 +179,10 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 	   I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
        | I.FUCOM opnd => I.FUCOM(foperand opnd)
        | I.FUCOMP opnd => I.FUCOMP(foperand opnd)
+       | I.FCOMI opnd => I.FCOMI(foperand opnd)
+       | I.FCOMIP opnd => I.FCOMIP(foperand opnd)
+       | I.FUCOMI opnd => I.FUCOMI(foperand opnd)
+       | I.FUCOMIP opnd => I.FUCOMIP(foperand opnd)
 
 	 (* Pseudo floating point instructions *)
        | I.FMOVE{fsize,dst,src} =>
@@ -181,8 +195,8 @@ functor X86Rewrite(Instr : X86INSTR) : X86REWRITE = struct
 		    lsrc=foperand lsrc,rsrc=foperand rsrc,dst=dst}
        | I.FUNOP{fsize,unOp,src,dst} =>
 	  I.FUNOP{fsize=fsize,unOp=unOp,src=foperand src,dst=dst}
-       | I.FCMP{fsize,lsrc,rsrc} =>
-	  I.FCMP{fsize=fsize,lsrc=foperand lsrc,rsrc=foperand rsrc}
+       | I.FCMP{i,fsize,lsrc,rsrc} =>
+	  I.FCMP{i=i,fsize=fsize,lsrc=foperand lsrc,rsrc=foperand rsrc}
        | _ => instr
     (*esac*))
 

@@ -231,7 +231,7 @@ struct
       in
 	case multDivOp
 	 of (I.IDIVL1 | I.DIVL1) => (eaxPair, C.edx::C.eax::uses)
-	  | I.MULL1 => (eaxPair, C.eax::uses)
+	  | (I.IMULL1 | I.MULL1) => (eaxPair, C.eax::uses)
       end
 
       fun unary opnd = (operandDef opnd, operandUse opnd)
@@ -256,6 +256,9 @@ struct
 	     if CB.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
 	| I.BINARY{src,dst,...} =>   
 	     (operandDef dst, operandAcc(src, operandUse dst))
+	| I.SHIFT{src,dst,count,...} =>   
+	     (operandDef dst, 
+              operandAcc(count, operandAcc(src, operandUse dst)))
 	| I.CMPXCHG{src, dst, ...} =>
 	     (C.eax::operandDef dst, C.eax::operandAcc(src, operandUse dst))
 	| I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
@@ -286,6 +289,10 @@ struct
 	| I.FNSTSW	      => ([C.eax], [])
 	| I.FUCOM opnd          => float opnd
 	| I.FUCOMP opnd         => float opnd
+	| I.FCOMI opnd          => float opnd
+	| I.FCOMIP opnd         => float opnd
+	| I.FUCOMI opnd         => float opnd
+	| I.FUCOMIP opnd        => float opnd
 
 	| I.FMOVE{src, dst, ...} => operandUse2(src, dst) 
 	| I.FILOAD{ea, dst, ...} => operandUse2(ea, dst) 
@@ -339,7 +346,7 @@ struct
 
     in
       case instr
-       of I.FSTPT opnd            => (operand opnd, [])  
+       of I.FSTPT opnd          => (operand opnd, [])  
 	| I.FSTPL opnd		=> (operand opnd, [])
 	| I.FSTPS opnd		=> (operand opnd, [])
 	| I.FSTL opnd		=> (operand opnd, [])
@@ -347,8 +354,12 @@ struct
 	| I.FLDT opnd		=> ([], operand opnd)
 	| I.FLDL opnd		=> ([], operand opnd)
 	| I.FLDS opnd		=> ([], operand opnd)
-	| I.FUCOM opnd            => ([], operand opnd)
-	| I.FUCOMP opnd           => ([], operand opnd)
+	| I.FUCOM opnd          => ([], operand opnd)
+	| I.FUCOMP opnd         => ([], operand opnd)
+	| I.FCOMI opnd          => ([], operand opnd)
+	| I.FCOMIP opnd         => ([], operand opnd)
+	| I.FUCOMI opnd         => ([], operand opnd)
+	| I.FUCOMIP opnd        => ([], operand opnd)
 	| I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
 	| I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
 

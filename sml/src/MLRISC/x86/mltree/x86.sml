@@ -1125,6 +1125,11 @@ struct
 
           (* generate code for floating point compare and branch *)
       and fbranch(fty, fcc, t1, t2, lab, an) = 
+          let fun j cc = mark(I.JCC{cond=cc, opnd=immedLabel lab},an)
+          in  fbranching(fty, fcc, t1, t2, j)
+          end
+
+      and fbranching(fty, fcc, t1, t2, j) = 
           let fun ignoreOrder (T.FREG _) = true
                 | ignoreOrder (T.FLOAD _) = true
                 | ignoreOrder (T.FMARK(e,_)) = ignoreOrder e
@@ -1146,7 +1151,10 @@ struct
                       val rsrc = foperand(fty, t2)
                       val fsize = fsize fty
                       fun cmp(lsrc, rsrc, fcc) =
-                          (emit(I.FCMP{fsize=fsize,lsrc=lsrc,rsrc=rsrc}); fcc)
+                      let val i = !arch <> Pentium    
+                      in  emit(I.FCMP{i=i,fsize=fsize,lsrc=lsrc,rsrc=rsrc});
+                          fcc
+                      end
                   in  case (lsrc, rsrc) of
                          (I.FPR _, I.FPR _) => cmp(lsrc, rsrc, fcc)
                        | (I.FPR _, mem) => cmp(mem,lsrc,T.Basis.swapFcond fcc)
@@ -1167,32 +1175,73 @@ struct
               fun testil i = emit(I.TESTL{lsrc=eax,rsrc=I.Immed(i)})
               fun xoril i = emit(I.BINARY{binOp=I.XORL,src=I.Immed(i),dst=eax})
               fun cmpil i = emit(I.CMPL{rsrc=I.Immed(i), lsrc=eax})
-              fun j(cc, lab) = mark(I.JCC{cond=cc, opnd=immedLabel lab},an)
               fun sahf() = emit(I.SAHF)
               fun branch(fcc) =
                   case fcc
-                  of T.==   => (andil 0x4400; xoril 0x4000; j(I.EQ, lab))
-                   | T.?<>  => (andil 0x4400; xoril 0x4000; j(I.NE, lab))
-                   | T.?    => (sahf(); j(I.P,lab))
-                   | T.<=>  => (sahf(); j(I.NP,lab))
-                   | T.>    => (testil 0x4500;  j(I.EQ,lab))
-                   | T.?<=  => (testil 0x4500;  j(I.NE,lab))
-                   | T.>=   => (testil 0x500; j(I.EQ,lab))
-                   | T.?<   => (testil 0x500; j(I.NE,lab))
-                   | T.<    => (andil 0x4500; cmpil 0x100; j(I.EQ,lab))
-                   | T.?>=  => (andil 0x4500; cmpil 0x100; j(I.NE,lab))
-                   | T.<=   => (andil 0x4100; cmpil 0x100; j(I.EQ,lab);
-                                cmpil 0x4000; j(I.EQ,lab))
-                   | T.?>   => (sahf(); j(I.P,lab); testil 0x4100; j(I.EQ,lab))
-                   | T.<>   => (testil 0x4400; j(I.EQ,lab))
-                   | T.?=   => (testil 0x4400; j(I.NE,lab))
+                  of T.==   => (andil 0x4400; xoril 0x4000; j(I.EQ))
+                   | T.?<>  => (andil 0x4400; xoril 0x4000; j(I.NE))
+                   | T.?    => (sahf(); j(I.P))
+                   | T.<=>  => (sahf(); j(I.NP))
+                   | T.>    => (testil 0x4500;  j(I.EQ))
+                   | T.?<=  => (testil 0x4500;  j(I.NE))
+                   | T.>=   => (testil 0x500; j(I.EQ))
+                   | T.?<   => (testil 0x500; j(I.NE))
+                   | T.<    => (andil 0x4500; cmpil 0x100; j(I.EQ))
+                   | T.?>=  => (andil 0x4500; cmpil 0x100; j(I.NE))
+                   | T.<=   => (andil 0x4100; cmpil 0x100; j(I.EQ);
+                                cmpil 0x4000; j(I.EQ))
+                   | T.?>   => (sahf(); j(I.P); testil 0x4100; j(I.EQ))
+                   | T.<>   => (testil 0x4400; j(I.EQ))
+                   | T.?=   => (testil 0x4400; j(I.NE))
                    | _      => error(concat[
 				  "fbranch(", T.Basis.fcondToString fcc, ")"
 				])
                  (*esac*)
+
+              (*
+               *             P  Z  C
+               * x < y       0  0  1
+               * x > y       0  0  0
+               * x = y       0  1  0
+               * unordered   1  1  1
+               * When it's unordered, all three flags, P, Z, C are set.
+               *)
+                
+              fun fast_branch(fcc) =
+                  case fcc
+                  of T.==   => orderedOnly(I.EQ)
+                   | T.?<>  => (j(I.P); j(I.NE))
+                   | T.?    => j(I.P)
+                   | T.<=>  => j(I.NP)
+                   | T.>    => orderedOnly(I.A)
+                   | T.?<=  => j(I.BE)
+                   | T.>=   => orderedOnly(I.AE)
+                   | T.?<   => j(I.B)
+                   | T.<    => orderedOnly(I.B)
+                   | T.?>=  => (j(I.P); j(I.AE))
+                   | T.<=   => orderedOnly(I.BE)
+                   | T.?>   => (j(I.P); j(I.A))
+                   | T.<>   => orderedOnly(I.NE)
+                   | T.?=   => j(I.EQ)
+                   | _      => error(concat[
+				  "fbranch(", T.Basis.fcondToString fcc, ")"
+				])
+                 (*esac*)
+              and orderedOnly fcc =
+              let val label = Label.anon()
+              in  emit(I.JCC{cond=I.P, opnd=immedLabel label});
+                  j fcc;
+                  defineLabel label
+              end
+ 
               val fcc = compare() 
-          in  emit I.FNSTSW;   
-              branch(fcc)
+          in  if !arch <> Pentium andalso
+                 (enableFastFPMode andalso !fast_floating_point) then
+                fast_branch(fcc)
+              else
+                (emit I.FNSTSW;   
+                 branch(fcc)
+                )
           end
 
       (*========================================================

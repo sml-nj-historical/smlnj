@@ -131,6 +131,27 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	       }
 	    end
 	end 
+      | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
+      | I.CMOV{cond, src, dst} => 
+           (* note: dst must be a register *)
+         (case spillLoc of
+           I.Direct r =>
+	      {proh=[],
+	       newReg=NONE,
+	       code=[mark(I.CMOV{cond=cond,src=src,dst=r},an)]
+	      }
+         | _ =>
+	  let val tmpR = newReg()
+	      val tmp  = I.Direct tmpR
+	  in  {proh=[tmpR],
+	       newReg=SOME tmpR,
+	       code=[I.move{mvOp=I.MOVL, src=spillLoc, dst=tmp},
+                     mark(I.CMOV{cond=cond,src=src,dst=tmpR},an),
+		     I.move{mvOp=I.MOVL, src=tmp, dst=spillLoc}]
+	      }
+	  end 
+         )
+
       | I.CMPXCHG{lock,sz,src,dst} => 
 	   if immedOrReg src then
 	       {proh=[],
@@ -195,6 +216,9 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	(*esac*))
 
       fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
+
+      fun isReloading (I.Direct r) = CB.sameColor(r,reg) 
+        | isReloading _ = false
 
       (* This version assumes that the value of tmpR is killed *)
       fun withTmp(f, an) = 
@@ -335,6 +359,12 @@ functor X86SpillInstr(structure Instr: X86INSTR
        | I.BINARY{binOp, src, dst} => 
 	  withTmp(fn tmpR => I.BINARY{binOp=binOp, src=operand(tmpR, src), 
 						   dst=operand(tmpR, dst)}, an)
+       | I.CMOV{cond, src, dst} => 
+         if CB.sameColor(dst,reg) then
+            error "CMOV"
+         else
+            done(I.CMOV{cond=cond, src=spillLoc, dst=dst}, an)
+       | I.SHIFT{shiftOp, count, src, dst} => error "go and implement SHIFT"
        | I.CMPXCHG{lock,sz,src,dst} => 
 	  withTmp(fn tmpR => I.CMPXCHG{lock=lock, sz=sz,
 				       src=operand(tmpR, src),
@@ -370,6 +400,10 @@ functor X86SpillInstr(structure Instr: X86INSTR
        | I.FSTS opnd => reloadReal(I.FSTS, opnd, an)
        | I.FUCOM opnd => reloadReal(I.FUCOM, opnd, an)
        | I.FUCOMP opnd => reloadReal(I.FUCOMP, opnd, an)
+       | I.FCOMI opnd => reloadReal(I.FCOMI, opnd, an)
+       | I.FCOMIP opnd => reloadReal(I.FCOMIP, opnd, an)
+       | I.FUCOMI opnd => reloadReal(I.FUCOMI, opnd, an)
+       | I.FUCOMIP opnd => reloadReal(I.FUCOMIP, opnd, an)
        | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
 				   I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
        | I.FBINARY{binOp, src, dst} => 
@@ -400,9 +434,9 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	  withTmpAvail(fn tmpR =>
 	     I.FUNOP{fsize=fsize, unOp=unOp, src=operand(tmpR, src),
 		     dst=operand(tmpR, dst)}, an)
-       | I.FCMP{fsize,lsrc,rsrc} =>
+       | I.FCMP{i,fsize,lsrc,rsrc} =>
 	  withTmpAvail(fn tmpR =>
-	     I.FCMP{fsize=fsize, 
+	     I.FCMP{i=i,fsize=fsize, 
 		    lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)
 		   }, an)
 
@@ -521,6 +555,10 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	 | I.FLDS opnd => {code=[mark(I.FLDS spillLoc, an)], proh=[], newReg=NONE}
 	 | I.FUCOM opnd => {code=[mark(I.FUCOM spillLoc, an)],proh=[],newReg=NONE}
 	 | I.FUCOMP opnd => {code=[mark(I.FUCOMP spillLoc, an)],proh=[],newReg=NONE}
+	 | I.FCOMI opnd => {code=[mark(I.FCOMI spillLoc, an)],proh=[],newReg=NONE}
+	 | I.FCOMIP opnd => {code=[mark(I.FCOMIP spillLoc, an)],proh=[],newReg=NONE}
+	 | I.FUCOMI opnd => {code=[mark(I.FUCOMI spillLoc, an)],proh=[],newReg=NONE}
+	 | I.FUCOMIP opnd => {code=[mark(I.FUCOMIP spillLoc, an)],proh=[],newReg=NONE}
 	 | I.FBINARY{binOp, src=I.FDirect f, dst} => 
 	     if CB.sameColor(f,reg) then 
 	       {code=[mark(I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}, an)],
@@ -549,28 +587,28 @@ functor X86SpillInstr(structure Instr: X86INSTR
 	    {code=[mark(I.FUNOP{fsize=fsize,unOp=unOp,
 				src=rename src, dst=dst},an)], 
 		   proh=[], newReg=NONE}
-	 | I.FCMP{fsize,lsrc,rsrc} =>
+	 | I.FCMP{i,fsize,lsrc,rsrc} =>
 	    (* Make sure that both the lsrc and rsrc cannot be in memory *)
 	    (case (lsrc, rsrc) of
 	      (I.FPR fs1, I.FPR fs2) =>
 		(case (CB.sameColor(fs1,reg), CB.sameColor(fs2,reg)) of
 		   (true, true) =>
 		   withTmp(fsize, 
-		      fn tmp => I.FCMP{fsize=fsize,lsrc=tmp, rsrc=tmp}, an)
+		      fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=tmp, rsrc=tmp}, an)
 		 | (true, false) =>
-		   {code=[mark(I.FCMP{fsize=fsize,lsrc=spillLoc,rsrc=rsrc},an)],
+		   {code=[mark(I.FCMP{i=i,fsize=fsize,lsrc=spillLoc,rsrc=rsrc},an)],
 		    proh=[], newReg=NONE}
 		 | (false, true) =>
-		   {code=[mark(I.FCMP{fsize=fsize,lsrc=lsrc,rsrc=spillLoc},an)],
+		   {code=[mark(I.FCMP{i=i,fsize=fsize,lsrc=lsrc,rsrc=spillLoc},an)],
 		    proh=[], newReg=NONE}
 		 | _ => error "fcmp.1"
 		)
 	     | (I.FPR _, _) =>
 		withTmp(fsize, 
-		   fn tmp => I.FCMP{fsize=fsize,lsrc=tmp, rsrc=rsrc}, an)
+		   fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=tmp, rsrc=rsrc}, an)
 	     | (_, I.FPR _) =>
 		withTmp(fsize, 
-		   fn tmp => I.FCMP{fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
+		   fn tmp => I.FCMP{i=i,fsize=fsize,lsrc=rsrc, rsrc=tmp}, an)
 	     | _ => error "fcmp.2"
 	    )
 	 | I.CALL{opnd, defs, uses, return, cutsTo, mem, pops} =>

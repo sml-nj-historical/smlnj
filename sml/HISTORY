@@ -13,6 +13,51 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/21 17:15:00 EST
+Tag: leunga-20020321-x86-fp-cfg
+Description:
+
+  1. Recoded the buggy parts of x86-fp. 
+
+     a. All the block reordering code has been removed.
+        We now depend on the block placement phases to do this work.
+
+     b. Critical edge splitting code has been simplified and moved into the
+        CFG modules, as where they belong.
+
+     Both of these were quite buggy and complex.  The code is now much, much
+     simpler.
+
+  2. X86 backend.
+
+     a. Added instructions for 64-bit support.  Instruction selection for
+        64-bit has not been committed, however, since that
+        requires changes to MLTREE which haven't been approved by 
+        Lal and John.
+
+     b. Added support for FUCOMI and FUCOMIP when generating code for 
+        PentiumPro and above.  We only generate these instructions in
+        the fast-fp mode.
+    
+     c. Added cases for JP and JNP in X86FreqProps. 
+
+  3. CFG
+
+     CFG now has a bunch of methods for edge splitting and merging.
+
+  4. Machine description.
+
+     John's simplification of MLTREE_BASIS.fcond broke a few machine
+     description things:
+
+     rtl-build.{sig,sml} and hppa.mdl fixed.
+
+     NOTE: the machine description stuff in the repository is still broken. 
+           Again, I can't put my fixes in because that involves 
+           changes to MLTREE. 
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/20 15:55:00 EST
 Tag: blume-20020320-kmp
