@@ -4,6 +4,9 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2002-02-12]
+	Applied bug fix (sent in by Chris Okasaki) to PQ implementation.
+
+[2002-02-12]
 	Added implementation of priority queues to Util library (using
 	Okasaki's leftist-tree implementation).
 
