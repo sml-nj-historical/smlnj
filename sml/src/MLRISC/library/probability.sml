@@ -24,6 +24,7 @@ signature PROBABILITY =
     val - : (prob * prob) -> prob
     val * : (prob * prob) -> prob
     val / : (prob * int) -> prob
+    val not : prob -> prob		(* not p == always - p *)
 
     val percent : int -> prob
 
@@ -51,7 +52,7 @@ structure Probability :> PROBABILITY =
 
     exception BadProb
 
-    val never = PROB(0w0, 0w0)
+    val never = PROB(0w0, 0w1)
     val unlikely = PROB(0w1, 0w1000)
     val likely = PROB(0w999, 0w1000)
     val always = PROB(0w1, 0w1)
@@ -161,11 +162,28 @@ structure Probability :> PROBABILITY =
 		end
 	(* compute the true probability *)
 	  val t as PROB(tn, td) = normalize(n12*sn, d12*sd)
+	  val maxDenom = 0wx8000
+	  val t as PROB(tn, td) = if td > maxDenom
+		then let
+		(* round down a bit to avoid future overflow *)
+		  fun lp (d, i) = let
+			val d' = Word.>>(d, 0w1)
+			in
+			  if (d' > maxDenom) then lp(d', i+0w1) else (d', i)
+			end
+		  val (d, i) = lp(td, 0w1)
+		  val n = Word.>>(tn, i)
+		  in
+		    PROB(if n > 0w0 then n else 0w1, d)
+		  end
+		else t
 	(* compute the false probability *)
 	  val f = PROB(td-tn, td)
 	  in
 	    {t = t, f = f}
 	  end
+
+    fun not (PROB(n, d)) = PROB(d-n, n)
 
     val op + = add
     val op - = sub
