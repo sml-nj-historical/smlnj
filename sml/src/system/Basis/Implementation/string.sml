@@ -207,7 +207,11 @@ structure StringImp : STRING =
 	end
     fun isSubstring s = let
 	val stringsearch = PreString.kmp s
-	fun search s' = stringsearch (s', 0, size s') >= 0
+	fun search s' = let
+	    val epos = size s'
+	in
+	    stringsearch (s', 0, epos) < epos
+	end
     in
 	search
     end

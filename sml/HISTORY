@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/21 22:20:00 EST
+Tag: blume-20020321-kmp-bugfix
+Description:
+
+Changed the interface to the KMP routine in PreString and fixed
+a minor bug in one place where it was used.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/21 20:30:00 EST
 Tag: leunga-20020321-cfg

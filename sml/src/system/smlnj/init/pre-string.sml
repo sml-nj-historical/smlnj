@@ -196,7 +196,7 @@ structure PreString =
      * Find the first string within the second, starting at and
      * ending before the given positions.
      * Return the starting position of the match
-     * or ~1 if there is no match. *)
+     * or the given ending position if there is no match. *)
     fun kmp pattern =
 	let val psz = size pattern
 	    val next = InlineT.PolyArray.array (psz, ~1)
@@ -232,7 +232,7 @@ structure PreString =
 		let fun txt x = unsafeSub (text, x)
 		    fun loop (p, t) =
 			if p >= psz then t - psz
-			else if t >= tsz then ~1
+			else if t >= tsz then tsz
 			else if p < 0 orelse pat p = txt t then loop (p+1, t+1)
 			else loop (nxt p, t)
 		in loop (0, start)

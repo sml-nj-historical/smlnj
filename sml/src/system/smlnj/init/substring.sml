@@ -134,7 +134,11 @@ structure Substring :> SUBSTRING
 	PreString.isPrefix (s1, s2, i2 + n2 - stringSize s1, n2)
     fun isSubstring s = let
 	val stringsearch = PreString.kmp s
-	fun search (SS (s', i, n)) = stringsearch (s', i, i + n) >= 0
+	fun search (SS (s', i, n)) = let
+	    val epos = i + n
+	in
+	    stringsearch (s', i, epos) < epos
+	end
     in
 	search
     end
@@ -178,10 +182,10 @@ structure Substring :> SUBSTRING
     fun position s = let
 	val stringsearch = PreString.kmp s
 	fun search (ss as SS (s', i, n)) = let
-	    val match = stringsearch (s', i, n - i)
+	    val epos = i + n
+	    val match = stringsearch (s', i, epos)
 	in
-	    if match < 0 then (ss, SS (s', i + n, 0))
-	    else (SS (s', i, match - i), SS (s', match, i + n - match))
+	    (SS (s', i, match - i), SS (s', match, epos - match))
 	end
     in
 	search
