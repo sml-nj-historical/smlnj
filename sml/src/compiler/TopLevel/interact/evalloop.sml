@@ -44,6 +44,8 @@ fun interruptable f x =
         handle e => (U.topLevelCont := oldcont; raise e)
     end
 
+exception ExnDuringExecution of exn
+
 (* 
  * The baseEnv and localEnv are purposely refs so that a top-level command
  * can re-assign either one of them, and the next iteration of the loop
@@ -88,13 +90,16 @@ fun evalLoop source = let
                     fixed in the long run. (ZHONG)
                  *)
 
-                val executable = Execute.mkexec csegments before checkErrors ()
+                val executable = Execute.mkexec
+				     { cs = csegments,
+				       exnwrapper = ExnDuringExecution }
+				 before checkErrors ()
                 val executable = Isolate.isolate (interruptable executable)
 
                 val _ = (PC.current := Profile.otherIndex)
                 val newdynenv = 
-                    Execute.execute{executable=executable, imports=imports,
-				    exportPid=exportPid, dynenv=dynenv}
+                    Execute.execute { executable=executable, imports=imports,
+				      exportPid=exportPid, dynenv=dynenv }
                 val _ = (PC.current := Profile.compileIndex)
 
                 val newenv =
@@ -201,17 +206,6 @@ fun interact () = let
 	fun flush() = (#anyErrors source := false; 
                        flush'() handle IO.Io _ => ())
 
-        local val p1 = Substring.isPrefix "TopLevel/interact/evalloop.sml:"
-              val p2 = Substring.isPrefix "TopLevel/main/compile.sml:"
-              val p3 = Substring.isPrefix "MiscUtil/util/stats.sml:"
-           in fun edit [s] = [s]
-                | edit nil = nil
-                | edit (s::r) = 
-                   let val s' = Substring.all s
-                    in if p1 s' orelse p2 s' orelse p3 s'
-                       then edit r else s :: edit r
-                   end
-          end
 
 	fun showhist' [s] = say(concat["  raised at: ", s, "\n"])
           | showhist' (s::r) = (showhist' r; 
@@ -219,47 +213,56 @@ fun interact () = let
           | showhist' [] = ()
 
 	fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
-          | exnMsg (Isolate.TopLevelException e) = exnMsg e
           | exnMsg exn = General.exnMessage exn
 
-	fun showhist (Isolate.TopLevelException e) = showhist e
-          | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
+	fun showhist e = showhist' (SMLofNJ.exnHistory e)
 
 	fun loop () = let
+	    fun user_hdl (ExnDuringExecution exn) = user_hdl exn
+	      | user_hdl exn = let
+		    val msg = exnMsg exn
+		    val name = exnName exn
+		in
+		    if msg = name then
+			say (concat ["\nuncaught exception ", name, "\n"])
+		    else say (concat ["\nuncaught exception ",
+				      name, " [", msg, "]\n"]);
+		    showhist exn;
+		    flush(); 
+		    loop()
+		end
+
+	    fun bug_hdl exn = let
+		val msg = exnMsg exn
+		val name = exnName exn
+	    in
+		say (concat ["\nunexpected exception (bug?) in SML/NJ: ",
+			     name," [", msg, "]\n"]);
+		showhist exn;
+		flush(); 
+		loop()
+	    end
+
 	    fun non_bt_hdl e =
 		case e of
 		    EndOfFile => (say "\n")
-                  | Interrupt => (say "\nInterrupt\n"; 
-				  flush(); loop())
+                  | (Interrupt | ExnDuringExecution Interrupt) =>
+		      (say "\nInterrupt\n"; flush(); loop())
                   | EM.Error => (flush(); loop())
                   | CompileExn.Compile "syntax error" => (flush(); loop())
                   | CompileExn.Compile s =>
                     (say(concat["\nuncaught exception Compile: \"",
 				s,"\"\n"]);
                      flush(); loop())
-                  | Isolate.TopLevelException Isolate.TopLevelCallcc =>
-                    (say("Error: throw from one top-level expression \
-			 \into another\n");
-                     flush (); loop ())
-                  | Isolate.TopLevelException EM.Error =>
-                    (flush (); loop ())
-                  | Isolate.TopLevelException exn => let
-			val msg = exnMsg exn
-			val name = exnName exn
-                    in
-			if msg = name then
-			    say (concat ["\nuncaught exception ", name, "\n"])
-			else say (concat ["\nuncaught exception ", name,
-					  " [", msg, "]\n"]);
-			showhist exn;
-			flush(); 
-			loop()
-                    end
-                  | exn => (say (concat["\nuncaught exception ", 
-					exnMsg exn, "\n"]);
-			    showhist exn;
-			    flush();
-			    loop())
+                  | Isolate.TopLevelCallcc =>
+                      (say("Error: throw from one top-level expression \
+			   \into another\n");
+                       flush (); loop ())
+		  | (Execute.Link | ExnDuringExecution Execute.Link) =>
+		      (flush (); loop ())
+		  | ExnDuringExecution exn => user_hdl exn
+		  | exn => bug_hdl exn
+
 	    fun bt_hdl (e, []) = non_bt_hdl e
 	      | bt_hdl (e, hist) =
 		(say (concat ("\n*** BACK-TRACE ***\n" :: hist));
@@ -299,7 +302,6 @@ in
     handle exn => (Source.closeSource source;
 		   case exn of
 		       EndOfFile => () 
-		     | Isolate.TopLevelException e => raise e
 		     | _ => raise exn)
 end
 
