@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/24 22:40:00 EST
+Tag: blume-20020324-bootfiles
+Description:
+
+Made the bootfiles that Allen asked for.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/23 15:50:00 EST
 Tag: leunga-20020323-flint-cps-rcc-primops
