@@ -51,21 +51,9 @@ struct
     * Copies are no longer treated as span dependent, which was a hack.
     *)
    structure ExpandCpys = 
-     CFGExpandCopies 
-	 (structure CFG = CFG
-	  structure ExpandCopies = 
-	     struct
-		structure I = I
-		fun expandCopies(I.COPY{k, dst, src, tmp, ...}) = 
-		     (case k
-		       of CellsBasis.GP => Shuffle.shuffle{dst=dst, src=src, tmp=tmp} 
-			| CellsBasis.FP => Shuffle.shufflefp{dst=dst, src=src, tmp=tmp}
-			| _ => MLRiscErrorMsg.error ("MachineGen", "expandCopies")
-		     (*esac*))
-		  | expandCopies(I.ANNOTATION{i, ...}) = expandCopies(i)
-		  | expandCopies instr = [instr]
-	     end
-	  )
+      CFGExpandCopies
+	  (structure CFG = CFG   
+	   structure Shuffle = Shuffle)
 
    fun omitFramePointer(cfg as G.GRAPH graph) = let
      val CFG.INFO{annotations, ...} = #graph_info graph 

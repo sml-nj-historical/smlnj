@@ -248,12 +248,15 @@ struct
  
       fun startSegment(seg) = (data := p :: !data; segmentF := seg)
 
-      fun addData(seg) =
+      fun addData () = data := p :: !data
+
+      fun chkAddData(seg) =
 	(case !segmentF
          of TEXT => 
 	     error (Fmt.format "addPseudoOp: %s in TEXT segment" [Fmt.STR seg])
-          | _ => data := p :: !data
+          | _ => addData()
         (*esac*))
+
     in
       case p
       of PB.ALIGN_SZ _ => addAlignment()
@@ -278,14 +281,14 @@ struct
        | PB.NOREORDER => 
 	   (reorder := [#create MLRiscAnnotations.NOREORDER ()]; newBlock(1); ())
   
-       | PB.INT _    => addData("INT")
-       | PB.FLOAT _  => addData("FLOAT")
-       | PB.ASCII _  => addData("ASCII")
-       | PB.ASCIIZ _ => addData("ASCIIZ")
-       | PB.SPACE _  => addData("SPACE")
-       | PB.IMPORT _ => addData("IMPORT")
-       | PB.EXPORT _ => addData("EXPORT")
-       | PB.EXT _ => addData("EXT")
+       | PB.INT _    => chkAddData("INT")
+       | PB.FLOAT _  => chkAddData("FLOAT")
+       | PB.ASCII _  => chkAddData("ASCII")
+       | PB.ASCIIZ _ => chkAddData("ASCIIZ")
+       | PB.SPACE _  => chkAddData("SPACE")
+       | PB.IMPORT _ => addData()
+       | PB.EXPORT _ => addData()
+       | PB.EXT _ => chkAddData("EXT")
     end
 
     fun defineLabel lab = 

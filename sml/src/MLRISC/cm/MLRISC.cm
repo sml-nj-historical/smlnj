@@ -16,7 +16,6 @@ Library
 	signature CONTROL_FLOW_GRAPH
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
-	signature EXPAND_COPIES
 	signature FREQUENCY_PROPERTIES
 	signature GAS_PSEUDO_OPS
 	signature GC_CELLS
@@ -152,7 +151,6 @@ is
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
-	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig

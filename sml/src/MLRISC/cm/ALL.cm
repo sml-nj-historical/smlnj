@@ -276,7 +276,6 @@ IA32.cm:
 	../x86/instructions/x86Props.sml
 	../x86/instructions/x86MemRegs.sig
 	../x86/instructions/x86FreqProps.sml
-	../x86/instructions/x86ExpandCopies.sml
 	../x86/emit/x86Asm.sml
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
@@ -524,7 +523,6 @@ MIPS.cm:
 	../mips/instructions/mipsShuffle.sml
 	../mips/instructions/mipsProps.sml
 	../mips/instructions/mipsFreqProps.sml
-	../mips/instructions/mipsExpandCopies.sml
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
 	../mips/backpatch/mipsDelaySlotProps.sml
@@ -552,7 +550,6 @@ MLRISC.cm:
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
-	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig

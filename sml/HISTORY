@@ -12,6 +12,18 @@ Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/01/15
+Tag: <none>
+Description:
+
+1. Since COPY instructions are no longer native to the architecture, 
+   a generic functor can be used to implement the expandCopies function.
+
+2. Allowed EXPORT and IMPORT pseudo-op declarations to appear inside a
+   TEXT segment.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/15
 Tag: blume-20020115-ffiupdates

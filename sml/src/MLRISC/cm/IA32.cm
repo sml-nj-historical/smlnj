@@ -13,7 +13,6 @@ Library
 	functor X86
 	functor X86AsmEmitter
 	functor X86CompInstrExt
-	functor X86ExpandCopies
 	functor X86FP
 	functor X86FreqProps
 	functor X86GasPseudoOps
@@ -74,7 +73,6 @@ is
 	../x86/instructions/x86Props.sml
 	../x86/instructions/x86MemRegs.sig
 	../x86/instructions/x86FreqProps.sml
-	../x86/instructions/x86ExpandCopies.sml
 	../x86/emit/x86Asm.sml
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
