@@ -22,6 +22,7 @@ struct
    val dot  = !! "."
    val list = seq(!! "[",comma++goodBreak,!! "]")
    val tuple = seq(!! "(",comma++goodBreak,!! ")")
+   val vector = seq(!! "#[",comma++goodBreak,!! "]")
    val record = seq(!! "{",comma++goodBreak,!! "}")
    val bars = seq(settab,nl'(5,0) ++ tab' ~2 ++ ! "|" ++ tab,unindent)
    val ands = seq(settab,tab' ~4 ++ ! "and" ++ tab,unindent)
@@ -82,6 +83,7 @@ struct
      | exp(LISTexp(es,SOME e)) = seq(nop,cons,cons) (map exp es) ++ exp e
      | exp(TUPLEexp [e]) = exp e
      | exp(TUPLEexp es) = tuple (map appexp es)
+     | exp(VECTORexp es) = vector (map appexp es)
      | exp(RECORDexp es) = record(map labexp es)
      | exp(SEQexp []) = ! "()"
      | exp(SEQexp [e]) = exp e
@@ -160,6 +162,7 @@ struct
      | isParenedExp(TUPLEexp _) = true
      | isParenedExp(RECORDexp _) = true
      | isParenedExp(LISTexp _) = true
+     | isParenedExp(VECTORexp _) = true
      | isParenedExp _ = false
 
    and isSym "+" = true
@@ -355,6 +358,7 @@ struct
      | pat(LISTpat(ps,SOME p)) = seq(nop,cons,cons) (map pat ps) ++ pat p
      | pat(TUPLEpat [p]) = pat p
      | pat(TUPLEpat ps) = tuple(map pat ps)
+     | pat(VECTORpat ps) = vector(map pat ps)
      | pat(RECORDpat(lps,flex)) = 
            record(map labpat lps @ (if flex then [! "..."] else []))
      | pat(TYPEDpat(p,t)) = paren(pat p ++ !! ":" ++ ty t)

@@ -89,7 +89,7 @@ struct
                                delayslot=NONE,
                                delaycand=NONE,sdi=NONE,latency=NONE,
                                pipeline=NONE, loc=SourceMapping.dummyLoc}
-   fun VAL(id,e) = VALdecl [VALbind(IDpat id,e)]
+   fun VAL(id,e) = VALdecl[VALbind(case id of "_" => WILDpat | _ => IDpat id,e)]
    fun FUN'(id,p,e) = FUNbind(id,[CLAUSE([p],NONE,e)])
    fun FUN(id,p,e) = FUNdecl [FUN'(id,p,e)]
    fun LET([],e) = e 

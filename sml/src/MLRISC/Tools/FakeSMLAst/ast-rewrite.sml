@@ -35,6 +35,7 @@ struct
                      CONSexp(id,SOME e) => CONSexp(id,SOME(exp e))
                    | LISTexp(es,e) => LISTexp(map exp es,opt exp e)
                    | TUPLEexp es => TUPLEexp(map exp es)
+                   | VECTORexp es => VECTORexp(map exp es)
                    | RECORDexp es => RECORDexp(map (fn (l,e) => (l,exp e)) es)
                    | SEQexp es => SEQexp(map exp es)
                    | APPexp(f,x) => APPexp(exp f, exp x) 
@@ -128,6 +129,7 @@ struct
                 | LITpat l => p
                 | LISTpat(ps,p) => LISTpat(map pat ps,opt pat p)
                 | TUPLEpat ps => TUPLEpat(map pat ps)
+                | VECTORpat ps => VECTORpat(map pat ps)
                 | RECORDpat(lps,flex) => 
                      RECORDpat(map (fn (l,p) => (l,pat p)) lps, flex)
                 | TYPEDpat(p,t) => TYPEDpat(pat p,ty t)

@@ -13,6 +13,13 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/03 13:20:00 EST
+Tag: leunga-20020303-mlrisc-tools
+
+  Added #[ ... ] expressions to mlrisc tools
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/02/27 12:29:00 EST
 Tag: blume-20020227-cdebug
@@ -134,8 +141,8 @@ N
        TOTAL                                   2375.26u  57.21s  48.00g  
 
 As you can see the old cps spill module suffers from some serious 
-performance problem but since I cannot decipher the old code fully, 
-innstead of patching the problems up, I'm reimplementing it 
+performance problem.  But since I cannot decipher the old code fully, 
+instead of patching the problems up, I'm reimplementing it 
 with a different algorithm.  The new code is more modular, 
 smaller when compiled, and substantially faster 
 (O(n log n) time and O(n) space).  Timing of the new spill module: 

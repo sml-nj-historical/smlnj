@@ -290,6 +290,7 @@ inf=i;
 <INITIAL,ASM>"("	=> (LPAREN(yypos,yypos+1));
 <INITIAL,ASM>")"	=> (RPAREN(yypos,yypos+1));
 <INITIAL,ASM>"["	=> (LBRACKET(yypos,yypos+1));
+<INITIAL,ASM>"#["	=> (LHASHBRACKET(yypos,yypos+1));
 <INITIAL,ASM>"]"	=> (RBRACKET(yypos,yypos+1));
 <INITIAL,ASM>"{"	=> (LBRACE(yypos,yypos+1));
 <INITIAL,ASM>"}"	=> (RBRACE(yypos,yypos+1));
