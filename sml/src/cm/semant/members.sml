@@ -62,7 +62,6 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     structure DG = DependencyGraph
     structure EM = ErrorMsg
-    structure E = Environment
     structure SS = SymbolSet
     structure GG = GroupGraph
     structure V = Version

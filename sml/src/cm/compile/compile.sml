@@ -9,17 +9,15 @@ local
     structure GP = GeneralParams
     structure DG = DependencyGraph
     structure GG = GroupGraph
-    structure E = Environment
     structure SE = StaticEnv
     structure Pid = PersStamps
-    structure DE = DynamicEnv
     structure PP = PrettyPrint
     structure EM = ErrorMsg
     structure SF = SmlFile
 
     type pid = Pid.persstamp
-    type statenv = E.staticEnv
-    type symenv = E.symenv
+    type statenv = StaticEnv.staticEnv
+    type symenv = SymbolicEnv.env
     type result = { stat: statenv, sym: symenv }
     type ed = IInfo.info
 in
@@ -147,7 +145,8 @@ in
 	end
 
 	fun requiredFiltering set se = let
-	    val dom = SymbolSet.addList (SymbolSet.empty, E.catalogEnv se)
+	    val dom = SymbolSet.addList (SymbolSet.empty,
+					 BrowseStatEnv.catalog se)
 	    val filt = SymbolSet.intersection (set, dom)
 	in
 	    if SymbolSet.equal (dom, filt) then NONE
@@ -162,7 +161,7 @@ in
 		NONE => { envs = fn () => { stat = ste, sym = symenv () },
 			  pids = pidset (statpid, sympid) }
 	      | SOME s => let
-		    val ste' = E.filterStaticEnv (ste, SymbolSet.listItems s)
+		    val ste' = SE.filter (ste, SymbolSet.listItems s)
 		    val key = (statpid, s)
 		    val statpid' =
 			case FilterMap.find (!filtermap, key) of
@@ -181,19 +180,14 @@ in
 		end
 	end
 
-	local
-	    fun r2e { stat, sym } = E.mkenv { static = stat, symbolic = sym,
-					      dynamic = DE.empty }
-	    fun e2r e = { stat = E.staticPart e, sym = E.symbolicPart e }
-	in
-	    (* This is a bit ugly because somehow we need to mix dummy
-	     * dynamic envs into the equation just to be able to use
-	     * concatEnv.  But, alas', that's life... *)
-	    fun rlayer (r, r') = e2r (E.concatEnv (r2e r, r2e r'))
+	fun rlayer ({ stat, sym }, { stat = stat', sym = sym' }) =
+	    { stat = SE.consolidateLazy (SE.atop (stat, stat')),
+	      (* let's not bother with stale pids here... *)
+	      sym = SymbolicEnv.atop (sym, sym') }
 
-	    val emptyEnv =
-		{ envs = fn () => e2r E.emptyEnv, pids = PidSet.empty }
-	end
+	val emptyEnv =
+	    { envs = fn () => { stat = SE.empty, sym = SymbolicEnv.empty },
+	      pids = PidSet.empty }
 
 	fun layer ({ envs = e, pids = p }, { envs = e', pids = p' }) =
 	    { envs = fn () => rlayer (e (), e' ()),
@@ -309,7 +303,8 @@ in
 				  | SOME sy => CoreHack.rewrite (ast, sy)
 			    val cmData = PidSet.listItems pids
 			    val (pre, post) = SmlInfo.setup i
-			    val toplenv = #get EnvRef.topLevel ()
+			    val topLevel = EnvRef.loc ()
+			    val toplenv = #get topLevel ()
 					  before perform_setup "pre" pre
 			    (* clear error flag (could still be set from
 			     * earlier run) *)
@@ -350,7 +345,7 @@ in
 				bfc2memo (bfc, SmlInfo.lastseen i, stat)
 			in
 			    perform_setup "post" post;
-			    #set EnvRef.topLevel toplenv;
+			    #set topLevel toplenv;
 			    storeBFC (i, { contents = bfc, stats = save bfc });
 			    SOME memo
 			end handle (EM.Error | CompileExn.Compile _)
@@ -395,7 +390,7 @@ in
 				val stat =
 				    case extra_compenv of
 					NONE => stat
-				      | SOME s => E.layerStatic (stat, s)
+				      | SOME s => SE.atop (stat, s)
 				fun load () = let
 				    val ts = TStamp.fmodTime binname
 				    fun openIt () = BinIO.openIn binname

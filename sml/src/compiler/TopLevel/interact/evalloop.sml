@@ -17,35 +17,11 @@ in
 exception Interrupt
 type lvar = Access.lvar
 
-type interactParams = 
-   { compManagerHook :
-       (Ast.dec * EnvRef.envref * EnvRef.envref -> unit) option ref,
-     baseEnvRef      : EnvRef.envref,
-     localEnvRef     : EnvRef.envref,
-     transform       : Absyn.dec -> Absyn.dec,
-     instrument      : { source: Source.inputSource,
-			 compenv: StaticEnv.staticEnv }
-                       -> Absyn.dec -> Absyn.dec,
-     perform         : CodeObj.executable -> CodeObj.executable,
-     isolate         : CodeObj.executable -> CodeObj.executable,
-     printer         : E.environment -> PP.ppstream
-		       -> (Absyn.dec * lvar list) -> unit }
+val compManagerHook : (Ast.dec * EnvRef.envref -> unit) ref = ref (fn _ => ())
 
-val stdParams : interactParams =
-      {compManagerHook = ref NONE,
-       baseEnvRef = EnvRef.pervasive,
-       localEnvRef = EnvRef.topLevel,
-       transform = (fn x => x),
-       instrument = (fn _ => fn x => x),
-       perform = (fn x => x),
-       isolate = Isolate.isolate,
-       printer = PPDec.ppDec}
-
-(* toplevel loop *)
+fun installCompManager cm = compManagerHook := cm
 
 val say = Control.Print.say
-fun debugmsg msg = 
-  if !Control.debugging	then (say (msg ^ "\n"); Control.Print.flush()) else ()
 
 exception EndOfFile
 
@@ -68,81 +44,81 @@ fun interruptable f x =
  * can be written. 
  *)
 
-fun evalLoop ({compManagerHook, baseEnvRef, localEnvRef, perform, 
-               isolate, printer, instrument, transform} : interactParams)
-             (source: Source.inputSource) : unit =
-
-let val parser = SmlFile.parseOne source
-    val cinfo = C.mkCompInfo { source = source, transform = transform }
+fun evalLoop source = let
+    val parser = SmlFile.parseOne source
+    val cinfo = C.mkCompInfo { source = source, transform = fn x => x }
 
     fun checkErrors s = 
         if CompInfo.anyErrors cinfo then raise EM.Error else ()
 
     fun oneUnit () = (* perform one transaction  *)
-      case parser ()
-       of NONE => raise EndOfFile
-	| SOME ast =>
-	    let val _ = case !compManagerHook
-                 of NONE => ()
-                  | SOME cm => cm (ast, baseEnvRef, localEnvRef)
+	case parser () of
+	    NONE => raise EndOfFile
+	  | SOME ast => let
+		val loc = EnvRef.loc ()
+		val base = EnvRef.base ()
+		val _ = !compManagerHook (ast, loc)
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
-                  E.layerEnv(#get localEnvRef (), #get baseEnvRef ())
+                    E.layerEnv (#get loc (), #get base ())
 
                 val splitting = Control.LambdaSplitting.get ()
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
                      imports, inlineExp, ...} = 
-                  C.compile {source=source, ast=ast,
-			     statenv=statenv,
-                             symenv=symenv,
-			     compInfo=cinfo, 
-                             checkErr=checkErrors,
-                             splitting=splitting}
+                    C.compile {source=source, ast=ast,
+			       statenv=statenv,
+                               symenv=symenv,
+			       compInfo=cinfo, 
+                               checkErr=checkErrors,
+                               splitting=splitting}
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 
                     fixed in the long run. (ZHONG)
                  *)
 
                 val executable = Execute.mkexec csegments before checkErrors ()
-                val executable = isolate (interruptable (perform executable))
+                val executable = Isolate.isolate (interruptable executable)
 
                 val _ = (PC.current := Profile.otherIndex)
                 val newdynenv = 
-                  Execute.execute{executable=executable, imports=imports,
-				  exportPid=exportPid, dynenv=dynenv}
+                    Execute.execute{executable=executable, imports=imports,
+				    exportPid=exportPid, dynenv=dynenv}
                 val _ = (PC.current := Profile.compileIndex)
 
                 val newenv =
 		    E.mkenv { static = newstatenv,
 			      dynamic = newdynenv, 
                               symbolic = SymbolicEnv.mk (exportPid,inlineExp) }
-                val newLocalEnv = E.concatEnv(newenv, #get localEnvRef ())
-                    (* refetch localEnvRef because execution may 
+                val newLocalEnv = E.concatEnv (newenv, #get loc ())
+                    (* refetch loc because execution may 
                        have changed its contents *)
 
-             in PrettyPrint.with_pp (#errConsumer source)
-                (fn ppstrm => printer 
-                  (E.layerEnv(newLocalEnv, #get baseEnvRef ()))
-                  ppstrm (absyn, exportLvars));
-                #set localEnvRef newLocalEnv
+            in
+		PrettyPrint.with_pp
+		    (#errConsumer source)
+		    (fn ppstrm => PPDec.ppDec 
+			(E.layerEnv(newLocalEnv, #get base ()))
+			ppstrm (absyn, exportLvars));
+                    #set loc newLocalEnv
             end
 
     fun loop() = (oneUnit(); loop())
- in interruptable loop ()
+in
+    interruptable loop ()
 end (* function evalLoop *)
 
 (*** interactive loop, with error handling ***)
-fun interact (interactParams) : unit =
-    let val source = Source.newSource("stdIn",1,TextIO.stdIn,true,
-                                   EM.defaultConsumer());
-       fun flush'() = 
-           case TextIO.canInput(TextIO.stdIn, 4096)
-             of NONE => ()
+fun interact () = let
+    val source = Source.newSource("stdIn",1,TextIO.stdIn,true,
+                                  EM.defaultConsumer());
+	fun flush'() = 
+            case TextIO.canInput(TextIO.stdIn, 4096) of
+		NONE => ()
               | (SOME 0) => ()
               | (SOME _) => (ignore (TextIO.input TextIO.stdIn); flush'())
 
-       fun flush() = (#anyErrors source := false; 
-                     flush'() handle IO.Io _ => ())
+	fun flush() = (#anyErrors source := false; 
+                       flush'() handle IO.Io _ => ())
 
         local val p1 = Substring.isPrefix "TopLevel/interact/evalloop.sml:"
               val p2 = Substring.isPrefix "TopLevel/main/compile.sml:"
@@ -156,97 +132,98 @@ fun interact (interactParams) : unit =
                    end
           end
 
-       fun showhist' [s] = say(concat["  raised at: ", s, "\n"])
-         | showhist' (s::r) = (showhist' r; 
+	fun showhist' [s] = say(concat["  raised at: ", s, "\n"])
+          | showhist' (s::r) = (showhist' r; 
                             say (concat["             ", s, "\n"]))
-         | showhist' [] = ()
+          | showhist' [] = ()
 
-       fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
-         | exnMsg (Isolate.TopLevelException e) = exnMsg e
-         | exnMsg exn = General.exnMessage exn
+	fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
+          | exnMsg (Isolate.TopLevelException e) = exnMsg e
+          | exnMsg exn = General.exnMessage exn
 
-       fun showhist (Isolate.TopLevelException e) = showhist e
-         | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
+	fun showhist (Isolate.TopLevelException e) = showhist e
+          | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
 
-       fun loop () = let
-	   fun non_bt_hdl e =
-	       case e of
-		   EndOfFile => (say "\n")
-                 | Interrupt => (say "\nInterrupt\n"; 
-				 flush(); loop())
-                 (* | EM.Error => (flush(); loop()) *)
-                 | CompileExn.Compile "syntax error" => (flush(); loop())
-                 | CompileExn.Compile s =>
-                   (say(concat["\nuncaught exception Compile: \"",
-			       s,"\"\n"]);
-                    flush(); loop())
-                 | Isolate.TopLevelException Isolate.TopLevelCallcc =>
-                   (say("Error: throw from one top-level expression \
-			\into another\n");
-                    flush (); loop ())
-                 | Isolate.TopLevelException EM.Error =>
-                   (flush (); loop ())
-                 | Isolate.TopLevelException exn => let
-		       val msg = exnMsg exn
-		       val name = exnName exn
-                   in
-		       if (msg = name)
-		       then say (concat
-				     ["\nuncaught exception ",
-				      exnName exn, "\n"])
-		       else say (concat
-				     ["\nuncaught exception ", exnName exn,
-				      " [", exnMsg exn, "]\n"]);
-		       showhist exn;
-		       flush(); 
-		       loop()
-                   end
-                 | exn => (say (concat["\nuncaught exception ", 
-				       exnMsg exn, "\n"]);
-			   showhist exn;
-			   flush();
-			   loop())
-	   fun bt_hdl (e, []) = non_bt_hdl e
-	     | bt_hdl (e, hist) =
-	       (say (concat ("\n*** BACK-TRACE ***\n" :: hist));
-		say "\n";
-		non_bt_hdl e)
-       in
-	   SMLofNJ.Internals.BTrace.bthandle
-	       { work = fn () => evalLoop interactParams source,
-		 hdl = bt_hdl }
-       end
-    in loop()
-    end (* fun interact *)
+	fun loop () = let
+	    fun non_bt_hdl e =
+		case e of
+		    EndOfFile => (say "\n")
+                  | Interrupt => (say "\nInterrupt\n"; 
+				  flush(); loop())
+                  (* | EM.Error => (flush(); loop()) *)
+                  | CompileExn.Compile "syntax error" => (flush(); loop())
+                  | CompileExn.Compile s =>
+                    (say(concat["\nuncaught exception Compile: \"",
+				s,"\"\n"]);
+                     flush(); loop())
+                  | Isolate.TopLevelException Isolate.TopLevelCallcc =>
+                    (say("Error: throw from one top-level expression \
+			 \into another\n");
+                     flush (); loop ())
+                  | Isolate.TopLevelException EM.Error =>
+                    (flush (); loop ())
+                  | Isolate.TopLevelException exn => let
+			val msg = exnMsg exn
+			val name = exnName exn
+                    in
+			if (msg = name)
+			then say (concat
+				      ["\nuncaught exception ",
+				       exnName exn, "\n"])
+			else say (concat
+				      ["\nuncaught exception ", exnName exn,
+				       " [", exnMsg exn, "]\n"]);
+			showhist exn;
+			flush(); 
+			loop()
+                    end
+                  | exn => (say (concat["\nuncaught exception ", 
+					exnMsg exn, "\n"]);
+			    showhist exn;
+			    flush();
+			    loop())
+	    fun bt_hdl (e, []) = non_bt_hdl e
+	      | bt_hdl (e, hist) =
+		(say (concat ("\n*** BACK-TRACE ***\n" :: hist));
+		 say "\n";
+		 non_bt_hdl e)
+	in
+	    SMLofNJ.Internals.BTrace.bthandle
+		{ work = fn () => evalLoop source,
+		  hdl = bt_hdl }
+	end
+in
+    loop()
+end (* fun interact *)
 
 fun isTermIn f = 
     let val (rd, buf) = TextIO.StreamIO.getReader(TextIO.getInstream f)
-       val isTTY = 
-           case rd
-             of TextPrimIO.RD{ioDesc = SOME iod, ...} =>
-                 (OS.IO.kind iod = OS.IO.Kind.tty)
+	val isTTY = 
+            case rd of
+		TextPrimIO.RD{ioDesc = SOME iod, ...} =>
+                (OS.IO.kind iod = OS.IO.Kind.tty)
               | _ => false
 
-(*       val buf = if (buf = "") then NONE else SOME buf *)
-     in (* since getting the reader will have terminated the stream, we need
-        * to build a new stream. *)
-       TextIO.setInstream(f, TextIO.StreamIO.mkInstream(rd, buf));
-       isTTY
+    (*       val buf = if (buf = "") then NONE else SOME buf *)
+    in
+	(* since getting the reader will have terminated the stream, we need
+         * to build a new stream. *)
+	TextIO.setInstream(f, TextIO.StreamIO.mkInstream(rd, buf));
+	isTTY
     end
 
-fun evalStream interactParams 
-               (fname:string,stream:TextIO.instream) : unit =
-    let val interactive = isTermIn stream
-       val source = Source.newSource(fname,1,stream,interactive,
+fun evalStream (fname, stream) = let
+    val interactive = isTermIn stream
+    val source = Source.newSource(fname,1,stream,interactive,
                                   EM.defaultConsumer())
-     in evalLoop interactParams source
-       handle exn =>
-         (Source.closeSource source;
-          case exn 
-          of EndOfFile => () 
-           | Isolate.TopLevelException e => raise e
-           | _ => raise exn)
-    end 
+in
+    evalLoop source
+    handle exn => (Source.closeSource source;
+		   case exn of
+		       EndOfFile => () 
+		     | Isolate.TopLevelException e => raise e
+		     | _ => raise exn)
+end
 
 end (* top-level local *)
 end (* functor EvalLoopF *)

@@ -26,7 +26,6 @@ functor BfcFn (val arch: string) :> BFC
 struct
 
     structure BF = Binfile
-    structure E = Environment
     type bfc = BF.bfContents
     type stats = { env: int, inlinfo: int, data: int, code: int }
 

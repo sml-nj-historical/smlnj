@@ -54,6 +54,7 @@ Group (../../system/smlnj/viscomp/elabdata.cm)
 	structure CoreBasicTypes
 	structure GenModIdMap
 	structure CoreAccess
+	structure BrowseStatEnv
 is
 	main/edcontrol.sml
 	main/compinfo.sml
@@ -104,6 +105,7 @@ is
 	statenv/lookup.sml
 	statenv/genmap.sml
 	statenv/coreacc.sml
+	statenv/browse.sml
 
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/parser.cm

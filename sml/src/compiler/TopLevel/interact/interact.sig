@@ -10,21 +10,6 @@ sig
   val evalStream : TextIO.instream * Environment.environment -> 
                    Environment.environment
 
-  val installCompManager:
-      (Ast.dec *
-       { get: unit -> Environment.environment,
-	 set: Environment.environment -> unit } *
-       { get: unit -> Environment.environment,
-	 set: Environment.environment -> unit }
-       -> unit) option
-      -> unit
-
-  (* These mUse functions should really be part of the Open Compiler *)
-  val mUseFile : (int->bool) -> string -> unit
-  val mUseFile_reset : unit -> unit
-  val mUseFile_add : (((unit -> unit) * string)list) -> unit
-  val mUseFile_list : unit -> (((unit -> unit)*string)list) list
+  val installCompManager: (Ast.dec * EnvRef.envref -> unit) -> unit
 
 end  (* signature INTERACT *)
-
-

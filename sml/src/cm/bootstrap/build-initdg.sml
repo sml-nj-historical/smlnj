@@ -106,8 +106,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    val (li, needs_primenv) =
 				foldr one ([], false) args
 			    val xe =
-				if needs_primenv then
-				    SOME (Environment.primEnv)
+				if needs_primenv then SOME PrimEnv.primEnv
 				else NONE
 			    val i = sml (file, split, xe, is_rts, ecs)
 			    val n = DG.SNODE { smlinfo = i,

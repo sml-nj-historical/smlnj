@@ -37,4 +37,7 @@ sig
 
   val symbols : staticEnv -> Symbol.symbol list
 
+
+  val filter : staticEnv * Symbol.symbol list -> staticEnv
+
 end (* signature STATICENV *)

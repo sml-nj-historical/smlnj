@@ -8,7 +8,6 @@
  *)
 local
     structure EM = ErrorMsg
-    structure E = Environment
     structure SE = StaticEnv
     structure PS = PersStamps
     structure GG = GroupGraph
@@ -157,7 +156,7 @@ struct
 	      archos = archos,
 	      keep_going = keep_going }
 
-	val emptydyn = E.dynamicPart E.emptyEnv
+	val emptydyn = DynamicEnv.empty
 
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)

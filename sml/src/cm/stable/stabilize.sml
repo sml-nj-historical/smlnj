@@ -12,11 +12,9 @@ local
     structure PP = PrettyPrint
     structure SM = SourceMap
     structure GP = GeneralParams
-    structure E = Environment
     structure Pid = PersStamps
     structure P = PickMod
     structure UP = UnpickMod
-    structure E = Environment
     structure MI = ModuleId
 in
 

@@ -22,7 +22,7 @@ signature SMLINFO = sig
 	{ split: splitrequest,
 	  is_rts: bool,
 	  explicit_core_sym: Symbol.symbol option,
-	  extra_compenv: Environment.staticEnv option }
+	  extra_compenv: StaticEnv.staticEnv option }
 
     type info_args =
 	{ sourcepath: SrcPath.file,
@@ -108,7 +108,7 @@ structure SmlInfo :> SMLINFO = struct
     type attribs = { split: splitrequest,
 		     is_rts: bool,
 		     explicit_core_sym: Symbol.symbol option,
-		     extra_compenv: Environment.staticEnv option }
+		     extra_compenv: StaticEnv.staticEnv option }
 
     type info_args = { sourcepath: SrcPath.file,
 		       group: SrcPath.file * region,

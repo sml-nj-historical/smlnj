@@ -58,5 +58,10 @@ val symbols = E.symbols
 
 fun sort env = ListMergeSort.sort B.binderGt (fold (op ::) nil env)
 
+fun filter (e, l) =
+    let fun add (sy, e') = bind (sy, look (e, sy), e') handle Unbound => e'
+    in foldl add empty l
+    end
+
 end (* local *)
 end (* structure StaticEnv *)

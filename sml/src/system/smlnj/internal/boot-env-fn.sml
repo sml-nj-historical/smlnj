@@ -13,8 +13,11 @@ end
 
 functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val architecture: string
-		  val cminit : string * DynamicEnv.env * envrequest ->
-		               (unit -> unit) option
+		  val cminit : string * DynamicEnv.env * envrequest
+			       * (TextIO.instream -> unit)(* useStream *)
+			       * (string -> unit) (* useFile *)
+			       * ((Ast.dec * EnvRef.envref -> unit) -> unit)
+			       -> (unit -> unit) option
 		  val cmbmake: string * bool -> unit) :> BOOTENV = struct
 
     exception BootFailure
@@ -51,7 +54,10 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	    val de = mkDE (!U.pStruct, DynE.empty)
 	in
 	    U.pStruct := U.NILrde;
-	    cminit (bootdir, de, er)
+	    cminit (bootdir, de, er,
+		    Backend.Interact.useStream,
+		    Backend.Interact.useFile,
+		    Backend.Interact.installCompManager)
 	end
     end
 

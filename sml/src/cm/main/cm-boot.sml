@@ -36,10 +36,14 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
       structure StabModmap = StabModmapFn ()
 
+      val useStreamHook =
+	  ref (fn _ => raise Fail "useStreamHook not initialized")
+	  : (TextIO.instream -> unit) ref
+
       structure Compile =
 	  CompileFn (structure Backend = HostBackend
 		     structure StabModmap = StabModmap
-		     val useStream = HostBackend.Interact.useStream
+		     fun useStream s = !useStreamHook s
 		     val compile_there = Servers.compile o SrcPath.encode)
 
       structure BFC =
@@ -102,10 +106,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				let val delta = E.mkenv { static = stat,
 							  symbolic = sym,
 							  dynamic = dyn }
-				    val base = #get ER.topLevel ()
+				    val loc = ER.loc ()
+				    val base = #get loc ()
 				    val new = E.concatEnv (delta, base)
 				in
-				    #set ER.topLevel new;
+				    #set loc new;
 				    Say.vsay ["[New bindings added.]\n"]
 				end
 			    else ();
@@ -226,7 +231,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      (case Parse.parse (parse_arg (al_greg, NONE, p)) of
 		   NONE => false
 		 | SOME (g, _) =>
-		   (AutoLoad.register (EnvRef.topLevel, g);
+		   (AutoLoad.register (EnvRef.loc (), g);
 		    true))
 	      before dropPickles ()
 	  end
@@ -446,8 +451,6 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      AutoLoad.mkManager { get_ginfo = al_ginfo,
 				   dropPickles = dropPickles }
 
-	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
-
 	  fun reset () =
 	      (Compile.reset ();
 	       Link.reset ();
@@ -456,7 +459,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	       SmlInfo.reset ();
 	       StabModmap.reset ())
 
-	  fun initTheValues (bootdir, de, er, autoload_postprocess) = let
+	  fun initTheValues (bootdir, de, er, autoload_postprocess, icm) = let
+	      (* icm: "install compilation manager" *)
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
@@ -585,7 +589,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 			  Preload.preload { make = make, autoload = autoload }
 		  in
 		      #set ER.pervasive pervasive;
-		      #set ER.topLevel E.emptyEnv;
+		      #set (ER.loc ()) E.emptyEnv;(* redundant? *)
 		      theValues := SOME { init_group = init_group };
 		      case er of
 			  BARE =>
@@ -593,9 +597,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 			       system_values := SrcPathMap.empty;
 			       NONE)
 			| AUTOLOAD =>
-			      (HostBackend.Interact.installCompManager
-			            (SOME al_manager');
-				    standard_preload BtNames.standard_preloads;
+			      (icm al_manager;
+			       standard_preload BtNames.standard_preloads;
 			       (* unconditionally drop all library pickles *)
 			       Parse.dropPickles ();
 			       SOME (autoload_postprocess ()))
@@ -603,12 +606,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  end
       end
   in
-    fun init (bootdir, de, er) = let
+    fun init (bootdir, de, er, useStream, useFile, icm) = let
 	fun procCmdLine () = let
 	    val autoload = ignore o autoload
 	    val make = ignore o make
-	    fun p (f, mk, ("sml" | "sig" | "fun")) =
-		HostBackend.Interact.useFile f
+	    fun p (f, mk, ("sml" | "sig" | "fun")) = useFile f
 	      | p (f, mk, "cm") = mk f
 	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
 					"' (unknown extension `", e, "')\n"]
@@ -649,9 +651,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      | l => args (l, autoload)
 	end
     in
+	useStreamHook := useStream;
 	initTheValues (bootdir, de, er,
 		       fn () => (Cleanup.install initPaths;
-				 procCmdLine))
+				 procCmdLine),
+		       icm)
     end
 
     structure CM = struct

@@ -46,7 +46,7 @@ functor AutoLoadFn (structure L : LINK
 	let val te = #get ter ()
 	    (* toplevel bindings (symbol set) ... *)
 	    val tss = foldl SymbolSet.add' SymbolSet.empty
-			    (E.catalogEnv (E.staticPart te))
+			    (BrowseStatEnv.catalog (E.staticPart te))
 	    (* "new" bindings (symbol set) ... *)
 	    val nss = SymbolMap.foldli (fn (i, _, s) => SymbolSet.add (s, i))
 				       SymbolSet.empty exports
