@@ -39,19 +39,26 @@ structure Internals : INTERNALS =
 	end
 	fun report () = Core.bt_report () ()
 	fun save () = Core.bt_save () ()
-	(* The following function must be compiled with BT-instrumentation
-	 * turned off because it relies on its exception handler to _not_
-	 * restore the bt-history! *)
-	fun bthandle { work, hdl } = let
-	    val restore = save ()
+	local
+	    exception BTraceTriggered of unit -> string list
 	in
-	    work ()
-	    handle e => let
-		       val do_report = report ()
-		   in
-		       restore ();
-		       hdl (e, do_report ())
-		   end
+	    (* The following function must be compiled with BT-instrumentation
+	     * turned off because it relies on its exception handler to _not_
+	     * restore the bt-history! *)
+	    fun bthandle { work, hdl } = let
+		val restore = save ()
+	    in
+		work ()
+		handle e as BTraceTriggered do_report' =>
+		       (restore (); hdl (e, do_report' ()))
+		     | e => let
+			   val do_report = report ()
+		       in
+			   restore ();
+			   hdl (e, do_report ())
+		       end
+	    end
+	    fun trigger () = raise BTraceTriggered (report ())
 	end
     end
 

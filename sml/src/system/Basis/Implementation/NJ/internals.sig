@@ -47,6 +47,10 @@ signature INTERNALS =
 	 * been compiled with mode=true) to make sure that the call
 	 * history is being unwound correctly. *)
 	val save : unit -> unit -> unit
+	(* Trigger an explicit back-trace.  The result will be reported
+	 * IN FULL by bthandle; intervening handlers and re-raisers are
+	 * completely ignored. *)
+	val trigger : unit -> 'a
     end
 
   end;

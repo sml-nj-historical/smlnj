@@ -6,10 +6,10 @@ structure X = struct
 	and b (x, n) = c (x, n)
 	and c (x, n) = a (x, n)
 	and d x = e (x, 3)
-		  handle Match => raise Bind
+		  handle e => (print "exn\n"; raise e)
 	and e (x, 0) = f x
 	  | e (x, n) = e (x, n - 1)
-	and f 0 = raise Foo
+	and f 0 = SMLofNJ.Internals.BTrace.trigger ()
 	  | f n = n * g (n - 1)
 	and g n = a (n, 3)
     in

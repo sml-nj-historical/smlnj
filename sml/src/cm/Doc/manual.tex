@@ -75,6 +75,7 @@ systems, literate-programming facilities, or shell-scripts
 \item sharing of code that is common to several programs or code that
 is common to both user programs and SML/NJ itself
 \item management of (the sharing of) link-time state
+\item conditional compilation (at compilation unit granularity)
 \item support for parallel and distributed compilation
 \item an API to access all these facilities at SML/NJ's interactive
 prompt
@@ -89,36 +90,40 @@ compilation management while libraries were added as an afterthought.
 \subsection{Basic philosophy}
 
 The venerable {\bf make} of Unix~\cite{feldman79} is {\em
-target-oriented}: one starts with a main goal (target) and applies
+target-oriented}\/: one starts with a main goal (target) and applies
 production rules (with associated actions such as invoking a compiler)
 until no more rules are applicable. The leaves of the resulting
-derivation tree can be seen as defining the set of source files that
-are used to make the main target.
+derivation tree\footnote{``Tree'' is figurative speech here since the
+derivation really yields a DAG.} can be seen as defining the set of
+source files that are used to make the main target.
 
-CM, on the other hand, is largely {\em source-oriented}: Whereas with
-{\bf make} one specifies the tree and let the program derive the
-leaves, with CM one specifies the leaves and let the program derive
+CM, on the other hand, is largely {\em source-oriented}\/: Whereas
+with {\bf make} one specifies the tree and lets the program derive the
+leaves, with CM one specifies the leaves and lets the program derive
 the tree.  Thus, the programmer writes down a list of sources, and CM
 will calculate and then execute a series of steps to make the
 corresponding program.  In {\bf make} terminology, this resulting
-program acts as the ``main goal'', but it does not need to be
+program acts as the ``main goal'', but under CM it does not need to be
 explicitly named.  In fact, since there typically is no corresponding
-single file system object, a ``natural'' name for it does not even
+single file system object for it, a ``natural'' name does not even
 exist.
 
 For simple projects it is literally true that all the programmer has
-to do is to tell CM about the set of sources: a description file lists
-little more than the names of participating ML source files. Larger
-projects typically benefit from a hierarchical structuring.  This can
-be achieved by grouping ML source files into separate libraries and
-library components.  Dependencies between such libraries have to be
-specified explicitly and must form an acyclic directed graph (DAG).
+to do is tell CM about the set of sources: a description file lists
+little more than the names of participating ML source files. However,
+larger projects typically benefit from a hierarchical structuring.
+This can be achieved by grouping ML source files into separate
+libraries and library components.  Dependencies between such libraries
+have to be specified explicitly and must form an acyclic directed
+graph (DAG).
 
 CM's own semantics, particularly its dependency analysis, interact
 with the ML language in such a way that for any well-formed project
 there will be exactly one possible interpretation as far as static
 semantics are concerned.  Only well-formed projects are accepted by
 CM; projects that are not well-formed will cause error messages.
+(Well-formedness is {\em defined} to enforce a unique definition-use
+relation for ML definitions~\cite{blume:depend99}.)
 
 \subsection{Description files}
 
@@ -134,16 +139,16 @@ ml-yacc} that produce ML source files.  See section~\ref{sec:tools}.}
 \noindent Example:
 
 \begin{verbatim}
-Library
-    signature BAR
-    structure Foo
-is
-    bar.sig
-    foo.sml
-    helper.sml
+  Library
+      signature BAR
+      structure Foo
+  is
+      bar.sig
+      foo.sml
+      helper.sml
 
-    $/basis.cm
-    $/smlnj-lib.cm
+      $/basis.cm
+      $/smlnj-lib.cm
 \end{verbatim}
 
 This library exports two definitions, one for a structure named {\tt
@@ -158,6 +163,44 @@ Standard ML Basis Library}~\cite{reppy99:basis}; most programs will
 want to list it in their own description file(s).  The other library
 in this example ({\tt \$/smlnj-lib.cm}) is a library of data
 structures and algorithms that comes bundled with SML/NJ.
+
+\subsection{Invoking CM}
+
+Once a library has been set up as shown in the example above, one can
+load it into a running interactive session by invoking function {\tt
+CM.make}.  If the name of the library's description file is, say, {\tt
+fb.cm}, then one would type
+
+\begin{verbatim}
+  CM.make "fb.cm";
+\end{verbatim}
+
+at SML/NJ's interactive prompt.  This will cause CM to
+
+\begin{enumerate}
+\item parse the description file {\tt fb.cm},
+\item locate all its sources and all its sub-libraries,
+\item calculate the dependency graph,
+\item issue warnings and errors (and skip the remaining steps) if
+necessary,
+\item compile those sources for which that is required,
+\item execute module initialization code,
+\item and augment the toplevel environment with bindings for exported
+symbols, i.e., in our example for {\tt signature BAR} and {\tt
+structure Foo}.
+\end{enumerate}
+
+CM does not compile sources that are not ``reachable'' from the
+library's exports.  For every other source, it will avoid
+recompilation if all of the following is true:
+
+\begin{itemize}
+\item The {\em binfile} for the source exists.
+\item The binfile has the same time stamp as the source.
+\item The current compilation environment for the source is precisely
+the same as the compilation environment that was in effect when the
+binfile was produced.
+\end{itemize}
 
 \subsection{Members of a library}
 
@@ -183,10 +226,20 @@ interactive top level.)
 
 Note that these rules do not require the exports of sub-groups or
 sub-libraries to be distinct from the exports of ML source files in
-the current library or group.  If an ML source file re-defines an
-imported name, then the disambiguating rule is that the definition
-from the ML source takes precedence over the definition imported from
-the group or library.
+the current library or group.  If an ML source file $f$ re-defines a
+name $n$ that is also imported from library or library component $l$,
+then the disambiguating rule is that the definition from $f$ takes
+precedence over that from $l$ in all sources except $f$ itself.  Free
+occurences of $n$ in $f$ refer to $l$'s definition.  This rule makes
+it possible to easily write code for exporting an ``augmented''
+version of some module.  Example:
+
+\begin{verbatim}
+  structure A = struct (* defines augmented A *)
+      open A           (* refers to imported A *)
+      fun f x = B.f x + C.g (x + 1)
+  end
+\end{verbatim}
 
 Rule~\ref{rule:diamond} may come as a bit of a surprise considering
 that each ML source file can be a member of at most one group or
@@ -208,11 +261,11 @@ delimited by \verb|(*| and \verb|*)|.
 \subsection{Name visibility}
 
 In general, all definitions exported from members (i.e., ML source
-files, subgroups and sublibraries) of a library are visible in all ML
-source files of that library.  The source code in those source files
-can refer to them directly without further qualification.  Here,
-``exported'' means either a top-level definition within an ML source
-file or a definition listed in a sublibrary's export list.
+files, subgroups and sublibraries) of a library are visible in all
+other ML source files of that library.  The source code in those
+source files can refer to them directly without further qualification.
+Here, ``exported'' means either a top-level definition within an ML
+source file or a definition listed in a sublibrary's export list.
 
 If a library is structured into library components using {\em groups}
 (see Section~\ref{sec:groups}), then---as far as name visibility is
@@ -243,7 +296,7 @@ like name resolution for entire libraries, but grouping is entirely
 internal to each library.
 
 When a library is {\em stabilized} (via {\tt CM.stabilize} -- see
-Section~\ref{sec:api}), the entire library is compiled to a single
+Section~\ref{sec:stable}), the entire library is compiled to a single
 file (hence groups do not result in separate stable files).
 
 During development, each group has its own description file which will
@@ -268,11 +321,11 @@ As an example, let us assume that
 
 %note: emacs gets temporarily confused by the single dollar
 \begin{verbatim}
-Group (foo-lib.cm)
-is
-    set-util.sml
-    map-util.sml
-    $/basis.cm
+  Group (foo-lib.cm)
+  is
+      set-util.sml
+      map-util.sml
+      $/basis.cm
 \end{verbatim}
 
 This description defines group {\tt foo-utils.cm} to have the
@@ -295,14 +348,14 @@ With this, the library description file {\tt foo-lib.cm} could list
 {\tt foo-utils.cm} as one of its members:
 
 \begin{verbatim}
-Library
-    signature FOO
-    structure Foo
-is
-    foo.sig
-    foo.sml
-    foo-utils.cm
-    $/basis.cm
+  Library
+      signature FOO
+      structure Foo
+  is
+      foo.sig
+      foo.sml
+      foo-utils.cm
+      $/basis.cm
 \end{verbatim}
 %note: emacs should be sufficiently un-confused again by now
 
@@ -334,6 +387,29 @@ source file is to be referred to by multiple clients, it must first be
 same library---a group).
 \end{itemize}
 
+\subsection{Stable libraries}
+\label{sec:stable}
+
+CM distinguishes between libraries that are {\em under development}
+and libraries that are {\em stable}.  A stable library is created by a
+call to {\tt CM.stabilize} (see Section~\ref{sec:api}).
+
+Access to stable libraries is subject to less internal
+consistency-checking and touches far fewer file-system
+objects. Therefore, it is typically more efficient.  Stable libraries
+play an additional semantic role in the context of access control (see
+Section~\ref{sec:access}).
+
+From the client program's point of view, using a stable library is
+completely transparent.  When referring to a library---regardless of
+whether it is under development or stable---one {\em always} uses the
+name of the library's description file.  CM will check whether there
+is a stable version of the library and provided that is the case use
+it.  This means that in the presence of a stable version, the
+library's actual description file does not have to physically exists
+(even though its name is used by CM to find the corresponding stable
+file).
+
 \subsection{Top-level groups}
 
 Mainly to facilitate some superficial backward-compatibility, CM also
@@ -347,24 +423,20 @@ top-level groups.
 
 \subsection{Motivation}
 
-File naming has been an area notorious for its problems and was the
-cause of most of the gripes from CM's users.  With this in mind, CM
-now takes a different approach to file name resolution.
+The main difficulty with file naming lies in the fact that files or
+even whole directories may move after CM has already partially (but
+not fully) processed them.  For example, this happens when the {\em
+autoloader} (see Section~\ref{sec:autoload}) has been invoked and the
+session (including CM's internal state) is then frozen (i.e., saved to
+a file) via {\tt SMLofNJ.exportML}.
 
-The main difficulty lies in the fact that files or even whole
-directories may move after CM has already partially (but not fully)
-processed them.  For example, this happens when the {\em autoloader}
-(see Section~\ref{sec:autoload}) has been invoked and the session
-(including CM's internal state) is then frozen (i.e., saved to a file)
-via {\tt SMLofNJ.exportML}.  The new CM is now able to resume such a
-session even when operating in a different environment, perhaps on a
-different machine with different file system mounted, or a different
-location of the SML/NJ installation.
-
-To make this possible, CM provides a configurable mechanism for
-locating file system objects.  Moreover, it invokes this mechanism
-always as late as possible and is prepared to re-invoke it after the
-configuration changes.
+CM's configurable {\em path anchor} mechanism enables it to resume
+such a session even when operating in a different environment, perhaps
+on a different machine with different file systems mounted, or a
+different location of the SML/NJ installation.  Evaluation of path
+anchors always takes place as late as possible, and CM will re-evaluate
+path anchors as this becomes necessary due to changes to their
+configuration.
 
 \subsection{Basic rules}
 \label{sec:basicrules}
@@ -532,13 +604,13 @@ but will otherwise be ignored.
 \label{sec:api}
 
 Functions that control CM's operation are accessible as members of a
-structure named {\tt CM}.  This structure itself is exported from a
-library called {\tt \$smlnj/cm/full.cm} (or, alternatively, {\tt
-\$smlnj/cm.cm}).  This library is pre-registered for auto-loading at
-the interactive top level.
+structure named {\tt CM} which itself is exported from a library
+called {\tt \$smlnj/full.cm} (or, alternatively, {\tt
+\$smlnj/cm/full.cm}).  This library is pre-registered for auto-loading
+at the interactive top level.
 
 Other libraries can exploit CM's functionality simply by putting a
-{\tt \$smlnj/cm/full.cm} entry into their own description file.
+{\tt \$smlnj/cm.cm} entry into their own description file.
 Section~\ref{sec:dynlink} shows one interesting use of this feature.
 
 Here is a description of all members:
@@ -734,9 +806,9 @@ of {\tt NONE} means that the variable is not defined.
 
 \noindent Examples:
 \begin{verbatim}
-#get (CM.symval "X") ();       (* query value of X *)
-#set (CM.symval "Y") (SOME 1); (* set Y to 1 *)
-#set (CM.symval "Z") NONE;     (* remove definition for Z *)
+  #get (CM.symval "X") ();       (* query value of X *)
+  #set (CM.symval "Y") (SOME 1); (* set Y to 1 *)
+  #set (CM.symval "Z") NONE;     (* remove definition for Z *)
 \end{verbatim}
 
 Some care is necessary as {\tt CM.symval} does not check whether the
@@ -951,7 +1023,7 @@ MyProg.main}.  If one wishes to produce a heap image file {\tt myprog}
 one simply has to invoke the following command:
 
 \begin{verbatim}
-ml-build myproglib.cm MyProg.main myprog
+  ml-build myproglib.cm MyProg.main myprog
 \end{verbatim}
 
 \subsubsection*{Finding all sources}
@@ -1094,10 +1166,10 @@ specified in parentheses after the keyword {\tt Library} as non-empty
 dot-separated sequences of non-negative integers.  Example:
 
 \begin{verbatim}
-Library (1.4.1.4.2.1.3.5)
-        structure Sqrt2
-is
-        sqrt2.sml
+  Library (1.4.1.4.2.1.3.5)
+      structure Sqrt2
+  is
+      sqrt2.sml
 \end{verbatim}
 
 \subsection{How versions are compared}
@@ -1252,8 +1324,8 @@ tool options.  If the list contains precisely one element, the
 parentheses may be omitted.  Example:
 
 \begin{verbatim}
-    euler.cm (version:2.71828)
-    pi.cm    (version:3.14159)
+  euler.cm (version:2.71828)
+  pi.cm    (version:3.14159)
 \end{verbatim}
 
 Normally, CM looks for stable library files in directory
@@ -1296,8 +1368,8 @@ more than an ML signature definition, it is typically not very useful
 to pass any options to it.}:
 
 \begin{verbatim}
-    lang.grm (sigoptions:(setup:(pre:"print \"compiling lang.grm.sig\\n\";"))
-              smloptions:(private))
+  lang.grm (sigoptions:(setup:(pre:"print \"compiling lang.grm.sig\\n\";"))
+            smloptions:(private))
 \end{verbatim}
 
 The tool invokes the {\tt ml-yacc} command if the targets are
@@ -1435,7 +1507,7 @@ Example:
 Here, file {\tt bar-grm} is generated (and kept up-to-date) by
 invoking the command:
 \begin{verbatim}
-make -f bar-grm.mk bar-grm
+  make -f bar-grm.mk bar-grm
 \end{verbatim}
 \noindent The target file is then treated as input for {\tt ml-yacc}.
 
@@ -1478,9 +1550,9 @@ line option of {\tt notangle}
 Example:
 
 \begin{verbatim}
-   project.nw (target:(name:main.sml options:(private))
-               target:(name:grammar class:mlyacc witness:grammar.wtn)
-               target:(name:parse.sml))
+  project.nw (target:(name:main.sml options:(private))
+              target:(name:grammar class:mlyacc witness:grammar.wtn)
+              target:(name:parse.sml))
 \end{verbatim}
 
 In place of the sub-option list there can be a single string option
@@ -1493,10 +1565,10 @@ as {\tt .sml}.
 The following four examples are all equivalent:
 
 \begin{verbatim}
-   foo.nw (target:(name:foo.sig) target:(name:foo.sml))
-   foo.nw (target:foo.sig target:foo.sml)
-   foo.nw (foo.sig foo.sml)
-   foo.nw
+  foo.nw (target:(name:foo.sig) target:(name:foo.sml))
+  foo.nw (target:foo.sig target:foo.sml)
+  foo.nw (foo.sig foo.sml)
+  foo.nw
 \end{verbatim}
 
 If {\tt lineformat} is missing, then a default based on the target
@@ -1534,28 +1606,28 @@ name of the witness file.
 Example:
 
 \begin{verbatim}
-   foo.nw (subdir:NOWEBFILES
-           witness:foo.wtn
-           target:(name:main.sml))
+  foo.nw (subdir:NOWEBFILES
+          witness:foo.wtn
+          target:(name:main.sml))
 \end{verbatim}
 
 Here, the files named {\tt main.sml} and {\tt foo.wtn} will be
 created as
 \begin{verbatim}
-   NOWEBFILES/main.sml
-   NOWEBFILES/foo.wtn
+  NOWEBFILES/main.sml
+  NOWEBFILES/foo.wtn
 \end{verbatim}
 \noindent while without the {\tt subdir}-option it would have been
 \begin{verbatim}
-   NW/main.sml
-   NW/foo.wtn
+  NW/main.sml
+  NW/foo.wtn
 \end{verbatim}
 \noindent To avoid the creation of such a sub-directory, one can use
 the {\em current arc} ``{\bf .}'' and write:
 \begin{verbatim}
-   foo.nw (subdir:.
-           witness:foo.wtn
-           target:(name:main.sml))
+  foo.nw (subdir:.
+          witness:foo.wtn
+          target:(name:main.sml))
 \end{verbatim}
 
 \section{Conditional compilation}
@@ -1609,8 +1681,8 @@ underscores.
 The following variables will be defined and bound to 1:
 \begin{itemize}
 \item depending on the operating system: {\tt OPSYS\_UNIX}, {\tt
-OPSYS\_WIN32}, {\tt OPSYS\_MACOS}, {\tt OPSYS\_OS2}, or {\tt
-OPSYS\_BEOS}
+OPSYS\_WIN32}, {\tt OPSYS\_MACOS}, {\tt OPSYS\_OS2}, or \linebreak
+{\tt OPSYS\_BEOS}
 \item depending on processor architecture: {\tt ARCH\_SPARC}, {\tt
 ARCH\_ALPHA32}, {\tt ARCH\_MIPS}, {\tt ARCH\_X86}, {\tt ARCH\_HPPA},
 {\tt ARCH\_RS6000}, or {\tt ARCH\_PPC}
@@ -1646,22 +1718,22 @@ the named symbol.
 \noindent Example:
 
 \begin{verbatim}
-Library
-  structure Foo
-#if defined(structure Bar)
-  structure Bar
-#endif
-is
-#if SMLNJ_VERSION > 110
-  new-foo.sml
-#else
-  old-foo.sml
-#endif
-#if defined(structure Bar)
-  bar-client.sml
-#else
-  no-bar-so-far.sml
-#endif
+  Library
+      structure Foo
+  #if defined(structure Bar)
+      structure Bar
+  #endif
+  is
+  #if SMLNJ_VERSION > 110
+      new-foo.sml
+  #else
+      old-foo.sml
+  #endif
+  #if defined(structure Bar)
+      bar-client.sml
+  #else
+      no-bar-so-far.sml
+  #endif
 \end{verbatim}
 
 Here, the file {\tt bar-client.sml} gets included if {\tt
@@ -1753,9 +1825,9 @@ between sessions:
 \item {\it Skeleton files} are used to store a highly abbreviated
 version of each ML source file's abstract syntax tree---just barely
 sufficient to drive CM's dependency analysis.  Skeleton files are much
-smaller and easier to read than actual ML source code.  Therefore, the
-existence of valid skeleton files makes CM a lot faster because
-usually most parsing operations can be avoided that way.
+smaller and (for a program) easier to read than actual ML source code.
+Therefore, the existence of valid skeleton files makes CM a lot faster
+because usually most parsing operations can be avoided that way.
 \item {\it Binfiles} are the SML/NJ equivalent of object files.  They
 contain executable code and a symbol table for the associated ML
 source file.
@@ -1785,20 +1857,20 @@ where {\it arch} is a string indicating the type of the current
 CPU architecture and {\it os} a string denoting the current operating
 system type.
 
-Library files are a bit of an exception in the sense that they do not
-require any source files or any other derived files of the same
-library to exist.  As a consequence, the location of such a library
-file is best described as being relative to ``the location of the
-original CM description file if that description file still existed''.
-(Of course, nothing precludes the CM description file from actually
-existing, but in the presence of a corresponding library file CM will
-not take any notice.)
+As explained in Section~\ref{sec:stable}, library files are a bit of
+an exception in the sense that they do not require any source files or
+any other derived files of the same library to exist.  As a
+consequence, the location of such a library file should be described
+as being relative to ``the location of the original CM description
+file if that description file still existed''.  (Of course, nothing
+precludes the CM description file from actually existing, but in the
+presence of a corresponding library file CM will not take any notice
+of that.)
 
 {\em Note:} As discussed in section~\ref{sec:toolparam}, CM sometimes
-looks for library files in
-{\tt CM/}{\it version}{\tt /}{\it arch}{\tt -}{\it os}.
-However, library files are never {\em created} there by CM.  If
-several versions of the same library are to be provided, an
+looks for library files in {\tt CM/}{\it version}{\tt /}{\it arch}{\tt
+-}{\it os}.  However, library files are never {\em created} there by
+CM.  If several versions of the same library are to be provided, an
 administrator must arrange the directory hierarchy accordingly ``by
 hand''.
 
@@ -1810,9 +1882,10 @@ outdated.  The rule is that in order to be considered ``up-to-date''
 the time stamp on skeleton file and binfile has to be exactly the
 same\footnote{CM explicitly sets the time stamp to be the same.} as
 the one on the ML source file.  This guarantees that all changes to a
-source will be noticed.\footnote{except for the pathological case where
-two different versions of the same source file have exactly the same
-time stamp}
+source will be noticed---even those that revert to an older version of
+a source file.\footnote{except for the pathological case where two
+different versions of the same source file have exactly the same time
+stamp}
 
 CM also uses time stamps to decide whether tools such as ML-Yacc or
 ML-Lex need to be run (see Section~\ref{sec:tools}).  However, the
@@ -1833,7 +1906,7 @@ If the tool is implemented as a ``typical'' shell command, then all
 that needs to be done is a single call to:
 
 \begin{verbatim}
-Tools.registerStdShellCmdTool
+  Tools.registerStdShellCmdTool
 \end{verbatim}
 
 For example, suppose you have made a
@@ -1842,16 +1915,16 @@ register it under a class called {\tt nmlyacc}.  Here is what you
 write:
 
 \begin{verbatim}
-val _ = Tools.registerStdShellCmdTool
-  { tool = "New-ML-Yacc",
-    class = "nmlyacc",
-    suffixes = ["ngrm", "ny"],
-    cmdStdPath = "new-ml-yacc",
-    template = NONE,
-    extensionStyle =
-        Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
-                      ("sml", SOME "sml", fn x => x)],
-    dflopts = [] }
+  val _ = Tools.registerStdShellCmdTool
+    { tool = "New-ML-Yacc",
+      class = "nmlyacc",
+      suffixes = ["ngrm", "ny"],
+      cmdStdPath = "new-ml-yacc",
+      template = NONE,
+      extensionStyle =
+          Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
+                        ("sml", SOME "sml", fn x => x)],
+      dflopts = [] }
 \end{verbatim}
 
 \begin{sloppy}
@@ -1944,7 +2017,7 @@ interface {\tt Tools.registerClass}.
 \subsection{Plug-in Tools}
 
 If CM comes across a member class name $c$ that it does not know
-about, then it tries to load a plugin module named {\tt \$}$c${\tt
+about, then it tries to load a plugin module named {\tt \$/}$c${\tt
 -tool.cm} or {\tt ./}$c${\tt -tool.cm}.  If it sees a file whose name
 ends in suffix $s$ for which no explicit member class has been
 specified in the CM description file and for which automatic
@@ -1986,11 +2059,11 @@ with the following signature:
 
 \begin{verbatim}
   structure Server : sig
-    type server
-    val start : { name: string,
-                  cmd: string * string list,
-                  pathtrans: (string -> string) option,
-                  pref: int } -> server option
+      type server
+      val start : { name: string,
+                    cmd: string * string list,
+                    pathtrans: (string -> string) option,
+                    pref: int } -> server option
   end
 \end{verbatim}
 
@@ -2155,10 +2228,10 @@ arranging some helper libraries and associated stub code.
 
 Consider the following module:
 \begin{verbatim}
-structure F = struct
-    fun f (x: int): int =
-        G.g x + H.h (2 * x + 1)
-end
+  structure F = struct
+      fun f (x: int): int =
+          G.g x + H.h (2 * x + 1)
+  end
 \end{verbatim}
 
 Let us further assume that the implementations of structures {\tt G}
@@ -2172,25 +2245,25 @@ be the place where the actual implementation of our function will be
 registered once it has been loaded.  This hook module is then wrapped
 into a hook library.  Thus, we have {\tt f-hook.cm}:
 \begin{verbatim}
-Library
-        structure F_Hook
-is
-        f-hook.sml
+  Library
+      structure F_Hook
+  is
+      f-hook.sml
 \end{verbatim}
 
 and {\tt f-hook.sml}:
 
 \begin{verbatim}
-structure F_Hook = struct
-    local
-        fun placeholder (i: int) : int =
-            raise Fail "F_Hook.f: unitinialized"
-        val r = ref placeholder
-    in
-        fun init f = r := f
-        fun f x = !r x
-    end
-end
+  structure F_Hook = struct
+      local
+          fun placeholder (i: int) : int =
+              raise Fail "F_Hook.f: unitinialized"
+          val r = ref placeholder
+      in
+          fun init f = r := f
+          fun f x = !r x
+      end
+  end
 \end{verbatim}
 
 The hook module provides a reference cell into which a function of
@@ -2203,25 +2276,25 @@ With this preparation we can write the implementation module {\tt f-impl.sml}
 in such a way that not only does it provide the actual
 code but also installs itself into the hook:
 \begin{verbatim}
-structure F_Impl = struct
-    local
-        fun f (x: int): int =
-            G.g x + H.h (2 * x + 1)
-    in
-        val _ = F_Hook.init f
-    end
-end
+  structure F_Impl = struct
+      local
+          fun f (x: int): int =
+              G.g x + H.h (2 * x + 1)
+      in
+          val _ = F_Hook.init f
+      end
+  end
 \end{verbatim}
 \noindent The implementation module is wrapped into its implementation
 library {\tt f-impl.cm}:
 \begin{verbatim}
-Library
-        structure F_Impl
-is
-        f-impl.sml
-        f-hook.cm
-        g.cm       (* imports G *)
-        h.cm       (* imports H *)
+  Library
+      structure F_Impl
+  is
+      f-impl.sml
+      f-hook.cm
+      g.cm       (* imports G *)
+      h.cm       (* imports H *)
 \end{verbatim}
 \noindent Note that {\tt f-impl.cm} must mention {\tt f-hook.cm} for
 {\tt f-impl.sml} to be able to access structure {\tt F\_Hook}.
@@ -2229,17 +2302,17 @@ is
 Finally, we replace the original contents of {\tt f.sml} with a stub
 module that defines structure {\tt F}:
 \begin{verbatim}
-structure F = struct
-    local
-        val initialized = ref false
-    in
-        fun f x =
-            (if !initialized then ()
-              else if CM.make "f-impl.cm" then initialized := true
-              else raise Fail "dynamic linkage for F.f failed";
-             F_Hook.f x)
-    end
-end
+  structure F = struct
+      local
+          val initialized = ref false
+      in
+          fun f x =
+              (if !initialized then ()
+               else if CM.make "f-impl.cm" then initialized := true
+               else raise Fail "dynamic linkage for F.f failed";
+               F_Hook.f x)
+      end
+  end
 \end{verbatim}
 \noindent The trick here is to explicitly invoke {\tt CM.make} the
 first time {\tt F.f} is called.  This will then cause {\tt f-impl.cm}
@@ -2255,12 +2328,12 @@ F\_Hook.f} and {\tt \$smlnj/cm/full.cm} is needed because it exports
 {\tt CM.make}:
 
 \begin{verbatim}
-Library
-        structure F
-is
-        f.sml
-        f-hook.cm
-        $smlnj/cm.cm (* or $smlnj/cm/full.cm *)
+  Library
+      structure F
+  is
+      f.sml
+      f-hook.cm
+      $smlnj/cm.cm (* or $smlnj/cm/full.cm *)
 \end{verbatim}
 
 \noindent{\bf Beware!}  This solution makes use of {\tt \$smlnj/cm.cm}
@@ -2503,68 +2576,71 @@ and also constitutes the major part of the API.  The structure is the
 installation procedure of SML/NJ registers this library for
 autoloading at the interactive top level.
 
+\begin{small}
 \begin{verbatim}
-signature CM = sig
+  signature CM = sig
 
-    val autoload : string -> bool
-    val make : string -> bool
-    val recomp : string -> bool
-    val stabilize : bool -> string -> bool
+      val autoload : string -> bool
+      val make : string -> bool
+      val recomp : string -> bool
+      val stabilize : bool -> string -> bool
 
-    type 'a controller = { get : unit -> 'a, set : 'a -> unit }
+      type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 
-    structure Anchor : sig
-        val anchor : string -> string option controller
-        val reset : unit -> unit
-    end
+      structure Anchor : sig
+          val anchor : string -> string option controller
+          val reset : unit -> unit
+      end
 
-    structure Control : sig
-        val keep_going : bool controller
-        val verbose : bool controller
-        val parse_caching : int controller
-        val warn_obsolete : bool controller
-        val debug : bool controller
-        val conserve_memory : bool controller
-    end
+      structure Control : sig
+          val keep_going : bool controller
+          val verbose : bool controller
+          val parse_caching : int controller
+          val warn_obsolete : bool controller
+          val debug : bool controller
+          val conserve_memory : bool controller
+      end
 
-    structure Library : sig
-        type lib
-        val known : unit -> lib list
-        val descr : lib -> string
-        val osstring : lib -> string
-        val dismiss : lib -> unit
-        val unshare : lib -> unit
-    end
+      structure Library : sig
+          type lib
+          val known : unit -> lib list
+          val descr : lib -> string
+          val osstring : lib -> string
+          val dismiss : lib -> unit
+          val unshare : lib -> unit
+      end
 
-    structure State : sig
-        val synchronize : unit -> unit
-        val reset : unit -> unit
-        val pending : unit -> string list
-    end
+      structure State : sig
+          val synchronize : unit -> unit
+          val reset : unit -> unit
+          val pending : unit -> string list
+      end
 
-    structure Server : sig
-        type server
-        val start : { cmd : string * string list,
-                      name : string,
-                      pathtrans : (string -> string) option,
-                      pref : int } -> server option
-        val stop : server -> unit
-        val kill : server -> unit
-        val name : server -> string
-    end
+      structure Server : sig
+          type server
+          val start : { cmd : string * string list,
+                        name : string,
+                        pathtrans : (string -> string) option,
+                        pref : int } -> server option
+          val stop : server -> unit
+          val kill : server -> unit
+          val name : server -> string
+      end
 
-    val sources :
-        { arch: string, os: string } option ->
-        string -> { file: string, class: string, derived: bool } list option
+      val sources :
+          { arch: string, os: string } option ->
+          string ->
+          { file: string, class: string, derived: bool } list option
 
-    val symval : string -> int option controller
-    val load_plugin : string -> bool
+      val symval : string -> int option controller
+      val load_plugin : string -> bool
 
-    val mk_standalone : bool option -> string -> string list option
-end
+      val mk_standalone : bool option -> string -> string list option
+  end
 
-structure CM : CM
+  structure CM : CM
 \end{verbatim}
+\end{small}
 
 \section{Listing of all pre-defined CM identifiers}
 
@@ -2598,7 +2674,7 @@ sml} command is invoked.  Each such parameter has a default setting.
 Default settings are determined at bootstrap time, i.e., the time when
 the heap image for SML/NJ's interactive system is
 built.\footnote{Normally this is the same as installation time, but
-for SML/NJ compiler there is also a {\tt makeml} script for the
+for SML/NJ compiler hackers there is also a {\tt makeml} script for the
 purpose of bootstrapping.}  At bootstrap time, it is possible to
 adjust defaults by using a different set of environment variables
 $v_b$.  If neither $v_s$ nor $v_b$ were set, a hard-wired fallback

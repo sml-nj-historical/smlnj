@@ -13,14 +13,35 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
-Date: 2000/07/02 15:36:00 JST
+Date: 2000/07/04 15:26:00
+Tag: blume-20000704-trigger
+Description:
+
+1. Improvements to CM manual.
+2. SMLofNJ.Internals.BTrace.trigger reinstated as an alternative way
+   of getting a back-trace.  The function, when called, raises an
+   internal exception which explicitly carries the full back-trace history,
+   so it is unaffected by any intervening handle-raise pairs ("trivial"
+   or not).  The interactive loop will print that history once it arrives
+   at top level.
+   Short of having all exceptions implicitly carry the full history, the
+   recommended way of using this facility is:
+     - compile your program with instrumentation "on"
+     - run it, when it raises an exception, look at the history
+     - if the history is "cut off" because of some handler, go and modify
+       your program so that it explicitly calls BTrace.trigger
+     - recompile (still instrumented), and rerun; look at the full history
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/07/03 15:36:00 JST
 Tag: blume-20000702-manual
 Description:
 
 Small corrections and updates to CM manual.
 
 ----------------------------------------------------------------------
-Name: Matthias Blumen
+Name: Matthias Blume
 Date: 2000/06/29 16:04:00 JST
 Tag: blume-20000629-yacctool
 Description:
