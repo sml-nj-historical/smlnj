@@ -195,6 +195,23 @@ fun check phase envs lexp = let
 	in (ts, typeIn ve' eb)
 	end
 
+      (* There are lvars hidden in Access.conrep, used by dcon.
+       * These functions just make sure that they are defined in the 
+       * current environemnent; we don't bother to typecheck them properly
+       * because supposedly conrep will go away...
+       *)
+      fun checkAccess (DA.LVAR v) = ignore (typeofVar v)
+        | checkAccess (DA.PATH (a,_)) = checkAccess a
+        | checkAccess _ = ()
+
+      fun checkConrep (DA.EXN a) = 
+              checkAccess a
+        | checkConrep (DA.SUSP (SOME (a1,a2))) = 
+              (checkAccess a1;
+               checkAccess a2)
+        | checkConrep _ =
+              ()
+
       fun chkSnglInst (fp as (le,s)) (lt,ts) =
 	if null ts then lt
 	else case ltTyApp fp (lt,ts,kenv)
@@ -285,7 +302,8 @@ fun check phase envs lexp = let
 	    fun g lt = (ltMatch (le,"SWITCH branch 1") (lt,selLty); venv)
 	    fun brLts (c,e) = let
 	      val venv' = case c
-		 of DATAcon ((_,_,lt), ts, v) => let
+		 of DATAcon ((_,conrep,lt), ts, v) => let
+                      val _ = checkConrep conrep
 		      val fp = (le,"SWITCH DECON")
 		      val ct = chkSnglInst fp (lt,ts)
 		      val nts = ltFnAppR fp (ct, [selLty])
@@ -309,8 +327,9 @@ fun check phase envs lexp = let
 		| NONE => ();
 	      ts
 	    end
-	| CON ((_,_,lt), ts, u, lv, e) =>
-	  typeWithBindingToSingleRsltOfInstAndApp ("CON",lt,ts,[u],lv) e
+	| CON ((_,conrep,lt), ts, u, lv, e) =>
+            (checkConrep conrep;
+             typeWithBindingToSingleRsltOfInstAndApp ("CON",lt,ts,[u],lv) e)
 	| RECORD (rk,vs,lv,e) => let
 	    val lt = case rk
 	       of RK_VECTOR t => let
@@ -373,8 +392,21 @@ fun check phase envs lexp = let
                        typeWith (lv, rt) e)
                  | _ => bug "unexpected WCAST in typecheck")
             else bug "unexpected WCAST in typecheck"
-	| PRIMOP ((_,_,lt,ts), vs, lv, e) => 
-	  typeWithBindingToSingleRsltOfInstAndApp ("PRIMOP",lt,ts,vs,lv) e
+	| PRIMOP ((dc,_,lt,ts), vs, lv, e) => let
+              (* There are lvars hidden inside dicts, which we didn't check
+               * before.  This is a first-order check that they at least
+               * are bound to something; for now we don't care about their
+               * types.  (I'm not sure what the rules should look like)
+               *   --league, 10 april 1998.
+               *)
+              fun checkDict (SOME {default, table}) = 
+                    (typeofVar default;
+                     app (ignore o typeofVar o #2) table)
+                | checkDict (NONE : dict option) = ()
+          in
+              checkDict dc;
+              typeWithBindingToSingleRsltOfInstAndApp ("PRIMOP",lt,ts,vs,lv) e
+          end
 (*
 	| GENOP (dict, (_,lt,ts), vs, lv, e) =>
 	  (* verify dict ? *)
