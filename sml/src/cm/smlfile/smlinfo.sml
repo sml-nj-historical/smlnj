@@ -10,8 +10,7 @@ signature SMLINFO = sig
     type info
 
     type policy = Policy.policy
-
-    type fileoffset = AbsPath.t * int
+    type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
 
     val resync : unit -> unit
 
@@ -21,15 +20,15 @@ signature SMLINFO = sig
     val info : policy ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t,
-	  error: string -> (PrettyPrint.ppstream -> unit) -> unit,
+	  error: complainer,
 	  history: string list,
 	  share: bool option }
 	-> info
 
     val sourcepath : info -> AbsPath.t
-    val error : info -> string -> (PrettyPrint.ppstream -> unit) -> unit
+    val error : info -> complainer
 
-    val exports : info -> SymbolSet.set
+    val exports : info  -> SymbolSet.set
     val skeleton : info -> Skeleton.decl
 
     (* different ways of describing an sml file using group and source *)
@@ -50,21 +49,19 @@ structure SmlInfo :> SMLINFO = struct
     type parsetree = GenericVC.Ast.dec
 
     type policy = Policy.policy
+    type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
 
     datatype info =
 	INFO of {
 		 sourcepath: AbsPath.t,
 		 group: AbsPath.t,
-		 error: string -> (PrettyPrint.ppstream -> unit) -> unit,
+		 error: complainer,
 		 lastseen: TStamp.t ref,
 		 parsetree: { tree: parsetree, source: source } option ref,
 		 skelpath: AbsPath.t,
 		 skeleton: Skeleton.decl option ref
 		 (* to be extended *)
 		}
-
-    type fileoffset = AbsPath.t * int
-    type stableinfo = { skeleton: Skeleton.decl, binary: fileoffset }
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun error (INFO { error = e, ... }) = e
@@ -87,34 +84,39 @@ structure SmlInfo :> SMLINFO = struct
 	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
     end
 
-    fun info policy { sourcepath, group, error, history, share } =
+    fun info policy { sourcepath, group, error, history, share } = let
+	fun newinfo () = let
+	    val i = INFO {
+			  sourcepath = sourcepath,
+			  group = group,
+			  error = error,
+			  lastseen = ref TStamp.NOTSTAMP,
+			  parsetree = ref NONE,
+			  skelpath = Policy.mkSkelPath policy sourcepath,
+			  skeleton = ref NONE
+			 }
+	in
+	    knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, i);
+	    i
+	end
+    in
 	case AbsPathMap.find (!knownInfo, sourcepath) of
 	    SOME (i as INFO { group = g, error = e, ... }) =>
-		(if AbsPath.compare (group, g) <> EQUAL then
-		     let val n = AbsPath.name sourcepath
-		     in
-			 error (concat ["ML source file ", n,
-					" appears in more than one group"])
-			       EM.nullErrorBody;
-			 e (concat ["(previous occurence of ", n, ")"])
-			   EM.nullErrorBody
-		     end
-		 else ();
-		 i)
-	  | NONE => let
-		val i = INFO {
-			      sourcepath = sourcepath,
-			      group = group,
-			      error = error,
-			      lastseen = ref TStamp.NOTSTAMP,
-			      parsetree = ref NONE,
-			      skelpath = Policy.mkSkelPath policy sourcepath,
-			      skeleton = ref NONE
-			     }
-	    in
-		knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, i);
-		i
-	    end
+		if AbsPath.compare (group, g) <> EQUAL then
+		    (if GroupReg.registered g then
+			 let val n = AbsPath.name sourcepath
+			 in
+			     error (concat ["ML source file ", n,
+					    " appears in more than one group"])
+			           EM.nullErrorBody;
+			     e (concat ["(previous occurence of ", n, ")"])
+			       EM.nullErrorBody
+			 end
+		     else ();
+		     newinfo ())
+		else i
+	  | NONE => newinfo ()
+    end
 
     (* check timestamp and throw away any invalid cache *)
     fun validate (INFO ir) = let
@@ -134,15 +136,17 @@ structure SmlInfo :> SMLINFO = struct
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)
-    fun getParseTree (INFO ir, quiet) = let
+    fun getParseTree (INFO ir, quiet, noerrors) = let
 	val { sourcepath, parsetree, error, ... } = ir
 	val name = AbsPath.name sourcepath
+	val err = if noerrors then (fn m => ())
+		  else (fn m => error m EM.nullErrorBody)
     in
 	case !parsetree of
 	    SOME pt => SOME pt
 	  | NONE => let
 		val stream = AbsPath.openTextIn sourcepath
-		val _ = if quiet then ()
+		val _ = if noerrors orelse quiet then ()
 			else Say.vsay (concat ["[parsing ", name, "]\n"])
 		val source =
 		    Source.newSource (name, 1, stream, false,
@@ -154,58 +158,53 @@ structure SmlInfo :> SMLINFO = struct
 		in
 		    SOME { tree = tree, source = source }
 		end handle SF.Compile msg => (TextIO.closeIn stream;
-					      error msg EM.nullErrorBody;
+					      err msg;
 					      NONE)
 		         | exn => (TextIO.closeIn stream; raise exn)
 	    in
 		TextIO.closeIn stream;
 		parsetree := pto;
 		pto
-	    end handle exn as IO.Io _ => (error (General.exnMessage exn)
-					        EM.nullErrorBody;
-					  NONE) 
+	    end handle exn as IO.Io _ => (err (General.exnMessage exn);
+					  NONE)
     end
 
-    fun getSkeleton (INFO ir) = let
+    fun getSkeleton (INFO ir, noerrors) = let
 	val { skelpath, skeleton, lastseen, error, ... } = ir
     in
 	case !skeleton of
-	    SOME sk => SOME sk
+	    SOME sk => sk
 	  | NONE =>
 		(case SkelIO.read (skelpath, !lastseen) of
-		     SOME sk => (skeleton := SOME sk; SOME sk)
+		     SOME sk => (skeleton := SOME sk; sk)
 		   | NONE =>
-			 (case getParseTree (INFO ir, false) of
+			 (case getParseTree (INFO ir, false, noerrors) of
 			      SOME { tree, source } => let
 				  fun err sv region s =
 				      EM.error source region sv s
 					 EM.nullErrorBody
-				  val sk =
+				  val { skeleton = sk, complain } =
 				      SkelCvt.convert { tree = tree,
 						        err = err }
 			      in
+				  if noerrors then () else complain ();
 				  if EM.anyErrors (EM.errors source) then
-				      (error "error(s) in ML source file";
-				       NONE)
+				      if noerrors then ()
+				      else error "error(s) in ML source file"
+					         EM.nullErrorBody
 				  else (SkelIO.write (skelpath, sk);
-					skeleton := SOME sk;
-					SOME sk)
+					skeleton := SOME sk);
+				  sk
 			      end
-			    | NONE => NONE))
+			    | NONE => Skeleton.SeqDecl []))
     end
 
     (* first check the time stamp, then do your stuff... *)
-    fun exports i =
-	(validate i;
-	 case getSkeleton i of
-	     NONE => SymbolSet.empty
-	   | SOME sk => SkelExports.exports sk)
-
-    fun skeleton i =
-	(validate i;
-	 case getSkeleton i of
-	     NONE => Skeleton.SeqDecl []
-	   | SOME sk => sk)
+    fun skeleton0 noerrors i = (validate i; getSkeleton (i, noerrors))
+ 
+    (* we only complain at the time of getting the exports *)
+    val exports = SkelExports.exports o (skeleton0 false)
+    val skeleton = skeleton0 true
 
     fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
     fun fullSpec (INFO { group, sourcepath, ... }) =

@@ -25,6 +25,12 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
+    (* The error function must look for the source using the GroupReg
+     * group register because the source must not be hard-wired into it
+     * (via closure creation).  The reason for this is that the error
+     * function will get cached in SmlInfo.info but the source will change
+     * when one re-runs the analysis. *)
+
     fun parse' (group, groupstack) = let
 
 	val currentDir = AbsPath.dir group
@@ -36,7 +42,12 @@ structure CMParse :> CMPARSE = struct
 	    { linewidth = !P.linewidth, flush = P.flush, consumer = P.say }
 	val source = S.newSource (filename, 1, stream, false, errcons)
 	val sourceMap = #sourceMap source
-	fun error' region m b = EM.error source region EM.COMPLAIN m b
+	val _ = GroupReg.register (group, source)
+	fun error' region m b = let
+	    val src = GroupReg.lookup group
+	in
+	    EM.error src region EM.COMPLAIN m b
+	end
 	fun error region m = error' region m EM.nullErrorBody
 
 	(* recParse returns a group (not an option)
@@ -160,7 +171,6 @@ structure CMParse :> CMPARSE = struct
 	else SOME parseResult
     end
     handle LrParser.ParseError => NONE
-	 | Cycle => NONE
 
-    fun parse group = parse' (group, [])
+    fun parse group = (GroupReg.clear (); parse' (group, []))
 end

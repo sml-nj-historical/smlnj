@@ -17,6 +17,7 @@ is
 	semant/members.sml
 	semant/semant.sml
 	semant/primitive.sml
+	semant/group-reg.sml
 
 	(* dependency graphs *)
 	depend/graph.sml

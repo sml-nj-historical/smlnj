@@ -12,7 +12,7 @@ signature SKELCVT = sig
     val convert : { tree: GenericVC.Ast.dec,
 		    err: GenericVC.ErrorMsg.severity ->
 		         GenericVC.Ast.region -> string -> unit }
-	-> Skeleton.decl
+	-> { skeleton : Skeleton.decl, complain : unit -> unit }
 end
 
 structure SkelCvt :> SKELCVT = struct
@@ -390,23 +390,25 @@ structure SkelCvt :> SKELCVT = struct
 	    NONE => accum
 	  | SOME ty => c_ty (ty, accum)
 
-    fun check_toplevel (ast, err) = let
-	fun check_topl (StrDec _, _) = ()
-	  | check_topl (AbsDec _, _) = ()
-	  | check_topl (FctDec _, _) = ()
-	  | check_topl (SigDec _, _) = ()
-	  | check_topl (FsigDec _, _) = ()
-	  | check_topl (LocalDec (_, body), reg) = check_topl (body, reg)
-	  | check_topl (SeqDec arg, reg) =
-	    app (fn ast => check_topl (ast, reg)) arg
-	  | check_topl (OpenDec _, reg) = err EM.COMPLAIN reg "toplevel open"
-	  | check_topl (MarkDec (arg, reg), _) = check_topl (arg, reg)
-	  | check_topl (_, reg) =
-	    err EM.WARN reg "definition not tracked by CM"
+    fun convert { tree, err } = let
+	(* build a function that will complain (once you call it)
+	 * about any existing restriction violations *)
+	fun newReg reg = let
+	    fun sameReg (LocalDec (_, body), k) = sameReg (body, k)
+	      | sameReg (SeqDec l, k) = foldl sameReg k l
+	      | sameReg (OpenDec _, k) =
+		(fn () => (k (); err EM.COMPLAIN reg "toplevel open"))
+	      | sameReg (MarkDec (arg, reg), k) = newReg reg (arg, k)
+	      | sameReg ((StrDec _ | AbsDec _ | FctDec _ | SigDec _ |
+			  FsigDec _), k) = k
+	      | sameReg (_, k) =
+		(fn () =>
+		 (k (); err EM.WARN reg "definition not tracked by CM"))
+
+	in
+	    sameReg
+	end
     in
-	check_topl (ast, (0, 0))
+	{ complain = newReg (0, 0) (tree, fn () => ()), skeleton = c_dec tree }
     end
-
-    fun convert { tree, err } = (check_toplevel (tree, err); c_dec tree)
-
 end

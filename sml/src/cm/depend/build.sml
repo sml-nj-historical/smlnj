@@ -144,6 +144,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    val f = SmlInfo.sourcepath i
 	    fun isSelf i' = SmlInfo.eq (i, i')
 
+	    exception Lookup
+
 	    (* lookup function for things not defined in the same ML file.
 	     * As a side effect, this function registers local and
 	     * global imports. *)
@@ -156,7 +158,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 					   ": reference to unknown " ::
 					   symDesc (s, [])))
 				  EM.nullErrorBody;
-				 DG.EMPTY)
+				 raise Lookup)
 	    in
 		case SM.find (localdefs, s) of
 		    SOME i' =>
@@ -171,30 +173,29 @@ structure BuildDepend :> BUILDDEPEND = struct
 	    end
 
 	    (* build the lookup function for DG.env *)
-	    val lookup = look lookimport
+	    val lookup_exn = look lookimport
 
 	    fun lookSymPath e (SP.SPATH []) = DG.EMPTY
 	      | lookSymPath e (SP.SPATH (p as (h :: t))) = let
 		    fun dotPath [] = []
 		      | dotPath [s] = [S.name s]
 		      | dotPath (h :: t) = S.name h :: "." :: dotPath t
-		    val firstTime = ref true
 		    fun complain s =
-			if !firstTime then
-			    (SmlInfo.error i
-			     (concat
-			      ("undefined " ::
-			       symDesc (s, " in path " :: dotPath p)))
-			     EM.nullErrorBody;
-			     firstTime := false;
-			     DG.EMPTY)
-			else DG.EMPTY
-		    val lookup' = look complain
+			(SmlInfo.error i
+			  (concat
+			   (AbsPath.spec f ::
+			    ": undefined " ::
+			    symDesc (s, " in path " :: dotPath p)))
+			  EM.nullErrorBody;
+			 raise Lookup)
+		    val lookup_exn' = look complain
 		    fun loop (e, []) = e
-		      | loop (e, h :: t) = loop (lookup' e h, t)
+		      | loop (e, h :: t) = loop (lookup_exn' e h, t)
 		in
-		    loop (lookup e h, t)
+		    loop (lookup_exn e h, t) handle Lookup => DG.EMPTY
 		end
+
+	    fun lookup e s = lookup_exn e s handle Lookup => DG.EMPTY
 
 	    (* "eval" -- compute the export environment of a skeleton *)
 	    fun eval sk = let
