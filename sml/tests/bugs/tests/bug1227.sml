@@ -7,8 +7,6 @@ open Array
 fun abs_real(x:real) = if x < 0.0 then ~x else x
 fun print_real (x:real) = print(Real.toString x)
 
-(* $Id$ *)
-
 val pi = 3.14159265358979323846
 
 val tpi = 2.0 * pi
