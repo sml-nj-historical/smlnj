@@ -15,11 +15,6 @@
 #include "ml-limits.h"
 #include "assyntax.h"
 	
-/* XXX:	 May no longer be needed */
-#ifndef VREGS
-#  define VREGS
-#endif
-
 /*
  *
  * The 386 registers are used as follows:
