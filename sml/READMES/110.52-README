@@ -37,7 +37,7 @@ Basis:
 Libraries:
 ----------
 
-  - HashString.hashString' for substrings added.
+  - HashString.hashSubstring added.
   - Atom.atom' now extracts a string from the given substring only
     if it is not already in the table.
   - Two simple but potentially useful statistics modules added to
