@@ -175,8 +175,11 @@ struct
 	val (hi', lo') =  
 	  if lo < 0w32768 then (hi, lo) else (hi+0w1, lo-0w65536)
       in
-	emit(I.LDA{r=rd, b=base, d=I.IMMop(wtoi lo')});
-	emit(I.LDAH{r=rd, b=rd, d=I.IMMop(wtoi hi')})
+	if lo' = 0w0 then
+	  emit(I.LDAH{r=rd, b=base, d=I.IMMop(wtoi hi')})
+	else 
+	 (emit(I.LDA{r=rd, b=base, d=I.IMMop(wtoi lo')});
+	  emit(I.LDAH{r=rd, b=rd, d=I.IMMop(wtoi hi')}))
       end
 
   (* loadImmed32 is used to load int32 and word32 constants.
@@ -189,6 +192,7 @@ struct
 	val low = W32.andb(n, 0w65535)	(* unsigned (0 .. 65535) *)
 	val high = W32.~>>(n, 0w16)	(* signed (~32768 .. 32768] *)
 	fun loadimmed(0, high) = emit(I.LDAH{r=rd, b=base, d=I.IMMop(high)})
+	  | loadimmed(low, 0) = emit(I.LDA{r=rd, b=base, d=I.IMMop(low)})
 	  | loadimmed(low, high) =
 	     (emit(I.LDA{r=rd, b=base, d=I.IMMop(low)});
 	      emit(I.LDAH{r=rd, b=rd, d=I.IMMop(high)}))
@@ -715,6 +719,9 @@ end
 
 (*
  * $Log: alpha32.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:54:37  george
+ *   Version 110.12
+ *
  * Revision 1.7  1998/09/30 19:32:26  dbm
  * fixing sharing/defspec conflict
  *

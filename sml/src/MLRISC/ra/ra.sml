@@ -128,6 +128,7 @@ struct
 	  (print(Label.nameOf lab^":\n");
 	   prBlks(blocks)) 
       | prBlks(F.ORDERED blks::blocks) = (prBlks blks; prBlks blocks)
+      | prBlks(F.PSEUDO pOp::blocks) = (print (F.P.toString pOp); prBlks(blocks))
       | prBlks(_::blocks) = prBlks(blocks)
 
     val saveStrm= !AsmStream.asmOutStream
@@ -138,10 +139,8 @@ struct
   end
 
   fun debug(msg, blocks, regmap) =			
-    if false then
       (print ("------------------" ^ msg ^ " ----------------\n");
        printBlocks(blocks,regmap))
-    else  () 
 
 		(*------------------------------*)
   fun graphColoring(mode, blocks, cblocks, blockDU, prevSpills, 
@@ -356,7 +355,7 @@ struct
 	nodes
     end
 
-    val _ = debug("before register allocation", blocks, regmap);
+(*    val _ = debug("before register allocation", blocks, regmap); *)
 
 		    (*---------simplify-----------*)
 
@@ -767,8 +766,9 @@ struct
 		 (* An exeception will be raised if the node is defined
 		  * but not used. This is not a suitable node to spill.
 		  *)
-		  val cost = ((length(getdInfo number) +
-			     (length(getuInfo number) handle _ => infinityi)))
+		  val cost = 
+		    (length(getdInfo number) handle _ => 0) +
+	               (length(getuInfo number) handle _ => infinityi)
 		  val hueristic = real cost / real (!degree)
 		in
 		  if hueristic < cmin andalso not(SL.member prevSpills number)
@@ -812,34 +812,11 @@ struct
     **)
     fun rerun spillList = let
       val SOME(dInfo,uInfo) = !remainInfo
-     (*
-      fun coalesceSpillLoc () = let
-	fun grow([], set, remain) = (set, remain)
-	  | grow(x::xs, set, remain) = let
-	     fun test(s::rest) = memBitMatrix(x, s) orelse test rest
-	       | test [] = false
-	    in 
-	      if test set then grow(xs, set, x::remain) 
-	      else grow(xs, x::set, remain)
-	    end
-	fun loop([]) = []
-	  | loop(x::xs) = let
-	      val (set, remain) = grow(xs, [x], [])
-	    in set::loop remain
-	    end
-      in loop(spillList)
-      end
-
-      val _ = 
-	 app (fn set => prList(map nodeNumber set, 
-			       "coalesced " ^ Int.toString(length set) ^ ": "))
-	     (coalesceSpillLoc())
-      *)
 
       (* blocks where spill code is required for node n *)
       fun affectedBlocks node = let
 	val n = nodeNumber node
-      in SL.merge(SL.uniq(Intmap.map dInfo n), 
+      in SL.merge(SL.uniq(Intmap.map dInfo n) handle _ => [], 
 		  SL.uniq(Intmap.map uInfo n) handle _ => [])
       end
 
@@ -1188,13 +1165,16 @@ struct
 	blockDefUse(blocks, 0);
 	updtAliases(); 
 	graphColoring(mode, blocks, cblocks, blockDU, [], nodes, regmap);
-	debug("after register allocation", blocks, regmap);
+(*	debug("after register allocation", blocks, regmap);  *)
 	cluster
       end 
 end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.1.1.1  1998/11/16 21:49:10  george
+ *   Version 110.10
+ *
  * Revision 1.6  1998/10/16 12:49:51  george
  *   Installed ~1 hack for C--
  *

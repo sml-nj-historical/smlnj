@@ -1,6 +1,6 @@
 Group
 	structure MipsLittleUnixCMB
-	structure MipsLittleVisComp
+	structure MipsLittleCompiler
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

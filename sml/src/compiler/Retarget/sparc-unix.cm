@@ -1,6 +1,6 @@
 Group
 	structure SparcUnixCMB
-	structure SparcVisComp
+	structure SparcCompiler
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

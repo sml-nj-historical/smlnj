@@ -3,6 +3,7 @@ Group is
 UTIL.cm
 
 util/mlriscErrormsg.sml
+util/mlriscErrormsg.sig
 
 control/mlrisc-control.sml
 control/mlrisc-profiling.sml
@@ -92,7 +93,6 @@ ir/loop-structure.sml
 
 IR/dataflow.sig
 IR/dataflow.sml
-IR/mlrisc-cfg-structuring.sml
 IR/mlrisc-cfg-util.sig
 IR/mlrisc-cfg-util.sml
 IR/mlrisc-cfg.sig
@@ -155,6 +155,21 @@ sparc/mltree/sparc.sml
 sparc/mltree/sparcPseudoInstr.sig
 sparc/ra/sparcRegAlloc.sml
 sparc/ra/sparcRewrite.sml
+
+ppc/backpatch/ppcJumps.sml
+ppc/emit/ppcAsm.sml
+ppc/emit/ppcMC.sml
+ppc/instructions/ppcCells.sig
+ppc/instructions/ppcCells.sml
+ppc/instructions/ppcInstr.sig
+ppc/instructions/ppcInstr.sml
+ppc/instructions/ppcProps.sml
+ppc/instructions/ppcShuffle.sig
+ppc/instructions/ppcShuffle.sml
+ppc/mltree/ppc.sml
+ppc/mltree/ppcPseudoInstr.sig
+ppc/ra/ppcRegAlloc.sml
+ppc/ra/ppcRewrite.sml
 
 Glue/mlrisc-glue.sig
 Glue/mlrisc-glue.sml

@@ -138,11 +138,11 @@ PVT SigReturn_t PanicTrace (
 #endif
 
 
-#if (defined(TARGET_RS6000) && defined(OPSYS_AIX))
+#if ((defined(TARGET_RS6000) || defined(TARGET_PPC)) && defined(OPSYS_AIX))
 
 /* SIG_GetCode:
  *
- * For the RS6000/AIX, the overflow and divide by zero information is obtained
+ * For  AIX, the overflow and divide by zero information is obtained
  * from information contained in the sigcontext structure.
  */
 PVT int SIG_GetCode (SigInfo_t code, SigContext_t *scp)

@@ -1,6 +1,6 @@
 Group
 	structure HppaUnixCMB
-	structure HppaVisComp
+	structure HppaCompiler
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

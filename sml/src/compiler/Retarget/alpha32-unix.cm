@@ -1,6 +1,6 @@
 Group
 	structure Alpha32UnixCMB
-	structure Alpha32VisComp
+	structure Alpha32Compiler
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

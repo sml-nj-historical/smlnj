@@ -39,7 +39,7 @@
  *              +----------------------+
  *      +32:    | ml_pc		       |
  *              +----------------------+
- *      +36:    | misc 24-27,3-13      |
+ *      +36:    | misc 24-27,3-13,29-31|
  *		.		       .
  *		.		       .
  *              +----------------------+
@@ -74,12 +74,15 @@
 #define		miscreg12	11
 #define		miscreg13	12
 #define		miscreg14	13
+
 #define		gclink		28
+
+#define 	maskreg		29
 
 #define       	atmp1 29
 #define       	atmp2 30
 #define       	atmp3 31
-#define 	atmp4 miscreg13
+#define 	atmp4 13
 
 /* stackframe layout:
  * Note: 1. The offset of cvti2d tmp is used in rs6000.sml
@@ -113,11 +116,9 @@
 
 
 /** MLState offsets **/
-#define		NROOTS			24	/* from ml_state.h */
-
 #define argblock 		48
 #define savearea		(23*4+4)	/* lr,cr,1,2,13-31,padding */
-#define framesize		(argblock+savearea)
+#define framesize		4096
 #define MLSTATE_OFFSET 		0	
 #define STARTGC_OFFSET		4
 #define CVTI2D_OFFSET		8
@@ -144,18 +145,15 @@
 
 #if (CALLEESAVE > 0)
 #define CONTINUE					\
-	    cmpl	CR0,limitptr,allocptr;		\
+	    cmpl	CR0,allocptr,limitptr;		\
 	    mtlr	stdcont;			\
 	    blr
 #endif
 
 #define CHECKLIMIT(mask,label)	 			\
-	    bt		CR0_GT, label;			\
-	    lwz		atmp2,STARTGC_OFFSET(stackptr);	\
-	    li		atmp1,mask;			\
-	    mtspr	SPR_LR, atmp2;			\
-	    addi	gclink,stdlink,0;		\
-	    blr		;				\
+	    bt		CR0_LT, label;			\
+	    li		maskreg, mask;			\
+	    b		saveregs;			\
     label:
 
 	.extern		CSYM(_PollFreq0)
@@ -313,7 +311,7 @@ restore_c_regs:
 	TEXT
 ENTRY(saveregs)
 	lwz	atmp3,MLSTATE_OFFSET(sp)
-	stw	atmp1,MaskOffMSP(atmp3)
+	stw	maskreg,MaskOffMSP(atmp3)
 
 #ifdef SOFT_POLL
 	/* free some regs */
@@ -393,7 +391,8 @@ do_gc:
 	stw	stdarg,StdArgOffMSP(atmp3)
 	stw	stdcont,StdContOffMSP(atmp3)
 	stw	stdclos,StdClosOffMSP(atmp3)
-	stw	gclink,PCOffMSP(atmp3)
+	mflr	stdclos
+	stw	stdclos,PCOffMSP(atmp3)
 	stw	exncont,ExnPtrOffMSP(atmp3)
 	/* save misc. roots */	
 #ifndef SOFT_POLL   /* miscreg0 & miscreg1 saved above for SOFT_POLL */
@@ -497,8 +496,9 @@ CENTRY(restoreregs)
 	lwz	miscreg14,MiscRegOffMSP(14)(atmp1)
 	lwz	stdlink,LinkRegOffMSP(atmp1)
 	lwz	varptr,VarPtrOffMSP(atmp1)
+	lwz	basereg,PCOffMSP(atmp1)		/* use basereg as scratch */
+	mtlr	basereg
 	lwz	basereg,BasePtrOffMSP(atmp1)
-	lwz	gclink,PCOffMSP(atmp1)
 	addi	basereg,basereg,32764		/* adjust baseReg */
 						/* check for pending signals */
 	lwz	atmp1,NPendingSysOffVSP(atmp2)
@@ -509,9 +509,7 @@ CENTRY(restoreregs)
 
 
 ENTRY(ml_go) 
-	cmpl	CR0,limitptr,allocptr
-	mtlr	gclink
-
+	cmpl	CR0,allocptr,limitptr
 	mtfsfi  3,0			/* Ensure that no exceptions are set */
 	mtfsfi  2,0
 	mtfsfi  1,0
@@ -534,53 +532,77 @@ pending_sigs:				/* there are pending signals */
 	addi	limitptr,allocptr,0
 	b	CSYM(ml_go)
 
-
+/* array : (int * 'a) -> 'a array
+ * Allocate and initialize a new array.	 This can cause GC.
+ */
 ML_CODE_HDR(array_a)
 	CHECKLIMIT(FUN_MASK,array_a_limit)
-	lwz	atmp2,0(stdarg)		/* atmp2 := tagged length */
-	srawi	atmp2,atmp2,1		/* atmp2 := untagged length */
- 	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a large object */
-	bf	CR0_LT,array_a_large	
-	slwi	atmp3,atmp2,TAG_SHIFTW  /* atmp3 := build descriptor */
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_array)
-	stw	atmp3,0(allocptr)	/* store the descriptor */
+
+	lwz	atmp1,0(stdarg)		/* atmp1 := length in words */
+	srawi	atmp2, atmp1, 1		/* atmp2 := length (untagged) */
+	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
+	bf	CR0_LT, array_a_large
+
+	lwz	stdarg,4(stdarg)	/* initial value */
+	slwi	atmp3,atmp2,TAG_SHIFTW	/* build descriptor in tmp3 */
+	ori	atmp3,atmp3,MAKE_TAG(DTAG_arr_data)
+	stw	atmp3,0(allocptr)	/* store descriptor */
 	addi	allocptr,allocptr,4	/* points to new object */
-	lwz	atmp4,4(stdarg)		/* atmp4 := get initial value */
-	addi	stdarg,allocptr,0	/* put ptr in return register */
-	slwi	atmp2,atmp2,2		/* atmp2 := length in bytes */
-	add	atmp1,atmp2,allocptr	/* beyond last word of new array */
-array_a_2:				/* loop */
-        addi	allocptr,allocptr,4	/* on to the next word */
-	cmp	CR0,allocptr,atmp1
-	stw	atmp4,-4(allocptr)	/* store the value */
-	bf	CR0_EQ, array_a_2	/* if not off the end, repeat */
-					/* end loop */
+	addi	atmp3,allocptr,0	/* array data ptr in atmp3 */
+
+array_a_1:
+	stw	stdarg,0(allocptr)	/* initialize array */
+	addi	atmp2,atmp2,-1
+	addi	allocptr,allocptr,4
+	cmpi 	CR0,atmp2,0
+	bf	CR0_EQ,array_a_1
+
+	/* allocate array header */
+	li	atmp2,DESC_polyarr	/* descriptor in tmp2 */
+	stw	atmp2,0(allocptr)	/* store descriptor */
+	addi	allocptr, allocptr, 4	/* allocptr++ */
+	addi	stdarg, allocptr, 0	/* result = header addr */
+	stw	atmp3,0(allocptr)	/* store pointer to data */
+	stw 	atmp1,4(allocptr)
+	addi	allocptr,allocptr,8
 	CONTINUE
 array_a_large:				/* off-line allocation */
 	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_ARRAY
 	b	set_request
 
-
+/* create_b : int -> bytearray
+ * Create a bytearray of the given length.
+ */
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(FUN_MASK,create_b_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
-	addi	atmp2,atmp2,3
-	srawi	atmp2,atmp2,2		/* length in words (including desc) */
+
+	srawi	atmp2,stdarg,1		/* atmp2 = length (untagged int) */
+	addi	atmp2,atmp2,3		/* atmp2 = length in words */
+	srawi	atmp2,atmp2,2		
 	cmpi    CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
 	bf     CR0_LT,create_b_a_large
 
-	srawi	atmp3,stdarg,1		/* build descriptor in atmp3 */
-	slwi	atmp3,atmp3,TAG_SHIFTW
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_bytearray)
-	stw	atmp3,0(allocptr)	/* store descriptor */
-	addi	stdarg,allocptr,4	/* pointer to new string */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* length + tag */
-	add	allocptr,allocptr,atmp2	/* advance allocptr */
+	/* allocate the data object */
+	slwi	atmp1,atmp2,TAG_SHIFTW	/* build descriptor in atmp1 */
+	ori	atmp1,atmp1,MAKE_TAG(DTAG_raw32)
+	stw	atmp1,0(allocptr) 	/* store the data descriptor */
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	addi	atmp3, allocptr, 0	/* atmp3 = data object */
+	slwi	atmp2, atmp2, 2		/* atmp2 = length in bytes */
+	add	allocptr,allocptr,atmp2 /* allocptr += total length */
+
+	/* allocate the header object */
+	li	atmp1, DESC_word8arr	/* header descriptor */
+	stw	atmp1,0(allocptr)	
+	addi	allocptr, allocptr, 4	/* allocptr++ */
+	stw	atmp3,0(allocptr)	/* header data field */
+	stw	stdarg,4(allocptr)	/* header length field */
+	addi	stdarg, allocptr, 0	/* stdarg = header object */
+	addi	allocptr,allocptr,8	/* allocptr += 2 */
 	CONTINUE
 
-create_b_a_large:
+create_b_a_large:			/* off-line allocation */
 	li	atmp1,FUN_MASK
 	li 	atmp4,REQ_ALLOC_BYTEARRAY
 	b	set_request
@@ -591,25 +613,33 @@ create_b_a_large:
 */
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(FUN_MASK,create_s_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
+
+	srawi	atmp2,stdarg,1		/* atmp2 = length(untagged int) */
 	addi	atmp2,atmp2,4
 	srawi	atmp2,atmp2,2		/* length in words (including desc) */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
 	bf	CR0_LT,create_s_a_large
 	
-	srawi	atmp1,stdarg,1		/* build descriptor in atmp1 */
-	slwi	atmp1,atmp1,TAG_SHIFTW
-	ori	atmp1,atmp1,MAKE_TAG(DTAG_string)
+	slwi	atmp1,atmp2,TAG_SHIFTW	/* build descriptor in atmp3 */
+	ori	atmp1,atmp1,MAKE_TAG(DTAG_raw32)
 	stw	atmp1,0(allocptr)	/* store descriptor */
-	addi	stdarg,allocptr,4	/* pointer to new string */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* + tag */
-	add	allocptr,allocptr,atmp2	/* advance allocptr */
-	li	0,0
-	stw	0,-4(allocptr)		/* zero in last word */
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	addi	atmp3,allocptr,0	/* atmp3 = data object */
+	slwi	atmp2,atmp2,2		/* atmp2 = length in bytes */
+	add	allocptr,atmp2,allocptr /* allocptr += total length */
+	stw	0,-4(allocptr)		/* store zero in last word */
+
+	/* Allocate the header object */
+	li	atmp1, DESC_string	/* header descriptor */
+	stw	atmp1, 0(allocptr)
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	stw	atmp3,0(allocptr)	/* header data field */
+	stw	stdarg,4(allocptr)	/* header length field */
+	addi	stdarg,allocptr,0	/* stdarg = header object */
+	addi	allocptr,allocptr,8	/* allocptr += 2 */
 	CONTINUE
 
-create_s_a_large:
+create_s_a_large:			/* off-line allocation */
 	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_STRING
 	b	set_request
@@ -618,52 +648,74 @@ create_s_a_large:
 
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(FUN_MASK,create_r_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
+
+	srawi	atmp2,stdarg,1		/* atmp2 = length (untagged int) */
 	slwi	atmp2,atmp2,1		/* length in words */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW	/* is this a small object */
 	bf	CR0_LT,create_r_a_large
 	
-	srawi	atmp3,stdarg,1		/* descriptor in atmp3 */
-	slwi	atmp3,atmp3,TAG_SHIFTW
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_realdarray)
+	/* allocate the data object */
+	slwi	atmp1, atmp2, TAG_SHIFTW /* descriptor in atmp1 */
+	ori	atmp1, atmp1, MAKE_TAG(DTAG_raw64)
 #ifdef ALIGN_REALDS
 	ori	allocptr,allocptr,4
 #endif	
-	stw	atmp3,0(allocptr)
-	addi	stdarg,allocptr,4	/* pointer to new realarray */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* plus tag */
-	add	allocptr,allocptr,atmp2	/* new allocptr */
+	stw	atmp1,0(allocptr)	/* store the descriptor */
+	addi	allocptr, allocptr, 4	/* allocptr++ */
+	addi	atmp3, allocptr, 0	/* atmp3 = data object */
+	slwi	atmp2, atmp2, 2		/* tmp2 = length in bytes */
+	add	allocptr,allocptr,atmp2 /* allocptr += length */
+
+	/* allocate the header object */
+	li	atmp1, DESC_real64arr
+	stw	atmp1, 0(allocptr)	/* header descriptor */
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	stw	atmp3,0(allocptr)	/* header data field */
+	stw	stdarg,4(allocptr)	/* header length field */
+	addi	stdarg,allocptr,0	/* stdarg = header object */
+	addi	allocptr,allocptr,8	/* allocptr += 2 */
 	CONTINUE
-create_r_a_large:
+create_r_a_large:			/* offline allocation */
 	li	atmp1,FUN_MASK
 	li	atmp4,REQ_ALLOC_REALDARRAY
 	b	set_request
 
 
+/* create_v_a : (int * 'a list) -> 'a vector
+ * Create a vector with elements taken from a list.
+ * NOTE: the front-end ensures that list cannot be nil.
+ */
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(FUN_MASK,create_v_a_limit)
-	lwz	atmp1,0(stdarg)		/* atmp1 := tagged length */
-	srawi	atmp1,atmp1,1		/* untagged length */
-	cmpi	CR0,atmp1,SMALL_OBJ_SZW /* is this a small object */
+	
+	lwz	atmp1,0(stdarg)		/* atmp1 = tagged length */
+	srawi	atmp2,atmp1,1		/* atmp2 = untagged length */
+	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
 	bf	CR0_LT,create_v_a_large
 
-	slwi	atmp2,atmp1,TAG_SHIFTW	/* build descriptor in atmp2 */
-	ori	atmp2,atmp2,MAKE_TAG(DTAG_vector)
-	stw	atmp2,0(allocptr)
-	addi	allocptr,allocptr,4
+	slwi	atmp2,atmp2,TAG_SHIFTW	/* build descriptor in atmp2 */
+	ori	atmp2,atmp2,MAKE_TAG(DTAG_vec_data)
+	stw	atmp2,0(allocptr)	/* store descriptor */
+	addi	allocptr,allocptr,4	/* allocptr++ */
 	lwz	atmp2,4(stdarg)		/* atmp2 := list */
 	addi	stdarg,allocptr,0	/* stdarg := vector */
-	li	atmp3,ML_nil
 
 create_v_a_1:
-	lwz	atmp1,0(atmp2)		/* atmp1:=hd(atmp2) */
+	lwz	atmp3,0(atmp2)		/* atmp3:=hd(atmp2) */
 	lwz	atmp2,4(atmp2)		/* atmp2:=tl(atmp2) */
-	cmp	CR0,atmp2,atmp3
-	stw	atmp1,0(allocptr)	/* store word */
-	addi	allocptr,allocptr,4
+	stw	atmp3,0(allocptr)	/* store word */
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	cmpi	CR0,atmp2,ML_nil
 	bf	CR0_EQ,create_v_a_1
 
+	/* allocate header object */
+	li	atmp3, DESC_polyvec	/* descriptor in tmp3 */
+	stw	atmp3,0(allocptr)	/* store descriptor */
+	addi	allocptr,allocptr,4	/* allocptr++ */
+	stw	stdarg,0(allocptr)	/* header data field */
+	stw 	atmp1,4(allocptr)	/* header length */
+	addi	stdarg, allocptr, 0	/* result = header object */
+	addi	allocptr,allocptr,8	/* allocptr += 2 */
 	CONTINUE
 
 create_v_a_large:
@@ -796,6 +848,15 @@ ML_CODE_HDR(unlock_a)
 
 
 
+CENTRY(set_fsr)
+	mtfsb0	24		/* disable invalid exception */
+	mtfsb0	25		/* disable overflow exception */
+	mtfsb0	26		/* disable underflow exception */
+	mtfsb0	28		/* disable inexact exception */
+	mtfsb0	30		/* round to nearest */
+	mtfsb0	31		
+	blr			/* return */
+	
 /* saveFPRegs and restoreFPRegs are called from C only. */
 #define ctmp1 12
 #define ctmp2 11

@@ -385,6 +385,8 @@ struct
 	open CPS
       in
 
+      val offp0 = CPS.OFFp 0 
+
       fun alloc(x, e, rest, hp) = allocR(newReg(), x, e, rest, hp)
       
       and allocR(r, x, e, rest, hp) = 
@@ -481,8 +483,8 @@ struct
 	      MkRecord.record {
 		  desc = M.LI hdrDesc,
 		  fields = [
-		      (M.REG dataPtr, CPS.OFFp 0),
-		      (tag(false, M.LI len), CPS.OFFp 0)
+		      (M.REG dataPtr, offp0),
+		      (tag(false, M.LI len), offp0)
 		    ],
 		  ans = hdrPtr,
 		  mem = hdrM, hp = hp + 4 + len*4
@@ -596,6 +598,7 @@ struct
 	       end
 	  (*esac*))
 	(*** SWITCH ***)
+	| gen(SWITCH(INT _, _, _), hp) = error "SWITCH"
 	| gen(SWITCH(v, _, l), hp) = let
 	    val lab = Label.newLabel""
 	    val labs = map (fn _ => Label.newLabel"") l
@@ -738,7 +741,7 @@ struct
 			   M.LI(dtoi D.desc_special))
 	    val ptr = newReg()
 	  in
-	    MkRecord.record{desc=desc, fields=[(regbind v, OFFp 0)],
+	    MkRecord.record{desc=desc, fields=[(regbind v, offp0)],
 			    ans=ptr, mem=memDisambig x, hp=hp};
 	    addRegBinding(x, ptr);
 	    gen(e, hp+8)
@@ -755,12 +758,12 @@ struct
 	    gen(e, hp+8)
 	  end
 	| gen(PURE(P.fwrap,[u],w,_,e), hp) = 
-	    gen(RECORD(CPS.RK_FBLOCK,[(u,OFFp 0)],w,e), hp)
+	    gen(RECORD(CPS.RK_FBLOCK,[(u, offp0)],w,e), hp)
 	| gen(PURE(P.funwrap,[u],w,_,e), hp) = gen(SELECT(0,u,w,FLTt,e), hp)
 	| gen(PURE(P.iwrap,[u],w,_,e), _) = error "iwrap not implemented"
 	| gen(PURE(P.iunwrap,[u],w,_,e), _) = error "iunwrap not implemented"
 	| gen(PURE(P.i32wrap,[u],w,_,e), hp) = 
-	    gen(RECORD(CPS.RK_I32BLOCK,[(u,OFFp 0)],w,e), hp)
+	    gen(RECORD(CPS.RK_I32BLOCK,[(u, offp0)],w,e), hp)
 	| gen(PURE(P.i32unwrap,[u],w,_,e), hp) = gen(SELECT(0,u,w,INT32t,e), hp)
 	| gen(PURE(P.wrap,[u],w,_,e), hp) = copy(w, u, e, hp)
 	| gen(PURE(P.unwrap,[u],w,_,e), hp) = copy(w, u, e, hp)
@@ -798,10 +801,7 @@ struct
 	    (* gen code to allocate array header *)
 	      MkRecord.record {
 		  desc = M.LI hdrDesc,
-		  fields = [
-		      (M.REG dataPtr, CPS.OFFp 0),
-		      (tag(false, mlZero), CPS.OFFp 0)
-		    ],
+		  fields = [(M.REG dataPtr, offp0), (mlZero, offp0)],
 		  ans = hdrPtr,
 		  mem = hdrM, hp = hp + 8
 		};
@@ -1137,6 +1137,9 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.12  1999/01/18 15:49:29  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.11  1998/11/23 20:09:42  jhr
  *   Fixed length field of raw64 objects (should be in words); new raw64Subscript
  *   primop.
