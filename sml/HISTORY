@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/19 13:40:00
+Tag: blume-20000619-manual
+Description:
+
+CM manual and system/README update.  This only covers the fact that
+there are no more implicit anchors.  (Path environments and the "bind"
+option to "cm" have yet to be documented.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/19 11:05:00 JST
 Tag: blume-20000619-chdir-bugfix
 Description:

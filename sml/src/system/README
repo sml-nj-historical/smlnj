@@ -353,23 +353,17 @@ Examples:
   $basis.cm             (* same as $/basis.cm or $basis.cm/basis.cm *)
   $nw-ext.cm            (* same as $/nw-ext.cm or $nw-ext.cm/nw-ext.cm *)
 
-Previously, CM used "implicit" anchors where anchored paths simply
-have the form
+There used to be a notion of "implicit" anchors where in the case that
+<anchor> is a known anchor, paths of the form
 
    <anchor>/<more>...
 
-The distinction between anchored paths and relative paths was made
-based on whether or not <anchor> had a known mapping at the time it
-was seen by CM.  Since this is hard to read and fragile, support for
-implicit anchors (while still there) is considered obsolete and will
-be faded out soon.  The meaning of an implicitly anchored path <path>
-is the same as $/<path>.
+were interpreted as if they had been written
 
-Recognition of implicit anchors can be turned off by issuing the
-following command:
+   $<anchor>/<anchor>/<more>...
 
-   CM.autoload "$smlnj/cm.cm";
-   #set CM.Control.implicit_anchors false;
+This is no longer the case. <foo>/<bar>... now always means what it
+seems to mean: a relative path starting with an arc named <foo>.
 
 + Why anchored paths?
 

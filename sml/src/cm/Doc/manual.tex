@@ -288,7 +288,6 @@ top-level groups.
 \section{Naming objects in the file system}
 
 \subsection{Motivation}
-\label{sec:implicit}
 
 File naming has been an area notorious for its problems and was the
 cause of most of the gripes from CM's users.  With this in mind, CM
@@ -312,11 +311,12 @@ configuration changes.
 \subsection{Basic rules}
 \label{sec:basicrules}
 
-CM uses its own ``standard'' syntax for pathnames which happens to be
-the same as the one used by most Unix-like systems: path name
-components are separated by ``{\bf /}'', paths beginning with ``{\bf
-/}'' are considered {\em absolute} while other paths are {\em
-relative}.
+CM uses its own ``standard'' syntax for pathnames which for the most
+part happens to be the same as the one used by most Unix-like systems:
+path name components are separated by ``{\bf /}'', paths beginning
+with ``{\bf /}'' are considered {\em absolute} while other paths are
+{\em relative}.  There is an important third form of standard paths:
+{\em anchored} paths.  Anchored paths always start with ``{\bf \$}''.
 
 Since this standard syntax does not cover system-specific aspects such
 as volume names, it is also possible to revert to ``native'' syntax by
@@ -324,34 +324,17 @@ enclosing the name in double-quotes.  Of course, description files
 that use path names in native syntax are not portable across operating
 systems.
 
-Absolute pathnames are resolved in the usual manner specific to the
-operating system.  However, it is advisable to avoid absolute
-pathnames because they are certain to ``break'' if the corresponding
-file moves to a different location.
-
-The resolution of relative pathnames is more complicated:
-
-\begin{itemize}
-\item If the first component of a relative pathname is a
-{\em configuration anchor} (see Section~\ref{sec:anchors}), then we call
-the path {\em implicitly anchored}.  In this case\footnote{as long as
-CM.Anchor.implict\_anchors is enabled, which currently is the default
-(see Section~\ref{sec:api})}
-the whole name will be resolved relative to the value associated with
-that anchor.  For example, if the path is {\tt foo/bar/baz} and {\tt
-foo} is known as an anchor mapped to {\tt /usr/local}, then the full
-name of the actual file system object referred to is {\tt
-/usr/local/foo/bar/baz}. Note that the {\tt foo} component is not
-stripped away during the resolution process; different anchors that
-map to the same directory still remain different. \\
-{\bf Warning:} Implicitly anchored paths are now considered obsolete!
-Support for them will disappear soon in future versions of CM.
-\item Otherwise, if the relative name appears in some description file
-whose name is {\it path}{\tt /}{\it file}{\tt .cm}, then it will be
-resolved relative to {\it path}, i.e., relative to the directory that
-contains the description file.
-\item If a non-anchored relative path is entered interactively, for
-example as an argument to one of CM's interface functions, then it
+\begin{description}
+\item[Absolute pathnames] are resolved in the usual manner
+specific to the operating system.  However, it is advisable to avoid
+absolute pathnames because they are certain to ``break'' if the
+corresponding file moves to a different location.
+\item[Relative pathnames that occur in some CM description file] whose
+name is {\it path}{\tt /}{\it file}{\tt .cm} will be resolved relative
+to {\it path}, i.e., relative to the directory that contains the
+description file.
+\item[Relative pathnames that have been entered interactively,] for
+example as an argument to one of CM's interface functions,
 will be resolved in the OS-specific manner, i.e., relative to the
 current working directory.  However, CM will internally represent the
 name in such a way that it remembers the corresponding working
@@ -361,37 +344,19 @@ switch its mode of operation and prepend the path of the original
 working directory. As a result, two names specified using identical
 strings but at different times when different working directories were
 in effect will be kept distinct and continue to refer to the file
-system location that they referred to when they were first seen.
-\end{itemize}
-
-\subsection{Explicitly anchored paths}
-
-When path anchors are used, their use should be syntactically
-obvious.  Therefore, the use of {\em explicitly anchored paths} is now
-preferred over their implicit counterparts.
-
-To specify an explicitly anchored path, the first component of a
-``standard'' path must start with a dollar symbol {\bf \$}.  The
-string between {\bf \$} and the first {\bf /} is taken to be the name
-of the anchor and the string after that {\bf /} is the path relative
-to the anchor.  An error is signalled whenever the anchor name does
-not correspond to an existing anchor.
-
-Note that any ``implicitly anchored'' path {\tt foo/bar/baz} (as
-described above) can always be re-written as\linebreak {\tt
-\$foo/foo/bar/baz}.  Moreover, the explicit form is slightly more
-expressive as it permits names such as {\tt \$a/b/c} where the anchor
-name and the first arc do not coincide.
-
-One can abbreviate the frequent case where they do coincide without
-resorting to implicit syntax by writing\linebreak {\tt \$/foo/bar/baz}
-instead of the lengthier {\tt \$foo/foo/bar/baz}.
-
-Another (somewhat controversial) shorthand is the following: if an
-explicitly anchored path has only one component and the component
-coincides with the anchor name, then one can abbreviate it further by
-writing just {\tt \$foo} instead of {\tt \$/foo} or even {\tt
-\$foo/foo}.
+system locations that they referred to when they were first seen.
+\item[Anchored paths] consist of an anchor name (of non-zero length)
+and a non-empty list of additional arcs.  The name is enclosed by
+the path's leading {\bf \$} on the left and the path's first {\bf /}
+on the right.  The list of arcs follows the first {\bf /}.  As with
+all standard paths, the arcs themselves are also separated by {\bf /}.
+An error is signalled if the anchor name is not known to CM.
+If $a$ is a know anchor name currently bound to some directory name
+$d$, then the standard path {\tt \$}$a${\tt /}$p$ (where $p$ is a list
+of arcs) refers to $d${\tt /}$p$.  The frequently occuring case where
+$a$ coincides with the first arc of $p$ can be abbreviated as {\tt
+\$/}$p$.
+\end{description}
 
 \subsection{Anchor configuration}
 \label{sec:anchors}
@@ -552,7 +517,6 @@ structure {\tt CM}.
     val parse_caching : int controller
     val warn_obsolete : bool controller
     val conserve_memory : bool controller
-    val implicit_anchors : bool controller
   end
 \end{verbatim}
 
@@ -602,14 +566,6 @@ occasionally incurring additional input from stable library files.
 This does not save very much and, therefore, is normally turned off.
 The default ({\em false}) can be overridden at startup by the
 environment variable {\tt CM\_CONSERVE\_MEMORY}.
-
-The {\tt CM.Control.implicit\_anchors} controller has been added
-temporarily while support for {\em implicitly anchored paths} (see
-Section~\ref{sec:implicit}) is being faded out.  If set to {\tt
-false}, CM will check for implicitly anchored paths and issue an
-error; this is the default.  Changing the value to {\tt true} (e.g.,
-by setting the environment variable {\tt CM\_IMPLICIT\_ANCHORS at
-startup}) causes implicit anchors to be accepted.
 
 \subsubsection*{Path anchors}
 
@@ -2328,7 +2284,6 @@ signature CM = sig
         val warn_obsolete : bool controller
         val debug : bool controller
         val conserve_memory : bool controller
-        val implicit_anchors : bool controller
     end
 
     structure Library : sig
@@ -2448,9 +2403,7 @@ user-specific path configuration file \\
 description files \\
 {\tt conserve\_memory} & {\tt CONSERVE\_MEMORY} & {\tt bool} & {\tt
 false} & same & avoid repeated I/O operations by keeping certain
-information in main memory \\
-{\tt implicit\_anchors} & {\tt IMPLICIT\_ANCHORS} & {\tt bool} & {\tt
-true} & same & recognize implicitly anchored paths
+information in main memory
 \end{tabular}
 \end{small}
 \end{center}
