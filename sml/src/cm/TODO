@@ -1,16 +1,8 @@
 short term:
-- binfile module (in compiler) should not have to worry about unpickling;
-  (the current interface is just wrong)
 
 medium term:
-- compilation units must NOT be identified by their export pid because
-  under CM's semantics this pid is not necessarily unique (correction:
-  I believe that it is not unique even under old SC semantics);
-  the current behavior is actually seriously broken (although you
-  almost have to know how to trigger the bug in order to actually trigger it)
-- (Related to previous point) move the concept of source paths (SrcPath module)
+- move the concept of source paths (SrcPath module)
   much further down towards the basis of the system;
-  compilation units should be identifed by their abstract source path;
   the compiler should uniformely talk about source paths (even for "use")
 - fix "too large environment after opaque match" problem
   (perhaps cannot be fixed easily (?))

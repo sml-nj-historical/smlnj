@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/11 12:05:00 EST
+Tag: blume-20020211-gensml
+Description:
+
+A quick fix for a problem with GenSML (in the pgraph-util library):
+Make generation of toplevel "local" optional.  (Strictly speaking,
+signature definitions within "local" are not legal SML.)
+
+Other than that: updates to INSTALL and cm/TODO.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/08 15:00:00 EST
 Tag: blume-20020208-uniquepid
 Description:

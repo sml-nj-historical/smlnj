@@ -43,17 +43,20 @@ These are instructions for installing recent "working" versions of SML/NJ.
    - Use some other means of downloading the necessary tarballs.  Store
      them in directory $d.  Then run the installer (config/install.sh).
 
-     Here is table that shows which packages you will need to download
+     Here is a table that shows which packages you will need to download
      depending on what you select in config/targets.  Take the union of
      all the packages corresponding to your selection.  Don't forget to
      include the "(always)" entry.  (<arch> and <os> should match your
      host system.)
 
-     Make sure you satisfy the "requires" dependencies when you make your
-     selection in config/targets.  (Actually, you need to satisfy these
-     requirements even if you do have network connectivity.  But you
-     said you were in a hurry...  Future versions of the installer
-     might be enhanced so that dependencies are satisfied automatically.)
+     Keep in mind that making selections in config/targets there are
+     dependencies between packages.  For example, eXene requires cml
+     and cml-lib.  The installer script "knows" about these dependencies
+     and will automatically calculate the transitive closure of the
+     "requires" relation for you.  Still, if you do not have network
+     connectivity, then you should have downloaded tarballs for the
+     entire transitive closure.  (If you didn't, the installer will
+     kindly remind you.)
 
           if you select...         |    ... you need 
       ---------------------------------------------------------------
