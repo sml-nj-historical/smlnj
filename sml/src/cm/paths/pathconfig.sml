@@ -83,6 +83,7 @@ structure PathConfig :> PATHCONFIG = struct
 		    [a, d] => (set (m, a, d); loop ())
 		  | ["-"] => (reset m; loop ())
 		  | [a] => (cancel (m, a); loop ())
+		  | [] => loop ()	(* ignore empty lines *)
 		  | _ => (Say.say [f, ": malformed line (ignored)\n"]; loop ())
 	    end
 	in

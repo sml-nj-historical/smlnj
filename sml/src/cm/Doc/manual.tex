@@ -1,0 +1,526 @@
+\documentclass{article}
+\usepackage{times}
+\usepackage{epsfig}
+
+\marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
+\topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
+\textwidth6.7in\textheight9.1in %\renewcommand{\baselinestretch}{1.2}
+\columnsep0.25in
+
+\author{Matthias Blume \\
+Research Institute for Mathematical Sciences \\
+Kyoto University}
+
+\title{{\bf CM}\\
+The SML/NJ Compilation and Library Manager \\
+{\it\small (for SML/NJ version 110.20 and later)} \\
+User Manual}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 3pt minus 2pt}
+
+\begin{document}
+
+\bibliographystyle{alpha}
+
+\maketitle
+
+\section{Introduction}
+
+This manual describes a new implementation of CM, the ``Compilation
+and Library Manager'' for Standard ML of New Jersey (SML/NJ).  Like its
+previous version, CM is in change of managing separate compilation and
+facilitates access to stable libraries.
+
+Programming projects that use CM are typically composed of separate
+{\em libraries}.  Libraries themselves can be internally
+sub-structured using CM's notion of {\em groups}.  Using libraries and
+groups, programs can be viewed as a {\em hierarchy of modules}.  Large
+projects tend to benefit from this approach~\cite{blume:appel:cm99}.
+
+CM uses {\em cutoff} techniques~\cite{tichy94} to minimize
+recompilation work and provides automatic dependency analysis to free
+the programmer from having to specify the module dependency graph by
+hand~\cite{blume:depend99}.
+
+The most important change with repect to the previous (``old'')
+implementation of CM is a change of emphasis.  Until now the focus was
+on compilation management while libraries were added as an
+afterthought.  Beginning now, CM takes a very library-centric view of
+the world.  In fact, the implementation of SML/NJ itself has been
+restructured to meet this approach.
+
+\section{The CM model}
+
+When working with CM, the most important concept is the concept of a
+{\em library}.  A library is a collection of ML source files and
+references to other libraries together with an explicit export
+interface.  The export interface lists all toplevel-defined symbols of
+the library that shall be exported to its clients.  A library is
+described by its {\em description file}.
+
+\noindent Example:
+
+\begin{verbatim}
+Library
+    signature FOO
+    structure Foo
+is
+    foo.sig
+    foo.sml
+    helper.sml
+    basis.cm
+\end{verbatim}
+
+This library consists of three ML source files ({\tt foo.sig}, {\tt
+foo.sml}, and {\tt helper.sml}) and refers to one external library
+({\tt basis.cm}).  It exports two definitions, one for a structure
+named {\tt Foo} and one for a signature named {\tt FOO}.  The entry
+{\tt basis.cm} typically denotes the description file of the {\it
+Standard ML Basis Library}~\cite{reppy99:basis}; most programs will
+want to list it in their description file(s).
+
+\subsection{Library descriptions}
+
+Members of a library do not have to be listed in any particular order
+since CM will automatically calculate the dependency graph.  Three
+minor restrictions on the source language are necessary to make this
+work:
+\begin{enumerate}
+\item All top-level definitions must be {\em module} definitions
+(structures, signatures, functors, or functor signatures).  In other
+words, there can be no top-level type-, value-, or infix-definitions.
+\item For a given symbol, there can be at most one file per library
+(or---more correctly---one file per library component; see
+Section~\ref{sec:groups}) that defines the symbol at top level.
+\item The use of ML's {\bf open} construct is not permitted at top
+level.
+\end{enumerate}
+
+The full syntax for library description files also includes provisions
+for a simple ``conditional compilation'' facility (see
+Section~\ref{sec:preproc}), for access control (see
+Section~\ref{sec:access}), and accepts ML-style nestable comments
+delimited by \verb|(*| and \verb|*)|.
+
+\subsection{Name visibility}
+
+In general, all definitions exported from members of a library are
+visible in all ML source files of that library.  The source code in
+those source files can refer to them directly.  Here, ``exported''
+means either a top-level definition within an ML source file or a
+definition listed in a (sub-)library's export list.
+
+If a library is structured into library components using {\em groups}
+(see Section~\ref{sec:groups}), then each component (group) is treated
+like a separate library.
+
+Dependencies among libraries, library components, or ML source files
+within a library are detected and flagged as errors.
+
+\subsection{Groups}
+\label{sec:groups}
+
+CM's group model eliminates a whole class of potential naming problems
+by providing control over name spaces for program linkage.  This has
+been described separately~\cite{blume:appel:cm99} but it sometimes
+involves the use of ``administrative'' libraries whose sole purpose is
+to rename certain definitions.
+
+However, under CM, ``library'' does not only refer to a concept but
+often also to an actual file system object.  It would be inconvenient
+if name resolution problems would result in a proliferation of
+additional library files.  Therefore, CM also provides the notion of
+groups (or: library components).  Name resolution for groups works
+like name resolution for entire libraries, but grouping is entirely
+internal to each library.
+
+During development, each group has its own description file which well
+be referred to by the surrounding library or other components thereof.
+The syntax of group description files is the same as that of library
+description files with the following exceptions:
+
+\begin{itemize}
+\item The initial keyword {\tt Library} is replaced with {\tt Group}
+followed by the name of the surrounding library's description file in
+parentheses.
+\item The export list can be left empty.  In this case CM will
+provide a default export list: all exports from ML source files plus
+all exports from sub-components of the component.  (Note that this does
+not include the exports of other libraries.)
+\item There are some small restrictions on access control
+specifications (see Section~\ref{sec:access}).
+\end{itemize}
+
+As an example, let us assume that {\tt foo-utils.cm} contains the
+following text:
+
+\begin{verbatim}
+Group (foo-lib.cm)
+is
+    set-util.sml
+    map-util.sml
+    basis.cm
+\end{verbatim}
+
+Here, the library description file {\tt foo-lib.cm} would list {\tt
+foo-utils.cm} as one of its members:
+
+\begin{verbatim}
+Library
+    signature FOO
+    structure Foo
+is
+    foo.sig
+    foo.sml
+    foo-utils.cm
+    basis.cm
+\end{verbatim}
+
+\section{Naming objects in the file system}
+
+\subsection{Motivation}
+
+File naming has been an area notorious for its problems and cause for
+most of the gripes from CM's users.  With this in mind, CM now takes a
+different approach to file name resolution.
+
+The main difficulty lies in the fact that files or even whole
+directories may move after CM has already partially (but not fully)
+processed them.  For example, this happens when the {\em auto loader}
+(see Section~\ref{sec:autoload}) has been used before saving an ML
+session via {\tt SMLofNJ.exportML}.  Under a correct installation, CM
+will now be able to resume such a session even when operating in a
+different environment, perhaps on a different machine with different
+file system mounts, or a different location of the SML/NJ
+installation.
+
+For this, CM provides a configurable mechanism for locating file
+system objects.  Moreover, it invokes this mechanism as late as
+possible and is prepared to re-invoke it if the configuration changes.
+
+\subsection{Basic rules}
+
+CM uses its own ``standard'' syntax for pathnames which happens to be
+the same as the one used by most Unix-like systems: path name
+components are separated by ``{\bf /}'', paths beginning with ``{\bf
+/}'' are considered {\em absolute} while other paths are {\em
+relative}.
+
+Since this standard syntax does not cover system-specific aspects such
+as volume names, it is also possible to revert to ``native'' syntax by
+enclosing the name in double-quotes.  Of course, description files
+that use path names in native syntax are not portable across operating
+systems.
+
+Absolute pathnames are resolved in the usual operating-specific
+manner.  However, it is advisable to avoid absolute pathnames because
+they are certain to ``break'' if the corresponding file moves to a
+different location.
+
+The resolution of relative pathnames is more complicated.
+
+\begin{itemize}
+\item If the first component of a relative pathname is a
+``configuration anchor'' (see Section~\ref{sec:anchors}), then we call
+the path {\em anchored}.  In this case  the
+whole name will be resolved relative to the value associated with that
+anchor.  For example, if the path is {\tt foo/bar/baz} and {\tt
+foo} is known as an anchor mapped to {\tt /usr/local}, then the
+full name of the actual file system object referred to is {\tt
+/usr/local/foo/bar/baz}. Note that the {\tt foo} component is not
+stripped away during the resolution process; different anchors that
+map to the same directory still remain different.
+\item Otherwise, if the relative name appears in some description file
+whose name is {\it path}{\tt /}{it file}{\tt .cm}, then it will be
+resolved relative to {\it path}, i.e., relative to the directory that
+contains the description file.
+\item If a non-anchored relative path is entered interactively, for
+example as an argument to one of CM's interface functions, then it
+will be resolved in the OS-specific manner, i.e., relative to the
+current working directory.  However, CM will remember what that
+directory is at the time the name was first seen.  Should the working
+directory change during an ongoing CM session, then CM will switch its
+mode of operation for that name and prepend the name of the original
+working directory.  In effect, the name will continue to refer to the
+same file system object regardless of what the current working
+directory is.
+\end{itemize}
+
+\subsection{Anchor configuration}
+\label{sec:anchors}
+
+The configuration of path name anchors to their corresponding
+directory names is a simple one-way mapping.  At startup time, this
+mapping is initialized by reading two configuration files: an
+installation-specific one and a user-specific one.  After that, the
+mapping can be maintained using CM's interface functions {\tt
+CM.setAnchor}, {\tt CM.cancelAnchor}, and {\tt CM.resetPathConfig}
+(see Section~\ref{sec:api}).
+
+The default location of the installation specific configuration file
+is {\tt /usr/lib/smlnj-pathconfig}.  However, normally this default
+gets replaced (via an environment variable named {\tt
+CM\_PATHCONFIG\_DEFAULT}) at installation time by a path pointing to
+wherever the installation actually puts the configuration file.
+The user can specify a new location at startup time using the
+environment variable {\tt CM\_PATCONFIG}.
+
+The default location of the user-specific configuration file is {\tt
+.smlnj-pathconfig} in the user's home directory (which must be given
+by the {\tt HOME} environment varibale).  At startup time, this
+default can be overridden by a fixed location which must be given as
+the value of the environment variable {\tt CM\_LOCAL\_PATHCONFIG}.
+
+The syntax of all configuration files is identical.  Lines are
+processed from top to bottom. White space divides lines into tokens.
+\begin{itemize}
+\item A line with exactly two tokens associates an anchor (the first
+token) with a directory in native syntax (the second token).  Neither
+anchor nor directory name may contain white space and the anchor
+should not contain a {\bf /}.  If the directory name is a relative
+name, then it will be expanded by prepending the name of the directory
+that contains the configuration file.
+\item A line containing exactly one token that is the name of an
+anchor cancels any existing association of that anchor with a
+directory.
+\item A line with a single token that consists of a single minus sign
+{\bf -} cancels all existing anchors.  This typically makes sense only
+at the beginning of the user-specific configuration file and
+eradicates any settings that were made by the installation-specific
+configuration file.
+\item Lines with no token (i.e., empty lines) will be silently ignored.
+\item Any other line is considered malformed and will cause a warning
+but will otherwise be ignored.
+\end{itemize}
+
+\section{Using CM}
+
+\subsection{Structure CM}
+\label{sec:api}
+
+Functions that control CM's operation are accessible as members of a
+structure named {\tt CM}.  Here is a description of the members of
+this structure:
+
+\subsubsection*{Compiling}
+
+Two main activities when using CM is to compile ML source code and to
+build stable libraries:
+
+\begin{verbatim}
+  val recomp : string -> bool
+  val stabilize : bool -> string -> bool
+\end{verbatim}
+
+{\tt CM.recomp} takes the name of a program's ``root'' description
+file and compiles or recompiles all ML source files that are necessary
+to provide definitions for the root library's export list.
+
+{\tt CM.stabilize} takes a boolean flag and then the name of a library
+and {\em stabilizes} this library.  A library is stabilized by writing
+all information pertaining to it (including all of its library
+components) into a single file.  Later, when the library is used in
+other programs, all members of the library are guaranteed to be
+up-to-date; no dependency analysis work and no recompilation work will
+be necessary.  I if the boolean flag is {\tt false}, then all
+sub-libraries of the library must already be stable.  If the flag is
+{\tt true}, then CM will recursively stabilize all libraries reachable
+from the given root.
+
+After a library has been stabilized it can be used even if none of its
+original sources---including the description file---are present.
+
+\subsubsection*{Linking}
+
+In SML/NJ, linking means executing top-level code of each compilation
+unit.  The resulting bindings can then be bound at the interactive top
+level.
+
+\begin{verbatim}
+  val make : string -> bool
+  val autoload : string -> bool
+\end{verbatim}
+
+{\tt CM.make} first acts like {\tt CM.recomp}.  If the (re-)compilation
+is successful, then it proceeds by linking all modules.  Provided
+there are no link-time errors, it finally introduces new bindings at
+top level.
+
+During the course of the same {\tt CM.make}, the code of each
+compilation module will be executed at most once.  Code in units that
+are marked as {\it private} will be executed exactly once.  Code in
+other units will be executed only if the unit has been recompiled
+since it was executed last time or if it depends on another
+compilation unit whose code has been executed since.
+
+In effect, different invocations of {\tt CM.make} (and {\tt
+CM.autoload}) will share dynamic state created at link time as much as
+possible unless the compilation units in question have been explicitly
+marked private.
+
+{\tt CM.autoload} acts like a ``lazy'' {\tt CM.make}.  The same
+bindings that {\tt CM.make} would introduce into the top-level
+enviroment are also introduced by the corresponding {\tt CM.autoload}.
+However, most work will be deferred until some code entered at the
+interactive top level later mentions one or more of the exported
+symbols.  Only then will CM go and perform just the minimal work
+necessary to provide the actual definitions for them.
+
+\subsubsection*{Flags}
+
+Several flags control the operation of CM.  Any invocation of the
+corresponding function reads the current value of the flag.  An
+invocation with {\tt NONE} just reads it, an invocation with {\tt
+SOME} $v$ reads it and then replaces it with a new value $v$.
+
+\begin{verbatim}
+  val verbose : bool option -> bool
+  val debug : bool option -> bool
+  val keep_going : bool option -> bool
+  val parse_caching : int option -> int
+  val warn_obsolete : bool option -> bool
+\end{verbatim}
+
+{\tt CM.verbose} can be used to turn off CM's progress messages.  The
+default is {\em on}.
+
+In the case of a compile-time error {\tt CM.keep\_going} instructs the
+{\tt CM.recomp} phase to continue working on parts of the dependency
+graph that are not related to the error.  (This does not work for
+syntax errors because a correct parse is needed before CM can
+construct its dependency graph.)  The default is {\em off}.
+
+{\tt CM.parse\_caching} sets a limit on how many parse trees are
+cached in main memory.  In certain cases CM must parse source files in
+order to be able to calculate the dependency graph.  Later, the same
+files may need to be compiled, in which case an existing parse tree
+saves the time to parse the file again.  Keeping parse trees can be
+expensive in memory usage.  Moreover, CM makes special efforts to
+avoid parsing files unless they have actually been modified.
+Therefore, it may not make much sense to set this value very high.
+The default is {\em 100}.
+
+This version of CM uses an ML-inspired syntax for expressions in its
+conditional compilation subsystem.  However, for the time being it
+will accept old C-inspired expressions but produce a warning for each
+occurrence. {\tt CM.warn\_obsolete} can be used to turn these warnings
+off. The default is {\em on}.
+
+{\tt CM.debug} can be used to turn on debug mode.  This currently has
+no effect since there is no separate debug mode. The default is {\em off}.
+
+\subsubsection*{Path anchors}
+
+Structure {\tt CM} also provides functions to explicitly manipulate
+the path anchor configuration.
+
+\begin{verbatim}
+  val setAnchor : string * string -> unit
+  val cancelAnchor : string -> unit
+  val resetPathConfig : unit -> unit
+\end{verbatim}
+
+{\tt CM.setAnchor} creates a new association or replaces an existing
+association of an anchor name with a directory name.  Both names must
+be given as strings---the directory name in native syntax.  If the
+directory name is a relative path name, then it will be expanded by
+prepending the name of the current working directory.
+
+{\tt CM.cancelAnchor} deletes the association of the given anchor name
+with its directory should such an association currently exist.
+Otherwise it will do nothing.
+
+{\tt CM.resetPathConfig} erases the entire existing path configuration
+mapping.
+
+\subsubsection*{Status inspection}
+
+CM keeps a lot of internal state.  Some of this state can be inspected.
+
+\begin{verbatim}
+  val showPending : unit -> unit
+  val listLibs : unit -> unit
+\end{verbatim}
+
+{\tt CM.showPending} lists the names of all symbols which are
+currently registered as being bound at top level via the autoloading
+mechanism and which so far have not actually been resolved.
+
+{\tt CM.listLibs} shows the path names of library description files
+for those stable libraries that are currently known to CM.  This list
+includes those libraries which have been accessed ``implicitly'' by
+virtue of being a sub-library of another library that has been
+accessed in the past.  Library state can take up considerable space in
+main memory.  Use {\tt CM.dismissLib} (see below) to remove a library
+from CM's registry.
+
+\subsubsection*{Altering CM's internal state}
+
+Sometimes it can become necessary to explicitly instruct CM to change
+or update its internal state.
+
+\begin{verbatim}
+  val dismissLib : string -> unit
+  val synchronize : unit -> unit
+  val reset : unit -> unit
+\end{verbatim}
+
+{\tt CM.dismissLib} is used to remove a stable library from CM's
+internal registry.  See the discussion of {\tt CM.listLibs} above.
+Although removing a library from the registry may recover considerable
+amounts of main memory, doing so also eliminates any chance of sharing
+the associated data structures with later references to the same
+library.  Therefore, doing so is not always in the interest of
+memory-conscious users.
+
+{\tt CM.synchronize} updates tables internal to CM to reflect changes
+in the file system.  In particular, this will be necessary when the
+association of file names to ``file IDs'' (in Unix: inode numbers)
+changes during an ongoing session.  In practice, this tends to be
+rare.
+
+{\tt CM.reset} completely erases all internal state in CM.  This is
+not very advisable since it will also break the association with
+pre-loaded libraries.  It may be a useful tool for determining the
+amount of space taken up by the internal state, though.
+
+\subsection{The auto loader}
+\label{sec:autoload}
+
+\section{Conditional compilation}
+\label{sec:preproc}
+
+\section{Access control}
+\label{sec:access}
+
+\section{Some history}
+
+Although its programming model is more general, CM's implementation is
+closely tied to the Standard ML programming language~\cite{milner97}
+in general and its SML/NJ implementation~\cite{appel91:sml} in particular.
+
+The current version is preceded by several other compilation managers,
+the most recent goin by the same name ``CM''~\cite{blume95:cm}, while
+earlier ones were known as IRM ({\it Incremental Recompilation
+Manager})~\cite{harper94:irm} and SC (for {\it Separate
+Compilation})~\cite{harper-lee-pfenning-rollins-CM}.  CM owes many
+ideas to SC and IRM.
+
+Separate compilation in the SML/NJ system heavily relies on mechanisms
+for converting static environments (i.e., the compiler's symbol
+tables) into linear byte stream suitable for storage on
+disks~\cite{appel94:sepcomp}.  However, unlike all its predecessors,
+the current implementation of CM is integrated into the main compiler
+and no longer relies on the {\em Visible Compiler} interface.
+
+\cleardoublepage
+
+\tableofcontents
+
+\pagebreak
+
+\bibliography{blume,appel,ml}
+
+\end{document}
+
