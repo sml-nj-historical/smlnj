@@ -1,7 +1,7 @@
 Group
 
 is
-../lib/ml-yacc-lib.cm
+../lib/sources.cm
 
 utils.sig
 utils.sml

@@ -103,6 +103,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 
 	(* pseudo FLINT phases *)
 	| runphase ("id",(f,r,l)) = (f,r,l)
+	| runphase (p as "collect",(f,r,l)) = (fcollect f, r, p)
 	| runphase (p as "print",(f,r,l)) =
 	  (say("\n[ After "^l^"... ]\n\n");
 	   PPFlint.printFundec f; (f,r,l)
