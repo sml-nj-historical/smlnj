@@ -29,3 +29,6 @@ REM more cleaning up
 del %smlfile%
 del %cmfile%
 del %listfile%
+del .cm/GUID/%smlfile%
+del .cm/SKEL/%smlfile%
+del .cm/x86-win32/%smlfile%
