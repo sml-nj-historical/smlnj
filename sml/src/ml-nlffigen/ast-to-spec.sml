@@ -20,7 +20,9 @@ structure AstToSpec = struct
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
-    fun build (bundle, sizes: Sizes.sizes, cfiles, match, allSU, eshift) = let
+    fun build (bundle, sizes: Sizes.sizes,
+	       cfiles, match, allSU, eshift, gensym_suffix) =
+    let
 
 	val curLoc = ref "?"
 
@@ -97,7 +99,7 @@ structure AstToSpec = struct
 		 SOME s => s
 	       | NONE => let
 		     val i = !nexttag
-		     val s = Int.toString i
+		     val s = Int.toString i ^ gensym_suffix
 		 in
 		     nexttag := i + 1;
 		     Tidtab.insert (tags, tid, s);

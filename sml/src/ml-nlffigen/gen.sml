@@ -21,6 +21,7 @@ structure Gen :> sig
 		dirname: string,
 		cmfile: string,
 		prefix: string,
+		gensym_stem: string,
 		extramembers: string list,
 		libraryhandle: string,
 		complete: bool,
@@ -88,7 +89,6 @@ end = struct
     fun Styp t = STstruct t ^ ".typ"
     fun Utyp t = UTstruct t ^ ".typ"
 
-    fun isu_id (K, tag) = concat ["I", K, "_", tag]
     fun fieldtype_id n = "t_f_" ^ n
     fun fieldrtti_id n = "typ_f_" ^ n
     fun field_id (n, p) = concat ["f_", n, p]
@@ -97,13 +97,19 @@ end = struct
     fun enum_id n = "e_" ^ n
 
     fun gen args = let
-	val { cfiles, match, mkidlsource,
+	val { cfiles, match, mkidlsource, gensym_stem,
 	      dirname, cmfile, prefix, extramembers, libraryhandle, complete,
 	      allSU, lambdasplit,
 	      wid,
 	      weightreq,
 	      namedargs = doargnames,
 	      target = { name = archos, sizes, shift, stdcall } } = args
+
+	val (gensym_prefix, gensym_suffix) =
+	    if gensym_stem = "" then ("", "")
+	    else (gensym_stem ^ "_", "_" ^ gensym_stem)
+	val isu_prefix = if complete then gensym_prefix else ""
+	fun isu_id (K, tag) = concat [isu_prefix, prefix, "I", K, "_", tag]
 
 	fun SUstruct K t = concat [prefix, K, "_", t]
 	val Sstruct = SUstruct "S"
@@ -130,7 +136,7 @@ end = struct
 				     idlsource
 		 val s' =
 		     AstToSpec.build (astbundle, sizes, cfiles, match,
-				      allSU, shift)
+				      allSU, shift, gensym_suffix)
 	     in
 		 S.join (s', s)
 	     end handle e => (OS.FileSys.remove idlsource handle _ => ();

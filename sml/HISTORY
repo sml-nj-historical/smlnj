@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/11 15:55:00 EST
+Tag: blume-20020211-gensym
+Description:
+
+Added a "-gensym" option to command line of ml-nlffigen.  This can be
+used to specify a "stem" -- a string that is inserted in all "gensym'd"
+names (ML structure names that correspond to unnamed C structs, unions,
+and enums), so that separate runs of ml-nlffigen do not clash.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/11 12:05:00 EST
 Tag: blume-20020211-gensml
 Description:

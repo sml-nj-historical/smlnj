@@ -49,6 +49,7 @@ structure Main = struct
 	val dir = ref "NLFFI-Generated"
 	val cmf = ref "nlffi-generated.cm"
 	val prefix = ref ""
+	val gstem = ref ""
 	val ems = ref []
 	val libh = ref "Library.libh"
 	val cmpl = ref true
@@ -91,6 +92,7 @@ structure Main = struct
 		      dirname = !dir,
 		      cmfile = !cmf,
 		      prefix = !prefix,
+		      gensym_stem = !gstem,
 		      extramembers = !ems,
 		      libraryhandle = !libh,
 		      complete = !cmpl,
@@ -124,6 +126,7 @@ structure Main = struct
 	  | proc ("-libhandle" :: lh :: l) = (libh := lh; proc l)
 	  | proc ("-include" :: es :: l) = (ems := es :: !ems; proc l)
 	  | proc ("-prefix" :: p :: l) = (prefix := p; proc l)
+	  | proc ("-gensym" :: g :: l) = (gstem := g; proc l)
 	  | proc ("-dir" :: d :: l) = (dir := d; proc l)
 	  | proc ("-cmfile" :: f :: l) = (cmf := f; proc l)
 	  | proc ("-cppopt" :: opt :: l) = (addcppopt opt; proc l)
