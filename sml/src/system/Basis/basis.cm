@@ -133,6 +133,7 @@ Library
 	structure Real64VectorSlice
 	structure Text
 	structure SML90
+	signature BIT_FLAGS
 
 	(* SML/NJ specific *)
 	structure Signals
@@ -161,7 +162,6 @@ Library
 
 #if defined(OPSYS_UNIX)
 	(* Posix *)
-	signature POSIX_FLAGS
 	signature POSIX_ERROR
 	signature POSIX_SIGNAL
 	signature POSIX_PROCESS

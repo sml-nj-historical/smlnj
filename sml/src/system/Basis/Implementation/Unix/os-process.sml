@@ -21,6 +21,9 @@ structure OS_Process : OS_PROCESS =
     val success = 0
     val failure = 1
 
+    fun isSuccess 0 = true
+      | isSuccess _ = false
+
     fun system cmd = (case P_Proc.fork()
 	   of NONE => (
 		P_Proc.exec ("/bin/sh", ["sh", "-c", cmd])
@@ -52,6 +55,7 @@ structure OS_Process : OS_PROCESS =
 
     val getEnv = Posix.ProcEnv.getenv
 
+    val sleep = ignore o Posix.Process.sleep
+
   end
 end
-

@@ -89,34 +89,26 @@ structure POSIX_IO =
     
     structure FD =
       struct
-        datatype flags = FDF of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = FDF w
-        fun toWord (FDF w) = w
-
-        fun flags ms = FDF(List.foldl (fn (FDF m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (FDF m, FDF m') = (m & m') <> 0w0
-        fun allSet (FDF m, FDF m') = (m & m') = m
-
-        val cloexec = FDF(w_osval "cloexec")
+        val cloexec = fromWord (w_osval "cloexec")
       end
 
     structure O =
       struct
-        datatype flags = FS of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = FS w
-        fun toWord (FS w) = w
-
-        fun flags ms = FS(List.foldl (fn (FS m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (FS m, FS m') = (m & m') <> 0w0
-        fun allSet (FS m, FS m') = (m & m') = m
-
-        val append   = FS(w_osval "append")
-        val dsync    = FS(w_osval "dsync")
-        val nonblock = FS(w_osval "nonblock")
-        val rsync    = FS(w_osval "rsync")
-        val sync     = FS(w_osval "sync")
+        val append   = fromWord (w_osval "append")
+        val dsync    = fromWord (w_osval "dsync")
+        val nonblock = fromWord (w_osval "nonblock")
+        val rsync    = fromWord (w_osval "rsync")
+        val sync     = fromWord (w_osval "sync")
       end
 
     val fcntl_d   : s_int * s_int -> s_int = cfun "fcntl_d"
@@ -125,14 +117,14 @@ structure POSIX_IO =
     val fcntl_gfl : s_int -> (word * word) = cfun "fcntl_gfl"
     val fcntl_sfl : (s_int * word) -> unit = cfun "fcntl_sfl"
     fun dupfd {old, base} = FS.fd (fcntl_d (FS.intOf old, FS.intOf base))
-    fun getfd fd = FD.FDF (fcntl_gfd (FS.intOf fd))
-    fun setfd (fd, FD.FDF fl) = fcntl_sfd(FS.intOf fd, fl)
+    fun getfd fd = FD.fromWord (fcntl_gfd (FS.intOf fd))
+    fun setfd (fd, fl) = fcntl_sfd(FS.intOf fd, FD.toWord fl)
     fun getfl fd = let
           val (sts, omode) = fcntl_gfl (FS.intOf fd)
           in
-            (O.FS sts, FS.omodeFromWord omode)
+            (O.fromWord sts, FS.omodeFromWord omode)
           end
-    fun setfl (fd, O.FS sts) = fcntl_sfl (FS.intOf fd, sts)
+    fun setfl (fd, sts) = fcntl_sfl (FS.intOf fd, O.toWord sts)
 
     datatype lock_type = F_RDLCK | F_WRLCK | F_UNLCK
 

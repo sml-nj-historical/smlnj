@@ -52,6 +52,7 @@ Library
 	signature PACK_WORD
 	signature TEXT
 	signature SML90
+	signature BIT_FLAGS
 
 	(* SML/NJ specific *)
 	signature SIGNALS
@@ -155,7 +156,6 @@ Library
 
 #if defined(OPSYS_UNIX)
 	(* Posix *)
-	signature POSIX_FLAGS
 	signature POSIX_ERROR
 	signature POSIX_SIGNAL
 	signature POSIX_PROCESS

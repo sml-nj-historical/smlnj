@@ -31,86 +31,70 @@ structure POSIX_TTY =
 
     structure I =
       struct
-        datatype flags = F of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = F w
-        fun toWord (F w) = w
-
-        fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (F m, F m') = (m & m') <> 0w0
-        fun allSet (F m, F m') = (m & m') = m
-
-        val brkint = F (w_osval "BRKINT")
-        val icrnl  = F (w_osval "ICRNL")
-        val ignbrk = F (w_osval "IGNBRK")
-        val igncr  = F (w_osval "IGNCR")
-        val ignpar = F (w_osval "IGNPAR")
-        val inlcr  = F (w_osval "INLCR")
-        val inpck  = F (w_osval "INPCK")
-        val istrip = F (w_osval "ISTRIP")
-        val ixoff  = F (w_osval "IXOFF")
-        val ixon   = F (w_osval "IXON")
-        val parmrk = F (w_osval "PARMRK")
+        val brkint = fromWord (w_osval "BRKINT")
+        val icrnl  = fromWord (w_osval "ICRNL")
+        val ignbrk = fromWord (w_osval "IGNBRK")
+        val igncr  = fromWord (w_osval "IGNCR")
+        val ignpar = fromWord (w_osval "IGNPAR")
+        val inlcr  = fromWord (w_osval "INLCR")
+        val inpck  = fromWord (w_osval "INPCK")
+        val istrip = fromWord (w_osval "ISTRIP")
+        val ixoff  = fromWord (w_osval "IXOFF")
+        val ixon   = fromWord (w_osval "IXON")
+        val parmrk = fromWord (w_osval "PARMRK")
       end
 
     structure O =
       struct
-        datatype flags = F of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = F w
-        fun toWord (F w) = w
-
-        fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (F m, F m') = (m & m') <> 0w0
-        fun allSet (F m, F m') = (m & m') = m
-
-        val opost = F (w_osval "OPOST")
+        val opost = fromWord (w_osval "OPOST")
       end
 
     structure C =
       struct
-        datatype flags = F of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = F w
-        fun toWord (F w) = w
-
-        fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (F m, F m') = (m & m') <> 0w0
-        fun allSet (F m, F m') = (m & m') = m
-
-        val clocal = F (w_osval "CLOCAL")
-        val cread  = F (w_osval "CREAD")
-        val csize  = F (w_osval "CSIZE")
-        val cs5    = F (w_osval "CS5")
-        val cs6    = F (w_osval "CS6")
-        val cs7    = F (w_osval "CS7")
-        val cs8    = F (w_osval "CS8")
-        val cstopb = F (w_osval "CSTOPB")
-        val hupcl  = F (w_osval "HUPCL")
-        val parenb = F (w_osval "PARENB")
-        val parodd = F (w_osval "PARODD")
+        val clocal = fromWord (w_osval "CLOCAL")
+        val cread  = fromWord (w_osval "CREAD")
+        val csize  = fromWord (w_osval "CSIZE")
+        val cs5    = fromWord (w_osval "CS5")
+        val cs6    = fromWord (w_osval "CS6")
+        val cs7    = fromWord (w_osval "CS7")
+        val cs8    = fromWord (w_osval "CS8")
+        val cstopb = fromWord (w_osval "CSTOPB")
+        val hupcl  = fromWord (w_osval "HUPCL")
+        val parenb = fromWord (w_osval "PARENB")
+        val parodd = fromWord (w_osval "PARODD")
       end
 
     structure L =
       struct
-        datatype flags = F of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = F w
-        fun toWord (F w) = w
-
-        fun flags ms = F(List.foldl (fn (F m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (F m, F m') = (m & m') <> 0w0
-        fun allSet (F m, F m') = (m & m') = m
-
-        val echo   = F (w_osval "ECHO")
-        val echoe  = F (w_osval "ECHOE")
-        val echok  = F (w_osval "ECHOK")
-        val echonl = F (w_osval "ECHONL")
-        val icanon = F (w_osval "ICANON")
-        val iexten = F (w_osval "IEXTEN")
-        val isig   = F (w_osval "ISIG")
-        val noflsh = F (w_osval "NOFLSH")
-        val tostop = F (w_osval "TOSTOP")
+        val echo   = fromWord (w_osval "ECHO")
+        val echoe  = fromWord (w_osval "ECHOE")
+        val echok  = fromWord (w_osval "ECHOK")
+        val echonl = fromWord (w_osval "ECHONL")
+        val icanon = fromWord (w_osval "ICANON")
+        val iexten = fromWord (w_osval "IEXTEN")
+        val isig   = fromWord (w_osval "ISIG")
+        val noflsh = fromWord (w_osval "NOFLSH")
+        val tostop = fromWord (w_osval "TOSTOP")
       end
 
     structure V =
@@ -251,10 +235,10 @@ structure POSIX_TTY =
           val (ifs,ofs,cfs,lfs,cc,isp,osp) = tcgetattr (FS.intOf fd)
           in
             TIOS {
-              iflag = I.F ifs,
-              oflag = O.F ofs,
-              cflag = C.F cfs,
-              lflag = L.F lfs,
+              iflag = I.fromWord ifs,
+              oflag = O.fromWord ofs,
+              cflag = C.fromWord cfs,
+              lflag = L.fromWord lfs,
               cc = V.CC cc,
               ispeed = B isp,
               ospeed = B osp
@@ -263,10 +247,10 @@ structure POSIX_TTY =
 
     val tcsetattr : int * s_int * termio_rep -> unit = cfun "tcsetattr"
     fun setattr (fd, TC.SA sa, TIOS tios) = let
-          val (I.F iflag) = #iflag tios
-          val (O.F oflag) = #oflag tios
-          val (C.F cflag) = #cflag tios
-          val (L.F lflag) = #lflag tios
+          val iflag = I.toWord (#iflag tios)
+          val oflag = O.toWord (#oflag tios)
+          val cflag = C.toWord (#cflag tios)
+          val lflag = L.toWord (#lflag tios)
           val (V.CC cc) = #cc tios
           val (B ispeed) = #ispeed tios
           val (B ospeed) = #ospeed tios

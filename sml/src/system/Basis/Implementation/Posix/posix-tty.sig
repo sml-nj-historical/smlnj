@@ -14,7 +14,7 @@ signature POSIX_TTY =
     
     structure I :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
         
         val brkint : flags
         val icrnl  : flags
@@ -31,14 +31,14 @@ signature POSIX_TTY =
 
     structure O :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
         
         val opost : flags
       end
 
     structure C :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
         
         val clocal : flags
         val cread  : flags
@@ -55,7 +55,7 @@ signature POSIX_TTY =
 
     structure L :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
         
         val echo   : flags
         val echoe  : flags
