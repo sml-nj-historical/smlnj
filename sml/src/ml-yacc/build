@@ -40,6 +40,6 @@ if [ "$HEAP_IMAGE" = "" ]; then
 fi
 
 cd src
-$BUILD ml-yacc.cm ExportParseGen.parseGen $HEAP_IMAGE
+"$BUILD" ml-yacc.cm ExportParseGen.parseGen "$HEAP_IMAGE"
 
 exit 0

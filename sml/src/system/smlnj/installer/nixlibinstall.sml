@@ -12,7 +12,13 @@ structure UnixLibInstall : sig end = struct
 	val installdir = getOpt (OS.Process.getEnv "INSTALLDIR", home)
 	val configdir = getOpt (OS.Process.getEnv "CONFIGDIR",
 				OS.Path.concat (home, "config"))
-	val unpack = OS.Path.concat (configdir, "unpack")
+	val unpackcmd = OS.Path.concat (configdir, "unpack")
+	fun unpack modules =
+	    let val cmdline =
+		    concat ("\"" :: unpackcmd :: "\" \"" :: home :: "\"" ::
+			    foldl (fn (f, l) => " " :: f :: l) [] modules)
+	    in OS.Process.system cmdline = OS.Process.success
+	    end
 	val bindir = getOpt (OS.Process.getEnv "BINDIR",
 			     OS.Path.concat (installdir, "bin"))
 	fun bincmd cmd = OS.Path.concat (bindir, cmd)
@@ -21,7 +27,7 @@ structure UnixLibInstall : sig end = struct
 	LibInstall.proc { smlnjroot = home,
 			  installdir = installdir,
 			  buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
-			  unpackcmd = SOME unpack,
+			  unpack = SOME unpack,
 			  instcmd = fn target => let
 					   val new = bincmd target
 				       in

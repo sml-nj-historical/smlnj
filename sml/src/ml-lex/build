@@ -39,5 +39,5 @@ if [ "$HEAP_IMAGE" = "" ]; then
     HEAP_IMAGE="$ROOT"
 fi
 
-$BUILD ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
+"$BUILD" ml-lex.cm ExportLexGen.lexGen $HEAP_IMAGE
 

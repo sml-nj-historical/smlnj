@@ -19,8 +19,8 @@ unset ENV
 #
 
 # the path of the directory in which executables (like this file) are kept.
-if [ x${SMLNJ_HOME} = x ] ; then
-    BIN_DIR=@BINDIR@
+if [ x"$SMLNJ_HOME" = x ] ; then
+    BIN_DIR="@BINDIR@"
     if [ ! -d "$BIN_DIR" ]; then
 	cmddir=`dirname $0`
 	case "$cmddir" in
@@ -29,11 +29,11 @@ if [ x${SMLNJ_HOME} = x ] ; then
 	esac
     fi
 else
-    if [ x${CM_PATHCONFIG} = x ] ; then
-	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
+    if [ x"$CM_PATHCONFIG" = x ] ; then
+	CM_PATHCONFIG="$SMLNJ_HOME"/lib/pathconfig
 	export CM_PATHCONFIG
     fi
-    BIN_DIR=${SMLNJ_HOME}/bin
+    BIN_DIR="$SMLNJ_HOME"/bin
 fi
 
 # the path of the directory in which the runtime system executables are kept.
@@ -42,7 +42,7 @@ RUN_DIR=$BIN_DIR/.run
 #
 # the following could be replaced with some site specific code
 #
-ARCH_N_OPSYS=`$BIN_DIR/.arch-n-opsys`
+ARCH_N_OPSYS=`"$BIN_DIR/.arch-n-opsys"`
 if [ "$?" != "0" ]; then
   echo "$CMD: unable to determine architecture/operating system"
   exit 1
@@ -61,14 +61,18 @@ eval $ARCH_N_OPSYS
 RUN="$RUN_DIR/run.$ARCH-$OPSYS"
 BOOT=""
 ARGS=""
+HEAP="sml"
 while [ "$#" != "0" ]; do
   arg=$1; shift
-  case $arg in
+  case "$arg" in
     @SMLrun=*)
-      RUN=`echo $arg | sed 's/@SMLrun=//'`
+      RUN=`echo "$arg" | sed 's/@SMLrun=//'`
       ;;
     @SMLboot=*)
-      BOOT=`echo $arg | sed 's/@SMLboot=//'`
+      BOOT=`echo "$arg" | sed 's/@SMLboot=//'`
+      ;;
+    @SMLheap=*)
+      HEAP=`echo "$arg" | sed 's/@SMLheap=//'`
       ;;
     @SMLversion)
       echo "$CMD @VERSION@"
@@ -93,4 +97,4 @@ fi
 #
 # run the sucker!
 #
-exec $RUN @SMLboot=$BOOT $ARGS
+exec "$RUN" @SMLboot="$BOOT" @SMLheap="$HEAP" $ARGS

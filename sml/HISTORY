@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/12/14 17:30:00 CST
+Tag: blume-20041214-spaces
+Description:
+
+Hacked some of the scripts (in particular: the installer) to cope with
+spaces in filenames a bit better.  But beware: the current "solution"
+is likely still full of bugs and inherently incomplete.  (We need to
+do away with those shell scripts for a comprehensive solution.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/13 14:45:00 CST
 Tag: blume-20041213-ml-makedepend
 Description:

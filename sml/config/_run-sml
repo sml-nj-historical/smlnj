@@ -3,7 +3,7 @@
 # The standard driver for SML/NJ under the new runtime system
 #
 
-CMD=`basename $0`
+CMD=`basename "$0"`
 
 #
 # for /bin/ksh, disable reading user's environment file
@@ -21,17 +21,17 @@ unset ENV
 #
 
 # the path of the directory in which executables (like this file) are kept.
-if [ x${SMLNJ_HOME} = x ] ; then
-    BIN_DIR=@BINDIR@
+if [ x"$SMLNJ_HOME" = x ] ; then
+    BIN_DIR="@BINDIR@"
     if [ ! -d "$BIN_DIR" ]; then
-	cmddir=`dirname $0`
+	cmddir=`dirname "$0"`
 	case "$cmddir" in
 	    /* ) BIN_DIR="$cmddir";;
 	    * ) BIN_DIR=`cd $cmddir; pwd` ;;
 	esac
     fi
 else
-    if [ x${CM_PATHCONFIG} = x ] ; then
+    if [ x"$CM_PATHCONFIG" = x ] ; then
 	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
 	export CM_PATHCONFIG
     fi
@@ -47,7 +47,7 @@ HEAP_DIR=$BIN_DIR/.heap
 #
 # the following could be replaced with some site specific code
 #
-ARCH_N_OPSYS=`$BIN_DIR/.arch-n-opsys`
+ARCH_N_OPSYS=`"$BIN_DIR/.arch-n-opsys"`
 if [ "$?" != "0" ]; then
   echo "$CMD: unable to determine architecture/operating system"
   exit 1
@@ -61,7 +61,7 @@ eval $ARCH_N_OPSYS
 #############################################################################
 
 # special shortcut for frequent use (and for Linux' binfmt)
-if [ `basename $0` = sml ] ; then
+if [ `basename "$0"` = sml ] ; then
     case "$1" in
 	/* | ./* | ../* )
 	    case "$1" in
@@ -83,7 +83,7 @@ ALLOC=""
 #
 while [ "$#" != "0" ]; do
   arg=$1
-  case $arg in
+  case "$arg" in
     @SMLrun=*)
       shift
       RUN=`echo $arg | sed 's/@SMLrun=//'`
@@ -195,4 +195,4 @@ fi
 #
 # run the sucker!
 #
-exec $RUN @SMLcmdname=$0 $HEAP $ALLOC "$@"
+exec "$RUN" @SMLcmdname="$0" "$HEAP" $ALLOC "$@"

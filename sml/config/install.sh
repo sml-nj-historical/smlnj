@@ -59,9 +59,9 @@ REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
 vsay $this: SML root is $ROOT.
 
-cd ${INSTALLDIR:=$ROOT}
+cd "${INSTALLDIR:=$ROOT}"
 INSTALLDIR=`pwd`
-cd $ROOT
+cd "$ROOT"
 vsay $this: Installation directory is ${INSTALLDIR}.
 
 #
@@ -78,11 +78,11 @@ LIBDIR=$INSTALLDIR/lib		# where libraries live
 # files to be deleted after we are done...
 #
 tmpfiles=""
-tmpfiles="$tmpfiles $ROOT/preloads.standard"
+tmpfiles="$tmpfiles preloads.standard"
 #
 # make sure we always clean up after ourselves...
 #
-trap 'rm -f $tmpfiles' 0 1 2 3 15
+trap 'cd "$ROOT"; rm -f $tmpfiles' 0 1 2 3 15
 
 
 #
@@ -96,29 +96,30 @@ CM_PATHCONFIG=$LIBDIR/pathconfig
 #
 # the release version that we are installing
 #
-VERSION=`cat $CONFIGDIR/version`
+VERSION=`cat "$CONFIGDIR/version"`
 vsay $this: Installing version $VERSION.
 
 #
 # the URL for the (usually remote) source archive
 #
-. $CONFIGDIR/srcarchiveurl
+. "$CONFIGDIR"/srcarchiveurl
 vsay $this: URL of source archive is $SRCARCHIVEURL.
 
 #
 # Function to make a directory including its ancestors.
 #
 makedir() {
-    if [ x$1 = x ] ; then
+    if [ x"$1" = x ] ; then
 	:
-    elif [ -d $1 ] ; then
+    elif [ -d "$1" ] ; then
 	:
     else
-	makedir `dirname $1`
+	makedirtmp=`dirname "$1"`
+	makedir "$makedirtmp"
 	if [ x${INSTALL_VERBOSE} = xtrue ] ; then
 	    vsay "$this: Making directory $1"
 	fi
-	if mkdir $1 ; then
+	if mkdir "$1" ; then
 	    :
 	else
 	    complain "$this: !!! Unable to make directory $1!"
@@ -133,7 +134,7 @@ makedir() {
 # a single subdirectory which is a CM metadata directory:
 #
 fish() {
-    cd $1
+    cd "$1"
     ORIG_CM_DIR_ARC=unknown
     for i in * .[a-zA-Z0-9]* ; do
 	if [ -d $i ] ; then
@@ -154,23 +155,23 @@ fish() {
 # The first argument must be a simple path (no / inside), and
 # the second argument must be an absolute path.
 move() {
-    if [ -L $1 ] ; then
-	rm -f $1	     # remove symbolic link made by diracs (see below)
-    elif [ -d $1 ] ; then
-	if [ ! -d $2 ] ; then
-	    if [ -f $2 ] ; then
+    if [ -L "$1" ] ; then
+	rm -f "$1"	     # remove symbolic link made by diracs (see below)
+    elif [ -d "$1" ] ; then
+	if [ ! -d "$2" ] ; then
+	    if [ -f "$2" ] ; then
 		complain $this: $2 exists as a non-directory.
 	    fi
-	    mkdir $2
+	    mkdir "$2"
 	fi
-	cd $1
+	cd "$1"
 	for i in * .[a-zA-Z0-9]* ; do
-	    move $i $2/$i
+	    move "$i" "$2"/"$i"
 	done
 	cd ..
-    elif [ -f $1 ] ; then
-	rm -f $2
-	mv $1 $2
+    elif [ -f "$1" ] ; then
+	rm -f "$2"
+	mv "$1" "$2"
     fi
 }
 
@@ -180,14 +181,14 @@ move() {
 # and establish $1 as a symbolic link to $2:
 #
 dirarcs() {
-    if [ -d $3 ] ; then
-	if [ $3 = $1 ] ; then
-	    mv $1 $2
-	    ln -s $2 $1
+    if [ -d "$3" ] ; then
+	if [ "$3" = "$1" ] ; then
+	    mv "$1" "$2"
+	    ln -s "$2" "$1"
 	else
-	    cd $3
+	    cd "$3"
 	    for d in * .[a-zA-Z0-9]* ; do
-		dirarcs $1 $2 $d
+		dirarcs "$1" "$2" "$d"
 	    done
 	    cd ..
 	fi
@@ -200,8 +201,8 @@ dirarcs() {
 #
 # create the various sub directories
 #
-for dir in $BINDIR $HEAPDIR $RUNDIR $LIBDIR $SRCDIR ; do
-    makedir $dir
+for dir in "$BINDIR" "$HEAPDIR" "$RUNDIR" "$LIBDIR" "$SRCDIR" ; do
+    makedir "$dir"
 done
 
 #
@@ -218,15 +219,15 @@ installdriver() {
 #   if [ -x $BINDIR/$ddst ]; then
 #	echo $this: Script $BINDIR/$ddst already exists.
 #   else
-	rm -f $BINDIR/$ddst
-	cat $CONFIGDIR/$dsrc | \
+	rm -f "$BINDIR"/"$ddst"
+	cat "$CONFIGDIR"/"$dsrc" | \
 	sed -e "s,@SHELL@,$SHELL,g" \
 	    -e "s,@BINDIR@,$BINDIR," \
 	    -e "s,@VERSION@,$VERSION," \
 	    -e "s,@CMDIRARC@,${CM_DIR_ARC:-dummy}," \
-	    > $BINDIR/$ddst
-	chmod 555 $BINDIR/$ddst
-	if [ ! -x $BINDIR/$ddst ]; then
+	    > "$BINDIR"/"$ddst"
+	chmod 555 "$BINDIR"/"$ddst"
+	if [ ! -x "$BINDIR"/"$ddst" ]; then
 	    complain "$this: !!! Installation of $BINDIR/${ddst} failed."
 	fi
 #   fi
@@ -241,7 +242,7 @@ installdriver _arch-n-opsys .arch-n-opsys
 # run it to figure out what architecture and os we are using, define
 # corresponding variables...
 #
-ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
+ARCH_N_OPSYS=`"$BINDIR"/.arch-n-opsys`
 if [ "$?" != "0" ]; then
     echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
     echo "$this: !!! You must patch this by hand and repeat the installation."
@@ -304,37 +305,37 @@ BOOT_FILES=sml.$BOOT_ARCHIVE
 #
 # build the run-time system
 #
-if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
+if [ -x "$RUNDIR"/run.$ARCH-$OPSYS ]; then
     vsay $this: Run-time system already exists.
 else
-    $CONFIGDIR/unpack $ROOT runtime
-    cd $SRCDIR/runtime/objs
+    "$CONFIGDIR"/unpack "$ROOT" runtime
+    cd "$SRCDIR"/runtime/objs
     echo $this: Compiling the run-time system.
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
-	mv run.$ARCH-$OPSYS $RUNDIR
+	mv run.$ARCH-$OPSYS "$RUNDIR"
 	$MAKE MAKE=$MAKE clean
     else
 	complain "$this: !!! Run-time system build failed for some reason."
     fi
 fi
-cd $SRCDIR
+cd "$SRCDIR"
 
 #
 # boot the base SML system
 #
-if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
+if [ -r "$HEAPDIR"/sml.$HEAP_SUFFIX ]; then
     vsay $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
-    fish $LIBDIR/basis.cm
+    fish "$LIBDIR"/basis.cm
     # ignore requested arc name since we have to live with what is there:
     export CM_DIR_ARC
     CM_DIR_ARC=$ORIG_CM_DIR_ARC
 else
-    $CONFIGDIR/unpack $ROOT $BOOT_ARCHIVE
+    "$CONFIGDIR"/unpack "$ROOT" "$BOOT_ARCHIVE"
 
-    fish $ROOT/$BOOT_FILES/basis.cm
+    fish "$ROOT"/"$BOOT_FILES"/basis.cm
 
-    cd $ROOT
+    cd "$ROOT"
 
     # Target arc:
     export CM_DIR_ARC
@@ -345,33 +346,33 @@ else
     else
 	# now we have to make a symbolic link for each occurrence of
 	# $ORIG_CM_DIR_ARC to $CM_DIR_ARC
-	dirarcs ${ORIG_CM_DIR_ARC} ${CM_DIR_ARC} $BOOT_FILES
+	dirarcs "$ORIG_CM_DIR_ARC" "$CM_DIR_ARC" "$BOOT_FILES"
     fi
 
-    cd $ROOT/$BOOT_FILES
+    cd "$ROOT"/"$BOOT_FILES"
 
     # now link (boot) the system and let it initialize itself...
-    if $BINDIR/.link-sml @SMLheap=$ROOT/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
+    if "$BINDIR"/.link-sml @SMLheap="$ROOT"/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
     then
-	cd $ROOT
+	cd "$ROOT"
 	if [ -r sml.$HEAP_SUFFIX ]; then
-	    mv sml.$HEAP_SUFFIX $HEAPDIR
-	    cd $BINDIR
+	    mv sml.$HEAP_SUFFIX "$HEAPDIR"
+	    cd "$BINDIR"
 	    ln -s .run-sml sml
 	    #
 	    # Now move all stable libraries to #LIBDIR and generate
 	    # the pathconfig file.
 	    #
-	    cd $ROOT/$BOOT_FILES
+	    cd "$ROOT"/"$BOOT_FILES"
 	    for anchor in * ; do
 		if [ -d $anchor ] ; then
 		    echo $anchor $anchor >>$CM_PATHCONFIG
-		    move $anchor $LIBDIR/$anchor
+		    move $anchor "$LIBDIR"/$anchor
 		fi
 	    done
-	    cd $ROOT
+	    cd "$ROOT"
 	    # $BOOT_FILES is now only an empty skeleton, let's get rid of it.
-	    rm -rf $BOOT_FILES
+	    rm -rf "$BOOT_FILES"
 
 	else
 	    complain "$this !!! No heap image generated (sml.$HEAP_SUFFIX)."
@@ -386,14 +387,14 @@ fi
 #
 installdriver _ml-build ml-build
 
-cd $ROOT
+cd "$ROOT"
 
 #
 # Now do all the rest using the precompiled installer:
 #
 echo $this: Installing other libraries and programs:
 export ROOT INSTALLDIR CONFIGDIR BINDIR
-if $BINDIR/sml -m \$smlnj/installer.cm
+if "$BINDIR"/sml -m \$smlnj/installer.cm
 then
     vsay $this: Installation complete.
 else

@@ -1,9 +1,9 @@
 #!@SHELL@
 
 if [ x${SMLNJ_HOME} = x ] ; then
-    BIN_DIR=@BINDIR@
+    BIN_DIR="@BINDIR@"
 else
-    if [ x${CM_PATHCONFIG} = x ] ; then
+    if [ x"$CM_PATHCONFIG" = x ] ; then
 	CM_PATHCONFIG=${SMLNJ_HOME}/lib/pathconfig
 	export CM_PATHCONFIG
     fi
@@ -71,10 +71,10 @@ EOF
 # Unless the heap image exists and is up-to-date CM will write the arguments
 # for the link script into $linkargsfile.
 # (See src/cm/main/cm-boot.sml [function "mlbuild"] for details.)
-if $SML $dulist @CMbuild $setup $root $cmfile $heap $listfile $linkargsfile
+if "$SML" $dulist @CMbuild $setup "$root" "$cmfile" "$heap" "$listfile" "$linkargsfile"
 then
-    if [ -r $linkargsfile ]; then
-	$LINK `cat $linkargsfile`
+    if [ -r "$linkargsfile" ]; then
+	"$LINK" `cat "$linkargsfile"`
     fi
 else
     exit $?

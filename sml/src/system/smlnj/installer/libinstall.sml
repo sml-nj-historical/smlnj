@@ -21,7 +21,7 @@ structure LibInstall : sig
 	  installdir: string,
 	  buildcmd: string,
 	  instcmd : string -> unit,
-	  unpackcmd: string option } -> unit
+	  unpack: (string list -> bool) option } -> unit
 
 end = struct
 
@@ -149,7 +149,7 @@ end = struct
 	handle _ => false
 
     (* our main routine *)
-    fun proc { smlnjroot, installdir, buildcmd, instcmd, unpackcmd } = let
+    fun proc { smlnjroot, installdir, buildcmd, instcmd, unpack } = let
 	val smlnjroot = F.fullPath smlnjroot
 	val installdir = F.fullPath installdir
 	val configdir = P.concat (smlnjroot, "config")
@@ -214,18 +214,11 @@ end = struct
 	(* fetch and unpack source trees, using auxiliary helper command
 	 * which takes the root directory as its first and the module
 	 * names to be fetched as subsequent arguments. *)
-	val _ = case unpackcmd of
+	val _ = case unpack of
 		    NONE => ()		(* archives must exist *)
-		  | SOME cmd => let
-			val cmdline =
-			    concat (cmd :: " " :: smlnjroot :: " " ::
-				    SS.foldl (fn (f, l) => " " :: f :: l)
-					     [] srcmoduleset)
-		    in
-			if OS.Process.system cmdline = OS.Process.success
-			then ()
-			else fail ["unpacking failed\n"]
-		    end
+		  | SOME upck =>
+		      if upck (SS.listItems srcmoduleset) then ()
+		      else fail ["unpacking failed\n"]
 
         val libdir = P.concat (installdir, "lib")
         val srcdir = P.concat (smlnjroot, "src")

@@ -17,8 +17,8 @@ shift
 CONFIGDIR=$ROOT/config
 SRCDIR=$ROOT/src
 
-VERSION=`cat $CONFIGDIR/version`
-. $CONFIGDIR/srcarchiveurl
+VERSION=`cat "$CONFIGDIR"/version`
+. "$CONFIGDIR"/srcarchiveurl
 
 vsay() {
     if [ x${INSTALL_DEBUG} = xtrue ] ; then
@@ -59,12 +59,12 @@ fetchurl() {
 	for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
 	    try=$base.$ext
 	    vsay $this: Trying $try ...
-	    if $getter $3/$try $ROOT/$try ; then
+	    if "$getter" "$3"/"$try" "$ROOT"/"$try" ; then
 		fetched=yes
 		vsay $this: Fetching $try was a success.
 		break 2		# get out of both for-loops
 	    else
-		rm -f $ROOT/$try
+		rm -f "$ROOT"/"$try"
 	    fi
 	done
     done
@@ -77,17 +77,17 @@ fetchurl() {
 
 # wrapper for wget
 usewget() {
-    wget -nv -O $2 $1
+    wget -nv -O "$2" "$1"
 }
 
 # wrapper for lynx
 uselynx() {
-    lynx -source $1 >$2
+    lynx -source "$1" >"$2"
 }
 
 # wrapper for curl
 usecurl() {
-    curl -s $1 >$2
+    curl -s "$1" >"$2"
 }
 
 testurlgetter() {
@@ -133,34 +133,34 @@ urlgetter() {
 # wrapper for tar
 un_tar() {
     vsay "$this: Un-TAR-ing $1 archive."
-    tar -xf $2
+    tar -xf "$2"
 }
 
 # wrapper for zcat followed by tar
 un_tar_Z() {
     vsay "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
-    zcat $2 | tar -xf -
+    zcat "$2" | tar -xf -
 }
 
 # wrapper for gunzip followed by tar
 un_tar_gz() {
     vsay "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
-    gunzip -c $2 | tar -xf -
+    gunzip -c "$2" | tar -xf -
 }
 
 # wrapper for bunzip2 followed by tar
 un_tar_bz2() {
     vsay "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
-    bunzip2 -c $2 | tar -xf -
+    bunzip2 -c "$2" | tar -xf -
 }
 
 # unarchive archive without and with version number attached
 unarchive() {
     # $1: descriptive string, $2: archive, $3: unpacker
-    if [ -r $ROOT/$2 ] ; then
-	$3 "$1" $ROOT/$2
-    elif [ -r $ROOT/$VERSION-$2 ]; then
-	$3 "$1" $ROOT/$VERSION-$2
+    if [ -r "$ROOT"/"$2" ] ; then
+	"$3" "$1" "$ROOT"/"$2"
+    elif [ -r "$ROOT"/"$VERSION"-"$2" ]; then
+	$3 "$1" "$ROOT"/"$VERSION"-"$2"
     else
 	return 1
     fi
@@ -180,18 +180,18 @@ unarchive() {
 # no archive is found locally, it invokes $URLGETTER and tries again.
 # The variable $tryfetch is used to make sure this happens only once.
 fetch_n_unpack() {
-    cd $2
-    if unarchive "$1" $4.tgz un_tar_gz ||
-       unarchive "$1" $4.tar.gz un_tar_gz ||
-       unarchive "$1" $4.tar.Z un_tar_Z ||
-       unarchive "$1" $4.tar un_tar ||
-       unarchive "$1" $4.tar.bz2 un_tar_bz2 ||
-       unarchive "$1" $4.tz un_tar_Z
+    cd "$2"
+    if unarchive "$1" "$4".tgz un_tar_gz ||
+       unarchive "$1" "$4".tar.gz un_tar_gz ||
+       unarchive "$1" "$4".tar.Z un_tar_Z ||
+       unarchive "$1" "$4".tar un_tar ||
+       unarchive "$1" "$4".tar.bz2 un_tar_bz2 ||
+       unarchive "$1" "$4".tz un_tar_Z
     then
 	: we are done
     elif [ $tryfetch = yes ] ; then
 	urlgetter
-	$URLGETTER "$1" $4 $SRCARCHIVEURL
+	$URLGETTER "$1" "$4" "$SRCARCHIVEURL"
 	tryfetch=no
 	fetch_n_unpack "$1" "$2" "$3" "$4"
     fi
@@ -202,12 +202,12 @@ fetch_n_unpack() {
 #
 unpack() {
     tryfetch=yes
-    if [ -d $2/$3 ]; then
+    if [ -d "$2"/"$3" ]; then
 	vsay "$this: The $1 tree already exists."
     else
 	fetch_n_unpack "$1" "$2" "$3" "$4"
     fi
-    if [ ! -d $2/$3 ]; then
+    if [ ! -d "$2"/"$3" ]; then
 	echo "$this: !!! Unable to unpack $1 archive."
 	exit 1
     fi
@@ -219,66 +219,66 @@ unpack() {
 
 for i
 do
-    case $i in
+    case "$i" in
       runtime)
-        unpack run-time $ROOT/src runtime runtime
+        unpack run-time "$ROOT"/src runtime runtime
 	;;
       boot.*)
-        unpack bootfiles $ROOT sml.$i $i
+        unpack bootfiles "$ROOT" sml.$i $i
 	;;
       compiler)
-	unpack compiler $ROOT/src compiler compiler
+	unpack compiler "$ROOT"/src compiler compiler
 	;;
       cm)
-	unpack compiler $ROOT/src cm cm
+	unpack compiler "$ROOT"/src cm cm
 	;;
       system)
-	unpack compiler $ROOT/src system system
+	unpack compiler "$ROOT"/src system system
 	;;
       ml-yacc)
-	unpack ML-Yacc $ROOT/src ml-yacc ml-yacc
+	unpack ML-Yacc "$ROOT"/src ml-yacc ml-yacc
 	;;
       ml-lex)
-	unpack ML-Lex $ROOT/src ml-lex ml-lex
+	unpack ML-Lex "$ROOT"/src ml-lex ml-lex
 	;;
       ml-burg)
-        unpack ML-Burg $ROOT/src ml-burg ml-burg
+        unpack ML-Burg "$ROOT"/src ml-burg ml-burg
 	;;
       ml-nlffigen)
-	unpack ML-NLFFI-Gen $ROOT/src ml-nlffigen ml-nlffigen
+	unpack ML-NLFFI-Gen "$ROOT"/src ml-nlffigen ml-nlffigen
 	;;
       nowhere)
-	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
+	unpack "MLRISC Tools Library" "$SRCDIR" MLRISC MLRISC
 	;;
       smlnj-lib)
-        unpack "SML/NJ Library" $SRCDIR smlnj-lib smlnj-lib
+        unpack "SML/NJ Library" "$SRCDIR" smlnj-lib smlnj-lib
 	;;
       cml)
-        unpack CML $SRCDIR cml cml
+        unpack CML "$SRCDIR" cml cml
 	;;
       cml-lib)
-        unpack CML $SRCDIR cml cml
+        unpack CML "$SRCDIR" cml cml
 	;;
       eXene)
-        unpack EXene $SRCDIR eXene eXene
+        unpack EXene "$SRCDIR" eXene eXene
 	;;
       ckit)
-        unpack "C-Kit" $ROOT ckit ckit
+        unpack "C-Kit" "$ROOT" ckit ckit
 	;;
       ml-nlffi-lib)
-        unpack "NLFFI Library" $SRCDIR ml-nlffi-lib ml-nlffi-lib
+        unpack "NLFFI Library" "$SRCDIR" ml-nlffi-lib ml-nlffi-lib
 	;;
       pgraph-util)
-	unpack "CM source code" $SRCDIR cm cm
+	unpack "CM source code" "$SRCDIR" cm cm
 	;;
       mlrisc)
-	unpack "MLRISC Library" $SRCDIR MLRISC MLRISC
+	unpack "MLRISC Library" "$SRCDIR" MLRISC MLRISC
 	;;
       mlrisc-tools)
-	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
+	unpack "MLRISC Tools Library" "$SRCDIR" MLRISC MLRISC
 	;;
       smlnj-c)
-	unpack "SML/NJ-C FFI" $SRCDIR smlnj-c smlnj-c
+	unpack "SML/NJ-C FFI" "$SRCDIR" smlnj-c smlnj-c
 	;;
       doc)
 	echo Package doc is currently unavailable.
