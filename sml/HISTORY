@@ -15,6 +15,17 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/18
+Tag: blume-20020118-ready-for-new-release
+Description:
+
+Made config/srcarchiveurl point to a new place.  (Will provide boot
+files shortly.)
+
+Maybe we christen this to be 110.38?
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/18
 Tag: blume-20020118-more-ffifiddle
 Description:
 
