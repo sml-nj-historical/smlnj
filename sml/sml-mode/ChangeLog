@@ -1,3 +1,17 @@
+1999-06-08  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-proc.el (sml-run): removed dubious code to take care of a supposedly
+	  special case in order not to sent "" when args=nil.
+
+1999-06-07  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-font-lock-syntactic-keywords): added syntactic
+	  fontification for the '   \"' case (exhibited by lexgen.sml).
+
+1999-06-07  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* ALL: the new indentation begins to work.  v3_9_0
+
 1999-05-29  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-defs.el (sml-mode-syntax-table): added ~ of prefix-syntax.
