@@ -350,8 +350,8 @@ fun fillPat(pat, d) =
                              (typ := t; labels)
                   | find _ = (complain EM.COMPLAIN "unresolved flexible record"
                               (fn ppstrm => 
-                                    (PP.add_newline ppstrm;
-                                     PP.add_string ppstrm "pattern: ";
+                                    (PP.newline ppstrm;
+                                     PP.string ppstrm "pattern: ";
                                      PPAbsyn.ppPat env ppstrm
                                         (pat,!Control.Print.printDepth)));
                                raise DontBother)
@@ -1139,7 +1139,7 @@ and mkExp (exp, d) =
 
         | g e = 
              EM.impossibleWithBody "untranslateable expression"
-              (fn ppstrm => (PP.add_string ppstrm " expression: ";
+              (fn ppstrm => (PP.string ppstrm " expression: ";
                             PPAbsyn.ppExp (env,NONE) ppstrm (e, !ppDepth)))
 
    in g exp

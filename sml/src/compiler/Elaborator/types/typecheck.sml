@@ -25,6 +25,7 @@ local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
   structure EU = ElabUtil
   structure ED = ElabDebug
   structure OLL = OverloadLit
+  structure PP = PrettyPrint
 	  
 in 
 
@@ -90,16 +91,16 @@ fun unifyErr{ty1,name1,ty2,name2,message=m,region,kind,kindname,phrase} =
 	      val m = if m="" then name1 ^ " and " ^ name2 ^ " don't agree"
 		      else m
 	  in if name1="" then ()
-             else (add_newline ppstrm; 
-                   add_string ppstrm (name1 ^ ": " ^ pad1);
+             else (newline ppstrm; 
+                   PP.string ppstrm (name1 ^ ": " ^ pad1);
 	           ppType ppstrm ty1); 
 	     if name2="" then ()
-	      else (add_newline ppstrm; 
-                    add_string ppstrm (name2 ^ ": " ^ pad2);
+	      else (newline ppstrm; 
+                    PP.string ppstrm (name2 ^ ": " ^ pad2);
 		    ppType ppstrm ty2);
 	     if kindname="" then ()
-	     else (add_newline ppstrm; add_string ppstrm("in "^kindname^":");
-		   add_break ppstrm (1,2); kind ppstrm (phrase,!printDepth))
+	     else (newline ppstrm; PP.string ppstrm("in "^kindname^":");
+		   break ppstrm {nsp=1,offset=2}; kind ppstrm (phrase,!printDepth))
 	 end));
        false)
 
@@ -163,8 +164,8 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
 			        \names of ALL the fields\n in this context)"
 			    (fn ppstrm =>
 			       (PPType.resetPPType();
-				add_newline ppstrm;
-				add_string ppstrm "type: ";
+				newline ppstrm;
+				PP.string ppstrm "type: ";
 				ppType ppstrm ty));
 			    WILDCARDty)
                          else ty
@@ -353,12 +354,12 @@ fun patType(pat: pat, depth, region) : pat * ty =
                   (message("constructor and argument don't agree in pattern",mode))
 		  (fn ppstrm =>
 		   (PPType.resetPPType();
-		    add_newline ppstrm;
-		    add_string ppstrm "constructor: ";
-		    ppType ppstrm typ; add_newline ppstrm;
-		    add_string ppstrm "argument:    ";
-		    ppType ppstrm argty; add_newline ppstrm;
-		    add_string ppstrm "in pattern:"; add_break ppstrm (1,2);
+		    newline ppstrm;
+		    PP.string ppstrm "constructor: ";
+		    ppType ppstrm typ; newline ppstrm;
+		    PP.string ppstrm "argument:    ";
+		    ppType ppstrm argty; newline ppstrm;
+		    PP.string ppstrm "in pattern:"; break ppstrm {nsp=1,offset=2};
 		    ppPat ppstrm (pat,!printDepth)));
 		 (pat,WILDCARDty))
 	   end
@@ -448,14 +449,14 @@ in
                   (message("selecting a non-existing field from a record",mode))
                   (fn ppstrm =>
                    (PPType.resetPPType();
-                    add_newline ppstrm;
-                    add_string ppstrm "the field name: ";
+                    newline ppstrm;
+                    PP.string ppstrm "the field name: ";
                     (case l of LABEL{name,...} => ppSym ppstrm name);
-                    add_newline ppstrm;
-                    add_string ppstrm "the record type:    ";
-                    ppType ppstrm nty; add_newline ppstrm;
-                    add_string ppstrm "in expression:"; 
-                    add_break ppstrm (1,2);
+                    newline ppstrm;
+                    PP.string ppstrm "the record type:    ";
+                    ppType ppstrm nty; newline ppstrm;
+                    PP.string ppstrm "in expression:"; 
+                    break ppstrm {nsp=1,offset=2};
                     ppExp ppstrm (exp,!printDepth)));
                     (exp, WILDCARDty))
            end
@@ -494,24 +495,24 @@ in
 		   then (err region COMPLAIN
 			  (message("operator and operand don't agree",mode))
 			  (fn ppstrm =>
-			   (add_newline ppstrm;
-			    add_string ppstrm "operator domain: ";
+			   (newline ppstrm;
+			    PP.string ppstrm "operator domain: ";
 			    ppType ppstrm (domain reducedRatorTy);
-			    add_newline ppstrm;
-			    add_string ppstrm "operand:         ";
-			    ppType ppstrm randTy; add_newline ppstrm;
-			    add_string ppstrm "in expression:";
-			    add_break ppstrm (1,2);
+			    newline ppstrm;
+			    PP.string ppstrm "operand:         ";
+			    ppType ppstrm randTy; newline ppstrm;
+			    PP.string ppstrm "in expression:";
+			    break ppstrm {nsp=1,offset=2};
 			    ppExp ppstrm (exp,!printDepth)));
 			 (exp,WILDCARDty))
 		   else (err region COMPLAIN
 			  (message("operator is not a function",mode))
 			  (fn ppstrm =>
-			    (add_newline ppstrm;
-			     add_string ppstrm "operator: ";
-			     ppType ppstrm (ratorTy); add_newline ppstrm;
-			     add_string ppstrm "in expression:";
-			     add_break ppstrm (1,2);
+			    (newline ppstrm;
+			     PP.string ppstrm "operator: ";
+			     ppType ppstrm (ratorTy); newline ppstrm;
+			     PP.string ppstrm "in expression:";
+			     break ppstrm {nsp=1,offset=2};
 			     ppExp ppstrm (exp,!printDepth)));
 			 (exp,WILDCARDty))
 	       end

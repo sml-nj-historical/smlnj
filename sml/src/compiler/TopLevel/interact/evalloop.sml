@@ -12,6 +12,9 @@ local open Environment
       structure T = Time
       structure U = Unsafe
       structure PC = SMLofNJ.Internals.ProfControl
+      structure ED = ElabDebug
+
+      open PP
 in 
 
 exception Interrupt
@@ -94,8 +97,47 @@ fun evalLoop source = let
                     (* refetch loc because execution may 
                        have changed its contents *)
 
+
+		(* start adding testing code of ppast.ppdec here *)
+		val debugging = ref true
+
+		val printDepth = Control_Print.printDepth
+				 
+		fun debugPrint (debugging: bool ref)
+                    (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
+                    if (!debugging) then
+                        with_pp (EM.defaultConsumer())
+                                (fn ppstrm =>
+                                    (openHVBox ppstrm (PP.Rel 0);
+                                     PP.string ppstrm msg;
+                                     newline ppstrm;
+                                     openHVBox ppstrm (PP.Rel 0);
+                                     printfn ppstrm arg;
+                                     closeBox ppstrm;
+                                     newline ppstrm;
+                                     closeBox ppstrm;
+                                     flushStream ppstrm))
+                    else ()
+
+		fun ppAstDebug (msg,dec) =
+		    let fun ppAstDec ppstrm d = 
+                            PPAst.ppDec (statenv,NONE) ppstrm (d,!printDepth)
+                     in debugPrint (Control.printAst) (msg, ppAstDec, dec)
+                    end
+		    
+		fun ppAbsynDebug (msg,dec) =
+		    let fun ppAbsynDec ppstrm d = 
+                            PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
+                     in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
+                    end
+		    
             in
-		PrettyPrint.with_pp
+		(* testing code to print ast *)
+		ppAstDebug("AST::",ast);
+		(* testing code to print absyn *)
+		ppAbsynDebug("ABSYN::",absyn);
+
+		PP.with_pp
 		    (#errConsumer source)
 		    (fn ppstrm => PPDec.ppDec 
 			(E.layerEnv(newLocalEnv, #get base ()))

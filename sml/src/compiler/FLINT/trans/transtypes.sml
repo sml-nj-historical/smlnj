@@ -49,14 +49,14 @@ in
 val env = StaticEnv.empty
 fun ppType x = 
  ((PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.add_string ppstrm "find: ";
+           (fn ppstrm => (PP.string ppstrm "find: ";
                           PPType.resetPPType();
                           PPType.ppType env ppstrm x)))
   handle _ => say "fail to print anything")
 
 fun ppTycon x = 
  ((PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.add_string ppstrm "find: ";
+           (fn ppstrm => (PP.string ppstrm "find: ";
                           PPType.resetPPType();
                           PPType.ppTycon env ppstrm x)))
   handle _ => say "fail to print anything")

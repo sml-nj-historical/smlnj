@@ -288,8 +288,8 @@ in
 			 before TStamp.setTime (binname, SmlInfo.lastseen i))
 			handle exn => let
 			    fun ppb pps =
-				(PP.add_newline pps;
-				 PP.add_string pps (General.exnMessage exn))
+				(PP.newline pps;
+				 PP.string pps (General.exnMessage exn))
 			in
 			    SmlInfo.error gp i EM.WARN
 					  ("failed to write " ^ binname) ppb;

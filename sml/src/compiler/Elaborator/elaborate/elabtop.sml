@@ -136,8 +136,8 @@ fun elab(SeqDec decs, env0, top, region) =
       let val _ = debugPrint("top level open: ",
                     (fn pps => fn paths =>
                        PPUtil.ppSequence pps
-                         {sep=(fn pps => PP.add_string pps ","),
-                          pr=PPUtil.ppSymPath, style=PP.INCONSISTENT}
+                         {sep=(fn pps => PP.string pps ","),
+                          pr=PPUtil.ppSymPath, style=PPUtil.INCONSISTENT}
                        (List.map SymPath.SPATH paths)), paths)
 
           val err = error region

@@ -1,16 +1,19 @@
 (* Copyright 1996 by AT&T Bell Laboratories *)
+(* Copyright 2003 by The SML/NJ Fellowship *)
 (* ppval.sml *)
+
+(* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
 signature PPVAL = 
 sig
-  val ppAccess: PrettyPrint.ppstream -> Access.access -> unit
-  val ppRep: PrettyPrint.ppstream -> Access.conrep -> unit
-  val ppDcon: PrettyPrint.ppstream -> VarCon.datacon -> unit
-  val ppVar: PrettyPrint.ppstream -> VarCon.var -> unit
-  val ppDebugDcon : PrettyPrint.ppstream
+  val ppAccess: PrettyPrint.stream -> Access.access -> unit
+  val ppRep: PrettyPrint.stream -> Access.conrep -> unit
+  val ppDcon: PrettyPrint.stream -> VarCon.datacon -> unit
+  val ppVar: PrettyPrint.stream -> VarCon.var -> unit
+  val ppDebugDcon : PrettyPrint.stream
 		    -> StaticEnv.staticEnv -> VarCon.datacon -> unit
   val ppDebugVar: (II.ii -> string) ->
-		  PrettyPrint.ppstream 
+		  PrettyPrint.stream 
 		  -> StaticEnv.staticEnv -> VarCon.var -> unit
 end (* signature PPVAL *)
 
@@ -30,7 +33,7 @@ val internals = ElabControl.internals
 
 fun C f x y = f y x
 
-val pps = PP.add_string
+val pps = PP.string
 val ppType = PPType.ppType
 val ppTycon = PPType.ppTycon
 val ppTyfun = PPType.ppTyfun
@@ -39,56 +42,50 @@ fun ppAccess ppstrm a = pps ppstrm (" ["^(A.prAcc a)^"]")
 
 fun ppInfo ii2string ppstrm a = pps ppstrm (" ["^(ii2string a)^"]")
 
-fun ppRep ppstrm =
-    let val {pps,...} = en_pp ppstrm
-     in fn rep => pps (A.prRep rep)
-    end
+fun ppRep ppstrm rep = PP.string ppstrm (A.prRep rep)
 
-fun ppCsig ppstrm =
-    let val {pps, ...} = en_pp ppstrm
-     in fn csig => pps (A.prCsig csig)
-    end
+fun ppCsig ppstrm csig = PP.string ppstrm (A.prCsig csig)
 
 fun ppDcon ppstrm =
     let fun ppD(DATACON{name, rep=A.EXN acc, ...}) =
-	       (ppSym ppstrm (name); 
+	       (ppSym ppstrm name;
 		if !internals then ppAccess ppstrm acc else ())
-	  | ppD(DATACON{name,...}) = ppSym ppstrm (name)
+	  | ppD(DATACON{name,...}) = ppSym ppstrm name
      in ppD
     end
 
 fun ppDebugDcon ppstrm env (DATACON{name,rep,const,typ,sign,lazyp}) =
-    let val {begin_block,end_block,pps,add_break,...} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
 	val ppSym = ppSym ppstrm
-     in begin_block CONSISTENT 3;
+     in openHVBox 3;
         pps "DATACON";
-	add_break(0,0);
-	pps "{name = "; ppSym name; add_comma_nl ppstrm;
-	pps "const = "; pps (Bool.toString const); add_comma_nl ppstrm;
-	pps "typ = "; ppType env ppstrm typ; add_comma_nl ppstrm;
-	pps "lazyp = "; pps (Bool.toString lazyp); add_comma_nl ppstrm;
-	pps "conrep ="; ppRep ppstrm rep; add_comma_nl ppstrm;
+	break{nsp=0,offset=0};
+	pps "{name = "; ppSym name; ppcomma_nl ppstrm;
+	pps "const = "; pps (Bool.toString const); ppcomma_nl ppstrm;
+	pps "typ = "; ppType env ppstrm typ; ppcomma_nl ppstrm;
+	pps "lazyp = "; pps (Bool.toString lazyp); ppcomma_nl ppstrm;
+	pps "conrep ="; ppRep ppstrm rep; ppcomma_nl ppstrm;
         pps "sign = ["; ppCsig ppstrm sign; pps "]}";
-        end_block()
+        closeBox()
     end
 
 fun ppDatacon (env:StaticEnv.staticEnv,DATACON{name,typ,...}) ppstrm =
-    let val {begin_block,end_block,pps,...} = en_pp ppstrm
-     in begin_block INCONSISTENT 0;
+    let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
+     in openHOVBox 0;
 	ppSym ppstrm name; pps " : "; ppType env ppstrm typ;
-	end_block()
+	closeBox()
     end
 
 fun ppConBinding ppstrm =
-    let val {begin_block,end_block,pps,...} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	fun ppCon (DATACON{name, typ, rep=A.EXN _, ...}, env) =
-		(begin_block CONSISTENT 0;
+		(openHVBox 0;
 		 pps "exception "; ppSym ppstrm name; 
                  if BasicTypes.isArrowType typ then
                    (pps " of "; 
    		    ppType env ppstrm (BasicTypes.domain typ))
                  else ();
-		 end_block())
+		 closeBox())
 	  | ppCon (con,env) = 
 	      let exception Hidden
 		  val visibleDconTyc =
@@ -103,10 +100,10 @@ fun ppConBinding ppstrm =
 			     handle Hidden => false)
 		      end
 	       in if !internals orelse not visibleDconTyc 
-	          then (begin_block CONSISTENT 0;
+	          then (openHVBox 0;
 			pps "con ";
 			ppDatacon(env,con) ppstrm;
-		        end_block())
+		        closeBox())
 	          else ()
 	      end
      in ppCon
@@ -116,61 +113,61 @@ fun ppVar ppstrm (VALvar {access,path,...}) =
       (pps ppstrm (SymPath.toString path);
        if !internals then ppAccess ppstrm access else ())
   | ppVar ppstrm (OVLDvar {name,...}) = ppSym ppstrm (name)
-  | ppVar ppstrm (ERRORvar) = add_string ppstrm "<errorvar>"
+  | ppVar ppstrm (ERRORvar) = PP.string ppstrm "<errorvar>"
 
 fun ppDebugVar ii2string ppstrm env  = 
-    let val {begin_block,end_block,pps,...} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	val ppAccess = ppAccess ppstrm
         val ppInfo = ppInfo ii2string ppstrm
 	fun ppDV(VALvar {access,path,typ,info}) = 
-	     (begin_block CONSISTENT 0;
+	     (openHVBox 0;
 	      pps "VALvar";
-	      begin_block CONSISTENT 3;
-	      pps "({access="; ppAccess access; add_comma_nl ppstrm;
-              pps "info="; ppInfo info; add_comma_nl ppstrm;
-	      pps "path="; pps (SymPath.toString path); add_comma_nl ppstrm;
+	      openHVBox 3;
+	      pps "({access="; ppAccess access; ppcomma_nl ppstrm;
+              pps "info="; ppInfo info; ppcomma_nl ppstrm;
+	      pps "path="; pps (SymPath.toString path); ppcomma_nl ppstrm;
 	      pps "typ=ref "; ppType env ppstrm (!typ); 
 	      pps "})";
-	      end_block(); end_block())
+	      closeBox(); closeBox())
 	  | ppDV (OVLDvar {name,options,scheme}) = 
-	     (begin_block CONSISTENT 0;
+	     (openHVBox 0;
 	      pps "OVLDvar";
-	      begin_block CONSISTENT 3;
-	      pps "({name="; ppSym ppstrm (name); add_comma_nl ppstrm;
+	      openHVBox 3;
+	      pps "({name="; ppSym ppstrm (name); ppcomma_nl ppstrm;
 	      pps "options=["; 
 	      (ppvseq ppstrm 0 ","
 	       (fn ppstrm => fn {indicator,variant} =>
 		  (pps "{indicator=";ppType env ppstrm  indicator; 
-		   add_comma_nl ppstrm;
+		   ppcomma_nl ppstrm;
 		   pps " variant =";
 		   ppDebugVar ii2string ppstrm env variant; pps "}"))
 	       (!options));
-	      pps "]"; add_comma_nl ppstrm;
+	      pps "]"; ppcomma_nl ppstrm;
 	      pps "scheme="; ppTyfun env ppstrm scheme; pps "})";
-	      end_block();
-	      end_block())
+	      closeBox();
+	      closeBox())
 	  | ppDV (ERRORvar) = pps "<ERRORvar>"
      in ppDV
     end
 
 fun ppVariable ppstrm  =
-    let val {begin_block,end_block,pps,...} = en_pp ppstrm
+    let val {openHVBox, openHOVBox,closeBox,pps,...} = en_pp ppstrm
 	fun ppV(env:StaticEnv.staticEnv,VALvar{path,access,typ,info}) = 
-	      (begin_block CONSISTENT 0;
+	      (openHVBox 0;
 	       pps(SymPath.toString path);
 	       if !internals then ppAccess ppstrm access else ();
 	       pps " : "; ppType env ppstrm (!typ);
-	       end_block())
+	       closeBox())
 	  | ppV (env,OVLDvar {name,options=ref optl,scheme=TYFUN{body,...}}) =
-	      (begin_block CONSISTENT 0;
+	      (openHVBox 0;
 	       ppSym ppstrm (name); pps " : "; ppType env ppstrm body; 
 	       pps " as ";
 	       ppSequence ppstrm
-		 {sep=C PrettyPrint.add_break(1,0),
-		  pr=(fn ppstrm => fn{variant,...} =>ppV(env,variant)),
+		 {sep=C PP.break {nsp=1,offset=0},
+		  pr=(fn ppstrm => fn{variant,...} => ppV(env,variant)),
 		  style=CONSISTENT}
 		 optl;
-	       end_block())
+	       closeBox())
 	  | ppV(_,ERRORvar) = pps "<ERRORvar>"
      in ppV
     end

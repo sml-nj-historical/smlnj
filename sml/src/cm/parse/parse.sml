@@ -176,10 +176,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		      | loop (g0, (g, (s, p1, p2)) :: t) = let
 			    val s = EM.matchErrorString s (p1, p2)
 			in
-			    PrettyPrint.add_newline pps;
-			    PrettyPrint.add_string pps s;
-			    PrettyPrint.add_string pps ": importing ";
-			    PrettyPrint.add_string pps (SrcPath.descr g0);
+			    PrettyPrint.newline pps;
+			    PrettyPrint.string pps s;
+			    PrettyPrint.string pps ": importing ";
+			    PrettyPrint.string pps (SrcPath.descr g0);
 			    loop (g, t)
 			end
 		in
@@ -213,8 +213,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun pphist pps = let
 			fun loop [] = ()
 			  | loop (h :: t) =
-			    (PrettyPrint.add_newline pps;
-			     PrettyPrint.add_string pps (SrcPath.descr h);
+			    (PrettyPrint.newline pps;
+			     PrettyPrint.string pps (SrcPath.descr h);
 			     loop t)
 		    in
 			loop (rev cyc)

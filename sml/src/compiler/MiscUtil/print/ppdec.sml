@@ -3,7 +3,7 @@
 
 signature PPDEC =
 sig
-  val ppDec : Environment.environment -> PrettyPrint.ppstream 
+  val ppDec : Environment.environment -> PrettyPrint.stream 
                 -> (Absyn.dec * Access.lvar list) -> unit
   val debugging : bool ref
 end (* signature PPDEC *)
@@ -15,7 +15,7 @@ local
   structure S = Symbol
   structure IP = InvPath
   structure M = Modules
-  structure V = VarCon
+  structure V = VarCon structure PP = PrettyPrint
   open Types VarCon Modules Bindings Fixity Absyn
        PrettyPrint PPUtil PPType PPObj Access
 in 
@@ -40,7 +40,7 @@ val anonFsym = S.fctSymbol "<anonymousFsig>"
 fun pplist_nl ppstrm pr =
   let fun pp [] = ()
         | pp [el] = pr el
-        | pp (el::rst) = (pr el; add_newline ppstrm; pp rst)
+        | pp (el::rst) = (pr el; PP.newline ppstrm; pp rst)
    in pp
   end
 
@@ -51,13 +51,13 @@ fun xtract (v, pos) = Unsafe.Object.nth (v, pos)
 exception OVERLOAD
 
 fun ppDec ({static,dynamic,...}: Environment.environment)
-          (ppstrm: ppstream) (dec: Absyn.dec, exportLvars) =
+          (ppstrm: PP.stream) (dec: Absyn.dec, exportLvars) =
    let val dec = (* pruneDec *) dec
 
        fun isExport (x : Access.lvar, []) = false
          | isExport (x, a::r) = if x = a then true else isExport(x, r)
 
-       val pps = add_string ppstrm
+       val pps = PP.string ppstrm
 	(* trueValType: get the type of the bound variable from static,
 	   since the stamps in the absyn haven't been converted by the pickler *)
        fun trueValType path =
@@ -90,12 +90,12 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 
        fun ppVar (VALvar{path, access, typ=(t0 as ref ty), info}) =
             if isLazyBogus path then () else
-             (begin_block ppstrm CONSISTENT 0;
-	      begin_block ppstrm INCONSISTENT 2;
-	      add_string ppstrm "val "; 
+             (openHVBox ppstrm (PP.Rel 0);
+	      openHOVBox ppstrm (PP.Rel 2);
+	      PP.string ppstrm "val "; 
 	      ppSymPath ppstrm path; 
-	      add_string ppstrm " =";
-	      add_break ppstrm (1,0);
+	      PP.string ppstrm " =";
+	      break ppstrm {nsp=1,offset=0};
 
 	      case access
 	       of LVAR lv =>  
@@ -107,23 +107,23 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 				     val obj = xtract (objv, pos)
                                   in ppObj static ppstrm 
                                        (obj, ty, !printDepth);
-				     add_break ppstrm (1,0);
-				     add_string ppstrm ": "; 
+				     break ppstrm {nsp=1,offset=0};
+				     PP.string ppstrm ": "; 
 			 	     ppType static ppstrm (trueValType path 
 					   handle OVERLOAD => ty)
                                  end)
-                           else (add_string ppstrm "<hidden-value>";
-				 add_break ppstrm (1,0);
-				 add_string ppstrm ": "; 
+                           else (PP.string ppstrm "<hidden-value>";
+				 break ppstrm {nsp=1,offset=0};
+				 PP.string ppstrm ": "; 
 			 	 ppType static ppstrm ty)
-		       | _ => add_string ppstrm "<PPDec.getVal failure>")
+		       | _ => PP.string ppstrm "<PPDec.getVal failure>")
                
-           (*** | PRIMOP _ => add_string ppstrm "<primop>" *)
+           (*** | PRIMOP _ => PP.string ppstrm "<primop>" *)
  	        | _ => ErrorMsg.impossible "ppDec.ppVb.ppBind.VARpat";
 
-	      end_block ppstrm;
-	      add_newline ppstrm;
- 	      end_block ppstrm)
+	      closeBox ppstrm;
+	      PP.newline ppstrm;
+ 	      closeBox ppstrm)
 
          | ppVar _ = ()
 
@@ -147,43 +147,43 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	   let val {path,tyfun=TYFUN{arity,body},...} =
 		   getOpt (trueTycon (#path dt), dt)
 	   in
-	       begin_block ppstrm CONSISTENT 0;
-	       begin_block ppstrm INCONSISTENT 2;
-	       add_string ppstrm "type"; 
+	       openHVBox ppstrm (PP.Rel 0);
+	       openHOVBox ppstrm (PP.Rel 2);
+	       PP.string ppstrm "type"; 
 	       ppFormals ppstrm arity; 
-	       add_break ppstrm (1,0);
+	       break ppstrm {nsp=1,offset=0};
 	       ppSym ppstrm (InvPath.last path); 
-	       add_string ppstrm " ="; 
-	       add_break ppstrm (1,0);
+	       PP.string ppstrm " ="; 
+	       break ppstrm {nsp=1,offset=0};
 	       ppType static ppstrm body;
-	       end_block ppstrm;
-	       add_newline ppstrm;
-	       end_block ppstrm
+	       closeBox ppstrm;
+	       PP.newline ppstrm;
+	       closeBox ppstrm
 	   end
 	 | ppTb _ = bug "ppTb:DEFtyc"
 
 	and ppAbsTyc(GENtyc { path, arity, eq, ... }) =
 	    (case !eq of
 		 ABS =>
-		 (begin_block ppstrm CONSISTENT 0;
-		  begin_block ppstrm INCONSISTENT 2;
-		  add_string ppstrm "type"; 
+		 (openHVBox ppstrm (PP.Rel 0);
+		  openHOVBox ppstrm (PP.Rel 2);
+		  PP.string ppstrm "type"; 
 		  ppFormals ppstrm arity; 
-		  add_break ppstrm (1,0);
+		  break ppstrm {nsp=1,offset=0};
 		  ppSym ppstrm (InvPath.last path); 
-		  end_block ppstrm;
-		  add_newline ppstrm;
-		  end_block ppstrm)
+		  closeBox ppstrm;
+		  PP.newline ppstrm;
+		  closeBox ppstrm)
 	       | _ => 
-		 (begin_block ppstrm CONSISTENT 0;
-	          begin_block ppstrm INCONSISTENT 2;
-	          add_string ppstrm "type"; 
+		 (openHVBox ppstrm (PP.Rel 0);
+	          openHOVBox ppstrm (PP.Rel 2);
+	          PP.string ppstrm "type"; 
 	          ppFormals ppstrm arity; 
-	          add_break ppstrm (1,0);
+	          break ppstrm {nsp=1,offset=0};
 	          ppSym ppstrm (InvPath.last path); 
-	          end_block ppstrm;
-		  add_newline ppstrm;
-	          end_block ppstrm))
+	          closeBox ppstrm;
+		  PP.newline ppstrm;
+	          closeBox ppstrm))
           | ppAbsTyc _ = bug "unexpected case in ppAbsTyc"
 
 	and ppDataTyc (GENtyc { path, arity,
@@ -196,97 +196,97 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 			    (ppSym ppstrm name; 
 			     case domain
 			      of SOME dom =>
-			         (add_string ppstrm " of ";
+			         (PP.string ppstrm " of ";
 				  ppDconDomain (members,freetycs)
 					       static ppstrm dom)
 			       | NONE => ())
 		    in
-			add_string ppstrm "= "; ppDcon first;
-			app (fn d => (add_break ppstrm (1,0);
-				      add_string ppstrm "| "; ppDcon d))
+			PP.string ppstrm "= "; ppDcon first;
+			app (fn d => (break ppstrm {nsp=1,offset=0};
+				      PP.string ppstrm "| "; ppDcon d))
 			    rest
 		    end
 		val {tycname,dcons,...} = Vector.sub(members,index)
 	    in
-		begin_block ppstrm CONSISTENT 0;
-		begin_block ppstrm CONSISTENT 0;
-		add_string ppstrm "datatype";
+		openHVBox ppstrm (PP.Rel 0);
+		openHVBox ppstrm (PP.Rel 0);
+		PP.string ppstrm "datatype";
 		ppFormals ppstrm arity;
-		add_string ppstrm " ";
+		PP.string ppstrm " ";
 		ppSym ppstrm (InvPath.last path); 
-		add_break ppstrm (1,2);
-		begin_block ppstrm CONSISTENT 0;
+		break ppstrm {nsp=1,offset=2};
+		openHVBox ppstrm (PP.Rel 0);
 		ppDcons dcons;
-		end_block ppstrm;
-		end_block ppstrm;
-		add_newline ppstrm;
-		end_block ppstrm
+		closeBox ppstrm;
+		closeBox ppstrm;
+		PP.newline ppstrm;
+		closeBox ppstrm
 	    end
 	  | ppDataTyc _ = bug "unexpected case in ppDataTyc"
 
 	and ppEb(EBgen{exn=DATACON{name,...},etype,...}) =
-	      (begin_block ppstrm CONSISTENT 0;
-	       begin_block ppstrm INCONSISTENT 2;
-	       add_string ppstrm "exception "; 
+	      (openHVBox ppstrm (PP.Rel 0);
+	       openHOVBox ppstrm (PP.Rel 2);
+	       PP.string ppstrm "exception "; 
 	       ppSym ppstrm name;
 	       case etype
 		 of NONE => ()
 		  | SOME ty' => 
-		           (add_string ppstrm " of"; 
-			    add_break ppstrm (1,0);
+		           (PP.string ppstrm " of"; 
+			    break ppstrm {nsp=1,offset=0};
 			    ppType static ppstrm ty');
-	       end_block ppstrm;
- 	       add_newline ppstrm;
-	       end_block ppstrm)
+	       closeBox ppstrm;
+ 	       PP.newline ppstrm;
+	       closeBox ppstrm)
 
 	  | ppEb(EBdef{exn=DATACON{name,...},edef=DATACON{name=dname,...}}) =
-	      (begin_block ppstrm CONSISTENT 0;
-	       begin_block ppstrm INCONSISTENT 2;
-	       add_string ppstrm "exception "; 
+	      (openHVBox ppstrm (PP.Rel 0);
+	       openHOVBox ppstrm (PP.Rel 2);
+	       PP.string ppstrm "exception "; 
 	       ppSym ppstrm name;
-	       add_string ppstrm " ="; 
-	       add_break ppstrm (1,0);
+	       PP.string ppstrm " ="; 
+	       break ppstrm {nsp=1,offset=0};
 	       ppSym ppstrm dname;
-	       end_block ppstrm;
- 	       add_newline ppstrm;
-	       end_block ppstrm)
+	       closeBox ppstrm;
+ 	       PP.newline ppstrm;
+	       closeBox ppstrm)
 
 	and ppStrb isAbs (STRB{name,str,...}) =    (* isAbs strvar *)
-	    (begin_block ppstrm CONSISTENT 0;
-	      begin_block ppstrm CONSISTENT 0;
+	    (openHVBox ppstrm (PP.Rel 0);
+	      openHVBox ppstrm (PP.Rel 0);
 	       pps "structure ";
 	       ppSym ppstrm name;
 	       pps " :";
-	       add_break ppstrm (1,2);
+	       break ppstrm {nsp=1,offset=2};
 	       PPModules.ppStructure ppstrm (str,static,!signatures);
-	      end_block ppstrm;
-	      add_newline ppstrm;
-	     end_block ppstrm)
+	      closeBox ppstrm;
+	      PP.newline ppstrm;
+	     closeBox ppstrm)
 
 	and ppFctb(FCTB{name,fct,...}) =
-	    (begin_block ppstrm CONSISTENT 0;
+	    (openHVBox ppstrm (PP.Rel 0);
 	      pps "functor ";
 	      ppSym ppstrm name;
 	      case fct of
 		  M.FCT { sign, ... } =>
 		    PPModules.ppFunsig ppstrm (sign, static, !signatures)
 		| _ => pps " : <sig>";  (* blume: cannot (?) happen *)
-	      add_newline ppstrm;
-	    end_block ppstrm)
+	      PP.newline ppstrm;
+	    closeBox ppstrm)
 
         and ppSigb sign = 
 	    let val name = case sign 
                             of M.SIG { name, ... } => getOpt (name, anonSym)
                              | _ => anonSym
 
-             in (begin_block ppstrm CONSISTENT 0;
-		  begin_block ppstrm CONSISTENT 0;
+             in (openHVBox ppstrm (PP.Rel 0);
+		  openHVBox ppstrm (PP.Rel 0);
    	           pps "signature "; ppSym ppstrm name; pps " =";
-	           add_break ppstrm (1,2);
+	           break ppstrm {nsp=1,offset=2};
 	           PPModules.ppSignature ppstrm (sign,static,!signatures);
-	          end_block ppstrm;
-	         add_newline ppstrm;
-	         end_block ppstrm)
+	          closeBox ppstrm;
+	         PP.newline ppstrm;
+	         closeBox ppstrm)
             end
 
         and ppFsigb fsig = 
@@ -294,43 +294,43 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
                             of M.FSIG{kind=SOME s, ...} => s
                              | _ => anonFsym
 
-	     in (begin_block ppstrm CONSISTENT 0;
+	     in (openHVBox ppstrm (PP.Rel 0);
 	         pps "funsig "; ppSym ppstrm name; 
 	         PPModules.ppFunsig ppstrm (fsig,static,!signatures);
-	         add_newline ppstrm;
-	         end_block ppstrm)
+	         PP.newline ppstrm;
+	         closeBox ppstrm)
             end
 
 	and ppFixity{fixity,ops} =
-	    (begin_block ppstrm CONSISTENT 0;
-	     begin_block ppstrm CONSISTENT 0;
-	     add_string ppstrm (Fixity.fixityToString fixity);
-	     PPUtil.ppSequence ppstrm {sep=C PrettyPrint.add_break (1,0),
+	    (openHVBox ppstrm (PP.Rel 0);
+	     openHVBox ppstrm (PP.Rel 0);
+	     PP.string ppstrm (Fixity.fixityToString fixity);
+	     PPUtil.ppSequence ppstrm {sep=C break {nsp=1,offset=0},
 			               pr=PPUtil.ppSym,
 			               style=INCONSISTENT}
 	                       ops;
-	     end_block ppstrm;
-	     add_newline ppstrm;		       
-	     end_block ppstrm)
+	     closeBox ppstrm;
+	     PP.newline ppstrm;		       
+	     closeBox ppstrm)
 
 	and ppOpen(pathStrs) =  
 	    if !printOpens
-	    then (begin_block ppstrm CONSISTENT 0;
+	    then (openHVBox ppstrm (PP.Rel 0);
 		   app (fn (path,str) =>
 			 PPModules.ppOpen ppstrm (path,str,static,!signatures))
 		       pathStrs;
-		  end_block ppstrm)
-	    else (begin_block ppstrm CONSISTENT 0;
-		  begin_block ppstrm CONSISTENT 0;
-		  add_string ppstrm "open ";
-		  ppSequence ppstrm {sep=C PrettyPrint.add_break (1,0),
+		  closeBox ppstrm)
+	    else (openHVBox ppstrm (PP.Rel 0);
+		  openHVBox ppstrm (PP.Rel 0);
+		  PP.string ppstrm "open ";
+		  ppSequence ppstrm {sep=C break {nsp=1,offset=0},
 			     pr=(fn ppstrm => fn (path,_)
 				    => ppSymPath ppstrm path),
 			     style=INCONSISTENT}
 			     pathStrs;
-		  end_block ppstrm;
-		  add_newline ppstrm;		       
-		  end_block ppstrm)
+		  closeBox ppstrm;
+		  PP.newline ppstrm;		       
+		  closeBox ppstrm)
 
 	and ppDec0 dec =
 	    case (resetPPType(); dec)
@@ -358,14 +358,14 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
                       | _ => app ppDec0 decs)
 	       | FIXdec fixd => ppFixity fixd
 	       | OVLDdec _ => 
-                   (add_string ppstrm "overload"; add_newline ppstrm)
+                   (PP.string ppstrm "overload"; PP.newline ppstrm)
 	       | OPENdec pathStrs => ppOpen pathStrs
 	       | MARKdec(dec,_) => ppDec0 dec
 
-     in begin_block ppstrm CONSISTENT 0;
+     in openHVBox ppstrm (PP.Rel 0);
 	ppDec0 dec;
-	end_block ppstrm;
-	flush_ppstream ppstrm
+	closeBox ppstrm;
+	flushStream ppstrm
     end
 
 end (* local *)

@@ -144,6 +144,8 @@ sig
   structure Print : PRINTCONTROL
   structure FLINT : FLINTCONTROL
   val debugging : bool ref
+  val printAst : bool ref
+  val printAbsyn : bool ref
 
   include BASIC_CONTROL
   (* provides: val printWarnings : bool ref

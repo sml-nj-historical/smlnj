@@ -114,9 +114,9 @@ in
 
 	    fun exn_err (msg, error, descr, exn) = let
 		fun ppb pps =
-		    (PP.add_newline pps;
-		     PP.add_string pps (General.exnMessage exn);
-		     PP.add_newline pps)
+		    (PP.newline pps;
+		     PP.string pps (General.exnMessage exn);
+		     PP.newline pps)
 	    in
 		error (concat [msg, " ", descr]) ppb;
 		raise Link exn

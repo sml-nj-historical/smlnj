@@ -8,7 +8,7 @@ signature PPOBJ =
 sig
   type object
   val ppObj : StaticEnv.staticEnv
-              -> PrettyPrint.ppstream
+              -> PrettyPrint.stream
                  -> object * Types.ty * int
                     -> unit
   val debugging : bool ref
@@ -153,15 +153,15 @@ fun printWithSharing ppstrm (obj,accu,printer) =
     if !Control.Print.printLoop then
       let val (seen,nb) = isSeen obj accu
        in if seen then
-	     (PP.add_string ppstrm "%";
-	      PP.add_string ppstrm (Int.toString nb))
+	     (PP.string ppstrm "%";
+	      PP.string ppstrm (Int.toString nb))
 	  else let val modif = ref NONE
 		   val nlAccu = (Unsafe.cast obj : unit ref,modif) :: accu
 	        in printer (obj,nlAccu);
 		   case !modif 
 		     of NONE => () 
-		      | SOME i => (PP.add_string ppstrm " as %";
-				   PP.add_string ppstrm (Int.toString i))
+		      | SOME i => (PP.string ppstrm " as %";
+				   PP.string ppstrm (Int.toString i))
 	       end
       end
     else printer (obj,accu)
@@ -211,7 +211,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		    depth:int, accu) =
         ppVal' (obj, ty, membersOp, depth, noparen, noparen, accu)
 
-    and ppVal' (_,_,_,0,_,_,_) = add_string ppstrm  "#"
+    and ppVal' (_,_,_,0,_,_,_) = PP.string ppstrm  "#"
       | ppVal' (obj: object, ty: T.ty, membersOp: (T.tycon list * T.tycon list) option, 
                 depth: int, l: F.fixity, r: F.fixity, accu) : unit =
        ((case ty
@@ -232,12 +232,12 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 	   | T.CONty(tyc as T.GENtyc { kind, stamp, eq, ... }, argtys) =>
 	     (case (kind, !eq)
 	       of (T.PRIMITIVE _, _) =>
-		  let fun ppWord s = PP.add_string ppstrm ("0wx"^s)
+		  let fun ppWord s = PP.string ppstrm ("0wx"^s)
 		  in
 	              if TU.eqTycon(tyc,BT.intTycon) then
-			  add_string ppstrm (Int.toString(Obj.toInt obj))
+			  PP.string ppstrm (Int.toString(Obj.toInt obj))
 		      else if TU.eqTycon(tyc,BT.int32Tycon) then
-			  add_string ppstrm (Int32.toString(Obj.toInt32 obj))
+			  PP.string ppstrm (Int32.toString(Obj.toInt32 obj))
 	              else if TU.eqTycon(tyc,BT.wordTycon) then 
 			  ppWord (Word.toString(Obj.toWord obj))
 	              else if TU.eqTycon(tyc,BT.word8Tycon) then 
@@ -245,29 +245,29 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 	              else if TU.eqTycon(tyc,BT.word32Tycon) then 
 			  ppWord (Word32.toString(Obj.toWord32 obj))
 	              else if TU.eqTycon(tyc,BT.realTycon) then
-			  add_string ppstrm (Real.toString(Obj.toReal obj))
+			  PP.string ppstrm (Real.toString(Obj.toReal obj))
 	              else if TU.eqTycon(tyc,BT.stringTycon) then
 			  PPUtil.pp_mlstr ppstrm (Obj.toString obj)
 	              else if TU.eqTycon(tyc,BT.charTycon) then
-			  (add_string ppstrm "#";
+			  (PP.string ppstrm "#";
 			   PPUtil.pp_mlstr ppstrm
 					(String.str(Char.chr(Obj.toInt obj))))
 	              else if TU.eqTycon(tyc,BT.arrowTycon) then
-			  add_string ppstrm  "fn"
+			  PP.string ppstrm  "fn"
 	              else if TU.eqTycon(tyc,BT.exnTycon) then
 			  let val name = General.exnName(Obj.toExn obj)
 			  in
-			      add_string ppstrm name;
-			      add_string ppstrm "(-)"
+			      PP.string ppstrm name;
+			      PP.string ppstrm "(-)"
 			  end
 	              else if TU.eqTycon(tyc,BT.contTycon) then
-			  add_string ppstrm  "cont"
+			  PP.string ppstrm  "cont"
 	              else if TU.eqTycon(tyc,BT.vectorTycon) then 
 			  ppVector(Obj.toVector obj, hd argtys,
 				   membersOp, depth,
 				   !Control.Print.printLength, accu)
 			  handle Obj.Representation =>
-				 add_string ppstrm  "prim?"
+				 PP.string ppstrm  "prim?"
 	              else if TU.eqTycon(tyc,BT.arrayTycon) then
 			  (printWithSharing ppstrm
 			    (obj,accu,
@@ -283,19 +283,19 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 				   | _ => bug "array (neither Real nor Poly)"
 				     ))
 			    handle Obj.Representation =>
-				   add_string ppstrm  "prim?")
-	              else add_string ppstrm  "prim?"
+				   PP.string ppstrm  "prim?")
+	              else PP.string ppstrm  "prim?"
 		  end
 		| (T.DATATYPE _,T.ABS) =>
 		  (PPTable.pp_object ppstrm stamp obj 
-		   handle PP_NOT_INSTALLED => add_string ppstrm  "-" )
+		   handle PP_NOT_INSTALLED => PP.string ppstrm  "-" )
 		| (T.DATATYPE{index,stamps,
 			      family as {members,...}, freetycs, root}, _) =>
 		  if TU.eqTycon(tyc,BT.ulistTycon) then
 	              ppUrList(obj,hd argtys,membersOp,depth,
 			       !Control.Print.printLength,accu)
 		  else if TU.eqTycon(tyc,BT.suspTycon) then 
-                      add_string ppstrm  "$$"  (* LAZY *)
+                      PP.string ppstrm  "$$"  (* LAZY *)
 		  else if TU.eqTycon(tyc,BT.listTycon) then
 		      ppList(obj,hd argtys,membersOp,depth,
 			     !Control.Print.printLength,accu)
@@ -318,8 +318,8 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
                                                      root, family)),
 				  argtys',depth,l,r,accu)
 		       end
-		| _ => add_string ppstrm "-")
-	   | T.CONty(tyc as T.RECORDtyc [], _) => add_string ppstrm  "()"
+		| _ => PP.string ppstrm "-")
+	   | T.CONty(tyc as T.RECORDtyc [], _) => PP.string ppstrm  "()"
 	   | T.CONty(tyc as T.RECORDtyc labels, argtys) =>
 	       if Tuples.isTUPLEtyc tyc
 	       then ppTuple(Obj.toTuple obj, argtys, membersOp, depth, accu)
@@ -332,7 +332,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		      let val tyc' =
 			      List.nth(memberTycs,i)
 			      handle Subscript =>
-			       (flush_ppstream ppstrm;
+			       (flushStream ppstrm;
 				print "#ppVal':  ";
 				print (Int.toString i);
 				print " "; print(Int.toString(length memberTycs));
@@ -357,7 +357,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		      let val tyc' =
 			      List.nth(freeTycs,i)
 			      handle Subscript =>
-			       (flush_ppstream ppstrm;
+			       (flushStream ppstrm;
 				print "#ppVal':  ";
 				print (Int.toString i);
 				print " "; 
@@ -369,21 +369,21 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 		      end
 		   | NONE => bug "ppVal': RECtyc with no members")
 
-	   | _ => add_string ppstrm  "-")
+	   | _ => PP.string ppstrm  "-")
 	handle e => raise e)
 
-and ppDcon(_,_,_,_,0,_,_,_) = add_string ppstrm  "#"
+and ppDcon(_,_,_,_,0,_,_,_) = PP.string ppstrm  "#"
   | ppDcon(obj:object, (stamp, {tycname,dcons,...}), membersOp : (T.tycon list * T.tycon list) option,
 	   argtys, depth:int, l:F.fixity, r:F.fixity, accu) =
      PPTable.pp_object ppstrm stamp obj
 	   (* attempt to find and apply user-defined pp on obj *)
      handle PP_NOT_INSTALLED => 
-       if length dcons = 0 then add_string ppstrm "-"
+       if length dcons = 0 then PP.string ppstrm "-"
        else
 	let val dcon as {name,domain,...} = switch(obj,dcons)
 	    val dname = Symbol.name name
 	 in case domain
-	      of NONE => add_string ppstrm dname
+	      of NONE => PP.string ppstrm dname
 	       | SOME dom =>
 		  let val fixity = 
 		          Lookup.lookFix(env,Symbol.fixSymbol dname)
@@ -399,34 +399,34 @@ and ppDcon(_,_,_,_,0,_,_,_) = add_string ppstrm  "#"
 				       [a, b] => (a, b)
 				     | _ => bug "ppDcon [a, b]"
 			    in if Tuples.isTUPLEtyc domTyc
-			       then (begin_block ppstrm INCONSISTENT 0;
+			       then (openHOVBox ppstrm (PP.Rel 0);
 				     ppVal'(a,tyL,
 					    membersOp,
 					    depth-1,F.NONfix,fixity,accu);
-				     add_break ppstrm (1,0);
-				     add_string ppstrm  dname;
-				     add_break ppstrm (1,0);
+				     break ppstrm {nsp=1,offset=0};
+				     PP.string ppstrm  dname;
+				     break ppstrm {nsp=1,offset=0};
 				     ppVal'(b,tyR,
 					    membersOp,
 					    depth-1,fixity, F.NONfix,accu);
-				     end_block ppstrm)
-			       else (begin_block ppstrm INCONSISTENT 2;
-				     add_string ppstrm  dname;
-				     add_break ppstrm (1,0);
+				     closeBox ppstrm)
+			       else (openHOVBox ppstrm (PP.Rel 2);
+				     PP.string ppstrm  dname;
+				     break ppstrm {nsp=1,offset=0};
 				     ppVal'(decon(obj,dcon),dom,
 					    membersOp, depth-1,
 					    F.NONfix,F.NONfix,accu);
-				     end_block ppstrm)
+				     closeBox ppstrm)
 			   end
-			 | _ => (begin_block ppstrm INCONSISTENT 2;
-				 add_string ppstrm  dname; add_break ppstrm (1,0);
+			 | _ => (openHOVBox ppstrm (PP.Rel 2);
+				 PP.string ppstrm  dname; break ppstrm {nsp=1,offset=0};
 				 ppVal'(decon(obj,dcon),dom,membersOp,depth-1,
 					F.NONfix,F.NONfix,accu);
-				 end_block ppstrm)
+				 closeBox ppstrm)
                   fun prpardcon() =
-		      (begin_block ppstrm INCONSISTENT 0;
-		       add_string ppstrm  "("; prdcon(); add_string ppstrm  ")";
-		       end_block ppstrm)
+		      (openHOVBox ppstrm (PP.Rel 0);
+		       PP.string ppstrm  "("; prdcon(); PP.string ppstrm  ")";
+		       closeBox ppstrm)
 	       in case(l,r,fixity)
 		    of (F.NONfix,F.NONfix,_) => prpardcon()
 		     | (F.INfix _,F.INfix _,_) => prdcon()
@@ -453,21 +453,21 @@ and ppList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
 	   case list_case p
 	     of NONE => ()
 	      | SOME(hd,tl) => 
-		  if len <= 0 then (add_string ppstrm  "...")
+		  if len <= 0 then (PP.string ppstrm  "...")
 		  else (case list_case tl
 			 of NONE => 
 			      ppValShare (hd, ty, membersOp, depth-1,accu)
 			  | _ =>
 			      (ppValShare (hd, ty, membersOp, depth-1,accu);
-			       add_string ppstrm  ",";
-			       add_break ppstrm (0,0);
+			       PP.string ppstrm  ",";
+			       break ppstrm {nsp=0,offset=0};
 			       ppTail(tl,len-1)))
 
-     in begin_block ppstrm INCONSISTENT 1;
-        add_string ppstrm  "["; 
+     in openHOVBox ppstrm (PP.Rel 1);
+        PP.string ppstrm  "["; 
         ppTail(obj,length);
-	add_string ppstrm  "]";
-        end_block ppstrm
+	PP.string ppstrm  "]";
+        closeBox ppstrm
     end
 
 and ppUrList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
@@ -482,115 +482,115 @@ and ppUrList(obj:object, ty:T.ty, membersOp, depth:int, length: int,accu) =
 	   case list_case p
 	     of NONE => ()
 	      | SOME(hd,tl) => 
-		  if len <= 0 then (add_string ppstrm  "...")
+		  if len <= 0 then (PP.string ppstrm  "...")
 		  else (case list_case tl
 			 of NONE => 
 			      ppValShare (hd, ty, membersOp, depth-1,accu)
 			  | _ =>
 			      (ppValShare (hd, ty, membersOp, depth-1,accu);
-			       add_string ppstrm  ",";
-	      	               add_break ppstrm (0,0);
+			       PP.string ppstrm  ",";
+	      	               break ppstrm {nsp=0,offset=0};
 			       ppTail(tl,len-1)))
 
-     in begin_block ppstrm INCONSISTENT 1;
-        add_string ppstrm  "[ unrolled list "; 
+     in openHOVBox ppstrm (PP.Rel 1);
+        PP.string ppstrm  "[ unrolled list "; 
         (* ppTail(obj,length); *)
-	add_string ppstrm  "]";
-        end_block ppstrm
+	PP.string ppstrm  "]";
+        closeBox ppstrm
     end
 
 and ppTuple(objs: object list, tys: T.ty list, membersOp, depth:int, accu) : unit =
     let fun ppFields([f],[ty]) = ppValShare (f, ty, membersOp, depth-1, accu)
 	  | ppFields(f::restf, ty::restty) = 
 	      (ppValShare (f, ty, membersOp, depth-1, accu);
-               add_string ppstrm (",");
-               add_break ppstrm (0,0);
+               PP.string ppstrm (",");
+               break ppstrm {nsp=0,offset=0};
 	       ppFields(restf,restty))
 	  | ppFields([], []) = ()
           | ppFields _ = bug "ppFields in ppval.sml"
-     in begin_block ppstrm INCONSISTENT 1;
-        add_string ppstrm ("("); 
+     in openHOVBox ppstrm (PP.Rel 1);
+        PP.string ppstrm ("("); 
         ppFields(objs, tys); 
-        add_string ppstrm (")");
-        end_block ppstrm
+        PP.string ppstrm (")");
+        closeBox ppstrm
     end
 
 and ppRecord(objs: object list, labels: T.label list,
 	     tys: T.ty list, membersOp, depth: int, accu) =
     let fun ppFields([f],[l],[ty]) = 
-	      (begin_block ppstrm CONSISTENT 2;
-               add_string ppstrm (Symbol.name l); 
-               add_string ppstrm ("="); 
+	      (openHVBox ppstrm (PP.Rel 2);
+               PP.string ppstrm (Symbol.name l); 
+               PP.string ppstrm ("="); 
                ppValShare (f, ty, membersOp, depth-1, accu);
-               end_block ppstrm)
+               closeBox ppstrm)
 	  | ppFields(f::restf, l::restl, ty::restty) = 
-	      (begin_block ppstrm CONSISTENT 2;
-               add_string ppstrm (Symbol.name l); 
-               add_string ppstrm ("="); 
+	      (openHVBox ppstrm (PP.Rel 2);
+               PP.string ppstrm (Symbol.name l); 
+               PP.string ppstrm ("="); 
                ppValShare (f,ty,membersOp,depth-1,accu);
-               end_block ppstrm;
-	       add_string ppstrm (","); 
-               add_break ppstrm (0,0);
+               closeBox ppstrm;
+	       PP.string ppstrm (","); 
+               break ppstrm {nsp=0,offset=0};
                ppFields(restf,restl,restty))
 	  | ppFields([],[],[]) = ()
           | ppFields _ = bug "ppFields in ppval.sml"
-     in begin_block ppstrm INCONSISTENT 1;
-        add_string ppstrm ("{"); 
+     in openHOVBox ppstrm (PP.Rel 1);
+        PP.string ppstrm ("{"); 
         ppFields(objs,labels,tys); 
-        add_string ppstrm ("}");
-        end_block ppstrm
+        PP.string ppstrm ("}");
+        closeBox ppstrm
     end
 
 and ppVector(objs:object vector, ty:T.ty, membersOp, depth:int, length,accu) =
       let val vectorLength  = V.length objs
           val (len, closing) = 
 	        if length >= vectorLength then 
-		  (vectorLength,fn _ => add_string ppstrm "]")
-		else (length,fn sep => (add_string ppstrm sep; 
-                                        add_string ppstrm "...]"))
+		  (vectorLength,fn _ => PP.string ppstrm "]")
+		else (length,fn sep => (PP.string ppstrm sep; 
+                                        PP.string ppstrm "...]"))
           fun printRest(sep,breaker, index) =
 	        if index >= len then closing sep
-                else (add_string ppstrm  sep; breaker ();
+                else (PP.string ppstrm  sep; breaker ();
 		      ppValShare (V.sub (objs,index),ty,membersOp,
 				  depth-1,accu);
-		      printRest (",",fn () => add_break ppstrm (0,0), index + 1))
-       in begin_block ppstrm INCONSISTENT 1;
-	  add_string ppstrm "#["; printRest("",fn () => (), 0);
-          end_block ppstrm
+		      printRest (",",fn () => break ppstrm {nsp=0,offset=0}, index + 1))
+       in openHOVBox ppstrm (PP.Rel 1);
+	  PP.string ppstrm "#["; printRest("",fn () => (), 0);
+          closeBox ppstrm
       end
 
 and ppArray (objs: object array, ty: T.ty, membersOp, depth: int, length, accu) =
       let val vectorLength  = Array.length objs
           val (len, closing) = 
 	        if length >= vectorLength then 
-		  (vectorLength,fn _ => add_string ppstrm "|]")
-		else (length,fn sep => (add_string ppstrm sep; 
-                                        add_string ppstrm "...|]"))
+		  (vectorLength,fn _ => PP.string ppstrm "|]")
+		else (length,fn sep => (PP.string ppstrm sep; 
+                                        PP.string ppstrm "...|]"))
           fun printRest(sep,breaker, index) =
 	        if index >= len then closing sep
-                else (add_string ppstrm  sep; breaker ();
+                else (PP.string ppstrm  sep; breaker ();
 		      ppValShare (Array.sub (objs,index),ty,membersOp,
 				  depth-1,accu);
-		      printRest (",",fn () => add_break ppstrm (0,0), index + 1))
-       in begin_block ppstrm INCONSISTENT 1;
-	  add_string ppstrm "[|"; printRest("",fn () => (), 0);
-          end_block ppstrm
+		      printRest (",",fn () => break ppstrm {nsp=0,offset=0}, index + 1))
+       in openHOVBox ppstrm (PP.Rel 1);
+	  PP.string ppstrm "[|"; printRest("",fn () => (), 0);
+          closeBox ppstrm
       end
 and ppRealArray (objs : Real64Array.array, length: int) =
       let val vectorLength  = Real64Array.length objs
           val (len, closing) = 
 	        if length >= vectorLength then 
-		  (vectorLength,fn _ => add_string ppstrm "|]")
-		else (length,fn sep => (add_string ppstrm sep; 
-                                        add_string ppstrm "...|]"))
+		  (vectorLength,fn _ => PP.string ppstrm "|]")
+		else (length,fn sep => (PP.string ppstrm sep; 
+                                        PP.string ppstrm "...|]"))
           fun printRest(sep,breaker, index) =
 	        if index >= len then closing sep
-                else (add_string ppstrm  sep; breaker ();
-		      add_string ppstrm (Real.toString(Real64Array.sub(objs,index)));
-		      printRest (",",fn () => add_break ppstrm (0,0), index + 1))
-       in begin_block ppstrm INCONSISTENT 1;
-	  add_string ppstrm "[|"; printRest("",fn () => (), 0);
-          end_block ppstrm
+                else (PP.string ppstrm  sep; breaker ();
+		      PP.string ppstrm (Real.toString(Real64Array.sub(objs,index)));
+		      printRest (",",fn () => break ppstrm {nsp=0,offset=0}, index + 1))
+       in openHOVBox ppstrm (PP.Rel 1);
+	  PP.string ppstrm "[|"; printRest("",fn () => (), 0);
+          closeBox ppstrm
       end
  in ppValue
 end (* fun ppObj *)

@@ -27,14 +27,14 @@ in
 		fun ppb pps = let
 		    fun loop [] = ()
 		      | loop (h :: t) =
-			(PP.add_string pps h;
-			 PP.add_newline pps;
+			(PP.string pps h;
+			 PP.newline pps;
 			 loop t)
 		in
-		    PP.add_newline pps;
-		    PP.add_string pps
+		    PP.newline pps;
+		    PP.string pps
 		       "because of dependence on non-shareable state in:";
-		    PP.add_newline pps;
+		    PP.newline pps;
 		    loop (StringSet.listItems s)
 		end
 	    in

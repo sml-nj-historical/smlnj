@@ -2,53 +2,64 @@
 
 signature PPUTIL =
 sig
-  val ppSequence : PrettyPrint.ppstream ->
-		   {sep: PrettyPrint.ppstream->unit, 
-		    pr: PrettyPrint.ppstream->'a->unit,
-		    style: PrettyPrint.break_style}
+
+  datatype break_style = CONSISTENT | INCONSISTENT
+
+  val openStyleBox : break_style -> PrettyPrint.stream -> PrettyPrint.indent -> unit
+
+  val ppSequence : PrettyPrint.stream ->
+		   {sep: PrettyPrint.stream->unit, 
+		    pr: PrettyPrint.stream->'a->unit,
+		    style: break_style}
 		   -> 'a list -> unit
-  val ppClosedSequence : PrettyPrint.ppstream
-			 -> {front:PrettyPrint.ppstream->unit, 
-                             sep:PrettyPrint.ppstream->unit,
-			     back:PrettyPrint.ppstream->unit,
-                             pr:PrettyPrint.ppstream->'a->unit,
-			     style:PrettyPrint.break_style}
+  val ppClosedSequence : PrettyPrint.stream
+			 -> {front:PrettyPrint.stream->unit, 
+                             sep:PrettyPrint.stream->unit,
+			     back:PrettyPrint.stream->unit,
+                             pr:PrettyPrint.stream->'a->unit,
+			     style:break_style}
 			 -> 'a list -> unit
-  val ppSym : PrettyPrint.ppstream -> Symbol.symbol -> unit
+  val ppSym : PrettyPrint.stream -> Symbol.symbol -> unit
   val mlstr : string -> string
-  val pp_mlstr : PrettyPrint.ppstream -> string -> unit
-  val ppvseq : PrettyPrint.ppstream
-               -> int -> string -> (PrettyPrint.ppstream -> 'a -> unit)
+  val pp_mlstr : PrettyPrint.stream -> string -> unit
+  val ppvseq : PrettyPrint.stream
+               -> int -> string -> (PrettyPrint.stream -> 'a -> unit)
                -> 'a list -> unit
-  val ppvlist : PrettyPrint.ppstream
-               -> string * string * (PrettyPrint.ppstream -> 'a -> unit) * 'a list
+  val ppvlist : PrettyPrint.stream
+               -> string * string * (PrettyPrint.stream -> 'a -> unit) * 'a list
                -> unit
-  val ppIntPath : PrettyPrint.ppstream -> int list -> unit
-  val ppSymPath : PrettyPrint.ppstream -> SymPath.path -> unit
-  val ppInvPath : PrettyPrint.ppstream -> InvPath.path -> unit
-  val nl_indent : PrettyPrint.ppstream -> int -> unit
+  val ppvlist' : PrettyPrint.stream
+               -> string * string * (PrettyPrint.stream -> string -> 'a -> unit)
+                    * 'a list
+               -> unit
+  val ppIntPath : PrettyPrint.stream -> int list -> unit
+  val ppSymPath : PrettyPrint.stream -> SymPath.path -> unit
+  val ppInvPath : PrettyPrint.stream -> InvPath.path -> unit
+  val nl_indent : PrettyPrint.stream -> int -> unit
 
   (* needed in PPTypes, PPModules *)
   val findPath : InvPath.path * ('a -> bool) * (SymPath.path -> 'a)
                  -> (Symbol.symbol list * bool)
 
-  val ppTuple: PrettyPrint.ppstream
-	       -> (PrettyPrint.ppstream -> 'a -> unit) -> 'a list -> unit
+  val ppTuple: PrettyPrint.stream
+	       -> (PrettyPrint.stream -> 'a -> unit) -> 'a list -> unit
 
-  val ppi: PrettyPrint.ppstream -> int -> unit
-  val add_comma : PrettyPrint.ppstream -> unit
-  val add_comma_nl : PrettyPrint.ppstream -> unit
-  val nl_app : PrettyPrint.ppstream -> (PrettyPrint.ppstream -> 'a -> unit)
+  val ppi: PrettyPrint.stream -> int -> unit
+  val ppcomma : PrettyPrint.stream -> unit
+  val ppcomma_nl : PrettyPrint.stream -> unit
+  val nl_app : PrettyPrint.stream -> (PrettyPrint.stream -> 'a -> unit)
                -> 'a list -> unit 
-  val br_app : PrettyPrint.ppstream -> (PrettyPrint.ppstream -> 'a -> unit)
+  val br_app : PrettyPrint.stream -> (PrettyPrint.stream -> 'a -> unit)
                -> 'a list -> unit 
-  val en_pp : PrettyPrint.ppstream -> 
-              {add_break   : int * int -> unit, 
-	       add_newline : unit -> unit,
-	       begin_block : PrettyPrint.break_style -> int -> unit,
-	       end_block   : unit -> unit, 
-	       pps : string -> unit}
-  val ppArray : PrettyPrint.ppstream -> 
-                (PrettyPrint.ppstream -> 'a -> unit) * 'a array
+  val en_pp : PrettyPrint.stream -> 
+              {break      : {nsp: int, offset: int} -> unit, 
+	       newline    : unit -> unit,
+	       openHVBox  : int -> unit,
+	       openHOVBox : int -> unit,
+	       closeBox   : unit -> unit, 
+	       pps        : string -> unit}
+  val ppArray : PrettyPrint.stream -> 
+                (PrettyPrint.stream -> 'a -> unit) * 'a array
 	        -> unit
+
 end (* signature PPUTIL *)

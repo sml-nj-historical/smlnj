@@ -143,11 +143,11 @@ fun resolveOverloaded env  =
 		      (err EM.COMPLAIN "overloaded variable not defined at type"
 			(fn ppstrm =>
 			  (PPType.resetPPType();
-			   PrettyPrint.add_newline ppstrm;
-			   PrettyPrint.add_string ppstrm "symbol: "; 
+			   PrettyPrint.newline ppstrm;
+			   PrettyPrint.string ppstrm "symbol: "; 
 			   PPUtil.ppSym ppstrm name;
-			   PrettyPrint.add_newline ppstrm;
-			   PrettyPrint.add_string ppstrm "type: ";
+			   PrettyPrint.newline ppstrm;
+			   PrettyPrint.string ppstrm "type: ";
 			   PPType.ppType env ppstrm context));
 		       ())
 

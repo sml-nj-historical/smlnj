@@ -296,7 +296,7 @@ fun printMatch env ((p,r)::more) =
       (PP.with_pp (ErrorMsg.defaultConsumer())
        (fn ppstrm =>
         (PPAbsyn.ppPat env ppstrm (p,!Control.Print.printDepth);
-         PP.add_newline ppstrm));
+         PP.newline ppstrm));
        say " => "; printLexp r; printMatch env more)
   | printMatch _ [] = ()
 

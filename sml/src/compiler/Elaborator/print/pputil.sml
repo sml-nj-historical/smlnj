@@ -1,4 +1,4 @@
-(* Copyright 1989 by AT&T Bell Laboratories *)
+(* Copyright 2003 by The SML/NJ Fellowship *)
 (* basics/pputil.sml *)
 
 structure PPUtil : PPUTIL =
@@ -9,9 +9,9 @@ struct
   structure IP = InvPath
   structure SP = SymPath
 
-  val pps = PP.add_string
+  val pps = PP.string
 
-  fun ppSequence0 ppstream (sep:PP.ppstream->unit,pr,elems) =
+  fun ppSequence0 ppstream (sep:PP.stream->unit,pr,elems) =
       let fun prElems [el] = pr ppstream el
 	    | prElems (el::rest) =
 	        (pr ppstream el;
@@ -21,98 +21,116 @@ struct
        in prElems elems
       end
 
-  fun ppSequence ppstream {sep:PP.ppstream->unit, pr:PP.ppstream->'a->unit, 
-                           style:PP.break_style} (elems: 'a list) =
-      (PP.begin_block ppstream style 0;
+  datatype break_style = CONSISTENT | INCONSISTENT
+
+  fun openStyleBox style = 
+      case style
+        of CONSISTENT => PP.openHVBox
+         | INCONSISTENT => PP.openHOVBox
+
+  fun ppSequence ppstream {sep:PP.stream->unit, pr:PP.stream->'a->unit, 
+                           style:break_style} (elems: 'a list) =
+      (openStyleBox style ppstream (PP.Rel 0);
        ppSequence0 ppstream (sep,pr,elems);
-       PP.end_block ppstream)
+       PP.closeBox ppstream)
 
-  fun ppClosedSequence ppstream{front:PP.ppstream->unit,sep:PP.ppstream->unit,
-                               back:PP.ppstream->unit,pr:PP.ppstream->'a->unit,
-                                style:PP.break_style} (elems:'a list) =
-      (PP.begin_block ppstream PP.CONSISTENT 0;
+  fun ppClosedSequence ppstream{front:PP.stream->unit,sep:PP.stream->unit,
+                                back:PP.stream->unit,pr:PP.stream->'a->unit,
+                                style:break_style} (elems:'a list) =
+      (PP.openHVBox ppstream (PP.Rel 0);
        front ppstream;
-       PP.begin_block ppstream style 0;
+       openStyleBox style ppstream (PP.Rel 0);
        ppSequence0 ppstream (sep,pr,elems); 
-       PP.end_block ppstream;
+       PP.closeBox ppstream;
        back ppstream;
-       PP.end_block ppstream)
+       PP.closeBox ppstream)
 
-  fun ppSym ppstream (s:S.symbol) = PP.add_string ppstream (S.name s)
+  fun ppSym ppstream (s:S.symbol) = PP.string ppstream (S.name s)
 
   val stringDepth = Control_Print.stringDepth
 
 (** NOTE: this duplicates code in basics/printutil.sml **)
-  fun escape i = let
-	val m = Int.toString
-	in
-	  concat ["\\", m(i div 100), m((i div 10)mod 10), m(i mod 10)]
-	end
+  fun escape i =
+      let val m = Int.toString
+       in concat ["\\", m(i div 100), m((i div 10)mod 10), m(i mod 10)]
+      end
+
   val offset = Char.ord #"A" - Char.ord #"\^A"
+
   fun ml_char #"\n" = "\\n"
     | ml_char #"\t" = "\\t"
     | ml_char #"\\" = "\\\\"
     | ml_char #"\"" = "\\\""
-    | ml_char c = if ((c >= #"\^A") andalso (c <= #"\^Z"))
-	  then "\\^" ^ String.str(Char.chr(Char.ord c + offset))
-	else if ((#" " <= c) andalso (c <= #"~"))
-	  then String.str c
-	  else escape(Char.ord c)
+    | ml_char c =
+       if ((c >= #"\^A") andalso (c <= #"\^Z"))
+       then "\\^" ^ String.str(Char.chr(Char.ord c + offset))
+       else if ((#" " <= c) andalso (c <= #"~"))
+       then String.str c
+       else escape(Char.ord c)
 
   fun mlstr s = concat["\"", concat(map ml_char (explode s)), "\""]
 
   fun pp_mlstr ppstream s =
       let val depth = !stringDepth
-          val add_string = PP.add_string ppstream
+          val ppstring = PP.string ppstream
 	  fun pr i =
-	      if i=depth then add_string "#"
+	      if i=depth then ppstring "#"
 	      else (let val ch = String.sub(s,i)
-		    in  add_string (ml_char ch); pr (i+1)
+		    in  ppstring (ml_char ch); pr (i+1)
 		    end handle Substring => ())
-       in add_string "\""; pr 0; add_string "\""
+       in ppstring "\""; pr 0; ppstring "\""
       end
 
   fun ppvseq ppstream ind (sep:string) pr elems =
       let fun prElems [el] = pr ppstream el
 	    | prElems (el::rest) = (pr ppstream el; 
-                                    PP.add_string ppstream sep; 
-                                    PP.add_newline ppstream;
+                                    PP.string ppstream sep; 
+                                    PP.newline ppstream;
                                     prElems rest)
 	    | prElems [] = ()
-       in PP.begin_block ppstream PP.CONSISTENT ind;
+       in PP.openHVBox ppstream (PP.Rel ind);
           prElems elems;
-          PP.end_block ppstream
+          PP.closeBox ppstream
       end
 
   fun ppvlist ppstrm (header,separator,pr_item,items) =
       case items
 	of nil => ()
 	 | first::rest =>
-	     (PP.add_string ppstrm header;
+	     (PP.string ppstrm header;
 	      pr_item ppstrm first;
-	      app (fn x => (PP.add_newline ppstrm;
-			    PP.add_string ppstrm separator;
+	      app (fn x => (PP.newline ppstrm;
+			    PP.string ppstrm separator;
 			    pr_item ppstrm x))
+		   rest)
+
+  fun ppvlist' ppstrm (header,separator,pr_item,items) =
+      case items
+	of nil => ()
+	 | first::rest =>
+	     (pr_item ppstrm header first;
+	      app (fn x => (PP.newline ppstrm;
+			    pr_item ppstrm separator x))
 		   rest)
 
   (* debug print functions *)
   fun ppIntPath ppstream =
       ppClosedSequence ppstream 
-	{front=(fn pps => PP.add_string pps "["),
-	 sep=(fn pps => (PP.add_string pps ","; PP.add_break pps (0,0))),
-	 back=(fn pps => PP.add_string pps "]"),
-	 style=PP.INCONSISTENT,
-	 pr=(fn pps => PP.add_string pps o Int.toString)}
+	{front=(fn pps => PP.string pps "["),
+	 sep=(fn pps => (PP.string pps ","; PP.break pps {nsp=0,offset=0})),
+	 back=(fn pps => PP.string pps "]"),
+	 style=INCONSISTENT,
+	 pr=(fn pps => PP.string pps o Int.toString)}
 
   fun ppSymPath ppstream (sp: SymPath.path) = 
-      PP.add_string ppstream (SymPath.toString sp)
+      PP.string ppstream (SymPath.toString sp)
 
   fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) =
       ppClosedSequence ppstream 
-	{front=(fn pps => PP.add_string pps "<"),
-	 sep=(fn pps => (PP.add_string pps ".")),
-	 back=(fn pps => PP.add_string pps ">"),
-	 style=PP.INCONSISTENT,
+	{front=(fn pps => PP.string pps "<"),
+	 sep=(fn pps => (PP.string pps ".")),
+	 back=(fn pps => PP.string pps ">"),
+	 style=INCONSISTENT,
 	 pr=ppSym}
         path
 
@@ -164,49 +182,50 @@ struct
 
   fun ppi ppstrm (i:int) = pps ppstrm (Int.toString i)
 
-  fun add_comma ppstrm = pps ppstrm ","
+  fun ppcomma ppstrm = pps ppstrm ","
 
-  fun add_comma_nl ppstrm  = (add_comma ppstrm; PP.add_newline ppstrm)
+  fun ppcomma_nl ppstrm  = (ppcomma ppstrm; PP.newline ppstrm)
 
   fun nl_indent ppstrm i =
-      let val {linewidth,...} = PP.dest_ppstream ppstrm 
-       in PP.add_break ppstrm (linewidth,i)
+      let val linewidth = 10000
+       in PP.break ppstrm {nsp=linewidth,offset=i}
       end
 
   fun nl_app ppstrm f =
       let fun g [] = ()
 	    | g [el] = f ppstrm el
-	    | g (el::rst) = (f ppstrm el; PP.add_newline ppstrm; g rst)
+	    | g (el::rst) = (f ppstrm el; PP.newline ppstrm; g rst)
        in g
       end
 
   fun br_app ppstrm f =
       let fun g [] = ()
 	    | g [el] = f ppstrm el
-	    | g (el::rst) = (f ppstrm el; PP.add_break ppstrm (1,0); g rst)
+	    | g (el::rst) = (f ppstrm el; PP.break ppstrm {nsp=1,offset=0}; g rst)
        in g
       end
 
   fun en_pp ppstrm =
-      {begin_block = PrettyPrint.begin_block ppstrm, 
-       end_block = fn () => PrettyPrint.end_block ppstrm,
-       pps = PrettyPrint.add_string ppstrm,
-       add_break = PrettyPrint.add_break ppstrm,
-       add_newline = fn () => PrettyPrint.add_newline ppstrm};
+      {openHVBox = (fn indent => PP.openHVBox ppstrm (PP.Rel indent)),  (* CONSISTENT *)
+       openHOVBox = (fn indent => PP.openHOVBox ppstrm (PP.Rel indent)),  (* INCONSISTENT *)
+       closeBox = fn () => PP.closeBox ppstrm,
+       pps = PP.string ppstrm,
+       break = fn nsp_offset => PP.break ppstrm nsp_offset,
+       newline = fn () => PP.newline ppstrm};
 
-  fun ppArray ppstrm (f:PP.ppstream -> 'a -> unit, a:'a array) =
-      let val {begin_block,pps,add_break,end_block,...} = en_pp ppstrm
+  fun ppArray ppstrm (f:PP.stream -> 'a -> unit, a:'a array) =
+      let val {openHVBox,openHOVBox,pps,break,closeBox,...} = en_pp ppstrm
 	  fun loop i = 
 	      let val elem = Array.sub(a,i)
 	       in pps (Int.toString i);
 		  pps ": "; 
 		  f ppstrm elem;
-		  add_break (1,0);
+		  break {nsp=1,offset=0};
 		  loop (i+1)
 	      end
-       in begin_block PP.INCONSISTENT 0;
+       in openHOVBox 0;
 	  loop 0 handle General.Subscript => ();
-	  end_block()
+	  closeBox()
       end
 
   fun C f x y = f y x;
@@ -214,9 +233,9 @@ struct
   fun ppTuple ppstrm f =
       ppClosedSequence ppstrm 
 	{front=C pps "(",
-	 sep=fn ppstrm => (pps ppstrm ","; PP.add_break ppstrm (0,0)),
+	 sep=fn ppstrm => (pps ppstrm ","; PP.break ppstrm {nsp=0,offset=0}),
 	 back=C pps ")",
-	 pr=f, style=PP.INCONSISTENT}
+	 pr=f, style=INCONSISTENT}
 
 
 end (* structure PPUtil *)

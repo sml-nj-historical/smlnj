@@ -3,7 +3,7 @@
 signature ERRORMSG =
  sig
     datatype severity = WARN | COMPLAIN
-    type complainer (*  = severity -> string -> (PrettyPrint.ppstream -> unit)
+    type complainer (*  = severity -> string -> (PrettyPrint.stream -> unit)
                           -> unit *)
     type errorFn = SourceMap.region -> complainer
     type errors (* = {error: errorFn,
@@ -11,20 +11,20 @@ signature ERRORMSG =
                       anyErrors : bool ref} *)
     val anyErrors : errors -> bool
     exception Error
-    val defaultConsumer : unit -> PrettyPrint.ppconsumer
-    val nullErrorBody : PrettyPrint.ppstream -> unit
+    val defaultConsumer : unit -> PrettyPrint.device
+    val nullErrorBody : PrettyPrint.stream -> unit
     val error : Source.inputSource -> SourceMap.region -> complainer
     (* with a known location string but without access to the actual source: *)
     val errorNoSource :
-	PrettyPrint.ppconsumer * bool ref -> string -> complainer
-    val errorNoFile : PrettyPrint.ppconsumer * bool ref -> SourceMap.region
+	PrettyPrint.device * bool ref -> string -> complainer
+    val errorNoFile : PrettyPrint.device * bool ref -> SourceMap.region
                       -> complainer
 
     val matchErrorString : Source.inputSource -> SourceMap.region -> string
     val errors : Source.inputSource -> errors
-    val errorsNoFile : PrettyPrint.ppconsumer * bool ref -> errors
+    val errorsNoFile : PrettyPrint.device * bool ref -> errors
 
     val impossible : string -> 'a
-    val impossibleWithBody : string -> (PrettyPrint.ppstream -> unit) -> 'a
+    val impossibleWithBody : string -> (PrettyPrint.stream -> unit) -> 'a
  end
 

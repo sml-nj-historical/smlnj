@@ -157,7 +157,7 @@ fun enter ty =
       val r = ref v
    in if !debugging 
       then PP.with_pp (EM.defaultConsumer())
-            (fn ppstrm => (PP.add_string ppstrm "enter: ";
+            (fn ppstrm => (PP.string ppstrm "enter: ";
                PPType.resetPPType(); PPType.ppType env ppstrm ty))
       else ();
       cache := (ty, v, r) :: !cache; (v,r)
@@ -170,7 +170,7 @@ fun find ty =
                   raise Notfound)
    in if !debugging 
       then PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.add_string ppstrm "find: ";
+           (fn ppstrm => (PP.string ppstrm "find: ";
                           PPType.resetPPType();
                           PPType.ppType env ppstrm ty))
       else ();
@@ -207,7 +207,7 @@ fun test(ty, 0) = raise Poly
   | test(ty, depth) =
      (if !debugging
       then PP.with_pp (EM.defaultConsumer())
-           (fn ppstrm => (PP.add_string ppstrm "test: ";
+           (fn ppstrm => (PP.string ppstrm "test: ";
                           PPType.resetPPType();
                           PPType.ppType env ppstrm ty))
       else ();

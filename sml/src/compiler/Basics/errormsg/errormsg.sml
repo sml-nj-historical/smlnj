@@ -4,6 +4,7 @@
 structure ErrorMsg : ERRORMSG =
 struct
 
+  structure PP = PrettyPrint
   open PrettyPrint SourceMap
 
  (* error reporting *)
@@ -12,7 +13,7 @@ struct
 
   datatype severity = WARN | COMPLAIN
 
-  type complainer = severity -> string -> (ppstream -> unit) -> unit
+  type complainer = severity -> string -> (PP.stream -> unit) -> unit
 
   type errorFn = region -> complainer
 
@@ -25,25 +26,25 @@ struct
        linewidth = !Control_Print.linewidth,
        flush = Control_Print.flush}
 
-  val nullErrorBody = (fn (ppstrm: ppstream) => ())
+  val nullErrorBody = (fn (ppstrm: PP.stream) => ())
 
   fun ppmsg(errConsumer,location,severity,msg,body) =
       case (!BasicControl.printWarnings, severity)
 	of (false,WARN) => ()
 	 | _ =>
 	    with_pp errConsumer (fn ppstrm =>
-	      (begin_block ppstrm CONSISTENT 0;
-	       begin_block ppstrm CONSISTENT 2;
-	       add_string ppstrm location;
-	       add_string ppstrm  (* print error label *)
+	      (openHVBox ppstrm (PP.Rel 0);
+	       openHVBox ppstrm (PP.Rel 2);
+	       PP.string ppstrm location;
+	       PP.string ppstrm  (* print error label *)
 		  (case severity
 		     of WARN => " Warning: "
 		      | COMPLAIN => " Error: ");
-	       add_string ppstrm msg;
+	       PP.string ppstrm msg;
 	       body ppstrm;
-	       end_block ppstrm;
-	       add_newline ppstrm;
-	       end_block ppstrm))
+	       closeBox ppstrm;
+	       PP.newline ppstrm;
+	       closeBox ppstrm))
 
   fun record(COMPLAIN,anyErrors) = anyErrors := true
     | record(WARN,_) = ()
@@ -103,7 +104,7 @@ struct
 (* <errormsg.sml>=                                                          *)
   fun error (source as {anyErrors, errConsumer,...}: Source.inputSource)
             (p1:int,p2:int) (severity:severity)
-            (msg: string) (body : ppstream -> unit) = 
+            (msg: string) (body : PP.stream -> unit) = 
       (ppmsg(errConsumer,(location_string source (p1,p2)),severity,msg,body);
        record(severity,anyErrors))
 
@@ -119,10 +120,10 @@ struct
 
   fun impossibleWithBody msg body =
       (with_pp (defaultConsumer()) (fn ppstrm =>
-        (add_string ppstrm "Error: Compiler bug: ";
-         add_string ppstrm msg;
+        (PP.string ppstrm "Error: Compiler bug: ";
+         PP.string ppstrm msg;
          body ppstrm;
-         add_newline ppstrm));
+         PP.newline ppstrm));
        raise Error)
 
   val matchErrorString = location_string

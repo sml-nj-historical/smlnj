@@ -287,13 +287,13 @@ fun matchTypes (spec, actual, dinfo, name) : (T.ty list * T.tyvar list) =
             "value type in structure doesn't match signature spec"
             (fn ppstrm =>
                  (PPType.resetPPType();
-                  PP.add_newline ppstrm;
-                  app (PP.add_string ppstrm) ["  name: ", S.name name];
-                  PP.add_newline ppstrm;
-                  PP.add_string ppstrm "spec:   ";
+                  PP.newline ppstrm;
+                  app (PP.string ppstrm) ["  name: ", S.name name];
+                  PP.newline ppstrm;
+                  PP.string ppstrm "spec:   ";
                   PPType.ppType statenv ppstrm spec;
-                  PP.add_newline ppstrm;
-                  PP.add_string ppstrm "actual: ";
+                  PP.newline ppstrm;
+                  PP.string ppstrm "actual: ";
                   PPType.ppType statenv ppstrm actual));
         ([],[]))
 

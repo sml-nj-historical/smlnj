@@ -686,13 +686,13 @@ struct
 			val relabs = if abs then "absolute" else "relative"
 			val gdesc = SrcPath.descr grouppath
 			fun ppb pps = let
-			    fun space () = PP.add_break pps (1, 0)
-			    fun string s = PP.add_string pps s
+			    fun space () = PP.break pps {nsp=1,offset=0}
+			    fun string s = PP.string pps s
 			    fun ss s = (string s; space ())
-			    fun nl () = PP.add_newline pps
+			    fun nl () = PP.newline pps
 			in
 			    nl ();
-			    PP.begin_block pps PP.INCONSISTENT 0;
+			    PP.openHOVBox pps (PP.Rel 0);
 			    app ss ["The", "path", "specifying"];
 			    app ss [what, descr, "is"];
 			    string relabs; string "."; nl ();
@@ -709,7 +709,7 @@ struct
 			    ss relabs;
 			    app ss ["location", "as", "they", "are"];
 			    string "now.)";
-			    PP.end_block pps
+			    PP.closeBox pps
 			end
 		    in
 			EM.errorNoFile
@@ -1041,15 +1041,15 @@ struct
 				 fun ppb pps = let
 				     fun loop [] = ()
 				       | loop ((p, _, _) :: t) =
-					 (PP.add_string pps (SrcPath.descr p);
-					  PP.add_newline pps;
+					 (PP.string pps (SrcPath.descr p);
+					  PP.newline pps;
 					  loop t)
 				 in
-				     PP.add_newline pps;
-				     PP.add_string pps
+				     PP.newline pps;
+				     PP.string pps
 				    (concat ["because the following sub-group",
 					     grammar, " not stable:"]);
-				     PP.add_newline pps;
+				     PP.newline pps;
 				     loop l
 				 end
 				 val errcons = #errcons gp

@@ -1,22 +1,26 @@
 (* Copyright 1991 by AT&T Bell Laboratories *)
+(* Copyright 2003 by The SML/NJ Fellowship *)
+(* pptype.sml *)
+
+(* modified to use SML/NJ Lib PP. [dbm, 7/30/03]) *)
 
 signature PPTYPE = 
 sig
   val typeFormals : int -> string list
   val tyvarPrintname : Types.tyvar -> string
-  val ppTycon : StaticEnv.staticEnv -> PrettyPrint.ppstream 
+  val ppTycon : StaticEnv.staticEnv -> PrettyPrint.stream 
                 -> Types.tycon -> unit
-  val ppTyfun : StaticEnv.staticEnv -> PrettyPrint.ppstream 
+  val ppTyfun : StaticEnv.staticEnv -> PrettyPrint.stream 
                 -> Types.tyfun -> unit 
-  val ppType  : StaticEnv.staticEnv -> PrettyPrint.ppstream 
+  val ppType  : StaticEnv.staticEnv -> PrettyPrint.stream 
                 -> Types.ty -> unit
   val ppDconDomain : (Types.dtmember vector * Types.tycon list) 
                      -> StaticEnv.staticEnv 
-                     -> PrettyPrint.ppstream -> Types.ty -> unit
-  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrint.ppstream 
+                     -> PrettyPrint.stream -> Types.ty -> unit
+  val ppDataconTypes : StaticEnv.staticEnv -> PrettyPrint.stream 
                 -> Types.tycon -> unit
   val resetPPType : unit -> unit
-  val ppFormals : PrettyPrint.ppstream -> int -> unit
+  val ppFormals : PrettyPrint.stream -> int -> unit
 
   val debugging : bool ref
   val unalias : bool ref
@@ -40,7 +44,7 @@ val debugging = ref false
 val unalias = ref true
 
 fun bug s = ErrorMsg.impossible ("PPType: " ^ s)
-val pps = PP.add_string
+val pps = PP.string
 
 fun C f x y = f y x
 
@@ -201,13 +205,13 @@ fun ppEqProp ppstrm p =
     end
 
 fun ppInvPath ppstream (InvPath.IPATH path: InvPath.path) = 
-    PP.add_string ppstream (SymPath.toString (SymPath.SPATH(rev path)))
+    PP.string ppstream (SymPath.toString (SymPath.SPATH(rev path)))
 
 fun ppTycon1 env ppstrm membersOp =
-    let val {begin_block,end_block,pps,add_break,...} = en_pp ppstrm
+    let val {openHVBox,openHOVBox,closeBox,pps,break,...} = en_pp ppstrm
 	fun ppTyc (tyc as GENtyc { path, stamp, eq, kind, ... }) =
 	    if !internals
-	    then (begin_block PP.INCONSISTENT 1;
+	    then (openHOVBox 1;
 		  ppInvPath ppstrm path;
 		  pps "[";
 		  pps "G"; ppkind ppstrm kind; pps ";"; 
@@ -215,24 +219,24 @@ fun ppTycon1 env ppstrm membersOp =
 		  pps ";";
 		  ppEqProp ppstrm (!eq);
 		  pps "]";
-		  end_block())
+		  closeBox())
 	    else pps(effectivePath(path,tyc,env))
 	  | ppTyc(tyc as DEFtyc{path,tyfun=TYFUN{body,...},...}) =
 	     if !internals
-	     then (begin_block PP.INCONSISTENT 1;
+	     then (openHOVBox 1;
 		    ppInvPath ppstrm path;
 		    pps "["; pps "D;"; 
 		    ppType env ppstrm body;
 		    pps "]";
-		   end_block())
+		   closeBox())
 	     else pps(effectivePath(path,tyc,env))
 	  | ppTyc(RECORDtyc labels) =
 	      ppClosedSequence ppstrm 
-		{front=C PP.add_string "{",
-		 sep=fn ppstrm => (PP.add_string ppstrm ","; 
-				   PP.add_break ppstrm (0,0)),
-		 back=C PP.add_string "}",
-		 style=PP.INCONSISTENT,
+		{front=C PP.string "{",
+		 sep=fn ppstrm => (PP.string ppstrm ","; 
+				   PP.break ppstrm {nsp=0,offset=0}),
+		 back=C PP.string "}",
+		 style=INCONSISTENT,
 		 pr=ppSym} labels
 
           | ppTyc (RECtyc n) =
@@ -255,11 +259,11 @@ fun ppTycon1 env ppstrm membersOp =
 
  	  | ppTyc (tyc as PATHtyc{arity,entPath,path}) =
 	     if !internals
-	     then (begin_block PP.INCONSISTENT 1;
+	     then (openHOVBox 1;
 		    ppInvPath ppstrm path; pps "[P;"; 
 		    pps (EntPath.entPathToString entPath);
 		    pps "]";
-		   end_block())
+		   closeBox())
 	     else ppInvPath ppstrm path
 
 	  | ppTyc ERRORtyc = pps "[E]"
@@ -269,7 +273,7 @@ fun ppTycon1 env ppstrm membersOp =
 
 and ppType1 env ppstrm (ty: ty, sign: T.polysign, 
                         membersOp: (T.dtmember vector * T.tycon list) option) : unit =
-    let val {begin_block,end_block,pps,add_break,add_newline} = en_pp ppstrm
+    let val {openHVBox,openHOVBox,closeBox,pps,break,newline} = en_pp ppstrm
         fun prty ty =
 	    case ty
 	      of VARty(ref(INSTANTIATED ty')) => prty(ty')
@@ -281,11 +285,11 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 		   end
 	       | CONty(tycon, args) => let
 		     fun otherwise () =
-			 (begin_block PP.INCONSISTENT 2;
+			 (openHOVBox 2;
 			  ppTypeArgs args; 
-			  add_break(0,0);
+			  break{nsp=0,offset=0};
 			  ppTycon1 env ppstrm membersOp tycon;
-			  end_block())
+			  closeBox())
 		 in
 		     case tycon
 		      of GENtyc { stamp, kind, ... } =>
@@ -294,24 +298,24 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 			      if Stamps.eq(stamp,arrowStamp)
 			      then case args
 			            of [domain,range] =>
-				       (begin_block PP.CONSISTENT 0;
+				       (openHVBox 0;
 					if strength domain = 0
-					then (begin_block PP.CONSISTENT 1;
+					then (openHVBox 1;
 					      pps "(";
 					      prty domain;
 					      pps ")";
-					      end_block())
+					      closeBox())
 					else prty domain;
-					add_break(1,0);
+					break{nsp=1,offset=0};
 					pps "-> ";
 					prty range;
-					end_block())
+					closeBox())
 				     | _ => bug "CONty:arity"
-			      else (begin_block PP.INCONSISTENT 2;
+			      else (openHOVBox 2;
                                     ppTypeArgs args;
-                                    add_break(0,0);
+                                    break{nsp=0,offset=0};
                                     ppTycon1 env ppstrm membersOp tycon;
-                                    end_block())
+                                    closeBox())
 			    | _ => otherwise ())
 		       | RECORDtyc labels =>
 			 if Tuples.isTUPLEtyc(tycon)
@@ -327,56 +331,56 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 	and ppTypeArgs [] = ()
 	  | ppTypeArgs [ty] = 
 	     (if strength ty <= 1
-	      then (begin_block PP.INCONSISTENT 1;
+	      then (openHOVBox 1;
                     pps "("; 
                     prty ty; 
                     pps ")";
-                    end_block())
+                    closeBox())
 	      else prty ty;
-	      add_break(1,0))
+	      break{nsp=1,offset=0})
 	  | ppTypeArgs tys =
               ppClosedSequence ppstrm 
-	        {front=C PP.add_string "(",
-		 sep=fn ppstrm => (PP.add_string ppstrm ",";
-                                   PP.add_break ppstrm (0,0)),
-		 back=C PP.add_string ") ",
-		 style=PP.INCONSISTENT, 
+	        {front=C PP.string "(",
+		 sep=fn ppstrm => (PP.string ppstrm ",";
+                                   PP.break ppstrm {nsp=0,offset=0}),
+		 back=C PP.string ") ",
+		 style=INCONSISTENT, 
                  pr=fn _ => fn ty => prty ty}
 		tys
 
 	and ppTUPLEty [] = pps(effectivePath(unitPath,RECORDtyc [],env))
 	  | ppTUPLEty tys = 
 	      ppSequence ppstrm
-		 {sep = fn ppstrm => (PP.add_break ppstrm (1,0);
-				    PP.add_string ppstrm "* "),
-		  style = PP.INCONSISTENT,
+		 {sep = fn ppstrm => (PP.break ppstrm {nsp=1,offset=0};
+				    PP.string ppstrm "* "),
+		  style = INCONSISTENT,
 		  pr = (fn _ => fn ty =>
 			  if strength ty <= 1
-			  then (begin_block PP.INCONSISTENT 1;
+			  then (openHOVBox 1;
 				pps "("; 
 				prty ty; 
 				pps ")";
-				end_block())
+				closeBox())
 			  else prty ty)}
 	        tys
 
-	and ppField(lab,ty) = (begin_block PP.CONSISTENT 0;
+	and ppField(lab,ty) = (openHVBox 0;
 			       ppSym ppstrm lab; 
 			       pps ":";
 			       prty ty;
-			       end_block())
+			       closeBox())
 
 	and ppRECORDty([],[]) = pps(effectivePath(unitPath,RECORDtyc [],env))
               (* this case should not occur *)
 	  | ppRECORDty(lab::labels, arg::args) =
-	      (begin_block PP.INCONSISTENT 1;
+	      (openHOVBox 1;
                pps "{";
                ppField(lab,arg);
 	       ListPair.app 
-		 (fn field => (pps ","; add_break(1,0);ppField field))
+		 (fn field => (pps ","; break{nsp=1,offset=0}; ppField field))
 		 (labels,args);
                pps "}";
-               end_block())
+               closeBox())
 	  | ppRECORDty _ = bug "PPType.ppRECORDty"
 
 	and ppTyvar (tv as (ref info) :tyvar) :unit =
@@ -388,18 +392,18 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
 			      (case fields
 				 of [] => (pps "{"; pps printname; pps "}")
 				  | field::fields =>
-				      (begin_block PP.INCONSISTENT 1;
+				      (openHOVBox 1;
 				       pps "{";
 				       ppField field;
 				       app (fn x => (pps ",";
-						     add_break(1,0);
+						     break{nsp=1,offset=0};
 						     ppField x))
 					    fields;
 				       pps ";";
-				       add_break(1,0);
+				       break{nsp=1,offset=0};
 				       pps printname;
 				       pps "}";
-				       end_block()))
+				       closeBox()))
 			   | _ => pps printname)
 		   | _ => pps printname
 	    end
@@ -407,28 +411,28 @@ and ppType1 env ppstrm (ty: ty, sign: T.polysign,
     end  (* ppType1 *)
 
 and ppType (env:StaticEnv.staticEnv) ppstrm (ty:ty) : unit = 
-      (PP.begin_block ppstrm PP.INCONSISTENT 1;
+      (PP.openHOVBox ppstrm (PP.Rel 1);
        ppType1 env ppstrm (ty,[],NONE);
-       PP.end_block ppstrm)
+       PP.closeBox ppstrm)
 
 fun ppDconDomain members (env:StaticEnv.staticEnv)
                  ppstrm (ty:ty) : unit = 
-      (PP.begin_block ppstrm PP.INCONSISTENT 1;
+      (PP.openHOVBox ppstrm (PP.Rel 1);
        ppType1 env ppstrm (ty,[],SOME members);
-       PP.end_block ppstrm)
+       PP.closeBox ppstrm)
 
 fun ppTycon env ppstrm tyc = ppTycon1 env ppstrm NONE tyc
 
 fun ppTyfun env ppstrm (TYFUN{arity,body}) =
-    let val {begin_block, end_block, pps, add_break,...} = en_pp ppstrm
-     in begin_block PP.INCONSISTENT 2;
+    let val {openHVBox, openHOVBox, closeBox, pps, break,...} = en_pp ppstrm
+     in openHOVBox 2;
 	pps "TYFUN({arity="; 
-	ppi ppstrm arity; add_comma ppstrm;
-	add_break(0,0);
+	ppi ppstrm arity; ppcomma ppstrm;
+	break{nsp=0,offset=0};
 	pps "body="; 
 	ppType env ppstrm body; 
 	pps "})";
-        end_block()
+        closeBox()
     end
 
 fun ppFormals ppstrm =
@@ -442,19 +446,19 @@ fun ppFormals ppstrm =
 
 fun ppDataconTypes env ppstrm (GENtyc { kind = DATATYPE dt, ... }) =
     let val {index,freetycs,family={members,...},...} = dt
-	val {begin_block, end_block, pps, add_break,...} = en_pp ppstrm
+	val {openHVBox, openHOVBox, closeBox, pps, break,...} = en_pp ppstrm
 	val {dcons,...} = Vector.sub(members,index)
     in
-	begin_block PP.CONSISTENT 0;
+	openHVBox 0;
 	app (fn {name,domain,...} =>
 		(pps (Symbol.name name); pps ":";
 		 case domain
 		  of SOME ty =>
 		     ppType1 env ppstrm (ty,[],SOME (members,freetycs))
 		   | NONE => pps "CONST";
-		 add_break(1,0)))
+		 break{nsp=1,offset=0}))
 	    dcons;
-	    end_block()
+	    closeBox()
     end
   | ppDataconTypes env ppstrm _ = bug "ppDataconTypes"
 

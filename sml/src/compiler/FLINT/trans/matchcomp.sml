@@ -36,6 +36,7 @@ local structure DA = Access
       structure EM = ErrorMsg
       structure TP = Types
       structure LN = LiteralToNum
+      structure PP = PrettyPrint
 
       open VarCon Types
       open Absyn PLambda         
@@ -691,34 +692,34 @@ fun matchPrint (env,rules,unused) ppstrm =
   let fun matchPrint' ([],_,_) = ()
         | matchPrint' ([(pat,_)],_,_) = () (* never print last rule *)
         | matchPrint' ((pat,_)::more,[],_) =
-           (add_string ppstrm "        "; 
+           (PP.string ppstrm "        "; 
             PPAbsyn.ppPat env ppstrm (pat,!printDepth);
-            add_string ppstrm " => ...";
-            add_newline ppstrm;
+            PP.string ppstrm " => ...";
+            PP.newline ppstrm;
             matchPrint' (more,[],0))
         | matchPrint' ((pat,_)::more,(taglist as (tag::tags)),i) =
            if i = tag then
-            (add_string ppstrm "  -->   ";
+            (PP.string ppstrm "  -->   ";
              PPAbsyn.ppPat env ppstrm (pat,!printDepth);
-             add_string ppstrm " => ..."; 
-             add_newline ppstrm;
+             PP.string ppstrm " => ..."; 
+             PP.newline ppstrm;
              matchPrint'(more,tags,i+1))
            else 
-            (add_string ppstrm "        ";
+            (PP.string ppstrm "        ";
              PPAbsyn.ppPat env ppstrm (pat,!printDepth);
-             add_string ppstrm " => ...";
-             add_newline ppstrm;
+             PP.string ppstrm " => ...";
+             PP.newline ppstrm;
              matchPrint'(more,taglist,i+1))
-   in add_newline ppstrm;
-      begin_block ppstrm CONSISTENT 0;
+   in PP.newline ppstrm;
+      PP.openHVBox ppstrm (PP.Rel 0);
       matchPrint'(rules,unused,0);
-      end_block ppstrm
+      PP.closeBox ppstrm
   end
 
 fun bindPrint (env,(pat,_)::_) ppstrm =
-      (add_newline ppstrm; add_string ppstrm "        "; 
+      (PP.newline ppstrm; PP.string ppstrm "        "; 
        PPAbsyn.ppPat env ppstrm (pat,!printDepth);
-       add_string ppstrm " = ...")
+       PP.string ppstrm " = ...")
   | bindPrint _ _ = bug "bindPrint in mc"
 
 end (* local printutil *)

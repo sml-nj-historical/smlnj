@@ -5,10 +5,10 @@ signature ELABDEBUG =
 sig
   val debugPrint : bool ref 
                    -> (string *
-		       (PrettyPrint.ppstream -> 'a -> unit) *
+		       (PrettyPrint.stream -> 'a -> unit) *
 		       'a)
                    -> unit
-  val ppSymList : PrettyPrint.ppstream -> Symbol.symbol list -> unit
+  val ppSymList : PrettyPrint.stream -> Symbol.symbol list -> unit
   val envSymbols : StaticEnv.staticEnv -> Symbol.symbol list
   val checkEnv : StaticEnv.staticEnv * Symbol.symbol -> string
   val withInternals : (unit -> 'a) -> 'a
@@ -30,28 +30,28 @@ local structure S  = Symbol
 in 
 
 fun debugPrint (debugging: bool ref)
-               (msg: string, printfn: ppstream -> 'a -> unit, arg: 'a) =
+               (msg: string, printfn: PP.stream -> 'a -> unit, arg: 'a) =
   if (!debugging) then
        with_pp (EM.defaultConsumer())
 	(fn ppstrm =>
-	  (begin_block ppstrm CONSISTENT 0;
-	   add_string ppstrm msg;
-	   add_newline ppstrm;
-	   add_string ppstrm "  ";
-	   begin_block ppstrm CONSISTENT 0;
+	  (openHVBox ppstrm (PP.Rel 0);
+	   PP.string ppstrm msg;
+	   newline ppstrm;
+	   PP.nbSpace ppstrm 2;
+	   openHVBox ppstrm (PP.Rel 0);
 	   printfn ppstrm arg;
-	   end_block ppstrm;
-	   add_newline ppstrm;
-	   end_block ppstrm;
-	   flush_ppstream ppstrm))
+	   closeBox ppstrm;
+	   newline ppstrm;
+	   closeBox ppstrm;
+	   PP.flushStream ppstrm))
   else ()
 
 fun ppSymList ppstrm (syms: S.symbol list) = 
      PPU.ppClosedSequence ppstrm
-     {front=(fn pps => PP.add_string pps "["),
-      sep=(fn pps => (PP.add_string pps ",")),
-      back=(fn pps => PP.add_string pps "]"),
-      style=PP.INCONSISTENT,
+     {front=(fn ppstrm => PP.string ppstrm "["),
+      sep=(fn ppstrm => (PP.string ppstrm ",")),
+      back=(fn ppstrm => PP.string ppstrm "]"),
+      style=PPU.INCONSISTENT,
       pr=PPU.ppSym}
      syms
 

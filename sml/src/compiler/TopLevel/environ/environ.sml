@@ -193,14 +193,14 @@ in
 end
 
 fun describe static (s: symbol) : unit =
-      let open PrettyPrint
+      let open PrettyPrint PPUtil
        in with_pp (ErrorMsg.defaultConsumer())
 	   (fn ppstrm =>
-	    (begin_block ppstrm CONSISTENT 0;
-	     PPModules.ppBinding ppstrm
-	       (s, SE.look(static,s), static, !Control.Print.printDepth);
-	     add_newline ppstrm;
-	       end_block ppstrm))
+	    (openHVBox ppstrm (Rel 0);
+	      PPModules.ppBinding ppstrm
+	        (s, SE.look(static,s), static, !Control.Print.printDepth);
+	      newline ppstrm;
+	     closeBox ppstrm))
       end handle SE.Unbound => print (S.name s ^ " not found\n")
 
 val primEnv = PrimEnv.primEnv

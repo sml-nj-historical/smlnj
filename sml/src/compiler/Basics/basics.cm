@@ -69,7 +69,7 @@ is
 	print/printcontrol.sml
 	print/printutil.sig
 	print/printutil.sml
-	print/pp-wrapper.sml
+	print/pp-init.sml
 
 	miscutil/intstrmap.sig
 	miscutil/intstrmap.sml

@@ -222,7 +222,7 @@ structure Control : CONTROL =
 		registry
 		{ ctl = Controls.stringControl bool_cvt ctl,
 		  envName = SOME (ControlUtil.EnvName.toUpper "CONTROL_" n) };
-		r
+	    r
 	end
     in
 
@@ -255,6 +255,8 @@ structure Control : CONTROL =
     val shareDefError = ElabControl.shareDefError
     val instantiateSigs = ElabControl.instantiateSigs
     val debugging = new ("debugging", "?", false)
+    val printAst = new ("printAst", "?", false)
+    val printAbsyn = new ("printAbsyn", "?", false)
     val internals = ElabControl.internals
     val interp = new ("interp", "?", false)
 (*

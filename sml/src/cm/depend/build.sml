@@ -154,11 +154,11 @@ structure BuildDepend :> BUILDDEPEND = struct
 				    n' :: " refers to " ::
 				    symDesc (s, [" defined in ", n''])
 			    in
-				app (PrettyPrint.add_string pps) l;
-				PrettyPrint.add_newline pps
+				app (PrettyPrint.string pps) l;
+				PrettyPrint.newline pps
 			    end
 		    in
-			PrettyPrint.add_newline pps;
+			PrettyPrint.newline pps;
 			recur (SrcPath.descr f, history)
 		    end
 		in
