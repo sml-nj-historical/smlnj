@@ -106,13 +106,13 @@ functor PPCMacOSX_CCalls (
     val dblTy = 64	(* MLRISC type of double *)
 
   (* stack pointer *)
-    val sp = C.GPReg 1
-    val spR = T.REG(wordTy, sp)
+    val spReg = T.REG(wordTy, C.GPReg 1)
 
   (* registers used for parameter passing *)
     val argGPRs = List.map C.GPReg [3, 4, 5, 6, 7, 8, 9, 10]
     val argFPRs = List.map C.FPReg [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    val resRegLoc = Reg(wordTy, C.GPReg 3, NONE)
+    val resGPR = C.GPReg 3
+    val resRegLoc = Reg(wordTy, resGPR, NONE)
     val resFPR = C.FPReg 1
 
   (* C callee-save registers *)
@@ -243,7 +243,7 @@ functor PPCMacOSX_CCalls (
 	  in {
 	    argLocs = assign (paramTys, 0, argGPRs, argFPRs, []),
 	    resLoc = resLoc,
-	    structRet = structRet
+	    structRetLoc = structRet
 	  } end
 
     datatype c_arg
@@ -255,14 +255,15 @@ functor PPCMacOSX_CCalls (
     val stkRg = T.Region.memory
 
   (* SP-based address of parameter at given offset *)
-    fun paramAddr off = T.ADD(wordTy, spR, T.LI(off + IntInf.fromInt paramAreaOffset))
+    fun paramAddr off =
+	  T.ADD(wordTy, spReg, T.LI(off + IntInf.fromInt paramAreaOffset))
 
     fun genCall {
 	  name, proto, paramAlloc, structRet, saveRestoreDedicated,
 	  callComment, args
 	} = let
 	  val {conv, retTy, paramTys} = proto
-	  val {argLocs, resLoc, structRet} = layout proto
+	  val {argLocs, resLoc, structRetLoc} = layout proto
 	(* generate code to assign the arguments to their locations *)
 	  fun assignArgs ([], [], stms) = stms
 	    | assignArgs (Reg(ty, r, _) :: locs, ARG exp :: args, stms) =
@@ -283,6 +284,15 @@ functor PPCMacOSX_CCalls (
 		  | SOME(Reg(ty, r, _)) => [T.GPR(T.REG(ty, r))]
 		  | SOME(FReg(ty, r, _)) => [T.FPR(T.FREG(ty, r))]
 		  | SOME _ => raise Fail "bogus result location"
+		(* end case *))
+	(* make struct return-area setup (if necessary) *)
+	  val setupStructRet = (case structRetLoc
+		 of NONE => []
+		  | SOME loc => let
+		      val structAddr = structRet loc
+		      in
+			[T.MV(wordTy, resGPR, structAddr)]
+		      end
 		(* end case *))
 	(* determine the registers used and defined by this call *)
 	  val (uses, defs) = let
@@ -313,9 +323,14 @@ functor PPCMacOSX_CCalls (
 		 of NONE => callStm
 		  | SOME c => T.ANNOTATION(callStm, #create MLRiscAnnotations.COMMENT c)
 		(* end case *))
+	(* take care of dedicated client registers *)
+	  val {save, restore} = saveRestoreDedicated defs
 	  val callseq = List.concat [
+		  setupStructRet,
 		  argSetupCode,
-		  [callStm]
+		  save,
+		  [callStm],
+		  restore
 		]
 	  in
 	  (* check calling convention *)

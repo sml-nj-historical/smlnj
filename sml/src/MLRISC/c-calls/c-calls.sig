@@ -87,7 +87,7 @@ signature C_CALLS =
     val layout : CTypes.c_proto -> {
 	    argLocs : arg_location list,	(* argument/parameter assignment *)
 	    resLoc : arg_location option,	(* result location; NONE for void functions *)
-	    structRet : {szb : int, align : int} option
+	    structRetLoc : {szb : int, align : int} option
 	  }
 
   (* Callee-save registers as defined in the C calling convention.  Note that
