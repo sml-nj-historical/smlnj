@@ -8,7 +8,7 @@
 \columnsep0.25in
 
 \newcommand{\smlmj}{110}
-\newcommand{\smlmn}{29}
+\newcommand{\smlmn}{30}
 
 \author{Matthias Blume \\
 Research Institute for Mathematical Sciences \\
@@ -77,6 +77,9 @@ is common to both user programs and SML/NJ itself
 \item management of (the sharing of) link-time state
 \item conditional compilation (at compilation unit granularity)
 \item support for parallel and distributed compilation
+\item facilities for generating stand-alone ML programs
+\item a mechanism for deriving dependency information that can be used
+by other compilation managers such as Unix' {\bf make}
 \item an API to access all these facilities at SML/NJ's interactive
 prompt
 \end{itemize}
@@ -989,7 +992,8 @@ section~\ref{sec:classes}).  This makes it possible to add new classes
 and tools very easily without having to reconfigure or recompile CM,
 not to mention modify its source code.
 
-\subsubsection{Building stand-alone programs}
+\subsubsection{Support for stand-alone programs}
+\label{sec:mlbuild:support}
 
 CM can be used to build stand-alone programs. In fact SML/NJ
 itself---including CM---is an example of this.  (The interactive
@@ -1002,33 +1006,56 @@ prepare those binfiles or libraries together with a list that
 describes them to the runtime system.
 
 \begin{verbatim}
-  val mk_standalone : bool option -> string -> string list option
+  val mk_standalone : bool option ->
+                      { project: string, wrapper: string, target: string } ->
+                      string list option
 \end{verbatim}
 
-Depending on the optional boolean argument, function {\tt
-CM.mk\_standalone} first acts like either {\tt CM.recomp} or {\tt
+Here, {\tt project} and {\tt wrapper} name description files and {\tt
+target} is the name of a heap image---with or without the usual
+implicit heap image suffix; see the description of {\tt
+SMLofNJ.exportFn} from the (SML/NJ-specific extension of the) Basis
+Library~\cite{reppy99:basis}.
+
+A call of {\tt mk\_standalone} triggers the following three-stage
+procedure:
+\begin{enumerate}
+\item Depending on the optional boolean argument, {\tt project} is
+subjected to the equivalent of either {\tt CM.recomp} or {\tt
 CM.stabilize}.  {\tt NONE} means {\tt CM.recomp}, and {\tt (SOME $r$)}
-means {\tt CM.stabilize $r$}.  After recompilation (or stabilization)
-is successful, {\tt CM.mk\_standalone} constructs a topologically
-sorted list of strings that, when written to a file, can be passed to the
-runtime system in order to perform stand-alone linkage of the given
-program. Upon failure, {\tt CM.mk\_standalone} returns {\tt NONE}.
+means {\tt CM.stabilize $r$}.
+There are tree ways of how to continue from here:
+\begin{enumerate}
+\item If recompilation of {\tt project}
+failed, then a result of {\tt NONE} will be returned immediately.
+\item If everything was up-to-date (i.e, if no ML source had to be compiled
+and all these sources were older than the existing {\tt target}), then
+a result of {\tt SOME []} will be returned.
+\item Otherwise execution proceeds to the next stage.
+\end{enumerate}
+\item The {\em wrapper library} named by {\tt wrapper} is being
+recompiled (using the equivalent of {\tt CM.recomp}).  If this
+fails, {\tt NONE} is returned.  Otherwise execution proceeds to the
+next stage.
+\item {CM.mk\_standalone} constructs a topologically sorted list $l$
+of strings that, when written to a file, can be passed to the runtime
+system in order to perform stand-alone linkage of the program given by
+{\tt wrapper}.  The final result is {\tt SOME $l$}.
+\end{enumerate}
 
-\paragraph*{\bf ml-build:} The programmer should normally have no need
-to invoke {\tt CM.mk\_standalone} directly.  Instead, SML/NJ provides
-a command {\tt ml-build} which does all the work.  To be able to use
-{\tt ml-build}, one must implement a library exporting a structure
-that has some function suitable to be an argument to {\tt
-SMLofNJ.exportFn}.  Suppose the library is called {\tt myproglib.cm}, the
-structure is called {\tt MyProg}, and the function is called {\tt
-MyProg.main}.  If one wishes to produce a heap image file {\tt myprog}
-one simply has to invoke the following command:
+The idea is that {\tt project} names the library that actually
+implements the main program while {\tt wrapper} names an auxiliary
+wrapper library responsible for issuing a call of {\tt
+SMLofNJ.exportFn} (generating {\tt target}) on behalf of {\tt
+project}.
 
-\begin{verbatim}
-  ml-build myproglib.cm MyProg.main myprog
-\end{verbatim}
+The programmer should normally never have a need to invoke {\tt
+CM.mk\_standalone} directly.  Instead, this function is used by an
+auxiliary script called {\tt ml-build} (see
+Section~\ref{sec:mlbuild}).
 
 \subsubsection{Finding all sources}
+\label{sec:makedepend:support}
 
 The {\tt CM.sources} function can be used to find the names of all
 source files that a given library depends on.  It returns the names of
@@ -1069,6 +1096,9 @@ variables instead of concrete architecture- and OS-names:
     (CM.sources (SOME { arch = "$ARCH", os = "$OPSYS" })
          "foo.cm");
 \end{verbatim}
+A call of {\tt CM.sources} similar to the one shown here is used by
+the auxiliary script {\tt ml-makedepend} (see
+Section~\ref{sec:makedepend}).
 \item[finding all {\tt noweb} sources:]
 To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools:noweb}),
 e.g., to be able to run the document preparation program {\tt noweave}
@@ -2217,6 +2247,185 @@ complicated scenarios such as the one necessary for compiling the
 the ``pervasive'' environment) during {\tt CMB.make}.  Therefore, this
 will always be done locally by the master process.
 
+\section{The {\tt sml} command line}
+
+The SML/NJ interactive system---including CM---is started from the
+operating system shell by invoking the command {\tt sml}.  This
+command accepts a variety of arguments. This section describes those
+arguments that concern CM.  CM processes these arguments one-by-one
+from left to right.
+
+\subsection{File arguments}
+
+Names of ML source files and CM description files can appear as
+arguments in any order.
+
+\begin{description}
+\item[ML source files] are recognized by their filename extensions
+({\tt .sig}, {\tt .sml}, or {\tt .fun}) and will be loaded via {\tt
+use} at the time the argument is being considered.  Names of ML source
+files are specified using the underlying operating system's native
+pathname syntax.
+\item[CM description files] are recognized by their extension {\tt
+.cm}.  They must be specified in CM's {\em standard} pathname syntax.
+The corresponding libraries (or groups) will be loaded at the time the
+argument is being considered by passing them to either {\tt
+CM.autoload} or {\tt CM.make}---depending on which {\em mode switching
+flag} ({\tt -a} or {\tt -m}) was specified last.  The default is {\tt
+-a} (i.e., {\tt CM.autoload}).
+\end{description}
+
+\subsection{Mode-switching flags}
+
+By default, CM description files are loaded via {\tt CM.autoload}.
+By specifying {\tt -m} somewhere on the command line one can force the
+system to use {\tt CM.make} for all following description files up to
+the next occurence of {\tt -a}.  The {\tt -a} flag switches back to
+the default behavior, using {\tt CM.autoload}, which will be in effect
+up to the next occurrence of another {\tt -m}.
+
+The mode-switching flags {\tt -a} and {\tt -m} can be specified
+arbitrarily often on the same command line.
+
+\subsection{Defining and undefining CM preprocessor symbols}
+\label{sec:cmdline:defundef}
+
+The following options for defining and undefining CM preprocessor
+symbols can also occur arbitrarily often.  Their effects accumulate
+while processing the command line from left to right.  Their combined
+effects eventually become observable in the interactive system.
+
+\begin{description}
+\item[{\tt -D$v$=$n$}] acts like {\tt (\#set (CM.symval "$v$") (SOME $n$))}.
+\item[{\tt -D$v$}] is equivalent to {\tt -D$v$=1}.
+\item[{\tt -U$v$}] acts like {\tt (\#set (CM.symval "$v$") NONE)}.
+\end{description}
+
+\section{Auxiliary scripts}
+
+\subsection{Building stand-alone programs}
+\label{sec:mlbuild}
+
+The programmer should normally have no need to invoke {\tt
+CM.mk\_standalone} (see Section~\ref{sec:mlbuild:support}) directly.
+Instead, SML/NJ provides a command {\tt ml-build} which does all the
+work.  To be able to use {\tt ml-build}, one must implement a library
+exporting a structure that has some function suitable to be an
+argument to {\tt SMLofNJ.exportFn}.  Suppose the library is called
+{\tt myproglib.cm}, the structure is called {\tt MyProg}, and the
+function is called {\tt MyProg.main}.  If one wishes to produce a heap
+image file {\tt myprog} one simply has to invoke the following
+command:
+
+\begin{verbatim}
+  ml-build myproglib.cm MyProg.main myprog
+\end{verbatim}
+
+The heap image is written only when needed: if a heap image exists and
+is newer than all ML sources involved, provided that none of the ML
+sources have to be recompiled, {\tt ml-build} will just issue a
+message indicating that everything is up-to-date.
+
+As in the case of {\tt sml}, it is possible to define or undefine
+preprocessor symbols using {\tt -D} or {\tt -U} options (see
+Section~\ref{sec:cmdline:defundef}).  These options must be specified
+before the three regular arguments.  Thus, the full command line
+syntax is:
+
+\begin{verbatim}
+  ml-build [DU-options] myproglib.cm MyProg.main myprog
+\end{verbatim}
+
+\subsubsection{Bootstrapping: How {\tt ml-build} works}
+
+Internally, {\tt ml-build} generates a temporary wrapper library
+containing a single call of {\tt SMLofNJ.exportFn} as part of the
+library's module-initialization code.  Once this is done, CM is
+started, {\tt CM.mk\_standalone} is invoked (with the main project
+description file, the generated wrapper library file, and the heap
+image name as arguments), and a {\em bootlist} file is written.
+If all these steps were successful, {\tt ml-build} invokes the (bare)
+SML/NJ runtime with a special option, causing it to {\em bootstrap}
+using the {\em bootlist} file.
+
+Each line of the {\em bootlist} file specifies one module to be linked
+into the final stand-alone program.  The runtime system reads these
+lines one-by-one, loads the corresponding modules, and executes their
+initialization code.  Since the last module has been arranged (by way
+of using the wrapper library from above) to contain a call of {\tt
+SMLofNJ.exportFn}, initialization of this module causes the program's
+heap image to be written and the bootstrap procedure to terminate.
+
+\subsection{Generating dependencies for {\tt make}}
+\label{sec:makedepend}
+
+When ML programs are used as parts of larger projects, it can become
+necessary to use CM (or, e.g., {\tt ml-build} as described in
+Section~\ref{sec:mlbuild}) in a traditional makefile for Unix' {\bf
+make}.  To avoid repeated invocations, the dependency information that
+CM normally manages internally must be described externally so that
+{\bf make} can process it.
+
+For this purpose, it is possible to let CM's dependency analyzer
+generate a list of files that a given ML program depends on (see
+Section~\ref{sec:makedepend:support}).  The {\tt ml-makedepend}
+scripts conveniently wraps this functionality in such a way that it
+resembles the familiar {\bf makedepend} facility found on many Unix
+installations for the use by C projects.
+
+An invocation of {\tt ml-makedepend} takes two mandatory arguments:
+the root description file of the ML program in question and the name
+of the target that is to be used by the generated makefile entry.
+Thus, a typical command line has the form:
+
+\begin{verbatim}
+  ml-makedepend project.cm targetname
+\end{verbatim}
+
+This will cause {\tt ml-makedepend} to first look for a file named
+{\tt makefile} and if that cannot be found for {\tt Makefile}.  (An
+error message is issued if neither of the two exists.)  After deleting
+any previously generated entry for this description-target
+combination, the script will invoke CM and add up-to-date dependency
+information to the file.
+
+Using the {\tt -f} option it is possible to force an arbitrary
+programmer-specified file to be used in place of {\tt makefile} or
+{\tt Makefile}.
+
+Some of the files a CM-managed program depends on are stable
+libraries.  Since the file names for stable libraries vary according
+to current CPU architecture and operating system, writing them
+directly would require different entries for different systems.  To
+avoid this problem (most of the time\footnote{The careful reader may
+have noticed that because of CM's conditional compilation it is
+possible that dependency information itself varies between different
+architectures or operating systems.}), {\tt ml-makedepend} will use
+{\bf make}-variables {\tt \$(ARCH)} and {\tt \$(OPSYS)} as
+placeholders within the information it generates.  It is the
+programmer's responsibility to make sure that these variables are set
+to meaningful values at the time {\bf make} is eventually being
+invoked.  This feature can be turned off (causing actual file names to
+be used) by specifying the {\tt -n} option to {\tt ml-makedepend}.
+
+In cases where the programmer prefers other strings to be used in
+place of {\tt \$(ARCH)} or {\tt \$(OPSYS)} (or both) one can specify
+those strings using the {\tt -a} and {\tt -o} options, respectively.
+
+Like {\tt ml-build} (Section~\ref{sec:mlbuild}) and {\tt sml}
+(Section~\ref{sec:cmdline:defundef}), the {\tt ml-makedepend} command
+also accepts {\tt -D} and {\tt -U} command line options.
+
+Thus, the full command line syntax for {\tt ml-makedepend} is:
+
+\begin{verbatim}
+  ml-makedepend [DU-options] [-n] [-f makefile] project.cm target
+  ml-makedepend [DU-options] [-a arch] [-o os] [-f makefile] project.cm target
+\end{verbatim}
+
+(If {\tt -n} is given, then any additional {\tt -a} or {\tt -o}
+options---while not illegal---will be ignored.)
+
 \section{Example: Dynamic linking}
 \label{sec:dynlink}
 
@@ -2977,7 +3186,6 @@ interactive system and glueing all the other parts together & always &
 no
 \end{tabular}
 \end{center}
-
 
 \pagebreak
 

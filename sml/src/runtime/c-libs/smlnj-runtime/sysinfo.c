@@ -9,6 +9,7 @@
 #include "ml-values.h"
 #include "ml-objects.h"
 #include "cfun-proto-list.h"
+#include "machine-id.h"
 
 #if defined(OPSYS_UNIX)
 #  include "ml-unixdep.h"  /* for OS_NAME */
@@ -32,6 +33,7 @@
  *   "TARGET_ARCH"
  *   "HAS_SOFT_POLL"
  *   "HAS_MP"
+ *   "HEAP_SUFFIX"      -- added by Blume (7/2000)
  */
 ml_val_t _ml_RunT_sysinfo (ml_state_t *msp, ml_val_t arg)
 {
@@ -42,6 +44,8 @@ ml_val_t _ml_RunT_sysinfo (ml_state_t *msp, ml_val_t arg)
 	res = ML_CString(msp, OS_NAME);
     else if (STREQ("OS_VERSION", name))
 	res = ML_CString(msp, "<unknown>");
+    else if (STREQ("HEAP_SUFFIX", name))
+        res = ML_CString(msp, MACHINE_ID "-" OPSYS_ID);
     else if (STREQ("HOST_ARCH", name))
 #if   defined(HOST_ALPHA32)
 	res = ML_CString(msp, "ALPHA32");

@@ -205,6 +205,7 @@ in
 		  | (SOME d, SOME s) => SOME (filter (d, s))
 
 	    and snode gp (DG.SNODE n) = let
+		val youngest = #youngest gp
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
 
@@ -276,6 +277,8 @@ in
 			end handle _ => fail () (* catch elaborator exn *)
 		end (* compile_here *)
 		fun notlocal () = let
+		    val _ = youngest := TStamp.max (!youngest,
+						    SmlInfo.lastseen i)
 		    val urgency = getUrgency i
 		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
@@ -354,6 +357,7 @@ in
 				fun compile () = let
 				    val sp = SmlInfo.sourcepath i
 				in
+				    youngest := TStamp.NOTSTAMP;
 				    if compile_there' sp then
 					tryload ("received", compile_again)
 				    else compile_again ()

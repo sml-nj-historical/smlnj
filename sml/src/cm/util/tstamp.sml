@@ -25,4 +25,7 @@ structure TStamp = struct
     fun fmodTime f = TSTAMP (OS.FileSys.modTime f) handle _ => NOTSTAMP
     fun setTime (f, NOTSTAMP) = ()
       | setTime (f, TSTAMP t) = OS.FileSys.setTime (f, SOME t)
+
+    fun max (TSTAMP t, TSTAMP t') = TSTAMP (if Time.< (t, t') then t' else t)
+      | max _ = NOTSTAMP
 end

@@ -45,6 +45,6 @@ signature SYS_INFO =
 	 * hardware is a multiprocessor.
 	 *)
 
+    val getHeapSuffix : unit -> string
+
   end
-
-

@@ -17,13 +17,14 @@ structure GeneralParams = struct
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,
-		  errcons: PrettyPrint.ppconsumer }
+		  errcons: PrettyPrint.ppconsumer,
+		  youngest: TStamp.t ref }
 
     fun bind { param = { penv, fnpolicy, symval, keep_going },
-		groupreg, errcons } rb =
+		groupreg, errcons, youngest } rb =
 	{ param = { penv = SrcPath.bind penv rb,
 		    fnpolicy = fnpolicy,
 		    symval = symval,
 		    keep_going = keep_going },
-	  groupreg = groupreg, errcons = errcons }
+	  groupreg = groupreg, errcons = errcons, youngest = youngest }
 end

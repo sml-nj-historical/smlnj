@@ -13,6 +13,41 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/07/27 17:40:00 JST
+Tag: blume-20000727-scripts
+Description:
+
+!!!! WARNING !!!!
+You must recompile the runtime system!
+!!!! WARNING !!!!
+
+This is basically another round of script-enhancements:
+
+1. sml, ml-build, and ml-makedepend accept options -D and -U to define
+   and undefine CM preprocessor symbols.
+
+2. ml-build avoids generating a new heap image if it finds that the
+   existing one is still ok.  (The condition is that no ML file had to
+   be recompiled and all ML files are found to be older that the heap
+   file.)
+
+   To make this work smoothly, I also hacked the runtime system as
+   well as SMLofNJ.SysInfo to get access to the heap image suffix
+   (.sparc-solaris, ...) that is currently being used.
+
+   Moreover, the signature of CM.mk_standalone has changed.  See the
+   CM manual.
+
+3. ml-makedepend accepts additional options -n, -a, and -o.  (See the
+   CM manual for details.)
+
+4. More CM manual updates:
+    - all of the above has been documented.
+    - there is now a section describing the (CM-related) command line
+      arguments that are accepted by the "sml" command
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/07/25 16:20:00 JST
 Tag: blume-20000725-makedepend
 Description:

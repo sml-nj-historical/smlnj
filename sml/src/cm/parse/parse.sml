@@ -113,7 +113,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	val groupreg = gr
 	val errcons = EM.defaultConsumer ()
-	val ginfo0 = { param = param, groupreg = groupreg, errcons = errcons }
+	val youngest = ref TStamp.ancient
+	val ginfo0 = { param = param, groupreg = groupreg,
+		       errcons = errcons, youngest = youngest }
 	val keep_going = #keep_going param
 
 	(* The "group cache" -- we store "group options";  having

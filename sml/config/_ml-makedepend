@@ -8,35 +8,70 @@ xx=$$
 tmpmf=$xx-makefile
 mlscript=$xx-mlscript.sml
 thisscript=$0
+archos=substitute
+archstring='$(ARCH)'
+osstring='$(OS)'
+dulist=''
 
 trap 'rm -f $tmpmf $mlscript' 0 1 2 3 15
 
 usage() {
     echo $thisscript: $*
-    echo Usage: $thisscript '[-f makefile]' cmfile targetname
+    echo Usage: $thisscript '[-f makefile] [-n] [-a arch] [-o os]' project.cm target
     exit 1
 }
 
 #
-# process -f option if it is given
+# process options
 #
-if [ $# != 0 ] ; then
-    if [ "$1" = "-f" ] ; then
+while [ $# != 0 ] ; do
+    case $1 in
+    -n)
+	shift
+	archos=real
+	;;
+    -a)
+	shift
+	if [ $# = 0 ] ; then
+	    usage
+	else
+	    archstring=$1
+	    shift
+	fi
+	;;
+    -o)
+	shift
+	if [ $# = 0 ] ; then
+	    usage
+	else
+	    osstring=$1
+	    shift
+	fi
+	;;
+    -f)
 	shift
 	if [ $# = 0 ] ; then
 	    usage
 	else
 	    mf=$1
 	    shift
-	    if [ -f "$mf" ] ; then
-		: ok
-	    else
-		echo $thisscript: $mf does not exist
-		exit 1
-	    fi
 	fi
-    fi
-fi
+	if [ -f "$mf" ] ; then
+	    : ok
+	else
+	    echo $thisscript: $mf does not exist
+	    exit 1
+	fi
+	;;
+    -D*|-U*)
+	dulist="$dulist $1"
+	shift
+	;;
+    *)
+	break
+	;;
+    esac
+done
 
 #
 # if there was no -f option, check for makefile and then Makefile
@@ -62,6 +97,12 @@ else
     usage
 fi
 
+if [ $archos = substitute ] ; then
+    archosarg="(SOME { arch = \"${archstring}\", os = \"${osstring}\" })"
+else
+    archosarg=NONE
+fi
+
 #
 # the delimiter strings (start and end)
 #
@@ -83,7 +124,7 @@ rm $tmpmf
 # construct the ML script
 #
 cat >$mlscript <<stop
-let val archos = SOME { arch = "\$(ARCH)", os = "\$(OPSYS)" }
+let val archos = ${archosarg}
     val lopt = CM.sources archos "${cmfile}"
 in
     case lopt of
@@ -102,7 +143,7 @@ in
 end
 stop
 
-if $SML '$smlnj/cm.cm' $mlscript >/dev/null 2>&1 ; then
+if $SML '$smlnj/cm.cm' $dulist $mlscript ; then
     cat $tmpmf >>$mf
 else
     echo $thisscript: CM dependency analysis failed

@@ -45,6 +45,8 @@ structure SysInfo : SYS_INFO =
     fun hasSoftwarePolling () = getFlag "HAS_SOFT_POLL"
     fun hasMultiprocessing () = getFlag "HAS_MP"
 
+    fun getHeapSuffix () = getInfoStr (sysInfo "HEAP_SUFFIX")
+
   end
 
 

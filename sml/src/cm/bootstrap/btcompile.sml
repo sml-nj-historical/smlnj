@@ -168,7 +168,9 @@ end = struct
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
-	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
+	val ginfo = { param = param, groupreg = groupreg,
+		      errcons = errcons,
+		      youngest = ref TStamp.ancient }
 
 	fun mk_main_compile arg = let
 

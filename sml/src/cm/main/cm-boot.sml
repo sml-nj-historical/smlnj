@@ -320,17 +320,35 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      before dropPickles ()
 	  end
 
-	  (* I would have liked to express this using "run", but "run"
-	   * thinks it has to return a bool... *)
-	  fun mk_standalone sflag s = let
-	      val p = mkStdSrcPath s
+	  fun mk_standalone sflag { project, wrapper, target } = let
+	      val hsfx = SMLofNJ.SysInfo.getHeapSuffix ()
+	      fun extendTarget () =
+		  OS.Path.joinBaseExt { base = target, ext = SOME hsfx }
+	      val target =
+		  case OS.Path.splitBaseExt target of
+		      { base, ext = NONE } => extendTarget ()
+		    | { base, ext = SOME e } =>
+		      if e = hsfx then target else extendTarget ()
+	      val pp = mkStdSrcPath project
+	      val wp = mkStdSrcPath wrapper
+	      val ts = TStamp.fmodTime target
 	      val gr = GroupReg.new ()
+	      fun do_wrapper () =
+		  case Parse.parse (parse_arg (gr, NONE, wp)) of
+		      NONE => NONE
+		    | SOME (g, gp) =>
+		      if recomp_runner gp g then SOME (mkBootList g)
+		      else NONE
 	  in
-	      (case Parse.parse (parse_arg (gr, sflag, p)) of
+	      (case Parse.parse (parse_arg (gr, sflag, pp)) of
 		   NONE => NONE
 		 | SOME (g, gp) =>
 		   if isSome sflag orelse recomp_runner gp g then
-		       SOME (mkBootList g)
+		       case (ts, !(#youngest gp)) of
+			   (TStamp.TSTAMP tgt_t, TStamp.TSTAMP src_t) =>
+			   if Time.< (tgt_t, src_t) then do_wrapper ()
+			   else SOME []
+			 | _ => do_wrapper ()
 		   else NONE)
 	      before dropPickles ()
 	  end
@@ -348,7 +366,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun al_ginfo () = { param = param (),
 			      groupreg = al_greg,
-			      errcons = EM.defaultConsumer () }
+			      errcons = EM.defaultConsumer (),
+			      youngest = ref TStamp.ancient }
 
 	  val al_manager =
 	      AutoLoad.mkManager { get_ginfo = al_ginfo,
@@ -427,7 +446,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      symval = SSV.symval,
 				      keep_going = false },
 			    groupreg = GroupReg.new (),
-			    errcons = EM.defaultConsumer () }
+			    errcons = EM.defaultConsumer (),
+			    youngest = ref TStamp.ancient }
 	      fun loadInitGroup () =
 		  Stabilize.loadStable
 		      { getGroup = fn _ =>
@@ -502,17 +522,38 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	fun procCmdLine () = let
 	    val autoload = ignore o autoload
 	    val make = ignore o make
-	    fun p (f, ("sml" | "sig"), mk) = HostMachDepVC.Interact.useFile f
-	      | p (f, "cm", mk) = mk f
-	      | p (f, e, mk) = Say.say ["!* unable to process `", f,
+	    fun p (f, mk, ("sml" | "sig" | "fun")) =
+		HostMachDepVC.Interact.useFile f
+	      | p (f, mk, "cm") = mk f
+	      | p (f, mk, e) = Say.say ["!* unable to process `", f,
 					"' (unknown extension `", e, "')\n"]
+	    fun badopt opt f () =
+		Say.say ["!* bad ", opt, " option: `", f, "'\n"]
+	    fun carg ("-D", f, _) =
+		let val bad = badopt "-D" f
+		in
+		    case String.fields (fn c => c = #"=")
+				       (String.extract (f, 2, NONE)) of
+			"" :: _ => bad ()
+		      | [var, num] =>
+			(case Int.fromString num of
+			     SOME i => #set (SSV.symval var) (SOME i)
+			   | NONE => bad ())
+		      | [var] => #set (SSV.symval var) (SOME 1)
+		      | _ => bad ()
+		end
+	      | carg ("-U", f, _) =
+		(case String.extract (f, 2, NONE) of
+		     "" => badopt "-U" f ()
+		   | var => #set (SSV.symval var) NONE)
+	      | carg (_, f, mk) = p (f, mk,
+				 String.map Char.toLower
+					    (getOpt (OS.Path.ext f, "<none>")))
 	    fun arg ("-a", _) = autoload
 	      | arg ("-m", _) = make
-	      | arg (f, mk) =
-		(p (f,
-		    String.map Char.toLower (getOpt (OS.Path.ext f, "<none>")),
-		    mk);
-		 mk)
+	      | arg (f, mk) = (carg (String.substring (f, 0, 2), f, mk)
+			       handle General.Subscript => ();
+			       mk)
 	in
 	    case SMLofNJ.getArgs () of
 		["@CMslave"] => (#set StdConfig.verbose false; slave ())
