@@ -10,6 +10,9 @@ sig
   val evalStream : TextIO.instream * Environment.environment -> 
                    Environment.environment
 
-  val installCompManager: (Ast.dec * EnvRef.envref -> unit) -> unit
+  val installCompManagers:
+      { manageImport : Ast.dec * EnvRef.envref -> unit,
+	managePrint : Symbol.symbol * EnvRef.envref -> unit,
+	getPending : unit -> Symbol.symbol list } -> unit
 
 end  (* signature INTERACT *)

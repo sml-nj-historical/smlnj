@@ -14,6 +14,30 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 12:00:00 CDT
+Tag: blume-20030926-ppautoload
+Description:
+
+I modified the read-eval-print loop so that the autoloader gets
+invoked whenever the prettyprinter tries to look up a symbol that
+is not currently defined in the toplevel environment but which
+appears in CM's autoload registry.  As a result, we see far fewer of
+those ?.Foo.Bar.xxx names in the prettyprinter's output.
+
+In addition to this I tried to clean up some pieces of the Basis
+implementation (e.g., Socket, Word8Array) in order to prevent other
+instances of these ?.Foo.Bar.xxx names from being printed.
+
+The mechanism that picks names for types still needs some work, though.
+(Right now it seems that if there is a type A.t which is defined to
+be B.y, but B is unavailable at toplevel, then A.t gets printed as
+"?.B.t" although the perhaps more sensible solution would be to use
+"A.t" in this case.  In other words, the prettyprinter should follow
+a chain of DEFtycs not farther than there are corresponding toplevel
+names in the current environment.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/24 16:31:00 CDT
 Tag: blume-20030924-installer
 Description:

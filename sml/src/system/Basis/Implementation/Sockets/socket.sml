@@ -21,26 +21,20 @@ structure SocketImp : SOCKET =
     type w8array = W8A.array
 
   (* the system's representation of a socket *)
-    type sockFD = PreSock.sockFD
+    type sockFD = Socket.sockFD
 
   (* to inherit the various socket related types *)
-    open PreSock
+    open Socket
 
   (* bind socket C functions *)
     fun netdbFun x = CI.c_function "SMLNJ-Sockets" x
 
 (*    val dummyAddr = ADDR(W8V.fromList[]) *)
 
-  (* witness types for the socket parameter *)
-    datatype dgram = DGRAM
-    datatype 'a stream = STREAM
-    datatype passive = PASSIVE
-    datatype active = ACTIVE
-
   (* address families *)
     structure AF =
       struct
-	type addr_family = PreSock.addr_family
+        open AF
 	val listAddrFamilies : unit -> CI.system_const list
 	      = sockFn "listAddrFamilies"
 	fun list () =
@@ -56,7 +50,7 @@ structure SocketImp : SOCKET =
   (* socket types *)
     structure SOCK =
       struct
-	type sock_type = PreSock.sock_type
+        open SOCK
 	val listSockTypes : unit -> CI.system_const list
 	      = sockFn "listSockTypes"
 	val stream = SOCKTY(CI.bindSysConst ("STREAM", listSockTypes ()))
@@ -74,8 +68,8 @@ structure SocketImp : SOCKET =
     structure Ctl =
       struct
 	local
-	  fun getOpt ctlFn (PreSock.SOCK { fd, ... }) = ctlFn(fd, NONE)
-	  fun setOpt ctlFn (PreSock.SOCK { fd, ... }, value) =
+	  fun getOpt ctlFn (Socket.SOCK { fd, ... }) = ctlFn(fd, NONE)
+	  fun setOpt ctlFn (Socket.SOCK { fd, ... }, value) =
 	        ignore(ctlFn(fd, SOME value))
 	  val ctlDEBUG     : (sockFD * bool option) -> bool =
 		sockFn "ctlDEBUG"
@@ -127,7 +121,7 @@ structure SocketImp : SOCKET =
 	  val getTYPE'  : sockFD -> CI.system_const = sockFn "getTYPE"
 	  val getERROR' : sockFD -> bool = sockFn "getERROR"
 	in
-        fun getTYPE (SOCK { fd, ... }) = SOCKTY(getTYPE' fd)
+        fun getTYPE (SOCK { fd, ... }) = SOCK.SOCKTY(getTYPE' fd)
         fun getERROR (SOCK { fd, ... }) = getERROR' fd
 	end (* local *)
 
@@ -177,7 +171,7 @@ structure SocketImp : SOCKET =
     local
 	val getAddrFamily : addr -> af = sockFn "getAddrFamily"
     in
-    fun familyOfAddr (ADDR a) = AF(getAddrFamily a)
+    fun familyOfAddr (ADDR a) = AF.AF(getAddrFamily a)
     end
 
     (* socket management *)
@@ -208,7 +202,6 @@ structure SocketImp : SOCKET =
     fun close (SOCK { fd, ... }) = close' fd
     end
 
-    datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
     local
       val shutdown' : (int * int) -> unit = sockFn "shutdown"
       fun how NO_RECVS = 0
@@ -221,9 +214,7 @@ structure SocketImp : SOCKET =
     fun ioDesc (SOCK { fd, ... }) = OpsysDetails.mkIODesc fd
 
     fun pollDesc sock = Option.valOf (OS.IO.pollDesc (ioDesc sock)) (** delete **)
-
     (* for now we implement select in terms of polling... *)
-    type sock_desc = OS.IO.iodesc
     val sockDesc = ioDesc
     fun sameDesc (d1, d2) = OS.IO.compare (d1, d2) = EQUAL
     fun select { rds, wrs, exs, timeout } = let
@@ -249,12 +240,6 @@ structure SocketImp : SOCKET =
     in
 	split3 (rev il, [], [], [])
     end
-
-  (* Sock I/O option types *)
-    type out_flags = {don't_route : bool, oob : bool}
-    type in_flags = {peek : bool, oob : bool}
-
-    type 'a buf = {buf : 'a, i : int, sz : int option}
 
     val vbuf = Word8VectorSlice.base
     val abuf = Word8ArraySlice.base

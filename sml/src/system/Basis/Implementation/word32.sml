@@ -63,5 +63,3 @@ structure Word32Imp : WORD =
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
   end  (* structure Word32 *)
-
-

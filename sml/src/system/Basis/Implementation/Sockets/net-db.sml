@@ -17,7 +17,7 @@ structure NetDB : NET_DB =
 
     datatype net_addr = NETADDR of SysW.word
 
-    type addr_family = PreSock.addr_family
+    type addr_family = Socket.AF.addr_family
 
     datatype entry = NETENT of {
 	name : string,
@@ -38,26 +38,26 @@ structure NetDB : NET_DB =
   (* Network DB query functions *)
     local
       type netent
-	= (string * string list * PreSock.af * SysWord.word)
+	= (string * string list * Socket.af * SysWord.word)
       fun getNetEnt NONE = NONE
 	| getNetEnt (SOME(name, aliases, addrType, addr)) = SOME(NETENT{
 	      name = name, aliases = aliases,
-	      addrType = PreSock.AF addrType, addr = NETADDR addr
+	      addrType = Socket.AF.AF addrType, addr = NETADDR addr
 	    })
       val getNetByName' : string -> netent option
 	    = netdbFun "getNetByName"
-      val getNetByAddr' : (SysWord.word * PreSock.af) -> netent option
+      val getNetByAddr' : (SysWord.word * Socket.af) -> netent option
 	    = netdbFun "getNetByAddr"
     in
     val getByName = getNetEnt o getNetByName'
-    fun getByAddr (NETADDR addr, PreSock.AF af) =
+    fun getByAddr (NETADDR addr, Socket.AF.AF af) =
 	  getNetEnt(getNetByAddr'(addr, af))
     end (* local *)
 
     fun scan getc strm = let
 	  val (op +) = SysW.+
 	  in
-	    case (PreSock.toWords getc strm)
+	    case (Socket.toWords getc strm)
 	     of SOME([a, b, c, d], strm) =>
 		  SOME(
 		    NETADDR(SysW.<<(a, 0w24)+SysW.<<(b, 0w16)+SysW.<<(c, 0w8)+d),
@@ -76,7 +76,7 @@ structure NetDB : NET_DB =
     fun toString (NETADDR addr) = let
 	  fun get n = Word8.fromLargeWord(SysW.toLargeWord((SysW.>>(addr, n))))
 	  in
-	    PreSock.fromBytes (get 0w24, get 0w16, get 0w8, get 0w0)
+	    Socket.fromBytes (get 0w24, get 0w16, get 0w8, get 0w0)
 	  end
 
   end

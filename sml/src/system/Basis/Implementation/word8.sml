@@ -3,7 +3,6 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-
 structure Word8Imp : WORD =
   struct
 
@@ -87,5 +86,3 @@ structure Word8Imp : WORD =
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
   end  (* structure Word8 *)
-
-

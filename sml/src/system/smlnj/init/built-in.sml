@@ -391,41 +391,39 @@ in
 	val getData   : array -> 'a = InLine.getSeqData
       end
 
+    (* preliminary version with just the type *)
+    structure Word8Vector :> sig
+	eqtype vector
+        val create : int -> vector
+    end = struct
+        type vector = string
+	val create = Assembly.A.create_s
+    end
+
+    (* now the real version with all values *)
     structure Word8Vector =
       struct
-	local
-	  structure V :> sig
-	      eqtype vector
-	      val create : int -> vector
-	    end = struct
-	      type vector = string
-	      val create = Assembly.A.create_s
-	    end
-	in
-	open V
-	end
-        val length    : vector -> int = InLine.length
+        open Word8Vector
+	val length    : vector -> int = InLine.length
         val sub       : vector * int -> word8 = InLine.ordof
         val chkSub    : vector * int -> word8 = InLine.inlordof
         val update    : vector * int * word8 -> unit = InLine.store
 	val getData   : vector -> 'a = InLine.getSeqData
       end
 
-    structure CharArray =
+    structure CharArray :> sig		(* prelim *)
+	eqtype array
+        val newArray0 : unit -> array
+	val create : int -> array
+    end = struct
+        type array = Assembly.A.word8array
+	val newArray0 : unit -> array = InLine.newArray0
+	val create = Assembly.A.create_b
+    end
+
+    structure CharArray =		(* full *)
       struct
-	local
-	  structure A :> sig
-	      eqtype array
-	      val newArray0 : unit -> array
-	      val create : int -> array
-	    end = struct
-	      type array = Assembly.A.word8array
-	      val newArray0 : unit -> array = InLine.newArray0
-	      val create = Assembly.A.create_b
-	    end
-	in
-	open A
-	end
+	open CharArray
 	val length    : array -> int = InLine.length
 	val chkSub    : (array * int) -> char = InLine.inlordof
 	val chkUpdate : (array * int * char) -> unit = InLine.inlstore

@@ -16,7 +16,12 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val cminit : string * DynamicEnv.env * envrequest
 			       * (TextIO.instream -> unit)(* useStream *)
 			       * (string -> unit) (* useFile *)
-			       * ((Ast.dec * EnvRef.envref -> unit) -> unit)
+			       * ({ manageImport:
+				      Ast.dec * EnvRef.envref -> unit,
+				    managePrint:
+				      Symbol.symbol * EnvRef.envref -> unit,
+				    getPending : unit -> Symbol.symbol list }
+				  -> unit)
 			       -> (unit -> unit) option
 		  val cmbmake: string * bool -> unit) :> BOOTENV = struct
 
@@ -57,7 +62,7 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	    cminit (bootdir, de, er,
 		    Backend.Interact.useStream,
 		    Backend.Interact.useFile,
-		    Backend.Interact.installCompManager)
+		    Backend.Interact.installCompManagers)
 	end
     end
 

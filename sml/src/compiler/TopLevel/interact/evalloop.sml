@@ -20,9 +20,15 @@ in
 exception Interrupt
 type lvar = Access.lvar
 
-val compManagerHook : (Ast.dec * EnvRef.envref -> unit) ref = ref (fn _ => ())
+val compManagerHook :
+    { manageImport : Ast.dec * EnvRef.envref -> unit,
+      managePrint :  Symbol.symbol * EnvRef.envref -> unit,
+      getPending : unit -> Symbol.symbol list } ref =
+    ref { manageImport = fn _ => (),
+	  managePrint = fn _ => (),
+	  getPending = fn () => [] }
 
-fun installCompManager cm = compManagerHook := cm
+fun installCompManagers cm = compManagerHook := cm
 
 val say = Control.Print.say
 
@@ -60,10 +66,12 @@ fun evalLoop source = let
 	  | SOME ast => let
 		val loc = EnvRef.loc ()
 		val base = EnvRef.base ()
-		val _ = !compManagerHook (ast, loc)
+		val _ = #manageImport (!compManagerHook) (ast, loc)
+
+		fun getenv () = E.layerEnv (#get loc (), #get base ())
 
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
-                    E.layerEnv (#get loc (), #get base ())
+		    getenv ()
 
                 val splitting = Control.LambdaSplitting.get ()
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
@@ -130,7 +138,40 @@ fun evalLoop source = let
                             PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
                      in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
                     end
-		    
+
+		(* we install the new local env first before we go about
+		 * printing, otherwise we find ourselves in trouble if
+		 * the autoloader changes the the contents of loc under
+		 * our feet... *)
+
+		val _ = #set loc newLocalEnv
+
+		fun look_and_load sy = let
+		    fun look () = StaticEnv.look (E.staticPart (getenv ()), sy)
+		in
+		    look ()
+		    handle StaticEnv.Unbound =>
+			   (#managePrint (!compManagerHook) (sy, loc);
+			    look ())
+		end
+
+		(* Notice that even through several potential rounds
+		 * the result of get_symbols is constant (up to list
+		 * order), so memoization (as performed by
+		 * StaticEnv.special) is ok. *)
+		fun get_symbols () = let
+		    val se = E.staticPart (getenv ())
+		    val othersyms = #getPending (!compManagerHook) ()
+		in
+		    StaticEnv.symbols se @ othersyms
+		end
+
+		val ste1 = StaticEnv.special (look_and_load, get_symbols)
+
+		val e0 = getenv ()
+		val e1 = E.mkenv { static = ste1,
+				   symbolic = E.symbolicPart e0,
+				   dynamic = E.dynamicPart e0 }
             in
 		(* testing code to print ast *)
 		ppAstDebug("AST::",ast);
@@ -139,10 +180,7 @@ fun evalLoop source = let
 
 		PP.with_pp
 		    (#errConsumer source)
-		    (fn ppstrm => PPDec.ppDec 
-			(E.layerEnv(newLocalEnv, #get base ()))
-			ppstrm (absyn, exportLvars));
-                    #set loc newLocalEnv
+		    (fn ppstrm => PPDec.ppDec e1 ppstrm (absyn, exportLvars))
             end
 
     fun loop() = (oneUnit(); loop())

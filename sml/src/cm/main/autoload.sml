@@ -17,8 +17,10 @@ signature AUTOLOAD = sig
 
     val register : ER.envref * GG.group -> unit
 
-    val mkManager : { get_ginfo: unit -> GP.info, dropPickles: unit -> unit }
-	-> Ast.dec * ER.envref -> unit
+    val mkManagers : { get_ginfo: unit -> GP.info, dropPickles: unit -> unit }
+		     -> { manageImport: Ast.dec * ER.envref -> unit,
+			  managePrint : Symbol.symbol * ER.envref -> unit,
+			  getPending : unit -> Symbol.symbol list }
 
     val getPending : unit -> DG.impexp SymbolMap.map
 
@@ -76,94 +78,129 @@ functor AutoLoadFn (structure L : LINK
 	    pending := SymbolMap.unionWith #1 (newNodes, !pending)
 	end
 
-    fun mkManager { get_ginfo, dropPickles } (ast, ter: ER.envref) = let
+    fun mkManagers { get_ginfo, dropPickles } = let
+	(* manage a list of symbols for which modules need to be loaded *)
+	fun manage (genloadmap, ter: ER.envref, quiet) = let
+	    val gp = get_ginfo ()
+		     
+	    fun loadit m = let
+		fun one ((_, tr), NONE) = NONE
+		  | one ((_, tr), SOME e) =
+		    (case tr gp of
+			 NONE => NONE
+		       | SOME e' => SOME (E.concatEnv (e', e)))
+	    in
+		(* make sure that there are no stale values around... *)
+		L.cleanup gp;
+		SymbolMap.foldl one (SOME E.emptyEnv) m
+	    end
 
-	val gp = get_ginfo ()
+	    val te = #get ter ()
+	    val ste = E.staticPart te
 
-	fun loadit m = let
-	    fun one ((_, tr), NONE) = NONE
-	      | one ((_, tr), SOME e) =
-		(case tr gp of
-		     NONE => NONE
-		   | SOME e' => SOME (E.concatEnv (e', e)))
+	    (* First, we get rid of anything in "pending" that has
+	     * meanwhile been added to the toplevel. *)
+	    fun notTopDefined (sy, _) =
+		(SE.look (ste, sy); false) handle SE.Unbound => true
+	    val pend = SymbolMap.filteri notTopDefined (!pending)
+	    val _ = pending := pend
+
+	    val loadmap0 = genloadmap pend
+
+	    (* However, we want to avoid hanging on to stuff unnecessarily, so
+	     * we now look for symbols that become available "for free" because
+	     * their corresponding node has been picked. *)
+
+	    fun add (((_, _, ss), _), allsyms) = SymbolSet.union (ss, allsyms)
+
+	    val pickedsyms = SymbolMap.foldl add SymbolSet.empty loadmap0
+
+	    fun isPicked ((_, _, ss), _) =
+		not (SymbolSet.isEmpty (SymbolSet.intersection (ss, pickedsyms)))
+
+	    val loadmap = SymbolMap.filter isPicked pend
+	    val noloadmap = SymbolMap.filter (not o isPicked) pend
 	in
-	    (* make sure that there are no stale values around... *)
-	    L.cleanup gp;
-	    SymbolMap.foldl one (SOME E.emptyEnv) m
+	    if SymbolMap.isEmpty loadmap then ()
+	    else
+		(SrcPath.revalidateCwd ();
+		 (* We temporarily turn verbosity off, so we need to wrap this
+		  * with a SafeIO.perform... *)
+		 SafeIO.perform
+		     { openIt = fn () => #get StdConfig.verbose () before
+					 #set StdConfig.verbose false,
+	               closeIt = #set StdConfig.verbose,
+		       cleanup = fn _ => (),
+		       work = fn _ =>
+				 (case loadit loadmap of
+				      SOME e =>
+				      (#set ter (E.concatEnv (e, te));
+				       pending := noloadmap;
+				       if not quiet then
+					   Say.say ["[autoloading done]\n"]
+				       else ())
+				    | NONE => raise Fail "unable to load module(s)") }
+		     handle Fail msg =>
+			    Say.say ["[autoloading failed: ", msg, "]\n"];
+		 dropPickles ())
 	end
 
-	val { skeleton, ... } =
-	    SkelCvt.convert { tree = ast, err = fn _ => fn _ => fn _ => () }
-	val te = #get ter ()
-	val ste = E.staticPart te
-
-	(* First, we get rid of anything in "pending" that has
-	 * meanwhile been added to the toplevel. *)
-	fun notTopDefined (sy, _) =
-	    (SE.look (ste, sy); false) handle SE.Unbound => true
-	val pend = SymbolMap.filteri notTopDefined (!pending)
-	val _ = pending := pend
-	val (dae, _) = Statenv2DAEnv.cvt ste
-	val load = ref SymbolMap.empty
-	val announce = let
+	fun mkAnnounce () =  let
 	    val announced = ref false
 	in
 	    fn () =>
-	    (if !announced then ()
-	     else (announced := true;
-		   Say.say ["[autoloading]\n"]))
+	       (if !announced then ()
+		else (announced := true;
+		      Say.say ["[autoloading]\n"]))
 	end
-	fun lookpend sy = let
-	    fun otherwise _ = EM.impossible "Autoload:lookpend"
+
+	fun manageImports (ast, ter: ER.envref) = let
+	    val { skeleton, ... } =
+		SkelCvt.convert { tree = ast,
+				  err = fn _ => fn _ => fn _ => () }
+	    fun genloadmap pend = let
+		val te = #get ter ()
+		val ste = E.staticPart te
+		val (dae, _) = Statenv2DAEnv.cvt ste
+		val load = ref SymbolMap.empty
+		val announce = mkAnnounce ()
+		fun lookpend sy = let
+		    fun otherwise _ = EM.impossible "Autoload:lookpend"
+		in
+		    case SymbolMap.find (pend, sy) of
+			SOME (x as ((_, e, _), _)) =>
+			(announce ();
+			 load := SymbolMap.insert (!load, sy, x);
+			 BuildDepend.look otherwise e sy)
+		      | NONE => DAEnv.EMPTY
+		end
+		val lookimport = BuildDepend.look lookpend dae
+		val _ = BuildDepend.processOneSkeleton lookimport skeleton
+	    in
+		!load
+	    end
 	in
-	    case SymbolMap.find (pend, sy) of
-		SOME (x as ((_, e, _), _)) =>
-		    (announce ();
-		     load := SymbolMap.insert (!load, sy, x);
-		     BuildDepend.look otherwise e sy)
-	      | NONE => DAEnv.EMPTY
+	    manage (genloadmap, ter, false)
 	end
-	val lookimport = BuildDepend.look lookpend dae
-	val _ = BuildDepend.processOneSkeleton lookimport skeleton
 
-	(* Here are the nodes that actually have been picked because
-	 * something demanded an exported symbol: *)
-	val loadmap0 = !load
-
-	(* However, we want to avoid hanging on to stuff unnecessarily, so
-	 * we now look for symbols that become available "for free" because
-	 * their corresponding node has been picked. *)
-
-	fun add (((_, _, ss), _), allsyms) = SymbolSet.union (ss, allsyms)
-
-	val pickedsyms = SymbolMap.foldl add SymbolSet.empty loadmap0
-
-	fun isPicked ((_, _, ss), _) =
-	    not (SymbolSet.isEmpty (SymbolSet.intersection (ss, pickedsyms)))
-
-	val loadmap = SymbolMap.filter isPicked pend
-	val noloadmap = SymbolMap.filter (not o isPicked) pend
+	fun managePrint (sy, ter) = let
+	    fun genloadmap pend = let
+		(* val announce = mkAnnounce () *)
+		fun announce () = ()	(* should not announce in the
+					 * middle of pretty-printing... *)
+	    in
+		case SymbolMap.find (pend, sy) of
+		    SOME x => (announce ();
+			       SymbolMap.singleton (sy, x))
+		  | NONE => SymbolMap.empty
+	    end
+	in
+	    manage (genloadmap, ter, true)
+	end
     in
-	if SymbolMap.isEmpty loadmap then ()
-	else
-	    (SrcPath.revalidateCwd ();
-	     (* We temporarily turn verbosity off, so we need to wrap this
-	      * with a SafeIO.perform... *)
-	     SafeIO.perform
-	      { openIt = fn () => #get StdConfig.verbose () before
-	                          #set StdConfig.verbose false,
-	        closeIt = #set StdConfig.verbose,
-		cleanup = fn _ => (),
-		work = fn _ =>
-	          (case loadit loadmap of
-		       SOME e =>
-			   (#set ter (E.concatEnv (e, te));
-			    pending := noloadmap;
-			    Say.say ["[autoloading done]\n"])
-		     | NONE => raise Fail "unable to load module(s)") }
-	      handle Fail msg =>
-		  Say.say ["[autoloading failed: ", msg, "]\n"];
-	      dropPickles ())
+	{ manageImport = manageImports,
+	  managePrint = managePrint,
+	  getPending = fn () => SymbolMap.listKeys (!pending) }
     end
 
     fun getPending () = SymbolMap.map #1 (!pending)

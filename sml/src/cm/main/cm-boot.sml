@@ -204,7 +204,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  end
 
 	  fun getTheValues () = valOf (!theValues)
-	      handle Option => raise Fail "CMBoot: theParam not initialized"
+	      handle Option => raise Fail "CMBoot: theValues not initialized"
 
 	  fun param slave_mode =
 	      { fnpolicy = fnpolicy,
@@ -479,10 +479,10 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 			      errcons = EM.defaultConsumer (),
 			      youngest = ref TStamp.ancient }
 
-	  val al_manager =
-	      AutoLoad.mkManager { get_ginfo = al_ginfo,
-				   dropPickles = dropPickles }
-
+	  val al_managers =
+	      AutoLoad.mkManagers { get_ginfo = al_ginfo,
+				    dropPickles = dropPickles }
+	      
 	  fun reset () =
 	      (Compile.reset ();
 	       Link.reset ();
@@ -632,7 +632,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 			       system_values := SrcPathMap.empty;
 			       NONE)
 			| AUTOLOAD =>
-			      (icm al_manager;
+			      (icm al_managers;
 			       standard_preload BtNames.standard_preloads;
 			       (* unconditionally drop all library pickles *)
 			       Parse.dropPickles ();

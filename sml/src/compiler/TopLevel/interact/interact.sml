@@ -7,7 +7,7 @@ struct
 
   type envref = EnvRef.envref
 
-  val installCompManager = EvalLoop.installCompManager
+  val installCompManagers = EvalLoop.installCompManagers
 
   fun interact() = (EvalLoop.interact (); OS.Process.exit OS.Process.success)
 
