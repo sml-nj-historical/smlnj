@@ -1,4 +1,4 @@
-(* trace-debug-profile.cm
+(* plugins.cm
  *
  *   Library of plug-in modules for tracing, debugging, and profiling.
  *

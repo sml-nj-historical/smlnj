@@ -20,7 +20,7 @@
 structure BackTrace : sig
     exception BTraceTriggered of unit -> string list
     val trigger : unit -> 'a
-    val monitor : (unit -> unit) -> unit
+    val monitor : (unit -> 'a) -> 'a
     val install : unit -> unit
 end = struct
 

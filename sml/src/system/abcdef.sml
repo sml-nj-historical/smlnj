@@ -1,6 +1,6 @@
 structure X = struct
     exception Foo
-    fun main n : int = let
+    fun foo n : int = let
 	fun a (x, 0) = d x
 	  | a (x, n) = b (x, n - 1)
 	and b (x, n) = c (x, n)
@@ -15,6 +15,10 @@ structure X = struct
 	  | f n = n * g (n - 1)
 	and g n = a (n, 3)
     in
-	f n
+	f n;
+	OS.Process.success
     end
+
+    fun main _ =
+	BackTrace.monitor (fn () => foo 3)
 end

@@ -329,6 +329,7 @@ struct
 	      | SOME (g, gp) => let
 		    fun finish (g, gp) = let
 			val { l = bootitems, ss } = mkBootList g
+			val bootitems = map #2 bootitems
 			val stablelibs = Reachable.stableLibsOf g
 			fun inSet bi = StableSet.member (ss, bi)
 			val frontiers =

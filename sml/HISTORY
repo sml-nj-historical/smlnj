@@ -14,6 +14,53 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/20 15:06:00 CDT
+Tag: blume-20041020-standalone-backtrace
+Description:
+
+Added a mechanism for getting back-trace information from standalone
+programs.  Here is how it works:
+
+   1. The part of the program from which you want to get backtrace
+      information (usually the whole program) should be wrapped with
+      BackTrace.monitor.  This is a (unit->'a)->'a function, and your
+      main program could be modified from something like
+
+         fun main (pgm, args) = ...
+
+     to
+
+        fun main (pgm, args) = BackTrace.monitor (fn () => ...)
+
+   2. To be able to access BackTrace.monitor, you have to add
+      library $smlnj-tdp/plugins.cm to the .cm file that contains your
+      main function.
+
+   3. Remove all compiled code (i.e., all the .cm/ subdirectories that
+      CM might have created in the past for your project).
+
+   4. Build the system using this command line:
+
+         ml-build -Ctdp.instrument=true \$smlnj-tdp/back-trace.cm \
+                  myprog.cm MyProg.main myprog
+
+      instead of the usual
+
+         ml-build myprog.cm MyProg.main myprog
+
+I changed a library name:
+
+   $/trace-debug-profile.cm --> $smlnj-tdp/plugins.cm
+
+New libraries:
+
+   $smlnj-tdp/back-trace.cm
+      -- when loaded causes the back-trace plugin to be installed
+   $smlnj-tdp/coverage.cm
+      -- when loaded causes the coverage plugin to be installed
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/18 16:45:00 CDT
 Tag: blume-20041018-groupowner
 Description:
