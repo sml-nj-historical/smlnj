@@ -54,6 +54,7 @@ struct vproc_state {
     Time_t	*vp_gcTime0;	    /* The cumulative CPU time at the start of */
 				    /* the last GC (see kernel/timers.c). */
     Time_t	*vp_gcTime;	    /* The cumulative GC time. */
+    Unsigned32_t vp_limitPtrMask;   /* for raw-C-call interface */
 #ifdef MP_SUPPORT
     mp_pid_t	vp_mpSelf;	    /* the owning process's ID */
     vproc_status_t vp_mpState;	    /* proc state (see ml-mp.h) */

@@ -1766,13 +1766,8 @@ struct
 			      C_PTR),
 			     v :: vl) =
 			  (CCalls.ARG (regbind v), vl)
-(* this would recursively traverse all structures fields, but we don't want
- * to do that...
-			| m (C_STRUCT tl, vl) = let val (al, vl') = ml (tl, vl)
-						in (CCalls.ARGS al, vl') end
-*)
-			(* instead, we just pass the struct's address... *)
 			| m (C_STRUCT _, v :: vl) =
+			  (* pass struct using the pointer to its beginning *)
 			  (CCalls.ARG (regbind v), vl)
 			| m (_, []) = error "RCC: not enough ML args"
 			| m _ = error "RCC: unexpected C-type"
@@ -1802,12 +1797,54 @@ struct
 		  val { callseq, result } =
 		      CCalls.genCall
 			  { name = f, proto = p, structRet = sr, args = a }
+
+		  fun withVSP f = let
+		      (***** must be a real frame pointer once that is
+		       * implemented!!*)
+		      val frameptr = C.stackptr
+
+		      val msp =
+			  M.LOAD (addrTy, ea (frameptr, MS.ML_STATE_OFFSET),
+				  R.memory)
+		      val vsp =
+			  M.LOAD (addrTy, ea (msp, MS.VProcOffMSP), R.memory)
+
+		      val vsp' = M.REG (addrTy, Cells.newReg ())
+		      val inML =
+			  M.LOAD (ity, ea (vsp', MS.InMLOffVSP),
+				  R.memory)
+		      val LimitPtrMask =
+			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP),
+				  R.memory)
+		  in
+		      (* move vsp to its register *)
+		      emit (assign (vsp', vsp));
+		      f { inML = inML, LimitPtrMask = LimitPtrMask }
+		  end
+
 	      in
 		  (* just for testing... *)
 	          print ("$$$ RCC: " ^ CProto.pshow p ^ "\n");
 
-		  (* now do it! *)
+		  (* prepare for leaving ML *)
+		  withVSP (fn { inML, LimitPtrMask } =>
+			      ((* set vp_limitPtrMask to ~1 *)
+			       emit (assign (LimitPtrMask, LW 0wxffffffff));
+			       (* set vp_inML to 0 *)
+			       emit (assign (inML, LW 0w0))));
+
+		  (* now do the actual call! *)
 		  app emit callseq;
+
+		  (* come back to ML, restore proper limit pointer *)
+		  withVSP (fn { inML, LimitPtrMask } =>
+			      ((* set vp_inML back to 1 *)
+			       emit (assign (inML, LW 0w1));
+			       (* limitPtr := limitPtr & vp_limitPtrMask *)
+			       emit (assign (C.limitptr,
+					     M.ANDB (pty, LimitPtrMask,
+						          C.limitptr)))));
+
 		  case (result, retTy) of
 		      (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) =>
 		      defI31 (w, mlZero, e, hp)

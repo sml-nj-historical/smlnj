@@ -13,6 +13,20 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/04/20 11:10:00 EDT
+Tag: blume-20010420-inMLflag
+Description:
+
+ - added vp_limitPtrMask to vproc-state.h
+   (for use by the raw-C-calls mechanism to implement proper interrupt
+    handling)
+ - made the ML compiler aware of various data-structure offsets so it
+   can generate code for accessing the vp_inML flag and vp_limitPtrMask
+ - tweaked mlriscGen.sml to have it emit interrupt-handling code for
+   raw C-calls
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/04/20 09:15:28 EDT
 Tag: george-20010420-macosX

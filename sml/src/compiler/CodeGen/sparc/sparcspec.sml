@@ -19,5 +19,9 @@ struct
     val initialSpillOffset = 116
     val startgcOffset	= 100
     val constBaseRegOffset = 4096
-end
 
+    val ML_STATE_OFFSET = 96
+    val VProcOffMSP = 4
+    val InMLOffVSP = 8
+    val LimitPtrMaskOffVSP = 200
+end

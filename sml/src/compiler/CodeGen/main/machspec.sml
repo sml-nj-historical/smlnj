@@ -60,5 +60,11 @@ structure DefaultMachSpec : MACH_SPEC =
     val fixedArgPassing = false
 
     val spillRematerialization = false
+
+    (* the following defaults happen to be the values for x86 *)
+    val ML_STATE_OFFSET = 176
+    val VProcOffMSP = 4
+    val InMLOffVSP = 8
+    val LimitPtrMaskOffVSP = 200
   end (* DefaultMachSpec *)
 

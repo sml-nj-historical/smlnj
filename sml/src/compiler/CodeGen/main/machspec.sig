@@ -85,6 +85,14 @@ signature MACH_SPEC =
 
     val spillRematerialization : bool
     (* Whether rematerialization of spill locations is performed *)
+
+    (* for accessing the in_ML flag etc.;
+     * These values must be coordinated with their respective runtime
+     * counterparts in ?.prim.asm and mlstate-offsets.h! *)
+    val ML_STATE_OFFSET : int		(* within frame *)
+    val VProcOffMSP : int		(* within ML state struct *)
+    val InMLOffVSP : int		(* within VProc struct *)
+    val LimitPtrMaskOffVSP : int	(* within VProc struct *)
   end (* MACH_SPEC *)
 
 
