@@ -1,0 +1,86 @@
+<!-- porting.html -->
+
+<!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>Porting old programs</TITLE>
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<HR>
+
+<H3>Porting old CML programs</H3>
+<P>
+There have been substantial changes from version&nbsp;0.9.8 of CML. Most of these changes are cosmetic name changes meant to track changes in the SML interfaces, and to rationalize naming conventions. In this section, we detail the changes to the CML interfaces, and describe correspondence between the old and new interfaces. 
+<H4>Backwards compatibility modules</H4>
+<P>
+To ease the transition from version&nbsp;0.9.8 of CML to the new interfaces, we provide two backwards compatibility modules in the CML Library. 
+<H4>Name changes</H4>
+<HR>
+<CENTER>
+<TABLE ALIGN=CENTER>
+<CAPTION ALIGN=TOP>
+<B>Name changes</B></CAPTION>
+<TR>
+<TH ALIGN=CENTER VALIGN=TOP>
+Old name 
+<TH ALIGN=CENTER VALIGN=TOP>
+New name   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>accept</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.recv:VAL:SPEC">recv</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>receive</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.recvEvt:VAL:SPEC">recvEvt</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>transmit</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.sendEvt:VAL:SPEC">sendEvt</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>timout</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.timeOutEvt:VAL:SPEC">timeOutEvt</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>waitUntil</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.atTimeEvt:VAL:SPEC">atTimeEvt</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>threadWait</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.joinEvt:VAL:SPEC">joinEvt</A>   
+<TR>
+<TD ALIGN=LEFT VALIGN=TOP>
+<CODE>sameThread</CODE>	
+<TD ALIGN=LEFT VALIGN=TOP>
+<A HREF="cml.html#SIG:CML.sameTid:VAL:SPEC">sameTid</A>
+</TABLE>
+</CENTER>
+<HR>
+ 
+<H4>Input/output</H4>
+<P>
+The most significant changes to the CML interfaces have to do with input/output operations. In version&nbsp;0.9.8, the structure <CODE>CIO</CODE> provided an implementation of the SML/NJ <CODE>IO</CODE> signature extended with event-valued operations. The old SML I/O interface has been replaced with a new interface, which is described in the SML Basis Library Manual, and CML has followed suite. 
+<H4>Condition variables</H4>
+<H4>Polling</H4>
+<P>
+The only loss in function from version&nbsp;0.9.8 is the elimination of the <CODE>poll</CODE> operation, which provided a non-blocking form of <A HREF="cml.html#SIG:CML.sync:VAL:SPEC">sync</A>. Instead of this operation, CML now provides non-blocking input operations on many of the basic communication types.
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="porting.html">TOP</A>
+   | <A HREF="basics.html">Parent</A> | <A HREF="refman.html">Root</A>
+   ]</B>
+<P>
+<I>Last Modified November 16, 1995</I><BR>
+Copyright &copy; 1996 AT&amp;T <BR>
+<HR>
+</BODY>
+</HTML>

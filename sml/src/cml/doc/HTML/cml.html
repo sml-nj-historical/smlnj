@@ -1,0 +1,301 @@
+<!-- cml.html -->
+
+<!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
+<!-- COPYRIGHT (c) 1991 John H. Reppy. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The CML structure</TITLE>
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<HR>
+
+<H3>The <CODE>CML</CODE> structure</H3>
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="CML:SIG:SPEC"><CODE>CML</CODE></A><BR>
+<B>structure </B><A NAME="CML:STR:SPEC"><CODE>CML</CODE></A><B> : </B>CML<BR>
+</CODE>
+</BLOCKQUOTE>
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>type</B> <A NAME="SIG:CML.thread_id:TY:SPEC" HREF="#SIG:CML.thread_id:TY">thread_id</A><BR>
+<B>type</B> 'a <A NAME="SIG:CML.chan:TY:SPEC" HREF="#SIG:CML.chan:TY">chan</A><BR>
+<B>type</B> 'a <A NAME="SIG:CML.event:TY:SPEC" HREF="#SIG:CML.event:TY">event</A><BR>
+<B>val</B> <A NAME="SIG:CML.version:VAL:SPEC" HREF="#SIG:CML.version:VAL">version</A> <B>:</B> {system : string, version_id : int list, date : string}       <BR>
+<B>val</B> <A NAME="SIG:CML.banner:VAL:SPEC" HREF="#SIG:CML.version:VAL">banner</A> <B>:</B> string         <BR>
+<B>val</B> <A NAME="SIG:CML.spawnc:VAL:SPEC" HREF="#SIG:CML.spawnc:VAL">spawnc</A> <B>:</B> ('a -&gt; unit) -&gt; 'a -&gt; thread_id       <BR>
+<B>val</B> <A NAME="SIG:CML.spawn:VAL:SPEC" HREF="#SIG:CML.spawnc:VAL">spawn</A> <B>:</B> (unit -&gt; unit) -&gt; thread_id         <BR>
+<B>val</B> <A NAME="SIG:CML.yield:VAL:SPEC" HREF="#SIG:CML.yield:VAL">yield</A> <B>:</B> unit -&gt; unit       <BR>
+<B>val</B> <A NAME="SIG:CML.exit:VAL:SPEC" HREF="#SIG:CML.exit:VAL">exit</A> <B>:</B> unit -&gt; 'a       <BR>
+<B>val</B> <A NAME="SIG:CML.getTid:VAL:SPEC" HREF="#SIG:CML.getTid:VAL">getTid</A> <B>:</B> unit -&gt; thread_id         <BR>
+<B>val</B> <A NAME="SIG:CML.sameTid:VAL:SPEC" HREF="#SIG:CML.sameTid:VAL">sameTid</A> <B>:</B> (thread_id * thread_id) -&gt; bool         <BR>
+<B>val</B> <A NAME="SIG:CML.compareTid:VAL:SPEC" HREF="#SIG:CML.compareTid:VAL">compareTid</A> <B>:</B> (thread_id * thread_id) -&gt; order         <BR>
+<B>val</B> <A NAME="SIG:CML.hashTid:VAL:SPEC" HREF="#SIG:CML.hashTid:VAL">hashTid</A> <B>:</B> thread_id -&gt; word         <BR>
+<B>val</B> <A NAME="SIG:CML.tidToString:VAL:SPEC" HREF="#SIG:CML.tidToString:VAL">tidToString</A> <B>:</B> thread_id -&gt; string         <BR>
+<B>val</B> <A NAME="SIG:CML.joinEvt:VAL:SPEC" HREF="#SIG:CML.joinEvt:VAL">joinEvt</A> <B>:</B> thread_id -&gt; unit event         <BR>
+<B>val</B> <A NAME="SIG:CML.channel:VAL:SPEC" HREF="#SIG:CML.channel:VAL">channel</A> <B>:</B> unit -&gt; 'a chan         <BR>
+<B>val</B> <A NAME="SIG:CML.sameChannel:VAL:SPEC" HREF="#SIG:CML.sameChannel:VAL">sameChannel</A> <B>:</B> ('a chan * 'a chan) -&gt; bool         <BR>
+<B>val</B> <A NAME="SIG:CML.send:VAL:SPEC" HREF="#SIG:CML.send:VAL">send</A> <B>:</B> ('a chan * 'a) -&gt; unit         <BR>
+<B>val</B> <A NAME="SIG:CML.recv:VAL:SPEC" HREF="#SIG:CML.recv:VAL">recv</A> <B>:</B> 'a chan -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:CML.sendEvt:VAL:SPEC" HREF="#SIG:CML.sendEvt:VAL">sendEvt</A> <B>:</B> ('a chan * 'a) -&gt; unit event       <BR>
+<B>val</B> <A NAME="SIG:CML.recvEvt:VAL:SPEC" HREF="#SIG:CML.sendEvt:VAL">recvEvt</A> <B>:</B> 'a chan -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.recvPoll:VAL:SPEC" HREF="#SIG:CML.recvPoll:VAL">recvPoll</A> <B>:</B> 'a chan -&gt; 'a option         <BR>
+<B>val</B> <A NAME="SIG:CML.wrap:VAL:SPEC" HREF="#SIG:CML.wrap:VAL">wrap</A> <B>:</B> ('a event * ('a -&gt; 'b)) -&gt; 'b event         <BR>
+<B>val</B> <A NAME="SIG:CML.wrapHandler:VAL:SPEC" HREF="#SIG:CML.wrapHandler:VAL">wrapHandler</A> <B>:</B> ('a event * (exn -&gt; 'a event)) -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.guard:VAL:SPEC" HREF="#SIG:CML.guard:VAL">guard</A> <B>:</B> (unit -&gt; 'a event) -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.withNack:VAL:SPEC" HREF="#SIG:CML.withNack:VAL">withNack</A> <B>:</B> (unit event -&gt; 'a event) -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.choose:VAL:SPEC" HREF="#SIG:CML.choose:VAL">choose</A> <B>:</B> 'a event list -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.sync:VAL:SPEC" HREF="#SIG:CML.sync:VAL">sync</A> <B>:</B> 'a event -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:CML.select:VAL:SPEC" HREF="#SIG:CML.select:VAL">select</A> <B>:</B> 'a event list -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:CML.never:VAL:SPEC" HREF="#SIG:CML.never:VAL">never</A> <B>:</B> 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.alwaysEvt:VAL:SPEC" HREF="#SIG:CML.alwaysEvt:VAL">alwaysEvt</A> <B>:</B> 'a -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:CML.timeOutEvt:VAL:SPEC" HREF="#SIG:CML.timeOutEvt:VAL">timeOutEvt</A> <B>:</B> Time.time -&gt; unit event         <BR>
+<B>val</B> <A NAME="SIG:CML.atTimeEvt:VAL:SPEC" HREF="#SIG:CML.atTimeEvt:VAL">atTimeEvt</A> <B>:</B> Time.time -&gt; unit event         <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:CML.thread_id:TY"><CODE><B>type</B> thread_id</CODE></A>
+<DD>
+Thread IDs are the unique IDs associated with CML threads. 	  These IDs are in an unspecified total order that can be used to 	  break cyclic depedencies (see <A HREF="cml.html#SIG:CML.compareTid:VAL:SPEC">compareTid</A>).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.chan:TY"><CODE><B>type</B> 'a chan</CODE></A>
+<DD>
+This is the type constructor for synchronous channels.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.event:TY"><CODE><B>type</B> 'a event</CODE></A>
+<DD>
+Event values are abstract representations of synchronous operations 	  (so called <EM>first-class sychronous operations</EM>).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.version:VAL"><CODE><B>val</B> version</CODE></A>
+<DT> <CODE><B>val</B> banner</CODE>
+<DD>
+These specify the version of CML in the same format as SML/NJ.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.spawnc:VAL"><CODE>spawnc <VAR>f</VAR> <VAR>x</VAR>
+	</CODE></A>
+<DT> <CODE>          spawn <VAR>f</VAR>
+        </CODE>
+<DD>
+creates a new thread of control to evaluate the body of <VAR>f</VAR>. 	A new unique ID for the thread is created and returned.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.yield:VAL"><CODE><B>val</B> yield</CODE></A>
+<DD>
+This function can be used to implement an explicit context switch. 	Since CML is preemptively scheduled, it should never be necessary for 	user programs to call this function. 	It is mainly used for performance measurements.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.exit:VAL"><CODE>exit ()
+	</CODE></A>
+<DD>
+causes the calling thread to terminate.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.getTid:VAL"><CODE>getTid ()
+          </CODE></A>
+<DD>
+returns the thread ID of the calling thread.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.sameTid:VAL"><CODE>sameTid (<VAR>tid1</VAR>, <VAR>tid2</VAR>)
+          </CODE></A>
+<DD>
+returns true, if the two thread IDs are the same ID.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.compareTid:VAL"><CODE>compareTid (<VAR>tid1</VAR>, <VAR>tid2</VAR>)
+          </CODE></A>
+<DD>
+compares the two thread IDs and returns their order in the total 	  ordering of thread IDs. 	  The precise semantics of this ordering is left unspecified, other 	  than to say it is a total order.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.hashTid:VAL"><CODE>hashTid <VAR>tid</VAR>
+          </CODE></A>
+<DD>
+returns a hashing of the thread ID <VAR>tid</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.tidToString:VAL"><CODE>tidToString <VAR>tid</VAR>
+          </CODE></A>
+<DD>
+returns a string representation of the thread ID <VAR>tid</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.joinEvt:VAL"><CODE>joinEvt <VAR>tid</VAR>
+          </CODE></A>
+<DD>
+creates an event value for synchronizing on the termination of 	  the thread with the ID <VAR>tid</VAR>. 	  There are three ways that a thread may terminate: the function that 	  was passed to <A HREF="cml.html#SIG:CML.spawn:VAL:SPEC">spawn</A> may return; it may call the <A HREF="cml.html#SIG:CML.exit:VAL:SPEC">exit</A> 	  function, or it may have an uncaught exception. 	  Note that joinEvt does not distinguish between these 	  cases; it also does not become enabled if the named thread deadlocks 	  (even if it is garbage collected).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.channel:VAL"><CODE>channel ()
+          </CODE></A>
+<DD>
+creates a new synchronous channel.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.sameChannel:VAL"><CODE>sameChannel (<VAR>ch1</VAR>, <VAR>ch2</VAR>)
+          </CODE></A>
+<DD>
+returns true, if the two channels are the same channel.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.send:VAL"><CODE>send (<VAR>ch</VAR>, <VAR>a</VAR>)
+          </CODE></A>
+<DD>
+sends the message <VAR>a</VAR> on the synchronous channel <VAR>ch</VAR>. 	  This operation blocks the calling thread until there is another 	  thread attempting a <A HREF="cml.html#SIG:CML.recv:VAL:SPEC">recv</A> operation on the channel <VAR>ch</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.recv:VAL"><CODE>recv <VAR>ch</VAR>
+          </CODE></A>
+<DD>
+receives a message from the channel <VAR>ch</VAR>. 	  This operation blocks the calling thread until there is another 	  thread attempting a <A HREF="cml.html#SIG:CML.send:VAL:SPEC">send</A> operation on the channel <VAR>ch</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.sendEvt:VAL"><CODE><B>val</B> sendEvt</CODE></A>
+<DT> <CODE><B>val</B> recvEvt</CODE>
+<DD>
+These functions create event values to represent the <A HREF="cml.html#SIG:CML.send:VAL:SPEC">send</A> 	  and <A HREF="cml.html#SIG:CML.recv:VAL:SPEC">recv</A> operations.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.recvPoll:VAL"><CODE>recvPoll <VAR>ch</VAR>
+          </CODE></A>
+<DD>
+attempts to receive a message from the channel <VAR>ch</VAR>. 	  If there is no other thread offering to <A HREF="cml.html#SIG:CML.send:VAL:SPEC">send</A> a message 	  on <VAR>ch</VAR>, then this returns 	  NONE, otherwise it 	  returns SOME wrapped 	  around the message. 	  This function is not recommended for general use; it is provided 	  as an efficiency aid for certain kinds of protocols.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.wrap:VAL"><CODE>wrap (<VAR>ev</VAR>, <VAR>f</VAR>)
+          </CODE></A>
+<DD>
+wraps the post-synchronization action <VAR>f</VAR> around the event 	  value <VAR>ev</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.wrapHandler:VAL"><CODE>wrapHandler (<VAR>ev</VAR>, <VAR>f</VAR>)
+          </CODE></A>
+<DD>
+wraps the exception handler function <VAR>f</VAR> around the event 	  value <VAR>ev</VAR>. 	  If, during execution of some post-synchronization action in 	  <VAR>ev</VAR>, an exception is raised, it will be caught and passed 	  to <VAR>f</VAR>. 	  Nesting of handlers works as would be expected: the innermost 	  handler is the one invoked. 	  Note that exceptions raised in the pre-synchronization actions in 	  <VAR>ev</VAR> (i.e., actions defined by <A HREF="cml.html#SIG:CML.guard:VAL:SPEC">guard</A> and <A HREF="cml.html#SIG:CML.withNack:VAL:SPEC">withNack</A>) 	  are not handled by <VAR>f</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.guard:VAL"><CODE>guard <VAR>f</VAR>
+          </CODE></A>
+<DD>
+creates <I>delayed</I> event value from the function <VAR>f</VAR>. 	  When the resulting event value is synchronized on, the function 	  <VAR>f</VAR> will be evaluated and the resulting event value will be 	  used in its place in the synchronization. 	  This provides a mechanism for implementing pre-synchronization 	  actions, such as sending a request to a server.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.withNack:VAL"><CODE>withNack <VAR>f</VAR>
+          </CODE></A>
+<DD>
+creates <I>delayed</I> event value from the function <VAR>f</VAR>. 	  As in the case of <A HREF="cml.html#SIG:CML.guard:VAL:SPEC">guard</A>, the function <VAR>f</VAR> will be evaluated 	  at synchronization time and the resulting event value will be 	  used in its place in the synchronization. 	  Furthermore, when <VAR>f</VAR> is evaluated, it is passed a <I>negative 	  acknowledgement</I> event as an argument. 	  If the event value that is returned from the evaluation of <VAR>f</VAR> 	  is <EM>not</EM> chosen in the synchronization, then the negative 	  event will be enabled. 	  This provides a mechanism for informing servers that a client has 	  aborted a transaction.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.choose:VAL"><CODE>choose <VAR>l</VAR>
+          </CODE></A>
+<DD>
+constructs an event value that represents the non-deterministic 	  choice of the events in the list <VAR>l</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.sync:VAL"><CODE>sync <VAR>ev</VAR>
+          </CODE></A>
+<DD>
+synchronizes the calling thread on the event <VAR>ev</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.select:VAL"><CODE>select <VAR>evs</VAR>
+          </CODE></A>
+<DD>
+synchronizes on the choice of a list of event values. 	  This is semantically equivalant to: 	  
+<PRE>
+	    <A HREF="cml.html#SIG:CML.sync:VAL:SPEC">sync</A> (<A HREF="cml.html#SIG:CML.choose:VAL:SPEC">choose</A> <VAR>evs</VAR>)
+	  
+</PRE>
+ 	  but is more efficient.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.never:VAL"><CODE>never
+          </CODE></A>
+<DD>
+is an event value that is never enabled for synchronization. 	  It is semantically equivalant to the expression: 	  
+<PRE>
+	    <A HREF="cml.html#SIG:CML.choose:VAL:SPEC">choose</A> []
+	  
+</PRE>
+     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.alwaysEvt:VAL"><CODE>alwaysEvt <VAR>a</VAR>
+          </CODE></A>
+<DD>
+creates an event value that is always enabled, and that returns 	  the value <VAR>a</VAR> upon synchronization.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.timeOutEvt:VAL"><CODE>timeOutEvt <VAR>t</VAR>
+          </CODE></A>
+<DD>
+creates an event value that becomes enabled at the time 	  interval <VAR>t</VAR> after synchronization. 	  For example, the expression: 	  
+<PRE>
+	    <A HREF="cml.html#SIG:CML.sync:VAL:SPEC">sync</A> (timeOutEvt (Time.fromSeconds 1))
+	  
+</PRE>
+ 	  will delay the calling thread for one second. 	  Note that the specified time interval is actually a minimum 	  waiting time, and the delay may be longer.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:CML.atTimeEvt:VAL"><CODE>atTimeEvt <VAR>t</VAR>
+          </CODE></A>
+<DD>
+creates an event value that becomes enabled at the specified time 	  <VAR>t</VAR>.     
+<BR>
+<BR>
+
+</DL>
+<HR>
+<H4>See Also</H4>
+<BLOCKQUOTE>
+General, Time
+</BLOCKQUOTE>
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="cml.html">TOP</A>
+   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+   ]</B>
+<P>
+<I>Last Modified November 16, 1995</I><BR>
+Copyright &copy; 1996 AT&amp;T <BR>
+<HR>
+</BODY>
+</HTML>

@@ -1,0 +1,197 @@
+<!-- sync-var.html -->
+
+<!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The SyncVar structure</TITLE>
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<HR>
+
+<H3>The <CODE>SyncVar</CODE> structure</H3>
+<P>
+The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory cells). These variables have two states: <I>empty</I> and <I>full</I>. An attempt to read a value from an empty variable blocks the calling thread until there is a value available. An attempt to put a value into a variable that is full results in the <A HREF="sync-var.html#SIG:SYNC_VAR.Put:EXN:SPEC">Put</A> exception being raised. There are two kinds of synchronous variables: I-variables are write-once, while M-variables are mutable. 
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="SYNC_VAR:SIG:SPEC"><CODE>SYNC_VAR</CODE></A><BR>
+<B>structure </B><A NAME="SyncVar:STR:SPEC"><CODE>SyncVar</CODE></A><B> : </B>SYNC_VAR<BR>
+</CODE>
+</BLOCKQUOTE>
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>exception</B> <A NAME="SIG:SYNC_VAR.Put:EXN:SPEC" HREF="#SIG:SYNC_VAR.Put:EXN">Put</A><BR>
+<B>type</B> 'a <A NAME="SIG:SYNC_VAR.ivar:TY:SPEC" HREF="#SIG:SYNC_VAR.ivar:TY">ivar</A><BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.iVar:VAL:SPEC" HREF="#SIG:SYNC_VAR.iVar:VAL">iVar</A> <B>:</B> unit -&gt; 'a ivar         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.iPut:VAL:SPEC" HREF="#SIG:SYNC_VAR.iPut:VAL">iPut</A> <B>:</B> ('a ivar * 'a) -&gt; unit 	<BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.iGet:VAL:SPEC" HREF="#SIG:SYNC_VAR.iGet:VAL">iGet</A> <B>:</B> 'a ivar -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.iGetEvt:VAL:SPEC" HREF="#SIG:SYNC_VAR.iGetEvt:VAL">iGetEvt</A> <B>:</B> 'a ivar -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.iGetPoll:VAL:SPEC" HREF="#SIG:SYNC_VAR.iGetPoll:VAL">iGetPoll</A> <B>:</B> 'a ivar -&gt; 'a option         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.sameIVar:VAL:SPEC" HREF="#SIG:SYNC_VAR.sameIVar:VAL">sameIVar</A> <B>:</B> ('a ivar * 'a ivar) -&gt; bool         <BR>
+<B>type</B> 'a <A NAME="SIG:SYNC_VAR.mvar:TY:SPEC" HREF="#SIG:SYNC_VAR.mvar:TY">mvar</A><BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mVar:VAL:SPEC" HREF="#SIG:SYNC_VAR.mVar:VAL">mVar</A> <B>:</B> unit -&gt; 'a mvar         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mVarInit:VAL:SPEC" HREF="#SIG:SYNC_VAR.mVarInit:VAL">mVarInit</A> <B>:</B> 'a -&gt; 'a mvar         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mPut:VAL:SPEC" HREF="#SIG:SYNC_VAR.mPut:VAL">mPut</A> <B>:</B> ('a mvar * 'a) -&gt; unit 	<BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mTake:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTake:VAL">mTake</A> <B>:</B> 'a mvar -&gt; 'a       <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mTakeEvt:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTakeEvt:VAL">mTakeEvt</A> <B>:</B> 'a mvar -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mGet:VAL:SPEC" HREF="#SIG:SYNC_VAR.mGet:VAL">mGet</A> <B>:</B> 'a mvar -&gt; 'a         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mGetEvt:VAL:SPEC" HREF="#SIG:SYNC_VAR.mGetEvt:VAL">mGetEvt</A> <B>:</B> 'a mvar -&gt; 'a event         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mTakePoll:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTakePoll:VAL">mTakePoll</A> <B>:</B> 'a mvar -&gt; 'a option       <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.mGetPoll:VAL:SPEC" HREF="#SIG:SYNC_VAR.mTakePoll:VAL">mGetPoll</A> <B>:</B> 'a mvar -&gt; 'a option         <BR>
+<B>val</B> <A NAME="SIG:SYNC_VAR.sameMVar:VAL:SPEC" HREF="#SIG:SYNC_VAR.sameMVar:VAL">sameMVar</A> <B>:</B> ('a mvar * 'a mvar) -&gt; bool         <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:SYNC_VAR.Put:EXN"><CODE><B>exception</B> Put</CODE></A>
+<DD>
+This exception is raised when an attempt is made to put a 	value into a value that is already full (see <A HREF="sync-var.html#SIG:SYNC_VAR.iPut:VAL:SPEC">iPut</A> and 	<A HREF="sync-var.html#SIG:SYNC_VAR.mPut:VAL:SPEC">mPut</A>).     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.ivar:TY"><CODE><B>type</B> 'a ivar</CODE></A>
+<DD>
+This is the type constructor for I-structured variables. 	I-structured variables are write-once variables that provide 	synchronization on read operations. 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.iVar:VAL"><CODE>iVar ()
+          </CODE></A>
+<DD>
+creates a new empty I-variable.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.iPut:VAL"><CODE>iPut (<VAR>iv</VAR>, <VAR>x</VAR>)
+          </CODE></A>
+<DD>
+fills the I-variable <VAR>iv</VAR> with the value <VAR>x</VAR>. 	  Any threads that are blocked on <VAR>iv</VAR> will be resumed. 	  If <VAR>iv</VAR> already has a value in it, then the <A HREF="sync-var.html#SIG:SYNC_VAR.Put:EXN:SPEC">Put</A> 	  exception is raised.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.iGet:VAL"><CODE>iGet <VAR>iv</VAR>
+          </CODE></A>
+<DD>
+returns the contents of the I-variable <VAR>iv</VAR>. 	  If the variable is empty, then the calling thread blocks until 	  the variable becomes full.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.iGetEvt:VAL"><CODE>iGetEvt <VAR>iv</VAR>
+          </CODE></A>
+<DD>
+returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A> 	  operation on <VAR>iv</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.iGetPoll:VAL"><CODE><B>val</B> iGetPoll</CODE></A>
+<DD>
+This is a non-blocking version of <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A>. 	  If the corresponding blocking form would block, then it returns 	  NONE; otherwise 	  it returns SOME 	  of the variable's contents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.sameIVar:VAL"><CODE>sameIVar (<VAR>iv1</VAR>, <VAR>iv2</VAR>)
+          </CODE></A>
+<DD>
+returns <CODE>true</CODE>, if the <VAR>iv1</VAR> and <VAR>iv2</VAR> are the 	  same I-variable.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mvar:TY"><CODE><B>type</B> 'a mvar</CODE></A>
+<DD>
+This is the type constructor for M-structured variables. 	Unlike <A HREF="sync-var.html#SIG:SYNC_VAR.ivar:TY:SPEC">ivar</A> values, M-structured variables may be 	updated multiple times. 	Like I-variables, however, they may only be written if they 	are empty.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mVar:VAL"><CODE>mVar ()
+          </CODE></A>
+<DD>
+creates a new empty M-variable.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mVarInit:VAL"><CODE>mVar x
+          </CODE></A>
+<DD>
+creates a new M-variable initialized to <VAR>x</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mPut:VAL"><CODE>mPut (<VAR>mv</VAR>, <VAR>x</VAR>)
+          </CODE></A>
+<DD>
+fills the M-variable <VAR>mv</VAR> with the value <VAR>x</VAR>. 	  Any threads that are blocked on <VAR>mv</VAR> will be resumed. 	  If <VAR>mv</VAR> already has a value in it, then the <A HREF="sync-var.html#SIG:SYNC_VAR.Put:EXN:SPEC">Put</A> 	  exception is raised.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mTake:VAL"><CODE>mTake <VAR>mv</VAR>
+        </CODE></A>
+<DD>
+removes and returns the contents of the M-variable <VAR>mv</VAR> 	making it empty. 	If the variable is already empty, then the calling thread 	is blocked until a value is available.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mTakeEvt:VAL"><CODE>mTakeEvt <VAR>mv</VAR>
+          </CODE></A>
+<DD>
+returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> 	  operation on <VAR>mv</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mGet:VAL"><CODE>mGet <VAR>mv</VAR>
+          </CODE></A>
+<DD>
+returns the contents of the M-variable <VAR>mv</VAR> without emptying 	  the variable; if the variable is empty, then the thread blocks until 	  a value is available. 	  It is equivalent to the code: 	  
+<PRE>
+let val x = <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> <VAR>mv</VAR> in <A HREF="sync-var.html#SIG:SYNC_VAR.mPut:VAL:SPEC">mPut</A>(<VAR>mv</VAR>, x); x end
+	  
+</PRE>
+     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mGetEvt:VAL"><CODE>mGetEvt <VAR>mv</VAR>
+          </CODE></A>
+<DD>
+returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> 	  operation on <VAR>mv</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.mTakePoll:VAL"><CODE><B>val</B> mTakePoll</CODE></A>
+<DT> <CODE><B>val</B> mGetPoll</CODE>
+<DD>
+These are non-blocking versions of <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> and 	  <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> (respectively). 	  If the corresponding blocking form would block, then they return 	  NONE; otherwise 	  they return SOME 	  of the variable's contents.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:SYNC_VAR.sameMVar:VAL"><CODE>sameMVar (<VAR>mv1</VAR>, <VAR>mv2</VAR>)
+          </CODE></A>
+<DD>
+returns <CODE>true</CODE>, if <VAR>mv1</VAR> and <VAR>mv2</VAR> are the same 	  M-variable.     
+<BR>
+<BR>
+
+</DL>
+<HR>
+<H4>Discussion</H4>
+<P>
+I-variables provide a useful mechanism for implementing the       reply communication in request/reply protocols.       They may also be used to implement incremental data structures       and streams.       
+<P>
+      A disciplined use of M-variables can provide an atomic       read-modify-write operation.     
+<H4>See Also</H4>
+<BLOCKQUOTE>
+<A HREF="cml.html#CML:STR:SPEC">CML</A>
+</BLOCKQUOTE>
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="sync-var.html">TOP</A>
+   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+   ]</B>
+<P>
+<I>Last Modified November 16, 1995</I><BR>
+Copyright &copy; 1996 AT&amp;T <BR>
+<HR>
+</BODY>
+</HTML>

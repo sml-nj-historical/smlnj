@@ -1,0 +1,61 @@
+<!-- os.html -->
+
+<!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The OS structure</TITLE>
+</HEAD>
+<BODY>
+<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<HR>
+
+<H3>The <CODE>OS</CODE> structure</H3>
+<P>
+The OS structure is a container for a collection of structures for interacting with the operating system's file system, directory paths, processes and I/O subsystem. 
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="CML_OS:SIG:SPEC"><CODE>CML_OS</CODE></A><BR>
+<B>structure </B><A NAME="OS:STR:SPEC"><CODE>OS</CODE></A><B> : </B>CML_OS<BR>
+</CODE>
+</BLOCKQUOTE>
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>include</B> <A NAME="SIG:CML_OS.OS:SIG:SPEC" HREF="#SIG:CML_OS.OS:SIG">OS</A><BR>
+<B>structure</B> <A NAME="SIG:CML_OS.Process:STR:SPEC" HREF="#SIG:CML_OS.Process:STR">Process</A> <B>:</B> CML_OS_PROCESS<BR>
+<B>structure</B> <A NAME="SIG:CML_OS.IO:STR:SPEC" HREF="#SIG:CML_OS.IO:STR">IO</A> <B>:</B> CML_OS_IO<BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:CML_OS.OS:SIG"><CODE><B>include</B> OS</CODE></A>
+<DD>
+<BR>
+
+<DT> <A NAME="SIG:CML_OS.Process:STR"><CODE><B>structure</B> Process</CODE></A>
+<DD>
+<BR>
+
+<DT> <A NAME="SIG:CML_OS.IO:STR"><CODE><B>structure</B> IO</CODE></A>
+<DD>
+<BR>
+
+</DL>
+<HR>
+<H4>See Also</H4>
+<BLOCKQUOTE>
+OS, OS.FileSys, OS.Path, <A HREF="os.html#SIG:CML_OS.Process:STR:SPEC">OS.Process</A>, <A HREF="os.html#SIG:CML_OS.IO:STR:SPEC">OS.IO</A>
+</BLOCKQUOTE>
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="os.html">TOP</A>
+   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+   ]</B>
+<P>
+<I>Last Modified April 30, 1996</I><BR>
+Copyright &copy; 1996 AT&amp;T <BR>
+<HR>
+</BODY>
+</HTML>

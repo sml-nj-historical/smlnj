@@ -1,0 +1,8 @@
+<HR>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="%{url:top}">TOP</A>
+   | <A HREF="%{url:parent}">Parent</A> | <A HREF="%{url:root}">Root</A>
+   ]</B>
+<P>
+<I>Last Modified %{date}</I><BR>
+Copyright &copy; 1996 AT&amp;T Research <BR>
+<HR>

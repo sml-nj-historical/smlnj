@@ -1,0 +1,8 @@
+(* sources file for plaid example *)
+Group 
+is
+
+cml.cm
+../../sources.cm
+
+plaid.sml

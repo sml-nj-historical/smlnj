@@ -1,0 +1,10 @@
+(* sources file for triangle demo *)
+Group
+is
+cml.cm
+cml-lib.cm
+../../sources.cm
+
+icon-bitmap.sml
+tri.sml
+

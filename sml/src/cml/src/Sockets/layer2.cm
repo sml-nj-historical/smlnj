@@ -1,0 +1,24 @@
+(* cml-socket.cm
+ *
+ * COPYRIGHT (c) 1996 AT&T Research.
+ *
+ *)
+
+Group
+  signature CML_SOCKET
+  signature GENERIC_SOCK
+  signature INET_SOCK
+  signature UNIX_SOCK
+  structure PreSock
+  structure Socket
+is
+
+layer1.cm
+
+rebind1.sml
+
+(* recompile the SML signatures, so that the types are right *)
+generic-sock-sig.sml
+inet-sock-sig.sml
+unix-sock-sig.sml
+

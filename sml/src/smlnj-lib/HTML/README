@@ -1,0 +1,22 @@
+This library provides support for parsing and pretty-printing HTML.
+The file html-sig.sml and html.sml define a parse-tree representation
+of HTML 3.2 (as defined in the August 21st, 1993 draft).
+
+Note that this is a fairly strict interpretation of the standard;
+non-standard tags and attributes will cause errors.  To allow some
+flexibility, the parser is functorized over a collection of error
+reporting functions (see html-error-sig.sml).
+
+The file test-parser.sml gives an example of how the parser part of the
+library can be used.
+
+TODO LIST:
+
+The pretty-printer needs to be rewritten to deal with line breaks better.
+
+Some library support for entities (e.g., "&lt;" should be provided).
+
+	John Reppy
+	AT&T Research
+	jhr@research.att.com
+

@@ -1,0 +1,37 @@
+<!-- mono-array-sort.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1996>
+<VERSION VERID="1.0" YEAR=1996 MONTH=5 DAY=29>
+<TITLE>The MONO_ARRAY_SORT signature</TITLE>
+
+<SECT>
+<HEAD>The <CD/MONO_ARRAY_SORT/ signature</HEAD>
+
+<PP>
+<!-- Some general introductory text -->
+
+<SIGNATURE SIGID="MONO_ARRAY_SORT">
+  <SIGBODY SIGID="MONO_ARRAY_SORT" FILE=MONO-ARRAY-SORT-SIG>
+    <SPEC>
+      <SUBSTRUCT>A<ID>MONO_ARRAY</SUBSTRUCT>
+    <SPEC>
+      <VAL>sort<TY>((A.elem * A.elem) -> order) -> A.array -> unit
+        <COMMENT>
+          <PROTOTY>
+          sort <ARG/f/ <ARG/arr/
+          </PROTOTY>
+          explain the use and semantics of sort HERE.
+    <SPEC>
+      <VAL>sorted<TY>((A.elem * A.elem) -> order) -> A.array -> bool
+        <COMMENT>
+          <PROTOTY>
+          sorted <ARG/f/ <ARG/arr/
+          </PROTOTY>
+          explain the use and semantics of sorted HERE.
+<!-- optional SEEALSO; uncomment to use     -->
+<!-- <SEEALSO>    -->
+<!--   non-empty list of XREFS here   -->
+<!-- </SEEALSO>    -->
+</SIGNATURE>
