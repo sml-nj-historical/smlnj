@@ -80,13 +80,12 @@ signature PPC_MACOSX_C_CALLS =
 functor PPCMacOSX_CCalls (
 
     structure T : MLTREE
-    val ix : (T.stm, T.rexp, T.fexp, T.ccexp) PPCInstrExt.sext -> T.sext
 
-  ): PPC_MACOSX_C_CALLS = struct
+  ): C_CALLS = struct
+
     structure T  = T
     structure CTy = CTypes
     structure C = PPCCells
-    structure IX = PPCInstrExt
 
     fun error msg = MLRiscErrorMsg.error ("PPCCompCCalls", msg)
 
@@ -166,18 +165,18 @@ functor PPCMacOSX_CCalls (
 
   (* compute the layout of a C call's arguments *)
     fun layout {conv, retTy, paramTys} = let
-	  fun gprRes isz = (case sizeOf isz
+	  fun gprRes isz = (case #sz(sizeOf isz)
 		 of 8 => raise Fail "register pairs not yet supported"
-		  | _ => SOME resGPR
+		  | _ => SOME(Reg(wordTy, resGPR, NONE))
 		(* end case *))
-	  val (resReg, availGPRs, structRet) = (case retTy
-		 of CTy.C_void => (NONE, availGPRs, NONE)
-		  | CTy.C_float => (SOME resFPR, availGPRs, NONE)
-		  | CTy.C_double => (SOME resFPR, availGPRs, NONE)
-		  | CTy.C_long_double => (SOME resFPR, availGPRs, NONE)
-		  | CTy.C_unsigned isz => (gprRes isz, availGPRs, NONE)
-		  | CTy.C_signed isz => (gprRes isz, availGPRs, NONE)
-		  | CTy.C_PTR => (SOME resGPR, availGPRs, NONE)
+	  val (resLoc, argGPRs, structRet) = (case retTy
+		 of CTy.C_void => (NONE, argGPRs, NONE)
+		  | CTy.C_float => (SOME(FReg(fltTy, resFPR, NONE)), argGPRs, NONE)
+		  | CTy.C_double => (SOME(FReg(dblTy, resFPR, NONE)), argGPRs, NONE)
+		  | CTy.C_long_double => (SOME(FReg(dblTy, resFPR, NONE)), argGPRs, NONE)
+		  | CTy.C_unsigned isz => (gprRes isz, argGPRs, NONE)
+		  | CTy.C_signed isz => (gprRes isz, argGPRs, NONE)
+		  | CTy.C_PTR => (SOME(Reg(wordTy, resGPR, NONE)), argGPRs, NONE)
 		  | CTy.C_ARRAY _ => error "array return type"
 		  | CTy.C_STRUCT s => let
 		      val sz = sizeOfStruct s
@@ -186,16 +185,16 @@ functor PPCMacOSX_CCalls (
 		       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
 		       *)
 			if (sz > 4)
-			  then (SOME resGPR, List.tl availGPRs, SOME{szb=sz, align=4})
-			  else (SOME resGPR, availGPRs, NONE)
+			  then (SOME resGPR, List.tl argGPRs, SOME{szb=sz, align=4})
+			  else (SOME resGPR, argGPRs, NONE)
 		      end
 		(* end case *))
-	  fun assign ([], offset, _, _, layout) = {sz = offset, layout = List.rev layout}
+	  fun assign ([], offset, _, _, layout) = List.rev layout
 	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = (
 		case ty
 		 of CTy.C_void => error "unexpected void tyument type"
 		  | CTy.C_float => (case (availGPRs, availFPRs)
-		       of (_:gprs, fpr::fprs) =>
+		       of (_::gprs, fpr::fprs) =>
 			    assign (tys, offset+4, gprs, fprs, FReg(fltTy, fpr, SOME offset)::layout)
 			| ([], fpr::fprs) =>
 			    assign (tys, offset+4, [], fprs, FReg(fltTy, fpr, SOME offset)::layout)
@@ -223,7 +222,7 @@ functor PPCMacOSX_CCalls (
 			| (_, []) => (Stk(wordTy, offset), [])
 			| (_, r1::rs) => (Reg(wordTy, r1, SOME offset), rs)
 		      (* end case *))
-		val offset = offset + sz + pad
+		val offset = offset + IntInf.fromInt(sz + pad)
 		in
 		  assign (args, offset, availGPRs, availFPRs, loc::layout)
 		end
@@ -241,7 +240,7 @@ functor PPCMacOSX_CCalls (
 		end
 	  in {
 	    argLocs = assign (paramTys, 0, argGPRs, argFPRs, []),
-	    resLoc = resReg,
+	    resLoc = resLoc,
 	    structRet = structRet
 	  } end
 
@@ -254,7 +253,7 @@ functor PPCMacOSX_CCalls (
     val stkRg = T.Region.memory
 
   (* SP-based address of parameter at given offset *)
-    fun paramAddr off = T.ADD(wordSz, spR, T.LI(off + IntInf.fromInt paramAreaOffset))
+    fun paramAddr off = T.ADD(wordTy, spR, T.LI(off + IntInf.fromInt paramAreaOffset))
 
     fun genCall {
 	  name, proto, paramAlloc, structRet, saveRestoreDedicated,
@@ -268,19 +267,19 @@ functor PPCMacOSX_CCalls (
 		assignArgs (locs, args, T.MV(ty, r, exp) :: stms)
 	    | assignArgs (Stk(ty, off) :: locs, ARG exp :: args, stms) =
 		assignArgs (locs, args, T.STORE(ty, paramAddr off, exp, stkRg) :: stms)
-	    | assignArgs (FReg(ty, r, _) :: locs, FARG fexp :: args) =
+	    | assignArgs (FReg(ty, r, _) :: locs, FARG fexp :: args, stms) =
 		assignArgs (locs, args, T.FMV(ty, r, fexp) :: stms)
 	    | assignArgs (FStk(ty, off) :: locs, FARG fexp :: args, stms) =
 		assignArgs (locs, args, T.FSTORE(ty, paramAddr off, fexp, stkRg) :: stms)
 	    | assignArgs ((Args locs') :: locs, (ARGS args') :: args, stms) =
 		assignArgs (locs, args, assignArgs(locs', args', stms))
 	    | assignArgs _ = error "argument/formal mismatch"
-	  val argsetupCode = List.rev(assignArgs(args, args, []))
+	  val argSetupCode = List.rev(assignArgs(argLocs, args, []))
 	(* convert the result location to an MLRISC expression list *)
 	  val result = (case resLoc
 		 of NONE => []
-		  | SOME(Reg(ty, r, _)) => [T.REG(ty, r)]
-		  | SOME(FReg(ty, r, _)) => [T.FREG(ty, r)]
+		  | SOME(Reg(ty, r, _)) => [T.GPR(T.REG(ty, r))]
+		  | SOME(FReg(ty, r, _)) => [T.FPR(T.FREG(ty, r))]
 		  | SOME _ => raise Fail "bogus result location"
 		(* end case *))
 	(* determine the registers used and defined by this call *)
