@@ -58,7 +58,6 @@ struct
   type instrStream = (I.instruction, C.cellset, CFG.cfg) TS.stream
   type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
-  val int_0 = T.I.int_0
   fun toInt n = T.I.toInt(32, n)
   fun LI i = T.LI(T.I.fromInt(32, i))
   fun LT (n,m) = T.I.LT(32, n, m)
@@ -187,9 +186,7 @@ struct
       val zeroR   = C.r0
       val newReg  = C.newReg
       val newFreg = C.newFreg
-      val int_m4096 = T.I.fromInt(32, ~4096)
-      val int_4096 =  T.I.fromInt(32, 4096)
-      fun immed13 n = LE(int_m4096, n) andalso LT(n, int_4096)
+      fun immed13 n = LE(~4096, n) andalso LT(n, 4096)
       fun immed13w w = let val x = W.~>>(w,0w12)
                        in  x = 0w0 orelse (W.notb x) = 0w0 end
       fun splitw w = {hi=W.toInt(W.>>(w,0w10)),lo=W.toInt(W.andb(w,0wx3ff))}
@@ -531,7 +528,7 @@ struct
         end
       in case e
 	 of T.REG(_,r) => r
-          | T.LI z => if T.I.isZero z then zeroR else comp()
+          | T.LI z => if z = 0 then zeroR else comp()
 	  | _ => comp()
       end
 
@@ -553,7 +550,7 @@ struct
             in
 	      case b 
               of T.LI z => 
-		  if T.I.isZero(z) then doExpr(a,d,cc,an) else default()
+		  if z = 0 then doExpr(a,d,cc,an) else default()
 	       | _ => default()
               (*esac*)
 	    end
@@ -728,7 +725,7 @@ struct
         | opn(x as T.LABEL l) = I.LAB x
         | opn(T.LABEXP x)     = I.LAB x
         | opn(e as T.LI n)   = 
-	    if T.I.isZero(n) then zeroOpn
+	    if n = 0 then zeroOpn
 	    else if immed13 n then I.IMMED(toInt n)
 		 else I.REG(expr e)
         | opn e              = I.REG(expr e)

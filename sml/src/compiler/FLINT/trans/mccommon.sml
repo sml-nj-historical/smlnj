@@ -21,6 +21,7 @@ datatype pcon
   = DATApcon of dconinfo
   | INTpcon of int
   | INT32pcon of Int32.int
+  | INTINFpcon of IntInf.int
   | WORDpcon of word
   | WORD32pcon of Word32.word
   | REALpcon of string
@@ -69,14 +70,15 @@ fun constantEq (INTcon n, INTcon n') = n = n'
   | constantEq _ = false
 *)
 
-fun constantEq (INTpcon n, INTpcon n') = n = n'
-  | constantEq (WORDpcon n, WORDpcon n') = n = n'
+fun constantEq (DATApcon (d1, _), DATApcon (d2, _)) = conEq(d1, d2)
+  | constantEq (INTpcon n, INTpcon n') = n = n'
   | constantEq (INT32pcon n, INT32pcon n') = n = n'
+  | constantEq (INTINFpcon n, INTINFpcon n') = n = n'
+  | constantEq (WORDpcon n, WORDpcon n') = n = n'
   | constantEq (WORD32pcon n, WORD32pcon n') = n = n'
   | constantEq (REALpcon r, REALpcon r') = r = r'
   | constantEq (STRINGpcon s, STRINGpcon s') = s = s'
   | constantEq (VLENpcon (n, _), VLENpcon (n',_)) = n = n'
-  | constantEq (DATApcon (d1, _), DATApcon (d2, _)) = conEq(d1, d2)
   | constantEq _ = false
 
 

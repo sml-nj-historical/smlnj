@@ -23,7 +23,7 @@ sig
 (* finite map structures *)
 
   structure ST : ORD_MAP where type Key.ord_key = Symbol.symbol
-  structure IT : ORD_MAP where type Key.ord_key = Int32.int
+  structure IT : ORD_MAP where type Key.ord_key = LargeInt.int
 
 
 (* environments *)
@@ -171,7 +171,7 @@ sig
      switchFuns : (* manipulate current switch context *)
       {pushSwitchLabels : unit -> unit, (* enter a switch statement *)
        popSwitchLabels : unit -> unit,  (* leave a switch statement *)
-       addSwitchLabel : Int32.int -> string option,
+       addSwitchLabel : LargeInt.int -> string option,
          (* record a new switch label; returns SOME errormsg if duplicate
 	  * or not within a switch *)
        addDefaultLabel : unit -> string option}}

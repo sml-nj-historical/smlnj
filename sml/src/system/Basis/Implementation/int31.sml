@@ -22,10 +22,10 @@ structure Int31Imp : INTEGER =
     val minInt = SOME minIntVal
     val maxInt = SOME 1073741823
 
-    val toLarge : int -> LargeInt.int = I32.fromInt
-    val fromLarge : LargeInt.int -> int = I32.toInt
-    val toInt = InlineT.Int31.toInt
-    val fromInt = InlineT.Int31.fromInt
+    val toLarge : int -> LargeInt.int = I31.toLarge
+    val fromLarge : LargeInt.int -> int = I31.fromLarge
+    val toInt = I31.toInt
+    val fromInt = I31.fromInt
 
     val ~ 	: int -> int = I31.~
     val op * 	: int * int -> int  = I31.*

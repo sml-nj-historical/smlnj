@@ -159,6 +159,7 @@ FLINT/cpsopt/expand.sml
 FLINT/cpsopt/expandNEW.sml
 FLINT/cpsopt/flatten.sml
 FLINT/cpsopt/uncurry.sml
+FLINT/cpsopt/infcnv.sml
 FLINT/flint/chkflint.sml
 FLINT/flint/flint.sig
 FLINT/flint/flint.sml
@@ -266,7 +267,7 @@ MiscUtil/print/ppobj.sml
 MiscUtil/print/pptable.sml
 
 MiscUtil/util/feedback.sml
-MiscUtil/util/literal-to-num.sml
+MiscUtil/util/literal-to-num.sml    (* uses CoreIntInf functionality *)
 
 (* Libraries that are part of the visible compiler framework. *)
 $smlnj/viscomp/basics.cm
@@ -288,3 +289,5 @@ $/basis.cm
 $/smlnj-lib.cm
 $/controls-lib.cm
 $/pickle-lib.cm
+
+$smlnj/init/init.cmi : cm          (* to gain access at CoreIntInf *)

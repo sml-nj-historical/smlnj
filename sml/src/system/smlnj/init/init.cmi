@@ -116,11 +116,17 @@ rts-placeholder rts = dummy.sml (asig, primitive)
 # We can now turn the cross-module optimizer on (when available)...
 split
 
+# definition of type order
+bind order = order.sml (primitive)
+
+# Minimal support for arbitrary-precision integers.
+bind coreintinf = core-intinf.sml (rts, order, primitive)
+
 # This defines the core environment to be used everywhere else...
 # (This binds the structure symbol "Core", which is not yet the one that
 # is used implicitly by the compiler.  Of course, "core.sml" itself cannot
 # yet have access to _Core.)
-bind core = core.sml (rts, asig, primitive)
+bind core = core.sml (rts, asig, coreintinf, primitive)
 
 # Now we make the binding for structure _Core for use by the remaining
 # members of the init library. (Everybody else in the world gets access to
@@ -150,7 +156,7 @@ ifdef ARCH_SPARC \
 ifndef ARCH_X86 ifndef ARCH_SPARC \
 	bind rawmem = rawmem-dummy.sml (core, primitive, xcore)
 
-bind pp = pre-perv.sml (built-in, xcore)
+bind pp = pre-perv.sml (built-in, order, xcore)
 bind ps = pre-string.sml (core, built-in, pp, xcore)
 bind ss-sig = substring.sig (pp, built-in, xcore)
 bind ss = substring.sml (ss-sig, pp, ps, core, built-in, xcore)
@@ -165,8 +171,9 @@ bind init-utils = init-utils.sml (ps ss-sig ss, xcore)
 # Make sure everybody else in the world gets access to structure _Core...
 bind-core (xCore) pervasive = pervasive.sml (core, ps, ss, pp, print-hook, \
 					     use-hook, exn-info-hook, \
+					     coreintinf, \
 					     math-inlT, built-in, xcore)
 
 # Report the results to the world...
 return (pervasive) built-in math-inlT print-hook use-hook exn-info-hook core \
-		   init-utils rawmem
+		   init-utils rawmem coreintinf

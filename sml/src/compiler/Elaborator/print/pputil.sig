@@ -22,6 +22,7 @@ sig
   val ppSym : PrettyPrint.stream -> Symbol.symbol -> unit
   val mlstr : string -> string
   val pp_mlstr : PrettyPrint.stream -> string -> unit
+  val pp_intinf : PrettyPrint.stream -> IntInf.int -> unit
   val ppvseq : PrettyPrint.stream
                -> int -> string -> (PrettyPrint.stream -> 'a -> unit)
                -> 'a list -> unit

@@ -117,7 +117,7 @@ struct
    fun roundToZero stm {ty,r,i,d} =
        let val reg = T.REG(ty,r)
        in  stm(T.MV(ty,d,
-                    T.COND(ty,T.CMP(ty,T.GE,reg, T.LI T.I.int_0),reg,
+                    T.COND(ty,T.CMP(ty,T.GE,reg, T.LI 0),reg,
                               T.ADD(ty,reg,T.LI(T.I.fromInt(intTy,i))))))
        end
  

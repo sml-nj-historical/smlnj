@@ -99,6 +99,7 @@ fun tocon con =
     in case con of
 	L.INTcon x    => F.INTcon x
       | L.INT32con x  => F.INT32con x
+      | L.INTINFcon _ => bug "INTINFcon"
       | L.WORDcon x   => F.WORDcon x
       | L.WORD32con x => F.WORD32con x
       | L.REALcon x   => F.REALcon x

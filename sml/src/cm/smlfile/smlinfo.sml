@@ -60,6 +60,7 @@ signature SMLINFO = sig
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
+    val parse_for_errors: GeneralParams.info -> info -> unit
     val exports : GeneralParams.info -> info  -> SymbolSet.set option
     val skeleton : GeneralParams.info -> info -> Skeleton.decl option
     val sh_spec : info -> Sharing.request
@@ -443,6 +444,7 @@ structure SmlInfo :> SMLINFO = struct
     val skeleton = skeleton0 true
 
     fun parsetree gp i = getParseTree gp (i, true, true)
+    fun parse_for_errors gp i = ignore (getParseTree gp (i, false, false))
 
     fun descr (INFO { sourcepath, ... }) = SrcPath.descr sourcepath
 

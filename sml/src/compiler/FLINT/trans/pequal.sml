@@ -9,6 +9,7 @@ sig
    * use runtime polyequal function to deal with abstract types. (ZHONG)
    *)
   val equal : {getStrEq : unit -> PLambda.lexp, 
+	       getIntInfEq : unit -> PLambda.lexp,
                getPolyEq : unit -> PLambda.lexp} * StaticEnv.staticEnv 
                -> (Types.ty * Types.ty * toTcLt) -> PLambda.lexp
 
@@ -146,7 +147,7 @@ exception Notfound
 (****************************************************************************
  *              equal --- the equality function generator                   *
  ****************************************************************************)
-fun equal ({getStrEq, getPolyEq}, env) 
+fun equal ({getStrEq, getIntInfEq, getPolyEq}, env) 
           (polyEqTy : ty, concreteType : ty, toTcLc as (toTyc, toLty)) =
 let 
 
@@ -191,6 +192,7 @@ fun atomeq (tyc, ty) =
   else if TU.equalTycon(tyc,BT.boolTycon) then prim(PO.IEQL,booleqty) 
   else if TU.equalTycon(tyc,BT.realTycon) then prim(PO.FEQLd,realeqty)
   else if TU.equalTycon(tyc,BT.stringTycon) then getStrEq()
+  else if TU.equalTycon(tyc,BT.intinfTycon) then getIntInfEq()
   else if TU.equalTycon(tyc,BT.refTycon) then ptrEq(PO.PTREQL, ty) 
 (**********************
  * For arrays under the new array representation, we need to compare
@@ -349,6 +351,8 @@ in
 
 end handle Poly => 
   (GENOP({default=getPolyEq(),
+	  (* might want to include intinf into this table (but we
+	   * need a tcc_intinf for that)... *)
           table=[([LT.tcc_string], getStrEq())]}, 
          PO.POLYEQL, toLty polyEqTy, 
          [toTyc concreteType]))
@@ -356,4 +360,3 @@ end handle Poly =>
 
 end (* toplevel local *)                       
 end (* structure Equal *)
-

@@ -12,23 +12,14 @@ structure Real64Imp : REAL =
 
     infix 4 == !=
     type real = real
-    val ~ = InlineT.Real64.~
-    val op +  = InlineT.Real64.+
-    val op -  = InlineT.Real64.-
-    val op *  = InlineT.Real64.*
-    val op /  = InlineT.Real64./
-    fun *+(a,b,c) = a*b+c
-    fun *-(a,b,c) = a*b-c
-
-    val op >  = InlineT.Real64.>
-    val op <  = InlineT.Real64.<
-    val op >= = InlineT.Real64.>=
-    val op <= = InlineT.Real64.<=
+    
+    fun *+(a:real,b,c) = a*b+c
+    fun *-(a:real,b,c) = a*b-c
 
     val op == = InlineT.Real64.==
     val op != = InlineT.Real64.!=
 
-    fun unordered(x,y) = Bool.not(x>y orelse x <= y)
+    fun unordered(x:real,y) = Bool.not(x>y orelse x <= y)
     fun ?= (x, y) = (x == y) orelse unordered(x, y)
 
     fun isNormal x = (case Assembly.A.logb x
@@ -42,10 +33,10 @@ structure Real64Imp : REAL =
    * in the compiler itself.
    *)
     val maxFinite = let
-	  fun f(x,i) = if i=1023 then x else f(x*2.0, I.+(i, 1))
+	  fun f(x,i) = if i=1023 then x else f(x*2.0, i + 1)
 	  val y = f(1.0,0)
 	  fun g(z, y, 0) = z
-	    | g(z, y, i) = g(z+y, y*0.5, I.-(i, 1))
+	    | g(z, y, i) = g (z+y, y*0.5, i - 1)
 	  in
 	    g(0.0,y,53)
 	  end
@@ -89,7 +80,7 @@ structure Real64Imp : REAL =
 		  else if isNan x then raise General.Domain
 		  else raise General.Overflow
 
-    fun ceil n = I.-(~1,floor(~(n+1.0)))
+    fun ceil n = ~1 - floor (~1.0 - n)
     fun trunc n = if n < 0.0 then ceil n else floor n
     fun round x =
         (* ties go to the nearest even number *)
@@ -123,21 +114,10 @@ structure Real64Imp : REAL =
     val abs : real -> real = InlineT.Real64.abs
     val fromInt : int -> real = InlineT.real
 
-    (* bug: operates correctly but slowly *)
-    fun fromLargeInt(x : Int32.int) =
-       let val i = Int32Imp.quot(x,2)
-           val j = Int32Imp.-(x,Int32Imp.+(i,i))
-           val i' = Int32Imp.toInt i
-	   val j' = Int32Imp.toInt j
-        in fromInt(i')*2.0+fromInt(j')
-       end    
-
-     (* bug: only one rounding mode implemented *)
     fun toInt IEEEReal.TO_NEGINF = floor
-      | toInt _ = raise Fail "toInt supports only NEGINF rounding mode now"
-
-      (* bug: doesn't support full range of large ints *)
-    fun toLargeInt mode x = Int32Imp.fromInt(toInt mode x)
+      | toInt IEEEReal.TO_POSINF = ceil
+      | toInt IEEEReal.TO_ZERO = trunc
+      | toInt IEEEReal.TO_NEAREST = round
 
     fun toLarge x = x
     fun fromLarge _ x = x       
@@ -145,22 +125,24 @@ structure Real64Imp : REAL =
     fun sign x = if (x < 0.0) then ~1 else if (x > 0.0) then 1 
                   else if isNan x then raise Domain else 0
     fun signBit x = (* Bug: negative zero not handled properly *)
-                   Assembly.A.scalb(x, I.~(Assembly.A.logb x)) < 0.0
+                   Assembly.A.scalb(x, ~(Assembly.A.logb x)) < 0.0
 
     fun sameSign (x, y) = signBit x = signBit y
 
     fun copySign(x,y) = (* may not work if x is Nan *)
            if sameSign(x,y) then x else ~x
 
-    fun compare(x,y) = if x<y then General.LESS else if x>y then General.GREATER
-                       else if x == y then General.EQUAL 
-			    else raise IEEEReal.Unordered
+    fun compare(x,y) =
+	if x<y then General.LESS
+	else if x>y then General.GREATER
+        else if x == y then General.EQUAL 
+	else raise IEEEReal.Unordered
     
     fun compareReal(x,y) = 
-           if x<y then IEEEReal.LESS else if x>y then IEEEReal.GREATER
-                       else if x == y then IEEEReal.EQUAL 
-			    else IEEEReal.UNORDERED
-    
+        if x<y then IEEEReal.LESS
+	else if x>y then IEEEReal.GREATER
+        else if x == y then IEEEReal.EQUAL 
+	else IEEEReal.UNORDERED
 
 (** This proably needs to be reorganized **)
     fun class x =  (* does not distinguish between quiet and signalling NaN *)
@@ -181,10 +163,10 @@ structure Real64Imp : REAL =
     val radix = 2
     val precision = 52
 
-    val two_to_the_54 = 18014398509481984.0
+    val radix_to_the_precision = 18014398509481984.0
 
     val two_to_the_neg_1000 =
-      let fun f(i,x) = if i=0 then x else f(I.-(i,1), x*0.5)
+      let fun f(i,x) = if i=0 then x else f(i - 1, x*0.5)
        in f(1000, 1.0)
       end
 
@@ -193,30 +175,46 @@ structure Real64Imp : REAL =
         We should fix this systematically some time. *)
 
     fun toManExp x = 
-      case I.+(Assembly.A.logb x, 1)
+      case Assembly.A.logb x + 1
 	of ~1023 => if x==0.0 then {man=x,exp=0}
 		    else let val {man=m,exp=e} = toManExp(x*1048576.0)
-		              in {man=m,exp=I.-(e,20)}
+		              in { man = m, exp = e - 20 }
 			 end
          | 1024 => {man=x,exp=0}
-         | i => {man=Assembly.A.scalb(x,I.~ i),exp=i}
+         | i => {man=Assembly.A.scalb(x, ~i),exp=i}
 
     fun fromManExp {man=m,exp=e:int} =
       if (m >= 0.5 andalso m <= 1.0  orelse m <= ~0.5 andalso m >= ~1.0)
-	then if I.>(e, 1020)
-	  then if I.>(e, 1050) then if m>0.0 then posInf else negInf
-	       else let fun f(i,x) = if i=0 then x else f(I.-(i,1),x+x)
-		       in f(I.-(e,1020),  Assembly.A.scalb(m,1020))
+	then if e > 1020
+	  then if e > 1050 then if m>0.0 then posInf else negInf
+	       else let fun f(i,x) = if i=0 then x else f(i-1,x+x)
+		       in f(e-1020,  Assembly.A.scalb(m,1020))
 		      end
-	  else if I.<(e, I.~ 1020)
-	       then if I.<(e, I.~ 1200) then 0.0
-		 else let fun f(i,x) = if i=0 then x else f(I.-(i,1), x*0.5)
-		       in f(I.-(1020,e), Assembly.A.scalb(m,I.~ 1020))
+	  else if e < ~1020
+	       then if e < ~1200 then 0.0
+		 else let fun f(i,x) = if i=0 then x else f(i-1, x*0.5)
+		       in f(1020-e, Assembly.A.scalb(m, ~1020))
 		      end
 	       else Assembly.A.scalb(m,e)  (* This is the common case! *)
       else let val {man=m',exp=e'} = toManExp m
-            in fromManExp{man=m', exp=I.+(e',e)}
+            in fromManExp { man = m', exp = e'+ e }
            end
+
+    fun fromLargeInt(x : IntInf.int) = let
+	val CoreIntInf.BI { negative, digits } = CoreIntInf.concrete x
+	val w2r = fromInt o InlineT.Word31.copyt_int31
+	val base = w2r CoreIntInf.base
+	fun calc [] = 0.0
+	  | calc (d :: ds) = w2r d + base * calc ds
+	val m = calc digits
+    in
+	if negative then ~m else m
+    end
+
+(*
+      (* bug: doesn't support full range of large ints *)
+    fun toLargeInt mode x = IntInfImp.fromInt(toInt mode x)
+*)
 
   (* whole and split could be implemented more efficiently if we had
    * control over the rounding mode; but for now we don't.
@@ -250,19 +248,103 @@ structure Real64Imp : REAL =
                        else if isNan x then raise General.Div
 			 else raise General.Overflow
 
+    val rbase = 1073741824.0	(* should be taken from CoreIntInf.base *)
+
+    fun toLargeInt mode x =
+	if isNan x then raise Domain
+	else if x == posInf orelse x == negInf then raise Overflow
+	else let val (negative, x) =
+		     if x < 0.0 then (true, ~x) else (false, x)
+		 fun feven x = #frac (split (x / 2.0)) == 0.0
+	     in
+		 (* if the magnitute is less or equal than 1.0, then
+		  * we just have to figure out whether to return ~1, 0, or 1
+		  *)
+		 if x <= 1.0 then
+		     case mode of
+			 IEEEReal.TO_ZERO => 0
+		       | IEEEReal.TO_POSINF =>
+			   if negative then 0 else 1
+		       | IEEEReal.TO_NEGINF =>
+			   if negative then ~1 else 0
+		       | IEEEReal.TO_NEAREST =>
+			   if x < 0.5 then 0
+			   else if x > 0.5 then
+			       if negative then ~1 else 1
+			   else 0	(* 0 is even *)
+		 else
+		     (* Otherwise we start with an integral value,
+		      * suitably adjusted according to fractional part
+		      * and rounding mode: *)
+		     let val { whole, frac } = split x
+			 val start =
+			     case mode of
+				 IEEEReal.TO_NEGINF =>
+				   if frac > 0.0 andalso negative then
+				       whole + 1.0
+				   else whole
+			       | IEEEReal.TO_POSINF =>
+				   if frac > 0.0 andalso not negative then
+				       whole + 1.0
+				   else whole
+			       | IEEEReal.TO_ZERO => whole
+			       | IEEEReal.TO_NEAREST =>
+				   if frac > 0.5 then whole + 1.0
+				   else if frac < 0.5 then whole
+				   else if feven whole then whole
+				   else whole + 1.0
+
+			 (* Now, for efficiency, we construct the
+			  * minimal whole number with
+			  * all the significant bits.  First
+			  * we get mantissa and exponent: *)
+			 val { man, exp } = toManExp x
+			 (* Then we adjust both to make sure the mantissa
+			  * is whole: *)
+			 fun adjust (man, exp) =
+			     if exp = 0 orelse #frac (split man) == 0.0 then
+				 (man, exp)
+			     else adjust (2.0 * man, exp - 1)
+			 val (man, exp) = adjust (man, exp)
+
+			 (* Now we can construct our bignum digits by
+			  * repeated div/mod using the bignum base: *)
+			 fun loop x =
+			     if x == 0.0 then []
+			     else
+				 let val { whole, frac } = split (x / rbase)
+				     val dig = InlineT.Word31.copyf_int31
+						   (Assembly.A.floor
+							(frac * rbase))
+				 in
+				     dig :: loop whole
+				 end
+			 (* Now we make a bignum out of those digits: *)
+			 val iman =
+			     CoreIntInf.abstract
+				 (CoreIntInf.BI { negative = negative,
+						  digits = loop start })
+		     in
+			 (* Finally, we have to put the exponent back
+			  * into the picture: *)
+			 IntInfImp.<< (iman, InlineT.Word31.copyf_int31 exp)
+		     end
+	     end
+(*
 (** NOTE logb and scalb are also defined in math64.sml; do we need both??? **)
     fun logb x = (case Assembly.A.logb x
 	   of ~1023 => (* denormalized number *)
-		I.-(Assembly.A.logb(x * two_to_the_54), 54)
+		Assembly.A.logb(x * two_to_the_54) - 54
 	    | i => i
 	  (* end case *))
 
-    fun scalb (x, k) = if I.ltu(I.+(k,1022),2046)
+    fun scalb (x, k) = if I.ltu (k+1022,2046)
 	  then Assembly.A.scalb(x,k)
-          else let val k1 = I.div(k, 2)
+          else let val k1 = k div 2
 	    in
-	      scalb(scalb(x, k1), I.-(k, k1))
+	      scalb(scalb(x, k1), k - k1)
 	    end
+*)
   
     fun nextAfter _ = raise Fail "Real.nextAfter unimplemented"
 
@@ -281,6 +363,15 @@ structure Real64Imp : REAL =
     val scan = NumScan.scanReal
     val fromString = StringCvt.scanString scan
 
+    val ~ = InlineT.Real64.~
+    val op +  = InlineT.Real64.+
+    val op -  = InlineT.Real64.-
+    val op *  = InlineT.Real64.*
+    val op /  = InlineT.Real64./
+
+    val op >  = InlineT.Real64.>
+    val op <  = InlineT.Real64.<
+    val op >= = InlineT.Real64.>=
+    val op <= = InlineT.Real64.<=
+
   end (* Real64 *)
-
-

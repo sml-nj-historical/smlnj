@@ -66,6 +66,9 @@ val intTy = (* CONty(intTycon, nil) *) CBT.intTy
 val int32Tycon = mkpt ("int32", 0, YES, PTN.ptn_int32)
 val int32Ty = CONty(int32Tycon, nil)
 
+val intinfTycon = mkpt ("intinf", 0, YES, PTN.ptn_intinf)
+val intinfTy = CONty(intinfTycon, nil)
+
 val realTycon = (* mkpt("real", 0, NO, PTN.ptn_real) *) CBT.realTycon
 val realTy = (* CONty(realTycon, nil) *) CBT.realTy
 

@@ -54,9 +54,9 @@ fun mkHexChar (args as (s, a, b, errWarn:errWarn)) : int (* returns a character 
 	in
 	  if (i>255) then 
 	    ((#warn errWarn) (a,b,"overflow in hexadecimal escape sequence");
-	    Int32.toInt(i mod 256))
+	    IntInf.toInt(i mod 256))
 	  else
-       	    Int32.toInt i
+       	    IntInf.toInt i
         end	
 
 fun mkOctInt (s,a,b,errWarn:errWarn)
@@ -71,9 +71,9 @@ fun mkOctChar (args as (s, a, b, errWarn:errWarn)) (* returns a character sized 
 	in
 	  if (i>255) then 
 	    ((#warn errWarn) (a,b,"overflow in octal escape sequence");
-	    Int32.toInt(i mod 256))
+	    IntInf.toInt(i mod 256))
 	  else
-       	    Int32.toInt i
+       	    IntInf.toInt i
         end	
 
 fun mkInt (s,a,b,errWarn:errWarn) = ((case (StringCvt.scanString (LargeInt.scan StringCvt.DEC) s) of
@@ -216,13 +216,13 @@ directive = #(.)*\n;
 + size(yytext)));
 
 <INITIAL>"'\\"{octdigit}{1,3}"'"	=> (let val s = substring(yytext, 2, size(yytext)-3)
-				     in Tokens.CCONST(Int32.fromInt (mkOctChar(s,yypos,yypos+size(yytext),errWarn)),
+				     in Tokens.CCONST(IntInf.fromInt (mkOctChar(s,yypos,yypos+size(yytext),errWarn)),
 						      yypos,
 					      yypos+size(yytext))
 	                             end);
 
 <INITIAL>"'\\x"{hexdigit}+"'"	=>  (let val s = substring(yytext, 3, size(yytext)-4)
-				     in Tokens.CCONST(Int32.fromInt (mkHexChar(s,yypos,yypos+size(yytext),errWarn)),
+				     in Tokens.CCONST(IntInf.fromInt (mkHexChar(s,yypos,yypos+size(yytext),errWarn)),
 						      yypos,
 						      yypos+size(yytext))
 	                             end);
@@ -231,7 +231,7 @@ directive = #(.)*\n;
 <INITIAL>{simplecharconst}	=> (let val cval = ordof(yytext,1)
 	                            in Tokens.CCONST(Int.toLarge cval,yypos,yypos+size(yytext))
                                     end);
-<INITIAL>{escapecharconst} => (Tokens.CCONST(Int32.fromInt(special_char(substring(yytext,1,size(yytext)-2),yypos,yypos+size(yytext),errWarn)), yypos, yypos+size(yytext)));
+<INITIAL>{escapecharconst} => (Tokens.CCONST(IntInf.fromInt(special_char(substring(yytext,1,size(yytext)-2),yypos,yypos+size(yytext),errWarn)), yypos, yypos+size(yytext)));
 <INITIAL>{id}        	=> (TokTable.checkToken(yytext,yypos));
 <INITIAL>.        	=> (continue());
 

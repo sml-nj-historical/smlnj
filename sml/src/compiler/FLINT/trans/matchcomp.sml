@@ -6,20 +6,29 @@ sig
 
   type toTcLt = (Types.ty -> PLambdaType.tyc) * (Types.ty -> PLambdaType.lty)
 
+  type genintinfswitch =
+       PLambda.lexp * (IntInf.int * PLambda.lexp) list * PLambda.lexp
+       -> PLambda.lexp
+
   val bindCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
           * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
-          * ErrorMsg.complainer -> PLambda.lexp
+          * ErrorMsg.complainer
+	  * genintinfswitch
+	-> PLambda.lexp
 
   val matchCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
           * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
-          * ErrorMsg.complainer -> PLambda.lexp
+          * ErrorMsg.complainer
+	  * genintinfswitch
+	-> PLambda.lexp
 
   val handCompile : 
         StaticEnv.staticEnv * (Absyn.pat * PLambda.lexp) list 
           * (PLambda.lexp -> PLambda.lexp) * LambdaVar.lvar * toTcLt
-          * ErrorMsg.complainer -> PLambda.lexp
+          * ErrorMsg.complainer * genintinfswitch
+	-> PLambda.lexp
 
 end (* signature MATCH_COMP *)
 
@@ -53,6 +62,10 @@ fun isthere(i,set) = SortedList.member set i
 fun bug s = EM.impossible ("MatchComp: " ^ s)
 val say = Control.Print.say
 type toTcLt = (ty -> LT.tyc) * (ty -> LT.lty)
+
+type genintinfswitch =
+     PLambda.lexp * (IntInf.int * PLambda.lexp) list * PLambda.lexp
+     -> PLambda.lexp
 
 (*
  * MAJOR CLEANUP REQUIRED ! The function mkv is currently directly taken 
@@ -244,6 +257,8 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	    INTpcon(LN.int s) 
       else if TU.equalType(t,BT.int32Ty) then
 	    INT32pcon (LN.int32 s)
+      else if TU.equalType (t, BT.intinfTy) then
+	  INTINFpcon s
       else wordCon(s, t, msg)
 
     fun addAConstraint(k, NONE, rule, nil) = [(k, [rule], NONE)]
@@ -989,7 +1004,7 @@ and pass1(RHS n, envin, rhs) = (RHS n, rhsbindings(n, rhs))
  * Given a decision tree for a match, a list of ?? and the name of the 
  * variable bound to the value to be matched, produce code for the match. 
  *)
-fun generate (dt, matchRep, rootVar, (toTyc, toLty)) = 
+fun generate (dt, matchRep, rootVar, (toTyc, toLty), giis) = 
   let val (subtree, envout) = pass1(dt, [(0, [ROOTPATH])], matchRep)
       fun mkDcon (DATACON {name, rep, typ, ...}) = 
             (name, rep, toDconLty toLty typ)
@@ -1026,6 +1041,14 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty)) =
             let val v = mkv()
              in LET(x, LET(v, TAPP(VAR f, ts), APP(VAR v, sv)), e)
             end
+	| genswitch (sv, sign, cases as ((INTINFcon _, _) :: _), default) =
+	    let fun strip (INTINFcon n, e) = (n, e)
+		  | strip _ = bug "genswitch: INTINFcon"
+	    in
+		case default of
+		    NONE => bug "no default in switch on INTINF"
+		  | SOME d => giis (sv, map strip cases, d)
+	    end
         | genswitch x = SWITCH x
 
       fun pass2rhs (n, env, ruleDesc) = 
@@ -1090,6 +1113,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty)) =
            | VLENpcon(i, t) => (VLENcon i, env)
            | INTpcon i => (INTcon i, env)
            | INT32pcon i => (INT32con i, env)
+	   | INTINFpcon n => (INTINFcon n, env)
            | WORDpcon w => (WORDcon w, env)
            | WORD32pcon w => (WORD32con w, env)
            | REALpcon r => (REALcon r, env)
@@ -1101,7 +1125,7 @@ fun generate (dt, matchRep, rootVar, (toTyc, toLty)) =
         | _ => pass2(subtree, [], matchRep)
   end
  
-fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err) = 
+fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err, giis) =
   let val lastRule = length rules - 1
       val matchReps = map (preProcessPat toLty) rules
       val (matchRep,rhsRep) = 
@@ -1118,7 +1142,7 @@ fun doMatchCompile(rules, finish, rootvar, toTcLt as (_, toLty), err) =
       val redundantF = redundant(unusedRules, lastRule)
 
       fun g((fname, fbody), body) = LET(fname, fbody, body)
-      val code = foldr g (generate(dt, matchRep, rootvar, toTcLt)) rhsRep
+      val code = foldr g (generate(dt, matchRep, rootvar, toTcLt,giis)) rhsRep
 
    in (finish(code), unusedRules, redundantF, exhaustive)
   end
@@ -1191,12 +1215,12 @@ in
  * but this would cause warnings on constructions like
  * val _ = <exp>  and  val _:<ty> = <exp>.
  *)
-fun bindCompile (env, rules, finish, rootv, toTcLt, err) =
+fun bindCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
         if !printArgs then (say "MC called with:"; MP.printMatch env rules)
         else ()
       val (code, _, _, exhaustive) = 
-        doMatchCompile(rules, finish, rootv, toTcLt, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
 
       val nonexhaustiveF =
 	  not exhaustive andalso
@@ -1226,12 +1250,12 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err) =
  *  a warning is printed.  If Control.MC.matchRedundantError is also
  *  set, the warning is promoted to an error message.
  *)
-fun handCompile (env, rules, finish, rootv, toTcLt, err) =
+fun handCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
         if !printArgs then (say "MC called with: "; MP.printMatch env rules)
         else ()
       val (code, unused, redundant, _) = 
-        doMatchCompile(rules, finish, rootv, toTcLt, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
       val  redundantF= !matchRedundantWarn andalso redundant
 
    in if redundantF 
@@ -1256,12 +1280,12 @@ fun handCompile (env, rules, finish, rootv, toTcLt, err) =
  * is promoted to an error. If the control flag Control.MC.matchExhaustive
  * is set, and match is nonexhaustive, a warning is printed.   
  *)
-fun matchCompile (env, rules, finish, rootv, toTcLt, err) =
+fun matchCompile (env, rules, finish, rootv, toTcLt, err, giis) =
   let val _ = 
         if !printArgs then (say "MC called with: "; MP.printMatch env rules)
         else ()
       val (code, unused, redundant, exhaustive) = 
-        doMatchCompile(rules, finish, rootv, toTcLt, err)
+        doMatchCompile(rules, finish, rootv, toTcLt, err, giis)
 
       val nonexhaustiveF = 
 	  not exhaustive andalso

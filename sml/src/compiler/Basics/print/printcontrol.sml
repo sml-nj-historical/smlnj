@@ -6,6 +6,7 @@ signature PRINTCONTROL = sig
     val printDepth : int ref
     val printLength : int ref
     val stringDepth : int ref
+    val intinfDepth : int ref
     val printLoop : bool ref
     val signatures : int ref
     val printOpens : bool ref
@@ -51,6 +52,8 @@ structure Control_Print : PRINTCONTROL = struct
     val printLength = new (int_cvt, "length", "max print length", 12)
     val stringDepth =
 	new (int_cvt, "string-depth", "max string print depth", 70)
+    val intinfDepth =
+	new (int_cvt, "intinf-depth", "max IntInf.int print depth", 70)
     val printLoop = new (bool_cvt, "loop", "print loop", true) (* ? *)
     val signatures =
 	new (int_cvt, "signatures", "max signature expansion depth", 2) (* ? *)

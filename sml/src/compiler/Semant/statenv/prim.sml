@@ -62,6 +62,7 @@ val primTypes =
              ("unit", BT.unitTycon) :-:
              ("int", BT.intTycon) :-:
              ("int32", BT.int32Tycon) :-:
+	     ("intinf", BT.intinfTycon) :-:
              ("real", BT.realTycon) :-:
              ("word", BT.wordTycon) :-:
              ("word8", BT.word8Tycon) :-:
@@ -94,7 +95,6 @@ val primTypes =
 
       val tycElements = map mkTycElement primTycs
       val conElements = map mkConElement primCons
-		 
 
       val allElements = tycElements@conElements
       val allSymbols = map #1 allElements
@@ -190,6 +190,7 @@ val i32 = BT.int32Ty
 val w32 = BT.word32Ty
 val w8 = BT.word8Ty
 val s  = BT.stringTy
+val inf = BT.intinfTy
 
 fun p0 t = t
 fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
@@ -285,6 +286,17 @@ val i_w8 = p0(ar(i,w8))
 val i32_w8 = p0(ar(i32,w8))
 val w32_w8 = p0(ar(w32,w8))
 
+val inf_i32 = p0(ar(inf,i32))
+val inf_w32 = p0(ar(inf,w32))
+val inf_i   = p0(ar(inf,i))
+val inf_w   = p0(ar(inf,w))
+val inf_w8  = p0(ar(inf,w8))
+val i32_inf = p0(ar(i32,inf))
+val w32_inf = p0(ar(w32,inf))
+val i_inf   = p0(ar(i,inf))
+val w_inf   = p0(ar(w,inf))
+val w8_inf  = p0(ar(w8,inf))
+
 val cc_b = binp BT.charTy
 
 (* The type of the RAW_CCALL primop (as far as the type checker is concerned)
@@ -344,6 +356,7 @@ val allPrimops =
        ("compose",	 P.INLCOMPOSE,  p3(ar(pa(ar(v2,v3),ar(v1,v2)),ar(v1,v3)))) :-:
        ("before",	 P.INLBEFORE,   p2(ar(pa(v1,v2),v1))) :-:
        ("ignore",        P.INLIGNORE,   p1(ar(v1,u))) :-:
+       ("identity",      P.INLIDENTITY, p1(ar(v1,v1))) :-:
 			 
        			 
        ("length",	 P.LENGTH,     	p1(ar(v1,i))) :-:
@@ -411,9 +424,9 @@ val allPrimops =
        ("test_32_31_w",  P.TEST(32,31),  	w32_i) :-:
        ("test_32_31_i",  P.TEST(32,31),  	i32_i) :-:
 
-       ("testu_31_31",   P.TESTU(31,31),        w_i) :-:
+       ("testu_31_31",   P.TESTU(31,31),      w_i) :-:
 
-       ("testu_32_31",   P.TESTU(32,31),        w32_i) :-:
+       ("testu_32_31",   P.TESTU(32,31),      w32_i) :-:
 
        ("testu_32_32",   P.TESTU(32,32),   	w32_i32) :-:
 
@@ -451,6 +464,23 @@ val allPrimops =
 
        ("trunc_32_8_i",  P.TRUNC(32,8),   	i32_w8) :-:
        ("trunc_32_8_w",  P.TRUNC(32,8),   	w32_w8) :-:
+
+       (* conversion primops involving intinf *)
+       ("test_inf_32",   P.TEST_INF 32,         inf_i32) :-:
+       ("test_inf_31",   P.TEST_INF 31,         inf_i)   :-:
+       ("copy_32_inf_w", P.COPY_INF 32,         w32_inf) :-:
+       ("copy_32_inf_i", P.COPY_INF 32,         i32_inf) :-:
+       ("copy_31_inf_w", P.COPY_INF 31,         w_inf)   :-:
+       ("copy_31_inf_i", P.COPY_INF 31,         i_inf)   :-:
+       ("copy_8_inf",    P.COPY_INF 8,          w8_inf)  :-:
+       ("extend_32_inf_i", P.EXTEND_INF 32,     i32_inf) :-:
+       ("extend_32_inf_w", P.EXTEND_INF 32,     w32_inf) :-:
+       ("extend_31_inf_i", P.EXTEND_INF 31,     i_inf) :-:
+       ("extend_31_inf_w", P.EXTEND_INF 31,     w_inf) :-:
+       ("extend_8_inf",  P.EXTEND_INF 8,        w8_inf)  :-:
+       ("trunc_inf_32",  P.TRUNC_INF 32,        inf_w32) :-:
+       ("trunc_inf_31",  P.TRUNC_INF 31,        inf_w) :-:
+       ("trunc_inf_8",   P.TRUNC_INF 8,         inf_w8)  :-:
        
        (* *** integer 31 primops ***
         *   Many of the i31 primops are being abused for different types

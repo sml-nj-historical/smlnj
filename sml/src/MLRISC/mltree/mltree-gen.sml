@@ -39,7 +39,7 @@ functor MLTreeGen (
    fun error msg = MLRiscErrorMsg.error("MLTreeGen",msg)
    fun unsupported what = error ("unsupported: " ^ what)
 
-   val zeroT = T.LI(T.I.int_0)
+   val zeroT = T.LI 0
    fun LI i = T.LI(T.I.fromInt(intTy, i))
 
    fun condOf(T.CC(cc,_)) = cc
@@ -105,8 +105,8 @@ functor MLTreeGen (
        val b = Cells.newReg ()
        val q = Cells.newReg ()
        val r = Cells.newReg ()
-       val zero = T.LI T.I.int_0
-       val one = T.LI T.I.int_1
+       val zero = T.LI 0
+       val one = T.LI 1
    in
        T.LET
 	(T.SEQ
@@ -143,7 +143,7 @@ functor MLTreeGen (
        val b = Cells.newReg ()
        val q = Cells.newReg ()
        val r = Cells.newReg ()
-       val zero = T.LI T.I.int_0
+       val zero = T.LI 0
    in
        T.LET
 	(T.SEQ
@@ -241,14 +241,14 @@ functor MLTreeGen (
 ***)
 
        | T.COND(ty,cc,e1,e2) => 
-           T.ADD(ty,T.MULU(ty,T.COND(ty,cc,T.LI T.I.int_1,zeroT),T.SUB(ty,e1,e2)),e2)
+           T.ADD(ty,T.MULU(ty,T.COND(ty,cc,T.LI 1,zeroT),T.SUB(ty,e1,e2)),e2)
 
        (* ones-complement.
         * WARNING: we are assuming two's complement architectures here.
         * Are there any architectures in use nowadays that doesn't use 
         * two's complement for integer arithmetic?
         *)
-       | T.NOTB(ty,e) => T.XORB(ty,e,T.LI T.I.int_m1)
+       | T.NOTB(ty,e) => T.XORB(ty,e,T.LI ~1)
 
        (* 
         * Default ways of converting integers to integers
@@ -264,9 +264,9 @@ functor MLTreeGen (
        | T.ZX(ty,fromTy,e) => 
          if fromTy <= ty then e else 
             (case ty of (* ty < fromTy *)
-                8  => T.ANDB(ty,e,T.LI T.I.int_0xff) 
-              | 16 => T.ANDB(ty,e,T.LI T.I.int_0xffff)
-              | 32 => T.ANDB(ty,e,T.LI T.I.int_0xffffffff)
+                8  => T.ANDB(ty,e,T.LI 0xff) 
+              | 16 => T.ANDB(ty,e,T.LI 0xffff)
+              | 32 => T.ANDB(ty,e,T.LI 0xffffffff)
               | 64 => e
               | _  => unsupported("unknown expression")
             )

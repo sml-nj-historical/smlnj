@@ -1,3 +1,3 @@
 (* (C) 1999 Lucent Technologies, Bell Laboratories *)
 
-structure LargeIntImp = Int32Imp
+structure LargeIntImp : INTEGER = IntInfImp

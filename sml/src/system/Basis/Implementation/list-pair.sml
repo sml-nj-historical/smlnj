@@ -82,7 +82,7 @@ structure ListPair : LIST_PAIR =
     fun allEq pred = let
 	  fun allp (a::r1, b::r2) = pred(a, b) andalso allp (r1, r2)
 	    | allp ([], []) = true
-	    | allp _ = raise UnequalLengths
+	    | allp _ = false
 	  in
 	    allp
 	  end

@@ -69,14 +69,18 @@ structure Date : DATE =
 	 *)
 	val ascTime : tm -> string
 	    = wrap (CInterface.c_function "SMLNJ-Date" "ascTime")
-	val localTime : Int32.int -> tm
+	val localTime' : Int32.int -> tm
 	    = wrap (CInterface.c_function "SMLNJ-Date" "localTime")
-	val gmTime : Int32.int -> tm
+	val gmTime' : Int32.int -> tm
 	    = wrap (CInterface.c_function "SMLNJ-Date" "gmTime")
-	val mkTime : tm -> Int32.int
+	val mkTime' : tm -> Int32.int
 	    = wrap (CInterface.c_function "SMLNJ-Date" "mkTime")
 	val strfTime : (string * tm) -> string
 	    = wrap (CInterface.c_function "SMLNJ-Date" "strfTime")
+
+	val localTime = localTime' o Int32.fromLarge
+	val gmTime = gmTime' o Int32.fromLarge
+	val mkTime = Int32.toLarge o mkTime'
 
 	fun year (DATE{year, ...}) = year
 	fun month (DATE{month, ...}) = month
@@ -214,8 +218,8 @@ structure Date : DATE =
 	 * what to add to local time to get gmt
 	 *)
 
-	val secInDay = Int32.fromInt(60 * 60 * 24)
-	val secInHDay = Int32.fromInt(30 * 30 * 24)
+	val secInDay : IntInf.int  = 60 * 60 * 24
+	val secInHDay : IntInf.int = 30 * 30 * 24
 (*
 	fun diffToOffset (d) =
 	    if (d<0) then Time.fromSeconds (secInDay+d)
@@ -250,7 +254,8 @@ structure Date : DATE =
 	    in
 		case (offset d) of
 		    NONE => mkTime (tm)
-		  | SOME (offsetV) => mkGMTime (tm) + offsetToDiff (offsetV)
+		  | SOME (offsetV) =>
+		      mkGMTime (tm) + offsetToDiff (offsetV)
 	    end
 
 	val toTime = Time.fromSeconds o toSeconds

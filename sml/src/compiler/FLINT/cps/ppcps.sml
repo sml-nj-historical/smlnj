@@ -87,7 +87,8 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName (P.rawstore {kind}) = ("rawstore" ^ numkindName kind)
   | setterName (P.rawupdate cty) = ("rawupdate" ^ CPS.ctyToString cty)
 
-fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
+val cvtParam = Int.toString
+fun cvtParams(from, to) = concat [cvtParam from, "_", cvtParam to]
 
 fun arithName (P.arith{oper,kind}) =
     ((case oper of  P.+ => "+" |  P.- => "-" |  P.* => "*"
@@ -101,6 +102,7 @@ fun arithName (P.arith{oper,kind}) =
      ^ numkindName kind)
   | arithName(P.test arg) = "test_" ^ cvtParams arg
   | arithName(P.testu arg) = "testu_" ^ cvtParams arg
+  | arithName(P.test_inf i) = "test_inf_" ^ cvtParam i
   | arithName (P.round{floor=true,fromkind=P.FLOAT 64,tokind=P.INT 31}) =
       "floor"
   | arithName (P.round{floor=false,fromkind=P.FLOAT 64,tokind=P.INT 31}) =
@@ -116,6 +118,9 @@ fun pureName P.length = "length"
   | pureName (P.extend arg) = "extend_" ^ cvtParams arg
   | pureName (P.copy arg) = "copy_" ^ cvtParams arg
   | pureName (P.trunc arg) = "trunc_" ^ cvtParams arg
+  | pureName (P.trunc_inf i) = "trunc_inf_" ^ cvtParam i
+  | pureName (P.copy_inf i) = concat ["copy_", cvtParam i, "_inf"]
+  | pureName (P.extend_inf i) =  concat ["extend_", cvtParam i, "_inf"]
   | pureName (P.real{fromkind=P.FLOAT 64,tokind=P.INT 31}) = "real"
   | pureName (P.real{fromkind,tokind}) =
     ("real" ^ numkindName fromkind ^ "_" ^ numkindName tokind)

@@ -112,7 +112,6 @@ struct
 
   val ST0 = C.ST 0
   val ST7 = C.ST 7
-  val one = T.I.int_1
 
   val opcodes8 = {INC=I.INCB,DEC=I.DECB,ADD=I.ADDB,SUB=I.SUBB,
                   NOT=I.NOTB,NEG=I.NEGB,
@@ -219,7 +218,7 @@ struct
       fun immedLabel lab = I.ImmedLabel(T.LABEL lab)
  
       (* Is the expression zero? *)
-      fun isZero(T.LI z) = T.I.isZero z 
+      fun isZero(T.LI z) = z = 0
         | isZero(T.MARK(e,a)) = isZero e
         | isZero _ = false
        (* Does the expression set the zero bit? 
@@ -1022,7 +1021,7 @@ struct
 		  | _ => binary(I.SUBL, e1, e2)
                end
 	     | T.SUB(32, e1 as T.LI n, e2) => 
-	         if T.I.isZero n then unary(I.NEGL, e2)
+	         if n = 0 then unary(I.NEGL, e2)
 		 else binary(I.SUBL, e1, e2)
              | T.SUB(32, e1, e2) => binary(I.SUBL, e1, e2)
 
@@ -1839,7 +1838,7 @@ struct
       and unaryMem(unOp, opnd, mem, an) =
           mark(I.UNARY{unOp=unOp, opnd=address(opnd,mem)}, an)
 
-      and isOne(T.LI n) = IntInf.== (n, one)
+      and isOne(T.LI n) = n = 1
         | isOne _ = false
 
       (* 

@@ -9,32 +9,6 @@ sig
 
    datatype div_rounding_mode = DIV_TO_ZERO | DIV_TO_NEGINF
 
-   (* some common constants *)
-   val int_0   : machine_int
-   val int_1   : machine_int
-   val int_2   : machine_int
-   val int_3   : machine_int
-   val int_4   : machine_int
-   val int_7   : machine_int
-   val int_8   : machine_int
-   val int_m1  : machine_int (* ~1 *)
-   val int_m2  : machine_int (* ~2 *)
-   val int_m3  : machine_int (* ~3 *)
-   val int_m4  : machine_int (* ~4 *)
-   val int_15  : machine_int
-   val int_16  : machine_int
-   val int_31  : machine_int
-   val int_32  : machine_int
-   val int_63  : machine_int
-   val int_64  : machine_int
-   val int_0xff : machine_int		(* 255 *)
-   val int_0x100 : machine_int		(* 256 *)
-   val int_0xffff : machine_int		(* 65535 *)
-   val int_0x10000 : machine_int	(* 65536 *)
-   val int_0xffffffff : machine_int	
-   val int_0x100000000 : machine_int
-
-
    val hash : machine_int -> word 
 
    (* machine_int <-> other types *)
@@ -65,15 +39,6 @@ sig
      * The least significant word is at the front of the list
      *)
    val split : {sz:sz, wordSize:sz, i:machine_int} -> machine_int list
-
-   (* queries *)
-   val isNeg    : machine_int -> bool
-   val isPos    : machine_int -> bool
-   val isZero   : machine_int -> bool
-   val isNonNeg : machine_int -> bool
-   val isNonPos : machine_int -> bool
-   val isEven   : machine_int -> bool
-   val isOdd    : machine_int -> bool
 
    (* two's complement operators *)
    val NEG   : sz * machine_int -> machine_int

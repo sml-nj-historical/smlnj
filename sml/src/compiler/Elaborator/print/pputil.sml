@@ -49,37 +49,9 @@ struct
 
   val stringDepth = Control_Print.stringDepth
 
-(** NOTE: this duplicates code in basics/printutil.sml **)
-  fun escape i =
-      let val m = Int.toString
-       in concat ["\\", m(i div 100), m((i div 10)mod 10), m(i mod 10)]
-      end
-
-  val offset = Char.ord #"A" - Char.ord #"\^A"
-
-  fun ml_char #"\n" = "\\n"
-    | ml_char #"\t" = "\\t"
-    | ml_char #"\\" = "\\\\"
-    | ml_char #"\"" = "\\\""
-    | ml_char c =
-       if ((c >= #"\^A") andalso (c <= #"\^Z"))
-       then "\\^" ^ String.str(Char.chr(Char.ord c + offset))
-       else if ((#" " <= c) andalso (c <= #"~"))
-       then String.str c
-       else escape(Char.ord c)
-
-  fun mlstr s = concat["\"", concat(map ml_char (explode s)), "\""]
-
-  fun pp_mlstr ppstream s =
-      let val depth = !stringDepth
-          val ppstring = PP.string ppstream
-	  fun pr i =
-	      if i=depth then ppstring "#"
-	      else (let val ch = String.sub(s,i)
-		    in  ppstring (ml_char ch); pr (i+1)
-		    end handle Substring => ())
-       in ppstring "\""; pr 0; ppstring "\""
-      end
+  val mlstr = PrintUtil.mlstr
+  fun pp_mlstr ppstream = PP.string ppstream o PrintUtil.pr_mlstr
+  fun pp_intinf ppstream = PP.string ppstream o PrintUtil.pr_intinf
 
   fun ppvseq ppstream ind (sep:string) pr elems =
       let fun prElems [el] = pr ppstream el

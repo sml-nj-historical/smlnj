@@ -154,9 +154,9 @@ struct
   val ity = 32 (* size of ML's integer *)
   val fty = 64 (* size of ML's real number *)
 
-  val zero = M.LI M.I.int_0
-  val one  = M.LI M.I.int_1
-  val two  = M.LI M.I.int_2
+  val zero = M.LI 0
+  val one  = M.LI 1
+  val two  = M.LI 2
   val mlZero = one (* tagged zero *)
   val offp0 = CPS.OFFp 0 
   fun LI i = M.LI (M.I.fromInt(ity, i))
@@ -1589,12 +1589,17 @@ struct
               (*esac*))
             | gen(PURE(P.copy ft, [v], x, _, e), hp) =
                (case ft
-                of (31, 32) => defI32(x, M.SRL(ity, regbind v, one), e, hp)
-                 | (8, 31) => copy(I31, x, v, e, hp)
-                 | (8, 32) => defI32(x, M.SRL(ity, regbind v, one), e, hp)
+                of (31,32) =>
+		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
+                 | (8,31) =>
+		     copy(I31, x, v, e, hp)
+                 | (8,32) =>
+		     defI32(x, M.SRL(ity, regbind v, one), e, hp)
                  | (n,m) => if n = m then copyM(m, x, v, e, hp) 
-                            else error "gen:PURE:copy"
+				       else error "gen:PURE:copy"
                (*esac*))
+	    | gen (PURE(P.copy_inf _, _, _, _, _), hp) =
+	        error "gen:PURE:copy_inf"
             | gen(PURE(P.extend ft, [v], x, _ ,e), hp) = 
               (case ft
                of (8,31) => 
@@ -1605,20 +1610,27 @@ struct
                     defI32(x, 
                        M.SRA(ity, M.SLL(ity, regbind v, LI 23), LI 24), 
                           e, hp)
-                | (31,32) => defI32(x, M.SRA(ity, regbind v, one), e, hp)
-                | (n, m) => if n = m then copyM(m, x, v, e, hp) 
-                            else error "gen:PURE:extend"
+                | (31,32) =>
+		    defI32(x, M.SRA(ity, regbind v, one), e, hp)
+                | (n,m) => if n = m then copyM(m, x, v, e, hp) 
+				      else error "gen:PURE:extend"
                 (*esac*))
+	    | gen (PURE(P.extend_inf _, _, _, _, _), hp) =
+	        error "gen:PURE:extend_inf"
             | gen(PURE(P.trunc ft, [v], x, _, e), hp) = 
               (case ft
-               of (32, 31) => 
+               of (32,31) => 
                    defI31(x, M.ORB(ity, M.SLL(ity, regbind v, one), one), e, hp)
-                | (31,8) => defI32(x, M.ANDB(ity, regbind v, LI 0x1ff), e, hp)
-                | (32,8) => defI32(x, tagUnsigned(M.ANDB(ity, regbind v, 
+                | (31,8) =>
+		    defI32(x, M.ANDB(ity, regbind v, LI 0x1ff), e, hp)
+                | (32,8) =>
+		    defI32(x, tagUnsigned(M.ANDB(ity, regbind v, 
                                           LI 0xff)), e, hp)
-                | (n, m) => if n = m then copyM(m, x, v, e, hp) 
-                            else error "gen:PURE:trunc"
+                | (n,m) => if n = m then copyM(m, x, v, e, hp) 
+				      else error "gen:PURE:trunc"
                (*esac*))
+	    | gen (PURE(P.trunc_inf _, _, _, _, _), hp) =
+	        error "gen:PURE:trunc_inf"
             | gen(PURE(P.objlength, [v], x, _, e), hp) = 
                 defI31(x, orTag(getObjLength(v)), e, hp)
             | gen(PURE(P.length, [v], x, t, e), hp) = select(1, v, x, t, e, hp)
@@ -1790,7 +1802,7 @@ struct
                * would be to generate a trap-if-negative instruction available
                * on a variety of machines, e.g. mips and sparc (maybe others).
                *)
-            | gen(ARITH(P.testu(32, 32), [v], x, _, e), hp) = 
+            | gen(ARITH(P.testu(32,32), [v], x, _, e), hp) = 
               let val xreg = newReg I32
                   val vreg = regbind v
               in  updtHeapPtr hp;
@@ -1798,7 +1810,7 @@ struct
                                               regbind(INT32 0wx80000000))));
                   defI32(x, vreg, e, 0)
               end
-            | gen(ARITH(P.testu(31, 31), [v], x, _, e), hp) = 
+            | gen(ARITH(P.testu(31,31), [v], x, _, e), hp) = 
               let val xreg = newReg I31
                   val vreg = regbind v
               in  updtHeapPtr hp;
@@ -1821,10 +1833,14 @@ struct
                   defineLabel lab;
                   defI31(x, tagUnsigned(vreg), e, 0)
               end
+	    | gen (ARITH(P.testu _, _, _, _, _), hp) = 
+	        error "gen:ARITH:testu with unexpected precisions (not implemented)"
             | gen(ARITH(P.test(32,31), [v], x, _, e), hp) = 
                (updtHeapPtr hp; defI31(x, tagSigned(regbind v), e, 0))
             | gen(ARITH(P.test(n, m), [v], x, _, e), hp) = 
                if n = m then copyM(m, x, v, e, hp) else error "gen:ARITH:test"
+	    | gen (ARITH(P.test_inf _, _, _, _, _), hp) =
+	        error "gen:ARITH:test_inf"
             | gen(ARITH(P.arith{oper, kind=P.FLOAT 64}, [v,w], x, _, e), hp) = 
               let val v = fregbind v 
                   val w = fregbind w

@@ -167,8 +167,12 @@ keyword-fn.sml
 int-binary-map.sml
 int-binary-set.sml
 int-hash-table.sml
+# if not (defined (signature INT_INF))
 int-inf-sig.sml
+# endif
+# if not (defined (structure IntInf))
 int-inf.sml
+# endif
 int-list-map.sml
 int-list-set.sml
 int-redblack-map.sml
@@ -228,3 +232,5 @@ word-hash-table.sml
 word-redblack-map.sml
 word-redblack-set.sml
 
+(* for testing intinf stuff *)
+$smlnj/init/init.cmi : cm

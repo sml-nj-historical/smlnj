@@ -17,6 +17,9 @@ sig
   val int32Tycon : Types.tycon 
   val int32Ty : Types.ty
 
+  val intinfTycon : Types.tycon
+  val intinfTy : Types.ty
+
   val realTycon  : Types.tycon 
   val realTy : Types.ty
 

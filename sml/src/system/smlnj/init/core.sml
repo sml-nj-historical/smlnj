@@ -290,6 +290,14 @@ structure Core =
 	val subscript = InLine.arrSub
 	val iadd = InLine.i31add
 
+	val testInf = CoreIntInf.testInf
+	val truncInf = CoreIntInf.truncInf
+	val finToInf = CoreIntInf.finToInf
+	val makeNegInf = CoreIntInf.makeNegInf
+	val makePosInf = CoreIntInf.makePosInf
+	val makeSmallNegInf = CoreIntInf.makeSmallNegInf
+	val makeSmallPosInf = CoreIntInf.makeSmallPosInf
+	val infLowValue = CoreIntInf.lowValue
     end (* local *)
 
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)

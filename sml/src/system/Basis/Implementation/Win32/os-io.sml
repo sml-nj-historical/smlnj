@@ -11,6 +11,7 @@
 local
     structure Word = WordImp
     structure Int = IntImp
+    structure Int32 = Int32Imp
     structure Time = TimeImp
 in
 structure OS_IO : OS_IO = 
@@ -87,15 +88,19 @@ structure OS_IO : OS_IO =
 	      | fromPollDescSock _ = NONE
 	in
 	    fun poll (pdl,t) = 
-		let val timeout = (case t
-				     of SOME (t) => SOME (Time.toSeconds (t),
-							  Int.fromLarge (Time.toMicroseconds t))
-				      | NONE => NONE)
-		    val (infoIO,infoSock) = poll' (List.mapPartial fromPollDescIO pdl,
-						   List.mapPartial fromPollDescSock pdl,
-						   timeout)
+		let val timeout =
+			case t of
+			    SOME (t) =>
+			    SOME (Int32.fromLarge (Time.toSeconds (t)),
+				  Int.fromLarge (Time.toMicroseconds t))
+			  | NONE => NONE
+		    val (infoIO,infoSock) =
+			poll' (List.mapPartial fromPollDescIO pdl,
+			       List.mapPartial fromPollDescSock pdl,
+			       timeout)
 		in
-		    List.@ (List.map toPollInfoIO infoIO,List.map toPollInfoSock infoSock)
+		    List.@ (List.map toPollInfoIO infoIO,
+			    List.map toPollInfoSock infoSock)
 		end
 	end
 		    

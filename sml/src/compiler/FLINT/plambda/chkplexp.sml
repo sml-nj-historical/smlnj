@@ -201,6 +201,7 @@ fun ltConChk le s (DATAcon ((_,rep,lt), ts, v), root, kenv, venv, d) =
                             | WORD32con _ => LT.ltc_int32
                             | REALcon _ => LT.ltc_real
                             | STRINGcon _ => ltString
+			    | INTINFcon _ => bug "INTINFcon"
                             |  _ => LT.ltc_int)
        in ltMatch le s (nt, root); venv
       end

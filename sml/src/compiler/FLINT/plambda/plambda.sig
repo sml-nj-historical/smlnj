@@ -14,6 +14,7 @@ datatype con
   = DATAcon of dataconstr * tyc list * lvar
   | INTcon of int
   | INT32con of Int32.int
+  | INTINFcon of IntInf.int		(* only used with in matchcomp *)
   | WORDcon of word
   | WORD32con of Word32.word
   | REALcon of string

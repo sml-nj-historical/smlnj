@@ -32,11 +32,16 @@ datatype primop
   | INLRSHIFTL of numkind
   | CMP of {oper: cmpop, kind: numkind}
 
-  | TESTU of int * int		
+  | TESTU of int * int
   | TEST of int * int
   | TRUNC of int * int
   | EXTEND of int * int
-  | COPY of int * int 
+  | COPY of int * int
+
+  | TEST_INF of int
+  | TRUNC_INF of int
+  | EXTEND_INF of int
+  | COPY_INF of int
 
   | ROUND of {floor: bool, fromkind: numkind, tokind: numkind}
   | REAL of {fromkind: numkind, tokind: numkind}
@@ -120,6 +125,8 @@ datatype primop
     *)
   | RAW_RECORD of { fblock: bool }
 
+  | INLIDENTITY				(* polymorphic identity *)
+
 and ccall_type = CCI32 | CCI64 | CCR64 | CCML
 
 (** default integer arithmetic and comparison operators *)
@@ -151,7 +158,8 @@ fun prNumkind (INT 31)      = ""
   | prNumkind (FLOAT  bits) = "f" ^ Int.toString bits
        
 
-fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
+val cvtParam = Int.toString
+fun cvtParams(from, to) = concat [cvtParam from, "_", cvtParam to]
 
 fun prPrimop (ARITH{oper,overflow,kind}) =
     concat [case oper  of
@@ -182,6 +190,11 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop(EXTEND arg) = "extend" ^ cvtParams arg
   | prPrimop(TRUNC arg) = "trunc" ^ cvtParams arg
   | prPrimop(COPY arg) = "copy" ^ cvtParams arg
+
+  | prPrimop (TEST_INF i) = "test_inf_" ^ cvtParam i
+  | prPrimop (TRUNC_INF i) = "trunc_inf_" ^ cvtParam i
+  | prPrimop (EXTEND_INF i) = concat ["extend_", cvtParam i, "_inf"]
+  | prPrimop (COPY_INF i) =  concat ["copy_", cvtParam i, "_inf"]
 
   | prPrimop(ROUND{floor=true,fromkind=FLOAT 64,tokind=INT 31}) = "floor"
   | prPrimop(ROUND{floor=false,fromkind=FLOAT 64,tokind=INT 31}) = "round"
@@ -271,7 +284,9 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (RAW_STORE nk) = concat ["raw_store(", prNumkind nk, ")"]
   | prPrimop (RAW_CCALL _) = "raw_ccall"
   | prPrimop (RAW_RECORD { fblock }) = 
-    concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
+      concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
+
+  | prPrimop INLIDENTITY = "inlidentity"
 
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)
@@ -286,6 +301,7 @@ val effect =
   | (CAST | WCAST) => false
   | (INLMIN _ | INLMAX _ | INLNOT | INLCOMPOSE | INLIGNORE) => false
   | (WRAP | UNWRAP) => false
+  | INLIDENTITY => false
   | _ => true
   
 val mayRaise =

@@ -8,11 +8,11 @@
 
 signature INT_INF =
   sig
-    include INTEGER
+    include INTEGER where type int = IntInf.int
 
-    val divmod  : (int * int) -> (int * int)
-    val quotrem : (int * int) -> (int * int)
-    val pow : (int * Int.int) -> int
+    val divMod  : int * int -> int * int
+    val quotRem : int * int -> int * int
+    val pow : int * Int.int -> int
     val log2 : int -> Int.int
     val orb  : int * int -> int
     val xorb : int * int -> int
@@ -20,16 +20,4 @@ signature INT_INF =
     val notb : int -> int
     val <<   : int * Word.word -> int
     val ~>>  : int * Word.word -> int
-
-  (* these are not in the BASIS signature, but they are useful since IntInf.int
-   * is not a builtin type yet.
-   *)
-    val == : (int * int) -> bool
-    val != : (int * int) -> bool
-
-  (* for testing *)
-    val fromInternal : CoreIntInf.intinf -> int
-    val toInternal : int -> CoreIntInf.intinf
-
   end (* signature INT_INF *)
-

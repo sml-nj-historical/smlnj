@@ -56,6 +56,8 @@ fun path escapes fl =
         | g(d, ARITH(P.arith{kind=P.INT _,...},_,_,_,e)) = g(d+1, e)   
 	| g(d, ARITH(P.testu _, _, _, _, e)) = g(d+1, e)
 	| g(d, ARITH(P.test _, _, _, _, e)) = g(d+1, e)
+	| g(d, ARITH(P.test_inf _, _, _, _, e)) =
+	    error "9827489 test_inf in limit"
         | g(d, ARITH(_,_,_,_,e)) = g(d,e)
         | g(d, PURE(P.pure_arith{kind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)
         | g(d, PURE(P.real{tokind=P.FLOAT 64,...},_,_,_,e)) = g(d+3, e)       
@@ -67,6 +69,9 @@ fun path escapes fl =
 	| g(d, PURE(P.mkspecial, _, _, _, e)) = g(d+2, e)
         | g(d, PURE(P.rawrecord tag,[INT n],_,_,e)) = 
              g(d+n+(case tag of SOME _ => 1 | NONE => 0), e)
+	| g(d, PURE((P.trunc_inf _ | P.extend_inf _ | P.copy_inf _),
+		    _, _, _, e)) =
+	    error "23487978 *_inf in limit"
         | g(d, LOOKER(P.numsubscript{kind=P.FLOAT 64},_,_,_,e)) = g(d+3, e)
         | g(d, SETTER(_,_,e)) = g(d,e)
         | g(d, LOOKER(_,_,_,_,e)) = g(d,e)

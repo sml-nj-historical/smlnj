@@ -37,8 +37,10 @@ local structure B  = Bindings
       structure TP = Types
       structure TU = TypesUtil
       structure V  = VarCon
+      structure EU = ElabUtil
 
-      structure Map = PersMap
+      structure IIMap = RedBlackMapFn (type ord_key = IntInf.int
+					val compare = IntInf.compare)
 
       open Absyn PLambda 
 in 
@@ -248,24 +250,35 @@ fun mergePidInfo (pi, t, l, nameOp) =
   end (* end of mergePidInfo *)
 
 (** a map that stores information about external references *)
-val persmap = ref (Map.empty : pidInfo Map.map)
+val persmap = ref (PersMap.empty : pidInfo PersMap.map)
 
 fun mkPid (pid, t, l, nameOp) =
-    case Map.find (!persmap, pid)
+    case PersMap.find (!persmap, pid)
       of NONE => 
 	  let val (pinfo, var) = mkPidInfo (t, l, nameOp)
-	   in persmap := Map.insert(!persmap, pid, pinfo);
+	   in persmap := PersMap.insert(!persmap, pid, pinfo);
 	      var
 	  end
        | SOME pinfo =>
 	  let val (npinfo, var) = mergePidInfo (pinfo, t, l, nameOp)
 	      fun rmv (key, map) = 
-		  let val (newMap, _) = Map.remove(map, key) 
+		  let val (newMap, _) = PersMap.remove(map, key) 
 		  in newMap
 		  end handle e => map
-	   in persmap := Map.insert(rmv(pid, !persmap), pid, npinfo);
+	   in persmap := PersMap.insert(rmv(pid, !persmap), pid, npinfo);
 	      var
 	  end
+
+val iimap = ref (IIMap.empty : lvar IIMap.map)
+
+fun getII n =
+    case IIMap.find (!iimap, n) of
+	SOME v => v
+      | NONE => let val v = mkv ()
+		in
+		    iimap := IIMap.insert (!iimap, n, v);
+		    v
+		end
 
 (** converting an access w. type into a lambda expression *)
 fun mkAccT (p, t, nameOp) = 
@@ -385,6 +398,7 @@ fun fillPat(pat, d) =
 val eqDict =
   let val strEqRef : lexp option ref = ref NONE
       val polyEqRef : lexp option ref = ref NONE
+      val intInfEqRef : lexp option ref = ref NONE
 
       fun getStrEq () = 
         (case (!strEqRef) 
@@ -393,6 +407,16 @@ val eqDict =
                        in strEqRef := (SOME e); e
                       end))
 
+      fun getIntInfEq () =		(* same as polyeq, but silent *)
+	  case !intInfEqRef of
+	      SOME e => e
+	    | NONE => let val e =
+			      TAPP (coreAcc "polyequal",
+				    [toTyc DI.top BT.intinfTy])
+		      in
+			  intInfEqRef := SOME e; e
+		      end
+
       fun getPolyEq () = 
         (repPolyEq();
 	 case (!polyEqRef) 
@@ -400,7 +424,7 @@ val eqDict =
            | NONE => (let val e = coreAcc "polyequal"
                        in polyEqRef := (SOME e); e
                       end))
-   in {getStrEq=getStrEq, getPolyEq=getPolyEq}
+   in {getStrEq=getStrEq, getIntInfEq=getIntInfEq, getPolyEq=getPolyEq}
   end
 
 val eqGen = PEqual.equal (eqDict, env) 
@@ -552,6 +576,23 @@ in
 	      VAR x, APP (negate, VAR x)))
 end
 
+fun inl_infPrec (what, corename, p, lt, is_from_inf) = let
+    val (orig_arg_lt, res_lt) =
+	case LT.ltd_arrow lt of
+	    (_, [a], [r]) => (a, r)
+	  | _ => bug ("unexpected type of " ^ what)
+    val extra_arg_lt =
+	LT.ltc_parrow (if is_from_inf then (orig_arg_lt, LT.ltc_int32)
+		       else (LT.ltc_int32, orig_arg_lt))
+    val new_arg_lt = LT.ltc_tuple [orig_arg_lt, extra_arg_lt]
+    val new_lt = LT.ltc_parrow (new_arg_lt, res_lt)
+    val x = mkv ()
+in
+    FN (x, orig_arg_lt,
+	APP (PRIM (p, new_lt, []),
+	     RECORD [VAR x, coreAcc corename]))
+end
+
 fun transPrim (prim, lt, ts) = 
   let fun g (PO.INLLSHIFT k) = inlineShift(lshiftOp, k, fn _ => lword0(k))
         | g (PO.INLRSHIFTL k) = inlineShift(rshiftlOp, k, fn _ => lword0(k))
@@ -597,6 +638,15 @@ fun transPrim (prim, lt, ts) =
 		  case ts of [a] => lt_tyc a
 			   | _ => bug "unexpected type for INLIGNORE"
 	  in FN (mkv (), argt, unitLexp)
+	  end
+
+	| g (PO.INLIDENTITY) =
+	  let val argt =
+		  case ts of [a] => lt_tyc a
+			   | _ => bug "unexpected type for INLIDENTITY"
+	      val v = mkv ()
+	  in
+	      FN (v, argt, VAR v)
 	  end
 
         | g (PO.INLSUBSCRIPTV) =
@@ -718,10 +768,57 @@ fun transPrim (prim, lt, ts) =
               end
 ****)
 
+	(* Precision-conversion operations involving IntInf.
+	 * These need to be translated specially by providing
+	 * a second argument -- the routine from _Core that
+	 * does the actual conversion to or from IntInf. *)
+
+	| g (p as PO.TEST_INF prec) =
+	    inl_infPrec ("TEST_INF", "testInf", p, lt, true)
+	| g (p as PO.TRUNC_INF prec) =
+	    inl_infPrec ("TRUNC_INF", "truncInf", p, lt, true)
+	| g (p as PO.EXTEND_INF prec) =
+	    inl_infPrec ("EXTEND_INF", "finToInf", p, lt, false)
+	| g (p as PO.COPY_INF prec) =
+	    inl_infPrec ("COPY", "finToInf", p, lt, false)
+
+	(* default handling for all other primops *)
         | g p = PRIM(p, lt, ts) 
 
    in g prim
   end (* function transPrim *)
+
+fun genintinfswitch (sv, cases, default) = let
+    val v = mkv ()
+
+    (* build a chain of equality tests for checking large pattern values *)
+    fun build [] = default
+      | build ((n, e) :: r) =
+	  COND (APP (#getIntInfEq eqDict (), RECORD [VAR v, VAR (getII n)]),
+		e, build r)
+
+    (* split pattern values into small values and large values;
+     * small values can be handled directly using SWITCH *)
+    fun split ([], s, l) = (rev s, rev l)
+      | split ((n, e) :: r, sm, lg) =
+	  (case LN.lowVal n of
+	       SOME l => split (r, (INTcon l, e) :: sm, lg)
+	     | NONE => split (r, sm, (n, e) :: lg))
+
+    fun gen () =
+	case split (cases, [], []) of
+	    ([], largeints) => build largeints
+	  | (smallints, largeints) => let
+		val iv = mkv ()
+	    in
+		LET (iv, APP (coreAcc "infLowValue", VAR v),
+		     SWITCH (VAR iv,
+			     DA.CNIL, smallints, SOME (build largeints)))
+	    end
+in
+    LET (v, sv, gen ())
+end
+    
 
 (***************************************************************************
  *                                                                         *
@@ -867,7 +964,8 @@ and mkVBs (vbs, d) =
                   val rules = [(fillPat(pat, d), b), (WILDpat, unitLexp)]
                   val rootv = mkv()
                   fun finish x = LET(rootv, ee, x)
-               in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain)
+               in MC.bindCompile(env, rules, finish, rootv, toTcLt d, complain,
+				 genintinfswitch)
               end
    in fold g vbs
   end
@@ -1030,8 +1128,9 @@ and mkExp (exp, d) =
         | g (INTexp (s, t)) =
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
                else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
-                    else bug "translate INTexp")
-               handle Overflow => (repErr "int constant too large"; INT 0))
+	       else if TU.equalType (t, BT.intinfTy) then VAR (getII s)
+               else bug "translate INTexp")
+              handle Overflow => (repErr "int constant too large"; INT 0))
 
         | g (WORDexp(s, t)) =
              ((if TU.equalType (t, BT.wordTy) then WORD (LN.word s)
@@ -1096,13 +1195,15 @@ and mkExp (exp, d) =
                  fun f x = FN(rootv, tLty ty, x)
                  val l' = mkRules l
               in HANDLE(g e, MC.handCompile(env, l', f, 
-                                            rootv, toTcLt d, complain))
+                                            rootv, toTcLt d, complain,
+					    genintinfswitch))
              end
 
         | g (FNexp (l, ty)) = 
              let val rootv = mkv()
                  fun f x = FN(rootv, tLty ty, x)
-              in MC.matchCompile (env, mkRules l, f, rootv, toTcLt d, complain)
+              in MC.matchCompile (env, mkRules l, f, rootv, toTcLt d,
+				  complain, genintinfswitch)
              end
 
         | g (CASEexp (ee, l, isMatch)) = 
@@ -1111,8 +1212,10 @@ and mkExp (exp, d) =
                  fun f x = LET(rootv, ee', x)
                  val l' = mkRules l
               in if isMatch 
-                 then MC.matchCompile (env, l', f, rootv, toTcLt d, complain)
-                 else MC.bindCompile (env, l', f, rootv, toTcLt d, complain)
+                 then MC.matchCompile (env, l', f, rootv, toTcLt d,
+				       complain, genintinfswitch)
+                 else MC.bindCompile (env, l', f, rootv, toTcLt d,
+				      complain, genintinfswitch)
              end
 
 	| g (IFexp { test, thenCase, elseCase }) =
@@ -1145,6 +1248,41 @@ and mkExp (exp, d) =
    in g exp
   end 
 
+and transIntInf d s =
+    (* This is a temporary solution.  Since IntInf literals
+     * are created using a core function call, there is
+     * no indication within the program that we are really
+     * dealing with a constant value that -- in principle --
+     * could be subject to such things as constant folding. *)
+    let val consexp = CONexp (BT.consDcon, [BT.wordTy])
+	fun build [] = CONexp (BT.nilDcon, [BT.wordTy])
+	  | build (d :: ds) = let
+		val i = Word.toIntX d
+	    in
+		APPexp (consexp,
+			EU.TUPLEexp [WORDexp (IntInf.fromInt i, BT.wordTy),
+				     build ds])
+	    end
+	fun small w =
+	    APP (coreAcc (if LN.isNegative s then "makeSmallNegInf"
+			  else "makeSmallPosInf"),
+		 mkExp (WORDexp (IntInf.fromInt (Word.toIntX w), BT.wordTy),
+			d))
+    in
+	case LN.repDigits s of
+	    [] => small 0w0
+	  | [w] => small w
+	  | ws => APP (coreAcc (if LN.isNegative s then "makeNegInf"
+				else "makePosInf"),
+		       mkExp (build ws, d))
+    end
+
+(* Wrap bindings for IntInf.int literals around body. *)
+fun wrapII body = let
+    fun one (n, v, b) = LET (v, transIntInf DI.top n, b)
+in
+    IIMap.foldli one body (!iimap)
+end
 
 (* wrapPidInfo: lexp * (pid * pidInfo) list -> lexp * importTree *)
 fun wrapPidInfo (body, pidinfos) = 
@@ -1205,8 +1343,11 @@ val exportLexp = SRECORD (map VAR exportLvars)
 (** translating the ML absyn into the PLambda expression *)
 val body = mkDec (rootdec, DI.top) exportLexp
 
+(** add bindings for intinf constants *)
+val body = wrapII body
+
 (** wrapping up the body with the imported variables *)
-val (plexp, imports) = wrapPidInfo (body, Map.listItemsi (!persmap))
+val (plexp, imports) = wrapPidInfo (body, PersMap.listItemsi (!persmap))
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()

@@ -9,7 +9,8 @@
 
 structure Int = Int31
 structure Word = Word31
-structure LargeInt = Int32
+structure LargeInt = IntInf
+structure FixedInt = Int32
 structure LargeWord = Word32
 structure Real = Real64
 structure LargeReal = Real64

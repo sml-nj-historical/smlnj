@@ -177,6 +177,11 @@ fun map_primop p =
      | AP.EXTEND(from,to) => PKP (P.extend(from, to))
      | AP.TRUNC(from,to) =>  PKP (P.trunc(from, to))
 
+     | AP.TEST_INF to => PKA (P.test_inf to)
+     | AP.TRUNC_INF to => PKP (P.trunc_inf to)
+     | AP.COPY_INF from => PKP (P.copy_inf from)
+     | AP.EXTEND_INF from => PKP (P.extend_inf from)
+
      | AP.ARITH{oper,kind,overflow=true} =>
          PKA(P.arith{oper=arithop oper,kind=numkind kind})
      | AP.ARITH{oper,kind,overflow=false} =>

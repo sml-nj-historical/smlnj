@@ -16,47 +16,39 @@ signature LITERAL_TO_NUM =
     val word   : IntInf.int -> word
     val word8  : IntInf.int -> word
     val word32 : IntInf.int -> Word32.word
+    val isNegative : IntInf.int -> bool
+    val repDigits : IntInf.int -> word list  (* expose representation *)
+    val lowVal : IntInf.int -> int option
   end
 
-structure LiteralToNum : LITERAL_TO_NUM =
-  struct
+structure LiteralToNum : LITERAL_TO_NUM = struct
 
-    val zero = IntInf.fromInt 0
-    val one = IntInf.fromInt 1
-    val two = IntInf.fromInt 2
-    val two_8 = IntInf.pow(two, 8)
-    val two_30 = IntInf.pow(two, 30)
-    val two_31 = IntInf.pow(two, 31)
-    val two_32 = IntInf.pow(two, 32)
-    val neg_two_30 = IntInf.~ two_31
-    val neg_two_31 = IntInf.~ two_31
+    val two_8  : IntInf.int =       0x100
+    val two_31 : IntInf.int =  0x80000000
+    val two_32 : IntInf.int = 0x100000000
 
-  (* return n if it is in the range [lo..hi-1]; otherwise raise Overflow *)
-    fun chkIntRange (lo, hi) n =
-	  if (IntInf.<=(lo, n) andalso IntInf.<(n, hi))
-	    then n
-	    else raise Overflow
+    val int    = Int.fromLarge
+    val int32  = Int32.fromLarge
+    fun word32 i =
+	if i < 0 orelse i >= two_32 then raise Overflow
+	else InlineT.IntInf.trunc_word32 i
+    fun word i =
+	if i < 0 orelse i >= two_31 then raise Overflow
+	else InlineT.IntInf.trunc_word31 i
+    fun word8 i =
+	if i < 0 orelse i >= two_8 then raise Overflow
+	else Word.fromLargeWord
+		 (Word8.toLargeWord (InlineT.IntInf.trunc_word8 i))
 
-  (* return n if it is in the range [0..hi-1]; otherwise raise Overflow *)
-    fun chkWordRange hi n = if (IntInf.<(n, hi)) then n else raise Overflow
-
-    fun int i = IntInf.toInt(chkIntRange (neg_two_30, two_30) i)
-    fun int32 i = IntInf.toLarge(chkIntRange (neg_two_31, two_31) i)
-    fun word w = Word.fromLargeInt(IntInf.toLarge(chkWordRange two_31 w))
-    fun word8 w = Word.fromInt(IntInf.toInt(chkWordRange two_8 w))
-    fun word32 w =
-	  if (IntInf.>=(w, two_32))
-	    then raise Overflow
-	    else Word32.fromLargeInt(IntInf.toLarge w)
-	      handle Overflow => let
-		val (d, m) = IntInf.divmod(w, two)
-		val d = Word32.fromLargeInt(IntInf.toLarge d)
-		in
-		  case IntInf.compare(m, zero)
-		  of EQUAL => Word32.<<(d, 0w1) 
-	           | _ => Word32.<<(d, 0w1)+0w1
-		end
-
-  end
-
-
+    local
+	fun unBI (CoreIntInf.BI x) = x
+    in
+    val isNegative = #negative o unBI o CoreIntInf.concrete
+    val repDigits = #digits o unBI o CoreIntInf.concrete
+    fun lowVal i = let
+	val l = CoreIntInf.lowValue i
+    in
+	if l = CoreIntInf.neg_base_as_int then NONE else SOME l
+    end
+    end
+end

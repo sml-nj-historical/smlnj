@@ -396,6 +396,11 @@ in
 	      | P.INLMAX kind => ?121 $ [numkind kind]
 	      | P.INLABS kind => ?122 $ [numkind kind]
 		    
+	      | P.TEST_INF i => ?123 $ [int i]
+	      | P.TRUNC_INF i => ?124 $ [int i]
+	      | P.EXTEND_INF i => ?125 $ [int i]
+	      | P.COPY_INF i => ?126 $ [int i]
+
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
 	      | P.UNWRAP => %?2
@@ -456,6 +461,7 @@ in
 	      | P.UNBOXEDASSIGN => %?54
 	      | P.RAW_CCALL NONE => %?55
 	      | P.INLIGNORE => %?56
+	      | P.INLIDENTITY => %?57
     end
 
     fun consig arg = let

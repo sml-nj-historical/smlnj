@@ -144,21 +144,16 @@ struct
       val newCCreg = C.newCell CB.CC
 
       
-      val int_0       = T.I.int_0
-      val int_m0x8000 = T.I.fromInt(32, ~32768)
-      val int_0x8000  = T.I.fromInt(32,  32768)
-      val int_m0x800  = T.I.fromInt(32, ~2048)
-      val int_0x800   = T.I.fromInt(32,  2048)
       fun LT (x,y)    = T.I.LT(32, x, y)
       fun LE (x,y)    = T.I.LE(32, x, y)
       fun toInt mi = T.I.toInt(32, mi)
       fun LI i = T.I.fromInt(32, i)
 
-      fun signed16 mi   = LE(int_m0x8000, mi) andalso LT(mi, int_0x8000)
-      fun signed12 mi   = LE(int_m0x800, mi) andalso LT(mi, int_0x800)
-      fun unsigned16 mi = LE(int_0, mi) andalso LT(mi, T.I.int_0x10000)
-      fun unsigned5 mi  = LE(int_0, mi) andalso LT(mi, T.I.int_32)
-      fun unsigned6 mi  = LE(int_0, mi) andalso LT(mi, T.I.int_64)
+      fun signed16 mi   = LE(~0x8000, mi) andalso LT(mi, 0x8000)
+      fun signed12 mi   = LE(~0x800, mi) andalso LT(mi, 0x800)
+      fun unsigned16 mi = LE(0, mi) andalso LT(mi, 0x10000)
+      fun unsigned5 mi  = LE(0, mi) andalso LT(mi, 32)
+      fun unsigned6 mi  = LE(0, mi) andalso LT(mi, 64)
 
       fun move(rs,rd,an) =
         if CB.sameColor(rs,rd) then () 
@@ -337,7 +332,7 @@ struct
           in
 	    case (e1, e2)
 	    of (T.ANDB(_, a1, a2), T.LI z) =>
-	        if T.I.isZero(z) then 
+	        if z = 0 then 
 		  (case commImmedOpnd unsigned16 (a1, a2)
 		   of (ra, I.RegOp rb) =>
 			emit(I.ARITH{oper=I.AND, ra=ra, rb=rb, rt=newReg(), Rc=true, OE=false})

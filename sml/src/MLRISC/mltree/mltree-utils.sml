@@ -261,7 +261,7 @@ struct
       m=n andalso a=d andalso eqRexp(b,e) andalso eqRexp(c,f)
 
   and eqRexp(T.REG(a,b),T.REG(c,d)) = a=c andalso eqCell(b,d)
-    | eqRexp(T.LI a,T.LI b) = IntInf.== (a,b)
+    | eqRexp(T.LI a,T.LI b) = a = b
     | eqRexp(T.LABEL a,T.LABEL b) = eqLabel(a,b)
     | eqRexp(T.LABEXP a,T.LABEXP b) = eqRexp(a,b)
     | eqRexp(T.CONST a,T.CONST b) = Constant.==(a,b)

@@ -44,7 +44,7 @@ let
       end
 
   fun mkChrInit c =
-      Simple(coreExp2exp (charCt, (IntConst (Int32.fromInt (ord c)))))
+      Simple(coreExp2exp (charCt, (IntConst (LargeInt.fromInt (ord c)))))
 
   fun mkIntInit i = 
       Simple(coreExp2exp (intCt, (IntConst (i:LargeInt.int))))
@@ -66,13 +66,15 @@ let
               (Simple(EXPR(StringConst s,aid,loc))::rest) =
        (* special case for character arrays initialized w/strings *)
        let val len = (String.size s) + 1 (* size of c string *)
-	   val max = case maxOp of SOME l => Int32.toInt l | _ => len
+	   val max = case maxOp of SOME l => LargeInt.toInt l | _ => len
 	   val nullOpt = if len = max + 1 then NONE else SOME #"\000"
 	   val charInits = mkChrs (nullOpt, explode s)
 	in norm(arrType, (Aggregate charInits)::rest)
        end
     | arrNorm (arrType, baseType, maxOp) origInits =
-       let val max = case maxOp of SOME l => Int32.toInt l | _ => length origInits
+       let val max = case maxOp of
+			 SOME l => LargeInt.toInt l
+		       | _ => length origInits
 	   fun loop(i, inits) = 
 	       if (i=max) then ([], inits)
 	       else let val (elemInit,remainder) = norm(baseType, inits)

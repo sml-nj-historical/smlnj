@@ -81,14 +81,14 @@ struct
    end
 
    fun wordToIntInf w   = IntInf.fromInt(Word.toIntX w)
-   fun word32ToIntInf w = IntInf.fromLarge(Word32.toLargeIntX w)
+   fun word32ToIntInf w = Word32.toLargeIntX w
    fun wordToInt w      = Word.toIntX w
    fun word32ToInt w    = Word32.toIntX w
    fun intInfToInt i    = IntInf.toInt i
-   fun intInfToInt32 i  = IntInf.toLarge i
+   fun intInfToInt32 i  = Int32.fromLarge i
    fun intToIntInf i    = IntInf.fromInt i
    fun intToInt32 i     = Int32.fromInt i
-   fun int32ToIntInf i  = IntInf.fromLarge i  
+   fun int32ToIntInf i  = Int32.toLarge i
    fun int32ToInt i     = Int32.toInt i
    
    (* Lookup the value number of a constant *)

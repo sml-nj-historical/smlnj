@@ -238,6 +238,8 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 			  PP.string ppstrm (Int.toString(Obj.toInt obj))
 		      else if TU.eqTycon(tyc,BT.int32Tycon) then
 			  PP.string ppstrm (Int32.toString(Obj.toInt32 obj))
+		      else if TU.eqTycon(tyc,BT.intinfTycon) then
+			  PPUtil.pp_intinf ppstrm (Unsafe.cast obj)
 	              else if TU.eqTycon(tyc,BT.wordTycon) then 
 			  ppWord (Word.toString(Obj.toWord obj))
 	              else if TU.eqTycon(tyc,BT.word8Tycon) then 

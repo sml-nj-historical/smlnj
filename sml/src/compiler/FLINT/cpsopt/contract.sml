@@ -480,7 +480,9 @@ fun sameLvar(lvar, VAR lv) = lv = lvar
   | sameLvar _ = false
 
 fun cvtPreCondition(n:int, n2, x, v2) =
-  n=n2 andalso usedOnce(x) andalso sameLvar(x, ren v2) 
+  n = n2 andalso usedOnce(x) andalso sameLvar(x, ren v2) 
+fun cvtPreCondition_inf(x, v2) =
+  usedOnce(x) andalso sameLvar(x, ren v2) 
 
 val rec reduce = fn cexp => g NONE cexp
 and g = fn hdlr =>
@@ -761,15 +763,23 @@ let val rec g' =
 	       end
       end
    | ARITH(P.test(p,n),[v],x,t,e as PURE(P.copy(n2,m),[v2],x2,t2,e2)) =>
-      if cvtPreCondition(n, n2, x, v2) andalso n=m then
+      if cvtPreCondition(n, n2, x, v2) andalso n = m then
 	(click "T(1)"; ARITH(P.test(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.test(p,n), [ren v], x, t, g' e)
+   | ARITH(P.test_inf n,[v,f],x,t,e as PURE(P.copy(n2,m),[v2],x2,t2,e2)) =>
+      if cvtPreCondition(n, n2, x, v2) andalso n = m then
+	(click "T(1)"; ARITH(P.test_inf m, [ren v, ren f], x2, t2, g' e2))
+      else ARITH(P.test_inf n, [ren v, ren f], x, t, g' e)
    | ARITH(P.test(p,n),[v],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) => 
       if cvtPreCondition(n, n2, x, v2) then
 	(click "T(2)"; ARITH(P.test(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.test(p,n), [ren v], x, t, g' e)
+   | ARITH(P.test_inf n,[v, f],x,t,e as ARITH(P.test(n2,m),[v2],x2,t2,e2)) => 
+      if cvtPreCondition(n, n2, x, v2) then
+	(click "T(2)"; ARITH(P.test_inf m, [ren v, ren f], x2, t2, g' e2))
+      else ARITH(P.test_inf n, [ren v, ren f], x, t, g' e)
    | ARITH(P.testu(p,n),[v],x,t,e as PURE(P.copy(n2,m),[v2],x2,t2,e2)) =>
-      if cvtPreCondition(n, n2, x, v2) andalso n=m then
+      if cvtPreCondition(n, n2, x, v2) andalso n = m then
 	(click "U(1)"; ARITH(P.testu(p,m), [ren v], x2, t2, g' e2))
       else ARITH(P.testu(p,n), [ren v], x, t, g' e)
    | ARITH(P.testu(p,n),[v],x,t,e as ARITH(P.testu(n2,m),[v2],x2,t2,e2)) => 
@@ -800,22 +810,57 @@ let val rec g' =
 	    if n2=m then checkClicked("R(2)", n2, m, P.trunc) else skip()
 	 | _  => skip()
      end
+   | PURE(P.trunc_inf n, [v, f], x, t,
+	  e as PURE(pure, [v2], x2, t2, e2)) => let
+      fun skip() = PURE(P.trunc_inf n, [ren v, ren f], x, t, g' e)
+      fun checkClicked(tok, n2, m) = 
+	if cvtPreCondition(n, n2, x, v2) then 
+	  (click tok; 
+	   PURE(P.trunc_inf m, [ren v, ren f], x2, t2, g' e2))
+	else skip()
+     in
+       case pure
+	of P.trunc(n2,m) => checkClicked("R(1)", n2, m)
+         | P.copy(n2,m) => 
+	    if n2=m then checkClicked("R(2)", n2, m) else skip()
+	 | _  => skip()
+     end
+   | PURE(P.extend(p,n), [v], x, t,
+	  e as PURE(P.extend_inf n2, [v2,f], x2, t2, e2)) =>
+	 if cvtPreCondition(n,n2,x,v2) then
+	     (click "X(1')";
+	      PURE(P.extend_inf p, [ren v, ren f], x2, t2, g' e2))
+	 else
+	     PURE(P.extend(p,n), [ren v], x, t, g' e)
    | PURE(P.extend(p,n), [v], x, t, e as PURE(pure, [v2], x2, t2, e2)) => let
        fun skip() = PURE(P.extend(p,n), [ren v], x, t, g' e)
-       fun checkClicked(tok, n2, m, pureOp) = 
+       fun checkClicked(tok, n2, pureOp) = 
 	 if cvtPreCondition(n, n2, x, v2) then
 	   (click tok;
-	    PURE(pureOp(p,m), [ren v], x2, t2, g' e2))
+	    PURE(pureOp, [ren v], x2, t2, g' e2))
 	 else skip()
      in
        case pure
-	of P.extend(n2,m) => checkClicked("X(1)", n2, m, P.extend)
+	of P.extend(n2,m) => checkClicked("X(1)", n2, P.extend (p, m))
          | P.copy(n2,m) => 
-	    if n2 = m then checkClicked("X(2)", n2, m, P.extend) else skip()
+	    if n2 = m then checkClicked("X(2)", n2, P.extend (p, m))
+	    else skip()
 	 | P.trunc(n2,m) => 
-	    if m >= p then checkClicked("X(3)", n2, m, P.extend)
-	    else checkClicked("X(4)", n2, m, P.trunc)
+	    if m >= p then checkClicked("X(3)", n2, P.extend (p, m))
+	    else checkClicked("X(4)", n2, P.trunc (p, m))
 	 | _ => skip()
+     end
+   | PURE(P.extend_inf p, [v,f], x, t,
+	  e as PURE(P.trunc_inf m, [v2, f2], x2, t2, e2)) =>
+     let fun checkClicked(tok, pureOp) =
+	     if cvtPreCondition_inf(x, v2) then
+		 (click tok;
+		  use_less f; use_less f2;
+		  PURE(pureOp, [ren v], x2, t2, g' e2))
+	     else PURE (P.extend_inf p, [ren v, ren f], x, t, g' e)
+     in
+	 if m >= p then checkClicked("X(3')", P.extend(p, m))
+	 else checkClicked("X(4')", P.trunc(p, m))
      end
    | PURE(P.extend(p,n), [v], x, t, e as ARITH(a, [v2], x2, t2, e2)) => let
        val v' = [ren v]
@@ -832,44 +877,95 @@ let val rec g' =
          | P.testu(n2, m) => checkClicked("X(6)", n2, m, P.testu)
 	 | _ => skip()
      end
+   | PURE(P.extend_inf p, [v, f], x, t,
+	  e as ARITH (P.test_inf m, [v2, f2], x2, t2, e2)) =>
+       if cvtPreCondition_inf (x, v2) then
+	   if m >= p then
+	       (click "X9"; use_less f; use_less f2;
+		PURE (P.extend (p, m), [ren v], x2, t2, g' e2))
+	   else ARITH (P.test (p, m), [ren v], x2, t2, g' e2)
+       else PURE (P.extend_inf p, [ren v, ren f], x, t, g' e)
+   | PURE (P.copy (p, n), [v], x, t,
+	   e as PURE (P.copy_inf n2, [v2, f2], x2, t2, e2)) =>
+       if cvtPreCondition (n, n2, x, v2) then
+	   (click "C(2)";
+	    PURE (P.copy_inf p, [ren v, ren f2], x2, t2, g' e2))
+       else
+	   PURE (P.copy (p, n), [ren v], x, t, g' e)
+   | PURE (P.copy (p, n), [v], x, t,
+	   e as PURE (P.extend_inf n2, [v2, f2], x2, t2, e2)) => let
+	 fun skip () = PURE (P.copy (p, n), [ren v], x, t, g' e)
+	 fun checkClicked(tok, pureOp) =
+	     if cvtPreCondition (n, n2, x, v2) then
+		 (click tok; PURE (pureOp, [ren v, ren f2], x2, t2, g' e2))
+	     else skip ()
+     in
+	 if n > p then checkClicked("C(2')", P.copy_inf p)
+	 else if n = p then checkClicked("C(2')", P.extend_inf p)
+	 else skip ()
+     end
    | PURE(P.copy(p,n), [v], x, t, e as PURE(pure, [v2], x2, t2, e2)) => let
        val v' = [ren v]
        fun skip () = PURE(P.copy(p,n), v', x, t, g' e)
-       fun checkClicked(tok, n2, m, pureOp) = 
+       fun checkClicked(tok, n2, pureOp) = 
 	 if cvtPreCondition(n, n2, x, v2) then
-	   (click tok; PURE(pureOp(p,m), v', x2, t2, g' e2))
+	   (click tok; PURE(pureOp, v', x2, t2, g' e2))
 	 else skip()
      in
        case pure
-	of P.copy(n2,m) => checkClicked("C(1)", n2, m, P.copy)
+	of P.copy(n2,m) => checkClicked("C(1)", n2, P.copy (p, m))
          | P.extend(n2,m) => 
-	    if n > p then checkClicked("C(2)", n2, m, P.copy)
-	    else if n = p then checkClicked("C(2)", n2, m, P.extend)
+	    if n > p then checkClicked("C(2)", n2, P.copy (p, m))
+	    else if n = p then checkClicked("C(2)", n2, P.extend (p, m))
 	    else skip()
    	 | P.trunc(n2,m) => 
-            if m >= p then checkClicked("C(3)", n2, m, P.copy)
-	    else if m < p then checkClicked("C(4)", n2, m, P.trunc)
+            if m >= p then checkClicked("C(3)", n2, P.copy (p, m))
+	    else if m < p then checkClicked("C(4)", n2, P.trunc (p, m))
 	    else skip()
 	 | _ => skip()
+     end
+   | PURE (P.copy_inf p, [v, f], x, t,
+	   e as PURE (P.trunc_inf m, [v2, f2], x2, t2, e2)) => let
+	 fun skip () = PURE (P.copy_inf p, [ren v, ren f], x, t, g' e)
+	 fun checkClicked (tok, pureOp) =
+	     if cvtPreCondition_inf (x, v2) then
+		(click tok;
+		 use_less f; use_less f2;
+		 PURE (pureOp, [ren v], x2, t2, g' e2))
+	     else skip ()
+     in
+	 if m >= p then checkClicked ("C(3)", P.copy (p, m))
+	 else if m < p then checkClicked ("C(4)", P.trunc (p, m))
+	 else skip ()
      end
    | PURE(P.copy(p,n), [v], x, t, e as ARITH(a, [v2], x2, t2, e2)) => let
        val v' = [ren v]
        fun skip () = PURE(P.copy(p,n), v', x, t, g' e)
-       fun checkClicked(tok, n2, m, class, arithOp) = 
+       fun checkClicked(tok, n2, class, arithOp) = 
 	 if cvtPreCondition(n, n2, x, v2) then
-	   (click tok; class(arithOp(p,m), v', x2, t2, g' e2))
+	   (click tok; class(arithOp, v', x2, t2, g' e2))
 	 else skip()
      in
        case a
 	of P.test(n2,m) =>
-	   if m >= p then checkClicked("C5", n2, m, PURE, P.copy)
-	   else checkClicked("C6", n2, m, ARITH, P.test)
+	   if m >= p then checkClicked("C5", n2, PURE, P.copy (p, m))
+	   else checkClicked("C6", n2, ARITH, P.test (p, m))
 	 | P.testu(n2,m) => 
-	   if m > p then checkClicked("C7", n2, m, PURE, P.copy)
-	   else checkClicked("C8", n2, m, ARITH, P.testu)
+	   if m > p then checkClicked("C7", n2, PURE, P.copy (p, m))
+	   else checkClicked("C8", n2, ARITH, P.testu (p, m))
 	 | _ => skip()
      end
-
+   | PURE (P.copy_inf p, [v, f], x, t,
+	   e as ARITH (P.test_inf m, [v2, f2], x2, t2, e2)) => let
+	 fun checkClicked (tok, class, oper) =
+	     if cvtPreCondition_inf (x, v2) then
+		 (click tok; use_less f; use_less f2;
+		  class (oper, [ren v], x2, t2, g' e2))
+	     else PURE (P.copy_inf p, [ren v, ren f], x, t, g' e)
+     in
+	 if m >= p then checkClicked ("C5", PURE, P.copy (p, m))
+	 else checkClicked ("C6", ARITH, P.test (p, m))
+     end
    | PURE(i,vl,w,t,e) =>
       let val vl' = map ren vl
 	  val {used,...} = get w

@@ -31,50 +31,27 @@ struct
    val hexToInt = StringCvt.scanString (I.scan StringCvt.HEX)
    val binToInt = StringCvt.scanString (I.scan StringCvt.BIN)
 
-   (* constants *)
-   val int_0   = I.fromInt 0
-   val int_1   = I.fromInt 1
-   val int_2   = I.fromInt 2
-   val int_3   = I.fromInt 3
-   val int_4   = I.fromInt 4
-   val int_7   = I.fromInt 7
-   val int_8   = I.fromInt 8
-   val int_15  = I.fromInt 15
-   val int_16  = I.fromInt 16
-   val int_31  = I.fromInt 31
-   val int_32  = I.fromInt 32
-   val int_63  = I.fromInt 63
-   val int_64  = I.fromInt 64
-   val int_m1  = I.fromInt ~1
-   val int_m2  = I.fromInt ~2
-   val int_m3  = I.fromInt ~3
-   val int_m4  = I.fromInt ~4
-   val int_0xff = I.fromInt 0xff
-   val int_0x100 = I.fromInt 0x100
-   val int_0xffff = I.fromInt 0xffff
-   val int_0x10000 = I.fromInt 0x10000
-
    (* Precompute some tables for faster arithmetic *)
    local
-   val pow2table = Array.tabulate(maxSz,fn n => I.<<(int_1,itow n))  (* 2^n *)
+   val pow2table = Array.tabulate(maxSz,fn n => I.<<(1,itow n))  (* 2^n *)
    val masktable = Array.tabulate(maxSz,
-                       fn n => I.-(I.<<(int_1,itow n),int_1))      (* 2^n-1 *)
+                       fn n => I.-(I.<<(1,itow n),1))      (* 2^n-1 *)
    val maxtable  = Array.tabulate(maxSz+1, 
-                    fn 0 => int_0
-                     | n => I.-(I.<<(int_1,itow(n-1)),int_1))  (* 2^{n-1}-1 *)
+                    fn 0 => 0
+                     | n => I.-(I.<<(1,itow(n-1)),1))  (* 2^{n-1}-1 *)
    val mintable  = Array.tabulate(maxSz+1, 
-                    fn 0 => int_0
-                     | n => I.~(I.<<(int_1,itow(n-1))))   (* -2^{n-1} *)
+                    fn 0 => 0
+                     | n => I.~(I.<<(1,itow(n-1))))   (* -2^{n-1} *)
    in
 
    fun pow2 i       = if i < maxSz then Array.sub(pow2table, i) 
-                      else I.<<(int_1,itow i)
+                      else I.<<(1,itow i)
    fun maskOf sz    = if sz < maxSz then Array.sub(masktable, sz)
-                      else I.-(I.<<(int_1,itow sz),int_1)
+                      else I.-(I.<<(1,itow sz),1)
    fun maxOfSize sz = if sz < maxSz then Array.sub(maxtable, sz) 
-                      else I.-(I.<<(int_1,itow(sz-1)),int_1)
+                      else I.-(I.<<(1,itow(sz-1)),1)
    fun minOfSize sz = if sz < maxSz then Array.sub(mintable, sz)
-                      else I.~(I.<<(int_1,itow(sz-1)))
+                      else I.~(I.<<(1,itow(sz-1)))
    end
 
    (* queries *)
@@ -83,7 +60,7 @@ struct
    fun isZero(i)   = I.sign i = 0 
    fun isNonNeg(i) = I.sign i >= 0
    fun isNonPos(i) = I.sign i <= 0
-   fun isEven(i)   = isZero(I.rem(i,int_2))
+   fun isEven(i)   = isZero(I.rem(i,2))
    fun isOdd(i)    = not(isEven(i))
 
    (* to unsigned representation *)
@@ -124,7 +101,7 @@ struct
       val wtoi   = W.toIntX
       val w32toi = W32.toIntX
       val fromInt    = I.fromInt 
-      val fromInt32  = I.fromLarge
+      val fromInt32  = Int32.toLarge
       fun fromWord w = I.fromLarge(Word.toLargeInt w)
       fun fromWord32 w = I.+(I.<<(I.fromInt(w32toi(W32.>>(w,0w16))),0w16), 
                                   I.fromInt(w32toi(W32.andb(w,0wxffff))))
@@ -143,18 +120,13 @@ struct
    fun toWord(sz, i)      = Word.fromLargeInt(I.toLarge(unsigned(sz, i)))
    fun toWord32(sz, i)    = 
        let val i  = unsigned(sz, i)
-           val lo = I.andb(i,int_0xffff)
+           val lo = I.andb(i,0xffff)
            val hi = I.~>>(i,0w16)
            fun tow32 i = Word32.fromLargeInt(I.toLarge i)
        in  tow32 lo + Word32.<<(tow32 hi, 0w16) end
-   fun toInt32(sz, i) = I.toLarge(narrow(sz, i))
+   fun toInt32(sz, i) = Int32.fromLarge(narrow(sz, i))
 
-   val int_0x1fffffff = fromWord(32,0wx1fffffff)
-   fun hash i = Word.fromInt(I.toInt(I.andb(i,int_0x1fffffff)))
-
-   (* constants *)
-   val int_0xffffffff = Option.valOf(fromString(64, "0xffffffff"))
-   val int_0x100000000 = Option.valOf(fromString(64, "0x100000000"))
+   fun hash i = Word.fromInt(I.toInt(I.andb(i,0x1fffffff)))
 
    fun isInRange(sz, i) = I.<=(minOfSize sz,i) andalso I.<=(i,maxOfSize sz) 
  
@@ -216,30 +188,33 @@ struct
          | slice((from,to)::sl,n) =
             slice(sl, ORB(sz, narrow(to-from+1, 
                                 Srl(sz, x, Word.fromInt from)), n))
-   in  slice(sl, int_0) 
+   in  slice(sl, 0) 
    end
 
-   fun bitOf(sz, i, b) = toWord(1, narrow(1, Srl(sz, i, Word.fromInt b)))
-   fun byteOf(sz, i, b) = toWord(8, narrow(8, Srl(sz, i, Word.fromInt(b*8))))
-   fun halfOf(sz, i, h) = toWord(16, narrow(16, Srl(sz, i, Word.fromInt(h*16))))
-   fun wordOf(sz, i, w) = toWord32(32, narrow(32, Srl(sz, i, Word.fromInt(w*32))))
+   fun bitOf(sz, i, b) =
+       toWord(1, narrow(1, Srl(sz, i, Word.fromInt b)))
+   fun byteOf(sz, i, b) =
+       toWord(8, narrow(8, Srl(sz, i, Word.fromInt(b*8))))
+   fun halfOf(sz, i, h) =
+       toWord(16, narrow(16, Srl(sz, i, Word.fromInt(h*16))))
+   fun wordOf(sz, i, w) =
+       toWord32(32, narrow(32, Srl(sz, i, Word.fromInt(w*32))))
 
    (* type promotion *)
    fun SX(toSz,fromSz,i) = narrow(toSz, narrow(fromSz, i))
    fun ZX(toSz,fromSz,i) = narrow(toSz, unsigned(fromSz, narrow(fromSz, i)))
 
    (* comparisions *)
-   fun EQ(sz,i,j)  = IntInf.== (i, j)
-   fun NE(sz,i,j)  = IntInf.!= (i, j)
-   fun GT(sz,i,j)  = I.>(i,j)
-   fun GE(sz,i,j)  = I.>=(i,j)
-   fun LT(sz,i,j)  = I.<(i,j)
-   fun LE(sz,i,j)  = I.<=(i,j)
-   fun LTU(sz,i,j) = I.<(unsigned(sz, i),unsigned(sz, j))
-   fun GTU(sz,i,j) = I.>(unsigned(sz, i),unsigned(sz, j))
-   fun LEU(sz,i,j) = I.<=(unsigned(sz, i),unsigned(sz, j))
-   fun GEU(sz,i,j) = I.>=(unsigned(sz, i),unsigned(sz, j))
-
+   fun EQ(sz,i:I.int,j)  = i = j
+   fun NE(sz,i:I.int,j)  = i <> j
+   fun GT(sz,i:I.int,j)  = i > j
+   fun GE(sz,i:I.int,j)  = i >= j
+   fun LT(sz,i:I.int,j)  = i < j
+   fun LE(sz,i:I.int,j)  = i <= j
+   fun LTU(sz,i,j) = unsigned(sz, i) < unsigned(sz, j)
+   fun GTU(sz,i,j) = unsigned(sz, i) > unsigned(sz, j)
+   fun LEU(sz,i,j) = unsigned(sz, i) <= unsigned(sz, j)
+   fun GEU(sz,i,j) = unsigned(sz, i) >= unsigned(sz, j)
    (*
     * Split an integer "i" of size "sz" into words of size "wordSize"
     *)

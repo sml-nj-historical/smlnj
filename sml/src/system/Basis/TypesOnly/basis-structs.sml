@@ -17,6 +17,11 @@ structure Int32 =
     type int = PrimTypes.int32
   end;
 
+structure IntInf =
+  struct
+    type int = PrimTypes.intinf
+  end;
+
 structure Word8 =
   struct
     type word = PrimTypes.word8

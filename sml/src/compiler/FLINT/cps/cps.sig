@@ -70,6 +70,7 @@ structure P : sig
       = arith of {oper: arithop, kind: numkind}
       | test of int * int
       | testu of int * int
+      | test_inf of int
       | round of {floor: bool, fromkind: numkind, tokind: numkind}
 
   (* These don't raise exceptions and don't access the store. *)
@@ -77,7 +78,12 @@ structure P : sig
       = pure_arith of {oper: arithop, kind: numkind}
       | pure_numsubscript of {kind: numkind}
       | length | objlength | makeref
-      | extend of int * int | trunc of int * int | copy of int * int
+      | extend of int * int
+      | trunc of int * int
+      | copy of int * int
+      | extend_inf of int
+      | trunc_inf of int
+      | copy_inf of int
       | real of {fromkind: numkind, tokind: numkind}
       | subscriptv
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn

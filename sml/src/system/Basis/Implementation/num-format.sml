@@ -66,10 +66,12 @@ structure NumFormat : sig
 
     fun fmtWord radix = PreString.implode o (fmtW radix)
 
+    val i2w = W.fromLargeInt o I32.toLarge
+
     fun fmtInt radix i = 
-      if W.fromLargeInt i = 0wx80000000 then "~2147483648"
+      if i2w i = 0wx80000000 then "~2147483648"
       else let
-	  val w32 = W.fromLargeInt(if I32.<(i, 0) then I32.~(i) else i)
+	  val w32 = i2w (if I32.<(i, 0) then I32.~(i) else i)
           val (n, digits) = fmtW radix w32
 	in
 	  if I32.<(i, 0) then PreString.implode(I.+(n,1), #"~"::digits)

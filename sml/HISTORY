@@ -13,6 +13,80 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/08/28 17:00:00 CDT
+Tag: blume-20030828-intinf
+Description:
+
+This is a major update which comes with a version number bump
+(110.42.99 -- yes, we are really close to 110.43 :-), NEW BOOTFILES,
+and an implementation of IntInf in the Basis.
+
+There are a fairly large number of related changes and updates throughout
+the system:
+
+Basis:
+	- Implemented IntInf.
+	- Made LargeInt a projection of IntInf (by filtering through INTEGER).
+	- Added some missing Real54 operations, most notably Real.toLargeInt.
+	- Added FixedInt as a synonym for Int32.
+
+compiler:
+	* Added support for a built-in intinf type.
+	  - literals
+	  - pattern matching
+	  - conversion shortcuts (Int32.fromLarge o Int.toLarge etc.)
+	  - overloading on literals and operations
+
+	This required adding a primitive type intinf, some additional
+	primops, and implementations for several non-trivial intinf
+	operations in Core.  (The intinf type is completely abstract
+	to the compiler; all operations get delegated back to the Core.)
+
+	* Intinf equality is handled by polyequal.  However, the compiler
+	does not print its usual warning in this case (since polyequal
+	is the right thing to do there).
+
+	* Improved the organization of structure InlineT.
+
+	* A word about conversion primops:
+	If conversions involving intinf do not cancel out during
+	CPS contract, the compiler must insert calls to Core functions.
+	Since all core access must be resolved already during the FLINT
+	translate phase, it would be too late a the time of CPS contract
+	to add now Core calls.  For this reason, conversion primops
+	for intinf carry two arguments:  1. the numeric argument that
+	they are supposed to convert, and 2. the Core function that
+	can help with this conversion if necessary.  If CPS contract
+	eliminates the primop, the Core functions become dead and go
+	away.  Intinf conversion primops that do not get eliminated
+	by CPS contract get rewritten into calls of those core functions
+	by a separate, new phase.
+
+interactive system:
+	- Control.Print.intinfDepth controls max length of intinf constants
+	being printed. (Analogous to Control.Print.stringDepth.)
+	- Cleanup in printutil and pputil: got rid of unused stuff and
+	duplicates; replaced some of the code with code that makes better
+	use of library functionality.
+
+CM:
+	Bugfix: parse-errors in init group (system/smlnj/init/init.cmi)
+	are no longer silent.
+
+CKIT:
+	Fixed mismatched uses of Int32 and LargeInt.  I always decided
+	in favor of LargeInt -- which is now the same as IntInf.
+	CKIT-knowledgable people should check whether this is what's
+	intended and otherwise change things back to using Int32 or
+	FixedInt.
+
+Throughout the code:
+        Started useng IntInf.int literals and built-in operations
+	(e.g., comparison with 0) where this seems appropriate.
+
+
+----------------------------------------------------------------------
 Name: Dave MacQueen (dbm@cs.uchicago.edu)
 Date: 2003/08/13 11:36:00 CDT
 Tag: dbm-20030813-mcz-merge1

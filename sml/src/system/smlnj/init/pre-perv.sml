@@ -5,7 +5,7 @@ structure PrePervasive = struct
 
     exception Span
 
-    datatype order = LESS | EQUAL | GREATER
+    open Order
 
     datatype option = datatype Assembly.option
 

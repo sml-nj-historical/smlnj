@@ -10,14 +10,14 @@ sig
   val printClosedSequence : (string*string*string) -> ('a -> unit) ->
 					 'a list -> unit
   val printSym : Symbol.symbol -> unit
-  val formatQid : Symbol.symbol list -> string
-  val mlstr : string -> string
-  val pr_mlstr : string -> string
+
   val nlindent : int -> unit
   val printvseq : int -> string -> ('a -> unit) -> 'a list -> unit
   val prIntPath : int list -> unit
   val prSymPath : Symbol.symbol list -> unit
 
+  val formatQid : Symbol.symbol list -> string
+  val mlstr : string -> string
+  val pr_mlstr : string -> string
+  val pr_intinf : IntInf.int -> string
 end (* signature PRINTUTIL *)
-
-

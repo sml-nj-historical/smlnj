@@ -4,6 +4,7 @@ Group (../basis.cm)
 	signature VECTOR
 	signature GENERAL
 	signature INTEGER
+	signature INT_INF
 	signature BOOL
 	signature CHAR
 	signature STRING
@@ -74,7 +75,10 @@ Group (../basis.cm)
 	structure IntImp
 	structure Int31Imp
 	structure Int32Imp
+	structure IntInfImp
+	structure IntInfImp
 	structure LargeIntImp
+	structure FixedIntImp
 	structure LargeRealImp
 	structure LargeWordImp
 	structure Math
@@ -286,6 +290,8 @@ is
 	ieee-real.sml
 	int31.sml
 	int32.sml
+	int-inf-sig.sml
+	int-inf.sml
 	word31.sml
 	word32.sml
 	real64.sml
@@ -315,6 +321,7 @@ is
 	bind-int-32.sml
 	bind-word-32.sml
 	bind-largeint-32.sml
+	bind-fixedint-32.sml
 	bind-largeword-32.sml
 	bind-sysword-32.sml
 	bind-position-32.sml

@@ -41,7 +41,7 @@ struct
 
   (* eventually, these may be defined elsewhere, perhaps via some
      compiler configuration mechanism *)
-  val intTypes = [BT.intTy, BT.int32Ty]
+  val intTypes = [BT.intTy, BT.int32Ty, BT.intinfTy]
   val wordTypes = [BT.wordTy, BT.word8Ty, BT.word32Ty]
   val realTypes = [BT.realTy]
   val charTypes = [BT.charTy]

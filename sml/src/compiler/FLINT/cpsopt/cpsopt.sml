@@ -15,6 +15,7 @@ structure Expand = Expand(MachSpec)
 structure EtaSplit = EtaSplit(MachSpec)
 structure Flatten = Flatten(MachSpec)
 structure Uncurry = Uncurry(MachSpec)
+structure IC = InfCnv
 val say = Control.Print.say
 
 (** obsolete table: used by cpsopt as a dummy template *)
@@ -195,7 +196,7 @@ in  (if rounds < 0 then function
 		| apply ("expand",f)        = expand(f, bodysize, false)
 		| apply ("print",f)	    = (PPCps.printcps0 f; f)
 		| apply (p,f) = (say("\n!! Unknown cps phase '"^p^"' !!\n"); f)
-     in foldl apply function (!CG.cpsopt)
+	  val optimized = foldl apply function (!CG.cpsopt)
 (*                 val function1 = first_contract function *)
 (*                 val function2 = eta function1 *)
 (*                 val function3 = uncurry function2 *)
@@ -203,8 +204,18 @@ in  (if rounds < 0 then function
 (*                 val function5 = cycle(rounds, not(!CG.unroll), function4) *)
 (*                 val function6 = eta function5 (* ZSH added this new phase *) *)
 (*                 val function7 = last_contract function6 *)
-(*              in function7 *)
-           end)
+(*                 val optimized function7 *)
+	  in
+	      IC.elim { function = optimized,
+			mkKvar = LambdaVar.mkLvar,
+			mkI32var =
+			  fn () => let val v = LambdaVar.mkLvar ()
+				   in
+				       IntHashTable.insert
+					   table (v, LtyExtern.ltc_int32);
+				       v
+				   end }
+          end)
     before (debugprint "\n"; debugflush())
 
 end (* fun reduce *)

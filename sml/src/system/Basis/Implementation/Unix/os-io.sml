@@ -9,6 +9,7 @@
 
 local
     structure Word = WordImp
+    structure Int32 = Int32Imp
     structure Int = IntImp
     structure SysWord = SysWordImp
 in
@@ -97,7 +98,8 @@ structure OS_IO : OS_IO =
     in
     fun poll (pds, timeOut) = let
 	  val timeOut = (case timeOut
-		 of SOME(PreBasis.TIME{sec, usec}) => SOME(sec, Int.fromLarge usec)
+		 of SOME(PreBasis.TIME{sec, usec}) =>
+		      SOME(Int32.fromLarge sec, Int.fromLarge usec)
 		  | NONE => NONE
 		(* end case *))
 	  val info = poll' (List.map fromPollDesc pds, timeOut)

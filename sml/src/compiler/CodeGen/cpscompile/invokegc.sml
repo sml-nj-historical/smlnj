@@ -83,9 +83,9 @@ struct
 
    val vfp = false			(* don't use virtual frame ptr here *)
 
-   val unit = T.LI(T.I.int_1)  (* representation of ML's unit; 
-                                * this is used to initialize registers.
-                                *)
+   val unit = T.LI 1		      (* representation of ML's unit; 
+                                       * this is used to initialize registers.
+                                       *)
    fun LI i = T.LI (T.I.fromInt(32, i))
        (*
         * Callee-save registers 

@@ -266,7 +266,7 @@ structure NumScan : sig
       | scanWord StringCvt.HEX = finalWord scanHex
 
     local
-      val fromword32 = W.toLargeIntX 
+      val fromword32 = I32.fromLarge o W.toLargeIntX 
     in
     fun finalInt scanFn getc cs = (case (scanFn false getc cs)
 	   of NONE => NONE

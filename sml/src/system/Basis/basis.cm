@@ -6,6 +6,7 @@ Library
 	signature VECTOR
 	signature GENERAL
 	signature INTEGER
+	signature INT_INF
 	signature BOOL
 	signature CHAR
 	signature STRING
@@ -80,7 +81,9 @@ Library
 	structure Int
 	structure Int31
 	structure Int32
+	structure IntInf
 	structure LargeInt
+	structure FixedInt
 	structure LargeReal
 	structure LargeWord
 	structure Math
@@ -191,7 +194,9 @@ is
 	Exports/int.sml
 	Exports/int31.sml
 	Exports/int32.sml
+	Exports/int-inf.sml
 	Exports/largeint.sml
+	Exports/fixedint.sml
 	Exports/largereal.sml
 	Exports/largeword.sml
 	Exports/position.sml

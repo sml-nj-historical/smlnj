@@ -117,14 +117,6 @@ struct
      | DISP of CB.cell * T.I.machine_int
      
 
-   (* infinite-precision short cuts. *)
-   val int_0       = T.I.int_0
-   val int_m16     = T.I.fromInt(32, ~16)
-   val int_1024    = T.I.fromInt(32, 1024)
-   val int_m1024   = T.I.fromInt(32, ~1024)
-   val int_8192    = T.I.fromInt(32, 8192)
-   val int_m8192   = T.I.fromInt(32, ~8192)
-
    fun LI i        = T.LI(T.I.fromInt(32, i))
    fun toInt mi    = T.I.toInt(32, mi)
    fun toInt32 mi  = T.I.toInt32(32, mi)
@@ -169,9 +161,9 @@ struct
        (* Check whether an expression is being multiplied by 2, 4, or 8 *)
        local
 	 fun mul(mi,e, exp) = 
-	   if EQ(mi, T.I.int_2) then (TIMES2, e)
-	   else if EQ(mi, T.I.int_4) then (TIMES4, e)
-		else if EQ(mi, T.I.int_8) then (TIMES8, e) 
+	   if EQ(mi, 2) then (TIMES2, e)
+	   else if EQ(mi, 4) then (TIMES4, e)
+		else if EQ(mi, 8) then (TIMES8, e) 
 		     else (TIMES1, exp)
        in	 
 	 fun times(exp) =
@@ -179,9 +171,9 @@ struct
 	   of T.MULU(_, e, T.LI mi) => mul(mi, e, exp)
 	    | T.MULU(_, T.LI mi, e) => mul(mi, e, exp)
 	    | T.SLL(_, e, T.LI mi) => 
-	       if EQ(mi, T.I.int_1) then (TIMES2, e)
-	       else if EQ(mi, T.I.int_2) then (TIMES4, e)
-		    else if EQ(mi, T.I.int_3) then (TIMES8, e)
+	       if EQ(mi, 1) then (TIMES2, e)
+	       else if EQ(mi, 2) then (TIMES4, e)
+		    else if EQ(mi, 3) then (TIMES8, e)
 			 else (TIMES1, exp)
 	    | _ => (TIMES1, exp)
           (*esac*))
@@ -192,9 +184,9 @@ struct
 	   | timest e = (TIMES1, e)
        end (*local*)
 
-       fun im5 n   = LT(n,T.I.int_16) andalso GE(n, int_m16)
-       fun im11 n  = LT(n, int_1024)  andalso GE(n, int_m1024)
-       fun im14 n  = LT(n, int_8192)  andalso GE(n, int_m8192)
+       fun im5 n   = LT(n, 16) andalso GE(n, ~16)
+       fun im11 n  = LT(n, 1024)  andalso GE(n, ~1024)
+       fun im14 n  = LT(n, 8192)  andalso GE(n, ~8192)
 
        (* Split values into 11 low bits and 21 high bits *)
        fun split11w w = 
@@ -575,7 +567,7 @@ struct
              val (b,x) = 
                case addr(32,e) of
 		 DISP(b, i) => 
-		   if T.I.isZero(i) then (b, zeroR) else disp(b, I.IMMED(toInt i))
+		   if i = 0 then (b, zeroR) else disp(b, I.IMMED(toInt i))
                | AMode(DISPea(r,i)) => disp(r, i) 
                | AMode(INDXea(r1,r2)) => let val b=newReg()
                                   in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=b});
@@ -690,7 +682,7 @@ struct
                val t1 =
                   case no 
                   of T.LI z =>			     (* false case is zero *)
-		      if T.I.isZero(z) then tmp else  (doExpr(no,tmp,[]); zeroR)
+		      if z = 0 then tmp else  (doExpr(no,tmp,[]); zeroR)
                    | _ => (doExpr(no,tmp,[]); zeroR) (* move false case to tmp *)
                   (*esac*)
 
@@ -712,7 +704,7 @@ struct
        in 
 	 case exp
 	 of T.REG(_, r) => r
-          | T.LI z => if T.I.isZero(z) then zeroR else comp()
+          | T.LI z => if z = 0 then zeroR else comp()
 	  | _ => comp()
        end
  
@@ -732,7 +724,7 @@ struct
                                   I.SH1ADDL,I.SH2ADDL,I.SH3ADDL,I.ADD,I.ADDI,
                                   a,b,t,an) 
 	   | T.SUB(_,a,T.LI mi) => 
-	      if T.I.isZero(mi) then doExpr(a,t,an)
+	      if mi = 0 then doExpr(a,t,an)
 	      else commImmedArith(I.ADD,I.ADDI,a,T.LI(T.I.NEGT(32,mi)),t,an)
            | T.SUB(_,a,b) => immedArith(I.SUB,I.SUBI,a,b,t,an)
            | T.ADDT(_,a,b) => plus(timest,

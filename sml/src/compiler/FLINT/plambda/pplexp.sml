@@ -63,6 +63,7 @@ fun whitespace() =
 fun prCon (DATAcon((sym, _, _), _, v)) = ((S.name sym) ^ " " ^ (lvarName v))
   | prCon (INTcon i) = Int.toString i
   | prCon (INT32con i) = "(I32)" ^ (Int32.toString i)
+  | prCon (INTINFcon i) = "II" ^ IntInf.toString i
   | prCon (WORDcon i) = "(W)" ^ (Word.toString i)
   | prCon (WORD32con i) = "(W32)" ^ (Word32.toString i)
   | prCon (REALcon r) = r

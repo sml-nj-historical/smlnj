@@ -209,9 +209,7 @@ struct
   val zeroOpn = I.REGop zeroR
   fun LI i    = T.LI(T.I.fromInt(32, i))
   fun toInt i = T.I.toInt(32, i)
-  val int_0   = T.I.int_0
-  val int_1   = T.I.int_1
-  val EQ      = IntInf.==
+  val EQ      = op =
 
   (*
    * Specialize the modules for multiplication/division 
@@ -341,7 +339,7 @@ struct
 
   val zeroFR = C.f31 
   val zeroEA = I.Direct zeroR
-  val zeroT  = T.LI int_0
+  val zeroT  = T.LI 0
   val trapb = [I.trapb]
   val zeroImm = I.IMMop 0
 
@@ -520,7 +518,7 @@ struct
       (* convert an expression into an operand *)
       and opn(T.REG(_,r)) = I.REGop r
         | opn(e as T.LI n) = 
-	    if IntInf.<=(n, T.I.int_0xff) andalso IntInf.>=(n, T.I.int_0) then 
+	    if n <= 0xff andalso n >= 0 then 
 	      I.IMMop(toInt(n))
             else let val tmpR = newReg()
                  in  loadImmed(n,zeroR,tmpR,[]); I.REGop tmpR end
@@ -608,14 +606,14 @@ struct
       and times4or8(ty,e) =
           let 
 	      fun f(t,a,n) = if t = ty then 
-                               if EQ(n, T.I.int_4) then (TIMES4,a)
-                               else if EQ(n, T.I.int_8) then (TIMES8,a)
+                               if EQ(n, 4) then (TIMES4,a)
+                               else if EQ(n, 8) then (TIMES8,a)
                                else (TIMES1,e)
                              else (TIMES1,e)
 
               fun u(t,a,n) = if t = ty then
-                               if EQ(n, T.I.int_2) then (TIMES4,a)
-                               else if EQ(n, T.I.int_3) then (TIMES8,a)
+                               if EQ(n, 2) then (TIMES4,a)
+                               else if EQ(n, 3) then (TIMES8,a)
                                else (TIMES1,e)
                              else (TIMES1,e)
           in  case e of 
@@ -749,10 +747,9 @@ struct
               in annotate(instr,an)::trapb end
               fun const(e,i) =
                   let val r = expr e
-                  in  if !useMultByConst andalso 
-		           IntInf.>=(i, T.I.int_0) andalso 
-			   IntInf.<(i, T.I.int_0x100) then
-                         annotate(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
+                  in  if !useMultByConst andalso
+			 i >= 0 andalso i < 0x100 then
+                          annotate(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
                       else    
                          (genConst{r=r,i=toInt i,d=rd}@trapb
                           handle _ => nonconst(T.REG(ty,r),T.LI i))
@@ -950,7 +947,7 @@ struct
       in
 	case e
 	of T.REG(_, r) => r
-         | T.LI z => if T.I.isZero(z) then zeroR else comp()
+         | T.LI z => if z = 0 then zeroR else comp()
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
@@ -981,7 +978,7 @@ struct
           | T.ADD(64,e,T.LI i)     => loadImmed(i, expr e, d, an)
           | T.ADD(64,T.LI i,e)     => loadImmed(i, expr e, d, an)
 	  | T.SUB(sz, a, b as T.LI z)    =>
-	      if T.I.isZero(z) then
+	      if z = 0 then
 		doExpr(a,d,an) 
 	      else (case sz
 		of 32 => minus(32,I.SUBL,I.S4SUBL,I.S8SUBL,a,b,d,an)
@@ -1092,9 +1089,9 @@ struct
 	  | T.COND(_, T.CMP(ty,cond,e1,e2), x, y)  => 
 	     (case (x, y)
 	      of (T.LI n, T.LI m) =>
-		if EQ(n, int_1) andalso EQ(m, int_0) then 
+		if EQ(n, 1) andalso EQ(m, 0) then 
 		  compare(ty,cond,e1,e2,d,an) 
-		else if EQ(n, int_0) andalso EQ(m, int_1) then
+		else if EQ(n, 0) andalso EQ(m, 1) then
 		  compare(ty,T.Basis.negateCond cond,e1,e2,d,an)
 	        else
 		  cmove(ty,cond,e1,e2,x,y,d,an) 
@@ -1224,7 +1221,7 @@ struct
           (* check whether an expression is andb(e,1) *)
       and isAndb1(e as T.ANDB(_, e1, e2)) = let
 	    fun isOne(n, ei) = 
-	      if EQ(n, int_1) then (true, ei) else (false, e)
+	      if EQ(n, 1) then (true, ei) else (false, e)
 	  in
 	    case(e1, e2) 
 	    of (T.LI n, _) => isOne(n, e2)
@@ -1234,8 +1231,8 @@ struct
 	| isAndb1 e = (false, e)
 
       and zeroOrOne(T.LI n) =
-	if T.I.isZero n then ZERO 
-	else if EQ(n, int_1) then ONE
+	if n = 0 then ZERO 
+	else if EQ(n, 1) then ONE
 	     else OTHER
 	| zeroOrOne _ = OTHER
 
@@ -1314,7 +1311,7 @@ struct
            *)
 
       and branchIt(ty,cc,e1,e2 as T.LI z,lab,an) = 
-	   if T.I.isZero z then branchIt0(cc,e1,lab,an)
+	   if z = 0 then branchIt0(cc,e1,lab,an)
 	   else branchItOther(ty,cc,e1,e2,lab,an)
         | branchIt(ty,cc,e1,e2,lab,an) = branchItOther(ty,cc,e1,e2,lab,an)
 
@@ -1399,7 +1396,7 @@ struct
                 | _ => (cond,a,b)
 
               fun sub(a, T.LI z) = 
-		   if T.I.isZero z then expr a else expr(T.SUB(ty,a,b))
+		   if z = 0 then expr a else expr(T.SUB(ty,a,b))
                 | sub(a,b)       = expr(T.SUB(ty,a,b))
 
               fun cmp(cond,e1,e2) = 

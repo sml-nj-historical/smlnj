@@ -73,14 +73,16 @@ structure POSIX_ProcEnv =
     val sysconf = P.sysconf
 
     val time' : unit -> Int32.int = cfun "time"
-    val time = Time.fromSeconds o time'
+    val time = Time.fromSeconds o Int32Imp.toLarge o time'
 
       (* times in clock ticks *)
     val times' : unit -> Int32.int * Int32.int * Int32.int * Int32.int * Int32.int
 	  = cfun "times"
     val ticksPerSec = Real.fromInt (SysWord.toIntX (sysconf "CLK_TCK"))
     fun times () = let
-          fun cvt ticks = Time.fromReal ((Real.fromLargeInt ticks)/ticksPerSec)
+          fun cvt ticks =
+	      Time.fromReal
+		  ((Real.fromLargeInt (Int32Imp.toLarge ticks))/ticksPerSec)
           val (e,u,s,cu,cs) = times' ()
           in
             { elapsed = cvt e,

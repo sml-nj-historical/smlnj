@@ -150,11 +150,16 @@ datatype primop
   | INLRSHIFTL of numkind
   | CMP of {oper: cmpop, kind: numkind}
 
-  | TESTU of int * int		
+  | TESTU of int * int
   | TEST of int * int
   | TRUNC of int * int
   | EXTEND of int * int
-  | COPY of int * int 
+  | COPY of int * int
+
+  | TEST_INF of int 			(* inf -> i *)
+  | TRUNC_INF of int			(* inf -> i *)
+  | EXTEND_INF of int			(* i -> inf *)
+  | COPY_INF of int			(* i -> inf *)
 
   | ROUND of {floor: bool, fromkind: numkind, tokind: numkind}
   | REAL of {fromkind: numkind, tokind: numkind}
@@ -238,6 +243,8 @@ datatype primop
     * or tag_fblock (fblock = true).
     *)
   | RAW_RECORD of { fblock: bool }
+
+  | INLIDENTITY				(* polymorphic identity *)
 
 and ccall_type =
     CCI32 |				(* passed as int32 *)

@@ -20,8 +20,8 @@ struct
 
   (* int binary maps *)
   structure IT = BinaryMapFn (struct 
-			        type ord_key = Int32.int
-			        val compare = Int32.compare
+			        type ord_key = LargeInt.int
+			        val compare = LargeInt.compare
 			      end)
 
 
@@ -140,7 +140,7 @@ struct
      switchFuns :
       {pushSwitchLabels : unit -> unit,
        popSwitchLabels : unit -> unit,
-       addSwitchLabel : Int32.int -> string option,
+       addSwitchLabel : LargeInt.int -> string option,
          (* returns error message option *)
        addDefaultLabel : unit -> string option}}
          (* returns error message option *)
@@ -270,7 +270,7 @@ local val {switchLabels} = switchContext in
       switchLabels := {switchTab = IT.empty, default=false} :: !switchLabels
 
   (* effects: switchLabels *)
-  fun addSwitchLabel (i: Int32.int) : string option =
+  fun addSwitchLabel (i: LargeInt.int) : string option =
       case !switchLabels
 	of {switchTab, default} :: rest =>
 	    (case IT.find(switchTab, i)
@@ -280,10 +280,10 @@ local val {switchLabels} = switchContext in
 		       NONE
 		   end
 		| SOME _ =>  (* error return *)
-		   SOME ("Duplicate case label " ^ (Int32.toString i) ^
+		   SOME ("Duplicate case label " ^ (LargeInt.toString i) ^
 			 " in the same switch statement"))
 	 | nil => (* error return *)
-	    SOME ("Case label " ^ (Int32.toString i) ^
+	    SOME ("Case label " ^ (LargeInt.toString i) ^
 		  " appears outside a switch statement")
     
   (* effects: switchLabels *)

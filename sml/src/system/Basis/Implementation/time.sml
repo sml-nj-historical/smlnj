@@ -46,21 +46,21 @@ structure TimeImp : TIME =
 	    else PB.TIME{sec=0, usec=usec}
 
     local
-    (* a floor function that produces a LargeInt.int *)
-      fun floor x = Real.toLargeInt IEEEReal.TO_NEGINF x
+    (* a floor function that produces a FixedInt.int *)
+      val floor = Real.toLargeInt IEEEReal.TO_NEGINF
+      val t2r = Real.fromLargeInt
     in
     fun fromReal rt = if (rt < 0.0)
 	  then raise Time
 	  else let
 	    val sec = floor rt
 	    in
-	      PB.TIME{sec=sec, usec=floor((rt - Real.fromLargeInt sec) * 1000000.0)}
+	      PB.TIME{sec=sec, usec=floor((rt - t2r sec) * 1000000.0)}
 	    end
 	      handle Overflow => raise Time
-    end (* local *)
 
-    fun toReal (PB.TIME{sec, usec}) =
-	  (Real.fromLargeInt sec) + ((Real.fromLargeInt usec) * 0.000001)
+    fun toReal (PB.TIME{sec, usec}) = (t2r sec) + ((t2r usec) * 0.000001)
+    end (* local *)
 
     fun add (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) = let
 	  val s = s1 + s2
@@ -99,7 +99,7 @@ structure TimeImp : TIME =
     in
     fun now () = let val (ts, tu) = gettimeofday()
 	  in
-	    PB.TIME{sec= Int32.toLarge ts, usec= Int.toLarge tu}
+	    PB.TIME{sec= Int32.toLarge ts, usec= Int.toLarge tu }
 	  end
     end (* local *)
 
@@ -117,7 +117,7 @@ structure TimeImp : TIME =
 	      PB.TIME{sec=0, usec=    50},
 	      PB.TIME{sec=0, usec=     5}
 	    ]
-      val fmtInt = (NumFormat.fmtInt StringCvt.DEC)
+      val fmtInt = IntInfImp.fmt StringCvt.DEC
       fun fmtUSec usec = let
 	    val usec' = fmtInt usec
 	    in
@@ -180,7 +180,8 @@ structure TimeImp : TIME =
     fun scan getc charStrm = let
 	  val chrLE : (char * char) -> bool = InlineT.cast InlineT.DfltInt.<=
 	  fun isDigit c = (chrLE(#"0", c) andalso chrLE(c, #"9"))
-	  fun incByDigit (n, c) = 10*n + Int.toLarge(Char.ord c - Char.ord #"0")
+	  fun incByDigit (n, c) =
+	      10*n + Int.toLarge(Char.ord c - Char.ord #"0")
 	  fun scanSec (secs, cs) = (case (getc cs)
 		 of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
 		  | (SOME(#".", cs')) => (case (getc cs')
