@@ -184,17 +184,16 @@ end = struct
 		fun rt2ie (n, ii: IInfo.info) = let
 		    val s = #statenv ii ()
 		    val (dae, mkDomain) = Statenv2DAEnv.cvt s
+		    val domain = mkDomain ()
 		in
-		    (* Link path info = NONE, will be reset at import
-		     * time (in members.sml). *)
-		    { ie = ((NONE, n), dae), mkDomain = mkDomain }
+		    { ie = (fn () => (NONE, n), dae, domain), domain = domain }
 		end
 		
 		fun add_exports (n, exports) = let
-		    val { ie, mkDomain } = rt2ie (n, rt n)
+		    val { ie, domain } = rt2ie (n, rt n)
 		    fun ins_ie (sy, m) = SymbolMap.insert (m, sy, ie)
 		in
-		    SymbolSet.foldl ins_ie exports (mkDomain ())
+		    SymbolSet.foldl ins_ie exports domain
 		end
 
 		val special_exports = let

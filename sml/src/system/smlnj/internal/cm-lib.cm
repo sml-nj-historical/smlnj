@@ -5,7 +5,6 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-(cm-hook)
 Library
 	signature CM
 

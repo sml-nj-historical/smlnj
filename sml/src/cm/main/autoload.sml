@@ -117,7 +117,7 @@ functor AutoLoadFn (structure C : COMPILE
 	    fun otherwise _ = EM.impossible "Autoload:lookpend"
 	in
 	    case SymbolMap.find (pend, sy) of
-		SOME (x as ((_, e), _)) =>
+		SOME (x as ((_, e, _), _)) =>
 		    (announce ();
 		     load := SymbolMap.insert (!load, sy, x);
 		     BuildDepend.look otherwise e sy)
@@ -132,23 +132,14 @@ functor AutoLoadFn (structure C : COMPILE
 
 	(* However, we want to avoid hanging on to stuff unnecessarily, so
 	 * we now look for symbols that become available "for free" because
-	 * their corresponding node has been picked.  So we first build
-	 * three sets: sml- and stable-infos of picked nodes: *)
-	fun add ((((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _), _),
-		 (ss, bs)) =
-	    (SmlInfoSet.add (ss, smlinfo), bs)
-	  | add ((((_, DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)), _), _),
-		 (ss, bs)) =
-	    (ss, StableSet.add (bs, bininfo))
+	 * their corresponding node has been picked. *)
 
-	val (smlinfos, stableinfos) =
-	    SymbolMap.foldl add (SmlInfoSet.empty, StableSet.empty) loadmap0
+	fun add (((_, _, ss), _), allsyms) = SymbolSet.union (ss, allsyms)
 
-	(* now we can easily find out whether a node has been picked... *)
-	fun isPicked (((_, DG.SB_SNODE (DG.SNODE n)), _), _) =
-	    SmlInfoSet.member (smlinfos, #smlinfo n)
-	  | isPicked (((_, DG.SB_BNODE (DG.BNODE n, _)), _), _) =
-	    StableSet.member (stableinfos, #bininfo n)
+	val pickedsyms = SymbolMap.foldl add SymbolSet.empty loadmap0
+
+	fun isPicked ((_, _, ss), _) =
+	    not (SymbolSet.isEmpty (SymbolSet.intersection (ss, pickedsyms)))
 
 	val loadmap = SymbolMap.filter isPicked pend
 	val noloadmap = SymbolMap.filter (not o isPicked) pend

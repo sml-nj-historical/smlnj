@@ -73,7 +73,7 @@ in
 
 	and fsbn (_, n) = sbn n
 
-	fun impexp (n, _) = ignore (fsbn n)
+	fun impexp (nth, _, _) = ignore (fsbn (nth ()))
     in
 	SymbolMap.app impexp exports
     end

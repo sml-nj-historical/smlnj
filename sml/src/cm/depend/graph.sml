@@ -30,7 +30,7 @@ structure DependencyGraph = struct
 
     withtype farsbnode = sbnode far
 
-    type impexp = farsbnode * DAEnv.env
+    type impexp = (unit -> farsbnode) * DAEnv.env * SymbolSet.set
 
     fun describeSBN (SB_BNODE (BNODE { bininfo = i, ... }, _)) =
 	BinInfo.describe i

@@ -55,7 +55,10 @@ ignore (OS.Process.exit ((case CM.mk_standalone NONE "${cmfile}" of
    handle _ => OS.Process.failure))
 EOF
 
-if $SML '$smlnj/cm/full.cm' <$mlscript ; then
+# Provide $smlnj/cm.cm as a command-line argument just to be absolutely
+# sure that structure CM is available. (Under normal circumstances it
+# is already available -- even without any command line arguments.)
+if $SML '$smlnj/cm.cm' <$mlscript ; then
     $LINK @SMLboot=$listfile $
 else
     echo Compilation failed.

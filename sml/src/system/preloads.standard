@@ -8,4 +8,7 @@
 # author: Matthias Blume (blume@cs.princeton.edu)
 #
 autoload $basis.cm
-autoload $smlnj/cm/minimal.cm
+autoload $smlnj/cm.cm
+autoload $smlnj/cmb.cm
+autoload $smlnj/compiler.cm
+autoload $/smlnj-lib.cm

@@ -203,8 +203,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 		fun dontcomplain s = DE.EMPTY
 		fun lookfar () =
 		    case SM.find (imports, s) of
-			SOME (farn, e) => (globalImport farn;
-					   look dontcomplain e s)
+			SOME (farnth, e, _) => (globalImport (farnth ());
+						look dontcomplain e s)
 		      | NONE =>
 			    (* We could complain here about an undefined
 			     * name.  However, since CM doesn't have the
@@ -242,20 +242,28 @@ structure BuildDepend :> BUILDDEPEND = struct
 	 * to be updated accordingly *)
 	fun doSmlFile i = ignore (getResult (i, []))
 
-	(* converting smlinfos to sbnodes * env *)
-	fun i2sbn i = let
-	    val (sn, e) = valOf (valOf (fetch i))
-	in
-	    (DG.SB_SNODE sn, e)
-	end
-
 	(* run the analysis *)
 	val _ = app doSmlFile smlfiles
 
-	(* We add NONE as link path info here.  In general, this is
-	 * not always the correct info, but the correct info will
-	 * become available upon _import_ (and not now, during export). *)
-	fun addDummyFilt (sbn, e) = ((NONE, sbn), e)
+	(* Invert the "localdefs" map so that each smlinfo is mapped to the
+	 * corresponding _set_ of symbols: *)
+	local
+	    fun add (sy, i, m) =
+		case SmlInfoMap.find (m, i) of
+		    NONE => SmlInfoMap.insert (m, i, SymbolSet.singleton sy)
+		  | SOME ss => SmlInfoMap.insert (m, i, SymbolSet.add (ss, sy))
+	in
+	    val ilocaldefs = SymbolMap.foldli add SmlInfoMap.empty localdefs
+	end
+
+	fun addDummyFilt i = let
+	    val (sn, e) = valOf (valOf (fetch i))
+	    val sbn = DG.SB_SNODE sn
+	    val fsbn = (NONE, sbn)
+	in
+	    (* We also thunkify the fsbn so that the result is an impexp. *)
+	    (fn () => fsbn, e, valOf (SmlInfoMap.find (ilocaldefs, i)))
+	end
 
 	(* First we make a map of all locally defined symbols to
 	 * the local "far sb node"
@@ -263,7 +271,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 	 * This makes it consistent with the current state
 	 * of "imports" and "gimports" where there can be filters, but
 	 * where those filters are not yet strengthened according to fopt *)
-	val localmap = SM.map (addDummyFilt o i2sbn) localdefs
+	val localmap = SM.map addDummyFilt localdefs
 
 	val exports =
 	    case fopt of
@@ -279,13 +287,15 @@ structure BuildDepend :> BUILDDEPEND = struct
 		     * They can be taken from either localmap or else from
 		     * imports.  In either case, it is necessary to strengthen
 		     * the filter attached to each node. *)
-		    fun strengthen ((fopt', sbn), e) = let
+		    fun strengthen (nth, e, allsyms) = let
+			val (fopt', sbn) = nth ()
 			val new_fopt =
 			    case fopt' of
 				NONE => fopt
 			      | SOME ss' => SOME (SS.intersection (ss, ss'))
+			fun nth' () = (new_fopt, sbn)
 		    in
-			((new_fopt, sbn), DE.FILTER (ss, e))
+			(nth', DE.FILTER (ss, e), SS.intersection (allsyms,ss))
 		    end
 		    val availablemap = SM.unionWith #1 (localmap, imports)
 		    fun addNodeFor (s, m) =

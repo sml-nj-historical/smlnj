@@ -109,9 +109,9 @@ in
 	    app (visit o #1) (SmlInfoMap.listItemsi (!smlmap))
 	end
 
-	fun newTraversal (GG.ERRORGROUP, _) =
+	fun newTraversal0 (GG.ERRORGROUP, _) =
 	    { group = fn _ => NONE, exports = SymbolMap.empty }
-	  | newTraversal (group as GG.GROUP grec, getBFC) = let
+	  | newTraversal0 (group as GG.GROUP grec, getBFC) = let
 
 	    val { exports, grouppath, ... } = grec
 
@@ -276,14 +276,15 @@ in
 				end
 
 			    fun fsbn (_, n) = sbn n
-			    fun impexp (n, _) = fsbn n
+			    fun impexp (nth, _, _) = fsbn (nth ())
 			in
 			    SymbolMap.app impexp exports
 			end
+		    fun force f = f ()
 		in
 		    if SrcPathSet.member (!visited, grouppath) then ()
 		    else (visited := SrcPathSet.add (!visited, grouppath);
-			  app (registerGroup o #2) sublibs;
+			  app (registerGroup o force o #2) sublibs;
 			  case kind of
 			      GG.LIB { kind = GG.STABLE _, ... } =>
 			          registerStableLib g
@@ -346,7 +347,7 @@ in
 
 	    and fsbn (_, n) = sbn n
 
-	    fun impexp (n, _) gp = #1 (fsbn n) gp
+	    fun impexp (nth, _, _) gp = #1 (fsbn (nth ())) gp
 		handle Link exn => raise exn
 
 	    val exports' = SymbolMap.map impexp exports
@@ -363,6 +364,19 @@ in
 	in
 	    { exports = exports', group = group' }
 	end
+
+	fun newTraversal (x as (GG.ERRORGROUP, _)) = newTraversal0 x
+	  | newTraversal (x as (GG.GROUP { exports, ... }, _)) = let
+		val tth = Memoize.memoize (fn () => newTraversal0 x)
+	    in
+		{ group = fn gp => #group (tth ()) gp,
+		  exports = SymbolMap.mapi
+				(fn (sy, _) => fn gp =>
+				    valOf (SymbolMap.find (#exports (tth ()),
+							   sy))
+					  gp)
+				exports }
+	    end
 
 	fun reset () = (stablemap := StableMap.empty;
 			smlmap := SmlInfoMap.empty)

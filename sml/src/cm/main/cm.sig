@@ -10,7 +10,10 @@
  *)
 signature CM = sig
 
-    include MINIMAL_CM
+    val autoload : string -> bool
+    val make : string -> bool
+    val recomp : string -> bool
+    val stabilize : bool -> string -> bool
 
     type 'a controller = { get : unit -> 'a, set : 'a -> unit }
 

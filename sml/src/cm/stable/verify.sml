@@ -21,7 +21,7 @@ signature VERIFY_STABLE = sig
     val verify' : GP.info -> exportmap
 	-> SrcPath.t *			(* grouppath *)
 	   DG.sbnode list *		(* export_nodes *)
-	   (SrcPath.t * GG.group) list * (* sublibs *)
+	   GG.subgrouplist *		(* sublibs *)
 	   SrcPathSet.set *		(* groups *)
 	   Version.t option
 	-> bool
@@ -51,9 +51,11 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 	      | _ => true
 	end
 
-	fun nonstabSublib (_, GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
-							 ... }, ... }) = false
-	  | nonstabSublib _ = true
+	fun nonstabSublib (_, gth) =
+	    case gth () of
+		GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
+					   ... }, ... } => false
+	      | _ => true
 
 	fun invalidGroup stab_t p =
 	    case SrcPath.tstamp p of
@@ -89,9 +91,10 @@ functor VerStabFn (structure Stabilize: STABILIZE) :> VERIFY_STABLE = struct
 		case kind of
 		    GG.NOLIB _ => NONE
 		  | GG.LIB { version, ... } => version
+	    fun force f = f ()
 	in
 	    verify' gp em (grouppath,
-			   map (#2 o #1) (SymbolMap.listItems exports),
+			   map (#2 o force o #1) (SymbolMap.listItems exports),
 			   sublibs, groups, version)
 	end
 end

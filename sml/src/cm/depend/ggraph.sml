@@ -32,7 +32,7 @@ structure GroupGraph = struct
 		   sublibs: subgrouplist }
       | ERRORGROUP
 
-    withtype subgrouplist = (SrcPath.t * group) list
+    withtype subgrouplist = (SrcPath.t * (unit -> group)) list
     (* Note: "sublibs" consists of (srcpath, group) pairs where
      * srcpath is equivalent -- but not necessarily identical -- to
      * the "grouppath" component of "group".  The group might have

@@ -12,6 +12,48 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/06/06 11:15:00 JST
+Tag: blume-20000606-lazierpickle
+Description:
+
+!!!! NEW BOOT FILES !!!!
+
+* The main purpose of this update is to make library pickles lazier in
+order to reduce the initial space penalty for autoloading a library.
+As a result, it is now possible to have $smlnj/compiler.cm
+pre-registered.  This should take care of the many complaints or
+inquiries about missing structure Compiler.  This required changes to
+CM's internal data structures and small tweaks to some algorithms.
+
+As a neat additional effect, it is no longer necessary (for the sake
+of lean heap image files) to distinguish between a "minimal" CM and a
+"full" CM.  Now, there is only one CM (i.e., the "full" version:
+$smlnj/cm.cm aka $smlnj/cm/full.cm), and it is always available at the
+interactive top level. ($smlnj/cm/minimal.cm is gone.)
+
+To make the life of compiler-hackers easier, "makeml" now also
+pre-registers $smlnj/cmb.cm (aka $smlnj/cmb/current.cm).  In other
+words, after you bootstrap a new sml for the first time, you will not
+have to autoload $smlnj/cmb.cm again afterwards.  (The first time
+around you will still have to do it, though.)
+
+* A second change consists of major updates to the CM manual.  There
+are now several appendices with summary information and also a full
+specification of the CM description file syntax.
+
+* In directory src/system I added the script "allcross".  This script
+invokes sml and cross-compiles the compiler for all supported
+architectures.  (Useful when providing a new set of boot files.)
+
+* There seems to be a latent bug in my "lazy pickles" mechanism.  I
+added a small tweak to pickle-util.sml to work around this problem,
+but it is not a proper fix yet.  I will investigate further.  (The
+effect of the bug was an inflation of library pickle size.)
+
+* Version number increased to 110.28.1 (to avoid compatibility problems).
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/05/25 17:28 EDT
 Tag: leunga-20000525-ra

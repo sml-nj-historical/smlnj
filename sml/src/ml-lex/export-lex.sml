@@ -1,6 +1,13 @@
 (* export-lex.sml
  *
  * $Log$
+ * Revision 1.4  2000/06/06 02:14:54  blume
+ * merging changes from devel branch; new boot files
+ *
+ * Revision 1.2.2.1  2000/06/02 08:11:06  blume
+ * added several appendices to CM manual;
+ * merged recent changes to main trunk into devel branch
+ *
  * Revision 1.3  2000/06/01 18:33:42  monnier
  * bring revisions from the vendor branch to the trunk
  *

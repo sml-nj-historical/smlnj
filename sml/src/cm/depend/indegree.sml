@@ -41,7 +41,7 @@ in
 		foldl inc_sn (foldl (fsb inc_sn) m gi) li
 	    end
 
-	    fun impexp ((n, _), m) = fsb snode (n, m)
+	    fun impexp ((nth, _, _), m) = fsb snode (nth (), m)
 	in
 	    SymbolMap.foldl impexp M.empty exports
 	end

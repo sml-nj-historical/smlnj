@@ -267,11 +267,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  case archos of
 		      NONE => fnpolicy
 		    | SOME ao => FilenamePolicy.colocate_generic ao
-	      fun sourcesOf ((p, g), (v, a)) =
+	      fun sourcesOf ((p, gth), (v, a)) =
 		  if SrcPathSet.member (v, p) then (v, a)
 		  else
 		      let val v = SrcPathSet.add (v, p)
-		      in case g of
+		      in case gth () of
 			     GG.ERRORGROUP => (v, a)
 			   | GG.GROUP { kind, sources, ... } => let
 				 fun add (p, x, a) =
@@ -305,7 +305,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      (case Parse.parse (parse_arg (gr, NONE, p)) of
 		   SOME (g, _) => let
 		       val (_, sm) =
-			   sourcesOf ((p, g),
+			   sourcesOf ((p, fn () => g),
 				      (SrcPathSet.empty,
 				       StringMap.singleton
 					   (SrcPath.osstring p,
@@ -489,11 +489,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			      (HostMachDepVC.Interact.installCompManager
 			            (SOME al_manager');
 				    standard_preload BtNames.standard_preloads;
-			       CmHook.init
-			         { stabilize = stabilize,
-				   recomp = recomp,
-				   make = make,
-				   autoload = autoload };
 			       (* unconditionally drop all library pickles *)
 			       Parse.dropPickles ();
 			       SOME (autoload_postprocess ()))

@@ -391,7 +391,7 @@ in
 		    end
 	    end (* snode *)
 
-	    fun impexp gp (n, _) = fsbnode gp n
+	    fun impexp gp (nth, _, _) = fsbnode gp (nth ())
 	in
 	    { sbnode = sbnode, impexp = impexp }
 	end
@@ -400,13 +400,17 @@ in
 	    { group = fn _ => NONE, exports = SymbolMap.empty }
 	  | newTraversal (notify, storeBFC, g as GG.GROUP grec) = let
 		val { exports, ... } = grec
-		val um = Indegree.indegrees g
-		fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
-		val { impexp, ... } =
-		    mkTraversal (notify, storeBFC, getUrgency)
+		val um = Memoize.memoize (fn () => Indegree.indegrees g)
+		fun getUrgency i = getOpt (SmlInfoMap.find (um (), i), 0)
+		(* generate the traversal -- lazily *)
+		val impexpth =
+		    Memoize.memoize
+			(fn () =>
+			    #impexp
+				(mkTraversal (notify, storeBFC, getUrgency)))
 		fun group gp = let
 		    val eo_cl =
-			map (fn x => Concur.fork (fn () => impexp gp x))
+			map (fn x => Concur.fork (fn () => impexpth () gp x))
 		            (SymbolMap.listItems exports)
 		    val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
 		in
@@ -415,7 +419,7 @@ in
 		      | SOME e => SOME (#envs e ())
 		end handle Abort => (Servers.reset false; NONE)
 		fun mkExport ie gp =
-		    case impexp gp ie handle Abort => NONE of
+		    case impexpth () gp ie handle Abort => NONE of
 			NONE => (Servers.reset false; NONE)
 		      | SOME e => SOME (#envs e ())
 	    in

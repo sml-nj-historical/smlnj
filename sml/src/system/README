@@ -32,8 +32,7 @@ in its own right):
   * $smlnj/compiler/current.cm		structure Compiler (current arch)
   * $smlnj/compiler/all.cm		all cross-compilers and all cross-CMBs
 
-  * $smlnj/cm/minimal.cm		minimal CM (pre-loaded)
-  * $smlnj/cm/full.cm			full structure CM (see manual)
+  * $smlnj/cm/full.cm			structure CM (see manual)
   * $smlnj/cm/tools.cm			CM tools library
 
   * $smlnj/cmb/{alpha32,hppa,ppc,sparc,x86}-unix.cm
@@ -53,7 +52,7 @@ in its own right):
   - $smlnj/viscomp/{alpha32,hppa,ppc,sparc,x86}.cm
 					Machine-specific parts of compiler
 
-  - $smlnj/internal/{intsys,cm-lib,cm-hook,host-compiler-0}.cm
+  - $smlnj/internal/{intsys,cm-lib,host-compiler-0}.cm
 					Glue that holds the interactive system
 					together
 
@@ -563,36 +562,38 @@ The reliance on the autoloader (and therefore CM's library mechanism)
 means that in order to be able to use the system, your paths must be
 properly configured.
 
-Two libraries get pre-registered at bootstap time: the basis library
-("$/basis.cm") and CM itself ("$smlnj/cm/minimal.cm").  The latter is
-crucial: without it one wouldn't be able to register any other
-libraries via CM.autoload.  The registration of $/basis.cm is a mere
-convenience.
+Several libraries get pre-registered at bootstap time.  Here, at least
+the following two should be included: the basis library ("$/basis.cm")
+and CM itself ("$smlnj/cm.cm").  Currently, we also pre-register the
+library exporting structure Compiler ($smlnj/compiler.cm) and the
+SML/NJ library ($/smlnj-lib.cm).
 
 Here are some other useful libraries that are not pre-registered but
 which can easily be made accessible via CM.autoload (or, non-lazily,
 via CM.make):
 
-	$smlnj/cm.cm		- provides the actual ("full") structure CM
-				  as described in the CM manual
-        $smlnj/cm/full.cm	- same as $smlnj/cm.cm
-	$smlnj/compiler.cm	- provides "structure Compiler"
-        $smlnj/compiler/current.cm - same as $smlnj/compiler.cm
 	$smlnj/cmb.cm		- provides "structure CMB"
 	$smlnj/cmb/current.cm	- same as $smlnj/cmb.cm
 	$smlnj/compiler/all.cm	- provides "structure <Arch>Compiler" and
 				  "structure <Arch><OS>CMB" for various
 				  values of <Arch> and <OS>
-	$smlnj-lib.cm		- the SML/NJ library
 
-[Note: The fact that $smlnj/compiler.cm is not among the
-pre-registered libraries seems like an oversight and could lead to
-some inconveniences to users who want to, for example, set compiler
-flags.  However, pre-registration of this library significantly
-increases the size of the heap image.  Moreover, since the library can
-easily be loaded by giving the string as a command line argument, this
-does not really appear to be a big burden to me.  Just create a shell
-alias or a little wrapper script if you think you really need this.]
+The file preloads.standard here in this directory currently includes
+$smlnj/cmb.cm.  This means that by doing ./makeml one obtains a heap
+image with the bootstrap compiler being pre-registered as well.  This
+seems reasonable for compiler hackers.  (The config/install.sh script
+uses config/preloads where $smlnj/cmb.cm is not pre-registered.  This
+is appropriate as a setup for general users.)
+
+[****** Note:  The following is NO LONGER TRUE:
+The fact that $smlnj/compiler.cm is not among the pre-registered
+libraries seems like an oversight and could lead to some
+inconveniences to users who want to, for example, set compiler flags.
+However, pre-registration of this library significantly increases the
+size of the heap image.  Moreover, since the library can easily be
+loaded by giving the string as a command line argument, this does not
+really appear to be a big burden to me.  Just create a shell alias or
+a little wrapper script if you think you really need this.]
 
 * Internal sharing
 ------------------

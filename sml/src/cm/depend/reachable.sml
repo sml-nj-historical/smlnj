@@ -62,12 +62,14 @@ structure Reachable :> REACHABLE = struct
 	    foldl sbnode (empty, StableSet.empty) export_nodes
 	end
 
+	fun force f = f ()
+
 	fun snodeMap' (exports: DG.impexp SymbolMap.map, acc) = let
 	    fun add (m, i, x) = SrcPathMap.insert (m, SmlInfo.sourcepath i, x)
 	    fun member (m, i) = SrcPathMap.inDomain (m, SmlInfo.sourcepath i)
 	in
 	    #1 (reach { add = add, member = member, empty = acc }
-		      (map (#2 o #1) (SymbolMap.listItems exports)))
+		      (map (#2 o force o #1) (SymbolMap.listItems exports)))
 	end
     in
 	val reachable' =
@@ -76,7 +78,8 @@ structure Reachable :> REACHABLE = struct
 		    empty = SmlInfoSet.empty }
 
 	fun reachable (GG.GROUP { exports, ... }) =
-	              reachable' (map (#2 o #1) (SymbolMap.listItems exports))
+	              reachable' (map (#2 o force o #1)
+				      (SymbolMap.listItems exports))
 	  | reachable GG.ERRORGROUP = (SmlInfoSet.empty, StableSet.empty)
 
 	fun snodeMap g = let
@@ -85,7 +88,7 @@ structure Reachable :> REACHABLE = struct
 		    val { exports, sublibs, grouppath, ... } = grec
 		in
 		    if SrcPathSet.member (seen, grouppath) then (a, seen)
-		    else foldl (fn ((_, g), x) => snm (g, x))
+		    else foldl (fn ((_, g), x) => snm (g (), x))
 		               (snodeMap' (exports, a),
 				SrcPathSet.add (seen, grouppath))
 			       sublibs
@@ -103,9 +106,11 @@ structure Reachable :> REACHABLE = struct
 	    fun go (GG.ERRORGROUP, a) = a
 	      | go (g as GG.GROUP { grouppath, ... }, a) = let
 		    val sgl = subgroups g
-		    fun sl ((p, g as GG.GROUP { kind = GG.NOLIB _, ... }), a) =
-			if SrcPathSet.member (a, p) then a else go (g, a)
-		      | sl (_, a) = a
+		    fun sl ((p, gth), a) =
+			case gth () of
+			    g as GG.GROUP { kind = GG.NOLIB _, ... } =>
+			    if SrcPathSet.member (a, p) then a else go (g, a)
+			  | _ => a
 		in
 		    SrcPathSet.add (foldl sl a sgl, grouppath)
 		end
@@ -115,8 +120,8 @@ structure Reachable :> REACHABLE = struct
 
 	fun stableLibsOf GG.ERRORGROUP = SrcPathMap.empty
 	  | stableLibsOf (g as GG.GROUP { grouppath, ... }) = let
-		fun slo ((_, GG.ERRORGROUP), x) = x
-		  | slo ((p, g as GG.GROUP grec), (seen, res)) = let
+		fun slo' ((_, GG.ERRORGROUP), x) = x
+		  | slo' ((p, g as GG.GROUP grec), (seen, res)) = let
 			val { kind, sublibs, ... } = grec
 		    in
 			if SrcPathSet.member (seen, p) then (seen, res)
@@ -131,8 +136,10 @@ structure Reachable :> REACHABLE = struct
 				  | _ => (seen, res)
 			    end
 		    end
+		and slo ((p, gth), x) = slo' ((p, gth ()), x)
 	    in
-		#2 (slo ((grouppath, g), (SrcPathSet.empty, SrcPathMap.empty)))
+		#2 (slo' ((grouppath, g),
+			  (SrcPathSet.empty, SrcPathMap.empty)))
 	    end
 
 	fun frontier _ GG.ERRORGROUP = StableSet.empty
@@ -149,8 +156,10 @@ structure Reachable :> REACHABLE = struct
 		    else foldl bnode (seen, f) li
 		end
 	    end
-	    fun get_bn (((_, DG.SB_BNODE (n, _)), _), bnl) = n :: bnl
-	      | get_bn (_, bnl) = bnl
+	    fun get_bn ((nth, _, _), bnl) =
+		case nth () of
+		    (_, DG.SB_BNODE (n, _)) => n :: bnl
+		  | _ => bnl
 	    val bnl = SymbolMap.foldl get_bn [] exports
 	in
 	    #2 (foldl bnode (StableSet.empty, StableSet.empty) bnl)

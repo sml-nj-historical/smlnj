@@ -187,11 +187,13 @@ structure CMSemant :> CM_SEMANT = struct
 	fun sameSL (p, g) (p', g') = SrcPath.compare (p, p') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
-	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
-	    (case kind of
-		 GG.NOLIB _ => foldl add l sublibs
-	       | _ => add (x, l))
-	  | oneSG (_, l) = l
+	fun oneSG (x as (_, gth), l) =
+	    case gth () of
+		GG.GROUP { kind, sublibs, ... } =>
+		(case kind of
+		     GG.NOLIB _ => foldl add l sublibs
+		   | _ => add (x, l))
+	      | _ => l
     in
 	foldl oneSG [] subgroups
     end
@@ -210,8 +212,9 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn)
-	val subgroups = MemberCollection.subgroups mc
+	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
+	fun thunkify (p, g) = (p, fn () => g)
+	val subgroups = map thunkify (MemberCollection.subgroups mc)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
@@ -239,8 +242,9 @@ structure CMSemant :> CM_SEMANT = struct
 	in
 	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
-	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn)
-	val subgroups = MemberCollection.subgroups mc
+	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn ())
+	fun thunkify (p, g) = (p, fn () => g)
+	val subgroups = map thunkify (MemberCollection.subgroups mc)
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in

@@ -111,7 +111,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    in
 		Symbol.nameSpaceToString ns :: " " :: Symbol.name s :: r
 	    end
-	    fun i_error (s, x as ((f, sbn), e), ((f', sbn'), e')) = let
+	    fun i_error (s, x as (nth, e, allsyms), (nth', e', allsyms')) = let
+		val (f, sbn) = nth ()
+		val (f', sbn') = nth' ()
 		fun complain () =
 		    error (concat (describeSymbol
 				       (s, [" imported from ",
@@ -123,7 +125,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		  | union (SOME f, SOME f') = SOME (SymbolSet.union (f, f'))
 	    in
 		if DG.sbeq (sbn, sbn') then
-		    ((union (f, f'), sbn), DAEnv.LAYER (e, e'))
+		    let val fsbn = (union (f, f'), sbn)
+		    in
+			(fn () => fsbn, DAEnv.LAYER (e, e'),
+			 SymbolSet.union (allsyms, allsyms'))
+		    end
 		else (complain (); x)
 	    end
 	    val i_union = SymbolMap.unionWithi i_error

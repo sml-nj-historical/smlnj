@@ -115,13 +115,16 @@ struct
 	 * position of its exporting sub-library and a representative
 	 * symbol that can be used to find the BNODE within the
 	 * exports of that library. *)
-	fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
-	    StableMap.insert (m, #bininfo n, (i, sy))
-	  | oneB _ (_, _, m) = m
-	fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
+	fun oneB i (sy, (nth, _, _), m) =
+	    case nth () of
+		(_, DG.SB_BNODE (DG.BNODE n, _)) =>
+		StableMap.insert (m, #bininfo n, (i, sy))
+	      | _ => m
+	fun oneSL (g as GG.GROUP { exports, ... }, (m, i)) =
 	    (SymbolMap.foldli (oneB i) m exports, i + 1)
 	  | oneSL (_, (m, i)) = (m, i + 1)
-	val (im, _) = foldl oneSL (StableMap.empty, 0) sublibs
+	fun oneSL' ((_, gth), a) = oneSL (gth (), a)
+	val (im, _) = foldl oneSL' (StableMap.empty, 0) sublibs
 	fun look i =
 	    case StableMap.find (im, i) of
 		SOME p => p
@@ -297,8 +300,9 @@ struct
 		fun xsg #"s" =
 		    let val p = abspath ()
 			val vo = option versionOptM version ()
+			fun gth () = getGroup' (p, vo)
 		    in
-			(p, getGroup' (p, vo))
+			(p, Memoize.memoize gth)
 		    end
 		  | xsg _ = raise Format
 	    in
@@ -310,7 +314,7 @@ struct
 		    val sublibs = list sgListM sg ()
 
 		    fun getSublib i =
-			(case #2 (List.nth (sublibs, i)) of
+			(case #2 (List.nth (sublibs, i)) () of
 			     GG.GROUP x => x
 			   | GG.ERRORGROUP =>
 			       EM.impossible "loadStable: ERRORGROUP")
@@ -321,9 +325,12 @@ struct
 			    val { exports, ... } = getSublib pos
 			in
 			    case SymbolMap.find (exports, sy) of
-				SOME ((_, DG.SB_BNODE (_, x)), _) =>
-				StabModmap.addEnv (#statenv x ())
-			      | _ => raise Format
+				SOME (nth, _, _) =>
+				  (case nth () of
+				       (_, DG.SB_BNODE (_, x)) =>
+				       StabModmap.addEnv (#statenv x ())
+				     | _ => raise Format)
+			      | NONE => raise Format
 			end
 
 		    val { symenv, statenv, symbol, symbollist } =
@@ -400,8 +407,11 @@ struct
 				val { exports = slexp, ... } = getSublib pos
 			    in
 				case SymbolMap.find (slexp, sy) of
-				    SOME ((_, DG.SB_BNODE(n, _)), _) => n
-				  | _ => raise Format
+				    SOME (nth, _, _) =>
+				      (case nth () of
+					   (_, DG.SB_BNODE (n, _)) => n
+					 | _ => raise Format)
+				  | NONE => raise Format
 			    end
 			  | sbn' #"3" = sn ()
 			  | sbn' _ = raise Format
@@ -418,24 +428,35 @@ struct
 
 		    and fsbnlist () = list fsbnListM fsbn ()
 
+		    val lazy_fsbn = UU.r_lazy session fsbn
+
 		    fun impexp () = let
 			fun ie #"i" =
 			    let val sy = symbol ()
 				(* really reads farbnodes! *)
-				val (f, n) = fsbn ()
+				val nth = lazy_fsbn ()
 				val ge = lazy_statenv ()
-				val ii = { statenv = ge,
-					   symenv = lazy_symenv (),
-					   statpid = pid (),
-					   sympid = pid () }
+				val sye = lazy_symenv ()
+				val statpid = pid ()
+				val sympid = pid ()
+				val allsyms = symbolset ()
+				fun ieth () = let
+				    val (f, n) = nth ()
+				    val ii = { statenv = ge,
+					       symenv = sye,
+					       statpid = statpid,
+					       sympid = sympid }
+				in
+				    (f, DG.SB_BNODE (n, ii))
+				end
 				val e = Statenv2DAEnv.cvtMemo ge
-				(* put a filter in front to avoid having the
-				 * FCTENV being queried needlessly (this
-				 * avoids spurious module loadings) *)
-				val e' =
-				    DAEnv.FILTER (SymbolSet.singleton sy, e)
+				(* put a filter in front to avoid having
+				 * the FCTENV being queried needlessly
+				 * (avoids spurious module loadings) *)
+				val e' = DAEnv.FILTER
+					     (SymbolSet.singleton sy, e)
 			    in
-				(sy, ((f, DG.SB_BNODE (n, ii)), e'))
+				(sy, (Memoize.memoize ieth, e', allsyms))
 			    end
 			  | ie _ = raise Format
 		    in
@@ -497,9 +518,12 @@ struct
 	    val sublibs = #sublibs grec
 	    val exports = #exports grec
 
+	    fun force f = f ()
+
 	    val libstamp =
 		libStampOf (grouppath,
-			    map (#2 o #1) (SymbolMap.listItems exports),
+			    map (#2 o force o #1)
+				(SymbolMap.listItems exports),
 			    sublibs)
 
 	    fun writeBFC s i = BF.write { stream = s,
@@ -619,7 +643,7 @@ struct
 
 		and fsbn (_, n) k s = sbn n k s
 
-		fun impexp (n, _) k s = fsbn n k s
+		fun impexp (nth, _, _) k s = fsbn (nth ()) k s
 
 		val bnodes =
 		    lst impexp (SymbolMap.listItems exports)
@@ -724,20 +748,24 @@ struct
 		"f" $ [filter f, sbn n]
 	    end
 
+	    val lazy_fsbn = PU.w_lazy fsbn
+
 	    (* Here is the place where we need to write interface info. *)
-	    fun impexp (s, (n, _)) = let
+	    fun impexp (s, (nth, _, allsyms)) = let
 		val op $ = PU.$ IMPEXP
 		val { statenv, symenv, statpid, sympid } =
-		    case n of
+		    case nth () of
 			(_, DG.SB_BNODE (_, ii)) => ii
 		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
 			    getII smlinfo
 	    in
-		"i" $ [symbol s, fsbn n,
+		"i" $ [symbol s,
+		       lazy_fsbn nth,
 		       lazy_env statenv,
 		       lazy_symenv symenv,
 		       pid statpid,
-		       pid sympid]
+		       pid sympid,
+		       symbolset allsyms]
 	    end
 
 	    fun w_exports e = let
@@ -758,11 +786,11 @@ struct
 		"v" $ [string (Version.toString v)]
 	    end
 
-	    fun sg (p, g) = let
+	    fun sg (p, gth) = let
 		val op $ = PU.$ SG
-		val vo = case g of GG.GROUP { kind = GG.LIB { version, ... },
-					      ... } => version
-				 | _ => NONE
+		val vo = case gth () of
+			     GG.GROUP { kind = GG.LIB x, ... } => #version x
+			   | _ => NONE
 	    in
 		"s" $ [abspath p, option version vo]
 	    end
@@ -794,8 +822,9 @@ struct
 	    fun refetchStableGroup () = let
 		fun getGroup (p, _) = let
 		    fun theSublib (q, _) = SrcPath.compare (p, q) = EQUAL
+		    fun force f = f ()
 		in
-		    Option.map #2 (List.find theSublib sublibs)
+		    Option.map (force o #2) (List.find theSublib sublibs)
 		end
 	    in
 		loadStable gp { getGroup = getGroup, anyerrors = anyerrors }
@@ -848,11 +877,13 @@ struct
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
-		      fun notStable (_, GG.GROUP { kind =
-						   GG.LIB { kind = GG.STABLE _,
-							    ... }, ... }) =
-			  false
-			| notStable _ = true
+		      fun notStable (_, gth) =
+			  case gth () of
+			      GG.GROUP { kind =
+					 GG.LIB { kind = GG.STABLE _,
+						  ... }, ... } =>
+			      false
+			    | _ => true
 		  in
 		    case List.filter notStable (#sublibs grec) of
 			[] => doit (wrapped, bfc_acc, version)

@@ -239,8 +239,9 @@ structure PickleUtil :> PICKLE_UTIL = struct
 	val v = thunk ()
 	(* The larger the value of trialStart, the smaller the chance that
 	 * the loop (see below) will run more than once.  However, some
-	 * space may be wasted.  2 sounds like a good compromise to me. *)
-	val trialStart = 2
+	 * space may be wasted.  3 should avoid this most of the time.
+	 * (Experience shows: 2 doesn't.) *)
+	val trialStart = 3
 	(* This loop is ugly, but we don't expect it to run very often.
 	 * It is needed because we must first write the length of the
 	 * encoding of the thunk's value, but that encoding depends
@@ -258,7 +259,10 @@ structure PickleUtil :> PICKLE_UTIL = struct
 		if n = 0 then pr
 		else pad (CONCAT (null, pr), n - 1)
 	in
-	    if ilen < iesz then loop (nxt + 1, ilen + 1)
+	    if ilen < iesz then
+		(print (concat ["%LAZY-PICKLE LOOP: sz = ", Int.toString sz,
+				", iesz = ", Int.toString iesz, "\n"]);
+		 loop (nxt + 1, ilen + 1))
 	    else (codes, CONCAT (pad (STRING ie, ilen - iesz), pr), state)
 	end
     in

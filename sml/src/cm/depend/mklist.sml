@@ -49,7 +49,7 @@ end = struct
 	and farsbnode (_, DG.SB_BNODE (n, _)) = bnode n
 	  | farsbnode (_, DG.SB_SNODE n) = snode n
 
-	fun impexp (n, _) = farsbnode n
+	fun impexp (nth, _, _) = farsbnode (nth ())
     in
 	do_list impexp (SymbolMap.listItems exports)
 	               (fn _ => Nil)

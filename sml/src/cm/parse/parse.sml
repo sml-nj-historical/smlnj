@@ -63,11 +63,13 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	let val changed = ref true
 	    fun canStay GG.ERRORGROUP = true (* doesn't matter *)
 	      | canStay (GG.GROUP { sublibs, ... }) = let
-		    fun goodSublib (p, GG.GROUP {
-			    kind = GG.LIB { kind = GG.STABLE _, ... }, ... }) =
-			SrcPath.compare (p, igp) = EQUAL orelse
-			SrcPathMap.inDomain (!sgc, p)
-		      | goodSublib _ = true
+		    fun goodSublib (p, gth) =
+			case gth () of
+			    GG.GROUP { kind = GG.LIB { kind = GG.STABLE _,
+						       ... }, ... } =>
+			    SrcPath.compare (p, igp) = EQUAL orelse
+			    SrcPathMap.inDomain (!sgc, p)
+			  | _ => true
 		    val cs = List.all goodSublib sublibs
 		in
 		    if cs then () else changed := true;
@@ -125,12 +127,18 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
 	fun update_em (GG.GROUP ns_g, GG.GROUP s_g) =
 	    let val s_e = #exports s_g
-		fun add (sy, ((_ , DG.SB_SNODE (DG.SNODE sn)), _)) =
-		    (case SymbolMap.find (s_e, sy) of
-			 SOME ((_, DG.SB_BNODE (DG.BNODE bn, _)), _) =>
-			 em := StableMap.insert (!em, #bininfo bn, #smlinfo sn)
-		       | _ => ())
-		  | add _ = ()
+		fun add (sy, (snth, _, _)) =
+		    case snth () of
+			(_ , DG.SB_SNODE (DG.SNODE sn)) =>
+			(case SymbolMap.find (s_e, sy) of
+			     NONE => ()
+			   | SOME (bnth, _, _) =>
+			     (case bnth () of
+				  (_, DG.SB_BNODE (DG.BNODE bn, _)) =>
+				  em := StableMap.insert (!em, #bininfo bn,
+							  #smlinfo sn)
+				| _ => ()))
+		      | _ => ()
 	    in
 		SymbolMap.appi add (#exports ns_g)
 	    end
