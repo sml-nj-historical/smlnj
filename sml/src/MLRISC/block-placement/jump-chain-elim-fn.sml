@@ -15,6 +15,19 @@ functor JumpChainElimFn (
     structure InsnProps : INSN_PROPERTIES
       where I = CFG.I
 
+  (* Control flag that when set true allows jumps to labels outside
+   * of the CFG to be chained.  Set this false when there are many
+   * short jumps to a long jump that exits the CFG.
+   *)
+    val chainEscapes : bool ref
+
+  (* Control flag that when set true allows the direction (forward or
+   * backward) of conditional jumps to be changed.  Set this false
+   * when the direction of conditional branches is used to predict
+   * the branch.
+   *)
+    val reverseDirection : bool ref
+
   ) : sig
 
     structure CFG : CONTROL_FLOW_GRAPH
@@ -41,9 +54,16 @@ functor JumpChainElimFn (
     fun run (cfg, blocks) = let
 	  val G.GRAPH{
 		  node_info, out_edges, set_out_edges, in_edges,
-		  entries, forall_nodes, remove_node, ...
+		  entries, exits, forall_nodes, remove_node, ...
 		} = cfg
+	  val chainEscapes = !chainEscapes
+	  val reverseDirection = !reverseDirection
+	(* this flag is set to note that we need to filter out unreachable
+	 * blocks after jump chaining.
+	 *)
 	  val needFilter = ref false
+	(* the exit block *)
+          val [exit] = exits()
 	(* map a block ID to a label *)
 	  fun labelOf blkId = (case node_info blkId
 		 of CFG.BLOCK{labels=ref(lab::_), ...} => lab
@@ -67,21 +87,24 @@ functor JumpChainElimFn (
 		 of CFG.BLOCK{insns as ref[i], kind=CFG.NORMAL, ...} => (
 		    (* a normal block with one instruction *)
 		      case out_edges blkId
-		       of [e as (_, dst, CFG.EDGE{k=CFG.JUMP, w, a})] => (
-			  (* the instruction must be a jump so transitively follow it
-			   * to get the target; but be careful to avoid infinite loops.
-			   *)
-			    set_out_edges (blkId, []);
-			    case followChain dst
-			     of NONE => (
-				  set_out_edges (blkId, [e]);
-				  SOME(dst, jumpLabelOf i))
-			      | (someLab as SOME(dst', lab)) => (
-				  insns := [IP.jump lab];
-				  set_out_edges (blkId,
-				    [(blkId, dst', CFG.EDGE{k=CFG.JUMP, w=w, a=a})]);
-				  someLab)
-			    (* end case *))
+		       of [e as (_, dst, CFG.EDGE{k=CFG.JUMP, w, a})] =>
+			    if ((dst <> exit) orelse chainEscapes)
+			      then (
+			      (* the instruction must be a jump so transitively follow it
+			       * to get the target; but be careful to avoid infinite loops.
+			       *)
+				set_out_edges (blkId, []);
+				case followChain dst
+				 of NONE => (
+				      set_out_edges (blkId, [e]);
+				      SOME(dst, jumpLabelOf i))
+				  | (someLab as SOME(dst', lab)) => (
+				      insns := [IP.jump lab];
+				      set_out_edges (blkId,
+					[(blkId, dst', CFG.EDGE{k=CFG.JUMP, w=w, a=a})]);
+				      someLab)
+				(* end case *))
+			      else NONE
 			| _ => NONE
 		      (* end case *))
 		  | _ => NONE
