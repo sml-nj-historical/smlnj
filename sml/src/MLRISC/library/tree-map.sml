@@ -20,7 +20,7 @@ sig
     val foldr    : (key * 'a * 'b -> 'b) -> 'b -> 'a map -> 'b 
 end
 
-functor TreeMapFn
+functor TreeMap
    (type key
     exception NotFound
     val compare : key * key -> order

@@ -10,7 +10,7 @@ functor HppaJumps
 struct
   structure I = Instr
   structure C = Instr.C
-  structure LE = LabelExp
+  structure LE = I.LabelExp
   structure Const = I.Constant
 
   fun error msg = MLRiscErrorMsg.error("HppaJumps",msg)
@@ -37,7 +37,6 @@ struct
 
   fun isSdi instr = let
     fun opnd (I.LabExp _) = true
-      | opnd (I.ConstOp _) = true
       | opnd _ = false
   in
     case instr
@@ -75,23 +74,10 @@ struct
   in
     case instr 
      of I.LDO{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
-      | I.LDO{i=I.ConstOp c, ...} => memDisp(Const.valueOf c, 4, 8)
-      | I.LOADI{i=I.ConstOp c, ...} => memDisp(Const.valueOf c, 4, 12)
       | I.LOADI{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
-      | I.STORE{d=I.ConstOp c, ...} => memDisp(Const.valueOf c, 4, 12)
-      | I.ARITHI{ai, i=I.ConstOp c, ...} => let
-	  fun arithImmed() = if im11(Const.valueOf c) then 4 else 12 
-	in
-	  case ai
-	  of I.ADDI => arithImmed()
-	   | I.ADDIO => arithImmed()
-	   | I.SUBI => arithImmed()
-	   | I.SUBIO => arithImmed()
-	   | _ => error "sdiSize: ARITHI LabelExp"
-	  (*esac*)
-	end
+      | I.STORE{d=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
       | I.ARITHI{ai, i=I.LabExp(lexp,_), ...} => let
-	  fun arithImmed() = if im11(LabelExp.valueOf lexp) then 4 else 12
+	  fun arithImmed() = if im11(LE.valueOf lexp) then 4 else 12
 	in
 	  case ai
 	  of I.ADDI => arithImmed()
@@ -128,7 +114,7 @@ struct
   end
 
   fun longJump{lab, n} = let
-    val baseDisp =  LE.MINUS(LE.LABEL lab, LE.CONST 8192)
+    val baseDisp =  LE.MINUS(LE.LABEL lab, LE.INT 8192)
     val labOpnd = (baseDisp, I.T)
     val baseptrR = 8
   in
@@ -167,56 +153,32 @@ struct
 	          I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
 		  I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=b, t=t}]
       (*esac*))
-    | expand(I.LDO{i=I.ConstOp c, t, b}, size, _) = 
+    | expand(instr as I.STORE{st, d as I.LabExp lexp, b, r, mem}, size, _) = 
       (case size 
-       of 4 => [I.LDO{i=I.IMMED(Const.valueOf c), t=t, b=b}]
-        | 8 => let
-	    val (hi, lo) = split11(Const.valueOf c)
-	  in
-	    [I.LDIL{i=I.IMMED hi, t=C.asmTmpR},
-	     I.LDO{i=I.IMMED lo, b=C.asmTmpR, t=t}]
-          end
-      (*esac*))
-    | expand(I.STORE{st, d=I.ConstOp c, b, r, mem}, size, _) = 
-      (case size 
-       of 4 => [I.STORE{st=st, d=I.IMMED(Const.valueOf c), b=b, r=r, mem=mem}]
-        | 12 => let
-	    val (hi, lo) = split11(Const.valueOf c)
-	  in
-	    [I.LDIL{i=I.IMMED hi, t=C.asmTmpR},
+       of 4 => [instr]
+        | 12 =>
+	    [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
 	     I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=b, t=C.asmTmpR},
-	     I.STORE{st=st, b=C.asmTmpR, d=I.IMMED lo, r=r, mem=mem}]
-	  end
+	     I.STORE{st=st, b=C.asmTmpR, d=I.LOLabExp lexp, r=r, mem=mem}]
       (*esac*))
     | expand(I.STORE _, _, _) = error "expand:STORE" 
-    | expand(I.ARITHI{ai, r, i=I.ConstOp c, t}, size, _) = 
+    | expand(instr as I.ARITHI{ai, r, i=I.LabExp lexp, t}, size, _) = 
       (case size
-       of 4 => [I.ARITHI{ai=ai, r=r, i=I.IMMED(Const.valueOf c), t=t}]
-        | 12 => let
-	    val (hi, lo) = 
-	      (case ai
-	       of I.ADDI => split11X(Const.valueOf c)
-		| I.ADDIO => split11X(Const.valueOf c)
-		| I.SUBI => split11X(Const.valueOf c)
-		| I.SUBIO => split11X(Const.valueOf c)
-		| _ => error "expandd: ARITHI"
-	       (*esac*))
-	  in
-	    [I.LDIL{i=I.IMMED hi, t=C.asmTmpR},
-	     I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=r, t=C.asmTmpR},
-	     I.ARITHI{ai=ai, r=C.asmTmpR, i=I.IMMED lo, t=t}]
-	  end
-      (*esac*))
-    | expand(instr as I.LOADI{li, r, i=I.ConstOp c, t, mem} , size, _) = 
-      (case size
-       of 4  => [I.LOADI{li=li, r=r, i=I.IMMED(Const.valueOf c), t=t, mem=mem}]
-        | 12 => let
-	    val (hi, lo) = split11(Const.valueOf c)
-	  in
-	    [I.LDIL{i=I.IMMED hi, t=C.asmTmpR},
-	     I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=r, t=C.asmTmpR},
-	     I.LOADI{li=li, r=C.asmTmpR, i=I.IMMED lo, t=t, mem=mem}]
-	  end
+       of 4 => [instr]
+        | 12 => 
+         (* Note: A better sequence would be to use ADDIL, however
+          * the expansion is done after register allocation and
+          * ADDIL defines %r1. 
+          *)
+            [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
+             I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
+             I.ARITH{
+                a = case ai of I.ADDI => I.ADD | I.ADDIO => I.ADDO
+                             | I.SUBI => I.SUB | I.SUBIO => I.SUBO
+                             | _ => error "expand: I.ARITHI LabExp",
+                t=t,
+                r1=C.asmTmpR,
+                r2=r}]
       (*esac*))
     | expand(instr as I.LOADI{li, r, i=I.LabExp lexp, t, mem} , size, _) = 
       (case size
@@ -224,24 +186,6 @@ struct
         | 12 => [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
 		 I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=r, t=C.asmTmpR},
 		 I.LOADI{li=li, r=C.asmTmpR, i=I.LOLabExp lexp, t=t, mem=mem}]
-      (*esac*))
-    | expand(instr as I.ARITHI{ai, r, i=I.LabExp lexp, t} , size, _) = 
-      (case size
-       of 4  => [instr]
-        | 12 => 
-	 (* Note: A better sequence would be to use ADDIL, however
-	  * the expansion is done after register allocation and
-	  * ADDIL defines %r1. 
-	  *)
-	    [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
-	     I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
-	     I.ARITH{
-		a = case ai of I.ADDI => I.ADD | I.ADDIO => I.ADDO
-		             | I.SUBI => I.SUB | I.SUBIO => I.SUBO
-			     | _ => error "expand: I.ARITHI LabExp",
-		t=t,
-		r1=C.asmTmpR,
-		r2=r}]
       (*esac*))
     | expand(instr as I.BCOND{cmp,bc, t, f, r1, r2, n, nop}, size, _) = let
 	fun rev I.COMBT=I.BCOND{cmp=I.COMBF,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true,nop=false}

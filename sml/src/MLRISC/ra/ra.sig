@@ -20,15 +20,21 @@ sig
    type mode = word
 
    (*
-    * Optimizations
+    * Optimizations/options:
+    * Or them together
     *)
-   val NO_OPTIMIZATION   : mode
-   val DEAD_COPY_ELIM    : mode
-   val BIASED_SELECTION  : mode
-   val SPILL_COLORING    : mode
-   val SPILL_COALESCING  : mode
-   val SPILL_PROPAGATION : mode
-   val COPY_PROPAGATION  : mode
+   val NO_OPTIMIZATION      : mode
+   val DEAD_COPY_ELIM       : mode
+   val BIASED_SELECTION     : mode
+   val SPILL_COLORING       : mode
+   val SPILL_COALESCING     : mode
+   val SPILL_PROPAGATION    : mode
+   val COPY_PROPAGATION     : mode
+   val HAS_PARALLEL_COPIES  : mode 
+       (* The above MUST be used when spill coloring is used and
+        * you have parallel copies in the program. Otherwise, phathom
+        * problems involving copy temporaries may appear.
+        *)
 
    (*
     * Perform register allocation.

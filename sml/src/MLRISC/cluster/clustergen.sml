@@ -33,6 +33,8 @@ struct
   fun newStream{compile,flowgraph} = 
   let val NOBLOCK = F.LABEL(Label.Label{id= ~1, name="", addr=ref 0})
 
+      val freq = 1
+
       val (blkCounter, regmap, annotations, blocks, entry, exit) = 
           case flowgraph of
             SOME(F.CLUSTER{blkCounter, regmap, annotations, blocks, 
@@ -55,7 +57,7 @@ struct
       let val n = !blkCounter
       in  blkCounter := n + 1;
           F.BBLOCK{blknum      = n,
-                   freq        = ref 1, 
+                   freq        = ref freq, 
                    annotations = ref (!blockNames),
                    liveIn      = ref C.empty,
                    liveOut     = ref C.empty,
@@ -93,35 +95,38 @@ struct
       fun annotation a =
           case #peek MLRiscAnnotations.BLOCK_NAMES a of
             SOME names => (endCurrBlock(); blockNames := names)
-          | NONE => if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
-                       (case !currBlock of
-                          F.BBLOCK _ => ()
-                        | _ => currBlock := newBasicBlock [];
-                        endCurrBlock())
-                    else (case !currBlock of
-                            F.BBLOCK{annotations, ...} => 
-                             annotations := a :: !annotations
-                         |  _ => (currBlock := newBasicBlock []; annotation a)
-                         )
-
+          | NONE => 
+             (if #contains MLRiscAnnotations.EMPTY_BLOCK [a] then
+                (case !currBlock of
+                   F.BBLOCK _ => ()
+                 | _ => currBlock := newBasicBlock [];
+                 endCurrBlock())
+              else 
+                (case #peek MLRiscAnnotations.EXECUTION_FREQ a of
+                  SOME f =>
+                   (case !currBlock of
+                      F.BBLOCK{freq, ...} => freq := f
+                    |  _ => (currBlock := newBasicBlock []; annotation a)
+                   )
+                | NONE =>
+                   (case !currBlock of
+                     F.BBLOCK{annotations, ...} => 
+                       annotations := a :: !annotations
+                   |  _ => (currBlock := newBasicBlock []; annotation a)
+                   )
+                )
+             )
+ 
       (* Add a comment *)
       fun comment msg = annotation(#create MLRiscAnnotations.COMMENT msg)
 
       (* Mark a block as exit *)
-      fun exitBlock liveRegs =
-      let val addCCreg = C.addCell C.CC 
-          (* we don't care about memory locations that may be live. *)
-          fun live(T.GPR(T.REG(_,r))::rest, acc) = live(rest,C.addReg(r, acc))
-            | live(T.FPR(T.FREG(_,f))::rest, acc) = live(rest,C.addFreg(f, acc))
-            | live(T.CCR(T.CC c)::rest, acc) = live(rest, addCCreg(c, acc))
-            | live(_::rest, acc) = live(rest, acc)
-            | live([], acc) = acc
-
-          fun findLiveOut(F.BBLOCK{liveOut, ...}::_) = liveOut
+      fun exitBlock cellset =
+      let fun findLiveOut(F.BBLOCK{liveOut, ...}::_) = liveOut
             | findLiveOut(F.LABEL _::blks) = findLiveOut blks
             | findLiveOut _ = error "exitBlock: no basic block"
       in  endCurrBlock();
-          findLiveOut (!blocks) := live(liveRegs, C.empty)
+          findLiveOut (!blocks) := cellset
       end
 
       (* Add an alias to the regmap *)
@@ -154,7 +159,7 @@ struct
               case exit of
                 F.EXIT{freq, ...} => 
                      F.EXIT{blknum=nextBlockNum(), pred=ref [], freq=freq}
-              | _ => F.EXIT{blknum=nextBlockNum(), pred=ref [], freq=ref 1}
+              | _ => F.EXIT{blknum=nextBlockNum(), pred=ref [], freq=ref freq}
 
           val (entryBlk, entryEdges) =
               case entry of
@@ -163,7 +168,7 @@ struct
                      succ)
               | _ => 
                 let val edges = ref []
-                in  (F.ENTRY{blknum=nextBlockNum(), succ=edges, freq=ref 1},
+                in  (F.ENTRY{blknum=nextBlockNum(), succ=edges, freq=ref freq},
                      edges)
                 end
 
@@ -238,7 +243,7 @@ struct
                         annotations=ref(blockAnnotations @ annotations)}
 
              (* reset regmap *)
-	  val _         = blkCounter := 0
+          val _         = blkCounter := 0
           val _         = regmap := C.regmap()  
           val _         = aliasF := Intmap.add (!regmap)
           val _         = entryLabels := []

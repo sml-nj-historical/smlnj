@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor TransactionFn(Log : TRANSACTION_LOG) : TRANSACTION =
+functor Transaction(Log : TRANSACTION_LOG) : TRANSACTION =
 struct
 
    exception Abort

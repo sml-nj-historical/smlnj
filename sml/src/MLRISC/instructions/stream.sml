@@ -6,7 +6,7 @@
  * -- Allen
  *)
 
-functor InstructionStreamFn(P : PSEUDO_OPS) : INSTRUCTION_STREAM =
+functor InstructionStream(P : PSEUDO_OPS) : INSTRUCTION_STREAM =
 struct
 
    structure P = P

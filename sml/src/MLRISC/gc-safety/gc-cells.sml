@@ -1,7 +1,7 @@
 (*
  * This makes a new cell module that automatically propagate gc type info.
  *)
-functor GCCells(structure C  : CELLS
+functor GCCells(structure C : CELLS
                 structure GCMap : GC_MAP) : GC_CELLS =
 struct
 

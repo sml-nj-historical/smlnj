@@ -15,20 +15,20 @@ sig
 
 end 
 
-functor Cluster2CFGFn
-   (structure CFG  : CONTROL_FLOW_GRAPH 
-    structure Util : CFG_UTIL
-    structure F    : FLOWGRAPH
-    structure P    : INSN_PROPERTIES
+functor Cluster2CFG
+   (structure CFG       : CONTROL_FLOW_GRAPH 
+    structure Util      : CFG_UTIL
+    structure Flowgraph : FLOWGRAPH
+    structure InsnProps : INSN_PROPERTIES
        sharing Util.CFG = CFG
-       sharing CFG.I = F.I = P.I
-       sharing CFG.P = F.P
+       sharing CFG.I = Flowgraph.I = InsnProps.I
+       sharing CFG.P = Flowgraph.P
    ) : CLUSTER2CFG =
 struct
 
     structure CFG  = CFG
     structure I    = CFG.I
-    structure F    = F
+    structure F    = Flowgraph
     structure G    = Graph
     structure W    = CFG.W
 
@@ -129,9 +129,9 @@ struct
            let fun is_fallsthru (j,yes,no) =
                    if j = i + 1 then
                       (case insns of
-                         jmp::_ => (case P.instrKind jmp of
-                                      P.IK_JUMP => no
-                                    | _         => yes
+                         jmp::_ => (case InsnProps.instrKind jmp of
+                                      InsnProps.IK_JUMP => no
+                                    | _                 => yes
                                    )
                       |  _ => yes)
                    else no

@@ -14,11 +14,11 @@ struct
            SOME b => b
          | NONE => branchProb i
         )
-     | branchProb(I.BRANCH(I.BR,_,_)) = 100 (* unconditional *)
-     | branchProb(I.BRANCH(I.BEQ,_,_)) = 10
-     | branchProb(I.BRANCH(I.BNE,_,_)) = 90
-     | branchProb(I.FBRANCH(I.FBEQ,_,_)) = 10 
-     | branchProb(I.FBRANCH(I.FBNE,_,_)) = 90
+     | branchProb(I.BRANCH{b=I.BR, ...}) = 100 (* unconditional *)
+     | branchProb(I.BRANCH{b=I.BEQ, ...}) = 10
+     | branchProb(I.BRANCH{b=I.BNE, ...}) = 90
+     | branchProb(I.FBRANCH{b=I.FBEQ, ...}) = 10 
+     | branchProb(I.FBRANCH{b=I.FBNE, ...}) = 90
      | branchProb(I.BRANCH _) = 50 (* default *)
      | branchProb(I.FBRANCH _) = 50 (* default *)
      | branchProb(I.JMPL(_,[])) = 100 (* unconditional *)

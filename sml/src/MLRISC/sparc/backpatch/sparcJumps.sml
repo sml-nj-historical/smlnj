@@ -10,7 +10,7 @@ functor SparcJumps
 struct
   structure I = Instr
   structure C = Instr.C
-  structure LE = LabelExp
+  structure LE = I.LabelExp
   structure Const = I.Constant
 
   fun error msg = MLRiscErrorMsg.error("SparcJumps",msg)
@@ -50,7 +50,6 @@ struct
         | oper(I.HI _) = false
         | oper(I.LO _) = false
         | oper(I.LAB _) = true
-        | oper(I.CONST _) = true
   in  case instr of 
         I.ARITH{i,...} => oper i
       | I.SHIFT{i,...} => oper i
@@ -89,7 +88,6 @@ struct
         | oper(I.HI _,_) = 4
         | oper(I.LO _,_) = 4
         | oper(I.LAB lexp,hi) = if immed13(LE.valueOf lexp) then 4 else hi
-        | oper(I.CONST c,hi) = if immed13(Const.valueOf c) then 4 else hi
       fun displacement lab = ((labMap lab) - loc) div 4
       fun branch22 lab = if immed22(displacement lab) then 4 else 16
       fun branch19 lab = if immed19(displacement lab) then 4 else 16
@@ -144,8 +142,7 @@ struct
       }
   end
 
-  fun split(I.CONST c) = split22_10(Const.valueOf c)
-    | split(I.LAB lexp) = split22_10(LE.valueOf lexp)
+  fun split(I.LAB lexp) = split22_10(LE.valueOf lexp)
     | split _ = error "split"
 
   (* Expand the immediate constant into two instructions *)

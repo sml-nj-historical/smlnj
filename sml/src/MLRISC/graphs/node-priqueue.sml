@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor NodePriorityQueueFn(A : ARRAY) : NODE_PRIORITY_QUEUE =
+functor NodePriorityQueue(A : ARRAY) : NODE_PRIORITY_QUEUE =
 struct
    structure G = Graph
 

@@ -5,14 +5,14 @@
 Library
 	signature ACYCLIC_SUBGRAPH_VIEW
 	structure AcyclicSubgraphView
-	functor BellmanFordFn
+	functor BellmanFord
 	signature BIPARTITE_GRAPH
 	signature CLOSED_SEMI_RING
-	functor DirectedGraphFn
+	functor DirectedGraph
 	structure DirectedGraph
-	functor DijkstraFn
-	functor FloydWarshallFn
-	functor JohnsonFn
+	functor Dijkstra
+	functor FloydWarshall
+	functor Johnson
 	signature GRAPH_BREATH_FIRST_SEARCH
 	structure GraphBFS
 	signature GRAPH_BICONNECTED_COMPONENTS
@@ -42,9 +42,9 @@ Library
 	signature BIPARTITE_MATCHING
 	structure BipartiteMatching
 	signature MAX_FLOW
-	functor MaxFlowFn
+	functor MaxFlow
 	signature MIN_CUT
-	functor MinCutFn
+	functor MinCut
 	signature NO_ENTRY_VIEW
 	signature NO_EXIT_VIEW
 	structure NoEntryView
@@ -52,7 +52,7 @@ Library
 	signature NODE_PARTITION
 	structure NodePartition
 	signature NODE_PRIORITY_QUEUE
-	functor NodePriorityQueueFn
+	functor NodePriorityQueue
 	signature PRINT_GRAPH
 	structure PrintGraph
 	signature READONLY_GRAPH_VIEW
@@ -68,7 +68,7 @@ Library
 	signature SINGLETON_GRAPH_VIEW
 	structure SingletonGraphView
 	signature GRAPH_SNAPSHOT
-	functor GraphSnapShotFn
+	functor GraphSnapShot
 	signature MIN_COST_SPANNING_TREE
 	signature START_STOP_VIEW
 	structure StartStopView
@@ -86,7 +86,7 @@ Library
 	structure UnionGraphView
 	signature GRAPH_WRAPPERS
 	structure GraphWrappers
-	functor UndirectedGraphFn
+	functor UndirectedGraph
 	signature UPDATE_GRAPH_INFO
 	structure UpdateGraphInfo
 is
@@ -95,6 +95,7 @@ is
 	basis.cm
 #endif
 	smlnj-lib.cm
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 
 	graphs/acyclic-graph.sml

@@ -17,13 +17,14 @@ struct
    structure F = ClusterGraph.F
    structure W = ClusterGraph.W
    structure L = GraphLayout
-   structure FMT = FormatInstructionFn(Asm)
+   structure FMT = FormatInstruction(Asm)
 
    val outline = MLRiscControl.getFlag "view-outline"
 
    fun view(clusterGraph) = 
-   let val F.CLUSTER{regmap,...} = ClusterGraph.cluster clusterGraph 
-       val toString = FMT.toString regmap
+   let val F.CLUSTER{regmap,annotations,...} = 
+                ClusterGraph.cluster clusterGraph 
+       val toString = FMT.toString (!annotations) (F.I.C.lookup regmap)
        fun graph _ = []
        fun edge(_,_,ref w) = [L.LABEL(W.toString w), L.COLOR "red"]
        fun title(blknum,ref freq) = 

@@ -15,7 +15,7 @@
  * -- Allen
  *)
 
-functor StaticSingleAssignmentFormFn
+functor StaticSingleAssignmentForm
    (Dom : DOMINATOR_TREE) : STATIC_SINGLE_ASSIGNMENT_FORM =
 struct
    structure Dom     = Dom
@@ -28,7 +28,7 @@ struct
                   {defs : var list, uses: var list}
    type copy    = {dst : var list, src : var list} -> unit
 
-   structure DJ = DJGraphFn(Dom)  
+   structure DJ = DJGraph(Dom)  
 
    fun app f = 
    let fun g [] = ()

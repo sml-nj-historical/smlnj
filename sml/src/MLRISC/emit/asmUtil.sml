@@ -3,15 +3,17 @@
  *)
 signature ASM_FORMAT_UTIL =
 sig
-   val reginfo : (string -> unit) * Annotations.annotations -> (int -> unit)
+   val reginfo : 
+          (string -> unit) * (int -> int) * Annotations.annotations -> 
+              (int -> unit)
 end
 
 structure AsmFormatUtil : ASM_FORMAT_UTIL =
 struct
 
-  fun reginfo(emit,an) =
+  fun reginfo(emit,regmap,an) =
       case #get MLRiscAnnotations.REGINFO an of
-         SOME f => (fn r => emit(f r))
+         SOME f => (fn r => emit(f(regmap, r)))
       |  NONE => (fn _ => ())
 
 end

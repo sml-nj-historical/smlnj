@@ -11,9 +11,10 @@ struct
         {mvInstr=fn{dst, src} => [I.MOVE{mvOp=I.MOVL, src=src, dst=dst}],
 	 ea=I.Direct}
 
+  (* Note, this only works with double precision floating point *)
   val shufflefp = 
     Shuffle.shuffle
-        {mvInstr=fn{dst, src} => [I.FLD src, I.FSTP dst],
+        {mvInstr=fn{dst, src} => [I.FLDL src, I.FSTPL dst],
 	 ea = I.FDirect}
 end
 

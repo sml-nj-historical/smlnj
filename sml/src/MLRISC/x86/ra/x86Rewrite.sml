@@ -5,7 +5,7 @@
 functor X86Rewrite(Instr : X86INSTR) = struct
   structure I=Instr
 
-  fun operand (mapr,rs,rt) opnd =
+  fun operand (mapr : I.C.cell -> I.C.cell,rs,rt) opnd =
     (case opnd
      of I.Direct r => if mapr r=rs then I.Direct rt else opnd
       | I.Displace{base, disp, mem} => 
@@ -23,7 +23,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
       | _ => opnd
     (*esac*))
 
-  fun rewriteUse(mapr, instr, rs, rt) = let
+  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     val operand = operand (mapr, rs, rt)
     fun replace r = if mapr r = rs then rt else r
   in
@@ -37,7 +37,12 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.MOVE{mvOp, src, dst} => 
          I.MOVE{mvOp=mvOp, src=operand src, dst=operand dst}
      | I.LEA{r32, addr} => I.LEA{r32=r32, addr=operand addr}
-     | I.CMP{lsrc, rsrc} => I.CMP{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.CMPL{lsrc, rsrc} => I.CMPL{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.CMPW{lsrc, rsrc} => I.CMPW{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.CMPB{lsrc, rsrc} => I.CMPB{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.TESTL{lsrc, rsrc} => I.TESTL{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.TESTW{lsrc, rsrc} => I.TESTW{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.TESTB{lsrc, rsrc} => I.TESTB{lsrc=operand lsrc, rsrc=operand rsrc}
      | I.BINARY{binOp, src, dst} => 
 	I.BINARY{binOp=binOp, src=operand src, dst=operand dst}
      | I.MULTDIV{multDivOp, src} => 
@@ -47,19 +52,26 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.MUL3{dst, src1, src2} => 
 	I.MUL3{dst=dst, src1=operand src1, src2=src2}
      | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
-     | I.PUSH opnd => I.PUSH(operand opnd)
+     | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}
+     | I.PUSHL opnd => I.PUSHL(operand opnd)
+     | I.PUSHW opnd => I.PUSHW(operand opnd)
+     | I.PUSHB opnd => I.PUSHB(operand opnd)
      | I.POP opnd  => I.POP(operand opnd)
      | I.COPY{dst, src, tmp} => 
 	I.COPY{dst=dst, src=map replace src, tmp=tmp}
-     | I.FSTP opnd => I.FSTP(operand opnd)
-     | I.FLD opnd => I.FLD(operand opnd)
+     | I.FSTPL opnd => I.FSTPL(operand opnd)
+     | I.FSTPS opnd => I.FSTPS(operand opnd)
+     | I.FLDL opnd => I.FLDL(operand opnd)
+     | I.FLDS opnd => I.FLDS(operand opnd)
+     | I.FENV{fenvOp,opnd} => I.FENV{fenvOp=fenvOp, opnd=operand opnd}
      | I.FBINARY{binOp, src, dst} => 
 	I.FBINARY{binOp=binOp, src=operand src, dst=dst}
+     | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
      | I.ANNOTATION{i,a}=> I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
      | _ => instr
   end (* rewriteUse *)
 
-  fun rewriteDef(mapr, instr, rs, rt) = let
+  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun operand(opnd as I.Direct r) = if mapr r=rs then I.Direct rt else opnd
     fun replace r = if mapr r=rs then rt else r
   in
@@ -71,13 +83,15 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.BINARY{binOp, src, dst} => I.BINARY{binOp=binOp, src=src, dst=operand dst}
      | I.MUL3{dst, src1, src2} => I.MUL3{dst=replace dst, src1=src1, src2=src2}
      | I.UNARY{unOp, opnd} => I.UNARY{unOp=unOp, opnd=operand opnd}
+     | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}
      | I.COPY{dst, src, tmp} => I.COPY{dst=map replace dst, src=src, tmp=tmp}
+     | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=src, dst=replace dst}
      | I.ANNOTATION{i,a}=> I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
      | _ => instr
   end
 
 
-  fun frewriteUse(mapr, instr, fs, ft) = let
+  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun foperand(opnd as I.FDirect f) = 
          if f=fs then I.FDirect ft else opnd
       | foperand opnd = opnd
@@ -86,7 +100,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   in
     case instr
     of I.FCOPY{dst, src, tmp,...} => I.FCOPY{dst=dst, src=map replace src, tmp=tmp}
-     | I.FLD opnd => I.FLD(foperand opnd)
+     | I.FLDL opnd => I.FLDL(foperand opnd)
+     | I.FLDS opnd => I.FLDS(foperand opnd)
      | I.CALL(opnd, defs, (ur, uf, uc), mem) => 
          I.CALL(opnd, defs, (ur, map replace uf, uc), mem)
      | I.FBINARY{binOp, src, dst} => 
@@ -95,7 +110,7 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | _ => instr
   end
 
-  fun frewriteDef(mapr, instr, fs, ft) = let
+  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun foperand(opnd as I.FDirect r) = 
          if r=fs then I.FDirect ft else opnd
       | foperand opnd = opnd
@@ -103,7 +118,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
   in
     case instr
     of I.FCOPY{dst, src, tmp, ...} => I.FCOPY{dst=map replace dst, src=src, tmp=tmp}
-     | I.FSTP opnd => I.FSTP(foperand opnd)
+     | I.FSTPL opnd => I.FSTPL(foperand opnd)
+     | I.FSTPS opnd => I.FSTPS(foperand opnd)
      | I.CALL(opnd, (dr,df,dc), uses, mem) => 
          I.CALL(opnd, (dr, map replace df, dc), uses, mem)
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}

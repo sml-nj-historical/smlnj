@@ -13,8 +13,8 @@
  * -- Allen
  *)
 
-functor LoopStructureFn (structure GraphImpl : GRAPH_IMPLEMENTATION
-                         structure Dom       : DOMINATOR_TREE)
+functor LoopStructure (structure GraphImpl : GRAPH_IMPLEMENTATION
+                       structure Dom       : DOMINATOR_TREE)
     : LOOP_STRUCTURE =
 struct
  

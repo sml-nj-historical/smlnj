@@ -20,7 +20,7 @@ struct
 
   val _ = app (fn r => Array.update(allRegs,r,true)) available
 
-  fun getreg{pref,stamp,proh} = 
+  fun getreg{pref,stamp:int,proh} = 
   let (* use preferred registers whenever possible *)
       fun checkPreferred [] = find(!lastReg)
         | checkPreferred(r::rs) = 
@@ -47,7 +47,7 @@ struct
           end
   in  checkPreferred pref end
 
-  fun getpair{pref,stamp,proh} = 
+  fun getpair{pref,stamp:int,proh} = 
   let (* if not, use the round robin scheme to look for a register *)
       fun find(start) =
           let val limit = Array.length allRegs

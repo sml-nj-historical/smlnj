@@ -5,7 +5,7 @@
  * -- Allen
  *)
 
-functor FloydWarshallFn(Num : ABELIAN_GROUP_WITH_INF) 
+functor FloydWarshall(Num : ABELIAN_GROUP_WITH_INF) 
    : ALL_PAIRS_SHORTEST_PATHS =
 struct
 

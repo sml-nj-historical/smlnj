@@ -3,13 +3,13 @@
  *
  * -- Allen
  *)
-functor ReducibilityFn(Loop : LOOP_STRUCTURE) : REDUCIBILITY = 
+functor Reducibility(Loop : LOOP_STRUCTURE) : REDUCIBILITY = 
 struct
    structure Loop = Loop
    structure Dom  = Loop.Dom
    structure G    = Graph
 
-   structure Derived = DerivedGraphFn(Dom)
+   structure Derived = DerivedGraph(Dom)
 
    fun is_reducible(Loop) =
    let val Dom = Loop.dom Loop

@@ -12,13 +12,18 @@ functor RADeadCodeElim
     val cellkind : Flowgraph.I.C.cellkind -> bool
     val deadRegs : bool Intmap.intmap (* Dead registers are stored here. *)
     val affectedBlocks : bool Intmap.intmap (* Affected blocks *)
+    val spillInit : Flowgraph.G.interferenceGraph * Flowgraph.I.C.cellkind 
+                      -> unit 
    ) : RA_FLOWGRAPH =
 struct
    structure F = Flowgraph
 
    open F
 
+   (* We must save all the copy temporaries for this to work *)
    val mode = RACore.SAVE_COPY_TEMPS
+
+   fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
    (*
     * New services that also removes dead code 
@@ -29,7 +34,7 @@ struct
         * The following build method marks all pseudo registers
         * that are dead, and record their definition points.
         *)
-       fun findDeadCode(G.GRAPH{nodes, copyTmps, ...}) = 
+       fun findDeadCode(G.GRAPH{nodes, copyTmps, mode, ...}) = 
        let val dead     = Intmap.add deadRegs 
            val affected = Intmap.add affectedBlocks
            val affectedList = app (fn d => affected(blockNum d, true))
@@ -53,7 +58,8 @@ struct
        in  markCopyTmps(!copyTmps);
            Intmap.app enter nodes;
            unmarkCopyTmps(!copyTmps);
-           copyTmps := []
+           if isOn(mode, RACore.HAS_PARALLEL_COPIES) then ()
+           else copyTmps := [] (* clean up now *)
        end
 
        (*
@@ -64,7 +70,11 @@ struct
        in  if cellkind kind then findDeadCode(graph) else ();
            moves
        end
-   in  {build=buildIt, spill=spill, programPoint=programPoint,
+
+       fun spillIt(arg as {graph, cellkind, ...}) = 
+           (spillInit(graph, cellkind); spill arg)
+
+   in  {build=buildIt, spill=spillIt, programPoint=programPoint,
         blockNum=blockNum, instrNum=instrNum}
    end
 

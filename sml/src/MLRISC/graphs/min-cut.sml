@@ -5,13 +5,13 @@
  * -- Allen
  *)
 
-functor MinCutFn(Num : ABELIAN_GROUP) : MIN_CUT =
+functor MinCut(Num : ABELIAN_GROUP) : MIN_CUT =
 struct
 
    structure Num = Num
    structure G   = Graph
    structure A   = Array
-   structure Q   = NodePriorityQueueFn(A)  
+   structure Q   = NodePriorityQueue(A)  
    structure L   = CatnetableList          (* for fast concatenation *)
 
    fun min_cut {graph=G.GRAPH G, weight} =

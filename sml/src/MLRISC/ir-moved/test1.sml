@@ -3,8 +3,8 @@ struct
 structure Graph = Graph;
 val G as Graph.GRAPH g = DirectedGraph.graph("foo",(),10) :
     (string,int,unit) Graph.graph 
-structure Dom = DominatorTreeFn(DirectedGraph)
-structure DJ  = DJGraphFn(Dom)
+structure Dom = DominatorTree(DirectedGraph)
+structure DJ  = DJGraph(Dom)
 val _ = app (#add_node g)
           [(0,"s"),
            (1,"v1"),

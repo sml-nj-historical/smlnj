@@ -39,7 +39,6 @@ struct
                               | copy _ = ()
                         in  copy(dst,src)
                         end
-                    | Props.IK_GROUP => () (* skip *)
                     | _ => prop i handle _ => ();
                     scan is
                    )

@@ -5,11 +5,11 @@
  * -- Allen
  *)
 
-functor ReshapeBranchesFn
-    ( structure IR   : MLRISC_IR
-      structure P    : INSN_PROPERTIES
-         sharing IR.I = P.I
-    ) : RESHAPE_BRANCHES =
+functor ReshapeBranches
+    ( structure IR        : MLRISC_IR
+      structure InsnProps : INSN_PROPERTIES
+         sharing IR.I = InsnProps.I
+    ) : MLRISC_IR_OPTIMIZATION =
 struct
 
    structure IR       = IR
@@ -20,11 +20,14 @@ struct
    structure G        = Graph
    structure Util     = IR.Util
 
+   type flowgraph = IR.IR
+
    (*
     * Restructure branches to in order to get better locality.
     *)
+   val name = "ReshapeBranches"
 
-   fun reshapeBranches IR =
+   fun run IR =
    let val CFG as G.GRAPH cfg   = IR
        val Dom as G.GRAPH dom   = IR.dom  IR
        val Loop as G.GRAPH loop = IR.loop IR
@@ -55,7 +58,7 @@ struct
               e2 as (_,k,CFG.EDGE{w=w2,k=k2 as CFG.BRANCH b2,a=a2})], 
               branch::rest) =>
              if should_flip(e1,e2) then 
-                let val branch' = P.negateConditional branch
+                let val branch' = InsnProps.negateConditional branch
                 in  if b1 andalso not(can_fallsthru j) orelse
                        b2 andalso not(can_fallsthru k) then
                        raise GiveUp
@@ -88,7 +91,7 @@ struct
                       flip_cond (fn _ => true) (i,#node_info cfg i)
                  | elim(e as (i,j,CFG.EDGE{k=CFG.FALLSTHRU,w,a,...})) =
                       let val i' as CFG.BLOCK{insns,...} = #node_info cfg i
-                      in  insns := P.jump(
+                      in  insns := InsnProps.jump(
                                 CFG.defineLabel(#node_info cfg i))::(!insns);
                           CFG.removeEdge CFG e;
                           #add_edge cfg (i,j,CFG.EDGE{k=CFG.JUMP,a=a,w=w});
@@ -117,7 +120,7 @@ struct
                        val _ = elim_fallsthru i
                        val CFG.BLOCK{insns,...} = #node_info cfg i
                        fun remove_jump(insns as jmp::rest) =
-                           if P.instrKind jmp = P.IK_JUMP then
+                           if InsnProps.instrKind jmp = InsnProps.IK_JUMP then
                               rest else insns
                          | remove_jump [] = []
                    in  insns := remove_jump(!insns);
@@ -136,7 +139,8 @@ struct
 
    in  #forall_nodes cfg (fn x => restructure_conditionals x handle _ => ());
        #forall_nodes loop restructure_loop; 
-       if !changed then IR.changed IR else ()
+       if !changed then IR.changed IR else ();
+       IR
    end
 
 end

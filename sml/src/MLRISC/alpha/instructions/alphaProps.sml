@@ -8,7 +8,7 @@ functor AlphaProps(AlphaInstr:ALPHAINSTR):INSN_PROPERTIES =
 struct
     structure I = AlphaInstr
     structure C = I.C
-    structure LE = LabelExp
+    structure LE = I.LabelExp
 
     exception NegateConditional
 
@@ -16,7 +16,7 @@ struct
 
     val zeroR = 31
 
-    datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+    datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                   | IK_PHI | IK_SOURCE | IK_SINK
     datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
@@ -31,7 +31,6 @@ struct
       | instrKind(I.JSR _)     = IK_CALL
       | instrKind(I.RET _)     = IK_JUMP
       | instrKind(I.ANNOTATION{i,...}) = instrKind i
-      | instrKind(I.GROUP _)   = IK_GROUP
       | instrKind _            = IK_INSTR
 
     fun moveInstr(I.COPY _)  = true
@@ -58,26 +57,26 @@ struct
    (*========================================================================
     *  Branches and Calls/Returns
     *========================================================================*)
-    fun branchTargets(I.BRANCH(I.BR, _, lab)) = [LABELLED lab]
-      | branchTargets(I.BRANCH(_, _, lab))  = [LABELLED lab, FALLTHROUGH] 
-      | branchTargets(I.FBRANCH(_, _, lab)) = [LABELLED lab, FALLTHROUGH] 
+    fun branchTargets(I.BRANCH{b=I.BR, lab, ...}) = [LABELLED lab]
+      | branchTargets(I.BRANCH{lab, ...})  = [LABELLED lab, FALLTHROUGH] 
+      | branchTargets(I.FBRANCH{lab, ...}) = [LABELLED lab, FALLTHROUGH] 
       | branchTargets(I.JMPL(_,[]))       = [ESCAPES]
       | branchTargets(I.JMPL(_,labs))     = map LABELLED labs
       | branchTargets(I.RET _)            = [ESCAPES]
       | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
       | branchTargets _ = error "branchTargets"
 
-    fun jump label = I.BRANCH(I.BR,31,label)
+    fun jump label = I.BRANCH{b=I.BR,r=31,lab=label}
 
     val immedRange = {lo= ~32768, hi = 32768}
     fun loadImmed{immed,t} = I.LDA{r=t,b=31,d=I.IMMop immed}
 
-    fun setTargets(I.BRANCH(I.BR,0,_),[L]) = I.BRANCH(I.BR,0,L)
-      | setTargets(I.BRANCH(b,r,_),[F,T])  = I.BRANCH(b,r,T)
-      | setTargets(I.FBRANCH(b,r,_),[F,T]) = I.FBRANCH(b,r,T)
+    fun setTargets(I.BRANCH{b=I.BR,r=31,...},[L]) = I.BRANCH{b=I.BR,r=31,lab=L}
+      | setTargets(I.BRANCH{b,r,...},[F,T])  = I.BRANCH{b=b,r=r,lab=T}
+      | setTargets(I.FBRANCH{b,f,...},[F,T]) = I.FBRANCH{b=b,f=f,lab=T}
       | setTargets(I.JMPL(x,_),labs)       = I.JMPL(x,labs)
       | setTargets(I.ANNOTATION{i,a},labs) = 
-          I.ANNOTATION{i=setTargets(i,labs),a=a}
+            I.ANNOTATION{i=setTargets(i,labs),a=a}
       | setTargets(i,_) = i
 
     fun negateConditional br = let
@@ -98,8 +97,8 @@ struct
 
     in
       case br
-      of I.BRANCH(br,r,label) => I.BRANCH(revBranch br,r,label)
-       | I.FBRANCH(br,r,label) => I.FBRANCH(revFBranch br,r,label)
+      of I.BRANCH{b,r,lab} => I.BRANCH{b=revBranch b,r=r,lab=lab}
+       | I.FBRANCH{b,f,lab} => I.FBRANCH{b=revFBranch b,f=f,lab=lab}
        | I.ANNOTATION{i,a} => I.ANNOTATION{i=negateConditional i,a=a}
        | _ => raise NegateConditional
     end
@@ -109,17 +108,15 @@ struct
     *========================================================================*)
    fun hashOpn(I.REGop r) = Word.fromInt r
      | hashOpn(I.IMMop i) = Word.fromInt i
-     | hashOpn(I.HILABop l) = LabelExp.hash l
-     | hashOpn(I.LOLABop l) = LabelExp.hash l
-     | hashOpn(I.LABop l) = LabelExp.hash l
-     | hashOpn(I.CONSTop c) = I.Constant.hash c
+     | hashOpn(I.HILABop l) = I.LabelExp.hash l
+     | hashOpn(I.LOLABop l) = I.LabelExp.hash l
+     | hashOpn(I.LABop l) = I.LabelExp.hash l
 
    fun eqOpn(I.REGop a,I.REGop b) = a = b
      | eqOpn(I.IMMop a,I.IMMop b) = a = b
-     | eqOpn(I.HILABop a,I.HILABop b) = LabelExp.==(a,b)
-     | eqOpn(I.LOLABop a,I.LOLABop b) = LabelExp.==(a,b)
-     | eqOpn(I.LABop a,I.LABop b) = LabelExp.==(a,b)
-     | eqOpn(I.CONSTop a,I.CONSTop b) = I.Constant.==(a,b)
+     | eqOpn(I.HILABop a,I.HILABop b) = I.LabelExp.==(a,b)
+     | eqOpn(I.LOLABop a,I.LOLABop b) = I.LabelExp.==(a,b)
+     | eqOpn(I.LABop a,I.LABop b) = I.LabelExp.==(a,b)
      | eqOpn _ = false
 
    (*========================================================================
@@ -144,10 +141,10 @@ struct
 	 | I.FSTORE{b, ...} => ([], [b])
 	 (* branch instructions *)
 	 | I.JMPL ({r, b, ...},_) => ([r], [b])
-	 | I.JSR({r, b, ...}, def, use, mem) => (r:: #1 def, b:: #1 use)
+	 | I.JSR{r, b, defs, uses, ...} => (r:: #1 defs, b:: #1 uses)
 	 | I.RET{r, b, ...} => ([r],[b])
-	 | I.BRANCH(I.BR, reg, _) => ([reg], [])
-	 | I.BRANCH(_, reg, _) => ([], [reg])
+	 | I.BRANCH{b=I.BR, r, ...} => ([r], [])
+	 | I.BRANCH{r, ...} => ([], [r])
 	 (* operate *)
 	 | I.OPERATE arg => Oper arg
 	 | I.PSEUDOARITH {oper, ra, rb=I.REGop rb, rc, tmps} => 
@@ -171,7 +168,7 @@ struct
     fun defUseF instr =
       case instr of
 	I.DEFFREG freg				=> ([freg], [])
-      | I.FBRANCH(_, freg, lab)			=>  ([],[freg])
+      | I.FBRANCH{f, ...}			=>  ([],[f])
       | I.FLOAD{r, ...}				=> ([r], [])
       | I.FSTORE{r, ...}			=> ([], [r])
       | I.FOPERATE{fa, fb, fc, ...}		=> ([fc], [fa, fb])
@@ -181,7 +178,7 @@ struct
       | I.FCMOVE{fa,fb,fc,...}                  => ([fc], [fa, fb, fc])
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
-      | I.JSR(_,def,use, mem)	     => (#2 def,#2 use)
+      | I.JSR{defs,uses, ...}	     => (#2 defs,#2 uses)
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
@@ -196,15 +193,4 @@ struct
          let val (i,an) = getAnnotations i in (i,a::an) end
       | getAnnotations i = (i,[])
     fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
-
-    (*=======================================================================
-     *  Groups 
-     *=======================================================================*)
-    fun getGroup(I.ANNOTATION{i,...}) = getGroup i
-      | getGroup(I.GROUP r) = r
-      | getGroup _ = error "getGroup"
-
-    val makeGroup = I.GROUP
 end
-
-

@@ -75,13 +75,14 @@ struct
 
    val debug = false
 
-   val NO_OPTIMIZATION   = 0wx0
-   val DEAD_COPY_ELIM    = Core.DEAD_COPY_ELIM
-   val BIASED_SELECTION  = Core.BIASED_SELECTION
-   val SPILL_COALESCING  = 0wx100
-   val SPILL_COLORING    = 0wx200
-   val SPILL_PROPAGATION = 0wx400
-   val COPY_PROPAGATION  = 0wx800
+   val NO_OPTIMIZATION      = 0wx0
+   val DEAD_COPY_ELIM       = Core.DEAD_COPY_ELIM
+   val BIASED_SELECTION     = Core.BIASED_SELECTION
+   val HAS_PARALLEL_COPIES  = Core.HAS_PARALLEL_COPIES
+   val SPILL_COALESCING     = 0wx100
+   val SPILL_COLORING       = 0wx200
+   val SPILL_PROPAGATION    = 0wx400
+   val COPY_PROPAGATION     = 0wx800
 
    fun isOn(flag, mask) = Word.andb(flag,mask) <> 0w0
 
@@ -95,6 +96,8 @@ struct
    val cfg_before_ra     = MLRiscControl.getFlag "dump-cfg-before-ra"
    val cfg_after_ra      = MLRiscControl.getFlag "dump-cfg-after-ra"
    val cfg_after_spill   = MLRiscControl.getFlag "dump-cfg-after-spilling"
+   val cfg_before_ras    = MLRiscControl.getFlag "dump-cfg-before-all-ra"
+   val cfg_after_ras     = MLRiscControl.getFlag "dump-cfg-after-all-ra"
    val dump_graph        = MLRiscControl.getFlag "dump-interference-graph"
    val debug_spill       = MLRiscControl.getFlag "ra-debug-spilling"
    val ra_count          = MLRiscControl.getCounter "ra-count"
@@ -150,6 +153,9 @@ struct
     
            (* the nodes table *)
            val nodes  = Intmap.new(numCell,NodeTable) 
+           val mode   = if isOn(HAS_PARALLEL_COPIES, mode) then
+                           Word.orb(Core.SAVE_COPY_TEMPS, mode) 
+                        else mode
            (* create an empty interference graph *)
            val G      = G.newGraph{nodes=nodes, 
                                    K=K,
@@ -234,7 +240,7 @@ struct
                               " uses="^Int.toString(length(!uses))^"\n"
                              )
                   ) else ();
-               {node=node,spillWkl=spillWkl}
+               {node=node,cost=cost,spillWkl=spillWkl}
            end 
               
            (*
@@ -272,6 +278,7 @@ struct
                val _ = if isOn(mode,SPILL_PROPAGATION+SPILL_COALESCING) then   
                           Core.initMemMoves G 
                        else ()
+               (*
                val spills = if isOn(mode,SPILL_PROPAGATION) then   
                                Core.spillPropagation G spills else spills
                val _ = if isOn(mode,SPILL_COALESCING) then 
@@ -280,6 +287,7 @@ struct
                           Core.spillColoring G spills else ()
                val _ = if isOn(mode,SPILL_COALESCING+SPILL_PROPAGATION) then 
                           markMemRegs spills else ()
+                *)
                val _ = logGraph("actual spill",G);
                val {simplifyWkl,freezeWkl,moveWkl,spillWkl} =  
                     Core.initWorkLists G
@@ -327,13 +335,15 @@ struct
                          if !pseudoCount = 0 (* all nodes simplified *)
                          then stack 
                          else
-                         let val {node,spillWkl} = 
+                         let val {node,cost,spillWkl} = 
                                     chooseVictim{spillWkl=spillWkl}
                          in  case node of  
                                SOME node => (* spill node and continue *)
                                let val _ = if debug then print "-" else () 
                                    val {moveWkl,freezeWkl,stack} = 
-                                       potentialSpill{node=node,stack=stack}
+                                       potentialSpill{node=node,
+                                                      cost=cost,
+                                                      stack=stack}
                                in  iterate([],moveWkl,freezeWkl,spillWkl,stack)
                                end 
                              | NONE => stack (* nothing to spill *)
@@ -384,7 +394,9 @@ struct
        fun regallocs [] = ()
          | regallocs(p::ps) = (regalloc p; regallocs ps)
 
-   in  regallocs params;
+   in  dumpFlowgraph(cfg_before_ras,"before register allocation");
+       regallocs params;
+       dumpFlowgraph(cfg_after_ras,"after register allocation");
        flowgraph
    end
 

@@ -4,34 +4,36 @@
 
 Library
 	signature CONTROL_DEPENDENCE_GRAPH
-	functor ControlDependenceGraphFn
+	functor ControlDependenceGraph
 	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
-	functor ControlFlowGraphRestructureFn
+	functor ControlFlowGraphRestructure
 	signature COMPUTE_FREQUENCIES
-	functor ComputeFrequenciesFn
+	functor ComputeFrequencies
 	signature COMPUTE_FREQUENCIES2
-	functor ComputeFrequencies2Fn
+	functor ComputeFrequencies2
 	signature DERIVED_GRAPH
-	functor DerivedGraphFn
+	functor DerivedGraph
 	signature DJ_GRAPH
-	functor DJGraphFn
+	functor DJGraph
 	signature DOMINANCE_FRONTIERS
-	functor DominanceFrontiersFn
+	functor DominanceFrontiers
 	signature DOMINATOR_TREE
-	functor DominatorTreeFn
+	functor DominatorTree
 	signature IDEFS
 	structure IDefs
 	signature LOOP_STRUCTURE
-	functor LoopStructureFn
+	functor LoopStructure
 	signature REDUCIBILITY
-	functor ReducibilityFn
+	functor Reducibility
 	signature STATIC_SINGLE_ASSIGNMENT_FORM
-	functor StaticSingleAssignmentFormFn
+	functor StaticSingleAssignmentForm
 is
+
 #if defined(NEW_CM)
 	basis.cm
 #endif
 	smlnj-lib.cm
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 	MLRISC-Graphs.cm
 

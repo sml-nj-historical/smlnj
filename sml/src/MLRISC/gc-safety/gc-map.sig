@@ -8,7 +8,6 @@ sig
    type gcmap = GC.gctype Intmap.intmap
 
    val GCMAP       : gcmap Annotations.property
-   val GCSAFEPOINT : unit Annotations.property 
 
    val toString    : gcmap -> (int -> string)
 

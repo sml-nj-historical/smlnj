@@ -10,7 +10,7 @@ functor PPC
    structure PPCMLTree : MLTREE 
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
       sharing PPCMLTree.Region = PPCInstr.Region
-      sharing PPCMLTree.Constant = PPCInstr.Constant
+      sharing PPCMLTree.LabelExp = PPCInstr.LabelExp
       sharing PseudoInstrs.I = PPCInstr 
 
    (* 
@@ -29,10 +29,20 @@ struct
   structure T   = PPCMLTree
   structure S   = T.Stream
   structure C   = PPCInstr.C
-  structure LE  = LabelExp
+  structure LE  = I.LabelExp
   structure W32 = Word32
 
   fun error msg = MLRiscErrorMsg.error("PPC",msg)
+
+  type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
+  type ('s,'r,'f,'c) mltreeStream = 
+     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
+  type ('s,'r,'f,'c) reducer =
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
+       T.reducer
+  type ('s,'r,'f,'c) extender =
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
+       T.extender
 
   structure Gen = MLTreeGen
     (structure T = T
@@ -95,6 +105,7 @@ struct
     (val signed = true)
 
   fun selectInstructions
+      (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp, ...})
       (S.STREAM{emit,comment,
                 defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,phi,alias,...}) =
@@ -186,11 +197,11 @@ struct
           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.LabelOp lexp}, an)
 
       fun loadConst(c, rt, an) = 
-          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.ConstOp c}, an)
+          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=0, im=I.LabelOp(LE.CONST c)}, an)
 
       fun immedOpnd range (e1, e2 as T.LI i) =
            (expr e1, if range i then I.ImmedOp i else I.RegOp(expr e2))
-        | immedOpnd _ (e1, T.CONST c) = (expr e1, I.ConstOp c)
+        | immedOpnd _ (e1, T.CONST c) = (expr e1, I.LabelOp(LE.CONST c))
         | immedOpnd _ (e1, T.LABEL lexp) = (expr e1, I.LabelOp lexp)
         | immedOpnd range (e1, e2 as T.LI32 w) = 
           let fun opnd2() = I.RegOp(expr e2)
@@ -236,6 +247,17 @@ struct
         | addr(size,T.ADD(_, e1, e2)) = (expr e1, I.RegOp (expr e2))
         | addr(size,e) = (expr e, I.ImmedOp 0)
 
+       (* convert mlrisc to cellset: *)
+       and cellset mlrisc =
+           let val addCCReg = C.addCell C.CC
+               fun g([],acc) = acc
+                 | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
+                 | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
+                 | g(T.CCR(T.CC(_,cc))::regs,acc)  = g(regs,addCCReg(cc,acc))
+                 | g(T.CCR(T.FCC(_,cc))::regs,acc) = g(regs,addCCReg(cc,acc))
+                 | g(_::regs, acc) = g(regs, acc)
+           in  g(mlrisc, C.empty) end
+
       (*
        * Translate a statement, and annotate it   
        *)
@@ -244,108 +266,109 @@ struct
         | stmt(T.CCMV(ccd, ccexp), an) = doCCexpr(ccexp, ccd, an)
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(_, dst, src), an) = fcopy(dst, src, an)
-        | stmt(T.JMP(T.LABEL lexp, labs),an) =
+        | stmt(T.JMP(ctrl, T.LABEL lexp, labs),an) =
              mark(I.B{addr=I.LabelOp lexp, LK=false},an)
-        | stmt(T.JMP(rexp, labs),an) =
+        | stmt(T.JMP(ctrl, rexp, labs),an) =
           let val rs = expr(rexp)
           in  emit(MTLR(rs));
               mark(I.BCLR{bo=I.ALWAYS,bf=CR0,bit=I.LT,LK=false,labels=labs},an)
           end
-        | stmt(T.CALL(rexp, defs, uses, mem), an) = 
-          let val addCCreg = C.addCell C.CC
-              fun live([],acc) = acc
-                | live(T.GPR(T.REG(_,r))::regs,acc) = live(regs,C.addReg(r,acc))
-                | live(T.CCR(T.CC cc)::regs,acc) = live(regs,addCCreg(cc,acc))
-                | live(T.FPR(T.FREG(_,f))::regs,acc) = live(regs,C.addFreg(f,acc))
-                | live(_::regs, acc) = live(regs, acc)
-              val defs=live(defs,C.empty)
-              val uses=live(uses,C.empty)
+        | stmt(T.CALL(rexp, flow, defs, uses, cdef, cuse, mem), an) = 
+          let val defs=cellset(defs)
+              val uses=cellset(uses)
            in emit(MTLR(expr rexp));
               mark(I.CALL{def=defs, use=uses, mem=mem}, an)
            end
-         | stmt(T.RET,an) = mark(RET,an)
-         | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)
-         | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
-         | stmt(T.BCC(_, T.CMP(_, _, T.LI _, T.LI _), _),_) = error "BCC"
-         | stmt(T.BCC(cc, T.CMP(ty, _, T.ANDB(_, e1, e2), T.LI 0), lab),an) = 
-           (case commImmedOpnd unsigned16 (e1, e2)
-             of (ra, I.RegOp rb) =>
-                 emit(I.ARITH{oper=I.AND, ra=ra, rb=rb, rt=newReg(), 
-                              Rc=true, OE=false})
-              | (ra, opnd) =>
-                 emit(I.ARITHI{oper=I.ANDI_Rc, ra=ra, im=opnd, rt=newReg()})
-            (*esac*);
-             stmt(T.BCC(cc, T.CC CR0, lab),an))
-         | stmt(T.BCC(cc, T.CMP(ty, _, e1 as T.LI _, e2), lab), an) = 
-           let val cc' = T.Util.swapCond cc
-           in  stmt(T.BCC(cc', T.CMP(ty, cc', e2, e1), lab), an)
-           end
-         | stmt(T.BCC(_, cmp as T.CMP(ty, cond, _, _), lab), an) =
-           let val ccreg = if true then CR0 else newCCreg() (* XXX *)
-               val (bo, cf) = 
-                 (case cond of 
-                    T.LT =>  (I.TRUE,  I.LT)
-                  | T.LE =>  (I.FALSE, I.GT)
-                  | T.EQ =>  (I.TRUE,  I.EQ)
-                  | T.NE =>  (I.FALSE, I.EQ)
-                  | T.GT =>  (I.TRUE,  I.GT)
-                  | T.GE =>  (I.FALSE, I.LT)
-                  | T.LTU => (I.TRUE,  I.LT)
-                  | T.LEU => (I.FALSE, I.GT)
-                  | T.GTU => (I.TRUE,  I.GT)
-                  | T.GEU => (I.FALSE, I.LT)
-                (*esac*))
-              val addr = I.LabelOp(LE.LABEL lab)
-           in doCCexpr(cmp, ccreg, []);
-              emitBranch{bo=bo, bf=ccreg, bit=cf, addr=addr, LK=false}
-           end
-         | stmt(T.BCC(cc, T.CC cr, lab), an) = 
-           let val addr=I.LabelOp(LE.LABEL lab)
-               fun branch(bo, bit) = 
-                  emitBranch{bo=bo, bf=cr, bit=bit, addr=addr, LK=false}
-           in  case cc of 
-                 T.EQ => branch(I.TRUE, I.EQ)
-               | T.NE => branch(I.FALSE, I.EQ)
-               | (T.LT | T.LTU) => branch(I.TRUE, I.LT)
-               | (T.LE | T.LEU) => branch(I.FALSE, I.GT)
-               | (T.GE | T.GEU) => branch(I.FALSE, I.LT)
-               | (T.GT | T.GTU) => branch(I.TRUE, I.GT)
-           end  
-         | stmt(T.FBCC(_, cmp as T.FCMP(fty, cond, _, _), lab),an) = 
-           let val ccreg = if true then CR0 else newCCreg() (* XXX *)
-               val labOp = I.LabelOp(LE.LABEL lab)
-               fun branch(bo, bf, bit) = 
-                   emitBranch{bo=bo, bf=bf, bit=bit, addr=labOp, LK=false}
-               fun test2bits(bit1, bit2) = 
-               let val ba=(ccreg, bit1)
-                   val bb=(ccreg, bit2)
-                   val bt=(ccreg, I.FL)
-               in  emit(I.CCARITH{oper=I.CROR, bt=bt, ba=ba, bb=bb});
-                   branch(I.TRUE, ccreg, I.FL)
-               end
-           in  doCCexpr(cmp, ccreg, []);
-               case cond of 
-                 T.==  => branch(I.TRUE,  ccreg, I.FE)
-               | T.?<> => branch(I.FALSE,  ccreg, I.FE)
-               | T.?   => branch(I.TRUE,  ccreg, I.FU)
-               | T.<=> => branch(I.FALSE,  ccreg, I.FU)
-               | T.>   => branch(I.TRUE,  ccreg, I.FG)
-               | T.>=  => test2bits(I.FG, I.FE)
-               | T.?>  => test2bits(I.FU, I.FG)
-               | T.?>= => branch(I.FALSE,  ccreg, I.FL)
-               | T.<   => branch(I.TRUE,  ccreg, I.FL)
-               | T.<=  => test2bits(I.FL, I.FE)
-               | T.?<  => test2bits(I.FU, I.FL)
-               | T.?<= => branch(I.FALSE,  ccreg, I.FG)
-               | T.<>  => test2bits(I.FL, I.FG)
-               | T.?=  => test2bits(I.FU, I.FE)
-              (*esac*)
-           end
+        | stmt(T.RET flow,an) = mark(RET,an)
+        | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)
+        | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
+        | stmt(T.BCC(ctrl, cc, lab),an) =
+              branch(cc,lab,an)
+        | stmt(T.DEFINE l, _) = defineLabel l
+        | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
+        | stmt(s, _) = doStmts(Gen.compileStm s)
 
-         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
-         | stmt _ = error "stmt"
-   
-      and doStmt(s) = stmt(s,[]) 
+      and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch"
+        | branch(T.CMP(ty, cc, T.ANDB(_, e1, e2), T.LI 0), lab, an) = 
+          (case commImmedOpnd unsigned16 (e1, e2)
+            of (ra, I.RegOp rb) =>
+                emit(I.ARITH{oper=I.AND, ra=ra, rb=rb, rt=newReg(), 
+                             Rc=true, OE=false})
+             | (ra, opnd) =>
+                emit(I.ARITHI{oper=I.ANDI_Rc, ra=ra, im=opnd, rt=newReg()})
+           (*esac*);
+            branch(T.CC(cc, CR0), lab, an)
+          )
+        | branch(T.CMP(ty, cc, e1 as T.LI _, e2), lab, an) = 
+          let val cc' = T.Basis.swapCond cc
+          in  branch(T.CMP(ty, cc', e2, e1), lab, an)
+          end
+        | branch(cmp as T.CMP(ty, cond, _, _), lab, an) =
+          let val ccreg = if true then CR0 else newCCreg() (* XXX *)
+              val (bo, cf) = 
+                (case cond of 
+                   T.LT =>  (I.TRUE,  I.LT)
+                 | T.LE =>  (I.FALSE, I.GT)
+                 | T.EQ =>  (I.TRUE,  I.EQ)
+                 | T.NE =>  (I.FALSE, I.EQ)
+                 | T.GT =>  (I.TRUE,  I.GT)
+                 | T.GE =>  (I.FALSE, I.LT)
+                 | T.LTU => (I.TRUE,  I.LT)
+                 | T.LEU => (I.FALSE, I.GT)
+                 | T.GTU => (I.TRUE,  I.GT)
+                 | T.GEU => (I.FALSE, I.LT)
+               (*esac*))
+             val addr = I.LabelOp(LE.LABEL lab)
+          in doCCexpr(cmp, ccreg, []);
+             emitBranch{bo=bo, bf=ccreg, bit=cf, addr=addr, LK=false}
+          end
+        | branch(T.CC(cc, cr), lab, an) = 
+          let val addr=I.LabelOp(LE.LABEL lab)
+              fun branch(bo, bit) = 
+                 emitBranch{bo=bo, bf=cr, bit=bit, addr=addr, LK=false}
+          in  case cc of 
+                T.EQ => branch(I.TRUE, I.EQ)
+              | T.NE => branch(I.FALSE, I.EQ)
+              | (T.LT | T.LTU) => branch(I.TRUE, I.LT)
+              | (T.LE | T.LEU) => branch(I.FALSE, I.GT)
+              | (T.GE | T.GEU) => branch(I.FALSE, I.LT)
+              | (T.GT | T.GTU) => branch(I.TRUE, I.GT)
+          end  
+        | branch(cmp as T.FCMP(fty, cond, _, _), lab, an) = 
+          let val ccreg = if true then CR0 else newCCreg() (* XXX *)
+              val labOp = I.LabelOp(LE.LABEL lab)
+              fun branch(bo, bf, bit) = 
+                  emitBranch{bo=bo, bf=bf, bit=bit, addr=labOp, LK=false}
+              fun test2bits(bit1, bit2) = 
+              let val ba=(ccreg, bit1)
+                  val bb=(ccreg, bit2)
+                  val bt=(ccreg, I.FL)
+              in  emit(I.CCARITH{oper=I.CROR, bt=bt, ba=ba, bb=bb});
+                  branch(I.TRUE, ccreg, I.FL)
+              end
+          in  doCCexpr(cmp, ccreg, []);
+              case cond of 
+                T.==  => branch(I.TRUE,  ccreg, I.FE)
+              | T.?<> => branch(I.FALSE,  ccreg, I.FE)
+              | T.?   => branch(I.TRUE,  ccreg, I.FU)
+              | T.<=> => branch(I.FALSE,  ccreg, I.FU)
+              | T.>   => branch(I.TRUE,  ccreg, I.FG)
+              | T.>=  => test2bits(I.FG, I.FE)
+              | T.?>  => test2bits(I.FU, I.FG)
+              | T.?>= => branch(I.FALSE,  ccreg, I.FL)
+              | T.<   => branch(I.TRUE,  ccreg, I.FL)
+              | T.<=  => test2bits(I.FL, I.FE)
+              | T.?<  => test2bits(I.FU, I.FL)
+              | T.?<= => branch(I.FALSE,  ccreg, I.FG)
+              | T.<>  => test2bits(I.FL, I.FG)
+              | T.?=  => test2bits(I.FU, I.FE)
+             (*esac*)
+          end
+        | branch _ = error "branch"
+  
+      and doStmt s = stmt(s,[]) 
+
+      and doStmts ss = app doStmt ss
    
         (* Emit an integer store *) 
       and store(ty, ea, data, mem, an) = 
@@ -445,7 +468,8 @@ struct
             )
         | subtract(ty, T.LI i, e2, rt, an) = subfImmed(i, expr e2, rt, an)
         | subtract(ty, T.CONST c, e2, rt, an) =
-             mark(I.ARITHI{oper=I.SUBFIC,rt=rt,ra=expr e2,im=I.ConstOp c},an)
+             mark(I.ARITHI{oper=I.SUBFIC,rt=rt,ra=expr e2,
+                           im=I.LabelOp(LE.CONST c)},an)
         | subtract(ty, T.LI32 w, e2, rt, an) =
              subfImmed(Word32.toIntX w, expr e2, rt, an)
         | subtract(ty, e1, e2, rt, an) =
@@ -478,18 +502,22 @@ struct
                  | _            => nonconst(e1,e2)
           in  app emit instrs end
 
-      and divu32 x = Mulu32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x 
+      and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x 
 
-      and divt32 x = Mult32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x 
+      and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x 
+
+      (*
+      and GOTO lab = T.JMP(T.LABEL(LE.LABEL lab), [], [])
 
       and roundToZero{ty,r,i,d} =
       let val L = Label.newLabel ""
           val dReg = T.REG(ty,d)
-      in  stmt(T.MV(ty,d,T.REG(ty,r)),[]);
-          stmt(T.BCC(T.GE,T.CMP(ty,T.GE,dReg,T.LI 0),L),[]);
-          stmt(T.MV(ty,d,T.ADD(ty,dReg,T.LI i)),[]);
+      in  doStmt(T.MV(ty,d,T.REG(ty,r)));
+          doStmt(T.IF(T.CMP(ty,T.GE,dReg,T.LI 0),GOTO L,T.SEQ []));
+          doStmt(T.MV(ty,d,T.ADD(ty,dReg,T.LI i)));
           defineLabel L
       end
+       *)
 
           (* Generate optimized division code *)
       and divide(ty,oper,genDiv,e1,e2,rt,overflow,an) =
@@ -591,17 +619,16 @@ struct
             
               (* Conditional expression *)
            | T.COND exp =>
-              Gen.compileCond{exp=exp,stm=stmt,defineLabel=defineLabel,
-                              annotations=an,rd=rt}
+              doStmts(Gen.compileCond{exp=exp,an=an,rd=rt})
 
               (* Misc *)
-           | T.SEQ(stm, e) => (stmt(stm,[]); doExpr(e, rt, an))
+           | T.LET(s,e) => (doStmt s; doExpr(e, rt, an))
            | T.MARK(e, a) => 
              (case #peek MLRiscAnnotations.MARK_REG a of
                SOME f => (f rt; doExpr(e,rt,an))
              | NONE => doExpr(e,rt,a::an)
              )
-           | e => doExpr(Gen.compile e,rt,an)
+           | e => doExpr(Gen.compileRexp e,rt,an)
   
       (* Generate a floating point load *) 
       and fload(ld32, ld64, ea, mem, ft, an) =
@@ -676,7 +703,7 @@ struct
           | T.FSUB(64, e1, e2) => fbinary(I.FSUB, e1, e2, ft, an)
           | T.FMUL(64, e1, e2) => fbinary(I.FMUL, e1, e2, ft, an)
           | T.FDIV(64, e1, e2) => fbinary(I.FDIV, e1, e2, ft, an)
-          | T.CVTI2F(64,_,_,e) => 
+          | T.CVTI2F(64,_,e) => 
                app emit (PseudoInstrs.cvti2d{reg=expr e,fd=ft})
 
             (* Single/double precision support *)
@@ -684,7 +711,6 @@ struct
           | T.FNEG((32|64), e) => funary(I.FNEG, e, ft, an)
 
             (* Misc *)
-          | T.FSEQ(stm, e) => (doStmt stm; doFexpr(e, ft, an))
           | T.FMARK(e, a) => 
             (case #peek MLRiscAnnotations.MARK_REG a of
               SOME f => (f ft; doFexpr(e,ft,an))
@@ -692,7 +718,8 @@ struct
             )
           | _ => error "doFexpr"
 
-       and ccExpr(T.CC cc) = cc
+       and ccExpr(T.CC(_,cc)) = cc
+         | ccExpr(T.FCC(_,cc)) = cc
          | ccExpr(ccexp) =
            let val cc = newCCreg()
            in  doCCexpr(ccexp,cc,[]); cc end
@@ -715,7 +742,7 @@ struct
               end
           | T.FCMP(fty, fcc, e1, e2) => 
              mark(I.FCOMPARE{cmp=I.FCMPU, bf=ccd, fa=fexpr e1, fb=fexpr e2},an) 
-          | T.CC cc => ccmove(cc,ccd,an)
+          | T.CC(_,cc) => ccmove(cc,ccd,an)
           | T.CCMARK(cc,a) => 
             (case #peek MLRiscAnnotations.MARK_REG a of
               SOME f => (f ccd; doCCexpr(cc,ccd,an))
@@ -732,6 +759,7 @@ struct
               (defineLabel label; emitTrap(); trapLabel := NONE) 
             | NONE => ();
            endCluster a)
+
    in  S.STREAM
        { beginCluster = beginCluster,
          endCluster   = endCluster,
@@ -741,7 +769,7 @@ struct
          entryLabel   = entryLabel,
          comment      = comment,
          annotation   = annotation,
-         exitBlock    = exitBlock,
+         exitBlock    = fn mlrisc => exitBlock(cellset mlrisc),
          alias        = alias,
          phi          = phi
        }

@@ -4,10 +4,11 @@
  * -- Allen
  *)
 
-functor InsertPreheadersFn(structure IR : MLRISC_IR
-                           structure P  : INSN_PROPERTIES
-                             sharing IR.CFG.I = P.I
-                          ) : INSERT_PREHEADERS =
+functor InsertPreheaders
+  (structure IR        : MLRISC_IR
+   structure InsnProps : INSN_PROPERTIES
+     sharing IR.CFG.I = InsnProps.I
+  ) : MLRISC_IR_OPTIMIZATION =
 struct
 
    structure IR   = IR
@@ -17,11 +18,15 @@ struct
    structure W    = CFG.W
    structure G    = Graph
 
+   type flowgraph = IR.IR 
+
    val preheaders = MLRiscControl.getCounter "preheaders-inserted"
 
-   fun error msg = MLRiscErrorMsg.error("InsertPreheaders",msg)
+   val name = "InsertPreheaders"
 
-   fun insert_preheaders IR =
+   fun error msg = MLRiscErrorMsg.error(name,msg)
+
+   fun run IR =
    let  val CFG as G.GRAPH cfg = IR
         val G.GRAPH loop = IR.loop IR
 
@@ -53,7 +58,7 @@ struct
             #add_node cfg (preheader,preheader_node);
             #add_edge cfg (preheader,header,new_edge);
             if no_jump then () 
-               else insns := [P.jump(CFG.defineLabel header_node)];
+               else insns := [InsnProps.jump(CFG.defineLabel header_node)];
             app (fn (i,_,_) => 
                 let fun edge(i,j,e) = 
                          (i,if j = header then preheader else j,e)
@@ -63,7 +68,8 @@ struct
         end 
    in   
         #forall_nodes loop process_loop;
-        if !changed then IR.changed IR else ()
+        if !changed then IR.changed IR else ();
+        IR
    end
 
 end

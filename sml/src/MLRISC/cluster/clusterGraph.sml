@@ -4,7 +4,7 @@
  *
  * -- Allen
  *)
-functor ClusterGraphFn(F : FLOWGRAPH) : CLUSTER_GRAPH =
+functor ClusterGraph(F : FLOWGRAPH) : CLUSTER_GRAPH =
 struct
 
    structure F = F

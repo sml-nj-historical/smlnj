@@ -20,6 +20,7 @@ struct
           (app emitAn (!a);
            app emit (rev (!insns))
           )
+        | emitIt _ = ()
   in  app annotation (!an);
       app emitIt blocks
   end

@@ -5,7 +5,7 @@
  * -- Allen
  *)
 
-functor ControlFlowGraphRestructureFn
+functor ControlFlowGraphRestructure
     (structure Loop : LOOP_STRUCTURE) : CONTROL_FLOW_GRAPH_RESTRUCTURE =
 struct
    structure Loop = Loop

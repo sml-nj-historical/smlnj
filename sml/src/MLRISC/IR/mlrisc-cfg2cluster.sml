@@ -21,17 +21,17 @@ sig
 
 end 
 
-functor CFG2ClusterFn
-   (structure CFG  : CONTROL_FLOW_GRAPH
-    structure F    : FLOWGRAPH
-       sharing CFG.I = F.I
-       sharing CFG.P = F.P
+functor CFG2Cluster
+   (structure CFG       : CONTROL_FLOW_GRAPH
+    structure Flowgraph : FLOWGRAPH
+       sharing CFG.I = Flowgraph.I
+       sharing CFG.P = Flowgraph.P
    ) : CFG2CLUSTER =
 struct
 
     structure CFG      = CFG
     structure W        = CFG.W
-    structure F        = F
+    structure F        = Flowgraph
     structure G        = Graph
     structure Q        = PriorityQueue
     structure Set      = BitSet

@@ -14,36 +14,49 @@ struct
    val BRANCH_PROB = A.new(SOME(fn b => "branch("^Int.toString b^"%)"))
 
     (* the execution frequency of a basic block *)
-   val EXECUTION_FREQ = A.new(SOME(fn r => "freq("^Real.toString r^")"))
+   val EXECUTION_FREQ = A.new(SOME(fn r => "freq("^Int.toString r^")"))
 
     (* no effect at all; just allows you to insert comments *)
    val COMMENT = A.new(SOME(fn s => s))
 
-    (* control dependence definition and use *)
-   datatype ctrl_dep = CTRL_DEF of int | CTRL_USE of int
-   fun prCtrl (CTRL_DEF x) = "ctrl-def "^Int.toString x
-     | prCtrl (CTRL_USE x) = "ctrl-use "^Int.toString x
-   val CTRL = A.new(SOME prCtrl)
+   fun listify f =
+   let fun g [] = ""
+         | g [x] = f x
+         | g (x::xs) = f x^" "^g xs
+   in  g end
+
+    (* control dependence use *)
+   exception CTRLDEF of int 
+   exception CTRLUSE of int
+   local
+      fun toString p = "p"^Int.toString p
+   in
+      val CTRL_USE = A.new'{create=CTRLUSE, 
+                            get=fn CTRLUSE x => x | e => raise e, 
+                            toString=toString}
+      val CTRL_DEF = A.new'{create=CTRLDEF, 
+                            get=fn CTRLDEF x => x | e => raise e, 
+                            toString=toString}
+   end
 
     (*
      * These annotations specifies definitions and uses                              * for a pseudo instruction.
      *)
-   fun defUse(d,u) =
-   let fun list l = 
-           String.concat(foldr (fn (r,l) => Int.toString r::" "::l) [] l)
-   in  "defs="^list d^" uses="^list u end
+   val REGINFO = A.new(SOME(fn _ => "REGINFO"))
+                  : ((int -> int) * int -> string) A.property
 
-   val DEFUSER  = A.new(SOME(fn x => "reg "^defUse x))
-   val DEFUSEF  = A.new(SOME(fn x => "freg "^defUse x))
-   val DEFUSECC = A.new(SOME(fn x => "ccreg "^defUse x))
-
-   val REGINFO = A.new(SOME(fn _ => "REGINFO")) : (int -> string) A.property
-
-   val NO_OPTIMIZATION = A.newFlag("NO_OPTIMIZATION") 
-   val CALLGC = A.newFlag("CALLGC") 
+   val NO_OPTIMIZATION = A.new(SOME(fn () => "NO_OPTIMIZATION"))
+   val CALLGC = A.new(SOME(fn () => "CALLGC"))
+   val GCSAFEPOINT = A.new(SOME(fn s => "GCSAFEPOINT: "^s))
    val BLOCK_NAMES = A.new(SOME(fn _ => "BLOCK_NAMES")) :
                        A.annotations A.property
-   val EMPTY_BLOCK = A.newFlag("EMPTY_BLOCK")
-   val MARK_REG = A.new(SOME(fn _ => "MARK_REG")) : (int -> unit) A.property
+   val EMPTY_BLOCK = A.new(SOME(fn () => "EMPTY_BLOCK"))
+
+   exception MARKREG of int -> unit
+   val MARK_REG = A.new'{toString=fn _ => "MARK_REG",
+                         create=MARKREG,
+                         get=fn MARKREG f => f | e => raise e
+                        }
+   val NO_BRANCH_CHAINING = A.new(SOME(fn () => "NO_BRANCH_CHAINING"))
 
 end

@@ -64,8 +64,8 @@ struct
        | (I.BV{labs,b,x,...},false) => I.BV{labs=labs,b=b,x=x,n=n}
        | (I.BE{labs,b,d,sr,...},false) => I.BE{labs=labs,b=b,d=d,sr=sr,n=n}
        | (I.BLR{x,t,labs,...},false) => I.BLR{x=x,t=t,labs=labs,n=n}
-       | (I.BL{x,t,defs,uses,...},false) => 
-            I.BL{x=x,t=t,defs=defs,uses=uses,n=n}
+       | (I.BL{x,t,defs,uses,mem,...},false) => 
+            I.BL{x=x,t=t,defs=defs,uses=uses,mem=mem,n=n}
        | (I.ANNOTATION{i,a},_) => 
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"

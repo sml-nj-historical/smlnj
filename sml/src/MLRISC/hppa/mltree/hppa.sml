@@ -17,11 +17,9 @@ functor Hppa
    structure HppaMLTree : MLTREE
    structure MilliCode : HPPA_MILLICODE
       where I = HppaInstr
-   structure LabelComp : LABEL_COMP 
-      where I = HppaInstr
+   structure LabelComp : LABEL_COMP where I = HppaInstr and T = HppaMLTree
       sharing HppaMLTree.Region = HppaInstr.Region
-      sharing HppaMLTree.Constant = HppaInstr.Constant
-      sharing LabelComp.T = HppaMLTree
+      sharing HppaMLTree.LabelExp = HppaInstr.LabelExp
    val costOfMultiply : int ref
    val costOfDivision : int ref
   ) : MLTREECOMP =
@@ -29,11 +27,23 @@ struct
    structure I = HppaInstr
    structure T = HppaMLTree
    structure S = T.Stream
-   structure C = HppaCells
+   structure C = I.C
    structure MC = MilliCode
    structure LC = LabelComp
-   structure LE = LabelExp
+   structure LE = I.LabelExp
    structure Region = I.Region
+   structure A = MLRiscAnnotations
+
+   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
+   type ('s,'r,'f,'c) mltreeStream = 
+      (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
+   type ('s,'r,'f,'c) reducer =
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
+       T.reducer
+   type ('s,'r,'f,'c) extender =
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c)
+       T.extender
+
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
                              val naturalWidths = [32]
@@ -85,12 +95,8 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("Hppa",msg)
 
-   datatype ea = 
-     DISPea of C.cell * I.operand    (* displacement *)
-   | INDXea of C.cell * C.cell       (* indexed *)
-   | INDXSCALEDea of C.cell * C.cell (* indexed with scaling (b,x) *)
+   datatype ea = datatype I.addressing_mode
 
-   datatype opnd = datatype LC.lab_opnd
    datatype times248 = TIMES1
                      | TIMES2 
                      | TIMES4 
@@ -99,7 +105,9 @@ struct
    val itow = W.fromInt
 
    fun selectInstructions
-        (S.STREAM{emit, defineLabel, entryLabel, 
+        (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp,...})
+        (instrStream as
+         S.STREAM{emit, defineLabel, entryLabel, 
                   beginCluster, endCluster, annotation,
                   exitBlock, pseudoOp, phi, alias, comment, ...}) =
    let
@@ -113,7 +121,7 @@ struct
        val zeroEA = I.Direct zeroR
        val zeroT = T.REG(32,zeroR)
        val zeroImmed = I.IMMED 0
-       val zeroOpn = OPND(zeroImmed)
+       val zeroOpn = zeroImmed
 
        fun mark(i,an) =
        let fun f(i,[]) = i
@@ -189,7 +197,8 @@ struct
        fun immedw w = let val t = newReg() in loadImmedw(w,t,[]); t end
 
        (* load constant *)
-       fun loadConst(c,t,an) = mark(I.LDO{b=0,i=I.ConstOp c,t=t},an)
+       fun loadConst(c,t,an) = 
+             mark(I.LDO{b=0,i=I.LabExp(LE.CONST c,I.F),t=t},an) (* XXX *)
 
        (* convert an operand into a register *)
        fun reduceOpn i = 
@@ -229,16 +238,16 @@ struct
         *)
        and immedArith(a,ai,e1,e2,t,an) =  
           case (opn e1,expr e2) of
-             (REG r1,r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
-           | (OPND i,r) => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+             (I.REG r1,r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
+           | (i,r) => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
 
        (* emit a commutative arithmetic op with immediate mode *)
        and commImmedArith(a,ai,e1,e2,t,an) =
           case (opn e1,opn e2) of
-             (REG r1,REG r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
-          |  (REG r,OPND i)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
-          |  (OPND i,REG r)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
-          |  (OPND i,OPND j) => mark(I.ARITHI{ai=ai,r=reduceOpn i,i=j,t=t},an)
+             (I.REG r1,I.REG r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
+          |  (I.REG r,i)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+          |  (i,I.REG r)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+          |  (i,j) => mark(I.ARITHI{ai=ai,r=reduceOpn i,i=j,t=t},an)
 
        (* emit an arithmetic op *)
        and arith(a,e1,e2,t,an) = 
@@ -258,9 +267,11 @@ struct
         * scale is the size of the data being addressed.
         *)
        and addr(scale,T.ADD(_,e,T.LI n))    = DISPea(expr e,I.IMMED n)
-         | addr(scale,T.ADD(_,e,T.CONST c)) = DISPea(expr e,I.ConstOp c)
+         | addr(scale,T.ADD(_,e,T.CONST c)) =
+              DISPea(expr e,I.LabExp(LE.CONST c,I.F))
          | addr(scale,T.ADD(ty,i as T.LI _,e)) = addr(scale,T.ADD(ty,e,i))
-         | addr(scale,T.ADD(_,T.CONST c,e)) = DISPea(expr e,I.ConstOp c)
+         | addr(scale,T.ADD(_,T.CONST c,e)) = 
+              DISPea(expr e,I.LabExp(LE.CONST c,I.F))
          | addr(scale,T.ADD(_,e,T.LABEL le)) = 
              let val rs = expr e
              in  case ldLabelEA le of
@@ -380,13 +391,36 @@ struct
        (* emit an integer branch instruction *)
                               
          (* generate a branch *)  
-       and branch(_,T.CMP(ty,cc,T.LI n,e),lab,an) = (* optimize cmp immed *) 
+       and branch(T.CMP(ty,cc,T.LI n,e),lab,an) = (* optimize cmp immed *) 
              emitBranchCmpWithImmed(ty,cc,n,e,lab,an)
-         | branch(cond,T.CMP(ty,cc,e1,e2 as T.LI _),lab,an) = (* commute *) 
-             branch(cond,T.CMP(ty,T.Util.swapCond cc,e2,e1),lab,an)
-         | branch(_,T.CMP(ty,cc,a,b),lab,an) = (* do the usual *)
+         | branch(T.CMP(ty,cc,e1,e2 as T.LI _),lab,an) = (* commute *) 
+             branch(T.CMP(ty,T.Basis.swapCond cc,e2,e1),lab,an)
+         | branch(T.CMP(ty,cc,a,b),lab,an) = (* do the usual *)
              emitBranch(ty,cc,expr a,expr b,lab,an)
-         | branch(cc,e,lab,an) = error "branch: what is the semantics?" 
+         | branch(T.FCMP(fty,cc,a,b),lab,an) =
+           let val f1 = fexpr a
+               val f2 = fexpr b
+               val fallThrough = Label.newLabel ""
+               fun fcond T.==   = I.!=
+                 | fcond T.?<>  = I.==
+                 | fcond T.?    = I.<=>
+                 | fcond T.<=>  = I.?
+                 | fcond T.>    = I.?<=
+                 | fcond T.>=   = I.?<
+                 | fcond T.?>   = I.<=
+                 | fcond T.?>=  = I.<
+                 | fcond T.<    = I.?>=
+                 | fcond T.<=   = I.?>
+                 | fcond T.?<   = I.>=
+                 | fcond T.?<=  = I.>
+                 | fcond T.<>   = I.?=
+                 | fcond T.?=   = I.<>
+                 | fcond _      = error "fcond"
+           in  mark(I.FBRANCH{cc=fcond cc,f1=f1,f2=f2,t=lab,f=fallThrough,
+                              fmt=getFmt a,n=true,long=false},an);
+               defineLabel fallThrough
+           end
+         | branch(e,lab,an) = error "branch: what is the semantics?" 
 
         (* generate a branch cmp with immed *)
        and emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,e,T.LI mask),t,an) = 
@@ -479,42 +513,18 @@ struct
            | 128 => I.QUAD
            | _   => error "getFmt"
 
-       (* emit a floating point branch instruction *)
-       and fbranch(c,T.FCMP(fty,cc,a,b),lab,an) =
-           let val f1 = fexpr a
-               val f2 = fexpr b
-               val fallThrough = Label.newLabel ""
-               fun fcond T.==   = I.!=
-                 | fcond T.?<>  = I.==
-                 | fcond T.?    = I.<=>
-                 | fcond T.<=>  = I.?
-                 | fcond T.>    = I.?<=
-                 | fcond T.>=   = I.?<
-                 | fcond T.?>   = I.<=
-                 | fcond T.?>=  = I.<
-                 | fcond T.<    = I.?>=
-                 | fcond T.<=   = I.?>
-                 | fcond T.?<   = I.>=
-                 | fcond T.?<=  = I.>
-                 | fcond T.<>   = I.?=
-                 | fcond T.?=   = I.<>
-                 | fcond _      = error "fcond"
-           in  mark(I.FBRANCH{cc=fcond cc,f1=f1,f2=f2,t=lab,f=fallThrough,
-                              fmt=getFmt a,n=true,long=false},an);
-               defineLabel fallThrough
-           end
-         | fbranch _ = error "fbranch"
-            
+       and goto(l,an) = mark(I.B{lab=l,n=true},an)
+
            (* generate code for a statement *)
        and stmt(T.MV(32,t,e),an) = doExpr(e,t,an)
          | stmt(T.FMV(64,t,e),an) = doFexpr(e,t,an)
          | stmt(T.CCMV(t,e),an) = doCCexpr(e,t,an)
          | stmt(T.COPY(32,dst,src),an) = copy(dst,src,an)
          | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
-         | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) = mark(I.B{lab=l,n=true},an)
-         | stmt(T.JMP(ea,labs),an) = jmp(ea,labs,an)
+         | stmt(T.JMP(ctrl,T.LABEL(LE.LABEL l),_),an) = goto(l,an)
+         | stmt(T.JMP(ctrl,ea,labs),an) = jmp(ea,labs,an)
          | stmt(s as T.CALL _,an) = call(s,an)
-         | stmt(T.RET,an) = mark(I.BV{labs=[],x=0,b=C.returnPtr,n=true},an)
+         | stmt(T.RET _,an) = mark(I.BV{labs=[],x=0,b=C.returnPtr,n=true},an)
          | stmt(T.STORE(8,ea,t,mem),an) = store(I.STB,ea,expr t,mem,an)
          | stmt(T.STORE(16,ea,t,mem),an) = store(I.STH,ea,expr t,mem,an)
          | stmt(T.STORE(32,ea,t,mem),an) = store(I.STW,ea,expr t,mem,an)
@@ -522,12 +532,14 @@ struct
               fstore(32,I.FSTWS,I.FSTWX,I.FSTWX_S,ea,t,mem,an)
          | stmt(T.FSTORE(64,ea,t,mem),an) = 
               fstore(64,I.FSTDS,I.FSTDX,I.FSTDX_S,ea,t,mem,an)
-         | stmt(T.BCC(cond,cc,lab),an) = branch(cond,cc,lab,an)
-         | stmt(T.FBCC(cond,cc,lab),an) = fbranch(cond,cc,lab,an)
+         | stmt(T.BCC(ctrl,cc,lab),an) = branch(cc,lab,an)
+         | stmt(T.DEFINE l,_) = defineLabel l
          | stmt(T.ANNOTATION(i,a),an) = stmt(i,a::an)
-         | stmt _ = error "stmt"
+         | stmt(T.EXT s,an) = compileStm (reducer()) {stm=s, an=an}
+         | stmt(s,_) = doStmts(Gen.compileStm s)
 
        and doStmt s = stmt(s,[])
+       and doStmts ss = app doStmt ss
 
        and jmp(e,labs,an) = 
            let val (b,x) = 
@@ -564,14 +576,16 @@ struct
             * d <- r + i
             * d <- if r >= 0 then r else d
             *)
+       (*
        and roundToZero{ty,r,i,d} = 
           (doStmt(T.MV(ty,d,T.ADD(ty,T.REG(ty,r),T.LI i)));
            doStmt(T.MV(ty,d,T.COND(ty,T.CMP(ty,T.GE,T.REG(ty,r),T.LI 0),
                                    T.REG(ty,r),T.REG(ty,d))))
           )
+        *)
 
-       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x
-       and divt32 x = Mult32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x
+       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x
+       and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x
        
        and muldiv(ty,genConst,milliFn,a,b,t,commute,an) =
            let fun const(a,i) =  
@@ -638,6 +652,7 @@ struct
                         | T.GEU => I.LTU
                         | T.GTU => I.LEU
                         | T.NE  => I.EQ
+               val tmp = newReg()
                val (b,i) = 
                   case yes of
                     T.LI n   => if im14 n then (zeroR,n) else 
@@ -650,9 +665,10 @@ struct
                   | e        => (expr e,0)
                val t1 =
                   case no of
-                   (T.LI 0 | T.LI32 0w0) => t (* false case is zero *)
-                 | _ => (doExpr(no,t,[]); zeroR) (* move false case to t *)
-           in  mark(I.COMCLR_LDO{cc=cc,r1=r1,r2=r2,b=b,i=i,t1=t1,t2=t},an) 
+                   (T.LI 0 | T.LI32 0w0) => tmp (* false case is zero *)
+                 | _ => (doExpr(no,tmp,[]); zeroR) (* move false case to tmp *)
+           in  mark(I.COMCLR_LDO{cc=cc,r1=r1,r2=r2,b=b,i=i,t1=t1,t2=tmp},an);
+               move(tmp, t, [])
            end
 
            (* convert an expression into a register *) 
@@ -669,8 +685,8 @@ struct
            | T.LI32 w   => loadImmedw(w,t,an)
            | T.LABEL le  => 
                 (case ldLabelOpnd{label=le,pref=SOME t} of
-                   REG r => move(r,t,an)
-                 | OPND opnd => mark(I.LDO{i=opnd,b=zeroR,t=t},an)
+                   I.REG r => move(r,t,an)
+                 | opnd => mark(I.LDO{i=opnd,b=zeroR,t=t},an)
                 )
            | T.CONST c  => loadConst(c,t,an)
            | T.ADD(_,a,b) => plus(times,
@@ -706,13 +722,12 @@ struct
 
            | T.COND(_,T.CMP(_,cond,x,y),yes,no) => 
                 comclr(cond,expr x,expr y,yes,no,t,an)
-           | T.SEQ(s,e) => (doStmt s; doExpr(e,t,an))
-           | T.MARK(e,a) => 
-             (case #peek MLRiscAnnotations.MARK_REG a of
-               SOME f => (f t; doExpr(e,t,an))
-             | NONE => doExpr(e,t,a::an)
-             )
-           | e => doExpr(Gen.compile e,t,an)
+           | T.LET(s,e) => (doStmt s; doExpr(e, t, an))
+           | T.MARK(e,A.MARKREG f) => (f t; doExpr(e,t,an))
+           | T.MARK(e,a) => doExpr(e,t,a::an)
+           | T.PRED(e,c) => doExpr(e,t,A.CTRLUSE c::an)
+           | T.REXT e => compileRexp (reducer()) {e=e, rd=t, an=an}
+           | e => doExpr(Gen.compileRexp e,t,an)
  
            (* convert an expression into a floating point register *) 
        and fexpr(T.FREG(_,r))    = r
@@ -745,66 +760,87 @@ struct
            | T.FSQRT(64,a)   => funary(I.FSQRT_D,a,t,an)
 
              (* conversions *)
-           | T.CVTF2F(fty,mode,fty',e) =>
-               (case (fty,mode,fty') of
-                  (64,T.TO_NEAREST,32) => fcnv(I.FCNVFF_SD,e,t,an)
-                | (32,_,64) => fcnv(I.FCNVFF_DS,e,t,an)
-                | (32,_,32) => doFexpr(e,t,an)
-                | (64,_,64) => doFexpr(e,t,an)
+           | T.CVTF2F(fty,fty',e) =>
+               (case (fty,fty') of
+                  (64,32) => fcnv(I.FCNVFF_SD,e,t,an)
+                | (32,64) => fcnv(I.FCNVFF_DS,e,t,an)
+                | (32,32) => doFexpr(e,t,an)
+                | (64,64) => doFexpr(e,t,an)
                 | _ => error "CVTF2F"
                )
-           | T.CVTI2F(32,_,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
-           | T.CVTI2F(64,_,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
+           | T.CVTI2F(32,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
+           | T.CVTI2F(64,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
 
              (* negation is implemented as subtraction *)
            | T.FNEG(ty,a)    => doFexpr(T.FSUB(ty,T.FREG(ty,zeroF),a),t,an)
 
-           | T.FSEQ(s,e)     => (doStmt s; doFexpr(e,t,an))
-           | T.FMARK(e,a)    =>
-             (case #peek MLRiscAnnotations.MARK_REG a of
-               SOME f => (f t; doFexpr(e,t,an))
-             | NONE => doFexpr(e,t,a::an)
-             )
-           | _               => error "doFexpr"
+           | T.FMARK(e,A.MARKREG f) => (f t; doFexpr(e,t,an))
+           | T.FMARK(e,a) => doFexpr(e,t,a::an)
+           | T.FPRED(e,c) => doFexpr(e,t,A.CTRLUSE c::an)
+           | T.FEXT e => compileFexp (reducer()) {e=e, fd=t, an=an}
+           | e => error "doFexpr"
  
-       and doCCexpr(T.CC r,t,an)  = move(r,t,an)
+       and doCCexpr(T.CC(_,r),t,an)  = move(r,t,an)
+         | doCCexpr(T.FCC(_,r),t,an)  = move(r,t,an)
          | doCCexpr(T.CMP(ty,cond,e1,e2),t,an) = error "doCCexpr"
-         | doCCexpr(T.CCMARK(e,a),t,an) = 
-           (case #peek MLRiscAnnotations.MARK_REG a of
-             SOME f => (f t; doCCexpr(e,t,an))
-           | NONE => doCCexpr(e,t,a::an)
-           )
+         | doCCexpr(T.CCMARK(e,A.MARKREG f),t,an) = (f t; doCCexpr(e,t,an))
+         | doCCexpr(T.CCMARK(e,a),t,an) = doCCexpr(e,t,a::an)
+         | doCCexpr(T.CCEXT e,t,an) = compileCCexp (reducer()) {e=e,cd=t,an=an}
          | doCCexpr e = error "doCCexpr"
  
-       and ccExpr(T.CC r) = r
+       and ccExpr(T.CC(_,r)) = r
+         | ccExpr(T.FCC(_,r)) = r
          | ccExpr e = let val t = newReg() in doCCexpr(e,t,[]); t end
 
            (* convert an expression into an operand *) 
-       and opn(T.CONST c)     = OPND(I.ConstOp c)
+       and opn(T.CONST c)     = I.LabExp(LE.CONST c,I.F)
          | opn(T.LABEL le)    = ldLabelOpnd{label=le,pref=NONE}
-         | opn(e as T.LI n)   = if im11 n then OPND(I.IMMED n) 
-                                else REG(expr e)
+         | opn(e as T.LI n)   = if im11 n then I.IMMED n
+                                else I.REG(expr e)
          | opn(e as T.LI32 w) = if Word32.<(w,0w1024) 
-                                then OPND(I.IMMED(Word32.toIntX w)) 
-                                else REG(expr e)
-         | opn e              = REG(expr e)
+                                then I.IMMED(Word32.toIntX w)
+                                else I.REG(expr e)
+         | opn e              = I.REG(expr e)
+
+       and reducer() = 
+          T.REDUCER{reduceRexp    = expr,
+                    reduceFexp    = fexpr,
+                    reduceCCexp   = ccExpr,
+                    reduceStm     = stmt,
+                    operand       = opn,
+                    reduceOperand = reduceOpn,
+                    addressOf     = fn e => addr(0,e),
+                    emit          = mark,
+                    instrStream   = instrStream,
+                    mltreeStream  = self()
+                   }
  
-       (* condition code registers are mapped onto general registers *)
-       fun cc (T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
-         | cc x = x
-   in S.STREAM
-      { beginCluster= beginCluster,
-        endCluster  = endCluster,
-        emit        = doStmt,
-        pseudoOp    = pseudoOp,
-        defineLabel = defineLabel,
-        entryLabel  = entryLabel,
-        comment     = comment,
-        annotation  = annotation,
-        exitBlock   = fn regs => exitBlock(map cc regs),
-        alias       = alias,
-        phi         = phi
-      }
+       (* convert mlrisc to cellset: 
+        * condition code registers are mapped onto general registers 
+        *)
+       and cellset mlrisc =
+           let fun g([],acc) = acc
+                 | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
+                 | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
+                 | g(T.CCR(T.CC(_,cc))::regs,acc)  = g(regs,C.addReg(cc,acc))
+                 | g(_::regs, acc) = g(regs, acc)
+           in  g(mlrisc, C.empty) end
+
+       and self() =
+          S.STREAM
+            { beginCluster= beginCluster,
+              endCluster  = endCluster,
+              emit        = doStmt,
+              pseudoOp    = pseudoOp,
+              defineLabel = defineLabel,
+              entryLabel  = entryLabel,
+              comment     = comment,
+              annotation  = annotation,
+              exitBlock   = fn regs => exitBlock(cellset regs),
+              alias       = alias,
+              phi         = phi
+            }
+   in  self()
    end
 
   

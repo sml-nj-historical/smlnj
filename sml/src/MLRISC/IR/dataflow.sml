@@ -5,7 +5,7 @@
  * -- Allen
  *)
 
-functor DataflowFn(P : DATAFLOW_PROBLEM) : DATAFLOW_ANALYZER =
+functor Dataflow(P : DATAFLOW_PROBLEM) : DATAFLOW_ANALYZER =
 struct
    structure G   = Graph
    structure A   = Array

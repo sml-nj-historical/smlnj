@@ -3,7 +3,7 @@
  * 
  * -- Allen.
  *) 
-functor CellsBasisFn
+functor CellsBasis
    (eqtype cellkind
     exception Cells
     val unknown     : cellkind
@@ -17,30 +17,12 @@ functor CellsBasisFn
 struct
    type cellkind = cellkind
    type cell = int
+   type ty   = int
    type regmap = cell Intmap.intmap
    exception Cells = Cells
 
    val cellkinds = kinds
    val cellkindToString = cellkindToString
-
-   val initSize = firstPseudo * 4 
-   val cellKindTable = Intmap.new(initSize,Cells) : cellkind Intmap.intmap
-   val lookupCellKind = Intmap.map cellKindTable
-   val cellKind = Intmap.mapWithDefault (cellKindTable,INT)
-   val updateCellKind = Intmap.add  cellKindTable
-
-   val cellKindOn = MLRiscControl.getFlag "register-cellkind";
-
-   fun init() =
-      if !cellKindOn then
-      (Intmap.clear(cellKindTable);
-       app (fn {kind,from,to} =>
-               let fun loop r = 
-                       if r > to then () else
-                       (Intmap.add cellKindTable (r,kind); loop(r+1))
-               in  loop from end
-           ) physical
-      ) else ()
 
    val firstPseudo = firstPseudo
 
@@ -75,8 +57,6 @@ struct
            let val r = !name 
            in  name := r + 1; 
                cnt := !cnt + 1;
-               if !cellKindOn andalso c <> INT 
-               then updateCellKind (r,c) else ();
                r 
            end
        end
@@ -95,18 +75,13 @@ struct
       let val r = !name 
       in  name := r + 1; 
           cnt := !cnt + 1;
-          if !cellKindOn then updateCellKind (r,FLOAT) else ();
           r 
       end
    end
 
    fun newVar r' =
    let val r = !name
-   in  name := r + 1;
-       if !cellKindOn then
-         (updateCellKind(r,lookupCellKind r') handle _ => ())
-       else ();
-       r    
+   in  name := r + 1; r    
    end
 
    fun numCell c = let val cnt = lookupCnt c in fn () => !cnt end
@@ -126,8 +101,7 @@ struct
 
    val lookup = Intmap.mapInt 
 
-   fun reset() = (init();
-                  app (fn r => r := 0) counters;
+   fun reset() = (app (fn r => r := 0) counters;
                   name := firstPseudo
                  )
 

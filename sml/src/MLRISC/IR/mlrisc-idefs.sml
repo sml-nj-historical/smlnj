@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor IDefsFn
+functor IDefs
    (structure Dom : DOMINATOR_TREE
     structure CFG : CONTROL_FLOW_GRAPH
    ) : MLRISC_IDEFS =

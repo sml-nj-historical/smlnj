@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor CFGStructuringFn(IR : MLRISC_IR) : CFG_STRUCTURING =
+functor CFGStructuring(IR : MLRISC_IR) : CFG_STRUCTURING =
 struct
 
    structure IR   = IR

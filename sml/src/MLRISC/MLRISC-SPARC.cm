@@ -28,6 +28,7 @@ is
 	basis.cm
 #endif
 	MLRISC.cm
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 	smlnj-lib.cm
 

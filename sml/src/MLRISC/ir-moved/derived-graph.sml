@@ -8,7 +8,7 @@
  * -- Allen
  *)
 
-functor DerivedGraphFn(Dom : DOMINATOR_TREE): DERIVED_GRAPH =
+functor DerivedGraph(Dom : DOMINATOR_TREE): DERIVED_GRAPH =
 struct
    structure Dom = Dom
    structure G   = Graph

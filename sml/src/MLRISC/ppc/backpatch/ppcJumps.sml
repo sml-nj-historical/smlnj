@@ -6,7 +6,7 @@ struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = LabelExp
+  structure LE = I.LabelExp
 
   fun error msg = MLRiscErrorMsg.error("PPCJumps",msg)
 
@@ -14,7 +14,6 @@ struct
 
   fun isSdi instr = let
     fun operand(I.LabelOp _) = true
-      | operand(I.ConstOp _) = true
       | operand _ = false
   in
     case instr
@@ -52,8 +51,6 @@ struct
 
     fun operand(I.LabelOp le, inRange, lo, hi) = 
          if inRange(LE.valueOf le) then lo else hi
-      | operand(I.ConstOp c, inRange, lo, hi) = 
-	 if inRange(Const.valueOf c) then lo else hi
       | operand _ = error "sdiSize:operand"
   in
     case instr
@@ -97,8 +94,7 @@ struct
   end
 
 
-  fun valueOf(I.ConstOp c) = Const.valueOf c
-    | valueOf(I.LabelOp lexp) = LE.valueOf lexp
+  fun valueOf(I.LabelOp lexp) = LE.valueOf lexp
     | valueOf _ = error "valueOf"
 
   fun split opnd = let

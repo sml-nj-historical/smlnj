@@ -58,14 +58,14 @@ fun test() =
 end
 
 structure TestWarshall = TestAllPairsShortestPaths(
-            FloydWarshallFn(struct type elem = int
+            FloydWarshall(struct type elem = int
                                    open Int
                                    val zero = 0 
                                    val == : int * int -> bool = op =
                                    val inf = 100000000
                                 end))
 structure TestJohnson = TestAllPairsShortestPaths(
-             JohnsonFn(struct type elem = int
+             Johnson(struct type elem = int
                                    open Int
                                    val zero = 0 
                                    val == : int * int -> bool = op =

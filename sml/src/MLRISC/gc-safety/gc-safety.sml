@@ -4,9 +4,9 @@
 functor GCSafety
    (structure SSA       : SSA
     structure GCProps   : GC_PROPERTIES
-    structure Props     : INSN_PROPERTIES
+    structure InsnProps : INSN_PROPERTIES
     structure SSAProps  : SSA_PROPERTIES
-       sharing SSA.I = GCProps.I = Props.I = SSAProps.I
+       sharing SSA.I = GCProps.I = InsnProps.I = SSAProps.I
    ) : GC_SAFETY =
 struct
    structure SSA = SSA

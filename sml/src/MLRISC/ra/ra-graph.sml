@@ -55,7 +55,7 @@ struct
               memRegs      : node list ref,
 
               spillLoc     : int ref,
-              span         : int Intmap.intmap,
+              span         : int Intmap.intmap option ref,
               mode         : mode,
               pseudoCount  : int ref,
               blockedCount : int ref
@@ -183,7 +183,7 @@ struct
              memMoves     = ref [],
              memRegs      = ref memRegs,
              spillLoc     = spillLoc,
-             span         = Intmap.new(2,Nodes),
+             span         = ref NONE,
              mode         = mode,
              pseudoCount  = ref 0,
              blockedCount = ref 0

@@ -5,16 +5,16 @@
  *)
 
 functor MLRISCGlue
-   (structure Asm : INSTRUCTION_EMITTER
-    structure F  : FLOWGRAPH
-    structure P  : INSN_PROPERTIES
+   (structure Asm       : INSTRUCTION_EMITTER
+    structure Flowgraph : FLOWGRAPH
+    structure InsnProps : INSN_PROPERTIES
     structure FreqProps : FREQUENCY_PROPERTIES
-       sharing P.I = Asm.I = F.I = FreqProps.I
-       sharing F.P = Asm.P 
+       sharing InsnProps.I = Asm.I = Flowgraph.I = FreqProps.I
+       sharing Flowgraph.P = Asm.P 
    ) : MLRISC_GLUE =
 struct
 
-   structure F = F
+   structure F = Flowgraph
    structure I = F.I
  
    val mlrisc  = MLRiscControl.getFlag       "mlrisc"
@@ -24,48 +24,48 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("MLRISCGlue",msg)
 
-   structure GraphViewer = GraphViewerFn(AllDisplays)
+   structure GraphViewer = GraphViewer(AllDisplays)
 
-   structure FormatInsn = FormatInstructionFn(Asm)
+   structure FormatInsn = FormatInstruction(Asm)
 
-   structure CFG = ControlFlowGraphFn
-      (structure I = I
-       structure P = F.P
+   structure CFG = ControlFlowGraph
+      (structure I         = I
+       structure PseudoOps = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm
       )
 
-   structure Util = CFGUtilFn
-      (structure CFG = CFG
-       structure P   = P
+   structure Util = CFGUtil
+      (structure CFG       = CFG
+       structure InsnProps = InsnProps
       )
 
-   structure CFG2Cluster = CFG2ClusterFn
-      (structure CFG  = CFG
-       structure Util = Util
-       structure F    = F
+   structure CFG2Cluster = CFG2Cluster
+      (structure CFG       = CFG
+       structure Util      = Util
+       structure Flowgraph = Flowgraph
       )
 
-   structure Cluster2CFG = Cluster2CFGFn
-      (structure CFG  = CFG
-       structure Util = Util
-       structure F    = F
-       structure P    = P
+   structure Cluster2CFG = Cluster2CFG
+      (structure CFG       = CFG
+       structure Util      = Util
+       structure Flowgraph = Flowgraph
+       structure InsnProps = InsnProps
       )
        
-   structure Dom = DominatorTreeFn(DirectedGraph)
+   structure Dom = DominatorTree(DirectedGraph)
 
-   structure CDG = ControlDependenceGraphFn
+   structure CDG = ControlDependenceGraph
       (structure Dom       = Dom
        structure GraphImpl = DirectedGraph
       )
 
-   structure Loop = LoopStructureFn
+   structure Loop = LoopStructure
       (structure Dom       = Dom
        structure GraphImpl = DirectedGraph
       )
 
-   structure IR = MLRISC_IRFn
+   structure IR = MLRISC_IR
       (structure CFG         = CFG
        structure CDG         = CDG
        structure Loop        = Loop
@@ -73,18 +73,36 @@ struct
        structure Util        = Util
       )
 
-   structure Guess = StaticBranchPredictionFn
-                        (structure IR = IR
-                         structure Props = P
-                         structure FreqProps = FreqProps
-                        )
+   structure Guess = StaticBranchPrediction
+      (structure IR        = IR
+       structure InsnProps = InsnProps
+       structure FreqProps = FreqProps
+       val loopMultiplier=10
+      )
       
-   structure Liveness = LivenessAnalysisFn(CFG)
+   structure Liveness = LivenessAnalysis(CFG)
 
-   structure Reshape = ReshapeBranchesFn(structure IR = IR
-                                         structure P  = P)
+   structure Reshape = ReshapeBranches
+     (structure IR        = IR
+      structure InsnProps = InsnProps
+     )
+
+   structure BranchChaining = BranchChaining
+     (structure IR        = IR
+      structure InsnProps = InsnProps
+     )
+
+   structure ClusterGraph = ClusterGraph(Flowgraph)
+
+   structure ClusterViewer = ClusterViewer
+     (structure GraphViewer = GraphViewer
+      structure ClusterGraph = ClusterGraph
+      structure Asm          = Asm
+     )
 
    fun view phase ir = if !view_IR then IR.view phase ir else ()
+   fun view' cluster = if !view_IR then 
+      ClusterViewer.view(ClusterGraph.clusterGraph cluster) else ()
 
    val ssaParams = {copyPropagation=false,keepName=true,semiPruned=false} 
 
@@ -94,15 +112,16 @@ struct
        fun doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
          | doPhase "cfg->cluster" (IR cfg) = 
             CLUSTER(CFG2Cluster.cfg2cluster{cfg=cfg,relayout=false})
-         | doPhase "guess" (r as IR ir) =
-            (Guess.profile {loopMultiplier=10} ir; r)
-         | doPhase "reshape"   (r as IR ir) = (Reshape.reshapeBranches ir; r)
+         | doPhase "guess" (r as IR ir) = (Guess.run ir; r)
+         | doPhase "reshape"   (r as IR ir) = (Reshape.run ir; r)
+         | doPhase "branch-chaining" (r as IR ir) = (BranchChaining.run ir; r)
          | doPhase "view-cfg"  (r as IR ir) = (view "cfg" ir; r)
          | doPhase "view-dom"  (r as IR ir) = (view "dom" ir; r)
          | doPhase "view-pdom" (r as IR ir) = (view "pdom" ir; r)
          | doPhase "view-doms" (r as IR ir) = (view "doms" ir; r)
          | doPhase "view-cdg"  (r as IR ir) = (view "cdg" ir; r)
          | doPhase "view-loop" (r as IR ir) = (view "loop" ir; r)
+         | doPhase "view-cluster" (r as CLUSTER c) = (view' c; r)
          | doPhase phase _ = error(phase)
        fun doPhases [] (CLUSTER c) = c
          | doPhases [] _ = error "cluster needed"

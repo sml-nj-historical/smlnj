@@ -5,8 +5,7 @@
 structure ChaitinSpillHeur : RA_SPILL_HEURISTICS =
 struct
 
-   structure Core = RACore
-   structure G    = RAGraph
+   structure G = RAGraph
 
    open G
 
@@ -19,7 +18,7 @@ struct
                         color=ref PSEUDO, defs=ref [], uses=ref [],
                         movecost=ref 0,movelist=ref [], number= ~1}
 
-   val mode = Core.NO_OPTIMIZATION
+   val mode = RACore.NO_OPTIMIZATION
 
    fun init() = ()
 

@@ -3,10 +3,13 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
-signature LABELEXP = sig
+signature LABELEXP = 
+sig
+  structure Constant : CONSTANT
   datatype labexp = 
       LABEL of Label.label
-    | CONST of int
+    | CONST of Constant.const
+    | INT of int
     | PLUS of labexp * labexp
     | MINUS of labexp * labexp
     | MULT of labexp * labexp
@@ -22,10 +25,12 @@ signature LABELEXP = sig
   val ==      : labexp * labexp -> bool
 end
 
-structure LabelExp = struct
+functor LabelExp(Constant : CONSTANT) = struct
+  structure Constant = Constant
   datatype labexp = 
       LABEL of Label.label
-    | CONST of int
+    | CONST of Constant.const
+    | INT of int
     | PLUS of labexp * labexp
     | MINUS of labexp * labexp
     | MULT of labexp * labexp
@@ -39,7 +44,8 @@ structure LabelExp = struct
   val wtoi = Word.toIntX
 
   fun valueOf(LABEL lab) = Label.addrOf lab
-    | valueOf(CONST i) = i
+    | valueOf(CONST c) = Constant.valueOf c
+    | valueOf(INT i) = i
     | valueOf(PLUS(lexp1, lexp2)) = valueOf(lexp1) + valueOf(lexp2)
     | valueOf(MINUS(lexp1, lexp2)) = valueOf(lexp1) - valueOf(lexp2)
     | valueOf(MULT(lexp1, lexp2)) = valueOf(lexp1) * valueOf(lexp2)
@@ -57,11 +63,12 @@ structure LabelExp = struct
   fun parenthesize str = "(" ^ str ^ ")"
 
   fun pToString(lexp as LABEL _) = toString lexp
-    | pToString(lexp as CONST _) = toString lexp
+    | pToString(lexp as INT _) = toString lexp
     | pToString lexp = parenthesize(toString lexp)
 
   and toString(LABEL lab) = Label.nameOf lab 
-    | toString(CONST i) = if i < 0 then "-"^Int.toString(~i) else Int.toString i
+    | toString(CONST c) = Constant.toString c
+    | toString(INT i) = if i < 0 then "-"^Int.toString(~i) else Int.toString i
     | toString(PLUS(lexp1, lexp2)) =  pToString lexp1 ^ "+" ^ pToString lexp2
     | toString(MINUS(lexp1, lexp2)) = pToString lexp1 ^ "-" ^ pToString lexp2
     | toString(MULT(lexp1, lexp2)) = pToString lexp1 ^ "*" ^ pToString lexp2
@@ -72,7 +79,8 @@ structure LabelExp = struct
     | toString(OR(lexp, mask)) = pToString lexp ^ "|" ^ Word.toString mask
 
   fun hash(LABEL(Label.Label{id,...})) = Word.fromInt id
-    | hash(CONST i) = Word.fromInt i
+    | hash(INT i) = Word.fromInt i
+    | hash(CONST c) = Constant.hash c
     | hash(PLUS(a,b)) = hash a + hash b + 0w12311
     | hash(MINUS(a,b)) = 0w1232 + hash a + hash b + 0w8834
     | hash(MULT(a,b)) = 0w123123 + hash a + hash b + 0w1714
@@ -83,7 +91,8 @@ structure LabelExp = struct
     | hash(OR(a,m)) = hash a + m + 0w777
 
   fun ==(LABEL(Label.Label{id=x,...}),LABEL(Label.Label{id=y,...})) = x = y
-    | ==(CONST i,CONST j) = i = j
+    | ==(INT i,INT j) = i = j
+    | ==(CONST c,CONST c') = Constant.==(c,c')
     | ==(PLUS(a,b),PLUS(c,d)) = ==(a,b) andalso ==(c,d)
     | ==(MINUS(a,b),MINUS(c,d)) = ==(a,b) andalso ==(c,d)
     | ==(MULT(a,b),MULT(c,d)) = ==(a,b) andalso ==(c,d)

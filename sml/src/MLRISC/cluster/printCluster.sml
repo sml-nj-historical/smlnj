@@ -12,7 +12,7 @@ sig
 end
 
 
-functor PrintClusterFn 
+functor PrintCluster 
    (structure Flowgraph : FLOWGRAPH
     structure Asm       : INSTRUCTION_EMITTER 
        where P=Flowgraph.P and I=Flowgraph.I
@@ -36,6 +36,7 @@ struct
    fun showEdge(F.BBLOCK{blknum, ...},w) = showEdge'(blknum,w)
      | showEdge(F.ENTRY{blknum, ...},w) = showEdge'(blknum,w)
      | showEdge(F.EXIT{blknum, ...},w) = showEdge'(blknum,w)
+     | showEdge(_, w) = "???"
 
    fun printCluster stream title 
         (F.CLUSTER {blocks, regmap, entry, exit, annotations, ...}) = 

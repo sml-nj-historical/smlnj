@@ -41,14 +41,14 @@ fun test() =
 end
 
 structure TestDijkstra = TestShortestPaths(
-               DijkstraFn(struct open Int 
+               Dijkstra(struct open Int 
                                        type elem = int
                                        val zero = 0
                                        val inf = 10000000
                                        val == : int * int -> bool = op=
                                  end))
 structure TestBellmanFord = TestShortestPaths(
-             BellmanFordFn(struct open Int 
+             BellmanFord(struct open Int 
                                        type elem = int
                                        val zero = 0
                                        val inf = 10000000

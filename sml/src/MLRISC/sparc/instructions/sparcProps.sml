@@ -7,7 +7,7 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("SparcProps",msg)
 
-  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
@@ -25,7 +25,6 @@ struct
     | instrKind(I.CALL _)  = IK_CALL
     | instrKind(I.JMPL _)  = IK_CALL
     | instrKind(I.ANNOTATION{i,...}) = instrKind i
-    | instrKind(I.GROUP _) = IK_GROUP
     | instrKind _          = IK_INSTR
 
   fun branchTargets(I.Bicc{b=I.BA,label,...}) = [LABELLED label]
@@ -143,16 +142,14 @@ struct
    *========================================================================*)
    fun hashOpn(I.REG r) = Word.fromInt r
      | hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LAB l) = LabelExp.hash l
-     | hashOpn(I.LO l) = LabelExp.hash l
-     | hashOpn(I.HI l) = LabelExp.hash l
-     | hashOpn(I.CONST c) = I.Constant.hash c
+     | hashOpn(I.LAB l) = I.LabelExp.hash l
+     | hashOpn(I.LO l) = I.LabelExp.hash l
+     | hashOpn(I.HI l) = I.LabelExp.hash l
    fun eqOpn(I.REG a,I.REG b) = a = b
      | eqOpn(I.IMMED a,I.IMMED b) = a = b
-     | eqOpn(I.LAB a,I.LAB b) = LabelExp.==(a,b)
-     | eqOpn(I.LO a,I.LO b) = LabelExp.==(a,b)
-     | eqOpn(I.HI a,I.HI b) = LabelExp.==(a,b)
-     | eqOpn(I.CONST a,I.CONST b) = I.Constant.==(a,b)
+     | eqOpn(I.LAB a,I.LAB b) = I.LabelExp.==(a,b)
+     | eqOpn(I.LO a,I.LO b) = I.LabelExp.==(a,b)
+     | eqOpn(I.HI a,I.HI b) = I.LabelExp.==(a,b)
      | eqOpn _ = false
 
   fun defUseR instr =
@@ -217,16 +214,4 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
-
-  (*========================================================================
-   *  Groups 
-   *========================================================================*)
-  fun getGroup(I.ANNOTATION{i,...}) = getGroup i
-    | getGroup(I.GROUP r) = r
-    | getGroup _ = error "getGroup"
-
-  val makeGroup = I.GROUP
 end
-
-
-

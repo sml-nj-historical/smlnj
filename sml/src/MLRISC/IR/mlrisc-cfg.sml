@@ -3,18 +3,18 @@
  *
  * -- Allen
  *)
-functor ControlFlowGraphFn
+functor ControlFlowGraph
    (structure I : INSTRUCTIONS
-    structure P : PSEUDO_OPS
+    structure PseudoOps : PSEUDO_OPS
     structure GraphImpl : GRAPH_IMPLEMENTATION
     structure Asm : INSTRUCTION_EMITTER
        sharing Asm.I = I
-       sharing Asm.P = P
+       sharing Asm.P = PseudoOps
    ) : CONTROL_FLOW_GRAPH =
 struct
 
     structure I = I
-    structure P = P
+    structure P = PseudoOps
     structure C = I.C
     structure W = Freq
     structure G = Graph
@@ -77,9 +77,11 @@ struct
     *========================================================================*)
               (* escaping live out information *)
     val LIVEOUT = Annotations.new 
-          (SOME (fn c => "Liveout: "^C.cellsetToString c))
-    val CHANGED = Annotations.new NONE : (unit -> unit) Annotations.property
-    val CHANGEDONCE = Annotations.new NONE : (unit -> unit) Annotations.property
+          (SOME(fn c => "Liveout: "^
+                        (LineBreak.lineBreak 75 (C.cellsetToString c))))
+    val CHANGED = Annotations.new(SOME(fn (f : unit -> unit) => "CHANGED"))
+    val CHANGEDONCE = Annotations.new
+                        (SOME(fn (f : unit -> unit) => "CHANGEDONCE"))
 
    (*========================================================================
     *

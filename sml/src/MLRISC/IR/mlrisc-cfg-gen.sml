@@ -4,7 +4,7 @@
  *
  * -- Allen
  *)
-functor ControlFlowGraphGenFn
+functor ControlFlowGraphGen
    (structure CFG     : CONTROL_FLOW_GRAPH
     structure Stream  : INSTRUCTION_STREAM
     structure InsnProps : INSN_PROPERTIES

@@ -12,7 +12,7 @@ sig
    val :=  : 'a uref * 'a -> unit
 end
 
-functor UndoableRefFn (Log : TRANSACTION_LOG) : UNDOABLE_REF =
+functor UndoableRef (Log : TRANSACTION_LOG) : UNDOABLE_REF =
 struct
 
    type 'a uref = 'a ref * Log.version ref 

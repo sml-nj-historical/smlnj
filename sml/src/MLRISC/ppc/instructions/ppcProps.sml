@@ -2,13 +2,13 @@ functor PPCProps(PPCInstr : PPCINSTR) : INSN_PROPERTIES =
 struct
   structure I = PPCInstr
   structure C = I.C
-  structure LE = LabelExp
+  structure LE = I.LabelExp
 
   exception NegateConditional
 
   fun error msg = MLRiscErrorMsg.error("PPCProps",msg)
 
-  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
@@ -20,7 +20,6 @@ struct
     | instrKind(I.FCOPY _) = IK_COPY
     | instrKind(I.CALL _) = IK_CALL
     | instrKind(I.ANNOTATION{i,...}) = instrKind i
-    | instrKind(I.GROUP _) = IK_GROUP
     | instrKind _ = IK_INSTR
 
   fun moveInstr(I.COPY _) = true
@@ -71,12 +70,10 @@ struct
 
   fun hashOpn(I.RegOp r) = Word.fromInt r
     | hashOpn(I.ImmedOp i) = Word.fromInt i
-    | hashOpn(I.LabelOp l) = LabelExp.hash l
-    | hashOpn(I.ConstOp c) = I.Constant.hash c
+    | hashOpn(I.LabelOp l) = I.LabelExp.hash l
   fun eqOpn(I.RegOp a,I.RegOp b) = a = b
     | eqOpn(I.ImmedOp a,I.ImmedOp b) = a = b
-    | eqOpn(I.LabelOp a,I.LabelOp b) = LabelExp.==(a,b)
-    | eqOpn(I.ConstOp a,I.ConstOp b) = I.Constant.==(a,b)
+    | eqOpn(I.LabelOp a,I.LabelOp b) = I.LabelExp.==(a,b)
     | eqOpn _ = false
 
   fun defUseR instr = let
@@ -141,15 +138,6 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
-
-  (*========================================================================
-   *  Groups 
-   *========================================================================*)
-  fun getGroup(I.ANNOTATION{i,...}) = getGroup i
-    | getGroup(I.GROUP r) = r
-    | getGroup _ = error "getGroup"
-
-  val makeGroup = I.GROUP
 end
 
 

@@ -5,12 +5,12 @@
  * -- Allen
  *)
 
-functor DijkstraFn(Num : ABELIAN_GROUP_WITH_INF) 
+functor Dijkstra(Num : ABELIAN_GROUP_WITH_INF) 
      : SINGLE_SOURCE_SHORTEST_PATHS =
 struct
 
    structure Num = Num
-   structure Q   = NodePriorityQueueFn(Array)
+   structure Q   = NodePriorityQueue(Array)
    structure G   = Graph
    structure A   = Array
 

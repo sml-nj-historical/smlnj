@@ -13,7 +13,7 @@ functor Alpha
     structure AlphaMLTree : MLTREE 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
        sharing AlphaMLTree.Region   = AlphaInstr.Region
-       sharing AlphaMLTree.Constant = AlphaInstr.Constant
+       sharing AlphaMLTree.LabelExp = AlphaInstr.LabelExp
        sharing PseudoInstrs.I = AlphaInstr
        sharing PseudoInstrs.T = AlphaMLTree
 
@@ -22,6 +22,11 @@ functor Alpha
 
       (* Should we just use the native multiply by a constant? *)
     val useMultByConst : bool ref
+
+      (* Should we use SUD flags for floating point and generate DEFFREG? 
+       * This should be set to false for C-like clients but true for SML/NJ.
+       *)
+    val SMLNJfloatingPoint : bool 
    ) : MLTREECOMP =
 struct
 
@@ -30,9 +35,10 @@ struct
   structure R   = AlphaMLTree.Region
   structure I   = AlphaInstr
   structure C   = AlphaInstr.C
-  structure LE  = LabelExp
+  structure LE  = I.LabelExp
   structure W32 = Word32
   structure P   = PseudoInstrs
+  structure A   = MLRiscAnnotations
 
  (*********************************************************
 
@@ -133,6 +139,16 @@ struct
 
   fun error msg = MLRiscErrorMsg.error("Alpha",msg) 
 
+  type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
+  type ('s,'r,'f,'c) mltreeStream = 
+     (('s,'r,'f,'c) T.stm,C.regmap,('s,'r,'f,'c) T.mlrisc list) T.stream
+  type ('s,'r,'f,'c) reducer = 
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
+       T.reducer
+  type ('s,'r,'f,'c) extender =
+     (I.instruction,C.regmap,C.cellset,I.operand,I.addressing_mode,'s,'r,'f,'c) 
+       T.extender
+ 
 
   (*
    * This module is used to simulate operations of non-standard widths.
@@ -275,7 +291,9 @@ struct
   datatype commutative = COMMUTE | NOCOMMUTE
 
   fun selectInstructions
-        (S.STREAM{emit,beginCluster,endCluster,
+        (T.EXTENDER{compileStm, compileRexp, compileFexp, compileCCexp, ...})
+        (instrStream as
+         S.STREAM{emit,beginCluster,endCluster,
                   defineLabel,entryLabel,pseudoOp,annotation,
                   exitBlock,phi,alias,comment,...}) =
   let
@@ -311,13 +329,10 @@ struct
        * Otherwise, we use /SUD.  This is the default for SML/NJ.
        *
        *)
-      val useSU = false
-      val (ADDT,SUBT,MULT,DIVT) =
-           if useSU then (I.ADDTSU,I.SUBTSU,I.MULTSU,I.DIVTSU)
-           else          (I.ADDTSUD,I.SUBTSUD,I.MULTSUD,I.DIVTSUD)
-      val (ADDS,SUBS,MULS,DIVS) =
-           if useSU then (I.ADDSSU,I.SUBSSU,I.MULSSU,I.DIVSSU)
-           else          (I.ADDSSUD,I.SUBSSUD,I.MULSSUD,I.DIVSSUD)
+      val (ADDTX,SUBTX,MULTX,DIVTX) =
+           (I.ADDTSUD,I.SUBTSUD,I.MULTSUD,I.DIVTSUD)
+      val (ADDSX,SUBSX,MULSX,DIVSX) =
+            (I.ADDSSUD,I.SUBSSUD,I.MULSSUD,I.DIVSSUD)
   
       fun mark'(i,[]) = i
         | mark'(i,a::an) = mark'(I.ANNOTATION{i=i,a=a},an)
@@ -393,7 +408,7 @@ struct
            end
 
       (* emit load immed *)
-      and loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.CONSTop c},an)
+      and loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop(LE.CONST c)},an)
 
       (* emit load label *)
       and loadLabel(l,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop l},an)
@@ -469,7 +484,7 @@ struct
             if w <= 0w255 then I.IMMop(W32.toIntX w) 
             else let val tmpR = newReg()
                  in  loadImmed32(w,zeroR,tmpR,[]); I.REGop tmpR end
-        | opn(T.CONST c) = I.CONSTop c
+        | opn(T.CONST c) = I.LABop(LE.CONST c)
         | opn e = I.REGop(expr e)
 
       (* compute base+displacement from an expression *)
@@ -477,8 +492,8 @@ struct
           case exp of 
             T.ADD(_,e,T.LI n) => makeEA(expr e,n)
           | T.ADD(_,T.LI n,e) => makeEA(expr e,n)
-          | T.ADD(_,e,T.CONST c) => (expr e,I.CONSTop c)
-          | T.ADD(_,T.CONST c,e) => (expr e,I.CONSTop c)
+          | T.ADD(_,e,T.CONST c) => (expr e,I.LABop(LE.CONST c))
+          | T.ADD(_,T.CONST c,e) => (expr e,I.LABop(LE.CONST c))
           | T.SUB(_,e,T.LI n) => makeEA(expr e,~n)
           | e => makeEA(expr e,0)
 
@@ -703,11 +718,13 @@ struct
            * d <- r + i;
            * d <- if (r > 0) then r else d
            *)
+      (*
       and roundToZero{ty,r,i,d} =
           (doStmt(T.MV(ty,d,T.ADD(ty,T.REG(ty,r),T.LI i)));
            doStmt(T.MV(ty,d,T.COND(ty,T.CMP(ty,T.GE,T.REG(ty,r),T.LI 0),
                                    T.REG(ty,r),T.REG(ty,d))))
           )
+       *)
 
       (*
        * Generic division.  
@@ -719,7 +736,7 @@ struct
 
               fun const(e,i) =
                   let val r = expr e
-                  in  genDiv{mode=T.TO_ZERO,roundToZero=roundToZero}
+                  in  genDiv{mode=T.TO_ZERO,stm=doStmt}
                             {r=r,i=i,d=rd}
                       handle _ => nonconst(T.REG(ty,r),T.LI i)
                   end
@@ -885,8 +902,10 @@ struct
              *)
           | T.ADD(64,e,T.LABEL le) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
           | T.ADD(64,T.LABEL le,e) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
-          | T.ADD(64,e,T.CONST c)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
-          | T.ADD(64,T.CONST c,e)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
+          | T.ADD(64,e,T.CONST c)  => 
+               mark(I.LDA{r=d,b=expr e,d=I.LABop(LE.CONST c)},an)
+          | T.ADD(64,T.CONST c,e)  => 
+               mark(I.LDA{r=d,b=expr e,d=I.LABop(LE.CONST c)},an)
           | T.ADD(64,e,T.LI i)     => loadImmed(i, expr e, d, an)
           | T.ADD(64,T.LI i,e)     => loadImmed(i, expr e, d, an)
           | T.ADD(64,e,T.LI32 i)   => loadImmed32(i, expr e, d, an)
@@ -965,12 +984,9 @@ struct
           | T.NOTB(_,e) => arith(I.ORNOT,zeroT,e,d,an)
 
             (* loads *)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,ea,mem)) => 
-               load8s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem)) => 
-               load16s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(32,ea,mem)) => 
-               load32s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem))=> load16s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(32,ea,mem))=> load32s(ea,d,mem,an)
           | T.LOAD(8,ea,mem) => load8(ea,d,mem,an)
           | T.LOAD(16,ea,mem) => load16(ea,d,mem,an)
           | T.LOAD(32,ea,mem) => load32s(ea,d,mem,an)
@@ -983,42 +999,49 @@ struct
              | (32,64) => cvtf2i(P.cvtsq,rounding,e,d,an)
              | (64,32) => cvtf2i(P.cvttl,rounding,e,d,an)
              | (64,64) => cvtf2i(P.cvttq,rounding,e,d,an)
-             | _       => doExpr(Gen.compile exp,d,an) (* other cases *)
+             | _       => doExpr(Gen.compileRexp exp,d,an) (* other cases *)
             )
 
            (* conversion to boolean *)
           | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 1,T.LI 0) => 
                compare(ty,cond,e1,e2,d,an) 
           | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 0,T.LI 1) => 
-               compare(ty,T.Util.negateCond cond,e1,e2,d,an) 
+               compare(ty,T.Basis.negateCond cond,e1,e2,d,an) 
           | T.COND(_,T.CMP(ty,cond,e1,e2),x,y) => 
                cmove(ty,cond,e1,e2,x,y,d,an) 
 
-          | T.SEQ(s,e) => (doStmt s; doExpr(e,d,an))
-          | T.MARK(e,a) => 
-            (case #peek MLRiscAnnotations.MARK_REG a of
-              SOME f => (f d; doExpr(e,d,an))
-            | NONE => doExpr(e,d,a::an)
-            )
+          | T.LET(s,e) => (doStmt s; doExpr(e, d, an))
+          | T.MARK(e,A.MARKREG f) => (f d; doExpr(e,d,an))
+          | T.MARK(e,a) => doExpr(e,d,a::an)
             (* On the alpha: all 32 bit values are already sign extended.
              * So no sign extension is necessary
              *)
-          | T.CVTI2I(64, _, 32, e) => doExpr(e, d, an)
+          | T.CVTI2I(64, T.SIGN_EXTEND, 32, e) => doExpr(e, d, an)
+          | T.CVTI2I(64, T.ZERO_EXTEND, 32, e) => doExpr(e, d, an)
+
+          | T.PRED(e, c) => doExpr(e, d, A.CTRLUSE c::an)
+          | T.REXT e => compileRexp (reducer()) {e=e, an=an, rd=d}
     
            (* Defaults *) 
-          | e => doExpr(Gen.compile e,d,an)
+          | e => doExpr(Gen.compileRexp e,d,an)
 
        (* Hmmm...  this is the funky thing described in the comments
         * in at the top of the file.  This should be made parametrizable
         * for other backends. 
         *)
-      and farith(opcode,a,b,d,an) = 
+      and farith(opcode,opcodeSMLNJ,a,b,d,an) = 
           let val fa = fexpr a
               val fb = fexpr b
-          in  emit(I.DEFFREG d);
-              mark(I.FOPERATEV{oper=opcode,fa=fa,fb=fb,fc=d},an);
-              emit(I.TRAPB)
+          in  if SMLNJfloatingPoint then 
+                   (emit(I.DEFFREG d);
+                    mark(I.FOPERATEV{oper=opcodeSMLNJ,fa=fa,fb=fb,fc=d},an);
+                    emit(I.TRAPB)
+                   )
+              else mark(I.FOPERATE{oper=opcode,fa=fa,fb=fb,fc=d},an)
           end
+
+      and farith'(opcode,a,b,d,an) = 
+            mark(I.FOPERATE{oper=opcode,fa=fexpr a,fb=fexpr b,fc=d},an)
 
       and funary(opcode,e,d,an) = mark(I.FUNARY{oper=opcode,fb=fexpr e,fc=d},an)
 
@@ -1047,17 +1070,22 @@ struct
             T.FREG(_,f)    => fmove(f,d,an)
 
             (* single precision support *)
-          | T.FADD(32,a,b) => farith(ADDS,a,b,d,an)
-          | T.FSUB(32,a,b) => farith(SUBS,a,b,d,an)
-          | T.FMUL(32,a,b) => farith(MULS,a,b,d,an)
-          | T.FDIV(32,a,b) => farith(DIVS,a,b,d,an)
+          | T.FADD(32,a,b) => farith(I.ADDS,ADDSX,a,b,d,an)
+          | T.FSUB(32,a,b) => farith(I.SUBS,SUBSX,a,b,d,an)
+          | T.FMUL(32,a,b) => farith(I.MULS,MULSX,a,b,d,an)
+          | T.FDIV(32,a,b) => farith(I.DIVS,DIVSX,a,b,d,an)
 
             (* double precision support *)
-          | T.FADD(64,a,b) => farith(ADDT,a,b,d,an)
-          | T.FSUB(64,a,b) => farith(SUBT,a,b,d,an)
-          | T.FMUL(64,a,b) => farith(MULT,a,b,d,an)
-          | T.FDIV(64,a,b) => farith(DIVT,a,b,d,an)
+          | T.FADD(64,a,b) => farith(I.ADDT,ADDTX,a,b,d,an)
+          | T.FSUB(64,a,b) => farith(I.SUBT,SUBTX,a,b,d,an)
+          | T.FMUL(64,a,b) => farith(I.MULT,MULTX,a,b,d,an)
+          | T.FDIV(64,a,b) => farith(I.DIVT,DIVTX,a,b,d,an)
 
+            (* copy sign (correct?) XXX *)
+          | T.FCOPYSIGN(_,T.FNEG(_,a),b) => farith'(I.CPYSN,a,b,d,an)
+          | T.FCOPYSIGN(_,a,T.FNEG(_,b)) => farith'(I.CPYSN,a,b,d,an)
+          | T.FNEG(_,T.FCOPYSIGN(_,a,b)) => farith'(I.CPYSN,a,b,d,an)
+          | T.FCOPYSIGN(_,a,b)           => farith'(I.CPYS,a,b,d,an)
 
             (* generic *)
           | T.FABS(_,a)   => 
@@ -1075,7 +1103,7 @@ struct
              * Note: it is not necessary to convert single precision
              * to double on the alpha.
              *)
-          | T.CVTF2F(fty,_,fty',e) => (* ignore rounding mode for now *)
+          | T.CVTF2F(fty,fty',e) => (* ignore rounding mode for now *)
             (case (fty,fty') of
                (64,64) => doFexpr(e,d,an) 
              | (64,32) => doFexpr(e,d,an) 
@@ -1085,7 +1113,7 @@ struct
             )
 
             (* integer -> floating point conversion *)
-          | T.CVTI2F(fty,T.SIGN_EXTEND,ty,e) => 
+          | T.CVTI2F(fty,ty,e) => 
             let val pseudo = 
                 case (ty,fty) of
                   (ty,32) => if ty <= 32 then P.cvtls else P.cvtqs
@@ -1093,13 +1121,10 @@ struct
                 | _       => error "CVTI2F"
             in  fcvti2f(pseudo,e,d,an) end
 
-            (* misc *)
-          | T.FSEQ(s,e) => (doStmt s; doFexpr(e,d,an))
-          | T.FMARK(e,a) => 
-            (case #peek MLRiscAnnotations.MARK_REG a of
-              SOME f => (f d; doFexpr(e,d,an))
-            | NONE => doFexpr(e,d,a::an)
-            )
+          | T.FMARK(e,A.MARKREG f) => (f d; doFexpr(e,d,an))
+          | T.FMARK(e,a) => doFexpr(e,d,a::an)
+          | T.FPRED(e,c) => doFexpr(e, d, A.CTRLUSE c::an)
+          | T.FEXT e => compileFexp (reducer()) {e=e, fd=d, an=an}
           | _ => error "doFexpr"
 
           (* check whether an expression is andb(e,1) *)
@@ -1116,16 +1141,59 @@ struct
         | zeroOrOne _           = OTHER
 
       (* compile a branch *)
-      and branch(c,e,lab,an) = 
+      and branch(e,lab,an) = 
           case e of
             T.CMP(ty,cc,e1 as T.LI _,e2) => 
-               branchBS(ty,T.Util.swapCond cc,e2,e1,lab,an)
+               branchBS(ty,T.Basis.swapCond cc,e2,e1,lab,an)
           | T.CMP(ty,cc,e1 as T.LI32 _,e2) => 
-               branchBS(ty,T.Util.swapCond cc,e2,e1,lab,an)
+               branchBS(ty,T.Basis.swapCond cc,e2,e1,lab,an)
           | T.CMP(ty,cc,e1,e2) => branchBS(ty,cc,e1,e2,lab,an)
-          | e => mark(I.BRANCH(I.BNE,ccExpr e,lab),an)
+            (* generate an floating point branch *)
+          | T.FCMP(fty,cc,e1,e2) =>
+            let val f1 = fexpr e1
+                val f2 = fexpr e2
+                fun bcc(cmp,br) = 
+                let val tmpR = C.newFreg()
+                in  emit(I.DEFFREG(tmpR));
+                    emit(I.FOPERATE{oper=cmp,fa=f1,fb=f2,fc=tmpR});
+                    emit(I.TRAPB);
+                    mark(I.FBRANCH{b=br,f=tmpR,lab=lab},an)
+                end
+                fun fall(cmp1, br1, cmp2, br2) = 
+                let val tmpR1 = newFreg()
+                    val tmpR2 = newFreg()
+                    val fallLab = Label.newLabel ""
+                in  emit(I.DEFFREG(tmpR1));
+                    emit(I.FOPERATE{oper=cmp1, fa=f1, fb=f2, fc=tmpR1});
+                    emit(I.TRAPB);
+                    mark(I.FBRANCH{b=br1, f=tmpR1, lab=fallLab},an);
+                    emit(I.DEFFREG(tmpR2));
+                    emit(I.FOPERATE{oper=cmp2, fa=f1, fb=f2, fc=tmpR2});
+                    emit(I.TRAPB);
+                    mark(I.FBRANCH{b=br2, f=tmpR2, lab=lab},an);
+                    defineLabel fallLab
+                end
+                fun bcc2(cmp1, br1, cmp2, br2) = 
+                     (bcc(cmp1, br1); bcc(cmp2, br2))
+            in  case cc of 
+                  T.==  => bcc(I.CMPTEQSU, I.FBNE)
+                | T.?<> => bcc(I.CMPTEQSU, I.FBEQ)
+                | T.?   => bcc(I.CMPTUNSU, I.FBNE)
+                | T.<=> => bcc(I.CMPTUNSU, I.FBEQ)
+                | T.>   => fall(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBEQ)
+                | T.>=  => fall(I.CMPTLTSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
+                | T.?>  => bcc(I.CMPTLESU, I.FBEQ)
+                | T.?>= => bcc(I.CMPTLTSU, I.FBEQ)
+                | T.<   => bcc(I.CMPTLTSU, I.FBNE)
+                | T.<=  => bcc(I.CMPTLESU, I.FBNE)
+                | T.?<  => bcc2(I.CMPTLTSU, I.FBNE, I.CMPTUNSU, I.FBNE)
+                | T.?<=  => bcc2(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBNE)
+                | T.<> => fall(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
+                | T.?= => bcc2(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBNE)
+            end
+          | e => mark(I.BRANCH{b=I.BNE,r=ccExpr e,lab=lab},an)
 
-      and br(opcode,exp,lab,an) = mark(I.BRANCH(opcode,expr exp,lab),an)
+      and br(opcode,exp,lab,an) = mark(I.BRANCH{b=opcode,r=expr exp,lab=lab},an)
 
             (* Use the branch on bit set/clear instruction when possible *) 
       and branchBS(ty,cc,a,b,lab,an)  =
@@ -1186,12 +1254,12 @@ struct
           let val tmpR = newReg()
               fun signedCmp(cmp,br) = 
                   (emit(I.OPERATE{oper=cmp, ra=expr e1, rb=opn e2, rc=tmpR});
-                   mark(I.BRANCH(br, tmpR, lab),an)
+                   mark(I.BRANCH{b=br, r=tmpR, lab=lab},an)
                   )
               fun unsignedCmp(ty,cmp,br) = 
                   let val (x,y) = unsignedCmpOpnds(ty,e1,e2)
                   in  emit(I.OPERATE{oper=cmp,ra=reduceOpn x,rb=y,rc=tmpR});
-                      mark(I.BRANCH(br, tmpR, lab),an)
+                      mark(I.BRANCH{b=br, r=tmpR, lab=lab},an)
                   end
           in  case cond of
                 T.LT  => signedCmp(I.CMPLT,I.BNE)
@@ -1212,21 +1280,21 @@ struct
           * are supported on the alpha.
           *)
       and cmove(ty,cond,a,b,x,y,d,an) =
-          let val _ = doExpr(y,d,[]) (* evaluate false case *)
+          let val tmp = newReg()
+              val _ = doExpr(y,tmp,[]) (* evaluate false case *)
 
               val (cond,a,b) = 
                 (* move the immed operand to b *)
                 case a of
-                  (T.LI _ | T.LI32 _ | T.CONST _) => 
-                       (T.Util.swapCond cond,b,a)
+                  (T.LI _ | T.LI32 _ | T.CONST _) => (T.Basis.swapCond cond,b,a)
                 | _ => (cond,a,b)
 
               fun sub(a,(T.LI 0 | T.LI32 0w0)) = expr a
                 | sub(a,b)                     = expr(T.SUB(ty,a,b))
 
               fun cmp(cond,e1,e2) = 
-                  let val d = newReg()
-                  in  compare(ty,cond,e1,e2,d,[]); d end
+                  let val flag = newReg()
+                  in  compare(ty,cond,e1,e2,flag,[]); flag end
 
               val (oper,ra,x,y) =
                 case (cond,isAndb1 a,zeroOrOne b) of
@@ -1248,7 +1316,8 @@ struct
                 | (T.LEU,_,_)          => (I.CMOVEQ,cmp(T.GTU,a,b),x,y)
                 | (T.GTU,_,_)          => (I.CMOVEQ,cmp(T.LEU,a,b),x,y)
                 | (T.GEU,_,_)          => (I.CMOVEQ,cmp(T.LTU,a,b),x,y)
-          in  mark(I.CMOVE{oper=oper,ra=ra,rb=opn x,rc=d},an) (* true case *)
+          in  mark(I.CMOVE{oper=oper,ra=ra,rb=opn x,rc=tmp},an); (* true case *)
+              move(tmp, d, [])
           end
 
 
@@ -1279,7 +1348,7 @@ struct
               val (cond,e1,e2) =
 		  case e1 of
                     (T.LI _ | T.LI32 _ | T.CONST _) => 
-                       (T.Util.swapCond cond,e2,e1)
+                       (T.Basis.swapCond cond,e2,e1)
                   | _ => (cond,e1,e2)
           in  case cond of
                 T.EQ  => eq(e1,e2,d)
@@ -1295,77 +1364,28 @@ struct
           end
 
          (* generate an unconditional branch *)
-      and goto(lab,an) = mark(I.BRANCH(I.BR,zeroR,lab),an)
+      and goto(lab,an) = mark(I.BRANCH{b=I.BR,r=zeroR,lab=lab},an)
 
          (* generate an call instruction *)
-      and call(ea,def,use,mem,an) = 
+      and call(ea,flow,def,use,mem,an) = 
        let val pv = expr ea
            val returnPtrR = 26
-           fun live([],acc) = acc
-             | live(T.GPR(T.REG(_,r))::regs,acc) = live(regs, C.addReg(r,acc))
-             | live(T.CCR(T.CC cc)::regs,acc) = live(regs, C.addReg(cc,acc))
-             | live(T.FPR(T.FREG(_,f))::regs,acc) = live(regs, C.addFreg(f,acc))
-             | live(_::regs, acc) = live(regs, acc)
-       in  mark(I.JSR({r=returnPtrR, b=pv, d=0},
-                      live(def, C.addReg(returnPtrR, C.empty)),
-                      live(use, C.addReg(pv, C.empty)),mem),an)
+       in  mark(I.JSR{r=returnPtrR,b=pv,d=0,defs=cellset def,uses=cellset use,
+                      mem=mem}, an)
        end
 
-         (* generate an floating point branch *)
-      and fbranch(_,T.FCMP(fty,cc,e1,e2),lab,an) =
-          let val f1 = fexpr e1
-              val f2 = fexpr e2
-              fun bcc(cmp,br) = 
-              let val tmpR = C.newFreg()
-              in  emit(I.DEFFREG(tmpR));
-                  emit(I.FOPERATE{oper=cmp,fa=f1,fb=f2,fc=tmpR});
-                  emit(I.TRAPB);
-                  mark(I.FBRANCH(br,tmpR,lab),an)
-              end
-              fun fall(cmp1, br1, cmp2, br2) = 
-              let val tmpR1 = newFreg()
-                  val tmpR2 = newFreg()
-                  val fallLab = Label.newLabel ""
-              in  emit(I.DEFFREG(tmpR1));
-                  emit(I.FOPERATE{oper=cmp1, fa=f1, fb=f2, fc=tmpR1});
-                  emit(I.TRAPB);
-                  mark(I.FBRANCH(br1, tmpR1, fallLab),an);
-                  emit(I.DEFFREG(tmpR2));
-                  emit(I.FOPERATE{oper=cmp2, fa=f1, fb=f2, fc=tmpR2});
-                  emit(I.TRAPB);
-                  mark(I.FBRANCH(br2, tmpR2, lab),an);
-                  defineLabel fallLab
-              end
-              fun bcc2(cmp1, br1, cmp2, br2) = (bcc(cmp1, br1); bcc(cmp2, br2))
-          in  case cc of 
-                T.==  => bcc(I.CMPTEQSU, I.FBNE)
-              | T.?<> => bcc(I.CMPTEQSU, I.FBEQ)
-              | T.?   => bcc(I.CMPTUNSU, I.FBNE)
-              | T.<=> => bcc(I.CMPTUNSU, I.FBEQ)
-              | T.>   => fall(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBEQ)
-              | T.>=  => fall(I.CMPTLTSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
-              | T.?>  => bcc(I.CMPTLESU, I.FBEQ)
-              | T.?>= => bcc(I.CMPTLTSU, I.FBEQ)
-              | T.<   => bcc(I.CMPTLTSU, I.FBNE)
-              | T.<=  => bcc(I.CMPTLESU, I.FBNE)
-              | T.?<  => bcc2(I.CMPTLTSU, I.FBNE, I.CMPTUNSU, I.FBNE)
-              | T.?<=  => bcc2(I.CMPTLESU, I.FBNE, I.CMPTUNSU, I.FBNE)
-              | T.<> => fall(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBEQ)
-              | T.?= => bcc2(I.CMPTEQSU, I.FBNE, I.CMPTUNSU, I.FBNE)
-          end
-        | fbranch _ = error "fbranch"
 
-         (* generate an floating point branch *)
-      and doCCexpr(T.CC r,d,an) = move(r,d,an)
+      and doCCexpr(T.CC(_,r),d,an) = move(r,d,an)
+        | doCCexpr(T.FCC(_,r),d,an) = fmove(r,d,an)
         | doCCexpr(T.CMP(ty,cond,e1,e2),d,an)  = compare(ty,cond,e1,e2,d,an) 
         | doCCexpr(T.FCMP(fty,cond,e1,e2),d,an) = error "doCCexpr"
-        | doCCexpr(T.CCMARK(e,a),d,an) = 
-          (case #peek MLRiscAnnotations.MARK_REG a of
-            SOME f => (f d; doCCexpr(e,d,an))
-          | NONE => doCCexpr(e,d,a::an)
-          )
+        | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
+        | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)
+        | doCCexpr(T.CCEXT e,d,an) = compileCCexp (reducer()) {e=e, cd=d, an=an}
+        | doCCexpr _ = error "doCCexpr"
 
-      and ccExpr(T.CC r) = r
+      and ccExpr(T.CC(_,r)) = r
+        | ccExpr(T.FCC(_,r)) = r
         | ccExpr e = let val d = newReg()
                      in  doCCexpr(e,d,[]); d end
 
@@ -1377,40 +1397,65 @@ struct
           | T.CCMV(r,e) => doCCexpr(e,r,an)
           | T.COPY(ty,dst,src) => copy(dst,src,an)
           | T.FCOPY(ty,dst,src) => fcopy(dst,src,an)
-          | T.JMP(T.LABEL(LE.LABEL lab),_) => goto(lab,an)
-          | T.JMP(e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
-          | T.BCC(cond,e,lab) => branch(cond,e,lab,an)
-          | T.FBCC(cond,e,lab) => fbranch(cond,e,lab,an)
-          | T.CALL(e,def,use,mem) => call(e,def,use,mem,an)
-          | T.RET => mark(I.RET{r=zeroR,b=26,d=0},an)
+          | T.JMP(ctrl,T.LABEL(LE.LABEL lab),_) => goto(lab,an)
+          | T.JMP(ctrl,e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
+          | T.BCC(ctrl,cc,lab) => branch(cc,lab,an)
+          | T.CALL(e,flow,def,use,cdef,cuse,mem) => call(e,flow,def,use,mem,an)
+          | T.RET _ => mark(I.RET{r=zeroR,b=26,d=0},an)
           | T.STORE(8,ea,data,mem) => store8(ea,data,mem,an)
           | T.STORE(16,ea,data,mem) => store16(ea,data,mem,an)
           | T.STORE(32,ea,data,mem) => store(I.STL,ea,data,mem,an)
           | T.STORE(64,ea,data,mem) => store(I.STQ,ea,data,mem,an)
           | T.FSTORE(32,ea,data,mem) => fstore(I.STS,ea,data,mem,an)
           | T.FSTORE(64,ea,data,mem) => fstore(I.STT,ea,data,mem,an)
+          | T.DEFINE l => defineLabel l
           | T.ANNOTATION(s,a) => stmt(s,a::an)
-          | _ => error "stmt"
+          | T.EXT s => compileStm (reducer()) {stm=s,an=an}
+          | s => doStmts (Gen.compileStm s)
+
+      and reducer() =
+          T.REDUCER{reduceRexp    = expr,
+                    reduceFexp    = fexpr,
+                    reduceCCexp   = ccExpr,
+                    reduceStm     = stmt,
+                    operand       = opn,
+                    reduceOperand = reduceOpn,
+                    addressOf     = addr,
+                    emit          = mark,
+                    instrStream   = instrStream,
+                    mltreeStream  = self()
+                   } 
 
       and doStmt s = stmt(s,[])
+      and doStmts ss = app doStmt ss
 
-      (* condition code registers are mapped onto general registers *)
-      fun cc(T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
-        | cc r = r
+       (* convert mlrisc to cellset:
+        * condition code registers are mapped onto general registers
+        *)
+      and cellset mlrisc =
+          let fun g([],acc) = acc
+                | g(T.GPR(T.REG(_,r))::regs,acc)  = g(regs,C.addReg(r,acc))
+                | g(T.FPR(T.FREG(_,f))::regs,acc) = g(regs,C.addFreg(f,acc))
+                | g(T.CCR(T.CC(_,cc))::regs,acc)  = g(regs,C.addReg(cc,acc))
+                | g(T.CCR(T.FCC(_,cc))::regs,acc) = g(regs,C.addReg(cc,acc))
+                | g(_::regs, acc) = g(regs, acc)
+          in  g(mlrisc, C.empty) end
 
-   in S.STREAM
-      { beginCluster= beginCluster,
-        endCluster  = endCluster,
-        emit        = doStmt,
-        pseudoOp    = pseudoOp,
-        defineLabel = defineLabel,
-        entryLabel  = entryLabel,
-        comment     = comment,
-        annotation  = annotation,
-        exitBlock   = fn regs => exitBlock(map cc regs),
-        alias       = alias,
-        phi         = phi
-      } 
+      and self() = 
+          S.STREAM
+         { beginCluster= beginCluster,
+           endCluster  = endCluster,
+           emit        = doStmt,
+           pseudoOp    = pseudoOp,
+           defineLabel = defineLabel,
+           entryLabel  = entryLabel,
+           comment     = comment,
+           annotation  = annotation,
+           exitBlock   = fn regs => exitBlock(cellset regs),
+           alias       = alias,
+           phi         = phi
+         } 
+   in  self()
    end
  
 end

@@ -3,10 +3,10 @@
  *
  * -- Allen
  *)
-functor CFGUtilFn
-     (structure CFG : CONTROL_FLOW_GRAPH
-      structure P   : INSN_PROPERTIES
-         sharing CFG.I = P.I
+functor CFGUtil
+     (structure CFG       : CONTROL_FLOW_GRAPH
+      structure InsnProps : INSN_PROPERTIES
+         sharing CFG.I = InsnProps.I
      ) : CFG_UTIL =
 struct
 
@@ -74,13 +74,14 @@ struct
                 [] => ()
              |  [(_,_,CFG.EDGE{k=(CFG.ENTRY | CFG.EXIT),...})] => ()
              |  [(i,j,_)] =>
-                  if P.instrKind jmp = P.IK_JUMP then
-                       insns := P.setTargets(jmp,[labelOf j])::rest
+                  if InsnProps.instrKind jmp = InsnProps.IK_JUMP then
+                       insns := InsnProps.setTargets(jmp,[labelOf j])::rest
                   else ()
              |  [(_,i,CFG.EDGE{k=CFG.BRANCH x,...}),
                  (_,j,CFG.EDGE{k=CFG.BRANCH y,...})] =>
                   let val (i,j) = if x then (j,i) else (i,j)
-                  in  insns := P.setTargets(jmp,[labelOf i,labelOf j])::rest
+                  in  insns := 
+                        InsnProps.setTargets(jmp,[labelOf i,labelOf j])::rest
                   end
              |  es =>
                   let fun gt ((_,_,CFG.EDGE{k=CFG.SWITCH i,...}),
@@ -88,7 +89,7 @@ struct
                         | gt _ = error "gt"
                       val es = ListMergeSort.sort gt es
                       val labels = map (fn (_,j,_) => labelOf j) es
-                  in  insns := P.setTargets(jmp,labels)::rest;
+                  in  insns := InsnProps.setTargets(jmp,labels)::rest;
                       error "updateJumpLabel"
                   end
              )
@@ -124,7 +125,8 @@ struct
        val insns1 = case !i1 of
                       [] => []
                     | insns as jmp::rest => 
-                        if P.instrKind jmp = P.IK_JUMP then rest else insns
+                        if InsnProps.instrKind jmp = InsnProps.IK_JUMP 
+                        then rest else insns
    in  i1 := !i2 @ insns1;
        a1 := !a1 @ !a2;
        #set_out_edges cfg (i,map (fn (_,j',e) => (i,j',e)) (#out_edges cfg j));
@@ -150,7 +152,7 @@ struct
                     val CFG.BLOCK{data,...}  = #node_info cfg j
                 in  case (!data,!insns) of 
                       ([],jmp::rest) =>
-                       if P.instrKind jmp = P.IK_JUMP then
+                       if InsnProps.instrKind jmp = InsnProps.IK_JUMP then
                         (insns := rest;
                          CFG.removeEdge CFG e;
                          #add_edge cfg (i,j,CFG.EDGE{k=CFG.FALLSTHRU,w=w,a=a});
@@ -172,7 +174,7 @@ struct
        (case #out_edges cfg i of
            [e as (i,j,CFG.EDGE{k=CFG.FALLSTHRU,w,a,...})] =>
               let val CFG.BLOCK{insns,...} = #node_info cfg i
-              in  insns := P.jump(labelOf CFG j) :: !insns;
+              in  insns := InsnProps.jump(labelOf CFG j) :: !insns;
                   CFG.removeEdge CFG e;
                   #add_edge cfg (i,j,CFG.EDGE{k=CFG.JUMP,w=w,a=a});
                   true
@@ -192,7 +194,7 @@ struct
               (case CFG.fallsThruFrom(CFG,j) of 
                 NONE => false
               | SOME _ => true)
-       val insns = ref(if jump then [P.jump(labelOf CFG j)] else [])
+       val insns = ref(if jump then [InsnProps.jump(labelOf CFG j)] else [])
        val node = 
            CFG.BLOCK{id=k, kind=kind, 
                      freq= ref(!w), data=ref [], labels = ref [],

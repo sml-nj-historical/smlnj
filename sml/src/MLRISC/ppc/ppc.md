@@ -25,18 +25,23 @@ struct
    lowercase assembly
 
    storage
-     GP = 32 cells of 64 bits in cellset called "register"
-          assembly as (fn r => Int.toString r)
-   | FP = 32 cells of 64 bits in cellset called "floating point register"
-          assembly as (fn f => Int.toString f)
-   | CC = 8 cells of 4 bits in cellset called "condition register"
-          assembly as (fn cr => "cr"^Int.toString cr)
-   | SPR = 32 cell of 64 bits called "special purpose register" 
-           assembly as (fn 1 => "xer"
-                         | 8 => "lr"
-                         | 9 => "ctr"
-                         | r => Int.toString r
-                       )
+     GP "r" = 32 cells of 64 bits in cellset called "register"
+              assembly as (fn (r,_) => Int.toString r)
+   | FP "f" = 32 cells of 64 bits in cellset called "floating point register"
+              assembly as (fn (f,_) => Int.toString f)
+   | CC "cc" = 8 cells of 4 bits in cellset called "condition register"
+              assembly as (fn (cr,_) => "cr"^Int.toString cr)
+   | SPR "spr" = 32 cell of 64 bits called "special purpose register" 
+                 assembly as (fn (1,_) => "xer"
+                               | (8,_) => "lr"
+                               | (9,_) => "ctr"
+                               | (r,_) => Int.toString r
+                             )
+   | MEM "m" = cells of 8 bits called "memory"
+               assembly as (fn (r,_) => "m"^Int.toString r)
+   | CTRL "ctrl" = cells of 8 bits called "control"
+               assembly as (fn (r,_) => "ctrl"^Int.toString r)
+
    locations
        stackptrR = $GP[1]
    and asmTmpR   = $GP[28]
@@ -47,239 +52,232 @@ struct
    and lr        = $SPR[8] (* Link register *)
    and ctr       = $SPR[9] (* counter register *)
 
-   structure Cells =
+   structure RTL =
    struct
-      fun zeroReg _ = NONE
-   end 
+   end
 
-   (*
-   semantics PPC =
+   structure Instruction = 
    struct
-      include "MD++/basis.md"
-      open Basis
-   end *)
+      type gpr = int			(* general purpose register *)
+      type fpr = int			(* floating point register *)
+      type ccr = int			(* condition code register *)
+      type crf = int			(* condition register field *)
+   
+      datatype spr! = XER | LR | CTR
+    
+      datatype operand = 
+          RegOp of $GP			``<GP>''	(emit_GP GP)
+        | ImmedOp of int			``<int>''	(itow int)
+        | LabelOp of LabelExp.labexp	``<emit_labexp labexp>''
+   					(itow(LabelExp.valueOf labexp))
 
-   structure Instruction = struct
-   type gpr = int			(* general purpose register *)
-   type fpr = int			(* floating point register *)
-   type ccr = int			(* condition code register *)
-   type crf = int			(* condition register field *)
-
-   datatype spr! = XER | LR | CTR
- 
-   datatype operand = 
-       RegOp of $GP			``<GP>''	(emit_GP GP)
-     | ImmedOp of int			``<int>''	(itow int)
-     | LabelOp of LabelExp.labexp	``<emit_labexp labexp>''
-					(itow(LabelExp.valueOf labexp))
-     | ConstOp of Constant.const	``<emit_const const>''
-					(itow(Constant.valueOf const))
-
-   datatype ea = 
-       Direct of $GP
-     | FDirect of $FP
-     | Displace of {base: $GP, disp:operand} (* RegOp illegal as operand *)
-
-   (* Load/store operators that have the E suffix means that 64-bit
-    * addressing is used.  Note: the x suffix is implicitly added if rb is a
-    * register.
-    *
-    * -- Allen
-    *) 
-
-                           
-   datatype load! = LBZ    (* load byte and zero *)
-                  | LBZE   
-                  | LHZ     (* load half word and zero *)
-                  | LHZE
-                  | LHA     (* load half word algebraic *)
-                  | LHAE
-                  | LWZ     (* load word and zero *) 
-                  | LWZE
-                  | LDE     (* load double word extended 
-                             * Note: there is no LD or LDX!!!
-                             *)
-
-   datatype store! = STB
-                   | STBE
-                   | STH
-                   | STHE
-                   | STW
-                   | STWE
-                   | STDE
-
-   datatype fload! = LFS
-                   | LFSE
-                   | LFD
-                   | LFDE
-
-   datatype fstore! = STFS
-                    | STFSE
-                    | STFD
-                    | STFDE
- 
-   datatype cmp! = CMP | CMPL
-
-   datatype fcmp! = FCMPO 0w32 (* ordered *) 
-                  | FCMPU 0w0  (* unordered *)
-
-                           (* xo *)
-   datatype unary! = NEG    0w104
-                   | EXTSB  0w954   (* extend sign byte *)
-                   | EXTSH  0w922   (* extend sign halfword *)
-                   | EXTSW  0w986   (* extend sign word *)
-                   | CNTLZW 0w26    (* count leading zeros word *)
-                   | CNTLZD 0w58    (* count leading zeros double word *)
-      
-
-                             (* opcd/xo *)
-   datatype funary! = FMR    (0w63,0w72)
-                    | FNEG   (0w63,0w40)
-                    | FABS   (0w63,0w264)
-                    | FNABS  (0w63,0w136)
-                    | FSQRT  (0w63,0w22)
-                    | FSQRTS (0w59,0w22)
-                    | FRSP   (0w63,0w12)  (* round to single precision *)
-                    | FCTIW  (0w63,0w14)  (* convert to integer word *)
-                    | FCTIWZ (0w63,0w15)  (* convert to integer word *)
-                    | FCTID  (0w63,0w814) (* convert to double word *)
-                    | FCTIDZ (0w63,0w815) (* convert to double word *)
-                    | FCFID  (0w63,0w846) (* convert from double word *)
-
-                             (* opcd/xo *)
-   datatype farith!  = FADD  (0w63,0w21)
-                     | FSUB  (0w63,0w20)
-                     | FMUL  (0w63,0w25)
-                     | FDIV  (0w63,0w18)
-                     | FADDS (0w59,0w21)
-                     | FSUBS (0w59,0w20)
-                     | FMULS (0w59,0w25)
-                     | FDIVS (0w59,0w18)
-
-                               (* opcd, xo *)
-   datatype farith3!  = FMADD   (0w63,0w29)
-                      | FMADDS  (0w59,0w29)
-                      | FMSUB   (0w63,0w28)
-                      | FMSUBS  (0w59,0w28)
-                      | FNMADD  (0w63,0w31)
-                      | FNMADDS (0w59,0w31)
-                      | FNMSUB  (0w63,0w30)
-                      | FNMSUBS (0w59,0w30)
-                      | FSEL    (0w63,0w23) (* floating point select *)
-
-   datatype bo = 
-       TRUE   0wb01100			(* 011zy *)
-     | FALSE  0wb00100			(* 001zy *)
-     | ALWAYS 0wb10100			(* 1z1zz *)
-     | COUNTER of {eqZero:bool, cond:bool option}
-          (case cond of 
-             NONE => if eqZero then 0wb10010  (* 1z01y *)
-                     else           0wb10000  (* 1z00y *)
-           | SOME cc => case (eqZero,cc) of
-                          (false,false) => 0wb00000  (* 0000y *)
-                        | (false,true)  => 0wb01000  (* 0100y *)
-                        | (true,false)  => 0wb00010  (* 0001y *)
-                        | (true,true)   => 0wb01010  (* 0101y *)
-          )
-
- 		        (* operation			ARITH	ARITHI *)
-   datatype arith! =    (* ---------			-----	------ *) 
-              (* xo *)
-       ADD    0w266     (* add			        add     addi   *)
-     | SUBF   0w40	(* subtract from		subf	subfic *)
-     | MULLW  0w235	(* multiply			mullw   mulli  *)
-     | MULLD  0w233	(* multiply double word		mulld     -    *)
-     | MULHW  0w75	(* multiply high word		mulhw     -    *)
-     | MULHWU 0w11	(* multiply high word unsigned	mulhwu    -    *)
-     | DIVW   0w491	(* divide word			divw      -    *)
-     | DIVD   0w489	(* divide doubleword 		divd      -    *)
-     | DIVWU  0w459	(* divide word unsigned		divwu     -    *)
-     | DIVDU  0w457	(* divide doubleword unsigned	divdu     -    *)
-     | AND    0w28	(* and				and	andi   *)
-     | OR     0w444     (* or				or	ori    *)
-     | XOR    0w316	(* xor				xor	xori   *)
-     | NAND   0w476     (* nand *)
-     | NOR    0w124     (* nor *)
-     | EQV    0w284     (* eqv *)
-     | ANDC   0w60      (* and with complement          andc      -    *)
-     | ORC    0w412     (* or with complement           orc       -    *)
-     | SLW    0w24	(* shift left word		slw	rlwinm *)
-     | SLD    0w27	(* shift left double word	sld	rldinm *)
-     | SRW    0w536	(* shift right word		srw     rlwinm *)
-     | SRD    0w539	(* shift right double word	srd     rldinm *)
-     | SRAW   0w792	(* shift right algebraic word	sraw	srawi  *)
-     | SRAD   0w794	(* shift right algebraic dword	srad	sradi  *)
-
-   datatype arithi! =    (* ---------			-----	------ *) 
-              (* opcd *)
-       ADDI   0w14      (* add			        add     addi   *)
-     | ADDIS  0w15      (* add-shifted			 -	addis  *)
-     | SUBFIC 0w8	(* subtract from		subf	subfic *)
-     | MULLI  0w7	(* multiply			mullw   mulli  *)
-     | ANDI_Rc "andi." 0w28	(* and				and	andi   *)
-     | ANDIS_Rc "andis." 0w29	(* and-shifted			-	andis  *)
-     | ORI    0w24      (* or				or	ori    *)
-     | ORIS   0w25      (* or-shifted			-	ori    *)
-     | XORI   0w26	(* xor				xor	xori   *)
-     | XORIS  0w27	(* xor-shifted			 -	xoris  *)
-     (*
-     | SLWI  (* !!! *) 	(* shift left word		slw	rlwinm *)
-     | SLDI  (* !!! *) 	(* shift left double word	sld	rldinm *)
-     | SRWI  (* !!! *) 	(* shift right word		srw     rlwinm *)
-     | SRDI  (* !!! *) 	(* shift right double word	srd     rldinm *)
-     *)
-     | SRAWI      	(* shift right algebric word	sraw    srawi *)
-     | SRADI  		(* shift right algebraic dword	srad	sradi  *)
-
-     (* !!! means that these are pseudo ops! *)
-
-   datatype rotate! = 
-             (* opcd *)
-       RLWNM (* rotate left word AND mask rlwnm	rlwinm *)
-     | RLDCL 
-     | RLDCR 
-
-   datatype rotatei! = 
-       RLWINM (* rotate left word AND mask rlwnm rlwinm *)
-     | RLWIMI
-     | RLDICL   
-     | RLDICR
-     | RLDIC
-     | RLDIMI
-
-   datatype ccarith! =  (* page 47-49 *)
-             (* xo *)
-       CRAND  0w257			(* cond. reg. AND *)
-     | CROR   0w449			(* cond. reg. OR *)
-     | CRXOR  0w193			(* cond. reg. XOR *)
-     | CRNAND 0w225 			(* cond. reg. NAND *)
-     | CRNOR  0w33			(* cond. reg. NOR *)
-     | CREQV  0w289			(* cond. reg. EQV *)
-     | CRANDC 0w129			(* cond. reg. AND with complement *)
-     | CRORC  0w417			(* cond. reg. OR with complement *)
-
-     
-   (* bits in condition code *)
-   datatype bit! = 
-       LT "lt" | GT "gt" | EQ "eq" | SO	"so"	(* cr0 *)
-     | FL "lt" | FG "gt" | FE "eq" | FU	"un"	(* cr1 *)
-      (* Lal: as far as I can tell there don't seem to be mnemonics
-       * for these, however using lt, gt, eq, so should fool
-       * the assembler into looking at the right bits in the
-       * cc field. Of course the bf field had better be cr1.
-       *)
-     | FX "lt" | FEX "gt" | VX "eq" | OX "so"
-
-   (* bits in integer exception register *)
-   datatype xerbit = SO64 (* summary overflow 64 *)
-                   | OV64 (* overflow 64 *)
-                   | CA64 (* carry 64 *)
-                   | SO32 (* summary overflow 32 bits *)
-                   | OV32 (* overflow 32 bits *)
-                   | CA32 (* carry 32 bits *)
- 
-   type cr_bit = $CC * bit
-   end 
+      type addressing_mode = C.cell * operand
+   
+      datatype ea = 
+          Direct of $GP
+        | FDirect of $FP
+        | Displace of {base: $GP, disp:operand} (* RegOp illegal as operand *)
+   
+      (* Load/store operators that have the E suffix means that 64-bit
+       * addressing is used.  Note: the x suffix is implicitly added if rb is a
+       * register.
+       *
+       * -- Allen
+       *) 
+   
+                              
+      datatype load! = LBZ    (* load byte and zero *)
+                     | LBZE   
+                     | LHZ     (* load half word and zero *)
+                     | LHZE
+                     | LHA     (* load half word algebraic *)
+                     | LHAE
+                     | LWZ     (* load word and zero *) 
+                     | LWZE
+                     | LDE     (* load double word extended 
+                                * Note: there is no LD or LDX!!!
+                                *)
+   
+      datatype store! = STB
+                      | STBE
+                      | STH
+                      | STHE
+                      | STW
+                      | STWE
+                      | STDE
+   
+      datatype fload! = LFS
+                      | LFSE
+                      | LFD
+                      | LFDE
+   
+      datatype fstore! = STFS
+                       | STFSE
+                       | STFD
+                       | STFDE
+    
+      datatype cmp! = CMP | CMPL
+   
+      datatype fcmp! = FCMPO 0w32 (* ordered *) 
+                     | FCMPU 0w0  (* unordered *)
+   
+                              (* xo *)
+      datatype unary! = NEG    0w104
+                      | EXTSB  0w954   (* extend sign byte *)
+                      | EXTSH  0w922   (* extend sign halfword *)
+                      | EXTSW  0w986   (* extend sign word *)
+                      | CNTLZW 0w26    (* count leading zeros word *)
+                      | CNTLZD 0w58    (* count leading zeros double word *)
+         
+   
+                                (* opcd/xo *)
+      datatype funary! = FMR    (0w63,0w72)
+                       | FNEG   (0w63,0w40)
+                       | FABS   (0w63,0w264)
+                       | FNABS  (0w63,0w136)
+                       | FSQRT  (0w63,0w22)
+                       | FSQRTS (0w59,0w22)
+                       | FRSP   (0w63,0w12)  (* round to single precision *)
+                       | FCTIW  (0w63,0w14)  (* convert to integer word *)
+                       | FCTIWZ (0w63,0w15)  (* convert to integer word *)
+                       | FCTID  (0w63,0w814) (* convert to double word *)
+                       | FCTIDZ (0w63,0w815) (* convert to double word *)
+                       | FCFID  (0w63,0w846) (* convert from double word *)
+   
+                                (* opcd/xo *)
+      datatype farith!  = FADD  (0w63,0w21)
+                        | FSUB  (0w63,0w20)
+                        | FMUL  (0w63,0w25)
+                        | FDIV  (0w63,0w18)
+                        | FADDS (0w59,0w21)
+                        | FSUBS (0w59,0w20)
+                        | FMULS (0w59,0w25)
+                        | FDIVS (0w59,0w18)
+   
+                                  (* opcd, xo *)
+      datatype farith3!  = FMADD   (0w63,0w29)
+                         | FMADDS  (0w59,0w29)
+                         | FMSUB   (0w63,0w28)
+                         | FMSUBS  (0w59,0w28)
+                         | FNMADD  (0w63,0w31)
+                         | FNMADDS (0w59,0w31)
+                         | FNMSUB  (0w63,0w30)
+                         | FNMSUBS (0w59,0w30)
+                         | FSEL    (0w63,0w23) (* floating point select *)
+   
+      datatype bo = 
+          TRUE   0wb01100			(* 011zy *)
+        | FALSE  0wb00100			(* 001zy *)
+        | ALWAYS 0wb10100			(* 1z1zz *)
+        | COUNTER of {eqZero:bool, cond:bool option}
+             (case cond of 
+                NONE => if eqZero then 0wb10010  (* 1z01y *)
+                        else           0wb10000  (* 1z00y *)
+              | SOME cc => case (eqZero,cc) of
+                             (false,false) => 0wb00000  (* 0000y *)
+                           | (false,true)  => 0wb01000  (* 0100y *)
+                           | (true,false)  => 0wb00010  (* 0001y *)
+                           | (true,true)   => 0wb01010  (* 0101y *)
+             )
+   
+    		        (* operation			ARITH	ARITHI *)
+      datatype arith! =    (* ---------			-----	------ *) 
+                 (* xo *)
+          ADD    0w266     (* add			add     addi   *)
+        | SUBF   0w40	(* subtract from		subf	subfic *)
+        | MULLW  0w235	(* multiply			mullw   mulli  *)
+        | MULLD  0w233	(* multiply double word		mulld     -    *)
+        | MULHW  0w75	(* multiply high word		mulhw     -    *)
+        | MULHWU 0w11	(* multiply high word unsigned	mulhwu    -    *)
+        | DIVW   0w491	(* divide word			divw      -    *)
+        | DIVD   0w489	(* divide doubleword 		divd      -    *)
+        | DIVWU  0w459	(* divide word unsigned		divwu     -    *)
+        | DIVDU  0w457	(* divide doubleword unsigned	divdu     -    *)
+        | AND    0w28	(* and				and	andi   *)
+        | OR     0w444     (* or			or	ori    *)
+        | XOR    0w316	(* xor				xor	xori   *)
+        | NAND   0w476     (* nand *)
+        | NOR    0w124     (* nor *)
+        | EQV    0w284     (* eqv *)
+        | ANDC   0w60      (* and with complement       andc      -    *)
+        | ORC    0w412     (* or with complement        orc       -    *)
+        | SLW    0w24	(* shift left word		slw	rlwinm *)
+        | SLD    0w27	(* shift left double word	sld	rldinm *)
+        | SRW    0w536	(* shift right word		srw     rlwinm *)
+        | SRD    0w539	(* shift right double word	srd     rldinm *)
+        | SRAW   0w792	(* shift right algebraic word	sraw	srawi  *)
+        | SRAD   0w794	(* shift right algebraic dword	srad	sradi  *)
+   
+      datatype arithi! =    (* ---------		-----	------ *) 
+                 (* opcd *)
+          ADDI   0w14      (* add			add     addi   *)
+        | ADDIS  0w15      (* add-shifted		 -	addis  *)
+        | SUBFIC 0w8	(* subtract from		subf	subfic *)
+        | MULLI  0w7	(* multiply			mullw   mulli  *)
+        | ANDI_Rc "andi." 0w28	(* and			and	andi   *)
+        | ANDIS_Rc "andis." 0w29(* and-shifted		-	andis  *)
+        | ORI    0w24   (* or				or	ori    *)
+        | ORIS   0w25   (* or-shifted			-	ori    *)
+        | XORI   0w26	(* xor				xor	xori   *)
+        | XORIS  0w27	(* xor-shifted			-	xoris  *)
+        (*
+        | SLWI  (* !!! *) (* shift left word		slw	rlwinm *)
+        | SLDI  (* !!! *) (* shift left double word	sld	rldinm *)
+        | SRWI  (* !!! *) (* shift right word		srw     rlwinm *)
+        | SRDI  (* !!! *) (* shift right double word	srd     rldinm *)
+        *)
+        | SRAWI      	(* shift right algebric word	sraw    srawi *)
+        | SRADI  		(* shift right algebraic dword	srad	sradi  *)
+   
+        (* !!! means that these are pseudo ops! *)
+   
+      datatype rotate! = 
+                (* opcd *)
+          RLWNM (* rotate left word AND mask rlwnm	rlwinm *)
+        | RLDCL 
+        | RLDCR 
+   
+      datatype rotatei! = 
+          RLWINM (* rotate left word AND mask rlwnm rlwinm *)
+        | RLWIMI
+        | RLDICL   
+        | RLDICR
+        | RLDIC
+        | RLDIMI
+   
+      datatype ccarith! =  (* page 47-49 *)
+                (* xo *)
+          CRAND  0w257			(* cond. reg. AND *)
+        | CROR   0w449			(* cond. reg. OR *)
+        | CRXOR  0w193			(* cond. reg. XOR *)
+        | CRNAND 0w225 			(* cond. reg. NAND *)
+        | CRNOR  0w33			(* cond. reg. NOR *)
+        | CREQV  0w289			(* cond. reg. EQV *)
+        | CRANDC 0w129			(* cond. reg. AND with complement *)
+        | CRORC  0w417			(* cond. reg. OR with complement *)
+   
+        
+      (* bits in condition code *)
+      datatype bit! = 
+          LT "lt" | GT "gt" | EQ "eq" | SO	"so"	(* cr0 *)
+        | FL "lt" | FG "gt" | FE "eq" | FU	"un"	(* cr1 *)
+         (* Lal: as far as I can tell there don't seem to be mnemonics
+          * for these, however using lt, gt, eq, so should fool
+          * the assembler into looking at the right bits in the
+          * cc field. Of course the bf field had better be cr1.
+          *)
+        | FX "lt" | FEX "gt" | VX "eq" | OX "so"
+   
+      (* bits in integer exception register *)
+      datatype xerbit = SO64 (* summary overflow 64 *)
+                      | OV64 (* overflow 64 *)
+                      | CA64 (* carry 64 *)
+                      | SO32 (* summary overflow 32 bits *)
+                      | OV32 (* overflow 32 bits *)
+                      | CA32 (* carry 32 bits *)
+    
+      type cr_bit = $CC * bit
+   end (* Instruction *)
 
    (*
     * The following describes the encoding of the instructions.
@@ -528,7 +526,7 @@ struct
         | (I.RLWIMI,SOME me) => rlwimi{ra,rs,sh=sh,mb,me}
         | (I.RLDICL,_)       => rldicl{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
         | (I.RLDICR,_)       => rldicr{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
-        | (I.RLDIC,_)        => rldic{ra,rs,sh=sh at[ 0..4],sh2=sh at [5],mb}
+        | (I.RLDIC,_)        => rldic{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
         | (I.RLDIMI,_)       => rldimi{ra,rs,sh=sh at [0..4],sh2=sh at [5],mb}
         )
 
@@ -595,7 +593,7 @@ struct
       fun addr(ra,I.RegOp rb) = (emit_GP ra; emit ", "; emit_GP rb)
         | addr(ra,d) = (emit_operand d; emit "("; emit_GP ra; emit ")")
 
-   end
+   end (* Assembly *)
 
    instruction
        L of {ld:load, rt: $GP, ra: $GP, d:operand, mem:Region.region}
@@ -703,18 +701,14 @@ struct
      | COPY of {dst: $GP list, src: $GP list, 
 		impl:instruction list option ref,
                 tmp: ea option}
-	``<emitInstrs (Shuffle.shuffle{regmap,tmp,dst,src})>''
+	asm: emitInstrs (Shuffle.shuffle{regmap,tmp,dst,src})
 
      | FCOPY of {dst: $FP list, src: $FP list, 
 		 impl:instruction list option ref,
                  tmp: ea option}
-	``<emitInstrs (Shuffle.shufflefp{regmap,tmp,dst,src})>''
+	asm: emitInstrs (Shuffle.shufflefp{regmap,tmp,dst,src})
 
      | ANNOTATION of {i:instruction, a:Annotations.annotation}
-        ``<(emitInstr i; comment(Annotations.toString a))>''
-        (emitInstr i)
-
-     | GROUP of Annotations.annotation
-        ``<comment(Annotations.toString annotation)>''
- 
+        asm: (emitInstr i; comment(Annotations.toString a))
+        mc:  emitInstr i
  end

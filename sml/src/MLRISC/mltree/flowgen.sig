@@ -22,5 +22,5 @@ sig
     *)
    val newStream : { compile   : flowgraph -> unit,
                      flowgraph : flowgraph option
-                   } -> (I.instruction, C.regmap) T.stream
+                   } -> (I.instruction, C.regmap, C.cellset) T.stream
 end

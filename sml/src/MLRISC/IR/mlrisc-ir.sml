@@ -11,7 +11,7 @@
  * -- Allen
  *)
 
-functor MLRISC_IRFn
+functor MLRISC_IR
    (structure CFG         : CONTROL_FLOW_GRAPH
     structure CDG         : CONTROL_DEPENDENCE_GRAPH
     structure Loop        : LOOP_STRUCTURE
@@ -72,7 +72,7 @@ struct
    val verbose = MLRiscControl.getFlag "verbose"
 
    fun memo name compute = 
-   let val {get,set,rmv,...} = A.new NONE
+   let val {get,set,rmv,...} = A.new(SOME(fn _ => name))
        fun getView(IR as G.GRAPH{graph_info=CFG.INFO{annotations,...},...}:IR)=
        let fun process(SOME(ref(SOME info))) =
                  (if !verbose then print ("[reusing "^name^"]") else (); info)

@@ -4,7 +4,7 @@
  *  -- Allen
  *)
 
-functor UndirectedGraphFn(A : ARRAY) : GRAPH_IMPLEMENTATION =
+functor UndirectedGraph(A : ARRAY) : GRAPH_IMPLEMENTATION =
 struct
 
    structure G = Graph

@@ -21,7 +21,7 @@ struct
   structure A = Array
 
   structure Liveness =
-      DataflowFn
+      Dataflow
          (structure CFG = CFG
           type domain  = R.typemap
           val  forward = false

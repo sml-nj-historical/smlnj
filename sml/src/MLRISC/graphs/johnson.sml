@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor JohnsonFn(Num : ABELIAN_GROUP_WITH_INF) : 
+functor Johnson(Num : ABELIAN_GROUP_WITH_INF) : 
     sig include ALL_PAIRS_SHORTEST_PATHS 
         exception NegativeCycle
     end =
@@ -14,9 +14,9 @@ struct
    structure G   = Graph
    structure A2  = Array2
    structure A   = Array
-   structure D   = DijkstraFn(Num)
-   structure BF  = BellmanFordFn(Num)
-   structure GI  = DirectedGraphFn(HashArray)
+   structure D   = Dijkstra(Num)
+   structure BF  = BellmanFord(Num)
+   structure GI  = DirectedGraph(HashArray)
    structure U   = UnionGraphView
 
    exception NegativeCycle = BF.NegativeCycle

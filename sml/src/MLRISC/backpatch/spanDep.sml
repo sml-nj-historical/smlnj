@@ -66,6 +66,7 @@ struct
         | noPseudo (F.BBLOCK _::_) = true
         | noPseudo (F.LABEL _::rest) = noPseudo rest
         | noPseudo (F.PSEUDO _::_) = false
+        | noPseudo _ = error "noPseudo"
 
       (* Maps blknum -> label at the position of the second instruction *)
       val dummy = Label.newLabel ""
@@ -288,6 +289,7 @@ struct
 	    process(!insns,compress rest)
 	end
       | compress [] = []
+      | compress _ = error "compress"
   in  enterLabels blocks;
       clusterList:=CLUSTER{comp = compress blocks, regmap=regmap}:: 
 		    (!clusterList)
@@ -323,6 +325,7 @@ struct
               let val (pos,changed) = doCode(code,pos,changed)
               in  scan(rest,pos,changed) end
 	  | scan([], pos, changed) = adjust(cluster, pos, changed)
+          | scan _ = error "scan"
         and doCode([],pos,changed) = (pos,changed)
           | doCode(code::rest,pos,changed) =
             case code of
@@ -374,8 +377,10 @@ struct
                   foldl e loc (if !fillSlot then newInsns else oldInsns)
 	  in foldl e loc code
 	  end
+	| process _ = error "process"
     in foldl process loc comp
     end
+      | emitCluster _ = error "emitCluster"
 
     val compressed = (rev (!clusterList)) before cleanUp()
     val size = fixpoint compressed

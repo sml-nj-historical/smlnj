@@ -9,12 +9,14 @@ Library
 	signature GRAPH_DISPLAY
 	structure GraphLayout
 	signature GRAPH_VIEWER
-	functor GraphViewerFn
+	functor GraphViewer
 	structure VCG
 is
+
 #if defined(NEW_CM)
 	basis.cm
 #endif
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 	MLRISC-Graphs.cm
 

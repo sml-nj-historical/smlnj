@@ -10,37 +10,36 @@ signature FORMAT_INSTRUCTION =
 sig
    structure I  : INSTRUCTIONS
 
-   val toString : I.C.regmap -> I.instruction -> string
+   val toString : Annotations.annotations -> (I.C.cell -> I.C.cell) -> 
+                    I.instruction -> string
 
 end
 
-functor FormatInstructionFn
-   (Emitter : INSTRUCTION_EMITTER) : FORMAT_INSTRUCTION =
+functor FormatInstruction(Asm : INSTRUCTION_EMITTER) : FORMAT_INSTRUCTION =
 struct
-   structure I = Emitter.I
+   structure I = Asm.I
 
-   fun toString regmap insn =
+   fun toString an regmap insn =
    let val buffer = StringOutStream.mkStreamBuf()
        val S      = StringOutStream.openStringOut buffer
-       val _      = AsmStream.withStream S 
-                    (fn i =>
-                     let val Emitter.S.STREAM{emit,...} = Emitter.makeStream []
-                     in  emit (I.C.lookup regmap) i
-                     end) insn
+       val ()     = AsmStream.withStream S 
+                     (fn insn => 
+                      let val Asm.S.STREAM{emit,...} = Asm.makeStream an
+                      in emit regmap insn
+                      end) insn
        val text   = StringOutStream.getString buffer
        fun isSpace #" "  = true
          | isSpace #"\t" = true
          | isSpace _     = false
-       val text = foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
-          (String.tokens isSpace text)
+       val text   = foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
+                          (String.tokens isSpace text)
        fun stripNL "" = ""
          | stripNL s =
        let fun f(0) = ""
              | f(i) = if String.sub(s,i) = #"\n" then f(i-1)
                       else String.extract(s,0,SOME(i+1))
        in  f(size s - 1) end  
-   in  stripNL text
-   end
+   in  stripNL text end
 
 end
 

@@ -12,7 +12,7 @@
  * --Allen
  *)
 
-functor DJGraphFn (Dom : DOMINATOR_TREE) : DJ_GRAPH =
+functor DJGraph (Dom : DOMINATOR_TREE) : DJ_GRAPH =
 struct
 
    structure G       = Graph
@@ -30,7 +30,7 @@ struct
        val stamp       = ref 0
        fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end
 
-       fun unmarked(marked,i,stamp) =
+       fun unmarked(marked,i,stamp : int) =
            let val s = A.sub(marked,i)
            in  if s = stamp then false else (A.update(marked,i,stamp); true)
            end

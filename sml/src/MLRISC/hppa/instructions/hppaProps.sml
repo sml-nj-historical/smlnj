@@ -8,13 +8,13 @@ functor HppaProps(HppaInstr : HPPAINSTR) : INSN_PROPERTIES =
 struct
   structure I = HppaInstr
   structure C = HppaInstr.C
-  structure LE = LabelExp
+  structure LE = I.LabelExp
 
   exception NegateConditional
 
   fun error msg = MLRiscErrorMsg.error("HppaProps",msg)
 
-  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
                 | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
@@ -36,7 +36,6 @@ struct
     | instrKind(I.BL  _)    = IK_CALL
     | instrKind(I.BLE _)    = IK_CALL
     | instrKind(I.ANNOTATION{i,...}) = instrKind i
-    | instrKind(I.GROUP _)  = IK_GROUP
     | instrKind _	    = IK_INSTR
 
   fun moveInstr(I.COPY _)   = true
@@ -150,15 +149,13 @@ struct
      | hashFieldSel I.T = 0w4
      | hashFieldSel I.P = 0w5
    fun hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LabExp(l,f)) = LabelExp.hash l + hashFieldSel f
-     | hashOpn(I.HILabExp(l,f)) = LabelExp.hash l + hashFieldSel f + 0w10000
-     | hashOpn(I.LOLabExp(l,f)) = LabelExp.hash l + hashFieldSel f + 0w20000
-     | hashOpn(I.ConstOp c) = I.Constant.hash c
+     | hashOpn(I.LabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f
+     | hashOpn(I.HILabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w10000
+     | hashOpn(I.LOLabExp(l,f)) = I.LabelExp.hash l + hashFieldSel f + 0w20000
    fun eqOpn(I.IMMED i,I.IMMED j) = i = j
-     | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = b = d andalso LabelExp.==(a,c)
-     | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = b = d andalso LabelExp.==(a,c)
-     | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = b = d andalso LabelExp.==(a,c)
-     | eqOpn(I.ConstOp a,I.ConstOp b) = I.Constant.==(a,b)
+     | eqOpn(I.LabExp(a,b),I.LabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
+     | eqOpn(I.HILabExp(a,b),I.HILabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
+     | eqOpn(I.LOLabExp(a,b),I.LOLabExp(c,d)) = b = d andalso I.LabelExp.==(a,c)
      | eqOpn _ = false
    
 
@@ -231,15 +228,6 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
-
-  (*========================================================================
-   *  Groups 
-   *========================================================================*)
-  fun getGroup(I.ANNOTATION{i,...}) = getGroup i
-    | getGroup(I.GROUP r) = r
-    | getGroup _ = error "getGroup"
-
-  val makeGroup = I.GROUP
 end
 
 

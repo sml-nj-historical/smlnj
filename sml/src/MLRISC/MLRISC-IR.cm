@@ -6,38 +6,39 @@
 Library 
 	signature MLTREE_SIMPLIFIER
 	functor MLTreeSimplifier
+	signature MLTREE_SINGLE_ASSIGNMENT
+	functor MLTreeSingleAssignment
 	signature CLUSTER_GRAPH
-	functor ClusterGraphFn
+	functor ClusterGraph
 	signature CLUSTER_VIEWER
 	functor ClusterViewer
 	signature DATAFLOW_ANALYZER
 	signature DATAFLOW_PROBLEM
-	functor DataflowFn
+	functor Dataflow
+	functor BranchChaining
 	signature CONTROL_FLOW_GRAPH_GEN
-	functor ControlFlowGraphGenFn
+	functor ControlFlowGraphGen
 	functor CFGGen
 	signature CFG_UTIL
-	functor CFGUtilFn
+	functor CFGUtil
 	signature CONTROL_FLOW_GRAPH
-	functor ControlFlowGraphFn
+	functor ControlFlowGraph
 	signature CLUSTER2CFG
-	functor Cluster2CFGFn
+	functor Cluster2CFG
 	signature CFG2CLUSTER
-	functor CFG2ClusterFn
+	functor CFG2Cluster
 	signature FORMAT_INSTRUCTION
-	functor FormatInstructionFn
+	functor FormatInstruction
 	signature MLRISC_IDEFS
-	functor IDefsFn
+	functor IDefs
 	signature MLRISC_IR
-	functor MLRISC_IRFn
+	functor MLRISC_IR
 	signature LIVENESS_ANALYSIS
-	functor LivenessAnalysisFn
-	signature INSERT_PREHEADERS
-	functor InsertPreheadersFn
-	signature RESHAPE_BRANCHES
-	functor ReshapeBranchesFn
-	signature STATIC_BRANCH_PREDICTION
-	functor StaticBranchPredictionFn
+	functor LivenessAnalysis
+	signature MLRISC_OPTIMIZATION
+	functor InsertPreheaders
+	functor ReshapeBranches
+	functor StaticBranchPrediction
 	signature MLRISC_GLUE
 	functor MLRISCGlue
 is
@@ -48,6 +49,7 @@ is
 	smlnj-lib.cm
 	
 	MLRISC.cm
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 	MLRISC-Graphs.cm
 	MLRISC-Visual.cm
@@ -57,6 +59,8 @@ is
 	 *)
 	mltree/mltree-simplify.sig
 	mltree/mltree-simplify.sml
+	mltree/mltree-single-assign.sig
+	mltree/mltree-single-assign.sml
 	
 	(* These provide a graph view for clusters.  Required if you 
 	 * want to perform any non-trivial analysis on the program.
@@ -72,6 +76,7 @@ is
 	 *)
 	IR/dataflow.sig
 	IR/dataflow.sml
+	IR/mlrisc-branch-chaining.sml
 	IR/mlrisc-cfg-gen.sig
 	IR/mlrisc-cfg-gen.sml
 	IR/mlrisc-cfg-gen2.sml
@@ -87,11 +92,9 @@ is
 	IR/mlrisc-ir.sig
 	IR/mlrisc-ir.sml
 	IR/mlrisc-liveness.sml
-	IR/mlrisc-preheaders.sig
+	IR/mlrisc-optimization.sig
 	IR/mlrisc-preheaders.sml
-	IR/mlrisc-reshape-branches.sig
 	IR/mlrisc-reshape-branches.sml
-	IR/static-branch-prediction.sig
 	IR/static-branch-prediction.sml
 	
 	(* Glue modules.  These are required only if you want to 

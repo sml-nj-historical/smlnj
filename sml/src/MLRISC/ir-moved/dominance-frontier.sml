@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor DominanceFrontiersFn (Dom : DOMINATOR_TREE) 
+functor DominanceFrontiers (Dom : DOMINATOR_TREE) 
    : DOMINANCE_FRONTIERS =
 struct
 

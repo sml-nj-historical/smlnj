@@ -6,25 +6,21 @@
  * information.  The callback is responsible for generating the appropriate
  * code to save and restore all roots and call the garbage collector.
  *)
-signature GC_GEN =
+signature GC_CALLBACK =
 sig
-
    structure C  : CELLS
-   structure T  : MLTREE
-   structure IR : MLRISC_IR
    structure GC : GC_TYPE
-     sharing T.Constant = IR.I.Constant
-     sharing T.PseudoOp = IR.CFG.P
-     sharing C          = IR.I.C
-
-   type callgcCallback =
+   structure T  : MLTREE
+   type sext and rext and fext and ccext
+   val callgcCallback :  
         { id          : int,                        (* basic block id *)
+          msg         : string,                     (* some auxiliary text *)
           gcLabel     : Label.label,                (* label of gc block *)
           returnLabel : Label.label,                (* label of return block *)
           roots       : (C.cell * GC.gctype) list,  (* root set *)
-          stream      : (T.stm,C.regmap) T.stream   (* code generator *)
+          stream      : 
+            ((sext,rext,fext,ccext) T.stm,C.regmap,
+             (sext,rext,fext,ccext) T.mlrisc list) T.stream 
+                          (* code generator *)
         } -> unit
-
-   val gcGen : {callgc : callgcCallback} -> IR.IR -> IR.IR
-
 end

@@ -2,6 +2,10 @@
  *
  * X86 spilling is complicated business. 
  * Allen: and it just got more complicated; now we have to recognize the regmap.
+ * I've also improved the spilling code so that more instructions are
+ * recognized.  Addressing modes are now folded into the existing instruction
+ * whenever possible.  This eliminates some redundant temporaries which were
+ * introduced before.
  *)
 signature X86SPILL = sig
   structure I : X86INSTR
@@ -34,16 +38,18 @@ functor X86Spill(structure Instr: X86INSTR
 
   fun immed(I.Immed _) = true
     | immed(I.ImmedLabel _) = true
-    | immed(I.Const _) = true
-    | immed(I.LabelEA _) = true
     | immed _ = false
 
   fun immedOrReg(I.Direct r) = true
     | immedOrReg(I.Immed _) = true
     | immedOrReg(I.ImmedLabel _) = true
-    | immedOrReg(I.Const _) = true
-    | immedOrReg(I.LabelEA _) = true
     | immedOrReg _ = false
+
+  fun isMemory(I.MemReg _) = true
+    | isMemory(I.Displace _) = true
+    | isMemory(I.Indexed _) = true
+    | isMemory(I.LabelEA _) = true
+    | isMemory _ = false
 
   (* Annotate instruction *)
   fun mark(instr,[]) = instr
@@ -61,10 +67,10 @@ functor X86Spill(structure Instr: X86INSTR
       case instr of 
         I.CALL(addr, defs, uses, mem) =>
           done(I.CALL(addr, C.rmvReg(reg,defs), uses, mem), an)
-      | I.MOVE{mvOp=I.MOVZX, src, dst} => 
+      | I.MOVE{mvOp as (I.MOVZBL|I.MOVSBL|I.MOVZWL|I.MOVSWL), src, dst} => 
           let val tmpR = newReg() val tmp = I.Direct tmpR
           in  {proh=[tmpR], newReg=SOME tmpR,
-               code=[mark(I.MOVE{mvOp=I.MOVZX, src=src, dst=tmp}, an),
+               code=[mark(I.MOVE{mvOp=mvOp, src=src, dst=tmp}, an),
                      I.MOVE{mvOp=I.MOVL, src=tmp, dst=spillLoc}]
               }
           end
@@ -92,6 +98,17 @@ functor X86Spill(structure Instr: X86INSTR
                      I.MOVE{mvOp=I.MOVL, src=I.Direct tmpR, dst=spillLoc}]
               }
           end 
+      | I.BINARY{binOp=I.XORL, src as I.Direct rs, dst=I.Direct rd} => 
+          if rs=rd then 
+             {proh=[],
+              code=[mark(I.MOVE{mvOp=I.MOVL, src=I.Immed 0, dst=spillLoc}, an)],
+              newReg=NONE
+             }
+          else
+             {proh=[],
+              code=[mark(I.BINARY{binOp=I.XORL, src=src, dst=spillLoc}, an)],
+              newReg=NONE
+             }
       | I.BINARY{binOp, src, dst} => (* note: dst = reg *)
           if immedOrReg src then  
              {proh=[],
@@ -120,6 +137,7 @@ functor X86Spill(structure Instr: X86INSTR
               }
           end
       | I.UNARY{unOp, opnd} => done(I.UNARY{unOp=unOp, opnd=spillLoc}, an)
+      | I.SET{cond, opnd} => done(I.SET{cond=cond, opnd=spillLoc}, an)
       | I.POP _ => done(I.POP spillLoc, an)
       | I.COPY _ => error "spill: COPY"
       | I.FNSTSW  => error "spill: FNSTSW"
@@ -174,6 +192,61 @@ functor X86Spill(structure Instr: X86INSTR
         }
     end
 
+    fun replace(opn as I.Direct r) = if regmap r = reg then spillLoc else opn
+      | replace opn         = opn
+
+    (* Fold in a memory operand if possible.  Makes sure that both operands
+     * are not in memory.  lsrc cannot be immediate.
+     *)
+    fun reloadCmp(cmp, lsrc, rsrc, an) = 
+        let fun reloadIt() =  
+	      withTmp(fn tmpR => 
+                cmp{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
+        in  if immedOrReg lsrc andalso immedOrReg rsrc then
+            let val lsrc' = replace lsrc
+                val rsrc' = replace rsrc
+            in  if isMemory lsrc' andalso isMemory rsrc' then
+                   reloadIt()
+                else
+                   done(cmp{lsrc=lsrc', rsrc=rsrc'}, an)
+            end
+            else reloadIt()
+        end
+
+    (* Fold in a memory operand if possible.  Makes sure that the right 
+     * operand is not in memory and left operand is not an immediate.
+     *  lsrc   rsrc
+     *   AL,   imm8  opc1 A8
+     *  EAX,   imm32 opc1 A9
+     *  r/m8,  imm8  opc2 F6/0 ib
+     *  r/m32, imm32 opc2 F7/0 id
+     *  r/m32, r32   opc3 85/r
+     *)
+    fun reloadTest(test, lsrc, rsrc, an) = 
+        let fun reloadIt() = 
+	       withTmp(fn tmpR => 
+                 test{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
+        in  if immedOrReg lsrc andalso immedOrReg rsrc then
+            let val lsrc = replace lsrc
+                val rsrc = replace rsrc
+            in  if isMemory rsrc then 
+                   if isMemory lsrc then reloadIt()
+                   else (* it is commutative! *)
+                      done(test{lsrc=rsrc, rsrc=lsrc}, an)
+                else 
+                   done(test{lsrc=lsrc, rsrc=rsrc}, an)
+            end
+            else reloadIt()
+        end
+
+    fun reloadPush(push, arg as I.Direct _, an) =
+          done(push(replace arg), an)
+      | reloadPush(push, arg, an) =
+          withTmp(fn tmpR => push(operand(tmpR, arg)), an)
+
+    fun reloadReal(realOp, opnd, an) =
+          withTmp'(fn tmpR => realOp(operand(tmpR, opnd)), an)
+
     fun reloadIt(instr, an) =
     case instr
     of I.JMP(I.Direct _, labs) => done(I.JMP(spillLoc, labs), an)
@@ -190,6 +263,8 @@ functor X86Spill(structure Instr: X86INSTR
                   an)]
            }
        end
+     | I.MOVE{mvOp, src as I.Direct _, dst as I.Direct _} => 
+ 	done(I.MOVE{mvOp=mvOp, src=replace src, dst=dst},an)
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
  	withTmp'(fn t =>I.MOVE{mvOp=mvOp, src=operand(t, src), dst=dst},an)
      | I.MOVE{mvOp, src as I.Direct _, dst} => 
@@ -203,16 +278,25 @@ functor X86Spill(structure Instr: X86INSTR
 	    I.MOVE{mvOp=mvOp, src=operand(t, src), dst=operand(t, dst)}, an)
      | I.LEA{r32, addr} => 
 	withTmp'(fn tmpR => I.LEA{r32=r32, addr=operand(tmpR, addr)}, an)
-     | I.CMP{lsrc, rsrc} => 
-	withTmp(fn tmpR => 
-          I.CMP{lsrc=operand(tmpR, lsrc), rsrc=operand(tmpR, rsrc)}, an)
+     | I.CMPL{lsrc, rsrc} => reloadCmp(I.CMPL, lsrc, rsrc, an) 
+     | I.CMPW{lsrc, rsrc} => reloadCmp(I.CMPW, lsrc, rsrc, an) 
+     | I.CMPB{lsrc, rsrc} => reloadCmp(I.CMPB, lsrc, rsrc, an) 
+     | I.TESTL{lsrc, rsrc} => reloadTest(I.TESTL, lsrc, rsrc, an) 
+     | I.TESTW{lsrc, rsrc} => reloadTest(I.TESTW, lsrc, rsrc, an) 
+     | I.TESTB{lsrc, rsrc} => reloadTest(I.TESTB, lsrc, rsrc, an) 
      | I.BINARY{binOp, src, dst as I.Direct _} => 
-	withTmp(fn tmpR => 
-            I.BINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
+          (case src of
+            I.Direct _ => 
+              done(I.BINARY{binOp=binOp, src=replace src, dst=dst},an)
+	  | _ => withTmp(fn tmpR => 
+              I.BINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
+          )
      | I.BINARY{binOp, src, dst} => 
 	withTmp(fn tmpR => I.BINARY{binOp=binOp, src=operand(tmpR, src), 
                                                  dst=operand(tmpR, dst)}, an)
-     | I.MULTDIV{multDivOp, src} => 
+     | I.MULTDIV{multDivOp, src as I.Direct _} => 
+        done(I.MULTDIV{multDivOp=multDivOp, src=replace src}, an)
+     | I.MULTDIV{multDivOp, src} =>
 	withTmp(fn tmpR => 
             I.MULTDIV{multDivOp=multDivOp, src=operand(tmpR, src)}, an)
      | I.MUL3{src1, src2, dst} => 
@@ -221,15 +305,22 @@ functor X86Spill(structure Instr: X86INSTR
 		 dst=if regmap dst = reg then error "reload:MUL3" else dst}, an)
      | I.UNARY{unOp, opnd} => 
 	withTmp'(fn tmpR => I.UNARY{unOp=unOp, opnd=operand(tmpR, opnd)}, an)
-     | I.PUSH arg => withTmp(fn tmpR => I.PUSH(operand(tmpR, arg)), an)
+     | I.SET{cond, opnd} => 
+	withTmp'(fn tmpR => I.SET{cond=cond, opnd=operand(tmpR, opnd)}, an)
+     | I.PUSHL arg => reloadPush(I.PUSHL, arg, an)
+     | I.PUSHW arg => reloadPush(I.PUSHW, arg, an)
+     | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
      | I.COPY _ => error "reload:COPY"
-     | I.FILD opnd => withTmp'(fn tmpR => I.FILD(operand(tmpR, opnd)), an)
-     | I.FLD opnd => withTmp'(fn tmpR => I.FLD(operand(tmpR, opnd)), an)
-     | I.FSTP opnd => withTmp'(fn tmpR => I.FSTP(operand(tmpR, opnd)), an)
+     | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
+     | I.FLDL opnd => reloadReal(I.FLDL, opnd, an)
+     | I.FLDS opnd => reloadReal(I.FLDS, opnd, an)
+     | I.FSTPL opnd => reloadReal(I.FSTPL, opnd, an)
+     | I.FSTPS opnd => reloadReal(I.FSTPS, opnd, an)
+     | I.FENV{fenvOp, opnd} => reloadReal(fn opnd => 
+                                 I.FENV{fenvOp=fenvOp,opnd=opnd}, opnd, an)
      | I.FBINARY{binOp, src, dst} => 
 	withTmp'(fn tmpR => 
 	         I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
-				     
      | I.ANNOTATION{i,a} => reloadIt(i, a::an)
      | _ => error "reload"
   in reloadIt(instr, [])
@@ -238,7 +329,8 @@ functor X86Spill(structure Instr: X86INSTR
   fun fspill(instr, regmap, reg, spillLoc) = 
   let fun spillIt(instr, an) = 
       (case instr of 
-         I.FSTP _ => {proh=[], code=[mark(I.FSTP spillLoc, an)], newReg=NONE}
+         I.FSTPL _ => {proh=[], code=[mark(I.FSTPL spillLoc, an)], newReg=NONE}
+       | I.FSTPS _ => {proh=[], code=[mark(I.FSTPS spillLoc, an)], newReg=NONE}
        | I.CALL(opnd, defs, uses, mem) =>
 	 {proh=[],
 	  code=[mark(I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem), an)],
@@ -252,7 +344,8 @@ functor X86Spill(structure Instr: X86INSTR
   fun freload(instr, regmap, reg, spillLoc) = 
   let fun reloadIt(instr, an) = 
       (case instr of 
-         I.FLD opnd => {code=[mark(I.FLD spillLoc, an)], proh=[], newReg=NONE}
+         I.FLDL opnd => {code=[mark(I.FLDL spillLoc, an)], proh=[], newReg=NONE}
+       | I.FLDS opnd => {code=[mark(I.FLDS spillLoc, an)], proh=[], newReg=NONE}
        | I.FBINARY{binOp, src=I.FDirect f, dst} => 
 	   if regmap f = reg then 
 	     {code=[mark(I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}, an)],

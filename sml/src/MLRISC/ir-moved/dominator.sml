@@ -8,8 +8,8 @@
  * -- Allen
  *)
 
-functor DominatorTreeFn (GraphImpl : GRAPH_IMPLEMENTATION
-                        ) : DOMINATOR_TREE =
+functor DominatorTree (GraphImpl : GRAPH_IMPLEMENTATION
+                      ) : DOMINATOR_TREE =
 struct
 
    structure GI      = GraphImpl

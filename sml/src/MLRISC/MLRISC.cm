@@ -11,16 +11,16 @@ Library
 
 	signature CELLS_BASIS
 	signature CELLS
-	functor CellsBasisFn
+	functor CellsBasis
 	signature REWRITE_INSTRUCTIONS
 	signature INSN_PROPERTIES
 	signature INSTRUCTION_STREAM
-	functor InstructionStreamFn
+	functor InstructionStream
 	signature INSTRUCTIONS
 	functor Shuffle
 	signature CONSTANT
 	signature LABELEXP
-	structure LabelExp
+	functor LabelExp
 	signature LABEL
 	structure Label
 	signature PSEUDO_OPS
@@ -29,6 +29,7 @@ Library
 	functor FreqProps
 	signature MLRISC_ANNOTATIONS
 	structure MLRiscAnnotations
+(*	signature INSTRUCTIONS_RTL *)
 	signature MLRISC_REGION
 	structure MLRiscRegion
 	signature POINTS_TO
@@ -49,7 +50,7 @@ Library
 	functor FlowGraph
 	functor ClusterGen
 	signature PRINT_CLUSTER
-	functor PrintClusterFn
+	functor PrintCluster
 	signature GETREG
 	functor GetReg
 	signature LIVENESS
@@ -68,6 +69,8 @@ Library
 	signature RA
 	functor RegisterAllocator
 	functor RADeadCodeElim
+	signature RA_PRIORITY_QUEUE
+	functor MemoryRA
 	signature INSTRUCTION_EMITTER
 	signature ASSEMBLY_EMITTER
 	signature ASM_STREAM
@@ -89,14 +92,6 @@ Library
 	signature SDI_JUMPS
 	signature MC_EMIT
 	functor BackPatch
-
-	signature MLRISC_ERROR_MSG
-	structure MLRiscErrorMsg
-	signature MLRISC_CONTROL
-	structure MLRiscControl
-	signature MLRISC_TIMING
-	structure MLRiscTiming
-
 is
 
 #if defined(NEW_CM)
@@ -104,12 +99,9 @@ is
 #endif
 	smlnj-lib.cm
 	
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
-	
-        control/mlriscErrormsg.sml
-        control/mlrisc-control.sml
-        control/mlrisc-timing.sml
-	
+
 	(* Core definitions. These are required *)
 	instructions/cells.sig
 	instructions/cells.sml
@@ -128,6 +120,7 @@ is
 	instructions/freqProps.sml
 	instructions/mlriscAnnotations.sig
 	instructions/mlriscAnnotations.sml
+(*	instructions/rtl.sig *)
 	
 	(* New aliasing/memory disambiguation support *)
 	aliasing/mlriscRegion.sig
@@ -143,8 +136,8 @@ is
 	mltree/mltree-util.sig
 	mltree/mltree-util.sml
 	mltree/mltreecomp.sig
-	mltree/mltreegen.sig
-	mltree/mltreegen.sml
+	mltree/mltree-gen.sig
+	mltree/mltree-gen.sml
 	mltree/flowgen.sig
 	mltree/mltree-mult.sig
 	mltree/mltree-mult.sml
@@ -178,6 +171,8 @@ is
         ra/ra.sig
         ra/ra.sml
 	ra/ra-deadCodeE.sml
+	ra/ra-priqueue.sig
+	ra/mem-ra.sml
 
 	(* Assembly machine code stuff *)
 	emit/instruction-emitter.sig
@@ -202,5 +197,3 @@ is
 	backpatch/noDelaySlots.sml
 	backpatch/sdi-jumps.sig
 	backpatch/vlBackPatch.sml
-
-	

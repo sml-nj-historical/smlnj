@@ -2,24 +2,27 @@
  * SSA optimizer for doing experiments 
  *)
 
-functor SSAOptimizerFn
+functor SSAOptimizer
    (structure Asm : INSTRUCTION_EMITTER
     structure MLTreeComp : MLTREECOMP
     structure F  : FLOWGRAPH
     structure P  : INSN_PROPERTIES
     structure SP : SSA_PROPERTIES
-    structure GCP : GC_PROPERTIES
-    structure GCMap : GC_MAP
+    structure OperandTable : OPERAND_TABLE
+    structure GCTypeSys : GC_TYPE_SYSTEM
     structure FreqProps : FREQUENCY_PROPERTIES
-       sharing P.I = SP.I = GCP.I = Asm.I = F.I = FreqProps.I = MLTreeComp.I
+       sharing P.I = SP.I = Asm.I = F.I = OperandTable.I =
+               FreqProps.I = MLTreeComp.I 
        sharing F.P = Asm.P = MLTreeComp.T.PseudoOp 
        sharing MLTreeComp.T.Constant = F.I.Constant
-       sharing GCP.GC = GCMap.GC
+       sharing SP.RTL = GCTypeSys.RTL
+    type sext and rext and fext and ccext
     val callgc : { id     : int,
+                   msg    : string,
                    gcLabel  : Label.label,
                    returnLabel  : Label.label,
-                   roots  : (P.I.C.cell * GCP.GC.gctype) list,
-                   stream : (MLTreeComp.T.stm,P.I.C.regmap) MLTreeComp.T.stream
+                   roots  : (P.I.C.cell * GCTypeSys.GC.gctype) list,
+                   stream : (sext,rext,fext,ccext) MLTreeComp.mltreeStream
                  } -> unit
    ) : SSA_OPTIMIZER =
 struct
@@ -33,47 +36,47 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("SSAOptimizer",msg)
 
-   structure GraphViewer = GraphViewerFn(AllDisplays)
+   structure GraphViewer = GraphViewer(AllDisplays)
 
-   structure FormatInsn = FormatInstructionFn(Asm)
+   structure FormatInsn = FormatInstruction(Asm)
 
-   structure CFG = ControlFlowGraphFn
+   structure CFG = ControlFlowGraph
       (structure I = I
        structure P = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm
       )
 
-   structure Util = CFGUtilFn
+   structure Util = CFGUtil
       (structure CFG = CFG
        structure P   = P
       )
 
-   structure CFG2Cluster = CFG2ClusterFn
+   structure CFG2Cluster = CFG2Cluster
       (structure CFG  = CFG
        structure F    = F
       )
 
-   structure Cluster2CFG = Cluster2CFGFn
+   structure Cluster2CFG = Cluster2CFG
       (structure CFG  = CFG
        structure Util = Util
        structure F    = F
        structure P    = P
       )
        
-   structure Dom = DominatorTreeFn(DirectedGraph)
+   structure Dom = DominatorTree(DirectedGraph)
 
-   structure CDG = ControlDependenceGraphFn
+   structure CDG = ControlDependenceGraph
       (structure Dom       = Dom
        structure GraphImpl = DirectedGraph
       )
 
-   structure Loop = LoopStructureFn
+   structure Loop = LoopStructure
       (structure Dom       = Dom
        structure GraphImpl = DirectedGraph
       )
 
-   structure IR = MLRISC_IRFn
+   structure IR = MLRISC_IR
       (structure CFG         = CFG
        structure CDG         = CDG
        structure Loop        = Loop
@@ -81,76 +84,91 @@ struct
        structure Util        = Util
       )
 
-   structure Guess = StaticBranchPredictionFn(structure IR = IR
-                                              structure Props = P
-                                              structure FreqProps = FreqProps
-                                             )
+   structure Guess = StaticBranchPrediction
+     (structure IR = IR
+      structure Props = P
+      structure FreqProps = FreqProps
+      val loopMultiplier=10
+     )
       
-   structure Liveness = LivenessAnalysisFn(CFG)
+   structure Liveness = LivenessAnalysis(CFG)
 
-   structure SSA = SSAFn
+   structure SSA = SSA
       (structure CFG  = CFG 
        structure Dom  = Dom
        structure SP   = SP
-       structure P    = P
+       structure Props= P
        structure RTL  = SP.RTL
        structure FormatInsn = FormatInsn
        structure GraphImpl = DirectedGraph
+       structure GCMap = GCTypeSys.GCMap
       )
       
-   structure CFG2SSA = CFG2SSAFn
+   structure CFG2SSA = CFG2SSA
       (structure SSA = SSA
        structure Liveness = Liveness
       )
 
-   structure Reshape = ReshapeBranchesFn(structure IR = IR
-                                         structure P  = P)
+   structure Reshape = ReshapeBranches(structure IR = IR
+                                       structure P  = P)
+   structure BranchChaining = BranchChaining(structure IR = IR
+                                             structure P  = P)
 
-   structure InsertPreheaders = InsertPreheadersFn(structure IR = IR
-                                                   structure P  = P)
+   structure InsertPreheaders = InsertPreheaders(structure IR = IR
+                                                 structure P  = P)
 
-   structure SSADCE = SSADeadCodeElimFn(SSA)
+   structure SSADCE = SSADeadCodeElim(SSA)
 
-   structure CF  = SSAConstantFoldingFn(SSA)
+   structure CF  = SSAConstantFolding(SSA)
 
-   structure GVN = SSAGlobalValueNumberingFn(CF)
+   structure GVN = SSAGlobalValueNumbering(CF)
 
-   structure SSAGVN = SSAGVNFn(structure GVN = GVN 
-                               val leaveBehindCopy = false
-                               val foldGlobalConstants = true)
+   structure CCP = SSACondConstProp(CF)
 
-   structure SSAGVNL = SSAGVNFn(structure GVN = GVN 
-                               val leaveBehindCopy = false
-                               val foldGlobalConstants = false)
+   structure SSAGVN = SSAGVN(structure GVN = GVN 
+                             val leaveBehindCopy = false
+                             val foldGlobalConstants = true)
 
-   structure SSAGVN' = SSAGVNFn(structure GVN = GVN 
-                               val leaveBehindCopy = false
-                               val foldGlobalConstants = true)
+   structure SSAGVNL = SSAGVN(structure GVN = GVN 
+                              val leaveBehindCopy = false
+                              val foldGlobalConstants = false)
 
-   structure SSAGCM = SSAGlobalCodeMotionFn(SSA)
-   (* structure SSAGCM2 = SSAGlobalCodeMotion2Fn(SSA) *)
-   structure Depressurize = SSADepressurizeFn(SSA)
+   structure SSAGVN' = SSAGVN(structure GVN = GVN 
+                              val leaveBehindCopy = false
+                              val foldGlobalConstants = true)
 
-   structure SSALiveness = SSALivenessFn(SSA)
+   structure SSACCP = SSACCP(CCP)
 
-   structure SSA2CFG = SSA2CFGFn
+   structure SSAGCM = SSAGlobalCodeMotion(SSA)
+   (* structure SSAGCM2 = SSAGlobalCodeMotion2(SSA) *)
+   (* structure Depressurize = SSADepressurize(SSA)*)
+
+   structure SSALiveness = SSALiveness(SSA)
+
+   structure SSA2CFG = SSA2CFG
       (structure SSA      = SSA
        structure Liveness = SSALiveness
-       structure P        = P
+       structure Props    = P
        structure Util     = Util
       ) 
 
-   structure GCTyping = GCTyping
+   structure GCInvariants = GCInvariants
       (structure IR = IR
-       structure GCProps = GCP
-       structure GCMap = GCMap
        structure Props = P
+       structure RTLProps = SP.RTLProps
+       structure OperandTable = OperandTable
+       structure TypeSys = GCTypeSys
+      )
+
+   structure SSAGCInvariants = SSAGCInvariants
+      (structure SSA     = SSA
+       structure TypeSys = GCTypeSys
       )
 
    structure GCGen = GCGen
       (structure MLTreeComp = MLTreeComp
        structure IR = IR
-       structure GCMap = GCMap
+       structure GCMap = GCTypeSys.GCMap
        structure InsnProps = P
       )
 
@@ -163,11 +181,11 @@ struct
        fun doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
          | doPhase "cfg->cluster" (IR cfg) = 
             CLUSTER(CFG2Cluster.cfg2cluster{cfg=cfg,relayout=false})
-         | doPhase "guess" (r as IR ir) =
-             (Guess.profile {loopMultiplier=10} ir; r)
-         | doPhase "reshape"   (r as IR ir) = (Reshape.reshapeBranches ir; r)
+         | doPhase "guess" (r as IR ir) = (Guess.run ir; r)
+         | doPhase "reshape"   (r as IR ir) = (Reshape.run ir; r)
+         | doPhase "branch-chaining" (r as IR ir) = (BranchChaining.run ir; r)
          | doPhase "insert-preheaders" (r as IR ir) = 
-             (InsertPreheaders.insert_preheaders ir; r)
+             (InsertPreheaders.run ir; r)
          | doPhase "split-critical-edges" (r as IR ir) = 
              (Util.splitAllCriticalEdges ir; r)
          | doPhase "view-cfg"  (r as IR ir) = (view "cfg" ir; r)
@@ -185,12 +203,15 @@ struct
          | doPhase "ssa-gvnl"  (SSA ssa) = SSA(SSAGVNL.optimize ssa)
          | doPhase "ssa-gvn'"  (SSA ssa) = SSA(SSAGVN'.optimize ssa)
          | doPhase "ssa-gcm"   (SSA ssa) = SSA(SSAGCM.optimize ssa)
+         | doPhase "ssa-ccp"   (SSA ssa) = SSA(SSACCP.optimize ssa)
+         | doPhase "ssa-gc-invariants" (SSA ssa) =
+              SSA(SSAGCInvariants.optimize ssa)
          (* | doPhase "ssa-gcm2"  (SSA ssa) = SSA(SSAGCM2.optimize ssa) *)
-         | doPhase "ssa-dep"   (SSA ssa) = SSA(Depressurize.optimize ssa)
+         (* | doPhase "ssa-dep"   (SSA ssa) = SSA(Depressurize.optimize ssa)*)
          | doPhase "gvn"       (r as SSA ssa) =
               (GVN.computeValueNumbers ssa; r)
          | doPhase "ssa->cfg"  (SSA ssa) = IR(SSA2CFG.buildCFG ssa)
-         | doPhase "gc-typing" (r as IR ir) = (GCTyping.gcTyping ir; r)
+         | doPhase "gc-invariants" (r as IR ir) = (GCInvariants.run ir; r)
          | doPhase "gc-gen"    (r as IR ir) = 
               (GCGen.gcGen{callgc=callgc} ir; r)
          | doPhase phase _ = error(phase)

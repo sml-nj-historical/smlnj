@@ -25,7 +25,7 @@ val E =   [(0,1,16),
 val _ = app (#add_edge g) E
 (* val _ = app (fn (i,j,w) => #add_edge g (j,i,w)) E *)
 
-structure MinCut = MinCutFn(struct type elem = int
+structure MinCut = MinCut(struct type elem = int
                                    open Int
                                    val zero = 0 
                                    val == : int * int -> bool = op =

@@ -46,7 +46,7 @@ struct
     fun shuffle(dests, srcs, tmp)  = let
       fun move(rd,rs) = I.MOVE{mvOp=I.MOVL, src=rs, dst=rd}
       fun loop((p as (rd, dst, rs, src))::rest, changed, used, done, instrs) = 
-	  if List.exists (fn r => dst=r) used then
+	  if List.exists (fn (r : I.C.cell) => dst=r) used then
 	    loop(rest, changed, used, p::done, instrs)
 	  else 
 	    loop(rest, true, used, done, move(I.Direct rd, I.Direct rs)::instrs)
@@ -168,11 +168,23 @@ struct
 	    fun memArg(I.Displace _) = true
 	      | memArg(I.Indexed _) = true
 	      | memArg(I.MemReg _) = true
+	      | memArg(I.LabelEA _) = true
 	      | memArg _ = false
 
 	    fun withTmp f =
             let val t = C.newReg()
 	    in  f t
+	    end
+
+            fun rewriteCmpTest(cmptest, lsrc, rsrc, an) =
+            let val (lsrcOpnd, acc1) = operand(lsrc, acc)
+                val (rsrcOpnd, acc2) = operand(rsrc, acc1)
+	    in  if memArg lsrcOpnd andalso memArg rsrcOpnd then 
+		    withTmp(fn t =>
+		       mark(cmptest{lsrc=I.Direct t, rsrc=rsrcOpnd},an)::
+			 movl{src=lsrcOpnd, dst=I.Direct t, acc=acc2})
+		else
+		    mark(cmptest{lsrc=lsrcOpnd, rsrc=rsrcOpnd},an)::acc2
 	    end
 
             fun rewrite(instr,an) =
@@ -201,17 +213,12 @@ struct
 		 	    acc=mark(I.LEA{r32=t, addr=srcOpnd},an)::acc1})
 		  else mark(I.LEA{r32=r32, addr=srcOpnd},an)::acc1
 		end
-	      | I.CMP{lsrc, rsrc} => let
-		  val (lsrcOpnd, acc1) = operand(lsrc, acc)
-		  val (rsrcOpnd, acc2) = operand(rsrc, acc1)
-		in
-		  if memArg lsrcOpnd andalso memArg rsrcOpnd then 
-		    withTmp(fn t =>
-		       mark(I.CMP{lsrc=I.Direct t, rsrc=rsrcOpnd},an)::
-			 movl{src=lsrcOpnd, dst=I.Direct t, acc=acc2})
-		  else
-		    mark(I.CMP{lsrc=lsrcOpnd, rsrc=rsrcOpnd},an)::acc2
-		end
+	      | I.CMPL{lsrc, rsrc} => rewriteCmpTest(I.CMPL, lsrc, rsrc, an)
+	      | I.CMPW{lsrc, rsrc} => rewriteCmpTest(I.CMPW, lsrc, rsrc, an)
+	      | I.CMPB{lsrc, rsrc} => rewriteCmpTest(I.CMPB, lsrc, rsrc, an)
+	      | I.TESTL{lsrc, rsrc} => rewriteCmpTest(I.TESTL, lsrc, rsrc, an)
+	      | I.TESTW{lsrc, rsrc} => rewriteCmpTest(I.TESTW, lsrc, rsrc, an)
+	      | I.TESTB{lsrc, rsrc} => rewriteCmpTest(I.TESTB, lsrc, rsrc, an)
 	      | I.BINARY{binOp, src, dst} => let
 		  val (srcOpnd, acc1) = operand(src, acc)
 		  val (dstOpnd, acc2) = operand(dst, acc1)
@@ -247,8 +254,23 @@ struct
 		end
 	      | I.UNARY{unOp, opnd} => 
 		  done(opnd, fn opnd => I.UNARY{unOp=unOp, opnd=opnd}, an)
-	      | I.PUSH opnd => done(opnd, fn opnd => I.PUSH opnd, an)	
-	      | I.POP opnd => done(opnd, fn opnd => I.POP opnd, an)
+	      | I.SET{cond, opnd} => 
+		  done(opnd, fn opnd => I.SET{cond=cond, opnd=opnd}, an)
+	      | I.PUSHL opnd => done(opnd, I.PUSHL, an)	
+	      | I.PUSHW opnd => done(opnd, I.PUSHW, an)	
+	      | I.PUSHB opnd => done(opnd, I.PUSHB, an)	
+	      | I.POP opnd => done(opnd, I.POP, an)
+	      | I.CMOV{cond, src, dst} => 
+                  let val (srcOpnd, acc1) = operand(src, acc)
+                      val dst' = originalRegmap dst
+                  in  if pseudoR dst then
+		        withTmp(fn t =>
+		         movl{dst=ea dst', src=I.Direct t, acc=
+                           mark(I.CMOV{cond=cond, dst=t, src=srcOpnd},an)::
+                             acc1})
+		      else 
+                        mark(I.CMOV{cond=cond, dst=dst, src=srcOpnd},an)::acc1
+                  end
 	      | I.COPY{dst, src, tmp} => let
 		  (* Note:
 		   *  Parallel copies are not allowed after this point.
@@ -291,9 +313,13 @@ struct
 		    | f([], acc) = acc
 	        in f(shuffle (dst, src, tmp), acc)
 		end
-	      | I.FSTP opnd => done(opnd, fn opnd => I.FSTP opnd, an)
-	      | I.FLD opnd => done(opnd, fn opnd => I.FLD opnd, an)
-	      | I.FILD opnd => done(opnd, fn opnd => I.FILD opnd, an)
+	      | I.FSTPL opnd => done(opnd, I.FSTPL, an)
+	      | I.FSTPS opnd => done(opnd, I.FSTPS, an)
+	      | I.FLDL opnd => done(opnd, I.FLDL, an)
+	      | I.FLDS opnd => done(opnd, I.FLDS, an)
+	      | I.FILD opnd => done(opnd, I.FILD, an)
+	      | I.FENV{fenvOp, opnd} => done(opnd, 
+                    fn opnd => I.FENV{fenvOp=fenvOp,opnd=opnd}, an)
 	      | I.FBINARY{src,dst,binOp} => 
 		  done(src, 
                        fn opnd => I.FBINARY{binOp=binOp, src=opnd, dst=dst},an)

@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor TarjanFastPathFn(Dom : DOMINATOR_TREE) : TARJAN_FAST_PATH =
+functor TarjanFastPath(Dom : DOMINATOR_TREE) : TARJAN_FAST_PATH =
 struct
 
    structure Dom = Dom

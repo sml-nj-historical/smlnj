@@ -4,9 +4,13 @@
 functor MLTreeSimplifier(T : MLTREE) : MLTREE_SIMPLIFIER =
 struct
 
-   structure T = T
-   structure W = Word32
-   structure I = Int32
+   structure T  = T
+   structure W  = Word32
+   structure I  = Int32
+   structure LE = T.LabelExp
+   structure R  = MLTreeRewrite(T)
+
+   type ('s,'r,'f,'c) simplifier = ('s,'r,'f,'c) R.rewriters
 
    datatype const = CONST of W.word | NONCONST
    datatype cond  = TRUE | FALSE | UNKNOWN
@@ -20,6 +24,8 @@ struct
 
    exception Precison
 
+   fun simplify {addressWidth} ext = 
+   let 
       (* Get constant value *)
    fun valOf(T.LI i) = CONST(W.fromInt i)
      | valOf(T.LI32 w) = CONST w
@@ -77,26 +83,26 @@ struct
          )
        | _ => e
 
-   val sll  = compute (false,fn (a,b) => W.<<(a,Word.fromInt(W.toIntX(b))))
-   val srl  = compute (false,fn (a,b) => W.>>(a,Word.fromInt(W.toIntX(b))))
-   val sra  = compute (true,fn (a,b) => W.~>>(a,Word.fromInt(W.toIntX(b))))
-   val andb = compute (false,W.andb)
-   val orb  = compute (false,W.orb)
-   val xorb = compute (false,W.xorb)
-   val notb = computeUnary (false,W.notb)
-   val add  = compute (true,W.+)
-   val addt = computeTrap (Int.+)
-   val sub  = compute (true,W.-)
-   val subt = computeTrap (Int.-)
-   val muls = compute (true,W.* )
-   val mulu = compute (false,W.* )
-   val mult = computeTrap (Int.* )
-   val divs = compute (true,W.div)
-   val divu = compute (false,W.div)
-   val divt = computeTrap (Int.div)
-   val rems = compute (true,W.mod)
-   val remu = compute (false,W.mod)
-   val remt = computeTrap (Int.mod)
+   fun sll x = compute (false,fn (a,b) => W.<<(a,Word.fromInt(W.toIntX(b)))) x
+   fun srl x = compute (false,fn (a,b) => W.>>(a,Word.fromInt(W.toIntX(b)))) x
+   fun sra x = compute (true,fn (a,b) => W.~>>(a,Word.fromInt(W.toIntX(b)))) x
+   fun andb x = compute (false,W.andb) x
+   fun orb  x = compute (false,W.orb) x
+   fun xorb x = compute (false,W.xorb) x
+   fun notb x = computeUnary (false,W.notb) x
+   fun add  x = compute (true,W.+) x
+   fun addt x = computeTrap (Int.+) x
+   fun sub  x = compute (true,W.-) x
+   fun subt x = computeTrap (Int.-) x
+   fun muls x = compute (true,W.* ) x
+   fun mulu x = compute (false,W.* ) x
+   fun mult x = computeTrap (Int.* ) x
+   fun divs x = compute (true,W.div) x
+   fun divu x = compute (false,W.div) x
+   fun divt x = computeTrap (Int.div) x
+   fun rems x = compute (true,W.mod) x
+   fun remu x = compute (false,W.mod) x
+   fun remt x = computeTrap (Int.mod) x
 
       (* Evaluate an integer comparison *)
    fun cmp (signed,rel) (ty,a,b) = 
@@ -112,14 +118,14 @@ struct
        else rel(a,b)
    end
 
-   val gt  = cmp (true,W.>)
-   val lt  = cmp (true,W.<)
-   val ge  = cmp (true,W.>=)
-   val le  = cmp (true,W.<=)
-   val gtu = cmp (false,W.>)
-   val ltu = cmp (false,W.<)
-   val geu = cmp (false,W.>=)
-   val leu = cmp (false,W.<=)
+   fun gt  x = cmp (true,W.>) x
+   fun lt  x = cmp (true,W.<) x
+   fun ge  x = cmp (true,W.>=) x
+   fun le  x = cmp (true,W.<=) x
+   fun gtu x = cmp (false,W.>) x
+   fun ltu x = cmp (false,W.<) x
+   fun geu x = cmp (false,W.>=) x
+   fun leu x = cmp (false,W.<=) x
 
       (* Evaluate a comparison *)
    fun evalcc(T.CMP(ty,cond,a,b)) =
@@ -143,46 +149,28 @@ struct
      | evalcc(T.CCMARK(e,_)) = evalcc e
      | evalcc _ = UNKNOWN
 
-   fun sim e =
-   let (* traverse and simplify *)
-       val e =  
-         case e of
-           T.ADD(ty,a,b)  => T.ADD(ty, sim a, sim b)
-         | T.SUB(ty,a,b)  => T.SUB(ty, sim a, sim b)
-         | T.MULS(ty,a,b) => T.MULS(ty, sim a, sim b)
-         | T.DIVS(ty,a,b) => T.DIVS(ty, sim a, sim b)
-         | T.REMS(ty,a,b) => T.REMS(ty, sim a, sim b)
-         | T.MULU(ty,a,b) => T.MULU(ty, sim a, sim b)
-         | T.DIVU(ty,a,b) => T.DIVU(ty, sim a, sim b)
-         | T.REMU(ty,a,b) => T.REMU(ty, sim a, sim b)
-         | T.ADDT(ty,a,b) => T.ADDT(ty, sim a, sim b)
-         | T.SUBT(ty,a,b) => T.SUBT(ty, sim a, sim b)
-         | T.MULT(ty,a,b) => T.MULT(ty, sim a, sim b)
-         | T.DIVT(ty,a,b) => T.DIVT(ty, sim a, sim b)
-         | T.REMT(ty,a,b) => T.REMT(ty, sim a, sim b)
-         | T.ANDB(ty,a,b) => T.ANDB(ty, sim a, sim b)
-         | T.ORB(ty,a,b)  => T.ORB(ty, sim a, sim b)
-         | T.XORB(ty,a,b) => T.XORB(ty, sim a, sim b)
-         | T.NOTB(ty,a)   => T.NOTB(ty, sim a)
-         | T.SRA(ty,a,b)  => T.SRA(ty, sim a, sim b)
-         | T.SRL(ty,a,b)  => T.SRL(ty, sim a, sim b)
-         | T.SLL(ty,a,b)  => T.SLL(ty, sim a, sim b)
-         | T.CVTI2I(ty,ext,ty',a) => T.CVTI2I(ty,ext,ty',sim a)
-         | T.CVTF2I(ty,round,fty,a) => T.CVTF2I(ty,round,fty,simF a)
-         | T.COND(ty,cc,a,b) => T.COND(ty, simCC cc, sim a, sim b)
-         | T.LOAD(ty,a,mem) => T.LOAD(ty, sim a, mem)
-         | T.LOAD_UNALIGNED(ty,a,mem) => T.LOAD_UNALIGNED(ty, sim a, mem)
-         | T.SEQ(stm,e) => T.SEQ(simStm stm, sim e)
-         | T.EXT(ty, rext, es) => T.EXT(ty, rext, map sim es)
-         | T.MARK(e,an) => T.MARK(sim e, an)
-         | e => e
- 
+   fun sim ==> e =
+   let
      (* algebraic simplification and constant folding *)
       fun ADD(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
         | ADD(e,f,ty,(T.LI 0 | T.LI32 0w0),a) = a
-        | ADD(e,f,ty,a,b) = f(e,ty,a,b)
+        | ADD(e,f,ty,a,b) = 
+            if ty = addressWidth then
+            (case (a, b) of
+              (T.LABEL le, T.LI n) => T.LABEL(LE.PLUS(le,LE.INT n))
+            | (T.LI n, T.LABEL le) => T.LABEL(LE.PLUS(le,LE.INT n))
+            | (T.LABEL le, T.LABEL le') => T.LABEL(LE.PLUS(le,le'))
+            | _ => f(e,ty,a,b)
+            ) else f(e,ty,a,b)
       fun SUB(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
-        | SUB(e,f,ty,a,b) = f(e,ty,a,b)
+        | SUB(e,f,ty,a,b) = 
+            if ty = addressWidth then
+            (case (a, b) of
+              (T.LABEL le, T.LI n) => T.LABEL(LE.MINUS(le,LE.INT n))
+            | (T.LI n, T.LABEL le) => T.LABEL(LE.MINUS(LE.INT n,le))
+            | (T.LABEL le, T.LABEL le') => T.LABEL(LE.MINUS(le,le'))
+            | _ => f(e,ty,a,b)
+            ) else f(e,ty,a,b)
       fun MUL(e,f,ty,a,b as (T.LI 0 | T.LI32 0w0)) = b
         | MUL(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
         | MUL(e,f,ty,a,(T.LI 1 | T.LI32 0w1)) = a
@@ -205,7 +193,8 @@ struct
       fun SHIFT(e,f,ty,a,(T.LI 0 | T.LI32 0w0)) = a
         | SHIFT(e,f,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
         | SHIFT(e,f,ty,a,b) = f(e,ty,a,b)
-      fun CVTI2I(e,ty,ext,ty',a) = e
+      fun SX(e,ty,ty',a) = e
+      fun ZX(e,ty,ty',a) = e
    in (* perform algebraic simplification and constant folding *)
       case e of
         T.ADD(ty,a,b)  => ADD(e,add,ty,a,b)
@@ -240,79 +229,30 @@ struct
       | T.SRL(ty,a,b)  => SHIFT(e,srl,ty,a,b)
       | T.SLL(ty,a,b)  => SHIFT(e,sll,ty,a,b)
 
-      | T.CVTI2I(ty,ext,ty',a) => CVTI2I(e,ty,ext,ty',a)
+      | T.CVTI2I(ty,T.SIGN_EXTEND,ty',a) => SX(e,ty,ty',a)
+      | T.CVTI2I(ty,T.ZERO_EXTEND,ty',a) => ZX(e,ty,ty',a)
 
       | T.COND(ty,cc,a,b) => 
           (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => e)
       | e => e
    end
 
-   and simStm s =
-       let val s = 
-           case s of 
-             T.MV(ty,dst,e) => T.MV(ty,dst,sim e)
-           | T.CCMV(dst,cc) => T.CCMV(dst,simCC cc)
-           | T.FMV(fty,dst,e) => T.FMV(fty,dst,simF e)	
-           | T.JMP(e,labs) => T.JMP(sim e,labs)
-           | T.CALL(e,defs,uses,mem) => T.CALL(sim e,defs,uses,mem)
-           | T.STORE(ty,a,b,mem) => T.STORE(ty,sim a,sim b,mem)
-           | T.STORE_UNALIGNED(ty,a,b,mem) => 
-                T.STORE_UNALIGNED(ty,sim a,sim b,mem)
-           | T.FSTORE(fty,a,b,mem) => T.FSTORE(fty,sim a,simF b,mem)
-           | T.FSTORE_UNALIGNED(fty,a,b,mem) => 
-                T.FSTORE_UNALIGNED(fty,sim a,simF b,mem)
-           | T.BCC(cond,cc,lab) => T.BCC(cond,simCC cc,lab)
-           | T.FBCC(fcond,cc,lab) => T.FBCC(fcond,simCC cc,lab)
-           | T.ANNOTATION(s,an) => T.ANNOTATION(simStm s,an)
-           | s => s
-       in case s of
-            T.BCC(cond,cc,lab) => (* dead code elimination *)
-                (case evalcc cc of
-                   TRUE => T.JMP(T.LABEL(LabelExp.LABEL lab),[lab])     
-                 | FALSE => NOP
-                 | UNKNOWN => s
-                )
-          | s => s
-       end
+   and simStm ==> (s as T.IF(ctrl,cc,s1,s2)) = (* dead code elimination *)
+        (case evalcc cc of
+           TRUE => s1
+         | FALSE => s2
+         | UNKNOWN => s
+        )
+     | simStm ==> s = s
    
-   and simF e =
-       let val exp = case e of
-             T.FLOAD(fty,e,mem) => T.FLOAD(fty,sim e,mem)
-           | T.FLOAD_UNALIGNED(fty,e,mem) => T.FLOAD_UNALIGNED(fty,sim e,mem)
-           | T.FADD(fty,a,b) => T.FADD(fty,simF a,simF b)
-           | T.FSUB(fty,a,b) => T.FSUB(fty,simF a,simF b)
-           | T.FMUL(fty,a,b) => T.FMUL(fty,simF a,simF b)
-           | T.FDIV(fty,a,b) => T.FDIV(fty,simF a,simF b)
-           | T.FABS(fty,a)   => T.FABS(fty,simF a)
-           | T.FNEG(fty,a)   => T.FNEG(fty,simF a)
-           | T.FSQRT(fty,a)  => T.FSQRT(fty,simF a)
-           | T.CVTI2F(fty,ext,ty,e) => T.CVTI2F(fty,ext,ty,sim e)
-           | T.CVTF2F(fty,round,fty',e) => T.CVTF2F(fty,round,fty',simF e)
-           | T.FSEQ(s,e) => T.FSEQ(simStm s,simF e)
-           | T.FEXT(fty,fext,es) => T.FEXT(fty,fext,map simF es)
-           | T.FMARK(e,an) => T.FMARK(simF e,an)
-           | e => e
-       in case exp of
-            T.FNEG(ty,T.FNEG(ty',e)) => if ty = ty' then e else exp
-          | exp => exp
-       end
+   and simF ==> (exp as T.FNEG(ty,T.FNEG(ty',e))) = if ty = ty' then e else exp
+     | simF ==> exp = exp
 
-  and simCC e =
-      let val e = case e of
-            T.CMP(ty,cond,a,b) => T.CMP(ty,cond,sim a,sim b) 
-          | T.FCMP(fty,fcond,a,b) => T.FCMP(fty,fcond,simF a,simF b) 
-          | T.CCMARK(e,an) => T.CCMARK(simCC e,an)
-          | e => e
-      in  case e of
-            T.CMP _ => 
-               (case evalcc e of
-                  TRUE => ALWAYS_TRUE | FALSE => ALWAYS_FALSE | UNKNOWN => e
-               )
-          | e => e
-      end
+   and simCC ==> (exp as T.CMP _) =
+       (case evalcc exp of
+         TRUE => ALWAYS_TRUE | FALSE => ALWAYS_FALSE | UNKNOWN => exp
+       )
+     | simCC ==> exp = exp
 
-   val simplify = simStm
-   val simplifyRexp = sim
-   val simplifyFexp = simF
-   val simplifyCCexp = simCC
+   in R.rewrite ext {rexp=sim,fexp=simF,ccexp=simCC,stm=simStm} end
 end

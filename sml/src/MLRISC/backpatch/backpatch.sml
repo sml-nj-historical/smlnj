@@ -64,6 +64,7 @@ struct
 	  CODE(mkCode(0, [], !insns, [])) :: compress rest
 	end
       | compress [] = []
+      | compress _ = error "compress"
   in clusterList:=CLUSTER{comp = compress blocks, regmap=regmap}:: (!clusterList)
   end
 
@@ -97,6 +98,7 @@ struct
               in doCode(code, pos, changed)
 	      end
 	    | f ([], pos, changed) = adjust(cluster, pos, changed)
+	    | f _ = error "adjust.f"
         in f(comp, pos, changed)
 	end
       | adjust(_::_, _, _) = error "adjust"
@@ -121,8 +123,10 @@ struct
                    (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
 	  in foldl e loc code
 	  end
+	| process _ = error "process"
     in foldl process loc comp
     end
+      | emitCluster _ = error "emitCluster"
 
     val compressed = (rev (!clusterList)) before cleanUp()
   in

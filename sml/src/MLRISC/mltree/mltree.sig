@@ -4,24 +4,15 @@
  *
  *)
 
-(*
- * Note, this version MLTREE is now typed.
- * Furthermore, it is also used as an RTL language for SSA optimizations.
- *
- * --- Allen
- *)
 signature MLTREE = sig
   structure Constant : CONSTANT
+  structure LabelExp : LABELEXP
   structure PseudoOp : PSEUDO_OPS
   structure Region   : REGION
   structure Stream   : INSTRUCTION_STREAM
   structure Basis    : MLTREE_BASIS
-  structure Util     : MLTREE_UTIL
      sharing Stream.P = PseudoOp
-     sharing Util.Basis = Basis
-
-  type rextension 
-  type fextension 
+     sharing Constant = LabelExp.Constant
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -29,15 +20,16 @@ signature MLTREE = sig
   type src = var (* source variable *)
   type dst = var (* destination variable *)
   type reg = var (* physical register *)
+  type an = Annotations.annotation
 
   datatype cond = datatype Basis.cond
   datatype fcond = datatype Basis.fcond
-  datatype ext = datatype Basis.ext
   datatype rounding_mode = datatype Basis.rounding_mode
+  datatype ext = datatype Basis.ext
 
   (* phi-functions for SSA form *)
   datatype phi =
-      PHI  of ty * dst * src list 
+      RPHI  of ty * dst * src list 
     | FPHI of fty * dst * src list 
     | CCPHI of dst * src list 
 
@@ -46,135 +38,211 @@ signature MLTREE = sig
    *)
   type alias = var * reg (* var is aliased to register *) 
 
-  (* statements *)
-  datatype stm =
-      MV      of ty * dst * rexp	
-    | CCMV    of dst * ccexp
-    | FMV     of fty * dst * fexp	
-    | COPY    of ty * dst list * src list
+  (* Statements/effects.  These types are parameterized by the statement
+   * extension type.  Unfortunately, this has to be made polymorphic to make
+   * it possible for recursive type definitions to work. 
+   *
+   * Terms marked with rtl are used within the rtl language 
+   *)
+  datatype ('s,'r,'f,'c) stm =
+      (* assignment *)
+      MV      of ty * dst * ('s,'r,'f,'c) rexp   (* rtl *)
+    | CCMV    of dst * ('s,'r,'f,'c) ccexp
+    | FMV     of fty * dst * ('s,'r,'f,'c) fexp	
+
+      (* parallel copies *)
+    | COPY    of ty * dst list * src list   (* rtl *)
     | FCOPY   of fty * dst list * src list
-    | JMP     of rexp * Label.label list
-    | CALL    of rexp * mlrisc list * mlrisc list * Region.region
-    | RET
 
-    | STORE  of ty * rexp * rexp * Region.region	(* address, data *)
-    | STORE_UNALIGNED of ty * rexp * rexp * Region.region
-    | FSTORE of fty * rexp * fexp * Region.region	(* address, data *)
-    | FSTORE_UNALIGNED of fty * rexp * fexp * Region.region
-    | BCC    of Basis.cond * ccexp * Label.label 
-    | FBCC   of Basis.fcond * ccexp * Label.label
-    | ANNOTATION of stm * Annotations.annotation
+      (* control flow *)
+    | JMP     of ctrls * ('s,'r,'f,'c) rexp * controlflow (* rtl *)
+    | BCC     of ctrls * ('s,'r,'f,'c) ccexp * Label.label
+    | CALL    of ('s,'r,'f,'c) rexp * controlflow * ('s,'r,'f,'c) mlrisc list * ('s,'r,'f,'c) mlrisc list * 
+                 ctrls * ctrls * Region.region (* rtl *)
+    | RET     of ctrls * controlflow (* rtl *)
+    | JOIN    of ctrls
+    | IF      of ctrls * ('s,'r,'f,'c) ccexp * 
+                  ('s,'r,'f,'c) stm * ('s,'r,'f,'c) stm   (* rtl *)
 
-      (* The following are used internally by SSA optimizations; 
-       * The frontend should not generate these.
+      (* memory update: ea, data *)
+    | STORE  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp * Region.region 
+    | FSTORE of fty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) fexp * Region.region 
+
+      (* control dependence *)
+    | REGION of ('s,'r,'f,'c) stm * ctrl
+
+    | SEQ    of ('s,'r,'f,'c) stm list   (* sequencing *)
+    | DEFINE of Label.label   (* define local label *)
+
+    | ANNOTATION of ('s,'r,'f,'c) stm * an
+    | EXT of 's    (* extension *)
+
+      (* RTL operators:
+       * The following are used internally for describing instruction semantics.
+       * The frontend must not use these.
        *)
-    | RTL of word ref * word * stm (* a RTL that has been cached *) 
-    | RTLPHI of int (* a phi-function at block id *)
-    | RTLPINNED of stm (* pinned statement *)
-    | RTLPAR of stm list (* parallel execution *)
+    | PHI    of int                    (* a phi-function at some block id *)
+    | PINNED of ('s,'r,'f,'c) stm      (* pinned statement *)
+    | RTL    of {hash:word ref, attribs:Basis.attribs, e:('s,'r,'f,'c) stm}
    
-  and rexp = 
-      REG    of ty * src
+  and ('s,'r,'f,'c) rexp = 
+      REG    of ty * reg            (* rtl *)
 
       (* sizes of constants are inferred by context *)
-    | LI     of int   
-    | LI32   of Word32.word
-    | LI64   of Word64.word
+    | LI     of int                 (* rtl *)
+    | LI32   of Word32.word         (* rtl *)
+    | LI64   of Word64.word         (* rtl *)
     | LABEL  of LabelExp.labexp
     | CONST  of Constant.const
 
-    | ADD    of ty * rexp * rexp
-    | SUB    of ty * rexp * rexp 
+    | NEG    of ty * ('s,'r,'f,'c) rexp                      
+    | ADD    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | SUB    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
 
       (* signed multiplication etc. *)
-    | MULS   of ty * rexp * rexp
-    | DIVS   of ty * rexp * rexp
-    | REMS   of ty * rexp * rexp
+    | MULS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | DIVS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | QUOTS  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | REMS   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
 
       (* unsigned multiplication etc. *)
-    | MULU   of ty * rexp * rexp
-    | DIVU   of ty * rexp * rexp 
-    | REMU   of ty * rexp * rexp
+    | MULU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | DIVU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | REMU   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
 
       (* trapping versions of above. These are all signed *)
-    | ADDT   of ty * rexp * rexp 
-    | SUBT   of ty * rexp * rexp 
-    | MULT   of ty * rexp * rexp
-    | DIVT   of ty * rexp * rexp
-    | REMT   of ty * rexp * rexp 
+    | NEGT   of ty * ('s,'r,'f,'c) rexp                       
+    | ADDT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | SUBT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | MULT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | DIVT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | QUOTT  of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | REMT   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
 
-    | ANDB   of ty * rexp * rexp
-    | ORB    of ty * rexp * rexp
-    | XORB   of ty * rexp * rexp
-    | NOTB   of ty * rexp
+      (* bit operations *)
+    | ANDB   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | ORB    of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | XORB   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp    (* rtl *)
+    | NOTB   of ty * ('s,'r,'f,'c) rexp              (* rtl *)
 
-    | SRA   of ty * rexp * rexp		(* value, shift *)
-    | SRL   of ty * rexp * rexp
-    | SLL   of ty * rexp * rexp
+    | SRA   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp	  (* value, shift *) (* rtl *)
+    | SRL   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp     (* rtl *)
+    | SLL   of ty * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp     (* rtl *)
 
-      (* type promotion *)
-    | CVTI2I of ty * Basis.ext * ty * rexp
-    | CVTF2I of ty * Basis.rounding_mode * fty * fexp
+      (* type promotion/conversion *)
+    | CVTI2I of ty * ext * ty * ('s,'r,'f,'c) rexp  (* signed extension *) (* rtl *)
+    | CVTF2I of ty * rounding_mode * fty * ('s,'r,'f,'c) fexp (* rtl *)
 
       (* 
        * COND(ty,cc,e1,e2):
        * Evaluate into either e1 or e2, depending on cc.  
-       * Both e1 and e2 can be evaluated eagerly.
+       * Both e1 and e2 are allowed to be evaluated eagerly.
        *)
-    | COND of ty * ccexp * rexp * rexp 
+    | COND of ty * ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp  (* rtl *)
 
       (* integer load *)
-    | LOAD of ty * rexp * Region.region
-    | LOAD_UNALIGNED of ty * rexp * Region.region
+    | LOAD of ty * ('s,'r,'f,'c) rexp * Region.region (* rtl *)
 
-    | SEQ of stm * rexp
+      (* predication *)
+    | PRED of ('s,'r,'f,'c) rexp * ctrl 
 
-    | EXT of ty * rextension * rexp list
+    | LET of ('s,'r,'f,'c) stm * ('s,'r,'f,'c) rexp
 
-    | MARK of rexp * Annotations.annotation
+    | REXT of ty * 'r
 
-      (* Used in RTL *)
-    | RTLPC (* the program counter; used for describing relative addressing *)
-    | RTLMISC of Basis.misc_op ref * rexp list
+    | MARK of ('s,'r,'f,'c) rexp * an
 
-  and fexp =
+  and ('s,'r,'f,'c) fexp =
       FREG   of fty * src
-    | FLOAD  of fty * rexp * Region.region
-    | FLOAD_UNALIGNED  of fty * rexp * Region.region
+    | FLOAD  of fty * ('s,'r,'f,'c) rexp * Region.region 
 
-    | FADD   of fty * fexp * fexp
-    | FMUL   of fty * fexp * fexp
-    | FSUB   of fty * fexp * fexp 
-    | FDIV   of fty * fexp * fexp
-    | FABS   of fty * fexp 
-    | FNEG   of fty * fexp
-    | FSQRT  of fty * fexp
+    | FADD   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
+    | FMUL   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
+    | FSUB   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp 
+    | FDIV   of fty * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
+    | FABS   of fty * ('s,'r,'f,'c) fexp 
+    | FNEG   of fty * ('s,'r,'f,'c) fexp
+    | FSQRT  of fty * ('s,'r,'f,'c) fexp
+    | FCOND  of fty * ('s,'r,'f,'c) ccexp * 
+                ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
+    | FCOPYSIGN of fty * ('s,'r,'f,'c) fexp (*sign*) * 
+                         ('s,'r,'f,'c) fexp (*magnitude*)
 
-    | CVTI2F of fty * Basis.ext * ty * rexp
-    | CVTF2F of fty * Basis.rounding_mode * fty * fexp
-    | FSEQ   of stm * fexp
+    | CVTI2F of fty * ty * ('s,'r,'f,'c) rexp  (* from signed integer *)
+    | CVTF2F of fty * fty * ('s,'r,'f,'c) fexp (* float to float conversion *)
 
-    | FEXT of fty * fextension * fexp list
+    | FPRED of ('s,'r,'f,'c) fexp * ctrl
+ 
+    | FEXT of fty * 'f
 
-    | FMARK of fexp * Annotations.annotation
+    | FMARK of ('s,'r,'f,'c) fexp * an
 
-      (* used in RTL *)
-    | RTLFMISC of Basis.misc_op ref * fexp list
+  and ('s,'r,'f,'c) ccexp =
+      CC     of Basis.cond * src                        (* rtl *)
+    | FCC    of Basis.fcond * src                       (* rtl *)
+    | TRUE                                              (* rtl *)
+    | FALSE                                             (* rtl *)
+    | NOT    of ('s,'r,'f,'c) ccexp                     (* rtl *)
+    | AND    of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
+    | OR     of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
+    | XOR    of ('s,'r,'f,'c) ccexp * ('s,'r,'f,'c) ccexp   (* rtl *)
+    | CMP    of ty * Basis.cond * ('s,'r,'f,'c) rexp * ('s,'r,'f,'c) rexp(*rtl*)
+    | FCMP   of fty * Basis.fcond * ('s,'r,'f,'c) fexp * ('s,'r,'f,'c) fexp
+    | CCMARK of ('s,'r,'f,'c) ccexp * an
+    | CCEXT  of ty * 'c
 
-  and ccexp =
-      CC     of src
-    | CMP    of ty * Basis.cond * rexp * rexp 
-    | FCMP   of fty * Basis.fcond * fexp * fexp
-    | CCMARK of ccexp * Annotations.annotation
-    | RTLCCMISC of Basis.misc_op ref * ccexp list
+  and ('s,'r,'f,'c) mlrisc = 
+      CCR of ('s,'r,'f,'c) ccexp 
+    | GPR of ('s,'r,'f,'c) rexp 
+    | FPR of ('s,'r,'f,'c) fexp 
 
-  and mlrisc = CCR of ccexp | GPR of rexp | FPR of fexp
+  withtype controlflow = Label.label list (* control flow info *)
+       and ctrl = var                     (* control dependence info *)
+       and ctrls = ctrl list
 
-  exception Unsupported of string * rexp
+  (*
+   * Instruction streams
+   *)
+  type ('i,'regmap,'cellset) stream = 
+       ('i -> unit,'regmap, an list, 'cellset, alias, phi) Stream.stream 
 
-  type ('i,'regmap) stream = 
-       ('i -> unit,'regmap,Annotations.annotations,
-        mlrisc list, alias, phi) Stream.stream 
+  (* Extension mechanism *)
+
+  (* These functions are supplied by the instruction selection module *)
+  datatype ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c) 
+    reducer =
+    REDUCER of
+    { reduceRexp    : ('s,'r,'f,'c) rexp -> reg,
+      reduceFexp    : ('s,'r,'f,'c) fexp -> reg,
+      reduceCCexp   : ('s,'r,'f,'c) ccexp -> reg,
+      reduceStm     : ('s,'r,'f,'c) stm * an list -> unit,
+      operand       : ('s,'r,'f,'c) rexp -> 'operand,
+      reduceOperand : 'operand -> reg,
+      addressOf     : ('s,'r,'f,'c) rexp -> 'addressing_mode,
+      emit          : 'instr * an list -> unit,
+      instrStream   : ('instr,'regmap,'cellset) stream,
+      mltreeStream  : 
+        (('s,'r,'f,'c) stm,'regmap,('s,'r,'f,'c) mlrisc list) stream
+    }
+
+
+  (* These functions should be provided by the client *)
+  datatype ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
+           extender =
+    EXTENDER of
+    { compileStm  :
+           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
+           reducer -> { stm : 's, an : an list} -> unit,
+      compileRexp :
+           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
+           reducer -> {e:ty * 'r, an:an list, rd:reg} -> unit,
+      compileFexp :
+           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
+           reducer -> {e:fty * 'f, an:an list, fd:reg} -> unit,
+      compileCCexp :
+           ('instr,'regmap,'cellset,'operand,'addressing_mode,'s,'r,'f,'c)
+           reducer -> {e:ty * 'c, an:an list, cd:reg} -> unit
+    }
 
 end (* MLTREE *)
 

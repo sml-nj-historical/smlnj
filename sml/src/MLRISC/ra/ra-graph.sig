@@ -74,7 +74,7 @@ sig
        spillLoc     : int ref,
 
        (* span indexed by node id *)
-       span         : int Intmap.intmap,
+       span         : int Intmap.intmap option ref,
 
        (* mode *)
        mode         : mode,

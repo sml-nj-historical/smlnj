@@ -6,7 +6,7 @@
  * -- Allen
  *)
 
-functor ComputeFrequencies2Fn
+functor ComputeFrequencies2
    (structure DerivedGraph : DERIVED_GRAPH
     structure Freq : FREQ
    ) : COMPUTE_FREQUENCIES2 =
@@ -30,7 +30,7 @@ struct
        val N                 = #capacity cfg ()
 
        fun hash(i,j,_) = Word.<<(Word.fromInt i,0w16) + Word.fromInt j
-       fun equal((a,b,_),(c,d,_)) = a = c andalso b = d
+       fun equal((a:int,b:int,_),(c,d,_)) = a = c andalso b = d
        exception NotThere
        val edgeProbs = HT.mkTable (hash,equal) (10,NotThere) 
        val addProb   = HT.insert edgeProbs

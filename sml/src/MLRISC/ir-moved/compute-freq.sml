@@ -7,7 +7,7 @@
  * -- Allen
  *)
 
-functor ComputeFrequenciesFn
+functor ComputeFrequencies
     (structure Loop : LOOP_STRUCTURE
      structure Freq : FREQ
     ) : COMPUTE_FREQUENCIES =

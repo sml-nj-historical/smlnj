@@ -8,7 +8,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 
   fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
 
-  fun rewriteUse(mapr, instr, rs, rt) = let
+  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun replc r = if mapr r=rs then rt else r
   in
     case instr
@@ -39,6 +39,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
      | I.BLE{b, d, sr, t, defs, uses=(i,f), mem} => 
 	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f), mem=mem} 
+     | I.BL{x, t, defs, uses=(i,f), mem, n} => 
+	I.BL{x=x, t=t, defs=defs, uses=(map replc i, f), mem=mem, n=n} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
 	I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
@@ -55,7 +57,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | _ => instr
   end
 
-  fun rewriteDef(mapr, instr, rs, rt) = let
+  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun replc r = if mapr r=rs then rt else r
     fun ea (SOME(I.Direct r)) = SOME(I.Direct (replc r))
       | ea x = x
@@ -75,6 +77,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
      | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses, mem=mem}
+     | I.BL{x, t, defs=(i,f), uses=uses, mem, n} => 
+	I.BL{x=x, t=replc t, defs=(map replc i, f), uses=uses, mem=mem, n=n} 
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
@@ -83,7 +87,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteUse(mapr, instr, fs, ft) = let
+  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun replc r = if mapr r=fs then ft else r
   in
     case instr
@@ -101,12 +105,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
      | I.BLE{d, b, sr, t, defs=defs, uses=(i,f), mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f), mem=mem}
+     | I.BL{x, t, defs=defs, uses=(i,f), mem, n} => 
+	I.BL{x=x, t=t, defs=defs, uses=(i,map replc f), mem=mem, n=n} 
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
      | _ => instr
     (*esac*)
   end
 
-  fun frewriteDef(mapr, instr, fs, ft) = let
+  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun replc r = if mapr r=fs then ft else r
     fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(replc f))
       | ea x  = x
@@ -123,6 +129,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
      | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses, mem=mem}
+     | I.BL{x, t, defs=(i,f), uses=uses, mem, n} => 
+	I.BL{x=x, t=t, defs=(i, map replc f), uses=uses, mem=mem, n=n} 
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
      | _ => instr
     (*esac*)

@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor MaxFlowFn(Num : ABELIAN_GROUP) : MAX_FLOW =
+functor MaxFlow(Num : ABELIAN_GROUP) : MAX_FLOW =
 struct
    structure G   = Graph
    structure A   = Array

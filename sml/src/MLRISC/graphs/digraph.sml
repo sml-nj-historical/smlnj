@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor DirectedGraphFn(A : ARRAY) : 
+functor DirectedGraph(A : ARRAY) : 
 sig include GRAPH_IMPLEMENTATION 
 
     type 'e adjlist   = 'e Graph.edge list A.array
@@ -153,5 +153,5 @@ struct
    in  newGraph{name=name,info=info,nodes=nodes,succ=succ,pred=pred} end
 end
 
-structure DirectedGraph = DirectedGraphFn(DynArray)
+structure DirectedGraph = DirectedGraph(DynArray)
 

@@ -9,11 +9,15 @@ functor GCGen
    (structure MLTreeComp : MLTREECOMP
     structure IR         : MLRISC_IR
     structure GCMap      : GC_MAP
+    structure GCCallBack : GC_CALLBACK
     structure InsnProps  : INSN_PROPERTIES
+       sharing GCCallBack.T          = MLTreeComp.T
+       sharing GCCallBack.GC         = GCMap.GC
+       sharing GCCallBack.C          = IR.I.C 
        sharing MLTreeComp.T.Constant = IR.I.Constant
        sharing MLTreeComp.T.PseudoOp = IR.CFG.P
        sharing IR.I = InsnProps.I = MLTreeComp.I
-   ) : GC_GEN =
+   ) : MLRISC_IR_OPTIMIZATION =
 struct
 
    structure C   = IR.I.C
@@ -23,7 +27,7 @@ struct
    structure GC  = GCMap.GC
    structure G   = Graph
    structure A   = Array
-   structure Liveness = 
+   structure Liveness =   
       GCLiveness(structure IR = IR
                  structure GCMap = GCMap
                  structure InsnProps = InsnProps)
@@ -34,40 +38,45 @@ struct
        structure InsnProps = InsnProps
       )
 
-   type callgcCallback =
-        { id          : int,
-          gcLabel     : Label.label,
-          returnLabel : Label.label,
-          roots       : (C.cell * GC.gctype) list,
-          stream      : (T.stm,C.regmap) T.stream
-        } -> unit
+   type flowgraph = IR.IR
 
-   fun gcGen {callgc} (IR as G.GRAPH cfg) =
+   fun error msg = MLRiscErrorMsg.error("GCGen",msg)
+
+   val name = "Generate GC code"
+
+   fun run (IR as G.GRAPH cfg) =
    let (*
         * Run gc-typed liveness analysis
         *)
        val table = Liveness.liveness IR
        val instrStream = Gen.newStream{compile=fn _ => (), flowgraph=SOME IR}
+       fun dummy _ = error "no extension" 
+       val extender = T.EXTENDER{compileStm=dummy,
+                                 compileRexp=dummy,
+                                 compileFexp=dummy,
+                                 compileCCexp=dummy}
        val stream as T.Stream.STREAM{beginCluster, endCluster, ...} = 
-           MLTreeComp.selectInstructions instrStream
+           MLTreeComp.selectInstructions extender instrStream
  
        (*
         * For each gc-point, invoke the callback to generate GC code.
         *)
        fun process(b,b' as CFG.BLOCK{annotations,insns,...}) =
-           case #get MLRiscAnnotations.CALLGC (!annotations) of
+           case #get MLRiscAnnotations.GCSAFEPOINT (!annotations) of
              NONE => ()
-           | SOME _ =>
+           | SOME msg =>
            let val {liveIn,liveOut} = A.sub(table,b)
                val roots = liveIn
                val return = #node_info cfg (hd(#succ cfg b))
            in  CFG.changed IR;
-               callgc{ id          = b,
-                       gcLabel     = CFG.defineLabel b',
-                       returnLabel = CFG.defineLabel return,
-                       roots       = liveIn,
-                       stream      = stream
-                     }
+               GCCallBack.callgcCallback
+               { id          = b,
+                 msg         = msg,
+                 gcLabel     = CFG.defineLabel b',
+                 returnLabel = CFG.defineLabel return,
+                 roots       = liveIn,
+                 stream      = stream
+               }
            end
            
    in  beginCluster 0;

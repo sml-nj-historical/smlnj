@@ -68,11 +68,5 @@ struct
            else (* r1 > r2 *) loop(a,v)
    in  loop(a,b) end
 
-   fun toString typemap =
-   let fun f(reg,gc) = C.toString (C.cellKind reg) reg^" "^GC.toString gc
-   in  "{"^ List.foldr (fn (x,"") => f x
-                         | (x,y)  => f x ^ ", " ^ y) "" typemap^"}"
-   end
-
 end
         

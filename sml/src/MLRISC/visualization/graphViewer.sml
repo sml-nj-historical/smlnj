@@ -4,7 +4,7 @@
  * -- Allen 
  *)
 
-functor GraphViewerFn(D : GRAPH_DISPLAY) : GRAPH_VIEWER =
+functor GraphViewer(D : GRAPH_DISPLAY) : GRAPH_VIEWER =
 struct
 
    structure L = GraphLayout

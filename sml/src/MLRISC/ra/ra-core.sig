@@ -9,15 +9,23 @@ signature RA_CORE =
 sig
 
    structure G  : RA_GRAPH
+   structure BM :
+   sig 
+      val member : G.bitMatrix -> int * int -> bool
+      val add    : G.bitMatrix -> int * int -> bool
+   end
+   structure MV : RA_PRIORITY_QUEUE where type elem = G.move
+   structure FZ : RA_PRIORITY_QUEUE where type elem = G.node
 
    type move_queue
    type freeze_queue
 
-   val NO_OPTIMIZATION  : G.mode
-   val BIASED_SELECTION : G.mode
-   val DEAD_COPY_ELIM   : G.mode
-   val COMPUTE_SPAN     : G.mode
-   val SAVE_COPY_TEMPS  : G.mode
+   val NO_OPTIMIZATION      : G.mode
+   val BIASED_SELECTION     : G.mode
+   val DEAD_COPY_ELIM       : G.mode
+   val COMPUTE_SPAN         : G.mode
+   val SAVE_COPY_TEMPS      : G.mode
+   val HAS_PARALLEL_COPIES  : G.mode
 
    (*
     * Basic functions
@@ -96,6 +104,7 @@ sig
    val potentialSpillNode : 
         G.interferenceGraph ->
            { node  : G.node,
+             cost  : real,
              stack : G.node list
            } ->
            { moveWkl   : move_queue,
@@ -120,8 +129,14 @@ sig
    val initMemMoves : G.interferenceGraph -> unit
 
    (*
+    * Compute spill savings due to memory <-> register moves
+    *)
+   val moveSavings : G.interferenceGraph -> (int -> int)
+
+   (*
     * Spill propagation/coalescing phase 
     *)
+   (*
    val spillPropagation : G.interferenceGraph -> G.node list -> G.node list
 
    (*
@@ -133,5 +148,6 @@ sig
     * Spill coloring phase
     *)
    val spillColoring : G.interferenceGraph -> G.node list -> unit
+   *)
 
 end

@@ -6,7 +6,7 @@
 functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   structure I=Instr
 
-  fun rewriteUse(mapr, instr, rs, rt) = let
+  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun isRegOp (opnd as I.REGop r) = mapr r=rs
       | isRegOp _ = false
     fun rwOperand(opnd as I.REGop r) = if mapr r=rs then I.REGop rt else opnd
@@ -46,11 +46,13 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.FSTORE farg => fstore(I.FSTORE, farg)
      | I.JMPL({r, b, d}, labs) =>
        if mapr b=rs then I.JMPL({r=r, b=rt, d=d}, labs) else instr
-     | I.JSR({r,b,d}, defs, (i,f), mem) =>
-	 I.JSR({r=r, b=replace b, d=d}, defs, (map replace i, f), mem)
+     | I.JSR{r, b, d, defs, uses=(i,f), mem} =>
+	 I.JSR{r=r, b=replace b, d=d, defs=defs, uses=(map replace i, f), 
+               mem=mem}
      | I.RET{r,b,d} => I.RET{r=r, b=replace b, d=d}
-     | I.BRANCH(I.BR, _, _) => instr
-     | I.BRANCH(br, r, lab) => if mapr r=rs then I.BRANCH(br, rt, lab) else instr
+     | I.BRANCH{b=I.BR, ...} => instr
+     | I.BRANCH{b, r, lab} => if mapr r=rs then I.BRANCH{b=b, r=rt, lab=lab} 
+                              else instr
      | I.OPERATE arg => operate(I.OPERATE, arg)
      | I.OPERATEV arg => operate(I.OPERATEV, arg)
      | I.CMOVE{oper,ra,rb,rc} => 
@@ -63,7 +65,7 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteUse(mapr, instr, fs, ft) = let
+  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun replace f = if mapr f=fs then ft else f
     fun foperate(opClass, {oper, fa, fb, fc}) = 
       if mapr fa=fs then 
@@ -72,8 +74,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
       else instr
   in
     case instr
-    of I.FBRANCH(br, f, lab) =>
-       if mapr f=fs then I.FBRANCH(br, ft, lab) else instr
+    of I.FBRANCH{b, f, lab} =>
+       if mapr f=fs then I.FBRANCH{b=b, f=ft, lab=lab} else instr
      | I.FCOPY{dst, src, impl, tmp} => 
 	I.FCOPY{dst=dst, src=map(fn f => if mapr f=fs then ft else f) src, 
 		tmp=tmp, impl=impl}
@@ -85,12 +87,13 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
         if mapr fb=fs then I.FUNARY{oper=oper,fb=ft,fc=fc} else instr
      | I.FCMOVE{oper,fa,fb,fc} => 
          I.FCMOVE{oper=oper,fa=replace fa,fb=replace fb,fc=replace fc}
-     | I.JSR(opnds, defs, (i,f), mem) => I.JSR(opnds, defs, (i, map replace f), mem)
+     | I.JSR{r, b, d, defs, uses=(i,f), mem} => 
+         I.JSR{r=r, b=b, d=d, defs=defs, uses=(i, map replace f), mem=mem}
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
      | _ => instr
   end
 
-  fun rewriteDef(mapr, instr, rs, rt) = let
+  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun rewrite r = if mapr r = rs then rt else r
     fun ea (SOME(I.Direct r)) = SOME(I.Direct (rewrite r))
       | ea x = x
@@ -102,11 +105,12 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
        if mapr r=rs then I.LOAD{ldOp=ldOp, r=rt, b=b, d=d, mem=mem} else instr
      | I.JMPL({r, b, d}, labs) =>
        if mapr r=rs then I.JMPL({r=rt, b=b, d=d}, labs) else instr
-     | I.JSR({r, b, d}, (i,f), uses, mem) =>
-         I.JSR({r=rewrite r, b=b, d=d}, (map rewrite i, f), uses, mem)
+     | I.JSR{r, b, d, defs=(i,f), uses, mem} =>
+         I.JSR{r=rewrite r, b=b, d=d, defs=(map rewrite i, f), uses=uses, 
+               mem=mem}
      | I.RET{r, b, d} => I.RET{r=rewrite r, b=b, d=d}
-     | I.BRANCH(I.BR, r, lab) => 
-       if mapr r=rs then I.BRANCH(I.BR, rt, lab) else instr
+     | I.BRANCH{b=I.BR, r, lab} => 
+       if mapr r=rs then I.BRANCH{b=I.BR, r=rt, lab=lab} else instr
      | I.OPERATE{oper, ra, rb, rc} => 
        if mapr rc=rs then I.OPERATE{oper=oper, ra=ra, rb=rb, rc=rt} else instr
      | I.OPERATEV{oper, ra, rb, rc} =>
@@ -120,7 +124,7 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteDef(mapr, instr, fs, ft) = let
+  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun rewrite f = if mapr f = fs then ft else f
     fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(rewrite f))
       | ea x  = x
@@ -138,7 +142,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.FCOPY{dst, src, tmp, impl} =>
 	I.FCOPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl} 
      | I.FCMOVE{oper,fa,fb,fc} => I.FCMOVE{oper=oper,fa=fa,fb=fb,fc=rewrite fc}
-     | I.JSR(opnds, (i,f), uses, mem) => I.JSR(opnds, (i, map rewrite f), uses, mem)
+     | I.JSR{r, b, d, defs=(i,f), uses, mem} => 
+        I.JSR{r=r, b=b, d=d, defs=(i, map rewrite f), uses=uses, mem=mem}
 	
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
      | _  => instr

@@ -15,6 +15,5 @@ sig
    val joins    : typemap list -> typemap
    val gen      : typemap * typemap -> typemap  
    val kill     : typemap * typemap -> typemap
-   val toString : typemap -> string
 
 end

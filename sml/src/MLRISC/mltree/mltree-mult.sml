@@ -110,11 +110,23 @@ struct
        else mult(r,itow i,!multCost,d)
    end
 
+   (* The semantics of roundToZero{r,i,d} is:
+    *   if r >= 0 then d <- r
+    *   else d <- r + i
+    *)
+   fun roundToZero stm {ty,r,i,d} =
+       let val reg = T.REG(ty,r)
+       in  stm(T.MV(ty,d,
+                    T.COND(ty,T.CMP(ty,T.GE,reg,T.LI 0),reg,
+                              T.ADD(ty,reg,T.LI i))))
+       end
+ 
+
    (* 
     * Simulate rounding towards zero for signed division 
     *)  
    fun roundDiv{mode=T.TO_NEGINF,r,...} = ([],r) (* no rounding necessary *)
-     | roundDiv{mode=T.TO_ZERO,roundToZero,r,i} =
+     | roundDiv{mode=T.TO_ZERO,stm,r,i} =
           if signed then
           let val d = C.newReg()
           in  if i = 2 then (* special case for division by 2 *)
@@ -123,18 +135,18 @@ struct
                  end
               else
                      (* invoke rounding callback *)
-                 let val () = roundToZero{ty=intTy,r=r,i=i-1,d=d}
+                 let val () = roundToZero stm {ty=intTy,r=r,i=i-1,d=d}
                  in ([],d) end
           end
           else ([],r) (* no rounding for unsigned division *)
      | roundDiv{mode,...} = 
           error("Integer rounding mode "^
-                T.Util.roundingModeToString mode^" is not supported")
+                T.Basis.roundingModeToString mode^" is not supported")
 
-   fun divideNonTrap{mode,roundToZero}{r,i,d} = 
+   fun divideNonTrap{mode,stm}{r,i,d} = 
        if i > 0 andalso isPowerOf2(itow i)
        then 
-       let val (code,r) = roundDiv{mode=mode,roundToZero=roundToZero,r=r,i=i}
+       let val (code,r) = roundDiv{mode=mode,stm=stm,r=r,i=i}
        in  code@shiftri{r=r,i=log2(itow i),d=d} end (* won't overflow *)
        else raise TooComplex
 
@@ -175,14 +187,14 @@ struct
        else mult(r,itow i,!multCost,d) 
    end
 
-   fun divideTrap{mode,roundToZero}{r,i,d} =
+   fun divideTrap{mode,stm}{r,i,d} =
        if i > 0 andalso isPowerOf2(itow i)
        then
-       let val (code,r) = roundDiv{mode=mode,roundToZero=roundToZero,r=r,i=i}
+       let val (code,r) = roundDiv{mode=mode,stm=stm,r=r,i=i}
        in  code@shiftri{r=r,i=log2(itow i),d=d} end (* won't overflow *)
        else raise TooComplex
 
-   val multiply = if trapping then multiplyTrap else multiplyNonTrap
-   val divide   = if trapping then divideTrap else divideNonTrap
+   fun multiply x = if trapping then multiplyTrap x else multiplyNonTrap x
+   fun divide   x = if trapping then divideTrap x else divideNonTrap x
 
 end

@@ -7,9 +7,20 @@ sig
 
    structure T : MLTREE
 
-   val simplify      : T.stm -> T.stm
-   val simplifyRexp  : T.rexp -> T.rexp
-   val simplifyFexp  : T.fexp -> T.fexp
-   val simplifyCCexp : T.ccexp -> T.ccexp
+   type ('s,'r,'f,'c) simplifier =
+       { stm   : ('s,'r,'f,'c) T.stm -> ('s,'r,'f,'c) T.stm,
+         rexp  : ('s,'r,'f,'c) T.rexp -> ('s,'r,'f,'c) T.rexp,
+         fexp  : ('s,'r,'f,'c) T.fexp -> ('s,'r,'f,'c) T.fexp,
+         ccexp : ('s,'r,'f,'c) T.ccexp -> ('s,'r,'f,'c) T.ccexp
+       }
 
+   val simplify  :
+       { addressWidth : int } ->
+       (* Extension mechanism provided by the client *)
+       { stm   : ('s,'r,'f,'c) simplifier -> 's -> 's, 
+         rexp  : ('s,'r,'f,'c) simplifier -> 'r -> 'r, 
+         fexp  : ('s,'r,'f,'c) simplifier -> 'f -> 'f, 
+         ccexp : ('s,'r,'f,'c) simplifier -> 'c -> 'c
+       } -> ('s,'r,'f,'c) simplifier
+   
 end

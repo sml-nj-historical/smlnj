@@ -34,11 +34,19 @@ sig
     * Client should provide a pretty printing function.
     *)
    val new : ('a -> string) option -> 'a property
-   val newFlag : string -> flag
+   val new' : {toString: 'a -> string,
+               get     : exn -> 'a,
+               create  : 'a -> exn
+              } -> 'a property
 
    (*
     * Pretty print an annotation
     *) 
    val toString : annotation -> string
+
+   (*
+    * Attach a pretty printer   
+    *)
+   val attachPrettyPrinter : (annotation -> string) -> unit
 
 end

@@ -2,7 +2,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
   structure I = Instr
 
   fun ea(NONE, _, _, _) = NONE
-    | ea(e as SOME(I.Direct r), rs, rt, mapr) = 
+    | ea(e as SOME(I.Direct r), rs, rt, mapr : I.C.cell -> I.C.cell) = 
        if mapr r=rs then SOME(I.Direct rt) else e 
     | ea(e as SOME(I.FDirect r), rs, rt, mapr) = 
        if mapr r=rs then SOME(I.FDirect rt) else e 
@@ -10,7 +10,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
        if mapr base=rs then SOME(I.Displace{base=rt, disp=disp}) 
        else e 
 
-  fun rewriteUse(mapr, instr, rs, rt) = let
+  fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun rplac r = if mapr r=rs then rt else r
     fun rwOperand(opnd as I.RegOp r) = 
          if mapr r = rs then I.RegOp rt else opnd
@@ -50,7 +50,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | _ => instr
   end
 
-  fun rewriteDef(mapr, instr, rs, rt) = let
+  fun rewriteDef(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun rplac r = if mapr r = rs then rt else r
   in
     case instr
@@ -75,7 +75,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | _ => instr
   end
 
-  fun frewriteUse(mapr, instr, fs, ft) = let
+  fun frewriteUse(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun rplac r = if mapr r = fs then ft else r
   in
     case instr
@@ -98,7 +98,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
   end
 
 
-  fun frewriteDef(mapr, instr, fs, ft) = let
+  fun frewriteDef(mapr : I.C.cell -> I.C.cell, instr, fs, ft) = let
     fun rplac r = if mapr r = fs then ft else r
   in
     case instr

@@ -4,7 +4,7 @@
  *  -- Allen
  *)
 
-functor UndoableArrayFn
+functor UndoableArray
       (structure Array : ARRAY
        structure Log : TRANSACTION_LOG) : ARRAY =
 struct

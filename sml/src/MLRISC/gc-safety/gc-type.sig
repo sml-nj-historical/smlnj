@@ -4,14 +4,18 @@
 signature GC_TYPE =
 sig
 
-   type objtype 
    type gctype 
+   type ty = int  (* width of addressing mode *)
 
-   val CONST  : int -> gctype                   (* integer constant *)
-   val NONREF : objtype ref -> gctype           (* non-reference value *)  
-   val REF    : objtype ref -> gctype           (* a reference to a gc object *)
-   val ADD    : int * gctype * gctype -> gctype (* address arithmetic *)
-   val SUB    : int * gctype * gctype -> gctype (* address arithmetic *)
+   val CONST  : int -> gctype                   (* integer constant *) 
+
+   val INT    : gctype                          (* machine integer *)
+   val REAL32 : gctype                          (* machine float *)
+   val REAL64 : gctype                          (* machine float *)
+   val PTR    : gctype                          (* gc pointers *)
+
+   val ADD    : ty * gctype * gctype -> gctype  (* address arithmetic *)
+   val SUB    : ty * gctype * gctype -> gctype  (* address arithmetic *)
    val BOT    : gctype
    val TOP    : gctype
 

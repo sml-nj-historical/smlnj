@@ -16,15 +16,8 @@ sig
 
    val multiply : {r:C.cell,i:int,d:C.cell} -> I.instruction list 
 
-   (* The semantics of roundToZero{r,i,d} is:
-    *   if r >= 0 then d <- r
-    *   else d <- r + i
-    *)
-
    val divide   : { mode:T.Basis.rounding_mode,
-                    roundToZero : {ty:T.ty,r:C.cell,i:int,d:C.cell} 
-                                    -> unit
-                  } -> 
-                  {r:C.cell,i:int,d:C.cell} -> I.instruction list
+                    stm :('s,'r,'f,'c) T.stm -> unit
+                  } -> {r:C.cell,i:int,d:C.cell} -> I.instruction list
 
 end

@@ -9,6 +9,41 @@
  * Here, we are given an instruction and a list of registers to spill
  * and reload.  We rewrite the instruction until all instances of these
  * registers are rewritten.
+ *
+ * (12/13/99) Some major caveats when spill coalescing/coloring is used:
+ * When parallel copies are generated and spill coalescing/coloring is used,
+ * two special cases have to be identified:
+ *
+ * Case 1 (spillLoc dst = spillLoc src)
+ *        Suppose we have a parallel copy
+ *             (u,v) <- (x,y)
+ *        where u has to be spilled and y has to reloaded.  When both
+ *        u and y are mapped to location M.  The following wrong code may
+ *        be generated:
+ *                M <- x  (spill u)
+ *                v <- M  (reload y)
+ *        This is incorrect.  Instead, we generate a dummy copy and
+ *        delay the spill after the reload, like this:  
+ *               
+ *               tmp <- x (save value of u)
+ *               v <- M   (reload y)
+ *               M <- tmp (spill u)
+ * Case 2 (spillLoc copyTmp = spillLoc src)
+ *        Another case that can cause problems is when the spill location of
+ *        the copy temporary is the same as that of one of the sources:
+ *
+ *              (a, b, v) <- (b, a, u)  where spillLoc(u) = spillLoc(tmp) = v
+ *
+ *        The incorrect code is
+ *              (a, b) <- (b, a) 
+ *              v <- M
+ *        But then the shuffle code for the copy can clobber the location M.
+ *
+ *              tmp <- M
+ *              (a, b) <- (b, a) 
+ *              v <- tmp
+ *
+ *       (Note that spillLoc copyTmp = spillLoc src can never happen) 
  * 
  * -- Allen
  *)
@@ -108,11 +143,13 @@ struct
        annotations : Annotations.annotations ref (* annotations *)
       } -> I.instruction list          (* reload code *)
 
+   (* val spilledCopyTmps = MLRiscControl.getCounter "ra-spilled-copy-temps" *)
+
    (*
     * The following function performs spilling.
     *)
    fun spillRewrite
-        {graph=G as G.GRAPH{showReg, spilledRegs, nodes,...},
+        {graph=G as G.GRAPH{showReg, spilledRegs, nodes, mode, ...},
          spill : spill, 
          spillCopyTmp : spillCopyTmp, 
          spillSrc : spillSrc, 
@@ -126,6 +163,7 @@ struct
    let 
        val regmap = Core.spillRegmap G (* This is the current regmap *)
        val spillLocOf = Core.spillLoc G
+       val spillLocsOf = map spillLocOf
        val getnode = Intmap.map nodes
 
        val insnDefUse = P.defUse cellkind
@@ -143,6 +181,7 @@ struct
          | getLoc(G.NODE{color=ref(G.SPILLED c), ...}) = c
          | getLoc(G.NODE{number, ...}) = number
 
+       val parallelCopies = Word.andb(RACore.HAS_PARALLEL_COPIES, mode) <> 0w0
        (*
         * Rewrite the instruction given that a bunch of registers have 
         * to be spilled and reloaded.
@@ -223,9 +262,9 @@ struct
            (*
             * Check whether the regToSpill is in a list
             *)
-           fun killable(regToSpill:int,[]) = false
-             | killable(regToSpill,r::rs) = 
-               r = regToSpill orelse killable(regToSpill,rs)
+           fun contains(regToSpill:int,[]) = false
+             | contains(regToSpill,r::rs) = 
+               r = regToSpill orelse contains(regToSpill,rs)
     
            (*
             * Insert spill code for an instruction.
@@ -267,13 +306,24 @@ struct
     
            (*
             * Insert spill code for a destination of a copy
+            *    suppose d = r and we have a copy d <- s in
+            *    d1...dn <- s1...sn
+            *
             *    d1...dn <- s1...sn
             * =>
-            *    spill code
-            *    d1...dn/r <- s1...sn/r
+            *    spill s to spillLoc 
+            *    d1...dn/d <- s1...sn/s
+            *
+            *    However, if the spill code may ovewrite the spill location
+            *    shared by other uses, we do the following less 
+            *    efficient scheme:  
+            *
+            *    /* save the result of d */
+            *    d1...dn, tmp <- s1...sn, s
+            *    spill tmp to spillLoc /* spill d */
             * 
             *)
-           fun spillCopyDst(instr,regToSpill,spillLoc,kill) = 
+           fun spillCopyDst(instr,regToSpill,spillLoc,kill,don'tOverwrite) = 
            let val (dst, src) = P.moveDstSrc instr
                val (mvSrc,copyDst,copySrc,kill) = 
                     extractDef(regToSpill,dst,src,kill)
@@ -287,33 +337,49 @@ struct
                   copy
                  )
                else (* normal spill *)
-               let  (* spill the move instruction *)
-                   val spillCode = spillSrc{src=mvSrc,reg=regToSpill,
-                                            spillLoc=spillLoc,
-                                            annotations=annotations}
-               in  spillCode @ copy
-               end
+                 if contains(spillLoc, don'tOverwrite) then
+                 let (* cycle found *)
+                     (*val _ = print("Register r"^Int.toString regToSpill^ 
+                                  " overwrites ["^Int.toString spillLoc^"]\n")*)
+                     val tmp = I.C.newCell cellkind () (* new temporary *)
+                     val copy = copyInstr((tmp::copyDst, mvSrc::copySrc),
+                                               instr) 
+                     val spillCode = spillSrc{src=tmp,reg=regToSpill,
+                                              spillLoc=spillLoc,
+                                              annotations=annotations}
+                 in  copy @ spillCode
+                 end
+                 else
+                 let (* spill the move instruction *)
+                     val spillCode = spillSrc{src=mvSrc,reg=regToSpill,
+                                              spillLoc=spillLoc,
+                                              annotations=annotations}
+                 in  spillCode @ copy
+                 end
            end
     
            (*
             * Insert spill code for a copy
             *)
-           fun spillCopy(instr,regToSpill,spillLoc,kill) =
+           fun spillCopy(instr,regToSpill,spillLoc,kill,don'tOverwrite) =
                case P.moveTmpR instr of
-                 NONE => spillCopyDst(instr,regToSpill,spillLoc,kill)
+                 NONE => spillCopyDst(instr,regToSpill,spillLoc,kill,
+                                      don'tOverwrite)
                | SOME tmp => 
                    if regmap tmp = regToSpill 
-                   then [spillCopyTmp{copy=instr, spillLoc=spillLoc,
-                                      annotations=annotations}]
-                   else spillCopyDst(instr,regToSpill,spillLoc,kill)
+                   then ((* spilledCopyTmps := !spilledCopyTmps + 1; *)
+                         [spillCopyTmp{copy=instr, spillLoc=spillLoc,
+                                      annotations=annotations}])
+                   else spillCopyDst(instr,regToSpill,spillLoc,kill,
+                                      don'tOverwrite)
     
            (*
             * Insert spill code
             *)
-           fun spill(instr,regToSpill,spillLoc,killSet) =
-           let val kill = killable(regToSpill,killSet)
+           fun spill(instr,regToSpill,spillLoc,killSet,don'tOverwrite) =
+           let val kill = contains(regToSpill,killSet)
            in  if P.moveInstr instr then
-                  spillCopy(instr,regToSpill,spillLoc,kill)
+                  spillCopy(instr,regToSpill,spillLoc,kill,don'tOverwrite)
                else
                   spillInstr(instr,regToSpill,spillLoc,kill)
            end
@@ -323,13 +389,13 @@ struct
            fun hasDef(i,reg) = contains(#1(insnDefUse i),reg)
            fun hasUse(i,reg) = contains(#2(insnDefUse i),reg)
 
-           fun spillOneReg([],_,_,killSet) = []
-             | spillOneReg(i::instrs,r,spillLoc,killSet) = 
+           fun spillOneReg([],_,_,_,_) = []
+             | spillOneReg(i::instrs,r,spillLoc,killSet,don'tOverwrite) = 
                if hasDef(i,r) 
                then 
-                spillOneReg(spill(i,r,spillLoc,killSet)@instrs,
-                                  r,spillLoc,killSet)
-               else i::spillOneReg(instrs,r,spillLoc,killSet)
+                spillOneReg(spill(i,r,spillLoc,killSet,don'tOverwrite)@instrs,
+                                  r,spillLoc,killSet,don'tOverwrite)
+               else i::spillOneReg(instrs,r,spillLoc,killSet,don'tOverwrite)
 
            fun reloadOneReg([],_,_) = []
              | reloadOneReg(i::instrs,r,spillLoc) = 
@@ -339,12 +405,13 @@ struct
                else i::reloadOneReg(instrs,r,spillLoc)
 
            (* This function spills a set of registers for an instruction *)
-           fun spillAll(instrs,[],killSet) = instrs 
-             | spillAll(instrs,r::rs,killSet) = 
+           fun spillAll(instrs,[],killSet,don'tOverwrite) = instrs 
+             | spillAll(instrs,r::rs,killSet,don'tOverwrite) = 
                let val node     = getnode r
                    val spillLoc = getLoc node
-               in  spillAll(spillOneReg(instrs,r,spillLoc,killSet),
-                            rs,killSet)
+               in  spillAll(
+                       spillOneReg(instrs,r,spillLoc,killSet,don'tOverwrite),
+                            rs,killSet,don'tOverwrite)
                end
 
            (* This function reloads a set of registers for an instruction *)
@@ -367,16 +434,24 @@ struct
                          val spillRegs  = SL.uniq spillRegs
                          val reloadRegs = SL.uniq reloadRegs
 
+                         (* spill locations that we can't overwrite if we
+                          * are spilling a parallel copy
+                          *)
+                         val don'tOverwrite = 
+                             if parallelCopies then spillLocsOf reloadRegs
+                             else []
+
                          (*
                          val Asm.S.STREAM{emit, ...} = Asm.makeStream[]
                          val regs = app (fn r => 
-                                print(Int.toString r^" ["^Int.toString
+                                print(Int.toString(regmap r)^" ["^Int.toString
                                           (getLoc (getnode r))^"] "))
                           *)
+ 
+                         val instrs = spillAll([instr],spillRegs,killRegs,
+                                               don'tOverwrite)
 
-                         val instrs = spillAll([instr],spillRegs,killRegs)
-
-                         (*
+                         (* 
                          val _ = 
                                (print("pt="^Int.toString pt^"\n");
                                 if spillRegs = [] then () else
@@ -390,11 +465,12 @@ struct
 
                          val instrs = reloadAll(instrs,reloadRegs)
 
-                         (*
+                         (* 
                          val _ =  
                                (print "After:"; app (emit regmap) instrs;
                                 print "------------------\n")
                           *)
+
                          fun concat([], l) = l
                            | concat(a::b, l) = concat(b, a::l)
                      in  loop(rest, dec pt, concat(instrs, newInstrs)) 

@@ -23,32 +23,34 @@ sig
 
 end
 
-functor LivenessAnalysisFn(CFG : CONTROL_FLOW_GRAPH) : LIVENESS_ANALYSIS =
+functor LivenessAnalysis(CFG : CONTROL_FLOW_GRAPH) : LIVENESS_ANALYSIS =
 struct
 
    structure CFG = CFG
    structure I   = CFG.I
+   structure C   = I.C
    structure A   = Annotations
    structure SL  = SortedList
    structure G   = Graph
 
-   val livenessProp = A.new NONE : (I.C.cell list * I.C.cell list) A.property
+   val livenessProp = A.new (SOME(fn _ => "liveness")) : 
+          (C.cell list * C.cell list) A.property
 
    structure Liveness =
-      DataflowFn
+      Dataflow
          (struct
               structure CFG   = CFG
-              type domain     = I.C.cell list
+              type domain     = C.cell list
               val  forward    = false
               val  bot        = []
-              val  ==         = op = : I.C.cell list * I.C.cell list -> bool
+              val  ==         = op = : C.cell list * C.cell list -> bool
               val  join       = SL.foldmerge
               val  op +       = SL.merge
               val  op -       = SL.difference
               type dataflow_info = 
-                  { liveOut : CFG.block Graph.node -> I.C.cell list,
+                  { liveOut : CFG.block Graph.node -> C.cell list,
                     defUse  : CFG.block Graph.node -> 
-                                  I.C.cell list * I.C.cell list
+                                  C.cell list * C.cell list
                   }
 
               fun prologue(cfg,{defUse,liveOut}) (b,b') =

@@ -53,6 +53,7 @@ struct
     val psr     = [I.C.psr] 
     val fsr     = [I.C.fsr]
     val y       = [I.C.y]
+    val everything = [I.C.y,I.C.psr,I.C.fsr]
     fun conflict{regmap,src=i,dst=j} = 
         let fun cc I.ANDCC  = true
               | cc I.ANDNCC = true
@@ -84,6 +85,8 @@ struct
               | defUseOther(I.MOVfcc _) = ([],fsr)
               | defUseOther(I.FMOVicc _) = ([],psr)
               | defUseOther(I.FMOVfcc _) = ([],fsr)
+              | defUseOther(I.CALL _) = (everything,[])
+              | defUseOther(I.JMPL _) = (everything,[])
               | defUseOther(I.ANNOTATION{i,...}) = defUseOther i
               | defUseOther _ = ([],[])
             fun clash(defUse) =

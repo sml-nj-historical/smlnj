@@ -3,10 +3,10 @@ structure TestMaxFlow =
 struct
 val G as Graph.GRAPH g = DirectedGraph.graph("foo",(),10) :
     (string,int,unit) Graph.graph 
-structure MaxFlow = MaxFlowFn(struct type elem = int open Int
-                                     val zero = 0 
-                                     val == : int * int -> bool = op =
-                              end)
+structure MaxFlow = MaxFlow(struct type elem = int open Int
+                                   val zero = 0 
+                                   val == : int * int -> bool = op =
+                            end)
 val _ = app (#add_node g)
           [(0,"s"),
            (1,"v1"),

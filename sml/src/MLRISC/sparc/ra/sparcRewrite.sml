@@ -4,7 +4,7 @@ struct
 
    fun rwset(S,rw) = SortedList.uniq(map rw S)
 
-   fun rewriteUse(mapr,instr,rs,rt) =  
+   fun rewriteUse(mapr : I.C.cell -> I.C.cell,instr,rs,rt) =  
    let fun R r = if mapr r = rs then rt else r 
        fun O(i as I.REG r) = if mapr r = rs then I.REG rt else i
          | O i = i
@@ -35,7 +35,7 @@ struct
        | _ => instr
    end
 
-   fun rewriteDef(mapr,instr,rs,rt) =
+   fun rewriteDef(mapr : I.C.cell -> I.C.cell,instr,rs,rt) =
    let fun R r = if mapr r = rs then rt else r 
        fun ea(SOME(I.Direct r)) = SOME(I.Direct(R r))
          | ea x = x 
@@ -60,7 +60,7 @@ struct
        | _ => instr
    end
 
-   fun frewriteUse(mapr,instr,rs,rt) = 
+   fun frewriteUse(mapr : I.C.cell -> I.C.cell,instr,rs,rt) = 
    let fun R r = if mapr r = rs then rt else r 
    in  case instr of
          I.FPop1{a,r,d} => I.FPop1{a=a,r=R r,d=d}
@@ -79,7 +79,7 @@ struct
        | _ => instr
    end
 
-   fun frewriteDef(mapr,instr,rs,rt) = 
+   fun frewriteDef(mapr : I.C.cell -> I.C.cell,instr,rs,rt) = 
    let fun R r = if mapr r = rs then rt else r 
        fun ea(SOME(I.FDirect r)) = SOME(I.FDirect(R r))
          | ea x = x 

@@ -11,7 +11,7 @@ struct
   structure I = Instr
   structure C = I.C
   structure Const = I.Constant
-  structure LE = LabelExp
+  structure LE = I.LabelExp
 
   fun error msg = MLRiscErrorMsg.error("X86Jumps",msg)
 
@@ -23,11 +23,11 @@ struct
 
   fun isSdi instr = let
     fun operand(I.ImmedLabel _) = true
-      | operand(I.Const _) = true
       | operand(I.LabelEA _) = true
       | operand(I.Displace{disp, ...}) = operand disp
       | operand(I.Indexed{disp, ...}) = operand disp
       | operand _ = false
+    fun cmptest{lsrc, rsrc} = operand lsrc orelse operand rsrc
   in 
     case instr
     of I.JMP(opnd, _) => operand opnd
@@ -35,14 +35,19 @@ struct
      | I.BINARY{src, dst, ...} => operand src orelse operand dst
      | I.MOVE{src, dst, ...} => operand src orelse operand dst
      | I.LEA{addr, ...} => operand addr
-     | I.CMP{lsrc, rsrc} => operand lsrc orelse operand rsrc
+     | ( I.CMPL arg | I.CMPW arg | I.CMPB arg 
+       | I.TESTL arg | I.TESTW arg | I.TESTB arg) => cmptest arg
      | I.MULTDIV{src, ...} => operand src
      | I.MUL3{src1, ...} => operand src1
      | I.UNARY{opnd, ...} => operand opnd
-     | I.PUSH opnd => operand opnd
+     | I.SET{opnd, ...} => operand opnd
+     | I.CMOV{src, dst, ...} => operand src 
+     | (I.PUSHL opnd | I.PUSHW opnd | I.PUSHB opnd) => operand opnd
      | I.POP opnd =>  operand opnd
-     | I.FSTP opnd => operand opnd
-     | I.FLD opnd => operand opnd
+     | I.FSTPL opnd => operand opnd
+     | I.FSTPS opnd => operand opnd
+     | I.FLDL opnd => operand opnd
+     | I.FLDS opnd => operand opnd
      | I.FBINARY{src, dst, ...} => operand src orelse operand dst
      | I.FILD opnd => operand opnd
      | I.ANNOTATION{i,...} => isSdi i
@@ -58,7 +63,6 @@ struct
 
   (* value of span-dependent operand *)
   fun operand(I.ImmedLabel le) = LE.valueOf le
-    | operand(I.Const c) = Const.valueOf c
     | operand(I.LabelEA le) = LE.valueOf le
     | operand _ = error "operand"
 

@@ -86,11 +86,12 @@ struct
   val bad_freeze    = MLRiscControl.getCounter "bad-freeze"
  *)
 
-  val NO_OPTIMIZATION  = 0w0
-  val BIASED_SELECTION = 0w1
-  val DEAD_COPY_ELIM   = 0w2
-  val COMPUTE_SPAN     = 0w4
-  val SAVE_COPY_TEMPS  = 0w8
+  val NO_OPTIMIZATION     = 0wx0
+  val BIASED_SELECTION    = 0wx1
+  val DEAD_COPY_ELIM      = 0wx2
+  val COMPUTE_SPAN        = 0wx4
+  val SAVE_COPY_TEMPS     = 0wx8 
+  val HAS_PARALLEL_COPIES = 0wx10
 
   local
 
@@ -213,13 +214,7 @@ struct
                  val tab = !table
                  val len = A.length tab
              in  if !elems < len then
-                 let fun hashFun(i, j, shift, size) = 
-                     let val i    = W.fromInt i
-                         val j    = W.fromInt j
-                         val h    = W.+(W.<<(i, shift), W.+(i, j))
-                         val mask = W.-(W.fromInt size, 0w1)
-                     in  W.toIntX(W.andb(h, mask)) end
-                     val index = hashFun(i, j, shift, len)
+                 let val index = hashFun(i, j, shift, len)
                      fun find NIL = false
                        | find(B(i',j',b)) = i = i' andalso j = j' orelse find b
                      val b = UA.sub(tab, index)
@@ -404,11 +399,7 @@ struct
                   app prMove (!movelist);
                   pr "\n"
                  ) 
-               else ();
-               if n = 10 then
-               (pr "defs="; app (fn p => pr(Int.toString p^" ")) (!defs);pr"\n";
-                pr "uses="; app (fn p => pr(Int.toString p^" ")) (!uses);pr"\n"
-               ) else ()
+               else ()
               )
            )
          )
@@ -1248,10 +1239,14 @@ struct
    *)
   fun potentialSpillNode (G as G.GRAPH{spillFlag,...}) =
   let val {markAsFrozen,...} = iteratedCoalescingPhases G
-  in  fn {node, stack} => 
+      val spilled = SPILLED ~1
+  in  fn {node, cost, stack} => 
       let val _ = spillFlag := true (* potential spill found *)
           val (mv, fz, stack) = markAsFrozen(node, FZ.EMPTY, stack)
-      in  {moveWkl=mv, freezeWkl=fz, stack=stack}
+      in  if cost < 0.0 then
+             let val NODE{color, ...} = node in color := spilled end
+          else ();
+          {moveWkl=mv, freezeWkl=fz, stack=stack}
       end
   end
 
@@ -1290,6 +1285,9 @@ struct
 
       (* Briggs' optimistic spilling heuristic *)
       fun optimistic([], spills, stamp) = (spills, stamp)
+        | optimistic((node as NODE{color=ref(SPILLED _), ...})::stack,  
+                     spills, stamp) =
+             optimistic(stack, node::spills, stamp)
         | optimistic((node as NODE{color, (* pair, *) adj, ...})::stack, 
                      spills, stamp) =
           let (* set up the proh array *)
@@ -1309,6 +1307,9 @@ struct
 
       (* Briggs' optimistic spilling heuristic, with biased coloring *)
       fun biasedColoring([], spills, stamp) = (spills, stamp)
+        | biasedColoring((node as NODE{color=ref(SPILLED _), ...})::stack,  
+                         spills, stamp) =
+             biasedColoring(stack, node::spills, stamp)
         | biasedColoring(
              (node as NODE{number, color, adj, 
                            (* pair, *) movecnt, movelist,...})::stack, 
@@ -1388,6 +1389,36 @@ struct
       val moves = !memMoves 
   in  memMoves := [];
       init moves
+  end
+
+
+  (*
+   * Compute savings due to memory<->register moves
+   *)
+  fun moveSavings(GRAPH{memMoves=ref [], ...}) = (fn node => 0)
+    | moveSavings(GRAPH{memMoves, bitMatrix, ...}) = 
+  let exception Savings
+      val savingsMap = Intmap.new(32, Savings)
+               : {pinned:int,cost:int} Intmap.intmap
+      val savings = Intmap.mapWithDefault(savingsMap, {pinned= ~1, cost=0})
+      val addSavings = Intmap.add savingsMap
+      val member     = BM.member(!bitMatrix)
+      fun incSavings(u, v, c) =
+      let val {pinned, cost} = savings u
+      in  if pinned <> ~1 andalso v <> pinned orelse member(u, v)
+          then ()
+          else addSavings(u, {pinned=v, cost=cost + c + c})
+      end
+      fun computeSavings(MV{dst, src, cost, ...}) =
+      let val src as NODE{number=u, color=cu, ...} = chase src
+          val dst as NODE{number=v, color=cv, ...} = chase dst
+      in  case (!cu, !cv) of
+            (SPILLED _, PSEUDO) => incSavings(v, u, cost)
+          | (PSEUDO, SPILLED _) => incSavings(u, v, cost)
+          | _ => ()
+      end
+  in  app computeSavings (!memMoves);
+      fn node => #cost(savings node)
   end
 
   (*
@@ -1483,6 +1514,7 @@ struct
   end
 
   (*
+  (*
    * Spill propagation.
    *)
   fun spillPropagation(G as GRAPH{bitMatrix, memRegs, ...}) nodesToSpill =
@@ -1540,8 +1572,9 @@ struct
                                   adj, movelist, ...})::worklist, 
                     spilled) =
           let val (pinned, savings) = coalescingSavings(!movelist, ~1, 0)
-          in  if (if pinned >= 0 then savings > spillcost
-                 else savings >= spillcost) (* XXX *)
+          in  (* if (if pinned >= 0 then savings > spillcost
+                 else savings >= spillcost) *) (* XXX *)
+              if savings >= spillcost 
               then  (* propagate spill *)
                  (ra_spill_prop := !ra_spill_prop + 1;
                   color := marker; (* spill the node *)
@@ -1584,14 +1617,30 @@ struct
   (*
    * Spill coloring.
    * Assign logical spill locations to all the spill nodes.
+   *
+   * IMPORTANT BUG FIX:
+   *    Spilled copy temporaries are assigned its own set of colors and
+   * cannot share with another other nodes.   They can share colors with 
+   * themselves however.
    *)
-  fun spillColoring(GRAPH{spillLoc, ...}) nodesToSpill = 
+  fun spillColoring(GRAPH{spillLoc, copyTmps, mode, ...}) nodesToSpill = 
   let val proh     = A.array(length nodesToSpill, ~1)
       val firstLoc = !spillLoc
-      val _ = spillLoc := firstLoc - 1 (* allocate one location *)
-      fun selectColor([], currLoc) = ()
+      val _ = spillLoc := firstLoc - 1 (* allocate one location first *)
+
+      fun colorCopyTmps(tmps) =
+      let fun loop([], found) = found
+            | loop(NODE{color as ref(SPILLED ~1), ...}::tmps, found) = 
+                (color := SPILLED firstLoc; loop(tmps, true))
+            | loop(_::tmps, found) = loop(tmps, found)
+      in  if loop(tmps, false) then
+             (spillLoc := !spillLoc - 1; firstLoc - 1)
+          else firstLoc
+      end
+
+      fun selectColor([], firstColor, currLoc) = ()
         | selectColor(NODE{color as ref(SPILLED ~1), number, adj, ...}::nodes,
-                      currLoc) = 
+                      firstColor, currLoc) = 
           let fun neighbors [] = ()
                 | neighbors(n::ns) = 
                   let fun mark(NODE{color=ref(SPILLED loc), ...}) =
@@ -1604,24 +1653,31 @@ struct
                   in  mark n end
               val _ = neighbors(!adj)
               fun findColor(loc, startingPoint) = 
-                  let val loc = if loc < firstLoc then !spillLoc + 1 else loc
+                  let val loc = if loc < firstColor then !spillLoc + 1 else loc
                   in  if A.sub(proh, firstLoc - loc) <> number then loc (* ok *)
                       else if loc = startingPoint then (* new location *)
                       let val loc = !spillLoc 
                       in  spillLoc := loc - 1; loc end
                       else findColor(loc - 1, startingPoint)
                   end
-              val currLoc = if currLoc < firstLoc then !spillLoc + 1 
+              val currLoc = if currLoc < firstColor then !spillLoc + 1 
                             else currLoc
               val loc = findColor(currLoc, currLoc)
               (* val _ = print("Spill("^Int.toString number^")="^
                             Int.toString loc^"\n") *)
-          in  color := SPILLED loc;
-              selectColor(nodes, loc - 1)
+          in  color := SPILLED loc; (* mark with color *)
+              selectColor(nodes, firstColor, loc - 1)
           end
-        | selectColor(_::nodes, currLoc) = selectColor(nodes, currLoc)
-  in  selectColor(nodesToSpill, firstLoc)
+        | selectColor(_::nodes, firstColor, currLoc) = 
+              selectColor(nodes, firstColor, currLoc)
+
+      (* color the copy temporaries first *)
+       val firstColor = if isOn(mode, HAS_PARALLEL_COPIES) 
+                        then colorCopyTmps(!copyTmps) else firstLoc
+      (* color the rest of the spilled nodes *)
+  in  selectColor(nodesToSpill, firstColor, !spillLoc) 
   end
+  *)
 
   (*
    * Update the regmap, after finishing register allocation.
@@ -1661,13 +1717,14 @@ struct
    * Clear the interference graph, but keep the nodes 
    *)
   fun clearGraph(GRAPH{bitMatrix, maxRegs, trail, spillFlag, 
-                       deadCopies, memMoves, ...}) =
+                       deadCopies, memMoves, copyTmps, ...}) =
   let val edges = BM.edges(!bitMatrix)
   in  trail      := END;
       spillFlag  := false;
-      bitMatrix  := BM.empty;
       deadCopies := [];
       memMoves   := [];
+      copyTmps   := [];
+      bitMatrix  := BM.empty;
       bitMatrix  := G.newBitMatrix{edges=edges, maxRegs=maxRegs()}
   end 
 

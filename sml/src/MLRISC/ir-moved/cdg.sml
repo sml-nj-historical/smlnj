@@ -8,7 +8,7 @@
  * -- Allen
  *)
 
-functor ControlDependenceGraphFn
+functor ControlDependenceGraph
    (structure Dom       : DOMINATOR_TREE
     structure GraphImpl : GRAPH_IMPLEMENTATION
    ) : CONTROL_DEPENDENCE_GRAPH =

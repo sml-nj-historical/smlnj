@@ -15,7 +15,7 @@ end
 (*
  * This is a naive implementation.
  *)
-functor GraphSnapShotFn(GI : GRAPH_IMPLEMENTATION) : GRAPH_SNAPSHOT =
+functor GraphSnapShot(GI : GRAPH_IMPLEMENTATION) : GRAPH_SNAPSHOT =
 struct
 
    structure G = Graph

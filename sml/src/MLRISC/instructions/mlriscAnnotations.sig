@@ -22,7 +22,7 @@ sig
     (* The execution frequency of a basic block 
      * You can attach this at a basic block.
      *)
-   val EXECUTION_FREQ : real Annotations.property
+   val EXECUTION_FREQ : int Annotations.property
 
     (* No effect at all; this just allows you to insert comments *)
    val COMMENT : string Annotations.property
@@ -37,22 +37,16 @@ sig
      * These annotations are currently recognized by the SSA optimization
      * modules.
      *)
-   datatype ctrl_dep = CTRL_DEF of int | CTRL_USE of int
-   val CTRL : ctrl_dep Annotations.property
-
-    (*
-     * These annotations specifies definitions and uses 
-     * for a pseudo instruction.
-     *)
-   val DEFUSER  : (int list * int list) Annotations.property
-   val DEFUSEF  : (int list * int list) Annotations.property
-   val DEFUSECC : (int list * int list) Annotations.property
+   exception CTRLDEF of int
+   exception CTRLUSE of int
+   val CTRL_DEF : int Annotations.property
+   val CTRL_USE : int Annotations.property
 
     (*
      * This annotation can be used specify a pretty printing function for
      * assemblers
      *)
-   val REGINFO : (int -> string) Annotations.property
+   val REGINFO : ((int -> int) * int -> string) Annotations.property
 
     (*
      * Disable all optimizations in the cluster
@@ -63,6 +57,7 @@ sig
      * Mark basic block that is used for calling the GC
      *)
    val CALLGC : unit Annotations.property
+   val GCSAFEPOINT : string Annotations.property
 
     (*
      * Insert block names
@@ -77,6 +72,12 @@ sig
     (* 
      * Enter information for a register.
      *)
+   exception MARKREG of int -> unit
    val MARK_REG : (int -> unit) Annotations.property
+
+    (*
+     * Disable branch chaining optimization on a jump
+     *)
+   val NO_BRANCH_CHAINING : unit Annotations.property
 
 end

@@ -32,6 +32,7 @@ is
 	basis.cm
 #endif
 	MLRISC.cm
+	MLRISC-Control.cm
 	MLRISC-Lib.cm
 	smlnj-lib.cm
 
@@ -49,6 +50,7 @@ is
 	x86/ra/x86Rewrite.sml
 	(* x86/ra/x86RegAlloc.sml *)
 	x86/ra/x86Spill.sml
-	x86/ra/x86PseudoR.sml
+	(* This is no long needed *)
+	x86/ra/x86PseudoR.sml 
 	x86/backpatch/x86Jumps.sml 
-	x86/mltree/x86.sml 
+	x86/mltree/x86.sml

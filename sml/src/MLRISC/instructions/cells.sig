@@ -28,6 +28,7 @@ signature CELLS_BASIS =
 sig
    eqtype cellkind 
    type cell = int
+   type ty   = int
    type regmap = cell Intmap.intmap
    exception Cells
 
@@ -50,12 +51,6 @@ sig
 
        (* generate a new name for a virtual register *)
    val newCell   : cellkind -> 'a -> cell 
-
-       (* lookup the cellkind of a virtual register *)
-   val cellKind : cell -> cellkind         
-
-       (* update the cellkind of a virtual register *)
-   val updateCellKind : cell * cellkind -> unit        
 
        (* lookup the number of virtual registers in a cellkind *)
    val numCell   : cellkind -> unit -> int              
@@ -98,6 +93,7 @@ sig
    val MEM  : cellkind  (* memory cell *)
    val CTRL : cellkind  (* control dependence *)
    val toString : cellkind -> cell -> string
+   val toStringWithType : cellkind -> cell * ty -> string
    val stackptrR : cell                    (* stack pointer register *)
    val asmTmpR : cell                      (* assembly temporary *)
    val fasmTmp : cell                      (* floating point temporary *)

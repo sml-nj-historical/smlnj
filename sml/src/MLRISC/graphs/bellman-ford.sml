@@ -5,7 +5,7 @@
  * -- Allen
  *)
 
-functor BellmanFordFn(Num : ABELIAN_GROUP_WITH_INF) : 
+functor BellmanFord(Num : ABELIAN_GROUP_WITH_INF) : 
     sig include SINGLE_SOURCE_SHORTEST_PATHS 
         exception NegativeCycle
     end =

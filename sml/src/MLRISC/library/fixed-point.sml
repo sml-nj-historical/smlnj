@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-functor FixedPointFn (val decimal_bits : int) : FIXED_POINT =
+functor FixedPoint (val decimal_bits : int) : FIXED_POINT =
 struct
 
    structure W = Word31
