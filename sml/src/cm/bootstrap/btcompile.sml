@@ -154,6 +154,7 @@ struct
 	    { fnpolicy = fnpolicy,
 	      penv = penv,
 	      symval = SSV.symval,
+	      archos = archos,
 	      keep_going = keep_going }
 
 	val emptydyn = E.dynamicPart E.emptyEnv

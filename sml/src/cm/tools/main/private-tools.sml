@@ -57,7 +57,9 @@ structure PrivateTools : PRIVATETOOLS = struct
     type rule = { spec: spec,
 		  native2pathmaker: string -> pathmaker,
 		  context: rulecontext,
-		  defaultClassOf: fnspec -> class option } ->
+		  defaultClassOf: fnspec -> class option,
+		  sysinfo: { symval: string -> int option,
+			     archos: string } } ->
 		partial_expansion
 
     type gcarg = { name: string, mkfname: unit -> string }
@@ -266,7 +268,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, native2pathmaker, defaultClassOf } = let
+    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
@@ -338,7 +340,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	   cmfiles = [] },
 	 [])
     end
-    fun cmrule { spec, context, native2pathmaker, defaultClassOf } = let
+    fun cmrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
 	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	fun err m = raise ToolError { tool = "cm", msg = m }
 	fun proc_opts (rb, vrq, []) = (rb, vrq)
@@ -376,7 +378,7 @@ structure PrivateTools : PRIVATETOOLS = struct
 	 [])
     end
 
-    fun expand { error, local_registry = lr, spec, context, load_plugin } = let
+    fun expand { error, local_registry = lr, spec, context, load_plugin, sysinfo } = let
 	val dummy = ({ smlfiles = [], cmfiles = [], sources = [] }, [])
 	fun norule _ = dummy
 	fun native2pathmaker s () =
@@ -422,7 +424,8 @@ structure PrivateTools : PRIVATETOOLS = struct
 	in
 	    rule { spec = spec, context = rcontext,
 		   native2pathmaker = native2pathmaker,
-		   defaultClassOf = defaultClassOf (load_plugin context) }
+		   defaultClassOf = defaultClassOf (load_plugin context),
+		   sysinfo = sysinfo }
 	    handle ToolError { tool, msg } =>
 		   (error (concat ["tool \"", tool, "\" failed: ", msg]);
 		    dummy)

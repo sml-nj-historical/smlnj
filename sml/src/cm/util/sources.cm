@@ -24,6 +24,7 @@ Group (../../system/smlnj/internal/cm-lib.cm)
 	structure StdConfig
 	structure AutoDir
 	structure Memoize
+	structure Subst
 
 	structure LibBase	(* from SML/NJ library *)
 	functor MapFn
@@ -45,6 +46,7 @@ is
 	say.sml
 	autodir.sml
 	memoize.sml
+	subst.sml
 
 	map-fn.sml
 	set-fn.sml

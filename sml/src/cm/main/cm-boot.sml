@@ -206,6 +206,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      { fnpolicy = fnpolicy,
 		penv = penv,
 		symval = SSV.symval,
+		archos = my_archos,
 		keep_going = #get StdConfig.keep_going () }
 	  end
 
@@ -528,6 +529,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val ginfo = { param = { fnpolicy = fnpolicy,
 				      penv = penv,
 				      symval = SSV.symval,
+				      archos = my_archos,
 				      keep_going = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer (),

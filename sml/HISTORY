@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/07/09 11:25:00 EDT
+Tag: blume-20010709-varargs
+Description:
+
+1. ckit-lib.cm now exports structure Error
+2. ml-nlffigen reports occurences of "..." (i.e., varargs function types)
+   with a warning accompanied by a source location.  Moreover, it
+   merely skips the offending function or type and proceeds with the
+   rest of its work.u  As a result, one can safely feed C code containing
+   "..." to ml-nlffigen.
+3. There are some internal improvements to CM, providing slightly
+   more general string substitutions in the tools subsystem.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/27 15:10:00 EDT
 Tag: blume-20010627-concur
 Description:

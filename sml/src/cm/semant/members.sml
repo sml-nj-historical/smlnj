@@ -178,7 +178,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 					   opts = tooloptions,
 					   derived = false },
 				  context = context,
-				  load_plugin = load_plugin }
+				  load_plugin = load_plugin,
+				  sysinfo = { symval =
+					      fn s => #get (#symval (#param gp) s) (),
+					      archos = #archos (#param gp) } }
 	val msources = foldl SrcPathMap.insert' SrcPathMap.empty sources
 	fun g_coll (p, v, rb) =
 	    case rparse (p, v, rb) of

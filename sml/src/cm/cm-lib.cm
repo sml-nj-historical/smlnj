@@ -13,6 +13,7 @@ Group (../system/smlnj/internal/cm-lib.cm)
 	structure Version
 	structure Sharing
 	signature TOOLS
+	structure Subst
 is
 	$/basis.cm
 	$/smlnj-lib.cm

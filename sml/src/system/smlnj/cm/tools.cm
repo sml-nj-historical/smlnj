@@ -12,6 +12,7 @@ Library
 	structure Version
 	signature TOOLS
 	structure Tools
+	structure Subst
 is
 	$/basis.cm
 	$smlnj/internal/srcpath-lib.cm

@@ -11,12 +11,18 @@ structure AstToSpec = struct
     structure B = Bindings
 
     exception VoidType
+    exception Ellipsis
 
     fun bug m = raise Fail ("AstToSpec: bug: " ^ m)
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
     fun build (bundle, sizes: Sizes.sizes, idlfile, allSU, eshift) = let
+
+	val errorState = Error.mkErrState TextIO.stdErr
+
+	fun warnLoc (l, m) = Error.warning (errorState, l, m)
+
 	val { ast, tidtab, errorCount, warningCount,
 	      auxiliaryInfo = { aidtab, implicits, env } } = bundle
 
@@ -41,7 +47,7 @@ structure AstToSpec = struct
 		     A.Array (_, t) => constness t
 		   | _ => Spec.RW
 
-	val sizerec = { sizes = sizes, err = err, warn = err, bug = bug }
+	val sizerec = { sizes = sizes, err = err, warn = warn, bug = bug }
 
 	fun sizeOf t = #bytes (Sizeof.byteSizeOf sizerec tidtab t)
 
@@ -82,7 +88,7 @@ structure AstToSpec = struct
 	  | tagname (SOME n, _) = n
 
 	fun valty A.Void = raise VoidType
-	  | valty A.Ellipses = err "ellipses variable type"
+	  | valty A.Ellipses = raise Ellipsis
 	  | valty (A.Qual (q, t)) = valty t
 	  | valty (A.Numeric (_, _, A.SIGNED, A.CHAR, _)) = Spec.SCHAR
 	  | valty (A.Numeric (_, _, A.UNSIGNED, A.CHAR, _)) = Spec.UCHAR
@@ -111,7 +117,8 @@ structure AstToSpec = struct
 	    typeref (tid, fn _ => bug "missing typedef info")
 	  | valty A.Error = err "Error type"
 
-	and valty_nonvoid t = valty t handle VoidType => err "void variable type"
+	and valty_nonvoid t = valty t
+	    handle VoidType => err "void variable type"
 
 	and typeref (tid, otherwise) =
 	    case Tidtab.find (tidtab, tid) of
@@ -326,7 +333,12 @@ structure AstToSpec = struct
 	  | coreExternalDecl (A.ExternalDeclExt _) = ()
 
 	fun externalDecl (A.DECL (d, _, l)) =
-	    if isThisFile l then coreExternalDecl d else ()
+	    if isThisFile l then
+		coreExternalDecl d
+		handle Ellipsis =>
+		       warnLoc (l, "varargs not supported; \
+				   \skipping this function or function type")
+	    else ()
 
 	fun doast l = app externalDecl l
     in

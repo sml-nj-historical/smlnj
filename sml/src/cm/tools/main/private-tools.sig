@@ -18,7 +18,9 @@ signature PRIVATETOOLS = sig
 		   local_registry : registry,
 		   spec: spec,
 		   context: SrcPath.dir,
-		   load_plugin: SrcPath.dir -> string -> bool }
+		   load_plugin: SrcPath.dir -> string -> bool,
+		   sysinfo: { symval: string -> int option,
+			      archos: string } }
 	-> expansion
 
     val withPlugin : SrcPath.file -> (unit -> 'a) -> 'a

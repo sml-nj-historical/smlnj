@@ -103,7 +103,9 @@ signature CORETOOLS = sig
     type rule = { spec: spec,
 		  native2pathmaker: string -> pathmaker,
 		  context: rulecontext,
-		  defaultClassOf: fnspec -> class option } ->
+		  defaultClassOf: fnspec -> class option,
+		  sysinfo: { symval: string -> int option,
+			     archos: string } } ->
 		partial_expansion
 
     (* install a class *)
