@@ -1,3 +1,5 @@
-Group is
+Library
+  structure X
+is
 xalias.cm
 self.sml

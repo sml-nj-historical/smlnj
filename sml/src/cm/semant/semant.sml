@@ -140,9 +140,19 @@ structure CMSemant :> CM_SEMANT = struct
 		   islib = false,
 		   required = StringSet.empty,
 		   grouppath = path,
-		   subgroups = [],
+		   sublibs = [],
 		   stableinfo = GG.NONSTABLE StringSet.empty }
-	
+
+    fun sgl2sll subgroups = let
+	fun sameSL (_, GG.GROUP g) (_, GG.GROUP g') =
+	    AbsPath.compare (#grouppath g, #grouppath g') = EQUAL
+	fun add (x, l) =
+	    if List.exists (sameSL x) l then l else x :: l
+	fun oneSG (x as (_, GG.GROUP { islib = true, ... }), l) = add (x, l)
+	  | oneSG ((_, GG.GROUP { sublibs, ... }), l) = foldl add l sublibs
+    in
+	foldl oneSG [] subgroups
+    end
 
     fun group (g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
@@ -154,7 +164,7 @@ structure CMSemant :> CM_SEMANT = struct
 	GG.GROUP { exports = exports, islib = false,
 		   required = StringSet.union (StringSet.union (rp, rp'), gr),
 		   grouppath = g,
-		   subgroups = subgroups,
+		   sublibs = sgl2sll subgroups,
 		   stableinfo = GG.NONSTABLE gr }
     end
 
@@ -168,7 +178,7 @@ structure CMSemant :> CM_SEMANT = struct
 	GG.GROUP { exports = exports, islib = true,
 		   required = StringSet.union (StringSet.union (rp, rp'), gr),
 		   grouppath = g,
-		   subgroups = subgroups,
+		   sublibs = sgl2sll subgroups,
 		   stableinfo = GG.NONSTABLE gr }
     end
 

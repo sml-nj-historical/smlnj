@@ -6,7 +6,6 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature SKELIO = sig
-    exception InternalError
     val read : AbsPath.t * TStamp.t -> Skeleton.decl option
     val write : AbsPath.t * Skeleton.decl -> unit
 end
@@ -18,7 +17,6 @@ structure SkelIO :> SKELIO = struct
     structure S = Symbol
     structure SP = GenericVC.SymPath
 
-    exception InternalError
     exception FormatError
 
     val s2b = Byte.stringToBytes
@@ -41,14 +39,14 @@ structure SkelIO :> SKELIO = struct
 
     (* We are consing up the whole output as a list of strings
      * before concatenating it to form the final result and
-     * wrinting it out using one single `output' call. *)
+     * writing it out using one single `output' call. *)
     fun w_name (n, r) =
 	(case S.nameSpace n of
 	     S.SIGspace => "'"		(* only tyvars could start like that *)
 	   | S.FCTspace => "("		(* no sym can start like that *)
 	   | S.FSIGspace => ")"		(* no sym can start like that *)
 	   | S.STRspace => ""		(* this should be safe now *)
-	   | _ => raise InternalError)
+	   | _ => GenericVC.ErrorMsg.impossible "SkelIO.w_name")
 	 :: S.name n :: "." :: r
 
     fun write_decl (s, d) = let
@@ -155,6 +153,5 @@ structure SkelIO :> SKELIO = struct
 	    raise exn
 	end
     end handle Interrupt.Interrupt => raise Interrupt.Interrupt
-             | InternalError => raise InternalError
              | _ => ()
 end

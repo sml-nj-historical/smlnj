@@ -80,6 +80,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val primconf = #primconf (#param gp)
 	val policy = #fnpolicy (#param gp)
 
+	val grouppath = #grouppath grec
+	val groupdir = AbsPath.dir grouppath
+
 	fun doit granted = let
 
 	    val _ =
@@ -100,15 +103,13 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		cp () handle e => (BinIO.closeIn ins; raise e);
 		    BinIO.closeIn ins
 	    end
-	    val delb = deleteFile o bname
 
 	    val grpSrcInfo = (#errcons gp, anyerrors)
 
 	    val exports = #exports grec
 	    val islib = #islib grec
 	    val required = StringSet.difference (#required grec, granted)
-	    val grouppath = #grouppath grec
-	    val subgroups = #subgroups grec
+	    val sublibs = #sublibs grec
 
 	    (* The format of a stable archive is the following:
 	     *  - It starts with the size s of the pickled dependency
@@ -122,17 +123,16 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	     *  - Individual binfile contents (concatenated).
 	     *)
 
-	    (* Here we build an inverse map that records for each
-	     * imported bnode a representative symbol.
-	     * This is used for pickling BNODEs -- they get represented
-	     * by a symbol that they export. This avoids having to
-	     * pickle a filename in the case of BNODEs. *)
-	    fun oneB (sy, ((_, DG.SB_BNODE (DG.BNODE n)), _), m) =
-		StableMap.insert (m, #bininfo n, sy)
-	      | oneB (_, _, m) = m
-	    fun oneSG ((_, GG.GROUP { exports, ... }), m) =
-		SymbolMap.foldli oneB m exports
-	    val inverseMap = foldl oneSG StableMap.empty subgroups
+	    (* Here we build a mapping that maps each BNODE to a number
+	     * representing the sub-library that it came from and a
+	     * representative symbol that can be used to find the BNODE
+	     * within the exports of that library *)
+	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n)), _), m) =
+		StableMap.insert (m, #bininfo n, (i, sy))
+	      | oneB i (_, _, m) = m
+	    fun oneSL ((_, g as GG.GROUP { exports, ... }), (m, i)) =
+		(SymbolMap.foldli (oneB i) m exports, i + 1)
+	    val inverseMap = #1 (foldl oneSL (StableMap.empty, 0) sublibs)
 
 	    val members = ref []
 	    val (registerOffset, getOffset) = let
@@ -221,6 +221,12 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	      | w_sharing (SOME false) k m = "f" :: k m
 
 	    fun w_si i k = let
+		(* FIXME: this is not a technical flaw, but perhaps one
+		 * that deserves fixing anyway:  If we only look at spec,
+		 * then we are losing information about sub-grouping
+		 * within libraries.  However, the spec in BinInfo.info
+		 * is only used for diagnostics and has no impact on the
+		 * operation of CM itself. *)
 		val spec = AbsPath.spec (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
 		val offset = registerOffset (i, bsz i)
@@ -234,35 +240,38 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun w_primitive p k m =
 		String.str (Primitive.toIdent primconf p) :: k m
 
-	    fun warn_nonanchor s = let
-		val relabs =
-		    if OS.Path.isRelative s then "relative" else "absolute"
+	    fun warn_relabs p abs = let
+		val relabs = if abs then "absolute" else "relative"
 		fun ppb pps =
 		    (PP.add_newline pps;
-		     PP.add_string pps ("subgroup: " ^ s);
+		     PP.add_string pps (AbsPath.name p);
 		     PP.add_newline pps;
 		     PP.add_string pps
     "(This means that in order to be able to use the result of stabilization";
 		     PP.add_newline pps;
-		     PP.add_string pps "the subgroups must be in the same ";
+		     PP.add_string pps "the library must be in the same ";
 		     PP.add_string pps relabs;
 		     PP.add_string pps " location as it is now.)";
 		     PP.add_newline pps)
 	    in
 		EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
 		    EM.WARN
-		    (concat [AbsPath.name (#grouppath grec),
-			     ": subgroup referred to by ", relabs,
-			     " pathname"])
+		    (concat [AbsPath.name grouppath,
+			     ": library referred to by ", relabs,
+			     " pathname:"])
 		    ppb
 	    end
 
 	    fun w_abspath p k m =
-		w_list w_string (AbsPath.pickle warn_nonanchor p) k m
+		w_list w_string (AbsPath.pickle (warn_relabs p) (p, groupdir))
+		                k m
 
 	    fun w_bn (DG.PNODE p) k m = "p" :: w_primitive p k m
-	      | w_bn (DG.BNODE { bininfo = i, ... }) k m =
-		"b" :: w_symbol (valOf (StableMap.find (inverseMap, i))) k m
+	      | w_bn (DG.BNODE { bininfo = i, ... }) k m = let
+		    val (n, sy) = valOf (StableMap.find (inverseMap, i))
+		in
+		    "b" :: w_int n (w_symbol sy k) m
+		end
 
 	    fun w_sn_raw (DG.SNODE n) k =
 		w_si (#smlinfo n)
@@ -290,9 +299,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		fun k0 m = []
 		val m0 = (0, Map.empty)
 	    in
-		(* Pickle the subgroups first because we need to already
+		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
-		concat (w_list w_sg subgroups
+		concat (w_list w_sg sublibs
 			    (w_exports exports
 			        (w_bool islib
 				    (w_privileges required k0))) m0)
@@ -311,6 +320,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    val li = map sn (#localimports n)
 			    val gi = map fsbn (#globalimports n)
 			    val sourcepath = SmlInfo.sourcepath smlinfo
+			    (* FIXME: see the comment near the other
+			     * occurence of AbsPath.spec... *)
 			    val spec = AbsPath.spec sourcepath
 			    val offset =
 				getOffset smlinfo + offset_adjustment
@@ -345,7 +356,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			   islib = islib,
 			   required = required,
 			   grouppath = grouppath,
-			   subgroups = subgroups,
+			   sublibs = sublibs,
 			   stableinfo = GG.STABLE simap }
 	    end
 
@@ -366,7 +377,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 writeInt32 (outs, sz);
 		 BinIO.output (outs, Byte.stringToBytes pickle);
 		 app (cpb outs) memberlist;
-		 app delb memberlist;
 		 BinIO.closeOut outs;
 		 SOME (mkStableGroup spath))
 	in
@@ -388,7 +398,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    GG.STABLE _ => false
 			  | GG.NONSTABLE _ => true
 		in
-		    case List.filter notStable (#subgroups grec) of
+		    case List.filter notStable (#sublibs grec) of
 			[] => doit granted
 		      | l => let
 			    val grammar = case l of [_] => " is" | _ => "s are"
@@ -425,7 +435,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
     fun loadStable (gp, getGroup, anyerrors) group = let
 
-	val context = AbsPath.relativeContext (AbsPath.dir group)
+	val groupdir = AbsPath.dir group
 	fun bn2env n = Statenv2DAEnv.cvtMemo (fn () => bn2statenv gp n)
 
 	val errcons = #errcons gp
@@ -537,7 +547,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	end
 
 	fun r_abspath () =
-	    case AbsPath.unpickle pcmode (r_list r_string (), context) of
+	    case AbsPath.unpickle pcmode (r_list r_string (), groupdir) of
 		SOME p => p
 	      | NONE => raise Format
 
@@ -606,18 +616,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	fun unpickle_group () = let
 
-	    val subgroups = r_list r_sg ()
-	    fun oneSG ((_, GG.GROUP { exports, ... }), m) =
-		SymbolMap.unionWith #1 (exports, m)
-	    val forwardMap = foldl oneSG SymbolMap.empty subgroups
+	    val sublibs = r_list r_sg ()
 
 	    fun r_bn () =
 		case rd () of
 		    #"p" => DG.PNODE (r_primitive ())
 		  | #"b" => let
+			val n = r_int ()
 			val sy = r_symbol ()
+			val (_, GG.GROUP { exports = slexp, ... }) =
+			    List.nth (sublibs, n) handle _ => raise Format
 		    in
-			case SymbolMap.find (forwardMap, sy) of
+			case SymbolMap.find (slexp, sy) of
 			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _)), _) => n
 			  | _ => raise Format
 		    end
@@ -668,7 +678,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		       islib = islib,
 		       required = required,
 		       grouppath = group,
-		       subgroups = subgroups,
+		       sublibs = sublibs,
 		       stableinfo = GG.STABLE simap }
 	    before BinIO.closeIn s
 	end

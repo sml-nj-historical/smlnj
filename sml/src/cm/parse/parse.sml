@@ -89,7 +89,12 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 		Stabilize.loadStable (ginfo, getStableSG, pErrFlag) gpath
 	    end
 
-	    fun stabilize g =
+	    (* We stabilize libraries only because a stable library will
+	     * encompass the contents of its sub-groups
+	     * (but not sub-libraries!). *)
+	    fun stabilize (g as GroupGraph.GROUP { islib = false, ... }) =
+		SOME g
+	      | stabilize g =
 		Stabilize.stabilize ginfo { group = g, anyerrors = pErrFlag }
 
 	    (* normal processing -- used when there is no cycle to report *)

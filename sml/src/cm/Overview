@@ -17,14 +17,16 @@ generation of listings or other statistics, etc.
 The central component of the front-end is the parser.  It builds the
 dependency graph incrementally with help from the dependency analyzer.
 
-* Analysis MUST be performed incrementally because the parser
-occasionally wants to know what the exported symbols of sub-groups and
-sub-libraries are.  (This is required for the parser's conditional
-compilation facility.)
-
 * Analysis CAN be performed incrementally because the sub-graphs that
 correspond to sub-groups or sub-libraries are independent of how they
 are being used.
+
+* We DO perform analysis incrementally because the parser occasionally
+wants to know what the exported symbols of sub-groups and
+sub-libraries are.  (This is required for the parser's conditional
+compilation facility.)  While it would probably be possible to achieve
+this using a more cursory analysis, the extra effort of implementing
+it would definitely not be outweighed by any gains.
 
 The dependency analyzer must inspect the ML source code of the
 project.  Within CM, handling of ML source code is centralized -- all

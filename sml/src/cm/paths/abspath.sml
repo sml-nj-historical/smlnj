@@ -26,8 +26,8 @@ signature ABSPATH = sig
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
-    val pickle : (string -> unit) -> t -> string list
-    val unpickle : PathConfig.mode -> string list * context -> t option
+    val pickle : (bool -> unit) -> t * t -> string list
+    val unpickle : PathConfig.mode -> string list * t -> t option
 
     val joinDirFile : { dir: t, file: string } -> t
     val splitDirFile : t -> { dir: t, file: string }
@@ -49,6 +49,7 @@ structure AbsPath :> ABSPATH = struct
 
     structure P = OS.Path
     structure F = OS.FileSys
+    val impossible = GenericVC.ErrorMsg.impossible
 
     (* unique file id that can handle absent files *)
     datatype id =
@@ -236,26 +237,35 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* make a pickle-string *)
-	fun pickle warn_nonanchor (PATH { context, spec, ... }) = let
-	    fun p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
-	      | p_c _ = (warn_nonanchor spec; ["c"])
+	fun pickle warn (path, gdir) = let
+	    val warned = ref false
+	    fun warn_once abs =
+		if !warned then () else (warned := true; warn abs)
+	    fun check_abs spec =
+		if OS.Path.isAbsolute spec then warn_once true else ()
+	    fun p_p (p as PATH { context, spec, ... }) =
+		if compare (p, gdir) = EQUAL then (warn_once false; ["r"])
+		else (check_abs spec; spec :: p_c context)
+	    and p_c (CONFIG_ANCHOR { config_name = n, ... }) = [n, "a"]
+	      | p_c (RELATIVE p) = p_p p
+	      | p_c _ = impossible "AbsPath.pickle"
 	in
-	    spec :: p_c context
+	    p_p path
 	end
 
-	fun unpickle mode (l, context) = let
+	fun unpickle mode (l, gdir) = let
 	    exception Format
-	    fun u_p (h :: t) =
+	    fun u_p ["r"] = gdir
+	      | u_p (h :: t) =
 		PATH { context = u_c t, spec = h, cache = ref NONE }
 	      | u_p [] = raise Format
-	    and u_c ["c"] = context
-	      | u_c [n, "a"] =
+	    and u_c [n, "a"] =
 		(case PathConfig.configAnchor mode n of
 		     NONE => raise Format
 		   | SOME fetch => CONFIG_ANCHOR { fetch = fetch,
 						   cache = ref NONE,
 						   config_name = n })
-	      | u_c _ = raise Format
+	      | u_c l = RELATIVE (u_p l)
 	in
 	    SOME (u_p l) handle Format => NONE
 	end
@@ -263,20 +273,20 @@ structure AbsPath :> ABSPATH = struct
 	(* . and .. are not permitted as file parameter *)
 	fun joinDirFile { dir = PATH { context, spec, ... }, file } =
 	    if file = P.currentArc orelse file = P.parentArc then
-		raise Fail "AbsPath.joinDirFile: . or .."
+		impossible "AbsPath.joinDirFile: . or .."
 	    else fresh (context, P.joinDirFile { dir = spec, file = file })
 
 	(* splitDirFile never walks past a context.
 	 * Moreover, it is an error to split something that ends in "..". *)
 	fun splitDirFile (PATH { context, spec, ... }) = let
 	    fun loop "" =
-		raise Fail "AbsPath.splitDirFile: tried to split a context"
+		impossible "AbsPath.splitDirFile: tried to split a context"
 	      | loop spec = let
 		    val { dir, file } = P.splitDirFile spec
 		in
 		    if file = P.currentArc then loop dir
 		    else if file = P.parentArc then
-			raise Fail "AbsPath.splitDirFile: <path>/.."
+			impossible "AbsPath.splitDirFile: <path>/.."
 		    else (dir, file)
 		end
 	    val (dir, file) = loop spec

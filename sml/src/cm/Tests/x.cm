@@ -1,4 +1,4 @@
-Library
+Group
 	structure X
 	structure Y
 is
