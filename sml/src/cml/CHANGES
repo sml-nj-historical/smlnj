@@ -1,6 +1,12 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-04-09]
+	Changed the name of the directory cml-lib/cm to cml-lib/cm-descr
+	in order to avoid a name conflict with cml-lib/CM which gets
+	created by the compilation manager.  (On case-insensitive
+	filesystems such as the one used by MacOS X the two names clash.)
+
 [2002-10-01]
 	Fixed a bad space leak in the stream I/O implementations.  The
 	cleanup hooks were holding onto the initial buffer, which
