@@ -130,7 +130,31 @@ struct
         I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
     | setTargets(i,_) = error "setTargets"
 
-  fun negateConditional _ = raise NotImplemented
+  fun negateConditional (I.ANNOTATION{i,a}, lab) =
+	I.ANNOTATION{i=negateConditional(i,lab), a=a}
+    | negateConditional (I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}), lab) = let
+	val cond' = (case cond
+	       of I.EQ => I.NE
+		| I.NE => I.EQ
+		| I.LT => I.GE
+		| I.LE => I.GT
+		| I.GT => I.LE
+		| I.GE => I.LT
+		| I.B => I.AE
+		| I.BE => I.A
+		| I.A => I.BE
+		| I.AE => I.B
+		| I.C => I.NC
+		| I.NC => I.C
+		| I.P => I.NP
+		| I.NP => I.P
+		| I.O => I.NO
+		| I.NO => I.O
+	      (* end case *))
+	in
+	  I.INSTR(I.JCC{cond=cond', opnd=I.ImmedLabel lab})
+	end
+    | negateConditional _ = error "negateConditional"
 
   val immedRange={lo= ~1073741824, hi=1073741823}
   val toInt32 = Int32.fromLarge o Int.toLarge
