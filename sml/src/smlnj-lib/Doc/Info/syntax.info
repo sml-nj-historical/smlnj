@@ -1,0 +1,15 @@
+@FILES
+  {"syntax"; "The RegExpSyntax structure";}
+@SIGNATURE ORD_SET
+@SIGNATURE REGEXP_SYNTAX "syntax" {
+  @STRUCTURE CharSet ORD_SET
+  @TYPES 
+    @DATATYPE syntax { Group Alt Concat Interval Option Star Plus MatchSet NonmatchSet Char Begin End}
+  @EXCEPTIONS 
+    CannotParse
+    CannotCompile
+  @VALS 
+    allChars
+    addRange
+}
+@STRUCTURE RegExpSyntax "syntax" REGEXP_SYNTAX

@@ -1,0 +1,9 @@
+@FILES
+  {"list-xprod"; "The ListXProd structure";}
+@SIGNATURE LIST_XPROD "list-xprod" {
+  @VALS 
+    foldX
+    mapX
+    appX
+}
+@STRUCTURE ListXProd "list-xprod" LIST_XPROD
