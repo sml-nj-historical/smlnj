@@ -183,8 +183,15 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  NONE => []
 		| SOME f => [f]
 	      val p = #get StdConfig.pathcfgspec () :: p
-	      fun processOne f = SrcPath.processSpecFile (penv, f)
-		  handle _ => ()
+	      fun processOne f = let
+		  val work =  SrcPath.processSpecFile
+				  { env = penv, specfile = f, say = Say.say }
+	      in
+		  SafeIO.perform { openIt = fn () => TextIO.openIn f,
+				   closeIt = TextIO.closeIn,
+				   work = work,
+				   cleanup = fn _ => () }
+	      end handle _ => ()
 	  in
 	      app processOne p;
 	      SrcPath.sync ()
@@ -235,21 +242,30 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      before dropPickles ()
 	  end
 
-	  and load_plugin context x = let
-	      val _ = Say.vsay ["[attempting to load plugin ", x, "]\n"]
-	      fun badname s = Say.say ["[bad plugin name: ", s, "]\n"]
-	      fun mkSrcPath s =
-		  SrcPath.file
-		      (SrcPath.standard { env = penv, err = badname }
-					{ context = context, spec = s })
+	  and load_plugin' p = let
+	      val d = SrcPath.descr p
+	      val _ = Say.vsay ["[attempting to load plugin ", d, "]\n"]
+	      val gr = GroupReg.new ()
 	      val success =
-		  run mkSrcPath NONE (make_runner false) x handle _ => false
+		  ((case Parse.parse (parse_arg (gr, NONE, p)) of
+			NONE => false
+		      | SOME (g, gp) => make_runner false gp g)
+		   before dropPickles ())
+		  handle _ => false
 	  in
 	      if success then
-		  Say.vsay ["[plugin ", x, " loaded successfully]\n"]
+		  Say.vsay ["[plugin ", d, " loaded successfully]\n"]
 	      else
-		  Say.vsay ["[unable to load plugin ", x, "]\n"];
+		  Say.vsay ["[unable to load plugin ", d, "]\n"];
 	      success
+	  end
+
+	  and load_plugin context s = let
+	      fun badname s = Say.say ["[bad plugin name: ", s, "]\n"]
+	      val pp = SrcPath.standard { env = penv, err = badname }
+					{ context = context, spec = s }
+	  in
+	      load_plugin' (SrcPath.file pp)
 	  end
 
 	  fun cwd_load_plugin x = load_plugin (SrcPath.cwd ()) x
@@ -635,7 +651,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	end
 
 	structure Server = struct
-	    type server = Servers.server
+	    type server = Servers.server_handle
 	    fun start x = Servers.start x
 			  before SrcPath.scheduleNotification ()
 	    val stop = Servers.stop
@@ -656,6 +672,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure Tools = ToolsFn (val load_plugin = cwd_load_plugin
+			       val load_plugin' = load_plugin'
 			       val penv = penv)
 
     val load_plugin = load_plugin

@@ -8,6 +8,5 @@
 Library
 	signature CM
 	structure CM
-	structure CM'
 is
 	$smlnj/cm/full.cm

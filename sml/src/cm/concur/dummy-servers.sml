@@ -8,8 +8,11 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure Servers :> SERVERS = struct
-    type server = unit
+
+(* It is unfortunate but necessary to use a transparant match here.
+ * Otherwise the "hack" in $smlnj/cm/full.cm won't work. *)
+structure Servers : SERVERS = struct
+    type server_handle = unit
     local
 	fun unavailable x =
 	    (Say.say ["Compile server facility not available."]; x)
@@ -21,7 +24,6 @@ structure Servers :> SERVERS = struct
 	fun name () = impossible ()
 	fun reset _ = Concur.reset ()
 	fun dirbase _ = ()
-	fun cd _ = ()
 	fun cm _ = ()
 	fun cmb _ = ()
 	fun cmb_new _ = ()

@@ -1,0 +1,15 @@
+(*
+ * Pathname handling for CM.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Library
+	signature SRCPATH
+	structure SrcPath
+	structure SrcPathMap
+	structure SrcPathSet
+	structure TStamp
+is
+	$cm/paths/srcpath-lib.cm

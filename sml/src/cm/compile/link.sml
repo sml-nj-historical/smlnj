@@ -75,8 +75,7 @@ in
 		case SmlInfo.sh_mode i of
 		    Sharing.SHARE true =>
 			SmlInfo.error gp i EM.WARN
-			(concat ["sharing for ",
-				 SmlInfo.descr i,
+			(concat ["sharing for ", SmlInfo.descr i,
 				 " may be lost"])
 			EM.nullErrorBody
 		  | _ =>  ()

@@ -10,18 +10,18 @@
  *)
 signature SERVERS = sig
 
-    type server
+    type server_handle
 
     (* add a compile server *)
     val start : { name: string, cmd: string * string list,
 		  pathtrans: (string -> string) option,
-		  pref: int } -> server option
+		  pref: int } -> server_handle option
 
-    val stop : server -> unit
+    val stop : server_handle -> unit
 
-    val kill : server -> unit
+    val kill : server_handle -> unit
 
-    val name : server -> string
+    val name : server_handle -> string
 
     (* Reset scheduler and wait until all servers are idle.
      * The "bool" argument makes reset suitable as an argument to
@@ -33,9 +33,6 @@ signature SERVERS = sig
 
     (* signal all servers that future cmb calls use a different dirbase *)
     val dirbase : string -> unit
-
-    (* signal all servers that we have a new working dir *)
-    val cd : string -> unit
 
     (* signal all servers that we are starting with a new .cm file *)
     val cm : { archos: string, project: string } -> unit

@@ -31,7 +31,12 @@ signature SRCPATH = sig
     (* re-validate current working directory *)
     val revalidateCwd : unit -> unit
 
-    (* make sure all servers get notified about cwd during next validation *)
+    (* register a "client" module that wishes to be notified when
+     * the CWD changes *)
+    val addClientToBeNotified : (string -> unit) -> unit
+
+    (* make sure all such clients get notified about the a CWD during
+     * next validation *)
     val scheduleNotification : unit -> unit
 
     (* new "empty" env *)
@@ -42,7 +47,11 @@ signature SRCPATH = sig
     val get_anchor : env * anchor -> string option
     val reset_anchors : env -> unit
 
-    val processSpecFile : env * string -> unit (* must sync afterwards! *)
+    (* process a specification file; must sync afterwards!
+     * The function argument is used for issuing warnings. *)
+    val processSpecFile :
+	{ env : env, specfile : string, say : string list -> unit }
+	-> TextIO.instream -> unit
 
     (* non-destructive bindings for anchors (for anchor scoping) *)
     val bind: env -> rebindings -> env
@@ -91,6 +100,10 @@ signature SRCPATH = sig
     val encode : file -> string
     val decode : env -> string -> file
 
+    (* check whether encoding (result of "encode") is absolute
+     * (i.e., not anchored and not relative) *)
+    val encodingIsAbsolute : string -> bool
+
     val pickle : { warn: bool * string -> unit } ->
 		 { file: prefile, relativeTo: file } -> string list
 
@@ -104,8 +117,11 @@ structure SrcPath :> SRCPATH = struct
     structure P = OS.Path
     structure F = OS.FileSys
     structure I = FileId
+    structure StringMap = RedBlackMapFn (struct type ord_key = string
+						val compare = String.compare
+					 end)
 
-    fun impossible s = GenericVC.ErrorMsg.impossible ("SrcPath: " ^ s)
+    fun impossible s = raise Fail ("impossible error in SrcPath: " ^ s)
 
     type anchor = string
 
@@ -215,6 +231,9 @@ structure SrcPath :> SRCPATH = struct
 
     val encode = encode0 false o unintern
 
+    val clients = ref ([] : (string -> unit) list)
+    fun addClientToBeNotified c = clients := c :: !clients
+
     fun revalidateCwd () = let
 	val { name = n, pp } = !cwd_info
 	val n' = F.getDir ()
@@ -227,8 +246,9 @@ structure SrcPath :> SRCPATH = struct
 	    let val p = PATH { arcs = rev (#revarcs pp),
 			       context = ROOT (#vol pp),
 			       elab = ref bogus_elab, id = ref NONE }
+		val ep = encode0 false p
 	    in
-		Servers.cd (encode0 false p);
+		app (fn c => c ep) (!clients);
 		cwd_notify := false
 	    end
 	else ()
@@ -283,7 +303,7 @@ structure SrcPath :> SRCPATH = struct
 
     fun compare0 (f1, f2) = I.compare (idOf f1, idOf f2)
 
-    structure F0M = MapFn (type ord_key = file0 val compare = compare0)
+    structure F0M = RedBlackMapFn (type ord_key = file0 val compare = compare0)
 
     local
 	val known = ref (F0M.empty: int F0M.map)
@@ -396,7 +416,7 @@ structure SrcPath :> SRCPATH = struct
 
     fun reset_anchors (e: env) = (#reset e (); sync ())
 
-    fun processSpecFile (e, f) = let
+    fun processSpecFile { env = e, specfile = f, say } = let
 	val d = P.dir (F.fullPath f)
 	fun set x = set0 (fn n => P.mkAbsolute { path = n, relativeTo = d }) x
 	fun work s = let
@@ -410,17 +430,14 @@ structure SrcPath :> SRCPATH = struct
 		       | ["-"] => (#reset e (); loop ())
 		       | [a] => (set (e, a, NONE); loop ())
 		       | [] => loop ()
-		       | _ => (Say.say [f, ": malformed line (ignored)\n"];
+		       | _ => (say [f, ": malformed line (ignored)\n"];
 			       loop ())
 	    end
 	in
 	    loop ()
 	end
     in
-	SafeIO.perform { openIt = fn () => TextIO.openIn f,
-			 closeIt = TextIO.closeIn,
-			 work = work,
-			 cleanup = fn _ => () }
+	work
     end
 
     datatype stdspec =
@@ -590,4 +607,8 @@ structure SrcPath :> SRCPATH = struct
 	    [] => impossible "decode: no segments"
 	  | seg0 :: segs => intern (foldl addseg (doseg0 seg0) segs)
     end
+
+    fun encodingIsAbsolute s =
+	(case String.sub (s, 0) of (#"/" | #"%") => true | _ => false)
+	handle _ => false
 end

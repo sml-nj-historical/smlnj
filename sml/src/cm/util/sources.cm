@@ -16,7 +16,6 @@ Group (../../system/smlnj/internal/cm-lib.cm)
 	structure PidSet
 	signature SAFEIO
 	structure SafeIO
-	structure TStamp
 	structure Seek
 	signature ENVCONFIG
 	structure EnvConfig
@@ -40,7 +39,6 @@ is
 	symbolmap.sml
 	pidset.sml
 	safeio.sml
-	tstamp.sml
 	seek.sml
 	envcfg.sml
 	stdcfg.sml

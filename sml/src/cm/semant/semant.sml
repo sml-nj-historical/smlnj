@@ -23,8 +23,11 @@ signature CM_SEMANT = sig
     type exports			(* still conditional *)
 
     type toolopt
+    type toolregistry
 
     type complainer = string -> unit
+
+    val newToolRegistry : unit -> toolregistry
 
     (* getting elements of primitive types (pathnames and symbols) *)
     val file_native : string * context * complainer -> SrcPath.prefile
@@ -74,6 +77,7 @@ signature CM_SEMANT = sig
 	     group: SrcPath.file * region,
 	     class: cm_class option,
 	     tooloptions: toolopt list option,
+	     local_registry: toolregistry,
 	     context: SrcPath.dir }
 	-> members
     val members : members * members -> members
@@ -157,6 +161,9 @@ structure CMSemant :> CM_SEMANT = struct
     type exports = environment -> SymbolSet.set
 
     type toolopt = PrivateTools.toolopt
+    type toolregistry = PrivateTools.registry
+
+    val newToolRegistry = PrivateTools.newRegistry
 
     type complainer = string -> unit
 

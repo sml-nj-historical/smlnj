@@ -46,7 +46,7 @@ signature CORETOOLS = sig
 
     (* A member specification consists of the actual string, an optional
      * class name, (optional) tool options, a function to convert a
-     * string to its correspondin gsrcpath, and information about whether
+     * string to its corresponding srcpath, and information about whether
      * or not this source is an "original" source or a derived source
      * (i.e., output of some tool). *)
     type spec = { name: string,
@@ -146,7 +146,12 @@ signature PRIVATETOOLS = sig
     include CORETOOLS where type srcpath = SrcPath.file
 		      where type presrcpath = SrcPath.prefile
 
+    type registry
+
+    val newRegistry : unit -> registry
+
     val expand : { error: string -> unit,
+		   local_registry : registry,
 		   spec: spec,
 		   context: SrcPath.dir,
 		   load_plugin: SrcPath.dir -> string -> bool }
@@ -224,10 +229,31 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	{ spec: spec, mkNativePath: pathmaker, context: rulecontext } ->
 	partial_expansion
 
-    val classes : rule StringMap.map ref = ref StringMap.empty
+    type registry = { classes : rule StringMap.map ref,
+		      sfx_classifiers : (string -> class option) list ref,
+		      gen_classifiers : (string -> class option) list ref }
 
-    fun registerClass (class, rule) =
-	classes := StringMap.insert (!classes, class, rule)
+    fun newRegistry () =  { classes = ref StringMap.empty,
+			    sfx_classifiers = ref [],
+			    gen_classifiers = ref [] } : registry
+
+    val global_registry = newRegistry ()
+
+    val local_registry : registry option ref = ref NONE
+
+    local
+	fun registry join sel () = let
+	    val get = ! o sel
+	in
+	    case !local_registry of
+		NONE => get global_registry
+	      | SOME rg => join (get rg, get global_registry)
+	end
+    in
+        val classes = registry (StringMap.unionWith #1) #classes
+        val sfx_classifiers = registry (op @) #sfx_classifiers
+	val gen_classifiers = registry (op @) #gen_classifiers
+    end
 
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
@@ -235,6 +261,23 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     fun stdSfxClassifier { sfx, class } =
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
+
+    local
+	fun upd sel f = let
+	    val rf = sel (case !local_registry of
+			      SOME rg => rg
+			    | NONE => global_registry)
+	in
+	    rf := f (!rf)
+	end
+    in
+        fun registerClass (class, rule) =
+	    upd #classes (fn m => StringMap.insert (m, class, rule))
+	fun registerClassifier (SFX_CLASSIFIER c) =
+	    upd #sfx_classifiers (fn l => c :: l)
+	  | registerClassifier (GEN_CLASSIFIER c) =
+	    upd #gen_classifiers (fn l => c :: l)
+    end
 
     datatype extensionStyle =
 	EXTEND of (string * class option * tooloptcvt) list
@@ -289,15 +332,12 @@ structure PrivateTools :> PRIVATETOOLS = struct
     val openTextOut = AutoDir.openTextOut
     val makeDirs = AutoDir.makeDirs
 
-    val sfx_classifiers : (string -> class option) list ref = ref []
-    val gen_classifiers : (string -> class option) list ref = ref []
-
-    local
-	fun add (x, r) = r := x :: (!r)
-    in
-	fun registerClassifier (SFX_CLASSIFIER c) = add (c, sfx_classifiers)
-	  | registerClassifier (GEN_CLASSIFIER c) = add (c, gen_classifiers)
-    end
+    fun globally lp arg =
+	SafeIO.perform { openIt = fn () => !local_registry before
+					   local_registry := NONE,
+			 closeIt = fn previous => local_registry := previous,
+			 work = fn _ => lp arg,
+			 cleanup = fn _ => () }
 
     (* query default class *)
     fun defaultClassOf load_plugin p = let
@@ -308,13 +348,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	       | SOME c => SOME c)
 
 	fun sfx_loop e = let
-	    fun loop [] = gen_loop (!gen_classifiers)
+	    fun loop [] = gen_loop (gen_classifiers ())
 	      | loop (h :: t) =
 		(case h e of
 		     NONE => loop t
 		   | SOME c => SOME c)
 	in
-	    loop (!sfx_classifiers)
+	    loop (sfx_classifiers ())
 	end
     in
 	case OS.Path.ext p of
@@ -322,16 +362,12 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		(case sfx_loop e of
 		     SOME c => SOME c
 		   | NONE => let
-			 fun try pre = let
-			     val plugin = concat [pre, e, "-ext.cm"]
-			 in
-			     load_plugin plugin
-			 end
+			 val plugin = concat ["$/", e, "-ext.cm"]
 		     in
-			 if try "$/" orelse try "./" then sfx_loop e
+			 if globally load_plugin plugin then sfx_loop e
 			 else NONE
 		     end)
-	  | NONE => gen_loop (!gen_classifiers)
+	  | NONE => gen_loop (gen_classifiers ())
     end
 
     fun parseOptions { tool, keywords, options } = let
@@ -440,22 +476,22 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	 [])
     end
 
-    fun expand { error, spec, context, load_plugin } = let
+    fun expand { error, local_registry = lr, spec, context, load_plugin } = let
 	fun mkNativePath s =
 	    SrcPath.native { err = error } { context = context, spec = s }
 	fun class2rule class =
-	    case StringMap.find (!classes, class) of
+	    case StringMap.find (classes (), class) of
 		SOME rule => rule
 	      | NONE => let
-		    val base = concat ["$", class, "-tool"]
+		    val base = concat ["$/", class, "-tool"]
 		    val plugin = OS.Path.joinBaseExt { base = base,
 						       ext = SOME "cm" }
 		    fun complain () =
 			(error (concat ["unknown class \"", class, "\""]);
 			 smlrule)
 		in
-		    if load_plugin context plugin then
-			case StringMap.find (!classes, class) of
+		    if globally (load_plugin context) plugin then
+			case StringMap.find (classes (), class) of
 			    SOME rule => rule
 			  | NONE => complain ()
 		    else complain ()
@@ -496,7 +532,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		      il @ items)
 	    end
     in
-	loop ({ smlfiles = [], cmfiles = [], sources = [] }, [spec])
+	SafeIO.perform { openIt = fn () => !local_registry
+					   before local_registry := SOME lr,
+			 closeIt = fn previous => local_registry := previous,
+			 work = fn _ => loop ({ smlfiles = [], cmfiles = [],
+						sources = [] },
+					      [spec]),
+			 cleanup = fn _ => () }
     end
 
     local
@@ -514,6 +556,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 end
 
 functor ToolsFn (val load_plugin : string -> bool
+		 val load_plugin' : SrcPath.file -> bool
 		 val penv: SrcPath.env) : TOOLS = struct
 
     open PrivateTools
@@ -523,14 +566,8 @@ functor ToolsFn (val load_plugin : string -> bool
     val vsay = Say.vsay
 
     fun mkCmdName cmdStdPath =
-	(* It is not enough to turn the string into a SrcPath.file
-	 * once.  This is because if there was no anchor in the
-	 * beginning, later additions of an anchor will go unnoticed.
-	 * This is different from how other files (ML source files etc.)
-	 * behave: They, once the are found to be unanchored, should
-	 * never become (implicitly) anchored later (although an existing
-	 * anchor is allowed to change). Of course, the whole issue
-	 * becomes moot once there are no more implicitly anchored paths. *)
+	(* The result of this function should not be cached. Otherwise
+	 * a later addition or change of an anchor will go unnoticed. *)
 	case SrcPath.get_anchor (penv, cmdStdPath) of
 	    NONE => cmdStdPath
 	  | SOME p => OS.Path.joinDirFile { dir = p, file = cmdStdPath }
@@ -611,5 +648,38 @@ functor ToolsFn (val load_plugin : string -> bool
     in
 	registerClass (class, rule);
 	app sfx suffixes
+    end
+
+    local
+	val toolclass = "tool"
+	val suffixclass = "suffix"
+	val empty_expansion =
+	    ({ cmfiles = [], smlfiles = [], sources = [] }, [])
+	fun toolrule { spec, context, mkNativePath } = let
+	    val { name, mkpath, opts, ... } : spec = spec
+	    fun err m = raise ToolError { tool = toolclass, msg = m }
+	in
+	    case opts of
+		NONE => if load_plugin' (srcpath (mkpath name)) then
+			    empty_expansion
+			else err "tool registration failed"
+	      | SOME _ => err "no tool options are recognized"
+	end
+	fun suffixrule { spec, context, mkNativePath } = let
+	    val { name = s, opts, ... } : spec = spec
+	    fun err m = raise ToolError { tool = suffixclass, msg = m }
+	    fun reg c =
+		(registerClassifier (stdSfxClassifier { sfx = s, class = c });
+		 empty_expansion)
+	in
+	    case opts of
+		SOME [STRING c] => reg (#name c)
+	      | SOME [SUBOPTS { name = "class", opts = [STRING c] }] =>
+		reg (#name c)
+	      | _ => err "invalid options"
+	end
+    in
+        val _ = registerClass (toolclass, toolrule)
+	val _ = registerClass (suffixclass, suffixrule)
     end
 end

@@ -4,7 +4,7 @@
 #   either "autoload" or "make" and where "libname" is suitable as an
 #   argument to CM.autoload or CM.make.
 #
-# Make sure that at least smlnj/cm.cm is being registered here.
+# Make sure that at least $smlnj/cm.cm is being registered here.
 #
 autoload $/basis.cm
 autoload $smlnj/cm.cm

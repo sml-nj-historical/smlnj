@@ -133,7 +133,12 @@ struct
 	val pidmapfile = P.joinDirFile { dir = bootdir, file = BtNames.pidmap }
 
 	val penv = SrcPath.newEnv ()
-	val _ = SrcPath.processSpecFile (penv, penvspec)
+	val _ = SafeIO.perform { openIt = fn () => TextIO.openIn penvspec,
+				 closeIt = TextIO.closeIn,
+				 work = SrcPath.processSpecFile
+					    { env = penv, specfile = penvspec,
+					      say = Say.say },
+				 cleanup = fn _ => () }
 	val _ = SrcPath.sync ()
 
 	fun stdpath s =

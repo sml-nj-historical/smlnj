@@ -34,6 +34,7 @@ signature MEMBERCOLLECTION = sig
 	     group: SrcPath.file * region,
 	     class: string option,
 	     tooloptions: PrivateTools.toolopts option,
+	     local_registry: PrivateTools.registry,
 	     context: SrcPath.dir }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
@@ -157,13 +158,15 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
       | sequential _ = ERRORCOLLECTION
 
     fun expandOne { gp, rparse, load_plugin } arg = let
-	val { name, mkpath, group, class, tooloptions, context } = arg
+	val { name, mkpath, group, class, tooloptions,
+	      local_registry, context } = arg
 	val class = Option.map (String.map Char.toLower) class
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
 	fun w0 s = error EM.WARN s EM.nullErrorBody
 	val { smlfiles, cmfiles, sources } =
 	    PrivateTools.expand { error = e0,
+				  local_registry = local_registry,
 				  spec = { name = name,
 					   mkpath = mkpath,
 					   class = class,

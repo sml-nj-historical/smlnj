@@ -122,17 +122,22 @@ in
 	      pids = pidset (statpid, sympid) }
 	end
 
-	fun exportsNothingBut set se =
-	    List.all (fn sy => SymbolSet.member (set, sy)) (E.catalogEnv se)
+	fun requiredFiltering set se = let
+	    val dom = SymbolSet.addList (SymbolSet.empty, E.catalogEnv se)
+	    val filt = SymbolSet.intersection (set, dom)
+	in
+	    if SymbolSet.equal (dom, filt) then NONE
+	    else SOME filt
+	end
 
 	fun filter (ii, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
 	    val ste = statenv ()
 	in
-	    if exportsNothingBut s ste then
-		{ envs = fn () => { stat = ste, sym = symenv () },
-		  pids = pidset (statpid, sympid) }
-	    else let
+	    case requiredFiltering s ste of
+		NONE => { envs = fn () => { stat = ste, sym = symenv () },
+			  pids = pidset (statpid, sympid) }
+	      | SOME s => let
 		    val ste' = E.filterStaticEnv (ste, SymbolSet.listItems s)
 		    val key = (statpid, s)
 		    val statpid' =

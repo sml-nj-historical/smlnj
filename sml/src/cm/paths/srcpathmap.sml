@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure SrcPathMap = MapFn (SrcPath)
+structure SrcPathMap = RedBlackMapFn (SrcPath)

@@ -72,5 +72,5 @@ TARGETS="$TARGETS smlnj-lib"
 # Note: autoloading is always enabled.
 #   In order to customize what is being pre-registered for autoloading
 #   edit file "preloads".  You should make sure that it contains at least
-#   "smlnj/cm.cm".
-#  Also, it is a good idea to have basis.cm pre-loaded.
+#   "$smlnj/cm.cm".
+#  Also, it is a good idea to have "$/basis.cm" pre-loaded.

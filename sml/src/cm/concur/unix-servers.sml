@@ -7,7 +7,10 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure Servers :> SERVERS = struct
+
+(* It is unfortunate but necessary to use a transparant match here.
+ * Otherwise the "hack" in $smlnj/cm/full.cm won't work. *)
+structure Servers : SERVERS = struct
 
     structure P = Posix
 
@@ -19,6 +22,9 @@ structure Servers :> SERVERS = struct
 			     pref: int,
 			     decommissioned: bool ref }
 
+    type server_handle = int * string	(* id and name *)
+
+    fun handleOf (S { id, name, ... }) = (id, name)
     fun servId (S { id, ... }) = id
     fun decommission (S { decommissioned, ... }) = decommissioned := true
     fun decommissioned (S { decommissioned = d, ... }) = !d
@@ -43,6 +49,7 @@ structure Servers :> SERVERS = struct
 	val all = ref (IntMap.empty: server IntMap.map)
 	fun nservers () = IntMap.numItems (!all)
     in
+        fun serverOf (h: server_handle) = IntMap.find (!all, #1 h)
         fun allIdle () = length (!idle) = nservers ()
 	fun noServers () = nservers () = 0
 	fun allServers () = IntMap.listItems (!all)
@@ -53,7 +60,7 @@ structure Servers :> SERVERS = struct
 	end
 	fun delServer s =
 	    (all := #1 (IntMap.remove (!all, servId s));
-	     (* If this was the last server we need to wake up
+	     (* If this was the last server, then we need to wake up
 	      * everyone who is currently waiting to grab a server.
 	      * The "grab"-loop will then gracefully fail and
 	      * not cause a deadlock. *)
@@ -63,16 +70,12 @@ structure Servers :> SERVERS = struct
 	     else ())
     end
 
-    (* This really shouldn't be here, but putting it into SrcPath would
-     * create a dependency cycle.  Some better structuring will fix this. *)
-    fun isAbsoluteDescr d =
-	(case String.sub (d, 0) of #"/" => true | #"%" => true | _ => false)
-	handle _ => false
-
+    (* translate absolute pathname encoding; relative and anchored paths
+     * stay unchanged *)
     fun fname (n, s) =
 	case servPT s of
 	    NONE => n
-	  | SOME f => if isAbsoluteDescr n then f n else n
+	  | SOME f => if SrcPath.encodingIsAbsolute n then f n else n
 
     (* protect some code segment from sigPIPE signals... *)
     fun pprotect work = let
@@ -344,5 +347,16 @@ structure Servers :> SERVERS = struct
 			 work = f,
 			 cleanup = reset }
 
-    val name = servName
+    fun name ((i, n) : server_handle) = n
+
+    fun handleFun f h =
+	case serverOf h of
+	    NONE => ()
+	  | SOME s => f s
+
+    val stop = handleFun stop
+    val kill = handleFun kill
+    val start = Option.map handleOf o start
+
+    val _ = SrcPath.addClientToBeNotified cd
 end

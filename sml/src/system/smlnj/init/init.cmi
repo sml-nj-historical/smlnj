@@ -31,6 +31,8 @@
 # Format of this file:
 #  - The file is processed on a line-by-line basis.
 #  - Empty lines and lines beginning with "#" are ignored.
+#  - Non-comment lines continue on the next line if their last character
+#    before the newline is a backslash \.
 #  - Actual whitespace, "=", ",", "(", and ")" are all counted as whitespace.
 #     (this means that the syntactic sugar you see below is really just
 #      sugar for the human eye; the program that processes this file can
@@ -129,8 +131,8 @@ bind-core (xCore) xcore = xcore.sml (core)
 # The rest of the DAG...
 # (Everybody implicitly depends on xcore to have access to _Core.)
 bind built-in = built-in.sml (core, primitive, xcore)
-ifdef ARCH_ALPHA   bind math-inlT = math-built-in-alpha.sml (core, primitive, xcore)
-ifdef ARCH_X86     bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
+ifdef ARCH_ALPHA bind math-inlT = math-built-in-alpha.sml (core, primitive, xcore)
+ifdef ARCH_X86 bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
 ifndef ARCH_ALPHA ifndef ARCH_X86 bind math-inlT = math-built-in.sml (core, primitive, xcore)
 bind pp = pre-perv.sml (built-in, xcore)
 bind ps = pre-string.sml (core, built-in, pp, xcore)

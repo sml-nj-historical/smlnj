@@ -12,9 +12,7 @@ medium term:
   much further down towards the basis of the system;
   compilation units should be identifed by their abstract source path;
   the compiler should uniformely talk about source paths (even for "use")
-- make traversal construction lazy somehow so that the autoloader does
-  not force lazy pickles (e.g., $/html-lib.cm should not show up when
-  touching CM or CM, but traversal construction screws this up)
+- fix "too large environment after opaque match" problem
 
 long term:
 - Generic notification architecture (ErrorMsg module, Say module, ...);

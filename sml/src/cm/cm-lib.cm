@@ -84,7 +84,7 @@ is
 	main/perv-access.sml
 
 	(* pathname abstraction *)
-	paths/sources.cm
+	$smlnj/internal/srcpath-lib.cm
 
 	(* bootstrap compiler (formerly known as "batch") *)
 	bootstrap/names.sml

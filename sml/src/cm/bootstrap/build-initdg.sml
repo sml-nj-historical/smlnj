@@ -44,15 +44,30 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	    fun error r m = EM.error source r EM.COMPLAIN m EM.nullErrorBody
 
 	    fun lineIn pos = let
-		val line = TextIO.inputLine stream
-		val len = size line
-		val newpos = pos + len
-		val _ = GenericVC.SourceMap.newline sourceMap newpos
 		fun sep c = Char.isSpace c orelse Char.contains "(),=;" c
+		val sub = String.sub
+		val null = List.null
+		fun return (pos, line) = SOME (String.tokens sep line, pos)
+		fun loop (pos, "", []) = NONE
+		  | loop (pos, "", lines) = return (pos, concat (rev lines))
+		  | loop (pos, line, lines) = let
+			val len = size line
+			val newpos = pos + len
+			val iscont =
+			    len >= 2 andalso
+			    sub (line, len -1 ) = #"\n" andalso
+			    sub (line, len - 2) = #"\\"
+		    in
+			GenericVC.SourceMap.newline sourceMap newpos;
+			if iscont then
+			    loop (newpos, TextIO.inputLine stream,
+				  substring (line, 0, len - 2) :: lines)
+			else if null lines andalso sub (line, 0) = #"#" then
+			    SOME ([], newpos)
+			else return (newpos, concat (rev (line :: lines)))
+		    end
 	    in
-		if line = "" then NONE
-		else if String.sub (line, 0) = #"#" then SOME ([], newpos)
-		     else SOME (String.tokens sep line, newpos)
+		loop (pos, TextIO.inputLine stream, [])
 	    end
 
 	    fun loop (split, m, pos) =

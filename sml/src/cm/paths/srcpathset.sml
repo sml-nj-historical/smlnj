@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure SrcPathSet = SetFn (SrcPath)
+structure SrcPathSet = RedBlackSetFn (SrcPath)

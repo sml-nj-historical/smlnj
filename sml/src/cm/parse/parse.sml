@@ -299,6 +299,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		val _ = Say.vsay ["[scanning ", SrcPath.descr group, "]\n"]
 
 		val context = SrcPath.dir group
+		val local_registry = CMSemant.newToolRegistry ()
 
 		fun work stream = let
 		    val source =
@@ -348,6 +349,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 					{ name = name, mkpath = mkpath,
 					  class = c, tooloptions = oto,
 					  group = (group, (p1, p2)),
+					  local_registry = local_registry,
 					  context = context }
 
 		    (* Build the argument for the lexer; the lexer's local

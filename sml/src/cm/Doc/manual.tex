@@ -8,7 +8,7 @@
 \columnsep0.25in
 
 \newcommand{\smlmj}{110}
-\newcommand{\smlmn}{30}
+\newcommand{\smlmn}{31}
 
 \author{Matthias Blume \\
 Research Institute for Mathematical Sciences \\
@@ -472,18 +472,19 @@ corresponding file moves to a different location.
 name is {\it path}{\tt /}{\it file}{\tt .cm} will be resolved relative
 to {\it path}, i.e., relative to the directory that contains the
 description file.
-\item[Relative pathnames that have been entered interactively,] for
-example as an argument to one of CM's interface functions,
-will be resolved in the OS-specific manner, i.e., relative to the
-current working directory.  However, CM will internally represent the
-name in such a way that it remembers the corresponding working
-directory.  Should the working directory change during an ongoing CM
-session while there still is a reference to the name, then CM will
-switch its mode of operation and prepend the path of the original
-working directory. As a result, two names specified using identical
-strings but at different times when different working directories were
-in effect will be kept distinct and continue to refer to the file
-system locations that they referred to when they were first seen.
+\item[Relative pathnames that have been entered interactively,]
+usually as an argument to one of CM's interface functions, will be
+resolved in the OS-specific manner, i.e., relative to the current
+working directory.  However, notice that some of CM's operations (see
+section~\ref{sec:autoload}---autoload) will be executed lazily and,
+thus, can occur interleaved with arbitary other operations---including
+changes of the working directory.  This is handled by CM in such a way
+that it appears as if all path derived from an interactive relative
+path $p$ had been completely resolved at the time $p$ was entered. As
+a result, two names specified using identical strings but at different
+times when different working directories were in effect will be kept
+apart and continue to refer to their respective original file system
+locations.
 \item[Anchored paths] consist of an anchor name (of non-zero length)
 and a non-empty list of additional arcs.  The name is enclosed by
 the path's leading {\bf \$} on the left and the path's first {\bf /}
@@ -653,7 +654,7 @@ original sources---including the description file---are present.
 The boolean result of {\tt CM.recomp} and {\tt CM.stabilize} indicates
 success or failure of the operation ({\tt true} = success).
 
-\subsubsection{Linking}
+\subsubsection{Linking and execution}
 
 In SML/NJ, linking means executing top-level code (i.e., module
 creation and initialization code) of each compilation unit.  The
@@ -1269,17 +1270,27 @@ it is also possible to specify the class of a member explicitly.  For
 this, the member name is followed by a colon {\bf :} and the name of
 the member class.  All class names are case-insensitive.
 
-In addition to genuine tool classes, there are two member classes
-that refer to facilities internal to CM: {\tt sml} is the class of
-ordinary ML source files and {\tt cm} is the class of CM library or
-group description files.
+In addition to genuine tool classes, there are four member classes
+that refer to facilities internal to CM:
+\begin{description}
+\item[{\tt sml}] is the class of ordinary ML source files.
+\item[{\tt cm}] is the class of CM library or group description files.
+\item[{\tt tool}] is the class of {\em plugin tools}.  Its purpose is
+to trigger the loading of an auxiliary plugin module---usually with the
+purpose of extending the set of tool classes that CM understands.
+See section~\ref{sec:plugintools} for more information.
+\item[{\tt suffix}] is a class similar to {\tt tool}.  Its purpose is
+to declare additional filename suffixes and their associated classes.
+See section~\ref{sec:plugintools}.
+\end{description}
 
-CM automatically classifies files with a {\tt .sml} suffix, a {\tt
-.sig} suffix, or a {\tt .fun} suffix as ML-source, file names ending
-in {\tt .cm} as CM descriptions.\footnote{Suffixes that are not known
-and for which no plugin module can be found are treated as ML source
-code.  However, as new tools are added there is no guarantee that
-this behavior will be preserved in future versions of CM.}
+By default, CM automatically classifies files with a {\tt .sml}
+suffix, a {\tt .sig} suffix, or a {\tt .fun} suffix as ML-source, file
+names ending in {\tt .cm} as CM descriptions.\footnote{Suffixes that
+are not known and for which no plugin module can be found are treated
+as ML source code.  However, as new tools are added there is no
+guarantee that this behavior will be preserved in future versions of
+CM.}
 
 \subsection{Tool parameters}
 \label{sec:toolparam}
@@ -1382,6 +1393,23 @@ and each occurence must be a suboption-list of the form {\tt
 (anchor:$a$ value:$v$)}.  The set of {\tt bind}-parameters augments
 the current anchor environment to form the environment that is used
 while processing the contents of the named CM description file.
+
+\subsubsection{Parameters for classes {\tt tool} and {\tt suffix}}
+
+Class {\tt tool} (see the discussion is section~\ref{sec:localtools})
+does not accept any parameters.
+
+Class {\tt suffix} (see section~\ref{sec:localsuffixes}) takes one
+mandatory parameter which is either simply a class name or the same
+class name labeled by {\tt class}.  Thus, the following two lines are
+equivalent:
+
+\begin{verbatim}
+ml : suffix (sml)
+ml : suffix (class:sml)
+\end{verbatim}
+
+There are no recognized filename suffixes for these two classes.
 
 \subsection{Built-in tools}
 \label{sec:builtin-tools}
@@ -1936,6 +1964,8 @@ lines of ML code.  The necessary hooks for this are provided by a
 structure {\tt Tools} which is exported by the {\tt \$smlnj/cm/tools.cm}
 library.
 
+\subsection{Adding simple shell-command tools}
+
 If the tool is implemented as a ``typical'' shell command, then all
 that needs to be done is a single call to:
 
@@ -2049,32 +2079,91 @@ Less common kinds of rules can also be defined using the generic
 interface {\tt Tools.registerClass}.
 
 \subsection{Plug-in Tools}
+\label{sec:plugintools}
+
+\subsubsection{Automatically-loaded, global plug-in tools}
 
 If CM comes across a member class name $c$ that it does not know
 about, then it tries to load a plugin module named {\tt \$/}$c${\tt
--tool.cm} or {\tt ./}$c${\tt -tool.cm}.  If it sees a file whose name
-ends in suffix $s$ for which no explicit member class has been
-specified in the CM description file and for which automatic
-member classification fails, then it tries to load a plugin module
-named {\tt \$/}$s${\tt -ext.cm} or {\tt ./}$s${\tt -ext.cm}.  The
-so-loaded module can then register the required tool which enables CM
-to successfully deal with the previously unknown member.
+-tool.cm}.  If it sees a file whose name ends in suffix $s$ for which
+no explicit member class has been specified in the CM description file
+and for which automatic member classification fails, then it tries to
+load a plugin module named {\tt \$/}$s${\tt -ext.cm}.  The so-loaded
+module can then register the required tool which enables CM to
+successfully deal with the previously unknown member.
 
 This mechanism makes it possible for new tools to be added by simply
-placing appropriately-named plug-in libraries in such a way that CM
-can find them.  This can be done in one of two ways:
+placing appropriately-named plug-in libraries into a global tool
+repository.  Of course, it will also require a corresponding
+re-configuration of the anchor environment.  In other words, for
+general-purpose tools that are installed in some central place,
+corresponding tool description files {\tt \$/}$c${\tt -tool.cm} and
+{\tt \$/}$s${\tt -ext.cm} should be registered using the path anchor
+mechanism.  If this is done, actual description files can be placed in
+arbitrary locations.
 
-\begin{enumerate}
-\item For general-purpose tools that are installed in some central
-place, corresponding tool description files {\tt \$/}$c${\tt -tool.cm}
-and {\tt \$/}$s${\tt -ext.cm} should be registered using the path
-anchor mechanism.  If this is done, actual description files can be
-placed in arbitrary locations.
-\item For special-purpose tools that are part of a specific program
-and for which there is no need for central installation, one should
-simply put the tool description files into the same directory as the
-one that contains their ``client'' description file.
-\end{enumerate}
+\subsubsection{Explicitly-loaded, local plug-in tools}
+\label{sec:localtools}
+
+Some projects might want to use their own special-purpose tools for
+which a global installation is not convenient or not appropriate.  In
+such a case, the project's description file can explicitly demand the
+tool to be registered temporarily.  This is the purpose of the special
+tool class {\tt tool}.  Example:
+
+\begin{verbatim}
+Library
+    structure Foo
+is
+    bar-tool.cm : tool
+    foo.b : bar
+\end{verbatim}
+
+Here, the member whose class is {\tt tool} (i.e, {\tt bar-tool.cm})
+must be the CM description file of the tool's implementation.  The
+difference to class {\tt cm} is that the so-specified library does not
+become part of the current project but is loaded and linked
+immediately via {\tt CM.load\_plugin}, causing one or more new classes
+and their classifiers to be registered.
+
+If we assume that loading {\tt bar-tool.cm} causes a class {\tt bar}
+to be registered with its associated rule (e.g., by invoking {\tt
+Tools.registerStdShellCmdTool}), the class name {\tt bar} will be
+available for all subsequent members of the current description file.
+Likewise, classifiers (e.g., filename suffixes) registered by {\tt
+bar-tool.cm} will also be available.
+
+The effect of registering classes and classifiers using class {\tt
+tool} lasts until the end of the current description file.  Moreover,
+the effect is {\em restricted} to the current description file.  This
+means that other description files that also want to use class {\tt
+bar} will have to have their own {\tt tool} entry.
+
+\noindent{\bf Important:} Registration of classes and classifiers
+happens by link-time side-effect.  If a class or a classifier has been
+registered locally via class {\tt tool}, then CM will {\em undo} this
+registration when finished with the corresponding description file.
+Therefore, it is important that the required side-effect happens {\em
+every time} the tool implementation is loaded!  Unfortunately, CM's
+default treatment of link-time state (see section~\ref{sec:sharing})
+would defeats this.  Therefore, it is necessary to mark the side-effecting
+ML code in the tool's implementation as {\em private}.
+
+\subsubsection{Locally declared suffixes}
+\label{sec:localsuffixes}
+
+It is sometimes convenient to locally add another recognized filename
+suffix to an already registered class.  This is done by using the
+special tool class {\tt suffix}.  For example, a programmer who has
+named all her ML files in such a way that they end in {\tt .ml}
+could write near the beginning of her description file:
+
+\begin{verbatim}
+    ml : suffix (sml)
+\end{verbatim}
+
+For the remainder of the current description file, all such {\tt
+.ml}-files will now be classified under {\tt sml}.
 
 \section{Parallel and distributed compilation}
 \label{sec:parmake}
@@ -3135,7 +3224,7 @@ For completeness, here is the list of other libraries that are part of
 SML/NJ's implementation:
 
 \begin{center}
-\begin{tabular}{p{2.8in}||p{2.3in}|c|c}
+\begin{tabular}{p{2.9in}||p{2.2in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
 {\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
@@ -3157,7 +3246,7 @@ always & no \\
 \hline 
 {\tt \$MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
 \hline\hline
-{\tt \$/comp-lib.cm} & utility library for compiler & always & no \\
+{\tt \$/pickle-lib.cm} & utility library for compiler and CM & always & no \\
 \hline
 {\tt \$smlnj/viscomp/core.cm} & architecture-neutral core of compiler
 & always & no \\
@@ -3180,6 +3269,13 @@ always & no \\
 {\tt \$smlnj/init/init.cmi} & initial ``glue''; implementation of
 pervasive environment & always & no \\
 \hline \hline
+{\tt \$smlnj/internal/cm-sig-lib.cm} & signatures {\tt CM} and {\tt
+CMB} & always & no \\
+\hline
+{\tt \$smlnj/internal/srcpath-lib.cm} & implementation of an internal
+``source path'' abstraction used by the compilation manager & always &
+no \\
+\hline
 {\tt \$smlnj/internal/cm-lib.cm} & implementation of compilation
 manager (not yet specialized to specific backends) & always & no \\
 \hline

@@ -34,7 +34,7 @@ structure FileId :> FILEID = struct
       | compare (ABSENT s, ABSENT s') = String.compare (s, s')
 
     fun fileId f = let
-	(* To maximize our chances of recognizing eqivalent path names to
+	(* To maximize our chances of recognizing equivalent path names to
 	 * non-existing files, we use F.fullPath to expand the largest
 	 * possible prefix of the path. *)
 	fun expandPath f = let

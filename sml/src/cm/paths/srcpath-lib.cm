@@ -5,18 +5,18 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (../../system/smlnj/internal/cm-lib.cm)
+Group (../../system/smlnj/internal/srcpath-lib.cm)
 	signature SRCPATH
 	structure SrcPath
 	structure SrcPathMap
 	structure SrcPathSet
+	structure TStamp
 is
 	fileid.sml
 	srcpath.sml
 	srcpathmap.sml
 	srcpathset.sml
+	tstamp.sml
 
-	../util/sources.cm
-	../concur/sources.cm
 	$/basis.cm
-	$smlnj/viscomp/core.cm
+	$/smlnj-lib.cm

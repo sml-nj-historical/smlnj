@@ -1,2 +1,4 @@
 Group is
-  x.cp : smlcopy
+  smlcopy-tool.cm : tool
+  copy : suffix (smlcopy)
+  x.copy : smlcopy
