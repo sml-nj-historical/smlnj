@@ -30,8 +30,9 @@ structure S = CMSemant
 %nonterm description of S.group
        | alias of S.group
        | group of S.group
-       | privspec of S.privilegespec
-       | grantspec of S.privilegespec -> S.privilegespec
+       | gprivspec of S.privilegespec
+       | lprivspec of S.privilegespec
+       | wrapspec of S.privilegespec -> S.privilegespec
        | opt_exports of S.exports option
        | exports of S.exports
        | export of S.exports
@@ -88,31 +89,36 @@ alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
 						 pathname)
 
-group : privspec GROUP opt_exports IS members   (S.group
+group : gprivspec opt_exports IS members        (S.group
 						 (grouppath,
-						  privspec, opt_exports,
+						  gprivspec, opt_exports,
 						  members,
 						  error (opt_exportsleft,
 							 opt_exportsright),
 						  gp))
-      | privspec LIBRARY exports IS members     (S.library
+      | lprivspec exports IS members            (S.library
 						 (grouppath,
-						  privspec, exports, members,
+						  lprivspec, exports, members,
 						  error (exportsleft,
 							 exportsright),
 						  gp))
 
-grantspec : (* empty *)                         (fn p => p)
-          | grantspec word                      (fn p =>
-						 S.grant (grantspec p, word,
+wrapspec : (* empty *)                         (fn p => p)
+          | wrapspec word                      (fn p =>
+						 S.wrap (wrapspec p, word,
 							  error (wordleft,
 								 wordright)))
 
-privspec : (* empty *)                          (S.initialPrivilegeSpec)
-         | privspec word                        (S.require (privspec, word,
+gprivspec : GROUP                               (S.initialPrivilegeSpec)
+          | word gprivspec                      (S.require (gprivspec, word,
 							    error (wordleft,
 								   wordright)))
-         | privspec LPAREN grantspec RPAREN     (grantspec privspec)
+
+lprivspec : LIBRARY                             (S.initialPrivilegeSpec)
+          | word lprivspec                      (S.require (lprivspec, word,
+							    error (wordleft,
+								   wordright)))
+          | LPAREN wrapspec RPAREN lprivspec    (wrapspec lprivspec)
 
 exports : export				(export)
 	| export exports			(S.exports (export, exports))

@@ -18,6 +18,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
     structure SM = GenericVC.SourceMap
+    structure GG = GroupGraph
 
     structure CMLrVals = CMLrValsFun (structure Token = LrParser.Token)
     structure CMLex = CMLexFun (structure Tokens = CMLrVals.Tokens)
@@ -92,8 +93,7 @@ functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 	    (* We stabilize libraries only because a stable library will
 	     * encompass the contents of its sub-groups
 	     * (but not sub-libraries!). *)
-	    fun stabilize (g as GroupGraph.GROUP { islib = false, ... }) =
-		SOME g
+	    fun stabilize (g as GG.GROUP { kind = GG.NOLIB, ... }) = SOME g
 	      | stabilize g =
 		Stabilize.stabilize ginfo { group = g, anyerrors = pErrFlag }
 

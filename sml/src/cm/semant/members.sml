@@ -105,9 +105,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    fun w0 s = error EM.WARN s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
 	    fun exp2coll (PrivateTools.GROUP p) = let
-		    val g as GG.GROUP { exports = i, islib, required, ... } =
+		    val g as GG.GROUP { exports = i, kind, required, ... } =
 			rparse p
-		    val gi = if islib then SymbolMap.empty else i
+		    val gi = case kind of GG.NOLIB => i | _ => SymbolMap.empty
 	        in
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,

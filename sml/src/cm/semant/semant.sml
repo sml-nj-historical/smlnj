@@ -46,7 +46,7 @@ signature CM_SEMANT = sig
     (* assembling privilege lists *)
     val initialPrivilegeSpec : privilegespec
     val require : privilegespec * cm_symbol * complainer -> privilegespec
-    val grant : privilegespec * cm_symbol * complainer -> privilegespec
+    val wrap : privilegespec * cm_symbol * complainer -> privilegespec
 
     (* constructing member collections *)
     val emptyMembers : members
@@ -107,7 +107,7 @@ structure CMSemant :> CM_SEMANT = struct
     type cm_symbol = string
 
     type group = GG.group
-    type privilegespec = { required: GG.privileges, granted: GG.privileges }
+    type privilegespec = { required: GG.privileges, wrapped: GG.privileges }
 
     type environment = MemberCollection.collection
 
@@ -137,66 +137,63 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun emptyGroup path =
 	GG.GROUP { exports = SymbolMap.empty,
-		   islib = false,
+		   kind = GG.NOLIB,
 		   required = StringSet.empty,
 		   grouppath = path,
-		   sublibs = [],
-		   stableinfo = GG.NONSTABLE StringSet.empty }
+		   sublibs = [] }
 
     fun sgl2sll subgroups = let
 	fun sameSL (_, GG.GROUP g) (_, GG.GROUP g') =
 	    AbsPath.compare (#grouppath g, #grouppath g') = EQUAL
 	fun add (x, l) =
 	    if List.exists (sameSL x) l then l else x :: l
-	fun oneSG (x as (_, GG.GROUP { islib = true, ... }), l) = add (x, l)
-	  | oneSG ((_, GG.GROUP { sublibs, ... }), l) = foldl add l sublibs
+	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
+	    case kind of
+		GG.NOLIB => foldl add l sublibs
+	      | _ => add (x, l)
     in
 	foldl oneSG [] subgroups
     end
 
-    fun group (g, p, e, m, error, gp) = let
+    fun grouplib (islib, g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
 	val (exports, rp) = MemberCollection.build (mc, filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
-	val { required = rp', granted = gr } = p
+	val { required = rp', wrapped = wr } = p
+	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
-	GG.GROUP { exports = exports, islib = false,
-		   required = StringSet.union (StringSet.union (rp, rp'), gr),
+	GG.GROUP { exports = exports,
+		   kind = if islib then GG.LIB wr
+			  else (if StringSet.isEmpty wr then ()
+				else EM.impossible
+				    "group with wrapped privilege";
+				GG.NOLIB),
+		   required = rp'',
 		   grouppath = g,
-		   sublibs = sgl2sll subgroups,
-		   stableinfo = GG.NONSTABLE gr }
+		   sublibs = sgl2sll subgroups }
     end
 
-    fun library (g, p, e, m, error, gp) = let
-	val mc = applyTo MemberCollection.empty m
-	val filter = applyTo mc e
-	val (exports, rp) = MemberCollection.build (mc, SOME filter, error, gp)
-	val subgroups = MemberCollection.subgroups mc
-	val { required = rp', granted = gr } = p
-    in
-	GG.GROUP { exports = exports, islib = true,
-		   required = StringSet.union (StringSet.union (rp, rp'), gr),
-		   grouppath = g,
-		   sublibs = sgl2sll subgroups,
-		   stableinfo = GG.NONSTABLE gr }
-    end
+    fun group (g, p, e, m, error, gp) =
+	grouplib (false, g, p, e, m, error, gp)
+    fun library (g, p, e, m, error, gp) =
+	grouplib (true, g, p, SOME e, m, error, gp)
 
     local
 	val isMember = StringSet.member
-	fun sanity ({ required, granted }, s, error) =
-	    if isMember (required, s) orelse isMember (granted, s) then
+	fun sanity ({ required, wrapped }, s, error) =
+	    if isMember (required, s) orelse isMember (wrapped, s) then
 		error ("duplicate privilege name: " ^ s)
 	    else ()
     in
 	val initialPrivilegeSpec = { required = StringSet.empty,
-				     granted = StringSet.empty }
-	fun require (a as ({ required, granted }, s, _)) =
+				     wrapped = StringSet.empty }
+	fun require (a as ({ required, wrapped }, s, _)) =
 	    (sanity a;
-	     { required = StringSet.add (required, s), granted = granted })
-	fun grant (a as ({ required, granted }, s, _)) =
+	     { required = StringSet.add (required, s), wrapped = wrapped })
+	fun wrap (a as ({ required, wrapped }, s, _)) =
 	    (sanity a;
-	     { required = required, granted = StringSet.add (granted, s) })
+	     { required = required, wrapped = StringSet.add (wrapped, s) })
     end
 
     fun emptyMembers env = env

@@ -81,14 +81,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val grouppath = #grouppath grec
 	val groupdir = AbsPath.dir grouppath
 
-	fun doit granted = let
+	fun doit wrapped = let
 
 	    val _ =
-		if StringSet.isEmpty granted then ()
+		if StringSet.isEmpty wrapped then ()
 		else
 		    Say.say ("$Stabilize: wrapping the following privileges:\n"
 			     :: map (fn s => ("  " ^ s ^ "\n"))
-			            (StringSet.listItems granted))
+			            (StringSet.listItems wrapped))
 
 	    val bname = AbsPath.name o SmlInfo.binpath
 	    val bsz = OS.FileSys.fileSize o bname
@@ -111,8 +111,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val grpSrcInfo = (#errcons gp, anyerrors)
 
 	    val exports = #exports grec
-	    val islib = #islib grec
-	    val required = StringSet.difference (#required grec, granted)
+	    val required = StringSet.difference (#required grec, wrapped)
 	    val sublibs = #sublibs grec
 
 	    (* The format of a stable archive is the following:
@@ -307,8 +306,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 * have them back when we unpickle BNODEs. *)
 		concat (w_list w_sg sublibs
 			    (w_exports exports
-			        (w_bool islib
-				    (w_privileges required k0))) m0)
+			         (w_privileges required k0)) m0)
 	    end
 
 	    val pickle = pickle_group ()
@@ -357,11 +355,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		val simap = genStableInfoMap (exports, grouppath)
 	    in
 		GG.GROUP { exports = exports,
-			   islib = islib,
+			   kind = GG.STABLELIB simap,
 			   required = required,
 			   grouppath = grouppath,
-			   sublibs = sublibs,
-			   stableinfo = GG.STABLE simap }
+			   sublibs = sublibs }
 	    end
 
 	    fun writeInt32 (s, i) = let
@@ -389,19 +386,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    handle exn => NONE
 	end
     in
-	case #stableinfo grec of
-	    GG.STABLE _ => SOME g
-	  | GG.NONSTABLE granted =>
+	case #kind grec of
+	    GG.STABLELIB _ => SOME g
+	  | GG.NOLIB => EM.impossible "stabilize: no library"
+	  | GG.LIB wrapped =>
 		if not (recomp gp g) then
 		    (anyerrors := true; NONE)
 		else let
-		    fun notStable (_, GG.GROUP { stableinfo, ... }) =
-			case stableinfo of
-			    GG.STABLE _ => false
-			  | GG.NONSTABLE _ => true
+		    fun notStable (_, GG.GROUP { kind, ... }) =
+			case kind of GG.STABLELIB _ => true | _ => false
 		in
 		    case List.filter notStable (#sublibs grec) of
-			[] => doit granted
+			[] => doit wrapped
 		      | l => let
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
@@ -671,16 +667,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		StringSet.addList (StringSet.empty, r_list r_string ())
 
 	    val exports = r_exports ()
-	    val islib = r_bool ()
 	    val required = r_privileges ()
 	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,
-		       islib = islib,
+		       kind = GG.STABLELIB simap,
 		       required = required,
 		       grouppath = group,
-		       sublibs = sublibs,
-		       stableinfo = GG.STABLE simap }
+		       sublibs = sublibs }
 	end
     in
 	SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinIn spath,
