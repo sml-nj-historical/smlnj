@@ -3,105 +3,158 @@
 
 structure Control_MC : MCCONTROL =
 struct
-    val printArgs = ref false
-    val printRet = ref false
-    val bindNoVariableWarn = ref false
-    val bindNonExhaustiveWarn = ref true
-    val matchNonExhaustiveWarn = ref true
-    val matchNonExhaustiveError = ref false
+    val m = Controls.module { name = "match-compiler settings",
+			      priority = [10, 10, 4],
+			      obscurity = 2,
+			      prefix = "compiler-mc-",
+			      default_suffix = SOME "-default",
+			      mk_ename = NONE }
+
+    val r = Controls.registry m Controls.bool
+
+    fun flag (s, d, f) = Controls.new_ref
+			     r { stem = s, descr = d, fallback = f }
+
+    val printArgs = flag ("print-args", "arguments print mode", false)
+    val printRet = flag ("print-ret", "return print mode", false)
+    val bindNoVariableWarn =
+	flag ("nobind-warn", "whether to warn if no variables get bound",
+	      false)
+    val bindNonExhaustiveWarn =
+	flag ("warn-non-exhaustive-bind",
+	      "whether to warn on non-exhaustive bind",
+	      true)
+    val matchNonExhaustiveWarn =
+	flag ("warn-non-exhaustive-match",
+	      "whether to warn on non-exhaustive match",
+	      true)
+    val matchNonExhaustiveError =
+	flag ("error-non-exhaustive-match",
+	      "whether non-exhaustive match is an error",
+	      false)
     (* matchExhaustiveError overrides matchExhaustiveWarn *)
-    val matchRedundantWarn = ref true
-    val matchRedundantError = ref true
+    val matchRedundantWarn =
+	flag ("warn-redundant",
+	      "whether to warn on redundant matches",
+	      true)
+    val matchRedundantError =
+	flag ("error-redundant",
+	      "whether a redundant match is an error",
+	      true)
     (* matchRedundantError overrides matchRedundantWarn *)
-    val expandResult = ref false
+(*
+    val expandResult =
+	flag ("expand-result",
+	      "whether to expand result of match",
+	      false)
+*)
 end
 
 structure Control_CG : CGCONTROL =
 struct
-    val tailrecur = ref true
-    val recordopt = ref true
-    val tail = ref true
-    val allocprof = ref false
-    val closureprint = ref false
-    val closureStrategy = ref 0
-    val lambdaopt = ref true
-    val cpsopt = ref ["zeroexpand", "last_contract"]
+    val m = Controls.module { name = "code generator settings",
+			      priority = [10, 11, 2],
+			      obscurity = 6,
+			      prefix = "cg-",
+			      default_suffix = SOME "-default",
+			      mk_ename = NONE }
+
+    val b = Controls.registry m Controls.bool
+
+    val i = Controls.registry m Controls.int
+
+    val r = Controls.registry m Controls.real
+
+    val sl = Controls.registry m Controls.stringList
+
+    fun new (r, s, d, f) =
+	Controls.new_ref r { stem = s, descr = d, fallback = f }
+
+    val tailrecur = new (b, "tailrecur", "?", true)
+    val recordopt = new (b, "recordopt", "?", true)
+    val tail = new (b, "tail", "?", true)
+    val allocprof = new (b, "allocprof", "?", false)
+    val closureprint = new (b, "closureprint", "?", false)
+    val closureStrategy = new (i, "closure-strategy", "?", 0)
+    val lambdaopt = new (b, "lambdaopt", "?", true)
+    val cpsopt = new (sl, "cpsopt", "cps optimizer phases",
+		      ["zeroexpand", "last_contract"])
     (* ["first_contract", "eta", "uncurry", "etasplit",
 	"cycle_expand", "eta", "last_contract" ] *)
-    val rounds = ref 10
-    val path = ref false
-    val betacontract = ref true
-    val eta = ref true
-    val selectopt = ref true
-    val dropargs = ref true
-    val deadvars = ref true
-    val flattenargs = ref false
-    val extraflatten = ref false
-    val switchopt = ref true
-    val handlerfold = ref true
-    val branchfold = ref false
-    val arithopt = ref true
-    val betaexpand = ref true
-    val unroll = ref true
-    val knownfiddle = ref false
-    val invariant = ref true
-    val targeting = ref 0
-    val lambdaprop = ref false
-    val newconreps = ref true
+    val rounds = new (i, "rounds", "max # of cpsopt rounds", 10)
+    val path = new (b, "path", "?", false)
+    val betacontract = new (b, "betacontract", "?", true)
+    val eta = new (b, "eta", "?", true)
+    val selectopt = new (b, "selectopt", "?", true)
+    val dropargs = new (b, "dropargs", "?", true)
+    val deadvars = new (b, "deadvars", "?", true)
+    val flattenargs = new (b, "flattenargs", "?", false)
+    val extraflatten = new (b, "extraflatten", "?", false)
+    val switchopt = new (b, "switchopt", "?", true)
+    val handlerfold = new (b, "handlerfold", "?", true)
+    val branchfold = new (b, "branchfold", "?", false)
+    val arithopt = new (b, "arithopt", "?", true)
+    val betaexpand = new (b, "betaexpand", "?", true)
+    val unroll = new (b, "unroll", "?", true)
+    val knownfiddle = new (b, "knownfiddle", "?", false)
+    val invariant = new (b, "invariant", "?", true)
+    val targeting = new (i, "targeting", "?", 0)
+    val lambdaprop = new (b, "lambdaprop", "?", false)
+    val newconreps = new (b, "newconreps", "?", true)
     val boxedconstconreps = ElabControl.boxedconstconreps
-    val unroll_recur = ref true
-    val sharepath = ref true
-    val staticprof = ref false
-    val hoistup = ref false
-    val hoistdown = ref false
-    val recordcopy = ref true
-    val recordpath = ref true
-    val verbose = ref false
-    val debugcps = ref false
-    val misc4 = ref 0
-    val argrep = ref true
-    val bodysize = ref 20
-    val reducemore = ref 15
-    val alphac = ref true
-    val comment = ref false
-    val knownGen = ref 0
-    val knownClGen = ref 0
-    val escapeGen = ref 0
-    val calleeGen = ref 0
-    val spillGen = ref 0
-    val foldconst = ref true
-    val etasplit = ref true
-    val printit = ref false
-    val printsize = ref false
-    val scheduling = ref true
-    val cse = ref false
-    val optafterclosure = ref false
-    val uncurry = ref true
-    val ifidiom = ref true
-    val comparefold = ref true
-    val csehoist = ref false
-    val rangeopt = ref false
-    val icount = ref false
-    val debugRep = ref false
-    val checklty1 = ref false
-    val checklty2 = ref false
-    val checklty3 = ref false
-    val checkcps1 = ref false
-    val checkcps2 = ref false
-    val checkcps3 = ref false
-    val checkcps = ref false
-    val flatfblock = ref true
-    val deadup = ref true
-    val pollChecks = ref false
-    val pollRatioAtoI = ref 1.0
+    val unroll_recur = new (b, "unroll-recur", "?", true)
+    val sharepath = new (b, "sharepath", "?", true)
+    val staticprof = new (b, "staticprof", "?", false)
+    val hoistup = new (b, "hoistup", "?", false)
+    val hoistdown = new (b, "hoistdown", "?", false)
+    val recordcopy = new (b, "recordcopy", "?", true)
+    val recordpath = new (b, "recordpath", "?", true)
+    val verbose = new (b, "verbose", "?", false)
+    val debugcps = new (b, "debugcps", "?", false)
+    val misc4 = new (i, "misc4", "?", 0)
+    val argrep = new (b, "argrep", "?", true)
+    val bodysize = new (i, "bodysize", "?", 20)
+    val reducemore = new (i, "reducemore", "?", 15)
+    val alphac = new (b, "alphac", "?", true)
+    val comment = new (b, "comment", "?", false)
+    val knownGen = new (i, "known-gen", "?", 0)
+    val knownClGen = new (i, "known-cl-gen", "?", 0)
+    val escapeGen = new (i, "escape-gen", "?", 0)
+    val calleeGen = new (i, "callee-gen", "?", 0)
+    val spillGen = new (i, "spill-gen", "?", 0)
+    val foldconst = new (b, "foldconst", "?", true)
+    val etasplit = new (b, "etasplit", "?", true)
+    val printit = new (b, "printit", "whether to show CPS", false)
+    val printsize = new (b, "printsize", "?", false)
+    val scheduling = new (b, "scheduling", "?", true)
+    val cse = new (b, "cse", "?", false)
+    val optafterclosure = new (b, "opt-after-closure", "?", false)
+    val uncurry = new (b, "uncurry", "?", true)
+    val ifidiom = new (b, "if-idiom", "?", true)
+    val comparefold = new (b, "comparefold", "?", true)
+    val csehoist = new (b, "csehoist", "?", false)
+    val rangeopt = new (b, "rangeopt", "?", false)
+    val icount = new (b, "icount", "?", false)
+    val debugRep = new (b, "debug-rep", "?", false)
+    val checklty1 = new (b, "checklty1", "?", false)
+    val checklty2 = new (b, "checklty2", "?", false)
+    val checklty3 = new (b, "checklty3", "?", false)
+    val checkcps1 = new (b, "checkcps1", "?", false)
+    val checkcps2 = new (b, "checkcps2", "?", false)
+    val checkcps3 = new (b, "checkcps3", "?", false)
+    val checkcps = new (b, "checkcps", "?", false)
+    val flatfblock = new (b, "flatfblock", "?", true)
+    val deadup = new (b, "deadup", "?", true)
+    val pollChecks = new (b, "poll-checks", "?", false)
+    val pollRatioAtoI = new (r, "poll-ratio-a-to-i", "?", 1.0)
 
     val printFlowgraphStream = ref TextIO.stdOut
 
-    val memDisambiguate = ref false
-    val controlDependence = ref false
-    val flinton = ref true
+    val memDisambiguate = new (b, "mem-disambiguate", "?", false)
+    val controlDependence = new (b, "control-dependence", "?", false)
+    val flinton = new (b, "flinton", "?", true)
 
-    val compdebugging = ref false
+    val compdebugging = new (b, "compdebugging", "?", false)
     val mudebugging   = ElabDataControl.mudebugging
     val eedebugging   = ElabDataControl.eedebugging
     val insdebugging  = ElabControl.insdebugging
@@ -109,12 +162,27 @@ struct
     val emdebugging   = ElabControl.emdebugging
     val esdebugging   = ElabControl.esdebugging
     val etdebugging   = ElabControl.etdebugging
-    val ecdebugging   = ref false
-    val tmdebugging   = ref false
+    val ecdebugging   = new (b, "ecdebugging", "?", false)
+    val tmdebugging   = new (b, "tmdebugging", "?", false)
 end
 
 structure Control : CONTROL =
   struct
+
+    local
+	val m = Controls.module { name = "miscellaneous control settings",
+				  priority = [10, 10, 9],
+				  obscurity = 4,
+				  prefix = "control-",
+				  default_suffix = SOME "-default",
+				  mk_ename = NONE }
+
+	val b = Controls.registry m Controls.bool
+
+	fun new (r, s, d, f) =
+	    Controls.new_ref r { stem = s, descr = d, fallback = f }
+    in
+
     structure Print : PRINTCONTROL = Control_Print
 
     structure MC : MCCONTROL = Control_MC
@@ -143,21 +211,26 @@ structure Control : CONTROL =
     val multDefWarn = ElabControl.multDefWarn
     val shareDefError = ElabControl.shareDefError
     val instantiateSigs = ElabControl.instantiateSigs
-    val debugging = ref false
+    val debugging = new (b, "debugging", "?", false)
     val internals = ElabControl.internals
-    val interp = ref false
+    val interp = new (b, "interp", "?", false)
 (*
     val debugLook = ref false
     val debugCollect = ref false
     val debugBind = ref false
 *)
     val markabsyn = ElabControl.markabsyn
-    val trackExn = ref true
-    val polyEqWarn = ref true (* warning message when call of polyEqual compiled *)
-    val indexing = ref false
-    val instSigs = ref true
+    val trackExn =
+	new (b, "track-exn",
+	     "whether to generate code that tracks exceptions", true)
+    (* warning message when call of polyEqual compiled: *)
+    val polyEqWarn =
+	new (b, "poly-eq-warn",
+	     "wheter to warn when generating call of polyEqual", true)
+    val indexing = new (b, "indexing", "?", false)
+    val instSigs = new (b, "inst-sigs", "?", true)
 
-    val preserveLvarNames : bool ref = ref false
+    val preserveLvarNames : bool ref = new (b, "preserve-names", "?", false)
     (* these are really all the same ref cell: *)
     val saveit : bool ref = saveLvarNames
     val saveAbsyn : bool ref = saveit
@@ -171,19 +244,40 @@ structure Control : CONTROL =
 	type localsetting = int option option
 	val UseDefault : localsetting = NONE
 	fun Suggest s : localsetting = SOME s
+	fun parse "off" = SOME Off
+	  | parse "on" = SOME (Default NONE)
+	  | parse s = Option.map (Default o SOME) (Int.fromString s)
+	fun show Off = "off"
+	  | show (Default NONE) = "on"
+	  | show (Default (SOME i)) = Int.toString i
 	local
-	    val state : globalsetting ref = ref (Default NONE)
+	    val m = Controls.module { name = "cross-module inlining",
+				      priority = [10, 10, 0, 1],
+				      obscurity = 1,
+				      prefix = "inline-",
+				      default_suffix = SOME "-default",
+				      mk_ename = NONE }
+	    val r = Controls.registry m
+		    { tname = "Control.LambdaSplitting.globalsetting",
+		      parse = parse, show = show }
+	    val state = Controls.new r
+		    { stem = "split-aggressiveness",
+		      descr = "aggressiveness of lambda-splitter",
+		      fallback = Default NONE }
 	in
-	    fun set s = state := s
+   	    val set = #set state
 	    fun get () =
-		case !state of
+		case #get state () of
 		    Off => NONE
 		  | Default d => d
 	    fun get' NONE = get ()
 	      | get' (SOME a) =
-		(case !state of
+		(case #get state () of
 		     Off => NONE
 		   | Default _ => a)
 	end
     end
+    val btrace = BTrace.enabled
+
+    end (* local *)
   end

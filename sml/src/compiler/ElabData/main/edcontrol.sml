@@ -2,8 +2,21 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
-structure ElabDataControl = struct
-    val saveLvarNames = ref false
-    val eedebugging = ref false
-    val mudebugging = ref false
+structure ElabDataControl : ELABDATA_CONTROL = struct
+
+    val m = Controls.module { name = "elaborator datastructures",
+			      priority = [10, 10, 7],
+			      obscurity = 6,
+			      prefix = "ed-",
+			      default_suffix = SOME "-default",
+			      mk_ename = NONE }
+
+    val b = Controls.registry m Controls.bool
+
+    fun new (s, d, f) =
+	Controls.new_ref b { stem = s, descr = d, fallback = f }
+
+    val saveLvarNames = new ("save-lvar-names", "?", false)
+    val eedebugging = new ("ee-debugging", "?", false)
+    val mudebugging = new ("mu-debugging", "?", false)
 end

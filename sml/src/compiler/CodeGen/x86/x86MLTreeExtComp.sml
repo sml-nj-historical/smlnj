@@ -6,6 +6,7 @@ functor X86MLTreeExtComp
      structure CFG : CONTROL_FLOW_GRAPH 
 		    where I=I 
 		      and P = TS.S.P
+     val fast_fp : bool ref
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
@@ -23,8 +24,6 @@ struct
 
    type reducer = 
      (I.instruction,C.cellset,I.operand,I.addressing_mode,CFG.cfg) TS.reducer
-
-   val fast_fp = MLRiscControl.getFlag "x86-fast-fp"
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "X86MLTreeExtComp" 
 

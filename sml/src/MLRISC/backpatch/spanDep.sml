@@ -35,10 +35,13 @@ struct
   structure WeightedPlacement = 
      WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
 
-  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
-  val blockPlacement = 
-      if !placementFlag then WeightedPlacement.blockPlacement
-      else DefaultPlacement.blockPlacement
+  val placementFlag = MLRiscControl.mkFlag
+	  ("weighted-block-placement",
+	   "whether MLRISC does weigted block placement")
+
+  fun blockPlacement cfg = 
+      if !placementFlag then WeightedPlacement.blockPlacement cfg
+      else DefaultPlacement.blockPlacement cfg
 
   fun error msg = MLRiscErrorMsg.error("SpanDependencyResolution",msg)
 
@@ -434,7 +437,8 @@ struct
     val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} =
 	E.makeStream []
 		    
-    val debug = MLRiscControl.getFlag "dump-cfg-after-spandep"
+    val debug = MLRiscControl.mkFlag ("dump-cfg-after-spandep",
+				      "whether flow graph is shown after spandep phase")
 
     fun emitCluster (CLUSTER{comp},loc) = let
       val emitInstrs = app emit 

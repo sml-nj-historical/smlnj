@@ -16,17 +16,35 @@ signature PRINTCONTROL = sig
 end
 
 structure Control_Print : PRINTCONTROL = struct
-    val printDepth = ref 5
-    val printLength = ref 12
-    val stringDepth = ref 70
-    val printLoop = ref true
-    val signatures = ref 2
-    val printOpens = ref true
+
+    val m = Controls.module { name = "compiler print settings",
+			      priority = [10, 10, 2],
+			      obscurity = 2,
+			      prefix = "print-",
+			      default_suffix = SOME "-default",
+			      mk_ename = NONE }
+
+    val flag_r = Controls.registry m Controls.bool
+
+    val int_r = Controls.registry m Controls.int
+
+    fun new (r, s, d, f) =
+	Controls.new_ref r { stem = s, descr = d, fallback = f }
+
+    val printDepth = new (int_r, "depth", "max print depth", 5)
+    val printLength = new (int_r, "length", "max print length", 12)
+    val stringDepth = new (int_r, "string-depth", "max string print depth", 70)
+    val printLoop =
+	new (flag_r, "loop", "print loop", true) (* ? *)
+    val signatures =
+	new (int_r, "signatures", "max signature expansion depth", 2) (* ? *)
+    val printOpens = new (flag_r, "opens", "print `open'", true)
     val out = ref{
 		  say = fn s => TextIO.output(TextIO.stdOut,s),
 		  flush = fn () => TextIO.flushOut TextIO.stdOut
 		  }
-    val linewidth = ref 79
+    val linewidth = new (int_r, "linewidth",
+			 "line-width hint for pretty printer", 79)
     fun say s = #say (!out) s
     fun flush() = #flush (!out) ()
 end

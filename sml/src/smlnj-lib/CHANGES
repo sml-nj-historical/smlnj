@@ -2,6 +2,11 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+[2002-03-06]
+	Added a generic "controls" module that provides documented
+	and configurable (via environment variables and other,
+	application-specific means such as, e.g., the command-line)
+	ref cells.
 
 [2002-02-21]
 	Fixed infinite loop in LeftPriorityQFn.fromList when given a

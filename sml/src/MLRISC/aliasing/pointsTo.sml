@@ -193,7 +193,8 @@ struct
 
    fun interfere(x,y) = find x = find y
 
-   val maxLevels = MLRiscControl.getInt "points-to-show-max-levels"
+   val maxLevels = MLRiscControl.mkInt ("points-to-show-max-levels",
+					"max # of level to show in pointsTo")
    val _ = maxLevels := 3
 
    fun toString r = show(!r, !maxLevels)

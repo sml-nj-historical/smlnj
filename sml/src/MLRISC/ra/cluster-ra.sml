@@ -38,7 +38,7 @@ struct
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
-   val dump_size = MLRiscControl.getFlag "ra-dump-size"
+   val dump_size = MLRiscControl.mkFlag ("ra-dump-size", "whether to show RA size")
 
    type flowgraph = CFG.cfg  (* flowgraph is a cluster *)
 

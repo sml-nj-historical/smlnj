@@ -24,7 +24,7 @@ usage() {
 
 while [ $# != 0 ] ; do
     case $1 in
-    -D*|-U*)
+    -D*|-U*|-C*)
 	dulist="$dulist $1"
 	shift
 	;;

@@ -22,13 +22,6 @@ structure Internals : INTERNALS =
     val resetTimers = InternalTimer.resetTimers
 
     structure BTrace = struct
-        val mode = let
-	    val state = ref false
-	    fun access NONE = !state
-	      | access (SOME change) = !state before state := change
-	in
-	    access
-	end
 	local
 	    val hook = ref { reset = fn () => () }
 	in

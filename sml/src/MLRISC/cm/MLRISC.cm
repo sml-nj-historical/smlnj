@@ -62,6 +62,7 @@ Library
 	signature REWRITE_INSTRUCTIONS
 	signature SDI_JUMPS
 	signature SHUFFLE
+	structure AsmFlags
 	structure AsmFormatUtil
 	structure AsmStream
 	structure CTypes
@@ -249,6 +250,7 @@ is
 	../ra/region-based-ra.sml
 	../ra/risc-ra.sml
         ../ra/cluster-ra.sml
+	../emit/asm-flags.sml
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml

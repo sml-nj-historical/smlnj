@@ -98,12 +98,14 @@ struct
    val name = "RISC_RA"
 
    (* Counters for register allocation *)
-   val intSpillsCnt = MLRiscControl.getCounter "ra-int-spills"
-   val intReloadsCnt = MLRiscControl.getCounter "ra-int-reloads"
-   val intRenamesCnt = MLRiscControl.getCounter "ra-int-renames"
-   val floatSpillsCnt = MLRiscControl.getCounter "ra-float-spills"
-   val floatReloadsCnt = MLRiscControl.getCounter "ra-float-reloads"
-   val floatRenamesCnt = MLRiscControl.getCounter "ra-float-renames"
+   val intSpillsCnt = MLRiscControl.mkCounter ("ra-int-spills", "RA int spill count")
+   val intReloadsCnt = MLRiscControl.mkCounter ("ra-int-reloads", "RA int reload count")
+   val intRenamesCnt = MLRiscControl.mkCounter ("ra-int-renames", "RA int rename count")
+   val floatSpillsCnt = MLRiscControl.mkCounter ("ra-float-spills", "RA float spill count")
+   val floatReloadsCnt = MLRiscControl.mkCounter ("ra-float-reloads", "RA float reload count")
+   val floatRenamesCnt = MLRiscControl.mkCounter ("ra-float-renames", "RA float rename count")
+
+   fun inc c = c := !c + 1
 
    fun error msg = MLRiscErrorMsg.error("RISC RA "^architecture,msg)
 
@@ -174,7 +176,7 @@ struct
 	   | spill(instrAn, I.INSTR _) = let
 	       val {opnd=spillLoc:I.ea, kind} = getRegLoc (S, an, reg, spillLoc)
              in
-	        intSpillsCnt := !intSpillsCnt + 1;
+	        inc intSpillsCnt;
 		SpillInstr.spill CB.GP (instr, reg, spillLoc)
              end
        in spill([], instr)
@@ -182,7 +184,7 @@ struct
 
    (* spill src at the spill location for reg i.e. spillLoc *)
    fun spillReg S {annotations=an,src,reg,spillLoc} =
-       (intSpillsCnt := !intSpillsCnt + 1;
+       (inc intSpillsCnt;
 	#code(SpillInstr.spillToEA CB.GP (src, #opnd(getRegLoc(S, an, reg, spillLoc)))))
 
 
@@ -190,14 +192,14 @@ struct
    fun spillTmp S {annotations=an, reg, copy=I.COPY{k=CB.GP, sz, tmp, dst, src}, spillLoc} = let
           val loc = #opnd(getRegLoc(S, an, reg, spillLoc))
        in
-         intSpillsCnt := !intSpillsCnt + 1;
+         inc intSpillsCnt;
 	 I.COPY{k=CB.GP, sz=sz, tmp=SOME loc, dst=dst, src=src}
        end
      | spillTmp _ _ = error "spillTmp"
 
    (* Rename integer register *)
    fun renameR{fromSrc,toSrc,instr} = 
-       let val _   = intRenamesCnt := !intRenamesCnt + 1
+       let val _   = inc intRenamesCnt
            val instr' = Rewrite.rewriteUse(instr, fromSrc, toSrc)
        in {code=[instr'], proh=[], newReg=SOME toSrc}
        end
@@ -213,7 +215,7 @@ struct
        | reload(instrAn, instr as I.INSTR _) = let
 	   val spillLoc = #opnd (getRegLoc(S, an, reg, spillLoc))
          in
-	   intReloadsCnt := !intReloadsCnt + 1;
+	   inc intReloadsCnt;
 	   SpillInstr.reload CB.GP (instr, reg, spillLoc)
          end
    in reload([], instr)
@@ -221,7 +223,7 @@ struct
 
    (* reload the register dst from the spill location for reg, i.e. spillLoc  *)
    fun reloadReg S {annotations=an,reg,dst,spillLoc} = 
-       (intReloadsCnt := !intReloadsCnt + 1;
+       (inc intReloadsCnt;
 	#code(SpillInstr.reloadFromEA CB.GP (dst, #opnd(getRegLoc(S, an, reg, spillLoc)))))
 
 
@@ -264,21 +266,21 @@ struct
 	   | spill(instrAn, I.LIVE _) = error "spillF: LIVE"
 	   | spill(_, I.COPY _) = error "spillF: COPY"
 	   | spill(instrAn, I.INSTR _) = 
-	       (floatSpillsCnt := !floatSpillsCnt + 1;
+	       (inc floatSpillsCnt;
 		SpillInstr.spill CB.FP (instr, reg, getFregLoc(S, an, spillLoc)))
         in spill([], instr)
         end
 
    (* spill src at the spill location  for reg, i.e. spillLoc *)
    fun spillFreg S {annotations=an,reg,src,spillLoc} = 
-       (floatSpillsCnt := !floatSpillsCnt + 1;
+       (inc floatSpillsCnt;
 	#code(SpillInstr.spillToEA CB.FP (src, getFregLoc(S, an, spillLoc))))
 
    (* Spill the temporary associated with a copy *)
    fun spillFtmp S {annotations=an, reg, copy=I.COPY{k=CB.FP, sz, tmp, dst, src}, spillLoc} = let
           val loc = getFregLoc(S, an, spillLoc)
        in
-         floatSpillsCnt := !floatSpillsCnt + 1;
+         inc floatSpillsCnt;
 	 I.COPY{k=CB.FP, sz=sz, tmp=SOME loc, dst=dst, src=src}
        end
      | spillFtmp _ _ = error "spillFtmp"
@@ -286,7 +288,7 @@ struct
                    
    (* Rename floating point register *)
    fun renameF{fromSrc,toSrc,instr} =
-       let val _ = floatRenamesCnt := !floatRenamesCnt + 1
+       let val _ = inc floatRenamesCnt
            val instr' = Rewrite.frewriteUse(instr, fromSrc, toSrc)
        in  {code=[instr'], proh=[], newReg=SOME toSrc}
        end
@@ -300,14 +302,14 @@ struct
 	   newReg=NONE}
        | reload(_, I.KILL _) = error "reloadF: KILL"
        | reload(instrAn, instr as I.INSTR _) = 
-	   (floatReloadsCnt := !floatReloadsCnt + 1;
+	   (inc floatReloadsCnt;
 	    SpillInstr.reload CB.FP (instr, reg, getFregLoc(S, an, spillLoc)))
    in reload([], instr)
    end
 
    (* reload register dst from the spill location for reg, i.e. spillLoc *)
    fun reloadFreg S {annotations=an,reg,dst,spillLoc} =
-       (floatReloadsCnt := !floatReloadsCnt + 1;
+       (inc floatReloadsCnt;
 	#code (SpillInstr.reloadFromEA CB.FP (dst, getFregLoc(S, an, spillLoc))))
 
    val KR = length Int.avail

@@ -24,8 +24,10 @@ functor JumpChainElimFn (
     structure G = Graph
 
   (* flags *)
-    val disable = MLRiscControl.getFlag "disable-jump-chain-elim"
-    val dumpCFG = MLRiscControl.getFlag "dump-cfg-jump-chain-elim"
+    val disable = MLRiscControl.mkFlag ("disable-jump-chain-elim",
+					"whether jump chain elimination is disabled")
+    val dumpCFG = MLRiscControl.mkFlag ("dump-cfg-jump-chain-elim",
+					"whether flow graph is shown after jump chain elimination")
     val dumpStrm = MLRiscControl.debug_stream
 
     fun run (cfg, blocks) = let

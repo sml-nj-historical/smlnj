@@ -199,13 +199,16 @@ struct
 
     type flowgraph = CFG.cfg
 
-    val intSpillCnt = MLRiscControl.getCounter "ra-int-spills"
-    val floatSpillCnt = MLRiscControl.getCounter "ra-float-spills"
-    val intReloadCnt = MLRiscControl.getCounter "ra-int-reloads"
-    val floatReloadCnt = MLRiscControl.getCounter "ra-float-reloads"
-    val intRenameCnt = MLRiscControl.getCounter "ra-int-renames"
-    val floatRenameCnt = MLRiscControl.getCounter "ra-float-renames"
-    val x86CfgDebugFlg = MLRiscControl.getFlag "x86-cfg-debug"
+    val intSpillCnt = MLRiscControl.mkCounter ("ra-int-spills", "RA int spill count")
+    val intReloadCnt = MLRiscControl.mkCounter ("ra-int-reloads", "RA int reload count")
+    val intRenameCnt = MLRiscControl.mkCounter ("ra-int-renames", "RA int rename count")
+    val floatSpillCnt = MLRiscControl.mkCounter ("ra-float-spills", "RA float spill count")
+    val floatReloadCnt = MLRiscControl.mkCounter ("ra-float-reloads", "RA float reload count")
+    val floatRenameCnt = MLRiscControl.mkCounter ("ra-float-renames", "RA float rename count")
+
+    fun inc c = c := !c + 1
+
+    val x86CfgDebugFlg = MLRiscControl.mkFlag ("x86-cfg-debug", "x86 CFG debug mode")
 
     fun error msg = MLRiscErrorMsg.error("X86RA",msg)
 
@@ -366,13 +369,13 @@ struct
 	| spill(instrAn, I.LIVE _) = error "spillF: LIVE"
 	| spill(_, I.COPY _) = error "spillF: COPY"
 	| spill(instrAn, I.INSTR _) = 
-	   (floatSpillCnt := !floatSpillCnt + 1;
-	    spillFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
+	  (inc floatSpillCnt;
+	   spillFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
     in spill([], instr)
     end
 
     fun spillFreg S {src, reg, spillLoc, annotations=an} = 
-       (floatSpillCnt := !floatSpillCnt + 1;
+       (inc floatSpillCnt;
         let val fstp = [I.fstpl(getFregLoc(S, an, spillLoc))]
         in  if CB.sameColor(src,C.ST0) then fstp
             else I.fldl(I.FDirect(src))::fstp
@@ -381,7 +384,7 @@ struct
 
    fun spillFcopyTmp S {copy=I.COPY{k=CB.FP, dst, src, ...}, spillLoc, reg,
                         annotations=an} =
-        (floatSpillCnt := !floatSpillCnt + 1;
+        (inc floatSpillCnt;
          fcopy{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
         )
      | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, reg, annotations} =
@@ -391,7 +394,7 @@ struct
 
     (* rename floating point *)
     fun renameF{instr, fromSrc, toSrc} =
-        (floatRenameCnt := !floatRenameCnt + 1;
+        (inc floatRenameCnt;
          reloadFInstr(instr, fromSrc, I.FDirect toSrc)
         )
 
@@ -404,13 +407,13 @@ struct
 	    newReg=NONE}
 	| reload(_, I.KILL _) = error "reloadF: KILL"
 	| reload(instrAn, instr as I.INSTR _) = 
-  	   (floatReloadCnt := !floatReloadCnt + 1;
+  	   (inc floatReloadCnt;
 	    reloadFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
     in reload([], instr)
     end
 
     fun reloadFreg S {dst, reg, spillLoc, annotations=an} = 
-        (floatReloadCnt := !floatReloadCnt + 1;
+        (inc floatReloadCnt;
          if CB.sameColor(dst,C.ST0) then 
             [I.fldl(getFregLoc(S, an, spillLoc))]
          else  
@@ -435,18 +438,18 @@ struct
     val copyInstrF' = fn x => [copyInstrF' x]
 
     fun spillFreg' S {src, reg, spillLoc, annotations=an} = 
-        (floatSpillCnt := !floatSpillCnt + 1;
+        (inc floatSpillCnt;
          [I.fmove{fsize=I.FP64, src=FMemReg src, 
                   dst=getFregLoc(S, an,spillLoc)}]
         )
 
     fun renameF'{instr, fromSrc, toSrc} =
-        (floatRenameCnt := !floatRenameCnt + 1;
+        (inc floatRenameCnt;
          reloadFInstr(instr, fromSrc, I.FPR toSrc)
         )
 
     fun reloadFreg' S {dst, reg, spillLoc, annotations=an} = 
-        (floatReloadCnt := !floatReloadCnt + 1;
+        (inc floatReloadCnt;
          [I.fmove{fsize=I.FP64, dst=FMemReg dst, 
                   src=getFregLoc(S,an,spillLoc)}]
         )
@@ -511,7 +514,7 @@ struct
 	| spill(instrAn, I.INSTR _) = 
 	  (case getRegLoc(S, an, reg, spillLoc) 
 	    of {opnd=spillLoc, kind=SPILL_LOC} => 
-		   ( intSpillCnt := !intSpillCnt + 1;
+		   ( inc intSpillCnt;
 		     spillInstr(annotate(instrAn, instr), reg, spillLoc)
 		    ) 
 	     | _ => (* don't have to spill a constant *)
@@ -524,7 +527,7 @@ struct
                      in  x >= 8 andalso x < 32 end
  
     fun spillReg S {src, reg, spillLoc, annotations=an} = 
-        let val _ = intSpillCnt := !intSpillCnt + 1;
+        let val _ = inc intSpillCnt
             val {opnd=dstLoc,kind} = getRegLoc(S,an,reg,spillLoc)
             val isMemReg = isMemReg src
             val srcLoc = if isMemReg then I.MemReg src else I.Direct src
@@ -537,7 +540,7 @@ struct
                         reg, spillLoc, annotations=an} = 
         (case getRegLoc(S, an, reg, spillLoc) of
            {opnd=tmp, kind=SPILL_LOC} =>
-            (intSpillCnt := !intSpillCnt + 1;
+            (inc intSpillCnt;
              copy{dst=dst, src=src, tmp=SOME tmp}
             )
          | _ => error "spillCopyTmp"
@@ -547,7 +550,7 @@ struct
                                        annotations=annotations}, a=a}
    
     fun renameR8{instr, fromSrc, toSrc} = 
-        (intRenameCnt := !intRenameCnt + 1;
+        (inc intRenameCnt;
          reloadInstr(instr, fromSrc, I.Direct toSrc)
         )
 
@@ -560,14 +563,14 @@ struct
 	    newReg=NONE}
 	| reload(_, I.KILL _) = error "reload: KILL"
 	| reload(instrAn, instr as I.INSTR _)  = 
-  	 ( intReloadCnt := !intReloadCnt + 1;
+  	 ( inc intReloadCnt;
 	   reloadInstr(annotate(instrAn, instr), reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
   	  ) 
     in reload([], instr)
     end 
 
     fun reloadReg S {dst, reg, spillLoc, annotations=an} = 
-        let val _ = intReloadCnt := !intReloadCnt + 1
+        let val _ = inc intReloadCnt
             val srcLoc = #opnd(getRegLoc(S, an, reg, spillLoc))
             val isMemReg = isMemReg dst
             val dstLoc = if isMemReg then I.MemReg dst else I.Direct dst

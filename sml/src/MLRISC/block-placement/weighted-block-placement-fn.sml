@@ -30,8 +30,9 @@ functor WeightedBlockPlacementFn (
       end)
 
   (* flags *)
-    val dumpBlocks = MLRiscControl.getFlag "dump-block-list"
-    val dumpCFG = MLRiscControl.getFlag "dump-cfg-after-placement"
+    val dumpBlocks = MLRiscControl.mkFlag ("dump-block-list", "whether block list is shown")
+    val dumpCFG = MLRiscControl.mkFlag ("dump-cfg-after-placement",
+					"whether CFG is shown after block placement")
     val dumpStrm = MLRiscControl.debug_stream
 
   (* sequences with constant-time concatenation *)

@@ -16,8 +16,6 @@ Group (../../system/smlnj/internal/cm-lib.cm)
 	signature SAFEIO
 	structure SafeIO
 	structure Seek
-	signature ENVCONFIG
-	structure EnvConfig
 	signature SAY
 	structure Say
 	structure StdConfig
@@ -39,7 +37,6 @@ is
 	pidset.sml
 	safeio.sml
 	seek.sml
-	envcfg.sml
 	stdcfg.sml
 	say.sml
 	autodir.sml

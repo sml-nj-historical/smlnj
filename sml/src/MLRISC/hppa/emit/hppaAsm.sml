@@ -21,10 +21,7 @@ struct
    structure P  = S.P
    structure Constant = I.Constant
    
-   val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
-   val show_region  = MLRiscControl.getFlag "asm-show-region"
-   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
-   val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
+   open AsmFlags
    
    fun error msg = MLRiscErrorMsg.error("HppaAsmEmitter",msg)
    

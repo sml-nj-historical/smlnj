@@ -94,8 +94,8 @@ struct
 
    val name = "X86 floating point rewrite"
 
-   val debugOn = MLRiscControl.getFlag "x86-fp-debug"
-   val traceOn = MLRiscControl.getFlag "x86-fp-trace"
+   val debugOn = MLRiscControl.mkFlag ("x86-fp-debug", "x86 fp debug mode")
+   val traceOn = MLRiscControl.mkFlag ("x86-fp-trace", "x86 fp trace mode")
 
    fun error msg = MLRiscErrorMsg.error("X86FP",msg)
    fun pr msg = TextIO.output(!MLRiscControl.debug_stream,msg)

@@ -45,6 +45,7 @@ signature RANDOM
 signature SCAN
 signature SPLAY_TREE
 signature UREF
+signature CONTROLS
 
 structure ArrayQSort
 structure Atom
@@ -94,6 +95,7 @@ structure URef
 structure WordHashTable
 structure WordRedBlackMap
 structure WordRedBlackSet
+structure Controls
 
 functor ArrayQSortFn
 functor BSearchFn
@@ -142,6 +144,8 @@ bit-vector.sml
 bsearch-fn.sml
 char-map-sig.sml
 char-map.sml
+controls.sig
+controls.sml
 dynamic-array-sig.sml
 dynamic-array.sml
 dynamic-array-fn.sml
@@ -223,4 +227,3 @@ uref.sml
 word-hash-table.sml
 word-redblack-map.sml
 word-redblack-set.sml
-

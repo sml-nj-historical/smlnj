@@ -20,7 +20,7 @@ struct
 
    open RA
 
-   val maxBlocks = MLRiscControl.getInt "ra-max-blocks"
+   val maxBlocks = MLRiscControl.mkInt ("ra-max-blocks", "max block count for region-based RA")
 
    (* Main entry point.  
     * All the magic is actually done in the FlowgraphPartitioner module

@@ -55,13 +55,18 @@ struct
   structure WeightedPlacement = 
      WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
 
-  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
+  val placementFlag = MLRiscControl.mkFlag
+			  ("weighted-block-placement",
+			   "whether MLRISC does weigted block placement")
 
-  val blockPlacement = 
-      if !placementFlag then WeightedPlacement.blockPlacement
-      else DefaultPlacement.blockPlacement
+  fun blockPlacement cfg = 
+      if !placementFlag then WeightedPlacement.blockPlacement cfg
+      else DefaultPlacement.blockPlacement cfg
 
-  val maxIter = MLRiscControl.getInt "variable-length-backpatch-iterations"
+  val maxIter = MLRiscControl.mkInt
+		    ("variable-length-backpatch-iterations",
+		     "number of variable-length backpath iterations")
+
   val _ = maxIter := 40
  
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)

@@ -4,7 +4,7 @@
  *)
 local
     (* turn on "fast-fp"... *)
-    val _ = MLRiscControl.getFlag "x86-fast-fp" := true
+    val _ = MLRiscControl.flag "x86-fast-fp" := true
 in
 structure X86CCallBackend = BackendFn (structure M = X86MC
 				       val cproto_conv = "ccall")

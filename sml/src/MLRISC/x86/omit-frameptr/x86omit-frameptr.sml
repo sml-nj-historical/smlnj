@@ -21,7 +21,8 @@ struct
   structure HT = IntHashTable
   val sp = C.esp
 
-  val dumpCfg = MLRiscControl.getFlag "dump-cfg-after-omit-frame-pointer"
+  val dumpCfg = MLRiscControl.mkFlag ("dump-cfg-after-omit-frame-pointer",
+				      "whether CFG is shown after omit-framepointer phase")
 
   fun error msg = MLRiscErrorMsg.error("X86OmitFramePointer", msg)
 

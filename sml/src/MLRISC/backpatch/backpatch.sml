@@ -30,10 +30,13 @@ struct
   structure WeightedPlacement = 
      WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
 
-  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
-  val blockPlacement = 
-      if !placementFlag then WeightedPlacement.blockPlacement
-      else DefaultPlacement.blockPlacement
+  val placementFlag = MLRiscControl.mkFlag
+	  ("weighted-block-placement",
+	   "whether MLRISC does weigted block placement")
+
+  fun blockPlacement cfg = 
+      if !placementFlag then WeightedPlacement.blockPlacement cfg
+      else DefaultPlacement.blockPlacement cfg
 
   fun error msg = MLRiscErrorMsg.error("BBSched",msg)
 

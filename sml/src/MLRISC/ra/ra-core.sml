@@ -79,9 +79,11 @@ struct
 
   open G 
 
-  val verbose       = MLRiscControl.getFlag "ra-verbose"
-  val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
-  val ra_spill_prop = MLRiscControl.getCounter "ra-spill-propagation"
+  val verbose       = MLRiscControl.mkFlag ("ra-verbose", "RA chattiness")
+  val ra_spill_coal = MLRiscControl.mkCounter ("ra-spill-coalescing",
+					       "RA spill coalescing counter")
+  val ra_spill_prop = MLRiscControl.mkCounter ("ra-spill-propagation",
+					       "RA spill propagation counter")
 
 (*
   val good_briggs   = MLRiscControl.getCounter "good-briggs"

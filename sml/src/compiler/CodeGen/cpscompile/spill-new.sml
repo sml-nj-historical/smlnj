@@ -114,8 +114,9 @@ struct
   structure LV  = LambdaVar
   structure H   = IntHashTable     (* For mapping from lvar *)
 
-  val debug_cps_spill = Control.MLRISC.getFlag "debug-cps-spill"
-  val debug_cps_spill_info = Control.MLRISC.getFlag "debug-cps-spill-info"
+  val debug_cps_spill = Control.MLRISC.mkFlag ("debug-cps-spill", "CPS spill debug mode")
+  val debug_cps_spill_info = Control.MLRISC.mkFlag ("debug-cps-spill-info",
+						    "CPS spill info debug mode")
 
   infix 6 \/ 
   infix 7 /\
@@ -407,7 +408,7 @@ struct
          } 
       exception LvarInfo
 
-      val () = if !debug_cps_spill_info 
+      val () = if !debug_cps_spill_info
                then pr "CPS Spill: linearScan\n" else ()
 
       val lvarInfo = H.mkTable(32,LvarInfo)
@@ -909,7 +910,7 @@ struct
            *)
       val body = createSpillRecord(numSpills, body)
 
-      val () = if !debug_cps_spill_info 
+      val () = if !debug_cps_spill_info
                then pr("CPS Spill: linearScan done "^i2s numSpills^" spilled\n")
                else ()
 

@@ -21,12 +21,30 @@ local
 in
 
 signature BTRACE = sig
+    val enabled : bool ref
     val instrument :
 	(Symbol.symbol -> bool) ->	(* isSpecial *)
 	SE.staticEnv * A.dec CompInfo.compInfo -> A.dec -> A.dec
 end
 
 structure BTrace :> BTRACE = struct
+
+    val enabled = let
+	val m = Controls.module { name = "instrumentation",
+				  priority = [10, 1],
+				  obscurity = 1,
+				  prefix = "compiler-",
+				  default_suffix = NONE,
+				  mk_ename = NONE }
+	val r = Controls.registry m { tname = "bool",
+				      parse = Bool.fromString,
+				      show = Bool.toString }
+    in
+	Controls.new_ref r { stem = "btrace-mode",
+			     descr = "backtrace instrumentation mode",
+			     fallback = false }
+	
+    end
 
     fun impossible s = EM.impossible ("BTrace: " ^ s)
 
@@ -331,7 +349,7 @@ structure BTrace :> BTRACE = struct
     end
 
     fun instrument isSpecial params d =
-	if SMLofNJ.Internals.BTrace.mode NONE then
+	if !enabled then
 	    instrument0 isSpecial params d
 	    handle NoCore => d		(* this takes care of core.sml *)
 	else d

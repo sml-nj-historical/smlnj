@@ -278,8 +278,8 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } = let
-	val { name, mkpath, opts = oto, derived, ... } : spec = spec
+    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } =
+    let val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
 	val kw_setup = "setup"

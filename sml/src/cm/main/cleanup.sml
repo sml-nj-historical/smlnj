@@ -9,9 +9,7 @@ structure Cleanup = struct
     local
 	structure C = SMLofNJ.Internals.CleanUp
 	val label = "CM-Cleanup"
-	fun atInit initPaths _ =
-	    (EnvConfig.init ();
-	     initPaths ())
+	fun atInit initPaths _ = (Controls.init (); initPaths ())
     in
 	fun install initPaths =
 	    ignore (C.addCleaner (label, [C.AtInit], atInit initPaths))

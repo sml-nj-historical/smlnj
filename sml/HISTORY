@@ -13,6 +13,65 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/03/07 16:15:00 EST
+Tag: blume-20020307-controls
+Description:
+
+This is a very large but mostly boring patch which makes (almost)
+every tuneable compiler knob (i.e., pretty much everything under
+Control.* plus a few other things) configurable via both the command
+line and environment variables in the style CM did its configuration
+until now.
+
+Try starting sml with '-h' (or, if you are brave, '-H')
+
+To this end, I added a structure Controls : CONTROLS to smlnj-lib.cm which
+implements the underlying generic mechanism.
+
+The interface to some of the existing such facilities has changed somewhat.
+For example, the MLRiscControl module now provides mkFoo instead of getFoo.
+(The getFoo interface is still there for backward-compatibility, but its
+use is deprecated.)
+
+The ml-build script passes -Cxxx=yyy command-line arguments through so
+that one can now twiddle the compiler settings when using this "batch"
+compiler.
+
+TODO items:
+
+We should go through and throw out all controls that are no longer
+connected to anything.  Moreover, we should go through and provide
+meaningful (and correct!) documentation strings for those controls
+that still are connected.
+
+Currently, multiple calls to Controls.new are accepted (only the first
+has any effect).  Eventually we should make sure that every control
+is being made (via Controls.new) exactly once.  Future access can then
+be done using Controls.acc.
+
+Finally, it would probably be a good idea to use the getter-setter
+interface to controls rather than ref cells.  For the time being, both
+styles are provided by the Controls module, but getter-setter pairs are
+better if thread-safety is of any concern because they can be wrapped.
+
+*****************************************
+
+One bug fix: The function blockPlacement in three of the MLRISC
+backpatch files used to be hard-wired to one of two possibilities at
+link time (according to the value of the placementFlag).  But (I
+think) it should rather sense the flag every time.
+
+*****************************************
+
+Other assorted changes (by other people who did not supply a HISTORY entry):
+
+1. the cross-module inliner now works much better (Monnier)
+2. representation of weights, frequencies, and probabilities in MLRISC
+   changed in preparation of using those for weighted block placement
+   (Reppy, George)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/03/07 14:44:24 EST 2002
 Tag: george-20020307-weighted-block-placement

@@ -38,7 +38,6 @@ signature INTERNALS =
 				   report: unit -> unit -> string list },
 			reset: unit -> unit }
 		      -> unit
-	val mode : bool option -> bool	(* turn annotation pass on/off *)
 	val report : unit -> unit -> string list
 	val bthandle : { work : unit -> 'a,
 			 hdl : exn * string list -> 'a } -> 'a

@@ -13,8 +13,10 @@ struct
 
   open G RACore
 
-  val ra_spill_coal = MLRiscControl.getCounter "ra-spill-coalescing"
-  val ra_spill_prop = MLRiscControl.getCounter "ra-spill-propagation"
+  val ra_spill_coal = MLRiscControl.mkCounter ("ra-spill-coalescing",
+					       "RA spill coalesce count")
+  val ra_spill_prop = MLRiscControl.mkCounter ("ra-spill-propagation",
+					       "RA spill propagation count")
 
   local
 

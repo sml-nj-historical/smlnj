@@ -172,26 +172,27 @@ struct
    * This flag controls whether extra MLRISC optimizations should be
    * performed.  By default, this is off.
    *)
-  val mlrisc   = Control.MLRISC.getFlag "mlrisc"
+  val mlrisc   = Control.MLRISC.mkFlag ("mlrisc", "whether to do MLRISC optimizations")
 
   (* 
    * If this flag is on then annotate the registers with GC type info.  
    * Otherwise use the default behavior.
    *)
-  val gctypes  = Control.MLRISC.getFlag "mlrisc-gc-types"
+  val gctypes  = Control.MLRISC.mkFlag ("mlrisc-gc-types", "whether to use GC type info")
 
   (*
    * If this flag is on then perform optimizations before generating gc code. 
    * If this flag is on then gctypes must also be turned on!
    * Otherwise use the default behavior.
    *)
-  val gcsafety = Control.MLRISC.getFlag "mlrisc-gcsafety"
+  val gcsafety = Control.MLRISC.mkFlag ("mlrisc-gcsafety",
+					"whether to optimize before generating GC code")
 
   (*
    * If this flag is on then split the entry block.
    * This should be on for SSA optimizations. 
    *)
-  val splitEntry = Control.MLRISC.getFlag "split-entry-block"
+  val splitEntry = Control.MLRISC.mkFlag ("split-entry-block", "whether to split entry block")
 
   (*
    * This dummy annotation is used to get an empty block  

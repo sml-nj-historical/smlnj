@@ -7,24 +7,62 @@
  *)
 structure StdConfig = struct
     local
-	val bool = EnvConfig.new Bool.fromString
-	val int = EnvConfig.new Int.fromString
-	val string = EnvConfig.new SOME
-	val stringoptthunk = EnvConfig.new (fn s => SOME (fn () => SOME s))
+	structure C = Controls
+
+	val m = C.module { name = "Compilation Manager (CM)",
+			   priority = [10, 2],
+			   obscurity = 2,
+			   prefix = "cm-",
+			   default_suffix = SOME "-default",
+			   mk_ename = NONE }
+
+	fun new typespec individual = let
+	    val r = C.registry m typespec
+	in
+	    C.new r individual
+	end
+
+	val bool = new C.bool
+	val int = new C.int
+	val string = new C.string
+	val stringoptthunk = new { tname = "string",
+				   parse = fn s => SOME (fn () => SOME s),
+				   show = fn th =>
+					     (case th () of
+						  SOME s => s
+						| NONE => "(not set)") }
     in
-	val verbose = bool ("VERBOSE", true)
-	val debug = bool ("DEBUG", false)
-	val keep_going = bool ("KEEP_GOING", false)
-	val pathcfgspec = string ("PATHCONFIG", "/usr/lib/smlnj-pathconfig")
-	val parse_caching = int ("PARSE_CACHING", 100)
+        val verbose =
+	    bool { stem = "verbose", fallback = true,
+		   descr = "CM chattiness" }
+	val debug =
+	    bool { stem = "debug", fallback = false,
+		   descr = "CM debug mode" }
+	val keep_going =
+	    bool { stem = "keep-going", fallback = false,
+		   descr = "whether CM presses on in face of errors" }
+	val pathcfgspec =
+	    string { stem = "pathconfig",
+		     fallback = "/usr/lib/smlnj-pathconfig",
+		     descr = "global path configuration file" }
+	val parse_caching =
+	    int { stem = "parse-caching", fallback = 100,
+		  descr = "limit on parse trees cached" }
 	val local_pathconfig =
-	    stringoptthunk ("LOCAL_PATHCONFIG",
-			    fn () =>
-			      Option.map (fn h => OS.Path.concat
-					   (h, ".smlnj-pathconfig"))
-			                 (OS.Process.getEnv "HOME"))
-	val warn_obsolete = bool ("WARN_OBSOLETE", true)
-	val conserve_memory = bool ("CONSERVE_MEMORY", false)
-	val generate_index = bool ("GENERATE_INDEX", false)
+	    stringoptthunk { stem = "local-pathconfig",
+			     fallback = fn () =>
+				Option.map (fn h => OS.Path.concat
+						(h, ".smlnj-pathconfig"))
+					   (OS.Process.getEnv "HOME"),
+			     descr = "local path configuration file" }
+	val warn_obsolete =
+	    bool { stem = "warn-obsolete", fallback = true,
+		   descr = "whether CM accepts old-style syntax" }
+	val conserve_memory =
+	    bool { stem = "conserve-memory", fallback =false,
+		   descr = "CM memory stinginess" }
+	val generate_index =
+	    bool { stem = "generate-index", fallback = false,
+		   descr = "whether CM generates library indices" }
     end
 end
