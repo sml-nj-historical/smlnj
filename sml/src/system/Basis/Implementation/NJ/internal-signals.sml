@@ -210,6 +210,8 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 		  else if (isMasked s2)
 		    then computeNewMask (s1::r1, r2, (sigToConst s2)::masked, nMasked+1, nNew)
 		    else computeNewMask (s1::r1, r2, masked, nMasked, nNew)
+	    | computeNewMask (_::_, [], _, _, _) =
+	        raise Fail "computeNewMask: bogus mask (impossible)"
 	  in
 	    computeNewMask (sigs, !sigList, [], 0, 0)
 	  end
@@ -249,6 +251,8 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 		  else if (isMasked s2)
 		    then computeNewMask (s1::r1, r2, (sigToConst s2)::masked, nMasked+1, nNew)
 		    else computeNewMask (s1::r1, r2, masked, nMasked, nNew)
+	    | computeNewMask (_::_, [], _, _, _) =
+	        raise Fail "unmaskSignals: bogus mask (impossible)"
 	  in
 	    computeNewMask (sigs, !sigList, [], 0, 0)
 	  end

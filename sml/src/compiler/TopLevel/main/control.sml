@@ -328,7 +328,7 @@ structure Control : CONTROL =
 		   | Default _ => a)
 	end
     end
-    val btrace = BTrace.enabled
+    val tdp_instrument = TDPInstrument.enabled
 
     end (* local *)
   end

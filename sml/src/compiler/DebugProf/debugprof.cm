@@ -11,7 +11,7 @@ Group (../../system/smlnj/viscomp/debugprof.cm)
 	structure TProf
 	structure SProf
 	structure BTImp
-	structure BTrace
+	structure TDPInstrument
 
 	functor ProfileFn
 	functor ProfEnvFn
@@ -23,13 +23,15 @@ is
 	profile/sprof.sml
 	profile/tell-env.sml
 	profile/tprof.sml
-	profile/btrace.sml
+	profile/tdp-instrument.sml
 	profile/btimp.sml
 
 	types/reconstruct.sml
 
 	$smlnj/viscomp/basics.cm
 	$smlnj/viscomp/elabdata.cm
+
+	$smlnj/init/init.cmi : cm
 
 	$/smlnj-lib.cm
 	$/controls-lib.cm

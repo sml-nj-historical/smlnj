@@ -2,7 +2,7 @@
  * (Sample) Implementation of a plug-in module for back-tracing.
  * This module hooks itself into the core environment so that
  * btrace-annotated (see btrace.sml) code will invoke the provided
- * functions "add", "push", "save", and "report".
+ * functions "enter", "push", "save", and "report".
  *
  * This module keeps track of the dynamic call-chain of annotated modules
  * (those that were compiled with SMLofNJ.Internals.BTrace.mode set to true).
@@ -60,10 +60,10 @@ end = struct
 
     fun reserve n = !next before next := !next + n
 
-    fun register (module, fct, s) =
-	names := M.insert (!names, module + fct, s)
+    fun register (module, _: int, id, s) =
+	names := M.insert (!names, module + id, s)
 
-    fun add (module, fct) = let
+    fun enter (module, fct) = let
 	val i = module + fct
 	val (from, front, back) =
 	    case !cur of
@@ -192,7 +192,7 @@ end = struct
 	    { corefns = { save = save,
 			  push = push,
 			  nopush = nopush,
-			  add = add,
+			  enter = enter,
 			  reserve = reserve,
 			  register = register,
 			  report = report },

@@ -204,7 +204,7 @@ sig
 	val get' : localsetting -> int option
 	val parse : string -> globalsetting option
 	val show : globalsetting -> string
-  end
+    end
 
-    val btrace : bool ref
+    val tdp_instrument : bool ref
 end

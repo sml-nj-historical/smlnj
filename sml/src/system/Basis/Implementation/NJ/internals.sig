@@ -32,9 +32,9 @@ signature INTERNALS =
 	val install : { corefns: { save: unit -> unit -> unit,
 				   push: int * int -> unit -> unit,
 				   nopush: int * int -> unit,
-				   add: int * int -> unit,
+				   enter: int * int -> unit,
 				   reserve: int -> int,
-				   register: int * int * string -> unit,
+				   register: int * int * int * string -> unit,
 				   report: unit -> unit -> string list },
 			reset: unit -> unit,
 			mode: bool option -> bool }
@@ -52,6 +52,10 @@ signature INTERNALS =
 	 * IN FULL by bthandle; intervening handlers and re-raisers are
 	 * completely ignored. *)
 	val trigger : unit -> 'a
+	(* pre-defined ID kinds: *)
+	val idk_entry_point   : int
+	val idk_non_tail_call : int
+	val idk_tail_call     : int
     end
 
   end;

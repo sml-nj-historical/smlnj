@@ -29,12 +29,12 @@ structure Internals : INTERNALS =
 	in
 	    fun install { corefns, reset, mode } =
 		(hook := { reset = reset, mode = mode };
-		 Core.bt_install corefns)
+		 Core.tdp_install corefns)
 	    fun reset () = #reset (!hook) ()
 	    fun mode x = #mode (!hook) x
 	end
-	fun report () = Core.bt_report () ()
-	fun save () = Core.bt_save () ()
+	fun report () = Core.tdp_report () ()
+	fun save () = Core.tdp_save () ()
 	local
 	    exception BTraceTriggered of unit -> string list
 	in
@@ -55,6 +55,9 @@ structure Internals : INTERNALS =
 		       end
 	    end
 	    fun trigger () = raise BTraceTriggered (report ())
+	    val idk_entry_point = Core.tdp_idk_entry_point
+	    val idk_tail_call = Core.tdp_idk_tail_call
+	    val idk_non_tail_call = Core.tdp_idk_non_tail_call
 	end
     end
 

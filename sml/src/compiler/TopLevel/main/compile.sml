@@ -75,7 +75,7 @@ struct
     fun instrument {source, senv, compInfo} =
 	SProf.instrumDec (senv, compInfo) source 
 	o TProf.instrumDec InlInfo.isPrimCallcc (senv, compInfo)
-	o BTrace.instrument isSpecial (senv, compInfo)
+	o TDPInstrument.instrument isSpecial (senv, compInfo)
     end
 
     val instrument =

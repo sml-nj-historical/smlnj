@@ -14,6 +14,30 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/10/13 16:34:00 CDT
+Tag: blume-20041013-tdp
+Description:
+
+Some rationalization of names:
+
+   structure BTrace -> structure TDPInstrument
+   etc.
+
+This is is preparation of using the original back-trace
+instrumentation for other purposes.  "TDP" stands for
+Trace/Debug/Profile.
+
+The control flag controlling whether instrumentation is on or off is now
+registered under a different name, so instead of running sml as
+
+ sml -Cinstrument.btrace-mode=true
+
+one has to say
+
+ sml -Ctdp.instrument=true
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/11 16:37:00 CDT
 Tag: blume-20041011-regions
 Description:
