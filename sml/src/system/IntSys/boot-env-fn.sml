@@ -18,6 +18,11 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 
     exception BootFailure
 
+    (* To be able to use ml-yacc and ml-lex at -rebuild time it is necessary
+     * to force their plugins to be _always_ plugged in.  We achieve this
+     * by simply mentioning the structure names here. *)
+    structure YaccTool = YaccTool and LexTool = LexTool
+
     structure DynE = DynamicEnv
     structure Print = GenericVC.Control.Print
 

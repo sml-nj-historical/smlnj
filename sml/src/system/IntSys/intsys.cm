@@ -27,13 +27,16 @@ is
 	full-cm.cm
 	host-cmb.cm
 
-	(* This stuff should eventually go away, i.e., be moved into the
-	 * corresponding source trees of ML-Yacc, ML-Lex, and ML-Burg. *)
 	cm-tools.cm
+        (* We need the ml-yacc and ml-lex tool plugins here. They must
+         * always be "plugged in" because they are needed for -rebuild. *)
 	mlyacc-tool.cm
-	grm-ext.cm
 	mllex-tool.cm
+	grm-ext.cm
 	lex-ext.cm
+        (* Technically, the ml-burg tool is not needed here.  It should
+         * eventually be moved into the ML-Burg source tree and installed
+         * from there. *)
 	mlburg-tool.cm
 	burg-ext.cm
 
