@@ -251,7 +251,23 @@ functor PPCMacOSX_CCalls (
 		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_ARRAY _ =>
 		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
-		  | CTy.C_STRUCT tys' => raise Fail "struct arguments not supported yet"
+		  | CTy.C_STRUCT tys' => let
+		      val sz = IntInf.fromInt(sizeOfStruct tys')
+		      fun assignMem (relOffset, availGPRs, fields) =
+			    if (relOffset < sz)
+			      then let
+				val (loc, availGPRs) = (case availGPRs
+				       of [] => (Stk(wordTy, offset+relOffset), [])
+					| r1::rs => (Reg(wordTy, r1, SOME(offset+relOffset)), rs)
+				      (* end case *))
+				in
+				  assignMem (relOffset+4, availGPRs, loc::fields)
+				end
+			      else assign (tys, offset+relOffset, availGPRs, availFPRs,
+				  Args(List.rev fields) :: layout)
+		      in
+			assignMem (0, availGPRs, [])
+		      end
 		(* end case *))
 	(* assign a GP register and memory for an integer/pointer argument. *)
 	  and assignGPR ({sz, pad, ...}, args, offset, availGPRs, availFPRs, layout) = let
@@ -318,7 +334,26 @@ functor PPCMacOSX_CCalls (
 	    | assignArgs (FStk(ty, off) :: locs, FARG fexp :: args, stms) =
 		assignArgs (locs, args, T.FSTORE(ty, paramAddr off, fexp, stkRg) :: stms)
 	    | assignArgs ((Args locs') :: locs, (ARGS args') :: args, stms) =
-		assignArgs (locs, args, assignArgs(locs', args', stms))
+		raise Fail "ARGS constructor is obsolete"
+	    | assignArgs ((Args locs') :: locs, ARG exp :: args, stms) = let
+	      (* MLRISC expression for address inside the struct *)
+		fun addr 0 = T.LOAD(wordTy, exp, memRg)
+		  | addr offset = T.LOAD(wordTy, T.ADD(wordTy, exp, T.LI offset), memRg)
+		fun copy ([], _, stms) = assignArgs(locs, args, stms)
+		  | copy (Reg(ty, r, _) :: locs, offset, stms) =
+		      copy (locs, offset+4, T.MV(ty, r, addr offset)::stms)
+		  | copy (Stk(ty, off) :: locs, offset, stms) = let
+		      val r = C.newReg()
+		      in
+			copy (locs, offset+4,
+			  T.STORE(ty, paramAddr off, T.REG(wordTy, r), stkRg)
+			  :: T.MV(ty, r, addr offset) :: stms)
+		      end
+		  | copy _ = raise Fail "unexpected FReg/FStk/Args in location list"
+		in
+		(* copy data from memory specified by exp to locs' *)
+		  copy (locs', 0, stms)
+		end
 	    | assignArgs _ = error "argument/formal mismatch"
 	  val argSetupCode = List.rev(assignArgs(argLocs, args, []))
 	(* convert the result location to an MLRISC expression list *)
