@@ -2,7 +2,7 @@
 #
 
 # ROOTDIR="../.."
-ROOTDIR="/homes/systems/shao/sml/110.4"
+ROOTDIR="/homes/systems/shao/sml/110.5.1"
 BINDIR=$ROOTDIR/bin
 LIBDIR=$ROOTDIR/lib
 YACCPATH=$BINDIR/ml-yacc
