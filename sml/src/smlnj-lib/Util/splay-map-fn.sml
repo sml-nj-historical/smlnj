@@ -11,8 +11,8 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     structure Key = K
     open SplayTree
 
-    datatype 'a map = 
-        EMPTY
+    datatype 'a map
+      = EMPTY
       | MAP of {
         root : (K.ord_key * 'a) splay ref,
         nobj : int
@@ -21,7 +21,28 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     fun cmpf k (k', _) = K.compare(k',k)
 
     val empty = EMPTY
-    
+ 
+    fun isEmpty EMPTY = true
+      | isEmpty _ = false
+
+  (* return the first item in the map (or NONE if it is empty) *)
+    fun first EMPTY = NONE
+      | first (MAP{root, ...}) = let
+	  fun f (SplayObj{value=(_, value), left=SplayNil, ...}) = SOME value
+	    | f (SplayObj{left, ...}) = f left
+	  in
+	    f (!root)
+	  end
+
+  (* return the first item in the map and its key (or NONE if it is empty) *)
+    fun firsti EMPTY = NONE
+      | firsti (MAP{root, ...}) = let
+	  fun f (SplayObj{value=(key, value), left=SplayNil, ...}) = SOME(key, value)
+	    | f (SplayObj{left, ...}) = f left
+	  in
+	    f (!root)
+	  end
+
 	(* Insert an item.  
 	 *)
     fun insert (EMPTY,key,v) =

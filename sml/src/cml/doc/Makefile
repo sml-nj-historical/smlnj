@@ -24,6 +24,7 @@ HTML_FILES =	$(HTML_DIR)/index-all.html \
 	$(HTML_DIR)/toc.html \
 	$(HTML_DIR)/refman.html \
 	$(HTML_DIR)/basics.html \
+	$(HTML_DIR)/running.html \
 	$(HTML_DIR)/porting.html \
 	$(HTML_DIR)/core-cml.html \
 	$(HTML_DIR)/cml.html \
@@ -38,6 +39,7 @@ HTML_FILES =	$(HTML_DIR)/index-all.html \
 
 INFO_FILES =	$(INFO_DIR)/refman.info \
 	$(INFO_DIR)/basics.info \
+	$(INFO_DIR)/running.info \
 	$(INFO_DIR)/porting.info \
 	$(INFO_DIR)/core-cml.info \
 	$(INFO_DIR)/cml.info \
@@ -52,6 +54,7 @@ INFO_FILES =	$(INFO_DIR)/refman.info \
 
 LATEX_FILES =	$(LATEX_DIR)/refman.tex \
 	$(LATEX_DIR)/basics.tex \
+	$(LATEX_DIR)/running.tex \
 	$(LATEX_DIR)/porting.tex \
 	$(LATEX_DIR)/core-cml.tex \
 	$(LATEX_DIR)/cml.tex \
@@ -66,6 +69,7 @@ LATEX_FILES =	$(LATEX_DIR)/refman.tex \
 
 PROOF_FILES =	$(PROOF_DIR)/refman.tex \
 	$(PROOF_DIR)/basics.tex \
+	$(PROOF_DIR)/running.tex \
 	$(PROOF_DIR)/porting.tex \
 	$(PROOF_DIR)/core-cml.tex \
 	$(PROOF_DIR)/cml.tex \
@@ -91,6 +95,9 @@ $(HTML_DIR)/refman.html:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
 
 $(HTML_DIR)/basics.html:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
 	$(HTML_GEN) $(SRC_DIR)/basics.mldoc
+
+$(HTML_DIR)/running.html:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
+	$(HTML_GEN) $(SRC_DIR)/running.mldoc
 
 $(HTML_DIR)/porting.html:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
 	$(HTML_GEN) $(SRC_DIR)/porting.mldoc
@@ -134,6 +141,9 @@ $(INFO_DIR)/refman.info:	$(SRC_DIR)/refman.mldoc $(CONFIG)
 $(INFO_DIR)/basics.info:	$(SRC_DIR)/basics.mldoc $(CONFIG)
 	$(EXTRACT_INFO) $(SRC_DIR)/basics.mldoc
 
+$(INFO_DIR)/running.info:	$(SRC_DIR)/running.mldoc $(CONFIG)
+	$(EXTRACT_INFO) $(SRC_DIR)/running.mldoc
+
 $(INFO_DIR)/porting.info:	$(SRC_DIR)/porting.mldoc $(CONFIG)
 	$(EXTRACT_INFO) $(SRC_DIR)/porting.mldoc
 
@@ -174,6 +184,9 @@ $(LATEX_DIR)/refman.tex:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
 
 $(LATEX_DIR)/basics.tex:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
 	$(LATEX_GEN) $(SRC_DIR)/basics.mldoc
+
+$(LATEX_DIR)/running.tex:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
+	$(LATEX_GEN) $(SRC_DIR)/running.mldoc
 
 $(LATEX_DIR)/porting.tex:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
 	$(LATEX_GEN) $(SRC_DIR)/porting.mldoc
@@ -216,6 +229,9 @@ $(PROOF_DIR)/refman.tex:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
 $(PROOF_DIR)/basics.tex:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
 	$(PROOF) $(SRC_DIR)/basics.mldoc
 
+$(PROOF_DIR)/running.tex:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
+	$(PROOF) $(SRC_DIR)/running.mldoc
+
 $(PROOF_DIR)/porting.tex:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
 	$(PROOF) $(SRC_DIR)/porting.mldoc
 
@@ -254,30 +270,32 @@ clean-info:
 
 clean-latex:
 	rm -f $(LATEX_FILES)
-	rm -f $(LATEX_GEN)/*.aux
-	rm -f $(LATEX_GEN)/*.bbl
-	rm -f $(LATEX_GEN)/*.blg
-	rm -f $(LATEX_GEN)/*.dvi
-	rm -f $(LATEX_GEN)/*.idx
-	rm -f $(LATEX_GEN)/*.ind
-	rm -f $(LATEX_GEN)/*.log
-	rm -f $(LATEX_GEN)/*.ps
-	rm -f $(LATEX_GEN)/*.toc
+	rm -f $(LATEX_DIR)/*.aux
+	rm -f $(LATEX_DIR)/*.bbl
+	rm -f $(LATEX_DIR)/*.blg
+	rm -f $(LATEX_DIR)/*.dvi
+	rm -f $(LATEX_DIR)/*.idx
+	rm -f $(LATEX_DIR)/*.ilg
+	rm -f $(LATEX_DIR)/*.ind
+	rm -f $(LATEX_DIR)/*.log
+	rm -f $(LATEX_DIR)/*.ps
+	rm -f $(LATEX_DIR)/*.toc
 
 clean-proof:
 	rm -f $(PROOF_FILES)
-	rm -f $(PROOF_GEN)/*.aux
-	rm -f $(PROOF_GEN)/*.bbl
-	rm -f $(PROOF_GEN)/*.blg
-	rm -f $(PROOF_GEN)/*.dvi
-	rm -f $(PROOF_GEN)/*.idx
-	rm -f $(PROOF_GEN)/*.ind
-	rm -f $(PROOF_GEN)/*.log
-	rm -f $(PROOF_GEN)/*.ps
-	rm -f $(PROOF_GEN)/*.toc
+	rm -f $(PROOF_DIR)/*.aux
+	rm -f $(PROOF_DIR)/*.bbl
+	rm -f $(PROOF_DIR)/*.blg
+	rm -f $(PROOF_DIR)/*.dvi
+	rm -f $(PROOF_DIR)/*.idx
+	rm -f $(PROOF_DIR)/*.ilg
+	rm -f $(PROOF_DIR)/*.ind
+	rm -f $(PROOF_DIR)/*.log
+	rm -f $(PROOF_DIR)/*.ps
+	rm -f $(PROOF_DIR)/*.toc
 
 clean-html:
 	rm -f $(HTML_FILES)
 
-clean:	clean-html clean-info clean-latex clean-prrof
+clean:	clean-html clean-info clean-latex clean-proof
 

@@ -16,6 +16,9 @@ signature ORD_MAP =
     val empty : 'a map
 	(* The empty map *)
 
+    val isEmpty : 'a map -> bool
+	(* Return true if and only if the map is empty *)
+
     val insert  : 'a map * Key.ord_key * 'a -> 'a map
     val insert' : ((Key.ord_key * 'a) * 'a map) -> 'a map
 	(* Insert an item. *)
@@ -27,6 +30,10 @@ signature ORD_MAP =
 	(* Remove an item, returning new map and value removed.
          * Raises LibBase.NotFound if not found.
 	 *)
+
+    val first : 'a map -> 'a option
+    val firsti : 'a map -> (Key.ord_key * 'a) option
+	(* return the first item in the map (or NONE if it is empty) *)
 
     val numItems : 'a map ->  int
 	(* Return the number of items in the map *)

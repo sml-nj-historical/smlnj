@@ -66,8 +66,21 @@ structure IntBinaryMap :> ORD_MAP where type Key.ord_key = Int.int =
           right : 'a map
 	}
 
+    fun isEmpty E = true
+      | isEmpty _ = false
+
     fun numItems E = 0
       | numItems (T{cnt,...}) = cnt
+
+  (* return the first item in the map (or NONE if it is empty) *)
+    fun first E = NONE
+      | first (T{value, left=E, ...}) = SOME value
+      | first (T{left, ...}) = first left
+
+  (* return the first item in the map and its key (or NONE if it is empty) *)
+    fun firsti E = NONE
+      | firsti (T{key, value, left=E, ...}) = SOME(key, value)
+      | firsti (T{left, ...}) = firsti left
 
 local
     fun N(k,v,E,E) = T{key=k,value=v,cnt=1,left=E,right=E}

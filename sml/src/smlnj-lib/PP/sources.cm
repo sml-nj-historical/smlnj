@@ -14,9 +14,12 @@ Library
 
   functor PPDescFn
   functor PPStreamFn
+  functor PPDebugFn
 
   structure SimpleTextIODev
   structure HTMLDev
+
+  structure StringToken
 
 is
   src/sources.cm

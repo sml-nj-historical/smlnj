@@ -32,6 +32,10 @@ GRAPHICS UTILITIES
     [04/07/97]
 
 LIBRARY CHANGES
+  - Fixed bug in ICCC signature, where the wrong type name was being used
+    for windows in some places.
+    [05/19/99]
+
   - Fixed a bug introduced in SML/NJ 109.30, where the open connection
     request had bogus data in it.
     [08/11/97]

@@ -15,6 +15,17 @@ functor ListMapFn (K : ORD_KEY) : ORD_MAP =
 
     val empty = []
 
+    fun isEmpty [] = true
+      | isEmpty _ = false
+
+  (* return the first item in the map (or NONE if it is empty) *)
+    fun first [] = NONE
+      | first ((_, value)::_) = SOME value
+
+  (* return the first item in the map and its key (or NONE if it is empty) *)
+    fun firsti [] = NONE
+      | firsti ((key, value)::_) = SOME(key, value)
+
     fun insert (l, key, item) = let
 	  fun f [] = [(key, item)]
 	    | f ((elem as (key', _))::r) = (case Key.compare(key, key')

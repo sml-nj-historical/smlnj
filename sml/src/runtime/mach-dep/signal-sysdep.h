@@ -348,7 +348,7 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 
 #  if defined(OPSYS_LINUX)
     /** X86, LINUX **/
-#    ifndef _SIGCONTEXT_H
+#    if (!defined(_SIGCONTEXT_H) && !defined(sigcontext_struct))
       /* older versions of Linux don't define this in <signal.h> */
 	struct sigcontext {
 	    unsigned short gs, __gsh;
@@ -374,7 +374,7 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 	    unsigned long oldmask;
 	    unsigned long cr2;
 	};
-#    endif /* !_SIGCONTEXT_H */
+#    endif
 
 #define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */

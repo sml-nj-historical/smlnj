@@ -10,6 +10,12 @@
        @FILE "trace-cml"
     }
   }
+  {"running"; "Porting old programs";
+    @SECTION "Running \|CML\| programs" {
+      @SECTION "Using the compilation manager" {}
+      @SECTION "Thecml-cmcommand" {}
+    }
+  }
   {@EMPTY "core-cml"; "Core CML Reference";
     @SECTION "Core CML reference" {
        @FILE "cml"
@@ -32,6 +38,7 @@
   }
   {@EMPTY "basics"; "Basics";
     @SECTION "Basics" {
+       @FILE "running"
        @FILE "porting"
     }
   }
@@ -42,6 +49,8 @@
      @FILE "cml-lib"
   }
   {"mailbox"; "The Mailbox structure";}
+@LABELS
+  {"sec:using-cm"; "running"}
 @SIGNATURE CML_OS_IO "os-io" {
   @VALS 
     pollEvt

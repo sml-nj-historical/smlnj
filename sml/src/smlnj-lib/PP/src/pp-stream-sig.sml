@@ -49,5 +49,7 @@ signature PP_STREAM =
     val onNewline : stream -> unit -> unit
 	(* the command is executed iff it is preceeded by a newline *)
 
+    val control : stream -> (device -> unit) -> unit
+
   end
 

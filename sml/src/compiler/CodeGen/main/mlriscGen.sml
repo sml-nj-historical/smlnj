@@ -90,7 +90,6 @@ struct
 
     fun genCluster(cluster) = let
       val _ = if !Control.debugging then app PPCps.printcps0 cluster else () 
-
       val sizeOfCluster = length cluster
 
       (* per-cluster tables *)
@@ -240,11 +239,21 @@ struct
       end
 
       fun updtHeapPtr(hp) = let
-	fun advBy hp = emit(M.MV(allocptrR, M.ADD(C.allocptr, M.LI hp)))
+	fun advBy hp =			
+	  emit(M.MV(allocptrR, M.ADD(C.allocptr, M.LI hp)))
       in
 	(* Keep allocation pointer aligned on odd boundary *)
-	(* Note: We have accounted for the extra space this eats up in 
-	 *    limit.sml
+
+	(* 
+	 * If the allocation pointer didn't need alignment in the
+	 * first place, then this just chews up an extra word 
+	 * unnecessarily. This may be significant as updtHeapPtr
+	 * is called after every trapping instruction.
+	 *
+	 * The right thing to do is to add another parameter to the
+	 * gen function saying if the allocation pointer should be
+	 * kept aligned; I am not going to do this unless the wasted
+	 * space really is a problem.
 	 *)
 	if hp = 0 then () 
         else if Word.andb(Word.fromInt hp, 0w4) <> 0w0 then advBy(hp+4)
@@ -1153,6 +1162,9 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.15  1999/04/16 14:53:01  george
+ *   changes to support new x86 code generator
+ *
  * Revision 1.14  1999/03/22 17:22:32  george
  *   Changes to support new GC API
  *

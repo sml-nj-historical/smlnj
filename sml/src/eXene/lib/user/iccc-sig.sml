@@ -111,12 +111,12 @@ signature ICCC =
   (* an abstract interface to a property on a window *)
     type property
 
-    val property : (Window.window * atom) -> property
+    val property : (EXB.window * atom) -> property
 	(* return the abstract representation of the named property on
 	 * the specified window.
 	 *)
 
-    val unusedProperty : Window.window -> property
+    val unusedProperty : EXB.window -> property
 	(* generate a property on the specified window that is guaranteed
 	 * to be unused.  Note that once this property has been "deleted"
 	 * its name may be reused.
@@ -125,7 +125,7 @@ signature ICCC =
 	 * are not using.
 	 *)
 
-    val mkProperty : (Window.window * prop_val) -> property
+    val mkProperty : (EXB.window * prop_val) -> property
 	(* create a new property initialized to the given value *)
 
     val nameOfProp : property -> atom
@@ -202,7 +202,7 @@ signature ICCC =
 
   (** Selection owner operations **)
 
-    val acquireSelection : (Window.window * atom * EXB.XTime.time)
+    val acquireSelection : (EXB.window * atom * EXB.XTime.time)
 	  -> selection_handle option
 	(* acquire the named selection *)
 
@@ -232,7 +232,7 @@ signature ICCC =
   (** Selection requestor operations **)
 
     val requestSelection : {
-	    win : Window.window,
+	    win : EXB.window,
 	    selection : atom,
 	    target : atom,
 	    property : atom,

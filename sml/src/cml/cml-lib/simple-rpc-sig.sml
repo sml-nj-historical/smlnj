@@ -19,6 +19,11 @@ signature SIMPLE_RPC = sig
 	    entryEvt : 'c -> unit event
 	  }
 
+    val mkRPC_Out : ('a -> ('b * 'c)) -> {
+	    call     : 'a -> 'b,
+	    entryEvt : 'c event
+	  }
+
     val mkRPC_InOut : (('a * 'c) -> ('b * 'd)) -> {
 	    call     : 'a -> 'b,
 	    entryEvt : 'c -> 'd event

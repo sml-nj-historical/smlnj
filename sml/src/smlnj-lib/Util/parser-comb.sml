@@ -36,7 +36,7 @@ structure ParserComb : PARSER_COMB =
     fun seq (p1, p2) = seqWith (fn x => x) (p1, p2)
 
     fun bind (p1, p2') getc strm = (case (p1 getc strm)
-	   of SOME(t1, strm1) => p2' t1 getc strm
+	   of SOME(t1, strm1) => p2' t1 getc strm1
 	    | NONE => NONE
 	  (* end case *))
 
