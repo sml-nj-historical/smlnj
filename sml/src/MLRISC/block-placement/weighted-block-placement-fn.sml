@@ -230,30 +230,31 @@ functor WeightedBlockPlacementFn (
 		end
 	  val blocks = List.foldl addChain [] chains
 	  fun updEdge (CFG.EDGE{w, a, ...}, k) = CFG.EDGE{w=w, a=a, k=k}
-	  fun flipJmp (insns as ref(i::r), lab) =
-		insns := IP.negateConditional(i, lab) :: r
-	  val setEdges = #set_out_edges graph
+	  fun updJmp f (insns as ref(i::r)) = insns := f i :: r
+	  fun flipJmp (insns, lab) =
+		updJmp (fn i => IP.negateConditional(i, lab)) insns
+	(* set to true if we change anything *)
+	  val changed = ref false
+	  val setEdges = let
+		val set = #set_out_edges graph
+		in
+		  fn arg => (changed := true; set arg)
+		end
 	(* map a block ID to a label *)
-	  fun labelOf blkId = (case #node_info graph blkId
-		 of CFG.BLOCK{labels=ref(lab::_), ...} => lab
-		  | CFG.BLOCK{labels, ...} => let
-		      val lab = Label.anon()
-		      in
-			labels := [lab];
-			lab
-		      end
-		(* end case *))
+	  val labelOf = CFG.labelOf cfg
 	(* patch the blocks so that unconditional jumps to the immediate successor
 	 * are replaced by fall-through edges and conditional jumps to the immediate
 	 * successor are negated.  Remember that we cannot fall through to the exit
 	 * block!
 	 *)
 	  fun patch (
-		(blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, ...}),
-		(next as (nextId, _)) :: rest
+		nd as (blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, freq, ...}),
+		(next as (nextId, _)) :: rest,
+		l
 	      ) = (
 		case #out_edges graph blkId
-		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (case (dst = nextId, k)
+		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (
+		      case (dst = nextId, k)
 		       of (false, CFG.FALLSTHRU) => (
 			  (* rewrite edge as JUMP and add jump insn *)
 			    setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
@@ -267,31 +268,68 @@ functor WeightedBlockPlacementFn (
 				insns := tl(!insns))
 			      else () (* do not rewrite jumps to STOP block *)
 			| _ => ()
-		      (* end case *))
+		      (* end case *);
+		      patch (next, rest, nd::l))
 		  | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
 		      (_, dst2, e2)
-		    ] => (case (dst1 = nextId, b)
-		       of (true, true) => (
+		    ] => (case (dst1 = nextId, dst2 = nextId, b)
+		       of (false, false, _) => let
+			  (* here, we have to introduce a new block that
+			   * jumps to the false target.
+			   *)
+			    fun rewrite (trueId, trueE, falseId, falseE) = let
+				  val CFG.EDGE{w, a, ...} = falseE
+				  val nd' as (id, CFG.BLOCK{insns=i, ...}) =
+					CFG.newNode cfg (!w)
+				  in
+				  (* initialize the new block *)
+				    i := [IP.jump(labelOf falseId)];
+				    setEdges (id, [
+					(id, falseId, CFG.EDGE{
+					  w = ref(!w), a = ref[], k=CFG.JUMP})
+				      ]);
+				  (* rewrite the out edges of the old block *)
+				    setEdges (blkId, [
+					(blkId, trueId, trueE),
+					(blkId, id, CFG.EDGE{
+					    k=CFG.BRANCH false, w=w, a=a
+					  })
+				      ]);
+				  (* rewrite the old jump instruction *)
+				    updJmp (fn i =>
+				      IP.setBranchTargets{
+					  i=i, t=labelOf trueId, f=labelOf id
+					}) insns;
+				    patch (next, rest, nd'::nd::l)
+				  end
+			    in
+			      if b
+				then rewrite (dst1, e1, dst2, e2)
+				else rewrite (dst2, e2, dst1, e1)
+			    end
+			| (true, _, true) => (
 			    setEdges (blkId, [
 				(blkId, dst1, updEdge(e1, CFG.BRANCH false)),
 				(blkId, dst2, updEdge(e2, CFG.BRANCH true))
 			      ]);
-			    flipJmp (insns, labelOf dst2))
-			| (false, false) => (
+			    flipJmp (insns, labelOf dst2);
+			    patch (next, rest, nd::l))
+			| (false, _, false) => (
 			    setEdges (blkId, [
 				(blkId, dst1, updEdge(e1, CFG.BRANCH true)),
 				(blkId, dst2, updEdge(e2, CFG.BRANCH false))
 			      ]);
-			    flipJmp (insns, labelOf dst1))
-			| _ => ()
+			    flipJmp (insns, labelOf dst1);
+			    patch (next, rest, nd::l))
+			| _ => patch (next, rest, nd::l)
 		      (* end case *))
-		  | _ => ()
-		(* end case *);
-		patch (next, rest))
-	    | patch (_, next::rest) = patch(next, rest)
-	    | patch (_, []) = ()
+		  | _ => patch (next, rest, nd::l)
+		(* end case *))
+	    | patch (nd, next::rest, l) = patch(next, rest, nd::l)
+	    | patch (_, [], l) = List.rev l
+	  val blocks = patch (hd blocks, tl blocks, [])
 	  in
-	    patch (hd blocks, tl blocks);
+	    if !changed then CFG.changed cfg else ();
 	    if !dumpBlocks
 	      then let
 		fun say s = TextIO.output(!dumpStrm, s)
