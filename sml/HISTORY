@@ -13,6 +13,40 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/05 17:24:48 EST 
+Tag: george-20020305-linkage-cluster
+
+In order to support the block placement optimization, the first
+cluster that is generated (called the linkage cluster) contains a jump
+to the entry point for the compilation unit. The linkage cluster
+contains only one function, so block placement will have no effect on
+the linkage cluster itself, but all the other clusters have full
+freedom in the manner in which they reorder blocks or functions.
+
+On the x86 the typical linkage code that is generated is:
+   ----------------------
+	.align 2
+   L0:
+        addl    $L1-L0, 72(%esp)
+        jmp     L0
+
+
+        .align  2
+   L1:
+   ----------------------
+
+72(%esp) is the memory location for the stdlink register. This 
+must contain the address of the CPS function being called. In the
+above example, it contains the address of memory for  L0; before
+calling L1 (the real entry point for the compilation unit), it
+must contain the address for L1, and hence
+
+	addl $L1-L0, 72(%esp)
+
+I have tested this on all architectures except the hppa.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/03 13:20:00 EST
 Tag: leunga-20020303-mlrisc-tools

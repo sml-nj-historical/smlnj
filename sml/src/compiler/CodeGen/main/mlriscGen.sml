@@ -301,6 +301,15 @@ struct
             | _ => addTypBinding(f, CPS.BOGt)
            (*esac*))
 
+      (*
+       * A CPS register may be implemented as a physical 
+       * register or a memory location.  The function assign moves a
+       * value v into a register or a memory location.
+       *)
+      fun assign(M.REG(ty,r), v) = M.MV(ty, r, v)
+	| assign(M.LOAD(ty, ea, mem), v) = M.STORE(ty, ea, v, mem)
+	| assign _ = error "assign"
+
  
       (*
        * Function for generating code for one cluster.
@@ -463,15 +472,6 @@ struct
                              M.LI(IntInf.fromInt
                                   (k-MachineSpec.constBaseRegOffset)))))
           in  markPTR e end
-
-          (*
-           * A CPS register may be implemented as a physical 
-           * register or a memory location.  The function assign moves a
-           * value v into a register or a memory location.
-           *)
-          fun assign(M.REG(ty,r), v) = M.MV(ty, r, v)
-            | assign(M.LOAD(ty, ea, mem), v) = M.STORE(ty, ea, v, mem)
-            | assign _ = error "assign"
 
           (*
            * The following function looks up the MLTREE expression associated
@@ -2123,8 +2123,27 @@ struct
 	pseudoOp (PB.EXT(CPs.FILENAME file));
 	compile(endCluster NO_OPT)
       end
+
+      fun linkageCluster((fk,f,args,cty,cexp)::_) = let
+	val stream = MLTreeComp.selectInstructions (Flowgen.build ())
+	val TS.S.STREAM{beginCluster, emit, exitBlock, entryLabel, pseudoOp, endCluster, ...} = stream
+	val flab = functionLabel f
+	val lab = Label.anon()
+	val formals = ArgP.standard{fnTy=typmap f, vfp=false, argTys=cty}
+      in
+	  beginCluster 0;
+	  entryLabel lab;
+	  emit(assign(C.stdlink(false), 
+		        M.ADD(ity, C.stdlink(false), 
+			      M.LABEXP(M.SUB(ity, M.LABEL(flab), M.LABEL(lab))))));
+	  emit (M.JMP(M.LABEL flab, [flab]));
+	  exitBlock(formals @ dedicated);
+	  compile(endCluster NO_OPT)
+      end 
+
   in  
     app mkGlobalTables funcs;
+    linkageCluster(funcs);
     app genCluster (Cluster.cluster funcs);
     finishCompilationUnit source
   end (* codegen *)

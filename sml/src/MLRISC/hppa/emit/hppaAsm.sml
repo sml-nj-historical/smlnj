@@ -51,7 +51,7 @@ struct
        fun paren f = (emit "("; f(); emit ")")
        fun defineLabel lab = emit(P.Client.AsmPseudoOps.defineLabel lab^"\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = (tab(); emit("/* " ^ msg ^ " */; nl()"))
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"); nl())
        fun annotation a = comment(Annotations.toString a)
        fun getAnnotations() = error "getAnnotations"
        fun doNothing _ = ()
