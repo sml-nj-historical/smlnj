@@ -1,6 +1,10 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-04-21]
+	The CleanUp.logMailbox function was not protected against
+	interrupts (thanks to David Benson for catching this bug).
+
 [2003-04-09]
 	Changed the name of the directory cml-lib/cm to cml-lib/cm-descr
 	in order to avoid a name conflict with cml-lib/CM which gets

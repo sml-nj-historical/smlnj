@@ -170,7 +170,7 @@ DEBUG*)
 	    (unlogMailbox name) handle Unlog => ();
 	    mboxList := ITEM{key=name, init=f, shut=f} :: (!mboxList)
 	  end
-    val logChannel = fn x => protect logChannel x
+    val logMailbox = fn x => protect logMailbox x
 
     val unlogServer = protect (unlogItem serverList)
 
