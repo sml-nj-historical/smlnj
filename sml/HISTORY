@@ -12,6 +12,22 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/25 17:00:00 EST
+Tag: leunga-20000425-alpha-ra
+Description:
+
+1. Alpha
+
+    PSEUDOARITH was missing in AlphaRewrite.  This causes an endless loop
+in C--. 
+
+2. RA
+
+   Added a flag "ra-dump-size" to print out the size of the flowgraph
+   and the interference graph.
+
+----------------------------------------------------------------------
 Name: Dave MacQueen
 Date: 2000/04/25/
 Tag: dbm-20000425-mlyacc_doc_examples
@@ -36,7 +52,7 @@ changes, however, do not affect SML/NJ at all (the RA is an exception).
 
             s <- t
 
-      no interference edge between s and t are added for this definition of s.
+      no interference edge between s and t is added for this definition of s.
  
    b. I've added two new spill heuristic modules that Fermin and I developed
       (in the new library RA.cm). These are unused in SML/NJ but maybe

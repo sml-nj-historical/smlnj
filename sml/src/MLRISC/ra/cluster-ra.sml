@@ -39,6 +39,8 @@ struct
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
+   val dump_size = MLRiscControl.getFlag "ra-dump-size"
+
    type flowgraph = F.cluster (* flowgraph is a cluster *)
 
    fun error msg = MLRiscErrorMsg.error("ClusterRA", msg)
@@ -368,8 +370,23 @@ struct
        (* 
         * Build the interference graph initially.
         *)
-       fun build(G, cellkind) = buildIt(cellkind, C.lookup regmap, G)
-
+       fun build(G, cellkind) = 
+       let val moves = buildIt(cellkind, C.lookup regmap, G)
+       in  if !dump_size then
+              let val GRAPH{nodes, bitMatrix,...} = G
+                  val insns = 
+                      foldr (fn (F.BBLOCK{insns,...},n) => length(!insns) + n 
+                              | (_,n) => n) 0 blocks
+              in  TextIO.output(!MLRiscControl.debug_stream,
+                        "RA #blocks="^Int.toString N^
+                        " #insns="^Int.toString insns^
+                        " #nodes="^Int.toString(Intmap.elems nodes)^
+                        " #edges="^Int.toString(Core.BM.size(!bitMatrix))^"\n")
+              end
+           else ();
+           moves
+       end
+ 
        (* 
         * Rebuild the interference graph;
         * We'll just do it from scratch for now.

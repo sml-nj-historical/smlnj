@@ -174,7 +174,12 @@ struct
 
      (* Integer branches *)
      rtl BR{lab} = Jmp(%%lab)
-     rtl BSR{lab} = Call(%%lab)
+     rtl BSR{lab,r,defs,uses,mem} = 
+         Call(%%lab) || 
+         $r[r] := ? || 
+         $cellset[defs] := $cellset[uses] ||
+         $m[? :mem] := ($m[? :mem] : #8 bits)
+
      fun branch oper {r,lab} = if oper($r[r], 0) then Jmp(%%lab) else ()
 
      rtl [BEQ, BLBC, BLBS, BGE, BGT, BLE, BLT, BNE] =
@@ -232,7 +237,7 @@ struct
 
      (* Call/return *)
      rtl JSR{r,b,defs,uses,mem} = 
-         Jmp($r[b]) || 
+         Call($r[b]) || 
          $r[r] := ? || 
          $cellset[defs] := $cellset[uses] ||
          $m[? :mem] := ($m[? :mem] : #8 bits)

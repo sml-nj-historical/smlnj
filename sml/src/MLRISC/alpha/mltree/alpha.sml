@@ -1471,7 +1471,7 @@ struct
           | T.BCC(ctrl,cc,lab) => branch(cc,lab,an)
           | T.CALL{funct,targets,defs,uses,cdefs,cuses,region} => 
               call(funct,targets,defs,uses,region,an)
-          | T.RET _ => mark(I.RET{r=zeroR,b=26,d=0},an)
+          | T.RET _ => mark(I.RET{r=zeroR,b=C.returnAddr,d=0},an)
           | T.STORE(8,ea,data,mem) => store8(ea,data,mem,an)
           | T.STORE(16,ea,data,mem) => store16(ea,data,mem,an)
           | T.STORE(32,ea,data,mem) => store(I.STL,ea,data,mem,an)

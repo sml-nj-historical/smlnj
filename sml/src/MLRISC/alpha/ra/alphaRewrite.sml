@@ -63,6 +63,9 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	 I.COPY{dst=dst, src=map replace src, tmp=tmp, impl=impl}
      | I.CALL_PAL{code, def, use } => 
          I.CALL_PAL{code=code, def=def, use=map replace use}
+     | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
+         I.PSEUDOARITH{oper=oper, ra=replace ra, rb=rwOperand rb, rc=rc,
+                       tmps=tmps}
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
      | _ => instr
   end
@@ -127,6 +130,9 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
 	I.COPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl}
      | I.CALL_PAL{code, def, use } => 
          I.CALL_PAL{code=code, def=map rewrite def, use=use}
+     | I.PSEUDOARITH{oper, ra, rb, rc, tmps=(i,f)} => 
+         I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rewrite rc,
+                       tmps=(map rewrite i,f)}
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
      | _ => instr
   end
@@ -153,7 +159,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
         I.JSR{r=r, b=b, d=d, defs=(i, map rewrite f), uses=uses, mem=mem}
      | I.BSR{r, lab, defs=(i,f), uses, mem} => 
         I.BSR{r=r, lab=lab, defs=(i, map rewrite f), uses=uses, mem=mem}
-	
+     | I.PSEUDOARITH{oper, ra, rb, rc, tmps=(i,f)} => 
+         I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rc, tmps=(i,map rewrite f)}
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
      | _  => instr
   end

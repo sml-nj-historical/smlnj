@@ -11,6 +11,7 @@ sig
    structure G  : RA_GRAPH
    structure BM :
    sig 
+      val size   : G.bitMatrix -> int
       val member : G.bitMatrix -> int * int -> bool
       val add    : G.bitMatrix -> int * int -> bool
    end

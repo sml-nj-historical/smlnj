@@ -138,6 +138,7 @@ struct
 
      val _ = init(0, 0)
       *)
+     fun size (BM{elems, ...}) = !elems
 
      fun edges(BM{table=SMALL(ref table, _), ...}) = A.length table
        | edges(BM{table=LARGE(ref table, _), ...}) = A.length table
