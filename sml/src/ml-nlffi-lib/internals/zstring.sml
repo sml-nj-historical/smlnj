@@ -9,8 +9,8 @@
 structure ZString : ZSTRING = struct
     local
 	open C
-	fun get' p = Cvt.ml_uchar (Get.uchar' (Ptr.|*! p))
-	fun set' (p, w) = Set.uchar' (Ptr.|*! p, Cvt.c_uchar w)
+	fun get' p = Get.uchar' (Ptr.|*! p)
+	fun set' (p, w) = Set.uchar' (Ptr.|*! p, w)
 	fun nxt' p = Ptr.|+! S.uchar (p, 1)
     in
         type 'c zstring = (uchar, 'c) ptr

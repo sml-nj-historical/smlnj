@@ -20,7 +20,7 @@ structure AstToSpec = struct
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
-    fun build (bundle, sizes: Sizes.sizes, cfiles, allSU, eshift) = let
+    fun build (bundle, sizes: Sizes.sizes, cfiles, match, allSU, eshift) = let
 
 	val curLoc = ref "?"
 
@@ -41,7 +41,8 @@ structure AstToSpec = struct
 
 	fun isThisFile SourceMap.UNKNOWN = false
 	  | isThisFile (SourceMap.LOC { srcFile, ... }) =
-	    List.exists (fn f => f = srcFile) cfiles
+	    List.exists (fn f => f = srcFile) cfiles orelse
+	    match srcFile
 
 (*
 	fun isPublicName "" = false
@@ -91,7 +92,7 @@ structure AstToSpec = struct
 	val nexttag = ref 0
 	val tags = Tidtab.uidtab () : string Tidtab.uidtab
 
-	fun tagname (NONE, tid) =
+	fun tagname (NONE, NONE, tid) =
 	    (case Tidtab.find (tags, tid) of
 		 SOME s => s
 	       | NONE => let
@@ -102,7 +103,9 @@ structure AstToSpec = struct
 		     Tidtab.insert (tags, tid, s);
 		     s
 		 end)
-	  | tagname (SOME n, _) = n
+	  | tagname (NONE, SOME n, _) = "_" ^ n
+	  | tagname (SOME n, _, _) =
+	    if String.sub (n, 0) = #"_" then "_" ^ n else n
 
 	fun valty A.Void = raise VoidType
 	  | valty A.Ellipses = raise Ellipsis
@@ -131,17 +134,27 @@ structure AstToSpec = struct
 	       | A.Function f => fptrty f
 	       | _ => Spec.PTR (cobj t))
 	  | valty (A.Function f) = fptrty f
-	  | valty (A.StructRef tid) = typeref (tid, Spec.STRUCT)
-	  | valty (A.UnionRef tid) = typeref (tid, Spec.UNION)
-	  | valty (A.EnumRef tid) = typeref (tid, (* hack *) fn _ => Spec.SINT)
+	  | valty (A.StructRef tid) = typeref (tid, Spec.STRUCT, NONE)
+	  | valty (A.UnionRef tid) = typeref (tid, Spec.UNION, NONE)
+	  | valty (A.EnumRef tid) =
+	    typeref (tid, (* hack *) fn _ => Spec.SINT, NONE)
 	  | valty (A.TypeRef tid) =
-	    typeref (tid, fn _ => bug "missing typedef info")
+	    typeref (tid, fn _ => bug "missing typedef info", NONE)
 	  | valty A.Error = err "Error type"
 
 	and valty_nonvoid t = valty t
 	    handle VoidType => err "void variable type"
 
-	and typeref (tid, otherwise) =
+
+	and valty_td (A.StructRef tid, tdname) =
+	    typeref (tid, Spec.STRUCT, tdname)
+	  | valty_td (A.UnionRef tid, tdname) =
+	    typeref (tid, Spec.UNION, tdname)
+	  | valty_td (A.EnumRef tid, tdname) =
+	    typeref (tid, fn _ => Spec.SINT, tdname)
+	  | valty_td (t, _) = valty t
+
+	and typeref (tid, otherwise, tdname) =
 	    case Tidtab.find (tidtab, tid) of
 		NONE => bug "tid not bound in tidtab"
 	      | SOME { name = SOME n, ntype = NONE, ... } => otherwise n
@@ -150,14 +163,14 @@ structure AstToSpec = struct
 	      | SOME { name, ntype = SOME nct, location, ... } =>
 		(case nct of
 		     B.Struct (tid, members) =>
-		     structty (tid, name, members, location)
+		     structty (tid, name, tdname, members, location)
 		   | B.Union (tid, members) =>
-		     unionty (tid, name, members, location)
+		     unionty (tid, name, tdname, members, location)
 		   | B.Enum (tid, edefs) => let
 			 fun one ({ name, uid, location, ctype, kind }, i) =
 			     { name = Symbol.name name, spec = i }
 			 val all = map one edefs
-			 val tn = tagname (name, tid)
+			 val tn = tagname (name, tdname, tid)
 		     in
 			 enums := SM.insert (!enums, tn,
 					     { src = srcOf location,
@@ -166,11 +179,11 @@ structure AstToSpec = struct
 			 Spec.SINT
 		     end
 		   | B.Typedef (_, t) => let
-			 val res = valty t
 			 val n = 
 			     case name of
 				 NONE => bug "missing name in typedef"
 			       | SOME n => n
+			 val res = valty_td (t, SOME n)
 			 fun sameName { src, name, spec } = name = n
 		     in
 			 if includedTy (n, location) then
@@ -183,99 +196,98 @@ structure AstToSpec = struct
 			 res
 		     end)
 
-	and structty (tid, name, members, location) = let
-	    val tag = tagname (name, tid)
+	and structty (tid, name, tdname, members, location) = let
+	    val tag = tagname (name, tdname, tid)
 	    val ty = Spec.STRUCT tag
 	in
 	    case List.find (fn tag' => tag = tag') (!seen_structs) of
 		SOME _ => ()
-	      | NONE =>
-		if includedSU (tag, location) then
-		    let val _ = seen_structs := tag :: !seen_structs
+	      | NONE => let
+		    val _ = seen_structs := tag :: !seen_structs
 
-			val fol = fieldOffsets (A.StructRef tid)
-			val ssize = sizeOf (A.StructRef tid)
+		    val fol = fieldOffsets (A.StructRef tid)
+		    val ssize = sizeOf (A.StructRef tid)
 
-			fun bfspec (offset, bits, shift, (c, t)) = let
-			    val offset = offset
-			    val bits = Word.fromLargeInt bits
-			    val shift = eshift (shift, intbits, bits)
-			    val r = { offset = offset,
-				      constness = c,
-				      bits = bits,
-				      shift = shift }
-			in
-			    case t of
-				Spec.UINT => Spec.UBF r
-			      | Spec.SINT => Spec.SBF r
-			      | _ => err "non-int bitfield"
-			end
+		    fun bfspec (offset, bits, shift, (c, t)) = let
+			val offset = offset
+			val bits = Word.fromLargeInt bits
+			val shift = eshift (shift, intbits, bits)
+			val r = { offset = offset,
+				  constness = c,
+				  bits = bits,
+				  shift = shift }
+		    in
+			case t of
+			    Spec.UINT => Spec.UBF r
+			  | Spec.SINT => Spec.SBF r
+			  | _ => err "non-int bitfield"
+		    end
 
-			fun synthetic (synth, (_, false), _) = ([], synth)
-			  | synthetic (synth, (endp, true), startp) =
-			    if endp = startp then ([], synth)
-			    else ([{ name = Int.toString synth,
-				     spec = Spec.OFIELD
+		    fun synthetic (synth, (_, false), _) = ([], synth)
+		      | synthetic (synth, (endp, true), startp) =
+			if endp = startp then ([], synth)
+			else ([{ name = Int.toString synth,
+				 spec = Spec.OFIELD
 					{ offset = endp,
 					  spec = (Spec.RW,
 						  Spec.ARR { t = Spec.UCHAR,
 							     d = startp - endp,
 							     esz = 1 }),
 					  synthetic = true } }],
-				  synth+1)
+			      synth+1)
 
-			fun build ([], synth, gap) =
-			    #1 (synthetic (synth, gap, ssize))
-			  | build ((t, SOME m, NONE) :: rest, synth, gap) =
-			    let val bitoff = #bitOffset (getField (m, fol))
-				val bytoff = bitoff div bytebits
-				val (filler, synth) =
-				    synthetic (synth, gap, bytoff)
-				val endp = bytoff + sizeOf t
-			    in
-				if bitoff mod bytebits <> 0 then
-				    bug "non-bitfield not on byte boundary"
-				else
-				    filler @
-				    { name = Symbol.name (#name m),
-				      spec = Spec.OFIELD
-						 { offset = bytoff,
-						   spec = cobj t,
-						   synthetic = false } } ::
-				    build (rest, synth, (endp, false))
-			    end
-			  | build ((t, SOME m, SOME b) :: rest, synth, gap) =
-			    let val bitoff = #bitOffset (getField (m, fol))
-				val bytoff =
-				    (intalign * (bitoff div intalign))
-				    div bytebits
-				val gap = (#1 gap, true)
-			    in
+		    fun build ([], synth, gap) =
+			#1 (synthetic (synth, gap, ssize))
+		      | build ((t, SOME m, NONE) :: rest, synth, gap) =
+			let val bitoff = #bitOffset (getField (m, fol))
+			    val bytoff = bitoff div bytebits
+			    val (filler, synth) =
+				synthetic (synth, gap, bytoff)
+			    val endp = bytoff + sizeOf t
+			in
+			    if bitoff mod bytebits <> 0 then
+				bug "non-bitfield not on byte boundary"
+			    else
+				filler @
 				{ name = Symbol.name (#name m),
-				  spec = bfspec (bytoff, b,
-						 bitoff mod intalign,
-						 cobj t) } ::
-				build (rest, synth, gap)
-			    end
-			  | build ((t, NONE, SOME _) :: rest, synth, gap) =
-			    build (rest, synth, (#1 gap, true))
-			  | build ((_, NONE, NONE) :: _, _, _) =
-			    bug "unnamed struct member (not bitfield)"
+				  spec = Spec.OFIELD
+					     { offset = bytoff,
+					       spec = cobj t,
+					       synthetic = false } } ::
+				build (rest, synth, (endp, false))
+			end
+		      | build ((t, SOME m, SOME b) :: rest, synth, gap) =
+			let val bitoff = #bitOffset (getField (m, fol))
+			    val bytoff =
+				(intalign * (bitoff div intalign))
+				div bytebits
+			    val gap = (#1 gap, true)
+			in
+			    { name = Symbol.name (#name m),
+			      spec = bfspec (bytoff, b,
+					     bitoff mod intalign,
+					     cobj t) } ::
+			    build (rest, synth, gap)
+			end
+		      | build ((t, NONE, SOME _) :: rest, synth, gap) =
+			build (rest, synth, (#1 gap, true))
+		      | build ((_, NONE, NONE) :: _, _, _) =
+			bug "unnamed struct member (not bitfield)"
 
-			val fields = build (members, 0, (0, false))
-		    in
-			structs := { src = srcOf location,
-				     tag = tag, 
-				     anon = not (isSome name),
-				     size = Word.fromInt ssize,
-				     fields = fields } :: !structs
-		    end
-		else ();
+		    val fields = build (members, 0, (0, false))
+		in
+		    structs := { src = srcOf location,
+				 tag = tag, 
+				 anon = not (isSome name),
+				 size = Word.fromInt ssize,
+				 exclude = not (includedSU (tag, location)),
+				 fields = fields } :: !structs
+		end;
 	    ty
 	end
 
-	and unionty (tid, name, members, location) = let
-	    val tag = tagname (name, tid)
+	and unionty (tid, name, tdname, members, location) = let
+	    val tag = tagname (name, tdname, tid)
 	    val ty = Spec.UNION tag
 	    val lsz = ref 0
 	    val lg = ref { name = "",
@@ -295,20 +307,18 @@ structure AstToSpec = struct
 	in
 	    case List.find (fn tag' => tag = tag') (!seen_unions) of
 		SOME _ => ()
-	      | NONE =>
-		if includedSU (tag, location) then
-		    let val _ = seen_unions := tag :: !seen_unions
-			val all = map mkField members
-		    in
-			unions := { src = srcOf location,
-				    tag = tag,
-				    anon = not (isSome name),
-				    size = Word.fromInt
-					       (sizeOf (A.UnionRef tid)),
-				    largest = !lg,
-				    all = all } :: !unions
-		    end
-		else ();
+	      | NONE => let
+		    val _ = seen_unions := tag :: !seen_unions
+		    val all = map mkField members
+		in
+		    unions := { src = srcOf location,
+				tag = tag,
+				anon = not (isSome name),
+				size = Word.fromInt (sizeOf (A.UnionRef tid)),
+				largest = !lg,
+				exclude = not (includedSU (tag, location)),
+				all = all } :: !unions
+		end;
 	    ty
 	end
 
@@ -383,7 +393,7 @@ structure AstToSpec = struct
 	fun declaration (A.TypeDecl { tid, ... }) =
 	    (* Spec.SINT is an arbitrary choice; the value gets
 	     * ignored anyway *)
-	    (ignore (typeref (tid, fn _ => Spec.SINT))
+	    (ignore (typeref (tid, fn _ => Spec.SINT, NONE))
 	     handle VoidType => ())	(* ignore type aliases for void *)
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 

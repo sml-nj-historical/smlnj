@@ -62,28 +62,28 @@ signature C = sig
     (* going from abstract to concrete and vice versa *)
     structure Cvt : sig
 	(* ML -> C *)
-	val c_schar  : MLRep.SChar.int   -> schar
-	val c_uchar  : MLRep.UChar.word  -> uchar
-	val c_sint   : MLRep.SInt.int    -> sint
-	val c_uint   : MLRep.UInt.word   -> uint
-	val c_sshort : MLRep.SShort.int  -> sshort
-	val c_ushort : MLRep.UShort.word -> ushort
-	val c_slong  : MLRep.SLong.int   -> slong
-	val c_ulong  : MLRep.ULong.word  -> ulong
-	val c_float  : MLRep.Float.real  -> float
-	val c_double : MLRep.Double.real -> double
+	val c_schar  : MLRep.Signed.int   -> schar
+	val c_uchar  : MLRep.Unsigned.word  -> uchar
+	val c_sint   : MLRep.Signed.int    -> sint
+	val c_uint   : MLRep.Unsigned.word   -> uint
+	val c_sshort : MLRep.Signed.int  -> sshort
+	val c_ushort : MLRep.Unsigned.word -> ushort
+	val c_slong  : MLRep.Signed.int   -> slong
+	val c_ulong  : MLRep.Unsigned.word  -> ulong
+	val c_float  : MLRep.Real.real  -> float
+	val c_double : MLRep.Real.real -> double
 
 	(* C -> ML *)
-	val ml_schar  : schar  -> MLRep.SChar.int
-	val ml_uchar  : uchar  -> MLRep.UChar.word
-	val ml_sint   : sint   -> MLRep.SInt.int
-	val ml_uint   : uint   -> MLRep.UInt.word
-	val ml_sshort : sshort -> MLRep.SShort.int
-	val ml_ushort : ushort -> MLRep.UShort.word
-	val ml_slong  : slong  -> MLRep.SLong.int
-	val ml_ulong  : ulong  -> MLRep.ULong.word
-	val ml_float  : float  -> MLRep.Float.real
-	val ml_double : double -> MLRep.Double.real
+	val ml_schar  : schar  -> MLRep.Signed.int
+	val ml_uchar  : uchar  -> MLRep.Unsigned.word
+	val ml_sint   : sint   -> MLRep.Signed.int
+	val ml_uint   : uint   -> MLRep.Unsigned.word
+	val ml_sshort : sshort -> MLRep.Signed.int
+	val ml_ushort : ushort -> MLRep.Unsigned.word
+	val ml_slong  : slong  -> MLRep.Signed.int
+	val ml_ulong  : ulong  -> MLRep.Unsigned.word
+	val ml_float  : float  -> MLRep.Real.real
+	val ml_double : double -> MLRep.Real.real
     end
 
     (* type-abbreviations for a bit more convenience. *)
@@ -290,31 +290,31 @@ signature C = sig
      * fetching does not care about constness *)
     structure Get : sig
 
-	(* primitive types *)
-	val schar :  'c schar_obj -> schar
-	val uchar :  'c uchar_obj -> uchar
-	val sint :   'c sint_obj -> sint
-	val uint :   'c uint_obj -> uint
-	val sshort : 'c sshort_obj -> sshort
-	val ushort : 'c ushort_obj -> ushort
-	val slong :  'c slong_obj -> slong
-	val ulong :  'c ulong_obj -> ulong
-	val float :  'c float_obj -> float
-	val double : 'c double_obj -> double
+	(* primitive types; the results are concrete here *)
+	val schar :  'c schar_obj -> MLRep.Signed.int
+	val uchar :  'c uchar_obj -> MLRep.Unsigned.word
+	val sint :   'c sint_obj -> MLRep.Signed.int
+	val uint :   'c uint_obj -> MLRep.Unsigned.word
+	val sshort : 'c sshort_obj -> MLRep.Signed.int
+	val ushort : 'c ushort_obj -> MLRep.Unsigned.word
+	val slong :  'c slong_obj -> MLRep.Signed.int
+	val ulong :  'c ulong_obj -> MLRep.Unsigned.word
+	val float :  'c float_obj -> MLRep.Real.real
+	val double : 'c double_obj -> MLRep.Real.real
 
 	(* alt *)
-	val schar' :  'c schar_obj' -> schar
-	val uchar' :  'c uchar_obj' -> uchar
-	val sint' :   'c sint_obj' -> sint
-	val uint' :   'c uint_obj' -> uint
-	val sshort' : 'c sshort_obj' -> sshort
-	val ushort' : 'c ushort_obj' -> ushort
-	val slong' :  'c slong_obj' -> slong
-	val ulong' :  'c ulong_obj' -> ulong
-	val float' :  'c float_obj' -> float
-	val double' : 'c double_obj' -> double
+	val schar' :  'c schar_obj' -> MLRep.Signed.int
+	val uchar' :  'c uchar_obj' -> MLRep.Unsigned.word
+	val sint' :   'c sint_obj' -> MLRep.Signed.int
+	val uint' :   'c uint_obj' -> MLRep.Unsigned.word
+	val sshort' : 'c sshort_obj' -> MLRep.Signed.int
+	val ushort' : 'c ushort_obj' -> MLRep.Unsigned.word
+	val slong' :  'c slong_obj' -> MLRep.Signed.int
+	val ulong' :  'c ulong_obj' -> MLRep.Unsigned.word
+	val float' :  'c float_obj' -> MLRep.Real.real
+	val double' : 'c double_obj' -> MLRep.Real.real
 
-	(* fetching pointers *)
+	(* fetching pointers; results have to be abstract *)
 	val ptr : (('t, 'pc) ptr, 'c) obj -> ('t, 'pc) ptr
 	val fptr : ('f, 'c) fptr_obj -> 'f fptr
 	val voidptr : 'c voidptr_obj -> voidptr
@@ -324,38 +324,38 @@ signature C = sig
 	val fptr' : ('f, 'c) fptr_obj' -> 'f fptr'
 	val voidptr' : 'c voidptr_obj' -> voidptr
 
-	(* bitfields *)
-	val sbf : 'c sbf -> sint
-	val ubf : 'c ubf -> uint
+	(* bitfields; concrete again *)
+	val sbf : 'c sbf -> MLRep.Signed.int
+	val ubf : 'c ubf -> MLRep.Unsigned.word
     end
 
     (* "store" methods; these require rw objects *)
     structure Set : sig
-	(* primitive types *)
-	val schar :  rw schar_obj * schar -> unit
-	val uchar :  rw uchar_obj * uchar -> unit
-	val sint :   rw sint_obj * sint -> unit
-	val uint :   rw uint_obj * uint -> unit
-	val sshort : rw sshort_obj * sshort -> unit
-	val ushort : rw ushort_obj * ushort -> unit
-	val slong :  rw slong_obj * slong -> unit
-	val ulong :  rw ulong_obj * ulong -> unit
-	val float :  rw float_obj * float -> unit
-	val double : rw double_obj * double -> unit
+	(* primitive types; use concrete values *)
+	val schar :  rw schar_obj * MLRep.Signed.int -> unit
+	val uchar :  rw uchar_obj * MLRep.Unsigned.word -> unit
+	val sint :   rw sint_obj * MLRep.Signed.int -> unit
+	val uint :   rw uint_obj * MLRep.Unsigned.word -> unit
+	val sshort : rw sshort_obj * MLRep.Signed.int -> unit
+	val ushort : rw ushort_obj * MLRep.Unsigned.word -> unit
+	val slong :  rw slong_obj * MLRep.Signed.int -> unit
+	val ulong :  rw ulong_obj * MLRep.Unsigned.word -> unit
+	val float :  rw float_obj * MLRep.Real.real -> unit
+	val double : rw double_obj * MLRep.Real.real -> unit
 
 	(* alt *)
-	val schar' :  rw schar_obj' * schar -> unit
-	val uchar' :  rw uchar_obj' * uchar -> unit
-	val sint' :   rw sint_obj' * sint -> unit
-	val uint' :   rw uint_obj' * uint -> unit
-	val sshort' : rw sshort_obj' * sshort -> unit
-	val ushort' : rw ushort_obj' * ushort -> unit
-	val slong' :  rw slong_obj' * slong -> unit
-	val ulong' :  rw ulong_obj' * ulong -> unit
-	val float' :  rw float_obj' * float -> unit
-	val double' : rw double_obj' * double -> unit
+	val schar' :  rw schar_obj' * MLRep.Signed.int -> unit
+	val uchar' :  rw uchar_obj' * MLRep.Unsigned.word -> unit
+	val sint' :   rw sint_obj' * MLRep.Signed.int -> unit
+	val uint' :   rw uint_obj' * MLRep.Unsigned.word -> unit
+	val sshort' : rw sshort_obj' * MLRep.Signed.int -> unit
+	val ushort' : rw ushort_obj' * MLRep.Unsigned.word -> unit
+	val slong' :  rw slong_obj' * MLRep.Signed.int -> unit
+	val ulong' :  rw ulong_obj' * MLRep.Unsigned.word -> unit
+	val float' :  rw float_obj' * MLRep.Real.real -> unit
+	val double' : rw double_obj' * MLRep.Real.real -> unit
 
-	(* storing pointers *)
+	(* storing pointers; abstract *)
 	val ptr : (('t, 'pc) ptr, rw) obj * ('t, 'pc) ptr -> unit
 	val fptr : ('f, rw) fptr_obj * 'f fptr -> unit
 	val voidptr : rw voidptr_obj * voidptr -> unit
@@ -373,9 +373,9 @@ signature C = sig
 	(* alt *)
 	val ptr_voidptr' : (('t, 'pc) ptr, rw) obj' * voidptr -> unit
 
-	(* bitfields *)
-	val sbf : rw sbf * sint -> unit
-	val ubf : rw ubf * uint -> unit
+	(* bitfields; concrete *)
+	val sbf : rw sbf * MLRep.Signed.int -> unit
+	val ubf : rw ubf * MLRep.Unsigned.word -> unit
     end
 
     (* copying the contents of arbitrary objects *)

@@ -33,10 +33,12 @@ structure Spec = struct
 
     type s =
 	 { src: string,
-	   tag: tag, anon: bool, size: word, fields: field list }
+	   tag: tag, anon: bool, size: word, fields: field list,
+	   exclude: bool }
     type u =
 	 { src: string,
-	   tag: tag, anon: bool, size: word, largest: field, all: field list }
+	   tag: tag, anon: bool, size: word, largest: field, all: field list,
+	   exclude: bool }
 
     type gvar = { src: string, name: string, spec: cobj }
 

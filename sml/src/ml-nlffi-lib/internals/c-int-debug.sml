@@ -39,7 +39,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	 *     1.......1 0.......0 1.......1    = im
 	 *
 	 * l + r = lr *)
-	type cword = MLRep.UInt.word
+	type cword = MLRep.Unsigned.word
 	type bf = { a: addr, l: word, r: word, lr: word, m: cword, im: cword }
 
 	fun pair_type_addr (t: objt) (a: addr) = (a, t)
@@ -54,13 +54,13 @@ structure C_Debug :> C_INT_DEBUG = struct
 	val op ++ = CMemory.++
 
 	infix << >> ~>> && || ^^
-	val op << = MLRep.UInt.<<
-	val op >> = MLRep.UInt.>>
-	val op ~>> = MLRep.UInt.~>>
-	val op && = MLRep.UInt.andb
-	val op || = MLRep.UInt.orb
-	val op ^^ = MLRep.UInt.xorb
-	val ~~ = MLRep.UInt.notb
+	val op << = MLRep.Unsigned.<<
+	val op >> = MLRep.Unsigned.>>
+	val op ~>> = MLRep.Unsigned.~>>
+	val op && = MLRep.Unsigned.andb
+	val op || = MLRep.Unsigned.orb
+	val op ^^ = MLRep.Unsigned.xorb
+	val ~~ = MLRep.Unsigned.notb
     in
 
     type ('t, 'c) obj = addr * objt	(* RTTI for stored value *)
@@ -80,16 +80,16 @@ structure C_Debug :> C_INT_DEBUG = struct
     type voidptr = addr
     type 'tag su = unit
 
-    type schar = MLRep.SChar.int
-    type uchar = MLRep.UChar.word
-    type sint = MLRep.SInt.int
-    type uint = MLRep.UInt.word
-    type sshort = MLRep.SShort.int
-    type ushort = MLRep.UShort.word
-    type slong = MLRep.SLong.int
-    type ulong = MLRep.ULong.word
-    type float = MLRep.Float.real
-    type double = MLRep.Double.real
+    type schar = MLRep.Signed.int
+    type uchar = MLRep.Unsigned.word
+    type sint = MLRep.Signed.int
+    type uint = MLRep.Unsigned.word
+    type sshort = MLRep.Signed.int
+    type ushort = MLRep.Unsigned.word
+    type slong = MLRep.Signed.int
+    type ulong = MLRep.Unsigned.word
+    type float = MLRep.Real.real
+    type double = MLRep.Real.real
 
     type 'c schar_obj = (schar, 'c) obj
     type 'c uchar_obj = (uchar, 'c) obj
@@ -313,7 +313,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 	  | fptr _ = bug "Get.fptr (non-function-pointer)"
 
 	local
-	    val u2s = MLRep.SInt.fromLarge o MLRep.UInt.toLargeIntX
+	    val u2s = MLRep.Signed.fromLarge o MLRep.Unsigned.toLargeIntX
 	in
 	    fun ubf ({ a, l, r, lr, m, im } : bf) =
 		(CMemory.load_uint a << l) >> lr
@@ -366,7 +366,7 @@ structure C_Debug :> C_INT_DEBUG = struct
 				   ((x << r) && m))
 
 	local
-	    val s2u = MLRep.UInt.fromLargeInt o MLRep.SInt.toLarge
+	    val s2u = MLRep.Unsigned.fromLargeInt o MLRep.Signed.toLarge
 	in
 	    fun sbf (f, x) = ubf (f, s2u x)
 	end

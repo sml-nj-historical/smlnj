@@ -8,7 +8,7 @@
  *)
 local
     val program = "ml-ffigen"
-    val version = "0.6"
+    val version = "0.7"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -16,6 +16,7 @@ in
 
 structure Gen :> sig
     val gen : { cfiles: string list,
+		match: string -> bool,
 		mkidlsource: string -> string,
 		dirname: string,
 		cmfile: string,
@@ -33,7 +34,10 @@ structure Gen :> sig
 			   sizes : Sizes.sizes,
 			   shift : int * int * word -> word,
 			   stdcall : bool } } -> unit
+    val version : string
 end = struct
+
+    val version = version
 
     structure P = PrettyPrint
     structure PP = P.PP
@@ -61,7 +65,7 @@ end = struct
 
     val writeto = "write_to"
 
-    val sint_ty = Type "MLRep.SInt.int"
+    val sint_ty = Type "MLRep.Signed.int"
 
     val dontedit = "(* This file has been generated automatically. \
 		   \DO NOT EDIT! *)"
@@ -93,7 +97,7 @@ end = struct
     fun enum_id n = "e_" ^ n
 
     fun gen args = let
-	val { cfiles, mkidlsource,
+	val { cfiles, match, mkidlsource,
 	      dirname, cmfile, prefix, extramembers, libraryhandle, complete,
 	      allSU, lambdasplit,
 	      wid,
@@ -125,7 +129,8 @@ end = struct
 				     (sizes, State.INITIAL)
 				     idlsource
 		 val s' =
-		     AstToSpec.build (astbundle, sizes, cfiles, allSU, shift)
+		     AstToSpec.build (astbundle, sizes, cfiles, match,
+				      allSU, shift)
 	     in
 		 S.join (s', s)
 	     end handle e => (OS.FileSys.remove idlsource handle _ => ();
@@ -166,6 +171,73 @@ end = struct
 	in
 	    do_dir ();
 	    result
+	end
+
+	val (structs, unions) = let
+	    val sdone = ref []
+	    val udone = ref []
+	    val slist = ref []
+	    val ulist = ref []
+	    val tq = ref []
+	    fun tag (t: S.tag) t' = t = t'
+	    fun s_tag t (s: S.s) = t = #tag s
+	    fun u_tag t (u: S.u) = t = #tag u
+	    fun ty_sched t = tq := t :: !tq
+	    fun fs_sched (S.OFIELD { spec = (_, t), ... }) = ty_sched t
+	      | fs_sched _ = ()
+	    fun f_sched { name, spec } = fs_sched spec
+	    fun senter takeit t =
+		if List.exists (tag t) (!sdone) then ()
+		else (sdone := t :: !sdone;
+		      case List.find (s_tag t) structs of
+			  SOME x => (if takeit then slist := x :: !slist
+				     else ();
+				     app f_sched (#fields x))
+			| NONE => ())
+	    fun uenter takeit t =
+		if List.exists (tag t) (!udone) then ()
+		else (udone := t :: !udone;
+		      case List.find (u_tag t) unions of
+			  SOME x => (if takeit then ulist := x :: !ulist
+				     else ();
+				     app f_sched (#largest x :: #all x))
+			| NONE => ())
+	    fun sinclude (s: S.s) =
+		if #exclude s then () else senter true (#tag s)
+	    fun uinclude (u: S.u) =
+		if #exclude u then () else uenter true (#tag u)
+	    fun gty { src, name, spec } = ty_sched spec
+	    fun gvar { src, name, spec = (_, t) } = ty_sched t
+	    fun gfun { src, name, spec, argnames } = ty_sched (S.FPTR spec)
+	    fun loop [] = ()
+	      | loop tl = let
+		    fun ty (S.STRUCT t) = senter true t
+		      | ty (S.UNION t) = uenter true t
+		      | ty (S.PTR (_, S.STRUCT t)) = senter false t
+		      | ty (S.PTR (_, S.UNION t)) = uenter false t
+		      | ty (S.PTR (_, t)) = ty t
+		      | ty (S.FPTR { args, res }) =
+			(app ty args;
+			 case res of SOME x => ty x | NONE => ())
+		      | ty (S.ARR { t, ... }) = ty t
+		      | ty (S.SCHAR | S.UCHAR | S.SINT | S.UINT |
+			    S.SSHORT | S.USHORT | S.SLONG | S.ULONG |
+			    S.FLOAT | S.DOUBLE | S.VOIDPTR) = ()
+		    fun tloop [] = nextround ()
+		      | tloop (t :: ts) = (ty t; tloop ts)
+		in
+		    tq := [];
+		    tloop tl
+		end
+	    and nextround () = loop (!tq)
+	in
+	    app sinclude structs;
+	    app uinclude unions;
+	    app gty gtys;
+	    app gvar gvars;
+	    app gfun gfuns;
+	    nextround ();
+	    (!slist, !ulist)
 	end
 
 	exception Incomplete
@@ -224,8 +296,9 @@ end = struct
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
 	    fun f ({ name, spec }, a) = fs (spec, a)
-	    fun s ({ src, tag, size, anon, fields }, a) = foldl f a fields
-	    fun u ({ src, tag, size, anon, largest, all }, a) =
+	    fun s ({ src, tag, size, anon, fields, exclude }, a) =
+		foldl f a fields
+	    fun u ({ src, tag, size, anon, largest, all, exclude }, a) =
 		foldl f a (largest :: all)
 	    fun gty ({ src, name, spec }, a) = ty (spec, a)
 	    fun gvar ({ src, name, spec = (_, t) }, a) = ty (t, a)
@@ -311,16 +384,12 @@ end = struct
 	and wtn_ty' t = wtn_ty_p "'" t
 
 	fun topfunc_ty p ({ args, res }, argnames) = let
-	    fun topty S.SCHAR = Type "MLRep.SChar.int"
-	      | topty S.UCHAR = Type "MLRep.UChar.word"
-	      | topty S.SINT = Type "MLRep.SInt.int"
-	      | topty S.UINT = Type "MLRep.UInt.word"
-	      | topty S.SSHORT = Type "MLRep.SShort.int"
-	      | topty S.USHORT = Type "MLRep.UShort.word"
-	      | topty S.SLONG = Type "MLRep.SLong.int"
-	      | topty S.ULONG = Type "MLRep.ULong.word"
-	      | topty S.FLOAT = Type "MLRep.Float.real"
-	      | topty S.DOUBLE = Type "MLRep.Double.real"
+	    fun topty (S.SCHAR | S.SINT | S.SSHORT | S.SLONG) =
+		Type "MLRep.Signed.int"
+	      | topty (S.UCHAR | S.UINT | S.USHORT | S.ULONG) =
+		Type "MLRep.Unsigned.word"
+	      | topty (S.FLOAT | S.DOUBLE) =
+		Type "MLRep.Real.real"
 	      | topty (S.STRUCT t) = Con ("su_obj" ^ p, [St t, Type "'c"])
 	      | topty (S.UNION t) = Con ("su_obj" ^ p, [Un t, Type "'c"])
 	      | topty t = wtn_ty_p p t
@@ -395,7 +464,7 @@ end = struct
 		SOME (_, i) => fptr_mkcall_qid i
 	      | NONE => raise Fail "missing fptr_type (mkcall)"
 
-	fun openPP (f, src) = let
+	fun openPP0 nocredits (f, src) = let
 	    val dst = TextIO.openOut f
 	    val stream = PP.openStream (SimpleTextIODev.openDev
 					    { dst = dst, wid = wid })
@@ -425,14 +494,15 @@ end = struct
 	    val pr_vdecl = pr_decl ("val", ":")
 	    fun closePP () = (PP.closeStream stream; TextIO.closeOut dst)
 	in
-	    str dontedit;
-	    case src of
-		NONE => ()
-	      | SOME s =>
-		(nl (); str (concat ["(* [from code at ", s, "] *)"]));
-	    line credits;
-	    line commentsto;
-	    nl ();
+	    if nocredits then ()
+	    else (str dontedit;
+		  case src of
+		      NONE => ()
+		    | SOME s =>
+		      (nl (); str (concat ["(* [from code at ", s, "] *)"]));
+		  line credits;
+		  line commentsto;
+		  nl ());
 	    { stream = stream,
 	      nl = nl, str = str, sp = sp, nsp = nsp, Box = Box, HVBox = HVBox,
 	      HBox = HBox, HOVBox = HOVBox, VBox = VBox, endBox = endBox,
@@ -442,6 +512,8 @@ end = struct
 	      closePP = closePP
 	      }
 	end
+
+	fun openPP x = openPP0 false x
 
 	val get_callop = let
 	    val ncallops = ref 0
@@ -657,7 +729,7 @@ end = struct
 	    val arg_e = ETuple (extra_arg_e @ args_el)
 	    val callop_n = get_callop (ml_args_t, e_proto, ml_res_t)
 	in
-	    str "local open C_Int in";
+	    str "local open C.Dim C_Int in";
 	    nl (); str (concat ["structure ", structname, " = struct"]);
 	    Box 4;
 	    pr_fdef ("mkcall",
@@ -722,9 +794,9 @@ end = struct
 	    closePP ()
 	end
 
-	fun pr_st_structure { src, tag, anon, size, fields } =
+	fun pr_st_structure { src, tag, anon, size, fields, exclude } =
 	    pr_sut_structure (src, tag, anon, size, "s", "S")
-	fun pr_ut_structure { src, tag, anon, size, largest, all } =
+	fun pr_ut_structure { src, tag, anon, size, largest, all, exclude } =
 	    pr_sut_structure (src, tag, anon, size, "u", "U")
 
 	fun pr_su_structure (src, tag, fields, k, K) = let
@@ -824,9 +896,9 @@ end = struct
 	    exports := sustruct :: (!exports)
 	end
 
-	fun pr_s_structure { src, tag, anon, size, fields } =
+	fun pr_s_structure { src, tag, anon, size, fields, exclude } =
 	    pr_su_structure (src, tag, fields, "s", "S")
-	fun pr_u_structure { src, tag, anon, size, largest, all } =
+	fun pr_u_structure { src, tag, anon, size, largest, all, exclude } =
 	    pr_su_structure (src, tag, all, "u", "U")
 
 	fun pr_t_structure { src, name, spec } =
@@ -839,7 +911,7 @@ end = struct
 			openPP (file, SOME src)
 		    val tstruct = "structure " ^ Tstruct name
 		in
-		    str "local open C in";
+		    str "local open C.Dim C in";
 		    nl (); str (tstruct ^ " = struct");
 		    Box 4;
 		    pr_tdef ("t", rtti_ty spec);
@@ -867,7 +939,7 @@ end = struct
 	    Box 4;
 	    nl (); str "local";
 	    VBox 4;
-	    nl (); str "open C_Int";
+	    nl (); str "open C.Dim C_Int";
 	    pr_vdef ("h", EApp (EVar libraryhandle, EString name));
 	    endBox ();
 	    nl (); str "in";
@@ -963,7 +1035,7 @@ end = struct
 	in
 	    str "local";
 	    Box 4;
-	    nl (); str "open C_Int";
+	    nl (); str "open C.Dim C_Int";
 	    pr_vdef ("h", EApp (EVar libraryhandle, EString name));
 	    endBox ();
 	    nl (); str "in";
@@ -1007,15 +1079,17 @@ end = struct
 	    exports := estruct :: !exports
 	end
 
-	fun do_iptrs () = let
+	fun do_iptrs report_only = let
 	    val file = smlfile "iptrs"
-	    val { closePP, str, nl, ... } = openPP (file, NONE)
+	    val { closePP, str, nl, ... } = openPP0 report_only (file, NONE)
 	    fun pr_isu_def K tag = let
 		val istruct = "structure " ^ isu_id (K, tag)
 	    in
+		if report_only then str "(* "
+		else exports := istruct :: !exports;
 		str (istruct ^ " = PointerToIncompleteType ()");
-		nl ();
-		exports := istruct :: !exports
+		if report_only then str " *)" else ();
+		nl ()
 	    end
 	in
 	    app (pr_isu_def "S") incomplete_structs;
@@ -1056,7 +1130,9 @@ end = struct
 	app pr_gvar gvars;
 	app pr_gfun gfuns;
 	app pr_enum enums;
-	if complete andalso needs_iptr then do_iptrs () else ();
+	if complete then
+	    if needs_iptr then do_iptrs false else ()
+	else do_iptrs true;
 	do_cmfile ()
     end
 end

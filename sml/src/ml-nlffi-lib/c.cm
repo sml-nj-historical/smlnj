@@ -27,8 +27,5 @@ Library
 
 	signature DYN_LINKAGE
 	structure DynLinkage
-
-	signature C_GETSET
-	structure CGetSet
 is
 	$/c-int.cm

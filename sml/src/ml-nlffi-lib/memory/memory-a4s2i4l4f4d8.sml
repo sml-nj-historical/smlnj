@@ -102,29 +102,29 @@ structure CMemory : CMEMORY = struct
 
     (* wrapping and unwrapping for cc types *)
     fun wrap_addr (x : addr) = x : cc_addr
-    fun wrap_schar (x : MLRep.SChar.int) = x : cc_schar
-    fun wrap_uchar (x : MLRep.UChar.word) = x : cc_uchar
-    fun wrap_sint (x : MLRep.SInt.int) = x : cc_sint
-    fun wrap_uint (x : MLRep.UInt.word) = x : cc_uint
-    fun wrap_sshort (x : MLRep.SShort.int) = x : cc_sshort
-    fun wrap_ushort (x : MLRep.UShort.word) = x : cc_ushort
-    fun wrap_slong (x : MLRep.SLong.int) = x : cc_slong
-    fun wrap_ulong (x : MLRep.ULong.word) = x : cc_ulong
-    fun wrap_float (x : MLRep.Float.real) = x : cc_float
-    fun wrap_double (x : MLRep.Double.real) = x : cc_double
+    fun wrap_schar (x : MLRep.Signed.int) = x : cc_schar
+    fun wrap_uchar (x : MLRep.Unsigned.word) = x : cc_uchar
+    fun wrap_sint (x : MLRep.Signed.int) = x : cc_sint
+    fun wrap_uint (x : MLRep.Unsigned.word) = x : cc_uint
+    fun wrap_sshort (x : MLRep.Signed.int) = x : cc_sshort
+    fun wrap_ushort (x : MLRep.Unsigned.word) = x : cc_ushort
+    fun wrap_slong (x : MLRep.Signed.int) = x : cc_slong
+    fun wrap_ulong (x : MLRep.Unsigned.word) = x : cc_ulong
+    fun wrap_float (x : MLRep.Real.real) = x : cc_float
+    fun wrap_double (x : MLRep.Real.real) = x : cc_double
 
     fun unwrap_addr (x : cc_addr) = x : addr
-    fun unwrap_schar (x : cc_schar) = x : MLRep.SChar.int
-    fun unwrap_uchar (x : cc_uchar) = x : MLRep.UChar.word
-    fun unwrap_sint (x : cc_sint) = x : MLRep.SInt.int
-    fun unwrap_uint (x : cc_uint) = x : MLRep.UInt.word
-    fun unwrap_sshort (x : cc_sshort) = x : MLRep.SShort.int
-    fun unwrap_ushort (x : cc_ushort) = x : MLRep.UShort.word
-    fun unwrap_slong (x : cc_slong) = x : MLRep.SLong.int
-    fun unwrap_ulong (x : cc_ulong) = x : MLRep.ULong.word
-    fun unwrap_float (x : cc_float) = x : MLRep.Float.real
-    fun unwrap_double (x : cc_double) = x : MLRep.Double.real
+    fun unwrap_schar (x : cc_schar) = x : MLRep.Signed.int
+    fun unwrap_uchar (x : cc_uchar) = x : MLRep.Unsigned.word
+    fun unwrap_sint (x : cc_sint) = x : MLRep.Signed.int
+    fun unwrap_uint (x : cc_uint) = x : MLRep.Unsigned.word
+    fun unwrap_sshort (x : cc_sshort) = x : MLRep.Signed.int
+    fun unwrap_ushort (x : cc_ushort) = x : MLRep.Unsigned.word
+    fun unwrap_slong (x : cc_slong) = x : MLRep.Signed.int
+    fun unwrap_ulong (x : cc_ulong) = x : MLRep.Unsigned.word
+    fun unwrap_float (x : cc_float) = x : MLRep.Real.real
+    fun unwrap_double (x : cc_double) = x : MLRep.Real.real
 
-    fun p2i (x : addr) = x : MLRep.ULong.word
-    fun i2p (x : MLRep.ULong.word) = x : addr
+    fun p2i (x : addr) = x : MLRep.Unsigned.word
+    fun i2p (x : MLRep.Unsigned.word) = x : addr
 end

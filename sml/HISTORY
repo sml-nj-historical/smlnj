@@ -13,6 +13,21 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/25
+Tag: blume-20020125-ffi
+Description:
+
+A large number of tweaks and improvements to ml-nlffi-lib and
+ml-nlffigen:
+
+   - ML represenation types have been streamlined
+   - getter and setter functions work with concrete values, not abstract
+     ones where possible
+   - ml-nlffigen command line more flexible (see README file there)
+   - some bugs have been fixed (hopefully)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/01/24
 Tag: george-20020124-risc-ra-interface

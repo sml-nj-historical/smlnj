@@ -62,6 +62,12 @@ Sketch of translation- (and naming-) scheme:
                     field types     t_f_xxx
                     field RTTI      typ_f_xxx
 
+       Note: If foo has the form _bar (leading underscore), then
+       an *extra* underscore will be added, i.e.,
+             "struct _bar" --> structure ST___bar etc.
+       This is to prevent clashes with 'typedef struct { ... } bar'
+       (see below).
+
   union foo { ... }
       -->   structure UT_foo   in    ut-foo.sml  (not exported)
                basic type info (name, size)
@@ -72,18 +78,30 @@ Sketch of translation- (and naming-) scheme:
                     field types     t_f_xxx
                     field RTTI      typ_f_xxx
 
+       An underscore rule analogous to the struct case applies.
+
+
   struct { ... }
-      like struct <n> { ... }, where <n> is a fresh integer
+      like struct <n> { ... }, where <n> is a fresh integer or _bar
+      if 'struct { ... }' occurs in the context of a
+      'typedef struct { ... } bar'
 
   union { ... }
-      like union <n> { ... }, where <n> is a fresh integer
+      like union <n> { ... }, where <n> is a fresh integer or _bar
+      if 'union { ... }' occurs in the context of a
+      'typedef union { ... } bar'
+
 
   enum foo { ... }
       -->   structure E_foo   in     e-foo.sml
                enum constants    e_xxx
+      An underscore rule analogous to the struct and union cases applies.
 
   enum { ... }
-      like enum <n> { ... }, where <n> is a fresh integer
+      like enum <n> { ... }, where <n> is a fresh integer or _bar
+      if 'enum { ... }' occurs in the context of a
+      'typedef enum { ... } bar'
+
 
   T foo (T, ..., T)  (global function/function prototype)
       -->   structure F_foo   in     f-foo.sml
@@ -122,6 +140,15 @@ Command-line options for ml-nlffigen:
 
   General syntax:   ml-nlffigen <option> ... [--] <C-file> ...
 
+  Environment variables:
+
+    Ml-nlffigen looks at the environment variable FFIGEN_CPP to obtain
+    the template string for the cpp command line.  If FFIGEN_CPP is not
+    set, the template defaults to "gcc -E -U__GNUC__ %o %s > %t".
+    The actual command line is obtained by substituting occurences of
+    %s with the name of the source, and %t with the name of a temporary
+    file holding the pre-processed code.
+
   Options:
 
    -dir <dir>   output directory where all generated files are placed
@@ -151,10 +178,17 @@ Command-line options for ml-nlffigen:
                 there is enough information for this in the C source;
                 (this is not always very useful)
                 default: off
-   -incomplete  do not generate definitions for incomplete types;  these
+   -incomplete  Do not generate definitions for incomplete types;  these
                 will then have to be provided by the programmer
                 default: generate such definitions, making each incomplete
-                type a new abstract type
+                type a new abstract type.
+                (If -incomplete has been specified, ml-nlffigen will
+                still generate the file <dir>/iptrs.sml, but it will not
+                be mentioned in the generated .cm file. Moreover,
+                the definitions in the generated <dir>/iptrs.sml will
+                then be commented out, and the usual "credits" comments that
+                appear at the top of all other generated files will
+                be omitted.)
    -libhandle <h>   Use the variable <h> to refer to the handle to the
                 shared library object.  Given the constraints of CM, <h>
                 must have the form of a long ML identifier, e.g.,
@@ -169,6 +203,23 @@ Command-line options for ml-nlffigen:
    -cmfile <f>  Specify name of the generated .cm file, relative to
                 the directory specified by the -dir <dir> option.
                 default: nlffi-generated.cm
+   -cppopt <o>  The string <o> gets added to the list of options to be
+                passed to cpp (the C preprocessor).  The list of options
+                gets substituted for %o in the cpp command line template.
+   -U<x>        The string -U<x> gets added to the list of cpp options.
+   -D<x>        The string -D<x> gets added to the list of cpp options.
+   -I<x>        The string -I<x> gets added to the list of cpp options.
+   -version     Just write the version number of ml-nlffigen to standard
+                output and then quit.
+   -match <r>   Normally ml-nlffigen will include ML definitions for a C
+                declaration if the C declaration textually appears in
+                one of the files specified at the command line.  Definitions
+                in #include-d files will normally not appear (unless
+                their absence would lead to inconsistencies).
+                By specifying -match <r>, ml-nlffigen will also include
+                definitions that occur in recursively #include-d files
+                for which the AWK-style regular expression <r> matches
+                a prefix of their names.
    --           Terminate processing of options, remaining arguments are
                 taken to be C sources.
 
