@@ -47,11 +47,11 @@ structure Control : CONTROL =
 	val liftLiterals= ref false
 	val sharewrap	= ref true
 	val maxargs	= ref 10
-	val saytappinfo	= ref true	(* for typelifting statistics *)
-	val phases	= ref ["deb2names", "lcontract", "fcontract",
+	val saytappinfo	= ref false	(* for typelifting statistics *)
+	val phases	= ref ["lcontract", "fcontract",
 			       "fixfix", "fcontract",
 			       "specialize", "fcontract",
-			       (* "names2deb", "typelift", "wellformed", "deb2names", *)
+			       (* "names2deb", "typelift", "deb2names", *)
 			       "loopify", "fcontract",
 			       "wrap",
 			       "reify", "fixfix", "fcontract"]

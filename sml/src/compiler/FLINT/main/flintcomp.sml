@@ -141,11 +141,13 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("fixfix",   _)		=> (fixfix f,     fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fk, p)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fk, p)
-	    | ("typelift",FK_DEBRUIJN)	=> (typelift f,   fk, p)
 	    | ("wrap",FK_NAMED)		=> (wrapping f,	  FK_WRAP, p)
 	    | ("reify",FK_WRAP)		=> (reify f,      FK_REIFY, p)
 	    | ("deb2names",FK_DEBRUIJN) => (deb2names f,  FK_NAMED, p)
 	    | ("names2deb",FK_NAMED)	=> (names2deb f,  FK_DEBRUIJN, p)
+	    | ("typelift", _)		=>
+	      let val f' = typelift f
+	      in if !CTRL.check then wff(f', p) else (); (f', fk, p) end
 
 	    (* pseudo FLINT phases *)
 	    | ("id",_) => (f,fk,l)
@@ -154,7 +156,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	      (say("\n\n[ After "^l^"... ]\n\n");
 	       PPFlint.printFundec f;
 	       (f, fk, l) before say "\n")
-	    | ("wellformed",FK_DEBRUIJN) => (wff(f,l); (f,fk,p))
+	    | ("wellformed",_) => (wff(f,l); (f,fk,p))
 	    | ("check",_) =>
 	      (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
 		     (ref true, fk = FK_REIFY, l) f; (f,fk,l))
@@ -177,16 +179,16 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 
       (* the "id" phase is just added to do the print/check at the entrance *)
       val (flint,fk,_) = foldl runphase'
-			       (flint, FK_DEBRUIJN, "flintnm")
+			       (deb2names flint, FK_NAMED, "flintnm")
 			       ((*  "id" :: *) !CTRL.phases)
 
       (* run any missing phases *)
       val (flint,fk) =
-	  if fk = FK_NAMED
-	  then (say "\n!!Forgot deb2names!!\n"; (deb2names flint, FK_DEBRUIJN))
+	  if fk = FK_DEBRUIJN
+	  then (say "\n!!Forgot deb2names!!\n"; (deb2names flint, FK_NAMED))
 	  else (flint,fk)
       val (flint,fk) =
-	  if fk = FK_DEBRUIJN
+	  if fk = FK_NAMED
 	  then (say "\n!!Forgot wrap!!\n"; (wrapping flint, FK_WRAP))
 	  else (flint,fk)
       val (flint,fk) =
