@@ -46,7 +46,8 @@ end = struct
 	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
 		     val getPid = RecompPersstate.pid_fetch_sml
 		     fun warmup (i, p) = ()
-		     val recomp = recomp)
+		     val recomp = recomp
+		     val transfer_state = RecompPersstate.transfer_state)
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
 			       val pending = AutoLoad.getPending)

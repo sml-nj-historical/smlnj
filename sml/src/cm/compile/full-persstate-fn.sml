@@ -72,12 +72,16 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 				       stable_value_present
 				   val new_smlinfo = discard_pers o SML)
 	    val reset_recomp = RecompPersstate.reset
+	    val transfer_state_recomp = RecompPersstate.transfer_state
 	in
 	    open RecompPersstate
 	    fun reset () =
 		(reset_recomp ();
 		 persmap := Map.empty;
 		 tmpmap := Map.empty)
+	    fun transfer_state (si, bi) =
+		(transfer_state_recomp (si, bi);
+		 discard_pers (SML si))
 	end
 
 	infix o'

@@ -33,6 +33,7 @@ end
 
 functor StabilizeFn (val bn2statenv : statenvgetter
 		     val getPid : SmlInfo.info -> pid option
+		     val transfer_state : SmlInfo.info * BinInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
     datatype pitem =
@@ -342,6 +343,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 					       localimports = li,
 					       globalimports = gi }
 			in
+			    transfer_state (smlinfo, i);
 			    m := SmlInfoMap.insert (!m, smlinfo, n);
 			    n
 			end

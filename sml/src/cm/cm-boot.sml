@@ -111,7 +111,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure Stabilize =
 	  StabilizeFn (val bn2statenv = bn2statenv
 		       val getPid = FullPersstate.pid_fetch_sml
-		       val recomp = recomp_runner)
+		       val recomp = recomp_runner
+		       val transfer_state = FullPersstate.transfer_state)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works

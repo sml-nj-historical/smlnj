@@ -28,6 +28,13 @@ functor RecompPersstateFn
 	fun reset () = (smlmap := SmlInfoMap.empty;
 			stablemap := StableMap.empty)
 
+	fun transfer_state (si, bi) = let
+	    val (map, (memo, _)) = SmlInfoMap.remove (!smlmap, si)
+	in
+	    smlmap := map;
+	    stablemap := StableMap.insert (!stablemap, bi, memo)
+	end
+
 	fun recomp_look_sml (i, provided, gp) = let
 	    fun isValid ({ bfc, ctxt }, ts) =
 		not (TStamp.needsUpdate { source = SmlInfo.lastseen i,
