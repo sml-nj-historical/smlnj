@@ -287,9 +287,10 @@ structure Binfile :> BINFILE = struct
 	    if (size s = i) then s
 	    else substring (s, 0, i)
 	end
+	(* use at most the first two components of version_id *)
 	fun version [] = []
-	  | version [x : int] = [Int.toString x]
-	  | version (x :: r) = (Int.toString x) :: "." :: (version r)
+	  | version [x] = [Int.toString x]
+	  | version (x :: y :: _) = [Int.toString x, ".", Int.toString y]
 	val v = fit (vbytes, concat (version version_id))
 	val a = fit (abytes, arch)
     in

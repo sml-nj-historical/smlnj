@@ -1,6 +1,10 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
-(* version.sml *)
-
+(* -*- sml -*-
+ * %F version.template
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 structure CompilerVersion : sig
 
     val version : {
@@ -15,8 +19,8 @@ structure CompilerVersion : sig
 
     val version = {
 	    system = "Standard ML of New Jersey ",
-	    version_id = [110, 49],
-	    date = "September 13, 2004"
+	    version_id = [%V],
+	    date = "%D"
 	  }
 
     fun f ([], l) = l
@@ -25,7 +29,7 @@ structure CompilerVersion : sig
 
     val banner = concat (
 	    #system version :: "v" :: 
-	    f (#version_id version, [" [FLINT v1.5], ", #date version]))
+	    f (#version_id version, [" built: ", #date version]))
 
   end
 

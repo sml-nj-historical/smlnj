@@ -125,6 +125,9 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure DebIndex
 is
 
+(* load the version tool (defines class "version" -- see below) *)
+TopLevel/main/versiontool.cm : tool
+
 TopLevel/environ/environ.sig
 TopLevel/environ/environ.sml
 TopLevel/environ/symenv.sig
@@ -145,10 +148,13 @@ TopLevel/main/cconfig.sig
 TopLevel/main/code-generator.sig
 TopLevel/main/compile.sig
 TopLevel/main/compile.sml
-TopLevel/main/version.sml
 TopLevel/main/printhooks.sml
 TopLevel/main/pptable.sml
 
+(* auto-generate the version file... *)
+TopLevel/main/version.template : version (target: TopLevel/main/version.sml
+                                          versionfile: ../../config/version
+                                          releasefile: ../../config/release)
 
 (* Semantic analysis (elaborator) specialized for SML/NJ. *)
 Semant/basics/inlinfo.sig
