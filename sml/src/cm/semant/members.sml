@@ -104,14 +104,14 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    fun w0 s = error EM.WARN s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
 	    fun exp2coll (PrivateTools.GROUP p) = let
-		    val g as GG.GROUP { exports = i, islib, privileges, ... } =
+		    val g as GG.GROUP { exports = i, islib, required, ... } =
 			rparse p
 		    val gi = if islib then SymbolMap.empty else i
 	        in
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
 				 subgroups = [g],
-				 reqpriv = #required privileges }
+				 reqpriv = required }
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src

@@ -9,13 +9,20 @@
 structure GroupGraph = struct
 
     type privileges = StringSet.set
-    type privilegespec = { required : privileges, granted : privileges }
 
+    datatype stableinfo =
+	NONSTABLE of privileges		(* granted privileges *)
+      | STABLE of BinInfo.info IntBinaryMap.map
+
+    (* the "required" field includes everything:
+     *   1. privileges required by subgroups
+     *   2. newly required privileges
+     *   3. privileges that would be granted once the group is stabilized *)
     datatype group =
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   islib: bool,
-		   privileges: privilegespec,
+		   required: privileges,
 		   grouppath: AbsPath.t,
 		   subgroups: group list,
-		   stableinfo: BinInfo.info IntBinaryMap.map option }
+		   stableinfo: stableinfo }
 end

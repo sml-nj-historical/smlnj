@@ -30,6 +30,8 @@ is
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml
+	smlfile/smlinfoset.sml
+	smlfile/smlinfomap.sml
 	smlfile/skeleton.sml
 	smlfile/skel-cvt.sml
 	smlfile/skel-io.sml

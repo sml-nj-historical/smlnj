@@ -10,7 +10,14 @@
 signature BININFO = sig
 
     type info
+    type ord_key = info
     type complainer = GenericVC.ErrorMsg.complainer
+    type region = GenericVC.SourceMap.region
+
+    val new : { group: AbsPath.t * region,
+	        spec: string,
+		offset: int,
+		share: bool option } -> info
 
     val compare : info * info -> order
     val describe : info -> string
@@ -30,6 +37,10 @@ structure BinInfo :> BININFO = struct
 		  spec: string,
 		  offset: int,
 		  share: bool option }
+
+    type ord_key = info
+
+    val new = INFO
 
     fun compare (INFO i, INFO i') =
 	case Int.compare (#offset i, #offset i') of

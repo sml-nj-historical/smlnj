@@ -15,7 +15,7 @@ signature CM_SEMANT = sig
 
     type group = GroupGraph.group
 
-    type privilegespec = GroupGraph.privilegespec
+    type privilegespec
     type aexp
     type exp
     type members			(* still conditional *)
@@ -107,7 +107,7 @@ structure CMSemant :> CM_SEMANT = struct
     type cm_symbol = string
 
     type group = GG.group
-    type privilegespec = GG.privilegespec
+    type privilegespec = { required: GG.privileges, granted: GG.privileges }
 
     type environment = MemberCollection.collection
 
@@ -137,11 +137,10 @@ structure CMSemant :> CM_SEMANT = struct
     fun emptyGroup path =
 	GG.GROUP { exports = SymbolMap.empty,
 		   islib = false,
-		   privileges = { required = StringSet.empty,
-				  granted = StringSet.empty },
+		   required = StringSet.empty,
 		   grouppath = path,
 		   subgroups = [],
-		   stableinfo = NONE }
+		   stableinfo = GG.NONSTABLE StringSet.empty }
 	
 
     fun group (g, p, e, m, error, gp) = let
@@ -150,13 +149,12 @@ structure CMSemant :> CM_SEMANT = struct
 	val (exports, rp) = MemberCollection.build (mc, filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
 	val { required = rp', granted = gr } = p
-	val rp'' = StringSet.difference (StringSet.union (rp, rp'), gr)
-	val p' = { required = rp'', granted = gr }
     in
 	GG.GROUP { exports = exports, islib = false,
-		   privileges = p', grouppath = g,
+		   required = StringSet.union (StringSet.union (rp, rp'), gr),
+		   grouppath = g,
 		   subgroups = subgroups,
-		   stableinfo = NONE }
+		   stableinfo = GG.NONSTABLE gr }
     end
 
     fun library (g, p, e, m, error, gp) = let
@@ -164,13 +162,13 @@ structure CMSemant :> CM_SEMANT = struct
 	val filter = applyTo mc e
 	val (exports, rp) = MemberCollection.build (mc, SOME filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
-	val { required = rp', granted } = p
-	val p' = { required = StringSet.union (rp, rp'), granted = granted }
+	val { required = rp', granted = gr } = p
     in
 	GG.GROUP { exports = exports, islib = true,
-		   privileges = p', grouppath = g,
+		   required = StringSet.union (StringSet.union (rp, rp'), gr),
+		   grouppath = g,
 		   subgroups = subgroups,
-		   stableinfo = NONE }
+		   stableinfo = GG.NONSTABLE gr }
     end
 
     local

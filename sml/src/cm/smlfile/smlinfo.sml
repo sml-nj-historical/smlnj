@@ -10,6 +10,7 @@
 signature SMLINFO = sig
 
     type info
+    type ord_key = info
 
     type complainer = GenericVC.ErrorMsg.complainer
     type ast = GenericVC.Ast.dec
@@ -47,6 +48,8 @@ signature SMLINFO = sig
     val fullSpec : info -> string	(* gspec(sspec) *)
     val name : info -> string		(* sname *)
     val fullName : info -> string	(* gname(sspec) *)
+
+    val mkBinInfo : info -> int -> BinInfo.info
 end
 
 structure SmlInfo :> SMLINFO = struct
@@ -73,6 +76,8 @@ structure SmlInfo :> SMLINFO = struct
 	INFO of { sourcepath: AbsPath.t,
 		  persinfo: persinfo,
 		  share: bool option }
+
+    type ord_key = info
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun share (INFO { share = s, ... }) = s
@@ -249,4 +254,13 @@ structure SmlInfo :> SMLINFO = struct
     fun name (INFO { sourcepath, ... }) = AbsPath.name sourcepath
     fun fullName (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
 	concat [AbsPath.name (#1 group), "(", AbsPath.spec sourcepath, ")"]
+
+    fun mkBinInfo (INFO i) offset = let
+	val { persinfo = PERS { group, ... }, sourcepath, share, ... } = i
+    in
+	BinInfo.new { group = group,
+		      spec = AbsPath.spec sourcepath,
+		      offset = offset,
+		      share = share }
+    end
 end

@@ -17,7 +17,7 @@ functor RecompPersstateFn
 	type recomp_memo = { bfc: BF.bfContent, ctxt: E.staticEnv }
 	type recomp_tmemo = recomp_memo * TStamp.t
 
-	val smlmap = ref (AbsPathMap.empty: recomp_tmemo AbsPathMap.map)
+	val smlmap = ref (SmlInfoMap.empty: recomp_tmemo SmlInfoMap.map)
 	val stablemap = ref (StableMap.empty: recomp_memo StableMap.map)
 
 	fun recomp_look_sml (i, provided, gp) = let
@@ -29,13 +29,12 @@ functor RecompPersstateFn
 		in
 		    PidSet.equal (provided, demanded)
 		end
-	    val p = SmlInfo.sourcepath i
 	in
-	    case AbsPathMap.find (!smlmap, p) of
+	    case SmlInfoMap.find (!smlmap, i) of
 		NONE => NONE
 	      | SOME (memo, ts) =>
 		    if isValid (memo, ts) then SOME memo
-		    else (smlmap := #1 (AbsPathMap.remove (!smlmap, p));
+		    else (smlmap := #1 (SmlInfoMap.remove (!smlmap, i));
 			  NONE)
 	end
 
@@ -44,7 +43,7 @@ functor RecompPersstateFn
 	    val tmemo = (memo, ts)
 	in
 	    discard_value i;
-	    smlmap := AbsPathMap.insert (!smlmap, SmlInfo.sourcepath i, tmemo)
+	    smlmap := SmlInfoMap.insert (!smlmap, i, tmemo)
 	end
 
 	fun discard (arg as (_, { bfc, ctxt })) = (BF.discardCode bfc; arg)
@@ -61,8 +60,6 @@ functor RecompPersstateFn
 	    if discard_code then recomp_memo_stable0 o discard
 	    else recomp_memo_stable0
 
-	fun bfc_fetch_sml i =
-	    #bfc (#1 (valOf (AbsPathMap.find (!smlmap, SmlInfo.sourcepath i))))
-	fun bfc_fetch_stable i =
-	    #bfc (valOf (StableMap.find (!stablemap, i)))
+	fun bfc_fetch_sml i = #bfc (#1 (valOf (SmlInfoMap.find (!smlmap, i))))
+	fun bfc_fetch_stable i = #bfc (valOf (StableMap.find (!stablemap, i)))
     end

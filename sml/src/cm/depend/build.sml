@@ -55,11 +55,10 @@ structure BuildDepend :> BUILDDEPEND = struct
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)
-	val bb = ref AbsPathMap.empty
-	fun lock i = bb := AbsPathMap.insert (!bb, SmlInfo.sourcepath i, NONE)
-	fun release (i, r) =
-	    (bb := AbsPathMap.insert (!bb, SmlInfo.sourcepath i, SOME r); r)
-	fun fetch i = AbsPathMap.find (!bb, SmlInfo.sourcepath i)
+	val bb = ref SmlInfoMap.empty
+	fun lock i = bb := SmlInfoMap.insert (!bb, i, NONE)
+	fun release (i, r) = (bb := SmlInfoMap.insert (!bb, i, SOME r); r)
+	fun fetch i = SmlInfoMap.find (!bb, i)
 
 	(* - get the result from the blackboard if it is there *)
 	(* - otherwise trigger analysis *)

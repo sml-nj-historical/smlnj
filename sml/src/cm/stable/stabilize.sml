@@ -25,13 +25,7 @@ structure Stablize = struct
 			 val compare = compare
 	end)
 
-    structure SmlInfoSet =
-	BinarySetFn (struct
-			 type ord_key = SmlInfo.info
-			 val compare = SmlInfo.compare
-	end)
-
-    fun f (GroupGraph.GROUP { exports, ... }, binSizeOf, binCopy) = let
+    fun f (g as GroupGraph.GROUP { exports, ... }, binSizeOf, binCopy) = let
 	(* The format of a stable archive is the following:
 	 *  - It starts with the size s of the pickled dependency graph.
 	 *    This size itself is written as four-byte string.
@@ -55,13 +49,10 @@ structure Stablize = struct
 	end
 
 	val offsetDict = let
-	    fun add (i, (d, n)) = let
-		val spec = AbsPath.spec (SmlInfo.sourcepath i)
-	    in
-		(StringMap.insert (d, spec, n), n + binSizeOf i)
-	    end
+	    fun add (i, (d, n)) =
+		(SmlInfoMap.insert (d, i, n), n + binSizeOf i)
 	in
-	    #1 (foldl add (StringMap.empty, 0) members)
+	    #1 (foldl add (SmlInfoMap.empty, 0) members)
 	end
 
 	fun w_list w_item [] k m = ";" :: k m
@@ -114,8 +105,8 @@ structure Stablize = struct
 	  | w_sharing (SOME false) k m = "f" :: k m
 
 	fun w_si_raw i k = let
-	    val spec = AbsPath.pickleSpec (SmlInfo.sourcepath i)
-	    val offset = valOf (StringMap.find (offsetDict, spec))
+	    val spec = AbsPath.spec (SmlInfo.sourcepath i)
+	    val offset = valOf (SmlInfoMap.find (offsetDict, i))
 	in
 	    w_string spec (w_int offset (w_sharing (SmlInfo.share i) k))
 	end
@@ -124,7 +115,7 @@ structure Stablize = struct
 
 	fun w_primitive p k m = String.str (Primitive.toIdent p) :: k m
 
-	fun w_abspath_raw p k m = w_string (AbsPath.pickle p) k m
+	fun w_abspath_raw p k m = w_list w_string (AbsPath.pickle p) k m
 
 	val w_abspath = w_share w_abspath_raw AP
 
@@ -144,7 +135,30 @@ structure Stablize = struct
 
 	and w_fsbn (f, n) k = w_filter f (w_sbn n k)
 
-	fun w_impexp (n, _) k = w_fsbn n k
+	fun w_impexp (s, (n, _)) k = w_symbol s (w_fsbn n k)
+
+	fun w_exports e = w_list w_impexp (SymbolMap.listItemsi e)
+
+	fun w_bool true k m = "t" :: k m
+	  | w_bool false k m = "f" :: k m
+
+	fun w_privileges p = w_list w_string (StringSet.listItems p)
+
+	fun pickle_group (GroupGraph.GROUP g) = let
+	    val { exports, islib, required, grouppath, subgroups, ... } = g
+	    fun w_sg (GroupGraph.GROUP { grouppath = gp, ... }) = w_abspath gp
+	    fun k0 m = []
+	    val m0 = (0, Map.empty)
+	in
+	    concat
+	      (w_exports exports
+	           (w_bool islib
+		          (w_privileges required
+			           (w_abspath grouppath
+				              (w_list w_sg subgroups k0)))) m0)
+	end
+	val pickle = pickle_group g
+	val sz = size pickle
     in
 	()
     end

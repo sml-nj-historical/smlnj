@@ -44,7 +44,7 @@ structure CheckSharing :> CHECKSHARING = struct
 		StringSet.add (s, x)
 	    end
 
-	val smlmap = ref AbsPathMap.empty
+	val smlmap = ref SmlInfoMap.empty
 	val stablemap = ref StableMap.empty
 
 	fun bn (DG.PNODE _, s) = s
@@ -63,10 +63,8 @@ structure CheckSharing :> CHECKSHARING = struct
 
 	and fbn ((_, n), s) = bn (n, s)
 
-	fun sn (DG.SNODE { smlinfo = i, localimports, globalimports }, s) = let
-	    val p = SmlInfo.sourcepath i
-	in
-	    case AbsPathMap.find (!smlmap, p) of
+	fun sn (DG.SNODE { smlinfo = i, localimports, globalimports }, s) =
+	    case SmlInfoMap.find (!smlmap, i) of
 		SOME s' => StringSet.union (s, s')
 	      | NONE => let
 		    val gs = foldl fsbn empty globalimports
@@ -74,10 +72,9 @@ structure CheckSharing :> CHECKSHARING = struct
 		    val s' = check (SmlInfo.share i, SmlInfo.name i, ls,
 				    SmlInfo.error gp i)
 		in
-		    smlmap := AbsPathMap.insert (!smlmap, p, s');
+		    smlmap := SmlInfoMap.insert (!smlmap, i, s');
 		    StringSet.union (s, s')
 		end
-	end
 
 	and sbn (DG.SB_BNODE n, s) = bn (n, s)
 	  | sbn (DG.SB_SNODE n, s) = sn (n, s)
