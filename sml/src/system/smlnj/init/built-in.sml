@@ -142,6 +142,7 @@ in
         val op *    : word32 * word32 -> word32 = InLine.w32mul
         val op +    : word32 * word32 -> word32 = InLine.w32add
         val op -    : word32 * word32 -> word32 = InLine.w32sub
+	val ~       : word32 -> word32          = InLine.w32neg
         val op div  : word32 * word32 -> word32 = InLine.w32div
         val op mod  : word32 * word32 -> word32 = InLine.w32mod
         val op >    : word32 * word32 -> bool   = InLine.w32gt
@@ -230,6 +231,7 @@ in
         val op *    : word * word -> word = InLine.w31mul
         val op +    : word * word -> word = InLine.w31add
         val op -    : word * word -> word = InLine.w31sub
+	val ~       : word -> word        = InLine.w31neg
         val op div  : word * word -> word = InLine.w31div
         val op mod  : word * word -> word = InLine.w31mod
         val op >    : word * word -> bool   = InLine.w31gt
@@ -310,22 +312,31 @@ in
 
       (* temporary framework, because the actual word8 operators 
        * are not implemented*)
-        val orb     : word8 * word8 -> word8 = InLine.i31orb_8
-        val xorb    : word8 * word8 -> word8 = InLine.i31xorb_8
-        val op div  : word8 * word8 -> word8 = InLine.i31div_8
-        val andb    : word8 * word8 -> word8 = InLine.i31andb_8
-        val op >    : word8 * word8 -> bool  = InLine.i31gt_8
-        val op >=   : word8 * word8 -> bool  = InLine.i31ge_8
-        val op <    : word8 * word8 -> bool  = InLine.i31lt_8
-        val op <=   : word8 * word8 -> bool  = InLine.i31le_8
-        val rshift  : word8 * word -> word8 = InLine.i31rshift_8
-        val rshiftl : word8 * word -> word8 = InLine.i31rshift_8 (* high bits always 0 *)
-        val lshift  : word8 * word -> word8 = InLine.i31lshift_8
-(* WARNING! the following operators don't get the high-order bits right *)
-        val notb    : word8 -> word8 = InLine.i31notb_8  
-        val op *    : word8 * word8 -> word8 = InLine.i31mul_8
-        val op +    : word8 * word8 -> word8 = InLine.i31add_8
-        val op -    : word8 * word8 -> word8 = InLine.i31sub_8
+	(* WARNING! some of the following operators
+	 *          don't get the high-order bits right *)
+        val orb     : word8 * word8 -> word8 = InLine.w31orb_8
+        val xorb    : word8 * word8 -> word8 = InLine.w31xorb_8
+        val andb    : word8 * word8 -> word8 = InLine.w31andb_8
+        val op *    : word8 * word8 -> word8 = InLine.w31mul_8
+        val op +    : word8 * word8 -> word8 = InLine.w31add_8
+        val op -    : word8 * word8 -> word8 = InLine.w31sub_8
+	val ~       : word8 -> word8         = InLine.w31neg_8
+        val op div  : word8 * word8 -> word8 = InLine.w31div_8
+        val op mod  : word8 * word8 -> word8 = InLine.w31mod_8
+        val op >    : word8 * word8 -> bool  = InLine.w31gt_8
+        val op >=   : word8 * word8 -> bool  = InLine.w31ge_8
+        val op <    : word8 * word8 -> bool  = InLine.w31lt_8
+        val op <=   : word8 * word8 -> bool  = InLine.w31le_8
+        val rshift  : word8 * word -> word8  = InLine.w31rshift_8
+        val rshiftl : word8 * word -> word8  = InLine.w31rshift_8
+        val lshift  : word8 * word -> word8  = InLine.w31lshift_8
+        val notb    : word8 -> word8         = InLine.w31notb_8
+	val chkLshift  : word8 * word -> word8 = InLine.w31ChkLshift_8
+	val chkRshift  : word8 * word -> word8 = InLine.w31ChkRshift_8
+	val chkRshiftl : word8 * word -> word8 = InLine.w31ChkRshiftl_8
+
+	val min     : word8 * word8 -> word8 = InLine.w31min_8
+	val max     : word8 * word8 -> word8 = InLine.w31max_8
         end
 
     structure Char =

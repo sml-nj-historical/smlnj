@@ -246,6 +246,10 @@ datatype primop
 
   | INLIDENTITY				(* polymorphic identity *)
 
+  | CVT64				(* convert between external and
+					 * internal representation of
+					 * simulated 64-bit scalars *)
+
 and ccall_type =
     CCI32 |				(* passed as int32 *)
     CCI64 |				(* int64, currently unused *)

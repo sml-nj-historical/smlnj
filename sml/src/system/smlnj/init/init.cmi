@@ -122,6 +122,9 @@ bind order = order.sml (primitive)
 # Minimal support for arbitrary-precision integers.
 bind coreintinf = core-intinf.sml (rts, order, primitive)
 
+# Minimal support for (simulated) 64-bit words.
+bind coreword64 = core-word64.sml (rts, primitive)
+
 # This defines the core environment to be used everywhere else...
 # (This binds the structure symbol "Core", which is not yet the one that
 # is used implicitly by the compiler.  Of course, "core.sml" itself cannot
@@ -173,7 +176,7 @@ bind init-utils = init-utils.sml (ps ss-sig ss, xcore)
 # Make sure everybody else in the world gets access to structure _Core...
 bind-core (xCore) pervasive = pervasive.sml (core, ps, ss, pp, print-hook, \
 					     use-hook, exn-info-hook, \
-					     coreintinf, \
+					     coreintinf, coreword64, \
 					     math-inlT, built-in, xcore)
 
 # Report the results to the world...

@@ -445,6 +445,7 @@ val lt_bool = LT.ltc_bool
 val lt_unit = LT.ltc_unit
 
 val lt_ipair = lt_tup [lt_int, lt_int]
+val lt_i32pair = lt_tup [lt_int32, lt_int32]
 val lt_icmp = lt_arw (lt_ipair, lt_bool)
 val lt_ineg = lt_arw (lt_int, lt_int)
 val lt_intop = lt_arw (lt_ipair, lt_int)
@@ -503,7 +504,7 @@ fun shiftTy k =
   end 
 
 fun inlineShift(shiftOp, kind, clear) = 
-  let fun shiftLimit (PO.UINT lim) = WORD(Word.fromInt lim)
+  let fun shiftLimit (PO.UINT lim | PO.INT lim) = WORD(Word.fromInt lim)
         | shiftLimit _ = bug "unexpected case in shiftLimit"
 
       val p = mkv() val vp = VAR p
@@ -648,6 +649,8 @@ fun transPrim (prim, lt, ts) =
 	  in
 	      FN (v, argt, VAR v)
 	  end
+
+	| g (PO.CVT64) = let val v = mkv () in FN (v, lt_i32pair, VAR v) end
 
         | g (PO.INLSUBSCRIPTV) =
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)

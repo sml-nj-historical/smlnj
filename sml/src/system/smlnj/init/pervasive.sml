@@ -20,6 +20,7 @@ local
     structure W8 = InlineT.Word8
     structure W31 = InlineT.Word31
     structure W32 = InlineT.Word32
+    structure CW64 = CoreWord64
     structure R64 = InlineT.Real64
     structure CV = InlineT.CharVector
     structure PV = InlineT.PolyVector
@@ -31,15 +32,7 @@ local
     val w8plus = w8adapt W8.+
     val w8minus = w8adapt W8.-
     val w8times = w8adapt W8.*
-
-    fun w8mod (a, b) = w8minus (a, w8times (W8.div (a, b), b))
-
-    val w8neg = InlineT.Int31.trunc_word8 o InlineT.Int31.~ o
-		InlineT.Int31.extend_word8
-    val w31neg = InlineT.Word31.copyf_int31 o InlineT.Int31.~ o
-		 InlineT.Word31.copyt_int31
-    val w32neg = InlineT.Word32.copyf_int32 o InlineT.Int32.~ o
-		 InlineT.Word32.copyt_int32
+    val w8neg = w8adapt W8.~
 
     fun stringlt (a, b) = let
 	val al = CV.length a
@@ -63,33 +56,51 @@ local
     fun stringge (a, b) = stringle (b, a)
 in
 overload ~ :   ('a -> 'a)
-   as  I31.~ and I32.~ and CII.~ and w8neg and w31neg and w32neg and R64.~
+   as  I31.~ and I32.~ and CII.~
+   and w8neg and W31.~ and W32.~ and CW64.~
+   and R64.~
 overload + :   ('a * 'a -> 'a)
-  as I31.+ and I32.+ and CII.+ and w8plus and W31.+ and W32.+ and R64.+
+  as  I31.+ and I32.+ and CII.+
+  and w8plus and W31.+ and W32.+ and CW64.+
+  and R64.+
 overload - :   ('a * 'a -> 'a)
-  as  I31.- and I32.- and CII.- and w8minus and W31.- and W32.- and R64.-
+  as  I31.- and I32.- and CII.-
+  and w8minus and W31.- and W32.- and CW64.-
+  and R64.-
 overload * :   ('a * 'a -> 'a)
-  as I31.* and I32.* and CII.* and w8times and W31.* and W32.* and R64.*
+  as  I31.* and I32.* and CII.*
+  and w8times and W31.* and W32.* and CW64.*
+  and R64.*
 overload / : ('a * 'a -> 'a)
   as R64./
 overload div : ('a * 'a -> 'a)
-  as  I31.div and I32.div and CII.div and W8.div and W31.div and W32.div
+  as  I31.div and I32.div and CII.div
+  and W8.div and W31.div and W32.div and CW64.div
 overload mod : ('a * 'a -> 'a)
-  as  I31.mod and I32.mod and CII.mod and w8mod and W31.mod and W32.mod
+  as  I31.mod and I32.mod and CII.mod
+  and W8.mod and W31.mod and W32.mod and CW64.mod
 overload < :   ('a * 'a -> bool)
-  as  I31.< and I32.< and CII.< and W8.< and W31.< and W32.< and R64.<
+  as  I31.< and I32.< and CII.<
+  and W8.< and W31.< and W32.< and CW64.<
+  and R64.<
   and InlineT.Char.<
   and stringlt
 overload <= :   ('a * 'a -> bool)
-  as I31.<= and I32.<= and CII.<= and W8.<= and W31.<= and W32.<= and R64.<=
+  as  I31.<= and I32.<= and CII.<=
+  and W8.<= and W31.<= and W32.<= and CW64.<=
+  and R64.<=
   and InlineT.Char.<=
   and stringle
 overload > :   ('a * 'a -> bool)
-  as I31.> and I32.> and CII.> and W8.> and W31.> and W32.> and R64.>
+  as  I31.> and I32.> and CII.>
+  and W8.> and W31.> and W32.> and CW64.>
+  and R64.>
   and InlineT.Char.>
   and stringgt
 overload >= :   ('a * 'a -> bool)
-  as I31.>= and I32.>= and CII.>= and W8.>= and W31.>= and W32.>= and R64.>=
+  as  I31.>= and I32.>= and CII.>=
+  and W8.>= and W31.>= and W32.>= and CW64.>=
+  and R64.>=
   and InlineT.Char.>=
   and stringge
 overload abs : ('a -> 'a)

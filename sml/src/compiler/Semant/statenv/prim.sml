@@ -508,41 +508,34 @@ val allPrimops =
        
        (* primops to go between abstract and concrete representation of
 	* 64-bit ints and words *)
-       ("w64p",          P.INLIDENTITY,         w64_pw32) :-:
-       ("p64w",          P.INLIDENTITY,         pw32_w64) :-:
-       ("i64p",          P.INLIDENTITY,         i64_pw32) :-:
-       ("p64i",          P.INLIDENTITY,         pw32_i64) :-:
+       ("w64p",          P.CVT64,               w64_pw32) :-:
+       ("p64w",          P.CVT64,               pw32_w64) :-:
+       ("i64p",          P.CVT64,               i64_pw32) :-:
+       ("p64i",          P.CVT64,               pw32_i64) :-:
 
        (* *** integer 31 primops ***
         *   Many of the i31 primops are being abused for different types
 	*   (mostly Word8.word and also for char).  In these cases
 	*   there are suffixed alternative versions of the primop
 	*   (i.e., same primop, different type). *)
-       ("i31add", 	 int31 (P.+),      	ii_i) :-:
-       ("i31add_8", 	 int31 (P.+),      	w8w8_w8) :-:
+       ("i31add", 	 int31 P.+,      	ii_i) :-:
+       ("i31add_8", 	 int31 P.+,      	w8w8_w8) :-:
 
-       ("i31sub",	 int31 (P.-),      	ii_i) :-:
-       ("i31sub_8",	 int31 (P.-),      	w8w8_w8) :-:
+       ("i31sub",	 int31 P.-,      	ii_i) :-:
+       ("i31sub_8",	 int31 P.-,      	w8w8_w8) :-:
 
-       ("i31mul",	 int31 (P.* ),      	ii_i) :-:
-       ("i31mul_8",	 int31 (P.* ),      	w8w8_w8) :-:
+       ("i31mul",	 int31 P.*,      	ii_i) :-:
+       ("i31mul_8",	 int31 P.*,      	w8w8_w8) :-:
 
-(*
-       ("i31div",	 P.INLDIV,      	ii_i) :-:
-       ("i31div_8",	 P.INLDIV,      	w8w8_w8) :-:
+       ("i31div",	 int31 P.DIV,      	ii_i) :-:
+       ("i31div_8",	 int31 P.DIV,      	w8w8_w8) :-:
 
-       ("i31mod",        P.INLMOD,      	ii_i) :-:
+       ("i31mod",        int31 P.MOD,      	ii_i) :-:
+       ("i31mod_8",      int31 P.MOD,           w8w8_w8) :-:
 
-       ("i31rem",	 P.INLREM,      	ii_i) :-:
-*)
-       ("i31div",	 int31 (P.DIV),      	ii_i) :-:
-       ("i31div_8",	 int31 (P.DIV),      	w8w8_w8) :-:
+       ("i31quot",	 int31 P./,      	ii_i) :-:
 
-       ("i31mod",        int31 (P.MOD),      	ii_i) :-:
-
-       ("i31quot",	 int31 (P./),      	ii_i) :-:
-
-       ("i31rem",	 int31 (P.REM),      	ii_i) :-:
+       ("i31rem",	 int31 P.REM,      	ii_i) :-:
 
        ("i31orb",	 bits31 P.ORB,      	ii_i) :-:
        ("i31orb_8",	 bits31 P.ORB,      	w8w8_w8) :-:
@@ -557,6 +550,7 @@ val allPrimops =
        ("i31notb_8",	 bits31 P.NOTB,      	w8_w8) :-:
 
        ("i31neg",	 int31 P.~,      	i_i) :-:
+       ("i31neg_8",	 int31 P.~,      	w8_w8) :-:
 
        ("i31lshift",	 bits31 P.LSHIFT,      	ii_i) :-:
        ("i31lshift_8",	 bits31 P.LSHIFT,      	w8w_w8) :-:
@@ -564,21 +558,21 @@ val allPrimops =
        ("i31rshift",	 bits31 P.RSHIFT,      	ii_i) :-:
        ("i31rshift_8",	 bits31 P.RSHIFT,      	w8w_w8) :-:
 
-       ("i31lt",	 int31cmp (P.<),        ii_b) :-:
-       ("i31lt_8",	 int31cmp (P.<),        w8w8_b) :-:
-       ("i31lt_c",	 int31cmp (P.<),        cc_b) :-:
+       ("i31lt",	 int31cmp P.<,		ii_b) :-:
+       ("i31lt_8",	 int31cmp P.<,		w8w8_b) :-:
+       ("i31lt_c",	 int31cmp P.<,		cc_b) :-:
 
-       ("i31le",	 int31cmp (P.<=),       ii_b) :-:
-       ("i31le_8",	 int31cmp (P.<=),       w8w8_b) :-:
-       ("i31le_c",	 int31cmp (P.<=),       cc_b) :-:
+       ("i31le",	 int31cmp P.<=,		ii_b) :-:
+       ("i31le_8",	 int31cmp P.<=,		w8w8_b) :-:
+       ("i31le_c",	 int31cmp P.<=,		cc_b) :-:
 
-       ("i31gt",	 int31cmp (P.>),        ii_b) :-:
-       ("i31gt_8",	 int31cmp (P.>),        w8w8_b) :-:
-       ("i31gt_c",	 int31cmp (P.>),        cc_b) :-:
+       ("i31gt",	 int31cmp P.>,		ii_b) :-:
+       ("i31gt_8",	 int31cmp P.>,		w8w8_b) :-:
+       ("i31gt_c",	 int31cmp P.>,		cc_b) :-:
 
-       ("i31ge", 	 int31cmp (P.>=),       ii_b) :-:
-       ("i31ge_8", 	 int31cmp (P.>=),       w8w8_b) :-:
-       ("i31ge_c", 	 int31cmp (P.>=),       cc_b) :-:
+       ("i31ge", 	 int31cmp P.>=,		ii_b) :-:
+       ("i31ge_8", 	 int31cmp P.>=,		w8w8_b) :-:
+       ("i31ge_c", 	 int31cmp P.>=,		cc_b) :-:
 
        ("i31ltu",	 word31cmp P.LTU,      	ii_b) :-:
        ("i31geu",	 word31cmp P.GEU,      	ii_b) :-:
@@ -586,48 +580,36 @@ val allPrimops =
        ("i31ne",	 int31cmp P.NEQ,      	ii_b) :-:
 
        ("i31min",	 P.INLMIN (P.INT 31),  	ii_i) :-:
+       ("i31min_8",	 P.INLMIN (P.INT 31),  	w8w8_w8) :-:
        ("i31max",	 P.INLMAX (P.INT 31),  	ii_i) :-:
+       ("i31max_8",	 P.INLMAX (P.INT 31),  	w8w8_w8) :-:
+
        ("i31abs",	 P.INLABS (P.INT 31), 	i_i) :-:
 
        (*** integer 32 primops ***)
-       ("i32mul",        int32 (P.* ),      	i32i32_i32) :-:
-       ("i32div",        int32 (P.DIV),      	i32i32_i32) :-:
-       ("i32mod",        int32 (P.MOD),      	i32i32_i32) :-:
-       ("i32quot",       int32 (P./),      	i32i32_i32) :-:
-       ("i32rem",        int32 (P.REM),      	i32i32_i32) :-:
-       ("i32add",        int32 (P.+),      	i32i32_i32) :-:
-       ("i32sub",        int32 (P.-),      	i32i32_i32) :-:
+       ("i32mul",        int32 P.*,      	i32i32_i32) :-:
+       ("i32div",        int32 P.DIV,      	i32i32_i32) :-:
+       ("i32mod",        int32 P.MOD,      	i32i32_i32) :-:
+       ("i32quot",       int32 P./,      	i32i32_i32) :-:
+       ("i32rem",        int32 P.REM,      	i32i32_i32) :-:
+       ("i32add",        int32 P.+,      	i32i32_i32) :-:
+       ("i32sub",        int32 P.-,      	i32i32_i32) :-:
        ("i32orb",        bits32 P.ORB,      	i32i32_i32) :-:
        ("i32andb",       bits32 P.ANDB,      	i32i32_i32) :-:
        ("i32xorb",       bits32 P.XORB,      	i32i32_i32) :-:
        ("i32lshift",     bits32 P.LSHIFT,      	i32i32_i32) :-:
        ("i32rshift",     bits32 P.RSHIFT,      	i32i32_i32) :-:
        ("i32neg",        int32 P.~,      	i32_i32) :-:
-       ("i32lt",         int32cmp (P.<),        i32i32_b) :-:
-       ("i32le",         int32cmp (P.<=),       i32i32_b) :-:
-       ("i32gt",         int32cmp (P.>),        i32i32_b) :-:
-       ("i32ge",         int32cmp (P.>=),       i32i32_b) :-:
-       ("i32eq",         int32cmp (P.EQL),      i32i32_b) :-:
-       ("i32ne",         int32cmp (P.NEQ),      i32i32_b) :-:
+       ("i32lt",         int32cmp P.<,		i32i32_b) :-:
+       ("i32le",         int32cmp P.<=,		i32i32_b) :-:
+       ("i32gt",         int32cmp P.>,		i32i32_b) :-:
+       ("i32ge",         int32cmp P.>=,		i32i32_b) :-:
+       ("i32eq",         int32cmp P.EQL,	i32i32_b) :-:
+       ("i32ne",         int32cmp P.NEQ,	i32i32_b) :-:
 
        ("i32min",	 P.INLMIN (P.INT 32),  	i32i32_i32) :-:
        ("i32max",	 P.INLMAX (P.INT 32),  	i32i32_i32) :-:
        ("i32abs",	 P.INLABS (P.INT 32), 	i32_i32) :-:
-
-       (*
-        * WARNING: the lambda types in translate.sml are all wrong for  
-        * this. The inlprimops for these must be parameterized over the 
-        * integer kind. 
-        *
-        *
-        * ("i32mod",    P.INLMOD,      	i32i32_i32) :-:
-        * ("i32div",    P.INLDIV,      	i32i32_i32) :-:
-        * ("i32rem",    P.INLREM,      	i32i32_i32) :-:
-        * ("i32max",    P.INLMAX,      	i32i32_i32) :-:
-        * ("i32min",    P.INLMIN,      	i32i32_i32) :-:
-        * ("i32abs",    P.INLABS,      	i32_i32) :-:
-        *
-        *)
 
        (*** float 64 primops ***)
        ("f64add", 	 purefloat64 (P.+),      f64f64_f64) :-:
@@ -715,6 +697,7 @@ val allPrimops =
        ("w31xorb",	word31 P.XORB,      	ww_w) :-:
        ("w31andb",	word31 P.ANDB,      	ww_w) :-:
        ("w31notb",	word31 P.NOTB,      	w_w) :-:
+       ("w31neg",       word31 P.~,             w_w) :-:
        ("w31rshift",	word31 P.RSHIFT,        ww_w) :-:
        ("w31rshiftl",   word31 P.RSHIFTL,       ww_w) :-:
        ("w31lshift",	word31 P.LSHIFT,        ww_w) :-:
@@ -728,9 +711,36 @@ val allPrimops =
        ("w31ChkRshiftl",P.INLRSHIFTL(P.UINT 31),ww_w) :-:
        ("w31ChkLshift", P.INLLSHIFT(P.UINT 31), ww_w) :-:
 
-       ("w31min",	 P.INLMIN (P.UINT 31), 	ww_w) :-:
-       ("w31max",	 P.INLMAX (P.UINT 31), 	ww_w) :-:
+       ("w31min",	P.INLMIN (P.UINT 31), 	ww_w) :-:
+       ("w31max",	P.INLMAX (P.UINT 31), 	ww_w) :-:
        
+       (* (pseudo-)word8 primops *)
+       ("w31mul_8",	word31 (P.* ),      	w8w8_w8) :-:
+       ("w31div_8",	word31 (P./),      	w8w8_w8) :-:
+       ("w31mod_8",	word31 (P.REM),      	w8w8_w8) :-:
+       ("w31add_8",	word31 (P.+),      	w8w8_w8) :-:
+       ("w31sub_8",	word31 (P.-),      	w8w8_w8) :-:
+       ("w31orb_8",	word31 P.ORB,      	w8w8_w8) :-:
+       ("w31xorb_8",	word31 P.XORB,      	w8w8_w8) :-:
+       ("w31andb_8",	word31 P.ANDB,      	w8w8_w8) :-:
+       ("w31notb_8",	word31 P.NOTB,      	w8_w8) :-:
+       ("w31neg_8",     word31 P.~,             w8_w8) :-:
+       ("w31rshift_8",	word31 P.RSHIFT,        w8w_w8) :-:
+       ("w31rshiftl_8", word31 P.RSHIFTL,       w8w_w8) :-:
+       ("w31lshift_8",	word31 P.LSHIFT,        w8w_w8) :-:
+       ("w31gt_8",	word31cmp (P.>),        w8w8_b) :-:
+       ("w31ge_8",	word31cmp (P.>=),       w8w8_b) :-:
+       ("w31lt_8",	word31cmp (P.<),        w8w8_b) :-:
+       ("w31le_8",	word31cmp (P.<=),       w8w8_b) :-:
+       ("w31eq_8",	word31cmp P.EQL,        w8w8_b) :-:
+       ("w31ne_8",	word31cmp P.NEQ,        w8w8_b) :-:
+       ("w31ChkRshift_8", P.INLRSHIFT(P.UINT 31), w8w_w8) :-:
+       ("w31ChkRshiftl_8",P.INLRSHIFTL(P.UINT 31),w8w_w8) :-:
+       ("w31ChkLshift_8", P.INLLSHIFT(P.UINT 31), w8w_w8) :-:
+
+       ("w31min_8",	P.INLMIN (P.UINT 31), 	w8w8_w8) :-:
+       ("w31max_8",	P.INLMAX (P.UINT 31), 	w8w8_w8) :-:
+
        (*** word32 primops ***)
        ("w32mul",	word32 (P.* ),      	w32w32_w32) :-:
        ("w32div",	word32 (P./),      	w32w32_w32) :-:
@@ -741,6 +751,7 @@ val allPrimops =
        ("w32xorb",	word32 P.XORB,      	w32w32_w32) :-:
        ("w32andb",	word32 P.ANDB,      	w32w32_w32) :-:
        ("w32notb",	word32 P.NOTB,      	w32_w32) :-:
+       ("w32neg",	word32 P.~,      	w32_w32) :-:
        ("w32rshift",	word32 P.RSHIFT,     	w32w_w32) :-:
        ("w32rshiftl",   word32 P.RSHIFTL,    	w32w_w32) :-:
        ("w32lshift",	word32 P.LSHIFT,     	w32w_w32) :-:

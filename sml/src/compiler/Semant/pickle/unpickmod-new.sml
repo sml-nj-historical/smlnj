@@ -128,7 +128,8 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.UNBOXEDASSIGN,
 	  P.RAW_CCALL NONE,
 	  P.INLIGNORE,
-	  P.INLIDENTITY
+	  P.INLIDENTITY,
+	  P.CVT64
         ]
 
     val cmpop_table =

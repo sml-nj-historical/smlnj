@@ -463,6 +463,7 @@ in
 	      | P.RAW_CCALL NONE => %?55
 	      | P.INLIGNORE => %?56
 	      | P.INLIDENTITY => %?57
+	      | P.CVT64 => %?58
     end
 
     fun consig arg = let

@@ -127,6 +127,10 @@ datatype primop
 
   | INLIDENTITY				(* polymorphic identity *)
 
+  | CVT64				(* convert between external and
+					 * internal representation of
+					 * simulated 64-bit scalars *)
+
 and ccall_type = CCI32 | CCI64 | CCR64 | CCML
 
 (** default integer arithmetic and comparison operators *)
@@ -287,6 +291,7 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
       concat ["raw_", if fblock then "fblock" else "iblock", "_record"]
 
   | prPrimop INLIDENTITY = "inlidentity"
+  | prPrimop CVT64 = "cvt64"
 
 (* should return more than just a boolean:
  * {Store,Continuation}-{read,write} *)
@@ -302,6 +307,7 @@ val effect =
   | (INLMIN _ | INLMAX _ | INLNOT | INLCOMPOSE | INLIGNORE) => false
   | (WRAP | UNWRAP) => false
   | INLIDENTITY => false
+  | CVT64 => false
   | _ => true
   
 val mayRaise =

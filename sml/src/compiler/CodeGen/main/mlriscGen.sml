@@ -1582,14 +1582,19 @@ struct
               (*esac*))
             | gen(PURE(P.pure_arith{oper=P.notb, kind}, [v], x, _, e), hp) =
                (case kind 
-                of P.UINT 32 => defI32(x,M.XORB(ity, regbind v, 
-                                                LW 0wxFFFFFFFF), e, hp)
-                 | P.INT 32 => defI32(x,M.XORB(ity, regbind v, 
-                                               LW 0wxFFFFFFFF), e, hp)
-                 | P.UINT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
-                 | P.INT 31 => defI31(x,M.SUB(ity, zero, regbind v), e, hp)
-		 | _ => error "unexpected numkind in pure unary arithop"
+                of (P.UINT 32 | P.INT 32) =>
+		     defI32(x,M.XORB(ity, regbind v,  LW 0wxFFFFFFFF), e, hp)
+                 | (P.UINT 31 | P.INT 31) =>
+		     defI31(x,M.SUB(ity, zero, regbind v), e, hp)
+		 | _ => error "unexpected numkind in pure notb arithop"
               (*esac*))
+	    | gen (PURE(P.pure_arith{oper=P.~, kind}, [v], x, _, e), hp) =
+	        (case kind of
+		     (P.UINT 32 | P.INT 32) =>
+		       defI32 (x, M.SUB(ity, zero, regbind v), e, hp)
+		   | (P.UINT 31 | P.INT 31) =>
+		       defI31 (x, M.SUB (ity, LI 2, regbind v), e, hp)
+		   | _ => error "unexpected numkind in pure ~ primop")
             | gen(PURE(P.copy ft, [v], x, _, e), hp) =
                (case ft
                 of (31,32) =>

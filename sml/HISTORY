@@ -14,8 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/10 18:12:00 CST
+Tag: blume-20041110-64bit
+Description:
+
+More 64-bit hacking (but still not even half-way there yet).
+Also, some assorted improvements to the handling of 8-bit words.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/09 17:50:00 CST
-Tag: blume-20041109-64bit
+Tag: <none>
 Description:
 
 Started adding some infrastructure for supporting 64-bit int- and

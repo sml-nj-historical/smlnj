@@ -124,9 +124,8 @@ structure Core =
           val vecLen : 'a -> int = InLine.length
           val vecSub : 'a vector * int -> 'a = InLine.vecSub
           val andb : int * int -> int = InLine.i31andb
-	  val lshift : int * int -> int = InLine.i31lshift
 
-	  val width_tags = 7  (* 5 tag bits plus "10" *)
+	  val width_tags = 0w7  (* 5 tag bits plus "10" *)
 
         (* the type annotation is just to work around an bug - sm *)
           val ltu : int * int -> bool = InLine.i31ltu
@@ -136,7 +135,13 @@ structure Core =
      (* limit of array, string, etc. element count is one greater than 
       * the maximum length field value (sign should be 0).
       *)
-       val max_length = lshift(1, 31 - width_tags) - 1
+       val max_length =
+	   let val op - = InLine.w31sub
+	       infix << val op << = InLine.w31lshift
+	       val int = InLine.copy_31_31_wi
+	   in
+	       int ((0w1 << (0w31 - width_tags)) - 0w1)
+	   end
 
        fun mkNormArray (n, init) = 
              if ieql(n, 0) then InLine.newArray0()

@@ -47,27 +47,24 @@ structure Word8Imp : WORD =
     val andb : word * word -> word = W8.andb
     val notb : word -> word = adapt W8.notb
 
-    val op * : word * word -> word = adapt W8.*
-  (* NOTE: waste of time to check for overflow; really should use Word31
-   * arithmetic operators; when those get implemented, switch over.
-   *)
-    val op + : word * word -> word = adapt W8.+
-    val op - : word * word -> word = adapt W8.-
-    val op div : word * word -> word = W8.div
-    fun op mod (a:word, b:word):word = a-(a div b)*b
+    val op * : word * word -> word = op *
+    val op + : word * word -> word = op +
+    val op - : word * word -> word = op -
+    val op div : word * word -> word = op div
+    val op mod : word * word -> word = op mod
 
     fun compare (w1, w2) =
 	  if (W8.<(w1, w2)) then LESS
 	  else if (W8.>(w1, w2)) then GREATER
 	  else EQUAL
-    val op > : word * word -> bool = W8.>
-    val op >= : word * word -> bool = W8.>=
-    val op < : word * word -> bool = W8.<
-    val op <= : word * word -> bool = W8.<=
+    val op > : word * word -> bool = op >
+    val op >= : word * word -> bool = op >=
+    val op < : word * word -> bool = op <
+    val op <= : word * word -> bool = op <=
 
     val ~ : word -> word = ~
-    fun min (w1, w2) = if (w1 < w2) then w1 else w2
-    fun max (w1, w2) = if (w1 > w2) then w1 else w2
+    val min : word * word -> word = W8.min
+    val max : word * word -> word = W8.max
 
     fun fmt radix = (NumFormat.fmtWord radix) o toLargeWord 
     val toString = fmt StringCvt.HEX
