@@ -17,15 +17,17 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
         $/basis.cm
         $/smlnj-lib.cm
+	$smlnj/MLRISC/Control.cm
 #else
         basis.cm
         smlnj-lib.cm
+	../../cm/Control.cm
 #endif
 #else
         smlnj-lib.cm
+	../../cm/Control.cm
 #endif
 
-	../../cm/Control.cm
 	../PP/sources.cm
 	../SourceMap/sources.cm
 

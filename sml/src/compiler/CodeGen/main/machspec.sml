@@ -9,6 +9,8 @@ structure DefaultMachSpec : MACH_SPEC =
 
     val architecture = ""
 
+    val framesize = 4096
+
     val numRegs = 0
     val numFloatRegs = 0
     val bigEndian = false
@@ -66,5 +68,7 @@ structure DefaultMachSpec : MACH_SPEC =
     val VProcOffMSP = 4
     val InMLOffVSP = 8
     val LimitPtrMaskOffVSP = 200
+
+    val framePtrNeverVirtual = false
   end (* DefaultMachSpec *)
 

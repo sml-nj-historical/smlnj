@@ -29,6 +29,9 @@ CodeGen/sparc/sparcPseudoInstrs.sml
 CodeGen/sparc/sparcgen.sml
 CodeGen/sparc/sparcspec.sml
 
+CodeGen/sparc/sparc-mltreeext.sml
+CodeGen/sparc/sparcMLTreeExtComp.sml
+
 $/basis.cm
 $/smlnj-lib.cm
 $smlnj/viscomp/core.cm

@@ -16,6 +16,8 @@ signature MACH_SPEC =
   sig
 
     val architecture : string
+
+    val framesize : int
    
   (* code generator flags *)
     val polling : bool
@@ -93,6 +95,8 @@ signature MACH_SPEC =
     val VProcOffMSP : int		(* within ML state struct *)
     val InMLOffVSP : int		(* within VProc struct *)
     val LimitPtrMaskOffVSP : int	(* within VProc struct *)
+
+    (* On machines with a real frame pointer, there is no point in
+     * attempting to omit a (virtual) frame pointer.  Example: Sparc *)
+    val framePtrNeverVirtual : bool	(* suppress omit-frame-ptr phase *)
   end (* MACH_SPEC *)
-
-

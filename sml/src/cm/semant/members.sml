@@ -55,6 +55,7 @@ signature MEMBERCOLLECTION = sig
     val ml_look : collection -> symbol -> bool
 
     val has_smlfiles : collection -> bool
+    val is_errorcollection : collection -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
@@ -267,4 +268,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     fun has_smlfiles (COLLECTION { smlfiles = [], ... }) = false
       | has_smlfiles ERRORCOLLECTION = false
       | has_smlfiles _ = true
+
+    fun is_errorcollection ERRORCOLLECTION = true
+      | is_errorcollection (COLLECTION _) = false
 end

@@ -31,6 +31,7 @@ sig
    val showCTRLWithSize : (register_id * sz) -> string
    val showCELLSETWithSize : (register_id * sz) -> string
    val stackptrR : cell
+   val frameptrR : cell
    val asmTmpR : cell
    val linkReg : cell
    val fasmTmp : cell
@@ -151,6 +152,7 @@ struct
    and RegCTRL = Reg CTRL
    and RegCELLSET = Reg CELLSET
    val stackptrR = RegGP 14
+   val frameptrR = RegGP 30
    val asmTmpR = RegGP 10
    val linkReg = RegGP 15
    val fasmTmp = RegFP 30

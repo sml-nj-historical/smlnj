@@ -35,7 +35,8 @@ struct
     | CTRL = $ctrl[] asm: (fn (r,_) => "ctrl"^Int.toString r)
 
    locations
-       stackptrR = $r[14]
+       stackptrR = $r[14]    (* %o6 = %sp *)
+   and frameptrR = $r[30]    (* %i6 = %fp *)
    and asmTmpR   = $r[10]    (* %o2 *)
    and linkReg   = $r[15]
    and fasmTmp   = $f[30]

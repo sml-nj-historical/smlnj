@@ -302,7 +302,8 @@ structure CMSemant :> CM_SEMANT = struct
 	    (error "proxy for component without explicit export list";
 	     GG.ERRORGROUP)
     in
-	if MemberCollection.has_smlfiles mc then notone ()
+	if MemberCollection.is_errorcollection mc then GG.ERRORGROUP
+	else if MemberCollection.has_smlfiles mc then notone ()
 	else
 	    case MemberCollection.subgroups mc of
 		[(_, GG.ERRORGROUP, _)] => GG.ERRORGROUP

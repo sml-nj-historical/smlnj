@@ -229,10 +229,10 @@ struct
      | emit_fsize (I.Q) = (0wx7 : Word32.word)
    fun opn {i} = 
        let 
-(*#line 477.11 "sparc/sparc.mdl"*)
+(*#line 478.11 "sparc/sparc.mdl"*)
            fun hi22 w = (itow w) ~>> 0wxa
 
-(*#line 478.11 "sparc/sparc.mdl"*)
+(*#line 479.11 "sparc/sparc.mdl"*)
            fun lo10 w = ((itow w) && 0wx3ff)
        in 
           (case i of
@@ -309,7 +309,7 @@ struct
            val d = emit_GP d
        in 
           let 
-(*#line 516.13 "sparc/sparc.mdl"*)
+(*#line 517.13 "sparc/sparc.mdl"*)
               val (op3, x) = s
           in 
              (case i of
@@ -449,10 +449,10 @@ struct
           )
        end
 
-(*#line 595.7 "sparc/sparc.mdl"*)
+(*#line 596.7 "sparc/sparc.mdl"*)
    fun disp label = (itow ((Label.addrOf label) - ( ! loc))) ~>> 0wx2
 
-(*#line 596.7 "sparc/sparc.mdl"*)
+(*#line 597.7 "sparc/sparc.mdl"*)
    val r15 = C.Reg C.GP 15
    and r31 = C.Reg C.GP 31
        fun emitter instr =

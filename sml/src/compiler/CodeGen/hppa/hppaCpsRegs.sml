@@ -51,6 +51,8 @@ struct
   fun gcLink _		= T.REG(32,returnPtr) 
   val stackptr		= REG(30)
 
+  fun frameptr _        = stackptr
+
   val miscregs = map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
   val calleesave = Array.fromList miscregs 
 
@@ -79,5 +81,8 @@ struct
 
   val signedGCTest = false
   val addressWidth = 32
-end
 
+  (* FIXME *)
+  val ccallCallerSaveR = []		(* no c-calls implemented yet *)
+  val ccallCallerSaveF = []		(* ... *)
+end

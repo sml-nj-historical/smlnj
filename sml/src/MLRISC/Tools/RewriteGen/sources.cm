@@ -10,19 +10,16 @@ is
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
         $/basis.cm
         $/smlnj-lib.cm
+	$smlnj/MLRISC/Control.cm
 #else
         basis.cm
         smlnj-lib.cm
+	../../cm/Control.cm
 #endif
 #else
         smlnj-lib.cm
-#endif
-
 	../../cm/Control.cm
-                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
-                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))
+#endif
 
 	../SourceMap/sources.cm 
 	../FakeSMLAst/sources.cm (* the fake SML abstract syntax *)

@@ -14,7 +14,6 @@ signature CPSREGS = sig
   val vfptr     : T.rexp
 
   val allocptr 	: T.rexp	(* must be a register, - T.REG(r) *)
-  val stackptr 	: T.rexp 
 
   (* The boolean argument in each case indicates the use of the virtual
    * frame pointer. Use virtual fp if true and physical fp if false.
@@ -25,6 +24,7 @@ signature CPSREGS = sig
    * however, the x86 is the only one that implements registers in memory,
    * so we will limit this to the set that it needs. 
    *)
+  val frameptr  : bool -> T.rexp
   val limitptr 	: bool -> T.rexp
   val stdlink	: bool -> T.rexp
   val stdclos	: bool -> T.rexp
@@ -49,4 +49,7 @@ signature CPSREGS = sig
   val availR     : T.reg list
   val dedicatedF : T.reg list
   val availF     : T.reg list
+
+  val ccallCallerSaveR : T.reg list
+  val ccallCallerSaveF : T.reg list
 end

@@ -150,16 +150,8 @@ structure C :> C_INT = struct
 	    fun dg n d = 10 * d + n
 	in
             val dec' = 0
-            val dg0' = dg 0
-            val dg1' = dg 1
-            val dg2' = dg 2
-            val dg3' = dg 3
-            val dg4' = dg 4
-            val dg5' = dg 5
-            val dg6' = dg 6
-            val dg7' = dg 7
-            val dg8' = dg 8
-            val dg9' = dg 9
+            val (dg0', dg1', dg2', dg3', dg4', dg5', dg6', dg7', dg8', dg9') =
+		(dg 0, dg 1, dg 2, dg 3, dg 4, dg 5, dg 6, dg 7, dg 8, dg 9)
 
 	    fun dec k = k dec'
 	    fun dg0 d k = k (dg0' d)

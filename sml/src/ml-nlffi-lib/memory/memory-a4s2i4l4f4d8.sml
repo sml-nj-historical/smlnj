@@ -1,5 +1,9 @@
 (*
- * Primitives for "raw" memory access on the x86.
+ * Primitives for "raw" memory access.
+ *
+ * x86/Sparc version:
+ *     addr char short  int  long float double
+ *     4    1    2      4    4    4     8       (bytes)
  *
  *   (C) 2001, Lucent Technologies, Bell Laboratories
  *

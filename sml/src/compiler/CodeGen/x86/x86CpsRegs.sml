@@ -24,9 +24,11 @@ structure X86CpsRegs : CPSREGS = struct
 
   val vfp = C.newDedicatedCell C.GP ()
   val vfptr = T.REG(32, vfp)
-  
+
+  fun frameptr which = if which then vfptr else esp
+
   fun regInMem(which, i) = let
-    val fp = if which then vfptr else esp
+    val fp = frameptr which
   in T.LOAD(32, T.ADD(32, fp, T.LI(T.I.fromInt(32, i))), CPSRegions.memory) 
   end
 
@@ -59,12 +61,19 @@ structure X86CpsRegs : CPSREGS = struct
   val floatregs   = map (fn f => T.FREG(64,FP f)) (8 upto 31)
   val savedfpregs = []
 
-  val availR = map (fn T.REG(_,r) => r) [ebp, esi, ebx, ecx, edx, eax]
-  val dedicatedR = map (fn T.REG(_,r) => r) [edi, esp, vfptr]
+  local
+      fun unREG (T.REG (_, r)) = r
+	| unREG _ = raise Fail "x86CpsRegs:unREG"
+  in
+
+  val availR = map unREG [ebp, esi, ebx, ecx, edx, eax]
+  val dedicatedR = map unREG [edi, esp, vfptr]
   val availF = map FP (8 upto 31)
   val dedicatedF = [] (* map FP [0,1,2,3,4,5,6,7] *)
   val signedGCTest = false
   val addressWidth = 32
+
+  val ccallCallerSaveR = [unREG edi]
+  val ccallCallerSaveF = []
+  end (*local*)
 end
-
-

@@ -36,6 +36,8 @@ struct
   val allocptr		= REG(13)
   val stackptr		= REG(30)
 
+  fun frameptr _        = stackptr
+
   val miscregs =  map REG ((5 upto 8) @ (15 upto 25) @ [27])
   val calleesave = Array.fromList(miscregs)
   val floatregs = map FREG (0 upto 28)
@@ -59,5 +61,8 @@ struct
   val dedicatedF = map FP [29, 30, 31]
   val signedGCTest = true
   val addressWidth = 64
-end
 
+  (* FIXME *)
+  val ccallCallerSaveR = []		(* no c-calls implemented yet *)
+  val ccallCallerSaveF = []		(* ... *)
+end

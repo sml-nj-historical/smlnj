@@ -139,10 +139,14 @@ ifdef ARCH_X86 \
 	bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
 ifndef ARCH_ALPHA ifndef ARCH_X86 ifndef ARCH_PPC\
 	bind math-inlT = math-built-in.sml (core, primitive, xcore)
+
 ifdef ARCH_X86 \
-	bind rawmem = rawmem-x86.sml (core, primitive, xcore)
-ifndef ARCH_X86 \
+	bind rawmem = rawmem.sml (core, primitive, xcore)
+ifdef ARCH_SPARC \
+	bind rawmem = rawmem.sml (core, primitive, xcore)
+ifndef ARCH_X86 ifndef ARCH_SPARC \
 	bind rawmem = rawmem-dummy.sml (core, primitive, xcore)
+
 bind pp = pre-perv.sml (built-in, xcore)
 bind ps = pre-string.sml (core, built-in, pp, xcore)
 bind ss-sig = substring.sig (pp, built-in, xcore)

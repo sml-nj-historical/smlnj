@@ -22,6 +22,9 @@ struct entry {
   forwardptr fwd;
 };
 
+#define EOFF0(x,p) ((char *)&((p)->x)-(char *)p)
+#define EOFF(x) EOFF0(x,(struct entry *)0)
+
 extern int print (struct entry *);
 extern int ppp (double, struct entry, float);
 
@@ -75,6 +78,11 @@ void _init (void)
 {
   char *last;
 
+  printf (
+      "Offsets: last@%d, first@%d, age@%d, weight@%d, f@%d, baz@%d, fwd@%d\n",
+      EOFF(last), EOFF(first), EOFF(age), EOFF(weight), EOFF(f), EOFF(baz),
+      EOFF(fwd));
+
   while ((last = asks ("Last name")) != NULL) {
     struct entry *n = malloc (sizeof (struct entry));
     n->fwd = forwardalloc ();
@@ -104,5 +112,11 @@ int print (struct entry *l)
 int ppp (double f, struct entry e, float g)
 {
   printf ("This is ppp(%g, ..., %g)\n", f, (double)g);
+  return print (&e);
+}
+
+int pppp (float f, struct entry e, double g)
+{
+  printf ("This is ppp(%g, ..., %g)\n", (double)f, g);
   return print (&e);
 }

@@ -40,15 +40,6 @@ struct
 
    val addrTy = C.addressWidth
 
-   (* IMPORTANT: 
-    *   There is never a raw C call in blocks that invoke GC, so it is
-    * not necessary to use the virtual frame pointer. If this should change
-    * in future, then this would need to be re-thought
-    *)
-   val vfp = false
-
-
-
    (* The following datatype is used to encapsulates 
     * all the information needed to generate code to invoke gc.
     * The important fields are:
@@ -86,8 +77,8 @@ struct
    val skidPad = 4096
    val pty  = 32
 
-   val sp   = Cells.stackptrR  (* stack pointer *)
-   val spR  = T.REG(addrTy,sp)
+   val vfp = false			(* don't use virtual frame ptr here *)
+
    val unit = T.LI(T.I.int_1)  (* representation of ML's unit; 
                                 * this is used to initialize registers.
                                 *)
@@ -101,28 +92,30 @@ struct
        (* 
         * registers that are the roots of gc.
         *)
-   val gcParamRegs  = 
-     (C.stdlink(vfp)::C.stdclos(vfp)::C.stdcont(vfp)::C.stdarg(vfp)::calleesaves)
+   val gcParamRegs = 
+     (C.stdlink(vfp)::C.stdclos(vfp)::C.stdcont(vfp)::C.stdarg(vfp)
+      ::calleesaves)
 
        (*
         * How to call the call the GC 
         *)
-   local val use = map T.GPR gcParamRegs 
-         val def = case C.exhausted of NONE => use 
-                                     | SOME cc => T.CCR cc::use
-   in  val gcCall =
-          T.ANNOTATION(
+   val gcCall = let
+       val use = map T.GPR gcParamRegs
+       val def = case C.exhausted of NONE => use 
+                                   | SOME cc => T.CCR cc::use
+   in
+       T.ANNOTATION(
           T.CALL{
             funct=
 	      T.LOAD(32, 
-		     T.ADD(addrTy,C.stackptr, LI MS.startgcOffset),
+		     T.ADD(addrTy,C.frameptr vfp, LI MS.startgcOffset),
 		     R.stack),
             targets=[], defs=def, uses=use, region=R.stack,
 	    pops=0},
           #create MLRiscAnnotations.COMMENT "call gc")
-
-       val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0
    end
+   
+   val ZERO_FREQ = #create MLRiscAnnotations.EXECUTION_FREQ 0
 
    val CALLGC = #create MLRiscAnnotations.CALLGC ()
    val NO_OPTIMIZATION = #create MLRiscAnnotations.NO_OPTIMIZATION ()
@@ -145,7 +138,8 @@ struct
 
    val unlikely = #create MLRiscAnnotations.BRANCH_PROB 0
 
-   val normalTestLimit = T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))
+   val normalTestLimit =
+       T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))
 
    (*====================================================================
     * Private state
@@ -165,16 +159,24 @@ struct
 
    (*
     * Convert a list of rexps into a set of registers and memory offsets.
-    * Memory offsets must be relative to the stack pointer.
+    * Memory offsets must be relative to the frame pointer.
     *)
-   fun set bindings = 
-   let fun isStackPtr sp = Cells.sameColor(sp,Cells.stackptrR)
+   fun set bindings =
+   let val theVfp = C.vfp
+       val T.REG (_, theFp) = C.frameptr false
+       (* At this point, theVfp will always eventually end up
+	* being theFp, but mlriscGen might pass in references to theVfp
+	* anyway (because of some RCC that happens to be in the cluster).
+	* Therefor, we test for either the real frame pointer (theFp) or
+	* the virtual frame pointer (theVfp) here. *)
+       fun isFramePtr fp = Cells.sameColor (fp, theFp) orelse
+			   Cells.sameColor (fp, theVfp)
        fun live(T.REG(_,r)::es, regs, mem) = live(es, r::regs, mem)
-         | live(T.LOAD(_, T.REG(_, sp), _)::es, regs, mem) =
-           if isStackPtr sp then live(es, regs, 0::mem)
+         | live(T.LOAD(_, T.REG(_, fp), _)::es, regs, mem) =
+           if isFramePtr fp then live(es, regs, 0::mem)
            else error "set:LOAD32"
-         | live(T.LOAD(_, T.ADD(_, T.REG(_, sp), T.LI i), _)::es, regs, mem) =
-           if isStackPtr sp then live(es, regs, T.I.toInt(32,i)::mem)
+         | live(T.LOAD(_, T.ADD(_, T.REG(_, fp), T.LI i), _)::es, regs, mem) =
+           if isFramePtr fp then live(es, regs, T.I.toInt(32,i)::mem)
            else error "set:LOAD32"
          | live([], regs, mem) = (regs, mem)
          | live _ = error "live"
@@ -189,14 +191,10 @@ struct
        "{"^foldr (fn (r,s) => Cells.toString r^" "^s) "" regs
           ^foldr (fn (m,s) => Int.toString m^" "^s) "" mem^"}"
 
-   fun setToMLTree{regs,mem} =
-       map (fn r => T.REG(32,r)) regs @ 
-       map (fn i => T.LOAD(32, T.ADD(addrTy, spR, LI(i)), R.memory)) mem
-            
    (* The client communicates root pointers to the gc via the following set
     * of registers and memory locations.
     *)
-   val gcrootSet = set gcParamRegs 
+   val gcrootSet = set gcParamRegs
    val aRoot     = hd(#regs gcrootSet)
    val aRootReg  = T.REG(32,aRoot)
 
@@ -210,11 +208,12 @@ struct
    in  if maxAlloc < skidPad then
           (case C.exhausted of
              SOME cc => gotoGC cc
-           | NONE => gotoGC(normalTestLimit)
+           | NONE => gotoGC normalTestLimit
           )
        else  
        let val shiftedAllocPtr = T.ADD(addrTy,C.allocptr,LI(maxAlloc-skidPad))
-           val shiftedTestLimit = T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr(vfp))
+           val shiftedTestLimit =
+	       T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr(vfp))
        in  case C.exhausted of
              SOME(cc as T.CC(_,r)) => 
                (emit(T.CCMV(r, shiftedTestLimit)); gotoGC(cc))
@@ -261,7 +260,7 @@ struct
      | split(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = split(rl,tl,b,i,r::f)
      | split _ = error "split"
 
-   fun genGcInfo (clusterRef,known,optimized) (St.STREAM{emit,...} : stream) 
+   fun genGcInfo (clusterRef,known,optimized) (St.STREAM{emit,...} : stream)
                  {maxAlloc, regfmls, regtys, return} =
    let (* partition the root set into the appropriate classes *)
        val {boxed, int32, float} = split(regfmls, regtys, [], [], [])
@@ -274,7 +273,8 @@ struct
                   int32    = int32,
                   float    = float,
                   regfmls  = regfmls,
-                  ret      = return } :: (!clusterRef)
+                  ret      = return }
+	  :: (!clusterRef)
    end
 
    (* 
@@ -298,11 +298,11 @@ struct
     * An array for checking cycles  
     *)
    local
-      val N = 1 + foldr (fn (r,n) => Int.max(Cells.registerNum r,n)) 
-                     0 (#regs gcrootSet)
+       val N = 1 + foldr (fn (r,n) => Int.max(Cells.registerNum r,n)) 
+			 0 (#regs gcrootSet)
    in
-      val clientRoots = A.array(N, ~1)
-      val stamp       = ref 0
+       val clientRoots = A.array(N, ~1)
+       val stamp       = ref 0
    end
 
    (*
@@ -565,15 +565,21 @@ struct
     * records, call the GC routine, then unpack the roots from the record.
     *) 
    fun emitCallGC{stream=St.STREAM{emit, annotation, defineLabel, ...}, 
-                  known, boxed, int32, float, ret} =
-   let (* IMPORTANT NOTE:  
+                  known, boxed, int32, float, ret } =
+   let fun setToMLTree{regs,mem} =
+	   map (fn r => T.REG(32,r)) regs @ 
+	   map (fn i => T.LOAD(32, T.ADD(addrTy, C.frameptr vfp, LI(i)),
+			       R.memory)) mem
+
+       (* IMPORTANT NOTE:  
         * If a boxed root happens be in a gc root register, we can remove
         * this root since it will be correctly targetted. 
         *
-        * boxedRoots are the boxed roots that we have to move to the appropriate
-        * registers.  gcrootSet are the registers that are available
-        * for communicating to the collector.
+        * boxedRoots are the boxed roots that we have to move to the
+	* appropriate registers.  gcrootSet are the registers that are
+	* available for communicating to the collector.
         *)
+
        val boxedSet   = set boxed
        val boxedRoots = difference(boxedSet,gcrootSet)  (* roots *)
        val gcrootAvail = difference(gcrootSet,boxedSet) (* gcroots available *)
@@ -645,7 +651,7 @@ struct
     * GC calling code, with entry labels and return information.
     *)
    fun invokeGC(stream as 
-                St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
+               St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
                 externalEntry) gcInfo = 
    let val {known, optimized, boxed, int32, float, regfmls, ret, lab} =
            case gcInfo of
@@ -678,29 +684,30 @@ struct
     * same calling convention.
     *)
    fun sameCallingConvention
-          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _), ...},
-           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _), ...}) =
-   let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
-         | eqEA(T.ADD(_,T.REG(_,r1),T.LI i), T.ADD(_,T.REG(_,r2),T.LI j)) =  
-             Cells.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
-         | eqEA _ = false
-       fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
-         | eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)
-         | eqR _ = false
-       fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = Cells.sameColor(f1,f2)
-         | eqF(T.FLOAD(_,ea1,_), T.FLOAD(_,ea2,_)) = eqEA(ea1, ea2)
-         | eqF _ = false
+          (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _),...},
+           GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _),...}) =
+	  let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
+		| eqEA(T.ADD(_,T.REG(_,r1),T.LI i),
+		       T.ADD(_,T.REG(_,r2),T.LI j)) =  
+		  Cells.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
+		| eqEA _ = false
+	      fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
+		| eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)
+		| eqR _ = false
+	      fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = Cells.sameColor(f1,f2)
+		| eqF(T.FLOAD(_,ea1,_), T.FLOAD(_,ea2,_)) = eqEA(ea1, ea2)
+		| eqF _ = false
 
-       fun all predicate = 
-       let fun f(a::x,b::y) = predicate(a,b) andalso f(x,y)
-             | f([],[]) = true
-             | f _ = false
-       in  f end
+	      fun all predicate = 
+		  let fun f(a::x,b::y) = predicate(a,b) andalso f(x,y)
+			| f([],[]) = true
+			| f _ = false
+		  in  f end
 
-       val eqRexp = all eqR
-   in  eqRexp(b1, b2) andalso eqR(ret1,ret2) andalso 
-       eqRexp(i1,i2) andalso all eqF(f1,f2)
-   end 
+	      val eqRexp = all eqR
+	  in  eqRexp(b1, b2) andalso eqR(ret1,ret2) andalso 
+	      eqRexp(i1,i2) andalso all eqF(f1,f2)
+	  end 
      | sameCallingConvention _ = false
 
    (*
@@ -715,19 +722,19 @@ struct
         * Use linear search to find the gc subroutine.
         *)
        fun find(info as GCINFO{lab as ref l, ...}) =
-       let fun search(MODULE{info=info', addrs}::rest) =
-               if sameCallingConvention(info, info') then
-                  addrs := l :: (!addrs) 
-               else search rest
-             | search [] = (* no matching convention *)
-               let val label = Label.newLabel ""
-               in  lab := label;
-                   moduleGcBlocks := MODULE{info=info, addrs=ref[l]} ::
-                      (!moduleGcBlocks)
-               end
-             | search _ = error "search"
-       in  search(!moduleGcBlocks) 
-       end
+	   let fun search(MODULE{info=info', addrs}::rest) =
+		   if sameCallingConvention(info, info') then
+                       addrs := l :: (!addrs) 
+		   else search rest
+		 | search [] = (* no matching convention *)
+		   let val label = Label.newLabel ""
+		   in  lab := label;
+                   moduleGcBlocks := MODULE{info=info, addrs=ref[l]}
+				     :: (!moduleGcBlocks)
+		   end
+		 | search _ = error "search"
+	   in  search(!moduleGcBlocks) 
+	   end
          | find _ = error "find"
 
        (*
@@ -747,14 +754,16 @@ struct
 
    in  app find (!clusterGcBlocks) before clusterGcBlocks := [];
        app longJumps (!moduleGcBlocks);
-       app (invokeGC(stream,false)) (!knownGcBlocks) before knownGcBlocks := []
+       app (invokeGC(stream,false)) (!knownGcBlocks)
+       before knownGcBlocks := []
    end (* emitLongJumpsToGC *)
 
    (* 
     * The following function is called to generate module specific 
     * GC invocation code 
     *)
-   fun emitModuleGC(stream) =
-       app (invokeGC(stream,true)) (!moduleGcBlocks) before moduleGcBlocks := []
+   fun emitModuleGC stream =
+       app (invokeGC(stream,true)) (!moduleGcBlocks)
+       before moduleGcBlocks := []
 
 end

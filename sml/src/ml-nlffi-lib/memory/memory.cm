@@ -12,10 +12,10 @@ is
 
 	memory.sig
 	linkage.sig
-# if defined(ARCH_X86) andalso defined(OPSYS_UNIX)
-	linkage.sml
-	memory-x86.sml	(lambdasplit:infinity)
-	mlrep-x86.sml	(lambdasplit:infinity)
+# if (defined(ARCH_X86) orelse defined(ARCH_SPARC)) andalso defined(OPSYS_UNIX)
+	linkage-dlopen.sml
+	mlrep-i32f64.sml	(lambdasplit:infinity)
+	memory-a4s2i4l4f4d8.sml	(lambdasplit:infinity)
 # else
 # error architecture not supported yet
 # endif

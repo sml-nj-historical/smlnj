@@ -14,6 +14,47 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/15 15:05:00 EDT
+Tag: blume-20010615-sparc
+Description:
+
+The purpose of this update is to provide an implementation of NLFFI
+on Sparc machines.
+
+Here are the changes in detail:
+
+   * src/MLRISC/sparc/c-calls/sparc-c-calls.sml is a new file containing
+   the Sparc implementation of the c-calls API.
+   * The Sparc backend of SML/NJ has been modified to uniformely use %fp
+   for accessing the ML frame.  Thus, we have a real frame pointer and
+   can freely modify %sp without need for an omit-frame-ptr phase.
+   The vfp logic in src/compiler/CodeGen/* has been changed to accomodate
+   this case.
+   * ml-nlffigen has been taught to produce code for different architectures
+   and calling conventions.
+   * In a way similar to what was done in the x86 case, the Sparc
+   backend uses its own specific extension to mltree.  (For example,
+   it needs to be able to generate UNIMP instructions which are part
+   of the calling convention.)
+   * ml-nlffi-lib was reorganized to make it more modular (in particular,
+   to make it easier to plug in new machine- and os-dependent parts).
+
+There are some other fairly unrelated bug fixes and cleanups as well:
+
+   * I further hacked the .cm files for MLRISC tools (like MDLGen) so
+   that they properly share their libraries with existing SML/NJ libraries.
+   * I fixed a minor cosmetic bug in CM, supressing certain spurious
+   follow-up error messages.
+   * Updates to CM/CMB documentation.
+
+TODO items:
+
+   * MLRISC should use a different register as its asmTemp on the Sparc.
+     (The current %o2 is a really bad choice because it is part of the
+     calling conventions, so things might interfere in unexpected ways.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/07
 Tag: blume-20010607-calls
 Description:

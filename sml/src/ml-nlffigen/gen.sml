@@ -8,7 +8,7 @@
  *)
 local
     val program = "ml-ffigen"
-    val version = "0.2"
+    val version = "0.3"
     val author = "Matthias Blume"
     val email = "blume@research.bell-labs.com"
     structure S = Spec
@@ -24,7 +24,11 @@ structure Gen :> sig
 		strname: string,
 		allSU: bool,
 		lambdasplit: string option,
-		wid: int } -> unit
+		wid: int,
+		target : { name  : string,
+			   sizes : Sizes.sizes,
+			   shift : int * int * word -> word,
+			   stdcall : bool } } -> unit
 end = struct
 
     structure P = PrettyPrint
@@ -47,8 +51,10 @@ end = struct
 
     val dontedit = "(* This file has been generated automatically. \
 		   \DO NOT EDIT! *)"
-    fun mkCredits src = concat ["(* [from ", src, " by ", author, "'s ",
-				program, " (version ", version, ")] *)"]
+    fun mkCredits (src, archos) =
+	concat ["(* [from ", src, " by ", author, "'s ",
+		program, " (version ", version, ") for ",
+		archos, "] *)"]
     val commentsto = concat ["(* Send comments and suggestions to ",
 			     email, ". Thanks! *)"]
 
@@ -58,16 +64,17 @@ end = struct
 	      sigfile, strfile, cmfile,
 	      signame, strname,
 	      allSU, lambdasplit,
-	      wid } = args
+	      wid,
+	      target = { name = archos, sizes, shift, stdcall } } = args
 
-	val credits = mkCredits idlfile
+	val credits = mkCredits (idlfile, archos)
 
 	val astbundle = ParseToAst.fileToAst'
 			    TextIO.stdErr
-			    (GenSizes.sizes, State.INITIAL)
+			    (sizes, State.INITIAL)
 			    idlsource
 
-	val spec = AstToSpec.build (astbundle, GenSizes.sizes, idlfile, allSU)
+	val spec = AstToSpec.build (astbundle, sizes, idlfile, allSU, shift)
 
 	val { structs, unions, gvars, gfuns, gtys } = spec
 
@@ -575,7 +582,9 @@ end = struct
 
 		val e_arg = Tuple (Unit :: map encode args)
 		val e_res = case res of NONE => Unit | SOME t => encode t
-		val e_proto = Con ("list", [Arrow (e_arg, e_res)])
+		val e_proto0 = Con ("list", [Arrow (e_arg, e_res)])
+		val e_proto =
+		    if stdcall then Con ("list", [e_proto0]) else e_proto0
 
 		(* generating the call operation *)
 

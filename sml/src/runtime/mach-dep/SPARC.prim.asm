@@ -76,9 +76,14 @@
  *
  * The ML stack frame has the following layout (set up by restoreregs):
  *
+ *	%fp = %sp+4096
+ *                      +-------------------+
+ *                      |                   |	
+ *                      .                   .
  *			|                   |
- *	%fp = %sp+112:	|  spill area       |
+ *	%sp+116:	|  spill area       |
  *			+-------------------+
+ *	%sp+112:	|     unused	    |
  *	%sp+108:	|     unused	    |
  *			+-------------------+
  *	%sp+104:	|     saved %o7     |

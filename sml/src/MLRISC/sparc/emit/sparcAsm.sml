@@ -9,7 +9,7 @@ functor SparcAsmEmitter(structure Instr : SPARCINSTR
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
 
-(*#line 465.21 "sparc/sparc.mdl"*)
+(*#line 466.21 "sparc/sparc.mdl"*)
                         val V9 : bool
                        ) : INSTRUCTION_EMITTER =
 struct
@@ -248,19 +248,19 @@ struct
          emit_labexp labexp; 
          emit ")" )
 
-(*#line 468.7 "sparc/sparc.mdl"*)
+(*#line 469.7 "sparc/sparc.mdl"*)
    fun emit_leaf false = ()
      | emit_leaf true = emit "l"
 
-(*#line 469.7 "sparc/sparc.mdl"*)
+(*#line 470.7 "sparc/sparc.mdl"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
 
-(*#line 470.7 "sparc/sparc.mdl"*)
+(*#line 471.7 "sparc/sparc.mdl"*)
    fun emit_a false = ()
      | emit_a true = emit ",a"
 
-(*#line 471.7 "sparc/sparc.mdl"*)
+(*#line 472.7 "sparc/sparc.mdl"*)
    fun emit_cc false = ()
      | emit_cc true = emit "cc"
    fun emitInstr' instr = 
@@ -307,7 +307,7 @@ struct
            emit_int const22 )
        | I.SETHI{i, d} => 
          let 
-(*#line 655.18 "sparc/sparc.mdl"*)
+(*#line 656.18 "sparc/sparc.mdl"*)
              val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxa))
          in 
             ( emit "sethi\t%hi(0x"; 
@@ -457,7 +457,7 @@ struct
            emit_operand i )
        | I.FPop1{a, r, d} => 
          let 
-(*#line 762.18 "sparc/sparc.mdl"*)
+(*#line 763.18 "sparc/sparc.mdl"*)
              fun f (a, r, d) = 
                  ( emit a; 
                    emit "\t"; 
@@ -465,10 +465,10 @@ struct
                    emit ", "; 
                    emit (C.showFP d))
 
-(*#line 767.18 "sparc/sparc.mdl"*)
+(*#line 768.18 "sparc/sparc.mdl"*)
              fun g (a, r, d) = 
                  let 
-(*#line 768.22 "sparc/sparc.mdl"*)
+(*#line 769.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 
@@ -476,10 +476,10 @@ struct
                     f ("fmovs", r + 1, d + 1)
                  end
 
-(*#line 772.18 "sparc/sparc.mdl"*)
+(*#line 773.18 "sparc/sparc.mdl"*)
              fun h (a, r, d) = 
                  let 
-(*#line 773.22 "sparc/sparc.mdl"*)
+(*#line 774.22 "sparc/sparc.mdl"*)
                      val r = C.registerNum r
                      and d = C.registerNum d
                  in f (a, r, d); 

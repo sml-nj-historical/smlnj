@@ -304,9 +304,10 @@ struct
 	  *)
 	  local
 	    fun hasRCC([]) = false
-	      | hasRCC((_,_,_,_,cexp)::rest) = CPS.hasRCC(cexp) orelse hasRCC(rest)
+	      | hasRCC((_,_,_,_,cexp)::rest) =
+		CPS.hasRCC(cexp) orelse hasRCC(rest)
           in
-	    val vfp = hasRCC(cluster)
+	    val vfp = not MS.framePtrNeverVirtual andalso hasRCC(cluster)
 	    val _ = ClusterAnnotation.useVfp := vfp
           end
 
@@ -1777,8 +1778,10 @@ struct
 		  val { retTy, paramTys, ... } = p
 		  fun build_args vl = let
 		      open CTypes
-		      fun m ((C_float | C_double), v :: vl) =
+		      fun m (C_double, v :: vl) =
 			  (CCalls.FARG (fregbind v), vl)
+			| m (C_float, v :: vl) =
+			  (CCalls.FARG (M.CVTF2F (32, 64, fregbind v)), vl)
 			| m ((C_unsigned (I_char | I_short | I_int | I_long) |
 			      C_signed (I_char | I_short | I_int | I_long) |
 			      C_PTR),
@@ -1813,9 +1816,9 @@ struct
 			   build_args avl)
 			| _ => error "RCC: prototype/arglist mismatch"
 		  fun srd defs = let
-		      fun loop ([], s, r) = { save = r, restore = r }
+		      fun loop ([], s, r) = { save = s, restore = r }
 			| loop (M.GPR (M.REG (ty, g)) :: l, s, r) =
-			  if List.exists (sameRegAs g) C.dedicatedR then
+			  if List.exists (sameRegAs g) C.ccallCallerSaveR then
 			      let val t = Cells.newReg ()
 			      in
 				  loop (l, M.COPY (ty, [t], [g]) :: s,
@@ -1823,7 +1826,7 @@ struct
 			      end
 			  else loop (l, s, r)
 			| loop (M.FPR (M.FREG (ty, f)) :: l, s, r) =
-			  if List.exists (sameRegAs f) C.dedicatedF then
+			  if List.exists (sameRegAs f) C.ccallCallerSaveF then
 			      let val t = Cells.newFreg ()
 			      in
 				  loop (l, M.FCOPY (ty, [t], [f]) :: s,
@@ -1844,7 +1847,7 @@ struct
 			    args = a }
 
 		  fun withVSP f = let
-		      val frameptr = C.vfptr 
+		      val frameptr = C.frameptr vfp 
 
 		      val msp =
 			  M.LOAD (addrTy, ea (frameptr, MS.ML_STATE_OFFSET),
@@ -2041,7 +2044,7 @@ struct
 	endCluster(clusterAnnotations())
       end (* genCluster *)
 
-      fun emitMLRiscUnit f = 
+      fun emitMLRiscUnit f =
 	(Cells.reset();
 	 ClusterAnnotation.useVfp := false;
 	 beginCluster 0; 

@@ -14,7 +14,7 @@ structure AstToSpec = struct
     fun err m = raise Fail ("AstToSpec: error: " ^ m)
     fun warn m = TextIO.output (TextIO.stdErr, "AstToSpec: warning: " ^ m)
 
-    fun build (bundle, sizes: Sizes.sizes, idlfile, allSU) = let
+    fun build (bundle, sizes: Sizes.sizes, idlfile, allSU, eshift) = let
 	val { ast, tidtab, errorCount, warningCount,
 	      auxiliaryInfo = { aidtab, implicits, env } } = bundle
 
@@ -155,7 +155,7 @@ structure AstToSpec = struct
 			fun bfspec (offset, bits, shift, (c, t)) = let
 			    val offset = offset
 			    val bits = Word.fromLargeInt bits
-			    val shift = Endian.shift (shift, intbits, bits)
+			    val shift = eshift (shift, intbits, bits)
 			    val r = { offset = offset,
 				      constness = c,
 				      bits = bits,

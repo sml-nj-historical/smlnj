@@ -15,11 +15,11 @@ signature C = sig
      * Witness types are often the same as the (abstract) type of the value
      * stored in the object.  However, this is merely a coincidence.  For
      * example, a constant object holding a pointer to a read-write integer
-     * would have type ((sint, unit, rw) ptr, unit, ro) obj and the value
-     * itself has type (sint, unit, rw) ptr.
+     * would have type ((sint, rw) ptr, ro) obj and the value itself has
+     * type (sint, rw) ptr.
      * However, in the case of the "light" version of this object (see below),
-     *  the object type is ((sint, unit, rw) ptr, unit, ro) obj' while fetching
-     * from this object gives a value of type (sint, unit, rw) ptr'.
+     * the object type is ((sint, rw) ptr, ro) obj' while fetching
+     * from this object gives a value of type (sint, rw) ptr'.
      * (In other words, we use the "heavy" versions of value types as witness
      * types -- even in the "light" case.) *)
     type ('t, 'c) obj
@@ -29,8 +29,7 @@ signature C = sig
     type ('t, 'c) obj'
 
     (* constness property, to be substituted for 'c *)
-    type ro
-    type rw
+    type ro and rw
 
     (* things to be substituted for 't *)
     type ('t, 'c) ptr			(* pointer to ('t, 'c) obj *)
@@ -52,16 +51,11 @@ signature C = sig
 					 * defined in the Tag module *)
 
     (* primtypes (signed/unsigned char, int, short, long; float, double) *)
-    type schar
-    type uchar
-    type sint
-    type uint
-    type sshort
-    type ushort
-    type slong
-    type ulong
-    type float
-    type double
+    type schar  and uchar
+    type sint   and uint
+    type sshort and ushort
+    type slong  and ulong
+    type float  and double
 
     (* going from abstract to concrete and vice versa *)
     structure Cvt : sig
@@ -121,8 +115,7 @@ signature C = sig
     type ('s, 'c) su_obj' = ('s su, 'c) obj'
 
     (* bitfields aren't "ordinary objects", so they have their own type *)
-    type 'c sbf
-    type 'c ubf
+    type 'c sbf and 'c ubf
 
     (*
      * A family of types and corresponding values representing natural numbers.
@@ -154,16 +147,8 @@ signature C = sig
 	 * is the same as "dec dg<Dn> ... dg<D0> dim".  The type of the zero
 	 * value is "(dec, zero) dim0". *)
 	type dec
-	type 'a dg0
-	type 'a dg1
-	type 'a dg2
-	type 'a dg3
-	type 'a dg4
-	type 'a dg5
-	type 'a dg6
-	type 'a dg7
-	type 'a dg8
-	type 'a dg9
+	type 'a dg0 and 'a dg1 and 'a dg2 and 'a dg3 and 'a dg4
+	type 'a dg5 and 'a dg6 and 'a dg7 and 'a dg8 and 'a dg9
 
 	(* Here are the corresponding constructors for ('a, 'z) dim0 values.
 	 * The type for dg0 ensures that there will be no "leading zeros" in

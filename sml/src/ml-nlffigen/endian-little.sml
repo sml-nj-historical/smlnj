@@ -5,6 +5,6 @@
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
-structure Endian = struct
+structure EndianLittle = struct
     fun shift (s: int, ib: int, b: word) = Word.fromInt (ib - s) - b
 end

@@ -37,6 +37,8 @@ struct
   fun baseptr _		= REG(23)
   fun gcLink _		= T.REG(32,PPCCells.lr) 
 
+  fun frameptr _        = stackptr
+
   val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13)) 
   val calleesave = Array.fromList(miscregs)
   val floatregs = map FREG (1 upto 31)
@@ -60,4 +62,8 @@ struct
 
   val signedGCTest = false
   val addressWidth = 32
+
+  (* FIXME *)
+  val ccallCallerSaveR = []		(* no c-calls implemented yet *)
+  val ccallCallerSaveF = []		(* ... *)
 end
