@@ -21,9 +21,6 @@ structure SkelIO :> SKELIO = struct
     structure UU = UnpickleUtil
 
     infix 3 $
-    infixr 4 &
-    val op & = PU.&
-    val % = PU.%
 
     exception Format = UU.Format
 
@@ -31,7 +28,7 @@ structure SkelIO :> SKELIO = struct
     val b2s = Byte.bytesToString
     val b2c = Byte.byteToChar
 
-    val version = "Skeleton 3\n"
+    val version = "Skeleton 4\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 
@@ -48,31 +45,31 @@ structure SkelIO :> SKELIO = struct
 
     fun write_decl (s, d) = let
 
+	val (P, D, M) = (1, 2, 3)
 	val symbol = PSymPid.w_symbol
 	val list = PU.w_list
 
-	fun path (SP.SPATH p) = list symbol p
+	val op $ = PU.$ P
+	fun path (SP.SPATH p) = "p" $ [list symbol p]
 
 	fun decl arg = let
-	    val D = 1
 	    val op $ = PU.$ D
-	    fun d (SK.Bind (name, def)) = "a" $ symbol name & modExp def
-	      | d (SK.Local (x, y)) = "b" $ decl x & decl y
-	      | d (SK.Par l) = "c" $ list decl l
-	      | d (SK.Seq l) = "d" $ list decl l
-	      | d (SK.Open d) = "e" $ modExp d
-	      | d (SK.Ref s) = "f" $ list symbol (SS.listItems s)
+	    fun d (SK.Bind (name, def)) = "a" $ [symbol name, modExp def]
+	      | d (SK.Local (x, y)) = "b" $ [decl x, decl y]
+	      | d (SK.Par l) = "c" $ [list decl l]
+	      | d (SK.Seq l) = "d" $ [list decl l]
+	      | d (SK.Open d) = "e" $ [modExp d]
+	      | d (SK.Ref s) = "f" $ [list symbol (SS.listItems s)]
 	in
 	    d arg
 	end
 
 	and modExp arg = let
-	    val M = 2
 	    val op $ = PU.$ M
-	    fun m (SK.Var p) = "g" $ path p
-	      | m (SK.Decl d) = "h" $ list decl d
-	      | m (SK.Let (d, e)) = "i" $ list decl d & modExp e
-	      | m (SK.Ign1 (e1, e2)) = "j" $ modExp e1 & modExp e2
+	    fun m (SK.Var p) = "g" $ [path p]
+	      | m (SK.Decl d) = "h" $ [list decl d]
+	      | m (SK.Let (d, e)) = "i" $ [list decl d, modExp e]
+	      | m (SK.Ign1 (e1, e2)) = "j" $ [modExp e1, modExp e2]
 	in
 	    m arg
 	end
@@ -94,6 +91,7 @@ structure SkelIO :> SKELIO = struct
 	fun list m r = UU.r_list session m r
 	fun share m f = UU.share session m f
 
+	val pathM = UU.mkMap ()
 	val symbolListM = UU.mkMap ()
 	val declM = UU.mkMap ()
 	val declListM = UU.mkMap ()
@@ -101,7 +99,12 @@ structure SkelIO :> SKELIO = struct
 
 	val symbollist = list symbolListM symbol
 
-	fun path () = SP.SPATH (symbollist ())
+	fun path () = let
+	    fun p #"p" = SP.SPATH (symbollist ())
+	      | p _ = raise Format
+	in
+	    share pathM p
+	end
 
 	fun decl () = let
 	    fun d #"a" = SK.Bind (symbol (), modExp ())

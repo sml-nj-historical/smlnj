@@ -64,12 +64,12 @@ struct
 	  patchback = fn (m: map, pm) => { ss = #ss m, sn = #sn m, pm = pm } }
 
     infix 3 $
-    infixr 4 &
-    val op & = PU.&
-    val % = PU.%
 
     (* type info *)
-    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM) = (1, 2, 3, 4, 5, 6, 7, 8)
+    val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM, G, AP,
+	 PRIM, EXPORTS, PRIV) =
+	(1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010,
+	 1011, 1012, 1013)
 
     val SSs =
 	{ find = fn (m: map, k) => SSMap.find (#ss m, k),
@@ -275,16 +275,17 @@ struct
 
 	    fun symbolset ss = let
 		val op $ = PU.$ SS
-		fun raw_ss ss = "s" $ list symbol (SymbolSet.listItems ss)
+		fun raw_ss ss = "s" $ [list symbol (SymbolSet.listItems ss)]
 	    in
 		share SSs raw_ss ss
 	    end
 
 	    val filter = option symbolset
 
-	    fun shm (Sharing.SHARE true) = %SHM "a"
-	      | shm (Sharing.SHARE false) = %SHM "b"
-	      | shm Sharing.DONTSHARE = %SHM "c"
+	    val op $ = PU.$ SHM
+	    fun shm (Sharing.SHARE true) = "a" $ []
+	      | shm (Sharing.SHARE false) = "b" $ []
+	      | shm Sharing.DONTSHARE = "c" $ []
 
 	    fun si i = let
 		(* FIXME: this is not a technical flaw, but perhaps one
@@ -299,11 +300,14 @@ struct
 		val sh_mode = SmlInfo.sh_mode i
 		val op $ = PU.$ SI
 	    in
-		"s" $ string spec & string locs & int offset & shm sh_mode
+		"s" $ [string spec, string locs, int offset, shm sh_mode]
 	    end
 
-	    fun primitive p =
-		string (String.str (Primitive.toIdent primconf p))
+	    fun primitive p = let
+		val op $ = PU.$ PRIM
+	    in
+		"p" $ [string (String.str (Primitive.toIdent primconf p))]
+	    end
 
 	    fun warn_relabs p abs = let
 		val relabs = if abs then "absolute" else "relative"
@@ -328,16 +332,17 @@ struct
 	    end
 
 	    fun abspath p = let
+		val op $ = PU.$ AP
 		val pp = SrcPath.pickle (warn_relabs p) (p, grouppath)
 	    in
-		list string pp
+		"p" $ [list string pp]
 	    end
 
 	    fun sn n = let
 		val op $ = PU.$ SN
 		fun raw_sn (DG.SNODE n) =
-		    "a" $ si (#smlinfo n) & list sn (#localimports n) &
-		    list fsbn (#globalimports n)
+		    "a" $ [si (#smlinfo n), list sn (#localimports n),
+			   list fsbn (#globalimports n)]
 	    in
 		share SNs raw_sn n
 	    end
@@ -349,19 +354,19 @@ struct
 	    in
 		case x of
 		    DG.SB_BNODE (DG.PNODE p, { statenv = getE, ... }) =>
-			"1" $ primitive p
+			"1" $ [primitive p]
 		  | DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _) => let
 			val (n, sy) = valOf (StableMap.find (inverseMap, i))
 		    in
-			"2" $ int n & symbol sy
+			"2" $ [int n, symbol sy]
 		    end
-		  | DG.SB_SNODE n => "3" $ sn n
+		  | DG.SB_SNODE n => "3" $ [sn n]
 	    end
 	
 	    and fsbn (f, n) = let
 		val op $ = PU.$ FSBN
 	    in
-		"f" $ filter f & sbn n
+		"f" $ [filter f, sbn n]
 	    end
 
 	    (* Here is the place where we need to write interface info. *)
@@ -375,23 +380,32 @@ struct
 		fun es2bs { env, ctxt } =
 		    { env = GenericVC.CoerceEnv.es2bs env, ctxt = ctxt }
 	    in
-		"i" $ symbol s & fsbn n &
-		      lazy_env (es2bs o statenv) &
-		      lazy_symenv symenv &
-		      pid statpid &
-		      pid sympid
+		"i" $ [symbol s, fsbn n,
+		       lazy_env (es2bs o statenv),
+		       lazy_symenv symenv,
+		       pid statpid,
+		       pid sympid]
 	    end
 
-	    fun w_exports e = list impexp (SymbolMap.listItemsi e)
+	    fun w_exports e = let
+		val op $ = PU.$ EXPORTS
+	    in
+		"e" $ [list impexp (SymbolMap.listItemsi e)]
+	    end
 
-	    fun privileges p = list string (StringSet.listItems p)
+	    fun privileges p = let
+		val op $ = PU.$ PRIV
+	    in
+		"p" $ [list string (StringSet.listItems p)]
+	    end
 
 	    fun group () = let
+		val op $ = PU.$ G
 		fun sg (p, g) = abspath p
 	    in
 		(* Pickle the sublibs first because we need to already
 		 * have them back when we unpickle BNODEs. *)
-		list sg sublibs & w_exports exports & privileges required
+		"g" $ [list sg sublibs, w_exports exports, privileges required]
 	    end
 
 	    val dg_pickle =
@@ -555,61 +569,8 @@ struct
 		UU.stringGetter' (SOME dg_pickle, mkPickleFetcher mksname)
 	    val session = UU.mkSession getter
 
-	    fun list m r = UU.r_list session m r
-	    val string = UU.r_string session
-	    val stringListM = UU.mkMap ()
-	    val stringlist = list stringListM string
-
-	    fun abspath () =
-		SrcPath.unpickle pcmode (stringlist (), group)
-		handle SrcPath.Format => raise Format
-		     | SrcPath.BadAnchor a =>
-		       (error ["configuration anchor \"", a, "\" undefined"];
-			raise Format)
-
-	    fun sg () = let
-		val p = abspath ()
-	    in
-		(p, getGroup' p)
-	    end
 	    val sgListM = UU.mkMap ()
-	    val sublibs = list sgListM sg ()
-
-	    (* Now that we have the list of sublibs, we can build the
-	     * environment for unpickling the environment list.
-	     * We will need the environment list when unpickling the
-	     * export list (making SB_BNODES). *)
-	    fun prim_context "pv" = SOME (E.staticPart pervasive)
-	      | prim_context s =
-		SOME (E.staticPart (Primitive.env primconf
-				    (valOf (Primitive.fromIdent primconf
-					    (String.sub (s, 0))))))
-		handle _ => NONE
-	    fun node_context (n, sy) = let
-		val (_, GG.GROUP { exports = slexp, ... }) =
-		    List.nth (sublibs, n)
-	    in
-		case SymbolMap.find (slexp, sy) of
-		    SOME ((_, DG.SB_BNODE (_, { statenv = ge, ... })), _) =>
-			SOME (#env (ge ()))
-		  | _ => NONE
-	    end handle _ => NONE
-
-	    val { symenv, env, symbol, symbollist } =
-		UP.mkUnpicklers session
-		    { prim_context = prim_context,
-		      node_context = node_context }
-
-	    val lazy_symenv = UU.r_lazy session symenv
-	    val lazy_env = UU.r_lazy session env
-
-	    fun option m r = UU.r_option session m r
-	    val int = UU.r_int session
-	    fun share m r = UU.share session m r
-	    fun nonshare r = UU.nonshare session r
-	    val bool = UU.r_bool session
-	    val pid = UnpickleSymPid.r_pid string
-
+	    val stringListM = UU.mkMap ()
 	    val stringListM = UU.mkMap ()
 	    val ssM = UU.mkMap ()
 	    val ssoM = UU.mkMap ()
@@ -622,140 +583,229 @@ struct
 	    val fsbnListM = UU.mkMap ()
 	    val impexpM = UU.mkMap ()
 	    val impexpListM = UU.mkMap ()
+	    val groupM = UU.mkMap ()
+	    val apM = UU.mkMap ()
+	    val primitiveM = UU.mkMap ()
+	    val exportsM = UU.mkMap ()
+	    val privilegesM = UU.mkMap ()
 
-	    fun symbolset () = let
-		fun s #"s" = SymbolSet.addList (SymbolSet.empty, symbollist ())
-		  | s _ = raise Format
-	    in
-		share ssM s
-	    end
-
-	    val filter = option ssoM symbolset
-
-	    fun primitive () =
-		valOf (Primitive.fromIdent primconf
-		          (String.sub (string (), 0)))
-		handle _ => raise Format
-
-	    fun shm () = let
-		fun s #"a" = Sharing.SHARE true
-		  | s #"b" = Sharing.SHARE false
-		  | s #"c" = Sharing.DONTSHARE
-		  | s _ = raise Format
-	    in
-		nonshare s
-	    end
-
-	    fun si () = let
-		fun s #"s" =
-		    let val spec = string ()
-			val locs = string ()
-			val offset = int () + offset_adjustment
-			val sh_mode = shm ()
-			val error = EM.errorNoSource grpSrcInfo locs
-		    in
-			BinInfo.new { group = group,
-				      mkStablename = mksname,
-				      error = error,
-				      spec = spec,
-				      offset = offset,
-				      sh_mode = sh_mode }
-		    end
-		  | s _ = raise Format
-	    in
-		share siM s
-	    end
-
-	    (* this is the place where what used to be an
-	     * SNODE changes to a BNODE! *)
-	    fun sn () = let
-		fun sn' #"a" =
-		    DG.BNODE { bininfo = si (),
-			       localimports = snlist (),
-			       globalimports = fsbnlist () }
-		  | sn' _ = raise Format
-	    in
-		share snM sn'
-	    end
-
-	    and snlist () = list snListM sn ()
-
-	    (* this one changes from farsbnode to plain farbnode *)
-	    and sbn () = let
-		fun sbn' #"1" = DG.PNODE (primitive ())
-		  | sbn' #"2" = let
-			val n = int ()
-			val sy = symbol ()
-			val (_, GG.GROUP { exports = slexp, ... }) =
-			    List.nth (sublibs, n) handle _ => raise Format
-		    in
-			case SymbolMap.find (slexp, sy) of
-			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _, _)), _) =>
-				n
-			  | _ => raise Format
-		    end
-		  | sbn' #"3" = sn ()
-		  | sbn' _ = raise Format
-	    in
-		share sbnM sbn'
-	    end
-
-	    and fsbn () = let
-		fun f #"f" = (filter (), sbn ())
-		  | f _ = raise Format
-	    in
-		share fsbnM f
-	    end
-
-	    and fsbnlist () = list fsbnListM fsbn ()
-
-	    fun impexp () = let
-		fun ie #"i" =
-		    let val sy = symbol ()
-			val (f, n) = fsbn () (* really reads farbnodes! *)
-			val ge = lazy_env ()
-			fun bs2es { env, ctxt } =
-			    { env = GenericVC.CoerceEnv.bs2es env,
-			     ctxt = ctxt }
-			val ge' = bs2es o ge
-			val ii = { statenv = Memoize.memoize ge',
-				   symenv = lazy_symenv (),
-				   statpid = pid (),
-				   sympid = pid () }
-			val e = Statenv2DAEnv.cvtMemo (#env o ge)
-			(* put a filter in front to avoid having the FCTENV
-			 * being queried needlessly (this avoids spurious
-			 * module loadings) *)
-			val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
-		    in
-			(sy, ((f, DG.SB_BNODE (n, ii)), e'))
-		    end
-		  | ie _ = raise Format
-	    in
-		share impexpM ie
-	    end
-
-	    val impexplist = list impexpListM impexp
-
-	    fun r_exports () = let
-		val iel = impexplist ()
-	    in
-		foldl SymbolMap.insert' SymbolMap.empty iel
-	    end
-
+	    fun list m r = UU.r_list session m r
+	    val string = UU.r_string session
 	    val stringlist = list stringListM string
 
-	    fun privileges () =
-		StringSet.addList (StringSet.empty, stringlist ())
+	    fun option m r = UU.r_option session m r
+	    val int = UU.r_int session
+	    fun share m r = UU.share session m r
+	    fun nonshare r = UU.nonshare session r
+	    val bool = UU.r_bool session
+	    val pid = UnpickleSymPid.r_pid (session, string)
 
-	    val exports = r_exports ()
-	    val required = privileges ()
+	    fun abspath () = let
+		fun ap #"p" =
+		    (SrcPath.unpickle pcmode (stringlist (), group)
+		     handle SrcPath.Format => raise Format
+			  | SrcPath.BadAnchor a =>
+			 (error ["configuration anchor \"", a, "\" undefined"];
+			  raise Format))
+		  | ap _ = raise Format
+	    in
+		share apM ap
+	    end
+
+	    fun sg () = let
+		val p = abspath ()
+	    in
+		(p, getGroup' p)
+	    end
+
+	    fun gr #"g" =
+		let val sublibs = list sgListM sg ()
+
+		    (* Now that we have the list of sublibs, we can build the
+		     * environment for unpickling the environment list.
+		     * We will need the environment list when unpickling the
+		     * export list (making SB_BNODES). *)
+		    fun prim_context "pv" = SOME (E.staticPart pervasive)
+		      | prim_context s =
+			SOME (E.staticPart
+			      (Primitive.env primconf
+			       (valOf (Primitive.fromIdent primconf
+				       (String.sub (s, 0))))))
+			handle _ => NONE
+		    fun node_context (n, sy) = let
+			val (_, GG.GROUP { exports = slexp, ... }) =
+			    List.nth (sublibs, n)
+		    in
+			case SymbolMap.find (slexp, sy) of
+			    SOME ((_, DG.SB_BNODE (_, x)), _) =>
+				SOME (#env (#statenv x ()))
+			  | _ => NONE
+		    end handle _ => NONE
+
+		    val { symenv, env, symbol, symbollist } =
+			UP.mkUnpicklers session
+			  { prim_context = prim_context,
+			    node_context = node_context }
+
+		    val lazy_symenv = UU.r_lazy session symenv
+		    val lazy_env = UU.r_lazy session env
+
+		    fun symbolset () = let
+			fun s #"s" =
+			    SymbolSet.addList (SymbolSet.empty, symbollist ())
+			  | s _ = raise Format
+		    in
+			share ssM s
+		    end
+
+		    val filter = option ssoM symbolset
+
+		    fun primitive () = let
+			fun p #"p" =
+			    (valOf (Primitive.fromIdent primconf
+				    (String.sub (string (), 0)))
+			     handle _ => raise Format)
+			  | p _ = raise Format
+		    in
+			share primitiveM p
+		    end
+
+		    fun shm () = let
+			fun s #"a" = Sharing.SHARE true
+			  | s #"b" = Sharing.SHARE false
+			  | s #"c" = Sharing.DONTSHARE
+			  | s _ = raise Format
+		    in
+			nonshare s
+		    end
+
+		    fun si () = let
+			fun s #"s" =
+			    let val spec = string ()
+				val locs = string ()
+				val offset = int () + offset_adjustment
+				val sh_mode = shm ()
+				val error = EM.errorNoSource grpSrcInfo locs
+			    in
+				BinInfo.new { group = group,
+					      mkStablename = mksname,
+					      error = error,
+					      spec = spec,
+					      offset = offset,
+					      sh_mode = sh_mode }
+			    end
+			  | s _ = raise Format
+		    in
+			share siM s
+		    end
+
+		    (* this is the place where what used to be an
+		     * SNODE changes to a BNODE! *)
+		    fun sn () = let
+			fun sn' #"a" =
+			    DG.BNODE { bininfo = si (),
+				       localimports = snlist (),
+				       globalimports = fsbnlist () }
+			  | sn' _ = raise Format
+		    in
+			share snM sn'
+		    end
+
+		    and snlist () = list snListM sn ()
+
+		    (* this one changes from farsbnode to plain farbnode *)
+		    and sbn () = let
+			fun sbn' #"1" = DG.PNODE (primitive ())
+			  | sbn' #"2" = let
+				val n = int ()
+				val sy = symbol ()
+				val (_, GG.GROUP { exports = slexp, ... }) =
+				    List.nth (sublibs, n)
+				    handle _ => raise Format
+			    in
+				case SymbolMap.find (slexp, sy) of
+				    SOME ((_, DG.SB_BNODE(n, _)), _) =>
+					(case n of
+					     DG.BNODE _ => n
+					   | _ => raise Format)
+				  | _ => raise Format
+			    end
+			  | sbn' #"3" = sn ()
+			  | sbn' _ = raise Format
+		    in
+			share sbnM sbn'
+		    end
+
+		    and fsbn () = let
+			fun f #"f" = (filter (), sbn ())
+			  | f _ = raise Format
+		    in
+			share fsbnM f
+		    end
+
+		    and fsbnlist () = list fsbnListM fsbn ()
+
+		    fun impexp () = let
+			fun ie #"i" =
+			    let val sy = symbol ()
+				(* really reads farbnodes! *)
+				val (f, n) = fsbn ()
+				val ge = lazy_env ()
+				fun bs2es { env, ctxt } =
+				    { env = GenericVC.CoerceEnv.bs2es env,
+				      ctxt = ctxt }
+				val ge' = bs2es o ge
+				val ii = { statenv = Memoize.memoize ge',
+					   symenv = lazy_symenv (),
+					   statpid = pid (),
+					   sympid = pid () }
+				val e = Statenv2DAEnv.cvtMemo (#env o ge)
+				(* put a filter in front to avoid having the
+				 * FCTENV being queried needlessly (this
+				 * avoids spurious module loadings) *)
+				val e' =
+				    DAEnv.FILTER (SymbolSet.singleton sy, e)
+			    in
+				(sy, ((f, DG.SB_BNODE (n, ii)), e'))
+			    end
+			  | ie _ = raise Format
+		    in
+			share impexpM ie
+		    end
+
+		    val impexplist = list impexpListM impexp
+
+		    fun r_exports () = let
+			fun e #"e" =
+			    foldl SymbolMap.insert'
+			          SymbolMap.empty (impexplist ())
+			  | e _ = raise Format
+		    in
+			share exportsM e
+		    end
+
+		    val stringlist = list stringListM string
+
+		    fun privileges () = let
+			fun p #"p" =
+			    StringSet.addList (StringSet.empty, stringlist ())
+			  | p _ = raise Format
+		    in
+			share privilegesM p
+		    end
+
+		    val exports = r_exports ()
+		    val required = privileges ()
+		in
+		    GG.GROUP { exports = exports,
+			      kind = GG.STABLELIB dropper,
+			      required = required,
+			      grouppath = group,
+			      sublibs = sublibs }
+		end
+	      | gr _ = raise Format
 	in
-	    GG.GROUP { exports = exports,
-		       kind = GG.STABLELIB dropper,
-		       required = required,
-		       grouppath = group,
-		       sublibs = sublibs }
+	    share groupM gr
 	end
     in
 	SOME (SafeIO.perform { openIt = BinIO.openIn o mksname,
