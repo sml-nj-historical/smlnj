@@ -21,7 +21,7 @@ signature C = sig
      * type (sint, rw) ptr.
      * However, in the case of the "light" version of this object (see below),
      * the object type is ((sint, rw) ptr, ro) obj' while fetching
-n     * from this object gives a value of type (sint, rw) ptr'.
+     * from this object gives a value of type (sint, rw) ptr'.
      * (In other words, we use the "heavy" versions of value types as witness
      * types -- even in the "light" case.) *)
     type ('t, 'c) obj
