@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/15 21:21:00 EST
+Tag: leunga-110_48-udgraph
+Description:
+
+Another bug fix from Carl Hauser:
+
+diff /net/niflab/smlnj48/src/MLRISC/graphs/udgraph.sml udgraph.sml
+> 48c48
+> <              | rmv((e as (k,_))::es,L) = rmv(es,if k = i then es else
+> e::L)
+> ---
+> >              | rmv((e as (k,_))::es,L) = rmv(es,if k = i then L else e::L)
+> Without this, any deletion of an edge in an undirected graph does severe
+> violence to the graph.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/08/10 23:35:00 EST
 Tag: leunga-110_48-ppc
 Description:

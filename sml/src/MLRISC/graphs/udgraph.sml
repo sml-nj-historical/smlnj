@@ -45,7 +45,7 @@ struct
 
        fun set_edges(i,edges) =
        let fun rmv([],L) = L
-             | rmv((e as (k,_))::es,L) = rmv(es,if k = i then es else e::L)
+             | rmv((e as (k,_))::es,L) = rmv(es,if k = i then L else e::L)
            fun add(i,j,e) =
                if i <> j then A.update(adj,j,(i,e)::A.sub(adj,j)) else ()
            val old_edges = A.sub(adj,i)
