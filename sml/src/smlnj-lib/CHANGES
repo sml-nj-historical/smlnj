@@ -3,6 +3,9 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2002-05-20]
+	Added ControlUtil module and stringControls function.
+
 [2002-05-17]
 	Added tyName field to ValueSyntax exception in Controls module
 	and path field to registry tree in ControlRegistry module.

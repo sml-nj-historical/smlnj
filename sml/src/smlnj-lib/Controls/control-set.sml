@@ -54,4 +54,15 @@ structure ControlSet : CONTROL_SET =
 
     fun app f cset = ATbl.app f cset
 
+  (* convert the controls in a set to string controls and create a new set
+   * for them.
+   *)
+    fun stringControls cvt cset = let
+	  val stringCtl = Controls.stringControl cvt
+	  fun cvtCtl {ctl, info} = {ctl = stringCtl ctl, info = info}
+	  in
+	    ATbl.map cvtCtl cset
+	  end
+
   end
+

@@ -30,4 +30,10 @@ signature CONTROL_SET =
     val app : ({ctl : 'a control, info : 'b} -> unit)
 	  -> ('a, 'b) control_set -> unit
 
+  (* convert the controls in a set to string controls and create a new set
+   * for them.
+   *)
+    val stringControls : 'a Controls.value_cvt -> ('a, 'b) control_set
+	  -> (string, 'b) control_set
+
   end

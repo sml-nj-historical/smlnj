@@ -16,6 +16,8 @@ Library
   structure ControlSet
   signature CONTROL_REGISTRY
   structure ControlRegistry
+  signature CONTROL_UTIL
+  structure ControlUtil
 
 is
 
@@ -31,6 +33,7 @@ is
   controls.sml
   control-set-sig.sml
   control-set.sml
+  control-util-sig.sml
+  control-util.sml
   registry-sig.sml
   registry.sml
-
