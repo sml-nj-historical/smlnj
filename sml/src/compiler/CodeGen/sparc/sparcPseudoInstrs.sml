@@ -84,5 +84,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: sparcPseudoInstrs.sml,v $
+ * Revision 1.1.1.1  1998/08/05 19:37:50  george
+ *   Release 110.7.4
+ *
  *)

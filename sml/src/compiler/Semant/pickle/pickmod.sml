@@ -227,62 +227,67 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop (P.WRAP) () = "Yj" $ []
   | primop (P.UNWRAP) () = "Zj" $ []
 
-  | primop P.SUBSCRIPT () = "ak" $ []
-  | primop P.SUBSCRIPTV () = "bk" $ []
-  | primop P.INLSUBSCRIPT () = "ck" $ []
-  | primop P.INLSUBSCRIPTV () = "dk" $ []
-  | primop P.INLMKARRAY () = "~k" $ []
+  | primop P.SUBSCRIPT () =  nestprimop "ak"
+  | primop P.SUBSCRIPTV () = nestprimop "bk" 
+  | primop P.INLSUBSCRIPT () = nestprimop "ck" 
+  | primop P.INLSUBSCRIPTV () = nestprimop "dk" 
+  | primop P.INLMKARRAY () = nestprimop "~k" 
 
-  | primop P.PTREQL () = "ek" $ []
-  | primop P.PTRNEQ () = "fk" $ []
-  | primop P.POLYEQL () = "gk" $ []
-  | primop P.POLYNEQ () = "hk" $ []
-  | primop P.BOXED () = "ik" $ []
-  | primop P.UNBOXED () = "jk" $ []
-  | primop P.LENGTH () = "kk" $ []
-  | primop P.OBJLENGTH () = "lk" $ []
-  | primop P.CAST () = "mk" $ []
-  | primop P.GETRUNVEC () = "nk" $ []
-  | primop P.MARKEXN () = "[k" $ []
-  | primop P.GETHDLR () = "ok" $ []
-  | primop P.SETHDLR () = "pk" $ []
-  | primop P.GETVAR () = "qk" $ []
-  | primop P.SETVAR () = "rk" $ []
-  | primop P.GETPSEUDO () = "sk" $ []
-  | primop P.SETPSEUDO () = "tk" $ []
-  | primop P.SETMARK () = "uk" $ []
-  | primop P.DISPOSE () = "vk" $ []
-  | primop P.MAKEREF () = "wk" $ []
-  | primop P.CALLCC () = "xk" $ []
-  | primop P.CAPTURE () = "yk" $ []
-  | primop P.THROW () = "zk" $ []
-  | primop P.DEREF () = "1k" $ []
-  | primop P.ASSIGN () = "2k" $ []
-  | primop P.UPDATE () = "3k" $ []
-  | primop P.INLUPDATE () = "4k" $ []
-  | primop P.BOXEDUPDATE () = "5k" $ []
-  | primop P.UNBOXEDUPDATE () = "6k" $ []
+  | primop P.PTREQL () = nestprimop "ek" 
+  | primop P.PTRNEQ () = nestprimop "fk" 
+  | primop P.POLYEQL () = nestprimop "gk" 
+  | primop P.POLYNEQ () = nestprimop "hk" 
+  | primop P.BOXED () = nestprimop "ik" 
+  | primop P.UNBOXED () = nestprimop "jk" 
+  | primop P.LENGTH () = nestprimop "kk" 
+  | primop P.OBJLENGTH () = nestprimop "lk" 
+  | primop P.CAST () = nestprimop "mk" 
+  | primop P.GETRUNVEC () = nestprimop "nk" 
+  | primop P.MARKEXN () = nestprimop "[k" 
+  | primop P.GETHDLR () = nestprimop "ok" 
+  | primop P.SETHDLR () = nestprimop "pk" 
+  | primop P.GETVAR () = nestprimop "qk" 
+  | primop P.SETVAR () = nestprimop "rk" 
+  | primop P.GETPSEUDO () = nestprimop "sk" 
+  | primop P.SETPSEUDO () = nestprimop "tk" 
+  | primop P.SETMARK () = nestprimop "uk" 
+  | primop P.DISPOSE () = nestprimop "vk" 
+  | primop P.MAKEREF () = nestprimop "wk" 
+  | primop P.CALLCC () = nestprimop "xk" 
+  | primop P.CAPTURE () = nestprimop "yk" 
+  | primop P.THROW () = nestprimop "zk" 
+  | primop P.DEREF () = nestprimop "1k" 
+  | primop P.ASSIGN () = nestprimop "2k" 
+  | primop P.UPDATE () = nestprimop "3k" 
+  | primop P.INLUPDATE () = nestprimop "4k" 
+  | primop P.BOXEDUPDATE () = nestprimop "5k" 
+  | primop P.UNBOXEDUPDATE () = nestprimop "6k" 
 
-  | primop P.GETTAG () = "7k" $ []
-  | primop P.MKSPECIAL () = "8k" $ []
-  | primop P.SETSPECIAL () = "9k" $ []
-  | primop P.GETSPECIAL () = "0k" $ []
-  | primop P.USELVAR () = "!k" $ []
-  | primop P.DEFLVAR () = "@k" $ []
-  | primop P.INLDIV () = "#k" $ []
-  | primop P.INLMOD () = "$k" $ []
-  | primop P.INLREM () = "%k" $ []
-  | primop P.INLMIN () = "^k" $ []
-  | primop P.INLMAX () = "&k" $ []
-  | primop P.INLABS () = "*k" $ []
-  | primop P.INLNOT () = "(k" $ []
-  | primop P.INLCOMPOSE () = ")k" $ []
-  | primop P.INLBEFORE () = ",k" $ []
-  | primop P.INL_ARRAY () = ".k" $ []
-  | primop P.INL_VECTOR () = "/k" $ []
-  | primop P.ISOLATE () = ":k" $ []
-  | primop P.WCAST () = ";k" $ []
+  | primop P.GETTAG () = nestprimop "7k" 
+  | primop P.MKSPECIAL () = nestprimop "8k" 
+  | primop P.SETSPECIAL () = nestprimop "9k" 
+  | primop P.GETSPECIAL () = nestprimop "0k" 
+  | primop P.USELVAR () = nestprimop "!k" 
+  | primop P.DEFLVAR () = nestprimop "@k" 
+  | primop P.INLDIV () = nestprimop "#k" 
+  | primop P.INLMOD () = nestprimop "$k"
+  | primop P.INLREM () = nestprimop "%k" 
+  | primop P.INLMIN () = nestprimop "^k" 
+  | primop P.INLMAX () = nestprimop "&k" 
+  | primop P.INLABS () = nestprimop "*k" 
+  | primop P.INLNOT () = nestprimop "(k" 
+  | primop P.INLCOMPOSE () = nestprimop ")k" 
+  | primop P.INLBEFORE () = nestprimop ",k" 
+  | primop P.INL_ARRAY () = nestprimop ".k" 
+  | primop P.INL_VECTOR () = nestprimop "/k" 
+  | primop P.ISOLATE () = nestprimop ":k" 
+  | primop P.WCAST () = nestprimop ";k" 
+  | primop P.NEW_ARRAY0 () = nestprimop "Ak" 
+  | primop P.GET_SEQ_DATA () = nestprimop "Bk" 
+  | primop P.SUBSCRIPT_REC () = nestprimop "Ck" 
+  | primop P.SUBSCRIPT_RAW64 () = nestprimop "Dk" 
 
+and nestprimop s = "aj" $ [fn () => s $ []]
 
 fun consig (A.CSIG(i,j)) () = "S8" $ [W.int i, W.int j]
   | consig (A.CNIL) () = "N8" $ []
@@ -923,6 +928,15 @@ end (* structure PickMod *)
 
 (*
  * $Log: pickmod.sml,v $
+ * Revision 1.8  1998/12/22 17:02:11  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
+ * Revision 1.6  1998/10/28 18:25:11  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.5  1998/09/30 19:20:59  dbm
+ * new repl field in TYCspec (bug 1432)
+ *
  * Revision 1.4  1998/05/23 14:10:12  george
  *   Fixed RCS keyword syntax
  *

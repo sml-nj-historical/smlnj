@@ -132,6 +132,9 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
   end
 
 (*
- * $Log$
+ * $Log: tokentable.sml,v $
+ * Revision 1.3  1998/05/23 14:09:56  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

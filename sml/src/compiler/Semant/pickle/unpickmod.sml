@@ -275,8 +275,10 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
   | primop #"Y" = %Uprimop(P.WRAP)
   | primop #"Z" = %Uprimop(P.UNWRAP)
 
-  | primop x = %Uprimop(
-       case x
+  | primop #"a" = ?nestprimop(fn Uprimop p => %Uprimop(p))
+
+ and nestprimop x =
+       %Uprimop (case x
         of #"a" => P.SUBSCRIPT
          | #"b" => P.SUBSCRIPTV
          | #"c" => P.INLSUBSCRIPT
@@ -330,6 +332,10 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          | #"/" => P.INL_VECTOR
          | #":" => P.ISOLATE
          | #";" => P.WCAST
+	 | #"A" => P.NEW_ARRAY0
+	 | #"B" => P.GET_SEQ_DATA
+	 | #"C" => P.SUBSCRIPT_REC
+	 | #"D" => P.SUBSCRIPT_RAW64
 	 | _ => raise Fail "    | primop")
 
 
@@ -1256,9 +1262,11 @@ fun unpickleEnv (context0, pickle) =
 end (* local *)
 end (* structure UnpickleMod *)
 
-
 (*
  * $Log: unpickmod.sml,v $
+ * Revision 1.8  1998/12/22 17:02:12  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  * Revision 1.4  1998/05/23 14:10:13  george
  *   Fixed RCS keyword syntax
  *

@@ -10,5 +10,8 @@ signature SPARCSHUFFLE = sig
 end
 
 (*
- * $Log$
+ * $Log: sparcShuffle.sig,v $
+ * Revision 1.1.1.1  1998/08/05 19:38:49  george
+ *   Release 110.7.4
+ *
  *)

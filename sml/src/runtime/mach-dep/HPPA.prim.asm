@@ -143,6 +143,7 @@ high addresses ...
 #define tmp1 asmTmp
 #define tmp2 miscreg10
 #define tmp3 miscreg11
+#define tmp4 miscreg9
 #define carg0 miscreg12
 #define creturn miscreg13
 
@@ -495,25 +496,38 @@ ENTRY(RestoreFPRegs)
  */
 ML_CODE_HDR(array_a)
 	CHECKLIMIT(array_check, FUN_MASK)
+
 	ldw	0(stdarg), tmp1		    /* tmp1 := length (tagged int) */
-        RSHIFT(tmp1, 1, tmp1)		    /* tmp1 := length : untagged int */
-	ldi     SMALL_OBJ_SZW, tmp2	    /* is this a small object */
-	combt,< tmp2, tmp1, L$array_offline
+        RSHIFT(tmp1, 1, tmp2)		    /* tmp2 := length : untagged int */
+	ldi     SMALL_OBJ_SZW, tmp3	    /* is this a small object */
+	combt,< tmp3, tmp1, L$array_offline
 	nop
-	LSHIFT(tmp1, TAG_SHIFTW, tmp3)	    /* build descriptor in atmp3 */
-	ldi	0+MAKE_TAG(DTAG_array), tmp2
-	or	tmp3, tmp2, tmp3
+
+	/* allocate and initialize array data */
+	ldw	4(stdarg), stdarg	    /* stdarg = initial value */
+	LSHIFT(tmp2, TAG_SHIFTW, tmp3)	    /* build descriptor in tmp3 */
+	ldi	0+MAKE_TAG(DTAG_arr_data), tmp4
+	or	tmp3, tmp4, tmp3
 	stw	tmp3,0(allocptr)	    /* store descriptor */
-	addi    4, allocptr, allocptr
-	ldw	4(stdarg), tmp2		    /* tmp2 := initial value */
-	copy	allocptr, stdarg
-	LSHIFT(tmp1, 2, tmp1)		    /* tmp1 := length in bytes */
-	add	tmp1, allocptr, tmp1        /* atmp1 is end of array */
-L$array_loop				    /* loop: */
-	stw	tmp2, 0(allocptr)
-	addi	4, allocptr, allocptr       /* allocptr++ */
-	combf,= allocptr, tmp1, L$array_loop
+	addi    4, allocptr, allocptr	    /* allocptr++ */
+	copy 	allocptr, tmp3		    /* array data ptr in tmp3 */
+
+	LSHIFT(tmp2, 2, tmp2)		    /* tmp2 = number of bytes to allocate */
+	add	tmp2, allocptr, tmp2	    /* tmp2 = address of end of array  */
+L$array_loop
+	stw	stdarg, 0(allocptr)	    
+	addi	4, allocptr, allocptr
+	combf,= allocptr, tmp2, L$array_loop
 	nop
+
+	/* allocate array header */
+	ldi	0+(DESC_polyarr), tmp2	    /* descriptor in tmp2 */
+	stw	tmp2, 0(allocptr)	    /* store the descriptor */
+	addi	4, allocptr, allocptr	    /* allocptr++ */
+	copy	allocptr, stdarg	    /* result = header addr */
+	stw	tmp3, 0(allocptr)	    /* store pointer to data */
+	stw	tmp1, 4(allocptr)	   
+	addi	8, allocptr, allocptr	    /* allocptr += 2 */
 	CONTINUE
 L$array_offline			/* off-line allocation of big arrays */
 	ldi	FUN_MASK, maskreg
@@ -524,24 +538,35 @@ L$array_offline			/* off-line allocation of big arrays */
 
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(creat_r_check,FUN_MASK)
-	RSHIFT(stdarg, 1, tmp1)
-	LSHIFT(tmp1, 1, tmp2)		    /* tmp2 = length in words */
+
+	RSHIFT(stdarg, 1, tmp2)		/* tmp2 = length (untagged int) */
+	LSHIFT(tmp2, 1, tmp2)		/* tmp2 = length in words */
 	ldi     SMALL_OBJ_SZW, tmp3
 	combt,< tmp3, tmp2, L$realarray_offline
 	nop
-	LSHIFT(tmp1, TAG_SHIFTW, tmp3)	    /* build descriptor in atmp3 */
-	ldi	0+MAKE_TAG(DTAG_realdarray), tmp1
-	or	tmp3, tmp1, tmp3
 
-	ldi	4, tmp1
-	or	allocptr, tmp1, allocptr    /* tag is unaligned, so that the */
-					    /* first element is 8-byte aligned */
-	stw	tmp3, 0(allocptr)
-	addi	4, allocptr, stdarg	    /* pointer to new realarray */
-	LSHIFT(tmp2, 2, tmp2)
-	addi	4, tmp2, tmp2
-	add	allocptr, tmp2, allocptr
+	LSHIFT(tmp2, TAG_SHIFTW, tmp1)	    /* build descriptor in tmp1 */
+	ldi	0+MAKE_TAG(DTAG_raw64), tmp3
+	or	tmp1, tmp3, tmp1
+
+	ldi	4, tmp3			/* align start floating addr */
+	or	allocptr, tmp3, allocptr    
+	stw	tmp1, 0(allocptr)	/* store data descriptor */
+	addi	4, allocptr, allocptr	/* allocptr++ */
+	copy 	allocptr, tmp3		/* tmp3 = data object */
+	LSHIFT(tmp2, 2, tmp2)		/* tmp2 = length in bytes */
+	add	allocptr, tmp2, allocptr/* allocptr += length */
+
+	/* allocate the header object */
+	ldi	0+(DESC_real64arr), tmp1
+	stw	tmp1, 0(allocptr)	/* header descriptor */
+	addi	4, allocptr, allocptr	/* allocptr++ */
+	stw 	tmp3, 0(allocptr)	/* header data field */
+	stw	stdarg,4(allocptr)	/* header length field */
+	copy	allocptr, stdarg	/* stdarg = header object */
+	addi	8, allocptr, allocptr 	/* allocptr += 2 */
 	CONTINUE
+
 L$realarray_offline
 	/* off-line allocation of big realarrays */
 	ldi	FUN_MASK, maskreg
@@ -552,21 +577,34 @@ L$realarray_offline
 
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(create_b_checked, FUN_MASK)
-	RSHIFT(stdarg, 1, tmp1)		    /* tmp1 := length (untagged) */
-	addi	3, tmp1, tmp2		    /* tmp2 := length (words) */ 
+
+	RSHIFT(stdarg, 1, tmp2)		    /* tmp2 := length (untagged) */
+	addi	3, tmp2, tmp2		    /* tmp2 := length (words) */ 
 	RSHIFT(tmp2, 2, tmp2)
 	ldi 	SMALL_OBJ_SZW, tmp3	    /* is this a small object? */
 	combt,< tmp3, tmp2, L$bytearray_offline /* no */
 	nop
-	LSHIFT(tmp1, TAG_SHIFTW, tmp3)	    /* descriptor in tmp3 */
-	ldi     0+MAKE_TAG(DTAG_bytearray), tmp1
-	or	tmp1, tmp3, tmp3
-	stw 	tmp3, 0(allocptr)	    /* write out descriptor */
-	addi	4, allocptr, stdarg	    /* return result */
+
+	/* allocate the data object */
+	LSHIFT(tmp2, TAG_SHIFTW, tmp1)	    /* descriptor in tmp1 */
+	ldi     0+MAKE_TAG(DTAG_raw32), tmp3
+	or	tmp1, tmp3, tmp1
+	stw 	tmp1, 0(allocptr)	    /* write out descriptor */
+	addi	4, allocptr, allocptr	    /* allocptr++  */ 
+	copy	allocptr, tmp3		    /* tmp3 = data object */
 	LSHIFT(tmp2, 2, tmp2)		    /* length in bytes */
-	addi	4, tmp2, tmp2		    /* plus tag */
-	add	tmp2, allocptr, allocptr    /* bump allocptr */
+	add	tmp2, allocptr, allocptr    /* allocptr += length */
+
+	/* allocate the header object */
+	ldi	0+(DESC_word8arr), tmp1	    /* header descriptor */
+	stw	tmp1, 0(allocptr)		
+        addi	4, allocptr, allocptr	    /* allocptr++ */
+	stw	tmp3, 0(allocptr)	    /* header data field */
+        stw	stdarg, 4(allocptr)	    /* header length field */
+        copy	allocptr, stdarg	    /* stdarg = header object */
+        addi    8, allocptr, allocptr	    /* allocptr += 2 */
 	CONTINUE
+
 L$bytearray_offline			    /* big object */
 	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_BYTEARRAY, tmp2
@@ -576,22 +614,35 @@ L$bytearray_offline			    /* big object */
 
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(create_s_checked, FUN_MASK)
-	RSHIFT(stdarg, 1, tmp1)		/* tmp1 := length: untagged int */
-	addi	4, tmp1, tmp2		/* tmp2 := length in words */
+
+	RSHIFT(stdarg, 1, tmp2)		/* tmp2 := length: untagged int */
+	addi	4, tmp2, tmp2		/* tmp2 := length in words */
 	RSHIFT(tmp2, 2, tmp2)		
 	ldi	SMALL_OBJ_SZW, tmp3	/* is this a big object */
 	combt,< tmp3, tmp2, L$string_offline /* no */
         nop
-	LSHIFT(tmp1, TAG_SHIFTW, tmp3)	/* build descriptor in tmp3 */
-	ldi	0+MAKE_TAG(DTAG_string), tmp1
-	or	tmp1, tmp3, tmp3	
-	stw	tmp3, 0(allocptr)	/* save descriptor */
-	addi	4, allocptr, stdarg	/* return result */
+
+	/* allocate the data object */
+	LSHIFT(tmp2, TAG_SHIFTW, tmp1)	/* build descriptor in tmp1 */
+	ldi	0+MAKE_TAG(DTAG_raw32), tmp3
+	or	tmp1, tmp3, tmp1	
+	stw	tmp1, 0(allocptr)	/* store descriptor */
+	addi	4, allocptr, allocptr	/* allocptr++ */
+	copy	allocptr, tmp3		/* tmp3 = data object */
 	LSHIFT(tmp2, 2, tmp2)		/* length in bytes */
-	addi	4, tmp2, tmp2		/* plus tag */
-	add	tmp2, allocptr, allocptr/* bump allocptr */
-	stw	zero, 0-4(allocptr)     /* zero-terminate string */
+	add	tmp2, allocptr, allocptr/* allocptr += length */
+	stw	zero, -4(allocptr)       /* zero-terminate string */
+
+     /* allocate the header object */
+	ldi	0+(DESC_string), tmp1	/* header descriptor */
+	stw	tmp1, 0(allocptr)	/* header data field */
+        addi	4, allocptr, allocptr	/* allocptr++ */
+	stw	tmp3, 0(allocptr)	/* header data field */
+	stw	stdarg, 4(allocptr)	/* header length field */
+        copy	allocptr, stdarg	/* stdarg = header object */
+	addi	8, allocptr, allocptr	/* allocptr += 2 */
 	CONTINUE
+
 L$string_offline
 	ldi	FUN_MASK, maskreg
 	ldi	REQ_ALLOC_STRING, tmp2
@@ -601,26 +652,38 @@ L$string_offline
 
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(create_v_checked,FUN_MASK)
+
 	ldw	0(stdarg), tmp1		/* tmp1 = tagged length */
-	RSHIFT(tmp1, 1, tmp1)		/* tmp1 = untagged length */
+	RSHIFT(tmp1, 1, tmp2)		/* tmp2 = untagged length */
 	ldi	SMALL_OBJ_SZW, tmp3	/* is this a small object? */
-	combt,< tmp3, tmp1, L$vector_offline /* no */
+	combt,< tmp3, tmp2, L$vector_offline /* no */
 	nop
-	LSHIFT(tmp1, TAG_SHIFTW, tmp2)	/* build descriptor in tmp2 */
-	ldi	0+MAKE_TAG(DTAG_vector), tmp3
-	or	tmp3, tmp2, tmp2
+
+	/* allocate and initialize data object */
+	LSHIFT(tmp2, TAG_SHIFTW, tmp2)	/* build descriptor in tmp2 */
+	ldi	0+MAKE_TAG(DTAG_vec_data), tmp3
+	or	tmp2, tmp3, tmp2
 	stw	tmp2, 0(allocptr)	/* store descriptor */
 	addi	4, allocptr, allocptr	/* allocptr++ */
 	ldw	4(stdarg), tmp2		/* tmp2 = list */
-	addi 	0, allocptr, stdarg	/* return result */
-	ldi	0+ML_nil, tmp3
+	copy	allocptr, stdarg	/* stdarg = data obj */
+	ldi	0+ML_nil, tmp4
 L$vector_loop
-	ldw	0(tmp2), tmp1		/* tmp1 = hd(tmp2) */
+	ldw	0(tmp2), tmp3		/* tmp3 = hd(tmp2) */
 	ldw	4(tmp2), tmp2		/* tmp2 = tl(tmp2) */
-	stw	tmp1, 0(allocptr)	/* store word in vector */
+	stw	tmp3, 0(allocptr)	/* store word in vector */
 	addi	4, allocptr, allocptr	/* allocptr++ */
-	combf,= tmp2, tmp3, L$vector_loop/* if (tmp2 <> nil) goto loop */
+	combf,= tmp2, tmp4, L$vector_loop/* if (tmp2 <> nil) goto loop */
 	nop
+
+	/* allocate header object */
+	ldi	0+(DESC_polyvec), tmp3	/* descriptor in tmp3 */
+	stw	tmp3, 0(allocptr)	/* header descriptor */
+	addi	4, allocptr, allocptr	/* allocptr++ */
+	stw	stdarg, 0(allocptr)	/* header data field */
+	stw	tmp1, 4(allocptr)	/* header length field */
+	copy	allocptr, stdarg	/* result = header object */
+	addi	8, allocptr, allocptr	/* allocptr += 2 */
 	CONTINUE
 L$vector_offline
 	ldi	FUN_MASK, maskreg

@@ -925,5 +925,8 @@ end (* structure LtyExtern *)
 
 
 (*
- * $Log$
+ * $Log: ltyextern.sml,v $
+ * Revision 1.4  1998/12/22 17:01:47  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

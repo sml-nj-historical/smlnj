@@ -22,8 +22,9 @@
 ml_val_t _ml_Sock_sendbufto (ml_state_t *msp, ml_val_t arg)
 {
     int		sock = REC_SELINT(arg, 0);
-    char	*data = REC_SELPTR(char, arg, 1) + REC_SELINT(arg, 2);
+    ml_val_t	buf = REC_SEL(arg, 1);
     int		nbytes = REC_SELINT(arg, 3);
+    char	*data = STR_MLtoC(buf) + REC_SELINT(arg, 2);
     ml_val_t	addr = REC_SEL(arg, 6);
     int		flgs, n;
 

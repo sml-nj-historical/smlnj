@@ -25,7 +25,7 @@ ml_val_t _ml_RunT_export_heap (ml_state_t *msp, ml_val_t arg)
     FILE	*file;
     int		sts;
 
-    QualifyImageName (strcpy(fname, PTR_MLtoC(char, arg)));
+    QualifyImageName (strcpy(fname, STR_MLtoC(arg)));
 
     if ((file = fopen(fname, "wb")) == NULL)
 	return RAISE_ERROR(msp, "unable to open file for writing");

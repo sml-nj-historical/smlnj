@@ -26,7 +26,7 @@
  */
 ml_val_t _ml_win32_PS_create_process(ml_state_t *msp, ml_val_t arg)
 {
-  char *str = PTR_MLtoC (char,arg);
+  char *str = STR_MLtoC(,arg);
   PROCESS_INFORMATION pi;
   STARTUPINFO si;
   ml_val_t res;
@@ -73,7 +73,7 @@ ml_val_t _ml_win32_PS_wait_for_single_object(ml_state_t *msp, ml_val_t arg)
  */
 ml_val_t _ml_win32_PS_system(ml_state_t *msp, ml_val_t arg)
 {
-  int ret = system(PTR_MLtoC(char,arg));
+  int ret = system(STR_MLtoC(arg));
   ml_val_t res;
 
   WORD_ALLOC(msp, res, (Word_t)ret);
@@ -97,7 +97,7 @@ ml_val_t _ml_win32_PS_get_environment_variable(ml_state_t *msp, ml_val_t arg)
 {
 #define GEV_BUF_SZ 4096
   char buf[GEV_BUF_SZ];
-  int ret = GetEnvironmentVariable(PTR_MLtoC(char,arg),buf,GEV_BUF_SZ);
+  int ret = GetEnvironmentVariable(STR_MLtoC(arg),buf,GEV_BUF_SZ);
   ml_val_t ml_s,res = OPTION_NONE;
 
   if (ret > GEV_BUF_SZ) {

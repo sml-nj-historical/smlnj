@@ -50,6 +50,11 @@ end
 
 (*
  * $Log: alpha32Cells.sig,v $
+ * Revision 1.2  1998/10/06 14:07:28  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.1  1998/05/19 15:48:49  george
  *   Version 110.5
  *

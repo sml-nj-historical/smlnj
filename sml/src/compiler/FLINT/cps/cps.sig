@@ -34,6 +34,7 @@ structure P : sig
     datatype setter
       = numupdate of {kind: numkind}
       | unboxedupdate | boxedupdate | update
+      | unboxedassign | assign
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
 
@@ -59,6 +60,7 @@ structure P : sig
       | subscriptv
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
+      | getseqdata | recsubscript | raw64subscript | newarray0
 
     val opp : branch -> branch
 
@@ -161,5 +163,17 @@ val ctype : LtyDef.lty -> cty
 end (* signature CPS *)
 
 (*
- * $Log$
+ * $Log: cps.sig,v $
+ * Revision 1.4  1998/11/23 20:09:52  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/11/18 03:53:15  jhr
+ *  New array representations.
+ *
+ * Revision 1.2  1998/10/28 18:21:21  jhr
+ *   New primops to support new array representation.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
+ *
  *)

@@ -84,5 +84,8 @@ signature POSIX_IO =
   end (* signature POSIX_IO *)
 
 (*
- * $Log$
+ * $Log: posix-io.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
+ *
  *)

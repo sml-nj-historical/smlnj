@@ -84,5 +84,8 @@ end (* structure Precedence *)
 
 
 (*
- * $Log$
+ * $Log: precedence.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:25  george
+ * Version 110.5
+ *
  *)

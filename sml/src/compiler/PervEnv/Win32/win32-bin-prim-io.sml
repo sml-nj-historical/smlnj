@@ -227,5 +227,8 @@ structure Win32BinPrimIO : OS_PRIM_IO =
     end
 
 (*
- * $Log$
+ * $Log: win32-bin-prim-io.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:02  george
+ * Version 110.5
+ *
  *)

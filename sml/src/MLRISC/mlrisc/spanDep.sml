@@ -334,6 +334,11 @@ end (* spanDep.sml *)
 
 (*
  * $Log: spanDep.sml,v $
+ * Revision 1.3  1998/10/06 14:07:49  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.2  1998/08/12 13:36:09  leunga
  *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
  *

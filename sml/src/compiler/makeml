@@ -88,10 +88,6 @@ do
   esac
 done
 
-case $OPSYS in
-  solaris) MAKE=/usr/ccs/bin/make ;;
-esac
-
 if [ "$RUN" = "" ]; then
   if [ "$OPSYS" = "win32" ]; then
     RUN_CMD="run.$ARCH-$OPSYS.exe"

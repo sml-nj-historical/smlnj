@@ -16,6 +16,6 @@
  */
 ml_val_t _ml_NetDB_getnetbyname (ml_state_t *msp, ml_val_t arg)
 {
-    return _util_NetDB_mknetent (msp, getnetbyname (PTR_MLtoC(char, arg)));
+    return _util_NetDB_mknetent (msp, getnetbyname (STR_MLtoC(arg)));
 
 } /* end of _ml_NetDB_getnetbyname */

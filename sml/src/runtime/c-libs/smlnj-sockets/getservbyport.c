@@ -24,7 +24,7 @@ ml_val_t _ml_NetDB_getservbyport (ml_state_t *msp, ml_val_t arg)
     if (mlProto == OPTION_NONE)
 	proto = NIL(char *);
     else
-	proto = PTR_MLtoC(char, OPTION_get(mlProto));
+	proto = STR_MLtoC(OPTION_get(mlProto));
 
     return _util_NetDB_mkservent (msp, getservbyport (REC_SELINT(arg, 0), proto));
 

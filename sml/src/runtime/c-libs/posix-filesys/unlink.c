@@ -20,7 +20,7 @@ ml_val_t _ml_P_FileSys_unlink (ml_state_t *msp, ml_val_t arg)
 {
     int		sts;
 
-    sts = unlink(PTR_MLtoC(char, arg));
+    sts = unlink(STR_MLtoC(arg));
 
     CHK_RETURN_UNIT(msp, sts)
 

@@ -93,5 +93,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32Instr.sig,v $
+ * Revision 1.3  1998/05/25 15:10:47  george
+ *   Fixed RCS keywords
+ *
  *)

@@ -113,5 +113,8 @@ structure Win32_IO : WIN32_IO =
     end
 
 (*
- * $Log$
+ * $Log: win32-io.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:03  george
+ * Version 110.5
+ *
  *)

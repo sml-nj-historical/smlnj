@@ -21,7 +21,7 @@ ml_val_t _ml_P_SysDB_getpwnam (ml_state_t *msp, ml_val_t arg)
     struct passwd*    info;
     ml_val_t          pw_name, pw_uid, pw_gid, pw_dir, pw_shell, r;
 
-    info = getpwnam(PTR_MLtoC(char, arg));
+    info = getpwnam(STR_MLtoC(arg));
     if (info == NIL(struct passwd *))
         return RAISE_SYSERR(msp, -1);
   

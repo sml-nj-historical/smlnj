@@ -54,7 +54,7 @@ ml_val_t _ml_P_IO_osval (ml_state_t *msp, ml_val_t arg)
 {
     name_val_t      *res;
     
-    res = _ml_posix_nv_lookup (PTR_MLtoC(char, arg), values, NUMELMS);
+    res = _ml_posix_nv_lookup (STR_MLtoC(arg), values, NUMELMS);
     if (res)
 	return INT_CtoML(res->val);
     else {

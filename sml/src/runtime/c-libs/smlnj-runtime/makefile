@@ -30,9 +30,12 @@ OBJS =		smlnj-runt-lib.o \
 		export-heap.o \
 		export-fun.o \
 		gc-ctl.o \
-		mkcode.o \
-		sysinfo.o \
 		itick.o \
+		mkcode.o \
+		mkliterals.o \
+		record1.o \
+		record-concat.o \
+		sysinfo.o \
 		setitimer.o
 
 $(LIBRARY)	: $(VERSION) $(OBJS)

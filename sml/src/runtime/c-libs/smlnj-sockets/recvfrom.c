@@ -32,7 +32,7 @@ ml_val_t _ml_Sock_recvfrom (ml_state_t *msp, ml_val_t arg)
     if (REC_SEL(arg, 3) == ML_true) flag |= MSG_PEEK;
 
   /* allocate the vector; note that this might cause a GC */
-    vec = ML_AllocString (msp, nbytes);
+    vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS(nbytes));
 
     n = recvfrom (
 	sock, PTR_MLtoC(char, vec), nbytes, flag,
@@ -44,10 +44,17 @@ ml_val_t _ml_Sock_recvfrom (ml_state_t *msp, ml_val_t arg)
 	ml_val_t	addr = ML_CData (msp, addrBuf, addrLen);
 	ml_val_t	res;
 
-	if (n < nbytes)
-	  /* we need to correct the length in the descriptor */
-	    PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(n, DTAG_string);
-	REC_ALLOC2(msp, res, vec, addr);
+	if (n == 0)
+	    res = ML_string0;
+	else {
+	    if (n < nbytes)
+	      /* we need to shrink the vector */
+		ML_ShrinkRaw32 (msp, vec, BYTES_TO_WORDS(n));
+	    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
+	}
+
+	REC_ALLOC2(msp, res, res, addr);
+
 	return res;
     }
 

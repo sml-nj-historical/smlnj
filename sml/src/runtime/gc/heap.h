@@ -249,22 +249,14 @@ struct bigobj_desc {	    /* A big-object descriptor. */
 
 /** operations on forward pointers **/
 
-#ifdef POINTERS_INTO_OBJECTS
 /* follow a forward pointer.  HDR is the object header, P is the pointer to
  * the object.
  * NOTE: we need the two type casts for 32/64 bit systems.
  */
-#define FOLLOW_FWDOBJ(HDR, P)	\
-    ((ml_val_t *)(((ml_val_t *)(HDR))[0]) + ((ml_val_t *)(P) - (ml_val_t *)(HDR)))
-
+#define FOLLOW_FWDOBJ(HDR)		((ml_val_t *)(((ml_val_t *)(HDR))[0]))
 /* follow a pair-space forward pointer (this is tagged as a descriptor). */
-#define FOLLOW_FWDPAIR(DESC, HDR, P)	\
-    ((ml_val_t *)(((Addr_t)(DESC)) & ~MAJOR_MASK) + ((P) - (HDR)))
-#else
-#define FOLLOW_FWDOBJ(HDR, P)		((ml_val_t *)(((ml_val_t *)(HDR))[0]))
-#define FOLLOW_FWDPAIR(DESC, HDR, P)	\
+#define FOLLOW_FWDPAIR(DESC, HDR)	\
     ((ml_val_t *)(((Addr_t)(DESC)) & ~MAJOR_MASK))
-#endif
 
 /* make a pair-space forward pointer (this is tagged as a descriptor). */
 #define MAKE_PAIR_FP(NEW_ADDR)	((ml_val_t)((Addr_t)(NEW_ADDR) | TAG_desc))

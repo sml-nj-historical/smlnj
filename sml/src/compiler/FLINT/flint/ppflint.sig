@@ -18,5 +18,8 @@ end (* signature PPFLINT *)
 
 
 (*
- * $Log$
+ * $Log: ppflint.sig,v $
+ * Revision 1.2  1998/12/22 17:01:40  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

@@ -23,25 +23,30 @@ ml_val_t _ml_Sock_recv (ml_state_t *msp, ml_val_t arg)
     int		sock = REC_SELINT(arg, 0);
     int		nbytes = REC_SELINT(arg, 1);
     int		flag = 0;
-    ml_val_t	vec;
+    ml_val_t	vec, res;
     int		n;
 
     if (REC_SEL(arg, 2) == ML_true) flag |= MSG_OOB;
     if (REC_SEL(arg, 3) == ML_true) flag |= MSG_PEEK;
 
   /* allocate the vector; note that this might cause a GC */
-    vec = ML_AllocString (msp, nbytes);
+    vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS(nbytes));
 
     n = recv (sock, PTR_MLtoC(char, vec), nbytes, flag);
 
     if (n < 0)
 	return RAISE_SYSERR(msp, sts);
-    else if (n < nbytes) {
-      /* we need to correct the length in the descriptor */
-	PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(n, DTAG_string);
+    else if (n == 0)
+	return ML_string0;
+
+    if (n < nbytes) {
+      /* we need to shrink the vector */
+	ML_ShrinkRaw32 (msp, vec, BYTES_TO_WORDS(n));
     }
 
-    return vec;
+    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
+
+    return res;
 
 } /* end of _ml_Sock_recv */
 

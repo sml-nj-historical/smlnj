@@ -84,6 +84,11 @@ end
 
 (*
  * $Log: printFlowgraph.sml,v $
+ * Revision 1.3  1998/10/06 14:07:48  george
+ * Flowgraph has been removed from modules that do not need it.
+ * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
+ * 						[leunga]
+ *
  * Revision 1.2  1998/07/25 03:08:22  george
  *   added to support block names in MLRISC
  *

@@ -243,7 +243,7 @@ SayDebug ("Repairing blast GC (maxGen = %d of %d)\n", maxGen, heap->numGens);
 	    for (__rp = __ap->repairList;  __rp < __stop;  __rp++) {	\
 		ml_val_t	*__p = __rp->loc;			\
 		if (INDX != PAIR_INDX)					\
-		    __p[-1] = FOLLOW_FWDOBJ(__p, __p)[-1];		\
+		    __p[-1] = FOLLOW_FWDOBJ(__p)[-1];			\
 		__p[0] = __rp->val;					\
 	    }								\
 	}								\
@@ -628,7 +628,7 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
 {
     ml_val_t	*obj = PTR_MLtoC(ml_val_t, v);
     int		gen = EXTRACT_GEN(id);
-    ml_val_t	*obj_start, *new_obj;
+    ml_val_t	*new_obj;
     ml_val_t	desc;
     Word_t	len;
     arena_t	*arena;
@@ -638,102 +638,76 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
 
     switch (EXTRACT_OBJC(id)) {
       case OBJC_record: {
-#ifdef POINTERS_INTO_OBJECTS
-	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
-	    continue;
-#else
-	obj_start = obj;
-	desc = obj_start[-1];
-#endif
-	if (desc == DESC_forwarded)
+	desc = obj[-1];
+	switch (GET_TAG(desc)) {
+	  case DTAG_vec_hdr:
+	  case DTAG_arr_hdr:
+	    len = 2;
+	    break;
+	  case DTAG_forward:
 	  /* This object has already been forwarded */
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	len = GET_LEN(desc);
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  default:
+	    len = GET_LEN(desc);
+	}
 	arena = heap->gen[gen-1]->arena[RECORD_INDX];
       } break;
 
       case OBJC_pair: {
 	ml_val_t	w;
 
-#ifdef POINTERS_INTO_OBJECTS
-	obj_start = (ml_val_t *)((Addr_t)obj & ~(2*WORD_SZB-1));
-#else
-	obj_start = obj;
-#endif
-	w = obj_start[0];
+	w = obj[0];
 	if (isDESC(w))
-	    return PTR_CtoML(FOLLOW_FWDPAIR(w, obj_start, obj));
+	    return PTR_CtoML(FOLLOW_FWDPAIR(w, obj));
 	else {
 	  /* forward the pair */
 	    arena = heap->gen[gen-1]->arena[PAIR_INDX];
 	    new_obj = arena->nextw;
 	    arena->nextw += 2;
 	    new_obj[0] = w;
-	    new_obj[1] = obj_start[1];
+	    new_obj[1] = obj[1];
 	  /* setup the forward pointer in the old pair */
-	    NOTE_REPAIR(arena, obj_start, w);
-	    obj_start[0] =  MAKE_PAIR_FP(new_obj);
-#ifdef POINTERS_INTO_OBJECTS
-	    return PTR_CtoML(new_obj + (obj - obj_start));
-#else
+	    NOTE_REPAIR(arena, obj, w);
+	    obj[0] =  MAKE_PAIR_FP(new_obj);
 	    return PTR_CtoML(new_obj);
-#endif
 	}
       } break;
 
       case OBJC_string: {
-#ifdef ALIGN_REALDS
-	int	align = 0;
-#endif
-	obj_start = obj;
-	desc = obj_start[-1];
+	arena = heap->gen[gen-1]->arena[STRING_INDX];
+	desc = obj[-1];
 	switch (GET_TAG(desc)) {
-	  case DTAG_forwarded:
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	  case DTAG_string: {
-		int		nChars = GET_LEN(desc);
-		len = BYTES_TO_WORDS(nChars);
-	      /* include the 0 termination bytes */
-		if ((nChars & (WORD_SZB-1)) == 0) len++;
-	    } break;
-	  case DTAG_bytearray:
-	    len = GET_STR_LEN(desc);
+	  case DTAG_forward:
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  case DTAG_raw32:
+	    len = GET_LEN(desc);
 	    break;
-	  case DTAG_reald:
-	    len = REALD_SZW;
+	  case DTAG_raw64:
+	    len = GET_LEN(desc);
 #ifdef ALIGN_REALDS
-	    align = WORD_SZB;
-#endif
-	    break;
-	  case DTAG_realdarray:
-	    len = GET_REALDARR_LEN(desc);
-#ifdef ALIGN_REALDS
-	    align = WORD_SZB;
+#  ifdef CHECK_HEAP
+	    if (((Addr_t)arena->nextw & WORD_SZB) == 0) {
+		*(arena->nextw) = (ml_val_t)0;
+		arena->nextw++;
+	    }
+#  else
+	    arena->nextw = (ml_val_t *)(((Addr_t)arena->nextw) | WORD_SZB);
+#  endif
 #endif
 	    break;
 	  default:
 	    Die ("bad string tag %d, obj = %#x, desc = %#x",
 		GET_TAG(desc), obj, desc);
 	}
-	arena = heap->gen[gen-1]->arena[STRING_INDX];
-#ifdef ALIGN_REALDS
-	arena->nextw = (ml_val_t *)(((Addr_t)arena->nextw) | align);
-#endif
       } break;
 
       case OBJC_array: {
-#ifdef POINTERS_INTO_OBJECTS
-	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
-	    continue;
-#else
-	obj_start = obj;
-	desc = obj_start[-1];
-#endif
+	desc = obj[-1];
 	switch (GET_TAG(desc)) {
-	  case DTAG_forwarded:
+	  case DTAG_forward:
 	  /* This object has already been forwarded */
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	  case DTAG_array:
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  case DTAG_arr_data:
 	    len = GET_LEN(desc);
 	    break;
 	  case DTAG_special:
@@ -757,17 +731,13 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
     new_obj = arena->nextw;
     arena->nextw += (len + 1);
     *new_obj++ = desc;
-    COPYLOOP(obj_start, new_obj, len);
+    COPYLOOP(obj, new_obj, len);
 
   /* set up the forward pointer, and return the new object. */
-    NOTE_REPAIR(arena, obj_start, *obj_start);
-    obj_start[-1] = DESC_forwarded;
-    obj_start[0] = (ml_val_t)(Addr_t)new_obj;
-#ifdef POINTERS_INTO_OBJECTS
-    return PTR_CtoML(new_obj + (obj - obj_start));
-#else
+    NOTE_REPAIR(arena, obj, *obj);
+    obj[-1] = DESC_forwarded;
+    obj[0] = (ml_val_t)(Addr_t)new_obj;
     return PTR_CtoML(new_obj);
-#endif
 
 } /* end of BlastGC_ForwardObj */
 
@@ -798,21 +768,8 @@ PVT bigobj_desc_t *BlastGC_ForwardBigObj (
 
     if (! finishGC) {
 	CHECK_GEN(heap, dp->gen);
-
 	codeInfo = EmbObjLookup (EmbObjTbl, dp->obj, UNUSED_CODE);
-	switch (OBJ_TAG(obj)) {
-	  case DTAG_string:	kind = EMB_STRING; break;
-	  case DTAG_reald:	kind = EMB_REALD; break;
-	  default:		kind = USED_CODE; break;
-	}
-
-	if ((kind != USED_CODE) && (codeInfo->kind == UNUSED_CODE)) {
-	  /* an embedded literal in an UNUSED_CODE block */
-	    objInfo = EmbObjLookup (EmbObjTbl, PTR_MLtoADDR(obj), kind);
-	    objInfo->codeObj = codeInfo;
-	}
-	else
-	    codeInfo->kind = USED_CODE;
+	codeInfo->kind = USED_CODE;
     }
 
     return dp;
@@ -848,6 +805,7 @@ PVT embobj_info_t *EmbObjLookup (addr_tbl_t *tbl, Addr_t addr, embobj_kind_t kin
  */
 PVT void BlastGC_AssignLits (Addr_t addr, void *_closure, void *_info)
 {
+#ifdef XXX
     struct assignlits_clos *closure = (struct assignlits_clos *) _closure;
     embobj_info_t	*info = (embobj_info_t *) _info;
     int			objSzB;
@@ -888,7 +846,9 @@ PVT void BlastGC_AssignLits (Addr_t addr, void *_closure, void *_info)
 	info->relAddr = HIO_TAG_PTR(closure->id, closure->offset);
 	closure->offset += objSzB;
     }
-
+#else
+Die ("BlastGC_AssignLits");
+#endif
 } /* end of BlastGC_AssignLits */
 
 /* BlastGC_ExtractLits:

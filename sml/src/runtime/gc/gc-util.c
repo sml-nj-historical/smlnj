@@ -197,7 +197,7 @@ void MarkRegion (bibop_t bibop, ml_val_t *baseAddr, Word_t szB, aid_t aid)
  */
 void ScanWeakPtrs (heap_t *heap)
 {
-    ml_val_t	*p, *q, *obj, *obj_start, desc, fwdObj;
+    ml_val_t	*p, *q, *obj, desc, fwdObj;
 
 /* SayDebug ("ScanWeakPtrs:\n"); */
     for (p = heap->weakList;  p != NIL(ml_val_t *);  p = q) {
@@ -210,17 +210,11 @@ void ScanWeakPtrs (heap_t *heap)
 	  case OBJC_record:
 	  case OBJC_string:
 	  case OBJC_array:
-#ifdef POINTERS_INTO_OBJECTS
-	    for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
-		continue;
-#else
-	    obj_start = obj;
-	    desc = obj_start[-1];
-#endif
+	    desc = obj[-1];
 	    if (desc == DESC_forwarded) {
 		p[0] = DESC_weak;
-		p[1] = PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-/* SayDebug ("forwarded to %#x\n", FOLLOW_FWDOBJ(obj_start, obj)); */
+		p[1] = PTR_CtoML(FOLLOW_FWDOBJ(obj));
+/* SayDebug ("forwarded to %#x\n", FOLLOW_FWDOBJ(obj)); */
 	    }
 	    else {
 		p[0] = DESC_null_weak;
@@ -229,15 +223,10 @@ void ScanWeakPtrs (heap_t *heap)
 	    }
 	    break;
 	  case OBJC_pair:
-#ifdef POINTERS_INTO_OBJECTS
-	    obj_start = (ml_val_t *)((Addr_t)obj & ~(PAIR_SZB-1));
-#else
-	    obj_start = obj;
-#endif
-	    if (isDESC(desc = obj_start[0])) {
+	    if (isDESC(desc = obj[0])) {
 		p[0] = DESC_weak;
-		p[1] = PTR_CtoML(FOLLOW_FWDPAIR(desc, obj_start, obj));
-/* SayDebug ("(pair) forwarded to %#x\n", FOLLOW_FWDPAIR(desc, obj_start, obj)); */
+		p[1] = PTR_CtoML(FOLLOW_FWDPAIR(desc, obj));
+/* SayDebug ("(pair) forwarded to %#x\n", FOLLOW_FWDPAIR(desc, obj)); */
 	    }
 	    else {
 		p[0] = DESC_null_weak;

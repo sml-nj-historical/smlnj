@@ -184,7 +184,7 @@ datatype primop
   | CALLCC | CAPTURE | THROW   (* continuation operations *)
   | ISOLATE                    (* isolating a function *)
   | DEREF                      (* dereferencing *)
-  | ASSIGN                     (* assignment; shorthand for update(a, 0, v) *)
+  | ASSIGN                     (* assignment *)
   | UPDATE                     (* array update (maybe boxed) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
   | BOXEDUPDATE                (* boxed array update *)
@@ -209,6 +209,11 @@ datatype primop
   | MKETAG                     (* make a new exception tag *)
   | WRAP                       (* box a value by wrapping it *)
   | UNWRAP                     (* unbox a value by unwrapping it *)
+(* Primops to support new array representations *)
+  | NEW_ARRAY0			(* allocate zero-length array header *)
+  | GET_SEQ_DATA		(* get data pointer from arr/vec header *)
+  | SUBSCRIPT_REC		(* record subscript operation *)
+  | SUBSCRIPT_RAW64		(* raw64 subscript operation *)
 
 
 val IADD : primop  (* default integer addition *)
@@ -237,5 +242,8 @@ end (* signature PRIM_OP *)
 
 
 (*
- * $Log$
+ * $Log: primop.sig,v $
+ * Revision 1.5  1998/12/22 17:01:50  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

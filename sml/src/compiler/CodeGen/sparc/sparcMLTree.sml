@@ -45,6 +45,9 @@ structure SparcMLTree =
 
 (*
  * $Log: sparcMLTree.sml,v $
+ * Revision 1.2  1998/10/06 14:00:02  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
  * Revision 1.1.1.1  1998/08/05 19:37:50  george
  *   Release 110.7.4
  *

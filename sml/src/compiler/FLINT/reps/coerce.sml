@@ -369,5 +369,8 @@ end (* structure Coerce *)
 
 
 (*
- * $Log$
+ * $Log: coerce.sml,v $
+ * Revision 1.2  1998/12/22 17:02:01  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

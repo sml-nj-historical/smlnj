@@ -19,10 +19,10 @@
 ml_val_t _ml_P_FileSys_rename (ml_state_t *msp, ml_val_t arg)
 {
     int		sts;
-    char        *oldname = REC_SELPTR(char, arg, 0);
-    char        *newname = REC_SELPTR(char, arg, 1);
+    ml_val_t	oldname = REC_SEL(arg, 0);
+    ml_val_t	newname = REC_SEL(arg, 1);
 
-    sts = rename(oldname, newname);
+    sts = rename(STR_MLtoC(oldname), STR_MLtoC(newname));
 
     CHK_RETURN_UNIT (msp, sts)
 

@@ -511,5 +511,8 @@ end (* structure LtyDef *)
 
 
 (*
- * $Log$
+ * $Log: ltydef.sml,v $
+ * Revision 1.4  1998/12/22 17:01:45  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

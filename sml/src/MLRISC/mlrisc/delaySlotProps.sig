@@ -42,6 +42,11 @@ end
 
 (*
  * $Log: delaySlotProps.sig,v $
+ * Revision 1.2  1998/08/12 13:36:07  leunga
+ *
+ *
+ *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
+ *
  * Revision 1.1  1998/08/05 19:47:20  george
  *   Changes to support the SPARC back end
  *

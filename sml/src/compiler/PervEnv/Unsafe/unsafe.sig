@@ -69,6 +69,9 @@ signature UNSAFE =
 
 (*
  * $Log: unsafe.sig,v $
+ * Revision 1.3  1998/10/16 17:27:06  jhr
+ *   Modified comment.
+ *
  * Revision 1.2  1998/08/26 14:06:55  george
  *   CM changes from blume
  *

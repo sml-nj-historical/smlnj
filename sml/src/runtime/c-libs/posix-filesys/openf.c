@@ -16,12 +16,12 @@
  */
 ml_val_t _ml_P_FileSys_openf (ml_state_t *msp, ml_val_t arg)
 {
-    char	    *path = REC_SELPTR(char, arg, 0);
+    ml_val_t	    path = REC_SEL(arg, 0);
     int		    flags = REC_SELWORD(arg, 1);
     int		    mode = REC_SELWORD(arg, 2);
     int		    fd;
 
-    fd = open (path, flags, mode);
+    fd = open (STR_MLtoC(path), flags, mode);
 
     CHK_RETURN(msp, fd)
 

@@ -223,6 +223,9 @@ and ty
 end (* structure Ast *)
 
 (*
- * $Log$
+ * $Log: ast.sml,v $
+ * Revision 1.3  1998/05/23 14:09:55  george
+ *   Fixed RCS keyword syntax
+ *
  *
  *)

@@ -357,5 +357,8 @@ end (* local *)
 end (* structure BasicTypes *)
 
 (*
- * $Log$
+ * $Log: basictypes.sml,v $
+ * Revision 1.3  1998/05/23 14:10:15  george
+ *   Fixed RCS keyword syntax
+ *
  *)

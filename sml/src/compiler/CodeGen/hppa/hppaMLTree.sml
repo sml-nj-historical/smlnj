@@ -41,6 +41,9 @@ structure HppaMLTree =
 
 (*
  * $Log: hppaMLTree.sml,v $
+ * Revision 1.3  1998/10/06 14:00:00  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
  * Revision 1.2  1998/07/25 03:05:35  george
  *   changes to support block names in MLRISC
  *

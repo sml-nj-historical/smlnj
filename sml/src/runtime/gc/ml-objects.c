@@ -52,10 +52,15 @@ ml_val_t ML_CString (ml_state_t *msp, const char *v)
 	int		n = BYTES_TO_WORDS(len+1);  /* count "\0" too */
 	ml_val_t	res;
 
-	ML_AllocWrite (msp, 0, MAKE_DESC(len, DTAG_string));
-	ML_AllocWrite (msp, n, 0);  /* so word-by-word string equality works */
-	res = ML_Alloc (msp, n);
+	res = ML_AllocRaw32 (msp, n);
+      /* zero the last word to allow fast (word) string comparisons, and to
+       * guarantee 0 termination.
+       */
+	PTR_MLtoC(Word_t, res)[n-1] = 0;
 	strcpy (PTR_MLtoC(char, res), v);
+
+	SEQHDR_ALLOC (msp, res, DESC_string, res, len);
+
 	return res;
     }
 
@@ -91,80 +96,38 @@ ml_val_t ML_CStringList (ml_state_t *msp, char **strs)
  */
 ml_val_t ML_AllocString (ml_state_t *msp, int len)
 {
-    int		nwords = BYTES_TO_WORDS(len);
-    int		allocSz = (((len & 0x3) == 0) ? nwords+1 : nwords);
-    ml_val_t	desc = MAKE_DESC(len, DTAG_string);
+    int		nwords = BYTES_TO_WORDS(len+1);
     ml_val_t	res;
 
-    if (allocSz > SMALL_OBJ_SZW) {
-	arena_t	*ap = msp->ml_heap->gen[0]->arena[STRING_INDX];
+    ASSERT(len > 0);
 
-	BEGIN_CRITICAL_SECT(MP_GCGenLock)
-	    IFGC (ap, (WORD_SZB*(allocSz + 1))+msp->ml_heap->allocSzB) {
-	      /* we need to do a GC */
-		ap->reqSizeB += WORD_SZB*(allocSz + 1);
-		RELEASE_LOCK(MP_GCGenLock);
-		    InvokeGC (msp, 1);
-		ACQUIRE_LOCK(MP_GCGenLock);
-	    }
-	    *(ap->nextw++) = desc;
-	    res = PTR_CtoML(ap->nextw);
-	    ap->nextw += allocSz;
-	END_CRITICAL_SECT(MP_GCGenLock)
-	COUNT_ALLOC(msp, WORD_SZB*(allocSz + 1));
-    }
-    else {
-	ML_AllocWrite (msp, 0, desc);
-	res = ML_Alloc (msp, allocSz);
-    }
+    res = ML_AllocRaw32 (msp, nwords);
 
   /* zero the last word to allow fast (word) string comparisons, and to
    * guarantee 0 termination.
    */
-    PTR_MLtoC(Word_t, res)[allocSz-1] = 0;
+    PTR_MLtoC(Word_t, res)[nwords-1] = 0;
+
+    SEQHDR_ALLOC (msp, res, DESC_string, res, len);
 
     return res;
 
 } /* end of ML_AllocString. */
 
-/* ML_AllocCode:
+/* ML_AllocRaw32:
  *
- * Allocate an uninitialized ML code string.  Assume that len > 1.
+ * Allocate an uninitialized chunk of raw32 data.
  */
-ml_val_t ML_AllocCode (ml_state_t *msp, int len)
+ml_val_t ML_AllocRaw32 (ml_state_t *msp, int nwords)
 {
-    heap_t	    *heap = msp->ml_heap;
-    int		    allocGen = (heap->numGens < CODE_ALLOC_GEN)
-			? heap->numGens
-			: CODE_ALLOC_GEN;
-    gen_t	    *gen = heap->gen[allocGen-1];
-    bigobj_desc_t   *dp;
-
-    BEGIN_CRITICAL_SECT(MP_GCGenLock)
-	dp = BO_Alloc (heap, allocGen, len);
-	ASSERT(dp->gen == allocGen);
-	dp->next = gen->bigObjs[CODE_INDX];
-	gen->bigObjs[CODE_INDX] = dp;
-	dp->objc = CODE_INDX;
-	COUNT_ALLOC(msp, len);
-    END_CRITICAL_SECT(MP_GCGenLock)
-
-    return PTR_CtoML(dp->obj);
-
-} /* end of ML_AllocCode. */
-
-/* ML_AllocBytearray:
- *
- * Allocate an uninitialized ML bytearray.  Assume that len > 0.
- */
-ml_val_t ML_AllocBytearray (ml_state_t *msp, int len)
-{
-    int		nwords = BYTES_TO_WORDS(len);
-    ml_val_t	desc = MAKE_DESC(len, DTAG_bytearray);
+    ml_val_t	desc = MAKE_DESC(nwords, DTAG_raw32);
     ml_val_t	res;
+
+    ASSERT(nwords > 0);
 
     if (nwords > SMALL_OBJ_SZW) {
 	arena_t	*ap = msp->ml_heap->gen[0]->arena[STRING_INDX];
+
 	BEGIN_CRITICAL_SECT(MP_GCGenLock)
 	    IFGC (ap, (WORD_SZB*(nwords + 1))+msp->ml_heap->allocSzB) {
 	      /* we need to do a GC */
@@ -186,16 +149,44 @@ ml_val_t ML_AllocBytearray (ml_state_t *msp, int len)
 
     return res;
 
-} /* end of ML_AllocBytearray. */
+} /* end of ML_AllocRaw32. */
 
-/* ML_AllocRealdarray:
+/* ML_ShrinkRaw32:
  *
- * Allocate an uninitialized ML realarray.  Assume that len > 0.
+ * Shrink a freshly allocated Raw32 vector.  This is used by the input routines
+ * that must allocate space for input that may be excessive.
  */
-ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len)
+void ML_ShrinkRaw32 (ml_state_t *msp, ml_val_t v, int nWords)
 {
-    int		nwords = DOUBLES_TO_WORDS(len);
-    ml_val_t	desc = MAKE_DESC(len, DTAG_realdarray);
+    int		oldNWords = OBJ_LEN(v);
+
+    if (nWords == oldNWords)
+	return;
+
+    ASSERT((nWords > 0) && (nWords < oldNWords));
+
+    if (oldNWords > SMALL_OBJ_SZW) {
+	arena_t	*ap = msp->ml_heap->gen[0]->arena[STRING_INDX];
+	ASSERT(ap->nextw - oldNWords == PTR_MLtoC(ml_val_t, v)); 
+	ap->nextw -= (oldNWords - nWords);
+    }
+    else {
+	ASSERT(msp->ml_allocPtr - oldNWords == PTR_MLtoC(ml_val_t, v)); 
+	msp->ml_allocPtr -= (oldNWords - nWords);
+    }
+
+    PTR_MLtoC(ml_val_t, v)[-1] = MAKE_DESC(nWords, DTAG_raw32);
+
+} /* end of ML_ShrinkRaw32 */
+
+/* ML_AllocRaw64:
+ *
+ * Allocate an uninitialized chunk of raw64 data.
+ */
+ml_val_t ML_AllocRaw64 (ml_state_t *msp, int nelems)
+{
+    int		nwords = DOUBLES_TO_WORDS(nelems);
+    ml_val_t	desc = MAKE_DESC(nwords, DTAG_raw64);
     ml_val_t	res;
 
     if (nwords > SMALL_OBJ_SZW) {
@@ -204,14 +195,21 @@ ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len)
 	  /* NOTE: we use nwords+2 to allow for the alignment padding */
 	    IFGC (ap, (WORD_SZB*(nwords + 2))+msp->ml_heap->allocSzB) {
 	      /* we need to do a GC */
-		ap->reqSizeB += WORD_SZB*(nwords + 1);
+		ap->reqSizeB += WORD_SZB*(nwords + 2);
 		RELEASE_LOCK(MP_GCGenLock);
 		    InvokeGC (msp, 1);
 		ACQUIRE_LOCK(MP_GCGenLock);
 	    }
 #ifdef ALIGN_REALDS
 	  /* Force REALD_SZB alignment (descriptor is off by one word) */
-	    ap->nextw = (ml_val_t *)((Addr_t)(ap->nextw) | WORD_SZB);
+#  ifdef CHECK_HEAP
+	    if (((Addr_t)ap->nextw & WORD_SZB) == 0) {
+		*(ap->nextw) = (ml_val_t)0;
+		ap->nextw++;
+	    }
+#  else
+	    ap->nextw = (ml_val_t *)(((Addr_t)ap->nextw) | WORD_SZB);
+#  endif
 #endif
 	    *(ap->nextw++) = desc;
 	    res = PTR_CtoML(ap->nextw);
@@ -230,6 +228,73 @@ ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len)
 
     return res;
 
+} /* end of ML_AllocRaw64 */
+
+/* ML_AllocCode:
+ *
+ * Allocate an uninitialized ML code string.  Assume that len > 1.
+ */
+ml_val_t ML_AllocCode (ml_state_t *msp, int len)
+{
+    heap_t	    *heap = msp->ml_heap;
+    int		    allocGen = (heap->numGens < CODE_ALLOC_GEN)
+			? heap->numGens
+			: CODE_ALLOC_GEN;
+    gen_t	    *gen = heap->gen[allocGen-1];
+    bigobj_desc_t   *dp;
+    ml_val_t	    res;
+
+    BEGIN_CRITICAL_SECT(MP_GCGenLock)
+	dp = BO_Alloc (heap, allocGen, len);
+	ASSERT(dp->gen == allocGen);
+	dp->next = gen->bigObjs[CODE_INDX];
+	gen->bigObjs[CODE_INDX] = dp;
+	dp->objc = CODE_INDX;
+	COUNT_ALLOC(msp, len);
+    END_CRITICAL_SECT(MP_GCGenLock)
+
+    SEQHDR_ALLOC (msp, res, DESC_string, PTR_CtoML(dp->obj), len);
+
+    return res;
+
+} /* end of ML_AllocCode. */
+
+/* ML_AllocBytearray:
+ *
+ * Allocate an uninitialized ML bytearray.  Assume that len > 0.
+ */
+ml_val_t ML_AllocBytearray (ml_state_t *msp, int len)
+{
+    int		nwords = BYTES_TO_WORDS(len);
+    ml_val_t	res;
+
+    res = ML_AllocRaw32 (msp, nwords);
+
+  /* zero the last word to allow fast (word) string comparisons, and to
+   * guarantee 0 termination.
+   */
+    PTR_MLtoC(Word_t, res)[nwords-1] = 0;
+
+    SEQHDR_ALLOC (msp, res, DESC_word8arr, res, len);
+
+    return res;
+
+} /* end of ML_AllocBytearray. */
+
+/* ML_AllocRealdarray:
+ *
+ * Allocate an uninitialized ML realarray.  Assume that len > 0.
+ */
+ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len)
+{
+    ml_val_t	res;
+
+    res = ML_AllocRaw64 (msp, len);
+
+    SEQHDR_ALLOC (msp, res, DESC_real64arr, res, len);
+
+    return res;
+
 } /* end of ML_AllocRealdarray. */
 
 /* ML_AllocArray:
@@ -240,7 +305,8 @@ ml_val_t ML_AllocRealdarray (ml_state_t *msp, int len)
 ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
 {
     ml_val_t	res, *p;
-    ml_val_t	desc = MAKE_DESC(len, DTAG_array);
+    ml_val_t	desc = MAKE_DESC(len, DTAG_arr_data);
+    int		i;
 
     if (len > SMALL_OBJ_SZW) {
 	arena_t	*ap = msp->ml_heap->gen[0]->arena[ARRAY_INDX];
@@ -278,8 +344,10 @@ ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
 	res = ML_Alloc (msp, len);
     }
 
-    for (p = PTR_MLtoC(ml_val_t, res);  --len >= 0; )
+    for (p = PTR_MLtoC(ml_val_t, res), i = 0;  i < len; i++)
 	*p++ = initVal;
+
+    SEQHDR_ALLOC (msp, res, DESC_polyarr, res, len);
 
     return res;
 
@@ -292,7 +360,7 @@ ml_val_t ML_AllocArray (ml_state_t *msp, int len, ml_val_t initVal)
  */
 ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal)
 {
-    ml_val_t	desc = MAKE_DESC(len, DTAG_vector);
+    ml_val_t	desc = MAKE_DESC(len, DTAG_vec_data);
     ml_val_t	res, *p;
 
     if (len > SMALL_OBJ_SZW) {
@@ -331,8 +399,14 @@ ml_val_t ML_AllocVector (ml_state_t *msp, int len, ml_val_t initVal)
 	res = ML_Alloc (msp, len);
     }
 
-    for (p = PTR_MLtoC(ml_val_t, res);  --len >= 0;  initVal = LIST_tl(initVal))
+    for (
+	p = PTR_MLtoC(ml_val_t, res);
+	initVal != LIST_nil;
+	initVal = LIST_tl(initVal)
+    )
 	*p++ = LIST_hd(initVal);
+
+    SEQHDR_ALLOC (msp, res, DESC_polyvec, res, len);
 
     return res;
 
@@ -409,27 +483,14 @@ ml_val_t ML_CData (ml_state_t *msp, void *data, int nbytes)
 {
     ml_val_t	obj;
 
-    obj = ML_AllocString (msp, nbytes);
-    memcpy (PTR_MLtoC(void, obj), data, nbytes);
+    if (nbytes == 0)
+	return ML_string0;
+    else {
+	obj = ML_AllocString (msp, nbytes);
+	memcpy (GET_SEQ_DATAPTR(void, obj), data, nbytes);
 
-    return obj;
+	return obj;
+    }
 
 } /* end of ML_CData */
-
-
-/* ML_StringEq:
- * Test two ML strings for equality.
- */
-bool_t ML_StringEq (ml_val_t a, ml_val_t b)
-{
-    int		l;
-
-    if (a == b)
-	return TRUE;
-    else if ((l = OBJ_LEN(a)) != OBJ_LEN(b))
-	return FALSE;
-    else
-	return (strncmp(PTR_MLtoC(char, a), PTR_MLtoC(char, b), l) == 0);
-
-} /* end of ML_StringEq */
 

@@ -18,7 +18,7 @@ ml_val_t _ml_P_ProcEnv_getenv (ml_state_t *msp, ml_val_t arg)
     char     *sts;
     ml_val_t r, s;
 
-    sts = getenv(PTR_MLtoC(char, arg));
+    sts = getenv(STR_MLtoC(arg));
     if (sts == NIL(char *))
         r = OPTION_NONE;
     else {

@@ -684,6 +684,7 @@ fun transPrim (prim, lt, ts) =
                                mkRaise(coreExn "Subscript", LT.ltc_unit))))))
               end
 
+(**** ASSIGN(r, x) <> UPDATE(r, 0, x) under new array reps (JHR;1998-10-30)
         | g (PO.ASSIGN) = 
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
                                     | _ => bug "unexpected ty for ASSIGN"
@@ -699,6 +700,7 @@ fun transPrim (prim, lt, ts) =
                in FN(x, argt, 
                    APP(oper, RECORD[SELECT(0, varX), INT 0, SELECT(1, varX)]))
               end
+****)
 
         | g p = PRIM(p, lt, ts) 
 
@@ -1168,5 +1170,11 @@ end (* structure Translate *)
 
 
 (*
- * $Log$
+ * $Log: translate.sml,v $
+ * Revision 1.6  1998/12/22 17:02:08  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
+ * Revision 1.4  1998/05/23 14:09:43  george
+ *   Fixed RCS keyword syntax
+ *
  *)

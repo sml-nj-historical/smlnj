@@ -20,7 +20,6 @@ local structure FE = FrontEnd
       structure ST = Stats
       structure CI = Unsafe.CInterface
       structure W8V = Word8Vector
-      structure V = Vector
 in
 
 val debugging = Control.CG.compdebugging
@@ -265,25 +264,34 @@ fun mksymenv (NONE, _) = SymbolicEnv.empty
   | mksymenv (_, NONE) = SymbolicEnv.empty
   | mksymenv (SOME pid, SOME l) = SymbolicEnv.singleton (pid, l)
 
+(** NOTE: these should move to Unsafe.Object soon **)
+val record1 : object -> object =
+	CI.c_function "SMLNJ-RunT" "record1"
+val rConcat : (object * object) -> object =
+	CI.c_function "SMLNJ-RunT" "recordConcat"
+
 (** turn the byte-vector-like code segments into an executable closure *)
 local
   type w8v = W8V.vector
-  val vzero = V.fromList []
+  val mkLiterals : w8v -> object =
+	CI.c_function "SMLNJ-RunT" "mkLiterals"
   val mkCodeV : w8v * string option -> (w8v * executable) = 
         CI.c_function "SMLNJ-RunT" "mkCode"
   val mkCodeO : w8v * string option -> (w8v * (object -> object)) =
         CI.c_function "SMLNJ-RunT" "mkCode"
 in
-fun mkexec {c0: w8v, cn: w8v list, data : w8v, name: string option ref} =
-  let val s = case !name of NONE => "EMPTY COMMENT <-- check"
+fun mkexec {c0: w8v, cn: w8v list, data : w8v, name: string option ref} = let
+      val s = case !name of NONE => "EMPTY COMMENT <-- check"
                           | SOME s => s
-      val nex = 
-        let val (_, dt) = mkCodeV(data, NONE)
-            val (_, ex) = mkCodeV(c0, SOME s)
-         in fn ivec => ex (V.concat [ivec, V.fromList [dt vzero]])
-        end
-   in foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) nex cn
-  end 
+      val nex = let val (_, ex) = mkCodeV(c0, SOME s)
+      in
+	if (W8V.length data > 0)
+	  then fn ivec => ex (rConcat (ivec, record1(mkLiterals data)))
+	  else fn ivec => ex ivec
+      end
+   in
+     foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) nex cn
+   end 
 end (* local *)
 
 (** just like f x, except that it catches top-level callcc's *)
@@ -310,12 +318,10 @@ end (* local of cont_stack *)
  *****************************************************************************)
 
 (** perform the execution of the excutable, output the new dynenv *)
-fun execute{executable, imports, exportPid, dynenv} = 
-  let val args : object V.vector = 
-        let fun selObj (obj, i) = 
-              ((V.sub (Unsafe.Object.toTuple obj, i)) handle _ =>
-                 bug "unexpected linkage interface in execute")
-
+fun execute {executable, imports, exportPid, dynenv} = let
+      val args : object = let
+            fun selObj (obj, i) = (Unsafe.Object.nth(obj, i)
+		  handle _ => bug "unexpected linkage interface in execute")
             fun getObj ((p, n), zs) = 
               let fun get (obj, CB.ITNODE [], z) = obj::z
                     | get (obj, CB.ITNODE xl, z) = 
@@ -328,9 +334,16 @@ fun execute{executable, imports, exportPid, dynenv} =
                         fail "imported objects not found or inconsistent"))
                in get(obj, n, zs)
               end
-
-         in Vector.fromList (foldr getObj [] imports)
-        end
+	    fun f [] = Unsafe.Object.toObject()
+	      | f [a] = record1 a
+	      | f [a, b] = Unsafe.Object.toObject(a, b)
+	      | f [a, b, c] = Unsafe.Object.toObject(a, b, c)
+	      | f [a, b, c, d] = Unsafe.Object.toObject(a, b, c, d)
+	      | f (a::b::c::d::r) =
+		    rConcat(Unsafe.Object.toObject(a, b, c, d), f r)
+	    in
+	      f (foldr getObj [] imports)
+            end
       val result : object = executable args
    in case exportPid 
        of NONE => DE.empty
@@ -347,6 +360,17 @@ end (* local of exception Compile *)
 
 (*
  * $Log: compile.sml,v $
+ * Revision 1.8  1998/11/18 03:54:25  jhr
+ *  New array representations.
+ *
+ * Revision 1.7  1998/10/28 18:25:43  jhr
+ *   New literal lifting and new Unsafe.Object API.
+ *
+ * Revision 1.6  1998/10/16 14:04:00  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  * Revision 1.5  1998/06/02 17:39:29  george
  *   Changes to integrate CM functionality into the compiler --- blume
  *

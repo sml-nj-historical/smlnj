@@ -75,17 +75,6 @@ datatype resKind
 fun ptrEq(p, tc) = PBIND (NONE, p, eqTy tc, [])
 fun prim(p, lt) = PBIND (NONE, p, lt, [])
 
-fun isRef tc = 
-  if LT.tcp_app tc then
-    (let val (x, _) = LT.tcd_app tc
-      in if LT.tcp_prim x 
-         then (let val pt = LT.tcd_prim x
-                in (pt = PT.ptc_ref) orelse (pt = PT.ptc_array)
-               end)
-         else false
-     end)
-  else false
-
 fun branch(PBIND p, vs, e1, e2) = BRANCH(p, vs, e1, e2)
   | branch(VBIND v, vs, e1, e2) = 
       let val x = mkv()
@@ -129,9 +118,19 @@ fun atomeq tc =
   if tcEqv(tc,LT.tcc_int) then prim(PO.IEQL,inteqty)
   else if tcEqv(tc,LT.tcc_int32) then prim(PO.IEQL,int32eqty)
   else if tcEqv(tc,LT.tcc_bool) then prim(PO.IEQL,booleqty) 
-  else if tcEqv(tc,LT.tcc_real) then prim(PO.FEQLd,realeqty)
   else if tcEqv(tc,LT.tcc_string) then VBIND (VAR seqv)
-  else if isRef(tc) then ptrEq(PO.PTREQL, tc)
+  else if (LT.tcp_app tc)
+    then let
+      val (x, _) = LT.tcd_app tc
+      in
+	if ((LT.tcp_prim x) andalso (LT.tcd_prim x = PT.ptc_ref))
+	  then ptrEq(PO.PTREQL, tc) (* 'a ref *)
+(** SOMEDAY
+	else if ((LT.tcp_prim x) andalso (LT.tcd_prim x = PT.ptc_array))
+	  then ???
+**)
+	  else raise Poly
+      end
   else raise Poly
 
 val fkfun = {isrec=NONE, known=false, cconv=CC_FUN LT.ffc_rrflint, inline=IH_ALWAYS}
@@ -190,5 +189,11 @@ end (* structure Equal *)
 
 
 (*
- * $Log$
+ * $Log: equal.sml,v $
+ * Revision 1.3  1998/12/22 17:02:02  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:44  george
+ * Version 110.5
+ *
  *)

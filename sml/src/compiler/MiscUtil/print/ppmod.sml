@@ -910,6 +910,9 @@ end (* structure PPModules *)
 
 (*
  * $Log: ppmod.sml,v $
+ * Revision 1.2  1998/09/30 19:01:17  dbm
+ * new repl field in TYCspec (bug 1432)
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:16  george
  * Version 110.5
  *

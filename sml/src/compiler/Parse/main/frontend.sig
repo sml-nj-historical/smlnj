@@ -15,5 +15,8 @@ end (* signature FRONT_END *)
 
 
 (*
- * $Log$
+ * $Log: frontend.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:19  george
+ * Version 110.5
+ *
  *)

@@ -18,16 +18,17 @@
  */
 ml_val_t _ml_NetDB_getservbyname (ml_state_t *msp, ml_val_t arg)
 {
+    ml_val_t	mlServ = REC_SEL(arg, 0);
     ml_val_t	mlProto = REC_SEL(arg, 1);
     char	*proto;
 
     if (mlProto == OPTION_NONE)
 	proto = NIL(char *);
     else
-	proto = PTR_MLtoC(char, OPTION_get(mlProto));
+	proto = STR_MLtoC(OPTION_get(mlProto));
 
     return _util_NetDB_mkservent (
 	msp,
-	getservbyname (REC_SELPTR(char, arg, 0), proto));
+	getservbyname (STR_MLtoC(mlServ), proto));
 
 } /* end of _ml_NetDB_getservbyname */

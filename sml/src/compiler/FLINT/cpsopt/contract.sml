@@ -462,6 +462,7 @@ fun setter (P.update, [_, _, INT _]) = P.unboxedupdate
 	| (OFFinfo _) => P.boxedupdate
 	| _ => P.update
 	(* end case *))
+  | setter (P.assign, [_, INT _]) = P.unboxedassign
   | setter (i, _) = i
 
 fun sameLvar(lvar, VAR lv) = lv = lvar
@@ -535,11 +536,8 @@ let val rec g' =
 				     of {info=RECinfo vl,...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
-					  in if (!Control.FLINT.liftLiterals)
-                                             then (case z' 
-                                                    of REAL _ => NONE 
-                                                     | _  => SOME z')
-                                             else SOME z'
+					  in
+					    case z' of REAL _ => NONE | _ => SOME z'
 					  end handle Subscript => NONE)
 				      | _ => NONE)
 			       | _ => NONE)
@@ -1045,5 +1043,8 @@ end (* functor Contract *)
 
 
 (*
- * $Log$
+ * $Log: contract.sml,v $
+ * Revision 1.3  1998/12/22 17:01:34  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

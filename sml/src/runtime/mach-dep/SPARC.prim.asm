@@ -521,23 +521,32 @@ ENTRY(ZeroLimitPtr)
  */
 ML_CODE_HDR(array_a)
 	CHECKLIMIT(FUN_MASK,array_a_limit)
-	ld	[STDARG],TMPREG1		    /* tmp1 = length in words */
-	sra	TMPREG1,1,TMPREG1		    /* convert to sparc int */
-	cmp	TMPREG1,SMALL_OBJ_SZW	    /* is this a small object? */
+	ld	[STDARG],TMPREG1		/* tmp1 = length in words */
+	sra	TMPREG1,1,TMPREG2		/* tmp2 = length (untagged) */
+	cmp	TMPREG2,SMALL_OBJ_SZW	    	/* is this a small object? */
 	bgt	3f
 	nop
-	ld	[STDARG+4],TMPREG3	    /* tmp3 = initial value */
-	sll	TMPREG1,TAG_SHIFTW,TMPREG2	    /* build descriptor in TMPREG2 */
-	or	TMPREG2,MAKE_TAG(DTAG_array),TMPREG2
-	st	TMPREG2,[ALLOCPTR]	    /* store the descriptor */
-	inc	4,ALLOCPTR		    /* allocptr++ */
-	mov	ALLOCPTR,STDARG	    /* result = object addr. */
-1:
-	st	TMPREG3,[ALLOCPTR]
-	deccc	1,TMPREG1			    /* if (--length > 0) */
-	bgt	1b				/* then continue */
-	inc	4,ALLOCPTR		    /* allocptr++ (delay slot) */
-	/* end loop */
+    /** allocate and initialize array data **/
+	ld	[STDARG+4],STDARG		/* stdarg = initial value */
+	sll	TMPREG2,TAG_SHIFTW,TMPREG3	/* build descriptor in tmp3 */
+	or	TMPREG3,MAKE_TAG(DTAG_arr_data),TMPREG3
+	st	TMPREG3,[ALLOCPTR]		/* store the descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	mov	ALLOCPTR,TMPREG3		/* array data ptr in tmp3 */
+1:						/* loop */
+	st	STDARG,[ALLOCPTR]
+	deccc	1,TMPREG2			  /* if (--length > 0) */
+	bgt	1b				    /* then continue */
+	inc	4,ALLOCPTR			    /* allocptr++ (delay slot) */
+						/* end loop */
+    /** allocate array header **/
+	set	DESC_polyarr,TMPREG2		/* descriptor in tmp2 */
+	st	TMPREG2,[ALLOCPTR]		/* store the descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	mov	ALLOCPTR,STDARG			/* result = header addr */
+	st	TMPREG3,[ALLOCPTR]		/* store pointer to data */
+	st	TMPREG1,[ALLOCPTR+4]
+	inc	8,ALLOCPTR			/* allocptr += 2 */
 	CONTINUE
 
 3:	/* here we do off-line allocation for big arrays */
@@ -550,21 +559,30 @@ ML_CODE_HDR(array_a)
  */
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(FUN_MASK,create_r_a_limit)
-	sra	STDARG,1,TMPREG2		    /* tmp2 = length (untagged int) */
-	sll	TMPREG2,2,TMPREG3		    /* tmpreg3 = length in words */
-	cmp	TMPREG3,SMALL_OBJ_SZW	    /* is this a small object? */
+	sra	STDARG,1,TMPREG2		/* tmp2 = length (untagged int) */
+	sll	TMPREG2,1,TMPREG2		/* tmp2 = length in words */
+	cmp	TMPREG2,SMALL_OBJ_SZW	        /* is this a small object? */
 	bgt	1f
 	nop
-	sll	TMPREG2,TAG_SHIFTW,TMPREG1	    /* build descriptor in tmpreg1 */
-	or	TMPREG1,MAKE_TAG(DTAG_realdarray),TMPREG1
+      /* Allocate the data object */
+	sll	TMPREG2,TAG_SHIFTW,TMPREG1	/* build data desc in tmp1 */
+	or	TMPREG1,MAKE_TAG(DTAG_raw64),TMPREG1
 #ifdef ALIGN_REALDS
-	or	ALLOCPTR,0x4,ALLOCPTR	    /* desc is unaliged */
+	or	ALLOCPTR,0x4,ALLOCPTR		/* desc is unaliged */
 #endif
-	st	TMPREG1,[ALLOCPTR]	    /* store the descriptor */
-	inc	4,ALLOCPTR		    /* allocptr++ */
-	mov	ALLOCPTR,STDARG	    /* stdarg = realarray */
-	sll	TMPREG3,2,TMPREG3		    /* tmpreg3 = length (in bytes) */
-	add	ALLOCPTR,TMPREG3,ALLOCPTR   /* ALLOCPTR += length */
+	st	TMPREG1,[ALLOCPTR]		/* store the data descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	mov	ALLOCPTR,TMPREG3		/* tmp3 = data object */
+	sll	TMPREG2,2,TMPREG2		/* tmp2 = length in bytes */
+	add	ALLOCPTR,TMPREG2,ALLOCPTR	/* allocptr += length */
+      /* Allocate the header object */
+	set	DESC_real64arr,TMPREG1
+	st	TMPREG1,[ALLOCPTR]		/* header descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	st	TMPREG3,[ALLOCPTR]		/* header data field */
+	st	STDARG,[ALLOCPTR+4]		/* header length field */
+	mov	ALLOCPTR,STDARG			/* stdarg = header object */
+	inc	8,ALLOCPTR			/* allocptr += 2 */
 	CONTINUE
 
 1:	/* off-line allocation of big realarrays */
@@ -577,19 +595,28 @@ ML_CODE_HDR(create_r_a)
  */
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(FUN_MASK,create_b_a_limit)
-	sra	STDARG,1,TMPREG2		    /* tmpreg2 = length (sparc int) */
-	add	TMPREG2,3,TMPREG3		    /* tmpreg3 = length in words */
-	sra	TMPREG3,2,TMPREG3
-	cmp	TMPREG3,SMALL_OBJ_SZW	    /* is this a small object? */
+	sra	STDARG,1,TMPREG2		/* tmp2 = length (sparc int) */
+	add	TMPREG2,3,TMPREG2		/* tmp2 = length in words */
+	sra	TMPREG2,2,TMPREG2
+	cmp	TMPREG2,SMALL_OBJ_SZW		/* is this a small object? */
 	bgt	1f
 	nop
-	sll	TMPREG2,TAG_SHIFTW,TMPREG1	    /* tmpreg1 is descriptor */
-	or	TMPREG1,MAKE_TAG(DTAG_bytearray),TMPREG1
-	st	TMPREG1,[ALLOCPTR]	    /* store the tag */
-	inc	4,ALLOCPTR		    /* allocptr++ */
-	sll	TMPREG3,2,TMPREG2		    /* tmpreg2 = length in bytes (no tag) */
-	mov	ALLOCPTR,STDARG	    /* result = object addr */
-	add	ALLOCPTR,TMPREG2,ALLOCPTR   /* allocptr += length */
+      /* Allocate the data object */
+	sll	TMPREG2,TAG_SHIFTW,TMPREG1	/* build data desc in tmp1 */
+	or	TMPREG1,MAKE_TAG(DTAG_raw32),TMPREG1
+	st	TMPREG1,[ALLOCPTR]		/* store the data descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	mov	ALLOCPTR,TMPREG3		/* tmp3 = data object */
+	sll	TMPREG2,2,TMPREG2		/* tmp2 = length in bytes */
+	add	ALLOCPTR,TMPREG2,ALLOCPTR	/* allocptr += length */
+      /* Allocate the header object */
+	set	DESC_word8arr,TMPREG1		/* header descriptor */
+	st	TMPREG1,[ALLOCPTR]
+	inc	4,ALLOCPTR			/* allocptr++ */
+	st	TMPREG3,[ALLOCPTR]		/* header data field */
+	st	STDARG,[ALLOCPTR+4]		/* header length field */
+	mov	ALLOCPTR,STDARG			/* stdarg = header object */
+	inc	8,ALLOCPTR			/* allocptr += 2 */
 	CONTINUE
 
 1:	/* here we do off-line allocation for big bytearrays */
@@ -598,24 +625,34 @@ ML_CODE_HDR(create_b_a)
 	set	REQ_ALLOC_BYTEARRAY,TMPREG3	/* (delayslot) */
 
 /* create_s : int -> string
- * Create a string of the given length.
+ * Create a string of the given length (> 0).
  */
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(FUN_MASK,create_s_a_limit)
-	sra	STDARG,1,TMPREG2		    /* tmpreg2 = length (sparc int) */
-	add	TMPREG2,4,TMPREG3		    /* tmpreg3 = length in words */
-	sra	TMPREG3,2,TMPREG3
-	cmp	TMPREG3,SMALL_OBJ_SZW	    /* is this a small object? */
+	sra	STDARG,1,TMPREG2		/* tmp2 = length (sparc int) */
+	add	TMPREG2,4,TMPREG2		/* tmp2 = length in words */
+						/*   (including zero at end). */
+	sra	TMPREG2,2,TMPREG2
+	cmp	TMPREG2,SMALL_OBJ_SZW		/* is this a small object? */
 	bgt	1f
 	nop
-	sll	TMPREG2,TAG_SHIFTW,TMPREG1	    /* tmpreg1 is descriptor */
-	or	TMPREG1,MAKE_TAG(DTAG_string),TMPREG1
-	st	TMPREG1,[ALLOCPTR]	    /* store the tag */
-	inc	4,ALLOCPTR		    /* allocptr++ */
-	sll	TMPREG3,2,TMPREG2		    /* tmpreg2 = length in bytes (no tag) */
-	mov	ALLOCPTR,STDARG	    /* result = object addr */
-	add	ALLOCPTR,TMPREG2,ALLOCPTR   /* allocptr += length */
-	st	ZERO,[ALLOCPTR-4]	    /* store 0 in last word */
+      /* Allocate the data object */
+	sll	TMPREG2,TAG_SHIFTW,TMPREG1	/* build data desc in tmp1 */
+	or	TMPREG1,MAKE_TAG(DTAG_raw32),TMPREG1
+	st	TMPREG1,[ALLOCPTR]		/* store the data descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	mov	ALLOCPTR,TMPREG3		/* tmp3 = data object */
+	sll	TMPREG2,2,TMPREG2		/* tmp2 = length in bytes */
+	add	ALLOCPTR,TMPREG2,ALLOCPTR	/* allocptr += length */
+	st	%g0,[ALLOCPTR-4]		/* store 0 in last word of data */
+      /* Allocate the header object */
+	set	DESC_string,TMPREG1		/* header descriptor */
+	st	TMPREG1,[ALLOCPTR]
+	inc	4,ALLOCPTR			/* allocptr++ */
+	st	TMPREG3,[ALLOCPTR]		/* header data field */
+	st	STDARG,[ALLOCPTR+4]		/* header length field */
+	mov	ALLOCPTR,STDARG			/* stdarg = header object */
+	inc	8,ALLOCPTR			/* allocptr += 2 */
 	CONTINUE
 
 1:	/* here we do off-line allocation for big strings */
@@ -629,25 +666,34 @@ ML_CODE_HDR(create_s_a)
  */
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(FUN_MASK,create_v_a_limit)
-	ld	[STDARG],TMPREG1		    /* tmpreg1 = length (tagged int) */
-	sra	TMPREG1,1,TMPREG1		    /* tmpreg1 = length (untagged int) */
-	cmp	TMPREG1,SMALL_OBJ_SZW	    /* is this a small object? */
+	ld	[STDARG],TMPREG1		/* tmp1 = length (tagged int) */
+	sra	TMPREG1,1,TMPREG2		/* tmp2 = length (untagged int) */
+	cmp	TMPREG2,SMALL_OBJ_SZW		/* is this a small object? */
 	bgt	1f
 	nop
-	sll	TMPREG1,TAG_SHIFTW,TMPREG2	    /* build descriptor in tmpreg2 */
-	or	TMPREG2,MAKE_TAG(DTAG_vector),TMPREG2
-	st	TMPREG2,[ALLOCPTR]	    /* store descriptor */
-	inc	4,ALLOCPTR		    /* allocptr++ */
-	ld	[STDARG+4],TMPREG2	    /* tmpreg2 := list */
-	mov	ALLOCPTR,STDARG	    /* stdarg := vector */
-2:					    /* loop */
-	ld	[TMPREG2],TMPREG1			/* tmpreg1 = hd(tmpreg2) */
-	ld	[TMPREG2+4],TMPREG2			/* tmpreg2 = tl(tmpreg2) */
-	st	TMPREG1,[ALLOCPTR]		/* store element */
-	cmp	TMPREG2,ML_nil			/* if (tmpreg2 <> nil) goto loop */
+      /* allocate and initialize data object */
+	sll	TMPREG2,TAG_SHIFTW,TMPREG2	/* build descriptor in TMPREG2 */
+	or	TMPREG2,MAKE_TAG(DTAG_vec_data),TMPREG2
+	st	TMPREG2,[ALLOCPTR]		/* store the descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	ld	[STDARG+4],TMPREG2		/* tmp2 = list */
+	mov	ALLOCPTR,STDARG			/* stdarg = data obj */
+2:						/* loop */
+	ld	[TMPREG2],TMPREG3		  /* tmp3 = hd(tmp2) */
+	ld	[TMPREG2+4],TMPREG2		  /* tmp2 = tl(tmp2) */
+	st	TMPREG3,[ALLOCPTR]		  /* store element */
+	cmp	TMPREG2,ML_nil			  /* if (tmp2 <> nil) goto loop */
 	bne	2b
-	inc	4,ALLOCPTR			/* allocptr++ (delay slot) */
-					    /* end loop */
+	inc	4,ALLOCPTR			  /* allocptr++ (delay slot) */
+						/* end loop */
+      /* allocate header object */
+	set	DESC_polyvec,TMPREG3		/* descriptor in TMPREG3 */
+	st	TMPREG3,[ALLOCPTR]		/* header descriptor */
+	inc	4,ALLOCPTR			/* allocptr++ */
+	st	STDARG,[ALLOCPTR]		/* header data field */
+	st	TMPREG1,[ALLOCPTR+4]		/* header length field */
+	mov	ALLOCPTR,STDARG			/* result = header object */
+	inc	8,ALLOCPTR			/* allocptr += 2 */
 	CONTINUE
 
 1:	/* off-line allocation of big vectors */

@@ -61,5 +61,8 @@ structure DefaultMachSpec : MACH_SPEC =
   end (* DefaultMachSpec *)
 
 (*
- * $Log$
+ * $Log: machspec.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:54  george
+ * Version 110.5
+ *
  *)

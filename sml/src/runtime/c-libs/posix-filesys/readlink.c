@@ -34,7 +34,7 @@
  */
 ml_val_t _ml_P_FileSys_readlink (ml_state_t *msp, ml_val_t arg)
 {
-    char        *path = PTR_MLtoC(char, arg);
+    char        *path = STR_MLtoC(arg);
     char	buf[MAXPATHLEN];
     int         len;
 

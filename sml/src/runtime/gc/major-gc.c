@@ -393,7 +393,9 @@ numBO1, numBO2, numBO3);
     ReportVM (msp, 0);
 #endif
 
-/* DEBUG CheckHeap(heap, maxSweptGen); */
+#ifdef CHECK_HEAP
+    CheckHeap(heap, maxSweptGen);
+#endif
 
 } /* end of MajorGC. */
 
@@ -705,24 +707,29 @@ IFBO_COUNT1(arena_id);
 PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t id)
 {
     ml_val_t	*obj = PTR_MLtoC(ml_val_t, v);
-    ml_val_t	*obj_start, *new_obj;
+    ml_val_t	*new_obj;
     ml_val_t	desc;
     Word_t	len;
     arena_t	*arena;
 
     switch (EXTRACT_OBJC(id)) {
       case OBJC_record: {
-#ifdef POINTERS_INTO_OBJECTS
-	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
-	    continue;
-#else
-	obj_start = obj;
-	desc = obj_start[-1];
-#endif
-	if (desc == DESC_forwarded)
+	desc = obj[-1];
+	switch (GET_TAG(desc)) {
+	  case DTAG_vec_hdr:
+	  case DTAG_arr_hdr:
+	    len = 2;
+	    break;
+	  case DTAG_forward:
 	  /* This object has already been forwarded */
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	len = GET_LEN(desc);
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  case DTAG_record:
+	    len = GET_LEN(desc);
+	    break;
+	  default:
+	    Die ("bad record tag %d, obj = %#x, desc = %#x",
+		GET_TAG(desc), obj, desc);
+	} /* end of switch */
 	arena = heap->gen[EXTRACT_GEN(id)-1]->arena[RECORD_INDX];
 	if (isOLDER(arena, obj))
 	    arena = arena->nextGen;
@@ -731,14 +738,9 @@ PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t i
       case OBJC_pair: {
 	ml_val_t	w;
 
-#ifdef POINTERS_INTO_OBJECTS
-	obj_start = (ml_val_t *)((Addr_t)obj & ~(PAIR_SZB-1));  /* in case obj is derived */
-#else
-	obj_start = obj;
-#endif
-	w = obj_start[0];
+	w = obj[0];
 	if (isDESC(w))
-	    return PTR_CtoML(FOLLOW_FWDPAIR(w, obj_start, obj));
+	    return PTR_CtoML(FOLLOW_FWDPAIR(w, obj));
 	else {
 	  /* forward the pair */
 	    arena = heap->gen[EXTRACT_GEN(id)-1]->arena[PAIR_INDX];
@@ -747,95 +749,66 @@ PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t i
 	    new_obj = arena->nextw;
 	    arena->nextw += PAIR_SZW;
 	    new_obj[0] = w;
-	    new_obj[1] = obj_start[1];
+	    new_obj[1] = obj[1];
 	  /* setup the forward pointer in the old pair */
-	    obj_start[0] =  MAKE_PAIR_FP(new_obj);
-#ifdef POINTERS_INTO_OBJECTS
-	    return PTR_CtoML(new_obj + (obj - obj_start));
-#else
+	    obj[0] =  MAKE_PAIR_FP(new_obj);
 	    return PTR_CtoML(new_obj);
-#endif
 	}
       } break;
 
       case OBJC_string: {
-#ifdef ALIGN_REALDS
-	int	align = 0;
-#endif
-	obj_start = obj;
-	desc = obj_start[-1];
+	arena = heap->gen[EXTRACT_GEN(id)-1]->arena[STRING_INDX];
+	if (isOLDER(arena, obj))
+	    arena = arena->nextGen;
+	desc = obj[-1];
 	switch (GET_TAG(desc)) {
-	  case DTAG_forwarded:
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	  case DTAG_string: {
-		int		nChars = GET_LEN(desc);
-		len = BYTES_TO_WORDS(nChars);
-	      /* include the 0 termination bytes */
-		if ((nChars & (WORD_SZB-1)) == 0) len++;
-	    } break;
-	  case DTAG_bytearray:
-	    len = GET_STR_LEN(desc);
+	  case DTAG_forward:
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  case DTAG_raw32:
+	    len = GET_LEN(desc);
 	    break;
-	  case DTAG_reald:
-	    len = REALD_SZW;
+	  case DTAG_raw64:
+	    len = GET_LEN(desc);
 #ifdef ALIGN_REALDS
-	    align = WORD_SZB;
-#endif
-	    break;
-	  case DTAG_realdarray:
-	    len = GET_REALDARR_LEN(desc);
-#ifdef ALIGN_REALDS
-	    align = WORD_SZB;
+#  ifdef CHECK_HEAP
+	    if (((Addr_t)arena->nextw & WORD_SZB) == 0) {
+		*(arena->nextw) = (ml_val_t)0;
+		arena->nextw++;
+	    }
+#  else
+	    arena->nextw = (ml_val_t *)(((Addr_t)arena->nextw) | WORD_SZB);
+#  endif
 #endif
 	    break;
 	  default:
 	    Die ("bad string tag %d, obj = %#x, desc = %#x",
 		GET_TAG(desc), obj, desc);
-	}
-	arena = heap->gen[EXTRACT_GEN(id)-1]->arena[STRING_INDX];
-	if (isOLDER(arena, obj))
-	    arena = arena->nextGen;
-#ifdef ALIGN_REALDS
-	arena->nextw = (ml_val_t *)(((Addr_t)arena->nextw) | align);
-#endif
+	} /* end of switch */
       } break;
 
-      case OBJC_bigobj: {
-	int		i;
-	bigobj_region_t	*region;
-	bigobj_desc_t	*dp;
-	int		gen;
-
-	MajorGC_ForwardBigObj (heap, EXTRACT_GEN(maxAid), v, id);
-	return v;
-      }
-
       case OBJC_array: {
-#ifdef POINTERS_INTO_OBJECTS
-	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
-	    continue;
-#else
-	obj_start = obj;
-	desc = obj_start[-1];
-#endif
+	desc = obj[-1];
 	switch (GET_TAG(desc)) {
-	  case DTAG_forwarded:
+	  case DTAG_forward:
 	  /* This object has already been forwarded */
-	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
-	  case DTAG_array:
+	    return PTR_CtoML(FOLLOW_FWDOBJ(obj));
+	  case DTAG_arr_data:
 	    len = GET_LEN(desc);
 	    break;
 	  case DTAG_special:
 	    return MajorGC_FwdSpecial (heap, maxAid, obj, id, desc);
-	    break;
 	  default:
-	    Die("unknown tag %#x @ %#x in array arena\n",
-		GET_TAG(desc), obj_start);
+	    Die ("bad array tag %d, obj = %#x, desc = %#x",
+		GET_TAG(desc), obj, desc);
 	} /* end of switch */
 	arena = heap->gen[EXTRACT_GEN(id)-1]->arena[ARRAY_INDX];
 	if (isOLDER(arena, obj))
 	    arena = arena->nextGen;
       } break;
+
+      case OBJC_bigobj:
+	MajorGC_ForwardBigObj (heap, EXTRACT_GEN(maxAid), v, id);
+	return v;
 
       default:
 	Die("unknown object class %d @ %#x", EXTRACT_OBJC(id), obj);
@@ -846,16 +819,13 @@ PVT ml_val_t MajorGC_ForwardObj (heap_t *heap, aid_t maxAid, ml_val_t v, aid_t i
     arena->nextw += (len + 1);
     *new_obj++ = desc;
     ASSERT(arena->nextw <= arena->tospTop);
-    COPYLOOP(obj_start, new_obj, len);
+    COPYLOOP(obj, new_obj, len);
 
   /* set up the forward pointer, and return the new object. */
-    obj_start[-1] = DESC_forwarded;
-    obj_start[0] = (ml_val_t)(Addr_t)new_obj;
-#ifdef POINTERS_INTO_OBJECTS
-    return PTR_CtoML(new_obj + (obj - obj_start));
-#else
+    obj[-1] = DESC_forwarded;
+    obj[0] = (ml_val_t)(Addr_t)new_obj;
+
     return PTR_CtoML(new_obj);
-#endif
 
 } /* end of MajorGC_ForwardObj */
 
@@ -939,15 +909,14 @@ SayDebug (" unboxed\n");
 	    else {
 		aid_t		aid = ADDR_TO_PAGEID(BIBOP, v);
 		ml_val_t	*vp = PTR_MLtoC(ml_val_t, v);
-		ml_val_t	*v_start, desc;
+		ml_val_t	desc;
 
 		if (IS_FROM_SPACE(aid, maxAid)) {
 		    switch (EXTRACT_OBJC(aid)) {
 		      case OBJC_record:
 		      case OBJC_string:
 		      case OBJC_array:
-			for (v_start = vp;  !isDESC(desc = v_start[-1]);  v_start--)
-			    continue;
+			desc = vp[-1];
 			if (desc == DESC_forwarded) {
 			  /* Reference to an object that has already been forwarded.
 			   * NOTE: we have to put the pointer to the non-forwarded
@@ -956,7 +925,7 @@ SayDebug (" unboxed\n");
 			   * it never sees to-space pointers during sweeping.
 			   */
 #ifdef DEBUG_WEAK_PTRS
-SayDebug (" already forwarded to %#x\n", FOLLOW_FWDOBJ(v_start, vp));
+SayDebug (" already forwarded to %#x\n", FOLLOW_FWDOBJ(vp));
 #endif
 			    *new_obj++ = DESC_weak;
 			    *new_obj = v;
@@ -969,7 +938,7 @@ SayDebug (" already forwarded to %#x\n", FOLLOW_FWDOBJ(v_start, vp));
 			   * reference.
 			   */
 #ifdef DEBUG_WEAK_PTRS
-SayDebug (" forward (start = %#x)\n", v_start);
+SayDebug (" forward (start = %#x)\n", vp);
 #endif
 			    *new_obj = MARK_PTR(PTR_CtoML(gen->heap->weakList));
 			    gen->heap->weakList = new_obj++;
@@ -977,8 +946,7 @@ SayDebug (" forward (start = %#x)\n", v_start);
 			}
 			break;
 		      case OBJC_pair:
-			v_start = (ml_val_t *)((Addr_t)vp & ~(PAIR_SZB-1));
-			if (isDESC(desc = v_start[0])) {
+			if (isDESC(desc = vp[0])) {
 			  /* Reference to a pair that has already been forwarded.
 			   * NOTE: we have to put the pointer to the non-forwarded
 			   * copy of the pair (i.e, v) into the to-space copy
@@ -986,7 +954,7 @@ SayDebug (" forward (start = %#x)\n", v_start);
 			   * it never sees to-space pointers during sweeping.
 			   */
 #ifdef DEBUG_WEAK_PTRS
-SayDebug (" (pair) already forwarded to %#x\n", FOLLOW_FWDPAIR(desc, v_start, vp));
+SayDebug (" (pair) already forwarded to %#x\n", FOLLOW_FWDPAIR(desc, vp));
 #endif
 			    *new_obj++ = DESC_weak;
 			    *new_obj = v;

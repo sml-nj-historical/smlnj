@@ -33,7 +33,7 @@ ml_val_t _ml_Date_asctime (ml_state_t *msp, ml_val_t arg)
     tm.tm_isdst	= REC_SELINT(arg, 8);
 
     res = ML_AllocString(msp, DATE_LEN);
-    strncpy (PTR_MLtoC(char, res), asctime(&tm), DATE_LEN);
+    strncpy (STR_MLtoC(res), asctime(&tm), DATE_LEN);
 
     return res;
 

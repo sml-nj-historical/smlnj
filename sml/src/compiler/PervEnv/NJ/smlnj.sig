@@ -33,5 +33,8 @@ signature SML_OF_NJ =
 
 
 (*
- * $Log$
+ * $Log: smlnj.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
+ *
  *)

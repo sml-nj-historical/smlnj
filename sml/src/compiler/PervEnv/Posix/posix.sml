@@ -21,5 +21,8 @@ structure Posix : POSIX =
   end (* structure Posix *)
 
 (*
- * $Log$
+ * $Log: posix.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:57  george
+ * Version 110.5
+ *
  *)

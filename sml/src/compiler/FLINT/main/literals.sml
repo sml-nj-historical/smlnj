@@ -1,15 +1,20 @@
-(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
-(* literals.sml *)
+(* literals.sml
+ *
+ * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 1998 YALE FLINT PROJECT.
+ *)
 
 signature LITERALS =
  sig
    type lit
    val litsplit : CPS.function -> CPS.function * lit
-   val lit2cps : lit -> CPS.function
- end
+   val litToBytes : lit -> Word8Vector.vector
+ end;
 
 structure Literals : LITERALS = 
 struct
+
+structure W8V = Word8Vector
 
 local structure LV = LambdaVar
       open CPS
@@ -17,59 +22,140 @@ in
 
 fun bug msg = ErrorMsg.impossible ("Literals: "^msg) 
 val ident = fn x => x
-val liftLiterals = Control.FLINT.liftLiterals
 fun mkv _ = LV.mkLvar()
 
 (****************************************************************************
  *                         A MINI-LITERAL LANGUAGE                          *
  ****************************************************************************)
 datatype lit_val
-  = LI_INT of int
-  | LI_INT32 of Word32.word
-  | LI_REAL of string
+  = LI_INT of word
   | LI_STRING of string
   | LI_VAR of lvar
 
+datatype block_kind
+  = LI_RECORD		(* record of tagged ML values *)
+  | LI_VECTOR		(* vector of tagged ML values *)
+
 datatype lit_exp
   = LI_TOP of lit_val list
-  | LI_RECORD of record_kind * lit_val list * lvar * lit_exp
+  | LI_BLOCK of (block_kind * lit_val list * lvar * lit_exp)
+  | LI_F64BLOCK of (string list * lvar * lit_exp)
+  | LI_I32BLOCK of (Word32.word list * lvar * lit_exp)
 
 type lit = lit_exp
 
-fun val2lit (VAR v) = LI_VAR v
-  | val2lit (INT i) = LI_INT i
-  | val2lit (INT32 i) = LI_INT32 i
-  | val2lit (REAL s) = LI_REAL s
-  | val2lit (STRING s) = LI_STRING s
+fun rk2bk CPS.RK_VECTOR	= LI_VECTOR
+  | rk2bk CPS.RK_RECORD	= LI_RECORD
+  | rk2bk _		= bug "rk2bk: unexpected block kind"
+
+fun val2lit (CPS.VAR v) = LI_VAR v
+  | val2lit (CPS.INT i) = LI_INT(Word.fromInt i)
+  | val2lit (CPS.STRING s) = LI_STRING s
   | val2lit _ = bug "unexpected case in val2lit"
 
 (****************************************************************************
- *                 TRANSLATING THE LITERAL EXP TO CPS EXP                   *
+ *                 TRANSLATING THE LITERAL EXP TO BYTES                     *
  ****************************************************************************)
-fun lit2cps li = 
-  let val k = mkv()
 
-      fun toval (LI_INT i) = INT i
-        | toval (LI_INT32 i) = INT32 i
-        | toval (LI_REAL s) = REAL s
-        | toval (LI_STRING s) = STRING s
-        | toval (LI_VAR v) = VAR v
+(* Literals are encoded as instructions for a "literal machine."  The abstract
+ * description of these instructions is as follows:
+ *
+ *	INT(i)			-- push the int31 literal i on the stack
+ *	RAW32[i1,...,in]	-- form a 32-bit raw data record from the
+ *				   i1..in and push a pointer to it.
+ *	RAW64[r1,...,rn]	-- form a 64-bit raw data record from the
+ *				   r1..rn and push a pointer to it.
+ *	STR[c1,...,cn]		-- form a string from the characters c1..cn
+ *				   and push it on the stack.
+ *	LIT(k)			-- push the contents of the stack element
+ *				   that is k slots from the top of the stack.
+ *	VECTOR(n)		-- pop n elements from the stack, make a vector
+ *				   from them and push a pointer to the vector.
+ *	RECORD(n)		-- pop n elements from the stack, make a record
+ *				   from them and push a pointer.
+ *	RETURN			-- return the literal that is on the top of the
+ *				   stack.
+ *)
 
-      fun toexp (LI_TOP []) = APP(VAR k, [INT 0])
-        | toexp (LI_TOP vs) = 
-            let val v = mkv()
-                val nvs = map (fn x => (toval x, OFFp 0)) vs
-             in RECORD(RK_RECORD, nvs, v, APP(VAR k, [VAR v]))
-            end
-        | toexp (LI_RECORD (rk, vs, v, e)) = 
-            let val nvs = map (fn x => (toval x, OFFp 0)) vs
-             in RECORD(rk, nvs, v, toexp e)
-            end
+fun w32ToBytes' (w, l) =
+	Word8.fromLargeWord(Word32.>>(w, 0w24)) ::
+	Word8.fromLargeWord(Word32.>>(w, 0w16)) ::
+	Word8.fromLargeWord(Word32.>>(w, 0w8)) ::
+	Word8.fromLargeWord w :: l
+fun w32ToBytes w = w32ToBytes' (w, [])
+fun w31ToBytes w = w32ToBytes(Word31.toLargeWordX w)
+fun intToBytes i = w32ToBytes(Word32.fromInt i)
+fun intToBytes' (i, l) = w32ToBytes'(Word32.fromInt i, l)
+fun strToBytes s = map Byte.charToByte (explode s)
 
-      val f = mkv()
-      val x = mkv()
-   in (ESCAPE, f, [k, x], [CNTt, BOGt], toexp li)
-  end 
+val emit_MAGIC = W8V.fromList[0wx19, 0wx98, 0wx10, 0wx22]
+fun emit_DEPTH n = W8V.fromList(intToBytes n)
+fun emit_INT i = W8V.fromList(0wx01 :: w31ToBytes i)
+fun emit_RAW32 [i] = W8V.fromList(0wx02 :: w32ToBytes i)
+  | emit_RAW32 l =
+      W8V.fromList(0wx03 :: (intToBytes'(length l, List.foldr w32ToBytes' [] l)))
+fun emit_RAW64 [r] = W8V.fromList(0wx04 :: strToBytes r)
+  | emit_RAW64 l = W8V.concat(
+      W8V.fromList(0wx05 :: intToBytes(length l)) :: map Byte.stringToBytes l)
+fun emit_STR s = W8V.concat[
+	W8V.fromList(0wx06 :: intToBytes(size s)),
+	Byte.stringToBytes s
+      ]
+fun emit_LIT k = W8V.fromList(0wx07 :: intToBytes k)
+fun emit_VECTOR n = W8V.fromList(0wx08 :: intToBytes n)
+fun emit_RECORD n = W8V.fromList(0wx09 :: intToBytes n)
+val emit_RETURN = W8V.fromList[0wxff]
+
+fun litToBytes (LI_TOP[]) = W8V.fromList[]
+  | litToBytes litExp = let
+      fun depth (LI_TOP ls, d, maxDepth) = Int.max(maxDepth, d+length ls)
+	| depth (LI_BLOCK(_, ls, _, rest), d, maxDepth) =
+	    depth (rest, d+1, Int.max(maxDepth, d+length ls))
+	| depth (LI_F64BLOCK(ls, _, rest), d, maxDepth) =
+	    depth (rest, d+1, Int.max(maxDepth, d+length ls))
+	| depth (LI_I32BLOCK(ls, _, rest), d, maxDepth) =
+	    depth (rest, d+1, Int.max(maxDepth, d+length ls))
+      fun emitLitExp (env, exp, code) = let
+	    fun emitLitVals ([], _, code) = code
+	      | emitLitVals (lit::r, d, code) = let
+		  val instr = (case lit
+			 of (LI_INT i) => emit_INT i
+			  | (LI_STRING s) => emit_STR s
+			  | (LI_VAR v) => let
+			      fun f ([], _) = bug "unbound lvar"
+			        | f (v'::r, d) = if (v = v') then d else f(r, d+1)
+			      in
+				emit_LIT(f (env, d))
+			      end
+			(* end case *))
+		  in
+		    emitLitVals (r, d+1, instr::code)
+		  end
+	    fun emitBlock (LI_RECORD, ls, code) =
+		  emit_RECORD(length ls) :: emitLitVals(ls, 0, code)
+	      | emitBlock (LI_VECTOR, ls, code) =
+		  emit_VECTOR(length ls) :: emitLitVals(ls, 0, code)
+	    fun emitF64Block (ls, code) =
+		  emit_RAW64(map IEEERealConst.realconst ls) :: code
+	    fun emitI32Block (ls, code) = emit_RAW32 ls :: code
+	    in
+	      case exp
+	       of (LI_TOP ls) => emit_RETURN :: emitBlock(LI_RECORD, ls, code)
+		| (LI_BLOCK(bk, ls, v, rest)) =>
+		    emitLitExp (v::env, rest, emitBlock(bk, ls, code))
+		| (LI_F64BLOCK(ls, v, rest)) =>
+		    emitLitExp (v::env, rest, emitF64Block(ls, code))
+		| (LI_I32BLOCK(ls, v, rest)) =>
+		    emitLitExp (v::env, rest, emitI32Block(ls, code))
+	      (* end case *)
+	    end
+      val maxDepth = depth (litExp, 0, 1)
+      val code = emit_MAGIC
+	    :: emit_DEPTH maxDepth
+	    :: List.rev(emitLitExp([], litExp, []))
+      in
+	W8V.concat code
+      end
 
 
 (****************************************************************************
@@ -80,9 +166,7 @@ fun liftlits body = bug "FLINT version currently not implemented yet"
 
 fun litsplit (FK_FCT, f, [(v, t)], body) = 
       if LT.ltp_str t then
-        let val (nbody, lit, llt) = 
-              if !liftLiterals then liftlits body
-              else (body, LI_TOP [], LT.ltc_str[])
+        let val (nbody, lit, llt) = liftlits body
             val nt = LT.ltc_str ((LT.ltd_str t)@[llt])
          in ((FK_FCT, f, [(v, nt)], body), lit)
         end
@@ -127,6 +211,10 @@ fun liftlits (body, root, offset) =
       fun const (VAR v) = ((Intmap.map m v; true) handle _ => false)
         | const (INT _ | INT32 _ | REAL _ | STRING _) = true
         | const _ = bug "unexpected case in const"
+
+      fun cstlit (VAR v) = ((Intmap.map m v; true) handle _ => false)
+        | cstlit (REAL _ | STRING _) = true
+        | cstlit _ = false
 
       (* register a string literal *)
       local val strs : string list ref = ref []
@@ -226,11 +314,11 @@ fun liftlits (body, root, offset) =
 
       (* if all fields of a record are "constant", then we lift it *)
       fun field ul = 
-        let fun h ((x, OFFp 0)::r, z) = 
-                 if const x then h(r, x::z) else NONE
-              | h ([], z) = SOME(rev z)
+        let fun h ((x, OFFp 0)::r, z, rsflag) = 
+                 if const x then h(r, x::z, rsflag orelse (cstlit x)) else NONE
+              | h ([], z, rsflag) = if rsflag then SOME(rev z) else NONE
               | h _ = bug "unexpected case in field"
-         in h (ul, [])
+         in h (ul, [], false)
         end
 
       (* register a constant record *)
@@ -274,12 +362,16 @@ fun liftlits (body, root, offset) =
               (case Intmap.map m v
                 of (ZZ_FLT _) => (* float is wrapped *)
                      bug "currently we don't expect ZZ_FLT in mklit"
-                     (* LI_RECORD(RK_FBLOCK, [LI_REAL s], v, lit) *)
+                     (* LI_F64BLOCK([s], v, lit) *)
                  | (ZZ_STR s) => 
                      bug "currently we don't expect ZZ_STR in mklit"
                      (* lit   --- or we could inline string *)
-                 | (ZZ_RCD (rk, vs)) => 
-                     LI_RECORD(rk, map val2lit vs, v, lit))
+                 | (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
+		     LI_F64BLOCK(map (fn (CPS.REAL s) => s) vs, v, lit)
+                 | (ZZ_RCD(CPS.RK_I32BLOCK, vs)) => 
+		     LI_I32BLOCK(map (fn (CPS.INT32 w) => w) vs, v, lit)
+                 | (ZZ_RCD(rk, vs)) => 
+                     LI_BLOCK(rk2bk rk, map val2lit vs, v, lit))
 
             (** build up the literal structure *)
             val lit = foldl mklit toplit allvars
@@ -367,14 +459,18 @@ fun liftlits (body, root, offset) =
 (* the main function *)
 fun litsplit (fk, f, vl as [_,x], [CNTt, t as PTRt(RPT n)], body) = 
       let val nt = PTRt(RPT (n+1))
-          val (nbody, lit) =  
-            if !liftLiterals then liftlits(body, VAR x, n)
-            else (body, LI_TOP [])
-          
+          val (nbody, lit) = liftlits(body, VAR x, n)
        in ((fk, f, vl, [CNTt, nt], nbody), lit)
       end
   | litsplit _ = bug "unexpected CPS header in litsplit"
 
 end (* toplevel local *)
 end (* Literals *)
+
+(*
+ * $Log: literals.sml,v $
+ * Revision 1.3  1998/12/22 17:01:54  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
+ *)
 

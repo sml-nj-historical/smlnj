@@ -117,5 +117,8 @@ type prog = fundec  (* was "lvar * lty * lexp" *)
 end (* signature FLINT *)
 
 (*
- * $Log$
+ * $Log: flint.sig,v $
+ * Revision 1.2  1998/12/22 17:01:37  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

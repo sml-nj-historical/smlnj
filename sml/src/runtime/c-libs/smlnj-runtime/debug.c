@@ -15,7 +15,7 @@
  */
 ml_val_t _ml_RunT_debug (ml_state_t *msp, ml_val_t arg)
 {
-    SayDebug (PTR_MLtoC(char, arg));
+    SayDebug (STR_MLtoC(arg));
 
     return ML_unit;
 

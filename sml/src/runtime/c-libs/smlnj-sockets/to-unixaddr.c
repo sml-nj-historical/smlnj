@@ -21,7 +21,7 @@
  */
 ml_val_t _ml_Sock_tounixaddr (ml_state_t *msp, ml_val_t arg)
 {
-    char		*path = PTR_MLtoC(char, arg);
+    char		*path = STR_MLtoC(arg);
     struct sockaddr_un	addr;
     int			len;
 

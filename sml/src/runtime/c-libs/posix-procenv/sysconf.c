@@ -49,7 +49,7 @@ ml_val_t _ml_P_ProcEnv_sysconf (ml_state_t *msp, ml_val_t arg)
     name_val_t  *attr;
     ml_val_t	p;
 
-    attr = _ml_posix_nv_lookup (PTR_MLtoC(char, arg), values, NUMELMS);
+    attr = _ml_posix_nv_lookup (STR_MLtoC(arg), values, NUMELMS);
     if (!attr) {
       errno = EINVAL;
       return RAISE_SYSERR(msp, -1);

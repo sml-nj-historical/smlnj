@@ -24,5 +24,8 @@ structure OS =
     end
 
 (*
- * $Log$
+ * $Log: pre-os.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:02  george
+ * Version 110.5
+ *
  *)

@@ -35,5 +35,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: hppaShuffle.sml,v $
+ * Revision 1.3  1998/05/25 15:11:01  george
+ *   Fixed RCS keywords
+ *
  *)

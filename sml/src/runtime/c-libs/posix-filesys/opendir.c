@@ -21,7 +21,7 @@ ml_val_t _ml_P_FileSys_opendir (ml_state_t *msp, ml_val_t arg)
 {
     DIR      *dir;
     
-    dir = opendir(PTR_MLtoC(char, arg));
+    dir = opendir(STR_MLtoC(arg));
     if (dir == NIL(DIR *))
 	return RAISE_SYSERR(msp, -1);
     else

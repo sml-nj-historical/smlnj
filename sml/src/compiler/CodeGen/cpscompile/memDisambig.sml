@@ -39,7 +39,7 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
       case cexp 
       of C.RECORD(C.RK_FBLOCK, vl, _, e) => sizeOf(e, frecord(length vl))
        | C.RECORD(C.RK_FCONT, vl, _, e)  => sizeOf(e, frecord(length vl))
-       | C.RECORD(C.RK_I32BLOCK, vl, _, e) => sizeOf(e, hp+record(1+length vl))
+       | C.RECORD(C.RK_VECTOR, vl, _, e) => sizeOf(e, hp+record(length vl + 3))
        | C.RECORD(_, vl, _, e) => sizeOf(e, hp + record(length vl))
        | C.SELECT(_, _, _, _, e) => sizeOf(e, hp)
        | C.OFFSET(_,_,_,e) => sizeOf(e, hp)
@@ -52,6 +52,7 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
        | C.PURE(P.mkspecial, _, _, _, e) => sizeOf(e, hp+8)
        | C.PURE(P.makeref, _, _, _, e) => sizeOf(e, hp+8)
        | C.PURE(P.i32wrap, _, _, _, e) => sizeOf(e, hp+record(2))
+       | C.PURE(P.newarray0, _, _, _, e) => sizeOf(e, hp+(4*5))
        | C.PURE(_, _, _, _, e) => sizeOf(e, hp)
        | C.ARITH(_, _, _, _, e) => sizeOf(e, hp)
        | C.LOOKER(_,_,_,_,e) => sizeOf(e, hp)
@@ -144,10 +145,15 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
         case cexp
 	of C.RECORD(C.RK_FBLOCK, vl, x, e) => frecord(vl, x, e)
 	 | C.RECORD(C.RK_FCONT, vl, x, e) => frecord(vl, x, e)
-	 | C.RECORD(rk, vl, x, e) => let
-	     val vl = case rk of C.RK_I32BLOCK => vl@[(C.INT 0, offp0)] | _ => vl
-	   in record(vl, x, e)
-           end     
+	 | C.RECORD(C.RK_VECTOR, vl, x, e) => let
+	    val y = LambdaVar.mkLvar()
+	    in
+	      record (vl, y,
+		C.RECORD(
+		  C.RK_RECORD, [(C.VAR y, offp0), (C.INT(length vl), offp0)],
+		  x, e))
+	    end
+	 | C.RECORD(rk, vl, x, e) => record(vl, x, e)
 	 | C.SELECT(i, v, x, _, e) => select(v, i, x, e)
 	 | C.OFFSET(i, v, x, e) => offset(v, i, x, e)
 	 | C.APP _ => ()
@@ -184,6 +190,14 @@ functor MemDisambiguate(structure Cells: CELLS) : MEM_DISAMBIGUATION = struct
 	     enterRegion(x, R.MUTABLE(defs, uses));
 	     iter(e, hp+8)
            end
+	 | C.PURE(P.newarray0, _, w, _, e) => let
+	    val y = LambdaVar.mkLvar()
+	    in
+	      iter (
+		C.RECORD(C.RK_RECORD, [(C.INT 0, offp0)], y,
+		  C.RECORD(C.RK_RECORD, [(C.VAR y, offp0), (C.INT 0, offp0)], w, e)),
+		hp)
+	    end
 	 | C.PURE(_, _, _, _, e) => iter(e, hp)
 	(*esac*)
       end
@@ -197,5 +211,11 @@ end
 
 
 (*
- * $Log$
+ * $Log: memDisambig.sml,v $
+ * Revision 1.4  1998/11/18 03:53:06  jhr
+ *  New array representations.
+ *
+ * Revision 1.3  1998/05/23 14:09:18  george
+ *   Fixed RCS keyword syntax
+ *
  *)

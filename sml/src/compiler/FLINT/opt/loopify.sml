@@ -245,3 +245,10 @@ end
 end
 end
 
+
+(*
+ * $Log: loopify.sml,v $
+ * Revision 1.1  1998/12/22 17:01:58  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
+ *)

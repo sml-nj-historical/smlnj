@@ -93,5 +93,8 @@ end (* structure PLambda *)
 
 
 (*
- * $Log$
+ * $Log: plambda.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:38  george
+ * Version 110.5
+ *
  *)

@@ -310,5 +310,8 @@ end (* toplevel local *)
 end (* structure Wrapping *)
 
 (*
- * $Log$
+ * $Log: wrapping.sml,v $
+ * Revision 1.2  1998/12/22 17:02:07  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

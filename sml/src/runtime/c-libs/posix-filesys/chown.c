@@ -19,12 +19,12 @@
  */
 ml_val_t _ml_P_FileSys_chown (ml_state_t *msp, ml_val_t arg)
 {
-    char	    *path = REC_SELPTR(char, arg, 0);
+    ml_val_t	    path = REC_SEL(arg, 0);
     uid_t           uid = REC_SELWORD(arg, 1);
     gid_t           gid = REC_SELWORD(arg, 2);
     int		    sts;
 
-    sts = chown (path, uid, gid);
+    sts = chown (STR_MLtoC(path), uid, gid);
 
     CHK_RETURN_UNIT(msp, sts)
 

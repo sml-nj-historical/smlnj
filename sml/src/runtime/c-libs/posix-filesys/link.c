@@ -20,10 +20,10 @@
 ml_val_t _ml_P_FileSys_link (ml_state_t *msp, ml_val_t arg)
 {
     int		sts;
-    char        *existing = REC_SELPTR(char, arg, 0);
-    char        *newname = REC_SELPTR(char, arg, 1);
+    ml_val_t	existing = REC_SEL(arg, 0);
+    ml_val_t	newname = REC_SEL(arg, 1);
 
-    sts = link(existing, newname);
+    sts = link(STR_MLtoC(existing), STR_MLtoC(newname));
 
     CHK_RETURN_UNIT (msp, sts)
 

@@ -13,10 +13,12 @@ signature UNSAFE_OBJECT =
    *)
     datatype representation
       = Unboxed
+      | Word32
       | Real
       | Pair
       | Record
-(*      | PolyVector	use Record for now *)
+      | Ref
+      | PolyVector
       | PolyArray	(* includes ref *)
       | ByteVector	(* includes Word8Vector.vector and CharVector.vector *)
       | ByteArray	(* includes Word8Array.array and CharArray.array *)
@@ -31,11 +33,17 @@ signature UNSAFE_OBJECT =
     val unboxed : object -> bool
     val rep : object -> representation
 
+    val length : object -> int
+	(* returns length part of descriptor (untagged pairs return 2);
+	 * raises Representation on unboxed values.
+	 *)
+
     exception Representation
-    val toTuple  : object -> object vector
+    val toTuple  : object -> object list
     val toString : object -> string
     val toRef    : object -> object ref
     val toArray  : object -> object array
+    val toVector : object -> object vector
     val toExn    : object -> exn
     val toReal   : object -> real
     val toInt    : object -> int
@@ -44,9 +52,24 @@ signature UNSAFE_OBJECT =
     val toWord8  : object -> Word8.word
     val toWord32 : object -> Word32.word
 
+  (* fetch nth element of tuple *)
+    val nth	 : (object * int) -> object
+
   end;
 
 
 (*
- * $Log$
+ * $Log: object.sig,v $
+ * Revision 1.4  1998/11/23 20:10:09  jhr
+ *   New raw64Subscript primop.
+ *
+ * Revision 1.3  1998/11/18 03:54:22  jhr
+ *  New array representations.
+ *
+ * Revision 1.2  1998/10/28 18:24:57  jhr
+ *   New Unsafe.Object API.
+ *
+ * Revision 1.1.1.1  1998/04/08 18:40:00  george
+ * Version 110.5
+ *
  *)

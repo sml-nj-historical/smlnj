@@ -54,7 +54,6 @@ structure Control : CONTROL =
 	val dropinvariant   = ref true
 
 	val specialize	    = ref true
-	val liftLiterals    = ref false
 	val sharewrap	    = ref true
 	val saytappinfo	    = ref false	(* for typelifting statistics *)
 			      

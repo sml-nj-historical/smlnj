@@ -40,7 +40,6 @@ sig
     val dropinvariant	: bool ref
 
     val specialize	: bool ref
-    val liftLiterals	: bool ref
     val sharewrap	: bool ref
     val saytappinfo	: bool ref	(* for verbose typelifting *)
 
@@ -209,6 +208,9 @@ end
 
 (*
  * $Log: control.sig,v $
+ * Revision 1.5  1998/12/22 17:02:16  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  * Revision 1.3  1998/05/23 14:10:29  george
  *   Fixed RCS keyword syntax
  *

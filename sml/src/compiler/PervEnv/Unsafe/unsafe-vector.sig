@@ -13,5 +13,8 @@ signature UNSAFE_VECTOR =
 
 
 (*
- * $Log$
+ * $Log: unsafe-vector.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:40:01  george
+ * Version 110.5
+ *
  *)

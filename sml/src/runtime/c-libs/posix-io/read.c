@@ -21,20 +21,27 @@ ml_val_t _ml_P_IO_read (ml_state_t *msp, ml_val_t arg)
 {
     int		    fd = REC_SELINT(arg, 0);
     int		    nbytes = REC_SELINT(arg, 1);
-    ml_val_t	    vec;
+    ml_val_t	    vec, res;
     int		    n;
 
+    if (nbytes == 0)
+	return ML_string0;
+
   /* allocate the vector; note that this might cause a GC */
-    vec = ML_AllocString (msp, nbytes);
+    vec = ML_AllocRaw32 (msp, BYTES_TO_WORDS(nbytes));
     n = read (fd, PTR_MLtoC(char, vec), nbytes);
     if (n < 0)
 	return RAISE_SYSERR(msp, n);
+    else if (n == 0)
+	return ML_string0;
 
     if (n < nbytes) {
-      /* we need to correct the length in the descriptor */
-	PTR_MLtoC(ml_val_t, vec)[-1] = MAKE_DESC(n, DTAG_string);
+      /* we need to shrink the vector */
+	ML_ShrinkRaw32 (msp, vec, BYTES_TO_WORDS(n));
     }
 
-    return vec;
+    SEQHDR_ALLOC (msp, res, DESC_string, vec, n);
+
+    return res;
 
 } /* end of _ml_P_IO_read */

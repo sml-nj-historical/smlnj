@@ -20,8 +20,8 @@ struct
 
    val profiling        = ref false
    val use_profile_info = ref false    
-   val edge_counts      = ref A.array0 : int A.array A.array ref
-   val edge_table       = ref A.array0 : (int * int) list A.array ref
+   val edge_counts      = ref (A.array(0,A.array(0,0)))
+   val edge_table       = ref (A.array(0,[(0,0)]))
    val module_table     = ref []       : (string * int * int) list ref
    val module           = ref ""
    val cluster_id       = ref 0
@@ -36,7 +36,7 @@ struct
    let val m = A.length(!edge_counts) * 2
        val m = if m < n then n else m
        val m = if m < 10 then 10 else m
-       val new_edge_counts = A.array(m,A.array0)
+       val new_edge_counts = A.array(m,A.array(0,0))
        val new_edge_table  = A.array(m,[])
    in  A.copy{src= !edge_counts, dst=new_edge_counts,si=0,di=0,len=NONE};
        edge_counts := new_edge_counts;
@@ -55,5 +55,14 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: mlrisc-profiling.sml,v $
+ * Revision 1.2  1998/11/18 03:52:22  jhr
+ *   Changed Array.array0 to Array.array(0, -).
+ *
+ * Revision 1.1.1.2  1998/11/16 21:47:28  george
+ *   Version 110.10
+ *
+ * Revision 1.1.1.1  1998/04/08 18:39:01  george
+ * Version 110.5
+ *
  *)

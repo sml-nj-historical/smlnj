@@ -100,5 +100,8 @@ end (* signature LTYEXTERN *)
 
 
 (*
- * $Log$
+ * $Log: ltyextern.sig,v $
+ * Revision 1.2  1998/12/22 17:01:46  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

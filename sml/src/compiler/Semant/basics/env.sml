@@ -378,6 +378,9 @@ end (* structure Env *)
 
 (*
  * $Log: env.sml,v $
+ * Revision 1.2  1998/08/05 15:29:37  dbm
+ * clean out old imperative type variables
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:34  george
  * Version 110.5
  *

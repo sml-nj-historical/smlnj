@@ -20,20 +20,20 @@
  */
 ml_val_t _ml_P_FileSys_utime (ml_state_t *msp, ml_val_t arg)
 {
-    char	    *path = REC_SELPTR(char, arg, 0);
+    ml_val_t	    path = REC_SEL(arg, 0);
     time_t          actime = REC_SELINT32(arg, 1);
     time_t          modtime = REC_SELINT32(arg, 2);
     int		    sts;
 
     if (actime == -1) {
-      sts = utime (path, NIL(struct utimbuf *));
+      sts = utime (STR_MLtoC(path), NIL(struct utimbuf *));
     }
     else {
       struct utimbuf tb;
 
       tb.actime = actime;
       tb.modtime = modtime;
-      sts = utime (path, &tb);
+      sts = utime (STR_MLtoC(path), &tb);
     }
 
     CHK_RETURN_UNIT(msp, sts)

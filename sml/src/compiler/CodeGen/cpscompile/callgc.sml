@@ -191,7 +191,7 @@ struct
      of [] => (callGC(); gcReturn())
       | _ => let
 	  val k = length fRegs
-	  val desc = LargeWord.toInt(D.makeDesc(k, D.tag_realdarray))
+	  val desc = LargeWord.toInt(D.makeDesc(k+k, D.tag_raw64))
 	  val baseR = Cells.newCell Cells.GP () 
 
 	  fun deposit([], _) = ()
@@ -278,6 +278,15 @@ end
 
 (*
  * $Log: callgc.sml,v $
+ * Revision 1.10  1998/11/23 20:09:19  jhr
+ *   Fixed length field of raw64 objects (should be in words).
+ *
+ * Revision 1.9  1998/11/18 03:53:04  jhr
+ *  New array representations.
+ *
+ * Revision 1.8  1998/10/14 14:40:52  george
+ *  fix to eliminate extra edges to the GC block when possible.
+ *
  * Revision 1.7  1998/09/30 18:53:20  dbm
  * removed sharing/defspec conflict
  *

@@ -11,12 +11,6 @@
 #include "ml-c.h"
 #include "cfun-proto-list.h"
 
-PVT ML_STRING(sysname,"sysname");
-PVT ML_STRING(nodename,"nodename");
-PVT ML_STRING(release,"release");
-PVT ML_STRING(version,"version");
-PVT ML_STRING(machine,"machine");
-
 /* _ml_P_ProcEnv_uname: unit -> (string * string) list
  *
  * Return names of current system.
@@ -26,6 +20,7 @@ ml_val_t _ml_P_ProcEnv_uname (ml_state_t *msp, ml_val_t arg)
     struct utsname      name;
     int                 sts;
     ml_val_t            l, p, s;
+    ml_val_t		field;
 
     sts = uname (&name);
 
@@ -35,20 +30,30 @@ ml_val_t _ml_P_ProcEnv_uname (ml_state_t *msp, ml_val_t arg)
 /** NOTE: we should do something about possible GC!!! **/
 
     l = LIST_nil;
+
+    field = ML_CString(msp, "machine");
     s = ML_CString(msp, name.machine);
-    REC_ALLOC2(msp, p, PTR_CtoML(machine.s), s);
+    REC_ALLOC2(msp, p, field, s);
     LIST_cons(msp, l, p, l);
+
+    field = ML_CString(msp, "version");
     s = ML_CString(msp, name.version);
-    REC_ALLOC2(msp, p, PTR_CtoML(version.s), s);
+    REC_ALLOC2(msp, p, field, s);
     LIST_cons(msp, l, p, l);
+
+    field = ML_CString(msp, "release");
     s = ML_CString(msp, name.release);
-    REC_ALLOC2(msp, p, PTR_CtoML(release.s), s);
+    REC_ALLOC2(msp, p, field, s);
     LIST_cons(msp, l, p, l);
+
+    field = ML_CString(msp, "nodename");
     s = ML_CString(msp, name.nodename);
-    REC_ALLOC2(msp, p, PTR_CtoML(nodename.s), s);
+    REC_ALLOC2(msp, p, field, s);
     LIST_cons(msp, l, p, l);
+
+    field = ML_CString(msp, "sysname");
     s = ML_CString(msp, name.sysname);
-    REC_ALLOC2(msp, p, PTR_CtoML(sysname.s), s);
+    REC_ALLOC2(msp, p, field, s);
     LIST_cons(msp, l, p, l);
 
     return l;

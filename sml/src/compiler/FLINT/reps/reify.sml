@@ -269,5 +269,8 @@ end (* toplevel local *)
 end (* structure Reify *)
 
 (*
- * $Log$
+ * $Log: reify.sml,v $
+ * Revision 1.2  1998/12/22 17:02:03  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

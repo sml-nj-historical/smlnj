@@ -18,5 +18,8 @@ signature INTERVAL_TIMER =
   end;
 
 (*
- * $Log$
+ * $Log: interval-timer.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:56  george
+ * Version 110.5
+ *
  *)

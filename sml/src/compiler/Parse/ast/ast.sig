@@ -219,5 +219,8 @@ end (* signature AST *)
 
 
 (*
- * $Log$
+ * $Log: ast.sig,v $
+ * Revision 1.3  1998/05/23 14:09:54  george
+ *   Fixed RCS keyword syntax
+ *
  *)

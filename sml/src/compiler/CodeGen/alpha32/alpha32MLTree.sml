@@ -41,6 +41,9 @@ structure Alpha32MLTree =
 
 (*
  * $Log: alpha32MLTree.sml,v $
+ * Revision 1.3  1998/10/06 13:59:57  george
+ * Flowgraph has been removed from modules that do not need it -- [leunga]
+ *
  * Revision 1.2  1998/07/25 03:05:33  george
  *   changes to support block names in MLRISC
  *

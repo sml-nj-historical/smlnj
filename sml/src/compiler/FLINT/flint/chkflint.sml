@@ -480,5 +480,8 @@ end (* toplevel local *)
 end (* structure ChkFlint *)
 
 (*
- * $Log$
+ * $Log: chkflint.sml,v $
+ * Revision 1.2  1998/12/22 17:01:36  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

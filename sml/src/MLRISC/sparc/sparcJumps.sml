@@ -202,6 +202,11 @@ end
 
 (*
  * $Log: sparcJumps.sml,v $
+ * Revision 1.2  1998/08/12 13:36:23  leunga
+ *
+ *
+ *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
+ *
  * Revision 1.1.1.1  1998/08/05 19:38:49  george
  *   Release 110.7.4
  *

@@ -171,5 +171,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: alpha32Props.sml,v $
+ * Revision 1.3  1998/05/25 15:10:48  george
+ *   Fixed RCS keywords
+ *
  *)

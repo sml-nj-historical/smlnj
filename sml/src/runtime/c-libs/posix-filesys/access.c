@@ -19,11 +19,11 @@
  */
 ml_val_t _ml_P_FileSys_access (ml_state_t *msp, ml_val_t arg)
 {
-    char	    *path = REC_SELPTR(char, arg, 0);
+    ml_val_t	    path = REC_SEL(arg, 0);
     mode_t	    mode = REC_SELWORD(arg, 1);
     int		    sts;
 
-    sts = access (path, mode);
+    sts = access (STR_MLtoC(path), mode);
 
     if (sts == 0)
         return ML_true;

@@ -16,11 +16,15 @@ Library
 	structure Alpha32XVisComp
 	structure Alpha32VisComp
 	structure HppaVisComp
+(**** no old-style code generators
 	structure MipsBigVisComp
 	structure MipsLittleVisComp
 	structure RS6000VisComp
+****)
 	structure SparcVisComp
+(**** no old-style code generators
 	structure X86VisComp
+****)
 
 	functor BootEnvF
 is
@@ -59,15 +63,19 @@ TopLevel/viscomp/alpha32xvis.sml
 TopLevel/viscomp/control.sig
 TopLevel/viscomp/control.sml
 TopLevel/viscomp/hppavis.sml
+(**** no old-style code generators
 TopLevel/viscomp/mipsebvis.sml
 TopLevel/viscomp/mipselvis.sml
 TopLevel/viscomp/rs6000vis.sml
+****)
 TopLevel/viscomp/sparcvis.sml
 TopLevel/viscomp/generic-vc.sig
 TopLevel/viscomp/generic-vc.sml
 TopLevel/viscomp/machdep-vc.sig
 TopLevel/viscomp/machdep-vc.sml
+(**** no old-style code generators
 TopLevel/viscomp/x86vis.sml
+****)
 
 Parse/ast/ast.sig
 Parse/ast/ast.sml
@@ -255,6 +263,7 @@ CodeGen/cpscompile/cpsRegs.sig
 CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
 CodeGen/cpscompile/functionNames.sml
+CodeGen/cpscompile/limit.sml
 CodeGen/cpscompile/memDisambig.sml
 CodeGen/cpscompile/mkRecord.sig
 CodeGen/cpscompile/mkRecord.sml
@@ -263,6 +272,7 @@ CodeGen/cpscompile/pseudoOpsBig.sml
 CodeGen/cpscompile/pseudoOpsLittle.sml
 CodeGen/cpscompile/regmask.sig
 CodeGen/cpscompile/regmaskConst.sml
+CodeGen/cpscompile/spill.sml
 CodeGen/hppa/hppaCG.sml
 CodeGen/hppa/hppaCpsRegs.sml
 CodeGen/hppa/hppaLabelComp.sml
@@ -285,45 +295,12 @@ CodeGen/sparc/sparcPseudoInstrs.sml
 CodeGen/sparc/sparcgen.sml
 CodeGen/sparc/sparcspec.sml
 
-OldCGen/coder/backpatch.sml
-OldCGen/coder/coder.sml
-OldCGen/coder/emitter.sig
-OldCGen/coder/ieeereal.sml
-OldCGen/coder/machinstr.sig
-OldCGen/cpsgen/cmachine.sig
-OldCGen/cpsgen/generic.sml
-OldCGen/cpsgen/limit.sml
-OldCGen/cpsgen/spill.sml
-OldCGen/cpsgen/spillNEW.sml
-OldCGen/mips/endian.sig
-OldCGen/mips/endian.sml
-OldCGen/mips/mips.sml
-OldCGen/mips/mipsdepend.sml
-OldCGen/mips/mipsebgen.sml
-OldCGen/mips/mipselgen.sml
-OldCGen/mips/mipsgen.sml
-OldCGen/mips/mipsinstr.sml
-OldCGen/mips/mipsmc.sml
-OldCGen/mips/mipsspec.sml
-OldCGen/rs6000/rs6000.sml
-OldCGen/rs6000/rs6000depend.sml
-OldCGen/rs6000/rs6000gen.sml
-OldCGen/rs6000/rs6000instrset.sml
-OldCGen/rs6000/rs6000mc.sml
-OldCGen/rs6000/rs6000spec.sml
-OldCGen/x86/x86.sml
-OldCGen/x86/x86coder.sig
-OldCGen/x86/x86gen.sml
-OldCGen/x86/x86jumps.sig
-OldCGen/x86/x86jumps.sml
-OldCGen/x86/x86mcode.sml
-OldCGen/x86/x86spec.sml
-
 MiscUtil/bignums/bigint.sig
 MiscUtil/bignums/bigint.sml
 MiscUtil/bignums/int-inf.sig
 MiscUtil/bignums/int-inf.sml
 MiscUtil/bignums/realconst.sml
+MiscUtil/bignums/ieeereal.sml
 MiscUtil/print/ppabsyn.sml
 MiscUtil/print/ppdec.sml
 MiscUtil/print/ppmod.sml
