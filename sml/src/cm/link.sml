@@ -1,4 +1,4 @@
-(* dummy implementation of functor LinkCM *)
+(* test implementation of functor LinkCM *)
 
 functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
@@ -42,25 +42,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       fun bn2statenv gp i = #1 (#stat (valOf (RecompTraversal.bnode gp i)))
 
-      fun doall farsbnode (GroupGraph.GROUP { exports, ... }, gp) = let
-	  fun one ((fsbn, _), false) = false
-	    | one ((fsbn, _), true) =
-	      isSome (farsbnode gp fsbn)
-      in
-	  SymbolMap.foldl one true exports
-      end
+      val recomp_group = RecompTraversal.group
 
-      val recomp_group = doall RecompTraversal.farsbnode
-      fun exec_group arg =
-	  (doall ExecTraversal.farsbnode arg)
-	  before FullPersstate.rememberShared ()
-      fun make_group (arg as (GroupGraph.GROUP { required = rq, ... }, _)) =
-	  (Say.say ("$Execute: required privileges are:\n" ::
-		    map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
-	   if recomp_group arg then exec_group arg else false)
+      fun exec_group gp g =
+	  (ExecTraversal.group gp g
+	   before FullPersstate.rememberShared ())
+
+      fun make_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
+	  (if StringSet.isEmpty rq then ()
+	   else Say.say ("$Execute: required privileges are:\n" ::
+		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
+	   if isSome (recomp_group gp g) then exec_group gp g else NONE)
 
       structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
-					  val recomp = recomp_group)
+					  fun recomp gp g =
+					      isSome (recomp_group gp g))
 
       structure Parse = ParseFn (structure Stabilize = Stabilize)
   in
@@ -76,15 +72,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val primconf = Primitive.configuration { basis = basis }
 	    val param = { primconf = primconf,
 			  fnpolicy = FilenamePolicy.default,
-			  keep_going = false,
+			  keep_going = true,
 			  pervasive = perv,
 			  corenv = corenv }
-	    val g = Parse.parse param sflag p
 	in
-	    Option.map f g
+	    case Parse.parse param sflag p of
+		NONE => NONE
+	      | SOME (g, gp) => f gp g
 	end
 
-	fun stabilize recursively = run (SOME recursively) ignore
+	fun stabilize recursively =
+	    run (SOME recursively) (fn _ => fn _ => SOME ())
 	val recomp = run NONE recomp_group
 	val make = run NONE make_group
     end

@@ -25,6 +25,11 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     type benv = statenv
     type env = { stat: statenv, sym: symenv, pids: PidSet.set }
+    type result = unit
+
+    val empty = ()
+    fun env2result (_: env) = ()
+    fun rlayer ((), ()) = ()
 
     type 'e wpid = 'e * pid
 

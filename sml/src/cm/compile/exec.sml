@@ -20,6 +20,7 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     type env = (unit -> E.dynenv) * bool
     type benv = env
     type envdelta = env
+    type result = E.dynenv
 
     fun layer ((d, n), (d', n')) = (fn () => DE.atop (d (), d'()), n orelse n')
 
@@ -29,6 +30,10 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     val blayer = layer
     val bfilter = filter
     val bnofilter = nofilter
+
+    val empty = DE.empty
+    fun env2result ((mkEnv, flag): env) = mkEnv ()
+    fun rlayer (r, r') = DE.atop (r, r')
 
     fun primitive (gp: GeneralParams.info) p =
 	(fn () => E.dynamicPart (Primitive.env (#primconf (#param gp)) p),

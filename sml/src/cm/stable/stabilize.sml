@@ -15,7 +15,7 @@ local
     structure E = GenericVC.Environment
 
     type statenvgetter = GP.info -> DG.bnode -> E.staticEnv
-    type recomp = GG.group * GP.info -> bool
+    type recomp = GP.info -> GG.group -> bool
 in
 
 signature STABILIZE = sig
@@ -84,7 +84,10 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	fun doit granted = let
 
-	    val _ = Say.say ("$Stabilize: wrapping the following privileges:\n"
+	    val _ =
+		if StringSet.isEmpty granted then ()
+		else
+		    Say.say ("$Stabilize: wrapping the following privileges:\n"
 			     :: map (fn s => ("  " ^ s ^ "\n"))
 			            (StringSet.listItems granted))
 
@@ -343,7 +346,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	case #stableinfo grec of
 	    GG.STABLE _ => SOME g
 	  | GG.NONSTABLE granted =>
-		if not (recomp (g, gp)) then
+		if not (recomp gp g) then
 		    (anyerrors := true; NONE)
 		else let
 		    fun notStable (GG.GROUP { stableinfo, ... }) =

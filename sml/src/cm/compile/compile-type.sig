@@ -10,9 +10,14 @@ signature COMPILATION_TYPE = sig
     type env
     type benv
     type envdelta
+    type result
+
+    val empty : result
+    val env2result : env -> result
 
     val layer : env * env -> env
     val blayer : benv * benv -> benv
+    val rlayer : result * result -> result
 
     val filter : envdelta * SymbolSet.set -> env
     val bfilter : envdelta * SymbolSet.set -> benv

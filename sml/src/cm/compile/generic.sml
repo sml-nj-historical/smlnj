@@ -1,5 +1,7 @@
 (*
  * The "generic" compilation traversal functor.
+ *  (In fact, it is probably possible to use this for things other
+ *   than compilation as well.)
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -8,25 +10,41 @@
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph
+    structure GG = GroupGraph
 in
     functor CompileGenericFn (structure CT: COMPILATION_TYPE) :> sig
 
 	type envdelta = CT.envdelta
-	type benv = CT.benv
-	type env = CT.env
+	type result = CT.result
 
 	val bnode : GP.info -> DG.bnode -> envdelta option
-	val farbnode : GP.info -> DG.farbnode -> benv option
-	val snode : GP.info -> DG.snode -> envdelta option
-	val sbnode : GP.info -> DG.sbnode -> envdelta option
-	val farsbnode : GP.info -> DG.farsbnode -> env option
+	val group : GP.info -> GG.group -> result option
 
     end = struct
 
 	type envdelta = CT.envdelta
 	type env = CT.env
 	type benv = CT.benv
+	type result = CT.result
 
+	(* This is to prevent re-execution of dosml if the first one failed *)
+	local
+	    val failures = ref SmlInfoSet.empty
+	in
+	    fun dosml (i, e, gp) =
+		if SmlInfoSet.member (!failures, i) then NONE
+		else case CT.dosml (i, e, gp) of
+		    SOME r => SOME r
+		  | NONE => (failures := SmlInfoSet.add (!failures, i); NONE)
+	    fun clearFailures () = failures := SmlInfoSet.empty
+	end
+
+	(* To implement "keep_going" we have two different ways to "fold"
+	 * a "layer" function over a list.  The _k version is to be used
+	 * if keep_going is true, otherwise the _s version applies.
+	 * Note that there is a bit of typing mystery in the way I use
+	 * these functions later: I had to be more verbose than I wanted
+	 * to because of the "value restriction rule" in SML'97. *)
 	fun foldlayer_k layer f = let
 	    fun loop r [] = r
 	      | loop NONE (h :: t) = (ignore (f h); loop NONE t)
@@ -99,7 +117,7 @@ in
 	in
 	    case e of
 		NONE => NONE
-	      | SOME e => CT.dosml (smlinfo, e, gp)
+	      | SOME e => dosml (smlinfo, e, gp)
 	end
 
 	and sbnode gp (DG.SB_BNODE b) = bnode gp b
@@ -110,5 +128,17 @@ in
 		(NONE, _) => NONE
 	      | (SOME d, NONE) => SOME (CT.nofilter d)
 	      | (SOME d, SOME s) => SOME (CT.filter (d, s))
+
+	fun impexp gp (n, _) = Option.map CT.env2result (farsbnode gp n)
+
+	fun group gp (GG.GROUP { exports, ... }) = let
+	    val fl =
+		if #keep_going (#param gp) then foldlayer_k else foldlayer_s
+	in
+	    (fl CT.rlayer (impexp gp)
+	                  (SOME CT.empty)
+			  (SymbolMap.listItems exports))
+	    before clearFailures ()
+	end
     end
 end
