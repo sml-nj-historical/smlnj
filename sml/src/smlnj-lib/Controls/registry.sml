@@ -107,7 +107,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
     datatype registry_tree = RTree of {
 	path : string list,
 	help : string,
-	ctls : string Controls.control list,
+	ctls : { ctl: string Controls.control, info: control_info } list,
 	subregs : registry_tree list
       }
 
@@ -134,10 +134,11 @@ structure ControlRegistry : CONTROL_REGISTRY =
 		  RTree{
 		      path = List.rev path,
 		      help = help,
-		      ctls = List.map #ctl (case obs
-			 of NONE => ControlSet.listControls ctls
-			  | SOME obs => ControlSet.listControls' (ctls, obs)
-			(* end case *)),
+		      ctls = case obs
+			      of NONE => ControlSet.listControls ctls
+			       | SOME obs =>
+				   ControlSet.listControls' (ctls, obs)
+		             (* end case *),
 		      subregs = List.map getReg subregs
 		    }
 		end
