@@ -21,8 +21,14 @@ struct
    lowercase assembly
 
    storage
-     GP = $r[32] of 64 bits asm: (fn (r,_) => Int.toString r)
-   | FP = $f[32] of 64 bits asm: (fn (f,_) => Int.toString f)
+     GP = $r[32] of 64 bits asm: (
+	   fn (r,_) => if !PPCAsmSyntax.ibm_syntax 
+	               then "r"^Int.toString r 
+		       else Int.toString r)
+   | FP = $f[32] of 64 bits asm: (
+	   fn (f,_) => if !PPCAsmSyntax.ibm_syntax 
+	               then "f"^Int.toString f
+		       else Int.toString r)
    | CC = $cc[8] of 4 bits asm: (fn (cr,_) => "cr"^Int.toString cr)
    | SPR = $spr[32] of 64 bits 
             asm: (fn (1,_) => "xer"

@@ -440,7 +440,7 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 449.12 "ppc/ppc.mdl"*)
+(*#line 455.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
           in 
              (case oper of
@@ -458,7 +458,7 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 462.12 "ppc/ppc.mdl"*)
+(*#line 468.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = emit_farith oper
           in 
              (case oper of
@@ -477,14 +477,14 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 471.12 "ppc/ppc.mdl"*)
+(*#line 477.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
           in a_form {opcd=opcd, frt=ft, fra=fa, frb=fb, frc=fc, xo=xo, rc=Rc}
           end
        end
    and cr_bit {cc} = 
        let 
-(*#line 476.12 "ppc/ppc.mdl"*)
+(*#line 482.12 "ppc/ppc.mdl"*)
            val (cr, bit) = cc
        in ((emit_CC cr) << 0wx2) + (itow 
           (case bit of
@@ -701,7 +701,7 @@ struct
        in eWord32 ((rs << 0wx15) + ((ra << 0wx10) + ((rb << 0wxb) + 0wx7c00012d)))
        end
 
-(*#line 572.7 "ppc/ppc.mdl"*)
+(*#line 578.7 "ppc/ppc.mdl"*)
    fun relative (I.LabelOp lexp) = (itow ((MLTreeEval.valueOf lexp) - ( ! loc))) ~>> 0wx2
      | relative _ = error "relative"
        fun emitter instr =

@@ -237,7 +237,7 @@ struct
      | asm_bit (I.OX) = "so"
    and emit_bit x = emit (asm_bit x)
 
-(*#line 602.7 "ppc/ppc.mdl"*)
+(*#line 608.7 "ppc/ppc.mdl"*)
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, (size s) - 1)) = #"e")
           then 
           ( emit (String.substring (s, 0, (size s) - 1)); 
@@ -247,17 +247,17 @@ struct
             emit "x" ))
      | emitx (s, _) = emit s
 
-(*#line 608.7 "ppc/ppc.mdl"*)
+(*#line 614.7 "ppc/ppc.mdl"*)
    fun eOERc {OE=false, Rc=false} = ()
      | eOERc {OE=false, Rc=true} = emit "."
      | eOERc {OE=true, Rc=false} = emit "o"
      | eOERc {OE=true, Rc=true} = emit "o."
 
-(*#line 612.7 "ppc/ppc.mdl"*)
+(*#line 618.7 "ppc/ppc.mdl"*)
    fun eRc false = ""
      | eRc true = "."
 
-(*#line 613.7 "ppc/ppc.mdl"*)
+(*#line 619.7 "ppc/ppc.mdl"*)
    fun cr_bit (cr, bit) = (4 * (CellsBasis.physicalRegisterNum cr)) + 
        (case bit of
          I.LT => 0
@@ -274,18 +274,18 @@ struct
        | I.OX => 3
        )
 
-(*#line 620.7 "ppc/ppc.mdl"*)
+(*#line 626.7 "ppc/ppc.mdl"*)
    fun eCRbit x = emit (Int.toString (cr_bit x))
 
-(*#line 621.7 "ppc/ppc.mdl"*)
+(*#line 627.7 "ppc/ppc.mdl"*)
    fun eLK true = emit "l"
      | eLK false = ()
 
-(*#line 622.7 "ppc/ppc.mdl"*)
+(*#line 628.7 "ppc/ppc.mdl"*)
    fun eI (I.RegOp _) = ()
      | eI _ = emit "i"
 
-(*#line 623.7 "ppc/ppc.mdl"*)
+(*#line 629.7 "ppc/ppc.mdl"*)
    fun eBI (bo, bf, bit) = 
        (case (bo, CellsBasis.physicalRegisterNum bf) of
          (I.ALWAYS, _) => ()
@@ -294,7 +294,7 @@ struct
        | (_, n) => emit ((("4*cr" ^ (Int.toString n)) ^ "+") ^ (asm_bit bit))
        )
 
-(*#line 629.7 "ppc/ppc.mdl"*)
+(*#line 635.7 "ppc/ppc.mdl"*)
    fun emit_bo bo = emit 
        (case bo of
          I.TRUE => "t"
@@ -310,13 +310,13 @@ struct
             else "f")
        )
 
-(*#line 640.7 "ppc/ppc.mdl"*)
+(*#line 646.7 "ppc/ppc.mdl"*)
    fun eME (SOME me) = 
        ( emit ", "; 
          emit_int me )
      | eME NONE = ()
 
-(*#line 643.7 "ppc/ppc.mdl"*)
+(*#line 649.7 "ppc/ppc.mdl"*)
    fun addr (ra, I.RegOp rb) = 
        ( emitCell ra; 
          emit ", "; 

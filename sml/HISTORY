@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/04 18:17:00 EST
+Tag: leunga-110_47-ppc-ibm-asm
+Description:
+
+  - Added minimal IBM assembly syntax support for PowerPC.
+
+  - Cygwin: manually changed the file cygwin.def.  Some exported symbols have 
+    been altered in the runtime.  We need an automatic way to keep the file
+    in sync.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/04 14:00:00 CDT
 Tag: Release_110_47

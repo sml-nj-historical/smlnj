@@ -5,6 +5,7 @@ Library
 	signature PPCSHUFFLE
 	signature PPC_PSEUDO_INSTR
 	structure PPCCells
+	structure PPCAsmSyntax
 	functor PPC
 	functor PPCAsmEmitter
 	functor PPCDelaySlots
@@ -55,6 +56,7 @@ is
 	../ppc/instructions/ppcProps.sml
 	../ppc/instructions/ppcFreqProps.sml
 	../ppc/emit/ppcAsm.sml
+	../ppc/emit/ppcAsmSyntax.sml
 	../ppc/emit/ppcMC.sml
 	../ppc/backpatch/ppcDelaySlots.sml
 	../ppc/backpatch/ppcJumps.sml
