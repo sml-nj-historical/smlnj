@@ -164,15 +164,6 @@ FLINT/flint/flintutil.sml
 FLINT/flint/ppflint.sig
 FLINT/flint/ppflint.sml
 FLINT/flint/tvarcvt.sml
-FLINT/nflint/nflint.sml
-FLINT/nflint/ppnflint.sml
-FLINT/nflint/tychker.sml
-FLINT/nflint/nflintgen.sml
-FLINT/nflint/tonflint.sml
-FLINT/nflint/tocps.sml
-FLINT/nflint/toclos.sml
-(* FLINT/nflint/total.sml *)
-FLINT/nflint/utils.sml
 FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
 FLINT/kernel/ltybasic.sig

@@ -51,8 +51,6 @@ val wrapping  = phase "FLINT 054 wrapping" Wrapping.wrapping
 val reify     = phase "FLINT 055 reify" Reify.reify
 val recover   = phase "FLINT 05a recover" Recover.recover
 
-val nflintgen = phase "FLINT 05x tonflint" NFlintGen.nflintgen
-
 val convert   = phase "CPS 060 convert" Convert.convert
 val cpstrans  = phase "CPS 065 cpstrans" CPStrans.cpstrans
 val cpsopt    = phase "CPS 070 cpsopt" CPSopt.reduce
@@ -199,10 +197,6 @@ fun flintcomp
 	  if fk = FK_WRAP
 	  then (say "\n!!Forgot reify!!\n"; (reify flint, FK_REIFY))
 	  else (flint,fk)
-
-      (* a hook to generate certified flint code *)
-      val nflint = if (!CTRL.nflintGen) then nflintgen flint
-                   else []
 
       (* finish up with CPS *)
       val (nc0, ncn, dseg) = 
