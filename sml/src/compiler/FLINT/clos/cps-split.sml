@@ -546,14 +546,3 @@ functor CpsSplitFun (MachSpec: MACH_SPEC): CPSSPLIT = struct
 
 end
 *)
-
-
-(*
- * $Log: cps-split.sml,v $
- * Revision 1.1.1.1  1999/07/15 17:52:42  george
- *  Version 110.20
- *
- * Revision 1.1.1.1  1998/04/08 18:39:46  george
- * Version 110.5
- *
- *)

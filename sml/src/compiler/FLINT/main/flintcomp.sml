@@ -128,10 +128,10 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	      let val (f,fi) = split f in (f, fi, fk, p) end
 
 	    (* pseudo FLINT phases *)
-(*	    | ("pickle",   _)		=> *)
-(*	      (valOf(UnpickMod.unpickleFLINT(PickMod.pickleFLINT(SOME f))), *)
-(*	       UnpickMod.unpickleFLINT(PickMod.pickleFLINT fi), *)
-(*	       fk, p) *)
+	    | ("pickle",   _)		=>
+	      (valOf(UnpickMod.unpickleFLINT(#pickle(PickMod.pickleFLINT(SOME f)))),
+	       UnpickMod.unpickleFLINT(#pickle(PickMod.pickleFLINT fi)),
+	       fk, p)
 	    | ("collect",_) => (fcollect f, fi, fk, p)
 	    | _ =>
 	      ((case (p,fk)
@@ -163,12 +163,17 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 		 (f, fi, fk, l)
 	  end
 
+      fun showhist [s] = say(concat["  raised at:\t", s, "\n"])
+	| showhist (s::r) = (showhist r; say (concat["\t\t", s, "\n"]))
+	| showhist [] = ()
+
       fun runphase' (arg as (p,{1=f,...})) =
 	  (if !CTRL.printPhases then say("Phase "^p^"...") else ();
 	   ((check' o print o runphase) arg) before
   	   (if !CTRL.printPhases then say("..."^p^" Done.\n") else ()))
 	      handle x => (say ("\nwhile in "^p^" phase\n");
-			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
+			   dumpTerm(PPFlint.printFundec,"flint.core", f);
+			   showhist(SMLofNJ.exnHistory x);
 			   raise x)
 
       val (flint,fi,fk,_) = foldl runphase'

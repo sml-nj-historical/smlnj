@@ -474,14 +474,3 @@ fun litsplit (fk, f, vl as [_,x], [CNTt, t as PTRt(RPT n)], body) =
 
 end (* toplevel local *)
 end (* Literals *)
-
-(*
- * $Log: literals.sml,v $
- * Revision 1.3  1999/11/29 16:33:19  george
- * *** empty log message ***
- *
- * Revision 1.2  1999/11/01 13:53:27  george
- *   parallel and distributed CM
- *
- *)
-

@@ -179,9 +179,8 @@ structure FContract :> FCONTRACT =
 struct
 local
     structure F  = FLINT
-    structure M  = IntRedBlackMap
+    structure M  = FLINTIntMap
     structure S  = IntRedBlackSet
-    structure S1 = Intset
     structure C  = Collect
     structure O  = Option
     structure DI = DebIndex
@@ -537,8 +536,13 @@ fun fcFix (fs,le) =
 				     then map (fn _ => []) args
 				     else OU.transpose(!actuals)
 		       val nm = ListPair.foldl merge_actuals m (args, actuals)
-		       (* contract the body and create the resulting fundec *)
-		       val nbody = fcexp (S.add'(f, ifs)) nm body #2
+		       (* contract the body and create the resulting fundec.
+			* Temporarily remove f's definition from the
+			* environment while we're rebuilding it to avoid
+			* nasty problems. *)
+		       val nbody = fcexp (S.add(ifs, f))
+					 (addbind(nm, f, Var(f, NONE)))
+					 body #2
 		       (* if inlining took place, the body might be completely
 			* changed (read: bigger), so we have to reset the
 			* `inline' bit *)
@@ -737,7 +741,7 @@ fun fcApp (f,vs) =
 		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
 		       (app (unuseval m) vs);
 		       unusecall m g;
-		       fcexp (S.add'(g, ifs)) m nle cont
+		       fcexp (S.add(ifs, g)) m nle cont
 		   end
 
 	   in if C.usenb gi = 1 andalso not(S.member(ifs, g)) then simpleinline()

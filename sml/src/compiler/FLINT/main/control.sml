@@ -10,7 +10,7 @@ struct
      * locally unused but could be cross-module inlined. *)
     val phases	        = ref ["lcontract", "specialize",
 			       "fixfix", "fcontract",
-			       "loopify", "fixfix", "split", "fcontract",
+			       "loopify", "fixfix", (* "split", *) "fcontract",
 			       "specialize", "fcontract",
 			       "wrap", "fcontract",
 			       (* "names2deb", "typelift", "deb2names", *)

@@ -1,6 +1,8 @@
 (* Copyright 1997 (c) by YALE FLINT PROJECT *)
 (* flintutil.sml *)
 
+structure FLINTIntMap = IntBinaryMap
+
 signature FLINTUTIL = 
 sig
   val rk_tuple : FLINT.rkind
@@ -22,7 +24,7 @@ sig
    * free variables remain unchanged except for the renaming specified
    * in the first (types) and second (values) argument *)
   val copy : (FLINT.tvar * FLINT.tyc) list ->
-             FLINT.lvar IntRedBlackMap.map ->
+             FLINT.lvar FLINTIntMap.map ->
              FLINT.lexp -> FLINT.lexp
   val copyfdec : FLINT.fundec -> FLINT.fundec
 
@@ -40,7 +42,7 @@ local structure EM = ErrorMsg
       structure LT = LtyExtern
       structure PO = PrimOp
       structure DA = Access
-      structure M  = IntRedBlackMap
+      structure M  = FLINTIntMap
       structure A  = Access
       structure O  = Option
       structure S  = IntRedBlackSet

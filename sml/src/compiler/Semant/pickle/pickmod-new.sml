@@ -462,8 +462,9 @@ in
 	      | LK.LT_CONT _ => bug "unexpected LT_CONT in mkPickleLty"
 	end
     in
-	if LK.ltp_norm x then share LTs ltyI x
-	else (* bug "unexpected complex lambda type in mkPickleLty" *) ltyI x
+	share LTs ltyI x
+    (* if LK.ltp_norm x then 
+       else bug "unexpected complex lambda type in mkPickleLty" ltyI x *)
     end
 
     and tyc alpha x = let
@@ -490,15 +491,16 @@ in
 		"M" $ bool b1 & bool b2 & list tyc ts1 & list tyc ts2
 	      | LK.TC_ARROW (LK.FF_FIXED, ts1, ts2) =>
 		"N" $ list tyc ts1 & list tyc ts2
-	      | LK.TC_PARROW _ => bug "unexpected TC_PARROW in mkPickleLty"
 	      | LK.TC_TOKEN (tk, t) => "O" $ int (LK.token_int tk) & tyc t
+	      | LK.TC_PARROW _ => bug "unexpected TC_PARROW in mkPickleLty"
 	      | LK.TC_IND _ => bug "unexpected TC_IND in mkPickleLty"
 	      | LK.TC_ENV _ => bug "unexpected TC_ENV in mkPickleLty"
 	      | LK.TC_CONT _ => bug "unexpected TC_CONT in mkPickleLty"
 	end
     in
-	if LK.tcp_norm x then share TCs tycI x
-	else (* bug "unexpected complex lambda tyc in mkPickleLty" *) tycI x
+	share TCs tycI x
+    (* if LK.tcp_norm x then 
+       else bug "unexpected complex lambda tyc in mkPickleLty" tycI x *)
     end
 
     (* the FLINT pickler *)
