@@ -47,8 +47,13 @@ obj_info_t GetObjInfo (ml_val_t obj)
 
 	    if (aid == AID_NEW) {
 	      /* Find the object header (object may be derived) */
+#ifdef POINTERS_INTO_OBJECTS
 		for (start = PTR_MLtoC(Word_t, obj);  !isDESC(desc = start[-1]);  start--)
 		    continue;
+#else
+		start = PTR_MLtoC(Word_t, obj);
+		desc = start[-1];
+#endif
 		GetDescInfo (desc, &result);
 		result.objStart = start;
 		result.gen = 0;

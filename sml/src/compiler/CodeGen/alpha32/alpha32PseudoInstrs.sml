@@ -12,10 +12,8 @@ struct
   val divlOffset = I.IMMop 120			(* " *)
   val divluOffset = I.IMMop 124			(* " *)
 
-  val newFreg = I.C.newFreg
-  val newReg = I.C.newReg
   val stack = CPSRegions.stack
-  val sp = I.C.stackptrR
+  val sp = C.stackptrR
   val zeroR = 31
 
   val makeCellset = List.foldl C.addReg C.empty 
@@ -49,6 +47,9 @@ end
 
 (*
  * $Log: alpha32PseudoInstrs.sml,v $
+ * Revision 1.2  1998/05/19 15:32:44  george
+ *   minor cleanup
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

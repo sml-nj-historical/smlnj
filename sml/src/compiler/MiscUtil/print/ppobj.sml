@@ -61,7 +61,7 @@ fun switch(obj, dcons) = let
 	      | A.REF => d
 	      | A.LISTCONS => if (Obj.boxed obj) then d else try r
 	      | A.LISTNIL => if chk(Obj.toInt, 0) then d else try r
-              | A.SUSP _ => d (* ZIDO *)           
+              | A.SUSP _ => d  (* LAZY *)           
 	      | _ => bug "switch: funny datacon"
 	    (* end case *))
 	| try [] = bug "switch: none of the datacons matched"
@@ -186,7 +186,7 @@ fun interpArgs(tys,NONE) = tys
 fun transMembers(stamps: Stamps.stamp vector, 
                  freetycs: T.tycon list, root,
                  family as {members,...} : T.dtypeFamily) = 
-    let fun dtmemberToTycon(n, {tycname,arity,dcons,eq,sign}, l) =
+    let fun dtmemberToTycon(n, {tycname,arity,dcons,eq,sign,lazyp}, l) =
 	      T.GENtyc{stamp=Vector.sub(stamps,n),arity=arity,eq=ref(T.YES),
 		       path=InvPath.IPATH[tycname], 
 		       kind=T.DATATYPE{index=n,
@@ -291,7 +291,7 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
 	         ppUrList(obj,hd argtys,membersOp,depth,
 			  !Control.Print.printLength,accu)
 	       else if TU.eqTycon(tyc,BT.suspTycon) then 
-                 add_string ppstrm  "$$"  (* ZIDO *)
+                 add_string ppstrm  "$$"  (* LAZY *)
                else if TU.eqTycon(tyc,BT.listTycon) then
 		 ppList(obj,hd argtys,membersOp,depth,
 			!Control.Print.printLength,accu)
@@ -571,6 +571,9 @@ end (* structure PPObj *)
 
 (*
  * $Log: ppobj.sml,v $
+ * Revision 1.2  1998/05/15 03:20:58  dbm
+ *   Added lazyp parameter for dtmemberToTycon.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:16  george
  * Version 110.5
  *

@@ -101,11 +101,12 @@ fun parse (source : source) =
  *****************************************************************************)
 
 (** several preprocessing phases done after parsing or after elaborations *)
+(*
 val fixityparse = (* ST.doPhase (ST.makePhase "Compiler 005 fixityparse") *) 
   FixityParse.fixityparse
 val lazycomp = (* ST.doPhase (ST.makePhase "Compiler 006 lazycomp") *)
   LazyComp.lazycomp
-
+*)
 val pickUnpick = 
   ST.doPhase (ST.makePhase "Compiler 036 pickunpick") CC.pickUnpick
 
@@ -113,11 +114,10 @@ val pickUnpick =
 fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = 
   let (** the following should go away soon; it needs clean up **)
       val bsenv = fromCM senv
-      val {ast=ast, compenv=_} =
-        fixityparse {ast=ast,compenv=bsenv,compInfo=cinfo} 
-      val {ast=ast} =
-        lazycomp{ast=ast, compenv=bsenv, compInfo=cinfo} 
-
+(* lazycomp folded into elaborate phase
+      val ast = fixityparse {ast=ast,env=bsenv,error=#error cinfo}
+      val ast = lazycomp ast
+*)
       val (absyn, nenv) = ElabTop.elabTop(ast, bsenv, cinfo)
       val (absyn, nenv) = 
         if anyErrors (cinfo) then (A.SEQdec nil, SE.empty) else (absyn, nenv)
@@ -339,6 +339,19 @@ end (* local of exception Compile *)
 
 (*
  * $Log: compile.sml,v $
+ * Revision 1.3  1998/05/20 18:40:34  george
+ *   We now use a new cross-module linkage conventions; the import
+ *   list of each module is now described as a tree which specifies
+ *   in details about which component of a structure is imported.
+ *   Also, each compilation unit now has a new data segment area,
+ *   this also affects the changes on linking conventions and the
+ *   binfile format. The new bin file format is described in
+ *   batch/batchutil.sml.
+ * 						-- zsh
+ *
+ * Revision 1.2  1998/05/15 03:51:37  dbm
+ *   Eliminate calls to fixityparse and lazycomp (which no longer exist).
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:15  george
  * Version 110.5
  *

@@ -56,7 +56,7 @@ fun ppDcon ppstrm =
      in ppD
     end
 
-fun ppDebugDcon ppstrm env (DATACON{name,rep,const,typ,sign}) =
+fun ppDebugDcon ppstrm env (DATACON{name,rep,const,typ,sign,lazyp}) =
     let val {begin_block,end_block,pps,add_break,...} = en_pp ppstrm
 	val ppSym = ppSym ppstrm
      in begin_block CONSISTENT 3;
@@ -65,6 +65,7 @@ fun ppDebugDcon ppstrm env (DATACON{name,rep,const,typ,sign}) =
 	pps "{name = "; ppSym name; add_comma_nl ppstrm;
 	pps "const = "; pps (Bool.toString const); add_comma_nl ppstrm;
 	pps "typ = "; ppType env ppstrm typ; add_comma_nl ppstrm;
+	pps "lazyp = "; pps (Bool.toString lazyp); add_comma_nl ppstrm;
 	pps "conrep ="; ppRep ppstrm rep; add_comma_nl ppstrm;
         pps "sign = ["; ppCsig ppstrm sign; pps "]}";
         end_block()
@@ -177,6 +178,9 @@ end (* structure PPVal *)
 
 (*
  * $Log: ppval.sml,v $
+ * Revision 1.2  1998/05/15 03:22:17  dbm
+ *   Added lazyp parameter to ppDebugDcon.  Add printing of lazyp field.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:17  george
  * Version 110.5
  *

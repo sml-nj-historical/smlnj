@@ -22,6 +22,7 @@ struct
   val cvti2dOffset = ~4
   fun copyTmp() = SOME(I.Direct(C.newReg()))
 
+
   fun doMilliCall offset {rs, rt, rd} = let
     fun addList([], cs) = cs
       | addList(r::rs, cs) = addList(rs, C.addReg(r,cs))
@@ -49,6 +50,9 @@ end
 
 (*
  * $Log: hppaMillicode.sml,v $
+ * Revision 1.2  1998/05/19 15:33:18  george
+ *   minor cleanup
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

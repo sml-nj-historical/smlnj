@@ -22,10 +22,11 @@ struct
 
   (* should change the return pointer to 2 to follow HPUX conventions *)
   fun doCall({stm,rexp,emit}:reduce, T.CALL(exp, def, use)) = let
+        val addCCreg = C.addCell C.CC
 	fun live([], acc) = acc
 	  | live(T.GPR(T.REG r)::regs, acc) = live(regs, C.addReg(r, acc))
 	  | live(T.FPR(T.FREG f)::regs, acc) = live(regs, C.addFreg(f, acc))
-	  | live(T.CCR(T.CC c)::regs, acc) = live(regs, C.addCCreg(c, acc))
+	  | live(T.CCR(T.CC c)::regs, acc) = live(regs, addCCreg(c, acc))
 	  | live(_::regs, acc) = live(regs, acc)
 	val returnPtr = 31
 	val defs = C.addReg(returnPtr, live(def, C.empty))
@@ -46,6 +47,9 @@ end
 
 (*
  * $Log: hppaLabelComp.sml,v $
+ * Revision 1.2  1998/05/19 15:33:16  george
+ *   addCCreg implemented with new cell class
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

@@ -38,6 +38,7 @@ typedef struct {	    /* The header of a .bin file; note that the fields */
     Byte_t	magic[16];	/* magic number */
     Int32_t	importCnt;	/* the number of imported PerIDs. */
     Int32_t	exportCnt;	/* the number of exported PerIDs. */
+    Int32_t	importSzB;	/* size of import tree area */
     Int32_t	cmInfoSzB;	/* the size of the CM dependency information area */
     Int32_t	lambdaSzB;	/* the size of inlinable lambda expressions */
     Int32_t	reserved1;	/* reserved for future use */

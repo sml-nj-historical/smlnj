@@ -296,6 +296,13 @@ end (* structure CPStrans *)
 
 (*
  * $Log: cpstrans.sml,v $
+ * Revision 1.2  1998/05/20 18:33:02  george
+ *   CPStrans now does one more task: spilling the argument registers.
+ *   Argument flattening done by FLINT may over-flatten a function
+ *   argument, the spilling done here checks if the flattening satisfies
+ *   the machine specification; and if not, it does proper spilling.
+ * 						-- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:47  george
  * Version 110.5
  *

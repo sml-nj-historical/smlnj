@@ -9,7 +9,7 @@ MAKE =		gmake
 
 ARFLAGS =	Trcv
 CC =		gcc -ansi
-CFLAGS =	-O
+CFLAGS =	-O2
 CPP =		gcc -x c -E -P -ansi
 #CPP =		/usr/bin/cpp -P
 

@@ -1,6 +1,13 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+Version 1.0.12 (SML/NJ 110; patch 4)
+------------------------------------
+
+  - Fixed bug in ChanIOFn (failure to spawn threads).
+    [1998-03-12]
+
+
 Version 1.0.11 (SML/NJ 109.33 and 110)
 --------------------------------------
 

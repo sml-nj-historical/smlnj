@@ -15,13 +15,13 @@ functor HppaShuffle(I:HPPAINSTR) = struct
 
   fun fmove{src=I.FDirect fs, dst=I.FDirect fd} = [I.FUNARY{fu=I.FCPY, f=fs, t=fd}]
     | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} = let
-        val tmp = I.C.newReg()
+        val tmp = I.C.newCell I.C.GP ()
       in
 	[I.LDO{i=I.IMMED disp, b=base, t=tmp},
 	 I.FLOADX{flx=I.FLDDX, b=tmp, x=0, t=ft, mem=mem}]
       end
     | fmove{src=I.FDirect fs, dst=I.Displace{base, disp}} = let
-	val tmp = I.C.newReg()
+	val tmp = I.C.newCell I.C.GP ()
       in
 	[I.LDO{i=I.IMMED disp, b=base, t=tmp},
 	 I.FSTOREX{fstx=I.FSTDX, b=tmp, x=0, r=fs, mem=mem}]
@@ -36,6 +36,9 @@ end
 
 (*
  * $Log: hppaShuffle.sml,v $
+ * Revision 1.2  1998/05/19 15:46:52  george
+ *   Minor cleanup
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

@@ -4,17 +4,20 @@
  *
  *)
 
-structure Alpha32Cells : CELLS = struct
+structure Alpha32Cells : ALPHA32CELLS = struct
   structure S = SortedList
 
-  exception Alpha32Cells
+  type regmap = int Intmap.intmap
+  datatype cellclass = GP | FP | CC | CR | MEM | CTRL
+
+  exception Cells
 
   val stackptrR		= 30
   val asmTmpR		= 28
   val fasmTmp		= 30
-  val firstPseudoReg	= 128
+  val firstPseudo	= 256
 
-  val counter = ref firstPseudoReg
+  val counter = ref firstPseudo
   val regCnt = ref 0
   val fregCnt = ref 0
   fun bump (r as ref c) = (r := c+1; c)
@@ -25,20 +28,37 @@ structure Alpha32Cells : CELLS = struct
   fun newReg ()   = (bump regCnt; bump counter)
   fun newFreg()   = (bump fregCnt; bump counter)
   fun newCCreg()  = (bump regCnt; bump counter)
-  fun maxReg()    = !counter
-  fun maxFreg()   = !counter
-  fun numRegs()   = !regCnt
-  fun numFregs()  = !fregCnt
   fun resetRegs() = let 
-    val regmap = Intmap.new(64, Alpha32Cells)
+    val regmap = Intmap.new(64, Cells)
     val enter = Intmap.add regmap
   in
-    counter:=firstPseudoReg; 
+    counter:=firstPseudo; 
     regCnt :=0; 
     fregCnt:=0; 
     app (fn r => enter(r,r)) physicalRegs;
     regmap
   end
+
+  fun newCell GP = newReg
+    | newCell FP = newFreg 
+    | newCell CC = newReg 
+    | newCell _  = fn () => bump counter
+
+  fun maxCell () = !counter
+  fun numCell GP = (fn () => !regCnt)
+    | numCell FP = (fn () => !fregCnt)
+    | numCell _  = raise Cells
+
+  fun cellToString(r,class) = prefix class^Int.toString r
+  and prefix GP   = "r"
+    | prefix FP   = "f"
+    | prefix CC   = "cc"
+    | prefix MEM  = "m"
+    | prefix CTRL = "ctrl"
+  
+  fun zero GP = SOME 31
+    | zero FP = SOME 31
+    | zero _ = NONE
 
   type cellset = int list * int list	(* (regs * fregs) *)
   fun cellset2string(regs, fregs) = let
@@ -49,7 +69,10 @@ structure Alpha32Cells : CELLS = struct
   val empty = ([], [])
   fun addReg(r, (rc,fc)) = (S.enter(r,rc), fc)
   fun addFreg(f, (rc,fc)) = (rc, S.enter(f, fc))
-  val addCCreg = addReg
+  fun addCell GP = addReg
+    | addCell FP = addFreg
+    | addCell CC = addReg
+    | addCell _  = raise Cells
 
   fun cellsetToRegs(regmap, (regs,fregs)) = let
     val lookup = Intmap.map regmap 
@@ -64,16 +87,11 @@ structure Alpha32Cells : CELLS = struct
 end
 
 
-
-
-
-
-
-
-
-
 (*
  * $Log: alpha32Cells.sml,v $
+ * Revision 1.2  1998/05/19 15:40:59  george
+ *   The cells interface now makes registers an abstract type called cellclass.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

@@ -30,11 +30,13 @@ functor HppaRegAlloc(structure P : INSN_PROPERTIES
    end=
 struct
 
+  structure C=I.C
+
   (* liveness analysis for general purpose registers *)
   structure RegLiveness = 
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
-	     val defUse = P.defUseR
+	     val defUse = P.defUse C.GP
 	     fun regSet c = #1 (c:HppaCells.cellset)
 	     fun cellset((_,f),r) = (r,f))
 
@@ -47,10 +49,10 @@ struct
 	   structure I = I
 	   structure Liveness=RegLiveness
 
-	   val defUse = P.defUseR
+	   val defUse = P.defUse C.GP
 	   val firstPseudoR = 32
-	   val maxPseudoR = HppaCells.maxReg
-	   val numRegs = HppaCells.numRegs
+	   val maxPseudoR = HppaCells.maxCell
+	   val numRegs = HppaCells.numCell HppaCells.GP
 	   fun regSet c = #1 (c:HppaCells.cellset)
 	end)
 
@@ -58,7 +60,7 @@ struct
   structure FregLiveness = 
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
-	     val defUse = P.defUseF
+	     val defUse = P.defUse C.FP
 	     fun regSet c = #2 (c:HppaCells.cellset)
 	     fun cellset((r,_),f) = (r,f))
 
@@ -70,16 +72,20 @@ struct
 	   structure I = I
 	   structure Liveness=FregLiveness
 
- 	   val defUse = P.defUseF
+ 	   val defUse = P.defUse C.FP
 	   val firstPseudoR = 32
-	   val maxPseudoR = HppaCells.maxFreg
-	   val numRegs = HppaCells.numFregs
+	   val maxPseudoR = HppaCells.maxCell 
+	   val numRegs = HppaCells.numCell HppaCells.FP
 	   fun regSet c = #2 (c:HppaCells.cellset)
 	end)
 end
 
 (*
  * $Log: hppaRegAlloc.sml,v $
+ * Revision 1.2  1998/05/19 15:45:55  george
+ *   The instructions properties now exports a generic defUse function that is
+ *   curried over the cellclass, i.e., defUseR and defUseF are gone.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

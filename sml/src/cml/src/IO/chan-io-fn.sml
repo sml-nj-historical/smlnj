@@ -25,7 +25,8 @@ functor ChanIOFn (
   (* create a reader that is connected to the output port of a channel. *)
     fun mkReader ch = let
 	  val closedFlg = SV.iVar()
-	  val isClosedEvt = CML.wrap(SV.iGetEvt closedFlg, fn () => raise IO.ClosedStream)
+	  val isClosedEvt =
+		CML.wrap(SV.iGetEvt closedFlg, fn () => raise IO.ClosedStream)
 	  datatype req
 	    = RD of (int * unit CML.event * V.vector CML.chan)
 	    | CLOSE
@@ -92,6 +93,7 @@ functor ChanIOFn (
 		(* end case *))
 	  and closedServer () = (ignore(Mailbox.recv reqCh); closedServer())
 	  in
+	    ignore(CML.spawnc server NONE);
 	    PrimIO.RD{
 		name       = "<channel>", 
 		chunkSize  = 1024,			(* ?? *)
@@ -112,7 +114,8 @@ functor ChanIOFn (
   (* create a writer that is connected to the input port of a channel. *)
     fun mkWriter ch = let
 	  val closedFlg = SV.iVar()
-	  val closedEvt = CML.wrap (SV.iGetEvt closedFlg, fn () => raise IO.ClosedStream)
+	  val closedEvt =
+		CML.wrap (SV.iGetEvt closedFlg, fn () => raise IO.ClosedStream)
 	  val ch' = CML.channel()
 	  fun buffer () = CML.select [
 		  CML.wrap (CML.recvEvt ch', fn v => (
@@ -137,6 +140,7 @@ functor ChanIOFn (
 		end
 	  fun close () = SV.iPut(closedFlg, ())
 	  in
+	    ignore(CML.spawn(fn () => ignore(buffer())));
 	    PrimIO.WR{
 		name        = "<channel>",
 		chunkSize   = 1024,

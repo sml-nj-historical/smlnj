@@ -210,8 +210,13 @@ void ScanWeakPtrs (heap_t *heap)
 	  case OBJC_record:
 	  case OBJC_string:
 	  case OBJC_array:
+#ifdef POINTERS_INTO_OBJECTS
 	    for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
 		continue;
+#else
+	    obj_start = obj;
+	    desc = obj_start[-1];
+#endif
 	    if (desc == DESC_forwarded) {
 		p[0] = DESC_weak;
 		p[1] = PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
@@ -224,7 +229,11 @@ void ScanWeakPtrs (heap_t *heap)
 	    }
 	    break;
 	  case OBJC_pair:
+#ifdef POINTERS_INTO_OBJECTS
 	    obj_start = (ml_val_t *)((Addr_t)obj & ~(PAIR_SZB-1));
+#else
+	    obj_start = obj;
+#endif
 	    if (isDESC(desc = obj_start[0])) {
 		p[0] = DESC_weak;
 		p[1] = PTR_CtoML(FOLLOW_FWDPAIR(desc, obj_start, obj));

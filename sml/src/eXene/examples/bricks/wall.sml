@@ -116,7 +116,7 @@ structure Wall : WALL =
         mkWallWidget (root,#concrete palette,Label.widgetOf msgArea, bricklist)
 
       local
-        val random = Rand.mkRandom 1.0
+        val random = Rand.mkRandom 0w1
       in
         fun randx () = Rand.range (0,xSize-1) (random())
         fun randy () = Rand.range (0,ySize-1) (random())

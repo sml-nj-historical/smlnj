@@ -3,7 +3,7 @@ signature HPPAINSTR = sig
   structure Region : REGION
 
   type csets = int list * int list
-  structure C : CELLS where type cellset = csets
+  structure C : HPPACELLS where type cellset = csets
 
   datatype store = STW | STH | STB 
 
@@ -40,8 +40,9 @@ signature HPPAINSTR = sig
   datatype fload = FLDDS | FLDWS
 
   datatype bcond = EQ | LT | LE | LTU | LEU | NE | GE | GT | GTU | GEU
-  datatype fcond = 
-    == | != | ? | <=> | > | >= | ?> | ?>= | < | <= | ?< | ?<= | <> | ?= 
+  datatype fcond = ? | !<=> | == | ?= | !<> | !?>= | < | ?< | !>= | !?> |
+                   <= | ?<= | !> | !?<= | > | ?> | !<= | !?< | >= | ?>= |
+                   !< | !?= | <> | != | !? | <=>
 
   datatype scond = ALL_ZERO | LEFTMOST_ONE | LEFTMOST_ZERO | RIGHTMOST_ONE
                  | RIGHTMOST_ZERO 
@@ -110,6 +111,9 @@ end
 
 (*
  * $Log: hppaInstr.sig,v $
+ * Revision 1.2  1998/05/19 15:45:11  george
+ *   Introduced the full set of IEEE comparision operators.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

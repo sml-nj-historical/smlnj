@@ -176,31 +176,33 @@ structure Core =
        val dupstring = dupstring
 
       
-	(* ZIDO:  The following definitions are essentially stolen from
-                  SMLofNJ.Susp.  Unfortunately, they had to be copied
-                  here in order to implement lazyness. *)
+      (* LAZY: The following definitions are essentially stolen from
+       *  SMLofNJ.Susp.  Unfortunately, they had to be copied here in
+       *  order to implement lazyness (in particular, in order to be
+       *  able to compute pids for them.) *)
 
-        (* (In particular, in order to be able to compute pids for them.) *)
-
-      (* ZIDO:  The following is hard-wiredand needs to track the object
+      (* LAZY:  The following is hard-wired and needs to track the object
        * descriptor definitions.
        *)
-        val TSUS = 0;  (* == ObjectDesc.special_unevaled_susp *)
-        val TSES = 1;  (* == ObjectDesc.special_evaled_susp *)
+       val TSUS = 0;  (* == ObjectDesc.special_unevaled_susp *)
+       val TSES = 1;  (* == ObjectDesc.special_evaled_susp *)
 
-        datatype 'a susp = Something of 'a  (* Just a hack for bootstrapping *)
+       datatype 'a susp = Something of 'a  (* Just a hack for bootstrapping *)
 
-        fun delay (f : unit -> 'a) = (InLine.mkspecial(TSUS , f)):('a susp)
-        fun force (x : 'a susp) =
-              if InLine.i31eq((InLine.getspecial x),TSUS)
-               then let
-                  val y : 'a = InLine.arrSub (InLine.cast x, 0) ()
-                  in
-                    InLine.arrUpdate (InLine.cast x, 0, y);
-                    InLine.setspecial (InLine.cast x, TSES);
-                    y
-                  end
-                else InLine.arrSub (InLine.cast x, 0)
+       fun delay (f : unit -> 'a) = (InLine.mkspecial(TSUS , f)):('a susp)
+       fun force (x : 'a susp) =
+	     if InLine.i31eq((InLine.getspecial x),TSUS)
+	      then let
+		 val y : 'a = InLine.arrSub (InLine.cast x, 0) ()
+		 in
+		   InLine.arrUpdate (InLine.cast x, 0, y);
+		   InLine.setspecial (InLine.cast x, TSES);
+		   y
+		 end
+	       else InLine.arrSub (InLine.cast x, 0)
+
+
+       (* equality primitives *)
 
        fun stringequal(a : string,b : string) =
 	  if peql(a,b) then true
@@ -269,6 +271,9 @@ structure Core =
 
 (*
  * $Log: core.sml,v $
+ * Revision 1.2  1998/05/15 03:28:53  dbm
+ *   Revised comments relating to lazysml.
+ *
  * Revision 1.1.1.1  1998/04/08 18:40:05  george
  * Version 110.5
  *

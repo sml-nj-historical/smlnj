@@ -26,15 +26,13 @@ struct
 	    = Unsafe.cast PPTable.install_pp
     end (* PPTable *)
   structure Ast = Ast
-  structure LazyComp = LazyComp 
-  structure FixityParse = FixityParse
 
   structure Interact = Interact(EvalLoopF(CompileF(structure M=Machm
                                                    structure CC=IntConfig)))
   structure Compile = CompileF(structure M=Machm
                                structure CC=BatchConfig)
-  structure BatchUtil = BatchUtilFun(Compile)
-  structure CMSA = CMSAFun (structure BU = BatchUtil
+  structure Binfile = BinfileFun (Compile)
+  structure CMSA = CMSAFun (structure BF = Binfile
                             structure C = Compile)
 
   structure Profile = ProfileFn(ProfEnv(Interact))
@@ -59,6 +57,12 @@ end (* functor VisComp *)
 
 (*
  * $Log: viscomp.sml,v $
+ * Revision 1.3  1998/05/21 17:54:51  jhr
+ *   Merging in Matthias's changes.
+ *
+ * Revision 1.2  1998/05/15 03:54:31  dbm
+ *   Eliminate FixityParse and LazyComp.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:14  george
  * Version 110.5
  *

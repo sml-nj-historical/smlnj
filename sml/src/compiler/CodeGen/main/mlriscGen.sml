@@ -56,8 +56,10 @@ struct
 
   val M.REG allocptrR = C.allocptr
 
-  val dedicated = 
+  val dedicated' = 
     map (M.GPR o M.REG) C.dedicatedR @ map (M.FPR o M.FREG) C.dedicatedF
+  val dedicated = 
+    case C.exhausted of NONE => dedicated' | SOME cc => M.CCR cc :: dedicated'
 
   fun codegen(funcs : CPS.function list, limits:CPS.lvar -> (int*int), err) = let
     val maxAlloc  = #1 o limits
@@ -73,9 +75,9 @@ struct
     val addTypBinding = Intmap.add typTbl
     val typmap = Intmap.map typTbl
 
-    fun mkGlobalTables(fk, f, _, _, _) = 
+    fun mkGlobalTables(fk, f, _, _, _) =
       (addLabelTbl (f, Label.newLabel(Int.toString f));
-       case fk 
+       case fk
 	of CPS.CONT => addTypBinding(f, CPS.CNTt)
          | _ => addTypBinding(f, CPS.BOGt)
        (*esac*))
@@ -252,12 +254,15 @@ struct
       end
 
       fun testLimit hp = let
-        fun assignCC(M.CC cc, v) = M.CCMV(cc, v)
-	  | assignCC(M.LOADCC(ea,region), v) = M.STORECC(ea, v, region)
+        fun assignCC(M.CC cc, v) = emit(M.CCMV(cc, v))
+	  | assignCC(M.LOADCC(ea,region), v) = emit(M.STORECC(ea, v, region))
 	  | assignCC _ = error "testLimit.assign"
       in
 	updtHeapPtr(hp);
-	assignCC(C.exhausted, M.CMP(M.GTU, C.allocptr, C.limitptr, M.LR))
+	case C.exhausted 
+        of NONE => () 
+         | SOME cc => assignCC(cc, M.CMP(M.GTU, C.allocptr, C.limitptr, M.LR))
+	(*esac*)
       end
 
       (* Int 31 tag optimization *)
@@ -519,9 +524,9 @@ struct
 	          ArgP.standard(typmap f, map grabty args)
 	  in
 	    callSetup(formals, args);
-	    emit(testLimit hp);
+	    testLimit hp;
 	    emit(M.JMP(dest, []));
-	    comp(M.ESCAPEBLOCK(formals @ (M.CCR C.exhausted :: dedicated)))
+	    comp(M.ESCAPEBLOCK(formals @ dedicated))
 	  end
 	| gen(APP(func as LABEL f, args), hp) = 
 	  (case Intmap.map genTbl f
@@ -550,7 +555,7 @@ struct
 	       in
 		 r:=Frag.GEN formals;
 		 callSetup(formals, args);
-		 emit(testLimit hp);
+		 testLimit hp;
 		 emit(branchToLabel(lab));
 		 comp(M.DEFINELABEL lab);
 		 CallGc.knwCheckLimit 
@@ -563,13 +568,13 @@ struct
 	       end
 	     | Frag.KNOWNCHK(ref(Frag.GEN formals)) => 
 	         (callSetup(formals, args); 
-		  emit(testLimit hp);
+		  testLimit hp;
 		  emit(branchToLabel(functionLabel f)))
 	     | Frag.STANDARD{fmlTyps, ...} => let
 	         val formals = ArgP.standard(typmap f, fmlTyps)
 	       in
 		 callSetup(formals, args);
-		 emit(testLimit hp);
+		 testLimit hp;
 		 emit(branchToLabel(functionLabel f))
 	       end
 	     | _ => error "APP"
@@ -1075,6 +1080,9 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.2  1998/05/08 10:52:26  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

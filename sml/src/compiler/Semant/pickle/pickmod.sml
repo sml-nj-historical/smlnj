@@ -540,8 +540,8 @@ let val alphaConvert = alphaConverter ()
       | eqprop T.ABS () = "Aq" $ []
       | eqprop T.UNDEF()= "Uq" $ []
 
-    fun datacon (T.DATACON{name=n,const=c,typ=t,rep=r,sign=s}) () =
-	  "Dr" $ [symbol n, bool c, ty t, conrep r, consig s]
+    fun datacon (T.DATACON{name=n,const=c,typ=t,rep=r,sign=s,lazyp=l}) () =
+	  "Dr" $ [symbol n, bool c, ty t, conrep r, consig s, bool l]
 
     and tyckind (T.PRIMITIVE pt) () = "Ps" $ [int (PT.pt_toint pt)] 
       | tyckind (T.DATATYPE{index=i, family, stamps=ss, root, freetycs}) () = 
@@ -572,8 +572,8 @@ let val alphaConvert = alphaConverter ()
 
     and tycpath _ () = bug "unexpected tycpath during the pickling"
 
-    and dtmember {tycname=n,dcons=d,arity=i,eq=ref e,sign=sn} () =
-          "Tt" $ [symbol n, list nameRepDomain d, int i, eqprop e,
+    and dtmember {tycname=n,dcons=d,arity=i,eq=ref e,lazyp=l,sign=sn} () =
+          "Tt" $ [symbol n, list nameRepDomain d, int i, eqprop e, bool l,
 		  consig sn]
 
     and nameRepDomain {name=n,rep=r,domain=t} () =
@@ -894,14 +894,14 @@ fun dontPickle (senv : StaticEnv.staticEnv, count) =
 				  env),
 			 k :: lvars)
 		     | _ => (say(A.prAcc a ^ "\n"); bug "dontPickle 3"))
-	       | B.CONbind(T.DATACON{name=n,const=c,typ=t,sign=s,
+	       | B.CONbind(T.DATACON{name=n,const=c,typ=t,sign=s,lazyp=false,
 				     rep as (A.EXN a)}) =>
 		   let val newrep = A.EXN (newAccess i)
                     in case a
 			 of A.LVAR k =>
 			     (i+1,
 			      Env.bind(sym,B.CONbind
-				       (T.DATACON{rep=newrep, name=n,
+				       (T.DATACON{rep=newrep, name=n, lazyp=false,
 						  const=c, typ=t, sign=s}),
 				       env),
 			      k :: lvars)
@@ -923,6 +923,15 @@ end (* structure PickMod *)
 
 (*
  * $Log: pickmod.sml,v $
+ * Revision 1.3  1998/05/20 18:39:35  george
+ *   As a result of the new linkage conventions, we no longer need
+ *   the LT_PST type. Certain utility functions on FLINT types are
+ *   significantly simplified.
+ * 						-- zsh
+ *
+ * Revision 1.2  1998/05/15 03:45:18  dbm
+ *   Added lazyp field as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:31  george
  * Version 110.5
  *

@@ -2,11 +2,12 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1995>
 <VERSION VERID="1.0" YEAR=1995 MONTH=11 DAY=16>
 <TITLE>Porting old programs</TITLE>
 
-<SECT>
+<SECTION>
 <HEAD>Porting old CML programs</HEAD>
 
 <PP>
@@ -16,14 +17,15 @@ changes in the &SML; interfaces, and to rationalize naming conventions.
 In this section, we detail the changes to the &CML; interfaces, and
 describe correspondence between the old and new interfaces.
 
-<SUBSECT>
+<SECTION>
 <HEAD>Backwards compatibility modules</HEAD>
 <PP>
 To ease the transition from version&nbsp;0.9.8 of &CML; to the new
 interfaces, we provide two backwards compatibility modules in the
 &CML; Library.
+</SECTION>
 
-<SUBSECT>
+<SECTION>
 <HEAD>Name changes</HEAD>
 <PP>
 <TABLE>
@@ -37,8 +39,9 @@ interfaces, we provide two backwards compatibility modules in the
   <TR><TD><IDREF/threadWait/	<TD><VALREF STRID="CML"/joinEvt/
   <TR><TD><IDREF/sameThread/	<TD><VALREF STRID="CML"/sameTid/
 </TABLE>
+</SECTION>
 
-<SUBSECT>
+<SECTION>
 <HEAD>Input/output</HEAD>
 <PP>
 The most significant changes to the &CML; interfaces have to do with
@@ -48,11 +51,13 @@ of the &SMLNJ; <IDREF/IO/ signature extended with event-valued operations.
 The old &SML; I/O interface has been replaced with a new interface, which is
 described in the <DOCREF DOCUMENT=SML-BASIS-DOC/&SML; Basis Library Manual/,
 and &CML; has followed suite.
+</SECTION>
 
-<SUBSECT>
+<SECTION>
 <HEAD>Condition variables</HEAD>
+</SECTION>
 
-<SUBSECT>
+<SECTION>
 <HEAD>Polling</HEAD>
 <PP>
 The only loss in function from version&nbsp;0.9.8 is the elimination
@@ -60,3 +65,6 @@ of the <IDREF/poll/ operation, which provided a non-blocking form
 of <VALREF STRID="CML"/sync/.
 Instead of this operation, &CML; now provides non-blocking input operations
 on many of the basic communication types.
+</SECTION>
+</SECTION>
+

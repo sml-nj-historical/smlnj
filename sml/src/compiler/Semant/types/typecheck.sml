@@ -40,8 +40,8 @@ infix -->
 
 val printDepth = Control.Print.printDepth
 
-fun refNewDcon(DATACON{name,const,rep,typ,sign}) = 
-  DATACON{name=name,const=const,rep=rep,typ=refPatType,sign=sign}
+fun refNewDcon(DATACON{name,const,rep,typ,sign,lazyp}) = 
+  DATACON{name=name,const=const,rep=rep,typ=refPatType,sign=sign,lazyp=lazyp}
 
 exception NotThere
 
@@ -810,6 +810,9 @@ end (* structure Typecheck *)
 
 (*
  * $Log: typecheck.sml,v $
+ * Revision 1.2  1998/05/15 03:47:54  dbm
+ *   Added lazyp fields as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:38  george
  * Version 110.5
  *

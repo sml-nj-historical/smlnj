@@ -372,7 +372,7 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
                    of T.GENtyc{kind=T.DATATYPE{index, family as {members,...},
                                                stamps, freetycs, ...}, ...} => 
 		        let val stamp = Vector.sub(stamps,index)
-                            val {tycname, arity, dcons, sign, ...} =
+                            val {tycname, arity, dcons, sign, lazyp, ...} =
 			         Vector.sub(members,index)
 			    (* add the type *)
 			    val ev = mkStamp()
@@ -432,6 +432,7 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 						     | _ => false
 				      val nd = T.DATACON {name=name,rep=rep,
 							  const=const,
+							  lazyp=lazyp,
                                                           sign=sign,
 							  typ=typ}
  			              val dspec = CONspec{spec=nd, slot=NONE}
@@ -470,10 +471,11 @@ fun elabDATArepl(name,syms,env,elements,symbols,region) =
 			    (* get the dcons -- quick and dirty (buggy?) hack *)
 			    val dcons = TU.extractDcons tyc
 			    fun addDcons([], elems, syms) = (elems, syms)
-			      | addDcons((d as T.DATACON{name,rep,const,sign,typ})::ds,
+			      | addDcons((d as T.DATACON{name,rep,const,lazyp,sign,
+							 typ})::ds,
 					 elems, syms) = 
 				  let val nd =
-				         T.DATACON {name=name,rep=rep,
+				         T.DATACON {name=name,rep=rep,lazyp=lazyp,
 						    const=const,sign=sign,
 						    typ= #1(MU.relativizeType epContext typ)}
 				      val dspec = CONspec{spec=nd, slot=NONE}
@@ -611,10 +613,10 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
       val _ = debugmsg "--elabDATATYPEspec: tycs added"
 
       fun addDcons([], elems, syms) = (elems, syms)
-        | addDcons((T.DATACON{name,rep,const,sign,typ})::ds, elems, syms) = 
+        | addDcons((T.DATACON{name,rep,const,sign,typ,lazyp})::ds, elems, syms) = 
             let val _ = debugPrint("addDcons - typ: ",
 		   (fn pps => fn ty => PPType.ppType env pps ty), typ)
-		val nd = T.DATACON {name=name, rep=rep, const=const,
+		val nd = T.DATACON {name=name, rep=rep, const=const, lazyp=lazyp,
                                     sign=sign, typ=vizty typ}
                 (** NOTICE that the call to vizty will kill all the 
                     references to old datatycs, dtycs, because the
@@ -635,7 +637,8 @@ fun elabDATATYPEspec0(dtycspec, env, elements, symbols, region) =
 
 fun elabDATATYPEspec(db as {datatycs,withtycs}, env, elements, symbols, region) = 
     case datatycs
-      of ([spec as Db{rhs=Repl syms,tyc=name,tyvars=[]}]) =>
+      of ([spec as Db{rhs=Repl syms,tyc=name,tyvars=[],lazyp=false}]) =>
+	  (* LAZY: not allowing datatype replication with lazy keyword *)
 	  elabDATArepl(name,syms,env,elements,symbols,region)
        | (Db{rhs=Constrs _,...}::_) => 
 	  elabDATATYPEspec0(db,env,elements,symbols,region)
@@ -836,7 +839,7 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
                            | NONE => (BT.exnTy, true))
              
                       val rep = A.EXN(A.nullAcc)
-                      val dcon = T.DATACON{name=name, const=const,
+                      val dcon = T.DATACON{name=name, const=const, lazyp=false,
                                            typ=typ, sign=A.CNIL, rep=rep}
                       val cspec = CONspec{spec=dcon, slot=SOME slots}
                       val elems' = add(name,cspec,elems,err)
@@ -848,12 +851,6 @@ fun elabSpec (spec, env, elements, symbols, slots, region) =
 
     | MarkSpec (spec,region') =>
         elabSpec(spec,env,elements,symbols,slots,region')
-
-    | FixSpec {ops,fixity} =>
-        (error region EM.WARN
-           "Fixity specification in signatures are ignored"
-           EM.nullErrorBody;
-         (env,elements,symbols,[],[],slots,false))
 
     | ShareStrSpec pl =>
         let fun loop(nil,internal) = internal
@@ -1082,6 +1079,9 @@ end (* structure ElabSig *)
 
 (*
  * $Log: elabsig.sml,v $
+ * Revision 1.2  1998/05/15 03:32:05  dbm
+ *   Added lazyp flag where appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:24  george
  * Version 110.5
  *

@@ -628,8 +628,11 @@ end (* structure FreeClose *)
 
 
 (*
- * $Log: nfreeclose.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:46  george
- * Version 110.5
+ * $Log: freeclose.sml,v $
+ * Revision 1.1  1998/05/20 18:36:49  george
+ *   New code that avoids sharing a single closure among
+ *   mututually recursive functions. This way, we'll no longer
+ *   have pointers that point to the middle of a record.
+ * 						-- zsh
  *
  *)

@@ -12,7 +12,7 @@ AS =		gas
 AR =		/usr/ccs/bin/ar
 GCC =		gcc
 CC =		$(GCC)
-CFLAGS =	-O
+CFLAGS =	-O2
 CPP =		$(GCC) -x c -E -P -ansi
 RANLIB =	$(AR) ts
 

@@ -351,7 +351,7 @@ fun extractSig (env, epContext, context,
                    slotCount+1, fctflag)
               end
 
-          | B.CONbind(dcon as T.DATACON{name,const,sign,typ,rep}) =>
+          | B.CONbind(dcon as T.DATACON{name,const,lazyp,sign,typ,rep}) =>
               let val typ' = relativize typ
                   val (rep', trans', slotOp, slotCount') =
                     case rep
@@ -362,7 +362,7 @@ fun extractSig (env, epContext, context,
                       | _ => (rep, trans, NONE, slotCount)
 
                   val ndcon = T.DATACON{name=name, const=const, sign=sign,
-                                        typ=typ', rep=rep'}
+                                        typ=typ', rep=rep', lazyp=lazyp}
 
                   val spec = CONspec{spec=ndcon, slot=slotOp}
                   val elements' = addElems((sym, spec), elements)
@@ -1497,7 +1497,7 @@ and elabDecl0
 	       in (resDec, entDec, env, entEnv)
 	      end
 
-	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil}::nil) =>
+	  | (Db{tyc=name,rhs=Repl syms,tyvars=nil,lazyp=false}::nil) =>
  	      (case withtycs
 		of _::_ => 
                     (error region EM.COMPLAIN
@@ -1623,6 +1623,9 @@ end (* structure ElabMod *)
 
 (*
  * $Log: elabmod.sml,v $
+ * Revision 1.2  1998/05/15 03:31:15  dbm
+ *   Added lazyp flag.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:22  george
  * Version 110.5
  *

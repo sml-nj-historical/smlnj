@@ -304,9 +304,14 @@ PVT ml_val_t MinorGC_ForwardObj (gen_t *gen1, ml_val_t v)
     Word_t	len;
     arena_t	*arena;
 
+#ifdef POINTERS_INTO_OBJECTS
   /* Find the object header (object may be derived) */
     for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
 	continue;
+#else
+    obj_start = obj;
+    desc = obj_start[-1];
+#endif
 
     switch (GET_TAG(desc)) {
       case DTAG_record:
@@ -329,7 +334,11 @@ PVT ml_val_t MinorGC_ForwardObj (gen_t *gen1, ml_val_t v)
       /* setup the forward pointer in the old pair */
 	obj_start[-1] = DESC_forwarded;
 	obj_start[0] = (ml_val_t)(Addr_t)new_obj;
+#ifdef POINTERS_INTO_OBJECTS
 	return PTR_CtoML((new_obj + (obj - obj_start)));
+#else
+	return PTR_CtoML(new_obj);
+#endif
       case DTAG_array:
 	len = GET_LEN(desc);
 	arena = gen1->arena[ARRAY_INDX];
@@ -381,7 +390,11 @@ PVT ml_val_t MinorGC_ForwardObj (gen_t *gen1, ml_val_t v)
   /* set up the forward pointer, and return the new object. */
     obj_start[-1] = DESC_forwarded;
     obj_start[0] = (ml_val_t)(Addr_t)new_obj;
+#ifdef POINTERS_INTO_OBJECTS
     return PTR_CtoML(new_obj + (obj - obj_start));
+#else
+    return PTR_CtoML(new_obj);
+#endif
 
 } /* end of MinorGC_ForwardObj */
 

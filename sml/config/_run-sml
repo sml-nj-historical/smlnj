@@ -80,6 +80,18 @@ if [ "$RUN" = "" ]; then
   # Construct the runtime system path from the ARCH and OS
   #
   RUN="$RUN_DIR/run.$ARCH-$OPSYS"
+  if [ ! -x "$RUN" ]; then
+    if [ "$ALT_OPSYS" = "" ]; then
+      echo "$CMD: cannot find runtime system $RUN"
+      exit 1
+    else
+      RUN="$RUN_DIR/run.$ARCH-$ALT_OPSYS"
+      if [ ! -x "$RUN" ]; then
+	echo "$CMD: cannot find runtime system $RUN"
+	exit 1
+      fi
+    fi
+  fi
 fi
 
 if [ "$HEAP" = "" ]; then
@@ -90,11 +102,6 @@ if [ "$HEAP" = "" ]; then
     APPL=$CMD
   fi
   HEAP="@SMLload=$HEAP_DIR/$APPL"
-fi
-
-if [ ! -x "$RUN" ]; then
-  echo "$CMD: cannot find runtime system $RUN"
-  exit 1
 fi
 
 #

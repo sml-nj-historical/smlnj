@@ -17,7 +17,9 @@ struct
   structure HppaRewrite = HppaRewrite(HppaInstr)
 
   (* properties of instruction set *)
-  structure HppaProps = HppaProps(structure HppaInstr = I val exnptrR = [6])
+  structure HppaProps = 
+    HppaProps(structure HppaInstr = I 
+	      structure Shuffle = HppaShuffle)
 
   
   (* Label backpatching and basic block scheduling *)
@@ -289,6 +291,9 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
+ * Revision 1.2  1998/05/19 15:33:14  george
+ *   instruction properties is no longer parameterized over the exnptrR
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

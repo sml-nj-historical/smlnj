@@ -19,23 +19,16 @@ functor Alpha32Shuffle(I:ALPHA32INSTR) = struct
     | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} =
 	[I.FLOAD{ldOp=I.LDT, r=ft, b=base, d=I.IMMop disp, mem=mem}]
 
-  val shuffle = 
-    Shuffle.shuffle
-      {mvInstr = 
-         fn {src=I.Direct rs, dst=I.Direct rd} =>
-	      [I.OPERATE{oper=I.BIS, ra=rs, rb=I.REGop 31, rc=rd}],
-       ea = I.Direct}
+  val shuffle = Shuffle.shuffle {mvInstr=move, ea=I.Direct}
 
-  val shufflefp = 
-    Shuffle.shuffle
-      {mvInstr = 
-         fn {src=I.FDirect fs, dst=I.FDirect fd} =>
-	      [I.FOPERATE{oper=I.CPYS, fa=fs, fb=fs, fc=fd}],
-       ea = I.FDirect}
+  val shufflefp = Shuffle.shuffle {mvInstr=fmove, ea=I.FDirect}
 end
 
 (*
  * $Log: alpha32Shuffle.sml,v $
+ * Revision 1.2  1998/05/19 15:43:47  george
+ *   Minor cleanup.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

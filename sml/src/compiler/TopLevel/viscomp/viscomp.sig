@@ -24,7 +24,7 @@ sig
   structure ModuleId : MODULE_ID
   structure CMStaticEnv : CMSTATICENV
   structure Profile : PROFILE
-  structure BatchUtil : BATCHUTIL
+  structure Binfile: BINFILE
   structure CMSA: CMSA
   structure PersStamps : PERSSTAMPS
   structure PrettyPrint : PRETTYPRINT
@@ -34,8 +34,6 @@ sig
                       (PrettyPrint.ppstream -> 'a -> unit) -> unit
    end
   structure Ast : AST
-  structure LazyComp: LAZY 
-  structure FixityParse: FIXITYPARSE
   structure Compile : COMPILE
   structure Interact : INTERACT
 (*
@@ -57,6 +55,12 @@ end
 
 (*
  * $Log: viscomp.sig,v $
+ * Revision 1.3  1998/05/21 17:54:49  jhr
+ *   Merging in Matthias's changes.
+ *
+ * Revision 1.2  1998/05/15 03:54:08  dbm
+ *   Eliminate FixityParse and LazyComp.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:14  george
  * Version 110.5
  *

@@ -95,7 +95,7 @@ fun reduceTy ty =
 
 fun expandREC (family as {members: T.dtmember vector, ...}, stamps, freetycs) =
   let fun g (RECtyc i) = 
-           let val {tycname,dcons,arity,eq,sign} =
+           let val {tycname,dcons,arity,eq,lazyp,sign} =
 	           Vector.sub(members,i)
                val s = Vector.sub(stamps, i)
             in GENtyc{stamp=s,arity=arity,eq=ref(YES), 
@@ -338,6 +338,9 @@ end (* structure Equal *)
 
 (*
  * $Log: pequal.sml,v $
+ * Revision 1.2  1998/05/15 03:14:53  dbm
+ *   Added lazyp flags.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:42  george
  * Version 110.5
  *

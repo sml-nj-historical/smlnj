@@ -35,8 +35,7 @@ struct
 
   val limitptr	= T.REG 4
   val varptr	= T.REG 7
-  val exhaustedR = 21
-  val exhausted	= T.CC exhaustedR
+  val exhausted	= NONE
   val storeptr	= T.REG 5
   val allocptr	= T.REG 3
   val exnptr	= T.REG 6
@@ -46,7 +45,7 @@ struct
   val stackptr	= T.REG 30
 
   val miscregs = 
-    map T.REG [1, 13, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 28, 2]
+    map T.REG [1, 13, 14, 15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 28, 2, 21]
   val calleesave = Array.fromList miscregs
 
   (* Note: We need at least one register for shuffling purposes. *)
@@ -58,8 +57,7 @@ struct
 
   val availR = 
     map (fn T.REG r => r)
-        ([stdlink, stdclos, stdarg, stdcont,
-	  gclinkreg, maskreg, T.REG exhaustedR] @ miscregs)
+        ([stdlink, stdclos, stdarg, stdcont, gclinkreg, maskreg] @ miscregs)
   val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
   val availF = SL.uniq(fromto(6, 30))
@@ -68,6 +66,9 @@ end
 
 (*
  * $Log: hppaCpsRegs.sml,v $
+ * Revision 1.2  1998/05/08 10:52:23  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

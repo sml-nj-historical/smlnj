@@ -11,4 +11,5 @@ is
   ../src/sources.cm
   ../../HTML/sources.cm
   simple-textio-dev.sml
+  string-token.sml
   html-dev.sml

@@ -1,5 +1,6 @@
 <!-- HTML/os-io.html -->
 
+<!-- COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies. -->
 <!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
 
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
@@ -7,15 +8,12 @@
 <HEAD>
 <TITLE>The OS.IO structure</TITLE>
 </HEAD>
-<BODY>
-<A NAME="top"></A>
+<BODY><A NAME="top"></A>
 <H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
 
 
-<H3>The <CODE>OS.IO</CODE> structure</H3>
-<P>
-  The OS.IO structure provides a general interface for polling I/O devices, which has been modelled after the Unix SVR4 poll interface.  A <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os-io.html#SIG:OS_IO.poll_desc:TY:SPEC">poll_desc</A>, created from an I/O descriptor, can be used to test for various polling conditions. 
+<H2><A NAME="section:0">The <CODE>OS.IO</CODE> structure</A></H2>
 <HR>
 <H4>Synopsis</H4>
 <BLOCKQUOTE>
@@ -23,6 +21,8 @@
 <B>structure </B><A NAME="IO:STR:SPEC"><CODE>IO</CODE></A><B> : </B>CML_OS_IO<BR>
 </CODE>
 </BLOCKQUOTE>
+<P>
+  The OS.IO structure provides a general interface for polling I/O devices, which has been modelled after the Unix SVR4 poll interface.  A <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os-io.html#SIG:OS_IO.poll_desc:TY:SPEC">poll_desc</A>, created from an I/O descriptor, can be used to test for various polling conditions. 
 <HR>
 <H4>Interface</H4>
 <BLOCKQUOTE>
@@ -35,7 +35,7 @@
 <DT> <A NAME="SIG:CML_OS_IO.pollEvt:VAL"><CODE>pollEvt <VAR>l</VAR>
         </CODE></A>
 <DD>
-polls a list of poll descriptors <VAR>l</VAR>. 	This will raise <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#SIG:OS.SysErr:EXN:SPEC">OS.SysErr</A> if, for example, 	one of the file descriptors refers to a closed file.     
+polls a list of poll descriptors <VAR>l</VAR>. 	This will raise <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#SIG:OS.SysErr:EXN:SPEC">OS.SysErr</A> if, for example, 	one of the file descriptors refers to a closed file.
 <BR>
 <BR>
 
@@ -49,16 +49,18 @@ polls a list of poll descriptors <VAR>l</VAR>. 	This will raise <A HREF="http://
 
 <HR>
 <CENTER>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
-   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="core-cml.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
    ]</B>
 </CENTER>
 <P>
-<I>Last Modified April 30, 1996</I><BR>
+<I>Last Modified &date;</I><BR>
 <I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
 
-Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
 
 <HR>
-</BODY>
-</HTML>
+</BODY></HTML>

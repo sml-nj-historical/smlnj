@@ -6,7 +6,7 @@
 <VERSION VERID="1.0" YEAR=1997 MONTH=1 DAY=29>
 <TITLE>The TraceCML structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/TraceCML/ structure</HEAD>
 
 <PP>
@@ -36,6 +36,7 @@ because of an uncaught exception.
     <SPEC>
       <TYPE><ID>trace_module
       <COMMENT>
+	<PP>
 	A <TYREF NOLINK/trace_module/ is an element in a hierarchical
 	name space, which is used to control debugging output.
     <SPEC>
@@ -47,6 +48,7 @@ because of an uncaught exception.
         <CONS>TraceToStream<TY>TextIO.outstream
       </DATATYPE>
       <COMMENT>
+	<PP>
 	The various destinations of trace output.
     <SPEC>
       <VAL>setTraceFile<TY>trace_to -> unit
@@ -185,8 +187,6 @@ because of an uncaught exception.
           </PROTOTY>
           resets the default uncaught exception action to the system default,
 	  and removes any layered actions.
-<!-- optional SEEALSO; uncomment to use     -->
-<!-- <SEEALSO>    -->
-<!--   non-empty list of XREFS here   -->
-<!-- </SEEALSO>    -->
 </STRUCTURE>
+</INTERFACE>
+

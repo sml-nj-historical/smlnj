@@ -548,15 +548,9 @@ fun gtLabel(a,b) =
 (* Tests used to implement the value restriction *)
 (* Based on Ken Cline's version; allows refutable patterns *)
 (* Modified to support CAST, and special binding CASEexp. (ZHONG) *)
-local open Absyn 
-
-(* ZIDO:  The following function is added to allow explicit fixed-point
-          combinators generated in lazycomp to be recognized as non-
-          expansive. *)
-fun isY s = 
-  case String.explode s of (#"$" :: #"!" :: #"Y" :: _) => true | _ => false
-
-in
+(* Modified to allow applications of lazy val rec Y combinators to
+   be nonexpansive. (Taha, DBM) *) 
+local open Absyn in
 
 fun isValue(VARexp _) = true
   | isValue(CONexp _) = true
@@ -581,8 +575,12 @@ fun isValue(VARexp _) = true
           fun iscast(VALvar{info,...}) = II.pureInfo info
             | iscast _ = false
 
+         (* LAZY: The following function allows applications of the fixed-point
+          *   combinators generated for lazy val recs to be non-expansive. *)
           fun issafe(VALvar{path=(SymPath.SPATH [s]),...}) = 
-                isY (Symbol.name s)
+              (case String.explode (Symbol.name s)
+		 of (#"Y" :: #"$" :: _) => true
+		  | _ => false)
             | issafe _ = false
 
 	  fun iscon (CONexp(dcon,_)) = not (isrefdcon dcon)
@@ -786,7 +784,7 @@ val reformat = Stats.doPhase(Stats.makePhase "Compiler 047 reformat") reformat
 fun dtSibling(n,tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
                                    family as {members,...}},...}) =
     if n = index then tyc
-    else let val {tycname,arity,dcons,eq,sign} = Vector.sub(members,n)
+    else let val {tycname,arity,dcons,eq,lazyp,sign} = Vector.sub(members,n)
              val stamp= Vector.sub(stamps,n)
 	  in GENtyc{stamp=stamp,arity=arity,eq=eq,path=IP.IPATH[tycname],
 		    kind=DATATYPE{index=n,stamps=stamps,freetycs=freetycs,
@@ -802,7 +800,7 @@ fun dtSibling(n,tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
 fun extractDcons(tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
                                              family as {members,...}}, ...}
 		 (* , sigContext,sigEntEnv *)) =
-    let val {dcons,sign,...} = Vector.sub(members,index)
+    let val {dcons,sign,lazyp,...} = Vector.sub(members,index)
 	fun expandTyc(PATHtyc _) = 
                bug "expandTyc:PATHtyc" (* use expandTycon? *)
 	  | expandTyc(RECtyc n) = dtSibling(n,tyc)
@@ -814,7 +812,7 @@ fun extractDcons(tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
 	fun expand ty = mapTypeFull expandTyc ty
 
 	fun mkDcon({name,rep,domain}) =
-	    DATACON{name = name, rep = rep, sign = sign,
+	    DATACON{name = name, rep = rep, sign = sign, lazyp = lazyp,
 		    typ = dconType(tyc, Option.map expand domain),
 		    const = case domain of NONE => true | _ => false}
 
@@ -869,6 +867,9 @@ end (* structure TypesUtil *)
 
 (*
  * $Log: typesutil.sml,v $
+ * Revision 1.2  1998/05/15 03:50:32  dbm
+ *   Added lazyp field as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

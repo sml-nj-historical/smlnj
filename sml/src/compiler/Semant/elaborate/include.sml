@@ -151,8 +151,8 @@ and adjustElem tycmap (sym,spec) =
                   FCTspec{sign=adjustFsig(sign,tycmap),entVar=ev,slot=s}
               | VALspec{spec=typ, slot=s} =>
                   VALspec{spec=adjustType(typ,tycmap), slot=s}
-              | CONspec{spec=DATACON{rep,name,typ,const,sign},slot=s} =>
-                  CONspec{spec=DATACON{rep=rep,name=name,const=const,
+              | CONspec{spec=DATACON{rep,name,typ,const,sign,lazyp},slot=s} =>
+                  CONspec{spec=DATACON{rep=rep,name=name,const=const,lazyp=lazyp,
                                        typ=adjustType(typ,tycmap),sign=sign},
                           slot=s}
        in (sym, nspec)
@@ -241,7 +241,7 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
            in (env, elems', syms', slot+1)
           end)
 
-   | CONspec{spec=DATACON{rep,name,typ,const,sign},...} =>
+   | CONspec{spec=DATACON{rep,name,typ,const,sign,lazyp},...} =>
        (if specified(name,elems)
         then (err EM.COMPLAIN ("duplicate constructor specifications for "
                                ^ S.name name ^ " caused by include")
@@ -250,7 +250,7 @@ fun addElem((name,nspec: M.spec), env, elems, syms, slot) =
         else (* new specification - ok *)
           let val newtyp = adjustType(typ,getMap())
               val ndcon = DATACON {rep=rep, name=name, typ=newtyp, 
-                                   const=const, sign=sign}
+                                   const=const, sign=sign, lazyp=lazyp}
               val (slotOp, slot') =
                 case rep 
                  of A.EXN _ => (SOME slot, slot+1)
@@ -288,6 +288,9 @@ end (* structure Include *)
 
 (*
  * $Log: include.sml,v $
+ * Revision 1.2  1998/05/15 03:39:27  dbm
+ *   Added lazyp field as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:25  george
  * Version 110.5
  *

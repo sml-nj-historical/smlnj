@@ -43,6 +43,7 @@ mlrisc/unionFind.sml
 
 hppa/hppa.sml
 hppa/hppaAsm.sml
+hppa/hppaCells.sig
 hppa/hppaCells.sml
 hppa/hppaInstr.sig
 hppa/hppaInstr.sml
@@ -58,6 +59,7 @@ hppa/hppaShuffle.sml
 
 alpha32/alpha32.sml
 alpha32/alpha32Asm.sml
+alpha32/alpha32Cells.sig
 alpha32/alpha32Cells.sml
 alpha32/alpha32Instr.sig
 alpha32/alpha32Instr.sml

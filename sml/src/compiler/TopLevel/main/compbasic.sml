@@ -49,6 +49,16 @@ end (* structure CompBasic *)
 
 (*
  * $Log: compbasic.sml,v $
+ * Revision 1.2  1998/05/20 18:40:32  george
+ *   We now use a new cross-module linkage conventions; the import
+ *   list of each module is now described as a tree which specifies
+ *   in details about which component of a structure is imported.
+ *   Also, each compilation unit now has a new data segment area,
+ *   this also affects the changes on linking conventions and the
+ *   binfile format. The new bin file format is described in
+ *   batch/batchutil.sml.
+ * 						-- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:15  george
  * Version 110.5
  *

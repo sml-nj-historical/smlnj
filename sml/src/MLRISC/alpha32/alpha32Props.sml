@@ -4,13 +4,16 @@
  *
  *)
 
-functor Alpha32Props 
-  (structure Alpha32Instr : ALPHA32INSTR
-   val exnptrR : int list) : INSN_PROPERTIES =
+functor Alpha32Props
+  (structure Alpha32Instr:ALPHA32INSTR
+   structure Shuffle : ALPHA32SHUFFLE
+     sharing Shuffle.I = Alpha32Instr):INSN_PROPERTIES =
 struct
     structure I = Alpha32Instr
     structure C = I.C
     structure LE = LabelExp
+
+    exception NegateConditional
 
     fun error msg = MLRiscErrorMsg.impossible ("alpha32Props."^msg)
 
@@ -19,18 +22,24 @@ struct
     datatype kind = IK_JUMP | IK_NOP | IK_INSTR
     datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
+   (*========================================================================
+    *  Instruction Kinds
+    *========================================================================*)
     fun instrKind(I.BRANCH _)  = IK_JUMP
       | instrKind(I.FBRANCH _) = IK_JUMP
       | instrKind(I.JMPL _)    = IK_JUMP
       | instrKind _            = IK_INSTR
 
-    fun branchTargets(I.BRANCH(I.BR, _, lab)) = [LABELLED lab]
-      | branchTargets(I.BRANCH(_, _, lab))  = [LABELLED lab, FALLTHROUGH] 
-      | branchTargets(I.FBRANCH(_, _, lab)) = [LABELLED lab, FALLTHROUGH] 
-      | branchTargets(I.JMPL(_,[]))       = [ESCAPES]
-      | branchTargets(I.JMPL(_,labs))     = map LABELLED labs
-      | branchTargets _ = error "branchTargets"
+    fun moveInstr(I.COPY _)  = true
+      | moveInstr(I.FCOPY _) = true
+      | moveInstr _	     = false
 
+    val nop = 
+      fn () => I.OPERATE{oper=I.BIS, ra=zeroR, rb=I.REGop zeroR, rc=zeroR}
+
+   (*========================================================================
+    *  Parallel Move
+    *========================================================================*)
     fun moveTmpR(I.COPY{tmp=SOME(I.Direct r), ...}) = SOME r
       | moveTmpR(I.FCOPY{tmp=SOME(I.FDirect f), ...}) = SOME f
       | moveTmpR _ = NONE
@@ -39,34 +48,74 @@ struct
       | moveDstSrc(I.FCOPY{dst, src, ...}) = (dst, src)
       | moveDstSrc _ = error "moveDstSrc"
 
-    fun moveInstr(I.COPY _) = true
-      | moveInstr(I.FCOPY _) = true
+    fun copy{src, dst} = 
+      I.COPY{src=src, dst=dst, impl=ref NONE, 
+	     tmp=case src of [_] => NONE | _ => SOME(I.Direct(C.newReg()))}
 
-(* Technically these are valid move instructions however they are
-   not emitted by the code generator when emitting a move.
-   I expect them to occur rarely so don't bother with them.
-      | moveInstr(I.FOPERATE{oper=I.CPYS, fa, fb, ...})       = fa = fb
-      | moveInstr(I.OPERATE{oper=I.BIS, rb=I.REGop 31, ...})  = true
-      | moveInstr(I.ADDL(_,I.IMMop 0,_))    = true
-      | moveInstr(I.BIS(31,_,_))            = true
-      | moveInstr(I.SUBL(_,I.IMMop 0, _))   = true
-      | moveInstr(I.ADDL(_,I.REGop 31,_))   = true
-      | moveInstr(I.SUBL(_,I.REGop 31,_))   = true
-      | moveInstr(I.LDA{d=I.IMMop 0, ...})  = true
-      | moveInstr(I.LDAH{d=I.IMMop 0, ...}) = true
-*)
-      | moveInstr _			  = false
+    fun fcopy{src,dst} = let
+      fun trans r = if r >= 32 andalso r < 64 then r-32 else r
+      val src = map trans src 
+      val dst = map trans dst
+    in
+      I.FCOPY{src=src,dst=dst,impl=ref NONE,
+	      tmp=case src of [_] => NONE | _   => SOME(I.FDirect(C.newFreg()))}
+    end
 
-    val nop = 
-      fn () => I.OPERATE{oper=I.BIS, ra=zeroR, rb=I.REGop zeroR, rc=zeroR}
+    fun splitCopies{regmap,insns} = let
+      val shuffle = Shuffle.shuffle
+      val shufflefp = Shuffle.shufflefp
+      fun scan([],is') = rev is'
+	| scan(I.COPY{dst,src,tmp,...}::is,is') = 
+	    scan(is,shuffle{regMap=regmap,src=src,dst=dst,temp=tmp}@is')
+	| scan(I.FCOPY{dst,src,tmp,...}::is,is') = 
+	    scan(is,shufflefp{regMap=regmap,src=src,dst=dst,temp=tmp}@is')
+	| scan(i::is,is') = scan(is,i::is')
+    in scan(insns,[]) 
+    end
 
-    (* Resource usage *)
+   (*========================================================================
+    *  Branches and Calls/Returns
+    *========================================================================*)
+    fun branchTargets(I.BRANCH(I.BR, _, lab)) = [LABELLED lab]
+      | branchTargets(I.BRANCH(_, _, lab))  = [LABELLED lab, FALLTHROUGH] 
+      | branchTargets(I.FBRANCH(_, _, lab)) = [LABELLED lab, FALLTHROUGH] 
+      | branchTargets(I.JMPL(_,[]))       = [ESCAPES]
+      | branchTargets(I.JMPL(_,labs))     = map LABELLED labs
+      | branchTargets _ = error "branchTargets"
+
+    fun jump label = I.BRANCH(I.BR,31,label)
+
+    fun setTargets(I.BRANCH(I.BR,0,_),[L]) = I.BRANCH(I.BR,0,L)
+      | setTargets(I.BRANCH(b,r,_),[F,T])  = I.BRANCH(b,r,T)
+      | setTargets(I.FBRANCH(b,r,_),[F,T]) = I.FBRANCH(b,r,T)
+      | setTargets(I.JMPL(x,_),labs)       = I.JMPL(x,labs)
+      | setTargets(i,_) = i
+
+    fun negateConditional br = let
+      fun revBranch I.BEQ  = I.BNE 
+	| revBranch I.BGE  = I.BLT 
+	| revBranch I.BGT  = I.BLE 
+	| revBranch I.BLE  = I.BGT 
+	| revBranch I.BLT  = I.BGE 
+	| revBranch I.BLBC = I.BLBS 
+	| revBranch I.BLBS = I.BLBC 
+	| revBranch _ = raise NegateConditional
+    in
+      case br
+      of I.BRANCH(br,r,label) => I.BRANCH(revBranch br,r,label)
+       | I.FBRANCH(br,r,label) => I.FBRANCH(revBranch br,r,label)
+       | _ => raise NegateConditional
+    end
+
+   (*========================================================================
+    *  Definition and use (for register allocation mainly)
+    *========================================================================*)
     fun defUseR instr =
       let
 	fun Oper {oper, ra, rb=I.REGop rb, rc} = ([rc], [ra, rb])
 	  | Oper {oper, ra, rb, rc} = ([rc], [ra])
 	fun FMem (freg, (rd, _)) = ([], [rd])
-	fun trap (def,use) =(def, exnptrR @ use)
+	fun trap (def,use) =(def, use)
       in
 	case instr of
 	  (* load/store instructions *)
@@ -115,46 +164,17 @@ struct
       | I.JSR(_,def,use) 	     => (#2 def,#2 use)
       | _ => ([],[])
 
-
-    (* These numbers are true of the DECchip 21064-AA implementation. *)
-    (* Load class *)
-    fun latency(I.LOAD _)       = 5
-      | latency(I.FLOAD _)      = 5
-
-      | latency(I.OPERATE{oper, ...}) = 
-         (case oper
-          of I.SRA	=> 2
-	   | I.SRL	=> 2
-	   | I.SLL	=> 2
-	   | I.INSBL	=> 2
-	   | I.EXTBL	=> 2
-	   | I.EXTQH	=> 2
-	   | I.MSKBL	=> 2
-	   | I.MSKLH	=> 2
-	   | I.CMPULE   => 3
-	   | I.CMPULT   => 3
-	   | I.CMPEQ	=> 3
-	   | I.CMPLE	=> 3
-	   | I.CMPLT	=> 3
-	   | I.MULL  	=> 21
-  	   | _ => 1
-	  (*esac*))
-      | latency (I.OPERATEV{oper=I.MULLV, ...}) = 21
-
-      (* Floating point *)
-      | latency(I.FOPERATEV{oper=I.DIVT, ...}) = 63
-      | latency(I.FOPERATEV _) = 6
-      | latency(I.FOPERATE _)  = 6
-
-      | latency(I.CALL_PAL _)   = 30
-
-      | latency _ 		= 1
+    fun defUse C.GP = defUseR
+      | defUse C.FP = defUseF
+      | defUse _ = error "defUse"
 end
-
 
 
 (*
  * $Log: alpha32Props.sml,v $
+ * Revision 1.2  1998/05/19 15:42:12  george
+ *   Added a whole bunch of functions to support global scheduling.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

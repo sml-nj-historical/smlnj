@@ -354,7 +354,9 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
 fun lookStr (elements,entEnv) (SP.SPATH spath) : (M.Signature * M.entity) =
   let fun loop ([sym],elements,entEnv) =
             ((case MU.getSpec(elements,sym)
-               of STRspec{entVar,sign,...} => (sign,EE.look(entEnv,entVar))
+               of STRspec{entVar,sign,...} =>
+                   (debugmsg ("$lookStr.1: "^S.name sym^", "^EP.entVarToString entVar);
+		   (sign,EE.look(entEnv,entVar)))
                 | _ => bug "looStr 1b")
               handle MU.Unbound _ => bug "lookStr 1c")
 
@@ -362,7 +364,8 @@ fun lookStr (elements,entEnv) (SP.SPATH spath) : (M.Signature * M.entity) =
             ((case MU.getSpec(elements,sym)
                of STRspec{sign=SIG{elements,...},entVar,...} =>
                     (case EE.look(entEnv,entVar)
-                      of STRent{entities,...} => loop(rest,elements,entities)
+                      of STRent{entities,...} => 
+                   (debugmsg ("$lookStr.2: "^S.name sym^", "^EP.entVarToString entVar);			  loop(rest,elements,entities))
 		       | ERRORent => (ERRORsig,ERRORent)
                        | _ => bug "lookStr 2a")
                 | _ => bug "lookStr 2b")
@@ -439,7 +442,8 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 		      STRent{stamp=s2,entities=ee2,...}) =>
 		      if ST.eq(s1,s2) then () (* shortcut! *)
 		      else if MU.eqSign(sign1,sign2) then
-			     let val SIG{elements,...} = sign1
+			     let val _ = debugmsg "$compStr: equal signs"
+				 val SIG{elements,...} = sign1
 			      in for elements (fn 
 				    (sym,TYCspec{entVar,...}) => 
 				      let val TYCent tyc1 = EE.look(ee1,entVar)
@@ -459,7 +463,8 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 				  | _ => ())
 			     end
 			   else
-			     let val common = commonElements(sign1,sign2)
+			     let val _ = debugmsg "$compStr: unequal signs"
+				 val common = commonElements(sign1,sign2)
 			      in for common (fn 
 				   (sym,TYCspec{entVar=v1,...},
 				        TYCspec{entVar=v2,...}) =>
@@ -475,8 +480,8 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 				        STRspec{entVar=v2,sign=sign2',...}) =>
 				      let val str1 = EE.look(ee1,v1)
 				          val str2 = EE.look(ee2,v2)
-				       in compStr((SP.extend(p1,sym),(sign1,str1)),
-						  (SP.extend(p2,sym),(sign1,str2)))
+				       in compStr((SP.extend(p1,sym),(sign1',str1)),
+						  (SP.extend(p2,sym),(sign1',str2)))
 				      end
 				 | _ => ()) (* values, constructors, functors *)
 			     end
@@ -788,7 +793,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                    end
 
                   | CONspec{spec=DATACON{typ=acttyp, name, const,
-                                         rep, sign}, slot} => 
+                                         rep, sign, lazyp}, slot} => 
                    let val spectyp = typeInMatched("$specty(val/con)", spectyp)
                        val acttyp = typeInOriginal("$actty(val/con)", acttyp)
                        val (instys, btvs) = 
@@ -802,7 +807,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                        val (decs', bindings') =
                          let val con = 
                                DATACON{typ=acttyp, name=name, const=const, 
-                                       rep=nrep, sign=sign}
+                                       rep=nrep, sign=sign, lazyp=lazyp}
                              val acc = DA.namedAcc(name, mkv)
                              val specvar = 
                                VALvar{path=SP.SPATH[name], access=acc,
@@ -821,7 +826,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                | _ => bug "matchVElem.1")
              handle MU.Unbound sym => matchErr(SOME "value"))
 
-           | CONspec{spec=DATACON{name, typ=spectyp, 
+           | CONspec{spec=DATACON{name, typ=spectyp, lazyp,
                                   rep=specrep, ...},...} => 
              ((case MU.getSpec(strElements, sym)
                 of CONspec{spec=DATACON{typ=acttyp, rep=actrep, const, 
@@ -839,7 +844,7 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                                    val nrep = exnRep(actrep, dacc) 
                                    val con = DATACON{typ=acttyp, name=name,
                                                      const=const, rep=nrep,
-                                                     sign=sign}
+                                                     sign=sign, lazyp=lazyp}
                                 in (B.CONbind(con)) :: bindings
                                end
 
@@ -1214,7 +1219,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                 in packElems(elems, entEnv, decs', bindings')
                end)
 
-           | CONspec{spec=DATACON{name, typ, rep, const, sign}, slot} =>
+           | CONspec{spec=DATACON{name, typ, rep, const, sign, lazyp}, slot} =>
               (let val bindings' =
                      case slot 
                       of NONE => bindings 
@@ -1223,7 +1228,7 @@ fun packElems ([], entEnv, decs, bindings) = (rev decs, rev bindings)
                                  typeInRes("$spec-resty(packStr-con)", typ)
                                val dacc = DA.selAcc(rootAcc, s)
                                val nrep = exnRep(rep, dacc) 
-                               val con = DATACON{typ=restyp, name=name,
+                               val con = DATACON{typ=restyp, name=name, lazyp=lazyp,
                                            const=const, rep=nrep, sign=sign}
                             in (B.CONbind(con)) :: bindings
                            end
@@ -1467,6 +1472,9 @@ end (* structure SigMatch *)
 
 (*
  * $Log: sigmatch.sml,v $
+ * Revision 1.2  1998/05/15 03:44:34  dbm
+ *   Fix for bug 1369 (EntityEnv.Unbound exception).
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:28  george
  * Version 110.5
  *

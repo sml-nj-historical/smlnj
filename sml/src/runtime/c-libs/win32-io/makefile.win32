@@ -21,7 +21,8 @@ LIBRARY =	libwin32-io.lib
 VERSION =	v-dummy
 
 OBJS =		win32-io-lib.obj \
-		win32-io.obj
+		win32-io.obj \
+                poll.obj
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
 	del /F /Q $(LIBRARY)
@@ -41,6 +42,9 @@ win32-io.obj: win32-io.c $(MACH_DIR)\win32-fault.h $(DEPENDENTS) \
 	 $(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c win32-io.c
 
+poll.obj: poll.c $(MACH_DIR)\win32-fault.h $(DEPENDENTS) \
+	 $(INC_DIR)\ml-base.h $(INC_DIR)\ml-values.h $(INC_DIR)\ml-objects.h
+	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c poll.c
 clean:
 	del /F /Q v-* *.obj *.pdb $(LIBRARY)
 

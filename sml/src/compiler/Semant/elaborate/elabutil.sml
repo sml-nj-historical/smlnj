@@ -14,6 +14,7 @@ local structure SP = SymPath
       structure TS = TyvarSet
       structure S = Symbol
       structure V = VarCon
+      structure BT = BasicTypes
 
       open Symbol Absyn Ast ErrorMsg PrintUtil AstUtil Types BasicTypes 
            EqTypes ModuleUtil TypesUtil VarCon
@@ -141,16 +142,27 @@ fun isPrimPat (VARpat{info, ...}) = II.isPrimInfo(info)
   | isPrimPat (COSTRAINTpat(VARpat{info, ...}, _)) = II.isPrimInfo(info)
   | isPrimPat _ = false
 *)
+
+(* patproc:
+ *   "alpha convert" a pattern, replacing old variables by
+ *   new ones, with new LVAR accesses.
+ *   Returns the converted pattern, the list of old variables (VARpats)
+ *   and the list of new variables (VALvars).
+ * called only once, in elabVB in elabcore.sml *)
+
 fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
     let val oldnew : (Absyn.pat * var) list ref = ref nil
 
 	fun f (p as VARpat(VALvar{access=acc,info,typ=ref typ',path})) =
               let fun find ((VARpat(VALvar{access=acc',...}), x)::rest, v) = 
-		        (case (A.accLvar acc') 
+		        (case (A.accLvar acc') (* DBM: can this return NONE? *)
                           of SOME w => if v=w then x else find(rest, v)
+			               (* DBM: can the true branch happen?
+					  ie. two variables with same lvar
+					  in a pattern? *)
                            | _ => find(rest, v))
                     | find (_::rest, v) = find(rest, v)
-		    | find (nil, v) =
+		    | find (nil, v) = (* DBM: assert this rule always applies ? *)
 		        let val x = VALvar{access=A.dupAcc(v,mkv), info=info,
                                            typ=ref typ', path=path}
 			 in oldnew := (p,x):: !oldnew; x
@@ -231,17 +243,18 @@ fun completeMatch' (RULE(p,e)) =
 
 exception NoCore
 
+fun getCoreExn(coreEnv,name) = 
+    (case LU.lookVal(coreEnv,SP.SPATH[strSymbol "Core", varSymbol name],
+		     fn _ => fn s => fn _ => raise NoCore)
+       of V.CON x => x
+        | _ => V.bogusEXN)
+    handle NoCore => V.bogusEXN
+
 fun completeMatch(coreEnv,name) =
-    let val exnMatch = 
-          (case LU.lookVal(coreEnv,SP.SPATH[strSymbol "Core", varSymbol name],
-                          fn _ => fn s => fn _ => raise NoCore)
-            of V.CON x => x
-             | _ => V.bogusEXN) handle NoCore => V.bogusEXN
-     in completeMatch'' 
-	 (fn marker =>
-	  RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(exnMatch,[]), UNDEFty))))
-    end
+    completeMatch'' 
+      (fn marker =>
+          RULE(WILDpat, 
+	       marker(RAISEexp(CONexp(getCoreExn(coreEnv,name),[]), UNDEFty))))
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 
@@ -424,6 +437,8 @@ fun clean_pat err (CONpat(DATACON{const=false,name,...},_)) =
 		     " used without argument in pattern")
          nullErrorBody;
        WILDpat)
+  | clean_pat err (p as CONpat(DATACON{lazyp=true,...},_)) = 
+      APPpat(BT.dollarDcon,[],p) (* LAZY *) (* second argument = nil OK? *)
   | clean_pat err p = p
 
 fun pat_to_string WILDpat = "_"
@@ -441,7 +456,12 @@ fun pat_to_string WILDpat = "_"
   | pat_to_string (ORpat _) = "<or pattern>"
   | pat_to_string _ = "<illegal pattern>"
 
-fun makeAPPpat err (CONpat(d as DATACON{const=false,...},t),p) = APPpat(d,t,p)
+fun makeAPPpat err (CONpat(d as DATACON{const=false,lazyp,...},t),p) =
+      let val p1 = APPpat(d,t,p)
+       in if lazyp (* LAZY *)
+	  then APPpat(BT.dollarDcon, [], p1)
+          else p1
+      end
   | makeAPPpat err (CONpat(d as DATACON{name,...},_),_) = 
       (err COMPLAIN
         ("constant constructor applied to argument in pattern:"
@@ -555,6 +575,9 @@ end (* structure ElabUtil *)
 
 (*
  * $Log: elabutil.sml,v $
+ * Revision 1.2  1998/05/15 03:37:55  dbm
+ *   Revised to support elaboration of lazy decls.  Added getCoreExn.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:25  george
  * Version 110.5
  *

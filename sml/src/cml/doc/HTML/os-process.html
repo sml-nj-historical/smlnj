@@ -1,5 +1,6 @@
 <!-- HTML/os-process.html -->
 
+<!-- COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies. -->
 <!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
 
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
@@ -7,15 +8,12 @@
 <HEAD>
 <TITLE>The OS.Process structure</TITLE>
 </HEAD>
-<BODY>
-<A NAME="top"></A>
+<BODY><A NAME="top"></A>
 <H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
 
 
-<H3>The <CODE>OS.Process</CODE> structure</H3>
-<P>
-The OS.Process structure provides functions for manipulating processes in an  operating system independent manner. 
+<H2><A NAME="section:0">The <CODE>OS.Process</CODE> structure</A></H2>
 <HR>
 <H4>Synopsis</H4>
 <BLOCKQUOTE>
@@ -23,6 +21,8 @@ The OS.Process structure provides functions for manipulating processes in an  op
 <B>structure </B><A NAME="Process:STR:SPEC"><CODE>Process</CODE></A><B> : </B>CML_OS_PROCESS<BR>
 </CODE>
 </BLOCKQUOTE>
+<P>
+The OS.Process structure provides functions for manipulating processes in an  operating system independent manner. 
 <HR>
 <H4>Interface</H4>
 <BLOCKQUOTE>
@@ -37,7 +37,7 @@ The OS.Process structure provides functions for manipulating processes in an  op
 <DD>
 asks the operating system to execute the command <VAR>cmd</VAR> as 	  a sub-process, and returns an event for synchronizing on the 	  termination of the sub-process.           Raises <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/os.html#SIG:OS.SysErr:EXN:SPEC">SysErr</A> if the command cannot be executed.           
 <P>
-          Note that, although this function is independent of the operating           system, the interpretation of the string <VAR>cmd</VAR> depends           very much on the underlying operating system and shell.   
+          Note that, although this function is independent of the operating           system, the interpretation of the string <VAR>cmd</VAR> depends           very much on the underlying operating system and shell.
 <BR>
 <BR>
 
@@ -51,16 +51,18 @@ asks the operating system to execute the command <VAR>cmd</VAR> as 	  a sub-proc
 
 <HR>
 <CENTER>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
-   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="core-cml.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
    ]</B>
 </CENTER>
 <P>
-<I>Last Modified April 30, 1996</I><BR>
+<I>Last Modified &date;</I><BR>
 <I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
 
-Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
 
 <HR>
-</BODY>
-</HTML>
+</BODY></HTML>

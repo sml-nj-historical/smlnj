@@ -225,7 +225,7 @@ fun mkVal(sym, sp, sign as SIG{elements,...},
                             info = II.selInfo(dinfo,slot), path = sp,
                             typ = ref(transType entities spec)})
 
-         | CONspec{spec=T.DATACON{name, const, typ, rep, sign}, slot} =>
+         | CONspec{spec=T.DATACON{name, const, typ, rep, sign, lazyp}, slot} =>
              let val newrep =
                    case (rep, slot)
                     of (A.EXN _, SOME i) => A.EXN (A.selAcc(dacc,i))
@@ -233,7 +233,7 @@ fun mkVal(sym, sp, sign as SIG{elements,...},
 
               in V.CON(T.DATACON{rep=newrep, name=name,
                                  typ=transType entities typ, 
-                                 const=const, sign=sign})
+                                 const=const, sign=sign, lazyp=lazyp})
              end
 
          | _ => bug "mkVal: wrong spec")
@@ -475,6 +475,9 @@ end (* structure ModuleUtil *)
 
 (*
  * $Log: moduleutil.sml,v $
+ * Revision 1.2  1998/05/15 03:42:51  dbm
+ *   Added lazyp field as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:28  george
  * Version 110.5
  *

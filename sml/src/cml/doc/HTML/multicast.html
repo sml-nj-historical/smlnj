@@ -7,15 +7,12 @@
 <HEAD>
 <TITLE>The Multicast structure</TITLE>
 </HEAD>
-<BODY>
-<A NAME="top"></A>
+<BODY><A NAME="top"></A>
 <H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
 
 
-<H3>The <CODE>Multicast</CODE> structure</H3>
-<P>
-Multicast channels provide a mechanism for broadcasting a stream of messages to a collection of threads. Threads receive multicast messages via an <EM>output port</EM>; each port receives its own copy of every message sent since the port was created. Multicast channels are particularly useful for communicating with a dynamically varying group of threads, since the sender does not need to know how many threads are listening. 
+<H2><A NAME="section:0">The <CODE>Multicast</CODE> structure</A></H2>
 <HR>
 <H4>Synopsis</H4>
 <BLOCKQUOTE>
@@ -23,6 +20,8 @@ Multicast channels provide a mechanism for broadcasting a stream of messages to 
 <B>structure </B><A NAME="Multicast:STR:SPEC"><CODE>Multicast</CODE></A><B> : </B>MULTICAST<BR>
 </CODE>
 </BLOCKQUOTE>
+<P>
+Multicast channels provide a mechanism for broadcasting a stream of messages to a collection of threads. Threads receive multicast messages via an <EM>output port</EM>; each port receives its own copy of every message sent since the port was created. Multicast channels are particularly useful for communicating with a dynamically varying group of threads, since the sender does not need to know how many threads are listening. 
 <HR>
 <H4>Interface</H4>
 <BLOCKQUOTE>
@@ -45,13 +44,13 @@ Multicast channels provide a mechanism for broadcasting a stream of messages to 
 
 <DT> <A NAME="SIG:MULTICAST.mchan:TY"><CODE><B>type</B> 'a mchan</CODE></A>
 <DD>
-This is the type constructor for asynchronous multicast channels.     
+          This is the type constructor for asynchronous multicast channels.     
 <BR>
 <BR>
 
 <DT> <A NAME="SIG:MULTICAST.port:TY"><CODE><B>type</B> 'a port</CODE></A>
 <DD>
-This is the type constructor for output ports on an 	  asynchronous multicast channels.     
+          This is the type constructor for output ports on an 	  asynchronous multicast channels.     
 <BR>
 <BR>
 
@@ -103,16 +102,18 @@ multicasts the value <VAR>v</VAR> on the channel <VAR>mc</VAR>. 	  This is a non
 
 <HR>
 <CENTER>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
-   | <A HREF="cml-lib.html">Parent</A> | <A HREF="refman.html">Root</A>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="cml-lib.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
    ]</B>
 </CENTER>
 <P>
-<I>Last Modified January 29, 1997</I><BR>
+<I>Last Modified &date;</I><BR>
 <I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
 
-Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
 
 <HR>
-</BODY>
-</HTML>
+</BODY></HTML>

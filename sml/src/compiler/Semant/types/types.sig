@@ -89,6 +89,7 @@ and dtmember =
     {tycname: Symbol.symbol,
      arity: int,
      eq: eqprop ref,
+     lazyp : bool,
      dcons: dconDesc list,
      sign: Access.consig}
 
@@ -106,6 +107,7 @@ datatype datacon                    (* data constructors *)
       {name   : Symbol.symbol,
        typ    : ty,
        rep    : Access.conrep,
+       lazyp  : bool,            (* LAZY *)
        const  : bool,
        sign   : Access.consig}
 
@@ -114,6 +116,9 @@ end (* signature TYPES *)
 
 (*
  * $Log: types.sig,v $
+ * Revision 1.2  1998/05/15 03:48:41  dbm
+ *   Added lazyp fields.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

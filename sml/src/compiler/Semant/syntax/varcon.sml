@@ -42,12 +42,14 @@ val bogusCON = T.DATACON{name=S.varSymbol "bogus",
                          typ=T.WILDCARDty,
                          rep=A.CONSTANT 0,
                          const=true,
+			 lazyp=false,
                          sign=A.CSIG(0,1)}
 
 val bogusEXN = T.DATACON{name=S.varSymbol "bogus",
                          typ=BT.exnTy,
                          rep=A.CONSTANT 0,
                          const=true,
+			 lazyp=false,
                          sign=A.CNIL}
 
 end (* local *)
@@ -55,6 +57,9 @@ end (* structure VarCon *)
 
 (*
  * $Log: varcon.sml,v $
+ * Revision 1.2  1998/05/15 03:46:34  dbm
+ *   Added lazyp field.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:31  george
  * Version 110.5
  *

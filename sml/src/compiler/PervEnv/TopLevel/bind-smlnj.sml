@@ -31,11 +31,13 @@ structure SMLofNJ : SML_OF_NJ =
     structure Weak = Weak
   end;
 
+(* Lazy can't be a substructure of SMLofNJ because the magical
+   property of the susp datatype would be lost in signature
+   matching? DBM *)
 structure Lazy =
   struct
     datatype susp = datatype PrimTypes.susp
   end
-
 
 signature UNSAFE_OBJECT = UNSAFE_OBJECT
 signature POLL = POLL
@@ -49,6 +51,9 @@ structure Unsafe = Unsafe
 
 (*
  * $Log: bind-smlnj.sml,v $
+ * Revision 1.2  1998/05/15 03:29:41  dbm
+ *   Added comment about Lazy structure.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

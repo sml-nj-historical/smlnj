@@ -57,20 +57,32 @@ struct
       | cond I.GTU = ">>"
       | cond I.GEU = ">>="
 
-    fun fcond I.==   = "=="
-      | fcond I.!=   = "!="
-      | fcond I.?    = "?"
-      | fcond I.<=>  = "<=>"
-      | fcond I.>    = ">"
-      | fcond I.>=   = ">= "
-      | fcond I.?>   = "?>"
-      | fcond I.?>=  = "?>= "
+    fun fcond I.?    = "?"
+      | fcond I.!<=> = "!<=>"
+      | fcond I.==   = "=="
+      | fcond I.?=   = "?="
+      | fcond I.!<>  = "!<>"
+      | fcond I.!?>= = "!?>="
       | fcond I.<    = "<"
-      | fcond I.<=   = "<= "
       | fcond I.?<   = "?<"
-      | fcond I.?<=  = "?<= "
+      | fcond I.!>=  = "!>="
+      | fcond I.!?>  = "!?>"
+      | fcond I.<=   = "<="
+      | fcond I.?<=  = "?<+"
+      | fcond I.!>   = "!>"
+      | fcond I.!?<= = "!?<="
+      | fcond I.>    = ">"
+      | fcond I.?>   = "?>"
+      | fcond I.!<=  = "!<="
+      | fcond I.!?<  = "!?<"
+      | fcond I.>=   = ">="
+      | fcond I.?>=  = "?>="
+      | fcond I.!<   = "!<"
+      | fcond I.!?=  = "!?="
       | fcond I.<>   = "<>"
-      | fcond I.?=   = "?= "
+      | fcond I.!=   = "!="
+      | fcond I.!?   = "!?"
+      | fcond I.<=>  = "<=>"
 
     fun emitFieldSel fs = 
       emit(case fs
@@ -254,6 +266,9 @@ end
 
 (*
  * $Log: hppaAsm.sml,v $
+ * Revision 1.2  1998/05/19 15:44:39  george
+ *   Introduced the full set of IEEE comparision operators.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

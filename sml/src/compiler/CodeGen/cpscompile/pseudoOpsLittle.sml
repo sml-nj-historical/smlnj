@@ -51,10 +51,19 @@ functor PseudoOpsLittle(M: MACH_SPEC) = struct
     in emitWord(w & 0w65535);   emitWord(w ~>> 0w16)
     end
     fun emitstring s = Word8Vector.app emit (Byte.stringToBytes s)
-    fun align loc = case Word.andb(itow(loc), 0w7)
-      of 0w0 => loc
-       | 0w4 => (emitLong 0; loc+4)
-       | _ => error "align"
+    fun align loc = let
+      fun fill n = 
+	if n>=4 then (emitLong 0; fill(n-4))
+	else if n >= 2 then (emitWord 0w0; fill(n-2))
+        else if n = 1 then emitByte(0w0) else ()
+    in
+      case Word.andb(itow(loc), 0w7)
+       of 0w0 => loc
+        |  w => let
+	       val pad = Word.toInt(Word.-(0w8, w))
+	     in fill(pad); loc + pad
+	     end
+    end
     val wtoi =  LargeWord.toInt
     val makeDesc = wtoi o T.makeDesc 
   in
@@ -99,6 +108,12 @@ end
 
 (*
  * $Log: pseudoOpsLittle.sml,v $
+ * Revision 1.3  1998/05/08 10:52:22  george
+ *   The exhausted register has been made optional -- leung
+ *
+ * Revision 1.2  1998/04/17 19:24:29  george
+ *   Bug fix for bug 1364 -- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

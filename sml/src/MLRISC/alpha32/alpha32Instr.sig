@@ -2,7 +2,7 @@ signature ALPHA32INSTR = sig
   structure Constant : CONSTANT
   structure Region : REGION
 
-  structure C : CELLS where type cellset = int list * int list
+  structure C : ALPHA32CELLS where type cellset = int list * int list
 
   datatype ea = 
       Direct of int 
@@ -94,6 +94,9 @@ end
 
 (*
  * $Log: alpha32Instr.sig,v $
+ * Revision 1.2  1998/05/19 15:41:40  george
+ *   There is no longer a generic CELLS interface, but an architecture specific one.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

@@ -33,11 +33,12 @@ functor Alpha32RegAlloc(structure P : INSN_PROPERTIES
       end
    end =
 struct
+  structure C = I.C
     (* liveness analysis for general purpose registers *)
   structure RegLiveness =
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
-	     val defUse = P.defUseR
+	     val defUse = P.defUse C.GP
 	     fun regSet c = #1 (c:Alpha32Cells.cellset)
 	     fun cellset((_,f),r) = (r,f))
 
@@ -51,10 +52,10 @@ struct
 	     structure AsmEmitter = Asm
 	     structure I = I
 	     structure Liveness=RegLiveness
-	     val defUse = P.defUseR
+	     val defUse = P.defUse C.GP
 	     val firstPseudoR = 32
-	     val maxPseudoR = Alpha32Cells.maxReg
-	     val numRegs = Alpha32Cells.numRegs
+	     val maxPseudoR = Alpha32Cells.maxCell
+	     val numRegs = Alpha32Cells.numCell Alpha32Cells.GP
 	     fun regSet c = #1 (c:Alpha32Cells.cellset)
 	  end)
 
@@ -64,7 +65,7 @@ struct
   structure FregLiveness = 
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
-	     val defUse = P.defUseF
+	     val defUse = P.defUse C.FP
 	     fun regSet c = #2 (c:Alpha32Cells.cellset)
 	     fun cellset((r,_),f) = (r,f))
 
@@ -78,10 +79,10 @@ struct
 	  structure Liveness=FregLiveness
 	  structure I = I
 
-	  val defUse = P.defUseF
+	  val defUse = P.defUse C.FP
 	  val firstPseudoR = 32
-	  val maxPseudoR = Alpha32Cells.maxFreg
-	  val numRegs = Alpha32Cells.numFregs
+	  val maxPseudoR = Alpha32Cells.maxCell 
+	  val numRegs = Alpha32Cells.numCell Alpha32Cells.FP
 	  fun regSet c = #2 (c:Alpha32Cells.cellset)
 	end)
 end
@@ -91,6 +92,10 @@ end
 
 (*
  * $Log: alpha32RegAlloc.sml,v $
+ * Revision 1.2  1998/05/19 15:43:26  george
+ *   The instructions properties now exports a generic defUse function that is
+ *   curried over the cellclass, i.e., defUseR and defUseF are gone.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

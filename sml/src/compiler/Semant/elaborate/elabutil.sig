@@ -51,6 +51,7 @@ sig
 
   val clean_pat : ErrorMsg.complainer -> Absyn.pat -> Absyn.pat
 
+  val getCoreExn : (StaticEnv.staticEnv * string) -> VarCon.datacon
   val completeMatch : (StaticEnv.staticEnv * string)
 		      -> Absyn.rule list -> Absyn.rule list
   val completeMatch' : Absyn.rule -> Absyn.rule list -> Absyn.rule list
@@ -102,6 +103,9 @@ end (* signature ELABUTIL *)
 
 (*
  * $Log: elabutil.sig,v $
+ * Revision 1.2  1998/05/15 03:35:44  dbm
+ *   Added getCoreExn spec.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:25  george
  * Version 110.5
  *

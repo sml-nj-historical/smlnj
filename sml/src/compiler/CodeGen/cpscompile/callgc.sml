@@ -50,6 +50,7 @@ struct
 	       | (T.ADD(T.REG r1, T.LI i),  T.ADD(T.REG r2, T.LI j)) => 
 		    r1=r2 andalso i=j
 	      (*esac*))
+	  | eqRoot _ = false
 
 	fun eqR([], []) = true
 	  | eqR(x::xs, y::ys) = eqRoot(x, y) andalso eqR(xs, ys)
@@ -81,13 +82,21 @@ struct
     fun assignCC(T.CC cc, v) = T.CCMV(cc, v)
       | assignCC(T.LOADCC(ea,region), v) = T.STORECC(ea, v, region)
       | assignCC _ = error "checkLimit.assign"
+    fun gotoGC(cc) = emit(T.BCC(T.GTU, cc, lab))
+    fun testLimit(allocR) = T.CMP(T.GTU, allocR, C.limitptr, T.LR)
   in
-    if max_alloc < 4096 then () 
+    if max_alloc < 4096 then 
+      (case C.exhausted 
+       of SOME cc => gotoGC(cc) 
+        | NONE => gotoGC(testLimit(C.allocptr))
+       (*esac*))
     else let 
         val allocptr' = T.ADD(C.allocptr, T.LI(max_alloc-4096))
-      in emit(assignCC(C.exhausted, T.CMP(T.GTU, allocptr', C.limitptr, T.LR)))
+      in 
+	case C.exhausted
+	of SOME cc => (emit(assignCC(cc, testLimit(allocptr'))); gotoGC(cc))
+         | NONE => gotoGC(testLimit(allocptr'))
       end;
-    emit(T.BCC(T.GTU, C.exhausted, lab));
     lab
   end
 
@@ -128,7 +137,6 @@ struct
    * A record of live floating point registers is created on the
    * heap and assigned to a pseudo register.
    *)
-  val exhausted = T.CCR C.exhausted
   val gclinkreg = T.GPR C.gclinkreg
   val maskreg = T.GPR C.maskreg
 
@@ -146,14 +154,18 @@ struct
       | mkRoot _ = error "root"
 
     fun callGC () = let
+      (* note: Adding int32t registers to roots frustrates induction
+       * variable elimination, as the induction variable is killed by GC.
+       *)
       val roots = map T.GPR (maskRegs @ i32Regs)
-      val def = exhausted::gclinkreg:: roots
+      val defs' = gclinkreg::roots
+      val def = case C.exhausted of NONE => defs' | SOME cc => T.CCR cc::defs'
       val use = maskreg::roots
       val gcAddr = T.ADD (C.stackptr, T.LI MS.startgcOffset)
 
       fun hasPseudoRegs [] = false
         | hasPseudoRegs(T.REG r::regs) =  
-	    r >= Cells.firstPseudoReg orelse hasPseudoRegs regs
+	    r >= Cells.firstPseudo orelse hasPseudoRegs regs
 	| hasPseudoRegs(_::regs) = hasPseudoRegs regs
 
       val regmaskVal = ConstType.REGLIST(map mkRoot maskRegs, regmap)
@@ -168,9 +180,11 @@ struct
       emit(T.CALL(T.LOAD32 (gcAddr, R.STACK), def, use))
     end
 
-    fun gcReturn () = 
-      (emit ret; 
-       comp(T.ESCAPEBLOCK(map T.GPR maskRegs @ (exhausted :: dedicated))))
+    fun gcReturn () = let
+      val live' = (map T.GPR maskRegs) @ dedicated
+      val live = case C.exhausted of NONE => live' | SOME cc => T.CCR cc::live'
+    in emit ret; comp(T.ESCAPEBLOCK live)
+    end
   in
     comp (T.ENTRYLABEL(!lab));
     case fRegs
@@ -178,7 +192,7 @@ struct
       | _ => let
 	  val k = length fRegs
 	  val desc = LargeWord.toInt(D.makeDesc(k, D.tag_realdarray))
-	  val baseR = Cells.newReg()
+	  val baseR = Cells.newCell Cells.GP () 
 
 	  fun deposit([], _) = ()
 	    | deposit(fpr::rest, i) = 
@@ -264,6 +278,19 @@ end
 
 (*
  * $Log: callgc.sml,v $
+ * Revision 1.5  1998/05/21 17:54:42  jhr
+ *   Merging in Matthias's changes.
+ *
+ * Revision 1.4  1998/05/19 15:34:37  george
+ *   Removed live variables with type int32t from the def/use list
+ *   of the call to gc. This frustrates induction variable elimination.
+ *
+ * Revision 1.3  1998/05/08 10:52:20  george
+ *   The exhausted register has been made optional -- leung
+ *
+ * Revision 1.2  1998/04/17 19:24:29  george
+ *   Bug fix for bug 1364 -- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

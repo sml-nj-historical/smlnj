@@ -237,7 +237,7 @@ fun ctyc tc =
 fun ctype lt = 
   LT.ltw_tyc(lt, fn tc => ctyc tc,
       fn lt => 
-        LT.ltw_str(lt, fn ts => PTRt(rtyc(ltflt, ts)), 
+        LT.ltw_str(lt, fn ts => PTRt(rtyc(fn _ => false, ts)), 
             fn lt => if LT.ltp_fct lt then FUNt
                      else if LT.ltp_cont lt then CNTt
                           else BOGt))
@@ -249,6 +249,12 @@ end (* structure CPS *)
 
 (*
  * $Log: cps.sml,v $
+ * Revision 1.3  1998/05/22 00:58:32  jhr
+ *   Bug fix for literal liftinh code.
+ *
+ * Revision 1.2  1998/05/20 18:33:36  george
+ *     Fixing a potential bug on cps types
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:47  george
  * Version 110.5
  *

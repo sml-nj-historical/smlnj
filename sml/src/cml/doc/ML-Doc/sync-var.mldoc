@@ -2,12 +2,16 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1995>
 <VERSION VERID="1.0" YEAR=1995 MONTH=11 DAY=16>
 <TITLE>The SyncVar structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/SyncVar/ structure</HEAD>
+<SEEALSO>
+  <STRREF TOPID/CML/
+</SEEALSO>
 
 <PP>
 The <STRREF TOPID NOLINK/SyncVar/ structure provides <BF/Id/-style
@@ -25,12 +29,14 @@ while M-variables are mutable.
     <SPEC>
       <EXN>Put
       <COMMENT>
+	<PP>
 	This exception is raised when an attempt is made to put a
 	value into a value that is already full (see <VALREF/iPut/ and
 	<VALREF/mPut/).
     <SPEC>
       <TYPE><TYPARAM>'a<ID>ivar
       <COMMENT>
+	<PP>
 	This is the type constructor for I-structured variables.
 	I-structured variables are write-once variables that provide
 	synchronization on read operations.
@@ -74,6 +80,7 @@ while M-variables are mutable.
     <SPEC>
       <VAL>iGetPoll<TY>'a ivar -> 'a option
         <COMMENT>
+	<PP>
 	  This is a non-blocking version of <VALREF/iGet/.
 	  If the corresponding blocking form would block, then it returns
 	  <CONREF DOCUMENT=SML-BASIS-DOC STRID="Option"/NONE/; otherwise
@@ -90,6 +97,7 @@ while M-variables are mutable.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>mvar
       <COMMENT>
+	<PP>
 	This is the type constructor for M-structured variables.
 	Unlike <TYREF/ivar/ values, M-structured variables may be
 	updated multiple times.
@@ -163,6 +171,7 @@ let val x = <VALREF/mTake/ <ARG/mv/ in <VALREF/mPut/(<ARG/mv/, x); x end
       <VAL>mTakePoll<TY>'a mvar -> 'a option
       <VAL>mGetPoll<TY>'a mvar -> 'a option
         <COMMENT>
+	<PP>
 	  These are non-blocking versions of <VALREF/mTake/ and
 	  <VALREF/mGet/ (respectively).
 	  If the corresponding blocking form would block, then they return
@@ -200,16 +209,14 @@ let val x = <VALREF/mTake/ <ARG/mv/ in <VALREF/mPut/(<ARG/mv/, <ARG/newV/); x en
           </PROTOTY>
           returns <CD/true/, if <ARG/mv1/ and <ARG/mv2/ are the same
 	  M-variable.
-    <DISCUSS>
-      I-variables provide a useful mechanism for implementing the
-      reply communication in request/reply protocols.
-      They may also be used to implement incremental data structures
-      and streams.
-      <PP>
-      A disciplined use of M-variables can provide an atomic
-      read-modify-write operation.
-    </DISCUSS>
-    <SEEALSO>
-      <STRREF TOPID/CML/
-    </SEEALSO>
+  </SIGBODY>
 </STRUCTURE>
+<PP>
+I-variables provide a useful mechanism for implementing the
+reply communication in request/reply protocols.
+They may also be used to implement incremental data structures
+and streams.
+<PP>
+A disciplined use of M-variables can provide an atomic
+read-modify-write operation.
+</INTERFACE>

@@ -4,8 +4,9 @@
 SHELL	= /bin/sh
 
 CC =		cc -xansi -D__STDC__
+# _MIPS_SIM=1 selects O32 ABI; required for regdef.h
 CPP =		/usr/lib/acpp -D_MIPS_SIM=1
-CFLAGS =	-O -32
+CFLAGS =	-O -o32
 AS =		/bin/as -nocpp
 RANLIB =	ar ts
 
@@ -14,7 +15,7 @@ RANLIB =	ar ts
 #BASE_DEFS =	-DHEAP_MONITOR
 XOBJS =
 XLIBS =
-LD_LIBS =	-lmalloc
+LD_LIBS =
 BASE_DEFS =
 DEFS =		$(BASE_DEFS) -DHOST_MIPS -DTARGET_MIPS -DOPSYS_UNIX -DOPSYS_IRIX5 -DCALLEESAVE=3
 TARGET =	MIPS

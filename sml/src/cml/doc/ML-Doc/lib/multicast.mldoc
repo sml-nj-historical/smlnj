@@ -6,7 +6,7 @@
 <VERSION VERID="1.0" YEAR=1997 MONTH=1 DAY=29>
 <TITLE>The Multicast structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/Multicast/ structure</HEAD>
 
 <PP>
@@ -26,10 +26,12 @@ how many threads are listening.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>mchan
         <COMMENT>
+	<PP>
           This is the type constructor for asynchronous multicast channels.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>port
         <COMMENT>
+	<PP>
           This is the type constructor for output ports on an
 	  asynchronous multicast channels.
     <SPEC>
@@ -86,8 +88,6 @@ how many threads are listening.
           </PROTOTY>
           multicasts the value <ARG/v/ on the channel <ARG/mc/.
 	  This is a nonblocking operation.
-<!-- optional SEEALSO; uncomment to use     -->
-<!-- <SEEALSO>    -->
-<!--   non-empty list of XREFS here   -->
-<!-- </SEEALSO>    -->
 </STRUCTURE>
+</INTERFACE>
+

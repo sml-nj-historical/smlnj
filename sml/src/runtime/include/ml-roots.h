@@ -46,9 +46,9 @@
 #   define BASE_INDX        21		/* $4  */
 
 #elif defined(TARGET_HPPA)
-#   define NROOTS	    23
+#   define NROOTS	    24
 #   define N_PSEUDO_REGS    2
-#   define N_ARG_REGS       19	 /* 4 std. regs & 15 miscregs */
+#   define N_ARG_REGS       20	 /* 4 std. regs & 16 miscregs */
 #   define PC_INDX	    0
 #   define LINK_INDX        1
 #   define CLOSURE_INDX	    2
@@ -73,6 +73,7 @@
 #   define MISC12_INDX	    20
 #   define MISC13_INDX	    21
 #   define MISC14_INDX	    22
+#   define MISC15_INDX	    23
  
 #elif defined (TARGET_M68)
 
