@@ -2,11 +2,18 @@ BOOT: the location of the latest boot files.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/11/02 17:00:00 JST
+Tag: blume-20001102-condcomp
+Version: 110.29.2
+Location: ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.29.2-autofetch/
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/08/31 17:30:00 JST
 Tag: blume-20001017-v110p29p1
 Version: 110.29.1
 Location: ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.29.1-autofetch/
 ----------------------------------------------------------------------
+Name: Matthias Blume
 Name: Matthias Blume
 Date: 2000/08/31 18:00:00 JST
 Tag: blume-20000831-cvsbootfiles

@@ -100,7 +100,22 @@ if [ "$ALLOC" = "" ] ; then
 	# "head" is called to make sure we consider only one matching line.
 	# (On linux SMP systems there is more than one such line.)
 	cache=`fgrep 'cache size' </proc/cpuinfo | head -1`
-	if [ $? = 0 ] ; then
+	if [ x$cache = x ] ; then
+	    # No cache info in /proc/cputype.  No we are checking the CPU
+	    # type....
+	    cpu=`fgrep 'cpu	' </proc/cpuinfo | head -1`
+	    cputype=`echo $cpu | sed -e 's/^.*:[ \t]*\(.*\)$/\1/'`
+	    case $cputype in
+		586)
+		    # An old Pentium.  Seems to work best with 64k.
+		    # Some extreme cases run best with even less
+		    #  (32k, 16k, or even just 8k).
+		    ALLOC="@SMLalloc=64k"
+		    ;;
+		*)
+		    ;;
+	    esac
+	else
 	    kb=`echo $cache | sed -e 's/^[^0-9]*\([0-9]*\).*$/\1/'`
 	    case $kb in 
 		128)

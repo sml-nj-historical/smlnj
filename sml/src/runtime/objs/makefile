@@ -461,4 +461,3 @@ $(CLIB_DIR)/posix-error/libposix-error.a: FORCE
 
 $(CLIB_DIR)/smlnj-ccalls/libsmlnj-ccalls.a: FORCE
 	(cd $(CLIB_DIR)/smlnj-ccalls; $(MAKE) $(LIB_MK_ARGS) libsmlnj-ccalls.a)
-

@@ -15,7 +15,7 @@ structure DependencyGraph = struct
     datatype bnode =
 	BNODE of { bininfo: BinInfo.info,
 		   localimports: bnode list,
-		   globalimports: farbnode list }
+		   globalimports: (unit -> farbnode) list }
 
     withtype farbnode = bnode far
 

@@ -32,6 +32,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	val _ = Say.vsay ["[reading init spec from ",
 			  SrcPath.descr specgroup, "]\n"]
 
+	fun defined symbol = isSome (#get (#symval (#param gp) symbol) ())
+
 	fun work stream = let
 	    val source = S.newSource (SrcPath.osstring specgroup,
 				      1, stream, false, errcons)
@@ -99,23 +101,28 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			    loop (split, StringMap.insert (m, name, n), newpos)
 			end
 			val looksb = DG.SB_SNODE o look
+
+			fun proc [] = loop (split, m, newpos)
+			  | proc ["split"] = loop (true, m, newpos)
+			  | proc ["nosplit"] = loop (false, m, newpos)
+			  | proc ("bind" :: name :: file :: args)  =
+			    node (name, file, args, false, NONE)
+			  | proc ("rts-placeholder" :: name :: file :: args) =
+			    node (name, file, args, true, NONE)
+			  | proc ("bind-core" :: ecs :: name :: file :: args) =
+			    node (name, file, args, false,
+				  SOME (Symbol.strSymbol ecs))
+			  | proc ("return" :: pervasive :: prims) =
+			    SOME { pervasive = looksb pervasive,
+				   others = map looksb prims,
+				   src = source }
+			  | proc ("ifdef" :: symbol :: line) =
+			    proc (if defined symbol then line else [])
+			  | proc ("ifndef" :: symbol :: line) =
+			    proc (if defined symbol then [] else line)
+			  | proc _ = (error "malformed line"; NONE)
 		    in
-			case line of
-			    [] => loop (split, m, newpos)
-			  | ["split"] => loop (true, m, newpos)
-			  | ["nosplit"] => loop (false, m, newpos)
-			  | ("bind" :: name :: file :: args)  =>
-				node (name, file, args, false, NONE)
-			  | ("rts-placeholder" :: name :: file :: args) =>
-				node (name, file, args, true, NONE)
-			  | ("bind-core" :: ecs :: name :: file :: args) =>
-			        node (name, file, args, false,
-				      SOME (Symbol.strSymbol ecs))
-			  | ("return" :: pervasive :: prims) =>
-				SOME { pervasive = looksb pervasive,
-				       others = map looksb prims,
-				       src = source }
-			  | _ => (error "malformed line"; NONE)
+			proc line
 		    end
 	in
 	    loop (false, StringMap.empty, 1)

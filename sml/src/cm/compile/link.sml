@@ -221,7 +221,7 @@ in
 					 l)
 				      | join ((f, SOME (i, l')), (e, l)) =
 					(e, B (f, i, l') :: l)
-				    val ge = foldl join e0 (map fbn gi)
+				    val ge = foldl join e0 (map lfbn gi)
 				    val le = foldl join ge (map bn li)
 				in
 				    case (BinInfo.sh_mode i, le) of
@@ -261,6 +261,8 @@ in
 			    end
 
 			    and fbn (_, n) = bn n
+
+			    and lfbn th = fbn (th ())
 
 			    fun sbn (DG.SB_SNODE n) =
 				EM.impossible "Link:SNODE in stable lib"

@@ -60,12 +60,41 @@
 #    from SML source code.)
 #  - There is one pre-defined name ("primitive") that refers to the
 #    Environment.primEnv.  It must not be "exported" by the "return" line.
+#  - A line of the form "ifdef SYMBOL rest ..." is equivalent to "rest ..."
+#    if the CM symbol "SYMBOL" is defined (i.e., if "#if defined(SYMBOL)"
+#    would be true in ordinary description files).  If SYMBOL is not
+#    defined, then the "ifdef" line will be ignored.
+#  - Similarly, a line of the form "ifndef SYMBOL rest ..." is equivalent
+#    to "rest ..." if SYMBOL is not defined; otherwise the line will
+#    be ignored.
 #
 # Note that a binding for structure _Core is necessary ALMOST EVERYWHERE.
 # Therefore, it is necessary that the pervasive environment has such a
 # binding.  For files of this initial library (which do not yet have the
 # benefit of being able to access the pervasive environment), a trivial
 # member "xcore" is used to supply _Core.
+#
+# Conditional compilation:
+#
+#  Guarded lines of the "ifdef" and "ifndef" variety (see above) are used to
+#  achive a limited form of conditional compilation within the init library.
+#  Since "ifdef" and "ifndef" guards can be applied even to lines that
+#  are already guarded, one can easily get the effect of a logical "and".
+#  A logical "or" can be obtained by duplicating lines that have different
+#  guards. (Be careful with this, though.  The guards of such duplicated
+#  lines must be mutually exclusive! Otherwise the same ML source might get
+#  included more than once.)
+#  Thus, any logical combinaton of conditions can be expressed (albeit perhaps
+#  clumsily).  For simple case (such as, for example, having different source
+#  files for different architectures), this facility should be easy to use.
+#
+#  Example:
+#   ...
+#   ifdef  ARCH_ALPHA32                  bind foo = foo-alpha32.sml (bar, baz)
+#   ifdef  ARCH_X86                      bind foo = foo-x86.sml (bar, baz)
+#   ifndef ARCH_ALPHA32 ifndef ARCH_X86  bind foo = foo-default.sml (bar, baz)
+#   ...
+#
 
 #### END OF EXPLANATION, SPEC STARTS HERE...
 

@@ -439,9 +439,9 @@ struct
 			share fsbnM f
 		    end
 
-		    and fsbnlist () = list fsbnListM fsbn ()
+		    and fsbnlist () = list fsbnListM lazy_fsbn ()
 
-		    val lazy_fsbn = UU.r_lazy session fsbn
+		    and lazy_fsbn () = UU.r_lazy session fsbn ()
 
 		    fun impexp () = let
 			fun ie #"i" =
@@ -750,7 +750,7 @@ struct
 		val op $ = PU.$ SN
 		fun raw_sn (DG.SNODE n) =
 		    "a" $ [si (#smlinfo n), list sn (#localimports n),
-			   list fsbn (#globalimports n)]
+			   list lazy_fsbn' (#globalimports n)]
 	    in
 		share SNs raw_sn n
 	    end
@@ -775,7 +775,9 @@ struct
 		"f" $ [filter f, sbn n]
 	    end
 
-	    val lazy_fsbn = PU.w_lazy fsbn
+	    and lazy_fsbn arg = PU.w_lazy fsbn arg
+
+	    and lazy_fsbn' arg = lazy_fsbn (fn () => arg)
 
 	    (* Here is the place where we need to write interface info. *)
 	    fun impexp (s, (nth, _, allsyms)) = let

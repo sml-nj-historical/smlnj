@@ -33,10 +33,12 @@ end = struct
 	    fun k' m = Cons (bininfo i, k (stab_reg (m, i)))
 	in
 	    if stab_isreg (m, i) then k m
-	    else do_list bnode l (do_list farbnode g k') m
+	    else do_list bnode l (do_list lazy_farbnode g k') m
 	end
 
 	and farbnode (_, n) = bnode n
+
+	and lazy_farbnode th = farbnode (th ())
 
 	fun snode (DG.SNODE n) k m = let
 	    val { smlinfo = i, localimports = l, globalimports = g } = n
