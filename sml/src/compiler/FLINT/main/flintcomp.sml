@@ -1,8 +1,8 @@
 (* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* flintcomp.sml *)
 
-functor FLINTComp (structure Gen: CPSGEN
-                   val collect: unit -> Word8Vector.vector) : CODEGENERATOR =
+functor FLINTComp (structure Gen: MACHINE_GEN
+                   val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
 struct
 
 local structure CB = CompBasic
@@ -12,7 +12,7 @@ local structure CB = CompBasic
       structure CPStrans = CPStrans(MachSpec)
       structure CPSopt = CPSopt(MachSpec)
       structure Closure = Closure(MachSpec)
-      structure Spill = Spill(MachSpec)
+      structure Spill = SpillFn(MachSpec)
       structure CpsSplit = CpsSplitFun (MachSpec) 
       structure CTRL = FLINT_Control
       structure PP = PPFlint
@@ -21,6 +21,7 @@ local structure CB = CompBasic
       structure F  = FLINT
 in 
 
+structure Machine = Gen
 val architecture = Gen.MachSpec.architecture
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
 val say = Control_Print.say
@@ -54,22 +55,12 @@ val convert   = phase "Compiler 060 convert" Convert.convert
 val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
 val cpsopt    = phase "Compiler 070 cpsopt" CPSopt.reduce
 val litsplit  = phase "Compiler 075 litsplit" Literals.litsplit
-val lit2cps   = phase "Compiler 076 lit2cps" Literals.lit2cps
+val litToBytes = phase "Compiler 076 litToBytes" Literals.litToBytes
 val closure   = phase "Compiler 080 closure"  Closure.closeCPS
 val globalfix = phase "Compiler 090 globalfix" GlobalFix.globalfix
-val spill     = if MachSpec.spillAreaSz < 500 * MachSpec.valueSize
-                then phase "Compiler 100 spill" Spill.spill
-                else fn x => x
+val spill     = phase "Compiler 100 spill" Spill.spill
 val limit     = phase "Compiler 110 limit" Limit.nolimit
 val codegen   = phase "Compiler 120 cpsgen" Gen.codegen
-
-val closureD  = phase "Compiler 081 closureD"  Closure.closeCPS
-val globalfixD= phase "Compiler 091 globalfixD" GlobalFix.globalfix
-val spillD    = if MachSpec.spillAreaSz < 500 * MachSpec.valueSize
-                then phase "Compiler 101 spillD" Spill.spill
-                else fn x => x
-val limitD    = phase "Compiler 110 limitD" Limit.nolimit
-val codegenD  = phase "Compiler 121 cpsgenD" Gen.codegen
 
 (** pretty printing for the FLINT and CPS code *)
 val (prF, prC) = 
@@ -204,10 +195,12 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
             val _ = prC "cpsopt" function
 
             val (function, dlit) = litsplit function
-            val data = lit2cps dlit
+	    val data = litToBytes dlit
             val _ = prC "cpsopt-code" function
-            val _ = prC "cpsopt-data" data
 
+(** NOTE: we should be passing the source-code name (src) to the
+ ** code generator somehow (for the second argument to code object allocation).
+ **)
             fun gen fx = 
               let val fx = (prC "closure" o closure) fx
                   val carg = globalfix fx
@@ -217,22 +210,11 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
                   collect ()
               end
 
-            fun gdata dd = 
-              let val x = Control.CG.printit
-                  val y = !x
-                  val _ = (x := false)
-                  val fx = (prC "closure" o closureD) dd
-                  val carg = globalfixD fx
-                  val carg = spillD carg
-                  val (carg, limit) = limitD carg
-               in codegenD (carg, limit, err);
-                  (collect ()) before (x := y)
-              end
          in case CpsSplit.cpsSplit function
-             of (fun0 :: funn) => (gen fun0, map gen funn, gdata data)
+             of (fun0 :: funn) => (gen fun0, map gen funn, data)
               | [] => bug "unexpected case on gen in flintcomp"
         end
-   in ({c0=nc0, cn=ncn, data=dseg, name=ref (SOME src)}, fi)
+   in ({c0=nc0, cn=ncn, data=dseg}, fi)
   end (* function flintcomp *)
 
 val flintcomp = phase "Compiler 050 flintcomp" flintcomp
@@ -241,5 +223,8 @@ end (* local *)
 end (* structure FLINTComp *)
 
 (*
- * $Log$
+ * $Log: flintcomp.sml,v $
+ * Revision 1.8  1999/01/11 16:53:25  george
+ *   new array representation support
+ *
  *)

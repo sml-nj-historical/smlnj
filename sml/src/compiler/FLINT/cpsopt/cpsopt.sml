@@ -204,7 +204,3 @@ in  (if rounds < 0 then function
 end (* fun reduce *)
 
 end (* functor CPSopt *)
-
-(*
- * $Log$
- *)

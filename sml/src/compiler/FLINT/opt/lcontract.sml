@@ -388,8 +388,3 @@ val lcontract = fn fdec => lcontract(lcontract(fdec, true), false)
 
 end (* toplevel local *)
 end (* structure LContract *)
-
-
-(*
- * $Log$
- *)

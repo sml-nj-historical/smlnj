@@ -15,8 +15,3 @@ sig
     val LVarString  : (FLINT.lvar -> string) ref
 
 end (* signature PPFLINT *)
-
-
-(*
- * $Log$
- *)

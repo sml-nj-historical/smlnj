@@ -119,7 +119,3 @@ and primop = dict option * PrimOp.primop * lty * tyc list
 type prog = fundec  (* was "lvar * lty * lexp" *)
 
 end (* signature FLINT *)
-
-(*
- * $Log$
- *)

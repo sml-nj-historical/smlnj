@@ -1276,8 +1276,3 @@ fun lt_nvars (lty:lty) =
 
 end (* toplevel local *)
 end (* abstraction LtyKernel *)
-
-
-(*
- * $Log$
- *)

@@ -5,5 +5,6 @@ signature CODEGENERATOR =
 sig
   structure Machine : MACHINE_GEN
   val architecture : string
-  val flintcomp : CompBasic.flint * CompBasic.compInfo -> CompBasic.csegments
+  val flintcomp : CompBasic.flint * CompBasic.compInfo ->
+      (CompBasic.csegments * CompBasic.flint option)
 end (* CODEGENERATOR *)

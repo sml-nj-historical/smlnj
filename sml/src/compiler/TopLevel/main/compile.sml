@@ -18,9 +18,8 @@ local structure FE = FrontEnd
       structure DA = Access
       structure CB = CompBasic
       structure ST = Stats
-      structure CI = Unsafe.CInterface
+      structure Obj = Unsafe.Object
       structure W8V = Word8Vector
-      structure V = Vector
 in
 
 val say = Control_Print.say
@@ -174,10 +173,6 @@ local
     else (flint, NONE)
 
 
-  val w8vLen = W8V.length
-  fun csegsize {c0, cn, data, name} =
-    foldl (fn (x, y) => (w8vLen x) + y) (w8vLen c0 + w8vLen data) cn
-
   val addCode = ST.addStat (ST.makeStat "Code Size")
 in
     fun codegen { flint: flint, imports: import list, symenv: symenv,
@@ -188,8 +183,13 @@ in
 
 	(* from optimized FLINT code, generate the machine code *)
 	val (csegs,inlineExp) = M.flintcomp(flint, compInfo)
+	val codeSz =
+	      List.foldl
+		(fn (co, n) => n + CodeObj.size co)
+		  (CodeObj.size(#c0 csegs) + W8V.length(#data csegs))
+		    (#cn csegs)
     in
-	addCode(csegsize csegs); 
+	addCode codeSz;
 	{ csegments=csegs, inlineExp=inlineExp, imports = revisedImports }
     end 
 end (* local codegen *)
@@ -263,25 +263,15 @@ fun mksymenv (NONE, _) = SymbolicEnv.empty
   | mksymenv (SOME pid, SOME l) = SymbolicEnv.singleton (pid, l)
 
 (** turn the byte-vector-like code segments into an executable closure *)
-local
-  type w8v = W8V.vector
-  val vzero = V.fromList []
-  val mkCodeV : w8v * string option -> (w8v * executable) = 
-        CI.c_function "SMLNJ-RunT" "mkCode"
-  val mkCodeO : w8v * string option -> (w8v * (object -> object)) =
-        CI.c_function "SMLNJ-RunT" "mkCode"
-in
-fun mkexec {c0: w8v, cn: w8v list, data : w8v, name: string option ref} =
-  let val s = case !name of NONE => "EMPTY COMMENT <-- check"
-                          | SOME s => s
-      val nex = 
-        let val (_, dt) = mkCodeV(data, NONE)
-            val (_, ex) = mkCodeV(c0, SOME s)
-         in fn ivec => ex (V.concat [ivec, V.fromList [dt vzero]])
-        end
-   in foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) nex cn
-  end 
-end (* local *)
+fun mkexec (cs : CodeObj.csegments) = let
+      val ex = CodeObj.exec (#c0 cs)
+      val nex = if (W8V.length(#data cs) > 0)
+	    then (fn ivec =>
+		ex (Obj.mkTuple(Obj.toTuple ivec @ [CodeObj.mkLiterals(#data cs)])))
+	    else (fn ivec => ex ivec)
+      in
+	foldl (fn (c, r) => (CodeObj.exec c) o r) nex (#cn cs)
+      end 
 
 (** just like f x, except that it catches top-level callcc's *)
 local 
@@ -307,12 +297,10 @@ end (* local of cont_stack *)
  *****************************************************************************)
 
 (** perform the execution of the excutable, output the new dynenv *)
-fun execute{executable, imports, exportPid, dynenv} = 
-  let val args : object V.vector = 
-        let fun selObj (obj, i) = 
-              ((V.sub (Unsafe.Object.toTuple obj, i)) handle _ =>
-                 bug "unexpected linkage interface in execute")
-
+fun execute {executable, imports, exportPid, dynenv} = let
+      val args : object = let
+            fun selObj (obj, i) = (Obj.nth(obj, i)
+		  handle _ => bug "unexpected linkage interface in execute")
             fun getObj ((p, n), zs) = 
               let fun get (obj, CB.ITNODE [], z) = obj::z
                     | get (obj, CB.ITNODE xl, z) = 
@@ -325,9 +313,9 @@ fun execute{executable, imports, exportPid, dynenv} =
                         fail "imported objects not found or inconsistent"))
                in get(obj, n, zs)
               end
-
-         in Vector.fromList (foldr getObj [] imports)
-        end
+	    in
+	      Obj.mkTuple (foldr getObj [] imports)
+            end
       val result : object = executable args
    in case exportPid 
        of NONE => DE.empty
@@ -344,6 +332,20 @@ end (* local of exception Compile *)
 
 (*
  * $Log: compile.sml,v $
+ * Revision 1.9  1998/12/30 20:21:30  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
+ * Revision 1.8  1998/11/18 03:54:25  jhr
+ *  New array representations.
+ *
+ * Revision 1.7  1998/10/28 18:25:43  jhr
+ *   New literal lifting and new Unsafe.Object API.
+ *
+ * Revision 1.6  1998/10/16 14:04:00  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  * Revision 1.5  1998/06/02 17:39:29  george
  *   Changes to integrate CM functionality into the compiler --- blume
  *

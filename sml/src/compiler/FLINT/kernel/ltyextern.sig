@@ -101,8 +101,3 @@ val twrap_gen   : bool -> ((tyc -> tyc) * (lty -> lty) *
 val tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit -> unit))
 
 end (* signature LTYEXTERN *)
-
-
-(*
- * $Log$
- *)

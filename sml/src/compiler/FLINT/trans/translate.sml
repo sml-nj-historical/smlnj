@@ -684,6 +684,7 @@ fun transPrim (prim, lt, ts) =
                                mkRaise(coreExn "Subscript", LT.ltc_unit))))))
               end
 
+(**** ASSIGN(r, x) <> UPDATE(r, 0, x) under new array reps (JHR;1998-10-30)
         | g (PO.ASSIGN) = 
               let val (tc1, t1) = case ts of [z] => (z, lt_tyc z)
                                     | _ => bug "unexpected ty for ASSIGN"
@@ -699,6 +700,7 @@ fun transPrim (prim, lt, ts) =
                in FN(x, argt, 
                    APP(oper, RECORD[SELECT(0, varX), INT 0, SELECT(1, varX)]))
               end
+****)
 
         | g p = PRIM(p, lt, ts) 
 

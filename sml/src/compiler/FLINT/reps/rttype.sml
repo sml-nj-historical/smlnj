@@ -383,4 +383,3 @@ fun isPair (kenv, tc) =
 end (* local *)
 end (* structure RuntimeType *)
 
-

@@ -290,8 +290,3 @@ fun ltInsert (venv, lv, lt, d) = IntmapF.add(venv, lv, (lt, d))
 
 end (* top-level local *)
 end (* structure LtyBasic *)
-
-
-(*
- * $Log$
- *)

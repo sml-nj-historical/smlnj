@@ -478,7 +478,3 @@ fun checkExp (le,phase) = check phase (LT.initTkEnv, LT.initLtyEnv, DI.top) le
 
 end (* toplevel local *)
 end (* structure ChkFlint *)
-
-(*
- * $Log$
- *)

@@ -66,7 +66,8 @@ datatype primop
   | CALLCC | CAPTURE | THROW   (* continuation operations *)
   | ISOLATE                    (* isolating a function *)
   | DEREF                      (* dereferencing *)
-  | ASSIGN                     (* assignment; shorthand for update(a, 0, v) *)
+  | ASSIGN                     (* assignment *)
+  | UNBOXEDASSIGN              (* assignment to integer reference *)
   | UPDATE                     (* array or reference update (maybe boxed) *)
   | INLUPDATE                  (* inline array update (maybe boxed) *)
   | BOXEDUPDATE                (* boxed array update *)
@@ -91,6 +92,11 @@ datatype primop
   | MKETAG                     (* make a new exception tag *)
   | WRAP                       (* box a value by wrapping it *)
   | UNWRAP                     (* unbox a value by unwrapping it *)
+(* Primops to support new array representations *)
+  | NEW_ARRAY0			(* allocate zero-length array header *)
+  | GET_SEQ_DATA		(* get data pointer from arr/vec header *)
+  | SUBSCRIPT_REC		(* record subscript operation *)
+  | SUBSCRIPT_RAW64		(* raw64 subscript operation *)
 
 
 (** default integer arithmetic and comparison operators *)
@@ -230,6 +236,13 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
   | prPrimop (MKETAG) = "mketag"
   | prPrimop (WRAP) = "wrap"
   | prPrimop (UNWRAP) = "unwrap"
+(* Primops to support new array representations *)
+  | prPrimop (NEW_ARRAY0) = "newarray0"
+  | prPrimop (GET_SEQ_DATA) = "getseqdata"
+  | prPrimop (SUBSCRIPT_REC) = "subscriptrec"
+  | prPrimop (SUBSCRIPT_RAW64) = "subscriptraw64"
+  | prPrimop _ = "**!!UNKNOWN!!**"
+
 
 val purePrimop =
   fn DEREF => false
@@ -277,3 +290,4 @@ val mayRaise =
    | _ => false
 
 end  (* structure PrimOp *)
+

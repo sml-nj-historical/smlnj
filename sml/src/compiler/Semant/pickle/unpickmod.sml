@@ -276,8 +276,10 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
   | primop #"Y" = %Uprimop(P.WRAP)
   | primop #"Z" = %Uprimop(P.UNWRAP)
 
-  | primop x = %Uprimop(
-       case x
+  | primop #"a" = ?nestprimop(fn Uprimop p => %Uprimop(p))
+
+ and nestprimop x =
+       %Uprimop (case x
         of #"a" => P.SUBSCRIPT
          | #"b" => P.SUBSCRIPTV
          | #"c" => P.INLSUBSCRIPT
@@ -308,6 +310,7 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          | #"z" => P.THROW
          | #"1" => P.DEREF
          | #"2" => P.ASSIGN
+	    (* NOTE: P.UNBOXEDASSIGN is handled below *)
          | #"3" => P.UPDATE
          | #"4" => P.INLUPDATE
          | #"5" => P.BOXEDUPDATE
@@ -331,6 +334,11 @@ fun primop #"A" = ?arithop(fn Uarithop p =>
          | #"/" => P.INL_VECTOR
          | #":" => P.ISOLATE
          | #";" => P.WCAST
+	 | #"A" => P.NEW_ARRAY0
+	 | #"B" => P.GET_SEQ_DATA
+	 | #"C" => P.SUBSCRIPT_REC
+	 | #"D" => P.SUBSCRIPT_RAW64
+         | #"E" => P.UNBOXEDASSIGN
 	 | _ => raise Fail "    | primop")
 
 

@@ -508,8 +508,3 @@ fun ltw_pfct (lt, f, g) =
 
 end (* top-level local *)
 end (* structure LtyDef *)
-
-
-(*
- * $Log$
- *)

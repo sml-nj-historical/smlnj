@@ -293,10 +293,3 @@ end
 end (* toplevel local *)
 end (* structure CPStrans *)
 
-
-(*
- * $Log: cpstrans.sml,v $
- * Revision 1.3  1998/05/23 14:09:30  george
- *   Fixed RCS keyword syntax
- *
- *)

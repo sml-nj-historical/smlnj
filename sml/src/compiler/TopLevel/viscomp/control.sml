@@ -112,13 +112,6 @@ struct
     val pollChecks = ref false
     val pollRatioAtoI = ref 1.0
 
-    datatype mlrisc_phase = 
-	NO_PHASE
-      | AFTER_INSTR_SEL
-      | AFTER_RA
-      | AFTER_SCHED
-      | PHASES of mlrisc_phase * mlrisc_phase
-    val printFlowgraph = ref NO_PHASE
     val printFlowgraphStream = ref TextIO.stdOut
 
     val memDisambiguate = ref false
@@ -185,3 +178,14 @@ structure Control : CONTROL =
     val lambdaSplitEnable = ref false
     val crossInlineEnable  = ref false
 end
+
+
+(*
+ * $Log: control.sml,v $
+ * Revision 1.7  1999/01/11 16:53:42  george
+ *   new array representation support
+ *
+ * Revision 1.4  1998/05/23 14:10:30  george
+ *   Fixed RCS keyword syntax
+ *
+ *)

@@ -570,8 +570,3 @@ fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
 
 end (* toplevel local *)
 end (* structure FlintNM *)
-
-
-(*
- * $Log$
- *)

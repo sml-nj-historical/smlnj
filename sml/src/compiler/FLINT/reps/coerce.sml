@@ -366,9 +366,3 @@ fun wrapOp (wenv, nts, ots, d) =
 
 end (* toplevel local *)
 end (* structure Coerce *)
-
-
-
-(*
- * $Log$
- *)

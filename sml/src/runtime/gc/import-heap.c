@@ -10,7 +10,6 @@
 #include "ml-base.h"
 #include "machine-id.h"
 #include "memory.h"
-#include "reg-mask.h"
 #include "cache-flush.h"
 #include "ml-state.h"
 #include "ml-values.h"
@@ -152,19 +151,15 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
     if (imHdr.kind == EXPORT_HEAP_IMAGE) {
       /* Load the live registers */
 	ASSIGN(MLSignalHandler, image.sigHandler);
-	msp->ml_liveRegMask	= RET_MASK;
 	msp->ml_arg		= image.stdArg;
-	msp->ml_closure		= image.stdClos;
 	msp->ml_cont		= image.stdCont;
-	msp->ml_exnCont		= image.exnCont;
+	msp->ml_closure		= image.stdClos;
 	msp->ml_pc		= image.pc;
-#if (CALLEESAVE > 0)
-	for (i = 0;  i < CALLEESAVE;  i++)
-	    msp->ml_calleeSave(i) = image.calleeSaves[i];
-#endif
-#if (FLOAT_CALLEESAVE > 0)
-	/** LOAD FLOAT CALLEE SAVES **/
-#endif
+	msp->ml_exnCont		= image.exnCont;
+	msp->ml_varReg		= image.varReg;
+	msp->ml_calleeSave[0]	= image.calleeSave[0];
+	msp->ml_calleeSave[1]	= image.calleeSave[1];
+	msp->ml_calleeSave[2]	= image.calleeSave[2];
       /* read the ML heap */
 	ReadHeap (&inBuf, &heapHdr, msp, externs);
       /* GC message are on by default for interactive images */
@@ -408,10 +403,26 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
   /* Adjust the ML registers to the new address space */
     ASSIGN(MLSignalHandler, RepairWord (
 	DEREF(MLSignalHandler), oldBIBOP, addrOffset, boRegionTbl, externs));
-    for (i = 0;  i < NROOTS;  i++) {
-	msp->ml_roots[i] = RepairWord (
-	    msp->ml_roots[i], oldBIBOP, addrOffset, boRegionTbl, externs);
-    }
+    msp->ml_arg = RepairWord (
+        msp->ml_arg, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_cont = RepairWord (
+        msp->ml_cont, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_closure = RepairWord (
+        msp->ml_closure, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_pc = RepairWord (
+        msp->ml_pc, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_linkReg = RepairWord (
+        msp->ml_linkReg, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_exnCont = RepairWord (
+        msp->ml_exnCont, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_varReg = RepairWord (
+        msp->ml_varReg, oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_calleeSave[0] = RepairWord (
+        msp->ml_calleeSave[0], oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_calleeSave[1] = RepairWord (
+        msp->ml_calleeSave[1], oldBIBOP, addrOffset, boRegionTbl, externs);
+    msp->ml_calleeSave[2] = RepairWord (
+        msp->ml_calleeSave[2], oldBIBOP, addrOffset, boRegionTbl, externs);
 
   /* release storage */
     for (i = 0; i < hdr->numBORegions;  i++) {

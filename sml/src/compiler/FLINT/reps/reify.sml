@@ -267,7 +267,3 @@ end (* function reify *)
 
 end (* toplevel local *)
 end (* structure Reify *)
-
-(*
- * $Log$
- *)

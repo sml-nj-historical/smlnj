@@ -149,9 +149,3 @@ val token_key     : int -> token
 val wrap_token    : token
 
 end (* signature LTYKERNEL *)
-
-
-
-(*
- * $Log$
- *)

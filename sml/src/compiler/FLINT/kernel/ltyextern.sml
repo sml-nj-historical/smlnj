@@ -938,8 +938,3 @@ fun lt_nvpoly(tvks, lt) =
 
 end (* top-level local *)
 end (* structure LtyExtern *)
-
-
-(*
- * $Log$
- *)

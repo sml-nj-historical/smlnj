@@ -126,7 +126,3 @@ type prog = fundec  (* was "lvar * lty * lexp" *)
 
 end (* local *)
 end (* structure FLINT *)
-
-(*
- * $Log$
- *)

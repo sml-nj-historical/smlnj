@@ -367,8 +367,3 @@ struct
 	 
 
 end (* structure PPFlint *)
-
-
-(*
- * $Log$
- *)

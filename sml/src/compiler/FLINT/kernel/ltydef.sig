@@ -331,7 +331,3 @@ val ltw_ppoly  : lty * (tkind list * lty -> 'a) * (lty -> 'a) -> 'a
 val ltw_pfct   : lty * (lty * lty -> 'a) * (lty -> 'a) -> 'a
 
 end (* signature LTYDEF *)
-
-(*
- * $Log$
- *)

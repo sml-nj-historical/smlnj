@@ -262,7 +262,3 @@ end
 
 end (* top-level local *)
 end (* structure FlintUtil *)
-
-(*
- * $Log$
- *)

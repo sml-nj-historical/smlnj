@@ -653,8 +653,3 @@ end (* function specialize *)
 
 end (* toplevel local *)
 end (* structure Specialize *)
-
-
-(*
- * $Log$
- *)

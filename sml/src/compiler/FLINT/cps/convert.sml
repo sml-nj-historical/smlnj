@@ -189,6 +189,10 @@ fun map_primop p =
 (*   | AP.THROW =>      PKP (P.cast) *)
      | AP.CAST =>       PKP (P.cast)
      | AP.MKETAG =>     PKP (P.makeref)
+     | AP.NEW_ARRAY0 => PKP (P.newarray0)
+     | AP.GET_SEQ_DATA => PKP (P.getseqdata)
+     | AP.SUBSCRIPT_REC => PKP (P.recsubscript)
+     | AP.SUBSCRIPT_RAW64 => PKP (P.raw64subscript)
         
      | AP.SUBSCRIPT => PKL (P.subscript)
      | AP.NUMSUBSCRIPT{kind,immutable=false,checked=false} => 
@@ -209,6 +213,8 @@ fun map_primop p =
      | AP.UNBOXEDUPDATE => PKS(P.unboxedupdate)
      | AP.BOXEDUPDATE => PKS(P.boxedupdate)
      | AP.UPDATE => PKS(P.update)
+     | AP.ASSIGN => PKS(P.assign)
+     | AP.UNBOXEDASSIGN => PKS(P.unboxedassign)
      | AP.SETVAR => PKS(P.setvar)
      | AP.SETPSEUDO => PKS(P.setpseudo)
      | AP.SETMARK => PKS(P.setmark)
@@ -619,9 +625,4 @@ end (* function convert *)
 
 end (* toplevel local *)
 end (* functor Convert *)
-
-
-(*
- * $Log$
- *)
 

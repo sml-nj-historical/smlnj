@@ -562,4 +562,3 @@ fun arrNew(tc, pv, rv, kenv) =
 end (* toplevel local *)
 end (* structure TypeOper *)
 
-

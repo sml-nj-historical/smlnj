@@ -123,7 +123,3 @@ fun recover (fdec, postRep) =
 
 end (* local *)
 end (* structure Recover *)
-
-(*
- * $Log$
- *)

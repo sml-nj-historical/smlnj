@@ -62,6 +62,10 @@ fun classPrim(px as (d, p, lt, ts)) =
            then ((d, f64sub, LT.lt_pinst(lt, ts), []), true, false)
            else (px, false, true)
          else (px, false, false)
+     | (PO.ASSIGN, [tc]) =>			      (* special *)
+	if (LT.tc_upd_prim tc = PO.UNBOXEDUPDATE)
+	  then ((d, PO.UNBOXEDASSIGN, lt, ts), false, false)
+	  else ((d, p, lt, ts), false, false)
      | (PO.UPDATE, [tc]) =>                           (* special *)
          if isArrayUpd lt then
            if LT.tc_eqv(tc, LT.tcc_real) 
