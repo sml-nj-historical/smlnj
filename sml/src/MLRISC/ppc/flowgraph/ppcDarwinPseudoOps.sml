@@ -34,6 +34,8 @@ functor PPCDarwinPseudoOps (
     val sizeOf = Endian.sizeOf
     val emitValue = Endian.emitValue
 
+    val labelToString = Label.fmt {gPrefix="", aPrefix="L"}
+
     fun prIntInf i =
 	  if IntInf.sign i < 0 then "-"^IntInf.toString(IntInf.~ i) 
 	  else IntInf.toString i
@@ -52,7 +54,7 @@ functor PPCDarwinPseudoOps (
 
     fun lexpToString le = toStr(le, 0)
 
-    and toStr(T.LABEL lab, _) = Label.fmt labFmt lab 
+    and toStr(T.LABEL lab, _) = labelToString lab 
       | toStr(T.LABEXP le, p) = toStr(le, p)
       | toStr(T.CONST c, _) = 
           (prInt(T.Constant.valueOf c) handle _ => T.Constant.toString c)
@@ -79,7 +81,7 @@ functor PPCDarwinPseudoOps (
       | toString(PB.ALIGN_ENTRY)    = "\t.align\t4"	(* 16 byte boundary *)
       | toString(PB.ALIGN_LABEL)    = "\t.align\t2"
   
-      | toString(PB.DATA_LABEL lab) = Label.fmt labFmt lab ^ ":"
+      | toString(PB.DATA_LABEL lab) = labelToString lab ^ ":"
       | toString(PB.DATA_READ_ONLY) = "\t.const_data"
       | toString(PB.DATA)           = "\t.data"
       | toString(PB.BSS)	    = "\t.section\t__DATA,__BSS"
@@ -121,6 +123,6 @@ functor PPCDarwinPseudoOps (
       | toString(PB.COMMENT txt) = Fmt.format "; %s" [Fmt.STR txt]
       | toString(PB.EXT _) = error "EXT"
 
-    fun defineLabel lab = Label.fmt labFmt lab ^ ":"
+    fun defineLabel lab = labelToString lab ^ ":"
 
   end
