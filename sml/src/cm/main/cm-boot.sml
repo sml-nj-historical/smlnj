@@ -169,15 +169,19 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	        (SrcPath.standard { err = fn s => raise Fail s, env = penv }
 				  { context = SrcPath.cwd (), spec = s })
 
-	  fun getPending () = let
-	      fun one (s, _) = let
-		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
-		  val n = Symbol.name s
-	      in
-		  concat ["  ", nss, " ", n, "\n"]
-	      end
+	  fun getPending () =
+	      map (Symbol.describe o #1)
+		  (SymbolMap.listItemsi (AutoLoad.getPending ()))
+
+	  fun showBindings () = let
+	      val loaded = map Symbol.describe (EnvRef.listBoundSymbols ())
+	      val pending = getPending ()
+	      fun pr s = Say.say [s, "\n"]
 	  in
-	      map one (SymbolMap.listItemsi (AutoLoad.getPending ()))
+	      Say.say ["\n*** Symbols bound at toplevel:\n"];
+	      app pr loaded;
+	      Say.say ["\n*** Symbols registered for autoloading:\n"];
+	      app pr pending
 	  end
 
 	  fun initPaths () = let
@@ -711,6 +715,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	    val synchronize = SrcPath.sync
 	    val reset = reset
 	    val pending = getPending
+	    val showBindings = showBindings
 	end
 
 	structure Server = struct

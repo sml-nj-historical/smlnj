@@ -18,6 +18,8 @@ signature ENVREF = sig
 
   (* push a given envstate onto the stack, run the thunk, then pop the state *)
   val locally : envstate * (unit -> 'a) -> 'a
+
+  val listBoundSymbols : unit -> Symbol.symbol list
 end
 
 structure EnvRef : ENVREF = struct
@@ -58,4 +60,9 @@ structure EnvRef : ENVREF = struct
 	th ()
 	before stack := oldstack
     end
+
+    fun listBoundSymbols () =
+	StaticEnv.symbols
+	    (StaticEnv.atop (#static (#get (loc ()) ()),
+			     #static (#get (base ()) ())))
 end

@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/15 14:17:00 EST
+Tag: blume-20020215-showbindings
+Description:
+
+Added EnvRef.listBoundSymbols and CM.State.showBindings.  Especially
+the latter can be useful for exploring what bindings are available at
+the interactive prompt.  (The first function returns only the list
+of symbols that are really bound, the second prints those but also the
+ones that CM's autoloading mechanism knows about.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/15 12:08:00 EST
 Tag: blume-20020215-iptrs
 Description:
