@@ -67,8 +67,5 @@ overload abs : ('a -> 'a)
 
 
 (*
- * $Log: bind-overloads.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:55  george
- * Version 110.5
- *
+ * $Log$
  *)

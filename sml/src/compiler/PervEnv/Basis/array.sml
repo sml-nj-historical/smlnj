@@ -224,9 +224,6 @@ structure Array : ARRAY =
 
 (*
  * $Log: array.sml,v $
- * Revision 1.2  1998/11/18 03:54:10  jhr
- *  New array representations.
- *
  * Revision 1.1.1.1  1998/04/08 18:40:03  george
  * Version 110.5
  *

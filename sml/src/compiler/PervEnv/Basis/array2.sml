@@ -290,9 +290,6 @@ structure Array2 :> ARRAY2 =
 
 (*
  * $Log: array2.sml,v $
- * Revision 1.4  1998/11/18 03:54:11  jhr
- *  New array representations.
- *
  * Revision 1.3  1998/10/19 13:47:14  jhr
  *   Fixed bug in Array2.fromList.
  *

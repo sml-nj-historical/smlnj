@@ -224,8 +224,5 @@ structure IntmapF :> INTMAPF =
     end
 
 (*
- * $Log: intmapf.sml,v $
- * Revision 1.2  1998/12/22 17:00:11  jhr
- *   Merged in 110.10 changes from Yale.
- *
+ * $Log$
  *)

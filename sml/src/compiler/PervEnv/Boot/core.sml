@@ -262,9 +262,6 @@ structure Core =
 
 (*
  * $Log: core.sml,v $
- * Revision 1.4  1998/11/18 03:54:19  jhr
- *  New array representations.
- *
  * Revision 1.3  1998/05/23 14:09:57  george
  *   Fixed RCS keyword syntax
  *

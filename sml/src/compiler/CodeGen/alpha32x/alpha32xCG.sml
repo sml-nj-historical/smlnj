@@ -233,9 +233,6 @@ end
 
 (*
  * $Log: alpha32xCG.sml,v $
- * Revision 1.5  1998/10/07 14:25:32  dbm
- * change 'where F' to 'where P' in Alpha32XCG parameter spec
- *
  * Revision 1.4  1998/08/05 21:00:47  george
  *   support for block names
  *
