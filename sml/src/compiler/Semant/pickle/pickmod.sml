@@ -7,18 +7,19 @@ sig
         SCStaticEnv.staticEnv * StaticEnv.staticEnv 
                   -> {hash: PersStamps.persstamp,
                       pickle: Word8Vector.vector, 
-	              exportLvars: Access.lvar list,
+	              exportLvars: Lambda.lvar list,
 	              exportPid: PersStamps.persstamp option}
-  val pickleFLINT:
-        CompBasic.flint option ->
-            {hash: PersStamps.persstamp, pickle: Word8Vector.vector}
+
+  val pickleLambda:
+        Lambda.lexp option ->
+                 {hash: PersStamps.persstamp, pickle: Word8Vector.vector}
 
   val pickle2hash: Word8Vector.vector -> PersStamps.persstamp
 
   val dontPickle : 
         StaticEnv.staticEnv * int
                   -> StaticEnv.staticEnv * PersStamps.persstamp *
-	             Access.lvar list * PersStamps.persstamp option
+	             Lambda.lvar list * PersStamps.persstamp option
 
   val debugging : bool ref
   val debuggingSW : bool ref
@@ -35,7 +36,7 @@ local structure A  = Access
       structure ED = EntPath.EvDict
       structure II = InlInfo
       structure IP = InvPath
-      structure F  = FLINT
+      structure L  = Lambda
       structure LK = LtyKernel  (* structure LT = LtyDef *)
       (** pickmod must look under the abstract lty representation *)
       structure M  = Modules 
@@ -223,10 +224,6 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop (P.INL_MONOARRAY k) () = "Mj" $ [numkind k]
   | primop (P.INL_MONOVECTOR k) () = "Vj" $ [numkind k]
 
-  | primop (P.MKETAG) () = "Xj" $ []
-  | primop (P.WRAP) () = "Yj" $ []
-  | primop (P.UNWRAP) () = "Zj" $ []
-
   | primop P.SUBSCRIPT () = "ak" $ []
   | primop P.SUBSCRIPTV () = "bk" $ []
   | primop P.INLSUBSCRIPT () = "ck" $ []
@@ -281,7 +278,6 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop P.INL_ARRAY () = ".k" $ []
   | primop P.INL_VECTOR () = "/k" $ []
   | primop P.ISOLATE () = ":k" $ []
-
 
 fun consig (A.CSIG(i,j)) () = "S8" $ [W.int i, W.int j]
   | consig (A.CNIL) () = "N8" $ []
@@ -376,8 +372,8 @@ fun mkPickleLty (stamp,tvar) =
                  "I6" $ [int n, tyc tc, list tyc ts, int i]
              | LK.TC_ABS tc => "J6" $ [tyc tc]
              | LK.TC_BOX tc => "K6" $ [tyc tc]
-             | LK.TC_TUPLE (_,l) => "L6" $ [list tyc l]
-             | LK.TC_ARROW ((b1,b2),ts1,ts2) => 
+             | LK.TC_TUPLE l => "L6" $ [list tyc l]
+             | LK.TC_ARROW ((b1,b2), ts1,ts2) => 
                  "M6" $ [bool b1, bool b2, list tyc ts1, list tyc ts2]
              | LK.TC_PARROW _ =>
                  bug "unexpected TC_PARROW in mkPickleLty"
@@ -401,12 +397,12 @@ fun mkPickleLty (stamp,tvar) =
               of LK.TK_MONO => "A7" $ []
                | LK.TK_BOX => "B7" $ []
                | LK.TK_SEQ ks => "C7" $ [list tkind ks]
-               | LK.TK_FUN(ks,k) => "D7" $ [list tkind ks, tkind k])
+               | LK.TK_FUN(k1,k2) => "D7" $ [tkind k1, tkind k2])
 
      in {lty=lty,tyc=tyc,tkind=tkind}
     end
  
-fun pickleFLINT fdecOp =
+fun pickleLambda leOp =
   let val alphaConvert = alphaConverter()
       val stamp = mkStamp alphaConvert
       val lvar = int o alphaConvert
@@ -414,76 +410,59 @@ fun pickleFLINT fdecOp =
       val {access,conrep} = mkAccess lvar
       val {lty,tyc,tkind} = mkPickleLty(stamp,tvar)
 	
-      fun con (F.DATAcon (dc, ts, v), e) () =
-	    ".5" $ [dcon (dc, ts), lvar v, lexp e]
-        | con (F.INTcon i, e) ()           = ",5" $ [int i, lexp e]
-        | con (F.INT32con i32, e) ()       = "=5" $ [int32 i32, lexp e]
-        | con (F.WORDcon w, e) ()          = "?5" $ [word w, lexp e]
-        | con (F.WORD32con w32, e) ()      = ">5" $ [word32 w32, lexp e]
-        | con (F.REALcon s, e) ()          = "<5" $ [W.string s, lexp e]
-        | con (F.STRINGcon s, e) ()        = "'5" $ [W.string s, lexp e]
-        | con (F.VLENcon i, e) ()          = ";5" $ [int i, lexp e]
-
-      and dcon ((s, cr, t), ts) () = 
-            "^5" $ [symbol s, conrep cr, lty t, list tyc ts]
+      fun con (L.DATAcon (s, cr, t), e) () =
+	    ".5" $ [symbol s, conrep cr, lty t, lexp e]
+        | con (L.INTcon i, e) ()           = ",5" $ [int i, lexp e]
+        | con (L.INT32con i32, e) ()       = "=5" $ [int32 i32, lexp e]
+        | con (L.WORDcon w, e) ()          = "?5" $ [word w, lexp e]
+        | con (L.WORD32con w32, e) ()      = ">5" $ [word32 w32, lexp e]
+        | con (L.REALcon s, e) ()          = "<5" $ [W.string s, lexp e]
+        | con (L.STRINGcon s, e) ()        = "'5" $ [W.string s, lexp e]
+        | con (L.VLENcon i, e) ()          = ";5" $ [int i, lexp e]
 
       and dict {default=v, table=tbls} () = 
             "%5" $ [lvar v, list (tuple2 (list tyc, lvar)) tbls]
 
-      and value (F.VAR v) ()               = "a5" $ [lvar v]
-	| value (F.INT i) ()               = "b5" $ [int i]
-	| value (F.INT32 i32) ()           = "c5" $ [int32 i32]
-	| value (F.WORD w) ()              = "d5" $ [word w]
-	| value (F.WORD32 w32) ()          = "e5" $ [word32 w32]
-	| value (F.REAL s) ()              = "f5" $ [W.string s]
-	| value (F.STRING s) ()            = "g5" $ [W.string s]
+      and sval (L.VAR v) ()               = "a5" $ [lvar v]
+	| sval (L.INT i) ()               = "b5" $ [int i]
+	| sval (L.INT32 i32) ()           = "z5" $ [int32 i32]
+	| sval (L.WORD w) ()              = "c5" $ [word w]
+	| sval (L.WORD32 w32) ()          = "d5" $ [word32 w32]
+	| sval (L.REAL s) ()              = "e5" $ [W.string s]
+	| sval (L.STRING s) ()            = "f5" $ [W.string s]
+	| sval (L.PRIM (p, t, ts)) ()     = 
+            "g5" $ [primop p, lty t, list tyc ts]
+        | sval (L.GENOP (dt, p, t, ts)) ()   = 
+            "h5" $ [dict dt, primop p, lty t, list tyc ts]
 
-      and fprim (NONE, p, t, ts) () = 
-            "h5" $ [primop p, lty t, list tyc ts]
-        | fprim (SOME dt, p, t, ts) () = 
-            "i5" $ [dict dt, primop p, lty t, list tyc ts]
+      and lexp (L.SVAL sv) ()             = "i5" $ [sval sv]
+	| lexp (L.FN (v, t, e)) ()        = "j5" $ [lvar v, lty t, lexp e]
+	| lexp (L.FIX (vl, tl, el, e)) () = 
+	    "k5" $ [list lvar vl, list lty tl, list lexp el, lexp e]
+	| lexp (L.APP (v1, v2)) ()        = "l5" $ [sval v1, sval v2]
+	| lexp (L.SWITCH (v, crl, cel, eo)) () =
+	    "m5" $ [sval v, consig crl, list con cel, option lexp eo]
+	| lexp (L.CON ((s, cr, t), ts, v)) () =
+	    "n5" $ [symbol s, conrep cr, lty t, list tyc ts, sval v]
+	| lexp (L.DECON ((s, cr, t), ts, v)) () =
+	    "o5" $ [symbol s, conrep cr, lty t, list tyc ts, sval v]
+	| lexp (L.VECTOR (vl, t)) ()           = "p5" $ [list sval vl, tyc t]
+	| lexp (L.RECORD vl) ()           = "q5" $ [list sval vl]
+	| lexp (L.SRECORD vl) ()          = "r5" $ [list sval vl]
+	| lexp (L.RAISE (v, t)) ()        = "s5" $ [sval v, lty t]
+	| lexp (L.HANDLE (e, v)) ()     = "t5" $ [lexp e, sval v]
+	| lexp (L.WRAP (t, b, v)) ()         = "u5" $ [tyc t, bool b, sval v]
+	| lexp (L.UNWRAP (t, b, v)) ()       = "v5" $ [tyc t, bool b, sval v]
+        | lexp (L.SELECT (i, v)) ()       = "w5" $ [int i, sval v]
 
-      and lexp (F.RET vs) () = "j5" $ [list value vs]
-        | lexp (F.LET(vs, e1, e2)) () =  
-            "k5" $ [list lvar vs, lexp e1, lexp e2]
-	| lexp (F.FIX (fdecs, e)) () = "l5" $ [list fundec fdecs, lexp e]
-	| lexp (F.APP (v, vs)) () = "m5" $ [value v, list value vs]
-	| lexp (F.TFN(tfdec, e)) () = 
-            "n5" $ [tfundec tfdec, lexp e]
-	| lexp (F.TAPP(v, ts)) () = 
-            "o5" $ [value v, list tyc ts]
-	| lexp (F.SWITCH (v, crl, cel, eo)) () =
-	    "p5" $ [value v, consig crl, list con cel, option lexp eo]
-	| lexp (F.CON (dc, ts, u, v, e)) () =
-            "q5" $ [dcon(dc, ts), value u, lvar v, lexp e]
-	| lexp (F.RECORD(rk, vl, v, e)) () =
-            "r5" $ [rkind rk, list value vl, lvar v, lexp e]
-        | lexp (F.SELECT (u, i, v, e)) () = 
-            "s5" $ [value u, int i, lvar v, lexp e]
-	| lexp (F.RAISE (u, ts)) () = "t5" $ [value u, list lty ts]
-	| lexp (F.HANDLE (e, u)) () = "u5" $ [lexp e, value u]
-	| lexp (F.BRANCH (p, vs, e1, e2)) () = 
-            "v5" $ [fprim p, list value vs, lexp e1, lexp e2]
-        | lexp (F.PRIMOP (p, vs, v, e)) () = 
-            "w5" $ [fprim p, list value vs, lvar v, lexp e]
-
-      and fundec (fk, v, vts, e) () = 
-            "05" $ [fkind fk, lvar v, list (tuple2(lvar, lty)) vts, lexp e]
-
-      and tfundec (v, tvks, e) () = 
-            "15" $ [lvar v, list (tuple2(tvar, tkind)) tvks, lexp e]
-
-      and fkind (F.FK_FCT) () = "25" $ []
-        | fkind (F.FK_FUN {isrec, fixed=(b1, b2), known, inline}) () = 
-            "35" $ [option (list lty) isrec, bool b1, bool b2, bool known,
-                    bool inline]
-
-      and rkind (F.RK_VECTOR tc) () = "45" $ [tyc tc]
-        | rkind (F.RK_STRUCT) () = "55" $ []
-        | rkind (F.RK_TUPLE _) () = "65" $ []
-
-      val prog = fundec
-      val pickle = W.pickle (option prog fdecOp)
+	| lexp (L.TFN(ks, e)) ()          = "x5" $ [list tkind ks, lexp e]
+	| lexp (L.TAPP(v, ts)) ()         = "y5" $ [sval v, list tyc ts]
+        | lexp (L.LET(v, e1, e2)) ()      = "05" $ [lvar v, lexp e1, lexp e2]
+	| lexp (L.PACK(t, ts, nts, v)) ()         = 
+            "15" $ [lty t, list tyc ts, list tyc nts, sval v]
+	| lexp (L.ETAG (v, t)) ()         = "25" $ [sval v, lty t]
+   
+      val pickle = W.pickle (option lexp leOp)
       val hash = pickle2hash pickle
    in {pickle = pickle, hash = hash}
   end
@@ -507,7 +486,7 @@ let val alphaConvert = alphaConverter ()
       | modId (MI.EENVid s) () = "Vf" $ [stamp s]
 
     val lvcount = ref 0
-    val lvlist = ref ([]: Access.lvar list)
+    val lvlist = ref ([]: LambdaVar.lvar list)
 
     fun anotherLvar v =
       let val j = !lvcount

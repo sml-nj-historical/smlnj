@@ -1,5 +1,3 @@
-(* Copyright (c) 1997 YALE FLINT PROJECT *)
-(* pflatten.sml *)
 
 signature PFLATTEN =
 sig
@@ -11,24 +9,17 @@ sig
     type value = FLINT.value
     type lvar = FLINT.lvar
 
-    (* the following functions are used in flintnm.sml *)
+    val all_flatten : llty -> (llty list * bool *
+			       ((lvar * lexp) -> (lvar list * lexp)) *
+			       (value -> (value list * (lexp -> lexp))))
+
+    val ltc_flat    : llty -> llty list
+    val ltp_flat    : llty -> bool
+    val v_unflatten : llty -> (lvar * lexp) -> (lvar list * lexp)
+    val v_flatten   : llty -> value -> (value list * (lexp -> lexp))
+
+    (* recursively turn cooked types into raw when possible *)
     val ltc_raw : llty -> flty
     val tcc_raw : ltyc -> ftyc
 
-    val t_pflatten   : llty -> bool * llty list * bool
-    val v_punflatten : llty -> ((bool * llty list * bool) *
-                                ((lvar * lexp) -> (lvar list * lexp)))
-    val v_pflatten   : llty -> ((bool * llty list * bool) *
-                                (value -> (value list * (lexp -> lexp))))
-
-    (* the following functions are used during type specialization in FLINT *)
-
-    val t_flatten   : (flty list * bool) -> bool * flty list * bool
-    val v_unflatten : (flty list * bool) -> 
-                           ((bool * flty list * bool) *
-                            ((lvar list * lexp) -> (lvar list * lexp)))
-    val v_flatten   : (flty list * bool) -> 
-                           ((bool * flty list * bool) *
-                           (value list -> (value list * (lexp -> lexp))))
-
-end (* signature PFLATTEN *)
+end

@@ -1,21 +1,48 @@
-(* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
-(* cmsa.sml *)
+(* cmsa.sml
+ *
+ * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ *)
 
-functor CMSAFun (structure BU : BATCHUTIL
-                 structure C  : COMPILE) :> CMSA = struct
+signature CMSA = sig
 
-    structure E = SCEnv.Env
-    structure P = Control.Print
-    structure S = Symbol
-
-    type env = E.environment		(* environments *)
-    type sym = S.symbol		(* symbols *)
+    type env				(* environments *)
+    type sym				(* symbols *)
 
     (* build symbols from strings *)
-    val STR = S.strSymbol		(* structure *)
-    val SIG = S.sigSymbol		(* signature *)
-    val FCT = S.fctSymbol		(* functor *)
-    val FSIG = S.fsigSymbol	(* funsig *)
+    val STR: string -> sym		(* structure *)
+    val SIG: string -> sym		(* signature *)
+    val FCT: string -> sym		(* functor *)
+    val FSIG: string -> sym		(* funsig *)
+
+    val pervenv: unit -> env		(* fetch pervasive environment *)
+    val register: env -> unit		(* register delta with toplevel env. *)
+
+    (* load or compile (1st arg), then execute *)
+    val run: string * env -> env
+    (* layer environments, head of list goes on top *)
+    val layer: env list -> env
+    (* filter environment by list of symbols *)
+    val filter: sym list -> env -> env
+
+end
+
+functor CMSAFun (structure CUnitUtil: CUNITUTIL
+		 structure Compile: COMPILE
+		 val arch: string) :> CMSA = struct
+
+    structure E = SCEnv.Env
+    structure CUU = CUnitUtil
+    structure C = Compile
+    structure P = Control.Print
+
+    type env = E.environment		(* environments *)
+    type sym = Symbol.symbol		(* symbols *)
+
+    (* build symbols from strings *)
+    val STR = Symbol.strSymbol		(* structure *)
+    val SIG = Symbol.sigSymbol		(* signature *)
+    val FCT = Symbol.fctSymbol		(* functor *)
+    val FSIG = Symbol.fsigSymbol	(* funsig *)
 
     (* fetch the pervasive environment *)
     fun pervenv () = #get EnvRef.pervasive ()
@@ -41,6 +68,17 @@ functor CMSAFun (structure BU : BATCHUTIL
      * if this fails, then try compiling the source (1st argument);
      * after one of the two steps succeeds run the code *)
     fun run (source, base) = let
+	fun runcode (code, imports, exportPid, ste, sye) = let
+	    val _ = P.say "ok - executing..."
+	    val de = C.execute { executable = code,
+				 imports = imports,
+				 exportPid = exportPid,
+				 dynenv = E.dynamicPart base }
+	    val e = E.mkenv { static = ste, dynamic = de, symbolic = sye }
+	    val _ = P.say "done\n"
+	in
+	    e
+	end
 	fun loadbin () = let
 	    val { dir, file } = OS.Path.splitDirFile source
 	    val cmdir = OS.Path.joinDirFile { dir = dir, file = "CM" }
@@ -52,24 +90,24 @@ functor CMSAFun (structure BU : BATCHUTIL
 		  | SMLofNJ.SysInfo.MACOS => "macos"
 		  | SMLofNJ.SysInfo.OS2 => "os2"
 		  | SMLofNJ.SysInfo.BEOS => "beos"
-	    val arch'os = concat [BU.arch, "-", oskind]
+	    val arch'os = concat [arch, "-", oskind]
 	    val archosdir = OS.Path.joinDirFile { dir = cmdir, file = arch'os }
 	    val bin = OS.Path.joinDirFile { dir = archosdir, file = file }
 	    val _ = P.say (concat ["Loading: ", bin, "..."])
 	    val f = BinIO.openIn bin
 	    fun rest () = let
-		val cu = BU.readUnit { name = bin,
+		val cu = CUU.readUnit { name = bin,
                                         stream = f,
 				        pids2iid = fn _ => (),
 					senv = E.staticPart base,
 					keep_code = true }
 		val _ = BinIO.closeIn f
-    	        val _ = P.say "ok - executing..."
-                val e = BU.execUnit(cu, E.dynamicPart base)
-  	        val _ = P.say "done\n"
-       	        in
-	           e
-	        end
+	    in
+		runcode (CUU.codeClosure cu,
+			 CUU.importsCU cu,
+			 CUU.exportCU cu,
+			 CUU.senvCU cu, CUU.symenvCU cu)
+	    end
 	in
 	    rest () handle e => (BinIO.closeIn f; raise e)
 	end
@@ -95,36 +133,43 @@ functor CMSAFun (structure BU : BATCHUTIL
 		end
 		else ()
 	    val corenv = #get EnvRef.core ()
-            val cinfo = C.mkCompInfo (source, corenv, fn x => x)
-
-            val {csegments=code, newstatenv, exportPid, imports, 
-                 inlineExp, ...} = 
-                   C.compile {source=source, ast=ast, 
-                              statenv=E.staticPart base,
-                              symenv=E.symbolicPart base,
-                              compInfo=cinfo, checkErr=check,
-                              runtimePid=NONE, splitting=true}
-            val obj = C.mkexec code
-	    val _ = P.say "ok - executing..."
-            val ndenv = C.execute {executable=C.mkexec code, 
-                                   imports=imports, exportPid=exportPid,
-                                   dynenv=E.dynamicPart base}
-	    val _ = P.say "done\n"
-	in 
-	    E.mkenv {static=newstatenv, dynamic=ndenv,
-                     symbolic= C.mksymenv(exportPid, inlineExp)}
+	    val cinfo = C.mkCompInfo (source, corenv, fn x => x)
+	    val senv = E.staticPart base
+	    val { absyn, newenv, exportLvars, staticPid, exportPid,
+		  pickle } =
+		C.elaborate { compInfo = cinfo, compenv = senv, ast = ast }
+		before check "elaboration"
+	    val absyn =
+		C.instrument { compenv = senv, source = source,
+			       compInfo = cinfo }
+		             absyn
+	    val { genLambda, imports } =
+		C.translate { compInfo = cinfo, absyn = absyn,
+			      exportLvars = exportLvars,
+                              newstatenv = newenv,
+                              oldstatenv = senv,
+			      exportPid = exportPid }
+		before check "translation"
+	    val lambda = C.inline { genLambda = genLambda,
+				    imports = imports,
+				    symenv = E.symbolicPart base }
+	    val { lambda_e, lambda_i } =
+		C.split { lambda = lambda, enable = true }
+	    val code = C.codegen { compInfo = cinfo, lambda = lambda_e }
+		before check "codegen"
+	in
+	    runcode (C.applyCode code, imports, exportPid,
+		     newenv, C.symDelta (exportPid, lambda_i))
 	end
     in
 	loadbin () handle _ => compilesource ()
     end
+end
 
-end (* functor CMSAFun *)
-
-
-
-
-
-
-
-
+(*
+ * $Log: cmsa.sml,v $
+# Revision 1.7  1997/08/26  19:18:13  jhr
+#   Added copyright and Log.
+#
+ *)
 

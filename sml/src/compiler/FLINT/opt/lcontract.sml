@@ -3,45 +3,57 @@
 
 signature LCONTRACT =
 sig
-  val lcontract : FLINT.prog -> FLINT.prog
+  val lcontract : Lambda.lexp -> Lambda.lexp
 end 
 
 structure LContract : LCONTRACT =
 struct
 
 local structure DI = DebIndex
-      structure DA = Access
-      structure LT = LtyExtern
-      open FLINT
+      open Access Lambda
 in
 
-fun bug s = ErrorMsg.impossible ("LContract: "^s)
-val say = Control.Print.say
-val ident = fn x => x
+val sameName = LambdaVar.sameName
+fun bug s = ErrorMsg.impossible ("LambdaOpt: "^s)
+val ident = fn le => le
 fun all p (a::r) = p a andalso all p r | all p nil = true
 
-fun isDiffs (vs, us) = 
-  let fun h (VAR x) = List.all (fn y => (y<>x)) vs
-        | h _ = true
-   in List.all h us
-  end
-
-fun isEqs (vs, us) = 
-  let fun h (v::r, (VAR x)::z) = if v = x then h(r, z) else false
-        | h ([], []) = true
-        | h _ = false
-   in h(vs, us)
-  end
+fun isDiff(x, VAR v) = (x <> v)
+  | isDiff(x, GENOP({default,table}, _, _, _)) = 
+      (x <> default) andalso (all (fn (_, w) => (x <> w)) table)
+  | isDiff _ = true
 
 datatype info
-  = SimpVal of value
+  = CompExp
+  | SimpVal of value
   | ListExp of value list
-  | FunExp of DI.depth * lvar list * lexp
-  | ConExp of dcon * tyc list * value
-  | StdExp
+  | FunExp of lvar * lty * lexp
+  | SimpExp
+
+fun isPure(SVAL _) = true
+  | isPure(RECORD _) = true
+  | isPure(SRECORD _) = true
+  | isPure(VECTOR _) = true
+  | isPure(SELECT _) = true
+  | isPure(FN _) = true
+  | isPure(TFN _) = true
+  | isPure(CON _) = true
+  | isPure(DECON _) = true (* this can be problematic *)
+  | isPure(ETAG _) = true
+  | isPure(PACK _) = true
+  | isPure(WRAP _) = true
+  | isPure(UNWRAP _) = true
+  | isPure(SWITCH(v, _, ces, oe)) = 
+      let fun g((_,x)::r) = if isPure x then g r else false
+            | g [] = case oe of NONE => true | SOME z => isPure z
+       in g ces
+      end
+  | isPure _ = false
+  (*** the cases for FIX and LET have already been flattened, thus
+       they should not occur ***)
 
 exception LContPass1
-fun pass1 fdec = 
+fun pass1 lexp = 
   let val zz : (DI.depth option) Intmap.intmap = Intmap.new(32, LContPass1)
       val add = Intmap.add zz
       val get = Intmap.map zz
@@ -53,64 +65,54 @@ fun pass1 fdec =
              val _ = rmv x
           in case s
               of NONE => ()
-               | SOME _ => add(x, NONE)  (* depth no longer matters *)
-(*
                | SOME d => if (d=nd) then add(x, NONE)
                            else ()
-*)
          end) handle _ => ()
 
       fun cand x = (get x; true) handle _ => false
 
-      fun lpfd d (FK_FUN {isrec=SOME _,...}, v, vts, e) = lple d e
-        | lpfd d (_, v, vts, e) = (enter(v, d); lple d e)
-
-      and lple d e = 
+      fun loop (e, d) = 
         let fun psv (VAR x) = kill x
               | psv _ = ()
-
-            and pst (v, vks, e) = lple (DI.next d) e
          
-            and pse (RET vs) = app psv vs
-              | pse (LET(vs, e1, e2)) = (pse e1; pse e2)          
-              | pse (FIX(fdecs, e)) = (app (lpfd d) fdecs; pse e) 
-              | pse (APP(VAR x, vs)) = (mark d x; app psv vs)
-              | pse (APP(v, vs)) = (psv v; app psv vs)
-              | pse (TFN(tfdec, e)) = (pst tfdec; pse e)
+            and pse (SVAL v) = psv v
+              | pse (FN(v, _, e)) = pse e
+              | pse (APP(VAR x, v2)) = (mark d x; psv v2)
+              | pse (APP(v1, v2)) = (psv v1; psv v2)
+              | pse (FIX(vs, ts, es, be)) = (app pse es; pse be)
+              | pse (LET(v, FN (_,_,e1), e2)) = (enter(v, d); pse e1; pse e2)
+              | pse (LET(v, e1, e2)) = (pse e1; pse e2)
+              | pse (TFN(ks, e)) = loop(e, DI.next d)
               | pse (TAPP(v, _)) = psv v
-              | pse (RECORD(_,vs,_,e)) = (app psv vs; pse e)
-              | pse (SELECT(u,_,_,e)) = (psv u; pse e)
-              | pse (CON(_,_,u,_,e)) = (psv u; pse e)
-              | pse (SWITCH(u, _, ces, oe)) =
-                  (psv u; app (fn (_,x) => pse x) ces; 
+              | pse (VECTOR(vs,_)) = app psv vs
+              | pse (RECORD vs) = app psv vs
+              | pse (SRECORD vs) = app psv vs
+              | pse (SELECT(_,v)) = psv v
+              | pse (CON(_,_,v)) = psv v
+              | pse (DECON(_,_,v)) = psv v
+              | pse (SWITCH(v, _, ces, oe)) =
+                  (psv v; app (fn (_,x) => pse x) ces; 
                    case oe of NONE => () | SOME x => pse x)
-              | pse (RAISE _) = ()
+              | pse (ETAG(v, _)) = psv v
               | pse (HANDLE(e,v)) = (pse e; psv v)
-              | pse (BRANCH(_, vs, e1, e2)) = (app psv vs; pse e1; pse e2) 
-              | pse (PRIMOP(_, vs, _, e)) = (app psv vs; pse e)
+              | pse (PACK(_,_,_,v)) = psv v
+              | pse (WRAP(_,_,v)) = psv v
+              | pse (UNWRAP(_,_,v)) = psv v
+              | pse (RAISE _) = ()
 
          in pse e
         end
 
-   in lpfd DI.top fdec; (cand, fn () => Intmap.clear zz)
-  end (* pass1 *)
+   in loop (lexp, DI.top); cand
+  end
 
 (************************************************************************
  *                      THE MAIN FUNCTION                               *
  ************************************************************************)
-fun lcontract (fdec, init) = 
+fun lcontract lexp = 
 let 
 
-(* In pass1, we calculate the list of functions that are the candidates
- * for contraction. To be such a candidate, a function must be called 
- * only once, and furthermore, the call site must be at the same 
- * depth as the definition site. (ZHONG)
- *
- * Being at the same depth is not strictly necessary, we'll relax this
- * constraint in the future.
- *)
-val (isCand, cleanUp) = 
- if init then (fn _ => false, fn () => ()) else pass1 fdec
+val isCand = pass1 lexp
 
 exception LContract
 val m : (int ref * info) Intmap.intmap = Intmap.new(32, LContract)
@@ -121,219 +123,158 @@ val kill = Intmap.rmv m
 
 fun chkIn (v, info) = enter(v, (ref 0, info))
 
-(** check if a variable is dead *)
-fun dead v = (case get v of (ref 0, _) => true
-                          | _ => false) handle _ => false
+fun refer v = 
+  ((case get v
+     of (_, SimpVal sv) => SOME sv
+      | (x, _) => (x := (!x) + 1; NONE)) handle _ => NONE)
 
-(** check if all variables are dead *)
-fun alldead [] = true
-  | alldead (v::r) = if dead v then alldead r else false 
+fun selInfo v = (SOME(get v)) handle _ => NONE
 
-(** renaming a value *)
-fun rename (u as (VAR v)) = 
-      ((case get v
-         of (_, SimpVal sv) => rename sv
-          | (x, _) => (x := (!x) + 1; u)) handle _ => u)
-  | rename u = u
+fun chkOut v = 
+  (let val x = get v
+    in kill v; SOME x
+   end handle _ => NONE)
 
-(** selecting a field from a potentially known record *)
-fun selInfo (VAR v, i)  = 
-      ((case get v
-         of (_, SimpVal u) => selInfo (u, i)
-          | (_, ListExp vs) => 
-              let val nv = List.nth(vs, i)
-                           handle _ => bug "unexpected List.Nth in selInfo"
-               in SOME nv
-              end
-          | _ => NONE) handle _ => NONE)
-  | selInfo _ = NONE
 
-(** applying a switch to a data constructor *)
-fun swiInfo (VAR v, ces, oe) = 
-      ((case get v
-         of (_, SimpVal u) => swiInfo(u, ces, oe)
-          | (_, ConExp (dc as (_,rep,_), ts, u)) =>
-               let fun h ((DATAcon(dc as (_,nrep,_),ts,x),e)::r) =
-                         if rep=nrep then SOME(LET([x], RET [u], e)) else h r
-                     | h (_::r) = bug "unexpected case in swiInfo"
-                     | h [] = oe
-                in h ces
-               end
-          | _ => NONE) handle _ => NONE)
-  | swiInfo _ = NONE
-
-(** contracting a function application *)
-fun appInfo (VAR v) =
-      ((case get v
-         of (ref 0, FunExp (d, vs, e)) => SOME (d, vs, e)
-          | _ => NONE) handle _ => NONE)
-  | appInfo _ = NONE
-
-fun transform [] = bug "unexpected case in transform"
-  | transform (cfg as ((d, od, k)::rcfg)) = let
-     fun h (f, t, (d, od, k)::r, sk) = h(f, f(t, od, d, k+sk), r, k+sk)
-       | h (f, t, [], _) = t
-     fun ltf t = h(LT.lt_adj_k, t, cfg, 0)
-     fun tcf t = h(LT.tc_adj_k, t, cfg, 0)
-
-     fun lpacc (DA.LVAR v) = 
-           (case lpsv (VAR v) of VAR w => DA.LVAR w
-                               | _ => bug "unexpected in lpacc")
-       | lpacc _ = bug "unexpected path in lpacc"
-
-     and lpdc (s, DA.EXN acc, t) = (s, DA.EXN(lpacc acc), ltf t)
-       | lpdc (s, rep, t) = (s, rep, ltf t)
-
-     and lpcon (DATAcon (dc, ts, v)) = DATAcon(lpdc dc, map tcf ts, v)
-       | lpcon c = c
-
-     and lpdt (SOME {default=v, table=ws}) =
-           let fun h x = 
-                 case rename (VAR x) of VAR nv => nv
-                                      | _ => bug "unexpected acse in lpdt"
-            in (SOME {default=h v, table=map (fn (ts,w) => (ts,h w)) ws})
-           end
-       | lpdt NONE = NONE
-
-     and lpsv x = (case x of VAR v => rename x | _ => x)
-
-     and lpfd (fk, v, vts, e) = 
-       (fk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))
-
-     and lplet (hdr: lexp -> lexp, pure, v: lvar, info: info, e) = 
-       let val _ = chkIn(v, info)
-           val (ne, b) = loop e
-        in if pure then (if dead v then (ne, b) else (hdr ne, b))
-           else (hdr ne, false)
-       end (* function lplet *)
-
-     and loop le =
-       (case le
-         of RET vs => (RET (map lpsv vs), true)
-          | LET(vs, RET us, e) =>
-              (ListPair.app chkIn (vs, map SimpVal us); loop e)
-          | LET(vs, LET(us, e1, e2), e3) => 
-              loop(LET(us, e1, LET(vs, e2, e3)))
-          | LET(vs, FIX(fdecs, e1), e2) =>
-              loop(FIX(fdecs, LET(vs, e1, e2)))
-          | LET(vs, TFN(tfd, e1), e2) => 
-              loop(TFN(tfd, LET(vs, e1, e2)))
-          | LET(vs, CON(dc, ts, u, v, e1), e2) =>
-              loop(CON(dc, ts, u, v, LET(vs, e1, e2)))
-          | LET(vs, RECORD(rk, us, v, e1), e2) => 
-              loop(RECORD(rk, us, v, LET(vs, e1, e2)))
-          | LET(vs, SELECT(u, i, v, e1), e2) => 
-              loop(SELECT(u, i, v, LET(vs, e1, e2)))
-          | LET(vs, PRIMOP(p, us, v, e1), e2) =>
-              loop(PRIMOP(p, us, v, LET(vs, e1, e2)))
-          | LET(vs, e1, e2 as (RET us)) =>
-              if isEqs(vs, us) then loop e1
-              else let val (ne1, b1) = loop e1
-                       val nus = map lpsv us
-                    in if (isDiffs(vs, nus)) andalso b1 then (RET nus, true)
-                       else (LET(vs, ne1, RET nus), b1)
+fun mkInfo (_, RECORD vs) = ListExp vs
+  | mkInfo (_, SRECORD vs) = ListExp vs
+  | mkInfo (v, SELECT(i, VAR x)) = 
+      let fun h z = 
+            (case selInfo z
+              of SOME(_, ListExp vs) => 
+                   let val nv = List.nth(vs, i)
+                         handle _ => bug "unexpected List.Nth in SELECT"
+                    in SimpVal nv
                    end
-          | LET(vs, e1, e2) => 
-              let val _ = app (fn v => chkIn(v, StdExp)) vs
-                  val (ne1, b1) = loop e1
-                  val (ne2, b2) = loop e2
-               in if (alldead vs) andalso b1 then (ne2, b2)
-                  else (case ne2 
-                         of (RET us) => 
-                              if isEqs(vs, us) then (ne1, b1)
-                              else (LET(vs, ne1, ne2), b1)
-                          | _ => (LET(vs, ne1, ne2), b1 andalso b2))
-              end
+               | SOME(_, SimpVal (VAR w)) => h w
+               | _ => SimpExp)
+        in h x
+       end
 
-          | FIX(fdecs, e) =>
-              let fun g (FK_FUN {isrec=SOME _, ...} :fkind, v, _, _) =
-                         chkIn(v, StdExp)
-                    | g ((_, v, vts, xe) : fundec) = 
-                         chkIn(v, if isCand v then FunExp(od, map #1 vts, xe) 
-                                  else StdExp)
-                  val _ = app g fdecs
-                  val (ne, b) = loop e
-               in if alldead (map #2 fdecs) then (ne, b)
-                  else (FIX(map lpfd fdecs, ne), b)
-              end
-          | APP(u, us) => 
-              (case appInfo u
-                of SOME(od', vs, e) => 
-                     let val ne = LET(vs, RET us, e)
-                      in transform ((od, od', 0)::cfg) ne
-                     end
-                 | _ => (APP(lpsv u, map lpsv us), false))
+  | mkInfo (v, e as FN x) = if isCand v then FunExp x else SimpExp
+  | mkInfo (_, e) = if isPure e then SimpExp else CompExp
 
-          | TFN(tfdec as (v, tvks, xe), e) => 
-              lplet ((fn z => TFN((v, tvks, 
-                              #1(transform ((DI.next d, DI.next od, 
-                                            k+1)::rcfg) xe)), z)), 
-                     true, v, StdExp, e)
-          | TAPP(u, ts) => (TAPP(lpsv u, map tcf ts), true)
+fun lpacc (LVAR v) = 
+      (case lpsv (VAR v)
+        of VAR w => LVAR w
+         | _ => bug "unexpected in lpacc")
+  | lpacc _ = bug "unexpected path in lpacc"
 
-          | CON(c, ts, u, v, e) =>   (* this could be made more finegrain *)
-              lplet ((fn z => CON(lpdc c, map tcf ts, lpsv u, v, z)), 
-                     true, v, ConExp(c,ts,u), e)
-          | SWITCH (v, cs, ces, oe) => 
-              (case swiInfo(v, ces, oe)
-                of SOME ne => loop ne
-                 | _ => let val nv = lpsv v
-                            fun h ((c, e), (es, b)) = 
-                              let val nc = lpcon c
-                                  val (ne, nb) = loop e
-                               in ((nc, ne)::es, nb andalso b)
-                              end
-                            val (nces, ncb) = foldr h ([], true) ces 
-                            val (noe, nb) = 
-                              case oe 
-                               of NONE => (NONE, ncb)
-                                | SOME e => let val (ne, b) = loop e
-                                             in (SOME ne, b andalso ncb)
-                                            end
-                         in (SWITCH(nv, cs, nces, noe), nb)
-                        end)
+and lpdc (s, EXN acc, t) = (s, EXN(lpacc acc), t)
+  | lpdc x = x
 
-          | RECORD (rk, us, v, e) => 
-              lplet ((fn z => RECORD(rk, map lpsv us, v, z)), 
-                     true, v, ListExp us, e)
-          | SELECT(u, i, v, e) => 
-              (case selInfo (u, i)
-                of SOME nv => (chkIn(v, SimpVal nv); loop e)
-                 | NONE => lplet ((fn z => SELECT(lpsv u, i, v, z)), 
-                                  true, v, StdExp, e))
+and lpcon (DATAcon dc) = DATAcon(lpdc dc)
+  | lpcon c = c
 
-          | RAISE(v, ts) => (RAISE(lpsv v, map ltf ts), false)
-          | HANDLE(e, v) => 
-              let val (ne, b) = loop e
-               in if b then (ne, true)
-                  else (HANDLE(ne, lpsv v), false)
-              end
+and lpdt {default=v, table=ws} =
+  let fun h x = case (refer x)
+                 of SOME(VAR nv) => nv
+                  | NONE => x
+   in {default=h v, table=map (fn (ts,w) => (ts,h w)) ws}
+  end
 
-          | BRANCH(px as (d, p, lt, ts), vs, e1, e2) =>
-              let val (ne1, b1) = loop e1
-                  val (ne2, b2) = loop e2
-               in (BRANCH(case (d,ts) of (NONE, []) => px 
-                                       | _ => (lpdt d, p, lt, map tcf ts), 
-                          map lpsv vs, ne1, ne2), false)
-              end
-          | PRIMOP(px as (dt, p, lt, ts), vs, v, e) => 
-              lplet ((fn z => PRIMOP((case (dt, ts) 
-                                       of (NONE, []) => px 
-                                        | _ => (lpdt dt, p, lt, map tcf ts)), 
-                                     map lpsv vs, v, z)), 
-                     false (* isPure p *), v, StdExp, e))
+and lpsv x = 
+  (case x
+    of VAR v => (case (refer v) of SOME nsv => lpsv nsv 
+                                 | NONE => (x : value))
+     | GENOP(dict, p, lt, ts) => GENOP(lpdt dict, p, lt, ts)
+     | _ => x)
 
-     in loop
-    end (* function transform *)
+and loop le =
+  (case le
+    of SVAL v => SVAL(lpsv v)
+     | FN(v, t, e) => FN(v, t, loop e)
+     | APP(v1 as VAR x, v2) => 
+         (case selInfo x
+           of SOME(ref c, FunExp(z,_,b)) => 
+               (if (c = 0) then loop(LET(z, SVAL v2, b))
+                else bug "unexpected FunExp in APP")
+(* commented out because it won't have any effect for the time being.
+            | SOME(_, SimpVal (y as VAR _)) => loop(APP(y, v2)) 
+*)
+            | _ => APP(lpsv v1, lpsv v2))
+     | APP(v1, v2) => APP(lpsv v1, lpsv v2)
+     | FIX(vs, ts, es, b) => 
+         let fun g ((FN _)::r) = g r
+               | g (_::r) = false
+               | g [] = true
+             val _ = if g es then () else bug "unexpected cases in loop-FIX"
+             val _ = app (fn x => chkIn(x, SimpExp)) vs
+             val nb = loop b
+             val ws = map chkOut vs
 
-val d = DI.top
-val (fk, f, vts, e) = fdec
-in (fk, f, vts, #1 (transform [(d, d, 0)] e))
-   before (Intmap.clear m; cleanUp())
-end (* function lcontract *)
+             fun h ((SOME(ref 0, _))::r) = h r
+               | h (_::r) = false
+               | h [] = true
+          in if h ws then nb 
+             else FIX(vs, ts, map loop es, nb)
+         end
+     | LET(v, LET(u, e1, e2), e3) => 
+         loop(LET(u, e1, LET(v, e2, e3)))
+     | LET(v, FIX(vs, ts, es, b), e) =>
+         loop(FIX(vs, ts, es, LET(v, b, e)))
+     | LET(v, SVAL sv, e2) => 
+         (chkIn(v, SimpVal sv); loop e2)
+     | LET(v, e1, e2 as SVAL (VAR x)) =>
+         if (v = x) then loop e1
+         else if isPure e1 then loop e2
+              else LET(v, loop e1, loop e2)
+     | LET(v, e1 as FN(v1, t1, b1), e2 as APP(VAR x, sv)) =>
+         if isDiff(v, sv) then
+           (if (v = x) then loop(LET(v1, SVAL sv, b1)) else loop e2)
+         else LET(v, loop e1, loop e2)
+     | LET(v, e1, e2) => 
+         let val _ = chkIn(v, mkInfo(v,e1))
+             val ne2 = loop e2
+             val w = chkOut v
+          in case w 
+              of SOME(_, CompExp) => LET(v, loop e1, ne2)
+               | SOME(ref 0, _) => ne2
+               | _ => (case (e1, ne2)
+                        of (FN(v1,t1,b1), APP(VAR x, sv)) =>
+                             if isDiff(v, sv) then
+                              (if (v=x) then loop(LET(v1, SVAL sv,b1))
+                               else ne2)
+                             else LET(v, loop e1, ne2)
+                         | (_, SVAL(VAR x)) =>
+                             if isPure e1 then (if v=x then loop e1
+                                                else ne2)
+                             else LET(v, loop e1, ne2)
+                         | _ => LET(v, loop e1, ne2))
+         end
+     | TFN(ks, e) => TFN(ks, loop e)
+     | TAPP(v, ts) => TAPP(lpsv v, ts)
+     | VECTOR(vs, t) => VECTOR(map lpsv vs, t)
+     | RECORD vs => RECORD (map lpsv vs)
+     | SRECORD vs => SRECORD (map lpsv vs)
+     | SELECT(i, v as VAR x) => 
+         (case selInfo x
+           of SOME(_, ListExp vs) => 
+                let val nv = List.nth(vs, i)
+                      handle _ => bug "unexpected List.Nth in SELECT"
+                 in SVAL(lpsv nv)
+                end
+            | SOME(_, SimpVal (y as VAR _)) => loop(SELECT(i, y))
+            | _ => SELECT(i, lpsv v))
+     | SELECT(i, v) => SELECT(i, lpsv v)
+     | CON(c, ts, v) => CON(lpdc c, ts, lpsv v)
+     | DECON(c, ts, v) => DECON(lpdc c, ts, lpsv v)
+     | SWITCH (v, cs, ces, oe) => 
+         let val nv = lpsv v
+             val nces = map (fn (c, e) => (lpcon c, loop e)) ces
+             val noe = case oe of NONE => NONE | SOME e => SOME (loop e)
+          in SWITCH(nv, cs, nces, noe)
+         end
+     | ETAG(v, t) => ETAG(lpsv v, t)
+     | RAISE(v, t) => RAISE(lpsv v, t)
+     | HANDLE(e, v) => HANDLE(loop e, lpsv v)
+     | PACK(t, ts1, ts2, v) => PACK(t, ts1, ts2, lpsv v)
+     | WRAP(t, b, v) => WRAP(t, b, lpsv v)
+     | UNWRAP(t, b, v) => UNWRAP(t, b, lpsv v))
 
-(** run the lambda contraction twice *)
-val lcontract = fn fdec => lcontract(lcontract(fdec, true), false)
+val nlexp = loop lexp
+in (Intmap.clear m; nlexp)
+end 
 
 end (* toplevel local *)
 end (* structure LContract *)

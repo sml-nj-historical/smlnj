@@ -85,9 +85,8 @@ val lt_print   : lty -> string
 (** adjusting an lty or tyc from one depth to another *)
 val lt_adj     : lty * depth * depth -> lty
 val tc_adj     : tyc * depth * depth -> tyc
-
-val lt_adj_k   : lty * depth * depth * int -> lty  
-val tc_adj_k   : tyc * depth * depth * int -> tyc  
+val tc_adj_one : tyc * depth * depth -> tyc  
+                                (* used by trans/transtypes.sml *)
 
 (** finding out the depth for a tyc's innermost-bound free variables *)
 val tc_depth : tyc * depth -> depth

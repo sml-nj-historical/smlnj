@@ -60,7 +60,7 @@ fun RECORDg es =
 
 (* val exnLexp : DA.access -> lexp *)
 fun exnLexp (DA.LVAR v) = SVAL(VAR v)
-(*  | exnLexp (DA.PATH(r, i)) = SELECTg(i, exnLexp r) *)
+  | exnLexp (DA.PATH(r, i)) = SELECTg(i, exnLexp r)
   | exnLexp _ = bug "unexpected case in exnLexp"
 
 (****************************************************************************
@@ -110,44 +110,36 @@ fun loop le =
 
      | CON ((_, DA.UNTAGGED, lt), ts, v) => 
          let val nt = ltAppSt(lt, map (fn _ => LT.tcc_void) ts)
-             val (ntc, _) = LT.tcd_parrow(LT.ltd_tyc nt)
-(*
+             val (tc, _) = LU.tcd_arw(LT.ltd_tyc nt)
              val ntc = case LU.tcWrap tc of NONE => tc
                                           | SOME z => z
-*)
              val hdr = LP.utgc(kenv, ntc)
-          in hdr (SVAL(lpsv v))
+          in hdr (SVAL (lpsv v))
          end
      | DECON ((_, DA.UNTAGGED, lt), ts, v) => 
          let val nt = ltAppSt(lt, map (fn _ => LT.tcc_void) ts)
-             val (ntc, _) = LT.tcd_parrow(LT.ltd_tyc nt)
-(*
+             val (tc, _) = LU.tcd_arw(LT.ltd_tyc nt)
              val ntc = case LU.tcWrap tc of NONE => tc
                                           | SOME z => z
-*)
              val hdr = LP.utgd(kenv, ntc)
-          in hdr (SVAL(lpsv v))
+          in hdr (SVAL (lpsv v))
          end
 
      | CON ((_, DA.TAGGED i, lt), ts, v) => 
          let val nt = ltAppSt(lt, map (fn _ => LT.tcc_void) ts)
-             val (ntc, _) = LT.tcd_parrow(LT.ltd_tyc nt)
-(*
+             val (tc, _) = LU.tcd_arw(LT.ltd_tyc nt)
              val ntc = case LU.tcWrap tc of NONE => tc
                                           | SOME z => z
-*)
              val hdr = LP.tgdc(kenv, i, ntc)
-          in hdr (SVAL(lpsv v))
+          in hdr (SVAL (lpsv v))
          end
      | DECON ((_, DA.TAGGED i, lt), ts, v) => 
          let val nt = ltAppSt(lt, map (fn _ => LT.tcc_void) ts)
-             val (ntc, _) = LT.tcd_parrow(LT.ltd_tyc nt)
-(*
+             val (tc, _) = LU.tcd_arw(LT.ltd_tyc nt)
              val ntc = case LU.tcWrap tc of NONE => tc
                                           | SOME z => z
-*)
              val hdr = LP.tgdd(kenv, i, ntc)
-          in hdr (SVAL(lpsv v))
+          in hdr (SVAL (lpsv v))
          end
 
      | CON ((_, DA.CONSTANT i, _), _, _) => WRAP(LT.tcc_int, true, INT i)
@@ -156,24 +148,20 @@ fun loop le =
          bug "DECON on a constant data constructor"
 
      | CON ((_, DA.EXN p, nt), [], v) => 
-         let val (nax, _) = LT.tcd_parrow(LT.ltd_tyc nt)
+         let val (ax, _) = LU.tcd_arw(LT.ltd_tyc nt)
              (***WARNING: the type of ax is adjusted to reflect boxing *)
-(*
              val nax = case LU.tcWrap ax of NONE => ax
                                           | SOME z => z
-*)
              (***WARNING: the type for the 3rd field should (string list) *)
              val nx = LT.tcc_tuple [LT.tcc_etag nax, nax, LT.tcc_int]
              
           in WRAPg(nx, true, RECORDg [exnLexp p, SVAL(lpsv v), SVAL(INT 0)])
          end
      | DECON ((_, DA.EXN _, nt), [], v) => 
-         let val (nax, _) = LT.tcd_parrow(LT.ltd_tyc nt)
+         let val (ax, _) = LU.tcd_arw(LT.ltd_tyc nt)
              (***WARNING: the type of ax is adjusted to reflect boxing *)
-(*
              val nax = case LU.tcWrap ax of NONE => ax
                                           | SOME z => z
-*)
              (***WARNING: the type for the 3rd field should (string list) *)
              val nx = LT.tcc_tuple [LT.tcc_etag nax, nax, LT.tcc_int]
           in SELECTg(1, UNWRAP(nx, true, lpsv v))

@@ -153,13 +153,16 @@ fun transType entEnv ty =
       TU.mapTypeFull (transTycon entEnv) ty
       handle EE.Unbound => (debugmsg "$transType"; raise EE.Unbound)
 
-val transTyconPhase = (Stats.makePhase "Compiler 033 4-transTycon") 
 val transTycon = 
-  fn x => fn y => (Stats.doPhase transTyconPhase (transTycon x) y)
+  fn x => fn y =>
+   (Stats.doPhase (Stats.makePhase "Compiler 033 4-transTycon") 
+                  (transTycon x) y)
 
-val transTypePhase = (Stats.makePhase "Compiler 033 5-transType") 
+
 val transType = 
-  fn x => fn y => (Stats.doPhase transTypePhase (transType x) y)
+  fn x => fn y =>
+   (Stats.doPhase (Stats.makePhase "Compiler 033 5-transType") 
+                  (transType x) y)
 
 fun strDefToStr(CONSTstrDef str, _) = str
   | strDefToStr(VARstrDef(sign,entPath), entEnv) =
@@ -391,10 +394,10 @@ fun relativizeType epContext ty : T.ty * bool =
 
 
 (*
-val relativizeTypePhase = (Stats.makePhase "Compiler 033 2-vizType") 
 val relativizeType = 
   fn x => fn y =>
-   (Stats.doPhase relativizeTypePhase (relativizeType x) y)
+   (Stats.doPhase (Stats.makePhase "Compiler 033 2-vizType") 
+                  (relativizeType x) y)
 
 *)
 

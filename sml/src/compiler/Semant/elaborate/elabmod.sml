@@ -144,12 +144,12 @@ fun inStr (EU.TOP) = EU.INSTR
  * structures and functors can be distributed into the signature matching
  * or the instantiation process. (ZHONG)
  *)
-val mapPathsPhase = (Stats.makePhase "Compiler 033 1-mapPaths") 
 
 fun mapPaths0(epc, STR{sign, rlzn, ...}, flex) = mapEPC(epc, sign, rlzn, flex)
   | mapPaths0 _ = ()
 
-and mapPaths x = Stats.doPhase mapPathsPhase mapPaths0 x
+and mapPaths x = 
+  Stats.doPhase (Stats.makePhase "Compiler 033 1-mapPaths") mapPaths0 x
 
 and mapEPC(epc, sign as SIG{elements,...}, 
                 rlzn as {entities, ...} : M.strEntity, flex) = 
