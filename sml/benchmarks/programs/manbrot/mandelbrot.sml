@@ -20,7 +20,11 @@ structure Main : BMARK =
             fun loop2 j = if (j >= sz)
 		  then ()
 		  else let
-                    val c_re = x_base * (delta + real j)
+		  (* NOTE: older versions of the benchmark had the following
+		   * incorrect code:
+		    val c_re = x_base * (delta + real_j)
+		   *)
+                    val c_re = x_base + (delta * real j)
 		    fun loop3 (count, z_re : real, z_im : real) = if (count < maxCount)
 			  then let
                             val z_re_sq = z_re * z_re
