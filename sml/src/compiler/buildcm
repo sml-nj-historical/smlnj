@@ -199,6 +199,6 @@ $SML $ARGS <<ZZZ
 		"\n[built `date`]\n$NOTE[CM&CMB]\n");
          CM.procCmdLine ());
 ZZZ
-echo ""
+
 rm -f ../cm/$config ../cm/$tmp
 exit 0
