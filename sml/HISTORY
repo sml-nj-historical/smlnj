@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/26 16:05:00 CDT
+Tag: blume-20030926-wrappriv
+Description:
+
+Added missing wrapper for privilege "primitive" in $smlnj/viscomp/core.cm.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/26 15:00:00 CDT
 Tag: blume-20030926-110_43_3
 Description:

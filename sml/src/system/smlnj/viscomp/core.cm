@@ -11,7 +11,7 @@
  * Moved to smlnj/viscomp for better path-anchor organization.
  *   M.Blume (03/2000)
  *)
-
+(primitive)
 Library
 	group($compiler/core.cm)
 is
