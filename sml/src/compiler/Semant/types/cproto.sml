@@ -133,12 +133,14 @@ end = struct
 			 (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
 		       | _ => bad ())
 
-	    fun rdt t =
+	    fun rdt (t, ml_args) =
 		if TU.equalType (t, BT.unitTy) then
-		    (CT.C_void, NONE)
+		    (CT.C_void, NONE, ml_args)
 		else let val (ct, mt) = dt t
 		     in
-			 (ct, SOME mt)
+			 case ct of
+			     (CT.C_STRUCT _) => (ct, SOME mt, mt :: ml_args)
+			   | _ => (ct, SOME mt, ml_args)
 		     end
 
 	    val (fty, nlists) = unlist (t, 0)
@@ -150,21 +152,18 @@ end = struct
 	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-                let val (retTy, retML) = rdt r
-                    val (argTys, argsML) =
+                let val (argTys, argsML) =
                         if TU.equalType (d, BT.unitTy) then ([], [])
                         else case BT.getFields d of
-		               SOME (_ :: fl) =>
-                               let val args = map dt fl
-                               in  (map #1 args, map #2 args)
-                               end
-			     | _ => bad () 
+				 SOME (_ :: fl) => ListPair.unzip (map dt fl)
+			       | _ => bad ()
+		    val (retTy, retML, argsML) = rdt (r, argsML)
                 in
 		    { c_proto = { conv = conv,
 				  retTy = retTy,
 				  paramTys = argTys },
                       ml_args = argsML,
-                      ml_res_opt  = retML,
+                      ml_res_opt = retML,
 		      reentrant = reentrant }
                 end
 	end
