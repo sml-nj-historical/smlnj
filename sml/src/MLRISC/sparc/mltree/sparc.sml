@@ -455,7 +455,7 @@ struct
                  (doExpr(T.SUB(ty,a,b),newReg(),CC,[]); br(cond,lab,an)) 
           end
         | branch(T.CC(cond,r),lab,an) = 
-              if CB.sameCell(r, C.psr) then br(cond,lab,an)
+              if CB.sameColor(r, C.psr) then br(cond,lab,an)
               else (genCmp0(CC,r); br(cond,lab,an))
         | branch(T.FCMP(fty,cond,a,b),lab,an) =
           let val cmp = case fty of
@@ -709,7 +709,7 @@ struct
           | e => doFexpr(Gen.compileFexp e,d,an)
 
       and doCCexpr(T.CMP(ty,cond,e1,e2),cc,an) =
-             if CB.sameCell(cc,C.psr) then
+             if CB.sameColor(cc,C.psr) then
                   doExpr(T.SUB(ty,e1,e2),newReg(),CC,an)
              else error "doCCexpr"
         | doCCexpr(T.CC(_,r),d,an) = 
