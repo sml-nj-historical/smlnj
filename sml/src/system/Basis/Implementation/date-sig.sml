@@ -44,7 +44,7 @@ signature DATE =
     val isDst   : date -> bool option
     val localOffset : unit -> Time.time
     val fromTimeLocal : Time.time -> date
-    val fromTimeUniv  : Time.time -> date
+    val fromUTC  : Time.time -> date
     val toTime : date -> Time.time
     val toString : date -> string
     val fmt      : string -> date -> string

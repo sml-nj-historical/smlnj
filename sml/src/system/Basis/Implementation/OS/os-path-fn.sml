@@ -65,11 +65,14 @@ functor OS_PathFn (OSPathBase : sig
 	    }
 	  end
 
+    fun checkedArc a =
+	if CharImp.contains a P.arcSepChar then raise InvalidArc else a
+
     fun toString {isAbs=false, vol, arcs="" :: _} = raise Path
       | toString {isAbs, vol, arcs} = let
 	  fun f [] = [""]
-	    | f [a] = [a]
-	    | f (a :: al) = a :: arcSepStr :: (f al)
+	    | f [a] = [checkedArc a]
+	    | f (a :: al) = checkedArc a :: arcSepStr :: (f al)
 	  in
 	    String.concat(P.joinVolPath(isAbs, vol, "") :: f arcs)
 	  end
@@ -111,7 +114,7 @@ functor OS_PathFn (OSPathBase : sig
 	  in
 	    split' arcs
 	  end
-    fun joinDirFile {dir="", file} = file
+    fun joinDirFile {dir="", file} = checkedArc file
       | joinDirFile {dir, file} = let
 	  val {isAbs, vol, arcs} = fromString dir
 	  in

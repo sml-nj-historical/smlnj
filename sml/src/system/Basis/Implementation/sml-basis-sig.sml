@@ -102,6 +102,7 @@ val osPoll : (ML_polldesc_list_t * Time_t option) -> ML_pollinfo_list_t
 val now : unit -> Time_t
 val gmTime : Time_t -> Date_t
 val localTime : Time_t -> Date_t
+val mkTime : Date_t -> Time_t
 val getCPUTime : unit -> (Time_t * Time_t * Time_t)
 val cmdName : unit -> idl_string
 val cmdArgs : unit -> ML_string_list_t
