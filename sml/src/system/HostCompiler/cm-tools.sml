@@ -5,4 +5,4 @@
  *
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
-structure Tools = ToolsFn (val load_plugin = CM.load_plugin)
+structure Tools = CM0.Tools

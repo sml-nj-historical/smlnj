@@ -5,12 +5,13 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
+(cm-init)
 Library
 	structure Sharing
 	signature TOOLS
 	structure Tools
 is
 	cm-lib.cm
-	full-cm.cm
+	host-compiler-0.cm
 	cm-tools.sml
 

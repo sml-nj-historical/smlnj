@@ -68,22 +68,17 @@ LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
 #
-# the paths to ml-yacc, ml-burg, and ml-lex; needed to configure CM
+# the path to the dir where ml-yacc, ml-burg, and ml-lex live
 #
-YACCPATH=$BINDIR/ml-yacc
-LEXPATH=$BINDIR/ml-lex
-BURGPATH=$BINDIR/ml-burg
+TOOLDIR=$BINDIR
 
 #
 # set the CM configuration variables (these are environment variables
 # that will be queried by the bootstrap code)
 # Especially important is CM_PATHCONFIG_DEFAULT.
 #
-CM_YACC_DEFAULT=$YACCPATH
-CM_LEX_DEFAULT=$LEXPATH
-CM_BURG_DEFAULT=$BURGPATH
 CM_PATHCONFIG_DEFAULT=$LIBDIR/pathconfig
-export CM_YACC_DEFAULT CM_LEX_DEFAULT CM_BURG_DEFAULT CM_PATHCONFIG_DEFAULT
+export CM_PATHCONFIG_DEFAULT
 
 #
 # the release version that we are installing
@@ -396,12 +391,15 @@ for i in $TARGETS ; do
 	;;
       ml-yacc)
 	standalone ml-yacc ML-Yacc src
+	echo ml-yacc $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       ml-lex)
 	standalone ml-lex ML-Lex
+	echo ml-lex $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       ml-burg)
 	standalone ml-burg ML-Burg
+	echo ml-burg $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       smlnj-lib)
         unpack "SML/NJ Library" $SRCDIR smlnj-lib $ROOT/$VERSION-smlnj-lib
