@@ -1,6 +1,6 @@
 I have not packaged the win32 port as an InstallShield(tm)
 bundle.  Instead, I simply made a .zip file (smlnj.zip) that
-you can unzip to a location of your choice.  There are two
+one can unzip to a location of one's choice.  There are two
 things to do "by hand" afterwards:
 
    - set the environment variable SMLNJ_HOME to
@@ -41,3 +41,19 @@ things there.  (But I am sure everything is similar to the XP case.)
 
 Once the two variables are properly set, you should be able to
 launch sml/nj by typing "sml" into a command prompt...
+
+--------------------------------------------------------------------------
+
+To compile from scratch, assuming Microsoft Visual Studio:
+
+- set path to include C compiler bin directory
+    (e.g., path %PATH%;"c:\Program Files\Microsoft Visual Studio\VC98\Bin")
+- run "vcvars32" command
+- create the full SML/NJ source hierarchy
+   (most convenient: do a CVS checkout; alternative: unzip and untar
+    all the source archives)
+- unzip and untar boot.x86-win32.tgz into the root of the source tree
+- set environment variable SMLNJ_HOME to root of source tree
+- edit config\targets to one's taste (careful: don't enable the
+    ml-nlffi stuff as it is not ready for win32 yet!)
+- run config\install.bat
