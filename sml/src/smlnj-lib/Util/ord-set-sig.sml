@@ -66,7 +66,7 @@ signature ORD_SET =
      
     val app : (item -> unit) -> set -> unit
 	(* Apply a function to the entries of the set 
-         * in decreasing order
+         * in increasing order
          *)
 
     val foldl : (item * 'b -> 'b) -> 'b -> set -> 'b

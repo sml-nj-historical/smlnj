@@ -3,6 +3,10 @@ correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
 
+[2002-06-18]
+	Fixed a bug in MatchTree.nth (regexp library).  Thanks to
+	Sami Nopanen.
+
 [2002-05-20]
 	Fixed bug in IntInf module: scanning of hex literals was not
 	handling "0x" prefixes.

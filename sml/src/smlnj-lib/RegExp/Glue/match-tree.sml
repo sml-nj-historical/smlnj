@@ -50,9 +50,9 @@ structure MatchTree :> MATCH_TREE =
    *)
     fun nth (t, n) = let
 	  datatype 'a sum = INL of int | INR of 'a
-	  fun walk (0, Match (x,_)) = INR x
-	    | walk (i, Match (_,children)) = let
-		fun walkList (i, []) = INL(i-1)
+	  fun walk (0, Match (x, _)) = INR x
+	    | walk (i, Match (_, children)) = let
+		fun walkList (i, []) = INL i
 		  | walkList (i, m::r) = (case walk(i, m)
 		       of (INL j) => walkList (j, r)
 			| result => result
