@@ -9,6 +9,7 @@ Library
 	functor PPCAsmEmitter
 	functor PPCDelaySlots
 	functor PPCFreqProps
+	functor PPCDarwinPseudoOps
 	functor PPCGasPseudoOps
 	functor PPCInstr
 	functor PPCJumps
@@ -54,6 +55,7 @@ is
 	../ppc/emit/ppcMC.sml
 	../ppc/backpatch/ppcDelaySlots.sml
 	../ppc/backpatch/ppcJumps.sml
+	../ppc/flowgraph/ppcDarwinPseudoOps.sml
 	../ppc/flowgraph/ppcGasPseudoOps.sml
 	../ppc/mltree/ppcPseudoInstr.sig
 	../ppc/mltree/ppc.sml 

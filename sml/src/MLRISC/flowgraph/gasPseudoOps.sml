@@ -96,7 +96,7 @@ struct
     | toString(PB.ASCII s)        =
 	Fmt.format "\t.ascii\t\"%s\"" [Fmt.STR(String.toCString s)]
     | toString(PB.ASCIIZ s)       = 
-        Fmt.format "\t.ascii \"%s\"" [Fmt.STR(String.toCString s)]
+        Fmt.format "\t.asciz \"%s\"" [Fmt.STR(String.toCString s)]
 
     | toString(PB.SPACE sz)	  = Fmt.format "\t.space\t%d" [Fmt.INT sz]
 
