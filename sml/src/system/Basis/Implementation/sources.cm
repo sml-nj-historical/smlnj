@@ -1,4 +1,4 @@
-Group (basis.cm)
+Group ($basis.cm)
 	signature ARRAY
 	signature ARRAY2
 	signature VECTOR
@@ -179,7 +179,7 @@ Group (basis.cm)
 #endif
 
 is
-	smlnj/init/init.cmi : cm
+	$smlnj/init/init.cmi : cm
 
 	../TypesOnly/sources.cm
 

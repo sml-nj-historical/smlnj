@@ -60,7 +60,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			val error = error (pos, newpos)
 			fun sml (spec, s, xe, rts, ecs) = let
 			    val p = SrcPath.standard pcmode
-				{ context = context, spec = spec }
+				{ context = context, spec = spec, err = error }
 			    val attribs =
 				{ split = s, is_rts = rts, extra_compenv = xe,
 				  explicit_core_sym = ecs }

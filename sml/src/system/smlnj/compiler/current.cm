@@ -2,4 +2,4 @@
 Library
 	structure Compiler
 is
-	smlnj/internal/host-compiler-0.cm
+	$smlnj/internal/host-compiler-0.cm

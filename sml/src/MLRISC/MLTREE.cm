@@ -16,9 +16,11 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
+#endif
 	
 	MLRISC.cm
 	Control.cm

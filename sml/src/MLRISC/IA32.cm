@@ -34,12 +34,15 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
-	MLRISC/MLRISC.cm
-	MLRISC/Control.cm
-	MLRISC/Lib.cm
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
+#endif
+
+	MLRISC.cm
+	Control.cm
+	Lib.cm
 
 	(* c calls *)
         x86/c-calls/ia32-svid.sml

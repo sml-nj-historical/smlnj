@@ -165,7 +165,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun mkStdSrcPath s =
 	      SrcPath.standard pcmode { context = SrcPath.cwdContext (),
-				        spec = s }
+				        spec = s,
+					err = fn s => raise Fail s }
 
 	  fun getPending () = let
 	      fun one (s, _) = let
@@ -237,8 +238,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  and load_plugin context x = let
 	      val _ = Say.vsay ["[attempting to load plugin ", x, "]\n"]
+	      fun badname s = Say.say ["[bad plugin name: ", s, "]\n"]
 	      fun mkSrcPath s =
-		  SrcPath.standard pcmode { context = context, spec = s }
+		  SrcPath.standard pcmode { context = context,
+					    spec = s, err = badname }
 	      val success =
 		  run mkSrcPath NONE (make_runner false) x handle _ => false
 	  in
@@ -539,6 +542,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val warn_obsolete = StdConfig.warn_obsolete
 	    val debug = StdConfig.debug
 	    val conserve_memory = StdConfig.conserve_memory
+	    val implicit_anchors = StdConfig.implicit_anchors
 	end
 
 	structure Library = struct

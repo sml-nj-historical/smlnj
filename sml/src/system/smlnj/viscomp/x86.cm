@@ -17,4 +17,4 @@ Library
 	structure X86FlowGraph
 	structure X86AsmEmitter
 is
-	compiler/viscomp-x86.cm
+	$compiler/viscomp-x86.cm

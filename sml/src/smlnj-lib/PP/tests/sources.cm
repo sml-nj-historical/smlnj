@@ -13,9 +13,9 @@ Library
   structure PrHTML
 is
 #if defined(NEW_CM)
-  basis.cm
-  html-lib.cm
-  pp-lib.cm
+  $/basis.cm
+  $/html-lib.cm
+  $/pp-lib.cm
 #else
   ../../HTML/html-lib.cm
   ../src/sources.cm

@@ -1,6 +1,6 @@
 Library
 	structure HppaCompiler
 is
-	smlnj/viscomp/core.cm
-	smlnj/viscomp/hppa.cm
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/hppa.cm
 	hppa.sml

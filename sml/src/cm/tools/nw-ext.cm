@@ -10,4 +10,4 @@
 Library
 	structure NowebTool
 is
-	noweb-tool.cm
+	$noweb-tool.cm

@@ -17,4 +17,4 @@ Library
 	structure PPCFlowGraph
 	structure PPCAsmEmitter
 is
-	compiler/viscomp-ppc.cm
+	$compiler/viscomp-ppc.cm

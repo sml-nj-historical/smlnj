@@ -35,7 +35,8 @@ signature ABSPATH = sig
     val reAnchoredName : t * string -> string option
 
     val native : { context: context, spec: string } -> t
-    val standard : PathConfig.mode -> { context: context, spec: string } -> t
+    val standard : PathConfig.mode ->
+		   { context: context, spec: string, err: string -> unit } -> t
 
     val fromDescr : PathConfig.mode -> string -> t
 
@@ -285,7 +286,7 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* make an abstract path from a standard string *)
-	fun standard mode { spec, context } = let
+	fun standard mode { spec, context, err } = let
 	    fun delim #"/" = true
 	      | delim #"\\" = true		(* accept DOS-style, too *)
 	      | delim _ = false
@@ -310,25 +311,35 @@ structure AbsPath :> ABSPATH = struct
 		    in
 			mk (arcs, anchorcontext)
 		    end
+
+	    fun badanchor a () =
+		(err (concat ["invalid anchor `", a, "' in path name"]);
+		 native { spec = spec, context = context })
 	in
 	    case String.fields delim spec of
 		[""] => impossible "AbsPath.standard: zero-length name"
 	      | "" :: arcs => mk (arcs, ROOT "")
 	      | [] => impossible "AbsPath.standard: no fields"
-	      | ["$"] => raise BadAnchor ""
-	      | "$" :: "" :: _ => raise BadAnchor ""
+	      | (["$"] | "$" :: "" :: _) =>
+		(err "invalid zero-length anchored path name";
+		 native { spec = spec, context = context })
 	      (* $-anchored paths using default anchor... *)
 	      | "$" :: (arcs as (arc1 :: _)) =>
-		anchored (arc1, arcs, fn () => raise BadAnchor arc1)
+		anchored (arc1, arcs, badanchor arc1)
 	      | arcs as (arc1 :: arcn) =>
 		(if String.sub (arc1, 0) = #"$" then
 		     (* $-anchored paths with specified anchor *)
 		     let val a = String.extract (arc1, 1, NONE)
 			 val arcn = case arcn of [] => [a] | _ => arcn
 		     in
-			 anchored (a, arcn, fn () => raise BadAnchor a)
+			 anchored (a, arcn, badanchor a)
 		     end
-		 else anchored (arc1, arcs, fn () => mk (arcs, context)))
+		 else if #get StdConfig.implicit_anchors () then
+		     anchored (arc1, arcs, fn () => mk (arcs, context))
+		 else if isSome (PathConfig.configAnchor mode arc1) then
+		     (err (concat ["implicit anchor `", arc1, "'"]);
+		      native { spec = spec, context = context })
+		 else mk (arcs, context))
 	end
 
 	(* make a pickle-string *)

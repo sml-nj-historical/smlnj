@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group (smlnj/viscomp/x86.cm)
+Group ($smlnj/viscomp/x86.cm)
 	structure X86VisComp
         structure X86CG
         structure X86CpsRegs
@@ -29,10 +29,10 @@ CodeGen/x86/x86StackSpills.sml
 CodeGen/x86/x86gen.sml
 CodeGen/x86/x86spec.sml
 
-basis.cm
-smlnj/viscomp/core.cm
-comp-lib.cm
-MLRISC/Control.cm
-MLRISC/MLRISC.cm
-MLRISC/IA32.cm
+$basis.cm
+$smlnj/viscomp/core.cm
+$comp-lib.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/IA32.cm
 

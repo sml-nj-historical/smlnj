@@ -17,4 +17,4 @@ Library
 	structure HppaFlowGraph
 	structure HppaAsmEmitter
 is
-	compiler/viscomp-hppa.cm
+	$compiler/viscomp-hppa.cm

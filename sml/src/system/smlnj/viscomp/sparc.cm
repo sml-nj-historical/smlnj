@@ -17,4 +17,4 @@ Library
 	structure SparcFlowGraph
 	structure SparcAsmEmitter
 is
-	compiler/viscomp-sparc.cm
+	$compiler/viscomp-sparc.cm

@@ -1,21 +1,21 @@
 #
-# spec.cmi
+# init.cmi
 #
 #  (C) 2000 Lucent Technologies, Bell Laboratories
 #
 # Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
 #
-# This is the specification for how to build the "init group".
-# The main purpose of the init group is to tie in the runtime system
+# This is the specification for how to build the "init library".
+# The main purpose of the init library is to tie in the runtime system
 # and to build the pervasive environment.  The pervasive enviroment
 # must contain a binding of the "special" structure named "_Core".
-# Because of its special nature, the init group cannot be described as
+# Because of its special nature, the init library cannot be described as
 # an ordinary CM library.  Instead, it is built from the DAG description
-# in this file.  The bootstrap compiler turns the init group into an
-# ordinary stable group.  The boot process fetches the pervasive
+# in this file.  The bootstrap compiler turns the init library into an
+# ordinary stable library.  The boot process fetches the pervasive
 # environment from that stable library.
 #
-# In addition to the pervasive environments, the init group can (and does)
+# In addition to the pervasive environments, the init library can (and does)
 # also export additional definitions.  These can be accessed by client code
 # (such as the implementation of the Basis library) by simply listing
 # "init.cmi : cm" in their respective library description files.  (Since CM
@@ -51,7 +51,7 @@
 #    It must specify at least one environment name, namely the one that is
 #    used as the system-wide "pervasive" environment.
 #    For any additional name n the exports of the module that was bound
-#    (by "bind") to n are added to the exports of the init group.
+#    (by "bind") to n are added to the exports of the init library.
 #    These exports can be accessed by clients that explicitly list init.cmi
 #    in their own description files.
 #    Note: Since some clients need direct access to the core environment,
@@ -63,7 +63,7 @@
 #
 # Note that a binding for structure _Core is necessary ALMOST EVERYWHERE.
 # Therefore, it is necessary that the pervasive environment has such a
-# binding.  For files of this initial group (which do not yet have the
+# binding.  For files of this initial library (which do not yet have the
 # benefit of being able to access the pervasive environment), a trivial
 # member "xcore" is used to supply _Core.
 
@@ -89,7 +89,7 @@ split
 bind core = core.sml (rts, asig, primitive)
 
 # Now we make the binding for structure _Core for use by the remaining
-# members of the init group. (Everybody else in the world gets access to
+# members of the init library. (Everybody else in the world gets access to
 # _Core via the pervasive env.)
 # The "bind-core" line says that its first argument ("xCore") should be
 # re-written as "_Core" before compilation. This rewriting is done

@@ -8,5 +8,5 @@
 Library
 	structure YaccTool
 is
-	smlnj/cm/tools.cm
+	$smlnj/cm/tools.cm
 	yacctool.sml

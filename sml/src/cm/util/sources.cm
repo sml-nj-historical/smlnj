@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (smlnj/internal/cm-lib.cm)
+Group ($smlnj/internal/cm-lib.cm)
 	structure StringSet
 	structure StringMap
 	structure Symbol
@@ -53,6 +53,6 @@ is
 	int-map.sml
 	int-set.sml
 
-	basis.cm
-	smlnj/viscomp/core.cm
-	smlnj-lib.cm
+	$basis.cm
+	$smlnj/viscomp/core.cm
+	$smlnj-lib.cm

@@ -137,7 +137,9 @@ end = struct
 	val pcmode = PathConfig.new ()
 	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
 
-	fun stdpath s = SrcPath.standard pcmode { context = ctxt, spec = s }
+	fun stdpath s = SrcPath.standard pcmode { context = ctxt,
+						  spec = s,
+						  err = fn s => raise Fail s }
 
 	val initgspec = stdpath initgspec
 	val maingspec =

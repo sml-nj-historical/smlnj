@@ -17,4 +17,4 @@ Library
 	structure Sharing
 	signature TOOLS
 is
-	cm/cm-lib.cm
+	$cm/cm-lib.cm

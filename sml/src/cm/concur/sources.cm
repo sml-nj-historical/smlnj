@@ -8,7 +8,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-Group (smlnj/internal/cm-lib.cm) is
+Group ($smlnj/internal/cm-lib.cm) is
 	concur.sml
 	servers.sig
 # if defined (OPSYS_UNIX)
@@ -16,5 +16,5 @@ Group (smlnj/internal/cm-lib.cm) is
 # else
 	dummy-servers.sml
 # endif
-	basis.cm
+	$basis.cm
 	../util/sources.cm

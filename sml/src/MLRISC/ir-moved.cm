@@ -32,12 +32,14 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
-	MLRISC-Graphs.cm
+#endif
+	Control.cm
+	Lib.cm
+	Graphs.cm
 
 	ir/cdg.sig
 	ir/cdg.sml

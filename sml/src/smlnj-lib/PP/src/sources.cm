@@ -16,8 +16,8 @@ Group (../pp-lib.cm)
 
 is
 #if defined(NEW_CM)
-  basis.cm
-  smlnj-lib.cm
+  $/basis.cm
+  $/smlnj-lib.cm
 #else
   ../../Util/smlnj-lib.cm
 #endif

@@ -559,13 +559,15 @@ struct
 
 	    fun path2list p = let
 		fun warn_relabs abs = let
-		    val relabs = if abs then "absolute" else "relative"
+		    val (relabs, is) = if abs then ("absolute", "is: ")
+				       else ("relative", "was resolved as: ")
 		    fun ppb pps =
 			(PP.add_newline pps;
+			 PP.add_string pps ("The library's path " ^ is);
 			 PP.add_string pps (SrcPath.descr p);
 			 PP.add_newline pps;
 			 PP.add_string pps
-     "(This means that in order to be able to use the result of stabilization";
+    "(This means that in order to be able to use the result of stabilization,";
                          PP.add_newline pps;
 			 PP.add_string pps "the library must be in the same ";
 			 PP.add_string pps relabs;
@@ -576,7 +578,7 @@ struct
 				   EM.WARN
 				   (concat [SrcPath.descr grouppath,
 					    ": library referred to by ",
-					    relabs, " pathname:"])
+					    relabs, " pathname."])
 				   ppb
 		end
 	    in

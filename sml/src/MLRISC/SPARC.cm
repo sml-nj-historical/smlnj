@@ -25,12 +25,15 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
-	MLRISC/MLRISC.cm
-	MLRISC/Control.cm
-	MLRISC/Lib.cm
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
+#endif
+
+	MLRISC.cm
+	Control.cm
+	Lib.cm
 
 	(* Sparc specific backend *)
 	sparc/instructions/sparcCells.sml

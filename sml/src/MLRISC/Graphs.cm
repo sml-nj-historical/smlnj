@@ -92,11 +92,13 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
+#endif
+	Control.cm
+	Lib.cm
 
 	graphs/acyclic-graph.sml
 	graphs/bellman-ford.sml

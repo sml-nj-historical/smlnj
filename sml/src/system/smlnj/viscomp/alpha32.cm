@@ -17,4 +17,4 @@ Library
 	structure Alpha32FlowGraph
 	structure Alpha32AsmEmitter
 is
-	compiler/viscomp-alpha32.cm  
+	$compiler/viscomp-alpha32.cm  

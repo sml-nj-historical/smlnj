@@ -1,8 +1,8 @@
 Library
 	structure PPCUnixCMB
 is
-	basis.cm
-	smlnj/internal/cm-lib.cm
-	smlnj/internal/host-compiler-0.cm
-	smlnj/viscomp/ppc.cm
+	$basis.cm
+	$smlnj/internal/cm-lib.cm
+	$smlnj/internal/host-compiler-0.cm
+	$smlnj/viscomp/ppc.cm
 	ppc-unix.sml

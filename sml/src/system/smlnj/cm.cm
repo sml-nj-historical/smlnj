@@ -9,4 +9,4 @@ Library
 	signature CM
 	structure CM
 is
-	smlnj/cm/full.cm
+	$smlnj/cm/full.cm

@@ -26,6 +26,7 @@ signature CM = sig
 	val warn_obsolete : bool controller
 	val debug : bool controller
 	val conserve_memory : bool controller
+	val implicit_anchors : bool controller
     end
 
     structure Library : sig

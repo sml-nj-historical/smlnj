@@ -19,4 +19,7 @@ is
 	graphViewer.sml
 	vcg.sml
 
-	basis.cm
+#if defined(NEW_CM)
+	$basis.cm
+#endif
+

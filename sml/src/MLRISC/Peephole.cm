@@ -11,9 +11,9 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
+	$basis.cm
 #endif
-	MLRISC/MLRISC.cm
+	MLRISC.cm
 
 	(* Peephole optimizations *)
 	instructions/peephole.sig

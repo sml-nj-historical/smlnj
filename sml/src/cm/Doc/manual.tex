@@ -81,7 +81,7 @@ is
     bar.sig
     foo.sml
     helper.sml
-    basis.cm
+    $/basis.cm (* or just $basis.cm *)
 \end{verbatim}
 
 This library exports two definitions, one for a structure named {\tt
@@ -90,7 +90,7 @@ such exports appear between the keywords {\tt Library} and {\tt is}.
 The {\em members} of the library are specified after the keyword {\tt
 is}.  Here we have three ML source files ({\tt bar.sig}, {\tt
 foo.sml}, and {\tt helper.sml}) as well as a reference to one external
-library ({\tt basis.cm}).  The entry {\tt basis.cm} typically denotes
+library ({\tt \$/basis.cm}).  The entry {\tt \$/basis.cm} typically denotes
 the description file for the {\it Standard ML Basis
 Library}~\cite{reppy99:basis}; most programs will want to list it in
 their own description file(s).
@@ -195,12 +195,13 @@ specifications (see Section~\ref{sec:access}).
 As an example, let us assume that {\tt foo-utils.cm} contains the
 following text:
 
+%note: emacs gets temporarily confused by the single dollar
 \begin{verbatim}
 Group (foo-lib.cm)
 is
     set-util.sml
     map-util.sml
-    basis.cm
+    $/basis.cm
 \end{verbatim}
 
 Here, the library description file {\tt foo-lib.cm} would list {\tt
@@ -214,8 +215,9 @@ is
     foo.sig
     foo.sml
     foo-utils.cm
-    basis.cm
+    $/basis.cm
 \end{verbatim}
+%note: emacs should be sufficiently un-confused again by now
 
 \subsection{Multiple occurences of the same member}
 \label{sec:multioccur}
@@ -249,6 +251,7 @@ top-level groups.
 \section{Naming objects in the file system}
 
 \subsection{Motivation}
+\label{sec:implicit}
 
 File naming has been an area notorious for its problems and was the
 cause of most of the gripes from CM's users.  With this in mind, CM
@@ -293,14 +296,18 @@ The resolution of relative pathnames is more complicated:
 \begin{itemize}
 \item If the first component of a relative pathname is a
 ``configuration anchor'' (see Section~\ref{sec:anchors}), then we call
-the path {\em anchored}.  In this case the
-whole name will be resolved relative to the value associated with that
-anchor.  For example, if the path is {\tt foo/bar/baz} and {\tt
-foo} is known as an anchor mapped to {\tt /usr/local}, then the
-full name of the actual file system object referred to is {\tt
+the path {\em implicitly anchored}.  In this case\footnote{as long as
+CM.Anchor.implict\_anchors is enabled, which currently is the default
+(see Section~\ref{sec:api})}
+the whole name will be resolved relative to the value associated with
+that anchor.  For example, if the path is {\tt foo/bar/baz} and {\tt
+foo} is known as an anchor mapped to {\tt /usr/local}, then the full
+name of the actual file system object referred to is {\tt
 /usr/local/foo/bar/baz}. Note that the {\tt foo} component is not
 stripped away during the resolution process; different anchors that
-map to the same directory still remain different.
+map to the same directory still remain different. \\
+{\bf Warning:} Implicitly anchored paths are now considered obsolete!
+Support for them will disappear soon in future versions of CM.
 \item Otherwise, if the relative name appears in some description file
 whose name is {\it path}{\tt /}{\it file}{\tt .cm}, then it will be
 resolved relative to {\it path}, i.e., relative to the directory that
@@ -321,19 +328,19 @@ system location that they referred to when they were first seen.
 
 \subsection{Explicitly anchored paths}
 
-It is possible to specify paths that are explicitly anchored.  For
-this, the first component of a ``standard'' path must start with a
-dollar symbol {\bf \$}.  The string between {\bf \$} and the first
-{\bf /} is taken to be the name of the anchor and the string after
-that {\bf /} is the path relative to the anchor.  An error is
-signalled whenever the anchor name does not correspond to an existing
-anchor.
+When path anchors are used, their use should be syntactically
+obvious.  Therefore, the use of {\em explicitly anchored paths} is now
+preferred over their implicit counterparts.
 
-Any ``implicitly anchored'' path {\tt foo/bar/baz} (as described above)
-can alternatively be written {\tt \$foo/foo/bar/baz}.  The advantage
-of the latter version is that it is clearly stating the {\em
-intention} that the path be an anchored path.
+To specify an explicitly anchored path, the first component of a
+``standard'' path must start with a dollar symbol {\bf \$}.  The
+string between {\bf \$} and the first {\bf /} is taken to be the name
+of the anchor and the string after that {\bf /} is the path relative
+to the anchor.  An error is signalled whenever the anchor name does
+not correspond to an existing anchor.
 
+Note that any ``implicitly anchored'' path {\tt foo/bar/baz} (as
+described above) can always be re-written as {\tt \$foo/foo/bar/baz}.
 Moreover, the explicit form is slightly more expressive as it permits
 names such as {\tt \$a/b/c} where the anchor name and the first arc do
 not coincide.
@@ -342,10 +349,11 @@ One can abbreviate the frequent case where they do coincide without
 resorting to implicit syntax by writing {\tt \$/foo/bar/baz} instead
 of the lengthier {\tt \$foo/foo/bar/baz}.
 
-If an explicitly anchored path has only one component and the
-component coincides with the anchor name, then one can abbreviate it
-further by writing just {\tt \$foo} instead of {\tt \$/foo} or even
-{\tt \$foo/foo}.
+Another (somewhat controversial) shorthand is the following: if an
+explicitly anchored path has only one component and the component
+coincides with the anchor name, then one can abbreviate it further by
+writing just {\tt \$foo} instead of {\tt \$/foo} or even {\tt
+\$foo/foo}.
 
 \subsection{Anchor configuration}
 \label{sec:anchors}
@@ -401,15 +409,15 @@ but will otherwise be ignored.
 
 Functions that control CM's operation are accessible as members of a
 structure named {\tt CM}.  This structure itself is exported from a
-library called {\tt smlnj/cm/full.cm} (or, alternatively, {\tt
-smlnj/cm.cm}).  Other libraries can exploit CM's functionality simply
-by putting a {\tt smlnj/cm/full.cm} entry into their own description file.
+library called {\tt \$smlnj/cm/full.cm} (or, alternatively, {\tt
+\$smlnj/cm.cm}).  Other libraries can exploit CM's functionality simply
+by putting a {\tt \$smlnj/cm/full.cm} entry into their own description file.
 Section~\ref{sec:dynlink} shows one interesting use of this feature.
 
 Initially, only a ``minimal'' version of structure {\tt CM} (exported
-by library {\tt smlnj/cm/minimal.cm}) is pre-registered at the interactive
+by library {\tt \$smlnj/cm/minimal.cm}) is pre-registered at the interactive
 prompt.  To make the full version of structure {\tt CM} available, one
-must explicitly load {\tt smlnj/cm/full.cm} using {\tt CM.autoload} or {\tt
+must explicitly load {\tt \$smlnj/cm/full.cm} using {\tt CM.autoload} or {\tt
 CM.make}, both of which are also available in the minimal version.
 (The minimal structure {\tt CM} contains four members: {\tt
 CM.recomp}, {\tt CM.stabilize}, {\tt CM.make}, and {\tt CM.autoload}.)
@@ -505,6 +513,7 @@ structure {\tt CM}.
     val parse_caching : int controller
     val warn_obsolete : bool controller
     val conserve_memory : bool controller
+    val implicit_anchors : bool controller
   end
 \end{verbatim}
 
@@ -554,6 +563,14 @@ occasionally incurring additional input from stable library files.
 This does not save very much and, therefore, is normally turned off.
 The default ({\em false}) can be overridden at startup by the
 environment variable {\tt CM\_CONSERVE\_MEMORY}.
+
+The {\tt CM.Control.implicit\_anchors} controller has been added
+temporarily while support for {\em implicitly anchored paths} (see
+Section~\ref{sec:implicit}) is being faded out.  If set to {\tt
+false}, CM will check for implicitly anchored paths and issue an
+error.  The default ({\tt true}, i.e, implicit anchors are being
+accepted) can be overridden at startup by the environment variable
+{\tt CM\_IMPLICIT\_ANCHORS}.
 
 \subsubsection*{Path anchors}
 
@@ -925,8 +942,8 @@ private} source.
 The SML/NJ interactive system, which includes the compiler, is itself
 created by linking modules from various libraries. Some of these
 libraries can also be used in user programs.  Examples are the
-Standard ML Basis Library {\tt basis.cm}, the SML/NJ library {\tt
-smlnj-lib.cm}, and the ML-Yacc library {\tt ml-yacc-lib.cm}.
+Standard ML Basis Library {\tt \$/basis.cm}, the SML/NJ library {\tt
+\$/smlnj-lib.cm}, and the ML-Yacc library {\tt \$/ml-yacc-lib.cm}.
 
 If a module from a library is used by both the interactive system and
 a user program running under control of the interactive system, then
@@ -944,7 +961,6 @@ Library (1.4.1.4.2.1.3.5)
         structure Sqrt2
 is
         sqrt2.sml
-        basis.cm
 \end{verbatim}
 
 \subsection{How versions are compared}
@@ -1305,7 +1321,7 @@ If {\tt lineformat} is missing, then a default based on the target
 class is used.  Currently only the {\tt sml} and {\tt cm} classes are
 known to CM; other classes can be added or removed by using the {\tt
 NowebTool.lineNumbering} controller function exported from library
-{\tt noweb-tool.cm}:
+{\tt \$/noweb-tool.cm}:
 
 \begin{verbatim}
   val lineNumbering: string -> { get: unit -> string option,
@@ -1518,7 +1534,7 @@ unit that all compilation units implicitly depend upon.  The pervasive
 enviroment exports all non-modular bindings (types, values, infix
 operators, overloaded symbols) that are mandated by the specification
 for the Standard ML Basis Library~\cite{reppy99:basis}.  (All other
-bindings of the Basis Library are exported by {\tt basis.cm} which is
+bindings of the Basis Library are exported by {\tt \$/basis.cm} which is
 a genuine CM library.)
 
 The pervasive environment is the only place where CM conveys
@@ -1602,7 +1618,7 @@ gets replaced by an older version of itself.
 
 CM's tool set is extensible: new tools can be added by writing a few
 lines of ML code.  The necessary hooks for this are provided by a
-structure {\tt Tools} which is exported by the {\tt smlnj/cm/tools.cm}
+structure {\tt Tools} which is exported by the {\tt \$smlnj/cm/tools.cm}
 library.
 
 If the tool is implemented as a ``typical'' shell command, then all
@@ -1631,7 +1647,7 @@ val _ = Tools.registerStdShellCmdTool
 \end{verbatim}
 
 This code can either be packaged as a CM library or entered at the
-interactive top level after loading the {\tt smlnj/cm/tools.cm} library
+interactive top level after loading the {\tt \$smlnj/cm/tools.cm} library
 (via {\tt CM.make} or {\tt CM.load\_plugin}).
 
 In our example, the shell command name for our tool is {\tt
@@ -1714,12 +1730,13 @@ interface {\tt Tools.registerClass}.
 \subsection{Plug-in Tools}
 
 If CM comes across a member class name $c$ that it does not know
-about, then it tries to load a plugin module named $c${\tt -tool.cm}.
-If it sees a file whose name ends in suffix $s$ for which no member
-class has been specified and for which member classification fails,
-then it tries to load a plugin module named $s${\tt -ext.cm}.  The
-so-loaded module can then register the required tool which enables CM
-to successfully deal with the previously unknown member.
+about, then it tries to load a plugin module named {\tt \$}$c${\tt
+-tool.cm} or {\tt ./}$c${\tt -tool.cm}.  If it sees a file whose name
+ends in suffix $s$ for which no member class has been specified and
+for which member classification fails, then it tries to load a plugin
+module named {\tt \$}$s${\tt -ext.cm} or {\tt ./}$s${\tt -ext.cm}.
+The so-loaded module can then register the required tool which enables
+CM to successfully deal with the previously unknown member.
 
 This mechanism makes it possible for new tools to be added by simply
 placing appropriately-named plug-in libraries in such a way that CM
@@ -1727,10 +1744,10 @@ can find them.  This can be done in one of two ways:
 
 \begin{enumerate}
 \item For general-purpose tools that are installed in some central
-place, corresponding tool description files $c${\tt -tool.cm} and
-$s${\tt -ext.cm} should be registered using the path anchor mechanism.
-If this is done, actual description files can be placed in arbitrary
-locations.
+place, corresponding tool description files {\tt \$}$c${\tt -tool.cm}
+and {\tt \$}$s${\tt -ext.cm} should be registered using the path
+anchor mechanism.  If this is done, actual description files can be
+placed in arbitrary locations.
 \item For special-purpose tools that are part of a specific program
 and for which there is no need for central installation, one should
 simply put the tool description files into the same directory as the
@@ -1993,19 +2010,20 @@ of {\tt F.f}.
 For the new {\tt f.sml} to be compiled successfully it must be placed
 into a library {\tt f.cm} that mentions {\tt f-hook.cm} and {\tt
 full-cm.cm}.  As we have seen, {\tt f-hook.cm} exports {\tt F\_Hook.f}
-and {\tt smlnj/cm/full.cm} is needed\footnote{The reduced version of
-structure {\tt CM} as exported by library {\tt smlnj/cm/minimal.cm} would
+and {\tt \$smlnj/cm/full.cm} is needed\footnote{The reduced version of
+structure {\tt CM} as exported by library {\tt \$smlnj/cm/minimal.cm} would
 have been sufficient, too.}  because it exports {\tt CM.make}:
+
 \begin{verbatim}
 Library
         structure F
 is
         f.sml
         f-hook.cm
-        smlnj/cm/full.cm
+        $smlnj/cm/full.cm (* or $smlnj/cm/minimal.cm *)
 \end{verbatim}
 
-\noindent{\bf Beware!}  This solution makes use of {\tt smlnj/cm/full.cm}
+\noindent{\bf Beware!}  This solution makes use of {\tt \$smlnj/cm/full.cm}
 which in turn requires the SML/NJ compiler to be present.  Therefore,
 is worthwhile only for really large program modules where the benefits
 of their absence are not outweighed be the need for the compiler.

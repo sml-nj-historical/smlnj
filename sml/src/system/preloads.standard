@@ -7,5 +7,5 @@
 #
 # author: Matthias Blume (blume@cs.princeton.edu)
 #
-autoload basis.cm
-autoload smlnj/cm/minimal.cm
+autoload $basis.cm
+autoload $smlnj/cm/minimal.cm

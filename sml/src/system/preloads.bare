@@ -6,5 +6,5 @@
 #
 # author: Matthias Blume (blume@cs.princeton.edu)
 #
-make basis.cm
-make smlnj/compiler.cm
+make $basis.cm
+make $smlnj/compiler.cm

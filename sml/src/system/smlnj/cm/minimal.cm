@@ -10,5 +10,5 @@ Library
 	signature MINIMAL_CM
 	structure CM
 is
-	smlnj/internal/cm-hook.cm
+	$smlnj/internal/cm-hook.cm
 	fetch-minimal-cm.sml

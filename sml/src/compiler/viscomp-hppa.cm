@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group (smlnj/viscomp/hppa.cm)
+Group ($smlnj/viscomp/hppa.cm)
 	structure HppaVisComp
         structure HppaCG
         structure HppaCpsRegs
@@ -28,10 +28,10 @@ CodeGen/hppa/hppaMillicode.sml
 CodeGen/hppa/hppagen.sml
 CodeGen/hppa/hppaspec.sml
 
-basis.cm
-smlnj/viscomp/core.cm
-comp-lib.cm
-MLRISC/Control.cm
-MLRISC/MLRISC.cm
-MLRISC/HPPA.cm
+$basis.cm
+$smlnj/viscomp/core.cm
+$comp-lib.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/HPPA.cm
 

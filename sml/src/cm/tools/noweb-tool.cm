@@ -8,7 +8,7 @@
 Library
 	structure NowebTool
 is
-	basis.cm
-	smlnj-lib.cm
-	smlnj/cm/tools.cm
+	$basis.cm
+	$smlnj-lib.cm
+	$smlnj/cm/tools.cm
 	nowebtool.sml

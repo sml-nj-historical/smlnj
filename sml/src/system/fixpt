@@ -36,7 +36,7 @@ BASE=sml
 # (The funky ML comment is there to un-confuse emacs fontlock mode. :)
 #
 initcompile() {
-$SML smlnj/cmb.cm <<EOF
+$SML '$smlnj/cmb.cm' <<EOF
 local open OS.Process CMB in
    val _ = exit (if make' (SOME "$BASE") then success else failure) (* ' *)
 end

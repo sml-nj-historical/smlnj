@@ -20,7 +20,7 @@ structure LrParser
 is
 
 #if defined(NEW_CM)
-  basis.cm
+  $basis.cm
 #endif
 
 base.sig

@@ -10,4 +10,4 @@
 Library
 	structure YaccTool
 is
-	mlyacc-tool.cm
+	$mlyacc-tool.cm

@@ -15,8 +15,12 @@ Library
 	structure StringStream
 	structure Word64
 is
-	basis.cm
+#if defined(NEW_CM)
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
+#endif
 
 	annotations.sig
 	annotations.sml

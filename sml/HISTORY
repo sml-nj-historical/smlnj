@@ -13,6 +13,51 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/05/12 17:30:00 JST
+Tag: blume-20000512-anchors
+Description:
+
+!!! NEW BOOT FILES !!!
+
+This change is in preparation of fading out support for "implicitly
+anchored path names".  I went through all sources and used the
+explicit (and relatively new) $-notation.  See system/README and the
+CM manual for more info on this.
+
+I also modified the anchoring scheme for some things such as "smlnj",
+"MLRISC", "cm", etc. to take advantage of the fact that explicit
+anchors are more expressive: anchor name and first arc do not have to
+coincide.  This entails the following user-visible change:
+
+You have to write $smlnj/foo/bar instead of smlnj/foo/bar.  In
+particular, when you fire up sml with a command-line argument, say,
+e.g.:
+
+   sml '$smlnj/cmb.cm'
+
+At the ML toplevel prompt:
+
+   CM.autoload "$smlnj/cmb.cm";
+
+There is also a new controller in CM.Control that can be used to turn
+off all remaining support for implicit anchors by saying:
+
+    CM.autoload "$smlnj/
+    #set CM.Control.implicit_anchors false;
+
+This causes CM to reject implicitly anchored paths.  This is (for the
+time being) less permissive than the "final" version where there will
+be no more such implicit anchors and relative paths will be just that:
+relative.
+
+The next step (version after next version?) will be to make the
+default for CM.Control.implicit_anchors false.  After the dust has
+settled, I can then produce the "final" version of this...
+
+Note: Since bootstrapping is a bit tricky, I provided new boot files.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/05/11 16:30:00 JST
 Tag: blume-20000511-sources
 Description:

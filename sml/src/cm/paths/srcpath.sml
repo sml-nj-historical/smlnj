@@ -51,7 +51,8 @@ signature SRCPATH = sig
     val cwdContext : unit -> context
 
     val native : { context: context, spec: string } -> t
-    val standard : PathConfig.mode -> { context: context, spec: string } -> t
+    val standard : PathConfig.mode ->
+		   { context: context, spec: string, err: string -> unit } -> t
 
     val fromDescr : PathConfig.mode -> string -> t
 

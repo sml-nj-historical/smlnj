@@ -266,10 +266,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		(case sfx_loop e of
 		     SOME c => SOME c
 		   | NONE => let
-			 val plugin = OS.Path.joinBaseExt { base = e ^ "-ext",
-							    ext = SOME "cm" }
+			 fun try pre = let
+			     val plugin = concat [pre, e, "-ext.cm"]
+			 in
+			     load_plugin plugin
+			 end
 		     in
-			 if load_plugin plugin then sfx_loop e
+			 if try "$" orelse try "./" then sfx_loop e
 			 else NONE
 		     end)
 	  | NONE => gen_loop (!gen_classifiers)
@@ -318,7 +321,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    case StringMap.find (!classes, class) of
 		SOME rule => rule
 	      | NONE => let
-		    val plugin = OS.Path.joinBaseExt { base = class ^ "-tool",
+		    val base = concat ["$", class, "-tool"]
+		    val plugin = OS.Path.joinBaseExt { base = base,
 						       ext = SOME "cm" }
 		    fun complain () =
 			(error (concat ["unknown class \"", class, "\""]);

@@ -109,7 +109,7 @@ functor SplaySetFn
 is
 
 #if defined(NEW_CM)
-basis.cm
+  $/basis.cm
 #endif
 
 array-qsort-fn.sml

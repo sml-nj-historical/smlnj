@@ -10,4 +10,4 @@
 Library
 	structure LexTool
 is
-	mllex-tool.cm
+	$mllex-tool.cm

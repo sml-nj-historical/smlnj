@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group (smlnj/viscomp/ppc.cm)
+Group ($smlnj/viscomp/ppc.cm)
 	structure PPCVisComp
         structure PPCCG
         structure PPCCpsRegs
@@ -27,10 +27,10 @@ CodeGen/ppc/ppcPseudoInstr.sml
 CodeGen/ppc/ppcgen.sml
 CodeGen/ppc/ppcspec.sml
 
-basis.cm
-smlnj/viscomp/core.cm
-comp-lib.cm
-MLRISC/Control.cm
-MLRISC/MLRISC.cm
-MLRISC/PPC.cm
+$basis.cm
+$smlnj/viscomp/core.cm
+$comp-lib.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/PPC.cm
 

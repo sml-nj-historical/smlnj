@@ -16,13 +16,14 @@ Library
   functor HTMLParserFn
 is
 #if defined(NEW_CM)
-  basis.cm
-  smlnj-lib.cm
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-yacc-lib.cm
 #else
   ../Util/smlnj-lib.cm
+  ml-yacc-lib.cm
 #endif
 
-  ml-yacc-lib.cm
   html-lex : MLLex
   html-gram : MLYacc
 

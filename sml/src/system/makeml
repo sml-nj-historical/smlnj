@@ -26,9 +26,10 @@ bare=no
 #
 # Set CM_PATHCONFIG_DEFAULT to ../../lib/pathconfig
 # (using an absolute path!)
+# ... unless it was already set at the time we run this script.
 #
 
-CM_PATHCONFIG_DEFAULT=$twoup/lib/pathconfig
+CM_PATHCONFIG_DEFAULT=${CM_PATHCONFIG_DEFAULT:-$twoup/lib/pathconfig}
 export CM_PATHCONFIG_DEFAULT
 
 #

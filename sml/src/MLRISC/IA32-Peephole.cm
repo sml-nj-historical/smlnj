@@ -10,11 +10,11 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
+	$basis.cm
 #endif
-	MLRISC/MLRISC.cm
-	MLRISC/Peephole.cm
-	MLRISC/IA32.cm
+	MLRISC.cm
+	Peephole.cm
+	IA32.cm
 
 	(* x86 *)
 	x86/instructions/x86Peephole.sml

@@ -167,13 +167,8 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun file_native (s, d) = SrcPath.native { context = d, spec = s }
     fun file_standard (gp: GeneralParams.info) (s, d, err) =
-	SrcPath.standard (#pcmode (#param gp)) { context = d, spec = s }
-	handle SrcPath.BadAnchor "" =>
-	       (err "invalid empty anchor in path name"; file_native (s, d))
-	     | SrcPath.BadAnchor a =>
-	       (err (concat ["invalid anchor `", a, "' in path name"]);
-		file_native (s, d))
-		
+	SrcPath.standard (#pcmode (#param gp))
+			 { context = d, spec = s, err = err }
     fun cm_symbol s = s
     fun cm_version (s, error) =
 	case Version.fromString s of

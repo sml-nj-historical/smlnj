@@ -7,5 +7,5 @@
 # Make sure that at least one of smlnj/cm/{minimal,full}.cm is being
 # registered here.
 #
-autoload basis.cm
-autoload smlnj/cm/minimal.cm
+autoload $basis.cm
+autoload $smlnj/cm/minimal.cm

@@ -23,10 +23,12 @@ Library
 	structure Word64
 is
 #if defined(NEW_CM)
-	basis.cm
-#endif
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
-	MLRISC/Control.cm
+#endif
+	Control.cm
 
 	library/annotations.sig
 	library/annotations.sml

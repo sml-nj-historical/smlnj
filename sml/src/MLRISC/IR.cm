@@ -42,16 +42,18 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
-#endif
+	$basis.cm
+	$smlnj-lib.cm
+#else
 	smlnj-lib.cm
+#endif
 	
 	MLRISC.cm
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
-	MLRISC-Graphs.cm
-	MLRISC-Visual.cm
-	MLRISC-ir.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
 
 	(* These modules perform very simple local optimizations on MLTREE
 	 *)

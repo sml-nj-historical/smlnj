@@ -19,7 +19,9 @@ structure LrParser
 
 is
 
-basis.cm
+#if defined(NEW_CM)
+  $basis.cm
+#endif
 
 base.sig
 join.sml

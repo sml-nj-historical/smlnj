@@ -14,7 +14,7 @@ is
 	 * in intsys.cm where it would cause a clash with ourselves.
 	 * This is a bit clutchy, but it avoids an additional administrative
 	 * library. *)
-	smlnj/cm/minimal.cm
+	$smlnj/cm/minimal.cm
 
-	smlnj/internal/host-compiler-0.cm
+	$smlnj/internal/host-compiler-0.cm
 	fetch-full-cm.sml

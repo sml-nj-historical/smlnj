@@ -14,11 +14,11 @@ Library
 is
 
 #if defined(NEW_CM)
-	basis.cm
+	$basis.cm
 #endif
-	MLRISC-Control.cm
-	MLRISC-Lib.cm
-	MLRISC-Graphs.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
 
 	visualization/allDisplays.sml
 	visualization/daVinci.sml

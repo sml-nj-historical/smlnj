@@ -7,7 +7,9 @@ Library
         functor GraphViewerFn
         functor AllDisplaysFn
 is
-	basis.cm
+#if defined(NEW_CM)
+	$basis.cm
+#endif
 	../library/sources.cm
 	../graphs/sources.cm
 	allDisplays.sml

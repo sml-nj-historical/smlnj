@@ -10,7 +10,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group (smlnj/viscomp/sparc.cm)
+Group ($smlnj/viscomp/sparc.cm)
 	structure SparcVisComp
         structure SparcCG
         structure SparcCpsRegs
@@ -29,9 +29,9 @@ CodeGen/sparc/sparcPseudoInstrs.sml
 CodeGen/sparc/sparcgen.sml
 CodeGen/sparc/sparcspec.sml
 
-basis.cm
-smlnj/viscomp/core.cm
-comp-lib.cm
-MLRISC/Control.cm
-MLRISC/MLRISC.cm
-MLRISC/SPARC.cm
+$basis.cm
+$smlnj/viscomp/core.cm
+$comp-lib.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm
+$MLRISC/SPARC.cm

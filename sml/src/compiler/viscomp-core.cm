@@ -13,7 +13,7 @@
  *   M.Blume (03/2000)
  *)
 
-Group (smlnj/viscomp/core.cm)
+Group ($smlnj/viscomp/core.cm)
 	signature GENERIC_VC
 	signature MACHDEP_VC
 
@@ -341,10 +341,10 @@ MiscUtil/util/sourcemap.sig
 MiscUtil/util/sourcemap.sml
 MiscUtil/util/stats.sml
 
-basis.cm
-ml-yacc-lib.cm
-smlnj-lib.cm
-comp-lib.cm
-pp-lib.cm
-MLRISC/Control.cm
-MLRISC/MLRISC.cm
+$basis.cm
+$ml-yacc-lib.cm
+$smlnj-lib.cm
+$comp-lib.cm
+$pp-lib.cm
+$MLRISC/Control.cm
+$MLRISC/MLRISC.cm

@@ -68,4 +68,4 @@ Library
 	functor MachDepVCFun
 is
 	(* reference to our only group... *)
-	compiler/viscomp-core.cm
+	$compiler/viscomp-core.cm

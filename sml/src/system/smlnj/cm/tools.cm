@@ -13,7 +13,7 @@ Library
 	signature TOOLS
 	structure Tools
 is
-	smlnj/internal/cm-lib.cm
-	smlnj/internal/host-compiler-0.cm
+	$smlnj/internal/cm-lib.cm
+	$smlnj/internal/host-compiler-0.cm
 	tools.sml
 
