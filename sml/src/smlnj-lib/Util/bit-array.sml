@@ -104,7 +104,7 @@ structure BitArray :> BIT_ARRAY =
                       end
                 in
                   (put(0,len-1)) handle _ => ();
-                  Byte.bytesToString (W8A.extract(buf,0,NONE))
+                  Byte.bytesToString (W8A.vector buf)
                 end
       
           fun bits (len,l) = let
@@ -409,6 +409,8 @@ structure BitArray :> BIT_ARRAY =
                   then raise Subscript
                   else slice (ba,sbit,nbits-sbit)
       
+	  fun vector ba = extract (ba, 0, NONE)
+
           fun rshift (ba as BA{nbits,bits},shft) =
                 if shft < 0 then badArg("rshift","negative shift")
                 else if shft = 0 then mkCopy ba
@@ -556,7 +558,7 @@ structure BitArray :> BIT_ARRAY =
                        if i < last then loop (8,byte)
                        else loop (mask7 (nbits - 1) + 1, byte)
                 in
-                  W8A.appi f' (bits,0,NONE)
+                  W8A.appi f' bits
                 end
       
             (* FIX: Reimplement using W8A.foldi *)
@@ -594,8 +596,9 @@ structure BitArray :> BIT_ARRAY =
                   else len
       
             (* FIX: Reimplement using W8A.appi *)
-          fun appi f (BA{nbits=0,bits},_,_) = ()
-            | appi f (BA{nbits,bits},sbit,l) = let
+	    (* FIX: obsolete interface, should go into separate module *)
+          fun appi_slice f (BA{nbits=0,bits},_,_) = ()
+            | appi_slice f (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 fun loop (_, 0) = ()
                   | loop (i, n) = let
@@ -608,8 +611,12 @@ structure BitArray :> BIT_ARRAY =
                   loop (sbit,len)
                 end
       
+           (* FIX: new interface, should get specialized implementation *)
+	  fun appi f ba = appi_slice f (ba, 0, NONE)
+
             (* FIX: Reimplement using W8A.foldi *)
-          fun foldli f a (BA{nbits,bits},sbit,l) = let
+	    (* FIX: obsolete interface, should go into separate module *)
+          fun foldli_slice f a (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 val last = sbit+len
                 fun loop (i,a) =
@@ -623,8 +630,12 @@ structure BitArray :> BIT_ARRAY =
                   loop (sbit,a)
                 end
       
+           (* FIX: new interface, should get specialized implementation *)
+	  fun foldli f a ba = foldli_slice f a (ba, 0, NONE)
+
             (* FIX: Reimplement using W8A.foldr *)
-          fun foldri f a (BA{nbits,bits},sbit,l) = let
+	    (* FIX: obsolete interface, should go into separate module *)
+          fun foldri_slice f a (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 fun loop (i,a) = 
                       if i < sbit then a
@@ -637,8 +648,12 @@ structure BitArray :> BIT_ARRAY =
                   loop (sbit+len-1,a)
                 end
       
+           (* FIX: new interface, should get specialized implementation *)
+	  fun foldri f a ba = foldri_slice f a (ba, 0, NONE)
+
             (* FIX: Reimplement using general-purpose copy *)
-          fun copy {src = src as BA{nbits,bits},si,len,dst,di} = let
+	    (* FIX: obsolete interface, should go into separate module *)
+          fun copy_slice {src = src as BA{nbits,bits},si,len,dst,di} = let
                 val l = valid (nbits, si, len)
                 val BA{nbits=nbits',bits=bits'} = dst
                 val _ = if di < 0 orelse nbits' - di < l then raise Subscript
@@ -654,6 +669,10 @@ structure BitArray :> BIT_ARRAY =
                   loop (si,di)
                 end
       
+           (* FIX: new interface, should get specialized implementation *)
+	  fun copy { di, dst, src } =
+	      copy_slice { di = di, dst = dst, len = NONE, si = 0, src = src }
+
           fun modify f (BA{nbits=0,bits}) = ()
             | modify f (BA{nbits,bits}) = let
                 val last = byteOf (nbits-1)
@@ -666,12 +685,13 @@ structure BitArray :> BIT_ARRAY =
                        if i < last then loop (8,byte,0w0,0w1)
                        else loop (mask7 (nbits - 1) + 1, byte,0w0,0w1)
                 in
-                  W8A.modifyi f' (bits,0,NONE)
+                  W8A.modifyi f' bits
                 end
       
             (* FIX: Reimplement using W8A.modifyi *)
-          fun modifyi f (BA{nbits=0,bits},sbit,l) = ()
-            | modifyi f (BA{nbits,bits},sbit,l) = let
+	    (* FIX: obsolete interface, should go into separate module *)
+          fun modifyi_slice f (BA{nbits=0,bits},sbit,l) = ()
+            | modifyi_slice f (BA{nbits,bits},sbit,l) = let
                 val len = valid (nbits, sbit, l)
                 val last = sbit+len
                 fun loop i =
@@ -692,6 +712,39 @@ structure BitArray :> BIT_ARRAY =
                   loop sbit
                 end
       
+           (* FIX: new interface, should get specialized implementation *)
+	  fun modifyi f ba = modifyi_slice f (ba, 0, NONE)
+
+           (* FIX: should probably be expressed using unsafe subscript etc. *)
+	  fun findi f ba = let
+	      val sz = length ba
+	      fun loop i =
+		  if i >= sz then NONE
+		  else let val x = (i, ba sub i)
+		       in if f x then SOME x else loop (i + 1)
+		       end
+	  in
+	      loop 0
+	  end
+
+           (* FIX: might need specialized implementations... *)
+	  fun find f = Option.map #2 o findi (f o #2)
+	  fun exists p ba = isSome (find p ba)
+	  fun all p ba = not (exists (not o p) ba)
+
+	  fun collate ecmp (a, b) = let
+	      val al = length a
+	      val bl = length b
+	      val l = if al < bl then al else bl
+	      fun loop i =
+		  if i >= l then Int31.compare (al, bl)
+		  else case ecmp (a sub i, b sub i) of
+			   EQUAL => loop (i + 1)
+			 | unequal => unequal
+	  in
+	      loop 0
+	  end
+
           end (* local *)
         end (* structure Vector *)
 

@@ -78,8 +78,8 @@ structure Stats :> STATS =
     val flush = Control_Print.flush
 
 (** NOTE: we should be able to rewrite this using the Timer structure **)
-    type times = {usr:T.time, sys:T.time, gc:T.time}
-    val zeros = {usr=T.zeroTime, sys=T.zeroTime, gc=T.zeroTime}
+    type times = {usr:T.time, sys:T.time}
+    val zeros = {usr=T.zeroTime, sys=T.zeroTime}
 
     datatype phase = PHASE of {name : string, accum : times ref, this: times ref}
 
@@ -114,12 +114,12 @@ structure Stats :> STATS =
     infix 6 -- val op -- = Time.-
 
     infix 6 +++
-    fun {usr,sys,gc}+++{usr=u,sys=s,gc=g} = {usr=usr++u,sys=sys++s,gc=gc++g}
+    fun {usr,sys}+++{usr=u,sys=s} = {usr=usr++u,sys=sys++s}
     infix 6 ---
-    fun {usr,sys,gc}---{usr=u,sys=s,gc=g} = 
+    fun {usr,sys}---{usr=u,sys=s} = 
           if (Time.<(usr, u))
 	      then zeros 
-              else {usr=usr--u,sys=sys--s,gc=gc--g}
+              else {usr=usr--u,sys=sys--s}
 
     local
       fun gettime () = Timer.checkCPUTimer(Timer.totalCPUTimer())
@@ -163,11 +163,11 @@ structure Stats :> STATS =
     fun doPhase (p as PHASE{name,this,accum}) f x = let
 	  val prev as PHASE{this=t',...} = !current
 	  fun endTime() = let
-		val x as {usr,sys,gc} = since() +++ !this
+		val x as {usr,sys} = since() +++ !this
 	        in
 		  this := zeros;
 		  accum := !accum +++ x;
-		  usr++sys++gc
+		  usr++sys
 	        end
 	  fun finish() = (
 		current := prev;
@@ -197,11 +197,10 @@ structure Stats :> STATS =
 	  say "\n")
 
     fun showPhase(PHASE{name,this,accum}) = let
-	  val {usr,sys,gc} = !this +++ !accum
+	  val {usr,sys} = !this +++ !accum
           in sayfield(40,name); 
 	    say(timeToStr usr); say "u  ";
 	    say(timeToStr sys); say "s  ";
-	    say(timeToStr gc); say "g  ";
             say "\n"
           end
 
@@ -214,14 +213,13 @@ structure Stats :> STATS =
 	  end
 
     fun showPhaseSp(PHASE{name,this,accum}) = let
-	  val {usr,sys,gc} = !this +++ !accum
-          in case T.compare(usr++sys++gc, T.zeroTime)
+	  val {usr,sys} = !this +++ !accum
+          in case T.compare(usr++sys, T.zeroTime)
 	     of EQUAL => ()
 	      | _ => 
                (sayfield(40,name); 
     	        say(timeToStr (usr++sys)); say "u  ";
 (*	        say(timeToStr sys); say "s  "; *)
-	        say(timeToStr gc); say "g  ";
                 say "\n")
           end
 

@@ -41,7 +41,7 @@ structure DynArray :
             let val new_size  = Int.max(i+1,!n*2)
                 val new_size  = if new_size < 10 then 10 else new_size
                 val new_array = A.array(new_size,d)
-            in  A.copy {src = a, si = 0, len = NONE, dst = new_array, di = 0};
+            in  A.copy {src = a, dst = new_array, di = 0};
                 r := new_array;
                 n := i+1;
                 A.update(new_array, i, e)
@@ -49,18 +49,21 @@ structure DynArray :
 
      fun expandTo(arr as ARRAY(_, d, _), N) = update(arr, N-1, d)
 
+(*
      fun extract (ARRAY(r as ref a, _, ref n), i, j) = A.extract (a, i, j)
+*)
 
-     fun copy { src = ARRAY(ref a,_,sz), si, len, dst, di } =
-       let val n = case len of SOME l => si + l 
-                             | NONE   => !sz
+     fun vector (ARRAY (r as ref a, _, _)) = A.vector a
+
+     fun copy { src = ARRAY(ref a,_,sz), dst, di } =
+       let val n = !sz
            fun cp(i,j) = 
                 if i < n then (update(dst,j,A.sub(a,i)); cp(i+1,j+1)) else ()
-       in  cp (si, di)
+       in  cp (0, di)
        end
 
-     fun copyVec { src, si, len, dst = ARRAY(ref a,_,sz), di } = 
-       A.copyVec { src = src, si = si, len = len, dst = a, di = di }
+     fun copyVec { src, dst = ARRAY(ref a,_,sz), di } = 
+       A.copyVec { src = src, dst = a, di = di }
 
      fun tabulate (n, f) = 
          let val array   = A.tabulate(n, f)
@@ -77,24 +80,30 @@ structure DynArray :
          end handle _ => raise Size
 
      fun app f (ARRAY (ref a,_,ref n)) = 
-         A.appi (fn (_,x) => f x) (a,0,SOME n)
+         A.appi (fn (_,x) => f x) a
 
      fun foldl f u (ARRAY (ref a,_,ref n)) = 
-        A.foldli (fn (_,x,y) => f (x,y)) u (a, 0, SOME n)
+        A.foldli (fn (_,x,y) => f (x,y)) u a
 
      fun foldr f u (ARRAY (ref a,_,ref n)) = 
-        A.foldri (fn (_,x,y) => f (x,y)) u (a, 0, SOME n)
+        A.foldri (fn (_,x,y) => f (x,y)) u a
 
      fun modify f (ARRAY (ref a,_,ref n)) =  
-        A.modifyi (fn (_,x) => f x) (a, 0, SOME n)
+        A.modifyi (fn (_,x) => f x) a
 
-     fun appi f (ARRAY(ref a,_,ref n), i, j) = A.appi f (a, i, j)
+     fun appi f (ARRAY(ref a,_,ref n)) = A.appi f a
 
-     fun foldli f u (ARRAY(ref a,_,ref n), i, j) = A.foldli f u (a, i, j)
+     fun foldli f u (ARRAY(ref a,_,ref n)) = A.foldli f u a
 
-     fun foldri f u (ARRAY(ref a,_,ref n), i, j) = A.foldri f u (a, i, j)
+     fun foldri f u (ARRAY(ref a,_,ref n)) = A.foldri f u a
 
-     fun modifyi f (ARRAY(ref a,_,ref n), i, j) = A.modifyi f (a, i, j)
+     fun modifyi f (ARRAY(ref a,_,ref n)) = A.modifyi f a
+
+     fun findi p (ARRAY(ref a,_,ref n)) = A.findi p a
+     fun find p (ARRAY(ref a,_,ref n)) = A.find p a
+     fun exists p (ARRAY(ref a,_,ref n)) = A.exists p a
+     fun all p (ARRAY(ref a,_,ref n)) = A.all p a
+     fun collate c (ARRAY(ref a, _, _), ARRAY(ref b,_,_)) = A.collate c (a, b)
 
 end
 

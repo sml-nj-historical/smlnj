@@ -9,7 +9,7 @@ sig
     val prefix : string
     val priority : Controls.priority
 
-    type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
+    type cpu_time = {usr:Time.time,sys:Time.time}
 
     val mlrisc        : bool ref               (* use the MLRISC optimizer? *)
     val mlrisc_phases : string list ref        (* the optimization phases *)
@@ -62,7 +62,7 @@ structure MLRiscControl : MLRISC_CONTROL = struct
 
     val registry = ControlRegistry.new { help = "MLRISC" }
 
-    type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
+    type cpu_time = {usr:Time.time,sys:Time.time}
 
     type 'a set = ('a, 'a ref) ControlSet.control_set
 
@@ -113,8 +113,7 @@ structure MLRiscControl : MLRISC_CONTROL = struct
 	fun mkString x = mk (strings, ControlUtil.Cvt.string, "", yes) x
 	fun mkStringList x =
 	    mk (stringLists, ControlUtil.Cvt.stringList, [], yes) x
-	fun mkTiming x = mk (timings, timing, {gc =Time.zeroTime,
-					       usr=Time.zeroTime,
+	fun mkTiming x = mk (timings, timing, {usr=Time.zeroTime,
 					       sys=Time.zeroTime}, no) x
 
 	val mlrisc = mkFlag ("mlrisc", "?")

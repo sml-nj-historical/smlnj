@@ -39,7 +39,7 @@ struct
 
     fun copy_array(ARRAY(ref a,d,ref n,ref c)) = 
          let val a' = A.array(n,[])
-             val _  = A.copy{src=a,dst=a',si=0,di=0,len=NONE}
+             val _  = A.copy{src=a,dst=a',di=0}
          in  ARRAY(ref a',d,ref n,ref c)
          end
 

@@ -73,7 +73,9 @@ Library
 	structure List
 	structure ListPair
 	structure CharArray
+	structure CharArraySlice
 	structure CharVector
+	structure CharVectorSlice
 	structure Array
 	structure Array2
 	structure IEEEReal

@@ -94,6 +94,10 @@ Group (../basis.cm)
 	structure Word8VectorSlice
 	structure Word8Array
 	structure Word8ArraySlice
+	structure CharArray
+	structure CharArraySlice
+	structure CharVector
+	structure CharVectorSlice
 	structure SysWordImp
 	structure TimeImp
 	structure Timer
