@@ -406,7 +406,6 @@ struct
 					       localimports = li,
 					       globalimports = gi }
 			in
-			    destroy_state gp smlinfo;
 			    m := SmlInfoMap.insert (!m, smlinfo, n);
 			    n
 			end
@@ -424,6 +423,7 @@ struct
 
 		val exports = SymbolMap.map impexp (#exports grec)
 	    in
+		SmlInfoMap.appi (fn (i, _) => destroy_state gp i) (!m);
 		GG.GROUP { exports = exports,
 			   kind = GG.STABLELIB,
 			   required = required,
@@ -452,7 +452,13 @@ struct
 				   cleanup = fn () =>
 				    (OS.FileSys.remove (mksname ())
 				     handle _ => ()) })
-	    handle exn => NONE
+	    handle exn =>
+		(EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
+		    EM.COMPLAIN
+		    (concat ["Exception raised while stabilizing ",
+			     SrcPath.descr grouppath])
+		    EM.nullErrorBody;
+		 NONE)
 	end
     in
 	case #kind grec of
