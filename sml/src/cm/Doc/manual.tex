@@ -1,4 +1,4 @@
-\documentclass[titlepage]{article}
+\documentclass[titlepage,letterpaper]{article}
 \usepackage{times}
 \usepackage{epsfig}
 
@@ -13,7 +13,7 @@ Kyoto University}
 
 \title{{\bf CM}\\
 The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version 110.28 and later)} \\
+{\it\small (for SML/NJ version 110.29 and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
@@ -801,33 +801,57 @@ sorted list of strings that, when written to a file, can be passed to the
 runtime system in order to perform stand-alone linkage of the given
 program. Upon failure, {\tt CM.mk\_standalone} returns {\tt NONE}.
 
-\subsubsection*{Support for {\tt make}}
+\subsubsection*{Finding all sources}
 
-CM has some limited support for generating dependency information that
-is usable by other compilation management tools, in particular, the 
-{\tt make} program found in {\sc Unix}.
+The {\tt CM.sources} function can be used to find the names of all
+source files that a given library depends on.  It returns the names of
+all files involved with the exception of skeleton files and binfiles
+(see Section~\ref{sec:files}).  Stable libraries are represented by
+their library file; their description file or consitutent members are
+{\em not} listed.
+
+Normally, the function reports actual file names as used for accessing
+the file system.  For (stable) library files this behavior can be
+inconvenient because these names depend on architecture and operating
+system.  For this reason, {\tt CM.sources} accepts an optional pair of
+strings that then will be used in place of the architecture- and
+OS-specific part of these names.
 
 \begin{verbatim}
-  val makedepend :
-      { group: string, targetname: string, outstream: TextIO.outstream }
-      -> bool
+  val sources :
+    { arch: string, os: string } option ->
+    string ->
+    { file: string, class: string, derived: bool } list option
 \end{verbatim}
 
-A call to {\tt CM.makedepend} writes a dependency entry for target
-{\tt targetname} to the specified output stream.  The syntax is the
-one used by {\tt make}'s makefiles. The actual dependencies are those
-implicitly given by library {\tt group}, while the targetname is an
-arbitrary, uninterpreted string.
+In case there was some error analyzing the specified library or group,
+{\tt CM.sources} returns {\tt NONE}.  Otherwise the result is a list
+of records, each carrying a file name, the corresponding class, and
+information about whether or not the source was created by some tool.
 
-Source items that appear in the dependency list can be:
-\begin{itemize}
-\item ML source file names which are members of non-stable libraries,
-\item CM description file names for non-stable libraries and groups, or
-\item names of files containing stable libraries.
-\end{itemize}
+Examples:
 
-Note that names of stable libraries vary depending on operation system
-and CPU type.
+\begin{description}
+\item[generating ``make'' dependencies:]
+To generate dependency information usable by Unix' {\tt make} command,
+one would be interested in all files that were not derived by some
+tool application.  Moreover, one would probably like to use shell
+variables instead of concrete architecture- and OS-names:
+\begin{verbatim}
+  Option.map (List.filter (not o #derived))
+    (CM.sources (SOME { arch = "$ARCH", os = "$OPSYS" })
+         "foo.cm");
+\end{verbatim}
+\item[finding all {\tt noweb} sources:]
+To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools}),
+e.g., to be able to run the document preparation program {\tt noweave}
+on them, one can simply look for entries of the {\tt noweb} class.
+Here, one would probably want to include derived sources:
+\begin{verbatim}
+  Option.map (List.filter (fn x => #class x = "noweb"))
+    (CM.sources NONE "foo.cm");
+\end{verbatim}
+\end{description}
 
 \subsection{The autoloader}
 \label{sec:autoload}
@@ -1059,6 +1083,7 @@ warnings or errors.  (See the discussion of {\tt CM.unshare} in
 section~\ref{sec:libreg} for how to to circumvent this restriction.)
 
 \subsection{Built-in tools}
+\label{sec:builtin-tools}
 
 \subsubsection*{The ML-Yacc tool}
 
@@ -1229,10 +1254,11 @@ literate programming facility~\cite{ramsey:simplified}.  Files ending
 with suffix {\tt .nw} are automatically recognized as belonging to
 this class.
 
-The noweb tool takes a list of targets.  Each target individually can
-have a variety of options.  A target is specified by a separate
-tool option labelled {\tt target}.  The tool option usually has the
-form of a sub-option list.  Recognized sub-options are:
+The list of targets that are to be extracted from a noweb file must be
+specified using tool options.  A target can then have a variety of its
+own options.  Each target is specified by a separate tool option
+labelled {\tt target}.  The option usually has the form of a
+sub-option list.  Recognized sub-options are:
 
 \begin{description}
 \item[name] the name of the target

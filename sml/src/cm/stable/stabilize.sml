@@ -469,6 +469,7 @@ struct
 					       kind = GG.STABLE dropper },
 			       required = required,
 			       grouppath = group,
+			       sources = SrcPathMap.empty,
 			       sublibs = sublibs }
 		end
 	      | gr _ = raise Format

@@ -13,6 +13,10 @@ signature FILENAMEPOLICY = sig
     val colocate : policyMaker
     val separate : { bindir: string, bootdir: string } -> policyMaker
 
+    val colocate_generic : { arch: string, os: string } -> policy
+    val separate_generic : { bindir: string, bootdir: string } ->
+			   { arch: string, os: string } -> policy
+
     val mkBinName : policy -> SrcPath.t -> string
     val mkSkelName : policy -> SrcPath.t -> string
     val mkStableName : policy -> SrcPath.t * Version.t option -> string
@@ -45,7 +49,7 @@ functor FilenamePolicyFn (val cmdir : string
 	in
 	    OS.Path.joinDirFile { dir = d2, file = f }
 	end
-	val archos = concat [arch, "-", kind2name os]
+	val archos = concat [arch, "-", os]
 	val stable0 = cmname [archos] o shiftstable
 	val stable =
 	    if ignoreversion then stable0 o #1
@@ -64,9 +68,11 @@ functor FilenamePolicyFn (val cmdir : string
 	  stable = stable }
     end
 
-    val colocate = mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
+    fun ungeneric g { arch, os } = g { arch = arch, os = kind2name os }
 
-    fun separate { bindir, bootdir } = let
+    val colocate_generic = mkPolicy (SrcPath.osstring, SrcPath.osstring, false)
+
+    fun separate_generic { bindir, bootdir } = let
 	fun shiftname root p =
 	    case SrcPath.reAnchoredName (p, root) of
 		SOME s => s
@@ -76,6 +82,9 @@ functor FilenamePolicyFn (val cmdir : string
     in
 	mkPolicy (shiftname bindir, shiftname bootdir, true)
     end
+
+    val colocate = ungeneric colocate_generic
+    val separate = ungeneric o separate_generic
 
     fun mkBinName (p: policy) s = #bin p s
     fun mkSkelName (p: policy) s = #skel p s

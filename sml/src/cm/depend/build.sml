@@ -14,6 +14,7 @@ signature BUILDDEPEND = sig
 	  smlfiles: SmlInfo.info list,
 	  localdefs: SmlInfo.info SymbolMap.map,
 	  subgroups: 'a,
+	  sources: 'b,
 	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
 	* GeneralParams.info
@@ -111,8 +112,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
     fun build (coll, fopt, gp, perv_fsbnode) = let
-	val { imports, gimports, smlfiles, localdefs, subgroups, reqpriv } =
-	    coll
+	val { imports, gimports, smlfiles, localdefs, subgroups,
+	      sources, reqpriv } = coll
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)

@@ -54,9 +54,9 @@ signature CM = sig
 	val name : server -> string
     end
 
-    val makedepend : { group : string,
-		       targetname : string,
-		       outstream : TextIO.outstream } -> bool
+    val sources :
+	{ arch: string, os: string } option ->
+	string -> { file: string, class: string, derived: bool } list option
 
     val symval : string -> int option controller
     val load_plugin : string -> bool

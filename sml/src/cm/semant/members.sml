@@ -20,7 +20,7 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
-    val implicit : GroupGraph.group -> collection
+    val implicit : GeneralParams.info -> GroupGraph.group -> collection
 
     val expandOne :
 	{ gp: GeneralParams.info,
@@ -41,6 +41,8 @@ signature MEMBERCOLLECTION = sig
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
     val subgroups : collection -> (SrcPath.t * GroupGraph.group) list
+    val sources : collection ->
+		  { class: string, derived: bool } SrcPathMap.map
 
     val num_look : GeneralParams.info -> collection -> string -> int
     val cm_look : GeneralParams.info -> collection -> string -> bool
@@ -67,23 +69,30 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		        smlfiles: smlinfo list,
 			localdefs: smlinfo SymbolMap.map,
 			subgroups: (SrcPath.t * GG.group) list,
+			sources:
+			       { class: string, derived: bool } SrcPathMap.map,
 			reqpriv: GG.privileges }
       | ERRORCOLLECTION
 
-    val empty =
+    fun empty' sources =
 	COLLECTION { imports = SymbolMap.empty,
 		     gimports = SymbolMap.empty,
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty,
 		     subgroups = [],
+		     sources = sources,
 		     reqpriv = StringSet.empty }
 
-    fun implicit init_group = let
+    val empty = empty' SrcPathMap.empty
+
+    fun implicit (gp: GeneralParams.info) init_group = let
 	val { grouppath, ... } =
 	    case init_group of
 		GG.GROUP x => x
 	      | GG.ERRORGROUP =>
 		EM.impossible "members.sml: implicit: bad init group"
+	val sm = SrcPathMap.singleton (grouppath,
+				       { class = "cm", derived = false })
     in
 	(* This is a collection that is an implicit member of every
 	 * library -- the "init" group which exports the pervasive env. *)
@@ -92,6 +101,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     smlfiles = [],
 		     localdefs = SymbolMap.empty,
 		     subgroups = [(grouppath, init_group)],
+		     sources = sm,
 		     reqpriv = StringSet.empty }
     end
 
@@ -124,12 +134,14 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 					 " and also in ", SmlInfo.spec f2])));
 		 f1)
 	    val ld_union = SymbolMap.unionWithi ld_error
+	    val s_union = SrcPathMap.unionWith #1
 	in
 	    COLLECTION { imports = i_union (#imports c1, #imports c2),
 			 gimports = gi_union (#gimports c1, #gimports c2),
 			 smlfiles = #smlfiles c1 @ #smlfiles c2,
 			 localdefs = ld_union (#localdefs c1, #localdefs c2),
 			 subgroups = #subgroups c1 @ #subgroups c2,
+			 sources = s_union (#sources c1, #sources c2),
 			 reqpriv = StringSet.union (#reqpriv c1, #reqpriv c2) }
 	end
       | sequential _ = ERRORCOLLECTION
@@ -140,14 +152,19 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
 	fun w0 s = error EM.WARN s EM.nullErrorBody
-	val { smlfiles, cmfiles } =
+	val { smlfiles, cmfiles, sources } =
 	    PrivateTools.expand { error = e0,
-				  spec = (name, mkpath, class, tooloptions),
+				  spec = { name = name,
+					   mkpath = mkpath,
+					   class = class,
+					   opts = tooloptions,
+					   derived = false },
 				  context = context,
 				  load_plugin = load_plugin }
+	val msources = foldl SrcPathMap.insert' SrcPathMap.empty sources
 	fun g_coll (p, v) =
 	    case rparse (p, v) of
-		g as GG.GROUP { exports = i, kind, required,
+		g as GG.GROUP { exports = i, kind, required, sources,
 				grouppath, sublibs } => let
 		    val (gi, ver) =
 			case kind of
@@ -170,6 +187,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
 				 localdefs = SymbolMap.empty,
 				 subgroups = [(p, g)],
+				 sources = SrcPathMap.empty,
 				 reqpriv = required }
 		end
 	      | GG.ERRORGROUP => ERRORCOLLECTION
@@ -192,12 +210,13 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			 smlfiles = [i],
 			 localdefs = ld,
 			 subgroups = [],
+			 sources = SrcPathMap.empty,
 			 reqpriv = StringSet.empty }
 	end
 	val collections = map g_coll cmfiles @ map s_coll smlfiles
 	fun combine (c1, c2) = sequential (c2, c1, e0)
     in
-	foldl combine empty collections
+	foldl combine (empty' msources) collections
     end
 
     fun build (COLLECTION c, fopt, gp, perv_fsbnode) =
@@ -207,6 +226,9 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
       | subgroups ERRORCOLLECTION = []
+
+    fun sources (COLLECTION { sources = s, ... }) = s
+      | sources ERRORCOLLECTION = SrcPathMap.empty
 
     local
 	fun symenv_look (gp: GeneralParams.info) (c: collection) s =

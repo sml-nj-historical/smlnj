@@ -258,28 +258,62 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val recomp = run mkStdSrcPath NONE recomp_runner
 	  val make = run mkStdSrcPath NONE (make_runner true)
 
-	  fun makedepend { group, targetname, outstream } = let
-	      val oss = SrcPath.osstring
-	      val fnrec = { bininfo = fn i => [BinInfo.stablename i],
-			    smlinfo = fn i => [oss (SmlInfo.group i),
-					       oss (SmlInfo.sourcepath i)],
-			    Cons = fn (l, s) => foldl StringSet.add' s l,
-			    Nil = StringSet.empty }
+
+	  fun sources archos group = let
+	      val policy =
+		  case archos of
+		      NONE => fnpolicy
+		    | SOME ao => FilenamePolicy.colocate_generic ao
+	      fun sourcesOf ((p, g), (v, a)) =
+		  if SrcPathSet.member (v, p) then (v, a)
+		  else
+		      let val v = SrcPathSet.add (v, p)
+		      in case g of
+			     GG.ERRORGROUP => (v, a)
+			   | GG.GROUP { kind, sources, ... } => let
+				 fun add (p, x, a) =
+				     StringMap.insert
+					 (a, SrcPath.osstring p, x)
+				 val a = SrcPathMap.foldli add a sources
+				 fun sg subgroups =
+				     foldl sourcesOf (v, a) subgroups
+			     in
+				 case kind of
+				     GG.LIB { kind, version } =>
+				     (case kind of
+					  GG.STABLE _ => let
+					      val file = SrcPath.osstring p
+					      val (a, x) =
+						  StringMap.remove (a, file)
+					      val sfile =
+						  FilenamePolicy.mkStableName
+						      policy (p, version)
+					  in
+					      (v,
+					       StringMap.insert (a, sfile, x))
+					  end
+					| GG.DEVELOPED d => sg (#subgroups d))
+				   | GG.NOLIB n => sg (#subgroups n)
+			     end
+		      end
 	      val p = mkStdSrcPath group
 	      val gr = GroupReg.new ()
 	  in
 	      (case Parse.parse (parse_arg (gr, NONE, p)) of
-		   NONE => false
-		 | SOME (g, _) => let
-		       val names = MkList.group fnrec g
-		       fun oneTarget t =
-			   TextIO.output (outstream, " \\\n\t" ^ t)
+		   SOME (g, _) => let
+		       val (_, sm) =
+			   sourcesOf ((p, g),
+				      (SrcPathSet.empty,
+				       StringMap.singleton
+					   (SrcPath.osstring p,
+					    { class = "cm",
+					      derived = false })))
+		       fun add (s, { class, derived }, l) =
+			   { file = s, class = class, derived = derived } :: l
 		   in
-		       TextIO.output (outstream, targetname ^ ":");
-		       StringSet.app oneTarget names;
-		       TextIO.output (outstream, "\n");
-		       true
-		   end)
+		       SOME (StringMap.foldli add [] sm)
+		   end
+		 | _ => NONE)
 	      before dropPickles ()
 	  end
 
@@ -535,7 +569,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val recomp = recomp
 	val stabilize = stabilize
 
-	val makedepend = makedepend
+	val sources = sources
 
 	val symval = SSV.symval
 	val load_plugin = cwd_load_plugin 

@@ -31,6 +31,7 @@ end = struct
 
     val arch = MachDepVC.architecture
     val osname = FilenamePolicy.kind2name os
+
     val archos = concat [arch, "-", osname]
 
     fun init_servers (GG.GROUP { grouppath, ... }) =
@@ -209,6 +210,8 @@ end = struct
 				version = NONE },
 			   required = StringSet.singleton "primitive",
 			   grouppath = initgspec,
+			   (* hack: sources never used for this group *)
+			   sources = SrcPathMap.empty,
 			   sublibs = [] }
 		before (ovldR := savedOvld)
 	    end

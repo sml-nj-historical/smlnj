@@ -42,8 +42,9 @@ structure NowebTool = struct
 			("cm", "#line %L %F%N")])
 
 	fun rule { spec, context, mkNativePath } = let
-	    val (str, pathmaker, _, too) = spec
-	    val sname = nativeSpec (pathmaker str)
+	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
+	    val p = mkpath str
+	    val sname = nativeSpec p
 	    fun oneTarget (tname, rname, tclass, topts, lf, cpif) = let
 		fun runcmd () = let
 		    val cmdname = mkCmdName stdCmdPath
@@ -77,7 +78,8 @@ structure NowebTool = struct
 	    in
 		if outdated tool ([tname], sname) then runcmd ()
 		else ();
-		(tname, mkNativePath, tclass, topts)
+		{ name = tname, mkpath = mkNativePath,
+		  class = tclass, opts = topts, derived = true }
 	    end
 
 	    fun simpleTarget { name, mkpath } = let
@@ -130,7 +132,8 @@ structure NowebTool = struct
 		    else badkw name
 		end
 	    fun rulefn () =
-		({ cmfiles = [], smlfiles = [] },
+		({ cmfiles = [], smlfiles = [],
+		   sources = [(p, { class = class, derived = derived })] },
 		 case too of
 		     SOME opts => map oneOpt opts
 		   | NONE => let
@@ -151,8 +154,11 @@ structure NowebTool = struct
 	in
 	    context rulefn
 	end
+	fun sfx s =
+	    registerClassifier (stdSfxClassifier { sfx = s, class = class })
     in
         val _ = registerClass (class, rule)
+	val _ = sfx "nw"
 	fun lineNumbering class = let
 	    fun get () = StringMap.find (!lnr, class)
 	    fun set NONE =

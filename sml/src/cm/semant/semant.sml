@@ -204,7 +204,7 @@ structure CMSemant :> CM_SEMANT = struct
     fun group arg = let
 	val { path = g, privileges = p, exports = e, members = m,
 	      gp, curlib, owner, error, initgroup } = arg
-	val mc = applyTo (MemberCollection.implicit initgroup, curlib) m
+	val mc = applyTo (MemberCollection.implicit gp initgroup, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val pfsbn = let
 	    val { exports, ... } =
@@ -226,13 +226,14 @@ structure CMSemant :> CM_SEMANT = struct
 		   kind = GG.NOLIB { subgroups = subgroups, owner = owner },
 		   required = rp'',
 		   grouppath = g,
+		   sources = MemberCollection.sources mc,
 		   sublibs = sgl2sll subgroups }
     end
 
     fun library arg = let
 	val { path = g, privileges = p, exports = e, members = m,
 	      version, gp, initgroup } = arg
-	val mc = applyTo (MemberCollection.implicit initgroup, SOME g) m
+	val mc = applyTo (MemberCollection.implicit gp initgroup, SOME g) m
 	val filter = SOME (applyTo mc e)
 	val pfsbn = let
 	    val { exports, ... } =
@@ -254,6 +255,7 @@ structure CMSemant :> CM_SEMANT = struct
 							 wrapped = wr } },
 		   required = rp'',
 		   grouppath = g,
+		   sources = MemberCollection.sources mc,
 		   sublibs = sgl2sll subgroups }
     end
 

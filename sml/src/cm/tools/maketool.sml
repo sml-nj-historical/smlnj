@@ -18,7 +18,7 @@ structure MakeTool = struct
 	fun err m = raise ToolError { tool = tool, msg = m }
 
 	fun rule { spec, context, mkNativePath } = let
-	    val (str, pathmaker, _, too) = spec
+	    val { name = str, mkpath, opts = too, ... } : spec = spec
 	    val (tclass, topts, mopts) =
 		case too of
 		    NONE => (NONE, NONE, [])
@@ -36,10 +36,14 @@ structure MakeTool = struct
 			 matches kw_options,
 			 restoptions)
 		    end
-	    val tname = nativeSpec (pathmaker str)
+	    val p = mkpath str
+	    val tname = nativeSpec p
 	    val partial_expansion =
-		({ smlfiles = [], cmfiles = [] },
-		 [(tname, mkNativePath, tclass, topts)])
+		(* The "make" class is odd in that it has only a target
+		 * but no sources. *)
+		({ smlfiles = [], cmfiles = [], sources = [] },
+		 [{ name = tname, mkpath = mkNativePath,
+		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () = let
 		val cmdname = mkCmdName stdCmdPath
 		val cmd = concat (cmdname :: foldr (fn (x, l) => " " :: x :: l)

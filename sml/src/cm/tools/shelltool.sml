@@ -22,8 +22,9 @@ structure ShellTool = struct
 				      kw, "'"])
 
 	fun rule { spec, context, mkNativePath } = let
-	    val (str, pathmaker, _, too) = spec
-	    val specname = nativeSpec (pathmaker str)
+	    val { name = str, mkpath, opts = too, derived, ... } : spec = spec
+	    val specpath = mkpath str
+	    val specname = nativeSpec specpath
 	    val (sname, tname, tclass, topts, cmdline) =
 		case too of
 		    NONE => err "missing options"
@@ -66,9 +67,15 @@ structure ShellTool = struct
 			  | (SOME _, SOME _) => err
 			 "only one of `source=' and `target=' can be specified"
 		    end
+	    val spath = mkNativePath sname
 	    val partial_expansion =
-		({ smlfiles = [], cmfiles = [] },
-		 [(tname, mkNativePath, tclass, topts)])
+		({ smlfiles = [], cmfiles = [],
+		   (* If str was the target, then "derived" does not really
+		    * make much sense.  I guess the best thing is to get
+		    * rid of the "source:" option. FIXME!! *)
+		   sources = [(spath, { class = class, derived = derived })] },
+		 [{ name = tname, mkpath = mkNativePath,
+		    class = tclass, opts = topts, derived = true }])
 	    fun runcmd () =
 		(vsay ["[", cmdline, "]\n"];
 		 if OS.Process.system cmdline = OS.Process.success then ()

@@ -28,6 +28,7 @@ structure GroupGraph = struct
 		   kind: kind,
 		   required: privileges,
 		   grouppath: SrcPath.t,
+		   sources: { class: string, derived: bool } SrcPathMap.map,
 		   sublibs: subgrouplist }
       | ERRORGROUP
 

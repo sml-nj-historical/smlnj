@@ -38,14 +38,24 @@ signature CORETOOLS = sig
     type tooloptcvt = toolopts option -> toolopts option
 
     (* A member specification consists of the actual string, an optional
-     * class name, (optional) tool options, and a function to convert a
-     * string to its correspondin gsrcpath. *)
-    type spec = string * pathmaker * class option * toolopts option
+     * class name, (optional) tool options, a function to convert a
+     * string to its correspondin gsrcpath, and information about whether
+     * or not this source is an "original" source or a derived source
+     * (i.e., output of some tool). *)
+    type spec = { name: string,
+		  mkpath: pathmaker,
+		  class: class option,
+		  opts: toolopts option,
+		  derived: bool }
 
     (* The goal of applying tools to members is to obtain an "expansion",
-     * i.e., a list of ML-files and a list of .cm-files. *)
-    type expansion = { smlfiles: (srcpath * Sharing.request) list,
-		       cmfiles: (srcpath * Version.t option) list }
+     * i.e., a list of ML-files and a list of .cm-files.  We also
+     * obtain a list of "sources".  This is used to implement CM.sources,
+     * i.e., to generate dependency information etc. *)
+    type expansion =
+	 { smlfiles: (srcpath * Sharing.request) list,
+	   cmfiles: (srcpath * Version.t option) list,
+	   sources: (srcpath * { class: string, derived: bool}) list }
 
     (* A partial expansion is an expansion with a list of things yet to be
      * expanded... *)
@@ -161,10 +171,16 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type tooloptcvt = toolopts option -> toolopts option
 
-    type spec = string * pathmaker * class option * toolopts option
+    type spec = { name: string,
+		  mkpath: pathmaker,
+		  class: class option,
+		  opts: toolopts option,
+		  derived: bool }
 
-    type expansion = { smlfiles: (srcpath * Sharing.request) list,
-		       cmfiles: (srcpath * Version.t option) list }
+    type expansion =
+	 { smlfiles: (srcpath * Sharing.request) list,
+	   cmfiles: (srcpath * Version.t option) list,
+	   sources: (srcpath * { class: string, derived: bool}) list }
 
     type partial_expansion = expansion * spec list
 
@@ -260,7 +276,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 
     fun smlrule { spec, context, mkNativePath } = let
-	val (name, mkpath, _, oto) = spec
+	val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val srq = case oto of
 		      NONE => Sharing.DONTCARE
 		    | SOME [] => Sharing.DONTCARE
@@ -268,24 +284,33 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		    | SOME [STRING { name = "private",... }] => Sharing.PRIVATE
 		    | SOME l => raise ToolError { tool = "sml",
 						  msg = "invalid option(s)" }
+	val p = mkpath name
     in
-	({ smlfiles = [(mkpath name, srq)], cmfiles = [] }, [])
+	({ smlfiles = [(p, srq)],
+	   sources = [(p, { class = "sml", derived = derived })],
+	   cmfiles = [] },
+	 [])
     end
-    fun cmrule { spec = (name, mkpath, _, oto), context, mkNativePath } =
-	let fun err m = raise ToolError { tool = "cm", msg = m }
-	    val vrq =
-		case oto of
-		    NONE => NONE
-		  | SOME [] => NONE
-		  | SOME [SUBOPTS { name = "version",
-				    opts = [STRING { name, ... }] }] =>
-		    (case Version.fromString name of
-			 NONE => err "ill-formed version specification"
-		       | SOME v => SOME v)
-		  | _ => err "unknown option"
-	in
-	    ({ smlfiles = [], cmfiles = [(mkpath name, vrq)] }, [])
-	end
+    fun cmrule { spec, context, mkNativePath } = let
+	val { name, mkpath, opts = oto, derived, ... } : spec = spec
+	fun err m = raise ToolError { tool = "cm", msg = m }
+	val vrq =
+	    case oto of
+		NONE => NONE
+	      | SOME [] => NONE
+	      | SOME [SUBOPTS { name = "version",
+				opts = [STRING { name, ... }] }] =>
+		(case Version.fromString name of
+		     NONE => err "ill-formed version specification"
+		   | SOME v => SOME v)
+	      | _ => err "unknown option"
+	val p = mkpath name
+    in
+	({ smlfiles = [],
+	   sources = [(p, { class = "cm", derived = derived })],
+	   cmfiles = [(p, vrq)] },
+	 [])
+    end
 
     fun expand { error, spec, context, load_plugin } = let
 	fun mkNativePath s = SrcPath.native { context = context, spec = s }
@@ -306,7 +331,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		    else complain ()
 		end
 
-	fun expand1 (spec as (name, _, co, _)) = let
+	fun expand1 (spec as { name, class = co, ... }) = let
 	    val rule =
 		case co of
 		    SOME c0 => class2rule (String.map Char.toLower c0)
@@ -328,17 +353,20 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		   mkNativePath = mkNativePath }
 	    handle ToolError { tool, msg } =>
 		   (error (concat ["tool \"", tool, "\" failed: ", msg]);
-		    ({ smlfiles = [], cmfiles = [] }, []))
+		    ({ smlfiles = [], cmfiles = [], sources = [] }, []))
 	end
 	fun loop (expansion, []) = expansion
-	  | loop ({ smlfiles, cmfiles }, item :: items) = let
-		val ({ smlfiles = sfl, cmfiles = cfl }, il) = expand1 item
+	  | loop ({ smlfiles, cmfiles, sources }, item :: items) = let
+		val ({ smlfiles = sfl, cmfiles = cfl, sources = sl }, il) =
+		    expand1 item
 	    in
-		loop ({ smlfiles = smlfiles @ sfl, cmfiles = cmfiles @ cfl},
+		loop ({ smlfiles = smlfiles @ sfl,
+			cmfiles = cmfiles @ cfl,
+			sources = sources @ sl },
 		      il @ items)
 	    end
     in
-	loop ({ smlfiles = [], cmfiles = [] }, [spec])
+	loop ({ smlfiles = [], cmfiles = [], sources = [] }, [spec])
     end
 
     local
@@ -385,7 +413,8 @@ functor ToolsFn (val load_plugin : string -> bool
 	val { tool, class, suffixes, cmdStdPath,
 	      extensionStyle, template, dflopts } = args
 	val template = getOpt (template, "%c %s")
-	fun rule { spec = (name, mkpath, _, oto), context, mkNativePath } = let
+	fun rule { spec, context, mkNativePath } = let
+	    val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	    val opts = getOpt (oto, dflopts)
 	    val sol = let		(* only use STRING options for %o *)
 		fun so (SUBOPTS _) = NONE
@@ -394,11 +423,18 @@ functor ToolsFn (val load_plugin : string -> bool
 	    in
 		List.mapPartial so opts
 	    end
-	    val nativename = nativeSpec (mkpath name)
+	    val p = mkpath name
+	    val nativename = nativeSpec p
 	    val tfiles = extend extensionStyle (nativename, oto)
 	    val partial_expansion =
-		({ smlfiles = [], cmfiles = [] },
-		 map (fn (f, co, too) => (f, mkNativePath, co, too)) tfiles)
+		({ smlfiles = [], cmfiles = [],
+		   sources = [(p, { class = class, derived = derived })] },
+		 map (fn (f, co, too) => { name = f,
+					   mkpath = mkNativePath,
+					   class = co,
+					   opts = too,
+					   derived = true })
+		     tfiles)
 	    fun runcmd () = let
 		val cmdname = mkCmdName cmdStdPath
 		fun fill ([], sl) = concat (rev sl)

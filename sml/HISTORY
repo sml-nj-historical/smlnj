@@ -12,6 +12,22 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/05/11 16:30:00 JST
+Tag: blume-20000511-sources
+Description:
+
+The main change is that I added function CM.sources as a generalized
+version of the earlier CM.makedepend.  This entails the following
+additional changes:
+
+  - CM.makedepend has been dropped.
+
+  - CM manual has been updated.
+
+  - TOOLS signature and API have been changed.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/05/10 21:17 EDT
 Tag: leunga-20000510-moby-c--ssa
