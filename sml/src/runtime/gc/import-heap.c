@@ -23,7 +23,7 @@
 #include "heap-input.h"
 #include "heap-io.h"
 
-#ifdef DLOPEN
+#if defined(DLOPEN) && !defined(OPSYS_WIN32)
 #include <dlfcn.h>
 #endif
 
@@ -104,7 +104,7 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
       inBuf.nbytes    = 0;
     } else {
       /* fname == NULL, so try to find an in-core heap image */
-#ifdef DLOPEN
+#if defined(DLOPEN) && !defined(OPSYS_WIN32)
       void *lib = dlopen (NULL, RTLD_LAZY);
       void *vimg, *vimglenptr;
       if ((vimg = dlsym(lib,HEAP_IMAGE_SYMBOL)) == NULL)
