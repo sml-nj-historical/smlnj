@@ -8,6 +8,9 @@
  *)
 structure RealOrderStats : sig
 
+    (* WARNING: Each of the functions exported from this module
+     * modifies its argument array by (partially) sorting it. *)
+
     (* select the i-th order statistic *)
     val select  : real array * int -> real
     val select' : real ArraySlice.slice * int -> real
@@ -54,16 +57,15 @@ end = struct
 	in rs (p, r) end
 
     fun select (a, i) = select0 (a, 0, Array.length a - 1, i)
-    fun select' (s, i) = let val (a, p, l) = ArraySlice.base s
-			 in select0 (a, p, p+l-1, p+i) end
+    fun select' (s, i) =
+	let val (a, p, l) = ArraySlice.base s in select0 (a, p, p+l-1, p+i) end
 
     fun median0 (a, p, len) =
 	let val mid = p + len div 2
 	    val r = p + len - 1
 	    val m0 = select0 (a, p, r, mid)
-	in if len mod 2 = 1 then m0
-	   else let fun l(i,m) = if i>=mid then m else l(i+1, Real.max(a$i,m))
-		in (l(p+1,a$p) + m0) / 2.0 end
+	    fun l(i,m) = if i>=mid then m else l(i+1, Real.max(a$i,m))
+	in if len mod 2 = 1 then m0 else (l(p+1,a$p) + m0) / 2.0
 	end
 
     fun median a = median0 (a, 0, Array.length a)

@@ -14,6 +14,17 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/12/15 23:40:00 CST
+Tag: blume-20041215-hashSubstring
+Description:
+
+- HashString.hashString' -> HashString.hashSubstring
+- corresponding changes in atom.sml
+- "de-compressed" (aka. un-obfuscated) code for UnivariateStats and
+  added some comments
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/12/15 15:30:00 CST
 Tag: Release_110_52
 Description:

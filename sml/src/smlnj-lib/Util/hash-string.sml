@@ -36,7 +36,7 @@ structure HashString : sig
 	    end
     in
     fun hashString s = hash (s, 0, size s)
-    fun hashString' ss = let
+    fun hashSubstring ss = let
 	  val (s, i0, len) = Substring.base ss
 	  in
 	    hash (s, i0, i0 + len)
