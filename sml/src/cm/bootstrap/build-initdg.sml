@@ -116,7 +116,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		      | ["start"] => loop (split, m, SOME [], newpos)
 		      | ("bind" :: name :: file :: args)  =>
 			    node (name, file, args)
-		      | ("return" :: rts :: core :: pervasive :: prims) =>
+		      | ("return" :: core :: rts :: pervasive :: prims) =>
 			    SOME { rts = look_snode rts,
 				   core = look_snode core,
 				   pervasive = look_snode pervasive,

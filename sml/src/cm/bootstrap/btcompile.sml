@@ -165,7 +165,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 					     #2 (#sym pervasive),
 					     #2 (#stat core)]) }
 	in
-	    case Parse.parse param (SOME true) maingspec of
+	    case Parse.parse param NONE maingspec of
 		NONE => NONE
 	      | SOME (g, gp) =>
 		    if recomp gp g then

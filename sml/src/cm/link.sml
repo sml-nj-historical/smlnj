@@ -165,12 +165,25 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	structure BootstrapCompile =
 	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC
 				val os = SMLofNJ.SysInfo.getOSKind ())
-	fun make () =
-	    BootstrapCompile.compile
-	      { binroot = "xxx.bin.xxx",
-	        pcmodespec = "pathconfig",
-		initgspec = "Init/spec.cmi",
-		maingspec = "Libs/main.cm" }
+	fun make () = let
+	    val res = BootstrapCompile.compile
+		{ binroot = "xxx.bin.xxx",
+		  pcmodespec = "pathconfig",
+		  initgspec = "Init/spec.cmi",
+		  maingspec = "Libs/main.cm" }
+	    fun offset NONE = ["\n"]
+	      | offset (SOME i) = ["@", Int.toString i, "\n"]
+	    fun showBootFile (p, off) =
+		Say.say (AbsPath.name p :: offset off)
+	in
+	    case res of
+		NONE => false
+	      | SOME { rtspid, bootfiles } => 
+		    (Say.say ["Runtime System PID is: ", rtspid,
+			      "\nBootfiles...\n"];
+		     app showBootFile bootfiles;
+		     true)
+	end
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()
 	fun make' _ = ()

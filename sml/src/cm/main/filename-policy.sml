@@ -19,7 +19,8 @@ signature FILENAMEPOLICY = sig
     val mkStablePath : policy -> AbsPath.t -> AbsPath.t
 end
 
-structure FilenamePolicy :> FILENAMEPOLICY = struct
+functor FilenamePolicyFn (val cmdir : string
+			  val skeldir : string) :> FILENAMEPOLICY = struct
 
     type converter = AbsPath.t -> AbsPath.t
 
@@ -35,7 +36,7 @@ structure FilenamePolicy :> FILENAMEPOLICY = struct
     fun mkPolicy shift { arch, os } = let
 	fun cmpath d s = let
 	    val { dir = d0, file = f } = AbsPath.splitDirFile s
-	    val d1 = AbsPath.joinDirFile { dir = d0, file = "CM" }
+	    val d1 = AbsPath.joinDirFile { dir = d0, file = cmdir }
 	    val d2 = AbsPath.joinDirFile { dir = d1, file = d }
 	in
 	    AbsPath.joinDirFile { dir = d2, file = f }
@@ -43,7 +44,7 @@ structure FilenamePolicy :> FILENAMEPOLICY = struct
 	val archos = concat [arch, "-", kind2name os]
 	val archosdep = cmpath archos o shift
     in
-	{ skel = cmpath "SKEL", bin = archosdep, stable = archosdep }
+	{ skel = cmpath skeldir, bin = archosdep, stable = archosdep }
     end
 
     val colocate = mkPolicy (fn s => s)
@@ -73,3 +74,6 @@ structure FilenamePolicy :> FILENAMEPOLICY = struct
     fun mkSkelPath (p: policy) s = #skel p s
     fun mkStablePath (p: policy) s = #stable p s
 end
+
+structure FilenamePolicy =
+    FilenamePolicyFn (val cmdir = "NEWCM" val skeldir = "SKEL")
