@@ -28,6 +28,7 @@ Library
 	structure UnpickMod
 	structure GenModIdMap
 	structure CompBasic
+	structure CoreSym
 
 	structure FLINT
 

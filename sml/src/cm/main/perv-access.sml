@@ -6,7 +6,6 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure PervCoreAccess = struct
+structure PervAccess = struct
     val pervStrSym = Symbol.strSymbol "<Pervasive>"
-    val coreStrSym = Symbol.strSymbol "<Core>"
 end

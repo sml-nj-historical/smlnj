@@ -12,6 +12,41 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/04/03 16:05:00 JST
+Tag: blume_main_v110p26p2_2
+Description:
+
+I eliminated coreEnv from compInfo.  Access to the "Core" structure is
+now done via the ordinary static environment that is context to each
+compilation unit.
+
+To this end, I arranged that instead of "structure Core" as "structure
+_Core" is bound in the pervasive environment.  Core access is done via
+_Core (which can never be accidentially rebound because _Core is not a
+legal surface-syntax symbol).
+
+The current solution is much cleaner because the core environment is
+now simply part of the pervasive environment which is part of every
+compilation unit's context anyway.  In particular, this eliminates all
+special-case handling that was necessary until now in order to deal
+with dynamic and symbolic parts of the core environment.
+
+Remaining hackery (to bind the "magic" symbol _Core) is localized in the
+compilation mananger's bootstrap compiler (actually: in the "init group"
+handling).  See the comments in src/system/smlnj/init/init.cmi for
+more details.
+
+I also tried to track down all mentions of "Core" (as string argument
+to Symbol.strSymbol) in the compiler and replaced them with a
+reference to the new CoreSym.coreSym.  Seems cleaner since the actual
+name appears in one place only.
+
+Binfile and bootfile format have not changed, but the switchover from
+the old "init.cmi" to the new one is a bit tricky, so I supplied new
+bootfiles anyway.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/04/02 21:17:00 EST
 Tag: leunga-20000402-mltree

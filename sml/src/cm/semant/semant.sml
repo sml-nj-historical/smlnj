@@ -177,7 +177,7 @@ structure CMSemant :> CM_SEMANT = struct
 		  | GG.ERRORGROUP =>
 		    EM.impossible "semant.sml: grouplib: bad init group"
 	in
-	    #1 (valOf (SymbolMap.find (exports, PervCoreAccess.pervStrSym)))
+	    #1 (valOf (SymbolMap.find (exports, PervAccess.pervStrSym)))
 	end
 	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn)
 	val subgroups = MemberCollection.subgroups mc

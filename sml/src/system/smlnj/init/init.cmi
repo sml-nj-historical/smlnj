@@ -1,20 +1,21 @@
 #
 # spec.cmi
 #
-#  (C) 1999 Lucent Technologies, Bell Laboratories
+#  (C) 2000 Lucent Technologies, Bell Laboratories
 #
 # Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
 #
 # This is the specification for how to build the "init group".
-# The main purpose of the init group is to tie in the runtime system,
-# to set up the core environment, and to build the pervasive environment.
+# The main purpose of the init group is to tie in the runtime system
+# and to build the pervasive environment.  The pervasive enviroment
+# must contain a binding of the "special" structure named "_Core".
 # Because of its special nature, the init group cannot be described as
 # an ordinary CM library.  Instead, it is built from the DAG description
 # in this file.  The bootstrap compiler turns the init group into an
-# ordinary stable group.  The boot process fetches core and pervasive
+# ordinary stable group.  The boot process fetches the pervasive
 # environment from that stable library.
 #
-# Besides core and pervasive environments, the init group can (and does)
+# In addition to the pervasive environments, the init group can (and does)
 # also export additional definitions.  These can be accessed by client code
 # (such as the implementation of the Basis library) by simply listing
 # "init.cmi : cm" in their respective library description files.  (Since CM
@@ -39,30 +40,32 @@
 #  - The (single) "rts-placeholder" line acts mostly like a "bind" line.
 #    Its purpose is to specify the module that plays the role of a
 #    placeholder for the runtime system.
-#  - "bind" lines (and the "rts-placeholder" line) must be in topological
-#    order (i.e., they cannot access environment names that are being
-#    defined later).
+#  - A "bind-core" line acts like a "bind" line, but it has an additional
+#    first argument which must be the name of a structure bound at top-level
+#    by the named .sml file.  CM replaces these bindings by corresponding
+#    bindings of the internal structure symbol "_Core".
+#  - "bind" lines (as well as "bind-core" lines and the "rts-placeholder"
+#    line) must be in topological order (i.e., they cannot access environment
+#    names that are being defined later).
 #  - The last line that gets processed is the "return" line.
-#    It must specify at least two environment names in this order:
-#      * the one that is used as the system-wide "core" environment
-#      * the one that is used as the system-wide "pervasive" environment
+#    It must specify at least one environment name, namely the one that is
+#    used as the system-wide "pervasive" environment.
 #    For any additional name n the exports of the module that was bound
 #    (by "bind") to n are added to the exports of the init group.
 #    These exports can be accessed by clients that explicitly list init.cmi
 #    in their own description files.
 #    Note: Since some clients need direct access to the core environment,
-#    the name "core" is listed twice: one time in its usual place, one time
-#    to have it exported from init.cmi.
+#    the name "core" is also listed.  This "core" (as opposed to "xcore"
+#    has a binding for structure "Core" which can be accessed directly
+#    from SML source code.)
 #  - There is one pre-defined name ("primitive") that refers to the
 #    Environment.primEnv.  It must not be "exported" by the "return" line.
 #
-# There is a side-condition on the core environment:
-# CM will first compile just the minimal required number of files that is
-# sufficient for getting hold of the core environment.  Naturally, these
-# files are compiled _without_ access to core and, therefore, cannot make
-# use of any language feature that lets the compiler try and access the core.
-# As soon as core is available, all remaining files are compiled using that
-# core, though.
+# Note that a binding for structure _Core is necessary ALMOST EVERYWHERE.
+# Therefore, it is necessary that the pervasive environment has such a
+# binding.  For files of this initial group (which do not yet have the
+# benefit of being able to access the pervasive environment), a trivial
+# member "xcore" is used to supply _Core.
 
 #### END OF EXPLANATION, SPEC STARTS HERE...
 
@@ -70,33 +73,47 @@
 # files are not actually loaded at boot time.
 nosplit
 
-# The "signature" of the runtime system:
+# The "signature" of the runtime system.  (No _Core yet.)
 bind asig = assembly.sig (primitive)
 
-# The placeholder for the runtime system:
+# The placeholder for the runtime system. (No _Core yet.)
 rts-placeholder rts = dummy.sml (asig, primitive)
 
 # We can now turn the cross-module optimizer on (when available)...
 split
 
 # This defines the core environment to be used everywhere else...
+# (This binds the structure symbol "Core", which is not yet the one that
+# is used implicitly by the compiler.  Of course, "core.sml" itself cannot
+# yet have access to _Core.)
 bind core = core.sml (rts, asig, primitive)
 
+# Now we make the binding for structure _Core for use by the remaining
+# members of the init group. (Everybody else in the world gets access to
+# _Core via the pervasive env.)
+# The "bind-core" line says that its first argument ("xCore") should be
+# re-written as "_Core" before compilation. This rewriting is done
+# internally after the parser has already completed. Normally, there is
+# no way of referring explicitly to a structure named _Core.
+bind-core (xCore) xcore = xcore.sml (core)
+
 # The rest of the DAG...
-bind built-in = built-in.sml (core, primitive)
-bind pp = pre-perv.sml (built-in)
-bind ps = pre-string.sml (core, built-in, pp)
-bind ss-sig = substring.sig (pp, built-in)
-bind ss = substring.sml (ss-sig, pp, ps, core, built-in)
-bind print-hook = print-hook.sml (built-in)
-bind use-hook = use-hook.sml (built-in)
-bind exn-info-hook = exn-info-hook.sml (built-in)
-bind init-utils = init-utils.sml (ps ss-sig ss)
+# (Everybody implicitly depends on xcore to have access to _Core.)
+bind built-in = built-in.sml (core, primitive, xcore)
+bind pp = pre-perv.sml (built-in, xcore)
+bind ps = pre-string.sml (core, built-in, pp, xcore)
+bind ss-sig = substring.sig (pp, built-in, xcore)
+bind ss = substring.sml (ss-sig, pp, ps, core, built-in, xcore)
+bind print-hook = print-hook.sml (built-in, xcore)
+bind use-hook = use-hook.sml (built-in, xcore)
+bind exn-info-hook = exn-info-hook.sml (built-in, xcore)
+bind init-utils = init-utils.sml (ps ss-sig ss, xcore)
 
 # Building the "pervasive" environment.  This file should be
 # kept as small as possible and only bind non-modular things
 # (i.e., top-level types and values).
-bind pervasive = pervasive.sml (core, ps, ss, pp, print-hook, use-hook, exn-info-hook, built-in)
+# Make sure everybody else in the world gets access to structure _Core...
+bind-core (xCore) pervasive = pervasive.sml (core, ps, ss, pp, print-hook, use-hook, exn-info-hook, built-in, xcore)
 
 # Report the results to the world...
-return (core, pervasive) built-in print-hook use-hook exn-info-hook core init-utils
+return (pervasive) built-in print-hook use-hook exn-info-hook core init-utils

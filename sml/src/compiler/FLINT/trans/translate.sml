@@ -99,7 +99,7 @@ exception NoCore
  ****************************************************************************)
 
 fun transDec (rootdec, exportLvars, env,
-	      compInfo as {coreEnv,errorMatch,error,...}: CB.compInfo) =
+	      compInfo as {errorMatch,error,...}: CB.compInfo) =
 let 
 
 (** generate the set of ML-to-FLINT type translation functions *)
@@ -120,7 +120,7 @@ fun toDconLty d ty =
 
 (** the special lookup functions for the Core environment *)
 fun coreLookup(id, env) = 
-  let val sp = SymPath.SPATH [S.strSymbol "Core", S.varSymbol id]
+  let val sp = SymPath.SPATH [CoreSym.coreSym, S.varSymbol id]
       val err = fn _ => fn _ => fn _ => raise NoCore
    in Lookup.lookVal(env, sp, err)
   end
@@ -282,7 +282,7 @@ fun mkAcc (p, nameOp) =
  * the primitive environment. (ZHONG)
  *)
 fun coreExn id =
-  ((case coreLookup(id, coreEnv)
+  ((case coreLookup(id, env)
      of V.CON(TP.DATACON{name, rep as DA.EXN _, typ, ...}) => 
           let val nt = toDconLty DI.top typ
               val nrep = mkRep(rep, nt, name)
@@ -292,7 +292,7 @@ fun coreExn id =
    handle NoCore => (say "WARNING: no Core access \n"; INT 0))
 
 and coreAcc id =
-  ((case coreLookup(id, coreEnv)
+  ((case coreLookup(id, env)
      of V.VAL(V.VALvar{access, typ, path, ...}) => 
            mkAccT(access, toLty DI.top (!typ), getNameOp path)
       | _ => bug "coreAcc in translate")

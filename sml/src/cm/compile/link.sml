@@ -128,10 +128,7 @@ in
 	     * stable libraries.) *)
 	    fun execute sysval (bfc, mk_de, gp: GP.info) =
 		case sysval (BF.exportPidOf bfc) of
-		    NONE =>
-			BF.exec (bfc,
-				 DE.atop (mk_de gp,
-					  E.dynamicPart(#corenv (#param gp))))
+		    NONE => BF.exec (bfc, mk_de gp)
 		  | SOME de' => de'
 
 	    (* Construction of the environment is delayed until we are

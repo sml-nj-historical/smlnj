@@ -25,7 +25,7 @@ type dynenv     = DynamicEnv.dynenv    (* dynamic env  : pid -> object *)
 type symenv     = SymbolicEnv.symenv   (* symbolic env : pid -> flint *)
 
 type compInfo   = CompBasic.compInfo   (* general compilation utilities *)
-val mkCompInfo  : source * statenv * (absyn -> absyn) -> compInfo
+val mkCompInfo  : source * (absyn -> absyn) -> compInfo
 val anyErrors   : compInfo -> bool
 
 type lvar       = Access.lvar          (* local id *)

@@ -18,8 +18,7 @@ datatype importTree = ITNODE of (int * importTree) list
 
 (** important context, environment, and utility functions *)
 type compInfo
-val mkCompInfo  : source * StaticEnv.staticEnv 
-                  * (absyn -> absyn) * (unit -> Stamps.generator)
+val mkCompInfo  : source * (absyn -> absyn) * (unit -> Stamps.generator)
                   -> compInfo
 val anyErrors   : compInfo -> bool
 

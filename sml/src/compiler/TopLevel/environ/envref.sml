@@ -9,7 +9,6 @@ sig
   type senvref = {get: unit -> staticEnv, set: staticEnv -> unit}
   type envref = {get: unit -> environment, set: environment -> unit}
 
-  val core: senvref
   val topLevel : envref			(* interactive top level env *)
   val pervasive : envref		(* pervasive environment *)
   val combined : unit -> environment
@@ -27,7 +26,6 @@ struct
      in {get=(fn()=> !r),set=(fn x=> r:=x)}
     end
 
-  val core = mkEnvRef StaticEnv.empty 
   val topLevel = mkEnvRef Environment.emptyEnv
   val pervasive = mkEnvRef Environment.emptyEnv
 

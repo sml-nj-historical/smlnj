@@ -141,8 +141,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				 val pending = AutoLoad.getPending)
 
       local
-	  type kernelValues =
-	       { corenv : E.environment, init_group : GG.group }
+	  type kernelValues = { init_group : GG.group }
 
 	  val fnpolicy = FilenamePolicy.colocate
 	      { os = os, arch = HostMachDepVC.architecture }
@@ -200,8 +199,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      { fnpolicy = fnpolicy,
 		pcmode = pcmode,
 		symval = SSV.symval,
-		keep_going = #get StdConfig.keep_going (),
-		corenv = #corenv v }
+		keep_going = #get StdConfig.keep_going () }
 	  end
 
 	  val init_group = #init_group o getTheValues
@@ -364,8 +362,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val ginfo = { param = { fnpolicy = fnpolicy,
 				      pcmode = pcmode,
 				      symval = SSV.symval,
-				      keep_going = false,
-				      corenv = E.emptyEnv },
+				      keep_going = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer () }
 	      fun loadInitGroup () =
@@ -392,28 +389,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			      NONE => raise Fail "init: bogus init group (1)"
 			    | SOME tr => tr
 
-		      val core_ct = getSymTrav (ctm, PervCoreAccess.coreStrSym)
-		      val core_lt = getSymTrav (ltm, PervCoreAccess.coreStrSym)
-		      val perv_ct = getSymTrav (ctm, PervCoreAccess.pervStrSym)
-		      val perv_lt = getSymTrav (ltm, PervCoreAccess.pervStrSym)
+		      val perv_ct = getSymTrav (ctm, PervAccess.pervStrSym)
+		      val perv_lt = getSymTrav (ltm, PervAccess.pervStrSym)
 
 		      fun doTrav t =
 			  case t ginfo of
 			      SOME r => r
 			    | NONE => raise Fail "init: bogus init group (2)"
 
-		      val { stat = corestat, sym = coresym } = doTrav core_ct
-		      val coredyn = doTrav core_lt
 		      val { stat = pervstat, sym = pervsym } = doTrav perv_ct
 		      val pervdyn = doTrav perv_lt
-
-		      val corenv =
-			  E.mkenv { static = corestat,
-				    symbolic = coresym,
-				    dynamic = coredyn }
-		      val core_symdyn =
-			  E.mkenv { static = E.staticPart E.emptyEnv,
-				    dynamic = coredyn, symbolic = coresym }
 
 		      val pervasive = E.mkenv { static = pervstat,
 					        symbolic = pervsym,
@@ -430,11 +415,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      val standard_preload =
 			  Preload.preload { make = make, autoload = autoload }
 		  in
-		      #set ER.core (E.staticPart corenv);
-		      #set ER.pervasive (E.layerEnv (pervasive, core_symdyn));
+		      #set ER.pervasive pervasive;
 		      #set ER.topLevel E.emptyEnv;
-		      theValues := SOME { corenv = corenv,
-					  init_group = init_group };
+		      theValues := SOME { init_group = init_group };
 		      case er of
 			  BARE =>
 			      (bare_preload BtNames.bare_preloads;

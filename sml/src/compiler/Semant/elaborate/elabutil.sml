@@ -244,18 +244,18 @@ fun completeMatch' (RULE(p,e)) =
 
 exception NoCore
 
-fun getCoreExn(coreEnv,name) = 
-    (case LU.lookVal(coreEnv,SP.SPATH[strSymbol "Core", varSymbol name],
+fun getCoreExn(env,name) = 
+    (case LU.lookVal(env,SP.SPATH[CoreSym.coreSym, varSymbol name],
 		     fn _ => fn s => fn _ => raise NoCore)
        of V.CON x => x
         | _ => V.bogusEXN)
     handle NoCore => V.bogusEXN
 
-fun completeMatch(coreEnv,name) =
+fun completeMatch(env,name) =
     completeMatch'' 
       (fn marker =>
           RULE(WILDpat, 
-	       marker(RAISEexp(CONexp(getCoreExn(coreEnv,name),[]), UNDEFty))))
+	       marker(RAISEexp(CONexp(getCoreExn(env,name),[]), UNDEFty))))
 
 val trivialCompleteMatch = completeMatch(SE.empty,"Match")
 

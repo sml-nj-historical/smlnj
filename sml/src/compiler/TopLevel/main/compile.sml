@@ -42,7 +42,7 @@ type dynenv     = DE.dynenv    (* dynamic env  : pid -> object *)
 type symenv     = SymbolicEnv.symenv   (* symbolic env : pid -> flint *)
 
 type compInfo   = CB.compInfo          (* general compilation utilities *)
-fun mkCompInfo (s, se, tr)  = CB.mkCompInfo (s, se, tr, CC.mkMkStamp)
+fun mkCompInfo (s, tr)  = CB.mkCompInfo (s, tr, CC.mkMkStamp)
 val anyErrors   = CB.anyErrors
 
 type lvar       = DA.lvar              (* local id *)
@@ -93,9 +93,9 @@ val elaborate = ST.doPhase(ST.makePhase "Compiler 030 elaborate") elaborate
  *****************************************************************************)
 
 (** instrumenting the abstract syntax to do time- and space-profiling *)
-fun instrument {source, compInfo as {coreEnv,...}: compInfo} =
-      SProf.instrumDec (coreEnv, compInfo) source 
-      o TProf.instrumDec (coreEnv, compInfo)
+fun instrument {source, senv, compInfo} =
+      SProf.instrumDec (senv, compInfo) source 
+      o TProf.instrumDec (senv, compInfo)
 
 val instrument = ST.doPhase (ST.makePhase "Compiler 039 instrument") instrument
 
@@ -175,7 +175,8 @@ fun compile {source=source, ast=ast, statenv, symenv=symenv,
             elaborate {ast=ast, statenv=statenv, compInfo=cinfo }
             before (check "elaborate")
 
-	val absyn = instrument {source=source, compInfo=cinfo} absyn
+	val absyn = instrument {source=source, senv = statenv,
+				compInfo=cinfo} absyn
                     before (check "instrument")
 
 	val {flint, imports} = 

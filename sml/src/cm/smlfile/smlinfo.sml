@@ -18,7 +18,9 @@ signature SMLINFO = sig
     type source = GenericVC.Source.inputSource
 
     type attribs =
-	{ split: bool, is_rts: bool,
+	{ split: bool,
+	  is_rts: bool,
+	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: GenericVC.Environment.staticEnv option }
 
     val eq : info * info -> bool	(* compares sourcepaths *)
@@ -105,7 +107,9 @@ structure SmlInfo :> SMLINFO = struct
     type complainer = EM.complainer
 
     type attribs =
-	{ split: bool, is_rts: bool,
+	{ split: bool,
+	  is_rts: bool,
+	  explicit_core_sym: Symbol.symbol option,
 	  extra_compenv: GenericVC.Environment.staticEnv option }
 
     type generation = unit ref
@@ -248,7 +252,8 @@ structure SmlInfo :> SMLINFO = struct
 	       attribs = attribs }
     end
 
-    val info = info' { split = true, extra_compenv = NONE, is_rts = false }
+    val info = info' { split = true, extra_compenv = NONE,
+		       is_rts = false, explicit_core_sym = NONE }
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)

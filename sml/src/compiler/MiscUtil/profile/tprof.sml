@@ -83,7 +83,7 @@ fun varexp(v as VALvar{typ=ref ty,path,...}) =
 fun clean (path as name::names) = if S.eq(name,anonSym) then names else path
   | clean x = x
 
-fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
+fun instrumDec' (env, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
  let val countarrayvar = tmpvar("countarray",CONty(arrayTycon,[intTy]),mkv)
      val countarray = varexp countarrayvar
 
@@ -95,8 +95,8 @@ fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
      
      val register =
 	 case Lookup.lookVal
-		  (coreEnv,
-		   SP.SPATH [S.strSymbol "Core",
+		  (env,
+		   SP.SPATH [CoreSym.coreSym,
 			     S.varSymbol "profile_register"],
 		   fn _ => fn s => fn _ => bug "222 in prof") of
 	     V.VAL r => r
@@ -318,8 +318,8 @@ fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
 
                            val exnMatch =
 			       case Lookup.lookVal
-					(coreEnv,
-					 SP.SPATH [S.strSymbol "Core", 
+					(env,
+					 SP.SPATH [CoreSym.coreSym,
 						   S.varSymbol "Match"],
 					 fn _ => fn s => fn _ => 
 							    bug "250 in prof")
@@ -371,9 +371,9 @@ fun instrumDec' (coreEnv, compInfo as {mkLvar=mkv, ...} : EU.compInfo) absyn =
   in absyn2
  end
 
-fun instrumDec (coreEnv, compInfo) absyn = 
+fun instrumDec (env, compInfo) absyn = 
       if !SMLofNJ.Internals.ProfControl.profMode
-	then instrumDec' (coreEnv, compInfo) absyn
+	then instrumDec' (env, compInfo) absyn
 	else absyn
 
 end (* local *)

@@ -31,8 +31,7 @@ signature BINFILE = sig
 		  ast: Ast.dec,
 		  source: Source.inputSource,
 		  senv:  senv,
-		  symenv: symenv,
-		  corenv: EnvRef.staticEnv }
+		  symenv: symenv }
 	-> bfContent
 
     val read:

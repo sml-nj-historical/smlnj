@@ -25,7 +25,7 @@ in
  *     we will merge in Chesakov's SProf in the future (ZHONG).
  *)
 
-fun instrumDec (coreEnv, 
+fun instrumDec (env, 
         compInfo as {mkLvar, ...} : CompBasic.compInfo) source absyn = absyn
 
 (* 
@@ -33,7 +33,7 @@ fun instrumDec (coreEnv,
 infix -->
 val xsym = Symbol.varSymbol "x"
 
-fun instrumDec coreEnv source absyn =
+fun instrumDec env source absyn =
  if not(!SMLofNJ.Internals.ProfControl.sprofiling) then absyn
  else let 
 
@@ -196,8 +196,8 @@ val registerTy =
 						--> alpha)])}}
 
 val V.VAL registerVar = Lookup.lookVal
-    (coreEnv,
-     SP.SPATH [Symbol.strSymbol "Core", Symbol.varSymbol "profile_sregister"],
+    (env,
+     SP.SPATH [CoreSym.coreSym, Symbol.varSymbol "profile_sregister"],
      fn _ => fn s => fn _ => err "222 in sprof")
 
 val absyn' =instrdec((0,0),nil,absyn) 

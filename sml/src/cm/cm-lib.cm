@@ -63,6 +63,7 @@ is
 
 	(* doing actual compilation work *)
 	compile/compile.sml
+	compile/corehack.sml
 	compile/link.sml
 	compile/bfc.sml
 

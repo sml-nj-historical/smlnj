@@ -136,14 +136,14 @@ fun elabABSTYPEdec({abstycs,withtycs,body},env,context,isFree,
 
 (**** ELABORATE GENERAL (core) DECLARATIONS ****)
 and elabDec (dec, env, isFree, rpath, region,
-             compInfo as {mkLvar=mkv,error,errorMatch,coreEnv,...}) =
+             compInfo as {mkLvar=mkv,error,errorMatch,...}) =
 
 let
     val _ = debugmsg ">>ElabCore.elabDec"
 
-    val completeMatch = EU.completeMatch(coreEnv,"Match")
+    val completeMatch = EU.completeMatch(env,"Match")
     val _ = debugmsg "--ElabCore.elabDec << completeBind Match"
-    val completeBind = EU.completeMatch(coreEnv,"Bind")
+    val completeBind = EU.completeMatch(env,"Bind")
     val _ = debugmsg "--ElabCore.elabDec << completeBind Bind"
 
     fun newVALvar s = V.mkVALvar(s, A.namedAcc(s, mkv))
@@ -178,7 +178,7 @@ let
 
 	    (* capture Match exn from coreEnv as a random exn for use internally
 	       in the Y combinator definition *)
-	    val exn = EU.getCoreExn(coreEnv,"Match")
+	    val exn = EU.getCoreExn(env,"Match")
 
 	    (* val exn = V.bogusEXN (* see if this will work? *) *)
 

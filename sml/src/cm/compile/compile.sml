@@ -239,7 +239,10 @@ in
 		    case SmlInfo.parsetree gp i of
 			NONE => fail ()
 		      | SOME (ast, source) => let
-			    val corenv = #corenv (#param gp)
+			    val ast =
+				case #explicit_core_sym (SmlInfo.attribs i) of
+				    NONE => ast
+				  | SOME sy => CoreHack.rewrite (ast, sy)
 			    val cmData = PidSet.listItems pids
 			    (* clear error flag (could still be set from
 			     * earlier run) *)
@@ -250,9 +253,7 @@ in
 				  ast = ast,
 				  source = source,
 				  senv = stat,
-				  symenv = E.layerSymbolic
-				               (sym, E.symbolicPart corenv),
-				  corenv = E.staticPart corenv }
+				  symenv = sym }
 			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
 			    save bfc;

@@ -29,6 +29,7 @@ Group (smlnj/viscomp/core.cm)
 	structure UnpickMod
 	structure GenModIdMap
 	structure CompBasic
+	structure CoreSym
 
 	structure FLINT
 
@@ -125,6 +126,7 @@ Semant/basics/stamps.sml
 Semant/basics/stampmap.sml
 Semant/basics/symbol.sig
 Semant/basics/symbol.sml
+Semant/basics/coresym.sml
 Semant/basics/sympaths.sig
 Semant/basics/sympaths.sml
 Semant/elaborate/elabcore.sml

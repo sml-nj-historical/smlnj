@@ -339,3 +339,8 @@ val exnName = ExnInfoHook.exnName
 val exnMessage = ExnInfoHook.exnMessage
 
 end (* local *)
+
+(* Bind structure _Core.  We use the symbol "xCore", but after parsing
+ * is done this will be re-written to "_Core" by the bootstrap compilation
+ * machinery.  See file init.cmi for more details. *)
+structure xCore = Core

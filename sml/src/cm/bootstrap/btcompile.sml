@@ -150,50 +150,30 @@ end = struct
 	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
 	        { arch = arch, os = os }
 
-	fun mkParam corenv =
+	val param =
 	    { fnpolicy = fnpolicy,
 	      pcmode = pcmode,
 	      symval = SSV.symval,
-	      keep_going = keep_going,
-	      corenv = corenv }
+	      keep_going = keep_going }
 
 	val emptydyn = E.dynamicPart E.emptyEnv
 
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)
 
-	val param_nocore = mkParam E.emptyEnv
-
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
-	val ginfo_nocore = { param = param_nocore, groupreg = groupreg,
-			     errcons = errcons }
+	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
 
 	fun mk_main_compile arg = let
 
-	    val { core = core_n, pervasive = perv_n, others, src } = arg
+	    val { pervasive = perv_n, others, src } = arg
 
 	    fun recompInitGroup () = let
 		val ovldR = GenericVC.Control.overloadKW
 		val savedOvld = !ovldR
 		val _ = ovldR := true
 		val sbnode = Compile.newSbnodeTraversal ()
-
-		(* here we build a new gp -- the one that uses the freshly
-		 * brewed pervasive env, core env, and primitives *)
-		val core = valOf (sbnode ginfo_nocore core_n)
-		val corenv =
-		    E.mkenv { static = #statenv core (),
-			      symbolic = #symenv core (),
-			      dynamic = emptydyn }
-
-		(* The following is a bit of a hack (but corenv is a hack
-		 * anyway): As soon as we have core available, we have to
-		 * patch the ginfo to include the correct corenv (because
-		 * virtually everybody else needs access to corenv). *)
-		val param = mkParam corenv
-		val ginfo =
-		    { param = param, groupreg = groupreg, errcons = errcons }
 
 		val perv_fsbnode = (NONE, perv_n)
 
@@ -219,57 +199,43 @@ end = struct
 		val special_exports = let
 		    fun mkie (n, rtn) = #ie (rt2ie (n, rtn))
 		in
-		    foldl SymbolMap.insert' SymbolMap.empty
-		       [(PervCoreAccess.pervStrSym, mkie (perv_n, pervasive)),
-		        (PervCoreAccess.coreStrSym, mkie (core_n, core))]
+		    SymbolMap.insert (SymbolMap.empty,
+				      PervAccess.pervStrSym,
+				      mkie (perv_n, pervasive))
 		end
 	    in
-		(GG.GROUP { exports = foldl add_exports special_exports others,
-			    kind = GroupGraph.LIB { wrapped = StringSet.empty,
-						    subgroups = [] },
-			    required = StringSet.singleton "primitive",
-			    grouppath = initgspec,
-			    sublibs = [] },
-		 corenv)
+		GG.GROUP { exports = foldl add_exports special_exports others,
+			   kind = GroupGraph.LIB { wrapped = StringSet.empty,
+						   subgroups = [] },
+			   required = StringSet.singleton "primitive",
+			   grouppath = initgspec,
+			   sublibs = [] }
 		before (ovldR := savedOvld)
 	    end
 
 	    (* just go and load the stable init group or signal failure *)
 	    fun loadInitGroup () = let
-		val coresym = PervCoreAccess.coreStrSym
 		val lsarg =
 		    { getGroup = fn _ => raise Fail "CMB: initial getGroup",
 		      anyerrors = ref false }
 	    in
-		case Stabilize.loadStable ginfo_nocore lsarg initgspec of
+		case Stabilize.loadStable ginfo lsarg initgspec of
 		    NONE => NONE
-		  | SOME (g as GG.GROUP { exports, ... }) => 
-			(case SymbolMap.find (exports, coresym) of
-			     SOME ((_, DG.SB_BNODE (_, ii)), _) => let
-				 val stat = #statenv ii ()
-				 val sym = #symenv ii ()
-				 val corenv =
-				     E.mkenv { static = stat,
-					       symbolic = sym,
-					       dynamic = emptydyn }
-			     in
-				 SOME (g, corenv)
-			     end
-			   | _ => NONE)
+		  | SOME (g as GG.GROUP { exports, ... }) => SOME g
 		  | SOME GG.ERRORGROUP => NONE
 	    end
 		    
 	    (* Don't try to load the stable init group. Instead, recompile
 	     * directly. *)
 	    fun dontLoadInitGroup () = let
-		val (g0, corenv) = recompInitGroup ()
+		val g0 = recompInitGroup ()
 		val stabarg = { group = g0, anyerrors = ref false }
 	    in
 		if deliver then
-		    case Stabilize.stabilize ginfo_nocore stabarg of
-			SOME g => (g, corenv)
+		    case Stabilize.stabilize ginfo stabarg of
+			SOME g => g
 		      | NONE => raise Fail "CMB: cannot stabilize init group"
-		else (g0, corenv)
+		else g0
 	    end
 
 	    (* Try loading the init group from the stable file if possible;
@@ -281,24 +247,19 @@ end = struct
 			
 	    (* Ok, now, based on "paranoid" and stable verification,
 	     * call the appropriate function(s) to get the init group. *)
-	    val (init_group, corenv) =
+	    val init_group =
 		if paranoid then let
-		    val export_nodes = core_n :: perv_n :: others
+		    val export_nodes = perv_n :: others
 		    val ver_arg = (initgspec, export_nodes, [],
 				   SrcPathSet.empty)
 		    val em = StableMap.empty
 		in
-		    if VerifyStable.verify' ginfo_nocore em ver_arg then
+		    if VerifyStable.verify' ginfo em ver_arg then
 			tryLoadInitGroup ()
 		    else dontLoadInitGroup ()
 		end
 		else tryLoadInitGroup ()
 
-	    (* now we finally build the real param and ginfo that we can
-	     * use throughout the rest... *)
-	    val param = mkParam corenv
-	    val ginfo =
-		{ param = param, errcons = errcons, groupreg = groupreg }
 
 	    val stab = if deliver then SOME true else NONE
 
@@ -394,7 +355,7 @@ end = struct
 	end handle Option => (Compile.reset (); NONE)
 	    	   (* to catch valOf failures in "rt" *)
     in
-	case BuildInitDG.build ginfo_nocore initgspec of
+	case BuildInitDG.build ginfo initgspec of
 	    SOME x => mk_main_compile x
 	  | NONE => NONE
     end

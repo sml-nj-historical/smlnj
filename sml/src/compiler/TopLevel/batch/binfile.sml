@@ -504,13 +504,13 @@ struct
 	end
 
 	fun create args = let
-	    val { splitting, cmData, ast, source, corenv, senv, symenv } =
+	    val { splitting, cmData, ast, source, senv, symenv } =
 		args
 	    val errors = Err.errors source
 	    fun check phase =
 		if Err.anyErrors errors then raise Compile (phase ^ " failed") 
 		else ()
-	    val cinfo = C.mkCompInfo (source, corenv, fn x => x)
+	    val cinfo = C.mkCompInfo (source, fn x => x)
 
 	    val { csegments=code, newstatenv, exportPid, staticPid, imports,
 		  pickle=envPickle, inlineExp, ...} = 

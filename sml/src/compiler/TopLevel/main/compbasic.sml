@@ -17,15 +17,13 @@ datatype importTree = ITNODE of (int * importTree) list
 
 type compInfo   = {mkStamp: unit -> Stamps.stamp,
                    mkLvar: Symbol.symbol option -> Access.lvar,
-                   coreEnv: StaticEnv.staticEnv,
                    anyErrors: bool ref,
                    error: ErrorMsg.errorFn,
                    errorMatch: SourceMap.region -> string,
                    transform: absyn -> absyn,
                    sourceName : string}
 
-fun mkCompInfo(source: source, coreEnv: StaticEnv.staticEnv,
-	       transform : absyn -> absyn, 
+fun mkCompInfo(source: source, transform : absyn -> absyn, 
                mkMkStamp : unit -> Stamps.generator) : compInfo = 
   let val {error,errorMatch,anyErrors} = ErrorMsg.errors source
       val _ = LambdaVar.clear()
@@ -36,7 +34,6 @@ fun mkCompInfo(source: source, coreEnv: StaticEnv.staticEnv,
        error = error,
        errorMatch = errorMatch,
        anyErrors = anyErrors,
-       coreEnv = coreEnv,
        transform = transform,
        sourceName = #fileOpened source}
   end
@@ -44,4 +41,3 @@ fun mkCompInfo(source: source, coreEnv: StaticEnv.staticEnv,
 fun anyErrors ({anyErrors=ref b,...} : compInfo) = b
 
 end (* structure CompBasic *)
-

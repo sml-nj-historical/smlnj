@@ -74,7 +74,7 @@ fun evalLoop ({compManagerHook, baseEnvRef, localEnvRef, perform,
              (source: Source.inputSource) : unit =
 
 let val parser = C.parseOne source
-    val cinfo = C.mkCompInfo(source,#get EnvRef.core (),transform)
+    val cinfo = C.mkCompInfo(source,transform)
 
     fun checkErrors s = 
         if C.anyErrors cinfo then raise EM.Error else ()

@@ -1,11 +1,9 @@
 (*
  * Build a simple dependency graph from a direct DAG description.
  *   - This is used in the bootstrap compiler to establish the
- *     pervasive env, the core env, and the primitives which later
- *     get used by the rest of the system.
- *   - The DAG does not contain any BNODEs and the only PNODEs will
- *     be those that correspond to primitives passed via "gp".
- *     In practice, the only PNODE will be the one for Env.primEnv.
+ *     pervasive env and the primitives which later get used by
+ *     the rest of the system.
+ *   - One important job is to set up a binding to "structure _Core".
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -13,8 +11,7 @@
  *)
 signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> SrcPath.t ->
-	{ core: DependencyGraph.sbnode,
-	  pervasive: DependencyGraph.sbnode,
+	{ pervasive: DependencyGraph.sbnode,
 	  others: DependencyGraph.sbnode list,
 	  src: GenericVC.Source.inputSource } option
 end
@@ -61,11 +58,12 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
 		  | SOME (line, newpos) => let
 			val error = error (pos, newpos)
-			fun sml (spec, s, xe, rts) = let
+			fun sml (spec, s, xe, rts, ecs) = let
 			    val p = SrcPath.standard pcmode
 				{ context = context, spec = spec }
 			    val attribs =
-				{ split = s, is_rts = rts, extra_compenv = xe }
+				{ split = s, is_rts = rts, extra_compenv = xe,
+				  explicit_core_sym = ecs }
 			in
 			    SmlInfo.info' attribs gp
 			      { sourcepath = p,
@@ -73,13 +71,14 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				sh_spec = Sharing.DONTCARE }
 			end
 			fun bogus n = 
-			    DG.SNODE { smlinfo = sml (n, false, NONE, false),
+			    DG.SNODE { smlinfo = sml (n, false, NONE,
+						      false, NONE),
 				       localimports = [], globalimports = [] }
 			fun look n =
 			    case StringMap.find (m, n) of
 				SOME x => x
 			      | NONE => (error ("undefined: " ^ n); bogus n)
-			fun node (name, file, args, is_rts) = let
+			fun node (name, file, args, is_rts, ecs) = let
 			    fun one (arg, (li, needs_primenv)) =
 				if arg = "primitive" then (li, true)
 				else (look arg :: li, needs_primenv)
@@ -89,7 +88,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				if needs_primenv then
 				    SOME (GenericVC.Environment.primEnv)
 				else NONE
-			    val i = sml (file, split, xe, is_rts)
+			    val i = sml (file, split, xe, is_rts, ecs)
 			    val n = DG.SNODE { smlinfo = i,
 					       localimports = li,
 					       globalimports = [] }
@@ -103,12 +102,14 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 			  | ["split"] => loop (true, m, newpos)
 			  | ["nosplit"] => loop (false, m, newpos)
 			  | ("bind" :: name :: file :: args)  =>
-				node (name, file, args, false)
+				node (name, file, args, false, NONE)
 			  | ("rts-placeholder" :: name :: file :: args) =>
-				node (name, file, args, true)
-			  | ("return" :: core :: pervasive :: prims) =>
-				SOME { core = looksb core,
-				       pervasive = looksb pervasive,
+				node (name, file, args, true, NONE)
+			  | ("bind-core" :: ecs :: name :: file :: args) =>
+			        node (name, file, args, false,
+				      SOME (Symbol.strSymbol ecs))
+			  | ("return" :: pervasive :: prims) =>
+				SOME { pervasive = looksb pervasive,
 				       others = map looksb prims,
 				       src = source }
 			  | _ => (error "malformed line"; NONE)

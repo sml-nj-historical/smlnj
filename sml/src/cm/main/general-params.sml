@@ -13,8 +13,7 @@ structure GeneralParams = struct
 		   fnpolicy: FilenamePolicy.policy,
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
-		   keep_going: bool,
-		   corenv: GenericVC.Environment.environment }
+		   keep_going: bool }
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,
