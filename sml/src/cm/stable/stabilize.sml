@@ -33,10 +33,10 @@ signature STABILIZE = sig
 	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
 end
 
-functor StabilizeFn (val transfer_state : SmlInfo.info * BinInfo.info -> unit
-		     val writeBFC: BinIO.outstream -> SmlInfo.info -> unit
-		     val sizeBFC: SmlInfo.info -> int
-		     val getII:  SmlInfo.info -> IInfo.info
+functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
+		     val sizeBFC : SmlInfo.info -> int
+		     val getII :  SmlInfo.info -> IInfo.info
+		     val destroy_state : SmlInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
     structure SSMap = BinaryMapFn
@@ -396,7 +396,7 @@ functor StabilizeFn (val transfer_state : SmlInfo.info * BinInfo.info -> unit
 					       localimports = li,
 					       globalimports = gi }
 			in
-			    transfer_state (smlinfo, i);
+			    destroy_state smlinfo;
 			    m := SmlInfoMap.insert (!m, smlinfo, n);
 			    n
 			end

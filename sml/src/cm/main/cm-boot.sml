@@ -38,56 +38,44 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val emptydyn = E.dynamicPart E.emptyEnv
       val system_values = ref emptydyn
 
-      (* Instantiate the persistent state functor; this includes
-       * the binfile cache and the dynamic value cache *)
-      structure FullPersstate =
-	  FullPersstateFn (structure MachDepVC = HostMachDepVC
-			   val system_values = system_values)
+      structure Link =
+	  LinkFn (structure MachDepVC = HostMachDepVC
+		  val system_values = system_values)
 
-      (* Building "Exec" will automatically also build "Recomp" and
-       * "RecompTraversal"... *)
-      local
-	  structure E = ExecFn (structure PS = FullPersstate)
-      in
-	  structure Recomp = E.Recomp
-	  structure RT = E.RecompTraversal
-	  structure Exec = E.Exec
-      end
-
-      structure ET = CompileGenericFn (structure CT = Exec)
+      structure Compile =
+	  CompileFn (structure MachDepVC = HostMachDepVC)
 
       structure AutoLoad = AutoLoadFn
-	  (structure RT = RT
-	   structure ET = ET)
+	  (structure C = Compile
+	   structure L = Link)
 
-      (* The StabilizeFn functor needs a way of converting bnodes to
-       * dependency-analysis environments.  This can be achieved quite
-       * conveniently by a "recompile" traversal for bnodes. *)
-      fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
-	  handle Option => raise Fail "bn2statenv"
-
-      (* exec_group is basically the same as ET.group with
-       * one additional actions to be taken:
-       *      Before executing the code, we announce the priviliges
-       *      that are being invoked.  (For the time being, we assume
-       *      that everybody has every conceivable privilege, but at the
-       *      very least we announce which ones are being made use of.) *)
-      fun exec_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
-	  (if StringSet.isEmpty rq then ()
-	   else Say.say ("$Execute: required privileges are:\n" ::
-		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
-	   ET.group gp g)
-
-      fun recomp_runner gp g = isSome (RT.group gp g)
+      fun recomp_runner gp g = let
+	  val { group, ... } = Compile.newTraversal (Link.evict, g)
+      in
+	  isSome (group gp) before Link.cleanup ()
+      end
 
       (* This function combines the actions of "recompile" and "exec".
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
-      fun make_runner gp g =
-	  case RT.group gp g of
+      fun make_runner gp g = let
+	  val { group = c_group, ... } = Compile.newTraversal (Link.evict, g)
+	  val { group = l_group, ... } = Link.newTraversal g
+	  val GroupGraph.GROUP { required = rq, ... } = g
+      in
+	  case c_group gp of
 	      NONE => false
 	    | SOME { stat, sym} =>
-		  (case exec_group gp g of
+		  (* Before executing the code, we announce the priviliges
+		   * that are being invoked.  (For the time being, we assume
+		   * that everybody has every conceivable privilege, but at
+		   * the very least we announce which ones are being made
+		   * use of.) *)
+		  (Link.cleanup ();
+		   if StringSet.isEmpty rq then ()
+		   else Say.say ("$Execute: required privileges are:\n" ::
+		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
+		   case l_group gp of
 		       NONE => false
 		     | SOME dyn => let
 			   val delta = E.mkenv { static = stat, symbolic = sym,
@@ -99,14 +87,17 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   Say.vsay ["[New bindings added.]\n"];
 			   true
 		       end)
+      end
 
       val al_greg = GroupReg.new ()
 
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
-	  StabilizeFn (val bn2statenv = bn2statenv
-		       val recomp = recomp_runner
-		       val transfer_state = FullPersstate.transfer_state)
+	  StabilizeFn (val recomp = recomp_runner
+		       val writeBFC = Compile.writeBFC
+		       val sizeBFC = Compile.sizeBFC
+		       val getII = Compile.getII
+		       val destroy_state = Link.evict)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
@@ -211,11 +202,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val make = run NONE make_runner
 
 	  fun reset () =
-	      (FullPersstate.reset ();
-	       RT.reset ();
-	       ET.reset ();
-	       Recomp.reset ();
-	       Exec.reset ();
+	      (Compile.reset ();
+	       Link.reset ();
 	       AutoLoad.reset ();
 	       Parse.reset ();
 	       SmlInfo.forgetAllBut SrcPathSet.empty)
@@ -268,23 +256,28 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       * been cheating, and if we ever have to try and
 		       * fetch assembly.sig or core.sml in a separate
 		       * traversal, it will fail. *)
-		      val rtts = RT.start ()
+		      val sbnode = Compile.newSbnodeTraversal (fn _ => ())
 		      fun get n = let
-			  val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } =
-			      valOf (RT.sbnode rtts ginfo n)
-			  (* Since we cannot start another recomp traversal,
-			   * we must also avoid exec traversals (because they
-			   * would internally trigger recomp traversals).
+			  val { ii, ctxt } = valOf (sbnode ginfo n)
+			  val { statpid, statenv, symenv, sympid } = ii
+			  (* We have not implemented the "sbnode" part
+			   * in the Link module.
 			   * But at boot time any relevant value should be
-			   * available as a sysval, so there is no problem. *)
-			  val d =
-			      case Option.map (FullPersstate.sysval o
-					       BF.exportPidOf) bfc of
-				  SOME (SOME d) => d
-				| _ => emptydyn
-			  val env = E.mkenv { static = s, symbolic = sy,
+			   * available as a sysval, so there is no problem.
+			   *
+			   * WARNING!  HACK!
+			   * We are cheating somewhat by taking advantage
+			   * of the fact that the staticPid is always
+			   * the same as the exportPid if the latter exists.
+			   *)
+			  val d = case Link.sysval (SOME statpid) of
+			      SOME d => d
+			    | NONE => emptydyn
+			  val env = E.mkenv { static = statenv (),
+					      symbolic = symenv (),
 					      dynamic = d }
-			  val pidInfo = { statpid = sp, sympid = syp,
+			  val pidInfo = { statpid = statpid,
+					  sympid = sympid,
 					  ctxt = ctxt }
 		      in
 			  (env, pidInfo)
@@ -311,11 +304,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 					   #statpid pervPidInfo,
 					   #sympid pervPidInfo])
 		  in
-		      (* Nobody is going to try and share this state --
-		       * or, rather, this state is shared via access
-		       * to "primitives".  Therefore, we don't call
-		       * RT.finish and ET.finish and reset the state. *)
-		      FullPersstate.reset ();
+		      Compile.reset ();
+		      Link.reset ();
 		      #set ER.core corenv;
 		      #set ER.pervasive pervasive;
 		      #set ER.topLevel BE.emptyEnv;

@@ -13,21 +13,28 @@ local
     type symenv = E.symenv
     type result = { stat: statenv, sym: symenv }
     type ed = { ii: IInfo.info, ctxt: statenv }
-    type env = { envs: unit -> result, pids: PidSet.set }
 in
     signature COMPILE = sig
 	(* reset internal persistent state *)
 	val reset : unit -> unit
+
+	(* notify linkage module about recompilation *)
+	type notifier = SmlInfo.info -> unit
+
 	val sizeBFC : SmlInfo.info -> int
 	val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	val getII : SmlInfo.info -> IInfo.info
-	val newTraversal : unit ->
-	    { sbnode: GP.info -> DG.sbnode -> ed option,
-	      impexp: GP.info -> DG.impexp -> env option }
-	val  recomp: GP.info -> GG.group -> bool
+
+	val newSbnodeTraversal : notifier -> GP.info -> DG.sbnode -> ed option
+
+	val newTraversal : notifier * GG.group ->
+	    { group: GP.info -> result option,
+	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
     functor CompileFn (structure MachDepVC : MACHDEP_VC) :> COMPILE = struct
+
+	type notifier = SmlInfo.info -> unit
 
 	structure BF = MachDepVC.Binfile
 
@@ -42,6 +49,7 @@ in
 		      | unequal => unequal
 	    end)
 
+	type env = { envs: unit -> result, pids: PidSet.set }
 	type envdelta =
 	    { ii: IInfo.info, ctxt: unit -> statenv, bfc: bfc option }
 
@@ -117,22 +125,40 @@ in
 	    end
 	end
 
-	(* This is a bit ugly because somehow we need to mix dummy
-	 * dynamic envs into the equation just to be able to use
-	 * concatEnv.  But, alas', that's life... *)
-	fun rlayer (r, r') = let
+	local
 	    fun r2e { stat, sym } = E.mkenv { static = stat, symbolic = sym,
 					      dynamic = DE.empty }
 	    fun e2r e = { stat = E.staticPart e, sym = E.symbolicPart e }
 	in
-	    e2r (E.concatEnv (r2e r, r2e r'))
+	    (* This is a bit ugly because somehow we need to mix dummy
+	     * dynamic envs into the equation just to be able to use
+	     * concatEnv.  But, alas', that's life... *)
+	    fun rlayer (r, r') = e2r (E.concatEnv (r2e r, r2e r'))
+
+	    val emptyEnv =
+		{ envs = fn () => e2r E.emptyEnv, pids = PidSet.empty }
 	end
 
 	fun layer ({ envs = e, pids = p }, { envs = e', pids = p' }) =
 	    { envs = fn () => rlayer (e (), e' ()),
 	      pids = PidSet.union (p, p') }
 
-	fun newTraversal ()  = let
+	fun layerwork k w v0 l = let
+	    fun lw v0 [] = v0
+	      | lw NONE (h :: t) =
+		if k then (ignore (w h); lw NONE t)
+		else NONE
+	      | lw (SOME v) (h :: t) = let
+		    fun lay (NONE, v) = NONE
+		      | lay (SOME v', v) = SOME (layer (v', v))
+		in
+		    lw (lay (w h, v)) t
+		end
+	in
+	    lw v0 l
+	end
+
+	fun mkTraversal notify = let
 	    val localmap = ref SmlInfoMap.empty
 
 	    fun pervenv (gp: GP.info) = let
@@ -142,21 +168,6 @@ in
 	    in
 		{ envs = fn () => { stat = ste, sym = sye },
 		  pids = PidSet.empty }
-	    end
-
-	    fun layerwork k w v0 l = let
-		fun lw v0 [] = v0
-		  | lw NONE (h :: t) =
-		    if k then (ignore (w h); lw NONE t)
-		    else NONE
-		  | lw (SOME v) (h :: t) = let
-			fun lay (NONE, v) = NONE
-			  | lay (SOME v', v) = SOME (layer (v', v))
-		    in
-			lw (lay (w h, v)) t
-		    end
-	    in
-		lw v0 l
 	    end
 
 	    fun sbnode gp n =
@@ -198,6 +209,7 @@ in
 			fun cleanup () =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
+			notify i;
 			SafeIO.perform { openIt =
 				           fn () => AutoDir.openBinOut binname,
 					 closeIt = BinIO.closeOut,
@@ -314,22 +326,40 @@ in
 	    end (* snode *)
 
 	    fun impexp gp (n, _) = fsbnode gp n
-
-	    fun envdelta2ed { ii, bfc, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
-	    { sbnode = fn gp => fn n => Option.map envdelta2ed (sbnode gp n),
-	      impexp = impexp }
+	    { sbnode = sbnode, impexp = impexp }
 	end
 
-	fun recomp gp (GG.GROUP { exports, ... }) = let
-	    val { impexp, ... } = newTraversal ()
-	    val k = #keep_going (#param gp)
-	    fun loop ([], success) = success
-	      | loop (h :: t, success) =
-		if isSome (impexp gp h) then loop (t, success)
-		else if k then loop (t, false) else false
+	fun newTraversal (notify, GG.GROUP { exports, ... }) = let
+	    val { impexp, ... } = mkTraversal notify
+	    fun group gp = let
+		val k = #keep_going (#param gp)
+		fun loop ([], success) = success
+		  | loop (h :: t, success) =
+		    if isSome (impexp gp h) then loop (t, success)
+		    else if k then loop (t, false) else false
+		val eo =
+		    layerwork k (impexp gp) (SOME emptyEnv)
+		    (SymbolMap.listItems exports)
+	    in
+		case eo of
+		    NONE => NONE
+		  | SOME e => SOME (#envs e ())
+	    end
+	    fun mkExport ie gp =
+		case impexp gp ie of
+		    NONE => NONE
+		  | SOME e => SOME (#envs e ())
 	in
-	    loop (SymbolMap.listItems exports, true)
+	    { group = group,
+	      exports = SymbolMap.map mkExport exports }
+	end
+
+	fun newSbnodeTraversal notify = let
+	    val { sbnode, ... } = mkTraversal notify
+	    fun envdelta2ed { ii, bfc, ctxt } = { ii = ii, ctxt = ctxt () }
+	in
+	    fn gp => fn n => Option.map envdelta2ed (sbnode gp n)
 	end
 
 	local

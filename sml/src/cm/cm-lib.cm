@@ -57,17 +57,7 @@ is
 
 	(* doing actual compilation work *)
 	compile/compile.sml
-(*
-	compile/recomp-persstate.sig
-	compile/full-persstate.sig
-	compile/recomp-persstate-fn.sml
-	compile/full-persstate-fn.sml
-	compile/compile-type.sig
-	compile/traversal.sig
-	compile/generic.sml
-	compile/recomp.sml
-	compile/exec.sml
-*)
+	compile/link.sml
 
 	(* overall control of CM *)
 	main/general-params.sml
@@ -101,3 +91,5 @@ is
 
 	(* refer to hook module to break static dependencies *)
 	cm-hook.cm
+
+	dummy.sml

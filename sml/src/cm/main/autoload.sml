@@ -6,42 +6,40 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 local
+    structure GP = GeneralParams
     structure DG = DependencyGraph
     structure BE = GenericVC.BareEnvironment
     structure ER = GenericVC.EnvRef
     structure GG = GroupGraph
     structure E = GenericVC.Environment
+    structure EM = GenericVC.ErrorMsg
 in
 signature AUTOLOAD = sig
 
     val register : ER.envref * GG.group -> unit
 
-    val mkManager : (unit -> GeneralParams.info) ->
-	GenericVC.Ast.dec * ER.envref -> unit
+    val mkManager : (unit -> GP.info) -> GenericVC.Ast.dec * ER.envref -> unit
 
     val getPending : unit -> DG.impexp SymbolMap.map
 
     val reset : unit -> unit
 end
 
-functor AutoLoadFn (structure RT : TRAVERSAL
-			where type result =
-			  { stat: E.staticEnv, sym: E.symenv }
-		    structure ET : TRAVERSAL
-			where type result = E.dynenv):> AUTOLOAD = struct
+functor AutoLoadFn (structure C : COMPILE
+		    structure L : LINK) :> AUTOLOAD = struct
 
     structure SE = GenericVC.StaticEnv
 
+    type traversal = GP.info -> E.environment option
     (* We let the topLevel env *logically* sit atop the pending
      * autoload bindings.  This way we do not have to intercept every
      * change to the topLevel env.  However, it means that any addition
      * to "pending" must be subtracted from the topLevel env. *)
-    val pending =
-	ref (SymbolMap.empty: (DG.impexp * RT.ts * ET.ts) SymbolMap.map)
+    val pending = ref (SymbolMap.empty: (DG.impexp * traversal) SymbolMap.map)
 
     fun reset () = pending := SymbolMap.empty
 
-    fun register (ter: ER.envref, GG.GROUP { exports, ... }) = let
+    fun register (ter: ER.envref, g as GG.GROUP { exports, ... }) = let
 	val te = #get ter ()
 	(* toplevel bindings (symbol set) ... *)
 	val tss = foldl SymbolSet.add' SymbolSet.empty
@@ -54,36 +52,45 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 	(* getting rid of unneeded bindings... *)
 	val te' = BE.filterEnv (te, SymbolSet.listItems rss)
 	(* make traversal states *)
-	val rts = RT.start ()
-	val ets = ET.start ()
-	fun addState n = (n, rts, ets)
+	val { exports = cTrav, ... } = C.newTraversal (L.evict, g)
+	val { exports = lTrav, ... } = L.newTraversal g
+	fun combine (ss, d) gp =
+	    case ss gp of
+		SOME { stat, sym } =>
+		    (case d gp of
+			 SOME dyn => SOME (E.mkenv { static = stat,
+						     symbolic = sym,
+						     dynamic = dyn })
+		       | NONE => NONE)
+	      | NONE => NONE
+	fun mkNode (sy, ie) =
+	    (ie, combine (valOf (SymbolMap.find (cTrav, sy)),
+			  valOf (SymbolMap.find (lTrav, sy))))
+	val newNodes = SymbolMap.mapi mkNode exports
     in
 	#set ter te';
-	pending :=
-	   SymbolMap.unionWith #1 (SymbolMap.map addState exports, !pending)
+	pending := SymbolMap.unionWith #1 (newNodes, !pending)
     end
 
     fun mkManager get_ginfo (ast, ter: ER.envref) = let
 
 	val gp = get_ginfo ()
 
-	fun loadit m =
-	    case RT.resume (fn ((n, _), rts, ets) => (n, rts)) gp m of
-		NONE => NONE
-	      | SOME { stat, sym } => let
-		    fun exec () =
-			ET.resume (fn ((n, _), rts, ets) => (n, ets)) gp m
-		in
-		    case exec () of
-			NONE => NONE
-		      | SOME dyn => let
-			    val e = E.mkenv { static = stat, symbolic = sym,
-					      dynamic =dyn }
-			    val be = GenericVC.CoerceEnv.e2b e
-			in
-			    SOME be
-			end
-		end
+	fun loadit m = let
+	    fun one ((_, tr), NONE) = NONE
+	      | one ((_, tr), SOME e) =
+		(case tr gp of
+		     NONE => NONE
+		   | SOME e' => let
+			 val be = GenericVC.CoerceEnv.e2b e'
+		     in
+			 SOME (BE.concatEnv (be, e))
+		     end)
+	in
+	    (* make sure that there are no stale value around... *)
+	    L.cleanup ();
+	    SymbolMap.foldl one (SOME BE.emptyEnv) m
+	end
 
 	val { skeleton, ... } =
 	    SkelCvt.convert { tree = ast, err = fn _ => fn _ => fn _ => () }
@@ -98,12 +105,15 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 	val _ = pending := pend
 	val (dae, _) = Statenv2DAEnv.cvt ste
 	val load = ref SymbolMap.empty
-	fun lookpend sy =
+	fun lookpend sy = let
+	    fun otherwise _ = EM.impossible "Autoload:lookpend"
+	in
 	    case SymbolMap.find (pend, sy) of
-		SOME (x as ((_, e), _, _)) =>
+		SOME (x as ((_, e), _)) =>
 		    (load := SymbolMap.insert (!load, sy, x);
-		     e)
+		     BuildDepend.look otherwise e sy)
 	      | NONE => DAEnv.EMPTY
+	end
 	val lookimport = BuildDepend.look lookpend dae
 	val _ = BuildDepend.processOneSkeleton lookimport skeleton
 
@@ -116,13 +126,13 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 	 * their corresponding node has been picked.  So we first build
 	 * three sets: sml- and stable-infos of picked nodes as well
 	 * as the set of PNODEs: *)
-	fun add ((((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _), _, _),
+	fun add ((((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _), _),
 		 (ss, bs, ps)) =
 	    (SmlInfoSet.add (ss, smlinfo), bs, ps)
-	  | add ((((_, DG.SB_BNODE (DG.BNODE { bininfo, ... })), _), _, _),
+	  | add ((((_, DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)), _), _),
 		 (ss, bs, ps)) =
 	    (ss, StableSet.add (bs, bininfo), ps)
-	  | add ((((_, DG.SB_BNODE (DG.PNODE p)), _), _, _), (ss, bs, ps)) =
+	  | add ((((_, DG.SB_BNODE (DG.PNODE p, _)), _), _), (ss, bs, ps)) =
 	    (ss, bs, StringSet.add (ps, Primitive.toString p))
 
 	val (smlinfos, stableinfos, prims) =
@@ -131,11 +141,11 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 		  loadmap0
 
 	(* now we can easily find out whether a node has been picked... *)
-	fun isPicked (((_, DG.SB_SNODE (DG.SNODE n)), _), _, _) =
+	fun isPicked (((_, DG.SB_SNODE (DG.SNODE n)), _), _) =
 	    SmlInfoSet.member (smlinfos, #smlinfo n)
-	  | isPicked (((_, DG.SB_BNODE (DG.BNODE n)), _), _, _) =
+	  | isPicked (((_, DG.SB_BNODE (DG.BNODE n, _)), _), _) =
 	    StableSet.member (stableinfos, #bininfo n)
-	  | isPicked (((_, DG.SB_BNODE (DG.PNODE p)), _), _, _) =
+	  | isPicked (((_, DG.SB_BNODE (DG.PNODE p, _)), _), _) =
 	    StringSet.member (prims, Primitive.toString p)
 
 	val loadmap = SymbolMap.filter isPicked pend

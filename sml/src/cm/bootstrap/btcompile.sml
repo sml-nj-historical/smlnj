@@ -26,42 +26,20 @@ end = struct
     structure P = OS.Path
     structure F = OS.FileSys
 
-(*
-    (* Since the bootstrap compiler never executes any of the code
-     * it produces, we don't need any dynamic values.  Therefore,
-     * we create RecompPersstate (but not FullPersstate!) and
-     * instantiate Recomp as well as RecompTraversal.
-     * Since RecompPersstate is not part of any surrounding FullPersstate,
-     * function "discard_value" simply does nothing. *)
-    structure RecompPersstate =
-	RecompPersstateFn (structure MachDepVC = MachDepVC
-			   val discard_code = true
-			   fun stable_value_present i = false
-			   fun new_smlinfo i = ())
-
-    structure Recomp = RecompFn (structure PS = RecompPersstate)
-    structure RT = CompileGenericFn (structure CT = Recomp)
-
-    fun recomp gp g = isSome (RT.group gp g)
-*)
-
-    structure Compile =
-	CompileFn (structure MachDepVC = MachDepVC)
+    structure Compile = CompileFn (structure MachDepVC = MachDepVC)
 
     (* instantiate Stabilize... *)
-(*
     structure Stabilize =
-	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
-		     fun warmup (i, p) = ()
-		     val recomp = recomp
-		     val transfer_state = RecompPersstate.transfer_state)
-*)
-    structure Stabilize =
-	StabilizeFn (fun transfer_state _ = raise Fail "transfer_state"
-		     val writeBFC = Compile.writeBFC
+	StabilizeFn (val writeBFC = Compile.writeBFC
 		     val sizeBFC = Compile.sizeBFC
 		     val getII = Compile.getII
-		     val recomp = Compile.recomp)
+		     fun destroy_state _ = ()
+		     fun recomp gp g = let
+			 val { group, ... } =
+			     Compile.newTraversal (fn _ => (), g)
+		     in
+			 isSome (group gp)
+		     end)
 
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
@@ -191,7 +169,7 @@ end = struct
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
 	    val _ = ovldR := true
-	    val { sbnode, ... } = Compile.newTraversal ()
+	    val sbnode = Compile.newSbnodeTraversal (fn _ => ())
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
@@ -250,8 +228,11 @@ end = struct
 	in
 	    case Parse.parse NONE param stab maingspec of
 		NONE => false
-	      | SOME (g, gp) =>
-		    if Compile.recomp gp g then let
+	      | SOME (g, gp) => let
+		    val { group = recomp, ... } =
+			Compile.newTraversal (fn _ => (), g)
+		in
+		    if isSome (recomp gp) then let
 			val rtspid = PS.toHex (#statpid (#ii rts))
 			fun writeList s = let
 			    fun add ((p, flag), l) = let
@@ -295,6 +276,7 @@ end = struct
 		      true
 		    end
 		    else false
+		end
 	end handle Option => (Compile.reset (); false)
 	    	   (* to catch valOf failures in "rt" *)
     in
