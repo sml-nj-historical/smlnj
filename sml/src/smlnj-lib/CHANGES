@@ -4,7 +4,8 @@ correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
 [2002-05-17]
-	Added tyName field to ValueSyntax exception in Controls module.
+	Added tyName field to ValueSyntax exception in Controls module
+	and path field to registry tree in ControlRegistry module.
 
 [2002-05-17]
 	Added == and != operators to INT_INF interface.  These are a

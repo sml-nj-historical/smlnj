@@ -43,6 +43,7 @@ signature CONTROL_REGISTRY =
     val init : registry -> unit
 
     datatype registry_tree = RTree of {
+	path : string list,
 	help : string,
 	ctls : string Controls.control list,
 	subregs : registry_tree list

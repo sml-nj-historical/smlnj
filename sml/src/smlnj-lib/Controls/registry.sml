@@ -103,6 +103,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
 	  end
 
     datatype registry_tree = RTree of {
+	path : string list,
 	help : string,
 	ctls : string Controls.control list,
 	subregs : registry_tree list
@@ -120,13 +121,16 @@ structure ControlRegistry : CONTROL_REGISTRY =
 		  | SOME obs => (fn (x as SubReg{obscurity, ...}, l) =>
 		      if (obscurity < obs) then x::l else l)
 		(* end case *))
-	  fun getTree (root as Reg{help, ctls, qRegs, uRegs, ...}) = let
+	  fun getTree (path, root as Reg{help, ctls, qRegs, uRegs, ...}) = let
 		val subregs =
 		      List.foldl gather (ATbl.fold gather [] qRegs) (!uRegs)
 		val subregs = sortSubregs subregs
-		fun getReg (SubReg{reg, ...}) = getTree reg
+		fun getReg (SubReg{reg, ...}) = getTree (path, reg)
+		fun getRegi (prefix, SubReg{reg, ...}) =
+		      getTree(prefix::path, reg)
 		in
 		  RTree{
+		      path = List.rev path,
 		      help = help,
 		      ctls = List.map #ctl (case obs
 			 of NONE => ControlSet.listControls ctls
@@ -136,7 +140,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
 		    }
 		end
 	  in
-	    getTree root
+	    getTree ([], root)
 	  end
 
   end
