@@ -187,7 +187,7 @@ struct
        | slli{r,i,d}   = 
           let val tmp = C.newReg()
           in  [I.OPERATE{oper=I.SLL,ra=r,rb=I.IMMop i,rc=tmp},
-               I.OPERATE{oper=I.SGNXL,ra=tmp,rb=zeroOpn,rc=d}]
+               I.OPERATE{oper=I.ADDL,ra=tmp,rb=zeroOpn,rc=d}]
           end
 
      (* 
@@ -204,7 +204,7 @@ struct
       *)
      fun srai{r,i,d} = 
          let val tmp = C.newReg()
-         in  [I.OPERATE{oper=I.SGNXL,ra=r,rb=zeroOpn,rc=tmp},
+         in  [I.OPERATE{oper=I.ADDL,ra=r,rb=zeroOpn,rc=tmp},
               I.OPERATE{oper=I.SRA,ra=tmp,rb=I.IMMop i,rc=d}]
          end 
     )
@@ -433,7 +433,7 @@ struct
 
        (* emit an sign extension op *)
       and signExt32(r,d) =
-          emit(I.OPERATE{oper=I.SGNXL,ra=r,rb=zeroOpn,rc=d})
+          emit(I.OPERATE{oper=I.ADDL,ra=r,rb=zeroOpn,rc=d})
 
       (* emit an commutative arithmetic op *)
       and commArith(opcode,a,b,d,an) =
@@ -837,16 +837,6 @@ struct
       and load(ldOp,ea,d,mem,an) =
           let val (base,disp) = addr ea
           in  mark(I.LOAD{ldOp=ldOp,r=d,b=base,d=disp,mem=mem},an) end
-
-      (* generate a load and sign extension *)
-      and loadSigned(ldOp,bits,ea,rd,mem,an) =
-          let val t1 = newReg()
-              val t2 = newReg()
-              val shift = I.IMMop(64-bits)
-          in  load(ldOp,ea,t1,mem,an);
-              emit(I.OPERATE{oper=I.SLL, ra=t1, rb=shift, rc=t2});
-              emit(I.OPERATE{oper=I.SRA, ra=t2, rb=shift, rc=rd})
-          end 
 
       (* generate a load with zero extension *)
       and loadZext(ea,rd,mem,EXT,an) = 

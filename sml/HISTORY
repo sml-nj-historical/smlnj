@@ -12,6 +12,28 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/05/15 16:02 EDT
+Tag: leunga-20000515-alpha-x86-ra
+Description:
+
+  1. Alpha
+
+      Slight cleanup.  Removed the instruction SGNXL
+
+  2. X86
+
+      Added the following instructions to the instruction set:
+   
+        ROLx, RORx,
+        BTx, BTSx, BTLx, BTRx, 
+        XCHGx, and variants with the LOCK prefix
+
+  3. Register Allocation
+
+      The module ra-rewrite-with-renaming has been improved.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/05/15 16:20:00 JST
 Tag: blume-20000515-lightrebuild

@@ -7,6 +7,10 @@ struct
    let fun isStackPtr(I.Direct r) = regmap r = 4
          | isStackPtr _ = false
 
+       fun isZero(I.Immed n) = n = 0
+         | isZero(I.ImmedLabel le) = I.LabelExp.valueOf le = 0
+         | isZero _ = false
+
        fun loop(code, instrs) = 
            (case code of
              [] => rev instrs
@@ -47,6 +51,12 @@ struct
                           src=I.Displace{base=4, disp=I.Immed 0, ...}, dst})::
              rest => if isStackPtr dst then loop(rest, j::i::instrs)
                      else loop(rest, I.POP dst::instrs)
+
+           | (i as I.MOVE{mvOp=I.MOVL, src, dst as I.Direct _})::rest =>
+             if isZero src then 
+                loop(rest, I.BINARY{binOp=I.XORL, src=dst, dst=dst}::instrs)
+             else
+                loop(rest, i::instrs)
 
            | i::rest => loop(rest, i::instrs)
            )

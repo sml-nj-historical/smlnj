@@ -197,7 +197,7 @@ struct
     * The following function performs spilling.
     *)
    fun spillRewrite
-        {graph=G as G.GRAPH{showReg, spilledRegs, nodes, mode, ...},
+        {graph=G as G.GRAPH{showReg, spilledRegs, nodes, mode, dedicated, ...},
          spill : spill, 
          spillCopyTmp : spillCopyTmp, 
          spillSrc : spillSrc, 
@@ -217,6 +217,13 @@ struct
        val MAX_DIST = !max_dist
 
        val insnDefUse = P.defUse cellkind
+
+       fun hasNonDedicated rs = 
+       let fun isDedicated r = Array.sub(dedicated,r) handle _ => false
+           fun loop [] = false
+             | loop(r::rs) =  
+               if isDedicated r then loop rs else true
+       in  loop rs end
 
        (* Merge prohibited registers *)
        val enterSpill = Intmap.add spilledRegs
@@ -514,7 +521,17 @@ struct
                let val spillRegs = getSpills pt
                    val reloadRegs = getReloads pt
                in  case (spillRegs, reloadRegs) of
-                     ([], []) => loop(rest, dec pt, [], instr::newInstrs)
+                     ([], []) => 
+                       let val env' = 
+                              case env of
+                                [] => []
+                              | _ => let val (defs, uses) = insnDefUse instr 
+                                     in  if hasNonDedicated defs orelse
+                                            hasNonDedicated uses then []
+                                         else env
+                                     end
+                       in  loop(rest, dec pt, env', instr::newInstrs)
+                       end
                    | _ =>
                      (* Eliminate duplicates from the spill/reload candidates *)
                      let val killRegs   = getKills pt

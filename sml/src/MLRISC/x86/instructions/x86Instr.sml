@@ -69,6 +69,44 @@ sig
    | SHLB
    | SARB
    | SHRB
+   | BTSW
+   | BTCW
+   | BTRW
+   | BTSL
+   | BTCL
+   | BTRL
+   | ROLW
+   | RORW
+   | ROLL
+   | RORL
+   | XCHGB
+   | XCHGW
+   | XCHGL
+   | LOCK_ADCW
+   | LOCK_ADCL
+   | LOCK_ADDW
+   | LOCK_ADDL
+   | LOCK_ANBW
+   | LOCK_ANBL
+   | LOCK_ANDW
+   | LOCK_ANDL
+   | LOCK_BTSW
+   | LOCK_BTSL
+   | LOCK_BTRW
+   | LOCK_BTRL
+   | LOCK_BTCW
+   | LOCK_BTCL
+   | LOCK_ORW
+   | LOCK_ORL
+   | LOCK_SBBW
+   | LOCK_SBBL
+   | LOCK_SUBW
+   | LOCK_SUBL
+   | LOCK_XORW
+   | LOCK_XORL
+   | LOCK_XCHGB
+   | LOCK_XCHGW
+   | LOCK_XCHGL
    datatype multDivOp =
      MULL
    | IDIVL
@@ -80,6 +118,15 @@ sig
    | NOTL
    | NOTW
    | NOTB
+   | LOCK_DECL
+   | LOCK_INCL
+   | LOCK_NEGL
+   | LOCK_NOTL
+   datatype bitOp =
+     BTW
+   | BTL
+   | LOCK_BTW
+   | LOCK_BTL
    datatype move =
      MOVL
    | MOVB
@@ -162,6 +209,7 @@ sig
    | TESTL of {lsrc:operand, rsrc:operand}
    | TESTW of {lsrc:operand, rsrc:operand}
    | TESTB of {lsrc:operand, rsrc:operand}
+   | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:int, src2:Int32.int option, src1:operand}
@@ -275,6 +323,44 @@ struct
    | SHLB
    | SARB
    | SHRB
+   | BTSW
+   | BTCW
+   | BTRW
+   | BTSL
+   | BTCL
+   | BTRL
+   | ROLW
+   | RORW
+   | ROLL
+   | RORL
+   | XCHGB
+   | XCHGW
+   | XCHGL
+   | LOCK_ADCW
+   | LOCK_ADCL
+   | LOCK_ADDW
+   | LOCK_ADDL
+   | LOCK_ANBW
+   | LOCK_ANBL
+   | LOCK_ANDW
+   | LOCK_ANDL
+   | LOCK_BTSW
+   | LOCK_BTSL
+   | LOCK_BTRW
+   | LOCK_BTRL
+   | LOCK_BTCW
+   | LOCK_BTCL
+   | LOCK_ORW
+   | LOCK_ORL
+   | LOCK_SBBW
+   | LOCK_SBBL
+   | LOCK_SUBW
+   | LOCK_SUBL
+   | LOCK_XORW
+   | LOCK_XORL
+   | LOCK_XCHGB
+   | LOCK_XCHGW
+   | LOCK_XCHGL
    datatype multDivOp =
      MULL
    | IDIVL
@@ -286,6 +372,15 @@ struct
    | NOTL
    | NOTW
    | NOTB
+   | LOCK_DECL
+   | LOCK_INCL
+   | LOCK_NEGL
+   | LOCK_NOTL
+   datatype bitOp =
+     BTW
+   | BTL
+   | LOCK_BTW
+   | LOCK_BTL
    datatype move =
      MOVL
    | MOVB
@@ -368,6 +463,7 @@ struct
    | TESTL of {lsrc:operand, rsrc:operand}
    | TESTW of {lsrc:operand, rsrc:operand}
    | TESTB of {lsrc:operand, rsrc:operand}
+   | BITOP of {bitOp:bitOp, lsrc:operand, rsrc:operand}
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
    | MUL3 of {dst:int, src2:Int32.int option, src1:operand}

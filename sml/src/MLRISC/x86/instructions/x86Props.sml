@@ -155,7 +155,8 @@ struct
       | I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
       | I.LEA{r32, addr}      => ([r32], operandUse addr)
       | ( I.CMPL arg | I.CMPW arg | I.CMPB arg
-        | I.TESTL arg | I.TESTW arg | I.TESTB arg) => cmptest arg
+        | I.TESTL arg | I.TESTW arg | I.TESTB arg ) => cmptest arg 
+      | I.BITOP{lsrc, rsrc, ...} => cmptest{lsrc=lsrc,rsrc=rsrc}
       | I.BINARY{binOp=I.XORL,src=I.Direct rs,dst=I.Direct rd,...} =>   
            if rs=rd then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   

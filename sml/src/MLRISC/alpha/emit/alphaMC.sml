@@ -166,7 +166,6 @@ struct
      | emit_operate (I.MULL) = (0wx13, 0wx0)
      | emit_operate (I.MULQ) = (0wx13, 0wx20)
      | emit_operate (I.UMULH) = (0wx13, 0wx30)
-     | emit_operate (I.SGNXL) = (0wx10, 0wx0)
    and emit_cmove (I.CMOVEQ) = (0wx24 : Word32.word)
      | emit_cmove (I.CMOVLBC) = (0wx16 : Word32.word)
      | emit_cmove (I.CMOVLBS) = (0wx14 : Word32.word)
@@ -252,16 +251,16 @@ struct
 
    and Split {le} = let
 
-(*#line 420.22 "alpha/alpha.md"*)
+(*#line 418.22 "alpha/alpha.md"*)
           val i = LabelExp.valueOf le
 
-(*#line 421.22 "alpha/alpha.md"*)
+(*#line 419.22 "alpha/alpha.md"*)
           val w = itow i
 
-(*#line 422.22 "alpha/alpha.md"*)
+(*#line 420.22 "alpha/alpha.md"*)
           val hi = w ~>> 0wx10
 
-(*#line 423.22 "alpha/alpha.md"*)
+(*#line 421.22 "alpha/alpha.md"*)
           val lo = w && 0wxffff
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -270,21 +269,21 @@ struct
 
    and High {le} = let
 
-(*#line 426.21 "alpha/alpha.md"*)
+(*#line 424.21 "alpha/alpha.md"*)
           val (hi, _) = Split {le=le}
        in hi
        end
 
    and Low {le} = let
 
-(*#line 427.21 "alpha/alpha.md"*)
+(*#line 425.21 "alpha/alpha.md"*)
           val (_, lo) = Split {le=le}
        in lo
        end
 
    and LoadStore {opc, ra, rb, disp} = let
 
-(*#line 429.12 "alpha/alpha.md"*)
+(*#line 427.12 "alpha/alpha.md"*)
           val disp = 
               (
                case disp of
@@ -374,7 +373,7 @@ struct
 
    and Pal {func} = eWord32 func
 
-(*#line 465.7 "alpha/alpha.md"*)
+(*#line 463.7 "alpha/alpha.md"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
    fun emitInstr (I.DEFFREG FP) = ()
      | emitInstr (I.LDA{r, b, d}) = ILoadStore {opc=0wx8, r=r, b=b, d=d}
@@ -391,14 +390,14 @@ struct
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = let
 
-(*#line 563.15 "alpha/alpha.md"*)
+(*#line 561.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
 
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = let
 
-(*#line 570.15 "alpha/alpha.md"*)
+(*#line 568.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
@@ -409,14 +408,14 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = let
 
-(*#line 599.15 "alpha/alpha.md"*)
+(*#line 597.15 "alpha/alpha.md"*)
           val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
 
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = let
 
-(*#line 607.15 "alpha/alpha.md"*)
+(*#line 605.15 "alpha/alpha.md"*)
           val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end

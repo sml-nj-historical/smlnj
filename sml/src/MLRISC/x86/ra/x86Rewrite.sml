@@ -43,6 +43,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.TESTL{lsrc, rsrc} => I.TESTL{lsrc=operand lsrc, rsrc=operand rsrc}
      | I.TESTW{lsrc, rsrc} => I.TESTW{lsrc=operand lsrc, rsrc=operand rsrc}
      | I.TESTB{lsrc, rsrc} => I.TESTB{lsrc=operand lsrc, rsrc=operand rsrc}
+     | I.BITOP{bitOp, lsrc, rsrc} => 
+        I.BITOP{bitOp=bitOp, lsrc=operand lsrc, rsrc=operand rsrc}
      | I.BINARY{binOp, src, dst} => 
 	I.BINARY{binOp=binOp, src=operand src, dst=operand dst}
      | I.MULTDIV{multDivOp, src} => 

@@ -5,9 +5,9 @@ is
 #if defined(NEW_CM)
 	$basis.cm
 #endif
-	MLRISC/MLRISC.cm
-	MLRISC/Peephole.cm
-	MLRISC/SPARC.cm
+	MLRISC.cm
+	Peephole.cm
+	SPARC.cm
 
 	(* sparc *)
 	sparc/instructions/sparcPeephole.sml

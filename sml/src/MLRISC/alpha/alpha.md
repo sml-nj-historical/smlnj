@@ -150,7 +150,6 @@ struct
      rtl MULL{ra,rb,rc}  = $r[rc] := sx(muls($r[ra], %rb))
      rtl MULQ{ra,rb,rc}  = $r[rc] := muls($r[ra], %rb)
      rtl UMULH{ra,rb,rc} = $r[rc] := umulh($r[ra], %rb) 
-     rtl SGNXL{ra,rb,rc} = ADDL{ra,rb,rc}
 
      (* Integer trapping operators *)
      val overflowtrap = ()
@@ -345,7 +344,6 @@ struct
         | ZAP   (0wx12,0wx30) | ZAPNOT (0wx12,0wx31)
         | MULL  (0wx13,0wx00)                        | MULQ (0wx13,0wx20)
                               | UMULH  (0wx13,0wx30) 
-        | SGNXL "addl" (0wx10,0wx00) (* same as ADDL *)
    
       (* conditional moves *) 
       datatype cmove! =

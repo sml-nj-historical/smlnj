@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 195.7 "x86/x86.md"*)
+(*#line 242.7 "x86/x86.md"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -126,6 +126,44 @@ struct
      | asm_binaryOp (I.SHLB) = "shlb"
      | asm_binaryOp (I.SARB) = "sarb"
      | asm_binaryOp (I.SHRB) = "shrb"
+     | asm_binaryOp (I.BTSW) = "btsw"
+     | asm_binaryOp (I.BTCW) = "btcw"
+     | asm_binaryOp (I.BTRW) = "btrw"
+     | asm_binaryOp (I.BTSL) = "btsl"
+     | asm_binaryOp (I.BTCL) = "btcl"
+     | asm_binaryOp (I.BTRL) = "btrl"
+     | asm_binaryOp (I.ROLW) = "rolw"
+     | asm_binaryOp (I.RORW) = "rorw"
+     | asm_binaryOp (I.ROLL) = "roll"
+     | asm_binaryOp (I.RORL) = "rorl"
+     | asm_binaryOp (I.XCHGB) = "xchgb"
+     | asm_binaryOp (I.XCHGW) = "xchgw"
+     | asm_binaryOp (I.XCHGL) = "xchgl"
+     | asm_binaryOp (I.LOCK_ADCW) = "lock\n\tadcw"
+     | asm_binaryOp (I.LOCK_ADCL) = "lock\n\tadcl"
+     | asm_binaryOp (I.LOCK_ADDW) = "lock\n\taddw"
+     | asm_binaryOp (I.LOCK_ADDL) = "lock\n\taddl"
+     | asm_binaryOp (I.LOCK_ANBW) = "lock\n\tanbw"
+     | asm_binaryOp (I.LOCK_ANBL) = "lock\n\tanbl"
+     | asm_binaryOp (I.LOCK_ANDW) = "lock\n\tandw"
+     | asm_binaryOp (I.LOCK_ANDL) = "lock\n\tandl"
+     | asm_binaryOp (I.LOCK_BTSW) = "lock\n\tbtsw"
+     | asm_binaryOp (I.LOCK_BTSL) = "lock\n\tbtsl"
+     | asm_binaryOp (I.LOCK_BTRW) = "lock\n\tbtrw"
+     | asm_binaryOp (I.LOCK_BTRL) = "lock\n\tbtrl"
+     | asm_binaryOp (I.LOCK_BTCW) = "lock\n\tbtcw"
+     | asm_binaryOp (I.LOCK_BTCL) = "lock\n\tbtcl"
+     | asm_binaryOp (I.LOCK_ORW) = "lock\n\torw"
+     | asm_binaryOp (I.LOCK_ORL) = "lock\n\torl"
+     | asm_binaryOp (I.LOCK_SBBW) = "lock\n\tsbbw"
+     | asm_binaryOp (I.LOCK_SBBL) = "lock\n\tsbbl"
+     | asm_binaryOp (I.LOCK_SUBW) = "lock\n\tsubw"
+     | asm_binaryOp (I.LOCK_SUBL) = "lock\n\tsubl"
+     | asm_binaryOp (I.LOCK_XORW) = "lock\n\txorw"
+     | asm_binaryOp (I.LOCK_XORL) = "lock\n\txorl"
+     | asm_binaryOp (I.LOCK_XCHGB) = "lock\n\txchgb"
+     | asm_binaryOp (I.LOCK_XCHGW) = "lock\n\txchgw"
+     | asm_binaryOp (I.LOCK_XCHGL) = "lock\n\txchgl"
    and emit_binaryOp x = emit (asm_binaryOp x)
    and asm_multDivOp (I.MULL) = "mull"
      | asm_multDivOp (I.IDIVL) = "idivl"
@@ -137,7 +175,16 @@ struct
      | asm_unaryOp (I.NOTL) = "notl"
      | asm_unaryOp (I.NOTW) = "notw"
      | asm_unaryOp (I.NOTB) = "notb"
+     | asm_unaryOp (I.LOCK_DECL) = "lock\n\tdecl"
+     | asm_unaryOp (I.LOCK_INCL) = "lock\n\tincl"
+     | asm_unaryOp (I.LOCK_NEGL) = "lock\n\tnegl"
+     | asm_unaryOp (I.LOCK_NOTL) = "lock\n\tnotl"
    and emit_unaryOp x = emit (asm_unaryOp x)
+   and asm_bitOp (I.BTW) = "btw"
+     | asm_bitOp (I.BTL) = "btl"
+     | asm_bitOp (I.LOCK_BTW) = "lock\n\tbtw"
+     | asm_bitOp (I.LOCK_BTL) = "lock\n\tbtl"
+   and emit_bitOp x = emit (asm_bitOp x)
    and asm_move (I.MOVL) = "movl"
      | asm_move (I.MOVB) = "movb"
      | asm_move (I.MOVW) = "movw"
@@ -205,16 +252,16 @@ struct
      | asm_fenvOp (I.FNSTENV) = "fnstenv"
    and emit_fenvOp x = emit (asm_fenvOp x)
 
-(*#line 197.6 "x86/x86.md"*)
+(*#line 244.6 "x86/x86.md"*)
    val memReg = MemRegs.memReg regmap
 
-(*#line 198.6 "x86/x86.md"*)
+(*#line 245.6 "x86/x86.md"*)
    fun emitInt32 i = let
 
-(*#line 199.10 "x86/x86.md"*)
+(*#line 246.10 "x86/x86.md"*)
           val s = Int32.toString i
 
-(*#line 200.10 "x86/x86.md"*)
+(*#line 247.10 "x86/x86.md"*)
           val s = (if (i >= 0)
                  then s
                  else ("-" ^ (String.substring (s, 1, (size s) - 1))))
@@ -222,7 +269,7 @@ struct
        end
 
 
-(*#line 203.6 "x86/x86.md"*)
+(*#line 250.6 "x86/x86.md"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -273,13 +320,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 243.7 "x86/x86.md"*)
+(*#line 290.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
        emit_operand opnd )
 
-(*#line 247.7 "x86/x86.md"*)
+(*#line 294.7 "x86/x86.md"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -287,10 +334,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 253.7 "x86/x86.md"*)
+(*#line 300.7 "x86/x86.md"*)
    fun chop fbinOp = let
 
-(*#line 254.15 "x86/x86.md"*)
+(*#line 301.15 "x86/x86.md"*)
           val n = size fbinOp
        in 
           (
@@ -301,25 +348,25 @@ struct
        end
 
 
-(*#line 260.7 "x86/x86.md"*)
+(*#line 307.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 261.7 "x86/x86.md"*)
+(*#line 308.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 262.7 "x86/x86.md"*)
+(*#line 309.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 263.7 "x86/x86.md"*)
+(*#line 310.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 264.7 "x86/x86.md"*)
+(*#line 311.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 265.7 "x86/x86.md"*)
+(*#line 312.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 266.7 "x86/x86.md"*)
+(*#line 313.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
    fun emitInstr' instr = 
        (
@@ -393,6 +440,12 @@ struct
         emit_lsrc lsrc )
       | I.TESTB{lsrc, rsrc} => 
         ( emit "testb\t"; 
+        emit_rsrc rsrc; 
+        emit ", "; 
+        emit_lsrc lsrc )
+      | I.BITOP{bitOp, lsrc, rsrc} => 
+        ( emit_bitOp bitOp; 
+        emit "\t"; 
         emit_rsrc rsrc; 
         emit ", "; 
         emit_lsrc lsrc )

@@ -227,6 +227,10 @@ functor X86Spill(structure Instr: X86INSTR
             else reloadIt()
         end
 
+    fun reloadBT(bitOp, lsrc, rsrc, an) = 
+           reloadCmp(fn {lsrc,rsrc} => I.BITOP{bitOp=bitOp,lsrc=lsrc,rsrc=rsrc},
+                     lsrc, rsrc, an)
+
     (* Fold in a memory operand if possible.  Makes sure that the right 
      * operand is not in memory and left operand is not an immediate.
      *  lsrc   rsrc
@@ -302,6 +306,7 @@ functor X86Spill(structure Instr: X86INSTR
      | I.TESTL{lsrc, rsrc} => reloadTest(I.TESTL, lsrc, rsrc, an) 
      | I.TESTW{lsrc, rsrc} => reloadTest(I.TESTW, lsrc, rsrc, an) 
      | I.TESTB{lsrc, rsrc} => reloadTest(I.TESTB, lsrc, rsrc, an) 
+     | I.BITOP{bitOp,lsrc, rsrc} => reloadBT(bitOp, lsrc, rsrc, an) 
      | I.BINARY{binOp, src, dst as I.Direct _} => 
           (case src of
             I.Direct _ => 

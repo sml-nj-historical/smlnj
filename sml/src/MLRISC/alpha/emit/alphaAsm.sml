@@ -187,7 +187,6 @@ struct
      | asm_operate (I.MULL) = "mull"
      | asm_operate (I.MULQ) = "mulq"
      | asm_operate (I.UMULH) = "umulh"
-     | asm_operate (I.SGNXL) = "addl"
    and emit_operate x = emit (asm_operate x)
    and asm_cmove (I.CMOVEQ) = "cmoveq"
      | asm_cmove (I.CMOVLBC) = "cmovlbc"
@@ -284,7 +283,7 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 470.7 "alpha/alpha.md"*)
+(*#line 468.7 "alpha/alpha.md"*)
    fun isZero (I.LABop le) = (LabelExp.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 

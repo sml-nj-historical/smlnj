@@ -118,7 +118,6 @@ sig
    | MULL
    | MULQ
    | UMULH
-   | SGNXL
    datatype cmove =
      CMOVEQ
    | CMOVLBC
@@ -367,7 +366,6 @@ struct
    | MULL
    | MULQ
    | UMULH
-   | SGNXL
    datatype cmove =
      CMOVEQ
    | CMOVLBC

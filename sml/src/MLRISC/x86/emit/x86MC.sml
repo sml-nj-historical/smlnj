@@ -100,6 +100,7 @@ struct
      | emitInstr (I.TESTL{lsrc, rsrc}) = error "TESTL"
      | emitInstr (I.TESTW{lsrc, rsrc}) = error "TESTW"
      | emitInstr (I.TESTB{lsrc, rsrc}) = error "TESTB"
+     | emitInstr (I.BITOP{bitOp, lsrc, rsrc}) = error "BITOP"
      | emitInstr (I.BINARY{binOp, src, dst}) = error "BINARY"
      | emitInstr (I.MULTDIV{multDivOp, src}) = error "MULTDIV"
      | emitInstr (I.MUL3{dst, src2, src1}) = error "MUL3"
