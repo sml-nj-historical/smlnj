@@ -175,14 +175,13 @@ is
 #endif
 
 
-  SMLNJ-Util/cml-atom.sml
+  SMLNJ-Util/cml-atom-new.sml
   SMLNJ-Util/atom-binary-map.sml
   SMLNJ-Util/atom-binary-set.sml
   SMLNJ-Util/atom-map.sml
   SMLNJ-Util/atom-redblack-map.sml
   SMLNJ-Util/atom-redblack-set.sml
   SMLNJ-Util/atom-set.sml
-  SMLNJ-Util/atom-sig.sml
   SMLNJ-Util/atom-table.sml
   SMLNJ-Util/io-util.sml
   SMLNJ-Util/io-util-sig.sml
