@@ -11,6 +11,8 @@ struct
 
   fun interact() = (EvalLoop.interact (); OS.Process.exit OS.Process.success)
 
+  val withErrorHandling = EvalLoop.withErrorHandling
+
   fun useFile fname =
       (app Control.Print.say ["[opening ",fname,"]\n"];
        EvalLoop.evalStream

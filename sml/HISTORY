@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/03 14:45:00 CST
+Tag: blume-20041103-useFile
+Description:
+
+Fixed a problem with unhelpful error messages related to problems with
+.cm- or .sml files that appear as part of the sml command line.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/18 15:40:00 CST
 Tag: Release_110_51
 Description:

@@ -666,10 +666,10 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  end
       end
   in
-    fun init (bootdir, de, er, useStream, useFile, icm) = let
+    fun init (bootdir, de, er, useStream, useFile, errorwrap, icm) = let
 	fun procCmdLine () = let
-	    val autoload = ignore o autoload
-	    val make = ignore o make
+	    val autoload = errorwrap (ignore o autoload)
+	    val make = errorwrap (ignore o make)
 	    fun p (f, mk, ("sml" | "sig" | "fun")) = useFile f
 	      | p (f, mk, "cm") = mk f
 	      | p (f, mk, e) = Say.say ["!* unable to process `", f,

@@ -16,6 +16,8 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		  val cminit : string * DynamicEnv.env * envrequest
 			       * (TextIO.instream -> unit)(* useStream *)
 			       * (string -> unit) (* useFile *)
+			       * ((string -> unit) -> (string -> unit))
+			                          (* errorwrap *)
 			       * ({ manageImport:
 				      Ast.dec * EnvRef.envref -> unit,
 				    managePrint:
@@ -57,11 +59,17 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 		    mkDE (rest, DynE.bind (dynpid, obj, de))
 		end
 	    val de = mkDE (!U.pStruct, DynE.empty)
+	    fun errorwrap u f x =
+		Backend.Interact.withErrorHandling u
+		  { thunk = fn () => f x,
+		    flush = fn () => (),
+		    cont = fn e => raise e }
 	in
 	    U.pStruct := U.NILrde;
 	    cminit (bootdir, de, er,
 		    Backend.Interact.useStream,
-		    Backend.Interact.useFile,
+		    errorwrap false Backend.Interact.useFile,
+		    errorwrap true,
 		    Backend.Interact.installCompManagers)
 	end
     end

@@ -193,123 +193,103 @@ in
     interruptable loop ()
 end (* function evalLoop *)
 
-(*** interactive loop, with error handling ***)
-fun interact () = let
-    val source = Source.newSource("stdIn",1,TextIO.stdIn,true,
-                                  EM.defaultConsumer());
-	fun flush'() = 
-            case TextIO.canInput(TextIO.stdIn, 4096) of
-		NONE => ()
-              | (SOME 0) => ()
-              | (SOME _) => (ignore (TextIO.input TextIO.stdIn); flush'())
-
-	fun flush() = (#anyErrors source := false; 
-                       flush'() handle IO.Io _ => ())
-
-
-	fun showhist' [s] = say(concat["  raised at: ", s, "\n"])
-          | showhist' (s::r) = (showhist' r; 
-                            say (concat["             ", s, "\n"]))
+fun withErrorHandling treatasuser { thunk, flush, cont = k } =
+    let fun showhist' [s] = say (concat["  raised at: ", s, "\n"])
+          | showhist' (s::r) =
+	      (showhist' r; say (concat ["             ", s, "\n"]))
           | showhist' [] = ()
 
-	fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
+	fun exnMsg (CompileExn.Compile s) = concat ["Compile: \"", s, "\""]
           | exnMsg exn = General.exnMessage exn
 
 	fun showhist e = showhist' (SMLofNJ.exnHistory e)
 
-	fun loop () = let
-	    fun user_hdl (ExnDuringExecution exn) = user_hdl exn
-	      | user_hdl exn = let
-		    val msg = exnMsg exn
-		    val name = exnName exn
-		in
-		    if msg = name then
-			say (concat ["\nuncaught exception ", name, "\n"])
-		    else say (concat ["\nuncaught exception ",
-				      name, " [", msg, "]\n"]);
-		    showhist exn;
-		    flush(); 
-		    loop()
-		end
-
-	    fun bug_hdl exn = let
-		val msg = exnMsg exn
+	fun user_hdl (ExnDuringExecution exn) = user_hdl exn
+	  | user_hdl exn =
+	    let val msg = exnMsg exn
 		val name = exnName exn
-	    in
-		say (concat ["\nunexpected exception (bug?) in SML/NJ: ",
-			     name," [", msg, "]\n"]);
-		showhist exn;
-		flush(); 
-		loop()
+	    in if msg = name then
+		   say (concat ["\nuncaught exception ", name, "\n"])
+	       else say (concat ["\nuncaught exception ",
+				 name, " [", msg, "]\n"]);
+	       showhist exn;
+	       flush (); 
+	       k exn
 	    end
 
-	    fun non_bt_hdl e =
-		case e of
-		    EndOfFile => (say "\n")
-                  | (Interrupt | ExnDuringExecution Interrupt) =>
-		      (say "\nInterrupt\n"; flush(); loop())
-                  | EM.Error => (flush(); loop())
-                  | CompileExn.Compile "syntax error" => (flush(); loop())
-                  | CompileExn.Compile s =>
-                    (say(concat["\nuncaught exception Compile: \"",
-				s,"\"\n"]);
-                     flush(); loop())
-                  | Isolate.TopLevelCallcc =>
-                      (say("Error: throw from one top-level expression \
-			   \into another\n");
-                       flush (); loop ())
-		  | (Execute.Link | ExnDuringExecution Execute.Link) =>
-		      (flush (); loop ())
-		  | ExnDuringExecution exn => user_hdl exn
-		  | exn => bug_hdl exn
+	fun bug_hdl exn =
+	    let val msg = exnMsg exn
+		val name = exnName exn
+	    in say (concat ["\nunexpected exception (bug?) in SML/NJ: ",
+			    name," [", msg, "]\n"]);
+	       showhist exn;
+	       flush();
+	       k exn
+	    end
 
-(*
-	    fun bt_hdl (e, []) = non_bt_hdl e
-	      | bt_hdl (e, hist) =
-		(say (concat ("\n*** BACK-TRACE ***\n" :: hist));
-		 say "\n";
-		 non_bt_hdl e)
-*)
-	in
-	    SMLofNJ.Internals.TDP.with_monitors (fn () => evalLoop source)
-	    handle e => non_bt_hdl e
-(*
-	    BackTrace.bthandle
-		{ work = fn () => evalLoop source,
-		  hdl = bt_hdl }
-*)
-	end
-in
-    loop()
-end (* fun interact *)
+	fun non_bt_hdl e =
+	    case e of
+		EndOfFile => (say "\n")
+              | (Interrupt | ExnDuringExecution Interrupt) =>
+		  (say "\nInterrupt\n"; flush(); k e)
+              | EM.Error => (flush(); k e)
+              | CompileExn.Compile "syntax error" => (flush(); k e)
+              | CompileExn.Compile s =>
+                  (say(concat["\nuncaught exception Compile: \"", s,"\"\n"]);
+                   flush(); k e)
+              | Isolate.TopLevelCallcc =>
+                  (say("Error: throw from one top-level expression \
+		       \into another\n");
+                   flush (); k e)
+	      | (Execute.Link | ExnDuringExecution Execute.Link) =>
+		  (flush (); k e)
+	      | ExnDuringExecution exn => user_hdl exn
+	      | exn => if treatasuser then user_hdl exn else bug_hdl exn
+    in SMLofNJ.Internals.TDP.with_monitors thunk
+       handle e => non_bt_hdl e
+    end
+
+(*** interactive loop, with error handling ***)
+fun interact () =
+    let val source = Source.newSource ("stdIn", 1, TextIO.stdIn, true,
+                                       EM.defaultConsumer ())
+	fun flush' () =
+            case TextIO.canInput(TextIO.stdIn, 4096) of
+		(NONE | SOME 0) => ()
+              | SOME _ => (ignore (TextIO.input TextIO.stdIn); flush'())
+
+	fun flush () = (#anyErrors source := false;
+			flush'() handle IO.Io _ => ())
+
+	fun loop () = withErrorHandling false
+			{ thunk = fn () => evalLoop source,
+			  flush = flush, cont = loop o ignore }
+    in loop ()
+    end
 
 fun isTermIn f = 
     let val (rd, buf) = TextIO.StreamIO.getReader(TextIO.getInstream f)
 	val isTTY = 
             case rd of
 		TextPrimIO.RD{ioDesc = SOME iod, ...} =>
-                (OS.IO.kind iod = OS.IO.Kind.tty)
+                  (OS.IO.kind iod = OS.IO.Kind.tty)
               | _ => false
-
-    (*       val buf = if (buf = "") then NONE else SOME buf *)
-    in
-	(* since getting the reader will have terminated the stream, we need
-         * to build a new stream. *)
+    in (* since getting the reader will have terminated the stream, we need
+        * to build a new stream. *)
 	TextIO.setInstream(f, TextIO.StreamIO.mkInstream(rd, buf));
 	isTTY
     end
 
-fun evalStream (fname, stream) = let
-    val interactive = isTermIn stream
-    val source = Source.newSource(fname,1,stream,interactive,
-                                  EM.defaultConsumer())
-in
-    evalLoop source
-    handle exn => (Source.closeSource source;
-		   case exn of
-		       EndOfFile => () 
-		     | _ => raise exn)
-end
+fun evalStream (fname, stream) =
+    let val interactive = isTermIn stream
+	val source = Source.newSource (fname, 1, stream, interactive,
+                                       EM.defaultConsumer ())
+    in evalLoop source
+       handle exn => (Source.closeSource source;
+		      case exn of
+			  EndOfFile => () 
+			| _ => raise exn)
+    end
 
 end (* top-level local *)
 end (* functor EvalLoopF *)

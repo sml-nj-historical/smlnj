@@ -10,6 +10,9 @@ sig
   val evalStream : TextIO.instream * Environment.environment -> 
                    Environment.environment
 
+  val withErrorHandling : bool -> (* true: treat all exns like usercode exns *)
+      { thunk: unit -> unit, flush: unit -> unit, cont: exn -> unit } -> unit
+
   val installCompManagers:
       { manageImport : Ast.dec * EnvRef.envref -> unit,
 	managePrint : Symbol.symbol * EnvRef.envref -> unit,
