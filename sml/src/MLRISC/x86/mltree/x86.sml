@@ -1519,7 +1519,7 @@ struct
       and fbinop(targetFty, 
                  binOp, binOpR, ibinOp, ibinOpR, lsrc, rsrc, fd, an) = 
               (* Put the mem operand in rsrc *)
-          let val _ = floatingPointUsed := true;
+          let 
               fun isMemOpnd(T.FREG(_, f)) = isFMemReg f
                 | isMemOpnd(T.FLOAD _) = true
                 | isMemOpnd(T.CVTI2F(_, (16 | 32), _)) = true
@@ -1560,6 +1560,7 @@ struct
           end
 
       and doFexpr''(fty, e, fd, an) = 
+         (floatingPointUsed := true;
           case e of
             T.FREG(_,fs) => if CB.sameColor(fs,fd) then () 
                             else fcopy''(fty, [fd], [fs], an)
@@ -1601,6 +1602,7 @@ struct
           | T.FEXT fexp =>
              ExtensionComp.compileFext (reducer()) {e=fexp, fd=fd, an=an}
           | _ => error("doFexpr''")
+         )
 
        (*========================================================
         * Tie the two styles of fp code generation together

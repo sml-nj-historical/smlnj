@@ -11,6 +11,31 @@ Name:
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/13 17:30:00 EST
+Tag: leunga-20020313-x86-fp-unary
+Description:
+
+Bug fix for:
+
+> leunga@weaselbane:~/Yale/tmp/sml-dist{21} bin/sml
+> Standard ML of New Jersey v110.39.1 [FLINT v1.5], March 08, 2002
+> - fun f(x,(y,z)) = Real.~ y;
+> [autoloading]
+> [autoloading done]
+>	fchsl	(%eax), 184(%esp)
+> Error: MLRisc bug: X86MCEmitter.emitInstr
+> 
+> uncaught exception Error
+>   raised at: ../MLRISC/control/mlriscErrormsg.sml:16.14-16.19
+
+The problem was that the code generator did not generate any fp registers
+in this case, and the ra didn't know that it needed to run the X86FP phase to
+translate the pseudo fp instruction.   This only happened with unary fp
+operators in certain situations.
+
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/13 14:00:00 EST
@@ -125,7 +150,7 @@ A functor parameter was missing.
 ----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/03/11 10:30:00 EST
-Tag: leunga-20020310-runtime-string0
+Tag: leunga-20020311-runtime-string0
 Description:
 
    The representation of the empty string now points to a 
