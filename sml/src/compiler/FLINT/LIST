@@ -1,0 +1,278 @@
+=========================================================================
+THE TRANSLATION PHASE
+
+    NOW:  SML Absyn --> Lambda --> CPS
+ FUTURE:  SML Absyn --> FLINT --> CPS (FLINT)
+
+The current structure:
+
+	SML Absyn   
+	--> PLambda (match compilation)           ----
+	--> FLINT   (a-normalize, multiple arg)      | alt. route
+	--> Lambda  (non-opt, single arg again)   <---
+	--> Lambda  (opt)
+	--> Lambda  (rep-analysis, inlining type primitives)
+	--> Lambda  (narrowed, tfn and tapp become fn and app)
+	--> Lambda  (lambdaopt and reorder)
+     *  --> CPS     (switch optimized)
+     *	--> CPS     (cps transed with wrapper eliminated)
+     *  --> CPS     (cpsopt)
+     *  --> CLO     (closure)
+     *  --> MLRISC  
+
+
+ Directory structure:     
+
+        trans    (* Absyn -> PLambda, calls mcomp *)
+        mcomp    (* match compilation *)
+        plambda  (* refer to plambdatype *)
+	
+        flint    (* refer to flinttype ? *)
+	
+        lambda   (* refer to lambdatype *)
+        opt      (* lambda optimizations *)
+        reps     (* representation analysis *)
+	
+        narrow   (* refer to narrowtype *)
+        obsol    (* files that are already obsolete *)
+
+The future structure:
+
+	SML Absyn   
+	--> PLambda                               
+	--> FLINT   (a-normalize, multiple arg, + switch opt + exn elim?)  
+        --> FLINT   (flint opt, reorder, lambdaopt, cpsopt)
+        --> FLINT   (post-rep-analysis ?)
+        --> CPS     (cps convert, cont-related primop made explicit)
+        --> CLO     (closure convert, fundec flattening)
+        --> MLRISC  
+
+To do:  changing the datatype representations in the front-end elaborator
+        propagating datatypes from the frontend into FLINT
+        update the FLINT typechecker to support strong typing
+        propagating the labels of records and sums into FLINT as well
+
+=========================================================================
+PHASE I   SML Absyn --> PLambda
+
+     4-FLINT/plambda/plambda.sig
+     4-FLINT/plambda/plambda.sml
+     4-FLINT/plambda/pplexp.sml
+     4-FLINT/plambda/chkplexp.sml   
+     
+     4-FLINT/mcomp/matchcomp.sml
+     4-FLINT/mcomp/mccommon.sml
+     4-FLINT/mcomp/tempexpn.sml
+
+     4-FLINT/trans/translate.sml
+     4-FLINT/trans/transmodules.sml
+     4-FLINT/trans/transtypes.sml
+     
+     4-FLINT/trans/pequal.sml
+     4-FLINT/trans/interp.sml
+     4-FLINT/trans/literals.sml
+
+Needs an interface of FLINT types used 
+by this translation.
+
+=========================================================================
+PHASE II  PLambda --> FLINT
+
+     4-FLINT/flint/flintnm.sml
+
+Currently does two things: 
+  (1) A-normalization
+  (2) argument expansions
+
+Notice there should not be any translation on 
+lambda types. PLambda ought to carry normalized
+types (i.e., known cooked types should be raw)
+
+Will do more in the future, potentially:
+  (1) Not treating exceptions as constructors
+  (2) Elimination of exception switches ?
+  (3) Effect inference ?
+
+=========================================================================
+PHASE III FLINT --> FLINT 
+
+
+     4-FLINT/flint/flint.sig
+     4-FLINT/flint/flint.sml
+     
+     4-FLINT/flint/debindex.sml
+     4-FLINT/flint/ltykernel.sig
+     4-FLINT/flint/ltykernel.sml
+
+---------------------------------------------------
+
+     4-FLINT/flint/lambdatype.sig
+     4-FLINT/flint/lambdatype.sml
+     4-FLINT/flint/ltyenv.sig
+     4-FLINT/flint/ltyenv.sml
+     
+     4-FLINT/flint/ltysingle.sig
+     4-FLINT/flint/ltysingle.sml
+     
+     4-FLINT/flint/ppflint.sig
+     4-FLINT/flint/ppflint.sml
+     (* 4-FLINT/flint/chkflint.sml *)
+     4-FLINT/flint/flintutil.sml
+
+=========================================================================
+PHASE IV  FLINT --> Lambda
+
+     4-FLINT/flint/flint2lambda.sml
+
+Goes from multiple arguments back
+into singleton argument.
+
+
+=========================================================================
+PHASE V   PLambda -> Lambda
+
+     4-FLINT/opt/normalize.sml
+  
+Alternative route: goes from PLambda directly 
+into Lambda.
+
+=========================================================================
+PHASE VI  Lambda -> Lambda
+
+     4-FLINT/lambda/checklty.sml
+     4-FLINT/lambda/lambda.sig
+     4-FLINT/lambda/lambda.sml
+     4-FLINT/lambda/lambdavar.sig
+     4-FLINT/lambda/lambdavar.sml
+     4-FLINT/lambda/lexputil.sml
+     4-FLINT/lambda/mcprint.sml
+     
+     4-FLINT/opt/flintcomp.sml
+     4-FLINT/opt/specialize.sml
+     4-FLINT/opt/equal.sml
+     4-FLINT/opt/lcontract.sml
+     4-FLINT/opt/coerce.sml
+     4-FLINT/opt/wrapping.sml
+     4-FLINT/opt/ltyprim.sml
+     4-FLINT/opt/ltycomp.sml
+     4-FLINT/opt/ltnarrow.sml
+     4-FLINT/opt/lambdaopt.sml
+     4-FLINT/opt/reorder.sml
+
+=========================================================================
+PHASE VII Lambda -> CPS
+
+     5-CPS/conv/convert.sml
+     5-CPS/conv/cpstrans.sml
+     5-CPS/conv/switch.sml
+
+=========================================================================
+PHASE VIII CPS -> CPS
+
+The cpsopt and closure phase should be rewritten
+to be performed upon FLINT instead.
+
+=========================================================================
+
+There are four clients of the Lambda Types:
+
+(1) PLambda  --- used by translate --- plambdatype.sig plambdatype.sml
+(2) FlintType --- used by flint clients --- flinttype.sig flinttype.sml
+(3) Lambda --- used by the old Lambda --- lambdatype.sig lambdatype.sml
+(4) CPS --- narrowtype.sig and narrowtype.sml
+
+=========================================================================
+Goal: make the FLINT backend independent of the front end
+
+Right now, the front-end references the following structures:
+  LtyKernel, LambdaType, Lambda, LambdaVar, 
+  DebIndex, PrimTyc, PrimOp.
+
+The FLINT phase references the following structures in the front 
+end:
+  Access --- the conrep for datatypes
+  Symbol --- names of constructors and record labels
+  ErrorMsg --- for debugging only
+
+LtyKernel
+
+   3-Semant/pickle/pickmod.sml
+   3-Semant/pickle/unpickmod.sml
+      (* must use LtyKernel for pickling and unpickling *)
+
+   5-CPS/conv/convert.sml
+   5-CPS/opt/contract.sml
+   5-CPS/opt/flatten.sml
+   5-CPS/opt/uncurry.sml
+      (* currently uses both LtyKernel and NarrowType; LtyKernel is
+         used for pattern-matching to support unboxed float vectors *)
+
+LambdaType
+
+   3-Semant/pickle/unpickmod.sml 
+      (* currently use LambdaType, but really it should use something
+         that is more basic than LambdaType *)
+
+Lambda
+
+   1-TopLevel/*/*.sml (* currently Lambda is used for inlining *)
+   3-Semant/basics/inlinfo.sml       (* Lambda used for inlining *)
+   3-Semant/pickle/pickmod.sml       (* pickled for cross-mod-inl *)
+   3-Semant/pickle/unpickmod.sml     (* pickled for cross-mod-inl *)
+   5-CPS/conv/convert.sml            (* translation into CPS *)
+   5-CPS/conv/switch.sml             (* translation into CPS *)
+   5-CPS/cps/cpscomp.sml             (* translation into CPS *)
+   5-CPS/cps/cpsphases.sig           (* translation into CPS *)
+
+   We should replace Lambda.lexp with FLINT.prog (?); eventually
+   Lambda should go away.
+
+LambdaVar
+
+   1-TopLevel/interact/compile.sml    (* used in compInfo *)
+   3-Semant/elaborate/elabutil.sml    (* type of compInfo *)
+   3-Semant/basics/access.sig         (* used in access path *)
+   3-Semant/basics/access.sml         (* used in access path *)
+   3-Semant/pickle/pickmod.sml        (* pickling of access *)
+   3-Semant/pickle/unpickmod.sml      (* pickling of access *)
+  
+   otherwise, it is heavily used by 4-FLINT and 5-CPS
+
+DebIndex
+
+   3-Semant/elaborate/elabmod.sml   (* we track depth during elaboration *)
+   3-Semant/elaborate/elabutil.sig  (* used by context type *)
+   3-Semant/elaborate/elabutil.sml  (* used by context type *)
+   3-Semant/modules/evalent.sml     (* we track depth during elaboration *)
+   3-Semant/modules/instantiate.sml (* we track depth during elaboration *)
+   3-Semant/modules/modules.sig     (* for lty memoization *)
+   3-Semant/modules/modules.sml     (* for lty memoization *)
+   3-Semant/modules/sigmatch.sml    (* we track depth during elaboration *)
+
+   3-Semant/pickle/pickmod.sml    (* pickling of IL *)
+   3-Semant/pickle/unpickmod.sml  (* unpickling of IL *)
+   3-Semant/types/types.sig       (* used by LBOUND tv to ease translation *)
+   3-Semant/types/types.sml       (* also by memoization on large types *)
+   3-Semant/types/typesutil.sig   (* used by reformat, soon obsolete *)
+
+PrimTyc
+
+   3-Semant/pickle/pickmod.sml    (* pickling of types *)
+   3-Semant/pickle/unpickmod.sml  (* unpickling of types *)
+   3-Semant/types/basictypes.sml  (* PRIMITIVE info, initial environment *)
+   3-Semant/types/types.sig       (* PRIMITIVE info *)
+   3-Semant/types/types.sml       (* PRIMITIVE info *)
+   3-Semant/types/typesutil.sml   (* the use of PrimTyc.ptc_void *)
+   5-CPS/cps/cps.sml              (* used by translation from lty to cty *)
+
+PrimOp
+
+   3-Semant/basics/inlinfo.sml    (* inlining information *)
+   3-Semant/statenv/prim.sml      (* initial environment *)
+   3-Semant/pickle/pickmod.sml    (* pickling of inlinfo and IL *)
+   3-Semant/pickle/unpickmod.sml  (* unpickling of inlinfo and IL *)
+   5-CPS/conv/convert.sml         (* translation to CPS primops *)
+   9-Misc/profile/sprof.sml       (* instrumenting absyn *)
+   9-Misc/profile/tprof.sml       (* instrumenting absyn *)
+
+=========================================================================

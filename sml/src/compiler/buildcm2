@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+
+ROOTDIR="/homes/systems/shao/sml/110.3"
+BINDIR=$ROOTDIR/bin
+LIBDIR=$ROOTDIR/lib
+YACCPATH=$BINDIR/ml-yacc
+LEXPATH=$BINDIR/ml-lex
+BURGPATH=$BINDIR/ml-burg
+
+./buildcm -yacc $YACCPATH -lex $LEXPATH -burg $BURGPATH -L ".:$LIBDIR" $*
