@@ -25,4 +25,6 @@ structure Compiler = struct
     structure Version = CompilerVersion
 
     open Backend
+
+    val version = Version.version
 end

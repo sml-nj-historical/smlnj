@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/09/13 11:20:00 EDT
+Tag: blume-20010913-minimal
+Description:
+
+1. Stefan Monnier's patch to fix a miscompilation problem that
+   was brought to light by John Reppy's work on Moby.
+
+2. Implemented a minimal "structure Compiler" that contains just
+   "version" and "architecture".  The minimal version will be
+   available when the full version is not.  This is for backward-
+   compatibility with code that wants to test Compiler.version.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/08/28 14:03:00 EDT
 Tag: blume-20010828-ml-lex
 Description:

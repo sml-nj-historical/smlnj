@@ -37,11 +37,12 @@ is
 	(* need access to CM's "init" function *)
 	$smlnj/internal/cm0.cm
 
-	(* need access to the actual backend *)
+	(* Need access to the actual backend... *)
 	$smlnj/compiler.cm
 
 	(* these are just here so they get made... *)
 	$smlnj/compiler/compiler.cm
+	$smlnj/compiler/minimal-only.cm
 	$smlnj/cm.cm
 	$smlnj/cmb.cm
 
