@@ -80,6 +80,7 @@ structure POSIX_Process =
       | mkExitStatus (1,s) = W_SIGNALED (Sig.SIG s)
       | mkExitStatus (_,s) = W_STOPPED (Sig.SIG s)
 
+    fun fromStatus s = mkExitStatus (Int.quot (s, 256), Int.rem (s, 256))
 
     structure W = struct
         local structure W0 = BitFlagsFn ()

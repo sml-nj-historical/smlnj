@@ -5,8 +5,6 @@
  *)
 signature UNIX = sig
 
-    type proc
-(*
     type ('a, 'b) proc
 
     type signal
@@ -18,36 +16,41 @@ signature UNIX = sig
 	   | W_STOPPED of signal
 
     val fromStatus : OS.Process.status -> exit_status
-*)
 
-      (* executeInEnv (path, args, env)
-       *   forks/execs new process given by path
-       *   The new process will have environment env, and
-       *   arguments args prepended by the last arc in path
-       *   (following the Unix convention that the first argument
-       *   is the command name).
-       *   Returns an abstract type proc, which represents
-       *   the child process plus streams attached to the
-       *   the child process stdin/stdout.
-       *
-       *   Simple command searching can be obtained by using
-       *     executeInEnv ("/bin/sh", "-c"::args, env)
-       *)
-    val executeInEnv : string * string list * string list -> proc
+    (* executeInEnv (path, args, env)
+     *   forks/execs new process given by path
+     *   The new process will have environment env, and
+     *   arguments args prepended by the last arc in path
+     *   (following the Unix convention that the first argument
+     *   is the command name).
+     *   Returns an abstract type proc, which represents
+     *   the child process plus streams attached to the
+     *   the child process stdin/stdout.
+     *
+     *   Simple command searching can be obtained by using
+     *     executeInEnv ("/bin/sh", "-c"::args, env)
+     *)
+    val executeInEnv : string * string list * string list -> ('a, 'b) proc
 
-      (* execute (path, args) 
-       *       = executeInEnv (path, args, Posix.ProcEnv.environ())
-       *)
-    val execute : string * string list -> proc
+    (* execute (path, args) 
+     *       = executeInEnv (path, args, Posix.ProcEnv.environ())
+     *)
+    val execute : string * string list -> ('a, 'b) proc
 
-      (* streamsOf proc
-       * returns an instream and outstream used to read
-       * from and write to the stdout and stdin of the 
-       * executed process.
-       *
-       * The underlying files are set to be close-on-exec.
-       *)
-    val streamsOf : proc -> TextIO.instream * TextIO.outstream
+    (* *{In,Out}treamOf proc
+     * returns an instream and outstream used to read
+     * from and write to the stdout and stdin of the 
+     * executed process.
+     *
+     * The underlying files are set to be close-on-exec.
+     *)
+    val textInstreamOf  : (TextIO.instream, 'a) proc -> TextIO.instream
+    val binInstreamOf   : (BinIO.instream, 'a) proc -> BinIO.instream
+    val textOutstreamOf : ('a, TextIO.outstream) proc -> TextIO.outstream
+    val binOutstreamOf  : ('a, BinIO.outstream) proc -> BinIO.outstream
+
+    val streamsOf : (TextIO.instream, TextIO.outstream) proc ->
+		    TextIO.instream * TextIO.outstream
 
       (* reap proc
        * This closes the associated streams and waits for the
@@ -59,12 +62,14 @@ signature UNIX = sig
        * the process will remain a zombie and take a slot in the
        * process table.
        *)
-    val reap : proc -> Posix.Process.exit_status
+    val reap : ('a, 'b) proc -> OS.Process.status
 
       (* kill (proc, signal)
        * sends the Posix signal to the associated process.
        *)
-    val kill : proc * Posix.Signal.signal -> unit
+    val kill : ('a, 'b) proc * signal -> unit
+
+    val exit : Word8.word -> 'a
 
   end
 

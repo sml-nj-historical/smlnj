@@ -14,6 +14,37 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/06/17 17:20:00 CDT
+Tag: blume-20040617-timer-unix
+Description:
+
+Changed the interface of structures Timer and Unix to match the most
+recent Basis spec.
+
+In the case of Unix there still seems to be an open/weird issue:
+
+   The {text,bin}{In,Out}streamOf functions are supposed to create
+   fresh streams whenever they are called -- as opposed to have them
+   return the same stream every time.  This design is supposed to
+   prevent space leaks caused by proc values hanging on to streams.
+
+   The reap function, on the other hand, is supposed to close the
+   streams.  This cannot be done without having a handle on the
+   stream in proc after all...
+
+I took the liberty to implement the following stopgap solution:
+
+  The proc value hangs on to the most recently created stream(s).
+  Reap closes those.  If either or both of the two streams hadn't
+  been created at all yet, then reap will close the corresponding
+  file descriptors directly.
+
+PS: I don't understand the original space leak argument anymore.  If
+a proc hangs on to the imperative stream, then I/O operations on those
+will advance the state of the cached stream and avoid the space leak.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/05/28 16:45:00 CDT
 Tag: blume-20040528-basis
 Description:

@@ -31,6 +31,8 @@ signature POSIX_PROCESS =
       | W_EXITSTATUS of Word8.word
       | W_SIGNALED of signal
       | W_STOPPED of signal
+
+    val fromStatus : OS.Process.status -> exit_status
     
     structure W :
       sig
