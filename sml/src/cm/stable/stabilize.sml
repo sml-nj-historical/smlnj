@@ -82,6 +82,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
+	val primconf = #primconf (#param gp)
+	val policy = #fnpolicy (#param gp)
+
 	fun doit granted = let
 
 	    val _ =
@@ -221,7 +224,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			       (w_sharing (SmlInfo.share i) k)))
 	    end
 
-	    fun w_primitive p k m = String.str (Primitive.toIdent p) :: k m
+	    fun w_primitive p k m =
+		String.str (Primitive.toIdent primconf p) :: k m
 
 	    fun w_abspath_raw p k m = w_list w_string (AbsPath.pickle p) k m
 
@@ -322,7 +326,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 	    val memberlist = rev (!members)
 
-	    val policy = #fnpolicy (#param gp)
 	    val gpath = #grouppath grec
 	    val spath = FilenamePolicy.mkStablePath policy gpath
 	    fun delete () = deleteFile (AbsPath.name spath)
@@ -399,6 +402,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
+	val primconf = #primconf (#param gp)
 	val spath = FilenamePolicy.mkStablePath policy group
 	val _ = Say.vsay ["[checking stable ", gname, "]\n"]
 	val s = AbsPath.openBinIn spath
@@ -538,7 +542,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val r_filter = r_option r_ss
 
 	fun r_primitive () =
-	    case Primitive.fromIdent (rd ()) of
+	    case Primitive.fromIdent primconf (rd ()) of
 		NONE => raise Format
 	      | SOME p => p
 

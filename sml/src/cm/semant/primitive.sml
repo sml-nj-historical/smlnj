@@ -1,5 +1,5 @@
 (*
- * "Primitive" classes in CM.
+ * "Primitives".
  *   - provide access to compiler internals in an orderly fashion
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
@@ -11,13 +11,17 @@ signature PRIMITIVE = sig
     type configuration
     type primitive
 
+    type pidInfo = { statpid: GenericVC.PersStamps.persstamp,
+		     sympid: GenericVC.PersStamps.persstamp,
+		     ctxt: GenericVC.Environment.staticEnv }
+
     val eq : primitive * primitive -> bool
 
-    val fromString : string -> primitive option
+    val fromString : configuration -> string -> primitive option
     val toString : primitive -> string
 
-    val toIdent : primitive -> char
-    val fromIdent : char -> primitive option
+    val toIdent : configuration -> primitive -> char
+    val fromIdent : configuration -> char -> primitive option
 
     val reqpriv : primitive -> StringSet.set
 
@@ -25,14 +29,13 @@ signature PRIMITIVE = sig
     val exports : configuration -> primitive -> SymbolSet.set
     val da_env : configuration -> primitive -> DAEnv.env
     val env : configuration -> primitive -> GenericVC.Environment.environment
-    val pidInfo : configuration -> primitive
-	-> { statpid: GenericVC.PersStamps.persstamp,
-	     sympid: GenericVC.PersStamps.persstamp,
-	     ctxt: GenericVC.Environment.staticEnv }
+    val pidInfo : configuration -> primitive -> pidInfo
 
-    val configuration :
-	{ basis: GenericVC.Environment.environment }
-	-> configuration
+    type pspec = { name: string,
+		   env: GenericVC.Environment.environment,
+		   pidInfo: pidInfo }
+
+    val configuration : pspec list -> configuration
 end
 
 structure Primitive :> PRIMITIVE = struct
@@ -41,57 +44,71 @@ structure Primitive :> PRIMITIVE = struct
     structure E = GenericVC.Environment
     structure DE = DAEnv
 
-    (* For now, we only know about the "basis".
-     * This is for testing only -- the basis will become a real
-     * "non-primitive" library, and there will be other primitives
-     * that are used to implement the basis. *)
-    datatype primitive =
-	BASIS
+    type primitive = string
 
-    type pinfo = { exports : SymbolSet.set,
-		   da_env : DE.env,
-		   env : GenericVC.Environment.environment }
+    type pidInfo = { statpid: GenericVC.PersStamps.persstamp,
+		     sympid: GenericVC.PersStamps.persstamp,
+		     ctxt: GenericVC.Environment.staticEnv }
 
-    type configuration = primitive -> pinfo
+    type pinfo = { name: string,
+		   exports: SymbolSet.set,
+		   da_env: DE.env,
+		   env: GenericVC.Environment.environment,
+		   pidInfo: pidInfo,
+		   ident: char }
+
+    type pspec = { name: string,
+		   env: GenericVC.Environment.environment,
+		   pidInfo: pidInfo }
+
+    type configuration =
+	pinfo StringMap.map * primitive Vector.vector
 
     fun eq (p1 : primitive, p2) = p1 = p2
 
-    fun fromString "basis" = SOME BASIS
-      | fromString _ = NONE
+    fun fromString ((sm, v): configuration) s =
+	case StringMap.find (sm, s) of
+	    NONE => NONE
+	  | SOME _ => SOME s
 
-    fun toString BASIS = "basis"
+    fun toString (p: primitive) = p
 
-    fun toIdent BASIS = #"b"
+    fun get ((sm, v): configuration) p =
+	case StringMap.find (sm, p) of
+	    NONE => GenericVC.ErrorMsg.impossible "Primitive: bad primitive"
+	  | SOME i => i
 
-    fun fromIdent #"b" = SOME BASIS
-      | fromIdent _ = NONE
+    infix o'
+    fun (f o' g) x y = f (g x y)
 
-    val reqpriv_basis = StringSet.singleton "basis"
+    val exports = #exports o' get
+    val da_env = #da_env o' get
+    val env = #env o' get
+    val pidInfo = #pidInfo o' get
+    val toIdent = #ident o' get
 
-    fun reqpriv BASIS = reqpriv_basis
+    val reqpriv = StringSet.singleton o toString
 
-    fun exports (cfg: configuration) p = #exports (cfg p)
-    fun da_env (cfg: configuration) p = #da_env (cfg p)
-    fun env (cfg: configuration) p = #env (cfg p)
-
-    fun configuration { basis } = let
-	fun gen_pinfo e = let
-	    val (da_env, mkExports) = Statenv2DAEnv.cvt (E.staticPart e)
-	in
-	    { exports = mkExports (), da_env = da_env, env = e }
-	end
-
-	val basis_pinfo = gen_pinfo basis
-	fun cfg BASIS = basis_pinfo
+    fun fromIdent ((sm, v): configuration) c = let
+	val p = Char.ord c
     in
-	cfg
+	if p < Vector.length v then SOME (Vector.sub (v, p)) else NONE
     end
-    (* this doesn't make much sense yet -- there aren't any singular
-     * pids describing the basis *)
-    fun pidInfo c BASIS = let
-	val p = GenericVC.PersStamps.fromBytes
-	    (Byte.stringToBytes "0123456789abcdef")
+
+    fun configuration l = let
+	fun gen_pinfo ({ name, env, pidInfo }, i) = let
+	    val (da_env, mkExports) = Statenv2DAEnv.cvt (E.staticPart env)
+	in
+	    { name = name, exports = mkExports (), da_env = da_env,
+	      env = env, pidInfo = pidInfo,
+	      ident = Char.chr i }
+	end
+	fun one (ps, (sm, sl, i)) =
+	    (StringMap.insert (sm, #name ps, gen_pinfo (ps, i)),
+	     #name ps :: sl,
+	     i + 1)
+	val (sm, sl, _) = foldr one (StringMap.empty, [], 0) l
     in
-	{ statpid = p, sympid = p, ctxt = GenericVC.CMStaticEnv.empty }
+	(sm, Vector.fromList sl)
     end
 end

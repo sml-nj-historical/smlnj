@@ -144,7 +144,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	end
     in
 	if isSome class then noPrimitive ()
-	else case Primitive.fromString (AbsPath.spec sourcepath) of
+	else case Primitive.fromString primconf (AbsPath.spec sourcepath) of
 	    SOME p => let
 		val exports = Primitive.exports primconf p
 		val env = Primitive.da_env primconf p

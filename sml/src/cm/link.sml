@@ -127,7 +127,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				     spec = s }
 	    val { mod = basis, nomod = perv } = split (#get ER.pervasive ())
 	    val corenv = #get ER.core ()
-	    val primconf = Primitive.configuration { basis = basis }
+	    val bpspec = let
+		val bogus = GenericVC.PersStamps.fromBytes
+		    (Byte.stringToBytes "0123456789abcdef")
+	    in
+		{ name = "basis",
+		  env = basis,
+		  pidInfo = { statpid = bogus, sympid = bogus,
+			      ctxt = GenericVC.CMStaticEnv.empty } }
+	    end
+	    val primconf = Primitive.configuration [bpspec]
 	    val pcmode = PathConfig.hardwire
 		[("smlnj-lib.cm", "/home/blume/ML/current/lib")]
 	    val fnpolicy =
