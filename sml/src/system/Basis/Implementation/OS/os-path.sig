@@ -44,5 +44,8 @@ signature OS_PATH =
 
     val concat      : (string * string) -> string
 
+    val fromUnixPath : string -> string
+    val toUnixPath   : string -> string
+
   end; (* OS_PATH *)
 

@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/06/11
+Tag: blume-20020611-unixpath
+Description:
+
+Back-ported OS.Path.{from,to}UnixPath from idlbasis-devel branch.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/06/10 16:35:00 EDT
 Tag: blume-20020610-ieeereal
 Description:

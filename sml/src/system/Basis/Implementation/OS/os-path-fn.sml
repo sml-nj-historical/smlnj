@@ -233,6 +233,31 @@ functor OS_PathFn (OSPathBase : sig
 		  else raise Path
 	  (* end case *))
 
+    local
+	fun fromUnixPath' up = let
+	    fun tr "." = P.currentArc
+	      | tr ".." = P.parentArc
+	      | tr arc = arc
+	in
+	    case String.fields (fn c => c = #"/") up of
+		"" :: arcs => { isAbs = true, vol = "", arcs = map tr arcs }
+	      | arcs => { isAbs = false, vol = "", arcs = map tr arcs }
+	end
+
+	fun toUnixPath' { isAbs, vol = "", arcs } =
+	    let fun tr arc =
+		    if arc = P.currentArc then "."
+		    else if arc = P.parentArc then ".."
+		    else if Char.contains arc #"/" then raise Path
+		    else arc
+	    in
+		String.concatWith "/" (if isAbs then "" :: arcs else arcs)
+	    end
+	  | toUnixPath' _ = raise Path
+    in
+        val fromUnixPath = toString o fromUnixPath'
+	val toUnixPath = toUnixPath' o fromString
+    end
   end
 end
 
