@@ -171,6 +171,73 @@ Full documentation will be available after autoloading the function."))
 (defconst sml-tyvarseq-re
   "\\(\\('+\\(\\sw\\|\\s_\\)+\\|(\\([,']\\|\\sw\\|\\s_\\|\\s-\\)+)\\)\\s-+\\)?")
 
+;;; Font-lock settings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defcustom sml-font-lock-symbols nil
+  "Display \\ and -> and such using symbols in fonts.
+This may sound like a neat trick, but be extra careful: it changes the
+alignment and can thus lead to nasty surprises w.r.t layout.
+If t, try to use whichever font is available.  Otherwise you can
+set it to a particular font of your preference among `japanese-jisx0208'
+and `unicode'."
+  :type '(choice (const nil)
+	         (const t)
+	         (const unicode)
+	         (const japanese-jisx0208)))
+
+(defconst sml-font-lock-symbols-alist
+  (append
+   ;; The symbols can come from a JIS0208 font.
+   (and (fboundp 'make-char) (charsetp 'japanese-jisx0208)
+	(memq sml-font-lock-symbols '(t japanese-jisx0208))
+	(list ;; (cons "\\" (make-char 'japanese-jisx0208 38 75))
+	      (cons "->" (make-char 'japanese-jisx0208 34 42))
+	      ;; (cons "<-" (make-char 'japanese-jisx0208 34 43))
+	      (cons "=>" (make-char 'japanese-jisx0208 34 77))))
+   ;; Or a unicode font.
+   (and (fboundp 'decode-char)
+	(memq sml-font-lock-symbols '(t unicode))
+	(list ;; (cons "\\" (decode-char 'ucs 955))
+	      (cons "->" (decode-char 'ucs 8594))
+	      ;; (cons "<-" (decode-char 'ucs 8592))
+	      (cons "=>" (decode-char 'ucs 8658))
+	      ;; (cons "::" (decode-char 'ucs 8759))
+	      ))))
+
+(defun sml-font-lock-compose-symbol (alist)
+  "Compose a sequence of ascii chars into a symbol.
+Regexp match data 0 points to the chars."
+  ;; Check that the chars should really be composed into a symbol.
+  (let ((start (match-beginning 0))
+	(end (match-end 0)))
+    (if (or (memq (char-syntax (or (char-before start) ?\ )) '(?. ?\\))
+	    (memq (char-syntax (or (char-after end) ?\ )) '(?. ?\\))
+	    (memq (get-text-property start 'face)
+		  '(font-lock-doc-face font-lock-string-face
+		    font-lock-comment-face)))
+	;; No composition for you.  Let's actually remove any composition
+	;; we may have added earlier and which is now incorrect.
+	(remove-text-properties start end '(composition))
+      ;; That's a symbol alright, so add the composition.
+      (compose-region start end (cdr (assoc (match-string 0) alist)))))
+  ;; Return nil because we're not adding any face property.
+  nil)
+
+(defun sml-font-lock-symbols-keywords ()
+  (when (fboundp 'compose-region)
+    (let ((alist nil))
+      (dolist (x sml-font-lock-symbols-alist)
+	(when (and (if (fboundp 'char-displayable-p)
+		       (char-displayable-p (cdr x))
+		     t)
+		   (not (assoc (car x) alist)))	;Not yet in alist.
+	  (push x alist)))
+      (when alist
+	`((,(regexp-opt (mapcar 'car alist) t)
+	   (0 (sml-font-lock-compose-symbol ',alist))))))))
+
+;; The font lock regular expressions.
+
 (defconst sml-font-lock-keywords
   `(;;(sml-font-comments-and-strings)
     (,(concat "\\<\\(fun\\|and\\)\\s-+" sml-tyvarseq-re "\\(\\sw+\\)\\s-+[^ \t\n=]")
@@ -190,7 +257,8 @@ Full documentation will be available after autoloading the function."))
      (1 font-lock-keyword-face)
      (2 font-lock-interface-def-face))
     
-    (,sml-keywords-regexp . font-lock-keyword-face))
+    (,sml-keywords-regexp . font-lock-keyword-face)
+    ,@(sml-font-lock-symbols-keywords))
   "Regexps matching standard SML keywords.")
 
 (defface font-lock-type-def-face
