@@ -43,6 +43,7 @@ ALLTARGETS=\
  ml-burg \
  ml-nlffigen \
  smlnj-lib \
+ mlrisc \
  cml \
  cml-lib \
  eXene \
@@ -474,6 +475,11 @@ reglib() {
     RELNAME=$2
     LIBNAME='$'${ANCHOR}/${RELNAME}
     ADIR=${SRCDIR}/$3
+    if [ $# -gt 3 ] ; then
+	FINALANCHOR=$4
+    else
+	FINALANCHOR=$ANCHOR
+    fi
     RELDIR=`dirname $RELNAME`
     RELBASE=`basename $RELNAME`
     if [ x$RELDIR = x. ] ; then
@@ -484,8 +490,8 @@ reglib() {
     RELLOC=${RELDIR}/CM/${ARCH}-unix/${RELBASE}
     SRCFINALLOC=${ADIR}${RELLOC}
     if [ x$MOVE_LIBRARIES = xtrue ] ; then
-	FINALLOC=${LIBDIR}/${ANCHOR}${RELLOC}
-	FINALCONFIGPATH=${ANCHOR}
+	FINALLOC=${LIBDIR}/${FINALANCHOR}${RELLOC}
+	FINALCONFIGPATH=${FINALANCHOR}
     else
 	FINALLOC=${SRCFINALLOC}
 	FINALCONFIGPATH=${ADIR}
@@ -501,7 +507,16 @@ reglib() {
 	    echo movelib ${SRCFINALLOC} ${FINALLOC} >>${LIBMOVESCRIPT}
 	fi
     fi
-    echo ${ANCHOR} ${FINALCONFIGPATH} >>${CM_PATHCONFIG}
+    echo ${FINALANCHOR} ${FINALCONFIGPATH} >>${CM_PATHCONFIG}
+}
+
+#
+# Function for adding anchor bindings to LOCALPATHCONFIG
+#
+# $1 - anchor name
+# $2 - directory relative to ROOT corresponding to $1
+localanchor() {
+    echo $1 ${ROOT}/$2 >>${LOCALPATHCONFIG}
 }
 
 #
@@ -797,6 +812,20 @@ for i in $TARGETS ; do
       pgraph-util)
 	unpack "CM source code" $SRCDIR cm cm
 	reglib pgraph-util.cm pgraph-util.cm cm/pgraph
+	;;
+      mlrisc)
+	unpack "MLRISC Library" $SRCDIR MLRISC MLRISC
+	localanchor Control.cm lib/SMLNJ-MLRISC
+	localanchor Lib.cm lib/SMLNJ-MLRISC
+	localanchor Visual.cm lib/SMLNJ-MLRISC
+	localanchor MLRISC.cm lib/SMLNJ-MLRISC
+	localanchor MLTREE.cm lib/SMLNJ-MLRISC
+	localanchor Graphs.cm lib/SMLNJ-MLRISC
+	localanchor IA32.cm lib/SMLNJ-MLRISC
+	localanchor Peephole.cm src/MLRISC/cm
+	reglib OTHER-MLRISC RA.cm MLRISC/cm SMLNJ-MLRISC
+	reglib OTHER-MLRISC Peephole.cm MLRISC/cm SMLNJ-MLRISC
+	reglib OTHER-MLRISC IA32-Peephole.cm MLRISC/cm SMLNJ-MLRISC
 	;;
       mlrisc-tools)
 	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
