@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/11 14:20:00 CDT
+Tag: blume-20040511-installml
+Description:
+
+Fixed two bugs in installml script.  (Thanks to Vesa A. Norrman for
+the patch.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/05/11 14:05:00 CDT
 Tag: blume-20040511-nlffi-netbsd
 Description:
