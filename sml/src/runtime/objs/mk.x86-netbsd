@@ -14,15 +14,13 @@ CPP =		gcc -x assembler-with-cpp -E -P
 #CPP =		/usr/bin/cpp -P
 
 XOBJS =
-XLIBS =	
+XLIBS =		../c-libs/dl/libunix-dynload.a
 LD_LIBS =
 BASE_DEFS =	
-DEFS		= $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_NETBSD
+DEFS =          $(XDEFS) $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_NETBSD -DDLOPEN
 TARGET =	X86
 VERSION =	v-x86-netbsd
 RUNTIME =	run.x86-netbsd
 
 all:
 	($(MAKE) RUNTIME="$(RUNTIME)" VERSION="$(VERSION)" MAKE="$(MAKE)" CC="$(CC)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" TARGET=$(TARGET) DEFS="$(DEFS)" XOBJS="$(XOBJS)" XLIBS="$(XLIBS)" LD_LIBS="$(LD_LIBS)" $(RUNTIME))
-
-
