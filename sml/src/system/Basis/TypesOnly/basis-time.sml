@@ -10,6 +10,6 @@
 structure Time =
   struct
     datatype time =
-	TIME of { sec: Int32.int, usec: Int32.int }
+	TIME of { seconds: Int32.int, uSeconds: Int32.int }
   end;
 

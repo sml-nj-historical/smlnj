@@ -18,29 +18,29 @@ structure OS_FileSys : OS_FILE_SYS =
     val sysWordToWord = Word.fromLargeWord o SysWord.toLargeWord
 
     (* should be finalized *)
-    datatype dirstream = DIRSTREAM of SMLBasis.Directory_t
+    datatype dirstream = DIRSTREAM of SMLBasis.ML_directory_t
     fun mkDirstream d = DIRSTREAM d
     fun unDirstream (DIRSTREAM d) = d
 
     val openDir   = mkDirstream o SMLBasis.openDir
     val readDir   = SMLBasis.readDir o unDirstream
     val rewindDir = SMLBasis.rewindDir o unDirstream
-    val closeDir  = SMLBasis.closedDir o unDirstream
+    val closeDir  = SMLBasis.closeDir o unDirstream
 
-    val chDir  = SMLBasis.chdir
+    val chDir  = SMLBasis.chDir
     val getDir = SMLBasis.getDir
 (*    local
       structure S = P_FSys.S
       val mode777 = S.flags[S.irwxu, S.irwxg, S.irwxo]
     in
 *)
-    fun mkDir path = SMLBasis.mkdir(path) (* , mode777) *)
+    fun mkDir path = SMLBasis.mkDir path (* , mode777) *)
 (*    end *)
-    val rmDir  = SMLBasis.rmdir
+    val rmDir  = SMLBasis.rmDir
     val isDir  = SMLBasis.isDir
 
     val isLink   = SMLBasis.isLink
-    val readLink = SMLBasis.readlink
+    val readLink = SMLBasis.readLink
 
   (* the maximum number of links allowed *)
     val maxLinks = 64
@@ -48,50 +48,34 @@ structure OS_FileSys : OS_FILE_SYS =
     structure P = OS_Path  (* dbm: which OS_Path? since OS_Path is
 			    * not generic *)
 
-    val fullPath = SMLBasis.fullPath
+    fun fullPath _ = raise Fail "fullPath not yet implemented"
 
-    val realPath = SMLBasis.realPath
-
-    (* dbm: are these functions the most efficient way to convert between
-     * Time.t (whose * internal representation is TIME{sec:int,usec:int})
-     * and Time_t = {sec: Int32.int, usec: Int32.int}? *)
-    fun toTime({sec,usec}: SMLBasis.Time_t): SMLBasis.Time_t =
-        Time.+(Time.fromSeconds(Int32.toInt sec),
-	       Time.fromMicroseconds(Int32.toInt usec))
-
-    fun fromTime(t: Time.t): SMLBasis.Time_t =
-	let val sec = Time.toSeconds t
-	    val usec = Time.toMicroseconds t - 1000000 * sec
-	 in {sec = Int32.fromInt sec, usec = Int32.fromInt usec}
-	end
+    fun realPath _ = raise Fail "realPath not yet implemented"
 
     val fileSize =  (* dbm: missing from SMLBasis *)
-        Position.fromLarge o SMLBasis.fileSize  (* fromLarge is from Int32.int !? *)
+	(* fromLarge is from Int32.int !? *)
+        PositionImp.fromLarge o SMLBasis.fileSize
 
-    val modTime  = toTime o SMLBasis.modTime   (* dbm: missing from SMLBasis *)
+    fun modTime f =
+	Time.TIME { seconds = SMLBasis.modTime f,
+		    uSeconds = 0 }
 
-    fun setTime(name,time_op) = 
-        let val t_op = Option.map fromTime time_op
-	 in SMLBasis.setTime(name, t_op)
-	end
+    fun setTime(name, time_op) = 
+	SMLBasis.setTime(name, Option.map (fn Time.TIME t => t) time_op)
 
-    val remove   = SMLBasis.unlink
-    val rename   = SMLBasis.rename
+    val remove   = SMLBasis.removeFile
+    fun rename { old, new } = SMLBasis.renameFile (old, new)
 
-    structure A : sig
-	datatype access_mode = A_READ | A_WRITE | A_EXEC
-      end = Posix.FileSys
-    open A
+    datatype access_mode = A_READ | A_WRITE | A_EXEC
 
     fun access (path, al) = let
 	  fun cvt A_READ = SMLBasis.A_READ
 	    | cvt A_WRITE = SMLBasis.A_WRITE
 	    | cvt A_EXEC = SMLBasis.A_EXEC
-	  in
-	    SMLBasis.access (path, List.map cvt al)  
-           (* dbm: type problem - SMLBasis.access takes Int32.int as second
-	    * argument *)
-	  end
+	  fun join (a, m) = cvt a + m
+    in
+	SMLBasis.fileAccess (path, foldl join 0 al)
+    end
 
     val tmpName : unit -> string = SMLBasis.tmpName
 
@@ -102,10 +86,13 @@ structure OS_FileSys : OS_FILE_SYS =
     fun fileId fname = FID (SMLBasis.fileId fname)
 
     fun hash (FID v) = (* hash on Word8Vector.vector *)
-     sysWordToWord(
-	  SysWord.+(SysWord.<<(dev, 0w16), ino))
+	(*
+	sysWordToWord(
+		      SysWord.+(SysWord.<<(dev, 0w16), ino))
+	*)
+	raise Fail "hash not yet implemented"
 
-    fun compare (FID v1, FID v2) = Word8Vector.collate Word8.compare (v1,v2)
+    fun compare (FID v1, FID v2) = Word8Vector.collate Word8Imp.compare (v1,v2)
       (* from new Basis!!! *)
 
   end

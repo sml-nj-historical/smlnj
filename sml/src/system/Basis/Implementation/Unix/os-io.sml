@@ -96,7 +96,7 @@ structure OS_IO : OS_IO =
     in
         fun poll (pds, timeOut) = let
 	    val timeOut = Option.map (fn PreBasis.TIME t => t) timeOut
-	    val info = SMLBasis.poll (List.map fromPollDesc pds, timeOut)
+	    val info = SMLBasis.osPoll (List.map fromPollDesc pds, timeOut)
 	in
 	    List.map toPollInfo info
 	end

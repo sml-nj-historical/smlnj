@@ -20,12 +20,12 @@ structure IntervalTimer : INTERVAL_TIMER =
 
     fun tick () = let val (s, us) = tick'()
 	  in
-	    PreBasis.TIME{sec= Int32.toLarge s, usec= Int.toLarge us}
+	    PreBasis.TIME{seconds= Int32.toLarge s, uSeconds= Int.toLarge us}
 	  end
 
     fun fromTimeOpt NONE = NONE
-      | fromTimeOpt (SOME(PreBasis.TIME{sec, usec})) =
-	  SOME(Int32.fromLarge sec, Int.fromLarge usec)
+      | fromTimeOpt (SOME(PreBasis.TIME{seconds, uSeconds})) =
+	  SOME(Int32.fromLarge seconds, Int.fromLarge uSeconds)
 
     fun setIntTimer timOpt = setITimer(fromTimeOpt timOpt)
 

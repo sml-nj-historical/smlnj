@@ -1,56 +1,26 @@
 (* prim-io-sig.sml
  *
- * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies.
+ * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Labs
  *
- * extracted from prim-io.mldoc (v. 1.7; 2000-05-26)
+ * This is an interface to a PrimIO structure augmented with
+ * functions to create readers and writers.
  *)
+signature PRIM_IO = sig
 
-signature PRIM_IO =
-  sig
-    type array
-    type vector
-    type elem
-    eqtype pos
-    val compare : pos * pos -> order
-    datatype reader
-      = RD of {
-        name : string,
-        chunkSize : int,
-        readVec : (int -> vector) option,
-        readArr : ({buf : array, i : int, sz : int option} -> int) option,
-        readVecNB : (int -> vector option) option,
-        readArrNB : ({buf : array, i : int, sz : int option} -> int option) option,
-        block : (unit -> unit) option,
-        canInput : (unit -> bool) option,
-        avail : unit -> int option,
-        getPos : (unit -> pos) option,
-        setPos : (pos -> unit) option,
-        endPos : (unit -> pos) option,
-        verifyPos : (unit -> pos) option,
-        close : unit -> unit,
-        ioDesc : OS.IO.iodesc option
-      }
-    datatype writer
-      = WR of {
-        name : string,
-        chunkSize : int,
-        writeVec : ({buf : vector, i : int, sz : int option} -> int) option,
-        writeArr : ({buf : array, i : int, sz : int option} -> int) option,
-        writeVecNB : ({buf : vector, i : int, sz : int option} -> int option) option,
-        writeArrNB : ({buf : array, i : int, sz : int option} -> int option) option,
-        block : (unit -> unit) option,
-        canOutput : (unit -> bool) option,
-        getPos : (unit -> pos) option,
-        setPos : (pos -> unit) option,
-        endPos : (unit -> pos) option,
-        verifyPos : (unit -> pos) option,
-        close : unit -> unit,
-        ioDesc : OS.IO.iodesc option
-      }
-    val openVector : vector -> reader
-    val nullRd : unit -> reader
-    val nullWr : unit -> writer
-    val augmentReader : reader -> reader
-    val augmentWriter : writer -> writer
-    
-  end
+    include GENERIC_PRIM_IO
+
+    val mkReader : {
+	    fd : OS.IO.iodesc,
+	    name : string,
+	    chunkSize : int option  (* default not specified *) 
+	  } -> reader
+
+    val mkWriter: {
+	    fd : OS.IO.iodesc,
+	    name : string,
+	    appendMode : bool,
+	    chunkSize : int option  (* default not specified *)
+	  } -> writer
+
+end (* signature PRIM_IO *)

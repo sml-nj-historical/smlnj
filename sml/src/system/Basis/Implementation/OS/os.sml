@@ -1,0 +1,23 @@
+(* os.sml
+ *
+ * COPYRIGHT (c) 2001 Lucent Technologies, Bell Labs
+ *
+ * Generic OS interface
+ *
+ *)
+structure OSImp : OS = struct
+
+    open OS
+
+    exception SysErr = Assembly.SysErr
+
+    structure FileSys = OS_FileSys
+    structure Path = OS_Path
+    structure Process = OS_Process
+    structure IO = OS_IO
+
+    fun errorMsg e = SMLBasis.errorMessage (Int32Imp.fromInt e)
+    fun errorName e = SMLBasis.errorName (Int32Imp.fromInt e)
+    fun syserror _ = NONE		(* FIXME!!!! *)
+
+end

@@ -11,12 +11,9 @@ local
     structure Int = IntImp
     structure OS = OSImp
 in
-functor TextIOFn (structure OSPrimIO : OS_TEXT_PRIM_IO
-		                       where PrimIO = TextPrimIO)
-  : TEXT_IO =
-struct
+functor TextIOFn (structure PrimIO : TEXT_PRIM_IO) : TEXT_IO = struct
 
-    structure PIO = OSPrimIO.PrimIO
+    structure PIO = PrimIO
     structure A = CharArray
     structure V = CharVector
 
@@ -786,16 +783,16 @@ struct
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.openRd fname, empty))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname = let
-	  val wr = OSPrimIO.openWr fname
+	  val wr = PIO.openWr fname
 	  in
 	    mkOutstream (StreamIO.mkOutstream (wr, bufferMode wr))
 	  end
 	    handle ex => raise IO.Io{function="openOut", name=fname, cause=ex}
     fun openAppend fname =
-	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openApp fname, IO.NO_BUF))
+	  mkOutstream(StreamIO.mkOutstream(PIO.openApp fname, IO.NO_BUF))
 	    handle ex => raise IO.Io{function="openAppend", name=fname, cause=ex}
 
   (** Text stream specific operations **)
@@ -805,7 +802,7 @@ struct
 	  end
     fun outputSubstr (strm, ss) = StreamIO.outputSubstr (!strm, ss)
     fun openString src =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.strReader src, empty))
+	  mkInstream(StreamIO.mkInstream(PIO.strReader src, empty))
 	    handle ex => raise IO.Io{function="openIn", name="<string>", cause=ex}
 
   (* the standard streams *)
@@ -813,7 +810,7 @@ struct
       structure SIO = StreamIO
       fun mkStdIn () = let
 	    val (strm as SIO.ISTRM(SIO.IBUF{info=SIO.INFO{cleanTag, ...}, ...}, _)) =
-		  SIO.mkInstream(OSPrimIO.stdIn(), empty)
+		  SIO.mkInstream(PIO.stdIn(), empty)
 	    in
 	      CleanIO.rebindCleaner (cleanTag, {
 		  init = fn () => (),
@@ -823,7 +820,7 @@ struct
 	      strm
 	    end
       fun mkStdOut () = let
-	    val wr = OSPrimIO.stdOut()
+	    val wr = PIO.stdOut()
 	    val (strm as SIO.OSTRM{cleanTag, ...}) =
 		  SIO.mkOutstream(wr, bufferMode wr)
 	    in
@@ -836,7 +833,7 @@ struct
 	    end
       fun mkStdErr () = let
 	    val (strm as SIO.OSTRM{cleanTag, ...}) =
-		  SIO.mkOutstream(OSPrimIO.stdErr(), IO.NO_BUF)
+		  SIO.mkOutstream(PIO.stdErr(), IO.NO_BUF)
 	    in
 	      CleanIO.rebindCleaner (cleanTag, {
 		 init = fn () => (),

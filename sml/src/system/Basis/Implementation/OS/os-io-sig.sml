@@ -7,7 +7,7 @@
 
 signature OS_IO =
   sig
-    eqtype iodesc
+    type iodesc
     val hash : iodesc -> word
     val compare : iodesc * iodesc -> order
     eqtype iodesc_kind
@@ -22,7 +22,7 @@ signature OS_IO =
         val device  : iodesc_kind
         
       end
-    eqtype poll_desc
+    type poll_desc
     type poll_info
     val pollDesc : iodesc -> poll_desc option
     val pollToIODesc : poll_desc -> iodesc

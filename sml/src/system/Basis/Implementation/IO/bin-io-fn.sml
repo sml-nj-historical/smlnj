@@ -11,12 +11,7 @@ local
     structure Int = IntImp
     structure Position = PositionImp
 in
-functor BinIOFn (
-
-    structure OSPrimIO : OS_PRIM_IO
-      where PrimIO = BinPrimIO
-
-  ) : BIN_IO = struct
+functor BinIOFn (structure PrimIO : BIN_PRIM_IO) : BIN_IO = struct
 
     structure PIO = OSPrimIO.PrimIO
     structure A = Word8Array

@@ -19,31 +19,33 @@ structure TimeImp : TIME =
 
     exception Time
 
-    val zeroTime = PB.TIME{sec=0, usec=0}
+    val zeroTime = PB.TIME{seconds=0, uSeconds=0}
 
-    fun toSeconds (PB.TIME{sec, ...}) = sec
+    fun toSeconds (PB.TIME{seconds, ...}) = seconds
     fun fromSeconds sec =
 	  if (sec < 0)
 	    then raise Time
-	    else PB.TIME{sec=sec, usec=0}
+	    else PB.TIME{seconds=sec, uSeconds=0}
 
-    fun toMilliseconds (PB.TIME{sec, usec}) =
-	  (sec * 1000) + LInt.quot(usec, 1000)
+    fun toMilliseconds (PB.TIME{seconds, uSeconds}) =
+	  (seconds * 1000) + LInt.quot(uSeconds, 1000)
     fun fromMilliseconds msec =
 	  if (msec < 0)
 	    then raise Time
 	  else if (msec >= 1000)
-	    then PB.TIME{sec= LInt.quot(msec, 1000), usec= 1000*(LInt.rem(msec, 1000))}
-	    else PB.TIME{sec= 0, usec= 1000*msec}
+	    then PB.TIME{seconds= LInt.quot(msec, 1000),
+			 uSeconds= 1000*(LInt.rem(msec, 1000))}
+	    else PB.TIME{seconds= 0, uSeconds= 1000*msec}
 
-    fun toMicroseconds (PB.TIME{sec, usec}) =
-	  (sec * 1000000) + usec
+    fun toMicroseconds (PB.TIME{seconds, uSeconds}) =
+	  (seconds * 1000000) + uSeconds
     fun fromMicroseconds usec =
 	  if (usec < 0)
 	    then raise Time
 	  else if (usec >= 1000000)
-	    then PB.TIME{sec= LInt.quot(usec, 1000000), usec= LInt.rem(usec,  1000000)}
-	    else PB.TIME{sec=0, usec=usec}
+	    then PB.TIME{seconds= LInt.quot(usec, 1000000),
+			 uSeconds= LInt.rem(usec,  1000000)}
+	    else PB.TIME{seconds=0, uSeconds=usec}
 
     local
     (* a floor function that produces a LargeInt.int *)
@@ -54,33 +56,37 @@ structure TimeImp : TIME =
 	  else let
 	    val sec = floor rt
 	    in
-	      PB.TIME{sec=sec, usec=floor((rt - Real.fromLargeInt sec) * 1000000.0)}
+	      PB.TIME{seconds=sec,
+		      uSeconds=floor((rt - Real.fromLargeInt sec) * 1000000.0)}
 	    end
 	      handle Overflow => raise Time
     end (* local *)
 
-    fun toReal (PB.TIME{sec, usec}) =
-	  (Real.fromLargeInt sec) + ((Real.fromLargeInt usec) * 0.000001)
+    fun toReal (PB.TIME{seconds, uSeconds}) =
+	Real.fromLargeInt seconds + 0.000001 * Real.fromLargeInt uSeconds
 
-    fun add (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) = let
+    fun add (PB.TIME{seconds=s1, uSeconds=u1},
+	     PB.TIME{seconds=s2, uSeconds=u2}) = let
 	  val s = s1 + s2
 	  val u = u1+u2
 	  in
 	    if (u >= 1000000)
-	      then PB.TIME{sec=s+1, usec=u-1000000}
-	      else PB.TIME{sec=s, usec=u}
+	      then PB.TIME{seconds=s+1, uSeconds=u-1000000}
+	      else PB.TIME{seconds=s, uSeconds=u}
 	  end
-    fun sub (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) = let
+    fun sub (PB.TIME{seconds=s1, uSeconds=u1},
+	     PB.TIME{seconds=s2, uSeconds=u2}) = let
 	  val s = s1 - s2
 	  val u = u1 - u2
 	  val (s, u) = if (u < 0) then (s-1, u+1000000) else (s, u)
 	  in
 	    if (s < 0)
 	      then raise Time
-	      else PB.TIME{sec=s, usec=u}
+	      else PB.TIME{seconds=s, uSeconds=u}
 	  end
 
-    fun compare (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
+    fun compare (PB.TIME{seconds=s1, uSeconds=u1},
+		 PB.TIME{seconds=s2, uSeconds=u2}) =
 	  if (s1 < s2) then LESS
 	  else if (s1 = s2)
 	    then if (u1 < u2) then LESS
@@ -88,9 +94,11 @@ structure TimeImp : TIME =
 	    else GREATER
 	  else GREATER
 
-    fun less (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
+    fun less (PB.TIME{seconds=s1, uSeconds=u1},
+	      PB.TIME{seconds=s2, uSeconds=u2}) =
 	  (s1 < s2) orelse ((s1 = s2) andalso (u1 < u2))
-    fun lessEq (PB.TIME{sec=s1, usec=u1}, PB.TIME{sec=s2, usec=u2}) =
+    fun lessEq (PB.TIME{seconds=s1, uSeconds=u1},
+		PB.TIME{seconds=s2, uSeconds=u2}) =
 	  (s1 < s2) orelse ((s1 = s2) andalso (u1 <= u2))
 
     local
@@ -99,7 +107,7 @@ structure TimeImp : TIME =
     in
     fun now () = let val (ts, tu) = gettimeofday()
 	  in
-	    PB.TIME{sec= Int32.toLarge ts, usec= Int.toLarge tu}
+	    PB.TIME{seconds= Int32.toLarge ts, uSeconds= Int.toLarge tu}
 	  end
     end (* local *)
 
@@ -111,11 +119,11 @@ structure TimeImp : TIME =
 	    then [substring(zeros, 0, n)]
 	    else zeros :: pad(n - numZeros)
       val rounding = #[
-	      PB.TIME{sec=0, usec= 50000},
-	      PB.TIME{sec=0, usec=  5000},
-	      PB.TIME{sec=0, usec=   500},
-	      PB.TIME{sec=0, usec=    50},
-	      PB.TIME{sec=0, usec=     5}
+	      PB.TIME{seconds=0, uSeconds= 50000},
+	      PB.TIME{seconds=0, uSeconds=  5000},
+	      PB.TIME{seconds=0, uSeconds=   500},
+	      PB.TIME{seconds=0, uSeconds=    50},
+	      PB.TIME{seconds=0, uSeconds=     5}
 	    ]
       val fmtInt = (NumFormat.fmtInt StringCvt.DEC)
       fun fmtUSec usec = let
@@ -127,27 +135,30 @@ structure TimeImp : TIME =
     fun fmt prec = if (prec <= 0)
 	    then let
 	      fun fmt' t = let
-		    val PB.TIME{sec, ...} = add(t, PB.TIME{sec=0, usec=500000})
+		    val PB.TIME{seconds, ...} =
+			add(t, PB.TIME{seconds=0, uSeconds=500000})
 		    in
-		      fmtInt sec
+		      fmtInt seconds
 		    end
 	      in
 		fmt'
 	      end
 	  else if (prec >= 6)
 	    then let
-	      fun fmt' (PB.TIME{sec, usec}) =
-		    String.concat(fmtInt sec :: "." :: fmtUSec usec :: pad(prec-6))
+	      fun fmt' (PB.TIME{seconds, uSeconds}) =
+		    String.concat(fmtInt seconds :: "." ::
+				  fmtUSec uSeconds :: pad(prec-6))
 	      in
 		fmt'
 	      end
 	    else let (* 0 < prec < 6 *)
 	      val amt = InlineT.PolyVector.sub(rounding, prec-1)
 	      fun fmt' t = let
-		    val PB.TIME{sec, usec} = add(t, amt)
+		    val PB.TIME{seconds, uSeconds} = add(t, amt)
 		    in
 		      String.concat[
-			  fmtInt sec, ".", String.substring(fmtUSec usec, 0, prec)
+			  fmtInt seconds, ".",
+			  String.substring(fmtUSec uSeconds, 0, prec)
 			]
 		    end
 	      in
@@ -182,16 +193,16 @@ structure TimeImp : TIME =
 	  fun isDigit c = (chrLE(#"0", c) andalso chrLE(c, #"9"))
 	  fun incByDigit (n, c) = 10*n + Int.toLarge(CharImp.ord c - CharImp.ord #"0")
 	  fun scanSec (secs, cs) = (case (getc cs)
-		 of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
+		 of NONE => SOME(PB.TIME{seconds=secs, uSeconds=0}, cs)
 		  | (SOME(#".", cs')) => (case (getc cs')
-		       of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
+		       of NONE => SOME(PB.TIME{seconds=secs, uSeconds=0}, cs)
 			| (SOME(d, cs'')) => if (isDigit d)
 			    then scanUSec (secs, cs')
-			    else SOME(PB.TIME{sec=secs, usec=0}, cs)
+			    else SOME(PB.TIME{seconds=secs, uSeconds=0}, cs)
 		      (* end case *))
 		  | (SOME(d, cs')) => if (isDigit d)
 		      then scanSec(incByDigit(secs, d), cs')
-		      else SOME(PB.TIME{sec=secs, usec=0}, cs)
+		      else SOME(PB.TIME{seconds=secs, uSeconds=0}, cs)
 		(* end case *))
 	  and scanUSec (secs, cs) = let
 		fun normalize (usecs, 6) = usecs
@@ -210,7 +221,7 @@ structure TimeImp : TIME =
 		      (* end case *))
 		val (usecs, cs) = scan' (0, 0, cs)
 		in
-		  SOME(PB.TIME{sec=secs, usec=usecs}, cs)
+		  SOME(PB.TIME{seconds=secs, uSeconds=usecs}, cs)
 		end
 	  val cs = PB.skipWS getc charStrm
 	  in
