@@ -36,7 +36,11 @@ struct
 	(case inline of F.IH_ALWAYS => "(i)"
 		      | F.IH_UNROLL => "(u)"
 		      | F.IH_SAFE => "")^
-	     (if isSome isrec then "R" else "")^
+	     (case isrec
+	       of SOME(_,F.LK_UNKNOWN) => "R"
+		| SOME(_,F.LK_LOOP) => "L"
+		| SOME(_,F.LK_WHILE) => "W"
+		| NONE => "")^
 		  (case cconv
 		    of F.CC_FCT => "FCT"
 		     | F.CC_FUN fixed => ("FUN "^(toStringFFlag fixed)))

@@ -47,9 +47,10 @@ structure Control : CONTROL =
 	val liftLiterals= ref false
 	val sharewrap	= ref true
 	val maxargs	= ref 10
-	val phases	= ref ["fcontract", "fcontract",
-			       "specialize", "fixfix", "fcontract",
-			       "specialize", "fixfix", "fcontract",
+	val phases	= ref ["lcontract", "fcontract",
+			       "fixfix", "fcontract",
+			       "specialize", "fcontract",
+			       "loopify", "fcontract",
 			       "wrap", "fixfix", "fcontract",
 			       "reify", "fixfix", "fcontract"]
 

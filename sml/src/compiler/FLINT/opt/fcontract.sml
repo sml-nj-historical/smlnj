@@ -23,7 +23,6 @@ end
  * - update counts when selecting a SWITCH alternative
  * - contracting RECORD(R.1,R.2) => R  (only if the type is easily available)
  * - dropping of dead arguments
- * - elimination of constant arguments
  *)
 
 (* things that lcontract.sml does that fcontract doesn't do (yet):
@@ -45,6 +44,7 @@ end
 
 (* things that could also be added:
  * - elimination of dead vars in let
+ * - elimination of constant arguments
  *)
 
 (* things that would require some type info:
@@ -195,9 +195,6 @@ fun buglexp (msg,le) = (say "\n"; PP.printLexp le; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; bug msg)
 
 (* fun sayexn e = app say (map (fn s => s^" <- ") (SMLofNJ.exnHistory e)) *)
-
-fun ASSERT (true,_) = ()
-  | ASSERT (FALSE,msg) = bug ("assertion "^msg^" failed")
 
 val cplv = LambdaVar.dupLvar
 
@@ -384,8 +381,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
     fun inline ifs (f,vs) =
 	case ((val2sval m f) handle x => raise x)
 	 of Fun(g,body,args,{inline,...},od) =>
-	    (ASSERT(used g, "used "^(C.LVarString g));
-	     if d <> od then (NONE, ifs)
+	    (if d <> od then (NONE, ifs)
 	     else if ((C.usenb(C.get g))handle x => raise x) = 1 andalso not(S.member ifs g) then
 							 
 		 (* simple inlining:  we should copy the body and then
@@ -395,7 +391,6 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		  * see comments at the begining of this file and in cfun *)
 		 (click_simpleinline();
 		  ignore(C.unuse true (C.get g));
-		  ASSERT(not (used g), "killed");
 		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
 		 
 	     (* aggressive inlining (but hopefully safe).  We allow

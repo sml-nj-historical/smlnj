@@ -203,6 +203,7 @@ FLINT/opt/optutils.sml
 FLINT/opt/lcontract.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
+FLINT/opt/loopify.sml
 FLINT/plambda/chkplexp.sml
 FLINT/plambda/flintnm.sml
 FLINT/plambda/pflatten.sig

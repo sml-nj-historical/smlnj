@@ -1,3 +1,20 @@
+1998-11-19  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/loopify.sml: new file
+
+	* cps/convert.sml: added code to take advantage of LK_WHILE loops.
+
+	* opt/optutils.sml (id): removed.  That was stupid.
+
+	* opt/collect.sml: drop support for actuals (was only used for cstargs).
+
+	* opt/lcontract.sml (lpfd): reset the inline bit to a safe value.
+
+	* opt/fcontract.sml (cstargs): eliminated.  Might reappear in a
+	  specialization phase some day.
+	(inline): turned off unrolling because it's buggy.
+	(APP): use the new ifs, damit!
+
 1998-11-11  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/fcontract.sml (sval): ref svals rather than going through F.value

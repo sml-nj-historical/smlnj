@@ -26,7 +26,9 @@ fun phase x = Stats.doPhase (Stats.makePhase x)
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fn f => (lcontract f; fcontract(fcollect f, Stats.newCounter[]))
+val fcontract = fn f => (fcontract(fcollect f, Stats.newCounter[]))
+
+val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -122,6 +124,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun runphase (p as "fcontract",(f,r,l)) = (fcontract f, r, p)
 	| runphase (p as "lcontract",(f,r,l)) = (lcontract f, r, p)
 	| runphase (p as "fixfix",(f,r,l)) = (fixfix f, r, p)
+	| runphase (p as "loopify",(f,r,l)) = (loopify f, r, p)
 	| runphase (p as "wrap",(f,false,l)) = (wrapping f, false, p)
 	| runphase (p as "specialize",(f,false,l)) = (specialize f, false, p)
 	| runphase (p as "reify",(f,false,l)) = (reify f, true, p)
@@ -152,7 +155,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
 			   raise x)
 
-      (* the "id" phases is just added to do the print/check at the entrance *)
+      (* the "id" phase is just added to do the print/check at the entrance *)
       val (flint,r,_) = foldl runphase'
 			      (flint,false,"flintnm")
 			      ((*  "id" :: *) !CTRL.phases)
