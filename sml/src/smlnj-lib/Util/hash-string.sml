@@ -5,9 +5,10 @@
 
 structure HashString : sig
 
-    val hashString : string -> word
+    val hashString  : string -> word
+    val hashString' : substring -> word
 
-  end = struct
+end = struct
 
     fun charToWord c = Word.fromInt(Char.ord c)
 
@@ -21,6 +22,21 @@ structure HashString : sig
  * in STL.
  *)
 
-    fun hashString s = CharVector.foldl hashChar 0w0 s
-	  
-  end (* HashString *)
+    (* fun hashString s = CharVector.foldl hashChar 0w0 s *)
+    local
+	fun x + y = Word.toIntX (Word.+ (Word.fromInt x, Word.fromInt y))
+	val sub = Unsafe.CharVector.sub
+	fun hash (s, i0, e) =
+	    let fun loop (h, i) =
+		    if i >= e then h
+		    else loop (hashChar (sub (s, i), h), i + 1)
+	    in loop (0w0, i0)
+	    end
+    in
+        fun hashString s = hash (s, 0, size s)
+	fun hashString' ss =
+	    let val (s, i0, len) = Substring.base ss
+	    in hash (s, i0, i0 + len)
+	    end
+    end
+end (* HashString *)
