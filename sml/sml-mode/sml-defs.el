@@ -77,7 +77,7 @@ notion of \"the end of an outline\".")
 (easy-menu-define sml-mode-menu sml-mode-map "Menu used in `sml-mode'."
   '("SML"
     ("Process"
-     ["Start default ML compiler" sml		(fboundp 'sml)	t]
+     ["Start default ML compiler" sml		t]
      ["-" nil nil]
      ["run CM.make"		sml-make	(featurep 'sml-proc)]
      ["load ML source file"	sml-load-file	(featurep 'sml-proc)]
