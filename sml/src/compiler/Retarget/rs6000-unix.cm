@@ -1,0 +1,6 @@
+Group
+	structure RS6000UnixCMB
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	rs6000-unix.sml

@@ -1,0 +1,6 @@
+Group
+	structure HppaUnixCMB
+is
+	../viscomp-lib.cm
+	../../cm/cm-lib.cm
+	hppa-unix.sml
