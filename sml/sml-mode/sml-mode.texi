@@ -729,15 +729,6 @@ compiler is started. Use @code{inferior-sml-mode-hook} to set any
 @end defvr
 
 
-@defvr Hook inferior-sml-load-hook
-Default: @code{nil}
-
-This hook is analogous to @code{sml-load-hook} and is run just after the
-code for @code{inferior-sml-mode} is loaded into Emacs. Use this to set
-process defaults, and preferred key bindings for the interaction buffer.
-@end defvr
-
-
 @deffn Command switch-to-sml
 Key: @kbd{C-c C-s}
 @kindex @kbd{C-c C-s}
@@ -1009,20 +1000,20 @@ provided to install your preferred key bindings. Given that the keymaps
 are global (variables):
 
 @lisp
-(defun my-sml-load-hook () "Global defaults for SML mode"
-  (define-key   sml-mode-map "\C-cd" 'sml-cd))
-(add-hook 'sml-load-hook 'my-sml-load-hook)
+(defun my-sml-mode-hook () "Global defaults for SML mode"
+  (define-key sml-mode-map "\C-cd" 'sml-cd))
+(add-hook 'sml-mode-hook 'my-sml-mode-hook)
 @end lisp
 @noindent
 This has the effect of binding @code{sml-cd} to the key @kbd{C-c d}.
 If you want the same behaviour from @kbd{C-c d} in the ML buffer:
 
 @lisp
-(defun my-inf-sml-load-hook () "Global defaults for inferior SML mode"
+(defun my-inf-sml-mode-hook () "Global defaults for inferior SML mode"
   (define-key inferior-sml-mode-map "\C-cd" 'sml-cd)
   ;; NB. for SML/NJ '96
   (setq sml-cd-command "OS.FileSys.chDir \"%s\""))
-(add-hook 'inferior-sml-load-hook 'my-inf-sml-load-hook)
+(add-hook 'inferior-sml-mode-hook 'my-inf-sml-mode-hook)
 @end lisp
 
 There is nothing to stop you rebuilding the entire keymap for
@@ -1085,7 +1076,7 @@ keep your macros from one editing session to the next, go to your
 to add @code{NAME} to @code{sml-forms-alist} permanently yourself:
 
 @lisp
-(defun my-sml-load-hook () "Global defaults for SML mode"
+(defun my-sml-mode-hook () "Global defaults for SML mode"
   ;; whatever else you do
   (add-to-list 'sml-forms-alist '("NAME" . FUNCTION)))
 @end lisp
@@ -1093,10 +1084,10 @@ to add @code{NAME} to @code{sml-forms-alist} permanently yourself:
 If you want to create templates like `case' that prompt for parameters
 you'll have to do some Lisp programming. The @code{skeleton} package is
 a good stating point.  Better yet, you can reuse the wrappers used by
-sml-mode itself in your sml-load-hook:
+sml-mode itself in your sml-mode-hook:
 
 @lisp
-(add-hook 'sml-load-hook
+(add-hook 'sml-mode-hook
   (lambda ()
     (sml-def-skeleton "case" "Case expr: "
       str " of" \n _ " => ")))
