@@ -1,0 +1,323 @@
+============================================================================
+This README file describes the overall structure of the current version of 
+the SML/NJ (v110.3) & FLINT/ML (v1.3) compiler source tree. Please send 
+your questions, comments, and suggestions to flint@cs.yale.edu (or contact
+Zhong Shao at shao-zhong@cs.yale.edu). 
+============================================================================
+
+NOTES
+   Some informal implementation notes. 
+
+README 
+   This file. It gives an overview of the overall compiler structure.
+
+all-files.cm
+   The standard Makefile for compiling the compiler. It is similar
+   to the idea of sources.cm used by CM.make, except that 
+   all-files.cm is designed for bootstrapping the compiler itself
+   only (i.e., CMB.make). The resulting binfiles from doing CMB.make 
+   are placed in a single bin directory, eg. bin.x86-unix or 
+   bin.sparc-unix. Right now, the list in all-files.cm is just the
+   list in sources.cm plus all the glue files in the 1-TopLevel/bootstrap
+   directory (which are used to bootstrap the interactive compiler).
+
+buildcm* compiler-name
+   A script for building the sml-cm version of the compiler. Suppose
+   you have build a SML heap image named sml.x86-unix, you type
+   "buildcm sml.x86-unix" to get the cm version of the compiler, 
+   probably named "sml-cm.x86-unix".
+
+buildcm2* compiler-name
+   Scripts for building a sml-cm compiler that knows where to
+   find the library and ml-lex and ml-yacc, etc. Need to adjust
+   the top-level directory name there. 
+
+sources.cm
+   This file contains the usual makefile for CM.make. It is not
+   used to build up the interactive compiler. But it can be
+   useful for debugging purpose. For example, you can type CM.make() 
+   to immediately build up a new, interactive visible compiler. To
+   access the newly built compiler, you use the 
+       "XXXVisComp.Interact.useFile"
+   function to compile ML programs. Notice all the bootstrap glue 
+   files are not in sources.cm.
+
+xmakeml* [-full] [-elab]
+   A script for building the interactive compiler. The default path
+   of bin files is ./bin.$arch-$os. There are two command-line options:
+   if you add the "-full" option, it will build a compiler whose 
+   components are visible to the top-level interactive environment;
+   if you add the "-elab" option, it will re-elaborate all the ML 
+   programs to recreate the static environments (this is useful, if
+   your new compiler has changed the representations of the bindings
+   in the static environments).
+
+xrun* compiler-name
+   A script for running the copmiler. Suppose you have a heap image 
+   named "sml.x86-unix", you can type "xrun sml.x86-unix" to run the
+   compiler. Similarly, you can type "xrun sml-cm.x86-unix" to run 
+   the CM version of the sml compiler. The xrun script uses the 
+   runtime system in the ../../bin/.run directory. 
+
+============================================================================
+Tips:
+   The current source code is organized as a two-level directory tree.
+   Apart from a few files which are placed immediately inside the 0-Boot 
+   directory (i.e., 0-Boot/*.{sig,sml}), all source files can be grep-ed
+   by typing "grep xxx */*/*.{sig,sml}", assuming you are looking for
+   binding "xxx". 
+
+   The following directories is organized based on the compilation phases.
+   Within each phase, the "main" sub-directory always contains the top-level 
+   module and some important data structures for that particular compilation 
+   phase.
+
+   File name conventions: 
+     *.sig --- the ML signature file 
+     *.sml --- the ML source program (occasionally with signatures)
+     *.grm --- ML-Yacc file
+     *.lex --- ML-Lex file
+     *.cm  --- the CM makefile
+
+0-Boot
+   The SML/NJ Initial Bootstrapping Library and the SML97 Basis Library. 
+   When recompiling the compiler (i.e., via CMB.make), files in this 
+   directory are always compiled first. More specifically, their order
+   of compilation is as follows:
+       (0)  build the initial primitive static environment 
+              (see 3-Semant/statenv/prim.sml)
+       (1)  compile assembly.sig and dummy.sml, these two files
+            make up the static environment for the runtime structure
+            (coming from the ../runtime/kernel/globals.c file). The
+            dynamic object from executing dummy.sml is discarded, and
+            replaced by a hard-wired object coming from the runtime
+            system.
+       (2)  compile core.sml, which defines a bunch of useful exceptions
+            and utilty functions such as polymorphic equality, string
+            equality, delay and force primitives, etc.
+       (4)  files in all-files.cm (must follow the exact order)
+       (5)  files in pervasive.cm (must follow the exact order)
+
+1/TopLevel
+   This directory contains the top-level glue files for different versions
+   of the batch and interactive compiler.  To understand, how the compiler
+   is organized, you can read the main directory.
+1-TopLevel/batch/
+   Utility files for the Compilation Manager CM and CMB; 
+1-TopLevel/bootstrap/
+   How to bootstrap an interactive compiler. Details are in boot.sml and
+   shareglue.sml. Before building an interactive compiler, one should have
+   already gotten a visible compiler (for that particular architecture),
+   see the viscomp directory. To build a compiler for SPARC architecture,
+   all we need to do is to load and run the IntSparc (in sparcglue.sml) 
+   structure.
+1-TopLevel/environ/
+   A top-level environment include static environment, dynamic environment
+   and symbolic environment. The definitions of static environments are in
+   the 3-Semant/statenv directory, as they are mostly used by the elaboration
+   and type checking.
+1-TopLevel/interact/
+   How the top-level interactive loop is organized. The evalloop.sml contains
+   the details on how a ML program is compiled from source code to binary
+   code and then later being executed.
+1-TopLevel/main/
+   The top-level compiler structure is shown in the compile.sig and 
+   compile.sml. The compile.sml contains details on how ML programs
+   are compiled into the FLINT intermediate format, but the details
+   on how FLINT gets compiled into the binary code segments are not
+   detailed here, instead, they are described in the 
+   4-FLINT/main/flintcomp.sml file. The CODEGENERATOR signature
+   in codes.sig defines the interface about this FLINT code generator.
+   Note: all the uses of the compilation facility goes throught the "compile"
+   function defined in the compile.sml. The common intermediate formats are 
+   stated in the compbasic.sig and compbasic.sml files. The version.sml 
+   defines the version numbers.
+1-TopLevel/viscomp/
+   How to build the visible compiler viscomp --- this is essentially 
+   deciding what to export to the outside world. All the Compiler 
+   control flags are defined in the control.sig and control.sml files
+   placed in this directory.
+
+2-FrontEnd/
+   Phase 1 of the compilation process. Turning the SML source code into
+   the Concrete Synatx. The definition of concrete syntax is in ast/ast.sml.
+   The frontend.sig and frontend.sml files in the main directory contain 
+   the big picture on the front end.
+
+3-Semant
+   This phase does semantic analysis, more specifically, it does the 
+   elaboration (of concrete syntax into abstract syntax) and type-checking 
+   of the core and module languages. The semantic objects are defined in 
+   main/bindings.sml. The result is the Abstract Syntax, defined the 
+   main/absyn.sml file. 
+3-Semant/basics/
+   Definition of several data structures and utility functions. They are
+   used by the code that does semantic analysis. The env.sig and env.sml
+   files defines the underlying data structures used to represent  the 
+   static environment. 
+3-Semant/elaborate/
+   How to turn a piece of code in the Concrete Syntax into one in the
+   Abstract Syntax. The top-level organization is in the following 
+   elabtop.sml file.
+3-Semant/main/absyn.sml
+   Definition of Abstract Syntax
+3-Semant/main/bindings.sml
+   Top-level view of what semantic objects we have
+3-Semant/main/elabtop.sml
+   Top-level view of the elaboration process. Notice that each piece
+   of core-ML program is first translated into the Abstract Syntax, 
+   and gets type-checked. The type-checking does change the contents
+   of abstract syntax, as certain type information won't be known
+   until type-checking is done.
+3-Semant/modules/
+   Utility functions for elaborations of modules. The module.sig and
+   module.sml contains the definitions of module-level semantic objects.
+3-Semant/pickle/
+   How to write the static environments into a file! This is important
+   if you want to create the *.bin file. It is also useful to infer 
+   a unique persistant id for each compilation unit (useful to detect
+   the cut-off compilation dependencies).
+3-Semant/statenv/
+   The definition of Static Environment. The SC-ed version of Static
+   Environment is used to avoid environment blow-up in the pickling.
+   The prim.sml contains the list of primitive operators and primitive 
+   types exported in the initial static environment (i.e., PrimEnv).
+   During bootstrapping, PrimEnv is the first environment you have to
+   set up before you can compile files in the 0-Boot directory.
+3-Semant/types/
+   This directory contains all the data structures and utility functions
+   used in type-checking the Core-ML language.
+3-Semant/typing/
+   The type-checking and type-inference code for the core-ML programs.
+   It is performed on Abstract Syntax and it produces Abstract Syntax
+   also.
+
+4-FLINT
+   This phase translates the Abstract Syntax into the intermediate 
+   Lambda language (i.e., FLINT). During the translation, it compiles
+   the Pattern Matches (see the mcomp directory). Then it does a bunch
+   of optimizations on FLINT; then it does representation analysis, 
+   and it converts the FLINT code into CPS, finally it does closure 
+   conversion. 
+4-FLINT/clos/
+   The closure conversion step. Check out Shao/Appel LFP94 paper for
+   the detailed algorithm.
+4-FLINT/cps/
+   Definition of CPS plus on how to convert the FLINT code into the 
+   CPS code. The compilation of the Switch statement is done in this
+   phase.
+4-FLINT/cpsopt/
+   The CPS-based optimizations (check Appel's "Compiling with 
+   Continuations" book for details). Eventually, all optimizations
+   in this directory will be migrated into FLINT.
+4-FLINT/flint/
+   This directory defines the FLINT language. The detailed definitions
+   of primitive tycs, primitive operators, kinds, type constructors, 
+   and types are in the 4-FLINT/kernel directory.
+4-FLINT/kernel/
+   Definiton of the kernel data structures used in the FLINT language.
+   This includes: deBruijn indices, primitive tycs, primitive operators,
+   FLINT kinds, FLINT constructors, and FLINT types. When you write 
+   code that manipulates the FLINT code, please restrict yourself to 
+   use the functions defined in the LTYEXTERN interface only.
+4-FLINT/lambda/
+   Definition of the OLD lambda language, should go away soon.
+4-FLINT/main/
+   The flintcomp.sml describes how the FLINT code gets compiled into
+   the optimized and closure-converted CPS code (eventually, it should
+   produce optimized, closure-converted, adn type-safe FLINT code).
+4-FLINT/obsol/
+   All files in this directory are currently not up-to-date. They are
+   either obsolete or are not compatible with recent changes made to
+   the CPS language.
+4-FLINT/opt/
+   The FLINT-based optimizations, such as contraction, type 
+   specializations, etc.
+4-FLINT/plambda/
+   An older version of the Lambda language (not in the A-Normal form)
+4-FLINT/reps/
+   Code for the representation analysis of the FLINT code.
+4-FLINT/trans/
+   Translation of Abstract Syntax into the PLambda code, then to the FLINT
+   code. All semantic objects used in the elaboration are translated into
+   the FLINT types as well. The translation phase also does match 
+   compilation. The translation from PLambda to FLINT does the (partial)
+   type-based argument flattening.
+
+5-CodeGen
+   The old code generator. May eventually go away after Lal's new
+   code generator becomes stable on all platforms. Each code generator 
+   should produce a structure of signature CODEGENERATOR (defined in 
+   the 1-Toplevel/main/codes.sig file).
+5-CodeGen/coder/
+   This directory contains the machine-independent parts of the
+   old code generator. Some important signatures are also here.
+5-CodeGen/cpsgen/
+   Compilation of CPS into the abstract machine in the old code 
+   generator. Probably the spill.sml and limit.sml files should
+   not be placed here. A counterpart of this in the new 
+   code generator is the 6-NewCGen/cpscompile directory.
+5-CodeGen/mips/
+   MIPS code generator for both little endian and big endian
+5-CodeGen/rs6000/
+   RS6000 code generator
+5-CodeGen/sparc/
+   SPARC code generator
+5-CodeGen/x86/
+   X86 code generator
+
+6-NewCGen/alpha32/
+   Alpha32 new code generator
+6-NewCGen/alpha32x/
+   Alpha32 new code generator (with special patches)
+6-NewCGen/cpscompile/
+   Compilation of CPS into the MLRISC abstract machine code
+6-NewCGen/hppa/
+   HPPA new code genrator
+
+7-MLRISC
+   Lal George's new code generator generator (MLRISC).
+
+9-MiscUtil/
+   Contains various kinds of utility programs
+9-MiscUtil/bignums/
+   Bignum packages. I have no clue how stable this is.
+9-MiscUtil/fixityparse
+9-MiscUtil/lazycomp
+   Some code for implementation of the lazy evaluation primitives.
+9-MiscUtil/print/
+   Pretty printing. Very Adhoc, needs major clean up.
+9-MiscUtil/profile/
+   The time and the space profiler.
+9-MiscUtil/util/
+   Important utility functions including the Inputsource (for 
+   reading in a program), and various Hashtable and Dictionary
+   implementations.
+
+============================================================================
+A. SUMMARY:
+
+0. statenv   : symbol -> binding
+   dynenv    : pid -> object
+   symenv    : pid -> flint 
+1. Parsing   : source -> ast
+2. Elaborator: ast + statenv -> absyn + pickle + newstatenv
+3. FLINT     : absyn -> FLINT -> CPS -> CLO
+4. CodeGen   : CPS -> csegments (spilling, limit check, codegen)
+5. NewCGen   : CPS -> csegments  (via MLRISC)
+
+============================================================================   
+B. How to recover the all-files.cm (or sources.cm) file after making 
+   dramatic changes to the directory structure. Notice that the difference
+   between all-files.cm and sources.cm is just the bootstrap glue files.
+
+   1. ls -1 [1-6,9]*/*/*.{sig,sml} | grep -i -v glue | grep -v obsol > xxx
+   2. Add 7-MLRISC/MLRISC.cm
+   3. Fix ml.lex.* and ml.grm.* files
+   4. Add 9-MiscUtil/util/UTIL.cm
+   5. Add ../ml-yacc/lib/sources.cm
+   6. Delete 9-MiscUtil/util/intmap.sig
+             9-MiscUtil/util/intmap.sml
+             9-MiscUtil/util/sort.sml
+             9-MiscUtil/util/sortedlist.sml
+============================================================================   
