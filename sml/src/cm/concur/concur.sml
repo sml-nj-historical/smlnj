@@ -139,23 +139,23 @@ structure Concur :> CONCUR = struct
 
     fun inputReady iis = let
 	val fis = TextIO.getInstream iis
-	val (r, v) = TextIO.StreamIO.getReader fis
 	fun bad () = (Say.say ["inputReady: bad stream\n"];
 		      raise Fail "concur")
-    in
-	case r of
-	    TextPrimIO.RD { ioDesc = SOME d, ... } =>
+	val rv = TextIO.StreamIO.getReader fis
+	val c = case rv of
+	    (TextPrimIO.RD { ioDesc = SOME d, ... }, "") =>
 		(case OS.IO.pollDesc d of
 		     NONE => bad ()
 		   | SOME pd => let
-			 val pd = OS.IO.pollIn pd
-			 val fis' = TextIO.StreamIO.mkInstream (r, v)
 			 val c = ref (Waiting [])
 		     in
-			 inputs := (c, pd) :: !inputs;
-			 TextIO.setInstream (iis, fis');
+			 inputs := (c, OS.IO.pollIn pd) :: !inputs;
 			 c
 		     end)
-	  | _ => bad ()
+	  | (_, "") => bad ()
+	  | rv => ref (Arrived ())
+    in
+	TextIO.setInstream (iis, TextIO.StreamIO.mkInstream rv);
+	c
     end
 end
