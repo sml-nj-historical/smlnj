@@ -1,4 +1,4 @@
-eXene-1.0 (released ???)
+eXene-1.0
 ------------------------
 
 GLOBAL CHANGES
@@ -19,6 +19,10 @@ GLOBAL CHANGES
     [08/01/96]
 
 STYLES
+  - fixed bug in parsing code (space between resource name and ":" was not
+    accepted.
+    [06/14/99]
+
   - fixed bug in parsing code.
     [04/07/97]
 
@@ -32,6 +36,15 @@ GRAPHICS UTILITIES
     [04/07/97]
 
 LIBRARY CHANGES
+  - Added code to make the leycode to keysym translation bulletproof (some
+    X servers seem to generate bogus keycodes in some situations).
+    [09/14/99]
+
+  - Fixed some bugs in the implementation of selections and modified the
+    interface to support interaction with applications that use CurrentTime
+    in their selection requests (this goes against the ICCC spec).
+    [07/12/99]
+
   - Fixed bug in ICCC signature, where the wrong type name was being used
     for windows in some places.
     [05/19/99]
@@ -62,7 +75,7 @@ WIDGET CHANGES
     [08/01/96]
 
 
-eXene-0.5 (released ???)
+eXene-0.5
 ------------------------
 
 GLOBAL CHANGES

@@ -21,8 +21,8 @@ signature SELECTION_SERVER =
     type selection_server
     type selection_handle
 
-    type atom (* = XProtTypes.atom *)
-    type time (* = XTime.time *)
+    type atom = XProtTypes.atom
+    type time = XTime.time
 
     val mkServer : XDisplay.xdisplay
 	    -> (XEventTypes.xevent CML.chan * selection_server)
@@ -38,13 +38,15 @@ signature SELECTION_SERVER =
 
     val requestEvt : selection_handle -> {
 	    target : atom,
-	    time : time,
+	    time : time option,
 	    reply : XProtTypes.prop_val option -> unit
 	  } CML.event
 	(* this event is enabled once for each request for the selection.  The
 	 * target field is the requested target type; the time field is the
 	 * server-time of the gesture that caused the request, and the reply
-	 * field is a function for sending the reply.
+	 * field is a function for sending the reply.  Strictly speaking
+         * this violates the ICCC specification, but applications may choose
+         * to accept it.
 	 *)
 
     val releaseEvt : selection_handle -> unit CML.event

@@ -94,6 +94,7 @@ structure XSendEvent =
 		      }
 	  in
 	    putEventCode (msg, evtSelectionNotify);
+	    putTS (msg, 4, time);
 	    putXId (msg, 8, requestor);
 	    putAtom (msg, 12, selection);
 	    putAtom (msg, 16, target);

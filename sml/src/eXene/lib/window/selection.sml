@@ -20,7 +20,7 @@ structure Selection : sig
 
     val selectionReqEvt : selection_handle -> {
 	    target : atom,
-	    time : time,
+	    time : time option,
 	    reply : XProtTypes.prop_val option -> unit
 	  } CML.event
 	(* this event is enabled once for each request for the selection.  The

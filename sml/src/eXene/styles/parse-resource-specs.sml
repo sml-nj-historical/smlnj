@@ -224,12 +224,21 @@ structure ParseResourceSpecs : sig
 	  val start = skipWS(ln, 0)
 	  fun getCompBind (i, path) = let
 		val (comp, i) = scanComp (ln, i)
+		fun getRest i = (case comp
+		       of (Name attr) => (rev path, attr, skipWS(ln, i+1))
+			| Wild => raise (BadSpec i)
+		      (* end case *))
 		in
 		  case (getCC (ln, i))
-		   of Colon => (case comp
-			 of (Name attr) => (rev path, attr, skipWS(ln, i+1))
-			  | Wild => raise (BadSpec i)
-			(* end case *))
+		   of Colon => getRest i
+		    | Space => let
+			val i = skipWS(ln, i+1)
+			in
+			  case getCC(ln, i)
+			   of Colon => getRest i
+			    | _ => raise (BadSpec i)
+			  (* end case *)
+			end
 		    | _ => let
 			val (bind, i) = scanBinding (ln, i)
 			in

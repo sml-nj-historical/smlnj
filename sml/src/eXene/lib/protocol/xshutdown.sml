@@ -32,7 +32,9 @@ structure XShutdown : sig
 			loop (remove conns)
 		      end
 		  | Shutdown => (
-TextIO.print(concat[CML.tidToString(CML.getTid()), " ***** shutdown *****\n"]);
+let val tid = CML.getTid() in
+TraceCML.trace(XDebug.libTM, fn () => [CML.tidToString tid, " ***** shutdown *****\n"])
+end;
 		      app XIo.closeConn conns;
 		      CML.send(replyCh, ())))
 	    in

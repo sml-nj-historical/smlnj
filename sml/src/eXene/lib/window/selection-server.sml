@@ -132,7 +132,7 @@ structure SelectionServer : SELECTION_SERVER =
     type sel_request = {	    (* the request for a selection that gets *)
 				    (* sent to the owner *)
 	target : atom,
-	time : time,
+	time : time option,
 	reply : XTy.prop_val option -> unit
       }
 
@@ -204,11 +204,14 @@ structure SelectionServer : SELECTION_SERVER =
 trace(fn() => ["SelectionRequestXEvt\n"]);
 		  case (findSel (#selection xevt), #time xevt)
 		   of (NONE, _) => (* we don't hold this selection, return NONE *)
+(trace(fn () => ["  SelectionRequestXEvt rejected: no selection\n"]);
 		        rejectReq ()
-		    | (_, XTy.CurrentTime) =>
-		      (* requestor isn't following ICCC, so reject request *)
-		        rejectReq ()
-		    | (SOME{reqCh, ...}, XTy.TimeStamp time) => let
+)
+		    | (SOME{reqCh, ...}, timeStamp) => let
+			val optTime = (case timeStamp
+			       of XTy.CurrentTime => NONE
+				| XTy.TimeStamp time => SOME time
+			      (* end case *))
 		      (* propagate the request to the holder of the selection. *)
 		        val prop = (case (#property xevt)
 			       of NONE => (#target xevt) (* obsolete client *)
@@ -218,7 +221,7 @@ trace(fn() => ["SelectionRequestXEvt\n"]);
 		        fun replyThread () = (
 			      CML.send (reqCh, {
 				  target = #target xevt,
-				  time = time,
+				  time = optTime,
 				  reply = (fn x => SyncVar.iPut(cv, x))
 			        });
 			      case (SyncVar.iGet cv)
@@ -235,8 +238,8 @@ trace(fn() => ["SelectionRequestXEvt\n"]);
 					requestor = #requestor xevt,
 					selection = #selection xevt,
 					target = #target xevt,
-					prop = NONE,
-					time = time
+					prop = #property xevt,
+					time = timeStamp
 				      })
 			      (* end case *))
 		        in

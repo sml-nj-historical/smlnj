@@ -108,7 +108,9 @@ structure Keymap : KEYMAP =
 	      in
 		KM(minKC, Array.fromList kbdMap)
 	      end
-	fun lookupKC (KM(minKC, a)) (XTy.KEYCODE kc) = Array.sub(a, kc - minKC)
+      (* NOTE: some X servers generate bogus keycodes on occasion *)
+	fun lookupKC (KM(minKC, a)) (XTy.KEYCODE kc) =
+	      (Array.sub(a, kc - minKC) handle Subscript => [])
       end
 
     (* the meaning of the Lock modifier key *)

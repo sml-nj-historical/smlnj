@@ -211,13 +211,16 @@ signature ICCC =
 
     val selectionReqEvt : selection_handle -> {
 	    target : atom,
-	    time : EXB.XTime.time,
+	    time : EXB.XTime.time option,
 	    reply : prop_val option -> unit
 	  } CML.event
 	(* this event is enabled once for each request for the selection.  The
 	 * target field is the requested target type; the time field is the
 	 * server-time of the gesture that caused the request, and the reply
-	 * field is a function for sending the reply.
+	 * field is a function for sending the reply.  If the time field is
+	 * NONE, this means a value of CurrentTime was used.  Strictly speaking
+	 * this violates the ICCC specification, but applications may choose
+	 * to accept it.
 	 *)
 
     val selectionRelEvt : selection_handle -> unit CML.event
