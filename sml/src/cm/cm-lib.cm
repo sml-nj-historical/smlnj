@@ -5,17 +5,10 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
+(cm-hook)
 Library
-#if defined(NEW_CM)
 	functor LinkCM
 	functor BootstrapCompileFn
-#else
-	functor LinkCM
-
-	(* dummy stuff *)
-	signature CMTOOLS
-	signature COMPILATION_MANAGER
-#endif
 is
 	(* the CM description file parser *)
 	parse/parse.sml
@@ -91,7 +84,6 @@ is
 	(* CM-internal libraries *)
 	util/sources.cm
 
-#if defined(NEW_CM)
 	basis.cm
 
 	(* compiler libraries *)
@@ -100,18 +92,6 @@ is
 
 	(* auxiliary libraries *)
 	ml-yacc-lib.cm
-#else
-	(* compiler libraries *)
-	../compiler/viscomp-lib.cm
-	../comp-lib/UTIL.cm
 
-	(* auxiliary libraries *)
-	../ml-yacc/lib/sources.cm
-#endif
-
-#if defined(NEW_CM)
 	cm-hook.cm
 	cm-boot.sml
-#else
-	link.sml
-#endif

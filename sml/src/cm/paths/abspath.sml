@@ -62,7 +62,24 @@ structure AbsPath :> ABSPATH = struct
       | compareId (PRESENT _, ABSENT _) = GREATER
       | compareId (ABSENT s, ABSENT s') = String.compare (s, s')
 
-    fun getId f = (PRESENT (F.fileId f) handle _ => ABSENT f)
+    (* To maximize our chances of recognizing eqivalent path names to
+     * non-existing files, we use F.fullPath to expand the largest
+     * possible prefix of the path. *)
+    fun expandPath f = let
+	fun loop { dir, file } =
+	    P.concat (F.fullPath dir, file)
+	    handle _ => let
+		val { dir = dir', file = file' } = P.splitDirFile dir
+	    in
+		loop { dir = dir', file = P.concat (file', file) }
+	    end
+    in
+	(* An initial call to splitDirFile is ok because we already know
+	 * that the complete path does not refer to an existing file. *)
+	loop (P.splitDirFile f)
+    end
+
+    fun getId f = (PRESENT (F.fileId f) handle _ => ABSENT (expandPath f))
 
     type elaboration = { stamp : unit ref,
 			 name : string,

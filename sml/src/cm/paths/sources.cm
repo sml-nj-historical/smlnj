@@ -22,9 +22,5 @@ is
 	srcpathset.sml
 
 	../util/sources.cm
-#if defined(NEW_CM)
 	basis.cm
 	viscomp-lib.cm
-#else
-	../../compiler/viscomp-lib.cm
-#endif
