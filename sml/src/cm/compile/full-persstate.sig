@@ -14,12 +14,12 @@ signature FULL_PERSSTATE = sig
     type exec_memo = { dyn: GenericVC.Environment.dynenv, dts: DynTStamp.dts }
 
     val exec_look_sml :
-	SmlInfo.info * DynTStamp.dts * GeneralParams.params -> exec_memo option
+	SmlInfo.info * DynTStamp.dts * GeneralParams.info -> exec_memo option
     val exec_memo_sml :
 	SmlInfo.info * exec_memo -> unit
 
     val exec_look_stable :
-	BinInfo.info * DynTStamp.dts * GeneralParams.params -> exec_memo option
+	BinInfo.info * DynTStamp.dts * GeneralParams.info -> exec_memo option
     val exec_memo_stable :
 	BinInfo.info * exec_memo -> unit
 end

@@ -16,7 +16,8 @@ signature PRIMITIVE = sig
     val fromString : string -> primitive option
     val toString : primitive -> string
 
-    val pervasive : primitive
+    val pervasive : configuration -> GenericVC.Environment.environment
+    val corenv : configuration -> GenericVC.BareEnvironment.staticEnv
 
     (* the domain of (lookup p) must always properly include (exports p) *)
     val exports : configuration -> primitive -> SymbolSet.set
@@ -58,7 +59,8 @@ structure Primitive :> PRIMITIVE = struct
 
     fun toString BASIS = "basis"
 
-    val pervasive = BASIS
+    fun pervasive c = Dummy.f ()
+    fun corenv c = Dummy.f ()
 
     fun exports (cfg: configuration) p = #exports (cfg p)
     fun lookup (cfg: configuration) p = #lookup (cfg p)

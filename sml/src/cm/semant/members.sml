@@ -20,7 +20,7 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
-    val expandOne : GeneralParams.params * (AbsPath.t -> GroupGraph.group)
+    val expandOne : GeneralParams.info * (AbsPath.t -> GroupGraph.group)
 	-> { sourcepath: AbsPath.t, group: AbsPath.t * region,
 	     class: string option }
 	-> collection
@@ -28,7 +28,7 @@ signature MEMBERCOLLECTION = sig
 
     val build :
 	collection * SymbolSet.set option * (string -> unit) *
-	GeneralParams.params
+	GeneralParams.info
 	-> impexp SymbolMap.map
 
     val subgroups : collection -> GroupGraph.group list
@@ -92,10 +92,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     subgroups = #subgroups c1 @ #subgroups c2 }
     end
 
-    fun expandOne (params, rparse) arg = let
-	val primconf = #primconf params
+    fun expandOne (gp, rparse) arg = let
+	val primconf = #primconf (#param gp)
 	val { sourcepath, group, class } = arg
-	val error = GroupReg.error (#groupreg params) group
+	val error = GroupReg.error (#groupreg gp) group
 	fun noPrimitive () = let
 	    fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
 	    fun w0 s = error EM.WARN s EM.nullErrorBody
@@ -110,11 +110,11 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
-		    val i =  SmlInfo.info params
+		    val i =  SmlInfo.info gp
 			{ sourcepath = p,
 			  group = group,
 			  share = s }
-		    val exports = SmlInfo.exports params i
+		    val exports = SmlInfo.exports gp i
 		    val _ = if SS.isEmpty exports then w0 "no module exports"
 			    else ()
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)

@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature CMPARSE = sig
-    val parse : Primitive.configuration -> AbsPath.t -> CMSemant.group option
+    val parse : GeneralParams.param -> AbsPath.t -> CMSemant.group option
 end
 
 structure CMParse :> CMPARSE = struct
@@ -25,14 +25,10 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    fun parse primconf group = let
+    fun parse param group = let
 
 	val groupreg = GroupReg.new ()
-	val fnpolicy = FilenamePolicy.default
-	val params = { groupreg = groupreg,
-		       fnpolicy = fnpolicy,
-		       primconf = primconf,
-		       keep_going = false }
+	val ginfo = { param = param, groupreg = groupreg }
 
 	val gc = ref AbsPathMap.empty	(* the "group cache" *)
 
@@ -113,7 +109,7 @@ structure CMParse :> CMPARSE = struct
 		     CMSemant.emptyGroup group)
 
 		fun doMember (p, p1, p2, c) =
-		    CMSemant.member (params, recParse (p1, p2))
+		    CMSemant.member (ginfo, recParse (p1, p2))
 		                    { sourcepath = p, class = c,
 				      group = (group, (p1, p2)) }
 
@@ -185,7 +181,7 @@ structure CMParse :> CMPARSE = struct
 		    CMParse.parse (lookAhead, tokenStream,
 				   fn (s,p1,p2) => error (p1, p2) s,
 				   (group, context, error, recParse,
-				    doMember, params))
+				    doMember, ginfo))
 	    in
 		TextIO.closeIn stream;
 		if !(#anyErrors source) then NONE

@@ -58,7 +58,7 @@ structure S = CMSemant
     (pos * pos -> string -> unit) *
     (pos * pos -> S.pathname -> S.group) *
     (S.pathname * pos * pos * S.cm_symbol option -> S.members) *
-    GeneralParams.params
+    GeneralParams.info
 %start description
 %eop EOF
 %noshift EOF

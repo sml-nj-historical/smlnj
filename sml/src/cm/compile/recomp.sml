@@ -85,7 +85,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	{ stat = stat, sym = sym, pids = pidset (statpid, sympid) }
     end
 
-    fun primitive c p = let
+    fun primitive (gp: GeneralParams.info) p = let
+	val c = #primconf (#param gp)
 	val e = Primitive.env c p
 	val { statpid, sympid, ctxt } = Primitive.pidInfo c p
     in
@@ -94,6 +95,15 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  ctxt = ctxt }
     end
 
+    fun pervasive (gp: GeneralParams.info) = let
+	val e = #pervasive (#param gp)
+    in
+	{ stat = E.staticPart e, sym = E.symbolicPart e, pids = PidSet.empty }
+    end
+
+    fun bpervasive (gp: GeneralParams.info) =
+	E.staticPart (#pervasive (#param gp))
+
     fun memo2envdelta { bfc, ctxt } =
 	{ stat = (BF.senvOf bfc, BF.staticPidOf bfc),
 	  sym = (BF.symenvOf bfc, BF.lambdaPidOf bfc),
@@ -101,7 +111,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 
     fun dostable (i, mkenv, gp) = let
 	fun load be = let
-	    val fnp = #fnpolicy gp
+	    val fnp = #fnpolicy (#param gp)
 	    val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
@@ -142,7 +152,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
 	    SOME d => SOME d
 	  | NONE => let
-		val mkBinPath = FilenamePolicy.mkBinPath (#fnpolicy gp)
+		val mkBinPath =
+		    FilenamePolicy.mkBinPath (#fnpolicy (#param gp))
 		val binpath = mkBinPath (SmlInfo.sourcepath i)
 		val binname = AbsPath.name binpath
 		fun delete () = OS.FileSys.remove binname handle _ => ()
@@ -177,7 +188,31 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		end handle e as Interrupt.Interrupt => raise e
 	                 | _ => NONE
 
-		fun compile () = Dummy.f ()
+		fun compile () =
+		    case SmlInfo.parsetree gp i of
+			NONE => NONE
+		      | SOME (ast, source) => let
+			    val _ = Say.vsay (concat ["[compiling ",
+						      SmlInfo.name i, " -> ",
+						      binname, "...]\n"])
+			    val corenv =
+				Primitive.corenv (#primconf (#param gp))
+			    val cmData = PidSet.listItems pids
+			    val bfc = BF.create { runtimePid = NONE,
+						  splitting = true,
+						  cmData = cmData,
+						  ast = ast,
+						  source = source,
+						  senv = stat,
+						  symenv = sym,
+						  corenv = corenv }
+			    val memo = { bfc = bfc, ctxt = stat }
+			in
+			    save bfc;
+			    PS.recomp_memo_sml (i, memo);
+			    SOME (memo2envdelta memo)
+			end handle e as Interrupt.Interrupt => raise e
+		                 | _ => NONE
 
 		fun isValid x =
 		    PidSet.equal (PidSet.addList (PidSet.empty, BF.cmDataOf x),

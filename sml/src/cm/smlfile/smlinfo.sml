@@ -14,24 +14,25 @@ signature SMLINFO = sig
     type complainer = GenericVC.ErrorMsg.complainer
     type ast = GenericVC.Ast.dec
     type region = GenericVC.SourceMap.region
+    type source = GenericVC.Source.inputSource
 
     val resync : unit -> unit		(* rebuild internal table *)
 
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
 
-    val info : GeneralParams.params ->
+    val info : GeneralParams.info ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t * region,
 	  share: bool option }
 	-> info
 
     val sourcepath : info -> AbsPath.t
-    val error : GeneralParams.params -> info -> complainer
+    val error : GeneralParams.info -> info -> complainer
 
-    val parsetree : GeneralParams.params -> info -> ast option
-    val exports : GeneralParams.params -> info  -> SymbolSet.set
-    val skeleton : GeneralParams.params -> info -> Skeleton.decl
+    val parsetree : GeneralParams.info -> info -> (ast * source) option
+    val exports : GeneralParams.info -> info  -> SymbolSet.set
+    val skeleton : GeneralParams.info -> info -> Skeleton.decl
     val share : info -> bool option
 
     (* different ways of describing an sml file using group and source *)
@@ -58,7 +59,7 @@ structure SmlInfo :> SMLINFO = struct
     datatype persinfo =
 	PERS of { group: AbsPath.t * region,
 		  lastseen: TStamp.t ref,
-		  parsetree: { tree: ast, source: source } option ref,
+		  parsetree: (ast * source) option ref,
 		  skeleton: Skeleton.decl option ref }
 		      
     datatype info =
@@ -69,7 +70,7 @@ structure SmlInfo :> SMLINFO = struct
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun share (INFO { share = s, ... }) = s
 
-    fun gerror (gp: GeneralParams.params) = GroupReg.error (#groupreg gp)
+    fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
     fun error gp (INFO { persinfo = PERS { group, ... }, ... }) =
 	gerror gp group
@@ -92,7 +93,7 @@ structure SmlInfo :> SMLINFO = struct
 	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
     end
 
-    fun info (gp: GeneralParams.params) arg = let
+    fun info (gp: GeneralParams.info) arg = let
 	val { sourcepath, group = gr as (group, region), share } = arg
 	val groupreg = #groupreg gp
 	fun newpersinfo () = let
@@ -164,7 +165,7 @@ structure SmlInfo :> SMLINFO = struct
 		val pto = let
 		    val tree = SF.parse source
 		in
-		    SOME { tree = tree, source = source }
+		    SOME (tree, source)
 		end handle SF.Compile msg => (TextIO.closeIn stream;
 					      err msg;
 					      NONE)
@@ -184,13 +185,14 @@ structure SmlInfo :> SMLINFO = struct
 	case !skeleton of
 	    SOME sk => sk
 	  | NONE => let
-		val skelpath = FNP.mkSkelPath (#fnpolicy gp) sourcepath
+		val policy = #fnpolicy (#param gp)
+		val skelpath = FNP.mkSkelPath policy sourcepath
 	    in
 		case SkelIO.read (skelpath, !lastseen) of
 		    SOME sk => (skeleton := SOME sk; sk)
 		  | NONE =>
 			(case getParseTree gp (i, false, noerrors) of
-			     SOME { tree, source } => let
+			     SOME (tree, source) => let
 				 fun err sv region s =
 				     EM.error source region sv s
 					 EM.nullErrorBody
@@ -218,8 +220,7 @@ structure SmlInfo :> SMLINFO = struct
     fun exports gp i = SkelExports.exports (skeleton0 false gp i)
     val skeleton = skeleton0 true
 
-    fun parsetree gp i =
-	Option.map #tree (getParseTree gp (i, true, true))
+    fun parsetree gp i = getParseTree gp (i, true, true)
 
     fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
     fun fullSpec (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =

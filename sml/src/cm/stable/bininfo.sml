@@ -17,7 +17,7 @@ signature BININFO = sig
     val offset : info -> int
     val group : info -> AbsPath.t
     val share : info -> bool option
-    val error : GeneralParams.params -> info -> complainer
+    val error : GeneralParams.info -> info -> complainer
 end
 
 structure BinInfo :> BININFO = struct
@@ -43,6 +43,6 @@ structure BinInfo :> BININFO = struct
     fun offset (INFO { offset = os, ... }) = os
     fun share (INFO { share = s, ... }) = s
 
-    fun error (gp: GeneralParams.params) (INFO { group, ... }) =
+    fun error (gp: GeneralParams.info) (INFO { group, ... }) =
 	GroupReg.error (#groupreg gp) group
 end

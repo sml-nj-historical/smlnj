@@ -32,9 +32,16 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     val bfilter = filter
     val bnofilter = nofilter
 
-    fun primitive c p =
-	{ dyn = fn () => E.dynamicPart (Primitive.env c p),
+    fun primitive (gp: GeneralParams.info) p =
+	{ dyn = fn () => E.dynamicPart (Primitive.env
+					(#primconf (#param gp)) p),
 	  dts = DTS.ancient }
+
+    fun pervasive (gp: GeneralParams.info) =
+	{ dyn = fn () => E.dynamicPart (#pervasive (#param gp)),
+	  dts = DTS.ancient }
+
+    val bpervasive = pervasive
 
     fun thunkify { dyn, dts } = { dyn = fn () => dyn, dts = dts }
 

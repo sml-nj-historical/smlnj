@@ -15,19 +15,17 @@ in
 	type benv = CT.benv
 	type env = CT.env
 
-	val bnode : GP.params -> DG.bnode -> envdelta option
-	val farbnode : GP.params -> DG.farbnode -> benv option
-	val snode : GP.params -> DG.snode -> envdelta option
-	val sbnode : GP.params -> DG.sbnode -> envdelta option
-	val farsbnode : GP.params -> DG.farsbnode -> env option
+	val bnode : GP.info -> DG.bnode -> envdelta option
+	val farbnode : GP.info -> DG.farbnode -> benv option
+	val snode : GP.info -> DG.snode -> envdelta option
+	val sbnode : GP.info -> DG.sbnode -> envdelta option
+	val farsbnode : GP.info -> DG.farsbnode -> env option
 
     end = struct
 
 	type envdelta = CT.envdelta
 	type env = CT.env
 	type benv = CT.benv
-
-	fun prim (gp: GP.params) = CT.primitive (#primconf gp)
 
 	fun foldlayer_k layer f = let
 	    fun loop r [] = r
@@ -51,7 +49,7 @@ in
 		loop i l
 	    end
 
-	fun bnode (gp: GP.params) = let
+	fun bnode (gp: GP.info) = let
 
 	    val (glob, loc) = let
 		val globf = farbnode gp
@@ -59,19 +57,14 @@ in
 		fun k f = foldlayer_k CT.blayer f
 		fun s f = foldlayer_s CT.blayer f
 	    in
-		if #keep_going gp then (k globf, k locf)
+		if #keep_going (#param gp) then (k globf, k locf)
 		else (s globf, s locf)
 	    end
 
-	    fun bn (DG.PNODE p) = SOME (prim gp p)
+	    fun bn (DG.PNODE p) = SOME (CT.primitive gp p)
 	      | bn (DG.BNODE n) = let
 		    val { bininfo, localimports = li, globalimports = gi } = n
-		    fun mkenv () = let
-			val pe = CT.bnofilter (prim gp Primitive.pervasive)
-			val ge = glob (SOME pe) gi
-		    in
-			loc ge li
-		    end
+		    fun mkenv () = loc (glob (SOME (CT.bpervasive gp)) gi) li
 		in
 		    CT.dostable (bininfo, mkenv, gp)
 		end
@@ -93,18 +86,16 @@ in
 		fun k f = foldlayer_k CT.layer f
 		fun s f = foldlayer_s CT.layer f
 	    in
-		if #keep_going gp then (k globf, k locf)
+		if #keep_going (#param gp) then (k globf, k locf)
 		else (s globf, s locf)
 	    end
 
 	    val { smlinfo, localimports = li, globalimports = gi } = n
-	    val pe = CT.nofilter (prim gp Primitive.pervasive)
-	    val ge = glob (SOME pe) gi
-	    val le = loc ge li
+	    val e = loc (glob (SOME (CT.pervasive gp)) gi) li
 	in
-	    case le of
+	    case e of
 		NONE => NONE
-	      | SOME le => CT.dosml (smlinfo, le, gp)
+	      | SOME e => CT.dosml (smlinfo, e, gp)
 	end
 
 	and sbnode gp (DG.SB_BNODE b) = bnode gp b

@@ -20,13 +20,13 @@ signature COMPILATION_TYPE = sig
     val nofilter : envdelta -> env
     val bnofilter : envdelta -> benv
 
-    val primitive : Primitive.configuration -> Primitive.primitive -> envdelta
+    val primitive : GeneralParams.info -> Primitive.primitive -> envdelta
+    val bpervasive : GeneralParams.info -> benv
+    val pervasive : GeneralParams.info -> env
 
     val dostable:
-	BinInfo.info * (unit -> benv option) * GeneralParams.params
+	BinInfo.info * (unit -> benv option) * GeneralParams.info
 	-> envdelta option
 
-    val dosml :
-	SmlInfo.info * env * GeneralParams.params
-	-> envdelta option
+    val dosml :	SmlInfo.info * env * GeneralParams.info -> envdelta option
 end

@@ -36,11 +36,11 @@ signature CM_SEMANT = sig
     val emptyGroup : pathname -> group
     val group :
 	pathname * privilegespec * exports option * members * complainer *
-	GeneralParams.params
+	GeneralParams.info
 	-> group
     val library :
 	pathname * privilegespec * exports * members * complainer *
-	GeneralParams.params
+	GeneralParams.info
 	-> group
 
     (* assembling privilege lists *)
@@ -51,7 +51,7 @@ signature CM_SEMANT = sig
     (* constructing member collections *)
     val emptyMembers : members
     val member :
-	GeneralParams.params * (pathname -> group)
+	GeneralParams.info * (pathname -> group)
 	-> { sourcepath: pathname, group: pathname * region,
 	     class: cm_symbol option }
 	-> members
@@ -143,10 +143,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   subgroups = [] }
 	
 
-    fun group (g, p, e, m, error, params) = let
+    fun group (g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
-	val exports = MemberCollection.build (mc, filter, error, params)
+	val exports = MemberCollection.build (mc, filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
     in
 	GG.GROUP { exports = exports, islib = false,
@@ -154,10 +154,10 @@ structure CMSemant :> CM_SEMANT = struct
 		   subgroups = subgroups }
     end
 
-    fun library (g, p, e, m, error, params) = let
+    fun library (g, p, e, m, error, gp) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = applyTo mc e
-	val exports = MemberCollection.build (mc, SOME filter, error, params)
+	val exports = MemberCollection.build (mc, SOME filter, error, gp)
 	val subgroups = MemberCollection.subgroups mc
     in
 	GG.GROUP { exports = exports, islib = true,
@@ -183,10 +183,10 @@ structure CMSemant :> CM_SEMANT = struct
     end
 
     fun emptyMembers env = env
-    fun member (params, rparse) arg env = let
-	val coll = MemberCollection.expandOne (params, rparse) arg
+    fun member (gp, rparse) arg env = let
+	val coll = MemberCollection.expandOne (gp, rparse) arg
 	val group = #group arg
-	val error = GroupReg.error (#groupreg params) group
+	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
     in
 	MemberCollection.sequential (env, coll, e0)

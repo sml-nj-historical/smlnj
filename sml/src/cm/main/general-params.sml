@@ -9,8 +9,12 @@
  *)
 structure GeneralParams = struct
 
-    type params = { primconf : Primitive.configuration,
-		    fnpolicy: FilenamePolicy.policy,
-		    groupreg: GroupReg.groupreg,
-		    keep_going: bool }
+    type param = { primconf : Primitive.configuration,
+		   fnpolicy: FilenamePolicy.policy,
+		   groupreg: GroupReg.groupreg,
+		   keep_going: bool,
+		   pervasive: GenericVC.Environment.environment,
+		   corenv: GenericVC.BareEnvironment.staticEnv }
+
+    type info = { param: param, groupreg: GroupReg.groupreg }
 end

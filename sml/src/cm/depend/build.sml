@@ -16,7 +16,7 @@ signature BUILDDEPEND = sig
 	  subgroups: GroupGraph.group list }
 	* SymbolSet.set option		(* filter *)
 	* (string -> unit)		(* error *)
-	* GeneralParams.params
+	* GeneralParams.info
 	->
 	impexp SymbolMap.map		(* exports *)
 end
