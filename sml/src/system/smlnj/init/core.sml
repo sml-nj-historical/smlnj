@@ -305,11 +305,8 @@ structure Core =
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)
 
     (* plugin stuff: *)
-    fun mkplugin (stamp: string, str: 'a) : plugin = let
-	val obj : Assembly.object = InLine.cast str
-    in
-	InLine.cast (stamp, obj)
-    end
+    fun mkplugin (stamp: string, str: Assembly.object) : plugin =
+	InLine.cast (stamp, str)
 
     fun getplugin (stamp: string, p: plugin) : Assembly.object = let
 	val (origstamp: string, str: Assembly.object) = InLine.cast p
@@ -317,6 +314,4 @@ structure Core =
 	if stringequal (stamp, origstamp) then str
 	else raise Plugin
     end
-
-    val cast : 'a -> 'b = InLine.cast
   end
