@@ -270,8 +270,8 @@ the function `sml-smlnj-error-parser' (qv).")
      (1 font-lock-prompt-face)
      (2 font-lock-command-face keep))
     (,sml-error-regexp . font-lock-warning-face)
-    ("^GC #.*" . font-lock-comment-face)
-    ("^\\[.*\\]" . font-lock-comment-face)))
+    ("^\\[\\(.*GC #.*\n\\)*.*\\]" . font-lock-comment-face)
+    ("^GC #.*" . font-lock-comment-face)))
 
 ;; default faces values
 (defvar font-lock-prompt-face
