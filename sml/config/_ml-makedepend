@@ -122,8 +122,8 @@ delime="# END  : ml-makedepend (${cmfile}:${target}); DO NOT DELETE!"
 #  (other cmfile/target combinations are unaffected)
 #
 awk "BEGIN { c = 1; s = \"${delims}\"; e = \"${delime}\"; }
-(\$0 == s) { c = 0; continue; }
-(\$0 == e) { c = 1; continue; }
+(\$0 == s) { c = 0; next; }
+(\$0 == e) { c = 1; next; }
 (c == 1) { print }" <$mf >$tmpmf
 cp $tmpmf $mf
 rm $tmpmf
