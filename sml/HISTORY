@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/18 15:35:00 CST
+Tag: <none>
+Description:
+
+Enabled dlopen and friends for FreeBSD (as recommended by Johannes 5
+Joemann).
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/11/17 16:05:21 EST 2004
 Tag: leunga-20041117-mlrisc-live-kill

@@ -14,10 +14,10 @@ CPP =		gcc -x assembler-with-cpp -E -P
 #CPP =		/usr/bin/cpp -P
 
 XOBJS =
-XLIBS =	
+XLIBS =		../c-libs/dl/libunix-dynload.a
 LD_LIBS =
 BASE_DEFS =	
-DEFS		= $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_FREEBSD
+DEFS		= $(BASE_DEFS) -DHOST_X86 -DTARGET_X86 -DOPSYS_UNIX -DOPSYS_FREEBSD -DDLOPEN
 TARGET =	X86
 VERSION =	v-x86-freebsd
 RUNTIME =	run.x86-freebsd
