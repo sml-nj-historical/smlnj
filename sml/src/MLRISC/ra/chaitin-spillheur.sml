@@ -47,7 +47,10 @@ struct
                         (_,[]) => (* defs but no use *)
                                   ~1.0 - real deg
                       | ([d],[u]) => (* defs after use; don't use *) 
-                           if d = u+1 orelse d = u+2 then don'tUse else cost()
+                         let fun plus({block,insn},n) = {block=block,insn=insn+n}
+                         in  if d = plus(u,1) orelse d = plus(u,2) 
+                             then don'tUse else cost()
+                         end
                       | _ => cost()
                in  if cost < lowestCost andalso not(hasBeenSpilled number)
                    then 

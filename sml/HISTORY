@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lal George
+Date: 2001/10/11 23:51:34 EDT
+Tag: george-20011011-too-many-instrs
+Description:
+
+The representation of a program point never expected to see more 
+than 65536 instructions in a basic block!
+
+----------------------------------------------------------------------
+Name: Lal George
 Date: 2001/10/09 09:41:37 EDT 
 Tag: george-20011008-mlrisc-labels
 Description:

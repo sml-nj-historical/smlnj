@@ -599,7 +599,7 @@ struct
                          (degree := !degree - 1; decDegree adj)
                      | decDegree(_::adj) = decDegree adj
                    fun elimUses([], _, uses, pri, cost) = (uses, pri)
-                     | elimUses(pt::pts, pt' : int, uses, pri, cost) =
+                     | elimUses(pt::pts, pt':G.programPoint, uses, pri, cost) =
                        if pt = pt' then elimUses(pts, pt', uses, pri-cost, cost)
                        else elimUses(pts, pt', pt::uses, pri, cost)
                    val (uses', pri') = elimUses(!uses, pt, [], !pri, cost);

@@ -25,6 +25,9 @@ sig
     (* Dump the flograph to a stream *)
    val dumpFlowgraph : string * flowgraph * TextIO.outstream -> unit
 
+    (* Dump the flograph to a stream *)
+   val annotations : flowgraph -> Annotations.annotations ref
+
     (*
      * Interface for communicating with the new register allocator.
      * It is expected that the services will cache enough information

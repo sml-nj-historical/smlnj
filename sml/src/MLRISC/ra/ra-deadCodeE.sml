@@ -42,7 +42,7 @@ struct
            val affectedList = app (fn d => affected(blockNum d, true))
 
            (* Mark all copy temporaries *)
-           val marker = [0]
+           val marker = [{block=0,insn=0}]
            fun markCopyTmps [] = ()  
              | markCopyTmps(G.NODE{uses, ...}::tmps) =
                  (uses := marker; markCopyTmps tmps)

@@ -70,13 +70,15 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("RASpill",msg)
 
-   fun dec n = Word.toIntX(Word.fromInt n - 0w1)
+   fun dec1 n = Word.toIntX(Word.fromInt n - 0w1)
+   fun dec{block,insn} = {block=block,insn=dec1 insn}
 
    structure T = RASpillTypes(I)
    open T
 
    fun uniq s = CB.SortedCells.return(CB.SortedCells.uniq s) 
    val i2s    = Int.toString
+   fun pt2s{block,insn} = "b"^i2s block^":"^i2s insn
 
    val Asm.S.STREAM{emit, ...} = Asm.makeStream[]
 
@@ -412,7 +414,7 @@ struct
                                                don'tOverwrite)
 
                          val _ = if debug then 
-                               (print("pt="^i2s pt^"\n");
+                               (print("pt="^pt2s pt^"\n");
                                 case spillRegs of 
                                   [] => ()
                                 |  _ => (print("Spilling "); 

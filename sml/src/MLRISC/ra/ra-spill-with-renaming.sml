@@ -117,13 +117,15 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("RASpillWithRenaming",msg)
 
-   fun dec n = Word.toIntX(Word.fromInt n - 0w1)
+   fun dec1 n = Word.toIntX(Word.fromInt n - 0w1)
+   fun dec{block,insn} = {block=block,insn=dec1 insn}
 
    structure T = RASpillTypes(I)
    open T
 
    fun uniq s = CBase.SortedCells.return(CBase.SortedCells.uniq s) 
    val i2s    = Int.toString
+   fun pt2s{block,insn} = "b"^i2s block^":"^i2s insn
 
    val Asm.S.STREAM{emit, ...} = Asm.makeStream[]
 
@@ -281,7 +283,10 @@ struct
                  [] => (reloadCode, env)
                | _  => (copyInstr((copyDst, copySrc), instr) @ reloadCode, env)
            end 
-    
+
+           fun diff({block=b1:int,insn=i1},{block=b2,insn=i2}) =
+               if b1=b2 then i1-i2 else MAX_DIST+1
+
            (*
             * Insert reload code
             *)
@@ -295,7 +300,7 @@ struct
                           if CBase.sameColor(r,regToSpill) then
                             if defPt = pt
                             then lookup env(* this is NOT the right renaming!*)
-                            else if defPt - pt <= MAX_DIST then
+                            else if diff(defPt,pt) <= MAX_DIST then
                                renameInstr(pt,instr,regToSpill,env,currentReg)
                             else
                                reloadInstr(pt,instr,regToSpill,env,spillLoc)
@@ -534,7 +539,7 @@ struct
                                       env,don'tOverwrite)
 
                          val _ = if debug then 
-                               (print("pt="^i2s pt^"\n");
+                               (print("pt="^pt2s pt^"\n");
                                 case spillRegs of 
                                   [] => ()
                                 |  _ => (print("Spilling "); 

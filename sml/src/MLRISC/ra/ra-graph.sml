@@ -22,9 +22,14 @@ struct
 
   type priority = int
 
-  type programPoint = int
+  type programPoint = {block:int, insn:int}
 
-  structure PPtHashTable = IntHashTable
+  structure PPtHashTable = HashTableFn
+     (type hash_key = programPoint
+      fun hashVal{block,insn} = 
+             Word.<<(Word.fromInt block,0w7) + Word.fromInt insn
+      fun sameKey(x:programPoint,y) = x = y
+      )
 
   type frame_offset = int
   type logical_spill_id = int

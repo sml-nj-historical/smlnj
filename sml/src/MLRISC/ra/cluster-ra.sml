@@ -76,9 +76,17 @@ struct
    in app dump (#nodes graph ())
    end
 
+   val annotations = CFG.annotations 
+
    val dummyBlock =   CFG.newBlock(~1, ref 0)
 
    fun x + y = Word.toIntX(Word.+(Word.fromInt x, Word.fromInt y))
+
+   val uniq = ListMergeSort.uniqueSort 
+                (fn ({block=b1,insn=i1},{block=b2,insn=i2}) =>
+                    case Int.compare(b1,b2) of
+                      EQUAL => Int.compare(i1,i2)
+                    | ord   => ord)
 
    fun services(cfg as Graph.GRAPH graph) = let
        val CFG.INFO{annotations=clAnns, ...} = #graph_info graph
@@ -89,22 +97,15 @@ struct
 
        val N = maxBlockId(blocks, #capacity graph ())
 
-       fun computeShift(0w0, max) = 0w31-max
-         | computeShift(N, max) = computeShift(Word.>>(N, 0w1), Word.+(max,0w1))
-       val shift = computeShift(Word.>>(Word.fromInt N, 0w15), 0w15)
-       val mask  = Word.<<(0w1, shift) - 0w1
-
        (*
         * Construct program point 
         *)
-       fun progPt(blknum, instrId) = 
-           Word.toIntX(Word.+(Word.<<(Word.fromInt blknum, shift),
-                                      Word.fromInt instrId))
-       fun blockNum pt = Word.toIntX(Word.>>(Word.fromInt pt, shift))
-       fun instrNum pt = Word.toIntX(Word.andb(Word.fromInt pt, mask))
+       fun progPt(blknum, instrId) = {block=blknum, insn=instrId}
+       fun blockNum{block,insn} = block
+       fun instrNum{block,insn} = insn
 
            (* blocks indexed by block id *)
-       val blockTable   = A.array(N, (#new_id graph (), dummyBlock))
+       val blockTable = A.array(N, (#new_id graph (), dummyBlock))
 
        fun fillBlockTable [] = ()
          | fillBlockTable((b as (nid, _))::blocks) =
@@ -129,7 +130,7 @@ struct
             * v is a source of a copy.
             *)
            val copyTable    = IntHashTable.mkTable(N, NotThere) 
-                : {dst:CB.cell,pt:int} list IntHashTable.hash_table
+                : {dst:CB.cell,pt:G.programPoint} list IntHashTable.hash_table
            val lookupCopy   = IntHashTable.find copyTable 
            val lookupCopy   = fn r => case lookupCopy r of SOME c => c 
                                                          | NONE => []
@@ -259,7 +260,7 @@ struct
                        liveOutAtStmt(block, A.length defs, defs, 1, !freq, span)
                      end
    
-               val useSites = SortedList.uniq(!uses) 
+               val useSites = uniq(!uses) 
                val trail    = initialize(v, v', useSites)
                val span     = foreachUseSite (useSites, 0)
                val _        = cleanup trail
@@ -300,7 +301,9 @@ struct
                            (* Add a pseudo use for tmpR *)
                           (case chase(getnode(colorOf r)) of
                              tmp as NODE{uses,defs=ref [d],...} =>
-                               (uses := [d-1]; (dst, tmp::tmps)) 
+                             let fun prev{block,insn}={block=block,insn=insn-1}
+                             in  (uses := [prev d]; (dst, tmp::tmps)) 
+                             end
                           | _ => error "mkMoves"
                           )
                        | (_, dst) => (dst, tmps)
@@ -347,14 +350,11 @@ struct
 			 val _    = UA.update(dtab, i, defs)
 			 val (mv, tmps) = 
 			       mkMoves(insn, pt, d, u, w, mv, tmps)
-		     in  scan(rest, pt+1, i+1, mv, tmps)  
+                         fun next{block,insn} = {block=block,insn=insn+1}
+		     in  scan(rest,next pt, i+1, mv, tmps)  
 		     end
 		 val (pt, i, mv, tmps) = 
 		   scan(!insns, progPt(nid,1), 1, mv, tmps)
-		 val _ = 
-		   if pt >= progPt(nid+1, 0) then 
-		      error("mkNodes: too many instructions")
-		   else ()
                in  
 		 (* If the block is escaping, then all liveout
 		  * registers are considered used here.
@@ -445,13 +445,13 @@ struct
            val _ = Core.clearGraph graph
 
            (* maps program point to registers to be spilled *)
-           val spillSet = IntHashTable.mkTable(32, NotThere)
+           val spillSet = G.PPtHashTable.mkTable(32, NotThere)
 
            (* maps program point to registers to be reloaded *)
-           val reloadSet = IntHashTable.mkTable(32, NotThere)
+           val reloadSet = G.PPtHashTable.mkTable(32, NotThere)
 
            (* maps program point to registers to be killed *)
-           val killSet = IntHashTable.mkTable(32, NotThere) 
+           val killSet = G.PPtHashTable.mkTable(32, NotThere) 
 
            val spillRewrite = Spill.spillRewrite
                               { graph=graph,
@@ -474,8 +474,8 @@ struct
            val addAffectedBlocks = IntHashTable.insert affectedBlocks
 
            fun ins set = let
-               val add  = IntHashTable.insert set
-               val look = IntHashTable.find set
+               val add  = G.PPtHashTable.insert set
+               val look = G.PPtHashTable.find set
                val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = 
@@ -490,8 +490,8 @@ struct
            val insReloadSet = ins reloadSet
            val insKillSet   = 
 	     let
-               val add  = IntHashTable.insert killSet
-               val look = IntHashTable.find killSet
+               val add  = G.PPtHashTable.insert killSet
+               val look = G.PPtHashTable.find killSet
                val look = fn r => case look r of SOME s => s | NONE => []
                fun enter(r, []) = ()
                  | enter(r, pt::pts) = (add(pt, r::look pt); enter(r, pts))
