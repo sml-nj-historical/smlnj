@@ -1,0 +1,88 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.07 [en] (X11; I; Linux 2.2.7 i686) [Netscape]">
+</HEAD>
+<BODY bgcolor="#FFFFFF">
+
+<CENTER>
+<H1>
+<FONT COLOR="#aa0000">Instruction Streams</FONT></H1></CENTER>
+
+<h3> Overview </h3>
+An <font color="#ff0000"> instruction stream </font> 
+is an abstraction used by MLRISC to describe linearized instructions.
+This abstraction turns out to fit the function of
+many MLRISC modules.  For example,
+a phase such as <a href="instrsel.html"> instruction
+selection </a> can be viewed as taking an stream of 
+<a href="mltree.html"> MLTREE </a> expressions and return a
+stream of <a href="instructions.html"> instructions </a>.  Similarly,
+phases such as <a href="asm.html"> assembly output </a> and
+<a href="mc.html"> machine code generation </a> can be seen 
+respectively as taking a stream of instructions and 
+returning a stream of characters and a stream of bytes.
+
+<h3> The Details </h3>
+An instruction stream satisfy the signature
+<a href="../instructions/stream.sig" target=code> INSTRUCTION_STREAM </a>,
+which is defined as:
+
+<pre>
+signature INSTRUCTION_STREAM = sig
+   structure P : <a href="pseudo-ops.html">PSEUDO_OPS</a>
+   structure B : <a href="block-names.html">BLOCK_NAMES</a>
+
+   datatype ('a,'b,'c) stream =
+      STREAM of
+         { init        : int -> unit,
+           finish      : 'c -> unit,
+           emit        : (int -> int) -> 'a -> unit,
+           pseudoOp    : P.pseudo_op -> unit,
+           defineLabel : Label.label -> unit, 
+           entryLabel  : Label.label -> unit, 
+           comment     : string -> unit,
+           blockName   : B.name -> unit,
+           annotation  : Annotations.annotation -> unit,
+           exitBlock   : 'b -> unit
+         }
+end
+</pre>
+
+<h3> The protocol </h3>
+Instruction streams follow the following protocol:
+<ul>
+  <li> The method <tt>init</tt> should be called at the beginning of
+        the stream to mark the start of a new compilation unit.  
+         The integer passed to this method is the number
+        of bytes in the stream.  This integer is only used for 
+        machine code emitter, which uses it to allocate space for the
+        code string.  
+  <li> The method <tt>finish</tt> should be called when the entire
+       compilation unit has been sent.
+  <li> In between these calls, the following methods can be called in any
+       order:
+  <ul>
+   <li> <tt>emit</tt> -- this method emits an instruction.  It takes
+         a <a href="regmap.html">regmap</a> as argument.
+   <li> <tt>pseudoOp</tt> -- this method emits a pseudo op.
+   <li> <tt>defineLabel</tt> -- this method defines a label.
+   <li> <tt>entryLabel</tt> -- this method defines a label that
+          also marks an procedure entry.
+   <li> <tt>comment</tt> -- this emits a comment string
+   <li> <tt>blockName</tt> -- this changes the current block name
+   <li> <tt>annotation</tt> -- this method injects an annotation into
+          the current block.
+   <li> <tt>exitBlock</tt> -- 
+          this marks the current block as an procedure exit.
+  </ul>
+</ul>  
+<HR>
+    <FONT SIZE="-2">
+<ADDRESS>
+<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
+<BR>
+
+</BODY>
+</HTML>

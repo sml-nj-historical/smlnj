@@ -1,0 +1,26 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * Sources file for INet library; part of the SML/NJ library suite.
+ *)
+
+Library
+  signature SOCK_UTIL
+  structure SockUtil
+
+#if defined(OPSYS_UNIX)
+  signature UNIX_SOCK_UTIL
+  structure UnixSockUtil
+#endif
+
+is
+  ../Util/sources.cm
+
+  sock-util-sig.sml
+  sock-util.sml
+
+#if defined(OPSYS_UNIX)
+  unix-sock-util.sml
+#endif
+

@@ -1,0 +1,71 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <META NAME="GENERATOR" CONTENT="Mozilla/4.07 [en] (X11; I; Linux 2.2.7 i686) [Netscape]">
+</HEAD>
+
+<BODY bgcolor="#FFFFFF">
+
+<CENTER>
+<H1>
+<FONT COLOR="#aa0000">Architecture of MLRISC</FONT></H1></CENTER>
+
+<h2> Overview </h2>
+  MLRISC is 
+
+<h2> Core Components </h2>
+
+  The core components of MLRISC allow the client to quickly construct 
+an optimizing backend for various architectures.  These components include:
+
+<ul>
+  <li> The MLTREE language, which is a RTL-like intermediate language
+       that is used to communicate to the MLRISC system.  A client is
+       responsible for writing the translator that generates MLTREE from
+       the source program.
+  <li> Instruction selection modules, which generates target machine 
+       instructions from the MLTREE intermediate language.
+  <li> The Register Allocator, which performs register allocation.
+  <li> Assemblers, which emits assembly code.
+</ul>
+
+For systems that require direct machine code generation, the following
+modules are included:
+<ul>
+  <li> Span dependency resolution modules, which compute addresses    
+       frmo symbolic addresses,
+       fill delay slots, and expand instructions that are 
+       <font color="#ff0000">span dependent</font>.
+  <li> Machine code emitters, which emit machine code into a binary stream.
+</ul>
+
+<h2> Optimization Modules </h2>
+
+In addition, MLRISC has been enhanced to support various types of
+machine level optimizations.  These include:
+
+<ul>
+  <li> Core optimizations
+  <li> SSA optimizations
+  <li> ILP optimizations for superscalars
+  <li> ILP optimizations for VLIW/EPIC architectures
+</ul>
+
+<h2> Basic Types </h2>
+
+<h2> How Things Are Fit Together </h2>
+
+<ul>
+  <li> Cluster
+  <li> MLRISC IR
+</ul>
+
+<HR>
+    <FONT SIZE="-2">
+<ADDRESS>
+<A HREF="mailto:leunga@cs.nyu.edu">Allen Leung</A></ADDRESS>
+<BR>
+
+</BODY>
+</HTML>
