@@ -99,7 +99,7 @@ fun fexp (fv,lexp) = let
 		end
 	else
 	    (* this "never" occurs, but dead-code removal is not bullet-proof *)
-	    ([(fk,f,args)], body)
+	    ([], le)
       | curry first le = ([], le)
 
     (* do the actual uncurrying *)

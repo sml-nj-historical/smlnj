@@ -24,7 +24,10 @@ val say = Control.Print.say
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
 (*  val lcontract = phase "Compiler 052 lcontract" LContract.lcontract  *)
-val fcontract = phase "Compiler 052 fcontract" FContract.contract
+val fcollect  = phase "Compiler 052a fcollect" Collect.collect
+val fcontract = phase "Compiler 052b fcontract" FContract.contract
+val fcontract = fcontract o fcollect
+
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
 val reify     = phase "Compiler 055 reify" Reify.reify

@@ -1,3 +1,13 @@
+1998-10-30  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml (dropcstargs): replace constant args by the constant.
+
+	* opt/fixfix.sml (curry): correctly handle "imposible" cases.
+
+	* opt/collect.sml: completely revisited:  no distinction between
+	  internal/external uses, dead-code elimination done right away.  This
+	  makes fcontract a little simpler.
+
 1998-10-28  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/fcontract.sml (inline): do simple inlining only for non-isrec
