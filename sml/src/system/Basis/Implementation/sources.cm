@@ -430,6 +430,7 @@ is
 	IO/bin-io-sig.sml (* bin-io.sig *)
 	IO/text-io-sig.sml (* text-io.sig *)
 	IO/os-prim-io.sig
+	IO/os-text-prim-io-sig.sml
 	IO/bin-io-fn.sml
 	IO/text-io-fn.sml
 

@@ -80,37 +80,27 @@ structure OS_IO : OS_IO =
 	  PollDesc(iod, {rd=rd, wr=wr, pri=true})
 
   (* polling function *)
-(* replace with SMLBasis.poll
     local
-      val poll' : ((int * word) list * (Int32.int * int) option) -> (int * word) list =
-	    CInterface.c_function "POSIX-OS" "poll"
-      fun join (false, _, w) = w
-        | join (true, b, w) = Word.orb(w, b)
-      fun test (w, b) = (Word.andb(w, b) <> 0w0)
-      val rdBit = 0w1 and wrBit = 0w2 and priBit = 0w4
-      fun fromPollDesc (PollDesc(OS.IO.IODesc fd, {rd, wr, pri})) =
-	    ( fd,
-	      join (rd, rdBit, join (wr, wrBit, join (pri, priBit, 0w0)))
-	    )
-      fun toPollInfo (fd, w) = PollInfo(OS.IO.IODesc fd, {
-	      rd = test(w, rdBit), wr = test(w, wrBit), pri = test(w, priBit)
-	    })
-    in
-    fun poll (pds, timeOut) = let
-	  val timeOut = (case timeOut
-		 of SOME(PreBasis.TIME{sec, usec}) => SOME(sec, Int.fromLarge usec)
-		  | NONE => NONE
-		(* end case *))
-	  val info = poll' (List.map fromPollDesc pds, timeOut)
-	  in
-	    List.map toPollInfo info
-	  end
-    end (* local *)
-*)
+	fun join (false, _, w) = w
+          | join (true, b, w) = Word.orb(w, b)
+	fun test (w, b) = (Word.andb(w, b) <> 0w0)
+	val rdBit = 0w1 and wrBit = 0w2 and priBit = 0w4
+	fun fromPollDesc (PollDesc(fd, {rd, wr, pri})) =
+	    (join (rd, rdBit, join (wr, wrBit, join (pri, priBit, 0w0))),
+	     Unsafe.Object.toObject fd)
+	fun toPollInfo (w, fdo) =
+	    PollInfo(Unsafe.cast fdo,
+		     { rd = test(w, rdBit), wr = test(w, wrBit),
+		       pri = test(w, priBit) })
 
-    (* val poll = SMLBasis.poll *)
-	  (* how is this supposed to work? *)
-    fun poll (pdl, to) = raise Fail "poll not yet implemented"
+    in
+        fun poll (pds, timeOut) = let
+	    val timeOut = Option.map (fn PreBasis.TIME t => t) timeOut
+	    val info = SMLBasis.poll (List.map fromPollDesc pds, timeOut)
+	in
+	    List.map toPollInfo info
+	end
+    end (* local *)
 
   (* check for conditions *)
     fun isIn (PollInfo(_, flgs)) = #rd flgs
