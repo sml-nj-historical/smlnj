@@ -105,7 +105,8 @@ structure OS_FileSys : OS_FILE_SYS =
 
 	fun exists s = W32FS.getFileAttributes s <> NONE 
 
-	fun fullPath s = 
+	fun fullPath "" = getDir ()
+	  | fullPath s = 
 	    if exists s then W32FS.getFullPathName' s
 	    else raise SysErr("fullPath: cannot generate full path",NONE)
 	val fullPath = OSPath.mkCanonical o fullPath
