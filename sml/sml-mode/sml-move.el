@@ -1,8 +1,6 @@
-;;; sml-move.el
+;;; sml-move.el --- Buffer navigation functions for sml-mode
 
-(defconst rcsid-sml-move "@(#)$Name$:$Id$")
-
-;; Copyright (C) 1999-1999  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,11 +16,15 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(require 'cl)
+
+;;; Commentary:
+
+
+;;; Code:
+
+(eval-when-compile (require 'cl))
 (require 'sml-util)
 (require 'sml-defs)
-
-;;
 
 (defsyntax sml-internal-syntax-table
   '((?_  . "w")
@@ -93,10 +95,10 @@
   "Alist of pseudo-precedence of syntactic elements.")
 
 (defun sml-op-prec (op dir)
-  "return the precedence of OP or nil if it's not an infix.
+  "Return the precedence of OP or nil if it's not an infix.
 DIR should be set to BACK if you want to precedence w.r.t the left side
     and to FORW for the precedence w.r.t the right side.
-This assumes that we are looking-at the OP."
+This assumes that we are `looking-at' the OP."
   (when op
     (let ((sprec (cdr (assoc op sml-syntax-prec))))
       (cond
@@ -122,7 +124,7 @@ This assumes that we are looking-at the OP."
     (looking-at re)))
 
 (defun sml-find-match-forward (this match)
-  "Only works for word matches"
+  "Only works for word matches."
   (let ((level 1)
 	(either (concat this "\\|" match)))
     (while (> level 0)
@@ -312,5 +314,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 (defun sml-backward-arg () (sml-backward-sexp 1000))
 (defun sml-forward-arg () (sml-forward-sexp 1000))
 
-;;
+
 (provide 'sml-move)
+
+;;; sml-move.el ends here

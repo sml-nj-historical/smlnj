@@ -2,7 +2,9 @@
 
 (defconst rcsid-sml-mode "@(#)$Name$:$Id$")
 
-;; Copyright (C) 1989-1999, Lars Bo Nielsen; 1994,1997, Matthew J. Morley
+;; Copyright (C) 1989       Lars Bo Nielsen
+;; Copyright (C) 1994-1997  Matthew J. Morley
+;; Copyright (C) 1999-2000  Stefan Monnier
 
 ;; $Revision$
 ;; $Date$
@@ -90,7 +92,7 @@
 
 ;;; Code:
 
-(require 'cl)
+(eval-when-compile (require 'cl))
 (require 'sml-util)
 (require 'sml-move)
 (require 'sml-defs)

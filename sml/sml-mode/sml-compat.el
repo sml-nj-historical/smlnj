@@ -1,8 +1,6 @@
-;;; sml-compat.el
+;;; sml-compat.el --- Compatibility functions for Emacs variants for sml-mode
 
-(defconst rcsid-sml-compat "@(#)$Name$:$Id$")
-
-;; Copyright (C) 1999-1999  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,7 +16,9 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-;;
+;;; Commentary:
+
+;;; Code:
 
 (unless (fboundp 'set-keymap-parents)
   (defun set-keymap-parents (m parents)
@@ -64,5 +64,6 @@ If DIR-FLAG is non-nil, create a new empty directory instead of a file."
     file)))
 
 
-;;
 (provide 'sml-compat)
+
+;;; sml-compat.el ends here

@@ -1,10 +1,16 @@
 2000-02-18  Stefan Monnier  <monnier@cs.yale.edu>
 
+	* *.el: Pass through checkdoc and use `eval-when-compile' whenever
+	possible for (require 'cl).
+
+2000-02-18  Stefan Monnier  <monnier@cs.yale.edu>
+
 	* sml-util.el (make-temp-dir, make-temp-file, temp-file-dir,
 	  delete-temp-dirs): Replaced by the make-temp-file from Emacs-21.
 	(custom-create-map): add :group arg and allow key to be a list.
 	(define-major-mode): Removed (use define-derived-mode instead).
 	(sml-builtin-nested-comments-flag): New var.
+	(concatq): Remove.
 
 	* sml-proc.el (sml-host-name): New var.
 	(sml-make-file-name): Replaced by `sml-compile-commands'.
@@ -26,7 +32,7 @@
 	  the command so the user can change it.
 	(sml-make-error): Fix for when `endline' is absent.
 
-	* sml-mode.el: Pass it rhough checkdoc.
+	* sml-mode.el: Pass it through checkdoc.
 	(sml-mode-version): Remove.
 	(sml-load-hook): Remove.
 	(sml-mode-info): Use `info' rather than `Info-goto-node'.

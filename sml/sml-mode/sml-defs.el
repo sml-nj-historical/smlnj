@@ -1,8 +1,6 @@
-;;; sml-move.el
+;;; sml-defs.el --- Various definitions for sml-mode
 
-(defconst rcsid-sml-defs "@(#)$Name$:$Id$")
-
-;; Copyright (C) 1999-1999  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,12 +16,14 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(require 'cl)
+;;; Commentary:
+
+
+;;; Code:
+
+(eval-when-compile (require 'cl))
 (require 'sml-util)
 
-;;; 
-;;; Code
-;;; 
 
 (defgroup sml ()
   "Editing SML code."
@@ -66,7 +66,7 @@
   :inherit sml-bindings
   :group 'sml)
 
-(defsyntax sml-mode-syntax-table 
+(defsyntax sml-mode-syntax-table
   `((?\*   . ,(if sml-builtin-nested-comments-flag ". 23n" ". 23"))
     (?\(   . "()1")
     (?\)   . ")(4")
@@ -83,17 +83,17 @@
   '("SML"
     ("Process"
      ["Start default ML compiler" sml		(fboundp 'sml)]
-     ["-" nil nil]				
+     ["-" nil nil]
      ["run CM.make"		sml-make	(featurep 'sml-proc)]
      ["load ML source file"	sml-load-file	(featurep 'sml-proc)]
      ["switch to ML buffer"	switch-to-sml	(featurep 'sml-proc)]
-     ["--" nil nil]				
+     ["--" nil nil]
      ["send buffer contents"	sml-send-buffer	(featurep 'sml-proc)]
      ["send region"		sml-send-region	(featurep 'sml-proc)]
      ["send paragraph"		sml-send-function (featurep 'sml-proc)]
      ;;["goto next error"		sml-next-error	(featurep 'sml-proc)]
      ["goto next error"		next-error	(featurep 'sml-proc)]
-     ["---" nil nil]				
+     ["---" nil nil]
      ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
      ["Poly/ML"			sml-poly-ml	(fboundp 'sml-poly-ml)]
      ["Moscow ML"		sml-mosml	(fboundp 'sml-mosml)]
@@ -189,8 +189,7 @@
      (,sml-=-starter-syms nil)
      (("abstype" "case" "datatype" "if" "then" "else" "sharing" "infix" "infixr"
        "let" "local" "nonfix" "open" "raise" "sig" "struct" "type" "val" "while"
-       "do" "with" "withtype"))))
-  "")
+       "do" "with" "withtype")))))
 
 (defconst sml-starters-indent-after
   (sml-syms-re "let" "local" "struct" "in" "sig" "with")
@@ -251,5 +250,6 @@
    (sml-syms-re "fun" "fn" "and" "handle" "datatype" "abstype"))
   "A `|' corresponds to one of these.")
 
-;;
 (provide 'sml-defs)
+
+;;; sml-defs.el ends here

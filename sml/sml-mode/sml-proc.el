@@ -1,6 +1,8 @@
 ;;; sml-proc.el --- Comint based interaction mode for Standard ML.
 
-;; Copyright (C) 1989, Lars Bo Nielsen, 1994,1997 Matthew J. Morley
+;; Copyright (C) 1989       Lars Bo Nielsen
+;; Copyright (C) 1994-1997  Matthew J. Morley
+;; Copyright (C) 1999-2000  Stefan Monnier
 
 ;; $Revision$
 ;; $Date$
@@ -87,6 +89,7 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl))
 (require 'sml-mode)
 (require 'sml-util)
 (require 'comint)

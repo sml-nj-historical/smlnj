@@ -1,8 +1,6 @@
-;;; sml-util.el
+;;; sml-util.el --- Utility functions for sml-mode
 
-(defconst rcsid-sml-util "@(#)$Name$:$Id$")
-
-;; Copyright (C) 1999-1999  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -18,16 +16,15 @@
 ;; along with this program; if not, write to the Free Software
 ;; Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-(require 'cl)
+
+;;; Commentary:
+
+;;; Code:
+
+(require 'cl)				;for `reduce'
 (require 'sml-compat)
 
 ;;
-
-(defmacro concatq (&rest ss)
-  "Concatenate all the arguments and make the result a string.
-As opposed to `concat', `concatq' does not evaluate its arguments
-and is hence executed at macro-expansion-time."
-  (apply 'concat ss))
 
 (defun flatten (ls &optional acc)
   (if (null ls) acc
@@ -38,7 +35,7 @@ and is hence executed at macro-expansion-time."
 	(cons head rest)))))
 
 (defun sml-preproc-alist (al)
-  "Expand an alist where keys can be lists of keys into a normal one."
+  "Expand an alist AL where keys can be lists of keys into a normal one."
   (reduce (lambda (x al)
 	    (let ((k (car x))
 		  (v (cdr x)))
@@ -115,7 +112,8 @@ and is hence executed at macro-expansion-time."
 		  (modify-syntax-entry ?\* ". 23n" st) st)
 		(let ((st (make-syntax-table)))
 		  (modify-syntax-entry ?\* ". 23" st) st))))
-  "Whether this Emacs understands the `n' in syntax entries.")
+  "Non-nil means this Emacs understands the `n' in syntax entries.")
 
-;;
 (provide 'sml-util)
+
+;;; sml-util.el ends here
