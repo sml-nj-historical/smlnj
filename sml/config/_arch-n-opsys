@@ -53,8 +53,8 @@ case `uname -s` in
     ;;
   Darwin)
     case `uname -r` in
-      5*) OPSYS=darwin5 ;;
-      6*) OPSYS=darwin ;;
+      5*) OPSYS=darwin5; HEAP_OPSYS=darwin ;;
+      6*) OPSYS=darwin;  HEAP_OPSYS=darwin ;;
       *) exit 1;;
     esac
     case `uname -p` in
