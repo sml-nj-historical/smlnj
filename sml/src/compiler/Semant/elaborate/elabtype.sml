@@ -89,10 +89,8 @@ and elabTypeList(ts,env,error,region:region) =
 (**** DATACON DECLARATIONS ****)
 exception ISREC
 
-fun elabDB((args,name,def,region),env,rpath:IP.path,error) =
-   let val rhs = mkCONty(L.lookArTyc (env,SP.SPATH[name],length args,
-                                      error region),
-		         map VARty args)
+fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
+   let val rhs = mkCONty(tyc, map VARty args)
 
        fun checkrec(_,NONE) = ()
          | checkrec(_,SOME typ) = 
@@ -135,7 +133,7 @@ fun elabDB((args,name,def,region),env,rpath:IP.path,error) =
 				   tyfun=TYFUN{arity=arity,body=typ}}
 		      else typ
 	       in DATACON{name=sym, const=const, rep=rep,
-                          sign=sign, typ=typ}
+                          sign=sign, typ=typ, lazyp=lazyp}
 	      end
 	fun bindDconslist ((r1 as (name,_,_))::l1,r2::l2) =
 	      let val dcon = bindDcons (r1,r2)
@@ -217,20 +215,35 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
                      compInfo as {mkStamp,error,...}: EU.compInfo) =
     let (* predefine datatypes *)
 	val _ = debugmsg ">>elabDATATYPEdec"
-	fun preprocess region (Db{tyc=name,rhs=Constrs def,tyvars}) = 
-	     {tvs=elabTyvList(tyvars,error,region),
-	      name=name,def=def,region=region, 
-	      tyc=GENtyc{path=IP.extend(rpath,name),
-			 arity=length tyvars,
-			 stamp=mkStamp(),
-			 eq=ref DATA,kind=TEMP}}
+	fun preprocess region (Db{tyc=name,rhs=Constrs def,tyvars,lazyp}) = 
+	    let val tvs = elabTyvList(tyvars,error,region)
+		val tyc = GENtyc{path=IP.extend(rpath,name),
+				 arity=length tyvars,
+				 stamp=mkStamp(),
+				 eq=ref DATA,kind=TEMP}
+		val binddef =
+		    if lazyp then
+			   DEFtyc{stamp=mkStamp(),
+				  tyfun=TYFUN{arity=length tyvars,
+					      body=CONty(BT.suspTycon,
+						    [CONty(tyc,map VARty tvs)])},
+			          strict=map (fn _ => true) tyvars,
+				  path=IP.extend(rpath,name)}
+			   
+		    else tyc
+	     in {tvs=tvs, name=name,def=def,region=region,tyc=tyc,
+		 binddef=binddef,lazyp=lazyp}
+	    end
 	  | preprocess _ (MarkDb(db',region')) = preprocess region' db'
+
         val dbs = map (preprocess region) datatycs
         val _ = debugmsg "--elabDATATYPEdec: preprocessing done"
 
+
         val envDTycs = (* staticEnv containing preliminary datatycs *)
-	    foldl (fn ({name,tyc,...},env) => 
-                     SE.bind(name, B.TYCbind tyc, env)) SE.empty dbs
+	      foldl (fn ({name,binddef,...},env) => 
+			   SE.bind(name, B.TYCbind binddef, env))
+		       SE.empty dbs
         val _ = debugmsg "--elabDATATYPEdec: envDTycs defined"
 
 	(* elaborate associated withtycs *)
@@ -244,7 +257,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 			     "duplicate type names in type declaration",
 			     map #name dbs @ withtycNames);
         val _ = debugmsg "--elabDATATYPEdec: uniqueness checked"
-	
+
+        (* add lazy auxiliary withtycs if any *)
+        val withtycs = map #binddef (List.filter #lazyp dbs) @ withtycs
+
 	(* staticEnv containing only new datatycs and withtycs *)
 	val envTycs = SE.atop(envWTycs, envDTycs)
 	(* staticEnv for evaluating the datacon types *)
@@ -293,10 +309,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	       | t => t
 
 	(* elaborate the definition of a datatype *)
-	fun elabRHS ({tvs,name,def,region,tyc}, (i,done)) = 
+	fun elabRHS ({tvs,name,def,region,tyc,lazyp,binddef}, (i,done)) = 
 	    let val (datacons,_) = 
-                      elabDB((tvs,name,def,region),fullEnv,rpath,error)
-		fun mkDconDesc (DATACON{name,const,rep,sign,typ}) = 
+                      elabDB((tyc,tvs,name,def,region,lazyp),fullEnv,rpath,error)
+		fun mkDconDesc (DATACON{name,const,rep,sign,typ,lazyp}) = 
 		    {name=name, rep=rep,
 		     domain=
 		       if const then NONE
@@ -312,7 +328,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		  dcons=datacons,
 		  dconDescs=map mkDconDesc datacons,
 		  tyc=tyc,
-		  index=i} :: done)
+		  index=i,
+		  lazyp=lazyp} :: done)
 	    end
  
         val (_,dbs') = foldl elabRHS (0,nil) dbs
@@ -320,11 +337,11 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: RHS elaborated"
 
         fun mkMember{name,dcons,dconDescs,tyc=GENtyc{stamp,arity,eq,...},
-		     dconNames,index} =
+		     dconNames,index,lazyp} =
 	    let val DATACON{sign,...}::_ = dcons
 		     (* extract common sign from first datacon *)
 	     in (stamp, {tycname=name,dcons=dconDescs,arity=arity,
-                         eq=eq,sign=sign})
+                         eq=eq,lazyp=lazyp,sign=sign})
 	    end
 
         val (mstamps, members) = ListPair.unzip (map mkMember dbs')
@@ -342,7 +359,7 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: members defined"
 
         fun fixDtyc{name,index,tyc as GENtyc{path,arity,stamp,eq,kind},
-		    dconNames,dcons,dconDescs} =
+		    dconNames,dcons,dconDescs,lazyp} =
 	    {old=tyc,
 	     name=name,
 	     new=GENtyc{path=path,arity=arity,stamp=stamp,eq=eq,
@@ -360,7 +377,6 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 
         val _ = EqTypes.defineEqProps(finalDtycs,sigContext,sigEntEnv)
         val _ = debugmsg "--elabDATATYPEdec: defineEqProps done"
-
 
         fun applyMap m =
             let fun sameTyc(GENtyc{stamp=s1,...},GENtyc{stamp=s2,...}) 
@@ -388,24 +404,19 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 			strict=strict,stamp=stamp,path=path}}
 	    :: tycmap
 
-        (* use foldr to preserve the order of the withtycs [dbm] *)
-        (* foldr is wrong! because withtycs will then be processed in the
-           reverse order. Notice that tycons in later part of withtycs
-           may refer to tycons in the earlier part of withtycs (ZHONG)
-         *)
-        val alltycmap = (* foldr *) foldl augTycmap dtycmap withtycs
+        (* use foldl to process the withtycs in their original order *)
+        val alltycmap = foldl augTycmap dtycmap withtycs
         val _ = debugmsg "--elabDATATYPEdec: alltycmap defined"
 
         fun header(_, 0, z) = z
-          | header(a::r, n, z) = if n > 0 then header(r, n-1, a::z)
-                                 else bug "header1 in elabDATATYPEdec"
+          | header(a::r, n, z) = header(r, n-1, a::z)
           | header([], _, _) = bug "header2 in elabDATATYPEdec"
 
 	val finalWithtycs = map #new (header(alltycmap,length withtycs,[]))
         val _ = debugmsg "--elabDATATYPEdec: finalWithtycs defined"
 
-        fun fixDcon (DATACON{name,const,rep,sign,typ}) = 
-	    DATACON{name=name,const=const,rep=rep,sign=sign,
+        fun fixDcon (DATACON{name,const,rep,sign,typ,lazyp}) = 
+	    DATACON{name=name,const=const,rep=rep,sign=sign,lazyp=lazyp,
 		    typ=applyMap alltycmap typ}
 
         val finalDcons = List.concat(map (map fixDcon) (map #dcons dbs'))
@@ -435,6 +446,9 @@ end (* structure ElabType *)
 
 (*
  * $Log: elabtype.sml,v $
+ * Revision 1.2  1998/05/15 03:34:52  dbm
+ *   Added elaboration of datatype lazy decls.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:24  george
  * Version 110.5
  *

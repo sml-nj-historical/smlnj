@@ -4,8 +4,8 @@
 Group is
 
 TopLevel/batch/batchconfig.sml
-TopLevel/batch/batchutil.sig
-TopLevel/batch/batchutil.sml
+TopLevel/batch/binfile.sig
+TopLevel/batch/binfile.sml
 TopLevel/batch/cmsa.sig
 TopLevel/batch/cmsa.sml
 TopLevel/batch/envcvt.sml
@@ -289,9 +289,6 @@ MiscUtil/bignums/bigint.sml
 MiscUtil/bignums/int-inf.sig
 MiscUtil/bignums/int-inf.sml
 MiscUtil/bignums/realconst.sml
-MiscUtil/fixityparse/fixityparse.sml
-MiscUtil/lazycomp/lazycomp-env.sml
-MiscUtil/lazycomp/lazycomp.sml
 MiscUtil/print/ppabsyn.sml
 MiscUtil/print/ppdec.sml
 MiscUtil/print/ppmod.sml

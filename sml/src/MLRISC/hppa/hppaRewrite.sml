@@ -26,8 +26,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BCONDI{cmpi, bc, i, r2, t, f, n} => 
         I.BCONDI{cmpi=cmpi, bc=bc, i=i, r2=replc r2, t=t, f=f,n=n} 
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
-     | I.BLE{b, d, sr, t, defs, uses} => 
-	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=uses} 
+     | I.BLE{b, d, sr, t, defs, uses=(i,f)} => 
+	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f)} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
 	I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
@@ -56,8 +56,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.COMCLR{cc, r1, r2, t} => I.COMCLR{cc=cc, r1=r1, r2=r2, t=replc t} 
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
-     | I.BLE{d, b, sr, t, defs, uses} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=uses}
+     | I.BLE{d, b, sr, t, defs=(i,f), uses} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses}
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
@@ -79,6 +79,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FCMP(fcc, f1, f2) => I.FCMP(fcc, replc f1, replc f2) 
      | I.FCOPY{dst, src, tmp, impl} => 
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
+     | I.BLE{d, b, sr, t, defs=defs, uses=(i,f)} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f)}
      | _ => instr
     (*esac*)
   end
@@ -97,6 +99,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FUNARY{fu, f, t} => I.FUNARY{fu=fu, f=f, t=replc t}
      | I.FCOPY{dst, src, impl, tmp} => 
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
+     | I.BLE{d, b, sr, t, defs=(i,f), uses} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses}
      | _ => instr
     (*esac*)
   end
@@ -104,6 +108,9 @@ end
 
 (*
  * $Log: hppaRewrite.sml,v $
+ * Revision 1.2  1998/05/08 10:54:00  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

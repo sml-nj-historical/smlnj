@@ -83,7 +83,13 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 		   | _ => bug "trueTycon: not a DEFtyc"
 	    end
 
+       fun isLazyBogus (SymPath.SPATH path) =
+	       case rev(String.explode (Symbol.name(List.last path)))
+                of #"$":: #","::_ => true
+                 | _ => false
+
        fun ppVar (VALvar{path, access, typ=(t0 as ref ty), info}) =
+            if isLazyBogus path then () else
              (begin_block ppstrm CONSISTENT 0;
 	      begin_block ppstrm INCONSISTENT 2;
 	      add_string ppstrm "val "; 
@@ -354,6 +360,10 @@ end (* structure PPDec *)
 
 (*
  * $Log: ppdec.sml,v $
+ * Revision 1.2  1998/05/15 03:19:38  dbm
+ *   Added isLazyBogus (hack to suppress printing of ",$" suffix on
+ *   "lazy" identifiers).
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:16  george
  * Version 110.5
  *

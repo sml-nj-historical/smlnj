@@ -187,28 +187,32 @@ struct
       (emitWord((opcode << 0w10) ++ (itow b << 0w5) ++ r);
        emitWord((rv << 0w13) ++ (ext8 << 0w5) ++ t))
 
-    fun fcond I.LT = 0w9
-      | fcond I.LE = 0w13
-      | fcond I.EQ = 0w4
-      | fcond I.NE = 0w26
-      | fcond I.GE = 0w21
-      | fcond I.GT = 0w17
-      | fcond _ = error ""
-
-    fun fcond I.==   = 0w4
-      | fcond I.!=   = 0w26
-      | fcond I.?    = 0w2
-      | fcond I.<=>  = 0w29
-      | fcond I.>    = 0w17
-      | fcond I.>=   = 0w21
-      | fcond I.?>   = 0w18
-      | fcond I.?>=  = 0w22
-      | fcond I.<    = 0w9
-      | fcond I.<=   = 0w13
-      | fcond I.?<   = 0w10
-      | fcond I.?<=  = 0w14
-      | fcond I.<>   = 0w25
+    fun fcond I.?    = 0w2
+      | fcond I.!<=> = 0w3
+      | fcond I.==   = 0w4
       | fcond I.?=   = 0w6
+      | fcond I.!<>  = 0w7
+      | fcond I.!?>= = 0w8
+      | fcond I.<    = 0w9
+      | fcond I.?<   = 0w10
+      | fcond I.!>=  = 0w11
+      | fcond I.!?>  = 0w12
+      | fcond I.<=   = 0w13
+      | fcond I.?<=  = 0w14
+      | fcond I.!>   = 0w15
+      | fcond I.!?<= = 0w16
+      | fcond I.>    = 0w17
+      | fcond I.?>   = 0w18
+      | fcond I.!<=  = 0w19
+      | fcond I.!?<  = 0w20
+      | fcond I.>=   = 0w21
+      | fcond I.?>=  = 0w22
+      | fcond I.!<   = 0w23
+      | fcond I.!?=  = 0w24
+      | fcond I.<>   = 0w25
+      | fcond I.!=   = 0w26
+      | fcond I.!?   = 0w28
+      | fcond I.<=>  = 0w29
 
     fun cmpCond I.EQ  = (0w1, 0w0)
       | cmpCond I.LT  = (0w2, 0w0)
@@ -355,6 +359,9 @@ end
 
 (*
  * $Log: hppaMC.sml,v $
+ * Revision 1.2  1998/05/19 15:45:29  george
+ *   Introduced the full set of IEEE comparision operators.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

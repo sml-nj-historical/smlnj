@@ -104,6 +104,7 @@ and dtmember =
     {tycname: S.symbol,
      arity: int,
      eq: eqprop ref,
+     lazyp: bool,
      dcons: dconDesc list,
      sign: A.consig}
 
@@ -123,6 +124,7 @@ datatype datacon (* data constructors *)
       {name   : S.symbol,
        typ    : ty,
        rep    : A.conrep,
+       lazyp  : bool,    (* LAZY: constructor belongs to lazy datatype? *)
        const  : bool,     (* redundant, could be determined from typ *)
        sign   : A.consig} (* redundant, ditto *)
 
@@ -132,6 +134,9 @@ end (* structure Types *)
 
 (*
  * $Log: types.sml,v $
+ * Revision 1.2  1998/05/15 03:49:10  dbm
+ *   Added lazyp fields.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

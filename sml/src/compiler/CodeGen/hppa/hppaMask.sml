@@ -29,7 +29,9 @@ structure HppaMask : REGMASK = struct
 		(25, 0w15),
 		(26, 0w16),
 		(28, 0w17),
-		(2, 0w18)]
+		(2, 0w18),
+		(21, 0w19)]
+
 	handle _ => error "setting regMap"
 
 
@@ -46,6 +48,9 @@ end
 
 (*
  * $Log: hppaMask.sml,v $
+ * Revision 1.2  1998/05/08 10:52:24  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

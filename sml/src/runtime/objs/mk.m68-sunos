@@ -4,7 +4,7 @@
 SHELL		= /bin/sh
 
 CC =		gcc -ansi
-CFLAGS =	-O
+CFLAGS =	-O2
 CPP =		gcc -x c -E -P -ansi
 #XOBJS =	xmonitor.o
 #XLIBS =	-lX11

@@ -36,9 +36,6 @@ structure IntInf :> INT_INF =
 
         val skipWS : (char, 'a) StringCvt.reader -> 'a -> 'a
 
-        val scanWord : StringCvt.radix
-	      ->  (char, 'a) StringCvt.reader
-	        -> 'a -> (Word32.word * 'a) option
         val scanInt : StringCvt.radix
 	      ->  (char, 'a) StringCvt.reader
 	        -> 'a -> (int * 'a) option
@@ -63,20 +60,19 @@ structure IntInf :> INT_INF =
         type 'a chr_strm = {getc : (char, 'a) StringCvt.reader}
     
       (* A table for mapping digits to values.  Whitespace characters map to
-       * 128, "+" maps to 129, "-","~" map to 130, "." maps to 131, and the
-       * characters 0-9,A-Z,a-z map to their * base-36 value.  All other
-       * characters map to 255.
+       * 128, and the characters 0-9,A-Z,a-z map to their 
+       * base-36 value.  All other characters map to 255.
        *)
         local
           val cvtTable = "\
     	    \\255\255\255\255\255\255\255\255\255\128\128\255\255\255\255\255\
     	    \\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-    	    \\128\255\255\255\255\255\255\255\255\255\255\129\255\130\131\255\
+    	    \\128\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     	    \\000\001\002\003\004\005\006\007\008\009\255\255\255\255\255\255\
     	    \\255\010\011\012\013\014\015\016\017\018\019\020\021\022\023\024\
     	    \\025\026\027\028\029\030\031\032\033\034\035\255\255\255\255\255\
     	    \\255\010\011\012\013\014\015\016\017\018\019\020\021\022\023\024\
-    	    \\025\026\027\028\029\030\031\032\033\034\035\255\255\255\130\255\
+    	    \\025\026\027\028\029\030\031\032\033\034\035\255\255\255\255\255\
     	    \\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     	    \\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
     	    \\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
@@ -90,8 +86,6 @@ structure IntInf :> INT_INF =
         in
 	fun code (c : char) = W.fromInt(ord(CharVector.sub(cvtTable, ord c)))
         val wsCode : Word32.word = 0w128
-        val plusCode : Word32.word = 0w129
-        val minusCode : Word32.word = 0w130
         end (* local *)
     
         fun skipWS (getc : (char, 'a) StringCvt.reader) cs = let
@@ -103,49 +97,30 @@ structure IntInf :> INT_INF =
                 skip cs
               end
     
-      (* skip leading whitespace and any sign (+, -, or ~) *)
-        fun scanPrefix (getc : (char, 'a) StringCvt.reader) cs = let
-    	  fun skipWS cs = (case (getc cs)
-    		 of NONE => NONE
-    		  | (SOME(c, cs')) => let val c' = code c
-    		      in
-    			if (c' = wsCode) then skipWS cs' else SOME(c', cs')
-    		      end
-    		(* end case *))
-    	  fun getNext (neg, cs) = (case (getc cs)
-    		 of NONE => NONE
-    		  | (SOME(c, cs)) => SOME{neg=neg, next=code c, rest=cs}
-    		(* end case *))
-    	  in
-    	    case (skipWS cs)
-    	     of NONE => NONE
-    	      | (SOME(c, cs')) =>
-    		  if (c = plusCode) then getNext(false, cs')
-    		  else if (c = minusCode) then getNext(true, cs')
-    		  else SOME{neg=false, next=c, rest=cs'}
-    	    (* end case *)
-    	  end
-    
       (* for power of 2 bases (2, 8 & 16), we can check for overflow by looking
        * at the hi (1, 3 or 4) bits.
        *)
         fun chkOverflow mask w =
     	  if (W.andb(mask, w) = 0w0) then () else raise Overflow
     
-        fun scanBin (getc : (char, 'a) StringCvt.reader) cs = (case (scanPrefix getc cs)
+        fun scan getc cs = case getc (skipWS getc cs)
+           of NONE => NONE
+            | SOME(c,rest) => SOME(code c, rest)
+         
+        fun scanBin getc cs = (case (scan getc cs)
     	   of NONE => NONE
-    	    | (SOME{neg, next, rest}) => let
+    	    | (SOME(next, rest)) => let
     		fun isDigit (d : Word32.word) = (d < 0w2)
     		val chkOverflow = chkOverflow 0wx80000000
     		fun cvt (w, rest) = (case (getc rest)
-    		       of NONE => SOME{neg=neg, word=w, rest=rest}
+    		       of NONE => SOME (w, rest)
     			| SOME(c, rest') => let val d = code c
     			    in
     			      if (isDigit d)
     				then (
     				  chkOverflow w;
     				  cvt(W.+(W.<<(w, 0w1), d), rest'))
-    				else SOME{neg=neg, word=w, rest=rest}
+    				else SOME(w, rest)
     			    end
     		      (* end case *))
     		in
@@ -155,20 +130,20 @@ structure IntInf :> INT_INF =
     		end
     	  (* end case *))
     
-        fun scanOct getc cs = (case (scanPrefix getc cs)
+        fun scanOct getc cs = (case (scan getc cs)
     	   of NONE => NONE
-    	    | (SOME{neg, next, rest}) => let
+    	    | (SOME(next, rest)) => let
     		fun isDigit (d : Word32.word) = (d < 0w8)
     		val chkOverflow = chkOverflow 0wxE0000000
     		fun cvt (w, rest) = (case (getc rest)
-    		       of NONE => SOME{neg=neg, word=w, rest=rest}
+    		       of NONE => SOME(w, rest)
     			| SOME(c, rest') => let val d = code c
     			    in
     			      if (isDigit d)
     				then (
     				  chkOverflow w;
     				  cvt(W.+(W.<<(w, 0w3), d), rest'))
-    				else SOME{neg=neg, word=w, rest=rest}
+    				else SOME(w, rest)
     			    end
     		      (* end case *))
     		in
@@ -178,12 +153,12 @@ structure IntInf :> INT_INF =
     		end
     	  (* end case *))
     
-        fun scanDec getc cs = (case (scanPrefix getc cs)
+        fun scanDec getc cs = (case (scan getc cs)
     	   of NONE => NONE
-    	    | (SOME{neg, next, rest}) => let
+    	    | (SOME(next, rest)) => let
     		fun isDigit (d : Word32.word) = (d < 0w10)
     		fun cvt (w, rest) = (case (getc rest)
-    		       of NONE => SOME{neg=neg, word=w, rest=rest}
+    		       of NONE => SOME(w, rest)
     			| SOME(c, rest') => let val d = code c
     			    in
     			      if (isDigit d)
@@ -194,7 +169,7 @@ structure IntInf :> INT_INF =
     				    then raise Overflow
     				    else ();
     				  cvt (0w10*w+d, rest'))
-    				else SOME{neg=neg, word=w, rest=rest}
+    				else SOME(w, rest)
     			    end
     		      (* end case *))
     		in
@@ -204,20 +179,20 @@ structure IntInf :> INT_INF =
     		end
     	  (* end case *))
     
-        fun scanHex getc cs = (case (scanPrefix getc cs)
+        fun scanHex getc cs = (case (scan getc cs)
     	   of NONE => NONE
-    	    | (SOME{neg, next, rest}) => let
+    	    | (SOME(next, rest)) => let
     		fun isDigit (d : Word32.word) = (d < 0w16)
     		val chkOverflow = chkOverflow 0wxF0000000
     		fun cvt (w, rest) = (case (getc rest)
-    		       of NONE => SOME{neg=neg, word=w, rest=rest}
+    		       of NONE => SOME(w, rest)
     			| SOME(c, rest') => let val d = code c
     			    in
     			      if (isDigit d)
     				then (
     				  chkOverflow w;
     				  cvt(W.+(W.<<(w, 0w4), d), rest'))
-    				else SOME{neg=neg, word=w, rest=rest}
+    				else SOME(w, rest)
     			    end
     		      (* end case *))
     		in
@@ -227,24 +202,9 @@ structure IntInf :> INT_INF =
     		end
     	  (* end case *))
     
-        fun finalWord scanFn getc cs = (case (scanFn getc cs)
-    	   of NONE => NONE
-    	    | (SOME{neg=true, ...}) => NONE
-    	    | (SOME{neg=false, word, rest}) => SOME(word, rest)
-    	  (* end case *))
-    
-        fun scanWord StringCvt.BIN = finalWord scanBin
-          | scanWord StringCvt.OCT = finalWord scanOct
-          | scanWord StringCvt.DEC = finalWord scanDec
-          | scanWord StringCvt.HEX = finalWord scanHex
-    
         fun finalInt scanFn getc cs = (case (scanFn getc cs)
     	   of NONE => NONE
-    	    | (SOME{neg=true, word, rest}) =>
-    		if (largestNegInt < word)
-    		  then raise Overflow
-    		  else SOME(I.~(W.toInt word), rest)
-    	    | (SOME{word, rest, ...}) =>
+    	    | (SOME(word, rest)) =>
     		if (largestPosInt < word)
     		  then raise Overflow
     		  else SOME(W.toInt word, rest)
@@ -855,4 +815,3 @@ structure IntInf :> INT_INF =
       | log2 _ = raise Domain
 
   end (* structure IntInf *)
-

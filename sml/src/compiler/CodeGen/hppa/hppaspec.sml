@@ -11,7 +11,7 @@ struct
 
     val architecture	= "hppa"
     val spillAreaSz	= 4000
-    val numRegs		= 18 (* length HppaCpsRegs.miscregs + 3 *)
+    val numRegs		= 19	(* length HppaCpsRegs.miscregs + 3 *)
     val numFloatRegs	= 25
       (* length HppaCpsRegs.floatregs + length HppaCpsRegs.savedfpregs *)
     val bigEndian	= true
@@ -22,6 +22,9 @@ end
 
 (*
  * $Log: hppaspec.sml,v $
+ * Revision 1.2  1998/05/08 10:52:25  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:55  george
  * Version 110.5
  *

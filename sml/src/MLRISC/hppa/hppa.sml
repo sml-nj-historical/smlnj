@@ -40,9 +40,6 @@ struct
   val ldLabelEA = LC.ldLabelEA emit
   val ldLabelOpnd = LC.ldLabelOpnd emit
 
-  fun newReg () = C.newReg()
-  fun newFreg() = C.newFreg()
-
   datatype ea = DISPea of int * I.operand  | INDXea of int * int
 
   (* integer ranges *)
@@ -65,21 +62,21 @@ struct
     if im14 n then (emit(I.LDO{i=I.IMMED n, b=0, t=rd}); rd)
     else let
         val (hi, lo) = split n
-	val tmpR = newReg()
+	val tmpR = C.newReg()
       in
 	emit(I.LDIL{i=I.IMMED hi, t=tmpR});
 	emit(I.LDO{i=I.IMMED lo, b=tmpR, t=rd});
 	rd
       end
 
-  fun loadImmed n = loadImmedRd(n, newReg())
+  fun loadImmed n = loadImmedRd(n, C.newReg())
 
   fun loadWord32Rd(w, rd) = let
     val toInt = Word32.toIntX
   in
     if Word32.<(w, 0w8192) then emit(I.LDO{i=I.IMMED(toInt w), b=0, t=rd})
     else let 
-        val tmpR = newReg()
+        val tmpR = C.newReg()
 	val hi = Word32.~>>(w, 0w11)
 	val lo = Word32.andb(w, 0wx7ff)
       in
@@ -88,7 +85,7 @@ struct
       end;
     rd
   end
-  fun loadWord32 w = loadWord32Rd(w, newReg())
+  fun loadWord32 w = loadWord32Rd(w, C.newReg())
 
   fun milliCall(milliFn, exp1, exp2, ord, rd) = let
     val (rs, rt) = orderedRR(exp1, exp2, ord)
@@ -137,8 +134,8 @@ struct
 		 if im14 disp then bd 
 		 else let 
 		     val (hi21, lo11) = split disp
-		     val tmpR1 = newReg()
-		     val tmpR2 = newReg()
+		     val tmpR1 = C.newReg()
+		     val tmpR2 = C.newReg()
 		   in
 		     emit(I.LDIL{i=I.IMMED hi21, t=tmpR1});
 		     emit(I.ARITH{a=I.ADD, r1=base, r2=tmpR1, t=tmpR2});
@@ -146,7 +143,7 @@ struct
 		   end
 	     | DISPea bd => bd
 	     | INDXea(r1,r2) => let 
-		 val t = newReg()
+		 val t = C.newReg()
 	       in
 		 emit (I.ARITH {a=I.ADD, r1=r1, r2=r2, t=t});
 		 (t, I.IMMED 0)
@@ -164,7 +161,7 @@ struct
 	    else
 	      emit(I.FSTOREX{fstx=I.FSTDX, b=b, x=loadImmed d, r=r, mem=mem})
          | DISPea(b, d) => let
-	      val tmpR = newReg()
+	      val tmpR = C.newReg()
 	   in 
 	     emit(I.ARITHI{ai=I.ADDI, r=b, i=d, t=tmpR});
 	     emit(I.FSTORE{fst=I.FSTDS, b=tmpR, d=0, r=r, mem=mem})
@@ -191,8 +188,8 @@ struct
 	 | T.NEQ  => emitBranch(I.COMBF, I.EQ,  r1, r2)
       (*esac*))
     end
-    fun copyTmp() = SOME(I.Direct(newReg()))
-    fun fcopyTmp() = SOME(I.FDirect(newFreg()))
+    fun copyTmp() = SOME(I.Direct(C.newReg()))
+    fun fcopyTmp() = SOME(I.FDirect(C.newFreg()))
 
     val reduce={stm=stmAction, rexp=regAction, emit=emit}
     val returnPtr = 2
@@ -324,7 +321,7 @@ struct
     | ccActionCd(T.LOADCC _, _) = error "ccAction:LOADCC"
 
   and regAction(T.REG r) = r
-    | regAction exp = regActionRd(exp, newReg())
+    | regAction exp = regActionRd(exp, C.newReg())
 
   and regActionRd(exp, rd) = let
     datatype opnd = REG of int | OPND of I.operand
@@ -377,7 +374,7 @@ struct
 	      end
 	  | f(exp1, exp2, order) = let
 	      val (r1, r2) = orderedRR(exp1, exp2, order)
-	      val tmp = newReg()
+	      val tmp = C.newReg()
 	    in
 	      emit(I.ARITHI{ai=I.SUBI, i=I.IMMED 31, r=r2, t=tmp});
 	      emit(I.MTCTL{r=tmp, t=11});
@@ -446,7 +443,7 @@ struct
   end (* regActionRd *)
 
   and fregAction (T.FREG f) = f
-    | fregAction exp = fregActionFd(exp, newFreg())
+    | fregAction exp = fregActionFd(exp, C.newFreg())
 
   and fregActionFd(exp, fd) = let
     fun orderedFarith(exp1, exp2, ord, arithOp) = let
@@ -469,7 +466,7 @@ struct
 		emit(I.FLOADX{flx=I.FLDDX, b=r, x=loadImmed n, t=fd, 
                               mem=region})
 	   | DISPea(r,d) => let
-		val tmpR = newReg()
+		val tmpR = C.newReg()
 	     in
 	       emit(I.ARITHI{ai=I.ADDI, r=r, i=d, t=tmpR});
 	       emit(I.FLOADX{flx=I.FLDDX, b=tmpR, x=zeroR, t=fd,mem=region})
@@ -514,6 +511,9 @@ end
 
 (*
  * $Log: hppa.sml,v $
+ * Revision 1.2  1998/05/19 15:44:01  george
+ *  Minor cleanup
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

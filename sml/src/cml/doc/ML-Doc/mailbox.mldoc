@@ -2,12 +2,16 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Research" YEAR=1996>
 <VERSION VERID="1.0" YEAR=1996 MONTH=4 DAY=21>
 <TITLE>The Mailbox structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <STRREF TOPID NOLINK/Mailbox/ structure</HEAD>
+<SEEALSO>
+  <STRREF TOPID/CML/
+</SEEALSO>
 
 <PP>
 The <STRREF TOPID NOLINK/Mailbox/ structure provides buffered asynchronous
@@ -18,6 +22,7 @@ channels, which we call mailboxes.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>mbox
       <COMMENT>
+	<PP>
 	This is the type constructor for a mailbox.
 	A mailbox is an unbounded, buffered communication channel.
     <SPEC>
@@ -63,21 +68,20 @@ channels, which we call mailboxes.
     <SPEC>
       <VAL>recvPoll<TY>'a mbox -> 'a option
       <COMMENT>
+	<PP>
         This is the non-blocking version of <VALREF/recv/.
 	If the corresponding blocking form would block (because the mailbox is
 	empty), then this returns
 	<CONREF DOCUMENT=SML-BASIS-DOC STRID="Option"/NONE/, otherwise it returns
 	<CONREF DOCUMENT=SML-BASIS-DOC STRID="Option"/SOME/ of the received
 	message.
-    <DISCUSS>
-      Note that mailbox buffers are unbounded, which means that there is no flow
-      control to prevent a producer from greatly outstriping a consumer, and thus
-      exhausting memory.
-      In situations where there is no natural limit to the rate of
-      <VALREF STRID="Mailbox"/send/ operations, it is recommended that the
-      synchronous channels from the <STRREF TOPID/CML/ structure
-      be used instead.
-    <SEEALSO>
-      <STRREF TOPID/CML/
-    </SEEALSO>
 </STRUCTURE>
+<PP>
+Note that mailbox buffers are unbounded, which means that there is no flow
+control to prevent a producer from greatly outstriping a consumer, and thus
+exhausting memory.
+In situations where there is no natural limit to the rate of
+<VALREF STRID="Mailbox"/send/ operations, it is recommended that the
+synchronous channels from the <STRREF TOPID/CML/ structure
+be used instead.
+</INTERFACE>

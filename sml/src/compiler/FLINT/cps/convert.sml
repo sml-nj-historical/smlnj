@@ -586,7 +586,11 @@ end (* functor Convert *)
 
 (*
  * $Log: convert.sml,v $
+ * Revision 1.2  1998/05/06 20:59:20  george
+ *   Fix for CML space leak -- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:47  george
  * Version 110.5
  *
  *)
+

@@ -20,7 +20,7 @@ case `uname -s` in
     case `uname -r` in
       4.*) OPSYS=irix4; HEAP_OPSYS=irix;;
       5.*) OPSYS=irix5; HEAP_OPSYS=irix;;
-      6.*) OPSYS=irix5; HEAP_OPSYS=irix;;
+      6.*) OPSYS=irix6; ALT_OPSYS=irix5; HEAP_OPSYS=irix;;
       *) exit 1;;
     esac
     ;;
@@ -122,5 +122,9 @@ else
   HEAP_SUFFIX="$ARCH-$HEAP_OPSYS"
 fi
 
+if [ "$ALT_OPSYS" = "" ]; then
 echo "ARCH=$ARCH; OPSYS=$OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+else
+echo "ARCH=$ARCH; OPSYS=$OPSYS; ALT_OPSYS=$ALT_OPSYS; HEAP_SUFFIX=$HEAP_SUFFIX"
+fi
 

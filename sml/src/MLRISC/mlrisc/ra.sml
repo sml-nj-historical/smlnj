@@ -96,8 +96,6 @@ struct
   in map(l, [])
   end
 
-  fun inc(counter, i) = counter := !counter + 1
-
 		(*---------printing------------ *)
   fun prList (l:int list,msg:string) = let
       fun pr [] = print "\n"
@@ -349,9 +347,6 @@ struct
     val _ = liveness blocks
     val initialMoves = mkInterferenceGraph()
     val initialWkls = mkInitialWorkLists initialMoves
-    val initialMoveCnt = length initialMoves	(* total number of moves *)
-    val movesCoalesced = ref 0			(* number of moves coalesced *)
-
 
     (* debugging *)
     fun dumpGraph() = let
@@ -540,7 +535,6 @@ struct
                           | (x,y) => (x,y)
             fun coalesceIt() =
 	      (status := COALESCED;
-	       inc(movesCoalesced, 1);
 	       if !spillFlag then undoInfo := (v, status) :: (!undoInfo)
 	       else ())
 	  in 
@@ -1098,42 +1092,17 @@ struct
             | _ => ())
           nodes
       end
-
-      fun lastOne(finish) = let
-	val mc = !movesCoalesced
-	(* getOut when all moves have been coalesced, or no moves 
-	 * have been coalesced. Since in theory this could iterate
- 	 * many times with no significant improvement , we should 
-	 * have a cut off, but I have never seen this behavior in 
-	 * practise. 
-	 *) 	fun getOut () = initialMoveCnt = mc orelse mc = 0 
-      in
-	if getOut() then finish()
-	else let
-	    fun init(NODE{color, degree, adj, movecnt, movelist, ...}) =
-	      (degree:=0; adj := []; movecnt:=0; movelist:=[]; color:=PSEUDO)
-	  in 
-	    app init stack;
-	    graphColoring(mode,blocks,cblocks,blockDU,prevSpills,nodes,regmap)
-	  end
-	end
-
     in
       case mode
-      of COPY_PROPAGATION => lastOne(finishCP)
-       | REGISTER_ALLOCATION =>
-	 if not(!spillFlag) then 
-	   (* If there were no Chaitin spills then there cannot be
-	    * any optimistic spills.
-	    *)
-	   lastOne(fn () => (optimistic(stack, []); finishRA()))
-	 else (case optimistic(stack, [])
-	   of [] => lastOne(finishRA)
-	    | spills  =>
-		(app (fn NODE{color, ...} => color := PSEUDO) stack;
-		 app undoCoalesced (!undoInfo);
-		 rerun spills) 
-	  (*esac*))
+      of COPY_PROPAGATION => finishCP()
+       | REGISTER_ALLOCATION => 
+	 (case optimistic(stack, [])
+	  of [] => finishRA()		
+	   | spills  =>			
+	       (app (fn NODE{color, ...} => color := PSEUDO) stack;
+		app undoCoalesced (!undoInfo);
+		rerun spills) 
+	 (*esac*))
     end (* assignColors *)
 
 
@@ -1149,7 +1118,6 @@ struct
   in
     iterate (WKL initialWkls)
   end (* graphColoring *)
-
 
   fun ra mode (cluster as (F.CLUSTER{blocks, regmap, ...})) = 
     if RaArch.numRegs() = 0 then cluster
@@ -1217,10 +1185,11 @@ struct
       end 
 end (* functor *)
 
-
-
 (*
  * $Log: ra.sml,v $
+ * Revision 1.2  1998/05/08 10:54:01  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

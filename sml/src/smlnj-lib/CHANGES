@@ -3,6 +3,22 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1998-04-15] 110 --> 110.5
+--------------------------
+
+There is now a regular expression library (mostly implemented by Riccardo
+Pucella).  The implementation separates front-ends (which specify the
+syntax of REs) from back-ends (which implement the matching algorithms).
+Currently, we support AWK syntax as the only front-end and two different
+back-ends.
+
+Added an implementation of the SML/NJ PP API to the pretty-printer examples.
+
+Fixed a bug in the IntInf structure with scanning strings of the form "1+2".
+Also did some clean-up of the code.
+
+
+--------------------------------------------------------------------------------
 [1997-12-07] 109.32 --> 110
 ---------------------------
 

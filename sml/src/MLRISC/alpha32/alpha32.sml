@@ -26,6 +26,7 @@ struct
   structure C = Alpha32Instr.C
   structure LE = LabelExp
   structure W32 = Word32
+
  (*********************************************************
 
        Trap Shadows, Floating Exceptions, and Denormalized
@@ -130,9 +131,6 @@ struct
 
   val emit = F.emitInstr
 
-  fun newReg () = C.newReg()
-  fun newFreg() = C.newFreg()
-
   val zeroR = 31
   val zeroOp = I.REGop zeroR
   val zeroEA = I.Direct zeroR
@@ -205,7 +203,7 @@ struct
     fun fbranch(_, T.FCMP(cc, exp1, exp2, order), lab) = let
       val (f1, f2) = orderedFArith(exp1, exp2, order)
       fun bcc(cmp, br) = let
-	val tmpR = newFreg()
+	val tmpR = C.newFreg()
       in
 	emit(I.DEFFREG(tmpR));
 	emit(I.FOPERATE{oper=cmp, fa=f1, fb=f2, fc=tmpR});
@@ -214,8 +212,8 @@ struct
       end
 
       fun fall(cmp1, br1, cmp2, br2) = let
-	val tmpR1 = newFreg()
-	val tmpR2 = newFreg()
+	val tmpR1 = C.newFreg()
+	val tmpR2 = C.newFreg()
 	val fallLab = Label.newLabel ""
       in
 	emit(I.DEFFREG(tmpR1));
@@ -250,7 +248,7 @@ struct
 
     fun branch(cond, exp1, exp2, lab, order) = let
 	fun zapHi r = emit(I.OPERATE{oper=I.ZAP, ra=r, rb=I.IMMop 0xf0, rc=r})
-	val tmpR = newReg()
+	val tmpR = C.newReg()
 	val (r1, o2) = 
 	  case order 
 	   of T.LR => (regAction exp1, opndAction exp2)
@@ -279,8 +277,8 @@ struct
 	  | I.CC_EQ  => emitBr(I.CMPEQ,  I.BNE)
 	  | I.CC_NEQ => emitBr(I.CMPEQ,  I.BEQ)
     end
-    fun copyTmp() = SOME(I.Direct(newReg()))
-    fun fcopyTmp() = SOME(I.FDirect(newFreg()))
+    fun copyTmp() = SOME(I.Direct(C.newReg()))
+    fun fcopyTmp() = SOME(I.FDirect(C.newFreg()))
   in
     case exp
      of T.JMP(T.LABEL(LE.LABEL lab), _) => emit(I.BRANCH(I.BR, zeroR, lab))
@@ -314,9 +312,9 @@ struct
       | T.STORE8(ea, r, region) => let
 	  val rs = regAction r
 	  val (rd, disp) = eaAction ea
-	  val t1 = newReg()
-	  val t2 = newReg()
-	  val t3 = newReg()
+	  val t1 = C.newReg()
+	  val t2 = C.newReg()
+	  val t3 = C.newReg()
         in
 	  app emit
 	     [I.LOAD{ldOp=I.LDQ_U, r=t1, b=rd, d=disp,mem=mem},
@@ -396,7 +394,7 @@ struct
   and opndAction (T.LI value) =				
       if value <= 255 andalso value >= 0 then I.IMMop value
       else let
-	  val tmpR = newReg()
+	  val tmpR = C.newReg()
         in
 	  loadImmed (value, zeroR, tmpR);
 	  I.REGop tmpR
@@ -404,7 +402,7 @@ struct
     | opndAction(T.LI32 value) =
       if Word32.<=(value, 0w255) then I.IMMop (Word32.toInt value)
       else let 
-	  val tmpR = newReg () 
+	  val tmpR = C.newReg () 
 	in
 	  loadImmed32 (value, zeroR, tmpR);
 	  I.REGop tmpR
@@ -413,7 +411,7 @@ struct
     | opndAction exp = I.REGop (regAction exp)
 
   and reduceOpnd(I.IMMop i) = let
-        val rd = newReg()
+        val rd = C.newReg()
       in loadImmed(i, zeroR, rd); rd
       end
     | reduceOpnd(I.REGop rd) = rd
@@ -428,7 +426,7 @@ struct
       end
 
   and regAction (T.REG r) = r
-    | regAction exp = regActionRd(exp, newReg())
+    | regAction exp = regActionRd(exp, C.newReg())
 
   and arithOperands(e1, e2, T.LR) = (regAction e1, opndAction e2)
     | arithOperands(e1, e2, T.RL) = let
@@ -598,8 +596,8 @@ struct
 	end
 	(* Load and sign-extend a byte from a  non-aligned address  *)
       | T.LOAD8(exp, region) => let
-	  val tmpR0 = newReg()
-	  val tmpR1 = newReg()
+	  val tmpR0 = C.newReg()
+	  val tmpR1 = C.newReg()
 	  val (rt, disp) = eaAction exp
 	in
 	  emit(I.LOAD{ldOp=I.LDQ_U, r=tmpR0, b=rt, d=disp, mem=mem});
@@ -615,7 +613,7 @@ struct
     fun makeEA(r, n) = 
       if ~32768 <= n andalso n <= 32767 then (r, I.IMMop n)
       else let
-	  val tmpR = newReg()
+	  val tmpR = C.newReg()
 	  val low = wtoi(Word.andb(itow n, 0w65535))(* unsigned low 16 bits *)
 	  val high = n div 65536
 	  val (lowsgn, highsgn) =			 (* Sign-extend *)
@@ -635,7 +633,7 @@ struct
   end (* eaAction *)
 
   and fregAction (T.FREG f) = f
-    | fregAction exp = fregActionFd(exp, newFreg())
+    | fregAction exp = fregActionFd(exp, C.newFreg())
 
   and fregActionFd(exp, fd) = let
     (* macho comment goes here *)
@@ -696,6 +694,9 @@ end
 
 (*
  * $Log: alpha32.sml,v $
+ * Revision 1.2  1998/05/19 15:40:03  george
+ *   Minor cleanup
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:00  george
  * Version 110.5
  *

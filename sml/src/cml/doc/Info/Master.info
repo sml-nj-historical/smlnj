@@ -4,13 +4,43 @@
   {"trace-cml"; "The TraceCML structure";}
   {"cml"; "The CML structure";}
   {"os-process"; "The OS.Process structure";}
-  {@EMPTY "cml-lib"; "CML Library Reference"; "trace-cml" "multicast"}
-  {@EMPTY "core-cml"; "Core CML Reference"; "os-io" "os-process" "os" "mailbox" "sync-var" "cml"}
+  {@EMPTY "cml-lib"; "CML Library Reference";
+    @SECTION "CML Library Reference" {
+       @FILE "multicast"
+       @FILE "trace-cml"
+    }
+  }
+  {@EMPTY "core-cml"; "Core CML Reference";
+    @SECTION "Core CML reference" {
+       @FILE "cml"
+       @FILE "sync-var"
+       @FILE "mailbox"
+       @FILE "os"
+       @FILE "os-process"
+       @FILE "os-io"
+    }
+  }
   {"sync-var"; "The SyncVar structure";}
-  {"porting"; "Porting old programs";}
-  {@EMPTY "basics"; "Basics"; "porting"}
+  {"porting"; "Porting old programs";
+    @SECTION "Porting old CML programs" {
+      @SECTION "Backwards compatibility modules" {}
+      @SECTION "Name changes" {}
+      @SECTION "Input/output" {}
+      @SECTION "Condition variables" {}
+      @SECTION "Polling" {}
+    }
+  }
+  {@EMPTY "basics"; "Basics";
+    @SECTION "Basics" {
+       @FILE "porting"
+    }
+  }
   {"os-io"; "The OS.IO structure";}
-  {@EMPTY "refman"; "The Concurrent Reference Manual"; "cml-lib" "core-cml" "basics"}
+  {@EMPTY "refman"; "The Concurrent Reference Manual";
+     @FILE "basics"
+     @FILE "core-cml"
+     @FILE "cml-lib"
+  }
   {"mailbox"; "The Mailbox structure";}
 @SIGNATURE CML_OS_IO "os-io" {
   @VALS 

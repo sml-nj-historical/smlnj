@@ -6,12 +6,17 @@
   NAME="John Reppy"
   EMAIL="jhr@research.att.com"
   YEAR=1996>
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Research" YEAR=1996>
 <VERSION VERID="1.4" YEAR=1996 MONTH=4 DAY=30>
 <TITLE>The OS.IO structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/OS.IO/ structure</HEAD>
+<SEEALSO>
+  <STRREF TOPID/OS/
+  <STRREF DOCUMENT=SML-BASIS-DOC STRID="OS"/OS.IO/
+</SEEALSO>
 
 <PP> 
 The <STRREF NOLINK/OS.IO/ structure provides a general interface
@@ -34,8 +39,6 @@ used to test for various polling conditions.
 	polls a list of poll descriptors <ARG/l/.
 	This will raise <EXNREF DOCUMENT=SML-BASIS-DOC STRID="OS"/OS.SysErr/ if, for example,
 	one of the file descriptors refers to a closed file.
-    <SEEALSO>
-      <STRREF TOPID/OS/
-      <STRREF DOCUMENT=SML-BASIS-DOC STRID="OS"/OS.IO/
-    </SEEALSO>
 </STRUCTURE>
+</INTERFACE>
+

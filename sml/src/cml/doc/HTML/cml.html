@@ -1,5 +1,6 @@
 <!-- HTML/cml.html -->
 
+<!-- COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies. -->
 <!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
 <!-- COPYRIGHT (c) 1991 John H. Reppy. -->
 
@@ -8,13 +9,12 @@
 <HEAD>
 <TITLE>The CML structure</TITLE>
 </HEAD>
-<BODY>
-<A NAME="top"></A>
+<BODY><A NAME="top"></A>
 <H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
 
 
-<H3>The <CODE>CML</CODE> structure</H3>
+<H2><A NAME="section:0">The <CODE>CML</CODE> structure</A></H2>
 <HR>
 <H4>Synopsis</H4>
 <BLOCKQUOTE>
@@ -65,26 +65,26 @@
 <DL>
 <DT> <A NAME="SIG:CML.thread_id:TY"><CODE><B>type</B> thread_id</CODE></A>
 <DD>
-Thread IDs are the unique IDs associated with CML threads. 	  These IDs are in an unspecified total order that can be used to 	  break cyclic depedencies (see <A HREF="cml.html#SIG:CML.compareTid:VAL:SPEC">compareTid</A>).     
+	  Thread IDs are the unique IDs associated with CML threads. 	  These IDs are in an unspecified total order that can be used to 	  break cyclic depedencies (see <A HREF="cml.html#SIG:CML.compareTid:VAL:SPEC">compareTid</A>).     
 <BR>
 <BR>
 
 <DT> <A NAME="SIG:CML.chan:TY"><CODE><B>type</B> 'a chan</CODE></A>
 <DD>
-This is the type constructor for synchronous channels.     
+          This is the type constructor for synchronous channels.     
 <BR>
 <BR>
 
 <DT> <A NAME="SIG:CML.event:TY"><CODE><B>type</B> 'a event</CODE></A>
 <DD>
-Event values are abstract representations of synchronous operations 	  (so called <EM>first-class sychronous operations</EM>).     
+	  Event values are abstract representations of synchronous operations 	  (so called <EM>first-class sychronous operations</EM>).     
 <BR>
 <BR>
 
 <DT> <A NAME="SIG:CML.version:VAL"><CODE><B>val</B> version</CODE></A>
 <DT> <CODE><B>val</B> banner</CODE>
 <DD>
-These specify the version of CML in the same format as SML/NJ.     
+	These specify the version of CML in the same format as SML/NJ.     
 <BR>
 <BR>
 
@@ -99,7 +99,7 @@ creates a new thread of control to evaluate the body of <VAR>f</VAR>. 	A new uni
 
 <DT> <A NAME="SIG:CML.yield:VAL"><CODE><B>val</B> yield</CODE></A>
 <DD>
-This function can be used to implement an explicit context switch. 	Since CML is preemptively scheduled, it should never be necessary for 	user programs to call this function. 	It is mainly used for performance measurements.     
+	This function can be used to implement an explicit context switch. 	Since CML is preemptively scheduled, it should never be necessary for 	user programs to call this function. 	It is mainly used for performance measurements.     
 <BR>
 <BR>
 
@@ -183,7 +183,7 @@ receives a message from the channel <VAR>ch</VAR>. 	  This operation blocks the 
 <DT> <A NAME="SIG:CML.sendEvt:VAL"><CODE><B>val</B> sendEvt</CODE></A>
 <DT> <CODE><B>val</B> recvEvt</CODE>
 <DD>
-These functions create event values to represent the <A HREF="cml.html#SIG:CML.send:VAL:SPEC">send</A> 	  and <A HREF="cml.html#SIG:CML.recv:VAL:SPEC">recv</A> operations.     
+	  These functions create event values to represent the <A HREF="cml.html#SIG:CML.send:VAL:SPEC">send</A> 	  and <A HREF="cml.html#SIG:CML.recv:VAL:SPEC">recv</A> operations.     
 <BR>
 <BR>
 
@@ -303,16 +303,18 @@ creates an event value that becomes enabled at the specified time 	  <VAR>t</VAR
 
 <HR>
 <CENTER>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
-   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="core-cml.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
    ]</B>
 </CENTER>
 <P>
-<I>Last Modified November 16, 1995</I><BR>
+<I>Last Modified &date;</I><BR>
 <I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
 
-Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
 
 <HR>
-</BODY>
-</HTML>
+</BODY></HTML>

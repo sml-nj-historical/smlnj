@@ -83,7 +83,7 @@ high addresses ...
 */
 
 /* 
-   ml_roots layout
+   ml_roots layout in the struct ml_state (kernel/ml-state.h)
 			+---------------------+
 	root  -->	| ml_pc		      |
 			+---------------------+
@@ -101,9 +101,8 @@ high addresses ...
 			+---------------------+
 	+28:		| ml_exnptr	      |
 			+---------------------+
-	+32:		| miscreg 0-14	      |
+	+32:		| miscreg 0-15	      |
 			+---------------------+
-			:		      :
 */
 
 #define zero 		%r0
@@ -127,7 +126,7 @@ high addresses ...
 #define miscreg6 	%r18
 #define miscreg7 	%r19
 #define maskreg		%r20
-#define exhausted 	%r21
+#define miscreg15 	%r21
 #define miscreg8 	%r22
 #define miscreg9 	%r23
 #define miscreg10 	%r24
@@ -154,19 +153,17 @@ high addresses ...
 
 
 #if (CALLEESAVE > 0)
-#define CONTINUE					\
-	comclr,> 	allocptr, limitptr, exhausted	!\
-	ldi		1, exhausted			!\
+#define CONTINUE        \
 	bv,n		zero(stdcont)
 #else
 #define CONTINUE ???
 #endif
 
-#define CHECKLIMIT(name,mask)					    \
-	combf,=,n	zero, exhausted, CSYM(CONCAT(L$$, name))   !\
-	ldi		mask, maskreg				   !\
-	copy		stdlink, gclink				   !\
-	b,n		saveregs1				   !\
+#define CHECKLIMIT(name,mask)						\
+	combt,<=,n      allocptr, limitptr, CSYM(CONCAT(L$$, name))	!\
+	ldi		mask, maskreg					!\
+	copy		stdlink, gclink					!\
+	b,n		saveregs1					!\
         .label          CSYM(CONCAT(L$$, name))
 
 /* All code must be in the data segment, since we cannot distinguish
@@ -366,6 +363,7 @@ saveregs1
 	stw	miscreg12, MiscRegOffMSP(12)(tmp1)
 	stw	miscreg13, MiscRegOffMSP(13)(tmp1)
 	stw	miscreg14, MiscRegOffMSP(14)(tmp1)
+	stw	miscreg15, MiscRegOffMSP(15)(tmp1)
 	stw	varptr, VarPtrOffMSP(tmp1)
 	ldil    L%-8192, tmp3
 	ldo	R%-8192(tmp3), tmp3
@@ -453,6 +451,7 @@ restoreregs
 	ldw	MiscRegOffMSP(12)(tmp1), miscreg12
 	ldw	MiscRegOffMSP(13)(tmp1), miscreg13
 	ldw	MiscRegOffMSP(14)(tmp1), miscreg14
+	ldw	MiscRegOffMSP(15)(tmp1), miscreg15
 	ldw	LinkRegOffMSP(tmp1), stdlink
 	ldw	VarPtrOffMSP(tmp1), varptr
 	ldw	PCOffMSP(tmp1), gclink
@@ -468,8 +467,6 @@ ml_go
 	ldw	MiscRegOffMSP(11)(tmp1), miscreg11	/* tmp3 */
 	mfsp	%sr5, tmp1				/* for indexed loads */
 	mtsp    tmp1, %sr3
-	comclr,> allocptr, limitptr, exhausted
-	ldi	1, exhausted
 	bv,n	0(gclink)
 
 pending_sigs

@@ -45,8 +45,8 @@ functor Alpha32Rewrite(Instr : ALPHA32INSTR) = struct
      | I.FSTORE farg => fstore(I.FSTORE, farg)
      | I.JMPL({r, b, d}, labs) =>
        if mapr b=rs then I.JMPL({r=r, b=rt, d=d}, labs) else instr
-     | I.JSR({r,b,d}, defs, uses) =>
-       if mapr b=rs then I.JSR({r=r,b=rt,d=d}, defs, uses) else instr
+     | I.JSR({r,b,d}, defs, (i,f)) =>
+	 I.JSR({r=r, b=replace b, d=d}, defs, (map replace i, f))
      | I.BRANCH(I.BR, _, _) => instr
      | I.BRANCH(br, r, lab) => if mapr r=rs then I.BRANCH(br, rt, lab) else instr
      | I.OPERATE arg => operate(I.OPERATE, arg)
@@ -74,6 +74,7 @@ functor Alpha32Rewrite(Instr : ALPHA32INSTR) = struct
 	if mapr r=fs then I.FSTORE{stOp=stOp, r=ft, b=b, d=d, mem=mem} else instr
      | I.FOPERATE arg => foperate(I.FOPERATE, arg)
      | I.FOPERATEV arg => foperate(I.FOPERATEV, arg)
+     | I.JSR(opnds, defs, (i,f)) => I.JSR(opnds, defs, (i, map replace f))
      | _ => instr
   end
 
@@ -89,8 +90,8 @@ functor Alpha32Rewrite(Instr : ALPHA32INSTR) = struct
        if mapr r=rs then I.LOAD{ldOp=ldOp, r=rt, b=b, d=d, mem=mem} else instr
      | I.JMPL({r, b, d}, labs) =>
        if mapr r=rs then I.JMPL({r=rt, b=b, d=d}, labs) else instr
-     | I.JSR({r, b, d}, defs, uses) =>
-       if mapr r=rs then I.JSR({r=rt, b=b, d=d}, defs, uses) else instr
+     | I.JSR({r, b, d}, (i,f), uses) =>
+         I.JSR({r=rewrite r, b=b, d=d}, (map rewrite i, f), uses)
      | I.BRANCH(I.BR, r, lab) => 
        if mapr r=rs then I.BRANCH(I.BR, rt, lab) else instr
      | I.OPERATE{oper, ra, rb, rc} => 
@@ -117,12 +118,17 @@ functor Alpha32Rewrite(Instr : ALPHA32INSTR) = struct
 	if mapr fc=fs then I.FOPERATEV{oper=oper, fa=fa, fb=fb, fc=ft} else instr
      | I.FCOPY{dst, src, tmp, impl} =>
 	I.FCOPY{dst=map rewrite dst, src=src, tmp=ea tmp, impl=impl} 
+     | I.JSR(opnds, (i,f), uses) => I.JSR(opnds, (i, map rewrite f), uses)
+	
      | _  => instr
   end
 end
 
 (*
  * $Log: alpha32Rewrite.sml,v $
+ * Revision 1.2  1998/05/08 10:53:59  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:01  george
  * Version 110.5
  *

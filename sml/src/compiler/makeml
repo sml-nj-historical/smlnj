@@ -32,42 +32,42 @@ do
     -full) FULL="@SMLfull" ;;
     -arch)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-arch\" option"
+        echo "makeml: missing argument for \"-arch\" option"
 	exit 1
       fi
       ARCH=$1; shift
     ;;
     -opsys)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-opsys\" option"
+        echo "makeml: missing argument for \"-opsys\" option"
 	exit 1
       fi
       OPSYS=$1; shift
     ;;
     -o)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-o\" option"
+        echo "makeml: missing argument for \"-o\" option"
 	exit 1
       fi
       HEAP_IMAGE=$1; shift
     ;;
     -run)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-run\" option"
+        echo "makeml: missing argument for \"-run\" option"
 	exit 1
       fi
       RUN=$1; shift
     ;;
     -alloc)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-alloc\" option"
+        echo "makeml: missing argument for \"-alloc\" option"
 	exit 1
       fi
       ALLOC=$1; shift
     ;;
     -boot)
       if [ "$#" = "0" ]; then
-        echo "xmakeml: missing argument for \"-boot\" option"
+        echo "makeml: missing argument for \"-boot\" option"
 	exit 1
       fi
       BOOT_DIR=$1; shift
@@ -75,7 +75,7 @@ do
     @SML*)
       RUN_ARGS="$RUN_ARGS $arg"
     ;;
-    *) echo "xmakeml: unknown argument \"$arg\""
+    *) echo "makeml: unknown argument \"$arg\""
        exit 1
     ;;
   esac
@@ -96,7 +96,7 @@ if [ "$RUN" = "" ]; then
   elif [ -x "$OBJS_DIR/$RUN_CMD" ]; then
     RUN="$OBJS_DIR/$RUN_CMD"
   else
-    echo "xmakeml: unable to find run-time system \"$RUN_CMD\""
+    echo "makeml: unable to find run-time system \"$RUN_CMD\""
     exit 1
   fi
 fi
@@ -122,7 +122,7 @@ fi
 echo "$RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL"
       $RUN @SMLboot=$BOOT_DIR @SMLalloc=$ALLOC $RUN_ARGS $ELAB $FULL <<XXXX
 $SET_FLAGS
-val use = Compiler.Interact.useFile
+val use = Compiler.Interact.useFile;
 val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
 	 print Compiler.banner; print "\n");
 XXXX

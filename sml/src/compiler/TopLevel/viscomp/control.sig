@@ -15,22 +15,6 @@ signature PRINTCONTROL =
    val flush: unit -> unit
  end
 
-signature LAZYCONTROL = 
-  sig
-    val enabled   : bool ref  (* enable/disable lazy features *)
-    val printDebug: bool ref  (* General Degubing Info *)
-    val printStats: bool ref  (* General Statistics *)
-    val redGenFD1 : bool ref  (* Reduce Generated Force-Delays at Ast Level *)
-    val redGenFD2 : bool ref  (* Reduce Generated Force-Delays at matchcomp *)
-    val redAllFD1 : bool ref  (* Reduce All Force-Delays at Ast Level *)
-    val redAllFD2 : bool ref  (* Reduce All Force-Delays at machcomp *)
-    val inlineF   : bool ref  (* Inline Force *)
-    val inlineD   : bool ref  (* Inline Delay *)
-    val earlyDT   : bool ref  (* Early (Ast) Dollar translate *)
-    val ok_MARK   : bool ref  (* Correct treatment of MARK in translate *)
-    val earlyFP   : bool ref  (* Early fixity parsing *)
-  end
-
 signature MCCONTROL =
 sig
   val printArgs : bool ref
@@ -155,7 +139,6 @@ end
 
 signature CONTROL = 
    sig structure MC : MCCONTROL
-       structure Lazy : LAZYCONTROL
        structure CG : CGCONTROL
        structure MLRISC : MLRISC_CONTROL
        structure Print : PRINTCONTROL
@@ -168,6 +151,7 @@ signature CONTROL =
        val instantiateSigs : bool ref 
           (* check signatures at declaration by instantiating them *)
        val internals : bool ref
+       val lazysml : bool ref
        val interp : bool ref
 (*
        val debugLook : bool ref
@@ -197,6 +181,9 @@ signature CONTROL =
 
 (*
  * $Log: control.sig,v $
+ * Revision 1.2  1998/05/15 03:52:44  dbm
+ *   Structure Lazy and signature LAZYCONTROL replaced by val lazysml.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:14  george
  * Version 110.5
  *

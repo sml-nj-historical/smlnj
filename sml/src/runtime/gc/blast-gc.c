@@ -638,8 +638,13 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
 
     switch (EXTRACT_OBJC(id)) {
       case OBJC_record: {
+#ifdef POINTERS_INTO_OBJECTS
 	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
 	    continue;
+#else
+	obj_start = obj;
+	desc = obj_start[-1];
+#endif
 	if (desc == DESC_forwarded)
 	  /* This object has already been forwarded */
 	    return PTR_CtoML(FOLLOW_FWDOBJ(obj_start, obj));
@@ -650,7 +655,11 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
       case OBJC_pair: {
 	ml_val_t	w;
 
+#ifdef POINTERS_INTO_OBJECTS
 	obj_start = (ml_val_t *)((Addr_t)obj & ~(2*WORD_SZB-1));
+#else
+	obj_start = obj;
+#endif
 	w = obj_start[0];
 	if (isDESC(w))
 	    return PTR_CtoML(FOLLOW_FWDPAIR(w, obj_start, obj));
@@ -664,7 +673,11 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
 	  /* setup the forward pointer in the old pair */
 	    NOTE_REPAIR(arena, obj_start, w);
 	    obj_start[0] =  MAKE_PAIR_FP(new_obj);
+#ifdef POINTERS_INTO_OBJECTS
 	    return PTR_CtoML(new_obj + (obj - obj_start));
+#else
+	    return PTR_CtoML(new_obj);
+#endif
 	}
       } break;
 
@@ -709,8 +722,13 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
       } break;
 
       case OBJC_array: {
+#ifdef POINTERS_INTO_OBJECTS
 	for (obj_start = obj;  !isDESC(desc = obj_start[-1]);  obj_start--)
 	    continue;
+#else
+	obj_start = obj;
+	desc = obj_start[-1];
+#endif
 	switch (GET_TAG(desc)) {
 	  case DTAG_forwarded:
 	  /* This object has already been forwarded */
@@ -745,7 +763,11 @@ PVT ml_val_t BlastGC_ForwardObj (heap_t *heap, ml_val_t v, aid_t id)
     NOTE_REPAIR(arena, obj_start, *obj_start);
     obj_start[-1] = DESC_forwarded;
     obj_start[0] = (ml_val_t)(Addr_t)new_obj;
+#ifdef POINTERS_INTO_OBJECTS
     return PTR_CtoML(new_obj + (obj - obj_start));
+#else
+    return PTR_CtoML(new_obj);
+#endif
 
 } /* end of BlastGC_ForwardObj */
 

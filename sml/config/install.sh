@@ -33,14 +33,16 @@ CM_MAKE_LIB="CM.stabilize true;"
 #
 # check for ksh
 #
-echo "checking for ksh"
-if [ -x /bin/ksh ]; then
-  SHELL=/bin/ksh
-elif [ -x /usr/local/bin/ksh ]; then
-  SHELL=/usr/local/bin/ksh
-else
+# ksh causes some people problems so we will always use /bin/sh
+#
+#echo "checking for ksh"
+#if [ -x /bin/ksh ]; then
+#  SHELL=/bin/ksh
+#elif [ -x /usr/local/bin/ksh ]; then
+#  SHELL=/usr/local/bin/ksh
+#else
   SHELL=/bin/sh
-fi
+#fi
 echo "  using $SHELL"
 
 #
@@ -226,9 +228,9 @@ do
     echo "  building $TARGET"
     case $i in
       src-smlnj)
- 	for src in compiler comp-lib MLRISC; do
- 	  $CONFIGDIR/unpack.sh $src $ROOT/src $src $ROOT/$VERSION-$src.tar
- 	done
+        for src in compiler comp-lib MLRISC; do
+          $CONFIGDIR/unpack.sh $src $ROOT/src $src $ROOT/$VERSION-$src.tar
+        done
       ;;
       sml-full)
 	if [ ! -d $ROOT/$BIN_FILES ]; then

@@ -5,7 +5,7 @@ SHELL =		/bin/sh
 
 MAKE =		make
 CC =		gcc -ansi
-CFLAGS =	-O
+CFLAGS =	-O2
 CPP =		gcc -x c -E -P -ansi
 #XOBJS =	xmonitor.o
 #LD_LIBS =	-lX11

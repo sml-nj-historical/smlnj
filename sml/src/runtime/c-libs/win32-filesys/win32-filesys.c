@@ -321,8 +321,12 @@ ml_val_t _ml_win32_FS_get_temp_file_name(ml_state_t *msp, ml_val_t arg)
 {
   ml_val_t res = OPTION_NONE;
   char name_buf[MAX_PATH];
+  char path_buf[MAX_PATH];
+  DWORD pblen;
 
-  if (GetTempFileName(".",TMP_PREFIX,0,name_buf)) {
+  pblen = GetTempPath(MAX_PATH,path_buf);
+  if ((pblen <= MAX_PATH) && 
+      (GetTempFileName(path_buf,TMP_PREFIX,0,name_buf) != 0)) {
     ml_val_t tfn = ML_CString(msp,name_buf);
     
     OPTION_SOME(msp,res,tfn);

@@ -105,12 +105,12 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 	    val tokFn = Tbl.map idTbl (hash, str)
 	    in
 	      if ((not(!Control.overloadKW))
-	      andalso (hash = overloadHash) andalso (str = "overload"))
+	         andalso (hash = overloadHash) andalso (str = "overload"))
 	        then mkId()
-	      else if ((not(!Control.Lazy.enabled))
-	      andalso (hash = lazyHash) andalso (str = "lazy"))
+	      else if ((not(!Control.lazysml))
+	              andalso (hash = lazyHash) andalso (str = "lazy"))
 	        then mkId()
-	        else tokFn yypos
+	      else tokFn yypos
 	    end
 	      handle NotToken => mkId()
 	  end
@@ -133,6 +133,9 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
 (*
  * $Log: tokentable.sml,v $
+ * Revision 1.2  1998/05/15 03:25:57  dbm
+ *   Control.Lazy.enabled replaced by Control.lazysml.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:19  george
  * Version 110.5
  *

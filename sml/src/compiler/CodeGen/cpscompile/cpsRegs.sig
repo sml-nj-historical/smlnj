@@ -23,7 +23,7 @@ signature CPSREGS = sig
   val gclinkreg	: T.rexp 
 
   val calleesave: T.rexp Array.array
-  val exhausted : T.ccexp
+  val exhausted : T.ccexp option
 
   val miscregs  : T.rexp list
   val floatregs : T.fexp list
@@ -37,6 +37,9 @@ end
 
 (*
  * $Log: cpsRegs.sig,v $
+ * Revision 1.2  1998/05/08 10:52:21  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

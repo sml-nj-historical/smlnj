@@ -6,12 +6,17 @@
   NAME="John Reppy"
   EMAIL="jhr@research.att.com"
   YEAR=1996>
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Research" YEAR=1996>
 <VERSION VERID="1.0" YEAR=1996 MONTH=4 DAY=30>
 <TITLE>The OS.Process structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/OS.Process/ structure</HEAD>
+<SEEALSO>
+  <STRREF TOPID/OS/
+  <STRREF DOCUMENT=SML-BASIS-DOC STRID="OS"/OS.Process/
+</SEEALSO>
 
 <PP>
 The <STRREF STRID="OS" NOLINK/OS.Process/ structure
@@ -37,8 +42,6 @@ operating system independent manner.
           Note that, although this function is independent of the operating
           system, the interpretation of the string <ARG/cmd/ depends
           very much on the underlying operating system and shell.
-  <SEEALSO>
-    <STRREF TOPID/OS/
-    <STRREF DOCUMENT=SML-BASIS-DOC STRID="OS"/OS.Process/
-  </SEEALSO>
 </STRUCTURE>
+</INTERFACE>
+

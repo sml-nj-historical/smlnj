@@ -1,7 +1,7 @@
 (* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
 (* cmsa.sml *)
 
-functor CMSAFun (structure BU : BATCHUTIL
+functor CMSAFun (structure BF : BINFILE
                  structure C  : COMPILE) :> CMSA = struct
 
     structure E = CMEnv.Env
@@ -52,20 +52,19 @@ functor CMSAFun (structure BU : BATCHUTIL
 		  | SMLofNJ.SysInfo.MACOS => "macos"
 		  | SMLofNJ.SysInfo.OS2 => "os2"
 		  | SMLofNJ.SysInfo.BEOS => "beos"
-	    val arch'os = concat [BU.arch, "-", oskind]
+	    val arch'os = concat [C.architecture, "-", oskind]
 	    val archosdir = OS.Path.joinDirFile { dir = cmdir, file = arch'os }
 	    val bin = OS.Path.joinDirFile { dir = archosdir, file = file }
 	    val _ = P.say (concat ["Loading: ", bin, "..."])
 	    val f = BinIO.openIn bin
 	    fun rest () = let
-		val cu = BU.readUnit { name = bin,
-                                        stream = f,
-				        pids2iid = fn _ => (),
-					senv = E.staticPart base,
-					keep_code = true }
+		val bfc = BF.read { name = bin,
+				    stream = f,
+				    senv = E.staticPart base,
+				    keep_code = true }
 		val _ = BinIO.closeIn f
     	        val _ = P.say "ok - executing..."
-                val e = BU.execUnit(cu, E.dynamicPart base)
+                val e = BF.exec (bfc, E.dynamicPart base)
   	        val _ = P.say "done\n"
        	        in
 	           e
@@ -131,6 +130,9 @@ end (* functor CMSAFun *)
 
 (*
  * $Log: cmsa.sml,v $
+ * Revision 1.2  1998/05/21 17:54:46  jhr
+ *   Merging in Matthias's changes.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:16  george
  * Version 110.5
  *

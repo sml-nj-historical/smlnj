@@ -755,12 +755,13 @@ fun unpickleEnv (context0, pickle) =
 
       fun datacon #"D" = 
             ?symbol(fn Usymbol n =>
-  		?bool(fn Ubool c =>
-		   ?ty(fn Uty t =>
-		       ?conrep(fn Uconrep r => 
-			  ?consig(fn Uconsig s =>
-			   %Udatacon(T.DATACON{name=n,const=c,typ=t,
-					       rep=r,sign=s}))))))
+  	     ?bool(fn Ubool c =>
+	      ?ty(fn Uty t =>
+	       ?conrep(fn Uconrep r => 
+		?consig(fn Uconsig s =>
+		 ?bool(fn Ubool l =>
+		  %Udatacon(T.DATACON{name=n,const=c,typ=t,lazyp=l,
+				      rep=r,sign=s})))))))
         | datacon _ = raise Fail "    | datacon"
 
 
@@ -807,12 +808,13 @@ fun unpickleEnv (context0, pickle) =
 
       and dtmember #"T" = 
   	?symbol(fn Usymbol n =>
-	    ?nameRepDomainList(fn UnameRepDomainList l =>
-              R.int(fn i =>
-	        ?eqprop(fn Ueqprop e =>
-		  ?consig(fn Uconsig sn =>
-		    %Udtmember{tycname=n,dcons=l,arity=i,
-			       eq=ref e,sign=sn})))))
+	 ?nameRepDomainList(fn UnameRepDomainList l =>
+          R.int(fn i =>
+	   ?eqprop(fn Ueqprop e =>
+	    ?bool(fn Ubool z =>
+	     ?consig(fn Uconsig sn =>
+	      %Udtmember{tycname=n,dcons=l,arity=i,
+			 eq=ref e,lazyp=z,sign=sn}))))))
         | dtmember _ = raise Fail "    | dtmember"
 
       and nameRepDomainList x =
@@ -1252,6 +1254,15 @@ end (* structure UnpickleMod *)
 
 (*
  * $Log: unpickmod.sml,v $
+ * Revision 1.3  1998/05/20 18:39:34  george
+ *   As a result of the new linkage conventions, we no longer need
+ *   the LT_PST type. Certain utility functions on FLINT types are
+ *   significantly simplified.
+ * 						-- zsh
+ *
+ * Revision 1.2  1998/05/15 03:45:50  dbm
+ *   Added lazyp field as appropriate.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:34  george
  * Version 110.5
  *

@@ -5,11 +5,11 @@ SHELL 		= /bin/sh
 
 # note: the vendor cpp isn't expanding nested macro applications correctly.
 #CC =            cc
-#CFLAGS =        -O
+#CFLAGS =        -O2
 #CPP =           /lib/cpp
 
 CC =            gcc -ansi
-CFLAGS =        -O
+CFLAGS =        -O2
 CPP =           gcc -x c -E -P -ansi
 
 XOBJS =

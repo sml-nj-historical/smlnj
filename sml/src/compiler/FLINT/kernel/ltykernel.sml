@@ -1257,6 +1257,9 @@ end (* abstraction LtyKernel *)
 
 (*
  * $Log: ltykernel.sml,v $
+ * Revision 1.2  1998/05/20 18:37:58  george
+ * NT/kernel/ltydef.sml
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:38  george
  * Version 110.5
  *

@@ -2,13 +2,18 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1995>
 <COPYRIGHT OWNER="John H. Reppy" YEAR=1991>
 <VERSION VERID="1.0" YEAR=1995 MONTH=11 DAY=16>
 <TITLE>The CML structure</TITLE>
 
-<SECT>
+<INTERFACE>
 <HEAD>The <CD/CML/ structure</HEAD>
+<SEEALSO>
+  <STRREF DOCUMENT=SML-BASIS-DOC TOPID/Option/
+  <STRREF DOCUMENT=SML-BASIS-DOC TOPID/Time/
+</SEEALSO>
 
 <PP>
 <!-- Some general introductory text -->
@@ -18,22 +23,26 @@
     <SPEC>
       <TYPE><ID>thread_id
 	<COMMENT>
+	<PP>
 	  Thread IDs are the unique IDs associated with &CML; threads.
 	  These IDs are in an unspecified total order that can be used to
 	  break cyclic depedencies (see <VALREF/compareTid/).
     <SPEC>
       <TYPE><TYPARAM>'a<ID>chan
 	<COMMENT>
+	<PP>
           This is the type constructor for synchronous channels.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>event
 	<COMMENT>
+	<PP>
 	  Event values are abstract representations of synchronous operations
 	  (so called <EM>first-class sychronous operations</EM>).
     <SPEC>
       <VAL>version<TY>{system : string, version_id : int list, date : string}
       <VAL>banner<TY>string
         <COMMENT>
+	<PP>
 	These specify the version of &CML; in the same format as &SMLNJ;.
     <SPEC>
       <VAL>spawnc<TY>('a -> unit) -> 'a -> thread_id
@@ -49,6 +58,7 @@
     <SPEC>
       <VAL>yield<TY>unit -> unit
       <COMMENT>
+	<PP>
 	This function can be used to implement an explicit context switch.
 	Since CML is preemptively scheduled, it should never be necessary for
 	user programs to call this function.
@@ -149,6 +159,7 @@
       <VAL>sendEvt<TY>('a chan * 'a) -> unit event
       <VAL>recvEvt<TY>'a chan -> 'a event
         <COMMENT>
+	<PP>
 	  These functions create event values to represent the <VALREF/send/
 	  and <VALREF/recv/ operations.
     <SPEC>
@@ -300,8 +311,5 @@
 	  creates an event value that becomes enabled at the specified time
 	  <ARG/t/.
     </SIGBODY>
-  <SEEALSO>
-    <STRREF DOCUMENT=SML-BASIS-DOC TOPID/Option/
-    <STRREF DOCUMENT=SML-BASIS-DOC TOPID/Time/
-  </SEEALSO>
 </STRUCTURE>
+</INTERFACE>

@@ -13,7 +13,7 @@ struct
 local
   structure SS = Substring
   structure C  = VC.Compile
-  structure BU = VC.BatchUtil
+  structure BF = VC.Binfile
   structure SE = StaticEnv
   structure CM = CMStaticEnv
   open ErrorMsg Modules ModuleUtil
@@ -209,14 +209,13 @@ in
                   say (concat ["Loading static bin for ", sourcename, "\n"])
                 val f = BinIO.openIn (tnamer sourcename)
 
-                val cu = BU.readUnit { name=tnamer sourcename,
-                                                 stream = f,
-                                                 pids2iid = fn _ => (),
-                                                 senv = env0,
-                                                 keep_code = false }
-                val exportPid = BU.exportCU cu
-                val senv = BU.senvCU cu
-                val symenv = BU.symenvCU cu
+                val bfc = BF.read { name=tnamer sourcename,
+				    stream = f,
+				    senv = env0,
+				    keep_code = false }
+                val exportPid = BF.exportPidOf bfc
+                val senv = BF.senvOf bfc
+                val symenv = BF.symenvOf bfc
 
              in theSymEnv := SymbolicEnv.atop (symenv, !theSymEnv); 
                 BinIO.closeIn f;
@@ -329,6 +328,9 @@ end (* functor BootEnvF *)
 
 (*
  * $Log: boot.sml,v $
+ * Revision 1.2  1998/05/21 17:54:47  jhr
+ *   Merging in Matthias's changes.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:15  george
  * Version 110.5
  *

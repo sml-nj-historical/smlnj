@@ -594,7 +594,9 @@ PVT void mkCint(Word_t src,Word_t **dst,int bytes)
     SayDebug("mkCint: placing integer into %d bytes at %x\n", bytes, *dst);
 #endif
 
+#ifdef BYTE_ORDER_BIG
     src <<= (sizeof(Word_t) - bytes)*8;
+#endif
     memcpy (*dst, &src, bytes);
     (*(Byte_t **)dst) += bytes;
 }
@@ -606,7 +608,9 @@ PVT void mkMLint(Word_t **src,Word_t *dst,int bytes)
 #endif
     
     memcpy (dst, *src, bytes);
+#ifdef BYTE_ORDER_BIG
     *dst >>= (sizeof(Word_t) - bytes)*8;
+#endif
     *(Byte_t **)src += bytes;
 }
 

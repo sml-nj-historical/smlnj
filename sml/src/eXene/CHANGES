@@ -43,6 +43,9 @@ LIBRARY CHANGES
     [08/01/96]
 
 WIDGET CHANGES
+  - Added 2D structure graphics canvas widget (widgets/fancy/2d-graphics).
+    [05/22/98]
+
   - Added RunEXene.parseDisplay.
     [04/07/97]
 

@@ -5,15 +5,15 @@ Utility library
 HTML Library
 ------------
 
-  Update to final version of 3.2 spec.
+  Rewrite parser as recursive descent (the ML-Yacc version doesn't handle
+  whitespace in the HEAD element very well).
 
+PP Library
+----------
+
+  Add support for tabular layout.
 
 New libraries
 -------------
 
-  Reactive
-
   CGI scripting
-
-  Regular expressions
-

@@ -43,7 +43,7 @@ struct
 
   fun isFlt CPS.FLTt = true  | isFlt _ = false
 
-  fun scan(t::z, gp, fp) = 
+  fun scan(t::z, gp, fp) =
       if isFlt t then (hd fp)::(scan(z,gp,tl fp)) 
       else (hd gp)::(scan(z,tl gp,fp))
     | scan([], _, _) = []
@@ -86,6 +86,9 @@ end
 
 (*
  * $Log: argPassing.sml,v $
+ * Revision 1.2  1998/05/08 10:52:19  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

@@ -7,7 +7,7 @@ SHELL 		= /bin/sh
 MAKE =		make
 CC =		gcc -ansi
 CFLAGS =	-g
-#CFLAGS =	-O
+#CFLAGS =	-O2
 CPP =		gcc -x c -E -P -ansi
 
 XOBJS =

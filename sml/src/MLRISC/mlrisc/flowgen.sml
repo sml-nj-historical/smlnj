@@ -137,11 +137,15 @@ struct
     (*esac*)
   end      
 
+
   fun exitBlock liveRegs  = let
+    val addReg   = C.addCell C.GP
+    val addFreg  = C.addCell C.FP
+    val addCCreg = C.addCell C.CC
     (* we don't care about memory locations that may be live. *)
-    fun live(T.GPR(T.REG r)::rest, acc) = live(rest, C.addReg(r, acc))
-      | live(T.FPR(T.FREG f)::rest, acc) = live(rest, C.addFreg(f, acc))
-      | live(T.CCR(T.CC c)::rest, acc) = live(rest, C.addCCreg(c, acc))
+    fun live(T.GPR(T.REG r)::rest, acc) = live(rest, addReg(r, acc))
+      | live(T.FPR(T.FREG f)::rest, acc) = live(rest, addFreg(f, acc))
+      | live(T.CCR(T.CC c)::rest, acc) = live(rest, addCCreg(c, acc))
       | live(_::rest, acc) = live(rest, acc)
       | live([], acc) = acc
 
@@ -252,6 +256,9 @@ end
 
 (*
  * $Log: flowgen.sml,v $
+ * Revision 1.2  1998/05/19 15:47:47  george
+ *   addCCreg defined in terms of Cells.addCell.
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

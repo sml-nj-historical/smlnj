@@ -2,14 +2,14 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Research" YEAR=1996>
 <COPYRIGHT OWNER="John H. Reppy" YEAR=1991>
 <VERSION VERID="1.0" YEAR=1996 MONTH=4 DAY=30>
 
 <TITLE>The Concurrent Reference Manual</TITLE>
 
-<TABLEOFCONTENTS>
-<INCLCHAP FILE="basics">
-<INCLCHAP FILE="core-cml">
-<INCLCHAP FILE="cml-lib">
+<INCLFILE FILE="basics">
+<INCLFILE FILE="core-cml">
+<INCLFILE FILE="cml-lib">
 

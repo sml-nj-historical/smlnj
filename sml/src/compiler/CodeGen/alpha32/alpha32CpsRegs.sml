@@ -21,7 +21,7 @@ struct
   val limitptr 	= T.REG 9
   val varptr	= T.REG 10
   val exhaustedR = 11
-  val exhausted	= T.CC  exhaustedR
+  val exhausted	= SOME(T.CC  exhaustedR)
   val storeptr	= T.REG 12
   val allocptr 	= T.REG 13
   val exnptr	= T.REG 14
@@ -48,6 +48,9 @@ end
 
 (*
  * $Log: alpha32CpsRegs.sml,v $
+ * Revision 1.2  1998/05/08 10:52:17  george
+ *   The exhausted register has been made optional -- leung
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:54  george
  * Version 110.5
  *

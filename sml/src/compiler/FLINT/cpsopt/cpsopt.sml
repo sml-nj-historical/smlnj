@@ -195,6 +195,9 @@ end (* functor CPSopt *)
 
 (*
  * $Log: cpsopt.sml,v $
+ * Revision 1.2  1998/05/20 18:32:36  george
+ *   Cosmetic change -- zsh
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:47  george
  * Version 110.5
  *

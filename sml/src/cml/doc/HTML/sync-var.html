@@ -1,5 +1,6 @@
 <!-- HTML/sync-var.html -->
 
+<!-- COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies. -->
 <!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
 
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
@@ -7,15 +8,12 @@
 <HEAD>
 <TITLE>The SyncVar structure</TITLE>
 </HEAD>
-<BODY>
-<A NAME="top"></A>
+<BODY><A NAME="top"></A>
 <H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
 
 
-<H3>The <CODE>SyncVar</CODE> structure</H3>
-<P>
-The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory cells). These variables have two states: <I>empty</I> and <I>full</I>. An attempt to read a value from an empty variable blocks the calling thread until there is a value available. An attempt to put a value into a variable that is full results in the <A HREF="sync-var.html#SIG:SYNC_VAR.Put:EXN:SPEC">Put</A> exception being raised. There are two kinds of synchronous variables: I-variables are write-once, while M-variables are mutable. 
+<H2><A NAME="section:0">The <CODE>SyncVar</CODE> structure</A></H2>
 <HR>
 <H4>Synopsis</H4>
 <BLOCKQUOTE>
@@ -23,6 +21,8 @@ The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory 
 <B>structure </B><A NAME="SyncVar:STR:SPEC"><CODE>SyncVar</CODE></A><B> : </B>SYNC_VAR<BR>
 </CODE>
 </BLOCKQUOTE>
+<P>
+The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory cells). These variables have two states: <I>empty</I> and <I>full</I>. An attempt to read a value from an empty variable blocks the calling thread until there is a value available. An attempt to put a value into a variable that is full results in the <A HREF="sync-var.html#SIG:SYNC_VAR.Put:EXN:SPEC">Put</A> exception being raised. There are two kinds of synchronous variables: I-variables are write-once, while M-variables are mutable. 
 <HR>
 <H4>Interface</H4>
 <BLOCKQUOTE>
@@ -53,13 +53,13 @@ The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory 
 <DL>
 <DT> <A NAME="SIG:SYNC_VAR.Put:EXN"><CODE><B>exception</B> Put</CODE></A>
 <DD>
-This exception is raised when an attempt is made to put a 	value into a value that is already full (see <A HREF="sync-var.html#SIG:SYNC_VAR.iPut:VAL:SPEC">iPut</A> and 	<A HREF="sync-var.html#SIG:SYNC_VAR.mPut:VAL:SPEC">mPut</A>).     
+	This exception is raised when an attempt is made to put a 	value into a value that is already full (see <A HREF="sync-var.html#SIG:SYNC_VAR.iPut:VAL:SPEC">iPut</A> and 	<A HREF="sync-var.html#SIG:SYNC_VAR.mPut:VAL:SPEC">mPut</A>).     
 <BR>
 <BR>
 
 <DT> <A NAME="SIG:SYNC_VAR.ivar:TY"><CODE><B>type</B> 'a ivar</CODE></A>
 <DD>
-This is the type constructor for I-structured variables. 	I-structured variables are write-once variables that provide 	synchronization on read operations. 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols.     
+	This is the type constructor for I-structured variables. 	I-structured variables are write-once variables that provide 	synchronization on read operations. 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols.     
 <BR>
 <BR>
 
@@ -93,7 +93,7 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.i
 
 <DT> <A NAME="SIG:SYNC_VAR.iGetPoll:VAL"><CODE><B>val</B> iGetPoll</CODE></A>
 <DD>
-This is a non-blocking version of <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A>. 	  If the corresponding blocking form would block, then it returns 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  it returns <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
+	  This is a non-blocking version of <A HREF="sync-var.html#SIG:SYNC_VAR.iGet:VAL:SPEC">iGet</A>. 	  If the corresponding blocking form would block, then it returns 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  it returns <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
 <BR>
 <BR>
 
@@ -106,7 +106,7 @@ returns <CODE>true</CODE>, if the <VAR>iv1</VAR> and <VAR>iv2</VAR> are the 	  s
 
 <DT> <A NAME="SIG:SYNC_VAR.mvar:TY"><CODE><B>type</B> 'a mvar</CODE></A>
 <DD>
-This is the type constructor for M-structured variables. 	Unlike <A HREF="sync-var.html#SIG:SYNC_VAR.ivar:TY:SPEC">ivar</A> values, M-structured variables may be 	updated multiple times. 	Like I-variables, however, they may only be written if they 	are empty.     
+	This is the type constructor for M-structured variables. 	Unlike <A HREF="sync-var.html#SIG:SYNC_VAR.ivar:TY:SPEC">ivar</A> values, M-structured variables may be 	updated multiple times. 	Like I-variables, however, they may only be written if they 	are empty.     
 <BR>
 <BR>
 
@@ -167,7 +167,7 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.m
 <DT> <A NAME="SIG:SYNC_VAR.mTakePoll:VAL"><CODE><B>val</B> mTakePoll</CODE></A>
 <DT> <CODE><B>val</B> mGetPoll</CODE>
 <DD>
-These are non-blocking versions of <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> and 	  <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> (respectively). 	  If the corresponding blocking form would block, then they return 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  they return <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
+	  These are non-blocking versions of <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> and 	  <A HREF="sync-var.html#SIG:SYNC_VAR.mGet:VAL:SPEC">mGet</A> (respectively). 	  If the corresponding blocking form would block, then they return 	  <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>; otherwise 	  they return <A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> 	  of the variable's contents.     
 <BR>
 <BR>
 
@@ -193,35 +193,37 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.m
 <DT> <A NAME="SIG:SYNC_VAR.sameMVar:VAL"><CODE>sameMVar (<VAR>mv1</VAR>, <VAR>mv2</VAR>)
           </CODE></A>
 <DD>
-returns <CODE>true</CODE>, if <VAR>mv1</VAR> and <VAR>mv2</VAR> are the same 	  M-variable.     
+returns <CODE>true</CODE>, if <VAR>mv1</VAR> and <VAR>mv2</VAR> are the same 	  M-variable.   
 <BR>
 <BR>
 
 </DL>
 <HR>
-<H4>Discussion</H4>
-<P>
-I-variables provide a useful mechanism for implementing the       reply communication in request/reply protocols.       They may also be used to implement incremental data structures       and streams.       
-<P>
-      A disciplined use of M-variables can provide an atomic       read-modify-write operation.     
 <H4>See Also</H4>
 <BLOCKQUOTE>
 <A HREF="cml.html#CML:STR:SPEC">CML</A>
 </BLOCKQUOTE>
+<H4>Discussion</H4>
+<P>
+I-variables provide a useful mechanism for implementing the reply communication in request/reply protocols. They may also be used to implement incremental data structures and streams.
+<P>
+A disciplined use of M-variables can provide an atomic read-modify-write operation.
 
 
 <HR>
 <CENTER>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
-   | <A HREF="core-cml.html">Parent</A> | <A HREF="refman.html">Root</A>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="core-cml.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
    ]</B>
 </CENTER>
 <P>
-<I>Last Modified November 16, 1995</I><BR>
+<I>Last Modified &date;</I><BR>
 <I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
 
-Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
 
 <HR>
-</BODY>
-</HTML>
+</BODY></HTML>
