@@ -161,5 +161,9 @@ struct
    in  entryEdges
    end
 
+   fun isBackEdge(Loop as G.GRAPH L) = 
+   let val dom = Dom.dominates(dom Loop)
+   in  fn (v,w) => #has_node L w andalso dom(w,v)
+   end
 end    
 
