@@ -36,6 +36,7 @@ struct
 	  | I.SOURCE _ => IK_SOURCE
 	  | I.SINK _   => IK_SINK
 	  | I.RET _ => IK_JUMP
+	  | I.INTO => IK_JUMP
 	  | _ => IK_INSTR)
     | instrKind _ = IK_INSTR
 
@@ -115,6 +116,7 @@ struct
 	 | I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...} => 
 	     [FALLTHROUGH, LABELLED lab]
 	 | I.CALL{cutsTo, ...} => FALLTHROUGH :: map LABELLED cutsTo
+	 | I.INTO => [ESCAPES]
 	 |  _ => error "branchTargets")
     | branchTargets _ = error "branchTargets"
 
@@ -124,11 +126,9 @@ struct
 
   fun setTargets(I.ANNOTATION{i,a},l) = I.ANNOTATION{i=setTargets(i,l),a=a}
     | setTargets(I.INSTR(I.JMP(I.ImmedLabel _,_)), [l]) = jump l
-    | setTargets(I.INSTR(I.JMP _), _) = error "setTargets"
     | setTargets(I.INSTR(I.JCC{cond,opnd=I.ImmedLabel _}),[f,t]) =
         I.jcc{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
-    | setTargets(I.INSTR(I.JCC _),_) = error "setTargets"
-    | setTargets(i,_) = i
+    | setTargets(i,_) = error "setTargets"
 
   fun negateConditional _ = raise NotImplemented
 
