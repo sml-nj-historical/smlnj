@@ -392,7 +392,7 @@ same library---a group).
 
 CM distinguishes between libraries that are {\em under development}
 and libraries that are {\em stable}.  A stable library is created by a
-call to {\tt CM.stabilize} (see Section~\ref{sec:api}).
+call to {\tt CM.stabilize} (see Section~\ref{sec:api:compiling}).
 
 Access to stable libraries is subject to less internal
 consistency-checking and touches far fewer file-system
@@ -557,7 +557,7 @@ initialized by reading two configuration files: an
 installation-specific one and a user-specific one.  After that, the
 contents of root locations can be maintained using CM's interface
 functions {\tt CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
-Section~\ref{sec:api}).
+Section~\ref{sec:api:anchors}).
 
 Although there is a hard-wired default for the installation-specific
 configuration file\footnote{which happens to be {\tt
@@ -615,7 +615,8 @@ Section~\ref{sec:dynlink} shows one interesting use of this feature.
 
 Here is a description of all members:
 
-\subsubsection*{Compiling}
+\subsubsection{Compiling}
+\label{sec:api:compiling}
 
 Two main activities when using CM are to compile ML source code and to
 build stable libraries:
@@ -649,7 +650,7 @@ original sources---including the description file---are present.
 The boolean result of {\tt CM.recomp} and {\tt CM.stabilize} indicates
 success or failure of the operation ({\tt true} = success).
 
-\subsubsection*{Linking}
+\subsubsection{Linking}
 
 In SML/NJ, linking means executing top-level code (i.e., module
 creation and initialization code) of each compilation unit.  The
@@ -687,7 +688,7 @@ the operation.  The result of {\tt CM.autoload} indicates success or
 failure of the {\em registration}.  (It does not know yet whether
 loading will actually succeed.)
 
-\subsubsection*{Registers}
+\subsubsection{Registers}
 
 Several internal registers control the operation of CM.  A register of
 type $T$ is accessible via a variable of type $T$ {\tt controller},
@@ -760,7 +761,8 @@ This does not save very much and, therefore, is normally turned off.
 The default ({\em false}) can be overridden at startup by the
 environment variable {\tt CM\_CONSERVE\_MEMORY}.
 
-\subsubsection*{Path anchors}
+\subsubsection{Path anchors}
+\label{sec:api:anchors}
 
 Structure {\tt CM} also provides functions to explicitly manipulate
 the path anchor configuration.  These functions are members of
@@ -788,7 +790,7 @@ directory.
 After a call of this function has completed, all root environment
 locations are marked as being ``undefined''.
 
-\subsubsection*{Setting CM variables}
+\subsubsection{Setting CM variables}
 
 CM variables are used by the conditional compilation system (see
 Section~\ref{sec:cmvars}).  Some of these variables are predefined,
@@ -817,7 +819,7 @@ that could happen is that a variable defined via {\tt CM.symval} is
 not accessible\footnote{from within CM's description files} because
 there is no legal syntax to name it.)
 
-\subsubsection*{Library registry}
+\subsubsection{Library registry}
 \label{sec:libreg}
 
 To be able to share associated data structures such as symbol tables
@@ -877,7 +879,7 @@ one of the two versions is used by SML/NJ itself.  Normally, only
 programmers working on SML/NJ's compiler are expected to be using this
 facility.})
 
-\subsubsection*{Internal state}
+\subsubsection{Internal state}
 
 For CM to work correctly, it must maintain an up-to-date picture of
 the state of the surrounding world (as far as that state affects CM's
@@ -911,7 +913,7 @@ do this is not very advisable since it will also break the association
 with pre-loaded libraries.  It may be a useful tool for determining
 the amount of space taken up by the internal state, though.
 
-\subsubsection*{Compile servers}
+\subsubsection{Compile servers}
 
 On Unix-like systems, CM supports parallel compilation.  For computers
 connected using a LAN, this can be extended to distributed compilation
@@ -959,7 +961,7 @@ Given a server handle, function {\tt CM.Server.name} returns the
 string that was originally given to the call of\linebreak {\tt
 CM.Server.start} used to created the server.
 
-\subsubsection*{Plug-ins}
+\subsubsection{Plug-ins}
 
 As an alternative to {\tt CM.make} or {\tt CM.autoload}, where the
 main purpose is to subsequently be able to access the library from
@@ -987,7 +989,7 @@ section~\ref{sec:classes}).  This makes it possible to add new classes
 and tools very easily without having to reconfigure or recompile CM,
 not to mention modify its source code.
 
-\subsubsection*{Building stand-alone programs}
+\subsubsection{Building stand-alone programs}
 
 CM can be used to build stand-alone programs. In fact SML/NJ
 itself---including CM---is an example of this.  (The interactive
@@ -1026,7 +1028,7 @@ one simply has to invoke the following command:
   ml-build myproglib.cm MyProg.main myprog
 \end{verbatim}
 
-\subsubsection*{Finding all sources}
+\subsubsection{Finding all sources}
 
 The {\tt CM.sources} function can be used to find the names of all
 source files that a given library depends on.  It returns the names of
@@ -1068,7 +1070,7 @@ variables instead of concrete architecture- and OS-names:
          "foo.cm");
 \end{verbatim}
 \item[finding all {\tt noweb} sources:]
-To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools}),
+To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools:noweb}),
 e.g., to be able to run the document preparation program {\tt noweave}
 on them, one can simply look for entries of the {\tt noweb} class.
 Here, one would probably want to include derived sources:
@@ -1130,7 +1132,7 @@ be active at the same time.
 
 % Need a good example here.
 
-\subsubsection*{Sharing annotations}
+\subsubsection{Sharing annotations}
 
 ML source files in CM description files can be specified as being {\em
 private} or {\em shared}.  This is done by adding a {\em tool
@@ -1145,7 +1147,7 @@ An ML source file that is not annotated will typically be treated as
 source.  It is an error, checked by CM, for a {\em shared} source to
 depend on a {\em private} source.
 
-\subsubsection*{Sharing with the interactive system}
+\subsubsection{Sharing with the interactive system}
 
 The SML/NJ interactive system, which includes the compiler, is itself
 created by linking modules from various libraries. Some of these
@@ -1182,7 +1184,7 @@ components themselves are compared numerically.
 
 An importing library or library component can specify which version of
 the imported library it would like to see.  See the discussion is
-section~\ref{sec:toolparam} for how this is done.  Where a version
+section~\ref{sec:toolparam:cm} for how this is done.  Where a version
 number is requested, an error is signalled if one of the following is
 true:
 
@@ -1266,7 +1268,7 @@ itself does not interpret the result but passes it on to the tool's
 rule function.  It is in each rule's own responsibility to assign
 meaning to its options.
 
-\subsubsection*{Parameters for class {\tt sml}}
+\subsubsection{Parameters for class {\tt sml}}
 
 The {\tt sml} class accepts two optional parameters.  One is the {\em
 sharing annotation} that was explained earlier (see
@@ -1310,7 +1312,8 @@ erased.  This means that setup code for other files {\em cannot} refer
 to them, and neither can code that in the future might be entered at
 top level.
 
-\subsubsection*{Parameters for class {\tt cm}}
+\subsubsection{Parameters for class {\tt cm}}
+\label{sec:toolparam:cm}
 
 The {\tt cm} class understands two kinds of parameters.  The first is
 a named parameter labeled by the string {\tt version}.  It must have
@@ -1353,7 +1356,7 @@ while processing the contents of the named CM description file.
 \subsection{Built-in tools}
 \label{sec:builtin-tools}
 
-\subsubsection*{The ML-Yacc tool}
+\subsubsection{ML-Yacc}
 
 The ML-Yacc tool is responsible for files that are input to the
 ML-Yacc parser generator.  Its class name is {\tt mlyacc}.  Recognized
@@ -1379,7 +1382,7 @@ Section~\ref{sec:anchor:env}), the command {\tt ml-yacc} will be located
 using the operating system's path search mechanism (e.g., the {\tt
 \$PATH} environment variable).
 
-\subsubsection*{ML-Lex}
+\subsubsection{ML-Lex}
 
 The ML-Lex tool governs files that are input to the ML-Lex lexical
 analyzer generator~\cite{appel89:lex}.  Its class name is {\tt mllex}.
@@ -1394,7 +1397,7 @@ anchor mechanism (see Section~\ref{sec:anchor:env}), the command {\tt
 ml-lex} will be located using the operating system's path search
 mechanism (e.g., the {\tt \$PATH} environment variable).
 
-\subsubsection*{ML-Burg}
+\subsubsection{ML-Burg}
 
 The ML-Burg tool deals with files that are input to the ML-Burg
 code-generater generator~\cite{mlburg93}.  Its class name is {\tt
@@ -1409,7 +1412,7 @@ Section~\ref{sec:anchor:env}), the command {\tt ml-lex} will be located
 using the operating system's path search mechanism (e.g., the {\tt
 \$PATH} environment variable).
 
-\subsubsection*{Shell}
+\subsubsection{Shell}
 
 The Shell tool can be used to specify arbitrary shell commands to be
 invoked on behalf of a given file.  The name of the class is {\tt
@@ -1480,7 +1483,7 @@ version from above, one would have to write:
 The shell tool invokes its command whenever the target is outdated
 with respect to the source.
 
-\subsubsection*{Make}
+\subsubsection{Make}
 
 The Make tool (class {\tt make}) can (almost) be seen as a specialized
 version of the Shell tool.  It has no source and one target (the
@@ -1522,7 +1525,8 @@ the contens of {\tt bar.pp} through the C preprocessor to arrive at
                  -f bar-pp.mk)
 \end{verbatim}
 
-\subsubsection*{Noweb}
+\subsubsection{Noweb}
+\label{sec:builtin-tools:noweb}
 
 The {\tt noweb} class handles sources written for Ramsey's {\it noweb}
 literate programming facility~\cite{ramsey:simplified}.  Files ending
@@ -1867,7 +1871,7 @@ precludes the CM description file from actually existing, but in the
 presence of a corresponding library file CM will not take any notice
 of that.)
 
-{\em Note:} As discussed in section~\ref{sec:toolparam}, CM sometimes
+{\em Note:} As discussed in section~\ref{sec:toolparam:cm}, CM sometimes
 looks for library files in {\tt CM/}{\it version}{\tt /}{\it arch}{\tt
 -}{\it os}.  However, library files are never {\em created} there by
 CM.  If several versions of the same library are to be provided, an
