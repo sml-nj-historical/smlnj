@@ -1060,7 +1060,9 @@ struct
                    | src => src
           in  mark(I.MOVE{mvOp=I.MOVB, src=src, dst=address(ea,mem)},an)
           end
-      and store16(ea, d, mem, an) = error "store16"
+      and store16(ea, d, mem, an) = 
+	mark(I.MOVE{mvOp=I.MOVW, src=immedOrReg(operand d), dst=address(ea, mem)}, an)
+
       and store32(ea, d, mem, an) = 
             move'(immedOrReg(operand d), address(ea, mem), an)
 

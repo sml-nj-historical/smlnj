@@ -1297,8 +1297,12 @@ struct
 	      defI32 (x, ZX32 (sz, M.LOAD (sz, regbind i, R.memory)), e, hp)
 	    | rawload ((P.UINT sz | P.INT sz), _, _, _, _) =
 	      error ("rawload: unsupported size: " ^ Int.toString sz)
-	    | rawload (P.FLOAT (sz as (32 | 64)), i, x, e, hp) =
-	      treeifyDefF64 (x, M.FLOAD (sz, regbind i, R.memory), e, hp)
+	    | rawload (P.FLOAT 64, i, x, e, hp) =
+	      treeifyDefF64 (x, M.FLOAD (64, regbind i, R.memory), e, hp)
+	    | rawload (P.FLOAT 32, i, x, e, hp) =
+	      treeifyDefF64 (x, M.CVTF2F (64, 32,
+					  M.FLOAD (32, regbind i, R.memory)),
+			     e, hp)
 	    | rawload (P.FLOAT sz, _, _, _, _) =
 	      error ("rawload: unsupported float size: " ^ Int.toString sz)
 

@@ -34,16 +34,26 @@ struct
   val edx = 2   val esi = 6   
   val ebx = 3   val edi = 7
 
+  val opnd16Prefix = 0x66
+
   fun const c = Int32.fromInt(Const.valueOf c)
   fun lexp le = Int32.fromInt(LE.valueOf le)
 
   val toWord8 = Word8.fromLargeWord o LargeWord.fromLargeInt o Int32.toLarge
   val eBytes = Word8Vector.fromList 
   fun eByte i = eBytes [W8.fromInt i]
-  fun eLong i32 = let
-    val w = (W.fromLargeInt o Int32.toLarge) i32
-    fun shift cnt = W8.fromLargeWord(W.>>(w, cnt))
-  in [shift(0w0), shift(0w8), shift(0w16), shift(0w24)]
+  local 
+    val toLWord = (W.fromLargeInt o Int32.toLarge) 
+    fun shift (w,cnt) = W8.fromLargeWord(W.>>(w, cnt))
+  in
+    fun eShort i16 = let
+      val w = toLWord i16
+    in [shift(w, 0w0), shift(w,0w8)]
+    end
+    fun eLong i32 = let
+      val w = toLWord i32
+    in [shift(w, 0w0), shift(w,0w8), shift(w,0w16), shift(w,0w24)]
+    end
   end
 
   fun emitInstrs(instrs) = Word8Vector.concat(map emitInstr instrs)
@@ -141,6 +151,8 @@ struct
     fun encodeReg(byte1, reg, opnd) = encode(byte1, rNum reg, opnd)
     fun encodeLongImm(byte1, opc, opnd, i) =
          eBytes(byte1 :: (eImmedExt(opc, opnd) @ eLong i))
+    fun encodeShortImm(byte1, opc, opnd, w) =
+         eBytes(byte1 :: (eImmedExt(opc, opnd) @ eShort w))
     fun encodeByteImm(byte1, opc, opnd, b) =
          eBytes(byte1 :: (eImmedExt(opc, opnd) @ [toWord8 b]))
 
@@ -257,6 +269,22 @@ struct
              | mv(src, dst as I.MemReg _) = mv(src, memReg dst)  
              | mv(src,dst) = arith(0wx88, 0) (src, dst)
        in  mv(src,dst) end
+     | I.MOVE{mvOp=I.MOVW, src, dst} => let
+	  fun immed16 i = Int32.<(i, 32768) andalso Int32.<=(~32768, i)
+	  fun prefix v = Word8Vector.concat[eByte(opnd16Prefix), v]
+	  fun mv(I.Immed(i), _) = 
+	      (case dst
+	       of I.Direct r => 
+		  if immed16 i then 
+		    prefix(eBytes(W8.+(0wxb8, W8.fromInt(rNum r)):: eShort(i)))
+		  else error "MOVW: Immediate too large"
+		| _ => prefix(encodeShortImm(0wxc7, 0, dst, i))
+	      (*esac*))
+	    | mv(src as I.MemReg _, dst) = mv(memReg src, dst)
+	    | mv(src, dst as I.MemReg _) = mv(src, memReg dst)
+	    | mv(src, dst) = prefix(arith(0wx88, 0) (src, dst))
+       in mv(src, dst)
+       end
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Immed(i)} =>
        (case size i
          of Bits32 => error "MOVE: MOVB: imm8"
@@ -483,6 +511,7 @@ struct
      | I.FLDLG2 => eBytes[0wxd9,0wxec]
      | I.FLDLN2 => eBytes[0wxd9,0wxed]
      | I.FLDZ   => eBytes[0wxd9,0wxee]
+     | I.FLDS opnd => encode(0wxd9, 0, opnd)
 
      | I.FLDL(I.ST n) => encodeST(0wxd9, 24, n)
      | I.FLDL opnd => encode(0wxdd, 0, opnd)
