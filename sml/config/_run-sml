@@ -145,7 +145,8 @@ if [ "$ALLOC" = "" ] ; then
 	    case $kb in 
 		128)
 		    # This is the Celeron case.
-		    ALLOC="@SMLalloc=32k"
+		    # ALLOC="@SMLalloc=32k"
+		    ALLOC="@SMLalloc=64k"
 		    ;;
 		256)
 		    # Do CPUs like this exist?

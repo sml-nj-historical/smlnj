@@ -670,10 +670,10 @@ BOOT_FILES=sml.$BOOT_ARCHIVE
 #
 # build the run-time system
 #
-unpack "run-time" $SRCDIR runtime runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
     vsay $this: Run-time system already exists.
 else
+    unpack "run-time" $SRCDIR runtime runtime
     cd $SRCDIR/runtime/objs
     echo $this: Compiling the run-time system.
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS

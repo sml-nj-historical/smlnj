@@ -48,8 +48,8 @@ structure BitmapIO : BITMAP_IO =
 
     fun readBitmap inStrm = let
 	  fun inputLine () = (case TextIO.inputLine inStrm
-		 of "" => raise BitmapFileInvalid
-		  | s => s
+		 of NONE => raise BitmapFileInvalid
+		  | SOME s => s
 		(* end case *))
           val inputSS = SS.all o inputLine
 	  fun setWid ({wid, ht, x_hot, y_hot}, w) =

@@ -216,7 +216,8 @@ unpack() {
 # Now do it:
 #
 
-for i ; do
+for i
+do
     case $i in
       runtime)
         unpack run-time $ROOT/src runtime runtime
@@ -283,3 +284,5 @@ for i ; do
 	;;
     esac
 done
+
+exit 0

@@ -1,6 +1,9 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-09-12]
+        Accounted for changed type of inputLine.
+
 [2003-09-09]
         Made CML compile under Win32 again.
 

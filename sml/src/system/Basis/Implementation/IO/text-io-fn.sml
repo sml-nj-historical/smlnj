@@ -423,8 +423,9 @@ functor TextIOFn (
 			| _ => nextBuf buf
 		      (* end case *))
 		    else scanData (buf, pos)
+ 	      val res_v = V.concat data
 	      in
-		(V.concat data, strm)
+	        if V.length res_v = 0 then NONE else SOME (res_v, strm)
 	      end
 
       (*** Output streams ***)
@@ -810,10 +811,8 @@ functor TextIOFn (
 	    handle ex => raise IO.Io{function="openAppend", name=fname, cause=ex}
 
   (** Text stream specific operations **)
-    fun inputLine strm = let val (s, strm') = StreamIO.inputLine (!strm)
-	  in
-	    strm := strm'; s
-	  end
+    fun inputLine strm =
+	Option.map (fn (v, s) => (strm := s; v)) (StreamIO.inputLine (!strm))
     fun outputSubstr (strm, ss) = StreamIO.outputSubstr (!strm, ss)
     fun openString src =
 	  mkInstream(StreamIO.mkInstream(OSPrimIO.strReader src, empty))

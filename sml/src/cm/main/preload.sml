@@ -15,20 +15,18 @@ end = struct
 	fun work s = let
 	    fun loop () = let
 		fun load loader f = if loader f then loop () else false
-		fun isComment l =
-		    size l > 0 andalso String.sub (l, 0) = #"#"
 	    in
 		case TextIO.inputLine s of
-		    "" => true
-		  | line =>
-			if isComment line then loop ()
-			else (case String.tokens Char.isSpace line of
-				  [] => loop ()(* ignore empty lines *)
-				| ["make", f] => load make f
-				| ["autoload", f] => load autoload f
-				| _ => (Say.say ["Illegal line in ", specfile,
-						 ": ", line];
-					loop ()))
+		    NONE => true
+		  | SOME line =>
+		      if String.sub (line, 0) = #"#" then loop ()
+		      else case String.tokens Char.isSpace line of
+			       [] => loop () (* ignore empty lines *)
+			     | ["make", f] => load make f
+			     | ["autoload", f] => load autoload f
+			     | _ => (Say.say ["Illegal line in ", specfile,
+					      ": ", line];
+				     loop ())
 	    end
 	in
 	    loop ()

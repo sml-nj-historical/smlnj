@@ -252,10 +252,10 @@ BOOT_FILES=sml.$BOOT_ARCHIVE
 #
 # build the run-time system
 #
-$CONFIGDIR/unpack $ROOT runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
     vsay $this: Run-time system already exists.
 else
+    $CONFIGDIR/unpack $ROOT runtime
     cd $SRCDIR/runtime/objs
     echo $this: Compiling the run-time system.
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
@@ -309,11 +309,9 @@ fi
 #
 # Now do all the rest using the libinstall.sml script:
 #
-echo $this: Compiling library code.
+echo $this: Installing other libraries and programs:
 if $BINDIR/sml $CONFIGDIR/libinstall.sml <<EOF
 LibInstall.proc { smlnjroot = "${ROOT}",
-                  targetsfiles = ["config/targets.customized",
-                                  "config/targets"],
                   buildcmd = "CM_LOCAL_PATHCONFIG=/dev/null ./build",
                   unpackcmd = SOME "$CONFIGDIR/unpack",
                   instcmd = fn target => let
@@ -327,9 +325,9 @@ LibInstall.proc { smlnjroot = "${ROOT}",
                              end }
 EOF
 then
-    vsay $this: Libraries compiled successfully.
+    vsay $this: Installation complete.
 else
-    complain "$this: !!! Something went wrong when compiling the libraries."
+    complain "$this: !!! Installation of libraries and programs failed."
 fi
 
 exit 0

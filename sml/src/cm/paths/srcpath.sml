@@ -470,22 +470,22 @@ structure SrcPath :> SRCPATH = struct
 		  | arcs => return (false, arcs)
 	    end
 	fun work s = let
-	    fun loop isnative = let
-		val line = TextIO.inputLine s
-	    in
-		if line = "" then ()
-		else if String.sub (line, 0) = #"#" then loop isnative
-		else case String.tokens Char.isSpace line of
-			 ["!standard"] => loop false
-		       | ["!native"] => loop true
-		       | [a, d] => (set (e, a, SOME (mknative isnative d));
-				    loop isnative)
-		       | ["-"] => (#reset e (); loop isnative)
-		       | [a] => (set (e, a, NONE); loop isnative)
-		       | [] => loop isnative
-		       | _ => (say [f, ": malformed line (ignored)\n"];
-			       loop isnative)
-	    end
+	    fun loop isnative =
+		case TextIO.inputLine s of
+		    NONE => ()
+		  | SOME line =>
+		      if String.sub (line, 0) = #"#" then loop isnative
+		      else case String.tokens Char.isSpace line of
+			       ["!standard"] => loop false
+			     | ["!native"] => loop true
+			     | [a, d] =>
+			         (set (e, a, SOME (mknative isnative d));
+				  loop isnative)
+			     | ["-"] => (#reset e (); loop isnative)
+			     | [a] => (set (e, a, NONE); loop isnative)
+			     | [] => loop isnative
+			     | _ => (say [f, ": malformed line (ignored)\n"];
+				     loop isnative)
 	in
 	    loop true
 	end

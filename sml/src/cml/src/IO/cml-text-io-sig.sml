@@ -48,7 +48,7 @@ signature CML_TEXT_IO =
     val getOutstream : outstream -> StreamIO.outstream
     val setOutstream : (outstream * StreamIO.outstream) -> unit
 
-    val inputLine    : instream -> string
+    val inputLine    : instream -> string option
     val outputSubstr : (outstream * substring) -> unit
 
     val openIn     : string -> instream

@@ -2,6 +2,9 @@ eXene-1.0
 ------------------------
 
 GLOBAL CHANGES
+  - accounted for changed type of inputLine (now returns an option)
+    [2003-09-12]
+
   - added a dummy implementation of UnixSock to kick when a native
      implementation is unavailable (on non-Unix systems);
     replaced reference to Posix.ProcEnv by reference to generic OS.Process;

@@ -545,10 +545,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		      end
 		  in
 		      case TextIO.inputLine s of
-			  "" => m
-			| line => (case String.tokens Char.isSpace line of
-				       d :: pids => loop (enter (d, pids))
-				     | _ => loop m)
+			  NONE => m
+			| SOME line =>
+			    (case String.tokens Char.isSpace line of
+				 d :: pids => loop (enter (d, pids))
+			       | _ => loop m)
 		  end
 		  val m = loop SrcPathMap.empty
 	      in

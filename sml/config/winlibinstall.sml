@@ -19,8 +19,6 @@ local
 in
     val _ = LibInstall.proc
 		{ smlnjroot = home,
-		  targetsfiles = ["config/targets.customized",
-				  "config/targets"],
 		  buildcmd = "build.bat",
 		  unpackcmd = NONE,
 		  instcmd = fn target =>

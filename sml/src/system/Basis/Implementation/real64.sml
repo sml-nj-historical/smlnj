@@ -252,10 +252,10 @@ structure Real64Imp : REAL =
 		     if x < 0.0 then (true, ~x) else (false, x)
 		 fun feven x = #frac (split (x / 2.0)) == 0.0
 	     in
-		 (* if the magnitute is less or equal than 1.0, then
+		 (* if the magnitute is less than 1.0, then
 		  * we just have to figure out whether to return ~1, 0, or 1
 		  *)
-		 if x <= 1.0 then
+		 if x < 1.0 then
 		     case mode of
 			 IEEEReal.TO_ZERO => 0
 		       | IEEEReal.TO_POSINF =>
@@ -293,7 +293,7 @@ structure Real64Imp : REAL =
 			  * minimal whole number with
 			  * all the significant bits.  First
 			  * we get mantissa and exponent: *)
-			 val { man, exp } = toManExp x
+			 val { man, exp } = toManExp start
 			 (* Then we adjust both to make sure the mantissa
 			  * is whole: *)
 			 fun adjust (man, exp) =
@@ -318,7 +318,7 @@ structure Real64Imp : REAL =
 			 val iman =
 			     CoreIntInf.abstract
 				 (CoreIntInf.BI { negative = negative,
-						  digits = loop start })
+						  digits = loop man })
 		     in
 			 (* Finally, we have to put the exponent back
 			  * into the picture: *)

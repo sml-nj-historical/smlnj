@@ -78,19 +78,33 @@ structure POSIX_ProcEnv =
       (* times in clock ticks *)
     val times' : unit -> Int32.int * Int32.int * Int32.int * Int32.int * Int32.int
 	  = cfun "times"
-    val ticksPerSec = Real.fromInt (SysWord.toIntX (sysconf "CLK_TCK"))
+
+    val ticksPerSec = IntImp.toLarge (SysWord.toIntX (sysconf "CLK_TCK"))
+
+    (* The following code assumes that 1 microsecond is equal or shorter
+     * than the the resolution of Time.time values.  The code is most
+     * efficient if it is equal.... *)
+    val ticksToTime =
+	case IntInfImp.quotRem (1000000, ticksPerSec) of
+	    (factor, 0) =>
+	      (fn ticks => Time.fromMicroseconds
+			       (factor * Int32Imp.toLarge ticks))
+	  | _ => (* 1000000 not a multiple of ticksPerSec, so we
+		  * have to do it the hard way... *)
+	      (fn ticks =>
+		  Time.fromMicroseconds
+		      (IntInfImp.quot (1000000 * Int32Imp.toLarge ticks,
+				       ticksPerSec)))
+
     fun times () = let
-          fun cvt ticks =
-	      Time.fromReal
-		  ((Real.fromLargeInt (Int32Imp.toLarge ticks))/ticksPerSec)
-          val (e,u,s,cu,cs) = times' ()
-          in
-            { elapsed = cvt e,
-              utime = cvt u, 
-              stime = cvt s, 
-              cutime = cvt cu, 
-              cstime = cvt cs }
-          end
+        val (e,u,s,cu,cs) = times' ()
+    in
+        { elapsed = ticksToTime e,
+          utime = ticksToTime u, 
+          stime = ticksToTime s, 
+          cutime = ticksToTime cu, 
+          cstime = ticksToTime cs }
+    end
 
     val getenv  : string -> string option = cfun "getenv"
     val environ : unit -> string list = cfun "environ"

@@ -13,7 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/12 11:45:00 CDT
+Tag: blume-20030912-various
+Description:
+
+ - fixed bug in Real.toLargeInt
+ - fixed bug in Posix.ProcEnv.times
+ - changed inputLine functions to return an option
+ - minor installer improvements / bugfixes
+ - changed default @SMLalloc parameter for x86/celeron to 64k
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/09 22:00:00 CDT
 Tag: Release_110_43
 Description:
@@ -21,7 +33,7 @@ Description:
     New working release 110.43.  New bootfiles.
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/09 19:20:00 CDT
 Tag: blume-20030909-installer
 Description:
@@ -48,7 +60,7 @@ Other changes:
     OS.Path code compares volume names for equality)
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/08 11:55:00 CDT
 Tag: blume-20030908-fullpath
 Description:
@@ -59,7 +71,7 @@ CM depends on it.  (CM otherwise goes into an infinite loop in certain
 cases when presented with the name of a non-existing .cm file.)
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/04 16:30:00 CDT
 Tag: blume-20030905-slices-etc
 Description:
@@ -100,7 +112,7 @@ Description:
      ArraySlice).
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/08/28 17:00:00 CDT
 Tag: blume-20030828-intinf
 Description:
@@ -187,7 +199,7 @@ prettyprinter for ast datatypes (Elaborator/print/ppast.{sig,sml})
 has been added.
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/08/11 15:45:00 CDT
 Tag: blume-20030811-windows
 Description:
@@ -282,7 +294,7 @@ Tag will be used for new development branch (mcz-branch) for
 use by MacQueen, (Lucasz) Zairek, and (George) Cao at uchicago.
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/05/27 16:55:00 CDT
 Tag: blume-20030527-polyeq
 Description:
@@ -290,7 +302,7 @@ Description:
 Tried to eliminated most cases of polymorphic equality.
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/05/21 17:45:00 CDT
 Tag: blume-20030517-complete
 Description:
@@ -303,7 +315,7 @@ Two changes:
      without a single non-exhaustive match- or bind warning.
 
 ----------------------------------------------------------------------
-Name: Matthias Blume (blume@tti-c.org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/05/17 10:20:00 CDT
 Tag: blume-20030517-absyn
 Description:

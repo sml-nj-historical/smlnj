@@ -25,20 +25,25 @@ in
 	fun chDir d =
 	    OS.FileSys.chDir (SrcPath.osstring (path (d, penv)))
 
+	fun getLineTokens s =
+	    Option.map (String.tokens Char.isSpace) (TextIO.inputLine s)
+
 	fun waitForStart () = let
-	    val line = TextIO.inputLine TextIO.stdIn
+	    fun loop () =
+		case getLineTokens TextIO.stdIn of
+		    NONE => shutdown ()
+		  | SOME ["cd", d] => (chDir d; say_ok (); waitForStart ())
+		  | SOME ["cm", archos, f] => do_cm (archos, f)
+		  | SOME ["cmb", db, archos, f] =>
+		      (dbr := db; do_cmb (archos, f))
+		  | SOME ["reset_cmb", archos] => reset_cmb archos
+		  | SOME ["ping"] => (say_pong (); waitForStart ())
+		  | SOME ["finish"] => (say_ok (); waitForStart ())
+		  | SOME ["shutdown"] => shutdown ()
+		  | _ => (say_error (); waitForStart ())
 	in
-	    if line = "" then shutdown ()
-	    else case String.tokens Char.isSpace line of
-		["cd", d] => (chDir d; say_ok (); waitForStart ())
-	      | ["cm", archos, f] => do_cm (archos, f)
-	      | ["cmb", db, archos, f] => (dbr := db; do_cmb (archos, f))
-	      | ["reset_cmb", archos] => reset_cmb archos
-	      | ["ping"] => (say_pong (); waitForStart ())
-	      | ["finish"] => (say_ok (); waitForStart ())
-	      | ["shutdown"] => shutdown ()
-	      | _ => (say_error (); waitForStart ())
-	end handle _ => (say_error (); waitForStart ())
+	    loop () handle _ => (say_error (); waitForStart ())
+	end
 
 	and reset_cmb archos = let
 	    val slave = CMBSlave.slave make
@@ -79,34 +84,32 @@ in
 	    end handle _ => (say_error (); waitForStart ())
 
 	and workLoop (index, trav, penv) = let
-	    fun loop () = let
-		val line = TextIO.inputLine TextIO.stdIn
-	    in
-		if line = "" then shutdown ()
-		else case String.tokens Char.isSpace line of
-		    ["cd", d] => (chDir d; say_ok (); loop ())
-		  | ["compile", f] => let
-			val p = path (f, penv)
-		    in
-			case SrcPathMap.find (index, p) of
-			    NONE => (say_error (); loop ())
-			  | SOME sn => let
-				val sbn = DG.SB_SNODE sn
-			    in
-				if trav sbn then (say_ok (); loop ())
-				else (say_error (); loop ())
-			    end
-		    end
-		  | ["cm", archos, f] => do_cm (archos, f)
-		  | ["cmb", db, archos, f] => (dbr := db; do_cmb (archos, f))
-		  | ["reset_cmb", archos] => reset_cmb archos
-		  | ["finish"] => (say_ok (); waitForStart ())
-		  | ["ping"] => (say_pong (); loop ())
-		  | ["shutdown"] => shutdown ()
+	    fun loop () =
+		case getLineTokens TextIO.stdIn of
+		    NONE => shutdown ()
+		  | SOME ["cd", d] => (chDir d; say_ok (); loop ())
+		  | SOME ["compile", f] =>
+		      let val p = path (f, penv)
+		      in
+			  case SrcPathMap.find (index, p) of
+			      NONE => (say_error (); loop ())
+			    | SOME sn => let
+				  val sbn = DG.SB_SNODE sn
+			      in
+				  if trav sbn then (say_ok (); loop ())
+				  else (say_error (); loop ())
+			      end
+		      end
+		  | SOME ["cm", archos, f] => do_cm (archos, f)
+		  | SOME ["cmb", db, archos, f] =>
+		      (dbr := db; do_cmb (archos, f))
+		  | SOME ["reset_cmb", archos] => reset_cmb archos
+		  | SOME ["finish"] => (say_ok (); waitForStart ())
+		  | SOME ["ping"] => (say_pong (); loop ())
+		  | SOME ["shutdown"] => shutdown ()
 		  | _ => (say_error (); loop ())
-	    end handle _ => (say_error (); loop ())
 	in
-	    loop ()
+	    loop () handle _ => (say_error (); workLoop (index, trav, penv))
 	end
     in
 	ignore (Signals.setHandler (Signals.sigINT, Signals.IGNORE));

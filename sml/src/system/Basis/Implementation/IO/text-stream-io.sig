@@ -7,7 +7,7 @@
 signature TEXT_STREAM_IO =
   sig
     include STREAM_IO
-    val inputLine    : instream -> (string * instream)
+    val inputLine    : instream -> (string * instream) option
     val outputSubstr : (outstream * substring) -> unit
   end
 

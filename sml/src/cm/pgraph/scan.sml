@@ -20,6 +20,8 @@ end = struct
     fun input ins = let
         val s = TextIO.getInstream ins
 
+	fun skipLine s = getOpt (Option.map #2 (S.inputLine s), s)
+
         fun allof l s = foldl (fn (f, s) => f s) s l
 
         fun skipWS s =
@@ -190,7 +192,7 @@ end = struct
         end
 
         fun graph s = let
-            val s = allof [#2 o S.inputLine, expectId "fn"] s
+            val s = allof [skipLine, expectId "fn"] s
             val (imports, s) = varlist s
             val s = allof [expect #"=", expect #">", expectId "let",
 			   expectId "open", expectId "PGOps"] s
@@ -201,7 +203,7 @@ end = struct
             val s = allof [expectId "end", expect #"|", expect #"_",
                            expect #"=", expect #">", expectId "raise",
                            expectId "Fail", #2 o string, expect #")",
-                           #2 o S.inputLine]
+			   skipLine]
                           s
         in
             TextIO.setInstream (ins, s);

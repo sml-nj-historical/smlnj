@@ -15,12 +15,12 @@
  *)
 structure LibInstall : sig
 
+    (* all filenames that are passed as arguments use native syntax: *)
     val proc :
-	{ smlnjroot: string,		(* native *)
-	  targetsfiles: string list,	(* standard *)
-	  buildcmd: string,		(* native *)
-	  instcmd : string -> unit,	(* function *)
-	  unpackcmd: string option } -> unit (* native *)
+	{ smlnjroot: string,
+	  buildcmd: string,
+	  instcmd : string -> unit,
+	  unpackcmd: string option } -> unit
 
 end = struct
 
@@ -30,22 +30,8 @@ end = struct
     structure SM = RedBlackMapFn (type ord_key = string
 				  val compare = String.compare)
 
-    (* all possible targets, in correct build order *)
-    val alltargets =
-	["ml-yacc",
-	 "ml-lex",
-	 "ml-burg",
-	 "ml-nlffigen",
-	 "nowhere",
-	 "smlnj-lib",
-	 "mlrisc",
-	 "cml",
-	 "cml-lib",
-	 "eXene",
-	 "ckit",
-	 "ml-nlffi-lib",
-	 "pgraph-util",
-	 "mlrisc-tools"]
+    structure SCC = GraphSCCFn (type ord_key = string
+				val compare = String.compare)
 
     fun say l = TextIO.output (TextIO.stdErr, concat l)
     fun fail l = (say ("FAILURE: " :: l);
@@ -61,10 +47,15 @@ end = struct
     val arch_oskind = concat [arch, "-", oskind]
     val heap_suffix = SMLofNJ.SysInfo.getHeapSuffix ()
 
-    (* parsing standard (Unix-like) pathnames *)
+    (* File names in configuration files are used across all platforms
+     * and for that reason are written using CM's standard syntax
+     * which is like Unix pathname syntax. *)
+
+    (* standard arc separator is / *)
     fun usep #"/" = true
       | usep _ = false
 
+    (* convert standard syntax to native syntax *)
     fun native f =
 	case String.fields usep f of
 	    "" :: arcs => P.toString { vol = "", isAbs = true, arcs = arcs }
@@ -77,7 +68,7 @@ end = struct
     val movlist  : (unit -> unit) list ref = ref []
     val salist : (unit -> unit) list ref = ref []
 
-    (* make a directory (including parent, parents parent, ...) *)
+    (* make a directory (including parent, parent's parent, ...) *)
     fun mkdir "" = ()
       | mkdir d = if fexists d then () else (mkdir (P.dir d); F.mkDir d)
 
@@ -89,54 +80,57 @@ end = struct
     fun localanchor { anchor, path } =
 	#set (CM.Anchor.anchor anchor) (SOME (native path))
 
+    fun getInputTokens s =
+	Option.map (String.tokens Char.isSpace) (TextIO.inputLine s)
+
     (* Take a list of modules and dependencies (in depfile) and
      * build the transitive closure of those modules.
-     * The final order needs to be consistent with alltargets. *)
+     * We do this by considering the dependency graph and construct
+     * a topological order for it. *)
     fun resolve (modules, depfile) = let
 	val s = TextIO.openIn depfile
-	fun readdeps deps =
-	    case TextIO.inputLine s of
-		"" => (TextIO.closeIn s; deps)
-	      | l =>
-		  (case String.tokens Char.isSpace l of
-		       (module :: mdeps) => readdeps ((module, mdeps) :: deps)
-		     | [] => readdeps deps)
-	val deps = readdeps []
-	fun closure (done, []) = done
-	  | closure (done, h :: t) = let
-		fun isH h' = h = h'
-	    in
-		if List.exists isH done then closure (done, t)
-		else case List.find (isH o #1) deps of
-			 SOME (_, dl) => closure (h :: done, dl @ t)
-		       | NONE => closure (h :: done, t)
-	    end
-	val clos = closure ([], modules)
+	fun rd m =
+	    case getInputTokens s of
+		NONE => (TextIO.closeIn s; fn x => getOpt (SM.find (m, x), []))
+	      | SOME (x :: xs) => rd (SM.insert (m, x, xs))
+	      | SOME [] => rd m
+	fun strip (SCC.SIMPLE c) = c
+	  | strip _ = fail ["cyclic dependencies in ", depfile, "\n"]
     in
-	List.filter (fn s => List.exists (fn s' => s = s') clos) alltargets
+	rev (map strip (SCC.topOrder' { roots = modules,
+					follow = rd SM.empty }))
     end
 
-    (* do all the delayed stuff *)
+    (* do all the delayed stuff: *)
+
+    (* stabilization of libraries... *)
     fun dostabs () =
 	foldr (fn (f, true) => f () | (_, false) => false) true (!stablist)
 
+    (* move stable library files to their final locations... *)
     fun domoves () =
 	(app (fn f => f ()) (rev (!movlist)); true)
+	handle _ => false
 
+    (* build those standalone programs that require libraries
+     * and, therefore, must be compiled "late"... *)
     fun dolatesas () =
 	(app (fn f => f ()) (rev (!salist)); true)
+	handle _ => false
 
     (* our main routine *)
-    fun proc { smlnjroot, targetsfiles, buildcmd, instcmd, unpackcmd } = let
+    fun proc { smlnjroot, buildcmd, instcmd, unpackcmd } = let
 	val smlnjroot = F.fullPath smlnjroot
+	val configdir = P.concat (smlnjroot, "config")
 
 	(* dependency file: config/dependencies *)
-	val depfile = P.concat (smlnjroot, P.concat ("config",
-						      "dependencies"))
+	val depfile = P.concat (configdir, "dependencies")
 
-	(* find first usable targetsfiles *)
+	(* find and open first usable targetsfiles *)
 	val targetsfiles =
-	    map (fn t => P.concat (smlnjroot, native t)) targetsfiles
+	    [P.concat (configdir, "targets.customized"),
+	     P.concat (configdir, "targets")]
+
 	val s =
 	    case List.find fexists targetsfiles of
 		SOME f => TextIO.openIn f
@@ -145,8 +139,8 @@ end = struct
 	(* parse the targets file *)
 	fun loop (mv, ml) =
 	    case TextIO.inputLine s of
-		"" => (TextIO.closeIn s; (mv, ml))
-	      | l =>
+		NONE => (TextIO.closeIn s; (mv, ml))
+	      | SOME l =>
 		  if String.sub (l, 0) = #"#" then loop (mv, ml)
 		  else (case String.tokens Char.isSpace l of
 			    ["dont_move_libraries"] => loop (false, ml)
@@ -157,7 +151,8 @@ end = struct
 
 	val (move_libraries, modules) = loop (true, [])
 
-	(* now resolve dependencies *)
+	(* now resolve dependencies; get full list of modules
+	 * in correct build order: *)
 	val modules = resolve (modules, depfile)
 
 	(* fetch and unpack source trees, using auxiliary helper command
@@ -201,19 +196,30 @@ end = struct
 	    end
 	    val s = TextIO.openIn cm_pathconfig
 	    fun loop m =
-		case TextIO.inputLine s of
-		    "" => (TextIO.closeIn s; finish m)
-		  | l =>
-		    (case String.tokens Char.isSpace l of
-			 [key, value] => loop (SM.insert (m, key, value))
-		       | _ => (say ["funny line in ", cm_pathconfig, ": ", l];
-			       loop m))
+		case getInputTokens s of
+		    NONE => (TextIO.closeIn s; finish m)
+		  | SOME [key, value] => loop (SM.insert (m, key, value))
+		  | SOME l => (say ("funny line in " :: cm_pathconfig :: ":" ::
+				    foldr (fn (x, l) => " " :: x :: l)
+					  ["\n"] l);
+			       loop m)
 	in
 	    loop SM.empty
 	end
 
 	(* register library to be built *)
 	fun reglib { anchor, altanchor, relname, dir } = let
+	    (* anchor: the anchor name currently used by the library
+	     *   to be registered for compilation
+	     * altanchor: optional alternative anchor name which is
+	     *   to be used once the library is in its final location
+	     *   (this must be used if "anchor" is already bound
+	     *   and used for other libraries which come from the
+	     *   bootfile bundle),
+	     * relname: path to library's .cm file relative to anchor
+	     *   (standard syntax)
+	     * dir: directory name that anchor should be bound to,
+	     *   name is relative to srcdir and in standard syntax *)
 	    val nrelname = native relname
 	    val ndir = native dir
 	    val libname = concat ["$", anchor, "/", relname]
@@ -235,6 +241,10 @@ end = struct
 	    if fexists finalloc then
 		say ["Library ", libname, " already exists in ",
 		     finalloc, "\n"]
+	    else if not (fexists (P.concat (adir, nrelname))) then
+		fail ["Source tree for ", libname, " at ",
+		      P.concat (adir, nreldir), "(", relbase,
+		      ") does not exist.\n"]
 	    else
 		(say ["Scheduling library ", libname, " to be built as ",
 		      finalloc, "\n"];
@@ -249,6 +259,17 @@ end = struct
 
 	(* build a standalone program, using auxiliary build script *)
 	fun standalone { target, optheapdir, optsrcdir } = let
+	    (* target: name of program; this is the same as the basename
+	     *   of the heap image to be generated as well as the
+	     *   final arc of the source tree's directory name
+	     * optheapdir: optional subdirectory where the build command
+	     *   drops the heap image
+	     * optsrcdir:
+	     *   The source tree for target is located in a directory
+	     *   named the same as the target itself.  Normally it is
+	     *   a subdirectory of srcdir.  With optsrcdir one can specify
+	     *   an alternative for srcdir by giving a path relative to
+	     *   the original srcdir. *)
 	    val heapname = concat [target, ".", heap_suffix]
 	    val targetheaploc =
 		case optheapdir of
@@ -259,12 +280,16 @@ end = struct
 		    NONE => srcdir
 		  | SOME sd => P.concat (srcdir, native sd)
 	    val finalheaploc = P.concat (heapdir, heapname)
+	    val treedir = P.concat (mysrcdir, target)
 	in
 	    if fexists finalheaploc then
 		say ["Target ", target, " already exists.\n"]
+	    else if not (fexists treedir) then
+		fail ["Source tree for ", target, " at ", treedir,
+		      " does not exist.\n"]
 	    else
 		(say ["Building ", target, ".\n"];
-		 F.chDir (P.concat (mysrcdir, target));
+		 F.chDir treedir;
 		 if OS.Process.system buildcmd = OS.Process.success then
 		     if fexists targetheaploc then
 			 (F.rename { old = targetheaploc,

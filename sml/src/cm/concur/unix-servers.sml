@@ -174,8 +174,8 @@ structure Servers : SERVERS = struct
 	    else
 		(Concur.wait (Concur.inputReady ins);
 		 case TextIO.inputLine ins of
-		     "" => (serverExit (); false)
-		   | line =>
+		     NONE => (serverExit (); false)
+		   | SOME line =>
 			 (Say.dsay ["<- ", name, ": ", line];
 			  case String.tokens Char.isSpace line of
 			      ["SLAVE:", "ok"] =>
@@ -211,10 +211,10 @@ structure Servers : SERVERS = struct
 		else
 		    (Concur.wait (Concur.inputReady ins);
 		     case TextIO.inputLine ins of
-			 "" =>
+			 NONE =>
 			     (* server has gone away -> no pong *)
 			     Say.dsay ["<-(EOF) ", name, "\n"]
-		       | line => 
+		       | SOME line => 
 			     (Say.dsay ["<- ", name, ": ", line];
 			      case String.tokens Char.isSpace line of
 				  ["SLAVE:", "pong"] => ()
