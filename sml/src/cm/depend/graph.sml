@@ -22,15 +22,6 @@ structure DependencyGraph = struct
 	FARNODE of filter * node
       | PNODE of primitive
 
-    (* the filter is duplicated in each member of the map to
-     * make it easier to build the global graph *)
-    datatype gnode =
-	GNODE of { groupinfo: groupinfo,
-		   imports: gnode list,
-		   filter: filter,
-		   exports: farnode SymbolMap.map,
-		   dangling: node list }
-
     (* environments used for dependency analysis *)
     datatype env =
 	EMPTY
@@ -41,7 +32,7 @@ structure DependencyGraph = struct
 
     withtype value = env
 
-    fun describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo
-
-    fun describeFarNode (farn: farnode) = (ignore Dummy.v; "blah")
+    fun describeFarNode (FARNODE (f, NODE { smlinfo = i, ... })) =
+	SmlInfo.fullName i
+      | describeFarNode (PNODE p) = Primitive.toString p
 end

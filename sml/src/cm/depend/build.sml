@@ -58,23 +58,24 @@ structure BuildDepend :> BUILDDEPEND = struct
 	      | SOME NONE => let	(* cycle found --> error message *)
 		    val f = SmlInfo.sourcepath i
 		    fun pphist pps = let
-			fun recur [] = () (* shouldn't happen *)
-			  | recur ((s, i') :: r) = let
+			fun recur (_, []) = () (* shouldn't happen *)
+			  | recur (n'', (s, i') :: r) = let
 				val f' = SmlInfo.sourcepath i'
+				val n' = AbsPath.spec f'
 				val _ =
 				    if SmlInfo.eq (i, i') then ()
-				    else recur r
-				val n' = AbsPath.name f'
+				    else recur (n', r)
 				val l =
 				    n' :: " refers to " ::
-				    symDesc (s, [" defined in ..."])
+				    symDesc (s, [" defined in ", n''])
 			    in
 				app (PrettyPrint.add_string pps) l;
 				PrettyPrint.add_newline pps
 			    end
 		    in
-			recur history;
-			PrettyPrint.add_string pps (AbsPath.name f);
+			PrettyPrint.add_newline pps;
+			recur (AbsPath.spec f, history);
+			PrettyPrint.add_string pps "...";
 			PrettyPrint.add_newline pps
 		    end
 		in
@@ -151,7 +152,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    case SM.find (subexports, s) of
 			SOME (farn, e) => (globalImport farn; e)
 		      | NONE => (SmlInfo.error i
-				  (concat (AbsPath.name f ::
+				  (concat (AbsPath.spec f ::
 					   ": reference to unknown " ::
 					   symDesc (s, [])))
 				  EM.nullErrorBody;

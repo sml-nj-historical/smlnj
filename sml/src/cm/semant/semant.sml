@@ -124,13 +124,17 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_functor = Symbol.fctSymbol
     val ml_funsig = Symbol.fsigSymbol
 
+    fun group0 islib (p: permspec, e: exports, m) = let
+	val mc = m MemberCollection.empty
+	val exports = e mc
+    in
+	ignore (MemberCollection.build mc);
+	if islib then Dummy.v else Dummy.v
+    end
+
     val emptyGroup = Dummy.v
-    fun group (p: permspec, e: exports, m: members) =
-	(ignore (m MemberCollection.empty);
-	 Dummy.v)
-    fun library (p: permspec, e: exports, m: members) =
-	(ignore (m MemberCollection.empty);
-	 Dummy.v)
+    val group = group0 false
+    val library = group0 true
 
     local
 	val isMember = StringSet.member

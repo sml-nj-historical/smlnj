@@ -28,6 +28,11 @@ signature MEMBERCOLLECTION = sig
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
+    val build : collection
+	-> { nodemap: DependencyGraph.node SymbolMap.map,
+ 	     rootset: DependencyGraph.node list }
+	
+
     val num_look : collection -> string -> int
     val ml_look : collection -> symbol -> bool
     val cm_look : collection -> string -> bool
@@ -89,8 +94,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	val se_union = SymbolMap.unionWithi se_error
 	fun ld_error (s, f1, f2) =
 	    (error (concat (describeSymbol
-			    (s, [" defined in ", SmlInfo.describe f1,
-				 " and also in ", SmlInfo.describe f2])));
+			    (s, [" defined in ", SmlInfo.spec f1,
+				 " and also in ", SmlInfo.spec f2])));
 	     f1)
 	val ld_union = SymbolMap.unionWithi ld_error
     in
@@ -146,6 +151,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	    end
 	  | NONE => noPrimitive ()
     end
+
+    fun build (COLLECTION c) = BuildDepend.build c
 
     fun num_look (c: collection) (s: string) = 0
 

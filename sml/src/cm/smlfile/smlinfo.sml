@@ -32,7 +32,11 @@ signature SMLINFO = sig
     val exports : info -> SymbolSet.set
     val skeleton : info -> Skeleton.decl
 
-    val describe : info -> string
+    (* different ways of describing an sml file using group and source *)
+    val spec : info -> string		(* sspec *)
+    val fullSpec : info -> string	(* gspec(sspec) *)
+    val name : info -> string		(* sname *)
+    val fullName : info -> string	(* gname(sspec) *)
 end
 
 structure SmlInfo :> SMLINFO = struct
@@ -203,5 +207,10 @@ structure SmlInfo :> SMLINFO = struct
 	     NONE => Skeleton.SeqDecl []
 	   | SOME sk => sk)
 
-    fun describe (INFO { sourcepath, ... }) = AbsPath.name sourcepath
+    fun spec (INFO { sourcepath, ... }) = AbsPath.spec sourcepath
+    fun fullSpec (INFO { group, sourcepath, ... }) =
+	concat [AbsPath.spec group, "(", AbsPath.spec sourcepath, ")"]
+    fun name (INFO { sourcepath, ... }) = AbsPath.name sourcepath
+    fun fullName (INFO { group, sourcepath, ... }) =
+	concat [AbsPath.name group, "(", AbsPath.spec sourcepath, ")"]
 end
