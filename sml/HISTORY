@@ -12,6 +12,17 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/06/15 00:38:00
+Tag: leunga-20000704-sparc-x86
+
+1. x86 peephole improvement sp += k; sp -= k => nop  [from John]
+2. fix to x86 RET bug [found by Dan Grossman] 
+3. sparc assembly bug fix for ticc instructions [found by Fermin]
+
+   Affects c-- and moby only
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/07/04 15:26:00
 Tag: blume-20000704-trigger

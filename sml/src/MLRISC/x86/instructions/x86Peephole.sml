@@ -30,6 +30,22 @@ struct
                     loop(rest, instrs)
                else loop(rest, i::instrs)
 
+             (*   addl n, %esp; subl m, %esp
+              * => addl (n-m), %esp     ;; when m < n
+              * => -                    ;; when m = n
+              * => subl (m-n), %esp     ;; when m > n
+              *)
+           | ((i as I.BINARY{binOp=I.SUBL, src=I.Immed m, dst=I.Direct 4})
+              :: (j as I.BINARY{binOp=I.ADDL, src=I.Immed n, dst=I.Direct 4})
+              :: rest) => if (m < n)
+                  then loop(rest,
+                    I.BINARY{binOp=I.ADDL, src=I.Immed(n-m), dst=I.Direct 4}::instrs)
+                else if (m = n)
+                  then loop (rest, instrs)
+                  else loop(rest,
+                    I.BINARY{binOp=I.SUBL, src=I.Immed(m-n), dst=I.Direct 4}::instrs)
+ 
+
              (* push folding:
               *   subl 4, %esp
               *   movl src, 0(%esp)  (where src <> %esp !!! )

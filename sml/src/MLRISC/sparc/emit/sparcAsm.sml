@@ -469,7 +469,7 @@ struct
            then ()
            else (emit "%xcc, ")); 
         emit_GP r; 
-        emit ", "; 
+        emit "+"; 
         emit_operand i )
       | I.FPop1{a, r, d} => let
 

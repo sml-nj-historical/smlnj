@@ -612,7 +612,7 @@ struct
    resource issue and mem and alu and falu and fmul and fdiv and branch
 
    (* Different implementations of cpus *)
-   cpu  default 2 [2 issue, 2 mem, 1 alu]  (* 2 issue machine *)
+   cpu default 2 [2 issue, 2 mem, 1 alu]  (* 2 issue machine *)
 
    (* Definitions of various reservation tables *) 
    pipeline NOP _    = [issue] 
@@ -752,7 +752,7 @@ struct
 
         (* Note, for V8 the cc bit must be ICC *)
    |  Ticc of { t:branch, cc:cc, r: $GP, i:operand} 
-        asm: ``t<t>\t<if cc = I.ICC then () else emit "%xcc, "><r>, <i>'' 
+        asm: ``t<t>\t<if cc = I.ICC then () else emit "%xcc, "><r>+<i>'' 
         mc:  ticc{t,r,cc,i}
 	rtl: [[ "T" cc t ]]
         delayslot candidate: false
