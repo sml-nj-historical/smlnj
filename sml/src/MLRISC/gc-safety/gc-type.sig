@@ -27,7 +27,8 @@ sig
    (*
     * Annotations.
     *)
-   exception GCMAP of gcmap  (* gc-map for a program (per cluster) *)
-   exception GCSAFEPOINT     (* marks all gcpoints (per block) *)
+   val GCMAP       : gcmap Annotations.property 
+                       (* gc-map for a program (per cluster) *)
+   val GCSAFEPOINT : Annotations.flag    (* marks all gcpoints (per block) *)
   
 end

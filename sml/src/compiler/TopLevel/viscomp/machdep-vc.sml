@@ -16,7 +16,6 @@ functor MachDepVCFun (Machm : CODEGENERATOR) : MACHDEP_VC = struct
 			      structure C = Compile)
     structure Profile = ProfileFn (ProfEnv (Interact))
     structure Machine = Machm.Machine
-    structure MLRISC = MLRISC_Export
     val architecture = Machm.architecture
 end
 

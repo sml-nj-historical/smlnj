@@ -15,22 +15,37 @@ Library
 
 # if not defined (LIGHT) orelse defined (ARCH_ALPHA32)
 	structure Alpha32VisComp
+        structure Alpha32CG
+        structure Alpha32CpsRegs
+        structure Alpha32Instr
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_HPPA)
 	structure HppaVisComp
+        structure HppaCG
+        structure HppaCpsRegs
+        structure HppaInstr
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_PPC)
 	structure PPCVisComp
+        structure PPCCG
+        structure PPCCpsRegs
+        structure PPCInstr
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_SPARC)
 	structure SparcVisComp
+        structure SparcCG
+        structure SparcCpsRegs
+        structure SparcInstr
 # endif
 
 # if not defined (LIGHT) orelse defined (ARCH_X86)
 	structure X86VisComp
+        structure X86CG
+        structure X86CpsRegs
+        structure X86Instr
 # endif
 
 (**** no old-style code generators
@@ -53,21 +68,6 @@ Library
          * A.Leung.
          *)
         signature MACHINE_GEN
-        structure Alpha32CG
-        structure Alpha32CpsRegs
-        structure Alpha32Instr
-        structure HppaCG
-        structure HppaCpsRegs
-        structure HppaInstr
-        structure PPCCG
-        structure PPCCpsRegs
-        structure PPCInstr
-        structure SparcCG
-        structure SparcCpsRegs
-        structure SparcInstr
-        structure X86CG
-        structure X86CpsRegs
-        structure X86Instr
         structure CPSRegions
         structure SMLGCType
 
@@ -323,7 +323,6 @@ CodeGen/main/machine-gen.sig
 CodeGen/main/machine-gen.sml
 CodeGen/main/machspec.sig
 CodeGen/main/machspec.sml
-CodeGen/main/mlrisc-export.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
@@ -392,4 +391,24 @@ ml-yacc-lib.cm
 smlnj-lib.cm
 
 MLRISC.cm
+
+# if not defined (LIGHT) orelse defined (ARCH_ALPHA32)
+  MLRISC-ALPHA.cm
+#endif
+
+# if not defined (LIGHT) orelse defined (ARCH_HPPA)
+  MLRISC-HPPA.cm
+#endif
+
+# if not defined (LIGHT) orelse defined (ARCH_SPARC)
+  MLRISC-SPARC.cm
+#endif
+
+# if not defined (LIGHT) orelse defined (ARCH_PPC)
+  MLRISC-PPC.cm
+#endif
+
+# if not defined (LIGHT) orelse defined (ARCH_X86)
+  MLRISC-IA32.cm
+#endif
 

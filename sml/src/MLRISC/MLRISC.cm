@@ -1,6 +1,9 @@
-(*
- * This library contains only the core MLRISC stuff.
- * This includes all the basic stuff necessary to compile the SML/NJ compiler.
+(* MLRISC.cm
+ *
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * This library contains only the core MLRISC stuff.  There are
+ * architecture-specific files for the various supported machines.
  *)
 
 Library 
@@ -19,7 +22,6 @@ Library
 	functor InstructionStreamFn
 	signature INSTRUCTIONS
 	functor Shuffle
-	signature BLOCK_NAMES
 	signature CONSTANT
 	signature LABELEXP
 	structure LabelExp
@@ -58,16 +60,19 @@ Library
 	functor GetReg
 	signature LIVENESS
 	functor Liveness
-	signature RA_ARCH_PARAMS
-	signature RA_USER_PARAMS
-	signature RA
-	signature BITMATRIX
-	structure TriangularBitMatrix
+	structure ChaitinSpillHeur
+	functor ClusterRA
 	signature RA_GRAPH
 	structure RAGraph
 	signature RA_CORE
 	structure RACore
-	functor RegAllocator
+	signature RA_SPILL
+	functor RASpill
+	signature RA_SPILL_HEURISTICS
+	signature RA_FLOWGRAPH
+	signature RA
+	functor RegisterAllocator
+
 	signature INSTRUCTION_EMITTER
 	signature ASSEMBLY_EMITTER
 	signature ASM_STREAM
@@ -90,105 +95,6 @@ Library
 	signature MC_EMIT
 	functor BackPatch
 
-# if not defined (LIGHT) orelse defined (ARCH_SPARC)
-	signature SPARCCELLS
-	structure SparcCells
-	signature SPARCINSTR
-	functor SparcInstr
-	signature SPARCSHUFFLE
-	functor SparcShuffle
-	functor SparcProps
-	functor SparcFreqProps
-	functor SparcAsmEmitter
-	functor SparcMCEmitter
-	functor SparcJumps
-	signature SPARC_PSEUDO_INSTR
-	functor Sparc
-	functor SparcRewrite
-	functor SparcRegAlloc
-	functor SparcDelaySlots
-# endif
-
-# if not defined (LIGHT) orelse defined (ARCH_HPPA)
-	signature HPPACELLS
-	structure HppaCells
-	signature HPPAINSTR
-	functor HppaInstr
-	signature HPPASHUFFLE
-	functor HppaShuffle
-	functor HppaProps
-	functor HppaFreqProps
-	functor HppaAsmEmitter
-	functor HppaMCEmitter
-	functor HppaDelaySlots
-	functor HppaJumps
-	signature HPPA_MILLICODE
-	functor Hppa
-	functor HppaRewrite
-	functor HppaRegAlloc
-	signature LABEL_COMP
-# endif
-
-# if not defined (LIGHT) orelse defined (ARCH_ALPHA32)
-	signature ALPHACELLS
-	structure AlphaCells
-	signature ALPHAINSTR
-	functor AlphaInstr
-	signature ALPHASHUFFLE
-	functor AlphaShuffle
-	functor AlphaProps
-	functor AlphaFreqProps
-	functor AlphaAsmEmitter
-	functor AlphaMCEmitter
-	functor AlphaJumps
-	signature ALPHA_PSEUDO_INSTR
-	functor Alpha
-	functor AlphaRewrite
-	functor AlphaRegAlloc
-# endif
-
-# if not defined (LIGHT) orelse defined (ARCH_X86)
-	signature X86CELLS
-	structure X86Cells
-	signature X86INSTR
-	functor X86Instr
-	signature X86SHUFFLE
-	functor X86Shuffle
-	functor X86Props
-	signature MEMORY_REGISTERS
-	functor X86FreqProps
-	functor X86AsmEmitter
-	functor X86MCEmitter
-	signature X86REWRITE
-	functor X86Rewrite
-	functor X86RegAlloc
-	signature X86SPILL
-	functor X86Spill
-	signature X86REWRITE_PSEUDO
-	functor X86RewritePseudo
-	functor X86Jumps
-	functor X86
-# endif
-
-# if not defined(LIGHT) orelse defined (ARCH_PPC)
-	signature PPCCELLS
-	structure PPCCells
-	signature PPCINSTR
-	functor PPCInstr
-	signature PPCSHUFFLE
-	functor PPCShuffle
-	functor PPCProps
-	functor PPCFreqProps
-	functor PPCAsmEmitter
-	functor PPCMCEmitter
-	functor PPCDelaySlots
-	functor PPCJumps
-	signature PPC_PSEUDO_INSTR
-	functor PPC
-	functor PPCRewrite
-	functor PPCRegAlloc
-# endif
-
 is
 
 	basis.cm
@@ -210,7 +116,6 @@ is
 	instructions/stream.sml
 	instructions/instructions.sig
 	instructions/shuffle.sml
-	instructions/block-names.sig
 	instructions/constant.sig
 	instructions/labelExp.sml
 	instructions/labels.sml
@@ -254,19 +159,25 @@ is
 	ra/getreg.sig
 	ra/getreg.sml
 	ra/liveness.sml
-	ra/ra-params.sig
-	ra/raBitset.sml
 	
-        (* The newer register allocator.
-         * This is the one we use.  It is basically the same as the old ra
-         * but with some organizational changes.
-         *)
+        (* Prioritized Chaitin's spill heuristics *)
+        ra/chaitin-spillheur.sml
+
+        (* RA's *)
+        ra/cluster-ra.sml
+
+	(* New RA *)
         ra/ra-graph.sig
         ra/ra-graph.sml
         ra/ra-core.sig
         ra/ra-core.sml
-        ra/ra-iteratedCoalescing.sml
-	
+        ra/ra-spill.sig
+        ra/ra-spill.sml
+        ra/ra-spillheur.sig
+        ra/ra-flowgraph.sig
+        ra/ra.sig
+        ra/ra.sml
+
 	(* Assembly machine code stuff *)
 	emit/instruction-emitter.sig
 	emit/asmEmit.sig 
@@ -291,84 +202,3 @@ is
 	backpatch/sdi-jumps.sig
 	backpatch/vlBackPatch.sml
 	
-	(* Sparc specific backend *)
-	sparc/instructions/sparcCells.sml
-	sparc/instructions/sparcInstr.sml
-	sparc/instructions/sparcShuffle.sig
-	sparc/instructions/sparcShuffle.sml
-	sparc/instructions/sparcProps.sml
-	sparc/instructions/sparcFreqProps.sml
-	sparc/emit/sparcAsm.sml
-	sparc/emit/sparcMC.sml
-	sparc/backpatch/sparcJumps.sml
-	sparc/mltree/sparcPseudoInstr.sig
-	sparc/mltree/sparc.sml 
-	sparc/ra/sparcRewrite.sml
-	sparc/ra/sparcRegAlloc.sml
-	sparc/backpatch/sparcDelaySlotProps.sml
-	
-	(* HPPA specific backend *)
-	hppa/instructions/hppaCells.sml
-	hppa/instructions/hppaInstr.sml
-	hppa/instructions/hppaShuffle.sig
-	hppa/instructions/hppaShuffle.sml
-	hppa/instructions/hppaProps.sml
-	hppa/instructions/hppaFreqProps.sml
-	hppa/emit/hppaAsm.sml
-	hppa/emit/hppaMC.sml
-	hppa/backpatch/hppaDelaySlotProps.sml
-	hppa/backpatch/hppaJumps.sml
-	hppa/mltree/hppaMillicode.sig
-	hppa/mltree/hppaLabelComp.sig
-	hppa/mltree/hppa.sml
-	hppa/ra/hppaRewrite.sml
-	hppa/ra/hppaRegAlloc.sml
-	
-	(* Alpha specific backend *)
-	alpha/instructions/alphaCells.sml
-	alpha/instructions/alphaInstr.sml
-	alpha/instructions/alphaShuffle.sig
-	alpha/instructions/alphaShuffle.sml
-	alpha/instructions/alphaProps.sml
-	alpha/instructions/alphaFreqProps.sml
-	alpha/emit/alphaAsm.sml
-	alpha/emit/alphaMC.sml
-	alpha/backpatch/alphaJumps.sml
-	alpha/mltree/alphaPseudoInstr.sig
-	alpha/mltree/alpha.sml
-	alpha/ra/alphaRewrite.sml
-	alpha/ra/alphaRegAlloc.sml
-	
-	(* X86 specific backend *)
-	x86/instructions/x86Cells.sml
-	x86/instructions/x86Instr.sml
-	x86/instructions/x86Shuffle.sig
-	x86/instructions/x86Shuffle.sml
-	x86/instructions/x86Props.sml
-	x86/instructions/x86MemRegs.sig
-	x86/instructions/x86FreqProps.sml
-	x86/emit/x86Asm.sml
-	x86/x86MC.sml
-	x86/ra/x86Rewrite.sig
-	x86/ra/x86Rewrite.sml
-	x86/ra/x86RegAlloc.sml
-	x86/ra/x86Spill.sml
-	x86/ra/x86PseudoR.sml
-	x86/backpatch/x86Jumps.sml 
-	x86/mltree/x86.sml 
-	
-	(* PowerPC specific backend *)
-	ppc/instructions/ppcCells.sml
-	ppc/instructions/ppcInstr.sml
-	ppc/instructions/ppcShuffle.sig
-	ppc/instructions/ppcShuffle.sml
-	ppc/instructions/ppcProps.sml
-	ppc/instructions/ppcFreqProps.sml
-	ppc/emit/ppcAsm.sml
-	ppc/emit/ppcMC.sml
-	ppc/backpatch/ppcDelaySlots.sml
-	ppc/backpatch/ppcJumps.sml
-	ppc/mltree/ppcPseudoInstr.sig
-	ppc/mltree/ppc.sml 
-	ppc/ra/ppcRewrite.sml
-	ppc/ra/ppcRegAlloc.sml

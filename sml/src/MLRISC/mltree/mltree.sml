@@ -13,7 +13,6 @@ functor MLTreeF(structure Const : CONSTANT
 struct
   structure Constant = Const
   structure PseudoOp = S.P
-  structure BNames = S.B
   structure Stream = S
   structure Region = R
 

@@ -26,4 +26,3 @@ signature CALLGC = sig
   val emitLongJumpsToGCInvocation : (T.stm,int Intmap.intmap) T.stream -> unit
   val emitModuleGC : (T.stm,int Intmap.intmap) T.stream -> unit
 end
-

@@ -163,9 +163,11 @@ struct
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
 	 | I.CALL_PAL{def,use, ...} => (def, use)
-         | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
-         | I.ANNOTATION{i,...} => defUseR i
-
+         | I.ANNOTATION{a, i, ...} =>
+            (case #peek BasicAnnotations.DEFUSER a of
+               SOME(d,u) => (d,u)
+             | NONE => defUseR i
+            )
 	 | _  		=> ([],[])
       end
 
@@ -184,8 +186,11 @@ struct
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR(_,def,use, mem)	     => (#2 def,#2 use)
-      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
-      | I.ANNOTATION{i,...} => defUseF i
+      | I.ANNOTATION{a, i, ...} =>
+          (case #peek BasicAnnotations.DEFUSEF a of
+             SOME(d,u) => (d,u)
+           | NONE => defUseF i
+          )
       | _ => ([],[])
 
     fun defUse C.GP = defUseR
@@ -195,8 +200,9 @@ struct
     (*=======================================================================
      *  Annotations 
      *=======================================================================*)
-    fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
-      | getAnnotations _ = []
+    fun getAnnotations(I.ANNOTATION{i,a}) = 
+         let val (i,an) = getAnnotations i in (i,a::an) end
+      | getAnnotations i = (i,[])
     fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
     (*=======================================================================

@@ -85,7 +85,7 @@
 	ALIGNDATA4
 request_w:		/* place to put the request code */
 	D_LONG 0
-	GLOBL ML_X86Frame
+	GLOBL CSYM(ML_X86Frame)
 LABEL(CSYM(ML_X86Frame)) /* ptr to the ml frame (gives C access to limitptr) */
 	D_LONG 0		
 
@@ -128,14 +128,14 @@ SavedSP:
 	MOV_L(tmp, dest)
 
 #define CONTINUE				\
-	JMP(stdcont)
+	JMP(CODEPTR(stdcont))
 
 #define CHECKLIMIT				\
  1:;						\
 	MOVE(stdlink, temp, pc)	;		\
 	CMP_L(limitptr, allocptr);		\
 	JB(9f);					\
-	CALL(saveregs);				\
+	CALL(CSYM(saveregs));			\
 	JMP(1b);				\
  9:
 
@@ -321,7 +321,7 @@ restore_and_jmp_ml:
 	
 jmp_ml:
 	CMP_L(limitptr, allocptr)
-	JMP(REGOFF(PCOffMSP,temp))	/* Jump to ML code. */
+	JMP(CODEPTR(REGOFF(PCOffMSP,temp)))	/* Jump to ML code. */
 
 
 pending:

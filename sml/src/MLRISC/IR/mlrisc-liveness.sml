@@ -32,9 +32,7 @@ struct
    structure SL  = SortedList
    structure G   = Graph
 
-   val {put : (I.C.cell list * I.C.cell list) * A.annotations -> A.annotations,
-        get, 
-        rmv} = A.new() 
+   val livenessProp = A.new NONE : (I.C.cell list * I.C.cell list) A.property
 
    structure Liveness =
       DataflowFn
@@ -64,7 +62,8 @@ struct
 
               fun epilogue _ { node = (b,CFG.BLOCK{annotations,...}), 
                                input=liveOut, output=liveIn } = 
-                  annotations := put((liveIn,liveOut),!annotations)
+                  annotations := #set livenessProp 
+                                  ((liveIn,liveOut),!annotations)
          end
         )
 
@@ -73,7 +72,7 @@ struct
 
    fun getLiveness (G.GRAPH cfg) b = 
        let val CFG.BLOCK{annotations,...} = #node_info cfg b
-       in  case get(!annotations) of
+       in  case #get livenessProp (!annotations) of
               SOME(x,y) => {livein=x,liveout=y}
            |  NONE => {livein=[],liveout=[]}
        end

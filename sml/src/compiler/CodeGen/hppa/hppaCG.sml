@@ -42,7 +42,7 @@ structure HppaCG =
          )
 
     structure RA = 
-       RegAlloc
+       RegAlloc2
          (structure I         = HppaInstr
           structure MachSpec  = HppaSpec
           structure Flowgraph = HppaFlowGraph
@@ -50,7 +50,6 @@ structure HppaCG =
           structure InsnProps = InsnProps 
           structure Rewrite   = HppaRewrite(HppaInstr) 
           structure Asm       = HppaAsmEmitter
-          functor Ra = HppaRegAlloc 
 
           (* NOTE: the spill offset grows backwards on the stack! 
            *)
@@ -62,6 +61,18 @@ structure HppaCG =
           val wtoi      = Word.toIntX
           fun low11(n)  = wtoi(Word.andb(itow n, 0wx7ff))
           fun high21(n) = wtoi(Word.~>>(itow n, 0w11))
+
+          fun pure(I.LOAD _) = true
+            | pure(I.LOADI _) = true
+            | pure(I.FLOAD _) = true
+            | pure(I.FLOADX _) = true
+            | pure(I.ARITH _) = true
+            | pure(I.ARITHI _) = true
+            | pure(I.FARITH _) = true
+            | pure(I.FUNARY _) = true
+            | pure(I.FCNV _) = true
+            | pure(I.ANNOTATION{i,...}) = pure i
+            | pure _ = false
  
           (* make copy *) 
           fun copyR((rds as [_], rss as [_]), _) =

@@ -16,10 +16,9 @@ structure X86MemRegs = X86MemRegs(X86Instr)
 structure X86FlowGraph = 
   FlowGraph(structure I=X86Instr 
 	    structure P=X86PseudoOps
-	    structure B=FunctionNames)
+           )
 
-structure X86Stream = InstructionStreamFn(structure P = X86PseudoOps
-                                          structure B = FunctionNames)
+structure X86Stream = InstructionStreamFn(X86PseudoOps)
 
 
 (* Assembly code emmitter *)

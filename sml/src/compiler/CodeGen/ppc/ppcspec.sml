@@ -20,4 +20,3 @@ struct
   val constBaseRegOffset = 32764
 end
 
-

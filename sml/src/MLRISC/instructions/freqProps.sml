@@ -9,9 +9,8 @@ struct
 
       (* Branch probability in percentage *)
    fun branchProb instr =
-   let fun f(BasicAnnotations.BRANCH_PROB b::_) = b     
-         | f(_::a) = f a
-         | f [] = 50
-   in  f(Props.getAnnotations instr) end
+      case #get BasicAnnotations.BRANCH_PROB (#2(Props.getAnnotations instr)) of
+        SOME b => b
+      | NONE => 50
 
 end

@@ -101,7 +101,6 @@ struct
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
-                blockName=doNothing,
                 annotation=doNothing,
                 phi=doNothing,
                 alias=doNothing

@@ -1,4 +1,4 @@
-(* sources.cm
+(* reactive-lib.cm
  *
  * COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies
  *
@@ -9,8 +9,12 @@ Library
   signature REACTIVE
   structure Reactive
 is
+#if defined(NEW_CM)
   basis.cm
   smlnj-lib.cm
+#else
+  ../Util/smlnj-lib.cm
+#endif
 
   instruction.sml
   machine.sml

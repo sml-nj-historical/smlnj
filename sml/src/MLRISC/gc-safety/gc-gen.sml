@@ -12,7 +12,6 @@ functor GCGen
     structure InsnProps  : INSN_PROPERTIES
        sharing MLTreeComp.T.Constant = IR.I.Constant
        sharing MLTreeComp.T.PseudoOp = IR.CFG.P
-       sharing MLTreeComp.T.BNames   = IR.CFG.B
        sharing IR.I = InsnProps.I = MLTreeComp.I
    ) : GC_GEN =
 struct
@@ -52,9 +51,7 @@ struct
        (*
         * Check if 
         *)
-       fun isGCPoint [] = false
-         | isGCPoint(BasicAnnotations.CALLGC::_) = true
-         | isGCPoint(_::an) = isGCPoint an
+       fun isGCPoint an = #contains BasicAnnotations.CALLGC an
 
        (*
         * For each gc-point, invoke the callback to generate GC code.

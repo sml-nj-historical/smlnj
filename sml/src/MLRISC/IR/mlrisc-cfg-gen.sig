@@ -12,7 +12,6 @@ sig
    structure S   : INSTRUCTION_STREAM
        sharing CFG.I = I
        sharing S.P   = CFG.P
-       sharing S.B   = CFG.B
 
    (*
     * This creates an emitter which can be used to build a CFG

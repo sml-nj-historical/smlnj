@@ -280,7 +280,7 @@ struct
   fun selectInstructions
         (S.STREAM{emit,beginCluster,endCluster,
                   defineLabel,entryLabel,pseudoOp,annotation,
-                  blockName,exitBlock,phi,alias,comment,...}) =
+                  exitBlock,phi,alias,comment,...}) =
   let
       infix || && << >> ~>>
 
@@ -340,7 +340,9 @@ struct
 
       (* emit load immed *)
       fun loadImmed(n, base, rd, an) =
-      if ~32768 <= n andalso n < 32768 then
+      if n =0 then
+         move(base, rd, an)
+      else if ~32768 <= n andalso n < 32768 then
          mark(I.LDA{r=rd, b=base, d=I.IMMop n},an)
       else 
       let val w = itow n
@@ -356,8 +358,8 @@ struct
        * In either case we sign extend the 32-bit value. This is compatible 
        * with LDL which sign extends a 32-bit valued memory location.
        *)
-      fun loadImmed32(0w0, base, rd, an) =
-           mark(I.OPERATE{oper=I.ADDL, ra=base, rb=zeroOpn, rc=rd},an)
+      and loadImmed32(0w0, base, rd, an) =
+           move(base, rd, an)
         | loadImmed32(n, base, rd, an) = let
             val low = W32.andb(n, 0w65535)  (* unsigned (0 .. 65535) *)
             val high = W32.~>>(n, 0w16)     (* signed (~32768 .. 32768] *)
@@ -381,48 +383,50 @@ struct
                else
                let val tmpR1 = newReg()
                    val tmpR2 = newReg()
+                   val tmpR3 = newReg()
                in
                  (* you gotta do what you gotta do! *)
-                 emit(I.LDA{r=rd, b=base, d=I.IMMop(ilow)});
-                 emit(I.OPERATE{oper=I.ADDL, ra=zeroR, rb=I.IMMop 1, rc=tmpR1});
+                 emit(I.LDA{r=tmpR3, b=base, d=I.IMMop(ilow)});
+                 emit(I.OPERATE{oper=I.ADDQ, ra=zeroR, rb=I.IMMop 1, rc=tmpR1});
                  emit(I.OPERATE{oper=I.SLL, ra=tmpR1, rb=I.IMMop 31, rc=tmpR2});
-                 mark(I.OPERATE{oper=I.ADDL, ra=tmpR2, rb=I.REGop rd, rc=rd},an)
+                 mark(I.OPERATE{oper=I.ADDQ, ra=tmpR2, rb=I.REGop tmpR3, 
+                                rc=rd},an)
                end
              end
            end
 
       (* emit load immed *)
-      fun loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.CONSTop c},an)
+      and loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.CONSTop c},an)
 
       (* emit load label *)
-      fun loadLabel(l,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop l},an)
+      and loadLabel(l,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop l},an)
 
       (* emit a copy *)
-      fun copy(dst,src,an) = 
+      and copy(dst,src,an) = 
           mark(I.COPY{dst=dst,src=src,impl=ref NONE,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.Direct(newReg()))},an)
 
       (* emit a floating point copy *)
-      fun fcopy(dst,src,an) = 
+      and fcopy(dst,src,an) = 
           mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
                       tmp=case dst of
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
-      fun move(s,d,an) = 
+      and move(s,d,an) = 
           if s = d orelse d = zeroR then () else 
           mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
-      fun fmove(s,d,an) = 
+      and fmove(s,d,an) = 
           if s = d orelse d = zeroFR then () else 
           mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
        (* emit an sign extension op *)
-      fun signExt32(r,d) =
+      and signExt32(r,d) =
           emit(I.OPERATE{oper=I.SGNXL,ra=r,rb=zeroOpn,rc=d})
 
       (* emit an commutative arithmetic op *)
-      fun commArith(opcode,a,b,d,an) =
+      and commArith(opcode,a,b,d,an) =
           case (opn a,opn b) of
             (I.REGop r,i) => mark(I.OPERATE{oper=opcode,ra=r,rb=i,rc=d},an)
           | (i,I.REGop r) => mark(I.OPERATE{oper=opcode,ra=r,rb=i,rc=d},an)
@@ -1382,7 +1386,6 @@ struct
         pseudoOp    = pseudoOp,
         defineLabel = defineLabel,
         entryLabel  = entryLabel,
-        blockName   = blockName,
         comment     = comment,
         annotation  = annotation,
         exitBlock   = fn regs => exitBlock(map cc regs),

@@ -26,7 +26,7 @@ struct
   val trapLabel = ref (NONE: Label.label option)
 
   fun selectInstructions 
-       (S.STREAM{emit,defineLabel,entryLabel,blockName,pseudoOp,annotation,
+       (S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
                  beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
   let
 
@@ -653,7 +653,6 @@ fun prMLRisc s = print(concat(stm s))
         pseudoOp    = pseudoOp,
         defineLabel = defineLabel,
         entryLabel  = entryLabel,
-        blockName   = blockName,
         comment     = comment,
         annotation  = annotation,
         exitBlock   = exitBlock,

@@ -9,7 +9,6 @@ signature CONTROL_FLOW_GRAPH =
 sig
 
    structure I : INSTRUCTIONS
-   structure B : BLOCK_NAMES
    structure P : PSEUDO_OPS
    structure C : CELLS
    structure W : FREQ
@@ -42,7 +41,6 @@ sig
       BLOCK of
       {  id          : int,                        (* block id *)
          kind        : block_kind,                 (* block kind *)
-         name        : B.name,                     (* block name *)
          freq        : weight ref,                 (* execution frequency *) 
          data        : data list ref,              (* data preceeding block *) 
          labels      : Label.label list ref,       (* labels on blocks *) 
@@ -81,16 +79,17 @@ sig
    *  Various kinds of annotations on basic blocks
    *
    *========================================================================*)
-   exception LIVEOUT of C.cellset       (* escaping live out information *)
-   exception CHANGED of unit -> unit
-   exception CHANGEDONCE of unit -> unit
+   val LIVEOUT : C.cellset Annotations.property
+                  (* escaping live out information *)
+   val CHANGED : (unit -> unit) Annotations.property
+   val CHANGEDONCE : (unit -> unit) Annotations.property
 
   (*========================================================================
    *
    *  Methods for manipulating basic blocks
    *
    *========================================================================*)
-   val newBlock          : int * B.name * W.freq ref -> block (* empty *)
+   val newBlock          : int * W.freq ref -> block (* empty *)
    val newStart          : int * W.freq ref -> block          (* start node *)
    val newStop           : int * W.freq ref -> block          (* stop node *)
    val newFunctionEntry  : int * W.freq ref -> block  (* fun entry node *)

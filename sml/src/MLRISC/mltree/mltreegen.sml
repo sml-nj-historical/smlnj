@@ -182,10 +182,11 @@ struct
        | T.CVTI2I(ty,T.ZERO_EXTEND,e) => 
          let val fromTy = size e
          in  if fromTy <= ty then e
-             else case fromTy of
+             else case ty of (* ty < fromTy *)
                     8  => T.ANDB(ty,e,T.LI32 0wxff) 
                   | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
                   | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
+                  | 64 => e
                   | _  => raise T.Unsupported("unknown expression",exp)
          end
 

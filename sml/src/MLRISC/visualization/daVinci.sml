@@ -10,8 +10,6 @@ struct
    structure L = GraphLayout
    structure G = Graph
 
-   exception DIR
-
    fun suffix() = ".daVinci"
    fun program() = "daVinci"
 
@@ -55,13 +53,13 @@ struct
        and edgeAttrib (L.COLOR c)       = EDGECOLOR c
          | edgeAttrib (L.ARROW_COLOR c) = EDGECOLOR c
          | edgeAttrib (L.EDGEPATTERN p) = atom("EDGEPATTERN",p)
-         | edgeAttrib DIR = Dir()
+         | edgeAttrib L.DIR = Dir()
          | edgeAttrib _ = () 
 
        and isEdgeAttrib (L.COLOR c)       = true
          | isEdgeAttrib (L.ARROW_COLOR c) = true
          | isEdgeAttrib (L.EDGEPATTERN p) = true
-         | isEdgeAttrib (DIR) = true
+         | isEdgeAttrib (L.DIR) = true
          | isEdgeAttrib _ = false 
 
        and findEdgeLabel ((L.LABEL "")::l) = findEdgeLabel l
@@ -91,14 +89,18 @@ struct
 
        and doEdge t (i,j,a) =
           ((findEdgeLabel a;
-            tab t; out "l(\""; int i; out "->"; int j; out "\",e(\"\",\n";
+            tab t; out "l(\""; 
+            int i; out "->"; int j; 
+            (* dummy label; daVinci chokes on duplicated edge names *)
+            out "-"; out(newLabel()); 
+            out "\",e(\"\",\n";
             attribs (t+2) (isEdgeAttrib,edgeAttrib) a;
             tab t; out ",r(\""; int j; out "\")))")
             handle FOUND l =>
             let val x = newLabel()
             in
             (tab t; out "l(\""; int i; out("->"^x^"\",e(\"\",");
-             attribs (t+2) (isEdgeAttrib,edgeAttrib) (DIR::a);
+             attribs (t+2) (isEdgeAttrib,edgeAttrib) (L.DIR::a);
              out ",l(\""; out(newLabel());
              out "\",n(\"\",[a(\"OBJECT\",\"";
              out l; out "\"),a(\"_GO\",\"text\")],";

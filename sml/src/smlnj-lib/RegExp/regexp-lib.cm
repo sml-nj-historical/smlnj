@@ -1,4 +1,4 @@
-(* sources.cm
+(* regexp-lib.cm
  *
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
  *)
@@ -20,9 +20,12 @@ structure DfaEngine
 functor RegExpFn
 
 is
-
+#if defined(NEW_CM)
   basis.cm
   smlnj-lib.cm
+#else
+  ../Util/smlnj-lib.cm
+#endif
 
 (* utility functions *)
   Glue/match-tree.sml

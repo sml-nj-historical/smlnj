@@ -43,7 +43,6 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = emit("\t/* " ^ msg ^ " */")
        fun annotation a = (comment(Annotations.toString a); nl())
-       fun blockName b = (comment(S.B.toString b); nl())
        fun emit_region mem = comment(I.Region.toString mem)
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
@@ -513,7 +512,6 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                blockName=blockName,
                 annotation=annotation,
                 phi=doNothing,
                 alias=doNothing

@@ -8,8 +8,11 @@ struct
 
    structure I = X86Instr
 
-   fun branchProb(I.ANNOTATION{a=BasicAnnotations.BRANCH_PROB b,...}) = b
-     | branchProb(I.ANNOTATION{i,...}) = branchProb i
+   fun branchProb(I.ANNOTATION{a, i, ...}) =
+        (case #peek BasicAnnotations.BRANCH_PROB a of
+           SOME b => b
+         | NONE => branchProb i
+        )
      | branchProb(I.JCC{cond=I.EQ,...}) = 10
      | branchProb(I.JCC{cond=I.O,...}) = 0 (* overflow *)
      | branchProb(I.JCC{cond=I.NE,...}) = 90

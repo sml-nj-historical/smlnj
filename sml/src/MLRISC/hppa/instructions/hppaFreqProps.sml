@@ -9,8 +9,11 @@ struct
 
    structure I = HppaInstr
 
-   fun branchProb(I.ANNOTATION{a=BasicAnnotations.BRANCH_PROB b,...}) = b 
-     | branchProb(I.ANNOTATION{i,...}) = branchProb i
+   fun branchProb(I.ANNOTATION{a, i, ...}) =
+         (case #peek BasicAnnotations.BRANCH_PROB a of
+            SOME b => b 
+          | NONE => branchProb i
+         )
      | branchProb(I.BCOND{cmp=I.COMBT,bc=I.EQ,...}) = 10
      | branchProb(I.BCOND{cmp=I.COMBF,bc=I.EQ,...}) = 90
      | branchProb(I.BCOND{cmp=I.COMBT,bc=I.NE,...}) = 90

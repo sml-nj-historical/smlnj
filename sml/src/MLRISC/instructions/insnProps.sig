@@ -66,7 +66,8 @@ sig
                       I.instruction -> (C.cell list * C.cell list)
 
      (* annotations *)
-   val getAnnotations : I.instruction -> Annotations.annotation list
+   val getAnnotations : I.instruction ->
+                           I.instruction * Annotations.annotation list
    val annotate       : I.instruction * Annotations.annotation -> I.instruction
 
      (*

@@ -6,6 +6,8 @@
 functor HppaRewrite(Instr:HPPAINSTR) = struct
   structure I = Instr
 
+  fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
+
   fun rewriteUse(mapr, instr, rs, rt) = let
     fun replc r = if mapr r=rs then rt else r
   in
@@ -19,6 +21,9 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.ARITH{a, r1, r2, t} => I.ARITH{a=a, r1=replc r1, r2=replc r2, t=t}
      | I.ARITHI{ai, r, i, t} => I.ARITHI{ai=ai, r=replc r, i=i, t=t}
      | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
+         if t1 <> t2 andalso mapr t2 = rs then 
+            error "rewriteUse: COMCLR_LDO"
+         else
          I.COMCLR_LDO{cc=cc, r1=replc r1, r2=replc r2, b=replc b, i=i, 
                       t1=t1, t2=t2}
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=replc r, len=len, t=t}
@@ -61,6 +66,9 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.LOAD{l, r1, r2, t, mem} => I.LOAD{l=l,r1=r1,r2=r2,t=replc t,mem=mem} 
      | I.LOADI{li, i, r, t, mem} => I.LOADI{li=li,i=i,r=r,t=replc t,mem=mem} 
      | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
+         if t1 <> t2 andalso mapr t2 = rs then 
+            error "rewriteDef: COMCLR_LDO"
+         else
           I.COMCLR_LDO{cc=cc, r1=r1, r2=r2, b=b, i=i, t1=replc t1, t2=replc t2} 
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}

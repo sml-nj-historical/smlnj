@@ -17,10 +17,9 @@ structure Alpha32PseudoOps =
 structure Alpha32FlowGraph = 
   FlowGraph(structure I=Alpha32Instr
 	    structure P=Alpha32PseudoOps
-	    structure B=FunctionNames)
+           )
 
-structure Alpha32Stream = InstructionStreamFn(structure P = Alpha32PseudoOps
-                                              structure B = FunctionNames)
+structure Alpha32Stream = InstructionStreamFn(Alpha32PseudoOps)
 
 structure Alpha32AsmEmitter=
   AlphaAsmEmitter(structure Instr=Alpha32Instr
@@ -33,17 +32,6 @@ structure Alpha32MCEmitter =
 		 structure PseudoOps=Alpha32PseudoOps
                  structure Stream=Alpha32Stream
 		 structure CodeString=CodeString)
-
-(*  Don't need this any more!  
-    We now support the alpha32x by generating different instructions.
-       -- Allen.
-
-structure Alpha32XMCEmitter = 
-  Alpha32XMCEmitter(structure Instr=Alpha32Instr
-		   structure PseudoOps=Alpha32PseudoOps
-		   structure CodeString=CodeString)
-*)
-
 
 structure Alpha32MLTree = 
   MLTreeF(structure Const=SMLNJConstant

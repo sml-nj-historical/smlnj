@@ -28,7 +28,7 @@ structure PPCCG =
                 structure Emitter = PPCMCEmitter)
 
     structure RA = 
-       RegAlloc
+       RegAlloc2
          (structure I         = PPCInstr
           structure MachSpec  = PPCSpec
           structure Flowgraph = PPCFlowGraph
@@ -36,10 +36,11 @@ structure PPCCG =
           structure InsnProps = InsnProps 
           structure Rewrite   = PPCRewrite(PPCInstr) 
           structure Asm       = PPCAsmEmitter
-          functor Ra = PPCRegAlloc 
 
           val sp = I.C.stackptrR
           val stack = I.Region.stack
+
+          fun pure _ = false
 
           (* make copy *)
           fun copyR((rds as [_], rss as [_]), _) =

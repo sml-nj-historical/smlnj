@@ -10,7 +10,6 @@ sig
    structure F   : FLOWGRAPH
       sharing CFG.I = F.I
       sharing CFG.P = F.P
-      sharing CFG.B = F.B
 
    val cluster2cfg : F.cluster -> CFG.cfg
 
@@ -24,7 +23,6 @@ functor Cluster2CFGFn
        sharing Util.CFG = CFG
        sharing CFG.I = F.I = P.I
        sharing CFG.P = F.P
-       sharing CFG.B = F.B
    ) : CLUSTER2CFG =
 struct
 
@@ -89,7 +87,7 @@ struct
   
             (* Insert an normal basic block *)
        and add_block({blknum,annotations,
-                      freq,name,liveIn,liveOut,succ,pred,insns},
+                      freq,liveIn,liveOut,succ,pred,insns},
                      Ps,Ls,rest) =
            let val bb = CFG.BLOCK{id    = blknum,
                                   kind  = CFG.NORMAL,
@@ -97,8 +95,8 @@ struct
                                   freq  = freq,
                                   data  = ref Ps,
                                   insns = insns,
-                                  name  = name,
-                                  annotations=ref(CFG.LIVEOUT(!liveOut)::
+                                  annotations=ref
+                                    (#create CFG.LIVEOUT(!liveOut)::
                                                   (!annotations))
                                  }
            in  #add_node cfg (blknum,bb);

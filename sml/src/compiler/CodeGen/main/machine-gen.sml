@@ -9,7 +9,6 @@ functor MachineGen
    structure CpsRegs    : CPSREGS              (* CPS registers *)
       where T.Region=CPSRegions
       where T.Constant=SMLNJConstant 
-      where T.BNames=FunctionNames 
       where T.PseudoOp=PseudoOps
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
       where I.Constant = CpsRegs.T.Constant
@@ -22,7 +21,6 @@ functor MachineGen
       where I = MLTreeComp.I
    structure BackPatch  : BBSCHED              (* machine code emitter *)
       where F.P = PseudoOps
-      where F.B = MLTreeComp.T.BNames
       where F.I = Asm.I
    structure RA         : REGALLOC             (* register allocator *)
       where F = BackPatch.F
@@ -32,7 +30,6 @@ struct
    structure F         = BackPatch.F
    structure P         = InsnProps
    structure I         = F.I
-   structure B         = F.B
    structure Cells     = I.C 
    structure T         = MLTreeComp.T
    structure S         = T.Stream

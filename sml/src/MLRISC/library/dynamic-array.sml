@@ -4,7 +4,7 @@
  * -- Allen
  *)
 
-structure DynamicArray : 
+structure DynArray : 
   sig include ARRAY
       val baseArray : 'a array -> 'a Array.array
       val checkArray: 'a array * 'a Array.array -> unit

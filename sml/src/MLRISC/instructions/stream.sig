@@ -10,7 +10,6 @@ signature INSTRUCTION_STREAM =
 sig
 
    structure P : PSEUDO_OPS
-   structure B : BLOCK_NAMES
 
    datatype ('a,'b,'c,'d,'e,'f) stream =
       STREAM of
@@ -21,7 +20,6 @@ sig
         defineLabel : Label.label -> unit,     (* define a local label *)
         entryLabel  : Label.label -> unit,     (* define an external label *)
         comment     : string -> unit,          (* emit comment *)
-        blockName   : B.name -> unit,          (* change block name *)
         annotation  : Annotations.annotation -> unit, (* add annotation *)
         exitBlock   : 'd -> unit,              (* mark the end of a procedure *)
         alias       : 'e -> unit,              (* generate alias information *)

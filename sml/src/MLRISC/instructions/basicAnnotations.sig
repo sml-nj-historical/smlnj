@@ -17,15 +17,15 @@ sig
      * Currently, the annotation is recognized by the static branch prediction
      * module. 
      *)
-   exception BRANCH_PROB of int (* in percentage (0-100)*) 
+   val BRANCH_PROB : int Annotations.property (* in percentage (0-100)*) 
 
     (* The execution frequency of a basic block 
      * You can attach this at a basic block.
      *)
-   exception EXECUTION_FREQ of real
+   val EXECUTION_FREQ : real Annotations.property
 
     (* No effect at all; this just allows you to insert comments *)
-   exception COMMENT of string 
+   val COMMENT : string Annotations.property
 
     (* 
      * Control dependence definition and use.
@@ -37,31 +37,31 @@ sig
      * These annotations are currently recognized by the SSA optimization
      * modules.
      *)
-   exception CTRL_DEF of int
-   exception CTRL_USE of int
+   datatype ctrl_dep = CTRL_DEF of int | CTRL_USE of int
+   val CTRL : ctrl_dep Annotations.property
 
     (*
      * These annotations specifies definitions and uses 
      * for a pseudo instruction.
      *)
-   exception DEFUSER  of int list * int list
-   exception DEFUSEF  of int list * int list
-   exception DEFUSECC of int list * int list
+   val DEFUSER  : (int list * int list) Annotations.property
+   val DEFUSEF  : (int list * int list) Annotations.property
+   val DEFUSECC : (int list * int list) Annotations.property
 
     (*
      * This annotation can be used specify a pretty printing function for
      * assemblers
      *)
-   exception REGINFO of int -> string
+   val REGINFO : (int -> string) Annotations.property
 
     (*
      * Disable all optimizations in the cluster
      *)
-   exception NO_OPTIMIZATION
+   val NO_OPTIMIZATION : unit Annotations.property
 
     (*
      * Mark basic block that is used for calling the GC
      *)
-   exception CALLGC
+   val CALLGC : unit Annotations.property
 
 end

@@ -72,7 +72,7 @@ struct
    val verbose = MLRiscControl.getFlag "verbose"
 
    fun memo name compute = 
-   let val {get,put,rmv,...} = A.new()
+   let val {get,set,rmv,...} = A.new NONE
        fun getView(IR as G.GRAPH{graph_info=CFG.INFO{annotations,...},...}:IR)=
        let fun process(SOME(ref(SOME info))) =
                  (if !verbose then print ("[reusing "^name^"]") else (); info)
@@ -87,7 +87,8 @@ struct
                   fun kill() = (r := NONE; 
                                 if !verbose then print("[uncaching "^name^"]")
                                 else ())
-              in  annotations := CFG.CHANGED kill :: put(r,!annotations);
+              in  annotations := #create CFG.CHANGED kill :: 
+                                 set(r,!annotations);
                   process(SOME r) 
               end
        in  process(get (!annotations)) end
@@ -136,12 +137,14 @@ struct
                 (fn (i,j,_) => Int.toString i^"->"^Int.toString j^" ") edges)
            fun node(_,Loop.LOOP{nesting,header,loop_nodes,
                                 backedges,exits,...}) =
-               [L.LABEL("nesting: "^Int.toString nesting^"\n"^
-                        CFG.show_block an regmap (#node_info cfg header)^
-                        "loop_nodes: "^mkNodes loop_nodes^"\n"^
-                        "backedges: "^mkEdges backedges^"\n"^
-                        "exits: "^mkEdges exits^"\n"
-                       )]
+               [L.LABEL
+                ("nesting: "^Int.toString nesting^"\n"^
+                 CFG.show_block an regmap (#node_info cfg header)^
+                 "entry edges: "^mkEdges(Loop.entryEdges loop header)^"\n"^
+                 "loop_nodes: "^mkNodes loop_nodes^"\n"^
+                 "backedges: "^mkEdges backedges^"\n"^
+                 "exits: "^mkEdges exits^"\n"
+                )]
        in  L.makeLayout {edge=defaultEdge,
                          graph=defaultGraph,
                          node=node} loop

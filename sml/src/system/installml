@@ -56,5 +56,3 @@ for lib in $list ; do
 done
 
 rm -r $LIB_DIR
-
-

@@ -64,6 +64,7 @@ struct
    in  loop(rset,[])
    end
 
+
    (* register mapping functions *)
    fun uniqMap(f, l) = SL.uniq(map f l)
 
@@ -226,7 +227,7 @@ struct
        (** 
         ** Run liveness analysis 
         **)
-       fun liveness(GRAPH{nodes,...},blocks) = 
+       fun liveness(nodes,blocks) = 
        let val getnode = Intmap.map nodes
            fun regmap i = 
            let val node = getnode i
@@ -238,6 +239,20 @@ struct
            end handle _ => i                 (* XXX *)
        in  RaArch.Liveness.liveness(blocks, regmap)
        end
+
+       (* 
+        * Given a set of registers, remove all spilled and dedicated nodes.
+        * NOTE: we assume that dedicated registers are NEVER entered into
+        *       nodes Intmap. 
+        *)
+       fun collectNodes(getnode,regs) =  
+       let fun loop([],xs) = xs
+             | loop(r::rs,xs) = 
+               (case chase(getnode r) of
+                  NODE{color=ref(COLORED ~1),...} => loop(rs,xs) 
+                | x => loop(rs,x::xs)
+               ) handle _ => loop(rs,xs) (* dedicated *)
+       in  loop(regs,[]) end
 
 
        (** 
@@ -256,7 +271,7 @@ struct
            fun memBitMatrix(NODE{number=x,...}, NODE{number=y,...}) =
                member (if x<y then (x, y) else (y, x))
 
-          fun delete(NODE{movecnt, ...}) = movecnt:=0
+           fun delete(NODE{movecnt, ...}) = movecnt:=0
            fun insert((node as NODE{movecnt as ref 0, ...})::rest, live) = 
                 (movecnt:=1; insert(rest, node::live))
              | insert(_::rest, live) = insert(rest, live)
@@ -325,7 +340,7 @@ struct
                      in app delete def;
                         doBlock(rest, bdu, insert(use,live), moves)
                      end  
-                   val lout = chaseRegs (rmvDedicated(RaArch.regSet(!liveOut)))
+                   val lout = collectNodes(getnode,RaArch.regSet(!liveOut))
                 in doBlock(!insns, bdu, insert(lout, []), mvs)
                 end
              (* Filter moves that already have an interference.
@@ -393,9 +408,9 @@ struct
                 fun doBBlocks n = 
                 let val F.BBLOCK{blknum,liveIn,liveOut,succ,...} = 
                          A.sub(cblocks,n)
-                    val rNum = nodeNumber o chaseReg
                     val liveout = 
-                          uniqMap (rNum, rmvDedicated(RaArch.regSet(!liveOut)))
+                     uniqMap (nodeNumber,
+                               collectNodes(getnode,RaArch.regSet(!liveOut)))
                 in  case !succ of 
                       [(F.EXIT _,_)] => 
                        (case SL.intersect(spillable,liveout) 
@@ -547,7 +562,7 @@ struct
            let val F.BBLOCK{insns, liveOut, name, ...} = 
                      A.sub(cblocks, blknum)
                val bdu = A.sub(blockDU, blknum)
-               val liveOut = chaseRegs(rmvDedicated(RaArch.regSet(!liveOut)))
+               val liveOut = collectNodes(getnode,RaArch.regSet(!liveOut))
                val spillReg = nodeNumber node
 
                (* note: the instruction list start out in reverse order. *)
@@ -748,7 +763,6 @@ struct
                         getreg=RaUser.getreg,
                         firstPseudoR=firstPseudoR
                        }
-           val _     = liveness(graph,blocks)    (* run liveness analysis *)
            val moves      = build graph        (* build interference graph *)
            val worklists  = Core.makeWorkLists graph moves 
            val simpCoalFz = Core.simplifyCoalesceFreeze graph
@@ -771,7 +785,9 @@ struct
            debug(cfg_before_ra,"before register allocation",blocks,regmap,an);
            iterate worklists
        end
-   in  graphColoring(initialize());
+       val nodes = initialize()
+   in  liveness(nodes,blocks);   (* run liveness analysis *)
+       graphColoring(nodes);
        debug(cfg_after_ra,"after register allocation",blocks,regmap,an);
        ra_count := !ra_count + 1;
        cluster

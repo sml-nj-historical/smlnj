@@ -105,8 +105,11 @@ struct
 	   | SOME(I.Direct r) => (r::dst, src)
 	(* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
 	 (*esac*))
-     | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
-     | I.ANNOTATION{i,...} => defUseR i
+     | I.ANNOTATION{a, i, ...} =>
+        (case #peek BasicAnnotations.DEFUSER a of
+           SOME(d,u) => (d,u)
+         | NONE => defUseR i
+        )
      | _ => ([], [])
   end
 
@@ -124,8 +127,11 @@ struct
 	  of SOME(I.FDirect f) => (f::dst, src)
 	   | _ => (dst, src)
 	 (*esac*))
-     | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
-     | I.ANNOTATION{i,...} => defUseF i
+     | I.ANNOTATION{a, i, ...} =>
+        (case #peek BasicAnnotations.DEFUSEF a of
+           SOME(d,u) => (d,u)
+         | NONE => defUseF i
+        )
      | _ => ([], [])
     (*esac*))
 
@@ -139,8 +145,9 @@ struct
   (*========================================================================
    *  Annotations 
    *========================================================================*)
-  fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
-    | getAnnotations _ = []
+  fun getAnnotations(I.ANNOTATION{i,a}) = 
+       let val (i,an) = getAnnotations i in (i,a::an) end
+    | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
   (*========================================================================

@@ -11,4 +11,3 @@ LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
 
 CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=/dev/null \
     ../../bin/sml @SMLload=$HEAP_IMAGE "$@"
-

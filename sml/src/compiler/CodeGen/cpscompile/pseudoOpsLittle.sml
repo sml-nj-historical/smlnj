@@ -86,7 +86,3 @@ struct
   end
 end
 
-
-
-	
-

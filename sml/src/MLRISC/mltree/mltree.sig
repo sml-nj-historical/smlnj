@@ -14,9 +14,7 @@ signature MLTREE = sig
   structure Constant : CONSTANT
   structure PseudoOp : PSEUDO_OPS
   structure Region   : REGION
-  structure BNames   : BLOCK_NAMES
   structure Stream   : INSTRUCTION_STREAM
-     sharing Stream.B = BNames
      sharing Stream.P = PseudoOp
 
   include MLTREE_BASIS

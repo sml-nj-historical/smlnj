@@ -9,8 +9,11 @@ struct
 
    structure I = PPCInstr
 
-   fun branchProb(I.ANNOTATION{a=BasicAnnotations.BRANCH_PROB b,...}) = b
-     | branchProb(I.ANNOTATION{i,...}) = branchProb i
+   fun branchProb(I.ANNOTATION{a, i, ...}) =
+        (case #peek BasicAnnotations.BRANCH_PROB a of
+           SOME b => b
+         | NONE => branchProb i
+        )
      | branchProb(I.BC _) = 50
      | branchProb(I.BCLR{labels=[],bo=I.ALWAYS,...}) = 100
      | branchProb(I.BCLR{labels,bo=I.ALWAYS,...}) = 100 div length labels

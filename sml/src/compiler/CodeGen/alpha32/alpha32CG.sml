@@ -15,7 +15,6 @@ structure Alpha32CG =
              structure AlphaMLTree = Alpha32MLTree
              structure PseudoInstrs = Alpha32PseudoInstrs
              val mode32bit = true (* simulate 32 bit mode *)
-             val useSU = false
              val multCost = ref 8 (* just guessing *)
              val useMultByConst = ref false (* just guessing *)
             )
@@ -30,7 +29,7 @@ structure Alpha32CG =
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 
-       RegAlloc
+       RegAlloc2
          (structure I         = Alpha32Instr
           structure MachSpec  = Alpha32Spec
           structure Flowgraph = Alpha32FlowGraph
@@ -38,10 +37,11 @@ structure Alpha32CG =
           structure InsnProps = InsnProps 
           structure Rewrite   = AlphaRewrite(Alpha32Instr)
           structure Asm       = Alpha32AsmEmitter
-          functor Ra = AlphaRegAlloc 
 
           val sp = I.C.stackptrR
           val stack = I.Region.stack
+
+          fun pure _ = false
 
           (* make copies *)
           fun copyR((rds as [_], rss as [_]), _) =

@@ -10,4 +10,3 @@ structure HppaMC =
     fun collect() = (HppaCG.finish(); CodeString.getCodeString()))
 
 
-

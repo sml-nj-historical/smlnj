@@ -19,8 +19,11 @@ struct
      | fcond I.FBNE = 90
      | fcond _      = 50
 
-   fun branchProb(I.ANNOTATION{a=BasicAnnotations.BRANCH_PROB b,...}) = b
-     | branchProb(I.ANNOTATION{i,...}) = branchProb i
+   fun branchProb(I.ANNOTATION{a, i, ...}) =
+        (case #peek BasicAnnotations.BRANCH_PROB a of
+           SOME b => b
+         | NONE => branchProb i
+        )
      | branchProb(I.Bicc{b,...}) = cond b
      | branchProb(I.FBfcc{b,...}) = fcond b
      | branchProb(I.BP{b,...}) = cond b

@@ -1,49 +1,123 @@
-(** Graph coloring register allocation.
- ** Implements the 'iterated register coalescing' scheme described 
- ** in POPL'96, and TOPLAS v18 #3, pp 325-353. 
- **
- ** RA CORE defines the core of the register allocator. 
- ** This basically means the enableMove, coalesce, simplify and freeze phases.
- ** These are separated out from the rest for more modularity 
- ** and customizability.
- ** 
- ** -- Allen
- **)
-
+(*
+ * Note: This is the core of the new register allocator, i.e. the portion
+ * that manipulates only the interference graph and not the flowgraph.
+ *
+ * -- Allen
+ *)
 
 signature RA_CORE = 
 sig
 
-   structure G : RA_GRAPH
+   structure G  : RA_GRAPH
+
+   type move_queue
+   type freeze_queue
 
    (*
     * Basic functions
     *)
-       (* add an edge *)
-   val addEdge : G.interferenceGraph -> G.node * G.node -> unit
-       (* debugging *)
-   val dumpGraph : G.interferenceGraph -> unit 
 
+   (* dump the interference graph to a stream *)
+   val dumpGraph : G.interferenceGraph -> TextIO.outstream -> unit
+   val show      : G.interferenceGraph -> G.node -> string
+
+   (* add an edge to the interference graph *)
+   val addEdge : G.interferenceGraph -> G.node * G.node -> unit
+
+   (* remove an edge from the interference graph *)
+   val removeEdge : G.interferenceGraph -> G.node * G.node -> unit
+
+   (*
+    * Function to create new nodes 
+    *)
+   val newNodes : G.interferenceGraph -> 
+        {cost:int,pt:G.programPoint,defs:int list,uses:int list} -> 
+            G.node list (* defs *)
+
+   (*
+    * Update regmap after finishing register allocation or copy propagation
+    *)
+   val finishRA : G.interferenceGraph -> unit
+   val finishCP : G.interferenceGraph -> unit
+
+   (*
+    * Create an initial set of worklists from a new interference graph
+    * and a list of moves 
+    *)
+   val initWorkLists : G.interferenceGraph -> 
+          { moves : G.move list,
+            deadCopyElim : bool
+          } -> 
+          { simplifyWkl : G.node list, 
+            moveWkl     : move_queue, 
+            freezeWkl   : freeze_queue, 
+            spillWkl    : G.node list   (* high degreee nodes *)
+          }
+
+   (*
+    * Clear the interference graph but keep the nodes table intact 
+    *)
+   val clearGraph : G.interferenceGraph -> unit
+
+   (*
+    * Remove all adjacency lists from the nodes table
+    *)
+   val clearNodes : G.interferenceGraph -> unit
+
+   (*
+    * Return a regmap function that reflects the current interference graph.
+    * Spilled registers are given the special value ~1
+    *)
+   val regmap      : G.interferenceGraph -> (int -> int)
+   val spillRegmap : G.interferenceGraph -> (int -> int)
+   val spillLoc    : G.interferenceGraph -> (int -> int)
 
    (* 
-    * Core phases
+    * Simplify, Coalease and Freeze until the work list is done
     *)
-   val makeWorkLists : G.interferenceGraph -> G.movelist  -> G.worklists
-   val simplifyPhase : G.interferenceGraph -> G.worklists -> G.worklists
-   val coalescePhase : G.interferenceGraph -> G.worklists -> G.worklists
-   val freezePhase   : G.interferenceGraph -> G.worklists -> G.worklists
-   val wklFromFrozen : int * G.node -> G.node list
+   val iteratedCoalescing : 
+        G.interferenceGraph -> 
+           { simplifyWkl : G.node list, 
+             moveWkl     : move_queue,
+             freezeWkl   : freeze_queue,
+             stack       : G.node list
+           } ->
+           { stack : G.node list 
+           }
 
-      (* Return a list of spill nodes *)
-   val optimisticSpilling : G.interferenceGraph -> G.worklists -> G.node list
+   (* 
+    * potentially spill a node.
+    *)
+   val potentialSpillNode : 
+        G.interferenceGraph ->
+           { node  : G.node,
+             stack : G.node list
+           } ->
+           { moveWkl   : move_queue,
+             freezeWkl : freeze_queue,
+             stack     : G.node list
+           }
 
-      (* simplify/coalesce/freeze *)
-   val simplifyCoalesceFreeze : G.interferenceGraph -> G.worklists -> G.worklists
+   (*
+    * Color nodes on the stack, using Briggs' optimistic spilling.  
+    * Return a list of actual spills 
+    *)
+   val select : 
+        G.interferenceGraph -> 
+           { biased : bool, (* use biased coloring too? *)
+             stack  : G.node list 
+           } ->
+           { spills : G.node list (* actual spills *)
+           }
 
-      (* Update the regmap to be consistent with the node set, 
-       * after register allocation or copy propagation 
-       *)
-   val finishRA : G.interferenceGraph -> unit 
-   val finishCP : G.interferenceGraph -> unit 
+   (*
+    * Spill coalescing 
+    *)
+    val spillCoalescing : G.interferenceGraph -> G.node list -> unit
+
+   (*
+    * Spill coloring 
+    *)
+    val spillColoring : G.interferenceGraph -> G.node list -> unit
+
 end
-

@@ -36,7 +36,7 @@ struct
        fun f r = "{"^toString(lookup r)^"}" handle _ => "{?}"
    in  f end
 
-   exception GCMAP of gcmap
-   exception GCSAFEPOINT
+   val GCMAP       = Annotations.new NONE : gcmap Annotations.property
+   val GCSAFEPOINT = Annotations.newFlag ""
 
 end

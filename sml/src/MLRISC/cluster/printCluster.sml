@@ -53,9 +53,8 @@ struct
        fun printBlock(F.PSEUDO pOp) = pseudoOp pOp
          | printBlock(F.LABEL l)    = defineLabel l
          | printBlock(F.BBLOCK{blknum, freq, succ, pred, liveOut, liveIn, 
-                               insns, name, annotations, ...}) = 
-          (pr ("BLOCK " ^ Int.toString blknum  
-                        ^ showFreq freq ^ "(" ^F.B.toString name ^ ")\n");
+                               insns, annotations, ...}) = 
+          (pr ("BLOCK " ^ Int.toString blknum ^ showFreq freq ^ "\n");
            app annotation (!annotations);
            pr ("\tlive in:  " ^ C.cellsetToString' regmap (!liveIn) ^ "\n");
 	   pr ("\tlive out: " ^ C.cellsetToString' regmap (!liveOut) ^ "\n");

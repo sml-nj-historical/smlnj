@@ -153,5 +153,5 @@ struct
    in  newGraph{name=name,info=info,nodes=nodes,succ=succ,pred=pred} end
 end
 
-structure DirectedGraph = DirectedGraphFn(DynamicArray)
+structure DirectedGraph = DirectedGraphFn(DynArray)
 

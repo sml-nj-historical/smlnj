@@ -20,7 +20,6 @@ functor MLRiscGen
     structure C          : CPSREGS
        where type T.Constant.const = SMLNJConstant.const
        where T.Region = CPSRegions
-       and T.BNames = FunctionNames 
        and T.PseudoOp = PseudoOp
     structure InvokeGC   : INVOKE_GC 
        where T = C.T
@@ -63,6 +62,7 @@ struct
   val NONREF = SMLGCType.NONREF(ref CPS.INTt)
   val FLOAT  = SMLGCType.NONREF(ref CPS.FLTt)
   val REF    = SMLGCType.REF(ref(CPS.PTRt(CPS.VPT)))
+  val NO_OPT = [#create BasicAnnotations.NO_OPTIMIZATION ()]
 
   fun error msg = ErrorMsg.impossible ("MLRiscGen." ^ msg)
 
@@ -112,7 +112,6 @@ struct
             alias,         (* generate register alias *)
             defineLabel,   (* define a local label *)
             entryLabel,    (* define an external entry *) 
-            blockName,     (* set block name *)
             exitBlock,     (* mark the end of a procedure *)
             pseudoOp,      (* emit a pseudo op *)
             ... } = 
@@ -747,7 +746,6 @@ struct
                        updtHeapPtr(hp);
                        callSetup(formals, args);
                        defineLabel lab;
-                       blockName f;
                        alignAllocptr f;
                        initialRegBindingsEscaping(vl, formals, tl);
                        initTypBindings e;
@@ -765,7 +763,6 @@ struct
                        emit(branchToLabel(lab));
 			***)
                        defineLabel lab;
-                       blockName f;
                        InvokeGC.knwCheckLimit stream
                          {maxAlloc=4*maxAlloc f, regfmls=formals, regtys=tl, 
                           return=branchToLabel(lab)};
@@ -1286,7 +1283,6 @@ struct
                   in func := NONE;
                      pseudoOp PseudoOp.ALIGN4;
                      entryLabel lab;
-                     blockName f;
                      alignAllocptr f;
                      emit(assign(C.baseptr, baseval));
                      InvokeGC.stdCheckLimit stream
@@ -1323,19 +1319,20 @@ struct
           endCluster(
              if !gcsafety then 
                 let val gcmap = GCCells.getGCMap()
-                in  [SMLGCType.GCMAP gcmap,
-                     BasicAnnotations.REGINFO(SMLGCType.mapToString gcmap)
+                in  [#create SMLGCType.GCMAP gcmap,
+                     #create 
+                        BasicAnnotations.REGINFO(SMLGCType.mapToString gcmap)
                     ]
                 end
              else []
           )
       end (* genCluster *)
 
-      and emitMLRiscUnit f = 
+      fun emitMLRiscUnit f = 
           (Cells.reset();
            beginCluster 0; 
            f stream;
-           endCluster [BasicAnnotations.NO_OPTIMIZATION]
+           endCluster NO_OPT
           )
   in  app mkGlobalTables funcs;
       app genCluster (Cluster.cluster funcs);

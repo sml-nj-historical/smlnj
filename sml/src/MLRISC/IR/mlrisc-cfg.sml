@@ -5,7 +5,6 @@
  *)
 functor ControlFlowGraphFn
    (structure I : INSTRUCTIONS
-    structure B : BLOCK_NAMES
     structure P : PSEUDO_OPS
     structure GraphImpl : GRAPH_IMPLEMENTATION
     structure Asm : INSTRUCTION_EMITTER
@@ -15,7 +14,6 @@ functor ControlFlowGraphFn
 struct
 
     structure I = I
-    structure B = B
     structure P = P
     structure C = I.C
     structure W = Freq
@@ -39,7 +37,6 @@ struct
     and block = 
        BLOCK of
        {  id          : int,                        (* block id *)
-          name        : B.name,                     (* block name *)
           kind        : block_kind,                 (* block kind *)
           freq        : weight ref,                 (* execution frequency *) 
           data        : data list ref,              (* data preceeding block *) 
@@ -78,9 +75,11 @@ struct
     *  Various kinds of annotations 
     *
     *========================================================================*)
-    exception LIVEOUT of C.cellset  (* escaping live out information *)
-    exception CHANGED of unit -> unit
-    exception CHANGEDONCE of unit -> unit
+              (* escaping live out information *)
+    val LIVEOUT = Annotations.new 
+          (SOME (fn c => "Liveout: "^C.cellsetToString c))
+    val CHANGED = Annotations.new NONE : (unit -> unit) Annotations.property
+    val CHANGEDONCE = Annotations.new NONE : (unit -> unit) Annotations.property
 
    (*========================================================================
     *
@@ -91,10 +90,9 @@ struct
       | defineLabel(BLOCK{labels,...}) = let val l = Label.newLabel ""
                                          in  labels := [l]; l end
 
-    fun newBlock'(id,kind,name,insns,freq) =
+    fun newBlock'(id,kind,insns,freq) =
         BLOCK{ id          = id,
                kind        = kind,
-               name        = name,
                freq        = freq,
                data        = ref [],
                labels      = ref [],
@@ -102,10 +100,9 @@ struct
                annotations = ref []
              }
 
-    fun copyBlock(id,BLOCK{kind,name,freq,data,labels,insns,annotations,...}) =
+    fun copyBlock(id,BLOCK{kind,freq,data,labels,insns,annotations,...}) =
         BLOCK{ id          = id,
                kind        = kind,
-               name        = name,
                freq        = ref (!freq),
                data        = ref (!data),
                labels      = ref [],
@@ -113,11 +110,10 @@ struct
                annotations = ref (!annotations) 
              }
 
-    fun newBlock(id,name,freq) = newBlock'(id,NORMAL,name,[],freq)
-    fun newStart(id,freq) = newBlock'(id,START,B.default,[],freq)
-    fun newStop(id,freq) = newBlock'(id,STOP,B.default,[],freq)
-    fun newFunctionEntry(id,freq) = 
-        newBlock'(id,FUNCTION_ENTRY,B.default,[],freq)
+    fun newBlock(id,freq) = newBlock'(id,NORMAL,[],freq)
+    fun newStart(id,freq) = newBlock'(id,START,[],freq)
+    fun newStop(id,freq) = newBlock'(id,STOP,[],freq)
+    fun newFunctionEntry(id,freq) = newBlock'(id,FUNCTION_ENTRY,[],freq)
 
    (*========================================================================
     *
@@ -141,7 +137,7 @@ struct
        ) 
 
     fun emitFooter (S.STREAM{comment,...}) (BLOCK{annotations,...}) = 
-        (case A.get (fn LIVEOUT x => SOME x | _ => NONE) (!annotations) of
+        (case #get LIVEOUT (!annotations) of
             SOME s => 
             let val regs = String.tokens Char.isSpace(C.cellsetToString s)
                 val K = 7
@@ -210,8 +206,11 @@ struct
         )
 
     fun changed(G.GRAPH{graph_info=INFO{reorder,annotations,...},...}) = 
-         (app (fn CHANGED f => f() | _ => ()) (!annotations);
-          reorder := true)
+         (case #get CHANGED (!annotations) of
+            SOME f => f ()
+          | NONE => ();
+          reorder := true
+         )
 
     fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = regmap
 
@@ -222,9 +221,8 @@ struct
 
     fun reglookup cfg = C.lookup(regmap cfg)
 
-    fun get f (BLOCK{annotations,...}) = A.get f (!annotations)
-    fun liveOut b = 
-         case get (fn LIVEOUT x => SOME x | _ => NONE) b of
+    fun liveOut (BLOCK{annotations, ...}) = 
+         case #get LIVEOUT (!annotations) of
             SOME s => s
          |  NONE => C.empty
     fun fallsThruFrom(G.GRAPH cfg,b) =
@@ -289,8 +287,10 @@ struct
    fun footerText block = getString 
         (fn b => emitFooter (Asm.makeStream []) b) block
 
+   fun getStyle a = (case #get L.STYLE (!a) of SOME l => l | NONE => [])
+
    fun edgeStyle(i,j,e as EDGE{k,a,...}) = 
-   let val a = L.LABEL(show_edge e) :: !a
+   let val a = L.LABEL(show_edge e) :: getStyle a
    in  case k of 
          (ENTRY | EXIT) => L.COLOR "green" :: a
        | _ => L.COLOR "red" :: a
@@ -303,9 +303,9 @@ struct
        val an     = getAnnotations cfg
        fun node (n,b as BLOCK{annotations,...}) = 
            if !outline then
-              L.LABEL(getString (emitOutline regmap) b) :: !annotations
+              L.LABEL(getString (emitOutline regmap) b) :: getStyle annotations
            else
-              L.LABEL(show_block an regmap b) :: !annotations
+              L.LABEL(show_block an regmap b) :: getStyle annotations
    in  { graph = fn _ => [],
          edge  = edgeStyle,
          node  = node
@@ -319,9 +319,9 @@ struct
        val an     = getAnnotations cfg
        fun node(n,b as BLOCK{annotations,...}) = 
           if #has_node subgraph n then
-             L.LABEL(show_block an regmap b) :: !annotations
+             L.LABEL(show_block an regmap b) :: getStyle annotations
           else
-             L.COLOR "lightblue"::L.LABEL(headerText b) :: !annotations
+             L.COLOR "lightblue"::L.LABEL(headerText b) :: getStyle annotations
        fun edge(i,j,e) = 
             if #has_edge subgraph (i,j) then edgeStyle(i,j,e)
             else [L.EDGEPATTERN "dotted"]
