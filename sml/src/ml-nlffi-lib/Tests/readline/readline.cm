@@ -1,0 +1,6 @@
+library
+	library(FFI/readline.cm)
+is
+	$/basis.cm
+	$c/c.cm
+	FFI/readline.cm : make (-f readline.make)
