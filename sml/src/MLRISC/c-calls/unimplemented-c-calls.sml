@@ -1,8 +1,13 @@
-(* dummy-ccalls.sml
+(* unimplemented-c-calls.sml
+ *
+ *   A dummy (placeholder) "implementation" of the c-calls interface.
+ *
+ * Copyright (c) 2004 by The Fellowship of SML/NJ
  *)
-
-functor DummyCCallsFn (T: MLTREE) :> C_CALLS where T = T =
-  struct
+functor UnimplementedCCallsFn
+	    (structure T: MLTREE
+	     val impossible: string -> 'a) :> C_CALLS where T = T =
+struct
     structure T = T
 
     datatype c_arg 
@@ -10,7 +15,7 @@ functor DummyCCallsFn (T: MLTREE) :> C_CALLS where T = T =
       | FARG of T.fexp
       | ARGS of c_arg list
 
-    fun genCall _ = ErrorMsg.impossible "C-calls not implemented (genCall)"
+    fun genCall _ = impossible "C-calls not implemented (genCall)"
 
     val paramAreaOffset = 0
 
@@ -21,9 +26,8 @@ functor DummyCCallsFn (T: MLTREE) :> C_CALLS where T = T =
       | FStk of T.fty * T.I.machine_int
       | Args of arg_location list
 
-    fun layout _ = ErrorMsg.impossible "C-calls not implemented (layout)"
+    fun layout _ = impossible "C-calls not implemented (layout)"
 
     val calleeSaveRegs : T.reg list = []
     val calleeSaveFRegs : T.reg list = []
-
-  end
+end

@@ -132,6 +132,7 @@ Library
 	functor Shuffle
 	functor SpanDependencyResolution
 	functor WeightedBlockPlacementFn
+	functor UnimplementedCCallsFn
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -285,4 +286,5 @@ is
 	../block-placement/jump-chain-elim-fn.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
+	../c-calls/unimplemented-c-calls.sml
  	../omit-frameptr/omit-frame-pointer.sig
