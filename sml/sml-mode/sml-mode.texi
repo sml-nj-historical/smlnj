@@ -415,14 +415,6 @@ bindings. @xref{Configuration}, for some examples.
 @end defvr
 
 
-@defvr Hook sml-load-hook
-Default: @code{nil}
-
-Another, maybe better, place for key bindings. This hook is only run when
-SML mode is loaded into Emacs. @xref{Configuration}.
-@end defvr
-
-
 @c ========================================================= INDENTATION
 
 @node Indentation, Magic Insertion, Basics, SML Mode
