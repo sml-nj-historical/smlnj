@@ -557,30 +557,6 @@ for dir in $BINDIR $HEAPDIR $RUNDIR $LIBDIR $SRCDIR ; do
 done
 
 #
-# install the script that tests the architecture, and make sure that it works
-#
-if [ -x $BINDIR/.arch-n-opsys ]; then
-    vsay $this: Script $BINDIR/.arch-n-opsys already exists.
-else
-    cat $CONFIGDIR/_arch-n-opsys \
-    | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
-    chmod 555 $BINDIR/.arch-n-opsys
-    if [ ! -x $BINDIR/.arch-n-opsys ]; then
-	complain "$this: !!! Installation of $BINDIR/.arch-n-opsys failed."
-    fi
-fi
-
-ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
-if [ "$?" != "0" ]; then
-    echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
-    echo "$this: !!! You must patch this by hand and repeat the installation."
-    exit 2
-else
-    vsay $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
-fi
-eval $ARCH_N_OPSYS
-
-#
 # Function to install a "driver" script...
 #   This takes care of patching the source of the script with the SHELL,
 #   BINDIR, and VERSION variables to use.
@@ -607,6 +583,28 @@ installdriver() {
 #   fi
 }
 
+#
+# install the script that tests architecture and os...
+#
+installdriver _arch-n-opsys .arch-n-opsys
+
+#
+# run it to figure out what architecture and os we are using, define
+# corresponding variables...
+#
+ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
+if [ "$?" != "0" ]; then
+    echo "$this: !!! Script $BINDIR/.arch-n-opsys fails on this machine."
+    echo "$this: !!! You must patch this by hand and repeat the installation."
+    exit 2
+else
+    vsay $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
+fi
+eval $ARCH_N_OPSYS
+
+#
+# now install all the other driver scripts...
+#
 installdriver _run-sml .run-sml
 installdriver _link-sml .link-sml
 installdriver _ml-build ml-build

@@ -14,8 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
-Date: 2002/10/16 12:00:00 EDT
+Date: 2002/10/17 09:10:00 EDT
 Tag: Release_110_42
+Description:
+
+In good old tradition, there has been a slight hiccup so that we have
+to patch 110.42 after the fact.   The old release tag has been replaced
+(see below).
+
+The change solves a problem with two competing approaches the
+configuration problem regarding MacOS 10.1 vs. MacOS 10.2 which got in
+each other's way.
+
+This change only affects the runtime system code and the installer script.
+(No new bootfiles.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/10/16 12:00:00 EDT
+Tag: Release_110_42_removed
 Description:
 
 New working release.  New bootfiles.
