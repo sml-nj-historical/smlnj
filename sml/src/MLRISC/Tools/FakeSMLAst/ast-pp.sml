@@ -67,6 +67,7 @@ struct
            | _ => intinf i
            )
      | literal(INTlit i) = int i
+     | literal(INT32lit i) = int32 i
      | literal(STRINGlit s) = string s
      | literal(CHARlit c) = char c
      | literal(BOOLlit b) = bool b

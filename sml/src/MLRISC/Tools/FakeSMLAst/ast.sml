@@ -58,6 +58,7 @@ struct
    and   literal = WORDlit of word
                  | WORD32lit of Word32.word
                  | INTlit of int
+                 | INT32lit of Int32.int
                  | INTINFlit of IntInf.int
                  | STRINGlit of string
                  | CHARlit of char

@@ -35,6 +35,7 @@ struct
    fun num s S = let val (b,i,m,c,t,l) = space S
                  in  (s::b,i,m,size s+c,NUM,l) end
    fun int n S = num (Int.toString n) S
+   fun int32 n S = num (Int32.toString n) S
    fun real r S = num (Real.toString r) S
    fun intinf i S = num (IntInf.toString i) S
    fun word w S = num ("0wx"^Word.toString w) S

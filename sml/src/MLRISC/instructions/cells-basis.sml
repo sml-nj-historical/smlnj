@@ -330,11 +330,11 @@ struct
 
        fun toString' cellset =
        let fun pr cellset = 
-           let fun loop((DESC{kind, toString, ...},s)::rest, S)=
+           let fun loop((DESC{kind, ...},s)::rest, S)=
                    (case s of
                       [] => loop(rest, S)
                     | _  => cellkindToString kind::"="::
-                            printSet(toString o registerId,s," "::loop(rest,S))
+                            printSet(toString,s," "::loop(rest,S))
                    )
                  | loop([],S) = S
            in  String.concat(loop(cellset, [])) 

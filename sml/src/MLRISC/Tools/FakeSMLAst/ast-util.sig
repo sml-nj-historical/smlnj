@@ -21,6 +21,7 @@ sig
    val NILexp  : Ast.exp
 
    val INTexp    : int -> Ast.exp
+   val INT32exp  : Int32.int -> Ast.exp
    val INTINFexp : IntInf.int -> Ast.exp
    val STRINGexp : string -> Ast.exp
    val BOOLexp   : bool -> Ast.exp
@@ -29,6 +30,7 @@ sig
    val CHARexp   : char -> Ast.exp
 
    val INTpat    : int -> Ast.pat
+   val INT32pat  : Int32.int -> Ast.pat
    val INTINFpat : IntInf.int -> Ast.pat
    val STRINGpat : string -> Ast.pat
    val BOOLpat   : bool -> Ast.pat

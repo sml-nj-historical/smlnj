@@ -56,7 +56,7 @@
  *) 
 
 local
-   val debug = true         (* set this to true to debug this module 
+   val debug = false         (* set this to true to debug this module 
                               * set this to false for production use.
                               *) 
    val debugLiveness = true (* debug liveness analysis *)
@@ -1336,10 +1336,7 @@ struct
            let (* Call this continuation when done with code generation *)
                fun FINISH code = loop(stamp+1, rest, lastUses, code) 
 
-               (* Call this continuation when done with floating point 
-                * code generation.  Remove all dead code first. 
-                *)
-               fun DONE code = 
+               fun KILL_THE_DEAD(dead, code) =
                let fun kill([], code) = FINISH code
                      | kill(f::fs, code) = 
                        let val fx = CB.registerNum f 
@@ -1366,6 +1363,11 @@ struct
                        end
                in  kill(dead, code) 
                end
+
+               (* Call this continuation when done with floating point 
+                * code generation.  Remove all dead code first. 
+                *)
+               fun DONE code = KILL_THE_DEAD(dead, code)
 
                (* Is this the last use of register f? *)
                fun isLastUse f = A.sub(lastUseTbl, f) = stamp
@@ -1795,10 +1797,10 @@ struct
                in
 		 case returnSet of
                      [] => ()
-                   | [r] => ST.push(stack, CB.registerNum r)
+                   | [r] => ST.push(stack, CB.registerNum r) 
                    | _   => 
                      error "can't return more than one fp argument (yet)";
-                   FINISH code
+                 KILL_THE_DEAD(List.filter isDead returnSet, code)
                end
 	       fun x86trans instr =
                 (case instr 
@@ -1871,6 +1873,13 @@ struct
                  | scan(I.INSTR(I.FILD mem)) = push()
                  | scan(I.INSTR(I.FILDL mem)) = push()
                  | scan(I.INSTR(I.FILDLL mem)) = push()
+                 | scan(I.INSTR(I.CALL{return, ...})) = 
+                   (n := 0; (* clear the stack *)
+                    (* Simulate the pushing of arguments *)
+                    let val returnSet = SL.return(SL.uniq(getCell return))
+                    in  app (fn _ => push()) returnSet
+                    end
+                   )
                  | scan _ = ()
                val _ = app scan (rev insns);  
                val n = !n

@@ -10,6 +10,7 @@ sig
    val !        : string -> pp       (* an identifier *)
    val !!       : string -> pp       (* a symbol *)
    val int      : int -> pp          (* an integer *)
+   val int32    : Int32.int -> pp    (* an integer *)
    val intinf   : IntInf.int -> pp   (* an integer *)
    val char     : char -> pp         (* an ML character *)
    val word     : word -> pp         (* an ML word constant *)
