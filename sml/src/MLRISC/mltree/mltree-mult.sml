@@ -9,13 +9,14 @@ functor MLTreeMult
    structure T : MLTREE
       sharing I.Constant   = T.Constant
 
+   structure CB : CELLS_BASIS = CellsBasis
    val intTy : int (* width of integer type *)
 
-   type argi = {r:I.C.cell, i:int, d:I.C.cell}
-   type arg  = {r1:I.C.cell, r2:I.C.cell, d:I.C.cell} 
+   type argi = {r:CB.cell, i:int, d:CB.cell}
+   type arg  = {r1:CB.cell, r2:CB.cell, d:CB.cell} 
 
      (* these are always non-overflow trapping *)
-   val mov   : {r:I.C.cell,d:I.C.cell} -> I.instruction
+   val mov   : {r:CB.cell, d:CB.cell} -> I.instruction
    val add   : arg -> I.instruction
    val slli  : argi -> I.instruction list
    val srli  : argi -> I.instruction list
@@ -62,7 +63,7 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("MLTreeMult",msg)
 
-   val zeroR   = C.zeroReg C.GP 
+   val zeroR   = C.zeroReg CB.GP 
    val shiftri = if signed then srai else srli
 
    fun isPowerOf2 w = ((w - 0w1) && w) = 0w0

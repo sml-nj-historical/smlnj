@@ -41,6 +41,7 @@ struct
   structure W32 = Word32
   structure P   = PseudoInstrs
   structure A   = MLRiscAnnotations
+  structure CB  = CellsBasis
 
  (*********************************************************
 
@@ -169,11 +170,12 @@ struct
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CellsBasis
 
      val intTy = 32
    
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
@@ -211,11 +213,12 @@ struct
   functor Multiply64 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CellsBasis
    
      val intTy = 64
 
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell, r2:CB.cell, d:CB.cell}
+     type argi = {r:CB.cell, i:int, d:CB.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d}= I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
@@ -413,11 +416,11 @@ struct
                            [_] => NONE | _ => SOME(I.FDirect(newFreg()))},an)
 
       and move(s,d,an) = 
-          if C.sameCell(s,d) orelse C.sameCell(d,zeroR) then () else 
+          if CB.sameCell(s,d) orelse CB.sameCell(d,zeroR) then () else 
           mark(I.COPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
       and fmove(s,d,an) = 
-          if C.sameCell(s,d) orelse C.sameCell(d,zeroFR) then () else 
+          if CB.sameCell(s,d) orelse CB.sameCell(d,zeroFR) then () else 
           mark(I.FCOPY{dst=[d],src=[s],impl=ref NONE,tmp=NONE},an)
 
        (* emit an sign extension op *)

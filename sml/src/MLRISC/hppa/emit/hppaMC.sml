@@ -70,13 +70,13 @@ struct
             eByteW b16; 
             eByteW b8 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_CR r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_fmt (I.SGL) = (0wx0 : Word32.word)
      | emit_fmt (I.DBL) = (0wx1 : Word32.word)
      | emit_fmt (I.QUAD) = (0wx3 : Word32.word)
@@ -395,7 +395,7 @@ struct
    and FTest {} = eWord32 0wx30002420
 
 (*#line 646.7 "hppa/hppa.mdl"*)
-   val zeroR = Option.valOf (C.zeroReg C.GP)
+   val zeroR = Option.valOf (C.zeroReg CellsBasis.GP)
 
 (*#line 647.7 "hppa/hppa.mdl"*)
    fun opn opnd = 
@@ -605,7 +605,7 @@ struct
      | emitInstr (I.BL{lab, t, defs, uses, cutsTo, mem, n}) = branchLink (0wx3a, 
           t, lab, 0wx0, n)
      | emitInstr (I.BLE{d, b, sr, t, defs, uses, cutsTo, mem}) = 
-       (case (d, C.registerId t) of
+       (case (d, CellsBasis.registerId t) of
          (I.IMMED 0, 31) => BranchExternal {Op=0wx39, b=b, w1=0wx0, s=assemble_3 (itow sr), 
             w2=0wx0, n=true, w=0wx0}
        | _ => error "BLE: not implemented"

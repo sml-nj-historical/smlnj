@@ -13,7 +13,6 @@ functor ClusterRA
    (structure Flowgraph : FLOWGRAPH
     structure Asm       : INSTRUCTION_EMITTER
     structure InsnProps : INSN_PROPERTIES
-      where C = CellsBasis
     structure Spill : RA_SPILL 
       sharing Flowgraph.I = InsnProps.I = Asm.I = Spill.I 
       sharing Asm.P = Flowgraph.P
@@ -35,7 +34,8 @@ struct
       )
 
    open G
-   structure C  = I.C
+   structure C      = I.C
+   structure CB     = CellsBasis
 
    fun isOn(flag,mask) = Word.andb(flag,mask) <> 0w0
 
@@ -49,17 +49,17 @@ struct
   
    val mode = 0w0
 
-   fun uniqCells s = C.SortedCells.return(C.SortedCells.uniq s)
+   fun uniqCells s = CB.SortedCells.return(CB.SortedCells.uniq s)
 
-   fun chaseCell(c as C.CELL{col=ref(C.MACHINE r),...}) = (c,r)
-     | chaseCell(C.CELL{col=ref(C.ALIASED c), ...}) = chaseCell c
-     | chaseCell(c as C.CELL{col=ref C.SPILLED, ...}) = (c,~1)
-     | chaseCell(c as C.CELL{col=ref C.PSEUDO, id, ...}) = (c,id)
+   fun chaseCell(c as CB.CELL{col=ref(CB.MACHINE r),...}) = (c,r)
+     | chaseCell(CB.CELL{col=ref(CB.ALIASED c), ...}) = chaseCell c
+     | chaseCell(c as CB.CELL{col=ref CB.SPILLED, ...}) = (c,~1)
+     | chaseCell(c as CB.CELL{col=ref CB.PSEUDO, id, ...}) = (c,id)
 
-   fun colorOf(C.CELL{col=ref(C.MACHINE r),...}) = r
-     | colorOf(C.CELL{col=ref(C.ALIASED c), ...}) = colorOf c
-     | colorOf(C.CELL{col=ref C.SPILLED, ...}) = ~1
-     | colorOf(C.CELL{col=ref C.PSEUDO, id, ...}) = id
+   fun colorOf(CB.CELL{col=ref(CB.MACHINE r),...}) = r
+     | colorOf(CB.CELL{col=ref(CB.ALIASED c), ...}) = colorOf c
+     | colorOf(CB.CELL{col=ref CB.SPILLED, ...}) = ~1
+     | colorOf(CB.CELL{col=ref CB.PSEUDO, id, ...}) = id
 
    fun chase(NODE{color=ref(ALIASED n), ...}) = chase n
      | chase n = n
@@ -122,7 +122,7 @@ struct
             * v is a source of a copy.
             *)
            val copyTable    = IntHashTable.mkTable(N, NotThere) 
-                : {dst:C.cell,pt:int} list IntHashTable.hash_table
+                : {dst:CB.cell,pt:int} list IntHashTable.hash_table
            val lookupCopy   = IntHashTable.find copyTable 
            val lookupCopy   = fn r => case lookupCopy r of SOME c => c 
                                                          | NONE => []
@@ -282,13 +282,13 @@ struct
            fun rmvDedicated regs =
            let fun loop([], rs') = rs'
                  | loop(r::rs, rs') = 
-                   let fun rmv(r as C.CELL{col=ref(C.PSEUDO), id, ...}) = 
+                   let fun rmv(r as CB.CELL{col=ref(CB.PSEUDO), id, ...}) = 
 			     if isDedicated(id) then loop(rs, rs') else loop(rs, r::rs')
-                         | rmv(C.CELL{col=ref(C.ALIASED r), ...}) = rmv r
-                         | rmv(r as C.CELL{col=ref(C.MACHINE col), ...}) = 
+                         | rmv(CB.CELL{col=ref(CB.ALIASED r), ...}) = rmv r
+                         | rmv(r as CB.CELL{col=ref(CB.MACHINE col), ...}) = 
                              if isDedicated col then loop(rs, rs')
                              else loop(rs, r::rs')
-                         | rmv(C.CELL{col=ref(C.SPILLED), ...}) = loop(rs,rs')
+                         | rmv(CB.CELL{col=ref(CB.SPILLED), ...}) = loop(rs,rs')
                    in  rmv r 
                    end
            in  loop(regs, []) end

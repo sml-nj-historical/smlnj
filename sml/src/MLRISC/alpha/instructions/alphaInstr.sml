@@ -16,11 +16,11 @@ sig
       sharing Constant = T.Constant
       sharing Region = T.Region
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:int}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:int}
    datatype operand =
-     REGop of C.cell
+     REGop of CellsBasis.cell
    | IMMop of int
    | HILABop of T.labexp
    | LOLABop of T.labexp
@@ -216,35 +216,40 @@ sig
    | IMB
    | RDUNIQUE
    | WRUNIQUE
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = (CellsBasis.cell * operand)
    datatype instruction =
-     DEFFREG of C.cell
-   | LDA of {r:C.cell, b:C.cell, d:operand}
-   | LDAH of {r:C.cell, b:C.cell, d:operand}
-   | LOAD of {ldOp:load, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | STORE of {stOp:store, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | FLOAD of {ldOp:fload, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | FSTORE of {stOp:fstore, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | JMPL of ({r:C.cell, b:C.cell, d:int} * Label.label list)
-   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+     DEFFREG of CellsBasis.cell
+   | LDA of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
+   | LDAH of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
+   | LOAD of {ldOp:load, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, mem:Region.region}
+   | STORE of {stOp:store, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+   | FLOAD of {ldOp:fload, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | RET of {r:C.cell, b:C.cell, d:int}
-   | BRANCH of {b:branch, r:C.cell, lab:Label.label}
-   | FBRANCH of {b:fbranch, f:C.cell, lab:Label.label}
-   | OPERATE of {oper:operate, ra:C.cell, rb:operand, rc:C.cell}
-   | OPERATEV of {oper:operateV, ra:C.cell, rb:operand, rc:C.cell}
-   | CMOVE of {oper:cmove, ra:C.cell, rb:operand, rc:C.cell}
-   | PSEUDOARITH of {oper:pseudo_op, ra:C.cell, rb:operand, rc:C.cell, tmps:C.cellset}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FSTORE of {stOp:fstore, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
+        mem:Region.region}
+   | JMPL of ({r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list)
+   | JSR of {r:CellsBasis.cell, b:CellsBasis.cell, d:int, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region}
+   | BSR of {r:CellsBasis.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region}
+   | RET of {r:CellsBasis.cell, b:CellsBasis.cell, d:int}
+   | BRANCH of {b:branch, r:CellsBasis.cell, lab:Label.label}
+   | FBRANCH of {b:fbranch, f:CellsBasis.cell, lab:Label.label}
+   | OPERATE of {oper:operate, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | OPERATEV of {oper:operateV, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
+        tmps:C.cellset}
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FUNARY of {oper:funary, fb:C.cell, fc:C.cell}
-   | FOPERATE of {oper:foperate, fa:C.cell, fb:C.cell, fc:C.cell}
-   | FOPERATEV of {oper:foperateV, fa:C.cell, fb:C.cell, fc:C.cell}
-   | FCMOVE of {oper:fcmove, fa:C.cell, fb:C.cell, fc:C.cell}
+   | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
+   | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
+   | FOPERATEV of {oper:foperateV, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+        fc:CellsBasis.cell}
+   | FCMOVE of {oper:fcmove, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | TRAPB
    | CALL_PAL of {code:osf_user_palcode, def:C.cellset, use:C.cellset}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
@@ -262,11 +267,11 @@ struct
    structure Region = T.Region
    structure Constant = T.Constant
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:int}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:int}
    datatype operand =
-     REGop of C.cell
+     REGop of CellsBasis.cell
    | IMMop of int
    | HILABop of T.labexp
    | LOLABop of T.labexp
@@ -462,35 +467,40 @@ struct
    | IMB
    | RDUNIQUE
    | WRUNIQUE
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = (CellsBasis.cell * operand)
    datatype instruction =
-     DEFFREG of C.cell
-   | LDA of {r:C.cell, b:C.cell, d:operand}
-   | LDAH of {r:C.cell, b:C.cell, d:operand}
-   | LOAD of {ldOp:load, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | STORE of {stOp:store, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | FLOAD of {ldOp:fload, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | FSTORE of {stOp:fstore, r:C.cell, b:C.cell, d:operand, mem:Region.region}
-   | JMPL of ({r:C.cell, b:C.cell, d:int} * Label.label list)
-   | JSR of {r:C.cell, b:C.cell, d:int, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+     DEFFREG of CellsBasis.cell
+   | LDA of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
+   | LDAH of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
+   | LOAD of {ldOp:load, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, mem:Region.region}
+   | STORE of {stOp:store, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | BSR of {r:C.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+   | FLOAD of {ldOp:fload, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | RET of {r:C.cell, b:C.cell, d:int}
-   | BRANCH of {b:branch, r:C.cell, lab:Label.label}
-   | FBRANCH of {b:fbranch, f:C.cell, lab:Label.label}
-   | OPERATE of {oper:operate, ra:C.cell, rb:operand, rc:C.cell}
-   | OPERATEV of {oper:operateV, ra:C.cell, rb:operand, rc:C.cell}
-   | CMOVE of {oper:cmove, ra:C.cell, rb:operand, rc:C.cell}
-   | PSEUDOARITH of {oper:pseudo_op, ra:C.cell, rb:operand, rc:C.cell, tmps:C.cellset}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FSTORE of {stOp:fstore, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
+        mem:Region.region}
+   | JMPL of ({r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list)
+   | JSR of {r:CellsBasis.cell, b:CellsBasis.cell, d:int, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region}
+   | BSR of {r:CellsBasis.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, mem:Region.region}
+   | RET of {r:CellsBasis.cell, b:CellsBasis.cell, d:int}
+   | BRANCH of {b:branch, r:CellsBasis.cell, lab:Label.label}
+   | FBRANCH of {b:fbranch, f:CellsBasis.cell, lab:Label.label}
+   | OPERATE of {oper:operate, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | OPERATEV of {oper:operateV, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
+   | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
+        tmps:C.cellset}
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FUNARY of {oper:funary, fb:C.cell, fc:C.cell}
-   | FOPERATE of {oper:foperate, fa:C.cell, fb:C.cell, fc:C.cell}
-   | FOPERATEV of {oper:foperateV, fa:C.cell, fb:C.cell, fc:C.cell}
-   | FCMOVE of {oper:fcmove, fa:C.cell, fb:C.cell, fc:C.cell}
+   | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
+   | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
+   | FOPERATEV of {oper:foperateV, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+        fc:CellsBasis.cell}
+   | FCMOVE of {oper:fcmove, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | TRAPB
    | CALL_PAL of {code:osf_user_palcode, def:C.cellset, use:C.cellset}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}

@@ -98,7 +98,7 @@ struct
       fun size instr =
       case instr of
         I.ARITH{a=I.OR,r,i,...} => 
-            if C.cellId r = 0 then oper(i,8) else oper(i,12)
+            if CellsBasis.cellId r = 0 then oper(i,8) else oper(i,12)
       | I.ARITH{i,...} => oper(i,12)
       | I.SHIFT{i,...} => oper(i,12)
       | I.LOAD{i,...} => oper(i,12)
@@ -162,7 +162,7 @@ struct
     | (I.FCOPY{impl=ref(SOME instrs),...},_) => instrs
     | (instr,4) => [instr]
     | (I.ARITH{a=I.OR,r,i,d},8) =>
-        if C.cellId r = 0 then
+        if CellsBasis.cellId r = 0 then
         let val {lo,hi} = split i
         in  [I.SETHI{i=hi,d=C.asmTmpR},
              I.ARITH{a=I.OR,r=C.asmTmpR,i=I.IMMED lo,d=d}

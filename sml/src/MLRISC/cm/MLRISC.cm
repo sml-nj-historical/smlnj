@@ -6,7 +6,6 @@ Library
 	signature BBSCHED
 	signature CELLS
 	signature CELLS_BASIS
-	signature CELLS_COMMON
 	signature CLUSTER_OPTIMIZATION
 	signature CODE_STRING
 	signature CONSTANT
@@ -59,7 +58,6 @@ Library
 	structure AsmStream
 	structure CTypes
 	structure CellsBasis
-	structure CellsInternal
 	structure ChaitinSpillHeur
 	structure ChowHennessySpillHeur
 	structure Label
@@ -72,7 +70,7 @@ Library
 	structure RAGraph
 	functor BBSched2
 	functor BackPatch
-	functor CellsCommon
+	functor Cells
 	functor ClusterCountCopies
 	functor ClusterEmit
 	functor ClusterExpandCopies

@@ -13,7 +13,7 @@ struct
 
   val GP = PPCCells.GPReg
   val FP = PPCCells.FPReg
-  val CC = PPCCells.Reg PPCCells.CC
+  val CC = PPCCells.Reg CellsBasis.CC
 
   fun REG r = T.REG(32, GP r) 
   fun FREG f = T.FREG(64, FP f)
@@ -49,7 +49,7 @@ struct
          ([stdlink(false), stdclos(false), stdarg(false), stdcont(false)] @ miscregs)
 
   local
-      structure SC = PPCCells.SortedCells
+      structure SC = CellsBasis.SortedCells
       val -- = SC.difference
       infix --
   in

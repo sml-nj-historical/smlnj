@@ -14,10 +14,10 @@ sig
 
    exception TooComplex
 
-   val multiply : {r:C.cell,i:int,d:C.cell} -> I.instruction list 
+   val multiply : {r:CellsBasis.cell,i:int,d:CellsBasis.cell} -> I.instruction list 
 
    val divide   : { mode:T.Basis.rounding_mode,
                     stm :T.stm -> unit
-                  } -> {r:C.cell,i:int,d:C.cell} -> I.instruction list
+                  } -> {r:CellsBasis.cell,i:int,d:CellsBasis.cell} -> I.instruction list
 
 end

@@ -70,13 +70,13 @@ struct
             eByteW b16; 
             eByteW b8 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_SPR r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_SPR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_operand (I.RegOp GP) = emit_GP GP
      | emit_operand (I.ImmedOp int) = itow int
      | emit_operand (I.LabelOp labexp) = itow (LabelExp.valueOf labexp)

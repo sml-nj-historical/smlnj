@@ -9,6 +9,7 @@ struct
   structure C = I.C
   structure LE = I.LabelExp
   structure T = I.T 
+  structure CB = CellsBasis
 
   exception NegateConditional
 
@@ -105,33 +106,33 @@ struct
      | hashOpn(I.ImmedLabel le) = LE.hash le + 0w123
      | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
      | hashOpn(I.LabelEA le) = LE.hash le + 0w44444
-     | hashOpn(I.Direct r)  = C.hashCell r
-     | hashOpn(I.MemReg r)  = C.hashCell r + 0w2123
-     | hashOpn(I.ST f) = C.hashCell f + 0w88
-     | hashOpn(I.FPR f) = C.hashCell f + 0w881
-     | hashOpn(I.FDirect f) = C.hashCell f + 0w31245
+     | hashOpn(I.Direct r)  = CB.hashCell r
+     | hashOpn(I.MemReg r)  = CB.hashCell r + 0w2123
+     | hashOpn(I.ST f) = CB.hashCell f + 0w88
+     | hashOpn(I.FPR f) = CB.hashCell f + 0w881
+     | hashOpn(I.FDirect f) = CB.hashCell f + 0w31245
      | hashOpn(I.Displace {base, disp, ...}) = 
-         hashOpn disp + C.hashCell base
+         hashOpn disp + CB.hashCell base
      | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
-         C.hashCell index + Word.fromInt scale + hashOpn disp
+         CB.hashCell index + Word.fromInt scale + hashOpn disp
    fun eqOpn(I.Immed a,I.Immed b) = a = b
      | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = LE.==(a,b)
      | eqOpn(I.Relative a,I.Relative b) = a = b
      | eqOpn(I.LabelEA a,I.LabelEA b) = LE.==(a,b)
-     | eqOpn(I.Direct a,I.Direct b) = C.sameColor(a,b)
-     | eqOpn(I.MemReg a,I.MemReg b) = C.sameColor(a,b)
-     | eqOpn(I.FDirect a,I.FDirect b) = C.sameColor(a,b)
-     | eqOpn(I.ST a,I.ST b) = C.sameColor(a,b)
-     | eqOpn(I.FPR a,I.FPR b) = C.sameColor(a,b)
+     | eqOpn(I.Direct a,I.Direct b) = CB.sameColor(a,b)
+     | eqOpn(I.MemReg a,I.MemReg b) = CB.sameColor(a,b)
+     | eqOpn(I.FDirect a,I.FDirect b) = CB.sameColor(a,b)
+     | eqOpn(I.ST a,I.ST b) = CB.sameColor(a,b)
+     | eqOpn(I.FPR a,I.FPR b) = CB.sameColor(a,b)
      | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
-          C.sameColor(a,c) andalso eqOpn(b,d)
+          CB.sameColor(a,c) andalso eqOpn(b,d)
      | eqOpn(I.Indexed{base=a,index=b,scale=c,disp=d,...},
              I.Indexed{base=e,index=f,scale=g,disp=h,...}) =
-          C.sameColor(b,f) andalso c = g
+          CB.sameColor(b,f) andalso c = g
           andalso sameCellOption(a,e) andalso eqOpn(d,h)
      | eqOpn _ = false
    and sameCellOption(NONE, NONE) = true
-     | sameCellOption(SOME x, SOME y) = C.sameColor(x,y)
+     | sameCellOption(SOME x, SOME y) = CB.sameColor(x,y)
      | sameCellOption _ = false
 
  (*========================================================================
@@ -183,7 +184,7 @@ struct
         | I.TESTL arg | I.TESTW arg | I.TESTB arg ) => cmptest arg 
       | I.BITOP{lsrc, rsrc, ...} => cmptest{lsrc=lsrc,rsrc=rsrc}
       | I.BINARY{binOp=I.XORL,src=I.Direct rs,dst=I.Direct rd,...} =>   
-           if C.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
+           if CB.sameColor(rs,rd) then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
       | I.CMPXCHG{src, dst, ...} =>
@@ -233,7 +234,7 @@ struct
          * do potentially it may define *and* use 
          *)
       | I.CMOV{src,dst,...} => ([dst], operandAcc(src, [dst]))
-      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
         let val (d,u) = defUseR i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseR i
       | _		      => ([], [])
@@ -281,14 +282,14 @@ struct
       | I.FIBINOP{lsrc, rsrc, dst, ...} => fbinop(lsrc, rsrc, dst)
       | I.FUNOP{src, dst, ...} => (operand dst, operand src)
 
-      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
         let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _  => ([], [])
   end
 
-  fun defUse C.GP = defUseR
-    | defUse C.FP = defUseF
+  fun defUse CB.GP = defUseR
+    | defUse CB.FP = defUseF
     | defUse _ = error "defUse"
 
   (*========================================================================

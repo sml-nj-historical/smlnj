@@ -13,7 +13,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
 
 (*#line 510.7 "x86/x86.mdl"*)
-                      val memRegBase : MemRegs.I.C.cell option
+                      val memRegBase : CellsBasis.cell option
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
@@ -65,7 +65,7 @@ struct
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
          (nl(); comment(title^C.CellSet.toString cellset))
        val emit_cellset = 
@@ -288,7 +288,7 @@ struct
        end
 
 (*#line 518.6 "x86/x86.mdl"*)
-   val {low=SToffset, ...} = C.cellRange C.FP
+   val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 
 (*#line 520.6 "x86/x86.mdl"*)
    fun emitScale 0 = emit "1"
@@ -314,7 +314,7 @@ struct
        | I.ST f => emitCell f
        | I.FPR f => 
          ( emit "%f"; 
-           emit (Int.toString (C.registerNum f)))
+           emit (Int.toString (CellsBasis.registerNum f)))
        | I.FDirect f => emit_operand (memReg opn)
        | I.Displace{base, disp, mem, ...} => 
          ( emit_disp disp; 
@@ -337,7 +337,7 @@ struct
            emit ")"; 
            emit_region mem )
        )
-   and emit_operand8 (I.Direct r) = emit (C.toStringWithSize (r, 8))
+   and emit_operand8 (I.Direct r) = emit (CellsBasis.toStringWithSize (r, 8))
      | emit_operand8 opn = emit_operand opn
    and emit_disp (I.Immed 0) = ()
      | emit_disp (I.Immed i) = emitInt32 i
@@ -371,7 +371,7 @@ struct
        end
 
 (*#line 581.7 "x86/x86.mdl"*)
-   fun isST0 (I.ST r) = (C.registerNum r) = 0
+   fun isST0 (I.ST r) = (CellsBasis.registerNum r) = 0
      | isST0 _ = false
 
 (*#line 585.7 "x86/x86.mdl"*)

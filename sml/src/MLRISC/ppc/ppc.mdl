@@ -63,7 +63,7 @@ struct
         | LabelOp of T.labexp	``<emit_labexp labexp>''
    					(itow(LabelExp.valueOf labexp))
 
-      type addressing_mode = C.cell * operand
+      type addressing_mode = CellsBasis.cell * operand
    
       datatype ea = 
           Direct of $GP
@@ -579,7 +579,7 @@ struct
         | eOERc{OE=true,Rc=true}   = emit "o."
       fun eRc false = "" | eRc true  = "."
       fun cr_bit(cr,bit) = 
-         4 * (C.physicalRegisterNum cr) + 
+         4 * (CellsBasis.physicalRegisterNum cr) + 
          (case bit of
             I.LT => 0 | I.GT => 1 | I.EQ => 2 | I.SO => 3
           | I.FL => 0 | I.FG => 1 | I.FE => 2 | I.FU => 3
@@ -589,7 +589,7 @@ struct
       fun eLK true = emit "l" | eLK false = ()
       fun eI (I.RegOp _) = () | eI _ = emit "i"
       fun eBI(bo, bf, bit) = 
-          case (bo, C.physicalRegisterNum bf) of 
+          case (bo, CellsBasis.physicalRegisterNum bf) of 
             (I.ALWAYS, _) => ()
           | (I.COUNTER{cond=NONE, ...}, _) => ()
           | (_,0) => emit(asm_bit bit)

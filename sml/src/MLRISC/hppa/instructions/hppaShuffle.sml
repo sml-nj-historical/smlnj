@@ -2,12 +2,13 @@ functor HppaShuffle(I:HPPAINSTR) : HPPASHUFFLE = struct
   structure I = I
   structure C = I.C
   structure Shuffle = Shuffle(I)
-  type t = {tmp:I.ea option, dst:C.cell list, src:C.cell list}
+  structure CB = CellsBasis
+  type t = {tmp:I.ea option, dst:CB.cell list, src:CB.cell list}
 
   fun error msg = MLRiscErrorMsg.error("HppaShuffle",msg)
   val mem = I.Region.memory
 
-  val zeroR = Option.valOf(C.zeroReg C.GP)
+  val zeroR = Option.valOf(C.zeroReg CB.GP)
 
   fun move{src=I.Direct rs, dst=I.Direct rt} = 
        [I.ARITH{a=I.OR, r1=rs, r2=zeroR, t=rt}]
@@ -20,13 +21,13 @@ functor HppaShuffle(I:HPPAINSTR) : HPPASHUFFLE = struct
   fun fmove{src=I.FDirect fs, dst=I.FDirect fd} =
         [I.FUNARY{fu=I.FCPY_D, f=fs, t=fd}]
     | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} = let
-        val tmp = I.C.newCell I.C.GP ()
+        val tmp = I.C.newCell CB.GP ()
       in
 	[I.LDO{i=I.IMMED disp, b=base, t=tmp},
 	 I.FLOADX{flx=I.FLDDX, b=tmp, x=zeroR, t=ft, mem=mem}]
       end
     | fmove{src=I.FDirect fs, dst=I.Displace{base, disp}} = let
-	val tmp = I.C.newCell I.C.GP ()
+	val tmp = I.C.newCell CB.GP ()
       in
 	[I.LDO{i=I.IMMED disp, b=base, t=tmp},
 	 I.FSTOREX{fstx=I.FSTDX, b=tmp, x=zeroR, r=fs, mem=mem}]

@@ -70,12 +70,12 @@ struct
             eByteW b24; 
             eByteW b32 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_branch (I.BR) = (0wx30 : Word32.word)
      | emit_branch (I.BLBC) = (0wx38 : Word32.word)
      | emit_branch (I.BEQ) = (0wx39 : Word32.word)
@@ -362,7 +362,7 @@ struct
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
 
 (*#line 478.7 "alpha/alpha.mdl"*)
-   val zeroR = Option.valOf (C.zeroReg C.GP)
+   val zeroR = Option.valOf (C.zeroReg CellsBasis.GP)
        fun emitter instr =
        let
    fun emitInstr (I.DEFFREG FP) = ()

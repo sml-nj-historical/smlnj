@@ -304,7 +304,7 @@ struct
      | ty(CELLty id) = 
            select( fn "pretty" => !!"$" ++ !id 
                     | "code" => !(if id = "cellset" then "C.cellset" 
-                                  else "C.cell")
+                                  else "CellsBasis.cell")
                     | mode => (error mode; nop)
                  )
      | ty(VARty(TYPEkind,i,_,ref NONE)) = !("'X"^Int.toString i)

@@ -47,20 +47,21 @@ struct
    structure Core   = RACore
    structure C      = I.C
    structure G      = Core.G
+   structure CB     = CellsBasis
 
-   type getreg = { pref  : C.cell_id list,
+   type getreg = { pref  : CB.cell_id list,
                    stamp : int,
                    proh  : int Array.array
-                 } -> C.cell_id
+                 } -> CB.cell_id
 
    type mode = word
 
    datatype spillLoc = datatype G.spillLoc
 
    type raClient =
-   { cellkind     : C.cellkind,             (* kind of register *)
-     spillProh    : C.cell list,            (* don't spill these *)
-     memRegs      : C.cell list,            (* memory registers *)
+   { cellkind     : CB.cellkind,             (* kind of register *)
+     spillProh    : CB.cell list,            (* don't spill these *)
+     memRegs      : CB.cell list,            (* memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : int -> bool,            (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)
@@ -165,7 +166,7 @@ struct
                                    dedicated=dedicated,
                                    numRegs=numCell,
                                    maxRegs=C.maxCell,
-                                   showReg=C.toString,
+                                   showReg=CellsBasis.toString,
                                    getreg=getreg,
                                    getpair=fn _ => error "getpair",
                                    firstPseudoR=C.firstPseudo,
@@ -362,7 +363,7 @@ struct
     
            fun initSpillProh(cells) = 
            let val markAsSpilled = IntHashTable.insert spilledRegs
-               fun mark r = markAsSpilled(C.registerId r,true)
+               fun mark r = markAsSpilled(CellsBasis.registerId r,true)
            in  app mark cells end
     
        in  dumpFlowgraph(cfg_before_ra,"before register allocation");

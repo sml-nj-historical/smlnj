@@ -6,7 +6,7 @@ struct
 
   type reduce = 
     { stm: T.stm -> unit, 
-      rexp: T.rexp -> C.cell, 
+      rexp: T.rexp -> CellsBasis.cell, 
       emit: I.instruction -> unit }
 
   fun error msg = ErrorMsg.impossible("HppaLabelComp." ^ msg)

@@ -7,35 +7,20 @@
 (*
  * This functor is applied to create the cells structure for an  architecture
  *)
-functor CellsCommon
+functor Cells
    (exception Cells
     val firstPseudo   : int
     val cellKindDescs : (CellsBasis.cellkind * CellsBasis.cellkindDesc) list
-   ) : CELLS_COMMON = 
+   ) : CELLS = 
 struct
 
-   open CellsBasis CellsInternal
-
-   structure CellsBasis = CellsBasis
+   open CellsBasis 
 
    exception Cells = Cells
 
    val i2s = Int.toString
 
    fun error msg = MLRiscErrorMsg.error(exnName Cells, msg)
-   (*
-   val cellKindDescs =
-       (CONST,
-        DESC{high= ~1, low=0, physicalRegs=ref(CellsInternal.array0),
-             kind=CONST, counter=ref 0, 
-             toString=fn v => "v"^i2s v,
-             toStringWithSize=fn (v,_) => "v"^i2s v,
-             defaultValues=[], 
-             zeroReg=NONE
-            } 
-       ) :: 
-       cellKindDescs
-    *)
 
    val cellkinds	 = map (fn (kind,_) => kind) cellKindDescs
    val firstPseudo	 = firstPseudo
@@ -155,6 +140,7 @@ struct
         name := firstName
        )
 
+
    structure CellSet =
    struct
       type cellset = (cellkindDesc * cell list) list
@@ -189,7 +175,7 @@ struct
                if same(k,k') then s else loop cellset
       in  loop cellset end
 
-      fun get k = get'(desc k)
+      fun get (k: cellkind) = get'(desc k)
 
       fun update' k (cellset:cellset,s) =
       let fun loop [] = [(k,s)]
@@ -233,7 +219,7 @@ struct
       in  pr cellset end
 
       val toString = toString'
-   end
+   end (* CellSet *)
 
    type cellset = CellSet.cellset
    val empty   = CellSet.empty
@@ -255,4 +241,9 @@ struct
    fun defaultValues k = 
    let val DESC{defaultValues, ...} = desc k
    in  defaultValues end 
+
+  (* dummy values for now; these get redefined for each architecture *)
+   val stackptrR = GPReg 0
+   val asmTmpR = GPReg 0
+   val fasmTmp = FPReg 0
 end

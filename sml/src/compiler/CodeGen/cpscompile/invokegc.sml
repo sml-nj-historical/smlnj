@@ -19,12 +19,13 @@ struct
    structure T  = C.T
    structure D  = MS.ObjDesc
    structure R  = CPSRegions
-   structure S  = Cells.SortedCells
    structure St = T.Stream
    structure SL = SortedList
    structure GC = SMLGCType
    structure Cells = Cells
    structure A  = Array
+   structure CB = CellsBasis
+   structure S  = CB.SortedCells
 
    fun error msg = ErrorMsg.impossible("InvokeGC."^msg)
 
@@ -169,8 +170,8 @@ struct
 	* anyway (because of some RCC that happens to be in the cluster).
 	* Therefor, we test for either the real frame pointer (theFp) or
 	* the virtual frame pointer (theVfp) here. *)
-       fun isFramePtr fp = Cells.sameColor (fp, theFp) orelse
-			   Cells.sameColor (fp, theVfp)
+       fun isFramePtr fp = CB.sameColor (fp, theFp) orelse
+			   CB.sameColor (fp, theVfp)
        fun live(T.REG(_,r)::es, regs, mem) = live(es, r::regs, mem)
          | live(T.LOAD(_, T.REG(_, fp), _)::es, regs, mem) =
            if isFramePtr fp then live(es, regs, 0::mem)
@@ -188,7 +189,7 @@ struct
        {regs=S.difference(r1,r2), mem=SL.difference(m1,m2)}
  
    fun setToString{regs,mem} =
-       "{"^foldr (fn (r,s) => Cells.toString r^" "^s) "" regs
+       "{"^foldr (fn (r,s) => CB.toString r^" "^s) "" regs
           ^foldr (fn (m,s) => Int.toString m^" "^s) "" mem^"}"
 
    (* The client communicates root pointers to the gc via the following set
@@ -298,7 +299,7 @@ struct
     * An array for checking cycles  
     *)
    local
-       val N = 1 + foldr (fn (r,n) => Int.max(Cells.registerNum r,n)) 
+       val N = 1 + foldr (fn (r,n) => Int.max(CB.registerNum r,n)) 
 			 0 (#regs gcrootSet)
    in
        val clientRoots = A.array(N, ~1)
@@ -314,13 +315,13 @@ struct
         * Datatype binding describes the contents a gc root.
         *)
        datatype binding =
-         Reg     of Cells.cell               (* integer register *)
-       | Freg    of Cells.cell               (* floating point register*)
+         Reg     of CB.cell               (* integer register *)
+       | Freg    of CB.cell               (* floating point register*)
        | Mem     of T.rexp * R.region        (* integer memory register *)
        | Record  of {boxed: bool,            (* is it a boxed record *)
                      words:int,              (* how many words *)
-                     reg: Cells.cell,        (* address of this record *)
-                     regTmp: Cells.cell,     (* temp used for unpacking *)
+                     reg: CB.cell,        (* address of this record *)
+                     regTmp: CB.cell,     (* temp used for unpacking *)
                      fields: binding list    (* its fields *)
                     }
 
@@ -343,14 +344,14 @@ struct
        val N = A.length clientRoots
        fun markClients [] = ()
          | markClients(T.REG(_, r)::rs) = 
-           let val rx = Cells.registerNum r
+           let val rx = CB.registerNum r
            in  if rx < N then A.update(clientRoots, rx, st) else ();
                markClients rs
            end
          | markClients(_::rs) = markClients rs
        fun markGCRoots [] = ()
          | markGCRoots(T.REG(_, r)::rs) = 
-           let val rx = Cells.registerNum r
+           let val rx = CB.registerNum r
            in  if A.sub(clientRoots, rx) = st then
                   A.update(clientRoots, rx, cyclic)
                else (); 
@@ -527,7 +528,7 @@ struct
                      (emit(T.MV(32, regTmp, sel n));
                       unpackFields(n+4, bs, rds, rss))
                  | unpackFields(n, Reg rd::bs, rds, rss) = 
-                   let val rdx = Cells.registerNum rd
+                   let val rdx = CB.registerNum rd
                    in  if rdx < N andalso A.sub(clientRoots, rdx) = cyclic then
                        let val tmpR = Cells.newReg()
                        in  (* print "WARNING: CYCLE\n"; *)
@@ -641,9 +642,9 @@ struct
          | listify title f l  = 
              title^foldr (fn (x,"") => f x
                            | (x,y)  => f x ^", "^y) "" (S.uniq l)^" "
-   in  listify "boxed=" Cells.toString (map extract boxed)^
-       listify "int32=" Cells.toString (map extract int32)^
-       listify "float=" Cells.toString (map fextract float)
+   in  listify "boxed=" CB.toString (map extract boxed)^
+       listify "int32=" CB.toString (map extract int32)^
+       listify "float=" CB.toString (map fextract float)
    end
 
    (*
@@ -686,15 +687,15 @@ struct
    fun sameCallingConvention
           (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _),...},
            GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _),...}) =
-	  let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = Cells.sameColor(r1,r2)
+	  let fun eqEA(T.REG(_, r1), T.REG(_, r2)) = CB.sameColor(r1,r2)
 		| eqEA(T.ADD(_,T.REG(_,r1),T.LI i),
 		       T.ADD(_,T.REG(_,r2),T.LI j)) =  
-		  Cells.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
+		  CB.sameColor(r1,r2) andalso T.I.EQ(32,i,j)
 		| eqEA _ = false
-	      fun eqR(T.REG(_,r1), T.REG(_,r2)) = Cells.sameColor(r1,r2)
+	      fun eqR(T.REG(_,r1), T.REG(_,r2)) = CB.sameColor(r1,r2)
 		| eqR(T.LOAD(_,ea1,_), T.LOAD(_,ea2,_)) = eqEA(ea1, ea2)
 		| eqR _ = false
-	      fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = Cells.sameColor(f1,f2)
+	      fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = CB.sameColor(f1,f2)
 		| eqF(T.FLOAD(_,ea1,_), T.FLOAD(_,ea2,_)) = eqEA(ea1, ea2)
 		| eqF _ = false
 

@@ -112,6 +112,7 @@ functor X86RA
     structure InsnProps  : INSN_PROPERTIES where I = I
     structure F          : FLOWGRAPH where I = I
     structure Asm        : INSTRUCTION_EMITTER where I = I
+    structure CB         : CELLS_BASIS = CellsBasis
 
       (* Spilling heuristics determines which node should be spilled. 
        * You can use Chaitin, ChowHenessey, or one of your own.
@@ -145,14 +146,14 @@ functor X86RA
     (* Integer register allocation parameters *)
     structure Int :
     sig
-       val avail     : I.C.cell list
-       val dedicated : I.C.cell list
-       val memRegs   : I.C.cell list
+       val avail     : CB.cell list
+       val dedicated : CB.cell list
+       val memRegs   : CB.cell list
        val phases    : raPhase list
 
        val spillLoc  : {info:spill_info,
                         an  :Annotations.annotations ref,
-                        cell:I.C.cell, (* spilled cell *)
+                        cell:CB.cell, (* spilled cell *)
                         id  :RAGraph.logical_spill_id
                        } -> 
                        { opnd: I.operand,
@@ -168,9 +169,9 @@ functor X86RA
     structure Float :
     sig
        (* Sethi-Ullman mode *)
-       val avail     : I.C.cell list
-       val dedicated : I.C.cell list
-       val memRegs   : I.C.cell list
+       val avail     : CB.cell list
+       val dedicated : CB.cell list
+       val memRegs   : CB.cell list
        val phases    : raPhase list
 
        val spillLoc  : spill_info * Annotations.annotations ref * 
@@ -180,7 +181,7 @@ functor X86RA
        val spillInit : RAGraph.interferenceGraph -> unit
 
        (* When fast_floating_point is on, use these instead: *)
-       val fastMemRegs : I.C.cell list
+       val fastMemRegs : CB.cell list
        val fastPhases  : raPhase list
     end
 
@@ -190,6 +191,7 @@ struct
     structure F = F
     structure I = I
     structure C = I.C
+    structure CB = CellsBasis
 
     val name = "X86RA"
 
@@ -235,7 +237,7 @@ struct
     fun removeDeadCode(F.CLUSTER{blocks, ...}) =
     let val find = IntHashTable.find deadRegs
         fun isDead r = 
-            case find (C.cellId r) of
+            case find (CB.cellId r) of
                SOME _ => true
             |  NONE   => false
         fun isAffected i = getOpt (IntHashTable.find affectedBlocks i, false)
@@ -272,13 +274,13 @@ struct
     val firstSpill = ref true
     val firstFPSpill = ref true
 
-    fun spillInit(graph, I.C.GP) = 
+    fun spillInit(graph, CB.GP) = 
         if !firstSpill then (* only do this once! *)
             (Int.spillInit graph;
              firstSpill := false
             )
          else ()
-      | spillInit(graph, I.C.FP) = 
+      | spillInit(graph, CB.FP) = 
         if !firstFPSpill then
             (Float.spillInit graph;
              firstFPSpill := false
@@ -298,7 +300,7 @@ struct
                 structure Spill = Spill
                )
             )
-            (fun cellkind I.C.GP = true | cellkind _ = false
+            (fun cellkind CB.GP = true | cellkind _ = false
              val deadRegs = deadRegs
              val affectedBlocks = affectedBlocks
              val spillInit = spillInit
@@ -312,14 +314,14 @@ struct
      * -------------------------------------------------------------------*)
     val KF32 = length Float.avail
     structure FR32 = GetReg(val nRegs=KF32 
-                            val available=map C.registerId Float.avail
-                            val first=C.registerId(I.C.ST 8))
+                            val available=map CB.registerId Float.avail
+                            val first=CB.registerId(I.C.ST 8))
 
-    val availF8 = C.Regs C.FP {from=0, to=6, step=1}
+    val availF8 = C.Regs CB.FP {from=0, to=6, step=1}
     val KF8  = length availF8
     structure FR8  = GetReg(val nRegs=KF8
-                            val available=map C.registerId availF8
-                            val first=C.registerId(I.C.ST 0))
+                            val available=map CB.registerId availF8
+                            val first=CB.registerId(I.C.ST 0))
  
     (* -------------------------------------------------------------------
      * Callbacks for floating point K=32 
@@ -345,7 +347,7 @@ struct
     fun spillFreg S {src, reg, spillLoc, annotations=an} = 
        (floatSpillCnt := !floatSpillCnt + 1;
         let val fstp = [I.FSTPL(getFregLoc(S, an, spillLoc))]
-        in  if C.sameColor(src,C.ST0) then fstp
+        in  if CB.sameColor(src,C.ST0) then fstp
             else I.FLDL(I.FDirect(src))::fstp
         end
        )
@@ -374,7 +376,7 @@ struct
 
     fun reloadFreg S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
-         if C.sameColor(dst,C.ST0) then 
+         if CB.sameColor(dst,C.ST0) then 
             [I.FLDL(getFregLoc(S, an, spillLoc))]
          else  
             [I.FLDL(getFregLoc(S, an, spillLoc)), I.FSTPL(I.FDirect dst)]
@@ -383,7 +385,7 @@ struct
     (* -------------------------------------------------------------------
      * Callbacks for floating point K=7 
      * -------------------------------------------------------------------*)
-    fun FMemReg f = let val fx = C.registerNum f
+    fun FMemReg f = let val fx = CB.registerNum f
                     in  if fx >= 8 andalso fx < 32
                         then I.FDirect f else I.FPR f
                     end
@@ -425,8 +427,8 @@ struct
         end
 
     fun copyInstrR((rds as [d], rss as [s]), _) =
-        if C.sameColor(d,s) then [] else 
-        let val dx = C.registerNum d and sx = C.registerNum s
+        if CB.sameColor(d,s) then [] else 
+        let val dx = CB.registerNum d and sx = CB.registerNum s
         in  case (dx >= 8 andalso dx < 32, sx >= 8 andalso sx < 32) of
              (false, false) => [I.COPY{dst=rds, src=rss, tmp=NONE}]
            | (true, false) => [I.MOVE{mvOp=I.MOVL,src=I.Direct s,
@@ -448,7 +450,7 @@ struct
         (* No, logical spill locations... *)
 
     structure GR8 = GetReg(val nRegs=8 
-                           val available=map C.registerId Int.avail
+                           val available=map CB.registerId Int.avail
                            val first=0)
  
     val K8 = length Int.avail
@@ -464,7 +466,7 @@ struct
            {code=[], newReg=NONE, proh=[]} 
         )
 
-    fun isMemReg r = let val x = C.registerNum r
+    fun isMemReg r = let val x = CB.registerNum r
                      in  x >= 8 andalso x < 32 end
  
     fun spillReg S {src, reg, spillLoc, annotations=an} = 
@@ -523,7 +525,7 @@ struct
     local 
       fun mark(arr, _, [], others) = others
 	| mark(arr, len, r::rs, others) = let
-	    val r = C.registerId r
+	    val r = CB.registerId r
           in
 	    if r >= len then mark(arr, len, rs, r::others)
 	    else (Array.update(arr, r, true); mark(arr, len, rs, others))
@@ -562,7 +564,7 @@ struct
                  copyInstr = copyInstrR,
                  K         = K8,
                  getreg    = GR8.getreg,
-                 cellkind  = I.C.GP,   
+                 cellkind  = CB.GP,   
                  dedicated = isDedicatedR,
                  spillProh = [],
                  memRegs   = Int.memRegs,
@@ -582,7 +584,7 @@ struct
                  copyInstr = copyInstrF,
                  K         = KF32,
                  getreg    = FR32.getreg,
-                 cellkind  = I.C.FP,   
+                 cellkind  = CB.FP,   
                  dedicated = isDedicatedF32,
                  spillProh = [],
                  memRegs   = Float.memRegs,
@@ -603,7 +605,7 @@ struct
                  copyInstr = copyInstrF',
                  K         = KF8,
                  getreg    = FR8.getreg,
-                 cellkind  = I.C.FP,   
+                 cellkind  = CB.FP,   
                  dedicated = isDedicatedF8,
                  spillProh = [],
                  memRegs   = Float.fastMemRegs,
@@ -638,7 +640,7 @@ struct
          * been enabled
          *)
         val cluster = 
-             if !fast_floating_point andalso I.C.numCell I.C.FP () > 0 then 
+             if !fast_floating_point andalso I.C.numCell CB.FP () > 0 then 
              let val cluster = X86FP.run cluster
              in  printGraph "\t---After X86 FP translation ---\n" cluster;
                  cluster

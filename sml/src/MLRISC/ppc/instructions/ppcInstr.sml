@@ -24,14 +24,14 @@ sig
    | LR
    | CTR
    datatype operand =
-     RegOp of C.cell
+     RegOp of CellsBasis.cell
    | ImmedOp of int
    | LabelOp of T.labexp
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = (CellsBasis.cell * operand)
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:operand}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:operand}
    datatype load =
      LBZ
    | LBZE
@@ -188,36 +188,42 @@ sig
    | SO32
    | OV32
    | CA32
-   type cr_bit = (C.cell * bit)
+   type cr_bit = (CellsBasis.cell * bit)
    datatype instruction =
-     L of {ld:load, rt:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | LF of {ld:fload, ft:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | ST of {st:store, rs:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | STF of {st:fstore, fs:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | UNARY of {oper:unary, rt:C.cell, ra:C.cell, Rc:bool, OE:bool}
-   | ARITH of {oper:arith, rt:C.cell, ra:C.cell, rb:C.cell, Rc:bool, OE:bool}
-   | ARITHI of {oper:arithi, rt:C.cell, ra:C.cell, im:operand}
-   | ROTATE of {oper:rotate, ra:C.cell, rs:C.cell, sh:C.cell, mb:int, me:int option}
-   | ROTATEI of {oper:rotatei, ra:C.cell, rs:C.cell, sh:operand, mb:int, me:int option}
-   | COMPARE of {cmp:cmp, l:bool, bf:C.cell, ra:C.cell, rb:operand}
-   | FCOMPARE of {cmp:fcmp, bf:C.cell, fa:C.cell, fb:C.cell}
-   | FUNARY of {oper:funary, ft:C.cell, fb:C.cell, Rc:bool}
-   | FARITH of {oper:farith, ft:C.cell, fa:C.cell, fb:C.cell, Rc:bool}
-   | FARITH3 of {oper:farith3, ft:C.cell, fa:C.cell, fb:C.cell, fc:C.cell, 
+     L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | ST of {st:store, rs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | STF of {st:fstore, fs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, 
+        mem:Region.region}
+   | UNARY of {oper:unary, rt:CellsBasis.cell, ra:CellsBasis.cell, Rc:bool, 
+        OE:bool}
+   | ARITH of {oper:arith, rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell, 
+        Rc:bool, OE:bool}
+   | ARITHI of {oper:arithi, rt:CellsBasis.cell, ra:CellsBasis.cell, im:operand}
+   | ROTATE of {oper:rotate, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:CellsBasis.cell, 
+        mb:int, me:int option}
+   | ROTATEI of {oper:rotatei, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:operand, 
+        mb:int, me:int option}
+   | COMPARE of {cmp:cmp, l:bool, bf:CellsBasis.cell, ra:CellsBasis.cell, rb:operand}
+   | FCOMPARE of {cmp:fcmp, bf:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell}
+   | FUNARY of {oper:funary, ft:CellsBasis.cell, fb:CellsBasis.cell, Rc:bool}
+   | FARITH of {oper:farith, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
         Rc:bool}
+   | FARITH3 of {oper:farith3, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+        fc:CellsBasis.cell, Rc:bool}
    | CCARITH of {oper:ccarith, bt:cr_bit, ba:cr_bit, bb:cr_bit}
-   | MCRF of {bf:C.cell, bfa:C.cell}
-   | MTSPR of {rs:C.cell, spr:C.cell}
-   | MFSPR of {rt:C.cell, spr:C.cell}
-   | TW of {to:int, ra:C.cell, si:operand}
-   | TD of {to:int, ra:C.cell, si:operand}
-   | BC of {bo:bo, bf:C.cell, bit:bit, addr:operand, LK:bool, fall:operand}
-   | BCLR of {bo:bo, bf:C.cell, bit:bit, LK:bool, labels:Label.label list}
+   | MCRF of {bf:CellsBasis.cell, bfa:CellsBasis.cell}
+   | MTSPR of {rs:CellsBasis.cell, spr:CellsBasis.cell}
+   | MFSPR of {rt:CellsBasis.cell, spr:CellsBasis.cell}
+   | TW of {to:int, ra:CellsBasis.cell, si:operand}
+   | TD of {to:int, ra:CellsBasis.cell, si:operand}
+   | BC of {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand}
+   | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
@@ -242,14 +248,14 @@ struct
    | LR
    | CTR
    datatype operand =
-     RegOp of C.cell
+     RegOp of CellsBasis.cell
    | ImmedOp of int
    | LabelOp of T.labexp
-   type addressing_mode = (C.cell * operand)
+   type addressing_mode = (CellsBasis.cell * operand)
    datatype ea =
-     Direct of C.cell
-   | FDirect of C.cell
-   | Displace of {base:C.cell, disp:operand}
+     Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:operand}
    datatype load =
      LBZ
    | LBZE
@@ -406,36 +412,42 @@ struct
    | SO32
    | OV32
    | CA32
-   type cr_bit = (C.cell * bit)
+   type cr_bit = (CellsBasis.cell * bit)
    datatype instruction =
-     L of {ld:load, rt:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | LF of {ld:fload, ft:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | ST of {st:store, rs:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | STF of {st:fstore, fs:C.cell, ra:C.cell, d:operand, mem:Region.region}
-   | UNARY of {oper:unary, rt:C.cell, ra:C.cell, Rc:bool, OE:bool}
-   | ARITH of {oper:arith, rt:C.cell, ra:C.cell, rb:C.cell, Rc:bool, OE:bool}
-   | ARITHI of {oper:arithi, rt:C.cell, ra:C.cell, im:operand}
-   | ROTATE of {oper:rotate, ra:C.cell, rs:C.cell, sh:C.cell, mb:int, me:int option}
-   | ROTATEI of {oper:rotatei, ra:C.cell, rs:C.cell, sh:operand, mb:int, me:int option}
-   | COMPARE of {cmp:cmp, l:bool, bf:C.cell, ra:C.cell, rb:operand}
-   | FCOMPARE of {cmp:fcmp, bf:C.cell, fa:C.cell, fb:C.cell}
-   | FUNARY of {oper:funary, ft:C.cell, fb:C.cell, Rc:bool}
-   | FARITH of {oper:farith, ft:C.cell, fa:C.cell, fb:C.cell, Rc:bool}
-   | FARITH3 of {oper:farith3, ft:C.cell, fa:C.cell, fb:C.cell, fc:C.cell, 
+     L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | ST of {st:store, rs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
+   | STF of {st:fstore, fs:CellsBasis.cell, ra:CellsBasis.cell, d:operand, 
+        mem:Region.region}
+   | UNARY of {oper:unary, rt:CellsBasis.cell, ra:CellsBasis.cell, Rc:bool, 
+        OE:bool}
+   | ARITH of {oper:arith, rt:CellsBasis.cell, ra:CellsBasis.cell, rb:CellsBasis.cell, 
+        Rc:bool, OE:bool}
+   | ARITHI of {oper:arithi, rt:CellsBasis.cell, ra:CellsBasis.cell, im:operand}
+   | ROTATE of {oper:rotate, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:CellsBasis.cell, 
+        mb:int, me:int option}
+   | ROTATEI of {oper:rotatei, ra:CellsBasis.cell, rs:CellsBasis.cell, sh:operand, 
+        mb:int, me:int option}
+   | COMPARE of {cmp:cmp, l:bool, bf:CellsBasis.cell, ra:CellsBasis.cell, rb:operand}
+   | FCOMPARE of {cmp:fcmp, bf:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell}
+   | FUNARY of {oper:funary, ft:CellsBasis.cell, fb:CellsBasis.cell, Rc:bool}
+   | FARITH of {oper:farith, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
         Rc:bool}
+   | FARITH3 of {oper:farith3, ft:CellsBasis.cell, fa:CellsBasis.cell, fb:CellsBasis.cell, 
+        fc:CellsBasis.cell, Rc:bool}
    | CCARITH of {oper:ccarith, bt:cr_bit, ba:cr_bit, bb:cr_bit}
-   | MCRF of {bf:C.cell, bfa:C.cell}
-   | MTSPR of {rs:C.cell, spr:C.cell}
-   | MFSPR of {rt:C.cell, spr:C.cell}
-   | TW of {to:int, ra:C.cell, si:operand}
-   | TD of {to:int, ra:C.cell, si:operand}
-   | BC of {bo:bo, bf:C.cell, bit:bit, addr:operand, LK:bool, fall:operand}
-   | BCLR of {bo:bo, bf:C.cell, bit:bit, LK:bool, labels:Label.label list}
+   | MCRF of {bf:CellsBasis.cell, bfa:CellsBasis.cell}
+   | MTSPR of {rs:CellsBasis.cell, spr:CellsBasis.cell}
+   | MFSPR of {rt:CellsBasis.cell, spr:CellsBasis.cell}
+   | TW of {to:int, ra:CellsBasis.cell, si:operand}
+   | TD of {to:int, ra:CellsBasis.cell, si:operand}
+   | BC of {bo:bo, bf:CellsBasis.cell, bit:bit, addr:operand, LK:bool, fall:operand}
+   | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}

@@ -20,14 +20,14 @@ sig
    | ImmedLabel of T.labexp
    | Relative of int
    | LabelEA of T.labexp
-   | Direct of C.cell
-   | FDirect of C.cell
-   | FPR of C.cell
-   | ST of C.cell
-   | MemReg of C.cell
-   | Displace of {base:C.cell, disp:operand, mem:Region.region}
-   | Indexed of {base:C.cell option, index:C.cell, scale:int, disp:operand, 
-        mem:Region.region}
+   | Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | FPR of CellsBasis.cell
+   | ST of CellsBasis.cell
+   | MemReg of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:operand, mem:Region.region}
+   | Indexed of {base:CellsBasis.cell option, index:CellsBasis.cell, scale:int, 
+        disp:operand, mem:Region.region}
    type addressing_mode = operand
    type ea = operand
    datatype cond =
@@ -233,7 +233,7 @@ sig
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
-   | LEA of {r32:C.cell, addr:operand}
+   | LEA of {r32:CellsBasis.cell, addr:operand}
    | CMPL of {lsrc:operand, rsrc:operand}
    | CMPW of {lsrc:operand, rsrc:operand}
    | CMPB of {lsrc:operand, rsrc:operand}
@@ -244,10 +244,10 @@ sig
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
-   | MUL3 of {dst:C.cell, src2:Int32.int, src1:operand}
+   | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
-   | CMOV of {cond:cond, src:operand, dst:C.cell}
+   | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
    | PUSHL of operand
    | PUSHW of operand
    | PUSHB of operand
@@ -256,8 +256,8 @@ sig
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:C.cell list, src:C.cell list, tmp:operand option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, tmp:operand option}
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
@@ -265,7 +265,7 @@ sig
    | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
-   | FXCH of {opnd:C.cell}
+   | FXCH of {opnd:CellsBasis.cell}
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand
@@ -313,14 +313,14 @@ struct
    | ImmedLabel of T.labexp
    | Relative of int
    | LabelEA of T.labexp
-   | Direct of C.cell
-   | FDirect of C.cell
-   | FPR of C.cell
-   | ST of C.cell
-   | MemReg of C.cell
-   | Displace of {base:C.cell, disp:operand, mem:Region.region}
-   | Indexed of {base:C.cell option, index:C.cell, scale:int, disp:operand, 
-        mem:Region.region}
+   | Direct of CellsBasis.cell
+   | FDirect of CellsBasis.cell
+   | FPR of CellsBasis.cell
+   | ST of CellsBasis.cell
+   | MemReg of CellsBasis.cell
+   | Displace of {base:CellsBasis.cell, disp:operand, mem:Region.region}
+   | Indexed of {base:CellsBasis.cell option, index:CellsBasis.cell, scale:int, 
+        disp:operand, mem:Region.region}
    type addressing_mode = operand
    type ea = operand
    datatype cond =
@@ -526,7 +526,7 @@ struct
    | LEAVE
    | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
-   | LEA of {r32:C.cell, addr:operand}
+   | LEA of {r32:CellsBasis.cell, addr:operand}
    | CMPL of {lsrc:operand, rsrc:operand}
    | CMPW of {lsrc:operand, rsrc:operand}
    | CMPB of {lsrc:operand, rsrc:operand}
@@ -537,10 +537,10 @@ struct
    | BINARY of {binOp:binaryOp, src:operand, dst:operand}
    | CMPXCHG of {lock:bool, sz:isize, src:operand, dst:operand}
    | MULTDIV of {multDivOp:multDivOp, src:operand}
-   | MUL3 of {dst:C.cell, src2:Int32.int, src1:operand}
+   | MUL3 of {dst:CellsBasis.cell, src2:Int32.int, src1:operand}
    | UNARY of {unOp:unaryOp, opnd:operand}
    | SET of {cond:cond, opnd:operand}
-   | CMOV of {cond:cond, src:operand, dst:C.cell}
+   | CMOV of {cond:cond, src:operand, dst:CellsBasis.cell}
    | PUSHL of operand
    | PUSHW of operand
    | PUSHB of operand
@@ -549,8 +549,8 @@ struct
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:C.cell list, src:C.cell list, tmp:operand option}
-   | FCOPY of {dst:C.cell list, src:C.cell list, tmp:operand option}
+   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
+   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
@@ -558,7 +558,7 @@ struct
    | FUCOMP of operand
    | FUCOMPP
    | FCOMPP
-   | FXCH of {opnd:C.cell}
+   | FXCH of {opnd:CellsBasis.cell}
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand

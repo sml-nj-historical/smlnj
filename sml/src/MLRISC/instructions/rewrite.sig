@@ -8,8 +8,8 @@ sig
    structure I : INSTRUCTIONS
 
                                     (* from      to *) 
-   val rewriteDef : I.instruction * I.C.cell * I.C.cell -> I.instruction
-   val rewriteUse : I.instruction * I.C.cell * I.C.cell -> I.instruction
-   val frewriteDef : I.instruction * I.C.cell * I.C.cell -> I.instruction
-   val frewriteUse : I.instruction * I.C.cell * I.C.cell -> I.instruction
+   val rewriteDef : I.instruction * CellsBasis.cell * CellsBasis.cell -> I.instruction
+   val rewriteUse : I.instruction * CellsBasis.cell * CellsBasis.cell -> I.instruction
+   val frewriteDef : I.instruction * CellsBasis.cell * CellsBasis.cell -> I.instruction
+   val frewriteUse : I.instruction * CellsBasis.cell * CellsBasis.cell -> I.instruction
 end

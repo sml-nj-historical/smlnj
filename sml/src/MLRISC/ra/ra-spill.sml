@@ -66,6 +66,7 @@ struct
    structure C      = I.C
    structure Core   = RACore
    structure G      = Core.G
+   structure CB     = CellsBasis
 
    fun error msg = MLRiscErrorMsg.error("RASpill",msg)
 
@@ -74,7 +75,7 @@ struct
    structure T = RASpillTypes(I)
    open T
 
-   fun uniq s = C.SortedCells.return(C.SortedCells.uniq s) 
+   fun uniq s = CB.SortedCells.return(CB.SortedCells.uniq s) 
    val i2s    = Int.toString
 
    val Asm.S.STREAM{emit, ...} = Asm.makeStream[]
@@ -103,16 +104,16 @@ struct
        val _ = Core.updateCellAliases G
 
        val getSpillLoc = Core.spillLoc G
-       fun spillLocOf(C.CELL{id, ...}) = getSpillLoc id
+       fun spillLocOf(CB.CELL{id, ...}) = getSpillLoc id
        val spillLocsOf = map spillLocOf
        val getnode = IntHashTable.lookup nodes
-       val getnode = fn C.CELL{id, ...} => getnode id
+       val getnode = fn CB.CELL{id, ...} => getnode id
 
        val insnDefUse = P.defUse cellkind
 
        (* Merge prohibited registers *)
        val enterSpill = IntHashTable.insert spilledRegs
-       val addProh = app (fn c => enterSpill(C.registerId c,true)) 
+       val addProh = app (fn c => enterSpill(CellsBasis.registerId c,true)) 
 
        val getSpills  = G.PPtHashTable.find spillSet
        val getSpills  = fn p => case getSpills p of SOME s => s | NONE => []
@@ -129,17 +130,17 @@ struct
          | getLoc _ = error "getLoc"
 
        fun printRegs regs = 
-           app (fn r => print(C.toString r^" ["^
-                              Core.spillLocToString G (C.cellId r)^"] ")) regs
+           app (fn r => print(CellsBasis.toString r^" ["^
+                              Core.spillLocToString G (CellsBasis.cellId r)^"] ")) regs
  
        val parallelCopies = Word.andb(Core.HAS_PARALLEL_COPIES, mode) <> 0w0
 
-       fun chase(C.CELL{col=ref(C.ALIASED c), ...}) = chase c
+       fun chase(CB.CELL{col=ref(CB.ALIASED c), ...}) = chase c
          | chase c = c
 
-       fun cellId(C.CELL{id, ...}) = id
+       fun cellId(CB.CELL{id, ...}) = id
 
-       fun sameCell(C.CELL{id=x,...}, C.CELL{id=y, ...}) = x=y
+       fun sameCell(CB.CELL{id=x,...}, CB.CELL{id=y, ...}) = x=y
 
        fun same(x,regToSpill) = sameCell(chase x,regToSpill)
 
@@ -223,9 +224,9 @@ struct
             * Check whether the id is in a list
             *)
            fun containsId(id,[]) = false
-             | containsId(id:C.cell_id,r::rs) = r = id orelse containsId(id,rs)
+             | containsId(id:CB.cell_id,r::rs) = r = id orelse containsId(id,rs)
            fun spillConflict(G.FRAME loc, rs) = containsId(~loc, rs)
-             | spillConflict(G.MEM_REG(C.CELL{id, ...}), rs) = 
+             | spillConflict(G.MEM_REG(CB.CELL{id, ...}), rs) = 
                  containsId(id, rs)
 
            fun contains(r',[]) = false
@@ -260,13 +261,13 @@ struct
                    else loop(rds, rss, rd::rds', rs::rss')
                  | loop _ = 
                      (print("rds="); 
-                      app (fn r => print(C.toString r^":"^
+                      app (fn r => print(CellsBasis.toString r^":"^
                                          i2s(spillLocOf r)^" ")) rds;
                       print("\nrss="); 
-                      app (fn r => print(C.toString r^":"^
+                      app (fn r => print(CellsBasis.toString r^":"^
                                          i2s(spillLocOf r)^" ")) rss;
                       print "\n";
-                      error("extractDef: "^C.toString regToSpill))
+                      error("extractDef: "^CellsBasis.toString regToSpill))
            in loop(rds, rss, [], []) end
     
            (*
@@ -306,7 +307,7 @@ struct
                  let (* cycle found *)
                      (*val _ = print("Register r"^Int.toString regToSpill^ 
                                   " overwrites ["^Int.toString spillLoc^"]\n")*)
-                     val tmp = I.C.newVar regToSpill (* new temporary *)
+                     val tmp = C.newVar regToSpill (* new temporary *)
                      val copy = copyInstr((tmp::copyDst, mvSrc::copySrc),
                                                instr) 
                      val spillCode = spillSrc{src=tmp,reg=regToSpill,

@@ -49,7 +49,7 @@ struct
 	    stdlink(false), stdclos(false), stdarg(false), stdcont(false)] @ miscregs)
 
   local
-      structure SC = AlphaCells.SortedCells
+      structure SC = CellsBasis.SortedCells
       val -- = SC.difference
       infix --
   in

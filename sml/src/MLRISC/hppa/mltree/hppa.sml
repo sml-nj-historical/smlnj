@@ -27,6 +27,7 @@ struct
    structure T = I.T
    structure S = T.Stream
    structure C = I.C
+   structure CB = CellsBasis
    structure MC = MilliCode
    structure LC = LabelComp
    structure Region = I.Region
@@ -46,9 +47,10 @@ struct
    functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
+     structure CB = CB
      val intTy = 32
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
 
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}
@@ -92,7 +94,7 @@ struct
 
    datatype amode = 
        AMode of I.addressing_mode 
-     | DISP of I.C.cell * T.I.machine_int
+     | DISP of CB.cell * T.I.machine_int
      
 
    (* infinite-precision short cuts. *)
@@ -210,14 +212,14 @@ struct
  
        (* move register s to register t *)
        fun move(s,t,an) =
-           if C.sameColor(s,t) orelse C.registerId t = 0 then ()
-           else if C.registerId s = 0 then
+           if CB.sameColor(s,t) orelse CB.registerId t = 0 then ()
+           else if CB.registerId s = 0 then
                 mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
            else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
  
        (* move floating point register s to register t *)
        fun fmove(s,t,an) =
-           if C.sameColor(s,t) then ()
+           if CB.sameColor(s,t) then ()
            else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
 
        (* generate millicode function call *)
@@ -271,7 +273,7 @@ struct
          | addr(scale,T.ADD(_,e,T.LABEXP le)) = 
              let val rs = expr e
                  val (rt, opnd) = ldLabelEA le
-             in  case (C.registerId rt, opnd) of
+             in  case (CB.registerId rt, opnd) of
                     (0, opnd) => AMode(DISPea(rs,opnd))
                  |  (_,I.IMMED 0) => AMode(INDXea(rs,rt))
                  |  (_,opnd) => 

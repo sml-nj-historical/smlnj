@@ -4,6 +4,7 @@ struct
   structure C = I.C
   structure T = I.T 
   structure LE = I.LabelExp 
+  structure CB = CellsBasis
 
   exception NegateConditional
 
@@ -13,9 +14,9 @@ struct
                 | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
-  val zeroR = Option.valOf(C.zeroReg C.GP)
-  val r15   = C.Reg C.GP 15
-  val r31   = C.Reg C.GP 31
+  val zeroR = Option.valOf(C.zeroReg CB.GP)
+  val r15   = C.Reg CB.GP 15
+  val r31   = C.Reg CB.GP 31
 
   (*========================================================================
    *  Instruction Kinds
@@ -157,12 +158,12 @@ struct
   (*========================================================================
    *  Equality and hashing
    *========================================================================*)
-   fun hashOpn(I.REG r) = C.hashCell r
+   fun hashOpn(I.REG r) = CB.hashCell r
      | hashOpn(I.IMMED i) = Word.fromInt i
      | hashOpn(I.LAB l) = LE.hash l
      | hashOpn(I.LO l) = LE.hash l
      | hashOpn(I.HI l) = LE.hash l
-   fun eqOpn(I.REG a,I.REG b) = C.sameColor(a,b)
+   fun eqOpn(I.REG a,I.REG b) = CB.sameColor(a,b)
      | eqOpn(I.IMMED a,I.IMMED b) = a = b
      | eqOpn(I.LAB a,I.LAB b) = LE.==(a,b)
      | eqOpn(I.LO a,I.LO b) = LE.==(a,b)
@@ -200,7 +201,7 @@ struct
         | I.Ticc{r,i,...} => oper(i,[],[r]) 
         | I.RDY{d,...} => ([d],[]) 
         | I.WRY{r,i,...} => oper(i,[],[r]) 
-        | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+        | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.GP,defs,uses}, i, ...} => 
           let val (d,u) = defUseR i in (defs@d, u@uses) end
         | I.ANNOTATION{a, i, ...} => defUseR i
         | _ => ([],[])  
@@ -220,13 +221,13 @@ struct
       | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)
       | I.FCOPY{src,dst,...} => (dst,src)
-      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+      | I.ANNOTATION{a=CB.DEF_USE{cellkind=CB.FP,defs,uses}, i, ...} => 
         let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
-  fun defUse C.GP = defUseR
-    | defUse C.FP = defUseF
+  fun defUse CB.GP = defUseR
+    | defUse CB.FP = defUseF
     | defUse _    = error "defUse"
 
   (*========================================================================

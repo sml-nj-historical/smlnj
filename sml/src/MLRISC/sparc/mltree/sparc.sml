@@ -43,6 +43,7 @@ struct
   structure S  = T.Stream
   structure R  = T.Region
   structure C  = I.C
+  structure CB = CellsBasis
   structure LE = I.LabelExp
   structure W  = Word32
   structure P  = PseudoInstrs
@@ -68,8 +69,9 @@ struct
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     structure CB = CellsBasis
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
   
      val intTy = 32    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -82,8 +84,9 @@ struct
   functor Multiply64 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
-     type argi = {r:C.cell,i:int,d:C.cell}
+     structure CB = CellsBasis
+     type arg  = {r1:CB.cell,r2:CB.cell,d:CB.cell}
+     type argi = {r:CB.cell,i:int,d:CB.cell}
       
      val intTy = 64    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -246,12 +249,12 @@ struct
 
       (* move register s to register d *)
       fun move(s,d,an) =
-          if C.sameColor(s,d) orelse C.registerId d = 0 then ()
+          if CB.sameColor(s,d) orelse CB.registerId d = 0 then ()
           else mark(I.COPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
 
       (* move floating point register s to register d *)
       fun fmoved(s,d,an) =
-          if C.sameColor(s,d) then ()
+          if CB.sameColor(s,d) then ()
           else mark(I.FCOPY{dst=[d],src=[s],tmp=NONE,impl=ref NONE},an)
       fun fmoves(s,d,an) = fmoved(s,d,an) (* error "fmoves" for now!!! XXX *)
       fun fmoveq(s,d,an) = error "fmoveq"
@@ -418,7 +421,7 @@ struct
 	  let val (r,i) = addr a
               val defs=cellset(defs)
               val uses=cellset(uses)
-	  in  case (C.registerId r,i) of
+	  in  case (CB.registerId r,i) of
 		  (0,I.LAB(T.LABEL l)) =>
 		  mark(I.CALL{label=l,defs=C.addReg(C.linkReg,defs),uses=uses,
                               cutsTo=cutsTo,mem=mem,nop=true},an)
@@ -440,7 +443,7 @@ struct
                  (doExpr(T.SUB(ty,a,b),newReg(),CC,[]); br(cond,lab,an)) 
           end
         | branch(T.CC(cond,r),lab,an) = 
-              if C.sameCell(r, C.psr) then br(cond,lab,an)
+              if CB.sameCell(r, C.psr) then br(cond,lab,an)
               else (genCmp0(CC,r); br(cond,lab,an))
         | branch(T.FCMP(fty,cond,a,b),lab,an) =
           let val cmp = case fty of
@@ -690,11 +693,11 @@ struct
           | e => doFexpr(Gen.compileFexp e,d,an)
 
       and doCCexpr(T.CMP(ty,cond,e1,e2),cc,an) =
-             if C.sameCell(cc,C.psr) then
+             if CB.sameCell(cc,C.psr) then
                   doExpr(T.SUB(ty,e1,e2),newReg(),CC,an)
              else error "doCCexpr"
         | doCCexpr(T.CC(_,r),d,an) = 
-             if C.sameColor(r,C.psr) then error "doCCexpr"
+             if CB.sameColor(r,C.psr) then error "doCCexpr"
              else move(r,d,an)
         | doCCexpr(T.CCMARK(e,A.MARKREG f),d,an) = (f d; doCCexpr(e,d,an))
         | doCCexpr(T.CCMARK(e,a),d,an) = doCCexpr(e,d,a::an)

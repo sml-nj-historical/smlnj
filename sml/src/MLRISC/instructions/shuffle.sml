@@ -10,19 +10,19 @@ functor Shuffle(I : INSTRUCTIONS) :
   sig
     val shuffle : 
       {mvInstr : {dst:I.ea, src:I.ea} -> I.instruction list,
-       ea : I.C.cell -> I.ea} 
+       ea : CellsBasis.cell -> I.ea} 
       ->
 	{tmp : I.ea option,
-	 dst : I.C.cell list,
-	 src : I.C.cell list} 
+	 dst : CellsBasis.cell list,
+	 src : CellsBasis.cell list} 
 	-> I.instruction list
   end = 
 struct
   structure C = I.C
 
-  datatype obj = TEMP | CELL of C.cell
+  datatype obj = TEMP | CELL of CellsBasis.cell
 
-  fun equal (r1, r2) = C.sameColor(r1,r2)
+  fun equal (r1, r2) = CellsBasis.sameColor(r1,r2)
 
   fun equalObj (TEMP, TEMP) = true
     | equalObj (CELL u, CELL v) = equal(u, v)

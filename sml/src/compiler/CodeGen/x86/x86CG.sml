@@ -95,6 +95,7 @@ structure X86CG =
     structure RA = 
       X86RA
       (structure I         = X86Instr
+       structure CB	   = CellsBasis
        structure InsnProps = InsnProps
        structure Asm       = X86AsmEmitter
        structure F         = X86FlowGraph
@@ -122,7 +123,7 @@ structure X86CG =
        struct
           val avail     = R.availR
           val dedicated = R.dedicatedR
-          val memRegs   = C.Regs C.GP {from=8,to=31,step=1}
+          val memRegs   = C.Regs CB.GP {from=8,to=31,step=1}
           val phases    = [SPILL_PROPAGATION,SPILL_COLORING]
 
           (* We try to make unused memregs available for spilling 
@@ -182,7 +183,7 @@ structure X86CG =
           fun spillLoc(S, an, loc) =
             I.Displace{base=base(), disp=X86StackSpills.getFregLoc loc, mem=spill}
 
-          val fastMemRegs = C.Regs C.FP {from=8, to=31, step=1}
+          val fastMemRegs = C.Regs CB.FP {from=8, to=31, step=1}
           val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]
       end
     ) (* X86RA *)

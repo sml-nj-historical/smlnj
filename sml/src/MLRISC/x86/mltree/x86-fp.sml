@@ -78,7 +78,8 @@ struct
    structure L  = Label
    structure LE = I.LabelExp
    structure An = Annotations
-   structure SL = C.SortedCells
+   structure CB = CellsBasis
+   structure SL = CB.SortedCells
 
    type flowgraph = F.cluster
    type an = An.annotations
@@ -149,7 +150,7 @@ struct
    (*-----------------------------------------------------------------------
     * Pretty print routines
     *-----------------------------------------------------------------------*)
-   fun fregToString f = "%f"^i2s(C.registerNum f)
+   fun fregToString f = "%f"^i2s(CB.registerNum f)
    fun fregsToString s =
         List.foldr (fn (r,"") => fregToString r | 
                        (r,s) => fregToString r^" "^s) "" s
@@ -167,15 +168,15 @@ struct
       val stack0 : stack
       val copy   : stack -> stack
       val clear  : stack -> unit
-      val fp     : stack * C.register_id -> stnum
-      val st     : stack * stnum -> C.register_id
-      val set    : stack * stnum * C.register_id -> unit 
-      val push   : stack * C.register_id -> unit
+      val fp     : stack * CB.register_id -> stnum
+      val st     : stack * stnum -> CB.register_id
+      val set    : stack * stnum * CB.register_id -> unit 
+      val push   : stack * CB.register_id -> unit
       val xch    : stack * stnum * stnum -> unit
       val pop    : stack -> unit
       val depth  : stack -> int
       val nonFull : stack -> unit
-      val kill   : stack * C.cell -> unit
+      val kill   : stack * CellsBasis.cell -> unit
       val stackToString : stack -> string
       val equal : stack * stack -> bool 
    end = 
@@ -183,7 +184,7 @@ struct
       type stnum = int
       datatype stack =
           STACK of 
-          { st  : C.register_id A.array, (* mapping %st -> %fp registers *)
+          { st  : CB.register_id A.array, (* mapping %st -> %fp registers *)
             fp  : stnum A.array,    (* mapping %fp -> %st registers *)
             sp  : int ref           (* stack pointer *)
           } 
@@ -243,7 +244,7 @@ struct
           set(stack, n, f_m)
       end
 
-      fun kill(STACK{fp, ...}, f) = A.update(fp, C.registerNum f, 16)
+      fun kill(STACK{fp, ...}, f) = A.update(fp, CB.registerNum f, 16)
 
       fun equal(st1, st2) =
       let val m = depth st1
@@ -390,7 +391,7 @@ struct
     *  5. Sacrifice a goat to make sure things don't go wrong.
     *-----------------------------------------------------------------------*)
    fun run(cluster as F.CLUSTER{blocks, blkCounter, ...}) = 
-   let val getCell = C.CellSet.get C.FP (*extract the fp component of cellset*)
+   let val getCell = C.CellSet.get CB.FP (*extract the fp component of cellset*)
 
        val stTable = A.tabulate(8, fn n => I.ST(C.ST n))
 
@@ -430,9 +431,9 @@ struct
         * Perform liveness analysis on the floating point variables
         * P.S. I'm glad I didn't throw away the code liveness code.
         *------------------------------------------------------------------*) 
-       val defUse = P.defUse C.FP   (* def/use properties *)
+       val defUse = P.defUse CB.FP   (* def/use properties *)
        val _ = Liveness.liveness{defUse=defUse,
-                                 updateCell=C.CellSet.update C.FP,
+                                 updateCell=C.CellSet.update CB.FP,
                                  getCell=getCell,
                                  blocks=blocks
                                 }
@@ -473,7 +474,7 @@ struct
        (*------------------------------------------------------------------ 
         * Temporary work space 
         *------------------------------------------------------------------*)
-       val {high, low} = C.cellRange C.FP
+       val {high, low} = C.cellRange CB.FP
        val n           = high+1
        val lastUseTbl  = A.array(n,~1) (* table for marking last uses *)
        val useTbl      = A.array(n,~1) (* table for marking uses *)
@@ -509,7 +510,7 @@ struct
        fun removeNonPhysical cellSet = 
        let fun loop([], S) = SL.return(SL.uniq S)
              | loop(f::fs, S) = 
-               let val fx = C.registerNum f 
+               let val fx = CB.registerNum f 
                in  loop(fs,if fx <= 7 then f::S else S)
                end
        in  loop(getCell(!cellSet), []) 
@@ -520,7 +521,7 @@ struct
         *)
        fun newStack fregs =
        let val stack = ST.create()
-       in  app (fn f => ST.push(stack, C.registerNum f)) (rev fregs);
+       in  app (fn f => ST.push(stack, CB.registerNum f)) (rev fregs);
            stack
        end
  
@@ -534,7 +535,7 @@ struct
            val _     = stampCounter := !stampCounter - 1
            fun markLive [] = ()
              | markLive(r::rs) = 
-               (A.update(useTbl, C.registerNum r, stamp); markLive rs)
+               (A.update(useTbl, CB.registerNum r, stamp); markLive rs)
            fun isLive f = A.sub(useTbl, f) = stamp
            fun loop(i, depth, code) = 
                if i >= depth then code else 
@@ -1252,7 +1253,7 @@ struct
              | loop(stamp, instr::rest, (lastUse,dead)::lastUses, code) = 
                let fun mark(tbl, []) = ()
                      | mark(tbl, r::rs) = 
-                       (A.update(tbl, C.registerNum r, stamp); mark(tbl, rs))
+                       (A.update(tbl, CB.registerNum r, stamp); mark(tbl, rs))
                in  mark(lastUseTbl,lastUse); (* mark all last uses *)
                    trans(stamp, instr, [], rest, dead, lastUses, code) 
                end
@@ -1278,7 +1279,7 @@ struct
                fun DONE code = 
                let fun kill([], code) = FINISH code
                      | kill(f::fs, code) = 
-                       let val fx = C.registerNum f 
+                       let val fx = CB.registerNum f 
                        in  if debug andalso debugDead then
                               pr("DEAD "^fregToString f^" in "^
                                  ST.stackToString stack^"\n")
@@ -1309,7 +1310,7 @@ struct
                (* Is this value dead? *) 
                fun isDead f = 
                let fun loop [] = false
-                     | loop(r::rs) = C.sameColor(f,r) orelse loop rs
+                     | loop(r::rs) = CB.sameColor(f,r) orelse loop rs
                in loop dead end
 
                (* Dump the stack before each intruction for debugging *)
@@ -1319,7 +1320,7 @@ struct
 
                (* Find the location of a source register *)
                fun getfs(f) = 
-               let val fx = C.registerNum f 
+               let val fx = CB.registerNum f 
                    val s = ST.fp(stack, fx) 
                in  (isLastUse fx,s) end
 
@@ -1331,15 +1332,15 @@ struct
                in  DONE code end
 
                (* Allocate a new register in %st(0) *)
-               fun alloc(f,code) = (ST.push(stack,C.registerNum f); code)
+               fun alloc(f,code) = (ST.push(stack,CB.registerNum f); code)
 
                (* register -> register move *)
                fun rrmove(fs,fd) = 
-               if C.sameColor(fs,fd) then DONE code 
+               if CB.sameColor(fs,fd) then DONE code 
                else
                let val (dead,ss) = getfs fs 
                in  if dead then              (* fs is dead *)
-                      (ST.set(stack,ss,C.registerNum fd);  (* rename fd to fs *)
+                      (ST.set(stack,ss,CB.registerNum fd);  (* rename fd to fs *)
                        DONE code             (* no code is generated *)
                       )
                    else (* fs is not dead; push it onto %st(0);
@@ -1420,7 +1421,7 @@ struct
 
                fun storeResult(fsize, dst, n, code) = 
                    case dst of
-                     I.FPR fd => (ST.set(stack, n, C.registerNum fd); DONE code)
+                     I.FPR fd => (ST.set(stack, n, CB.registerNum fd); DONE code)
                    | mem      => 
                       let val code = if n = 0 then code else xch n::code
                       in  ST.pop stack; DONE(FSTP(fsize, mem)::code) end
@@ -1672,13 +1673,13 @@ struct
                fun fcopy{dst,src,tmp} =
                let fun loop([], [], copies, renames) = (copies, renames)
                      | loop(fd::fds, fs::fss, copies, renames) = 
-                       let val fsx = C.registerNum fs
+                       let val fsx = CB.registerNum fs
                        in  if isLastUse fsx then 
                              if A.sub(useTbl,fsx) <> stamp 
                                (* unused *)
                              then (A.update(useTbl,fsx,stamp);
                                    loop(fds, fss, copies, 
-                                        if C.sameColor(fd,fs) then renames 
+                                        if CB.sameColor(fd,fs) then renames 
                                         else (fd, fs)::renames)
                                )
                               else loop(fds, fss, (fd, fs)::copies, renames)
@@ -1689,17 +1690,17 @@ struct
                    (* generate code for the copies *)
                    fun genCopy([], code) = code
                      | genCopy((fd, fs)::copies, code) = 
-                       let val ss   = ST.fp(stack, C.registerNum fs)
-                           val _    = ST.push(stack, C.registerNum fd)
+                       let val ss   = ST.fp(stack, CB.registerNum fs)
+                           val _    = ST.push(stack, CB.registerNum fd)
                            val code = I.FLDL(ST ss)::code 
                        in  genCopy(copies, code) end
 
                    (* perform the renaming; it must be done in parallel! *)
                    fun renaming(renames) = 
                    let val ss = map (fn (_,fs) => 
-                                        ST.fp(stack,C.registerNum fs)) renames
+                                        ST.fp(stack,CB.registerNum fs)) renames
                    in  ListPair.app (fn ((fd,_),ss) => 
-                               ST.set(stack,ss,C.registerNum fd))
+                               ST.set(stack,ss,CB.registerNum fd))
                           (renames, ss)
                    end
 
@@ -1729,7 +1730,7 @@ struct
                let val returnSet = SL.return(SL.uniq(getCell return))
                in  case returnSet of
                      [] => ()
-                   | [r] => ST.push(stack, C.registerNum r)
+                   | [r] => ST.push(stack, CB.registerNum r)
                    | _   => 
                      error "can't return more than one fp argument (yet)";
                    DONE code

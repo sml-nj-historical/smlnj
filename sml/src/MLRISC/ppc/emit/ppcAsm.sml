@@ -59,7 +59,7 @@ struct
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
          (nl(); comment(title^C.CellSet.toString cellset))
        val emit_cellset = 
@@ -244,7 +244,7 @@ struct
      | eRc true = "."
 
 (*#line 581.7 "ppc/ppc.mdl"*)
-   fun cr_bit (cr, bit) = (4 * (C.physicalRegisterNum cr)) + 
+   fun cr_bit (cr, bit) = (4 * (CellsBasis.physicalRegisterNum cr)) + 
        (case bit of
          I.LT => 0
        | I.GT => 1
@@ -273,7 +273,7 @@ struct
 
 (*#line 591.7 "ppc/ppc.mdl"*)
    fun eBI (bo, bf, bit) = 
-       (case (bo, C.physicalRegisterNum bf) of
+       (case (bo, CellsBasis.physicalRegisterNum bf) of
          (I.ALWAYS, _) => ()
        | (I.COUNTER{cond=NONE, ...}, _) => ()
        | (_, 0) => emit (asm_bit bit)

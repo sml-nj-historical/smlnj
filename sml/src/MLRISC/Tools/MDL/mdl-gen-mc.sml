@@ -96,7 +96,7 @@ struct
        val cellFuns = 
            let fun mkEmitCell(CELLdecl{id, from, ...}) =
                    FUN'(emit id, IDpat "r", 
-                      APP("itow", APP("C.physicalRegisterNum", ID "r")))
+                      APP("itow", APP("CellsBasis.physicalRegisterNum", ID "r")))
            in  FUNdecl(map mkEmitCell (Comp.cells md)) end
 
        (* 

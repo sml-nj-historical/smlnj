@@ -1,20 +1,21 @@
 functor PPCRewrite(Instr : PPCINSTR) = struct
   structure I = Instr
   structure C = I.C
+  structure CB = CellsBasis
 
   fun ea(NONE, _, _) = NONE
     | ea(e as SOME(I.Direct r), rs, rt) =
-       if C.sameColor(r,rs) then SOME(I.Direct rt) else e 
+       if CB.sameColor(r,rs) then SOME(I.Direct rt) else e 
     | ea(e as SOME(I.FDirect r), rs, rt) = 
-       if C.sameColor(r,rs) then SOME(I.FDirect rt) else e 
+       if CB.sameColor(r,rs) then SOME(I.FDirect rt) else e 
     | ea(e as SOME(I.Displace{base, disp}), rs, rt) =
-       if C.sameColor(base,rs) then SOME(I.Displace{base=rt, disp=disp}) 
+       if CB.sameColor(base,rs) then SOME(I.Displace{base=rt, disp=disp}) 
        else e 
 
   fun rewriteUse(instr, rs, rt) = let
-    fun rplac r = if C.sameColor(r,rs) then rt else r
+    fun rplac r = if CB.sameColor(r,rs) then rt else r
     fun rwOperand(opnd as I.RegOp r) = 
-         if C.sameColor(r,rs) then I.RegOp rt else opnd
+         if CB.sameColor(r,rs) then I.RegOp rt else opnd
       | rwOperand opnd = opnd
   in
     case instr
@@ -51,15 +52,15 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=map rplac uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=map rplac uses,
                                        defs=defs}
                           | _ => a}
      | _ => instr
   end
 
   fun rewriteDef(instr, rs, rt) = let
-    fun rplac r = if C.sameColor(r,rs) then rt else r
+    fun rplac r = if CB.sameColor(r,rs) then rt else r
   in
     case instr
     of I.L {ld, rt, ra, d, mem} =>
@@ -83,15 +84,15 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=uses,
                                        defs=map rplac defs}
                           | _ => a}
      | _ => instr
   end
 
   fun frewriteUse(instr, fs, ft) = let
-    fun rplac r = if C.sameColor(r,fs) then ft else r
+    fun rplac r = if CB.sameColor(r,fs) then ft else r
   in
     case instr
     of I.STF {st, fs, ra, d, mem} =>
@@ -112,8 +113,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=frewriteUse(i,fs,ft),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=map rplac uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=map rplac uses,
                                        defs=defs}
                           | _ => a}
      | _ => instr
@@ -121,7 +122,7 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
 
 
   fun frewriteDef(instr, fs, ft) = let
-    fun rplac r = if C.sameColor(r,fs) then ft else r
+    fun rplac r = if CB.sameColor(r,fs) then ft else r
   in
     case instr
     of I.LF{ld, ft, ra, d, mem} =>
@@ -141,8 +142,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ANNOTATION{i,a} => 
         I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=uses,
                                        defs=map rplac defs}
                           | _ => a}
      | _ => instr

@@ -81,9 +81,10 @@ functor X86Shuffle(I : X86INSTR) : X86SHUFFLE =
 struct
   structure I = I
   structure C = I.C
+  structure CB = CellsBasis
   structure Shuffle = Shuffle(I)
 
-  type t = {tmp:I.ea option, dst:C.cell list, src:C.cell list}
+  type t = {tmp:I.ea option, dst:CB.cell list, src:CB.cell list}
 
   exception foo
   val shuffle =
@@ -109,7 +110,7 @@ struct
   let val n =  length src
   in  if n <= 7 then 
          let fun gen(s::ss, d::ds, pushes, pops) = 
-                 if C.sameColor(s,d) then gen(ss, ds, pushes, pops)
+                 if CB.sameColor(s,d) then gen(ss, ds, pushes, pops)
                  else gen(ss, ds, I.FLDL(I.FDirect s)::pushes, 
                                       I.FSTPL(I.FDirect d)::pops)
                | gen(_, _, pushes, pops) = List.revAppend(pushes, pops)

@@ -9,12 +9,14 @@ structure MDLConstant =
      fun hash _ = 0w0
      fun == _ = false
   end
+
 structure MDLRegion   =
   struct
      type region = unit
      val stack = () and readonly = () and memory = () 
      fun toString _ = ""
   end
+
 structure MDLPseudoOps = 
   struct
      type pseudo_op = unit
@@ -23,7 +25,9 @@ structure MDLPseudoOps =
      fun sizeOf _ = 0 
      fun adjustLabels _ = false
   end
+
 structure MDLStream   = InstructionStream(MDLPseudoOps)
+
 structure MDLExtension =
   struct
      type ('s,'r,'f,'c) sx = unit 

@@ -35,14 +35,14 @@ functor RISC_RA
    structure Int :
    sig
 
-      val avail     : I.C.cell list (* list of available registers *)
-      val dedicated : I.C.cell list (* list of registers that are dedicated *)
+      val avail     : CellsBasis.cell list (* list of available registers *)
+      val dedicated : CellsBasis.cell list (* list of registers that are dedicated *)
 
       (* This functions is used to create copy instructions.
        * Given dst/src lists, return a new copy instruction with the same
        * temporary as the old one.
        *)
-      val copy : (I.C.cell list * I.C.cell list) * I.instruction -> 
+      val copy : (CellsBasis.cell list * CellsBasis.cell list) * I.instruction -> 
                      I.instruction
 
       (* This function is used to spill the temporary used in the copy
@@ -53,15 +53,15 @@ functor RISC_RA
 
       (* This function is used to spill a register onto some stack offset 
        *)
-      val spillInstr : {an:Annotations.annotations ref, src:I.C.cell,
-			spilledCell:I.C.cell, spillLoc:RAGraph.spillLoc} 
+      val spillInstr : {an:Annotations.annotations ref, src:CellsBasis.cell,
+			spilledCell:CellsBasis.cell, spillLoc:RAGraph.spillLoc} 
 	               -> I.instruction list
 
       (*
        * This function is used to reload a register from some stack offset
        *)
-      val reloadInstr : {an:Annotations.annotations ref, dst:I.C.cell,
-			 spilledCell:I.C.cell, spillLoc:RAGraph.spillLoc}
+      val reloadInstr : {an:Annotations.annotations ref, dst:CellsBasis.cell,
+			 spilledCell:CellsBasis.cell, spillLoc:RAGraph.spillLoc}
 	                -> I.instruction list
 
       (* Mode for RA optimizations *)
@@ -71,14 +71,14 @@ functor RISC_RA
    structure Float :
    sig
 
-      val avail     : I.C.cell list (* list of available registers *)
-      val dedicated : I.C.cell list (* list of registers that are dedicated *)
+      val avail     : CellsBasis.cell list (* list of available registers *)
+      val dedicated : CellsBasis.cell list (* list of registers that are dedicated *)
 
       (* This functions is used to create copy instructions.
        * Given dst/src lists, return a new copy instruction with the same
        * temporary as the old one.
        *)
-      val copy : (I.C.cell list * I.C.cell list) * I.instruction -> 
+      val copy : (CellsBasis.cell list * CellsBasis.cell list) * I.instruction -> 
                      I.instruction
 
       (* This function is used to spill the temporary used in the copy
@@ -90,13 +90,13 @@ functor RISC_RA
       (* This function is used to spill a register onto some stack offset 
        * The 
        *)
-      val spillInstr : Annotations.annotations ref * I.C.cell * 
+      val spillInstr : Annotations.annotations ref * CellsBasis.cell * 
                        RAGraph.spillLoc -> I.instruction list
       (*
        * This function is used to reload a register from some stack offset,
        * and concatenate the reload code with the given instruction list.
        *)
-      val reloadInstr : Annotations.annotations ref * I.C.cell * 
+      val reloadInstr : Annotations.annotations ref * CellsBasis.cell * 
                         RAGraph.spillLoc -> I.instruction list
 
       (* Mode for RA optimizations *)
@@ -139,7 +139,7 @@ struct
 
    fun mark(arr, _, [], others) = others
      | mark(arr, len, r::rs, others) = let
-	 val r = C.registerId r
+	 val r = CellsBasis.registerId r
        in
 	 if r >= len then mark(arr, len, rs, r::others)
 	 else (Array.update(arr, r, true); mark(arr, len, rs, others))
@@ -148,21 +148,21 @@ struct
 
 
    local
-       val {low,high} = C.cellRange C.GP
+       val {low,high} = C.cellRange CellsBasis.GP
        val arr = Array.array(high+1,false)
        val others = mark(arr, high+1, Int.dedicated, [])
    in
        structure GR = GetReg(val first=low val nRegs=high-low+1 
-                             val available=map C.registerId Int.avail)
+                             val available=map CellsBasis.registerId Int.avail)
        val dedicatedR : int -> bool = isDedicated (high+1, arr, others)
    end
    local 
-      val {low,high} = C.cellRange C.FP
+      val {low,high} = C.cellRange CellsBasis.FP
       val arr = Array.array(high+1,false)
       val others = mark(arr, high+1, Float.dedicated, [])
    in
       structure FR = GetReg(val first=low val nRegs=high-low+1 
-                            val available=map C.registerId Float.avail)
+                            val available=map CellsBasis.registerId Float.avail)
       val dedicatedF : int -> bool = isDedicated(high+1, arr, others)
    end
 
@@ -276,7 +276,7 @@ struct
    val KF = length Float.avail
 
    val params =
-       [  { cellkind     = I.C.GP,
+       [  { cellkind     = CellsBasis.GP,
             getreg       = GR.getreg,
             spill        = spillR,
             spillSrc     = spillReg,
@@ -291,7 +291,7 @@ struct
             memRegs      = [],
             mode         = Int.mode
           } : Ra.raClient,
-          { cellkind     = I.C.FP,
+          { cellkind     = CellsBasis.FP,
             getreg       = FR.getreg,
             spill        = spillF,
             spillSrc     = spillFreg,

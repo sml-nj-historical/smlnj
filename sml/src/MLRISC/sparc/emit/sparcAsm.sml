@@ -62,7 +62,7 @@ struct
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
          (nl(); comment(title^C.CellSet.toString cellset))
        val emit_cellset = 
@@ -316,7 +316,7 @@ struct
               emitCell d )
          end
        | I.ARITH{a, r, i, d} => 
-         (case (a, C.registerId r, C.registerId d) of
+         (case (a, CellsBasis.registerId r, CellsBasis.registerId d) of
            (I.OR, 0, _) => 
            ( emit "mov\t"; 
              emit_operand i; 
@@ -469,8 +469,8 @@ struct
              fun g (a, r, d) = 
                  let 
 (*#line 769.22 "sparc/sparc.mdl"*)
-                     val r = C.registerNum r
-                     and d = C.registerNum d
+                     val r = CellsBasis.registerNum r
+                     and d = CellsBasis.registerNum d
                  in f (a, r, d); 
                     emit "\n\t"; 
                     f ("fmovs", r + 1, d + 1)
@@ -480,8 +480,8 @@ struct
              fun h (a, r, d) = 
                  let 
 (*#line 774.22 "sparc/sparc.mdl"*)
-                     val r = C.registerNum r
-                     and d = C.registerNum d
+                     val r = CellsBasis.registerNum r
+                     and d = CellsBasis.registerNum d
                  in f (a, r, d); 
                     emit "\n\t"; 
                     f ("fmovs", r + 1, d + 1); 

@@ -21,9 +21,9 @@ signature LIVENESS = sig
     sharing I.C = C
 
   val liveness : 
-      { defUse     : I.instruction -> C.cell list * C.cell list,
-        updateCell : C.cellset * C.cell list -> C.cellset,
-        getCell    : C.cellset -> C.cell list,
+      { defUse     : I.instruction -> CellsBasis.cell list * CellsBasis.cell list,
+        updateCell : C.cellset * CellsBasis.cell list -> C.cellset,
+        getCell    : C.cellset -> CellsBasis.cell list,
         blocks     : F.block list
       } -> F.block list
 end
@@ -35,7 +35,7 @@ struct
   structure F  = Flowgraph
   structure I  = F.I
   structure C  = I.C
-  structure SC = C.SortedCells
+  structure SC = CellsBasis.SortedCells (* CellsBasis.SortedCells *)
 
   fun error msg = MLRiscErrorMsg.error("Liveness",msg)
 

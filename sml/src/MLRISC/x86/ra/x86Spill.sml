@@ -9,21 +9,22 @@
  *)
 signature X86SPILL = sig
   structure I : X86INSTR
+  structure CB : CELLS_BASIS = CellsBasis
   val spill :  
-    I.instruction * I.C.cell * I.operand -> 
-      {code:I.instruction list, proh:I.C.cell list, newReg:I.C.cell option}
+    I.instruction * CB.cell * I.operand -> 
+      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
 
   val reload : 
-    I.instruction * I.C.cell * I.operand -> 
-      {code:I.instruction list, proh:I.C.cell list, newReg:I.C.cell option}
+    I.instruction * CB.cell * I.operand -> 
+      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
 
   val fspill :  
-    I.instruction * I.C.cell * I.operand -> 
-      {code:I.instruction list, proh:I.C.cell list, newReg:I.C.cell option}
+    I.instruction * CB.cell * I.operand -> 
+      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
 
   val freload : 
-    I.instruction * I.C.cell * I.operand -> 
-      {code:I.instruction list, proh:I.C.cell list, newReg:I.C.cell option}
+    I.instruction * CB.cell * I.operand -> 
+      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
 end
 
 
@@ -33,6 +34,7 @@ functor X86Spill(structure Instr: X86INSTR
 
   structure I  = Instr
   structure C  = I.C
+  structure CB = CellsBasis
 
   fun error msg = MLRiscErrorMsg.impossible("X86Spill: "^ msg)
 
@@ -80,7 +82,7 @@ functor X86Spill(structure Instr: X86INSTR
               }
           end
       | I.MOVE{mvOp, src as I.Direct rs, dst} =>
-          if C.sameColor(rs,reg) then {code=[], proh=[], newReg=NONE}
+          if CB.sameColor(rs,reg) then {code=[], proh=[], newReg=NONE}
 	  else done(I.MOVE{mvOp=mvOp, src=src, dst=spillLoc}, an)
       | I.MOVE{mvOp, src, dst=I.Direct _} => 
 	  if Props.eqOpn(src, spillLoc) then {code=[], proh=[], newReg=NONE}
@@ -104,7 +106,7 @@ functor X86Spill(structure Instr: X86INSTR
               }
           end 
       | I.BINARY{binOp=I.XORL, src as I.Direct rs, dst=I.Direct rd} => 
-          if C.sameColor(rs,rd) then 
+          if CB.sameColor(rs,rd) then 
              {proh=[],
               code=[mark(I.MOVE{mvOp=I.MOVL, src=I.Immed 0, dst=spillLoc}, an)],
               newReg=NONE
@@ -169,20 +171,20 @@ functor X86Spill(structure Instr: X86INSTR
   fun reload(instr, reg, spillLoc) = 
   let fun operand(rt, opnd) =
       (case opnd
-       of I.Direct r => if C.sameColor(r,reg) then I.Direct rt else opnd
+       of I.Direct r => if CB.sameColor(r,reg) then I.Direct rt else opnd
         | I.Displace{base, disp, mem} => 
-	   if C.sameColor(base,reg) 
+	   if CB.sameColor(base,reg) 
            then I.Displace{base=rt, disp=disp, mem=mem} 
            else opnd
 	| I.Indexed{base=NONE, index, scale, disp, mem=mem} => 
-	   if C.sameColor(index,reg) then
+	   if CB.sameColor(index,reg) then
 	     I.Indexed{base=NONE, index=rt, scale=scale, disp=disp, mem=mem}
 	   else opnd
 	| I.Indexed{base as SOME b, index, scale, disp, mem=mem} => 
-	   if C.sameColor(b,reg) then 
+	   if CB.sameColor(b,reg) then 
 	     operand(rt, I.Indexed{base=SOME rt, index=index, 
 				   scale=scale, disp=disp, mem=mem})
-	   else if C.sameColor(index,reg) then
+	   else if CB.sameColor(index,reg) then
 	     I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
 		else opnd
 	| opnd => opnd
@@ -228,7 +230,7 @@ functor X86Spill(structure Instr: X86INSTR
             end
 
     fun replace(opn as I.Direct r) = 
-          if C.sameColor(r,reg) then spillLoc else opn
+          if CB.sameColor(r,reg) then spillLoc else opn
       | replace opn         = opn
 
     (* Fold in a memory operand if possible.  Makes sure that both operands
@@ -352,7 +354,7 @@ functor X86Spill(structure Instr: X86INSTR
      | I.MUL3{src1, src2, dst} => 
 	withTmp(fn tmpR => 
           I.MUL3{src1=operand(tmpR, src1), src2=src2, 
-		 dst=if C.sameColor(dst,reg) 
+		 dst=if CB.sameColor(dst,reg) 
                      then error "reload:MUL3" else dst}, an)
      | I.UNARY{unOp, opnd} => 
 	withTmpAvail
@@ -479,9 +481,9 @@ functor X86Spill(structure Instr: X86INSTR
 
   fun freload(instr, reg, spillLoc) = 
   let fun rename(src as I.FDirect f) = 
-          if C.sameColor(f,reg) then spillLoc else src 
+          if CB.sameColor(f,reg) then spillLoc else src 
         | rename(src as I.FPR f) = 
-          if C.sameColor(f,reg) then spillLoc else src 
+          if CB.sameColor(f,reg) then spillLoc else src 
         | rename src = src
 
       fun withTmp(fsize, f, an) = 
@@ -507,7 +509,7 @@ functor X86Spill(structure Instr: X86INSTR
        | I.FUCOM opnd => {code=[mark(I.FUCOM spillLoc, an)],proh=[],newReg=NONE}
        | I.FUCOMP opnd => {code=[mark(I.FUCOMP spillLoc, an)],proh=[],newReg=NONE}
        | I.FBINARY{binOp, src=I.FDirect f, dst} => 
-	   if C.sameColor(f,reg) then 
+	   if CB.sameColor(f,reg) then 
 	     {code=[mark(I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}, an)],
 	      proh=[], 
               newReg=NONE}
@@ -538,7 +540,7 @@ functor X86Spill(structure Instr: X86INSTR
           (* Make sure that both the lsrc and rsrc cannot be in memory *)
           (case (lsrc, rsrc) of
             (I.FPR fs1, I.FPR fs2) =>
-              (case (C.sameColor(fs1,reg), C.sameColor(fs2,reg)) of
+              (case (CB.sameColor(fs1,reg), CB.sameColor(fs2,reg)) of
                  (true, true) =>
                  withTmp(fsize, 
                     fn tmp => I.FCMP{fsize=fsize,lsrc=tmp, rsrc=tmp}, an)

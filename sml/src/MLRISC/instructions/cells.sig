@@ -4,56 +4,50 @@
  *
  * Allen Leung (12/2/00)
  *)
+
+
 (*
  * Things that are architecture specific.
  *)
-signature CELLS_COMMON = 
-sig
-   include CELLS_BASIS
-   structure CellsBasis : CELLS_BASIS = CellsBasis
-         sharing type cellkind     = CellsBasis.cellkind   
-             and type cellkindDesc = CellsBasis.cellkindDesc
-             and type cellkindInfo = CellsBasis.cellkindInfo
-             and type cell         = CellsBasis.cell
-             and type HashTable.hash_table = CellsBasis.HashTable.hash_table
-             and type ColorTable.hash_table = CellsBasis.ColorTable.hash_table
-         sharing SortedCells = CellsBasis.SortedCells
+signature CELLS = sig
 
-   exception Cells
+   val cellkinds : CellsBasis.cellkind list  
+   (* list of all the cellkinds *)
 
-   val cellkinds : cellkind list  (* list of all the cellkinds *)
+   val firstPseudo : CellsBasis.cell_id      
+   (* first pseudo register *)
+  
+   val cellkindDesc : CellsBasis.cellkind -> CellsBasis.cellkindDesc 
+   (* find descriptor *)				  
 
+   val cellRange : CellsBasis.cellkind -> {low:int, high:int}
+   (* given a cellkind returns its encoding range *)
 
-      (*
-       * For internal use only. 
-       *)
-   val firstPseudo : cell_id      (* first pseudo register *)
-   val cellkindDesc : cellkind -> cellkindDesc (* find descriptor *)
-(*   val cellCounter  : int ref *)
+   val Reg   : CellsBasis.cellkind -> (CellsBasis.register_num -> CellsBasis.cell)
+   (* Returns the nth physical register of the given kind,
+    * raises Cells if there are no physical register of the given number.
+    * Also raises Cells if the given number if outside of the range.
+    * NOTE: this function returns the same cell for the 
+    * same argument every time.   See also the function cloneCell below
+    *)
 
-       (* given a cellkind returns its encoding range *)
-   val cellRange : cellkind -> {low:int, high:int}
+   val Regs  : 
+     CellsBasis.cellkind -> 
+        {from : CellsBasis.register_num, 
+	 to   : CellsBasis.register_num, 
+	 step : int
+	 } ->
+	    CellsBasis.cell list
+  (* return a list of cells *)
 
-       (* Returns the nth physical register of the given kind,
-        * raises Cells if there are no physical register of the given number.
-        * Also raises Cells if the given number if outside of the range.
-        * NOTE: this function returns the same cell for the 
-        * same argument every time.   See also the function cloneCell below
-        *)
-   val Reg   : cellkind -> (register_num -> cell)
+   val Cell  : CellsBasis.cellkind -> (CellsBasis.register_id -> CellsBasis.cell) 
+   (* Same as Reg but we take the id instead.
+    * So, registerNum(Reg k r) = r, and
+    *     registerId(Cell k id) = id
+    *)
 
-       (* return a list of cells *)
-   val Regs  : cellkind -> {from:register_num, to:register_num, step:int} ->
-                 cell list
-
-       (* Same as Reg but we take the id instead.
-        * So, registerNum(Reg k r) = r, and
-        *     registerId(Cell k id) = id
-        *)
-   val Cell  : cellkind -> (register_id -> cell) 
-
-   val GPReg : int -> cell (* abbreviation for Reg GP *)
-   val FPReg : int -> cell (* abbreviation for Reg FP *)
+   val GPReg : int -> CellsBasis.cell (* abbreviation for Reg GP *)
+   val FPReg : int -> CellsBasis.cell (* abbreviation for Reg FP *)
 
        (*
         * Generate a new cell for a virtual register.  The new cell
@@ -63,24 +57,24 @@ sig
         * function generate new cells.  The first application takes
         * time.
         *)
-   val newCell   : cellkind -> ('a -> cell)
-   val newReg    : 'a -> cell  (* abbreviation for newCell GP *)
-   val newFreg   : 'a -> cell  (* abbreviation for newCell FP *)
+   val newCell   : CellsBasis.cellkind -> ('a -> CellsBasis.cell)
+   val newReg    : 'a -> CellsBasis.cell  (* abbreviation for newCell GP *)
+   val newFreg   : 'a -> CellsBasis.cell  (* abbreviation for newCell FP *)
 
-   val newDedicatedCell : cellkind -> ('a -> cell)
+   val newDedicatedCell : CellsBasis.cellkind -> ('a -> CellsBasis.cell)
 
-       (* lookup the number of virtual registers in a cellkind *)
-   val numCell   : cellkind -> (unit -> int) 
+       (* lookup the number of virtual registers in a CellsBasis.cellkind *)
+   val numCell   : CellsBasis.cellkind -> (unit -> int) 
 
        (* the next virtual register name *) 
-   val maxCell   : unit -> cell_id
+   val maxCell   : unit -> CellsBasis.cell_id
      
        (* Given a cell c, create a new pseudo register that has the same 
         * cellkind as c, and a new property list initialized 
         * with the contents of c's properity list.
         * Note: the numCell kind is NOT updated!
         *)
-   val newVar : cell -> cell
+   val newVar : CellsBasis.cell -> CellsBasis.cell
 
        (* This is the same as above, except that if the original
         * cell is colored, then the new cell has the same color.
@@ -91,7 +85,7 @@ sig
         * representing the same register used in different situations.  
         * See the function Reg above.
         *)
-   val cloneCell : cell -> cell
+   val cloneCell : CellsBasis.cell -> CellsBasis.cell
 
        (* Reset all counters. *) 
    val reset     : unit -> unit 
@@ -103,15 +97,15 @@ sig
    sig
       type cellset 
       (* cellset functions *)
-      val empty      : cellset
-      val add        : cell * cellset -> cellset
-      val rmv        : cell * cellset -> cellset
-      val get        : cellkind -> cellset -> cell list
-      val update     : cellkind -> cellset * cell list -> cellset
-      val map        : {from:cell,to:cell} -> cellset -> cellset
+      val empty  : cellset
+      val add    : CellsBasis.cell * cellset -> cellset
+      val rmv    : CellsBasis.cell * cellset -> cellset
+      val get    : CellsBasis.cellkind -> cellset -> CellsBasis.cell list
+      val update : CellsBasis.cellkind -> cellset * CellsBasis.cell list -> cellset
+      val map    : {from:CellsBasis.cell, to:CellsBasis.cell} -> cellset -> cellset
 
       (* convert cellset into a list of cells *)
-      val toCellList : cellset -> cell list
+      val toCellList : cellset -> CellsBasis.cell list
 
       (* pretty printing *)
       val toString   : cellset -> string
@@ -121,30 +115,25 @@ sig
    type cellset = CellSet.cellset 
 
    val empty      : cellset
-   val getReg     : cellset -> cell list 
-   val addReg     : cell * cellset -> cellset 
-   val rmvReg     : cell * cellset -> cellset
-   val getFreg    : cellset -> cell list 
-   val addFreg    : cell * cellset -> cellset
-   val rmvFreg    : cell * cellset -> cellset
+   val getReg     : cellset -> CellsBasis.cell list 
+   val addReg     : CellsBasis.cell * cellset -> cellset 
+   val rmvReg     : CellsBasis.cell * cellset -> cellset
+   val getFreg    : cellset -> CellsBasis.cell list 
+   val addFreg    : CellsBasis.cell * cellset -> cellset
+   val rmvFreg    : CellsBasis.cell * cellset -> cellset
 
        (* Return a register that is always zero on the architecture,
         * if one exists.  IMPORTANT: each call returns the same cell.
         * See also cloneCell above.
         *)
-   val zeroReg    : cellkind -> cell option  
+   val zeroReg    : CellsBasis.cellkind -> CellsBasis.cell option  
                            
-   val defaultValues : cellkind -> (register_id * int) list
+   val defaultValues : CellsBasis.cellkind -> (CellsBasis.register_id * int) list
 
+   val stackptrR     : CellsBasis.cell (* stack pointer register *)
+   val asmTmpR       : CellsBasis.cell (* assembly temporary *)
+   val fasmTmp       : CellsBasis.cell (* floating point temporary *)
 end
 
-(*
- * This is the abstract interface of cells.
- *)
-signature CELLS =
-sig
-   include CELLS_COMMON
-   val stackptrR     : cell (* stack pointer register *)
-   val asmTmpR       : cell (* assembly temporary *)
-   val fasmTmp       : cell (* floating point temporary *)
-end
+
+

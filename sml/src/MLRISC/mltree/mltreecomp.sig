@@ -22,9 +22,9 @@ sig
      (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 
    val compileSext : reducer -> {stm:T.sext, an:T.an list} -> unit
-   val compileRext : reducer -> {e:T.ty * T.rext, rd:C.cell, an:T.an list} -> unit
-   val compileFext : reducer -> {e:T.ty * T.fext, fd:C.cell, an:T.an list} -> unit
-   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:C.cell, an:T.an list} -> unit
+   val compileRext : reducer -> {e:T.ty * T.rext, rd:CellsBasis.cell, an:T.an list} -> unit
+   val compileFext : reducer -> {e:T.ty * T.fext, fd:CellsBasis.cell, an:T.an list} -> unit
+   val compileCCext : reducer -> {e:T.ty * T.ccext, ccd:CellsBasis.cell, an:T.an list} -> unit
 end
 
 signature MLTREECOMP = 

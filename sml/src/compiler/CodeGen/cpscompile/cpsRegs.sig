@@ -10,7 +10,7 @@ signature CPSREGS = sig
   structure T : MLTREE
   structure C : CELLS
 
-  val vfp       : C.cell
+  val vfp       : CellsBasis.cell
   val vfptr     : T.rexp
 
   val allocptr 	: T.rexp	(* must be a register, - T.REG(r) *)

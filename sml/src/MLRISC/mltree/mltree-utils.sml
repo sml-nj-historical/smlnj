@@ -31,7 +31,6 @@ struct
    structure Region     = T.Region
    structure B          = T.Basis
    structure C          = CellsBasis
-   structure CI         = CellsInternal
    structure W          = Word
    
 
@@ -40,7 +39,7 @@ struct
    val toLower = String.map Char.toLower
 
    fun error msg = MLRiscErrorMsg.error("MLTreeUtils",msg)
-   fun wv(CI.CELL{id, ...}) = w id
+   fun wv(C.CELL{id, ...}) = w id
    fun wvs is = 
    let fun f([],h) = h
          | f(i::is,h) = f(is,wv i+h)
@@ -198,7 +197,7 @@ struct
   and eqLabels([],[]) = true
     | eqLabels(a::b,c::d) = eqLabel(a,c) andalso eqLabels(b,d)
     | eqLabels _ = false
-  and eqCell(CI.CELL{id=x, ...},CI.CELL{id=y, ...}) = x=y
+  and eqCell(C.CELL{id=x, ...},C.CELL{id=y, ...}) = x=y
   and eqCells([], []) = true
     | eqCells(x::xs,y::ys) = eqCell(x,y) andalso eqCells(xs,ys)
     | eqCells _ = false

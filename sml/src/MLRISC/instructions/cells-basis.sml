@@ -4,10 +4,11 @@
  * -- Allen.
  *) 
 
+
 (*
- * The following data structures are hidden from the clients.
+ * Basic utilities on cells
  *)
-structure CellsInternal =
+structure CellsBasis : CELLS_BASIS =
 struct
 
    datatype cellkindInfo = INFO of {name:string, nickname:string}
@@ -69,27 +70,6 @@ struct
        | SPILLED
 
    val array0 = Array.tabulate(0, fn _ => raise Match) : cell Array.array
-end
-
-
-(*
- * Basic utilities on cells
- *)
-structure CellsBasis : CELLS_BASIS =
-struct
-
-   structure I = CellsInternal
-
-   datatype cellkind     = datatype I.cellkind
-   datatype cellkindInfo = datatype I.cellkindInfo
-   datatype cellkindDesc = datatype I.cellkindDesc
-   datatype cell         = datatype I.cell
-   datatype cellColor    = datatype I.cellColor
-
-   type sz           = I.sz
-   type cell_id      = I.cell_id
-   type register_id  = I.register_id
-   type register_num = I.register_num
 
    fun error msg = MLRiscErrorMsg.error ("CellBasis", msg)
 
@@ -100,14 +80,14 @@ struct
      | cellkindToString CC = "CC"
      | cellkindToString MEM = "MEM"
      | cellkindToString CTRL = "CTRL"
-     | cellkindToString (MISC_KIND(ref(I.INFO{name, ...}))) = name
+     | cellkindToString (MISC_KIND(ref(INFO{name, ...}))) = name
 
    fun cellkindToNickname GP = "r"
      | cellkindToNickname FP = "f"
      | cellkindToNickname CC = "cc"
      | cellkindToNickname MEM = "m"
      | cellkindToNickname CTRL = "ctrl"
-     | cellkindToNickname (MISC_KIND(ref(I.INFO{nickname, ...}))) = nickname
+     | cellkindToNickname (MISC_KIND(ref(INFO{nickname, ...}))) = nickname
 
    fun newCellKind{name="GP", ...} = GP
      | newCellKind{name="FP", ...} = FP
@@ -308,11 +288,12 @@ struct
          toString         = fn m => "m"^i2s m,
          toStringWithSize = fn (m, _) => "m"^i2s m,
          defaultValues    = [],
-         physicalRegs     = ref CellsInternal.array0,
+         physicalRegs     = ref array0,
          zeroReg          = NONE
         }
 
    fun mem id =  CELL{id=id, an=ref [], desc=memDesc, col=ref(MACHINE id)}
 
+   val array0 = Array.tabulate(0, fn _ => raise Match) : cell Array.array
 end
 

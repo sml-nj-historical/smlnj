@@ -73,7 +73,7 @@ struct
   * temporaries, since sdi expansion is performed after register 
   * allocation.
   *)
-  val zeroR = Option.valOf(C.zeroReg C.GP)
+  val zeroR = Option.valOf(C.zeroReg CellsBasis.GP)
 
   fun expand(instr, size, pos) = let
     fun load(ldClass, ldOp, r, b, d as I.LABop le, mem) = 

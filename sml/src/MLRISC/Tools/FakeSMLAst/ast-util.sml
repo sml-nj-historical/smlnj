@@ -68,7 +68,7 @@ struct
    val UNITty = IDty(IDENT([],"unit"))
    val BOOLty = IDty(IDENT([],"bool"))
    val INTty = IDty(IDENT([],"int"))
-   val REGISTERty = IDty(IDENT([],"cell"))
+   val REGISTERty = IDty(IDENT([],"CellsBasis.cell"))
    val REGISTERLISTty = APPty(IDENT([],"list"),[REGISTERty])
    val INTLISTty = APPty(IDENT([],"list"),[INTty])
    val STRINGty = IDty(IDENT([],"string"))
@@ -77,7 +77,7 @@ struct
    val LABELty = IDty(IDENT(["Label"],"label"))
    val LABEXPty = IDty(IDENT(["LabelExp"],"labexp"))
    val CONSTty = IDty(IDENT(["Constant"],"const"))
-   val CELLKINDty = IDty(IDENT([],"cellkind"))
+   val CELLKINDty = IDty(IDENT([],"CellsBasis.cellkind"))
    val CELLSETty = IDty(IDENT([],"cellset"))
 
    fun DATATYPE(id,args,cbs) = 

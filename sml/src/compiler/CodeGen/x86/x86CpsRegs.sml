@@ -22,7 +22,7 @@ structure X86CpsRegs : CPSREGS = struct
   val edx = T.REG(32, C.edx)	val esi = T.REG(32, C.esi)
   val ebx = T.REG(32, C.ebx)	val edi = T.REG(32, C.edi)
 
-  val vfp = C.newDedicatedCell C.GP ()
+  val vfp = C.newDedicatedCell CellsBasis.GP ()
   val vfptr = T.REG(32, vfp)
 
   fun frameptr which = if which then vfptr else esp

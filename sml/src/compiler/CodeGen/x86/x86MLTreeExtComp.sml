@@ -6,6 +6,7 @@ struct
    structure T = T
    structure I = I
    structure C = I.C
+   structure CB = CellsBasis
    structure Ext = X86_SMLNJMLTreeExt
    structure X86CompInstrExt = X86CompInstrExt(I)
 
@@ -20,7 +21,7 @@ struct
    val compileRext  = unimplemented
    val compileCCext = unimplemented
    fun compileFext (T.REDUCER{reduceFexp, emit, ...}:reducer) = let
-     fun comp{e=(64, fexp), fd:C.cell, an:T.an list} = let
+     fun comp{e=(64, fexp), fd:CB.cell, an:T.an list} = let
            fun trig(f, foper) = 
 	     (reduceFexp f; emit(I.FUNARY foper, an))
          in
@@ -34,8 +35,8 @@ struct
 	 end
        | comp _ = MLRiscErrorMsg.impossible "compileFext" 
 
-     fun fastComp{e=(64, fexp), fd:C.cell, an:T.an list} =     
-         let fun Freg f = let val fx = C.registerNum f
+     fun fastComp{e=(64, fexp), fd:CB.cell, an:T.an list} =     
+         let fun Freg f = let val fx = CB.registerNum f
                           in  if fx >= 8  andalso fx < 32 (* hardwired! *)
                               then I.FDirect f else I.FPR f 
                           end

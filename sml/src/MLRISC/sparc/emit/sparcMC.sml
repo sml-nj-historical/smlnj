@@ -70,15 +70,15 @@ struct
             eByteW b16; 
             eByteW b8 )
        end
-   fun emit_GP r = itow (C.physicalRegisterNum r)
-   and emit_FP r = itow (C.physicalRegisterNum r)
-   and emit_Y r = itow (C.physicalRegisterNum r)
-   and emit_PSR r = itow (C.physicalRegisterNum r)
-   and emit_FSR r = itow (C.physicalRegisterNum r)
-   and emit_CC r = itow (C.physicalRegisterNum r)
-   and emit_MEM r = itow (C.physicalRegisterNum r)
-   and emit_CTRL r = itow (C.physicalRegisterNum r)
-   and emit_CELLSET r = itow (C.physicalRegisterNum r)
+   fun emit_GP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FP r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_Y r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_PSR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_FSR r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CC r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_MEM r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CTRL r = itow (CellsBasis.physicalRegisterNum r)
+   and emit_CELLSET r = itow (CellsBasis.physicalRegisterNum r)
    fun emit_load (I.LDSB) = (0wx9 : Word32.word)
      | emit_load (I.LDSH) = (0wxa : Word32.word)
      | emit_load (I.LDUB) = (0wx1 : Word32.word)
@@ -453,8 +453,8 @@ struct
    fun disp label = (itow ((Label.addrOf label) - ( ! loc))) ~>> 0wx2
 
 (*#line 597.7 "sparc/sparc.mdl"*)
-   val r15 = C.Reg C.GP 15
-   and r31 = C.Reg C.GP 31
+   val r15 = C.Reg CellsBasis.GP 15
+   and r31 = C.Reg CellsBasis.GP 31
        fun emitter instr =
        let
    fun emitInstr (I.LOAD{l, d, r, i, mem}) = load {l=l, r=r, i=i, d=d}

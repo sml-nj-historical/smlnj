@@ -174,7 +174,7 @@ struct
                 end
 	 | 12 => 
            let val (hi,lo) = split im
-	   in [I.ARITHI{oper=I.ADDIS, rt=C.asmTmpR, ra=C.Reg C.GP 0, 
+	   in [I.ARITHI{oper=I.ADDIS, rt=C.asmTmpR, ra=C.Reg CellsBasis.GP 0, 
                         im=I.ImmedOp hi},
 	       I.ARITHI{oper=I.ADDI,rt=C.asmTmpR,ra=C.asmTmpR,im=I.ImmedOp lo},
    	       I.ARITH{oper=cnv oper, rt=rt, ra=ra, rb=C.asmTmpR, OE=false, 

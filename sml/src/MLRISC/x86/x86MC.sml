@@ -10,7 +10,7 @@ functor X86MCEmitter
   (structure Instr : X86INSTR
    structure Shuffle : X86SHUFFLE where I = Instr
    structure MemRegs : MEMORY_REGISTERS where I = Instr
-   val memRegBase : MemRegs.I.C.cell option
+   val memRegBase : CellsBasis.cell option
    structure AsmEmitter : INSTRUCTION_EMITTER where I = Instr) : MC_EMIT = 
 struct
   structure I = Instr
@@ -20,6 +20,7 @@ struct
   structure W32 = Word32
   structure W8 = Word8
   structure W = LargeWord
+  structure CB = CellsBasis
 
   val itow  = Word.fromInt
   val wtoi  = Word.toInt
@@ -65,8 +66,8 @@ struct
            let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
            in  emit instr; error msg end
 
-    val rNum = C.physicalRegisterNum 
-    val fNum = C.physicalRegisterNum 
+    val rNum = CB.physicalRegisterNum 
+    val fNum = CB.physicalRegisterNum 
 
     fun memReg r = MemRegs.memReg{reg=r, base=Option.valOf memRegBase}
 
@@ -186,7 +187,7 @@ struct
             of Bits32 => 
                (case dst
                 of I.Direct r =>
-                    if C.physicalRegisterNum r = eax then 
+                    if CB.physicalRegisterNum r = eax then 
                       eBytes(W8.fromInt(8*opc2 + 5) :: eLong(i))
                     else 
                       encodeLongImm(0wx81, opc2, dst, i)
@@ -215,11 +216,11 @@ struct
       | test(bits, I.Immed(i), lsrc) =
          (case (lsrc, i >= 0 andalso i < 255) of 
            (I.Direct r, false) => 
-             if C.physicalRegisterNum r = eax then eBytes(0wxA9 :: eLong i) 
+             if CB.physicalRegisterNum r = eax then eBytes(0wxA9 :: eLong i) 
              else encodeLongImm(0wxF7, 0, lsrc, i)
          | (_, false)  => encodeLongImm(0wxF7, 0, lsrc, i)
          | (I.Direct r, true) =>  (* 8 bit *)
-           let val r = C.physicalRegisterNum r
+           let val r = CB.physicalRegisterNum r
            in  if r = eax then eBytes[0wxA8, toWord8 i]
                else if r < 4 then 
                     (* unfortunately, only CL, DL, BL can be encoded *)
@@ -429,7 +430,7 @@ struct
        in  eBytes[opc1, opc2]
        end
      | I.FBINARY{binOp, src, dst=I.ST dst} => 
-       if C.physicalRegisterNum dst = 0 then
+       if CB.physicalRegisterNum dst = 0 then
        let
          val (opc, code) = 
            (case binOp of 

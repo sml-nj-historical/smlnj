@@ -7,38 +7,36 @@
 
 signature ALPHACELLS =
 sig
-   include CELLS_COMMON
-   val CELLSET : cellkind
-   val showGP : register_id -> string
-   val showFP : register_id -> string
-   val showCC : register_id -> string
-   val showMEM : register_id -> string
-   val showCTRL : register_id -> string
-   val showCELLSET : register_id -> string
-   val showGPWithSize : (register_id * sz) -> string
-   val showFPWithSize : (register_id * sz) -> string
-   val showCCWithSize : (register_id * sz) -> string
-   val showMEMWithSize : (register_id * sz) -> string
-   val showCTRLWithSize : (register_id * sz) -> string
-   val showCELLSETWithSize : (register_id * sz) -> string
-   val stackptrR : cell
-   val asmTmpR : cell
-   val fasmTmp : cell
-   val returnAddr : cell
-   val r31 : cell
-   val f31 : cell
-   val addGP : (cell * cellset) -> cellset
-   val addFP : (cell * cellset) -> cellset
-   val addCC : (cell * cellset) -> cellset
-   val addMEM : (cell * cellset) -> cellset
-   val addCTRL : (cell * cellset) -> cellset
-   val addCELLSET : (cell * cellset) -> cellset
+   include CELLS
+   val CELLSET : CellsBasis.cellkind
+   val showGP : CellsBasis.register_id -> string
+   val showFP : CellsBasis.register_id -> string
+   val showCC : CellsBasis.register_id -> string
+   val showMEM : CellsBasis.register_id -> string
+   val showCTRL : CellsBasis.register_id -> string
+   val showCELLSET : CellsBasis.register_id -> string
+   val showGPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showFPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showCCWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showMEMWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showCTRLWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showCELLSETWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val returnAddr : CellsBasis.cell
+   val r31 : CellsBasis.cell
+   val f31 : CellsBasis.cell
+   val addGP : (CellsBasis.cell * cellset) -> cellset
+   val addFP : (CellsBasis.cell * cellset) -> cellset
+   val addCC : (CellsBasis.cell * cellset) -> cellset
+   val addMEM : (CellsBasis.cell * cellset) -> cellset
+   val addCTRL : (CellsBasis.cell * cellset) -> cellset
+   val addCELLSET : (CellsBasis.cell * cellset) -> cellset
 end
 
 structure AlphaCells : ALPHACELLS =
 struct
    exception AlphaCells
    fun error msg = MLRiscErrorMsg.error("AlphaCells",msg)
+   open CellsBasis
    fun showGPWithSize (r, ty) = (fn (30, _) => "$sp"
                                   | (r, _) => "$" ^ (Int.toString r)
                                 ) (r, ty)
@@ -59,30 +57,30 @@ struct
    fun showCTRL r = showCTRLWithSize (r, 0)
    fun showCELLSET r = showCELLSETWithSize (r, 0)
    val CELLSET = CellsBasis.newCellKind {name="CELLSET", nickname="cellset"}
-   structure MyCellsCommon = CellsCommon
+   structure MyCells = Cells
       (exception Cells = AlphaCells
        val firstPseudo = 256
-       val desc_GP = CellsInternal.DESC {low=0, high=31, kind=CellsBasis.GP, 
-              defaultValues=[(31, 0)], zeroReg=SOME 31, toString=showGP, toStringWithSize=showGPWithSize, 
-              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
-       and desc_FP = CellsInternal.DESC {low=32, high=63, kind=CellsBasis.FP, 
+       val desc_GP = CellsBasis.DESC {low=0, high=31, kind=CellsBasis.GP, defaultValues=[(31, 
+              0)], zeroReg=SOME 31, toString=showGP, toStringWithSize=showGPWithSize, 
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
+       and desc_FP = CellsBasis.DESC {low=32, high=63, kind=CellsBasis.FP, 
               defaultValues=[(63, 0)], zeroReg=SOME 31, toString=showFP, toStringWithSize=showFPWithSize, 
-              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
-       and desc_MEM = CellsInternal.DESC {low=64, high=63, kind=CellsBasis.MEM, 
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
+       and desc_MEM = CellsBasis.DESC {low=64, high=63, kind=CellsBasis.MEM, 
               defaultValues=[], zeroReg=NONE, toString=showMEM, toStringWithSize=showMEMWithSize, 
-              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
-       and desc_CTRL = CellsInternal.DESC {low=64, high=63, kind=CellsBasis.CTRL, 
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
+       and desc_CTRL = CellsBasis.DESC {low=64, high=63, kind=CellsBasis.CTRL, 
               defaultValues=[], zeroReg=NONE, toString=showCTRL, toStringWithSize=showCTRLWithSize, 
-              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
-       and desc_CELLSET = CellsInternal.DESC {low=64, high=63, kind=CELLSET, 
-              defaultValues=[], zeroReg=NONE, toString=showCELLSET, toStringWithSize=showCELLSETWithSize, 
-              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
+       and desc_CELLSET = CellsBasis.DESC {low=64, high=63, kind=CELLSET, defaultValues=[], 
+              zeroReg=NONE, toString=showCELLSET, toStringWithSize=showCELLSETWithSize, 
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsBasis.array0}
        val cellKindDescs = [(CellsBasis.GP, desc_GP), (CellsBasis.FP, desc_FP), 
               (CellsBasis.CC, desc_GP), (CellsBasis.MEM, desc_MEM), (CellsBasis.CTRL, 
               desc_CTRL), (CELLSET, desc_CELLSET)]
       )
 
-   open MyCellsCommon
+   open MyCells
    val addGP = CellSet.add
    and addFP = CellSet.add
    and addCC = CellSet.add

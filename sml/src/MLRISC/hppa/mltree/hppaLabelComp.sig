@@ -5,18 +5,18 @@ signature LABEL_COMP = sig
 
   type reduce = 
     {stm: T.stm -> unit, 
-     rexp: T.rexp -> I.C.cell, 
+     rexp: T.rexp -> CellsBasis.cell, 
      emit:I.instruction -> unit 
     }
     (* functions to emit MLRISC statements or register expressions *)
 
   val ldLabelEA : 
-    (I.instruction -> unit) -> T.labexp -> (I.C.cell * I.operand)
+    (I.instruction -> unit) -> T.labexp -> (CellsBasis.cell * I.operand)
     (* generate a label operand to use as an effective address *)
 
   val ldLabelOpnd : 
     (I.instruction -> unit) -> 
-       {label:T.labexp, pref:I.C.cell option} -> I.operand
+       {label:T.labexp, pref:CellsBasis.cell option} -> I.operand
     (* generate a label operand to be used by immediate instructions *)
 
   val doJmp : reduce * T.stm  -> unit

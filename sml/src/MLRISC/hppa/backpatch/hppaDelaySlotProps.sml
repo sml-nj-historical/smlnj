@@ -9,7 +9,7 @@ functor HppaDelaySlots
 struct
    structure I  = I
    structure C  = I.C
-   structure SL = C.SortedCells
+   structure SL = CellsBasis.SortedCells
 
    fun error msg = MLRiscErrorMsg.error("HppaDelaySlotProps",msg)
 
@@ -74,9 +74,9 @@ struct
            I.ANNOTATION{i=enableDelaySlot{instr=i,n=n,nop=nop},a=a}
        | _ => error "enableDelaySlot"
 
-    val defUseI = P.defUse I.C.GP
-    val defUseF = P.defUse I.C.FP
-    val zeroR   = Option.valOf(C.zeroReg C.GP) 
+    val defUseI = P.defUse CellsBasis.GP
+    val defUseF = P.defUse CellsBasis.FP
+    val zeroR   = Option.valOf(C.zeroReg CellsBasis.GP) 
 
     fun conflict{src=i,dst=j} = 
         let fun clash(defUse) =

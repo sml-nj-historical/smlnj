@@ -59,7 +59,7 @@ struct
        fun init size = (comment("Code Size = " ^ ms size); nl())
        val emitCellInfo = AsmFormatUtil.reginfo
                                 (emit,formatAnnotations)
-       fun emitCell r = (emit(C.toString r); emitCellInfo r)
+       fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)
        fun emit_cellset(title,cellset) =
          (nl(); comment(title^C.CellSet.toString cellset))
        val emit_cellset = 
@@ -283,7 +283,8 @@ struct
          ( emit "/* deffreg\t"; 
            emitCell FP; 
            emit " */" )
-       | I.LDA{r, b, d} => (if ((isZero d) andalso (C.sameCell (r, b)))
+       | I.LDA{r, b, d} => (if ((isZero d) andalso (CellsBasis.sameCell (r, 
+            b)))
             then ()
             else 
             ( 
@@ -291,7 +292,7 @@ struct
                 emitCell r; 
                 emit ", "; 
                 emit_operand d ); 
-              (if ((C.registerId b) = 31)
+              (if ((CellsBasis.registerId b) = 31)
                  then ()
                  else 
                  ( emit "("; 
@@ -303,7 +304,7 @@ struct
              emitCell r; 
              emit ", "; 
              emit_operand d ); 
-           (if ((C.registerId b) = 31)
+           (if ((CellsBasis.registerId b) = 31)
               then ()
               else 
               ( emit "("; 
@@ -404,11 +405,11 @@ struct
                    emit ", "; 
                    emitCell rc )
          in 
-            (case (oper, C.registerId ra, rb, C.registerId rc) of
-              (I.BIS, 27, I.REGop rb, 29) => (if ((C.registerId rb) = 31)
+            (case (oper, CellsBasis.registerId ra, rb, CellsBasis.registerId rc) of
+              (I.BIS, 27, I.REGop rb, 29) => (if ((CellsBasis.registerId rb) = 31)
                  then (emit "ldgp\t$29, 0($27)")
                  else (disp ()))
-            | (I.BIS, 26, I.REGop rb, 29) => (if ((C.registerId rb) = 31)
+            | (I.BIS, 26, I.REGop rb, 29) => (if ((CellsBasis.registerId rb) = 31)
                  then (emit "ldgp\t$29, 0($26)")
                  else (disp ()))
             | _ => disp ()

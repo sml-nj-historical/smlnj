@@ -2,9 +2,10 @@ functor SparcRewrite(Instr:SPARCINSTR) =
 struct
    structure I = Instr
    structure C = I.C
+   structure CB = CellsBasis
 
    fun rewriteUse(instr,rs,rt) =  
-   let fun match r = C.sameColor(r,rs) 
+   let fun match r = CB.sameColor(r,rs) 
        fun R r = if match r then rt else r 
        fun O(i as I.REG r) = if match r then I.REG rt else i
          | O i = i
@@ -37,15 +38,15 @@ struct
        | I.ANNOTATION{i,a} => 
            I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=map R uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=map R uses,
                                        defs=defs}
                           | _ => a}
        | _ => instr
    end
 
    fun rewriteDef(instr,rs,rt) =
-   let fun match r = C.sameColor(r,rs)
+   let fun match r = CB.sameColor(r,rs)
        fun R r = if match r then rt else r 
        fun ea(SOME(I.Direct r)) = SOME(I.Direct(R r))
          | ea x = x 
@@ -71,15 +72,15 @@ struct
        | I.ANNOTATION{i,a} => 
            I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=uses,
                                        defs=map R defs}
                           | _ => a}
        | _ => instr
    end
 
    fun frewriteUse(instr,rs,rt) = 
-   let fun match r = C.sameColor(r,rs)
+   let fun match r = CB.sameColor(r,rs)
        fun R r = if match r then rt else r 
    in  case instr of
          I.FPop1{a,r,d} => I.FPop1{a=a,r=R r,d=d}
@@ -100,15 +101,15 @@ struct
        | I.ANNOTATION{i,a} => 
            I.ANNOTATION{i=frewriteUse(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=map R uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=map R uses,
                                        defs=defs}
                           | _ => a}
        | _ => instr
    end
 
    fun frewriteDef(instr,rs,rt) = 
-   let fun match r = C.sameColor(r,rs)
+   let fun match r = CB.sameColor(r,rs)
        fun R r = if match r then rt else r 
        fun ea(SOME(I.FDirect r)) = SOME(I.FDirect(R r))
          | ea x = x 
@@ -129,8 +130,8 @@ struct
        | I.ANNOTATION{i,a}=> 
            I.ANNOTATION{i=frewriteDef(i,rs,rt),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=uses,
                                        defs=map R defs}
                           | _ => a}
        | _ => instr

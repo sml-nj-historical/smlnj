@@ -419,7 +419,7 @@ struct
          BPT 0x80 | BUGCHK 0x81 | CALLSYS 0x83 
        | GENTRAP 0xaa | IMB 0x86 | RDUNIQUE 0x9e | WRUNIQUE 0x9f
 
-      type addressing_mode = C.cell * operand
+      type addressing_mode = CellsBasis.cell * operand
    
    end (* Instruction *)
 
@@ -475,7 +475,7 @@ struct
    struct
       (* compute displacement address *)
       fun disp lab = itow(Label.addrOf lab - !loc - 4) ~>> 0w2
-      val zeroR = Option.valOf(C.zeroReg C.GP)
+      val zeroR = Option.valOf(C.zeroReg CellsBasis.GP)
    end
 
    structure Assembly =
@@ -501,16 +501,16 @@ struct
  
    (* Load/Store *)
    | LDA of {r: $GP, b: $GP, d:operand}        (* use of REGop is illegal *)
-     asm: if isZero d andalso C.sameCell(r,b) then ()
+     asm: if isZero d andalso CellsBasis.sameCell(r,b) then ()
           else (``lda\t<r>, <d>''; 
-                if C.registerId b = 31 then () else ``(<b>)''
+                if CellsBasis.registerId b = 31 then () else ``(<b>)''
                )
      mc:  ILoadStore{opc=0w08,r,b,d}
      rtl: ``LDA''
 
    | LDAH of {r: $GP, b: $GP, d:operand} (* use of REGop is illegal *)
      asm: (``ldah\t<r>, <d>''; 
-           if C.registerId b = 31 then () else ``(<b>)''
+           if CellsBasis.registerId b = 31 then () else ``(<b>)''
           )
      mc:  ILoadStore{opc=0w09,r,b,d}
      rtl: ``LDAH''
@@ -576,12 +576,12 @@ struct
    | OPERATE of {oper:operate, ra: $GP, rb:operand, rc: $GP}
              (* Pretty print ldgp differently *) 
      asm: let fun disp() = ``<oper>\t<ra>, <rb>, <rc>''
-          in  case (oper,C.registerId ra,rb,C.registerId rc) of
+          in  case (oper,CellsBasis.registerId ra,rb,CellsBasis.registerId rc) of
                  (I.BIS,27,I.REGop rb,29) => 
-                   if C.registerId rb = 31 then ``ldgp\t$29, 0($27)''
+                   if CellsBasis.registerId rb = 31 then ``ldgp\t$29, 0($27)''
                    else disp()
               |  (I.BIS,26,I.REGop rb,29) => 
-                   if C.registerId rb = 31 then ``ldgp\t$29, 0($26)''
+                   if CellsBasis.registerId rb = 31 then ``ldgp\t$29, 0($26)''
                    else disp()
               | _                        => disp()
           end

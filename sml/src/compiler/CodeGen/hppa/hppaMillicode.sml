@@ -4,6 +4,7 @@ struct
   structure C = Instr.C
   structure I = Instr
   structure Region = I.Region
+  structure CB = CellsBasis
 
   val arg1 = C.GPReg 26
   val arg2 = C.GPReg 25

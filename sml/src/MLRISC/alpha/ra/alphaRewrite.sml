@@ -6,9 +6,10 @@
 functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   structure I=Instr
   structure C=I.C
+  structure CB=CellsBasis
 
   fun rewriteUse(instr, rs, rt) = let
-    fun match r = C.sameColor(r,rs)
+    fun match r = CB.sameColor(r,rs)
     fun isRegOp (I.REGop r) = match r
       | isRegOp _ = false
     fun rwOperand(opnd as I.REGop r) = 
@@ -74,15 +75,15 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.ANNOTATION{i,a} =>
            I.ANNOTATION{i=rewriteUse(i,rs,rt),
                         a=case a of 
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,defs=defs,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,defs=defs,
                                        uses=map replace uses}
                           | _ => a}
      | _ => instr
   end
 
   fun frewriteUse(instr, fs, ft) = let
-     fun match f = C.sameColor(f,fs)
+     fun match f = CB.sameColor(f,fs)
     fun replace f = if match f then ft else f
     fun foperate(opClass, {oper, fa, fb, fc}) = 
       if match fa then 
@@ -113,8 +114,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=frewriteUse(i,fs,ft),
                       a=case a of 
-                         C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                           C.DEF_USE{cellkind=C.FP,defs=defs,
+                         CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                           CB.DEF_USE{cellkind=CB.FP,defs=defs,
                                      uses=map replace uses}
                         | _ => a}
 
@@ -122,7 +123,7 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   end
 
   fun rewriteDef(instr, rs, rt) = let
-    fun match r = C.sameColor(r,rs)
+    fun match r = CB.sameColor(r,rs)
     fun rewrite r = if match r then rt else r
     fun ea (SOME(I.Direct r)) = SOME(I.Direct (rewrite r))
       | ea x = x
@@ -158,15 +159,15 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=rewriteDef(i,rs,rt),
                         a=case a of 
-                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.GP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.GP,uses=uses,
                                        defs=map rewrite defs}
                           | _ => a}
      | _ => instr
   end
 
   fun frewriteDef(instr, fs, ft) = let
-    fun match f = C.sameColor(f,fs)
+    fun match f = CB.sameColor(f,fs)
     fun rewrite f = if match f then ft else f
     fun ea (SOME(I.FDirect f)) = SOME(I.FDirect(rewrite f))
       | ea x  = x
@@ -196,8 +197,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.ANNOTATION{i,a} => 
          I.ANNOTATION{i=frewriteDef(i,fs,ft),
                         a=case a of
-                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
-                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                           CB.DEF_USE{cellkind=CB.FP,defs,uses} =>
+                             CB.DEF_USE{cellkind=CB.FP,uses=uses,
                                        defs=map rewrite defs}
                           | _ => a}
      | _  => instr

@@ -41,6 +41,7 @@ struct
   structure MS = MachineSpec    (* Machine Specification *)
   structure D  = MS.ObjDesc     (* ML Object Descriptors *)
   structure An = MLRiscAnnotations
+  structure CB = CellsBasis
 
   structure ArgP =              (* Argument passing *)
     ArgPassing(structure Cells=Cells
@@ -80,7 +81,7 @@ struct
 
   val enterGC = GCCells.setGCType
 
-  fun sameRegAs x y = Cells.sameCell (x, y)
+  fun sameRegAs x y = CB.sameCell (x, y)
 
   val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
   val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
@@ -227,8 +228,8 @@ struct
 
       val (newReg, newRegWithCty, newRegWithKind, newFreg)  = 
            if gctypes then 
-              let val newReg  = GCCells.newCell Cells.GP
-                  val newFreg = GCCells.newCell Cells.FP
+              let val newReg  = GCCells.newCell CB.GP
+                  val newFreg = GCCells.newCell CB.FP
                   fun newRegWithCty cty = newReg(ctyToGCty cty)
                   fun newRegWithKind kind = newReg(kindToGCty kind)
               in  (newReg, newRegWithCty, newRegWithKind, newFreg) end

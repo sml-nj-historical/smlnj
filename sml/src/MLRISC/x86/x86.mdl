@@ -507,7 +507,7 @@ struct
 
   functor Assembly
      (structure MemRegs : MEMORY_REGISTERS where I = Instr
-      val memRegBase : MemRegs.I.C.cell option) =
+      val memRegBase : CellsBasis.cell option) =
   struct
      fun memReg r = MemRegs.memReg {reg=r, base=Option.valOf memRegBase}
      fun emitInt32 i = 
@@ -515,7 +515,7 @@ struct
          val s = if i >= 0 then s else "-"^String.substring(s,1,size s-1)
      in  emit s end
 
-     val {low=SToffset, ...} = C.cellRange C.FP
+     val {low=SToffset, ...} = C.cellRange CellsBasis.FP
 		
      fun emitScale 0 = emit "1"
        | emitScale 1 = emit "2"
@@ -536,7 +536,7 @@ struct
        | I.Direct r => emitCell r
        | I.MemReg r => emit_operand(memReg opn)
        | I.ST f => emitCell f
-       | I.FPR f => (emit "%f"; emit(Int.toString(C.registerNum f)))
+       | I.FPR f => (emit "%f"; emit(Int.toString(CellsBasis.registerNum f)))
        | I.FDirect f => emit_operand(memReg opn)
        | I.Displace{base,disp,mem,...} => 
            (emit_disp disp; emit "("; emitCell base; emit ")"; 
@@ -550,7 +550,7 @@ struct
            emitCell index; comma(); 
            emitScale scale; emit ")"; emit_region mem)
 
-      and emit_operand8(I.Direct r) = emit(C.toStringWithSize(r,8))
+      and emit_operand8(I.Direct r) = emit(CellsBasis.toStringWithSize(r,8))
         | emit_operand8 opn = emit_operand opn
 
       and emit_disp(I.Immed 0) = ()
@@ -578,7 +578,7 @@ struct
               | _ => fbinOp
           end
 
-      fun isST0 (I.ST r) = C.registerNum r = 0 
+      fun isST0 (I.ST r) = CellsBasis.registerNum r = 0 
         | isST0 _ = false
  
       (* Special syntax for binary operators *)

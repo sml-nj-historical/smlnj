@@ -555,9 +555,9 @@ struct
         | LOLabExp of T.labexp * field_selector ``<labexp>''
 
       datatype addressing_mode = 
-        DISPea of C.cell * operand    (* displacement *)
-      | INDXea of C.cell * C.cell       (* indexed *)
-      | INDXSCALEDea of C.cell * C.cell (* indexed with scaling (b,x) *)
+        DISPea of CellsBasis.cell * operand		  (* displacement *)
+      | INDXea of CellsBasis.cell * CellsBasis.cell       (* indexed *)
+      | INDXSCALEDea of CellsBasis.cell * CellsBasis.cell (* indexed with scaling (b,x) *)
 
    end  (* Instruction *)
 
@@ -643,7 +643,7 @@ struct
     *========================================================================*) 
    structure MC =
    struct
-      val zeroR = Option.valOf(C.zeroReg C.GP)
+      val zeroR = Option.valOf(C.zeroReg CellsBasis.GP)
       fun opn opnd = 
       let fun hi21 n  = (itow n) >> 0w11
           fun hi21X n = (itow n) ~>> 0w11
@@ -1015,7 +1015,7 @@ struct
               mem:Region.region}
         asm: ``ble\t<d>(<emit_int sr>,<b>)<mem><
                emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo>''
-        mc:  (case (d,C.registerId t) of
+        mc:  (case (d,CellsBasis.registerId t) of
                (I.IMMED 0,31) =>
                  BranchExternal{Op=0wx39,b=b,w1=0w0,s=assemble_3(itow sr),
                                 w2=0w0,n=true,w=0w0}

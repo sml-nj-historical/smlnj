@@ -218,7 +218,7 @@ struct
           "    fun init size = (comment(\"Code Size = \" ^ ms size); nl())",
           "    val emitCellInfo = AsmFormatUtil.reginfo",
           "                             (emit,formatAnnotations)",
-          "    fun emitCell r = (emit(C.toString r); emitCellInfo r)",
+          "    fun emitCell r = (emit(CellsBasis.toString r); emitCellInfo r)",
           "    fun emit_cellset(title,cellset) =",
           "      (nl(); comment(title^C.CellSet.toString cellset))",
           "    val emit_cellset = ",
