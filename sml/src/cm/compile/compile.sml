@@ -171,20 +171,23 @@ in
 	    { envs = fn () => rlayer (e (), e' ()),
 	      pids = PidSet.union (p, p') }
 
-	fun layerwork k w v0 l = let
-	    fun lw v0 [] = v0
-	      | lw NONE (h :: t) =
-		if k then (ignore (w h); lw NONE t)
-		else NONE
-	      | lw (SOME v) (h :: t) = let
-		    fun lay (NONE, v) = NONE
-		      | lay (SOME v', v) = SOME (layer (v', v))
-		in
-		    lw (lay (w h, v)) t
-		end
-	in
-	    lw v0 l
-	end
+	(* I would rather not use an exception here, but short of a better
+	 * implementation of concurrency I see no choice.
+	 * The problem is that at each node we sequentiallay wait for the
+	 * children nodes.  But the scheduler might (and probably will)
+	 * let a child run that we are not currently waiting for, so an
+	 * error there will not result in "wait" to immediately return
+	 * as it should for clean error recovery.
+	 * Using the exception avoids having to implement a
+	 * "wait for any child -- whichever finishes first" kind of call. *)
+	exception Abort
+
+	fun layer'wait u (p, NONE) =
+	    (ignore (Concur.waitU u p); NONE)
+	  | layer'wait u (p, SOME e) =
+	    (case Concur.waitU u p of
+		 SOME e' => SOME (layer (e', e))
+	       | NONE => NONE)
 
 	fun mkTraversal (notify, storeBFC, getUrgency) = let
 	    val localstate = ref SmlInfoMap.empty
@@ -221,6 +224,9 @@ in
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
 
+		fun fail () =
+		    if #keep_going (#param gp) then NONE else raise Abort
+
 		fun compile_here (stat, sym, pids) = let
 		    fun save bfc = let
 			fun writer s =
@@ -248,7 +254,7 @@ in
 		    end (* save *)
 		in
 		    case SmlInfo.parsetree gp i of
-			NONE => NONE
+			NONE => fail ()
 		      | SOME (ast, source) => let
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
@@ -268,13 +274,12 @@ in
 			    save bfc;
 			    storeBFC (i, bfc);
 			    SOME memo
-			end handle _ => NONE (* catch elaborator exn *)
+			end handle _ => fail () (* catch elaborator exn *)
 		end (* compile_here *)
 		fun notlocal () = let
 		    val urgency = getUrgency i
 		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
-		    val k = #keep_going (#param gp)
 		    fun loc li_n = Option.map nofilter (snode gp li_n)
 		    fun glob gi_n = fsbnode gp gi_n
 		    val gi_cl =
@@ -282,10 +287,11 @@ in
 		    val li_cl =
 			map (fn li_n => Concur.fork (fn () => loc li_n)) li
 		    val e =
-			layerwork k (Concur.wait' urgency)
-			         (layerwork k (Concur.wait' urgency)
-				              (SOME (pervenv gp)) gi_cl)
-				 li_cl
+			foldl (layer'wait urgency)
+			      (foldl (layer'wait urgency)
+			             (SOME (pervenv gp))
+				     gi_cl)
+			      li_cl
 		in
 		    case e of
 			NONE => NONE
@@ -364,6 +370,9 @@ in
 			end
 		end (* notlocal *)
 	    in
+		(* Here we just wait (no "waitU") so we don't get
+		 * priority over threads that may have to clean up after
+		 * errors. *)
 		case SmlInfoMap.find (!localstate, i) of
 		    SOME mopt_c => Option.map memo2ed (Concur.wait mopt_c)
 		  | NONE => let
@@ -391,22 +400,17 @@ in
 	    fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
 	    val { impexp, ... } = mkTraversal (notify, storeBFC, getUrgency)
 	    fun group gp = let
-		val k = #keep_going (#param gp)
-		fun loop ([], success) = success
-		  | loop (h :: t, success) =
-		    if isSome (impexp gp h) then loop (t, success)
-		    else if k then loop (t, false) else false
 		val eo_cl =
 		    map (fn x => Concur.fork (fn () => impexp gp x))
 		        (SymbolMap.listItems exports)
-		val eo = layerwork k Concur.wait (SOME emptyEnv) eo_cl
+		val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
 	    in
 		case eo of
 		    NONE => (Servers.reset false; NONE)
 		  | SOME e => SOME (#envs e ())
-	    end
+	    end handle Abort => (Servers.reset false; NONE)
 	    fun mkExport ie gp =
-		case impexp gp ie of
+		case impexp gp ie handle Abort => NONE of
 		    NONE => (Servers.reset false; NONE)
 		  | SOME e => SOME (#envs e ())
 	in
@@ -419,7 +423,7 @@ in
 					       fn _ => (),
 					       fn _ => 0)
 	    fun sbn_trav gp g = let
-		val r = sbnode gp g
+		val r = sbnode gp g handle Abort => NONE
 	    in
 		if isSome r then () else Servers.reset false;
 		r

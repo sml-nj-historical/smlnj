@@ -19,9 +19,14 @@ signature CONCUR = sig
 
     type 'a cond			(* condition with value *)
 
-    val fork : (unit -> 'a) -> 'a cond	(* termination condition with value *)
-    val wait : 'a cond -> 'a
-    val wait' : int -> 'a cond -> 'a
+    val fork : (unit -> 'a) -> 'a cond	(* termination condition with value
+					 * (thread initially waits with
+					 * extremely low urgency) *)
+    val wait : 'a cond -> 'a		(* wait with low urgency *)
+    val waitU : int -> 'a cond -> 'a	(* wait with given urgency,
+					 * (urgency is always higher than
+					 * when waiting using "wait") *)
+
     val inputReady : TextIO.instream -> unit cond
     val ucond : unit -> unit cond
     val signal : unit cond -> unit
@@ -112,11 +117,18 @@ structure Concur :> CONCUR = struct
 
     fun wait c = wait' 0 c
 
+    fun waitU u c = wait' (u + 1) c
+
     fun fork worker = let
 	val c = ref (Waiting [])
     in
+	(* We give new workers a low priority so that any threads that
+	 * were already running but are now waiting for some event
+	 * get control first if they are re-enabled.  This is because
+	 * waiting threads will clean up after errors in which case
+	 * we don't want new threads to run off. *)
 	SMLofNJ.Cont.callcc (fn return =>
-	  (SMLofNJ.Cont.callcc (fn ts => (enqueue ((ts, 0), runable);
+	  (SMLofNJ.Cont.callcc (fn ts => (enqueue ((ts, ~1), runable);
 					  SMLofNJ.Cont.throw return c));
 	   wakeup (c, worker ());
 	   schedule ()))

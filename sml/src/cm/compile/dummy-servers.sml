@@ -17,5 +17,9 @@ structure Servers :> SERVERS = struct
     fun cm _ = ()
     fun cmb _ = ()
     fun compile _ = false
-    fun withServers f = f ()
+    fun withServers f =
+	SafeIO.perform { openIt = fn () => (),
+			 closeIt = fn () => (),
+			 work = f,
+			 cleanup = reset }
 end
