@@ -1027,7 +1027,7 @@ PVT void TrimHeap (heap_t *heap, int maxCollectedGen)
 			newSzB = ap->tospSizeB;
 		}
 		ap->tospSizeB = newSzB;
-		ap->tospTop = (Addr_t)ap->tospBase + ap->tospSizeB;
+		ap->tospTop = (ml_val_t *)((Addr_t)ap->tospBase + ap->tospSizeB);
 	    }
 	}
     }

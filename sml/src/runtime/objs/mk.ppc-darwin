@@ -7,8 +7,9 @@ SHELL =		/bin/sh
 
 MAKE =		make
 CC =		cc -ansi
-CFLAGS =	-O2
-CPP =           /usr/libexec/gcc/darwin/ppc/default/cpp
+CFLAGS =	-g -O2
+#CPP =           /usr/libexec/gcc/darwin/ppc/default/cpp
+CPP =           gcc -x assembler-with-cpp -E -P -ansi
 XOBJS =
 XLIBS =	
 LD_LIBS =

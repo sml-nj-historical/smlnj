@@ -340,10 +340,17 @@ CENTRY(restoreregs)
 #if defined(USE_TOC)
 	lwz	r0,T.saveregs(2)
 #else
+#ifdef BROKEN_CODE
 	lis	r28, HI(CSYM(saveregs))	/* GPR0 <- addrof(saveregs) */
 	addi	r28, r28, LO(CSYM(saveregs))
         li      r0, 0
         add     r0, r28, r0
+#else
+	lis	r11, HI(CSYM(saveregs))	/* GPR0 <- addrof(saveregs) */
+	addi	r11, r11, LO(CSYM(saveregs))
+        li      r0, 0
+        add     r0, r11, r0
+#endif
 #endif
 	stw	r3, MLSTATE_OFFSET(sp)
 	stw	r0, STARTGC_OFFSET(sp)
