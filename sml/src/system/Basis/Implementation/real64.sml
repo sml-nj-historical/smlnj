@@ -28,6 +28,8 @@ structure Real64Imp : REAL =
 	    | _ => true
 	  (* end case *))
 
+    val rbase = 1073741824.0	(* should be taken from CoreIntInf.base *)
+
   (* The next three values are computed laboriously, partly to
    * avoid problems with inaccurate string->float conversions
    * in the compiler itself.
@@ -203,9 +205,8 @@ structure Real64Imp : REAL =
     fun fromLargeInt(x : IntInf.int) = let
 	val CoreIntInf.BI { negative, digits } = CoreIntInf.concrete x
 	val w2r = fromInt o InlineT.Word31.copyt_int31
-	val base = w2r CoreIntInf.base
 	fun calc [] = 0.0
-	  | calc (d :: ds) = w2r d + base * calc ds
+	  | calc (d :: ds) = w2r d + rbase * calc ds
 	val m = calc digits
     in
 	if negative then ~m else m
@@ -242,8 +243,6 @@ structure Real64Imp : REAL =
     fun checkFloat x = if x>negInf andalso x<posInf then x
                        else if isNan x then raise General.Div
 			 else raise General.Overflow
-
-    val rbase = 1073741824.0	(* should be taken from CoreIntInf.base *)
 
     fun toLargeInt mode x =
 	if isNan x then raise Domain
