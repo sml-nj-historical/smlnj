@@ -355,18 +355,20 @@ TAB file name completion, as in shell-mode, etc.."
   (set (make-local-variable 'sml-error-cursor) (point-max-marker))
   (set-marker-insertion-type sml-error-cursor nil)
 
-  ;; compilation support (used for next-error)
-  (set (make-local-variable 'compilation-error-regexp-alist)
-       sml-error-regexp-alist)
-  (compilation-minor-mode 1)
-  ;; eliminate compilation-minor-mode's map since its Mouse-2 binding
-  ;; is just too unbearable.
-  (add-to-list 'minor-mode-overriding-map-alist
-	       (cons 'compilation-minor-mode (make-sparse-keymap)))
-  ;; I'm sure people might kill me for that
-  (setq compilation-error-screen-columns nil)
-  (make-local-variable 'sml-endof-error-alist)
-  ;;(make-local-variable 'sml-error-overlay)
+  ;; Compilation support (used for `next-error').
+  ;; The keymap of compilation-minor-mode is too unbearable, so we
+  ;; just can't use the minor-mode if we can't override the map.
+  (when (boundp 'minor-mode-overriding-map-alist)
+    (set (make-local-variable 'compilation-error-regexp-alist)
+	 sml-error-regexp-alist)
+    (compilation-minor-mode 1)
+    ;; Eliminate compilation-minor-mode's map.
+    (add-to-list 'minor-mode-overriding-map-alist
+		 (cons 'compilation-minor-mode (make-sparse-keymap)))
+    ;; I'm sure people might kill me for that
+    (setq compilation-error-screen-columns nil)
+    (make-local-variable 'sml-endof-error-alist))
+    ;;(make-local-variable 'sml-error-overlay)
 
   (setq mode-line-process '(": %s")))
 
