@@ -45,7 +45,10 @@ struct
           in  lastReg := next;
               found
           end
-  in  checkPreferred pref end
+  in  checkPreferred pref 
+  end
+
+  val lastRegPair = ref first
 
   fun getpair{pref, stamp:int, proh} = let
       (* if not, use the round robin scheme to look for a register *)
@@ -66,10 +69,10 @@ struct
               val next = found + 1
               val next = if next+1 >= limit then first else next
       in  
-	  lastReg := next;
+	  lastRegPair := next;
           found
       end
-  in  find(!lastReg) 
+  in  find(!lastRegPair) 
   end
 
 end
