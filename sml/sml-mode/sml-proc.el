@@ -634,14 +634,14 @@ non-nil.  With prefix arg, always prompts."
   (let ((err (point-marker))
 	(linenum (string-to-number c))
 	(filename (list (first f) (second f)))
-	(column (string-to-number (compile-buffer-substring (third f)))))
+	(column (string-to-number (match-string (third f)))))
     ;; record the end of error, if any
     (when (fourth f)
-      (let ((endlinestr (compile-buffer-substring (fourth f))))
+      (let ((endlinestr (match-string (fourth f))))
 	(when endlinestr
 	  (let* ((endline (string-to-number endlinestr))
 		 (endcol (string-to-number
-			  (or (compile-buffer-substring (fifth f)) "0")))
+			  (or (match-string (fifth f)) "0")))
 		 (linediff (- endline linenum)))
 	    (push (list err linediff (if (= 0 linediff) (- endcol column) endcol))
 		  sml-endof-error-alist)))))

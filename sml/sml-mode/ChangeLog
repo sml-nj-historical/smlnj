@@ -1,10 +1,16 @@
+2004-11-14  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* Makefile (install_startup): Don't add to load-path any more.
+
+	* sml-proc.el (sml-make-error): Use match-string.
+
 2004-04-04  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* testcases.sml: Add a nasty case that is still wrong.
 
 	* sml-proc.el (sml-error-regexp-alist): Tune the regexp for sml/nj.
 
-	* sml-mode.el (sml-mode): Batter handle paragraphs in comments.
+	* sml-mode.el (sml-mode): Better handle paragraphs in comments.
 	(sml-mode-variables): Clean up paragraph settings.
 	(sml-electric-pipe): Fix a boundary bug.
 	(sml-indent-starter, sml-get-sym-indent, sml-find-matching-starter):

@@ -308,7 +308,7 @@ This mode runs `sml-mode-hook' just before exiting.
   (set (make-local-variable 'forward-sexp-function) 'sml-user-forward-sexp)
   ;; For XEmacs
   (easy-menu-add sml-mode-menu)
-  ;; Compatibility
+  ;; Compatibility.  FIXME: we should use `-' in Emacs-CVS.
   (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
   (sml-mode-variables))
 
