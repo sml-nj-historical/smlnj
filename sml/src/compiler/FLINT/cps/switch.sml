@@ -1,7 +1,7 @@
-(* COPYRIGHT (c) 1996 Bell Laboratories *)
+(* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* switch.sml *)
 
-signature SWITCH =
+signature SWITCH = 
 sig
 
  exception TooBig
@@ -34,19 +34,20 @@ sig
      } -> 
      {exp: 'value,
       sign: Access.consig,
-      cases: (Lambda.con * 'cexp) list,
+      cases: (FLINT.con * 'cexp) list,
       default: 'cexp}
        ->
        'cexp
 
 end
 
-structure Switch : SWITCH =
+
+structure Switch : SWITCH = 
 struct
 
 local
 
-structure L = Lambda
+structure L = FLINT
 structure A = Access
 
 in
@@ -187,30 +188,30 @@ fun int_switch(e: 'value, l, default, inrange) =
 	| (false, SOME n) => switch1(e, l, default, (0,n))
   end
 
-  fun isboxed (L.DATAcon(_,A.CONSTANT _, _)) = false
-    | isboxed (L.DATAcon(_,A.LISTNIL,_)) = false
-    | isboxed (L.DATAcon(_,rep,_)) = true
+  fun isboxed (L.DATAcon((_,A.CONSTANT _, _),_,_)) = false
+    | isboxed (L.DATAcon((_,A.LISTNIL,_),_,_)) = false
+    | isboxed (L.DATAcon((_,rep,_),_,_)) = true
     | isboxed (L.REALcon _) = true
     | isboxed (L.STRINGcon s) = true
     | isboxed _ = false
 
-  fun isexn (L.DATAcon(_,A.EXN _,_)) = true
+  fun isexn (L.DATAcon((_,A.EXN _,_),_,_)) = true
     | isexn _ = false
 
  fun exn_switch(w,l,default) =
    E_getexn(w, fn u =>
-      let fun g((L.DATAcon(_,A.EXN p,_),x)::r) =
-	          E_path(p, fn v => E_branch(E_pneq,u,v, g r, x))
+      let fun g((L.DATAcon((_,A.EXN p,_),_,_),x)::r) =
+                E_path(p, fn v => E_branch(E_pneq,u,v, g r, x))
 	    | g nil = default
 	    | g _ = bug "switch.21"
        in g l
       end)
 
- fun datacon_switch(w,sign,l: (Lambda.con * 'cexp) list, default) =
+ fun datacon_switch(w,sign,l: (L.con * 'cexp) list, default) =
    let 
-      fun tag (L.DATAcon(_,A.CONSTANT i,_)) = i
-        | tag (L.DATAcon(_,A.TAGGED i,_)) = i
-(*      | tag (L.DATAcon(_,A.TAGGEDREC(i,_),_)) = i *)
+      fun tag (L.DATAcon((_,A.CONSTANT i,_),_,_)) = i
+        | tag (L.DATAcon((_,A.TAGGED i,_),_,_)) = i
+(*      | tag (L.DATAcon((_,A.TAGGEDREC(i,_),_),_,_)) = i *)
 	| tag _ = 0
 
       fun tag'(c,e) = (tag c, e)
@@ -299,7 +300,7 @@ fun int_switch(e: 'value, l, default, inrange) =
 	     end
         | L.REALcon _ => real_switch(exp,cases,default)
         | L.STRINGcon _ => string_switch(exp,cases,default)
-        | L.DATAcon(_,A.EXN _,_) => exn_switch(exp,cases,default)
+        | L.DATAcon((_,A.EXN _,_),_,_) => exn_switch(exp,cases,default)
         | L.DATAcon _ => datacon_switch(exp,sign,cases,default)
 	| L.WORDcon _ => word_switch(exp, cases, default)
 	| L.WORD32con _ => word32_switch(exp,cases,default)

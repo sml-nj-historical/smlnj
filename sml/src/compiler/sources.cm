@@ -127,6 +127,7 @@ Semant/typing/reconstruct.sml
 Semant/typing/typecheck.sml
 
 FLINT/clos/allocprof.sml
+FLINT/clos/cps-split.sml
 FLINT/clos/freemap.sml
 FLINT/clos/globalfix.sml
 FLINT/clos/nclosure.sml
@@ -144,6 +145,7 @@ FLINT/cpsopt/cpsopt.sml
 FLINT/cpsopt/eta.sml
 FLINT/cpsopt/etasplit.sml
 FLINT/cpsopt/expand.sml
+FLINT/cpsopt/expandNEW.sml
 FLINT/cpsopt/flatten.sml
 FLINT/cpsopt/uncurry.sml
 FLINT/flint/chkflint.sml
@@ -169,18 +171,7 @@ FLINT/kernel/primop.sig
 FLINT/kernel/primop.sml
 FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
-FLINT/lambda/checklty.sml
-FLINT/lambda/flint2lambda.sml
-FLINT/lambda/lambda.sig
-FLINT/lambda/lambda.sml
-FLINT/lambda/lexputil.sml
-FLINT/lambda/mcprint.sml
 FLINT/main/flintcomp.sml
-FLINT/obsol/cps-split.sml
-FLINT/obsol/expandNEW.sml
-FLINT/obsol/interp.sml
-FLINT/obsol/literals.sml
-FLINT/obsol/spillNEW.sml
 FLINT/opt/lcontract.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
@@ -195,18 +186,11 @@ FLINT/plambda/plambdatype.sml
 FLINT/plambda/pplexp.sml
 FLINT/plambda/reorder.sml
 FLINT/reps/coerce.sml
-FLINT/reps/coerceNEW.sml
 FLINT/reps/equal.sml
-FLINT/reps/equalNEW.sml
-FLINT/reps/ltnarrow.sml
-FLINT/reps/ltyutil.sml
-FLINT/reps/reify.sml
-FLINT/reps/reifyNEW.sml 
-FLINT/reps/typeoper.sml
+FLINT/reps/reify.sml 
 FLINT/reps/rttype.sml
-FLINT/reps/typeoperNEW.sml 
+FLINT/reps/typeoper.sml 
 FLINT/reps/wrapping.sml
-FLINT/reps/wrappingNEW.sml
 FLINT/trans/matchcomp.sml
 FLINT/trans/mccommon.sml
 FLINT/trans/pequal.sml
@@ -270,6 +254,7 @@ OldCGen/cpsgen/cmachine.sig
 OldCGen/cpsgen/generic.sml
 OldCGen/cpsgen/limit.sml
 OldCGen/cpsgen/spill.sml
+OldCGen/cpsgen/spillNEW.sml
 OldCGen/mips/endian.sig
 OldCGen/mips/endian.sml
 OldCGen/mips/mips.sml

@@ -173,6 +173,7 @@ datatype primop
   | LENGTH                     (* vector, string, array, ... length *)
   | OBJLENGTH                  (* length of arbitrary heap object *)
   | CAST
+  | WCAST
   | GETRUNVEC                  (* get the pointer to the run-vector *)
   | MARKEXN                    (* mark an exception value with a string *)
   | GETHDLR | SETHDLR          (* get/set exn handler pointer *)

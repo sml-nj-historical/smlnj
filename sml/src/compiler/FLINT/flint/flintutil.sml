@@ -58,9 +58,12 @@ fun UNWRAP(tc, vs, v, e) = PRIMOP(unwrap tc, vs, v, e)
 (* the corresponding utility functions to recover the tyc *)
 fun getEtagTyc (_, _, lt, [tc]) = tc
   | getEtagTyc (_, _, lt, []) = 
-      let val (t, xs) = LT.tcd_app(LT.ltd_tyc (#2(LT.ltd_parrow lt)))
-       in (case xs of [x] => x
-                    | _ => bug "unexpected case 1 in getEtagTyc")
+      let val nt = LT.ltd_tyc (#2(LT.ltd_parrow lt))
+       in if LT.tcp_app nt then 
+            (case #2 (LT.tcd_app nt)
+              of [x] => x
+               | _ => bug "unexpected case 1 in getEtagTyc")
+          else LT.tcc_void
       end
   | getEtagTyc _ = bug "unexpected case 2 in getEtagTyc"
 

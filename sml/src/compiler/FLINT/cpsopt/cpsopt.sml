@@ -16,6 +16,7 @@ structure Expand = Expand(MachSpec)
 structure EtaSplit = EtaSplit(MachSpec)
 structure Flatten = Flatten(MachSpec)
 structure Uncurry = Uncurry(MachSpec)
+val say = Control.Print.say
 
 fun reduce (function, table, _, afterClosure) = 
 (* NOTE: The third argument to reduce is currently ignored.
@@ -23,12 +24,20 @@ fun reduce (function, table, _, afterClosure) =
 let
 
 val debug = !CG.debugcps (* false *)
-fun debugprint s = if debug then Control.Print.say(s) else ()
+fun debugprint s = if debug then say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
 val clicked = ref 0
 fun click (s:string) = (debugprint s; clicked := !clicked+1)
 
 val cpssize = ref 0
+(*
+val prC = 
+  let fun prGen (flag,printE) s e =
+        if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e; e) 
+        else e
+   in prGen (Control.CG.printit, PPCps.printcps0)
+  end
+*)
 
 fun contract last f = 
   let val f' = (clicked := 0;

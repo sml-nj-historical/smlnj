@@ -344,7 +344,7 @@ val (click, num_click) = mk_click ()
  * that the main pass traverse the code in different order.
  * There must be a simpler way, but I didn't find one yet (ZHONG).
  *)
-val {getLty=getLtyGen, cleanUp} = Recover.recover fdec
+val {getLty=getLtyGen, cleanUp} = Recover.recover(fdec, false)
 
 (* transform: infoEnv * DI.depth * lty cvt * tyc cvt 
               * (value -> lty) * bool -> (lexp -> lexp)

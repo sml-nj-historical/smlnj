@@ -136,8 +136,6 @@ val rf_eqv    : rflag * rflag -> bool = LK.rf_eqv
 (** testing the equivalence for tycs and ltys with relaxed constraints *)
 val tc_eqv_x  : tyc * tyc -> bool = LK.tc_eqv_x
 val lt_eqv_x  : lty * lty -> bool = LK.lt_eqv_x
-val tc_eqv_bx : tyc * tyc -> bool = LK.tc_eqv_bx
-val lt_eqv_bx : lty * lty -> bool = LK.lt_eqv_bx
 
 (***************************************************************************
  *            UTILITY FUNCTIONS FOR PRETTY PRINTING                        *
@@ -171,10 +169,12 @@ fun tc_print (x : tyc) =
         | g (LK.TC_FIX ((_, tc, ts), i)) = 
               if tc_eqv(x,tcc_bool) then "B" 
               else if tc_eqv(x,tcc_list) then "LST" 
-                   else (let val ntc = case ts of [] => tc
-                                                | _ => tcc_app(tc, ts)
-                          in ("DT{" ^ "DATA" (* (tc_print ntc) *)
-                                    ^ "===" ^ (itos i) ^ "}")
+                   else (let (* val ntc = case ts of [] => tc
+                                                | _ => tcc_app(tc, ts) *)
+                             val _ = 1
+                          in ("DT{" ^ "DATA" (* ^ "[" ^ (tc_print tc)  
+                                    ^ "] &&" ^ (plist(tc_print, ts))
+                                          ^ "&&" *) ^ "===" ^ (itos i) ^ "}")
                          end)
         | g (LK.TC_ABS t) = "Ax(" ^ (tc_print t) ^ ")"
         | g (LK.TC_BOX t) = "Bx(" ^ (tc_print t) ^ ")"
@@ -253,20 +253,12 @@ val tc_unknown : tyc -> bool = LK.tc_unknown
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
  ***************************************************************************)
 
-(** tkind environment: maps each tyvar, i.e., its debindex, to its kind *)
-type tkindEnv = tkind list list
-
-(** utility functions for manipulating the tkindEnv *)
-exception tkUnbound
-val initTkEnv : tkindEnv = []
-
-fun tkLookup (kenv, i, j) = 
-  let val ks = List.nth(kenv, i-1) handle _ => raise tkUnbound
-   in List.nth(ks, j) handle _ => raise tkUnbound
-  end
-
-fun tkInsert (kenv, ks) = ks::kenv
-
+type tkindEnv = LK.tkindEnv
+exception tkUnbound = LK.tkUnbound
+val initTkEnv = LK.initTkEnv
+val tkLookup = LK.tkLookup
+val tkInsert = LK.tkInsert
+  
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)

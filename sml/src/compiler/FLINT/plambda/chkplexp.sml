@@ -94,17 +94,22 @@ fun ltSel (lt, i) =
   (LT.lt_select(lt, i)) handle _ => raise LtySelect
 
 (** build a function or functor type from a pair of arbitrary ltys *)
-
-val ltFun = LT.ltc_fun 
+fun ltFun (x, y) = 
+  if (LT.ltp_tyc x) andalso (LT.ltp_tyc y) then LT.ltc_parrow(x, y)
+  else LT.ltc_pfct(x, y)
 
 fun ltTup ts = LT.ltc_tyc(LT.tcc_tuple (map LT.ltd_tyc ts))
 
 (** lazily finding out the arg and res of an lty *)
 exception LtyArrow 
-fun ltArrow lt = (LT.lt_arrow lt) handle _ => raise LtyArrow
+fun ltArrow lt = 
+  (if LT.ltp_tyc lt then LT.ltd_parrow lt
+   else LT.ltd_pfct lt) handle _ => raise LtyArrow
+
+val lt_inst_chk = LT.lt_inst_chk_gen()
 
 fun ltAppChk (lt, ts, kenv) = 
-  (case LT.lt_inst_chk(lt, ts, kenv) 
+  (case lt_inst_chk(lt, ts, kenv) 
     of [b] => b 
      | _ => bug "unexpected ase in ltAppChk")
 

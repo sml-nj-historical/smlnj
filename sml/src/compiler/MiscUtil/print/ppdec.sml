@@ -155,15 +155,26 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	    end
 
 	and ppAbsTyc(GENtyc{path, arity, eq=ref(ABS), ...}) =
-	    (begin_block ppstrm CONSISTENT 0;
-	      begin_block ppstrm INCONSISTENT 2;
-	       add_string ppstrm "type"; 
-	       ppFormals ppstrm arity; 
-	       add_break ppstrm (1,0);
-	       ppSym ppstrm (InvPath.last path); 
-	      end_block ppstrm;
-              add_newline ppstrm;
-	     end_block ppstrm)
+	      (begin_block ppstrm CONSISTENT 0;
+	         begin_block ppstrm INCONSISTENT 2;
+	         add_string ppstrm "type"; 
+	         ppFormals ppstrm arity; 
+	         add_break ppstrm (1,0);
+	         ppSym ppstrm (InvPath.last path); 
+	         end_block ppstrm;
+               add_newline ppstrm;
+	        end_block ppstrm)
+          | ppAbsTyc(GENtyc{path, arity, eq=ref _, ...}) =
+	      (begin_block ppstrm CONSISTENT 0;
+	         begin_block ppstrm INCONSISTENT 2;
+	         add_string ppstrm "type"; 
+	         ppFormals ppstrm arity; 
+	         add_break ppstrm (1,0);
+	         ppSym ppstrm (InvPath.last path); 
+	         end_block ppstrm;
+               add_newline ppstrm;
+	        end_block ppstrm)
+          | ppAbsTyc _ = bug "unexpected case in ppAbsTyc"
 
 	and ppDataTyc(GENtyc{path, arity,
                              kind=DATATYPE{index, freetycs, family={members, ...},...}, ...}) =

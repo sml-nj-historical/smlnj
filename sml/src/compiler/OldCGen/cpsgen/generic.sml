@@ -269,8 +269,10 @@ let
 
     val calleesaveregs = (gprfromto(4,k+3))@(fprfromto(0,kf-1))
 
-    fun cut_head(n,l as (a::r)) = if n=0 then l else cut_head(n-1,r)
-      | cut_head _ = bug "codegen cuthead 4384"
+    fun cut_head(n,l) = 
+      if n = 0 then l
+      else (case l of a::r => cut_head(n-1,r)
+                    | _ => bug "codegen cuthead 4384")
 
     fun isFlt t = if unboxedfloat then (case t of FLTt => true | _ => false)
                   else false

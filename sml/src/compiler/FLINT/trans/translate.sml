@@ -131,8 +131,8 @@ fun CON' ((_, DA.REF, lt), ts, e) = APP (PRIM (PO.MAKEREF, lt, ts), e)
 
 local val region = ref(0,0)
       val markexn = PRIM(PO.MARKEXN,
-		      LT.ltc_arw(LT.ltc_tuple [LT.ltc_exn, LT.ltc_string],
-				 LT.ltc_exn), [])
+		      LT.ltc_parrow(LT.ltc_tuple [LT.ltc_exn, LT.ltc_string],
+				    LT.ltc_exn), [])
 in 
 
 fun withRegion loc f x =

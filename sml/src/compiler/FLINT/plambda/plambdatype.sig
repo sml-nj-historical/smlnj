@@ -7,9 +7,6 @@ sig
 include LTYEXTERN
 
 val lt_merge : lty * lty -> lty
-val tcc_arw  : tyc * tyc -> tyc
-val ltc_funN : fflag * lty list * lty list -> lty
-val ltd_pfun : lty -> lty * lty
 
 end (* signature PLAMBDATYPE *) 
 

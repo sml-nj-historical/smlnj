@@ -20,6 +20,7 @@ local structure LT = PLambdaType
       structure F  = FLINT
       structure FU = FlintUtil
       structure DA = Access
+      structure BT = BasicTypes
 in
 
 val say = Control.Print.say
@@ -37,6 +38,48 @@ fun bug msg = ErrorMsg.impossible("FlintNM: "^msg)
 
 fun optmap f (SOME v)	= SOME (f v)
   | optmap _ NONE	= NONE
+
+
+local val (trueDcon', falseDcon') = 
+        let val lt = LT.ltc_arrow(LT.ffc_rrflint, [LT.ltc_unit], [LT.ltc_bool])
+            fun h (Types.DATACON{name, rep, ...}) = (name, rep, lt)
+         in (h BT.trueDcon, h BT.falseDcon)
+        end
+
+      fun boolLexp b = 
+        let val v = mkv() and w = mkv()
+            val dc = if b then trueDcon' else falseDcon'
+         in F.RECORD(FU.rk_tuple, [], v, 
+             F.CON(dc, [], F.VAR v, w, F.RET[F.VAR w]))
+        end
+in 
+
+fun flint_prim (po as (d, p, lt, ts), vs, v, e) = 
+  (case p
+    of (PO.BOXED  | PO.UNBOXED | PO.CMP _ | PO.PTREQL | 
+        PO.PTRNEQ | PO.POLYEQL | PO.POLYNEQ) =>
+          (*** branch primops gets translated into F.BRANCH ***)
+          F.LET([v], F.BRANCH(po, vs, boolLexp true, boolLexp false), e)
+     | (PO.GETRUNVEC | PO.GETHDLR | PO.GETVAR | PO.DEFLVAR) =>
+          (*** primops that take zero arguments; argument types
+               must be unit ***)
+          let fun fix t = 
+                LT.ltw_arrow(t, 
+                 fn (ff,[t1],ts2) => 
+                   (if LT.tc_eqv(t1, LT.tcc_unit) 
+                    then LT.ltc_tyc(LT.tcc_arrow(ff, [], ts2))
+                    else bug "unexpected zero-args prims 1 in flint_prim"),
+                 fn _ => bug "unexpected zero-args prims 2 in flint_prim")
+              val nlt = 
+                LT.ltw_ppoly(lt, 
+                   fn (ks, t) => LT.ltc_ppoly(ks, fix t),
+                   fn _ => fix lt)
+           in F.PRIMOP((d,p,nlt,ts), [], v, e)
+          end
+     | _ => 
+          F.PRIMOP(po, vs, v, e))
+
+end (* local flint_prim *)
 
 (* force_raw freezes the calling conventions of a data constructor;
    strictly used by the CON and DATAcon only 
@@ -118,7 +161,9 @@ and tolexp (venv,d) lexp =
                     tovalues(venv, d, arg,
 			     fn (arg_vals, arg_lty) =>
 			     (* now find the return type *)
-			     let val (_, r_lty) = LT.ltd_pfun f_lty
+			     let val (_, r_lty) = 
+                                   if LT.ltp_pfct f_lty then LT.ltd_pfct f_lty
+                                   else LT.ltd_parrow f_lty
 			     (* and finally do the call *)
 			     in (F.APP(f_val,arg_vals), r_lty)
 			     end))
@@ -411,8 +456,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
       | L.APP (L.PRIM ((po,f_lty,tycs)),arg) =>
             PO_helper(arg, f_lty, tycs,
                        fn (arg_vals,pty, c_lexp) =>
-                       F.PRIMOP((NONE, po, pty, map FL.tcc_raw tycs),
-				arg_vals, lvar, c_lexp))
+                       flint_prim((NONE, po, pty, map FL.tcc_raw tycs),
+				  arg_vals, lvar, c_lexp))
 
       | L.APP (L.GENOP({default,table},po,f_lty,tycs),arg) =>
             let fun f ([],table,cont) = cont (table)
@@ -428,11 +473,11 @@ and tolvar (venv,d,lvar,lexp,cont) =
                              fn table' =>
                              PO_helper(arg, f_lty, tycs,
                                         fn (arg_vals,pty,c_lexp) =>
-                                        F.PRIMOP((SOME {default=dflt_lv, 
-                                                        table=table'},
-                                                  po, pty, 
-                                                  map FL.tcc_raw tycs),
-						arg_vals, lvar, c_lexp))))
+                                        flint_prim((SOME {default=dflt_lv, 
+                                                          table=table'},
+                                                    po, pty, 
+                                                    map FL.tcc_raw tycs),
+						   arg_vals, lvar, c_lexp))))
             end
 
 
@@ -451,7 +496,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                     fn (le_lv, le_lty) =>
                     let val (c_lexp, c_lty) = cont(LT.ltc_etag lty)
                         val mketag = FU.mketag (FL.tcc_raw (LT.ltd_tyc lty))
-                    in (F.PRIMOP(mketag, [le_lv], lvar, c_lexp), c_lty)
+                    in (flint_prim(mketag, [le_lv], lvar, c_lexp), c_lty)
                     end)
       | L.CON ((s,cr,lty),tycs,le) =>
 	    tovalue(venv, d, le,

@@ -618,8 +618,10 @@ and freevars(n,sn,ce) =
  in (#1(freefix (0,[]) fe'), getsn, freeV, ekfunsP)
 end (* function freemapClose *)
 
+(*
 val freemapClose = Stats.doPhase(Stats.makePhase "Compiler 079 freemapClose")
                      freemapClose
+*)
 
 end
 end (* structure FreeClose *)

@@ -1,6 +1,6 @@
 ============================================================================
 This README file describes the overall structure of the current version of 
-the SML/NJ (v110.3) & FLINT/ML (v1.3) compiler source tree. Please send 
+the SML/NJ (v110.4) & FLINT/ML (v1.4) compiler source tree. Please send 
 your questions, comments, and suggestions to flint@cs.yale.edu (or contact
 Zhong Shao at shao-zhong@cs.yale.edu). 
 ============================================================================
@@ -220,23 +220,17 @@ Tips:
    FLINT kinds, FLINT constructors, and FLINT types. When you write 
    code that manipulates the FLINT code, please restrict yourself to 
    use the functions defined in the LTYEXTERN interface only.
-4-FLINT/lambda/
-   Definition of the OLD lambda language, should go away soon.
 4-FLINT/main/
    The flintcomp.sml describes how the FLINT code gets compiled into
    the optimized and closure-converted CPS code (eventually, it should
    produce optimized, closure-converted, adn type-safe FLINT code).
-4-FLINT/obsol/
-   All files in this directory are currently not up-to-date. They are
-   either obsolete or are not compatible with recent changes made to
-   the CPS language.
 4-FLINT/opt/
    The FLINT-based optimizations, such as contraction, type 
    specializations, etc.
 4-FLINT/plambda/
    An older version of the Lambda language (not in the A-Normal form)
 4-FLINT/reps/
-   Code for the representation analysis of the FLINT code.
+   Code for performing the representation analysis on FLINT
 4-FLINT/trans/
    Translation of Abstract Syntax into the PLambda code, then to the FLINT
    code. All semantic objects used in the elaboration are translated into

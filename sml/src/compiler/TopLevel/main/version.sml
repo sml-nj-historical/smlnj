@@ -14,9 +14,9 @@ structure Version : sig
   end = struct
 
     val version = {
-	    system = "Standard ML of New Jersey (FLINT v1.3)",
-	    version_id = [110,3],
-	    date = "Rev. 03/13/98"
+	    system = "Standard ML of New Jersey ",
+	    version_id = [110,4],
+	    date = "April 2, 1998"
 	  }
 
     fun f ([], l) = l
@@ -24,8 +24,8 @@ structure Version : sig
       | f (x::r, l) = (Int.toString x) :: "." :: f(r, l)
 
     val banner = concat (
-	    #system version :: ", Ver " ::
-	    f (#version_id version, [", ", #date version]))
+	    #system version :: "v" :: 
+	    f (#version_id version, [" [FLINT v1.4], ", #date version]))
 
   end
 

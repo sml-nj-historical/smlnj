@@ -5,7 +5,7 @@
 
 signature RECOVER = 
 sig 
-  val recover : FLINT.prog -> 
+  val recover : (FLINT.prog * bool) -> 
                   {getLty: DebIndex.depth -> FLINT.value -> FLINT.lty,
                    cleanUp: unit -> unit}
 end (* signature SPECIALIZE *)
@@ -39,7 +39,7 @@ fun reslty (lt, ts) =
   end
 
 exception RecoverLty
-fun recover fdec =
+fun recover (fdec, postRep) = 
   let val zz : (lty * DI.depth) Intmap.intmap = Intmap.new(32, RecoverLty)
       val add = Intmap.add zz
       val get = Intmap.map zz
@@ -105,6 +105,12 @@ fun recover fdec =
                   let val _ = lpe e1
                    in lpe e2
                   end
+              | lpe (PRIMOP((_,PrimOp.WCAST, lt, []), _, v, e)) = 
+                  if postRep then 
+                     (case LT.ltd_fct lt
+                       of ([_],[r]) => (addv(v, r); lpe e)
+                        | _ => bug "unexpected case for WCAST")
+                  else bug "unexpected primop WCAST in recover"
               | lpe (PRIMOP((_,_,lt,ts), _, v, e)) = 
                   (addv (v, reslty (lt, ts)); lpe e)
 

@@ -281,6 +281,7 @@ fun primop (P.ARITH{oper=p,overflow=v,kind=k}) () =
   | primop P.INL_ARRAY () = ".k" $ []
   | primop P.INL_VECTOR () = "/k" $ []
   | primop P.ISOLATE () = ":k" $ []
+  | primop P.WCAST () = ";k" $ []
 
 
 fun consig (A.CSIG(i,j)) () = "S8" $ [W.int i, W.int j]

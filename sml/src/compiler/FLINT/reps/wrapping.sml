@@ -1,9 +1,9 @@
 (* COPYRIGHT (c) 1998 YALE FLINT PROJECT *)
 (* wrapping.sml *)
 
-signature WRAPPING =
+signature WRAPPING = 
 sig
-  val wrapLexp : Lambda.lexp -> Lambda.lexp
+  val wrapping : FLINT.prog -> FLINT.prog
 
 end (* signature WRAPPING *)
 
@@ -11,393 +11,302 @@ structure Wrapping : WRAPPING =
 struct
 
 local structure CO = Coerce
-      structure LU = LtyUtil
       structure LT = LtyExtern
-      structure DA = Access
       structure DI = DebIndex
       structure PO = PrimOp
-      open Lambda
+      structure DA = Access
+      open FLINT
 in
 
 fun bug s = ErrorMsg.impossible ("Wrapping: " ^ s)
 val say = Control.Print.say
-
-val mkv = LambdaVar.mkLvar
+fun mkv _ = LambdaVar.mkLvar()
+val fkfun = FK_FUN{isrec=NONE,known=false,inline=true, fixed=LT.ffc_fixed}
 val ident = fn le => le
-val IntOpTy = LT.ltc_parrow(LT.ltc_tuple[LT.ltc_int,LT.ltc_int],LT.ltc_int)
-
-(** based on the given tyc, return its appropriate Update operator *)
-val tcUpd = LT.tc_upd_prim
+fun option f NONE = NONE
+  | option f (SOME x) = SOME (f x)
 
 (****************************************************************************
  *                   MISC UTILITY FUNCTIONS                                 *
  ****************************************************************************)
-fun ltApply x = case LT.lt_inst x 
-                 of [z] => z
-                  | _ => bug "unexpected in ltApply"
-fun ltAppSt x = case LT.lt_inst_st x 
-                 of [z] => z
-                  | _ => bug "unexpected in ltAppSt"
+local val lt_upd = 
+        let val x = LT.ltc_array (LT.ltc_tv 0)
+         in LT.ltc_poly([LT.tkc_mono], 
+              [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int, LT.ltc_tv 0], 
+                                            [LT.ltc_unit])])
+        end
+      val lt_sub = 
+        let val x = LT.ltc_array (LT.ltc_tv 0)
+         in LT.ltc_poly([LT.tkc_mono], 
+              [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int], [LT.ltc_tv 0])])
+        end
+in 
 
-val ltArrow = LT.lt_arrow 
-val ltSelect = LT.lt_select
-val ltFun = LT.ltc_fun
-val ltTup = LT.ltc_tuple
-val lt_eqv = LT.lt_eqv
-val tc_eqv = LT.tc_eqv
-val tc_real = LT.tcc_real
+fun isArraySub t = LT.lt_eqv(t, lt_sub)
+fun isArrayUpd t = LT.lt_eqv(t, lt_upd)
+val f64sub = PO.NUMSUBSCRIPT{kind=PO.FLOAT 64, checked=false, immutable=false} 
+val f64upd = PO.NUMUPDATE{kind=PO.FLOAT 64, checked=false}
 
-val lt_upd = 
-  let val x = LT.ltc_array (LT.ltc_tv 0)
-   in LT.ltc_poly([LT.tkc_mono], 
-                  [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int, LT.ltc_tv 0], 
-                                 [LT.ltc_unit])])
-  end
-
-val lt_sub = 
-  let val x = LT.ltc_array (LT.ltc_tv 0)
-   in LT.ltc_poly([LT.tkc_mono], 
-                  [LT.ltc_arrow(LT.ffc_rrflint, [x, LT.ltc_int], [LT.ltc_tv 0])])
-  end
-
-datatype primKind = STANDARD | PARRAYOP | RARRAYOP
-
-(*
- * WARN: NEED TO WORK ON GENOP of INLMKARRAY !!!
+(* Function classPrim : primop -> primop * bool * bool takes a primop
+ * and classifies its kind. It returns a new primop, a flag indicates
+ * if this primop has been specialized, and another flag that indicates
+ * whether this primop is dependent on runtime type information. (ZHONG)
  *)
+fun classPrim(px as (d, p, lt, ts)) =  
+  (case (p, ts)
+    of ((PO.NUMSUBSCRIPT _ | PO.NUMUPDATE _), _) =>   (* overloaded primops *)
+         ((d, p, LT.lt_pinst(lt, ts), []), true, false)
+     | (PO.SUBSCRIPT, [tc]) =>                        (* special *)
+         if isArraySub lt then
+           if LT.tc_eqv(tc, LT.tcc_real)
+           then ((d, f64sub, LT.lt_pinst(lt, ts), []), true, false)
+           else (px, false, true)
+         else (px, false, false)
+     | (PO.UPDATE, [tc]) =>                           (* special *)
+         if isArrayUpd lt then
+           if LT.tc_eqv(tc, LT.tcc_real) 
+           then ((d, f64upd, LT.lt_pinst(lt, ts), []), true, false)
+           else ((d, LT.tc_upd_prim tc, lt, ts), false, true)
+         else ((d, LT.tc_upd_prim tc, lt, ts), false, false)
+     | _ => (px, false, false))
 
-fun mkPrim(p as PO.SUBSCRIPT, t, [tc]) = 
-      if lt_eqv(t, lt_sub)
-      then if tc_eqv(tc, tc_real)
-           then (PO.NUMSUBSCRIPT{kind=PO.FLOAT 64, checked=false, 
-                                 immutable=false}, RARRAYOP)
-           else (p, PARRAYOP)
-      else (p, STANDARD)
-  | mkPrim(PO.UPDATE, t, [tc]) = 
-      if lt_eqv(t,lt_upd)
-      then if tc_eqv(tc,tc_real)
-           then (PO.NUMUPDATE{kind=PO.FLOAT 64, checked=false}, RARRAYOP)
-           else (let val np = tcUpd tc
-                  in case np
-                      of PO.UPDATE => (np, PARRAYOP)
-                       | _ => (np, STANDARD)
-                 end)
-      else (tcUpd tc, STANDARD)
-  | mkPrim(PO.SUBSCRIPT, _, _) = bug "unexpected SUBSCRIPT primops in mkPrim"
-  | mkPrim(PO.UPDATE, _, _) = bug "unexpected UPDATE primops in mkPrim"
-  | mkPrim(p, _, []) = bug "unexpected arguments in mkPrim"
-  | mkPrim(p, _, _) = (p, STANDARD)
+val argbase = fn vs => (vs, ident)
+val resbase = fn v => (v, ident)
+
+end (* utility functions *)
 
 (****************************************************************************
- * val transform : CO.wpEnv * LT.ltyEnv * DI.depth                          *
- *                     -> lexp -> (lexp * LT.lty)                           *
+ * The "wrapping" function does the following several things:               *
  *                                                                          *
- * Transform does the following several things:                             *
- *   (1) representation analysis coercions are inserted;                    *
- *                                                                          *
- *   (2) all conreps in CON and DECON are given type-specific meanings.     *
- *   (3) type abstractions TFN are converted into function abstractions;    *
- *   (4) type applications TAPP are converted into function applications;   *
- *   (5) all primops in PRIM are given type-specific meanings;              *
- *   (6) lty is (narrowed) simplified into those with LT.ltc_void; with     *
- *       the following invariants:                                          *
- *         The resulting lexp is a simply-typed lambda expression, and      *
- *         all explicit type annotations can only be:  ltc_int, ltc_int32,  *
- *         ltc_real, ltc_void, ltc_parrow, ltc_tup, or ltc_cont.            * 
+ *   (1) representation coercions are inserted at TAPP, BRANCH, PRIMOP,     *
+ *       CON, SWITCH, and RECORD(RK_VECTOR _, _). Where CON and SWITCH      *
+ *       only wrap/unwrap the arguments of a datatype constuctor while      *
+ *       RK_VECTOR just wraps the vector elements only.                     *
+ *   (2) all primops in PRIM are given type-specific meanings;              *
+ *   (3) all conreps in CON and SWITCH are given type-specific meanings ??  *
  *                                                                          *
  ****************************************************************************)
-fun transform (wenv, venv, d) = 
-let 
+fun wrapping fdec = 
+let (* In pass1, we calculate the old type of each variables in the FLINT
+     * expression. We do this for the sake of having simpler wrapping code.
+     *)
+    val {getLty=getLtyGen, cleanUp} = Recover.recover (fdec, false)
 
-val (tcWrap, ltWrap, tcsWrap) = LU.genWrap true
+    (** generate a set of new wrappers *)
+    val (tcWrap, ltWrap, tcf, ltf, cleanup2) = LT.twrap_gen true
 
-fun fixDconTy lt = 
-  let fun fix t = 
-        (case LT.ltd_arrow t
-          of (ff, [aty], rtys) =>
-               (case ltWrap aty 
-                 of NONE => t
-                  | SOME naty => LT.ltc_arrow(ff, [naty], rtys))
-           | _ => bug "unexpected type in fixDconTy")
-   in if LT.ltp_ppoly lt then
+    fun fixDconTy lt = 
+      if LT.ltp_ppoly lt then
         let val (ks, t) = LT.ltd_ppoly lt
-         in LT.ltc_ppoly(ks, fix t)
+         in LT.ltc_ppoly(ks, ltWrap t)
         end
-      else fix lt
-  end (* function fixDconTy *)
+      else ltWrap lt
 
-fun primExp(sv as (PRIM _ | GENOP _), t) = 
-      let val x = mkv()
-          val (argt,_) = ltArrow t
-       in FN(x, argt, APP(sv, VAR x))
-      end
-  | primExp _ = bug "unexpected cases in primExp"
+    (* transform : CO.wpEnv * DI.depth -> (lexp -> lexp) *)
+    fun transform (wenv, d) = 
+      let val getlty = getLtyGen d 
 
-fun lpve sv = 
-  (case sv
-    of VAR v => (SVAL sv, LT.ltLookup(venv, v, d))
-     | (INT _ | WORD _) => (SVAL sv, LT.ltc_int)
-     | (INT32 _ | WORD32 _) => (SVAL sv, LT.ltc_int32)
-     | REAL _ => (SVAL sv, LT.ltc_real)
-     | STRING _ => (SVAL sv, LT.ltc_string)
-     | PRIM (p, lt, []) => (primExp(sv,lt), lt)
-     | PRIM (p as (PO.NUMSUBSCRIPT _ | PO.NUMUPDATE _), lt, ts) => 
-         (* the polymorphism in NUMSUB & NUMUPD is used for overloading *)
-         let val nt = ltAppSt(lt, ts)
-          in (primExp (PRIM(p, nt, []), nt), nt)
-         end
-     | PRIM (p, lt, ts) => 
-         let val (np, pknd) = mkPrim(p, lt, ts)
-          in (case (tcsWrap ts, pknd)
-               of ((_, RARRAYOP) | (NONE, STANDARD)) =>
-                    (let val nt = ltAppSt(lt, ts)
-                      in (primExp(PRIM(np, nt, []), nt), nt)
-                     end)
-                | (NONE, PARRAYOP) =>  
-                    (** these parrayops are not fully determined ***)
-                    (let val nt = ltAppSt(lt, ts)
-                      in (primExp(PRIM(np, lt, ts), nt), nt)
-                     end)
-                | (SOME wts, _) =>
-                    (let val nt = ltAppSt(lt, wts)
-                         val ot = ltAppSt(lt, ts)
-                         val hdr = CO.unwrapOp(wenv, nt, ot, d)
-                      in (hdr(primExp(PRIM(np, nt, []), nt)), ot)
-                     end))
-         end
-     | GENOP({default=pv, table=[(_,sv)]}, PO.POLYEQL, _, [tc]) =>
-         loop(Equal.equal(pv, sv, tc))
-     | GENOP(dict as {default=pv, table=[(_,sv)]}, 
-             p as PO.INLMKARRAY, lt, ts as [tc]) =>
-         if tc_eqv(tc, tc_real) then 
-               let val nt = ltAppSt(lt,ts)
-                in (SVAL(VAR sv), nt)
-               end
-         else (case tcsWrap ts
-                of NONE => let val nt = ltAppSt(lt, ts)
-                            in (primExp(GENOP(dict, p, lt, ts), nt), nt)
-                           end
-                 | SOME wts =>  (** we know it cannot be real64 *)
-                     let val nt = ltAppSt(lt, wts)
-                         val ot = ltAppSt(lt, ts)
-                         val hdr = CO.unwrapOp(wenv, nt, ot, d)
-                      in (hdr(TAPP(VAR pv, wts)), ot)
-                     end)
-     | GENOP _ => bug "other GENOPs not implemented yet")
+          fun lpfd (fk, v, vts, e) = 
+            ((case fk 
+               of FK_FUN {isrec,known,inline,fixed} =>  
+                    let val nisrec = case isrec of SOME ts => SOME (map ltf ts)
+                                                 | NONE => NONE
+                     in FK_FUN {isrec=nisrec, known=known, 
+                                fixed=LT.ffc_fixed, inline=inline}
+                    end
+                | _ => fk), 
+             v, 
+             map (fn (x,t) => (x, ltf t)) vts, 
+             loop e)
 
-and lpev le = 
-  (case le
-    of SVAL nsv => (nsv, ident)
-     | e => let val v = mkv()
-             in (VAR v, fn x => LET(v, e, x))
-            end)
+          (* lpdc : dcon * tyc list * value * bool -> 
+                       (dcon * tyc list * (lexp -> lexp) * value)  *) 
+          and lpdc (dc as (name,rep,lt), ts, u, wflag) = 
+            let (*** fixing the potential mismatch in the type *)
+                val ndc = (name, rep, fixDconTy lt)
 
-and lpsv sv = 
-  (case (lpve sv)
-    of (SVAL nsv, lt) => (nsv, ident, lt)
-     | (e, lt) => 
-          let val v = mkv()
-           in (VAR v, fn x => LET(v, e, x), lt)
-          end)
+                val aty = case LT.ltd_arrow (LT.lt_pinst(lt, ts))
+                           of (_, [x], _) => x
+                            | _ => bug "unexpected case in lpdc"
+                val (naty, oaty) = (ltWrap aty, ltf aty)
 
-and loop le = 
-  (case le
-    of SVAL sv => lpve sv
-     | TFN (ks, e) => 
-         let val nwenv = CO.wpNew(wenv, d)
-             val (ne, nt) = transform (nwenv, venv, DI.next d) e
-             val ne' = CO.wpBuild(nwenv, ne)
-          in (TFN(ks, ne'), LT.ltc_poly(ks, [nt]))
-         end
-     | TAPP (v, ts) => 
-         let val (nv, hdr0, lt) = lpsv v
-          in (case tcsWrap ts
-               of NONE => (hdr0(TAPP(nv, ts)), ltApply(lt, ts))
-                | SOME nts => 
-                    let val nt = ltAppSt(lt, nts)
-                        val ot = ltAppSt(lt, ts)
-                        val hdr = CO.unwrapOp (wenv, nt, ot, d)
-                        
-                     in (hdr0(hdr(TAPP(nv, nts))), ot)
-                    end)
-         end
-     | PACK (lt, ts, nts, sv) => 
-         let val (ne, _) = lpve sv
-             val nt = ltAppSt(lt, nts)
-             val ot = ltAppSt(lt, ts)
-             val hdr = CO.wrapOp (wenv, nt, ot, d)
-          in (hdr ne, nt)
-         end
-     | CON (x as (name, rep, lt), ts, v) => 
-         let val (nv, hdr0, _) = lpsv v
-             val ot = ltAppSt(lt, ts)
-             val (argt, res) = ltArrow(ot)
-          in (case ltWrap argt
-               of NONE => (hdr0(CON(x, ts, nv)), res)
-                | SOME nargt =>
-                    let val hdr = CO.wrapOp (wenv, nargt, argt, d)
-                        val x = (name, rep, fixDconTy lt)
-                        val ne = hdr0(hdr(SVAL nv))
-                     in case ne 
-                         of SVAL nnv => (CON(x, ts, nnv), res)
-                          | _ => 
-                             let val z = mkv()
-                              in (LET(z, ne, CON(x, ts, VAR z)), res)
-                             end
-                    end)
-         end
-     | DECON ((_, DA.CONSTANT _, _), _, _) => (RECORD[], LT.ltc_unit)
-         (* reason: unit-carrying data constructors are considered 
-                    as constants; *)
-     | DECON (x as (name, rep, lt), ts, sv) => 
-         let val (nv, hdr0, _) = lpsv sv
-             val ot = ltAppSt(lt, ts)
-             val (res, argt) = ltArrow(ot)
-          in (case ltWrap res
-               of NONE => (hdr0(DECON(x, ts, nv)), res)
-                | SOME nres =>
-                    let val hdr = CO.unwrapOp (wenv, nres, res, d)
-                        val x = (name, rep, fixDconTy lt)
-                     in (hdr(hdr0(DECON(x, ts, nv))), res)
-                    end)
-         end
-     | SWITCH (v, reps, cases, opp) => 
-         let val (nv, hdr0, _) = lpsv v
-             fun g (c, x) = (c, #1 (loop x))
-             val (ncases, nt) = 
-               (case cases
-                 of ((c, e)::rest) =>
-                      let val (ne, nt) = loop e
-                       in ((c, ne)::(map g rest), nt)
-                      end
-                  | _ => bug "unexpected empty switch cases")
-             val nopp = (case opp of NONE => NONE
-                                   | SOME x => SOME(#1(loop x)))
-          in (hdr0(SWITCH(nv, reps, ncases, nopp)), nt)
-         end
-     | FN(v, t, e) => 
-         let val nvenv = LT.ltInsert(venv, v, t, d)
-             val (ne, nt) = transform (wenv, nvenv, d) e
-          in (FN(v, t, ne), ltFun(t, nt))
-         end
-     | FIX(vs, ts, es, eb) => 
-         let val nvenv = 
-               let fun h (env, v::r, x::z) = h(LT.ltInsert(env, v, x, d), r, z)
-                     | h (env, [], []) = env
-                     | h _ = bug "unexpected FIX bindings"
-                in h(venv, vs, ts)
-               end
-             val nes = map (fn x => (#1 (transform (wenv, nvenv, d) x))) es
-             val (neb, nt) = transform (wenv, nvenv, d) eb
-          in (FIX(vs, ts, nes, neb), nt)
-         end
-     | APP(v1, v2) => 
-         let val (nv1, hdr1, nt1) = lpsv v1
-             val (nv2, hdr2, _) = lpsv v2
-             val (_, nt) = ltArrow nt1
-          in (hdr1(hdr2(APP(nv1, nv2))), nt)
-         end
-     | LET(v, e1, e2) => 
-         let val (ne1, nt1) = loop e1
-             val nvenv = LT.ltInsert(venv, v, nt1, d)
-             val (ne2, nt2) = transform (wenv, nvenv, d) e2
-          in (LET(v, ne1, ne2), nt2)
-         end
+                val hdr = if wflag then CO.wrapOp(wenv,[naty],[oaty],d) 
+                          else CO.unwrapOp(wenv,[naty],[oaty],d) 
 
-     | RECORD vs => 
-         let fun h([], hdr, nvs, nts) = 
-                   (hdr(RECORD(rev nvs)), ltTup(rev nts))
-               | h(v::r, hdr, nvs, nts) = 
-                   let val (nv, h0, nt) = lpsv v
-                    in h(r, hdr o h0, nv::nvs, nt::nts)
-                   end
-          in h(vs, ident, [], [])
-         end
-     | SRECORD vs => 
-         let fun h([], hdr, nvs, nts) = 
-                   (hdr(SRECORD(rev nvs)), LT.ltc_str(rev nts))
-               | h(v::r, hdr, nvs, nts) = 
-                   let val (nv, h0, nt) = lpsv v
-                    in h(r, hdr o h0, nv::nvs, nt::nts)
-                   end
-          in h(vs, ident, [], [])
-         end
-     | VECTOR (vs, t) => 
-         let val (wt, hdr, mhdr) = 
-               (case LU.tcWrap t 
-                 of NONE => (t, fn sv => SVAL sv, fn le => le) 
-                  | SOME z => 
-                      let val z' = LT.ltc_tyc z and t' = LT.ltc_tyc t
-                          val xh = CO.wrapOp(wenv, z', t', d) 
-                          val x = mkv()
-                          val y = mkv()
-                          val mh = (fn le => LET(x, FN(y, t', xh(SVAL(VAR y))),
-                                                 le))
-                          val hh = (fn sv => APP(VAR x, sv))
-                       in (z, hh, mh) 
+
+                val nts = map tcWrap ts
+             in case hdr
+                 of NONE => (ndc, nts, ident, u)
+                  | SOME hhh => 
+                      let val z = mkv()
+                          val nu = VAR z
+                       in if wflag then  (* CON *)
+                            (ndc, nts, fn xe => LET([z], hhh([u]), xe), nu)
+                          else           (* DECON *)
+                            let val x = case u of VAR q => q
+                                          | _ => bug "unexpected case in lpdc"
+                             in (ndc, nts, 
+                                 fn xe => LET([x], hhh([nu]), xe), nu)
+                            end
+                      end 
+            end (* function lpdc *)
+
+          (* lpsw : con * lexp -> con * lexp *)
+          and lpsw (DATAcon(dc, ts, v), e) = 
+                let val (ndc, nts, hdr, u) = lpdc(dc, ts, VAR v, false)
+                 in (case u 
+                      of VAR nv => (DATAcon(ndc, nts, nv), hdr(loop e))
+                       | _ => bug "unexpected case in lpsw")
+                end
+            | lpsw (c, e) = (c, loop e)
+
+
+          (* lprim : primop -> (primop * 
+           *                    (value list -> value list * (lexp -> lexp))
+           *                    (lvar -> lvar * (lexp -> lexp))) 
+           *)
+          and lprim (dict, p, lt, []) = 
+                ((dict, p, ltf lt, []), argbase, resbase)
+            | lprim px = 
+                let val ((dict, np, lt, ts), issp, isdyn) = classPrim px
+                    val nlt = ltf lt 
+                    val wts = map tcWrap ts
+                 in if issp then  (* primop has been specialized *)
+                     ((dict, np, nlt, wts), argbase, resbase)
+                    else (* still a polymorphic primop *)
+                     (let val nt = LT.lt_pinst(nlt, wts)
+                          val (_, nta, ntr) = LT.ltd_arrow nt
+                          val ot = ltf(LT.lt_pinst(lt, ts))
+                          val (_, ota, otr) = LT.ltd_arrow ot
+                          val arghdr = 
+                            (case CO.wrapOp(wenv, nta, ota, d)
+                              of NONE => argbase
+                               | SOME hhh => 
+                                   (fn vs => 
+                                     let val nvs = map mkv vs
+                                      in (map VAR nvs, 
+                                          fn le => LET(nvs, hhh(vs), le))
+                                     end))
+                          val reshdr = 
+                            (case CO.unwrapOp(wenv, ntr, otr, d)
+                              of NONE => resbase
+                               | SOME hhh => 
+                                   (fn v => 
+                                     let val nv = mkv()
+                                      in (nv, 
+                                          fn le => LET([v], hhh([VAR nv]), le))
+                                     end))
+                          val npx' = if isdyn then (dict, np, nlt, wts)
+                                     else (dict, np, nt, [])
+                       in (npx', arghdr, reshdr)
                       end)
- 
-             fun h([], h2, nvs) = h2(VECTOR(rev nvs, wt))
-               | h(v::r, h2, nvs) = 
-                   let val (xv, h1, _) = lpsv v
-                       val (nv, h0) = lpev (hdr xv)
-                    in h(r, h2 o h1 o h0, nv::nvs)
+                end (* function lprim *)
+
+          and loop le = 
+            (case le
+              of RET _ => le
+               | LET (vs, e1, e2) => LET (vs, loop e1, loop e2)
+               | FIX (fdecs, e) => FIX(map lpfd fdecs, loop e)
+               | APP _ => le
+               | TFN ((v, tvks, e1), e2) =>  (* put down all wrappers *)
+                   let val nwenv = CO.wpNew(wenv, d)
+                       val ne1 = transform (nwenv, DI.next d) e1
+                    in TFN((v, tvks, CO.wpBuild(nwenv, ne1)), loop e2)
                    end
-          in (h (vs, mhdr, []), LT.ltc_tyc(LT.tcc_vector t))
-         end
-     | SELECT (i, v) => 
-         let val (nv, hdr, nt) = lpsv v
-          in (hdr(SELECT(i, nv)), ltSelect(nt, i))
-         end
-     | ETAG (v, t) => 
-         let val (nv, hdr, _) = lpsv v
-          in (hdr(ETAG(nv, t)), LT.ltc_etag t)
-         end
-     | RAISE (v, t) => 
-         let val (nv, hdr, _) = lpsv v
-          in (hdr(RAISE(nv, t)), t)
-         end
-     | HANDLE (e, v) => 
-         let val (ne, nt) = loop e
-             val (nv, hdr, _) = lpsv v
-          in (hdr(HANDLE(ne, nv)), nt)
-         end
-     | WRAP _ => bug "unexpected WRAP lexp"
-     | UNWRAP _ => bug "unexpected UNWRAP lexp")
+               | TAPP (v, ts) => 
+                   let val olt = getlty v
+                       val nts = map tcWrap ts
+                       val nlts = LT.lt_inst(ltf olt, nts)
+                       val olts = map ltf (LT.lt_inst(olt, ts))
+                       val hdr = CO.unwrapOp (wenv, nlts, olts, d)
+                    in case hdr 
+                        of NONE => TAPP(v, nts)
+                         | SOME hhh =>
+                             let val nvs = map mkv nlts
+                              in LET(nvs, TAPP(v, nts), hhh(map VAR nvs))
+                             end
+                   end
+               | CON (dc, ts, u, v, e) => 
+                   let val (ndc, nts, hdr, nu) = lpdc(dc, ts, u, true)
+                    in hdr (CON(ndc, nts, nu, v, loop e))
+                   end
+               | SWITCH (v, csig, cases, opp) => 
+                   SWITCH(v, csig, map lpsw cases, option loop opp)
 
- in loop 
-end (* function transform *)
+               | RECORD(RK_VECTOR t, vs, v, e) =>
+                   let val (otc, ntc) = (tcf t, tcWrap t)
+                       val ot = LT.ltc_tyc otc
+                       val nt = LT.ltc_tyc ntc
+                    in (case CO.wrapOp(wenv, [nt], [ot], d) 
+                         of NONE => RECORD(RK_VECTOR ntc, vs, v, loop e)
+                          | SOME hhh =>
+                              let val f = mkv() and x = mkv()
+                                  fun mh xe = 
+                                    FIX([(fkfun,f,[(x,ot)],hhh([VAR x]))], xe)
 
-fun wrapLexp (FN(v, t, e)) = 
-      let val wenv = CO.initWpEnv ()
-          val venv = LT.initLtyEnv
-          val d = DI.top
-          val nvenv = LT.ltInsert(venv, v, t, d)
-          val (ne, _) = transform (wenv, nvenv, d) e
-       in FN(v, t, CO.wpBuild(wenv, ne))
-      end
-  | wrapLexp _ = bug "unexpected lambda expressions in wrapLexp"
+                                  fun pass([], nvs, h) = 
+                                        h(RECORD(RK_VECTOR ntc, 
+                                                rev nvs, v, loop e))
+                                    | pass(u::r, nvs, h) = 
+                                        let val z = mkv()
+                                            fun h0 xe = 
+                                              LET([z], APP(VAR f, [u]), xe)
+                                         in pass(r, (VAR z)::nvs, h o h0)
+                                        end
+                               in pass(vs, [], mh)
+                              end)
+                   end
+               | RECORD (rk, vs, v, e) => RECORD(rk, vs, v, loop e)
+               | SELECT (u, i, v, e) => SELECT(u, i, v, loop e)
+
+               | RAISE (u, lts) => RAISE(u, map ltf lts)
+               | HANDLE (e, v) => HANDLE (loop e, v)
+
+               (* resolving the polymorphic equality in a special way *)
+               | BRANCH (p as (_, PO.POLYEQL, _, _), vs, e1, e2) =>
+                   loop(Equal.equal_branch (p, vs, e1, e2))
+               | PRIMOP (p as (_, PO.POLYEQL, _, _), vs, v, e) =>
+                   bug "unexpected case in wrapping"
+ 
+               (* resolving the polymorphic mkarray *)
+               | PRIMOP ((dict, po as PO.INLMKARRAY, lt, ts), vs, v, e) =>
+                   let val (nlt, nts) = (ltf lt, map tcf ts)
+                    in (case (dict, nts)
+                         of (SOME {default=pv, table=[(_,sv)]}, [tc]) =>
+                              if LT.tc_eqv(tc, LT.tcc_real) then 
+                                LET([v], APP(VAR sv, vs), loop e)
+                              else 
+                                (if LT.tc_unknown tc then
+                                   PRIMOP((dict, po, nlt, nts), vs, v, loop e)
+                                 else 
+                                   let val z = mkv()
+                                    in LET([z], loop(TAPP(VAR pv, ts)),
+                                          LET([v], APP(VAR z, vs), loop e))
+                                   end)
+                          | _ => bug "unexpected case for inlmkarray")
+                   end
+
+               (* resolving the usual primops *)
+               | BRANCH (p, vs, e1, e2) => 
+                   let val (np, hg, _) = lprim p
+                       val (nvs, nh) = hg vs
+                    in nh(BRANCH(np, nvs, loop e1, loop e2))
+                   end
+               | PRIMOP (p, vs, v, e) => 
+                   let val (np, hg1, hg2) = lprim p
+                       val (nvs, nh1) = hg1 vs
+                       val (nv, nh2) = hg2 v
+                    in nh1(PRIMOP(np, nvs, nv, nh2(loop e)))
+                   end)
+       in loop 
+      end (* function transform *)
+
+    val (fk, f, vts, e) = fdec
+    val nvts = map (fn (v, t) => (v, ltf t)) vts
+    val wenv = CO.initWpEnv()
+    val ne = transform (wenv, DI.top) e
+ in (fk, f, nvts, CO.wpBuild(wenv, ne)) before (cleanup2(); cleanUp())
+end (* function wrapping *)
 
 end (* toplevel local *)
 end (* structure Wrapping *)
-
-(*
- * $Log: wrapping.sml,v $
- * Revision 1.4  1997/05/05  20:00:18  george
- *   Change the term language into the quasi-A-normal form. Added a new round
- *   of lambda contraction before and after type specialization and
- *   representation analysis. Type specialization including minimum type
- *   derivation is now turned on all the time. Real array is now implemented
- *   as realArray. A more sophisticated partial boxing scheme is added and
- *   used as the default.
- *
- * Revision 1.3  1997/04/18  15:40:35  george
- *   Fixing the DECON on the constant data constructor bug reported
- *   by Pichora. -- zsh
- *
- * Revision 1.2  1997/02/26  21:55:31  george
- *    Fixing the incorrect wrapper bug, BUG 1158, reported by Ken Cline
- *    (zcline.sml). This also fixes the core dump bug, BUG 1153,
- *    reported by Nikolaj.
- *
- *)

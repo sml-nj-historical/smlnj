@@ -135,8 +135,11 @@ sig
 
   val memDisambiguate : bool ref
   val controlDependence : bool ref
-  val flinton : bool ref
-  val checkflint1 : bool ref
+
+  (* FLINT internal type-checking controls *)
+  val checkFlint    : bool ref
+  val checkDatatypes: bool ref
+  val checkKinds    : bool ref
 
   val compdebugging : bool ref
   val mudebugging   : bool ref

@@ -32,16 +32,5 @@ fun lt_merge(t1, t2) =
                *))
   end (* function lt_merge *)
 
-val tcc_arw = tcc_parrow  (* soon be obsolete *)
-
-(* the following is a weird function, r should be replaced by fkind *)
-fun ltc_funN (r, x, y) =
-  (if List.all ltp_tyc (x@y) then ltc_arrow(r, x, y)
-   else ltc_fct(x, y))
-
-fun ltd_pfun t =
-    if ltp_pfct t then ltd_pfct t
-    else ltd_parrow t
-
 end (* structure PLambdaType *)
 

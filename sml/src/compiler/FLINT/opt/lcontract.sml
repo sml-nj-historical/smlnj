@@ -12,6 +12,7 @@ struct
 local structure DI = DebIndex
       structure DA = Access
       structure LT = LtyExtern
+      structure FU = FlintUtil
       open FLINT
 in
 
@@ -125,6 +126,8 @@ fun chkIn (v, info) = enter(v, (ref 0, info))
 fun dead v = (case get v of (ref 0, _) => true
                           | _ => false) handle _ => false
 
+fun once v = (case get v of (ref 1, _) => true | _ => false) handle _ => false
+
 (** check if all variables are dead *)
 fun alldead [] = true
   | alldead (v::r) = if dead v then alldead r else false 
@@ -169,6 +172,58 @@ fun appInfo (VAR v) =
           | _ => NONE) handle _ => NONE)
   | appInfo _ = NONE
 
+
+(** A very ad-hoc implementation of branch/switch eliminations *)
+local
+
+fun isBoolLty lt = 
+  (case LT.ltd_arrow lt
+    of (_, [at], [rt]) =>
+         (LT.lt_eqv(at, LT.ltc_unit)) andalso (LT.lt_eqv(rt, LT.ltc_bool))
+     | _ => false) 
+
+fun isBool true (RECORD(RK_TUPLE _, [], x, 
+                  CON((_,DA.CONSTANT 1,lt), [], VAR x', v, RET [VAR v']))) = 
+      (x = x') andalso (v = v') andalso (isBoolLty lt)
+  | isBool false (RECORD(RK_TUPLE _, [], x, 
+                  CON((_,DA.CONSTANT 0,lt), [], VAR x', v, RET [VAR v']))) = 
+      (x = x') andalso (v = v') andalso (isBoolLty lt)
+  | isBool _ _ = false
+
+(* functions that do the branch optimizations *)
+fun boolDcon((DATAcon((_,DA.CONSTANT 1,lt1),[],v1), e1), 
+             (DATAcon((_,DA.CONSTANT 0,lt2),[],v2), e2)) = 
+      if (isBoolLty lt1) andalso (isBoolLty lt2) then
+        SOME(RECORD(FU.rk_tuple,[],v1,e1), RECORD(FU.rk_tuple,[],v2,e2))
+      else NONE
+  | boolDcon(ce1 as (DATAcon((_,DA.CONSTANT 0,_),[],_), _), 
+             ce2 as (DATAcon((_,DA.CONSTANT 1,_),[],_), _)) =
+      boolDcon (ce2, ce1)
+  | boolDcon _ = NONE
+
+fun ssplit (LET(vs,e1,e2)) = (fn x => LET(vs,x,e2), e1)
+  | ssplit e = (ident, e)
+
+in
+
+fun branchopt([v], e1 as (BRANCH(p, us, e11, e12)), e2) = 
+      let val (hdr, se2) = ssplit e2
+       in case se2 
+           of SWITCH(VAR nv, _, [ce1, ce2], NONE) =>
+                if (once v) andalso (nv = v) andalso (isBool true e11) 
+                   andalso (isBool false e12)
+                then (case boolDcon (ce1, ce2)
+                       of SOME (e21, e22) => SOME(hdr(BRANCH(p, us, e21, e22)))
+                        | NONE => NONE)
+                else NONE
+            | _ => NONE
+      end
+  | branchopt _ = NONE
+
+end (* branchopt local *)
+
+
+(** the main transformation function *)
 fun transform [] = bug "unexpected case in transform"
   | transform (cfg as ((d, od, k)::rcfg)) = let
      fun h (f, t, (d, od, k)::r, sk) = h(f, f(t, od, d, k+sk), r, k+sk)
@@ -198,7 +253,14 @@ fun transform [] = bug "unexpected case in transform"
      and lpsv x = (case x of VAR v => rename x | _ => x)
 
      and lpfd (fk, v, vts, e) = 
-       (fk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))
+       let val nfk = 
+             case fk 
+              of FK_FUN{isrec=SOME t, known, inline, fixed} =>
+                   FK_FUN{isrec=SOME(map ltf t), known=known, inline=inline,
+                           fixed=fixed} 
+               | _ => fk
+        in (nfk, v, map (fn (v,t) => (v,ltf t)) vts, #1(loop e))
+       end
 
      and lplet (hdr: lexp -> lexp, pure, v: lvar, info: info, e) = 
        let val _ = chkIn(v, info)
@@ -238,11 +300,14 @@ fun transform [] = bug "unexpected case in transform"
                   val (ne1, b1) = loop e1
                   val (ne2, b2) = loop e2
                in if (alldead vs) andalso b1 then (ne2, b2)
-                  else (case ne2 
-                         of (RET us) => 
-                              if isEqs(vs, us) then (ne1, b1)
-                              else (LET(vs, ne1, ne2), b1)
-                          | _ => (LET(vs, ne1, ne2), b1 andalso b2))
+                  else (case branchopt(vs, ne1, ne2)
+                         of SOME xx => (xx, b1 andalso b2)
+                          | NONE => 
+                              (case ne2 
+                                of (RET us) => 
+                                     if isEqs(vs, us) then (ne1, b1)
+                                     else (LET(vs, ne1, ne2), b1)
+                                 | _ => (LET(vs, ne1, ne2), b1 andalso b2)))
               end
 
           | FIX(fdecs, e) =>

@@ -67,7 +67,7 @@ fun fail s = raise (Compile s)
  *****************************************************************************)
 
 (** take the input source and turn it into the concrete syntax *)
-val parsePhase = ST.makePhase "Compiler 010 Parse"
+val parsePhase = ST.makePhase "Compiler 010 parse"
 fun parseOne (source : source) =  
   let val parser = FE.parse source
       val parser = ST.doPhase parsePhase parser (* for correct timing *)
@@ -103,7 +103,7 @@ val lazycomp = (* ST.doPhase (ST.makePhase "Compiler 006 lazycomp") *)
   LazyComp.lazycomp
 
 val pickUnpick = 
-  ST.doPhase (ST.makePhase "Compiler 036 pickUnpick") CC.pickUnpick
+  ST.doPhase (ST.makePhase "Compiler 036 pickunpick") CC.pickUnpick
 
 (** take ast, do semantic checks, and output the new env, absyn and pickles *)
 fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = 
@@ -122,7 +122,7 @@ fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} =
        exportLvars=exportLvars, staticPid = hash, pickle=pickle}
   end (* function elaborate *)
 
-val elaborate = ST.doPhase(ST.makePhase "Compiler 030 Elaborate") elaborate
+val elaborate = ST.doPhase(ST.makePhase "Compiler 030 elaborate") elaborate
 
 (*****************************************************************************
  *                          ABSYN INSTRUMENTATION                            *
@@ -133,7 +133,7 @@ fun instrument {source, compInfo as {coreEnv,...}: compInfo} =
       SProf.instrumDec (coreEnv, compInfo) source 
       o TProf.instrumDec (coreEnv, compInfo)
 
-val instrument = ST.doPhase (ST.makePhase "Compiler 039 Instrument") instrument
+val instrument = ST.doPhase (ST.makePhase "Compiler 039 instrument") instrument
 
 
 (*****************************************************************************
@@ -149,7 +149,7 @@ fun translate{absyn, exportLvars, newstatenv, oldstatenv, compInfo} =
    in {flint=flint, imports=imports} 
   end
 
-val translate = ST.doPhase (ST.makePhase "Compiler 040 Translate") translate 
+val translate = ST.doPhase (ST.makePhase "Compiler 040 translate") translate 
 
 
 (*****************************************************************************
@@ -190,8 +190,9 @@ fun codegen {flint: flint, imports: pid list, symenv: symenv,
   end 
 end (* local codegen *)
 
+(*
 val codegen = ST.doPhase (ST.makePhase "Compiler 140 CodeGen") codegen
-
+*)
 
 (*****************************************************************************
  *                           COMPILATION                                     *

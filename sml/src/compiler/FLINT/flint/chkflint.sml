@@ -6,7 +6,7 @@
 signature CHKFLINT = sig 
 
 (** which set of the typing rules to use while doing the typecheck *)
-type typsys (* currently very crude, i.e., = int or phases *)
+type typsys (* currently very crude *)
 
 val checkTop : FLINT.fundec * typsys -> bool
 val checkExp : FLINT.lexp * typsys -> bool
@@ -17,13 +17,14 @@ structure ChkFlint : CHKFLINT =
 struct
 
 (** which set of the typing rules to use while doing the typecheck *)
-type typsys = int (* currently very crude, use int for phases *)
+type typsys = bool (* currently very crude *)
 
 local structure LT = LtyExtern
       structure LV = LambdaVar
       structure DA = Access 
       structure DI = DebIndex
       structure PP = PPFlint
+      structure PO = PrimOp
       open FLINT
 
 fun bug s = ErrorMsg.impossible ("ChkFlint: "^s)
@@ -83,19 +84,22 @@ fun catchExn f (le,g) =
     (le, fn () => g () before say ("\n** exception " ^ exnName ex ^ " raised"))
 
 (*** a hack for type checkng ***)
-fun laterPhase i = i > 20
+fun laterPhase postReify = postReify
 
 fun check phase envs lexp = let
   val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
-  fun ltTAppChk (lt, ts, kenv) = LT.lt_inst(lt, ts)
+  val ltTAppChk =
+    if !Control.CG.checkKinds then LT.lt_inst_chk_gen()
+    else fn (lt,ts,_) => LT.lt_inst(lt,ts)
 
   fun constVoid _ = LT.ltc_void
-  val (ltString,ltExn,ltEtag,ltVector,ltWrap) =
+  val (ltString,ltExn,ltEtag,ltVector,ltWrap,ltBool) =
     if laterPhase phase then
-      (LT.ltc_void, LT.ltc_void, constVoid, constVoid, constVoid)
+      (LT.ltc_string, LT.ltc_void, constVoid, constVoid, constVoid, 
+       LT.ltc_void)
     else
       (LT.ltc_string, LT.ltc_exn, LT.ltc_etag, LT.ltc_tyc o LT.tcc_vector, 
-       LT.ltc_tyc o LT.tcc_box)
+       LT.ltc_tyc o LT.tcc_box, LT.ltc_bool)
 
   fun prMsgLt (s,lt) = (say s; ltPrint lt)
 
@@ -129,13 +133,9 @@ fun check phase envs lexp = let
   local
     fun ltFnAppGen opr (le,s,msg) (t,ts) =
       catchExn
-        (fn () => let val (xs,ys) = opr (LT.lt_arrowN t)
-		  (*** lt_arrowN may go away soon, and functors and functions
-		       have to be treated differently anyway, using different
-		       algorithms for comparing datatypes (probably)
-		   ***)
-	    in ltsMatch (le,s) (xs,ts); ys
-	    end)
+        (fn () => let val (xs,ys) = opr (LT.ltd_fkfun t)
+                   in ltsMatch (le,s) (xs,ts); ys
+                  end)
 	(le, fn () => (prMsgLt (s ^ msg ^ "\n** type:\n", t); []))
   in
   fun ltFnApp (le,s) =
@@ -358,12 +358,21 @@ fun check phase envs lexp = let
                             (le, 
                              "BRANCK : primop must return single result ",
                              LT.ltc_void)
-                val _ = ltMatch fp (lt, LT.ltc_bool)
+                val _ = ltMatch fp (lt, ltBool)
                 val lts1 = typeof e1
                 val lts2 = typeof e2
              in ltsMatch fp (lts1, lts2);
                 lts1
             end
+        | PRIMOP ((_,PO.WCAST,lt,[]), [u], lv, e) => 
+            (*** a hack: checked only after reifY is done ***)
+            if laterPhase phase then
+              (case LT.ltd_fct lt
+                of ([argt], [rt]) => 
+                      (ltMatch (le, "WCAST") (typeofVal u, argt); 
+                       typeWith (lv, rt) e)
+                 | _ => bug "unexpected WCAST in typecheck")
+            else bug "unexpected WCAST in typecheck"
 	| PRIMOP ((_,_,lt,ts), vs, lv, e) => 
 	  typeWithBindingToSingleRsltOfInstAndApp ("PRIMOP",lt,ts,vs,lv) e
 (*
