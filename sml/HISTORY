@@ -13,6 +13,22 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2003/09/18 15:20:00 CDT
+Tag: blume-20030918-misc
+Description:
+
+1. Exported fractionsPerSecond etc. from TimeImp (but not from Time as
+   this seems to be controversial at the moment) and used those in
+   Posix.ProcEnv.times.
+
+2. Added Time.{from,to}Nanoseconds to Time.
+
+3. Improved Real.{from,to}LargeInt by avoiding needless calculations.
+   For example, fromLargeInt never needs to look at more than 3 "big
+   digits" to get its 53 bits of precision.
+
+----------------------------------------------------------------------
 Name:  Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/17 16:30:00 CDT
 Tag: blume-20030917-real32-slices

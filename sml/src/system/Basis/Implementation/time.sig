@@ -22,6 +22,8 @@ signature TIME =
     val fromMilliseconds : LargeInt.int -> time
     val toMicroseconds   : time -> LargeInt.int
     val fromMicroseconds : LargeInt.int -> time
+    val toNanoseconds    : time -> LargeInt.int
+    val fromNanoseconds  : LargeInt.int -> time
 
     val +  : (time * time) -> time
     val -  : (time * time) -> time
@@ -41,4 +43,3 @@ signature TIME =
     val scan : (char, 'a) StringCvt.reader -> (time, 'a) StringCvt.reader
 
   end (* TIME *)
-

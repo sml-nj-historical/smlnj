@@ -32,6 +32,7 @@ structure Real64Imp : REAL =
     val w31_r = InlineT.Real64.from_int32 o InlineT.Int32.copy_word31
 
     val rbase = w31_r CoreIntInf.base
+    val baseBits = InlineT.Word31.copyt_int31 CoreIntInf.baseBits
     val intbound = w31_r 0wx40000000	(* not necessarily the same as rbase *)
     val negintbound = ~intbound
 
@@ -169,7 +170,7 @@ structure Real64Imp : REAL =
 			             else IEEEReal.NAN IEEEReal.QUIET
 
     val radix = 2
-    val precision = 52
+    val precision = 52			(* 53? *)
 
     val radix_to_the_precision = 18014398509481984.0
 
@@ -208,14 +209,35 @@ structure Real64Imp : REAL =
             in fromManExp { man = m', exp = e'+ e }
            end
 
+    (* some protection against insanity... *)
+    val _ =
+	if baseBits < 18 then  (* i.e., 3 * baseBits < 53 *)
+	    raise Fail
+		 "big digits in intinf implementation do not have enough bits"
+	else ()
+
     fun fromLargeInt(x : IntInf.int) = let
 	val CoreIntInf.BI { negative, digits } = CoreIntInf.concrete x
 	val w2r = fromInt o InlineT.Word31.copyt_int31
-	fun calc [] = 0.0
-	  | calc (d :: ds) = w2r d + rbase * calc ds
-	val m = calc digits
+	(* Looking at at most 3 "big digits" is always enough to
+	 * get 53 bits of precision...
+	 * (See insanity insurance above.)
+	 *)
+	fun scaleup (k, x) = let	(* increase exponent by k *)
+	    val { man, exp } = toManExp x
+	in
+	    fromManExp { man = man, exp = exp + k }
+	end
+	fun dosign (x: real) = if negative then ~x else x
+	fun calc (k, d1, d2, d3, []) =
+	      dosign (scaleup (k, w2r d1 + rbase * (w2r d2 + rbase * w2r d3)))
+	  | calc (k, _, d1, d2, d3 :: r) = calc (k + baseBits, d1, d2, d3, r)
     in
-	if negative then ~m else m
+	case digits of
+	    [] => 0.0
+	  | [d] => dosign (w2r d)
+	  | [d1, d2] => dosign (rbase * w2r d2 + w2r d1)
+	  | d1 :: d2 :: d3 :: r => calc (0, d1, d2, d3, r)
     end
 
   (* whole and split could be implemented more efficiently if we had
@@ -294,21 +316,28 @@ structure Real64Imp : REAL =
 				   else if feven whole then whole
 				   else whole + 1.0
 
-			 (* Now, for efficiency, we construct the
-			  * minimal whole number with
+			 (* Now, for efficiency, we construct a
+			  * fairly "small" whole number with
 			  * all the significant bits.  First
 			  * we get mantissa and exponent: *)
 			 val { man, exp } = toManExp start
 			 (* Then we adjust both to make sure the mantissa
-			  * is whole: *)
-			 fun adjust (man, exp) =
-			     if exp = 0 orelse #frac (split man) == 0.0 then
-				 (man, exp)
-			     else adjust (2.0 * man, exp - 1)
-			 val (man, exp) = adjust (man, exp)
+			  * is whole:
+			  * We know that man is between .5 and 1, so
+			  * multiplying man by 2^53 will guarantee wholeness.
+			  * However, exp might be < 53 -- which would be
+			  * bad.  The correct solution is to multiply
+			  * by 2^min(exp,53) and adjust exp by subtracting
+			  * min(exp,53): *)
+			 val adj = IntImp.min (53 (* precision? *), exp)
+			 val man = fromManExp { man = man, exp = adj }
+			 val exp = exp - adj
 
 			 (* Now we can construct our bignum digits by
-			  * repeated div/mod using the bignum base: *)
+			  * repeated div/mod using the bignum base.
+			  * This loop will terminate after two rounds at
+			  * the most because we chop off 30 bits each
+			  * time: *)
 			 fun loop x =
 			     if x == 0.0 then []
 			     else
@@ -335,10 +364,6 @@ structure Real64Imp : REAL =
 
     val min : real * real -> real = InlineT.Real64.min
     val max : real * real -> real = InlineT.Real64.max
-(*
-    fun min(x,y) = if x<y orelse isNan y then x else y
-    fun max(x,y) = if x>y orelse isNan y then x else y
-*)
 
     fun toDecimal _ = raise Fail "Real.toDecimal unimplemented"
     fun fromDecimal _ = raise Fail "Real.fromDecimal unimplemented"
