@@ -39,12 +39,12 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("BBScheduler.",msg)
 
-   fun schedule {cpu,regmap} =
+   fun schedule {cpu} =
    let val cpu_info as 
             SchedProps.CPU_INFO
             {newTable,findSlot,pipeline,insert,defUse,...} = 
              SchedProps.info{backward=true, cpu=SchedProps.cpu cpu}
-       val split = SchedProps.splitCopies regmap
+       val split = SchedProps.splitCopies 
 
        fun sched insns = 
        let val insns' = if prepass then 
@@ -70,9 +70,8 @@ struct
             app (fn i => 
                  let val (d,u) = defUse i 
                      val d     = map #1 d
-                     fun pr rs = app (fn r => print(Int.toString(regmap r)^"("^
-                                                    Int.toString r^") ")) rs
-                 in  print(Viewer.toString regmap i^"\n");
+                     fun pr rs = app (fn r => print(C.toString r)) rs
+                 in  print(Viewer.toString i^"\n");
                      (* print "defs="; pr d;
                      print " uses="; pr u;
                      print "\n" *) ()
@@ -81,10 +80,9 @@ struct
        and schedInsns(N, insns) =
        let val DDG as G.GRAPH ddg = DDG.newDDG(N)
            val {succ, pred, nodes} = DDG.internalInfo DDG
-           val _      = Build.buildDDG{ddg=DDG,cpu_info=cpu_info,
-                                       regmap=regmap} insns
+           val _      = Build.buildDDG{ddg=DDG,cpu_info=cpu_info} insns
            val _      = if !view_IR andalso !view_ddg 
-                        then Viewer.view regmap DDG else ()
+                        then Viewer.view DDG else ()
            val rank   = Rank.rank DDG
            val issueTimes   = A.array(N,0)
            val outDeg       = A.array(N,0)
@@ -120,7 +118,7 @@ struct
            fun sched(rt) = 
            let val (i,i') = PQ.deleteMin ready
                val t      = findASlot(rt,i,i')
-           in  (*print("["^Int.toString t^"]"^Viewer.toString regmap i'^"\n");*)
+           in  (*print("["^Int.toString t^"]"^Viewer.toString i'^"\n");*)
                A.update(issueTimes,i,t);
                updatePred(i);
                sched(rt)

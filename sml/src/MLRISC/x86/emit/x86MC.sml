@@ -6,15 +6,15 @@
 
 
 functor X86MCEmitter(structure Instr : X86INSTR
-                     structure Stream : INSTRUCTION_STREAM
                      structure CodeString : CODE_STRING
                     ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
-   structure S = Stream
    structure C = I.C
-   structure Constant = I.Constant
    structure LabelExp = I.LabelExp
+   structure Constant = I.Constant
+   structure T = I.T
+   structure S = T.Stream
    structure P = S.P
    structure W = Word32
    
@@ -158,7 +158,7 @@ struct
        | I.FDirect _ => extension {opc=opc, opnd=memReg opnd}
        | I.Displace{base, disp, ...} => 
          let 
-(*#line 470.13 "x86/x86.mdl"*)
+(*#line 471.13 "x86/x86.mdl"*)
              val immed = immedOpnd {opnd=disp}
          in ()
          end

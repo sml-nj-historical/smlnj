@@ -31,7 +31,6 @@ struct
 
    structure T = T
    structure Size = MLTreeSize(structure T = T val intTy = intTy)
-   structure LE = T.LabelExp
    structure C  = CellsBasis
 
    exception Unsupported of string
@@ -85,7 +84,7 @@ struct
 
    fun compileRexp(exp) = 
        case exp of
-         T.CONST c => T.LABEL(T.LabelExp.CONST c)
+         T.CONST c => T.LABEXP exp
 
          (* non overflow trapping ops *)
        | T.NEG(ty,a)    => T.SUB(ty, zeroT, a)
@@ -171,14 +170,14 @@ struct
      | mark(s,a::an) = mark(T.ANNOTATION(s,a),an)
 
    fun compileStm (T.SEQ s) = s
-     | compileStm (T.IF(cond,T.JMP(T.LABEL(LE.LABEL L),_),T.SEQ [])) = 
+     | compileStm (T.IF(cond,T.JMP(T.LABEL L,_),T.SEQ [])) = 
            [T.BCC(cond,L)]
      | compileStm (T.IF(cond,yes,no)) = 
        let val L1 = Label.newLabel ""
            val L2 = Label.newLabel ""
        in  [T.BCC(cond,L1),
             no,
-            T.JMP(T.LABEL(LE.LABEL L2),[]),
+            T.JMP(T.LABEL L2,[]),
             T.DEFINE L1,
             yes,
             T.DEFINE L2

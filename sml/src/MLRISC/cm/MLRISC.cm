@@ -1,14 +1,5 @@
-(* MLRISC.cm
- *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
- *
- * This library contains only the core MLRISC stuff.  There are
- * architecture-specific files for the various supported machines.
- *)
-
-Library 
-
-
+(* This file is created by makeallcm *)
+Library
 	signature ASM_FORMAT_UTIL
 	signature ASM_STREAM
 	signature ASSEMBLY_EMITTER
@@ -25,7 +16,6 @@ Library
 	signature FLOWGRAPH_GEN
 	signature FREQUENCY_PROPERTIES
 	signature GC_CELLS
-	signature GC_MAP
 	signature GC_TYPE
 	signature GETREG
 	signature INSN_PROPERTIES
@@ -71,10 +61,10 @@ Library
 	structure ChaitinSpillHeur
 	structure ChowHennessySpillHeur
 	structure Label
-	structure MachineInt
 	structure MLRiscAnnotations
 	structure MLRiscRegion
 	structure MLTreeBasis
+	structure MachineInt
 	structure PointsTo
 	structure RACore
 	structure RAGraph
@@ -89,7 +79,6 @@ Library
 	functor FlowGraph
 	functor FreqProps
 	functor GCCells
-	functor GCMap
 	functor GetReg
 	functor GetReg2
 	functor InstructionStream
@@ -111,26 +100,29 @@ Library
 	functor Shuffle
 	functor SpanDependencyResolution
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
 	$/Control.cm
 	$/Lib.cm
+#endif
 #else
-        basis.cm
-        smlnj-lib.cm
+	basis.cm
+	smlnj-lib.cm
 	Control.cm
 	Lib.cm
 #endif
 #else
-        smlnj-lib.cm
+	smlnj-lib.cm
 	Control.cm
 	Lib.cm
 #endif
-	
-	(* Core definitions. These are required *)
 	../instructions/cells.sig
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
@@ -143,7 +135,6 @@ is
 	../instructions/shuffle.sig
 	../instructions/shuffle.sml
 	../instructions/constant.sig
-	../instructions/labelExp.sml
 	../instructions/labels.sml
 	../instructions/pseudoOps.sig
 	../instructions/region.sig
@@ -152,16 +143,10 @@ is
 	../instructions/mlriscAnnotations.sig
 	../instructions/mlriscAnnotations.sml
 	../instructions/mlriscOptimization.sig
-	
-	(* New ../aliasing/memory disambiguation support *)
 	../aliasing/mlriscRegion.sig
 	../aliasing/mlriscRegion.sml
 	../aliasing/pointsTo.sig
 	../aliasing/pointsTo.sml
-	
-	(* Core definitions for the MLTREE language. These are required. *)
-	../mltree/machine-int.sig
-	../mltree/machine-int.sml
 	../mltree/mltree-extension.sig
 	../mltree/mltree-basis.sig
 	../mltree/mltree-basis.sml
@@ -175,25 +160,21 @@ is
 	../mltree/flowgen.sig
 	../mltree/mltree-mult.sig
 	../mltree/mltree-mult.sml
-	
-	(* Basic cluster stuff. These are required. *)
+	../mltree/mltree-labexp.sig
+	../mltree/mltree-labexp.sml
+	../mltree/machine-int.sig
+	../mltree/machine-int.sml
 	../cluster/flowgraph.sml
 	../cluster/clustergen.sml
 	../cluster/printCluster.sml
 	../cluster/clusterOptimization.sig
 	../cluster/clusterCountCopies.sml
-	
-	(* Core register allocator utilities *)
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml
 	../ra/liveness.sml
-	
-        (* Spill heuristics *)
         ../ra/chaitin-spillheur.sml
         ../ra/chow-hennessy-spillheur.sml
-
-	(* New RA *)
         ../ra/ra-graph.sig
         ../ra/ra-graph.sml
         ../ra/ra-core.sig
@@ -211,27 +192,17 @@ is
 	../ra/mem-ra.sml
 	../ra/region-based-ra.sml
 	../ra/risc-ra.sml
-
-        (* Cluster based RA's *)
         ../ra/cluster-ra.sml
         ../ra/cluster-partitioner.sml
-
-	(* Assembly machine code stuff *)
 	../emit/instruction-emitter.sig
 	../emit/asmEmit.sig 
 	../emit/asmStream.sml
 	../emit/asmUtil.sml
 	../emit/clusterEmit.sml
 	../emit/code-string.sig
-	
-	(* Basic GC types stuff *)
 	../gc-safety/gc-cells.sig
 	../gc-safety/gc-cells.sml
 	../gc-safety/gc-type.sig
-	../gc-safety/gc-map.sig
-	../gc-safety/gc-map.sml
-	
-	(* Span dependency stuff *)
 	../backpatch/backpatch.sml
 	../backpatch/bbsched.sig
 	../backpatch/spanDep.sml
@@ -239,8 +210,5 @@ is
 	../backpatch/noDelaySlots.sml
 	../backpatch/sdi-jumps.sig
 	../backpatch/vlBackPatch.sml
-
-        (* c calls *)
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
-

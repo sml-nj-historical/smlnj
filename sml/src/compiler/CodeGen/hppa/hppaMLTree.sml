@@ -4,27 +4,36 @@
  *
  *)
 
-(* constants specialised to the hppa *)
-structure HppaConst = SMLNJConstant
+structure HppaPseudoOps = PseudoOpsBig(HppaSpec)
+
+structure HppaStream = InstructionStream(HppaPseudoOps)
+
+structure HppaMLTree = 
+  MLTreeF(structure Constant=SMLNJConstant
+	  structure Region=CPSRegions
+	  structure Stream=HppaStream
+	  structure Extension=SMLNJMLTreeExt
+         )
 
 (* specialised hppa instruction set *)
 structure HppaInstr = 
-  HppaInstr(structure LabelExp = SMLNJLabelExp
-	    structure Region = CPSRegions)
+  HppaInstr(
+    LabelExp
+       (structure T = HppaMLTree
+        fun h _ _ = 0w0 fun eq _ _ = false
+        val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
+        val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq
+        ))
 
 structure HppaShuffle = HppaShuffle(HppaInstr)
 
 structure HppaProps = HppaProps(HppaInstr)
-
-structure HppaPseudoOps = PseudoOpsBig(HppaSpec)
 
 (* flowgraph data structure specialized to Hppa instructions *)
 structure HppaFlowGraph = 
   FlowGraph(structure I=HppaInstr
 	    structure P=HppaPseudoOps
            )
-
-structure HppaStream = InstructionStream(HppaPseudoOps)
 
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
@@ -39,10 +48,4 @@ structure HppaMCEmitter =
 		structure CodeString=CodeString)
 
 
-structure HppaMLTree = 
-  MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure Region=CPSRegions
-	  structure Stream=HppaStream
-	  structure Extension=SMLNJMLTreeExt
-         )
 

@@ -20,11 +20,27 @@ struct
 
    exception Cells = Cells
 
+   val i2s = Int.toString
+
    fun error msg = MLRiscErrorMsg.error(exnName Cells, msg)
+   (*
+   val cellKindDescs =
+       (CONST,
+        DESC{high= ~1, low=0, physicalRegs=ref(CellsInternal.array0),
+             kind=CONST, counter=ref 0, 
+             toString=fn v => "v"^i2s v,
+             toStringWithSize=fn (v,_) => "v"^i2s v,
+             defaultValues=[], 
+             zeroReg=NONE
+            } 
+       ) :: 
+       cellKindDescs
+    *)
 
    val cellkinds   = map (fn (kind,_) => kind) cellKindDescs
    val firstPseudo = firstPseudo
    val name        = ref firstPseudo
+   val cellCounter = name
 
    val _ = app (fn (_, desc as DESC{physicalRegs, high, low, ...}) =>
                 let val n = high - low + 1
@@ -45,6 +61,8 @@ struct
          | loop((kind,info)::defs) =
            if kind = k then info else loop defs
    in  loop cellKindDescs end
+
+   val cellkindDesc = desc
 
    fun cellRange k = 
    let val DESC{low,high,...} = desc k

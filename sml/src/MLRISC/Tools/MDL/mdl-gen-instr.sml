@@ -22,18 +22,18 @@ struct
              ([DATATYPE("instruction",[],Comp.instructions md)],[])
 
        (* Arguments to the instruction functor *)
-       val args =
-           ["structure LabelExp : LABELEXP",
-            "structure Region   : REGION"
-           ]
+       val args = ["LabelExp : LABELEXP"]
 
        (* The signature *)
        val sigBody =
           [$ ["structure C : "^Comp.signame md "CELLS",
+              "structure T : MLTREE",
+              "structure LabelExp : LABELEXP",
               "structure Constant: CONSTANT",
-              "structure LabelExp: LABELEXP",
               "structure Region : REGION",
-              "   sharing Constant = LabelExp.Constant"
+              "   sharing LabelExp.T = T",
+              "   sharing Constant = T.Constant",
+              "   sharing Region = T.Region"
               ],
            Comp.typeOf md "Instruction",
            instrDatatype
@@ -42,9 +42,10 @@ struct
        (* The functor *)
        val strBody = 
            [$ ["structure C = "^Comp.strname md "Cells",
-               "structure Region = Region",
                "structure LabelExp = LabelExp",
-               "structure Constant = LabelExp.Constant"
+               "structure T = LabelExp.T",
+               "structure Region = T.Region",
+               "structure Constant = T.Constant"
               ],
             Comp.declOf md "Instruction",
             instrDatatype

@@ -1,34 +1,39 @@
-(*
- * This library contains the basic interface to the regions stuff 
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature POINTS_TO_INFO
 	signature REGION_INFO
 	signature REGION_PROPERTIES
 	structure PointsToInfo
 	structure RegionInfo
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-
+#else
+	$/smlnj-lib.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
+#else
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
 	../instructions/regionInfo.sml
 	../instructions/regionProps.sig
-
 	../aliasing/pointsToInfo.sig
 	../aliasing/pointsToInfo.sml

@@ -1,7 +1,4 @@
-(*
- * This is a generic graph library. 
- *)
-
+(* This file is created by makeallcm *)
 Library
 	signature ABELIAN_GROUP
 	signature ABELIAN_GROUP_WITH_INF
@@ -90,22 +87,29 @@ Library
 	functor NodePriorityQueue
 	functor UndirectedGraph
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
-
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+#endif
 	../graphs/acyclic-graph.sml
 	../graphs/bellman-ford.sml
 	../graphs/bigraph.sig

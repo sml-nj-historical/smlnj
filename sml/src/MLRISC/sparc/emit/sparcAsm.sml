@@ -6,7 +6,6 @@
 
 
 functor SparcAsmEmitter(structure Instr : SPARCINSTR
-                        structure Stream : INSTRUCTION_STREAM
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
 
@@ -16,7 +15,8 @@ functor SparcAsmEmitter(structure Instr : SPARCINSTR
 struct
    structure I  = Instr
    structure C  = I.C
-   structure S  = Stream
+   structure T  = I.T
+   structure S  = T.Stream
    structure P  = S.P
    structure LabelExp = I.LabelExp
    structure Constant = I.Constant
@@ -300,7 +300,7 @@ struct
        | I.SETHI{i, d} => 
          let 
 (*#line 650.18 "sparc/sparc.mdl"*)
-             val i = Word32.toString (Word32  .<< (Word32.fromInt i, 0wxa))
+             val i = Word32.toString (Word32.<< (Word32.fromInt i, 0wxa))
          in 
             ( emit "sethi\t%hi(0x"; 
               emit i; 

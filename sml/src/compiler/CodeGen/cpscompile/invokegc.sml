@@ -18,7 +18,6 @@ struct
 
    structure T  = C.T
    structure D  = MS.ObjDesc
-   structure LE = T.LabelExp
    structure R  = CPSRegions
    structure S  = Cells.SortedCells
    structure St = T.Stream
@@ -214,6 +213,7 @@ struct
        lab
    end
 
+   val baseOffset = T.LI(IntInf.fromInt MS.constBaseRegOffset)
    (* 
     * This function recomputes the base pointer address.
     *)
@@ -221,8 +221,7 @@ struct
    let val returnLab = Label.newLabel ""
        val baseExp = 
            T.ADD(addrTy, C.gcLink,
-                 T.LABEL(LE.MINUS(LE.INT MS.constBaseRegOffset,
-                                  LE.LABEL returnLab)))
+                 T.LABEXP(T.SUB(addrTy,baseOffset,T.LABEL returnLab)))
    in  defineLabel returnLab;
        annotation(ZERO_FREQ); 
        emit(case C.baseptr of 
@@ -730,7 +729,7 @@ struct
                val liveOut   = regRoots @ fregRoots
                val l         = !lab
            in  app defineLabel (!addrs) before addrs := [];
-               emit(T.JMP(T.LABEL(LE.LABEL l), []));
+               emit(T.JMP(T.LABEL l, []));
                exitBlock liveOut
            end
          | longJumps _ = error "longJumps"

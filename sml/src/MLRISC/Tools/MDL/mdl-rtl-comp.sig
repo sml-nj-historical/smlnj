@@ -61,6 +61,8 @@ sig
    *)
   val mkDefUseQuery : compiled_rtls ->
        { name  : Ast.id,           (* name of function *)
+         args  : Ast.id list list,
+         namedArguments : bool,
          decls : Ast.decl list,    (* local definitions *)
          def   : Ast.exp * RTL.exp * Ast.exp -> Ast.exp option,
          use   : Ast.exp * RTL.exp * Ast.exp -> Ast.exp option

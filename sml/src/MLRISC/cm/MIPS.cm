@@ -1,9 +1,5 @@
-(*
- * MIPS specific modules for MLRISC code generation framework.
- *)
-
+(* This file is created by makeallcm *)
 Library
-
 	signature MIPSCELLS
 	signature MIPSINSTR
 	signature MIPSSHUFFLE
@@ -15,33 +11,38 @@ Library
 	functor MIPSRewrite
 	functor MIPSShuffle
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
-
-	(* MIPS specific backend *)
+#else
+	$/smlnj-lib.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
+#else
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
 	../mips/instructions/mipsCells.sml
 	../mips/instructions/mipsInstr.sml
 	../mips/instructions/mipsShuffle.sig
 	../mips/instructions/mipsShuffle.sml
-	(*mips/instructions/mipsProps.sml
-	../mips/instructions/mipsFreqProps.sml*)
 	../mips/emit/mipsAsm.sml
 	../mips/emit/mipsMC.sml
 	../mips/backpatch/mipsJumps.sml
-	(*mips/mltree/mipsPseudoInstr.sig*)
-	(*mips/mltree/mips.sml*)
 	../mips/ra/mipsRewrite.sml

@@ -9,8 +9,11 @@
 
 local
  
- 
-   include "x86Instr.sml" (* import instruction definitions *)
+
+   structure I =  
+   struct
+     include "x86Instr.sml" (* import instruction definitions *)
+   end
 
 in
 

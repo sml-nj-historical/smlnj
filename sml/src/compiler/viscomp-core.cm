@@ -43,7 +43,6 @@ Group (../system/smlnj/viscomp/core.cm)
 
         structure CPSRegions
         structure SMLGCType
-        structure SMLGCMap
 
 	(* To be able to separate machine-dependent parts of viscomp-lib.cm
 	 * from machine-independent parts, we must also export the
@@ -56,7 +55,6 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure Control
 	structure DefaultMachSpec
 	structure SMLNJConstant
-	structure SMLNJLabelExp
 	signature SMLNJ_MLTREE_EXT
 	structure SMLNJMLTreeExt
         functor   SMLNJMLTreeExtComp
@@ -352,12 +350,13 @@ MiscUtil/util/stats.sml
 (* The following used to be in $/comp-lib.cm -- which I wanted to
  * get rid of.  Eventually, someone should clean up all uses of
  * structure SortedList -- either using IntListSet or IntRedBlackSet. *)
-MiscUtil/library/sortedlist.sml
+(* MiscUtil/library/sortedlist.sml *)
 
 $/basis.cm
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/pickle-lib.cm
+$smlnj/MLRISC/Lib.cm
 $smlnj/MLRISC/Control.cm
 (* $smlnj/MLRISC/Lib.cm			(* provides SortedList *) *)
 $smlnj/MLRISC/MLRISC.cm

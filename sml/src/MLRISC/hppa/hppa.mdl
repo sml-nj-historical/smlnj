@@ -550,9 +550,9 @@ struct
           (* this is used only during instruction selection *)
           REG of $GP              rtl: $r[GP]
         | IMMED of int ``<int>''  rtl: int
-        | LabExp of LabelExp.labexp * field_selector ``<labexp>'' rtl: labexp
-        | HILabExp of LabelExp.labexp * field_selector ``<labexp>''
-        | LOLabExp of LabelExp.labexp * field_selector ``<labexp>''
+        | LabExp of T.labexp * field_selector ``<labexp>'' rtl: labexp
+        | HILabExp of T.labexp * field_selector ``<labexp>''
+        | LOLabExp of T.labexp * field_selector ``<labexp>''
 
       datatype addressing_mode = 
         DISPea of C.cell * operand    (* displacement *)
@@ -963,8 +963,8 @@ struct
               ``bv<n>\t%r0(<tmp>)''
              ) 
         mc:  let val offset = 
-                    LabelExp.MINUS(LabelExp.LABEL lab, 
-                        LabelExp.PLUS(LabelExp.LABEL tmpLab, LabelExp.INT 4))
+                    T.SUB(32,T.LABEL lab, 
+                        T.ADD(32,T.LABEL tmpLab, T.LI(IntInf.fromInt 4)))
              in (* set the location of tmpLab *)
                  Label.setAddr(tmpLab, !loc+4); 
                  branchLink(0wx3a,tmp,tmpLab,0w0,n);
@@ -1192,7 +1192,7 @@ struct
    struct
 
       fun operand(ty,I.REG r) = T.REG(ty, r)
-        | operand(ty,I.IMMED i) = T.LI i
+        | operand(ty,I.IMMED i) = T.LI(IntInf.fromInt i)
         (*| operand(ty,I.LabExp(le,_)) = T.LABEL le*)
         | operand _ = error "operand"
 

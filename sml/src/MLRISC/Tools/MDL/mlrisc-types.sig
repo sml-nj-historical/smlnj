@@ -34,5 +34,22 @@ sig
 
    val ofCellKind : RTL.exp * Ast.storagedecl -> bool
 
+   (*
+    * Generate code for extracting an operand.
+    * The functions generated are
+    *   get_cellset,
+    *   get_cell,
+    *   get_label, 
+    *   get_operand, 
+    * etc.
+    *)
+   datatype conv = IGNORE
+                 | CONV  of string
+                 | MULTI of string
+   val getOpnd : 
+          (string * conv) list -> 
+          { decl : Ast.decl,
+            get  : Ast.exp * RTL.exp * Ast.exp -> Ast.exp 
+          }
 
 end

@@ -9,7 +9,8 @@ sig
 
    val readKind  : Region.region -> RegionInfo.kind
    val writeKind : Region.region -> RegionInfo.kind
-   val readFrom  : Region.region -> int list (* uses *)
-   val writeTo   : Region.region -> int list * int list (* defs/uses *)
+   val readFrom  : Region.region -> CellsBasis.cell list (* uses *)
+   val writeTo   : Region.region -> 
+                     CellsBasis.cell list * CellsBasis.cell list (* defs/uses *)
 
 end

@@ -1,4 +1,5 @@
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature MLRISC_CONTROL
 	signature MLRISC_ERROR_MSG
 	signature MLRISC_TIMING
@@ -8,12 +9,15 @@ Library
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
 #else
-        basis.cm
 #endif
+#else
+	basis.cm
 #endif
-
+#else
+#endif
         ../control/mlriscErrormsg.sml
         ../control/mlrisc-control.sml
         ../control/mlrisc-timing.sml

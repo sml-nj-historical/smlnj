@@ -1,12 +1,5 @@
-(* IA32-MLRISC.cm
- *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
- *
- * IA32 (ne x86) specific modules for MLRISC code generation framework.
- *)
-
+(* This file is created by makeallcm *)
 Library
-
 	signature MEMORY_REGISTERS
 	signature X86CELLS
 	signature X86COMP_INSTR_EXT
@@ -31,32 +24,34 @@ Library
 	functor X86Shuffle
 	functor X86Spill
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+#endif
 #else
-        basis.cm
-        smlnj-lib.cm
+	basis.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
 #else
-        smlnj-lib.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
-
-        (* c calls *)
         ../x86/c-calls/ia32-svid.sml
-
-	(* X86 specific backend *)
 	../x86/instructions/x86Cells.sml
 	../x86/instructions/x86comp-instr-ext.sml
 	../x86/instructions/x86Instr.sml
@@ -70,15 +65,8 @@ is
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
 	../x86/ra/x86Rewrite.sml
-	(* ../x86/ra/x86RegAlloc.sml *)
 	../x86/ra/x86Spill.sml
-	(* This is no long needed *)
-	(* ../x86/ra/x86PseudoR.sml *)
 	../x86/backpatch/x86Jumps.sml 
 	../x86/mltree/x86.sml
-
-	(* Floating Point Code Generation/Optimization *)
 	../x86/mltree/x86-fp.sml
-
-	(* register allocator *)
 	../x86/ra/x86RA.sml

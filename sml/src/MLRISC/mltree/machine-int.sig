@@ -32,6 +32,9 @@ sig
    val int_0xffffffff : machine_int	
    val int_0x100000000 : machine_int
 
+
+   val hash : machine_int -> word 
+
    (* machine_int <-> other types *)
    val fromInt     : sz * int -> machine_int
    val fromInt32   : sz * Int32.int -> machine_int

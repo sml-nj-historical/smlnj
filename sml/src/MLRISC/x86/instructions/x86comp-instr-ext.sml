@@ -20,12 +20,9 @@ signature X86COMP_INSTR_EXT = sig
 end
 
 
-functor X86CompInstrExt
-  (structure T : MLTREE 
-   structure I : X86INSTR 
-     sharing T.LabelExp = I.LabelExp) : X86COMP_INSTR_EXT = 
+functor X86CompInstrExt(I : X86INSTR) : X86COMP_INSTR_EXT = 
 struct
-  structure T = T
+  structure T = I.T
   structure I = I
   structure C = I.C
   structure X = X86InstrExt

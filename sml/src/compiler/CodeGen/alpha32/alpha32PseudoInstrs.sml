@@ -1,12 +1,8 @@
 functor Alpha32PseudoInstrs
-  (structure Instr : ALPHAINSTR 
-     where Region=CPSRegions  
-   structure T     : MLTREE
-     where Region=CPSRegions
-  ) : ALPHA_PSEUDO_INSTR = 
+  (Instr : ALPHAINSTR where Region=CPSRegions) : ALPHA_PSEUDO_INSTR = 
 struct
   structure I = Instr
-  structure T = T
+  structure T = I.T
   structure C = Instr.C
 
   fun error msg = MLRiscErrorMsg.impossible("Alpha32PsuedoInstrs."^msg)

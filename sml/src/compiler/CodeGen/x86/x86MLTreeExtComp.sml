@@ -1,15 +1,14 @@
 functor X86MLTreeExtComp
-   (structure T : MLTREE  where Extension = X86_SMLNJMLTreeExt
-    structure I : X86INSTR
-      sharing T.LabelExp = I.LabelExp
+   (structure T : MLTREE where Extension = X86_SMLNJMLTreeExt
+    structure I : X86INSTR where T = T
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
    structure I = I
    structure C = I.C
    structure Ext = X86_SMLNJMLTreeExt
-   structure X86CompInstrExt = X86CompInstrExt
-				   (structure T = T structure I = I)
+   structure X86CompInstrExt = X86CompInstrExt(I)
+
    type reducer = 
      (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 

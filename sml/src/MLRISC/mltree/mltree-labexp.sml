@@ -1,51 +1,42 @@
-(* 
- *  Common operations on MLTREE
+(* labelExp.sml -- expressions involving labels
  *
- * -- Allen 
+ * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ *
  *)
-functor MLTreeUtils
+
+functor LabelExp
   (structure T : MLTREE
    (* Hashing extensions *)
    val hashSext  : T.hasher -> T.sext -> word
    val hashRext  : T.hasher -> T.rext -> word
    val hashFext  : T.hasher -> T.fext -> word
    val hashCCext : T.hasher -> T.ccext -> word
-
    (* Equality extensions *)
    val eqSext  : T.equality -> T.sext * T.sext -> bool
    val eqRext  : T.equality -> T.rext * T.rext -> bool
    val eqFext  : T.equality -> T.fext * T.fext -> bool
    val eqCCext : T.equality -> T.ccext * T.ccext -> bool
-
-   (* Pretty printing extensions *)
-   val showSext  : T.printer -> T.sext -> string
-   val showRext  : T.printer -> T.ty * T.rext -> string
-   val showFext  : T.printer -> T.fty * T.fext -> string
-   val showCCext : T.printer -> T.ty * T.ccext -> string
-  ) : MLTREE_UTILS =
+  ) : LABELEXP =
 struct
 
    structure T          = T
    structure I          = T.I 
    structure Constant   = T.Constant
-   structure Region     = T.Region
    structure B          = T.Basis
    structure C          = CellsBasis
    structure CI         = CellsInternal
    structure W          = Word
-   
 
    val w = W.fromInt
    val i2s = Int.toString
    val toLower = String.map Char.toLower
 
-   fun error msg = MLRiscErrorMsg.error("MLTreeUtils",msg)
+   fun error msg = MLRiscErrorMsg.error("LabelExp",msg)
    fun wv(CI.CELL{id, ...}) = w id
    fun wvs is = 
    let fun f([],h) = h
          | f(i::is,h) = f(is,wv i+h)
    in  f(is,0w0) end
-
 
    (*
     * Hashing
@@ -188,10 +179,6 @@ struct
 
   and hashCCexps([],h) = h
     | hashCCexps(e::es,h) = hashCCexps(es,hashCCexp e + h)
-
-   (*
-    * Equality
-    *)
 
   fun eqLabel(Label.Label{id=x,...},Label.Label{id=y,...}) = x=y 
   and eqLabels([],[]) = true
@@ -365,254 +352,120 @@ struct
     | eqCCexps(a::b,c::d) = eqCCexp(a,c) andalso eqCCexps(b,d)
     | eqCCexps _ = false
 
-  (*
-   * Pretty printing
-   *)
-  fun show {def,use,regionDef,regionUse} =
-  let fun ty t = "."^i2s t
-      fun fty 32 = ".s"
-        | fty 64 = ".d"
-        | fty 128 = ".q"
-        | fty t   = ty t
+   exception NonConst
 
-      fun reg(t,v) = C.toString v^ty t
-      fun freg(t,v) = C.toString v^fty t
-      fun ccreg v = C.toString v   
-      fun ctrlreg v = C.toString v
+   fun eval{label, const} =
+   let fun rexp(T.LI i) = i
+         | rexp(T.CONST c) = const c
+         | rexp(T.LABEL l) = IntInf.fromInt(label l)
+         | rexp(T.LABEXP e) = rexp e
 
-      fun srcReg(t,v) = reg(t,v)
-      fun srcFreg(t,v) = freg(t,v)
-      fun srcCCreg v = ccreg v
-      fun srcCtrlreg v = ctrlreg v
+         | rexp(T.NEG(sz,x)) = I.NEG(sz,rexp x)
+         | rexp(T.ADD(sz,x,y)) = I.ADD(sz,rexp x,rexp y)
+         | rexp(T.SUB(sz,x,y)) = I.SUB(sz,rexp x,rexp y)
 
-      fun dstReg(t,v) = reg(t,v)
-      fun dstFreg(t,v) = freg(t,v)
-      fun dstCCreg v = ccreg v
-      fun dstCtrlreg v = ctrlreg v
+         | rexp(T.MULS(sz,x,y)) = I.MULS(sz,rexp x,rexp y)
+         | rexp(T.DIVS(sz,x,y)) = I.DIVS(sz,rexp x,rexp y)
+         | rexp(T.QUOTS(sz,x,y)) = I.QUOTS(sz,rexp x,rexp y)
+         | rexp(T.REMS(sz,x,y)) = I.REMS(sz,rexp x,rexp y)
 
-      fun srcParam(i) = def i handle _ => "<"^i2s i^">"
-      fun dstParam(i) = use i handle _ => "<"^i2s i^">"
+         | rexp(T.MULU(sz,x,y)) = I.MULU(sz,rexp x,rexp y)
+         | rexp(T.DIVU(sz,x,y)) = I.DIVU(sz,rexp x,rexp y)
+         | rexp(T.REMU(sz,x,y)) = I.REMU(sz,rexp x,rexp y)
 
-      fun listify f =
-      let fun g(t,[]) = ""
-            | g(t,[r]) = f(t,r)
-            | g(t,r::rs) = f(t,r)^","^g(t,rs)
-      in  g end
+         | rexp(T.NEGT(sz,x)) = I.NEGT(sz,rexp x)
+         | rexp(T.ADDT(sz,x,y)) = I.ADDT(sz,rexp x,rexp y)
+         | rexp(T.SUBT(sz,x,y)) = I.SUBT(sz,rexp x,rexp y)
+         | rexp(T.MULT(sz,x,y)) = I.MULT(sz,rexp x,rexp y)
+         | rexp(T.DIVT(sz,x,y)) = I.DIVT(sz,rexp x,rexp y)
+         | rexp(T.QUOTT(sz,x,y)) = I.QUOTT(sz,rexp x,rexp y)
+         | rexp(T.REMT(sz,x,y)) = I.REMT(sz,rexp x,rexp y)
 
-      fun listify' f =
-      let fun g([]) = ""
-            | g([r]) = f(r)
-            | g(r::rs) = f(r)^","^g(rs)
-      in  g end
+         | rexp(T.NOTB(sz,x)) = I.NOTB(sz,rexp x)
+         | rexp(T.ANDB(sz,x,y)) = I.ANDB(sz,rexp x,rexp y)
+         | rexp(T.ORB(sz,x,y)) = I.ORB(sz,rexp x,rexp y)
+         | rexp(T.XORB(sz,x,y)) = I.XORB(sz,rexp x,rexp y)
+         | rexp(T.EQVB(sz,x,y)) = I.EQVB(sz,rexp x,rexp y)
+         | rexp(T.SLL(sz,x,y)) = I.SLL(sz,rexp x,rexp y)
+         | rexp(T.SRL(sz,x,y)) = I.SRL(sz,rexp x,rexp y)
+         | rexp(T.SRA(sz,x,y)) = I.SRA(sz,rexp x,rexp y)
+         | rexp(T.BITSLICE(sz,x,y)) = I.BITSLICE(sz,x,rexp y)
 
-      val srcRegs = listify srcReg 
-      val dstRegs = listify dstReg 
-      val srcFregs = listify srcFreg 
-      val dstFregs = listify dstFreg 
-      val srcCCregs = listify' srcCCreg 
-      val dstCCregs = listify' dstCCreg 
-      val srcCtrlregs = listify' srcCtrlreg 
-      val dstCtrlregs = listify' dstCtrlreg 
-      fun usectrl cr  = " ["^srcCtrlreg cr^"]"
-      fun usectrls [] = ""
-        | usectrls cr = " ["^srcCtrlregs cr^"]"
-      fun defctrl cr  = ""^dstCtrlreg cr^" <- "
-      fun defctrls [] = ""
-        | defctrls cr = ""^dstCtrlregs cr^" <- "
+         | rexp(T.COND(sz,cc,x,y)) = if ccexp cc then rexp x else rexp y
+         | rexp(T.SX(a,b,x)) = I.SX(a,b,rexp x)
+         | rexp(T.ZX(a,b,x)) = I.ZX(a,b,rexp x)
+         | rexp(T.MARK(e,_)) = rexp e
 
-      fun copy(t,dst,src) = dstRegs(t, dst)^" := "^srcRegs(t, src)
-      fun fcopy(t,dst,src) = dstFregs(t, dst)^" := "^srcFregs(t, src)
-
-      fun shower() = {stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp, 
-                      dstReg=dstReg, srcReg=srcReg}
-          (* pretty print a statement *)
-      and stm(T.MV(t,dst,e)) = dstReg(t,dst)^" := "^rexp e
-        | stm(T.CCMV(dst,e)) = dstCCreg dst^" := "^ccexp e
-        | stm(T.FMV(fty,dst,e)) = dstFreg(fty,dst)^" := "^fexp e
-        | stm(T.COPY(ty,dst,src)) = copy(ty,dst,src)
-        | stm(T.FCOPY(fty,dst,src)) = fcopy(fty,dst,src)
-        | stm(T.JMP(ea,labels)) = "jmp "^rexp ea
-        | stm(T.CALL{funct,targets,defs,uses,region}) = 
-              "call "^rexp funct
-        | stm(T.RET(flow)) = "ret"
-        | stm(T.STORE(ty,ea,e,mem)) = store(ty,"",ea,mem,e)
-        | stm(T.FSTORE(fty,ea,e,mem)) = fstore(fty,"",ea,mem,e)
-        | stm(T.BCC(a,lab)) = 
-             "bcc "^ccexp a^" "^Label.nameOf lab
-        | stm(T.IF(a,b,T.SEQ [])) = "if "^ccexp a^" then "^stm b
-        | stm(T.IF(a,b,c)) = "if "^ccexp a^" then "^stm b^" else "^stm c
-        | stm(T.SEQ []) = "skip"
-        | stm(T.SEQ s) = stms(";\n",s)
-        | stm(T.REGION(s,cr)) = stm s^usectrl cr
-        | stm(T.ANNOTATION(s, a)) = stm s 
-        | stm(T.PHI{preds, block}) = "phi["^i2s block^"]"
-        | stm(T.SOURCE) = "source"
-        | stm(T.SINK) = "sink"
-        | stm(T.RTL{e,...}) = stm e
-        | stm(T.EXT x) = showSext (shower()) x
-        | stm(T.ASSIGN(ty,lhs,T.???)) = "define "^rexp lhs
-        | stm(T.ASSIGN(ty,T.???,rhs)) = "use "^rexp rhs
-        | stm(T.ASSIGN(ty,x,rhs)) = lhs x^" := "^rexp rhs
-        | stm _ = error "stm"
-
-      and stms(sep,[]) = ""
-        | stms(sep,[s]) = stm s
-        | stms(sep,s::ss) = stm s^sep^stms(sep,ss)
-
-      and lhs(T.PARAM i) = dstParam i
-        | lhs(T.$(ty,k,T.PARAM i)) = dstParam i
-        | lhs(e) = rexp e
-
-          (* pretty print an expression  *)
-      and rexp(T.REG(ty, src)) = srcReg(ty,src)
-        | rexp(T.LI i) = IntInf.toString i
-        | rexp(T.LABEL l) = Label.nameOf l
-        | rexp(T.CONST c) = Constant.toString c
-        | rexp(T.LABEXP le) = rexp le
-        | rexp(T.NEG x) = unary("~",x)
-        | rexp(T.ADD x) = binary("+",x)
-        | rexp(T.SUB x) = binary("-",x)
-        | rexp(T.MULS x) = two("muls",x)
-        | rexp(T.DIVS x) = two("divs",x)
-        | rexp(T.QUOTS x) = two("quots",x)
-        | rexp(T.REMS x) = two("rems",x)
-        | rexp(T.MULU x) = two("mulu",x)
-        | rexp(T.DIVU x) = two("divu",x)
-        | rexp(T.REMU x) = two("remu",x)
-        | rexp(T.NEGT x) = one("negt",x)
-        | rexp(T.ADDT x) = two("addt",x)
-        | rexp(T.SUBT x) = two("subt",x)
-        | rexp(T.MULT x) = two("mult",x)
-        | rexp(T.DIVT x) = two("divt",x)
-        | rexp(T.QUOTT x) = two("quott",x)
-        | rexp(T.REMT x) = two("remt",x)
-        | rexp(T.ANDB x) = binary("&",x)
-        | rexp(T.ORB x)  = binary("|",x)
-        | rexp(T.XORB x) = binary("^",x)
-        | rexp(T.EQVB x) = binary("eqvb",x)
-        | rexp(T.NOTB x) = unary("!",x)
-        | rexp(T.SRA x) = binary("~>>",x)
-        | rexp(T.SRL x) = binary(">>",x)
-        | rexp(T.SLL x) = binary("<<",x)
-        | rexp(T.COND(t,cc,e1,e2)) = 
-             "cond"^ty t^"("^ccexp cc^","^rexp e1^","^rexp e2^")"
-        | rexp(T.SX(t, t', e)) = "sx"^ty t^ty t'^" "^rexp e
-        | rexp(T.ZX(t, t', e)) = "zx"^ty t^ty t'^" "^rexp e
-        | rexp(T.CVTF2I(t, round, t', e)) = 
-             "cvtf2i"^ty t^toLower(B.roundingModeToString round)^
-             fty t'^" "^fexp e
-        | rexp(T.LOAD(ty, ea, mem)) = load(ty,"",ea,mem)
-        | rexp(T.LET(s, e)) = stm s^";"^rexp e
-        | rexp(T.PRED(e, cr)) = rexp e^usectrl cr
-        | rexp(T.MARK(e, _)) = rexp e
-        | rexp(T.REXT e) = showRext (shower()) e
-        | rexp(T.???) = "???"
-        | rexp(T.OP(t,opc,es)) = oper opc^ty t^" "^rexps es
-        | rexp(T.ARG(t,ref(T.REP kind),name)) = 
-             name^":"^kind^(if t = 0 then "" else ty t)
-        | rexp(T.PARAM n) = srcParam n
-        | rexp(T.$(ty,k,e)) =    
-             "$"^C.cellkindToNickname k^"["^rexp e^"]"
-        | rexp(T.BITSLICE(ty,sl,e)) = rexp e^" at "^slices sl
-
-      and oper(T.OPER{name,...}) = name 
-
-      and parenRexp
-            (e as (T.REG _ | T.LI _ | T.$ _ | T.ARG _)) = 
-              rexp e
-        | parenRexp e = "("^rexp e^")"
-
-      and slices sc = listify' (fn (from,to) => i2s from^".."^i2s to) sc
-
-          (* pretty print a real expression  *)
-      and fexp(T.FREG f) = srcFreg f
-        | fexp(T.FLOAD(fty, ea, mem)) = fload(fty,"",ea,mem)
-        | fexp(T.FADD x) = two'("fadd",x)
-        | fexp(T.FMUL x) = two'("fmul",x)
-        | fexp(T.FSUB x) = two'("fsub",x)
-        | fexp(T.FDIV x) = two'("fdiv",x)
-        | fexp(T.FCOPYSIGN x) = two'("fcopysign",x)
-        | fexp(T.FABS x) = one'("fabs",x)
-        | fexp(T.FNEG x) = one'("fneg",x)
-        | fexp(T.FSQRT x) = one'("fsqrt",x)
-        | fexp(T.FCOND(t,cc,e1,e2)) = 
-             "fcond"^fty t^ccexp cc^"("^fexp e1^","^fexp e2^")"
-        | fexp(T.CVTI2F(t, t', e)) = "cvti2f"^ty t'^" "^rexp e
-        | fexp(T.CVTF2F(t, t', e)) = "cvtf2f"^fty t^fty t'^" "^fexp e
-        | fexp(T.FPRED(e, cr)) = fexp e^usectrl cr
-        | fexp(T.FMARK(e, _)) = fexp e
-        | fexp(T.FEXT e) = showFext (shower()) e
-
-      and ccexp(T.CC(cc,r)) = srcCCreg r^toLower(B.condToString cc)
-        | ccexp(T.FCC(fcc,r)) = srcCCreg r^toLower(B.fcondToString fcc)
-        | ccexp(T.CMP(t,T.SETCC,x,y)) = "setcc"^ty t^pair(x,y)
-        | ccexp(T.CMP(t,cc,x,y)) = 
-            "cmp"^toLower(B.condToString cc)^ty t^pair(x,y)
-        | ccexp(T.FCMP(t,T.SETFCC,x,y)) = "setfcc"^ty t^pair'(x,y)
-        | ccexp(T.FCMP(t,fcc,x,y)) = 
-                "fcmp"^toLower(B.fcondToString fcc)^fty t^pair'(x,y)
-        | ccexp(T.NOT x) = "not "^ccexp x
-        | ccexp(T.AND(x,y)) = two''(" and ",x,y)
-        | ccexp(T.OR(x,y)) = two''(" or ",x,y)
-        | ccexp(T.XOR(x,y)) = two''(" xor ",x,y)
-        | ccexp(T.EQV(x,y)) = two''(" eqv ",x,y)
-        | ccexp(T.CCMARK(e, _)) = ccexp e
-        | ccexp(T.TRUE) = "true"
-        | ccexp(T.FALSE) = "false"
-        | ccexp(T.CCEXT(e)) = showCCext (shower()) e
-
-      and mlrisc(T.GPR e) = rexp e
-        | mlrisc(T.FPR e) = fexp e
-        | mlrisc(T.CCR e) = ccexp e
-
-      and mlriscs l = listify' mlrisc l
-
-      (* Auxiliary functions *)
-      and one(opcode,(t,x)) = opcode^ty t^"("^rexp x^")"
-      and two(opcode,(t,x,y)) = opcode^ty t^pair(x,y)
-      and binary(opcode,(t,x,y)) = parenRexp x^" "^opcode^ty t^" "^parenRexp y
-      and unary(opcode,(t,x)) = opcode^ty t^" "^parenRexp x
-      and pair(x,y) = "("^rexp x^","^rexp y^")"
-      and one'(opcode,(t,x)) = opcode^fty t^"("^fexp x^")"
-      and two'(opcode,(t,x,y)) = opcode^fty t^pair'(x,y)
-      and two''(c,x,y) = "("^ccexp x^ c ^ ccexp y^")"
-      and pair'(x,y) = "("^fexp x^","^fexp y^")"
-      and rexps es = "("^foldr (fn (e,"") => rexp e
-                                 | (e,x) => rexp e^","^x) "" es^")"
-      and fexps es = "("^foldr (fn (e,"") => fexp e
-                                 | (e,x) => fexp e^","^x) "" es^")"
-      and ccexps es = "("^foldr (fn (e,"") => ccexp e
-                                  | (e,x) => ccexp e^","^x) "" es^")"
-      and store(t,u,ea,m,e) = memdef(t,u,ea,m)^" := "^rexp e
-      and fstore(t,u,ea,m,e) = fmemdef(t,u,ea,m)^" := "^fexp e
-      and ccstore(u,ea,m,e) = ccmemdef(u,ea,m)^" := "^ccexp e
-      and load(t,u,ea,m) = memuse(t,u,ea,m)
-      and fload(t,u,ea,m) = fmemuse(t,u,ea,m)
-      and ccload(u,ea,m) = ccmemuse(u,ea,m)
-      and addr(u,ea,m,show) = 
-          let val r = show m handle _ => Region.toString m
-              val r = if r = "" then r else ":"^r
-          in  u^"["^rexp ea^r^"]" end
-      and mem(t,u,ea,m,show) = "mem"^ty t^addr(u,ea,m,show)
-      and fmem(t,u,ea,m,show) = "mem"^fty t^addr(u,ea,m,show)
-      and ccmem(u,ea,m,show) = "mem"^addr(u,ea,m,show)
-      and memdef(t,u,ea,m) = mem(t,u,ea,m,regionDef)
-      and fmemdef(t,u,ea,m) = fmem(t,u,ea,m,regionDef)
-      and ccmemdef(u,ea,m) = ccmem(u,ea,m,regionDef)
-      and memuse(t,u,ea,m) = mem(t,u,ea,m,regionUse)
-      and fmemuse(t,u,ea,m) = fmem(t,u,ea,m,regionUse)
-      and ccmemuse(u,ea,m) = ccmem(u,ea,m,regionUse)
-   in shower()
+         | rexp _ = raise NonConst
+       and ccexp(T.TRUE) = true
+         | ccexp(T.FALSE) = false
+         | ccexp(T.CMP(sz,T.EQ,x,y)) = I.EQ(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.NE,x,y)) = I.NE(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.GT,x,y)) = I.GT(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.GE,x,y)) = I.GE(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.LT,x,y)) = I.LT(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.LE,x,y)) = I.LE(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.GTU,x,y)) = I.GTU(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.LTU,x,y)) = I.LTU(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.GEU,x,y)) = I.GEU(sz,rexp x,rexp y)
+         | ccexp(T.CMP(sz,T.LEU,x,y)) = I.LEU(sz,rexp x,rexp y)
+         | ccexp(T.NOT x) = not(ccexp x)
+         | ccexp(T.AND(x,y)) = ccexp x andalso ccexp y
+         | ccexp(T.OR(x,y)) = ccexp x orelse ccexp y
+         | ccexp(T.XOR(x,y)) = ccexp x <> ccexp y
+         | ccexp(T.EQV(x,y)) = ccexp x = ccexp y
+         | ccexp(T.CCMARK(e,_)) = ccexp e
+         | ccexp _ = raise NonConst
+   in  {rexp=rexp, ccexp=ccexp} 
    end
 
-   exception Nothing
+   fun valueOf e = 
+         IntInf.toInt
+            (#rexp(eval{const=fn c => IntInf.fromInt(Constant.valueOf c),
+                        label=Label.addrOf}) e)
+   val == = eqRexp
+   val hash = hashRexp
+ 
+   val resolveConstants = MLRiscControl.getFlag "asm-resolve-constants"
+   val _ = resolveConstants := true
 
-   fun dummy _ = raise Nothing
-   val dummy = {def=dummy, use=dummy, regionDef=dummy, regionUse=dummy}
+  (* This module should be parameterised, in order to generate
+   * target label expressions for assembly code purposes.
+   *)
+(* operator precedences:
+   (Note: these differ from C's precedences)
+                2 MULT, DIV, LSHIFT, RSHIFT
+                1 AND, OR
+                0 PLUS, MINUS
+*)
 
-   fun stmToString s   = #stm(show dummy) s
-   fun rexpToString s  = #rexp(show dummy) s
-   fun fexpToString s  = #fexp(show dummy) s
-   fun ccexpToString s = #ccexp(show dummy) s
+  fun parens (str, prec, op_prec) = 
+      if prec > op_prec then "(" ^ str ^ ")" else str
 
-end 
+  fun prInt i = if i < 0 then "-"^Int.toString(~i) else Int.toString i
+  fun prIntInf i = if IntInf.sign i < 0 then "-"^IntInf.toString(IntInf.~ i) 
+                   else IntInf.toString i
+
+  fun toString le = toStr(le, 0) 
+
+  and toStr(T.LABEL lab, _) = Label.nameOf lab 
+    | toStr(T.LABEXP le, p) = toStr(le, p)
+    | toStr(T.CONST c, _) = 
+        if !resolveConstants then prInt(Constant.valueOf c)
+        else Constant.toString c
+    | toStr(T.LI i, _) = prIntInf i
+    | toStr(T.MULS(_,lexp1, lexp2), _) = toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2)
+    | toStr(T.DIVS(_,lexp1, lexp2), _) =  toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2)
+    | toStr(T.SLL(_,lexp, cnt), prec) = toStr(lexp,2) ^ "<<" ^ toStr(cnt,2)
+    | toStr(T.SRL(_,lexp, cnt), prec) = toStr(lexp,2) ^ ">>" ^ toStr(cnt,2)
+    | toStr(T.ANDB(_,lexp, mask), prec) = 
+        parens(toStr(lexp,1) ^ "&" ^ toStr(mask, 1), prec, 1)
+    | toStr(T.ORB(_,lexp, mask), prec) = 
+        parens(toStr(lexp, 1) ^ "|" ^ toStr(mask, 1), prec, 1)
+    | toStr(T.ADD(_,lexp1, lexp2), prec) = 
+        parens(toStr(lexp1, 0) ^ "+" ^ toStr(lexp2, 0), prec, 0)
+    | toStr(T.SUB(_,lexp1, lexp2), prec) = 
+        parens(toStr(lexp1, 0) ^ "-" ^ toStr(lexp2, 0), prec, 0)
+    | toStr _ = error "toStr"
+
+end

@@ -7,6 +7,7 @@ struct
        FSINE of 'f
      | FCOSINE of 'f
      | FTANGENT of 'f
+
 end
 
 (* This is the default extension compilation module 
@@ -15,7 +16,7 @@ end
 functor SMLNJMLTreeExtComp
    (structure T : MLTREE
     structure I : INSTRUCTIONS
-      sharing T.LabelExp = I.LabelExp
+      sharing T = I.T
    ) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T

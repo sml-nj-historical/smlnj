@@ -1,4 +1,4 @@
-(* mlriscGen.sml --- translate CPS to MLRISC.
+(* mlriscGenNew.sml --- translate CPS to MLRISC.
  * 
  * This version of MLRiscGen also injects GC types to the MLRISC backend.
  * I've also reorganized it a bit and added a few comments
@@ -27,7 +27,7 @@ functor MLRiscGen
     structure Cells      : CELLS
     structure CCalls     : C_CALLS where T = C.T
        sharing C.T.PseudoOp = PseudoOp
-       sharing Flowgen.I = MLTreeComp.I
+       sharing Flowgen.I = MLTreeComp.I  
     val compile : Flowgen.flowgraph -> unit
  ) : MLRISCGEN =
 struct
@@ -35,7 +35,6 @@ struct
   structure M  = C.T            (* MLTree *)
   structure E  = Ext            (* Extensions *)
   structure P  = CPS.P          (* CPS primitive operators *)
-  structure LE = M.LabelExp     (* Label Expression *)
   structure R  = CPSRegions     (* Regions *)
   structure PT = R.PT           (* PointsTo *)
   structure CG = Control.CG     (* Compiler Control *)
@@ -70,7 +69,7 @@ struct
    *)
   structure GCCells =           (* How to annotate GC information *) 
       GCCells(structure C = Cells
-              structure GCMap = SMLGCMap)
+              structure GC = SMLGCType)
 
   val I31    = SMLGCType.I31     (* tagged integers *)
   val I32    = SMLGCType.I32     (* untagged integers *)
@@ -78,13 +77,12 @@ struct
   val PTR    = SMLGCType.PTR     (* boxed objects *)
   val NO_OPT = [#create MLRiscAnnotations.NO_OPTIMIZATION ()]
 
-  val enterGC = ref (fn _ => error "enterGC") : 
-                   (Cells.cell * SMLGCType.gctype -> unit) ref
+  val enterGC = GCCells.setGCType
 
-  val ptr = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,PTR))
-  val i32 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I32))
-  val i31 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I31))
-  val flt = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,REAL64))
+  val ptr = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,PTR))
+  val i32 = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,I32))
+  val i31 = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,I31))
+  val flt = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,REAL64))
   fun ctyToAnn CPS.INTt   = i31 
     | ctyToAnn CPS.INT32t = i32 
     | ctyToAnn CPS.FLTt   = flt 
@@ -125,10 +123,11 @@ struct
   val zero = M.LI M.I.int_0
   val one  = M.LI M.I.int_1
   val two  = M.LI M.I.int_2
-  val mlZero = one			(* tagged zero *)
+  val mlZero = one (* tagged zero *)
   val offp0 = CPS.OFFp 0 
   fun LI i = M.LI (M.I.fromInt(ity, i))
   fun LW w = M.LI (M.I.fromWord32(ity, w))
+  val constBaseRegOffset = LI MachineSpec.constBaseRegOffset
  
   (*
    * The allocation pointer.  This must be a register
@@ -221,14 +220,6 @@ struct
        * Otherwise, we'll just use the normal version.
        *)
       val gctypes = !gctypes
-
-      val _       = if gctypes then
-                    let val gcMap = GCCells.newGCMap()
-                        val enterGCTy = Cells.HashTable.insert gcMap;
-                    in  enterGC := enterGCTy;
-                        GCCells.setGCMap gcMap 
-                    end
-                    else ()
 
       val (newReg, newRegWithCty, newRegWithKind, newFreg)  = 
            if gctypes then 
@@ -426,8 +417,9 @@ struct
           fun laddr(lab, k) =
           let val e = 
               M.ADD(addrTy, C.baseptr,
-                    M.LABEL(LE.PLUS(LE.LABEL lab, 
-                            LE.INT(k-MachineSpec.constBaseRegOffset))))
+                    M.LABEXP(M.ADD(addrTy,M.LABEL lab, 
+                             M.LI(IntInf.fromInt
+                                  (k-MachineSpec.constBaseRegOffset)))))
           in  markPTR e end
 
           (*
@@ -790,15 +782,15 @@ struct
             | scale8(a, CPS.INT i) = M.ADD(ity, a, LI(i*8))
             | scale8(a, i) = M.ADD(ity, a, M.SLL(ity, stripTag(regbind i), 
                                                   LI(2)))
-
-	  (* zero-extend and sign-extend; these should just be synonyms
+   
+ 	  (* zero-extend and sign-extend; these should just be synonyms
 	   * for M.ZX and M.SX, but the machine-code emitter does not
 	   * know how to handle those at the moment... *)
 	  fun ZX32 (sz, e) = (* M.ZX (32, sz, e) *)
 	      M.SRL (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
 	  fun SX32 (sz, e) = (* M.SX (32, sz, e) *)
 	      M.SRA (32, M.SLL (32, e, LI (32 - sz)), LI (32 - sz))
-    
+
           (* add to storelist, the address where a boxed update has occured *)
           fun recordStore(tmp, hp) =
             (emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp)),
@@ -819,7 +811,7 @@ struct
                  | P.<   => M.LT | P.<=  => M.LE
                  | P.neq => M.NE | P.eql => M.EQ 
     
-          fun branchToLabel(lab) = M.JMP(M.LABEL(LE.LABEL lab),[])
+          fun branchToLabel(lab) = M.JMP(M.LABEL lab,[])
     
           local
             open CPS
@@ -889,13 +881,13 @@ struct
                      *)
                      case looker of
                        (P.numsubscript{kind=P.FLOAT _} |
-			P.rawload {kind=P.FLOAT _}) =>
-		       addCntTbl(x,COMPUTE)
+                        P.rawload {kind=P.FLOAT _}) =>
+                       addCntTbl(x,COMPUTE)
                      | _ => ();
                      add(x,t); init e
                     )
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
-	       | RCC(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
+               | RCC(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
                | PURE(p,vl,x,t,e) => 
                     (case p of
                        P.fwrap => hasFloats := true
@@ -946,9 +938,9 @@ struct
                      if !needBasePtr then 
                        let val baseval = 
                              M.ADD(addrTy,linkreg, 
-                                   M.LABEL(LE.MINUS(
-                                       LE.INT MachineSpec.constBaseRegOffset,
-                                       LE.LABEL entryLab)))
+                                   M.LABEXP(M.SUB(addrTy,
+                                       constBaseRegOffset,
+                                       M.LABEL entryLab)))
                        in  emit(assign(C.baseptr, baseval)) end
                      else ();
                      InvokeGC.stdCheckLimit stream
@@ -1252,7 +1244,7 @@ struct
                   val formals as (M.GPR dest::_) = ArgP.standard(typmap f, ctys)
               in  callSetup(formals, args);
                   if gctypes then
-                    annotation(gcAnnotation(#create SMLGCMap.GCLIVEOUT, 
+                    annotation(gcAnnotation(#create GCCells.GCLIVEOUT, 
                                             formals, ctys))
                   else ();
                   testLimit hp;
@@ -1682,8 +1674,8 @@ struct
                          e, hp)
             | gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
                 (print "getpseudo not implemented\n"; nop(x, i, e, hp))
-	    | gen (LOOKER (P.rawload { kind }, [i], x, _, e), hp) =
-	        rawload (kind, i, x, e, hp)
+            | gen( LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
+                rawload (kind, i, x, e, hp)
             (*** SETTER ***)
             | gen(SETTER(P.assign, [a as VAR arr, v], e), hp) = 
               let val ea = regbind a
@@ -1759,9 +1751,8 @@ struct
             | gen(SETTER(P.free,[x],e), hp) = gen(e, hp)
             | gen(SETTER(P.setpseudo,_,e), hp) = 
                 (print "setpseudo not implemented\n"; gen(e, hp))
-	    | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
-	        (rawstore (kind, i, x); gen (e, hp))
-
+            | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
+                (rawstore (kind, i, x); gen (e, hp))
 	    | gen (RCC (p, vl, w, _, e), hp) = let
 		  val { retTy, paramTys, ... } = p
 		  fun build_args vl = let
@@ -1943,23 +1934,19 @@ struct
            *)
           fun clusterAnnotations() = 
              if gctypes then 
-                let val gcmap = GCCells.getGCMap()
-                    fun enter(M.REG(_,r),ty) = !enterGC(r, ty)
+                let fun enter(M.REG(_,r),ty) = enterGC(r, ty)
                       | enter _ = ()
-                in  !enterGC(allocptrR, SMLGCType.ALLOCPTR);
+                in  enterGC(allocptrR, SMLGCType.ALLOCPTR);
                     enter(C.limitptr, SMLGCType.LIMITPTR);
                     enter(C.baseptr, PTR);
                     enter(C.stdlink, PTR);
-                    [#create SMLGCMap.GCMAP gcmap,
-                     #create 
-                        MLRiscAnnotations.REGINFO(SMLGCMap.toString gcmap)
+                    [#create MLRiscAnnotations.PRINT_CELLINFO(GCCells.printType)
                     ]
                 end
              else []
       in
           initFrags cluster;
           beginCluster 0;
-          if gctypes then Cells.HashTable.clear(GCCells.getGCMap()) else ();
           fragComp();
           InvokeGC.emitLongJumpsToGCInvocation stream;
           endCluster(clusterAnnotations())

@@ -1,12 +1,5 @@
-(* ALPHA-MLRISC.cm
- *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
- *
- * Alpha specific modules for MLRISC code generation framework.
- *)
-
+(* This file is created by makeallcm *)
 Library
-
 	signature ALPHACELLS
 	signature ALPHAINSTR
 	signature ALPHASHUFFLE
@@ -22,29 +15,33 @@ Library
 	functor AlphaRewrite
 	functor AlphaShuffle
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+#endif
 #else
-        basis.cm
-        smlnj-lib.cm
+	basis.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
 #else
-        smlnj-lib.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
-
-	(* Alpha specific backend *)
 	../alpha/instructions/alphaCells.sml
 	../alpha/instructions/alphaInstr.sml
 	../alpha/instructions/alphaShuffle.sig

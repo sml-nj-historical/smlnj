@@ -1,6 +1,9 @@
 local
 
-   include "sparcInstr.sml"
+   structure I =
+   struct
+     include "sparcInstr.sml"
+   end
 
 in
 

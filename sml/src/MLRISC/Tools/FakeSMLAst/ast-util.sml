@@ -36,6 +36,7 @@ struct
    fun BOOLexp x = LITexp(BOOLlit x)
    fun STRINGexp s = LITexp(STRINGlit s)
    fun INTexp x = LITexp(INTlit x)
+   fun INTINFexp x = LITexp(INTINFlit x)
    fun CHARexp x = LITexp(CHARlit x)
    fun WORDexp x = LITexp(WORDlit x)
    fun WORD32exp x = LITexp(WORD32lit x)
@@ -43,6 +44,7 @@ struct
    fun BOOLpat x = LITpat(BOOLlit x)
    fun STRINGpat s = LITpat(STRINGlit s)
    fun INTpat x = LITpat(INTlit x)
+   fun INTINFpat x = LITpat(INTINFlit x)
    fun CHARpat x = LITpat(CHARlit x)
    fun WORDpat x = LITpat(WORDlit x)
    fun WORD32pat x = LITpat(WORD32lit x)
@@ -132,6 +134,7 @@ struct
          | kind(WORDlit _) = 4
          | kind(WORD32lit _) = 5
          | kind(INTINFlit _) = 6
+         | kind(REALlit _) = 7
    in  case (x, y) of
          (INTlit x,INTlit y) => Int.compare(x,y)
        | (BOOLlit x,BOOLlit y) => if x = y then EQUAL 
@@ -141,6 +144,7 @@ struct
        | (WORDlit x,WORDlit y) => Word.compare(x,y)
        | (WORD32lit x,WORD32lit y) => Word32.compare(x,y)
        | (INTINFlit x,INTINFlit y) => IntInf.compare(x,y)
+       | (REALlit x,REALlit y) => String.compare(x,y)
        | (x, y) => Int.compare(kind x,kind y)
    end
 end

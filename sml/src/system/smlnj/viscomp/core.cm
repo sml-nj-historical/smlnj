@@ -42,7 +42,6 @@ Library
 
         structure CPSRegions
         structure SMLGCType
-        structure SMLGCMap
 
 	(* To be able to separate machine-dependent parts of viscomp-lib.cm
 	 * from machine-independent parts, we must also export the
@@ -55,7 +54,6 @@ Library
 	structure Control
 	structure DefaultMachSpec
 	structure SMLNJConstant
-	structure SMLNJLabelExp
 	signature SMLNJ_MLTREE_EXT
 	structure SMLNJMLTreeExt
         functor   SMLNJMLTreeExtComp

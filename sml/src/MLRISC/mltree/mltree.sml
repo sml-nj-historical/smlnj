@@ -4,20 +4,19 @@
  *
  *)
 
-functor MLTreeF(structure LabelExp  : LABELEXP
+functor MLTreeF(structure Constant  : CONSTANT
                 structure Region    : REGION
                 structure Stream    : INSTRUCTION_STREAM
                 structure Extension : MLTREE_EXTENSION
                ) : MLTREE =
 struct
-  structure LabelExp = LabelExp
-  structure Constant = LabelExp.Constant
+  structure Constant = Constant
   structure PseudoOp = Stream.P
   structure Stream = Stream
   structure Region = Region
   structure Basis  = MLTreeBasis
   structure Extension = Extension
-  structure I      = MachineInt
+  structure I = MachineInt  
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -73,19 +72,20 @@ struct
        * for describing instruction semantics.
        * The frontend must not use these.
        *)
-    | PHI    of {preds:int list, block:int}
+    | PHI    of {preds:int list,block:int}
     | ASSIGN of ty * rexp * rexp
-    | SOURCE of {block:int, liveIn:reg list}
-    | SINK   of {block:int, liveOut:reg list}
+    | SOURCE 
+    | SINK  
     | RTL    of {hash:word, attribs:Basis.attribs ref, e:stm}
 
   and rexp = 
       REG    of ty * reg            
 
       (* sizes of constants are inferred by context *)
-    | LI     of IntInf.int           
-    | LABEL  of LabelExp.labexp
+    | LI     of I.machine_int                 
+    | LABEL  of Label.label
     | CONST  of Constant.const
+    | LABEXP of rexp
 
     | NEG    of ty * rexp                      
     | ADD    of ty * rexp * rexp    
@@ -208,6 +208,7 @@ struct
        and rext   = (stm, rexp, fexp, ccexp) Extension.rx
        and fext   = (stm, rexp, fexp, ccexp) Extension.fx
        and ccext  = (stm, rexp, fexp, ccexp) Extension.ccx
+       and labexp = rexp
 
   (*
    * Instruction streams

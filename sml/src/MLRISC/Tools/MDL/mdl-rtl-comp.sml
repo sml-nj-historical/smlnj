@@ -288,11 +288,11 @@ struct
              [STRUCTUREdecl(strname,[$["Build : RTL_BUILD"]],NONE,
                  DECLsexp
                    [LOCALdecl([OPENdecl [IDENT([],"Build")],
-                               $["structure C = T.CellsBasis"]
+                               $["structure C = CellsBasis"]
                               ],
                               [userRtlDecls])]),
               STRUCTUREdecl(strname,[],NONE,
-                            APPsexp(IDENT([],strname),
+                            APPsexp(IDsexp(IDENT([],strname)),
                                     IDsexp(IDENT([],"MDLRTLBuilder")))),
               LOCALdecl([OPENdecl [IDENT([],"MDLRTLBuilder"),
                                    IDENT([],strname)]],
@@ -413,8 +413,7 @@ struct
              STRUCTUREdecl(
                 strname,
                 [$["structure RTL : MLTREE_RTL",
-                   "structure C   : "^Comp.signame md "CELLS",
-                   "   sharing type C.cellkind = RTL.T.CellsBasis.cellkind"
+                   "structure C   : "^Comp.signame md "CELLS"
                   ]
                 ],
                 NONE,
@@ -638,7 +637,8 @@ struct
     * Generate RTL code for def/use like queries
     *
     *------------------------------------------------------------------------*)
-   fun mkDefUseQuery compiled_rtls { name, decls, def, use } = 
+   fun mkDefUseQuery compiled_rtls 
+        { name, decls, def, use, namedArguments, args } = 
    let val md = md compiled_rtls
        val trivial = ref true
        val Nil = LISTexp([], NONE)
@@ -655,9 +655,13 @@ struct
            fun fold f (e as T.ARG(_,_,x),exp) = add(f, ID x, e, exp)
              | fold f (e as T.$(_,_,T.ARG(_,_,x)),exp) = add(f, ID x,e,exp)
              | fold f (e as T.$(_,k,T.LI i), exp) =
-               let val CELLdecl{from, ...} = 
+               let val CELLdecl{id, ...} = 
                          Comp.lookupCellKind md (C.cellkindToString k)
-               in  add(f,INTexp(i + !from),e,exp) 
+                   val cell = 
+                          APPexp(APPexp(IDexp(IDENT(["C"],"Reg")),
+                                        IDexp(IDENT(["C"],id))),
+                                      INTexp(IntInf.toInt i))
+               in  add(f,const cell,e,exp)
                end
              | fold f (_, exp) = exp
 
@@ -673,7 +677,7 @@ struct
        end
        val decl = 
          mkQuery compiled_rtls
-          {name=name, namedArguments=false, args=[["instr"]], decls=decls,
+          {name=name, namedArguments=namedArguments, args=args, decls=decls,
            caseArgs=[], body=defUseBody
           } 
    in  if !trivial then FUN(name,WILDpat,TUPLEexp[Nil,Nil])
@@ -704,7 +708,7 @@ struct
    fun complexErrorHandlerDef() =
        $["fun bug(msg,instr) =",
          "let val Asm.S.STREAM{emit, ...} = Asm.makeStream []",
-         "in  emit (fn r => r) instr; error msg end"
+         "in  emit instr; error msg end"
         ]
 
    (*------------------------------------------------------------------------

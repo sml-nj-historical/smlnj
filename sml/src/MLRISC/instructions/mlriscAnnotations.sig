@@ -46,11 +46,16 @@ sig
    val CTRL_DEF : C.cell Annotations.property
    val CTRL_USE : C.cell Annotations.property
 
-    (*
-     * This annotation can be used specify a pretty printing function for
-     * assemblers
+    (* 
+     * Attach this annotation to assemblers for pretty printing
+     * client defined cell informations.
      *)
-   val REGINFO : (C.cell -> string) Annotations.property
+   val PRINT_CELLINFO : (C.cell -> string) Annotations.property
+
+    (*
+     * Does a compilation unit has GC information? 
+     *)
+   val GC_INFO : unit Annotations.property
 
     (*
      * Disable all optimizations in the cluster

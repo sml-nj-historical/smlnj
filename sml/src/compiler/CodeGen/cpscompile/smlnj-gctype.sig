@@ -5,7 +5,7 @@ sig
    type ty = int
 
    datatype gctype =
-     CONST of int                  (* integer constant *)
+     CONST of IntInf.int           (* integer constant *)
    | NONREF of CPS.cty ref         (* non-reference value *)
    | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
    | PLUS of ty * gctype * gctype  (* address arithmetic + *)
@@ -35,6 +35,9 @@ sig
    val SUB      : ty * gctype * gctype -> gctype
 
    val isRecoverable : gctype -> bool
+  
+   exception GCTYPE of gctype
+   val GC_TYPE : gctype Annotations.property
 
 end
 

@@ -1,22 +1,42 @@
-Library 
+(* This file is created by makeallcm *)
+Library
 	functor SparcRTL
 	functor SparcRTLProps
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-#else
-        basis.cm
-#endif
-#endif
-
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	MLRISC.cm
 	RTL.cm
 	Region.cm
 	SPARC.cm
-	
-	(* sparc specific backend *)
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/MLRISC.cm
+	$/RTL.cm
+	$/Region.cm
+	$/SPARC.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	SPARC.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	SPARC.cm
+#endif
 	../sparc/mltree/sparcRTL.sml 
 	../sparc/mltree/sparcRTLProps.sml 

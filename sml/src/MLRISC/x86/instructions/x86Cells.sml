@@ -37,6 +37,7 @@ sig
    val edi : cell
    val stackptrR : cell
    val ST : int -> cell
+   val ST0 : cell
    val asmTmpR : cell
    val fasmTmp : cell
    val eflags : cell
@@ -161,6 +162,7 @@ struct
    val stackptrR = RegGP 4
    val ST = (fn x => RegFP x
             )
+   val ST0 = RegFP 0
    val asmTmpR = RegGP 0
    val fasmTmp = RegFP 0
    val eflags = RegEFLAGS 0

@@ -11,7 +11,7 @@ sig
     * Note: the instructions are assumed to be in reverse order,
     * the same as in the cluster and the CFG representation.
     *) 
-   val schedule : {cpu:string, regmap:C.cell -> C.cell} 
+   val schedule : {cpu:string}
                    -> I.instruction list -> I.instruction list
 
 end

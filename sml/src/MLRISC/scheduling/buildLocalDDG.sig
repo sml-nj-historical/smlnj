@@ -10,7 +10,6 @@ sig
      (* instructions in reverse order *)
    type ddg = (I.instruction,DDG.latency) DDG.ddg
    val buildDDG : { cpu_info : DDG.SchedProps.cpu_info,
-                    regmap   : C.cell -> C.cell,
                     ddg      : ddg
                   } -> I.instruction list -> unit
 

@@ -1,5 +1,8 @@
 local
-   include "alphaInstr.sml"
+   structure I = 
+   struct
+      include "alphaInstr.sml"
+   end
 in
 
 functor AlphaPeephole(AlphaInstr : ALPHAINSTR) : PEEPHOLE =

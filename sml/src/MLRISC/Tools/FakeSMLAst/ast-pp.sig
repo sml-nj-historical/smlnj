@@ -14,6 +14,8 @@ sig
    val valbind : Ast.valbind -> PP.pp
    val funbind : Ast.funbind -> PP.pp
    val clause  : Ast.clause -> PP.pp
+   val datatypebind : Ast.datatypebind -> PP.pp
+   val typebind : Ast.typebind -> PP.pp
 
    val encodeName : Ast.id -> Ast.id
 

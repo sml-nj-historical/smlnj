@@ -13,13 +13,9 @@ structure HppaCG =
 
     structure CCalls     = DummyCCallsFn (HppaMLTree)
 
-    structure HppaMillicode =
-      HppaMillicode(structure MLTree=HppaMLTree
-                    structure Instr=HppaInstr)
+    structure HppaMillicode = HppaMillicode(HppaInstr)
 
-    structure HppaLabelComp =
-      HppaLabelComp(structure MLTree=HppaMLTree
-                    structure Instr=HppaInstr)
+    structure HppaLabelComp = HppaLabelComp(HppaInstr)
 
     structure MLTreeComp=
        Hppa(structure HppaInstr = HppaInstr

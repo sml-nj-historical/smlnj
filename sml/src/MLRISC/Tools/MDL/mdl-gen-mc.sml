@@ -33,12 +33,11 @@ struct
 
        (* Arguments for the functor *)
        val args = ["structure Instr : "^Comp.signame md "INSTR",
-                   "structure Stream : INSTRUCTION_STREAM",
                    "structure CodeString : CODE_STRING"
                   ] @
                   (if debugOn then
                      ["structure Assembler : INSTRUCTION_EMITTER",
-                      "  where I = Instr and S = Stream"
+                      "  where I = Instr and S = Instr.T.Stream"
                      ]
                    else [])
 
@@ -243,10 +242,11 @@ struct
        (* Body of the module *) 
        val strBody =
        [$["structure I = Instr",
-          "structure S = Stream",
           "structure C = I.C",
-          "structure Constant = I.Constant",
           "structure LabelExp = I.LabelExp",
+          "structure Constant = I.Constant",
+          "structure T = I.T",
+          "structure S = T.Stream",
           "structure P = S.P",
           "structure W = Word32",
           "",

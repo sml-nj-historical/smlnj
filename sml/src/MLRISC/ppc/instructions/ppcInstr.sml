@@ -8,10 +8,13 @@
 signature PPCINSTR =
 sig
    structure C : PPCCELLS
+   structure T : MLTREE
+   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
-   structure LabelExp: LABELEXP
    structure Region : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region = T.Region
    type gpr = int
    type fpr = int
    type ccr = int
@@ -23,7 +26,7 @@ sig
    datatype operand =
      RegOp of C.cell
    | ImmedOp of int
-   | LabelOp of LabelExp.labexp
+   | LabelOp of T.labexp
    type addressing_mode = (C.cell * operand)
    datatype ea =
      Direct of C.cell
@@ -222,14 +225,14 @@ sig
    | PHI of {}
 end
 
-functor PPCInstr(structure LabelExp : LABELEXP
-                 structure Region   : REGION
+functor PPCInstr(LabelExp : LABELEXP
                 ) : PPCINSTR =
 struct
    structure C = PPCCells
-   structure Region = Region
    structure LabelExp = LabelExp
-   structure Constant = LabelExp.Constant
+   structure T = LabelExp.T
+   structure Region = T.Region
+   structure Constant = T.Constant
    type gpr = int
    type fpr = int
    type ccr = int
@@ -241,7 +244,7 @@ struct
    datatype operand =
      RegOp of C.cell
    | ImmedOp of int
-   | LabelOp of LabelExp.labexp
+   | LabelOp of T.labexp
    type addressing_mode = (C.cell * operand)
    datatype ea =
      Direct of C.cell

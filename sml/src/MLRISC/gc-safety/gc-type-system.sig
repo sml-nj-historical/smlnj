@@ -5,10 +5,8 @@
  *)
 signature GC_TYPE_SYSTEM =
 sig
-   structure GC    : GC_TYPE
-   structure GCMap : GC_MAP
-   structure RTL   : MLTREE_RTL
-     sharing GCMap.GC = GC
+   structure GC  : GC_TYPE
+   structure RTL : MLTREE_RTL
 
    (* Given a RTL expression, return the gc type of the value *)
    val typeOf : (RTL.T.var -> GC.gctype) -> RTL.exp -> GC.gctype

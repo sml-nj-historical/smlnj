@@ -60,7 +60,7 @@ struct
       datatype operand = 
           RegOp of $GP			``<GP>'' (emit_GP GP) rtl: $r[GP]
         | ImmedOp of int		``<int>'' (itow int)  rtl: immed int
-        | LabelOp of LabelExp.labexp	``<emit_labexp labexp>''
+        | LabelOp of T.labexp	``<emit_labexp labexp>''
    					(itow(LabelExp.valueOf labexp))
 
       type addressing_mode = C.cell * operand

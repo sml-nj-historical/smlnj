@@ -26,9 +26,7 @@ struct
          | stm reduce (T.IF(T.FALSE, y, n)) = n
          | stm reduce s = s
 
-       and rexp reduce (e as T.LI32 w) = 
-              (T.LI(Word32.toIntX w) handle Overflow => e)
-         | rexp reduce (T.ADD(_,T.LI 0,x)) = x
+       and (* rexp reduce (T.ADD(_,T.LI 0,x)) = x
          | rexp reduce (T.ADD(_,x,T.LI 0)) = x
          | rexp reduce (T.SUB(_,x,T.LI 0)) = x
          | rexp reduce (T.MULS(_,_,zero as T.LI 0)) = zero
@@ -44,11 +42,11 @@ struct
          | rexp reduce (T.DIVU(_,x,T.LI 1)) = x
          | rexp reduce (T.DIVT(_,x,T.LI 1)) = x
          | rexp reduce (T.ANDB(_,_,zero as T.LI 0)) = zero
-         | rexp reduce (T.ANDB(_,zero as T.LI 0,_)) = zero
-         | rexp reduce (e as T.ANDB(_,x,y)) = 
+         | rexp reduce (T.ANDB(_,zero as T.LI 0,_)) = zero 
+         | *) rexp reduce (e as T.ANDB(_,x,y)) = 
              if RTL.Util.eqRexp(x,y) then x else e
-         | rexp reduce (T.ORB(_,x,T.LI 0)) = x
-         | rexp reduce (T.ORB(_,T.LI 0,x)) = x
+         (* | rexp reduce (T.ORB(_,x,T.LI 0)) = x
+         | rexp reduce (T.ORB(_,T.LI 0,x)) = x *)
          | rexp reduce (e as T.ORB(_,x,y)) = 
              if RTL.Util.eqRexp(x,y) then x else e
          | rexp reduce (T.NOTB(_,T.NOTB(_,x))) = x
@@ -84,14 +82,13 @@ struct
     *
     *========================================================================*)
    fun transRTL 
-        {app,id,int,word32,string,list,Nil,tuple,record,arg,
+        {app,id,int,intinf,word32,string,list,Nil,tuple,record,arg,
          cellkind,oper,region} 
                 rtl = 
    let fun word w = word32(Word.toLargeWord w)
        fun binOp n (ty,x,y) = app(n,[int ty,rexp x,rexp y])
        and unaryOp n (ty,x) = app(n,[int ty,rexp x])
-       and rexp(T.LI i) = app("LI",[int i])
-         | rexp(T.LI32 w) = app("LI32",[word32 w])
+       and rexp(T.LI i) = app("LI",[intinf i])
          | rexp(T.NEG x) = unaryOp "NEG" x
          | rexp(T.ADD x) = binOp "ADD" x
          | rexp(T.SUB x) = binOp "SUB" x
@@ -193,7 +190,8 @@ struct
        fun oper(T.OPER{name,...}) = A.IDexp(A.IDENT(["P"],name))
        val region=A.IDexp(A.IDENT(["T","Region"],"memory"))
    in  transRTL{id=id, app=app, list=A.LISTexp, string=string,
-                int=int, word32=U.WORD32exp, Nil=A.LISTexp([],NONE),
+                int=int, intinf=U.INTINFexp,
+                word32=U.WORD32exp, Nil=A.LISTexp([],NONE),
                 tuple=A.TUPLEexp, record=A.RECORDexp,
                 region=region, arg=arg, cellkind=cellkind, oper=oper
                } rtl
@@ -209,6 +207,7 @@ struct
          | app(n, es) = A.CONSpat(mkId n, SOME(A.TUPLEpat es))
        fun record ps = A.RECORDpat(ps,false)
        val int = U.INTpat
+       val intinf= U.INTINFpat
        val string= U.STRINGpat
        fun arg(ty,a,name) = A.IDpat name
        fun cellkind k = A.IDpat(CellsBasis.cellkindToString k)
@@ -217,7 +216,8 @@ struct
             SOME(A.RECORDpat([("name",U.STRINGpat name)],true)))
        val region=A.WILDpat
    in  transRTL{id=id, app=app, list=A.LISTpat, string=string,
-                int=int, word32=U.WORD32pat, Nil=A.LISTpat([],NONE),
+                int=int, intinf=intinf,
+                word32=U.WORD32pat, Nil=A.LISTpat([],NONE),
                 tuple=A.TUPLEpat, record=record, region=region,
                 arg=arg, cellkind=cellkind, oper=oper
                } rtl

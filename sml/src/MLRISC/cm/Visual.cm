@@ -1,7 +1,4 @@
-(*
- * This library implements visualization of graphs
- *)
-
+(* This file is created by makeallcm *)
 Library
 	signature GRAPH_DISPLAY
 	signature GRAPH_VIEWER
@@ -12,19 +9,29 @@ Library
 	structure daVinci
 	functor GraphViewer
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-#else
-        basis.cm
-#endif
-#endif
-
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
 	Control.cm
 	Lib.cm
 	Graphs.cm
-
+#else
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+#endif
+#else
+	basis.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
+#else
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
 	../visualization/allDisplays.sml
 	../visualization/daVinci.sml
 	../visualization/dot.sml

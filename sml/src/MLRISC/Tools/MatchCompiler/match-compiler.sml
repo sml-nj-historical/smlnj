@@ -1,6 +1,6 @@
 (*
  * A pattern matching compiler. 
- * This is a literal translation of Pettersson's paper
+ * This is based on Pettersson's paper
  * ``A Term Pattern-Match Compiler Inspired by Finite Automata Theory''
  *
  *)
@@ -15,7 +15,7 @@ functor MatchCompiler
        type con 
        val compare     : con * con -> order
        val toString    : con -> string
-       val allVariants : con -> con list
+       val variants    : con -> {known:con list, others:bool}
        val arity       : con -> int
     end  
 
@@ -24,6 +24,7 @@ functor MatchCompiler
        type literal
        val compare  : literal * literal -> order
        val toString : literal -> string
+       val variants : literal -> {known:literal list, others:bool} option
     end
 
     structure Action :   
@@ -33,9 +34,15 @@ functor MatchCompiler
 
     structure Guard  : (* a guard expression *)
     sig type guard 
-        val toString : guard -> string
+        val toString   : guard -> string
+        val compare    : guard * guard -> order
+        val logicalAnd : guard * guard -> guard
     end
 
+    structure Exp :
+    sig type exp
+        val toString : exp -> string
+    end
                (* a variable *)
     structure Var  : 
     sig type var 
@@ -111,17 +118,24 @@ struct
       structure Set = RedBlackSetFn(type ord_key = name val compare = compare)
    end
 
-   structure VarSet = RedBlackSetFn(type ord_key = Var.var val compare = Var.compare)
+   structure VarSet = RedBlackSetFn
+      (type ord_key = Var.var val compare = Var.compare)
    structure Subst = RedBlackMapFn(type ord_key = Var.var val compare = Var.compare)
    type subst = name Subst.map
+   fun mergeSubst(s1,s2) = Subst.foldri(fn (k,v,s) => Subst.insert(s,k,v)) s1 s2
 
    (* Internal rep of pattern after every variable has been renamed *) 
    datatype pat = 
-     WILD                               (* wild card *)
-   | APP of decon * pat list            (* constructor *)
-   | TUPLE of pat list                  (* tupling *)
-   | RECORD of (Var.var * pat) list     (* record *)
-   | OR of (subst * pat) list           (* disjunction *)
+     WILDpat                               (* wild card *)
+   | APPpat of decon * pat list            (* constructor *)
+   | TUPLEpat of pat list                  (* tupling *)
+   | RECORDpat of (Var.var * pat) list     (* record *)
+   | ORpat of (subst * pat) list           (* disjunction *)
+   | ANDpat of (subst * pat) list          (* conjunction *)  
+   | NOTpat of subst * pat                 (* negation *)
+   | WHEREpat of pat * subst * Guard.guard   (* guard *)
+   | NESTEDpat of pat * subst * path * (int * Exp.exp) * pat
+   | CONTpat of Var.var * pat 
 
    and decon = CON of Con.con          
              | LIT of Literal.literal   
@@ -135,6 +149,7 @@ struct
    structure Action  = Action
    structure Literal = Literal
    structure Guard   = Guard
+   structure Exp     = Exp
    structure Var     = Var
 
    structure Decon =
@@ -159,60 +174,23 @@ struct
           ListMergeSort.sort 
             (fn ((x,_),(y,_)) => Var.compare(x,y) = GREATER) l
 
-      fun toString(WILD) = "_"
-        | toString(APP(c,[])) = Decon.toString c
-        | toString(APP(c,xs)) = Decon.toString c^
+      fun toString(WILDpat) = "_"
+        | toString(APPpat(c,[])) = Decon.toString c
+        | toString(APPpat(c,xs)) = Decon.toString c^
                                  listify("(",",",")") (map toString xs)
-        | toString(TUPLE pats) = listify("(",",",")") (map toString pats)
-        | toString(RECORD lps) = listify("{",",","}") 
+        | toString(TUPLEpat pats) = listify("(",",",")") (map toString pats)
+        | toString(RECORDpat lps) = listify("{",",","}") 
                                  (map (fn (l,p) =>
                                       Var.toString l^"="^toString p) lps)
-        | toString(OR ps) = listify("(","|",")") (map toString' ps)
+        | toString(ORpat ps) = listify("("," | ",")") (map toString' ps)
+        | toString(ANDpat ps) = listify("("," and ",")") (map toString' ps)
+        | toString(NOTpat p)  = "not "^toString' p
+        | toString(WHEREpat(p,_,g)) = toString p^" where "^Guard.toString g
+        | toString(NESTEDpat(p,_,_,(_,e),p')) =
+                toString p^" where "^Exp.toString e^" in "^toString p' 
+        | toString(CONTpat(v,p)) = toString p ^" exception "^ Var.toString v
       and toString'(subst,p) = toString p
 
-      fun kind(WILD) = 0
-        | kind(APP _) = 1
-        | kind(TUPLE _) = 2
-        | kind(RECORD _) = 3
-        | kind(OR _) = 4
-
-      and compareList([], []) = EQUAL
-        | compareList([], _)  = LESS
-        | compareList(_, [])  = GREATER
-        | compareList(x::xs, y::ys) =
-          (case compare(x,y) of
-            EQUAL => compareList(xs,ys)
-          | ord   => ord 
-          )
-
-      and compare(WILD, WILD) = EQUAL
-        | compare(APP(f,xs), APP(g,ys)) =
-          (case Decon.compare(f,g) of
-             EQUAL => compareList(xs, ys)
-          |  ord => ord  
-          )
-        | compare(TUPLE xs, TUPLE ys) = compareList(xs, ys)
-        | compare(RECORD xs,RECORD ys) =
-          let val xs = sortByLabel xs
-              val ys = sortByLabel ys
-              fun loop([], []) = EQUAL
-                | loop([], _)  = LESS
-                | loop(_, [])  = GREATER
-                | loop((i,x)::xs, (j,y)::ys) =
-                  (case Var.compare(i, j) of 
-                     EQUAL => (case compare(x,y) of
-                                 EQUAL => loop(xs,ys)
-                               | ord => ord
-                              )
-                  |  ord => ord
-                  )
-          in  loop(xs, ys)
-          end
-        | compare(OR xs, OR ys) = compareList(map #2 xs, map #2 ys)
-        | compare(x, y) = Int.compare(kind x, kind y)
-
-      structure Set = RedBlackSetFn(type ord_key = pat val compare = compare)
-      fun equal(p1,p2) = compare(p1,p2) = EQUAL
    end
 
    type rule_no = int
@@ -230,10 +208,12 @@ struct
    and test = 
          CASE   of path * (decon * path list * dfa) list * 
                    dfa option (* multiway *)
-       | WHERE  of guard * dfa * dfa                  (* if test *)
+       | WHERE  of Guard.guard * dfa * dfa            (* if test *)
        | OK     of rule_no * Action.action            (* final dfa *)
-       | BIND   of subst * dfa                        (* bind *)
+       | BIND   of subst * dfa                        (* apply subst *)
+       | LET    of path * (int * Exp.exp) * dfa       (* let *)
        | SELECT of path * (path * index) list * dfa   (* projections *)
+       | CONT   of Var.var * dfa                      (* bind continuation *)
        | FAIL                                         (* error dfa *)
 
    and compiled_dfa  = 
@@ -243,8 +223,6 @@ struct
                    redundant  : IntListSet.set
                   }
 
-   and guard = GUARD of Guard.guard ref
-
    and matrix = 
        MATRIX of
        { rows  : row list,
@@ -252,13 +230,14 @@ struct
        }
        
 
-   withtype row = 
-              {pats  : pat list, 
-               guard : (subst * guard) option,
-               dfa   : dfa
+   withtype row =  
+              {pats   : pat list, 
+               guard  : (subst * Guard.guard) option,
+               nested : (subst * path * (int * Exp.exp) * pat) list,
+               dfa    : dfa
               } 
        and compiled_rule = 
-             rule_no * pat list * guard option * subst * Action.action
+             rule_no * pat list * Guard.guard option * subst * Action.action
 
        and compiled_pat = pat * subst
 
@@ -276,8 +255,10 @@ struct
                foldr (fn ((_,_,x),y) => h x + y) 
                      (case default of SOME x => h x | NONE => 0w0) cases
           | SELECT(_, _, dfa) => 0w2313 + hash dfa
+          | CONT(_, dfa) => 0w1234 + hash dfa
           | WHERE(g, yes, no) => 0w2343 + h yes + h no
           | BIND(_, dfa) => 0w23234 + h dfa
+          | LET(_, (i, _), dfa) => itow i + h dfa + 0w843
           )
 
       (* pointer equality *)
@@ -297,6 +278,8 @@ struct
                  forall(fn ((px,ix),(py,iy)) =>
                     Path.equal(px,py) andalso Index.equal(ix,iy))
                      (b1,b2)
+              | (CONT(k1, x), CONT(k2, y)) => 
+                 Var.compare(k1,k2) = EQUAL andalso eq(x,y)
               | (CASE(p1,c1,o1), CASE(p2,c2,o2)) =>
                   Path.equal(p1,p2) andalso 
                   forall
@@ -304,15 +287,18 @@ struct
                           Decon.equal(u,v) andalso eq(x,y)) 
                         (c1,c2) andalso
                   eqOpt(o1,o2)
-              | (WHERE(GUARD(g1), y1, n1), 
-                 WHERE(GUARD(g2), y2, n2)) =>
-                  g1 = g2 andalso eq(y1,y2) andalso eq(n1,n2) 
+              | (WHERE(g1, y1, n1), 
+                 WHERE(g2, y2, n2)) =>
+                  Guard.compare(g1,g2) = EQUAL 
+                  andalso eq(y1,y2) andalso eq(n1,n2) 
               | (BIND(s1, x), BIND(s2, y)) =>
                   eq(x,y) andalso
                     forall (fn ((p,x),(q,y)) =>
                              Var.compare(p,q) = EQUAL andalso 
                              Name.equal(x,y))
                       (Subst.listItemsi s1, Subst.listItemsi s2)
+              | (LET(p1, (i1, _), x), LET(p2, (i2, _), y)) =>
+                  Path.equal(p1,p2) andalso i1=i2 andalso eq(x,y)
               | _ => false
              )
 
@@ -353,6 +339,7 @@ struct
                            ) ++
                       line(!"in") ++
                       block(walk body)
+                    | CONT(k,x) => line(!"Cont" ++ !(Var.toString k) ++ walk x)
                     | CASE(p,cases,default) =>
                       line(!"Case" ++ !!(Path.toString p)) ++
                        block(
@@ -367,7 +354,7 @@ struct
                              )
                           )
                        )
-                    | WHERE(GUARD(ref g),y,n) =>
+                    | WHERE(g,y,n) =>
                       line(!"If" ++ !(Guard.toString g)) ++
                       block(tab ++ ! "then" ++ walk y ++ nl ++
                             tab ++ ! "else" ++ walk n)
@@ -377,6 +364,10 @@ struct
                                   !(Name.toString n) ++ pp)
                                nop subst) ++
                            walk x
+                    | LET(path,( _, e), x) =>
+                      line(! "Let" ++ !(Path.toString path) ++ !"=" ++ 
+                           !(Exp.toString e)) ++
+                      block(walk x) 
                     )
                    )
       in  PP.text(walk dfa ++ nl)
@@ -431,20 +422,19 @@ struct
            let val pats_i = col(m, i)
                val pats_i0 = hd pats_i 
            in  case pats_i0 of 
-                 WILD => 0
+                 WILDpat => 0
                | _  =>
                  let val (cons, score) =
                     (* count distinct constructors; skip refutable cards 
                      * Give records, tuples and or pats, high scores so that
                      * they are immediately expanded
                      *)
-                       List.foldr (fn (WILD, (S, n)) => (S, n)
-                                 | (TUPLE _, (S, n)) => (S, 100000)
-                                 | (RECORD _, (S, n)) => (S, 100000)
-                                 | (OR _, (S, n)) => (S, 100000)
-                                 | (pat, (S, n)) => (Pat.Set.add(S, pat), n))
-                           (Pat.Set.empty, 0) pats_i
-                 in score + Pat.Set.numItems cons end
+                       List.foldr (fn (WILDpat, (S, n)) => (S, n)
+                                    | (APPpat(c, _), (S, n)) => 
+                                         (Decon.Set.add(S, c), n)
+                                    | (_, (S, n)) => (S, 10000))
+                           (Decon.Set.empty, 0) pats_i
+                 in score + Decon.Set.numItems cons end
            end
 
            (* Find column with the highest score *)
@@ -474,7 +464,7 @@ struct
     * Rename user pattern into internal pattern.
     * The path business is hidden from the client.
     *)
-   fun rename doIt (rule_no, pats, guard, action) : compiled_rule = 
+   fun rename doIt {number=rule_no, pats, guard, action, cont} =
    let val empty = Subst.empty
 
        fun bind(subst, v, p) = 
@@ -483,13 +473,13 @@ struct
            | NONE => Subst.insert(subst, v, PVAR p)
 
        fun process(path, subst:subst, pat) : compiled_pat = 
-       let fun idPat id = (WILD, bind(subst, id, path))
+       let fun idPat id = (WILDpat, bind(subst, id, path))
            fun asPat(id, p) = 
            let val (p, subst) = process(path, subst, p)
            in  (p, bind(subst, id, path))
            end
-           fun wildPat() = (WILD, subst)
-           fun litPat(lit) = (APP(LIT lit, []), subst)
+           fun wildPat() = (WILDpat, subst)
+           fun litPat(lit) = (APPpat(LIT lit, []), subst)
 
            fun processPats(pats) = 
            let fun loop([], _, ps', subst) = (rev ps', subst)
@@ -511,31 +501,40 @@ struct
  
            fun consPat(c,args) : compiled_pat = 
            let val (pats, subst) = processPats(args)
-               val n = case c of
-                         LIT _ => 0
-                       | CON c => Con.arity c 
            in  (* arity check *)
-               if n <> length args 
-               then error("arity mismatch "^Decon.toString c)
+               if Con.arity c <> length args 
+               then error("arity mismatch "^Con.toString c)
                else ();
-               (APP(c, pats), subst) 
+               (APPpat(CON c, pats), subst) 
            end
 
            fun tuplePat(pats) : compiled_pat = 
            let val (pats, subst) = processPats(pats)
-           in  (TUPLE pats, subst) end
+           in  (TUPLEpat pats, subst) end
 
            fun recordPat(lpats) : compiled_pat = 
            let val (lpats, subst) = processLPats(lpats)
-           in  (RECORD lpats, subst) end
+           in  (RECORDpat lpats, subst) end
+
+           fun noDupl(subst, subst') =
+           let val duplicated =
+                    VarSet.listItems( 
+                     VarSet.intersection
+                        (VarSet.addList(VarSet.empty, Subst.listKeys subst'),
+                         VarSet.addList(VarSet.empty, Subst.listKeys subst)))
+           in  case duplicated of
+                 [] => ()
+               | _ => error("duplicated pattern variables: "^
+                            listify("",",","") (map Var.toString duplicated))
+           end
 
            (* Or patterns are tricky because the same variable name
             * may be bound to different components.  We handle this by renaming
             * all variables to some canonical set of paths, 
             * then rename all variables to these paths. 
             *)
-           fun orPat([])   = error "empty or pattern"
-             | orPat(pats) : compiled_pat =
+           fun logicalPat (name, name2, f)  [] = error("empty "^name^" pattern")
+             | logicalPat (name, name2, f)  pats = 
            let val results  = map (fn p => process(path, empty, p)) pats
                val ps       = map #1 results
                val orSubsts = map #2 results
@@ -549,17 +548,9 @@ struct
                 *)
                val orNames = Subst.listKeys(hd orSubsts)
                val _ = if sameVars(tl orSubsts, orNames) then ()
-                       else error "not all disjuncts have the same variable bindings"
-               val duplicated =
-                    VarSet.listItems( 
-                     VarSet.intersection
-                        (VarSet.addList(VarSet.empty, orNames),
-                         VarSet.addList(VarSet.empty, Subst.listKeys subst)))
-               val _ = case duplicated of
-                         [] => ()
-                       | _ => error("duplicated pattern variables: "^
-                                   listify("",",","") 
-                                     (map Var.toString duplicated))
+                       else error("not all "^name2^
+                                  " have the same variable bindings")
+               val _ = noDupl(subst, hd orSubsts)
                (* build the new substitution to include all names in the    
                 * or patterns.
                 *)
@@ -567,9 +558,30 @@ struct
                val subst = Subst.foldri  
                             (fn (v, _, subst) => Subst.insert(subst,v,VAR v)
                             ) subst (hd orSubsts) 
-           in  (OR(ListPair.zip(orSubsts,ps)), subst)
+           in  (f(ListPair.zip(orSubsts,ps)), subst)
            end
-           
+
+           fun orPat pats = logicalPat ("or", "disjuncts", ORpat) pats
+           fun andPat pats = logicalPat ("and", "conjuncts", ANDpat) pats
+
+           fun notPat pat = 
+           let val (pat,subst')  = process(path, empty, pat)
+               val _ = noDupl(subst,subst')
+           in  (NOTpat(subst',pat), subst)
+           end
+
+           fun wherePat(pat, e) =
+           let val (pat, subst') = process(path, empty, pat)
+               val _ = noDupl(subst,subst')
+           in  (WHEREpat(pat, subst', e), subst)
+           end
+
+           fun nestedPat(pat1, e, pat2) =
+           let val path' = Path.dot(path, INT ~1)
+               val (pat1, subst1) = process(path, subst, pat1)
+               val (pat2, subst2) = process(path',subst1, pat2)
+           in  (NESTEDpat(pat1, subst1, path', e, pat2), subst2)
+           end 
 
        in  doIt {idPat=idPat,
                  asPat=asPat,
@@ -578,7 +590,11 @@ struct
                  tuplePat=tuplePat,
                  recordPat=recordPat,
                  litPat=litPat,
-                 orPat=orPat
+                 orPat=orPat,
+                 andPat=andPat,
+                 notPat=notPat,
+                 wherePat=wherePat,
+                 nestedPat=nestedPat
                 } pat
        end
 
@@ -588,7 +604,7 @@ struct
            in  processAllPats(i+1, ps, subst, p::ps')  end
 
        val (pats, subst) = processAllPats(0, pats, empty, [])  
-   in  (rule_no, pats, Option.map (GUARD o ref) guard, subst, action)
+   in  (rule_no, pats, guard, subst, action)
    end
 
    structure DFAMap = 
@@ -621,9 +637,6 @@ struct
              in  (p, others, SOME defaultCase) 
              end
        end 
-
-   structure LSet = RedBlackSetFn(type ord_key = Var.var 
-                                  val compare = Var.compare)
 
    (* 
     * The main pattern matching compiler.
@@ -673,10 +686,12 @@ struct
            then c
            else newState(CASE(simp(p, cases, default)))
        fun Select(x) = newState(SELECT(x))
+       fun Cont(x) = newState(CONT(x))
        fun Where(g, yes, no) = 
            if DFA.eq(yes,no) then yes else newState(WHERE(g, yes, no))
        fun Bind(subst, x) =
            if Subst.numItems subst = 0 then x else newState(BIND(subst, x))
+       fun Let x = newState(LET x)
 
        (*
         * Expand column i, 
@@ -697,53 +712,96 @@ struct
            in  loop(0, ps, []) end
  
            (* If the ith column cfind out what to expand *)
-           fun expand(WILD::ps, this) = expand(ps, this)
-             | expand((p as OR _)::ps, this) = SOME p
-             | expand((p as TUPLE _)::ps, this) = expand(ps, SOME p)
-             | expand((p as RECORD _)::ps, this) = expand(ps, SOME p)
-             | expand((p as APP _)::ps, this) = expand(ps, SOME p)
+           fun expand(WILDpat::ps, this) = expand(ps, this)
+             | expand((p as ORpat _)::ps, this) = SOME p
+             | expand((p as ANDpat _)::ps, this) = SOME p
+             | expand((p as NOTpat _)::ps, this) = SOME p
+             | expand((p as WHEREpat _)::ps, this) = SOME p
+             | expand((p as NESTEDpat _)::ps, this) = SOME p
+             | expand((p as CONTpat _)::ps, this) = SOME p
+             | expand((p as TUPLEpat _)::ps, this) = expand(ps, SOME p)
+             | expand((p as RECORDpat _)::ps, this) = expand(ps, SOME p)
+             | expand((p as APPpat _)::ps, this) = expand(ps, SOME p)
              | expand([], this) = this
 
             (* Split the paths *)
            val (prevPaths, _, nextPaths) = split_i paths
 
        in  case expand(ithCol, NONE) of
-             SOME(OR _) => 
-                (* if we have or patterns then expand all rows
-                 * with or pattern
-                 *)
-             let fun expandOr(row as {pats, dfa, guard}) =
+             SOME(NOTpat _) => (* expand not patterns *)
+             let fun expand([], _) = bug "expand NOT" 
+                   | expand((row as {pats, guard, nested, dfa})::rows,rows') = 
                  let val (prev, pat_i, next) = split_i(pats)
                  in  case pat_i of
-                       OR ps =>
+                       NOTpat(subst,p) =>
+                           let val rows' = rev rows'
+                               val yes   = {pats=prev@[WILDpat]@next,
+                                            nested=nested,
+                                            guard=guard, dfa=dfa}
+                               val m2 = MATRIX{rows=rows, paths=paths}
+                               val no = {pats=prev@[p]@next, guard=NONE, 
+                                         nested=[],
+                                         dfa=Bind(subst,match m2)}
+                               val m1 = MATRIX{rows=rows'@[no,yes]@rows,
+                                               paths=paths}
+                           in  expandColumn(m1, i) end
+                         | _ => expand(rows, row::rows')
+                     end   
+             in  expand(rows, [])
+             end
+           | SOME(ORpat _ | WHEREpat _ | NESTEDpat _) => 
+                (* if we have or/where patterns then expand all rows
+                 * with these patterns
+                 *)
+             let fun expand(row as {pats, dfa, nested, guard}) =
+                 let val (prev, pat_i, next) = split_i(pats)
+                 in  case pat_i of
+                       ORpat ps =>
                          map (fn (subst,p) => 
-                              {pats=prev@[p]@next, dfa=Bind(subst,dfa), guard=guard})
+                                {pats=prev@[p]@next, nested=nested,
+                                 dfa=Bind(subst,dfa), guard=guard})
                              ps
+                     | WHEREpat(p,subst',g) =>
+                        [{pats=prev@[p]@next, dfa=dfa, nested=nested,
+                          guard=case guard of
+                                  NONE => SOME(subst',g)
+                                | SOME(subst,g') => 
+                                        SOME(mergeSubst(subst,subst'),
+                                             Guard.logicalAnd(g,g'))
+                         }]
+                     | NESTEDpat(pat, subst, path, exp, pat') =>
+                        [{pats=prev@[pat]@next, dfa=dfa,
+                          nested=(subst,path,exp,pat')::nested,
+                          guard=guard}]
                      | _ => [row]
                  end
                  val newMatrix =
-                      MATRIX{rows  = List.concat (map expandOr rows),
+                      MATRIX{rows  = List.concat (map expand rows),
                              paths = paths
                             }
              in  expandColumn(newMatrix, i)
              end
-           | SOME(TUPLE pats) => (* expand a tuple along all the columns *)
+           | SOME(TUPLEpat pats) => (* expand a tuple along all the columns *)
              let val arity = length pats
-                 val wilds = map (fn _ => WILD) pats
-                 fun processRow{pats, dfa, guard} =
+                 val wilds = map (fn _ => WILDpat) pats
+                 fun processRow{pats, nested, dfa, guard} =
                  let val (prev, pat_i, next) = split_i(pats)
                  in  case pat_i of
-                        TUPLE ps' =>
+                        TUPLEpat ps' =>
                         let val n   = length ps'
                         in  if n <> arity then error("tuple arity mismatch")
                             else ();
-                            {pats=prev @ ps' @ next, dfa=dfa, guard=guard}
+                            {pats=prev @ ps' @ next, nested=nested,
+                             dfa=dfa, guard=guard}
                         end
-                     |  WILD => {pats=prev @ wilds @ next,dfa=dfa,guard=guard}
-                     |  _   => error("mixng tuple and constructors")
+                     |  WILDpat => 
+                           {pats=prev @ wilds @ next, nested=nested,
+                            dfa=dfa,guard=guard}
+                     |  pat => error("mixing tuple and: "^Pat.toString pat)
                  end
                  val rows  = map processRow rows
-                 val path_i' = List.tabulate (arity, fn i => Path.dot(path_i, INT i))
+                 val path_i' = List.tabulate 
+                                 (arity, fn i => Path.dot(path_i, INT i))
                  val paths = prevPaths @ path_i' @ nextPaths
                  val bindings = List.tabulate (arity, fn i => 
                                        (Path.dot(path_i, INT i), INT i))
@@ -751,15 +809,15 @@ struct
                         MATRIX{rows=rows, paths=paths}
                        )
              end
-           | SOME(RECORD _) => (* expand a tuple along all the columns *)
+           | SOME(RECORDpat _) => (* expand a tuple along all the columns *)
              let (* All the labels that are in this column *)
                  val labels = 
-                     LSet.listItems
+                     VarSet.listItems
                      (List.foldr 
-                      (fn (RECORD lps, L) => 
-                            List.foldr (fn ((l,p), L) => LSet.add(L,l)) L lps
+                      (fn (RECORDpat lps, L) => 
+                            List.foldr (fn ((l,p), L) => VarSet.add(L,l)) L lps
                         | (_, L) => L)
-                        LSet.empty ithCol)
+                        VarSet.empty ithCol)
 
                  val _ = if debug then
                             print("Labels="^listify("",",","") 
@@ -770,12 +828,12 @@ struct
                  fun lps2s lps = listify("","\t","") (map lp2s lps)
                  fun ps2s ps = listify("","\t","") (map Pat.toString ps)
 
-                 val wilds = map (fn _ => WILD) labels
+                 val wilds = map (fn _ => WILDpat) labels
 
-                 fun processRow{pats, dfa, guard} =
+                 fun processRow{pats, nested, dfa, guard} =
                  let val (prev, pat_i, next) = split_i(pats)
                  in  case pat_i of
-                        RECORD lps =>
+                        RECORDpat lps =>
                         (* Put lps in canonical order *)
                         let val lps = Pat.sortByLabel lps
                             val _   = if debug then
@@ -784,11 +842,11 @@ struct
  
                             fun collect([], [], ps') = rev ps'
                               | collect(x::xs, [], ps') = 
-                                   collect(xs, [], WILD::ps')
+                                   collect(xs, [], WILDpat::ps')
                               | collect(x::xs, this as (l,p)::lps, ps') =
                                 (case Var.compare(x,l) of
                                   EQUAL => collect(xs, lps, p::ps')
-                                | LESS  => collect(xs, this, WILD::ps')
+                                | LESS  => collect(xs, this, WILDpat::ps')
                                 | GREATER => error "labels out of order"
                                 )
                               | collect _ = bug "processRow"
@@ -796,10 +854,13 @@ struct
                             val _   = if debug then
                                          print("new pats="^ps2s ps^"\n")
                                       else ()
-                        in  {pats=prev @ ps @ next, dfa=dfa, guard=guard}
+                        in  {pats=prev @ ps @ next, nested=nested,
+                             dfa=dfa, guard=guard}
                         end
-                     |  WILD => {pats=prev @ wilds @ next,dfa=dfa,guard=guard}
-                     |  _   => error("mixing tuple and constructors")
+                     |  WILDpat => 
+                          {pats=prev @ wilds @ next,nested=nested,
+                           dfa=dfa,guard=guard}
+                     |  pat => error("mixing record and: "^Pat.toString pat)
                  end
                   
                  val rows  = map processRow rows
@@ -814,17 +875,25 @@ struct
                          MATRIX{rows=rows, paths=paths}
                         )
              end
-           | SOME(APP(decon,_)) => 
+           | SOME(APPpat(decon,_)) => 
            (* Find out how many variants are there in this case *)
-             let val (allVariants, hasDefault) =
-                   case decon of
-                     CON c   => (map CON (Con.allVariants c), false)
-                   | LIT i   => 
-                      (Decon.Set.listItems 
+             let fun getVariants() = 
+                      Decon.Set.listItems 
                         (List.foldr 
-                           (fn (APP(x as LIT _,_),S) => Decon.Set.add(S,x)
-                             | (_,S) => S) Decon.Set.empty ithCol),
-                       true) 
+                           (fn (APPpat(x,_),S) => Decon.Set.add(S,x)
+                             | (_,S) => S) Decon.Set.empty ithCol)
+
+                 val (allVariants, hasDefault) =
+                   case decon of
+                     CON c   => 
+                       let val {known, others} = Con.variants c
+                       in  (case known of [] => getVariants() 
+                                        | _  => map CON known, others) 
+                       end
+                   | LIT l   => 
+                      case Literal.variants l of
+                        SOME{known, others} => (map LIT known, others)
+                      | NONE => (getVariants(), true) 
 
                 (* function from con -> matrix; initially no rows 
                  *)
@@ -838,7 +907,8 @@ struct
                 fun create([], tbl) = tbl
                   | create((con as CON c)::cons, tbl) =
                     let val n = Con.arity c
-                        val paths = List.tabulate(n, fn i => Path.dot(path_i, INT i))
+                        val paths = List.tabulate
+                              (n, fn i => Path.dot(path_i, INT i))
                     in  create(cons, insert(tbl, con, {args=paths, rows=[]}))
                     end
                   | create((con as LIT l)::cons, tbl) =
@@ -852,25 +922,26 @@ struct
                     end
     
                 fun foreachRow([], tbl) = tbl
-                  | foreachRow({pats, dfa, guard}::rows, tbl) =
+                  | foreachRow({pats, dfa, nested, guard}::rows, tbl) =
                     let val (prev, pat_i, next) = split_i pats
      
                         fun addRow(tbl, decon, pats) = 
                             insertRow(tbl, decon, 
-                                   {pats=pats, dfa=dfa, guard=guard})
+                                   {pats=pats, nested=nested,
+                                    dfa=dfa, guard=guard})
      
                         fun addWildToEveryRow(tbl) =
                             foldr (fn (c, tbl) => 
                                    let val {args, rows} = lookup(tbl, c)
-                                       val wilds = map (fn _ => WILD) args
+                                       val wilds = map (fn _ => WILDpat) args
                                        val pats  = prev @ wilds @ next
                                    in  addRow(tbl, c, pats)
                                    end) tbl allVariants
       
                         val tbl = 
                            case pat_i of
-                             WILD => addWildToEveryRow tbl
-                           | APP(decon, args) =>
+                             WILDpat => addWildToEveryRow tbl
+                           | APPpat(decon, args) =>
                              let val pats = prev @ args @ next
                              in  addRow(tbl, decon, pats)
                              end
@@ -899,7 +970,7 @@ struct
                         MATRIX{rows=List.filter 
                                      (fn {pats, ...} =>
                                         case List.nth(pats, i) of
-                                          WILD => true
+                                          WILDpat => true
                                         | _ => false) rows,
                                paths=paths}
                        )   
@@ -907,23 +978,38 @@ struct
      
              in  SWITCH(Decon.Map.foldri collectCases [] tbl, default)
              end
-           | _ => error "expandColumn.1"
+           | SOME p => bug ("expandColumn: "^Pat.toString p)
+           | NONE => bug "expandColumn"
        end (* expandColumn *)
 
        (*
         * Generate the DFA
         *)
-       fun match matrix =
+       and match matrix =
            if Matrix.isEmpty matrix then fail
            else
            case Matrix.findBestMatchColumn matrix of
              NONE =>   (* first row is all wild cards *) 
                (case Matrix.row(matrix, 0) of
-                 {guard=SOME(subst, g), dfa, ...} => (* generate guard *)
+                 {guard=SOME(subst, g), nested=[], dfa, ...} => 
+                      (* generate guard *)
                    Bind(subst,
                        Where(g, dfa, 
                              match(Matrix.removeFirstRow matrix)))
-               | {guard=NONE, dfa, ...} => dfa
+               | {guard=NONE, dfa, nested=[], ...} => dfa
+               | {guard, pats, nested=n::ns, dfa, ...} => 
+                        (* handle nested pats *)
+                 let val (subst, path, exp, pat) = n
+                     val MATRIX{rows, paths} = matrix
+                     val row0  = {guard=guard, pats=pat::pats,
+                                  nested=ns, dfa=dfa}
+                     val rows' = tl rows
+                     val rows' = map (fn {pats, nested, dfa, guard} =>
+                           {pats=WILDpat::pats, nested=nested, dfa=dfa,
+                            guard=guard}) rows'
+                     val m = MATRIX{rows=row0::rows', paths=path::paths}
+                 in  Bind(subst, Let(path, exp, match m))
+                 end
                )
            | SOME i => 
               (* mixture rule; split at column i *)
@@ -944,9 +1030,10 @@ struct
        let val (_, pats0, _, _, _) = hd rules
            val arity = length pats0
            fun makeRow(r, pats, NONE, subst, action) =
-               {pats=pats, guard=NONE, dfa=Bind(subst, Ok(r, action))}
+               {pats=pats, guard=NONE, nested=[],
+                dfa=Bind(subst, Ok(r, action))}
              | makeRow(r, pats, SOME g, subst, action) = 
-               {pats=pats, guard=SOME(subst,g), 
+               {pats=pats, guard=SOME(subst,g), nested=[],
                 dfa=Ok(r, action)}
              
        in  MATRIX{rows  = map makeRow rules,
@@ -972,14 +1059,17 @@ struct
        fun set(fv, s) = (fv := s; s)
        fun setH(height, h) = (height := h; h)
        val union = Name.Set.union
+       val diff  = Name.Set.difference
        val add   = Name.Set.add
        val empty = Name.Set.empty
+
+       fun diffPaths(fvs, ps) = 
+           diff(fvs, Name.Set.addList(Name.Set.empty, map PVAR ps))
 
        val used = ref Name.Set.empty
        fun occurs s = used := Name.Set.union(!used,s)
        val redundant = ref(IntListSet.addList(IntListSet.empty, rule_nos))
        fun ruleUsed r = redundant := IntListSet.delete(!redundant, r)
-
        fun vars subst = Name.Set.addList(empty,Subst.listItems subst)
 
        fun visit(DFA{stamp, refCount, test, freeVars, height, ...}) = 
@@ -994,11 +1084,16 @@ struct
                     in  occurs s; 
                         (set(freeVars, s), setH(height, h + 1))
                     end
+                  | LET(p, _, dfa) =>
+                    let val (s, h) = visit dfa
+                    in  (set(freeVars, s), setH(height, h+1))
+                    end
                   | OK(rule_no, _) => (ruleUsed rule_no; (empty, 0))
                   | CASE(p, cases, opt) =>
                     let val (fvs, h) = 
-                         List.foldr (fn ((_,_,x),(s, h)) => 
+                         List.foldr (fn ((_,ps,x),(s, h)) => 
                              let val (fv,h') = visit x
+                                 val fv = diffPaths(fv, ps)
                              in  (union(fv,s), Int.max(h,h'))
                              end)
                              (empty, 0) cases 
@@ -1027,6 +1122,12 @@ struct
                     in  occurs bs; 
                         (set(freeVars, s), setH(height,h+1)) 
                     end 
+                  | CONT(k, x) =>
+                    let val (s, h) = visit x
+                    in  (* always generate a state function *)
+                        refCount := !refCount + 1; 
+                        (set(freeVars, s), setH(height,h+1))
+                    end 
                  )
            )
        val _ = visit dfa; 
@@ -1047,15 +1148,17 @@ struct
    fun codeGen 
         { genFail : unit -> 'exp,
           genOk,   
+          genPath,   
           genBind,   
           genCase,
           genIf   : Guard.guard * 'exp * 'exp -> 'exp,
-          genGoto : int * Var.var list -> 'exp, (* call a function *)
-          genFun  : int * Var.var list * 'exp -> 'decl, (* function def *)
+          genGoto,
+          genFun, 
           genLet  : 'decl list * 'exp -> 'exp,
           genProj : path * (path option * index) list -> 'decl,
           genVar  : path -> Var.var,
-          genVal  : Var.var * 'exp -> 'decl
+          genVal  : Var.var * 'exp -> 'decl,
+          genCont 
         } (root, dfa) = 
    let
        val ROOT{dfa, used, ...} = dfa
@@ -1098,7 +1201,7 @@ struct
            end
  
            (* expand the dfa always *)
-       and expandDfa(DFA{stamp, test, ...}, workList) =  
+       and expandDfa(DFA{stamp, test, freeVars, ...}, workList) =  
               (case test of
                 (* action *)
                 OK(rule_no, action) => (genOk(action), workList)
@@ -1109,13 +1212,16 @@ struct
                 let val (code, workList) = walk(dfa, workList)
                     val bindings = 
                        Subst.foldri 
-                       (fn (v,PVAR p,b) => (v,p)::b
+                       (fn (v,PVAR p,b) => (v,genPath p)::b
                          | (v,VAR v',b) => b
-                         (* | (p,PVAR p',b) => (genVar p',p)::b *)
                        ) [] subst
                 in  (genLet(genBind bindings, code), workList)
                 end
-              | WHERE(GUARD(ref g), yes, no) =>
+              | LET(path, (_, e), dfa) =>
+                let val (code, workList) = walk(dfa, workList)
+                in  (genLet(genBind [(genVar path,e)], code), workList)
+                end
+              | WHERE(g, yes, no) =>
                 let val (yes, no, workList) = expandYesNo(yes, no, workList)
                 in  (genIf(g, yes, no), workList)
                 end
@@ -1144,6 +1250,10 @@ struct
                 let val (body, workList) = walk(body, workList)
                     val bindings = map (fn (p,v) => (SOME p,v)) bindings
                 in  (genLet([genProj(path, bindings)], body), workList)
+                end
+              | CONT(k, body) =>
+                let val (body, workList) = walk(body, workList)
+                in  (genLet([genCont(k, stamp, mkVars freeVars)],body),workList)
                 end
               )
 

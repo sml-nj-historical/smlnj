@@ -5,6 +5,7 @@ struct
 
    datatype decl = 
      DATATYPEdecl of datatypebind list * typebind list
+   | EXCEPTIONdecl of exceptionbind list
    | FUNdecl of funbind list
    | RTLdecl of pat * exp * loc
    | RTLSIGdecl of id list * ty
@@ -14,11 +15,13 @@ struct
    | LOCALdecl of decl list * decl list
    | SEQdecl of decl list 
    | STRUCTUREdecl of id * decl list * sigexp option * structexp
+   | FUNCTORdecl of id * decl list * sigexp option * structexp
    | STRUCTURESIGdecl of id * sigexp
    | SIGNATUREdecl of id * sigexp
    | SHARINGdecl of share list
    | OPENdecl of ident list
    | FUNCTORARGdecl of id * sigexp
+   | INCLUDESIGdecl of sigexp
    | INFIXdecl of int * id list
    | INFIXRdecl of int * id list
    | NONFIXdecl of id list
@@ -59,6 +62,7 @@ struct
                  | STRINGlit of string
                  | CHARlit of char
                  | BOOLlit of bool
+                 | REALlit of string
    
    and      exp  = LITexp of literal
                  | IDexp of ident
@@ -77,19 +81,20 @@ struct
                  | LAMBDAexp of clause list
                  | MARKexp of loc * exp
 
-                   (* MD extensions *)
+                   (* MDL extensions *)
                  | BITSLICEexp of exp * range list
                  | LOCexp of id * exp * id option
                  | ASMexp of assembly
                  | TYPEexp of ty
                  | RTLexp of rtl
+                 | CONTexp of exp * id
 
    and ety       = I8 | I16 | I32 | I64 | FSINGLE | FDOUBLE
 
    and assemblycase = LOWERCASE | UPPERCASE | VERBATIM
 
    and structexp = IDsexp of ident
-                 | APPsexp of ident * structexp
+                 | APPsexp of structexp * structexp
                  | DECLsexp of decl list
                  | CONSTRAINEDsexp of structexp * sigexp
 
@@ -109,14 +114,18 @@ struct
    and tvkind = INTkind | TYPEkind
 
    and        pat   = IDpat of id
+                    | CONSpat of ident * pat option
                     | WILDpat
                     | ASpat of id * pat
                     | LITpat of literal
                     | LISTpat of pat list * pat option
                     | TUPLEpat of pat list
                     | RECORDpat of (id * pat) list * bool
+                    | NOTpat of pat
                     | ORpat of pat list
-                    | CONSpat of ident * pat option
+                    | ANDpat of pat list
+                    | WHEREpat of pat * exp 
+                    | NESTEDpat of pat * exp * pat
 
    and  ident = IDENT of id list * id 
 
@@ -153,6 +162,9 @@ struct
              {id:id,tyvars:tyvar list,mc : opcodeencoding,asm : bool,
               field:id option,cbs:consbind list}
                       | DATATYPEEQbind of {id:id, tyvars:tyvar list, ty:ty}
+
+   and   exceptionbind = EXCEPTIONbind of id * ty option
+                       | EXCEPTIONEQbind of id * ident
 
    and   consbind     = 
          CONSbind of {id : id,ty:ty option,mc : mc option,

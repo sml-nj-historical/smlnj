@@ -1,9 +1,5 @@
-(*
- * This library contains the definitions of the MLRISC IR 
- * and simple optimizations.
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature CFG2CLUSTER
 	signature CFG_UTIL
 	signature CLUSTER2CFG
@@ -41,19 +37,11 @@ Library
 	functor ReshapeBranches
 	functor StaticBranchPrediction
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
@@ -61,19 +49,41 @@ is
 	Visual.cm
 	ir.cm
 	MLTREE.cm
-
-	(* These provide a graph view for clusters.  Required if you 
-	 * want to perform any non-trivial analysis on the program.
-	 * Also required if you want to use the visualization stuff on clusters.
-	 *)
+#else
+	$/smlnj-lib.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/Visual.cm
+	$/ir.cm
+	$/MLTREE.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLTREE.cm
+#endif
+#else
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLTREE.cm
+#endif
 	../cluster/clusterGraph.sig
 	../cluster/clusterGraph.sml
 	../cluster/clusterViewer.sig
 	../cluster/clusterViewer.sml
-
-	(* MLRISC IR for optimizations. These are necessary only if you want
-	 * to use various optional MLRISC optimizations.
-	 *)
 	../IR/dataflow.sig
 	../IR/dataflow.sml
 	../IR/mlrisc-branch-chaining.sml
@@ -99,9 +109,5 @@ is
 	../IR/mlrisc-preheaders.sml
 	../IR/mlrisc-reshape-branches.sml
 	../IR/static-branch-prediction.sml
-	
-	(* Glue modules.  These are required only if you want to 
-	 * play with optimizations.
-	 *)
 	../Glue/mlrisc-glue.sig
 	../Glue/mlrisc-glue.sml

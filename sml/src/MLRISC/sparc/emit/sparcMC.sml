@@ -6,15 +6,15 @@
 
 
 functor SparcMCEmitter(structure Instr : SPARCINSTR
-                       structure Stream : INSTRUCTION_STREAM
                        structure CodeString : CODE_STRING
                       ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
-   structure S = Stream
    structure C = I.C
-   structure Constant = I.Constant
    structure LabelExp = I.LabelExp
+   structure Constant = I.Constant
+   structure T = I.T
+   structure S = T.Stream
    structure P = S.P
    structure W = Word32
    

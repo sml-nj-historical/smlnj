@@ -17,7 +17,7 @@ sig
           gcLabel     : Label.label,                (* label of gc block *)
           returnLabel : Label.label,                (* label of return block *)
           roots       : (C.cell * GC.gctype) list,  (* root set *)
-          stream      : (T.stm,C.regmap, T.mlrisc list) T.stream 
+          stream      : (T.stm,T.mlrisc list) T.stream 
                           (* code generator *)
         } -> unit
 end

@@ -55,17 +55,15 @@ struct
        Dasm.gen md;
        Jumps.gen md; 
        (* DelaySlots.gen md; *)
-       (*
        let val compiled_rtls = RTLComp.compile md
-       in  (* doIt RTLComp.gen compiled_rtls;
+       in  doIt RTLComp.gen compiled_rtls;
            doIt Rewrite.gen compiled_rtls;
            doIt Props.gen compiled_rtls;
            doIt RTLProps.gen compiled_rtls;
-           doIt SSAProps.gen compiled_rtls; *)
-          (*
-           SchedProps.gen rtl *)
+           doIt SSAProps.gen compiled_rtls; 
+           (* doIt SchedProps.gen compiled_rtls; *)
            RTLComp.dumpLog compiled_rtls
-       end; *)
+       end; 
        Comp.Error.log(Comp.Error.status());
        Comp.Error.closeLogFile()
       )

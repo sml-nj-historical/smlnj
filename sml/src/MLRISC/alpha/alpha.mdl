@@ -292,11 +292,11 @@ struct
         | Displace of {base: $GP, disp:int}
     
       datatype operand = 
-          REGop of $GP                 ``<GP>''          rtl: $r[GP]
-        | IMMop of int                 ``<int>''         rtl: immed int
-        | HILABop of LabelExp.labexp   ``hi(<labexp>)''  rtl: hi(labexp)
-        | LOLABop of LabelExp.labexp   ``lo(<labexp>)''  rtl: lo(labexp)
-        | LABop of LabelExp.labexp     ``<labexp>''      rtl: labexp
+          REGop of $GP          ``<GP>''          rtl: $r[GP]
+        | IMMop of int          ``<int>''         rtl: immed int
+        | HILABop of T.labexp   ``hi(<labexp>)''  rtl: hi(labexp)
+        | LOLABop of T.labexp   ``lo(<labexp>)''  rtl: lo(labexp)
+        | LABop of T.labexp     ``<labexp>''      rtl: labexp
    
       (* 
        * When I say ! after the datatype name XXX, it means generate a
@@ -674,7 +674,7 @@ struct
    structure SSA =
    struct
      fun operand(ty, I.REGop r) = T.REG(ty, r)
-       | operand(ty, I.IMMop i) = T.LI i
+       | operand(ty, I.IMMop i) = T.LI(IntInf.fromInt i)
        | operand(ty, _) = error "operand"
    end
 

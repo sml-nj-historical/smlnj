@@ -7,12 +7,8 @@
 
 functor PPC
   (structure PPCInstr : PPCINSTR
-   structure PPCMLTree : MLTREE 
-   structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = PPCInstr and T = PPCMLTree
+   structure ExtensionComp : MLTREE_EXTENSION_COMP where I = PPCInstr 
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
-      sharing PPCMLTree.Region = PPCInstr.Region
-      sharing PPCMLTree.LabelExp = PPCInstr.LabelExp
       sharing PseudoInstrs.I = PPCInstr 
 
    (* 
@@ -28,10 +24,9 @@ functor PPC
   ) : MLTREECOMP = 
 struct
   structure I   = PPCInstr
-  structure T   = PPCMLTree
+  structure T   = I.T
   structure S   = T.Stream
   structure C   = PPCInstr.C
-  structure LE  = I.LabelExp
   structure W32 = Word32
   structure A   = MLRiscAnnotations
 
@@ -160,7 +155,7 @@ struct
 
       fun emitBranch{bo, bf, bit, addr, LK} = 
       let val fallThrLab = Label.newLabel""
-          val fallThrOpnd = I.LabelOp(LE.LABEL fallThrLab)
+          val fallThrOpnd = I.LabelOp(T.LABEL fallThrLab)
       in
           emit(I.BC{bo=bo, bf=bf, bit=bit, addr=addr, LK=LK, fall=fallThrOpnd});
           defineLabel fallThrLab
@@ -191,17 +186,14 @@ struct
            in loadImmedHiLo(hi, lo, rt, an) 
 	   end
 
-      fun loadLabel(lexp, rt, an) = 
+      fun loadLabexp(lexp, rt, an) = 
           mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, im=I.LabelOp lexp}, an)
-
-      fun loadConst(c, rt, an) = 
-          mark(I.ARITHI{oper=I.ADDI, rt=rt, ra=zeroR, 
-                        im=I.LabelOp(LE.CONST c)}, an)
 
       fun immedOpnd range (e1, e2 as T.LI i) =
            (expr e1, if range i then I.ImmedOp(toInt i) else I.RegOp(expr e2))
-        | immedOpnd _ (e1, T.CONST c) = (expr e1, I.LabelOp(LE.CONST c))
-        | immedOpnd _ (e1, T.LABEL lexp) = (expr e1, I.LabelOp lexp)
+        | immedOpnd _ (e1, x as T.CONST _) = (expr e1, I.LabelOp x)
+        | immedOpnd _ (e1, x as T.LABEL _) = (expr e1, I.LabelOp x)
+        | immedOpnd _ (e1, T.LABEXP lexp) = (expr e1, I.LabelOp lexp)
         | immedOpnd _ (e1, e2) = (expr e1, I.RegOp(expr e2))
 
       and commImmedOpnd range (e1 as T.LI _, e2) = 
@@ -209,6 +201,8 @@ struct
         | commImmedOpnd range (e1 as T.CONST _, e2) = 
            immedOpnd range (e2, e1)
         | commImmedOpnd range (e1 as T.LABEL _, e2) =
+           immedOpnd range (e2, e1)
+        | commImmedOpnd range (e1 as T.LABEXP _, e2) =
            immedOpnd range (e2, e1)
         | commImmedOpnd range arg = immedOpnd range arg
 
@@ -258,8 +252,10 @@ struct
         | stmt(T.CCMV(ccd, ccexp), an) = doCCexpr(ccexp, ccd, an)
         | stmt(T.COPY(_, dst, src), an) = copy(dst, src, an)
         | stmt(T.FCOPY(_, dst, src), an) = fcopy(dst, src, an)
-        | stmt(T.JMP(T.LABEL lexp, labs),an) =
+        | stmt(T.JMP(T.LABEXP lexp, labs),an) =
              mark(I.B{addr=I.LabelOp lexp, LK=false},an)
+        | stmt(T.JMP(x as (T.LABEL _ | T.CONST _), labs),an) =
+             mark(I.B{addr=I.LabelOp x, LK=false},an)
         | stmt(T.JMP(rexp, labs),an) =
           let val rs = expr(rexp)
           in  emit(MTLR(rs));
@@ -299,7 +295,7 @@ struct
 		| T.GEU => (I.FALSE, I.LT)
 	     (*esac*))
             val ccreg = if true then CR0 else newCCreg() (* XXX *)
-	    val addr = I.LabelOp(LE.LABEL lab)
+	    val addr = I.LabelOp(T.LABEL lab)
 	    fun default() = 
 	      (doCCexpr(cmp, ccreg, []);
 	       emitBranch{bo=bo, bf=ccreg, bit=cf, addr=addr, LK=false})
@@ -320,7 +316,7 @@ struct
 		  default()
           end
         | branch(T.CC(cc, cr), lab, an) = 
-          let val addr=I.LabelOp(LE.LABEL lab)
+          let val addr=I.LabelOp(T.LABEL lab)
               fun branch(bo, bit) = 
                  emitBranch{bo=bo, bf=cr, bit=bit, addr=addr, LK=false}
           in  case cc of 
@@ -333,7 +329,7 @@ struct
           end  
         | branch(cmp as T.FCMP(fty, cond, _, _), lab, an) = 
           let val ccreg = if true then CR0 else newCCreg() (* XXX *)
-              val labOp = I.LabelOp(LE.LABEL lab)
+              val labOp = I.LabelOp(T.LABEL lab)
               fun branch(bo, bf, bit) = 
                   emitBranch{bo=bo, bf=bf, bit=bit, addr=labOp, LK=false}
               fun test2bits(bit1, bit2) = 
@@ -418,7 +414,7 @@ struct
                                     in  trapLabel := SOME l; l end
                           | SOME l => l
           in  emitBranch{bo=I.TRUE, bf=CR0, bit=I.SO, LK=false,
-                         addr=I.LabelOp(LE.LABEL label)}
+                         addr=I.LabelOp(T.LABEL label)}
           end
 
       (* Generate a load and annotate the instruction *)
@@ -464,9 +460,9 @@ struct
                            rb=expr e1, OE=false, Rc=false}, an)
             )
         | subtract(ty, T.LI i, e2, rt, an) = subfImmed(i, expr e2, rt, an)
-        | subtract(ty, T.CONST c, e2, rt, an) =
+        | subtract(ty, x as (T.CONST _ | T.LABEL _), e2, rt, an) =
              mark(I.ARITHI{oper=I.SUBFIC,rt=rt,ra=expr e2,
-                           im=I.LabelOp(LE.CONST c)},an)
+                           im=I.LabelOp x},an)
         | subtract(ty, e1, e2, rt, an) =
           let val rb = expr e1 val ra = expr e2
           in  mark(I.ARITH{oper=I.SUBF,rt=rt,ra=ra,rb=rb,Rc=false,OE=false},an)
@@ -545,9 +541,10 @@ struct
            case e of
              T.REG(_,rs)  => if C.sameColor(rs,C.lr) then mark(MFLR rt,an)
                              else move(rs,rt,an)
-           | T.LI i       => loadImmed(i, rt, an)
-           | T.LABEL lexp => loadLabel(lexp, rt, an)
-           | T.CONST c    => loadConst(c, rt, an)
+           | T.LI i        => loadImmed(i, rt, an)
+           | T.LABEXP lexp => loadLabexp(lexp, rt, an)
+           | T.CONST _     => loadLabexp(e, rt, an)
+           | T.LABEL _     => loadLabexp(e, rt, an)
 
              (* All data widths *)
            | T.ADD(_, e1, e2) => eCommImm signed16 (I.ADD,I.ADDI,e1,e2,rt,an)

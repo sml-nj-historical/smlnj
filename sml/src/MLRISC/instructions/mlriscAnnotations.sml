@@ -42,15 +42,10 @@ struct
                          get=fn CTRLDEF x => x | e => raise e, 
                          toString=C.toString}
 
-    (*
-     * These annotations specifies definitions and uses                              * for a pseudo instruction.
-     *)
-   val REGINFO = A.new(SOME(fn _ => "REGINFO"))
-                  : (C.cell -> string) A.property
-
    val NO_OPTIMIZATION = A.new(SOME(fn () => "NO_OPTIMIZATION"))
    val CALLGC = A.new(SOME(fn () => "CALLGC"))
    val GCSAFEPOINT = A.new(SOME(fn s => "GCSAFEPOINT: "^s))
+   val GC_INFO = A.new(SOME(fn () => "GC_INFO"))
 
    exception BLOCKNAMES of A.annotations
    val BLOCK_NAMES = A.new'{create=BLOCKNAMES,
@@ -67,6 +62,9 @@ struct
                          create=MARKREG,
                          get=fn MARKREG f => f | e => raise e
                         }
+   val PRINT_CELLINFO = A.new(SOME(fn _ => "PRINT_CELLINFO"))
+           : (C.cell -> string) A.property
+         
    val NO_BRANCH_CHAINING = A.new(SOME(fn () => "NO_BRANCH_CHAINING"))
 
 end

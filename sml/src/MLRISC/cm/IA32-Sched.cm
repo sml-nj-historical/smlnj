@@ -1,8 +1,5 @@
-(*
- * This library contains the superscalar scheduling stuff.
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature X86ARCHITECTURE
 	signature X86_RESERVATION_TABLE
 	structure X86PentiumII
@@ -11,33 +8,49 @@ Library
 	functor X86PipelineRT
 	functor X86SchedProps
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm
 	IA32.cm
 	Sched.cm
 	Region.cm
-	
-	(* X86 scheduler *) 
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/MLRISC.cm
+	$/IA32.cm
+	$/Sched.cm
+	$/Region.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	IA32.cm
+	Sched.cm
+	Region.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	IA32.cm
+	Sched.cm
+	Region.cm
+#endif
 	../x86/scheduling/x86Arch.sig
 	../x86/scheduling/x86ReservationTable.sig
 	../x86/scheduling/x86PairingRT.sml
 	../x86/scheduling/x86PipelineRT.sml
 	../x86/scheduling/x86PentiumII.sml
 	../x86/scheduling/x86PentiumPro.sml
-	(* ../x86/scheduling/x86SchedulingProps.sml *)
-
 	../x86/scheduling/x86SchedProps.sml

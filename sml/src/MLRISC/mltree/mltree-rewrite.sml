@@ -42,8 +42,8 @@ struct
            | T.EXT s => 
                 T.EXT(sext {rexp=rexp, fexp=fexp, ccexp=ccexp, stm=stm} s)
            | T.PHI _ => s 
-           | T.SOURCE _ => s 
-           | T.SINK _ => s 
+           | T.SOURCE => s 
+           | T.SINK => s 
            | T.RTL _ => s
            | T.ASSIGN(ty,x,y) => T.ASSIGN(ty,rexp x, rexp y)
       in doStm stm s end
@@ -54,9 +54,8 @@ struct
       let val e = case e of
              T.REG _ => e
            | T.LI _ => e
-           | T.LI32 _ => e 
-           | T.LIInf _ => e 
            | T.LABEL _ => e 
+           | T.LABEXP _ => e 
            | T.CONST _ => e
            | T.NEG(ty,x)   => T.NEG(ty,rexp x)
            | T.ADD(ty,x,y) => T.ADD(ty,rexp x,rexp y)

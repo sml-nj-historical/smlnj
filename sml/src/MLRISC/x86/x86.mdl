@@ -66,6 +66,7 @@ struct
    and edi       = $r[7]
    and stackptrR = $r[4]
    and ST(x)     = $f[x]
+   and ST0       = $f[0]
    and asmTmpR   = $r[0] (* not used *)
    and fasmTmp   = $f[0] (* not used *)
    and eflags    = $eflags[0]
@@ -97,9 +98,9 @@ struct
       (* Note: Relative is only generated after sdi resolution *)
       datatype operand =
          Immed      of Int32.int	   rtl: int
-       | ImmedLabel of LabelExp.labexp     rtl: labexp
+       | ImmedLabel of T.labexp            rtl: labexp
        | Relative   of int		   (* no semantics given *)
-       | LabelEA    of LabelExp.labexp     rtl: labexp (* XXX *)
+       | LabelEA    of T.labexp            rtl: labexp (* XXX *)
        | Direct     of $GP		   rtl: $r[GP]
           (* pseudo memory register for floating point *)
        | FDirect    of $FP                 rtl: $f[FP]
@@ -907,7 +908,7 @@ struct
    *------------------------------------------------------------------------*)
     structure SSA =
     struct
-       fun operand(ty, I.Immed i) = T.LI(Int32.toInt i)
+       fun operand(ty, I.Immed i) = T.LI(T.I.fromInt32(32,i))
          (*| operand(ty, I.ImmedLabel le) = T.LABEL le*)
          | operand(ty, I.Direct r) = T.REG(ty, r)
          | operand _ = error "operand"

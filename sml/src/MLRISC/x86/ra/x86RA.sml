@@ -229,7 +229,10 @@ struct
 
     fun spillFreg{src, reg, spillLoc, annotations=an} = 
        (floatSpillCnt := !floatSpillCnt + 1;
-        [I.FLDL(I.FDirect(src)), I.FSTPL(getFregLoc(an, spillLoc))]
+        let val fstp = [I.FSTPL(getFregLoc(an, spillLoc))]
+        in  if C.sameColor(src,C.ST0) then fstp
+            else I.FLDL(I.FDirect(src))::fstp
+        end
        )
 
    fun spillFcopyTmp{copy=I.FCOPY{dst, src, ...}, spillLoc, 
@@ -256,7 +259,10 @@ struct
 
     fun reloadFreg{dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
-         [I.FLDL(getFregLoc(an, spillLoc)), I.FSTPL(I.FDirect dst)]
+         if C.sameColor(dst,C.ST0) then 
+            [I.FLDL(getFregLoc(an, spillLoc))]
+         else  
+            [I.FLDL(getFregLoc(an, spillLoc)), I.FSTPL(I.FDirect dst)]
         )
 
     (* -------------------------------------------------------------------

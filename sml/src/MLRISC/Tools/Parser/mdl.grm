@@ -29,10 +29,9 @@ fun p2s p = PP.text(AstPP.pat p)
 fun e2s e = PP.text(AstPP.exp e)
 fun ps2s ps = PP.text(PP.concat(map AstPP.pat ps))
 
-fun precErr err loc msg = err(loc,msg)
-
-fun STRINGexp s = LITexp(STRINGlit s)
 fun BOOLexp b = LITexp(BOOLlit b)
+
+fun precErr err loc msg = err(loc,msg)
 
 fun parseExp precStack err loc toks =
     Prec.parse{error=precErr err loc,app=APPexp,tuple=TUPLEexp,
@@ -43,9 +42,11 @@ fun parsePat precStack err loc toks =
 let fun appPat (IDpat id,p) = CONSpat(IDENT([],id),SOME p)
       | appPat (CONSpat(id,NONE),p) = CONSpat(id,SOME p)
       | appPat (p1,p2) = (err(loc,"pattern "^p2s p1^" "^p2s p2); p1)
-in  Prec.parse{error=precErr err loc,app=appPat,tuple=TUPLEpat,
+in  case Prec.parse{error=precErr err loc,app=appPat,tuple=TUPLEpat,
                id=IDpat, stack= !precStack, kind="pattern",
-               toString=p2s} toks
+               toString=p2s} toks of
+      CONSpat(IDENT([],"not"),SOME p) => NOTpat p
+    | p => p     
 end
 
 fun parseFunPat precStack err loc toks = 
@@ -98,6 +99,9 @@ fun enumExp'(err, loc, es, id) =
                   | e => (err(loc,"bad expression "^PP.text(AstPP.exp e)); e)
                 ) es
 
+fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
+  | clause(pats, guard, SOME x, e) = CLAUSE(pats, guard, CONTexp(e, x))
+
 %%
 %header (functor MDLParser(structure Token   : TOKEN
                            structure AstPP   : MDL_AST_PRETTY_PRINTER
@@ -121,7 +125,7 @@ fun enumExp'(err, loc, es, id) =
         HANDLE | LET | STRUCTURE | FUNCTOR | SIGNATURE | SIG | STRUCT | WHERE |
 	SHARING | INSTRUCTION | REGISTER | CELL | CELLS | ORDERING |
         FIELD | FIELDS | VLIW | SUPERSCALAR | SIGNED | UNSIGNED |
-	FORMATS | AS | ENCODING | WITHTYPE | FUN | VAL | INCLUDE | OPEN |
+	FORMATS | AS | ENCODING | WITHTYPE | FUN | VAL | INCLUDE | OPEN | OP |
 	LITTLE | BIG | ENDIAN | PIPELINE | PREDICATED |
         LOWERCASE | UPPERCASE | VERBATIM | WHEN | BRANCHING | TAKEN |
         ASSEMBLY | RTL | SPAN | DEPENDENT | ASSIGN | DELAYSLOT | 
@@ -130,11 +134,14 @@ fun enumExp'(err, loc, es, id) =
         ASM_COLON | MC_COLON | RTL_COLON | DELAYSLOT_COLON | NULLIFIED_COLON |
 	PADDING_COLON | CANDIDATE_COLON | AGGREGABLE | ALIASING |
 	RESOURCE | CPU | RESERVATION | TABLE | LATENCY | EQUATION | 
+	EXCEPTION |
 	ID of string |
 	SYMBOL of string |
 	TYVAR of string |
 	WORD of Word32.word | 
 	INT of int |
+	INTINF of IntInf.int |
+	REAL of string |
 	STRING of string |
 	CHAR of char |
 	ASMTEXT of string |
@@ -162,6 +169,8 @@ fun enumExp'(err, loc, es, id) =
 	 newScope of unit |
 	 oldScope of unit |
 	 mldecls of decl list |
+	 exceptionbind of exceptionbind |
+	 exceptionbinds of exceptionbind list |
 	 decl of decl |
 	 locdecl of loc * decl |
 	 loc of loc |
@@ -178,6 +187,7 @@ fun enumExp'(err, loc, es, id) =
 	 exp of exp |
 	 guard of exp option |
 	 funguard of exp option |
+	 cont of id option |
 	 region of id option |
 	 opt_exp of exp option |
 	 exps of exp list |
@@ -197,6 +207,7 @@ fun enumExp'(err, loc, es, id) =
 	 pats1 of pat list |
 	 pats2 of pat list |
 	 orpats2 of pat list |
+	 andpats2 of pat list |
 	 labpat of id * pat |
 	 labpats0 of (id * pat) list * bool |
 	 labpats of (id * pat) list  * bool|
@@ -215,11 +226,15 @@ fun enumExp'(err, loc, es, id) =
          unsignedint_opt of Word32.word option |
 	 width of width |
          int of int |
+         intopt of int |
+         intinf of IntInf.int |
+         real of string |
 	 endianess of endianess |
 	 kind of archKind |
 	 string of string |
 	 char of char |
 	 bool of bool |
+	 literal of literal |
 	 slice of int * int |
 	 slices of (int * int) list |
 	 storagedecl of storagedecl |
@@ -303,7 +318,9 @@ fun enumExp'(err, loc, es, id) =
 	 latencybinds of latencybind list |
 	 latencybind of latencybind |
          latencyclauses of (id * pat * exp) list |
-         latencyclause of (id * pat * exp) 
+         latencyclause of (id * pat * exp) |
+	 optsemi of unit
+
 
 %verbose
 %nodefault
@@ -334,9 +351,12 @@ decls:			  	([])
 mldecls:			([])
 |		mldecl mldecls	(mldecl::mldecls)
 
-decl:		mldecl	(mldecl)
-|		mddecl	(mddecl)
-|		INCLUDE string 
+optsemi:				()
+|		SEMICOLON optsemi	()
+
+decl:		mldecl optsemi	(mldecl)
+|		mddecl optsemi	(mddecl)
+|		INCLUDE string optsemi
 		(SEQdecl(import
                   (SourceMap.location srcMap 
                       (INCLUDEleft,stringright), string)))
@@ -451,11 +471,21 @@ mymldecl:	DATATYPE datatypebinds withtypeclause
 			(STRUCTUREdecl(id,functorarg,NONE,structexp))
 |		FUNCTOR id LPAREN functorarg RPAREN COLON sigexp EQ structexp
 			(STRUCTUREdecl(id,functorarg,SOME sigexp,structexp))
+|		FUNCTOR id EQ structexp (FUNCTORdecl(id,[],NONE,structexp))
 |		SHARING sharingdecls (SHARINGdecl sharingdecls)
-|		INFIX int syms (Infix precStack (int,syms); INFIXdecl(int,syms))
-|		INFIXR int syms (Infixr precStack (int,syms); INFIXRdecl(int,syms))
+|		INFIX intopt syms (Infix precStack (intopt,syms); INFIXdecl(intopt,syms))
+|		INFIXR intopt syms (Infixr precStack (intopt,syms); INFIXRdecl(intopt,syms))
 |		NONFIX syms (Nonfix precStack (syms); NONFIXdecl(syms))
 |		OPEN idents (OPENdecl(idents))
+|		INCLUDE sigexp (INCLUDESIGdecl sigexp)
+|		EXCEPTION exceptionbinds (EXCEPTIONdecl exceptionbinds)
+
+exceptionbinds: exceptionbind			 ([exceptionbind])
+|		exceptionbind AND exceptionbinds (exceptionbind::exceptionbinds)
+
+exceptionbind:	id 		(EXCEPTIONbind(id,NONE))
+|		id OF ty	(EXCEPTIONbind(id,SOME ty))
+|		id EQ ident	(EXCEPTIONEQbind(id,ident))
 
 
 functorarg:	scopeddecls		(scopeddecls)
@@ -507,10 +537,12 @@ rtlterm:	string	(LITrtl string)
 |		sym	(IDrtl sym)
 |		HASH id (COMPOSITErtl id)
 
-structexp:	ident				(IDsexp ident)
-|		ident LPAREN scopeddecls RPAREN	(APPsexp(ident,DECLsexp scopeddecls))
-|		ident LPAREN ident RPAREN	(APPsexp(ident1,IDsexp ident2))
-|		STRUCT scopeddecls END		(DECLsexp scopeddecls)
+structexp:	ident			(IDsexp ident)
+|		STRUCT scopeddecls END	(DECLsexp scopeddecls)
+|		structexp LPAREN scopeddecls RPAREN 
+			(APPsexp(structexp,DECLsexp scopeddecls))
+|		structexp LPAREN ident RPAREN
+			(APPsexp(structexp,IDsexp ident))
 
 datatypebinds:	datatypebind			([datatypebind])
 |		datatypebind AND datatypebinds	(datatypebind::datatypebinds)
@@ -702,14 +734,19 @@ valbinds:	valbind			([valbind])
 
 valbind:	pat EQ exp		(VALbind(pat,exp))
 
-aexp:		word			(LITexp(WORD32lit word))
-|		int			(LITexp(INTlit int))
-|		string			(STRINGexp string)
-|		char			(LITexp(CHARlit char))
-|		bool			(BOOLexp bool)
+literal:	word			(WORD32lit word)
+|		int			(INTlit int)	
+|		intinf			(INTINFlit intinf)	
+|		string			(STRINGlit string)	
+|		char			(CHARlit char)	
+|		bool			(BOOLlit bool)	
+|		real			(REALlit real)	
+
+aexp:		literal			(LITexp literal)
 |		ident2			(IDexp ident2)
 |		HASH id			(TYPEexp(TYVARty(INTtv id))) 
-|		LPAREN symb RPAREN	(IDexp (IDENT([],symb)))
+|		OP symb			(IDexp(IDENT([],symb)))
+|		LPAREN symb RPAREN	(IDexp(IDENT([],symb)))
 |		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))
 |		LDQUOTE asms RDQUOTE	(ASMexp(ASMasm asms))
 |		LPAREN RPAREN		(TUPLEexp [])
@@ -739,6 +776,7 @@ aexp:		word			(LITexp(WORD32lit word))
                             NONE) 
                  end
                 )
+|		LET decls IN expseq END	(LETexp(decls,expseq))
 
 region:		  (NONE)
 |	COLON id (SOME id) 
@@ -769,7 +807,6 @@ exp: 		appexp			(parseExp precStack err
 |		FN clauses		(LAMBDAexp clauses)
 |		exp HANDLE clauses	(HANDLEexp(exp,clauses))
 |		RAISE exp		(RAISEexp exp)
-|		LET decls IN expseq END	(LETexp(decls,expseq))
 
 expseq:		exp			([exp])
 |		exp SEMICOLON expseq	(exp::expseq)
@@ -785,17 +822,17 @@ exps:			([])
 |		exps1	(exps1)
 
 apat:		ident2				(CONSpat(ident2,NONE))
-|		int				(LITpat(INTlit int))
-|		word				(LITpat(WORD32lit word))
-|		string				(LITpat(STRINGlit string))
-|		bool				(LITpat(BOOLlit bool))
-|		char				(LITpat(CHARlit char))
+|		literal				(LITpat literal)
 |		WILD				(WILDpat)
 |		LPAREN RPAREN			(TUPLEpat [])
 |		LBRACKET pats RBRACKET		(LISTpat(pats,NONE))
 |		LPAREN pats2 RPAREN		(TUPLEpat pats2)
 |		LPAREN orpats2 RPAREN		(ORpat orpats2)
+|		LPAREN andpats2 RPAREN		(ANDpat andpats2)
 |		LPAREN pat RPAREN		(pat)
+|		LPAREN pat WHERE exp RPAREN	(WHEREpat(pat,exp))
+|		LPAREN pat WHERE exp IN pat RPAREN	
+						(NESTEDpat(pat1,exp,pat2))
 |		LBRACE labpats0 RBRACE		(RECORDpat(labpats0))
 |		sym CONCAT LBRACKET pats RBRACKET 
                 (let val loc = SourceMap.location srcMap 
@@ -819,8 +856,12 @@ apat:		ident2				(CONSpat(ident2,NONE))
 orpats2:	pat BAR pat	([pat1,pat2])
 |		pat BAR orpats2	(pat::orpats2)
 
+andpats2:	pat AND pat		([pat1,pat2])
+|		pat AND andpats2	(pat::andpats2)
+
 apat2:		apat			(Prec.EXP apat)
 |		sym			(Prec.ID sym)
+|		OP sym			(Prec.ID sym)
 
 apppat:		apat2			([apat2])
 |		apppat apat2		(apppat@[apat2])
@@ -851,8 +892,13 @@ labpats:	labpat			([labpat],false)
 labpat:		sym		(sym,IDpat sym)
 |		sym EQ pat	(sym,pat)
 |		sym AS pat 	(sym,ASpat(sym,pat))
+|		sym WHERE exp	(sym,WHEREpat(IDpat sym,exp))
+|		sym WHERE exp IN pat (sym,NESTEDpat(IDpat sym,exp,pat))
 
-clause:		pat guard DARROW exp	(CLAUSE([pat],guard,exp))
+clause:		pat guard cont DARROW exp	(clause([pat],guard,cont,exp))
+
+cont:				(NONE)
+|		EXCEPTION id	(SOME id) 
 
 guard:				(NONE)
 |		WHERE exp	(SOME exp)
@@ -860,15 +906,15 @@ guard:				(NONE)
 clauses:	clause			([clause])
 |		clause BAR clauses	(clause::clauses)
 
-funclause:	apppat funguard EQ exp	
+funclause:	apppat funguard cont EQ exp	
                 (let val loc = SourceMap.location srcMap (apppatleft,expright)
                  in case parseFunPat precStack err loc apppat of
-                      (SOME f,ps) => (f,CLAUSE(ps,funguard,exp))
+                      (SOME f,ps) => (f,clause(ps,funguard,cont,exp))
                     | (NONE,ps) => 
                       (err(loc,
                            "in clause "^
                              PP.text(AstPP.clause (CLAUSE(ps,funguard,exp))));
-                       ("dummy",CLAUSE(ps,funguard,exp)))
+                       ("dummy",clause(ps,funguard,cont,exp)))
                  end
                 )
 
@@ -951,6 +997,13 @@ locbinds:	locbind			([locbind])
 word:		WORD (WORD)
 
 int:		INT (INT)
+
+intopt:		int	(int)
+|			(0)
+
+intinf:		INTINF	(INTINF)
+
+real:		REAL	(REAL)
 
 aliasing:			(NONE)
 |		ALIASING  id	(SOME id)

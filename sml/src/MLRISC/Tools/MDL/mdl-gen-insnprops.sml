@@ -9,7 +9,7 @@ struct
    structure RTLComp  = RTLComp
    structure Comp     = RTLComp.Comp
    structure Ast      = Comp.Ast
-   structure MLRisc   = RTLComp.MLRiscTypes
+   structure M        = RTLComp.MLRiscTypes
 
    open Ast Comp.Util
 
@@ -78,22 +78,35 @@ struct
        val hashOpn       = DUMMYfun "hashOpn"
 
        fun mkDefUse(cellKind as CELLdecl{id, ...}) = 
-       let fun def(x,exp,d) = 
-               if MLRisc.ofCellKind(exp,cellKind) then SOME(cons(x,d))
+       let val {get, decl} = M.getOpnd
+                [("int", M.IGNORE),
+                 ("int32", M.IGNORE),
+                 ("intinf", M.IGNORE),
+                 ("word", M.IGNORE),
+                 ("word32", M.IGNORE),
+                 ("label", M.IGNORE),
+                 ("cells", M.MULTI "x"),
+                 ("cell", M.CONV "x"),
+                 ("cellset", M.MULTI("C.cellSet.get C."^id^" x")),
+                 ("operand", M.IGNORE) (* XXX *)
+                ]
+
+           fun defUse(x,exp,L) = 
+               if M.ofCellKind(exp,cellKind) then SOME(get(x,exp,L))
                else NONE
-           fun use(x,exp,u) = 
-               if MLRisc.ofCellKind(exp,cellKind) then SOME(cons(x,u))
-               else NONE
+
        in  RTLComp.mkDefUseQuery compiled_rtls 
              {name="defUse"^id,
-              decls=[],
-              def=def,
-              use=use
+              decls=[decl],
+              args=[["instr"]],
+              namedArguments=false,
+              def=defUse,
+              use=defUse
              }
        end
 
-       val defUseFuns    = SEQdecl(Comp.forallUserCellKinds md mkDefUse)
-       val defUse        = Comp.mkQueryByCellKind md "defUse"
+       val defUseFuns = SEQdecl(Comp.forallUserCellKinds md mkDefUse)
+       val defUse     = Comp.mkQueryByCellKind md "defUse"
 
        (* The functor *)
        val strBody = 

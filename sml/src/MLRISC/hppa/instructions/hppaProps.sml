@@ -86,7 +86,7 @@ struct
   fun loadImmed{immed,t} = 
       I.LDO{i=if #lo immedRange <= immed andalso immed <= #hi immedRange 
               then I.IMMED immed
-              else I.LabExp(LE.INT immed,I.F),b=zeroR,t=t}
+              else I.LabExp(I.T.LI(I.T.I.fromInt(32,immed)),I.F),b=zeroR,t=t}
   fun loadOperand{opn,t} = I.LDO{i=opn,b=zeroR,t=t}
 
   fun setTargets(I.BCOND{cmp,bc,r1,r2,t,f,n,nop},[F,T]) =

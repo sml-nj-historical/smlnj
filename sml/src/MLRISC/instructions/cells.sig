@@ -16,13 +16,20 @@ sig
              and type cellkindInfo = CellsBasis.cellkindInfo
              and type cell         = CellsBasis.cell
              and type HashTable.hash_table = CellsBasis.HashTable.hash_table
+             and type ColorTable.hash_table = CellsBasis.ColorTable.hash_table
          sharing SortedCells = CellsBasis.SortedCells
 
    exception Cells
 
    val cellkinds : cellkind list  (* list of all the cellkinds *)
 
+
+      (*
+       * For internal use only. 
+       *)
    val firstPseudo : cell_id      (* first pseudo register *)
+   val cellkindDesc : cellkind -> cellkindDesc (* find descriptor *)
+   val cellCounter  : int ref
 
        (* given a cellkind returns its encoding range *)
    val cellRange : cellkind -> {low:int, high:int}

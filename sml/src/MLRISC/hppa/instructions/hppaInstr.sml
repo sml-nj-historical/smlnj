@@ -8,10 +8,13 @@
 signature HPPAINSTR =
 sig
    structure C : HPPACELLS
+   structure T : MLTREE
+   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
-   structure LabelExp: LABELEXP
    structure Region : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region = T.Region
    datatype fmt =
      SGL
    | DBL
@@ -208,9 +211,9 @@ sig
    datatype operand =
      REG of C.cell
    | IMMED of int
-   | LabExp of (LabelExp.labexp * field_selector)
-   | HILabExp of (LabelExp.labexp * field_selector)
-   | LOLabExp of (LabelExp.labexp * field_selector)
+   | LabExp of (T.labexp * field_selector)
+   | HILabExp of (T.labexp * field_selector)
+   | LOLabExp of (T.labexp * field_selector)
    datatype addressing_mode =
      DISPea of (C.cell * operand)
    | INDXea of (C.cell * C.cell)
@@ -265,14 +268,14 @@ sig
    | PHI of {}
 end
 
-functor HppaInstr(structure LabelExp : LABELEXP
-                  structure Region   : REGION
+functor HppaInstr(LabelExp : LABELEXP
                  ) : HPPAINSTR =
 struct
    structure C = HppaCells
-   structure Region = Region
    structure LabelExp = LabelExp
-   structure Constant = LabelExp.Constant
+   structure T = LabelExp.T
+   structure Region = T.Region
+   structure Constant = T.Constant
    datatype fmt =
      SGL
    | DBL
@@ -469,9 +472,9 @@ struct
    datatype operand =
      REG of C.cell
    | IMMED of int
-   | LabExp of (LabelExp.labexp * field_selector)
-   | HILabExp of (LabelExp.labexp * field_selector)
-   | LOLabExp of (LabelExp.labexp * field_selector)
+   | LabExp of (T.labexp * field_selector)
+   | HILabExp of (T.labexp * field_selector)
+   | LOLabExp of (T.labexp * field_selector)
    datatype addressing_mode =
      DISPea of (C.cell * operand)
    | INDXea of (C.cell * C.cell)

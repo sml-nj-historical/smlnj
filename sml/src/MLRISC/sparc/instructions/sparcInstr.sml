@@ -8,10 +8,13 @@
 signature SPARCINSTR =
 sig
    structure C : SPARCCELLS
+   structure T : MLTREE
+   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
-   structure LabelExp: LABELEXP
    structure Region : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region = T.Region
    datatype load =
      LDSB
    | LDSH
@@ -184,9 +187,9 @@ sig
    datatype operand =
      REG of C.cell
    | IMMED of int
-   | LAB of LabelExp.labexp
-   | LO of LabelExp.labexp
-   | HI of LabelExp.labexp
+   | LAB of T.labexp
+   | LO of T.labexp
+   | HI of T.labexp
    type addressing_mode = (C.cell * operand)
    datatype instruction =
      LOAD of {l:load, d:C.cell, r:C.cell, i:operand, mem:Region.region}
@@ -230,14 +233,14 @@ sig
    | PHI of {}
 end
 
-functor SparcInstr(structure LabelExp : LABELEXP
-                   structure Region   : REGION
+functor SparcInstr(LabelExp : LABELEXP
                   ) : SPARCINSTR =
 struct
    structure C = SparcCells
-   structure Region = Region
    structure LabelExp = LabelExp
-   structure Constant = LabelExp.Constant
+   structure T = LabelExp.T
+   structure Region = T.Region
+   structure Constant = T.Constant
    datatype load =
      LDSB
    | LDSH
@@ -410,9 +413,9 @@ struct
    datatype operand =
      REG of C.cell
    | IMMED of int
-   | LAB of LabelExp.labexp
-   | LO of LabelExp.labexp
-   | HI of LabelExp.labexp
+   | LAB of T.labexp
+   | LO of T.labexp
+   | HI of T.labexp
    type addressing_mode = (C.cell * operand)
    datatype instruction =
      LOAD of {l:load, d:C.cell, r:C.cell, i:operand, mem:Region.region}

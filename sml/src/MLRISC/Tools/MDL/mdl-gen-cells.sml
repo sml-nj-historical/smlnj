@@ -159,7 +159,7 @@ struct
        (* create CellsBasis *)
        val applyCellsCommon =
            STRUCTUREdecl("MyCellsCommon",[],NONE,
-             APPsexp(IDENT([],"CellsCommon"),
+             APPsexp(IDsexp(IDENT([],"CellsCommon")),
                DECLsexp
                [$["exception Cells = "^strName,
                   "val firstPseudo = 256"

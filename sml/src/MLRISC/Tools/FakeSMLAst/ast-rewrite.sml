@@ -5,6 +5,7 @@ functor MDLAstRewriter(Ast : MDL_AST) : MDL_AST_REWRITER =
 struct
 
    structure Ast = Ast
+   structure Error = MDLError
 
    type 'a rewriter = ('a -> 'a) -> ('a -> 'a)
 
@@ -44,10 +45,11 @@ struct
                    | LAMBDAexp c => LAMBDAexp(map clause c)
                    | LETexp(d,e) => LETexp(map decl d,map exp e)
                    | TYPEDexp(e,t) => TYPEDexp(exp e,ty t)
-                   | MARKexp(l,e) => MARKexp(l,exp e)
+                   | MARKexp(l,e) => (Error.setLoc l; MARKexp(l,exp e))
                    | LOCexp(id,e,region) => LOCexp(id,exp e,region)
                    | BITSLICEexp(e,slices) => BITSLICEexp(exp e,slices) 
                    | TYPEexp t => TYPEexp(ty t)
+                   | CONTexp(e,x) => CONTexp(exp e,x)
                    | e => e
         in  rwExp exp e end
 
@@ -64,13 +66,21 @@ struct
             | SEQdecl ds => SEQdecl(map decl ds)
             | STRUCTUREdecl(id,ds,s,se) => 
                  STRUCTUREdecl(id,map decl ds,s, sexp se)
+            | FUNCTORdecl(id,ds,s,se) => 
+                 FUNCTORdecl(id, map decl ds,s, sexp se)
+            | INCLUDESIGdecl s => INCLUDESIGdecl(sigexp s)
             | SIGNATUREdecl(id,s) => SIGNATUREdecl(id, sigexp s)
             | STRUCTURESIGdecl(id,s) => STRUCTURESIGdecl(id, sigexp s)
             | OPENdecl ids => OPENdecl ids 
             | FUNCTORARGdecl(id,se) => FUNCTORARGdecl(id, sigexp se)
-            | MARKdecl(l,d) => MARKdecl(l,decl d)
+            | EXCEPTIONdecl ebs => EXCEPTIONdecl(map ebind ebs)
+            | MARKdecl(l,d) => (Error.setLoc l; MARKdecl(l,decl d))
             | d => d
         in rwDecl decl d end
+
+        and ebind(b as EXCEPTIONbind(id,NONE)) = b
+          | ebind(EXCEPTIONbind(id,SOME t)) = EXCEPTIONbind(id,SOME(ty t))
+          | ebind(b as EXCEPTIONEQbind _) = b
 
         and sigexp se = 
             let val se = case se of
@@ -84,7 +94,7 @@ struct
 
         and sexp se =
             let val se = case se of
-                  APPsexp(a,se) => APPsexp(a,sexp se)
+                  APPsexp(a,se) => APPsexp(sexp a,sexp se)
                 | DECLsexp ds => DECLsexp(map decl ds)
                 | CONSTRAINEDsexp(s, si) => CONSTRAINEDsexp(sexp s,sigexp si)
                 | IDsexp _ => se
@@ -119,6 +129,10 @@ struct
                 | CONSpat(id,NONE) => p
                 | CONSpat(id,SOME p) => CONSpat(id,SOME(pat p))
                 | ORpat ps => ORpat(map pat ps)
+                | ANDpat ps => ANDpat(map pat ps)
+                | NOTpat p => NOTpat(pat p)
+                | WHEREpat(p,e) => WHEREpat(pat p,exp e)
+                | NESTEDpat(p,e,p') => NESTEDpat(pat p,exp e,pat p')
             in rwPat pat p end
 
         and fbind(FUNbind(id,c)) = FUNbind(id,map clause c)

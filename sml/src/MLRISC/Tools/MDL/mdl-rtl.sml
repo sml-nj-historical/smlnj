@@ -9,7 +9,6 @@ structure MDLConstant =
      fun hash _ = 0w0
      fun == _ = false
   end
-structure MDLLabelExp = LabelExp(MDLConstant) 
 structure MDLRegion   =
   struct
      type region = unit
@@ -34,7 +33,7 @@ structure MDLExtension =
   end
 
 structure MDLMLTree   =
-  MLTreeF(structure LabelExp=MDLLabelExp
+  MLTreeF(structure Constant=MDLConstant
           structure Region=MDLRegion
           structure Stream=MDLStream
           structure Extension=MDLExtension)      

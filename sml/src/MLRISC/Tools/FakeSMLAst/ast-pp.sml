@@ -19,6 +19,7 @@ struct
    val comma = !! ", "
    val semi = !! "; "
    val cons = !! "::"
+   val dot  = !! "."
    val list = seq(!! "[",comma++goodBreak,!! "]")
    val tuple = seq(!! "(",comma++goodBreak,!! ")")
    val record = seq(!! "{",comma++goodBreak,!! "}")
@@ -52,15 +53,24 @@ struct
    fun ident(IDENT([],id)) = if isSym id then !"op" ++ ! id 
                              else if isAlpha id then !(name id)
                              else sp ++ !id
-     | ident(IDENT(p,id)) = seq(nop,!! ".",nop) (map ! (p @[name id]))
+     | ident(IDENT(p,id)) = seq(nop,dot,nop) (map ! (p @[name id]))
 
    and literal(WORDlit w) = word w
      | literal(WORD32lit w) = word32 w
-     | literal(INTINFlit i) = intinf i
+     | literal(INTINFlit i) = 
+         select
+           (fn "code" =>
+             (!"(IntInf.fromInt" ++ int(IntInf.toInt i)  ++ !!")"
+              handle Overflow =>
+             !"(Option.valOf(IntInt.fromString"++string(IntInf.toString i)++ !!"))"
+             )
+           | _ => intinf i
+           )
      | literal(INTlit i) = int i
      | literal(STRINGlit s) = string s
      | literal(CHARlit c) = char c
      | literal(BOOLlit b) = bool b
+     | literal(REALlit r) = !r
 
    and exp(LITexp l) = literal l
      | exp(IDexp id) = ident id
@@ -112,6 +122,7 @@ struct
          select(fn "pretty" => rtl r
                  | mode => (error mode; nop)
                )
+     | exp(CONTexp(e,x)) = exp e
 
    and rtl r = seq(!"[[",sp,!"]]") (map rtlterm r)
 
@@ -201,11 +212,21 @@ struct
                  decls ds ++ unindent ++
                  tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
                  ! "=" ++ nl ++ sexp se)
+     | decl(FUNCTORdecl(id,[],s,se)) = 
+           line(! "functor" ++ ! id ++ sigexpOpt s ++ ! "=" ++ nl ++ sexp se)
+     | decl(FUNCTORdecl(id,ds,s,se)) = 
+           line(! "functor" ++ ! id ++ settab ++ !! "(" ++ settab ++
+                 decls ds ++ unindent ++
+                 tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
+                 ! "=" ++ nl ++ sexp se)
      | decl(SIGNATUREdecl(id,se)) = 
            line(! "signature" ++ ! id ++ ! "=" ++ sigexp se)
      | decl(OPENdecl ids) = 
            line(! "open" ++ seq(nop,sp,nop)(map ident ids))
+     | decl(INCLUDESIGdecl s) = line(! "include" ++ sigexp s) 
      | decl(FUNCTORARGdecl(id,se)) = ! id ++ ! ":" ++ sigexp se
+     | decl(EXCEPTIONdecl ebs) =
+           line(!"exception" ++ ands(map exceptionbind ebs))
      | decl(SHARINGdecl s) = line(! "sharing" ++ ands(map share s))
      | decl(MARKdecl(l,d)) = 
         nl++ !(SourceMap.directive l) ++nl ++ decl d 
@@ -233,6 +254,10 @@ struct
      | decl(PIPELINEdecl _) = line(!"pipeline ...")
      | decl(LATENCYdecl _) = line(!"latency ...")
 
+   and exceptionbind(EXCEPTIONbind(id,NONE)) = ! id
+     | exceptionbind(EXCEPTIONbind(id,SOME t)) = !id ++ !"of" ++ ty t
+     | exceptionbind(EXCEPTIONEQbind(id,id')) = !id ++ !"=" ++ ident id'
+
    and share(TYPEshare ids) = !"type" ++ seq(nop,! "=",nop) (map ident ids)
      | share(STRUCTshare ids) = seq(nop,! "=",nop) (map ident ids)
 
@@ -247,10 +272,10 @@ struct
      | sigexpOpt (SOME s) = !":" ++ sigexp s
 
    and sexp (IDsexp id) = ident id
-     | sexp (APPsexp(a,DECLsexp ds)) = ident a ++ nl ++ 
+     | sexp (APPsexp(a,DECLsexp ds)) = sexp a ++ nl ++ 
                              block(line(group("(",")") (decls ds)))
-     | sexp (APPsexp(a,IDsexp id)) = ident a ++ paren(ident id)
-     | sexp (APPsexp(a,b)) = ident a ++ nl ++ paren(sexp b)
+     | sexp (APPsexp(a,IDsexp id)) = sexp a ++ paren(ident id)
+     | sexp (APPsexp(a,b)) = sexp a ++ nl ++ paren(sexp b)
      | sexp (DECLsexp ds) = line(!"struct") ++ block(decls ds) ++ line(!"end")
      | sexp (CONSTRAINEDsexp(s,si)) = sexp s ++ !":" ++ sigexp si
 
@@ -310,14 +335,22 @@ struct
      | pat(RECORDpat(lps,flex)) = 
            record(map labpat lps @ (if flex then [! "..."] else []))
      | pat(CONSpat(id,NONE)) = ident id 
+     | pat(CONSpat(IDENT([],"::"),SOME(TUPLEpat[x,y]))) = 
+           paren(pat x ++ sp ++ !!"::" ++ sp ++ pat y)
+     | pat(CONSpat(id,SOME p)) = ident id ++ ppat p
      | pat(ORpat [p]) = pat p
      | pat(ORpat ps) = 
           if length ps > 10 
           then nl ++ tab ++ seq(! "(",! "|"++nl++tab,! ")") (map pat ps)
           else seq(!! "(", ! "|", !! ")") (map pat ps)
-     | pat(CONSpat(id,SOME p)) = ident id ++ ppat p
+     | pat(ANDpat [p]) = pat p
+     | pat(ANDpat ps) = seq(!! "(",sp ++ !"and" ++ sp, !!")") (map pat ps)
+     | pat(NOTpat p) = !"not" ++ sp ++ pat p
+     | pat(WHEREpat(p,e)) = pat p ++ sp ++ !"where" ++ sp ++ exp e
+     | pat(NESTEDpat(p,e,p')) = pat p ++ sp ++ !"where" ++ sp ++ exp e ++
+                                 sp ++ !"in" ++ sp ++ pat p'    
 
-   and ppat(p as CONSpat _) = paren(pat p)
+   and ppat(p as (CONSpat _ | ASpat _)) = paren(pat p)
      | ppat p = pat p
 
    and pats ps = concat(map pat ps)

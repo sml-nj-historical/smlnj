@@ -135,23 +135,28 @@ struct
    fun cellId(CELL{id, ...}) = id
 
    fun hashCell(CELL{id, ...}) = Word.fromInt id
+   fun hashColor c = Word.fromInt(registerId c)
    fun desc(CELL{desc, ...}) = desc 
    fun sameCell(c1, c2) = cellId(c1) = cellId(c2)
    fun sameDesc(DESC{counter=x, ...}, DESC{counter=y, ...}) = x=y
    fun sameKind(c1, c2) = sameDesc(desc c1,desc c2)
    fun sameAliasedCell(c1, c2) = sameCell(chase c1, chase c2)
    fun sameColor(c1, c2) = registerId c1 = registerId c2
+   fun compareColor(c1, c2) = Int.compare(registerId c1, registerId c2)
    fun cellkind(CELL{desc=DESC{kind, ...}, ...}) = kind
    fun annotations(CELL{an, ...}) = an
 
    fun setAlias{from, to} = 
-   let val CELL{col, ...} = chase from
+   let val CELL{id, col, desc=DESC{kind, ...}, ...} = chase from
        val to as CELL{col=colTo, ...} = chase to
    in  if col = colTo then ()  (* prevent self-loops *)
-       else case !col
-            of PSEUDO => col := ALIASED to
-             | _      => error "setAlias"
+       else if id < 0 then error "setAlias: constant"
+       else case (!col, kind) 
+            of (PSEUDO, _) => col := ALIASED to
+             | _           => error "setAlias: non-pseudo"
    end
+
+   fun isConst(CELL{id, ...}) = id < 0 
 
    (* Pretty printing of cells *)
    fun toString(c as CELL{desc=DESC{toString, ...},...}) = 
@@ -159,6 +164,11 @@ struct
 
    fun toStringWithSize(c as CELL{desc=DESC{toStringWithSize,...},...},sz) = 
         toStringWithSize(registerNum c,sz) 
+
+   fun cnv(r, low, high) = if low <= r andalso r <= high then r - low else r
+   fun show(DESC{toString, low, high, ...}) r = toString(cnv(r,low,high))
+   fun showWithSize(DESC{toStringWithSize, low, high, ...}) (r, sz) = 
+        toStringWithSize(cnv(r,low,high),sz)
 
    structure SortedCells =  struct
       type sorted_cells = cell list
@@ -255,7 +265,11 @@ struct
       HashTableFn(type hash_key = cell
                   val hashVal = hashCell 
                   val sameKey = sameCell)
- 
+
+    structure ColorTable = 
+      HashTableFn(type hash_key = cell
+                  val hashVal = hashColor 
+                  val sameKey = sameColor)
 
     (*
      * These annotations specifies definitions and uses 

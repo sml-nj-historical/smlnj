@@ -71,6 +71,7 @@ functor X86FP
 struct
    structure F  = Flowgraph
    structure I  = X86Instr
+   structure T  = I.T
    structure P  = X86Props
    structure C  = I.C
    structure A  = Array
@@ -1054,10 +1055,10 @@ struct
                val exits   = ref []
 
                (* retarget the branch of block *)
-               fun retarget(I.JMP(I.ImmedLabel(LE.LABEL _), [_])::rest, l) = 
-                     I.JMP(I.ImmedLabel(LE.LABEL l), [l])::rest
-                 | retarget(I.JCC{cond,opnd=I.ImmedLabel(LE.LABEL _)}::rest,l)=
-                     I.JCC{cond=cond,opnd=I.ImmedLabel(LE.LABEL l)}::rest
+               fun retarget(I.JMP(I.ImmedLabel(T.LABEL _), [_])::rest, l) = 
+                     I.JMP(I.ImmedLabel(T.LABEL l), [l])::rest
+                 | retarget(I.JCC{cond,opnd=I.ImmedLabel(T.LABEL _)}::rest,l)=
+                     I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL l)}::rest
                  | retarget(_,l) = error "retarget"
 
                (* Translate repair code to actual block *)

@@ -76,7 +76,7 @@ struct
     fun loadImmed{immed,t} = 
         I.LDA{r=t,b=zeroR,
               d=if #lo immedRange <= immed andalso immed <= #hi immedRange
-              then I.IMMop immed else I.LABop(LE.INT immed)}
+              then I.IMMop immed else I.LABop(I.T.LI(I.T.I.fromInt(64,immed)))}
     fun loadOperand{opn,t} = I.LDA{r=t,b=zeroR,d=opn}
 
     fun setTargets(I.BRANCH{b=I.BR,r as C.CELL{id=31,...}, ...},[L]) = 

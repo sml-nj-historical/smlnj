@@ -1,8 +1,5 @@
-(*
- * This library implements GC safety. 
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature GC_CALLBACK
 	signature GC_LIVENESS
 	signature GC_TYPEMAP
@@ -14,27 +11,45 @@ Library
 	functor GCTypeMap
 	functor GCTypeSystem
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	Graphs.cm
 	MLRISC.cm
 	IR.cm
 	RTL.cm
-
-	(* GC safety stuff *)
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/MLRISC.cm
+	$/IR.cm
+	$/RTL.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	MLRISC.cm
+	IR.cm
+	RTL.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	MLRISC.cm
+	IR.cm
+	RTL.cm
+#endif
 	../gc-safety/gc-gen.sig
 	../gc-safety/gc-gen.sml
 	../gc-safety/gc-liveness.sig

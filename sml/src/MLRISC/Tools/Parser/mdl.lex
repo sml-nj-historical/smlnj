@@ -49,9 +49,16 @@ fun whex(err,s,pos) =
 fun woctal(err,s,pos) = scan err (Word32.scan StringCvt.OCT) (s,strip 3 s) WORD pos
 fun wbinary(err,s,pos) = scan err (Word32.scan StringCvt.BIN) (s,strip 3 s) WORD pos
 fun decimal(err,s,pos) = scan err (Int.scan StringCvt.DEC) (s,s) INT pos
+fun real(err,s,pos) = scan err (Real.scan) (s,s) 
+                       (fn (x,y,z) => REAL(Real.toString x, y, z)) pos
 fun hex(err,s,pos) = scan err (Int.scan StringCvt.HEX) (s,strip 2 s) INT pos
 fun octal(err,s,pos) = scan err (Int.scan StringCvt.OCT) (s,strip 2 s) INT pos
 fun binary(err,s,pos) = scan err (Int.scan StringCvt.BIN) (s,strip 2 s) INT pos
+
+fun decimalinf(err,s,pos) = scan err (IntInf.scan StringCvt.DEC) (s,s) INTINF pos
+fun hexinf(err,s,pos) = scan err (IntInf.scan StringCvt.HEX) (s,strip 2 s) INTINF pos
+fun octalinf(err,s,pos) = scan err (IntInf.scan StringCvt.OCT) (s,strip 2 s) INTINF pos
+fun binaryinf(err,s,pos) = scan err (IntInf.scan StringCvt.BIN) (s,strip 2 s) INTINF pos
 
 fun string(err,s,pos) = 
   STRING(
@@ -88,6 +95,7 @@ val _ = app (HashTable.insert keywords)
  ("handle", HANDLE) $$
  ("let", LET) $$
  ("local", LOCAL) $$
+ ("exception", EXCEPTION) $$
  ("structure", STRUCTURE) $$
  ("signature", SIGNATURE) $$
  ("functor", FUNCTOR) $$
@@ -108,6 +116,7 @@ val _ = app (HashTable.insert keywords)
  ("case", CASE) $$
  ("as", AS) $$
  ("open", OPEN) $$
+ ("op", OP) $$
  ("include", INCLUDE) $$
  ("infix", INFIX) $$
  ("infixr", INFIXR) $$
@@ -170,9 +179,6 @@ val _ = app (HashTable.insert symbols)
   ("=",	EQ) $$
   ("*",	TIMES) $$
   (":",	COLON) $$
-  (".",	DOT) $$
-  ("..", DOTDOT) $$
-  ("...", DOTDOT) $$
   ("|", BAR) $$
   ("->", ARROW) $$
   ("=>", DARROW) $$
@@ -208,7 +214,8 @@ digit=[0-9];
 id=[A-Za-z_][A-Za-z0-9_\']*;
 tyvar=\'{id};
 decimal={digit}+;
-integer=-?{decimal};
+integer=~?{decimal};
+real={integer}\.{decimal}(e{integer})?;
 octal=0[0-7]+;
 hex=0x[0-9a-fA-F]+;
 binary=0b[0-1]+;
@@ -222,8 +229,9 @@ char=#\"([^\\\n\t"]|\\.)*\";
 sym1=(\-|[=\.+~/*:!@#$%^&*|?])+;
 sym2=`+|'+|\<+|\>+|\=\>|~\>\>;
 asmsymbol={sym1}|{sym2};
-symbol=(\-|[=\.+~/*:!@#$%^&*|?<>])+|``|'';
+symbol=(\-|[=+~/*:!@#$%^&*|?<>])+|``|'';
 asmtext=([^\n\t<>']+|');
+inf=i;
 
 %s COMMENT ASM ASMQUOTE;
 
@@ -234,16 +242,21 @@ asmtext=([^\n\t<>']+|');
                                 "newline in assembly text!"); continue());
 <INITIAL>\-\-.*\n	=> (continue());
 <INITIAL>"(*"		=> (commentLevel := 1; YYBEGIN COMMENT; continue());
-<INITIAL,ASM>{decimal}	=> (decimal(err,yytext,yypos));
+<INITIAL,ASM>{integer}	=> (decimal(err,yytext,yypos));
 <INITIAL,ASM>{hex}	=> (hex(err,yytext,yypos));
 <INITIAL,ASM>{octal}	=> (octal(err,yytext,yypos));
 <INITIAL,ASM>{binary}	=> (binary(err,yytext,yypos));
+<INITIAL,ASM>{integer}{inf}	=> (decimalinf(err,yytext,yypos));
+<INITIAL,ASM>{hex}{inf}		=> (hexinf(err,yytext,yypos));
+<INITIAL,ASM>{octal}{inf}	=> (octalinf(err,yytext,yypos));
+<INITIAL,ASM>{binary}{inf}	=> (binaryinf(err,yytext,yypos));
 <INITIAL,ASM>{wdecimal}	=> (wdecimal(err,yytext,yypos));
 <INITIAL,ASM>{whex}	=> (whex(err,yytext,yypos));
 <INITIAL,ASM>{woctal}	=> (woctal(err,yytext,yypos));
 <INITIAL,ASM>{wbinary}	=> (wbinary(err,yytext,yypos));
 <INITIAL,ASM>{string}	=> (string(err,yytext,yypos));
 <INITIAL,ASM>{char}	=> (char(err,yytext,yypos));
+<INITIAL,ASM>{real}	=> (real(err,yytext,yypos));
 <INITIAL,ASM>"$"	=> (if MDLmode then DOLLAR(yypos,yypos+1)
                             else SYMBOL("$",yypos,yypos+1));
 <INITIAL,ASM>"asm:"     => (ASM_COLON(yypos,yypos + size yytext));
@@ -263,7 +276,9 @@ asmtext=([^\n\t<>']+|');
 <INITIAL,ASM>"}"	=> (RBRACE(yypos,yypos+1));
 <INITIAL,ASM>","	=> (COMMA(yypos,yypos+1));
 <INITIAL,ASM>";"	=> (SEMICOLON(yypos,yypos+1));
-
+<INITIAL,ASM>"."	=> (DOT(yypos,yypos+1));
+<INITIAL,ASM>".."	=> (DOTDOT(yypos,yypos+2));
+<INITIAL,ASM>"..."	=> (DOTDOT(yypos,yypos+3));
 <INITIAL>{symbol}	=> (if yytext = !asmLQuote then
 				(debug("lquote "^yytext^"\n");
 				 YYBEGIN ASMQUOTE; 

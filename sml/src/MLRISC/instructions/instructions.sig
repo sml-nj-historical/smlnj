@@ -4,10 +4,13 @@
 signature INSTRUCTIONS =
 sig
    structure C        : CELLS
-   structure Constant : CONSTANT
+   structure T        : MLTREE
    structure LabelExp : LABELEXP
+   structure Constant : CONSTANT
    structure Region   : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region   = T.Region
 
    type operand         (* operand is abstract *)
    type ea              (* effective address is abstract *)

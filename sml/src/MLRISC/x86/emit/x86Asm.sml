@@ -6,17 +6,17 @@
 
 
 functor X86AsmEmitter(structure Instr : X86INSTR
-                      structure Stream : INSTRUCTION_STREAM
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 507.7 "x86/x86.mdl"*)
+(*#line 508.7 "x86/x86.mdl"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
-   structure S  = Stream
+   structure T  = I.T
+   structure S  = T.Stream
    structure P  = S.P
    structure LabelExp = I.LabelExp
    structure Constant = I.Constant
@@ -254,26 +254,26 @@ struct
      | asm_isize (I.I64) = "64"
    and emit_isize x = emit (asm_isize x)
 
-(*#line 509.6 "x86/x86.mdl"*)
+(*#line 510.6 "x86/x86.mdl"*)
    val memReg = MemRegs.memReg
 
-(*#line 510.6 "x86/x86.mdl"*)
+(*#line 511.6 "x86/x86.mdl"*)
    fun emitInt32 i = 
        let 
-(*#line 511.10 "x86/x86.mdl"*)
+(*#line 512.10 "x86/x86.mdl"*)
            val s = Int32.toString i
 
-(*#line 512.10 "x86/x86.mdl"*)
+(*#line 513.10 "x86/x86.mdl"*)
            val s = (if (i >= 0)
                   then s
                   else ("-" ^ (String.substring (s, 1, (size s) - 1))))
        in emit s
        end
 
-(*#line 515.6 "x86/x86.mdl"*)
+(*#line 516.6 "x86/x86.mdl"*)
    val {low=SToffset, ...} = C.cellRange C.FP
 
-(*#line 517.6 "x86/x86.mdl"*)
+(*#line 518.6 "x86/x86.mdl"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -327,13 +327,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 561.7 "x86/x86.mdl"*)
+(*#line 562.7 "x86/x86.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 565.7 "x86/x86.mdl"*)
+(*#line 566.7 "x86/x86.mdl"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -341,10 +341,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 571.7 "x86/x86.mdl"*)
+(*#line 572.7 "x86/x86.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 572.15 "x86/x86.mdl"*)
+(*#line 573.15 "x86/x86.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -353,11 +353,11 @@ struct
           )
        end
 
-(*#line 578.7 "x86/x86.mdl"*)
+(*#line 579.7 "x86/x86.mdl"*)
    fun isST32 (I.ST r) = (C.registerNum r) = 32
      | isST32 _ = false
 
-(*#line 582.7 "x86/x86.mdl"*)
+(*#line 583.7 "x86/x86.mdl"*)
    fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
           then 
           ( emit_fbinOp binOp; 
@@ -377,31 +377,31 @@ struct
             | _ => error "emit_fbinaryOp"
             )))
 
-(*#line 592.7 "x86/x86.mdl"*)
+(*#line 593.7 "x86/x86.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 593.7 "x86/x86.mdl"*)
+(*#line 594.7 "x86/x86.mdl"*)
    val emit_src = emit_operand
 
-(*#line 594.7 "x86/x86.mdl"*)
+(*#line 595.7 "x86/x86.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 595.7 "x86/x86.mdl"*)
+(*#line 596.7 "x86/x86.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 596.7 "x86/x86.mdl"*)
+(*#line 597.7 "x86/x86.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 597.7 "x86/x86.mdl"*)
+(*#line 598.7 "x86/x86.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 598.7 "x86/x86.mdl"*)
+(*#line 599.7 "x86/x86.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 599.7 "x86/x86.mdl"*)
+(*#line 600.7 "x86/x86.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 600.7 "x86/x86.mdl"*)
+(*#line 601.7 "x86/x86.mdl"*)
    val emit_ea = emit_operand
    fun emitInstr' instr = 
        (case instr of

@@ -8,6 +8,7 @@ struct
   structure I = X86Instr
   structure C = I.C
   structure LE = I.LabelExp
+  structure T = I.T 
 
   exception NegateConditional
 
@@ -72,18 +73,18 @@ struct
   fun branchTargets(I.JMP(_, [])) = [ESCAPES]
     | branchTargets(I.JMP(_, labs)) = map LABELLED labs
     | branchTargets(I.RET _) = [ESCAPES]
-    | branchTargets(I.JCC{opnd=I.ImmedLabel(LE.LABEL(lab)), ...}) = 
+    | branchTargets(I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...}) = 
         [FALLTHROUGH, LABELLED lab]
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
-  fun jump label = I.JMP (I.ImmedLabel(LE.LABEL label), [label])
+  fun jump label = I.JMP (I.ImmedLabel(T.LABEL label), [label])
 
   exception NotImplemented
   fun setTargets(I.JMP(I.ImmedLabel _,_),[l]) = jump l
     | setTargets(I.JMP(opnd,_),_) = error "setTargets"
     | setTargets(I.JCC{cond,opnd=I.ImmedLabel _},[f,t]) =
-        I.JCC{cond=cond,opnd=I.ImmedLabel(LE.LABEL t)}
+        I.JCC{cond=cond,opnd=I.ImmedLabel(T.LABEL t)}
     | setTargets(I.JCC _,_) = error "setTargets"
     | setTargets(I.ANNOTATION{i,a},l) = I.ANNOTATION{i=setTargets(i,l),a=a}
     | setTargets(i,_) = i

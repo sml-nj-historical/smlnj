@@ -8,11 +8,9 @@
 functor GCGen
    (structure MLTreeComp : MLTREECOMP
     structure IR         : MLRISC_IR
-    structure GCMap      : GC_MAP
     structure GCCallBack : GC_CALLBACK
     structure InsnProps  : INSN_PROPERTIES
        sharing GCCallBack.T          = MLTreeComp.T
-       sharing GCCallBack.GC         = GCMap.GC
        sharing GCCallBack.C          = IR.I.C 
        sharing MLTreeComp.T.Constant = IR.I.Constant
        sharing MLTreeComp.T.PseudoOp = IR.CFG.P
@@ -24,12 +22,12 @@ struct
    structure T   = MLTreeComp.T
    structure IR  = IR
    structure CFG = IR.CFG
-   structure GC  = GCMap.GC
+   structure GC  = GCCallBack.GC
    structure G   = Graph
    structure A   = Array
    structure Liveness =   
       GCLiveness(structure IR = IR
-                 structure GCMap = GCMap
+                 structure GC = GC
                  structure InsnProps = InsnProps)
 
    structure Gen = CFGGen

@@ -6,7 +6,7 @@ Group
 	signature ENV
 	signature INSTRUCTION_STREAM
 	signature LABEL
-	signature LABELEXP
+	signature MACHINE_INT
 	signature MDL_COMPILE
 	signature MDL_ENV
 	signature MDL_GEN
@@ -38,7 +38,6 @@ Group
 	structure MDLEnv
 	structure MDLExtension
 	structure MDLGen
-	structure MDLLabelExp
 	structure MDLMLTree
 	structure MDLMLTreeFold
 	structure MDLMLTreeRTL
@@ -59,9 +58,9 @@ Group
 	structure MLRiscDefs
 	structure MLRiscTypes
 	structure MLTreeBasis
+	structure MachineInt
 	functor CellsCommon
 	functor InstructionStream
-	functor LabelExp
 	functor MDLCompile
 	functor MDLDummyGen
 	functor MDLEnv
@@ -123,7 +122,6 @@ is
 	../../instructions/region.sig
 	../../instructions/constant.sig
 	../../instructions/labels.sml
-	../../instructions/labelExp.sml
 	../../instructions/pseudoOps.sig
 	../../mltree/mltree-basis.sig
 	../../mltree/mltree-basis.sml
@@ -138,6 +136,8 @@ is
 	../../mltree/mltree-fold.sml
 	../../mltree/mltree-rtl.sig
 	../../mltree/mltree-rtl.sml
+	../../mltree/machine-int.sig
+	../../mltree/machine-int.sml
 	../../mltree/rtl-build.sig
 	../../mltree/rtl-build.sml
 

@@ -1,50 +1,35 @@
 (*
- * This makes a new cell module that automatically propagate gc type info.
+ * This makes a new cell function that automatically propagate gc type info.
  *)
-functor GCCells(structure GCMap : GC_MAP
-                structure C : CELLS
+functor GCCells(structure C : CELLS
+                structure GC : GC_TYPE
                ) : GC_CELLS =
 struct
 
    structure C  = C
-   structure GC = GCMap.GC
-   structure GCMap = GCMap
+   structure GC = GC
   
-   fun error msg = MLRiscErrorMsg.error("GCCells",msg)
-
-   val gcmap = ref NONE : GCMap.gcmap option ref
-
-   fun setGCMap map = gcmap := SOME map
-
-   fun getGCMap() = 
-        case !gcmap of
-          NONE => error "no gc map"
-        | SOME gcmap => gcmap
-
-   fun clearGCMap() = gcmap := NONE
-
    (*
-    * Generate a new virtual register and update the gc map at the same time.
+    * Generate a new virtual register and update the gc information 
+    * at the same time.
     *)
    fun newCell k = 
    let val new = C.newCell k
-       val gcmap = getGCMap()
-       val add  = GCMap.C.HashTable.insert gcmap
+       val set = #set GC.GC_TYPE
        fun genVar gc =
-       let val r = new()
-       in  add(r,gc); r end
+       let val r as C.CELL{an, ...} = new()
+       in  an := set(gc,!an); r end
    in  genVar
    end
 
-   (*
-    * Create a new GC map
-    *)
-   fun newGCMap() =
-   let val gcmap = GCMap.C.HashTable.mkTable(129,GCMap.GCMap)
-   in  case C.zeroReg C.GP of
-         SOME r => GCMap.C.HashTable.insert gcmap (r,GC.CONST 0)
-       | _ => ();
-       gcmap
-   end
+   fun getGCType(C.CELL{an, ...}) = #lookup GC.GC_TYPE (!an)
+   fun setGCType(C.CELL{an, ...}, gc) = an := #set GC.GC_TYPE (gc, !an)
 
+   fun printType(C.CELL{an, ...}) = 
+       case #get GC.GC_TYPE (!an) of
+         SOME ty => ":"^GC.toString ty
+       | NONE    => ":?"
+
+   val GCLIVEOUT = Annotations.new(SOME(fn _ => "GCLIVEOUT")) 
+                     : (C.cell * GC.gctype) list Annotations.property
 end

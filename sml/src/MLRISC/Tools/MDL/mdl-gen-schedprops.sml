@@ -512,14 +512,12 @@ struct
               "     [I.FCOPY{src=[rs], dst=[rd], tmp=NONE"^implInit^"}]",
               "val shuffle = Shuffle.shuffle{mvInstr=move, ea=I.Direct}",
               "val shufflefp = Shuffle.shuffle{mvInstr=fmove, ea=I.FDirect}",
-              "fun splitCopies regmap =",
-              "let fun f(I.ANNOTATION{i,...}) = f i",
-              "      | f(I.COPY{src,dst,tmp,...}) =",
-              "          shuffle{regmap=regmap, tmp=tmp, src=src, dst=dst}",
-              "      | f(I.FCOPY{src,dst,tmp,...}) =",
-              "          shufflefp{regmap=regmap, tmp=tmp, src=src, dst=dst}",
-              "      | f i = [i]",
-              "in  f end" 
+              "fun splitCopies(I.ANNOTATION{i,...}) = splitCopies i",
+              "  | splitCopies(I.COPY{src,dst,tmp,...}) =",
+              "       shuffle{tmp=tmp, src=src, dst=dst}",
+              "  | splitCopies(I.FCOPY{src,dst,tmp,...}) =",
+              "       shufflefp{tmp=tmp, src=src, dst=dst}",
+              "  | splitCopies i = [i]"
              ]
 
        (* The functor *)
@@ -533,11 +531,8 @@ struct
                ""
               ],
             Comp.errorHandler md "SchedProps",
+            RTLComp.complexErrorHandlerDef compiled_rtl,
             $ ["",
-               "fun bug(msg,instr) =",
-               "let val Asm.S.STREAM{emit, ...} = Asm.makeStream []",
-               "in  emit (fn r => r) instr; error msg end",
-               "",
                "val source = I.SOURCE{}",
                "val sink   = I.SINK{}",
                ""

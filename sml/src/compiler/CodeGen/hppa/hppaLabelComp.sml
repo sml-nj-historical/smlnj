@@ -1,13 +1,8 @@
-functor HppaLabelComp
-  (structure MLTree : MLTREE
-   structure Instr : HPPAINSTR
-     sharing Instr.Region = MLTree.Region 
-     sharing Instr.LabelExp = MLTree.LabelExp) : LABEL_COMP = 
+functor HppaLabelComp(Instr : HPPAINSTR) : LABEL_COMP = 
 struct
-  structure T = MLTree
+  structure T = Instr.T
   structure I = Instr
   structure C = I.C
-  structure LE = I.LabelExp
 
   type reduce = 
     { stm: T.stm -> unit, 
@@ -40,8 +35,7 @@ struct
 
   fun doJmp({stm,rexp,emit}:reduce, T.JMP(exp, labs)) =
     (case exp
-     of T.LABEL(LE.LABEL lab) => emit(I.B{lab=lab,n=true})
-      | T.LABEL _ => error "doJmp: LABEL"
+     of T.LABEL lab => emit(I.B{lab=lab,n=true})
       | _ => emit(I.BV{b=rexp(exp), x=C.GPReg 0, labs=labs, n=true})
     (*esac*))
 

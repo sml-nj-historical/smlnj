@@ -12,6 +12,9 @@ sig
    structure Guard   : sig type guard 
                            val toString : guard -> string
                        end
+   structure Exp     : sig type exp
+                           val toString : exp -> string
+                       end
    structure Action  : sig type action end
    structure Con     : sig type con val compare : con * con -> order end
    structure Literal : sig type literal 
@@ -56,15 +59,25 @@ sig
        ( { idPat     : Var.var -> compiled_pat,
            asPat     : Var.var * 'pat -> compiled_pat,
            wildPat   : unit -> compiled_pat,
-           consPat   : decon * 'pat list -> compiled_pat,
+           consPat   : Con.con * 'pat list -> compiled_pat,
            tuplePat  : 'pat list -> compiled_pat,
            recordPat : (Var.var * 'pat) list -> compiled_pat,
            litPat    : Literal.literal -> compiled_pat,
-           orPat     : 'pat list -> compiled_pat
+
+            (* logical connectives and other extensions to the standard *) 
+           orPat     : 'pat list -> compiled_pat,
+           andPat    : 'pat list -> compiled_pat,
+           notPat    : 'pat -> compiled_pat,
+           wherePat  : 'pat * Guard.guard -> compiled_pat,
+           nestedPat : 'pat * (int * Exp.exp) * 'pat -> compiled_pat
          } -> 'pat -> compiled_pat
        )
-      ->
-       (rule_no * 'pat list * Guard.guard option * Action.action) 
+      -> {number: rule_no,            (* rule number *)
+          pats:   'pat list,          (* the pattern *)
+          guard:  Guard.guard option, (* optional guard *)
+          cont:   Var.var option,     (* optional continuation *)  
+          action: Action.action       (* action *)
+         }
       -> compiled_rule
 
    (* Compile a set of canonical rules into a dfa  *)
@@ -82,18 +95,20 @@ sig
     * Assuming an ML-like language.
     *)
    val codeGen : 
-        { genFail : unit -> 'exp,
-          genOk   : Action.action -> 'exp,
-          genBind : (Var.var * path) list -> 'decl list,
-          genCase : Var.var * (decon * path option list * 'exp) list * 
-                     'exp option -> 'exp,
-          genIf   : Guard.guard * 'exp * 'exp -> 'exp,
-          genGoto : int * Var.var list -> 'exp, (* call a function *)
-          genFun  : int * Var.var list * 'exp -> 'decl, (* function def *)
-          genLet  : 'decl list * 'exp -> 'exp,
+        { genFail : unit -> Exp.exp,
+          genOk   : Action.action -> Exp.exp,
+          genPath : path -> Exp.exp,
+          genBind : (Var.var * Exp.exp) list -> 'decl list,
+          genCase : Var.var * (decon * path option list * Exp.exp) list * 
+                     Exp.exp option -> Exp.exp,
+          genIf   : Guard.guard * Exp.exp * Exp.exp -> Exp.exp,
+          genGoto : int * Var.var list -> Exp.exp, (* call a function *)
+          genFun  : int * Var.var list * Exp.exp -> 'decl, (* function def *)
+          genCont : Var.var * int * Var.var list -> 'decl,
+          genLet  : 'decl list * Exp.exp -> Exp.exp,
           genVar  : path -> Var.var,
-          genVal  : Var.var * 'exp -> 'decl,
+          genVal  : Var.var * Exp.exp -> 'decl,
           genProj : path * (path option * index) list -> 'decl
-        } -> ('exp * compiled_dfa)
-          -> 'exp
+        } -> (Exp.exp * compiled_dfa)
+          -> Exp.exp
 end

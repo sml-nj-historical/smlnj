@@ -10,14 +10,10 @@
 
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR 
-    structure AlphaMLTree : MLTREE 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
     structure ExtensionComp : MLTREE_EXTENSION_COMP
-       where T = AlphaMLTree and I = AlphaInstr
-       sharing AlphaMLTree.Region   = AlphaInstr.Region
-       sharing AlphaMLTree.LabelExp = AlphaInstr.LabelExp
+       where I = AlphaInstr
        sharing PseudoInstrs.I = AlphaInstr
-       sharing PseudoInstrs.T = AlphaMLTree
 
       (* Cost of multiplication in cycles *)
     val multCost : int ref
@@ -37,12 +33,11 @@ functor Alpha
    ) : MLTREECOMP =
 struct
 
-  structure T   = AlphaMLTree
-  structure S   = T.Stream
-  structure R   = AlphaMLTree.Region
   structure I   = AlphaInstr
-  structure C   = AlphaInstr.C
-  structure LE  = I.LabelExp
+  structure C   = I.C
+  structure T   = I.T
+  structure S   = T.Stream
+  structure R   = T.Region
   structure W32 = Word32
   structure P   = PseudoInstrs
   structure A   = MLRiscAnnotations
@@ -165,10 +160,7 @@ struct
   fun toInt i = T.I.toInt(32, i)
   val int_0   = T.I.int_0
   val int_1   = T.I.int_1
-  fun EQ(x,y) = T.I.EQ(32, x, y)
-  fun GE(x,y) = T.I.GE(32, x, y)
-  fun LE(x,y) = T.I.LE(32, x, y)
-  fun LT(x,y) = T.I.LT(32, x, y)
+  fun EQ(x:IntInf.int,y) = x=y
 
   (*
    * Specialize the modules for multiplication/division 
@@ -405,11 +397,8 @@ struct
       end
 
 
-      (* emit load immed *)
-      and loadConst(c,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop(LE.CONST c)},an)
-
-      (* emit load label *)
-      and loadLabel(l,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop l},an)
+      (* emit load label expression *)
+      and loadLabexp(le,d,an) = mark(I.LDA{r=d,b=zeroR,d=I.LABop le},an)
 
       (* emit a copy *)
       and copy(dst,src,an) = 
@@ -475,43 +464,50 @@ struct
       (* convert an expression into an operand *)
       and opn(T.REG(_,r)) = I.REGop r
         | opn(e as T.LI n) = 
-	    if LE(n, T.I.int_0xff) andalso GE(n, T.I.int_0) then 
+	    if IntInf.<=(n, T.I.int_0xff) andalso IntInf.>=(n, T.I.int_0) then 
 	      I.IMMop(toInt(n))
             else let val tmpR = newReg()
                  in  loadImmed(n,zeroR,tmpR,[]); I.REGop tmpR end
-        | opn(T.CONST c) = I.LABop(LE.CONST c)
+        | opn(e as (T.CONST _ | T.LABEL _)) = I.LABop e
+        | opn(T.LABEXP x) = I.LABop x
         | opn e = I.REGop(expr e)
 
       (* compute base+displacement from an expression 
        *)
       and addr exp =
-          let fun toLexp(I.IMMop i) = LE.INT i
+          let fun toLexp(I.IMMop i) = T.LI(IntInf.fromInt i)
                 | toLexp(I.LABop le) = le
                 | toLexp _ = error "addr.toLexp"
 
-              fun add(n,I.IMMop m)  = I.IMMop(toInt n + m)
-                | add(n,I.LABop le) = I.LABop(LE.PLUS(LE.INT(toInt(n)),le))
-                | add(n,_) = error "addr.add"
-              fun addC(c,I.IMMop 0) = I.LABop(LE.CONST c)
-                | addC(c,disp) = I.LABop(LE.PLUS(LE.CONST c,toLexp disp))
-              fun addL(l,I.IMMop 0) = I.LABop l
-                | addL(l,disp) = I.LABop(LE.PLUS(l,toLexp disp))
-              fun sub(n,I.IMMop m) = I.IMMop(m - toInt n)
-                | sub(n,I.LABop le) = I.LABop(LE.MINUS(le,LE.INT(toInt n)))
-                | sub(n,_) = error "addr.sub"
-              fun subC(c,disp) = I.LABop(LE.MINUS(toLexp disp, LE.CONST c))
-              fun subL(l,disp) = I.LABop(LE.MINUS(toLexp disp, l))
+              fun add(t,n,I.IMMop m)  = 
+                   I.IMMop(toInt(T.I.ADD(t,n,IntInf.fromInt m)))
+                | add(t,n,I.LABop le) = I.LABop(T.ADD(t,T.LI n,le))
+                | add(t,n,_) = error "addr.add"
+
+              fun addLe(ty,le,I.IMMop 0) = I.LABop le
+                | addLe(ty,le,disp) = I.LABop(T.ADD(ty,le,toLexp disp))
+
+              fun sub(t,n,I.IMMop m) = 
+                  I.IMMop(toInt(T.I.SUB(t,IntInf.fromInt m,n)))
+                | sub(t,n,I.LABop le) = I.LABop(T.SUB(t,le,T.LI n))
+                | sub(t,n,_) = error "addr.sub"
+
+              fun subLe(ty,le,I.IMMop 0) = I.LABop le
+                | subLe(ty,le,disp) = I.LABop(T.SUB(ty,le,toLexp disp))
              
               (* Should really take into account of the address width XXX *) 
-              fun fold(T.ADD(_,e,T.LI n),disp) = fold(e, add(n,disp))
-                | fold(T.ADD(_,e,T.CONST c),disp) = fold(e, addC(c,disp))
-                | fold(T.ADD(_,e,T.LABEL l),disp) = fold(e, addL(l,disp))
-                | fold(T.ADD(_,T.LI n,e),disp) = fold(e, add(n,disp))
-                | fold(T.ADD(_,T.CONST n, e),disp) = fold(e, addC(n,disp))
-                | fold(T.ADD(_,T.LABEL l, e),disp) = fold(e, addL(l,disp))
-                | fold(T.SUB(_,e,T.LI n),disp) = fold(e, sub(n,disp))
-                | fold(T.SUB(_,e,T.CONST n),disp) = fold(e, subC(n,disp))
-                | fold(T.SUB(_,e,T.LABEL l),disp) = fold(e, subL(l,disp))
+              fun fold(T.ADD(t,e,T.LI n),disp) = fold(e,add(t,n,disp))
+                | fold(T.ADD(t,e,x as T.CONST _),disp) = fold(e,addLe(t,x,disp))
+                | fold(T.ADD(t,e,x as T.LABEL _),disp) = fold(e,addLe(t,x,disp))
+                | fold(T.ADD(t,e,T.LABEXP l),disp) = fold(e,addLe(t,l,disp))
+                | fold(T.ADD(t,T.LI n,e),disp) = fold(e, add(t,n,disp))
+                | fold(T.ADD(t,x as T.CONST _,e),disp) = fold(e,addLe(t,x,disp))
+                | fold(T.ADD(t,x as T.LABEL _,e),disp) = fold(e,addLe(t,x,disp))
+                | fold(T.ADD(t,T.LABEXP l,e),disp) = fold(e,addLe(t,l,disp))
+                | fold(T.SUB(t,e,T.LI n),disp) = fold(e,sub(t,n,disp))
+                | fold(T.SUB(t,e,x as T.CONST _),disp) = fold(e,subLe(t,x,disp))
+                | fold(T.SUB(t,e,x as T.LABEL _),disp) = fold(e,subLe(t,x,disp))
+                | fold(T.SUB(t,e,T.LABEXP l),disp) = fold(e,subLe(t,l,disp))
                 | fold(e,disp) = (expr e,disp)
 
           in  makeEA(fold(exp, zeroImm))
@@ -528,7 +524,7 @@ struct
                end
            end
         | offset(base,disp as I.LABop le,off) =
-           (base, I.LABop(LE.PLUS(le,LE.INT off)))
+           (base, I.LABop(T.ADD(64,le,T.LI(IntInf.fromInt off))))
         | offset(base,disp,off) =
            let val tmp = newReg()
            in  emit(I.OPERATE{oper=I.ADDQ,ra=base,rb=disp,rc=tmp});
@@ -706,8 +702,8 @@ struct
               fun const(e,i) =
                   let val r = expr e
                   in  if !useMultByConst andalso 
-		           GE(i, T.I.int_0) andalso 
-			   LT(i, T.I.int_0x100) then
+		           IntInf.>=(i, T.I.int_0) andalso 
+			   IntInf.<(i, T.I.int_0x100) then
                          mark'(gen{ra=r,rb=I.IMMop(toInt i),rc=rd},an)::trapb
                       else    
                          (genConst{r=r,i=toInt i,d=rd}@trapb
@@ -920,19 +916,20 @@ struct
           case exp of
             T.REG(_,r) => move(r,d,an)
           | T.LI n     => loadImmed(n,zeroR,d,an)
-          | T.LABEL l  => loadLabel(l,d,an)
-          | T.CONST c  => loadConst(c,d,an)
+          | T.LABEL l  => loadLabexp(exp,d,an)
+          | T.CONST c  => loadLabexp(exp,d,an)
+          | T.LABEXP le => loadLabexp(le,d,an)
 
             (* special optimizations for additions and subtraction 
              * Question: using LDA for all widths is not really correct
              * since the result may not fit into the sign extension scheme.
              *)
-          | T.ADD(64,e,T.LABEL le) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
-          | T.ADD(64,T.LABEL le,e) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
-          | T.ADD(64,e,T.CONST c)  => 
-               mark(I.LDA{r=d,b=expr e,d=I.LABop(LE.CONST c)},an)
-          | T.ADD(64,T.CONST c,e)  => 
-               mark(I.LDA{r=d,b=expr e,d=I.LABop(LE.CONST c)},an)
+          | T.ADD(64,e,T.LABEXP le) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
+          | T.ADD(64,T.LABEXP le,e) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
+          | T.ADD(64,e,x as (T.CONST _ | T.LABEL _))  => 
+               mark(I.LDA{r=d,b=expr e,d=I.LABop x},an)
+          | T.ADD(64,x as (T.CONST _ | T.LABEL _),e)  => 
+               mark(I.LDA{r=d,b=expr e,d=I.LABop x},an)
           | T.ADD(64,e,T.LI i)     => loadImmed(i, expr e, d, an)
           | T.ADD(64,T.LI i,e)     => loadImmed(i, expr e, d, an)
 	  | T.SUB(sz, a, b as T.LI z)    =>
@@ -1334,7 +1331,8 @@ struct
               val (cond,a,b) = 
                 (* move the immed operand to b *)
                 case a of
-                  (T.LI _ | T.CONST _) => (T.Basis.swapCond cond,b,a)
+                  (T.LI _ | T.CONST _ | T.LABEL _ | T.LABEXP _) => 
+                    (T.Basis.swapCond cond,b,a)
                 | _ => (cond,a,b)
 
               fun sub(a, T.LI z) = 
@@ -1397,7 +1395,7 @@ struct
                   end
               val (cond,e1,e2) =
 		  case e1 of
-                    (T.LI _ | T.CONST _) => 
+                    (T.LI _ | T.CONST _ | T.LABEL _ | T.LABEXP _) => 
                        (T.Basis.swapCond cond,e2,e1)
                   | _ => (cond,e1,e2)
           in  case cond of
@@ -1423,7 +1421,7 @@ struct
            val uses=cellset uses
            val instr = 
                case (ea, flow) of
-                 (T.LABEL(LE.LABEL lab), [_]) => 
+                 (T.LABEL lab, [_]) => 
                    I.BSR{lab=lab,r=C.returnAddr,defs=defs,uses=uses,mem=mem}
                | _ => I.JSR{r=C.returnAddr,b=expr ea,
                             d=0,defs=defs,uses=uses,mem=mem}
@@ -1453,7 +1451,7 @@ struct
           | T.CCMV(r,e) => doCCexpr(e,r,an)
           | T.COPY(ty,dst,src) => copy(dst,src,an)
           | T.FCOPY(ty,dst,src) => fcopy(dst,src,an)
-          | T.JMP(T.LABEL(LE.LABEL lab),_) => goto(lab,an)
+          | T.JMP(T.LABEL lab,_) => goto(lab,an)
           | T.JMP(e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
           | T.BCC(cc,lab) => branch(cc,lab,an)
           | T.CALL{funct,targets,defs,uses,region,...} => 

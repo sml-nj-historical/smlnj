@@ -9,6 +9,7 @@ struct
 
    structure RTLComp = RTLComp
    structure Comp    = RTLComp.Comp
+   structure M       = RTLComp.MLRiscTypes
    structure Consts  = Comp.Consts
    structure Ast     = Comp.Ast
    structure Env     = Comp.Env
@@ -96,45 +97,36 @@ struct
     * Create the function defUse : instruction -> cell list * cell list
     *
     *------------------------------------------------------------------------*)
-   fun mkDefUseQueryFun compiled_rtls name user =
-   let val md = RTLComp.md compiled_rtls
-
-       fun cellOf(k,r) = 
-       let val CELLdecl{from,...} = 
-               Comp.lookupCellKind md (C.cellkindToString k)
-       in  INTexp(!from + r)
-       end
-
-       fun join("::",x,y) = cons(x,y)
-         | join(typ,x,y)  = APP(typ,TUPLEexp[x,y])
-
-       fun body{instr, rtl=RTLComp.RTLDEF{id,rtl,...}, const} = 
-       let val (d, u) = RTL.defUse rtl
-
-           fun arg(k,x) = user(IDexp(IDENT(["C"],C.cellkindToString k)),x)
-
-           fun collect(T.ARG(_,ref(T.REP k),x), e) = 
-                  join("get"^k,arg(C.GP,ID x),e)
-             | collect(T.$(_,C.MEM,_),e) = e (* XXX *)
-             | collect(T.$(_,k,T.ARG(_,_,x)), e) = join("::", arg(k,ID x), e)
-             | collect(T.$(_,k,T.LI r), e) = join("::",arg(k, cellOf(k,r)), e)
-             | collect(t,e) = fail("collect "^RTL.Util.rexpToString t)
-
-           val def = foldr collect (LISTexp([],NONE)) d
-           val use = foldr collect (LISTexp([],NONE)) u
-           val exp = TUPLEexp[def,use]
-       in  {exp=exp, casePats=[]}
-       end
-   in  RTLComp.mkQuery compiled_rtls
-          {name          = name,
-           namedArguments= true,
-           args          = [["instr"]], 
-           decls         = [RTLComp.complexErrorHandler name],
-           caseArgs      = [],
-           body          = body
+   fun mkDefUseQueryFun compiled_rtls name =
+   let val {get, decl} = M.getOpnd
+            [("int",     M.CONV("CELL(int x)")),
+             ("int32",   M.CONV("CELL(int32 x)")),
+             ("intinf",  M.CONV("CELL(intinf x)")),
+             ("word",    M.CONV("CELL(word x)")),
+             ("word32",  M.CONV("CELL(word32 x)")),
+             ("cell",    M.CONV("CELL x")),
+             ("label",   M.IGNORE),
+             ("cellset", M.MULTI("map CELL (C.CellSet.toCellList x)")),
+             ("operand", M.CONV("OPERAND x"))
+            ]
+        val decl0 =
+            $["(* methods for computing value numbers *)",
+              "val OT.VALUE_NUMBERING",
+              "   {int, int32, intinf, word, word32, operand, ...} =",
+              "      valueNumberingMethods",
+              "(* methods for type conversion *)"
+             ]       
+       fun gen x = SOME(get x)
+   in  RTLComp.mkDefUseQuery 
+          compiled_rtls
+          {name           = name,
+           args           = [["valueNumberingMethods"], ["instr"]],
+           namedArguments = false,
+           decls          = [RTLComp.complexErrorHandler name, decl0, decl],
+           def            = gen,
+           use            = gen
           }
    end
-
 
    (*------------------------------------------------------------------------
     *
@@ -154,9 +146,9 @@ struct
            ["structure Instr : "^Comp.signame md "INSTR",
             "structure RegionProps : REGION_PROPERTIES",
             "structure RTL : MLTREE_RTL",
+            "structure OperandTable : OPERAND_TABLE where I = Instr",
             "structure Asm : INSTRUCTION_EMITTER where I = Instr",
-            "  sharing Instr.Region = RegionProps.Region",
-            "  sharing type Instr.C.cellkind = RTL.T.CellsBasis.cellkind"
+            "  sharing Instr.T = RTL.T"
            ]
 
        (* The functor *)
@@ -165,19 +157,16 @@ struct
                "structure C   = I.C",
                "structure RTL = RTL",
                "structure T   = RTL.T",
+               "structure OT  = OperandTable",
                "",
-               "datatype opnkind =",
-               "  IMM     (* a constant operand *)",
-               "| REG     (* can be renamed *)",
-               "| FIX     (* cannot be renamed *)",
-               "| MEM     (* memory *)",
-               "| CTRL    (* control dependence *)",
+               "datatype value = CELL of C.cell",
+               "               | OPERAND of I.operand",
                ""
               ],
             Comp.errorHandler md "RTLProps",
             RTLComp.complexErrorHandlerDef (),
             STRUCTUREdecl(Comp.strname md "RTL",[],NONE,
-               APPsexp(IDENT([],Comp.strname md "RTL"),
+               APPsexp(IDsexp(IDENT([],Comp.strname md "RTL")),
                   DECLsexp[
                   $[ "structure RTL = RTL",
                      "structure C   = C"
@@ -186,9 +175,7 @@ struct
             ),
             genRTLTable compiled_rtls,
             mkRtlQueryFun compiled_rtls,
-            mkDefUseQueryFun compiled_rtls "defUse" (fn (k,x) => x), 
-            mkDefUseQueryFun compiled_rtls "defUseWithCellKind" 
-                  (fn (k,x) => TUPLEexp[k,x]) 
+            mkDefUseQueryFun compiled_rtls "defUse" 
            ]
 
    in  Comp.codegen md "mltree/RTLProps"

@@ -11,12 +11,9 @@
 
 functor Sparc
   (structure SparcInstr : SPARCINSTR
-   structure SparcMLTree : MLTREE 
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = SparcInstr and T = SparcMLTree 
-      sharing SparcMLTree.Region = SparcInstr.Region
-      sharing SparcMLTree.LabelExp = SparcInstr.LabelExp
+      where I = SparcInstr 
       sharing PseudoInstrs.I = SparcInstr
    (* 
     * The client should also specify these parameters.
@@ -41,10 +38,10 @@ functor Sparc
          *)
   ) : MLTREECOMP = 
 struct
-  structure T  = SparcMLTree
-  structure S  = T.Stream
-  structure R  = SparcMLTree.Region
   structure I  = SparcInstr
+  structure T  = I.T
+  structure S  = T.Stream
+  structure R  = T.Region
   structure C  = I.C
   structure LE = I.LabelExp
   structure W  = Word32
@@ -362,14 +359,17 @@ struct
           if immed13 n then (expr e,I.IMMED(toInt n))
           else let val d = newReg()
                in  loadImmed(n,d,REG,[]); (d,opn e) end
-        | addr(T.ADD(_,e,T.CONST c)) = (expr e,I.LAB(LE.CONST c))
-        | addr(T.ADD(_,e,T.LABEL l)) = (expr e,I.LAB l)
+        | addr(T.ADD(_,e,x as T.CONST c)) = (expr e,I.LAB x)
+        | addr(T.ADD(_,e,x as T.LABEL l)) = (expr e,I.LAB x)
+        | addr(T.ADD(_,e,T.LABEXP x)) = (expr e,I.LAB x)
         | addr(T.ADD(ty,i as T.LI _,e)) = addr(T.ADD(ty,e,i))
-        | addr(T.ADD(_,T.CONST c,e)) = (expr e,I.LAB(LE.CONST c))
-        | addr(T.ADD(_,T.LABEL l,e)) = (expr e,I.LAB l)
+        | addr(T.ADD(_,x as T.CONST c,e)) = (expr e,I.LAB x)
+        | addr(T.ADD(_,x as T.LABEL l,e)) = (expr e,I.LAB x)
+        | addr(T.ADD(_,T.LABEXP x,e)) = (expr e,I.LAB x)
         | addr(T.ADD(_,e1,e2))       = (expr e1,I.REG(expr e2))
         | addr(T.SUB(ty,e,T.LI n))   = addr(T.ADD(ty,e,T.LI(T.I.NEG(32,n))))
-        | addr(T.LABEL l)            = (zeroR,I.LAB l)
+        | addr(x as T.LABEL l)       = (zeroR,I.LAB x)
+        | addr(T.LABEXP x)           = (zeroR,I.LAB x)
         | addr a                     = (expr a,zeroOpn)
 
       (* emit an integer load *)
@@ -414,7 +414,7 @@ struct
           val defs=cellset(defs)
           val uses=cellset(uses)
       in  case (C.registerId r,i) of
-            (0,I.LAB(LE.LABEL l)) =>
+            (0,I.LAB(T.LABEL l)) =>
              mark(I.CALL{label=l,defs=C.addReg(C.linkReg,defs),uses=uses,
                          mem=mem,nop=true},an)
           | _ => mark(I.JMPL{r=r,i=i,d=C.linkReg,defs=defs,uses=uses,mem=mem,
@@ -476,7 +476,7 @@ struct
         | stmt(T.CCMV(d,e),an) = doCCexpr(e,d,an)
         | stmt(T.COPY(_,dst,src),an) = copy(dst,src,an)
         | stmt(T.FCOPY(_,dst,src),an) = fcopy(dst,src,an)
-        | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) =
+        | stmt(T.JMP(T.LABEL l,_),an) =
             mark(I.Bicc{b=I.BA,a=true,label=l,nop=false},an)
         | stmt(T.JMP(e,labs),an) = jmp(e,labs,an)
         | stmt(T.CALL{funct,targets,defs,uses,region,...},an) = 
@@ -518,8 +518,9 @@ struct
           case e of
             T.REG(_,r) => (move(r,d,an); genCmp0(cc,r))
           | T.LI n     => loadImmed(n,d,cc,an)
-          | T.LABEL l  => loadLabel(l,d,cc,an)
-          | T.CONST c  => loadLabel(LE.CONST c,d,cc,an)
+          | T.LABEL l  => loadLabel(e,d,cc,an)
+          | T.CONST c  => loadLabel(e,d,cc,an)
+          | T.LABEXP x  => loadLabel(x,d,cc,an)
 
                 (* generic 32/64 bit support *)
           | T.ADD(_,a,b) => arith(I.ADD,I.ADDCC,a,b,d,cc,COMMUTE,[],an)
@@ -695,8 +696,9 @@ struct
       and ccExpr e = let val d = newReg() in doCCexpr(e,d,[]); d end
 
           (* convert an expression into an operand *) 
-      and opn(T.CONST c)     = I.LAB(LE.CONST c)
-        | opn(T.LABEL l)     = I.LAB l
+      and opn(x as T.CONST c) = I.LAB x
+        | opn(x as T.LABEL l) = I.LAB x
+        | opn(T.LABEXP x)     = I.LAB x
         | opn(e as T.LI n)   = 
 	    if T.I.isZero(n) then zeroOpn
 	    else if immed13 n then I.IMMED(toInt n)

@@ -11,7 +11,7 @@ sig
    structure T : MLTREE
    structure I : INSTRUCTIONS
    structure C : CELLS
-      sharing T.LabelExp = I.LabelExp
+      sharing T = I.T
       sharing I.C = C
 
    (* 
@@ -34,7 +34,7 @@ sig
    structure C : CELLS
    structure Gen : MLTREEGEN
       sharing T = Gen.T
-      sharing T.LabelExp = I.LabelExp
+      sharing T = I.T
       sharing I.C = C
 
    type instrStream = (I.instruction,C.cellset) T.stream  

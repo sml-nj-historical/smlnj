@@ -19,11 +19,11 @@ struct
 
    val toString = FormatInsn.toString [] 
 
-   fun view regmap ddg =
+   fun view ddg =
        GraphViewer.view 
          (GraphLayout.makeLayout
            {graph = fn _ => [],
-            node  = fn (_,i) => [L.LABEL(toString regmap i)],
+            node  = fn (_,i) => [L.LABEL(toString i)],
             edge  = fn (_,_,lat) => [L.LABEL(Int.toString lat),edgeColor] 
            }
            ddg

@@ -1,26 +1,35 @@
 (* COPYRIGHT (c) 1999 Lucent Technologies, Bell Labs. *)
 
-(* constants specialised to the powerpc *)
-structure PPCConst = SMLNJConstant
+structure PPCPseudoOps = PseudoOpsBig(PPCSpec)
+
+structure PPCStream = InstructionStream(PPCPseudoOps)
+
+structure PPCMLTree = 
+  MLTreeF(structure Constant=SMLNJConstant
+	  structure Region=CPSRegions
+	  structure Stream=PPCStream
+	  structure Extension=SMLNJMLTreeExt
+         )
 
 (* specialised powerpc instruction set *)
 structure PPCInstr = 
-  PPCInstr(structure LabelExp=SMLNJLabelExp
-	   structure Region=CPSRegions)
+  PPCInstr(
+    LabelExp
+       (structure T = PPCMLTree
+        fun h _ _ = 0w0 fun eq _ _ = false
+        val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
+        val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq
+        ))
 
 structure PPCProps = PPCProps(PPCInstr)
 
 structure PPCShuffle = PPCShuffle(PPCInstr)
-
-structure PPCPseudoOps = PseudoOpsBig(PPCSpec)
 
 (* Flowgraph data structure specialized to DEC alpha instructions *)
 structure PPCFlowGraph = 
   FlowGraph(structure I=PPCInstr
 	    structure P=PPCPseudoOps
            )
-
-structure PPCStream = InstructionStream(PPCPseudoOps)
 
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr
@@ -35,9 +44,4 @@ structure PPCMCEmitter =
 	       structure CodeString=CodeString)
 
 
-structure PPCMLTree = 
-  MLTreeF(structure LabelExp=SMLNJLabelExp
-	  structure Region=CPSRegions
-	  structure Stream=PPCStream
-	  structure Extension=SMLNJMLTreeExt
-         )
+

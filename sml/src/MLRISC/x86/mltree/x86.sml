@@ -39,16 +39,13 @@ in
 
 functor X86
   (structure X86Instr : X86INSTR
-   structure X86MLTree : MLTREE
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-     where I = X86Instr and T = X86MLTree
-     sharing X86MLTree.Region = X86Instr.Region
-     sharing X86MLTree.LabelExp = X86Instr.LabelExp
+     where I = X86Instr
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val cvti2f : 
          (* source operand, guaranteed to be non-memory! *)
-         {ty: X86MLTree.ty, src: X86Instr.operand} -> 
+         {ty: X86Instr.T.ty, src: X86Instr.operand} -> 
          {instrs : X86Instr.instruction list,(* the instructions *)
           tempMem: X86Instr.operand,         (* temporary for CVTI2F *)
           cleanup: X86Instr.instruction list (* cleanup code *)
@@ -61,9 +58,9 @@ functor X86
           val rewriteMemReg : bool
       end = 
 struct
-  structure T = X86MLTree
-  structure S = T.Stream
   structure I = X86Instr
+  structure T = I.T
+  structure S = T.Stream
   structure C = I.C
   structure Shuffle = Shuffle(I)
   structure W32 = Word32
@@ -132,7 +129,7 @@ struct
             case !trapLabel of 
               NONE => let val label = Label.newLabel "trap"
                           val jmp   = I.JCC{cond=I.O, 
-                                            opnd=I.ImmedLabel(LE.LABEL label)}
+                                            opnd=I.ImmedLabel(T.LABEL label)}
                       in  trapLabel := SOME(jmp, label); jmp end
             | SOME(jmp, _) => jmp
       in  emit jmp end
@@ -191,7 +188,7 @@ struct
       val ecx = I.Direct(C.ecx)
       val edx = I.Direct(C.edx)
 
-      fun immedLabel lab = I.ImmedLabel(LE.LABEL lab)
+      fun immedLabel lab = I.ImmedLabel(T.LABEL lab)
  
       (* Is the expression zero? *)
       fun isZero(T.LI z) = T.I.isZero z 
@@ -296,8 +293,9 @@ struct
             | doEA(t::trees, b, i, s, d) =
               (case t of 
                  T.LI n   => doEAImmed(trees, toInt32 n, b, i, s, d)
-               | T.CONST c => doEALabel(trees, LE.CONST c, b, i, s, d)
-               | T.LABEL le => doEALabel(trees, le, b, i, s, d)
+               | T.CONST _ => doEALabel(trees, t, b, i, s, d)
+               | T.LABEL _ => doEALabel(trees, t, b, i, s, d)
+               | T.LABEXP le => doEALabel(trees, le, b, i, s, d)
                | T.ADD(32, t1, t2 as T.REG(_,r)) => 
                     if isMemReg r then doEA(t2::t1::trees, b, i, s, d)
                     else doEA(t1::t2::trees, b, i, s, d)
@@ -322,7 +320,8 @@ struct
             | doEAImmed(trees, n, b, i, s, I.Immed m) = 
                  doEA(trees, b, i, s, I.Immed(n+m))
             | doEAImmed(trees, n, b, i, s, I.ImmedLabel le) = 
-                 doEA(trees, b, i, s, I.ImmedLabel(LE.PLUS(le,LE.INT(Int32.toInt n))))
+                 doEA(trees, b, i, s, 
+                      I.ImmedLabel(T.ADD(32,le,T.LI(T.I.fromInt32(32, n)))))
             | doEAImmed(trees, n, b, i, s, _) = error "doEAImmed"
 
           (* Add a label expression *)
@@ -330,10 +329,10 @@ struct
                  doEA(trees, b, i, s, I.ImmedLabel le)
             | doEALabel(trees, le, b, i, s, I.Immed m) = 
                  doEA(trees, b, i, s, 
-                      I.ImmedLabel(LE.PLUS(le,LE.INT(Int32.toInt m)))
+                      I.ImmedLabel(T.ADD(32,le,T.LI(T.I.fromInt32(32, m))))
                       handle Overflow => error "doEALabel: constant too large")
             | doEALabel(trees, le, b, i, s, I.ImmedLabel le') = 
-                 doEA(trees, b, i, s, I.ImmedLabel(LE.PLUS(le,le')))
+                 doEA(trees, b, i, s, I.ImmedLabel(T.ADD(32,le,le')))
             | doEALabel(trees, le, b, i, s, _) = error "doEALabel"
 
           and makeAddressingMode(NONE, NONE, _, disp) = disp
@@ -391,8 +390,8 @@ struct
 
           (* reduce an expression into an operand *)
       and operand(T.LI i) = I.Immed(toInt32(i)) 
-        | operand(T.CONST c) = I.ImmedLabel(LE.CONST c)
-        | operand(T.LABEL lab) = I.ImmedLabel lab
+        | operand(x as (T.CONST _ | T.LABEL _)) = I.ImmedLabel x
+        | operand(T.LABEXP le) = I.ImmedLabel le
         | operand(T.REG(_,r)) = IntReg r
         | operand(T.LOAD(32,ea,mem)) = address(ea, mem)
         | operand(t) = I.Direct(expr t)
@@ -787,8 +786,9 @@ struct
 		 else
 		   move'(I.Immed(n), rdOpnd, an)
 	       end
-             | T.CONST c   => move'(I.ImmedLabel(LE.CONST c), rdOpnd, an)
-             | T.LABEL lab => move'(I.ImmedLabel lab, rdOpnd, an)
+             | (T.CONST _ | T.LABEL _) => 
+                 move'(I.ImmedLabel exp, rdOpnd, an)
+             | T.LABEXP le => move'(I.ImmedLabel le, rdOpnd, an)
 
                (* 32-bit addition *)
 	     | T.ADD(32, e1, e2 as T.LI n) => let
@@ -1009,10 +1009,10 @@ struct
           end
 
           (* generate code for jumps *)
-      and jmp(T.LABEL(lexp as LE.LABEL lab), labs, an) = 
+      and jmp(lexp as T.LABEL lab, labs, an) = 
              mark(I.JMP(I.ImmedLabel lexp, [lab]), an)
-        | jmp(T.LABEL lexp, labs, an) = mark(I.JMP(I.ImmedLabel lexp, labs), an)
-        | jmp(ea, labs, an)           = mark(I.JMP(operand ea, labs), an)
+        | jmp(T.LABEXP le, labs, an) = mark(I.JMP(I.ImmedLabel le, labs), an)
+        | jmp(ea, labs, an)          = mark(I.JMP(operand ea, labs), an)
 
        (* convert mlrisc to cellset:
         *)

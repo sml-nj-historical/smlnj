@@ -1,7 +1,7 @@
 signature LABEL_COMP = sig
   structure T : MLTREE
   structure I : INSTRUCTIONS
-    sharing T.LabelExp = I.LabelExp
+    sharing I.T = T
 
   type reduce = 
     {stm: T.stm -> unit, 
@@ -11,12 +11,12 @@ signature LABEL_COMP = sig
     (* functions to emit MLRISC statements or register expressions *)
 
   val ldLabelEA : 
-    (I.instruction -> unit) -> I.LabelExp.labexp -> (I.C.cell * I.operand)
+    (I.instruction -> unit) -> T.labexp -> (I.C.cell * I.operand)
     (* generate a label operand to use as an effective address *)
 
   val ldLabelOpnd : 
     (I.instruction -> unit) -> 
-       {label:I.LabelExp.labexp, pref:I.C.cell option} -> I.operand
+       {label:T.labexp, pref:I.C.cell option} -> I.operand
     (* generate a label operand to be used by immediate instructions *)
 
   val doJmp : reduce * T.stm  -> unit

@@ -1,9 +1,6 @@
-functor HppaMillicode
-  (structure MLTree : MLTREE
-   structure Instr : HPPAINSTR
-     sharing MLTree.Constant = Instr.Constant) : HPPA_MILLICODE =
+functor HppaMillicode(Instr : HPPAINSTR) : HPPA_MILLICODE =
 struct
-  structure T = MLTree
+  structure T = Instr.T
   structure C = Instr.C
   structure I = Instr
   structure Region = I.Region

@@ -6,7 +6,7 @@ struct
    type ty = int
   
    datatype gctype =
-     CONST of int                  (* integer constant *)
+     CONST of IntInf.int           (* integer constant *)
    | NONREF of CPS.cty ref         (* non-reference value *)
    | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
    | PLUS of ty * gctype * gctype   (* address arithmetic + *)
@@ -16,11 +16,9 @@ struct
    | BOT
    | TOP
 
-   fun int i = if i >= 0 then Int.toString i else "-"^Int.toString(~i)
-
    fun toString BOT = "bot"
      | toString TOP = "top"
-     | toString (CONST i) = int i
+     | toString (CONST i) = IntInf.toString i
      | toString (NONREF(ref obj)) = CPS.ctyToString obj
      | toString (REF(ref obj)) =  CPS.ctyToString obj
      | toString (PLUS(ty,a,b)) = "("^toString a^"+"^toString b^")"
@@ -52,17 +50,17 @@ struct
 
   fun ADD(_,TOP,x) = TOP
     | ADD(_,x,TOP) = TOP
-    | ADD(ty,CONST i,CONST j) = (CONST(i+j) handle Overflow => INT)
-    | ADD(ty,CONST 0,b) = b
-    | ADD(ty,b,CONST 0) = b
+    | ADD(ty,CONST i,CONST j) = (CONST(IntInf.+(i,j)) handle Overflow => INT)
+    (*| ADD(ty,CONST 0,b) = b
+    | ADD(ty,b,CONST 0) = b*)
     | ADD(ty,CONST _,NONREF _) = INT
     | ADD(ty,NONREF _,CONST _) = INT
     | ADD(ty,x as NONREF a,y as NONREF b) = if a = b then x else INT
     | ADD(ty,x,y)  = PLUS(ty,x,y)
   fun SUB(_,TOP,x) = TOP
     | SUB(_,x,TOP) = TOP
-    | SUB(ty,CONST i,CONST j) = (CONST(i-j) handle Overflow => INT)
-    | SUB(ty,a,CONST 0) = a
+    | SUB(ty,CONST i,CONST j) = (CONST(IntInf.+(i,j)) handle Overflow => INT)
+    (*| SUB(ty,a,CONST 0) = a*)
     | SUB(ty,CONST _,NONREF _) = INT
     | SUB(ty,NONREF _,CONST _) = INT
     | SUB(ty,x as NONREF a,y as NONREF b) = if a = b then x else INT
@@ -71,6 +69,9 @@ struct
   fun isRecoverable TOP = false
     | isRecoverable BOT = false (* XXX *)
     | isRecoverable _   = true
-end
 
-structure SMLGCMap = GCMap(SMLGCType)
+  exception GCTYPE of gctype
+  val GC_TYPE = Annotations.new'{create=GCTYPE,
+                                 get=fn GCTYPE x => x | e => raise e,
+                                 toString=toString}
+end

@@ -14,12 +14,11 @@ struct
 
    val name = "Basic Block Scheduling"
 
-   fun run(cluster as F.CLUSTER{blocks, regmap, annotations, ...}) = 
+   fun run(cluster as F.CLUSTER{blocks, annotations, ...}) = 
    if #contains MLRiscAnnotations.NO_OPTIMIZATION (!annotations)
    then cluster
    else
-   let val regmap = F.I.C.lookup regmap
-       val schedule = BBSched.schedule {regmap=regmap, cpu= !cpu}
+   let val schedule = BBSched.schedule {cpu= !cpu}
        fun sched(F.BBLOCK{annotations, insns, ...}) = 
             if #contains MLRiscAnnotations.NO_OPTIMIZATION (!annotations) 
             then ()

@@ -8,15 +8,18 @@
 signature X86INSTR =
 sig
    structure C : X86CELLS
+   structure T : MLTREE
+   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
-   structure LabelExp: LABELEXP
    structure Region : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region = T.Region
    datatype operand =
      Immed of Int32.int
-   | ImmedLabel of LabelExp.labexp
+   | ImmedLabel of T.labexp
    | Relative of int
-   | LabelEA of LabelExp.labexp
+   | LabelEA of T.labexp
    | Direct of C.cell
    | FDirect of C.cell
    | FPR of C.cell
@@ -283,19 +286,19 @@ sig
    | PHI of {}
 end
 
-functor X86Instr(structure LabelExp : LABELEXP
-                 structure Region   : REGION
+functor X86Instr(LabelExp : LABELEXP
                 ) : X86INSTR =
 struct
    structure C = X86Cells
-   structure Region = Region
    structure LabelExp = LabelExp
-   structure Constant = LabelExp.Constant
+   structure T = LabelExp.T
+   structure Region = T.Region
+   structure Constant = T.Constant
    datatype operand =
      Immed of Int32.int
-   | ImmedLabel of LabelExp.labexp
+   | ImmedLabel of T.labexp
    | Relative of int
-   | LabelEA of LabelExp.labexp
+   | LabelEA of T.labexp
    | Direct of C.cell
    | FDirect of C.cell
    | FPR of C.cell

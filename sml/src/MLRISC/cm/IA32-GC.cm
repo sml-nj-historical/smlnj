@@ -1,20 +1,3 @@
-Library 
+(* This file is created by makeallcm *)
+Library
 is
-
-#if defined(NEW_CM)
-#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
-	MLRISC.cm
-	GC.cm
-	IA32.cm
-	
-	(* X86 specific backend *)

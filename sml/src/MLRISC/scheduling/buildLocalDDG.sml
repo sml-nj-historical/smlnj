@@ -12,7 +12,7 @@ struct
    structure I          = DDG.I
    structure C          = I.C
    structure SchedProps = DDG.SchedProps
-   structure HA         = HashArray
+   structure H          = C.ColorTable
    structure G          = Graph
 
    type architecture = string
@@ -21,38 +21,49 @@ struct
    fun error msg = MLRiscErrorMsg.error("BasicBlockSchedulerDDGBuilder",msg)
 
    val COPY_LATENCY = 0
+
+   exception NotThere
+
   (*
    * Build a DAG from a list of instructions (in reverse order)
    * This is just a simple def/use analysis.
    *)
-   fun buildDDG{regmap,cpu_info,ddg=G.GRAPH ddg} =
+   fun buildDDG{cpu_info,ddg=G.GRAPH ddg} =
    let val SchedProps.CPU_INFO{defUse,...} = cpu_info
        fun buildDAG insns =
-       let val defMap = HA.array(31,[]) and useMap = HA.array(31,[]) 
+       let val defMap    = H.mkTable(31,NotThere) 
+           val useMap    = H.mkTable(31,NotThere) 
+           val findUse   = H.find useMap
+           val findDef   = H.find defMap
+           val rmvUse    = H.remove useMap
+           val rmvDef    = H.remove defMap
+           fun lookupUse r = case findUse r of NONE => [] | SOME x => x
+           fun lookupDef r = case findDef r of NONE => [] | SOME x => x
+           val insertUse = H.insert useMap
+           val insertDef = H.insert defMap
+
            fun flowDep i (r,latency) = 
-               app (fn j => #add_edge ddg (i,j,latency)) (HA.sub(useMap,r))
+               app (fn j => #add_edge ddg (i,j,latency)) (lookupUse r)
            fun outputDep i (r,_) = 
-               app (fn j => #add_edge ddg (i,j,~1)) (HA.sub(defMap,r))
+               app (fn j => #add_edge ddg (i,j,~1)) (lookupDef r)
            fun antiDep i r = 
-               app (fn j => #add_edge ddg (i,j,~1)) (HA.sub(defMap,r))
+               app (fn j => #add_edge ddg (i,j,~1)) (lookupDef r)
            fun ctrlDep i j = #add_edge ddg (i,j,~1)
-           fun addDefs n (r,l) = (HA.remove(useMap,r); HA.update(defMap,r,[n]))
-           fun addUses n r = HA.update(useMap,r,n::HA.sub(useMap,r))
+           fun addDefs n (r,l) = (rmvUse r; insertDef(r, [n]))
+           fun addUses n r = insertUse(r,n::lookupUse r)
 
            fun copyDstSrc i' =
            let val (dst, src) = InsnProps.moveDstSrc i'
                fun coalesce(d::ds, s::ss, dst, src) = 
-                   let val d = regmap d and s = regmap s
-                   in  if d = s then coalesce(ds, ss, dst, src)
-                       else coalesce(ds, ss, (d,COPY_LATENCY)::dst, s::src)
-                   end
+                   if C.sameColor(d,s) then coalesce(ds, ss, dst, src)
+                   else coalesce(ds, ss, (d,COPY_LATENCY)::dst, s::src)
                  | coalesce([], [], dst, src) = (dst, src)
                  | coalesce _ = error "coalesce"
 
                val (dst, src) = coalesce(dst, src, [], [])
                val dst = case InsnProps.moveTmpR i' of
                            NONE => dst
-                         | SOME tmp => (regmap tmp,~1)::dst
+                         | SOME tmp => (tmp,~1)::dst
            in  (dst, src) end
 
            fun scan(i,[],branches,succs) = ()
@@ -62,9 +73,7 @@ struct
                val (defs,uses) = 
                    case kind of
                      InsnProps.IK_COPY => copyDstSrc i'
-                   | _ => let val (d, u) = defUse i'
-                          in  (map (fn (r,l) => (regmap r,l)) d, map regmap u) 
-                          end
+                   | _ => defUse i'
                val _ = #add_node ddg (i,i')
                val _ = app (flowDep i) defs
                val _ = app (outputDep i) defs

@@ -4,13 +4,12 @@
  * into one single signature.
  *)
 functor GCTypeSystem
-  (structure GCMap : GC_MAP
+  (structure GC    : GC_TYPE
    structure RTL   : MLTREE_RTL
-   val isRecoverable : GCMap.GC.gctype -> bool
+   val isRecoverable : GC.gctype -> bool
   ) : GC_TYPE_SYSTEM =
 struct
-   structure GCMap = GCMap
-   structure GC    = GCMap.GC
+   structure GC    = GC
    structure RTL   = RTL
    structure T     = RTL.T
 
@@ -19,8 +18,6 @@ struct
    fun typeOf lookup = 
    let fun T(T.REG(t,r))      = lookup r
          | T(T.LI i)          = GC.CONST i
-         | T(T.LI32 w)        = 
-             (GC.CONST(Word32.toIntX w) handle Overflow => GC.INT)
          | T(T.CONST c)       = GC.INT
          | T(T.LABEL l)       = GC.INT
          | T(T.NEG(t,a))      = unaryArith(t,a)

@@ -1,8 +1,5 @@
-(*
- * This library contains the superscalar scheduling stuff.
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature BASIC_BLOCK_SCHEDULER
 	signature BASIC_BLOCK_SCHEDULER_DDG_BUILDER
 	signature BASIC_BLOCK_SCHEDULER_DDG_VIEWER
@@ -33,19 +30,11 @@ Library
 	functor SchedulerDDG
 	functor SchedulerDDGBuilder
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	Graphs.cm
@@ -54,24 +43,48 @@ is
 	MLRISC.cm
 	RTL.cm
 	IR.cm
-
-	(* Rank algorithms *)
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/Visual.cm
+	$/ir.cm
+	$/MLRISC.cm
+	$/RTL.cm
+	$/IR.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	RTL.cm
+	IR.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	RTL.cm
+	IR.cm
+#endif
 	../scheduling/PalemSimons.sig
 	../scheduling/PalemSimons.sml
 	../scheduling/LeungPalemPnueli.sig
 	../scheduling/LeungPalemPnueli.sml
-
-	(* Data dependence dag representation *)
 	../scheduling/schedulerDDG.sig
 	../scheduling/schedulerDDG.sml
-
-	(* Signature of a rank function *)
 	../scheduling/schedulingRanks.sig
-
-	(* Architectural Properties *)
 	../scheduling/schedulingProps.sig
-
-	(* Basic block scheduling *)
 	../scheduling/localCP.sml
 	../scheduling/buildLocalDDG.sig
 	../scheduling/buildLocalDDG.sml
@@ -80,11 +93,6 @@ is
 	../scheduling/bbDDGViewer.sig
 	../scheduling/bbDDGViewer.sml
 	../scheduling/clusterBBScheduler.sml
-
-	(* Superscalar scheduling.  These are required if you want to
-	 * play with instruction scheduling for superscalars.
-	 * It requires the MLRISC IR stuff. !!!
-	 *)
 	../scheduling/listScheduler.sig
 	../scheduling/listScheduler.sml
 	../scheduling/buildDDG.sig
@@ -92,8 +100,6 @@ is
 	../scheduling/schedulingAliasing.sig
 	../scheduling/regionBuilder.sig
 	../scheduling/regionBuilder.sml
-
-	(* Various global scheduling algorithms *)
 	../scheduling/globalCP.sml
 	../scheduling/globalDDGViewer.sig
 	../scheduling/globalDDGViewer.sml

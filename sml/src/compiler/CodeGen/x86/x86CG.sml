@@ -18,7 +18,7 @@ structure X86CG =
     structure Shuffle    = X86Shuffle
 
     structure CCalls     = IA32SVID_CCalls (structure T = X86MLTree
-					    fun ix x = x)
+                                            fun ix x = x)
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 

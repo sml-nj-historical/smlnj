@@ -34,8 +34,8 @@ struct
                sext {stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp} (s,x)
            | T.PHI _ => x 
            | T.ASSIGN(_,a,b) => rexp(b,rexp(a,x))
-           | T.SOURCE _ => x 
-           | T.SINK _ => x 
+           | T.SOURCE => x 
+           | T.SINK => x 
            | T.RTL _ => x
       in doStm(s,x) end
    
@@ -45,9 +45,8 @@ struct
       let val x = case e of
              T.REG _ => x
            | T.LI _ => x
-           | T.LI32 _ => x 
-           | T.LIInf _ => x 
            | T.LABEL _ => x 
+           | T.LABEXP _ => x 
            | T.CONST _ => x
            | T.NEG(ty,a) => rexp(a,x)
            | T.ADD(ty,a,b) => rexp2(a,b,x)

@@ -116,6 +116,7 @@ sig
    val fallsThruTo    : cfg * Graph.node_id -> Graph.node_id option
    val removeEdge     : cfg -> edge -> unit
    val setBranch      : cfg * Graph.node_id * bool -> I.instruction
+   val edgeDir        : edge_info Graph.edge -> bool option
 
   (*========================================================================
    *

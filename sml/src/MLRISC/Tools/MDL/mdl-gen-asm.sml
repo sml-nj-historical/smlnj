@@ -20,7 +20,6 @@ struct
 
        (* Arguments of the functor *)
        val args = ["structure Instr : "^Comp.signame md "INSTR",
-                   "structure Stream : INSTRUCTION_STREAM",
                    "structure Shuffle : "^Comp.signame md "SHUFFLE",
                    "   where I = Instr"
                   ]
@@ -87,7 +86,7 @@ struct
              | ([], "string") => APP("emit", e)
              | (["Constant"],"const") => APP(emit t, e)
              | (["Label"],"label") => APP(emit t, e)
-             | (["LabelExp"],"labexp") => APP(emit t, e)
+             | (["T"],"labexp") => APP(emit t, e)
              | (["Region"],"region") => APP(emit t, e)
              | _ =>
                 if List.exists(fn db as DATATYPEbind{id=id', ...}=> 
@@ -168,7 +167,8 @@ struct
        val body =
        [$["structure I  = Instr",
           "structure C  = I.C",
-          "structure S  = Stream",
+          "structure T  = I.T",
+          "structure S  = T.Stream",
           "structure P  = S.P",
           "structure LabelExp = I.LabelExp",
           "structure Constant = I.Constant",

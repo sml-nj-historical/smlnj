@@ -6,15 +6,15 @@
 
 
 functor HppaMCEmitter(structure Instr : HPPAINSTR
-                      structure Stream : INSTRUCTION_STREAM
                       structure CodeString : CODE_STRING
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I = Instr
-   structure S = Stream
    structure C = I.C
-   structure Constant = I.Constant
    structure LabelExp = I.LabelExp
+   structure Constant = I.Constant
+   structure T = I.T
+   structure S = T.Stream
    structure P = S.P
    structure W = Word32
    
@@ -583,8 +583,8 @@ struct
      | emitInstr (I.LONGJUMP{lab, n, tmp, tmpLab}) = 
        let 
 (*#line 965.18 "hppa/hppa.mdl"*)
-           val offset = LabelExp.MINUS (LabelExp.LABEL lab, LabelExp.PLUS (LabelExp.LABEL tmpLab, 
-                  LabelExp.INT 4))
+           val offset = T.SUB (32, T.LABEL lab, T.ADD (32, T.LABEL tmpLab, 
+                  T.LI (IntInf.fromInt 4)))
        in Label.setAddr (tmpLab, ( ! loc) + 4); 
           branchLink (0wx3a, tmp, tmpLab, 0wx0, n); 
           LongImmed {Op=0wxa, r=tmp, im21=assemble_21 (itow (LabelExp.valueOf offset))}; 

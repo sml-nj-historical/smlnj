@@ -125,6 +125,7 @@ struct
 
     fun branchOf(EDGE{k=BRANCH b,...}) = SOME b
       | branchOf _ = NONE
+    fun edgeDir(_,_,e) = branchOf e
 
    (*========================================================================
     *

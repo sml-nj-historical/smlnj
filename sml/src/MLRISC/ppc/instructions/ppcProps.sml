@@ -2,6 +2,7 @@ functor PPCProps(PPCInstr : PPCINSTR) : INSN_PROPERTIES =
 struct
   structure I = PPCInstr
   structure C = I.C
+  structure T = I.T 
   structure LE = I.LabelExp
 
   exception NegateConditional
@@ -49,23 +50,23 @@ struct
 
   fun branchTargets(I.BC{bo=I.ALWAYS, addr,  ...}) = 
       (case addr
-        of I.LabelOp(LE.LABEL lab) => [LABELLED lab]
+        of I.LabelOp(T.LABEL lab) => [LABELLED lab]
          | _ => error "branchTargets:BC:ALWAYS"
       (*esac*))
     | branchTargets(I.BC{addr, ...}) = 
       (case addr
-        of I.LabelOp(LE.LABEL lab) => [LABELLED lab, FALLTHROUGH]
+        of I.LabelOp(T.LABEL lab) => [LABELLED lab, FALLTHROUGH]
          | _ => error "branchTargets:BC"
       (*esac*))
     | branchTargets(I.BCLR{labels, bo=I.ALWAYS, ...}) = 
       (case labels of [] => [ESCAPES] | _ => map LABELLED labels)
     | branchTargets(I.BCLR{labels,  ...}) = 
       (case labels of [] => [ESCAPES, FALLTHROUGH] | _ => map LABELLED labels)
-    | branchTargets(I.B{addr=I.LabelOp(LE.LABEL lab), LK}) = [LABELLED lab]
+    | branchTargets(I.B{addr=I.LabelOp(T.LABEL lab), LK}) = [LABELLED lab]
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
-  fun jump lab = I.B{addr=I.LabelOp(LE.LABEL lab), LK=false}
+  fun jump lab = I.B{addr=I.LabelOp(T.LABEL lab), LK=false}
 
   val immedRange = {lo= ~32768, hi=32767}
 
@@ -73,7 +74,7 @@ struct
        I.ARITHI
          {oper=I.ADDI, rt=t, ra=zeroR(), 
           im=if #lo immedRange <= immed andalso immed <= #hi immedRange
-             then I.ImmedOp immed else I.LabelOp(LE.INT immed)}
+             then I.ImmedOp immed else I.LabelOp(I.T.LI(IntInf.fromInt immed))}
   fun loadOperand{opn,t} = 
        I.ARITHI{oper=I.ADDI, rt=t, ra=zeroR(), im=opn}
 

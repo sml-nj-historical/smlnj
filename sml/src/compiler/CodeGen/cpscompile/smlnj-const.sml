@@ -6,4 +6,3 @@ structure SMLNJConstant = struct
   fun == (x : const,y : const) = false
 end
 
-structure SMLNJLabelExp = LabelExp(SMLNJConstant)

@@ -8,10 +8,13 @@
 signature ALPHAINSTR =
 sig
    structure C : ALPHACELLS
+   structure T : MLTREE
+   structure LabelExp : LABELEXP
    structure Constant: CONSTANT
-   structure LabelExp: LABELEXP
    structure Region : REGION
-      sharing Constant = LabelExp.Constant
+      sharing LabelExp.T = T
+      sharing Constant = T.Constant
+      sharing Region = T.Region
    datatype ea =
      Direct of C.cell
    | FDirect of C.cell
@@ -19,9 +22,9 @@ sig
    datatype operand =
      REGop of C.cell
    | IMMop of int
-   | HILABop of LabelExp.labexp
-   | LOLABop of LabelExp.labexp
-   | LABop of LabelExp.labexp
+   | HILABop of T.labexp
+   | LOLABop of T.labexp
+   | LABop of T.labexp
    datatype branch =
      BR
    | BLBC
@@ -248,14 +251,14 @@ sig
    | PHI of {}
 end
 
-functor AlphaInstr(structure LabelExp : LABELEXP
-                   structure Region   : REGION
+functor AlphaInstr(LabelExp : LABELEXP
                   ) : ALPHAINSTR =
 struct
    structure C = AlphaCells
-   structure Region = Region
    structure LabelExp = LabelExp
-   structure Constant = LabelExp.Constant
+   structure T = LabelExp.T
+   structure Region = T.Region
+   structure Constant = T.Constant
    datatype ea =
      Direct of C.cell
    | FDirect of C.cell
@@ -263,9 +266,9 @@ struct
    datatype operand =
      REGop of C.cell
    | IMMop of int
-   | HILABop of LabelExp.labexp
-   | LOLABop of LabelExp.labexp
-   | LABop of LabelExp.labexp
+   | HILABop of T.labexp
+   | LOLABop of T.labexp
+   | LABop of T.labexp
    datatype branch =
      BR
    | BLBC

@@ -2,7 +2,8 @@ functor SparcProps(SparcInstr : SPARCINSTR) : INSN_PROPERTIES =
 struct
   structure I = SparcInstr
   structure C = I.C
-  structure LE = I.LabelExp
+  structure T = I.T 
+  structure LE = I.LabelExp 
 
   exception NegateConditional
 
@@ -126,7 +127,7 @@ struct
   fun loadImmed{immed,t} = 
       I.ARITH{a=I.OR,r=zeroR,i=
               if #lo immedRange <= immed andalso immed <= #hi immedRange 
-              then I.IMMED immed else I.LAB(LE.INT immed),d=t}
+              then I.IMMED immed else I.LAB(T.LI(IntInf.fromInt immed)),d=t}
   fun loadOperand{opn, t} = I.ARITH{a=I.OR,r=zeroR,i=opn, d=t}
 
   fun moveInstr(I.COPY _)  = true
@@ -154,14 +155,14 @@ struct
    *========================================================================*)
    fun hashOpn(I.REG r) = C.hashCell r
      | hashOpn(I.IMMED i) = Word.fromInt i
-     | hashOpn(I.LAB l) = I.LabelExp.hash l
-     | hashOpn(I.LO l) = I.LabelExp.hash l
-     | hashOpn(I.HI l) = I.LabelExp.hash l
+     | hashOpn(I.LAB l) = LE.hash l
+     | hashOpn(I.LO l) = LE.hash l
+     | hashOpn(I.HI l) = LE.hash l
    fun eqOpn(I.REG a,I.REG b) = C.sameColor(a,b)
      | eqOpn(I.IMMED a,I.IMMED b) = a = b
-     | eqOpn(I.LAB a,I.LAB b) = I.LabelExp.==(a,b)
-     | eqOpn(I.LO a,I.LO b) = I.LabelExp.==(a,b)
-     | eqOpn(I.HI a,I.HI b) = I.LabelExp.==(a,b)
+     | eqOpn(I.LAB a,I.LAB b) = LE.==(a,b)
+     | eqOpn(I.LO a,I.LO b) = LE.==(a,b)
+     | eqOpn(I.HI a,I.HI b) = LE.==(a,b)
      | eqOpn _ = false
 
   fun defUseR instr =

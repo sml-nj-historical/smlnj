@@ -97,6 +97,7 @@ sig
     *)
    val cellId           : cell -> cell_id        (* return cell id *)
    val cellkind         : cell -> cellkind       (* return cellkind *)
+   val isConst          : cell -> bool
    val annotations      : cell -> Annotations.annotations ref 
    val sameCell         : cell * cell -> bool    (* object identity *)
    val sameKind         : cell * cell -> bool    (* same cellkind? *)
@@ -107,12 +108,13 @@ sig
    val registerNum      : cell -> register_num   (* +++ *)
    val physicalRegisterNum : cell -> int         (* +++ *)
    val sameColor        : cell * cell -> bool    (* color identity +++ *)
+   val compareColor     : cell * cell -> order   (* +++ *)
    val toString         : cell -> string         (* pretty print a cell +++ *)
    val toStringWithSize : cell * sz -> string    (* +++ *)
 
    (* Set the color of the 'from' cell to be the same as
-    * the 'to' cell.  The 'from' cell MUST be a pseudo register.
-    * Chase aliases.
+    * the 'to' cell.  The 'from' cell MUST be a pseudo register,
+    * and cannot be of kind CONST.
     *)
    val setAlias    : {from: cell, to: cell} -> unit  (* +++ *)
 
@@ -147,6 +149,13 @@ sig
     *)
    structure HashTable : MONO_HASH_TABLE where type Key.hash_key = cell
 
+   (*
+    * Hash table indexed by cell color.  
+    * IMPORTANT: this table is indexed by color!
+    * ALSO: DO NOT change the colors of the cells while using this table!
+    *)
+   structure ColorTable : MONO_HASH_TABLE where type Key.hash_key = cell
+
     (*
      * These annotations adds extra definitions and uses to an instruction
      *)
@@ -156,5 +165,9 @@ sig
 
     (* Internal use for alias analysis; don't use! *)
    val mem : register_id -> cell
+
+    (* Internal use only! *)
+   val show         : cellkindDesc -> register_id -> string
+   val showWithSize : cellkindDesc -> register_id * sz -> string
 end
 

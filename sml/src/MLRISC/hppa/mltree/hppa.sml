@@ -14,25 +14,21 @@
 
 functor Hppa
   (structure HppaInstr : HPPAINSTR
-   structure HppaMLTree : MLTREE
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = HppaInstr and T = HppaMLTree
+      where I = HppaInstr 
    structure MilliCode : HPPA_MILLICODE
       where I = HppaInstr
-   structure LabelComp : LABEL_COMP where I = HppaInstr and T = HppaMLTree
-      sharing HppaMLTree.Region = HppaInstr.Region
-      sharing HppaMLTree.LabelExp = HppaInstr.LabelExp
+   structure LabelComp : LABEL_COMP where I = HppaInstr 
    val costOfMultiply : int ref
    val costOfDivision : int ref
   ) : MLTREECOMP =
 struct
    structure I = HppaInstr
-   structure T = HppaMLTree
+   structure T = I.T
    structure S = T.Stream
    structure C = I.C
    structure MC = MilliCode
    structure LC = LabelComp
-   structure LE = I.LabelExp
    structure Region = I.Region
    structure A = MLRiscAnnotations
 
@@ -190,11 +186,12 @@ struct
                 end
 
        (* generate code to load a immediate constant *) 
-       fun immed (n: T.I.machine_int) = let val t = newReg() in loadImmed(n,t,[]); t end
+       fun immed (n: T.I.machine_int) = 
+            let val t = newReg() in loadImmed(n,t,[]); t end
 
        (* load constant *)
        fun loadConst(c,t,an) = 
-             mark(I.LDO{b=zeroR,i=I.LabExp(LE.CONST c,I.F),t=t},an) (* XXX *)
+             mark(I.LDO{b=zeroR,i=I.LabExp(c,I.F),t=t},an) (* XXX *)
 
        (* convert an operand into a register *)
        fun reduceOpn i = 
@@ -266,12 +263,12 @@ struct
 	* in the case of DISPea.
         *)
        and addr(scale,T.ADD(_,e,T.LI n))    = DISP(expr e, n)
-         | addr(scale,T.ADD(_,e,T.CONST c)) =
-              AMode(DISPea(expr e,I.LabExp(LE.CONST c,I.F)))
+         | addr(scale,T.ADD(_,e,c as T.CONST _)) =
+              AMode(DISPea(expr e,I.LabExp(c,I.F)))
          | addr(scale,T.ADD(ty,i as T.LI _,e)) = addr(scale,T.ADD(ty,e,i))
-         | addr(scale,T.ADD(_,T.CONST c,e)) = 
-              AMode(DISPea(expr e,I.LabExp(LE.CONST c,I.F)))
-         | addr(scale,T.ADD(_,e,T.LABEL le)) = 
+         | addr(scale,T.ADD(_,c as T.CONST _,e)) = 
+              AMode(DISPea(expr e,I.LabExp(c,I.F)))
+         | addr(scale,T.ADD(_,e,T.LABEXP le)) = 
              let val rs = expr e
                  val (rt, opnd) = ldLabelEA le
              in  case (C.registerId rt, opnd) of
@@ -283,7 +280,7 @@ struct
                          AMode(DISPea(tmp,opnd))
                      end
              end
-         | addr(scale,T.ADD(t,e1 as T.LABEL l,e2)) = addr(scale,T.ADD(t,e2,e1))
+         | addr(scale,T.ADD(t,e1 as T.LABEXP l,e2)) = addr(scale,T.ADD(t,e2,e1))
          | addr(scale,T.ADD(_,e1,e2)) = 
            let (* check for special multiply add sequence 
                 * here, e1 is is scaled 
@@ -311,8 +308,8 @@ struct
 		 | _ => AMode(INDXea(expr e1,expr e2))
            end
          | addr(scale,T.SUB(ty,e,T.LI n)) = addr(scale,T.ADD(ty,e,T.LI(T.I.NEGT(32,n))))
-         | addr(scale,T.LABEL lexp)       = AMode(DISPea(ldLabelEA(lexp)))
-         | addr(scale,ea)                 = AMode(DISPea(expr ea,zeroImmed))
+         | addr(scale,T.LABEXP lexp)     = AMode(DISPea(ldLabelEA(lexp)))
+         | addr(scale,ea)                = AMode(DISPea(expr ea,zeroImmed))
  
        (* emit an integer load 
         * li - load immediate, 
@@ -520,7 +517,7 @@ struct
          | stmt(T.CCMV(t,e),an) = doCCexpr(e,t,an)
          | stmt(T.COPY(32,dst,src),an) = copy(dst,src,an)
          | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
-         | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) = goto(l,an)
+         | stmt(T.JMP(T.LABEL l,_),an) = goto(l,an)
          | stmt(T.JMP(ea,labs),an) = jmp(ea,labs,an)
          | stmt(s as T.CALL _,an) = call(s,an)
          | stmt(T.RET _,an) = 
@@ -697,12 +694,13 @@ struct
            case e of
              T.REG(_,r) => move(r,t,an)
            | T.LI n     => loadImmed(n,t,an)
-           | T.LABEL le  => 
+           | T.LABEXP le => 
                 (case ldLabelOpnd{label=le,pref=SOME t} of
                    I.REG r => move(r,t,an)
                  | opnd => mark(I.LDO{i=opnd,b=zeroR,t=t},an)
                 )
-           | T.CONST c  => loadConst(c,t,an)
+           | T.CONST _  => loadConst(e,t,an)
+           | T.LABEL _  => loadConst(e,t,an)
            | T.ADD(_,a,b) => plus(times,
                                   I.SH1ADDL,I.SH2ADDL,I.SH3ADDL,I.ADD,I.ADDI,
                                   a,b,t,an) 
@@ -810,11 +808,12 @@ struct
          | ccExpr e = let val t = newReg() in doCCexpr(e,t,[]); t end
 
            (* convert an expression into an operand *) 
-       and opn(T.CONST c)     = I.LabExp(LE.CONST c,I.F)
-         | opn(T.LABEL le)    = ldLabelOpnd{label=le,pref=NONE}
-         | opn(e as T.LI n)   = if im11 n then I.IMMED(toInt n)
-                                else I.REG(expr e)
-         | opn e              = I.REG(expr e)
+       and opn(c as T.CONST _) = I.LabExp(c,I.F)
+         | opn(l as T.LABEL _) = I.LabExp(l,I.F)
+         | opn(T.LABEXP le)    = ldLabelOpnd{label=le,pref=NONE}
+         | opn(e as T.LI n)    = if im11 n then I.IMMED(toInt n)
+                                 else I.REG(expr e)
+         | opn e               = I.REG(expr e)
 
        and addrOf e = 
 	 case addr(0, e)

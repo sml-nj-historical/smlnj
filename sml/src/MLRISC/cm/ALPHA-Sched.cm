@@ -1,29 +1,44 @@
-(*
- * This library contains the superscalar scheduling stuff.
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	functor AlphaSchedProps
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	MLRISC.cm
 	ALPHA.cm
 	Sched.cm
 	Region.cm
-	
-	(* Alpha scheduler *) 
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/MLRISC.cm
+	$/ALPHA.cm
+	$/Sched.cm
+	$/Region.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	ALPHA.cm
+	Sched.cm
+	Region.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	MLRISC.cm
+	ALPHA.cm
+	Sched.cm
+	Region.cm
+#endif
 	../alpha/scheduling/alphaSchedProps.sml

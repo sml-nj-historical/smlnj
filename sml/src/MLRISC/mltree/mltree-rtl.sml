@@ -164,7 +164,6 @@ struct
                                in  stms(ss, d, u) end
 
        and rhs(T.LI _, d, u) = (d, u)
-         | rhs(T.LI32 _, d, u) = (d, u)
          | rhs(x as T.ARG _, d, u) = (d, x::u)
          | rhs(x as T.PARAM _, d, u) = (d, x::u)
          | rhs(T.ADD(_,x,y), d, u) = binOp(x, y, d, u)
@@ -265,7 +264,7 @@ struct
     *-----------------------------------------------------------------------*)
    fun namingConstraints(defs, uses) =
    let fun collectFixed((x as T.$(_,_,T.LI r))::xs, fixed, rest) =
-              collectFixed(xs, (x, r)::fixed, rest)
+              collectFixed(xs, (x, IntInf.toInt r)::fixed, rest)
          | collectFixed(x::xs, fixed, rest) = 
               collectFixed(xs, fixed, x::rest)
          | collectFixed([], fixed, rest) = (fixed, rest)
@@ -331,13 +330,13 @@ struct
    fun can'tMoveUp(T.RTL{attribs, ...}) = 
           isOn(!attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
      | can'tMoveUp(T.PHI _) = true
-     | can'tMoveUp(T.SOURCE _) = true
-     | can'tMoveUp(T.SINK _) = true
+     | can'tMoveUp(T.SOURCE) = true
+     | can'tMoveUp(T.SINK) = true
      | can'tMoveUp _ = false
 
    fun can'tMoveDown(T.PHI _) = true
-     | can'tMoveDown(T.SOURCE _) = true
-     | can'tMoveDown(T.SINK _) = true
+     | can'tMoveDown(T.SOURCE) = true
+     | can'tMoveDown(T.SINK) = true
      | can'tMoveDown(T.RTL{attribs, ...}) = 
           isOn(!attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP || A_TRAPPING ||
                         A_PINNED ||
@@ -347,13 +346,13 @@ struct
    fun pinned(T.RTL{attribs, ...}) = 
          isOn(!attribs, A_SIDEEFFECT || A_TRAPPING || A_PINNED)
      | pinned(T.PHI _) = true
-     | pinned(T.SOURCE _) = true
-     | pinned(T.SINK _) = true
+     | pinned(T.SOURCE) = true
+     | pinned(T.SINK) = true
      | pinned _ = false
    fun can'tBeRemoved(T.RTL{attribs, ...}) = 
          isOn(!attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP)
-     | can'tBeRemoved(T.SOURCE _) = true
-     | can'tBeRemoved(T.SINK _) = true
+     | can'tBeRemoved(T.SOURCE) = true
+     | can'tBeRemoved(T.SINK) = true
      | can'tBeRemoved _ = false
  
 end

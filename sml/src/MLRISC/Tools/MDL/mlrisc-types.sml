@@ -90,71 +90,124 @@ struct
      | ofCellKind(T.ARG _,CELLdecl{id, ...}) = false
      | ofCellKind(_, _) = false
 
+
+    (*
+     * A database of all special types
+     *)
+    datatype howto = 
+       HOWTO of 
+        { rep           : string, (* name of representation *)
+          isSSAValue    : bool,   (* is it a value in SSA form? *)
+          mlType        : Ast.ty, (* type in ML *)
+          isConst       : bool,   (* if so, is it always a constant? *) 
+          isMultiValued :         (* if a value can it take more than one *)
+             Comp.md -> bool
+        } 
+ 
+     val howtos = ref [] : howto list ref
+ 
+     fun findRep r =
+         case List.find (fn HOWTO{rep, ...} => rep = r) (!howtos) of 
+           SOME(HOWTO howto) => howto
+         | NONE => fail("bug: representation "^r^" not known")
+ 
+    (*---------------------------------------------------------------------
+     * 
+     * Code generation magic
+     *
+     *---------------------------------------------------------------------*)
+     fun isConst(T.REP rep) = #isConst(findRep rep)
+
+    (*---------------------------------------------------------------------
+     * 
+     * Okay, now specify all the types that we have to handle.
+     *
+     *---------------------------------------------------------------------*)
+     fun no _ = false
+     fun yes _ = true
+     fun bug _ = fail("unimplemented")
+ 
+     val _ = howtos :=
+       [HOWTO{rep           = "label",
+              isSSAValue    = false,
+              mlType        = IDty(IDENT(["Label"],"label")),
+              isConst       = true,
+              isMultiValued = no
+             },
+ 
+        HOWTO{rep           = "int",
+              isSSAValue    = true,
+              mlType        = IDty(IDENT([],"int")),
+              isConst       = true,
+              isMultiValued = no
+             },
+ 
+        HOWTO{rep           = "operand",
+              isSSAValue    = true,
+              mlType        = IDty(IDENT(["I"],"operand")),
+              isConst       = false,
+              isMultiValued = yes
+             },
+ 
+        HOWTO{rep           = "cellset",
+              isSSAValue    = true,
+              mlType        = IDty(IDENT(["C"],"cellset")),
+              isConst       = false,
+              isMultiValued = yes
+             }
+       ]
+
    (*---------------------------------------------------------------------
     * 
-    * A database of all special types
+    * Generate an expression for performing the appropriate conversion
     *
     *---------------------------------------------------------------------*)
-   datatype howto = 
-      HOWTO of 
-       { rep           : string, (* name of representation *)
-         isSSAValue    : bool,   (* is it a value in SSA form? *)
-         mlType        : Ast.ty, (* type in ML *)
-         isConst       : bool,   (* if so, is it always a constant? *) 
-         isMultiValued :         (* if a value can it take more than one *)
-            Comp.md -> bool
-       } 
+   datatype conv = IGNORE | CONV of string | MULTI of string
 
-    val howtos = ref [] : howto list ref
+   structure DescMap = RedBlackMapFn(type ord_key = string
+                                     val compare = String.compare)
+   fun getOpnd desc = 
+   let val tbl =
+           foldr (fn ((rep,conv), tbl) =>
+                    DescMap.insert(tbl, rep, conv)) DescMap.empty desc
 
-    fun findRep r =
-        case List.find (fn HOWTO{rep, ...} => rep = r) (!howtos) of 
-          SOME(HOWTO howto) => howto
-        | NONE => fail("bug: representation "^r^" not known")
+       fun mkConvFun(rep,conv) = 
+           "fun get_"^rep^"(x,L) = "^
+             (case conv of 
+               IGNORE => "L"
+             | CONV f => f^"::L"
+             | MULTI f => f^"@L"
+             )
+       fun mkConvFun0(rep,conv) = 
+           "fun get_"^rep^"'(x) = "^
+             (case conv of 
+               IGNORE => "[]"
+             | CONV f => "["^f^"]"
+             | MULTI f => f
+             )
+       val decl = $(map mkConvFun desc @ map mkConvFun0 desc)
 
-   (*---------------------------------------------------------------------
-    * 
-    * Code generation magic
-    *
-    *---------------------------------------------------------------------*)
-    fun isConst(T.REP rep) = #isConst(findRep rep)
+       fun apply(rep, this, rest) = APP("get_"^rep,TUPLEexp[this,rest])
 
-   (*---------------------------------------------------------------------
-    * 
-    * Okay, now specify all the types that we have to handle.
-    *
-    *---------------------------------------------------------------------*)
-    fun no _ = false
-    fun yes _ = true
-    fun bug _ = fail("unimplemented")
+       fun getIt(rep, this, rest) = 
+           case (DescMap.find(tbl, rep), rest) of
+             (NONE, _) => fail("getOpnd: "^rep^" is not defined")
+           | (SOME IGNORE, _)   => rest
+           | (SOME(CONV _), _)  => apply(rep, this, rest)
+           | (SOME(MULTI conv), LISTexp([],NONE)) => APP("get_"^rep^"'", this)
+           | (SOME(MULTI _), rest) => apply(rep, this, rest)
 
-    val _ = howtos :=
-      [HOWTO{rep           = "label",
-             isSSAValue    = false,
-             mlType        = IDty(IDENT(["Label"],"label")),
-             isConst       = true,
-             isMultiValued = no
-            },
+       fun get(this,T.$(_,k,_),rest) =  
+             if C.cellkindToString k = "CELLSET" then
+                 getIt("cellset",this,rest)
+             else
+                 getIt("cell",this,rest)
+          | get(this,T.ARG(_,ref(T.REP rep),_),rest) = getIt(rep,this,rest)
+          | get(_, e, _) = fail("MLRiscTypes.get: "^RTL.Util.rexpToString e)
 
-       HOWTO{rep           = "int",
-             isSSAValue    = true,
-             mlType        = IDty(IDENT([],"int")),
-             isConst       = true,
-             isMultiValued = no
-            },
+   in  { decl= decl,
+         get = get 
+       }
+   end
 
-       HOWTO{rep           = "operand",
-             isSSAValue    = true,
-             mlType        = IDty(IDENT(["I"],"operand")),
-             isConst       = false,
-             isMultiValued = yes
-            },
-
-       HOWTO{rep           = "cellset",
-             isSSAValue    = true,
-             mlType        = IDty(IDENT(["C"],"cellset")),
-             isConst       = false,
-             isMultiValued = yes
-            }
-      ]
 end

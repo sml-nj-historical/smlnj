@@ -6,14 +6,14 @@
 
 
 functor PPCAsmEmitter(structure Instr : PPCINSTR
-                      structure Stream : INSTRUCTION_STREAM
                       structure Shuffle : PPCSHUFFLE
                          where I = Instr
                      ) : INSTRUCTION_EMITTER =
 struct
    structure I  = Instr
    structure C  = I.C
-   structure S  = Stream
+   structure T  = I.T
+   structure S  = T.Stream
    structure P  = S.P
    structure LabelExp = I.LabelExp
    structure Constant = I.Constant

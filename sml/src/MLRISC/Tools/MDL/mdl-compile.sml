@@ -333,7 +333,8 @@ struct
    fun mkQueryByCellKind md name =
    let val cellKinds = cells md
        val clientDefined =  
-           List.filter (fn CELLdecl{id, ...} =>
+           List.filter (fn CELLdecl{id, alias, ...} =>
+              not(isSome alias) andalso
               not(MLRiscDefs.isPredefinedCellKind id) andalso
               not(MLRiscDefs.isPseudoCellKind id)) cellKinds
 
@@ -342,7 +343,7 @@ struct
              [] => [CLAUSE([WILDpat],NONE,APP("error",STRINGexp name))]
            | _  => 
               [CLAUSE([IDpat "k"],NONE,
-                 foldr(fn (CELLdecl{id, ...}, e) =>
+                 foldr(fn (CELLdecl{id, alias, ...}, e) =>
                     IFexp(APP("=",TUPLEexp[ID "k",IDexp(IDENT(["C"],id))]),
                           ID(name^id),
                           e))
@@ -350,11 +351,17 @@ struct
               ]
 
        val predefined =
-          foldr (fn (CELLdecl{id, ...}, c) =>
+          foldr (fn (CELLdecl{id, alias, ...}, c) =>
                  if MLRiscDefs.isPredefinedCellKind id andalso 
-                    not(MLRiscDefs.isPseudoCellKind id) then 
-                   CLAUSE([CONSpat(IDENT(["C"],id),NONE)],NONE,ID(name^id))::c
-                 else c) newlyDefined cellKinds 
+                    not(MLRiscDefs.isPseudoCellKind id) 
+                 then 
+                   CLAUSE([CONSpat(IDENT(["C"],id),NONE)],NONE,
+                          case alias of 
+                            NONE       => ID(name^id)
+                          | SOME alias => APP(name,IDexp(IDENT(["C"],alias)))
+                         )::c
+                 else c
+                ) newlyDefined cellKinds 
 
    in  FUNdecl[FUNbind(name, predefined)]
    end
@@ -363,8 +370,10 @@ struct
     * Do everything on user defined cellkinds
     *)
    fun forallUserCellKinds md f = 
-        map f (List.filter (fn CELLdecl{id, ...} =>
-               not(MLRiscDefs.isPseudoCellKind id)) (cells md))
+        map f (List.filter (fn CELLdecl{id, alias, ...} =>
+               not(MLRiscDefs.isPseudoCellKind id)
+               andalso not(isSome alias)
+              ) (cells md))
 
 
 end

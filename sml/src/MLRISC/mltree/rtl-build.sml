@@ -6,6 +6,7 @@ functor RTLBuild(RTL : MLTREE_RTL) : RTL_BUILD =
 struct 
    structure RTL = RTL
    structure T = RTL.T
+   structure I = T.I
    
    type effect  = RTL.rtl
    type exp     = T.rexp
@@ -47,8 +48,8 @@ struct
    fun label ty exp = exp
 
    (* integer *)
-   fun intConst ty i = T.LI i
-   fun wordConst ty w = T.LI32 w
+   fun intConst ty i = T.LI(I.fromInt(ty, i))
+   fun wordConst ty w = T.LI(I.fromWord32(ty, w))
 
    fun binOp oper ty (x, y) = oper(ty,x,y)
    fun unaryOp oper ty x = oper(ty,x)

@@ -1,8 +1,5 @@
-(*
- * This library contains the VLIW based optimizations.
- *)
-
-Library 
+(* This file is created by makeallcm *)
+Library
 	signature C6CELLS
 	signature C6DATAPATHS
 	signature C6FUNITS
@@ -56,20 +53,11 @@ Library
 	functor PredicatedDDG
 	functor PredicatedDDGBuilder
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
-#else
-        basis.cm
-        smlnj-lib.cm
-#endif
-#else
-        smlnj-lib.cm
-#endif
-
-	
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
 	Control.cm
 	Lib.cm
 	Graphs.cm
@@ -77,11 +65,37 @@ is
 	ir.cm
 	MLRISC.cm
 	IR.cm
-	
-	../emit/emitterNEW.sig (* dummy *)
-	
-	(* ../VLIW/EPIC foundational stuff.
-	 *)
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+	$/Visual.cm
+	$/ir.cm
+	$/MLRISC.cm
+	$/IR.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+#endif
 	../instructions/funits.sig
 	../instructions/datapaths.sig
 	../instructions/pred-instructions.sig
@@ -89,11 +103,6 @@ is
 	../instructions/pred-vliw-instructions.sig
 	../instructions/predicationProps.sig
 	../instructions/vliwProps.sig
-	
-	(* Hyperblock and predicate analysis. 
-	 * These are necessary if you want to play with optimizations
-	 * for predicated for VLIW architectures.
-	 *)
 	../hyperblock/decision-trees.sig
 	../hyperblock/decision-trees.sml
 	../hyperblock/hyperblock.sig
@@ -104,20 +113,12 @@ is
 	../hyperblock/if-conversion.sml
 	../hyperblock/predicated-ddg.sig
 	../hyperblock/predicated-ddg.sml
-	
-	(* Hyperblock Scheduling for VLIW 
-	 * It requires the hyperblock, MLRISC IR and VLIW modules. !!!
-	 *)
 	../hyperblock-scheduling/critical-path.sml
 	../hyperblock-scheduling/hyperblock-scheduling.sig
 	../hyperblock-scheduling/hyperblock-scheduling.sml
 	../hyperblock-scheduling/rank-algorithm.sig
 	../hyperblock-scheduling/vliwSchedulingProps.sig
 	../hyperblock-scheduling/vliwSchedulingAutomaton.sig
-	
-	(* Modulo Scheduling for VLIW
-	 * It requires the hyperblock, MLRISC IR and VLIW modules. !!!
-	 *)
 	../modulo-scheduling/iterated-modulo-scheduling.sml
 	../modulo-scheduling/modulo-scheduling-algo.sig
 	../modulo-scheduling/modulo-scheduling.sig
@@ -126,13 +127,10 @@ is
 	../modulo-scheduling/mrt.sml
 	../modulo-scheduling/pre-modulo-scheduling.sig
 	../modulo-scheduling/pre-modulo-scheduling.sml
-	
-	(* C6 specific backend !!! *)
 	../C6/instructions/C6Cells.sig
 	../C6/instructions/C6Cells.sml
 	../C6/instructions/C6Datapaths.sig
 	../C6/instructions/C6Datapaths.sml
-	(*C6/instructions/C6DatapathsProps.sml*)
 	../C6/instructions/C6Funits.sig
 	../C6/instructions/C6Funits.sml
 	../C6/instructions/C6Instr.sig
@@ -149,9 +147,4 @@ is
 	../C6/instructions/C6Shuffle.sml
 	../C6/instructions/C6VLIWProps.sml
 	../C6/emit/C6Asm.sml
-	(*C6/scheduling/C6RTDEFS.sml
-	C6/scheduling/C6RTDEFS2.sml
-	C6/scheduling/C6RTTables.sml
-	C6/scheduling/C6RTTables2.sml*)
 	../C6/scheduling/C6SchedulingProps.sml
-	(* ../C6/SSA/C6SSAProps.sml *)

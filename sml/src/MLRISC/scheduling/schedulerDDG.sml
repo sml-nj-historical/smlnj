@@ -79,15 +79,7 @@ struct
    fun latToString i = if i < 0 then "-"^Int.toString(~i) else Int.toString i
 
    (* Slow but pretty way of pretty printing registers *)
-   fun showReg(prefix,r) = 
-   let fun loop [] = prefix^Int.toString r
-         | loop(k::ks) = 
-           let val {low, high} = C.cellRange k 
-           in  if low <= r andalso r <= high then
-                 C.toString k r
-               else loop ks
-           end handle _ => loop ks
-   in loop C.cellkinds end
+   fun showReg(prefix,r) = prefix^C.toString r
  
    fun edgeToString(EDGE{l,d,r}) =
    let val (dep,prefix) = 
@@ -104,7 +96,7 @@ struct
            | LIVEOUT    => ("liveout","r")
        val lat = if l = 0 then "" else " "^latToString l
 
-       val reg = if r >= 0 then "("^showReg(prefix,r)^")" else ""
+       val reg = "("^showReg(prefix,r)^")" 
    in  dep ^ lat ^ reg end
 
    fun cellsToString S =

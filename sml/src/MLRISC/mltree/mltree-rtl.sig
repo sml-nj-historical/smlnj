@@ -27,8 +27,8 @@ sig
    (*-----------------------------------------------------------------------
     * Basic Operations
     *-----------------------------------------------------------------------*)
-   val showRTL : {def:CellsBasis.cell->string, 
-                  use:CellsBasis.cell->string, 
+   val showRTL : {def:int->string, 
+                  use:int->string, 
                   regionDef:T.Region.region->string, 
                   regionUse:T.Region.region->string} -> T.printer
    val rtlToString : rtl -> string

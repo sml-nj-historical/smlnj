@@ -7,7 +7,7 @@ sig
    type gctype 
    type ty = int  (* width of addressing mode *)
 
-   val CONST  : int -> gctype                   (* integer constant *) 
+   val CONST  : IntInf.int -> gctype                   (* integer constant *) 
 
    val INT    : gctype                          (* machine integer *)
    val REAL32 : gctype                          (* machine float *)
@@ -24,5 +24,11 @@ sig
    val meet   : gctype * gctype -> gctype
 
    val toString : gctype -> string
+
+   (*
+    * Annotations for gc type
+    *)
+   exception GCTYPE of gctype
+   val GC_TYPE : gctype Annotations.property
 
 end

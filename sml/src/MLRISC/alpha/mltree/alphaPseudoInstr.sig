@@ -6,6 +6,7 @@ sig
    structure T : MLTREE
    structure C : ALPHACELLS
      sharing C = I.C
+     sharing I.T = T
   
    type reduceOpnd = I.operand -> C.cell
 

@@ -1,13 +1,5 @@
-(* PPC-MLRISC.cm
- *
- * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
- *
- * PowerPC specific modules for MLRISC code generation framework.
- *)
-
+(* This file is created by makeallcm *)
 Library
-
-
 	signature PPCCELLS
 	signature PPCINSTR
 	signature PPCSHUFFLE
@@ -24,29 +16,33 @@ Library
 	functor PPCRewrite
 	functor PPCShuffle
 is
-
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
-        $/basis.cm
-        $/smlnj-lib.cm
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
 	$/MLRISC.cm
 	$/Control.cm
 	$/Lib.cm
+#endif
 #else
-        basis.cm
-        smlnj-lib.cm
+	basis.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
 #else
-        smlnj-lib.cm
+	smlnj-lib.cm
 	MLRISC.cm
 	Control.cm
 	Lib.cm
 #endif
-
-	(* PowerPC specific backend *)
 	../ppc/instructions/ppcCells.sml
 	../ppc/instructions/ppcInstr.sml
 	../ppc/instructions/ppcShuffle.sig
@@ -60,4 +56,3 @@ is
 	../ppc/mltree/ppcPseudoInstr.sig
 	../ppc/mltree/ppc.sml 
 	../ppc/ra/ppcRewrite.sml
-	(* ../ppc/ra/ppcRegAlloc.sml *)

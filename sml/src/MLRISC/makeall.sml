@@ -7,6 +7,7 @@ val files =
 [
  "Control.cm",
  "Lib.cm",
+
  "MLRISC.cm",
  "SPARC.cm",
  "ALPHA.cm",
@@ -14,10 +15,12 @@ val files =
  "IA32.cm",
  "PPC.cm",
  (*"MIPS.cm", *)
+
  "Peephole.cm",
  "ALPHA-Peephole.cm",
  "SPARC-Peephole.cm",
  "IA32-Peephole.cm",
+
  "Graphs.cm",
  "Visual.cm",
  "ir.cm",
@@ -27,23 +30,31 @@ val files =
  "IR.cm",
  "RTL.cm",
  "Region.cm",
- "SSA.cm",
- "VLIW.cm",
- "Sched.cm",
- "Opt.cm",
+
  "ALPHA-RTL.cm",
  "SPARC-RTL.cm",
  "HPPA-RTL.cm",
  "IA32-RTL.cm",
+
+ "SSA.cm",
+
+ "Opt.cm",
+
  "ALPHA-SSA.cm",
  "SPARC-SSA.cm",
  "HPPA-SSA.cm",
- "IA32-SSA.cm",
+ "IA32-SSA.cm"
+
+(* "VLIW.cm", *)
+(* "Sched.cm", *)
+
+(*
  "ALPHA-Sched.cm",
  "SPARC-Sched.cm",
  "HPPA-Sched.cm",
  "PPC-Sched.cm",
  "IA32-Sched.cm"
+*)
  (*"ALPHA-GC.cm",
  "SPARC-GC.cm",
  "HPPA-GC.cm",

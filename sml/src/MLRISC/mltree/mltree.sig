@@ -6,15 +6,13 @@
 
 signature MLTREE = sig
   structure Constant    : CONSTANT
-  structure LabelExp    : LABELEXP
   structure PseudoOp    : PSEUDO_OPS
   structure Region      : REGION
   structure Stream      : INSTRUCTION_STREAM
   structure Basis       : MLTREE_BASIS
   structure Extension   : MLTREE_EXTENSION
+  structure I           : MACHINE_INT  
      sharing Stream.P = PseudoOp
-     sharing Constant = LabelExp.Constant
-  structure I           : MACHINE_INT
 
   type ty  = Basis.ty
   type fty = Basis.fty
@@ -70,19 +68,20 @@ signature MLTREE = sig
        * for describing instruction semantics.
        * The frontend must not use these.
        *)
-    | PHI    of {preds:int list, block:int}
+    | PHI    of {preds:int list,block:int}
     | ASSIGN of ty * rexp * rexp
-    | SOURCE of {block:int, liveIn:reg list}
-    | SINK   of {block:int, liveOut:reg list}
+    | SOURCE 
+    | SINK  
     | RTL    of {hash:word, attribs:Basis.attribs ref, e:stm}
 
   and rexp = 
       REG    of ty * reg            
 
       (* sizes of constants are inferred by context *)
-    | LI     of I.machine_int
-    | LABEL  of LabelExp.labexp
+    | LI     of I.machine_int                 
+    | LABEL  of Label.label
     | CONST  of Constant.const
+    | LABEXP of rexp
 
     | NEG    of ty * rexp                      
     | ADD    of ty * rexp * rexp    
@@ -205,6 +204,7 @@ signature MLTREE = sig
        and rext   = (stm, rexp, fexp, ccexp) Extension.rx
        and fext   = (stm, rexp, fexp, ccexp) Extension.fx
        and ccext  = (stm, rexp, fexp, ccexp) Extension.ccx
+       and labexp = rexp
 
   (*
    * Instruction streams

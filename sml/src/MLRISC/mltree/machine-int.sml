@@ -139,6 +139,9 @@ struct
        in  tow32 lo + Word32.<<(tow32 hi, 0w16) end
    fun toInt32(sz, i) = I.toLarge(narrow(sz, i))
 
+   val int_0x1fffffff = fromWord(32,0wx1fffffff)
+   fun hash i = Word.fromInt(I.toInt(I.andb(i,int_0x1fffffff)))
+
    (* constants *)
    val int_0xffffffff = Option.valOf(fromString(64, "0xffffffff"))
    val int_0x100000000 = Option.valOf(fromString(64, "0x100000000"))

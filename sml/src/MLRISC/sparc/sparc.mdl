@@ -452,11 +452,11 @@ struct
                       | Q 0b00111 
    
       datatype operand =
-         REG of $GP              ``<GP>''           rtl: $r[GP] 
-       | IMMED of int            ``<int>''          rtl: immed int 
-       | LAB of LabelExp.labexp  ``<labexp>''       rtl: labexp
-       | LO of LabelExp.labexp   ``%lo(<labexp>)''  rtl: lo(labexp)
-       | HI of LabelExp.labexp   ``%hi(<labexp>)''  rtl: hi(labexp)
+         REG of $GP       ``<GP>''           rtl: $r[GP] 
+       | IMMED of int     ``<int>''          rtl: immed int 
+       | LAB of T.labexp  ``<labexp>''       rtl: labexp
+       | LO of T.labexp   ``%lo(<labexp>)''  rtl: lo(labexp)
+       | HI of T.labexp   ``%hi(<labexp>)''  rtl: hi(labexp)
 
       type addressing_mode = C.cell * operand
    
@@ -861,7 +861,7 @@ struct
    structure SSA = 
    struct
       fun operand(ty,I.REG r)   = T.REG(ty, r)
-        | operand(ty,I.IMMED i) = T.LI i
+        | operand(ty,I.IMMED i) = T.LI(IntInf.fromInt i)
         (*| operand(ty,I.LAB le)  = T.LABEL le*)
         | operand(ty,_) = error "operand"
    end
