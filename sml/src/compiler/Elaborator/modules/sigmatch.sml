@@ -176,8 +176,8 @@ fun eqvTnspTy (specty: ty, actualty: ty) : (ty * tyvar list) =
       val (specInst, specInstTvs) = TU.instantiatePoly specty
       val _ = ((Unify.unifyTy(actInst, specInst))
                handle _ => bug "unexpected types in eqvTnspTy")
-      val btvs = map TU.tyvarType specInstTvs
-   in (actinst, btvs)
+      val boundTvs = map TU.tyvarType specInstTvs
+   in (actinst, boundTvs)
   end
 
 

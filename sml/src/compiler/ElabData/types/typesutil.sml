@@ -514,7 +514,7 @@ fun tyvarType (VARty (tv as ref(OPEN _))) = tv
   | tyvarType (CONty(_,_)) = bug "tyvarType: CONty"
   | tyvarType (POLYty _) = bug "tyvarType: POLYty"
   | tyvarType UNDEFty = bug "tyvarType: UNDEFty"
-  | tyvarType _ = bug "tyvarType 124" 
+  | tyvarType _ = bug "tyvarType - unexpected argument" 
 
 (* 
  * getRecTyvarMap : int * ty -> (int -> bool) 
