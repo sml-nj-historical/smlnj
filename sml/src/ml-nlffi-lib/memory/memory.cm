@@ -13,10 +13,19 @@ is
 	memory.sig
 	linkage.sig
 	bitop-fn.sml
-# if (defined(ARCH_X86) orelse defined(ARCH_SPARC) orelse defined(ARCH_PPC)) andalso defined(OPSYS_UNIX)
+# if (defined(ARCH_X86) orelse defined(ARCH_SPARC) orelse defined(ARCH_PPC)) andalso (defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32))
+
+#   if defined(OPSYS_WIN32)
+	main-lib-win32.sml
+	memory-a4s2i4l4f4d8-win32.sml	(lambdasplit:infinity)
+#   else
+	main-lib-unix.sml
+	memory-a4s2i4l4f4d8.sml		(lambdasplit:infinity)
+#   endif
+
 	linkage-dlopen.sml
-	mlrep-i32f64.sml	(lambdasplit:infinity)
-	memory-a4s2i4l4f4d8.sml	(lambdasplit:infinity)
+	mlrep-i32f64.sml		(lambdasplit:infinity)
+
 # else
 # error architecture not supported yet
 # endif

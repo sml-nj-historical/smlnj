@@ -7,6 +7,7 @@
 #include "ml-base.h"
 #include "ml-objects.h"
 #include "cfun-proto-list.h"
+#include "ml-c.h"
 
 /* _ml_Date_localtime : Int32.int -> (int * int * int * int * int * int * int * int * int)
  *
@@ -20,6 +21,8 @@ ml_val_t _ml_Date_localtime (ml_state_t *msp, ml_val_t arg)
     struct tm	*tm;
 
     tm = localtime (&t);
+
+    if (tm == NULL) RAISE_SYSERR(msp,0);
 
     ML_AllocWrite(msp, 0, MAKE_DESC(DTAG_record, 9));
     ML_AllocWrite(msp, 1, INT_CtoML(tm->tm_sec));

@@ -88,6 +88,11 @@ struct
      | asm_load (I.LWZ) = "lwz"
      | asm_load (I.LWZE) = "lwze"
      | asm_load (I.LDE) = "lde"
+     | asm_load (I.LBZU) = "lbzu"
+     | asm_load (I.LHZU) = "lhzu"
+     | asm_load (I.LHAU) = "lhau"
+     | asm_load (I.LWZU) = "lwzu"
+     | asm_load (I.LDZU) = "ldzu"
    and emit_load x = emit (asm_load x)
    and asm_store (I.STB) = "stb"
      | asm_store (I.STBE) = "stbe"
@@ -96,16 +101,24 @@ struct
      | asm_store (I.STW) = "stw"
      | asm_store (I.STWE) = "stwe"
      | asm_store (I.STDE) = "stde"
+     | asm_store (I.STBU) = "stbu"
+     | asm_store (I.STHU) = "sthu"
+     | asm_store (I.STWU) = "stwu"
+     | asm_store (I.STDU) = "stdu"
    and emit_store x = emit (asm_store x)
    and asm_fload (I.LFS) = "lfs"
      | asm_fload (I.LFSE) = "lfse"
      | asm_fload (I.LFD) = "lfd"
      | asm_fload (I.LFDE) = "lfde"
+     | asm_fload (I.LFSU) = "lfsu"
+     | asm_fload (I.LFDU) = "lfdu"
    and emit_fload x = emit (asm_fload x)
    and asm_fstore (I.STFS) = "stfs"
      | asm_fstore (I.STFSE) = "stfse"
      | asm_fstore (I.STFD) = "stfd"
      | asm_fstore (I.STFDE) = "stfde"
+     | asm_fstore (I.STFSU) = "stfsu"
+     | asm_fstore (I.STFDU) = "stfdu"
    and emit_fstore x = emit (asm_fstore x)
    and asm_cmp (I.CMP) = "cmp"
      | asm_cmp (I.CMPL) = "cmpl"
@@ -224,7 +237,7 @@ struct
      | asm_bit (I.OX) = "so"
    and emit_bit x = emit (asm_bit x)
 
-(*#line 576.7 "ppc/ppc.mdl"*)
+(*#line 602.7 "ppc/ppc.mdl"*)
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, (size s) - 1)) = #"e")
           then 
           ( emit (String.substring (s, 0, (size s) - 1)); 
@@ -234,17 +247,17 @@ struct
             emit "x" ))
      | emitx (s, _) = emit s
 
-(*#line 582.7 "ppc/ppc.mdl"*)
+(*#line 608.7 "ppc/ppc.mdl"*)
    fun eOERc {OE=false, Rc=false} = ()
      | eOERc {OE=false, Rc=true} = emit "."
      | eOERc {OE=true, Rc=false} = emit "o"
      | eOERc {OE=true, Rc=true} = emit "o."
 
-(*#line 586.7 "ppc/ppc.mdl"*)
+(*#line 612.7 "ppc/ppc.mdl"*)
    fun eRc false = ""
      | eRc true = "."
 
-(*#line 587.7 "ppc/ppc.mdl"*)
+(*#line 613.7 "ppc/ppc.mdl"*)
    fun cr_bit (cr, bit) = (4 * (CellsBasis.physicalRegisterNum cr)) + 
        (case bit of
          I.LT => 0
@@ -261,18 +274,18 @@ struct
        | I.OX => 3
        )
 
-(*#line 594.7 "ppc/ppc.mdl"*)
+(*#line 620.7 "ppc/ppc.mdl"*)
    fun eCRbit x = emit (Int.toString (cr_bit x))
 
-(*#line 595.7 "ppc/ppc.mdl"*)
+(*#line 621.7 "ppc/ppc.mdl"*)
    fun eLK true = emit "l"
      | eLK false = ()
 
-(*#line 596.7 "ppc/ppc.mdl"*)
+(*#line 622.7 "ppc/ppc.mdl"*)
    fun eI (I.RegOp _) = ()
      | eI _ = emit "i"
 
-(*#line 597.7 "ppc/ppc.mdl"*)
+(*#line 623.7 "ppc/ppc.mdl"*)
    fun eBI (bo, bf, bit) = 
        (case (bo, CellsBasis.physicalRegisterNum bf) of
          (I.ALWAYS, _) => ()
@@ -281,7 +294,7 @@ struct
        | (_, n) => emit ((("4*cr" ^ (Int.toString n)) ^ "+") ^ (asm_bit bit))
        )
 
-(*#line 603.7 "ppc/ppc.mdl"*)
+(*#line 629.7 "ppc/ppc.mdl"*)
    fun emit_bo bo = emit 
        (case bo of
          I.TRUE => "t"
@@ -297,13 +310,13 @@ struct
             else "f")
        )
 
-(*#line 614.7 "ppc/ppc.mdl"*)
+(*#line 640.7 "ppc/ppc.mdl"*)
    fun eME (SOME me) = 
        ( emit ", "; 
          emit_int me )
      | eME NONE = ()
 
-(*#line 617.7 "ppc/ppc.mdl"*)
+(*#line 643.7 "ppc/ppc.mdl"*)
    fun addr (ra, I.RegOp rb) = 
        ( emitCell ra; 
          emit ", "; 

@@ -92,5 +92,5 @@ NLFFI:
 Compiler internals:
 -------------------
 
-   - As per request by Adam Chlipala <adam@hcoop.net>, extended
+   - As per request by Adam Chlipala, extended
      various export lists in compiler-related .cm-files.

@@ -14,7 +14,9 @@ structure HppaCG =
     structure Asm        = HppaAsmEmitter
     structure Shuffle    = HppaShuffle
 
-    structure CCalls     = DummyCCallsFn (HppaMLTree)
+    structure CCalls     = UnimplementedCCallsFn
+			       (structure T = HppaMLTree
+				val impossible = ErrorMsg.impossible)
 
     structure OmitFramePtr = struct
       exception NotImplemented

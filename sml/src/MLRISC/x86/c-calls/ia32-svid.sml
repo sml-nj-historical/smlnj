@@ -56,7 +56,7 @@ functor IA32SVID_CCalls (
     structure C = X86Cells
     structure IX = X86InstrExt
 
-    fun error msg = MLRiscErrorMsg.error ("X86CompCCalls", msg)
+    fun error msg = MLRiscErrorMsg.error ("IA32SVID_CCalls", msg)
 
     datatype  c_arg 
       = ARG of T.rexp	    
@@ -66,6 +66,15 @@ functor IA32SVID_CCalls (
     val mem = T.Region.memory
     val stack = T.Region.memory
 
+  (* MLRISC types *)
+    val wordTy = 32
+    val fltTy = 32
+    val dblTy = 64
+    val xdblTy = 80
+
+  (* shorts and chars are promoted to 32-bits *)
+    val naturalIntSz = wordTy
+
     val paramAreaOffset = 0 (* stack offset to param area *)
 
   (* This annotation is used to indicate that a call returns a fp value 
@@ -73,69 +82,94 @@ functor IA32SVID_CCalls (
    *)
     val fpReturnValueInST0 = #create MLRiscAnnotations.RETURN_ARG C.ST0
 
-  (* map C integer types to their MLRisc type *)
-    fun intTy (Ty.I_char) = 8
-      | intTy (Ty.I_short) = 16
-      | intTy (Ty.I_int) = 32
-      | intTy (Ty.I_long) = 32
-      | intTy (Ty.I_long_long) = 64
-
-  (* size in bytes of C integer type *)
-    fun intSize (Ty.I_char) = 1
-      | intSize (Ty.I_short) = 2
-      | intSize (Ty.I_int) = 4
-      | intSize (Ty.I_long) = 4
-      | intSize (Ty.I_long_long) = 8
-
-  (* size in bytes of C type *)
-    fun sizeOf (Ty.C_void) = 4
-      | sizeOf (Ty.C_float) = 4
-      | sizeOf (Ty.C_double) = 8
-      | sizeOf (Ty.C_long_double) = 12	(* no padding required *)
-      | sizeOf (Ty.C_unsigned i) = intSize i
-      | sizeOf (Ty.C_signed i) = intSize i
-      | sizeOf (Ty.C_PTR) = 4
-      | sizeOf (Ty.C_ARRAY _) = 4
-      | sizeOf (Ty.C_STRUCT fields) = structSz fields
-
-  (* size in bytes of C struct type *)
-    and structSz fields = 
-	  List.foldl  (fn (fld, sum) => sizeOf fld + sum) 0 fields
-
     val sp = C.esp
-    fun LI i = T.LI(T.I.fromInt(32, i))
+    val spR = T.REG(wordTy, sp)
 
-    local
-      fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
-      fun gpr(sz,r) = T.GPR(T.REG(sz, r))
-      val st0 = C.ST(0)
-    (* note that the caller saves includes the result register (%eax) *)
-      val callerSaves = [gpr(32, C.eax), gpr(32, C.ecx), gpr(32, C.edx)]
-      val oneRes = [gpr(32, C.eax)]
-      val twoRes = [gpr(32, C.edx), gpr(32, C.eax)]
-    in
-  (* List of registers defined by a C Call; this is the result registers
-   * plus the caller-save registers.
-   * Multiple returns have most significant register first.
+    fun fpr(sz,f) = T.FPR(T.FREG(sz, f))
+    fun gpr(sz,r) = T.GPR(T.REG(sz, r))
+    val eax = C.eax
+    val st0 = C.ST(0)
+
+  (* note that the caller saves includes the result register (%eax) *)
+    val callerSaves = [gpr(wordTy, eax), gpr(wordTy, C.ecx), gpr(wordTy, C.edx)]
+
+  (* C callee-save registers *)
+    val calleeSaveRegs = [C.ebx, C.esi, C.edi]	(* C callee-save registers *)
+    val calleeSaveFRegs = []			(* C callee-save floating-point registers *)
+
+  (* align the address to the given alignment, which must be a power of 2 *)
+    fun alignAddr (addr, align) = let
+	  val mask = Word.fromInt(align-1)
+	  in
+	    Word.toIntX(Word.andb(Word.fromInt addr + mask, Word.notb mask))
+	  end
+
+    fun align4 addr = Word.toIntX(Word.andb(Word.fromInt addr + 0w3, Word.notb 0w3))
+
+  (* size and natural alignment for integer types. *)
+    fun sizeOfInt Ty.I_char = {ty = 8, sz = 1, align = 1}
+      | sizeOfInt Ty.I_short = {ty = 16, sz = 2, align = 2}
+      | sizeOfInt Ty.I_int = {ty = 32, sz = 4, align = 4}
+      | sizeOfInt Ty.I_long = {ty = 32, sz = 4, align = 4}
+      | sizeOfInt Ty.I_long_long = {ty = 64, sz = 8, align = 4}
+
+  (* sizes of other C types *)
+    val sizeOfPtr = {ty = 32, sz = 4, align = 4}
+
+  (* compute the size and alignment information for a struct; tys is the list
+   * of member types.
+   * The total size is padded to agree with the struct's alignment.
    *)
-    fun resultsAndDefs (Ty.C_void) = ([], callerSaves)
-      | resultsAndDefs (Ty.C_float) =
-	  ([fpr(32, st0)], fpr(32, st0) :: callerSaves)
-      | resultsAndDefs (Ty.C_double) =
-	  ([fpr(64, st0)], fpr(64, st0) :: callerSaves)
-      | resultsAndDefs (Ty.C_long_double) =
-	  ([fpr(80, st0)], fpr(80, st0) :: callerSaves)
-      | resultsAndDefs (Ty.C_unsigned(Ty.I_long_long)) =
-	  (twoRes, gpr(32, C.edx) :: callerSaves)
-      | resultsAndDefs (Ty.C_signed(Ty.I_long_long)) =
-	  (twoRes, gpr(32, C.edx) :: callerSaves)
-      | resultsAndDefs (Ty.C_unsigned i) = (oneRes, callerSaves)
-      | resultsAndDefs (Ty.C_signed i) = (oneRes, callerSaves)
-      | resultsAndDefs (Ty.C_PTR) = (oneRes, callerSaves)
-      | resultsAndDefs (Ty.C_ARRAY _) = (oneRes, callerSaves)
-      | resultsAndDefs (Ty.C_STRUCT _) = (oneRes, callerSaves)
+    fun sizeOfStruct tys = let
+	  fun ssz ([], maxAlign, offset) =
+		{sz = alignAddr(offset, maxAlign), align = maxAlign}
+	    | ssz (ty::tys, maxAlign, offset) = let
+		  val {sz, align} = sizeOfTy ty
+		  val offset = alignAddr(offset, align)
+		  in
+		    ssz (tys, Int.max(maxAlign, align), offset+sz)
+		  end
+	  in
+	    ssz (tys, 1, 0)
+	  end
 
-(**** START NEW CODE ****)
+  (* the size alignment of a union type is the maximum of the sizes and alignments of the
+   * members.  The final size is padded to agree with the alignment.
+   *)
+    and sizeOfUnion tys = let
+	  fun usz ([], maxAlign, maxSz) =
+		{sz = alignAddr(maxSz, maxAlign), align = maxAlign}
+	    | usz (ty::tys, maxAlign, maxSz) = let
+		  val {sz, align} = sizeOfTy ty
+		  in
+		    usz (tys, Int.max(maxAlign, align), Int.max(sz, maxSz))
+		  end
+	  in
+	    usz (tys, 1, 0)
+	  end
+
+    and sizeOfTy Ty.C_void = error "unexpected void argument type"
+      | sizeOfTy Ty.C_float = {sz = 4, align = 4}
+      | sizeOfTy Ty.C_double = {sz = 8, align = 4}
+      | sizeOfTy Ty.C_long_double = {sz = 12, align = 4}
+      | sizeOfTy (Ty.C_unsigned isz) = let
+	  val {sz, align, ...} = sizeOfInt isz
+	  in
+	    {sz = sz, align = align}
+	  end
+      | sizeOfTy (Ty.C_signed isz) = let
+	  val {sz, align, ...} = sizeOfInt isz
+	  in
+	    {sz = sz, align = align}
+	  end
+      | sizeOfTy Ty.C_PTR = {sz = 4, align = 4}
+      | sizeOfTy (Ty.C_ARRAY(ty, n)) = let
+	  val {sz, align} = sizeOfTy ty
+	  in
+	    {sz = n*sz, align = align}
+	  end
+      | sizeOfTy (Ty.C_STRUCT tys) = sizeOfStruct tys
+      | sizeOfTy (Ty.C_UNION tys) = sizeOfUnion tys
 
   (* the location of arguments/parameters; offsets are given with respect to the
    * low end of the parameter area (see paramAreaOffset above).
@@ -150,269 +184,229 @@ functor IA32SVID_CCalls (
       | Args of arg_location list
 
     fun layout {conv, retTy, paramTys} = let
-	  in
-	    raise Fail "layout not implemented yet"
-	  end
+	(* get the location of the result (resLoc) and the offset of the first
+	 * parameter/argument.  If the result is a struct or union, then we also
+	 * compute the size and alignment of the result type (structRetLoc).
+	 *)
+	  val (resLoc, structRetLoc, argOffset) = (case retTy
+		 of Ty.C_void => (NONE, NONE, 0)
+		  | Ty.C_float => (SOME(FReg(fltTy, st0, NONE)), NONE, 0)
+		  | Ty.C_double => (SOME(FReg(dblTy, st0, NONE)), NONE, 0)
+		  | Ty.C_long_double => (SOME(FReg(xdblTy, st0, NONE)), NONE, 0)
+		  | Ty.C_unsigned I_long_long => raise Fail "register pair"
+		  | Ty.C_signed I_long_long => raise Fail "register pair"
+		  | Ty.C_PTR => (SOME(Reg(wordTy, eax, NONE)), NONE, 0)
+		  | Ty.C_ARRAY _ => error "array return type"
+		  | Ty.C_STRUCT tys => let
+		      val {sz, align} = sizeOfStruct tys
+		      in
+			(SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		      end
+		  | Ty.C_UNION tys => let
+		      val {sz, align} = sizeOfUnion tys
+		      in
+			(SOME(Reg(wordTy, eax, NONE)), SOME{szb=sz, align=align}, 4)
+		      end
+		(* end case *))
+	  fun assign ([], offset, locs) = (List.rev locs, align4 offset)
+	    | assign (paramTy::params, offset, locs) = let
+		fun next {ty, align, sz} = let
+		      val offset = alignAddr (offset, align)
+		      in
+			assign (params, offset+sz, Stk(ty, IntInf.fromInt offset)::locs)
+		      end
+		fun nextFlt (ty, szb) = let
+		      val offset = alignAddr (offset, 4)
+		      in
+			assign (params, offset+szb, FStk(ty, IntInf.fromInt offset)::locs)
+		      end
+		fun assignMem {sz, align} = let
+		      fun f (nb, offset, locs') =
+			    if (nb >= 4)
+			      then f(nb-4, offset+4, Stk(wordTy, IntInf.fromInt offset)::locs')
+			    else if (nb >= 2)
+			      then f(nb-2, offset+2, Stk(16, IntInf.fromInt offset)::locs')
+			    else if (nb = 1)
+			      then f(nb, offset+1, Stk(8, IntInf.fromInt offset)::locs')
+			      else assign(params, align4 offset, Args(List.rev locs')::locs)
+		      in
+			f (sz, offset, [])
+		      end
+		in
+		  case paramTy
+		   of Ty.C_void => error "void argument type"
+		    | Ty.C_float => nextFlt (fltTy, 4)
+		    | Ty.C_double => nextFlt (dblTy, 8)
+		    | Ty.C_long_double => nextFlt (xdblTy, 12)
+		    | Ty.C_unsigned iTy => next (sizeOfInt iTy)
+		    | Ty.C_signed iTy => next (sizeOfInt iTy)
+		    | Ty.C_PTR => next sizeOfPtr
+		    | Ty.C_ARRAY _ => next sizeOfPtr
+		    | Ty.C_STRUCT tys => assignMem(sizeOfStruct tys)
+		    | Ty.C_UNION tys => assignMem(sizeOfUnion tys)
+		  (* end case *)
+		end
+	  val (argLocs, argSz) = assign (paramTys, argOffset, [])
+	  in {
+	    argLocs = argLocs, argMem = {szb = argSz, align = 4},
+	    resLoc = resLoc, structRetLoc = structRetLoc
+	  } end
 
-  (* C callee-save registers *)
-    val calleeSaveRegs = [C.ebx, C.esi, C.edi]	(* C callee-save registers *)
-    val calleeSaveFRegs = []			(* C callee-save floating-point registers *)
-
-(**** END NEW CODE ****)
+  (* List of registers defined by a C Call with the given return type; this list
+   * is the result registers plus the caller-save registers.
+   *)
+    fun definedRegs (Ty.C_float) = fpr(fltTy, st0) :: callerSaves
+      | definedRegs (Ty.C_double) = fpr(dblTy, st0) :: callerSaves
+      | definedRegs (Ty.C_long_double) = fpr(xdblTy, st0) :: callerSaves
+      | definedRegs (Ty.C_unsigned(Ty.I_long_long)) = gpr(wordTy, C.edx) :: callerSaves
+      | definedRegs (Ty.C_signed(Ty.I_long_long)) = gpr(wordTy, C.edx) :: callerSaves
+      | definedRegs _ = callerSaves
 
     fun fstp (32, f) = T.EXT(ix(IX.FSTPS(f)))
       | fstp (64, f) = T.EXT(ix(IX.FSTPL(f)))
       | fstp (80, f) = T.EXT(ix(IX.FSTPT(f)))
       | fstp (sz, f) = error ("fstp(" ^ Int.toString sz ^ ",_)")
 
-  (* Copy (result) registers into fresh temporaries *)
-    fun copyOut([], results, stmts) = (results, stmts)
-      | copyOut (T.FPR(T.FREG(sz, f))::rest, results, stmts) = let
-	  val t = C.newFreg()
-        (* If we are using fast floating point mode then do NOT 
-         * generate FSTP.
-         * --- Allen 
-         *)
-	  val stmt = if !fast_floating_point 
-        	then T.FCOPY(sz, [t], [f])
-        	else fstp(sz, T.FREG(sz, t))
-	  in
-	    copyOut (rest, fpr(sz, t)::results, stmt::stmts)
-	  end
-      | copyOut (T.GPR(T.REG(sz, r))::rest, results, stmts) = let
-	  val t = C.newReg()
-	  in
-	    copyOut(rest, gpr(sz, t)::results, T.COPY(sz,[t],[r])::stmts)
-	  end
-      | copyOut _ = error "copyOut"
-    end (* local *)
-
-    fun genCall ar = let
-	  val {
-		name, proto, paramAlloc, structRet,
-		saveRestoreDedicated, callComment, args
-	      } = ar
-	  val {conv, retTy, paramTys} = proto
-	  val calleePops = (case conv
+    fun genCall {
+	    name, proto, paramAlloc, structRet, saveRestoreDedicated, callComment, args
+	  } = let
+	  val {argLocs, argMem, resLoc, structRetLoc} = layout proto
+	(* instruction to allocate space for arguments *)
+	  val argAlloc = if ((#szb argMem > 0) andalso paramAlloc argMem)
+		then [T.MV(wordTy, sp, T.SUB(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
+		else []
+	(* for functions that return a struct/union, pass the location
+	 * as an implicit first argument.
+	 *)
+	  val (args, argLocs) = (case structRetLoc
+		 of SOME pos => (ARG(structRet pos)::args, Stk(wordTy, 0)::argLocs)
+		  | NONE => (args, argLocs)
+		(* end case *))
+	(* generate instructions to copy arguments into argument area
+	 * using %esp to address the argument area.
+	 *)
+	  val copyArgs = let
+		fun offSP 0 = spR
+		  | offSP offset = T.ADD(wordTy, spR, T.LI offset)
+		fun f ([], [], stms) = List.rev stms
+		  | f (arg::args, loc::locs, stms) = let
+			val stms = (case (arg, loc)
+			       of (ARG(rexp as T.REG _), Stk(mty, offset)) =>
+				    T.STORE(mty, offSP offset, rexp, stack)
+				      :: stms
+				| (ARG rexp, Stk(mty, offset)) => let
+				    val tmp = C.newReg()
+				    in
+				      T.STORE(wordTy, offSP offset, T.REG(wordTy, tmp), stack)
+					:: T.MV(wordTy, tmp, rexp)
+					:: stms
+				    end
+				| (ARG rexp, Args memLocs) => let
+				    val (loadAddr, addrR) = (case rexp
+					   of T.REG _ => ([], rexp)
+					    | _ => let
+						val r = C.newReg()
+						in
+						  ([T.MV(wordTy, r, rexp)], T.REG(wordTy, r))
+						end
+					  (* end case *))
+				    fun addr 0 = addrR
+				      | addr offset = T.ADD(wordTy, addrR, T.LI offset)
+				    fun copy ([], stms) = stms
+				      | copy (Stk(ty, offset)::locs, stms) = let
+					  val tmp = C.newReg()
+					  in
+					    T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
+					      :: T.MV(ty, tmp, addr offset)
+					      :: stms
+					  end
+				      | copy _ = error "bogus memory location"
+				    in
+				      copy (memLocs, loadAddr @ stms)
+				    end
+				| (FARG(fexp as T.FREG _), FStk(ty, offset)) =>
+				    T.FSTORE(ty, offSP offset, fexp, stack) :: stms
+				| (FARG fexp, FStk(ty, offset)) => let
+				    val tmp = C.newFreg()
+				    in
+				      T.FSTORE(ty, offSP offset, T.FREG(ty, tmp), stack)
+					:: T.FMV(ty, tmp, fexp)
+					:: stms
+				    end
+				| (ARGS _, _) => raise Fail "ARGS obsolete"
+				| _ => error "impossible location"
+			      (* end case *))
+			in
+			  f (args, locs, stms)
+			end
+		  | f _ = error "argument arity error"
+		in
+		  f (args, argLocs, [])
+		end
+	(* the SVID specifies that the caller pops arguments, but a the callee
+	 * pops the arguments in a stdcall on Windows.  I'm not sure what other
+	 * differences there might be between the SVID and Windows ABIs. (JHR)
+	 *)
+	  val calleePops = (case #conv proto
 		 of (""|"ccall") => false
 		  | "stdcall" => true
-		  | _ => error (concat [
+		  | conv => error (concat [
 			"unknown calling convention \"", String.toString conv, "\""
 		    ])
 		(* end case *))
-	  fun push signed {sz, e} = let
-		fun pushl rexp = T.EXT(ix(IX.PUSHL(rexp)))
-		fun signExtend(e) = if sz=32 then e else T.SX(32, sz, e)
-		fun zeroExtend(e) = if sz=32 then e else T.ZX(32, sz, e)
-		in 
-		  pushl(if signed then signExtend(e) else zeroExtend(e))
-		end
-	  val signed = push true
-	  val unsigned = push false
-
-	  fun push64 rexp = error "push64"
-	  (* increment the stack pointer and store floating point result. *)
-	  fun bumpSp sz = T.MV(32, sp, T.SUB(32, T.REG(32,sp), LI sz))
-	  fun storeAtSp(sz, e) = T.STORE(sz, T.REG(32,sp), e, stack)
-	  fun PUSHB(e, stmts) = bumpSp(1)::storeAtSp(8, e)::stmts
-	  fun PUSHW(e, stmts) = bumpSp(2)::storeAtSp(16, e)::stmts
-
-	  fun fst32 fexp = [bumpSp(4), T.FSTORE(32, T.REG(32, sp), fexp, stack)]
-	  fun fst64 fexp = [bumpSp(8), T.FSTORE(64, T.REG(32, sp), fexp, stack)]
-	  fun fst80 fexp = [bumpSp(10), T.FSTORE(80, T.REG(32, sp), fexp, stack)]
-
-	  fun pushArgs ([], [], stmts) = stmts
-	    | pushArgs (param::r1, arg::r2, stmts) = let
-		fun next stmt = pushArgs (r1, r2, stmt::stmts)
-		fun nextL stmt = pushArgs (r1, r2, stmt@stmts)
-		(* struct arguments are padded to word boundaries. *)
-		fun pad16(fields, stmts) = let
-		  val sz = structSz fields
-        	in
-		  case Word.andb(Word.fromInt sz, 0w1)
-		   of 0w0 => stmts
-		    | 0w1 => bumpSp(1)::stmts
-		    | _ => error ("pad16: sz=" ^ Int.toString sz)
-		  (*esac*)
-		end
-		fun mkStructArgs(fields, rexp) = let
-		  val ptrR = C.newReg()
-		  val ptr = T.REG(32, ptrR)
-		  fun mkArgs([], i, acc) = (i, rev acc)
-		    | mkArgs(ty::rest, i, acc) = let
-			fun ea() = T.ADD(32, ptr, LI i)
-			fun fload (bits, bytes) =
-			  mkArgs(rest, i+bytes, 
-				 FARG(T.FLOAD(bits, ea(), mem))::acc)
-			fun load (bits, bytes) =
-			  mkArgs(rest, i+bytes, 
-				 ARG(T.LOAD(bits, ea(), mem))::acc)
-			fun intSz cint = (intTy cint, intSize cint)
-		      in
-			case ty
-			of Ty.C_void => error "STRUCT: void field"
-			 | Ty.C_float => fload(32, 4)
-			 | Ty.C_double => fload(64, 8)
-			 | Ty.C_long_double => fload(80, 10)
-			 | Ty.C_unsigned(cint) => load(intSz(cint))
-			 | Ty.C_signed(cint) => load(intSz(cint))
-			 | Ty.C_PTR => load(32, 4)
-			 | Ty.C_ARRAY _ => load(32, 4)
-			 | Ty.C_STRUCT fields => let
-			     val (i, args) = mkArgs(fields, i, [])
-			   in mkArgs(rest, i, ARGS args::acc)
-			   end
-		      end
-		in (T.MV(32, ptrR, rexp), #2 (mkArgs(fields, 0, [])))
-		end
-	      in
-		case (param, arg)
-		of (Ty.C_float, FARG fexp) => nextL(fst32 fexp)
-		 | (Ty.C_double, FARG fexp) => nextL(fst64 fexp)
-		 | (Ty.C_long_double, FARG fexp) => nextL(fst80 fexp)
-		 | (Ty.C_unsigned(Ty.I_char), ARG rexp) => 
-		      next(unsigned{sz=8, e=rexp})
-		 | (Ty.C_unsigned(Ty.I_short), ARG rexp) => 
-		      next(unsigned{sz=16, e=rexp})
-		 | (Ty.C_unsigned(Ty.I_int), ARG rexp) => 
-		      next(unsigned{sz=32, e=rexp})
-		 | (Ty.C_unsigned(Ty.I_long), ARG rexp) => 
-		      next(unsigned{sz=32, e=rexp})
-		 | (Ty.C_unsigned(Ty.I_long_long), ARG rexp) => 
-		      next(push64(rexp))
-		 | (Ty.C_signed(Ty.I_char), ARG rexp) => next(signed{sz=8, e=rexp})
-		 | (Ty.C_signed(Ty.I_short), ARG rexp) => next(signed{sz=16, e=rexp})
-		 | (Ty.C_signed(Ty.I_int), ARG rexp) => next(signed{sz=32, e=rexp})
-		 | (Ty.C_signed(Ty.I_long), ARG rexp) => next(signed{sz=32, e=rexp})
-		 | (Ty.C_signed(Ty.I_long_long), ARG rexp) => next(push64 rexp)
-		 | (Ty.C_PTR, ARG rexp) => next(unsigned{sz=32, e=rexp})
-		 | (Ty.C_ARRAY _, ARG rexp) => next(unsigned{sz=32, e=rexp})
-		 | (Ty.C_STRUCT fields, ARG rexp) => let
-		      val (ldPtr, args) = mkStructArgs(fields, rexp)
-		      val stmts = pushArgs([param], [ARGS(args)], stmts)
-		   in pushArgs(r1, r2, ldPtr::stmts)
-        	   end
-		 | (Ty.C_STRUCT fields, ARGS args) => let
-		      fun pushStruct([], [], stmts) = stmts
-			| pushStruct(ty::tys, arg::args, stmts) = let
-			    fun cont(stmts) = pushStruct(tys, args, stmts)
-			    fun pushf(sz, fexp) = 
-			      (case sz
-			       of 32 => fst32(fexp)
-				| 64 => fst64(fexp)
-				| 80 => fst80(fexp)
-				| _ => error ("pushf: sz=" ^ Int.toString sz)
-			       (*esac*)) @ stmts
-			    fun pushb (rexp) = cont(PUSHB(rexp, stmts))
-			    fun pushw (rexp) = cont(PUSHW(rexp, stmts))
-			    fun pushl (rexp) = cont(T.EXT(ix(IX.PUSHL(rexp)))::stmts)
-			    fun pushCint(cint, rexp) = 
-			     (case cint
-			      of Ty.I_char => pushb(rexp)
-			       | Ty.I_short => pushw(rexp)
-			       | Ty.I_int => pushl(rexp)
-			       | Ty.I_long => pushl(rexp)
-			       | Ty.I_long_long => error "STRUCT: long_long"
-			     (*esac*))
-			  in
-			    case (ty, arg)
-			    of (Ty.C_void, _) => error "STRUCT: void field"
-			     | (Ty.C_float, FARG fexp) => cont(pushf(32,fexp))
-			     | (Ty.C_double, FARG fexp)	=> cont(pushf(64, fexp))
-			     | (Ty.C_long_double, FARG fexp) =>
-				  cont(pushf(80, fexp))
-			     | (Ty.C_unsigned(cint), ARG rexp) =>
-				  pushCint(cint, rexp)
-			     | (Ty.C_signed(cint), ARG rexp) => pushCint(cint, rexp)
-			     | (Ty.C_PTR, ARG rexp) => pushl(rexp)
-			     | (Ty.C_ARRAY _, ARG rexp)	 => pushl(rexp) 
-			     | (Ty.C_STRUCT fields, ARG rexp)  => let
-				 val (ldPtr, args) = mkStructArgs(fields, rexp)
-				 in cont(ldPtr::pushStruct(fields, args, stmts))
-				 end
-			     | (Ty.C_STRUCT fields, ARGS rexps) =>
-				  cont(pushStruct(fields, rexps, stmts))
-			     | _ => error "pushStruct: ty<->arg mismatch"
-			  end
-			| pushStruct (([], _::_, _) | (_::_, [], _)) =
-			    error "pushStruct"
-		      in
-		        pushArgs(r1, r2,
-			  pad16(fields, pushStruct(fields, args, stmts)))
-		      end
-		 | _ => error "argument/parameter mismatch"
-	       (* end case *)
-	      end
-	    | pushArgs _ = error "argument/parameter mismatch"
-
-	  (* struct return address is an implicit 0th argument*)
-	  fun pushStructRetAddr (acc) = (case retTy
-		 of Ty.C_STRUCT fields => let
-		      val addr = structRet{szb=structSz fields, align=0}
-		      in
-			unsigned{sz=32, e=addr}::acc
-		      end
-		  | _ => acc
+	  val defs = definedRegs(#retTy proto)
+	  val { save, restore } = saveRestoreDedicated defs
+	  val callStm = T.CALL{
+		  funct=name, targets=[], defs=defs, uses=[], 
+		  region = T.Region.memory,
+		  pops = if calleePops then Int32.fromInt(#szb argMem) else 0
+		}
+	  val callStm = (case callComment
+		 of NONE => callStm
+		  | SOME c => T.ANNOTATION (callStm, #create MLRiscAnnotations.COMMENT c)
 		(* end case *))
-
-	(* call defines callersave registers and uses result registers. *)
-	  fun mkCall (defs, npop) = let
-	      val npop = Int32.fromInt npop
-	      val { save, restore } = saveRestoreDedicated defs
-	      val callstm = 
-		  T.CALL { funct=name, targets=[], defs=defs, uses=[], 
-			   region=T.Region.memory, pops=npop }
-	      val callstm =
-		  case callComment of
-		      NONE => callstm
-		    | SOME c => T.ANNOTATION (callstm,
-					      #create MLRiscAnnotations.COMMENT c)
-	    (* If return type is floating point then add an annotation RETURN_ARG 
-	     * This is currently a hack.  Eventually MLTREE *should* support
-	     * return arguments for CALLs.
-	     * --- Allen
-	     *)
-              fun markFpReturn callstm = T.ANNOTATION(callstm, fpReturnValueInST0)
-              val callstm =
-        	  if !fast_floating_point then
-        	     (case retTy
-                       of Ty.C_float => markFpReturn callstm
-        	     | Ty.C_double => markFpReturn callstm
-        	     | Ty.C_long_double => markFpReturn callstm
-        	     |  _ => callstm
-        	     )
-        	  else callstm
+	(* If return type is floating point then add an annotation RETURN_ARG 
+	 * This is currently a hack.  Eventually MLTREE *should* support
+	 * return arguments for CALLs.
+	 * --- Allen
+	 *)
+	  val callStm = if !fast_floating_point
+		andalso ((#retTy proto = Ty.C_float)
+		  orelse (#retTy proto = Ty.C_double)
+		  orelse (#retTy proto = Ty.C_long_double))
+		then T.ANNOTATION(callStm, fpReturnValueInST0)
+		else callStm
+	(* code to pop the arguments from the stack *)
+	  val popArgs = if calleePops
+		then []
+		else [T.MV(wordTy, sp, T.ADD(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
+	(* code to copy the result into fresh pseudo registers *)
+	  val (resultRegs, copyResult) = (case resLoc
+		 of NONE => ([], [])
+		  | SOME(Reg(ty, r, _)) => let
+		      val resReg = C.newReg()
+		      in
+			([T.GPR(T.REG(ty, resReg))], [T.COPY(ty, [resReg], [r])])
+		      end
+		  | SOME(FReg(ty, r, _)) => let
+		      val resReg = C.newFreg()
+		      val res = [T.FPR(T.FREG(ty, r))]
+		      in
+        	      (* If we are using fast floating point mode then do NOT 
+        	       * generate FSTP.
+        	       * --- Allen 
+        	       *)
+			if !fast_floating_point
+			  then (res, [T.FCOPY(ty, [resReg], [r])])
+			  else (res, [fstp(ty, T.FREG(ty, resReg))])
+		      end
+		  | _ => error "bogus result location"
+		(* end case *))
+	(* assemble the call sequence *)
+	  val callSeq = copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
 	  in
-	      save @ callstm :: restore
+	    {callseq=callSeq, result=resultRegs}
 	  end
-
-	(* size to pop off on return *)
-	  fun argsSz(Ty.C_STRUCT fields::rest) = let
-        	val sz = structSz fields
-		fun pad16 bytes = (case Word.andb(Word.fromInt sz, 0w1)
-		       of 0w0 => sz
-			| 0w1 => sz+1
-			| _ => error ("argSz: " ^ Int.toString sz)
-		      (* end case *))
-        	in
-		  pad16 sz + argsSz(rest)
-        	end
-	    | argsSz(ty::rest) =
-	      (* remember that char and short get promoted... *)
-	        Int.max(sizeOf(ty),4)+argsSz(rest)
-	    | argsSz [] = 0
-
-	  val (cRets, cDefs) = resultsAndDefs (retTy)
-	  val (retRegs, cpyOut) = copyOut(cRets, [], [])
-	  val n = argsSz paramTys
-	  val (popseq, implicit_pop) =
-	      if calleePops orelse n = 0 then ([], n)
-	      else ([T.MV(32, sp, T.ADD(32, T.REG(32,sp), LI n))], 0)
-	  val call = mkCall(cDefs, implicit_pop) @ popseq @ cpyOut
-	  val callSeq = pushArgs(paramTys, args, pushStructRetAddr(call))
-	  in
-	    {callseq=callSeq, result=retRegs}
-	  end (* genCall *)
 
   end
 

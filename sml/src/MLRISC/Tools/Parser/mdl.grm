@@ -304,6 +304,7 @@ fun idty(IDENT([],"unit")) = TUPLEty []
 	 encodingexps of int list |
 	 fieldty of id option |
 	 asms of asm list |
+	 asm_strings of asm list |
 	 asm of asm |
 	 hasasm of bool |
 	 sigsub of sigexp -> sigexp |
@@ -676,8 +677,12 @@ consencoding:				(NONE)
 
 consassembly:				(NONE)
 |		string			(SOME(STRINGasm string))
-|		LDQUOTE asms RDQUOTE	(SOME(ASMasm asms))
+|		asm_strings		(SOME(ASMasm asm_strings))
 |		ASM_COLON exp		(SOME(ASMasm[EXPasm exp]))
+
+asm_strings:
+ 	LDQUOTE asms RDQUOTE			(asms)
+|	LDQUOTE asms RDQUOTE asm_strings	(asms@asm_strings)
 
 asms:	asm 		([asm])
 |	asm asms	(asm::asms)
@@ -767,7 +772,7 @@ aexp:		literal			(LITexp literal)
 |		OP symb			(IDexp(IDENT([],symb)))
 |		LPAREN symb RPAREN	(IDexp(IDENT([],symb)))
 (*|		LPAREN exp COLON ty RPAREN	(TYPEDexp(exp,ty))*)
-|		LDQUOTE asms RDQUOTE	(ASMexp(ASMasm asms))
+|		asm_strings 		(ASMexp(ASMasm asm_strings))
 |		LPAREN RPAREN		(TUPLEexp [])
 |		LPAREN typedexp RPAREN	(typedexp)
 |		LPAREN exps2 RPAREN	(TUPLEexp exps2)

@@ -89,6 +89,12 @@ struct
                      | LDE     (* load double word extended 
                                 * Note: there is no LD or LDX!!!
                                 *)
+
+		     | LBZU
+		     | LHZU
+		     | LHAU
+		     | LWZU
+		     | LDZU
    
       datatype store! = STB
                       | STBE
@@ -97,16 +103,27 @@ struct
                       | STW
                       | STWE
                       | STDE
+
+		      | STBU
+		      | STHU
+		      | STWU
+		      | STDU
    
       datatype fload! = LFS
                       | LFSE
                       | LFD
                       | LFDE
+
+		      | LFSU
+		      | LFDU
    
       datatype fstore! = STFS
                        | STFSE
                        | STFD
                        | STFDE
+
+		       | STFSU
+		       | STFDU
     
       datatype cmp! = CMP | CMPL
    
@@ -298,6 +315,7 @@ struct
         | (I.RegOp rb,I.LWZ)  => loadx{rt,ra,rb,xop=0w23}  (* lwzx *)
         | (I.RegOp rb,I.LWZE) => loadx{rt,ra,rb,xop=0w31}  (* lwzxe *)
         | (I.RegOp rb,I.LDE)  => loadx{rt,ra,rb,xop=0w799} (* ldxe *)
+
         | (d,I.LBZ)           => loadd{opcd=0w34,rt,ra,d}
         | (de,I.LBZE)         => loadde{opcd=0w58,rt,ra,de,xop=0w0}
         | (d,I.LHZ)           => loadd{opcd=0w40,rt,ra,d}
@@ -307,6 +325,12 @@ struct
         | (d,I.LWZ)           => loadd{opcd=0w32,rt,ra,d}
         | (de,I.LWZE)         => loadde{opcd=0w58,rt,ra,de,xop=0w6}
         | (de,I.LDE)          => loadde{opcd=0w62,rt,ra,de,xop=0w0}
+
+	| (I.RegOp rb,I.LHAU) => loadx{rt,ra,rb,xop=0w375} (* lhaux *)
+	| (I.RegOp rb,I.LHZU) => loadx{rt,ra,rb,xop=0w311} (* lhzux *)
+	| (I.RegOp rb,I.LWZU) => loadx{rt,ra,rb,xop=0w55}  (* lwzux *)
+	| (d,I.LHZU)          => loadd{opcd=0w41,rt,ra,d}
+	| (d,I.LWZU)          => loadd{opcd=0w33,rt,ra,d}
        )
 
        (* floating point loads *)
@@ -320,10 +344,12 @@ struct
        | (I.RegOp rb,I.LFSE) => floadx{ft,ra,rb,xop=0w543}
        | (I.RegOp rb,I.LFD)  => floadx{ft,ra,rb,xop=0w599}
        | (I.RegOp rb,I.LFDE) => floadx{ft,ra,rb,xop=0w607}
+       | (I.RegOp rb,I.LFDU) => floadx{ft,ra,rb,xop=0w631}
        | (d,I.LFS)           => floadd{ft,ra,d,opcd=0w48}
        | (de,I.LFSE)         => floadde{ft,ra,de,opcd=0w62,xop=0w4}
        | (d,I.LFD)           => floadd{ft,ra,d,opcd=0w50}
        | (de,I.LFDE)         => floadde{ft,ra,de,opcd=0w62,xop=0w6}
+       | (d,I.LFDU)          => floadd{ft,ra,d,opcd=0w51}
        )
 
        (* integer stores *)
@@ -534,8 +560,8 @@ struct
 	(* Taken from a googled link:
 	    http://publibn.boulder.ibm.com/doc_link/en_US/a_doc_lib/aixassem/alangref/lwarx.htm
 	 *)
-     | lwarx{oper:6=31, rt:GP 5, ra:GP 5, rb:GP 5, _:10=20, _:1=0} 
-     | stwcx{oper:6=31, rs:GP 5, ra:GP 5, rb:GP 5, _:10=150, _:1=1} 
+     | lwarx{oper:6=0w31, rt:GP 5, ra:GP 5, rb:GP 5, _:10=0w20, _:1=0} 
+     | stwcx{oper:6=0w31, rs:GP 5, ra:GP 5, rb:GP 5, _:10=0w150, _:1=1} 
 
    (*
     * Some helper functions for generating machine code.

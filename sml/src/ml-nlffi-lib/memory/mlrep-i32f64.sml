@@ -1,11 +1,11 @@
 (*
  * User-visible ML-side representation of certain primitive C types.
  *
- * x86/Sparc version (all ints: 32 bit, all floats: 64 bit)
+ * x86/Sparc/PPC version (all ints: 32 bit, all floats: 64 bit)
  *
- *  (C) 2001, Lucent Technologies, Bell Labs
+ *  (C) 2004 The Fellowship of SML/NJ
  *
- * author: Matthias Blume (blume@research.bell-labs.com)
+ * author: Matthias Blume (blume@tti-c.org)
  *)
 structure MLRep = struct
     structure Signed = Int32

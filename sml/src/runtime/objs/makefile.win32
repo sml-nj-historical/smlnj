@@ -62,6 +62,7 @@ CLIBS =		$(XCLIBS) \
 		$(CLIB_DIR)\win32-io\libwin32-io.lib \
 		$(CLIB_DIR)\win32-filesys\libwin32-filesys.lib \
 		$(CLIB_DIR)\win32-process\libwin32-process.lib \
+		$(CLIB_DIR)\dl\dynload.lib \
 		$(CLIB_DIR)\smlnj-runtime\libsmlnj-runt.lib \
 		$(CLIB_DIR)\smlnj-signals\libsmlnj-sig.lib \
 		$(CLIB_DIR)\smlnj-sockets\libsmlnj-sock.lib \
@@ -469,6 +470,11 @@ $(CLIB_DIR)\smlnj-sockets\libsmlnj-sock.lib: FORCE
 	$(MAKE) $(LIB_MK_ARGS) libsmlnj-sock.lib
 	cd $(MAKEDIR)
 
+$(CLIB_DIR)\dl\dynload.lib: FORCE
+	cd $(CLIB_DIR)\dl
+	$(MAKE) $(LIB_MK_ARGS) dynload.lib
+	cd $(MAKEDIR)
+
 $(CLIB_DIR)\smlnj-prof\libsmlnj-prof.lib: FORCE
 	cd $(CLIB_DIR)\smlnj-prof
 	$(MAKE) $(LIB_MK_ARGS) libsmlnj-prof.lib
@@ -498,5 +504,4 @@ $(CLIB_DIR)\smlnj-ccalls\libsmlnj-ccalls.lib: FORCE
 #	cd $(CLIB_DIR)\smlnj-mp 
 #	$(MAKE) $(LIB_MK_ARGS) libsmlnj-mp.lib
 #	cd $(MAKEDIR)
-
 

@@ -340,6 +340,7 @@ in
 	  | CTypes.C_PTR => %?14
 	  | CTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
 	  | CTypes.C_STRUCT l => ?21 $ [list ctype l]
+	  | CTypes.C_UNION l => ?22 $ [list ctype l]
     end
 
     fun ccall_type t =

@@ -51,7 +51,6 @@ Group (../system/smlnj/viscomp/core.cm)
 	functor FLINTComp
 	functor BackendFn
 
-	functor DummyCCallsFn
 	structure ClusterAnnotation
 
 	(* stuff that lived (or should have) in Frontend (aka GenericVC) *)
@@ -282,8 +281,6 @@ CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
 CodeGen/main/spill-table.sml
-CodeGen/main/dummy-ccalls.sml
-
 
 (* Miscellaneous utilities. *)
 MiscUtil/bignums/realconst.sml

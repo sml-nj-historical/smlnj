@@ -163,11 +163,11 @@ structure AstToSpec = struct
 	  | valty C (A.Numeric (_, _, _, A.FLOAT, _)) = Spec.FLOAT
 	  | valty C (A.Numeric (_, _, _, A.DOUBLE, _)) = Spec.DOUBLE
 	  | valty C (A.Numeric (_, _, A.SIGNED, A.LONGLONG, _)) =
-	    Spec.UNIMPLEMENTED "long long"
+	      Spec.UNIMPLEMENTED "long long"
 	  | valty C (A.Numeric (_, _, A.UNSIGNED, A.LONGLONG, _)) =
-	    Spec.UNIMPLEMENTED "unsigned long long"
+	      Spec.UNIMPLEMENTED "unsigned long long"
 	  | valty C (A.Numeric (_, _, _, A.LONGDOUBLE, _)) =
-	    Spec.UNIMPLEMENTED "long double"
+	      Spec.UNIMPLEMENTED "long double"
 	  | valty C (A.Array (NONE, t)) = valty C (A.Pointer t)
 	  | valty C (A.Array (SOME (n, _), t)) =
 	    let val d = Int.fromLarge n
@@ -337,19 +337,13 @@ structure AstToSpec = struct
 	    val C' = mk_context_su (tag_stem, anon)
 	    val ty = Spec.UNION tag
 	    val lsz = ref 0
-	    val lg = ref { name = "",
-			   spec = Spec.OFIELD { offset = 0,
-						spec = (Spec.RW, Spec.SINT),
-						synthetic = true } }
 	    fun mkField (t, m: A.member) = let
 		val sz = sizeOf t
-		val e = { name = Symbol.name (#name m),
-			  spec = Spec.OFIELD { offset = 0,
-					       spec = cobj C' t,
-					       synthetic = false } }
 	    in
-		if sz > !lsz then (lsz := sz; lg := e) else ();
-		e
+		{ name = Symbol.name (#name m),
+		  spec = Spec.OFIELD { offset = 0,
+				       spec = cobj C' t,
+				       synthetic = false } }
 	    end
 	in
 	    if SS.member (!seen_unions, tag) then ()
@@ -361,7 +355,6 @@ structure AstToSpec = struct
 				tag = tag,
 				anon = anon,
 				size = Word.fromInt (sizeOf (A.UnionRef tid)),
-				largest = !lg,
 				exclude = not (includedSU (tag, location)),
 				all = all } :: !unions
 		end;

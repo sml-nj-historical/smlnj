@@ -14,7 +14,10 @@ structure Alpha32CG =
     structure Asm        = Alpha32AsmEmitter
     structure Shuffle    = Alpha32Shuffle
    
-    structure CCalls     = DummyCCallsFn (Alpha32MLTree)
+    structure CCalls     = UnimplementedCCallsFn
+			       (structure T = Alpha32MLTree
+				val impossible = ErrorMsg.impossible)
+
     structure OmitFramePtr = struct
       exception NotImplemented
       structure CFG=Alpha32CFG

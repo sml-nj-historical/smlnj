@@ -1,3 +1,13 @@
+union u { int i; } u = { 42 }, u2 = { 0 };
+
+union u uf (union u u)
+{
+  union u ru;
+  printf ("uf: %d\n", u.i);
+  ru.i = u.i + 10;
+  return ru;
+}
+
 int f1 (void)
 {
   return 1;

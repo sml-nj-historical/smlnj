@@ -80,7 +80,8 @@ request mlrisc
 # "no longer foreign")
 # This library is necessary to compile and/or run programs that use
 # the new FFI.
-# This preview release currently works only under X86/Linux.
+# This preview release currently works under X86/Linux, Sparc/Solaris,
+# PPC/MacOSX, and X86/Win32.
 #
 #request ml-nlffi-lib
 
@@ -88,7 +89,8 @@ request mlrisc
 # the new "NLFFI" foreign function interface.  The tool generates ML
 # glue code from C source code.
 # (Requires ckit!)
-# This preview release currently works only under X86/Linux.
+# This preview release currently works under X86/Linux, Sparc/Solaris,
+# PPC/MacOSX, and X86/Win32.
 #
 #request ml-nlffigen
 

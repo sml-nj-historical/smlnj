@@ -24,6 +24,11 @@ signature C_CALLS =
    *)
     val paramAreaOffset : int
 
+  (* The MLRISC type that describes the natural size of integer arguments (i.e., what
+   * small integers are promoted to).
+   *)
+    val naturalIntSz : T.ty
+
   (* translate a C function call with the given argument list into
    * a MLRISC statement list.  The arguments are as follows:
    *
@@ -46,13 +51,26 @@ signature C_CALLS =
    *				   pointers).
    *    callComment		-- if present, the comment string is attached
    *				   the CALL instruction as a COMMENT annotation.
-   *    args			-- the arguments to the call.
+   *    args			-- the arguments to the call.  The assumption is
+   *				   that any required sign or zero extension has
+   *				   already been done.
    *
    * The result of genCall is a mlrisc list specifying where the result
    * is and the MLRisc statements that implement the calling sequence.
    * Functions with void return type have no result, most others have
    * one result, but some conventions may flatten larger arguments into
    * multiple registers (e.g., a register pair for long long results).
+   *
+   * The implementation of genCall will return a statement sequence with the
+   * following order:
+   *
+   *	<argument area allocation>
+   *	<setup arguments>
+   *	<save dedicated registers>
+   *	<call C function>
+   *	<restore dedicated registers>
+   *	<free argument area>
+   *	<copy result into fresh registers>
    *
    * WARNING: if the client's implementation of structRet uses the stack
    * pointer to address the struct-return area, then paramAlloc should always

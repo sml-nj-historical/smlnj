@@ -13,6 +13,102 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/04 14:00:00 CDT
+Tag: Release_110_47
+Description:
+
+New working version (110.47).  NEW BOOTFILES!
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/03 14:25:00 CDT
+Tag: blume-20040803-callingconv
+Description:
+
+Added low-level support for choosing C calling conventions by
+twiddling the type of rawccall.  (See
+src/compiler/Semant/types/cproto.sml for details.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/02 15:55:00 CDT
+Tag: blume-20040802-backout
+Description:
+
+Backed out of change to win32-filesys.c.  The earlier patch to
+get_file_time caused CM to produce files with the wrong time stamp.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/02 14:45:00 CDT
+Tag: blume-20040802-nlffi-win32
+Description:
+
+Added NLFFI support for Win32, adapted from a patch provided by David
+Hansel.  This is currently completely untested.  Also, the issue
+concerning stdcall vs. ccall is still unresolved.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/30 17:55:00 CDT
+Tag: blume-20040730-various
+Description:
+
+Gearing up towards 110.47...
+
+- various minor bugfixes to ml-nlffigen
+- a beginning of a manual for nlffi
+
+- eliminated 'export name=value' in config/install.sh as this does
+  not work with certain versions of /bin/sh
+  (Thanks to David King at Motorola for catching this.)
+
+- several bugfixes provided or suggested by David Hansel at Reactive Systems:
+  - added a test for tm==NULL to gmtime.c and localtime.c
+  - applied patch for incorrect GetFileTime under win32
+  - toSeconds -> toMilliseconds in Win32/win32-process.sml
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/21 18:20:00 CDT
+Tag: blume-20040721-nlffigen
+Description:
+
+- Fixed minor issue in ml-nlffigen: Now generate structure T_foo
+  for a typedef to an incomplete type, but leave out the "typ" member.
+  (This is just for consistency.)
+- Started to produce what is supposed to become better (i.e., comprehensive)
+  documentation of what ml-nlffigen does and produces.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/14 16:25:00 CDT
+Tag: blume-20040714-union
+Description:
+
+Added C_UNION to c-calls/c-types.sml and updated the machinery
+(ml-nlffigen, cproto.sml) that conveys C function interface
+information to the code generator.
+
+However, the actual architecture-specific implementation of function
+arguments and results that are C unions is still not implemented.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/07/14 14:38:00 EST
+Tag: leunga-110_46_1-ppc-lwzu
+Description:
+
+    Added these instructions to the PowerPC architecture:
+    LBZU(X), LHZU(X), LWZU(X),
+    STWU(X), STFDU, STFSU 
+    
+    etc...
+
+    Note: I haven't added their instruction encoding into the description.
+
+----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/07/13 15:04:00 EST
 Tag: leunga-110_46_1-ppc-lwarx

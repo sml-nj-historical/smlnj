@@ -30,7 +30,8 @@
  * [T*]                 = string
  * ml object            = bool
  * [struct {}]          = exn
- * [struct{t1,...tn}]   = unit * [t1] * ... * [tn]
+ * [struct{t1,...,tn}]  = unit * [t1] * ... * [tn]
+ * [union{t1,...,tn}]   = int * [t1] * ... * [tn]
  * [void]               = unit
  *
  * Currently we don't encode arrays.  (C arrays are mostly like pointers
@@ -39,19 +40,27 @@
  *
  * The prototype of a function taking arguments of types a1,...,an (n > 0)
  * and producing a result of type r is encoded as:
- *       (unit * [a1] * ... * [an] -> [r]) list
+ *       ([conv] * [a1] * ... * [an] -> [r]) list
+ *
  * We use
- *       (unit * [a1] * ... * [an] -> [r]) list list
- * to specify a "stdcall" calling convention used by, e.g., Win32.
- * 
+ *       ([conv] * [a1] * ... * [an] -> [r]) list list
+ * to specify a reentrant call.
+ *
  * For n = 0 (C argument list is "(void)"), we use:
- *       (unit -> [r]) list     or      (unit -> [r]) list list
+ *       ([conv] -> [r]) list     or      ([conv] -> [r]) list list
  * The use of list constructor(s) here is a trick to avoid having to construct
  * an actual function value of the required type when invoking the RAW_CCALL
  * primop.  Instead, we just pass nil.  The code generator will throw away
  * this value anyway.
- * The unit type for non-empty records and non-empty argument lists
- * avoids the degenerate case of 1-element (ML-)records.
+ * 
+ * The [conv] type for non-empty records and non-empty argument lists
+ * has the additional effect of avoiding the degenerate case of
+ * 1-element (ML-)records.
+ *
+ * [conv] encodes the calling convention to be used:
+ *     [default]       = unit
+ *     [ccall]         = word    -- for x86/win32
+ *     [stdcall]       = int     -- for x86/win32
  *)
 structure CProto : sig
     exception BadEncoding
@@ -62,9 +71,8 @@ structure CProto : sig
      * passed as a 32-bit integer, a 64-bit integer (currently unused),
      * a 64-bit floating point value, or an Unsafe.Object.object.
      *)
-    val decode : string -> 
-                 { fun_ty : Types.ty, encoding : Types.ty }
-		 -> 
+    val decode : string ->
+		 { fun_ty : Types.ty, encoding : Types.ty } -> 
                  { c_proto    : CTypes.c_proto,
                    ml_args    : PrimOp.ccall_type list,
                    ml_res_opt : PrimOp.ccall_type option,
@@ -92,7 +100,7 @@ end = struct
 	fun bad () = raise BadEncoding
 	fun listTy t = T.CONty (BT.listTycon, [t])
     in
-        fun decode conv { encoding = t, fun_ty } = let
+        fun decode defaultconv { encoding = t, fun_ty } = let
 	    (* The type-mapping table: *)
 	    val m =
 		[(BT.intTy,           CT.C_signed   CT.I_int,       P.CCI32),
@@ -129,8 +137,11 @@ end = struct
 		    SOME tt => tt
 		  | NONE =>
 		    (case BT.getFields t of
-			 SOME (_ :: fl) =>
-			 (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
+			 SOME (f1 :: fl) =>
+			   if TU.equalType (f1, BT.unitTy) then
+			       (CT.C_STRUCT (map (#1 o dt) fl), P.CCI32)
+			   else
+			       (CT.C_UNION (map (#1 o dt) fl), P.CCI32)
 		       | _ => bad ())
 
 	    fun rdt (t, ml_args) =
@@ -139,24 +150,41 @@ end = struct
 		else let val (ct, mt) = dt t
 		     in
 			 case ct of
-			     (CT.C_STRUCT _) => (ct, SOME mt, mt :: ml_args)
+			     (CT.C_STRUCT _ | CT.C_UNION _) =>
+			       (ct, SOME mt, mt :: ml_args)
 			   | _ => (ct, SOME mt, ml_args)
 		     end
 
 	    val (fty, nlists) = unlist (t, 0)
 
 	    val reentrant = nlists > 1
+
+	    fun getConv t =
+		if TU.equalType (t, BT.unitTy) then SOME defaultconv
+		else if TU.equalType (t, BT.wordTy) then SOME "ccall"
+		else if TU.equalType (t, BT.intTy) then SOME "stdcall"
+		else NONE
 	in
 	    (* Get argument types and result type; decode them.
 	     * Construct the corresponding CTypes.c_proto value. *)
 	    case getDomainRange fty of
 		NONE => bad ()
 	      | SOME (d, r) =>
-                let val (argTys, argsML) =
-                        if TU.equalType (d, BT.unitTy) then ([], [])
-                        else case BT.getFields d of
-				 SOME (_ :: fl) => ListPair.unzip (map dt fl)
-			       | _ => bad ()
+                let val (conv, argTys, argsML) =
+			(case getConv d of
+			     SOME conv => (conv, [], [])
+			   | NONE =>
+			     (case BT.getFields d of
+				  SOME (convty :: fl) =>
+				    (case getConv convty of
+					 SOME conv =>
+					 let val (argTys, argsML) =
+						 ListPair.unzip (map dt fl)
+					 in
+					     (conv, argTys, argsML)
+					 end
+				       | NONE => bad ())
+				| _ => bad ()))
 		    val (retTy, retML, argsML) = rdt (r, argsML)
                 in
 		    { c_proto = { conv = conv,
@@ -184,7 +212,9 @@ end = struct
 	      | ct C_PTR = "T*"
 	      | ct (C_ARRAY(t,i)) = concat [ct t, "[", Int.toString i, "]"]
 	      | ct (C_STRUCT fl) =
-		concat ("{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
+  		concat ("s{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
+	      | ct (C_UNION fl) =
+  		concat ("u{" :: foldr (fn (f, l) => ct f :: ";" :: l) ["}"] fl)
 	    fun cp { conv, retTy, paramTys = a1 :: an } =
 		concat (ct retTy :: "(*)(" :: ct a1 ::
 			foldr (fn (a, l) => "," :: ct a :: l) [")"] an)

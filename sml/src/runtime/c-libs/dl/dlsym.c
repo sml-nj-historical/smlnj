@@ -3,8 +3,13 @@
  * COPYRIGHT (c) 2000 by Lucent Technologies, Bell Laboratories
  */
 
-#include "ml-unixdep.h"
-#include <dlfcn.h>
+#ifdef OPSYS_WIN32
+# include <windows.h>
+extern void dlerror_set (const char *fmt, const char *s);
+#else
+# include "ml-unixdep.h"
+# include <dlfcn.h>
+#endif
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"
@@ -18,12 +23,18 @@
 ml_val_t _ml_U_Dynload_dlsym (ml_state_t *msp, ml_val_t arg)
 {
   ml_val_t ml_handle = REC_SEL (arg, 0);
-  ml_val_t symname = REC_SEL (arg, 1);
+  char *symname = STR_MLtoC (REC_SEL (arg, 1));
   void *handle = (void *) (WORD_MLtoC (ml_handle));
   void *addr;
   ml_val_t res;
 
-  addr = dlsym (handle, STR_MLtoC (symname));
+#ifdef OPSYS_WIN32
+  addr = GetProcAddress (handle, symname);
+  if (addr == NULL && symname != NULL)
+    dlerror_set ("Symbol `%s' not found", symname);
+#else
+  addr = dlsym (handle, symname);
+#endif
   
   WORD_ALLOC (msp, res, (Word_t) addr);
   return res;

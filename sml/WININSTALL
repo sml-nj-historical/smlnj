@@ -54,6 +54,5 @@ To compile from scratch, assuming Microsoft Visual Studio:
     all the source archives)
 - unzip and untar boot.x86-win32.tgz into the root of the source tree
 - set environment variable SMLNJ_HOME to root of source tree
-- edit config\targets to one's taste (careful: don't enable the
-    ml-nlffi stuff as it is not ready for win32 yet!)
+- edit config\targets to one's taste
 - run config\install.bat
