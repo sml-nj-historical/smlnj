@@ -34,7 +34,7 @@ signature C_CALLS =
    *				   in the stack.  If it returns true, then the
    *				   space for the parameters is allocated by
    *				   client; otherwise genCall allocates the space.
-   *    structRet		-- this callback thjes the size and alignment
+   *    structRet		-- this callback takes the size and alignment
    *				   of space required for returning a struct
    *				   value.  It returns the address of the
    *				   reserved space.
@@ -45,7 +45,7 @@ signature C_CALLS =
    *				   expects to be preserved (e.g., allocation
    *				   pointers).
    *    callComment		-- if present, the comment string is attached
-   *				   the CALL instruction as a COMMENT annotaiton.
+   *				   the CALL instruction as a COMMENT annotation.
    *    args			-- the arguments to the call.
    *
    * The result of genCall is a mlrisc list specifying where the result
