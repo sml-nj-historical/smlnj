@@ -58,6 +58,3 @@ fun expType(VARexp(ref(VALvar{typ=ref ty,...}),insttys)) =
 end (* structure Reconstruct *)
 
 
-(*
- * $Log$
- *)

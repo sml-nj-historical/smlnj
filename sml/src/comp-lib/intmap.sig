@@ -13,6 +13,3 @@ signature INTMAP =
     val clear : '1a intmap -> unit
   end
 
-(*
- * $Log$
- *)

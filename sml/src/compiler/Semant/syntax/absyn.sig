@@ -102,6 +102,3 @@ and fctb = FCTB of {name: Symbol.symbol, fct: Modules.Functor, def: fctexp}
 end (* signature ABSYN *)
 
 
-(*
- * $Log$
- *)

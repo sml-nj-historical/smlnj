@@ -70,6 +70,3 @@ fun binderGt(bind1: S.symbol * binding,
 end (* local *)
 end (* structure Bindings *)
 
-(*
- * $Log$
- *)

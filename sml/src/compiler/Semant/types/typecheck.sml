@@ -808,10 +808,3 @@ val decType = Stats.doPhase (Stats.makePhase "Compiler 035 typecheck") decType
 end (* local *)
 end (* structure Typecheck *)
 
-(*
- * $Log$
- *)
-
-
-
-

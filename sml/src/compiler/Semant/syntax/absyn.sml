@@ -127,6 +127,3 @@ end (* local *)
 end (* structure Absyn *)
 
 
-(*
- * $Log$
- *)

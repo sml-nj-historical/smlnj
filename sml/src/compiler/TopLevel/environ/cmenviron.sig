@@ -11,6 +11,3 @@ sig
   val unCM : Env.environment -> Environment.environment
 end
 
-(*
- * $Log$
- *)

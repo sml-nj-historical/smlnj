@@ -55,6 +55,3 @@ val bogusEXN = T.DATACON{name=S.varSymbol "bogus",
 end (* local *)
 end (* structure VarCon *)
 
-(*
- * $Log$
- *)
