@@ -427,7 +427,7 @@ unaryOperator:
 	| BANG  (Not)
 
 expr:
-	expr QUESTION expr COLON expr %prec QUESTION (markExpression srcMap (QuestionColon(expr1,expr2,expr3),expr1left,expr3right))
+	expr QUESTION exprWComma COLON expr %prec QUESTION (markExpression srcMap (QuestionColon(expr1,exprWComma1,expr2),expr1left,expr2right))
         | expr PLUSEQUALS expr  	(markExpression srcMap (Binop(PlusAssign,expr1,expr2),expr1left,expr2right))
         | expr MINUSEQUALS expr		(markExpression srcMap (Binop(MinusAssign,expr1,expr2),expr1left,expr2right))
         | expr TIMESEQUALS expr		(markExpression srcMap (Binop(TimesAssign,expr1,expr2),expr1left,expr2right))
