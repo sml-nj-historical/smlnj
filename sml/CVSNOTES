@@ -7,14 +7,20 @@
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
 
 * /softs install
-** orignial
+** original
 	cd /softs/smlnj-110
 	ztar ~/work/110-bin.x86-unix.tar.gz
 	config/install.sh
 	rm -rf bin.* src/sml-nj
 ** upgrade
 	cvs update
-	ztar ~/work/110.3-bin.x86-unix.tar.gz
+	cd src/sml-nj
+	./xrun <some sml-cm> <<EOF
+		   CMB.make();
+	EOF
+	./xrecompile
+	rm sml*.*
+	cd ../..
 	rm -rf bin lib **/CM
 	config/install.sh
-	rm -rf bin.* src/sml-nj
+	rm -rf src/sml-nj/bin.*
