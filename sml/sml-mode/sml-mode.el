@@ -768,7 +768,7 @@ If anyone has a good algorithm for this..."
           (skip-chars-forward "\t ")
           (cond
            ((looking-at "|") (current-indentation))
-           ((and sml-case-indent (looking-at "of\\b"))
+           ((looking-at "of\\b")
             (1+ (current-indentation)))
            ((looking-at "fn\\b") (1+ (current-indentation)))
            ((looking-at "handle\\b") (+ (current-indentation) 5))
@@ -781,7 +781,7 @@ If anyone has a good algorithm for this..."
           (sml-find-match-indent "in" "\\bin\\b" "\\blocal\\b\\|\\blet\\b"))
          ((looking-at "end\\b")         ; Match the beginning
           (sml-find-match-indent "end" "\\bend\\b" sml-end-starters-reg))
-         ((and sml-nested-if-indent (looking-at "else[\t ]*if\\b"))
+         ((and sml-nested-if-indent (looking-at "else\\b"))
           (sml-re-search-backward "\\bif\\b\\|\\belse\\b")
           (current-indentation))
          ((looking-at "else\\b")        ; Match the if
@@ -789,7 +789,7 @@ If anyone has a good algorithm for this..."
          ((looking-at "then\\b")        ; Match the if + extra indentation
           (+ (sml-find-match-indent "then" "\\bthen\\b" "\\bif\\b" t)
              sml-indent-level))
-         ((and sml-case-indent (looking-at "of\\b"))
+         ((looking-at "of\\b")
           (sml-re-search-backward "\\bcase\\b")
           (+ (current-column) 2))
          ((looking-at sml-starters-reg)
@@ -851,6 +851,9 @@ If anyone has a good algorithm for this..."
         (let ((indent (current-column)))
           (skip-chars-forward "\t (")
           (cond
+	   ;; a "let fun" or "let val"
+           ((looking-at "let \\(fun\\|val\\)\\b")
+            (+ (current-column) 4 sml-indent-level))
            ;; Started val/fun/structure...
            ((looking-at sml-indent-starters-reg)
             (+ (current-column) sml-indent-level))
