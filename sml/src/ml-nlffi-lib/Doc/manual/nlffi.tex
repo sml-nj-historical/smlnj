@@ -97,7 +97,7 @@ access to the memory location that $v$ stands for in C.  If $t_C$ is
   either {\tt unit -> (t, C.ro) C.obj} or {\tt unit -> (t, C.rw) C.obj}.
 \end{description}
 
-\paragraph*{Examples}
+\subsubsection*{Examples}
 
 \begin{center}
 \begin{tabular}{c|c}
@@ -176,17 +176,17 @@ end
 \subsection{Functions}
 
 An external C function $f$ is represented by an ML structure {\tt
-  F\_}$f$.  This structure always contains at last three values: {\tt
-  typ}, {\tt fptr}, and {\tt f'}.  Variable {\tt typ} holds run-time
-type information regarding function pointers that share $f$'s
+  F\_}$f$.  Each such structure always contains at last three values:
+{\tt typ}, {\tt fptr}, and {\tt f'}.  Variable {\tt typ} holds
+run-time type information regarding function pointers that share $f$'s
 prototype.  The most important part of this information is the code
 that implements native C calling conventions for these functions.
-Variable {\tt fptr} represents a C pointer to $f$.  And {\tt f'} is an
-ML function that dispatches a call of $f$ (through {\tt fptr}), using
-``light-weight'' types for arguments and results where this
-distinction is relevant.  If the result type of $f$ is {\em complete},
-then {\tt F\_}$f$ will also contain a function {\tt f}, using
-``heavy-weight'' argument- and result-types.
+Variable {\tt fptr} provides access to a C pointer to $f$.  And {\tt
+  f'} is an ML function that dispatches a call of $f$ (through {\tt
+  fptr}), using ``light-weight'' types for arguments and results.  If
+the result type of $f$ is {\em complete}, then {\tt F\_}$f$ will also
+contain a function {\tt f}, using ``heavy-weight'' argument- and
+result-types.
 
 \paragraph*{Details}
 
@@ -194,14 +194,15 @@ then {\tt F\_}$f$ will also contain a function {\tt f}, using
 \item[{\tt val typ}] holds run-time type information for pointers to
   functions of the same prototype.  The ML type of {\tt typ} is {\tt
     ($A$ -> $B$) C.fptr C.T.typ} where $A$ and $B$ are types encoding
-  $f$'s argument list and result type, respectively.
+  $f$'s argument list and result type, respectively.  A
+  description of $A$ and $B$ is given below.
 \item[{\tt val fptr}] is a function that returns the (heavy-weight)
   function pointer to $f$. The type of {\tt fptr} is {\tt unit -> ($A$
-    -> $B$) C.fptr}.  The encodings of argument- and result types is
-  the same as the one used for {\tt typ}.  Notice that even though
-  {\tt fptr} is a heavy-weight value carrying run-time type
-  information, pointer arguments within $A$ or $B$ still use the
-  light-weight version!
+    -> $B$) C.fptr}.  The encodings of argument- and result types in
+  $A$ and $B$ is the same as the one used for {\tt typ} (see below).
+  Notice that although {\tt fptr} is a heavy-weight value carrying
+  run-time type information, pointer arguments within $A$ or $B$ still
+  use the light-weight version!
 \item[!{\tt val f}] is an ML function that dispatches a call to $f$
   via {\tt fptr}.  For convenience, {\tt f} has built-in conversions
   for arguments (from ML to C) and the result (from C to ML).  For
@@ -222,15 +223,217 @@ then {\tt F\_}$f$ will also contain a function {\tt f}, using
   versions.
 \end{description}
 
-\paragraph*{Examples}
+\subsubsection*{Type encoding rules for {\tt ($A$ -> $B$) C.fptr}}
+
+A C function $f$'s prototype is encoded as an ML type {\tt $A$ ->
+  $B$}.  Calls of $f$ from ML take an argument of type $A$ and
+produce a result of type $B$.
+
+\begin{itemize}
+\item Type $A$ is constructed from a sequence $\langle T_1, \ldots,
+  T_k \rangle$ of types.  If that sequence is empty, then {\tt $A =$
+    unit}; if the sequence has only one element $T_1$, then $A = T_1$.
+  Otherwise $A$ is a tuple type {\tt $T_1$ * $\ldots$ * $T_k$}.
+\item If $f$'s result is neither a {\tt struct} nor a {\tt union},
+  then $T_1$ encodes the type of $f$'s first argument, $T_2$ that of
+  the second, $T_3$ that of the third, and so on.
+\item If $f$'s result is some {\tt struct} or some {\tt union}, then
+  $T_1$ will be {\tt ($\tau$, C.rw) C.su\_obj'} with $\tau$
+  instantiated to the appropriate {\tt struct}- or {\tt union}-tag
+  type.  Moreover, we then also have $B = T_1$. $T_2$ encodes the type
+  of $f$'s {\em first} argument, $T_3$ that of the second.  (In
+  general, $T_{i+1}$ will encode the type of the $i$th argument of
+  $f$ in this case.)
+\item The encoding of the $i$th argument of $f$ ($T_i$ or $T_{i+1}$
+  depending on $f$'s return type) is the light-weight ML equivalent of
+  the C type of that argument.
+\item An argument of C {\tt struct}- or {\tt union}-type corresponds
+  to {\tt ($\tau$, C.ro) C.su\_obj'} with $\tau$ instantiated to the
+  appropriate tag type.
+\item If $f$'s result type is {\tt void}, then {\tt $B =$ unit}.  If
+  the result type is not a {\tt struct}- or {\tt union}-type, then $B$
+  is the light-weight ML encoding of that type.  Otherwise $B = T_1$
+  (see above).
+\end{itemize}
+
+\subsubsection*{Examples}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+{\tt void f1 (void);}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f1 : sig
+    val typ  : (unit -> unit) C.fptr C.T.typ
+    val fptr : unit -> (unit -> unit) C.fptr
+    val f    : unit -> unit
+    val f'   : unit -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+{\tt int f2 (void);}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f2 : sig
+    val typ  : (C.sint -> unit) C.fptr C.T.typ
+    val fptr : unit -> (C.sint -> unit) C.fptr
+    val f    : MLRep.Signed.int -> unit
+    val f'   : MLRep.Signed.int -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+{\tt void f3 (int);}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f3 : sig
+    val typ  : (unit -> C.sint) C.fptr C.T.typ
+    val fptr : unit -> (unit -> C.sint) C.fptr
+    val f    : unit -> MLRep.Signed.int
+    val f'   : unit -> MLRep.Signed.int
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+{\tt void f4 (double, struct s*);}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f4 : sig
+    val typ  : (C.double *
+                (ST_s.tag, C.rw) C.su_obj C.ptr'
+                -> unit)
+                    C.fptr C.T.typ
+    val fptr : unit -> (C.double *
+                        (ST_s.tag, C.rw) C.su_obj C.ptr'
+                        -> unit) C.fptr
+    val f    : MLRep.Real.real *
+               (ST_s.tag, C.rw) C.su_obj C.ptr
+               -> unit
+    val f'   : MLRep.Real.real *
+               (ST_s.tag, C.rw) C.su_obj C.ptr'
+               -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct s *f5 (float);
+/* s incomplete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f5 : sig
+    val typ  : (C.float
+                -> (ST_s.tag, C.rw) C.su_obj C.ptr')
+                    C.fptr C.T.typ
+    val fptr : unit -> (C.float
+                       -> (ST_s.tag, C.rw) C.su_obj C.ptr')
+                           C.fptr
+    val f'   : MLRep.Real.real ->
+               (ST_s.tag, C.rw) C.su_obj C.ptr'
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct t *f6 (float);
+/* t complete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f6 : sig
+    val typ  : (C.float
+                -> (S_t.tag, C.rw) C.su_obj C.ptr')
+                    C.fptr C.T.typ
+    val fptr : unit -> (C.float
+                       -> (S_t.tag, C.rw) C.su_obj C.ptr')
+                           C.fptr
+    val f    : MLRep.Real.real ->
+               (S_t.tag, C.rw) C.su_obj C.ptr
+    val f'   : MLRep.Real.real ->
+               (S_t.tag, C.rw) C.su_obj C.ptr'
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct t f7 (int, double);
+/* t complete */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure F_f7 : sig
+    val typ  : ((S_t.tag, C.rw) C.su_obj' *
+                C.sint * C.double
+                -> (S_t.tag, C.rw) C.su_obj')
+                    C.fptr C.T.typ
+    val fptr : unit -> ((S_t.tag, C.rw) C.su_obj' *
+                        C.sint * C.double
+                        -> (S_t.tag, C.rw) C.su_obj')
+                            C.fptr
+    val f    : (S_t.tag, C.rw) C.su_obj *
+               MLRep.Signed.int *
+               MLRep.Real.real
+               -> (S_t.tag, C.rw) C.su_obj
+    val f'   : (S_t.tag, C.rw) C.su_obj' *
+               MLRep.Signed.int *
+               MLRep.Real.real
+               -> (S_t.tag, C.rw) C.su_obj'
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
+
+\subsection{Type definitions ({\tt typedef})}
 
 ...
 
-\subsubsection{Type encoding rules for {\tt ($A$ -> $B$) C.fptr}}
+\subsection{{\tt struct} and {\tt union}}
 
 ...
 
+\subsection{Enumerations ({\tt enum})}
 
+...
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix
