@@ -35,6 +35,8 @@ signature CML_IMPERATIVE_IO =
       sharing type vector = StreamIO.vector
       sharing type elem = StreamIO.elem
 
+    val getPosIn    : instream -> StreamIO.in_pos
+    val setPosIn    : (instream * StreamIO.in_pos) -> unit
     val mkInstream  : StreamIO.instream -> instream
     val getInstream : instream -> StreamIO.instream
     val setInstream : (instream * StreamIO.instream) -> unit

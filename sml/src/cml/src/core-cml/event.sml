@@ -82,7 +82,8 @@ structure Event : sig
   (* set a condition variable; we assume that this function is always
    * executed in an atomic region.
    *)
-    fun atomicCVarSet (R.CVAR state) = (case !state
+    fun atomicCVarSet (R.CVAR state) = (
+	  case !state
 	   of (R.CVAR_unset waiting) => let
 		val R.Q{rear, ...} = S.rdyQ1
 		fun add [] = !rear
@@ -179,6 +180,19 @@ structure Event : sig
       = BASE_GRP of 'a base_evt list
       | GRP of 'a event_group list
       | NACK_GRP of (R.cvar * 'a event_group)
+
+(*+DEBUG
+fun sayGrp (msg, eg) = let
+      fun f (BASE_GRP l, sl) = "BASE_GRP("::Int.toString(List.length l)::")"::sl
+	| f (GRP l, sl) = "GRP(" :: g(l, ")"::sl)
+	| f (NACK_GRP l, sl) = "NACK_GRP(" :: f(#2 l, ")"::sl)
+      and g ([], sl) = sl
+	| g ([x], sl) = f(x, sl)
+	| g (x::r, sl) = f(x, "," :: g(r, sl))
+      in
+	Debug.sayDebugId(String.concat(msg :: ": " :: f(eg, ["\n"])))
+      end
+-DEBUG*)
 
   (* force the evaluation of any guards in an event group. *)
     fun force (BEVT l) = BASE_GRP l
@@ -292,7 +306,9 @@ structure Event : sig
 	  end
 
   (* walk the event group tree, collecting the base events (with associated
-   * ack flags), and a list of (cvar * ack flag set) pairs.
+   * ack flags), and a list of flag sets.  A flag set is a (cvar * ack flag list)
+   * pairs, where the flags are those associated with the events covered by the
+   * nack cvar.
    *)
     fun collect grp = let
 	  val unWrappedFlg = ref false
@@ -304,7 +320,7 @@ structure Event : sig
 			    in
 			      append (r, (bev, flg)::bl, flg::allFlgs)
 			    end
-		      val (bl', allFlgs') = append (bevs, [], allFlgs)
+		      val (bl', allFlgs') = append (bevs, bl, allFlgs)
 		      in
 		        (bl', allFlgs', flgSets)
 		      end
@@ -316,9 +332,9 @@ structure Event : sig
 		      end
 		  | gather (NACK_GRP(cvar, grp), bl, allFlgs, flgSets) = let
 		      val (bl', allFlgs', flgSets') =
-			    gather (grp, bl, allFlgs, flgSets)
+			    gather (grp, bl, [], flgSets)
 		      in
-			(bl', allFlgs', (cvar, allFlgs') :: flgSets')
+			(bl', allFlgs' @ allFlgs, (cvar, allFlgs') :: flgSets')
 		      end
 		val (bl, _, flgSets) = gather (grp, bl, [], flgSets)
 		in
@@ -353,9 +369,12 @@ structure Event : sig
     fun syncOnGrp grp = let
 	  val (bl, flgSets) = collect grp
 	  fun chkCVars () = let
+	      (* chkCVar checks the flags of a flag set.  If they are all false
+	       * then the corresponding cvar is set to signal the negative ack.
+	       *)
 		fun chkCVar (cvar, flgs) = let
-		      fun chkFlgs [] = ()
-			| chkFlgs ((ref true)::_) = atomicCVarSet cvar
+		      fun chkFlgs [] = atomicCVarSet cvar
+			| chkFlgs ((ref true)::_) = ()
 			| chkFlgs (_::r) = chkFlgs r
 		      in
 			chkFlgs flgs

@@ -47,7 +47,7 @@ structure Unix : UNIX =
     fun openInFD (name, fd) =
 	  TextIO.mkInstream (
 	    TextIO.StreamIO.mkInstream (
-	      fdReader (name, fd), ""))
+	      fdReader (name, fd), NONE))
 
     datatype proc = PROC of {
         pid : PP.pid,

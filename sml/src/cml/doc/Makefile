@@ -1,15 +1,17 @@
 # Generated makefile
 #
 
-MLDOC_BIN = /n/stew/home/jhr/SGML/ML-Doc/bin
+MLDOC_BIN = /n/bopp/shome/jhr/SGML/ML-Doc/bin
 
-EXTRACT_INFO = $(MLDOC_BIN)/extract-info.sh
-HTML_GEN = $(MLDOC_BIN)/html-gen.sh
-HTML_INDEX = $(MLDOC_BIN)/html-index.sh
-HTML_TOC = $(MLDOC_BIN)/html-toc.sh
-LATEX_GEN = $(MLDOC_BIN)/latex-gen.sh
-MERGE_INFO = $(MLDOC_BIN)/merge-info.sh
-PROOF = $(MLDOC_BIN)/proof.sh
+EXTRACT_INFO = $(MLDOC_BIN)/extract-info
+HTML_GEN = $(MLDOC_BIN)/html-gen
+HTML_INDEX = $(MLDOC_BIN)/html-index
+HTML_TOC = $(MLDOC_BIN)/html-toc
+LATEX_GEN = $(MLDOC_BIN)/latex-gen
+MERGE_INFO = $(MLDOC_BIN)/merge-info
+PROOF_LATEX = $(MLDOC_BIN)/proof-latex
+RUN_LATEX = $(MLDOC_BIN)/run-latex
+DVIPS = dvips
 
 SRC_DIR = ML-Doc
 INFO_DIR = Info
@@ -24,7 +26,6 @@ HTML_FILES =	$(HTML_DIR)/index-all.html \
 	$(HTML_DIR)/toc.html \
 	$(HTML_DIR)/refman.html \
 	$(HTML_DIR)/basics.html \
-	$(HTML_DIR)/running.html \
 	$(HTML_DIR)/porting.html \
 	$(HTML_DIR)/core-cml.html \
 	$(HTML_DIR)/cml.html \
@@ -39,7 +40,6 @@ HTML_FILES =	$(HTML_DIR)/index-all.html \
 
 INFO_FILES =	$(INFO_DIR)/refman.info \
 	$(INFO_DIR)/basics.info \
-	$(INFO_DIR)/running.info \
 	$(INFO_DIR)/porting.info \
 	$(INFO_DIR)/core-cml.info \
 	$(INFO_DIR)/cml.info \
@@ -54,7 +54,6 @@ INFO_FILES =	$(INFO_DIR)/refman.info \
 
 LATEX_FILES =	$(LATEX_DIR)/refman.tex \
 	$(LATEX_DIR)/basics.tex \
-	$(LATEX_DIR)/running.tex \
 	$(LATEX_DIR)/porting.tex \
 	$(LATEX_DIR)/core-cml.tex \
 	$(LATEX_DIR)/cml.tex \
@@ -69,7 +68,6 @@ LATEX_FILES =	$(LATEX_DIR)/refman.tex \
 
 PROOF_FILES =	$(PROOF_DIR)/refman.tex \
 	$(PROOF_DIR)/basics.tex \
-	$(PROOF_DIR)/running.tex \
 	$(PROOF_DIR)/porting.tex \
 	$(PROOF_DIR)/core-cml.tex \
 	$(PROOF_DIR)/cml.tex \
@@ -95,9 +93,6 @@ $(HTML_DIR)/refman.html:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
 
 $(HTML_DIR)/basics.html:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
 	$(HTML_GEN) $(SRC_DIR)/basics.mldoc
-
-$(HTML_DIR)/running.html:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
-	$(HTML_GEN) $(SRC_DIR)/running.mldoc
 
 $(HTML_DIR)/porting.html:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
 	$(HTML_GEN) $(SRC_DIR)/porting.mldoc
@@ -141,9 +136,6 @@ $(INFO_DIR)/refman.info:	$(SRC_DIR)/refman.mldoc $(CONFIG)
 $(INFO_DIR)/basics.info:	$(SRC_DIR)/basics.mldoc $(CONFIG)
 	$(EXTRACT_INFO) $(SRC_DIR)/basics.mldoc
 
-$(INFO_DIR)/running.info:	$(SRC_DIR)/running.mldoc $(CONFIG)
-	$(EXTRACT_INFO) $(SRC_DIR)/running.mldoc
-
 $(INFO_DIR)/porting.info:	$(SRC_DIR)/porting.mldoc $(CONFIG)
 	$(EXTRACT_INFO) $(SRC_DIR)/porting.mldoc
 
@@ -185,9 +177,6 @@ $(LATEX_DIR)/refman.tex:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
 $(LATEX_DIR)/basics.tex:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
 	$(LATEX_GEN) $(SRC_DIR)/basics.mldoc
 
-$(LATEX_DIR)/running.tex:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
-	$(LATEX_GEN) $(SRC_DIR)/running.mldoc
-
 $(LATEX_DIR)/porting.tex:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
 	$(LATEX_GEN) $(SRC_DIR)/porting.mldoc
 
@@ -224,46 +213,43 @@ $(LATEX_DIR)/trace-cml.tex:	$(SRC_DIR)/trace-cml.mldoc $(INFO_DIR)/Master.info
 Proof:	$(PROOF_FILES)
 
 $(PROOF_DIR)/refman.tex:	$(SRC_DIR)/refman.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/refman.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/refman.mldoc
 
 $(PROOF_DIR)/basics.tex:	$(SRC_DIR)/basics.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/basics.mldoc
-
-$(PROOF_DIR)/running.tex:	$(SRC_DIR)/running.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/running.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/basics.mldoc
 
 $(PROOF_DIR)/porting.tex:	$(SRC_DIR)/porting.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/porting.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/porting.mldoc
 
 $(PROOF_DIR)/core-cml.tex:	$(SRC_DIR)/core-cml.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/core-cml.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/core-cml.mldoc
 
 $(PROOF_DIR)/cml.tex:	$(SRC_DIR)/cml.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/cml.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/cml.mldoc
 
 $(PROOF_DIR)/mailbox.tex:	$(SRC_DIR)/mailbox.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/mailbox.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/mailbox.mldoc
 
 $(PROOF_DIR)/sync-var.tex:	$(SRC_DIR)/sync-var.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/sync-var.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/sync-var.mldoc
 
 $(PROOF_DIR)/os.tex:	$(SRC_DIR)/os.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/os.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/os.mldoc
 
 $(PROOF_DIR)/os-process.tex:	$(SRC_DIR)/os-process.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/os-process.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/os-process.mldoc
 
 $(PROOF_DIR)/os-io.tex:	$(SRC_DIR)/os-io.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/os-io.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/os-io.mldoc
 
 $(PROOF_DIR)/cml-lib.tex:	$(SRC_DIR)/cml-lib.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/cml-lib.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/cml-lib.mldoc
 
 $(PROOF_DIR)/multicast.tex:	$(SRC_DIR)/multicast.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/multicast.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/multicast.mldoc
 
 $(PROOF_DIR)/trace-cml.tex:	$(SRC_DIR)/trace-cml.mldoc $(INFO_DIR)/Master.info
-	$(PROOF) $(SRC_DIR)/trace-cml.mldoc
+	$(PROOF_LATEX) $(SRC_DIR)/trace-cml.mldoc
 
 clean-info:
 	rm -f $(INFO_DIR)/Master.info $(INFO_FILES)

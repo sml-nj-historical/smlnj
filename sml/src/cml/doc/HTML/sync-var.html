@@ -59,7 +59,7 @@ The SyncVar structure provides <B>Id</B>-style synchronous variables (or memory 
 
 <DT> <A NAME="SIG:SYNC_VAR.ivar:TY"><CODE><B>type</B> 'a ivar</CODE></A>
 <DD>
-	This is the type constructor for I-structured variables. 	I-structured variables are write-once variables that provide 	synchronization on read operations. 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols.     
+	This is the type constructor for I-structured variables. 	I-structured variables are write-once variables that provide 	synchronization on read operations. 	They are especially useful for one-shot communications, such 	as reply messages in client/server protocols, and can also be used 	to implement shared <EM>incremental</EM> data structures.     
 <BR>
 <BR>
 
@@ -100,7 +100,7 @@ returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.i
 <DT> <A NAME="SIG:SYNC_VAR.sameIVar:VAL"><CODE>sameIVar (<VAR>iv1</VAR>, <VAR>iv2</VAR>)
           </CODE></A>
 <DD>
-returns <CODE>true</CODE>, if the <VAR>iv1</VAR> and <VAR>iv2</VAR> are the 	  same I-variable.     
+returns <CODE>true</CODE>, if <VAR>iv1</VAR> and <VAR>iv2</VAR> are the 	  same I-variable.     
 <BR>
 <BR>
 
@@ -117,7 +117,7 @@ creates a new empty M-variable.
 <BR>
 <BR>
 
-<DT> <A NAME="SIG:SYNC_VAR.mVarInit:VAL"><CODE>mVar x
+<DT> <A NAME="SIG:SYNC_VAR.mVarInit:VAL"><CODE>mVarInit <VAR>x</VAR>
           </CODE></A>
 <DD>
 creates a new M-variable initialized to <VAR>x</VAR>.     
@@ -183,7 +183,7 @@ let val x = <A HREF="sync-var.html#SIG:SYNC_VAR.mTake:VAL:SPEC">mTake</A> <VAR>m
 <BR>
 <BR>
 
-<DT> <A NAME="SIG:SYNC_VAR.mSwapEvt:VAL"><CODE>mSwapEvt <VAR>mv</VAR>
+<DT> <A NAME="SIG:SYNC_VAR.mSwapEvt:VAL"><CODE>mSwapEvt (<VAR>mv</VAR>, <VAR>newV</VAR>)
           </CODE></A>
 <DD>
 returns an event-value that represents the <A HREF="sync-var.html#SIG:SYNC_VAR.mSwap:VAL:SPEC">mSwap</A> 	  operation on <VAR>mv</VAR> and <VAR>newV</VAR>.     
@@ -205,7 +205,7 @@ returns <CODE>true</CODE>, if <VAR>mv1</VAR> and <VAR>mv2</VAR> are the same 	  
 </BLOCKQUOTE>
 <H4>Discussion</H4>
 <P>
-I-variables provide a useful mechanism for implementing the reply communication in request/reply protocols. They may also be used to implement incremental data structures and streams.
+I-variables provide a useful mechanism for implementing the reply communication in request/reply protocols (in cases where the server does not care if the reply is accepted). They may also be used to implement incremental data structures and streams; for example, the <A HREF="multicast.html#Multicast:STR:SPEC">Multicast</A> structure uses I-variables to implement its multicast channels.
 <P>
 A disciplined use of M-variables can provide an atomic read-modify-write operation.
 

@@ -14,6 +14,26 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/20 16:40:00 EDT
+Tag: blume-20010620-cml
+Description:
+
+CML now compiles and works again.
+
+Libraries (for version > 110.33):
+
+  $cml/cml.cm            Main CML library.
+  $cml/basis.cm          CML's version of $/basis.cm.
+  $cml/cml-internal.cm   Internal helper library.
+  $cml/core-cml.cm       Internal helper library.
+  $cml-lib/trace-cml.cm  Tracing facility.
+  $cml-lib/smlnj-lib.cm  CML's version of $/smlnj-lib.cm
+
+The installer (config/install.sh) has been taught how to properly
+install this stuff.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/19 17:55:00 EDT
 Tag: blume-20010619-instantiate
 Description:

@@ -1,6 +1,6 @@
-(* sock-util-sig.sml
+(* sock-util.sml
  *
- * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  * Various utility functions for programming with sockets.
  *)
@@ -82,14 +82,6 @@ structure SockUtil : SOCK_UTIL =
 	  end
 
     type 'a stream_sock = ('a, Socket.active Socket.stream) Socket.sock
-
-  (* establish a client-side connection to a Unix-domain stream socket *)
-    fun connectUnixStrm path = let
-	  val sock = UnixSock.Strm.socket ()
-	  in
-	    Socket.connect (sock, UnixSock.toAddr path);
-	    sock
-	  end
 
   (* establish a client-side connection to a INET domain stream socket *)
     fun connectINetStrm {addr, port} = let

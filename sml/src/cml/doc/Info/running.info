@@ -1,9 +1,0 @@
-@FILES
-  {"running"; "Porting old programs";
-    @SECTION "Running \|CML\| programs" {
-      @SECTION "Using the compilation manager" {}
-      @SECTION "Thecml-cmcommand" {}
-    }
-  }
-@LABELS
-  {"sec:using-cm"; "running"}

@@ -68,10 +68,14 @@ structure IOManager : sig
 	    R.BEVT[pollFn]
 	  end
 
-(** NOTE: there should be an OS.IO.infoToIODesc **)
-    fun sameDesc (pi, pd) =
-	  (OS.IO.pollToIODesc(OS.IO.infoToPollDesc pi) = OS.IO.pollToIODesc pd)
+(* NOTE: this code works because SML/NJ doesn't use opaque signature matching
+ * on the OS.IO interface.
+ *)
+    fun sameDesc (pi, pd) = (OS.IO.infoToPollDesc pi = pd)
 
+  (* Take an I/O waiting queue and return the cleaned queue along with the list
+   * of poll descriptors in the remaining elements.
+   *)
     fun clean wq = let
 	  fun cl ([] : io_wait_item list, pds, q) = (pds, q)
 	    | cl ({tid=ref R.CANCEL, ...} :: r, pds, wq) = cl (r, pds, wq)
@@ -116,4 +120,3 @@ structure IOManager : sig
     fun anyWaiting () = (case !waiting of [] => false | _ => true)
 
   end
-

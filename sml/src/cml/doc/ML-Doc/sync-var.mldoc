@@ -41,7 +41,8 @@ while M-variables are mutable.
 	I-structured variables are write-once variables that provide
 	synchronization on read operations.
 	They are especially useful for one-shot communications, such
-	as reply messages in client/server protocols.
+	as reply messages in client/server protocols, and can also be used
+	to implement shared <EM>incremental</EM> data structures.
     <SPEC>
       <VAL>iVar<TY>unit -> 'a ivar
         <COMMENT>
@@ -92,7 +93,7 @@ while M-variables are mutable.
           <PROTOTY>
           sameIVar (<ARG/iv1/, <ARG/iv2/)
           </PROTOTY>
-          returns <CD/true/, if the <ARG/iv1/ and <ARG/iv2/ are the
+          returns <CD/true/, if <ARG/iv1/ and <ARG/iv2/ are the
 	  same I-variable.
     <SPEC>
       <TYPE><TYPARAM>'a<ID>mvar
@@ -114,7 +115,7 @@ while M-variables are mutable.
       <VAL>mVarInit<TY>'a -> 'a mvar
         <COMMENT>
           <PROTOTY>
-          mVar x
+          mVarInit <ARG/x/
           </PROTOTY>
           creates a new M-variable initialized to <ARG/x/.
     <SPEC>
@@ -197,7 +198,7 @@ let val x = <VALREF/mTake/ <ARG/mv/ in <VALREF/mPut/(<ARG/mv/, <ARG/newV/); x en
       <VAL>mSwapEvt<TY>('a mvar * 'a) -> 'a event
         <COMMENT>
           <PROTOTY>
-          mSwapEvt <ARG/mv/
+          mSwapEvt (<ARG/mv/, <ARG/newV/)
           </PROTOTY>
           returns an event-value that represents the <VALREF/mSwap/
 	  operation on <ARG/mv/ and <ARG/newV/.
@@ -213,9 +214,11 @@ let val x = <VALREF/mTake/ <ARG/mv/ in <VALREF/mPut/(<ARG/mv/, <ARG/newV/); x en
 </STRUCTURE>
 <PP>
 I-variables provide a useful mechanism for implementing the
-reply communication in request/reply protocols.
+reply communication in request/reply protocols (in cases where
+the server does not care if the reply is accepted).
 They may also be used to implement incremental data structures
-and streams.
+and streams; for example, the <STRREF>Multicast</STRREF> structure
+uses I-variables to implement its multicast channels.
 <PP>
 A disciplined use of M-variables can provide an atomic
 read-modify-write operation.

@@ -4,7 +4,7 @@
  * to avoid cycles.
  *)
 
-Group
+Group (../cml-internal.cm)
   signature OS_IO
   signature OS_PROCESS
   signature OS
@@ -14,7 +14,12 @@ Group
 
   structure ProcManager
 is
-  ../core-cml/sources.cm
+#if defined (NEW_CM)
+  ../cml-sub-basis.cm
+  $cml/core-cml.cm
+#else
+  ../core-cml.cm
+#endif
   ../OS/sources.cm
   ../util/sources.cm
 

@@ -39,6 +39,9 @@ structure CleanIO :> sig
 
     val removeCleaner : tag -> unit
 
+  (* for linking the master IO cleaner function into the list of cleanup hooks *)
+    val ioCleaner : (string * CleanUp.when list * (CleanUp.when -> unit))
+
   end = struct
 
     structure SV = SyncVar
@@ -99,7 +102,8 @@ structure CleanIO :> sig
 	  (!osInitHook)();
 	  (!stdStrmHook)())
 
-    val _ = C.addCleaner ("IO", C.atAll, cleanUp)
+  (* for linking the master IO cleaner function into the list of cleanup hooks *)
+    val ioCleaner = ("IO", C.atAll, cleanUp)
 
   end (* CleanIO *)
 

@@ -1,20 +1,36 @@
 (* layer1.cm
  *
- * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  *)
 
-Group
+Group (../cml-internal.cm)
   signature CML_SOCKET
   structure PreSock
   structure CML_Socket
+
+#if defined (NEW_CM)
+  (* re-exporting from the basis *)
+  structure GenericSock
+  structure NetHostDB
+  structure INetSock
+  structure UnixSock
+#endif
 is
 
-../core-cml/sources.cm
-#if defined(OPSYS_UNIX)
-../Unix/sources.cm
+#if defined (NEW_CM)
+  $/basis.cm
+  $cml/core-cml.cm
+#else
+  ../core-cml.cm
 #endif
 
-pre-sock.sml
+
+(* remove Posix reliance in pre-sock *)
+#if defined(OPSYS_WIN32)
+  win32-pre-sock.sml
+#else
+  pre-sock.sml
+#endif
 cml-socket-sig.sml
 cml-socket.sml

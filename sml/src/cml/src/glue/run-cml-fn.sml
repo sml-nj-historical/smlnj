@@ -24,6 +24,8 @@ functor RunCMLFn (G : OS_GLUE) : sig
     structure Sig = Signals
     structure CU = CleanUp
 
+    open InitCleanup	(* to force CM to link this module in *)
+
     structure E = ExportFnFn (G);
 
     open CU
@@ -36,6 +38,10 @@ functor RunCMLFn (G : OS_GLUE) : sig
 	  then SMLofNJ.Cont.throw (! S.shutdownHook) (true, sts)
 	  else raise Fail "CML is not running"
 
+  (* a dummy print function, in case the user's program doesn't reference
+   * CML's TextIO structure directly.
+   *)
+    fun dummyPrint _ = raise Fail "print called without loading CML's TextIO"
 
     val interruptK : unit SMLofNJ.Cont.cont =
 	  SMLofNJ.Cont.isolate (fn _ => shutdown OS.Process.failure)
@@ -55,6 +61,7 @@ functor RunCMLFn (G : OS_GLUE) : sig
 		ignore (
 		  Sig.setHandler (Sig.sigINT, Sig.HANDLER(fn _ => interruptK)));
 		S.shutdownHook := doneK;
+		SMLofNJ.Internals.prHook := dummyPrint;
 		case tq of (SOME tq) => S.startTimer tq | _ => S.restartTimer();
 		CU.clean CU.AtInit;
 		CML.spawn initialProc;
@@ -86,7 +93,7 @@ functor RunCMLFn (G : OS_GLUE) : sig
 	(* unlink the SML print function *)
 	  SMLofNJ.Internals.prHook := (fn _ => ());
 	(* unlink the perv structure *)
-	  Unsafe.pStruct := Unsafe.NILrde;
+	  Unsafe.pStruct := Unsafe.Object.toObject ();
 	(* now export the wrapped main function *)
 	  exportFn' (fileName, E.wrapForExport (main, timeQ)))
 

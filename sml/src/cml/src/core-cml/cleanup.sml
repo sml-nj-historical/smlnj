@@ -12,6 +12,9 @@ structure CleanUp : sig
 
     val exportFnCleanup : unit -> unit
 
+    val chanCleaner : (string * when list * (when -> unit))
+    val servCleaner : (string * when list * (when -> unit))
+
   end = struct
 
     datatype when = AtInit | AtInitFn | AtShutdown | AtExit
@@ -77,14 +80,14 @@ structure CleanUp : sig
 		  CML.joinEvt(CML.spawnc f when),
 		  CML.timeOutEvt(Time.fromSeconds 1)
 		]
-(*DEBUG*
+(*DEBUG
 fun doCleaner (tag, _, f) = (
 Debug.sayDebugTS(concat["do Cleaner \"", tag, "\"\n"]);
 CML.select [
 CML.wrap(CML.joinEvt(CML.spawnc f when), fn _ => Debug.sayDebugTS "  done\n"),
 CML.wrap(CML.timeOutEvt(Time.fromSeconds 1), fn _ => Debug.sayDebugTS "  timeout\n")
 ])
-*DEBUG*)
+DEBUG*)
 	  in
 	  (* remove uneccesary clean-up routines *)
 	    case when
@@ -193,10 +196,9 @@ CML.wrap(CML.timeOutEvt(Time.fromSeconds 1), fn _ => Debug.sayDebugTS "  timeout
   (* clean the logged channels and mailboxes. *)
     fun cleanChannels _ = (appInit chanList; appInit mboxList)
 
-  (* Add the standard cleaners *)
-    val _ = (
-	  addCleaner ("Channels&Mailboxes", [AtInit,AtShutdown], cleanChannels);
-	  addCleaner ("Servers", atAll, cleanServers))
+  (* The standard cleaners *)
+    val chanCleaner = ("Channels&Mailboxes", [AtInit,AtShutdown], cleanChannels)
+    val servCleaner = ("Servers", atAll, cleanServers)
 
   (* remove useless cleaners and clear the channel/mailbox logs
    * prior to exporting a stand-alone CML program.

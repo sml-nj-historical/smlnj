@@ -87,7 +87,6 @@ structure TimeOut : sig
 		  SMLofNJ.Cont.callcc (fn k => (
 		    timeWait (Time.+(t, t0), cleanUp, transId, k);
 		    next()));
-		    cleanUp();
 		    S.atomicEnd()
 		end
 	  fun pollFn () = if (t = Time.zeroTime)
@@ -102,7 +101,6 @@ structure TimeOut : sig
 		SMLofNJ.Cont.callcc (fn k => (
 		  timeWait (t, cleanUp, transId, k);
 		  next()));
-		cleanUp();
 		S.atomicEnd())
 	  fun pollFn () = if Time.<=(t, S.getTime())
 		then R.ENABLED{prio= ~1, doFn=S.atomicEnd}

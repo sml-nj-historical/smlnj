@@ -13,22 +13,22 @@ structure SimpleRPC : SIMPLE_RPC =
     fun call reqMB arg = let
 	  val replV = SyncVar.iVar()
 	  in
-	    Mailbox.send(reqMb, (arg, replV));
+	    Mailbox.send(reqMB, (arg, replV));
 	    SyncVar.iGet replV
 	  end
 
     fun mkRPC f = let
-	  val reqMb = Mailbox.mailbox()
+	  val reqMB = Mailbox.mailbox()
 	  val entryEvt = CML.wrap (
-		Mailbox.recvEvt reqMb,
+		Mailbox.recvEvt reqMB,
 		fn (arg, replV) => SyncVar.iPut(replV, f arg))
 	  in
 	    { call = call reqMB, entryEvt = entryEvt }
 	  end
 
     fun mkRPC_In f = let
-	  val reqMb = Mailbox.mailbox()
-	  val reqEvt = Mailbox.recvEvt reqMb
+	  val reqMB = Mailbox.mailbox()
+	  val reqEvt = Mailbox.recvEvt reqMB
 	  fun entryEvt state = CML.wrap (
 		reqEvt,
 		fn (arg, replV) => SyncVar.iPut(replV, f(arg, state)))
@@ -37,8 +37,8 @@ structure SimpleRPC : SIMPLE_RPC =
 	  end
 
     fun mkRPC_Out f = let
-	  val reqMb = Mailbox.mailbox()
-	  val reqEvt = Mailbox.recvEvt reqMb
+	  val reqMB = Mailbox.mailbox()
+	  val reqEvt = Mailbox.recvEvt reqMB
 	  val entryEvt = CML.wrap (
 		reqEvt,
 		fn (arg, replV) => let val (res, state') = f arg
@@ -50,8 +50,8 @@ structure SimpleRPC : SIMPLE_RPC =
 	  end
 
     fun mkRPC_InOut f = let
-	  val reqMb = Mailbox.mailbox()
-	  val reqEvt = Mailbox.recvEvt reqMb
+	  val reqMB = Mailbox.mailbox()
+	  val reqEvt = Mailbox.recvEvt reqMB
 	  fun entryEvt state = CML.wrap (
 		reqEvt,
 		fn (arg, replV) => let val (res, state') = f(arg, state)

@@ -323,7 +323,7 @@ functor BinIOFn (
 			else (SV.mPut(more, next); false)
 		    end
 	      (* end case *))
-	fun mkInstream (reader, data) = let
+	fun mkInstream (reader, optData) = let
 	      val PIO.RD{readVec, readVecEvt, getPos, setPos, ...} = reader
 	      val getPos = (case (getPos, setPos)
 		     of (SOME f, SOME _) => (fn () => SOME(f()))
@@ -336,18 +336,21 @@ functor BinIOFn (
 		      closed = ref false, getPos = getPos,
 		      tail = SV.mVarInit more, cleanTag = tag
 		    }
-(** What should we do about the position when there is initial data?? **)
+	      val buf = (case optData
+		     of NONE => IBUF{
+			    basePos = getPos(), data=empty,
+			    info=info, more=more
+			  }
+(** What should we do about the position in this case ?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
-	      val basePos = if (V.length data = 0)
-		    then getPos()
-		    else NONE
-	      val buf = IBUF{
-		      basePos = basePos, data = data, info = info, more = more
-		    }
-	      val strm = ISTRM(buf, 0)
+		      | (SOME v) => IBUF{
+			    basePos = NONE, data=v,
+			    info=info, more=more}
+		    (* end case *))
+	      val strm =  ISTRM(buf, 0)
 	      in
 		CleanIO.rebindCleaner (tag, fn () => closeIn strm);
 		strm
@@ -368,12 +371,30 @@ functor BinIOFn (
 		  else (reader, V.concat(getData more))
 	      end
 
-	fun filePosIn (ISTRM(buf, pos)) = (case buf
+      (** Position operations on instreams **)
+	datatype in_pos = INP of {
+	    base : pos,
+	    offset : int,
+	    info : info
+	  }
+
+	fun getPosIn (ISTRM(buf, pos)) = (case buf
 	       of IBUF{basePos=NONE, info, ...} =>
-		    inputExn (info, "filePosIn", IO.RandomAccessNotSupported)
-		| IBUF{basePos=SOME base, info, ...} =>
-		    Position.+(base, Position.fromInt pos)
+		    inputExn (info, "getPosIn", IO.RandomAccessNotSupported)
+		| IBUF{basePos=SOME p, info, ...} => INP{
+		      base = p, offset = pos, info = info
+		    }
 	      (* end case *))
+	fun filePosIn (INP{base, offset, ...}) =
+	      Position.+(base, Position.fromInt offset)
+	fun setPosIn (pos as INP{info as INFO{reader, ...}, ...}) = let
+	      val fpos = filePosIn pos
+	      val (PIO.RD rd) = reader
+	      in
+		terminate info;
+		valOf (#setPos rd) fpos;
+		mkInstream (PIO.RD rd, NONE)
+	      end
 
 
       (*** Output streams ***)
@@ -658,6 +679,8 @@ functor BinIOFn (
 	    SV.mPut(strm, StreamIO.findEOS buf)
 	  end
     fun endOfStream strm = StreamIO.endOfStream(SV.mGet strm)
+    fun getPosIn strm = StreamIO.getPosIn(SV.mGet strm)
+    fun setPosIn (strm, p) = mUpdate(strm, StreamIO.setPosIn p)
 
   (** Output operations **)
     fun output (strm, v) = StreamIO.output(SV.mGet strm, v)
@@ -678,7 +701,7 @@ functor BinIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, empty))
+	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, NONE))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname =
 	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openWr fname, IO.BLOCK_BUF))

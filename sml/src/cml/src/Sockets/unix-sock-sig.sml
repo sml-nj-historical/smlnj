@@ -3,11 +3,11 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  * $Log$
- * Revision 1.2  2000/06/01 18:33:22  monnier
- * bring revisions from the vendor branch to the trunk
+ * Revision 1.3  2001/06/20 20:39:14  blume
+ * CML compiles and works again
  *
- * Revision 1.1.1.1  1997/10/04 23:33:11  monnier
- *
+ * Revision 1.2.4.1  2001/06/20 17:54:59  blume
+ * CML now compiles under old and new CM
  *
  * Revision 1.3  1996/09/06  00:35:43  george
  * *** empty log message ***

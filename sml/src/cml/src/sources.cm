@@ -1,60 +1,50 @@
 (* sources.cm
  *
- * The sources file for the CML library
+ * This is the top-level CM description file for CML when compiled using
+ * the old (110.0.x-style) compilation manager.  It exists for backward
+ * compatibility and simply merges exports from cml.cm and basis.cm.
  *)
-
 Library
-  signature CML
-  structure CML
-
-  signature SYNC_VAR
-  structure SyncVar
-  signature MAILBOX
-  structure Mailbox
-
-  structure RunCML
-
-  structure Debug
-
-  signature OS_PROCESS
-  signature OS_IO
-  signature OS
-  structure OS
-
-  signature PRIM_IO
-  signature CML_STREAM_IO
-  signature CML_TEXT_STREAM_IO
-  signature CML_IMPERATIVE_IO
-  signature CML_BIN_IO
-  signature CML_TEXT_IO
-
-  structure BinPrimIO
-  structure BinIO
-  structure TextPrimIO
-  structure TextIO
-
+#if defined (NEW_CM)
+#error Not for use with the new CM!
+#endif
+	signature OS_PROCESS
+	signature OS_IO
+	signature OS
+	structure OS
+	signature PRIM_IO
+	structure BinIO
+	structure BinPrimIO
+	structure TextIO
+	structure TextPrimIO
+	signature INET_SOCK
+	signature GENERIC_SOCK
+	structure Socket
+	structure INetSock
 #if defined(OPSYS_UNIX)
-  signature UNIX
-  structure Unix
-  structure Socket
-  structure GenericSock
-  structure INetSock
-  structure UnixSock
+	signature UNIX_SOCK
+	structure UnixSock
+	signature UNIX
+	structure Unix
 #endif
 
+	signature CML
+	structure CML
+
+	signature SYNC_VAR
+	structure SyncVar
+	signature MAILBOX
+	structure Mailbox
+
+	structure RunCML
+
+	structure Debug
+
+	signature CML_STREAM_IO
+	signature CML_TEXT_STREAM_IO
+	signature CML_IMPERATIVE_IO
+	signature CML_BIN_IO
+	signature CML_TEXT_IO
 is
-  core-cml/sources.cm
-  glue/sources.cm
-  OS/sources.cm
-  IO/sources.cm
-
-#if defined(OPSYS_UNIX)
-  Unix/sources.cm
-  Sockets/sources.cm
-#endif
-
-#if defined (OPSYS_WIN32)
-  Win32/sources.cm
-#endif
-
-
+  cml.cm
+  basis.cm

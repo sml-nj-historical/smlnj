@@ -1,6 +1,6 @@
 (* sock-util-sig.sml
  *
- * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  * Various utility functions for programming with sockets.
  *)
@@ -35,11 +35,6 @@ signature SOCK_UTIL =
 
     type 'a stream_sock = ('a, Socket.active Socket.stream) Socket.sock
 
-(** NOTE: we should probably move this somewhere else, since it is not
- ** portable to non-Unix systems.
- **)
-    val connectUnixStrm : string -> UnixSock.unix stream_sock
-	(* establish a client-side connection to a Unix-domain stream socket *)
     val connectINetStrm : {addr : NetHostDB.in_addr, port : int}
 	  -> INetSock.inet stream_sock
 	(* establish a client-side connection to a INET domain stream socket *)
