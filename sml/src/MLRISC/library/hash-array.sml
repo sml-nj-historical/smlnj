@@ -18,7 +18,7 @@ struct
 
     datatype 'a default = V of 'a | F of int -> 'a | U of int -> 'a
     datatype 'a array = 
-       ARRAY of (int * 'a) list A.array ref * 'a default * int ref * int ref
+       ARRAY of (int * 'a) list A.array ref * 'a default ref * int ref * int ref
 
     type 'a vector = 'a Vector.vector
 
@@ -28,9 +28,9 @@ struct
 
     fun unimplemented _ = raise HashArrayUnimplemented
 
-    fun array(n,d) = ARRAY(ref(A.array(16,[])),V d,ref n,ref 0)
-    fun array'(n,f) = ARRAY(ref(A.array(16,[])),F f,ref n,ref 0)
-    fun array''(n,f) = ARRAY(ref(A.array(16,[])),U f,ref n,ref 0)
+    fun array(n,d) = ARRAY(ref(A.array(16,[])),ref(V d),ref n,ref 0)
+    fun array'(n,f) = ARRAY(ref(A.array(16,[])),ref(F f),ref n,ref 0)
+    fun array''(n,f) = ARRAY(ref(A.array(16,[])),ref(U f),ref n,ref 0)
     fun clear(ARRAY(r,d,n,c)) = (r := A.array(16,[]); n := 0; c := 0)
 
     fun roundsize n =
@@ -59,9 +59,9 @@ struct
         fun insert 0 = ins 0
           | insert i = (ins i; insert(i-1))
     in  if n < 0 then
-          ARRAY(ref a,F(fn _ => raise Subscript),ref 0,ref 0)
+          ARRAY(ref a,ref(F(fn _ => raise Subscript)),ref 0,ref 0)
         else
-          ARRAY(ref a,V(insert(n-1)),ref n,ref n)
+          ARRAY(ref a,ref(V(insert(n-1))),ref n,ref n)
     end
 
     fun fromList l =
@@ -76,14 +76,14 @@ struct
         fun insert(i,[])   = F(fn _ => raise Subscript)
           | insert(i,[x])  = V(ins(i,x))
           | insert(i,x::l) = (ins(i,x); insert(i+1,l))
-    in  ARRAY(ref a,insert(0,l),ref n,ref n)
+    in  ARRAY(ref a,ref(insert(0,l)),ref n,ref n)
     end
 
     fun length(ARRAY(_,_,ref n,_)) = n
 
     fun sub(a' as ARRAY(ref a,d,_,_),i) = 
     let val pos = index(a,i)
-        fun search [] = (case d of
+        fun search [] = (case !d of
                            V d => d
                          | F f => f i
                          | U f => let val x = f i
@@ -129,18 +129,16 @@ struct
     in  change(A.sub(a,pos),[])
     end
 
-    fun extract (a as ARRAY(_,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-        fun f(k,l) = if k < i then l else f(k-1,sub(a,k)::l)
+    fun vector (a as ARRAY(_,_,ref n,_)) = 
+    let fun f(k,l) = if k < 0 then l else f(k-1,sub(a,k)::l)
     in 
-        Vector.fromList(f(j-1,[]))
+        Vector.fromList(f(n-1,[]))
     end
 
-    fun copy { src = src as ARRAY(_,_,ref n,_), si, len, dst, di } = 
-    let val j = case len of SOME len => si+len | NONE => n
-        fun f(k,k') = if k >= j then ()
+    fun copy { src = src as ARRAY(_,_,ref n,_), dst, di } = 
+    let fun f(k,k') = if k >= n then ()
                       else (update(dst,k',sub(src,k)); f(k+1,k'+1))
-    in  f(si,di)
+    in  f(0,di)
     end
 
     val copyVec = unimplemented
@@ -154,30 +152,35 @@ struct
     fun modify f (ARRAY(ref a,_,_,_)) =
        A.modify (List.map (fn (i,x) => (i,f x))) a 
 
-    fun appi f (ARRAY(ref a,_,ref n,_),i,j) =
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.app (List.app 
-           (fn (k,x) => if k >= i andalso k < j then f(k,x) else ())) a
-    end
-    fun foldli f e (ARRAY(ref a,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.foldl (fn (l,e) => List.foldl 
-           (fn ((k,x),e) => if k >= i andalso k < j then f(k,x,e) else e) e l) 
+    fun appi f (ARRAY(ref a,_,ref n,_)) =
+	A.app (List.app 
+		   (fn (k,x) => if k >= 0 andalso k < n then f(k,x) else ())) a
+    fun foldli f e (ARRAY(ref a,_,ref n,_)) = 
+	A.foldl (fn (l,e) => List.foldl 
+	   (fn ((k,x),e) => if k >= 0 andalso k < n then f(k,x,e) else e) e l) 
            e a
-    end
-    fun foldri f e (ARRAY(ref a,_,ref n,_),i,j) = 
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.foldr (fn (l,e) => List.foldr 
-           (fn ((k,x),e) => if k >= i andalso k < j then f(k,x,e) else e) e l) 
+    fun foldri f e (ARRAY(ref a,_,ref n,_)) = 
+	A.foldr (fn (l,e) => List.foldr 
+           (fn ((k,x),e) => if k >= 0 andalso k < n then f(k,x,e) else e) e l) 
            e a
-    end
     fun dom(ARRAY(ref a,_,_,_)) = 
        A.foldl (fn (e,l) => List.foldr (fn ((i,_),l) => i::l) l e) [] a
 
-    fun modifyi f (ARRAY(ref a,_,ref n,_),i,j) =
-    let val j = case j of SOME j => i+j | NONE => n
-    in  A.modify (List.map(fn (k,x) => if k >= i andalso k < j then (k,f(k,x))
+    fun modifyi f (ARRAY(ref a,_,ref n,_)) =
+	A.modify (List.map(fn (k,x) => if k >= 0 andalso k < n then (k,f(k,x))
                                        else (k,x))) a
+    fun findi p (a : 'a array) = let
+	exception Found of int * 'a
+    in
+	(appi (fn x => if p x then raise Found x else ()) a; NONE)
+	handle Found x => SOME x
     end
-end
 
+    fun find p = Option.map #2 o findi (p o #2)
+
+    fun exists p = isSome o find p
+
+    fun all p = not o exists (not o p)
+
+    fun collate c (a, b) = raise Fail "HashArray.collate not implemented"
+end

@@ -488,8 +488,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		  fun listDir ds = let
 		      fun loop l =
 			  case F.readDir ds of
-			      "" => l
-			    | x => loop (x :: l)
+			      NONE => l
+			    | SOME x => loop (x :: l)
 		  in
 		      loop []
 		  end
