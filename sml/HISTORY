@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/20 10:59:00 EDT
+Tag: blume-20020520-preloads
+Description:
+
+Added a lot of commented-out suggestions for things to be included
+in config/preloads.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/05/18 14:20:00 EDT
 Tag: leunga-20020518-mdl
