@@ -50,6 +50,8 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	val maingspec = AbsPath.native { context = ctxt, spec = maingspec }
 	val pcmodespec = AbsPath.native { context = ctxt, spec = pcmodespec }
 	val binroot = AbsPath.native { context = ctxt, spec = binroot }
+	val pidfile = AbsPath.joinDirFile { dir = binroot, file = "RTPID" }
+	val listfile = AbsPath.joinDirFile { dir = binroot, file = "BINLIST" }
 
 	val pcmode = let
 	    fun work s = let
@@ -79,6 +81,16 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 				      absArc = "ABSOLUTE" }
 	                            { arch = MachDepVC.architecture, os = os }
 
+	fun mkParam { primconf, pervasive, pervcorepids } { corenv } =
+	    { primconf = primconf,
+	      fnpolicy = fnpolicy,
+	      pcmode = pcmode,
+	      symenv = SSV.env,
+	      keep_going = keep_going,
+	      pervasive = pervasive,
+	      corenv = corenv,
+	      pervcorepids = pervcorepids }
+
 	val emptydyn = E.dynamicPart E.emptyEnv
 
 	(* first, build an initial GeneralParam.info, so we can
@@ -98,14 +110,11 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	    val primconf = Primitive.configuration [pspec]
 	end
 
-	val param_nocore = { primconf = primconf,
-			     fnpolicy = fnpolicy,
-			     pcmode = pcmode,
-			     symenv = SSV.env,
-			     keep_going = keep_going,
-			     pervasive = E.emptyEnv,
-			     corenv = BE.staticPart BE.emptyEnv,
-			     pervcorepids = PidSet.empty }
+	val mkInitParam = mkParam { primconf = primconf,
+				    pervasive = E.emptyEnv,
+				    pervcorepids = PidSet.empty }
+
+	val param_nocore = mkInitParam { corenv = BE.staticPart BE.emptyEnv }
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
@@ -123,22 +132,12 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	     * brewed pervasive env, core env, and primitives *)
 	    val core = valOf (RT.snode ginfo_nocore core)
 	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
-	    (* even though we have a pid for the core, we can't use it
-	     * (otherwise we would invalidate earlier compilation results) *)
-	    val pervcorepids = PidSet.empty
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
 	     * ginfo to include the correct corenv (because virtually
 	     * everybody else needs access to corenv). *)
-	    val param_justcore = { primconf = primconf,
-				   fnpolicy = fnpolicy,
-				   pcmode = pcmode,
-				   symenv = SSV.env,
-				   keep_going = keep_going,
-				   pervasive = E.emptyEnv,
-				   corenv = corenv,
-				   pervcorepids = pervcorepids }
+	    val param_justcore = mkInitParam { corenv = corenv }
 	    val ginfo_justcore = { param = param_justcore, groupreg = groupreg,
 				   errcons = errcons }
 
@@ -159,35 +158,59 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 
 	    val _ = ovldR := savedOvld
 
-	    val param = { primconf = Primitive.configuration pspecs,
-			  fnpolicy = fnpolicy,
-			  pcmode = pcmode,
-			  symenv = SSV.env,
-			  keep_going = keep_going,
+	    val param =
+		mkParam { primconf = Primitive.configuration pspecs,
 			  pervasive = E.mkenv { static = #1 (#stat pervasive),
 					        symbolic = #1 (#sym pervasive),
 						dynamic = emptydyn },
-			  corenv = CoerceEnv.es2bs (#1 (#stat core)),
 			  pervcorepids =
 			    PidSet.addList (PidSet.empty,
 					    [#2 (#stat pervasive),
 					     #2 (#sym pervasive),
 					     #2 (#stat core)]) }
+		        { corenv = corenv }
 	in
 	    case Parse.parse param NONE maingspec of
-		NONE => NONE
+		NONE => false
 	      | SOME (g, gp) =>
-		    if recomp gp g then
-			SOME { rtspid = PS.toHex (#2 (#stat rts)),
-			       bootfiles =
-			         map (fn x => (x, NONE)) binpaths @
-				 MkBootList.group g }
-		    else NONE
-	end handle Option => (RT.clearFailures (); NONE)
+		    if recomp gp g then let
+			val rtspid = PS.toHex (#2 (#stat rts))
+			val bootfiles =
+			    map (fn x => (x, NONE)) binpaths @
+			    MkBootList.group g
+			fun writeList s = let
+			    fun offset NONE = ["\n"]
+			      | offset (SOME i) = ["@", Int.toString i, "\n"]
+			    fun showBootFile (p, off) =
+				TextIO.output (s,
+					       concat (AbsPath.name p
+						       :: offset off))
+			in
+			    app showBootFile bootfiles
+			end
+		    in
+			Say.say ["Runtime System PID is: ", rtspid, "\n"];
+			SafeIO.perform { openIt = fn () =>
+					   AbsPath.openTextOut pidfile,
+					 closeIt = TextIO.closeOut,
+					 work = fn s =>
+					   TextIO.output (s, rtspid ^ "\n"),
+					 cleanup = fn () =>
+					   AbsPath.delete pidfile };
+			SafeIO.perform { openIt = fn () =>
+					   AbsPath.openTextOut listfile,
+					 closeIt = TextIO.closeOut,
+					 work = writeList,
+					 cleanup = fn () =>
+					   AbsPath.delete listfile };
+			true
+		    end
+		    else false
+	end handle Option => (RT.clearFailures (); false)
 	    	   (* to catch valOf failures in "rt" *)
     in
 	case BuildInitDG.build ginfo_nocore initgspec of
 	    SOME x => main_compile x
-	  | NONE => NONE
+	  | NONE => false
     end
 end

@@ -71,8 +71,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	SymbolMap.foldl add IntBinaryMap.empty exports
     end
 
-    fun deleteFile n = OS.FileSys.remove n handle _ => ()
-
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
 	val primconf = #primconf (#param gp)
@@ -371,7 +369,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val gpath = #grouppath grec
 	    val spath = FilenamePolicy.mkStablePath policy gpath
-	    fun delete () = deleteFile (AbsPath.name spath)
 	    fun work outs =
 		(Say.vsay ["[stabilizing ", AbsPath.name gpath, "]\n"];
 		 writeInt32 (outs, sz);
@@ -382,7 +379,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    SOME (SafeIO.perform { openIt = fn () => AbsPath.openBinOut spath,
 				   closeIt = BinIO.closeOut,
 				   work = work,
-				   cleanup = delete })
+				   cleanup = fn () => AbsPath.delete spath })
 	    handle exn => NONE
 	end
     in

@@ -37,6 +37,7 @@ signature ABSPATH = sig
     val exists : t -> bool
     val tstamp : t -> TStamp.t
     val setTime : t * TStamp.t -> unit
+    val delete : t -> unit
 
     (* The open?Out functions automagically create any necessary directories
      * and announce this activity via their string consumer argument. *)
@@ -313,6 +314,8 @@ structure AbsPath :> ABSPATH = struct
 
 	fun setTime (p, TStamp.NOTSTAMP) = ()
 	  | setTime (p, TStamp.TSTAMP t) = OS.FileSys.setTime (name p, SOME t)
+
+	fun delete p = OS.FileSys.remove (name p) handle _ => ()
 
 	fun openOut fileopener ap = let
 	    val p = name ap

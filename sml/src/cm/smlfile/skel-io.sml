@@ -140,12 +140,9 @@ structure SkelIO :> SKELIO = struct
 	    handle _ => NONE
 
     fun write (ap, sk, ts) = let
-	fun cleanup () = let
-	    val p = AbsPath.name ap
-	in
-	    OS.FileSys.remove p handle _ => ();
-	    Say.say ["[writing ", p, " failed]\n"]
-	end
+	fun cleanup () =
+	    (AbsPath.delete ap;
+	     Say.say ["[writing ", AbsPath.name ap, " failed]\n"])
     in
 	SafeIO.perform { openIt = fn () => AbsPath.openBinOut ap,
 			 closeIt = BinIO.closeOut,

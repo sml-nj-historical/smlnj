@@ -176,7 +176,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			(BF.write { stream = s, content = bfc,
 				    keep_code = true };
 			 Say.vsay ["[wrote ", binname, "]\n"])
-		    fun cleanup () = OS.FileSys.remove binname handle _ => ()
+		    fun cleanup () = AbsPath.delete binpath
 		in
 		    SafeIO.perform { openIt =
 				         fn () => AbsPath.openBinOut binpath,
