@@ -660,11 +660,12 @@ struct
 	rtl: ``SETHI''
 
    |  ARITH of { a:arith, r: $GP, i:operand, d: $GP }
-        asm: (case (a,CellsBasis.registerId r,CellsBasis.registerId d) of 
+        asm: (case (a,CellsBasis.registerId r,CellsBasis.registerId d, i) of 
                 (* generate abbreviations! *)
-               (I.OR,0,_)    => ``mov\t<i>, <d>''
-             | (I.SUBCC,_,0) => ``cmp\t<r>, <i>''
-             |  _            => ``<a>\t<r>, <i>, <d>'' 
+               (I.OR,0,_,I.REG _) => ``mov\t<i>, <d>''
+             | (I.OR,0,_,_)       => ``set\t<i>, <d>''
+             | (I.SUBCC,_,0,_)    => ``cmp\t<r>, <i>''
+             |  _                 => ``<a>\t<r>, <i>, <d>'' 
              )
         mc:  arith{a,r,i,d}
 	rtl: (case (a,CellsBasis.registerId r) of 
