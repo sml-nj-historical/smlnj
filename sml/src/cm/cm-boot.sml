@@ -135,6 +135,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
+	  fun setAnchor (a, s) = PathConfig.set (pcmode, a, s)
+
 	  fun initPaths () = let
 	      val p =
 		  case OS.Process.getEnv "HOME" of
@@ -310,6 +312,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	val make = make
 	val autoload = autoload
 	val reset = reset
+
+	val verbose = EnvConfig.getSet StdConfig.verbose
+	val debug = EnvConfig.getSet StdConfig.debug
+	val keep_going = EnvConfig.getSet StdConfig.keep_going
+	val parse_caching = EnvConfig.getSet StdConfig.parse_caching
+	val setAnchor = setAnchor
     end
 
     fun init (bootdir, de, er) =

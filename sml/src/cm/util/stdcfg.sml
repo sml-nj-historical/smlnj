@@ -15,6 +15,7 @@ structure StdConfig = struct
 	val debug = bool ("DEBUG", false)
 	val keep_going = bool ("KEEP_GOING", false)
 	val pathcfgspec = string ("PATHCONFIG", "/usr/lib/smlnj-pathconfig")
+	val parse_caching = int ("PARSE_CACHING", 100)
     end
 end
 

@@ -103,6 +103,13 @@ structure SmlInfo :> SMLINFO = struct
 
     val knownInfo = ref (SrcPathMap.empty: persinfo SrcPathMap.map)
 
+    fun countParseTrees () = let
+	fun one (PERS { parsetree = ref (SOME _), ... }, i) = i + 1
+	  | one (_, i) = i
+    in
+	SrcPathMap.foldl one 0 (!knownInfo)
+    end
+
     fun forgetParsetree (INFO { persinfo = PERS { parsetree, ... }, ... }) =
 	parsetree := NONE
 
@@ -199,8 +206,17 @@ structure SmlInfo :> SMLINFO = struct
 					   closeIt = TextIO.closeIn,
 					   work = work,
 					   cleanup = fn () => () })
+		(* Counting the trees explicitly may be a bit slow,
+		 * but maintaining an accurate count is difficult, so
+		 * this method should be robust.  (I don't think that
+		 * the overhead of counting will make a noticeable
+		 * difference.) *)
+		val ntrees = countParseTrees ()
+		val treelimit = EnvConfig.getSet StdConfig.parse_caching NONE
 	    in
-		parsetree := pto;
+		if ntrees < treelimit then
+		    parsetree := pto
+		else ();
 		pto
 	    end handle exn as IO.Io _ => (err (General.exnMessage exn); NONE)
 	             | SF.Compile msg => (err msg; NONE)
