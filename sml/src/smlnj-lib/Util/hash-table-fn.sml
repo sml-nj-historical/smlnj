@@ -140,11 +140,17 @@ functor HashTableFn (Key : HASH_KEY) : MONO_HASH_TABLE =
     fun foldi f init (HT{table, ...}) = HTRep.foldi f init (! table)
     fun fold f init (HT{table, ...}) = HTRep.fold f init (! table)
 
+  (* modify the hash-table items in place *)
+    fun modifyi f (HT{table, ...}) = HTRep.modifyi f (!table)
+    fun modify f (HT{table, ...}) = HTRep.modify f (!table)
+
   (* remove any hash table items that do not satisfy the given
    * predicate.
    *)
-    fun filteri pred (HT{table, ...}) = HTRep.filteri pred (! table)
-    fun filter pred (HT{table, ...}) = HTRep.filter pred (! table)
+    fun filteri pred (HT{table, n_items, ...}) =
+	  n_items := HTRep.filteri pred (! table)
+    fun filter pred (HT{table, n_items, ...}) = 
+	  n_items := HTRep.filter pred (! table)
 
   (* Create a copy of a hash table *)
     fun copy (HT{table, n_items, not_found}) = HT{

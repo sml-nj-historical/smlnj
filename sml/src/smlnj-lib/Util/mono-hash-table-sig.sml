@@ -59,6 +59,10 @@ signature MONO_HASH_TABLE =
     val fold  : (('a * 'b) -> 'b) -> 'b -> 'a hash_table -> 'b
     val foldi : ((Key.hash_key * 'a * 'b) -> 'b) -> 'b -> 'a hash_table -> 'b
 
+    val modify  : ('a -> 'a) -> 'a hash_table -> unit
+    val modifyi : ((Key.hash_key * 'a) -> 'a) -> 'a hash_table -> unit
+	(* modify the hash-table items in place *)
+
 (** Also mapPartial?? *)
     val filter  : ('a -> bool) -> 'a hash_table -> unit
     val filteri : ((Key.hash_key * 'a) -> bool) -> 'a hash_table -> unit

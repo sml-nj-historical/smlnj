@@ -48,8 +48,11 @@ structure HashTableRep : sig
     val foldi : ('a * 'b * 'c -> 'c) -> 'c -> ('a, 'b) table -> 'c
     val fold : ('a * 'b -> 'b) -> 'b -> ('c, 'a) table -> 'b
 
-    val filteri : ('a * 'b -> bool) -> ('a, 'b) table -> unit
-    val filter : ('a -> bool) -> ('b,'a) table -> unit
+    val modify  : ('b -> 'b) -> ('a, 'b) table -> unit
+    val modifyi : (('a * 'b) -> 'b) -> ('a, 'b) table -> unit
+
+    val filteri : ('a * 'b -> bool) -> ('a, 'b) table -> int
+    val filter : ('a -> bool) -> ('b,'a) table -> int
 
     val copy : ('a, 'b) table -> ('a, 'b) table
 
@@ -184,24 +187,47 @@ structure HashTableRep : sig
 	    Array.foldl foldF init table
 	  end
 
+  (* modify the hash-table items in place *)
+    fun modify f table = let
+	  fun modifyF NIL = NIL
+	    | modifyF (B(hash, key, item, rest)) = B(hash, key, f item, modifyF rest)
+	  in
+	    Array.modify modifyF table
+	  end
+    fun modifyi f table = let
+	  fun modifyF NIL = NIL
+	    | modifyF (B(hash, key, item, rest)) =
+		B(hash, key, f(key, item), modifyF rest)
+	  in
+	    Array.modify modifyF table
+	  end
+
   (* remove any hash table items that do not satisfy the given
-   * predicate.
+   * predicate.  Return the number of items left in the table.
    *)
     fun filteri pred table = let
+	  val nItems = ref 0
 	  fun filterP NIL = NIL
 	    | filterP (B(hash, key, item, rest)) = if (pred(key, item))
-		then B(hash, key, item, filterP rest)
+		then (
+		  nItems := !nItems+1;
+		  B(hash, key, item, filterP rest))
 		else filterP rest
 	  in
-	    Array.modify filterP table
+	    Array.modify filterP table;
+	    !nItems
 	  end (* filteri *)
     fun filter pred table = let
+	  val nItems = ref 0
 	  fun filterP NIL = NIL
 	    | filterP (B(hash, key, item, rest)) = if (pred item)
-		then B(hash, key, item, filterP rest)
+		then (
+		  nItems := !nItems+1;
+		  B(hash, key, item, filterP rest))
 		else filterP rest
 	  in
-	    Array.modify filterP table
+	    Array.modify filterP table;
+	    !nItems
 	  end (* filter *)
 
   (* Create a copy of a hash table *)

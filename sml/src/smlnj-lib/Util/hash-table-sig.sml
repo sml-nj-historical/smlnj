@@ -60,6 +60,10 @@ signature HASH_TABLE =
     val foldi : (('a * 'b * 'c) -> 'c) -> 'c -> ('a, 'b) hash_table -> 'c
 	(* Fold a function over the elements of a table *)
 
+    val modify  : ('b -> 'b) -> ('a, 'b) hash_table -> unit
+    val modifyi : (('a * 'b) -> 'b) -> ('a, 'b) hash_table -> unit
+	(* modify the hash-table items in place *)
+
     val filter  : ('b -> bool) -> ('a, 'b) hash_table -> unit
     val filteri : (('a * 'b) -> bool) -> ('a, 'b) hash_table -> unit
 	(* remove any hash table items that do not satisfy the given

@@ -36,6 +36,7 @@ structure HTMLDev : sig
   (* hyper-text links and anchors *)
     val link : string -> style
     val anchor : string -> style
+    val linkAnchor : {name : string, href : string} -> style
 
     val openDev : {wid : int, textWid : int option} -> device
     val done : device -> HTML.text
@@ -48,8 +49,7 @@ structure HTMLDev : sig
       | STRONG | DFN | CODE | SAMP | KBD
       | VAR | CITE
       | COLOR of string
-      | LINK of string
-      | ANCHOR of string
+      | A of {href : string option, name : string option}
       | STYS of style list
 
     datatype device = DEV of {
@@ -99,13 +99,8 @@ structure HTMLDev : sig
 	    | wrap (VAR, t) = HTML.VAR t
 	    | wrap (CITE, t) = HTML.CITE t
 	    | wrap (COLOR c, t) = HTML.FONT{color=SOME c, size=NONE, content=t}
-	    | wrap (LINK s, t) = HTML.A{
-		  name = NONE, href = SOME s,
-		  rel = NONE, rev = NONE, title = NONE,
-		  content = t
-		}
-	    | wrap (ANCHOR s, t) = HTML.A{
-		  name = SOME s, href = NONE,
+	    | wrap (A{name, href}, t) = HTML.A{
+		  name = name, href = href,
 		  rel = NONE, rev = NONE, title = NONE,
 		  content = t
 		}
@@ -176,8 +171,9 @@ structure HTMLDev : sig
     val styleVAR = VAR
     val styleCITE = CITE
     val color = COLOR
-    val link = LINK
-    val anchor = ANCHOR
+    fun link s = A{href=SOME s, name=NONE}
+    fun anchor s = A{href=NONE, name=SOME s}
+    fun linkAnchor {name, href} = A{href=SOME href, name = SOME name}
 
     fun openDev {wid, textWid} = DEV{
 	    txt = ref [],
