@@ -209,13 +209,13 @@ functor WeightedBlockPlacementFn (
 	 * chains!
 	 *)
 	  val exitChain = let
-		val ND{chain, mark, ...} = lookupNd(hd(#exits graph ()))
+		val ND{chain, mark, ...} = lookupNd(CFG.exitId cfg)
 		in
 		  mark := true;
 		  chain
 		end
 	(* start with the entry node *)
-	  val chains = dfs (lookupNd(hd(#entries graph ())), [])
+	  val chains = dfs (lookupNd(CFG.entryId cfg), [])
 	(* place the rest of the nodes and add the exit node *)
 	  val chains = List.foldl dfs chains chainNodes
 	  val chains = exitChain :: chains

@@ -54,7 +54,7 @@ functor JumpChainElimFn (
     fun run (cfg, blocks) = let
 	  val G.GRAPH{
 		  node_info, out_edges, set_out_edges, in_edges,
-		  entries, exits, forall_nodes, remove_node, ...
+		  forall_nodes, remove_node, ...
 		} = cfg
 	  val chainEscapes = !chainEscapes
 	  val reverseDirection = !reverseDirection
@@ -63,7 +63,7 @@ functor JumpChainElimFn (
 	 *)
 	  val needFilter = ref false
 	(* the exit block *)
-          val [exit] = exits()
+          val exit = CFG.exitId cfg
 	(* map a block ID to a label *)
 	  fun labelOf blkId = (case node_info blkId
 		 of CFG.BLOCK{labels=ref(lab::_), ...} => lab
@@ -152,7 +152,7 @@ functor JumpChainElimFn (
 		  (* end case *)
 		end
 	    | doBlock _ = ()
-          val [entry] = entries()
+          val entry = CFG.entryId cfg
 	  fun keepBlock (blkId, _) =
 		if null(in_edges blkId) andalso (blkId <> entry)
 		  then (remove_node blkId; false)
