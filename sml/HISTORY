@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2003/01/07 10:40:00 EST
+Tag: leunga-20030107-int-rem
+Description:
+
+Fixed a bug in Int.rem(x,y) where y is a power of 2 on x86.
+The arguments to the SUBL instruction were swapped.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/12/12 16:25:00 EST
 Tag: blume-20021212-risc-ra

@@ -715,7 +715,7 @@ struct
 			       emit (I.BINARY { binOp = I.ANDL,
 						src = I.Immed (~a),
 						dst = tmp });
-			       binary (I.SUBL, T.REG (32, rt), T.REG (32, r1))
+			       binary (I.SUBL, T.REG (32, r1), T.REG (32, rt))
 			   end
 		       else
 			   if isneg then
