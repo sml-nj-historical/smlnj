@@ -285,8 +285,9 @@ struct
                  ([CCalls.ARG (regbind v)], vl)
 	     | m ((C_signed I_long_long | C_unsigned I_long_long), v :: vl) =
 	       let fun field off =
-		       M.LOAD (ity, ea (regbind v, off), R.memory)
-	       in ([CCalls.ARG (field 8), CCalls.ARG (field 4)], vl)
+		       M.LOAD (ity, M.LOAD (pty, ea (regbind v, off), R.memory),
+			       R.memory)
+	       in ([CCalls.ARG (field 4), CCalls.ARG (field 0)], vl)
 	       end
 	     | m (C_long_double, _) =
 	         error "RCC: unexpected long double argument"

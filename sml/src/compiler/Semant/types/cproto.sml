@@ -115,8 +115,8 @@ end = struct
 		 (BT.word32Ty,        CT.C_unsigned CT.I_long,      P.CCI32),
 		 (listTy BT.charTy,   CT.C_signed   CT.I_short,     P.CCI32),
 		 (listTy BT.word8Ty,  CT.C_unsigned CT.I_short,     P.CCI32),
-		 (listTy BT.int32Ty,  CT.C_signed   CT.I_long_long, P.CCI32),
-		 (listTy BT.word32Ty, CT.C_unsigned CT.I_long_long, P.CCI32),
+		 (listTy BT.int32Ty,  CT.C_signed   CT.I_long_long, P.CCML),
+		 (listTy BT.word32Ty, CT.C_unsigned CT.I_long_long, P.CCML),
 		 (listTy (listTy BT.realTy), CT.C_long_double,      P.CCR64),
 		 (BT.exnTy,           CT.C_STRUCT [],               P.CCI32)]
 
