@@ -16,27 +16,8 @@ functor Alpha
        where type cond = MLTreeBasis.cond
        and   type fcond = MLTreeBasis.fcond
        and   type rounding_mode = MLTreeBasis.rounding_mode
-    structure Stream : INSTRUCTION_STREAM
-       where B = AlphaMLTree.BNames
-       and   P = AlphaMLTree.PseudoOp
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
        where I = AlphaInstr
-
-      (* When this flag is set:
-       * (1) 32 bit loads are always sign extended.
-       *) 
-    val mode32bit : bool 
-
-      (*
-       * Floating point rounding mode.
-       * When this is set to true, we use the /SU rounding mode
-       * (chopped towards zero) for floating point arithmetic.
-       * This flag is only used to support the old alpha32x backend.
-       * 
-       * Otherwise, we use /SUD.  This is the default for SML/NJ.
-       *
-       *)
-    val useSU : bool (* use false for SML/NJ *)
 
       (* Cost of multiplication in cycles *)
     val multCost : int ref
@@ -46,14 +27,15 @@ functor Alpha
    ) : MLTREECOMP =
 struct
 
-  structure S   = Stream
   structure T   = AlphaMLTree
+  structure S   = T.Stream
   structure R   = AlphaMLTree.Region
   structure I   = AlphaInstr
   structure C   = AlphaInstr.C
   structure LE  = LabelExp
   structure W32 = Word32
   structure U   = MLTreeUtil
+  structure P   = PseudoInstrs
 
  (*********************************************************
 
@@ -161,6 +143,8 @@ struct
   structure Gen = MLTreeGen(structure T = T
                             val intTy = 64
                             val naturalWidths = [32,64]
+                            datatype rep = SE | ZE | NEITHER
+                            val rep = SE
                            )
 
   val zeroR   = C.GPReg 31
@@ -177,8 +161,8 @@ struct
 
      val intTy = 32
    
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}
@@ -219,8 +203,8 @@ struct
    
      val intTy = 64
 
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
 
      fun mov{r,d}    = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d}= I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}
@@ -232,7 +216,6 @@ struct
   (* signed, trapping version of multiply and divide *)
   structure Mult32 = Multiply32
     (val trapping = true
-     val signed = true
      val multCost = multCost
      fun addv{r1,r2,d} = [I.OPERATEV{oper=I.ADDLV,ra=r1,rb=I.REGop r2,rc=d}]
      fun subv{r1,r2,d} = [I.OPERATEV{oper=I.SUBLV,ra=r1,rb=I.REGop r2,rc=d}]
@@ -240,11 +223,11 @@ struct
      val sh2addv = NONE
      val sh3addv = NONE
     )
+    (val signed = true)
 
-  (* unsigned, non-trapping version of multiply and divide *)
-  structure Mulu32 = Multiply32
+  (* non-trapping version of multiply and divide *)
+  functor Mul32 = Multiply32
     (val trapping = false
-     val signed = false
      val multCost = multCost
      fun addv{r1,r2,d} = [I.OPERATE{oper=I.ADDL,ra=r1,rb=I.REGop r2,rc=d}]
      fun subv{r1,r2,d} = [I.OPERATE{oper=I.SUBL,ra=r1,rb=I.REGop r2,rc=d}]
@@ -254,11 +237,12 @@ struct
      val sh3addv = SOME(fn {r1,r2,d} => 
                     [I.OPERATE{oper=I.S8ADDL,ra=r1,rb=I.REGop r2,rc=d}])
     )
+  structure Mulu32 = Mul32(val signed = false)
+  structure Muls32 = Mul32(val signed = true)
 
   (* signed, trapping version of multiply and divide *)
   structure Mult64 = Multiply64
     (val trapping = true
-     val signed = true
      val multCost = multCost
      fun addv{r1,r2,d} = [I.OPERATEV{oper=I.ADDQV,ra=r1,rb=I.REGop r2,rc=d}]
      fun subv{r1,r2,d} = [I.OPERATEV{oper=I.SUBQV,ra=r1,rb=I.REGop r2,rc=d}]
@@ -266,11 +250,11 @@ struct
      val sh2addv = NONE
      val sh3addv = NONE
     )
+    (val signed = true)
 
   (* unsigned, non-trapping version of multiply and divide *)
-  structure Mulu64 = Multiply64
+  functor Mul64 = Multiply64
     (val trapping = false
-     val signed = false
      val multCost = multCost
      fun addv{r1,r2,d} = [I.OPERATE{oper=I.ADDQ,ra=r1,rb=I.REGop r2,rc=d}]
      fun subv{r1,r2,d} = [I.OPERATE{oper=I.SUBQ,ra=r1,rb=I.REGop r2,rc=d}]
@@ -280,6 +264,8 @@ struct
      val sh3addv = SOME(fn {r1,r2,d} => 
                     [I.OPERATE{oper=I.S8ADDQ,ra=r1,rb=I.REGop r2,rc=d}])
     )
+  structure Mulu64 = Mul64(val signed = false)
+  structure Muls64 = Mul64(val signed = true)
 
   (* 
    * The main stuff
@@ -292,8 +278,9 @@ struct
   datatype commutative = COMMUTE | NOCOMMUTE
 
   fun selectInstructions
-        (S.STREAM{emit,init,finish,defineLabel,entryLabel,pseudoOp,annotation,
-                  blockName,exitBlock,...}) =
+        (S.STREAM{emit,beginCluster,endCluster,
+                  defineLabel,entryLabel,pseudoOp,annotation,
+                  blockName,exitBlock,phi,alias,comment,...}) =
   let
       infix || && << >> ~>>
 
@@ -312,13 +299,22 @@ struct
 
       val newReg = C.newReg
       val newFreg = C.newFreg
-      val emit = emit (fn _ => 0)
 
       val trapb = [I.TRAPB]
 
       (* Choose the appropriate rounding mode to generate.
        * This stuff is used to support the alpha32x SML/NJ backend.
+       *
+       *
+       * Floating point rounding mode.
+       * When this is set to true, we use the /SU rounding mode
+       * (chopped towards zero) for floating point arithmetic.
+       * This flag is only used to support the old alpha32x backend.
+       * 
+       * Otherwise, we use /SUD.  This is the default for SML/NJ.
+       *
        *)
+      val useSU = false
       val (ADDT,SUBT,MULT,DIVT) =
            if useSU then (I.ADDTSU,I.SUBTSU,I.MULTSU,I.DIVTSU)
            else          (I.ADDTSUD,I.SUBTSUD,I.MULTSUD,I.DIVTSUD)
@@ -571,6 +567,7 @@ struct
               (TIMES4,a) => arith(s4sub,a,b,d,an)
            |  (TIMES8,a) => arith(s8sub,a,b,d,an)
            |  _          => 
+              if ty = 64 then
               (case b of 
                  (* use LDA to handle subtraction when possible 
                   * Note: this may have sign extension problems later.
@@ -578,7 +575,7 @@ struct
                  T.LI i => (loadImmed(~i,expr a,d,an) handle Overflow =>
                               arith(sub,a,b,d,an))
               |  _ => arith(sub,a,b,d,an)
-              )
+              ) else arith(sub,a,b,d,an)
           )
 
       (* look for special constants *)
@@ -586,39 +583,37 @@ struct
         | wordOpn(T.LI32 w) = SOME w
         | wordOpn e = NONE
 
-      (* look for special byte mask constants *)
-      and byteMask(_,SOME 0wx00000000) = SOME 0xff
-        | byteMask(_,SOME 0wx000000ff) = SOME 0xfe
-        | byteMask(_,SOME 0wx0000ff00) = SOME 0xfd
-        | byteMask(_,SOME 0wx0000ffff) = SOME 0xfc
-        | byteMask(_,SOME 0wx00ff0000) = SOME 0xfb
-        | byteMask(_,SOME 0wx00ff00ff) = SOME 0xfa
-        | byteMask(_,SOME 0wx00ffff00) = SOME 0xf9
-        | byteMask(_,SOME 0wx00ffffff) = SOME 0xf8
-          (* IMPORTANT: 
-           * When ty is 64 then we assume the top 32 bits are all zeros.
-           * Otherwise, we must keep the sign bit!!!!
-           *)
-        | byteMask(ty,SOME 0wxff000000) = SOME(if ty = 64 then 0xf7 else 0x07)
-        | byteMask(ty,SOME 0wxff0000ff) = SOME(if ty = 64 then 0xf6 else 0x06)
-        | byteMask(ty,SOME 0wxff00ff00) = SOME(if ty = 64 then 0xf5 else 0x05)
-        | byteMask(ty,SOME 0wxff00ffff) = SOME(if ty = 64 then 0xf4 else 0x04)
-        | byteMask(ty,SOME 0wxffff0000) = SOME(if ty = 64 then 0xf3 else 0x03)
-        | byteMask(ty,SOME 0wxffff00ff) = SOME(if ty = 64 then 0xf2 else 0x02)
-        | byteMask(ty,SOME 0wxffffff00) = SOME(if ty = 64 then 0xf1 else 0x01)
-        | byteMask(ty,SOME 0wxffffffff) = SOME(if ty = 64 then 0xf0 else 0x00)
-        | byteMask _ = NONE
+      (* look for special byte mask constants 
+       * IMPORTANT: we must ALWAYS keep the sign bit!      
+       *)
+      and byteMask(_,SOME 0wx00000000) = 0xff
+        | byteMask(_,SOME 0wx000000ff) = 0xfe
+        | byteMask(_,SOME 0wx0000ff00) = 0xfd
+        | byteMask(_,SOME 0wx0000ffff) = 0xfc
+        | byteMask(_,SOME 0wx00ff0000) = 0xfb
+        | byteMask(_,SOME 0wx00ff00ff) = 0xfa
+        | byteMask(_,SOME 0wx00ffff00) = 0xf9
+        | byteMask(_,SOME 0wx00ffffff) = 0xf8
+        | byteMask(ty,SOME 0wxff000000) = if ty = 64 then 0xf7 else 0x07
+        | byteMask(ty,SOME 0wxff0000ff) = if ty = 64 then 0xf6 else 0x06
+        | byteMask(ty,SOME 0wxff00ff00) = if ty = 64 then 0xf5 else 0x05
+        | byteMask(ty,SOME 0wxff00ffff) = if ty = 64 then 0xf4 else 0x04
+        | byteMask(ty,SOME 0wxffff0000) = if ty = 64 then 0xf3 else 0x03
+        | byteMask(ty,SOME 0wxffff00ff) = if ty = 64 then 0xf2 else 0x02
+        | byteMask(ty,SOME 0wxffffff00) = if ty = 64 then 0xf1 else 0x01
+        | byteMask(ty,SOME 0wxffffffff) = if ty = 64 then 0xf0 else 0x00
+        | byteMask _ = ~1
 
       (* generate an and instruction 
        * look for special masks.
        *)
       and andb(ty,a,b,d,an) =
           case byteMask(ty,wordOpn a) of
-             SOME mask => arith(I.ZAP,b,T.LI mask,d,an)
-          |  _ =>
-          case byteMask(ty,wordOpn b) of
-             SOME mask => arith(I.ZAP,a,T.LI mask,d,an)
-          | _ => commArith(I.AND,a,b,d,an)
+            ~1 => (case byteMask(ty,wordOpn b) of
+                    ~1 => commArith(I.AND,a,b,d,an)
+                  | mask => arith(I.ZAP,a,T.LI mask,d,an)
+                  )
+          | mask => arith(I.ZAP,b,T.LI mask,d,an)
 
       (* generate sll/sra/srl *)
       and sll32(a,b,d,an) =
@@ -822,15 +817,6 @@ struct
       (* generate a load 16 bit with sign extension *)
       and load16s(ea,rd,mem,an) = loadSext(ea,rd,mem,2,I.EXTQH,48,an)
 
-      (* generate a load 32 bit with zero extension *)
-      and load32(ea,rd,mem,an) = 
-          if mode32bit then load(I.LDL,ea,rd,mem,an)
-          else let val (base,disp) = addr ea
-                   val tmp   = newReg()
-               in  mark(I.LOAD{ldOp=I.LDL,r=tmp,b=base,d=disp,mem=mem},an);
-                   emit(I.OPERATE{oper=I.ZAP,ra=tmp,rb=I.IMMop 0xf0,rc=rd})
-               end
-
       (* generate a load 32 bit with sign extension *)
       and load32s(ea,rd,mem,an) = load(I.LDL,ea,rd,mem,an)
 
@@ -868,6 +854,10 @@ struct
       and store16(ea,data,mem,an) = 
           storeUnaligned(ea,data,mem,I.INSWL,I.MSKWL,an)  
 
+      (* generate conversion from floating point to integer *)
+      and cvtf2i(pseudo,rounding,e,rd,an) = 
+          app emit (pseudo{mode=rounding, fs=fexpr e, rd=rd})
+
       (* generate an expression and return the register that holds the result *)
       and expr(T.REG(_,r)) = r
         | expr(T.LI 0) = zeroR
@@ -876,8 +866,8 @@ struct
                    in  doExpr(e,r,[]); r end
 
       (* generate an expression that targets register d *)
-      and doExpr(e,d,an) =
-          case e of
+      and doExpr(exp,d,an) =
+          case exp of
             T.REG(_,r) => move(r,d,an)
           | T.LI n     => loadImmed(n,zeroR,d,an)
           | T.LI32 w   => loadImmed32(w,zeroR,d,an)
@@ -888,14 +878,14 @@ struct
              * Question: using LDA for all widths is not really correct
              * since the result may not fit into the sign extension scheme.
              *)
-          | T.ADD(_,e,T.LABEL le) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
-          | T.ADD(_,T.LABEL le,e) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
-          | T.ADD(_,e,T.CONST c)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
-          | T.ADD(_,T.CONST c,e)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
-          | T.ADD(_,e,T.LI i)     => loadImmed(i, expr e, d, an)
-          | T.ADD(_,T.LI i,e)     => loadImmed(i, expr e, d, an)
-          | T.ADD(_,e,T.LI32 i)   => loadImmed32(i, expr e, d, an)
-          | T.ADD(_,T.LI32 i,e)   => loadImmed32(i, expr e, d, an)
+          | T.ADD(64,e,T.LABEL le) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
+          | T.ADD(64,T.LABEL le,e) => mark(I.LDA{r=d,b=expr e,d=I.LABop le},an)
+          | T.ADD(64,e,T.CONST c)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
+          | T.ADD(64,T.CONST c,e)  => mark(I.LDA{r=d,b=expr e,d=I.CONSTop c},an)
+          | T.ADD(64,e,T.LI i)     => loadImmed(i, expr e, d, an)
+          | T.ADD(64,T.LI i,e)     => loadImmed(i, expr e, d, an)
+          | T.ADD(64,e,T.LI32 i)   => loadImmed32(i, expr e, d, an)
+          | T.ADD(64,T.LI32 i,e)   => loadImmed32(i, expr e, d, an)
           | T.SUB(_,a,(T.LI 0 | T.LI32 0w0)) => doExpr(a,d,an)
 
             (* 32-bit support *)
@@ -903,18 +893,25 @@ struct
           | T.SUB(32,a,b) => minus(32,I.SUBL,I.S4SUBL,I.S8SUBL,a,b,d,an)
           | T.ADDT(32,a,b) => commArithTrap(I.ADDLV,a,b,d,an)
           | T.SUBT(32,a,b) => arithTrap(I.SUBLV,a,b,d,an)
-          | T.MULT(32,a,b) => (* multTrap(I.MULLV,I.ADDL,I.ADDLV,a,b,d,an) *)
+          | T.MULT(32,a,b) => 
                multiply(32,
                  fn{ra,rb,rc} => I.OPERATEV{oper=I.MULLV,ra=ra,rb=rb,rc=rc},
                  Mult32.multiply,a,b,d,trapb,an) 
-          | T.MULU(32,a,b) => (* mulu(I.MULL,I.ADDL,a,b,d,an) *)
+          | T.MULU(32,a,b) => 
                multiply(32,
                  fn{ra,rb,rc} => I.OPERATE{oper=I.MULL,ra=ra,rb=rb,rc=rc},
                  Mulu32.multiply,a,b,d,[],an) 
-          | T.DIVT(32,a,b) => (* pseudo(PseudoInstrs.divl,a,b,d) *)
-               divide(32,PseudoInstrs.divl,Mult32.divide,a,b,d,an)
-          | T.DIVU(32,a,b) => (* pseudo(PseudoInstrs.divlu,a,b,d) *)
-               divide(32,PseudoInstrs.divlu,Mulu32.divide,a,b,d,an)
+          | T.MULS(32,a,b) => 
+               multiply(32,
+                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULL,ra=ra,rb=rb,rc=rc},
+                 Muls32.multiply,a,b,d,[],an) 
+          | T.DIVT(32,a,b) => divide(32,P.divlv,Mult32.divide,a,b,d,an)
+          | T.DIVU(32,a,b) => divide(32,P.divlu,Mulu32.divide,a,b,d,an)
+          | T.DIVS(32,a,b) => divide(32,P.divl,Muls32.divide,a,b,d,an)
+          | T.REMT(32,a,b) => pseudo(P.remlv,a,b,d)
+          | T.REMU(32,a,b) => pseudo(P.remlu,a,b,d)
+          | T.REMS(32,a,b) => pseudo(P.reml,a,b,d)
+
           | T.SLL(32,a,b) => sll32(a,b,d,an)
           | T.SRA(32,a,b) => sra32(a,b,d,an)
           | T.SRL(32,a,b) => srl32(a,b,d,an)
@@ -924,18 +921,25 @@ struct
           | T.SUB(64,a,b) => minus(64,I.SUBQ,I.S4SUBQ,I.S8SUBQ,a,b,d,an)
           | T.ADDT(64,a,b) => commArithTrap(I.ADDQV,a,b,d,an)
           | T.SUBT(64,a,b) => arithTrap(I.SUBQV,a,b,d,an)
-          | T.MULT(64,a,b) => (* multTrap(I.MULQV,I.ADDQ,I.ADDQV,a,b,d,an) *)
+          | T.MULT(64,a,b) =>
                multiply(64,
                  fn{ra,rb,rc} => I.OPERATEV{oper=I.MULQV,ra=ra,rb=rb,rc=rc},
                  Mult64.multiply,a,b,d,trapb,an) 
-          | T.MULU(64,a,b) => (* mulu(I.MULQ,I.ADDQ,a,b,d,an) *)
+          | T.MULU(64,a,b) => 
                multiply(64,
                  fn{ra,rb,rc} => I.OPERATE{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
                  Mulu64.multiply,a,b,d,[],an) 
-          | T.DIVT(64,a,b) => (* pseudo(PseudoInstrs.divq,a,b,d) *)
-               divide(64,PseudoInstrs.divq,Mult64.divide,a,b,d,an)
-          | T.DIVU(64,a,b) => (* pseudo(PseudoInstrs.divqu,a,b,d) *)
-               divide(64,PseudoInstrs.divqu,Mulu64.divide,a,b,d,an)
+          | T.MULS(64,a,b) => 
+               multiply(64,
+                 fn{ra,rb,rc} => I.OPERATE{oper=I.MULQ,ra=ra,rb=rb,rc=rc},
+                 Muls64.multiply,a,b,d,[],an) 
+          | T.DIVT(64,a,b) => divide(64,P.divqv,Mult64.divide,a,b,d,an)
+          | T.DIVU(64,a,b) => divide(64,P.divqu,Mulu64.divide,a,b,d,an)
+          | T.DIVS(64,a,b) => divide(64,P.divq,Muls64.divide,a,b,d,an)
+          | T.REMT(64,a,b) => pseudo(P.remqv,a,b,d)
+          | T.REMU(64,a,b) => pseudo(P.remqu,a,b,d)
+          | T.REMS(64,a,b) => pseudo(P.remq,a,b,d)
+
           | T.SLL(64,a,b) => sll64(a,b,d,an)
           | T.SRA(64,a,b) => sra64(a,b,d,an)
           | T.SRL(64,a,b) => srl64(a,b,d,an)
@@ -955,16 +959,24 @@ struct
           | T.ORB(_,a,b) => commArith(I.BIS,a,b,d,an)
           | T.NOTB(_,e) => arith(I.ORNOT,zeroT,e,d,an)
 
-          | T.CVTI2I(_,T.ZERO_EXTEND,e) => doExpr(e,d,an)
-
             (* loads *)
           | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
           | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(16,ea,mem)) => load16s(ea,d,mem,an)
           | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(32,ea,mem)) => load32s(ea,d,mem,an)
           | T.LOAD(8,ea,mem) => load8(ea,d,mem,an)
           | T.LOAD(16,ea,mem) => load16(ea,d,mem,an)
-          | T.LOAD(32,ea,mem) => load32(ea,d,mem,an)
+          | T.LOAD(32,ea,mem) => load32s(ea,d,mem,an)
           | T.LOAD(64,ea,mem) => load(I.LDQ,ea,d,mem,an) 
+
+           (* floating -> int conversion *)
+          | T.CVTF2I(ty,rounding,e) =>
+            (case (Gen.fsize e,ty) of
+               (32,32) => cvtf2i(P.cvtsl,rounding,e,d,an)
+             | (32,64) => cvtf2i(P.cvtsq,rounding,e,d,an)
+             | (64,32) => cvtf2i(P.cvttl,rounding,e,d,an)
+             | (64,64) => cvtf2i(P.cvttq,rounding,e,d,an)
+             | _       => doExpr(Gen.compile exp,d,an) (* other cases *)
+            )
 
            (* conversion to boolean *)
           | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 1,T.LI 0) => 
@@ -976,6 +988,8 @@ struct
 
           | T.SEQ(s,e) => (doStmt s; doExpr(e,d,an))
           | T.MARK(e,a) => doExpr(e,d,a::an)
+    
+           (* Defaults *) 
           | e => doExpr(Gen.compile e,d,an)
 
        (* Hmmm...  this is the funky thing described in the comments
@@ -990,6 +1004,9 @@ struct
               emit(I.TRAPB)
           end
 
+      and funary(opcode,e,d,an) = mark(I.FUNARY{oper=opcode,fb=fexpr e,fc=d},an)
+
+
       (* generate an floating point expression
        * return the register that holds the result 
        *)
@@ -997,9 +1014,9 @@ struct
         | fexpr e = let val d = newFreg() in doFexpr(e,d,[]); d end
 
       (* generate an external floating point operation *) 
-      and fcvti2f(gen,e,fd,an) =
+      and fcvti2f(pseudo,e,fd,an) =
           let val opnd = opn e
-          in  app emit (gen({opnd=opnd, fd=fd}, reduceOpn))
+          in  app emit (pseudo({opnd=opnd, fd=fd}, reduceOpn))
           end
 
       (* generate a floating point store *)
@@ -1018,14 +1035,13 @@ struct
           | T.FSUB(32,a,b) => farith(SUBS,a,b,d,an)
           | T.FMUL(32,a,b) => farith(MULS,a,b,d,an)
           | T.FDIV(32,a,b) => farith(DIVS,a,b,d,an)
-          | T.CVTI2F(32,_,e) => fcvti2f(PseudoInstrs.cvti2s,e,d,an)
 
             (* double precision support *)
           | T.FADD(64,a,b) => farith(ADDT,a,b,d,an)
           | T.FSUB(64,a,b) => farith(SUBT,a,b,d,an)
           | T.FMUL(64,a,b) => farith(MULT,a,b,d,an)
           | T.FDIV(64,a,b) => farith(DIVT,a,b,d,an)
-          | T.CVTI2F(64,_,e) => fcvti2f(PseudoInstrs.cvti2d,e,d,an)
+
 
             (* generic *)
           | T.FABS(_,a)   => 
@@ -1038,6 +1054,28 @@ struct
             (* loads *)
           | T.FLOAD(32,ea,mem) => fload(I.LDS,ea,d,mem,an)
           | T.FLOAD(64,ea,mem) => fload(I.LDT,ea,d,mem,an)
+         
+            (* floating/floating conversion 
+             * Note: it is not necessary to convert single precision
+             * to double on the alpha.
+             *)
+          | T.CVTF2F(fty,_,e) => (* ignore rounding mode for now *)
+            (case (fty,Gen.fsize e) of
+               (64,64) => doFexpr(e,d,an) 
+             | (64,32) => doFexpr(e,d,an) 
+             | (32,32) => doFexpr(e,d,an) 
+             | (32,64) => funary(I.CVTTS,e,d,an) (* use normal rounding *)
+             | _       => error "CVTF2F"
+            )
+
+            (* integer -> floating point conversion *)
+          | T.CVTI2F(fty,T.SIGN_EXTEND,e) => 
+            let val pseudo = 
+                case (Gen.size e,fty) of
+                  (ty,32) => if ty <= 32 then P.cvtls else P.cvtqs
+                | (ty,64) => if ty <= 32 then P.cvtlt else P.cvtqt
+                | _       => error "CVTI2F"
+            in  fcvti2f(pseudo,e,d,an) end
 
             (* misc *)
           | T.FSEQ(s,e) => (doStmt s; doFexpr(e,d,an))
@@ -1333,26 +1371,23 @@ struct
 
       and doStmt s = stmt(s,[])
 
-      fun mltreeComp mltree =
-      let (* condition code registers are mapped onto general registers *)
-          fun cc(T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
-            | cc r = r
-          fun comp(T.PSEUDO_OP pOp)    = pseudoOp pOp
-            | comp(T.DEFINELABEL lab)  = defineLabel lab
-            | comp(T.ENTRYLABEL lab)   = entryLabel lab
-            | comp(T.BEGINCLUSTER)     = init 0
-            | comp(T.CODE stms)        = app doStmt stms
-            | comp(T.BLOCK_NAME name)  = blockName name
-            | comp(T.BLOCK_ANNOTATION a) = annotation a
-            | comp(T.ENDCLUSTER regmap)= finish regmap
-            | comp(T.ESCAPEBLOCK regs) = exitBlock (map cc regs)
-            | comp _ = error "mltreeComp"
-      in  comp mltree
-      end
+      (* condition code registers are mapped onto general registers *)
+      fun cc(T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
+        | cc r = r
 
-   in { mltreeComp = mltreeComp,
-        mlriscComp = doStmt,
-        emitInstr  = emit
+   in S.STREAM
+      { beginCluster= beginCluster,
+        endCluster  = endCluster,
+        emit        = doStmt,
+        pseudoOp    = pseudoOp,
+        defineLabel = defineLabel,
+        entryLabel  = entryLabel,
+        blockName   = blockName,
+        comment     = comment,
+        annotation  = annotation,
+        exitBlock   = fn regs => exitBlock(map cc regs),
+        alias       = alias,
+        phi         = phi
       } 
    end
  

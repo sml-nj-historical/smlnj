@@ -4,6 +4,7 @@
  *
  *)
 local
+    open PrimTypes
     open PrePervasive
 in
 
@@ -62,4 +63,3 @@ signature SUBSTRING =
 
   end
 end (* local *)
-

@@ -4,25 +4,32 @@
 
 functor SSAOptimizerFn
    (structure Asm : INSTRUCTION_EMITTER
+    structure MLTreeComp : MLTREECOMP
     structure F  : FLOWGRAPH
     structure P  : INSN_PROPERTIES
     structure SP : SSA_PROPERTIES
+    structure GCP : GC_PROPERTIES
     structure FreqProps : FREQUENCY_PROPERTIES
-       sharing P.I = SP.I = Asm.I = F.I = FreqProps.I
-       sharing F.P = Asm.P 
-    val copyProp : F.cluster -> F.cluster
+       sharing P.I = SP.I = GCP.I = Asm.I = F.I = FreqProps.I = MLTreeComp.I
+       sharing F.P = Asm.P = MLTreeComp.T.PseudoOp 
+       sharing MLTreeComp.T.BNames = F.B
+       sharing MLTreeComp.T.Constant = F.I.Constant
+    val callgc : { id     : int,
+                   label  : Label.label,
+                   roots  : (P.I.C.cell * GCP.GC.gctype) list,
+                   stream : (MLTreeComp.T.stm,P.I.C.regmap) MLTreeComp.T.stream
+                 } -> unit
    ) : SSA_OPTIMIZER =
 struct
 
    structure F = F
    structure I = F.I
    structure B = F.B
-   structure Ctrl = MLRISC_Control
 
-   val view_IR    = Ctrl.getFlag "view-IR" 
-   val verbose    = Ctrl.getFlag "verbose"
-   val viewer     = Ctrl.getString "viewer"
-   val min_blocks = Ctrl.getInt "min-blocks"
+   val view_IR    = MLRiscControl.getFlag "view-IR" 
+   val verbose    = MLRiscControl.getFlag "verbose"
+   val viewer     = MLRiscControl.getString "viewer"
+   val min_blocks = MLRiscControl.getInt "min-blocks"
 
    fun error msg = MLRiscErrorMsg.error("SSAOptimizer",msg)
 
@@ -36,18 +43,23 @@ struct
        structure P = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm
-       structure Ctrl = Ctrl
+      )
+
+   structure Util = CFGUtilFn
+      (structure CFG = CFG
+       structure P   = P
       )
 
    structure CFG2Cluster = CFG2ClusterFn
-      (structure CFG = CFG
-       structure F   = F
+      (structure CFG  = CFG
+       structure F    = F
       )
 
    structure Cluster2CFG = Cluster2CFGFn
-      (structure CFG = CFG
-       structure F   = F
-       structure P   = P
+      (structure CFG  = CFG
+       structure Util = Util
+       structure F    = F
+       structure P    = P
       )
        
    structure Dom = DominatorTreeFn(DirectedGraph)
@@ -62,18 +74,12 @@ struct
        structure GraphImpl = DirectedGraph
       )
 
-   structure Util = CFGUtilFn
-      (structure CFG = CFG
-       structure P   = P
-      )
-
    structure IR = MLRISC_IRFn
       (structure CFG         = CFG
        structure CDG         = CDG
        structure Loop        = Loop
        structure GraphViewer = GraphViewer
        structure Util        = Util
-       structure Ctrl        = Ctrl
       )
 
    structure Guess = StaticBranchPredictionFn(structure IR = IR
@@ -91,7 +97,6 @@ struct
        structure RTL  = SP.RTL
        structure FormatInsn = FormatInsn
        structure GraphImpl = DirectedGraph
-       structure Ctrl = Ctrl
       )
       
    structure CFG2SSA = CFG2SSAFn
@@ -103,8 +108,7 @@ struct
                                          structure P  = P)
 
    structure InsertPreheaders = InsertPreheadersFn(structure IR = IR
-                                                   structure P  = P
-                                                   structure Ctrl = Ctrl)
+                                                   structure P  = P)
 
    structure SSADCE = SSADeadCodeElimFn(SSA)
 
@@ -135,8 +139,20 @@ struct
        structure Liveness = SSALiveness
        structure P        = P
        structure Util     = Util
-       structure Ctrl     = Ctrl
       ) 
+
+   structure GCTyping = GCTyping
+      (structure IR = IR
+       structure GCProps = GCP
+       structure Props = P
+      )
+
+   structure GCGen = GCGen
+      (structure MLTreeComp = MLTreeComp
+       structure IR = IR
+       structure GC = GCP.GC
+       structure InsnProps = P
+      )
 
    fun view phase ir = if !view_IR then IR.view phase ir else ()
 
@@ -144,8 +160,7 @@ struct
    let datatype rep = IR of IR.IR
                     | CLUSTER of F.cluster
                     | SSA of SSA.ssa
-       fun doPhase "copy-prop" (CLUSTER c) = CLUSTER(copyProp c)
-         | doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
+       fun doPhase "cluster->cfg" (CLUSTER c) = IR(Cluster2CFG.cluster2cfg c)
          | doPhase "cfg->cluster" (IR cfg) = 
             CLUSTER(CFG2Cluster.cfg2cluster{cfg=cfg,relayout=false})
          | doPhase "guess" (r as IR ir) =
@@ -175,7 +190,11 @@ struct
          | doPhase "gvn"       (r as SSA ssa) =
               (GVN.computeValueNumbers ssa; r)
          | doPhase "ssa->cfg"  (SSA ssa) = IR(SSA2CFG.buildCFG ssa)
+         | doPhase "gc-typing" (r as IR ir) = (GCTyping.gcTyping ir; r)
+         | doPhase "gc-gen"    (r as IR ir) = 
+              (GCGen.gcGen{callgc=callgc} ir; r)
          | doPhase phase _ = error(phase)
+
        fun doPhases [] (CLUSTER c) = c
          | doPhases [] _ = error "cluster needed"
          | doPhases (phase::phases) ir = 
@@ -202,11 +221,12 @@ struct
          (true,_) => cluster
        | (false,n) =>
          if n >= !min_blocks then
-            doPhases (!Ctrl.mlrisc_phases) (CLUSTER cluster)
+            doPhases (!MLRiscControl.mlrisc_phases) (CLUSTER cluster)
          else
             cluster
    end
 
-   fun codegen cluster = if !Ctrl.mlrisc then optimize cluster else cluster
+   fun codegen cluster = 
+       if !MLRiscControl.mlrisc then optimize cluster else cluster
 
 end

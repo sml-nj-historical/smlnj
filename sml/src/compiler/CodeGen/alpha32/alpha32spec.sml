@@ -12,6 +12,7 @@ struct
   val architecture = "alpha32"
   val bigEndian = false
   val spillAreaSz = 4000
+  val initialSpillOffset = 128
   val numRegs = 17
   val numFloatRegs = 29
   val numFloatCalleeSaves = 0

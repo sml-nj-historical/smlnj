@@ -14,9 +14,6 @@ functor PPC
         and type fcond         = MLTreeBasis.fcond
         and type ext           = MLTreeBasis.ext
         and type rounding_mode = MLTreeBasis.rounding_mode
-   structure Stream : INSTRUCTION_STREAM
-     where B = PPCMLTree.BNames
-       and P = PPCMLTree.PseudoOp
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
       where I = PPCInstr 
 
@@ -33,8 +30,8 @@ functor PPC
   ) : MLTREECOMP = 
 struct
   structure I   = PPCInstr
-  structure S   = Stream
   structure T   = PPCMLTree
+  structure S   = T.Stream
   structure C   = PPCInstr.C
   structure LE  = LabelExp
   structure W32 = Word32
@@ -44,6 +41,8 @@ struct
   structure Gen = MLTreeGen
     (structure T = T
      val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
+     datatype rep = SE | ZE | NEITHER
+     val rep = NEITHER
     )
 
   (* 
@@ -67,8 +66,8 @@ struct
     (structure I = I
      structure T = T
      val intTy = 32
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
 
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d}= I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}
@@ -79,7 +78,6 @@ struct
 
   structure Mulu32 = Multiply32
     (val trapping = false
-     val signed   = false
      val multCost = multCost
      fun addv{r1,r2,d}=[I.ARITH{oper=I.ADD,ra=r1,rb=r2,rt=d,Rc=false,OE=false}]
      fun subv{r1,r2,d}=[I.ARITH{oper=I.SUBF,ra=r2,rb=r1,rt=d,Rc=false,OE=false}]
@@ -87,10 +85,10 @@ struct
      val sh2addv = NONE
      val sh3addv = NONE
     )
+    (val signed = false)
 
   structure Mult32 = Multiply32
     (val trapping = true
-     val signed   = true
      val multCost = multCost
      fun addv{r1,r2,d} = error "Mult32.addv"
      fun subv{r1,r2,d} = error "Mult32.subv"
@@ -98,13 +96,13 @@ struct
      val sh2addv = NONE
      val sh3addv = NONE
     )
+    (val signed = true)
 
   fun selectInstructions
-      (S.STREAM{emit,defineLabel,entryLabel,blockName,pseudoOp,annotation,
-                init,finish,exitBlock,...}) =
-  let val emit = emit(fn r => r)
-
-      (* mark an instruction with annotations *)
+      (S.STREAM{emit,comment,
+                defineLabel,entryLabel,blockName,pseudoOp,annotation,
+                beginCluster,endCluster,exitBlock,phi,alias,...}) =
+  let (* mark an instruction with annotations *)
       fun mark'(instr,[]) = instr
         | mark'(instr,a::an) = mark'(I.ANNOTATION{i=instr,a=a},an)
       fun mark(instr,an) = emit(mark'(instr,an))
@@ -718,25 +716,26 @@ struct
    
       and emitTrap() = emit(I.TW{to=31,ra=0,si=I.ImmedOp 0}) 
 
-      fun mltreeComp(T.PSEUDO_OP pOp)    = pseudoOp pOp
-        | mltreeComp(T.DEFINELABEL lab)  = defineLabel lab
-        | mltreeComp(T.ENTRYLABEL lab)   = entryLabel lab
-        | mltreeComp(T.BEGINCLUSTER)     = (init(0); trapLabel := NONE)
-        | mltreeComp(T.CODE stms)        = app doStmt stms
-        | mltreeComp(T.BLOCK_NAME name)  = blockName name
-        | mltreeComp(T.BLOCK_ANNOTATION a) = annotation a
-        | mltreeComp(T.ENDCLUSTER regmap)= 
+        val beginCluster = fn _ => (trapLabel := NONE; beginCluster(0))
+        val endCluster = fn a =>
            (case !trapLabel of 
               SOME label => 
               (defineLabel label; emitTrap(); trapLabel := NONE) 
             | NONE => ();
-           finish regmap)
-        | mltreeComp(T.ESCAPEBLOCK regs) = exitBlock regs
-        | mltreeComp _ = error "mltreeComp"
-   in
-       { mltreeComp = mltreeComp,
-         mlriscComp = doStmt,
-         emitInstr  = emit
+           endCluster a)
+   in  S.STREAM
+       { beginCluster = beginCluster,
+         endCluster   = endCluster,
+         emit         = doStmt,
+         pseudoOp     = pseudoOp,
+         defineLabel  = defineLabel,
+         entryLabel   = entryLabel,
+         blockName    = blockName,
+         comment      = comment,
+         annotation   = annotation,
+         exitBlock    = exitBlock,
+         alias        = alias,
+         phi          = phi
        }
    end
     

@@ -14,12 +14,12 @@ structure PrePervasive = struct
     fun getOpt (SOME x, y) = x
       | getOpt (NONE, y) = y
 
-    fun isSome (SOME _) = true
-      | isSome NONE = false
+    fun isSome (SOME _) = PrimTypes.true
+      | isSome NONE = PrimTypes.false
 
     fun valOf (SOME x) = x
       | valOf NONE = raise Option
 
-    val op = : ''a * ''a -> bool = InlineT.=
-    val op <> : ''a * ''a -> bool = InlineT.<>
+    val op = : ''a * ''a -> PrimTypes.bool = InlineT.=
+    val op <> : ''a * ''a -> PrimTypes.bool = InlineT.<>
 end

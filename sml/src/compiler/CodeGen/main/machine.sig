@@ -8,8 +8,6 @@ signature MACHINE = sig
 	where I = F.I and C = F.C
   structure Asm : INSTRUCTION_EMITTER
         where I = F.I and  P = F.P 
-  structure FreqProps : FREQUENCY_PROPERTIES
-        where I = F.I
 
   val copyProp :  F.cluster -> F.cluster
 

@@ -18,8 +18,7 @@ struct
    let val N           = #capacity dom ()
        val DF          = A.array(N,[]) : dominance_frontiers
        val G.GRAPH cfg = Dom.cfg Dom
-       val methods     = Dom.methods Dom
-       val immediately_dominates = #immediately_dominates methods
+       val immediately_dominates = Dom.immediately_dominates Dom
        fun computeDF X =
        let (* the successors in X that are not strictly dominated by X *)
            val S = foldr (fn ((_,Y,_),S) =>

@@ -23,14 +23,12 @@ struct
   val uses = makeCellset [16, 17]
   fun copyTmp() = SOME(I.Direct(C.newReg()))
 
-  fun divl({ra, rb, rc}, reduceOpnd) = 
+  fun divlv({ra, rb, rc}, reduceOpnd) = 
     [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
      I.LOAD{ldOp=I.LDL, r=27, b=sp, d=divlOffset, mem=stack},
      I.JSR({r=26, b=27, d=0}, defs, uses, stack),
      I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
-
-  fun divq _ = error "divq"
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
     [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
@@ -39,17 +37,30 @@ struct
      I.JSR({r=26, b=27, d=0}, defs, uses, stack),
      I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
 
-  fun divqu _ = error "divqu"
+  fun unimplemented _ = error "unimplemented pseudo-instr"
+  val divl  = unimplemented
+  val divqv = unimplemented
+  val divq  = unimplemented
+  val divqu = unimplemented
+  val remlv = unimplemented
+  val reml  = unimplemented
+  val remlu = unimplemented
+  val remqv = unimplemented
+  val remq  = unimplemented
+  val remqu = unimplemented
      
-  fun cvti2d({opnd, fd}, reduceOpnd) = let
-    val ra = reduceOpnd opnd
-  in
-    [I.STORE{stOp=I.STQ, r=ra,
-	     b=sp, d=floatTmpOffset, mem=stack},
-     I.FLOAD{ldOp=I.LDT, r=fd, b=sp, d=floatTmpOffset, mem=stack},
-     I.FUNARY{oper=I.CVTQT, fb=fd, fc=fd}]
+  fun cvtlt({opnd, fd}, reduceOpnd) = 
+  let val ra = reduceOpnd opnd
+  in  [I.STORE{stOp=I.STQ, r=ra, b=sp, d=floatTmpOffset, mem=stack},
+       I.FLOAD{ldOp=I.LDT, r=fd, b=sp, d=floatTmpOffset, mem=stack},
+       I.FUNARY{oper=I.CVTQT, fb=fd, fc=fd}]
   end
 
-  fun cvti2s _ = error "cvti2s"
+  val cvtls = unimplemented
+  val cvtqt = unimplemented
+  val cvtqs = unimplemented
+  val cvtsl = unimplemented
+  val cvttl = unimplemented
+  val cvtsq = unimplemented
+  val cvttq = unimplemented
 end
-

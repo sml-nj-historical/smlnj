@@ -37,8 +37,7 @@ structure PPCMCEmitter =
 
 structure PPCMLTree = 
   MLTreeF(structure Const=PPCConst
-	  structure P=PPCPseudoOps
 	  structure R=CPSRegions
-	  structure B=FunctionNames
+	  structure S=PPCStream
           type rextension=unit
           type fextension=unit)

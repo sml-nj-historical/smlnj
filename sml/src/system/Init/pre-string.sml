@@ -7,6 +7,17 @@
  *
  *)
 
+local
+    infix 7  * /  mod  div
+    infix 6 ^ + -
+    infix 3 := o
+    infix 4 > < >= <= = <>
+    infixr 5 :: @
+    infix 0 before
+
+    open PrimTypes
+in
+
 structure PreString =
   struct
 
@@ -181,5 +192,4 @@ structure PreString =
 
     end (* local *)
   end; (* PreString *)
-
-
+end

@@ -11,6 +11,7 @@ struct
 
     val architecture	= "hppa"
     val spillAreaSz	= 4000
+    val initialSpillOffset = 116
     val numRegs		= 17	(* length HppaCpsRegs.miscregs + 3 *)
     val numFloatRegs	= 25
       (* length HppaCpsRegs.floatregs + length HppaCpsRegs.savedfpregs *)

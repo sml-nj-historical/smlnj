@@ -18,7 +18,8 @@ struct
   fun remove (pl, e) =  foldr rmv e pl
   fun consolidate e = e
   fun singleton (p, l) = bind (p, l, empty)
-
+  fun listItemsi e = PersMap.listItemsi e
+  fun fromListi il = foldl PersMap.insert' PersMap.empty il
 end (* structure SymbolicEnv *)
 
 

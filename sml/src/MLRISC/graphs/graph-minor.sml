@@ -11,7 +11,7 @@ sig
    val minor : ('n,'e,'g) Graph.graph
             -> ('n * 'n * 'e Graph.edge list -> 'n)
             -> { view  : ('n,'e,'g) Graph.graph,
-                 union : Graph.node_id * Graph.node_id -> bool,
+                 union : Graph.node_id * Graph.node_id -> unit,
                  ==    : Graph.node_id * Graph.node_id -> bool,
                  partition : Graph.node_id -> Graph.node_id list 
                }
@@ -22,7 +22,7 @@ structure GraphMinorView : GRAPH_MINOR_VIEW =
 struct
 
    structure G = Graph
-   structure U = UnionFindRef
+   structure U = URef
    structure H = HashArray
 
    datatype ('n,'e) node = 
@@ -41,12 +41,12 @@ struct
        val _ = #forall_nodes G 
                 (fn (n,n') => 
                     H.update(table,n,
-                       U.uref(NODE{key=n,
+                       U.uRef(NODE{key=n,
                                    data=n',
                                    nodes=[n],
                                    succ= #out_edges G n,
                                    pred= #in_edges G n})))
-       fun same(i,j) = U.== (H.sub(table,i),H.sub(table,j))
+       fun same(i,j) = U.equal (H.sub(table,i),H.sub(table,j))
        fun partition i = #nodes(get i) 
        val size  = ref (#size G ())
        val order = ref (#order G ())
@@ -96,7 +96,7 @@ struct
            val _ = size  := !size - length s'
        in  n
        end
-       fun union(i,j) = U.union merge (H.sub(table,i),H.sub(table,j))
+       fun union(i,j) = U.unify merge (H.sub(table,i),H.sub(table,j))
        val view =
        G.GRAPH
        { name            = #name G,

@@ -23,17 +23,18 @@ struct
    let val buffer = StringStream.mkStreamBuf()
        val S      = StringStream.openStringOut buffer
        val _      = AsmStream.withStream S 
-                    (fn _ =>
-                    let val Emitter.S.STREAM{emit,...} = Emitter.makeStream()
-                    in  emit (I.C.lookup regmap) insn 
-                    end) ()
+                    (fn i =>
+                     let val Emitter.S.STREAM{emit,...} = Emitter.makeStream []
+                     in  emit (I.C.lookup regmap) i
+                     end) insn
        val text   = StringStream.getString buffer
        fun isSpace #" "  = true
          | isSpace #"\t" = true
          | isSpace _     = false
        val text = foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
           (String.tokens isSpace text)
-       fun stripNL s =
+       fun stripNL "" = ""
+         | stripNL s =
        let fun f(0) = ""
              | f(i) = if String.sub(s,i) = #"\n" then f(i-1)
                       else String.extract(s,0,SOME(i+1))

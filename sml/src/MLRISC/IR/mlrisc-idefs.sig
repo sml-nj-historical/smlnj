@@ -15,10 +15,10 @@ sig
       sharing CFG.I = I
 
    val idefs : 
-       (I.instruction -> I.C.register list * I.C.register list) ->
+       (I.instruction -> I.C.cell list * I.C.cell list) ->
        CFG.cfg ->
-       { idefuse     : unit -> (RegSet.regset * RegSet.regset) Array.array,
-         ipostdefuse : unit -> (RegSet.regset * RegSet.regset) Array.array
+       { idefuse     : unit -> (I.C.cell list * I.C.cell list) Array.array,
+         ipostdefuse : unit -> (I.C.cell list * I.C.cell list) Array.array
        }
 end
 

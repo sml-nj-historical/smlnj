@@ -9,8 +9,8 @@
 
 structure NumFormat : sig
 
-    val fmtWord : StringCvt.radix -> word32 -> string
-    val fmtInt  : StringCvt.radix -> int32 -> string
+    val fmtWord : StringCvt.radix -> Word32.word -> string
+    val fmtInt  : StringCvt.radix -> Int32.int -> string
 
   end = struct
 
@@ -23,7 +23,7 @@ structure NumFormat : sig
     val op * = W.*
     val op div = W.div
 
-    fun mkDigit (w : word32) =
+    fun mkDigit (w : Word32.word) =
 	  InlineT.CharVector.sub("0123456789abcdef", W.toInt w)
 
     fun wordToBin w = let

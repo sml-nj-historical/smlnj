@@ -8,7 +8,7 @@ structure Int32Imp : INTEGER =
   struct
     structure I32 = InlineT.Int32
 
-    type int = int32
+    type int = Int32.int
 
     val precision = SOME 32
 

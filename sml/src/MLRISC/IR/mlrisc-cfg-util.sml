@@ -83,10 +83,10 @@ struct
                   in  insns := P.setTargets(jmp,[labelOf i,labelOf j])::rest
                   end
              |  es =>
-                  let fun cmp ((_,_,CFG.EDGE{k=CFG.SWITCH i,...}),
-                               (_,_,CFG.EDGE{k=CFG.SWITCH j,...})) = i < j
-                        | cmp _ = error "cmp"
-                      val es = Sorting.sort cmp es
+                  let fun gt ((_,_,CFG.EDGE{k=CFG.SWITCH i,...}),
+                              (_,_,CFG.EDGE{k=CFG.SWITCH j,...})) = i > j
+                        | gt _ = error "gt"
+                      val es = ListMergeSort.sort gt es
                       val labels = map (fn (_,j,_) => labelOf j) es
                   in  insns := P.setTargets(jmp,labels)::rest;
                       error "updateJumpLabel"
@@ -183,15 +183,19 @@ struct
     *  Split a control flow edge, return a new edge and the new block 
     *
     *=====================================================================*)
-   fun splitEdge (CFG as G.GRAPH cfg) {edge=(i,j,e as CFG.EDGE{w,...}),jump} = 
+   fun splitEdge (CFG as G.GRAPH cfg) 
+                 {kind, edge=(i,j,e as CFG.EDGE{w,...}),jump} = 
    let val k = #new_id cfg ()
        val jump = jump orelse i = j orelse
               (case CFG.fallsThruFrom(CFG,j) of 
                 NONE => false
               | SOME _ => true)
-       val node as CFG.BLOCK{insns,...} = CFG.newBlock(k,CFG.B.default,ref(!w))
+       val insns = ref(if jump then [P.jump(labelOf CFG j)] else [])
+       val node = 
+           CFG.BLOCK{id=k, kind=kind, name=CFG.B.default,
+                     freq= ref(!w), data=ref [], labels = ref [],
+                     insns=insns, annotations=ref []}
        val kind = if jump then CFG.JUMP else CFG.FALLSTHRU
-       val _    = if jump then insns := [P.jump(labelOf CFG j)] else ()
        val edge = (k,j,CFG.EDGE{w=ref(!w),a=ref [],k=kind})
    in  CFG.removeEdge CFG (i,j,e);
        #add_edge cfg (i,k,e);
@@ -208,7 +212,7 @@ struct
     *=====================================================================*)
    fun splitAllCriticalEdges (CFG as G.GRAPH cfg) =
        (#forall_edges cfg (fn e => if isCriticalEdge CFG e then
-                                     (splitEdge CFG {edge=e,jump=false}; ())
+          (splitEdge CFG {edge=e,kind=CFG.NORMAL,jump=false}; ())
                                   else ());
         CFG.changed CFG
        )
@@ -304,7 +308,8 @@ struct
 
    (*=====================================================================
     *
-    *  Merge all edges in the CFG
+    *  Merge all edges in the CFG.
+    *  Merge higher frequency edges first
     *
     *=====================================================================*)
    fun mergeAllEdges(CFG as G.GRAPH cfg) =
@@ -312,7 +317,9 @@ struct
        fun higherFreq((_,_,CFG.EDGE{w=x,...}),(_,_,CFG.EDGE{w=y,...}))= !x < !y
        fun mergeAll([],changed) = changed
          | mergeAll(e::es,changed) = mergeAll(es,mergeEdge e orelse changed) 
-       val changed = mergeAll(Sorting.sort higherFreq (#edges cfg ()),false)
+       (* note: sort expects the gt operator and sorts in ascending order *) 
+       val changed = mergeAll(ListMergeSort.sort higherFreq (#edges cfg ()),
+                              false)
    in  if changed then CFG.changed CFG else ()
    end
 

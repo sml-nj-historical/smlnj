@@ -34,12 +34,21 @@ structure Alpha32MCEmitter =
                  structure Stream=Alpha32Stream
 		 structure CodeString=CodeString)
 
+(*  Don't need this any more!  
+    We now support the alpha32x by generating different instructions.
+       -- Allen.
+
+structure Alpha32XMCEmitter = 
+  Alpha32XMCEmitter(structure Instr=Alpha32Instr
+		   structure PseudoOps=Alpha32PseudoOps
+		   structure CodeString=CodeString)
+*)
+
 
 structure Alpha32MLTree = 
   MLTreeF(structure Const=SMLNJConstant
-	  structure P=Alpha32PseudoOps
 	  structure R=CPSRegions
-	  structure B=FunctionNames
+	  structure S=Alpha32Stream
           type rextension = unit
           type fextension = unit
          )

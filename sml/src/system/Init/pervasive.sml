@@ -8,6 +8,10 @@ infix 4 > < >= <= = <>
 infixr 5 :: @
 infix 0 before
 
+(* top-level type (we need this one early) *)
+
+datatype bool = datatype PrimTypes.bool
+
 local
     structure I31 = InlineT.Int31
     structure I32 = InlineT.Int32
@@ -114,6 +118,8 @@ exception Chr = InlineT.Char.Chr
 exception Div = Assembly.Div
 exception Domain
 
+type string = PrimTypes.string
+
 exception Fail of string
 
 (* exception Span
@@ -136,7 +142,6 @@ fun ignore _ = ()
 
 (* top-level types *)
 
-datatype bool = datatype PrimTypes.bool
 datatype list = datatype PrimTypes.list
 datatype ref = datatype PrimTypes.ref
 
@@ -243,8 +248,6 @@ local
     val unsafeSub = CV.sub
     val unsafeUpdate = CV.update
 in
-
-type string = PrimTypes.string
 
 val size = CV.length : string -> int
 

@@ -10,9 +10,6 @@ structure SparcConst = SMLNJConstant
 structure SparcInstr = 
   SparcInstr(structure Const = SparcConst
 	     structure Region = CPSRegions
-(*
-             structure Annotations = SMLNJAnnotations
-*)
             )
 
 structure SparcPseudoInstrs = SparcPseudoInstrs(SparcInstr)
@@ -46,8 +43,7 @@ structure SparcMCEmitter =
 structure SparcMLTree = 
   MLTreeF(structure Const=SparcConst
 	  structure R=CPSRegions
-	  structure P=SparcPseudoOps
-	  structure B=FunctionNames
+	  structure S=SparcStream
           type rextension = unit
           type fextension = unit
          )

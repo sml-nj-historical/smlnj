@@ -24,11 +24,12 @@ struct
        val D as G.GRAPH d = GI.graph("derived graph",(),N) 
        val G.GRAPH cfg    = Dom.cfg Dom
        val ancestors      = A.array(Dom.max_levels Dom,0)
+       val levelsMap      = Dom.levelsMap Dom
        fun dfs lvl i = 
        let val _ = A.update(ancestors,lvl,i)
            val _ = #add_node d (i,#node_info cfg i)
            fun add_edge (e as (i,j,_)) =
-               let val Dom.DOM{level,...} = #node_info dom j
+               let val level = A.sub(levelsMap,j)
                in if lvl < level then 
                      #add_edge d (i,j,e)  (* i idom j ! *)
                   else

@@ -30,12 +30,15 @@ structure CmHook = struct
 			 verbose = bo_b,
 			 debug = bo_b,
 			 keep_going = bo_b,
+			 warn_obsolete = bo_b,
 			 parse_caching = io_i,
 			 setAnchor = s's_u,
 			 cancelAnchor = s_u,
 			 resetPathConfig = u_u,
 			 synchronize = u_u,
-			 showPending = u_u }
+			 showPending = u_u,
+			 listLibs = u_u,
+			 dismissLib = s_u }
     in
 	(* the routine to be called at bootstrap time... *)
 	fun init v = hook := v
@@ -50,12 +53,15 @@ structure CmHook = struct
 	    fun verbose bo = #verbose (!hook) bo
 	    fun debug bo = #debug (!hook) bo
 	    fun keep_going bo = #keep_going (!hook) bo
+	    fun warn_obsolete bo = #warn_obsolete (!hook) bo
 	    fun parse_caching io = #parse_caching (!hook) io
 	    fun setAnchor (a, s) = #setAnchor (!hook) (a, s)
 	    fun cancelAnchor a = #cancelAnchor (!hook) a
 	    fun resetPathConfig () = #resetPathConfig (!hook) ()
 	    fun synchronize () = #synchronize (!hook) ()
 	    fun showPending () = #showPending (!hook) ()
+	    fun listLibs () = #listLibs (!hook) ()
+	    fun dismissLib l = #dismissLib (!hook) l
 	end
     end
 end

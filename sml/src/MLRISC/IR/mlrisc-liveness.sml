@@ -14,12 +14,12 @@ sig
 
    val liveness : 
        { cfg     : CFG.cfg,
-         liveOut : CFG.block Graph.node -> RegSet.regset,
-         defUse  : CFG.block Graph.node -> RegSet.regset * RegSet.regset
+         liveOut : CFG.block Graph.node -> I.C.cell list,
+         defUse  : CFG.block Graph.node -> I.C.cell list * I.C.cell list
        } -> unit
 
    val getLiveness : CFG.cfg -> Graph.node_id -> 
-                           {livein: RegSet.regset, liveout: RegSet.regset}
+                           {livein: I.C.cell list, liveout: I.C.cell list}
 
 end
 
@@ -29,10 +29,10 @@ struct
    structure CFG = CFG
    structure I   = CFG.I
    structure A   = Annotations
-   structure S   = RegSet
+   structure SL  = SortedList
    structure G   = Graph
 
-   val {put : (S.regset * S.regset) * A.annotations -> A.annotations,
+   val {put : (I.C.cell list * I.C.cell list) * A.annotations -> A.annotations,
         get, 
         rmv} = A.new() 
 
@@ -40,16 +40,17 @@ struct
       DataflowFn
          (struct
               structure CFG   = CFG
-              type domain     = S.regset
+              type domain     = I.C.cell list
               val  forward    = false
-              val  bot        = S.empty
-              val  ==         = S.==
-              val  join       = S.union
-              val  op +       = S.+
-              val  op -       = S.-
+              val  bot        = []
+              val  ==         = op = : I.C.cell list * I.C.cell list -> bool
+              val  join       = SL.foldmerge
+              val  op +       = SL.merge
+              val  op -       = SL.difference
               type dataflow_info = 
-                  { liveOut : CFG.block Graph.node -> S.regset,
-                    defUse  : CFG.block Graph.node -> S.regset * S.regset
+                  { liveOut : CFG.block Graph.node -> I.C.cell list,
+                    defUse  : CFG.block Graph.node -> 
+                                  I.C.cell list * I.C.cell list
                   }
 
               fun prologue(cfg,{defUse,liveOut}) (b,b') =
@@ -74,7 +75,7 @@ struct
        let val CFG.BLOCK{annotations,...} = #node_info cfg b
        in  case get(!annotations) of
               SOME(x,y) => {livein=x,liveout=y}
-           |  NONE => {livein=S.empty,liveout=S.empty}
+           |  NONE => {livein=[],liveout=[]}
        end
 
 end

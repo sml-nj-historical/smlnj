@@ -15,33 +15,30 @@ sig
    val ==    : 'n node_partition -> Graph.node_id * Graph.node_id -> bool
    val union : 'n node_partition -> ('n Graph.node * 'n Graph.node ->
                                         'n Graph.node) ->
-                                        Graph.node_id * Graph.node_id -> bool
-   val union': 'n node_partition -> Graph.node_id * Graph.node_id -> bool
+                                        Graph.node_id * Graph.node_id -> unit
+   val union': 'n node_partition -> Graph.node_id * Graph.node_id -> unit
 
 end
 
 structure NodePartition :> NODE_PARTITION =
 struct
 
-   structure U = UnionFindRef
-   structure M = HashMap
+   structure U = URef
+   structure H = HashTable
    structure G = Graph
 
-   type 'n node_partition = (G.node_id,'n G.node U.uref) M.map
+   type 'n node_partition = (G.node_id,'n G.node U.uref) H.hash_table
 
    fun node_partition (G.GRAPH G) =
-   let val P   = M.create { order = Int.compare, 
-                            hash = fn i => i, 
-                            exn = G.NotFound 
-                          } (#order G () * 2)
-       val ins = M.insert P
-       val _   = #forall_nodes G (fn n as (i,_) => ins(i,U.uref n))
+   let val P   = H.mkTable (Word.fromInt,op =) (#order G () * 2,G.NotFound)
+       val ins = H.insert P
+       val _   = #forall_nodes G (fn n as (i,_) => ins(i,U.uRef n))
    in  P
    end
 
-   fun !! P x          = U.!! (M.lookup P x)
-   fun == P (x,y)      = U.== (M.lookup P x, M.lookup P y)
-   fun union P f (x,y) = U.union f (M.lookup P x, M.lookup P y)
-   fun union' P (x,y)  = U.union' (M.lookup P x, M.lookup P y)
+   fun !! P x          = U.!! (H.lookup P x)
+   fun == P (x,y)      = U.equal (H.lookup P x, H.lookup P y)
+   fun union P f (x,y) = U.unify f (H.lookup P x, H.lookup P y)
+   fun union' P (x,y)  = U.union (H.lookup P x, H.lookup P y)
 end
 

@@ -28,8 +28,8 @@ sig
 
       (* parallel moves *) 
    val moveInstr  : I.instruction -> bool
-   val moveTmpR   : I.instruction -> C.register option
-   val moveDstSrc : I.instruction -> C.register list * C.register list
+   val moveTmpR   : I.instruction -> C.cell option
+   val moveDstSrc : I.instruction -> C.cell list * C.cell list
 
       (* no op *)
    val nop 	  : unit -> I.instruction
@@ -39,7 +39,7 @@ sig
 
       (* load immediate; must be within immedRange *)
    val immedRange : {lo:int, hi:int}
-   val loadImmed  : {immed:int, t:C.register} -> I.instruction
+   val loadImmed  : {immed:int, t:C.cell} -> I.instruction
 
      (* 
       * Targets of a branch instruction 
@@ -63,7 +63,7 @@ sig
 
      (* definition/use for the RA *)
    val defUse     : C.cellkind -> 
-                      I.instruction -> (C.register list * C.register list)
+                      I.instruction -> (C.cell list * C.cell list)
 
      (* annotations *)
    val getAnnotations : I.instruction -> Annotations.annotation list

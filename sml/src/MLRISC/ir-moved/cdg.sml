@@ -22,13 +22,12 @@ struct
     type ('n,'e,'g) cdg = ('n,'e,'g) Graph.graph
 
     fun control_dependence_graph' f_node f_edge f_graph is_conditional
-             (Dom as G.GRAPH dom, PDom as G.GRAPH pdom) =
-    let val G.GRAPH cfg        = Dom.cfg Dom
+             (PDom as G.GRAPH pdom) =
+    let val G.GRAPH cfg        = Dom.cfg PDom
         val N                  = #capacity cfg ()
         val cdg_info           = f_graph (#graph_info cfg)
         val CDG as G.GRAPH cdg = GI.graph("CDG", cdg_info, N)
-        val methods            = Dom.methods Dom
-        val ipdom              = #ipdom methods
+        val ipdom              = Dom.idom PDom
         val add_edge           = fn e => #add_edge cdg (f_edge e)
         val out_edges          = #out_edges cfg
 

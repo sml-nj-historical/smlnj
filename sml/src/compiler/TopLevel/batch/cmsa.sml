@@ -60,14 +60,15 @@ functor CMSAFun (structure BF : BINFILE
 	    fun rest () = let
 		val bfc = BF.read { name = bin,
 				    stream = f,
-				    senv = E.staticPart base,
-				    keep_code = true }
+				    senv = E.staticPart base }
 		val _ = BinIO.closeIn f
     	        val _ = P.say "ok - executing..."
-                val e = BF.exec (bfc, E.dynamicPart base)
+                val de = BF.exec (bfc, E.dynamicPart base)
   	        val _ = P.say "done\n"
        	        in
-	           e
+	           E.mkenv { dynamic = de,
+			     static = BF.senvOf bfc,
+			     symbolic = BF.symenvOf bfc }
 	        end
 	in
 	    rest () handle e => (BinIO.closeIn f; raise e)

@@ -26,6 +26,12 @@ Library
 
 	(* eventually we should export more of these guys... *)
 	structure DynamicEnv
+
+	structure PickleSymPid
+	structure UnpickleSymPid
+	structure PickMod
+	structure UnpickMod
+	structure CompBasic
 is
 
 TopLevel/batch/batchconfig.sml
@@ -130,10 +136,12 @@ Semant/modules/modules.sml
 Semant/modules/moduleutil.sig
 Semant/modules/moduleutil.sml
 Semant/modules/sigmatch.sml
-Semant/pickle/pickmod.sml
-Semant/pickle/shareread.sml
-Semant/pickle/sharewrite.sml
-Semant/pickle/unpickmod.sml
+
+Semant/pickle/pickle-sym-pid.sml
+Semant/pickle/pickmod-new.sml
+Semant/pickle/unpickle-sym-pid.sml
+Semant/pickle/unpickmod-new.sml
+
 Semant/statenv/bindings.sml
 Semant/statenv/lookup.sig
 Semant/statenv/lookup.sml
@@ -250,6 +258,8 @@ CodeGen/cpscompile/cpsRegs.sig
 CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
 CodeGen/cpscompile/functionNames.sml
+CodeGen/cpscompile/invokegc.sig
+CodeGen/cpscompile/invokegc.sml
 CodeGen/cpscompile/limit.sml
 CodeGen/cpscompile/memAliasing.sml
 CodeGen/cpscompile/memDisambig.sml
@@ -259,6 +269,7 @@ CodeGen/cpscompile/pseudoOpType.sig
 CodeGen/cpscompile/pseudoOpsBig.sml
 CodeGen/cpscompile/pseudoOpsLittle.sml
 CodeGen/cpscompile/smlnj-const.sml
+CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/hppa/hppaCG.sml
 CodeGen/hppa/hppaCpsRegs.sml
@@ -270,12 +281,15 @@ CodeGen/hppa/hppaspec.sml
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig
 CodeGen/main/machine-gen.sig
+CodeGen/main/machine-gen.sml
 CodeGen/main/machspec.sig
 CodeGen/main/machspec.sml
 CodeGen/main/mlrisc-export.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
+CodeGen/main/regalloc.sig
+CodeGen/main/regalloc.sml
 CodeGen/ppc/ppcCG.sml
 CodeGen/ppc/ppcCpsRegs.sml
 CodeGen/ppc/ppcMLTree.sml

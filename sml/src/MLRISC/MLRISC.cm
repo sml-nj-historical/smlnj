@@ -1,184 +1,358 @@
-Group (viscomp-lib.cm) is
-
-  basis.cm
-  comp-lib.cm
-
-library/sources.cm
-graphs/sources.cm
-visualization/sources.cm
-ir/sources.cm
-
-(* Core definitions. These are required *)
-control/mlriscErrormsg.sml
-control/mlrisc-control.sml
-control/mlrisc-timing.sml
-
-instructions/cells.sig
-instructions/cells.sml
-instructions/insnProps.sig
-instructions/stream.sig
-instructions/stream.sml
-instructions/instructions.sig
-instructions/shuffle.sml
-instructions/block-names.sig
-instructions/constant.sig
-instructions/labelExp.sml
-instructions/labels.sml
-instructions/pseudoOps.sig
-instructions/region.sig
-instructions/basicAnnotations.sig
-instructions/basicAnnotations.sml
-instructions/freqProps.sig
-instructions/freqProps.sml
-
-
-(* New aliasing/memory disambiguation support *)
-aliasing/mlriscRegion.sig
-aliasing/mlriscRegion.sml
-aliasing/pointsTo.sig
-aliasing/pointsTo.sml
-
-mltree/mltree-basis.sig
-mltree/mltree-basis.sml
-mltree/mltree.sig
-mltree/mltree.sml
-mltree/mltree-util.sig
-mltree/mltree-util.sml
-mltree/mltreecomp.sig
-mltree/mltreegen.sig
-mltree/mltreegen.sml
-mltree/flowgen.sig
-mltree/mltree-mult.sig
-mltree/mltree-mult.sml
-
-
-(* Basic cluster stuff. These are required. *)
-cluster/flowgraph.sml
-cluster/printCluster.sml
-cluster/clustergen.sml
-
-
-(* MLRISC IR for optimizations. These are necessary only if you want
- * to use various optional MLRISC optimizations.
+(*
+ * This library contains only the core MLRISC stuff.
+ * This includes all the basic stuff necessary to compile the SML/NJ compiler.
  *)
-IR/dataflow.sig
-IR/dataflow.sml
-IR/mlrisc-cfg-util.sig
-IR/mlrisc-cfg-util.sml
-IR/mlrisc-cfg.sig
-IR/mlrisc-cfg.sml
-IR/mlrisc-cfg2cluster.sml
-IR/mlrisc-cluster2cfg.sml
-IR/mlrisc-format-insn.sml
-IR/mlrisc-ir.sig
-IR/mlrisc-ir.sml
-IR/mlrisc-liveness.sml
-IR/mlrisc-reshape-branches.sig
-IR/mlrisc-reshape-branches.sml
-IR/static-branch-prediction.sig
-IR/static-branch-prediction.sml
 
+Library 
+	signature MLRISC_ERROR_MSG
+	structure MLRiscErrorMsg
+	signature MLRISC_CONTROL
+	structure MLRiscControl
+	signature MLRISC_TIMING
+	structure MLRiscTiming
+	signature CELLS_BASIS
+	signature CELLS
+	functor CellsBasisFn
+	signature REWRITE_INSTRUCTIONS
+	signature INSN_PROPERTIES
+	signature INSTRUCTION_STREAM
+	functor InstructionStreamFn
+	signature INSTRUCTIONS
+	functor Shuffle
+	signature BLOCK_NAMES
+	signature CONSTANT
+	signature LABELEXP
+	structure LabelExp
+	signature LABEL
+	structure Label
+	signature PSEUDO_OPS
+	signature REGION
+	signature FREQUENCY_PROPERTIES
+	functor FreqProps
+	signature BASIC_ANNOTATIONS
+	structure BasicAnnotations
+	signature MLRISC_REGION
+	structure MLRiscRegion
+	signature POINTS_TO
+	structure PointsTo
+	signature MLTREE_BASIS
+	structure MLTreeBasis
+	signature MLTREE
+	functor MLTreeF
+	signature MLTREE_UTIL
+	structure MLTreeUtil
+	signature MLTREECOMP
+	signature MLTREEGEN
+	functor MLTreeGen
+	signature FLOWGRAPH_GEN
+	signature MLTREE_MULT_DIV
+	functor MLTreeMult
+(*	signature INSTR_GEN		LG *)
+(*	functor InstrGen		LG *)
+	signature FLOWGRAPH
+	functor FlowGraph
+	functor ClusterGen
+	signature PRINT_CLUSTER
+	functor PrintClusterFn
+	signature GETREG
+	functor GetReg
+	signature LIVENESS
+	functor Liveness
+	signature RA_ARCH_PARAMS
+	signature RA_USER_PARAMS
+	signature RA
+	signature BITMATRIX
+	structure TriangularBitMatrix
+	signature RA_GRAPH
+	structure RAGraph
+	signature RA_CORE
+	structure RACore
+	functor RegAllocator
+	signature INSTRUCTION_EMITTER
+	signature ASSEMBLY_EMITTER
+	signature ASM_STREAM
+	structure AsmStream
+	signature ASM_FORMAT_UTIL
+	structure AsmFormatUtil		
+	functor ClusterEmit
+	signature CODE_STRING
+	signature OBJ_TYPE
+	signature GC_CELLS
+	functor GCCells
+	signature GC_TYPE
+	functor GCType
+	functor BBSched2
+	signature BBSCHED
+	functor SpanDependencyResolution
+	signature DELAY_SLOT_PROPERTIES
+	functor NoDelaySlots
+	signature SDI_JUMPS
+	signature MC_EMIT
+	functor BackPatch
+	signature SPARCCELLS
+	structure SparcCells
+	signature SPARCINSTR
+	functor SparcInstr
+	signature SPARCSHUFFLE
+	functor SparcShuffle
+	functor SparcProps
+	functor SparcFreqProps
+	functor SparcAsmEmitter
+	functor SparcMCEmitter
+	functor SparcJumps
+	signature SPARC_PSEUDO_INSTR
+	functor Sparc
+	functor SparcRewrite
+	functor SparcRegAlloc
+	functor SparcDelaySlots
+	signature HPPACELLS
+	structure HppaCells
+	signature HPPAINSTR
+	functor HppaInstr
+	signature HPPASHUFFLE
+	functor HppaShuffle
+	functor HppaProps
+	functor HppaFreqProps
+	functor HppaAsmEmitter
+	functor HppaMCEmitter
+	functor HppaDelaySlots
+	functor HppaJumps
+	signature HPPA_MILLICODE
+	signature LABEL_COMP
+	functor Hppa
+	functor HppaRewrite
+	functor HppaRegAlloc
+	signature ALPHACELLS
+	structure AlphaCells
+	signature ALPHAINSTR
+	functor AlphaInstr
+	signature ALPHASHUFFLE
+	functor AlphaShuffle
+	functor AlphaProps
+	functor AlphaFreqProps
+	functor AlphaAsmEmitter
+	functor AlphaMCEmitter
+	functor AlphaJumps
+	signature ALPHA_PSEUDO_INSTR
+	functor Alpha
+	functor AlphaRewrite
+	functor AlphaRegAlloc
+	signature X86CELLS
+	structure X86Cells
+	signature X86INSTR
+	functor X86Instr
+	signature X86SHUFFLE
+	functor X86Shuffle
+	functor X86Props
+	signature MEMORY_REGISTERS
+	functor X86FreqProps
+	functor X86AsmEmitter
+	functor X86MCEmitter
+	signature X86REWRITE
+	functor X86Rewrite
+	functor X86RegAlloc
+	signature X86SPILL
+	functor X86Spill
+	signature X86REWRITE_PSEUDO
+	functor X86RewritePseudo
+	functor X86Jumps
+	functor X86
+	signature PPCCELLS
+	structure PPCCells
+	signature PPCINSTR
+	functor PPCInstr
+	signature PPCSHUFFLE
+	functor PPCShuffle
+	functor PPCProps
+	functor PPCFreqProps
+	functor PPCAsmEmitter
+	functor PPCMCEmitter
+	functor PPCDelaySlots
+	functor PPCJumps
+	signature PPC_PSEUDO_INSTR
+	functor PPC
+	functor PPCRewrite
+	functor PPCRegAlloc
+is
 
-(* Core register allocator utilities *)
-ra/getreg.sig
-ra/getreg.sml
-ra/liveness.sml
-ra/ra-params.sig
-ra/ra.sml
-ra/raBitset.sml
-
-(* Assembly machine code stuff *)
-emit/instruction-emitter.sig
-emit/asmEmit.sml
-emit/asmStream.sml
-emit/code-string.sig
-emit/emitterNEW.sig
-
-backpatch/backpatch.sml
-backpatch/bbsched.sig
-backpatch/delaySlotProps.sig
-backpatch/sdi-jumps.sig
-backpatch/spanDep.sml
-backpatch/vlBackPatch.sml
-
-(* Sparc specific backend *)
-sparc/instructions/sparcCells.sml
-sparc/instructions/sparcInstr.sml
-sparc/instructions/sparcShuffle.sig
-sparc/instructions/sparcShuffle.sml
-sparc/instructions/sparcProps.sml
-sparc/emit/sparcAsm.sml
-sparc/emit/sparcMC.sml
-sparc/backpatch/sparcJumps.sml
-sparc/backpatch/sparcDelaySlotProps.sml
-sparc/mltree/sparcPseudoInstr.sig
-sparc/mltree/sparc.sml
-sparc/ra/sparcRewrite.sml
-sparc/ra/sparcRegAlloc.sml
-
-(* HPPA specific backend *)
-hppa/instructions/hppaCells.sml
-hppa/instructions/hppaInstr.sml
-hppa/instructions/hppaShuffle.sig
-hppa/instructions/hppaShuffle.sml
-hppa/instructions/hppaProps.sml
-hppa/emit/hppaAsm.sml
-hppa/emit/hppaMC.sml
-hppa/backpatch/hppaDelaySlotProps.sml
-hppa/backpatch/hppaJumps.sml
-hppa/mltree/hppaMillicode.sig
-hppa/mltree/hppaLabelComp.sig
-hppa/mltree/hppa.sml
-hppa/ra/hppaRewrite.sml
-hppa/ra/hppaRegAlloc.sml
-
-(* Alpha specific backend *)
-alpha/instructions/alphaCells.sml
-alpha/instructions/alphaInstr.sml
-alpha/instructions/alphaShuffle.sig
-alpha/instructions/alphaShuffle.sml
-alpha/instructions/alphaProps.sml
-alpha/emit/alphaAsm.sml
-alpha/emit/alphaMC.sml
-alpha/backpatch/alphaJumps.sml
-alpha/mltree/alphaPseudoInstr.sig
-alpha/mltree/alpha.sml
-alpha/ra/alphaRewrite.sml
-alpha/ra/alphaRegAlloc.sml
-
-(* X86 specific backend *)
-x86/instructions/x86Cells.sml
-x86/instructions/x86Instr.sml
-x86/instructions/x86Shuffle.sig
-x86/instructions/x86Shuffle.sml
-x86/instructions/x86Props.sml
-x86/instructions/x86MemRegs.sig
-x86/emit/x86Asm.sml
-x86/x86MC.sml		(* temporary handwritten version *)
-x86/ra/x86Rewrite.sig
-x86/ra/x86Rewrite.sml
-x86/ra/x86RegAlloc.sml
-x86/ra/x86Spill.sml
-x86/ra/x86PseudoR.sml
-x86/backpatch/x86Jumps.sml
-x86/mltree/x86.sml
-
-(* PowerPC specific backend *)
-ppc/instructions/ppcCells.sml
-ppc/instructions/ppcInstr.sml
-ppc/instructions/ppcShuffle.sig
-ppc/instructions/ppcShuffle.sml
-ppc/instructions/ppcProps.sml
-ppc/emit/ppcAsm.sml
-ppc/emit/ppcMC.sml
-ppc/backpatch/ppcJumps.sml
-ppc/mltree/ppcPseudoInstr.sig
-ppc/mltree/ppc.sml
-ppc/ra/ppcRewrite.sml
-ppc/ra/ppcRegAlloc.sml
-
-(* Glue modules.  These are required only if you want to 
- * play with optimizations.
- *)
-Glue/mlrisc-glue.sig
-Glue/mlrisc-glue.sml
+	basis.cm
+	comp-lib.cm
+	smlnj-lib.cm
+	
+	MLRISC-Lib.cm
+	
+	(* Core definitions. These are required *)
+	control/mlriscErrormsg.sml
+	control/mlrisc-control.sml
+	control/mlrisc-timing.sml
+	
+	instructions/cells.sig
+	instructions/cells.sml
+	instructions/rewrite.sig
+	instructions/insnProps.sig
+	instructions/stream.sig
+	instructions/stream.sml
+	instructions/instructions.sig
+	instructions/shuffle.sml
+	instructions/block-names.sig
+	instructions/constant.sig
+	instructions/labelExp.sml
+	instructions/labels.sml
+	instructions/pseudoOps.sig
+	instructions/region.sig
+	instructions/freqProps.sig
+	instructions/freqProps.sml
+	instructions/basicAnnotations.sig
+	instructions/basicAnnotations.sml
+	
+	(* New aliasing/memory disambiguation support *)
+	aliasing/mlriscRegion.sig
+	aliasing/mlriscRegion.sml
+	aliasing/pointsTo.sig
+	aliasing/pointsTo.sml
+	
+	(* Core definitions for the MLTREE language. These are required. *)
+	mltree/mltree-basis.sig
+	mltree/mltree-basis.sml
+	mltree/mltree.sig
+	mltree/mltree.sml
+	mltree/mltree-util.sig
+	mltree/mltree-util.sml
+	mltree/mltreecomp.sig
+	mltree/mltreegen.sig
+	mltree/mltreegen.sml
+	mltree/flowgen.sig
+	mltree/mltree-mult.sig
+	mltree/mltree-mult.sml
+(*
+	mltree/instr-gen.sig
+	mltree/instr-gen.sml
+*)
+	
+	(* Basic cluster stuff. These are required. *)
+	cluster/flowgraph.sml
+	cluster/clustergen.sml
+	cluster/printCluster.sml
+	
+	(* Core register allocator utilities *)
+	ra/getreg.sig
+	ra/getreg.sml
+	ra/liveness.sml
+	ra/ra-params.sig
+	ra/raBitset.sml
+	
+        (* The newer register allocator.
+         * This is the one we use.  It is basically the same as the old ra
+         * but with some organizational changes.
+         *)
+        ra/ra-graph.sig
+        ra/ra-graph.sml
+        ra/ra-core.sig
+        ra/ra-core.sml
+        ra/ra-iteratedCoalescing.sml
+	
+	(* Assembly machine code stuff *)
+	emit/instruction-emitter.sig
+	emit/asmEmit.sig 
+	emit/asmStream.sml
+	emit/asmUtil.sml
+	emit/clusterEmit.sml
+	emit/code-string.sig
+	
+	(* Basic GC types stuff *)
+	gc-safety/gc-obj-type.sig
+	gc-safety/gc-cells.sig
+	gc-safety/gc-cells.sml
+	gc-safety/gc-type.sig
+	gc-safety/gc-type.sml
+	
+	(* Span dependency stuff *)
+	backpatch/backpatch.sml
+	backpatch/bbsched.sig
+	backpatch/spanDep.sml
+	backpatch/delaySlotProps.sig
+	backpatch/noDelaySlots.sml
+	backpatch/sdi-jumps.sig
+	backpatch/vlBackPatch.sml
+	
+	(* Sparc specific backend *)
+	sparc/instructions/sparcCells.sml
+	sparc/instructions/sparcInstr.sml
+	sparc/instructions/sparcShuffle.sig
+	sparc/instructions/sparcShuffle.sml
+	sparc/instructions/sparcProps.sml
+	sparc/instructions/sparcFreqProps.sml
+	sparc/emit/sparcAsm.sml
+	sparc/emit/sparcMC.sml
+	sparc/backpatch/sparcJumps.sml
+	sparc/mltree/sparcPseudoInstr.sig
+	sparc/mltree/sparc.sml 
+	sparc/ra/sparcRewrite.sml
+	sparc/ra/sparcRegAlloc.sml
+	sparc/backpatch/sparcDelaySlotProps.sml
+	
+	(* HPPA specific backend *)
+	hppa/instructions/hppaCells.sml
+	hppa/instructions/hppaInstr.sml
+	hppa/instructions/hppaShuffle.sig
+	hppa/instructions/hppaShuffle.sml
+	hppa/instructions/hppaProps.sml
+	hppa/instructions/hppaFreqProps.sml
+	hppa/emit/hppaAsm.sml
+	hppa/emit/hppaMC.sml
+	hppa/backpatch/hppaDelaySlotProps.sml
+	hppa/backpatch/hppaJumps.sml
+	hppa/mltree/hppaMillicode.sig
+	hppa/mltree/hppaLabelComp.sig
+	hppa/mltree/hppa.sml
+	hppa/ra/hppaRewrite.sml
+	hppa/ra/hppaRegAlloc.sml
+	
+	(* Alpha specific backend *)
+	alpha/instructions/alphaCells.sml
+	alpha/instructions/alphaInstr.sml
+	alpha/instructions/alphaShuffle.sig
+	alpha/instructions/alphaShuffle.sml
+	alpha/instructions/alphaProps.sml
+	alpha/instructions/alphaFreqProps.sml
+	alpha/emit/alphaAsm.sml
+	alpha/emit/alphaMC.sml
+	alpha/backpatch/alphaJumps.sml
+	alpha/mltree/alphaPseudoInstr.sig
+	alpha/mltree/alpha.sml
+	alpha/ra/alphaRewrite.sml
+	alpha/ra/alphaRegAlloc.sml
+	
+	(* X86 specific backend *)
+	x86/instructions/x86Cells.sml
+	x86/instructions/x86Instr.sml
+	x86/instructions/x86Shuffle.sig
+	x86/instructions/x86Shuffle.sml
+	x86/instructions/x86Props.sml
+	x86/instructions/x86MemRegs.sig
+	x86/instructions/x86FreqProps.sml
+	x86/emit/x86Asm.sml
+	x86/x86MC.sml
+	x86/ra/x86Rewrite.sig
+	x86/ra/x86Rewrite.sml
+	x86/ra/x86RegAlloc.sml
+	x86/ra/x86Spill.sml
+	x86/ra/x86PseudoR.sml
+	x86/backpatch/x86Jumps.sml 
+	x86/mltree/x86.sml 
+	
+	(* PowerPC specific backend *)
+	ppc/instructions/ppcCells.sml
+	ppc/instructions/ppcInstr.sml
+	ppc/instructions/ppcShuffle.sig
+	ppc/instructions/ppcShuffle.sml
+	ppc/instructions/ppcProps.sml
+	ppc/instructions/ppcFreqProps.sml
+	ppc/emit/ppcAsm.sml
+	ppc/emit/ppcMC.sml
+	ppc/backpatch/ppcDelaySlots.sml
+	ppc/backpatch/ppcJumps.sml
+	ppc/mltree/ppcPseudoInstr.sig
+	ppc/mltree/ppc.sml 
+	ppc/ra/ppcRewrite.sml
+	ppc/ra/ppcRegAlloc.sml

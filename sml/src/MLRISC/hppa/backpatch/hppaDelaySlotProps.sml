@@ -46,6 +46,7 @@ struct
               nOff=D_ALWAYS}
        | I.B{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BV{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
+       | I.BE{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BLR{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.BL{n,...} => {nop=false, n=n, nOn=D_NONE, nOff=D_ALWAYS}
        | I.ANNOTATION{i,...} => delaySlot{instr=i,backward=backward}
@@ -61,6 +62,7 @@ struct
              I.BB{bc=bc,p=p,nop=nop,n=n,r=r,t=t,f=f}
        | (I.B{lab,...},false) => I.B{lab=lab,n=n}
        | (I.BV{labs,b,x,...},false) => I.BV{labs=labs,b=b,x=x,n=n}
+       | (I.BE{labs,b,d,sr,...},false) => I.BE{labs=labs,b=b,d=d,sr=sr,n=n}
        | (I.BLR{x,t,labs,...},false) => I.BLR{x=x,t=t,labs=labs,n=n}
        | (I.BL{x,t,defs,uses,...},false) => 
             I.BL{x=x,t=t,defs=defs,uses=uses,n=n}
@@ -100,7 +102,7 @@ struct
         end
 
     fun delaySlotCandidate{jmp,delaySlot=
-             (I.BCOND _ | I.BCONDI _ | I.BB _ | I.FBRANCH _ | I.BV _ 
+             (I.BCOND _ | I.BCONDI _ | I.BB _ | I.FBRANCH _ | I.BV _ | I.BE _ 
              | I.COMCLR_LDO _ | I.BLR _ | I.BL _ | I.BLE _)} = false
       | delaySlotCandidate{jmp=I.ANNOTATION{i,...},delaySlot} = 
            delaySlotCandidate{jmp=i,delaySlot=delaySlot}

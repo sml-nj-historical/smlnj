@@ -56,5 +56,6 @@ struct
   val availF = SL.uniq(fromto(FP 0, FP 30, 2))
   val dedicatedF = []
   val signedGCTest = false
+  val addressWidth = 32
 end
 

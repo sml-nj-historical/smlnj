@@ -1,4 +1,4 @@
-Group (viscomp-lib.cm)
+Library
 	signature ABELIAN_GROUP
 	signature ABELIAN_GROUP_WITH_INF
 	signature ALL_PAIRS_SHORTEST_PATHS
@@ -87,6 +87,10 @@ Group (viscomp-lib.cm)
 	functor GraphSnapShotFn
 	functor UndirectedGraphFn
 is
+
+	basis.cm
+	comp-lib.cm
+	smlnj-lib.cm
 	../library/sources.cm
 	acyclic-graph.sml
 	bellman-ford.sml

@@ -28,7 +28,7 @@ struct
    let val CFG as G.GRAPH cfg   = IR
        val Dom as G.GRAPH dom   = IR.dom  IR
        val Loop as G.GRAPH loop = IR.loop IR
-       val dominates            = #dominates (Dom.methods Dom)
+       val dominates            = Dom.dominates Dom
        val changed              = ref false
 
        exception GiveUp

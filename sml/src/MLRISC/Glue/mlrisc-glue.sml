@@ -19,11 +19,11 @@ struct
    structure I = F.I
    structure B = F.B
  
-   val viewer  = MLRISC_Control.getString     "viewer"
-   val mlrisc  = MLRISC_Control.getFlag       "mlrisc"
-   val phases  = MLRISC_Control.getStringList "mlrisc-phases"
-   val view_IR = MLRISC_Control.getFlag       "view-IR"
-   val verbose = MLRISC_Control.getFlag       "verbose"
+   val viewer  = MLRiscControl.getString     "viewer"
+   val mlrisc  = MLRiscControl.getFlag       "mlrisc"
+   val phases  = MLRiscControl.getStringList "mlrisc-phases"
+   val view_IR = MLRiscControl.getFlag       "view-IR"
+   val verbose = MLRiscControl.getFlag       "verbose"
 
    fun error msg = MLRiscErrorMsg.error("MLRISCGlue",msg)
 
@@ -37,18 +37,24 @@ struct
        structure P = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm
-       structure Ctrl = MLRISC_Control
+      )
+
+   structure Util = CFGUtilFn
+      (structure CFG = CFG
+       structure P   = P
       )
 
    structure CFG2Cluster = CFG2ClusterFn
-      (structure CFG = CFG
-       structure F   = F
+      (structure CFG  = CFG
+       structure Util = Util
+       structure F    = F
       )
 
    structure Cluster2CFG = Cluster2CFGFn
-      (structure CFG = CFG
-       structure F   = F
-       structure P   = P
+      (structure CFG  = CFG
+       structure Util = Util
+       structure F    = F
+       structure P    = P
       )
        
    structure Dom = DominatorTreeFn(DirectedGraph)
@@ -63,18 +69,12 @@ struct
        structure GraphImpl = DirectedGraph
       )
 
-   structure Util = CFGUtilFn
-      (structure CFG = CFG
-       structure P   = P
-      )
-
    structure IR = MLRISC_IRFn
       (structure CFG         = CFG
        structure CDG         = CDG
        structure Loop        = Loop
        structure GraphViewer = GraphViewer
        structure Util        = Util
-       structure Ctrl        = MLRISC_Control
       )
 
    structure Guess = StaticBranchPredictionFn

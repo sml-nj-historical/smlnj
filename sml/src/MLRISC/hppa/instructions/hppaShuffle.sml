@@ -1,7 +1,8 @@
 functor HppaShuffle(I:HPPAINSTR) : HPPASHUFFLE = struct
   structure I = I
   structure Shuffle = Shuffle(I)
-  type t = {regmap:I.C.register->I.C.register, tmp:I.ea option,                             dst:I.C.register list, src:I.C.register list}
+  type t = {regmap:I.C.cell->I.C.cell, tmp:I.ea option,
+            dst:I.C.cell list, src:I.C.cell list}
 
   fun error msg = MLRiscErrorMsg.error("HppaShuffle",msg)
   val mem = I.Region.memory

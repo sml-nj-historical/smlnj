@@ -35,7 +35,7 @@ structure Control : CONTROL =
       val expandResult = ref false
     end
 
-    structure MLRISC = MLRISC_Control
+    structure MLRISC = MLRiscControl
 
     structure CG : CGCONTROL =
     struct

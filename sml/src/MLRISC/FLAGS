@@ -15,6 +15,9 @@ These flags are set via the MLRISC_Control structure.
 	"dump-interference-graph"	
 		Dumps out the interference graph at each round.
 
+	"x86-cfg-debug"	
+		Debug X86 register allocation
+
     counters:
         "ra-int-spills"
 		Counts the number of integer spill instructions
@@ -36,5 +39,4 @@ These flags are set via the MLRISC_Control structure.
 		an actual spill).
 	
 		
-	
     

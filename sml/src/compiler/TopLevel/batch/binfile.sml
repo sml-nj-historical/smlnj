@@ -8,8 +8,6 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
     structure CB = CompBasic
 
     exception FormatError = CodeObj.FormatError
-    exception NoCodeBug
-    exception NoPickleBug
 
     exception Compile = C.Compile
     exception TopLevelException = C.TopLevelException
@@ -29,18 +27,22 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
     type csegments = C.csegments
     type executable = C.executable
 
-    datatype code
-      = DISCARDED
-      | CSEGS of csegments
-      | CLOSURE of executable
+    fun delay thunk = let
+	val f = ref (fn () => raise Fail "Binfile.delay not initialized")
+	fun first () = let
+	    val r = thunk ()
+	    fun later () = r
+	in
+	    f := later; r
+	end
+    in
+	f := first;
+	fn () => !f ()
+    end
 
     (* pickled data: the data, the pid, and the pickle *)
     type 'a pData =
-       { unpickled: 'a,
-	 pid: pid,
-	 pickled: Word8Vector.vector option ref }
-
-    fun dropPickle { pickled, pid, unpickled } = pickled := NONE
+       { unpickled: unit -> 'a, pid: pid, pickled: Word8Vector.vector }
 
     datatype bfContent =
 	BFC of {
@@ -49,7 +51,8 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		cmData: pid list,
 		senv: senv pData,
 		lambda: lambda option pData,
-		code: code ref
+		csegments: csegments,
+		executable: executable option ref
 	       }
 
     fun staticPidOf (BFC { senv = { pid, ... }, ... }) = pid
@@ -57,27 +60,22 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	if hasExports then SOME (staticPidOf bfc) else NONE
     fun lambdaPidOf (BFC { lambda = { pid, ... }, ... }) = pid
     fun cmDataOf (BFC { cmData, ... }) = cmData
-    fun senvOf (BFC { senv = { unpickled, ... }, ... }) = unpickled
+    fun senvOf (BFC { senv = { unpickled, ... }, ... }) = unpickled ()
     fun symenvOf (bfc as BFC { senv, lambda, hasExports, ... }) =
-	C.mksymenv (exportPidOf bfc, #unpickled lambda)
-
-    fun discardCode (BFC { code, ... }) = code := DISCARDED
-    fun noCode (BFC { code = ref DISCARDED, ... }) = true
-      | noCode _ = false
+	C.mksymenv (exportPidOf bfc, #unpickled lambda ())
 
     local
 	val arch = C.architecture
 
-	fun executableOf (BFC { code = ref (CLOSURE e), ... }) = e
-	  | executableOf (BFC { code = ref DISCARDED, ... }) = raise NoCodeBug
-	  | executableOf (BFC { code = cref as ref (CSEGS cs), ... }) = let
-		val e = C.isolate (C.mkexec cs)
+	fun executableOf (BFC { executable = ref (SOME e), ... }) = e
+	  | executableOf (BFC { executable, csegments, ... }) = let
+		val e = C.isolate (C.mkexec csegments)
 	    in
-		cref := CLOSURE e; e
+		executable := SOME e;
+		e
 	    end
 
-	fun codeSegments (BFC {code = ref (CSEGS s), ... }) = s
-	  | codeSegments _ = raise NoCodeBug
+	fun codeSegments (BFC { csegments, ... }) = csegments
 
 	val fromInt = Word32.fromInt
 	val fromByte = Word32.fromLargeWord o Word8.toLargeWord
@@ -381,46 +379,86 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	      end
     in
 	fun read args = let
-	    val { name, stream = s, senv = context, keep_code} = args
+	    val { name, stream = s, senv = context } = args
 	    val { nExports = ne, lambdaSz = sa2,
 		  res1Sz, res2Sz, codeSz = cs, envSz = es,
 		  imports, exportPid, cmData,
 		  staticPid, lambdaPid } = readHeader s
-	    val lambda_i =
-		if sa2 = 0 then NONE
+	    val (lambda_i, plambda) =
+		if sa2 = 0 then (fn () => NONE,
+				 Word8Vector.fromList [])
 		else let
 		    val bytes = bytesIn (s, sa2)
 		in
-		    UnpickMod.unpickleFLINT { hash = staticPid, pickle = bytes}
+		    (delay (fn () => UnpickMod.unpickleFLINT bytes),
+		     bytes)
 		end
 	    val _ = if res1Sz = 0 andalso res2Sz = 0
 			then () else error "non-zero reserved size"
 	    val code = readCodeList (s, name, cs)
-	    val penv = bytesIn (s, es)
-	    val _ =
-		if Word8Vector.length penv = es then ()
-		else error "missing bytes in bin file"
-	    val b'senv = UnpickMod.unpickleEnv (context, { hash = staticPid,
-							   pickle = penv })
-	    val senv = CMStaticEnv.CM b'senv
+	    val (senv, penv) =
+		if es = 0 then (fn () => CMStaticEnv.empty,
+				Word8Vector.fromList [])
+		else let
+		    val penv = bytesIn (s, es)
+		    val _ =
+			if Word8Vector.length penv = es then ()
+			else error "missing bytes in bin file"
+		    val mkSenv =
+			delay (fn () =>
+			       CMStaticEnv.CM
+			        (UnpickMod.unpickleEnv { context = context,
+							 hash = staticPid,
+							 pickle = penv }))
+		in
+		    (mkSenv, penv)
+		end
 	    val hasExports = isSome exportPid
-	    fun pd (u, p) = { unpickled = u, pid = p, pickled = ref NONE }
+	    fun pd (u, p, pk) = { unpickled = u, pid = p, pickled = pk }
         in
 	    BFC { imports = imports,
 		  hasExports = hasExports,
 		  cmData = cmData,
-		  senv = pd (senv, staticPid),
-		  lambda = pd (lambda_i, lambdaPid),
-		  code = ref (if keep_code then CSEGS code else DISCARDED) }
+		  senv = pd (senv, staticPid, penv),
+		  lambda = pd (lambda_i, lambdaPid, plambda),
+		  csegments = code,
+		  executable = ref NONE }
         end
 
-	fun write {stream = s, content = bfc, keep_code } = let
+	(* compute size of code objects (including length fields) *)
+	fun codeSize (csegs: csegments) =
+	    List.foldl
+	    (fn (co, n) => n + CodeObj.size co + 4)
+	      (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
+	      (#cn csegs)
+
+	(* This function must be kept in sync with the "write" function below.
+	 * It calculates the number of bytes written by a corresponding
+	 * call to "write". *)
+	fun size { content = bfc, nopickle } = let
+	    val BFC { imports, hasExports, senv, cmData, lambda,  ... } = bfc
+	    val { unpickled = lut, pickled = lambdaP, ... } = lambda
+	    val pidSz = Word8Vector.length (Pid.toBytes (#pid senv))
+	    val (_, picki) = pickleImports imports
+	    val csegs = codeSegments bfc
+	in
+	    magicBytes +
+	    9 * 4 +
+	    Word8Vector.length picki +
+	    (if hasExports then pidSz else 0) +
+	    pidSz * (length cmData + 2) +
+	    (if nopickle then 0
+	     else case lut () of NONE => 0 | _ => Word8Vector.length lambdaP) +
+	    codeSize csegs +
+	    (if nopickle then 0 else Word8Vector.length (#pickled senv))
+	end
+	    
+	(* Keep this in sync with "size" (see above). *)
+	fun write { stream = s, content = bfc, nopickle } = let
 	    val BFC { imports, hasExports, cmData, senv, lambda, ... } = bfc
-	    val { pickled = ref senvP, pid = staticPid, ... } = senv
-	    val { pickled = ref lambdaP, pid = lambdaPid, unpickled = lu } =
+	    val { pickled = senvP, pid = staticPid, ... } = senv
+	    val { pickled = lambdaP, pid = lambdaPid, unpickled = lut } =
 		lambda
-	    val senvP = valOf senvP handle Option => raise NoPickleBug
-	    val lambdaP = valOf lambdaP handle Option => raise NoPickleBug
 	    val staticPid = staticPid
 	    val envPids = staticPid :: lambdaPid :: cmData
 	    val (leni, picki) = pickleImports imports
@@ -429,42 +467,39 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    val nei = length envPids
 	    val cmInfoSzB = nei * bytesPerPid
 	    val sa2 =
-		(case lu of
+		(if nopickle then 0
+		 else case lut () of
 		     NONE => 0 
 		   | _ => Word8Vector.length lambdaP)
 	    val res1Sz = 0
 	    val res2Sz = 0
 	    val csegs = codeSegments bfc
-	  (* compute size of code objects (including length fields) *)
-	    val cs = List.foldl
-		  (fn (co, n) => n + CodeObj.size co + 4)
-		    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
-		      (#cn csegs)
+	    val cs = codeSize csegs
 	    fun codeOut c = (
 		  writeInt32 s (CodeObj.size c);
 		  CodeObj.output (s, c))
+	    val (es, writeEnv) =
+		if nopickle then (0, fn () => ())
+		else (Word8Vector.length senvP,
+		      fn () => BinIO.output (s, senvP))
 	in
 	    BinIO.output (s, MAGIC);
-	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB];
-	    app (writeInt32 s) [sa2, res1Sz, res2Sz, cs];
-	    writeInt32 s (Word8Vector.length senvP);
+	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
+				sa2, res1Sz, res2Sz, cs, es];
 	    BinIO.output (s, picki);
 	    writePidList (s, epl);
 	    (* arena1 *)
 	    writePidList (s, envPids);
-	    (* arena2 *)
-	    case lu of NONE => () | _ => BinIO.output (s, lambdaP);
+	    (* arena2 -- pickled flint stuff *)
+	    if sa2 = 0 then () else BinIO.output (s, lambdaP);
 	    (* arena3 is empty *)
 	    (* arena4 is empty *)
 	    (* code objects *)
-	    writeInt32 s (Word8Vector.length(#data csegs));
-	      BinIO.output(s, #data csegs);
+	    writeInt32 s (Word8Vector.length (#data csegs));
+	    BinIO.output(s, #data csegs);
 	    codeOut (#c0 csegs);
 	    app codeOut (#cn csegs);
-	    BinIO.output (s, senvP);
-	    if keep_code then () else discardCode bfc;
-	    dropPickle lambda;
-	    dropPickle senv
+	    writeEnv ()
 	end
 
 	fun create args = let
@@ -484,27 +519,21 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 	    val {hash = lambdaPid, pickle} = PickMod.pickleFLINT inlineExp
 	    val hasExports = isSome exportPid
 	    fun pd (u, p, x) =
-		{ unpickled = u, pid = p, pickled = ref (SOME x) }
+		{ unpickled = fn () => u, pid = p, pickled = x }
 	in
 	    BFC { imports = imports,
 		  hasExports = hasExports,
 		  cmData = cmData,
 		  senv = pd (newstatenv, staticPid, envPickle),
 		  lambda = pd (inlineExp, lambdaPid, pickle),
-		  code = ref (CSEGS code) }
+		  csegments = code,
+		  executable = ref NONE }
 	end
 
-	fun exec (bfc as BFC { imports, ... }, denv) = let
-	    val ndenv = 
-		C.execute { executable = executableOf bfc,
-			    imports = imports,
-			    exportPid = exportPidOf bfc,
-			    dynenv = denv }
-	in
-	    Env.mkenv { static = senvOf bfc,
-		        dynamic = ndenv,
-			symbolic = symenvOf bfc }
-	end
+	fun exec (bfc as BFC { imports, ... }, denv) =
+	    C.execute { executable = executableOf bfc,
+		        imports = imports,
+			exportPid = exportPidOf bfc,
+			dynenv = denv }
     end
 end
-

@@ -1,4 +1,4 @@
-Group (viscomp-lib.cm)
+Library
 	signature CONTROL_DEPENDENCE_GRAPH
 	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
 	signature DJ_GRAPH
@@ -23,6 +23,7 @@ Group (viscomp-lib.cm)
 is
 	../library/sources.cm
 	../graphs/sources.cm
+	comp-lib.cm
 	cdg.sig
 	cdg.sml
 	cfg-restructure.sig
@@ -45,3 +46,5 @@ is
 	reducibility.sml
 	ssa.sig
 	ssa.sml
+
+	basis.cm

@@ -17,10 +17,12 @@ sig
 end 
 
 functor Cluster2CFGFn
-   (structure CFG : CONTROL_FLOW_GRAPH 
-    structure F   : FLOWGRAPH
-    structure P   : INSN_PROPERTIES
-       sharing CFG.I = F.I = P.I 
+   (structure CFG  : CONTROL_FLOW_GRAPH 
+    structure Util : CFG_UTIL
+    structure F    : FLOWGRAPH
+    structure P    : INSN_PROPERTIES
+       sharing Util.CFG = CFG
+       sharing CFG.I = F.I = P.I
        sharing CFG.P = F.P
        sharing CFG.B = F.B
    ) : CLUSTER2CFG =
@@ -31,8 +33,6 @@ struct
     structure F    = F
     structure G    = Graph
     structure W    = CFG.W
-    structure Util = CFGUtilFn(structure CFG = CFG
-                               structure P   = P)
 
     fun error msg = MLRiscErrorMsg.error("Cluster2CFG",msg)
 
@@ -49,8 +49,8 @@ struct
           | first_block (_::bs)                   = first_block bs
           | first_block []                        = error "first_block"
 
-        val reorder = ref true
-        val info = CFG.INFO { regmap       = ref regmap,
+        val reorder = ref false
+        val info = CFG.INFO { regmap       = regmap,
                               firstBlock   = ref(first_block blocks),
                               reorder      = reorder,
                               annotations  = annotations
@@ -186,11 +186,11 @@ struct
                        val l = !labels 
                        val _ = labels := []
                        val { node=(_,CFG.BLOCK{labels=l' as ref [],...}),...} = 
-                           Util.splitEdge CFG {edge=(i,j,e), jump=false};
-                   in  l' := l;
+                           Util.splitEdge CFG {kind=CFG.FUNCTION_ENTRY, 
+                                               edge=(i,j,e), jump=false};
+                   in  l' := l;  
                        app (fn (k,_,_) => Util.updateJumpLabel CFG k) 
-                          (#in_edges cfg j);
-                       reorder := true
+                          (#in_edges cfg j)
                    end
                 val entries = #out_edges cfg ENTRY
            in   app split (#out_edges cfg ENTRY) end

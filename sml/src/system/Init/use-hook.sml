@@ -4,7 +4,7 @@ structure UseHook = struct
     local
 	fun dummy (s: PrimTypes.string) = ()
     in
-	val useHook = ref dummy
+	val useHook = PrimTypes.ref dummy
 	fun use s = InlineT.! useHook s
     end
 end

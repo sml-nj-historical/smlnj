@@ -19,7 +19,7 @@ struct
    (* Hppa is a big endian architecture *)
    
    fun error msg = MLRiscErrorMsg.error("HppaMC",msg)
-   fun makeStream() =
+   fun makeStream _ =
    let infix && || << >> ~>>
        val op << = W.<<
        val op >> = W.>>
@@ -74,16 +74,41 @@ struct
 
    fun emit_CC r = (itow ((regmap r) - 96))
    and emit_CR r = (itow ((regmap r) - 64))
-   and emit_GP r = (itow (regmap r))
    and emit_FP r = (itow ((regmap r) - 32))
+   and emit_GP r = (itow (regmap r))
 
-   fun emit_cmplt (I.ADDR) = (0wx0, 0wx0)
-     | emit_cmplt (I.ADDR_S) = (0wx1, 0wx0)
-     | emit_cmplt (I.ADDR_M) = (0wx0, 0wx1)
-     | emit_cmplt (I.ADDR_SM) = (0wx1, 0wx1)
+   fun emit_farith (I.FADD_S) = (0wx0, 0wx0)
+     | emit_farith (I.FADD_D) = (0wx0, 0wx1)
+     | emit_farith (I.FADD_Q) = (0wx0, 0wx3)
+     | emit_farith (I.FSUB_S) = (0wx1, 0wx0)
+     | emit_farith (I.FSUB_D) = (0wx1, 0wx1)
+     | emit_farith (I.FSUB_Q) = (0wx1, 0wx3)
+     | emit_farith (I.FMPY_S) = (0wx2, 0wx0)
+     | emit_farith (I.FMPY_D) = (0wx2, 0wx1)
+     | emit_farith (I.FMPY_Q) = (0wx2, 0wx3)
+     | emit_farith (I.FDIV_S) = (0wx3, 0wx0)
+     | emit_farith (I.FDIV_D) = (0wx3, 0wx1)
+     | emit_farith (I.FDIV_Q) = (0wx3, 0wx3)
+     | emit_farith (I.XMPYU) = (error "XMPYU")
+   and emit_floadx (I.FLDDX) = (0wxb, 0wx0, 0wx0, 0wx0)
+     | emit_floadx (I.FLDDX_S) = (0wxb, 0wx0, 0wx1, 0wx0)
+     | emit_floadx (I.FLDDX_M) = (0wxb, 0wx0, 0wx0, 0wx1)
+     | emit_floadx (I.FLDDX_SM) = (0wxb, 0wx0, 0wx1, 0wx1)
+     | emit_floadx (I.FLDWX) = (0wx9, 0wx1, 0wx0, 0wx0)
+     | emit_floadx (I.FLDWX_S) = (0wx9, 0wx1, 0wx1, 0wx0)
+     | emit_floadx (I.FLDWX_M) = (0wx9, 0wx1, 0wx0, 0wx1)
+     | emit_floadx (I.FLDWX_SM) = (0wx9, 0wx1, 0wx1, 0wx1)
    and emit_store (I.STW) = (0wx1a : Word32.word)
      | emit_store (I.STH) = (0wx19 : Word32.word)
      | emit_store (I.STB) = (0wx18 : Word32.word)
+   and emit_fstorex (I.FSTDX) = (0wxb, 0wx0, 0wx0, 0wx0)
+     | emit_fstorex (I.FSTDX_S) = (0wxb, 0wx0, 0wx1, 0wx0)
+     | emit_fstorex (I.FSTDX_M) = (0wxb, 0wx0, 0wx0, 0wx1)
+     | emit_fstorex (I.FSTDX_SM) = (0wxb, 0wx0, 0wx1, 0wx1)
+     | emit_fstorex (I.FSTWX) = (0wx9, 0wx1, 0wx0, 0wx0)
+     | emit_fstorex (I.FSTWX_S) = (0wx9, 0wx1, 0wx1, 0wx0)
+     | emit_fstorex (I.FSTWX_M) = (0wx9, 0wx1, 0wx0, 0wx1)
+     | emit_fstorex (I.FSTWX_SM) = (0wx9, 0wx1, 0wx1, 0wx1)
    and emit_fcond (I.False_) = (0wx0 : Word32.word)
      | emit_fcond (I.False) = (0wx1 : Word32.word)
      | emit_fcond (I.?) = (0wx2 : Word32.word)
@@ -116,22 +141,42 @@ struct
      | emit_fcond (I.<=>) = (0wx1d : Word32.word)
      | emit_fcond (I.True_) = (0wx1e : Word32.word)
      | emit_fcond (I.True) = (0wx1f : Word32.word)
-   and emit_floadx (I.FLDDX) = (0wxb, 0wx0, 0wx0, 0wx0)
-     | emit_floadx (I.FLDDX_S) = (0wxb, 0wx0, 0wx1, 0wx0)
-     | emit_floadx (I.FLDDX_M) = (0wxb, 0wx0, 0wx0, 0wx1)
-     | emit_floadx (I.FLDDX_SM) = (0wxb, 0wx0, 0wx1, 0wx1)
-     | emit_floadx (I.FLDWX) = (0wx9, 0wx1, 0wx0, 0wx0)
-     | emit_floadx (I.FLDWX_S) = (0wx9, 0wx1, 0wx1, 0wx0)
-     | emit_floadx (I.FLDWX_M) = (0wx9, 0wx1, 0wx0, 0wx1)
-     | emit_floadx (I.FLDWX_SM) = (0wx9, 0wx1, 0wx1, 0wx1)
-   and emit_fstorex (I.FSTDX) = (0wxb, 0wx0, 0wx0, 0wx0)
-     | emit_fstorex (I.FSTDX_S) = (0wxb, 0wx0, 0wx1, 0wx0)
-     | emit_fstorex (I.FSTDX_M) = (0wxb, 0wx0, 0wx0, 0wx1)
-     | emit_fstorex (I.FSTDX_SM) = (0wxb, 0wx0, 0wx1, 0wx1)
-     | emit_fstorex (I.FSTWX) = (0wx9, 0wx1, 0wx0, 0wx0)
-     | emit_fstorex (I.FSTWX_S) = (0wx9, 0wx1, 0wx1, 0wx0)
-     | emit_fstorex (I.FSTWX_M) = (0wx9, 0wx1, 0wx0, 0wx1)
-     | emit_fstorex (I.FSTWX_SM) = (0wx9, 0wx1, 0wx1, 0wx1)
+   and emit_loadi (I.LDW) = (0wx12 : Word32.word)
+     | emit_loadi (I.LDH) = (0wx11 : Word32.word)
+     | emit_loadi (I.LDB) = (0wx10 : Word32.word)
+   and emit_fmt (I.SGL) = (0wx0 : Word32.word)
+     | emit_fmt (I.DBL) = (0wx1 : Word32.word)
+     | emit_fmt (I.QUAD) = (0wx3 : Word32.word)
+   and emit_bcond (I.EQ) = (0wx1 : Word32.word)
+     | emit_bcond (I.LT) = (0wx2 : Word32.word)
+     | emit_bcond (I.LE) = (0wx3 : Word32.word)
+     | emit_bcond (I.LTU) = (0wx4 : Word32.word)
+     | emit_bcond (I.LEU) = (0wx5 : Word32.word)
+     | emit_bcond (I.NE) = (error "NE")
+     | emit_bcond (I.GE) = (error "GE")
+     | emit_bcond (I.GT) = (error "GT")
+     | emit_bcond (I.GTU) = (error "GTU")
+     | emit_bcond (I.GEU) = (error "GEU")
+   and emit_funary (I.FCPY_S) = (0wx2, 0wx0)
+     | emit_funary (I.FCPY_D) = (0wx2, 0wx1)
+     | emit_funary (I.FCPY_Q) = (0wx2, 0wx3)
+     | emit_funary (I.FABS_S) = (0wx3, 0wx0)
+     | emit_funary (I.FABS_D) = (0wx3, 0wx1)
+     | emit_funary (I.FABS_Q) = (0wx3, 0wx3)
+     | emit_funary (I.FSQRT_S) = (0wx4, 0wx0)
+     | emit_funary (I.FSQRT_D) = (0wx4, 0wx1)
+     | emit_funary (I.FSQRT_Q) = (0wx4, 0wx3)
+     | emit_funary (I.FRND_S) = (0wx5, 0wx0)
+     | emit_funary (I.FRND_D) = (0wx5, 0wx1)
+     | emit_funary (I.FRND_Q) = (0wx5, 0wx3)
+   and emit_bitcond (I.BSET) = (0wx2 : Word32.word)
+     | emit_bitcond (I.BCLR) = (0wx6 : Word32.word)
+   and emit_cmplt (I.ADDR) = (0wx0, 0wx0)
+     | emit_cmplt (I.ADDR_S) = (0wx1, 0wx0)
+     | emit_cmplt (I.ADDR_M) = (0wx0, 0wx1)
+     | emit_cmplt (I.ADDR_SM) = (0wx1, 0wx1)
+   and emit_cmp (I.COMBT) = (0wx20 : Word32.word)
+     | emit_cmp (I.COMBF) = (0wx22 : Word32.word)
    and emit_fcnv (I.FCNVFF_SD) = (0wx0, 0wx0, 0wx1)
      | emit_fcnv (I.FCNVFF_SQ) = (0wx0, 0wx0, 0wx3)
      | emit_fcnv (I.FCNVFF_DS) = (0wx0, 0wx1, 0wx0)
@@ -147,46 +192,8 @@ struct
      | emit_fcnv (I.FCNVFXT_S) = (0wx3, 0wx0, 0wx0)
      | emit_fcnv (I.FCNVFXT_D) = (0wx3, 0wx1, 0wx0)
      | emit_fcnv (I.FCNVFXT_Q) = (0wx3, 0wx3, 0wx0)
-   and emit_arithi (I.ADDI) = (0wx2d, 0wx0)
-     | emit_arithi (I.ADDIO) = (0wx2d, 0wx1)
-     | emit_arithi (I.ADDIL) = (error "ADDIL")
-     | emit_arithi (I.SUBI) = (0wx25, 0wx0)
-     | emit_arithi (I.SUBIO) = (0wx25, 0wx1)
-   and emit_fmt (I.SGL) = (0wx0 : Word32.word)
-     | emit_fmt (I.DBL) = (0wx1 : Word32.word)
-     | emit_fmt (I.QUAD) = (0wx3 : Word32.word)
-   and emit_bitcond (I.BSET) = (0wx2 : Word32.word)
-     | emit_bitcond (I.BCLR) = (0wx6 : Word32.word)
    and emit_cmpi (I.COMIBT) = (0wx21 : Word32.word)
      | emit_cmpi (I.COMIBF) = (0wx23 : Word32.word)
-   and emit_loadi (I.LDW) = (0wx12 : Word32.word)
-     | emit_loadi (I.LDH) = (0wx11 : Word32.word)
-     | emit_loadi (I.LDB) = (0wx10 : Word32.word)
-   and emit_cmp (I.COMBT) = (0wx20 : Word32.word)
-     | emit_cmp (I.COMBF) = (0wx22 : Word32.word)
-   and emit_farith (I.FADD_S) = (0wx0, 0wx0)
-     | emit_farith (I.FADD_D) = (0wx0, 0wx1)
-     | emit_farith (I.FADD_Q) = (0wx0, 0wx3)
-     | emit_farith (I.FSUB_S) = (0wx1, 0wx0)
-     | emit_farith (I.FSUB_D) = (0wx1, 0wx1)
-     | emit_farith (I.FSUB_Q) = (0wx1, 0wx3)
-     | emit_farith (I.FMPY_S) = (0wx2, 0wx0)
-     | emit_farith (I.FMPY_D) = (0wx2, 0wx1)
-     | emit_farith (I.FMPY_Q) = (0wx2, 0wx3)
-     | emit_farith (I.FDIV_S) = (0wx3, 0wx0)
-     | emit_farith (I.FDIV_D) = (0wx3, 0wx1)
-     | emit_farith (I.FDIV_Q) = (0wx3, 0wx3)
-     | emit_farith (I.XMPYU) = (error "XMPYU")
-   and emit_bcond (I.EQ) = (0wx1 : Word32.word)
-     | emit_bcond (I.LT) = (0wx2 : Word32.word)
-     | emit_bcond (I.LE) = (0wx3 : Word32.word)
-     | emit_bcond (I.LTU) = (0wx4 : Word32.word)
-     | emit_bcond (I.LEU) = (0wx5 : Word32.word)
-     | emit_bcond (I.NE) = (error "NE")
-     | emit_bcond (I.GE) = (error "GE")
-     | emit_bcond (I.GT) = (error "GT")
-     | emit_bcond (I.GTU) = (error "GTU")
-     | emit_bcond (I.GEU) = (error "GEU")
    and emit_arith (I.ADD) = (0wx18 : Word32.word)
      | emit_arith (I.ADDL) = (0wx28 : Word32.word)
      | emit_arith (I.ADDO) = (0wx38 : Word32.word)
@@ -205,6 +212,11 @@ struct
      | emit_arith (I.XOR) = (0wxa : Word32.word)
      | emit_arith (I.AND) = (0wx8 : Word32.word)
      | emit_arith (I.ANDCM) = (0wx0 : Word32.word)
+   and emit_arithi (I.ADDI) = (0wx2d, 0wx0)
+     | emit_arithi (I.ADDIO) = (0wx2d, 0wx1)
+     | emit_arithi (I.ADDIL) = (error "ADDIL")
+     | emit_arithi (I.SUBI) = (0wx25, 0wx0)
+     | emit_arithi (I.SUBIO) = (0wx25, 0wx1)
    and emit_load (I.LDWX) = (0wx2, 0wx0, 0wx0)
      | emit_load (I.LDWX_S) = (0wx2, 0wx1, 0wx0)
      | emit_load (I.LDWX_M) = (0wx2, 0wx0, 0wx1)
@@ -215,162 +227,17 @@ struct
      | emit_load (I.LDHX_SM) = (0wx1, 0wx1, 0wx1)
      | emit_load (I.LDBX) = (0wx0, 0wx0, 0wx0)
      | emit_load (I.LDBX_M) = (0wx0, 0wx0, 0wx1)
-   and emit_funary (I.FCPY_S) = (0wx2, 0wx0)
-     | emit_funary (I.FCPY_D) = (0wx2, 0wx1)
-     | emit_funary (I.FCPY_Q) = (0wx2, 0wx3)
-     | emit_funary (I.FABS_S) = (0wx3, 0wx0)
-     | emit_funary (I.FABS_D) = (0wx3, 0wx1)
-     | emit_funary (I.FABS_Q) = (0wx3, 0wx3)
-     | emit_funary (I.FSQRT_S) = (0wx4, 0wx0)
-     | emit_funary (I.FSQRT_D) = (0wx4, 0wx1)
-     | emit_funary (I.FSQRT_Q) = (0wx4, 0wx3)
-     | emit_funary (I.FRND_S) = (0wx5, 0wx0)
-     | emit_funary (I.FRND_D) = (0wx5, 0wx1)
-     | emit_funary (I.FRND_Q) = (0wx5, 0wx3)
 
-   fun ShoftDispShort {Op, b, r, s, a, cc, ext4, m, im5} = (eWord32 ((im5 && 0wx1f) + ((m << 0wx5) + ((ext4 << 0wx6) + ((cc << 0wxa) + ((a << 0wxd) + ((s << 0wxe) + ((r << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000))))))))))
-   and FloatOp2Maj0C {r1, r2, sop, fmt, n, c} = let
-          val r1 = (emit_FP r1)
-          val r2 = (emit_FP r2)
-       in (eWord32 (c + ((n << 0wx5) + ((fmt << 0wxb) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx30000400)))))))
-       end
-
-   and FloatOp0Maj0C {r, sop, fmt, t} = let
-          val r = (emit_FP r)
-          val t = (emit_FP t)
-       in (eWord32 (t + ((fmt << 0wxb) + ((sop << 0wxd) + ((r << 0wx15) + 0wx30000000)))))
-       end
-
-   and FloatOp2Maj0E {r1, r2, sop, r22, f, r11, c} = let
-          val r1 = (emit_FP r1)
-          val r2 = (emit_FP r2)
-       in (eWord32 (c + ((r11 << 0wx7) + ((f << 0wxb) + ((r22 << 0wxc) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx38000400))))))))
-       end
-
-   and FloatOp0Maj0E {r, sop, fmt, r2, t2, t} = let
-          val r = (emit_FP r)
-          val t = (emit_FP t)
-       in (eWord32 (t + ((t2 << 0wx6) + ((r2 << 0wx7) + ((fmt << 0wxb) + ((sop << 0wxd) + ((r << 0wx15) + 0wx38000000)))))))
-       end
-
-   and Break {Op, im13, ext8, im5} = (eWord32 ((im5 && 0wx1f) + ((ext8 << 0wx5) + (((im13 && 0wx1fff) << 0wxd) + (Op << 0wx1a)))))
-   and CoProcShort {Op, b, im5, s, a, ls, uid, rt} = let
-          val b = (emit_GP b)
-          val rt = (emit_FP rt)
-       in (eWord32 (rt + ((uid << 0wx6) + ((ls << 0wx9) + ((a << 0wxd) + ((s << 0wxe) + ((im5 << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000)))))))))
-       end
-
-   and Nop {nop} = (if nop
-          then (NOP {})
-          else ())
-   and ConditionalBranch {Op, r2, r1, c, w1, n, w} = let
-          val r2 = (emit_GP r2)
-          val r1 = (emit_GP r1)
-          val c = (emit_bcond c)
-          val n = (emit_bool n)
-       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((r1 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a))))))))
-       end
-
-   and Shift {Op, r2, r1, ext3, cp, t} = let
-          val r2 = (emit_GP r2)
-          val r1 = (emit_GP r1)
+   fun Arithi {Op, r, t, e, im11} = let
+          val r = (emit_GP r)
           val t = (emit_GP t)
-       in (eWord32 (t + ((cp << 0wx5) + ((ext3 << 0wxa) + ((r1 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a)))))))
-       end
-
-   and Compare {r2, r1, c, f, ext, t} = let
-          val r2 = (emit_GP r2)
-          val r1 = (emit_GP r1)
-          val t = (emit_GP t)
-       in (eWord32 (t + ((ext << 0wx6) + ((f << 0wxc) + ((c << 0wxd) + ((r1 << 0wx10) + ((r2 << 0wx15) + 0wx8000000)))))))
-       end
-
-   and FloatMultiOp {rm1, rm2, ta, ra, f, tm} = (eWord32 (tm + ((f << 0wx5) + ((ra << 0wx6) + ((ta << 0wxb) + ((rm2 << 0wx10) + ((rm1 << 0wx15) + 0wx38000000)))))))
-   and IndexedLoad {Op, b, x, u, ext4, m, t} = let
-          val b = (emit_GP b)
-          val x = (emit_GP x)
-          val t = (emit_GP t)
-       in (eWord32 (t + ((m << 0wx5) + ((ext4 << 0wx6) + ((u << 0wxd) + ((x << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wxc000))))))))
+       in (eWord32 ((im11 && 0wx7ff) + ((e << 0wxb) + ((t << 0wx10) + ((r << 0wx15) + (Op << 0wx1a))))))
        end
 
    and FloatOp1Maj0C {r, sop, df, sf, t} = let
           val r = (emit_FP r)
           val t = (emit_FP t)
        in (eWord32 (t + ((sf << 0wxb) + ((df << 0wxd) + ((sop << 0wxf) + ((r << 0wx15) + 0wx30000200))))))
-       end
-
-   and NOP {} = (eWord32 0wx8000240)
-   and FloatOp1Maj0E {r, sop, df, sf, r2, t2, t} = let
-          val r = (emit_FP r)
-          val t = (emit_FP t)
-       in (eWord32 (t + ((t2 << 0wx6) + ((r2 << 0wx7) + ((sf << 0wxb) + ((df << 0wxd) + ((sop << 0wxf) + ((r << 0wx15) + 0wx38000200))))))))
-       end
-
-   and Extract {Op, r, t, ext3, p, clen} = let
-          val r = (emit_GP r)
-          val t = (emit_GP t)
-          val p = (emit_int p)
-          val clen = (emit_int clen)
-       in (eWord32 (clen + ((p << 0wx5) + ((ext3 << 0wxa) + ((t << 0wx10) + ((r << 0wx15) + (Op << 0wx1a)))))))
-       end
-
-   and Store {st, b, r, im14} = let
-          val st = (emit_store st)
-          val b = (emit_GP b)
-          val r = (emit_GP r)
-       in (eWord32 ((im14 && 0wx3fff) + ((r << 0wx10) + ((b << 0wx15) + (st << 0wx1a)))))
-       end
-
-   and BranchExternal {Op, b, w1, s, w2, n, w} = let
-          val b = (emit_GP b)
-          val n = (emit_bool n)
-       in (eWord32 (w + ((n << 0wx1) + ((w2 << 0wx2) + ((s << 0wxd) + ((w1 << 0wx10) + ((b << 0wx15) + (Op << 0wx1a))))))))
-       end
-
-   and CoProcIndexed {Op, b, x, s, u, ls, uid, m, rt} = let
-          val b = (emit_GP b)
-          val x = (emit_GP x)
-          val rt = (emit_FP rt)
-       in (eWord32 (rt + ((m << 0wx5) + ((uid << 0wx6) + ((ls << 0wx9) + ((u << 0wxd) + ((s << 0wxe) + ((x << 0wx10) + ((b << 0wx15) + (Op << 0wx1a))))))))))
-       end
-
-   and LongImmed {Op, r, im21} = let
-          val r = (emit_GP r)
-       in (eWord32 ((im21 && 0wx1fffff) + ((r << 0wx15) + (Op << 0wx1a))))
-       end
-
-   and BranchAndLink {Op, t, w1, ext3, w2, n, w} = let
-          val t = (emit_GP t)
-          val n = (emit_bool n)
-       in (eWord32 (w + ((n << 0wx1) + ((w2 << 0wx2) + ((ext3 << 0wxd) + ((w1 << 0wx10) + ((t << 0wx15) + (Op << 0wx1a))))))))
-       end
-
-   and ShortDispLoad {Op, b, im5, s, a, cc, ext4, m, t} = let
-          val b = (emit_GP b)
-          val t = (emit_GP t)
-       in (eWord32 (t + ((m << 0wx5) + ((ext4 << 0wx6) + ((cc << 0wxa) + ((a << 0wxd) + ((s << 0wxe) + (((im5 && 0wx1f) << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000))))))))))
-       end
-
-   and FTest {} = (eWord32 0wx30002420)
-   and BranchOnBit {p, r, c, w1, n, w} = let
-          val p = (emit_int p)
-          val r = (emit_GP r)
-          val n = (emit_bool n)
-       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((r << 0wx10) + ((p << 0wx15) + 0wxc4000000)))))))
-       end
-
-   and Deposit {Op, t, r, ext3, cp, clen} = let
-          val t = (emit_GP t)
-          val r = (emit_GP r)
-          val cp = (emit_int cp)
-          val clen = (emit_int clen)
-       in (eWord32 (clen + ((cp << 0wx5) + ((ext3 << 0wxa) + ((r << 0wx10) + ((t << 0wx15) + (Op << 0wx1a)))))))
-       end
-
-   and MoveToControlReg {Op, t, r, rv, ext8} = let
-          val t = (emit_CR t)
-          val r = (emit_GP r)
-       in (eWord32 ((ext8 << 0wx5) + ((rv << 0wxd) + ((r << 0wx10) + ((t << 0wx15) + (Op << 0wx1a))))))
        end
 
    and FloatOp3Maj0C {r1, r2, sop, fmt, n, t} = let
@@ -380,17 +247,23 @@ struct
        in (eWord32 (t + ((n << 0wx5) + ((fmt << 0wxb) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx30000600)))))))
        end
 
-   and ConditionalBranchi {Op, r2, im5, c, w1, n, w} = let
-          val r2 = (emit_GP r2)
-          val c = (emit_bcond c)
-          val n = (emit_bool n)
-       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((im5 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a))))))))
+   and FloatOp1Maj0E {r, sop, df, sf, r2, t2, t} = let
+          val r = (emit_FP r)
+          val t = (emit_FP t)
+       in (eWord32 (t + ((t2 << 0wx6) + ((r2 << 0wx7) + ((sf << 0wxb) + ((df << 0wxd) + ((sop << 0wxf) + ((r << 0wx15) + 0wx38000200))))))))
        end
 
-   and Load {Op, b, t, im14} = let
+   and FloatOp3Maj0E {r1, r2, sop, r22, f, r11, t} = let
+          val r1 = (emit_FP r1)
+          val r2 = (emit_FP r2)
+          val t = (emit_FP t)
+       in (eWord32 (t + ((r11 << 0wx7) + ((f << 0wxb) + ((r22 << 0wxc) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx38000600))))))))
+       end
+
+   and CoProcShort {Op, b, im5, s, a, ls, uid, rt} = let
           val b = (emit_GP b)
-          val t = (emit_GP t)
-       in (eWord32 ((im14 && 0wx3fff) + ((t << 0wx10) + ((b << 0wx15) + (Op << 0wx1a)))))
+          val rt = (emit_FP rt)
+       in (eWord32 (rt + ((uid << 0wx6) + ((ls << 0wx9) + ((a << 0wxd) + ((s << 0wxe) + ((im5 << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000)))))))))
        end
 
    and Arith {r2, r1, a, t} = let
@@ -401,24 +274,151 @@ struct
        in (eWord32 (t + ((a << 0wx6) + ((r1 << 0wx10) + ((r2 << 0wx15) + 0wx8000000)))))
        end
 
-   and Arithi {Op, r, t, e, im11} = let
-          val r = (emit_GP r)
-          val t = (emit_GP t)
-       in (eWord32 ((im11 && 0wx7ff) + ((e << 0wxb) + ((t << 0wx10) + ((r << 0wx15) + (Op << 0wx1a))))))
-       end
-
-   and FloatOp3Maj0E {r1, r2, sop, r22, f, r11, t} = let
-          val r1 = (emit_FP r1)
-          val r2 = (emit_FP r2)
-          val t = (emit_FP t)
-       in (eWord32 (t + ((r11 << 0wx7) + ((f << 0wxb) + ((r22 << 0wxc) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx38000600))))))))
-       end
-
    and BranchVectored {Op, t, x, ext3, n} = let
           val t = (emit_GP t)
           val x = (emit_GP x)
           val n = (emit_bool n)
        in (eWord32 ((n << 0wx1) + ((ext3 << 0wxd) + ((x << 0wx10) + ((t << 0wx15) + (Op << 0wx1a))))))
+       end
+
+   and LongImmed {Op, r, im21} = let
+          val r = (emit_GP r)
+       in (eWord32 ((im21 && 0wx1fffff) + ((r << 0wx15) + (Op << 0wx1a))))
+       end
+
+   and Shift {Op, r2, r1, ext3, cp, t} = let
+          val r2 = (emit_GP r2)
+          val r1 = (emit_GP r1)
+          val t = (emit_GP t)
+       in (eWord32 (t + ((cp << 0wx5) + ((ext3 << 0wxa) + ((r1 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a)))))))
+       end
+
+   and IndexedLoad {Op, b, x, u, ext4, m, t} = let
+          val b = (emit_GP b)
+          val x = (emit_GP x)
+          val t = (emit_GP t)
+       in (eWord32 (t + ((m << 0wx5) + ((ext4 << 0wx6) + ((u << 0wxd) + ((x << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wxc000))))))))
+       end
+
+   and Break {Op, im13, ext8, im5} = (eWord32 ((im5 && 0wx1f) + ((ext8 << 0wx5) + (((im13 && 0wx1fff) << 0wxd) + (Op << 0wx1a)))))
+   and FTest {} = (eWord32 0wx30002420)
+   and Compare {r2, r1, c, f, ext, t} = let
+          val r2 = (emit_GP r2)
+          val r1 = (emit_GP r1)
+          val t = (emit_GP t)
+       in (eWord32 (t + ((ext << 0wx6) + ((f << 0wxc) + ((c << 0wxd) + ((r1 << 0wx10) + ((r2 << 0wx15) + 0wx8000000)))))))
+       end
+
+   and CoProcIndexed {Op, b, x, s, u, ls, uid, m, rt} = let
+          val b = (emit_GP b)
+          val x = (emit_GP x)
+          val rt = (emit_FP rt)
+       in (eWord32 (rt + ((m << 0wx5) + ((uid << 0wx6) + ((ls << 0wx9) + ((u << 0wxd) + ((s << 0wxe) + ((x << 0wx10) + ((b << 0wx15) + (Op << 0wx1a))))))))))
+       end
+
+   and Store {st, b, r, im14} = let
+          val st = (emit_store st)
+          val b = (emit_GP b)
+          val r = (emit_GP r)
+       in (eWord32 ((im14 && 0wx3fff) + ((r << 0wx10) + ((b << 0wx15) + (st << 0wx1a)))))
+       end
+
+   and FloatOp0Maj0C {r, sop, fmt, t} = let
+          val r = (emit_FP r)
+          val t = (emit_FP t)
+       in (eWord32 (t + ((fmt << 0wxb) + ((sop << 0wxd) + ((r << 0wx15) + 0wx30000000)))))
+       end
+
+   and FloatMultiOp {rm1, rm2, ta, ra, f, tm} = (eWord32 (tm + ((f << 0wx5) + ((ra << 0wx6) + ((ta << 0wxb) + ((rm2 << 0wx10) + ((rm1 << 0wx15) + 0wx38000000)))))))
+   and Load {Op, b, t, im14} = let
+          val b = (emit_GP b)
+          val t = (emit_GP t)
+       in (eWord32 ((im14 && 0wx3fff) + ((t << 0wx10) + ((b << 0wx15) + (Op << 0wx1a)))))
+       end
+
+   and FloatOp2Maj0C {r1, r2, sop, fmt, n, c} = let
+          val r1 = (emit_FP r1)
+          val r2 = (emit_FP r2)
+       in (eWord32 (c + ((n << 0wx5) + ((fmt << 0wxb) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx30000400)))))))
+       end
+
+   and FloatOp0Maj0E {r, sop, fmt, r2, t2, t} = let
+          val r = (emit_FP r)
+          val t = (emit_FP t)
+       in (eWord32 (t + ((t2 << 0wx6) + ((r2 << 0wx7) + ((fmt << 0wxb) + ((sop << 0wxd) + ((r << 0wx15) + 0wx38000000)))))))
+       end
+
+   and ShoftDispShort {Op, b, r, s, a, cc, ext4, m, im5} = (eWord32 ((im5 && 0wx1f) + ((m << 0wx5) + ((ext4 << 0wx6) + ((cc << 0wxa) + ((a << 0wxd) + ((s << 0wxe) + ((r << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000))))))))))
+   and FloatOp2Maj0E {r1, r2, sop, r22, f, r11, c} = let
+          val r1 = (emit_FP r1)
+          val r2 = (emit_FP r2)
+       in (eWord32 (c + ((r11 << 0wx7) + ((f << 0wxb) + ((r22 << 0wxc) + ((sop << 0wxd) + ((r2 << 0wx10) + ((r1 << 0wx15) + 0wx38000400))))))))
+       end
+
+   and Deposit {Op, t, r, ext3, cp, clen} = let
+          val t = (emit_GP t)
+          val r = (emit_GP r)
+          val cp = (emit_int cp)
+          val clen = (emit_int clen)
+       in (eWord32 (clen + ((cp << 0wx5) + ((ext3 << 0wxa) + ((r << 0wx10) + ((t << 0wx15) + (Op << 0wx1a)))))))
+       end
+
+   and Extract {Op, r, t, ext3, p, clen} = let
+          val r = (emit_GP r)
+          val t = (emit_GP t)
+          val p = (emit_int p)
+          val clen = (emit_int clen)
+       in (eWord32 (clen + ((p << 0wx5) + ((ext3 << 0wxa) + ((t << 0wx10) + ((r << 0wx15) + (Op << 0wx1a)))))))
+       end
+
+   and ConditionalBranchi {Op, r2, im5, c, w1, n, w} = let
+          val r2 = (emit_GP r2)
+          val c = (emit_bcond c)
+          val n = (emit_bool n)
+       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((im5 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a))))))))
+       end
+
+   and ShortDispLoad {Op, b, im5, s, a, cc, ext4, m, t} = let
+          val b = (emit_GP b)
+          val t = (emit_GP t)
+       in (eWord32 (t + ((m << 0wx5) + ((ext4 << 0wx6) + ((cc << 0wxa) + ((a << 0wxd) + ((s << 0wxe) + (((im5 && 0wx1f) << 0wx10) + ((b << 0wx15) + ((Op << 0wx1a) + 0wx1000))))))))))
+       end
+
+   and BranchExternal {Op, b, w1, s, w2, n, w} = let
+          val b = (emit_GP b)
+          val n = (emit_bool n)
+       in (eWord32 (w + ((n << 0wx1) + ((w2 << 0wx2) + ((s << 0wxd) + ((w1 << 0wx10) + ((b << 0wx15) + (Op << 0wx1a))))))))
+       end
+
+   and ConditionalBranch {Op, r2, r1, c, w1, n, w} = let
+          val r2 = (emit_GP r2)
+          val r1 = (emit_GP r1)
+          val c = (emit_bcond c)
+          val n = (emit_bool n)
+       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((r1 << 0wx10) + ((r2 << 0wx15) + (Op << 0wx1a))))))))
+       end
+
+   and MoveToControlReg {Op, t, r, rv, ext8} = let
+          val t = (emit_CR t)
+          val r = (emit_GP r)
+       in (eWord32 ((ext8 << 0wx5) + ((rv << 0wxd) + ((r << 0wx10) + ((t << 0wx15) + (Op << 0wx1a))))))
+       end
+
+   and BranchOnBit {p, r, c, w1, n, w} = let
+          val p = (emit_int p)
+          val r = (emit_GP r)
+          val n = (emit_bool n)
+       in (eWord32 (w + ((n << 0wx1) + ((w1 << 0wx2) + ((c << 0wxd) + ((r << 0wx10) + ((p << 0wx15) + 0wxc4000000)))))))
+       end
+
+   and NOP {} = (eWord32 0wx8000240)
+   and Nop {nop} = (if nop
+          then (NOP {})
+          else ())
+   and BranchAndLink {Op, t, w1, ext3, w2, n, w} = let
+          val t = (emit_GP t)
+          val n = (emit_bool n)
+       in (eWord32 (w + ((n << 0wx1) + ((w2 << 0wx2) + ((ext3 << 0wxd) + ((w1 << 0wx10) + ((t << 0wx15) + (Op << 0wx1a))))))))
        end
 
 
@@ -597,6 +597,13 @@ struct
      | emitInstr (I.BCONDI{cmpi, bc, i, r2, n, nop, t, f}) = (bcondi (cmpi, bc, i, r2, n, t, nop))
      | emitInstr (I.BB{bc, r, p, n, nop, t, f}) = (branchOnBit (bc, r, p, n, t, nop))
      | emitInstr (I.B{lab, n}) = (branchLink (0wx3a, 0, lab, 0wx0, n))
+     | emitInstr (I.BE{b, d, sr, n, labs}) = let
+
+(*#line 517.1 "hppa/hppa.md"*)
+          val(w, w1, w2) = (assemble_17 (opn d))
+       in (BranchExternal {Op=0wx38, b=b, w1=w1, s=(assemble_3 (itow sr)), w2=w2, n=n, w=w})
+       end
+
      | emitInstr (I.BV{x, b, labs, n}) = (BranchVectored {Op=0wx3a, t=b, x=x, ext3=0wx6, n=n})
      | emitInstr (I.BLR{x, t, labs, n}) = (BranchVectored {Op=0wx3a, t=t, x=x, ext3=0wx2, n=n})
      | emitInstr (I.BL{x, t, defs, uses, n}) = (error "BL")
@@ -617,7 +624,7 @@ struct
        )
      | emitInstr (I.FSTOREX{fstx, b, x, r, mem}) = let
 
-(*#line 571.1 "hppa/hppa.md"*)
+(*#line 578.1 "hppa/hppa.md"*)
           val(Op, uid, u, m) = (emit_fstorex fstx)
        in (CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx1, uid=uid, rt=r})
        end
@@ -630,7 +637,7 @@ struct
        )
      | emitInstr (I.FLOADX{flx, b, x, t, mem}) = let
 
-(*#line 586.1 "hppa/hppa.md"*)
+(*#line 593.1 "hppa/hppa.md"*)
           val(Op, uid, u, m) = (emit_floadx flx)
        in (CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx0, uid=uid, rt=t})
        end
@@ -641,7 +648,7 @@ struct
         I.XMPYU => (FloatOp3Maj0E {sop=0wx2, f=0wx1, r1=r1, r2=r2, t=t, r11=0wx0, r22=0wx0})
       | _ => let
 
-(*#line 594.1 "hppa/hppa.md"*)
+(*#line 601.1 "hppa/hppa.md"*)
            val(sop, fmt) = (emit_farith fa)
         in (FloatOp3Maj0C {sop=sop, r1=r1, r2=r2, t=t, n=0wx0, fmt=fmt})
         end
@@ -649,14 +656,14 @@ struct
        )
      | emitInstr (I.FUNARY{fu, f, t}) = let
 
-(*#line 600.1 "hppa/hppa.md"*)
+(*#line 607.1 "hppa/hppa.md"*)
           val(sop, fmt) = (emit_funary fu)
        in (FloatOp0Maj0C {r=f, t=t, sop=sop, fmt=fmt})
        end
 
      | emitInstr (I.FCNV{fcnv, f, t}) = let
 
-(*#line 607.1 "hppa/hppa.md"*)
+(*#line 614.1 "hppa/hppa.md"*)
           val(sop, sf, df) = (emit_fcnv fcnv)
        in (FloatOp1Maj0E {r=f, t=t, sop=sop, sf=sf, df=df, r2=0wx1, t2=0wx0})
        end
@@ -675,16 +682,18 @@ struct
            emitInstr
        end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
                 blockName=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

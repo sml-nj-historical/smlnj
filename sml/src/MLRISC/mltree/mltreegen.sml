@@ -19,6 +19,15 @@ functor MLTreeGen
       * We'll try to promote to the next largest size.
       *)
      val naturalWidths : T.ty list  
+
+     (*
+      * Are integers of widths less than the size of integer word.
+      * automatically sign extended, zero extended, or neither.
+      * When in doubt, choose neither since it is conservative.
+      *)
+     datatype rep = SE | ZE | NEITHER
+     val rep : rep
+
     ) : MLTREEGEN =
 struct
 
@@ -31,38 +40,53 @@ struct
    fun size(T.REG(ty,_)) = ty
      | size(T.LI _) = intTy
      | size(T.LI32 _) = intTy
+     | size(T.LI64 _) = intTy
      | size(T.LABEL _) = intTy
      | size(T.CONST _) = intTy
      | size(T.ADD(ty,_,_)) = ty
      | size(T.SUB(ty,_,_)) = ty
      | size(T.MULS(ty,_,_)) = ty
      | size(T.DIVS(ty,_,_)) = ty
+     | size(T.REMS(ty,_,_)) = ty
      | size(T.MULU(ty,_,_)) = ty
      | size(T.DIVU(ty,_,_)) = ty
+     | size(T.REMU(ty,_,_)) = ty
      | size(T.ADDT(ty,_,_)) = ty
      | size(T.SUBT(ty,_,_)) = ty
      | size(T.MULT(ty,_,_)) = ty
      | size(T.DIVT(ty,_,_)) = ty
+     | size(T.REMT(ty,_,_)) = ty
+     | size(T.ANDB(ty,_,_)) = ty
+     | size(T.ORB(ty,_,_)) = ty
+     | size(T.XORB(ty,_,_)) = ty
+     | size(T.NOTB(ty,_)) = ty
+     | size(T.SRA(ty,_,_)) = ty
+     | size(T.SRL(ty,_,_)) = ty
+     | size(T.SLL(ty,_,_)) = ty
+     | size(T.COND(ty,_,_,_)) = ty
      | size(T.LOAD(ty,_,_)) = ty
+     | size(T.LOAD_UNALIGNED(ty,_,_)) = ty
      | size(T.CVTI2I(ty,_,_)) = ty
      | size(T.CVTF2I(ty,_,_)) = ty
      | size(T.SEQ(s,e)) = size e
-     | size(T.COND(ty,_,_,_)) = ty
+     | size(T.EXTENSION(ty,_,_)) = ty
      | size(T.MARK(e,_)) = size e
      | size _ = raise SizeUnknown
 
    fun fsize(T.FREG(ty,_)) = ty
+     | fsize(T.FLOAD(ty,_,_)) = ty
+     | fsize(T.FLOAD_UNALIGNED(ty,_,_)) = ty
      | fsize(T.FADD(ty,_,_)) = ty
      | fsize(T.FSUB(ty,_,_)) = ty
      | fsize(T.FMUL(ty,_,_)) = ty
      | fsize(T.FDIV(ty,_,_)) = ty
-     | fsize(T.FNEG(ty,_)) = ty
      | fsize(T.FABS(ty,_)) = ty
+     | fsize(T.FNEG(ty,_)) = ty
      | fsize(T.FSQRT(ty,_)) = ty
-     | fsize(T.FLOAD(ty,_,_)) = ty
      | fsize(T.CVTI2F(ty,_,_)) = ty
      | fsize(T.CVTF2F(ty,_,_)) = ty
      | fsize(T.FSEQ(_,e)) = fsize e
+     | fsize(T.FEXTENSION(ty,_,_)) = ty
      | fsize(T.FMARK(e,_)) = fsize e
      | fsize _ = raise SizeUnknown
 
@@ -141,6 +165,39 @@ struct
         * two's complement for integer arithmetic?
         *)
        | T.NOTB(ty,e) => T.XORB(ty,e,T.LI ~1)
+
+       (* 
+        * Default ways of converting integers to integers
+        *)
+       | T.CVTI2I(ty,T.SIGN_EXTEND,e) => 
+         let val fromTy = size e
+         in  if fromTy = ty then e
+             else if rep = SE andalso fromTy < ty andalso 
+                     fromTy >= hd naturalWidths then e 
+             else
+             let val shift = T.LI(W - fromTy)
+             in  T.SRA(W,T.SLL(W,e,shift),shift) 
+             end 
+         end
+       | T.CVTI2I(ty,T.ZERO_EXTEND,e) => 
+         let val fromTy = size e
+         in  if fromTy <= ty then e
+             else case fromTy of
+                    8  => T.ANDB(ty,e,T.LI32 0wxff) 
+                  | 16 => T.ANDB(ty,e,T.LI32 0wxffff) 
+                  | 32 => T.ANDB(ty,e,T.LI32 0wxffffffff) 
+                  | _  => raise T.Unsupported("unknown expression",exp)
+         end
+
+       (* 
+        * Converting floating point to integers.
+        * The following rule handles the case when ty is not
+        * one of the naturally supported widths on the machine.
+        *)
+       | T.CVTF2I(ty,round,e) => 
+         let val ty' = promoteTy(exp,ty)
+         in  T.CVTI2I(ty,T.SIGN_EXTEND,T.CVTF2I(ty',round,e))
+         end
 
        | exp => raise T.Unsupported("unknown expression",exp)
 

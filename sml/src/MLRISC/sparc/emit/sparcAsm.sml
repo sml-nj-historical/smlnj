@@ -22,14 +22,21 @@ struct
    
    fun error msg = MLRiscErrorMsg.error("SparcAsm",msg)
    
-   fun makeStream() =
+   fun makeStream formatAnnotations =
    let val stream = !AsmStream.asmOutStream
-       fun emit s = TextIO.output(stream,s)
-       fun nl() = emit "\n"
+       fun emit' s = TextIO.output(stream,s)
+       val newline = ref true
+       val tabs = ref 0
+       fun tabbing 0 = ()
+         | tabbing n = (emit' "\t"; tabbing(n-1))
+       fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
+       fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = emit "\t"
-       fun ms n = if n<0 then "-"^Int.toString(~n) 
-                  else Int.toString n
+       fun tab() = tabs := !tabs + 1
+       fun ms n = let val s = Int.toString n
+                  in  if n<0 then "-"^String.substring(s,1,size s-1)
+                      else s
+                  end
        fun emit_label lab = emit(Label.nameOf lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
@@ -44,57 +51,30 @@ struct
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
        fun doNothing _ = ()
+       val emitRegInfo = AsmFormatUtil.reginfo(emit,formatAnnotations)
        fun emitter regmap =
        let
 
-   fun emit_Y r = (emit (C.showY (regmap r)))
-   and emit_CC r = (emit (C.showCC (regmap r)))
-   and emit_PSR r = (emit (C.showPSR (regmap r)))
-   and emit_GP r = (emit (C.showGP (regmap r)))
-   and emit_FSR r = (emit (C.showFSR (regmap r)))
-   and emit_FP r = (emit (C.showFP (regmap r)))
+   fun emit_PSR r = 
+       ((emit (C.showPSR (regmap r))); 
+       (emitRegInfo r))
+   and emit_CC r = 
+       ((emit (C.showCC (regmap r))); 
+       (emitRegInfo r))
+   and emit_Y r = 
+       ((emit (C.showY (regmap r))); 
+       (emitRegInfo r))
+   and emit_FP r = 
+       ((emit (C.showFP (regmap r))); 
+       (emitRegInfo r))
+   and emit_GP r = 
+       ((emit (C.showGP (regmap r))); 
+       (emitRegInfo r))
+   and emit_FSR r = 
+       ((emit (C.showFSR (regmap r))); 
+       (emitRegInfo r))
 
-   fun asm_store (I.STB) = "stb"
-     | asm_store (I.STH) = "sth"
-     | asm_store (I.ST) = "st"
-     | asm_store (I.STX) = "stx"
-     | asm_store (I.STD) = "std"
-   and emit_store x = (emit (asm_store x))
-   and asm_fsize (I.S) = "s"
-     | asm_fsize (I.D) = "d"
-     | asm_fsize (I.Q) = "q"
-   and emit_fsize x = (emit (asm_fsize x))
-   and asm_rcond (I.RZ) = "rz"
-     | asm_rcond (I.RLEZ) = "rlez"
-     | asm_rcond (I.RLZ) = "rlz"
-     | asm_rcond (I.RNZ) = "rnz"
-     | asm_rcond (I.RGZ) = "rgz"
-     | asm_rcond (I.RGEZ) = "rgez"
-   and emit_rcond x = (emit (asm_rcond x))
-   and asm_fload (I.LDF) = "ldf"
-     | asm_fload (I.LDDF) = "lddf"
-     | asm_fload (I.LDQF) = "ldqf"
-     | asm_fload (I.LDFSR) = "ldfsr"
-     | asm_fload (I.LDXFSR) = "ldxfsr"
-   and emit_fload x = (emit (asm_fload x))
-   and asm_branch (I.BN) = "n"
-     | asm_branch (I.BE) = "e"
-     | asm_branch (I.BLE) = "le"
-     | asm_branch (I.BL) = "l"
-     | asm_branch (I.BLEU) = "leu"
-     | asm_branch (I.BCS) = "cs"
-     | asm_branch (I.BNEG) = "neg"
-     | asm_branch (I.BVS) = "vs"
-     | asm_branch (I.BA) = ""
-     | asm_branch (I.BNE) = "ne"
-     | asm_branch (I.BG) = "g"
-     | asm_branch (I.BGE) = "ge"
-     | asm_branch (I.BGU) = "gu"
-     | asm_branch (I.BCC) = "cc"
-     | asm_branch (I.BPOS) = "pos"
-     | asm_branch (I.BVC) = "vs"
-   and emit_branch x = (emit (asm_branch x))
-   and asm_farith1 (I.FiTOs) = "fitos"
+   fun asm_farith1 (I.FiTOs) = "fitos"
      | asm_farith1 (I.FiTOd) = "fitod"
      | asm_farith1 (I.FiTOq) = "fitoq"
      | asm_farith1 (I.FsTOi) = "fstoi"
@@ -119,21 +99,41 @@ struct
      | asm_farith1 (I.FSQRTd) = "fsqrtd"
      | asm_farith1 (I.FSQRTq) = "fsqrtq"
    and emit_farith1 x = (emit (asm_farith1 x))
-   and asm_farith2 (I.FADDs) = "fadds"
-     | asm_farith2 (I.FADDd) = "faddd"
-     | asm_farith2 (I.FADDq) = "faddq"
-     | asm_farith2 (I.FSUBs) = "fsubs"
-     | asm_farith2 (I.FSUBd) = "fsubd"
-     | asm_farith2 (I.FSUBq) = "fsubq"
-     | asm_farith2 (I.FMULs) = "fmuls"
-     | asm_farith2 (I.FMULd) = "fmuld"
-     | asm_farith2 (I.FMULq) = "fmulq"
-     | asm_farith2 (I.FsMULd) = "fsmuld"
-     | asm_farith2 (I.FdMULq) = "fdmulq"
-     | asm_farith2 (I.FDIVs) = "fdivs"
-     | asm_farith2 (I.FDIVd) = "fdivd"
-     | asm_farith2 (I.FDIVq) = "fdivq"
-   and emit_farith2 x = (emit (asm_farith2 x))
+   and asm_store (I.STB) = "stb"
+     | asm_store (I.STH) = "sth"
+     | asm_store (I.ST) = "st"
+     | asm_store (I.STX) = "stx"
+     | asm_store (I.STD) = "std"
+   and emit_store x = (emit (asm_store x))
+   and emit_operand (I.REG GP) = (emit_GP GP)
+     | emit_operand (I.IMMED int) = (emit_int int)
+     | emit_operand (I.LAB labexp) = (emit_labexp labexp)
+     | emit_operand (I.LO labexp) = 
+       ((emit "%lo("); 
+       (emit_labexp labexp); 
+       (emit ")"))
+     | emit_operand (I.HI labexp) = 
+       ((emit "%hi("); 
+       (emit_labexp labexp); 
+       (emit ")"))
+     | emit_operand (I.CONST const) = (emit_const const)
+   and asm_fload (I.LDF) = "ldf"
+     | asm_fload (I.LDDF) = "lddf"
+     | asm_fload (I.LDQF) = "ldqf"
+     | asm_fload (I.LDFSR) = "ldfsr"
+     | asm_fload (I.LDXFSR) = "ldxfsr"
+   and emit_fload x = (emit (asm_fload x))
+   and asm_fstore (I.STF) = "stf"
+     | asm_fstore (I.STDF) = "stdf"
+     | asm_fstore (I.STFSR) = "stfsr"
+   and emit_fstore x = (emit (asm_fstore x))
+   and asm_prediction (I.PT) = "pt"
+     | asm_prediction (I.PN) = "pn"
+   and emit_prediction x = (emit (asm_prediction x))
+   and asm_fsize (I.S) = "s"
+     | asm_fsize (I.D) = "d"
+     | asm_fsize (I.Q) = "q"
+   and emit_fsize x = (emit (asm_fsize x))
    and asm_shift (I.SLL) = "sll"
      | asm_shift (I.SRL) = "srl"
      | asm_shift (I.SRA) = "sra"
@@ -141,6 +141,23 @@ struct
      | asm_shift (I.SRLX) = "srlx"
      | asm_shift (I.SRAX) = "srax"
    and emit_shift x = (emit (asm_shift x))
+   and asm_branch (I.BN) = "n"
+     | asm_branch (I.BE) = "e"
+     | asm_branch (I.BLE) = "le"
+     | asm_branch (I.BL) = "l"
+     | asm_branch (I.BLEU) = "leu"
+     | asm_branch (I.BCS) = "cs"
+     | asm_branch (I.BNEG) = "neg"
+     | asm_branch (I.BVS) = "vs"
+     | asm_branch (I.BA) = ""
+     | asm_branch (I.BNE) = "ne"
+     | asm_branch (I.BG) = "g"
+     | asm_branch (I.BGE) = "ge"
+     | asm_branch (I.BGU) = "gu"
+     | asm_branch (I.BCC) = "cc"
+     | asm_branch (I.BPOS) = "pos"
+     | asm_branch (I.BVC) = "vs"
+   and emit_branch x = (emit (asm_branch x))
    and asm_arith (I.AND) = "and"
      | asm_arith (I.ANDCC) = "andcc"
      | asm_arith (I.ANDN) = "andn"
@@ -184,17 +201,13 @@ struct
      | asm_fcmp (I.FCMPEd) = "fcmped"
      | asm_fcmp (I.FCMPEq) = "fcmpeq"
    and emit_fcmp x = (emit (asm_fcmp x))
-   and asm_load (I.LDSB) = "ldsb"
-     | asm_load (I.LDSH) = "ldsh"
-     | asm_load (I.LDUB) = "ldub"
-     | asm_load (I.LDUH) = "lduh"
-     | asm_load (I.LD) = "ld"
-     | asm_load (I.LDX) = "ldx"
-     | asm_load (I.LDD) = "ldd"
-   and emit_load x = (emit (asm_load x))
-   and asm_prediction (I.PT) = "pt"
-     | asm_prediction (I.PN) = "pn"
-   and emit_prediction x = (emit (asm_prediction x))
+   and asm_rcond (I.RZ) = "rz"
+     | asm_rcond (I.RLEZ) = "rlez"
+     | asm_rcond (I.RLZ) = "rlz"
+     | asm_rcond (I.RNZ) = "rnz"
+     | asm_rcond (I.RGZ) = "rgz"
+     | asm_rcond (I.RGEZ) = "rgez"
+   and emit_rcond x = (emit (asm_rcond x))
    and asm_fbranch (I.FBN) = "fbn"
      | asm_fbranch (I.FBNE) = "fbne"
      | asm_fbranch (I.FBLG) = "fblg"
@@ -212,22 +225,29 @@ struct
      | asm_fbranch (I.FBULE) = "fbule"
      | asm_fbranch (I.FBO) = "fbo"
    and emit_fbranch x = (emit (asm_fbranch x))
-   and emit_operand (I.REG GP) = (emit_GP GP)
-     | emit_operand (I.IMMED int) = (emit_int int)
-     | emit_operand (I.LAB labexp) = (emit_labexp labexp)
-     | emit_operand (I.LO labexp) = 
-       ((emit "%lo("); 
-       (emit_labexp labexp); 
-       (emit ")"))
-     | emit_operand (I.HI labexp) = 
-       ((emit "%hi("); 
-       (emit_labexp labexp); 
-       (emit ")"))
-     | emit_operand (I.CONST const) = (emit_const const)
-   and asm_fstore (I.STF) = "stf"
-     | asm_fstore (I.STDF) = "stdf"
-     | asm_fstore (I.STFSR) = "stfsr"
-   and emit_fstore x = (emit (asm_fstore x))
+   and asm_load (I.LDSB) = "ldsb"
+     | asm_load (I.LDSH) = "ldsh"
+     | asm_load (I.LDUB) = "ldub"
+     | asm_load (I.LDUH) = "lduh"
+     | asm_load (I.LD) = "ld"
+     | asm_load (I.LDX) = "ldx"
+     | asm_load (I.LDD) = "ldd"
+   and emit_load x = (emit (asm_load x))
+   and asm_farith2 (I.FADDs) = "fadds"
+     | asm_farith2 (I.FADDd) = "faddd"
+     | asm_farith2 (I.FADDq) = "faddq"
+     | asm_farith2 (I.FSUBs) = "fsubs"
+     | asm_farith2 (I.FSUBd) = "fsubd"
+     | asm_farith2 (I.FSUBq) = "fsubq"
+     | asm_farith2 (I.FMULs) = "fmuls"
+     | asm_farith2 (I.FMULd) = "fmuld"
+     | asm_farith2 (I.FMULq) = "fmulq"
+     | asm_farith2 (I.FsMULd) = "fsmuld"
+     | asm_farith2 (I.FdMULq) = "fdmulq"
+     | asm_farith2 (I.FDIVs) = "fdivs"
+     | asm_farith2 (I.FDIVd) = "fdivd"
+     | asm_farith2 (I.FDIVq) = "fdivq"
+   and emit_farith2 x = (emit (asm_farith2 x))
 
    fun emit_leaf false = ()
      | emit_leaf true = (emit "l")
@@ -519,16 +539,18 @@ struct
            (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
       in  emitInstr end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
                 blockName=blockName,
-                annotation=annotation
+                annotation=annotation,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

@@ -10,46 +10,73 @@ sig
 
     exception Dominator
 
-    datatype 'n dom_node = 
-       DOM of { node : 'n, level : int, preorder : int, postorder : int }
     type ('n,'e,'g) dom_info
 
-    type ('n,'e,'g) dominator_tree     =
-       ('n dom_node,unit,('n,'e,'g) dom_info) Graph.graph
+    (* Dominator/postdominator trees *) 
+    type ('n,'e,'g) dominator_tree =
+       ('n,unit,('n,'e,'g) dom_info) Graph.graph
     type ('n,'e,'g) postdominator_tree = 
-       ('n dom_node,unit,('n,'e,'g) dom_info) Graph.graph
+       ('n,unit,('n,'e,'g) dom_info) Graph.graph
 
-    type dominator_methods = 
-         { dominates              : Graph.node_id * Graph.node_id -> bool,
-           immediately_dominates  : Graph.node_id * Graph.node_id -> bool,
-           strictly_dominates     : Graph.node_id * Graph.node_id -> bool,
-           postdominates          : Graph.node_id * Graph.node_id -> bool,
-           immediately_postdominates : Graph.node_id * Graph.node_id -> bool,
-           strictly_postdominates : Graph.node_id * Graph.node_id -> bool,
-           control_equivalent     : Graph.node_id * Graph.node_id -> bool,
-           idom         : Graph.node_id -> Graph.node_id, (* ~1 if none *)
-           idoms        : Graph.node_id -> Graph.node_id list,
-           doms         : Graph.node_id -> Graph.node_id list,
-           ipdom        : Graph.node_id -> Graph.node_id, (* ~1 if none *)
-           ipdoms       : Graph.node_id -> Graph.node_id list,
-           pdoms        : Graph.node_id -> Graph.node_id list,
-           dom_lca      : Graph.node_id * Graph.node_id -> Graph.node_id,
-           pdom_lca     : Graph.node_id * Graph.node_id -> Graph.node_id,
-           dom_level    : Graph.node_id -> int,
-           pdom_level   : Graph.node_id -> int,
-           control_equivalent_partitions : unit -> Graph.node_id list list
-         }
+    type node = Graph.node_id
 
-       (* Compute the dominator tree from a flowgraph *)
-    val dominator_trees : ('n,'e,'g) Graph.graph -> 
-                            ('n,'e,'g) dominator_tree * 
-                            ('n,'e,'g) postdominator_tree 
+       (* Compute the (post)dominator tree from a flowgraph *)
+    val makeDominator : ('n,'e,'g) Graph.graph -> ('n,'e,'g) dominator_tree 
+    val makePostdominator : ('n,'e,'g) Graph.graph -> 
+                                ('n,'e,'g) postdominator_tree 
 
-    val methods    : ('n,'e,'g) dominator_tree -> dominator_methods
+    (* The following methods work on both dominator/postdominator trees.
+     * When operating on a postdominator tree, the interpretation of these
+     * methods are reversed in the obvious manner.
+     *) 
+
+        (* Extract the original CFG *)
     val cfg        : ('n,'e,'g) dominator_tree -> ('n,'e,'g) Graph.graph
+
+        (* The height of the dominator tree *)
     val max_levels : ('n,'e,'g) dominator_tree -> int
-    val levels     : ('n,'e,'g) dominator_tree -> int Array.array
-    val idoms      : ('n,'e,'g) dominator_tree -> int Array.array
+
+        (* Return a map from node id -> level (level(root) = 0) *)
+    val levelsMap  : ('n,'e,'g) dominator_tree -> int Array.array
+
+        (* Return a map from node id -> immediate (post)dominator *)
+    val idomsMap   : ('n,'e,'g) dominator_tree -> int Array.array
+
+        (* Immediately (post)dominates? *)
+    val immediately_dominates : ('n,'e,'g) dominator_tree -> node * node -> bool
+
+        (* (Post)dominates? *)
+    val dominates : ('n,'e,'g) dominator_tree -> node * node -> bool
+
+        (* Strictly (post)dominates? *)
+    val strictly_dominates : ('n,'e,'g) dominator_tree -> node * node -> bool
+
+        (* Immediate (post)dominator of a node (~1 if none) *)
+    val idom : ('n,'e,'g) dominator_tree -> node -> node
+
+        (* Nodes that the node immediately (post)dominates *)
+    val idoms : ('n,'e,'g) dominator_tree -> node -> node list
+
+        (* Nodes that the node (post)dominates (includes self) *)
+    val doms : ('n,'e,'g) dominator_tree -> node -> node list
+
+        (* Return the level of a node in the tree *)
+    val level : ('n,'e,'g) dominator_tree -> node -> int 
+
+        (* Return the least common ancestor of a pair of nodes *)
+    val lca : ('n,'e,'g) dominator_tree -> node * node -> node 
+
+    (* The following methods require both the dominator and postdominator trees.
+     *) 
+        (* Are two nodes control equivalent? *)
+    val control_equivalent :
+          ('n,'e,'g) dominator_tree * ('n,'e,'g) postdominator_tree ->
+              node * node -> bool
+
+        (* Compute the control equivalent partitions of a graph *)
+    val control_equivalent_partitions : 
+          ('n,'e,'g) dominator_tree * ('n,'e,'g) postdominator_tree ->
+              node list list
 
 end
 

@@ -6,6 +6,5 @@
 
 structure PPCMC = 
   FLINTComp(
-    structure PPCGen = PPCCG(structure Emitter=PPCMCEmitter)
-    structure Gen=PPCGen
-    fun collect() = (PPCGen.finish(); CodeString.getCodeString()))
+    structure Gen=PPCCG
+    fun collect() = (PPCCG.finish(); CodeString.getCodeString()))

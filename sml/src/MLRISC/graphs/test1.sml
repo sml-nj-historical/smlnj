@@ -1,4 +1,4 @@
-CM.make();
+CM.make "sources.cm";
 structure TestMaxFlow =
 struct
 val G as Graph.GRAPH g = DirectedGraph.graph("foo",(),10) :

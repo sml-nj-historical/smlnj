@@ -68,10 +68,10 @@ sig
    type node = block Graph.node
 
    datatype info = 
-       INFO of { regmap      : C.regmap ref,
+       INFO of { regmap      : C.regmap,
                  annotations : Annotations.annotations ref,
-                 firstBlock  : int ref,
-                 reorder     : bool ref
+                 firstBlock  : int ref, (* id of first block *)
+                 reorder     : bool ref (* has the CFG been reordered? *)
                }
 
    type cfg = (block,edge_info,info) Graph.graph
@@ -96,8 +96,10 @@ sig
    val newFunctionEntry  : int * W.freq ref -> block  (* fun entry node *)
    val copyBlock         : int * block -> block       (* copy a block *)
    val defineLabel       : block -> Label.label       (* define a label *)
-   val emit              : C.regmap -> block -> unit  (* emit assembly *)
-   val show_block        : C.regmap -> block -> string 
+
+               (* emit assembly *)
+   val emit       : Annotations.annotations -> C.regmap -> block -> unit  
+   val show_block : Annotations.annotations -> C.regmap -> block -> string 
 
   (*========================================================================
    *
@@ -111,9 +113,9 @@ sig
    val changed  : cfg -> unit      (* mark cfg as changed *)  
 
    val regmap         : cfg -> C.regmap
-   val setRegmap      : cfg * C.regmap -> unit
    val setAnnotations : cfg * Annotations.annotations -> unit
-   val reglookup : cfg -> C.register -> C.register
+   val getAnnotations : cfg -> Annotations.annotations
+   val reglookup : cfg -> C.cell -> C.cell
    val liveOut   : block -> C.cellset
    val fallsThruFrom : cfg * Graph.node_id -> Graph.node_id option
    val fallsThruTo   : cfg * Graph.node_id -> Graph.node_id option

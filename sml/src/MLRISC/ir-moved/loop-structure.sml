@@ -44,9 +44,8 @@ struct
        val G.GRAPH cfg        = Dom.cfg DOM
        val G.GRAPH dom        = DOM
        val N                  = #capacity dom ()
-       val M                  = Dom.methods DOM
+       val dominates          = Dom.dominates DOM
        val LS as G.GRAPH ls   = GI.graph ("Loop structure",info,N) 
-       val dominates          = #dominates M
        val ENTRY              = case #entries cfg () of
                                   [ENTRY] => ENTRY
                                 | _ => raise Graph.NotSingleEntry
@@ -147,7 +146,7 @@ struct
    fun entryEdges(Loop as G.GRAPH L) =
        let val dom = dom Loop
            val G.GRAPH cfg = Dom.cfg dom
-           val {dominates,...} = Dom.methods dom
+           val dominates = Dom.dominates dom
            fun entryEdges(header) = 
                if #has_node L header then 
                   List.filter(fn (i,j,_) => not(dominates(j,i)))

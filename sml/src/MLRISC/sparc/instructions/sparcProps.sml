@@ -185,6 +185,7 @@ struct
         | I.Ticc{r,i,...} => oper(i,[],[r]) 
         | I.RDY{d,...} => ([d],[]) 
         | I.WRY{r,i,...} => oper(i,[],[r]) 
+        | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
         | I.ANNOTATION{i,...} => defUseR i
         | _ => ([],[])  
     end
@@ -203,6 +204,7 @@ struct
       | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)
       | I.FCOPY{src,dst,...} => (dst,src)
+      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
       | I.ANNOTATION{i,...} => defUseF i
       | _ => ([],[])
 

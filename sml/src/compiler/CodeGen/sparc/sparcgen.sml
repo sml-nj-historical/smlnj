@@ -5,8 +5,7 @@
 
 structure SparcMC = 
   FLINTComp(
-    structure SparcGen = SparcCG(structure Emitter=SparcMCEmitter)
-    structure Gen=SparcGen
-    fun collect() = (SparcGen.finish(); CodeString.getCodeString()))
+    structure Gen=SparcCG
+    fun collect() = (SparcCG.finish(); CodeString.getCodeString()))
 
 

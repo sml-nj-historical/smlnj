@@ -22,14 +22,21 @@ struct
    
    fun error msg = MLRiscErrorMsg.error("X86Asm",msg)
    
-   fun makeStream() =
+   fun makeStream formatAnnotations =
    let val stream = !AsmStream.asmOutStream
-       fun emit s = TextIO.output(stream,s)
-       fun nl() = emit "\n"
+       fun emit' s = TextIO.output(stream,s)
+       val newline = ref true
+       val tabs = ref 0
+       fun tabbing 0 = ()
+         | tabbing n = (emit' "\t"; tabbing(n-1))
+       fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
+       fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = emit "\t"
-       fun ms n = if n<0 then "-"^Int.toString(~n) 
-                  else Int.toString n
+       fun tab() = tabs := !tabs + 1
+       fun ms n = let val s = Int.toString n
+                  in  if n<0 then "-"^String.substring(s,1,size s-1)
+                      else s
+                  end
        fun emit_label lab = emit(Label.nameOf lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
@@ -44,14 +51,26 @@ struct
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
        fun doNothing _ = ()
+       val emitRegInfo = AsmFormatUtil.reginfo(emit,formatAnnotations)
        fun emitter regmap =
        let
 
-   fun emit_CC r = (emit (C.showCC (regmap r)))
-   and emit_GP r = (emit (C.showGP (regmap r)))
-   and emit_FP r = (emit (C.showFP (regmap r)))
+   fun emit_CC r = 
+       ((emit (C.showCC (regmap r))); 
+       (emitRegInfo r))
+   and emit_FP r = 
+       ((emit (C.showFP (regmap r))); 
+       (emitRegInfo r))
+   and emit_GP r = 
+       ((emit (C.showGP (regmap r))); 
+       (emitRegInfo r))
 
-   fun asm_fbinOp (I.FADDP) = "faddp"
+   fun asm_unaryOp (I.DEC) = "dec"
+     | asm_unaryOp (I.INC) = "inc"
+     | asm_unaryOp (I.NEG) = "neg"
+     | asm_unaryOp (I.NOT) = "not"
+   and emit_unaryOp x = (emit (asm_unaryOp x))
+   and asm_fbinOp (I.FADDP) = "faddp"
      | asm_fbinOp (I.FADD) = "fadd"
      | asm_fbinOp (I.FMULP) = "fmulp"
      | asm_fbinOp (I.FMUL) = "fmul"
@@ -64,6 +83,26 @@ struct
      | asm_fbinOp (I.FDIVRP) = "fdivrp"
      | asm_fbinOp (I.FDIVR) = "fdivr"
    and emit_fbinOp x = (emit (asm_fbinOp x))
+   and asm_funOp (I.FABS) = "fabs"
+     | asm_funOp (I.FCHS) = "fchs"
+   and emit_funOp x = (emit (asm_funOp x))
+   and asm_move (I.MOVL) = "movl"
+     | asm_move (I.MOVZX) = "movzx"
+     | asm_move (I.MOVB) = "movb"
+   and emit_move x = (emit (asm_move x))
+   and asm_multDivOp (I.UMUL) = "umul"
+     | asm_multDivOp (I.IDIV) = "idiv"
+     | asm_multDivOp (I.UDIV) = "udiv"
+   and emit_multDivOp x = (emit (asm_multDivOp x))
+   and asm_binaryOp (I.ADD) = "add"
+     | asm_binaryOp (I.SUB) = "sub"
+     | asm_binaryOp (I.AND) = "and"
+     | asm_binaryOp (I.OR) = "or"
+     | asm_binaryOp (I.XOR) = "xor"
+     | asm_binaryOp (I.SHL) = "shl"
+     | asm_binaryOp (I.SAR) = "sar"
+     | asm_binaryOp (I.SHR) = "shr"
+   and emit_binaryOp x = (emit (asm_binaryOp x))
    and asm_cond (I.EQ) = "eq"
      | asm_cond (I.NE) = "ne"
      | asm_cond (I.LT) = "lt"
@@ -81,36 +120,20 @@ struct
      | asm_cond (I.O) = "o"
      | asm_cond (I.NO) = "no"
    and emit_cond x = (emit (asm_cond x))
-   and asm_binaryOp (I.ADD) = "add"
-     | asm_binaryOp (I.SUB) = "sub"
-     | asm_binaryOp (I.AND) = "and"
-     | asm_binaryOp (I.OR) = "or"
-     | asm_binaryOp (I.XOR) = "xor"
-     | asm_binaryOp (I.SHL) = "shl"
-     | asm_binaryOp (I.SAR) = "sar"
-     | asm_binaryOp (I.SHR) = "shr"
-   and emit_binaryOp x = (emit (asm_binaryOp x))
-   and asm_unaryOp (I.DEC) = "dec"
-     | asm_unaryOp (I.INC) = "inc"
-     | asm_unaryOp (I.NEG) = "neg"
-     | asm_unaryOp (I.NOT) = "not"
-   and emit_unaryOp x = (emit (asm_unaryOp x))
-   and asm_move (I.MOVL) = "movl"
-     | asm_move (I.MOVZX) = "movzx"
-     | asm_move (I.MOVB) = "movb"
-   and emit_move x = (emit (asm_move x))
-   and asm_funOp (I.FABS) = "fabs"
-     | asm_funOp (I.FCHS) = "fchs"
-   and emit_funOp x = (emit (asm_funOp x))
-   and asm_multDivOp (I.UMUL) = "umul"
-     | asm_multDivOp (I.IDIV) = "idiv"
-     | asm_multDivOp (I.UDIV) = "udiv"
-   and emit_multDivOp x = (emit (asm_multDivOp x))
    val memReg = (MemRegs.memReg regmap)
 
-   fun emitInt32 i = (emit (if (i < 0)
-          then ("-" ^ (Int32.toString (~ i)))
-          else (Int32.toString i)))
+   fun emitInt32 i = let
+
+(*#line 144.1 "x86/x86.md"*)
+          val s = (Int32.toString i)
+
+(*#line 145.1 "x86/x86.md"*)
+          val s = (if (i >= 0)
+                then s
+                else ("-" ^ (String.substring (s, 1, ((size s) - 1)))))
+       in (emit s)
+       end
+
 
    fun emit_src2 NONE = ()
      | emit_src2 (SOME i) = 
@@ -142,7 +165,7 @@ struct
       | I.Direct r => (emit_GP r)
       | I.FDirect f => let
 
-(*#line 168.1 "x86/x86.md"*)
+(*#line 171.1 "x86/x86.md"*)
            val f' = (regmap f)
         in (if (f' < (32 + 8))
               then (emit_FP f')
@@ -173,6 +196,7 @@ struct
         (emit_GP base); 
         (comma ()); 
         (emit_GP index); 
+        (comma ()); 
         (emitScale scale); 
         (emit ")"); 
         (emit_region mem))
@@ -211,7 +235,16 @@ struct
         ((emit "call\t"); 
         (stupidGas operand); 
         (emit_region region))
-      | I.RET => (emit "ret")
+      | I.RET operand => 
+        ((emit "ret"); 
+        
+        (
+         case operand of
+         NONE => ()
+       | SOME e => 
+         ((emit "\t"); 
+         (emit_operand e))
+        ))
       | I.MOVE{mvOp, src, dst} => 
         ((emit_move mvOp); 
         (emit "\t"); 
@@ -289,16 +322,18 @@ struct
            (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
       in  emitInstr end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
                 blockName=blockName,
-                annotation=annotation
+                annotation=annotation,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

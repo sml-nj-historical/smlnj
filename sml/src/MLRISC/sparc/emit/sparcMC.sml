@@ -19,7 +19,7 @@ struct
    (* Sparc is a big endian architecture *)
    
    fun error msg = MLRiscErrorMsg.error("SparcMC",msg)
-   fun makeStream() =
+   fun makeStream _ =
    let infix && || << >> ~>>
        val op << = W.<<
        val op >> = W.>>
@@ -72,51 +72,14 @@ struct
        end
 
 
-   fun emit_Y r = (itow ((regmap r) - 64))
+   fun emit_PSR r = (itow ((regmap r) - 65))
    and emit_CC r = (itow ((regmap r) - 67))
-   and emit_PSR r = (itow ((regmap r) - 65))
+   and emit_Y r = (itow ((regmap r) - 64))
+   and emit_FP r = (itow ((regmap r) - 32))
    and emit_GP r = (itow (regmap r))
    and emit_FSR r = (itow ((regmap r) - 66))
-   and emit_FP r = (itow ((regmap r) - 32))
 
-   fun emit_cc (I.ICC) = (0wx0 : Word32.word)
-     | emit_cc (I.XCC) = (0wx2 : Word32.word)
-   and emit_store (I.STB) = (0wx5 : Word32.word)
-     | emit_store (I.STH) = (0wx6 : Word32.word)
-     | emit_store (I.ST) = (0wx4 : Word32.word)
-     | emit_store (I.STX) = (0wxe : Word32.word)
-     | emit_store (I.STD) = (0wx7 : Word32.word)
-   and emit_fsize (I.S) = (0wx4 : Word32.word)
-     | emit_fsize (I.D) = (0wx6 : Word32.word)
-     | emit_fsize (I.Q) = (0wx7 : Word32.word)
-   and emit_rcond (I.RZ) = (0wx1 : Word32.word)
-     | emit_rcond (I.RLEZ) = (0wx2 : Word32.word)
-     | emit_rcond (I.RLZ) = (0wx3 : Word32.word)
-     | emit_rcond (I.RNZ) = (0wx5 : Word32.word)
-     | emit_rcond (I.RGZ) = (0wx6 : Word32.word)
-     | emit_rcond (I.RGEZ) = (0wx7 : Word32.word)
-   and emit_fload (I.LDF) = (0wx20 : Word32.word)
-     | emit_fload (I.LDDF) = (0wx23 : Word32.word)
-     | emit_fload (I.LDQF) = (0wx22 : Word32.word)
-     | emit_fload (I.LDFSR) = (0wx21 : Word32.word)
-     | emit_fload (I.LDXFSR) = (0wx21 : Word32.word)
-   and emit_branch (I.BN) = (0wx0 : Word32.word)
-     | emit_branch (I.BE) = (0wx1 : Word32.word)
-     | emit_branch (I.BLE) = (0wx2 : Word32.word)
-     | emit_branch (I.BL) = (0wx3 : Word32.word)
-     | emit_branch (I.BLEU) = (0wx4 : Word32.word)
-     | emit_branch (I.BCS) = (0wx5 : Word32.word)
-     | emit_branch (I.BNEG) = (0wx6 : Word32.word)
-     | emit_branch (I.BVS) = (0wx7 : Word32.word)
-     | emit_branch (I.BA) = (0wx8 : Word32.word)
-     | emit_branch (I.BNE) = (0wx9 : Word32.word)
-     | emit_branch (I.BG) = (0wxa : Word32.word)
-     | emit_branch (I.BGE) = (0wxb : Word32.word)
-     | emit_branch (I.BGU) = (0wxc : Word32.word)
-     | emit_branch (I.BCC) = (0wxd : Word32.word)
-     | emit_branch (I.BPOS) = (0wxe : Word32.word)
-     | emit_branch (I.BVC) = (0wxf : Word32.word)
-   and emit_farith1 (I.FiTOs) = (0wxc4 : Word32.word)
+   fun emit_farith1 (I.FiTOs) = (0wxc4 : Word32.word)
      | emit_farith1 (I.FiTOd) = (0wxc8 : Word32.word)
      | emit_farith1 (I.FiTOq) = (0wxcc : Word32.word)
      | emit_farith1 (I.FsTOi) = (0wxd1 : Word32.word)
@@ -140,26 +103,44 @@ struct
      | emit_farith1 (I.FSQRTs) = (0wx29 : Word32.word)
      | emit_farith1 (I.FSQRTd) = (0wx2a : Word32.word)
      | emit_farith1 (I.FSQRTq) = (0wx2b : Word32.word)
-   and emit_farith2 (I.FADDs) = (0wx41 : Word32.word)
-     | emit_farith2 (I.FADDd) = (0wx42 : Word32.word)
-     | emit_farith2 (I.FADDq) = (0wx43 : Word32.word)
-     | emit_farith2 (I.FSUBs) = (0wx45 : Word32.word)
-     | emit_farith2 (I.FSUBd) = (0wx46 : Word32.word)
-     | emit_farith2 (I.FSUBq) = (0wx47 : Word32.word)
-     | emit_farith2 (I.FMULs) = (0wx49 : Word32.word)
-     | emit_farith2 (I.FMULd) = (0wx4a : Word32.word)
-     | emit_farith2 (I.FMULq) = (0wx4b : Word32.word)
-     | emit_farith2 (I.FsMULd) = (0wx69 : Word32.word)
-     | emit_farith2 (I.FdMULq) = (0wx6e : Word32.word)
-     | emit_farith2 (I.FDIVs) = (0wx4d : Word32.word)
-     | emit_farith2 (I.FDIVd) = (0wx4e : Word32.word)
-     | emit_farith2 (I.FDIVq) = (0wx4f : Word32.word)
+   and emit_store (I.STB) = (0wx5 : Word32.word)
+     | emit_store (I.STH) = (0wx6 : Word32.word)
+     | emit_store (I.ST) = (0wx4 : Word32.word)
+     | emit_store (I.STX) = (0wxe : Word32.word)
+     | emit_store (I.STD) = (0wx7 : Word32.word)
+   and emit_fload (I.LDF) = (0wx20 : Word32.word)
+     | emit_fload (I.LDDF) = (0wx23 : Word32.word)
+     | emit_fload (I.LDQF) = (0wx22 : Word32.word)
+     | emit_fload (I.LDFSR) = (0wx21 : Word32.word)
+     | emit_fload (I.LDXFSR) = (0wx21 : Word32.word)
+   and emit_fstore (I.STF) = (0wx24 : Word32.word)
+     | emit_fstore (I.STDF) = (0wx27 : Word32.word)
+     | emit_fstore (I.STFSR) = (0wx25 : Word32.word)
+   and emit_fsize (I.S) = (0wx4 : Word32.word)
+     | emit_fsize (I.D) = (0wx6 : Word32.word)
+     | emit_fsize (I.Q) = (0wx7 : Word32.word)
    and emit_shift (I.SLL) = (0wx25, 0wx0)
      | emit_shift (I.SRL) = (0wx26, 0wx0)
      | emit_shift (I.SRA) = (0wx27, 0wx0)
      | emit_shift (I.SLLX) = (0wx25, 0wx1)
      | emit_shift (I.SRLX) = (0wx26, 0wx1)
      | emit_shift (I.SRAX) = (0wx27, 0wx1)
+   and emit_branch (I.BN) = (0wx0 : Word32.word)
+     | emit_branch (I.BE) = (0wx1 : Word32.word)
+     | emit_branch (I.BLE) = (0wx2 : Word32.word)
+     | emit_branch (I.BL) = (0wx3 : Word32.word)
+     | emit_branch (I.BLEU) = (0wx4 : Word32.word)
+     | emit_branch (I.BCS) = (0wx5 : Word32.word)
+     | emit_branch (I.BNEG) = (0wx6 : Word32.word)
+     | emit_branch (I.BVS) = (0wx7 : Word32.word)
+     | emit_branch (I.BA) = (0wx8 : Word32.word)
+     | emit_branch (I.BNE) = (0wx9 : Word32.word)
+     | emit_branch (I.BG) = (0wxa : Word32.word)
+     | emit_branch (I.BGE) = (0wxb : Word32.word)
+     | emit_branch (I.BGU) = (0wxc : Word32.word)
+     | emit_branch (I.BCC) = (0wxd : Word32.word)
+     | emit_branch (I.BPOS) = (0wxe : Word32.word)
+     | emit_branch (I.BVC) = (0wxf : Word32.word)
    and emit_arith (I.AND) = (0wx1 : Word32.word)
      | emit_arith (I.ANDCC) = (0wx11 : Word32.word)
      | emit_arith (I.ANDN) = (0wx5 : Word32.word)
@@ -201,13 +182,14 @@ struct
      | emit_fcmp (I.FCMPEs) = (0wx55 : Word32.word)
      | emit_fcmp (I.FCMPEd) = (0wx56 : Word32.word)
      | emit_fcmp (I.FCMPEq) = (0wx57 : Word32.word)
-   and emit_load (I.LDSB) = (0wx9 : Word32.word)
-     | emit_load (I.LDSH) = (0wxa : Word32.word)
-     | emit_load (I.LDUB) = (0wx1 : Word32.word)
-     | emit_load (I.LDUH) = (0wx2 : Word32.word)
-     | emit_load (I.LD) = (0wx0 : Word32.word)
-     | emit_load (I.LDX) = (0wxb : Word32.word)
-     | emit_load (I.LDD) = (0wx3 : Word32.word)
+   and emit_rcond (I.RZ) = (0wx1 : Word32.word)
+     | emit_rcond (I.RLEZ) = (0wx2 : Word32.word)
+     | emit_rcond (I.RLZ) = (0wx3 : Word32.word)
+     | emit_rcond (I.RNZ) = (0wx5 : Word32.word)
+     | emit_rcond (I.RGZ) = (0wx6 : Word32.word)
+     | emit_rcond (I.RGEZ) = (0wx7 : Word32.word)
+   and emit_cc (I.ICC) = (0wx0 : Word32.word)
+     | emit_cc (I.XCC) = (0wx2 : Word32.word)
    and emit_fbranch (I.FBN) = (0wx0 : Word32.word)
      | emit_fbranch (I.FBNE) = (0wx1 : Word32.word)
      | emit_fbranch (I.FBLG) = (0wx2 : Word32.word)
@@ -224,15 +206,255 @@ struct
      | emit_fbranch (I.FBLE) = (0wxd : Word32.word)
      | emit_fbranch (I.FBULE) = (0wxe : Word32.word)
      | emit_fbranch (I.FBO) = (0wxf : Word32.word)
-   and emit_fstore (I.STF) = (0wx24 : Word32.word)
-     | emit_fstore (I.STDF) = (0wx27 : Word32.word)
-     | emit_fstore (I.STFSR) = (0wx25 : Word32.word)
+   and emit_load (I.LDSB) = (0wx9 : Word32.word)
+     | emit_load (I.LDSH) = (0wxa : Word32.word)
+     | emit_load (I.LDUB) = (0wx1 : Word32.word)
+     | emit_load (I.LDUH) = (0wx2 : Word32.word)
+     | emit_load (I.LD) = (0wx0 : Word32.word)
+     | emit_load (I.LDX) = (0wxb : Word32.word)
+     | emit_load (I.LDD) = (0wx3 : Word32.word)
+   and emit_farith2 (I.FADDs) = (0wx41 : Word32.word)
+     | emit_farith2 (I.FADDd) = (0wx42 : Word32.word)
+     | emit_farith2 (I.FADDq) = (0wx43 : Word32.word)
+     | emit_farith2 (I.FSUBs) = (0wx45 : Word32.word)
+     | emit_farith2 (I.FSUBd) = (0wx46 : Word32.word)
+     | emit_farith2 (I.FSUBq) = (0wx47 : Word32.word)
+     | emit_farith2 (I.FMULs) = (0wx49 : Word32.word)
+     | emit_farith2 (I.FMULd) = (0wx4a : Word32.word)
+     | emit_farith2 (I.FMULq) = (0wx4b : Word32.word)
+     | emit_farith2 (I.FsMULd) = (0wx69 : Word32.word)
+     | emit_farith2 (I.FdMULq) = (0wx6e : Word32.word)
+     | emit_farith2 (I.FDIVs) = (0wx4d : Word32.word)
+     | emit_farith2 (I.FDIVd) = (0wx4e : Word32.word)
+     | emit_farith2 (I.FDIVq) = (0wx4f : Word32.word)
 
-   fun call {disp30} = (eWord32 ((disp30 && 0wx3fffffff) + 0wx40000000))
+   fun load {l, r, i, d} = let
+          val l = (emit_load l)
+       in (rir {op1=0wx3, op3=l, r=r, i=i, d=d})
+       end
+
+   and ticc {t, cc, r, i} = let
+          val t = (emit_branch t)
+       in (ticcx {op1=0wx2, d=t, op3=0wx3a, cc=cc, r=r, i=i})
+       end
+
+   and wdy {r, i} = (rix {op1=0wx2, op3=0wx30, r=r, i=i, d=0wx0})
+   and rr {op1, rd, op3, rs1, rs2} = let
+          val rs1 = (emit_GP rs1)
+          val rs2 = (emit_GP rs2)
+       in (eWord32 (rs2 + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + (op1 << 0wx1e))))))
+       end
+
+   and fcmp {rs1, opf, rs2} = let
+          val rs1 = (emit_FP rs1)
+          val opf = (emit_fcmp opf)
+          val rs2 = (emit_FP rs2)
+       in (eWord32 (rs2 + ((opf << 0wx5) + ((rs1 << 0wxe) + 0wx81a80000))))
+       end
+
+   and sethi {rd, imm22} = let
+          val rd = (emit_GP rd)
+          val imm22 = (emit_int imm22)
+       in (eWord32 ((imm22 && 0wx3fffff) + ((rd << 0wx19) + 0wx1000000)))
+       end
+
+   and cmovi {op3, rd, cc2, cond, cc1, cc0, simm11} = (eWord32 ((simm11 && 0wx7ff) + ((cc0 << 0wxb) + ((cc1 << 0wxc) + ((cond << 0wxe) + ((cc2 << 0wx12) + ((rd << 0wx13) + ((op3 << 0wx18) + 0wx80002000))))))))
+   and save {r, i, d} = (rir {op1=0wx2, op3=0wx3c, r=r, i=i, d=d})
+   and rif {op1, op3, r, i, d} = let
+          val d = (emit_FP d)
+       in (rix {op1=op1, op3=op3, r=r, i=i, d=d})
+       end
+
+   and restore {r, i, d} = (rir {op1=0wx2, op3=0wx3d, r=r, i=i, d=d})
+   and fmovfcc {sz, b, r, d} = let
+          val sz = (emit_fsize sz)
+          val b = (emit_fbranch b)
+          val r = (emit_FP r)
+          val d = (emit_FP d)
+       in (cmovr {op3=0wx2c, cond=b, rs2=r, rd=d, cc2=0wx0, cc1=0wx0, cc0=0wx0})
+       end
+
+   and cmovr {op3, rd, cc2, cond, cc1, cc0, rs2} = (eWord32 (rs2 + ((cc0 << 0wxb) + ((cc1 << 0wxc) + ((cond << 0wxe) + ((cc2 << 0wx12) + ((rd << 0wx13) + ((op3 << 0wx18) + 0wx80000000))))))))
+   and fmovicc {sz, b, r, d} = let
+          val sz = (emit_fsize sz)
+          val b = (emit_branch b)
+          val r = (emit_FP r)
+          val d = (emit_FP d)
+       in (cmovr {op3=0wx2c, cond=b, rs2=r, rd=d, cc2=0wx1, cc1=0wx0, cc0=0wx0})
+       end
+
+   and ticci {op1, rd, op3, rs1, cc, sw_trap} = let
+          val rs1 = (emit_GP rs1)
+          val cc = (emit_cc cc)
+       in (eWord32 ((sw_trap && 0wx7f) + ((cc << 0wxb) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + ((op1 << 0wx1e) + 0wx2000)))))))
+       end
+
+   and movri {rd, rs1, rcond, simm10} = let
+          val rd = (emit_GP rd)
+          val rs1 = (emit_GP rs1)
+       in (eWord32 ((simm10 && 0wx3ff) + ((rcond << 0wxa) + ((rs1 << 0wxe) + ((rd << 0wx19) + 0wx81782000)))))
+       end
+
+   and rir {op1, op3, r, i, d} = let
+          val d = (emit_GP d)
+       in (rix {op1=op1, op3=op3, r=r, i=i, d=d})
+       end
+
+   and movfcc {b, i, d} = let
+          val b = (emit_fbranch b)
+          val d = (emit_GP d)
+       in (cmov {op3=0wx2c, cond=b, i=i, rd=d, cc2=0wx0, cc1=0wx0, cc0=0wx0})
+       end
+
+   and delay {nop} = (if nop
+          then (NOP {})
+          else ())
+   and fquad {a, r, d} = let
+          val a = (emit_farith1 a)
+          val r = (emit_FP r)
+          val d = (emit_FP d)
+       in 
+          ((fop_1 {a=a, r=r, d=d}); 
+          (fop_1 {a=0wx1, r=(r + 0wx1), d=(d + 0wx1)}); 
+          (fop_1 {a=0wx1, r=(r + 0wx2), d=(d + 0wx2)}); 
+          (fop_1 {a=0wx1, r=(r + 0wx3), d=(d + 0wx3)}))
+       end
+
+   and movicc {b, i, d} = let
+          val b = (emit_branch b)
+          val d = (emit_GP d)
+       in (cmov {op3=0wx2c, cond=b, i=i, rd=d, cc2=0wx1, cc1=0wx0, cc0=0wx0})
+       end
+
+   and rix {op1, op3, r, i, d} = 
+       (
+        case i of
+        I.REG rs2 => (rr {op1=op1, op3=op3, rs1=r, rs2=rs2, rd=d})
+      | _ => (ri {op1=op1, op3=op3, rs1=r, rd=d, simm13=(opn {i=i})})
+       )
    and fbfcc {a, b, disp22} = let
           val a = (emit_bool a)
           val b = (emit_fbranch b)
        in (eWord32 ((disp22 && 0wx3fffff) + ((b << 0wx19) + ((a << 0wx1d) + 0wx1800000))))
+       end
+
+   and movr {rcond, r, i, d} = let
+          val rcond = (emit_rcond rcond)
+       in 
+          (
+           case i of
+           I.REG rs2 => (movrr {rcond=rcond, rs1=r, rs2=rs2, rd=d})
+         | _ => (movri {rcond=rcond, rs1=r, rd=d, simm10=(opn {i=i})})
+          )
+       end
+
+   and ticcr {op1, rd, op3, rs1, cc, rs2} = let
+          val rs1 = (emit_GP rs1)
+          val cc = (emit_cc cc)
+          val rs2 = (emit_GP rs2)
+       in (eWord32 (rs2 + ((cc << 0wxb) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + (op1 << 0wx1e)))))))
+       end
+
+   and fop_1 {d, a, r} = (eWord32 (r + ((a << 0wx5) + ((d << 0wx19) + 0wx81a00000))))
+   and movrr {rd, rs1, rcond, rs2} = let
+          val rd = (emit_GP rd)
+          val rs1 = (emit_GP rs1)
+          val rs2 = (emit_GP rs2)
+       in (eWord32 (rs2 + ((rcond << 0wxa) + ((rs1 << 0wxe) + ((rd << 0wx19) + 0wx81780000)))))
+       end
+
+   and shifti {rd, op3, rs1, x, cnt} = (eWord32 ((cnt && 0wx3f) + ((x << 0wxc) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + 0wx80002000))))))
+   and arith {a, r, i, d} = let
+          val a = (emit_arith a)
+       in (rir {op1=0wx2, op3=a, r=r, i=i, d=d})
+       end
+
+   and ticcx {op1, op3, cc, r, i, d} = 
+       (
+        case i of
+        I.REG rs2 => (ticcr {op1=op1, op3=op3, cc=cc, rs1=r, rs2=rs2, rd=d})
+      | _ => (ticci {op1=op1, op3=op3, cc=cc, rs1=r, rd=d, sw_trap=(opn {i=i})})
+       )
+   and shift {s, r, i, d} = let
+          val s = (emit_shift s)
+          val r = (emit_GP r)
+          val d = (emit_GP d)
+       in let
+
+(*#line 302.1 "sparc/sparc.md"*)
+             val(op3, x) = s
+          in 
+             (
+              case i of
+              I.REG rs2 => (shiftr {op3=op3, rs1=r, rs2=rs2, rd=d, x=x})
+            | _ => (shifti {op3=op3, rs1=r, cnt=(opn {i=i}), rd=d, x=x})
+             )
+          end
+
+       end
+
+   and shiftr {rd, op3, rs1, x, rs2} = let
+          val rs2 = (emit_GP rs2)
+       in (eWord32 (rs2 + ((x << 0wxc) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + 0wx80000000))))))
+       end
+
+   and bicc {a, b, disp22} = let
+          val a = (emit_bool a)
+          val b = (emit_branch b)
+       in (eWord32 ((disp22 && 0wx3fffff) + ((b << 0wx19) + ((a << 0wx1d) + 0wx800000))))
+       end
+
+   and fdouble {a, r, d} = let
+          val a = (emit_farith1 a)
+          val r = (emit_FP r)
+          val d = (emit_FP d)
+       in 
+          ((fop_1 {a=a, r=r, d=d}); 
+          (fop_1 {a=0wx1, r=(r + 0wx1), d=(d + 0wx1)}))
+       end
+
+   and jmpl {r, i, d} = (rir {op1=0wx2, op3=0wx38, r=r, i=i, d=d})
+   and fstore {s, r, i, d} = let
+          val s = (emit_fstore s)
+       in (rif {op1=0wx3, op3=s, r=r, i=i, d=d})
+       end
+
+   and cmov {op3, cond, cc2, cc1, cc0, i, rd} = 
+       (
+        case i of
+        I.REG rs2 => (cmovr {op3=op3, cond=cond, rs2=(emit_GP rs2), rd=rd, cc0=cc0, cc1=cc1, cc2=cc2})
+      | _ => (cmovi {op3=op3, cond=cond, rd=rd, cc0=cc0, cc1=cc1, cc2=cc2, simm11=(opn {i=i})})
+       )
+   and fop1 {a, r, d} = let
+          val a = (emit_farith1 a)
+          val r = (emit_FP r)
+          val d = (emit_FP d)
+       in (fop_1 {a=a, r=r, d=d})
+       end
+
+   and fload {l, r, i, d} = let
+          val l = (emit_fload l)
+       in (rif {op1=0wx3, op3=l, r=r, i=i, d=d})
+       end
+
+   and fop2 {d, r1, a, r2} = let
+          val d = (emit_FP d)
+          val r1 = (emit_FP r1)
+          val a = (emit_farith2 a)
+          val r2 = (emit_FP r2)
+       in (eWord32 (r2 + ((a << 0wx5) + ((r1 << 0wxe) + ((d << 0wx19) + 0wx81a00000)))))
+       end
+
+   and ri {op1, rd, op3, rs1, simm13} = let
+          val rs1 = (emit_GP rs1)
+       in (eWord32 ((simm13 && 0wx1fff) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + ((op1 << 0wx1e) + 0wx2000))))))
+       end
+
+   and call {disp30} = (eWord32 ((disp30 && 0wx3fffffff) + 0wx40000000))
+   and NOP {} = (eWord32 0wx1000000)
+   and store {s, r, i, d} = let
+          val s = (emit_store s)
+       in (rir {op1=0wx3, op3=s, r=r, i=i, d=d})
        end
 
    and opn {i} = let
@@ -256,231 +478,9 @@ struct
           )
        end
 
-   and sethi {rd, imm22} = let
-          val rd = (emit_GP rd)
-          val imm22 = (emit_int imm22)
-       in (eWord32 ((imm22 && 0wx3fffff) + ((rd << 0wx19) + 0wx1000000)))
-       end
-
-   and store {s, r, i, d} = let
-          val s = (emit_store s)
-       in (rir {op1=0wx3, op3=s, r=r, i=i, d=d})
-       end
-
-   and ri {op1, rd, op3, rs1, simm13} = let
-          val rs1 = (emit_GP rs1)
-       in (eWord32 ((simm13 && 0wx1fff) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + ((op1 << 0wx1e) + 0wx2000))))))
-       end
-
-   and fmovfcc {sz, b, r, d} = let
-          val sz = (emit_fsize sz)
-          val b = (emit_fbranch b)
-          val r = (emit_FP r)
-          val d = (emit_FP d)
-       in (cmovr {op3=0wx2c, cond=b, rs2=r, rd=d, cc2=0wx0, cc1=0wx0, cc0=0wx0})
-       end
-
-   and wdy {r, i} = (rix {op1=0wx2, op3=0wx30, r=r, i=i, d=0wx0})
-   and fop_1 {d, a, r} = (eWord32 (r + ((a << 0wx5) + ((d << 0wx19) + 0wx81a00000))))
-   and movri {rd, rs1, rcond, simm10} = let
-          val rd = (emit_GP rd)
-          val rs1 = (emit_GP rs1)
-       in (eWord32 ((simm10 && 0wx3ff) + ((rcond << 0wxa) + ((rs1 << 0wxe) + ((rd << 0wx19) + 0wx81782000)))))
-       end
-
-   and fload {l, r, i, d} = let
-          val l = (emit_fload l)
-       in (rif {op1=0wx3, op3=l, r=r, i=i, d=d})
-       end
-
-   and cmovi {op3, rd, cc2, cond, cc1, cc0, simm11} = (eWord32 ((simm11 && 0wx7ff) + ((cc0 << 0wxb) + ((cc1 << 0wxc) + ((cond << 0wxe) + ((cc2 << 0wx12) + ((rd << 0wx13) + ((op3 << 0wx18) + 0wx80002000))))))))
-   and rif {op1, op3, r, i, d} = let
-          val d = (emit_FP d)
-       in (rix {op1=op1, op3=op3, r=r, i=i, d=d})
-       end
-
-   and ticc {t, cc, r, i} = let
-          val t = (emit_branch t)
-       in (ticcx {op1=0wx2, d=t, op3=0wx3a, cc=cc, r=r, i=i})
-       end
-
-   and rr {op1, rd, op3, rs1, rs2} = let
-          val rs1 = (emit_GP rs1)
-          val rs2 = (emit_GP rs2)
-       in (eWord32 (rs2 + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + (op1 << 0wx1e))))))
-       end
-
-   and fquad {a, r, d} = let
-          val a = (emit_farith1 a)
-          val r = (emit_FP r)
-          val d = (emit_FP d)
-       in 
-          ((fop_1 {a=a, r=r, d=d}); 
-          (fop_1 {a=0wx1, r=(r + 0wx1), d=(d + 0wx1)}); 
-          (fop_1 {a=0wx1, r=(r + 0wx2), d=(d + 0wx2)}); 
-          (fop_1 {a=0wx1, r=(r + 0wx3), d=(d + 0wx3)}))
-       end
-
-   and movrr {rd, rs1, rcond, rs2} = let
-          val rd = (emit_GP rd)
-          val rs1 = (emit_GP rs1)
-          val rs2 = (emit_GP rs2)
-       in (eWord32 (rs2 + ((rcond << 0wxa) + ((rs1 << 0wxe) + ((rd << 0wx19) + 0wx81780000)))))
-       end
-
-   and cmovr {op3, rd, cc2, cond, cc1, cc0, rs2} = (eWord32 (rs2 + ((cc0 << 0wxb) + ((cc1 << 0wxc) + ((cond << 0wxe) + ((cc2 << 0wx12) + ((rd << 0wx13) + ((op3 << 0wx18) + 0wx80000000))))))))
-   and arith {a, r, i, d} = let
-          val a = (emit_arith a)
-       in (rir {op1=0wx2, op3=a, r=r, i=i, d=d})
-       end
-
-   and ticci {op1, rd, op3, rs1, cc, sw_trap} = let
-          val rs1 = (emit_GP rs1)
-          val cc = (emit_cc cc)
-       in (eWord32 ((sw_trap && 0wx7f) + ((cc << 0wxb) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + ((op1 << 0wx1e) + 0wx2000)))))))
-       end
-
-   and NOP {} = (eWord32 0wx1000000)
-   and cmov {op3, cond, cc2, cc1, cc0, i, rd} = 
-       (
-        case i of
-        I.REG rs2 => (cmovr {op3=op3, cond=cond, rs2=(emit_GP rs2), rd=rd, cc0=cc0, cc1=cc1, cc2=cc2})
-      | _ => (cmovi {op3=op3, cond=cond, rd=rd, cc0=cc0, cc1=cc1, cc2=cc2, simm11=(opn {i=i})})
-       )
    and rdy {d} = let
           val d = (emit_GP d)
        in (eWord32 ((d << 0wx19) + 0wx81400000))
-       end
-
-   and rir {op1, op3, r, i, d} = let
-          val d = (emit_GP d)
-       in (rix {op1=op1, op3=op3, r=r, i=i, d=d})
-       end
-
-   and jmpl {r, i, d} = (rir {op1=0wx2, op3=0wx38, r=r, i=i, d=d})
-   and restore {r, i, d} = (rir {op1=0wx2, op3=0wx3d, r=r, i=i, d=d})
-   and ticcr {op1, rd, op3, rs1, cc, rs2} = let
-          val rs1 = (emit_GP rs1)
-          val cc = (emit_cc cc)
-          val rs2 = (emit_GP rs2)
-       in (eWord32 (rs2 + ((cc << 0wxb) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + (op1 << 0wx1e)))))))
-       end
-
-   and bicc {a, b, disp22} = let
-          val a = (emit_bool a)
-          val b = (emit_branch b)
-       in (eWord32 ((disp22 && 0wx3fffff) + ((b << 0wx19) + ((a << 0wx1d) + 0wx800000))))
-       end
-
-   and rix {op1, op3, r, i, d} = 
-       (
-        case i of
-        I.REG rs2 => (rr {op1=op1, op3=op3, rs1=r, rs2=rs2, rd=d})
-      | _ => (ri {op1=op1, op3=op3, rs1=r, rd=d, simm13=(opn {i=i})})
-       )
-   and movr {rcond, r, i, d} = let
-          val rcond = (emit_rcond rcond)
-       in 
-          (
-           case i of
-           I.REG rs2 => (movrr {rcond=rcond, rs1=r, rs2=rs2, rd=d})
-         | _ => (movri {rcond=rcond, rs1=r, rd=d, simm10=(opn {i=i})})
-          )
-       end
-
-   and fdouble {a, r, d} = let
-          val a = (emit_farith1 a)
-          val r = (emit_FP r)
-          val d = (emit_FP d)
-       in 
-          ((fop_1 {a=a, r=r, d=d}); 
-          (fop_1 {a=0wx1, r=(r + 0wx1), d=(d + 0wx1)}))
-       end
-
-   and shifti {rd, op3, rs1, x, cnt} = (eWord32 ((cnt && 0wx3f) + ((x << 0wxc) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + 0wx80002000))))))
-   and ticcx {op1, op3, cc, r, i, d} = 
-       (
-        case i of
-        I.REG rs2 => (ticcr {op1=op1, op3=op3, cc=cc, rs1=r, rs2=rs2, rd=d})
-      | _ => (ticci {op1=op1, op3=op3, cc=cc, rs1=r, rd=d, sw_trap=(opn {i=i})})
-       )
-   and delay {nop} = (if nop
-          then (NOP {})
-          else ())
-   and save {r, i, d} = (rir {op1=0wx2, op3=0wx3c, r=r, i=i, d=d})
-   and movicc {b, i, d} = let
-          val b = (emit_branch b)
-          val d = (emit_GP d)
-       in (cmov {op3=0wx2c, cond=b, i=i, rd=d, cc2=0wx1, cc1=0wx0, cc0=0wx0})
-       end
-
-   and shiftr {rd, op3, rs1, x, rs2} = let
-          val rs2 = (emit_GP rs2)
-       in (eWord32 (rs2 + ((x << 0wxc) + ((rs1 << 0wxe) + ((op3 << 0wx13) + ((rd << 0wx19) + 0wx80000000))))))
-       end
-
-   and shift {s, r, i, d} = let
-          val s = (emit_shift s)
-          val r = (emit_GP r)
-          val d = (emit_GP d)
-       in let
-
-(*#line 302.1 "sparc/sparc.md"*)
-             val(op3, x) = s
-          in 
-             (
-              case i of
-              I.REG rs2 => (shiftr {op3=op3, rs1=r, rs2=rs2, rd=d, x=x})
-            | _ => (shifti {op3=op3, rs1=r, cnt=(opn {i=i}), rd=d, x=x})
-             )
-          end
-
-       end
-
-   and fcmp {rs1, opf, rs2} = let
-          val rs1 = (emit_FP rs1)
-          val opf = (emit_fcmp opf)
-          val rs2 = (emit_FP rs2)
-       in (eWord32 (rs2 + ((opf << 0wx5) + ((rs1 << 0wxe) + 0wx81a80000))))
-       end
-
-   and fop1 {a, r, d} = let
-          val a = (emit_farith1 a)
-          val r = (emit_FP r)
-          val d = (emit_FP d)
-       in (fop_1 {a=a, r=r, d=d})
-       end
-
-   and fop2 {d, r1, a, r2} = let
-          val d = (emit_FP d)
-          val r1 = (emit_FP r1)
-          val a = (emit_farith2 a)
-          val r2 = (emit_FP r2)
-       in (eWord32 (r2 + ((a << 0wx5) + ((r1 << 0wxe) + ((d << 0wx19) + 0wx81a00000)))))
-       end
-
-   and load {l, r, i, d} = let
-          val l = (emit_load l)
-       in (rir {op1=0wx3, op3=l, r=r, i=i, d=d})
-       end
-
-   and movfcc {b, i, d} = let
-          val b = (emit_fbranch b)
-          val d = (emit_GP d)
-       in (cmov {op3=0wx2c, cond=b, i=i, rd=d, cc2=0wx0, cc1=0wx0, cc0=0wx0})
-       end
-
-   and fstore {s, r, i, d} = let
-          val s = (emit_fstore s)
-       in (rif {op1=0wx3, op3=s, r=r, i=i, d=d})
-       end
-
-   and fmovicc {sz, b, r, d} = let
-          val sz = (emit_fsize sz)
-          val b = (emit_branch b)
-          val r = (emit_FP r)
-          val d = (emit_FP d)
-       in (cmovr {op3=0wx2c, cond=b, rs2=r, rd=d, cc2=0wx1, cc1=0wx0, cc0=0wx0})
        end
 
 
@@ -548,16 +548,18 @@ struct
            emitInstr
        end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
                 blockName=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

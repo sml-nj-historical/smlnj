@@ -19,9 +19,9 @@ end
 structure GraphMinor : GRAPH_MINOR =
 struct
 
-   structure G = Graph
-   structure H = HashArray
-   structure R = RegSet
+   structure G  = Graph
+   structure H  = HashArray
+   structure SL = SortedList
 
    fun minor (G.GRAPH G : ('n,'e,'g) Graph.graph) =
    let exception NotThere
@@ -60,8 +60,8 @@ struct
                (#nodes G ())
        fun order() = length(nodes())
        fun size() = length(edges())
-       fun entries() = R.sort(map look (#entries G ()))
-       fun exits() = R.sort(map look (#exits G ()))
+       fun entries() = SL.uniq(map look (#entries G ()))
+       fun exits() = SL.uniq(map look (#exits G ()))
        fun forall_nodes f = app f (nodes ())
        fun forall_edges f = app f (edges ())
        fun merge([],_) = ()

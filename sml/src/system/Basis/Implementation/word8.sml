@@ -11,7 +11,7 @@ structure Word8Imp : WORD =
     structure W31 = InlineT.Word31
     structure LW = Word32Imp
 
-    type word = word8  (* 31 bits *)
+    type word = Word8.word		(* 31 bits *)
 
     val wordSize = 8
     val wordSizeW = 0w8

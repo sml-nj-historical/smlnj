@@ -48,5 +48,6 @@ struct
   val availF = FP 0 upto FP 28
   val dedicatedF = map FP [29, 30, 31]
   val signedGCTest = true
+  val addressWidth = 64
 end
 

@@ -1,4 +1,4 @@
-CM.make();
+CM.make "sources.cm";
 (* See page 249 of Aho Hopcroft Ullman *)
 structure TestMatching =
 struct

@@ -19,14 +19,21 @@ struct
    
    fun error msg = MLRiscErrorMsg.error("HppaAsm",msg)
    
-   fun makeStream() =
+   fun makeStream formatAnnotations =
    let val stream = !AsmStream.asmOutStream
-       fun emit s = TextIO.output(stream,s)
-       fun nl() = emit "\n"
+       fun emit' s = TextIO.output(stream,s)
+       val newline = ref true
+       val tabs = ref 0
+       fun tabbing 0 = ()
+         | tabbing n = (emit' "\t"; tabbing(n-1))
+       fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
+       fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = emit "\t"
-       fun ms n = if n<0 then "-"^Int.toString(~n) 
-                  else Int.toString n
+       fun tab() = tabs := !tabs + 1
+       fun ms n = let val s = Int.toString n
+                  in  if n<0 then "-"^String.substring(s,1,size s-1)
+                      else s
+                  end
        fun emit_label lab = emit(Label.nameOf lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
@@ -41,23 +48,59 @@ struct
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
        fun doNothing _ = ()
+       val emitRegInfo = AsmFormatUtil.reginfo(emit,formatAnnotations)
        fun emitter regmap =
        let
 
-   fun emit_CC r = (emit (C.showCC (regmap r)))
-   and emit_CR r = (emit (C.showCR (regmap r)))
-   and emit_GP r = (emit (C.showGP (regmap r)))
-   and emit_FP r = (emit (C.showFP (regmap r)))
+   fun emit_CC r = 
+       ((emit (C.showCC (regmap r))); 
+       (emitRegInfo r))
+   and emit_CR r = 
+       ((emit (C.showCR (regmap r))); 
+       (emitRegInfo r))
+   and emit_FP r = 
+       ((emit (C.showFP (regmap r))); 
+       (emitRegInfo r))
+   and emit_GP r = 
+       ((emit (C.showGP (regmap r))); 
+       (emitRegInfo r))
 
-   fun asm_cmplt (I.ADDR) = ""
-     | asm_cmplt (I.ADDR_S) = ",s"
-     | asm_cmplt (I.ADDR_M) = ",m"
-     | asm_cmplt (I.ADDR_SM) = ",sm"
-   and emit_cmplt x = (emit (asm_cmplt x))
+   fun asm_farith (I.FADD_S) = "fadd,sgl"
+     | asm_farith (I.FADD_D) = "fadd,dbl"
+     | asm_farith (I.FADD_Q) = "fadd,quad"
+     | asm_farith (I.FSUB_S) = "fsub,sgl"
+     | asm_farith (I.FSUB_D) = "fsub,dbl"
+     | asm_farith (I.FSUB_Q) = "fsub,quad"
+     | asm_farith (I.FMPY_S) = "fmpy,sgl"
+     | asm_farith (I.FMPY_D) = "fmpy,dbl"
+     | asm_farith (I.FMPY_Q) = "fmpy,quad"
+     | asm_farith (I.FDIV_S) = "fdiv,sgl"
+     | asm_farith (I.FDIV_D) = "fdiv,dbl"
+     | asm_farith (I.FDIV_Q) = "fdiv,quad"
+     | asm_farith (I.XMPYU) = "xmpyu"
+   and emit_farith x = (emit (asm_farith x))
+   and asm_floadx (I.FLDDX) = "flddx"
+     | asm_floadx (I.FLDDX_S) = "flddx,s"
+     | asm_floadx (I.FLDDX_M) = "flddx,m"
+     | asm_floadx (I.FLDDX_SM) = "flddx,sm"
+     | asm_floadx (I.FLDWX) = "fldwx"
+     | asm_floadx (I.FLDWX_S) = "fldwx,s"
+     | asm_floadx (I.FLDWX_M) = "fldwx,m"
+     | asm_floadx (I.FLDWX_SM) = "fldwx,sm"
+   and emit_floadx x = (emit (asm_floadx x))
    and asm_store (I.STW) = "stw"
      | asm_store (I.STH) = "sth"
      | asm_store (I.STB) = "stb"
    and emit_store x = (emit (asm_store x))
+   and asm_fstorex (I.FSTDX) = "fstdx"
+     | asm_fstorex (I.FSTDX_S) = "fstdx,s"
+     | asm_fstorex (I.FSTDX_M) = "fstdx,m"
+     | asm_fstorex (I.FSTDX_SM) = "fstdx,sm"
+     | asm_fstorex (I.FSTWX) = "fstwx"
+     | asm_fstorex (I.FSTWX_S) = "fstwx,s"
+     | asm_fstorex (I.FSTWX_M) = "fstwx,m"
+     | asm_fstorex (I.FSTWX_SM) = "fstwx,sm"
+   and emit_fstorex x = (emit (asm_fstorex x))
    and asm_fcond (I.False_) = "false?"
      | asm_fcond (I.False) = "false"
      | asm_fcond (I.?) = "?"
@@ -91,24 +134,68 @@ struct
      | asm_fcond (I.True_) = "true?"
      | asm_fcond (I.True) = "true"
    and emit_fcond x = (emit (asm_fcond x))
-   and asm_floadx (I.FLDDX) = "flddx"
-     | asm_floadx (I.FLDDX_S) = "flddx,s"
-     | asm_floadx (I.FLDDX_M) = "flddx,m"
-     | asm_floadx (I.FLDDX_SM) = "flddx,sm"
-     | asm_floadx (I.FLDWX) = "fldwx"
-     | asm_floadx (I.FLDWX_S) = "fldwx,s"
-     | asm_floadx (I.FLDWX_M) = "fldwx,m"
-     | asm_floadx (I.FLDWX_SM) = "fldwx,sm"
-   and emit_floadx x = (emit (asm_floadx x))
-   and asm_fstorex (I.FSTDX) = "fstdx"
-     | asm_fstorex (I.FSTDX_S) = "fstdx,s"
-     | asm_fstorex (I.FSTDX_M) = "fstdx,m"
-     | asm_fstorex (I.FSTDX_SM) = "fstdx,sm"
-     | asm_fstorex (I.FSTWX) = "fstwx"
-     | asm_fstorex (I.FSTWX_S) = "fstwx,s"
-     | asm_fstorex (I.FSTWX_M) = "fstwx,m"
-     | asm_fstorex (I.FSTWX_SM) = "fstwx,sm"
-   and emit_fstorex x = (emit (asm_fstorex x))
+   and asm_loadi (I.LDW) = "ldw"
+     | asm_loadi (I.LDH) = "ldh"
+     | asm_loadi (I.LDB) = "ldb"
+   and emit_loadi x = (emit (asm_loadi x))
+   and emit_operand (I.IMMED int) = (emit_int int)
+     | emit_operand (I.LabExp(labexp, field_selector)) = (emit_labexp labexp)
+     | emit_operand (I.HILabExp(labexp, field_selector)) = (emit_labexp labexp)
+     | emit_operand (I.LOLabExp(labexp, field_selector)) = (emit_labexp labexp)
+     | emit_operand (I.ConstOp const) = (emit_const const)
+   and asm_fmt (I.SGL) = "sgl"
+     | asm_fmt (I.DBL) = "dbl"
+     | asm_fmt (I.QUAD) = "quad"
+   and emit_fmt x = (emit (asm_fmt x))
+   and asm_fload (I.FLDDS) = "fldds"
+     | asm_fload (I.FLDWS) = "fldws"
+   and emit_fload x = (emit (asm_fload x))
+   and asm_bcond (I.EQ) = "="
+     | asm_bcond (I.LT) = "<"
+     | asm_bcond (I.LE) = "<="
+     | asm_bcond (I.LTU) = "<<"
+     | asm_bcond (I.LEU) = "<<="
+     | asm_bcond (I.NE) = "<>"
+     | asm_bcond (I.GE) = ">="
+     | asm_bcond (I.GT) = ">"
+     | asm_bcond (I.GTU) = ">>"
+     | asm_bcond (I.GEU) = ">>="
+   and emit_bcond x = (emit (asm_bcond x))
+   and asm_funary (I.FCPY_S) = "fcpy,sgl"
+     | asm_funary (I.FCPY_D) = "fcpy,dbl"
+     | asm_funary (I.FCPY_Q) = "fcpy,quad"
+     | asm_funary (I.FABS_S) = "fabs,sgl"
+     | asm_funary (I.FABS_D) = "fabs,dbl"
+     | asm_funary (I.FABS_Q) = "fabs,quad"
+     | asm_funary (I.FSQRT_S) = "fsqrt,sgl"
+     | asm_funary (I.FSQRT_D) = "fsqrt,dbl"
+     | asm_funary (I.FSQRT_Q) = "fsqrt,quad"
+     | asm_funary (I.FRND_S) = "frnd,sgl"
+     | asm_funary (I.FRND_D) = "frnd,dbl"
+     | asm_funary (I.FRND_Q) = "frnd,quad"
+   and emit_funary x = (emit (asm_funary x))
+   and asm_shiftv (I.VEXTRU) = "vextru"
+     | asm_shiftv (I.VEXTRS) = "vextrs"
+     | asm_shiftv (I.ZVDEP) = "zvdep"
+   and emit_shiftv x = (emit (asm_shiftv x))
+   and asm_fstore (I.FSTDS) = "fstds"
+     | asm_fstore (I.FSTWS) = "fstws"
+   and emit_fstore x = (emit (asm_fstore x))
+   and asm_bitcond (I.BSET) = "<"
+     | asm_bitcond (I.BCLR) = ">="
+   and emit_bitcond x = (emit (asm_bitcond x))
+   and asm_cmplt (I.ADDR) = ""
+     | asm_cmplt (I.ADDR_S) = ",s"
+     | asm_cmplt (I.ADDR_M) = ",m"
+     | asm_cmplt (I.ADDR_SM) = ",sm"
+   and emit_cmplt x = (emit (asm_cmplt x))
+   and asm_cmp (I.COMBT) = "combt"
+     | asm_cmp (I.COMBF) = "combf"
+   and emit_cmp x = (emit (asm_cmp x))
+   and asm_shift (I.EXTRU) = "extru"
+     | asm_shift (I.EXTRS) = "extrs"
+     | asm_shift (I.ZDEP) = "zdep"
+   and emit_shift x = (emit (asm_shift x))
    and asm_fcnv (I.FCNVFF_SD) = "fcnvff,sgl,dbl"
      | asm_fcnv (I.FCNVFF_SQ) = "fcnvff,sgl,quad"
      | asm_fcnv (I.FCNVFF_DS) = "fcnvff,dbl,sgl"
@@ -125,61 +212,9 @@ struct
      | asm_fcnv (I.FCNVFXT_D) = "fcnvfxt,dbl,"
      | asm_fcnv (I.FCNVFXT_Q) = "fcnvfxt,quad,"
    and emit_fcnv x = (emit (asm_fcnv x))
-   and asm_arithi (I.ADDI) = "addi"
-     | asm_arithi (I.ADDIO) = "addio"
-     | asm_arithi (I.ADDIL) = "addil"
-     | asm_arithi (I.SUBI) = "subi"
-     | asm_arithi (I.SUBIO) = "subio"
-   and emit_arithi x = (emit (asm_arithi x))
-   and asm_fload (I.FLDDS) = "fldds"
-     | asm_fload (I.FLDWS) = "fldws"
-   and emit_fload x = (emit (asm_fload x))
-   and asm_fmt (I.SGL) = "sgl"
-     | asm_fmt (I.DBL) = "dbl"
-     | asm_fmt (I.QUAD) = "quad"
-   and emit_fmt x = (emit (asm_fmt x))
-   and asm_bitcond (I.BSET) = "<"
-     | asm_bitcond (I.BCLR) = ">="
-   and emit_bitcond x = (emit (asm_bitcond x))
    and asm_cmpi (I.COMIBT) = "comibt"
      | asm_cmpi (I.COMIBF) = "comibf"
    and emit_cmpi x = (emit (asm_cmpi x))
-   and asm_loadi (I.LDW) = "ldw"
-     | asm_loadi (I.LDH) = "ldh"
-     | asm_loadi (I.LDB) = "ldb"
-   and emit_loadi x = (emit (asm_loadi x))
-   and asm_cmp (I.COMBT) = "combt"
-     | asm_cmp (I.COMBF) = "combf"
-   and emit_cmp x = (emit (asm_cmp x))
-   and asm_farith (I.FADD_S) = "fadd,sgl"
-     | asm_farith (I.FADD_D) = "fadd,dbl"
-     | asm_farith (I.FADD_Q) = "fadd,quad"
-     | asm_farith (I.FSUB_S) = "fsub,sgl"
-     | asm_farith (I.FSUB_D) = "fsub,dbl"
-     | asm_farith (I.FSUB_Q) = "fsub,quad"
-     | asm_farith (I.FMPY_S) = "fmpy,sgl"
-     | asm_farith (I.FMPY_D) = "fmpy,dbl"
-     | asm_farith (I.FMPY_Q) = "fmpy,quad"
-     | asm_farith (I.FDIV_S) = "fdiv,sgl"
-     | asm_farith (I.FDIV_D) = "fdiv,dbl"
-     | asm_farith (I.FDIV_Q) = "fdiv,quad"
-     | asm_farith (I.XMPYU) = "xmpyu"
-   and emit_farith x = (emit (asm_farith x))
-   and asm_bcond (I.EQ) = "="
-     | asm_bcond (I.LT) = "<"
-     | asm_bcond (I.LE) = "<="
-     | asm_bcond (I.LTU) = "<<"
-     | asm_bcond (I.LEU) = "<<="
-     | asm_bcond (I.NE) = "<>"
-     | asm_bcond (I.GE) = ">="
-     | asm_bcond (I.GT) = ">"
-     | asm_bcond (I.GTU) = ">>"
-     | asm_bcond (I.GEU) = ">>="
-   and emit_bcond x = (emit (asm_bcond x))
-   and asm_shift (I.EXTRU) = "extru"
-     | asm_shift (I.EXTRS) = "extrs"
-     | asm_shift (I.ZDEP) = "zdep"
-   and emit_shift x = (emit (asm_shift x))
    and asm_arith (I.ADD) = "add"
      | asm_arith (I.ADDL) = "addl"
      | asm_arith (I.ADDO) = "addo"
@@ -199,6 +234,12 @@ struct
      | asm_arith (I.AND) = "and"
      | asm_arith (I.ANDCM) = "andcm"
    and emit_arith x = (emit (asm_arith x))
+   and asm_arithi (I.ADDI) = "addi"
+     | asm_arithi (I.ADDIO) = "addio"
+     | asm_arithi (I.ADDIL) = "addil"
+     | asm_arithi (I.SUBI) = "subi"
+     | asm_arithi (I.SUBIO) = "subio"
+   and emit_arithi x = (emit (asm_arithi x))
    and asm_load (I.LDWX) = "ldwx"
      | asm_load (I.LDWX_S) = "ldwx,s"
      | asm_load (I.LDWX_M) = "ldwx,m"
@@ -210,31 +251,6 @@ struct
      | asm_load (I.LDBX) = "ldbx"
      | asm_load (I.LDBX_M) = "ldbx,m"
    and emit_load x = (emit (asm_load x))
-   and asm_shiftv (I.VEXTRU) = "vextru"
-     | asm_shiftv (I.VEXTRS) = "vextrs"
-     | asm_shiftv (I.ZVDEP) = "zvdep"
-   and emit_shiftv x = (emit (asm_shiftv x))
-   and asm_funary (I.FCPY_S) = "fcpy,sgl"
-     | asm_funary (I.FCPY_D) = "fcpy,dbl"
-     | asm_funary (I.FCPY_Q) = "fcpy,quad"
-     | asm_funary (I.FABS_S) = "fabs,sgl"
-     | asm_funary (I.FABS_D) = "fabs,dbl"
-     | asm_funary (I.FABS_Q) = "fabs,quad"
-     | asm_funary (I.FSQRT_S) = "fsqrt,sgl"
-     | asm_funary (I.FSQRT_D) = "fsqrt,dbl"
-     | asm_funary (I.FSQRT_Q) = "fsqrt,quad"
-     | asm_funary (I.FRND_S) = "frnd,sgl"
-     | asm_funary (I.FRND_D) = "frnd,dbl"
-     | asm_funary (I.FRND_Q) = "frnd,quad"
-   and emit_funary x = (emit (asm_funary x))
-   and emit_operand (I.IMMED int) = (emit_int int)
-     | emit_operand (I.LabExp(labexp, field_selector)) = (emit_labexp labexp)
-     | emit_operand (I.HILabExp(labexp, field_selector)) = (emit_labexp labexp)
-     | emit_operand (I.LOLabExp(labexp, field_selector)) = (emit_labexp labexp)
-     | emit_operand (I.ConstOp const) = (emit_const const)
-   and asm_fstore (I.FSTDS) = "fstds"
-     | asm_fstore (I.FSTWS) = "fstws"
-   and emit_fstore x = (emit (asm_fstore x))
 
    fun emit_n false = ()
      | emit_n true = (emit ",n")
@@ -364,6 +380,16 @@ struct
         (emit_n n); 
         (emit "\t"); 
         (emit_label lab))
+      | I.BE{b, d, sr, n, labs} => 
+        ((emit "be"); 
+        (emit_n n); 
+        (emit "\t"); 
+        (emit_operand d); 
+        (emit "("); 
+        (emit_int sr); 
+        (emit ","); 
+        (emit_GP b); 
+        (emit ")"))
       | I.BV{x, b, labs, n} => 
         ((emit "bv"); 
         (emit_n n); 
@@ -501,16 +527,18 @@ struct
            (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
       in  emitInstr end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
                 blockName=blockName,
-                annotation=annotation
+                annotation=annotation,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

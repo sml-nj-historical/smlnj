@@ -30,6 +30,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.BB{bc, r, p, t, f, n, nop} => 
         I.BB{bc=bc, r=replc r, p=p, t=t, f=f,n=n, nop=nop} 
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
+     | I.BE{b, d, sr, labs, n} => I.BE{b=replc b, d=d, sr=sr, labs=labs, n=n} 
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
      | I.BLE{b, d, sr, t, defs, uses=(i,f), mem} => 
 	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f), mem=mem} 

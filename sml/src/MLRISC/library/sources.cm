@@ -1,99 +1,64 @@
-Group (viscomp-lib.cm)
+Library 
 	signature ANNOTATIONS
-	signature BITSET
-	signature FIXED_POINT
-	signature FREQ
-	signature HASHTABLE
-	signature HASH_BAG
-	signature HASH_MAP
-	signature HASH_MULTIMAP
-	signature HASH_SET
-	signature PRIORITY_QUEUE
-	signature REGISTER_MAP
-	signature REGISTER_SET
-	signature TRANSACTION_LOG
-	signature TRANSACTION
-	signature CACHE_REF
-	signature CATNETABLE_LIST
-	signature INTSET
-	signature PROBABILITY
-	signature RANDOM_ACCESS_LIST
-	signature SORTING
-	signature STRING_STREAM
-	signature SUSPENSION
-	signature TREE_MAP
-	signature UNDOABLE_REF
-	signature UNION_FIND
-	signature UNION_FIND_REF
 	structure Annotations
+	signature BITSET
 	structure BitSet
-	structure CacheRef
+	signature CATNETABLE_LIST
 	structure CatnetableList
 	structure DynamicArray
-	structure DynamicBitSet
+	signature FREQ
 	structure Freq
 	structure HashArray
-	structure Hashtable
-	structure HashBag
-	structure HashMap
-	structure HashMultimap
-	structure HashSet
-	structure IntSet
+	signature PRIORITY_QUEUE
 	structure PriorityQueue
-	structure Probability
-	structure RandomAccessList
-	structure RegSet
-	structure Sorting
+	signature STRING_STREAM
 	structure StringStream
-	structure Suspension
-	structure Transaction
-	structure UndoableRef
-	structure UndoableArray
-	structure TransactionLog
-	structure Unionfind
-	structure UnionFindRef
 	structure Word64
-	functor FixedPointFn
-	functor RegMapFn
-	functor TransactionFn
-	functor TreeMapFn
-	functor UndoableArrayFn
-	functor UndoableRefFn
 is
+	basis.cm
+	smlnj-lib.cm
+
 	annotations.sig
 	annotations.sml
 	bitset.sig
 	bitset.sml
+(*
 	cache.sml
+ *)
 	catlist.sml
 	dynamic-array.sml
+(*
 	dynamic-bitset.sml
 	fixed-point.sig
 	fixed-point.sml
+ *)
 	freq.sig
 	freq.sml
 	hash-array.sml
+(*
 	hash-table.sig
 	hash-table.sml
-	hashBag.sig
-	hashBag.sml
 	hashMap.sig
 	hashMap.sml
+	hashBag.sig
+	hashBag.sml
 	hashMultimap.sig
 	hashMultimap.sml
 	hashSet.sig
 	hashSet.sml
 	int-set.sml
+ *)
 	priQueue.sig
 	priQueue.sml
+(*
 	probability.sml
 	randlist.sml
-	regmap.sig
-	regmap.sml
 	regset.sig
 	regset.sml
 	sorting2.sml
+ *)
 	stringStream.sml
+(*
 	susp.sml
 	transaction-glue.sml
 	transaction-log.sig
@@ -105,6 +70,6 @@ is
 	undoable-ref.sml
 	union-find.sml
 	uref.sml
+ *)
 	word64.sml
 
-	basis.cm

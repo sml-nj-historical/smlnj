@@ -10,15 +10,12 @@ functor X86
        and Constant = X86Instr.Constant
        and type cond = MLTreeBasis.cond
        and type fcond = MLTreeBasis.fcond   
-   structure Stream : INSTRUCTION_STREAM
-     where B = X86MLTree.BNames
-       and P = X86MLTree.PseudoOp
    val tempMem : X86Instr.operand) : MLTREECOMP = 
 struct
   structure T = X86MLTree
+  structure S = T.Stream
   structure I = X86Instr
   structure C = X86Cells
-  structure S = Stream
 
   structure W32 = Word32
   structure LE = LabelExp
@@ -30,10 +27,9 @@ struct
 
   fun selectInstructions 
        (S.STREAM{emit,defineLabel,entryLabel,blockName,pseudoOp,annotation,
-                 init,finish,exitBlock,...}) =
+                 beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
   let
 
-  val emit    = emit(fn _ => 0)
   val newReg  = C.newReg
   val newFreg = C.newFreg
 
@@ -279,7 +275,7 @@ fun prMLRisc s = print(concat(stm s))
       in  mark(I.CALL(operand t,
                       addList(def,C.empty),addList(use,C.empty),mem),an)
       end
-    | reduceStm(T.RET,an) = mark(I.RET,an)
+    | reduceStm(T.RET,an) = mark(I.RET NONE,an)
     | reduceStm(T.STORE(8, t1, t2, mem),an) = 
       let val opnd = immedOrReg(operand t2)
           val src = 
@@ -642,31 +638,28 @@ fun prMLRisc s = print(concat(stm s))
   in gencode(fexp, labels, an)
   end (*reduceFexp*)
  
-  fun doStm s = reduceStm(s,[])
-
-  fun mltreeComp mltree = let
-    fun mltc(T.PSEUDO_OP pOp)     = pseudoOp pOp
-      | mltc(T.DEFINELABEL lab)   = defineLabel lab
-      | mltc(T.ENTRYLABEL lab)    = entryLabel lab
-      | mltc(T.BEGINCLUSTER)      = (init 0; trapLabel := NONE)
-      | mltc(T.CODE stms)         = app doStm stms 
-      | mltc(T.BLOCK_NAME name)   = blockName name
-      | mltc(T.BLOCK_ANNOTATION a)= annotation a
-      | mltc(T.ENDCLUSTER regmap) = 
+      fun doStm s = reduceStm(s,[])
+      val beginCluster = fn _ => (trapLabel := NONE; beginCluster 0)
+      val endCluster = fn a =>
          (case !trapLabel
           of NONE => ()
            | SOME lab => (defineLabel lab; emit(I.INTO))
           (*esac*);
-          finish regmap)
-      | mltc(T.ESCAPEBLOCK regs)  = exitBlock regs
-  in mltc mltree
+          endCluster a)
+  in S.STREAM
+     {  beginCluster= beginCluster,
+        endCluster  = endCluster,
+        emit        = doStm,
+        pseudoOp    = pseudoOp,
+        defineLabel = defineLabel,
+        entryLabel  = entryLabel,
+        blockName   = blockName,
+        comment     = comment,
+        annotation  = annotation,
+        exitBlock   = exitBlock,
+        alias       = alias,
+        phi         = phi
+     }
   end 
-
-  in
-      { mltreeComp = mltreeComp,
-        mlriscComp = doStm,
-        emitInstr  = emit
-      }
-  end
 
 end

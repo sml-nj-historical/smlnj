@@ -1,5 +1,5 @@
 (*
- * Description of registers and other updatable cells.
+ * Description of cell and other updatable cells.
  * 
  * -- Allen.
  *) 
@@ -15,27 +15,32 @@ functor CellsBasisFn
     val physical    : {kind:cellkind,from:int,to:int} list
    ) : CELLS_BASIS = 
 struct
-   structure DA = DynamicArray
    type cellkind = cellkind
-   type register = int
-   type regmap   = register Intmap.intmap
+   type cell = int
+   type regmap = cell Intmap.intmap
    exception Cells = Cells
 
    val cellkinds = kinds
    val cellkindToString = cellkindToString
 
    val initSize = firstPseudo * 4 
-   val cellKindTable = DA.array(initSize,unknown)
+   val cellKindTable = Intmap.new(initSize,Cells) : cellkind Intmap.intmap
+   val lookupCellKind = Intmap.map cellKindTable
+   val cellKind = Intmap.mapWithDefault (cellKindTable,INT)
+   val updateCellKind = Intmap.add  cellKindTable
+
+   val cellKindOn = MLRiscControl.getFlag "register-cellkind";
 
    fun init() =
-      (DA.clear(cellKindTable,initSize);
+      if !cellKindOn then
+      (Intmap.clear(cellKindTable);
        app (fn {kind,from,to} =>
                let fun loop r = 
                        if r > to then () else
-                       (DA.update(cellKindTable,r,kind); loop(r+1))
+                       (Intmap.add cellKindTable (r,kind); loop(r+1))
                in  loop from end
            ) physical
-      )
+      ) else ()
 
    val firstPseudo = firstPseudo
 
@@ -66,29 +71,45 @@ struct
 
    fun newCell c = 
        let val cnt = lookupCnt c
-       in  fn () => 
+       in  fn _ => 
            let val r = !name 
            in  name := r + 1; 
                cnt := !cnt + 1;
-               DA.update(cellKindTable,r,c);
+               if !cellKindOn andalso c <> INT 
+               then updateCellKind (r,c) else ();
                r 
            end
        end
 
-   val newReg  = newCell INT
-   val newFreg = newCell FLOAT
+   local val cnt = lookupCnt INT
+   in fun newReg _ = 
+      let val r = !name 
+      in  name := r + 1; 
+          cnt := !cnt + 1;
+          r 
+      end
+   end
+
+   local val cnt = lookupCnt FLOAT
+   in fun newFreg _ = 
+      let val r = !name 
+      in  name := r + 1; 
+          cnt := !cnt + 1;
+          if !cellKindOn then updateCellKind (r,FLOAT) else ();
+          r 
+      end
+   end
 
    fun newVar r' =
    let val r = !name
    in  name := r + 1;
-       DA.update(cellKindTable,r,DA.sub(cellKindTable,r'));
+       if !cellKindOn then
+         (updateCellKind(r,lookupCellKind r') handle _ => ())
+       else ();
        r    
    end
 
    fun numCell c = let val cnt = lookupCnt c in fn () => !cnt end
-
-   fun cellKind r = DA.sub(cellKindTable,r)
-   fun updateCellKind(r,k) = DA.update(cellKindTable,r,k)
 
    fun maxCell() = !name
 
@@ -103,8 +124,7 @@ struct
        map
    end
 
-   fun lookup regmap = let val look = Intmap.map regmap
-                       in  fn r => look r handle _ => r end
+   val lookup = Intmap.mapInt 
 
    fun reset() = (init();
                   app (fn r => r := 0) counters;

@@ -4,8 +4,6 @@
 signature BINFILE = sig
 
     exception FormatError
-    exception NoCodeBug
-    exception NoPickleBug
 
     exception Compile of string
     exception TopLevelException of exn
@@ -26,8 +24,7 @@ signature BINFILE = sig
     val senvOf: bfContent -> senv
     val symenvOf: bfContent -> symenv
 
-    val discardCode: bfContent -> unit
-    val noCode: bfContent -> bool
+    val size: { content: bfContent, nopickle: bool } -> int
 
     val create: { runtimePid: pid option,
 		  splitting: bool,
@@ -39,17 +36,12 @@ signature BINFILE = sig
 		  corenv: EnvRef.staticEnv }
 	-> bfContent
 
-    val read: { name: string,
-	        stream: BinIO.instream,
-		senv: senv,
-		keep_code: bool }
-	-> bfContent
+    val read:
+	{ name: string, stream: BinIO.instream, senv: senv } -> bfContent
 
-    val write: { stream: BinIO.outstream,
-		 content: bfContent,
-		 keep_code: bool }
-	-> unit
+    val write:
+	{ stream: BinIO.outstream, content: bfContent, nopickle: bool } -> unit
 
-    val exec: bfContent * denv -> env
+    val exec: bfContent * denv -> denv
 end (* signature BINFILE *)
 

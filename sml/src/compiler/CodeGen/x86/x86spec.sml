@@ -6,6 +6,7 @@ struct
   val architecture = "x86"
   val bigEndian = false
   val spillAreaSz = 8192
+  val initialSpillOffset = 512
   val numRegs = 12 (* 18 *) (* can be |X86CpsRegs.availR| + |vregs| *)
   val numFloatRegs = 21   (* can be |8 upto 31| *)
   val numFloatCalleeSaves = 0

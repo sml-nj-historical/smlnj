@@ -41,10 +41,8 @@ structure HppaMCEmitter =
 structure HppaMLTree = 
   MLTreeF(structure Const=HppaConst
 	  structure R=CPSRegions
-	  structure P=HppaPseudoOps
-	  structure B=FunctionNames
+	  structure S=HppaStream
           type rextension = unit 
           type fextension = unit 
          )
-
 

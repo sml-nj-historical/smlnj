@@ -3,7 +3,11 @@
 
 signature MACHINE_GEN = sig			
   include MACHINE
+  structure MLTreeComp : MLTREECOMP
+  structure InvokeGC   : INVOKE_GC
   structure MachSpec : MACH_SPEC
+     sharing InvokeGC.T   = MLTreeComp.T
+     sharing MLTreeComp.I = F.I
 
   val codegen : CPS.function list * (CPS.lvar -> (int * int))
                 * ErrorMsg.complainer -> unit

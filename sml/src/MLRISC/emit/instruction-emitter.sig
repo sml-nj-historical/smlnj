@@ -15,6 +15,12 @@ sig
       sharing I.C = C  
       sharing S.P = P
 
-   val makeStream : unit -> (I.instruction,'a,'b) S.stream
+   (* 
+    * Create a new stream.  The argument is a list of 
+    * annotations that can affect the output format.
+    *)
+   val makeStream : Annotations.annotations -> 
+                     ((int -> int) -> I.instruction -> unit,
+                      unit,'b,'c,'d,'e) S.stream
 
 end

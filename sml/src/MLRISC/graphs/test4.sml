@@ -1,4 +1,4 @@
-CM.make();
+CM.make "sources.cm";
 functor TestShortestPaths(SP : SINGLE_SOURCE_SHORTEST_PATHS
                                   where type Num.elem = int) =
 struct

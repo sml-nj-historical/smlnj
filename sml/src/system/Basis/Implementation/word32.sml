@@ -12,7 +12,7 @@ structure Word32Imp : WORD =
 
     structure W32 = InlineT.Word32
 
-    type word = word32
+    type word = Word32.word
 
     val wordSize = 32
 

@@ -15,10 +15,10 @@ structure SimpleGraph =
 struct
 
    structure G = Graph
-   structure S = Sorting
+   structure S = ListMergeSort
    fun simple_graph merge (G.GRAPH G) =
    let val sort = S.sort (fn ((i,j,_),(i',j',_)) => 
-                      i < i' orelse i = i' andalso j < j')
+                      i > i' orelse i = i' andalso j > j')
        fun uniq([],_,_,[],es'') = es''
          | uniq([],i,j,[e],es'') = (i,j,e)::es''
          | uniq([],i,j,es,es'') = (i,j,merge(i,j,es))::es''

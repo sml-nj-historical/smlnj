@@ -40,4 +40,28 @@ sig
    exception CTRL_DEF of int
    exception CTRL_USE of int
 
+    (*
+     * These annotations specifies definitions and uses 
+     * for a pseudo instruction.
+     *)
+   exception DEFUSER  of int list * int list
+   exception DEFUSEF  of int list * int list
+   exception DEFUSECC of int list * int list
+
+    (*
+     * This annotation can be used specify a pretty printing function for
+     * assemblers
+     *)
+   exception REGINFO of int -> string
+
+    (*
+     * Disable all optimizations in the cluster
+     *)
+   exception NO_OPTIMIZATION
+
+    (*
+     * Mark basic block that is used for calling the GC
+     *)
+   exception CALLGC
+
 end

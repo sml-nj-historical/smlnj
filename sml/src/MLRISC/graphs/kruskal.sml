@@ -21,7 +21,8 @@ struct
        fun make_tree(1,u) = u
          | make_tree(M,u) =
             let val e as (i,j,_) = Q.deleteMin Q
-            in  if P.union' P (i,j) then make_tree(M-1,add_edge(e,u))
+            in  if P.== P (i,j) then 
+                   (P.union' P (i,j); make_tree(M-1,add_edge(e,u)))
                 else make_tree(M,u)
             end
    in  
