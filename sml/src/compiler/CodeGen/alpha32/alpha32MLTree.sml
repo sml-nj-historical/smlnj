@@ -10,7 +10,9 @@ structure Alpha32Shuffle = Alpha32Shuffle(Alpha32Instr)
 structure Alpha32PseudoInstrs =
   Alpha32PseudoInstrs(structure Instr = Alpha32Instr)
 
-structure Alpha32PseudoOps = PseudoOpsLittle(Alpha32Spec)
+
+structure Alpha32PseudoOps = 
+  PseudoOpsLittle(structure M=Alpha32Spec val nop = NONE)
 
 (* Flowgraph data structure specialized to DEC alpha instructions *)
 structure Alpha32FlowGraph = 
@@ -42,6 +44,9 @@ structure Alpha32MLTree =
 
 (*
  * $Log: alpha32MLTree.sml,v $
+ * Revision 1.5  1999/03/22 17:22:14  george
+ *   Changes to support new GC API
+ *
  * Revision 1.4  1998/12/30 20:21:21  jhr
  *   Modifications to support code generation directly into code objects.
  *

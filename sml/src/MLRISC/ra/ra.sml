@@ -23,10 +23,6 @@ struct
   val cfg_after_ra = Control.getFlag "dump-cfg-after-ra"
   val dump_graph = Control.getFlag "dump-interference-graph"
 
-  val cfg_before_ra = ref false
-  val cfg_after_ra = ref false
-  val dump_graph = ref false
-
   fun error msg = MLRiscErrorMsg.impossible ("RegAllocator." ^ msg)
   fun assert(msg, true) = () | assert(msg, false) = error msg
 
@@ -863,7 +859,7 @@ struct
 		      | f([], [], _, _) = error "newReloadCopy.f"
 		  in f(rds, rss, [], [])
 		  end
-		
+
 		  (* insert reloading code and continue *)
 		  fun reloadInstr(instr, du, newI, newBDU, prevSpills) = let
 		    val {code, proh} = 
@@ -918,8 +914,10 @@ struct
 		    val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 		  in 
 		    case instr
-		    of NONE => doInstrs(rest, bDU, newI, newBDU, prevSpills)
-		     | SOME instr => reload(defUse instr, instr, newI, newBDU, prevSpills)
+		    of NONE => 
+		        doInstrs(rest, bDU, newI, newBDU, prevSpills)
+		     | SOME instr => 
+		        reload(defUse instr, instr, newI, newBDU, prevSpills)
 		  end
 		
 		  fun spillCopy() = let
@@ -1008,8 +1006,8 @@ struct
 	   if SL.member prevSpills number then 
 	     glue(rest, prevSpills)
 	   else 
-	    (color := COLORED(spillRegSentinel);
-	     glue(rest, doBlocks(affectedBlocks node, node, prevSpills)))
+	    (glue(rest, doBlocks(affectedBlocks node, node, prevSpills))
+	     before color := COLORED(spillRegSentinel))
 	     
 
       (* redoAlgorithm
@@ -1117,7 +1115,7 @@ struct
     iterate (WKL initialWkls)
   end (* graphColoring *)
 
-  fun ra mode (cluster as (F.CLUSTER{blocks, regmap, ...})) = 
+  fun ra mode prohibit (cluster as (F.CLUSTER{blocks, regmap, ...})) = 
     if RaArch.numRegs() = 0 then cluster
     else let 
 	exception Nodes
@@ -1177,7 +1175,7 @@ struct
       in
 	blockDefUse(blocks, 0);
 	updtAliases(); 
-	graphColoring(mode, blocks, cblocks, blockDU, [], nodes, regmap);
+	graphColoring(mode, blocks, cblocks, blockDU, SL.uniq prohibit, nodes, regmap);
 	debug(cfg_after_ra, "after register allocation", blocks, regmap);  
 	cluster
       end 
@@ -1185,6 +1183,12 @@ end (* functor *)
 
 (*
  * $Log: ra.sml,v $
+ * Revision 1.5  1999/03/24 21:26:02  george
+ *   fixed bug in implementation of flags
+ *
+ * Revision 1.4  1999/03/22 21:06:44  george
+ *  new GC API (take II)
+ *
  * Revision 1.3  1999/03/22 17:25:26  george
  *   Changes for new MLRISC Control
  *

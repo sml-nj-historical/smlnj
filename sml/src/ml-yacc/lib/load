@@ -1,9 +1,0 @@
-(* load file for ML-Yacc library *)
-
-app use [
-    "base.sig",
-    "join.sml",
-    "lrtable.sml",
-    "stream.sml",
-    "parser2.sml"
-  ];

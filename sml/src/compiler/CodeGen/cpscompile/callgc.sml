@@ -322,8 +322,8 @@ struct
 	  val empty = {regs=[], mem=[]}
 	  val recd = 
 	    (case raw 
-	     of NONE => mkRecord(aRoot::live)
-	      | SOME rw => mkRecord(aRoot::rw::live)
+	     of NONE => mkRecord(rev(aRoot::live))
+	      | SOME rw => mkRecord(rev(aRoot::rw::live))
 	    (*esac*))
 	in assignGcRoots(empty, NONE, SOME recd, {regs=[aroot],mem=[]})
 	end

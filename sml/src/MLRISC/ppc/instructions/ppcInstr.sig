@@ -110,6 +110,7 @@ signature PPCINSTR = sig
 		tmp: ea option}
 
   val mtlr : int -> instruction
+  val mflr : int -> instruction
   val ret : unit -> instruction
 end
 

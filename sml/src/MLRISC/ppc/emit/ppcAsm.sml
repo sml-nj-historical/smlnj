@@ -312,7 +312,7 @@ struct
 	 (emit "b"; emit(if LK then "l" else ""); tab(); eOperand addr)
 	  
     (* CALL = BCLR {bo=ALWAYS, bf=0, bit=0, LK=true, labels=[] *)
-     | I.CALL{def, use} => emit("bclr")
+     | I.CALL{def, use} => emit("bclrl")
 
      | I.COPY{dst, src, impl, tmp} =>
 	  app (fn instr => (emit "\t"; emitInstr(instr, regmap)))

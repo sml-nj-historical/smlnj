@@ -200,10 +200,10 @@ struct
 	     I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
          end)
 
-    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION
-    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION
-    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION
-    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION
+    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION []
+    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION []
+    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION []
+    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION []
 
     fun ra cluster = let
       val pg = PrintFlowGraph.printCluster TextIO.stdOut
@@ -244,6 +244,9 @@ end
 
 (*
  * $Log: alpha32CG.sml,v $
+ * Revision 1.8  1999/03/22 21:06:15  george
+ *  new GC API (take II)
+ *
  * Revision 1.7  1999/03/22 17:22:11  george
  *   Changes to support new GC API
  *

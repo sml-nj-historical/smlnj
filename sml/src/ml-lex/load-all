@@ -1,4 +1,0 @@
-app use [
-    "lexgen.sml",
-    "export-lex.sml"
-  ];

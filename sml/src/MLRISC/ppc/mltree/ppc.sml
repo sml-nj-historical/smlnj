@@ -330,13 +330,19 @@ struct
 	      addr=I.LabelOp(LE.LABEL(Option.valOf (!trapLabel)))}
   end
     
-  and reduceExp(T.REG r) = r
+  and reduceExp(exp as T.REG 72) = reduceExpRd(exp, newReg())
+    | reduceExp(T.REG r) = r
     | reduceExp rexp = reduceExpRd(rexp, newReg())
 
   (* reduceExpRd(rexp, rd) -- reduce the expression rexp, giving 
    *	preference to register rd as the destination.
    *)
-  and reduceExpRd(T.REG r, _) = r
+  and reduceExpRd(e, 72) = let
+       val rd = newReg()
+      in reduceExpRd(e, rd); emit(I.mtlr rd); 72
+      end
+    | reduceExpRd(T.REG 72, rd) = (emit(I.mflr rd); rd)
+    | reduceExpRd(T.REG r, _) = r
     | reduceExpRd(T.SEQ(stm, e), rt) = (reduceStm stm; reduceExpRd(e, rt))
     | reduceExpRd(exp, rt) = 
       (case exp

@@ -5,17 +5,11 @@ functor PPCRegAlloc(structure I : INSTRUCTIONS where C = PPCCells
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
-		     where type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
+		     where type B.name = F.B.name) : RA
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
-		     where type B.name = F.B.name) : sig
-      datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-      val ra : mode -> F.cluster -> F.cluster
-     end
-   end=
+		     where type B.name = F.B.name) : RA
+  end=
 struct
 
   structure C=I.C

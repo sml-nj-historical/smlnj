@@ -18,8 +18,7 @@ functor MLRiscGen
        and T.BNames = FunctionNames 
        and T.PseudoOp = PseudoOp
     structure Cells	: CELLS
-    structure MLTreeComp : MLTREECOMP 
-       where T = C.T
+    structure MLTreeComp : MLTREECOMP where T = C.T
   ): MLRISCGEN =
 struct
   structure M : MLTREE = C.T
@@ -102,11 +101,15 @@ struct
       val genTbl : Frag.frag Intmap.intmap = Intmap.new(sizeOfCluster, GenTbl)
 
       (* {fp,gp}RegTbl -- mapping of lvars to registers  *)
-      val fpRegTbl : int Intmap.intmap = Intmap.new(2, RegMap)
-      val gpRegTbl : int Intmap.intmap = Intmap.new(32, RegMap)
+      val fpRegTbl : M.fexp Intmap.intmap = Intmap.new(2, RegMap)
+      val gpRegTbl : M.rexp Intmap.intmap = Intmap.new(32, RegMap)
       fun clearTables() =(Intmap.clear fpRegTbl; Intmap.clear gpRegTbl)
-      val addRegBinding = Intmap.add gpRegTbl
+      val addExpBinding = Intmap.add gpRegTbl
+      fun addRegBinding(x,r) = addExpBinding (x, M.REG r)
       val addFregBinding = Intmap.add fpRegTbl
+
+
+      val treeify = CpsTreeify.usage cluster
 
       (* memDisambiguation uses the new register counters, 
        * so this must be reset here.
@@ -152,8 +155,9 @@ struct
 	| assign _ = error "assign"
 
       fun regbind(CPS.VAR v) = 
-            ((M.REG(Intmap.map gpRegTbl v)) handle e => 
-               (print ("\n* can't find a register for lvar " ^ (Int.toString v) ^ "\n");
+            ((Intmap.map gpRegTbl v) handle e => 
+               (print ("\n* can't find a register for lvar " ^ 
+		       (Int.toString v) ^ "\n");
                 raise e))
 	| regbind(CPS.INT i) = M.LI (i+i+1)
 	| regbind(CPS.INT32 w) = M.LI32 w
@@ -161,8 +165,9 @@ struct
 	| regbind _ = error "regbind"
 
       fun fregbind(CPS.VAR v) = 
-             ((M.FREG(Intmap.map fpRegTbl v)) handle e =>
-               (print ("\n* can't find a fpregister for lvar " ^ (Int.toString v) ^ "\n");
+             ((Intmap.map fpRegTbl v) handle e =>
+               (print ("\n* can't find a fpregister for lvar " ^ 
+		       (Int.toString v) ^ "\n");
                 raise e))
 	| fregbind _ = error "fregbind"
 
@@ -216,7 +221,7 @@ struct
 	  | eFcopy(xs, rl) = let
 	      val fs = map (fn _ => newFreg()) xs
 	    in
-	      ListPair.app addFregBinding (xs, fs);
+	      ListPair.app (fn (x,f) => addFregBinding(x, M.FREG f)) (xs, fs);
 	      emit(M.FCOPY(fs, rl))
 	    end
 	val (vl', rl') = eCopy(vl, rl, [], [], [], [])
@@ -227,7 +232,7 @@ struct
 
       fun initialRegBindingsKnown(vl, rl, tl) = let
 	fun f(v, M.GPR(M.REG r)) = addRegBinding(v, r)
-	  | f(v, M.FPR(M.FREG f)) = addFregBinding(v, f)
+	  | f(v, M.FPR(f as M.FREG _)) = addFregBinding(v, f)
 	  | f _ = error "initialRegBindingsKnown.f"
       in 
         ListPair.app f (vl, rl);
@@ -387,19 +392,26 @@ struct
 
       val offp0 = CPS.OFFp 0 
 
-      fun alloc(x, e, rest, hp) = allocR(newReg(), x, e, rest, hp)
-      
-      and allocR(r, x, e, rest, hp) = 
-       (addRegBinding(x, r);
+      fun alloc(x, e, rest, hp) = let
+	val r = newReg()
+      in
+        addRegBinding(x, r);  
 	emit(M.MV(r, e));  
-	gen(rest, hp))
+	gen(rest, hp)
+      end
 
-      and falloc(x, e, rest, hp) = fallocF(newFreg(), x, e, rest, hp)
-      
-      and fallocF(f, x, e, rest, hp) =
-        (addFregBinding(x, f); 
-	 emit(M.FMV(f, e)); 
-	 gen(rest, hp))
+      and falloc(x, e, rest, hp) = 
+       (case treeify x
+	 of CpsTreeify.DEAD => gen(rest, hp)
+	  | CpsTreeify.TREEIFY => (addFregBinding(x,e); gen(rest, hp))
+          | CpsTreeify.COMPUTE => let
+	      val f = newFreg()
+            in
+	      addFregBinding(x, M.FREG f);  
+	      emit(M.FMV(f, e));  
+	      gen(rest, hp)
+            end
+       (*esac*))
 
       and nop(x, v, e, hp) = alloc(x, regbind v, e, hp)
 
@@ -514,23 +526,25 @@ struct
                  if unboxedfloat then (case t of FLTt => true | _ => false)
                  else false
                fun fallocSp(x,e,hp) =
-                 (addFregBinding(x,newFreg());gen(e, hp))
+                 (addFregBinding(x,M.FREG(newFreg()));gen(e, hp))
               (* warning: the following generated code should never be 
                  executed; its semantics is completely screwed up !
                *)
             in if isFlt t then fallocSp(x, e, hp)
 	       else alloc(x, M.LI k, e, hp)(* BOGUS *)
            end
-	| gen(SELECT(i,v,x,FLTt,e), hp) = let
-	    val a as M.REG ar = regbind v
-	    val f = newFreg()
-	  in fallocF(f, x, M.LOADD(scale8(a, INT i), R.REAL), e, hp)
-	  end
+	| gen(SELECT(i,v,x,FLTt,e), hp) = 
+	   falloc(x, M.LOADD(scale8(regbind v, INT i), R.REAL), e, hp)
 	| gen(SELECT(i,v,x,_,e), hp) = let
-	    val a = regbind v
-	    val r = newReg()
-	    val region = getRegion(v, i)
-          in allocR(r, x, M.LOAD32(scale4(a, INT i), region), e, hp)
+	    val select = M.LOAD32(scale4(regbind v, INT i), getRegion(v, i))
+	  in
+	    (* This business is only done with SELECTs because it is
+	       where I think it has the most benefit. [Lal]
+	     *)
+	    case treeify x
+	     of CpsTreeify.COMPUTE => alloc(x, select, e, hp)
+	      | CpsTreeify.TREEIFY => (addExpBinding(x, select); gen(e, hp))
+ 	      | CpsTreeify.DEAD => gen(e, hp)
           end
 	| gen(OFFSET(i,v,x,e), hp) = alloc(x, scale4(regbind v, INT i), e, hp)
 
@@ -843,7 +857,7 @@ struct
 	  in
 	    updtHeapPtr hp;
 	    emit(M.MV(xreg, M.ADDT(vreg, regbind(INT32 0wx80000000))));
-	    allocR(xreg, x, vreg, e, 0)
+	    alloc(x, vreg, e, 0)
           end
 	| gen(ARITH(P.testu(31, 31), [v], x, _, e), hp) = let
 	     val xreg = newReg()
@@ -851,7 +865,7 @@ struct
 	  in
 	    updtHeapPtr hp;
 	    emit(M.MV(xreg, M.ADDT(vreg, regbind(INT32 0wx80000000))));
-	    allocR(xreg, x, vreg, e, 0)
+	    alloc(x, vreg, e, 0)
           end
 	| gen(ARITH(P.testu(32,31), [v], x, _, e), hp) = let
 	    val vreg = regbind v
@@ -1084,7 +1098,7 @@ struct
 				      LE.LABEL lab)))
 	    in
 	      func := NONE;
-	      comp(M.ENTRYLABEL lab);
+	      comp(M.ORDERED[M.PSEUDO_OP PseudoOp.ALIGN4, M.ENTRYLABEL lab]);
 	      comp(M.BLOCK_NAME(Int.toString f));
 	      alignAllocptr f;
 	      emit(assign(C.baseptr, baseval));
@@ -1139,6 +1153,9 @@ end (* MLRiscGen *)
 
 (*
  * $Log: mlriscGen.sml,v $
+ * Revision 1.14  1999/03/22 17:22:32  george
+ *   Changes to support new GC API
+ *
  * Revision 1.13  1999/02/23 20:22:06  george
  *   bug fix to do with zero length arrays
  *

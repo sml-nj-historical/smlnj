@@ -96,7 +96,7 @@ struct
          | arith I.TADDTV = "taddtv"
        fun shift I.SLL  = "sll"
          | shift I.SRL  = "srl"
-         | shift I.SRA  = "srl"
+         | shift I.SRA  = "sra"
        fun load I.LD   = "ld"
          | load I.LDD  = "ldd"
          | load I.LDUB = "ldub"

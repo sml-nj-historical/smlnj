@@ -129,8 +129,8 @@
             jmp		(STDCONT);
 
 #define CHECKLIMIT					\
-	    beq		NEEDGC,3f;			\
 	    mov		STDLINK, PC;			\
+	    beq		NEEDGC,3f;			\
 	    br		saveregs;			\
 	 3:
 

@@ -25,9 +25,9 @@ signature SDI_JUMPS = sig
        * given by labMap.
        *)
 
-  val expand	: I.instruction * int -> I.instruction list
-      (* expand(instr,size) - expands sdi instruction instr,
-       *  into size bytes.
+  val expand : I.instruction * int * int -> I.instruction list
+      (* expand(instr,size,loc) - expands sdi instruction instr,
+       *  into size bytes at postion loc.
        *)
 
 end
@@ -35,6 +35,9 @@ end
 
 (*
  * $Log: sdi-jumps.sig,v $
+ * Revision 1.1.1.1  1998/11/16 21:47:14  george
+ *   Version 110.10
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:02  george
  * Version 110.5
  *

@@ -154,14 +154,14 @@ struct
     | loadIndexed I.LDH = I.LDHX
     | loadIndexed I.LDB = I.LDBX
 
-  fun expand(I.LDO{i=I.LabExp lexp, t, b}, size) = 
+  fun expand(I.LDO{i=I.LabExp lexp, t, b}, size, _) = 
       (case size 
         of 4 => [I.LDO{i=I.LabExp lexp, b=b, t=t}]
          | 12 => [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
 	          I.LDO{i=I.LOLabExp lexp, b=C.asmTmpR, t=C.asmTmpR},
 		  I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=b, t=t}]
       (*esac*))
-    | expand(I.LDO{i=I.ConstOp c, t, b}, size) = 
+    | expand(I.LDO{i=I.ConstOp c, t, b}, size, _) = 
       (case size 
        of 4 => [I.LDO{i=I.IMMED(Const.valueOf c), t=t, b=b}]
         | 8 => let
@@ -171,7 +171,7 @@ struct
 	     I.LDO{i=I.IMMED lo, b=C.asmTmpR, t=t}]
           end
       (*esac*))
-    | expand(I.STORE{st, d=I.ConstOp c, b, r, mem}, size) = 
+    | expand(I.STORE{st, d=I.ConstOp c, b, r, mem}, size, _) = 
       (case size 
        of 4 => [I.STORE{st=st, d=I.IMMED(Const.valueOf c), b=b, r=r, mem=mem}]
         | 12 => let
@@ -182,8 +182,8 @@ struct
 	     I.STORE{st=st, b=C.asmTmpR, d=I.IMMED lo, r=r, mem=mem}]
 	  end
       (*esac*))
-    | expand(I.STORE _, _) = error "expand:STORE" 
-    | expand(I.ARITHI{ai, r, i=I.ConstOp c, t}, size) = 
+    | expand(I.STORE _, _, _) = error "expand:STORE" 
+    | expand(I.ARITHI{ai, r, i=I.ConstOp c, t}, size, _) = 
       (case size
        of 4 => [I.ARITHI{ai=ai, r=r, i=I.IMMED(Const.valueOf c), t=t}]
         | 12 => let
@@ -201,7 +201,7 @@ struct
 	     I.ARITHI{ai=ai, r=C.asmTmpR, i=I.IMMED lo, t=t}]
 	  end
       (*esac*))
-    | expand(instr as I.LOADI{li, r, i=I.ConstOp c, t, mem} , size) = 
+    | expand(instr as I.LOADI{li, r, i=I.ConstOp c, t, mem} , size, _) = 
       (case size
        of 4  => [I.LOADI{li=li, r=r, i=I.IMMED(Const.valueOf c), t=t, mem=mem}]
         | 12 => let
@@ -212,14 +212,14 @@ struct
 	     I.LOADI{li=li, r=C.asmTmpR, i=I.IMMED lo, t=t, mem=mem}]
 	  end
       (*esac*))
-    | expand(instr as I.LOADI{li, r, i=I.LabExp lexp, t, mem} , size) = 
+    | expand(instr as I.LOADI{li, r, i=I.LabExp lexp, t, mem} , size, _) = 
       (case size
        of 4  => [instr]
         | 12 => [I.LDIL{i=I.HILabExp lexp, t=C.asmTmpR},
 		 I.ARITH{a=I.ADD, r1=C.asmTmpR, r2=r, t=C.asmTmpR},
 		 I.LOADI{li=li, r=C.asmTmpR, i=I.LOLabExp lexp, t=t, mem=mem}]
       (*esac*))
-    | expand(instr as I.ARITHI{ai, r, i=I.LabExp lexp, t} , size) = 
+    | expand(instr as I.ARITHI{ai, r, i=I.LabExp lexp, t} , size, _) = 
       (case size
        of 4  => [instr]
         | 12 => 
@@ -237,7 +237,7 @@ struct
 		r1=C.asmTmpR,
 		r2=r}]
       (*esac*))
-    | expand(instr as I.BCOND{cmp,bc, t, f, r1, r2, n}, size) = let
+    | expand(instr as I.BCOND{cmp,bc, t, f, r1, r2, n}, size, _) = let
 	fun rev I.COMBT=I.BCOND{cmp=I.COMBF,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true}
 	  | rev I.COMBF=I.BCOND{cmp=I.COMBT,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true}
       in
@@ -247,7 +247,7 @@ struct
 	 | 20 => rev cmp :: longJump{lab=t, n=n}
         (*esac*)
       end
-    | expand(instr as I.BCONDI{cmpi, bc, t, f, i, r2, n}, size) = let
+    | expand(instr as I.BCONDI{cmpi, bc, t, f, i, r2, n}, size, _) = let
         fun rev I.COMIBT=I.BCONDI{cmpi=I.COMIBF,bc=bc,i=i,r2=r2,t=f,f=f,n=true}
 	  | rev I.COMIBF=I.BCONDI{cmpi=I.COMIBT,bc=bc,i=i,r2=r2,t=f,f=f,n=true}
       in
@@ -257,12 +257,12 @@ struct
 	   | 20 => rev cmpi :: longJump{lab=t, n=n}
 	(*esac*))
       end
-    | expand(instr as I.B{lab=lab, n=n}, size) =
+    | expand(instr as I.B{lab=lab, n=n}, size, _) =
       (case size 
 	of 4 => [instr]
          | 16 => longJump{lab=lab, n=n}
       (*esac*))
-    | expand(instr as I.FBRANCH{t, f, n, ...}, size) =
+    | expand(instr as I.FBRANCH{t, f, n, ...}, size, _) =
       (case size 
 	of 12 => [instr]
          | 24 => 
@@ -274,21 +274,24 @@ struct
 	      *)
 	        error "FBRANCH"
       (*esac*))
-    | expand(I.BLR{labs,n,t,x,...},size) = 
+    | expand(I.BLR{labs,n,t,x,...},size,_) = 
        (if size = 8 + 8 * length labs then
            I.BLR{labs=[],n=n,t=t,x=x}::
            I.NOP::
            foldr (fn (l,is) => I.B{lab=l,n=true}::I.NOP::is) [] labs
         else error "BLR"
        )
-    | expand(I.COPY{impl=ref(SOME instrs),...}, _) = instrs
-    | expand(I.FCOPY{impl=ref(SOME instrs),...}, _) = instrs
+    | expand(I.COPY{impl=ref(SOME instrs),...}, _, _) = instrs
+    | expand(I.FCOPY{impl=ref(SOME instrs),...}, _, _) = instrs
     | expand _ = error "expand"
 
 end
 
 (*
  * $Log: hppaJumps.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:28  george
+ *   Version 110.12
+ *
  * Revision 1.2  1998/10/06 14:04:32  george
  *   The instruction sequence FCMP, FTEST, FBCC is being replaced
  *   by the composite instruction FBRANCH.  This makes scheduling and

@@ -13,6 +13,7 @@ structure PPCCells : PPCCELLS = struct
   val stackptrR = 1
   val asmTmpR = 28			
   val fasmTmp = 0
+  val lr = 72
 
   val firstPseudo	= 256
 
@@ -80,6 +81,7 @@ structure PPCCells : PPCCELLS = struct
       0..31   gp
       32..63  fp
       64..71  cc
+      72      lr
    *)
   fun cellsetToRegs(regmap, (regs,fregs,ccregs)) = let 
     val lookup = Intmap.map regmap 

@@ -224,10 +224,10 @@ struct
 	      I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
          end)
 
-    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION
-    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION
-    val icp       = IntRa.ra IntRa.COPY_PROPAGATION
-    val fcp       = FloatRa.ra FloatRa.COPY_PROPAGATION
+    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION []
+    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION []
+    val icp       = IntRa.ra IntRa.COPY_PROPAGATION []
+    val fcp       = FloatRa.ra FloatRa.COPY_PROPAGATION []
     val cp        = fcp o icp
 
     fun ra cluster = let
@@ -282,6 +282,9 @@ end
 
 (*
  * $Log: sparcCG.sml,v $
+ * Revision 1.5  1999/03/22 18:46:43  george
+ *   Changes to conform to new MLRISC Control
+ *
  * Revision 1.4  1999/03/22 17:22:39  george
  *   Changes to support new GC API
  *

@@ -45,7 +45,7 @@ Group is
 ../MLRISC/backpatch/delaySlotProps.sig
 ../MLRISC/backpatch/sdi-jumps.sig
 ../MLRISC/backpatch/spanDep.sml
-
+../MLRISC/backpatch/vlBackPatch.sml
 
 ../MLRISC/alpha32/backpatch/alpha32Jumps.sml
 ../MLRISC/alpha32/emit/alpha32Asm.sml
@@ -109,3 +109,25 @@ Group is
 ../MLRISC/ppc/mltree/ppcPseudoInstr.sig
 ../MLRISC/ppc/ra/ppcRegAlloc.sml
 ../MLRISC/ppc/ra/ppcRewrite.sml
+
+../MLRISC/x86/backpatch/x86Jumps.sml
+../MLRISC/x86/emit/x86MC.sml
+../MLRISC/x86/emit/x86Asm.sml
+../MLRISC/x86/instructions/x86Cells.sig
+../MLRISC/x86/instructions/x86Cells.sml
+../MLRISC/x86/instructions/x86Instr.sig
+../MLRISC/x86/instructions/x86Instr.sml
+../MLRISC/x86/instructions/x86MemRegs.sig
+../MLRISC/x86/instructions/x86Props.sml
+../MLRISC/x86/instructions/x86Shuffle.sig
+../MLRISC/x86/instructions/x86Shuffle.sml
+../MLRISC/x86/mltree/x86.sml
+../MLRISC/x86/ra/x86PseudoR.sml
+../MLRISC/x86/ra/x86RegAlloc.sml
+../MLRISC/x86/ra/x86Rewrite.sig
+../MLRISC/x86/ra/x86Rewrite.sml
+../MLRISC/x86/ra/x86Spill.sml
+
+
+
+

@@ -29,6 +29,20 @@ structure Object :> UNSAFE_OBJECT =
 
     val toObject : 'a -> object = InlineT.cast
 
+    local
+      val record1 : object -> object =
+	    CInterface.c_function "SMLNJ-RunT" "record1"
+      val rConcat : (object * object) -> object =
+	    CInterface.c_function "SMLNJ-RunT" "recordConcat"
+    in
+    fun mkTuple [] = toObject()
+      | mkTuple [a] = record1 a
+      | mkTuple [a,b] = toObject(a,b)
+      | mkTuple [a,b,c] = toObject(a,b,c)
+      | mkTuple [a,b,c,d] = toObject(a,b,c,d)
+      | mkTuple (a::b::c::d::r) = rConcat(toObject(a,b,c,d), mkTuple r)
+    end (* local *)
+
     val boxed = InlineT.boxed
     val unboxed = InlineT.unboxed
 
@@ -95,7 +109,10 @@ structure Object :> UNSAFE_OBJECT =
 	  (* end case *))
 
     fun toTuple obj = (case (rep obj)
-	   of Pair => [
+	   of Unboxed => if (((InlineT.cast obj) : int) = 0)
+		then []
+		else raise Representation
+	    | Pair => [
 		  InlineT.recordSub(obj, 0),
 		  InlineT.recordSub(obj, 1)
 		]
@@ -161,6 +178,9 @@ structure Object :> UNSAFE_OBJECT =
 
 (*
  * $Log: object.sml,v $
+ * Revision 1.4  1998/11/23 20:10:10  jhr
+ *   New raw64Subscript primop.
+ *
  * Revision 1.3  1998/11/18 03:54:24  jhr
  *  New array representations.
  *

@@ -12,6 +12,7 @@ signature PPCCELLS = sig
   val stackptrR : int
   val asmTmpR : int
   val fasmTmp : int
+  val lr : int
 
   val newCell : cellclass -> unit -> int (* generate a new name *)
   val numCell : cellclass -> unit -> int (* number of names in class *)

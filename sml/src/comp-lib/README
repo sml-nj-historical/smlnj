@@ -1,8 +1,0 @@
-comp-lib
-========
-
-This directory contains compiler-independent utility libraries that
-were originally in directory compiler/MiscUtil/util.  Many of these
-are variants of modules that are available in smlnj-lib/Util, and they
-should eventually be replaced by the corresponding smlnj-lib modules.
-

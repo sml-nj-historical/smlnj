@@ -18,18 +18,11 @@ functor Alpha32RegAlloc(structure I : INSTRUCTIONS where C = Alpha32Cells
    sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
-		     where type B.name = F.B.name
-		     (* should be: where I = I -- bug 1205 *)) : sig
-        datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-	val ra : mode -> F.cluster -> F.cluster
-      end
+		     where type B.name = F.B.name) : RA 
+
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		       where I = I
-		       where type B.name = F.B.name
-		       (* should be: where I = I *)) : sig
-        datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
-        val ra : mode -> F.cluster -> F.cluster
-      end
+		       where type B.name = F.B.name) : RA
    end =
 struct
   structure C = I.C
@@ -91,6 +84,9 @@ end
 
 (*
  * $Log: alpha32RegAlloc.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:55:01  george
+ *   Version 110.12
+ *
  * Revision 1.6  1998/10/06 14:07:31  george
  * Flowgraph has been removed from modules that do not need it.
  * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
