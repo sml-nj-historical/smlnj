@@ -152,7 +152,7 @@ struct
 	  of SOME bId => bId 
 	   | NONE => EXIT)
 
-      fun jump(from, [Props.ESCAPES], _) = addEdge(from, EXIT, CFG.FALLSTHRU)
+      fun jump(from, [Props.ESCAPES], _) = addEdge(from, EXIT, CFG.EXIT)
 	| jump(from, [Props.LABELLED lab], _) = addEdge(from, target lab, CFG.JUMP)
 	| jump(from, [Props.LABELLED lab, Props.FALLTHROUGH], blks) = let
 	   fun next(CFG.BLOCK{id, ...}::_) = id
@@ -172,7 +172,7 @@ struct
 
       and fallsThru(id, blks) = 
 	case blks
-	 of [] => addEdge(id, EXIT, CFG.FALLSTHRU)
+	 of [] => addEdge(id, EXIT, CFG.EXIT)
 	    | CFG.BLOCK{id=next, ...}::_ => addEdge(id, next, CFG.FALLSTHRU)
 	  (*esac*)
 
