@@ -239,6 +239,11 @@ functor WeightedBlockPlacementFn (
 			lab
 		      end
 		(* end case *))
+	(* patch the blocks so that unconditional jumps to the immediate successor
+	 * are replaced by fall-through edges and conditional jumps to the immediate
+	 * successor are negated.  Remember that we cannot fall through to the exit
+	 * block!
+	 *)
 	  fun patch (
 		(blkId, CFG.BLOCK{kind=CFG.NORMAL, insns, ...}),
 		(next as (nextId, _)) :: rest
@@ -246,14 +251,17 @@ functor WeightedBlockPlacementFn (
 		case #out_edges graph blkId
 		 of [(_, dst, e as CFG.EDGE{k, w, a})] => (case (dst = nextId, k)
 		       of (false, CFG.FALLSTHRU) => (
-			    (* rewrite edge as JUMP and add jump insn *)
+			  (* rewrite edge as JUMP and add jump insn *)
 			    setEdges (blkId, [(blkId, dst, updEdge(e, CFG.JUMP))]);
 			    insns := IP.jump(labelOf dst) :: !insns)
-			| (true, CFG.JUMP) => (
-			    (* rewrite edge as FALLSTHRU and remove jump insn *)
-			    setEdges (blkId,
-			      [(blkId, dst, updEdge(e, CFG.FALLSTHRU))]);
-			    insns := tl(!insns))
+			| (true, CFG.JUMP) =>
+			    if (nextId <> exitId)
+			      then (
+			      (* rewrite edge as FALLSTHRU and remove jump insn *)
+				setEdges (blkId,
+				  [(blkId, dst, updEdge(e, CFG.FALLSTHRU))]);
+				insns := tl(!insns))
+			      else () (* do not rewrite jumps to STOP block *)
 			| _ => ()
 		      (* end case *))
 		  | [(_, dst1, e1 as CFG.EDGE{k=CFG.BRANCH b, ...}),
@@ -291,7 +299,12 @@ functor WeightedBlockPlacementFn (
 		end
 	      else ();
 	    if !dumpCFG
-	      then CFG.dump(!dumpStrm, "after block placement", cfg)
+	      then let
+		val prBlock = CFG.dumpBlock (!dumpStrm, cfg)
+		in
+		  TextIO.output(!dumpStrm, "[ after block placement ]\n");
+		  List.app prBlock blocks
+		end
 	      else ();
 	    blocks
 	  end
