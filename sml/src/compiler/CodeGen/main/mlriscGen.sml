@@ -204,6 +204,14 @@ struct
        * Otherwise, we'll just use the normal version.
        *)
       val gctypes = !gctypes
+
+      val _       = if gctypes then
+                    let val gcMap = GCCells.newGCMap()
+                    in  enterGC := Intmap.add gcMap;
+                        GCCells.setGCMap gcMap 
+                    end
+                    else ()
+
       val (newReg, newRegWithCty, newRegWithKind, newFreg)  = 
            if gctypes then 
               let val newReg  = GCCells.newCell Cells.GP
@@ -213,12 +221,6 @@ struct
               in  (newReg, newRegWithCty, newRegWithKind, newFreg) end
            else (Cells.newReg, Cells.newReg, Cells.newReg, Cells.newFreg)
 
-      val _       = if gctypes then
-                    let val gcMap = GCCells.newGCMap()
-                    in  enterGC := Intmap.add gcMap;
-                        GCCells.setGCMap gcMap 
-                    end
-                    else ()
       fun markPTR e = if gctypes then M.MARK(e,ptr) else e
       fun markI32 e = if gctypes then M.MARK(e,i32) else e
       fun markFLT e = if gctypes then M.FMARK(e,flt) else e
@@ -1733,7 +1735,7 @@ struct
           )
   in  app mkGlobalTables funcs;
       app genCluster (Cluster.cluster funcs);
-      emitMLRiscUnit InvokeGC.emitModuleGC 
+      emitMLRiscUnit InvokeGC.emitModuleGC
   end (* codegen *)
 end (* MLRiscGen *)
 

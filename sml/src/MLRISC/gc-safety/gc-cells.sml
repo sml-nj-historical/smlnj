@@ -8,11 +8,19 @@ struct
    structure C  = C
    structure GC = GCMap.GC
    structure GCMap = GCMap
+  
+   fun error msg = MLRiscErrorMsg.error("GCCells",msg)
 
    val gcmap = ref NONE : GCMap.gcmap option ref
 
    fun setGCMap map = gcmap := SOME map
-   fun getGCMap() = Option.valOf(!gcmap) 
+
+   fun getGCMap() = 
+        case !gcmap of
+          NONE => error "no gc map"
+        | SOME gcmap => gcmap
+
+   fun clearGCMap() = gcmap := NONE
 
    (*
     * Generate a new virtual register and update the gc map at the same time.

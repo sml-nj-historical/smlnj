@@ -16,6 +16,7 @@ Description:
 Name: Allen Leung
 Date: 2000/03/29 18:00:00
 Tag: leunga-20000327-mlriscGen_hppa_alpha_x86
+Boot files (optional): ftp://react-ilp.cs.nyu.edu/leunga/110.26.1-sml.boot.x86-unix-20000330.tar.gz
 Description:
  
    This update contains *MAJOR* changes to the way code is generated from CPS

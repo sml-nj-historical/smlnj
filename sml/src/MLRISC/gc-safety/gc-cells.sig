@@ -14,6 +14,7 @@ sig
    val newGCMap : unit -> GCMap.gcmap  (* create a new gc map *)
    val setGCMap : GCMap.gcmap -> unit  (* set the current gc map *)
    val getGCMap : unit -> GCMap.gcmap  (* get the current gc map *)
+   val clearGCMap : unit -> unit       (* remove current gc map *) 
 
    (*
     * Generate a virtual register and update the gc map at the same time.
