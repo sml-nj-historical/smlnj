@@ -16,48 +16,61 @@
 ------------------------------------------------------------------------ 
 Summary:
 
-  This version has some minor tweeks to FLINT (after the major merge
-  in 110.26).  Work continues on tuning FLINT and the various optimizations
-  it implements.
+ * This version has some minor tweeks to FLINT (after the major merge
+   in 110.26).  Work continues on tuning FLINT and the various optimizations
+   it implements.
 
-  CM has been revised extensively, and the modmap environment mechanism
-  supporting stubbified pickles has been reworked completely.  The pathconfig
-  file has been simplified.  Installation scripts have been further
-  modified.  See src/system/README and the latest version of the
-  CM manual at 
+ * CM has been revised extensively, and the modmap environment mechanism
+   supporting stubbified pickles has been reworked completely.  The pathconfig
+   file has been simplified.  Installation scripts have been further
+   modified.  See src/system/README and the latest version of the
+   CM manual at 
 
-   <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual/index.html>
-   <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual.ps>
+    <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual/index.html>
+    <//http://www.kurims.kyoto-u.ac.jp/~blume/SMLNJ-DEV/manual.ps>
 
-  for further information about these changes.
+   for further information about these changes.
 
-  MLRISC, and particularly the x86 back end have been modified extensively.
+ * MLRISC, and particularly the x86 back end have been modified extensively.
 
-  There are a few updates to the SML/NJ Library
+ * There are a few updates to the SML/NJ Library
 
-  Reported bug fixes:
-    1556. (jhr) signal race condition
-    Some CM bugs (not recorded)
+ * Reported bug fixes:
+     1556. (jhr) signal race condition
+     Some CM bugs (not recorded)
 
+ * Distribution file names have been simplified.  They no longer start
+   with the version number (e.g. "110.27-config.tar.gz" is now
+   simply "config.tar.gz").  The boot directory tarballs are now
+   "boot.alpha32-unix.tar.gz", etc. (i.e. no version number and the
+   "sml." prefix is dropped).  The new install script will restore
+   the usual name (e.g. "sml.boot.alpha32-unix" when the tarball is
+   unpacked.  [We dropped the initial "sml." for the boot tarballs to
+   get the file names under 28 characters because of a limitation of
+   the Bell Labs ftp server.]
+   The version README file is still named 110.27-README, however.
 
-  Distribution file names
-    Distribution file names have been simplified.  They no longer start
-    with the version number (e.g. "110.27-config.tar.gz" is now
-    simply "config.tar.gz").  The boot directory tarballs are now
-    "boot.alpha32-unix.tar.gz", etc. (i.e. no version number and the
-    "sml." prefix is dropped).  The new install script will restore
-    the usual name (e.g. "sml.boot.alpha32-unix" when the tarball is
-    unpacked.  [We dropped the initial "sml." for the boot tarballs to
-    get the file names under 28 characters because of a limitation of
-    the Bell Labs ftp server.]
-    The version README file is still named 110.27-README, however.
+     110.27-README
+     HISTORY
+     MLRISC.tar.gz
+     boot.alpha32-unix.tar.gz
+     boot.hppa-unix.tar.gz
+     boot.ppc-unix.tar.gz
+     boot.sparc-unix.tar.gz
+     boot.x86-unix.tar.gz
+     cm.tar.gz
+     compiler.tar.gz
+     config.tar.gz
+     ml-burg.tar.gz
+     ml-lex.tar.gz
+     ml-yacc.tar.gz
+     runtime.tar.gz
+     smlnj-lib.tar.gz
+     system.tar.gz
 
+======================================================================
+Details of changes
 
-----------------------------------------------------------------------
-The following change records are extracted from the CVS repository
-HISTORY file, which started in early March, 2000, so this doesn't
-cover changes between mid-December, 1999, when 110.26 was created, and
-early March.
 
 ======================================================================
 FLINT:
