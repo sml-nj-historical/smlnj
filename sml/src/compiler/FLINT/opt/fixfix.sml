@@ -51,14 +51,29 @@ structure SccNode = struct
 end
 structure SCC = SCCUtilFun (structure Node = SccNode)
 
-(* fexp: (intset * lexp) -> (int * intset * lexp)
+(* fexp: int ref intmapf -> lexp) -> (int * intset * lexp)
+ * The intmap contains refs to counters.  The meaning of the counters
+ * is slightly overloaded:
+ * - if the counter is negative, it means the lvar
+ *   is a locally known function and the counter's absolute value denotes
+ *   the number of calls (off by one to make sure it's always negative).
+ * - else, it indicates that the lvar is a
+ *   function argument and the absolute value is a (fuzzily defined) measure
+ *   of the reduction in code size/speed that would result from knowing
+ *   its value (might be used to decide whether or not duplicating code is
+ *   desirable at a specific call site).
  * The three subparts returned are:
  * - the size of lexp
  * - the set of freevariables of lexp (plus the ones passed as arguments
  *   which are assumed to be the freevars of the continuation of lexp)
  * - a new lexp with FIXes rewritten.
  *)
-fun fexp (fv,lexp) = let
+fun fexp mf lexp = let
+
+    val loop = fexp mf
+
+    fun lookup (F.VAR lv) = M.lookup mf lv
+      | lookup _ = raise M.IntmapF
 
     fun addv (s,F.VAR lv) = S.add(lv, s)
       | addv (s,_) = s
@@ -162,42 +177,44 @@ fun fexp (fv,lexp) = let
       | uncurry (_,body) = bug "uncurrying a non-curried function"
 
 in case lexp
-    of F.RET vs => (0, addvs(fv, vs), lexp)
-     | F.LET (lvs,le1,le2) =>
-       let val (s2,fv,le2) = fexp(fv, le2)
-	   val (s1,fv,le1) = fexp(rmvs(fv, lvs), le1)
-       in (s1 + s2, fv, F.LET(lvs, le1, le2))
+    of F.RET vs => (0, addvs(S.empty, vs), lexp)
+     | F.LET (lvs,body,le) =>
+       let val (s2,fvl,nle) = loop le
+	   val (s1,fvb,nbody) = loop body
+       in (s1 + s2, S.union(rmvs(fvl, lvs), fvb), F.LET(lvs, nbody, nle))
        end
      | F.FIX (fdecs,le) =>
        let val funs = S.make(map #2 fdecs) (* set of funs defined by the FIX *)
 
-	   (* process the main lexp and make it into a dummy function.
-	    * The computation of the freevars is a little sloppy since `fv'
-	    * includes freevars of the continuation, but the uniqueness
-	    * of varnames ensures that S.inter(fv, funs) gives the correct
-	    * result nonetheless. *)
-	   val (s,fv,le) = fexp(fv, le)
-	   val lename = LambdaVar.mkLvar()
-	   val m = M.singleton(lename, (S.members(S.inter(fv, funs)), 0,
-					{inline=F.IH_SAFE, isrec=NONE,
-					 known=true,cconv=F.CC_FCT},
-					[], le))
+	   (* create call-counters for each fun and add them to fm *)
+	   val (fs,mf) = foldl (fn ((fk,f,args,body),(fs,mf)) =>
+				let val c = ref ~1
+				in ((fk,f,args,body,c)::fs, M.add(mf, f, ref 0))
+				end)
+			       ([],mf)
+			       fdecs
 
 	   (* process each fun *)
-	   fun ffun (fdec as (fk as {isrec,...},f,args,body):F.fundec,
+	   fun ffun (fdec as (fk as {isrec,...}:F.fkind,f,args,body,cf),
 		     (s,fv,funs,m)) =
-	       case curry (true,false,!maxargs) (F.FIX([fdec], F.RET[F.VAR f]))
+	       case curry (true,false,!maxargs)
+			  (F.FIX([(fk,f,args,body)], F.RET[F.VAR f]))
 		of (args as _::_::_,body) => (* curried function *)
 		   let val ((fk,f,fargs,fbody),(fk',f',fargs',fbody')) =
 			   uncurry(args,body)
 		       (* add the wrapper function *)
-		       val nm = M.add(m, f, ([f'], 1, fk, fargs, fbody))
+		       val cs = map (fn _ => ref 0) fargs
+		       val nm = M.add(m, f, ([f'], 1, fk, fargs, fbody, cf, cs))
 		   (* now, retry ffun with the uncurried function *)
-		   in ffun((fk', f', fargs', fbody'),
+		   in ffun((fk', f', fargs', fbody', ref 1),
 			   (s+1, fv, S.add(f', funs), nm))
 		   end
 		 | _ =>	(* non-curried function *)
-		   let val (fs,ffv,body) = fexp(S.empty, body)
+		   let val (mf,cs) = foldr (fn ((v,t),(m,cs)) =>
+					    let val c = ref 0
+					    in (M.add(m, v, c), c::cs) end)
+					   (mf,[]) args
+		       val (fs,ffv,body) = fexp mf body
 		       val ffv = rmvs(ffv, map #1 args) (* fun's freevars *)
 		       val ifv = S.inter(ffv, funs) (* set of rec funs ref'ed *)
 		       val fs = fs div (case isrec of SOME(_,F.LK_TAIL) => 3
@@ -205,49 +222,62 @@ in case lexp
 						    | _ => 1)
 		   in
 		       (fs + s, S.union(ffv, fv), funs,
-			M.add(m, f, (S.members ifv, fs, fk, args, body)))
+			M.add(m, f, (S.members ifv, fs, fk, args, body, cf, cs)))
 		   end
 
+	   (* process the main lexp and make it into a dummy function.
+	    * The computation of the freevars is a little sloppy since `fv'
+	    * includes freevars of the continuation, but the uniqueness
+	    * of varnames ensures that S.inter(fv, funs) gives the correct
+	    * result nonetheless. *)
+	   val (s,fv,le) = fexp mf le
+	   val lename = LambdaVar.mkLvar()
+	   val m = M.singleton(lename, (S.members(S.inter(fv, funs)), 0,
+					{inline=F.IH_SAFE, isrec=NONE,
+					 known=true,cconv=F.CC_FCT},
+					[], le, ref 0, []))
+
 	   (* process the functions, collecting them in map m *)
-	   val (s,fv,funs,m) = foldl ffun (s, fv, funs, m) fdecs
+	   val (s,fv,funs,m) = foldl ffun (s, fv, funs, m) fs
 
 	   (* find strongly connected components *)
 	   val top = SCC.topOrder{root=lename, follow= #1 o (M.lookup m)}
 
 	   (* turns them back into flint code *)
-	   fun sccconvert (SCC.SIMPLE f,le) =
-	       (* a simple function.  Fix the fk accordingly *)
-	       let val (_,s,{isrec,cconv,known,inline},args,body) = M.lookup m f
-		   val fk =
-		       (* small functions inlining heuristic *)
-		       let val inline' =
-			       if inline = F.IH_SAFE andalso 
-				   s < !CTRL.inlineThreshold then
-				   F.IH_ALWAYS
-			       else inline
-		       in {isrec=NONE, inline=inline',
-			   known=known, cconv=cconv}
+	   fun sccSimple f (_,s,{isrec,cconv,known,inline},args,body,cf,cs) =
+	       let (* small functions inlining heuristic *)
+		   val ilthreshold = !CTRL.inlineThreshold + (length args)
+		   val ilh =
+		       if inline = F.IH_ALWAYS then inline
+		       else if s < ilthreshold then F.IH_ALWAYS
+		       else let val cs = map (op!) cs
+				val s' = foldl (op+) 0 cs
+		       in if s < 2*s' + ilthreshold
+			  then ((* say((Collect.LVarString f)^" = F.IH_MAYBE "^(Int.toString (s-ilthreshold))^(foldl (fn (i,s) => s^" "^(Int.toString i)) "" cs)^"\n"); *)
+				F.IH_MAYBE (s-ilthreshold, cs))
+			  else inline
 		       end
-	       in F.FIX([(fk, f, args, body)], le)
+		   val fk = {isrec=NONE, inline=ilh, known=known, cconv=cconv}
+	       in (fk, f, args, body)
 	       end
+	   fun sccRec f (_,s,fk as {isrec,cconv,known,inline},args,body,cf,cs) =
+	       let val fk' =
+		       (* let's check for unroll opportunities.
+			* This heuristic is pretty bad since it doesn't
+			* take the number of rec-calls into account *)
+		       case (isrec,inline)
+			of (SOME(_,(F.LK_LOOP|F.LK_TAIL)),F.IH_SAFE) =>
+			   if s < !CTRL.unrollThreshold then
+			       {inline=F.IH_UNROLL, isrec=isrec,
+				cconv=cconv, known=known}
+			   else fk
+			 | _ => fk
+	       in (fk, f, args, body)
+	       end
+	   fun sccconvert (SCC.SIMPLE f,le) =
+	       F.FIX([sccSimple f (M.lookup m f)], le)
 	     | sccconvert (SCC.RECURSIVE fs,le) =
-	       let fun scfun f =
-		       let val (_,s,fk as {isrec,cconv,known,inline},args,le) =
-			       M.lookup m f
-			   val fk' =
-			       (* let's check for unroll opportunities.
-				* This heuristic is pretty bad since it doesn't
-				* take the number of rec-calls into account *)
-			       case (isrec,inline)
-				of (SOME(_,(F.LK_LOOP|F.LK_TAIL)),F.IH_SAFE) =>
-				   if s < !CTRL.unrollThreshold then
-				       {inline=F.IH_UNROLL, isrec=isrec,
-					cconv=cconv, known=known}
-				   else fk
-				 | _ => fk
-		       in (fk, f, args, le) end
-	       in F.FIX(map scfun fs, le)
-	       end
+	       F.FIX(map (fn f => sccRec f (M.lookup m f)) fs, le)
        in
 	   case top
 	    of (SCC.SIMPLE f)::sccs =>
@@ -256,72 +286,85 @@ in case lexp
 	     | (SCC.RECURSIVE _)::_ => bug "recursive main body in SCC ?!?!?"
 	     | [] => bug "SCC going crazy"
        end
-     | F.APP (f,args) =>
-       (* the cost of a function call depends on the number of args
-	* and the size of the continuation (number of free vars).
-	* We could also ask Collect whether f is known *)
-       (3 + (length args) + (S.size fv), addvs(fv, f::args), lexp)
+     | F.APP (F.VAR f,args) =>
+       (* For known functions, increase the counter and
+	* make the call a bit cheaper. *)
+       let val scall =
+	       (let val cf as ref c = M.lookup mf f
+	       in if c < 0
+		  then (cf := c - 1; 1)
+		  else (cf := c + 5; 5)
+	       end) handle M.IntmapF => 5
+       in  
+	   (scall + (length args), addvs(S.singleton f, args), lexp)
+       end
      | F.TFN ((f,args,body),le) =>
-       let val (se,fve,le) = fexp(fv, le)
-	   val (sb,fvb,body) = fexp(S.empty, body)
+       let val (se,fve,le) = loop le
+	   val (sb,fvb,body) = loop body
        in (sb + se, S.union(S.rmv(f, fve), fvb), F.TFN((f, args, body), le))
        end
-     | F.TAPP (f,args) =>
+     | F.TAPP (F.VAR f,args) =>
        (* The cost of TAPP is kinda hard to estimate.  It can be very cheap,
 	* and just return a function, or it might do all kinds of wrapping
 	* but we have almost no information on which to base our choice.
 	* We opted for cheap here, to try to inline them more (they might
 	* become cheaper once inlined) *)
-       (3, addv(fv, f), lexp)
+       (3, S.singleton f, lexp)
      | F.SWITCH (v,ac,arms,def) =>
        let fun farm (dcon as F.DATAcon(dc,_,lv),le) =
 	       (* the binding might end up costly, but we count it as 1 *)
-	       let val (s,fv,le) = fexp(fv,le)
+	       let val (s,fv,le) = loop le
 	       in (1+s, fdcon(S.rmv(lv, fv),dc), (dcon, le))
 	       end
 	     | farm (dc,le) =
-	       let val (s,fv,le) = fexp(fv, le) in (s, fv, (dc, le)) end
-	   val (s,fv,arms) =
-	       foldl (fn ((s1,fv1,arm),(s2,fv2,arms)) =>
-		      (s1+s2, S.union(fv1, fv2), arm::arms))
-		     (0, fv, []) (map farm arms)
-       in case def
+	       let val (s,fv,le) = loop le in (s, fv, (dc, le)) end
+	   val (s,smax,fv,arms) =
+	       foldl (fn ((s1,fv1,arm),(s2,smax,fv2,arms)) =>
+		      (s1+s2, Int.max(s1,smax), S.union(fv1, fv2), arm::arms))
+		     (0, 0, S.empty, []) (map farm arms)
+       in  let val cf = lookup v in cf := !cf+s-smax end handle M.IntmapF=>();
+	   case def
 	   of NONE => (s, fv, F.SWITCH(v, ac, arms, NONE))
-	    | SOME le => let val (sd,fvd,le) = fexp(fv,le)
+	    | SOME le => let val (sd,fvd,le) = loop le
 	      in (s+sd, S.union(fv, fvd), F.SWITCH(v, ac, arms, SOME le))
 	      end
        end
      | F.CON (dc,tycs,v,lv,le) =>
-       let val (s,fv,le) = fexp(fv, le)
+       let val (s,fv,le) = loop le
        in (2+s, fdcon(addv(S.rmv(lv, fv), v),dc), F.CON(dc, tycs, v, lv, le))
        end
      | F.RECORD (rk,vs,lv,le) =>
-       let val (s,fv,le) = fexp(fv, le)
+       let val (s,fv,le) = loop le
        in ((length vs)+s, addvs(S.rmv(lv, fv), vs), F.RECORD(rk, vs, lv, le))
        end
      | F.SELECT (v,i,lv,le) =>
-       let val (s,fv,le) = fexp(fv, le)
-       in (1+s, addv(S.rmv(lv, fv), v), F.SELECT(v,i,lv,le))
+       let val (s,fv,le) = loop le
+       in let val cf = lookup v in cf := !cf + 1 end handle M.IntmapF=>();
+	   (1+s, addv(S.rmv(lv, fv), v), F.SELECT(v,i,lv,le))
        end
-     | F.RAISE (v,ltys) => (3, addv(fv, v), lexp)
+     | F.RAISE (F.VAR v,ltys) => (3, S.singleton v, lexp)
      | F.HANDLE (le,v) =>
-       let val (s,fv,le) = fexp(fv, le)
+       let val (s,fv,le) = loop le
        in (2+s, addv(fv, v), F.HANDLE(le,v))
        end
      | F.BRANCH (po,vs,le1,le2) =>
-       let val (s1,fv1,le1) = fexp(fv,le1)
-	   val (s2,fv2,le2) = fexp(fv,le2)
+       let val (s1,fv1,le1) = loop le1
+	   val (s2,fv2,le2) = loop le2
        in (1+s1+s2, fpo(addvs(S.union(fv1, fv2), vs), po),
 	   F.BRANCH(po, vs, le1, le2))
        end
      | F.PRIMOP (po,vs,lv,le) =>
-       let val (s,fv,le) = fexp(fv, le)
+       let val (s,fv,le) = loop le
        in (1+s, fpo(addvs(S.rmv(lv, fv), vs),po), F.PRIMOP(po,vs,lv,le))
        end
+
+     | F.APP _ => bug "bogus F.APP"
+     | F.TAPP _ => bug "bogus F.TAPP"
+     | F.RAISE _ => bug "bogus F.RAISE"
 end
 
 fun fixfix ((fk,f,args,body):F.prog) =
-    let val (s,fv,nbody) = fexp(S.empty, body)
+    let val (s,fv,nbody) = fexp M.empty body
 	val fv = S.diff(fv, S.make(map #1 args))
     in
 	(*  PPFlint.printLexp(F.RET(map F.VAR (S.members fv))); *)

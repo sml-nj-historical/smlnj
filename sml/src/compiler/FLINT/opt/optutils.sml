@@ -17,6 +17,12 @@ sig
     (* A less brain-dead version of ListPair.all: returns false if
      * length l1 <> length l2 *)
     val ListPair_all : ('a * 'b -> bool) -> 'a list * 'b list -> bool
+
+    (* This is not a proper transposition in that the order is reversed
+     * in the following way:  transpose x = map rev (proper_trans x) *)
+    exception Unbalanced
+    val transpose : 'a list list -> 'a list list
+    val foldl3 : ('a * 'b * 'c * 'd -> 'd) -> 'd -> 'a list * 'b list * 'c list -> 'd
 end
 
 structure OptUtils :> OPT_UTILS =
@@ -48,6 +54,26 @@ in
 	      | allp ([],[]) = true
 	      | allp _ = false
 	in allp
+	end
+
+    exception Unbalanced
+    fun transpose [] = []
+      | transpose (xs::xss) =
+	let fun tr [] accs = accs
+	      | tr (xs::xss) accs =
+		let fun f [] [] = []
+		      | f (x::xs) (acc::accs) = (x::acc)::(f xs accs)
+		      | f _ _ = raise Unbalanced
+		in tr xss (f xs accs)
+		end
+	in tr xss (map (fn x => [x]) xs)
+	end
+
+    fun foldl3 f =
+	let fun l s ([],[],[]) = s
+	      | l s (x1::x1s,x2::x2s,x3::x3s) = l (f(x1,x2,x3,s)) (x1s,x2s,x3s)
+	      | l _ _ = raise Unbalanced
+	in l
 	end
 
 end

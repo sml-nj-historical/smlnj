@@ -88,6 +88,7 @@ local
     structure FU = FlintUtil
     structure LV = LambdaVar
     structure PP = PPFlint
+    structure PO = PrimOp
 in
 
 val say = Control.Print.say
@@ -110,12 +111,12 @@ fun new args lv =
 
 (* map related helper functions *)
 fun get lv = (M.map m lv)
-		  (* handle x as NotFound =>
+		  handle x as NotFound =>
 		  (say ("Collect: ERROR: get unknown var "^
 			(LV.lvarName lv)^
 			". Pretending dead...\n");
 		   (*  raise x; *)
-		   new NONE lv) *)
+		   new NONE lv)
 
 fun LVarString lv =
     let val Info{uses=ref uses,calls=ref calls,...} = get lv
@@ -201,7 +202,7 @@ fun usage bs =
 	 | [] => None
     end
 
-fun impurePO po = true		(* if a PrimOP is pure or not *)
+fun impurePO (po:F.primop) = not(PO.purePrimop (#2 po))
 
 val census = let
     (* val use = if inc then use else unuse *)
@@ -210,8 +211,6 @@ val census = let
     fun newv lv = new NONE lv
     fun newf args lv = new args lv
     fun id x = x
-
-    fun impurePO po = true		(* if a PrimOP is pure or not *)
 
     (* here, the use resembles a call, but it's safer to consider it as a use *)
     fun cpo (NONE:F.dict option,po,lty,tycs) = ()
@@ -258,11 +257,11 @@ val census = let
 	    (call (SOME vs) f; app use vs)
 
 	  | F.TFN ((tf,args,body),le) =>
-	    let val tfi = newf NONE tf
+	    let val tfi = newf (SOME[]) tf
 	    in cexp le; if used tfi then cexp body else ()
 	    end
 
-	  | F.TAPP (F.VAR tf,tycs) => call NONE tf
+	  | F.TAPP (F.VAR tf,tycs) => call (SOME[]) tf
 
 	  | F.SWITCH (v,cs,arms,def) =>
 	    (use v; Option.map cexp def;
@@ -293,8 +292,8 @@ val census = let
 	  
 	  | F.PRIMOP (po,vs,lv,le) =>
 	    let val lvi = newv lv
-	    in cexp le;
-		if impurePO po orelse used lvi then (cpo po; app use vs) else ()
+	    in  cexp le;
+		if used lvi orelse impurePO po then (cpo po; app use vs) else ()
 	    end
 	  
 	  | le => buglexp("unexpected lexp", le)
@@ -389,7 +388,7 @@ fun unuselexp undertaker = let
 	  
 	  | F.PRIMOP (po,vs,lv,le) =>
 	    let val lvi = get lv
-	    in if impurePO po orelse used lvi
+	    in if used lvi orelse impurePO po
 	       then (cpo po; app unuse vs)
 	       else ();
 	       def lvi; cexp le; kill lv
@@ -409,7 +408,7 @@ fun copylexp alpha le =
 fun collect (fdec as (_,f,_,_)) =
     ((*  say "Entering Collect...\n"; *)
      M.clear m;				(* start from a fresh state *)
-     (* PP.LVarString := LVarString; *)
+     PP.LVarString := LVarString;
      uselexp (F.FIX([fdec], F.RET[F.VAR f]));
      (*  say "...Collect Done.\n"; *)
      fdec)

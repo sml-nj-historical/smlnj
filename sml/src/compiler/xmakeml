@@ -138,6 +138,9 @@ val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
          print "[built `date`]\n"; print "$NOTE");
 XXXX
 
+output="$HEAP_IMAGE.$ARCH-$OPSYS"
+[ -r "$output" ] && chmod +x "$output"
+
 #  if [ -L ./bin.$ARCH-unix ]; then
 #    rm -f ./bin.$ARCH-unix
 #  fi

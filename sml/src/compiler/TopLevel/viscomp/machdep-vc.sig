@@ -11,6 +11,7 @@ signature MACHDEP_VC = sig
     structure CMSA: CMSA
     structure Compile : COMPILE
     structure Interact : INTERACT
+    structure Control : CONTROL
     val architecture: string
 end
 

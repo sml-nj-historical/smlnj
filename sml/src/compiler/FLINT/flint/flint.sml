@@ -25,9 +25,12 @@ type rflag = LD.rflag
 
 (* what kind of inlining behavior is desired for the function *)
 datatype ilhint
-  = IH_ALWAYS				(* inline whenever possible *)
+  = IH_SAFE				(* only if trivially size-safe *)
+  | IH_ALWAYS				(* inline whenever possible *)
   | IH_UNROLL				(* only inline once within itself *)
-  | IH_SAFE				(* only if trivially size-safe *)
+  (* call-site dependent inlining:
+   *     #1 < sum (map2 (fn (a,w) => (known a) * w) (actuals, #2) *)
+  | IH_MAYBE of int * int list
 
 (* what kind of recursive function (aka loop) is this *)
 datatype loopkind

@@ -35,6 +35,7 @@ struct
     fun toStringFKind ({isrec,cconv,inline,...}:F.fkind) =
 	(case inline of F.IH_ALWAYS => "(i)"
 		      | F.IH_UNROLL => "(u)"
+		      | F.IH_MAYBE(s,ws) => "(i:"^(Int.toString s)^")"
 		      | F.IH_SAFE => "")^
 	     (case isrec
 	       of SOME(_,F.LK_UNKNOWN) => "R"

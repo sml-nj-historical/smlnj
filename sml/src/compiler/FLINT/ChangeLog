@@ -1,3 +1,41 @@
+1998-12-12  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml (fcFun): value-specialization (turned off: useless)
+	(fcApp): use IH_MAYBE.
+
+	* opt/fixfix.sml: improved the inlining heuristic by using the IH_MAYBE.
+
+1998-11-29  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml (fcFun): only update the binding (after contracting
+	  the function) if there are more functions to contract (the unusual case)
+
+1998-11-28  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/[lf]contract.sml,collect.sml: use PO.purePrimop
+
+	* opt/fcontract.sml: generalized the BRANCH thing.
+	It should now be faster to detect and avoid potential code blowups while
+	applying to more cases.  But it requires one more pass to generate the
+	same code quality :-(
+	(fcexp): straightforward split into functions
+	(fcLet): do the BRANCH thing after contraction (plus force an additional
+	  contraction, so the total is 3 passes for a fairly good handling of
+	  wrap's equality-primop compilation)
+	(fcLet): drop TAPP if the output is unused.
+
+1998-11-25  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/loopify.sml: improved tail-calls recognition.
+	Also be more careful about wrapping loops into functions (so contraction
+	is not needed to cleanup).
+
+	* opt/fixfix.sml: pretend loops are smaller to increase their inlining.
+
+	* kernel/ltyextern.sml: commented out Stats calls.
+
+	* flint/flint.sig: changed LK_WHILE to LK_TAIL.
+
 1998-11-21  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* reps/rttype.sml: changes from Bratin.

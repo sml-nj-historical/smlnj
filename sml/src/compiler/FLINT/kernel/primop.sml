@@ -234,7 +234,6 @@ fun prPrimop (ARITH{oper,overflow,kind}) =
 val purePrimop =
   fn DEREF => false
    | ASSIGN => false 
-                    (* this should probably should never be called on ASSIGN *)
    | SUBSCRIPT => false
    | BOXEDUPDATE => false
    | UNBOXEDUPDATE => false
@@ -244,8 +243,11 @@ val purePrimop =
    | ISOLATE => false
    | ARITH{overflow,...} => not overflow
    | NUMSUBSCRIPT{immutable,...} => immutable
+   | NUMUPDATE _ => false
    | GETSPECIAL => false
-   | SETSPECIAL => false
+   | (SETSPECIAL | SETHDLR | SETVAR | SETPSEUDO | SETMARK) => false
+   | THROW => false
+   | (DISPOSE | MKSPECIAL | DEFLVAR | MARKEXN) => false
    | _ => true
   
 val mayRaise =

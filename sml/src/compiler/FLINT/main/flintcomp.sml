@@ -25,10 +25,17 @@ datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
+val fcc = Stats.newCounter[];
+val _ = Stats.registerStat(Stats.newStat("FContract", [fcc]))
+
+val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
+val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
+
+val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
+val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fn f => (fcontract(fcollect f, Stats.newCounter[]))
+val fcontract = fn f => ((* lcontract' f; *) fcontract(fcollect f, fcc))
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
 
@@ -38,9 +45,6 @@ val wformed   = phase "Compiler 0536 wformed" Lift.wellFormed
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
 val reify     = phase "Compiler 055 reify" Reify.reify
-
-val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
-val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
 
 val convert   = phase "Compiler 060 convert" Convert.convert
 val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
@@ -92,16 +96,11 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])
 
-      fun check (checkE,printE,chkId) (enableChk,lvl,logId) e =
-	(if !enableChk andalso checkE (e,lvl) then
-	   (dumpTerm (printE, src ^ "." ^ chkId ^ logId, e);
-	    bug (chkId ^ " typing errors " ^ logId))
-	 else ();
-	 e)
-      fun chkF (b, s) = 
-        check (ChkFlint.checkTop, PPFlint.printFundec, 
-               "FLINT") (CTRL.check, b, s)
-
+      fun check (checkE,printE,chkId) (lvl,logId) e =
+	  if checkE (e,lvl) then
+	      (dumpTerm (printE, src ^ "." ^ chkId ^ logId, e);
+	       bug (chkId ^ " typing errors " ^ logId))
+	  else ()
       fun wff (f, s) = if wformed f then ()
 		       else print ("\nAfter " ^ s ^ " CODE NOT WELL FORMED\n")
 
@@ -159,28 +158,31 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("wellformed",_) => (wff(f,l); (f,fk,p))
 	    | ("check",_) =>
 	      (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
-		     (ref true, fk = FK_REIFY, l) f; (f,fk,l))
+		     (fk = FK_REIFY, l) f; (f,fk,l))
 	    | _ =>
 	      (say("\n!! Unknown or badly scheduled FLINT phase '"^p^"' !!\n");
 	       (f,fk,l))
 
       fun print (f,fk,l) = (prF l f; (f, fk, l))
-      fun check (f,fk,l) =
-	  ((* if fk <> FK_NAMED *) chkF (fk = FK_REIFY, l) (names2deb f) (* else f *);
+      fun check' (f,fk,l) =
+	  (if !CTRL.check then
+	       check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
+		     (fk = FK_REIFY, l)
+		     (if fk = FK_DEBRUIJN then f else names2deb f)
+	   else ();
 	   (f, fk, l))
 
       fun runphase' (arg as (p,{1=f,...})) =
 	  (if !CTRL.printPhases then say("Phase "^p^"...") else ();
-	   ((check o print o runphase) arg) before
+	   ((check' o print o runphase) arg) before
   	   (if !CTRL.printPhases then say("..."^p^" Done.\n") else ()))
 	      handle x => (say ("\nwhile in "^p^" phase\n");
 			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
 			   raise x)
 
-      (* the "id" phase is just added to do the print/check at the entrance *)
       val (flint,fk,_) = foldl runphase'
-			       (deb2names flint, FK_NAMED, "flintnm")
-			       ((*  "id" :: *) !CTRL.phases)
+			       (flint, FK_DEBRUIJN, "flintnm")
+			       ((* "id" :: *) "deb2names" :: !CTRL.phases)
 
       (* run any missing phases *)
       val (flint,fk) =

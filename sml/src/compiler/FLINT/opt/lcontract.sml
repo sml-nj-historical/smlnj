@@ -13,6 +13,7 @@ local structure DI = DebIndex
       structure DA = Access
       structure LT = LtyExtern
       structure FU = FlintUtil
+      structure PO = PrimOp
       open FLINT
 in
 
@@ -236,13 +237,12 @@ end (* branchopt local *)
      and lpcon (DATAcon (dc, ts, v)) = DATAcon(lpdc dc, ts, v)
        | lpcon c = c
 
-     and lpdt (SOME {default=v, table=ws}) =
+     and lpdt {default=v, table=ws} =
            let fun h x = 
                  case rename (VAR x) of VAR nv => nv
                                       | _ => bug "unexpected acse in lpdt"
             in (SOME {default=h v, table=map (fn (ts,w) => (ts,h w)) ws})
            end
-       | lpdt NONE = NONE
 
      and lpsv x = (case x of VAR v => rename x | _ => x)
 
@@ -366,16 +366,16 @@ end (* branchopt local *)
           | BRANCH(px as (d, p, lt, ts), vs, e1, e2) =>
               let val (ne1, b1) = loop e1
                   val (ne2, b2) = loop e2
-               in (BRANCH(case (d,ts) of (NONE, []) => px 
-                                       | _ => (lpdt d, p, lt, ts), 
+               in (BRANCH(case d of NONE => px 
+				  | SOME d => (lpdt d, p, lt, ts), 
                           map lpsv vs, ne1, ne2), false)
               end
           | PRIMOP(px as (dt, p, lt, ts), vs, v, e) => 
-              lplet ((fn z => PRIMOP((case (dt, ts) 
-                                       of (NONE, []) => px 
-                                        | _ => (lpdt dt, p, lt, ts)), 
+              lplet ((fn z => PRIMOP((case dt 
+                                       of NONE => px 
+                                        | SOME d => (lpdt d, p, lt, ts)), 
                                      map lpsv vs, v, z)), 
-                     false (* isPure p *), v, StdExp, e))
+                     false (* PO.purePrimop p *), v, StdExp, e))
 
 val d = DI.top
 val (fk, f, vts, e) = fdec

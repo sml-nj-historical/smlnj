@@ -41,20 +41,18 @@ structure Control : CONTROL =
     struct
 	val print	= ref false
 	val printPhases	= ref false
-	val inlineThreshold = ref 20
+	val inlineThreshold = ref 16
 	val unrollThreshold = ref 20
 	val specialize	= ref true
 	val liftLiterals= ref false
 	val sharewrap	= ref true
 	val maxargs	= ref 10
 	val saytappinfo	= ref false	(* for typelifting statistics *)
-	val phases	= ref ["lcontract", "fcontract",
-			       "fixfix", "fcontract",
-			       "specialize", "fcontract",
+	val phases	= ref ["lcontract", "specialize", "fixfix", "fcontract",
+			       "wrap", "fcontract",
 			       (* "names2deb", "typelift", "deb2names", *)
-			       "loopify", "fcontract",
-			       "wrap",
-			       "reify", "fixfix", "fcontract"]
+			       "reify",
+			       "loopify", "fcontract", "fixfix", "fcontract"]
 			      
 	(* only for temporary debugging *)
 	val misc	= ref 0
