@@ -240,27 +240,25 @@ ml_val_t _ml_win32_FS_get_file_time(ml_state_t *msp, ml_val_t arg)
   h = CreateFile(STR_MLtoC(arg),0,0,NULL,
 		 OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,INVALID_HANDLE_VALUE);
   if (h != INVALID_HANDLE_VALUE) {
-    FILETIME ftUTC, ftLocal;
+    FILETIME ft;
 
-    if (GetFileTime(h,NULL,NULL,&ftUTC)) { /* request time of "last write" */
-      if (FileTimeToLocalFileTime (&ftUTC, &ftLocal)) { /* convert to local time */
-        SYSTEMTIME st;
+    if (GetFileTime(h,NULL,NULL,&ft)) {  /* request time of "last write" */
+      SYSTEMTIME st;
     
-        CloseHandle(h);
-        if (FileTimeToSystemTime(&ftLocal,&st)) {
-	  ml_val_t rec;
+      CloseHandle(h);
+      if (FileTimeToSystemTime(&ft,&st)) {
+	ml_val_t rec;
 
-  	  REC_ALLOC8(msp,rec,
-		     INT_CtoML((int)st.wYear),
-		     INT_CtoML((int)st.wMonth),
-		     INT_CtoML((int)st.wDayOfWeek),
-		     INT_CtoML((int)st.wDay),
-		     INT_CtoML((int)st.wHour),
-		     INT_CtoML((int)st.wMinute),
-		     INT_CtoML((int)st.wSecond),
-		     INT_CtoML((int)st.wMilliseconds));
-	  OPTION_SOME(msp,res,rec);
-        }
+	REC_ALLOC8(msp,rec,
+		   INT_CtoML((int)st.wYear),
+		   INT_CtoML((int)st.wMonth),
+		   INT_CtoML((int)st.wDayOfWeek),
+		   INT_CtoML((int)st.wDay),
+		   INT_CtoML((int)st.wHour),
+		   INT_CtoML((int)st.wMinute),
+		   INT_CtoML((int)st.wSecond),
+		   INT_CtoML((int)st.wMilliseconds));
+	OPTION_SOME(msp,res,rec);
       }
     }
   }
