@@ -5,19 +5,16 @@ struct
     val print	        = ref false
     val printPhases	= ref false
     val printFctTypes   = ref false
-    (* `split' should probably be called after `fixfix' since
+    (* `split' should probably be called just after `fixfix' since
      * fcontract might eliminate some uncurry wrappers which are
      * locally unused but could be cross-module inlined. *)
-    val phases	        = ref ["lcontract", "specialize",
-			       "fixfix", "fcontract",
-			       "loopify", "fixfix", (* "split", *) "fcontract",
-			       "specialize", "fcontract",
-			       "wrap", "fcontract", (*"switchoff", *) "fcontract",
-			       (* "names2deb", "typelift", "deb2names", *)
-			       "reify", "loopify", "fixfix", "fcontract",
-			       "fixfix", "fcontract+eta"]
+    val phases = ref ["lcontract", (* Cruder but quicker than fcontract *)
+		      "fixfix", "fcontract",
+		      "specialize", (* "fixfix", "split", *) "fcontract",
+		      "wrap", "reify",
+		      "loopify", "fixfix", "fcontract+eta"]
 			  
-    val inlineThreshold = ref 0 (* 16 *)
+    val inlineThreshold = ref 16
     val splitThreshold  = ref 0
     val unrollThreshold = ref 20
     val maxargs	        = ref 6

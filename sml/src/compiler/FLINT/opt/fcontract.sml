@@ -421,33 +421,70 @@ fun fcexp ifs m le cont = let
     val cdcon = cdcon m
     val cpo = cpo m
 
-fun fcLet (lvs,le,body) =
-    loop m le
-	 (fn (nm,nle) =>
-	  let fun cbody () =
-		  let val nm = (foldl (fn (lv,m) =>
-				       addbind(m, lv, Var(lv, NONE)))
-				      nm lvs)
-		  in case loop nm body cont
-		      of F.RET vs => if vs = (map F.VAR lvs) then nle
-				     else F.LET(lvs, nle, F.RET vs)
-		       | nbody => F.LET(lvs, nle, nbody)
-		  end
-	  in case nle
-	      of F.RET vs =>
-		 let fun simplesubst (lv,v,m) =
-			 let val sv = val2sval m v
-			 in substitute(m, lv, sv, sval2val sv)
-			 end
-		     val nm = (ListPair.foldl simplesubst nm (lvs, vs))
-		 in loop nm body cont
-		 end
-	       | F.TAPP _ =>
-		 if List.all (C.dead o C.get) lvs
-		 then loop nm body cont
-		 else cbody()
-	       | _ => cbody()
-	  end)
+fun fcLet (lvs,le,body) = let
+
+    fun fcbody (nm,nle) =
+	let fun cbody () =
+		let val nm = (foldl (fn (lv,m) =>
+					addbind(m, lv, Var(lv, NONE)))
+				    nm lvs)
+		in case loop nm body cont
+		    of F.RET vs => if vs = (map F.VAR lvs) then nle
+				   else F.LET(lvs, nle, F.RET vs)
+		     | nbody => F.LET(lvs, nle, nbody)
+		end
+	in case nle
+	    of F.RET vs =>
+	       let fun simplesubst (lv,v,m) =
+		       let val sv = val2sval m v
+		       in substitute(m, lv, sv, sval2val sv)
+		       end
+		   val nm = (ListPair.foldl simplesubst nm (lvs, vs))
+	       in loop nm body cont
+	       end
+	     | F.TAPP _ =>
+	       if List.all (C.dead o C.get) lvs
+	       then loop nm body cont
+	       else cbody()
+	     | _ => cbody()
+	end
+
+    (* this is a hack originally meant to cleanup the BRANCH
+     * mess introduced in flintnm (where each branch returns
+     * just true or false which is generally only used as
+     * input to a SWITCH).
+     * The present code does more than clean up this case. *)
+    fun cassoc (lv,F.SWITCH(F.VAR v,ac,arms,NONE),wrap) =
+	if lv <> v orelse C.usenb(C.get lv) > 1 then loop m le fcbody else
+	let val (narms,fdecs) =
+	       	ListPair.unzip (map extract arms)
+	    fun addswitch [v] =
+	       	C.copylexp
+	       	    M.empty
+	       	    (F.SWITCH(v,ac,narms,NONE))
+	      | addswitch _ = bug "prob in addswitch"
+	    (* replace each leaf `ret' with a copy
+	     * of the switch *)
+	    val nle = append [lv] addswitch le
+	    (* decorate with the functions extracted
+	     * from the switch arms *)
+	    val nle =
+	       	foldl (fn (f,le) => F.FIX([f],le))
+	       	      (wrap nle) fdecs
+	in
+	    click_branch();
+	    loop m nle cont
+	end
+      | cassoc _ = loop m le fcbody
+
+in case (lvs, le, body)
+    of ([lv],(F.BRANCH _ | F.SWITCH _),F.SWITCH _) =>
+       cassoc(lv, body, fn x => x)
+     | ([lv],(F.BRANCH _ | F.SWITCH _),F.LET(lvs,body as F.SWITCH _,rest)) =>
+       cassoc(lv, body, fn le => F.LET(lvs,le,rest))
+     | _ => 
+       loop m le fcbody
+end
 
 fun fcFix (fs,le) =
     let (* merge actual arguments to extract the constant subpart *)

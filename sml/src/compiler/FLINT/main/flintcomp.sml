@@ -36,11 +36,11 @@ val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
 (*  val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract *)
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
-val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fn opts => fcontract opts o fcollect
+val fcontract = phase "Compiler 052b fcontract"
+		      (fn (opts,lexp) => FContract.contract opts lexp)
+val fcontract = fn opts => fn lexp => fcontract(opts, fcollect lexp)
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
-val switchoff = phase "Compiler unnumbered switchoff" Switchoff.switchoff
 val split     = phase "Compiler 058 split" FSplit.split
 		
 val typelift  = phase "Compiler 0535 typelift" Lift.typeLift
@@ -114,17 +114,6 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("fcontract+eta",_)	=>
 	      (fcontract {etaSplit=true, tfnInline=false} f,  fi, fk, p)
 	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
-	   | ("switchoff", _)          => (					
-					   (*say("switchoff <-\n");*)
-					   (*prF l f;*)
-					   (*say("switchoff \n");
-					   let val result = switchoff f
-					   in
-					       prF l result;
-					       (result, fi, fk, p)
-					   end*)
-					  (switchoff f, fi, fk, p)
-					   )
 	   | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fi, fk, p)
