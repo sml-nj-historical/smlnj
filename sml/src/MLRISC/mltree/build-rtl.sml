@@ -99,7 +99,7 @@ struct
    val op >  = cmp T.GT
    val op <  = cmp T.LT
    val op <= = cmp T.LE
-   val op >= = cmp T.GT
+   val op >= = cmp T.GE
    val ltu   = cmp T.LTU
    val leu   = cmp T.LEU
    val gtu   = cmp T.GTU

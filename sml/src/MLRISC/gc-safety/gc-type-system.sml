@@ -51,7 +51,7 @@ struct
          | T(T.PRED(e, _))    = T e
          | T(T.REXT(t,RTL.OP(misc_op,es))) = GC.INT
          | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e,_))))) = GC.TOP
-         | T(e) = error("typeOf: "^ #rexp (RTL.showRTL ([],[])) e)
+         | T(e) = error("typeOf: "^ RTL.expToString e)
  
        and binaryArith(t,a,b) = 
            let val ta = T(a)
@@ -66,7 +66,7 @@ struct
     * Compute the effect    
     *)
    fun effectOf{lookup, update} {action, dst, src, effect} =
-   let fun err() = error("effectOf: "^ #stm (RTL.showRTL ([], [])) action)
+   let fun err() = error("effectOf: "^ RTL.rtlToString action)
 
        (* Note the parallel copy semantics! *)
        fun copy(dst, src, e) =

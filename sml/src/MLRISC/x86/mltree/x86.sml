@@ -681,8 +681,9 @@ struct
 
                   (* Add n to rd *)
               fun addN n =
-                mark(I.BINARY{binOp=I.ADDL, src=I.Immed(toInt32 n), 
-                              dst=rdOpnd}, an)
+              let val n = operand n
+                  val src = if isMemReg rd then immedOrReg n else n
+              in  mark(I.BINARY{binOp=I.ADDL, src=src, dst=rdOpnd}, an) end
 
           in  case exp of
                T.REG(_,rs) => 
@@ -708,10 +709,10 @@ struct
              | T.ADD(32, (T.LI 1|T.LI32 0w1), e) => unary(I.INCL, e)
              | T.ADD(32, e, T.LI ~1) => unary(I.DECL, e)
              | T.ADD(32, T.LI ~1, e) => unary(I.DECL, e)
-             | T.ADD(32, e1 as T.REG(_, rs), e2 as T.LI n) =>
-                  if rs = rd then addN n else addition(e1, e2)
-             | T.ADD(32, e1 as T.LI n, e2 as T.REG(_, rs)) =>
-                  if rs = rd then addN n else addition(e1, e2)
+             | T.ADD(32, e1 as T.REG(_, rs), e2) =>
+                  if rs = rd then addN e2 else addition(e1, e2)
+             | T.ADD(32, e1, e2 as T.REG(_,rs)) =>
+                  if rs = rd then addN e1 else addition(e1, e2)
              | T.ADD(32, e1, e2) => addition(e1, e2)
 
                (* 32-bit subtraction *)

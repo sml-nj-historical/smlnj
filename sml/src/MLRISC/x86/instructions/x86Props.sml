@@ -157,8 +157,8 @@ struct
            if rs=rd then ([rd],[]) else ([rd],[rs,rd])
       | I.BINARY{src,dst,...} =>   
            (operandDef dst, operandAcc(src, operandUse dst))
-      | I.ENTER _             => ([C.stackptrR], [C.stackptrR])
-      | I.LEAVE               => ([C.stackptrR], [C.stackptrR])
+      | I.ENTER _             => ([C.esp, C.ebp], [C.esp, C.ebp])
+      | I.LEAVE               => ([C.esp, C.ebp], [C.esp, C.ebp])
       | I.MULTDIV arg	      => multdiv arg
       | I.MUL3{src1, src2=SOME _, dst}=> ([dst], operandUse src1)
       | I.MUL3{src1, dst, ...}=> ([dst], dst::operandUse src1)

@@ -12,6 +12,18 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/06 00:36:00 EST
+Tag: leunga-20000406-peephole-x86-SSA
+Description:
+
+1.  New Peephole code
+
+2.  Minor improvement to X86 instruction selection
+
+3.  Various fixes to SSA and machine description -> code translator
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/04/05 12:30:00 JST
 Tag: blume_main_v110p26p2_3

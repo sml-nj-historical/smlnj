@@ -14,6 +14,7 @@ sig
           FORALL of 'r
        |  FETCH  of 'r loc
        |  ARG    of string * string
+       |  PARAM  of int * int
        |  OP     of Basis.misc_op ref * 'r list
        |  SLICE  of {from:'r, to:'r} list * Basis.ty * 'r 
 
@@ -48,9 +49,15 @@ sig
    type cell   = T.rexp rtlCell
    type ty     = T.ty
 
+   (* Hashing and Equality *) 
    val hashRTL : action -> word
    val eqRTL  : action * action -> bool
-   val showRTL : (string list * string list) -> T.printer
+
+   (* Pretty Printing *)
+   val showRTL : {def:int->string, use:int->string,
+                  regionDef:int->string, regionUse:int->string} -> T.printer
+   val rtlToString : action -> string
+   val expToString : exp -> string
    val new    : action -> rtl 
    val newOp  : {name:string, attribs:T.Basis.attribs} -> T.Basis.misc_op ref
 

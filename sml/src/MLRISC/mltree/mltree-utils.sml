@@ -335,7 +335,7 @@ struct
   (*
    * Pretty printing
    *)
-  fun show (dst,src) =
+  fun show {def,use,regionDef,regionUse} =
   let fun ty t = "."^Int.toString t
       fun fty 32 = ".s"
         | fty 64 = ".d"
@@ -347,15 +347,15 @@ struct
       fun ccreg v = "cc"^Int.toString v   
       fun ctrlreg v = "p"^Int.toString v   
 
-      fun srcReg(t,v) = List.nth(src,v) handle _ => reg(t,v)
-      fun srcFreg(t,v) = List.nth(src,v) handle _ => freg(t,v)
-      fun srcCCreg v = List.nth(src,v) handle _ => ccreg v
-      fun srcCtrlreg v = List.nth(src,v) handle _ => ctrlreg v
+      fun srcReg(t,v) = use v handle _ => reg(t,v)
+      fun srcFreg(t,v) = use v handle _ => freg(t,v)
+      fun srcCCreg v = use v handle _ => ccreg v
+      fun srcCtrlreg v = use v handle _ => ctrlreg v
 
-      fun dstReg(t,v) = List.nth(dst,v) handle _ => reg(t,v)
-      fun dstFreg(t,v) = List.nth(dst,v) handle _ => freg(t,v)
-      fun dstCCreg v =  List.nth(dst,v) handle _ => ccreg v
-      fun dstCtrlreg v = List.nth(dst,v) handle _ => ctrlreg v
+      fun dstReg(t,v) = def v handle _ => reg(t,v)
+      fun dstFreg(t,v) = def v handle _ => freg(t,v)
+      fun dstCCreg v =  def v handle _ => ccreg v
+      fun dstCtrlreg v = def v handle _ => ctrlreg v
 
       fun listify f =
       let fun g(t,[]) = ""
@@ -422,13 +422,13 @@ struct
           (* pretty print an expression  *)
       and rexp(T.REG(ty, src)) = srcReg(ty,src)
         | rexp(T.LI i) = Int.toString i
-        | rexp(T.LI32 w) = Word32.toString w
-        | rexp(T.LI64 w) = Word64.toString w
+        | rexp(T.LI32 w) = "0x"^Word32.toString w
+        | rexp(T.LI64 w) = "0x"^Word64.toString w
         | rexp(T.LABEL le) = LabelExp.toString le
         | rexp(T.CONST c) = Constant.toString c
-        | rexp(T.NEG x) = one("neg",x)
-        | rexp(T.ADD x) = two("add",x)
-        | rexp(T.SUB x) = two("sub",x)
+        | rexp(T.NEG x) = unary("~",x)
+        | rexp(T.ADD x) = binary("+",x)
+        | rexp(T.SUB x) = binary("-",x)
         | rexp(T.MULS x) = two("muls",x)
         | rexp(T.DIVS x) = two("divs",x)
         | rexp(T.QUOTS x) = two("quots",x)
@@ -443,13 +443,13 @@ struct
         | rexp(T.DIVT x) = two("divt",x)
         | rexp(T.QUOTT x) = two("quott",x)
         | rexp(T.REMT x) = two("remt",x)
-        | rexp(T.ANDB x) = two("andb",x)
-        | rexp(T.ORB x) = two("orb",x)
-        | rexp(T.XORB x) = two("xorb",x)
-        | rexp(T.NOTB x) = one("notb",x)
-        | rexp(T.SRA x) = two("sra",x)
-        | rexp(T.SRL x) = two("srl",x)
-        | rexp(T.SLL x) = two("sll",x)
+        | rexp(T.ANDB x) = binary("&",x)
+        | rexp(T.ORB x)  = binary("|",x)
+        | rexp(T.XORB x) = binary("^",x)
+        | rexp(T.NOTB x) = unary("!",x)
+        | rexp(T.SRA x) = binary("~>>",x)
+        | rexp(T.SRL x) = binary(">>",x)
+        | rexp(T.SLL x) = binary("<<",x)
         | rexp(T.COND(t,cc,e1,e2)) = 
              "cond"^ty t^ccexp cc^"("^rexp e1^","^rexp e2^")"
         | rexp(T.CVTI2I(t, T.SIGN_EXTEND, t', e)) = "sx"^ty t^ty t'^" "^rexp e
@@ -461,6 +461,9 @@ struct
         | rexp(T.PRED(e, cr)) = rexp e^usectrl cr
         | rexp(T.MARK(e, _)) = rexp e
         | rexp(T.REXT e) = showRext (shower()) e
+
+      and parenRexp(e as (T.REG _ | T.LI _ | T.LI32 _ | T.LI64 _)) = rexp e
+        | parenRexp e = "("^rexp e^")"
 
       and slices sc = listify' (fn {from,to} => rexp from^".."^rexp to) sc
 
@@ -505,6 +508,8 @@ struct
       (* Auxiliary functions *)
       and one(opcode,(t,x)) = opcode^ty t^"("^rexp x^")"
       and two(opcode,(t,x,y)) = opcode^ty t^pair(x,y)
+      and binary(opcode,(t,x,y)) = parenRexp x^" "^opcode^ty t^" "^parenRexp y
+      and unary(opcode,(t,x)) = opcode^ty t^" "^parenRexp x
       and pair(x,y) = "("^rexp x^","^rexp y^")"
       and one'(opcode,(t,x)) = opcode^fty t^"("^fexp x^")"
       and two'(opcode,(t,x,y)) = opcode^fty t^pair'(x,y)
@@ -516,26 +521,36 @@ struct
                                  | (e,x) => fexp e^","^x) "" es^")"
       and ccexps es = "("^foldr (fn (e,"") => ccexp e
                                   | (e,x) => ccexp e^","^x) "" es^")"
-      and store(t,u,ea,m,e) = mem(t,u,ea,m)^" := "^rexp e
-      and fstore(t,u,ea,m,e) = fmem(t,u,ea,m)^" := "^fexp e
-      and ccstore(u,ea,m,e) = ccmem(u,ea,m)^" := "^ccexp e
-      and load(t,u,ea,m) = mem(t,u,ea,m)
-      and fload(t,u,ea,m) = fmem(t,u,ea,m)
-      and ccload(u,ea,m) = ccmem(u,ea,m)
-      and addr(u,ea,m) = 
-          let val r = Region.toString m
-              val r = if r = "" then r else ","^r
+      and store(t,u,ea,m,e) = memdef(t,u,ea,m)^" := "^rexp e
+      and fstore(t,u,ea,m,e) = fmemdef(t,u,ea,m)^" := "^fexp e
+      and ccstore(u,ea,m,e) = ccmemdef(u,ea,m)^" := "^ccexp e
+      and load(t,u,ea,m) = memuse(t,u,ea,m)
+      and fload(t,u,ea,m) = fmemuse(t,u,ea,m)
+      and ccload(u,ea,m) = ccmemuse(u,ea,m)
+      and addr(u,ea,m,show) = 
+          let val r = show m handle _ => Region.toString m
+              val r = if r = "" then r else ":"^r
           in  u^"["^rexp ea^r^"]" end
-      and mem(t,u,ea,m) = "mem"^ty t^addr(u,ea,m)
-      and fmem(t,u,ea,m) = "mem"^fty t^addr(u,ea,m)
-      and ccmem(u,ea,m) = "mem"^addr(u,ea,m)
-
+      and mem(t,u,ea,m,show) = "mem"^ty t^addr(u,ea,m,show)
+      and fmem(t,u,ea,m,show) = "mem"^fty t^addr(u,ea,m,show)
+      and ccmem(u,ea,m,show) = "mem"^addr(u,ea,m,show)
+      and memdef(t,u,ea,m) = mem(t,u,ea,m,regionDef)
+      and fmemdef(t,u,ea,m) = fmem(t,u,ea,m,regionDef)
+      and ccmemdef(u,ea,m) = ccmem(u,ea,m,regionDef)
+      and memuse(t,u,ea,m) = mem(t,u,ea,m,regionUse)
+      and fmemuse(t,u,ea,m) = fmem(t,u,ea,m,regionUse)
+      and ccmemuse(u,ea,m) = ccmem(u,ea,m,regionUse)
    in shower()
    end
 
-   fun stmToString s   = #stm(show ([],[])) s
-   fun rexpToString s  = #rexp(show ([],[])) s
-   fun fexpToString s  = #fexp(show ([],[])) s
-   fun ccexpToString s = #ccexp(show ([],[])) s
+   exception Nothing
+
+   fun dummy _ = raise Nothing
+   val dummy = {def=dummy, use=dummy, regionDef=dummy, regionUse=dummy}
+
+   fun stmToString s   = #stm(show dummy) s
+   fun rexpToString s  = #rexp(show dummy) s
+   fun fexpToString s  = #fexp(show dummy) s
+   fun ccexpToString s = #ccexp(show dummy) s
 
 end 

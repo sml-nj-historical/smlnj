@@ -50,6 +50,7 @@ struct
          FORALL of 'r
       |  FETCH  of 'r loc
       |  ARG    of string * string
+      |  PARAM  of int * int
       |  OP     of Basis.misc_op ref * 'r list
       |  SLICE  of {from:'r, to:'r} list * Basis.ty * 'r
    
@@ -98,6 +99,7 @@ struct
       fun hashRtlOp hasher (FORALL e) = #rexp (hasher:hasher) e
         | hashRtlOp hasher (FETCH l) = hashLoc hasher l
         | hashRtlOp hasher (ARG _)   = 0w3
+        | hashRtlOp hasher (PARAM _) = 0w12321
         | hashRtlOp hasher (OP(ref{hash, ...}, es)) = hash + hashRexps hasher es
         | hashRtlOp hasher (SLICE(sl, ty, e)) = 
           itow ty + hashSlices hasher sl + #rexp hasher e
@@ -114,6 +116,7 @@ struct
       fun eqRtlOp eq (FORALL x, FORALL y)  = #rexp (eq:equality) (x,y)
         | eqRtlOp eq (FETCH l, FETCH l')   = eqLoc eq (l,l')
         | eqRtlOp eq (ARG x, ARG y)        = x=y
+        | eqRtlOp eq (PARAM x, PARAM y)    = x=y
         | eqRtlOp eq (OP(x,es), OP(x',es')) = 
             x=x' andalso eqRexps (#rexp eq) (es,es')
         | eqRtlOp eq (SLICE(sl, t, e), SLICE(sl', t', e')) = 
@@ -145,6 +148,7 @@ struct
       and showRtlOp pr (t,FORALL e) = "forall "^ #rexp (pr:printer) e
         | showRtlOp pr (t,FETCH l)  = showLoc pr l
         | showRtlOp pr (t,ARG(k,x)) = k^" "^x
+        | showRtlOp pr (t,PARAM(x,y)) = "r"^Int.toString x^"-"^Int.toString y
         | showRtlOp pr (t,OP(ref{name, ...}, es)) = name^showTy t^showExps pr es
         | showRtlOp pr (t,SLICE(sl, ty, e)) = 
             #rexp pr e^" at ["^showSlices pr sl^"]"
@@ -183,9 +187,11 @@ struct
       val showCCext = noShow
      )
 
-   val hashRTL = Util.hashStm
-   val eqRTL   = Util.eqStm
-   val showRTL = Util.show
+   val hashRTL     = Util.hashStm
+   val eqRTL       = Util.eqStm
+   val showRTL     = Util.show
+   val rtlToString = Util.stmToString
+   val expToString = Util.rexpToString
 
    structure Basis = T.Basis
 
@@ -203,7 +209,7 @@ struct
      and fext rw x = x
      and ccext rw x = x
      and loc rw (AGG(t1,t2,c)) = AGG(t1,t2,cell rw c)
-     and cell rw (CELL(k,t,e,r)) = CELL(k,t,#rexp rw e,#rexp rw r)
+     and cell rw (CELL(k,t,e,r)) = CELL(k,t,#rexp rw e,r)
     )
 
    val A_TRAPPING   = W.<<(0w1,0w1)
@@ -225,26 +231,39 @@ struct
     *  Reduce a RTL to compiled internal form
     *)
    fun reduce rtl =
-   let fun getRegion (T.REG(_,r)) = r
-         | getRegion e = error("getRegion: "^Util.rexpToString e)
-       fun rexp _ (T.REXT(ty,FETCH(AGG(_,_,CELL("GP",_,T.REG(_,r),_))))) = 
+   let fun regionUse(T.REXT(_,PARAM(_,r))) = r
+         | regionUse(T.REG(_,r)) = r
+         | regionUse e = error("regionUse: "^Util.rexpToString e)
+       fun regionDef(T.REXT(_,PARAM(r,_))) = r
+         | regionDef(T.REG(_,r)) = r
+         | regionDef e = error("regionDef: "^Util.rexpToString e)
+       fun rexp _
+             (T.REXT(ty,FETCH(AGG(_,_,CELL("GP",_,T.REXT(_,PARAM(_,r)),_))))) = 
               T.REG(ty,r)
-         | rexp _ (T.REXT(ty,FETCH(AGG(_,_,CELL("FP",_,T.REG(_,r),_))))) = 
+         | rexp _
+             (T.REXT(ty,FETCH(AGG(_,_,CELL("GP",_,T.REG(_,r),_))))) = 
               T.REG(ty,r)
+         | rexp _ 
+             (T.REXT(ty,FETCH(AGG(_,_,CELL("FP",_,T.REXT(_,PARAM(_,r)),_))))) = 
+               T.REG(ty,r)
+         | rexp _ 
+             (T.REXT(ty,FETCH(AGG(_,_,CELL("FP",_,T.REG(_,r),_))))) = 
+               T.REG(ty,r)
          | rexp _ (T.REXT(ty,FETCH(AGG(_,_,CELL("MEM",_,ea,region)))))=
-              T.LOAD(ty,ea,getRegion region)
+              T.LOAD(ty,ea,regionUse region)
          | rexp _ e = e
        fun stm _ (T.SEQ[s]) = s
          | stm _ (T.EXT(ASSIGN(AGG(ty,_,CELL("MEM",_,ea,region)),d))) =
-              T.STORE(ty,ea,d,getRegion region)
+              T.STORE(ty,ea,d,regionDef region)
+         | stm _ (T.EXT(ASSIGN(AGG(ty,_,
+                     CELL("GP",_,T.REXT(_,PARAM(r,_)),_)),d))) = 
+              T.MV(ty,r,d)
          | stm _ (T.EXT(ASSIGN(AGG(ty,_,CELL("GP",_,T.REG(_,r),_)),d))) = 
               T.MV(ty,r,d)
-         (*| stm _ (T.EXT(ASSIGN(AGG(ty,_,CELL("FP",_,T.REG(_,r))),d))) = 
-              T.MV(ty,r,d)*)
          | stm _ (T.EXT(ASSIGN(AGG(ty,_,
-                       CELL(_,_,T.REXT(_,FORALL(T.REG(_,0))),_)),
+                     CELL(_,_,T.REXT(_,FORALL(T.REG(_,0))),_)),
               T.REXT(_,FETCH(AGG(_,_,
-                       CELL(_,_,T.REXT(_,FORALL(T.REG(_,0))),_))))))) =
+                     CELL(_,_,T.REXT(_,FORALL(T.REG(_,0))),_))))))) =
               T.COPY(ty,[],[])
          | stm _ (T.EXT(PAR(s,T.SEQ []))) = s
          | stm _ (T.EXT(PAR(T.SEQ [],s))) = s

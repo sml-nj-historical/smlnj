@@ -7,8 +7,10 @@
  *)
 
 Library 
-	signature C_CALL
-	structure CTypes
+(*	
+*)
+(*
+*)
 	signature CELLS_BASIS
 	signature CELLS
 	functor CellsBasis
@@ -30,9 +32,7 @@ Library
 	functor FreqProps
 	signature MLRISC_ANNOTATIONS
 	structure MLRiscAnnotations
-(*	
-	signature INSTRUCTIONS_RTL 
-*)
+	signature MLRISC_OPTIMIZATION
 	signature MLRISC_REGION
 	structure MLRiscRegion
 	signature POINTS_TO
@@ -43,10 +43,6 @@ Library
 	signature MLTREE
 	functor MLTreeF
 	signature MLTREE_EXTENSION_COMP
-(*
-	signature MLTREE_UTIL
-	structure MLTreeUtil
-*)
 	signature MLTREECOMP
 	signature MLTREEGEN
 	functor MLTreeGen
@@ -58,6 +54,7 @@ Library
 	functor ClusterGen
 	signature PRINT_CLUSTER
 	functor PrintCluster
+	signature CLUSTER_OPTIMIZATION
 	signature GETREG
 	functor GetReg
 	signature LIVENESS
@@ -99,6 +96,8 @@ Library
 	signature SDI_JUMPS
 	signature MC_EMIT
 	functor BackPatch
+	structure CTypes
+	signature C_CALL
 is
 
 #if defined(NEW_CM)
@@ -128,7 +127,7 @@ is
 	instructions/freqProps.sml
 	instructions/mlriscAnnotations.sig
 	instructions/mlriscAnnotations.sml
-(*	instructions/rtl.sig *)
+	instructions/mlriscOptimization.sig
 	
 	(* New aliasing/memory disambiguation support *)
 	aliasing/mlriscRegion.sig
@@ -142,10 +141,6 @@ is
 	mltree/mltree-basis.sml
 	mltree/mltree.sig
 	mltree/mltree.sml
-(*
-	mltree/mltree-util.sig
-	mltree/mltree-util.sml
-*)
 	mltree/mltreecomp.sig
 	mltree/mltree-gen.sig
 	mltree/mltree-gen.sml
@@ -157,6 +152,7 @@ is
 	cluster/flowgraph.sml
 	cluster/clustergen.sml
 	cluster/printCluster.sml
+	cluster/clusterOptimization.sig
 	
 	(* Core register allocator utilities *)
 	ra/getreg.sig

@@ -13,6 +13,7 @@ struct
        (case !viewer of
           "daVinci" => daVinci.visualize print
         | "vcg"     => VCG.visualize print
+        | "dot"     => Dot.visualize print
         | _         => daVinci.visualize print
        )
 
@@ -20,6 +21,7 @@ struct
        (case !viewer of
           "daVinci" => daVinci.program()
         | "vcg"     => VCG.program()
+        | "dot"     => Dot.program()
         | _         => daVinci.program()
        )
 
@@ -27,6 +29,7 @@ struct
        (case !viewer of
           "daVinci" => daVinci.suffix()
         | "vcg"     => VCG.suffix()
+        | "dot"     => Dot.suffix()
         | _         => daVinci.suffix()
        )
 

@@ -28,7 +28,11 @@ sig
    (*
     * Pretty printing 
     *)
-   val show : (string list * string list) -> T.printer  
+   val show : {def       : int -> string, 
+               use       : int -> string,
+               regionDef : T.Region.region -> string,
+               regionUse : T.Region.region -> string
+              } -> T.printer  
 
    val stmToString   : T.stm -> string
    val rexpToString  : T.rexp -> string

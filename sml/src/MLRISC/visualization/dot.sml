@@ -11,7 +11,7 @@ struct
    structure G = Graph
 
    fun suffix() = ".dot"
-   fun program() = "dot"
+   fun program() = "dotty"
   
    fun visualize out (G.GRAPH G) =
    let val spaces = "                                           ";
@@ -20,7 +20,7 @@ struct
        fun semi() = out ";"
        fun name n = if n < 0 then (out "XX"; int(~n))
                     else (out "X"; int n)
-       fun attribs t a = (out "[\n"; doAttribs t "" a; out "]")
+       fun attribs t a = (out "[ shape=box"; doAttribs t "," a; out "]")
 
        and doAttrib t comma (L.LABEL "")   = false
          | doAttrib t comma (L.LABEL l)    = (out comma; tab t; label l; true)
@@ -37,7 +37,7 @@ struct
        fun doEdge t (i,j,a) =
            (tab t; name i; out "-> "; name j; attribs t a; semi())
 
-   in  out "digraph {\n";
+   in  out("digraph " ^ #name G ^ " {\n");
        #forall_nodes G (doNode 2);
        #forall_edges G (doEdge 2);
        out "}\n" 
