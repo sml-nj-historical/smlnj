@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/09/14 16:15:00 EDT
+Tag: blume-20010914-x86fastfp
+Description:
+
+John committed some changes that Allen made, in particular a (hopefully)
+correctly working version of the x86-fp module.
+
+I changed the default setting of the Control.MLRISC.getFlag "x86-fast-fp"
+flag to "true".  Everything seems to compile to a fixpoint ok, and
+"mandelbrot" speeds up by about 15%.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/09/13 11:20:00 EDT
 Tag: blume-20010913-minimal
 Description:
