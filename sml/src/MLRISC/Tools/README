@@ -26,7 +26,7 @@ Organization
 
   RewriteGen/ --- a separate tool for generating rewriters
 
-  WhereGen/  --- the source to 'nowhere', a translator that converts
+  nowhere/  --- the source to 'nowhere', a translator that converts
                  SML with where-clauses into SML code.
 
   ASDL/      --- some utilities for emitting ASDL definitions.

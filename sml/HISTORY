@@ -13,8 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/01/27 
+Tag: leunga-20020127-nowhere
+Description:
+
+   Added a target called nowhere in the configuration scripts.
+   Enabling this will build the MLRISC 'nowhere' tool (for translating 
+   programs with where-clauses into legal SML code) during installation.  
+
+----------------------------------------------------------------------
 Name: Matthias Blume
-Date: 2001/01/25 21:27:00 EST
+Date: 2002/01/25 21:27:00 EST
 Tag: Release_110_38
 Description:
 

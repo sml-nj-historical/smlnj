@@ -378,11 +378,12 @@ reglib() {
 
 #
 # Function to build a standalone program such as ml-yacc.  The function takes
-# 2 or 3 arguments.  First the name of the program which at the same time
-# is the directory name under $SRCDIR where the sources reside.  The second
+# 2 or 3 or 4 arguments.  First the name of the program which at the same time
+# is the directory name under $SRCDIR/$4 where the sources reside.  The second
 # argument is a descriptive name for the program (passed on to "unpack").
-# The optional third argument specifies the path relative to $SRCDIR/$1
+# The optional third argument specifies the path relative to $SRCDIR/$4/$1
 # of the directory where the program's heap image is to be found.
+# The fourth argument, if missing, defaults to "."
 #
 
 standalone() {
@@ -392,12 +393,17 @@ standalone() {
     else
 	TARGETLOC=$TARGET
     fi
+    if [ $# = 4 ] ; then
+         MYSRCDIR=$SRCDIR/$4
+    else
+         MYSRCDIR=$SRCDIR
+    fi
     if [ -r $HEAPDIR/$TARGET ] ; then
 	echo $this: Target $TARGET already exists.
     else
 	echo $this: Building $TARGET.
-	unpack $2 $SRCDIR $1 $1
-	cd $SRCDIR/$1
+	unpack $2 $MYSRCDIR $1 $1
+	cd $MYSRCDIR/$1
 	# build it, but make sure we don't pick up some (unrelated)
 	# local path configuration...
 	CM_LOCAL_PATHCONFIG=/dev/null ./build
@@ -674,6 +680,10 @@ for i in $TARGETS ; do
         reglib mlrisc-tools prec-parser.cm MLRISC/Tools
         reglib mlrisc-tools parser.cm MLRISC/Tools
         reglib mlrisc-tools match-compiler.cm MLRISC/Tools
+	;;
+      nowhere)
+        echo standalone nowhere NoWhere . MLRISC/Tools >>$LATESTANDALONES
+	echo nowhere $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       doc)
 	unpack Doc $ROOT doc doc
