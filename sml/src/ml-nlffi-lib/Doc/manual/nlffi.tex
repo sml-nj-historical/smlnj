@@ -100,6 +100,9 @@ access to the memory location that $v$ stands for in C.  If $t_C$ is
   either {\tt unit -> (t, C.ro) C.obj} or {\tt unit -> (t, C.rw) C.obj}.
 \end{description}
 
+(Elements that are subject to omission due to incompleteness of types
+are marked with an exclamation mark(!).)
+
 \subsubsection*{Examples}
 
 \begin{small}
@@ -155,7 +158,7 @@ extern struct str s1;
 \begin{verbatim}
 
 structure G_s1 : sig
-    type t   = (S_str.tag, rw) C.su_obj C.ptr
+    type t   = (S_str.tag C.su, rw) C.obj C.ptr
     val typ  : t C.T.typ
     val obj  : unit -> (t, C.rw) C.obj
     val obj' : unit -> (t, C.rw) C.obj'
@@ -175,7 +178,7 @@ extern struct istr s2;
 \begin{verbatim}
 
 structure G_s2 : sig
-    type t   = (ST_istr.tag, rw) C.su_obj C.ptr
+    type t   = (ST_istr.tag C.su, rw) C.obj C.ptr
     val obj' : unit -> (t, C.rw) C.obj'
 end
 
@@ -251,7 +254,7 @@ produce a result of type $B$.
   then $T_1$ encodes the type of $f$'s first argument, $T_2$ that of
   the second, $T_3$ that of the third, and so on.
 \item If $f$'s result is some {\tt struct} or some {\tt union}, then
-  $T_1$ will be {\tt ($\tau$, C.rw) C.su\_obj'} with $\tau$
+  $T_1$ will be {\tt ($\tau$ C.su, C.rw) C.obj'} with $\tau$
   instantiated to the appropriate {\tt struct}- or {\tt union}-tag
   type.  Moreover, we then also have $B = T_1$. $T_2$ encodes the type
   of $f$'s {\em first} argument, $T_3$ that of the second.  (In
@@ -261,7 +264,7 @@ produce a result of type $B$.
   depending on $f$'s return type) is the light-weight ML equivalent of
   the C type of that argument.
 \item An argument of C {\tt struct}- or {\tt union}-type corresponds
-  to {\tt ($\tau$, C.ro) C.su\_obj'} with $\tau$ instantiated to the
+  to {\tt ($\tau$ C.su, C.ro) C.obj'} with $\tau$ instantiated to the
   appropriate tag type.
 \item If $f$'s result type is {\tt void}, then {\tt $B =$ unit}.  If
   the result type is not a {\tt struct}- or {\tt union}-type, then $B$
@@ -327,17 +330,17 @@ end
 
 structure F_f4 : sig
     val typ  : (C.double *
-                (ST_s.tag, C.rw) C.su_obj C.ptr'
+                (ST_s.tag C.su, C.rw) C.obj C.ptr'
                 -> unit)
                     C.fptr C.T.typ
     val fptr : unit -> (C.double *
-                        (ST_s.tag, C.rw) C.su_obj C.ptr'
+                        (ST_s.tag C.su, C.rw) C.obj C.ptr'
                         -> unit) C.fptr
     val f    : MLRep.Real.real *
-               (ST_s.tag, C.rw) C.su_obj C.ptr
+               (ST_s.tag C.su, C.rw) C.obj C.ptr
                -> unit
     val f'   : MLRep.Real.real *
-               (ST_s.tag, C.rw) C.su_obj C.ptr'
+               (ST_s.tag C.su, C.rw) C.obj C.ptr'
                -> unit
 end
 
@@ -363,13 +366,13 @@ struct s *f5 (float);
 
 structure F_f5 : sig
     val typ  : (C.float
-                -> (ST_s.tag, C.rw) C.su_obj C.ptr')
+                -> (ST_s.tag C.su, C.rw) C.obj C.ptr')
                     C.fptr C.T.typ
     val fptr : unit -> (C.float
-                       -> (ST_s.tag, C.rw) C.su_obj C.ptr')
+                       -> (ST_s.tag C.su, C.rw) C.obj C.ptr')
                            C.fptr
     val f'   : MLRep.Real.real ->
-               (ST_s.tag, C.rw) C.su_obj C.ptr'
+               (ST_s.tag C.su, C.rw) C.obj C.ptr'
 end
 
 \end{verbatim}
@@ -387,15 +390,15 @@ struct t *f6 (float);
 
 structure F_f6 : sig
     val typ  : (C.float
-                -> (S_t.tag, C.rw) C.su_obj C.ptr')
+                -> (S_t.tag C.su, C.rw) C.obj C.ptr')
                     C.fptr C.T.typ
     val fptr : unit -> (C.float
-                       -> (S_t.tag, C.rw) C.su_obj C.ptr')
+                       -> (S_t.tag C.su, C.rw) C.obj C.ptr')
                            C.fptr
     val f    : MLRep.Real.real ->
-               (S_t.tag, C.rw) C.su_obj C.ptr
+               (S_t.tag C.su, C.rw) C.obj C.ptr
     val f'   : MLRep.Real.real ->
-               (S_t.tag, C.rw) C.su_obj C.ptr'
+               (S_t.tag C.su, C.rw) C.obj C.ptr'
 end
 
 \end{verbatim}
@@ -412,22 +415,22 @@ struct t f7 (int, double);
 \begin{verbatim}
 
 structure F_f7 : sig
-    val typ  : ((S_t.tag, C.rw) C.su_obj' *
+    val typ  : ((S_t.tag C.su, C.rw) C.obj' *
                 C.sint * C.double
-                -> (S_t.tag, C.rw) C.su_obj')
+                -> (S_t.tag C.su, C.rw) C.obj')
                     C.fptr C.T.typ
-    val fptr : unit -> ((S_t.tag, C.rw) C.su_obj' *
+    val fptr : unit -> ((S_t.tag C.su, C.rw) C.obj' *
                         C.sint * C.double
-                        -> (S_t.tag, C.rw) C.su_obj')
+                        -> (S_t.tag C.su, C.rw) C.obj')
                             C.fptr
-    val f    : (S_t.tag, C.rw) C.su_obj *
+    val f    : (S_t.tag C.su, C.rw) C.obj *
                MLRep.Signed.int *
                MLRep.Real.real
-               -> (S_t.tag, C.rw) C.su_obj
-    val f'   : (S_t.tag, C.rw) C.su_obj' *
+               -> (S_t.tag C.su, C.rw) C.obj
+    val f'   : (S_t.tag C.su, C.rw) C.obj' *
                MLRep.Signed.int *
                MLRep.Real.real
-               -> (S_t.tag, C.rw) C.su_obj'
+               -> (S_t.tag C.su, C.rw) C.obj'
 end
 
 \end{verbatim}
@@ -496,7 +499,7 @@ typedef struct s *t3;
 \begin{verbatim}
 
 structure T_t3 : sig
-    type t  = (ST_s.tag, C.rw) C.su_obj C.ptr
+    type t  = (ST_s.tag C.su, C.rw) C.obj C.ptr
 end
 
 \end{verbatim}
@@ -537,7 +540,7 @@ A C type of the form {\tt struct $t$} is represented in ML as {\tt
   $s_t$ C.su}, a type of the form {\tt union $t$} as {\tt $u_t$ C.su}.
 For example, this means that a heavy-weight non-constant memory object
 of C type {\tt struct $t$} has ML type {\tt ($s_t$ C.su, C.rw) C.obj}
-which can be abbreviated to {\tt ($s_t$, C.rw) C.su\_obj}.
+which can be abbreviated to {\tt ($s_t$ C.su, C.rw) C.obj}.
 
 All ML types {\tt ($\tau$ C.su, $\zeta$) C.obj} are originally
 completely abstract: they does not come with any operations that could
@@ -668,10 +671,12 @@ structure S_t : sig
   val typ : tag C.su C.T.typ
 
   type t_f_i = C.T.sint
+  val typ_f_i : t_f_i C.T.typ
   val f_i  : (tag C.su, 'c) obj  -> (t_f_i, 'c) C.obj
   val f_i' : (tag C.su, 'c) obj' -> (t_f_i, 'c) C.obj'
 
   type t_f_d = C.T.double
+  val typ_f_d : t_f_d C.T.typ
   val f_d  : (tag C.su, 'c) obj  -> (t_f_d, C.ro) C.obj
   val f_d' : (tag C.su, 'c) obj' -> (t_f_d, C.ro) C.obj'
 
@@ -724,9 +729,348 @@ Here are the rules for generating tags:
   number.
 \end{itemize}
 
+\subsubsection*{Examples}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct {
+  int i;
+};
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure S_0 : sig
+  type tag = ...
+  val size : tag C.su C.S.size
+  val typ : tag C.su C.T.typ
+
+  type t_f_i = C.T.sint
+  val typ_f_i : t_f_i C.T.typ
+  val f_i  : (tag C.su, 'c) obj  -> (t_f_i, 'c) C.obj
+  val f_i' : (tag C.su, 'c) obj' -> (t_f_i, 'c) C.obj'
+end
+
+\end{verbatim}
+\end{minipage}  
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+typedef struct {
+  int j;
+} s;
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure S_'s : sig
+  type tag = ...
+  val size : tag C.su C.S.size
+  val typ : tag C.su C.T.typ
+
+  type t_f_j = C.T.sint
+  val typ_f_j : t_f_j C.T.typ
+  val f_j  : (tag C.su, 'c) obj  -> (t_f_j, 'c) C.obj
+  val f_j' : (tag C.su, 'c) obj' -> (t_f_j, 'c) C.obj'
+end
+
+\end{verbatim}
+\end{minipage}  
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+struct s {
+  struct {
+    int j;
+  } x;
+};
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure S_s'0 : sig
+    type tag = ...
+    val size : tag C.su C.S.size
+    val typ : tag C.su C.T.typ
+
+    type t_f_j = C.sint
+    val typ_f_j : t_f_j C.T.typ
+    val f_j  : (tag C.su, 'c) C.obj  -> (t_f_j, 'c) C.obj
+    val f_j' : (tag C.su, 'c) C.obj' -> (t_f_j, 'c) C.obj'
+end
+
+structure S_s : sig
+    type tag = ...
+    val size : tag C.su C.S.size
+    val typ : tag C.su C.T.typ
+
+    type t_f_x = S_s'0.tag C.su
+    val typ_f_x : t_f_x C.T.typ
+    val f_x  : (tag C.su, 'c) C.obj  -> (t_f_x, 'c) C.obj
+    val f_x' : (tag C.su, 'c) C.obj' -> (t_f_x, 'c) C.obj'
+end
+
+\end{verbatim}
+\end{minipage}  
+\end{tabular}
+\end{center}
+\end{small}
+
 \subsection{Enumerations ({\tt enum})}
 
-...
+A C enumeration of constants $c_1, c_2, \ldots, c_k$ declared via {\tt
+  enum} is represented by $k$ ML values of a chosen ML representation
+type.  By default, that type is {\tt MLRep.Signed.int}, i.e., the same
+type that also represents the C type {\tt int}.  A command line switch
+({\tt -enum-constructors} or {\tt -ec}) to {\gentool} can change this
+behavior in such a way that whenever possible the representation type
+for an enumeration becomes an ML datatype, thus making it possible to
+perform pattern-matching on constants.  The representation type cannot be a
+datatype if two or more {\tt enum} constants share the same value as in:
+
+\begin{verbatim}
+  enum ab { A = 12, B = 12 };
+\end{verbatim}
+
+\subsubsection*{Complete enumerations}
+
+Let $t$ be the tag of the C {\tt enum} declaration, and let
+$c_1,\ldots,c_k$ be its set of constants.  The ML-side representative
+of such a declaration is a structure {\tt E\_$t$} which contains $10+k$
+elements, the first 10 being:
+
+\begin{description}\setlength{\itemsep}{0pt}
+\item[{\tt type tag}] The ML-side encoding of type {\tt enum $t$} is
+  {\tt tag C.enum}.  Values of this type are abstract.  They can be
+  converted to and from concrete integer values of type {\tt
+    MLRep.Signed.int} using {\tt C.Cvt.c2i\_enum} and {\tt
+    C.Cvt.i2c\_enum}, respectively.  Like in the case of {\tt struct}
+  or {\tt union}, type {\tt tag} is an abbreviation for the
+  pre-defined type that uniquely corresponds to the tag name $t$.
+\item[{\tt type mlrep}] This is the type of concrete ML-side values
+  representing the $c_1,\ldots,c_k$.  This type is not the same as
+  {\tt tag C.enum} and defaults to {\tt MLRep.Signed.int}.  As
+  mentioned above, by specifying the {\tt -enum-constructors} or {\tt
+    -ec} command-line flag one can force {\gentool} to generate a
+  datatype definition for type {\tt mlrep}.
+\item[{\tt val m2i}] This is a function for converting {\tt mlrep}
+  values to values of type {\tt MLRep.Signed.int}.  If the former is
+  the same type as the latter (see above), then {\tt m2i} is the
+  identity function.  Otherwise {\gentool} generates explicit code to
+  map each {\tt mlrep} constructor to an integer value.
+\item[{\tt val i2m}] This is the inverse of {\tt m2i}.  If {\tt mlrep}
+  is a datatype, then {\tt m2i} will raise exception {\tt Domain} when
+  the argument does not correspond to one of the constructors.
+\item[{\tt val c}] Function {\tt c} converts values of type {\tt
+    mlrep} to values of type {\tt tag C.enum}.  It is merely a
+  composition of {\tt C.Cvt.i2c\_enum} and {\tt m2i}.
+\item[{\tt val ml}] Function {\tt ml} is the composition of {\tt i2m}
+  and {\tt C.Cvt.c2i\_enum} and converts values of type {\tt tag
+    C.enum} to values of type {\tt mlrep}.  It can raise exception
+  {\tt Domain} if the C type system had been subverted (which is
+  always a real possibility).
+\item[{\tt val get}] Function {\tt get} fetches a value of type {\tt
+    mlrep} from a memory object of type {\tt (tag C.enum, $\zeta$)
+    C.obj}.  It is a composition of {\tt i2m} and {\tt C.Get.enum}.
+\item[{\tt val get'}] Function {\tt get}' fetches a value of type {\tt
+    mlrep} from a memory object of type {\tt (tag C.enum, $\zeta$)
+    C.obj'}.  It is a composition of {\tt i2m} and {\tt C.Get.enum'}.
+\item[{\tt val set}] Function {\tt set} stores a value of type {\tt
+    mlrep} into a memory object of type {\tt (tag C.enum, C.rw)
+    C.obj}.  It is a composition of {\tt m2i} and {\tt C.Set.enum}.
+\item[{\tt val set'}] Function {\tt set'} stores a value of type {\tt
+    mlrep} into a memory object of type {\tt (tag C.enum, C.rw)
+    C.obj'}.  It is a composition of {\tt m2i} and {\tt C.Set.enum'}.
+\end{description}
+
+Each of the remaining $k$ elements corresponds to one of the
+enumeration constants $c_i$.  Concretely, the element generated for
+$c_i$ is {\tt val e\_$c_i$} and has type {\tt mlrep}.  If {\tt mlrep}
+is a datatype, then the {\tt e\_$c_i$} are constructors which can be
+used in ML patterns.
+
+\subsubsection*{Examples}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+enum e { A, B, C };
+/* default treatment */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure E_e : sig
+    type tag = ...
+    type mlrep = MLRep.Signed.int
+    val e_A  : mlrep  (* = 0 *)
+    val e_B  : mlrep  (* = 1 *)
+    val e_C  : mlrep  (* = 2 *)
+    val m2i  : mlrep -> MLRep.Signed.int
+    val i2m  : MLRep.Signed.int -> mlrep
+    val c    : mlrep -> tag C.enum
+    val ml   : tag C.enum -> mlrep
+    val get  : (tag C.enum, 'c) C.obj  -> mlrep
+    val get' : (tag C.enum, 'c) C.obj' -> mlrep
+    val set  : (tag C.enum, C.rw) C.obj  * mlrep -> unit
+    val set' : (tag C.enum, C.rw) C.obj' * mlrep -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+enum e { A, B, C };
+/* -enum-constructors */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure E_e : sig
+    type tag = ...
+    datatype mlrep = e_A | e_B | e_C
+    val m2i  : mlrep -> MLRep.Signed.int
+    val i2m  : MLRep.Signed.int -> mlrep
+    val c    : mlrep -> tag C.enum
+    val ml   : tag C.enum -> mlrep
+    val get  : (tag C.enum, 'c) C.obj  -> mlrep
+    val get' : (tag C.enum, 'c) C.obj' -> mlrep
+    val set  : (tag C.enum, C.rw) C.obj  * mlrep -> unit
+    val set' : (tag C.enum, C.rw) C.obj' * mlrep -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+enum e { A = 0, B = 1,
+         C = 0 };
+/* with or without
+ *  -enum-constructors */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure E_e : sig
+    type tag = ...
+    type mlrep = MLRep.Signed.int
+    val e_A  : mlrep  (* = 0 *)
+    val e_B  : mlrep  (* = 1 *)
+    val e_C  : mlrep  (* = 0 *)
+    val m2i  : mlrep -> MLRep.Signed.int
+    val i2m  : MLRep.Signed.int -> mlrep
+    val c    : mlrep -> tag C.enum
+    val ml   : tag C.enum -> mlrep
+    val get  : (tag C.enum, 'c) C.obj  -> mlrep
+    val get' : (tag C.enum, 'c) C.obj' -> mlrep
+    val set  : (tag C.enum, C.rw) C.obj  * mlrep -> unit
+    val set' : (tag C.enum, C.rw) C.obj' * mlrep -> unit
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
+
+
+\subsubsection*{Incomplete enumerations}
+
+If the enumeration is incomplete, i.e., if only its tag $t$ is known,
+then no structure {\tt E\_$t$} is generated.  Instead, a structure
+{\tt ET\_$t$} takes its place which merely contains the type {\tt tag}
+as described above.
+
+\subsubsection*{Unnamed enumerations}
+
+Anonymous enumerations ({\tt enum}s without a tag) are handled in a
+way that is very similar to the treatment of unnamed {\tt struct}s and
+{\tt union}s.  In particular, the rules for assigning a generated tag
+are the same if the {\tt enum} occurs in the context of a {\tt
+  typedef} or another {\tt struct} or {\tt union}.
+
+However, by default all constants in unnamed top-level {\tt enum}s get
+collected into one single virtual enumeration whose tag is {\tt '}
+(apostrophe).  If this is not desired, then the command line flag {\tt
+  -nocollect} turns this off and lets {\gentool} fall back to the
+exact same rules that are used for unnamed top-level {\tt struct}s and
+{\tt union}s: a fresh ``numeric'' tag gets generated for each such
+{\tt enum}.
+
+\subsubsection*{Examples for collected unnamed enumerations}
+
+\begin{small}
+\begin{center}
+\begin{tabular}{c|c}
+C declaration & signature of ML-side representation \\ \hline\hline
+\begin{minipage}{2in}
+\begin{verbatim}
+enum { A, B };
+enum { C, D };
+/* with or without
+ *  -enum-constructors */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure E_' : sig
+    type tag = ...
+    type mlrep = MLRep.Signed.int
+    val e_A  : mlrep  (* = 0 *)
+    val e_B  : mlrep  (* = 1 *)
+    val e_C  : mlrep  (* = 0 *)
+    val e_D  : mlrep  (* = 1 *)
+    ...
+end
+
+\end{verbatim}
+\end{minipage}
+\\ \hline
+\begin{minipage}{2in}
+\begin{verbatim}
+enum { A, B };
+enum { C = 2, D };
+/* -enum-constructors */
+\end{verbatim}
+\end{minipage}
+&
+\begin{minipage}{4in}
+\begin{verbatim}
+
+structure E_' : sig
+    type tag = ...
+    datatype mlrep = e_A | e_B | e_C | e_D
+    ...
+end
+
+\end{verbatim}
+\end{minipage}
+\end{tabular}
+\end{center}
+\end{small}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\appendix
