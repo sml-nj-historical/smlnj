@@ -1,6 +1,6 @@
 ;;; sml-compat.el --- Compatibility functions for Emacs variants for sml-mode
 
-;; Copyright (C) 1999-2000  Stefan Monnier <monnier@cs.yale.edu>
+;; Copyright (C) 1999, 2000, 2004  Stefan Monnier <monnier@gnu.org>
 ;;
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@
        (car parents)))))
 
 ;; for XEmacs
-(when (and (not (boundp 'temporary-file-directory)) (fboundp 'temp-directory))
+(when (fboundp 'temp-directory)
   (defvar temporary-file-directory (temp-directory)))
 
 (unless (fboundp 'make-temp-file)
