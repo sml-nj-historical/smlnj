@@ -1,6 +1,0 @@
-@FILES
-  {"os-io"; "The OS.IO structure";}
-@SIGNATURE CML_OS_IO "os-io" {
-  @VALS 
-    pollEvt
-}

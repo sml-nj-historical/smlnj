@@ -2,16 +2,18 @@
 
 <!DOCTYPE ML-DOC SYSTEM>
 
+<COPYRIGHT OWNER="John H. Reppy" YEAR=2003>
 <COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1998>
 <COPYRIGHT OWNER="AT&AMP;T Bell Laboratories" YEAR=1995>
-<VERSION VERID="1.0" YEAR=1995 MONTH=11 DAY=16>
+<VERSION VERID="1.1" YEAR=2003 MONTH=3 DAY=10>
+
 <TITLE>Porting old programs</TITLE>
 
 <SECTION>
 <HEAD>Porting old CML programs</HEAD>
 
 <PP>
-There have been substantial changes from version&nbsp;0.9.8 of &CML;.
+There have been substantial changes from Version&nbsp;0.9.8 of &CML;.
 Most of these changes are cosmetic name changes meant to track
 changes in the &SML; interfaces, and to rationalize naming conventions.
 In this section, we detail the changes to the &CML; interfaces, and

@@ -1,6 +1,0 @@
-@FILES
-  {@EMPTY "basics"; "Basics";
-    @SECTION "Basics" {
-       @FILE "porting"
-    }
-  }
