@@ -17,19 +17,6 @@ local
     structure P = PickMod
     structure UP = UnpickMod
     structure E = GenericVC.Environment
-
-    fun memoize thunk = let
-	val r = ref (fn () => raise Fail "Stabilize:delay")
-	fun firsttime () = let
-	    val v = thunk ()
-	in
-	    r := (fn () => v);
-	    v
-	end
-    in
-	r := firsttime;
-	(fn () => !r ())
-    end
 in
 
 signature STABILIZE = sig
@@ -136,8 +123,6 @@ struct
 	     *    s + t + 8. The pickled dependency graph also contains integer
 	     *    offsets relative to other stable groups.  These offsets
 	     *    need no further adjustment.
-	     *  - The pickled environment (list).  To be unpickled using
-	     *    unpickleEnvN.
 	     *  - Individual binfile contents (concatenated) but without
 	     *    their static environments.
 	     *)
@@ -719,7 +704,7 @@ struct
 			    { env = GenericVC.CoerceEnv.bs2es env,
 			     ctxt = ctxt }
 			val ge' = bs2es o ge
-			val ii = { statenv = memoize ge',
+			val ii = { statenv = Memoize.memoize ge',
 				   symenv = lazy_symenv (),
 				   statpid = pid (),
 				   sympid = pid () }

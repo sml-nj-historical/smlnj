@@ -81,19 +81,6 @@ in
 		NONE => BF.exec (bfc, de)
 	      | SOME de' => de'
 
-	fun memoize thunk = let
-	    val r = ref (fn _ => raise Fail "Link:memoize")
-	    fun firsttime gp = let
-		val v = thunk gp
-	    in
-		r := (fn _ => v);
-		v
-	    end
-	in
-	    r := firsttime;
-	    fn gp => !r gp
-	end
-
 	type smemo = E.dynenv * SmlInfo.info list
 
 	val smlmap = ref (SmlInfoMap.empty: smemo SmlInfoMap.map)
@@ -221,7 +208,7 @@ in
 				case (BinInfo.sh_mode i, le) of
 				    (Sharing.SHARE _, (e, [])) => let
 					fun thunk gp = link_stable (i, e gp)
-					val m_thunk = memoize thunk
+					val m_thunk = Memoize.memoize thunk
 				    in
 					(fn gp => fn _ => m_thunk gp, NONE)
 				    end
@@ -300,7 +287,7 @@ in
 			in
 			    f gp (foldl add emptyDyn fl)
 			end
-			val m_th = memoize th
+			val m_th = Memoize.memoize th
 		    in
 			l_stablemap :=
 			  StableMap.insert (!l_stablemap, i, m_th);
@@ -333,7 +320,7 @@ in
 			                   (map fsbn globalimports)
 			val (getE, snl) = foldl add gi (map sn localimports)
 			fun thunk gp = link_sml (gp, i, getBFC, getE, snl)
-			val m_thunk = memoize thunk
+			val m_thunk = Memoize.memoize thunk
 		    in
 			l_smlmap := SmlInfoMap.insert (!l_smlmap, i, m_thunk);
 			(m_thunk, [i])
