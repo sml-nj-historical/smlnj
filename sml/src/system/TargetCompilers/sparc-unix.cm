@@ -3,5 +3,6 @@ Library
 is
 	basis.cm
 	cm-lib.cm
+	full-cm.cm
 	viscomp-sparc.cm
 	sparc-unix.sml

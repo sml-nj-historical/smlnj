@@ -45,6 +45,12 @@ full-cm.cm		../system/HostCompiler
 host-cmb.cm		../system/HostCompiler
 host-compiler.cm	../system/HostCompiler
 cm-hook.cm		../system/HostCompiler
-cm-tools.cm		../cm
+cm-tools.cm		../system/HostCompiler
 pp-lib.cm		../smlnj-lib/PP
 html-lib.cm		../smlnj-lib/HTML
+mlyacc-tool.cm		../cm/tools
+grm-ext.cm		../cm/tools
+mllex-tool.cm		../cm/tools
+lex-ext.cm		../cm/tools
+mlburg-tool.cm		../cm/tools
+burg-ext.cm		../cm/tools

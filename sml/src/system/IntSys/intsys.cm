@@ -26,7 +26,17 @@ is
 	 * now within full-cm.cm. (See there.) *)
 	full-cm.cm
 	host-cmb.cm
+
+	(* This stuff should eventually go away, i.e., be moved into the
+	 * corresponding source trees of ML-Yacc, ML-Lex, and ML-Burg. *)
 	cm-tools.cm
+	mlyacc-tool.cm
+	grm-ext.cm
+	mllex-tool.cm
+	lex-ext.cm
+	mlburg-tool.cm
+	burg-ext.cm
+
 # if not defined(LIGHT)
 	target-compilers.cm
 # endif

@@ -3,5 +3,6 @@ Library
 is
 	basis.cm
 	cm-lib.cm
+	full-cm.cm
 	viscomp-alpha32.cm
 	alpha32-unix.sml

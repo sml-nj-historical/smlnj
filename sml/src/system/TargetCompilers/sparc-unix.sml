@@ -2,4 +2,5 @@
 
 structure SparcUnixCMB =
     BootstrapCompileFn (structure MachDepVC = SparcVisComp
-			val os = SMLofNJ.SysInfo.UNIX)
+			val os = SMLofNJ.SysInfo.UNIX
+			val load_plugin = CM.load_plugin)

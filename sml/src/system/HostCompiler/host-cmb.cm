@@ -1,5 +1,44 @@
-(cm-init)
 Library
 	structure CMB
 is
-	host-compiler-0.cm
+	(* based on current architecture and OS, select CMB *)
+
+# if defined(ARCH_ALPHA)
+	alpha32-unix.cm
+	Select/alpha32-unix-cmb.sml
+# elif defined(ARCH_MIPS)
+#   if defined(BIG_ENDIAN)
+	mipseb-unix.cm
+	Select/mipseb-unix-cmb.sml
+#   else
+	mipsel-unix.cm
+	Select/mipsel-unix-cmb.sml
+#   endif
+# elif defined(ARCH_HPPA)
+	hppa-unix.cm
+	Select/hppa-unix-cmb.sml
+# elif defined(ARCH_RS6000)
+	rs6000-unix.cm
+	Select/rs6000-unix-cmb.sml
+# elif defined(ARCH_PPC)
+#   if defined(OS_MACOS)
+	ppc-macos.cm
+	Select/ppc-macos-cmb.sml
+#   else
+	ppc-unix.cm
+	Select/ppc-unix-cmb.sml
+#   endif
+# elif defined(ARCH_SPARC)
+	sparc-unix.cm
+	Select/sparc-unix-cmb.sml
+# elif defined(ARCH_X86)
+#   if defined(OS_WIN32)
+	x86-win32.cm
+	Select/x86-win32-cmb.sml
+#   else
+	x86-unix.cm
+	Select/x86-unix-cmb.sml
+#   endif
+# else
+#   error Strange architecture and/or OS!
+# endif
