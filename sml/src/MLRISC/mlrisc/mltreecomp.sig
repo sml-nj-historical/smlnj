@@ -4,8 +4,11 @@
  *)
 signature MLTREECOMP = sig
     structure T : MLTREE
+    structure I : INSTRUCTIONS
+
     val mltreeComp : T.mltree -> unit
     val mlriscComp : T.stm -> unit
+    val emitInstr : I.instruction -> unit
 end
 
 (*

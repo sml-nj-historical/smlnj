@@ -235,13 +235,18 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 				  path=IP.extend(rpath,name)}
 			   
 		    else tyc
-	     in {tvs=tvs, name=name,def=def,region=region,tyc=tyc,
-		 binddef=binddef,lazyp=lazyp,
-		 strictName=strictName}
+	     in SOME{tvs=tvs, name=name,def=def,region=region,
+		     tyc=tyc, binddef=binddef,lazyp=lazyp,
+		     strictName=strictName}
 	    end
+	  | preprocess region (Db{tyc=name,rhs=Repl _,...}) = 
+	     (error region EM.COMPLAIN
+	       ("datatype replication mixed with regular datatypes:" ^ S.name name)
+	       EM.nullErrorBody;
+	      NONE)
 	  | preprocess _ (MarkDb(db',region')) = preprocess region' db'
 
-        val dbs = map (preprocess region) datatycs
+        val dbs = List.mapPartial (preprocess region) datatycs
         val _ = debugmsg "--elabDATATYPEdec: preprocessing done"
 
 
@@ -451,10 +456,3 @@ end (* local *)
 end (* structure ElabType *)
 
 
-(*
- * $Log: elabtype.sml,v $
- * Revision 1.3  1998/05/23 14:10:05  george
- *   Fixed RCS keyword syntax
- *
- *
- *)

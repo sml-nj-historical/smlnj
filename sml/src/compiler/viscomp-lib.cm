@@ -16,17 +16,16 @@ Library
 	structure RS6000VisComp
 	structure SparcVisComp
 	structure X86VisComp
-	functor IntShare
+	functor BootEnvF
 is
 
 TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
+TopLevel/bootstrap/boot.sml
 TopLevel/batch/cmsa.sig
 TopLevel/batch/cmsa.sml
 TopLevel/batch/envcvt.sml
-TopLevel/bootstrap/boot.sml
-TopLevel/bootstrap/shareglue.sml
 TopLevel/environ/dynenv.sig
 TopLevel/environ/dynenv.sml
 TopLevel/environ/environ.sig
@@ -346,5 +345,3 @@ MiscUtil/util/stats.sml
 ../ml-yacc/lib/sources.cm
 
 ../MLRISC/MLRISC.cm
-
-

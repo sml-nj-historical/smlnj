@@ -21,11 +21,11 @@ signature STREAM_IO =
     val input       : instream -> (vector * instream)
     val input1      : instream -> (elem * instream) option
     val inputN      : (instream * int) -> (vector * instream)
-    val inputAll    : instream -> (vector * instream)
+    val inputAll    : instream -> vector
     val canInput    : (instream * int) -> int option
     val closeIn     : instream -> unit
     val endOfStream : instream -> bool
-    val mkInstream  : (reader * vector option) -> instream
+    val mkInstream  : (reader * vector) -> instream
     val getReader   : instream -> (reader * vector)
     val getPosIn    : instream -> in_pos
     val setPosIn    : in_pos -> instream

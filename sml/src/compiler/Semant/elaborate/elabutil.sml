@@ -395,18 +395,6 @@ fun makeHANDLEexp(exp, rules, compInfo as {mkLvar=mkv, ...}: compInfo) =
      in HANDLEexp(exp, HANDLER(FNexp(rules,UNDEFty))) 
     end
 
-fun isBoundConstructor(env,var) =
-    (case LU.lookValSym(env,var,fn _ => raise SE.Unbound)
-       of V.CON _ => true
-        | _ => false)
-     handle SE.Unbound => false
-
-fun checkBoundConstructor(env,var,err) =
-    if isBoundConstructor(env,var)
-    then err COMPLAIN ("rebinding data constructor \""
-		       ^S.name var^ "\" as variable")
-			     nullErrorBody
-    else ()
 
 (* transform a VarPat into either a variable or a constructor. If we are given
    a long path (>1) then it has to be a constructor. *)
@@ -573,7 +561,3 @@ end (* structure ElabUtil *)
 
 
 
-(*
- * $Log$
- *
- *)

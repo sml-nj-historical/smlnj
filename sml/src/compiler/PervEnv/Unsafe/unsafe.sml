@@ -95,7 +95,12 @@ structure Unsafe :> UNSAFE =
 
     val cast = InlineT.cast
 
-    val pStruct : Object.object ref = InlineT.cast Assembly.pstruct
+    (* actual representation of pStruct *)
+    datatype runDynEnv =
+	NILrde
+      | CONSrde of Word8Vector.vector * Object.object * runDynEnv
+
+    val pStruct : runDynEnv ref = InlineT.cast Assembly.pstruct
 
     val topLevelCont = ref(InlineT.isolate (fn () => ()))
 
@@ -104,6 +109,3 @@ structure Unsafe :> UNSAFE =
   end;
 
 
-(*
- * $Log$
- *)

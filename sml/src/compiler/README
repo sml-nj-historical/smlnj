@@ -29,7 +29,7 @@ all-files.cm
    CMB.retarget, then CMB.retarget will create them.
 
 sources.cm
-   This file is and alias for viscomp-lib.cm and makes it possible to
+   This file is an alias for viscomp-lib.cm and makes it possible to
    use CMB.CM.make (); for experimenting with the compiler.
    (Don't use CM.make because it has a different idea of where the binfiles
     live.)
@@ -44,10 +44,6 @@ viscomp-lib.cm
    This file specifies the "library" of visible compilers for various
    supported architectures.
 
-compman-lib.cm
-   This file specifies the "library" of compilation managers for various
-   supported architectures.
-
 makeml* [-full] [-rebuild dir]
    A script for building the interactive compiler. The default path
    of bin files is ./bin.$arch-$os. There are two command-line options:
@@ -57,7 +53,7 @@ makeml* [-full] [-rebuild dir]
    If you add the "-rebuild dir" option, it will recompile the compiler,
    using "dir" as the new binfile directory.  It then proceeds by loading
    the static and symbolic environments from the newly created batch of
-   binfiles.  (This supercedes the -elab option and is useful, if
+   binfiles.  (This supercedes the -elab option and is useful if
    your new compiler has changed the representations of the bindings
    in the environments.  Other than with -elab, there will be a fresh set
    of usable binfiles ready after such a "rebuild".)
@@ -84,10 +80,11 @@ Retarget/<arch>-<os>.{cm,sml}
 ============================================================================
 Tips:
    The current source code is organized as a two-level directory tree.
-   All source files can be grep-ed by typing "grep xxx */*/*.{sig,sml}", 
+   All source files (except those in Retarget/* wich are not part of the
+   ordinary compiler) can be grep-ed by typing "grep xxx */*/*.{sig,sml}", 
    assuming you are looking for binding "xxx". 
 
-   The following directories is organized based on the compilation phases.
+   The following directories are organized based on the compilation phases.
    Within each phase, the "main" sub-directory always contains the top-level 
    module and some important data structures for that particular compilation 
    phase.

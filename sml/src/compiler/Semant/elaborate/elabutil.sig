@@ -70,9 +70,6 @@ sig
   val checkBoundTyvars :
        TyvarSet.tyvarset * Types.tyvar list * ErrorMsg.complainer -> unit
 
-  val checkBoundConstructor :
-       StaticEnv.staticEnv * Symbol.symbol * ErrorMsg.complainer -> unit
-
   val pat_id : 
        SymPath.path * StaticEnv.staticEnv * ErrorMsg.complainer * compInfo
        -> Absyn.pat
@@ -101,6 +98,3 @@ sig
 
 end (* signature ELABUTIL *)
 
-(*
- * $Log$
- *)

@@ -229,8 +229,7 @@ functor BinIOFn (
 	      fun loop (v, strm) =
 		    if (V.length v = 0) then [] else v :: loop(bigInput strm)
 	      val data = V.concat (loop (bigInput strm))
-	      in
-		(data, findEOS buf)
+	      in data
 	      end
       (* Return SOME k, if k <= amount characters can be read without blocking. *)
 	fun canInput (strm as ISTRM(buf, pos), amount) = let
@@ -283,7 +282,7 @@ functor BinIOFn (
 			(* end case *))
 		      else false
 	      (* end case *))
-	fun mkInstream (reader, optData) = let
+	fun mkInstream (reader, data) = let
 	      val PIO.RD{readVec, readVecNB, getPos, setPos, ...} = reader
 	      val readVec' = (case readVec
 		     of NONE => (fn _ => raise IO.BlockingNotSupported)
@@ -312,20 +311,15 @@ functor BinIOFn (
 		      closed = closedFlg, getPos = getPos, tail = ref more,
 		      cleanTag = tag
 		    }
-	      val buf = (case optData
-		     of NONE => IBUF{
-			    basePos = getPos(), data=empty,
-			    info=info, more=more
-			  }
+	      val buf = 
 (** What should we do about the position in this case ?? **)
 (** Suggestion: When building a stream with supplied initial data,
  ** nothing can be said about the positions inside that initial
  ** data (who knows where that data even came from!).
  **) 
-		      | (SOME v) => IBUF{
-			    basePos = NONE, data=v,
+		        IBUF{
+			    basePos = NONE, data=data,
 			    info=info, more=more}
-		    (* end case *))
 	      in
 		ISTRM(buf, 0)
 	      end
@@ -365,7 +359,7 @@ functor BinIOFn (
 	      in
 		terminate info;
 		Option.valOf (#setPos rd) fpos;
-		mkInstream (PIO.RD rd, NONE)
+		mkInstream (PIO.RD rd, V.fromList[])
 	      end
 
 
@@ -597,9 +591,10 @@ functor BinIOFn (
 	    strm := strm'; v
 	  end
     fun inputAll (strm : instream) = let
-	  val (v, strm') = StreamIO.inputAll(!strm)
+	  val (s as StreamIO.ISTRM(buf, _)) = !strm
+	  val v = StreamIO.inputAll s
 	  in
-	    strm := strm'; v
+	    strm := StreamIO.findEOS buf; v
 	  end
     fun canInput (strm, n) = StreamIO.canInput (!strm, n)
     fun lookahead (strm : instream) = (case StreamIO.input1(!strm)
@@ -635,7 +630,7 @@ functor BinIOFn (
 
   (** Open files **)
     fun openIn fname =
-	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, NONE))
+	  mkInstream(StreamIO.mkInstream(OSPrimIO.openRd fname, V.fromList[]))
 	    handle ex => raise IO.Io{function="openIn", name=fname, cause=ex}
     fun openOut fname =
 	  mkOutstream(StreamIO.mkOutstream(OSPrimIO.openWr fname, IO.BLOCK_BUF))

@@ -246,10 +246,10 @@ fun equalType(ty,ty') =
 	      else (eq(reduceType ty, ty')
 		    handle ReduceType =>
 		      (eq(ty,reduceType ty') handle ReduceType => false))
-	  | eq(ty1 as VARty _, ty2 as CONty _) =
+	  | eq(ty1 as (VARty _ | IBOUND _), ty2 as CONty _) =
 	      (eq(ty1,reduceType ty2)
 	       handle ReduceType => false)
-	  | eq(ty1 as CONty _, ty2 as VARty _) =
+	  | eq(ty1 as CONty _, ty2 as (VARty _ | IBOUND _)) =
 	      (eq(reduceType ty1, ty2)
 	       handle ReduceType => false)
 	  | eq(WILDCARDty,_) = true
@@ -865,9 +865,3 @@ end (* local *)
 end (* structure TypesUtil *)
 
 
-(*
- * $Log: typesutil.sml,v $
- * Revision 1.3  1998/05/23 14:10:19  george
- *   Fixed RCS keyword syntax
- *
- *)

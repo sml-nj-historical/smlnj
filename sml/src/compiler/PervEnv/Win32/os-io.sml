@@ -1,10 +1,11 @@
-(* win32-os-io.sml
+(* os-io.sml
  *
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
- * Replacement of OS.IO structure for Win32.
+ * Replacement OS.IO structure for Win32.
  * It implements a simple type of polling for file objects.
+ * This file requires a runtime system supporting polling in Win32-IO.
  *)
 
 structure OS_IO : OS_IO = 

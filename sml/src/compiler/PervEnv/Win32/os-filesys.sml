@@ -105,7 +105,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
 	fun realPath p = 
 	    if OSPath.isAbsolute p then fullPath p
-	    else OSPath.mkRelative (fullPath p, fullPath (getDir()))
+	    else OSPath.mkRelative {path=fullPath p, relativeTo=fullPath (getDir())}
 
 	fun fileSize s = 
 	    case W32FS.getLowFileSizeByName s of
@@ -252,6 +252,3 @@ structure OS_FileSys : OS_FILE_SYS =
     end
 
 
-(*
- * $Log$
- *)

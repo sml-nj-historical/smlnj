@@ -89,7 +89,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
     fun realPath p = if (P.isAbsolute p)
 	  then fullPath p
-	  else P.mkRelative (fullPath p, fullPath(getDir()))
+	  else P.mkRelative {path=fullPath p, relativeTo=fullPath(getDir())}
 
     val fileSize = P_FSys.ST.size o P_FSys.stat
     val modTime  = P_FSys.ST.mtime o P_FSys.stat
@@ -140,6 +140,3 @@ structure OS_FileSys : OS_FILE_SYS =
 
   end;
 
-(*
- * $Log$
- *)

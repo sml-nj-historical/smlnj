@@ -29,6 +29,7 @@ do
   arg=$1; shift
   case $arg in
     -full) FULL="@SMLfull" ;;
+    -bare) FULL="@SMLbare" ;;
     -rebuild)
       if [ "$#" = "0" ]; then
         echo "makeml: missing argument for \"-rebuild\" option"

@@ -1,5 +1,6 @@
 Group
 	structure MipsBigUnixCMB
+	structure MipsBigVisComp
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

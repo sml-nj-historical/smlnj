@@ -173,9 +173,10 @@ functor OS_PathFn (OSPathBase : sig
     fun isAbsolute p = #isAbs(fromString p)
     fun isRelative p = Bool.not(#isAbs(fromString p))
 
-    fun mkAbsolute (p1, p2) = (case (fromString p1, fromString p2)
+    fun mkAbsolute {path, relativeTo} = (
+	  case (fromString path, fromString relativeTo)
 	   of (_, {isAbs=false, ...}) => raise Path
-	    | ({isAbs=true, ...}, _) => p1
+	    | ({isAbs=true, ...}, _) => path
 	    | ({vol=v1, arcs=al1, ...}, {vol=v2, arcs=al2, ...}) => let
 		fun mkCanon vol = mkCanonical(toString{
 			isAbs=true, vol=vol, arcs=List.@(al2, al1)
@@ -187,13 +188,13 @@ functor OS_PathFn (OSPathBase : sig
 		    else raise Path
 		end
 	  (* end case *))
-    fun mkRelative (p1, p2) =
-	  if (isAbsolute p2)
-	    then if (isRelative p1)
-	      then p1
+    fun mkRelative {path, relativeTo} =
+	  if (isAbsolute relativeTo)
+	    then if (isRelative path)
+	      then path
 	      else let
-		val {vol=v1, arcs=al1, ...} = fromString p1
-		val {vol=v2, arcs=al2, ...} = fromString(mkCanonical p2)
+		val {vol=v1, arcs=al1, ...} = fromString path
+		val {vol=v2, arcs=al2, ...} = fromString(mkCanonical relativeTo)
 		fun strip (l, []) = mkArcs l
 		  | strip ([], l) = dotDot([], l)
                   | strip (l1 as (x1::r1), l2 as (x2::r2)) = if (x1 = x2)
@@ -232,6 +233,3 @@ functor OS_PathFn (OSPathBase : sig
   end;
 
 
-(*
- * $Log$
- *)

@@ -37,6 +37,7 @@ struct
 
   val itow = Word.fromInt
 
+  val emitInstr = F.emitInstr
   val emit = F.emitInstr
   val ldLabelEA = LC.ldLabelEA emit
   val ldLabelOpnd = LC.ldLabelOpnd emit
@@ -511,9 +512,3 @@ struct
   val mlriscComp = stmAction
 end
 
-(*
- * $Log: hppa.sml,v $
- * Revision 1.3  1998/05/25 15:10:52  george
- *   Fixed RCS keywords
- *
- *)
