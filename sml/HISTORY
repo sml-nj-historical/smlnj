@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/11 00:15:00 CST
+Tag: blume-20041111-word64
+Description:
+
+Structure Word64 is now (almost) complete, word literals and patterns
+seem to work.  There are a few odd pieces missing.  In particular,
+I didn't do the {from,to}LargeWord parts because LargeWord is still Word32
+at the moment.
+
+Making Word64 official would mean that LargeWord becomes Word64.  But
+this requires extreme care because most word-word conversions have to
+go through LargeWord, so making a mistake means loss of efficiency or
+worse.  Eventually there will be a solution similar to (but actually
+simpler than) what I did with IntInf.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/10 18:12:00 CST
 Tag: blume-20041110-64bit
 Description:

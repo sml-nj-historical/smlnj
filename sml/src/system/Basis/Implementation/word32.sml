@@ -6,10 +6,6 @@
 
 structure Word32Imp : WORD =
   struct
-    infix 7 * div mod
-    infix 6 + -
-    infix 4 > < >= <=
-
     structure W32 = InlineT.Word32
 
     type word = Word32.word

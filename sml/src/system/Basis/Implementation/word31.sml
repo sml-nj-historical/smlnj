@@ -6,10 +6,6 @@
 
 structure Word31Imp : WORD =
   struct
-    infix 7 * div mod
-    infix 6 + -
-    infix 4 > < >= <=
-
     structure W31 = InlineT.Word31
     structure LW = Word32
 

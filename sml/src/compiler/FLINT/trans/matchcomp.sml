@@ -302,15 +302,17 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
       | genAndor (LAYEREDpat(APPpat(k,t,lpat), bpat), rule) =
 	  addConstraint ((k,t), SOME lpat, rule, genAndor(bpat, rule))
       | genAndor (INTpat (s,t), rule) = 
-	  let val con = numCon(s, t, "genAndor INTpat")
-	   in CASE{bindings = nil, constraints = nil, sign = DA.CNIL,
-		   cases = [(con, [rule], nil)]}
-	  end
+	  if TU.equalType (t, BT.int64Ty) then genAndor64 (LN.int64 s, rule)
+	  else let val con = numCon(s, t, "genAndor INTpat")
+	       in CASE{bindings = nil, constraints = nil, sign = DA.CNIL,
+		       cases = [(con, [rule], nil)]}
+	       end
       | genAndor (WORDpat(s,t), rule) = 
-	  let val con = wordCon(s, t, "genAndor WORDpat")
-	   in CASE{bindings = nil, constraints = nil, sign = DA.CNIL,
-		   cases = [(con, [rule], nil)]}
-	  end
+	  if TU.equalType (t, BT.word64Ty) then genAndor64 (LN.word64 s, rule)
+	  else let val con = wordCon(s, t, "genAndor WORDpat")
+	       in CASE{bindings = nil, constraints = nil, sign = DA.CNIL,
+		       cases = [(con, [rule], nil)]}
+	       end
       | genAndor (REALpat r, rule) =
 	  CASE {bindings = nil, constraints = nil, sign = DA.CNIL,
 		cases = [(REALpcon r, [rule], nil)]}
@@ -347,6 +349,12 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 		  cases = [(DATApcon(k,t), [rule], [genAndor(pat, rule)])]}
       | genAndor _ =
 	  bug "genandor applied to inapplicable pattern"
+
+    (* simulate 64-bit words and ints as pairs of 32-bit words *)
+    and genAndor64 ((hi, lo), rule) =
+	let fun p32 w = WORDpat (Word32.toLargeInt w, BT.word32Ty)
+	in genAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], rule)
+	end
 
     and multiGen(nil, rule) = nil
       | multiGen(pat::rest, rule) = (genAndor(pat,rule))::multiGen((rest,rule))
@@ -387,18 +395,22 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 		  AND{bindings=bindings, constraints=constraints, 
 		      subtrees=subtrees}
 	      | _ => bug "genAndor returned bogusly")
-      | mergeAndor (INTpat (s,t), CASE{bindings, cases, 
-				       constraints, sign}, rule) =
-	    let val pcon = numCon(s, t, "mergeAndor INTpat")
-	     in CASE{bindings = bindings, constraints = constraints, sign = sign,
-		     cases = addACase(pcon, nil, rule, cases)}
-	    end
-      | mergeAndor (WORDpat(s,t), CASE{bindings, cases, 
-				       constraints, sign}, rule) =
-	    let val pcon = wordCon(s, t, "mergeAndor WORDpat")
-	     in CASE{bindings = bindings, constraints = constraints, sign = sign,
-		     cases = addACase(pcon, nil, rule, cases)}
-	    end
+      | mergeAndor (INTpat (s,t), c as CASE{bindings, cases, 
+					    constraints, sign}, rule) =
+	  if TU.equalType (t, BT.int64Ty) then
+	      mergeAndor64 (LN.int64 s, c, rule)
+	  else let val pcon = numCon(s, t, "mergeAndor INTpat")
+	       in CASE{bindings = bindings, constraints = constraints,
+		       sign = sign, cases = addACase(pcon, nil, rule, cases)}
+	       end
+      | mergeAndor (WORDpat(s,t), c as CASE{bindings, cases, 
+					    constraints, sign}, rule) =
+	  if TU.equalType (t, BT.word64Ty) then
+	      mergeAndor64 (LN.word64 s, c, rule)
+	  else let val pcon = wordCon(s, t, "mergeAndor WORDpat")
+	       in CASE{bindings = bindings, constraints = constraints,
+		       sign = sign, cases = addACase(pcon, nil, rule, cases)}
+	       end
       | mergeAndor (REALpat r, CASE{bindings, cases, constraints,sign}, rule) =
 	  CASE {bindings = bindings, constraints = constraints, sign=sign,
 		cases = addACase(REALpcon r, nil, rule, cases)}
@@ -452,6 +464,12 @@ let fun addBinding (v, rule, AND{bindings, subtrees, constraints}) =
 	  else bug "concrete constructor application can't match record"
       | mergeAndor _ =
 	  bug "bad pattern merge"
+
+    (* simulate 64-bit words and ints as pairs of 32-bit words *)
+    and mergeAndor64 ((hi, lo), c, rule) =
+	let fun p32 w = WORDpat (Word32.toLargeInt w, BT.word32Ty)
+	in mergeAndor (AbsynUtil.TUPLEpat [p32 hi, p32 lo], c, rule)
+	end
 
     and addACase (pcon, pats, rule, nil) =
 	  [(pcon, [rule], multiGen(pats, rule))]
