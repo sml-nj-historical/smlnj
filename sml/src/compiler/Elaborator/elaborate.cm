@@ -42,6 +42,8 @@ Group (../../system/smlnj/viscomp/elaborate.cm)
 	structure PPModules
 	structure PPVal
 	structure PPAst
+
+	structure Unify
 is
 
 	basics/elabcontrol.sml
