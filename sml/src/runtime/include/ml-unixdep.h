@@ -38,7 +38,6 @@
  *   { HAS_SELECT, HAS_POLL }
  *   { HAS_POSIX_SIGS, HAS_BSD_SIGS }
  *   { HAS_SIGCONTEXT, HAS_UCONTEXT }
- *   { HAS_POSIX_SIGS, HAS_BSD_SIGS }
  *
  * Some UNIX systems do not support the POSIX libraries (HAS_POSIX_LIBRARIES is
  * not defined), in which case, some of the following feature falgs may be defined:
@@ -198,11 +197,14 @@ extern char	*sys_errlist[];
 #elif defined(OPSYS_DARWIN) /** MacOS X **/
 #  define OS_NAME       "Darwin"
 #  define HAS_POSIX_LIBRARIES
+#  define HAS_POSIX_SIGS
+#  define HAS_GETRUSAGE
+#  define HAS_SETITIMER
+#  define HAS_ANON_MMAP
 #  define HAS_SIGCONTEXT
 #  define HAS_POSIX_SIGS
 #  define HAS_STRERROR
 #  define HAS_SELECT
-#  define HAS_ANON_MMAP
 
 #elif defined(OPSYS_HPUX9)  /** HPUX 9.0 **/
 #  define OS_NAME       "HPUX"
