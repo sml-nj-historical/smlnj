@@ -1,91 +1,18 @@
-(* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
-(* binfile.sml *)
-
-functor BinfileFun (C : COMPILE) : BINFILE =
-struct
-    structure Pid = PersStamps
-    structure Env = Environment
-    structure Err = ErrorMsg
-    structure CB = CompBasic
-
-    exception FormatError = CodeObj.FormatError
-
-    exception Compile = C.Compile
-    exception TopLevelException = C.TopLevelException
-    exception SilentException = C.SilentException
-
-    fun error msg = (
-      Control.Print.say(concat["Bin file format error: ", msg, "\n"]);
-      raise FormatError)
-
-    type pid = Pid.persstamp
-    type senv = Env.staticEnv
-    type symenv = Env.symenv
-    type denv = Env.dynenv
-    type env = Env.environment
-    type lambda = CB.flint
-
-    type csegments = C.csegments
-    type executable = C.executable
-
-    type stats = { env: int, inlinfo: int, data: int, code: int }
-
-    fun delay thunk = let
-	val f = ref (fn () => raise Fail "Binfile.delay not initialized")
-	fun first () = let
-	    val r = thunk ()
-	    fun later () = r
-	in
-	    f := later; r
-	end
-    in
-	f := first;
-	fn () => !f ()
-    end
-
-    (* pickled data: the data, the pid, and the pickle *)
-    type 'a pData =
-       { unpickled: unit -> 'a, pid: pid, pickled: Word8Vector.vector }
-
-    datatype bfContent =
-	BFC of {
-		imports: C.import list,
-		exportPid: pid option,
-		cmData: pid list,
-		senv: senv pData,
-		lambda: lambda option pData,
-		csegments: csegments,
-		executable: executable option ref
-	       }
-
-    fun staticPidOf (BFC { senv = { pid, ... }, ... }) = pid
-    fun exportPidOf (bfc as BFC { exportPid, ... }) = exportPid
-    fun lambdaPidOf (BFC { lambda = { pid, ... }, ... }) = pid
-    fun cmDataOf (BFC { cmData, ... }) = cmData
-    fun senvOf (BFC { senv = { unpickled, ... }, ... }) = unpickled ()
-    fun symenvOf (bfc as BFC { senv, lambda, ... }) =
-	C.mksymenv (exportPidOf bfc, #unpickled lambda ())
-
-    local
-	val arch = C.architecture
-
-	fun executableOf (BFC { executable = ref (SOME e), ... }) = e
-	  | executableOf (BFC { executable, csegments, ... }) = let
-		val e = C.isolate (C.mkexec csegments)
-	    in
-		executable := SOME e;
-		e
-	    end
-
-	fun codeSegments (BFC { csegments, ... }) = csegments
-
-	val fromInt = Word32.fromInt
-	val fromByte = Word32.fromLargeWord o Word8.toLargeWord
-	val toByte = Word8.fromLargeWord o Word32.toLargeWord
-	val >> = Word32.>>
-	infix >>
+(* binfile-new.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com
+ *)
 
 (*
+ * This revised version of structure Binfile is now machine-independent.
+ * Moreover, it deals with the file format only and does not know how to
+ * create new binfile contents (aka "compile") or how to interpret the
+ * pickles.  As a result, it does not statically depend on the compiler.
+ * (Eventually we might want to support a light-weight binfile loader.)
+ * 
+ * ----------------------------------------------------------------------------
  * BINFILE FORMAT description:
  *
  *  Every 4-byte integer field is stored in big-endian format.
@@ -194,30 +121,54 @@ struct
  *  associated with the pid are used to recursively fetch components of that
  *  record.
  *)
+structure Binfile :> BINFILE = struct
 
-	val MAGIC = let
-	    fun fit (i, s) = let
-		val s = StringCvt.padRight #" " i s
-	    in
-		if (size s = i) then s
-		else substring (s, 0, i)
-	    end
-	    fun version [] = []
-	      | version [x : int] = [Int.toString x]
-	      | version (x :: r) = (Int.toString x) :: "." :: (version r)
-	    val v = fit (8, concat (version (#version_id Version.version)))
-	    val a =
-		if String.sub (arch, 0) = #"." then
-		    fit (7, substring (arch, 1, (String.size arch) - 1))
-		else fit (7, arch)
-	in
-	    Byte.stringToBytes (concat [v, a, "\n"])
-	end
+    structure Pid = PersStamps
 
-	val magicBytes = Word8Vector.length MAGIC
-	val bytesPerPid = 16
+    exception FormatError = CodeObj.FormatError
 
-	fun bytesIn (s, n) = let
+    type pid = Pid.persstamp
+
+    type csegments = CodeObj.csegments
+
+    type executable = CodeObj.executable
+
+    type stats = { env: int, inlinfo: int, data: int, code: int }
+
+    type pickle = { pid: pid, pickle: Word8Vector.vector }
+
+    datatype bfContents =
+	BF of { imports: ImportTree.import list,
+		exportPid: pid option,
+		cmData: pid list,
+		senv: pickle,
+		lambda: pickle,
+		csegments: csegments,
+		executable: executable option ref }
+    fun unBF (BF x) = x
+
+    val bytesPerPid = Pid.persStampSize
+    val magicBytes = 16
+
+    val exportPidOf = #exportPid o unBF
+    val cmDataOf = #cmData o unBF
+    val senvPickleOf = #senv o unBF
+    val staticPidOf = #pid o senvPickleOf
+    val lambdaPickleOf = #lambda o unBF
+    val lambdaPidOf = #pid o lambdaPickleOf
+
+    fun error msg =
+	(Control.Print.say (concat ["binfile format error: ", msg, "\n"]);
+	 raise FormatError)
+
+    val fromInt = Word32.fromInt
+    val fromByte = Word32.fromLargeWord o Word8.toLargeWord
+    val toByte = Word8.fromLargeWord o Word32.toLargeWord
+    val >> = Word32.>>
+    infix >>
+
+    fun bytesIn (s, 0) = Byte.stringToBytes ""
+      | bytesIn (s, n) = let
 	    val bv = BinIO.inputN (s, n)
 	in
 	    if n = Word8Vector.length bv then bv
@@ -226,46 +177,46 @@ struct
 			       Int.toString(Word8Vector.length bv)])
 	end
 
-	fun readInt32 s = LargeWord.toIntX(Pack32Big.subVec(bytesIn(s, 4), 0))
+    fun readInt32 s = LargeWord.toIntX(Pack32Big.subVec(bytesIn(s, 4), 0))
 
-	fun readPackedInt32 s = let
-	    fun loop n =
-		case BinIO.input1 s of
-		    NONE => error "unable to read a packed int32"
-		  | SOME w8 => let
-			val n' =
-			    n * 0w128
-			    + Word8.toLargeWord (Word8.andb (w8, 0w127))
-		    in
-			if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
-		    end
-	in
-	    LargeWord.toIntX (loop 0w0)
-	end
-
-	fun readPid s = Pid.fromBytes (bytesIn (s, bytesPerPid))
-	fun readPidList (s, n) = List.tabulate (n, fn _ => readPid s)
-
-	fun readImportTree s =
-	    case readPackedInt32 s of
-		0 =>  (CB.ITNODE [], 1)
-	      | cnt => let
-		    fun readImportList 0 = ([], 0)
-		      | readImportList cnt = let
-			    val selector = readPackedInt32 s
-			    val (tree, n) = readImportTree s
-			    val (rest, n') = readImportList (cnt - 1)
-			in
-			    ((selector, tree) :: rest, n + n')
-			end
-		    val (l, n) = readImportList cnt
+    fun readPackedInt32 s = let
+	fun loop n =
+	    case BinIO.input1 s of
+		NONE => error "unable to read a packed int32"
+	      | SOME w8 => let
+		    val n' =
+			n * 0w128
+			+ Word8.toLargeWord (Word8.andb (w8, 0w127))
 		in
-		    (CB.ITNODE l, n)
+		    if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
 		end
+    in
+	LargeWord.toIntX (loop 0w0)
+    end
 
-	fun readImports (s, n) =
-	    if n <= 0 then []
-	    else let
+    fun readPid s = Pid.fromBytes (bytesIn (s, bytesPerPid))
+    fun readPidList (s, n) = List.tabulate (n, fn _ => readPid s)
+
+    fun readImportTree s =
+	case readPackedInt32 s of
+	    0 =>  (ImportTree.ITNODE [], 1)
+	  | cnt => let
+		fun readImportList 0 = ([], 0)
+		  | readImportList cnt = let
+			val selector = readPackedInt32 s
+			val (tree, n) = readImportTree s
+			val (rest, n') = readImportList (cnt - 1)
+		    in
+			((selector, tree) :: rest, n + n')
+		    end
+		val (l, n) = readImportList cnt
+	    in
+		(ImportTree.ITNODE l, n)
+	    end
+
+    fun readImports (s, n) =
+	if n <= 0 then []
+	else let
 		val pid = readPid s
 		val (tree, n') = readImportTree s
 		val rest = readImports (s, n - n')
@@ -273,279 +224,241 @@ struct
 		(pid, tree) :: rest
 	    end
 
-	fun pickleInt32 i = let
-	    val w = fromInt i
-	    fun out w = toByte w
-	in
-	    Word8Vector.fromList [toByte (w >> 0w24), toByte (w >> 0w16),
-				  toByte (w >> 0w8), toByte w]
-	end
-	fun writeInt32 s i = BinIO.output (s, pickleInt32 i)
-
-	fun picklePackedInt32 i = let
-	    val n = fromInt i
-	    val // = LargeWord.div
-	    val %% = LargeWord.mod
-	    val !! = LargeWord.orb
-	    infix // %% !!
-	    val toW8 = Word8.fromLargeWord
-	    fun r (0w0, l) = Word8Vector.fromList l
-	      | r (n, l) = r (n // 0w128, toW8 ((n %% 0w128) !! 0w128) :: l)
-	in
-	    r (n // 0w128, [toW8 (n %% 0w128)])
-	end
-
-	fun writePid (s, pid) = BinIO.output (s, Pid.toBytes pid)
-	fun writePidList (s, l) = app (fn p => writePid (s, p)) l
-
-	local
-	    fun pickleImportSpec ((selector, tree), (n, p)) = let
-		val sp = picklePackedInt32 selector
-		val (n', p') = pickleImportTree (tree, (n, p))
-	    in
-		(n', sp :: p')
-	    end
-	    and pickleImportTree (CB.ITNODE [], (n, p)) =
-		(n + 1, picklePackedInt32 0 :: p)
-	      | pickleImportTree (CB.ITNODE l, (n, p)) = let
-		    val (n', p') = foldr pickleImportSpec (n, p) l
-		in
-		    (n', picklePackedInt32 (length l) :: p')
-		end
-
-	    fun pickleImport ((pid, tree), (n, p)) = let
-		val (n', p') = pickleImportTree (tree, (n, p))
-	    in
-		(n', Pid.toBytes pid :: p')
-	    end
-	in
-	    fun pickleImports l = let
-		val (n, p) = foldr pickleImport (0, []) l
-	    in
-		(n, Word8Vector.concat p)
-	    end
-	end
-
-	fun checkMagic s =
-	    if bytesIn (s, magicBytes) = MAGIC then ()
-	    else error "bad magic number"
-
-	fun readHeader s = let
-	    val _ = checkMagic s
-	    val leni = readInt32 s
-	    val ne = readInt32 s
-	    val importSzB = readInt32 s
-	    val cmInfoSzB = readInt32 s
-	    val nei = cmInfoSzB div bytesPerPid
-	    val sLam = readInt32 s
-	    val reserved = readInt32 s
-	    val pad = readInt32 s
-	    val cs = readInt32 s
-	    val es = readInt32 s
-	    val imports = readImports (s, leni)
-	    val exportPid =
-		(case ne of
-		     0 => NONE
-		   | 1 => SOME(readPid s)
-		   | _ => error "too many export PIDs")
-	    val envPids = readPidList (s, nei)
-	in
-	    case envPids of
-		st :: lm :: cmData =>
-		    { nExports = ne,
-		      lambdaSz = sLam, reserved = reserved, pad = pad,
-		      codeSz = cs, envSz = es,
-		      imports = imports, exportPid = exportPid,
-		      cmData = cmData, staticPid = st, lambdaPid = lm }
-	      | _ => error "env PID list"
-	end
-
-      (* must be called with second arg >= 0 *)
-	fun readCodeList (strm, name, nbytes) = let
-	      fun readCode 0 = []
-		| readCode n = let
-		    val sz = readInt32 strm
-		    val n' = n - sz - 4
-		    in
-		      if n' < 0
-			then error "code size"
-			else CodeObj.input(strm, sz, SOME name) :: readCode n'
-		    end
-	      val dataSz = readInt32 strm
-	      val n' = nbytes - dataSz - 4
-	      val data = if n' < 0 then error "data size"
-			 else bytesIn (strm, dataSz)
-	      in
-		case readCode n'
-		 of (c0 :: cn) => {data = data, c0 = c0, cn = cn}
-		  | [] => error "missing code objects"
-		(* end case *)
-	      end
+    fun pickleInt32 i = let
+	val w = fromInt i
+	fun out w = toByte w
     in
-	fun read args = let
-	    val { name, stream = s, modmap = m } = args
-	    fun context _ = m
-	    val { nExports = ne, lambdaSz,
-		  reserved, pad, codeSz = cs, envSz = es,
-		  imports, exportPid, cmData,
-		  staticPid, lambdaPid } = readHeader s
-	    val (lambda_i, plambda) =
-		if lambdaSz = 0 then (fn () => NONE, Word8Vector.fromList [])
-		else let
-		    val bytes = bytesIn (s, lambdaSz)
-		in
-		    (delay (fn () => UnpickMod.unpickleFLINT bytes),
-		     bytes)
-		end
-	    (* We could simply skip the reserved area if there is one,
-	     * but in that case there probably is something else seriously
-	     * wrong (wrong version, etc.), so we may as well complain... *)
-	    val _ = if reserved = 0 then () else error "non-zero reserved size"
-	    (* skip padding *)
-	    val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
-	    (* now get the code *)
-	    val code = readCodeList (s, name, cs)
-	    val (senv, penv) =
-		if es = 0 then (fn () => StaticEnv.empty,
-				Word8Vector.fromList [])
-		else let
-		    val penv = bytesIn (s, es)
-		    val _ =
-			if Word8Vector.length penv = es then ()
-			else error "missing bytes in bin file"
-		    val mkSenv =
-			delay (fn () => UnpickMod.unpickleEnv
-					    context (staticPid, penv))
-		in
-		    (mkSenv, penv)
-		end
-	    fun pd (u, p, pk) = { unpickled = u, pid = p, pickled = pk }
-        in
-	    { content = BFC { imports = imports,
+	Word8Vector.fromList [toByte (w >> 0w24), toByte (w >> 0w16),
+			      toByte (w >> 0w8), toByte w]
+    end
+    fun writeInt32 s i = BinIO.output (s, pickleInt32 i)
+
+    fun picklePackedInt32 i = let
+	val n = fromInt i
+	val // = LargeWord.div
+	val %% = LargeWord.mod
+	val !! = LargeWord.orb
+	infix // %% !!
+	val toW8 = Word8.fromLargeWord
+	fun r (0w0, l) = Word8Vector.fromList l
+	  | r (n, l) = r (n // 0w128, toW8 ((n %% 0w128) !! 0w128) :: l)
+    in
+	r (n // 0w128, [toW8 (n %% 0w128)])
+    end
+
+    fun writePid (s, pid) = BinIO.output (s, Pid.toBytes pid)
+    fun writePidList (s, l) = app (fn p => writePid (s, p)) l
+
+    local
+	fun pickleImportSpec ((selector, tree), (n, p)) = let
+	    val sp = picklePackedInt32 selector
+	    val (n', p') = pickleImportTree (tree, (n, p))
+	in
+	    (n', sp :: p')
+	end
+	and pickleImportTree (ImportTree.ITNODE [], (n, p)) =
+	    (n + 1, picklePackedInt32 0 :: p)
+	  | pickleImportTree (ImportTree.ITNODE l, (n, p)) = let
+		val (n', p') = foldr pickleImportSpec (n, p) l
+	    in
+		(n', picklePackedInt32 (length l) :: p')
+	    end
+
+	fun pickleImport ((pid, tree), (n, p)) = let
+	    val (n', p') = pickleImportTree (tree, (n, p))
+	in
+	    (n', Pid.toBytes pid :: p')
+	end
+    in
+        fun pickleImports l = let
+	    val (n, p) = foldr pickleImport (0, []) l
+	in
+	    (n, Word8Vector.concat p)
+	end
+    end
+
+    fun mkMAGIC arch = let
+	val vbytes = 8			(* version part *)
+	val abytes = magicBytes - vbytes - 1 (* arch part *)
+	fun fit (i, s) = let
+	    val s = StringCvt.padRight #" " i s
+	in
+	    if (size s = i) then s
+	    else substring (s, 0, i)
+	end
+	fun version [] = []
+	  | version [x : int] = [Int.toString x]
+	  | version (x :: r) = (Int.toString x) :: "." :: (version r)
+	val v = fit (vbytes, concat (version (#version_id Version.version)))
+	val a = fit (abytes, arch)
+    in
+	Byte.stringToBytes (concat [v, a, "\n"])
+	(* assert (Word8Vector.length (MAGIC <arch>) = magicBytes *)
+    end
+
+    (* calculate size of code objects (including length fields) *)
+    fun codeSize (csegs: csegments) =
+	List.foldl
+	    (fn (co, n) => n + CodeObj.size co + 4)
+	    (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
+	    (#cn csegs)
+
+    (* This function must be kept in sync with the "write" function below.
+     * It calculates the number of bytes written by a corresponding
+     * call to "write". *)
+    fun size { contents, nopickle } = let
+	val { imports, exportPid, senv, cmData, lambda,  csegments, ... } =
+	    unBF contents
+	val (_, picki) = pickleImports imports
+	val hasExports = isSome exportPid
+	fun pickleSize { pid, pickle } =
+	    if nopickle then 0 else Word8Vector.length pickle
+    in
+	magicBytes +
+	9 * 4 +
+	Word8Vector.length picki +
+	(if hasExports then bytesPerPid else 0) +
+	bytesPerPid * (length cmData + 2) +
+	pickleSize lambda +
+	codeSize csegments +
+	pickleSize senv
+    end
+
+    fun create { imports, exportPid, cmData, senv, lambda, csegments } =
+	BF { imports = imports,
+	     exportPid = exportPid,
+	     cmData = cmData,
+	     senv = senv,
+	     lambda = lambda,
+	     csegments = csegments,
+	     executable = ref NONE }
+
+    (* must be called with second arg >= 0 *)
+    fun readCodeList (strm, name, nbytes) = let
+	fun readCode 0 = []
+	  | readCode n = let
+		val sz = readInt32 strm
+		val n' = n - sz - 4
+	    in
+		if n' < 0 then
+		    error "code size"
+		else CodeObj.input(strm, sz, SOME name) :: readCode n'
+	    end
+	val dataSz = readInt32 strm
+	val n' = nbytes - dataSz - 4
+	val data = if n' < 0 then error "data size" else bytesIn (strm, dataSz)
+    in
+	case readCode n' of
+	    (c0 :: cn) => { data = data, c0 = c0, cn = cn }
+	  | [] => error "missing code objects"
+    end
+
+    fun read { arch, name, stream = s } = let
+	val MAGIC = mkMAGIC arch
+	val magic = bytesIn (s, magicBytes)
+	val _ = if magic = MAGIC then () else error "bad magic number"
+	val leni = readInt32 s
+	val ne = readInt32 s
+	val importSzB = readInt32 s
+	val cmInfoSzB = readInt32 s
+	val nei = cmInfoSzB div bytesPerPid
+	val lambdaSz = readInt32 s
+	val reserved = readInt32 s
+	val pad = readInt32 s
+	val cs = readInt32 s
+	val es = readInt32 s
+	val imports = readImports (s, leni)
+	val exportPid =
+	    (case ne of
+		 0 => NONE
+	       | 1 => SOME(readPid s)
+	       | _ => error "too many export PIDs")
+	val envPids = readPidList (s, nei)
+	val (staticPid, lambdaPid, cmData) =
+	    case envPids of
+		st :: lm :: cmData => (st, lm, cmData)
+	      | _ => error "env PID list"
+	val plambda = bytesIn (s, lambdaSz)
+	(* We could simply skip the reserved area if there is one,
+	 * but in that case there probably is something else seriously
+	 * wrong (wrong version, etc.), so we may as well complain... *)
+	val _ = if reserved = 0 then () else error "non-zero reserved size"
+	(* skip padding *)
+	val _ = if pad <> 0 then ignore (bytesIn (s, pad)) else ()
+	(* now get the code *)
+	val code = readCodeList (s, name, cs)
+	val penv = bytesIn (s, es)
+    in
+	{ contents = create { imports = imports,
 			      exportPid = exportPid,
 			      cmData = cmData,
-			      senv = pd (senv, staticPid, penv),
-			      lambda = pd (lambda_i, lambdaPid, plambda),
-			      csegments = code,
-			      executable = ref NONE },
-	      stats = { env = es, inlinfo = lambdaSz, code = cs,
-			data = Word8Vector.length (#data code) } }
-        end
-
-	(* compute size of code objects (including length fields) *)
-	fun codeSize (csegs: csegments) =
-	    List.foldl
-	    (fn (co, n) => n + CodeObj.size co + 4)
-	      (CodeObj.size(#c0 csegs) + Word8Vector.length(#data csegs) + 8)
-	      (#cn csegs)
-
-	(* This function must be kept in sync with the "write" function below.
-	 * It calculates the number of bytes written by a corresponding
-	 * call to "write". *)
-	fun size { content = bfc, nopickle } = let
-	    val BFC { imports, exportPid, senv, cmData, lambda,  ... } = bfc
-	    val { unpickled = lut, pickled = lambdaP, ... } = lambda
-	    val pidSz = Word8Vector.length (Pid.toBytes (#pid senv))
-	    val (_, picki) = pickleImports imports
-	    val csegs = codeSegments bfc
-	    val hasExports = isSome exportPid
-	in
-	    magicBytes +
-	    9 * 4 +
-	    Word8Vector.length picki +
-	    (if hasExports then pidSz else 0) +
-	    pidSz * (length cmData + 2) +
-	    (if nopickle then 0
-	     else case lut () of NONE => 0 | _ => Word8Vector.length lambdaP) +
-	    codeSize csegs +
-	    (if nopickle then 0 else Word8Vector.length (#pickled senv))
-	end
-	    
-	(* Keep this in sync with "size" (see above). *)
-	fun write { stream = s, content = bfc, nopickle } = let
-	    val BFC { imports, exportPid, cmData, senv, lambda, ... } = bfc
-	    val { pickled = senvP, pid = staticPid, ... } = senv
-	    val { pickled = lambdaP, pid = lambdaPid, unpickled = lut } =
-		lambda
-	    val staticPid = staticPid
-	    val envPids = staticPid :: lambdaPid :: cmData
-	    val (leni, picki) = pickleImports imports
-	    val importSzB = Word8Vector.length picki
-	    val (ne, epl) =
-		case exportPid of
-		    NONE => (0, [])
-		  | SOME p => (1, [p])
-	    val nei = length envPids
-	    val cmInfoSzB = nei * bytesPerPid
-	    val lambdaSz =
-		(if nopickle then 0
-		 else case lut () of
-		     NONE => 0 
-		   | _ => Word8Vector.length lambdaP)
-	    val reserved = 0		(* currently no reserved area *)
-	    val pad = 0			(* currently no padding *)
-	    val csegs = codeSegments bfc
-	    val cs = codeSize csegs
-	    fun codeOut c = (
-		  writeInt32 s (CodeObj.size c);
-		  CodeObj.output (s, c))
-	    val (es, writeEnv) =
-		if nopickle then (0, fn () => ())
-		else (Word8Vector.length senvP,
-		      fn () => BinIO.output (s, senvP))
-	    val datasz = Word8Vector.length (#data csegs)
-	in
-	    BinIO.output (s, MAGIC);
-	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
-				lambdaSz, reserved, pad, cs, es];
-	    BinIO.output (s, picki);
-	    writePidList (s, epl);
-	    (* arena1 *)
-	    writePidList (s, envPids);
-	    (* arena2 -- pickled flint stuff *)
-	    if lambdaSz = 0 then () else BinIO.output (s, lambdaP);
-	    (* arena3 is empty *)
-	    (* arena4 is empty *)
-	    (* code objects *)
-	    writeInt32 s datasz;
-	    BinIO.output(s, #data csegs);
-	    codeOut (#c0 csegs);
-	    app codeOut (#cn csegs);
-	    writeEnv ();
-	    { env = es, inlinfo = lambdaSz, data = datasz, code = cs }
-	end
-
-	fun create args = let
-	    val { splitting, cmData, ast, source, senv, symenv } =
-		args
-	    val errors = Err.errors source
-	    fun check phase =
-		if Err.anyErrors errors then raise Compile (phase ^ " failed") 
-		else ()
-	    val cinfo = C.mkCompInfo (source, fn x => x)
-
-	    val { csegments=code, newstatenv, exportPid, staticPid, imports,
-		  pickle=envPickle, inlineExp, ...} = 
-		C.compile { source=source, ast=ast, statenv=senv, 
-			    symenv=symenv, compInfo=cinfo, checkErr=check, 
-			    splitting=Control.LambdaSplitting.get' splitting}
-	    val {hash = lambdaPid, pickle} = PickMod.pickleFLINT inlineExp
-	    fun pd (u, p, x) =
-		{ unpickled = fn () => u, pid = p, pickled = x }
-	in
-	    BFC { imports = imports,
-		  exportPid = exportPid,
-		  cmData = cmData,
-		  senv = pd (newstatenv, staticPid, envPickle),
-		  lambda = pd (inlineExp, lambdaPid, pickle),
-		  csegments = code,
-		  executable = ref NONE }
-	end
-
-	fun exec (bfc as BFC { imports, ... }, denv) =
-	    C.execute { executable = executableOf bfc,
-		        imports = imports,
-			exportPid = exportPidOf bfc,
-			dynenv = denv }
+			      senv = { pid = staticPid, pickle = penv },
+			      lambda = { pid = lambdaPid, pickle = plambda },
+			      csegments = code },
+	  stats = { env = es, inlinfo = lambdaSz, code = cs,
+		    data = Word8Vector.length (#data code) } }
     end
+
+    fun write { arch, stream = s, contents, nopickle } = let
+	(* Keep this in sync with "size" (see above). *)
+	val { imports, exportPid, cmData, senv, lambda, csegments, ... } =
+	    unBF contents
+	val { pickle = senvP, pid = staticPid } = senv
+	val { pickle = lambdaP, pid = lambdaPid } = lambda
+	val envPids = staticPid :: lambdaPid :: cmData
+	val (leni, picki) = pickleImports imports
+	val importSzB = Word8Vector.length picki
+	val (ne, epl) =
+	    case exportPid of
+		NONE => (0, [])
+	      | SOME p => (1, [p])
+	val nei = length envPids
+	val cmInfoSzB = nei * bytesPerPid
+	fun pickleSize { pid, pickle } =
+	    if nopickle then 0 else Word8Vector.length pickle
+	val lambdaSz = pickleSize lambda
+	val reserved = 0		(* currently no reserved area *)
+	val pad = 0			(* currently no padding *)
+	val cs = codeSize csegments
+	fun codeOut c = (writeInt32 s (CodeObj.size c); CodeObj.output (s, c))
+	val es = pickleSize senv
+	val writeEnv = if nopickle then fn () => ()
+		       else fn () => BinIO.output (s, senvP)
+	val datasz = Word8Vector.length (#data csegments)
+	val MAGIC = mkMAGIC arch
+    in
+	BinIO.output (s, MAGIC);
+	app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
+			    lambdaSz, reserved, pad, cs, es];
+	BinIO.output (s, picki);
+	writePidList (s, epl);
+	(* arena1 *)
+	writePidList (s, envPids);
+	(* arena2 -- pickled flint stuff *)
+	if lambdaSz = 0 then () else BinIO.output (s, lambdaP);
+	(* arena3 is empty *)
+	(* arena4 is empty *)
+	(* code objects *)
+	writeInt32 s datasz;
+	BinIO.output(s, #data csegments);
+	codeOut (#c0 csegments);
+	app codeOut (#cn csegments);
+	writeEnv ();
+	{ env = es, inlinfo = lambdaSz, data = datasz, code = cs }
+    end
+
+    fun exec (BF { imports, exportPid, executable, csegments, ... }, dynenv) =
+	let val executable =
+		case !executable of
+		    SOME e => e
+		  | NONE => let
+			val e = Isolate.isolate (Execute.mkexec csegments)
+		    in executable := SOME e; e
+		    end
+	in
+	    Execute.execute { executable = executable,
+			      imports = imports,
+			      exportPid = exportPid,
+			      dynenv = dynenv }
+	end
 end

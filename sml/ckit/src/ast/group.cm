@@ -7,17 +7,11 @@ is
         (* standard basis *)
         $/basis.cm
 
-	(* Compiler *)
-	$smlnj/compiler.cm
-
 	(* standard library *)
 	$/smlnj-lib.cm
 #else
 	(* standard basis *)
 	basis.cm
-
-        (* Compiler *)
-        host-compiler.cm
 
 	(* standard library *)
 	smlnj-lib.cm
@@ -115,5 +109,4 @@ is
         extensions/c/ast-ext.sml
         extensions/c/cnv-ext.sml
         extensions/c/pp-ast-ext-fn.sml
-
 #endif

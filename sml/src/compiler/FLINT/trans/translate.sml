@@ -6,10 +6,10 @@ sig
 
   (* Invariant: transDec always applies to a top-level absyn declaration *) 
   val transDec : Absyn.dec * Access.lvar list 
-                 * StaticEnv.staticEnv * CompBasic.compInfo
+                 * StaticEnv.staticEnv * CompInfo.compInfo
                  -> {flint: FLINT.prog,
                      imports: (PersStamps.persstamp 
-                               * CompBasic.importTree) list}
+                               * ImportTree.importTree) list}
 
 end (* signature TRANSLATE *)
 
@@ -21,7 +21,6 @@ local structure B  = Bindings
       structure DA = Access
       structure DI = DebIndex
       structure EM = ErrorMsg
-      structure CB = CompBasic
       structure II = InlInfo
       structure LT = PLambdaType
       structure M  = Modules
@@ -95,11 +94,11 @@ exception NoCore
  *                 * StaticEnv.staticEnv * CompBasic.compInfo               *
  *                 -> {flint: FLINT.prog,                                   *
  *                     imports: (PersStamps.persstamp                       *
- *                               * CompBasic.importTree) list}              *
+ *                               * ImportTree.importTree) list}             *
  ****************************************************************************)
 
 fun transDec (rootdec, exportLvars, env,
-	      compInfo as {errorMatch,error,...}: CB.compInfo) =
+	      compInfo as {errorMatch,error,...}: CompInfo.compInfo) =
 let 
 
 (** generate the set of ML-to-FLINT type translation functions *)
@@ -1112,15 +1111,15 @@ and mkExp (exp, d) =
 fun wrapPidInfo (body, pidinfos) = 
   let val imports = 
         let fun p2itree (ANON xl) = 
-                  CB.ITNODE (map (fn (i,z) => (i, p2itree z)) xl)
-              | p2itree (NAMED _) = CB.ITNODE []
+                  ImportTree.ITNODE (map (fn (i,z) => (i, p2itree z)) xl)
+              | p2itree (NAMED _) = ImportTree.ITNODE []
          in map (fn (p, pi) => (p, p2itree pi)) pidinfos
         end
 (*
       val _ = let val _ = say "\n ****************** \n"
                   val _ = say "\n the current import tree is :\n"
-                  fun tree (CB.ITNODE []) = ["\n"]
-                    | tree (CB.ITNODE xl) = 
+                  fun tree (ImportTree.ITNODE []) = ["\n"]
+                    | tree (ImportTree.ITNODE xl) = 
                         foldr (fn ((i, x), z) => 
                           let val ts = tree x
                               val u = (Int.toString i)  ^ "   "

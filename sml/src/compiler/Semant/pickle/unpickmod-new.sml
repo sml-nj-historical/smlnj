@@ -25,7 +25,7 @@ signature UNPICKMOD = sig
 		      PersStamps.persstamp * Word8Vector.vector ->
 		      StaticEnv.staticEnv
 
-    val unpickleFLINT : Word8Vector.vector -> CompBasic.flint option
+    val unpickleFLINT : Word8Vector.vector -> FLINT.prog option
 
     (* The env unpickler resulting from "mkUnpicklers" cannot be used for
      * "original" environments that come out of the elaborator.  For those,

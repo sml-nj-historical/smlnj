@@ -1,6 +1,5 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
-structure SparcCompiler = struct
-    open SparcVisComp
-    open GenericVC
-end
+(* compiler/sparc.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+structure Backend = SparcBackend

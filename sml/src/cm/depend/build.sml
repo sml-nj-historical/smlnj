@@ -38,8 +38,8 @@ structure BuildDepend :> BUILDDEPEND = struct
     structure SK = Skeleton
     structure DG = DependencyGraph
     structure DE = DAEnv
-    structure EM = GenericVC.ErrorMsg
-    structure SP = GenericVC.SymPath
+    structure EM = ErrorMsg
+    structure SP = SymPath
 
     type impexp = DG.impexp
 

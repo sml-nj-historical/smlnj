@@ -11,4 +11,4 @@
 Library
 	(* this is a proxy library; exports taken from its (only) member *)
 is
-	$compiler/viscomp-x86.cm
+	$compiler/backend-x86.cm

@@ -7,7 +7,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 local
-    structure A = GenericVC.Ast
+    structure A = Ast
 in
     structure CoreHack : sig
 	val rewrite : A.dec * Symbol.symbol -> A.dec

@@ -8,7 +8,7 @@ struct
 
   structure Map = PersMap
 
-  type object = CompBasic.object
+  type object = (* CompBasic.object *) Unsafe.Object.object
 
   datatype dynenv = NORM of object Map.map * dynenv
                   | SPECIAL of (pid -> object) * dynenv

@@ -3,7 +3,7 @@
 
 structure SymbolicEnv: SYMENV = 
 struct
-  type flint = CompBasic.flint
+  type flint = FLINT.prog
   type pid = PersStamps.persstamp
   type symenv = flint PersMap.map
 
@@ -19,7 +19,8 @@ struct
   fun consolidate e = e
   fun singleton (p, l) = bind (p, l, empty)
   fun listItemsi e = PersMap.listItemsi e
-  fun fromListi il = foldl PersMap.insert' PersMap.empty il
+  fun fromListi il = foldl PersMap.insert' empty il
+  fun mk (NONE, _) = empty
+    | mk (_, NONE) = empty
+    | mk (SOME p, SOME l) = singleton (p, l)
 end (* structure SymbolicEnv *)
-
-

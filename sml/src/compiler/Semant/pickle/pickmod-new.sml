@@ -53,10 +53,8 @@ signature PICKMOD = sig
 		      exportLvars: Access.lvar list,
 		      exportPid: PersStamps.persstamp option }
 
-    val pickleFLINT:
-        CompBasic.flint option
-	-> { hash: PersStamps.persstamp,
-	     pickle: Word8Vector.vector }
+    val pickleFLINT: FLINT.prog option -> { hash: PersStamps.persstamp,
+					    pickle: Word8Vector.vector }
 
     val symenvPickler : (map, SymbolicEnv.symenv) PickleUtil.pickler
 

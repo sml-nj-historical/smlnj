@@ -1,6 +1,5 @@
-(* (C) 1999 Lucent Technologies, Bell Laboratories *)
-
-structure MipsLittleCompiler = struct
-    open MipsLittleVisComp
-    open GenericVC
-end
+(* compiler/mipseb.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+structure Backend = MipsLittleBackend

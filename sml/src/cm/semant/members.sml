@@ -14,7 +14,7 @@ signature MEMBERCOLLECTION = sig
     type symbol = Symbol.symbol
     type smlinfo = SmlInfo.info
     type impexp = DependencyGraph.impexp
-    type region = GenericVC.SourceMap.region
+    type region = SourceMap.region
     type subgroups =
 	 (SrcPath.file * GroupGraph.group * SrcPath.rebindings) list
 
@@ -61,8 +61,8 @@ end
 structure MemberCollection :> MEMBERCOLLECTION = struct
 
     structure DG = DependencyGraph
-    structure EM = GenericVC.ErrorMsg
-    structure E = GenericVC.Environment
+    structure EM = ErrorMsg
+    structure E = Environment
     structure SS = SymbolSet
     structure GG = GroupGraph
     structure V = Version
@@ -70,7 +70,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
     type impexp = DG.impexp
-    type region = GenericVC.SourceMap.region
+    type region = SourceMap.region
     type subgroups = (SrcPath.file * GG.group * SrcPath.rebindings) list
 
     datatype collection =

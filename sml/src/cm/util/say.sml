@@ -13,7 +13,7 @@ end
 
 structure Say :> SAY = struct
 
-    structure Print = GenericVC.Control.Print
+    structure Print = Control.Print
 
     fun say l = (Print.say (concat l); Print.flush ())
 

@@ -1,49 +1,56 @@
-(* COPYRIGHT (c) 1997 Bell Labs, Lucent Technologies *)
-(* binfile.sig *)
-
+(* binfile-new.sig
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com
+ *)
+(*
+ * This revised version of signature BINFILE is now machine-independent.
+ * Moreover, it deals with the file format only and does not know how to
+ * create new binfile contents (aka "compile") or how to interpret the
+ * pickles.  As a result, it does not statically depend on the compiler.
+ * (Eventually we might want to support a light-weight binfile loader.)
+ *)
 signature BINFILE = sig
+
+    type bfContents
 
     exception FormatError
 
-    exception Compile of string
-    exception TopLevelException of exn
-    exception SilentException
-
-    type bfContent
-
     type pid = PersStamps.persstamp
-    type senv = StaticEnv.staticEnv
-    type symenv = SymbolicEnv.symenv
-    type denv = DynamicEnv.dynenv
-    type env = Environment.environment
-
-    val staticPidOf: bfContent -> pid
-    val exportPidOf: bfContent -> pid option
-    val lambdaPidOf: bfContent -> pid
-    val cmDataOf: bfContent -> pid list
-    val senvOf: bfContent -> senv
-    val symenvOf: bfContent -> symenv
-
-    val size: { content: bfContent, nopickle: bool } -> int
-
-    val create: { splitting: Control.LambdaSplitting.localsetting,
-		  cmData: pid list,
-		  ast: Ast.dec,
-		  source: Source.inputSource,
-		  senv:  senv,
-		  symenv: symenv }
-	-> bfContent
-
     type stats = { env: int, inlinfo: int, data: int, code: int }
+    type pickle = { pid: pid, pickle: Word8Vector.vector }
 
-    val read:
-	{ name: string, stream: BinIO.instream, modmap: ModuleId.tmap } ->
-	{ content: bfContent, stats: stats }
+    val staticPidOf    : bfContents -> pid
+    val exportPidOf    : bfContents -> pid option
+    val lambdaPidOf    : bfContents -> pid
+    val cmDataOf       : bfContents -> pid list
 
-    val write:
-	{ stream: BinIO.outstream, content: bfContent, nopickle: bool } ->
-	stats
+    val senvPickleOf   : bfContents -> pickle
+    val lambdaPickleOf : bfContents -> pickle
 
-    val exec: bfContent * denv -> denv
-end (* signature BINFILE *)
+    (* calculate the size in bytes occupied by some binfile contents *)
+    val size : { contents: bfContents, nopickle: bool } -> int
 
+    (* create the abstract binfile contents *)
+    val create : { imports: ImportTree.import list,
+		   exportPid: pid option,
+		   cmData: pid list,
+		   senv: pickle,
+		   lambda: pickle,
+		   csegments: CodeObj.csegments } -> bfContents
+
+    (* read binfile contents from an IO stream *)
+    val read : { arch: string, name: string, stream: BinIO.instream }
+	       -> { contents: bfContents, stats: stats }
+
+    (* write binfile contents to an IO stream *)
+    val write : { arch: string, stream: BinIO.outstream,
+		  contents: bfContents, nopickle: bool }
+		-> stats
+
+    (* Given a dynamic environment, link the code object contained in
+     * some given binfile contents. The result is the delta environment
+     * containing the bindings (if any) resulting from this link operation. *)
+    val exec : bfContents * DynamicEnv.dynenv -> DynamicEnv.dynenv
+end

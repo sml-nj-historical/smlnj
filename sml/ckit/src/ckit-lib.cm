@@ -29,6 +29,5 @@ Library
   structure Sizes
   structure TypeUtil
   structure Sizeof
-  structure Error
 is 
   ast/group.cm

@@ -8,16 +8,16 @@
 local
     structure DG = DependencyGraph
     structure GG = GroupGraph
-    structure EM = GenericVC.ErrorMsg
+    structure EM = ErrorMsg
     structure PP = PrettyPrint
-    structure SM = GenericVC.SourceMap
+    structure SM = SourceMap
     structure GP = GeneralParams
-    structure E = GenericVC.Environment
-    structure Pid = GenericVC.PersStamps
+    structure E = Environment
+    structure Pid = PersStamps
     structure P = PickMod
     structure UP = UnpickMod
-    structure E = GenericVC.Environment
-    structure MI = GenericVC.ModuleId
+    structure E = Environment
+    structure MI = ModuleId
 in
 
 signature STABILIZE = sig
@@ -38,19 +38,19 @@ signature STABILIZE = sig
 		    GG.group option
 end
 
-functor StabilizeFn (structure MachDepVC : MACHDEP_VC
+functor StabilizeFn (val arch : string
 		     structure StabModmap : STAB_MODMAP
 		     val recomp : GP.info -> GG.group ->
 			 (SmlInfo.info ->
-			  { content: MachDepVC.Binfile.bfContent,
-			    stats: MachDepVC.Binfile.stats }) option
+			  { contents: Binfile.bfContents,
+			    stats: Binfile.stats }) option
 		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
 struct
     type groupgetter =
 	 GP.info * SrcPath.file * Version.t option * SrcPath.rebindings ->
 	 GG.group option
 
-    structure BF = MachDepVC.Binfile
+    structure BF = Binfile
 
     structure SSMap = MapFn
 	(struct
@@ -602,18 +602,19 @@ struct
 				    sublibs)
 
 		fun writeBFC s (i, { code, data, env, inlinfo }) = let
-		    val { content, stats } = getBFC i
+		    val { contents, stats } = getBFC i
 		    val { code = c, data = d, env = e, inlinfo = ii } = stats
 		in
-		    ignore (BF.write { stream = s, content = content,
-				       nopickle = true });
+		    ignore (BF.write { arch = arch, nopickle = true,
+				       stream = s, contents = contents });
 		    { code = code + c, data = data + d,
 		      env = env + e, inlinfo = inlinfo + ii }
 		end
 
 		fun sizeBFC i =
-		    BF.size { content = #content (getBFC i), nopickle = true }
-		fun pidBFC i = BF.staticPidOf (#content (getBFC i))
+		    BF.size { contents = #contents (getBFC i),
+			      nopickle = true }
+		fun pidBFC i = BF.staticPidOf (#contents (getBFC i))
 
 		val _ =
 		    Say.vsay ["[stabilizing ", SrcPath.descr grouppath, "]\n"]

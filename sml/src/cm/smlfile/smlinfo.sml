@@ -12,17 +12,17 @@ signature SMLINFO = sig
     type info
     type ord_key = info
 
-    type complainer = GenericVC.ErrorMsg.complainer
-    type ast = GenericVC.Ast.dec
-    type region = GenericVC.SourceMap.region
-    type source = GenericVC.Source.inputSource
-    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
+    type complainer = ErrorMsg.complainer
+    type ast = Ast.dec
+    type region = SourceMap.region
+    type source = Source.inputSource
+    type splitrequest = Control.LambdaSplitting.localsetting
 
     type attribs =
 	{ split: splitrequest,
 	  is_rts: bool,
 	  explicit_core_sym: Symbol.symbol option,
-	  extra_compenv: GenericVC.Environment.staticEnv option }
+	  extra_compenv: Environment.staticEnv option }
 
     type info_args =
 	{ sourcepath: SrcPath.file,
@@ -93,29 +93,27 @@ end
 
 structure SmlInfo :> SMLINFO = struct
 
-    structure Source = GenericVC.Source
-    structure SF = GenericVC.SmlFile
-    structure EM = GenericVC.ErrorMsg
+    structure Source = Source
+    structure SF = SmlFile
+    structure EM = ErrorMsg
     structure FNP = FilenamePolicy
 
     type source = Source.inputSource
-    type ast = GenericVC.Ast.dec
-    type region = GenericVC.SourceMap.region
-    type splitrequest = GenericVC.Control.LambdaSplitting.localsetting
+    type ast = Ast.dec
+    type region = SourceMap.region
+    type splitrequest = Control.LambdaSplitting.localsetting
 
     type complainer = EM.complainer
 
-    type attribs =
-	{ split: splitrequest,
-	  is_rts: bool,
-	  explicit_core_sym: Symbol.symbol option,
-	  extra_compenv: GenericVC.Environment.staticEnv option }
+    type attribs = { split: splitrequest,
+		     is_rts: bool,
+		     explicit_core_sym: Symbol.symbol option,
+		     extra_compenv: Environment.staticEnv option }
 
-    type info_args =
-	{ sourcepath: SrcPath.file,
-	  group: SrcPath.file * region,
-	  sh_spec: Sharing.request,
-	  setup: string option * string option }
+    type info_args = { sourcepath: SrcPath.file,
+		       group: SrcPath.file * region,
+		       sh_spec: Sharing.request,
+		       setup: string option * string option }
 
     type generation = unit ref
 
@@ -334,7 +332,7 @@ structure SmlInfo :> SMLINFO = struct
 		else ();
 		pto
 	    end handle exn as IO.Io _ => (err (General.exnMessage exn); NONE)
-	             | SF.Compile msg => (err msg; NONE)
+	             | CompileExn.Compile msg => (err msg; NONE)
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let

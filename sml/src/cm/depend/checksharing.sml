@@ -7,7 +7,7 @@
  *)
 local
     structure DG = DependencyGraph
-    structure EM = GenericVC.ErrorMsg
+    structure EM = ErrorMsg
     structure PP = PrettyPrint
 in
   signature CHECKSHARING = sig

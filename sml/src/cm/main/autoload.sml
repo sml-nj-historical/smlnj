@@ -8,17 +8,17 @@
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph
-    structure ER = GenericVC.EnvRef
+    structure ER = EnvRef
     structure GG = GroupGraph
-    structure E = GenericVC.Environment
-    structure EM = GenericVC.ErrorMsg
+    structure E = Environment
+    structure EM = ErrorMsg
 in
 signature AUTOLOAD = sig
 
     val register : ER.envref * GG.group -> unit
 
     val mkManager : { get_ginfo: unit -> GP.info, dropPickles: unit -> unit }
-	-> GenericVC.Ast.dec * ER.envref -> unit
+	-> Ast.dec * ER.envref -> unit
 
     val getPending : unit -> DG.impexp SymbolMap.map
 
@@ -30,7 +30,7 @@ functor AutoLoadFn (structure L : LINK
 		    structure C : COMPILE where type stats = BFC.stats
 		    sharing type C.bfc = L.bfc = BFC.bfc) :> AUTOLOAD = struct
 
-    structure SE = GenericVC.StaticEnv
+    structure SE = StaticEnv
 
     type traversal = GP.info -> E.environment option
     (* We let the topLevel env *logically* sit atop the pending
@@ -57,7 +57,7 @@ functor AutoLoadFn (structure L : LINK
 	    (* make traversal states *)
 	    val { store, get } = BFC.new ()
 	    val { exports = cTrav, ... } = C.newTraversal (L.evict, store, g)
-	    val { exports = lTrav, ... } = L.newTraversal (g, #content o get)
+	    val { exports = lTrav, ... } = L.newTraversal (g, #contents o get)
 	    fun combine (ss, d) gp =
 		case ss gp of
 		    SOME { stat, sym } =>

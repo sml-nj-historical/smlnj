@@ -1,8 +1,8 @@
 signature LSPLIT_INLINE = sig
 
-    type flint = CompBasic.flint
+    type flint = FLINT.prog
     type pid = PersStamps.persstamp
-    type importTree = CompBasic.importTree
+    type importTree = ImportTree.importTree
     type import = pid * importTree
     type symenv = SymbolicEnv.symenv
 
@@ -11,9 +11,9 @@ end
 
 structure LSplitInline :> LSPLIT_INLINE = struct
 
-    type flint = CompBasic.flint
+    type flint = FLINT.prog
     type pid = PersStamps.persstamp
-    datatype importTree = datatype CompBasic.importTree
+    datatype importTree = datatype ImportTree.importTree
     type import = pid * importTree
     type symenv = SymbolicEnv.symenv
 

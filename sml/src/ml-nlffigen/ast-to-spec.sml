@@ -21,8 +21,6 @@ structure AstToSpec = struct
 
 	val curLoc = ref "?"
 
-	val errorState = Error.mkErrState TextIO.stdErr
-
 	fun warnLoc m = warn (concat [!curLoc, ": ", m])
 
 	val { ast, tidtab, errorCount, warningCount,

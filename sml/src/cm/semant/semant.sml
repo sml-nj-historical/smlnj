@@ -8,7 +8,7 @@
 signature CM_SEMANT = sig
 
     type context = SrcPath.dir
-    type region = GenericVC.SourceMap.region
+    type region = SourceMap.region
     type ml_symbol
     type cm_symbol
     type cm_class
@@ -141,12 +141,12 @@ end
 
 structure CMSemant :> CM_SEMANT = struct
 
-    structure SymPath = GenericVC.SymPath
-    structure EM = GenericVC.ErrorMsg
+    structure SymPath = SymPath
+    structure EM = ErrorMsg
     structure GG = GroupGraph
 
     type context = SrcPath.dir
-    type region = GenericVC.SourceMap.region
+    type region = SourceMap.region
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
     type cm_class = string

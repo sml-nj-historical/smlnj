@@ -5,12 +5,12 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-functor SpecificSymValFn (structure MachDepVC: MACHDEP_VC
+functor SpecificSymValFn (val arch: string
 			  val os: SMLofNJ.SysInfo.os_kind) =
     struct
 	local
 	    val (arch, big, size) =
-		case MachDepVC.architecture of
+		case arch of
 		    "sparc" => ("SPARC", true, 32)
 		  | "alpha32" => ("ALPHA", false, 32)
 		  | "mipsel" => ("MIPS", false, 32)
@@ -19,14 +19,11 @@ functor SpecificSymValFn (structure MachDepVC: MACHDEP_VC
 		  | "hppa" => ("HPPA", false, 32)
 		  | "rs6000" => ("RS6000", false, 32)
 		  | "ppc" => ("PPC", false, 32)
-		  | arch => GenericVC.ErrorMsg.impossible
-			("unknown architecture: " ^ arch)
-	    val env0 =
-		SymVal.default { arch = arch,
-				 big = big,
-				 size = size,
-				 os = os,
-				 version = #version_id GenericVC.version }
+		  | arch => ErrorMsg.impossible
+				("unknown architecture: " ^ arch)
+	    val env0 = SymVal.default
+			   { arch = arch, big = big, size = size, os = os,
+			     version = #version_id CompilerVersion.version }
 	    val er = ref env0
 	in
 	    fun symval s = let

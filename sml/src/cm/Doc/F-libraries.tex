@@ -22,7 +22,7 @@ of the form {\tt \$$/x[/\cdots]$} act as an abbreviation for {\tt
 
 \begin{small}
 \begin{center}
-\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+\begin{tabular}{p{1.7in}||p{3.4in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
 {\tt \$/basis.cm} & Standard Basis Library & always & auto \\
@@ -65,6 +65,8 @@ name & description & installed & loaded \\
 {\tt \$smlnj/compiler.cm} \newline
 {\tt \$smlnj/compiler/current.cm} & visible compiler for current
 architecture & always & auto \\
+{\tt \$smlnj/compiler/compiler.cm} & structure {\tt Compiler} (the
+visible compiler in one big structure) & always & no \\
 \hline\hline
 {\tt \$smlnj/cm.cm} \newline
 {\tt \$smlnj/cm/cm.cm} & compilation manager & always & auto \\
@@ -118,7 +120,7 @@ can target all of SML/NJ's supported platforms.
 
 \begin{small}
 \begin{center}
-\begin{tabular}{p{2.2in}||p{3in}|c|c}
+\begin{tabular}{p{2.3in}||p{2.9in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
 {\tt \$smlnj/cmb.cm} \newline
@@ -146,24 +148,23 @@ systems & always & no \\
 {\tt \$smlnj/cmb/x86-win32.cm} & bootstrap compiler for IA32/Win32
 systems & always & no \\
 \hline\hline
-{\tt \$smlnj/compiler/alpha32.cm} & visible compiler for
+{\tt \$smlnj/compiler/alpha32.cm} & visible compiler with backend for
 Alpha-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/hppa.cm} & visible compiler for
+{\tt \$smlnj/compiler/hppa.cm} & visible compiler with backend for
 HP-PA-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/ppc.cm} & visible compiler for
+{\tt \$smlnj/compiler/ppc.cm} & visible compiler with backend for
 PowerPC-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/sparc.cm} & visible compiler for
+{\tt \$smlnj/compiler/sparc.cm} & visible compiler with backend for
 Sparc-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/x86.cm} & visible compiler for
+{\tt \$smlnj/compiler/x86.cm} & visible compiler with backend for
 IA32-specific cross-compiler & always & no \\
 \hline
-{\tt \$smlnj/compiler/all.cm} & visible compilers and
-bootstrap compilers for all architectures
-visible compilers for all & always & no
+{\tt \$smlnj/compiler/all.cm} & visible compiler, backends and
+bootstrap compilers for all architectures & always & no
 \end{tabular}
 \end{center}
 \end{small}
@@ -175,7 +176,7 @@ SML/NJ's implementation:
 
 \begin{small}
 \begin{center}
-\begin{tabular}{p{2.9in}||p{2.2in}|c|c}
+\begin{tabular}{p{2.5in}||p{2.6in}|c|c}
 name & description & installed & loaded \\
 \hline\hline
 {\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
@@ -230,8 +231,8 @@ no \\
 {\tt \$smlnj/internal/cm-lib.cm} & implementation of CM 
 (not yet specialized to specific backends) & always & no \\
 \hline
-{\tt \$smlnj/internal/host-compiler-0.cm} & selection of host-specific
-visible compiler and specialization of compilation manager & always &
+{\tt \$smlnj/internal/cm0.cm} & specialization of compilation manager
+to host compiler & always &
 no \\
 \hline
 {\tt \$smlnj/internal/intsys.cm} & root library, containing

@@ -15,22 +15,20 @@
 signature BFC = sig
     type bfc
     type stats = { env: int, inlinfo: int, data: int, code: int }
-    val new : unit -> { store: SmlInfo.info * { content: bfc, stats: stats }
+    val new : unit -> { store: SmlInfo.info * { contents: bfc, stats: stats }
 			       -> unit,
-		        get: SmlInfo.info -> { content: bfc, stats: stats } }
+		        get: SmlInfo.info -> { contents: bfc, stats: stats } }
     val getStable : { stable: string, offset: int, descr: string } -> bfc
 end
 
-functor BfcFn (structure MachDepVC : MACHDEP_VC) :> BFC
-    where type bfc = MachDepVC.Binfile.bfContent =
+functor BfcFn (val arch: string) :> BFC
+    where type bfc = Binfile.bfContents =
 struct
 
-    structure BF = MachDepVC.Binfile
-    structure E = GenericVC.Environment
-    type bfc = BF.bfContent
+    structure BF = Binfile
+    structure E = Environment
+    type bfc = BF.bfContents
     type stats = { env: int, inlinfo: int, data: int, code: int }
-
-    val emap = GenericVC.ModuleId.emptyTmap
 
     fun new () = let
 	val m = ref SmlInfoMap.empty
@@ -43,8 +41,8 @@ struct
 	      | NONE => let
 		    val binname = SmlInfo.binname i
 		    fun reader s = let
-			val x = BF.read { stream = s, name = binname,
-					  modmap = emap }
+			val x = BF.read { arch = arch, stream = s,
+					  name = binname }
 		    in
 			store (i, x);
 			x
@@ -64,7 +62,7 @@ struct
 	    (Seek.seek (s, offset);
 	     (* We can use an empty static env because no
 	      * unpickling will be done. *)
-	     #content (BF.read { stream = s, name = descr, modmap = emap }))
+	     #contents (BF.read { arch = arch, stream = s, name = descr }))
     in
 	SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 			 closeIt = BinIO.closeIn,

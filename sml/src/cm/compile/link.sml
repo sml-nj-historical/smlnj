@@ -10,9 +10,9 @@ local
     structure GP = GeneralParams
     structure DG = DependencyGraph
     structure GG = GroupGraph
-    structure E = GenericVC.Environment
+    structure E = Environment
     structure DE = DynamicEnv
-    structure EM = GenericVC.ErrorMsg
+    structure EM = ErrorMsg
     structure PP = PrettyPrint
 
     type env = E.dynenv
@@ -43,18 +43,17 @@ in
 	val unshare : SrcPath.file -> unit
     end
 
-    functor LinkFn (structure MachDepVC : MACHDEP_VC
-		    structure BFC : BFC
-		    sharing type MachDepVC.Binfile.bfContent = BFC.bfc
+    functor LinkFn (structure BFC : BFC where type bfc = Binfile.bfContents
+(***)		    val x : int
 		    val system_values : posmap SrcPathMap.map ref) :>
 	    LINK where type bfc = BFC.bfc =
     struct
 
 	exception Link of exn
 
-	structure BF = MachDepVC.Binfile
+	structure BF = Binfile
 
-	type bfc = BF.bfContent
+	type bfc = BF.bfContents
 	type bfcGetter = SmlInfo.info -> bfc
 
 	type bfun = GP.info -> E.dynenv -> E.dynenv

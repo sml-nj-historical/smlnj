@@ -11,4 +11,4 @@
 Library
 	(* this is a proxy library; exports taken from its (only) member *)
 is
-	$compiler/viscomp-alpha32.cm  
+	$compiler/backend-alpha32.cm  

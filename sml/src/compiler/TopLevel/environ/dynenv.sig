@@ -3,7 +3,7 @@
 
 signature DYNENV =
 sig
-  type object = CompBasic.object
+  type object = Unsafe.Object.object
   type dynenv
   exception Unbound  
   exception SpecialEnv

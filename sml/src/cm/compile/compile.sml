@@ -9,13 +9,13 @@ local
     structure GP = GeneralParams
     structure DG = DependencyGraph
     structure GG = GroupGraph
-    structure E = GenericVC.Environment
-    structure SE = GenericVC.StaticEnv
-    structure Pid = GenericVC.PersStamps
-    structure DE = GenericVC.DynamicEnv
+    structure E = Environment
+    structure SE = StaticEnv
+    structure Pid = PersStamps
+    structure DE = DynamicEnv
     structure PP = PrettyPrint
-    structure EM = GenericVC.ErrorMsg
-    structure SF = GenericVC.SmlFile
+    structure EM = ErrorMsg
+    structure SF = SmlFile
 
     type pid = Pid.persstamp
     type statenv = E.staticEnv
@@ -36,7 +36,7 @@ in
 
 	(* type of a function to store away the binfile contents *)
 	type bfcReceiver =
-	     SmlInfo.info * { content: bfc, stats: stats } -> unit
+	     SmlInfo.info * { contents: bfc, stats: stats } -> unit
 
 	val getII : SmlInfo.info -> IInfo.info
 
@@ -51,23 +51,26 @@ in
 	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
-    functor CompileFn (structure MachDepVC : MACHDEP_VC
+    functor CompileFn (structure Backend : BACKEND
 		       structure StabModmap : STAB_MODMAP
 		       val useStream : TextIO.instream -> unit
 		       val compile_there : SrcPath.file -> bool) :>
-	COMPILE where type bfc = MachDepVC.Binfile.bfContent
-	        where type stats = MachDepVC.Binfile.stats =
+	COMPILE where type bfc = Binfile.bfContents
+	        where type stats = Binfile.stats =
     struct
+
+        val arch = Backend.architecture
 
 	type notifier = GP.info -> SmlInfo.info -> unit
 
-	structure BF = MachDepVC.Binfile
+	structure BF = Binfile
+	structure C = Backend.Compile
 
-	type bfc = BF.bfContent
+	type bfc = BF.bfContents
 	type stats = BF.stats
 
 	type bfcReceiver =
-	     SmlInfo.info * { content: bfc, stats: stats } -> unit
+	     SmlInfo.info * { contents: bfc, stats: stats } -> unit
 
 	structure FilterMap = MapFn
 	    (struct
@@ -109,9 +112,22 @@ in
 
 	fun memo2ed memo = memo2ii memo
 
-	fun bfc2memo (bfc, ts) = let
-	    val ii = { statenv = fn () => BF.senvOf bfc,
-		       symenv = fn () => BF.symenvOf bfc,
+	fun bfc2memo (bfc, ts, context_senv) = let
+	    fun statenv () =
+		let val mm0 = StabModmap.get ()
+		    val m = GenModIdMap.mkMap' (context_senv, mm0)
+		    fun context _ = m
+		    val { pid, pickle } = BF.senvPickleOf bfc
+		in UnpickMod.unpickleEnv context (pid, pickle)
+		end
+	    fun symenv () =
+		let val { pickle, ... } = BF.lambdaPickleOf bfc
+		    val l = if Word8Vector.length pickle = 0 then NONE
+			    else UnpickMod.unpickleFLINT pickle
+		in SymbolicEnv.mk (BF.exportPidOf bfc, l)
+		end
+	    val ii = { statenv = Memoize.memoize statenv,
+		       symenv = Memoize.memoize symenv,
 		       statpid = BF.staticPidOf bfc,
 		       sympid = BF.lambdaPidOf bfc }
 	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
@@ -151,7 +167,7 @@ in
 			case FilterMap.find (!filtermap, key) of
 			    SOME statpid' => statpid'
 			  | NONE => let
-				val statpid' = GenericVC.Rehash.rehash
+				val statpid' = Rehash.rehash
 					{ env = ste', orig_hash = statpid }
 			    in
 				filtermap :=
@@ -257,8 +273,8 @@ in
 			       cleanup = fn _ => () })
 		    fun save bfc = let
 			fun writer s = let
-			    val s = BF.write { stream = s, content = bfc,
-					       nopickle = false }
+			    val s = BF.write { arch = arch, nopickle = false,
+					       stream = s, contents = bfc }
 			in pstats s; s
 			end
 			fun cleanup _ =
@@ -291,25 +307,51 @@ in
 				  | SOME sy => CoreHack.rewrite (ast, sy)
 			    val cmData = PidSet.listItems pids
 			    val (pre, post) = SmlInfo.setup i
-			    val toplenv = #get GenericVC.EnvRef.topLevel ()
+			    val toplenv = #get EnvRef.topLevel ()
 					  before perform_setup "pre" pre
 			    (* clear error flag (could still be set from
 			     * earlier run) *)
 			    val _ = #anyErrors source := false
+			    (* we actually run the compiler here;
+			     * Binfile is not doing it anymore *)
+			    val err = EM.errors source
+			    fun check phase =
+				if EM.anyErrors err then
+				    raise CompileExn.Compile
+					      (phase ^ " failed")
+				else ()
+			    val cinfo = C.mkCompInfo { source = source,
+						       transform = fn x => x }
+			    val splitting = Control.LambdaSplitting.get' split
+			    val { csegments, newstatenv, exportPid,
+				  staticPid, imports, pickle = senvP,
+				  inlineExp, ... } =
+				C.compile { source = source, ast = ast,
+					    statenv = stat, symenv = sym,
+					    compInfo = cinfo, checkErr = check,
+					    splitting = splitting }
+			    val { hash = lambdaPid, pickle = lambdaP } =
+				PickMod.pickleFLINT inlineExp
+			    val lambdaP = case inlineExp of
+					      NONE => Byte.stringToBytes ""
+					    | SOME _ => lambdaP
 			    val bfc = BF.create
-				{ splitting = split,
-				  cmData = cmData,
-				  ast = ast,
-				  source = source,
-				  senv = stat,
-				  symenv = sym }
-			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
+				      { imports = imports,
+					exportPid = exportPid,
+					cmData = cmData,
+					senv = { pickle = senvP,
+						 pid = staticPid },
+					lambda = { pickle = lambdaP,
+						   pid = lambdaPid },
+					csegments = csegments }
+			    val memo =
+				bfc2memo (bfc, SmlInfo.lastseen i, stat)
 			in
 			    perform_setup "post" post;
-			    #set GenericVC.EnvRef.topLevel toplenv;
-			    storeBFC (i, { content = bfc, stats = save bfc });
+			    #set EnvRef.topLevel toplenv;
+			    storeBFC (i, { contents = bfc, stats = save bfc });
 			    SOME memo
-			end handle (EM.Error | SF.Compile _)
+			end handle (EM.Error | CompileExn.Compile _)
 				   (* At this point we handle only
 				    * explicit compiler bugs and ordinary
 				    * compilation errors because for those
@@ -358,14 +400,13 @@ in
 				    fun reader s = let
 					val mm0 = StabModmap.get ()
 					val m = GenModIdMap.mkMap' (stat, mm0)
-					val { content, stats } =
-					    BF.read { stream = s,
-						      name = binname,
-						      modmap = m }
+					val { contents, stats } =
+					    BF.read { arch = arch,
+						      stream = s,
+						      name = binname }
 				    in
-					(content, ts, stats)
+					(contents, ts, stats)
 				    end
-					
 				in
 				    SOME (SafeIO.perform
 					  { openIt = openIt,
@@ -378,8 +419,8 @@ in
 				    case (sync (); load ()) of
 					NONE => otherwise ()
 				      | SOME (bfc, ts, stats) => let
-					    val memo = bfc2memo (bfc, ts)
-					    val contst = { content = bfc,
+					    val memo = bfc2memo (bfc, ts, stat)
+					    val contst = { contents = bfc,
 							   stats = stats }
 					in
 					    if isValidMemo (memo, pids, i) then

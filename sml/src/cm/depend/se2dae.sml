@@ -6,8 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature STATENV2DAENV = sig
-    val cvt : GenericVC.Environment.staticEnv ->
-	DAEnv.env * (unit -> SymbolSet.set)
+    val cvt : Environment.staticEnv -> DAEnv.env * (unit -> SymbolSet.set)
 
     (* The thunk passed to cvtMemo will not be called until the first
      * attempt to query the resulting DAEnv.env.
@@ -15,14 +14,12 @@ signature STATENV2DAENV = sig
      * should further guard the resulting env with an appropriate filter
      * to avoid queries that are known in advance to be unsuccessful
      * because they would needlessly cause the thunk to be called. *)
-    val cvtMemo :
-	(unit -> GenericVC.Environment.staticEnv) ->
-	DAEnv.env
+    val cvtMemo : (unit -> Environment.staticEnv) -> DAEnv.env
 end
 
 structure Statenv2DAEnv :> STATENV2DAENV = struct
 
-    structure E = GenericVC.Environment
+    structure E = Environment
 
     fun cvt_fctenv look = DAEnv.FCTENV (cvt_result o look)
 

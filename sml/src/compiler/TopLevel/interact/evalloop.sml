@@ -6,7 +6,6 @@ struct
 
 local open Environment
       structure C  = Compile
-      structure CB = CompBasic
       structure EM = ErrorMsg
       structure E  = Environment
       structure PP = PrettyPrint
@@ -19,18 +18,18 @@ exception Interrupt
 type lvar = Access.lvar
 
 type interactParams = 
-   {compManagerHook :
-    (CB.ast * EnvRef.envref * EnvRef.envref -> unit) option ref,
-          baseEnvRef      : EnvRef.envref,
-          localEnvRef     : EnvRef.envref,
-          transform       : CB.absyn -> CB.absyn,
-          instrument      : {source: CB.source,
-                             compenv: StaticEnv.staticEnv}
-                                -> (CB.absyn -> CB.absyn),
-          perform         : CB.executable -> CB.executable,
-          isolate         : CB.executable -> CB.executable,
-          printer         : E.environment -> PP.ppstream 
-                            -> (CB.absyn * lvar list) -> unit}
+   { compManagerHook :
+       (Ast.dec * EnvRef.envref * EnvRef.envref -> unit) option ref,
+     baseEnvRef      : EnvRef.envref,
+     localEnvRef     : EnvRef.envref,
+     transform       : Absyn.dec -> Absyn.dec,
+     instrument      : { source: Source.inputSource,
+			 compenv: StaticEnv.staticEnv }
+                       -> Absyn.dec -> Absyn.dec,
+     perform         : CodeObj.executable -> CodeObj.executable,
+     isolate         : CodeObj.executable -> CodeObj.executable,
+     printer         : E.environment -> PP.ppstream
+		       -> (Absyn.dec * lvar list) -> unit }
 
 val stdParams : interactParams =
       {compManagerHook = ref NONE,
@@ -39,7 +38,7 @@ val stdParams : interactParams =
        transform = (fn x => x),
        instrument = (fn _ => fn x => x),
        perform = (fn x => x),
-       isolate = C.isolate,
+       isolate = Isolate.isolate,
        printer = PPDec.ppDec}
 
 (* toplevel loop *)
@@ -73,11 +72,11 @@ fun evalLoop ({compManagerHook, baseEnvRef, localEnvRef, perform,
                isolate, printer, instrument, transform} : interactParams)
              (source: Source.inputSource) : unit =
 
-let val parser = C.parseOne source
-    val cinfo = C.mkCompInfo(source,transform)
+let val parser = SmlFile.parseOne source
+    val cinfo = C.mkCompInfo { source = source, transform = transform }
 
     fun checkErrors s = 
-        if C.anyErrors cinfo then raise EM.Error else ()
+        if CompInfo.anyErrors cinfo then raise EM.Error else ()
 
     fun oneUnit () = (* perform one transaction  *)
       case parser ()
@@ -104,17 +103,19 @@ let val parser = C.parseOne source
                     fixed in the long run. (ZHONG)
                  *)
 
-                val executable = C.mkexec csegments before checkErrors ()
+                val executable = Execute.mkexec csegments before checkErrors ()
                 val executable = isolate (interruptable (perform executable))
 
                 val _ = (PC.current := Profile.otherIndex)
                 val newdynenv = 
-                  C.execute{executable=executable, imports=imports,
-                            exportPid=exportPid, dynenv=dynenv}
+                  Execute.execute{executable=executable, imports=imports,
+				  exportPid=exportPid, dynenv=dynenv}
                 val _ = (PC.current := Profile.compileIndex)
 
-                val newenv = E.mkenv {static=newstatenv, dynamic=newdynenv, 
-                                      symbolic=C.mksymenv(exportPid,inlineExp)}
+                val newenv =
+		    E.mkenv { static = newstatenv,
+			      dynamic = newdynenv, 
+                              symbolic = SymbolicEnv.mk (exportPid,inlineExp) }
                 val newLocalEnv = E.concatEnv(newenv, #get localEnvRef ())
                     (* refetch localEnvRef because execution may 
                        have changed its contents *)
@@ -160,12 +161,11 @@ fun interact (interactParams) : unit =
                             say (concat["             ", s, "\n"]))
          | showhist' [] = ()
 
-       fun exnMsg (Compile.Compile s) = concat["Compile: \"", s, "\""]
-         | exnMsg (C.TopLevelException e) = exnMsg e
+       fun exnMsg (CompileExn.Compile s) = concat["Compile: \"", s, "\""]
+         | exnMsg (Isolate.TopLevelException e) = exnMsg e
          | exnMsg exn = General.exnMessage exn
 
-       fun showhist (C.TopLevelException e) = showhist e
-         | showhist C.SilentException = ()
+       fun showhist (Isolate.TopLevelException e) = showhist e
          | showhist e = showhist' (edit(SMLofNJ.exnHistory e))
 
        fun loop () = let
@@ -175,20 +175,18 @@ fun interact (interactParams) : unit =
                  | Interrupt => (say "\nInterrupt\n"; 
 				 flush(); loop())
                  (* | EM.Error => (flush(); loop()) *)
-                 | C.Compile "syntax error" => (flush(); loop())
-                 | C.Compile s =>
+                 | CompileExn.Compile "syntax error" => (flush(); loop())
+                 | CompileExn.Compile s =>
                    (say(concat["\nuncaught exception Compile: \"",
 			       s,"\"\n"]);
                     flush(); loop())
-                 | C.TopLevelException C.TopLevelCallcc =>
+                 | Isolate.TopLevelException Isolate.TopLevelCallcc =>
                    (say("Error: throw from one top-level expression \
 			\into another\n");
                     flush (); loop ())
-                 | C.TopLevelException EM.Error =>
+                 | Isolate.TopLevelException EM.Error =>
                    (flush (); loop ())
-                 | C.TopLevelException C.SilentException =>
-                   (flush (); loop ())
-                 | C.TopLevelException exn => let
+                 | Isolate.TopLevelException exn => let
 		       val msg = exnMsg exn
 		       val name = exnName exn
                    in
@@ -203,7 +201,6 @@ fun interact (interactParams) : unit =
 		       flush(); 
 		       loop()
                    end
-                 | C.SilentException => (flush (); loop ())
                  | exn => (say (concat["\nuncaught exception ", 
 				       exnMsg exn, "\n"]);
 			   showhist exn;
@@ -247,10 +244,9 @@ fun evalStream interactParams
          (Source.closeSource source;
           case exn 
           of EndOfFile => () 
-           | C.TopLevelException e => raise e
+           | Isolate.TopLevelException e => raise e
            | _ => raise exn)
     end 
 
 end (* top-level local *)
 end (* functor EvalLoopF *)
-

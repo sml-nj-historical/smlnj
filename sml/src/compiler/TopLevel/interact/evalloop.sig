@@ -5,23 +5,21 @@ signature EVALLOOP =
 sig
   exception Interrupt 
   type interactParams = 
-         {compManagerHook : (CompBasic.ast * EnvRef.envref 
-                                           * EnvRef.envref -> unit) option ref,
-          baseEnvRef      : EnvRef.envref,
-          localEnvRef     : EnvRef.envref,
-          transform       : CompBasic.absyn -> CompBasic.absyn,
-          instrument      : {source: CompBasic.source,
+       { compManagerHook : (Ast.dec * EnvRef.envref 
+                            * EnvRef.envref -> unit) option ref,
+         baseEnvRef      : EnvRef.envref,
+         localEnvRef     : EnvRef.envref,
+         transform       : Absyn.dec -> Absyn.dec,
+         instrument      : { source: Source.inputSource,
                              compenv: StaticEnv.staticEnv}
-                                -> (CompBasic.absyn -> CompBasic.absyn),
-          perform         : CompBasic.executable -> CompBasic.executable,
-          isolate         : CompBasic.executable -> CompBasic.executable,
-          printer         : Environment.environment -> PrettyPrint.ppstream 
-                            -> (CompBasic.absyn * Access.lvar list) -> unit}
+			   -> Absyn.dec -> Absyn.dec,
+         perform         : CodeObj.executable -> CodeObj.executable,
+         isolate         : CodeObj.executable -> CodeObj.executable,
+         printer         : Environment.environment -> PrettyPrint.ppstream 
+                           -> (Absyn.dec * Access.lvar list) -> unit}
 
   val stdParams   : interactParams
   val interact    : interactParams -> unit
   val evalStream  : interactParams -> string * TextIO.instream -> unit
 
 end (* signature EVALLOOP *)
-
-

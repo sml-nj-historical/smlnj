@@ -5,9 +5,7 @@ functor FLINTComp (structure Gen: MACHINE_GEN
                    val collect: unit -> CodeObj.code_object) : CODEGENERATOR =
 struct
 
-local structure CB = CompBasic
-      (*        structure CGC = Control.CG *)
-      structure MachSpec = Gen.MachSpec
+local structure MachSpec = Gen.MachSpec
       structure Convert = Convert(MachSpec)
       structure CPStrans = CPStrans(MachSpec)
       structure CPSopt = CPSopt(MachSpec)
@@ -88,7 +86,8 @@ fun dumpTerm (printE, s, le) =
 val fcs : (FLINT.prog -> FLINT.prog) list ref = ref []
 
 (** compiling FLINT code into the binary machine code *)
-fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo,
+fun flintcomp(flint,
+	      compInfo as {error, sourceName=src, ...}: CompInfo.compInfo,
 	      splitting) = 
   let fun err severity s =
  	error (0,0) severity (concat["Real constant out of range: ",s,"\n"])

@@ -11,7 +11,6 @@
 local
     structure A = Absyn
     structure SE = StaticEnv
-    structure CB = CompBasic
     structure SP = SymPath
     structure EM = ErrorMsg
     structure VC = VarCon
@@ -23,7 +22,7 @@ local
 in
 
 signature BTRACE = sig
-    val instrument : SE.staticEnv * CB.compInfo -> A.dec -> A.dec
+    val instrument : SE.staticEnv * CompInfo.compInfo -> A.dec -> A.dec
 end
 
 structure BTrace :> BTRACE = struct
@@ -42,7 +41,7 @@ structure BTrace :> BTRACE = struct
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
     val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
 
-    fun instrument0 (senv, cinfo: CB.compInfo) d = let
+    fun instrument0 (senv, cinfo: CompInfo.compInfo) d = let
 
 	val matchstring = #errorMatch cinfo
 

@@ -6,7 +6,7 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 local
-    structure PS = GenericVC.PersStamps
+    structure PS = PersStamps
     type pid = PS.persstamp
 in
     structure MkBootList = struct

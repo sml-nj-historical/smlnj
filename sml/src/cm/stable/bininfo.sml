@@ -1,7 +1,7 @@
 (*
  * Bundling information pertaining to the member of a stable group.
- *   - only includes information that does not require running
- *     the machine-dependent part of the compiler
+ *   - includes information that does not require running
+ *     the machine-dependent part of the compiler only
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -11,9 +11,9 @@ signature BININFO = sig
 
     type info
     type ord_key = info
-    type complainer = GenericVC.ErrorMsg.complainer
-    type region = GenericVC.SourceMap.region
-    type pid = GenericVC.PersStamps.persstamp
+    type complainer = ErrorMsg.complainer
+    type region = SourceMap.region
+    type pid = PersStamps.persstamp
 
     val new : { group: SrcPath.file,
 	        mkStablename: unit -> string,
@@ -35,9 +35,9 @@ end
 
 structure BinInfo :> BININFO = struct
 
-    type complainer = GenericVC.ErrorMsg.complainer
-    type region = GenericVC.SourceMap.region
-    type pid = GenericVC.PersStamps.persstamp
+    type complainer = ErrorMsg.complainer
+    type region = SourceMap.region
+    type pid = PersStamps.persstamp
 
     datatype info =
 	INFO of { group: SrcPath.file,

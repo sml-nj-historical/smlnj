@@ -14,6 +14,85 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/07/19 15:00:00 EDT
+Tag: blume-20010719-libreorg
+Description:
+
+This update puts together a fairly extensive but straightforward change
+to the way the libraries that implement the interactive system are
+organized:
+
+   The biggest change is the elimination of structure Compiler.  As a
+   replacement for this structure, there is now a CM library
+   (known as $smlnj/compiler.cm or $smlnj/compiler/current.cm)
+   that exports all the substructures of the original structure Compiler
+   directly.  So instead of saying Compiler.Foo.bar one now simply
+   says Foo.bar.  (The CM libraries actually export a collection of
+   structures that is richer than the collection of substructures of
+   structure Compiler.)
+
+   To make the transition smooth, there is a separate library called
+   $smlnj/compiler/compiler.cm which puts together and exports the
+   original structure Compiler (or at least something very close to it).
+
+   There are five members of the original structure Compiler
+   that are not exported directly but which instead became members
+   of a new structure Backend (described by signature BACKEND).  These are:
+   structure Profile (: PROFILE), structure Compile (: COMPILE), structure
+   Interact (: INTERACT), structure Machine (: MACHINE), and val
+   architecture (: string).
+
+   Structure Compiler.Version has become structure CompilerVersion.
+
+   Cross-compilers for alpha32, hppa, ppc, sparc, and x86 are provided
+   by $smlnj/compiler/<arch>.cm where <arch> is alpha32, hppa, ppc, sparc,
+   or x86, respectively.
+   Each of these exports the same frontend structures that
+   $smlnj/compiler.cm exports.  But they do not have a structure Backend
+   and instead export some structure <Arch>Backend where <Arch> is Alpha32,
+   Hppa, PPC, Sparc, or X86, respectively.
+
+   Library $smlnj/compiler/all.cm exports the union of the exports of
+   $smlnj/compiler/<arch>.cm
+
+   There are no structures <Arch>Compiler anymore, use
+   $smlnj/compiler/<arch>.cm instead.
+
+   Library host-compiler-0.cm is gone.  Instead, the internal library
+   that instantiates CM is now called cm0.cm.  Selection of the host
+   compiler (backend) is no longer done here but. (Responsibility for it
+   now lies with $smlnj/compiler/current.cm.  This seems to be more
+   logical.)
+
+   Many individual files have been moved or renamed.  Some files have
+   been split into multiple files, and some "dead" files have been deleted.
+
+Aside from these changes to library organization, there are also changes
+to the way the code itself is organized:
+
+   Structure Binfile has been re-implemented in such a way that it no
+   longer needs any knowledge of the compiler.  It exclusively deals
+   with the details of binfile layout.  It no longer invokes the
+   compiler (for the purpose of creating new prospective binfile
+   content), and it no longer has any knowledge of how to interpret
+   pickles.
+
+   Structure Compile (: COMPILE) has been stripped down to the bare
+   essentials of compilation.  It no longer deals with linking/execution.
+   The interface has been cleaned up considerably.
+
+   Utility routines for dealing with linking and execution have been
+   moved into their own substructures.
+
+   (The ultimate goal of these changes is to provide a light-weight
+   binfile loader/linker (at least for, e.g., stable libraries) that
+   does not require CM or the compiler to be present.)
+
+CM documentation has been updated to reflect the changes to library
+organization.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/07/10 17:30:00 EDT
 Tag: Release_110_34
 Description:

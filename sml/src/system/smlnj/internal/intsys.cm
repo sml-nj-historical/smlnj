@@ -12,9 +12,9 @@ Library
 	structure InteractiveSystem
 
 	(* export representatives for pro-forma libraries... *)
-	structure Compiler
-	structure CM
-	structure CMB
+	structure Compiler  (* $smlnj/compiler/compiler.cm *)
+	structure CM        (* $smlnj/cm.cm *)
+	structure CMB       (* $smlnj/cmb.cm *)
 	structure Tools
 	structure YaccTool
 	structure LexTool
@@ -35,10 +35,13 @@ is
 	$smlnj/viscomp/core.cm
 
 	(* need access to CM's "init" function *)
-	$smlnj/internal/host-compiler-0.cm
+	$smlnj/internal/cm0.cm
+
+	(* need access to the actual backend *)
+	$smlnj/compiler.cm
 
 	(* these are just here so they get made... *)
-	$smlnj/compiler.cm
+	$smlnj/compiler/compiler.cm
 	$smlnj/cm.cm
 	$smlnj/cmb.cm
 

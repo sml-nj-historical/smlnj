@@ -1,7 +1,15 @@
+(* stabmm.sml
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-lab.com)
+ *)
 local
-    structure SE = GenericVC.StaticEnv
-    structure MI = GenericVC.ModuleId
+    structure SE = StaticEnv
+    structure MI = ModuleId
 in
+    (* This module implements a "central" modmap for stable libraries.
+     * By having only one such map, sharing should be maximized. *)
     signature STAB_MODMAP = sig
 	val get : unit -> MI.tmap
 	val reset : unit -> unit

@@ -2,7 +2,7 @@
 (* symenv.sig *)
 
 signature SYMENV = sig
-    type flint = CompBasic.flint
+    type flint = FLINT.prog
     type symenv
     type pid = PersStamps.persstamp
 
@@ -15,5 +15,7 @@ signature SYMENV = sig
     val singleton: pid * flint -> symenv
     val listItemsi: symenv -> (pid * flint) list
     val fromListi: (pid * flint) list -> symenv
+
+    val mk : pid option * flint option -> symenv
 end (* signature SYMENV *)
 

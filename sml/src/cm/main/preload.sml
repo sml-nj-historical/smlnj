@@ -23,7 +23,8 @@ end = struct
 		  | line =>
 			if isComment line then loop ()
 			else (case String.tokens Char.isSpace line of
-				  ["make", f] => load make f
+				  [] => loop ()(* ignore empty lines *)
+				| ["make", f] => load make f
 				| ["autoload", f] => load autoload f
 				| _ => (Say.say ["Illegal line in ", specfile,
 						 ": ", line];

@@ -45,7 +45,7 @@ datatype context
              (* within functor body *)
   | INSIG    (* within a signature body *)
 
-type compInfo = CompBasic.compInfo
+type compInfo = CompInfo.compInfo
 
 fun newVALvar(s, mkv) = V.mkVALvar(s, A.namedAcc(s, mkv))
 

@@ -9,7 +9,7 @@
  *)
 structure BootEnv =
     BootEnvF (datatype envrequest = datatype CM0.envrequest
-	      val architecture = Compiler.architecture
+	      val architecture = Backend.architecture
 	      val cminit = CM0.init
 	      fun cmbmake (nbd, light) =
 		  (if light then #set (CMB.symval "LIGHT") (SOME 1) else ();

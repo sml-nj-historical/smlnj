@@ -2,20 +2,17 @@
 (* smlfile.sml *)
 
 signature SMLFILE = sig
-    exception Compile of string
     val parseOne : Source.inputSource -> unit -> Ast.dec option
     val parse : Source.inputSource -> Ast.dec
 end
 
 structure SmlFile :> SMLFILE = struct
 
-    exception Compile of string
-
     structure FE = FrontEnd
 
     val parsePhase = Stats.makePhase "Compiler 010 parse"
 
-    fun fail s = raise (Compile s)
+    fun fail s = raise (CompileExn.Compile s)
 
     fun parseOne source = let
 	val parser = FE.parse source

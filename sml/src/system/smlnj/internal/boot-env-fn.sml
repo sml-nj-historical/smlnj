@@ -27,7 +27,7 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
     structure DirToolClassify = DirToolClassify
 
     structure DynE = DynamicEnv
-    structure Print = GenericVC.Control.Print
+    structure Print = Control.Print
 
     fun say s = (Print.say s; Print.flush ())
     fun die s = (say s; raise BootFailure)
@@ -44,7 +44,7 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	fun initialize (bootdir, er) = let
 	    fun mkDE (U.NILrde, de) = de
 	      | mkDE (U.CONSrde (rawdynpid, obj, rest), de) = let
-		    val dynpid = GenericVC.PersStamps.fromBytes rawdynpid
+		    val dynpid = PersStamps.fromBytes rawdynpid
 		in
 		    mkDE (rest, DynE.bind (dynpid, obj, de))
 		end
