@@ -53,7 +53,7 @@ signature TOOLS = sig
 	EXTEND of string list
       | REPLACE of string list * string list
 
-    type cmdGetterSetter = string option -> string
+    type cmdGetterSetter = { get: unit -> string, set: string -> unit }
 
     val newCmdGetterSetter : string * string -> cmdGetterSetter
 
@@ -304,12 +304,13 @@ structure PrivateTools :> PRIVATETOOLS = struct
 					   msg = "cannot access " ^ f }
     end
 
-    type cmdGetterSetter = string option -> string
+    type cmdGetterSetter = { get: unit -> string, set: string -> unit }
 
-    fun newCmdGetterSetter sp = EnvConfig.getSet (EnvConfig.new SOME sp)
+    fun newCmdGetterSetter sp = EnvConfig.new SOME sp
 
     fun registerStdShellCmdTool arg = let
-	val { tool, class, suffixes, command, extensionStyle, sml } = arg
+	val { tool, class, suffixes, command: cmdGetterSetter,
+	      extensionStyle, sml } = arg
 	fun rule (f, ctxt) = let
 	    val targetfiles = extend extensionStyle f
 	    val mkTarget =
@@ -317,7 +318,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		else (fn tf => (tf, NONE))
 	    val targets = map mkTarget targetfiles
 	    fun runcmd () = let
-		val cmd = concat [command NONE, " ", f]
+		val cmd = concat [#get command (), " ", f]
 		val _ = Say.vsay ["[", cmd, "]\n"]
 	    in
 		if OS.Process.system cmd = OS.Process.success then ()

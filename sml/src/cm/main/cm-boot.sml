@@ -156,11 +156,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  end
 
 	  fun initPaths () = let
-	      val lpcth = EnvConfig.getSet StdConfig.local_pathconfig NONE
+	      val lpcth = #get StdConfig.local_pathconfig ()
 	      val p = case lpcth () of
 		  NONE => []
 		| SOME f => [f]
-	      val p = EnvConfig.getSet StdConfig.pathcfgspec NONE :: p
+	      val p = #get StdConfig.pathcfgspec () :: p
 	      fun processOne f = PathConfig.processSpecFile (pcmode, f)
 		  handle _ => ()
 	  in
@@ -175,8 +175,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      { primconf = #primconf v,
 	        fnpolicy = fnpolicy,
 		pcmode = pcmode,
-		symenv = SSV.env,
-		keep_going = EnvConfig.getSet StdConfig.keep_going NONE,
+		symval = SSV.symval,
+		keep_going = #get StdConfig.keep_going (),
 		pervasive = #pervasive v,
 		corenv = #corenv v,
 		pervcorepids = #pervcorepids v }
@@ -262,7 +262,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val ginfo = { param = { primconf = Primitive.primEnvConf,
 				      fnpolicy = fnpolicy,
 				      pcmode = pcmode,
-				      symenv = SSV.env,
+				      symval = SSV.symval,
 				      keep_going = false,
 				      pervasive = E.emptyEnv,
 				      corenv = BE.staticPart BE.emptyEnv,
@@ -353,23 +353,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   make = make,
 				   autoload = autoload,
 				   reset = reset,
-				   verbose =
-				      EnvConfig.getSet StdConfig.verbose,
-				   debug =
-				      EnvConfig.getSet StdConfig.debug,
-				   keep_going =
-				      EnvConfig.getSet StdConfig.keep_going,
-				   warn_obsolete =
-				      EnvConfig.getSet StdConfig.warn_obsolete,
-				   parse_caching =
-				      EnvConfig.getSet StdConfig.parse_caching,
+				   verbose = StdConfig.verbose,
+				   debug = StdConfig.debug,
+				   keep_going = StdConfig.keep_going,
+				   warn_obsolete = StdConfig.warn_obsolete,
+				   parse_caching = StdConfig.parse_caching,
 				   setAnchor = setAnchor,
 				   cancelAnchor = cancelAnchor,
 				   resetPathConfig = resetPathConfig,
 				   synchronize = SrcPath.sync,
 				   showPending = showPending,
 				   listLibs = listLibs,
-				   dismissLib = dismissLib })
+				   dismissLib = dismissLib,
+				   symval = SSV.symval })
 
 		  end
 	  end

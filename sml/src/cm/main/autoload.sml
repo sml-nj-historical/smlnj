@@ -169,9 +169,9 @@ functor AutoLoadFn (structure C : COMPILE
 	     (* We temporarily turn verbosity off, so we need to wrap this
 	      * with a SafeIO.perform... *)
 	     SafeIO.perform
-	      { openIt = fn () =>
-	          EnvConfig.getSet StdConfig.verbose (SOME false),
-	        closeIt = ignore o (EnvConfig.getSet StdConfig.verbose) o SOME,
+	      { openIt = fn () => #get StdConfig.verbose () before
+	                          #set StdConfig.verbose false,
+	        closeIt = ignore o #set StdConfig.verbose,
 		cleanup = fn () => (),
 		work = fn _ =>
 	          (case loadit loadmap of

@@ -152,7 +152,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    fun error r m =
 			EM.error source r EM.COMPLAIN m EM.nullErrorBody
 		    fun obsolete r =
-			if EnvConfig.getSet StdConfig.warn_obsolete NONE then
+			if #get StdConfig.warn_obsolete () then
 			    EM.error source r EM.WARN
 			      "old-style operator (obsolete)" EM.nullErrorBody
 			else ()

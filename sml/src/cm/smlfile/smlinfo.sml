@@ -221,7 +221,7 @@ structure SmlInfo :> SMLINFO = struct
 		 * the overhead of counting will make a noticeable
 		 * difference.) *)
 		val ntrees = countParseTrees ()
-		val treelimit = EnvConfig.getSet StdConfig.parse_caching NONE
+		val treelimit = #get StdConfig.parse_caching ()
 	    in
 		if ntrees < treelimit then
 		    parsetree := pto

@@ -119,7 +119,7 @@ end = struct
 		end
 	      | _ => raise Fail "BootstrapCompile:listName: bad name"
 
-	val keep_going = EnvConfig.getSet StdConfig.keep_going NONE
+	val keep_going = #get StdConfig.keep_going ()
 
 	val ctxt = SrcPath.cwdContext ()
 
@@ -146,7 +146,7 @@ end = struct
 	    { primconf = primconf,
 	      fnpolicy = fnpolicy,
 	      pcmode = pcmode,
-	      symenv = SSV.env,
+	      symval = SSV.symval,
 	      keep_going = keep_going,
 	      pervasive = pervasive,
 	      corenv = corenv,

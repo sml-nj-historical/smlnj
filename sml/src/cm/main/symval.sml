@@ -11,6 +11,7 @@ signature SYMVAL = sig
 
     val look : env -> string -> int option
     val empty : env
+    val define : env * string * int option -> env
 
     val default : { arch: string,
 		    big: bool,
@@ -27,6 +28,11 @@ structure SymVal :> SYMVAL = struct
     fun look e s = StringMap.find (e, s)
 
     val empty = StringMap.empty
+
+    fun define (e, s, NONE) =
+	(#1 (StringMap.remove (e, s))
+	 handle LibBase.NotFound => e)
+      | define (e, s, SOME v) = StringMap.insert (e, s, v)
 
     fun default { arch, big, size, os, version } = let
 	val arch_sym = "ARCH_" ^ arch

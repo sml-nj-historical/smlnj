@@ -183,7 +183,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 
     local
 	fun symenv_look (gp: GeneralParams.info) (c: collection) s =
-	    SymVal.look (#symenv (#param gp)) s
+	    #get (#symval (#param gp) s) ()
     in
 	fun num_look gp c s = getOpt (symenv_look gp c s, 0)
 	fun cm_look gp c s = isSome (symenv_look gp c s)

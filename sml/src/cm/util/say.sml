@@ -17,7 +17,7 @@ structure Say :> SAY = struct
 
     fun say l = (Print.say (concat l); Print.flush ())
 
-    fun csay cnd l = if EnvConfig.getSet cnd NONE then say l else ()
+    fun csay { get, set } l = if get () then say l else ()
     val vsay = csay StdConfig.verbose
     val dsay = csay StdConfig.debug
 end

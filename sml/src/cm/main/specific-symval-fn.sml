@@ -21,12 +21,19 @@ functor SpecificSymValFn (structure MachDepVC: MACHDEP_VC
 		  | "ppc" => ("PPC", false, 32)
 		  | arch => GenericVC.ErrorMsg.impossible
 			("unknown architecture: " ^ arch)
-	in
-	    val env =
+	    val env0 =
 		SymVal.default { arch = arch,
 				 big = big,
 				 size = size,
 				 os = os,
 				 version = #version_id GenericVC.version }
+	    val er = ref env0
+	in
+	    fun symval s = let
+		fun get () = SymVal.look (!er) s
+		fun set v = er := SymVal.define (!er, s, v)
+	    in
+		{ get = get, set = set }
+	    end
 	end
     end
