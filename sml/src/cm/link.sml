@@ -44,15 +44,15 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       val recomp_group = RecompTraversal.group
 
-      fun exec_group gp g =
-	  (ExecTraversal.group gp g
-	   before FullPersstate.rememberShared ())
-
-      fun make_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
+      fun exec_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
 	  (if StringSet.isEmpty rq then ()
 	   else Say.say ("$Execute: required privileges are:\n" ::
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
-	   if isSome (recomp_group gp g) then exec_group gp g else NONE)
+	   ExecTraversal.group gp g
+	   before FullPersstate.rememberShared ())
+
+      fun make_group gp g =
+	  if isSome (recomp_group gp g) then exec_group gp g else NONE
 
       structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
 					  fun recomp gp g =
