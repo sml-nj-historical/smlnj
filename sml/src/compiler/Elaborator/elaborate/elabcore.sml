@@ -5,14 +5,22 @@ signature ELABCORE =
 sig
 
   val elabABSTYPEdec :
-        {abstycs: Ast.db list,withtycs: Ast.tb list,body: Ast.dec} 
-        * StaticEnv.staticEnv * ElabUtil.context * (Types.tycon -> bool)
-        * InvPath.path * SourceMap.region * ElabUtil.compInfo
+      { atd: {abstycs: Ast.db list,withtycs: Ast.tb list,body: Ast.dec},
+        env: StaticEnv.staticEnv,
+	context: ElabUtil.context,
+	isFree: Types.tycon -> bool,
+	rpath: InvPath.path,
+	region: SourceMap.region,
+	compInfo: ElabUtil.compInfo }
         -> Absyn.dec * StaticEnv.staticEnv (* * Modules.entityEnv ??? *)
 
   val elabDec : 
-        Ast.dec * StaticEnv.staticEnv * (Types.tycon -> bool)
-        * InvPath.path * SourceMap.region * ElabUtil.compInfo
+        { dec: Ast.dec,
+	  env: StaticEnv.staticEnv,
+	  isFree: Types.tycon -> bool,
+	  rpath: InvPath.path,
+	  region: SourceMap.region,
+	  compInfo: ElabUtil.compInfo }
         -> Absyn.dec * StaticEnv.staticEnv
 
   val debugging : bool ref
@@ -123,14 +131,16 @@ in
 end
 
 (**** ABSTRACT TYPE DECLARATIONS ****)
-fun elabABSTYPEdec({abstycs,withtycs,body},env,context,isFree,
-                   rpath,region,compInfo) =
+fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
+                     rpath,region,compInfo} =
   let val (datatycs,withtycs,_,env1) =
         ET.elabDATATYPEdec({datatycs=abstycs,withtycs=withtycs}, env,
                            [], EE.empty, isFree, rpath, region, compInfo)
 
       val (body,env2) = 
-        elabDec(body,SE.atop(env1,env),isFree,rpath,region,compInfo)
+        elabDec { dec = body, env = SE.atop(env1,env),
+		  isFree = isFree, rpath = rpath, region = region,
+		  compInfo = compInfo }
 
       (* datatycs will be changed to abstycs during type checking
 	 by changing the eqprop field *)
@@ -143,8 +153,8 @@ fun elabABSTYPEdec({abstycs,withtycs,body},env,context,isFree,
 
 
 (**** ELABORATE GENERAL (core) DECLARATIONS ****)
-and elabDec (dec, env, isFree, rpath, region,
-             compInfo as {mkLvar=mkv,error,errorMatch,...}) =
+and elabDec { dec, env, isFree, rpath, region,
+              compInfo as {mkLvar=mkv,error,errorMatch,...} } =
 
 let
     val _ = debugmsg ">>ElabCore.elabDec"
@@ -684,8 +694,10 @@ let
 			  noTyvars(SEQdec[],SE.empty)))
 	   | AbstypeDec x => 
 	      let val (dec', env') =
-  		    elabABSTYPEdec(x,env,EU.TOP,isFree,
-                                   rpath,region,compInfo)
+  		    elabABSTYPEdec { atd = x, env = env, context = EU.TOP,
+				     isFree = isFree,
+                                     rpath = rpath, region = region,
+				     compInfo = compInfo }
 	       in noTyvars(dec', env')
 	      end
 	   | ExceptionDec ebs => elabEXCEPTIONdec(ebs,env,region)

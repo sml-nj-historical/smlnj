@@ -1581,8 +1581,13 @@ and elabDecl0
                  | _ => (fn _ => false))
 
             val (decl, env', abstycs, withtycs) =
-		case  EC.elabABSTYPEdec(x, env0, context, isFree, 
-					rpath, region, compInfo) of
+		case  EC.elabABSTYPEdec { atd = x,
+					  env = env0,
+					  context = context,
+					  isFree = isFree,
+					  rpath = rpath,
+					  region = region,
+					  compInfo = compInfo } of
 		    (d as A.ABSTYPEdec x, e) =>
 		    (d, e, #abstycs x, #withtycs x)
 		  | _ => bug "elabDecl0:AbstypeDec"
@@ -1618,9 +1623,13 @@ and elabDecl0
                           | _ => false))
                       | _ => (fn _ => false))
 
-            val (decl,env') = EC.elabDec(dec, env0, isFree, 
-                                         rpath, region, compInfo)
-              handle EE.Unbound => (debugmsg("$EC.elabDec"); raise EE.Unbound)
+            val (decl,env') = EC.elabDec { dec = dec, env = env0,
+					   isFree = isFree,
+                                           rpath = rpath,
+					   region = region,
+					   compInfo = compInfo }
+		handle EE.Unbound => (debugmsg("$EC.elabDec");
+				      raise EE.Unbound)
             val _ = debugmsg (">>elabDecl0.dec[after EC.elabDec: top=" 
                               ^ (Bool.toString top))
             val decl' = transform decl
