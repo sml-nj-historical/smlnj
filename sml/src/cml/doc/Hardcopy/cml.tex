@@ -1,0 +1,288 @@
+\section{The {\tt CML} structure}
+
+
+
+\begin{synopsis}
+\item {\textbf{signature}} CML\label{sig-CML}
+\item {\STRUCTURE} CML: CML\label{str-CML}
+\end{synopsis}
+
+\begin{interface}
+\item {\index{thread_id@thread\_\linebreak[0]id!CML@CML}}{\textbf{type}} thread\_\linebreak[0]id
+\item {\index{chan@chan!CML@CML}}{\textbf{type}} \(\alpha\)~chan
+\item {\index{event@event!CML@CML}}{\textbf{type}} \(\alpha\)~event
+\item {\index{version@version!CML@CML}}{\textbf{val}} {\tt version: \(\{\mathrm{system}:\mathrm{string},\,\mathrm{version\_id}:\mathrm{int}\;\mathrm{list},\,\mathrm{date}:\mathrm{string}\}\)}
+
+\item {\index{banner@banner!CML@CML}}{\textbf{val}} {\tt banner: \(\mathrm{string}\)}
+
+\item {\index{spawnc@spawnc!CML@CML}}{\textbf{val}} {\tt spawnc: \((\alpha\rightarrow \mathrm{unit})\rightarrow \alpha\rightarrow \mathrm{thread\_id}\)}
+
+\item {\index{spawn@spawn!CML@CML}}{\textbf{val}} {\tt spawn: \((\mathrm{unit}\rightarrow \mathrm{unit})\rightarrow \mathrm{thread\_id}\)}
+
+\item {\index{yield@yield!CML@CML}}{\textbf{val}} {\tt yield: \(\mathrm{unit}\rightarrow \mathrm{unit}\)}
+
+\item {\index{exit@exit!CML@CML}}{\textbf{val}} {\tt exit: \(\mathrm{unit}\rightarrow \alpha\)}
+
+\item {\index{getTid@getTid!CML@CML}}{\textbf{val}} {\tt getTid: \(\mathrm{unit}\rightarrow \mathrm{thread\_id}\)}
+
+\item {\index{sameTid@sameTid!CML@CML}}{\textbf{val}} {\tt sameTid: \((\mathrm{thread\_id}\:\verb,*,\:\mathrm{thread\_id})\rightarrow \mathrm{bool}\)}
+
+\item {\index{compareTid@compareTid!CML@CML}}{\textbf{val}} {\tt compareTid: \((\mathrm{thread\_id}\:\verb,*,\:\mathrm{thread\_id})\rightarrow \mathrm{order}\)}
+
+\item {\index{hashTid@hashTid!CML@CML}}{\textbf{val}} {\tt hashTid: \(\mathrm{thread\_id}\rightarrow \mathrm{word}\)}
+
+\item {\index{tidToString@tidToString!CML@CML}}{\textbf{val}} {\tt tidToString: \(\mathrm{thread\_id}\rightarrow \mathrm{string}\)}
+
+\item {\index{joinEvt@joinEvt!CML@CML}}{\textbf{val}} {\tt joinEvt: \(\mathrm{thread\_id}\rightarrow \mathrm{unit}\;\mathrm{event}\)}
+
+\item {\index{channel@channel!CML@CML}}{\textbf{val}} {\tt channel: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{chan}\)}
+
+\item {\index{sameChannel@sameChannel!CML@CML}}{\textbf{val}} {\tt sameChannel: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha\:\mathrm{chan})\rightarrow \mathrm{bool}\)}
+
+\item {\index{send@send!CML@CML}}{\textbf{val}} {\tt send: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}
+
+\item {\index{recv@recv!CML@CML}}{\textbf{val}} {\tt recv: \(\alpha\:\mathrm{chan}\rightarrow \alpha\)}
+
+\item {\index{sendEvt@sendEvt!CML@CML}}{\textbf{val}} {\tt sendEvt: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\;\mathrm{event}\)}
+
+\item {\index{recvEvt@recvEvt!CML@CML}}{\textbf{val}} {\tt recvEvt: \(\alpha\:\mathrm{chan}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{sendPoll@sendPoll!CML@CML}}{\textbf{val}} {\tt sendPoll: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha)\rightarrow \mathrm{bool}\)}
+
+\item {\index{recvPoll@recvPoll!CML@CML}}{\textbf{val}} {\tt recvPoll: \(\alpha\:\mathrm{chan}\rightarrow \alpha\:\mathrm{option}\)}
+
+\item {\index{wrap@wrap!CML@CML}}{\textbf{val}} {\tt wrap: \((\alpha\:\mathrm{event}\:\verb,*,(\alpha\rightarrow \beta))\rightarrow \beta\:\mathrm{event}\)}
+
+\item {\index{wrapHandler@wrapHandler!CML@CML}}{\textbf{val}} {\tt wrapHandler: \((\alpha\:\mathrm{event}\:\verb,*,(\mathrm{exn}\rightarrow \alpha\:\mathrm{event}))\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{guard@guard!CML@CML}}{\textbf{val}} {\tt guard: \((\mathrm{unit}\rightarrow \alpha\:\mathrm{event})\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{withNack@withNack!CML@CML}}{\textbf{val}} {\tt withNack: \((\mathrm{unit}\;\mathrm{event}\rightarrow \alpha\:\mathrm{event})\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{choose@choose!CML@CML}}{\textbf{val}} {\tt choose: \(\alpha\:\mathrm{event}\;\mathrm{list}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{sync@sync!CML@CML}}{\textbf{val}} {\tt sync: \(\alpha\:\mathrm{event}\rightarrow \alpha\)}
+
+\item {\index{select@select!CML@CML}}{\textbf{val}} {\tt select: \(\alpha\:\mathrm{event}\;\mathrm{list}\rightarrow \alpha\)}
+
+\item {\index{never@never!CML@CML}}{\textbf{val}} {\tt never: \(\alpha\:\mathrm{event}\)}
+
+\item {\index{alwaysEvt@alwaysEvt!CML@CML}}{\textbf{val}} {\tt alwaysEvt: \(\alpha\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{timeOutEvt@timeOutEvt!CML@CML}}{\textbf{val}} {\tt timeOutEvt: \(\mathrm{Time}.\mathrm{time}\rightarrow \mathrm{unit}\;\mathrm{event}\)}
+
+\item {\index{atTimeEvt@atTimeEvt!CML@CML}}{\textbf{val}} {\tt atTimeEvt: \(\mathrm{Time}.\mathrm{time}\rightarrow \mathrm{unit}\;\mathrm{event}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{thread_id@thread\_\linebreak[0]id!CML@CML}}{\textbf{type}} thread\_\linebreak[0]id\label{ty-CML.thread_id}
+
+\begin{speccomment}
+\item 
+
+	  Thread IDs are the unique IDs associated with CML threads.\- 	  These IDs are in an unspecified total order that can be used to 	  break cyclic depedencies (see \texttt{compare\-Tid}).\-     \end{speccomment}
+\item {\index{chan@chan!CML@CML}}{\textbf{type}} \(\alpha\)~chan\label{ty-CML.chan}
+
+\begin{speccomment}
+\item 
+
+          This is the type constructor for synchronous channels.\-     \end{speccomment}
+\item {\index{event@event!CML@CML}}{\textbf{type}} \(\alpha\)~event\label{ty-CML.event}
+
+\begin{speccomment}
+\item 
+
+	  Event values are abstract representations of synchronous operations 	  (so called \emph{first-class sychronous operations}).\-     \end{speccomment}
+\item {\index{banner@banner!CML@CML}}{\textbf{val}} {\tt banner: \(\mathrm{string}\)}\label{val-CML.banner}
+
+
+\begin{speccomment}
+\item 
+
+	These specify the version of CML in the same format as SML/NJ.\-     \end{speccomment}
+\item {\index{spawn@spawn!CML@CML}}{\textbf{val}} {\tt spawn: \((\mathrm{unit}\rightarrow \mathrm{unit})\rightarrow \mathrm{thread\_id}\)}\label{val-CML.spawn}
+
+
+\begin{speccomment}
+\item {\tt spawnc \textit{f} \textit{x} 	}\linebreak
+{\tt           spawn \textit{f}         } 
+creates a new thread of control to evaluate the body of \textit{f}.\- 	A new unique ID for the thread is created and returned.\-     \end{speccomment}
+\item {\index{yield@yield!CML@CML}}{\textbf{val}} {\tt yield: \(\mathrm{unit}\rightarrow \mathrm{unit}\)}\label{val-CML.yield}
+
+
+\begin{speccomment}
+\item 
+
+	This function can be used to implement an explicit context switch.\- 	Since CML is preemptively scheduled, it should never be necessary for 	user programs to call this function.\- 	It is mainly used for performance measurements.\-     \end{speccomment}
+\item {\index{exit@exit!CML@CML}}{\textbf{val}} {\tt exit: \(\mathrm{unit}\rightarrow \alpha\)}\label{val-CML.exit}
+
+
+\begin{speccomment}
+\item {\tt exit () 	} 
+causes the calling thread to terminate.\-     \end{speccomment}
+\item {\index{getTid@getTid!CML@CML}}{\textbf{val}} {\tt getTid: \(\mathrm{unit}\rightarrow \mathrm{thread\_id}\)}\label{val-CML.getTid}
+
+
+\begin{speccomment}
+\item {\tt get\-Tid ()           } 
+returns the thread ID of the calling thread.\-     \end{speccomment}
+\item {\index{sameTid@sameTid!CML@CML}}{\textbf{val}} {\tt sameTid: \((\mathrm{thread\_id}\:\verb,*,\:\mathrm{thread\_id})\rightarrow \mathrm{bool}\)}\label{val-CML.sameTid}
+
+
+\begin{speccomment}
+\item {\tt same\-Tid (\textit{tid1}, \textit{tid2})           } 
+returns true, if the two thread IDs are the same ID.\-     \end{speccomment}
+\item {\index{compareTid@compareTid!CML@CML}}{\textbf{val}} {\tt compareTid: \((\mathrm{thread\_id}\:\verb,*,\:\mathrm{thread\_id})\rightarrow \mathrm{order}\)}\label{val-CML.compareTid}
+
+
+\begin{speccomment}
+\item {\tt compare\-Tid (\textit{tid1}, \textit{tid2})           } 
+compares the two thread IDs and returns their order in the total 	  ordering of thread IDs.\- 	  The precise semantics of this ordering is left unspecified, other 	  than to say it is a total order.\-     \end{speccomment}
+\item {\index{hashTid@hashTid!CML@CML}}{\textbf{val}} {\tt hashTid: \(\mathrm{thread\_id}\rightarrow \mathrm{word}\)}\label{val-CML.hashTid}
+
+
+\begin{speccomment}
+\item {\tt hash\-Tid \textit{tid}           } 
+returns a hashing of the thread ID \textit{tid}.\-     \end{speccomment}
+\item {\index{tidToString@tidToString!CML@CML}}{\textbf{val}} {\tt tidToString: \(\mathrm{thread\_id}\rightarrow \mathrm{string}\)}\label{val-CML.tidToString}
+
+
+\begin{speccomment}
+\item {\tt tid\-To\-String \textit{tid}           } 
+returns a string representation of the thread ID \textit{tid}.\-     \end{speccomment}
+\item {\index{joinEvt@joinEvt!CML@CML}}{\textbf{val}} {\tt joinEvt: \(\mathrm{thread\_id}\rightarrow \mathrm{unit}\;\mathrm{event}\)}\label{val-CML.joinEvt}
+
+
+\begin{speccomment}
+\item {\tt join\-Evt \textit{tid}           } 
+creates an event value for synchronizing on the termination of 	  the thread with the ID \textit{tid}.\- 	  There are three ways that a thread may terminate: the function that 	  was passed to \texttt{spawn} may return; it may call the \texttt{exit} 	  function, or it may have an uncaught exception.\- 	  Note that \texttt{join\-Evt} does not distinguish between these 	  cases; it also does not become enabled if the named thread deadlocks 	  (even if it is garbage collected).\-     \end{speccomment}
+\item {\index{channel@channel!CML@CML}}{\textbf{val}} {\tt channel: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{chan}\)}\label{val-CML.channel}
+
+
+\begin{speccomment}
+\item {\tt channel ()           } 
+creates a new synchronous channel.\-     \end{speccomment}
+\item {\index{sameChannel@sameChannel!CML@CML}}{\textbf{val}} {\tt sameChannel: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha\:\mathrm{chan})\rightarrow \mathrm{bool}\)}\label{val-CML.sameChannel}
+
+
+\begin{speccomment}
+\item {\tt same\-Channel (\textit{ch1}, \textit{ch2})           } 
+returns true, if the two channels are the same channel.\-     \end{speccomment}
+\item {\index{send@send!CML@CML}}{\textbf{val}} {\tt send: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}\label{val-CML.send}
+
+
+\begin{speccomment}
+\item {\tt send (\textit{ch}, \textit{a})           } 
+sends the message \textit{a} on the synchronous channel \textit{ch}.\- 	  This operation blocks the calling thread until there is another 	  thread attempting a \texttt{recv} operation on the channel \textit{ch}.\-     \end{speccomment}
+\item {\index{recv@recv!CML@CML}}{\textbf{val}} {\tt recv: \(\alpha\:\mathrm{chan}\rightarrow \alpha\)}\label{val-CML.recv}
+
+
+\begin{speccomment}
+\item {\tt recv \textit{ch}           } 
+receives a message from the channel \textit{ch}.\- 	  This operation blocks the calling thread until there is another 	  thread attempting a \texttt{send} operation on the channel \textit{ch}.\-     \end{speccomment}
+\item {\index{recvEvt@recvEvt!CML@CML}}{\textbf{val}} {\tt recvEvt: \(\alpha\:\mathrm{chan}\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.recvEvt}
+
+
+\begin{speccomment}
+\item 
+
+	  These functions create event values to represent the \texttt{send} 	  and \texttt{recv} operations.\-     \end{speccomment}
+\item {\index{sendPoll@sendPoll!CML@CML}}{\textbf{val}} {\tt sendPoll: \((\alpha\:\mathrm{chan}\:\verb,*,\:\alpha)\rightarrow \mathrm{bool}\)}\label{val-CML.sendPoll}
+
+
+\begin{speccomment}
+\item {\tt send (\textit{ch}, \textit{a})           } 
+attempts to send the message \textit{a} on the synchronous channel \textit{ch}.\- 	  If this operation can complete without blocking the calling thread, then 	  the message is sent and {\tt true} is returned.\- 	  Otherwise, no communication is preformed and {\tt false} is returned.\- 	  This function is not recommended for general use; it is provided 	  as an efficiency aid for certain kinds of protocols.\-     \end{speccomment}
+\item {\index{recvPoll@recvPoll!CML@CML}}{\textbf{val}} {\tt recvPoll: \(\alpha\:\mathrm{chan}\rightarrow \alpha\:\mathrm{option}\)}\label{val-CML.recvPoll}
+
+
+\begin{speccomment}
+\item {\tt recv\-Poll \textit{ch}           } 
+attempts to receive a message from the channel \textit{ch}.\- 	  If there is no other thread offering to \texttt{send} a message 	  on \textit{ch}, then this returns 	  \texttt{NONE}, otherwise it 	  returns \texttt{SOME} wrapped 	  around the message.\- 	  This function is not recommended for general use; it is provided 	  as an efficiency aid for certain kinds of protocols.\-     \end{speccomment}
+\item {\index{wrap@wrap!CML@CML}}{\textbf{val}} {\tt wrap: \((\alpha\:\mathrm{event}\:\verb,*,(\alpha\rightarrow \beta))\rightarrow \beta\:\mathrm{event}\)}\label{val-CML.wrap}
+
+
+\begin{speccomment}
+\item {\tt wrap (\textit{ev}, \textit{f})           } 
+wraps the post-synchronization action \textit{f} around the event 	  value \textit{ev}.\-     \end{speccomment}
+\item {\index{wrapHandler@wrapHandler!CML@CML}}{\textbf{val}} {\tt wrapHandler: \((\alpha\:\mathrm{event}\:\verb,*,(\mathrm{exn}\rightarrow \alpha\:\mathrm{event}))\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.wrapHandler}
+
+
+\begin{speccomment}
+\item {\tt wrap\-Handler (\textit{ev}, \textit{f})           } 
+wraps the exception handler function \textit{f} around the event 	  value \textit{ev}.\- 	  If, during execution of some post-synchronization action in 	  \textit{ev}, an exception is raised, it will be caught and passed 	  to \textit{f}.\- 	  Nesting of handlers works as would be expected: the innermost 	  handler is the one invoked.\- 	  Note that exceptions raised in the pre-synchronization actions in 	  \textit{ev} (i.\-e.\-, actions defined by \texttt{guard} and \texttt{with\-Nack}) 	  are not handled by \textit{f}.\-     \end{speccomment}
+\item {\index{guard@guard!CML@CML}}{\textbf{val}} {\tt guard: \((\mathrm{unit}\rightarrow \alpha\:\mathrm{event})\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.guard}
+
+
+\begin{speccomment}
+\item {\tt guard \textit{f}           } 
+creates \textit{delayed} event value from the function \textit{f}.\- 	  When the resulting event value is synchronized on, the function 	  \textit{f} will be evaluated and the resulting event value will be 	  used in its place in the synchronization.\- 	  This provides a mechanism for implementing pre-synchronization 	  actions, such as sending a request to a server.\-     \end{speccomment}
+\item {\index{withNack@withNack!CML@CML}}{\textbf{val}} {\tt withNack: \((\mathrm{unit}\;\mathrm{event}\rightarrow \alpha\:\mathrm{event})\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.withNack}
+
+
+\begin{speccomment}
+\item {\tt with\-Nack \textit{f}           } 
+creates \textit{delayed} event value from the function \textit{f}.\- 	  As in the case of \texttt{guard}, the function \textit{f} will be evaluated 	  at synchronization time and the resulting event value will be 	  used in its place in the synchronization.\- 	  Furthermore, when \textit{f} is evaluated, it is passed a \textit{negative 	  acknowledgement} event as an argument.\- 	  If the event value that is returned from the evaluation of \textit{f} 	  is \emph{not} chosen in the synchronization, then the negative 	  event will be enabled.\- 	  This provides a mechanism for informing servers that a client has 	  aborted a transaction.\-     \end{speccomment}
+\item {\index{choose@choose!CML@CML}}{\textbf{val}} {\tt choose: \(\alpha\:\mathrm{event}\;\mathrm{list}\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.choose}
+
+
+\begin{speccomment}
+\item {\tt choose \textit{l}           } 
+constructs an event value that represents the non-deterministic 	  choice of the events in the list \textit{l}.\-     \end{speccomment}
+\item {\index{sync@sync!CML@CML}}{\textbf{val}} {\tt sync: \(\alpha\:\mathrm{event}\rightarrow \alpha\)}\label{val-CML.sync}
+
+
+\begin{speccomment}
+\item {\tt sync \textit{ev}           } 
+synchronizes the calling thread on the event \textit{ev}.\-     \end{speccomment}
+\item {\index{select@select!CML@CML}}{\textbf{val}} {\tt select: \(\alpha\:\mathrm{event}\;\mathrm{list}\rightarrow \alpha\)}\label{val-CML.select}
+
+
+\begin{speccomment}
+\item {\tt select \textit{evs}           } 
+synchronizes on the choice of a list of event values.\- 	  This is semantically equivalant to: 	  
+\begin{code}
+	    sync (choose \textit{evs})
+	  
+\end{code}
+ 	  but is more efficient.\-     \end{speccomment}
+\item {\index{never@never!CML@CML}}{\textbf{val}} {\tt never: \(\alpha\:\mathrm{event}\)}\label{val-CML.never}
+
+
+\begin{speccomment}
+\item {\tt never           } 
+is an event value that is never enabled for synchronization.\- 	  It is semantically equivalant to the expression: 	  
+\begin{code}
+	    choose []
+	  
+\end{code}
+     \end{speccomment}
+\item {\index{alwaysEvt@alwaysEvt!CML@CML}}{\textbf{val}} {\tt alwaysEvt: \(\alpha\rightarrow \alpha\:\mathrm{event}\)}\label{val-CML.alwaysEvt}
+
+
+\begin{speccomment}
+\item {\tt always\-Evt \textit{a}           } 
+creates an event value that is always enabled, and that returns 	  the value \textit{a} upon synchronization.\-     \end{speccomment}
+\item {\index{timeOutEvt@timeOutEvt!CML@CML}}{\textbf{val}} {\tt timeOutEvt: \(\mathrm{Time}.\mathrm{time}\rightarrow \mathrm{unit}\;\mathrm{event}\)}\label{val-CML.timeOutEvt}
+
+
+\begin{speccomment}
+\item {\tt time\-Out\-Evt \textit{t}           } 
+creates an event value that becomes enabled at the time 	  interval \textit{t} after synchronization.\- 	  For example, the expression: 	  
+\begin{code}
+	    sync (time\-Out\-Evt (Time.fromSeconds 1))
+	  
+\end{code}
+ 	  will delay the calling thread for one second.\- 	  Note that the specified time interval is actually a minimum 	  waiting time, and the delay may be longer.\-     \end{speccomment}
+\item {\index{atTimeEvt@atTimeEvt!CML@CML}}{\textbf{val}} {\tt atTimeEvt: \(\mathrm{Time}.\mathrm{time}\rightarrow \mathrm{unit}\;\mathrm{event}\)}\label{val-CML.atTimeEvt}
+
+
+\begin{speccomment}
+\item {\tt at\-Time\-Evt \textit{t}           } 
+creates an event value that becomes enabled at the specified time 	  \textit{t}.\-     \end{speccomment}
+\end{descr}
+
+\begin{seealso}
+\texttt{Option}, \texttt{Time}
+\end{seealso}

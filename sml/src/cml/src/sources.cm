@@ -1,0 +1,60 @@
+(* sources.cm
+ *
+ * The sources file for the CML library
+ *)
+
+Library
+  signature CML
+  structure CML
+
+  signature SYNC_VAR
+  structure SyncVar
+  signature MAILBOX
+  structure Mailbox
+
+  structure RunCML
+
+  structure Debug
+
+  signature OS_PROCESS
+  signature OS_IO
+  signature OS
+  structure OS
+
+  signature PRIM_IO
+  signature CML_STREAM_IO
+  signature CML_TEXT_STREAM_IO
+  signature CML_IMPERATIVE_IO
+  signature CML_BIN_IO
+  signature CML_TEXT_IO
+
+  structure BinPrimIO
+  structure BinIO
+  structure TextPrimIO
+  structure TextIO
+
+#if defined(OPSYS_UNIX)
+  signature UNIX
+  structure Unix
+  structure Socket
+  structure GenericSock
+  structure INetSock
+  structure UnixSock
+#endif
+
+is
+  core-cml/sources.cm
+  glue/sources.cm
+  OS/sources.cm
+  IO/sources.cm
+
+#if defined(OPSYS_UNIX)
+  Unix/sources.cm
+  Sockets/sources.cm
+#endif
+
+#if defined (OPSYS_WIN32)
+  Win32/sources.cm
+#endif
+
+

@@ -1,0 +1,10 @@
+#
+# Modules to be pre-loaded into a "bare" system during bootstrap.
+#   (Avoid "autoload" specifications as they will not work in a bare system.)
+#
+#   Copyright (c) 1999 by Lucent Bell Laboratories
+#
+# author: Matthias Blume (blume@cs.princeton.edu)
+#
+make $/basis.cm
+make $smlnj/compiler.cm

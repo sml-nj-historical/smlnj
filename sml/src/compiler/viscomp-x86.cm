@@ -1,0 +1,41 @@
+(* viscomp-x86.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to X86s.
+ *   (M.Blume, 11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/x86.cm.
+ *   M.Blume (03/2000)
+ *)
+
+Group (../system/smlnj/viscomp/x86.cm)
+	structure X86VisComp
+        structure X86CG
+        structure X86CpsRegs
+        structure X86Instr
+ 	structure X86Props
+	structure X86FlowGraph
+	structure X86AsmEmitter
+is
+TopLevel/viscomp/x86vis.sml
+CodeGen/x86/x86CG.sml
+CodeGen/x86/x86CpsRegs.sml
+CodeGen/x86/x86Emitters.sml
+CodeGen/x86/x86-mltreeext.sml
+CodeGen/x86/x86MLTree.sml
+CodeGen/x86/x86MLTreeExtComp.sml
+CodeGen/x86/x86MemRegs.sml
+CodeGen/x86/x86Runtime.sml
+CodeGen/x86/x86StackSpills.sml
+CodeGen/x86/x86gen.sml
+CodeGen/x86/x86spec.sml
+
+$/basis.cm
+$/smlnj-lib.cm
+$smlnj/viscomp/core.cm
+$smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/MLRISC.cm
+$smlnj/MLRISC/MLTREE.cm
+$smlnj/MLRISC/IA32.cm

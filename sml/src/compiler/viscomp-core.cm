@@ -1,0 +1,359 @@
+(* Copyright YALE FLINT PROJECT 1997 *)
+(* viscomp-core.cm *)
+
+(*
+ * This used to be called all-files.cm, then sources.cm, and even later
+ * viscomp-lib.cm (at which point it became "just a library").
+ * It is now reduced to the machine-independent core part of the
+ * library.  Machine-dependent parts are in viscomp-<arch>.cm.
+ *   M.Blume (11/1999)
+ *
+ * This is now just a group which gets referred to by the actual library
+ * file in system/smlnj/viscomp/core.cm.
+ *   M.Blume (03/2000)
+ *)
+
+Group (../system/smlnj/viscomp/core.cm)
+	signature GENERIC_VC
+	signature MACHDEP_VC
+
+	structure GenericVC
+
+	(* eventually we should export more of these guys... *)
+	structure DynamicEnv
+	structure PrettyPrint
+
+	structure PickleSymPid
+	structure UnpickleSymPid
+	structure PickMod
+	structure UnpickMod
+	structure GenModIdMap
+	structure CompBasic
+	structure CoreSym
+
+	structure FLINT
+
+        (* To make it possible to dynamically link in the optimizer, 
+         * we have to export the following to the library.
+         * A.Leung.
+         *)
+        signature MACHINE_GEN
+        signature INVOKE_GC
+        signature CPSREGS
+
+        structure CPSRegions
+        structure SMLGCType
+
+	(* To be able to separate machine-dependent parts of viscomp-lib.cm
+	 * from machine-independent parts, we must also export the
+	 * the following things.
+	 *  M.Blume (11/1999) *)
+
+	signature MACH_SPEC
+
+	structure ErrorMsg
+	structure Control
+	structure DefaultMachSpec
+	structure SMLNJConstant
+	signature SMLNJ_MLTREE_EXT
+	structure SMLNJMLTreeExt
+        functor   SMLNJMLTreeExtComp
+	structure CodeString
+
+	functor PseudoOpsBig
+	functor PseudoOpsLittle
+	functor MachineGen
+	functor SpillTable
+	functor FLINTComp
+	functor MachDepVCFun
+
+	functor DummyCCallsFn
+	structure ClusterAnnotation
+is
+
+TopLevel/batch/batchconfig.sml
+TopLevel/batch/binfile.sig
+TopLevel/batch/binfile.sml
+TopLevel/batch/smlfile.sml
+TopLevel/environ/dynenv.sig
+TopLevel/environ/dynenv.sml
+TopLevel/environ/environ.sig
+TopLevel/environ/environ.sml
+TopLevel/environ/envref.sml
+TopLevel/environ/persmap.sml
+TopLevel/environ/symenv.sig
+TopLevel/environ/symenv.sml
+TopLevel/interact/evalloop.sig
+TopLevel/interact/evalloop.sml
+TopLevel/interact/intconfig.sml
+TopLevel/interact/interact.sig
+TopLevel/interact/interact.sml
+TopLevel/main/cconfig.sig
+TopLevel/main/code-generator.sig
+TopLevel/main/code-obj.sig
+TopLevel/main/code-obj.sml
+TopLevel/main/compbasic.sig
+TopLevel/main/compbasic.sml
+TopLevel/main/compile.sig
+TopLevel/main/compile.sml
+TopLevel/main/version.sml
+TopLevel/viscomp/control.sig
+TopLevel/viscomp/control.sml
+TopLevel/viscomp/generic-vc.sig
+TopLevel/viscomp/generic-vc.sml
+TopLevel/viscomp/machdep-vc.sig
+TopLevel/viscomp/machdep-vc.sml
+
+Parse/ast/ast.sig
+Parse/ast/ast.sml
+Parse/ast/astutil.sig
+Parse/ast/astutil.sml
+Parse/ast/fixity.sml
+Parse/lex/ml.lex
+Parse/lex/tokentable.sml
+Parse/main/frontend.sig
+Parse/main/frontend.sml
+Parse/parse/ml.grm
+
+Semant/basics/access.sig
+Semant/basics/access.sml
+Semant/basics/conrep.sml
+Semant/basics/env.sig
+Semant/basics/env.sml
+Semant/basics/inlinfo.sml
+Semant/basics/persstamps.sig
+Semant/basics/persstamps.sml
+Semant/basics/stamps.sig
+Semant/basics/stamps.sml
+Semant/basics/stampmap.sml
+Semant/basics/symbol.sig
+Semant/basics/symbol.sml
+Semant/basics/coresym.sml
+Semant/basics/sympaths.sig
+Semant/basics/sympaths.sml
+Semant/elaborate/elabcore.sml
+Semant/elaborate/elabdebug.sml
+Semant/elaborate/specialsyms.sml
+Semant/elaborate/elabmod.sml
+Semant/elaborate/elabsig.sml
+Semant/elaborate/elabtop.sml
+Semant/elaborate/elabtype.sig
+Semant/elaborate/elabtype.sml
+Semant/elaborate/elabutil.sig
+Semant/elaborate/elabutil.sml
+Semant/elaborate/include.sml
+Semant/elaborate/precedence.sml
+Semant/elaborate/tyvarset.sml
+Semant/syntax/absyn.sig
+Semant/syntax/absyn.sml
+Semant/syntax/varcon.sig
+Semant/syntax/varcon.sml
+Semant/modules/entityenv.sig
+Semant/modules/entityenv.sml
+Semant/modules/entpath.sml
+Semant/modules/epcontext.sml
+Semant/modules/evalent.sml
+Semant/modules/expandtycon.sml
+Semant/modules/instantiate.sml
+Semant/modules/moduleid.sml
+Semant/modules/modules.sig
+Semant/modules/modules.sml
+Semant/modules/moduleutil.sig
+Semant/modules/moduleutil.sml
+Semant/modules/sigmatch.sml
+
+Semant/pickle/pickle-sym-pid.sml
+Semant/pickle/pickmod-new.sml
+Semant/pickle/unpickle-sym-pid.sml
+Semant/pickle/unpickmod-new.sml
+
+Semant/statenv/bindings.sml
+Semant/statenv/lookup.sig
+Semant/statenv/lookup.sml
+Semant/statenv/prim.sml
+Semant/statenv/genmap.sml
+Semant/statenv/statenv.sig
+Semant/statenv/statenv.sml
+Semant/types/basictypes.sig
+Semant/types/basictypes.sml
+Semant/types/eqtypes.sml
+Semant/types/tuples.sml
+Semant/types/types.sig
+Semant/types/types.sml
+Semant/types/typesutil.sig
+Semant/types/typesutil.sml
+Semant/types/unify.sml
+Semant/types/overload.sml
+Semant/types/overloadlit.sml
+Semant/types/reconstruct.sml
+Semant/types/typecheck.sml
+Semant/types/cproto.sml
+
+FLINT/clos/allocprof.sml
+FLINT/clos/cps-split.sml
+FLINT/clos/freemap.sml
+FLINT/clos/globalfix.sml
+FLINT/clos/closure.sml
+FLINT/clos/freeclose.sml
+FLINT/clos/staticprof.sml
+FLINT/clos/unrebind.sml
+FLINT/cps/convert.sml
+FLINT/cps/cps.sig
+FLINT/cps/cps.sml
+FLINT/cps/cpstrans.sml
+FLINT/cps/ppcps.sml
+FLINT/cps/switch.sml
+FLINT/cpsopt/contract.sml
+FLINT/cpsopt/cpsopt.sml
+FLINT/cpsopt/eta.sml
+FLINT/cpsopt/etasplit.sml
+FLINT/cpsopt/expand.sml
+FLINT/cpsopt/expandNEW.sml
+FLINT/cpsopt/flatten.sml
+FLINT/cpsopt/uncurry.sml
+FLINT/flint/chkflint.sml
+FLINT/flint/flint.sig
+FLINT/flint/flint.sml
+FLINT/flint/flintutil.sml
+FLINT/flint/ppflint.sig
+FLINT/flint/ppflint.sml
+FLINT/flint/tvarcvt.sml
+FLINT/kernel/debindex.sig
+FLINT/kernel/debindex.sml
+FLINT/kernel/lambdavar.sig
+FLINT/kernel/lambdavar.sml
+FLINT/kernel/ltybasic.sig
+FLINT/kernel/ltybasic.sml
+FLINT/kernel/ltydef.sig
+FLINT/kernel/ltydef.sml
+FLINT/kernel/ltydict.sml
+FLINT/kernel/ltyextern.sig
+FLINT/kernel/ltyextern.sml
+FLINT/kernel/ltykernel.sig
+FLINT/kernel/ltykernel.sml
+FLINT/kernel/primop.sig
+FLINT/kernel/primop.sml
+FLINT/kernel/primtyc.sig
+FLINT/kernel/primtyc.sml
+FLINT/main/flintcomp.sml
+FLINT/main/control.sml
+FLINT/main/literals.sml
+FLINT/opt/fixfix.sml
+FLINT/opt/collect.sml
+FLINT/opt/fcontract.sml
+FLINT/opt/optutils.sml
+FLINT/opt/lcontract.sml
+FLINT/opt/recover.sml
+FLINT/opt/specialize.sml
+FLINT/opt/loopify.sml
+FLINT/opt/split.sml
+FLINT/opt/lift.sml
+FLINT/opt/abcopt.sml
+FLINT/plambda/chkplexp.sml
+FLINT/plambda/flintnm.sml
+FLINT/plambda/pflatten.sig
+FLINT/plambda/pflatten.sml
+FLINT/plambda/plambda.sig
+FLINT/plambda/plambda.sml
+FLINT/plambda/plambdatype.sml
+FLINT/plambda/pplexp.sml
+FLINT/plambda/reorder.sml
+FLINT/reps/coerce.sml
+FLINT/reps/equal.sml
+FLINT/reps/reify.sml 
+FLINT/reps/rttype.sml
+FLINT/reps/typeoper.sml 
+FLINT/reps/wrapping.sml
+FLINT/trans/matchcomp.sml
+FLINT/trans/mccommon.sml
+FLINT/trans/pequal.sml
+FLINT/trans/tempexpn.sml
+FLINT/trans/translate.sml
+FLINT/trans/transtypes.sml
+
+FLINT/lsplit/ls-inline.sml
+
+CodeGen/cpscompile/argPassing.sig
+CodeGen/cpscompile/argPassing.sml
+CodeGen/cpscompile/cluster.sml
+CodeGen/cpscompile/cps-aliasing.sml
+CodeGen/cpscompile/cpsRegions.sig
+CodeGen/cpscompile/cpsRegions.sml
+CodeGen/cpscompile/cpsRegs.sig
+CodeGen/cpscompile/frag.sig
+CodeGen/cpscompile/frag.sml
+CodeGen/cpscompile/invokegc.sig
+CodeGen/cpscompile/invokegc.sml
+CodeGen/cpscompile/limit.sml
+CodeGen/cpscompile/memAliasing.sml
+CodeGen/cpscompile/memDisambig.sml
+CodeGen/cpscompile/pseudoOpType.sig
+CodeGen/cpscompile/pseudoOpsBig.sml
+CodeGen/cpscompile/pseudoOpsLittle.sml
+CodeGen/cpscompile/smlnj-const.sml
+CodeGen/cpscompile/smlnj-gctype.sig
+CodeGen/cpscompile/smlnj-gctype.sml
+CodeGen/cpscompile/smlnj-mltreeext.sig
+CodeGen/cpscompile/smlnj-mltreeext.sml
+CodeGen/cpscompile/spill.sml
+CodeGen/main/clusterAnnotation.sml	(* temporary hack; see comment in file *)
+CodeGen/main/code-string.sml
+CodeGen/main/machine.sig
+CodeGen/main/machine-gen.sig
+CodeGen/main/machine-gen.sml
+CodeGen/main/machspec.sig
+CodeGen/main/machspec.sml
+CodeGen/main/mlriscGen.sml
+CodeGen/main/object-desc.sig
+CodeGen/main/object-desc.sml
+CodeGen/main/spill-table.sml
+CodeGen/main/dummy-ccalls.sml
+
+MiscUtil/bignums/bigint.sig
+MiscUtil/bignums/bigint.sml
+MiscUtil/bignums/realconst.sml
+MiscUtil/bignums/ieeereal.sml
+MiscUtil/print/ppabsyn.sml
+MiscUtil/print/ppdec.sml
+MiscUtil/print/ppmod.sml
+MiscUtil/print/ppobj.sml
+MiscUtil/print/pptable.sml
+MiscUtil/print/pptype.sml
+MiscUtil/print/pputil.sig
+MiscUtil/print/pputil.sml
+MiscUtil/print/ppval.sml
+MiscUtil/print/pp-wrapper.sml
+MiscUtil/print/printutil.sig
+MiscUtil/print/printutil.sml
+MiscUtil/profile/prof-env.sml
+MiscUtil/profile/profile-fn.sml
+MiscUtil/profile/profile.sig
+MiscUtil/profile/profile.sml
+MiscUtil/profile/sprof.sml
+MiscUtil/profile/tell-env.sml
+MiscUtil/profile/tprof.sml
+MiscUtil/profile/btrace.sml
+MiscUtil/profile/btimp.sml
+
+MiscUtil/util/errormsg.sig
+MiscUtil/util/errormsg.sml
+MiscUtil/util/feedback.sml
+MiscUtil/util/intstrmap.sig
+MiscUtil/util/intstrmap.sml
+MiscUtil/util/literal-to-num.sml
+MiscUtil/util/pathnames.sig
+MiscUtil/util/pathnames.sml
+MiscUtil/util/source.sig
+MiscUtil/util/source.sml
+MiscUtil/util/sourcemap.sig
+MiscUtil/util/sourcemap.sml
+MiscUtil/util/stats.sml
+
+$/basis.cm
+$/smlnj-lib.cm
+$/ml-yacc-lib.cm
+$/pickle-lib.cm
+$smlnj/MLRISC/Lib.cm			(* provides SortedList *)
+$smlnj/MLRISC/Control.cm
+$smlnj/MLRISC/MLRISC.cm
+$/pp-lib.cm

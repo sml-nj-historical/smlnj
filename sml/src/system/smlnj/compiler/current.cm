@@ -1,0 +1,12 @@
+(*
+ * Library exporting "visible" compiler (structure Compiler).
+ *
+ * (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+(cm-init)
+Library
+	structure Compiler
+is
+	$smlnj/internal/host-compiler-0.cm

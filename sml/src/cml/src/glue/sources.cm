@@ -1,0 +1,14 @@
+(* sources.cm
+ *
+ * The sources file for the glue that holds CML together.
+ *)
+
+Group
+  signature OS_GLUE
+  functor RunCMLFn
+is
+  ../core-cml/sources.cm
+
+  export-fn-fn.sml
+  os-glue-sig.sml
+  run-cml-fn.sml

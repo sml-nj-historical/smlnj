@@ -1,0 +1,43 @@
+<!-- running.mldoc -->
+
+<!DOCTYPE ML-DOC SYSTEM>
+
+<COPYRIGHT OWNER="Bell Labs, Lucent Technologies" YEAR=1999>
+<VERSION VERID="1.0" YEAR=1999 MONTH=1 DAY=8>
+<TITLE>Porting old programs</TITLE>
+
+<SECTION>
+<HEAD>Running &CML; programs</HEAD>
+<PP>
+&CML; does not currently support executing &CML; code from the &SMLNJ; top-level
+loop.
+This restriction is because the &SMLNJ; compiler is not thread safe.
+Instead, one uses the <VALREF STRID="RunCML">RunCML.doit</VALREF> command
+to run programs.
+
+<SECTION LABEL="sec:using-cm">
+<HEAD>Using the compilation manager</HEAD>
+<PP>
+The recommended way to compile &CML; programs is by using the &SMLNJ;
+<IT>Compilation Manager</IT> (CM).
+</SECTION>
+
+<SECTION>
+<HEAD>The <TT>cml-cm</TT> command</HEAD>
+<PP>
+The &SMLNJ; installation provides the option of building the <TT>cml-cm</TT>
+command.
+This is basically a version of &SMLNJ; that knows how to autoload &CML;
+components when compiling code that references them.
+When using <TT>cml-cm</TT>, it is still necessary to use
+<VALREF STRID="RunCML">RunCML.doit</VALREF> to execute your code.
+<PP>
+Unfortunately, there have been problems with the way that the compilation
+manager initializes autoloaded modules, and thus  <TT>cml-cm</TT> has been
+broken in a number of released versions.
+Therefore, we recommend that you use the methods described
+in <SECREF LABEL="sec:using-cm"> above when working with &CML;
+</SECTION>
+
+</SECTION>
+

@@ -1,0 +1,14 @@
+(* smlnj/viscomp/hppa.cm *)
+
+(*
+ * This is the part of what used to be viscomp-lib.cm that is specific to
+ * to HPPAs.
+ *   (M.Blume, 11/1999)
+ *
+ * Moved to smlnj/viscomp for better path-anchor organization.
+ *   M.Blume (03/2000)
+ *)
+Library
+	(* this is a proxy library; exports taken from its (only) member *)
+is
+	$compiler/viscomp-hppa.cm

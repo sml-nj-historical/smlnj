@@ -1,0 +1,30 @@
+(*
+ * A new foreign-function interface for SML.
+ *   This interface is actually an interface to C.  It is based on
+ *   an encoding of C's type system in ML.
+ *   This library is a helper library for use by automatically generated
+ *   code.  (An auxiliary tool produces this code directly from C code.)
+ *
+ *   (C) 2000, Lucent Technologies, Bell Laboratories
+ *
+ * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+(c-int)
+Library
+	structure Tag
+
+	structure MLRep
+
+	signature C
+	structure C
+
+	structure ZString
+
+	signature POINTER_TO_INCOMPLETE_TYPE
+	functor PointerToCompleteType
+	functor PointerToIncompleteType
+
+	signature DYN_LINKAGE
+	structure DynLinkage
+is
+	$/c-int.cm

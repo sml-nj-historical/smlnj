@@ -1,0 +1,12 @@
+(* sources file for bounce demo *)
+Group
+is
+cml.cm
+cml-lib.cm
+../../sources.cm
+
+heads.sml
+bounce-dm.sml
+ball.sml
+menu.sml
+bounce.sml

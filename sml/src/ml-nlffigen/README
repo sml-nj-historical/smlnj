@@ -1,0 +1,10 @@
+Copyright (c) 2001, Lucent Technologies, Bell Laboratories
+
+author: Matthias Blume (blume@research.bell-labs.com)
+
+This directory contains ML-NLFFI-Gen, a glue-code generator for
+the new "NLFFI" foreign function interface.  The generator reads
+C source code and emits ML code along with a description file for CM.
+
+Compiling this generator requires the C-Kit ($/ckit-lib.cm) to be
+installed.

@@ -1,0 +1,21 @@
+(*
+ * This is library $smlnj/MLRISC/IA32.cm -- a proxy providing the
+ * services of $SMLNJ-MLRISC/IA32.cm.
+ *   The path anchor $SMLNJ-MLRISC points to (implementation of the)
+ *   version of MLRISC that is used by SML/NJ.
+ *   This proxy takes care of binding path anchors internal to MLRISC
+ *   in such a way that they consistently point to the same version
+ *   of MLRISC.
+ *
+ *   Copyright (c) 2000 by Lucent Bell Laboratories
+ *
+ * author: Matthias Blume (blume@cs.princeton.edu)
+ *)     
+Library
+	(* this is a proxy library; exports taken from only member *)
+is
+	$SMLNJ-MLRISC/IA32.cm
+                (bind:(anchor:Control.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:Lib.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLTREE.cm value:$SMLNJ-MLRISC)
+                 bind:(anchor:MLRISC.cm value:$SMLNJ-MLRISC))

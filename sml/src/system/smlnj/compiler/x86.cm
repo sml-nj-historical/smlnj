@@ -1,0 +1,13 @@
+(*
+ * Library exporting "visible" compiler for IA-32.
+ *
+ * (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	structure X86Compiler
+is
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/x86.cm
+	x86.sml
