@@ -788,7 +788,7 @@ If anyone has a good algorithm for this..."
           (sml-find-match-indent "else" "\\belse\\b" "\\bif\\b" t))
          ((looking-at "then\\b")        ; Match the if + extra indentation
           (+ (sml-find-match-indent "then" "\\bthen\\b" "\\bif\\b" t)
-             sml-indent-level))
+             (if sml-type-of-indent sml-indent-level 0)))
          ((looking-at "of\\b")
           (sml-re-search-backward "\\bcase\\b")
           (+ (current-column) 2))
