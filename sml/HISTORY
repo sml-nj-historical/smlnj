@@ -12,6 +12,15 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Dave MacQueen
+Date: 2000/04/25/
+Tag: dbm-20000425-mlyacc_doc_examples
+Description: 
+  Updated mlyacc.tex sections 5 and 7 for SML '97 and CM.
+  Updated all three examples in src/ml-yacc/examples to run
+  under 110.* using CM.make.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2000/04/20 23:04:00 EST
 Tag: leunga-20000420-ssa-c---stuff
