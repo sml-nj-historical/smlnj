@@ -517,6 +517,13 @@ FLINT/
 intermediate representation (a form of typed lambda calculus)
 
   [see FLINT/MAP]
+  kernel/
+    primop.sig/sml
+      define datatypes representing primitive operations.  some are true
+      primities, some are "inline", meaning that they expand into lambda
+      code sequences.
+      uses: Int
+      defs: PRIM_OP, PrimOp: PRIM_OP
 
 
 4. Back End
@@ -618,6 +625,18 @@ TopLevel/
       defs: CompileF: CODEGENERATOR # CCONFIG # {cproto_conv : string} => COMPILE0
 
 
+7. System Build
+  
+system/
+
+system/init
+    built-in.sml
+    reassign more precise types to primops in structure Inline, producing a new
+    structure InLineT; most of these reassignments are redundant since PrimEnv
+    (Semant/statenv/prim.sml) now assigns exact types to most primops, but there
+    are a few primops (e.g. length) that have multiple types that are instances
+    of a more polymorphic type assigned in InLine.
+    defs: InlineT
 
 ============================================================================
 
