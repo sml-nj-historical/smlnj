@@ -1,10 +1,7 @@
-!!! ATTENTION !!!
-As an SML/NJ compiler developer, please read this document carefully.
-The new CM has a lot of good things to offer, but you must be aware
-of the many changes that it incurs to the process of compiling the
-SML/NJ compiler.
-			Matthias Blume (July 1999)
--------------------------------------------------------------------------
+Compiler Hacker's Guide to the new CM...
+========================================
+
+Last change: 2/2000
 
 * Libraries
 -----------
@@ -399,21 +396,31 @@ that.  The owner library is specified in parentheses after the "group"
 keyword.  If the specification is missing (that's the "old" syntax),
 then the the owner will be taken to be the interactive toplevel.
 
-* Pervasive environment, core environment, other "primitive" environments
+* Pervasive environment, core environment, the init group "init.cmi"
 -------------------------------------------------------------------------
 
-Just a handful of files is compiled at the beginning in order to
-establish a number of "primitive" environments -- including the
-"pervasive" environment and the "core" environment.  The pervasive
-environment no longer includes the entire basis library but only
-non-modular bindings (top-level bindings of variables and types).
+CMB.make (or CMB.deliver) starts out by building and compiling the
+"init group".  This group cannot be described in the "usual" way
+because it uses "magic" in three ways:
+ - it is used to later tie in the runtime system
+ - it builds the "core" environment
+ - it builds the "pervasive" environment
 
-CM cannot automatically determine dependencies for these initial
+The pervasive environment no longer includes the entire basis library
+but only non-modular bindings (top-level bindings of variables and
+types).
+
+CM cannot automatically determine dependencies for the init group
 source files, but it still does use its regular cutoff recompilation
 mechanism.  Therefore, dependencies must be given explicitly.  This is
 done by a special description file which currently lives in
 Init/init.cmi.  See the long comment at the beginning of that file for
 more details.
+
+After it is built, init.cmi can be used as an "ordinary" library by
+other libraries.  (This is done, for example, by the implementation of
+the Basis library.)  Access to "init.cmi" is protected by the
+privilege named "primitive".
 
 * Autoloader
 ------------

@@ -2,11 +2,12 @@
 #
 # Copyright (c) 1994 AT&T Bell Laboratories.
 #
-# installation script for SML/NJ and related tools; this is a temporary
+# Installation script for SML/NJ and related tools; this is a temporary
 # placeholder until the configuration tool is finished.
 #
-
-#set -x
+# Significant changes to accommodate (and take advantage of) the new CM
+# by M.Blume (2/2000).
+#
 
 #
 # get the target list
@@ -27,23 +28,12 @@ fi
 cp config/preloads preloads.standard
 
 #
-# some OSs have make in strange places
+# Some OSs have make in strange places, but most of the time it is
+# simply on the PATH:
 #
 MAKE=make
 
-#
-# check for ksh
-#
-# ksh causes some people problems so we will always use /bin/sh
-#
-#echo "checking for ksh"
-#if [ -x /bin/ksh ]; then
-#  SHELL=/bin/ksh
-#elif [ -x /usr/local/bin/ksh ]; then
-#  SHELL=/usr/local/bin/ksh
-#else
-  SHELL=/bin/sh
-#fi
+SHELL=/bin/sh
 echo Using shell $SHELL.
 
 #
@@ -68,7 +58,7 @@ LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$INSTALLDIR/pathconfig # a temporary pathconfig file
 
 #
-# the path to the dir where ml-yacc, ml-burg, and ml-lex live
+# the path to the dir where ml-yacc, ml-burg, ml-lex, and ml-build live
 #
 TOOLDIR=$BINDIR
 
@@ -111,8 +101,10 @@ makedir() {
 #     different suffixes to determine what kind of de-compression is to
 #     be used)
 unpack() {
-    if [ ! -d $2/$3 ]; then
-	echo Unpacking $1 source files.
+    if [ -d $2/$3 ]; then
+	echo "The $1 source tree already exists."
+    else
+	echo "Unpacking $1 source archive."
 	cd $2
 	if [ -r $4.tar.Z ] ; then
 	    zcat $4.tar.Z | tar -xf -
@@ -127,11 +119,11 @@ unpack() {
 	elif [ -r $4.tz ] ; then
 	    zcat $4.tz | tar -xf -
 	else
-	    echo "!!! The $1 source files are missing."
+	    echo "!!! The $1 source archive is missing."
 	    exit 1
 	fi
 	if [ ! -d $2/$3 ]; then
-	    echo "!!! Unable to unpack $1 source files."
+	    echo "!!! Unable to unpack $1 source archive."
 	    exit 1
 	fi
     fi
@@ -151,7 +143,7 @@ unpack() {
 movelibs() {
     for lib in `/bin/ls $1/CM/$ARCH-unix` ; do
 	case $lib in
-	*.cm)
+	*.cm | *.cmi)
 	    if [ $lib != $2 ] ; then
 		echo "! Warning:" $lib specified relative to $2
 	    fi
@@ -240,70 +232,89 @@ do
     makedir $dir
 done
 
-
 #
 # install the script that tests the architecture, and make sure that it works
 #
 if [ -x $BINDIR/.arch-n-opsys ]; then
-  echo Script $BINDIR/.arch-n-opsys already exists.
+    echo Script $BINDIR/.arch-n-opsys already exists.
 else
-  cat $CONFIGDIR/_arch-n-opsys | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
-  chmod 555 $BINDIR/.arch-n-opsys
-  if [ ! -x $BINDIR/.arch-n-opsys ]; then
-    echo "!!! Installation of $BINDIR/.arch-n-opsys failed for some reason."
-    exit 1
-  fi
+    cat $CONFIGDIR/_arch-n-opsys \
+    | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
+    chmod 555 $BINDIR/.arch-n-opsys
+    if [ ! -x $BINDIR/.arch-n-opsys ]; then
+	echo "!!! Installation of $BINDIR/.arch-n-opsys failed."
+	exit 1
+    fi
 fi
+
 ARCH_N_OPSYS=`$BINDIR/.arch-n-opsys`
 if [ "$?" != "0" ]; then
-  echo "!!! Script $BINDIR/.arch-n-opsys fails on this machine."
-  echo "!!! You must patch this by hand and repeat the installation."
-  exit 2
+    echo "!!! Script $BINDIR/.arch-n-opsys fails on this machine."
+    echo "!!! You must patch this by hand and repeat the installation."
+    exit 2
 else
-  echo Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
+    echo Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
 fi
 eval $ARCH_N_OPSYS
 
-if [ -x $BINDIR/.run-sml ]; then
-  echo Script $BINDIR/.run-sml already exists.
-else
-  cat $CONFIGDIR/_run-sml | \
-    sed -e "s,@SHELL@,$SHELL,g" -e "s,@BINDIR@,$BINDIR," -e "s,@VERSION@,$VERSION," \
-    > $BINDIR/.run-sml
-  chmod 555 $BINDIR/.run-sml
-  if [ ! -x $BINDIR/.run-sml ]; then
-    echo "!!! Installation of $BINDIR/.run-sml failed for some reason."
-    exit 1
-  fi
-fi
+#
+# Function to install a "driver" script...
+#   This takes care of patching the source of the script with the SHELL,
+#   BINDIR, and VERSION variables to use.
+#
+installdriver() {
+    dsrc=$1
+    ddst=$2
+    if [ -x $BINDIR/$ddst ]; then
+	echo Script $BINDIR/$ddst already exists.
+    else
+	cat $CONFIGDIR/$dsrc | \
+	sed -e "s,@SHELL@,$SHELL,g" \
+	    -e "s,@BINDIR@,$BINDIR," \
+	    -e "s,@VERSION@,$VERSION," \
+	    > $BINDIR/$ddst
+	chmod 555 $BINDIR/$ddst
+	if [ ! -x $BINDIR/$ddst ]; then
+	    echo "!!! Installation of $BINDIR/${ddst} failed."
+	    exit 1
+	fi
+    fi
+}
+
+installdriver _run-sml .run-sml
+installdriver _link-sml .link-sml
+installdriver _ml-build ml-build
 
 #
 # set some architecture dependent run-time system flags
 #
 case $ARCH in
-  mips*) ALLOC=1M ;;
-  x86)
-    ALLOC=256k
-  ;;
-  alpha32)
-    ALLOC=512k
-  ;;
-  *)
-    ALLOC=512k
-  ;;
+    mips*)
+	ALLOC=1M
+	;;
+    x86)
+	ALLOC=256k
+	;;
+    alpha32)
+	ALLOC=512k
+	;;
+    *)
+	ALLOC=512k
+	;;
 esac
+
 case $OPSYS in
-  solaris)
-    MAKE=/usr/ccs/bin/make
-  ;;
-  linux)
-    EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
-    if [ "$?" != "0" ]; then
-      echo "!!! Problems checking for underscores in global names."
-      exit 1
-    fi
-    EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
-  ;;
+    solaris)
+	MAKE=/usr/ccs/bin/make
+	;;
+    linux)
+	EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
+	if [ "$?" != "0" ]; then
+	    echo "!!! Problems checking for underscores in global names."
+	    exit 1
+	fi
+	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
+	;;
 esac
 
 #
@@ -312,20 +323,40 @@ esac
 BOOT_FILES=sml.boot.$ARCH-unix
 
 #
+# files to be deleted after we are done...
+#
+tmpfiles=""
+tmpfiles="$tmpfiles $ROOT/preloads.standard"
+tmpfiles="$tmpfiles $ROOT/$LIBLIST"
+tmpfiles="$tmpfiles $ROOT/$LOCALPATHCONFIG"
+tmpfiles="$tmpfiles $ROOT/$LIBMOVESCRIPT"
+#
+# also remove the boot dir because it won't have anything interesting in
+# it after we are successful...
+#
+tmpfiles="$tmpfiles $ROOT/$BOOT_FILES"
+#
+# make sure we always clean up after ourselves...
+#
+trap 'rm -rf $tmpfiles' 0 1 2 3 15
+
+#
 # build the run-time system
 #
 unpack "run-time" $SRCDIR runtime $ROOT/$VERSION-runtime
-if [ ! -x $RUNDIR/run.$ARCH-$OPSYS ]; then
-  cd $SRCDIR/runtime/objs
-  echo Compiling the run-time system.
-  $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
-  if [ -x run.$ARCH-$OPSYS ]; then
-    mv run.$ARCH-$OPSYS $RUNDIR
-    # $MAKE MAKE=$MAKE clean
-  else
-    echo "!!! Run-time system build failed for some reason."
-    exit 1
-  fi
+if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
+    echo Run-time system already exists.
+else
+    cd $SRCDIR/runtime/objs
+    echo Compiling the run-time system.
+    $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
+    if [ -x run.$ARCH-$OPSYS ]; then
+	mv run.$ARCH-$OPSYS $RUNDIR
+	# $MAKE MAKE=$MAKE clean
+    else
+	echo "!!! Run-time system build failed for some reason."
+	exit 1
+    fi
 fi
 cd $SRCDIR
 
@@ -333,40 +364,37 @@ cd $SRCDIR
 # boot the base SML system
 #
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
-  echo Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
+    echo Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
-  unpack bin $ROOT $BOOT_FILES $ROOT/$VERSION-$BOOT_FILES
-  cd $ROOT
-  if $RUNDIR/run.$ARCH-$OPSYS @SMLheap=sml \
-	@SMLboot=$ROOT/$BOOT_FILES @SMLrtpid=`cat $BOOT_FILES/RTPID` \
-	@SMLalloc=$ALLOC
-  then
-    if [ -r sml.$HEAP_SUFFIX ]; then
-	mv sml.$HEAP_SUFFIX $HEAPDIR
-	cd $BINDIR
-	ln -s .run-sml sml
-
-	#
-	# Now move all stable libraries to #LIBDIR and generate
-	# the pathconfig file.
-	#
-
-	cd $ROOT/$BOOT_FILES
-	for lib in *.cm ; do
-	    echo $lib $LIBDIR/$lib >>$CM_PATHCONFIG_DEFAULT
-	    movelibs $ROOT/$BOOT_FILES/$lib $lib
-	done
+    unpack bin $ROOT $BOOT_FILES $ROOT/$VERSION-$BOOT_FILES
+    cd $ROOT/$BOOT_FILES
+    if $BINDIR/.link-sml @SMLheap=$ROOT/sml @SMLboot=BOOTLIST @SMLalloc=$ALLOC
+    then
 	cd $ROOT
-	# rm -rf $BOOT_FILES
+	if [ -r sml.$HEAP_SUFFIX ]; then
+	    mv sml.$HEAP_SUFFIX $HEAPDIR
+	    cd $BINDIR
+	    ln -s .run-sml sml
+	    #
+	    # Now move all stable libraries to #LIBDIR and generate
+	    # the pathconfig file.
+	    #
+	    cd $ROOT/$BOOT_FILES
+	    for lib in *.cm ; do
+		echo $lib $LIBDIR/$lib >>$CM_PATHCONFIG_DEFAULT
+		movelibs $ROOT/$BOOT_FILES/$lib $lib
+	    done
+	    cd $ROOT
+	    # rm -rf $BOOT_FILES
 
+	else
+	    echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."
+	    exit 1
+	fi
     else
-	echo "!!! Boot code did not produce heap image (sml.$HEAP_SUFFIX)."
+	echo "!!! Boot code failed, no heap image built (sml.$HEAP_SUFFIX)."
 	exit 1
     fi
-  else
-    echo "!!! Boot code failed, no heap image built (sml.$HEAP_SUFFIX)."
-    exit 1
-  fi
 fi
 
 #
@@ -459,7 +487,6 @@ else
     echo "!!! Something went wrong when compiling the libraries."
     exit 1
 fi
-rm -f $LIBLIST $LOCALPATHCONFIG
 
 #
 # Finally, move the libraries to their final locations...
@@ -468,10 +495,6 @@ rm -f $LIBLIST $LOCALPATHCONFIG
 if [ -r $LIBMOVESCRIPT ] ; then
     echo Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
-    rm -f $LIBMOVESCRIPT
 fi
 
-#
-# Get rid of preloads.standard
-#
-rm -f $ROOT/preloads.standard
+exit 0

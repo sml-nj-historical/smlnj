@@ -45,8 +45,7 @@ in
 
 	val smlmap = ref SmlInfoMap.empty
 
-	fun bn (DG.PNODE _) = StringSet.empty
-	  | bn (DG.BNODE { bininfo = i, ... }) =
+	fun bn (DG.BNODE { bininfo = i, ... }) =
 	    case BinInfo.sh_mode i of
 		Sharing.DONTSHARE => StringSet.singleton (BinInfo.describe i)
 	      | _ => StringSet.empty

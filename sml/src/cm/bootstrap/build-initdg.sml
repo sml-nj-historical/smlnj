@@ -13,11 +13,10 @@
  *)
 signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> SrcPath.t ->
-	{ rts: DependencyGraph.sbnode,
-	  core: DependencyGraph.sbnode,
+	{ core: DependencyGraph.sbnode,
 	  pervasive: DependencyGraph.sbnode,
-	  primitives: (string * DependencyGraph.sbnode) list,
-	  binpaths: (string * bool) list } option
+	  others: DependencyGraph.sbnode list,
+	  src: GenericVC.Source.inputSource } option
 end
 
 structure BuildInitDG :> BUILD_INIT_DG = struct
@@ -29,7 +28,6 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
     fun build (gp: GeneralParams.info) specgroup = let
 	val pcmode = #pcmode (#param gp)
-	val primconf = #primconf (#param gp)
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
 
@@ -58,74 +56,65 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 		     else SOME (String.tokens sep line, newpos)
 	    end
 
-	    fun loop (split, m, bnl, pos, lst) =
+	    fun loop (split, m, pos) =
 		case lineIn pos of
 		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
 		  | SOME (line, newpos) => let
 			val error = error (pos, newpos)
-			fun sml (spec, split) = let
+			fun sml (spec, s, xe, rts) = let
 			    val p = SrcPath.standard pcmode
 				{ context = context, spec = spec }
+			    val attribs =
+				{ split = s, is_rts = rts, extra_compenv = xe }
 			in
-			    SmlInfo.info gp { sourcepath = p,
-					      group = (specgroup,
-						       (pos, newpos)),
-					      sh_spec = Sharing.DONTCARE,
-					      split = split }
+			    SmlInfo.info' attribs gp
+			      { sourcepath = p,
+			        group = (specgroup, (pos, newpos)),
+				sh_spec = Sharing.DONTCARE }
 			end
 			fun bogus n = 
-			    DG.SNODE { smlinfo = sml (n, false),
+			    DG.SNODE { smlinfo = sml (n, false, NONE, false),
 				       localimports = [], globalimports = [] }
 			fun look n =
 			    case StringMap.find (m, n) of
 				SOME x => x
-			      | NONE =>
-				    (case Primitive.fromString primconf n of
-					 SOME p =>  let
-					     val ii =
-						 Primitive.iinfo primconf p
-					 in
-					     DG.SB_BNODE (DG.PNODE p, ii)
-					 end
-				       | NONE => (error ("undefined: " ^ n);
-						  DG.SB_SNODE (bogus n)))
-
-			fun node (name, file, args) = let
-			    fun one (arg, (li, gi)) =
-				case look arg of
-				    DG.SB_SNODE n => (n :: li, gi)
-				  | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
-			    val (li, gi) = foldr one ([], []) args
-			    val i = sml (file, split)
+			      | NONE => (error ("undefined: " ^ n); bogus n)
+			fun node (name, file, args, is_rts) = let
+			    fun one (arg, (li, needs_primenv)) =
+				if arg = "primitive" then (li, true)
+				else (look arg :: li, needs_primenv)
+			    val (li, needs_primenv) =
+				foldr one ([], false) args
+			    val xe =
+				if needs_primenv then
+				    SOME (GenericVC.Environment.primEnv)
+				else NONE
+			    val i = sml (file, split, xe, is_rts)
 			    val n = DG.SNODE { smlinfo = i,
 					       localimports = li,
-					       globalimports = gi }
+					       globalimports = [] }
 			in
-			    loop (split,
-				  StringMap.insert (m, name, DG.SB_SNODE n),
-				  (SmlInfo.binname i, lst) :: bnl,
-				  newpos,
-				  lst)
+			    loop (split, StringMap.insert (m, name, n), newpos)
 			end
+			val looksb = DG.SB_SNODE o look
 		    in
 			case line of
-			    [] => loop (split, m, bnl, newpos, lst)
-			  | ["split"] => loop (true, m, bnl, newpos, lst)
-			  | ["nosplit"] => loop (false, m, bnl, newpos, lst)
-			  | ["start"] => loop (split, m, bnl, newpos, true)
+			    [] => loop (split, m, newpos)
+			  | ["split"] => loop (true, m, newpos)
+			  | ["nosplit"] => loop (false, m, newpos)
 			  | ("bind" :: name :: file :: args)  =>
-				node (name, file, args)
-			  | ("return" :: core :: rts :: pervasive :: prims) =>
-				SOME { rts = look rts,
-				       core = look core,
-				       pervasive = look pervasive,
-				       primitives =
-				              map (fn n => (n, look n)) prims,
-				       binpaths = rev bnl }
+				node (name, file, args, false)
+			  | ("rts-placeholder" :: name :: file :: args) =>
+				node (name, file, args, true)
+			  | ("return" :: core :: pervasive :: prims) =>
+				SOME { core = looksb core,
+				       pervasive = looksb pervasive,
+				       others = map looksb prims,
+				       src = source }
 			  | _ => (error "malformed line"; NONE)
 		    end
 	in
-	    loop (false, StringMap.empty, [], 1, false)
+	    loop (false, StringMap.empty, 1)
 	end
 	fun openIt () = TextIO.openIn (SrcPath.osstring specgroup)
     in

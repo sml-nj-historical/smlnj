@@ -22,7 +22,6 @@ is
 
 	semant/sharing.sml
 	semant/iinfo.sml
-	semant/primitive.sml
 	semant/group-reg.sml
 
 	(* semantic actions for description file parser *)
@@ -54,6 +53,7 @@ is
 	stable/stablemap.sml
 	stable/stableset.sml
 	stable/stabilize.sml
+	stable/verify.sml
 
 	(* tools for handling other source types *)
 	tools/tools.sml
@@ -77,6 +77,7 @@ is
 	main/slave.sml
 	main/preload.sml
 	main/cm-boot.sml
+	main/perv-access.sml
 
 	(* pathname abstraction *)
 	paths/sources.cm

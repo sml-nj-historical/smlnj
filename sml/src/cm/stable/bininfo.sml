@@ -13,12 +13,14 @@ signature BININFO = sig
     type ord_key = info
     type complainer = GenericVC.ErrorMsg.complainer
     type region = GenericVC.SourceMap.region
+    type pid = GenericVC.PersStamps.persstamp
 
     val new : { group: SrcPath.t,
 	        mkStablename: unit -> string,
 	        error: complainer,
 		spec: string,
 		offset: int,
+		rts_pid: pid option,
 		sh_mode: Sharing.mode } -> info
 
     val compare : info * info -> order
@@ -26,6 +28,7 @@ signature BININFO = sig
     val offset : info -> int
     val group : info -> SrcPath.t
     val stablename : info -> string
+    val rts_pid : info -> pid option
     val sh_mode : info -> Sharing.mode
     val error : info -> complainer
 end
@@ -34,12 +37,14 @@ structure BinInfo :> BININFO = struct
 
     type complainer = GenericVC.ErrorMsg.complainer
     type region = GenericVC.SourceMap.region
+    type pid = GenericVC.PersStamps.persstamp
 
     datatype info =
 	INFO of { group: SrcPath.t,
 		  mkStablename: unit -> string,
 		  spec: string,
 		  offset: int,
+		  rts_pid: pid option,
 		  sh_mode: Sharing.mode,
 		  error: complainer }
 
@@ -57,6 +62,7 @@ structure BinInfo :> BININFO = struct
 
     fun group (INFO { group = g, ... }) = g
     fun offset (INFO { offset = os, ... }) = os
+    fun rts_pid (INFO { rts_pid = p, ... }) = p
     fun sh_mode (INFO { sh_mode = s, ... }) = s
     fun stablename (INFO { mkStablename = msn, ... }) = msn ()
 

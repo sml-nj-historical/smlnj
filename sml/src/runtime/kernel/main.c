@@ -39,11 +39,9 @@ bool_t          StandAlone = TRUE;
 PVT bool_t	isBoot = FALSE;	/* true if we should bootstrap a system */
 PVT char	*LoadImage	/* the path name of the image file to load */
 		    = DFLT_IMAGE;
-PVT char	*BootFrom	/* the boot source (bin file directory). */
+PVT char	*BootFrom	/* the boot source (bin file list file). */
 		    = NULL;
 PVT int		NumProcs = 1;	/* not used */
-
-PVT char        *rtPID = NULL;
 
 PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams);
 
@@ -72,7 +70,7 @@ main (int argc, char **argv)
 
   /* start ML */
     if (isBoot) {
-	BootML (BootFrom, heapParams, rtPID);
+	BootML (BootFrom, heapParams);
     }
     else { /* load an image */
 	LoadML (LoadImage, heapParams);
@@ -186,10 +184,6 @@ PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams)
 	    }
 #endif
 #endif
-	    else if (MATCH("rtpid")) {
-	      CHECK("rtpid");
-	      rtPID = optionArg;
-	    }
 	}
 	else {
 	    *nextArg++ = arg;

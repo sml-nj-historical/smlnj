@@ -157,10 +157,7 @@ typedef struct heap_params heap_params_t;
 
 extern heap_params_t *ParseHeapParams (char **argv);
 extern ml_state_t *AllocMLState (bool_t isBoot, heap_params_t *params);
-extern void BootML (
-    const char *bootModule,
-    heap_params_t *params,
-    const char *rtPID);
+extern void BootML (const char *bootlist, heap_params_t *params);
 extern void LoadML (const char *loadImage, heap_params_t *params);
 
 extern bool_t QualifyImageName (char *buf);

@@ -1,6 +1,6 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find at the top-level.  A "minimal" structure
+ * structure CM that people find in full-cm.cm.  A "minimal" structure
  * CM is defined in CmHook, but it needs to be initialized at bootstrap
  * time.
  *
@@ -41,17 +41,20 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  CompileFn (structure MachDepVC = HostMachDepVC
 		     val compile_there = Servers.compile o SrcPath.descr)
 
-      structure Link =
-	  LinkFn (structure MachDepVC = HostMachDepVC
-		  val system_values = system_values)
-
       structure BFC =
 	  BfcFn (structure MachDepVC = HostMachDepVC)
+
+      structure Link =
+	  LinkFn (structure MachDepVC = HostMachDepVC
+		  structure BFC = BFC
+		  val system_values = system_values)
 
       structure AutoLoad = AutoLoadFn
 	  (structure C = Compile
 	   structure L = Link
 	   structure BFC = BFC)
+
+      val mkBootList = #l o MkBootList.group (fn p => p)
 
       fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
 	  Servers.cm { archos = my_archos, project = SrcPath.descr grouppath }
@@ -79,7 +82,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  case Servers.withServers (fn () => c_group gp) of
 	      NONE => false
 	    | SOME { stat, sym} =>
-		  (* Before executing the code, we announce the priviliges
+		  (* Before executing the code, we announce the privileges
 		   * that are being invoked.  (For the time being, we assume
 		   * that everybody has every conceivable privilege, but at
 		   * the very least we announce which ones are being made
@@ -122,23 +125,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       NONE => NONE
 			     | SOME _ => SOME get
 		       end
-		       fun destroy_state gp i =
-			   (Compile.evict i;
-			    Link.evict gp i)
 		       val getII = Compile.getII)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
        * well enough. *)
       structure Parse = ParseFn (structure Stabilize = Stabilize
+				 fun evictStale () =
+				     (Compile.evictStale ();
+				      Link.evictStale ())
 				 val pending = AutoLoad.getPending)
 
       local
 	  type kernelValues =
-	      { primconf : Primitive.configuration,
-	        pervasive : E.environment,
-		corenv : BE.staticEnv,
-		pervcorepids : PidSet.set }
+	      {	corenv : BE.environment,
+		init_group : GroupGraph.group }
 
 	  val fnpolicy = FilenamePolicy.colocate
 	      { os = os, arch = HostMachDepVC.architecture }
@@ -184,41 +185,47 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      app processOne p
 	  end
 
+	  fun getTheValues () = valOf (!theValues)
+	      handle Option => raise Fail "CMBoot: theParam not initialized"
+
 	  fun param () = let
-	      val v = valOf (!theValues)
-		  handle Option =>
-		      raise Fail "CMBoot: theParam not initialized"
+	      val v = getTheValues ()
 	  in
-	      { primconf = #primconf v,
-	        fnpolicy = fnpolicy,
+	      { fnpolicy = fnpolicy,
 		pcmode = pcmode,
 		symval = SSV.symval,
 		keep_going = #get StdConfig.keep_going (),
-		pervasive = #pervasive v,
-		corenv = #corenv v,
-		pervcorepids = #pervcorepids v }
+		corenv = #corenv v }
 	  end
+
+	  val init_group = #init_group o getTheValues
 
 	  fun dropPickles () =
 	      if #get StdConfig.conserve_memory () then
 		  Parse.dropPickles ()
 	      else ()
 
-	  fun autoload s = let
+	  fun parse_arg (gr, sflag, p) =
+	      { load_plugin = load_plugin, gr = gr, param = param (),
+	        stabflag = sflag, group = p, init_group = init_group (),
+		paranoid = false }
+
+	  and autoload s = let
 	      val p = mkStdSrcPath s
 	  in
-	      (case Parse.parse load_plugin (SOME al_greg) (param ()) NONE p of
+	      (case Parse.parse (parse_arg (al_greg, NONE, p)) of
 		   NONE => false
 		 | SOME (g, _) =>
-		       (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
-			true))
+		   (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
+		    true))
 	      before dropPickles ()
 	  end
 
 	  and run sflag f s = let
 	      val p = mkStdSrcPath s
+	      val gr = GroupReg.new ()
 	  in
-	      (case Parse.parse load_plugin NONE (param ()) sflag p of
+	      (case Parse.parse (parse_arg (gr, sflag, p)) of
 		   NONE => false
 		 | SOME (g, gp) => f gp g)
 	      before dropPickles ()
@@ -242,9 +249,24 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val recomp = run NONE recomp_runner
 	  val make = run NONE (make_runner true)
 
+	  (* I would have liked to express this using "run", but "run"
+	   * thinks it has to return a bool... *)
+	  fun mk_standalone sflag s = let
+	      val p = mkStdSrcPath s
+	      val gr = GroupReg.new ()
+	  in
+	      (case Parse.parse (parse_arg (gr, sflag, p)) of
+		   NONE => NONE
+		 | SOME (g, gp) =>
+		   if isSome sflag orelse recomp_runner gp g then
+		       SOME (mkBootList g)
+		   else NONE)
+	      before dropPickles ()
+	  end
+
 	  fun slave () = let
-	      fun parse p =
-		  Parse.parse load_plugin NONE (param ()) NONE p
+	      val gr = GroupReg.new ()
+	      fun parse p = Parse.parse (parse_arg (gr, NONE, p))
 	  in
 	      Slave.slave { pcmode = pcmode,
 			    parse = parse,
@@ -296,74 +318,64 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  app (fn (x, d) => PathConfig.set (pcmode, x, d)) pairList
 	      end
 	      val initgspec = mkStdSrcPath BtNames.initgspec
-	      val ginfo = { param = { primconf = Primitive.primEnvConf,
-				      fnpolicy = fnpolicy,
+	      val ginfo = { param = { fnpolicy = fnpolicy,
 				      pcmode = pcmode,
 				      symval = SSV.symval,
 				      keep_going = false,
-				      pervasive = E.emptyEnv,
-				      corenv = BE.staticPart BE.emptyEnv,
-				      pervcorepids = PidSet.empty },
+				      corenv = BE.emptyEnv },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer () }
+	      fun loadInitGroup () =
+		  Stabilize.loadStable ginfo
+		    { getGroup = fn _ => raise Fail "CMBoot: initial getGroup",
+		      anyerrors = ref false }
+		    initgspec
 	  in
-	      case BuildInitDG.build ginfo initgspec of
-		  NONE => raise Fail "CMBoot: BuiltInitDG.build"
-		| SOME { rts, core, pervasive, primitives, ... } => let
-		      (* It is absolutely crucial that we don't finish the
-		       * recomp traversal until we are done with all
-		       * nodes of the InitDG.  This is because we have
-		       * been cheating, and if we ever have to try and
-		       * fetch assembly.sig or core.sml in a separate
-		       * traversal, it will fail. *)
-		      val sbnode = Compile.newSbnodeTraversal ()
-		      fun get n = let
-			  val { statpid, statenv, symenv, sympid } =
-			      valOf (sbnode ginfo n)
-			  (* We have not implemented the "sbnode" part
-			   * in the Link module.
-			   * But at boot time any relevant value should be
-			   * available as a sysval, so there is no problem.
-			   *
-			   * WARNING!  HACK!
-			   * We are cheating somewhat by taking advantage
-			   * of the fact that the staticPid is always
-			   * the same as the exportPid if the latter exists.
-			   *)
-			  val d = case Link.sysval (SOME statpid) of
-			      SOME d => d
-			    | NONE => emptydyn
-			  val { env = static, ctxt } = statenv ()
-			  val env = E.mkenv { static = static,
-					      symbolic = symenv (),
-					      dynamic = d }
-			  val pidInfo =
-			      { statpid = statpid, sympid = sympid,
-			        ctxt = ctxt }
-		      in
-			  (env, pidInfo)
-		      end
-		      fun getPspec (name, n) = let
-			  val (env, pidInfo) = get n
-		      in
-			  { name = name, env = env, pidInfo = pidInfo }
-		      end
+	      case loadInitGroup () of
+		  NONE => raise Fail "CMBoot: unable to load init group"
+		| SOME init_group => let
+		      val _ = Compile.reset ()
+		      val _ = Link.reset ()
 
-		      val (core, corePidInfo) = get core
-		      val corenv = CoerceEnv.es2bs (E.staticPart core)
-		      val (rts, _) = get rts
-		      val (pervasive0, pervPidInfo) = get pervasive
-		      val pspecs = map getPspec primitives
+		      val { exports = ctm, ... } =
+			  Compile.newTraversal (fn _ => fn _ => (),
+						fn _ => (),
+						init_group)
+		      val { exports = ltm, ... } = Link.newTraversal
+			  (init_group, fn _ => raise Fail "init: get bfc?")
+
+		      fun getSymTrav (tr_m, sy) =
+			  case SymbolMap.find (tr_m, sy) of
+			      NONE => raise Fail "init: bogus init group (1)"
+			    | SOME tr => tr
+
+		      val core_ct = getSymTrav (ctm, PervCoreAccess.coreStrSym)
+		      val core_lt = getSymTrav (ltm, PervCoreAccess.coreStrSym)
+		      val perv_ct = getSymTrav (ctm, PervCoreAccess.pervStrSym)
+		      val perv_lt = getSymTrav (ltm, PervCoreAccess.pervStrSym)
+
+		      fun doTrav t =
+			  case t ginfo of
+			      SOME r => r
+			    | NONE => raise Fail "init: bogus init group (2)"
+
+		      val { stat = corestat, sym = coresym } = doTrav core_ct
+		      val coredyn = doTrav core_lt
+		      val { stat = pervstat, sym = pervsym } = doTrav perv_ct
+		      val pervdyn = doTrav perv_lt
+
+		      val corenv =
+			  BE.mkenv { static = CoerceEnv.es2bs corestat,
+				     symbolic = coresym,
+				     dynamic = coredyn }
 		      val core_symdyn =
 			  E.mkenv { static = E.staticPart E.emptyEnv,
-				    dynamic = E.dynamicPart core,
-				    symbolic = E.symbolicPart core }
-		      val pervasive = E.layerEnv (pervasive0, core_symdyn)
-		      val pervcorepids =
-			  PidSet.addList (PidSet.empty,
-					  [#statpid corePidInfo,
-					   #statpid pervPidInfo,
-					   #sympid pervPidInfo])
+				    dynamic = coredyn, symbolic = coresym }
+
+		      val pervasive = E.mkenv { static = pervstat,
+					        symbolic = pervsym,
+						dynamic = pervdyn }
+
 		      fun bare_autoload x =
 			  (Say.say
 			    ["!* ", x,
@@ -375,16 +387,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      val standard_preload =
 			  Preload.preload { make = make, autoload = autoload }
 		  in
-		      Compile.reset ();
-		      Link.reset ();
-		      #set ER.core corenv;
-		      #set ER.pervasive pervasive;
+		      #set ER.core (BE.staticPart corenv);
+		      #set ER.pervasive (E.layerEnv (pervasive, core_symdyn));
 		      #set ER.topLevel BE.emptyEnv;
-		      theValues :=
-		        SOME { primconf = Primitive.configuration pspecs,
-			       pervasive = pervasive,
-			       corenv = corenv,
-			       pervcorepids = pervcorepids };
+		      theValues := SOME { corenv = corenv,
+					  init_group = init_group };
 		      case er of
 			  BARE =>
 			      (bare_preload BtNames.bare_preloads;
@@ -479,6 +486,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	val symval = SSV.symval
 	val load_plugin = load_plugin
+	val mk_standalone = mk_standalone
     end
 
     structure Tools = ToolsFn (val load_plugin = load_plugin

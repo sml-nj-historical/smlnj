@@ -1,0 +1,58 @@
+#!@SHELL@
+
+BIN_DIR=@BINDIR@
+
+SML=$BIN_DIR/sml
+LINK=$BIN_DIR/.link-sml
+
+thisscript=$0
+
+xx=$$
+smlfile=$xx-export.sml
+cmfile=$xx-export.cm
+listfile=$xx-BOOTLIST
+mlscript=$xx-script
+
+trap 'rm -rf $smlfile $cmfile $listfile $mlscript' 0 1 2 3 15
+
+usage() {
+    echo ${thisscript}: $*
+    echo Usage: $thisscript root-group main-function heapfile
+    exit 1
+}
+
+if [ $# != 3 ] ; then
+    usage wrong number of arguments
+fi
+
+root=$1
+main=$2
+heap=$3
+
+rare=XYZ_XXX_0123
+
+cat >$smlfile <<EOF
+structure ${rare} = struct val _ = SMLofNJ.exportFn ("${heap}", ${main}) end
+EOF
+
+cat >$cmfile <<EOF
+Group structure ${rare} is basis.cm ${root} ${smlfile}
+EOF
+
+cat >$mlscript <<EOF
+OS.Process.exit ((case CM.mk_standalone NONE "${cmfile}" of
+   NONE => OS.Process.failure
+ | SOME l => let val s = TextIO.openOut "${listfile}"
+   in app (fn str => TextIO.output (s, str ^ "\n")) l;
+      TextIO.closeOut s;
+      OS.Process.success
+   end)
+   handle _ => OS.Process.failure)
+EOF
+
+if $SML full-cm.cm <$mlscript ; then
+    $LINK @SMLboot=$listfile $
+else
+    echo Compilation failed.
+    exit 1
+fi

@@ -23,7 +23,7 @@ signature UNPICKMOD = sig
      *)
     val mkUnpicklers :
 	UnpickleUtil.session ->
-	{ prim_context: string -> CMStaticEnv.staticEnv option,
+	{ prim_context: CMStaticEnv.staticEnv,
 	  node_context: int * Symbol.symbol -> CMStaticEnv.staticEnv option }
 	-> { symenv: SymbolicEnv.symenv UnpickleUtil.reader,
 	     env: env'n'ctxt UnpickleUtil.reader,
@@ -499,7 +499,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | tyc #"F" = T.RECtyc (int ())
 	      | tyc #"G" = T.FREEtyc (int ())
 	      | tyc #"H" = T.ERRORtyc
-	      | tyc #"I" = lookTYCp (string (), modId ())
+	      | tyc #"I" = lookTYCp (modId ())
 	      | tyc #"J" = lookTYCn (int (), symbol(), modId ())
 	      | tyc _ = raise Format
 	in
@@ -582,7 +582,7 @@ structure UnpickMod : UNPICKMOD = struct
 				  lambdaty = ref NONE,
 				  typsharing = spathlistlist (),
 				  strsharing = spathlistlist () }
-	      | sg #"D" = lookSIGp (string (), modId ())
+	      | sg #"D" = lookSIGp (modId ())
 	      | sg #"E" = lookSIGn (int (), symbol (), modId ())
 	      | sg _ = raise Format
 	in
@@ -597,7 +597,7 @@ structure UnpickMod : UNPICKMOD = struct
 				    paramvar = entVar (),
 				    paramsym = symboloption (),
 				    bodysig = Signature () }
-	      | fsg #"d" = lookFSIGp (string (), modId ())
+	      | fsg #"d" = lookFSIGp (modId ())
 	      | fsg #"e" = lookFSIGn (int (), symbol (), modId ())
 	      | fsg _ = raise Format
 	in
@@ -650,7 +650,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | str #"C" = stracc (lookSTR (modId ()))
 	      | str #"D" = M.STR { sign = Signature (), rlzn = strEntity (),
 				   access = access (), info = inl_info () }
-	      | str #"I" = stracc (lookSTRp (string (), modId ()))
+	      | str #"I" = stracc (lookSTRp (modId ()))
 	      | str #"J" = stracc (lookSTRn (int (), symbol (), modId ()))
 	      | str _ = raise Format
 	in
@@ -666,7 +666,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | fct #"F" = fctacc (lookFCT (modId ()))
 	      | fct #"G" = M.FCT { sign = fctSig (), rlzn = fctEntity (),
 				   access = access (), info = inl_info () }
-	      | fct #"H" = fctacc (lookFCTp (string (), modId ()))
+	      | fct #"H" = fctacc (lookFCTp (modId ()))
 	      | fct #"I" = fctacc (lookFCTn (int (), symbol (), modId ()))
 	      | fct _ = raise Format
 	in
@@ -759,7 +759,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | eenv #"C" = M.ERReenv
 	      | eenv #"D" = lookEENV (modId ())
 	      | eenv #"E" = M.MARKeenv (stamp (), entityEnv ())
-	      | eenv #"F" = lookEENVp (string (), modId ())
+	      | eenv #"F" = lookEENVp (modId ())
 	      | eenv #"G" = lookEENVn (int (), symbol (), modId ())
 	      | eenv _ = raise Format
 	in
@@ -1102,10 +1102,10 @@ structure UnpickMod : UNPICKMOD = struct
 
     fun mkUnpicklers session contexts = let
 	val { prim_context, node_context } = contexts
-	fun cvtP lk (s, id) =
-	    case prim_context s of
-		NONE => raise Format
-	      | SOME e => (case lk e id of SOME v => v | NONE => raise Format)
+	fun cvtP lk id =
+	    case lk prim_context id of
+		SOME v => v
+	      | NONE => raise Format
 	fun cvtN lk (i, s, id) =
 	    case node_context (i, s) of
 		NONE => raise Format

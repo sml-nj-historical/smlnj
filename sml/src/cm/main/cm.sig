@@ -56,4 +56,7 @@ signature CM = sig
 
     val symval : string -> int option controller
     val load_plugin : string -> bool
+
+    val mk_standalone : bool option -> string -> string list option
 end
+

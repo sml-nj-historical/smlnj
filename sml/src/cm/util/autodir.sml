@@ -17,6 +17,9 @@ end = struct
     fun fileExists n = F.access (n, []) handle _ => false
 
     fun openOut fileopener p = let
+	fun fileopener' n =
+	    (if fileExists n then (F.remove n handle _ => ()) else ();
+	     fileopener n)
 	fun mkDir d =
 	    F.mkDir d handle exn => (if fileExists d then () else raise exn)
 	fun generic (maker, pmaker, p) =
@@ -40,7 +43,7 @@ end = struct
 	    (Say.vsay ["[creating directory ", dir, " ...]\n"];
 	     makedirs dir)
     in
-	generic (fileopener, advertisemakedirs, p)
+	generic (fileopener', advertisemakedirs, p)
     end
 
     val openTextOut = openOut TextIO.openOut

@@ -19,8 +19,12 @@
  *)
 structure InteractiveSystem : sig end = struct
 
+    (* first, we have to step back out of the boot directory... *)
+    val bootdir = OS.FileSys.getDir ()
+    val _ = OS.FileSys.chDir OS.Path.parentArc
+    
     (* environment initializations *)
-    val { heapfile, procCmdLine } = BootEnv.init ()
+    val { heapfile, procCmdLine } = BootEnv.init bootdir
 	
     (* establish default signal handlers *)
     fun handleINT _ = !Unsafe.topLevelCont

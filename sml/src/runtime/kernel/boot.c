@@ -21,16 +21,6 @@
 #  define SEEK_SET	0
 #endif
 
-/** The names of the boot and binary file lists **/
-PVT char	*FileLists[] = {
-	"BOOTLIST", "PERVLIST", "COMPLIST"
-    };
-#define NUM_FILE_LISTS	(sizeof(FileLists) / sizeof(char *))
-
-
-pers_id_t	RunTimePerID = {RUNTIME_PERID};
-
-
 /* The persistent ID list is stored in the PervStruct refcell.  It has
  * the following ML type:
  *
@@ -44,13 +34,10 @@ PVT ml_val_t	BinFileList = LIST_nil;	/* A list of bin files to load */
 
 
 /* local routines */
-PVT ml_val_t BuildFileList (ml_state_t *msp, const char *binDir);
-PVT FILE *OpenBinFile (const char *binDir, const char *fname, bool_t isBinary);
-PVT void ReadBinFile (
-    FILE *file, void *buf, int nbytes,
-    const char *binDir, const char *fname
-);
-PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname);
+PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist);
+PVT FILE *OpenBinFile (const char *fname, bool_t isBinary);
+PVT void ReadBinFile (FILE *file, void *buf, int nbytes, const char *fname);
+PVT void LoadBinFile (ml_state_t *msp, char *fname);
 PVT void EnterPerID (ml_state_t *msp, pers_id_t *perID, ml_val_t obj);
 PVT ml_val_t LookupPerID (pers_id_t *perID);
 PVT void ShowPerID (char *buf, pers_id_t *perID);
@@ -59,25 +46,13 @@ PVT void ShowPerID (char *buf, pers_id_t *perID);
 
 /* BootML:
  *
-* Boot the system using the .bin files from binDir.
+* Boot the system using the items read from the "bootlist" file.
 */
-void BootML (const char *binDir, heap_params_t *heapParams, const char *rtPID)
+void BootML (const char *bootlist, heap_params_t *heapParams)
 {
     ml_state_t	*msp;
-    char	fname[512];
-
-    if (rtPID != NIL(char *)) {
-	int i, l = strlen (rtPID);
-	for (i = 0; i < PERID_LEN; i++) {
-	    int i2 = 2 * i;
-	    if (i2 + 1 < l) {
-		int c1 = rtPID[i2];
-		int c2 = rtPID[i2 + 1];
-/* what if upper-case digits are used?? */
-		RunTimePerID.bytes[i] = (HEX(c1) << 4) + HEX(c2);
-	    }
-        }
-    }
+    char	fname[MAX_BOOT_PATH_LEN];
+    int         rts_init = 0;
 
     msp = AllocMLState (TRUE, heapParams);
 
@@ -89,17 +64,34 @@ void BootML (const char *binDir, heap_params_t *heapParams, const char *rtPID)
     InitFaultHandlers ();
     AllocGlobals (msp);
 
-  /* Enter the runtime system binding */
-    EnterPerID (msp, &RunTimePerID, RunTimeCompUnit);
-
   /* construct the list of files to be loaded */
-    BinFileList = BuildFileList (msp, binDir);
+    BinFileList = BuildFileList (msp, bootlist);
 
   /* boot the system */
     while (BinFileList != LIST_nil) {
 	strcpy(fname, STR_MLtoC(LIST_hd(BinFileList)));
 	BinFileList = LIST_tl(BinFileList);
-	LoadBinFile (msp, binDir, fname);
+	if (fname[0] == '#')
+	  if (rts_init)
+	    Die ("runtime system registered more than once\n");
+	  else {
+	    /* register the runtime system under the given pers id */
+	    pers_id_t pid;
+	    int i, l = strlen (fname + 1);
+	    for (i = 0; i < PERID_LEN; i++) {
+	      int i2 = 2 * i;
+	      if (i2 + 1 < l) {
+		int c1 = fname[i2+1];
+		int c2 = fname[i2+2];
+		pid.bytes[i] = (HEX(c1) << 4) + HEX(c2);
+	      }
+	    }
+	    Say ("[Registering runtime system as %s]\n", fname+1);
+	    EnterPerID (msp, &pid, RunTimeCompUnit);
+	    rts_init = 1;	/* make sure we do this only once */
+	  }
+	else
+	  LoadBinFile (msp, fname);
     }
 
 } /* end of BootML */
@@ -110,7 +102,7 @@ void BootML (const char *binDir, heap_params_t *heapParams, const char *rtPID)
  * Given the directory path, build a list of the .bin files in the
  * heap.
  */
-PVT ml_val_t BuildFileList (ml_state_t *msp, const char *binDir)
+PVT ml_val_t BuildFileList (ml_state_t *msp, const char *bootlist)
 {
     FILE	*listF;
     ml_val_t	fileNames[MAX_NUM_BOOT_FILES];
@@ -118,10 +110,8 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *binDir)
     char	nameBuf[MAX_BOOT_PATH_LEN];
     ml_val_t	fileList;
 
-    for (numFiles = 0, i = 0;  i < NUM_FILE_LISTS;  i++) {
-	listF = OpenBinFile (binDir, FileLists[i], FALSE);
-	if (listF == NULL)
-	    continue;
+    listF = OpenBinFile (bootlist, FALSE);
+    if (listF != NULL) {
       /* read in the file names, converting them to ML strings. */
 	while (fgets (nameBuf, MAX_BOOT_PATH_LEN, listF) != NIL(char *)) {
 	    j = strlen(nameBuf)-1;
@@ -148,15 +138,12 @@ PVT ml_val_t BuildFileList (ml_state_t *msp, const char *binDir)
  *
  * Open a file in the bin file directory.
  */
-PVT FILE *OpenBinFile (const char *binDir, const char *fname, bool_t isBinary)
+PVT FILE *OpenBinFile (const char *fname, bool_t isBinary)
 {
-    char	path[MAX_BOOT_PATH_LEN];
     FILE	*file;
 
-    sprintf(path, "%s%c%s", binDir, PATH_ARC_SEP, fname);
-
-    if ((file = fopen(path, isBinary ? "rb" : "r")) == NULL)
-	Error ("unable to open \"%s\"\n", path);
+    if ((file = fopen (fname, isBinary ? "rb" : "r")) == NULL)
+	Error ("unable to open \"%s\"\n", fname);
 
     return file;
 
@@ -274,12 +261,10 @@ PVT FILE *OpenBinFile (const char *binDir, const char *fname, bool_t isBinary)
 
 /* ReadBinFile:
  */
-PVT void ReadBinFile (
-    FILE *file, void *buf, int nbytes, const char *binDir, const char *fname
-)
+PVT void ReadBinFile (FILE *file, void *buf, int nbytes, const char *fname)
 {
     if (fread(buf, nbytes, 1, file) == -1)
-	Die ("cannot read file \"%s%c%s\"", binDir, PATH_ARC_SEP, fname);
+	Die ("cannot read file \"%s\"", fname);
 
 } /* end of ReadBinFile */
 
@@ -287,14 +272,14 @@ PVT void ReadBinFile (
  *
  * Read an integer in "packed" format.  (Small numbers only require 1 byte.)
  */
-PVT Int32_t ReadPackedInt32 (FILE *file, const char *binDir, const char *fname)
+PVT Int32_t ReadPackedInt32 (FILE *file, const char *fname)
 {
     Unsigned32_t	n;
     Byte_t		c;
 
     n = 0;
     do {
-	ReadBinFile (file, &c, sizeof(c), binDir, fname);
+	ReadBinFile (file, &c, sizeof(c), fname);
 	n = (n << 7) | (c & 0x7f);
     } while ((c & 0x80) != 0);
 
@@ -306,25 +291,19 @@ PVT Int32_t ReadPackedInt32 (FILE *file, const char *binDir, const char *fname)
  *
  * Select out the interesting bits from the imported object.
  */
-PVT void ImportSelection (
-    ml_state_t	*msp,
-    FILE	*file,
-    const char	*binDir,
-    const char	*fname,
-    int		*importVecPos,
-    ml_val_t	tree)
+PVT void ImportSelection (ml_state_t *msp, FILE *file, const char *fname,
+			  int *importVecPos, ml_val_t tree)
 {
-    Int32_t cnt = ReadPackedInt32 (file, binDir, fname);
+    Int32_t cnt = ReadPackedInt32 (file, fname);
     if (cnt == 0) {
 	ML_AllocWrite (msp, *importVecPos, tree);
 	(*importVecPos)++;
     }
     else {
 	while (cnt-- > 0) {
-	    Int32_t selector = ReadPackedInt32 (file, binDir, fname);
-	    ImportSelection (
-		msp, file, binDir, fname, importVecPos,
-		REC_SEL(tree, selector));
+	    Int32_t selector = ReadPackedInt32 (file, fname);
+	    ImportSelection (msp, file, fname, importVecPos,
+			     REC_SEL(tree, selector));
 	}
     }
 
@@ -332,7 +311,7 @@ PVT void ImportSelection (
 
 /* LoadBinFile:
  */
-PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
+PVT void LoadBinFile (ml_state_t *msp, char *fname)
 {
     FILE	    *file;
     int		    i, exportSzB, remainingCode, importRecLen;
@@ -361,7 +340,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
     Say ("[Loading %s]\n", objname);
 
   /* open the file */
-    file = OpenBinFile (binDir, fname, TRUE);
+    file = OpenBinFile (fname, TRUE);
     if (file == NULL)
 	Exit (1);
 
@@ -371,12 +350,12 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
    */
     if (archiveOffset != 0) {
 	if (fseek (file, archiveOffset, SEEK_SET) == -1)
-	    Die ("cannot seek on archive file \"%s%c%s@%ul\"",
-		binDir, PATH_ARC_SEP, fname, (unsigned long) archiveOffset);
+	    Die ("cannot seek on archive file \"%s@%ul\"",
+		 fname, (unsigned long) archiveOffset);
     }
 
   /* get the header */
-    ReadBinFile (file, &hdr, sizeof(binfile_hdr_t), binDir, fname);
+    ReadBinFile (file, &hdr, sizeof(binfile_hdr_t), fname);
 
   /* get header byte order right */
     hdr.importCnt	= BIGENDIAN_TO_HOST(hdr.importCnt);
@@ -401,10 +380,9 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 	ML_AllocWrite (msp, 0, MAKE_DESC(importRecLen, DTAG_record));
 	for (importVecPos = 1; importVecPos < importRecLen; ) {
 	    pers_id_t	importPid;
-	    ReadBinFile (file, &importPid, sizeof(pers_id_t), binDir, fname);
-	    ImportSelection (
-		msp, file, binDir, fname, &importVecPos,
-		LookupPerID(&importPid));
+	    ReadBinFile (file, &importPid, sizeof(pers_id_t), fname);
+	    ImportSelection (msp, file, fname, &importVecPos,
+			     LookupPerID(&importPid));
 	}
 	ML_AllocWrite(msp, importRecLen, ML_nil);
 	importRec = ML_Alloc(msp, importRecLen);
@@ -413,7 +391,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
   /* read the export PerID */
     if (hdr.exportCnt == 1) {
 	exportSzB = sizeof(pers_id_t);
-	ReadBinFile (file, &exportPerID, exportSzB, binDir, fname);
+	ReadBinFile (file, &exportPerID, exportSzB, fname);
     }
     else if (hdr.exportCnt != 0)
 	Die ("# of export pids is %d (should be 0 or 1)", (int)hdr.exportCnt);
@@ -431,8 +409,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 			+ hdr.reserved1 + hdr.reserved2;
 
 	if (fseek(file, off, SEEK_SET) == -1)
-	    Die ("cannot seek on bin file \"%s%c%s\"",
-		 binDir, PATH_ARC_SEP, fname);
+	    Die ("cannot seek on bin file \"%s\"", fname);
     }
 
   /* Read code objects and run them.  The first code object will be the
@@ -444,18 +421,17 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
     remainingCode = hdr.codeSzB;
 
   /* read the size for the data object */
-    ReadBinFile (file, &thisSzB, sizeof(Int32_t), binDir, fname);
+    ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
     thisSzB = BIGENDIAN_TO_HOST(thisSzB);
 
     remainingCode -= thisSzB + sizeof(Int32_t);
     if (remainingCode < 0)
-	Die ("format error (data size mismatch) in bin file \"%s%c%s\"",
-	    binDir, PATH_ARC_SEP, fname);
+	Die ("format error (data size mismatch) in bin file \"%s\"", fname);
 
     if (thisSzB > 0) {
 	Byte_t		*dataObj = NEW_VEC(Byte_t, thisSzB);
 
-	ReadBinFile (file, dataObj, thisSzB, binDir, fname);
+	ReadBinFile (file, dataObj, thisSzB, fname);
 	SaveCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
 	val = BuildLiterals (msp, dataObj, thisSzB);
 	FREE(dataObj);
@@ -477,7 +453,7 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
 	int		strLen, padLen, extraLen;
 
       /* read the size for this code object */
-	ReadBinFile (file, &thisSzB, sizeof(Int32_t), binDir, fname);
+	ReadBinFile (file, &thisSzB, sizeof(Int32_t), fname);
 	thisSzB = BIGENDIAN_TO_HOST(thisSzB);
 
       /* We use one byte for the length, so the longest string is 255
@@ -495,12 +471,11 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, char *fname)
       /* how much more? */
 	remainingCode -= thisSzB + sizeof(Int32_t);
 	if (remainingCode < 0)
-	    Die ("format error (code size mismatch) in bin file \"%s%c%s\"",
-		binDir, PATH_ARC_SEP, fname);
+	  Die ("format error (code size mismatch) in bin file \"%s\"", fname);
 
       /* allocate space and read code object */
 	codeObj = ML_AllocCode (msp, thisSzB+extraLen);
-	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, binDir, fname);
+	ReadBinFile (file, PTR_MLtoC(char, codeObj), thisSzB, fname);
 
       /* tack on the bin-file name as a comment string. */
 	memcpy (PTR_MLtoC(char, codeObj)+thisSzB+padLen, objname, strLen);

@@ -5,15 +5,24 @@
 #
 # Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
 #
-# This is the specification for how to build and set up a minimal set
-# of "primitive" environments (including the pervasive environment,
-# and the core environment).
+# This is the specification for how to build the "init group".
+# The main purpose of the init group is to tie in the runtime system,
+# to set up the core environment, and to build the pervasive environment.
+# Because of its special nature, the init group cannot be described as
+# an ordinary CM library.  Instead, it is built from the DAG description
+# in this file.  The bootstrap compiler turns the init group into an
+# ordinary stable group.  The boot process fetches core and pervasive
+# environment from that stable library.
 #
-# CM's normal group- and library processing cannot yet be used here
-# because of certain peculiarities (non-modular top-level bindings to
-# name the most important one).
+# Besides core and pervasive environments, the init group can (and does)
+# also export additional definitions.  These can be accessed by client code
+# (such as the implementation of the Basis library) by simply listing
+# "init.cmi : cm" in their respective library description files.  (Since CM
+# does not automatically recognize the member class of ".cmi" files, the
+# class "cm" must be given explicitly.)  Clients who want to access "init.cmi"
+# must be in possession of the privilege named "primitive".
 #
-# The specification is basically a DAG.  The "bind" statements define
+# The specification is basically a DAG: "bind" statements define
 # named environments which are the results of compiling the files on the
 # right-hand side of "=" wrt. a combination of the environments given
 # in parentheses.
@@ -27,24 +36,23 @@
 #      do without it)
 #  - A line that says "nosplit" disables cross-module inlining (aka
 #    "lambda-splitting") until the next line that says "split".
-#  - "bind" specification that appear before the line that says "start"
-#    will not be listed in the boot list which is prepared for the
-#    runtime system boot loader.  Thus, the only files that may appear
-#    before "start" must either contain pure signature and type bindings or
-#    be the placeholder for the runtime system itself.
-#  - "bind" lines must be in topological order (i.e., they cannot access
-#    environment names that are being defined later).
+#  - The (single) "rts-placeholder" line acts mostly like a "bind" line.
+#    Its purpose is to specify the module that plays the role of a
+#    placeholder for the runtime system.
+#  - "bind" lines (and the "rts-placeholder" line) must be in topological
+#    order (i.e., they cannot access environment names that are being
+#    defined later).
 #  - The last line that gets processed is the "return" line.
-#    It must specify at least three environment names in this order:
+#    It must specify at least two environment names in this order:
 #      * the one that is used as the system-wide "core" environment
-#      * the one that resulted from compiling the runtime system placeholder
 #      * the one that is used as the system-wide "pervasive" environment
-#    Any additional name is taken as the name of a "primitive" that
-#    can be accessed from within CM description files by the given name.
-#    (Access to such primitives is subject to CM's access control mechanism.)
-#    Note: If you need direct access to the core environment as a primitive,
-#    then you must list it twice (one time in its usual place, one time
-#    to establish it as a "primitive").
+#    For any additional name n the exports of the module that was bound
+#    (by "bind") to n are added to the exports of the init group.
+#    These exports can be accessed by clients that explicitly list init.cmi
+#    in their own description files.
+#    Note: Since some clients need direct access to the core environment,
+#    the name "core" is listed twice: one time in its usual place, one time
+#    to have it exported from init.cmi.
 #  - There is one pre-defined name ("primitive") that refers to the
 #    Environment.primEnv.  It must not be "exported" by the "return" line.
 #
@@ -56,6 +64,8 @@
 # As soon as core is available, all remaining files are compiled using that
 # core, though.
 
+#### END OF EXPLANATION, SPEC STARTS HERE...
+
 # Turn off splitting. It would confuse the compiler because the following
 # files are not actually loaded at boot time.
 nosplit
@@ -64,12 +74,9 @@ nosplit
 bind asig = assembly.sig (primitive)
 
 # The placeholder for the runtime system:
-bind rts = dummy.sml (asig, primitive)
+rts-placeholder rts = dummy.sml (asig, primitive)
 
-# All other files must be loaded by the boot loader at boot time...
-start
-
-# And we can turn the cross-module optimizer on (when available)...
+# We can now turn the cross-module optimizer on (when available)...
 split
 
 # This defines the core environment to be used everywhere else...
@@ -92,5 +99,4 @@ bind init-utils = init-utils.sml (ps ss-sig ss)
 bind pervasive = pervasive.sml (core, ps, ss, pp, print-hook, use-hook, exn-info-hook, built-in)
 
 # Report the results to the world...
-return (core, rts, pervasive) built-in print-hook use-hook exn-info-hook core init-utils
-
+return (core, pervasive) built-in print-hook use-hook exn-info-hook core init-utils

@@ -137,29 +137,22 @@ functor AutoLoadFn (structure C : COMPILE
 	(* However, we want to avoid hanging on to stuff unnecessarily, so
 	 * we now look for symbols that become available "for free" because
 	 * their corresponding node has been picked.  So we first build
-	 * three sets: sml- and stable-infos of picked nodes as well
-	 * as the set of PNODEs: *)
+	 * three sets: sml- and stable-infos of picked nodes: *)
 	fun add ((((_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })), _), _),
-		 (ss, bs, ps)) =
-	    (SmlInfoSet.add (ss, smlinfo), bs, ps)
+		 (ss, bs)) =
+	    (SmlInfoSet.add (ss, smlinfo), bs)
 	  | add ((((_, DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)), _), _),
-		 (ss, bs, ps)) =
-	    (ss, StableSet.add (bs, bininfo), ps)
-	  | add ((((_, DG.SB_BNODE (DG.PNODE p, _)), _), _), (ss, bs, ps)) =
-	    (ss, bs, StringSet.add (ps, Primitive.toString p))
+		 (ss, bs)) =
+	    (ss, StableSet.add (bs, bininfo))
 
-	val (smlinfos, stableinfos, prims) =
-	    SymbolMap.foldl add
-	          (SmlInfoSet.empty, StableSet.empty, StringSet.empty)
-		  loadmap0
+	val (smlinfos, stableinfos) =
+	    SymbolMap.foldl add (SmlInfoSet.empty, StableSet.empty) loadmap0
 
 	(* now we can easily find out whether a node has been picked... *)
 	fun isPicked (((_, DG.SB_SNODE (DG.SNODE n)), _), _) =
 	    SmlInfoSet.member (smlinfos, #smlinfo n)
 	  | isPicked (((_, DG.SB_BNODE (DG.BNODE n, _)), _), _) =
 	    StableSet.member (stableinfos, #bininfo n)
-	  | isPicked (((_, DG.SB_BNODE (DG.PNODE p, _)), _), _) =
-	    StringSet.member (prims, Primitive.toString p)
 
 	val loadmap = SymbolMap.filter isPicked pend
 	val noloadmap = SymbolMap.filter (not o isPicked) pend

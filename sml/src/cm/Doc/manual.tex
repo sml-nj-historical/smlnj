@@ -13,7 +13,7 @@ Kyoto University}
 
 \title{{\bf CM}\\
 The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version 110.25 and later)} \\
+{\it\small (for SML/NJ version 110.26 and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
@@ -59,11 +59,11 @@ meet this approach.
 
 \section{The CM model}
 
-A CM library is a collection of ML source files and may also contain
-references to other libraries together with an explicit export
-interface.  The export interface lists all toplevel-defined symbols of
-the library that shall be exported to its clients.  A library is
-described by the contents of its {\em description file}.
+A CM library is a (possibly empty) collection of ML source files and
+may also contain references to other libraries.  Each library comes
+with an explicit export interface which lists all toplevel-defined
+symbols of the library that shall be exported to its clients.  A
+library is described by the contents of its {\em description file}.
 
 \noindent Example:
 
@@ -83,7 +83,7 @@ Foo} and one for a signature named {\tt BAR}.  The specification for
 such exports appear between the keywords {\tt Library} and {\tt is}.
 The {\em members} of the library are specified after the keyword {\tt
 is}.  Here we have three ML source files ({\tt bar.sig}, {\tt
-foo.sml}, and {\tt helper.sml}) and a reference to one external
+foo.sml}, and {\tt helper.sml}) as well as a reference to one external
 library ({\tt basis.cm}).  The entry {\tt basis.cm} typically denotes
 the description file for the {\it Standard ML Basis
 Library}~\cite{reppy99:basis}; most programs will want to list it in
@@ -111,10 +111,10 @@ level.
 \end{enumerate}
 
 Note that these rules do not require the exports of sub-groups or
-sub-libraries to be distinct from the exports of ML source files.
-Here, the disambiguating rule is that the definition from the ML
-source takes precedence over the definition imported from the group or
-library.
+sub-libraries to be distinct from the exports of ML source files.  If
+an ML source file re-defines an imported name, then the disambiguating
+rule is that the definition from the ML source takes precedence over
+the definition imported from the group or library.
 
 Rule~\ref{rule:diamond} may come as a bit of a surprise considering
 that each ML source file can be a member of at most one group or
@@ -153,16 +153,19 @@ files within a library are detected and flagged as errors.
 \label{sec:groups}
 
 CM's group model eliminates a whole class of potential naming problems
-by providing control over name spaces for program linkage. As has been
-described separately~\cite{blume:appel:cm99}, it sometimes involves
-the use of ``administrative'' libraries whose sole purpose is to
-rename certain definitions.
+by providing control over name spaces for program linkage.  The group
+model in full generality sometimes requires bindings to be renamed at
+the time of import. As has been described
+separately~\cite{blume:appel:cm99}, in the case of ML this can also be
+achieved using ``administative'' libaries, which is why CM can get
+away with not providing more direct support for renaming.
 
 However, under CM, the term ``library'' does not only mean namespace
-management but also refers to actual file system objects.  It would be
+management (as it would from the point of view of the pure group
+model) but also refers to actual file system objects.  It would be
 inconvenient if name resolution problems would result in a
 proliferation of additional library files.  Therefore, CM also
-provides the notion of groups (or: library components).  Name
+provides the notion of groups (or: ``library components'').  Name
 resolution for groups works like name resolution for entire libraries,
 but grouping is entirely internal to each library.
 
@@ -241,23 +244,24 @@ top-level groups.
 
 \subsection{Motivation}
 
-File naming has been an area notorious for its problems and cause of
-most of the gripes from CM's users.  With this in mind, CM now takes a
-different approach to file name resolution.
+File naming has been an area notorious for its problems and was the
+cause of most of the gripes from CM's users.  With this in mind, CM
+now takes a different approach to file name resolution.
 
 The main difficulty lies in the fact that files or even whole
 directories may move after CM has already partially (but not fully)
 processed them.  For example, this happens when the {\em autoloader}
 (see Section~\ref{sec:autoload}) has been invoked and the session
-(including CM's internal state) is then saved via {\tt
-SMLofNJ.exportML}.  CM is now able to resume such a session even when
-operating in a different environment, perhaps on a different machine
-with different file system mounted, or a different location of the
-SML/NJ installation.
+(including CM's internal state) is then frozen (i.e., saved to a file)
+via {\tt SMLofNJ.exportML}.  The new CM is now able to resume such a
+session even when operating in a different environment, perhaps on a
+different machine with different file system mounted, or a different
+location of the SML/NJ installation.
 
-For this, CM provides a configurable mechanism for locating file
-system objects.  Moreover, it invokes this mechanism as late as
-possible and is prepared to re-invoke it if the configuration changes.
+To make this possible, CM provides a configurable mechanism for
+locating file system objects.  Moreover, it invokes this mechanism
+always as late as possible and is prepared to re-invoke it after the
+configuration changes.
 
 \subsection{Basic rules}
 
@@ -510,7 +514,7 @@ Section~\ref{sec:parmake}) to TextIO.stdOut. The default is {\em
 false} and can be overriden at startup time by the environment
 variable {\tt CM\_DEBUG}.
 
-Using {\tt CM.Control.conserve\_memory}, CM can be told to be lightly
+Using {\tt CM.Control.conserve\_memory}, CM can be told to be slightly
 more conservative with its use of main memory at the expense of
 occasionally incurring additional input from stable library files.
 This does not save very much and, therefore, is normally turned off.
@@ -547,7 +551,7 @@ mapping.
 \subsubsection*{Setting CM variables}
 
 CM variables are used by the conditional compilation system (see
-Section~\ref{sec:cmvars}).   Some of these variables are predefined,
+Section~\ref{sec:cmvars}).  Some of these variables are predefined,
 but the user can add new ones and alter or remove those that already
 exist.
 
@@ -570,8 +574,8 @@ of {\tt NONE} means that the variable is not defined.
 Some care is necessary as {\tt CM.symval} does not check whether the
 syntax of the argument string is valid.  (However, the worst thing
 that could happen is that a variable defined via {\tt CM.symval} is
-not accessible from within CM's description files because there is no
-legal syntax to name it.)
+not accessible\footnote{from within CM's description files} because
+there is no legal syntax to name it.)
 
 \subsubsection*{Library registry}
 
@@ -724,6 +728,31 @@ CM itself uses plug-in modules in its member-class subsystem (see
 section~\ref{sec:classes}).  This makes it possible to add new classes
 and tools very easily without having to reconfigure or recompile CM,
 not to mention modify its source code.
+
+\subsubsection*{Building stand-alone programs}
+
+CM can be used to build stand-alone programs. In fact SML/NJ
+itself---including CM---is an example of this.  (The interactive
+system cannot rely on an existing compilation manager when starting
+up.)
+
+A stand-alone program is constructed by the runtime system from
+existing binfiles or members of existing stable libraries.  CM must
+prepare those binfiles or libraries together with a list that
+describes them to the runtime system.
+
+\begin{verbatim}
+  val mk_standalone : bool option -> string -> string list option
+\end{verbatim}
+
+Depending on the optional boolean argument, function {\tt
+CM.mk\_standalone} first acts like either {\tt CM.recomp} or {\tt
+CM.stabilize}.  {\tt NONE} means {\tt CM.recomp}, and {\tt (SOME $r$)}
+means {\tt CM.stabilize $r$}.  After recompilation (or stabilization)
+is successful, {\tt CM.mk\_standalone} constructs a topologically
+sorted list of strings that, when written to a file, can be passed to the
+runtime system in order to perform stand-alone linkage of the given
+program. Upon failure, {\tt CM.mk\_standalone} returns {\tt NONE}.
 
 \subsection{The autoloader}
 \label{sec:autoload}
@@ -879,8 +908,8 @@ parentheses to enforce precedence.
 
 CM provides a number of ``variables'' (names that stand for certain
 integers). These variables may appear in expressions of the
-conditional-compilation facility. The exact set of provided variable
-names depends on SML/NJ version number, machine architecture, and
+conditional-compilation facility. The exact set of variables provided
+depends on SML/NJ version number, machine architecture, and
 operating system.  A reference to a CM variable is considered an
 arithmetic expression. If the variable is not defined, then it
 evaluates to 0.  The expression {\tt defined}($v$) is a boolean
@@ -916,8 +945,8 @@ variables or modify existing ones.
 
 \subsection{Querying exported definitions}
 
-An expression of the form {\tt defined}($n$ $s$) where $s$ is an ML
-symbol and $n$ is an ML namespace specifier is a boolean expression
+An expression of the form {\tt defined}($n$ $s$), where $s$ is an ML
+symbol and $n$ is an ML namespace specifier, is a boolean expression
 that yields true if and only if any member included before this test
 exports a definition under this name.  Therefore, order among members
 matters after all (but it remains unrelated to the problem of
@@ -961,9 +990,9 @@ other {\tt defined} test.)
 
 \subsection{Explicit errors}
 
-A pseudo-member of the form {\tt \#error $\ldots$} which---like other
+A pseudo-member of the form {\tt \#error $\ldots$}, which---like other
 {\tt \#}-items---starts in the first column and extends to the end of
-the line causes an explicit error message unless it gets excluded by
+the line, causes an explicit error message unless it gets excluded by
 the conditional compilation logic.  The error message is given by the
 remainder of the line after the word {\tt error}.
 
@@ -1042,12 +1071,10 @@ mechanisms are implemented, but there is no enforcement.  In other
 words, everybody is assumed to have every possible privilege.  CM
 merely reports which privileges "would have been required".
 
-\section{The pervasive environment and primitive modules}
+\section{The pervasive environment}
 
-\subsection{The pervasive environment}
-
-The {\em pervasive environment} can be thought of as a library that
-all compilation units implicitly depend upon.  The pervasive
+The {\em pervasive environment} can be thought of as a compilation
+unit that all compilation units implicitly depend upon.  The pervasive
 enviroment exports all non-modular bindings (types, values, infix
 operators, overloaded symbols) that are mandated by the specification
 for the Standard ML Basis Library~\cite{reppy99:basis}.  (All other
@@ -1056,21 +1083,6 @@ a genuine CM library.)
 
 The pervasive environment is the only place where CM conveys
 non-modular bindings from one compilation unit to another.
-
-\subsection{Primitive modules}
-
-CM also knows about some ``primitive'' modules.  These modules give
-access to certain compiler internals which are implemented in a way
-that is outside the usual CM compilation model.  A user program can
-access a primitive module by listing its name as one of the members in
-its CM description files.  However, usage of any primitive module $M$
-is protected by requiring the client to possess  privilege $M$
-(see Section~\ref{sec:access}), i.e., a privilege that goes by the
-same name as the module itself.
-
-User programs are strongly discouraged to access primitive modules
-directly. The exact set of primitive modules known to CM is subject to
-change without notice.
 
 \section{Files}
 
@@ -1093,7 +1105,7 @@ library including all of its components (groups).
 \end{enumerate}
 
 Normally, all these files are stored in a subdirectory of directory
-{\tt CM} which itself is a subdirectory of the directory where the
+{\tt CM}. {\tt CM} itself is a subdirectory of the directory where the
 original ML source file or---in the case of library files---the
 original CM description file is located.
 
@@ -1220,8 +1232,8 @@ interface {\tt Tools.registerClass}.
 
 If CM comes across a member class name $c$ that it does not know
 about, then it tries to load a plugin module named $c${\tt -tool.cm}.
-If it sees a file whose name ends in suffix $s$, for which no member
-class has been specified, and for which member classification fails,
+If it sees a file whose name ends in suffix $s$ for which no member
+class has been specified and for which member classification fails,
 then it tries to load a plugin module named $s${\tt -ext.cm}.  The
 so-loaded module can then register the required tool which enables CM
 to successfully deal with the previously unknown member.
@@ -1531,4 +1543,3 @@ and no longer relies on the {\em Visible Compiler} interface.
 \bibliography{blume,appel,ml}
 
 \end{document}
-

@@ -17,6 +17,10 @@ signature SMLINFO = sig
     type region = GenericVC.SourceMap.region
     type source = GenericVC.Source.inputSource
 
+    type attribs =
+	{ split: bool, is_rts: bool,
+	  extra_compenv: GenericVC.Environment.staticEnv option }
+
     val eq : info * info -> bool	(* compares sourcepaths *)
     val compare : info * info -> order	(* compares sourcepaths *)
 
@@ -37,8 +41,13 @@ signature SMLINFO = sig
     val info : GeneralParams.info ->
 	{ sourcepath: SrcPath.t,
 	  group: SrcPath.t * region,
-	  sh_spec: Sharing.request,
-	  split: bool }
+	  sh_spec: Sharing.request }
+	-> info
+
+    val info' : attribs -> GeneralParams.info ->
+	{ sourcepath: SrcPath.t,
+	  group: SrcPath.t * region,
+	  sh_spec: Sharing.request }
 	-> info
 
     val sourcepath : info -> SrcPath.t
@@ -52,7 +61,7 @@ signature SMLINFO = sig
     val sh_spec : info -> Sharing.request
     val set_sh_mode : info * Sharing.mode -> unit
     val sh_mode : info -> Sharing.mode
-    val split : info -> bool
+    val attribs : info -> attribs
     val lastseen : info -> TStamp.t
 
     (* forget a parse tree that we are done with *)
@@ -66,6 +75,9 @@ signature SMLINFO = sig
      * generation. This is used to get rid of the information for
      * members of now-stable libraries. *)
     val cleanGroup : bool -> SrcPath.t -> unit
+
+    (* See if a given piece of info is (still) known here: *)
+    val isKnown : info -> bool
 
     (* Delete all known info. *)
     val reset : unit -> unit
@@ -92,6 +104,10 @@ structure SmlInfo :> SMLINFO = struct
 
     type complainer = EM.complainer
 
+    type attribs =
+	{ split: bool, is_rts: bool,
+	  extra_compenv: GenericVC.Environment.staticEnv option }
+
     type generation = unit ref
 
     (* sh_mode is an elaboration of sh_spec;  it must be persistent
@@ -110,7 +126,7 @@ structure SmlInfo :> SMLINFO = struct
 		  mkBinname: unit -> string,
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
-		  split: bool }
+		  attribs: attribs }
 
     type ord_key = info
 
@@ -128,7 +144,7 @@ structure SmlInfo :> SMLINFO = struct
     fun sh_mode (INFO { persinfo = PERS { sh_mode = ref m, ... }, ... }) = m
     fun set_sh_mode (INFO { persinfo = PERS { sh_mode, ... }, ... }, m) =
 	sh_mode := m
-    fun split (INFO { split = s, ... }) = s
+    fun attribs (INFO { attribs = a, ... }) = a
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
 
@@ -143,6 +159,9 @@ structure SmlInfo :> SMLINFO = struct
 	!lastseen
 
     val knownInfo = ref (SrcPathMap.empty: persinfo SrcPathMap.map)
+
+    fun isKnown (INFO { sourcepath, ... }) =
+	isSome (SrcPathMap.find (!knownInfo, sourcepath))
 
     fun countParseTrees () = let
 	fun one (PERS { parsetree = ref (SOME _), ... }, i) = i + 1
@@ -181,8 +200,8 @@ structure SmlInfo :> SMLINFO = struct
 	else ()
     end
 
-    fun info (gp: GeneralParams.info) arg = let
-	val { sourcepath, group = gr as (group, region), sh_spec, split } = arg
+    fun info' attribs (gp: GeneralParams.info) arg = let
+	val { sourcepath, group = gr as (group, region), sh_spec } = arg
 	val policy = #fnpolicy (#param gp)
 	fun mkSkelname () = FNP.mkSkelName policy sourcepath
 	fun mkBinname () = FNP.mkBinName policy sourcepath
@@ -226,8 +245,10 @@ structure SmlInfo :> SMLINFO = struct
 	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,
-	       split = split }
+	       attribs = attribs }
     end
+
+    val info = info' { split = true, extra_compenv = NONE, is_rts = false }
 
     (* the following functions are only concerned with getting the data,
      * not with checking time stamps *)

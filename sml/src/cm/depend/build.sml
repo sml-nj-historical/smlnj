@@ -17,6 +17,7 @@ signature BUILDDEPEND = sig
 	  reqpriv: GroupGraph.privileges }
 	* SymbolSet.set option		(* filter *)
 	* GeneralParams.info
+	* DependencyGraph.farsbnode	(* pervasive env *)
 	->
 	impexp SymbolMap.map		(* exports *)
 	* GroupGraph.privileges		(* required privileges (aggregate) *)
@@ -109,7 +110,7 @@ structure BuildDepend :> BUILDDEPEND = struct
     fun symDesc (s, r) =
 	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
-    fun build (coll, fopt, gp) = let
+    fun build (coll, fopt, gp, perv_fsbnode) = let
 	val { imports, gimports, smlfiles, localdefs, subgroups, reqpriv } =
 	    coll
 
@@ -162,7 +163,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 	 * corresponding node *)
 	and analyze (i, history) = let
 	    val li = ref []
-	    val gi = ref []
+	    val gi = ref [perv_fsbnode]
 
 	    (* register a local import *)
 	    fun localImport n =

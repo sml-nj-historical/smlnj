@@ -11,8 +11,8 @@ structure GroupGraph = struct
     type privileges = StringSet.set
 
     datatype kind =
-	NOLIB
-      | LIB of privileges		(* wrapped privileges *)
+	NOLIB of subgrouplist
+      | LIB of privileges * subgrouplist (* wrapped privileges *)
       | STABLELIB of unit -> unit	(* pickle dropper *)
 
     (* the "required" field includes everything:
@@ -20,12 +20,14 @@ structure GroupGraph = struct
      *   2. newly required privileges
      *   3. privileges that would be wrapped once the group is stabilized
      *)
-    datatype group =
+    and group =
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
 		   kind: kind,
 		   required: privileges,
 		   grouppath: SrcPath.t,
-		   sublibs: (SrcPath.t * group) list }
+		   sublibs: subgrouplist }
+
+    withtype subgrouplist = (SrcPath.t * group) list
     (* Note: "sublibs" consists of (srcpath, group) pairs where
      * srcpath is equivalent -- but not necessarily identical -- to
      * the "grouppath" component of "group".  The group might have

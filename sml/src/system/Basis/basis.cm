@@ -1,4 +1,4 @@
-(built-in core init-utils print-hook exn-info-hook)
+(primitive)
 Library
 	(* Basis *)
 	signature ARRAY

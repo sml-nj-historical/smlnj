@@ -12,4 +12,8 @@ structure BtNames = struct
     val pcmodespec = "pathconfig"
     val bare_preloads = "preloads.bare"
     val standard_preloads = "preloads.standard"
+    val bootlist = "BOOTLIST"
+    val pidmap = "PIDMAP"
+    val bin_infix = ".bin."
+    val boot_infix = ".boot."
 end

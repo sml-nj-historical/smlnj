@@ -6,12 +6,12 @@
  * Revised for using the new CM. (M.Blume, 7/1999)
  *)
 
-(use-hook cm-init)
+(primitive)
 Library
 	(* bootstrap stuff *)
 	structure InteractiveSystem
 is
-	use-hook
+	init.cmi : cm
 
 	basis.cm
 	viscomp-core.cm

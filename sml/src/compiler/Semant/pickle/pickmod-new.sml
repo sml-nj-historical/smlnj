@@ -6,8 +6,8 @@
 signature PICKMOD = sig
 
     datatype ckey =			(* context key *)
-	PrimKey of string
-      | NodeKey of int * Symbol.symbol
+	PrimKey				(* for primEnv *)
+      | NodeKey of int * Symbol.symbol	(* n-th sublib, module exporting sym *)
 
     type 'a context =
 	{ lookSTR: ModuleId.modId -> 'a,
@@ -626,7 +626,7 @@ in
 	list (pair (pid, flint)) (SymbolicEnv.listItemsi sye)
 
     datatype ckey =			(* context key *)
-	PrimKey of string
+	PrimKey
       | NodeKey of int * Symbol.symbol
 
     type 'a context =
@@ -640,7 +640,7 @@ in
     datatype stubinfo =
 	NoStub
       | SimpleStub
-      | PrimStub of string
+      | PrimStub
       | NodeStub of int * Symbol.symbol
 
     (* the environment pickler *)
@@ -776,7 +776,7 @@ in
 			    SimpleStub => "A" $ [modId id]
 			  | NoStub => "B" $ [stamp s, int arity, eqprop eq,
 					     tyckind kind, ipath path]
-			  | PrimStub s => "I" $ [string s, modId id]
+			  | PrimStub => "I" $ [modId id]
 			  | NodeStub (i, s) =>
 				"J" $ [int i, symbol s, modId id]
 		in
@@ -878,7 +878,7 @@ in
 				       option (list (pair (entPath, tkind))) b,
 				       list (list spath) typsharing,
 				       list (list spath) strsharing]
-			  | PrimStub s => "D" $ [string s, modId id]
+			  | PrimStub => "D" $ [modId id]
 			  | NodeStub (i, s) =>
 				"E" $ [int i, symbol s, modId id]
 		    end
@@ -904,7 +904,7 @@ in
 				       entVar paramvar,
 				       option symbol paramsym,
 				       Signature bodysig]
-			  | PrimStub s => "d" $ [string s, modId id]
+			  | PrimStub => "d" $ [modId id]
 			  | NodeStub (i, s) =>
 				"e" $ [int i, symbol s, modId id]
 		    end
@@ -961,7 +961,7 @@ in
 			  | NoStub =>
 				"D" $ [Signature sign, strEntity rlzn,
 				       access a, inl_info info]
-			  | PrimStub s => "I" $ [string s, modId id]
+			  | PrimStub => "I" $ [modId id]
 			  | NodeStub (i, s) =>
 				 "J" $ [int i, symbol s, modId id, access a]
 		in
@@ -984,7 +984,7 @@ in
 			  | NoStub =>
 				"G" $ [fctSig sign, fctEntity rlzn,
 				       access a, inl_info info]
-			  | PrimStub s => "H" $ [string s, modId id]
+			  | PrimStub => "H" $ [modId id]
 			  | NodeStub (i, s) =>
 				"I" $ [int i, symbol s, modId id, access a]
 		in
@@ -1062,7 +1062,7 @@ in
 		    case lookEENV id of
 			SimpleStub => "D" $ [modId id]
 		      | NoStub => "E" $ [stamp s, entityEnv r]
-		      | PrimStub s => "F" $ [string s,  modId id]
+		      | PrimStub => "F" $ [modId id]
 		      | NodeStub (i, s) => "G" $ [int i, symbol s, modId id]
 	    in
 		share (MIs (id, NONE)) mee_raw (s, r)
@@ -1164,7 +1164,7 @@ in
 	    context
 	fun cvt lk i =
 	    case lk i of
-		SOME (PrimKey s) => PrimStub s
+		SOME PrimKey => PrimStub
 	      | SOME (NodeKey (i, s)) => NodeStub (i, s)
 	      | NONE => NoStub
 	val c = { lookSTR = cvt lookSTR,

@@ -9,15 +9,12 @@
  *)
 structure GeneralParams = struct
 
-    type param = { primconf : Primitive.configuration,
-		   pcmode : PathConfig.mode,
+    type param = { pcmode : PathConfig.mode,
 		   fnpolicy: FilenamePolicy.policy,
 		   symval: string -> { get: unit -> int option,
 				       set: int option -> unit },
 		   keep_going: bool,
-		   pervasive: GenericVC.Environment.environment,
-		   corenv: GenericVC.BareEnvironment.staticEnv,
-		   pervcorepids: PidSet.set }
+		   corenv: GenericVC.BareEnvironment.environment }
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,

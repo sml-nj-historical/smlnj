@@ -44,7 +44,7 @@ mv $HEAP_FILE $MAIN_HEAP_DIR/sml.$ARCH-$OPSYS
 cd $LIB_DIR
 list=`echo *.cm`
 cd ..
-for lib in $list ; do
+for lib in init.cmi $list ; do
     if [ -d $MAIN_LIB_DIR/$lib/CM/$ARCH-unix ] ; then
 	rm -r $MAIN_LIB_DIR/$lib/CM/$ARCH-unix
     fi

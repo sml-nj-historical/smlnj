@@ -1,5 +1,6 @@
 Group (basis.cm) is
-	built-in
+
+	init.cmi : cm
 
 	basis-structs.sml
 	basis-time.sml

@@ -11,6 +11,7 @@ local
     structure DG = DependencyGraph
     structure GG = GroupGraph
     structure E = GenericVC.Environment
+    structure BE = GenericVC.BareEnvironment
     structure DE = DynamicEnv
     structure EM = GenericVC.ErrorMsg
     structure PP = PrettyPrint
@@ -24,6 +25,8 @@ in
 
 	(* Evict value from cache if it exists *)
 	val evict : GP.info -> SmlInfo.info -> unit
+
+	val evictStale : unit -> unit
 
 	(* Check all values and evict those that depended on other
 	 * meanwhile evicted ones. *)
@@ -40,8 +43,10 @@ in
     end
 
     functor LinkFn (structure MachDepVC : MACHDEP_VC
+		    structure BFC : BFC
+		    sharing type MachDepVC.Binfile.bfContent = BFC.bfc
 		    val system_values : env ref) :> LINK
-	where type bfc = MachDepVC.Binfile.bfContent =
+	where type bfc = BFC.bfc =
     struct
 
 	structure BF = MachDepVC.Binfile
@@ -76,9 +81,16 @@ in
 	    raise exn
 	end
 
-	fun execute (bfc, de) =
+	(* We invoke mk_de here and only if we don't have the value
+	 * available as a sysval.  This saves the (unnecessary) traversal
+	 * in the stable case. (Normally all sysval entries are from
+	 * stable libraries.) *)
+	fun execute (bfc, mk_de, gp: GP.info) =
 	    case sysval (BF.exportPidOf bfc) of
-		NONE => BF.exec (bfc, de)
+		NONE =>
+		    BF.exec (bfc,
+			     DE.atop (mk_de gp,
+				      BE.dynamicPart (#corenv (#param gp))))
 	      | SOME de' => de'
 
 	type smemo = E.dynenv * SmlInfo.info list
@@ -101,6 +113,9 @@ in
 	    handle LibBase.NotFound => ()
 	end
 
+	fun evictStale () =
+	    smlmap := SmlInfoMap.filteri (SmlInfo.isKnown o #1) (!smlmap)
+
 	fun cleanup gp = let
 	    val visited = ref SmlInfoSet.empty
 	    fun visit i =
@@ -121,36 +136,23 @@ in
 	    app (visit o #1) (SmlInfoMap.listItemsi (!smlmap))
 	end
 
-	fun prim2dyn p (gp: GP.info) =
-	    E.dynamicPart (Primitive.env (#primconf (#param gp)) p)
-
-	fun getPerv (gp: GP.info) = E.dynamicPart (#pervasive (#param gp))
-
-	fun link_stable (i, e) = let
+	(* Construction of the environment is delayed until we are
+	 * sure we really, really need it.  This way we spare ourselves
+	 * the trouble of doing the ancestor traversal iff we
+	 * end up finding out we already have the value in sysVal. *)
+	fun link_stable (i, mk_e, gp) = let
 	    val stable = BinInfo.stablename i
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
-	    val _ = Say.vsay ["[linking with ", descr, "]\n"]
 	    val error = BinInfo.error i EM.COMPLAIN
-	in
-	    let fun work s =
-		(Seek.seek (s, os);
-		 (* We can use an empty static env because no
-		  * unpickling will be done. *)
-		 BF.read { stream = s, name = descr, senv = emptyStatic })
-		val bfc =
-		    SafeIO.perform { openIt = fn () => BinIO.openIn stable,
-				     closeIt = BinIO.closeIn,
-				     work = work,
-				     cleanup = fn _ => () }
-		    handle exn =>
-			exn_err ("unable to load library module",
-				 error, descr, exn)
-	    in
-		execute (bfc, e)
-		handle exn => exn_err ("link-time exception in library code",
+	    val bfc =
+		BFC.getStable { stable = stable, offset = os, descr = descr }
+		handle exn => exn_err ("unable to load library module",
 				       error, descr, exn)
-	    end
+	in
+	    execute (bfc, mk_e, gp)
+	    handle exn => exn_err ("link-time exception in library code",
+				   error, descr, exn)
 	end
 
 	fun link_sml (gp, i, getBFC, getE, snl) = let
@@ -160,7 +162,7 @@ in
 		case getE gp of
 		    NONE => NONE
 		  | SOME e =>
-			(SOME (execute (bfc, e))
+			(SOME (execute (bfc, fn _ => e, gp))
 			 handle exn =>
 			     exn_err ("link-time exception in user program",
 				      SmlInfo.error gp i EM.COMPLAIN,
@@ -191,13 +193,11 @@ in
 		val GG.GROUP { grouppath, kind, sublibs, ... } = g
 		fun registerStableLib (GG.GROUP { exports, ... }) = let
 		    val localmap = ref StableMap.empty
-		    fun bn (DG.PNODE p) =
-			(fn gp => fn _ => prim2dyn p gp, NONE)
-		      | bn (DG.BNODE n) = let
+		    fun bn (DG.BNODE n) = let
 			    val { bininfo = i, localimports, globalimports } =
 				n
 			    fun new () = let
-				val e0 = (getPerv, [])
+				val e0 = (fn _ => emptyDyn, [])
 				fun join ((f, NONE), (e, l)) =
 				    (fn gp => DE.atop (f gp emptyDyn, e gp), l)
 				  | join ((f, SOME (i, l')), (e, l)) =
@@ -207,7 +207,8 @@ in
 			    in
 				case (BinInfo.sh_mode i, le) of
 				    (Sharing.SHARE _, (e, [])) => let
-					fun thunk gp = link_stable (i, e gp)
+					fun thunk gp =
+					    link_stable (i, e, gp)
 					val m_thunk = Memoize.memoize thunk
 				    in
 					(fn gp => fn _ => m_thunk gp, NONE)
@@ -216,7 +217,9 @@ in
 				    EM.impossible "Link: sh_mode inconsistent"
 				  | (Sharing.DONTSHARE, (e, l)) =>
 				    (fn gp => fn e' =>
-				     link_stable (i, (DE.atop (e', e gp))),
+				     link_stable (i,
+						  fn gp => DE.atop (e', e gp),
+						  gp),
 				     SOME (i, l))
 			    end
 			in
@@ -226,23 +229,19 @@ in
 					 Sharing.DONTSHARE => (f, SOME (i, []))
 				       | _ => (f, NONE))
 			      | SOME (B (f, i, l)) => (f, SOME (i, l))
-			      | NONE =>
-					 (case StableMap.find (!localmap, i) of
-					      SOME x => x
-					    | NONE => let
-						  val x = new ()
-					      in
-						  localmap := StableMap.insert
-						       (!localmap, i, x);
-						  x
-					      end)
+			      | NONE => (case StableMap.find (!localmap, i) of
+					     SOME x => x
+					   | NONE => let val x = new ()
+					     in localmap := StableMap.insert
+						    (!localmap, i, x);
+						x
+					     end)
 			end
 
 		    and fbn (_, n) = bn n
 
 		    fun sbn (DG.SB_SNODE n) =
 			EM.impossible "Link:SNODE in stable lib"
-		      | sbn (DG.SB_BNODE (DG.PNODE _, _)) = ()
 		      | sbn (DG.SB_BNODE (n as DG.BNODE { bininfo, ... }, _)) =
 			let
 			    val b as B (_, i, _) =
@@ -294,8 +293,7 @@ in
 			m_th
 		    end
 
-	    fun sbn (DG.SB_BNODE (DG.PNODE p, _)) = (SOME o prim2dyn p, [])
-	      | sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)) = let
+	    fun sbn (DG.SB_BNODE (DG.BNODE { bininfo, ... }, _)) = let
 		    val b = valOf (StableMap.find (!stablemap, bininfo))
 		    fun th gp =
 			SOME (bnode b gp)
@@ -316,7 +314,7 @@ in
 			  | atop (SOME e, SOME e') = SOME (DE.atop (e, e'))
 			fun add ((f, l), (f', l')) =
 			    (fn gp => atop (f gp, f' gp), l @ l')
-			val gi = foldl add (SOME o getPerv, [])
+			val gi = foldl add (fn _ => SOME emptyDyn, [])
 			                   (map fsbn globalimports)
 			val (getE, snl) = foldl add gi (map sn localimports)
 			fun thunk gp = link_sml (gp, i, getBFC, getE, snl)

@@ -47,7 +47,4 @@ typedef struct {	    /* The header of a .bin file; note that the fields */
     Int32_t	envSzB;		/* the size of the environment */
 } binfile_hdr_t;
 
-/* the value of the run-time system persistent ID */
-#define RUNTIME_PERID	"runtimePidxxxxxx"
-
 #endif /* !_BIN_FILE_ */

@@ -20,6 +20,8 @@ signature MEMBERCOLLECTION = sig
 
     val empty : collection
 
+    val implicit : GroupGraph.group -> collection
+
     val expandOne :
 	GeneralParams.info * (SrcPath.t -> GroupGraph.group) * (string -> bool)
 	-> { name: string, mkpath: string -> SrcPath.t,
@@ -29,7 +31,8 @@ signature MEMBERCOLLECTION = sig
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build :
-	collection * SymbolSet.set option * GeneralParams.info
+	collection * SymbolSet.set option * GeneralParams.info *
+	DependencyGraph.farsbnode	(* pervasive env *)
 	-> impexp SymbolMap.map * GroupGraph.privileges
 
     val subgroups : collection -> (SrcPath.t * GroupGraph.group) list
@@ -69,6 +72,19 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		     subgroups = [],
 		     reqpriv = StringSet.empty }
 
+    fun implicit init_group = let
+	val (GG.GROUP { grouppath, ... }) = init_group
+    in
+	(* This is a collection that is an implicit member of every
+	 * library -- the "init" group which exports the pervasive env. *)
+	COLLECTION { imports = SymbolMap.empty,
+		     gimports = SymbolMap.empty,
+		     smlfiles = [],
+		     localdefs = SymbolMap.empty,
+		     subgroups = [(grouppath, init_group)],
+		     reqpriv = StringSet.empty }
+    end
+
     fun sequential (COLLECTION c1, COLLECTION c2, error) = let
 	fun describeSymbol (s, r) = let
 	    val ns = Symbol.nameSpace s
@@ -106,81 +122,54 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     end
 
     fun expandOne (gp, rparse, load_plugin) arg = let
-	val primconf = #primconf (#param gp)
 	val { name, mkpath, group, class, context } = arg
 	val class = Option.map (String.map Char.toLower) class
 	val error = GroupReg.error (#groupreg gp) group
-	fun noPrimitive () = let
-	    fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
-	    fun w0 s = error EM.WARN s EM.nullErrorBody
-	    val { smlfiles, cmfiles } =
-		PrivateTools.expand { error = e0,
-				      spec = (name, mkpath, class),
-				      context = context,
-				      load_plugin = load_plugin }
-	    fun g_coll p = let
-		val g as GG.GROUP { exports = i, kind, required, ... } =
-		    rparse p
-		val gi = case kind of GG.NOLIB => i | _ => SymbolMap.empty
-	    in
-		COLLECTION { imports = i, gimports = gi, smlfiles = [],
-			     localdefs = SymbolMap.empty,
-			     subgroups = [(p, g)],
-			     reqpriv = required }
-	    end
-	    fun s_coll (p, s) = let
-		val i = SmlInfo.info gp
-		    { sourcepath = p, group = group,
-		      sh_spec = s, split = true }
-		val exports =
-		    case SmlInfo.exports gp i of
-			NONE => SS.empty
-		      | SOME ex => (if SS.isEmpty ex then
-					w0 ("no module exports from " ^
-					    SrcPath.descr p)
-				    else ();
-				    ex)
-		fun addLD (s, m) = SymbolMap.insert (m, s, i)
-		val ld = SS.foldl addLD SymbolMap.empty exports
-	    in
-		COLLECTION { imports = SymbolMap.empty,
-			     gimports = SymbolMap.empty,
-			     smlfiles = [i],
-			     localdefs = ld,
-			     subgroups = [],
-			     reqpriv = StringSet.empty }
-	    end
-	    val collections = map g_coll cmfiles @ map s_coll smlfiles
-	    fun combine (c1, c2) = sequential (c2, c1, e0)
+	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
+	fun w0 s = error EM.WARN s EM.nullErrorBody
+	val { smlfiles, cmfiles } =
+	    PrivateTools.expand { error = e0,
+				  spec = (name, mkpath, class),
+				  context = context,
+				  load_plugin = load_plugin }
+	fun g_coll p = let
+	    val g as GG.GROUP { exports = i, kind, required, ... } = rparse p
+	    val gi = case kind of GG.NOLIB _ => i | _ => SymbolMap.empty
 	in
-	    foldl combine empty collections
+	    COLLECTION { imports = i, gimports = gi, smlfiles = [],
+			 localdefs = SymbolMap.empty,
+			 subgroups = [(p, g)],
+			 reqpriv = required }
 	end
+	fun s_coll (p, s) = let
+	    val i =
+		SmlInfo.info gp { sourcepath = p, group = group, sh_spec = s }
+	    val exports =
+		case SmlInfo.exports gp i of
+		    NONE => SS.empty
+		  | SOME ex => (if SS.isEmpty ex then
+				    w0 ("no module exports from " ^
+					SrcPath.descr p)
+				else ();
+				ex)
+	    fun addLD (s, m) = SymbolMap.insert (m, s, i)
+	    val ld = SS.foldl addLD SymbolMap.empty exports
+	in
+	    COLLECTION { imports = SymbolMap.empty,
+			 gimports = SymbolMap.empty,
+			 smlfiles = [i],
+			 localdefs = ld,
+			 subgroups = [],
+			 reqpriv = StringSet.empty }
+	end
+	val collections = map g_coll cmfiles @ map s_coll smlfiles
+	fun combine (c1, c2) = sequential (c2, c1, e0)
     in
-	if isSome class then noPrimitive ()
-	else case Primitive.fromString primconf name of
-	    SOME p => let
-		val exports = Primitive.exports primconf p
-		val env = Primitive.da_env primconf p
-		fun addFN (s, m) = let
-		    val ii = Primitive.iinfo primconf p
-		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p, ii))
-		in
-		    SymbolMap.insert (m, s, (fsbn, env))
-		end
-		val imp = SS.foldl addFN SymbolMap.empty exports
-	    in
-		COLLECTION { imports = imp,
-			     gimports = SymbolMap.empty,
-			     smlfiles = [],
-			     localdefs = SymbolMap.empty,
-			     subgroups = [],
-			     reqpriv = Primitive.reqpriv p }
-	    end
-	  | NONE => noPrimitive ()
+	foldl combine empty collections
     end
 
-    fun build (COLLECTION c, fopt, gp) =
-	BuildDepend.build (c, fopt, gp)
+    fun build (COLLECTION c, fopt, gp, perv_fsbnode) =
+	BuildDepend.build (c, fopt, gp, perv_fsbnode)
 
     fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
 

@@ -16,6 +16,7 @@ signature BFC = sig
     type bfc
     val new : unit -> { store: SmlInfo.info * bfc -> unit,
 		        get: SmlInfo.info -> bfc }
+    val getStable : { stable: string, offset: int, descr: string } -> bfc
 end
 
 functor BfcFn (structure MachDepVC : MACHDEP_VC) :> BFC
@@ -53,5 +54,18 @@ struct
 		end
     in
 	{ store = store, get = get }
+    end
+
+    fun getStable { stable, offset, descr } = let
+	fun work s =
+	    (Seek.seek (s, offset);
+	     (* We can use an empty static env because no
+	      * unpickling will be done. *)
+	     BF.read { stream = s, name = descr, senv = estat })
+    in
+	SafeIO.perform { openIt = fn () => BinIO.openIn stable,
+			 closeIt = BinIO.closeIn,
+			 work = work,
+			 cleanup = fn _ => () }
     end
 end

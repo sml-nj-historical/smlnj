@@ -179,11 +179,7 @@ Group (basis.cm)
 #endif
 
 is
-	built-in
-	core
-	init-utils
-	print-hook
-	exn-info-hook
+	init.cmi : cm
 
 	../TypesOnly/sources.cm
 

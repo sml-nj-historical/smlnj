@@ -54,7 +54,7 @@ structure S = CMSemant
 
 %pos int
 %verbose
-%arg (grouppath, context, obsolete, error, doMember, curlib, gp) :
+%arg (grouppath, context, obsolete, error, doMember, curlib, gp, ig) :
     S.pathname *
     S.context *
     (pos * pos -> unit) *
@@ -62,7 +62,8 @@ structure S = CMSemant
     ({ name: string, mkpath: string -> S.pathname } *
      pos * pos * S.cm_class option -> S.members) *
     S.pathname option *
-    GeneralParams.info
+    GeneralParams.info *
+    S.group
 %start description
 %eop EOF
 %noshift EOF
@@ -91,11 +92,12 @@ group : gprivspec owner opt_exports IS members (S.group
 						  gprivspec, opt_exports,
 						  members, gp, curlib, owner,
 						  error (ownerleft,
-							 ownerright)))
+							 ownerright),
+						  ig))
       | lprivspec mand_exports IS members      (S.library
 						 (grouppath,
 						  lprivspec, mand_exports,
-						  members, gp))
+						  members, gp, ig))
 
 owner : (* empty *)                            (NONE)
       | LPAREN pathname RPAREN                 (SOME (#mkpath pathname

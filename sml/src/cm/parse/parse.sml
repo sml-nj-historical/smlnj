@@ -6,11 +6,14 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature PARSE = sig
-    val parse :
-	(string -> bool) ->
-	GroupReg.groupreg option ->
-	GeneralParams.param -> bool option ->
-	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
+    val parse : { load_plugin: string -> bool,
+		  gr: GroupReg.groupreg,
+		  param: GeneralParams.param,
+		  stabflag: bool option,
+		  group: SrcPath.t,
+		  init_group: CMSemant.group,
+		  paranoid: bool }
+	-> (CMSemant.group * GeneralParams.info) option
     val reset : unit -> unit
     val listLibs : unit -> SrcPath.t list
     val dropPickles : unit -> unit
@@ -18,6 +21,7 @@ signature PARSE = sig
 end
 
 functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
+		 val evictStale : unit -> unit
 		 structure Stabilize: STABILIZE) :> PARSE = struct
 
     val lookAhead = 30
@@ -40,8 +44,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 
     fun registerNewStable (p, g) =
 	(sgc := SrcPathMap.insert (!sgc, p, g);
-	 SrcPathSet.app (SmlInfo.cleanGroup true) (Reachable.groupsOf g))
-    fun cachedStable p = SrcPathMap.find (!sgc, p)
+	 SrcPathSet.app (SmlInfo.cleanGroup true) (Reachable.groupsOf g);
+	 evictStale ())
+    fun cachedStable (p, ig as GG.GROUP { grouppath, ... }) =
+	if SrcPath.compare (p, grouppath) = EQUAL then SOME ig
+	else SrcPathMap.find (!sgc, p)
 
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
@@ -56,22 +63,25 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	(sgc := #1 (SrcPathMap.remove (!sgc, l)))
 	handle LibBase.NotFound => ()
 
-    fun parse load_plugin gropt param stabflag group = let
+    fun parse args = let
+	val { load_plugin, gr, param, stabflag, group, init_group, paranoid } =
+	    args
+
+	val GroupGraph.GROUP { grouppath = init_gname, ... } = init_group
 
 	val stabthis = isSome stabflag
 	val staball = stabflag = SOME true
 
-	val groupreg =
-	    case gropt of
-		SOME r => r
-	      | NONE => GroupReg.new ()
+	val groupreg = gr
 	val errcons = EM.defaultConsumer ()
 	val ginfo = { param = param, groupreg = groupreg, errcons = errcons }
 
 	(* The "group cache" -- we store "group options";  having
 	 * NONE registered for a group means that a previous attempt
-	 * to parse it had failed. *)
-	val gc = ref (SrcPathMap.empty: CMSemant.group option SrcPathMap.map)
+	 * to parse it had failed.
+	 * This registry is primed with the "init" group because it is
+	 * "special" and cannot be parsed directly. *)
+	val gc = ref (SrcPathMap.singleton (init_gname, SOME init_group))
 
 	fun hasCycle (group, groupstack) = let
 	    (* checking for cycles among groups and printing them nicely *)
@@ -149,47 +159,54 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		end
 	    in
 		case findCycle (stablestack, []) of
-		    NONE => (case cachedStable gpath of
+		    NONE => (case cachedStable (gpath, init_group) of
 				 SOME g => SOME g
 			       | NONE => load ())
 		  | SOME cyc => (report cyc; NONE)
 	    end
+
+	    fun stabilize NONE = NONE
+	      | stabilize (SOME g) =
+		(case g of
+		     GG.GROUP { kind = GG.LIB _, ... } => let
+			 val go = Stabilize.stabilize ginfo
+			     { group = g, anyerrors = pErrFlag }
+		     in
+			 case go of
+			     NONE => NONE
+			   | SOME g => (registerNewStable (group, g); SOME g)
+		     end
+		   | _ => SOME g)
 	in
-	    case getStable [] group of
-		SOME g => SOME g
-	      | NONE =>
-		    (case SrcPathMap.find (!gc, group) of
-			 SOME gopt => gopt
-		       | NONE => let
-			     val pres =
-				 parse' (group, groupstack, pErrFlag,
-					 stabthis, curlib)
-			 in
-			     case cachedStable group of
-				 NONE =>
-				     gc := SrcPathMap.insert (!gc, group, pres)
-			       | SOME _ => ();
-			     pres
-			 end)
+	    case SrcPathMap.find (!gc, group) of
+		SOME gopt => gopt
+	      | NONE => let
+		    fun try_s () = getStable [] group
+		    fun try_n () = parse' (group, groupstack, pErrFlag, curlib)
+		    fun reg gopt =
+			(gc := SrcPathMap.insert (!gc, group, gopt); gopt)
+		    fun proc_n gopt =
+			reg (if stabthis then stabilize gopt
+			     else (SmlInfo.cleanGroup false group; gopt))
+		in
+		    if paranoid then
+			case try_n () of
+			    NONE => reg NONE
+			  | SOME g =>
+				if VerifyStable.verify ginfo g then
+				    reg (case try_s () of
+					     NONE => SOME g
+					   | SOME g' => SOME g')
+				else proc_n (SOME g)
+		    else case try_s () of
+			SOME g => reg (SOME g)
+		      | NONE => proc_n (try_n ())
+		end
 	end
 
-	and parse' (group, groupstack, pErrFlag, stabthis, curlib) = let
-
-	    (* We stabilize libraries only because a stable library will
-	     * encompass the contents of its sub-groups
-	     * (but not sub-libraries!). *)
-	    fun stabilize (g as GG.GROUP { kind = GG.NOLIB, ... }) = SOME g
-	      | stabilize g = let
-		    val go = Stabilize.stabilize ginfo { group = g,
-							 anyerrors = pErrFlag }
-		in
-		    case go of
-			NONE => NONE
-		      | SOME g => (registerNewStable (group, g);
-				   (gc := #1 (SrcPathMap.remove (!gc, group))
-				    handle LibBase.NotFound => ());
-				   SOME g)
-		end
+	(* Parse' is used when we are sure that we don't want to load
+	 * a stable library. *)
+	and parse' (group, groupstack, pErrFlag, curlib) = let
 
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
@@ -332,23 +349,17 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
 				       (group, context, obsolete, error,
-					doMember, curlib, ginfo))
+					doMember, curlib, ginfo, init_group))
 		in
 		    if !(#anyErrors source) then NONE
 		    else SOME parseResult
 		end
 		fun openIt () = TextIO.openIn (SrcPath.osstring group)
-		val pro =
-		    SafeIO.perform { openIt = openIt,
-				     closeIt = TextIO.closeIn,
-				     work = work,
-				     cleanup = fn _ => () }
 	    in
-		case pro of
-		    NONE => NONE
-		  | SOME pr =>
-			if stabthis then stabilize pr
-			else (SmlInfo.cleanGroup false group; SOME pr)
+		SafeIO.perform { openIt = openIt,
+				 closeIt = TextIO.closeIn,
+				 work = work,
+				 cleanup = fn _ => () }
 	    end
             handle LrParser.ParseError => NONE
 	in

@@ -45,8 +45,7 @@ end = struct
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (fun destroy_state _ i = Compile.evict i
-		     structure MachDepVC = MachDepVC
+	StabilizeFn (structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
 			 val { store, get } = BFC.new ()
 			 val _ = init_servers g
@@ -62,41 +61,26 @@ end = struct
 
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
+			       val evictStale = Compile.evictStale
 			       fun pending () = SymbolMap.empty)
 
-    (* copying an input file to an output file safely... *)
-    fun copyFile (oi, ci, oo, co, inp, outp, eof) (inf, outf) = let
-	fun workIn is = let
-	    fun workOut os = let
-		val N = 4096
-		fun loop () =
-		    if eof is then () else (outp (os, inp (is, N)); loop ())
-	    in
-		loop ()
-	    end
-	in
-	    SafeIO.perform { openIt = fn () => oo outf,
-			     closeIt = co,
-			     work = workOut,
-			     cleanup = fn _ =>
-			         (F.remove outf handle _ => ()) }
-	end
+    fun mkBootList g = let
+	fun listName p =
+	    case P.fromString p of
+		{ vol = "", isAbs = false, arcs = _ :: arc1 :: arcn } => let
+		    fun win32name () =
+			concat (arc1 ::
+				foldr (fn (a, r) => "\\" :: a :: r) [] arcn)
+		in
+		    case os of
+			SMLofNJ.SysInfo.WIN32 => win32name ()
+		      | _ => P.toString { isAbs = false, vol = "",
+					  arcs = arc1 :: arcn }
+		end
+	      | _ => raise Fail ("BootstrapCompile:listName: bad name: " ^ p)
     in
-	SafeIO.perform { openIt = fn () => oi inf,
-			 closeIt = ci,
-			 work = workIn,
-			 cleanup = fn _ => () }
+	MkBootList.group listName g
     end
-
-    val copyTextFile =
-	copyFile (TextIO.openIn, TextIO.closeIn,
-		  AutoDir.openTextOut, TextIO.closeOut,
-		  TextIO.inputN, TextIO.output, TextIO.endOfStream)
-
-    val copyBinFile =
-	copyFile (BinIO.openIn, BinIO.closeIn,
-		  AutoDir.openBinOut, BinIO.closeOut,
-		  BinIO.inputN, BinIO.output, BinIO.endOfStream)
 
     fun mk_compile deliver root dbopt = let
 
@@ -105,37 +89,15 @@ end = struct
 	val initgspec = BtNames.initgspec
 	val maingspec = BtNames.maingspec
 
-	val bindir = concat [dirbase, ".bin.", archos]
-	val bootdir = concat [dirbase, ".boot.", archos]
-
-	fun listName (p, copy) =
-	    case P.fromString p of
-		{ vol = "", isAbs = false, arcs = arc0 :: arc1 :: arcn } => let
-		    fun win32name () =
-			concat (arc1 ::
-				foldr (fn (a, r) => "\\" :: a :: r) [] arcn)
-		    fun doCopy () = let
-			val bootpath =
-			    P.toString { isAbs = false, vol = "",
-					 arcs = bootdir :: arc1 :: arcn }
-		    in
-			copyBinFile (p, bootpath)
-		    end
-		in
-		    if copy andalso arc0 = bindir then doCopy () else ();
-		    case os of
-			SMLofNJ.SysInfo.WIN32 => win32name ()
-		      | _ => P.toString { isAbs = false, vol = "",
-					  arcs = arc1 :: arcn }
-		end
-	      | _ => raise Fail "BootstrapCompile:listName: bad name"
+	val bindir = concat [dirbase, BtNames.bin_infix, archos]
+	val bootdir = concat [dirbase, BtNames.boot_infix, archos]
 
 	val keep_going = #get StdConfig.keep_going ()
 
 	val ctxt = SrcPath.cwdContext ()
 
-	val pidfile = P.joinDirFile { dir = bootdir, file = "RTPID" }
-	val listfile = P.joinDirFile { dir = bootdir, file = "BOOTLIST" }
+	val listfile = P.joinDirFile { dir = bootdir, file = BtNames.bootlist }
+	val pidmapfile = P.joinDirFile { dir = bootdir, file = BtNames.pidmap }
 
 	val pcmode = PathConfig.new ()
 	val _ = PathConfig.processSpecFile (pcmode, pcmodespec)
@@ -148,35 +110,23 @@ end = struct
 		NONE => stdpath maingspec
 	      | SOME r => SrcPath.fromDescr pcmode r
 
-	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
-	    handle Option => raise Fail "BootstrapCompile: cmifile"
-
 	val fnpolicy =
 	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
 	        { arch = arch, os = os }
 
-	fun mkParam { primconf, pervasive, pervcorepids }
-	            { corenv } =
-	    { primconf = primconf,
-	      fnpolicy = fnpolicy,
+	fun mkParam corenv =
+	    { fnpolicy = fnpolicy,
 	      pcmode = pcmode,
 	      symval = SSV.symval,
 	      keep_going = keep_going,
-	      pervasive = pervasive,
-	      corenv = corenv,
-	      pervcorepids = pervcorepids }
+	      corenv = corenv }
 
 	val emptydyn = E.dynamicPart E.emptyEnv
 
 	(* first, build an initial GeneralParam.info, so we can
 	 * deal with the pervasive env and friends... *)
 
-	val primconf = Primitive.primEnvConf
-	val mkInitParam = mkParam { primconf = primconf,
-				    pervasive = E.emptyEnv,
-				    pervcorepids = PidSet.empty }
-
-	val param_nocore = mkInitParam { corenv = BE.staticPart BE.emptyEnv }
+	val param_nocore = mkParam BE.emptyEnv
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
@@ -185,7 +135,7 @@ end = struct
 
 	fun mk_main_compile arg = let
 
-	    val { rts, core, pervasive, primitives, binpaths } = arg
+	    val { core = core_n, pervasive = perv_n, others, src } = arg
 
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
@@ -194,62 +144,103 @@ end = struct
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
-	    val core = valOf (sbnode ginfo_nocore core)
-	    val corenv =  CoerceEnv.es2bs (#env (#statenv core ()))
-	    val core_sym = #symenv core ()
+	    val core = valOf (sbnode ginfo_nocore core_n)
+	    val corenv =
+		BE.mkenv { static = CoerceEnv.es2bs (#env (#statenv core ())),
+			   symbolic = #symenv core (),
+			   dynamic = BE.dynamicPart BE.emptyEnv }
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
 	     * ginfo to include the correct corenv (because virtually
 	     * everybody else needs access to corenv). *)
-	    val param_justcore = mkInitParam { corenv = corenv }
-	    val ginfo_justcore = { param = param_justcore, groupreg = groupreg,
-				   errcons = errcons }
+	    val param = mkParam corenv
+	    val ginfo =
+		{ param = param, groupreg = groupreg, errcons = errcons }
 
-	    fun rt n = valOf (sbnode ginfo_justcore n)
-	    val rts = rt rts
-	    val pervasive = rt pervasive
+	    val perv_fsbnode = (NONE, perv_n)
 
-	    fun sn2pspec (name, n) = let
-		val { statenv, symenv, statpid, sympid } = rt n
-		val { env = static, ctxt } = statenv ()
-		val env =
-		    E.mkenv { static = static,
-			      symbolic = symenv (),
-			      dynamic = emptydyn }
-		val pidInfo =
-		    { statpid = statpid, sympid = sympid, ctxt = ctxt }
+	    fun rt n = valOf (sbnode ginfo n)
+	    val pervasive = rt perv_n
+
+	    fun rt2ie (n, ii: IInfo.info) = let
+		val bs = CoerceEnv.es2bs (#env (#statenv ii ()))
+		val (dae, mkDomain) = Statenv2DAEnv.cvt bs
 	    in
-		{ name = name, env = env, pidInfo = pidInfo }
+		{ ie = ((NONE, n), dae), mkDomain = mkDomain }
+	    end
+		
+	    fun add_exports (n, exports) = let
+		val { ie, mkDomain } = rt2ie (n, rt n)
+		fun ins_ie (sy, m) = SymbolMap.insert (m, sy, ie)
+	    in
+		SymbolSet.foldl ins_ie exports (mkDomain ())
 	    end
 
-	    val pspecs = map sn2pspec primitives
+	    val special_exports = let
+		fun mkie (n, rtn) = #ie (rt2ie (n, rtn))
+	    in
+		foldl SymbolMap.insert' SymbolMap.empty
+		      [(PervCoreAccess.pervStrSym, mkie (perv_n, pervasive)),
+		       (PervCoreAccess.coreStrSym, mkie (core_n, core))]
+	    end
+
+	    val init_group = GroupGraph.GROUP
+		{ exports = foldl add_exports special_exports others,
+		  kind = GroupGraph.LIB (StringSet.empty, []),
+		  required = StringSet.singleton "primitive",
+		  grouppath = initgspec,
+		  sublibs = [] }
 
 	    val _ = ovldR := savedOvld
 
-	    (* The following is a hack but must be done for both the symbolic
-	     * and later the dynamic part of the core environment:
-	     * we must include these parts in the pervasive env. *)
-	    val perv_sym = E.layerSymbolic (#symenv pervasive (),
-					    core_sym)
+	    (* At this point we check if there is a usable stable version
+	     * of the init group.  If so, we continue to use that. *)
+	    val (stab, init_group, deliver) = let
+		fun nostabinit () =
+		    if deliver then
+			let val stabarg = { group = init_group,
+					    anyerrors = ref false }
+			in
+			    case Stabilize.stabilize ginfo stabarg of
+				SOME g => (SOME true, g, true)
+			      (* if we cannot stabilize the init group, then
+			       * as a first remedy we turn delivery off *)
+			      | NONE => (NONE, init_group, false)
+			end
+		    else (NONE, init_group, false)
+	    in
+		if VerifyStable.verify ginfo init_group then let
+		    fun load () =
+			Stabilize.loadStable ginfo
+			  { getGroup = fn _ =>
+			       raise Fail "CMB: initial getGroup",
+			    anyerrors = ref false }
+			  initgspec
+		in
+		    case load () of
+			NONE => nostabinit ()
+		      | SOME g =>
+			    (if deliver then SOME true else NONE, g, deliver)
+		end
+		else nostabinit ()
+	    end
 
-	    val param =
-		mkParam { primconf = Primitive.configuration pspecs,
-			  pervasive =
-			  E.mkenv { static = #env (#statenv pervasive ()),
-				    symbolic = perv_sym,
-				    dynamic = emptydyn },
-			  pervcorepids =
-			    PidSet.addList (PidSet.empty,
-					    [#statpid pervasive,
-					     #sympid pervasive,
-					     #statpid core]) }
-		        { corenv = corenv }
-	    val stab =
-		if deliver then SOME true else NONE
+	    val gr = GroupReg.new ()
+	    val _ = GroupReg.register gr (initgspec, src)
+
+	    val parse_arg =
+		{ load_plugin = load_plugin,
+		  gr = gr,
+		  param = param,
+		  stabflag = stab,
+		  group = maingspec,
+		  init_group = init_group,
+		  paranoid = true }
 	in
 	    Servers.dirbase dirbase;
-	    case Parse.parse load_plugin NONE param stab maingspec of
+	    Parse.reset ();
+	    case Parse.parse parse_arg of
 		NONE => NONE
 	      | SOME (g, gp) => let
 		    fun thunk () = let
@@ -261,50 +252,57 @@ end = struct
 			    Servers.withServers (fn () => recomp gp)
 		    in
 			if isSome res then let
-			    val rtspid = PS.toHex (#statpid rts)
-			    fun writeList s = let
-				fun add ((p, flag), l) = let
-				    val n = listName (p, true)
-				in
-				    if flag then n :: l else l
-				end
-				fun transcribe (p, NONE) = listName (p, true)
-				  | transcribe (p, SOME (off, desc)) =
-				    concat [listName (p, false),
-					    "@", Int.toString off, ":", desc]
-				val bootstrings =
-				    foldr add
-				          (map transcribe (MkBootList.group g))
-					  binpaths
-				fun show str =
-				    (TextIO.output (s, str);
-				     TextIO.output (s, "\n"))
+			    val { l = bootitems, ss } = mkBootList g
+			    val stablelibs = Reachable.stableLibsOf g
+			    fun inSet bi = StableSet.member (ss, bi)
+			    val frontiers =
+				SrcPathMap.map (Reachable.frontier inSet)
+				               stablelibs
+			    fun writeBootList s = let
+				fun wr str = TextIO.output (s, str ^ "\n")
 			    in
-				app show bootstrings
+				app wr bootitems
 			    end
+			    fun writePid s i = let
+				val sn = BinInfo.stablename i
+				val os = BinInfo.offset i
+				val descr = BinInfo.describe i
+				val bfc = BFC.getStable
+				    { stable = sn, offset = os, descr = descr }
+			    in
+				case BF.exportPidOf bfc of
+				    NONE => ()
+				  | SOME pid =>
+					(TextIO.output (s, " ");
+					 TextIO.output (s, PS.toHex pid))
+			    end
+			    fun writePidLine s (p, set) =
+				if StableSet.isEmpty set then ()
+				else (TextIO.output (s, SrcPath.descr p);
+				      StableSet.app (writePid s) set;
+				      TextIO.output (s, "\n"))
+			    fun writePidMap s =
+				SrcPathMap.appi (writePidLine s) frontiers
 			in
 			    if deliver then
 				(SafeIO.perform
 				 { openIt = fn () =>
-				       AutoDir.openTextOut pidfile,
-				   closeIt = TextIO.closeOut,
-				   work = fn s =>
-				       TextIO.output (s, rtspid ^ "\n"),
-				   cleanup = fn _ =>
-				       OS.FileSys.remove pidfile
-				       handle _ => () };
-				 SafeIO.perform
-				 { openIt = fn () =>
 				       AutoDir.openTextOut listfile,
 				   closeIt = TextIO.closeOut,
-				   work = writeList,
+				   work = writeBootList,
 				   cleanup = fn _ =>
 				       OS.FileSys.remove listfile
 				       handle _ => () };
-				 copyTextFile (SrcPath.osstring initgspec,
-					       cmifile);
-				 Say.say ["Runtime System PID is: ",
-					  rtspid, "\n"])
+				 SafeIO.perform
+				 { openIt = fn () =>
+				       AutoDir.openTextOut pidmapfile,
+				   closeIt = TextIO.closeOut,
+				   work = writePidMap,
+				   cleanup = fn _ =>
+				       OS.FileSys.remove pidmapfile
+				       handle _ => () };
+				 Say.say
+				      ["New boot directory has been built.\n"])
 			    else ();
 			    true
 			end

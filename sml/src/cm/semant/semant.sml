@@ -38,11 +38,13 @@ signature CM_SEMANT = sig
     val emptyGroup : pathname -> group
     val group :
 	pathname * privilegespec * exports option * members *
-	GeneralParams.info * pathname option * pathname option * complainer
+	GeneralParams.info * pathname option * pathname option * complainer *
+	GroupGraph.group		(* init group *)
 	-> group
     val library :
 	pathname * privilegespec * exports * members *
-	GeneralParams.info
+	GeneralParams.info *
+	GroupGraph.group		(* init group *)
 	-> group
 
     (* assembling privilege lists *)
@@ -144,7 +146,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     fun emptyGroup path =
 	GG.GROUP { exports = SymbolMap.empty,
-		   kind = GG.NOLIB,
+		   kind = GG.NOLIB [],
 		   required = StringSet.empty,
 		   grouppath = path,
 		   sublibs = [] }
@@ -155,32 +157,37 @@ structure CMSemant :> CM_SEMANT = struct
 	    if List.exists (sameSL x) l then l else x :: l
 	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
 	    case kind of
-		GG.NOLIB => foldl add l sublibs
+		GG.NOLIB _ => foldl add l sublibs
 	      | _ => add (x, l)
     in
 	foldl oneSG [] subgroups
     end
 
-    fun grouplib (islib, g, p, e, m, gp, curlib) = let
-	val mc = applyTo (MemberCollection.empty, curlib) m
+    fun grouplib (islib, g, p, e, m, gp, curlib, init_group) = let
+	val mc = applyTo (MemberCollection.implicit init_group, curlib) m
 	val filter = Option.map (applyTo mc) e
-	val (exports, rp) = MemberCollection.build (mc, filter, gp)
+	val pfsbn = let
+	    val GroupGraph.GROUP { exports, ... } = init_group
+	in
+	    #1 (valOf (SymbolMap.find (exports, PervCoreAccess.pervStrSym)))
+	end
+	val (exports, rp) = MemberCollection.build (mc, filter, gp, pfsbn)
 	val subgroups = MemberCollection.subgroups mc
 	val { required = rp', wrapped = wr } = p
 	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
     in
 	GG.GROUP { exports = exports,
-		   kind = if islib then GG.LIB wr
+		   kind = if islib then GG.LIB (wr, subgroups)
 			  else (if StringSet.isEmpty wr then ()
 				else EM.impossible
 				    "group with wrapped privilege";
-				GG.NOLIB),
+				GG.NOLIB subgroups),
 		   required = rp'',
 		   grouppath = g,
 		   sublibs = sgl2sll subgroups }
     end
 
-    fun group (g, p, e, m, gp, curlib, owner, error) = let
+    fun group (g, p, e, m, gp, curlib, owner, error, init_group) = let
 	fun libname NONE = "<toplevel>"
 	  | libname (SOME p) = SrcPath.descr p
 	fun eq (NONE, NONE) = true
@@ -193,10 +200,10 @@ structure CMSemant :> CM_SEMANT = struct
 				libname curlib])
     in
 	checkowner ();
-	grouplib (false, g, p, e, m, gp, curlib)
+	grouplib (false, g, p, e, m, gp, curlib, init_group)
     end
-    fun library (g, p, e, m, gp) =
-	grouplib (true, g, p, SOME e, m, gp, SOME g)
+    fun library (g, p, e, m, gp, init_group) =
+	grouplib (true, g, p, SOME e, m, gp, SOME g, init_group)
 
     local
 	val isMember = StringSet.member

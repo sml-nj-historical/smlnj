@@ -7,7 +7,8 @@
  *       (M. Blume, 7/1999)
  *)
 signature BOOTENV = sig
-    val init: unit -> { heapfile: string, procCmdLine: (unit -> unit) option }
+    val init:
+	string -> { heapfile: string, procCmdLine: (unit -> unit) option }
 end
 
 functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
@@ -52,40 +53,28 @@ functor BootEnvF (datatype envrequest = AUTOLOAD | BARE
 	end
     end
 
-    fun init () = let
+    fun init bootdir = let
 	(* grab relevant command line arguments... *)
 	fun vArg (prefix, arg) =
 	    if String.isPrefix prefix arg then
 		SOME (String.extract (arg, size prefix, NONE))
 	    else NONE
-	fun bootArgs ([], bootdir, newbindir, heapfile, er) =
-	    (bootdir, newbindir, heapfile, er)
-	  | bootArgs ("@SMLbare" :: rest, bootdir, newbindir, heapfile, _) =
-	    bootArgs (rest, bootdir, newbindir, heapfile, BARE)
-	  | bootArgs (head :: rest, bootdir, newbindir, heapfile, er) =
-	    (case vArg ("@SMLboot=", head) of
-		 SOME bootdir =>
-		     bootArgs (rest, bootdir, newbindir, heapfile, er)
+	fun bootArgs ([], newbindir, heapfile, er) = (newbindir, heapfile, er)
+	  | bootArgs ("@SMLbare" :: rest, newbindir, heapfile, _) =
+	    bootArgs (rest, newbindir, heapfile, BARE)
+	  | bootArgs (head :: rest, newbindir, heapfile, er) =
+	    (case vArg ("@SMLrebuild=", head) of
+		 nbd as SOME _ => bootArgs (rest, nbd, heapfile, er)
 	       | NONE =>
-		     (case vArg ("@SMLrebuild=", head) of
-			  newbindir as SOME _ =>
-			      bootArgs (rest, bootdir, newbindir, heapfile, er)
-			| NONE =>
-			      (case vArg ("@SMLheap=", head) of
-				   SOME heapfile =>
-				       bootArgs (rest, bootdir, newbindir,
-						 heapfile, er)
-				 | NONE =>
-				       bootArgs (rest, bootdir, newbindir,
-						 heapfile, er))))
+		     (case vArg ("@SMLheap=", head) of
+			  SOME hf => bootArgs (rest, newbindir, hf, er)
+			| NONE => bootArgs (rest, newbindir, heapfile, er)))
 
-	val (bootdir, newbindir, heapfile, er) =
+	val (newbindir, heapfile, er) =
 	    bootArgs (SMLofNJ.getAllArgs (),
-		      "comp.boot." ^ architecture,
 		      NONE,
 		      "sml." ^ architecture,
 		      AUTOLOAD)
-	val bootdir = OS.Path.mkCanonical bootdir
 	val newbindir = Option.map OS.Path.mkCanonical newbindir
     in
 	case newbindir of

@@ -10,6 +10,7 @@ local
     structure DG = DependencyGraph
     structure GG = GroupGraph
     structure E = GenericVC.Environment
+    structure BE = GenericVC.BareEnvironment
     structure Pid = GenericVC.PersStamps
     structure DE = GenericVC.DynamicEnv
     structure PP = PrettyPrint
@@ -36,7 +37,7 @@ in
 
 	val getII : SmlInfo.info -> IInfo.info
 
-	val evict : SmlInfo.info -> unit
+	val evictStale : unit -> unit
 	val evictAll : unit -> unit
 
 	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
@@ -192,27 +193,12 @@ in
 	fun mkTraversal (notify, storeBFC, getUrgency) = let
 	    val localstate = ref SmlInfoMap.empty
 
-	    fun pervenv (gp: GP.info) = let
-		val e = #pervasive (#param gp)
-		val ste = E.staticPart e
-		val sye = E.symbolicPart e
-	    in
-		{ envs = fn () => { stat = ste, sym = sye },
-		  pids = PidSet.empty }
-	    end
-
-	    fun sbnode gp n =
-		case n of 
-		    DG.SB_BNODE (_, ii) =>
-			(* The beauty of this scheme is that we don't have
-			 * to do anything at all for SB_BNODEs:  Everything
-			 * is prepared ready to be used when the library
-			 * is unpickled. *)
-			SOME ii
-		  | DG.SB_SNODE n =>
-			(case snode gp n of
-			     NONE => NONE
-			   | SOME ii => SOME ii)
+	    fun sbnode gp (DG.SB_SNODE n) = snode gp n
+	      (* The beauty of this scheme is that we don't have
+	       * to do anything at all for SB_BNODEs:  Everything
+	       * is prepared ready to be used when the library
+	       * is unpickled: *)
+	      | sbnode gp (DG.SB_BNODE (_, ii)) = SOME ii
 
 	    and fsbnode gp (f, n) =
 		case (sbnode gp n, f) of
@@ -227,7 +213,7 @@ in
 		fun fail () =
 		    if #keep_going (#param gp) then NONE else raise Abort
 
-		fun compile_here (stat, sym, pids) = let
+		fun compile_here (stat, sym, pids, split) = let
 		    fun save bfc = let
 			fun writer s =
 			    (BF.write { stream = s, content = bfc,
@@ -261,14 +247,16 @@ in
 			    (* clear error flag (could still be set from
 			     * earlier run) *)
 			    val _ = #anyErrors source := false
-			    val bfc = BF.create { runtimePid = NONE,
-						  splitting = SmlInfo.split i,
-						  cmData = cmData,
-						  ast = ast,
-						  source = source,
-						  senv = stat,
-						  symenv = sym,
-						  corenv = corenv }
+			    val bfc = BF.create
+				{ runtimePid = NONE,
+				  splitting = split,
+				  cmData = cmData,
+				  ast = ast,
+				  source = source,
+				  senv = stat,
+				  symenv = BE.layerSymbolic
+				               (sym, BE.symbolicPart corenv),
+				  corenv = BE.staticPart corenv }
 			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
 			    save bfc;
@@ -289,7 +277,7 @@ in
 		    val e =
 			foldl (layer'wait urgency)
 			      (foldl (layer'wait urgency)
-			             (SOME (pervenv gp))
+			             (SOME emptyEnv)
 				     gi_cl)
 			      li_cl
 		in
@@ -301,6 +289,12 @@ in
 			     * global map... *)
 			    fun fromfile () = let
 				val { stat, sym } = envs ()
+				val { split, extra_compenv, ... } =
+				    SmlInfo.attribs i
+				val stat =
+				    case extra_compenv of
+					NONE => stat
+				      | SOME s => E.layerStatic (stat, s)
 				fun load () = let
 				    val ts = TStamp.fmodTime binname
 				    fun openIt () = BinIO.openIn binname
@@ -334,7 +328,7 @@ in
 				fun compile_again () =
 				    (Say.vsay ["[compiling ",
 					       SmlInfo.descr i, "]\n"];
-				     compile_here (stat, sym, pids))
+				     compile_here (stat, sym, pids, split))
 				fun compile () = let
 				    val sp = SmlInfo.sourcepath i
 				in
@@ -419,9 +413,8 @@ in
 	end
 
 	fun newSbnodeTraversal () = let
-	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
-					       fn _ => (),
-					       fn _ => 0)
+	    val { sbnode, ... } =
+		mkTraversal (fn _ => fn _ => (), fn _ => (), fn _ => 0)
 	    fun sbn_trav gp g = let
 		val r = sbnode gp g handle Abort => NONE
 	    in
@@ -432,9 +425,9 @@ in
 	    sbn_trav
 	end
 
-	fun evict i =
-	    (globalstate := #1 (SmlInfoMap.remove (!globalstate, i)))
-	    handle LibBase.NotFound => ()
+	fun evictStale () =
+	    globalstate :=
+	      SmlInfoMap.filteri (SmlInfo.isKnown o #1) (!globalstate)
 
 	fun evictAll () = globalstate := SmlInfoMap.empty
 
