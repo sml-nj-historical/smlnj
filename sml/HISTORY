@@ -7,13 +7,24 @@ description.
 
 The form of an entry should be:
 
-Name: 
+Name:
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
-Name: Matthias Blume
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2003/09/18 16:00:00 CDT
+Tag: blume-20030918-110_43_1
+Description:
+
+Made a new interim version and bootfiles for developer's bootstrapping
+convenience.
+
+   110.43.1 -- NEW BOOTFILES
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/18 15:20:00 CDT
 Tag: blume-20030918-misc
 Description:
@@ -29,7 +40,7 @@ Description:
    digits" to get its 53 bits of precision.
 
 ----------------------------------------------------------------------
-Name:  Matthias Blume (blume (at) tti - c (dot) org)
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2003/09/17 16:30:00 CDT
 Tag: blume-20030917-real32-slices
 Description:
