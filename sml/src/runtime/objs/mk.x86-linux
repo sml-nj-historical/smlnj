@@ -5,10 +5,10 @@ SHELL =		/bin/sh
 
 MAKE =		make
 CC =		gcc -ansi
-CFLAGS =	-O2 -D_REENTRANT
+CFLAGS =	-O2
 CPP =		gcc -x c -E -P -ansi
 #XOBJS =	xmonitor.o
-#LD_LIBS =	-lX11 -rdynamic -lpthread
+#LD_LIBS =	-lX11
 #BASE_DEFS =	-DHEAP_MONITOR
 XOBJS =
 XLIBS =		../c-libs/dl/libunix-dynload.a
