@@ -194,13 +194,21 @@ notion of \"the end of an outline\".")
      ("in" . t)))
   "Words which might delegate indentation to their parent.")
 
-(defconst sml-symbol-indent
+(defcustom sml-symbol-indent
   '(("fn" . -3)
     ("of" . 1)
     ("|" . -2)
+    ("," . -2)
+    (";" . -2)
     ;;("in" . 1)
     ("d=" . 2))
-  "Special indentation alist for some symbols.")
+  "Special indentation alist for some symbols.
+An entry like (\"in\" . 1) indicates that a line starting with the
+symbol `in' should be indented one char further to the right.
+This is only used in a few specific cases, so it does not work
+for all symbols and in all lines starting with the given symbol."
+  :group 'sml
+  :type '(repeat (cons string integer)))
 
 (defconst sml-open-paren
   (sml-preproc-alist
