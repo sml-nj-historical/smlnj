@@ -18,7 +18,13 @@ sig
   val getWrapTyc   : FLINT.primop -> FLINT.tyc
   val getUnWrapTyc : FLINT.primop -> FLINT.tyc
 
-  val copy : (unit -> FLINT.lvar) -> FLINT.prog -> FLINT.prog
+  (* copy a lexp with alpha renaming.
+   * free variables remain unchanged except for the renaming specified
+   * in the first argument *)
+  val copy : FLINT.lvar IntmapF.intmap -> FLINT.lexp -> FLINT.lexp
+
+  val dcon_eq : FLINT.dcon * FLINT.dcon -> bool
+
 end (* signature FLINTUTIL *) 
 
 
@@ -29,6 +35,7 @@ local structure EM = ErrorMsg
       structure LT = LtyExtern
       structure PO = PrimOp
       structure DA = Access
+      structure M  = IntmapF
       open FLINT
 in 
 
@@ -73,163 +80,89 @@ fun getWrapTyc (_, _, lt, []) = LT.ltd_tyc(#1(LT.ltd_parrow lt))
 fun getUnWrapTyc (_, _, lt, []) = LT.ltd_tyc(#2(LT.ltd_parrow lt))
   | getUnWrapTyc _ = bug "unexpected case in getUnWrapTyc"
 
+fun dcon_eq ((s1,c1,t1),(s2,c2,t2)) =
+    (s1 = s2) andalso (c1 = c2) andalso LtyBasic.lt_eqv(t1, t2)
+
+val cplv = LambdaVar.dupLvar
 (* 
  * general alpha-conversion on lexp free variables remain unchanged
- *   val copy: (unit -> lvar) -> fundec -> fundec
+ * except for the renaming specified in the first argument.
+ *   val copy: lvar M.intmap -> fundec -> fundec
  *)
-fun copy mkLvar = let
+fun copy alpha le = let
+    fun substvar lv = ((M.lookup alpha lv) handle M.IntmapF => lv)
+    fun substval (VAR lv) = VAR(substvar lv)
+      | substval v = v
+    fun newv (lv,alpha) =
+	let val nlv = cplv lv in (nlv, M.add(alpha,lv,nlv)) end
+    fun newvs (lvs,alpha) =
+	foldr (fn (lv,(lvs,alpha)) =>
+	       let val (nlv,nalpha) = newv(lv,alpha) in (nlv::lvs,nalpha) end)
+	      ([],alpha) lvs
+    fun cdcon (s,Access.EXN(Access.LVAR lv),lty) =
+	(s, Access.EXN(Access.LVAR(substvar lv)), lty)
+      | cdcon dc = dc
+    fun cpo (SOME{default,table},po,lty,tycs) =
+	(SOME{default=substvar default,
+	      table=map (fn (tycs,lv) => (tycs, substvar lv)) table},
+	 po,lty,tycs)
+      | cpo po = po
+in case le
+    of RET vs => RET(map substval vs)
+     | LET (lvs,le,body) =>
+       let val nle = copy alpha le
+	   val (nlvs,nalpha) = newvs(lvs,alpha)
+       in LET(nlvs, nle, copy nalpha body)
+       end
+     | FIX (fdecs,le) =>
+       let fun cfun alpha ((fk,f,args,body):fundec,nf) =
+	       let val (nargs,nalpha) = newvs(map #1 args, alpha)
+	       in (fk, nf, ListPair.zip(nargs, (map #2 args)), copy nalpha body)
+	       end
+	   val (nfs, nalpha) = newvs(map #2 fdecs, alpha)
+	   val nfdecs = ListPair.map (cfun nalpha) (fdecs, nfs)
+       in
+	   FIX(nfdecs, copy nalpha le)
+       end
+     | APP (f,args) => APP(substval f, map substval args)
+     | TFN ((lv,args,body),le) =>
+       (* don't forget to rename the tvar also *)
+       let val (nlv,nalpha) = newv(lv,alpha)
+	   val (nargs,ialpha) = newvs(map #1 args, nalpha)
+       in TFN((nlv, ListPair.zip(nargs, map #2 args), copy ialpha body),
+		copy nalpha le)
+       end
+     | TAPP (f,tycs) => TAPP(substval f, tycs)
+     | SWITCH (v,ac,arms,def) =>
+       let fun carm (DATAcon(dc,tycs,lv),le) =
+	       let val (nlv,nalpha) = newv(lv, alpha)
+	       in (DATAcon(cdcon dc, tycs, nlv), copy nalpha le)
+	       end
+	     | carm (con,le) = (con, copy alpha le)
+       in SWITCH(substval v, ac, map carm arms, Option.map (copy alpha) def)
+       end
+     | CON (dc,tycs,v,lv,le) =>
+       let val (nlv,nalpha) = newv(lv, alpha)
+       in CON(cdcon dc, tycs, substval v, nlv, copy nalpha le)
+       end
+     | RECORD (rk,vs,lv,le) => 
+       let val (nlv,nalpha) = newv(lv, alpha)
+       in RECORD(rk, map substval vs, nlv, copy nalpha le)
+       end
+     | SELECT (v,i,lv,le) => 
+       let val (nlv,nalpha) = newv(lv, alpha)
+       in SELECT(substval v, i, nlv, copy nalpha le)
+       end
+     | RAISE (v,ltys) => RAISE(substval v, ltys)
+     | HANDLE (le,v) => HANDLE(copy alpha le, substval v)
+     | BRANCH (po,vs,le1,le2) =>
+       BRANCH(cpo po, map substval vs, copy alpha le1, copy alpha le2)
+     | PRIMOP (po,vs,lv,le) =>
+       let val (nlv,nalpha) = newv(lv, alpha)
+       in PRIMOP(cpo po, map substval vs, nlv, copy nalpha le)
+       end
+end
 
-    fun look m v = (IntmapF.lookup m v) handle IntmapF.IntmapF => v
-    fun rename (lv, m) = 
-      let val lv' = mkLvar ()
-  	  val m' = IntmapF.add (m, lv, lv')
-       in (lv', m')
-      end
-
-    fun renamevs (vs, m) = 
-      let fun h([], nvs, nm) = (rev nvs, nm)
-            | h(a::r, nvs, nm) = 
-                 let val (a', nm') = rename(a, nm)
-                  in h(r, a'::nvs, nm')
-                 end
-       in h(vs, [], m)
-      end
-
-    fun renamevps (vps, m) = 
-      let fun h([], nvs, nm) = (rev nvs, nm)
-            | h((a,t)::r, nvs, nm) = 
-                 let val (a', nm') = rename(a, nm)
-                  in h(r, (a',t)::nvs, nm')
-                 end
-       in h(vps, [], m)
-      end
-
-    (* access *)
-    fun ca (DA.LVAR v, m) = DA.LVAR (look m v)
-      | ca (DA.PATH (a, i), m) = DA.PATH (ca (a, m), i)
-      | ca (a, _) = a
-
-    (* conrep *)
-    fun ccr (DA.EXN a, m) = DA.EXN (ca (a, m))
-      | ccr (cr, _) = cr
-
-    (* dataconstr *)
-    fun cdc ((s, cr, t), m) = (s, ccr (cr, m), t)
-
-    (* con *)
-    fun ccon (DATAcon (dc, ts, v), m) = 
-          let val (nv, m') = rename(v, m)
-           in (DATAcon (cdc(dc, m), ts, nv), m')
-          end
-      | ccon x = x
-
-    (* dict *)
-    fun dict ({default=v, table=tbls}, m) =
-      let val nv = look m v
-          val ntbls = map (fn (x, v) => (x, look m v)) tbls
-       in {default=nv, table=ntbls}
-      end
-
-    (* primop *)
-    fun cprim (p as (NONE, _, _, _), m) = p
-      | cprim ((SOME d, p, lt, ts), m) = (SOME (dict(d, m)), p, lt, ts)
-
-    (* value *)
-    fun sv (VAR lv, m) = VAR (look m lv)
-      | sv (x as INT _, _) = x
-      | sv (x as INT32 _, _) = x
-      | sv (x as WORD _, _) = x
-      | sv (x as WORD32 _, _) = x
-      | sv (x as REAL _, _) = x
-      | sv (x as STRING _, _) = x
-
-    (* value list *)
-    fun svs (vs, m) = 
-      let fun h([], res, m) = rev res
-            | h(v::r, res, m) = h(r, (sv(v, m))::res, m)
-       in h(vs, [], m)
-      end
-
-    (* lexp *)
-    fun c (RET vs, m) = RET (svs (vs, m))
-      | c (APP (v, vs), m) = APP (sv (v, m), svs (vs, m))
-      | c (TAPP (v, ts), m) = TAPP (sv (v, m), ts)
-      | c (FIX (fdecs, le), m) = 
-           let val (fdecs', nm) = cf(fdecs, m)
-            in FIX(fdecs', c(le, nm))
-           end
-      | c (LET (vs, le1, le2), m) = 
-           let val le1' = c(le1, m)
-               val (nvs, m') = renamevs(vs, m)
-            in LET(nvs, le1', c(le2, m'))
-           end
-      | c (TFN (tfdec, le), m) = 
-           let val (tfdec', nm) = ctf(tfdec, m)
-            in TFN(tfdec', c(le, nm))
-           end
-
-      | c (SWITCH (v, crl, cel, eo), m) = 
-           let fun cc (con, x) = 
-                 let val (ncon, m') = ccon (con, m)
-                  in (ncon, c (x, m'))
-                 end
-    	       fun co NONE = NONE
-  	         | co (SOME x) = SOME (c (x, m))
- 	    in SWITCH (sv (v, m), crl, map cc cel, co eo)
-  	   end
-      | c (CON (dc, ts, u, v, le), m) = 
-           let val (nv, nm) = rename(v, m)
-            in CON (cdc (dc, m), ts, sv (u, m), nv, c(le, nm))
-           end
-      | c (RECORD (rk, vs, v, le), m) = 
-           let val (nv, nm) = rename(v, m)
-            in RECORD (rk, svs (vs, m), nv, c(le, nm))
-           end
-      | c (SELECT (u, i, v, le), m) = 
-           let val (nv, nm) = rename(v, m)
-            in SELECT (sv (u,m), i, nv, c(le, nm))
-           end
-      | c (RAISE (v, ts), m) = RAISE (sv (v, m), ts)
-      | c (HANDLE (e, v), m) = HANDLE (c (e, m), sv (v, m))
-      | c (BRANCH (p, vs, e1, e2), m) = 
-           BRANCH (cprim(p, m), svs(vs, m), c(e1, m), c(e2, m))
-      | c (PRIMOP (p, vs, v, le), m) = 
-           let val (nv, nm) = rename(v, m)
-            in PRIMOP(cprim(p,m), svs(vs, m), nv, c(le, nm))
-           end
-
-    and ctf ((v,args,le), m) = 
-      let val (nv, nm) = rename(v, m)
-          (*** ZSH-WARNING: I didn't bother to rename tvars in args ***)
-       in ((nv, args, c(le, m)), nm)
-      end
-
-    and cf (fdecs, m) =
-      let fun pass1([], res, m) = (rev res, m)
-            | pass1((_, v, _, _)::r, res, m) = 
-                let val (nv, nm) = rename(v, m)
-                 in pass1(r, nv::res, nm)
-                end
-
-          val (nvs, nm) = pass1(fdecs, [], m)
-
-          fun pass2([], [], res) = (rev res, nm)
-            | pass2((fk, _, args, le)::r, nv::nvs, res) = 
-                let val (args', nm') = renamevps(args, nm)
-                 in pass2(r, nvs, (fk, nv, args', c(le, nm'))::res)
-                end
-            | pass2 _ = bug "unexpected cases in cf - pass2"
-       in pass2(fdecs, nvs, [])
-      end
-in
-    fn fdec => 
-      let val init = IntmapF.empty
-          val (fdecs', _) = cf([fdec], init)
-       in (case fdecs' 
-            of [x] => x
-             | _ => bug "unexpected cases in copy - top")
-      end
-end (* function copy *)
 
 end (* top-level local *)
 end (* structure FlintUtil *)

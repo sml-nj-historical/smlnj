@@ -60,8 +60,11 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 	      | build ([], _, _, _) = bug "build mismatch: too many types"
 	      | build ((imp as (pid, tr)) :: rest, tyl, i, rvl) = let
 		    val lc = cnt tr
+		    fun copy fdec = let val F.FIX([fdec], F.RET[]) =
+			FU.copy IntmapF.empty (F.FIX([fdec], F.RET[]))
+		    in fdec end
 		in
-		    case Option.map (FU.copy LV.mkLvar) (symLook pid) of
+		    case Option.map copy (symLook pid) of
 			NONE => let
 			    fun h (0, tyl, i, rvl) = build (rest, tyl, i, rvl)
 			      | h (n, ty :: tyl, i, rvl) = let
