@@ -14,6 +14,124 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/28 10:53:00 CDT
+Tag: blume-20040928-controls
+Description:
+
+Some cleanup of the controls code.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/27 22:08:00 CDT
+Tag: blume-20040927-controls
+Description:
+
+Added two pieces of functionality to the Controls interface:
+
+1.   val save'restore: 'a control -> unit -> unit
+
+   grabs the current value of the control in stage 1 and restores it
+   in stage 2.
+
+2.   val set' : 'a control * 'a -> unit -> unit
+
+   stores the given value into the control in stage 2 (i.e., delayed)
+   but does all error checking in stage 1.
+   (This is for string controls that need to do parse their argument --
+    something that might fail.  In some cases, notably in CM, one
+    already knows the intended argument but wants to delay the actual
+    assignment until a time when error recovery would be more difficult.)
+
+Changed the handling of controls in tool arguments to classes "sml" and
+"lazysml":
+   - use Controls.save'restore as a more robust way of restoring the
+     old value (in particular: without having to re-parse the string)
+   - use controls to handle the "overload" keyword in the init group
+     (I believe this change actually fixes a long-standing obscure bug.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/27 17:00:00 CDT
+Tag: blume-20040927-lazysml
+Description:
+
+Added a new tool class called "lazysml" to CM's tool chest.  The only
+difference to "sml" is that compilation is done with Control.lazysml
+set to true.  A source of class "lazysml" is automatically recognized
+by a file name suffix of ".lml".
+
+In addition to the above feature, the original class "sml" now also
+supports a tool argument "lazy" which has the same effect.  As a
+result, the following three lines are equivalent:
+
+    foo.sml : lazysml
+    foo.sml : sml (lazy)
+    foo.sml (lazy)
+
+The setting goes into effect both during parsing and during
+compilation.  The original setting is restored right after parsing and
+after compilation, respectively.
+
+In addition to all the above, there is also a general mechanism to set
+ANY of the "controls" that are available at the command line via
+"-C..." on a per-sml-file basis.  The same rules that apply for "lazy"
+apply as well. (In fact, "lazy" is implemented as a special case of
+the general mechanism.)
+
+The .cm file syntax uses a new keyword tool argument called "with".
+There are several ways of indicating the desired settings:
+
+    foo.sml (with:parser.quotations=true)
+    foo.sml (with:(name:parser.quotations value:true))
+    foo.sml (with:(name:name1 value:value1 name:name2 value:value2 ...))
+    foo.sml (with:(name1=value1 name2=value2 ...))
+    foo.sml (with:(name1=value1 name:name2 value:value2 name3=value3 ...))
+
+    etc.
+
+Another possible abbreviation is to leave out the =v or value:v part
+if the name refers to a boolean control (in which case the value is
+taken to be true).  Thus, one could get lazy sml also by saying:
+
+    foo.sml (with:parser.lazy-keyword=true)
+    foo.sml (with:parser.lazy-keyword)
+    foo.sml (with:(name:parser.lazy-keyword value:true))
+    foo.sml (with:(name:parser.lazy-keyword))
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/24 16:22:00 CDT
+Tag: blume-20040924-ppc-long-branch
+Description:
+
+Turned message about "emiting long form of branch" off by default.
+Added a control flag to turn it back on when desired.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/24 16:05:00 CDT
+Tag: blume-20040924-rounding
+Description:
+
+Applied patch for setting rounding modes under Mac OS X.  Thanks to
+Melissa O'Neill for providing the code!
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/23 17:30:00 CDT
+Tag: blume-20040923-envvars
+Description:
+
+1. Changed definition of type ControlRegistry.registry_tree to
+   include control_info (i.e., the name of the controlling environment
+   variable).
+
+2. Added command-line flags -e and -E to print the names of environment
+   variables that can be used to control internal settings.
+   (This uses the new API mentioned in 1.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/09/13 16:50:00 CDT
 Tag: Release_110_49
 Description:

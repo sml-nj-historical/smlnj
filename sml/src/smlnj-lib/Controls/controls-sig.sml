@@ -47,7 +47,12 @@ signature CONTROLS =
     val name : 'a control -> string
     val get : 'a control -> 'a
     val set : 'a control * 'a -> unit
+    val set' : 'a control * 'a -> unit -> unit (* delayed,
+						* error checking in 1st stage *)
     val info : 'a control -> {priority : priority, obscurity : int, help : string}
+
+  (* capture current value (1st stage) and restore it (2nd stage) *)
+    val save'restore : 'a control -> unit -> unit
 
   (* compare the priority of two controls *)
     val compare : ('a control * 'a control) -> order

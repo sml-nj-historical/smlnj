@@ -11,7 +11,13 @@ structure ControlReps =
 
     datatype 'a control = Ctl of {
 	name : Atom.atom,		(* name of the control *)
-	set : 'a -> unit,		(* function to set the control's value *)
+	set : 'a option -> unit -> unit,(* function to set the control's value;
+					 * it is delayed (error checking in 1st
+					 * stage, actual assignment in 2nd);
+					 * if the argument is NONE, then
+					 * the 2nd stage will restore the
+					 * value that was present during the
+					 * first stage *)
 	get : unit -> 'a,		(* return the control's value *)
 	priority : priority,		(* control's priority *)
 	obscurity : int,		(* control's detail level; higher means *)
@@ -29,10 +35,6 @@ structure ControlReps =
 	toString : 'a -> string
       }
 
-  (* ">" ordering on priorities *)
-    fun priorityGT ([], _) = false
-      | priorityGT (_, []) = true
-      | priorityGT (x::xs, y::ys) =
-	  Int.>(x, y) orelse ((x = y) andalso priorityGT(xs, ys))
-
+    fun priorityGT priorities =
+	List.collate Int.compare priorities = GREATER
   end

@@ -11,6 +11,8 @@ signature CONTROL_REGISTRY =
 
     type registry
 
+    type control_info = { envName : string option }
+
     val new : {
 	    help : string	(* registry's description *)
 	  } -> registry
@@ -45,7 +47,7 @@ signature CONTROL_REGISTRY =
     datatype registry_tree = RTree of {
 	path : string list,
 	help : string,
-	ctls : string Controls.control list,
+	ctls : { ctl : string Controls.control, info : control_info } list,
 	subregs : registry_tree list
       }
 

@@ -70,12 +70,17 @@ signature CORETOOLS = sig
 
     type splitting = int option option (* see ....Control.LambdaSplitting... *)
 
+    type controller =
+	 { save'restore: unit -> unit -> unit,
+	   set: unit -> unit }
+
     type smlparams = 
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
 	   noguid: bool,
-	   locl: bool }
+	   locl: bool,
+	   controllers: controller list }
 
     type cmparams =
 	 { version: Version.t option,

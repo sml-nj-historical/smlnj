@@ -45,12 +45,17 @@ structure PrivateTools : PRIVATETOOLS = struct
 
     type splitting = int option option
 
+    type controller =
+	 { save'restore: unit -> unit -> unit,
+	   set: unit -> unit }
+
     type smlparams = 
 	 { share: Sharing.request,
 	   setup: setup,
 	   split: splitting,
 	   noguid: bool,
-	   locl: bool }
+	   locl: bool,
+	   controllers: controller list }
 
     type cmparams =
 	 { version: Version.t option,
@@ -279,23 +284,38 @@ structure PrivateTools : PRIVATETOOLS = struct
 	loop (options, StringMap.empty, [])
     end
 
-    fun smlrule { spec, context, native2pathmaker, defaultClassOf, sysinfo } =
+    fun smlrule enforce_lazy
+	    { spec, context, native2pathmaker, defaultClassOf, sysinfo } =
     let val { name, mkpath, opts = oto, derived, ... } : spec = spec
 	val tool = "sml"
 	fun err s = raise ToolError { tool = tool, msg = s }
+	fun fail s = raise Fail ("(SML Tool) " ^ s)
 	val kw_setup = "setup"
+	val kw_with = "with"
 	val kw_lambdasplit = "lambdasplit"
 	val kw_noguid = "noguid"
+	val kw_local = "local"
+	val kw_lazy = "lazy"
 	val UseDefault = NONE
 	val Suggest = SOME
-	val (srq, setup, splitting, noguid, locl) =
+	val lazy_controller =
+	    { save'restore =
+	      fn () => let val orig = !Control.lazysml
+		       in
+			fn () => Control.lazysml := orig
+		       end,
+	      set = fn () => Control.lazysml := true }
+	val (srq, setup, splitting, noguid, locl, controllers) =
 	    case oto of
 		NONE => (Sharing.DONTCARE, (NONE, NONE), UseDefault,
-			 false, false)
+			 false, false, if enforce_lazy then [lazy_controller]
+				       else [])
 	      | SOME to => let
 		    val { matches, restoptions } =
 			parseOptions { tool = tool,
-				       keywords = [kw_setup, kw_lambdasplit],
+				       keywords = [kw_setup,
+						   kw_with,
+						   kw_lambdasplit],
 				       options = to }
 		    fun is_shspec "shared" = true
 		      | is_shspec "private" = true
@@ -310,11 +330,14 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | _ => err "invalid option(s)"
 		    fun isKW kw s = String.compare (kw, s) = EQUAL
 		    val (locls, restoptions) =
-			List.partition (isKW "local") restoptions
+			List.partition (isKW kw_local) restoptions
 		    val (noguids, restoptions) =
-			List.partition (isKW "noguid") restoptions
+			List.partition (isKW kw_noguid) restoptions
+		    val (lazies, restoptions) =
+			List.partition (isKW kw_lazy) restoptions
 		    val locl = not (List.null locls)
 		    val noguid = not (List.null noguids)
+		    val lazysml = enforce_lazy orelse not (List.null lazies)
 		    val _ = if List.null restoptions then ()
 			    else err (concat
 					  ("invalid option(s): " ::
@@ -341,6 +364,54 @@ structure PrivateTools : PRIVATETOOLS = struct
 					     opts = [STRING pre] }]) =>
 			    (SOME (#name pre), SOME (#name post))
 			  | _ => err "invalid setup spec"
+
+		    val controllers =
+			case matches kw_with of
+			    NONE => []
+			  | SOME subopts => let
+				fun fields c s =
+				    String.fields (fn c' => c = c') s
+				fun set (c, v) =
+				    Controls.set' (c, v)
+				    handle Controls.ValueSyntax vse =>
+					   fail (concat ["error setting \
+							 \ controller: \
+							 \unable to parse \
+							 \value `",
+							 #value vse, "' for ",
+							 #ctlName vse, " : ",
+							 #tyName vse])
+				fun mk (n, v) =
+				    case ControlRegistry.control
+					     BasicControl.topregistry
+					     (fields #"." n)
+				     of NONE =>
+					  err ("no such control: " ^ n)
+				      | SOME c =>
+					  { save'restore =
+					      fn () => Controls.save'restore c,
+					    set = set (c, v) }
+				fun loop ([], a) = a
+				  | loop (STRING nv :: r, a) =
+				      (case fields #"=" (#name nv) of
+					   [n, v] => loop (r, mk (n, v) :: a)
+					 | [n] => loop (r, mk (n, "true") :: a)
+					 | _ => err "invalid controller spec")
+				  | loop (SUBOPTS { name = "name",
+						    opts = [STRING n] } ::
+					  SUBOPTS { name = "value",
+						    opts = [STRING v] } :: r,
+					  a) =
+				      loop (r, mk (#name n, #name v) :: a)
+				  | loop (SUBOPTS { name = "name",
+						    opts = [STRING n] } :: r,
+					  a) =
+				      loop (r, mk (#name n, "true") :: a)
+				  | loop _ = err "invalid controller spec"
+			    in
+				loop (subopts, [])
+			    end
+
 		    val splitting = let
 			fun invalid () = err "invalid lambdasplit spec"
 			fun spec (s: fnspec) =
@@ -354,13 +425,16 @@ structure PrivateTools : PRIVATETOOLS = struct
 			  | SOME [STRING x] => spec x
 			  | _ => invalid ()
 		    end
+		    val controllers =
+			if lazysml then lazy_controller :: controllers
+			else controllers
 		in
-		    (srq, setup, splitting, noguid, locl)
+		    (srq, setup, splitting, noguid, locl, controllers)
 		end
 	val p = srcpath (mkpath ())
 	val sparam = { share = srq, setup = setup, split = splitting,
 		       noguid = noguid,
-		       locl = locl }
+		       locl = locl, controllers = controllers }
     in
 	({ smlfiles = [(p, sparam)],
 	   sources = [(p, { class = "sml", derived = derived })],
@@ -482,10 +556,12 @@ structure PrivateTools : PRIVATETOOLS = struct
 	fun sfx (s, c) =
 	    registerClassifier (stdSfxClassifier { sfx = s, class = c })
     in
-	val _ = registerClass ("sml", smlrule)
+	val _ = registerClass ("sml", smlrule false)
+	val _ = registerClass ("lazysml", smlrule true)
 	val _ = registerClass ("cm", cmrule)
 
 	val _ = sfx ("sml", "sml")
+	val _ = sfx ("lml", "lazysml")
 	val _ = sfx ("sig", "sml")
 	val _ = sfx ("fun", "sml")
 	val _ = sfx ("cm", "cm")

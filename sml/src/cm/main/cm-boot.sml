@@ -656,10 +656,10 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		    open FormatComb
 		    val { help, ctls, subregs, path } = rt
 
-		    fun one c = let
+		    fun one ci = let
 			val arg = concat (foldr (fn (s, r) => s :: "." :: r)
-						[getarg c] path)
-			val value = getval c
+						[getarg ci] path)
+			val value = getval ci
 			val sz = size value
 			val lw = !Control_Print.linewidth
 			val padsz = lw - 6 - size arg - indent
@@ -720,21 +720,28 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		     \    -h               (produce minimal help listing)\n\
 		     \    -h<level>        (help with obscurity limit)\n\
 		     \    -S               (list all current settings)\n\
-		     \    -s<level>        (limited list of settings)\n\n"];
-		show_controls (Controls.name,
-			       fn c => concat ["(", #help (Controls.info c),
-					       ")"],
+		     \    -s<level>        (limited list of settings)\n\
+		     \    -E               (list all environment variables)\n\
+		     \    -e<level>        (limited list of environment variables)\n\n"];
+		show_controls (Controls.name o #ctl,
+			       fn ci =>
+				  concat ["(", #help (Controls.info (#ctl ci)),
+					  ")"],
 			       FormatComb.pad FormatComb.left)
 			      level)
 
-	    fun showcur level = let
-		fun nopad (_, s) = s
-	    in
-		show_controls (fn c => (Controls.name c ^ "="),
-			       fn c => Controls.get c,
+	    fun showcur level =
+		show_controls (fn ci => (Controls.name (#ctl ci) ^ "="),
+			       fn ci => Controls.get (#ctl ci),
 			       fn _ => fn ff => ff)
 			      level
-	    end
+
+	    fun show_envvars level =
+		show_controls (fn ci => (Controls.name (#ctl ci) ^ ":"),
+			       fn ci => Option.getOpt (#envName (#info ci),
+						       "(none)"),
+			       FormatComb.pad FormatComb.left)
+			      level
 
 	    fun badopt opt f () =
 		Say.say ["!* bad ", opt, " option: `", f, "'\n",
@@ -793,6 +800,11 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		       "" => showcur (SOME 0)
 		     | level => showcur (Int.fromString level);
 		   quit_if last)
+	      | carg ("-e", f, _, last) =
+		  (case String.extract (f, 2, NONE) of
+		       "" => show_envvars (SOME 0)
+		     | level => show_envvars (Int.fromString level);
+		   quit_if last)
 	      | carg (_, f, mk, _) =
 		  p (f, mk, String.map Char.toLower
 				       (getOpt (OS.Path.ext f, "<none>")))
@@ -801,6 +813,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	      | args ("-m" :: rest, _) = args (rest, make)
 	      | args ("-H" :: rest, mk) = (help NONE; args_q (rest, mk))
 	      | args ("-S" :: rest, mk) = (showcur NONE; args_q (rest, mk))
+	      | args ("-E" :: rest, mk) = (show_envvars NONE; args_q (rest, mk))
 	      | args ("-q" :: _, _) = quit ()
 	      | args ("@CMbuild" :: rest, _) = mlbuild rest
 	      | args (f :: rest, mk) =

@@ -26,6 +26,11 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
     fun build (gp: GeneralParams.info) specgroup = let
 	val ovldR = Control.overloadKW
+	val ovldC = { save'restore =
+		        fn () => let val orig = !ovldR in
+				  fn () => ovldR := orig
+				 end,
+		      set = fn () => ovldR := true }
 	val penv = #penv (#param gp)
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
@@ -36,7 +41,7 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 
 	fun defined symbol = isSome (#get (#symval (#param gp) symbol) ())
 
-	fun work (stream, _) = let
+	fun work stream = let
 	    val source = S.newSource (SrcPath.osstring specgroup,
 				      1, stream, false, errcons)
 	    val sourceMap = #sourceMap source
@@ -91,7 +96,8 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 					  group = (specgroup, (pos, newpos)),
 					  sh_spec = Sharing.DONTCARE,
 					  setup = (NONE, NONE),
-					  locl = false }
+					  locl = false,
+					  controllers = [ovldC] }
 			in
 			    SmlInfo.parse_for_errors gp i;
 			    i
@@ -161,13 +167,9 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	in
 	    loop (LSC.UseDefault, StringMap.empty, 1)
 	end
-	fun openIt () = (TextIO.openIn (SrcPath.osstring specgroup),
-			 !ovldR before ovldR := true)
-	fun closeIt (s, savedOvld) =
-	    (TextIO.closeIn s;
-	     ovldR := savedOvld)
+	fun openIt () = TextIO.openIn (SrcPath.osstring specgroup)
     in
-	SafeIO.perform { openIt = openIt, closeIt = closeIt, work = work,
-			 cleanup = fn _ => () }
+	SafeIO.perform { openIt = openIt, closeIt = TextIO.closeIn,
+			 work = work, cleanup = fn _ => () }
     end
 end
