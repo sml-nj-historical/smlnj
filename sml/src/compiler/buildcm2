@@ -1,8 +1,8 @@
 #!/bin/sh
 #
 
-# ROOTDIR="/homes/systems/shao/sml/110.3"
-ROOTDIR="../.."
+# ROOTDIR="../.."
+ROOTDIR="/homes/systems/shao/sml/110.4"
 BINDIR=$ROOTDIR/bin
 LIBDIR=$ROOTDIR/lib
 YACCPATH=$BINDIR/ml-yacc
