@@ -40,7 +40,7 @@ structure BuildDepend :> BUILDDEPEND = struct
       | look otherwise (DE.BINDING (s', v)) s =
 	if S.eq (s, s') then v else otherwise s
       | look otherwise (DE.LAYER (e, e')) s = look (look otherwise e') e s
-      | look otherwise (DE.FCTENV { looker, domain }) s =
+      | look otherwise (DE.FCTENV looker) s =
 	(case looker s of NONE => otherwise s | SOME v => v)
       | look otherwise (DE.FILTER (ss, e)) s =
 	if SymbolSet.member (ss, s) then look otherwise e s else otherwise s

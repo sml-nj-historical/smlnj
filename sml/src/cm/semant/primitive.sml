@@ -88,19 +88,18 @@ structure Primitive :> PRIMITIVE = struct
 		foldl addModule SymbolSet.empty l
 	    end
 	    
-	    fun cvt_fctenv { symbols, look } =
-		{ looker = cvt_result o look, domain = l2s o symbols }
+	    fun cvt_fctenv look = cvt_result o look
 
-	    and cvt_result (BE.CM_ENV cme) = SOME (DE.FCTENV (cvt_fctenv cme))
+	    and cvt_result (BE.CM_ENV cme) =
+		SOME (DE.FCTENV (cvt_fctenv (#look cme)))
 	      | cvt_result BE.CM_NONE = NONE
 
 	    val sb = BE.staticPart (GenericVC.CoerceEnv.e2b e)
-
-	    val { domain, looker } =
-		cvt_fctenv { symbols = fn () => BE.catalogEnv sb,
-			     look = BE.cmEnvOfModule sb }
+	    val looker = cvt_fctenv (BE.cmEnvOfModule sb)
 	in
-	    { exports = domain (), lookup = valOf o looker, env = e }
+	    { exports = l2s (BE.catalogEnv sb),
+	      lookup = valOf o looker,
+	      env = e }
 	end
 
 	val basis_pinfo = gen_pinfo basis

@@ -34,12 +34,34 @@ structure Stablize = struct
 			 val compare = compare
 	end)
 
-    fun stabilize (g as GG.GROUP grec, binSizeOf, binCopy, gp) =
+    fun genStableInfoMap (exports, group) = let
+	(* find all the exported bnodes that are in the same group: *)
+	fun add (((_, DG.SB_BNODE (n as DG.BNODE b)), _), m) = let
+	    val i = #bininfo b
+	in
+	    if AbsPath.compare (BinInfo.group i, group) = EQUAL then
+		IntBinaryMap.insert (m, BinInfo.offset i, n)
+	    else m
+	end
+	  | add (_, m) = m
+    in
+	SymbolMap.foldl add IntBinaryMap.empty exports
+    end
+
+    fun stabilize gp (g as GG.GROUP grec, binSizeOf, copyBin, outs) =
 	case #stableinfo grec of
 	    GG.STABLE _ => g
 	  | GG.NONSTABLE granted => let
 
+		(* this needs to be refined (perhaps) *)
+		val grpSrcInfo = (EM.defaultConsumer (), ref false)
+
 		val exports = #exports grec
+		val islib = #islib grec
+		val required = StringSet.difference (#required grec,
+						     granted)
+		val grouppath = #grouppath grec
+		val subgroups = #subgroups grec
 
 		(* The format of a stable archive is the following:
 		 *  - It starts with the size s of the pickled dependency
@@ -53,20 +75,21 @@ structure Stablize = struct
 		 *  - Individual binfile contents (concatenated).
 		 *)
 
-		val offsetDict = ref SmlInfoMap.empty
 		val members = ref []
-		val registerOffset = let
+		val (registerOffset, getOffset) = let
+		    val dict = ref SmlInfoMap.empty
 		    val cur = ref 0
 		    fun reg (i, sz) = let
 			val os = !cur
 		    in
 			cur := os + sz;
-			offsetDict := SmlInfoMap.insert (!offsetDict, i, os);
+			dict := SmlInfoMap.insert (!dict, i, os);
 			members := i :: (!members);
 			os
 		    end
+		    fun get i = valOf (SmlInfoMap.find (!dict, i))
 		in
-		    reg
+		    (reg, get)
 		end
 
 		fun w_list w_item [] k m =
@@ -183,26 +206,85 @@ structure Stablize = struct
 
 		fun w_privileges p = w_list w_string (StringSet.listItems p)
 
-		fun pickle_group (GG.GROUP g, granted) = let
+		fun pickle_group () = let
 		    fun w_sg (GG.GROUP g) = w_abspath (#grouppath g)
-		    val req' = StringSet.difference (#required g, granted)
 		    fun k0 m = []
 		    val m0 = (0, Map.empty)
 		in
 		    concat
-		       (w_exports (#exports g)
-		          (w_bool (#islib g)
-		              (w_privileges req'
-			           (w_abspath (#grouppath g)
-				         (w_list w_sg (#subgroups g) k0)))) m0)
+		       (w_exports exports
+			   (w_bool islib
+		              (w_privileges required
+			            (w_list w_sg subgroups k0))) m0)
 		end
-		val pickle = pickle_group (g, granted)
+
+		val pickle = pickle_group ()
 		val sz = size pickle
+		val offset_adjustment = sz + 4
+
+		fun mkStableGroup () = let
+		    val m = ref SmlInfoMap.empty
+		    fun sn (DG.SNODE (n as { smlinfo, ... })) =
+			case SmlInfoMap.find (!m, smlinfo) of
+			    SOME n => n
+			  | NONE => let
+				val li = map sn (#localimports n)
+				val gi = map fsbn (#globalimports n)
+				val sourcepath = SmlInfo.sourcepath smlinfo
+				val spec = AbsPath.spec sourcepath
+				val offset =
+				    getOffset smlinfo + offset_adjustment
+				val share = SmlInfo.share smlinfo
+				val locs = SmlInfo.errorLocation gp smlinfo
+				val error = EM.errorNoSource grpSrcInfo locs
+				val i = BinInfo.new { group = grouppath,
+						      spec = spec,
+						      offset = offset,
+						      share = share,
+						      error = error }
+				val n = DG.BNODE { bininfo = i,
+						   localimports = li,
+						   globalimports = gi }
+			    in
+				m := SmlInfoMap.insert (!m, smlinfo, n);
+				n
+			    end
+
+		    and sbn (DG.SB_SNODE n) = sn n
+		      | sbn (DG.SB_BNODE n) = n
+
+		    and fsbn (f, n) = (f, sbn n)
+
+		    fun impexp ((f, n), e) = ((f, DG.SB_BNODE (sbn n)), e)
+
+		    val exports = SymbolMap.map impexp (#exports grec)
+		    val simap = genStableInfoMap (exports, grouppath)
+		in
+		    GG.GROUP { exports = exports,
+			       islib = islib,
+			       required = required,
+			       grouppath = grouppath,
+			       subgroups = subgroups,
+			       stableinfo = GG.STABLE simap }
+		end
+
+		fun writeInt32 (s, i) = let
+		    val a = Word8Array.array (4, 0w0)
+		    val _ = Pack32Big.update (a, 0, LargeWord.fromInt i)
+		in
+		    BinIO.output (s, Word8Array.extract (a, 0, NONE))
+		end
 	    in
-		Dummy.f ()
+		writeInt32 (outs, sz);
+		BinIO.output (outs, Byte.stringToBytes pickle);
+		app (copyBin outs) (rev (!members));
+		mkStableGroup ()
 	    end
 
-    fun g (getGroup, bn2env, grpSrcInfo, group, s) = let
+    fun g (getGroup, bn2env, group, s) = let
+
+	(* we don't care about errors... (?) *)
+	val grpSrcInfo = (EM.defaultConsumer (), ref false)
 
 	exception Format
 
@@ -413,23 +495,13 @@ structure Stablize = struct
 	    val exports = r_exports ()
 	    val islib = r_bool ()
 	    val required = r_privileges ()
-	    val grouppath = r_abspath ()
 	    val subgroups = r_list (getGroup o r_abspath) ()
-	    (* find all the exported bnodes that are in the same group: *)
-	    fun add (((_, DG.SB_BNODE (n as DG.BNODE b)), _), m) = let
-		    val i = #bininfo b
-		in
-		    if AbsPath.compare (BinInfo.group i, group) = EQUAL then
-			IntBinaryMap.insert (m, BinInfo.offset i, n)
-		    else m
-		end
-	      | add (_, m) = m
-	    val simap = SymbolMap.foldl add IntBinaryMap.empty exports
+	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,
 		       islib = islib,
 		       required = required,
-		       grouppath = grouppath,
+		       grouppath = group,
 		       subgroups = subgroups,
 		       stableinfo = GG.STABLE simap }
 	end
