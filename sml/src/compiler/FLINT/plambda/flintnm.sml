@@ -469,6 +469,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
             end
 
 
+      | L.TFN ([], body) => bug "TFN[]"
       | L.TFN (tks, body) =>
             let val (body', body_lty) =
                   tovalue(venv, DI.next d, body, 
@@ -480,6 +481,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
                  lty)
             end
 
+      | L.TAPP (f,[]) => bug "TAPP[]"
       | L.TAPP (f,tycs) =>
             (* similar to APP *)
             tovalue(venv, d, f,
