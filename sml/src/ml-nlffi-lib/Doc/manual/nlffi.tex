@@ -1,7 +1,10 @@
 % -*- latex -*-
 \documentclass[titlepage,letterpaper]{article}
+\usepackage{latexsym}
 \usepackage{times}
 \usepackage{hyperref}
+
+\newcommand{\gentool}{{\tt ml-nlffigen}}
 
 \marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
 \topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
@@ -53,7 +56,7 @@ The C library...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Translation conventions}
 
-The {\tt ml-nlffigen} tool generates one ML structure for each
+The {\gentool} tool generates one ML structure for each
 exported C definition.  In particular, there is one structure per
 external variable, function, {\tt typedef}, {\tt struct}, {\tt union},
 and {\tt enum}.
@@ -521,8 +524,96 @@ end
 \end{small}
 
 \subsection{{\tt struct} and {\tt union}}
+ 
+The type identity of a named C {\tt struct} (or {\tt union}) is
+provided by a unique ML {\em tag} type.  There is a 1-1 correspondence
+between C tag names $t$ for {\tt struct}s on one side and ML tag types
+$s_t$ on the other.  An analogous correspondence exists between C tag
+names $t$ for {\tt union}s and ML tag types $u_t$.  Notice that these
+correspondences are {\em independent of the actual declaration} of the
+C {\tt struct} or {\tt union} in question.
 
-...
+A C type of the form {\tt struct $t$} is represented in ML as {\tt
+  $s_t$ C.su}, a type of the form {\tt union $t$} as {\tt $u_t$ C.su}.
+For example, this means that a heavy-weight non-constant memory object
+of C type {\tt struct $t$} has ML type {\tt ($s_t$ C.su, C.rw) C.obj}
+which can be abbreviated to {\tt ($s_t$, C.rw) C.su\_obj}.
+
+All ML types {\tt ($\tau$ C.su, $\zeta$) C.obj} are originally
+completely abstract: they does not come with any operations that could
+be applied to their values.  In C, the operations to be applied to a
+{\tt struct}- or {\tt union}-value is field selection.  Field
+selection {\em does} depend on the actual C declaration, so it is
+{\gentool}'s job to generate a set of ML-side field-accessors that
+correspond to field-access operations in C.
+
+Each field is represented by a function mapping a memory object of the
+{\tt struct}- or {\tt union}-type to an object of the respective field
+type.  Let {\tt int i;} and {\tt const double d;} be fields of some
+{\tt struct t} and let {\tt tag} be the ML tag type corresponding to
+{\tt t}.  Here are the types of the (heavy-weight) access functions
+for {\tt i} and {\tt d}:
+
+\begin{small}
+\begin{center}
+\begin{tabular}{l@{~~~~$\leadsto$~~~~}l}
+{\tt int i;} &
+  {\tt val f\_i : (tag C.su, 'c) C.obj -> (C.sint, 'c) C.obj} \\
+{\tt const double d;} &
+  {\tt val f\_d : (tag C.su, 'c) C.obj -> (C.double, C.ro) C.obj}
+\end{tabular}
+\end{center}
+\end{small}
+
+\noindent Notice how each field access function is polymorphic in the
+{\tt const} property of the argument object.  For fields declared {\tt
+  const}, the result always uses {\tt C.ro} while for ordinary fields
+the argument's type is used---reflecting the idea that a field is
+considered writable if it has not been declared {\tt const} and, at
+the same time, the enclosing {\tt struct} or {\tt union} is writable.
+
+\subsubsection*{Incomplete declarations}
+
+If the {\tt struct} or {\tt union} is incomplete (i.e., if only its
+tag $t$ is known), then {\gentool} will merely generate an ML structure
+(called {\tt ST\_$t$} for {\tt struct} and {\tt UT\_$t$} for {\tt
+  union}) with a single type {\tt tag} that is an abbreviation for the
+library-defined type that corresponds to tag $t$.
+
+\subsubsection*{Complete declarations}
+
+If the {\tt struct} or {\tt union} with tag $t$ is complete, then
+{\gentool} will generate an ML structure (called {\tt S\_$t$} for {\tt
+  struct} and {\tt U\_$t$} for {\tt union}) which contains at least:
+\begin{description}\setlength{\itemsep}{0pt}
+\item[{\tt type tag}] --- an abbreviation for the library-defined type
+  that corresponds to $t$
+\item[{\tt val size}] --- a value representing information about the
+  size of memory objects of this {\tt struct}- or {\tt union}-type.
+  The ML type of {\tt size} is {\tt tag C.su C.S.size}.
+\item[{\tt val typ}] --- a value representing run-time type
+  information corresponding to this {\tt struct}- or {\tt union}-type.
+  The ML type of {\tt typ} is {\tt tag C.su C.T.typ}.
+\end{description}
+In addition to this, there will be a light-weight access function {\tt
+  f\_$f$'} for each field or bitfield $f$ of the {\tt struct} or {\tt
+  union}.
+
+If $f$ is a regular field, then {\tt f\_$f$'} maps a value of type
+{\tt (tag C.su, $\zeta$) C.obj'} to a value of type {\tt (${\tau}_f$,
+  ${\zeta}_f$) C.obj'} where ${\tau}_f$ is the ML type encoding the C
+type of field $f$ and where {\tt ${\zeta}_f =$ C.rw} when $f$ was
+declared {\tt const} or ${\zeta}_f = \zeta$ otherwise.
+
+If $f$ is a bitfield, then the result type of {\tt f\_$f$'} is either
+{\tt ${\zeta}_f$ C.sbf} or {\tt ${\zeta}_f$ C.ubf}, depending on
+whether the bitfield's C type is {\tt signed} or {\tt unsigned}.
+
+For every field $f$ that is either a regular field of complete type or
+a bitfield there is also a heavy-weight access function {\tt f\_$f$}
+which maps {\tt (tag C.su, $\zeta$) C.obj} to {\tt (${\tau}_f$,
+  ${\zeta}_f$) C.obj}, {\tt ${\zeta}_f$ C.sbf}, or {\tt ${\zeta}_f$
+  C.ubf}.
 
 \subsection{Enumerations ({\tt enum})}
 
