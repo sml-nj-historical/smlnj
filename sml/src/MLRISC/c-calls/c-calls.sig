@@ -86,6 +86,9 @@ signature C_CALLS =
 
     val layout : CTypes.c_proto -> {
 	    argLocs : arg_location list,	(* argument/parameter assignment *)
+	    argMem : {szb : int, align : int},	(* memory requirements for stack-allocated *)
+						(* arguments; this value can be passed to *)
+						(* the paramAlloc callback. *)
 	    resLoc : arg_location option,	(* result location; NONE for void functions *)
 	    structRetLoc : {szb : int, align : int} option
 	  }
