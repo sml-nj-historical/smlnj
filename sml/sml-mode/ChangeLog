@@ -1,3 +1,17 @@
+2004-04-04  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* testcases.sml: Add a nasty case that is still wrong.
+
+	* sml-proc.el (sml-error-regexp-alist): Tune the regexp for sml/nj.
+
+	* sml-mode.el (sml-mode): Batter handle paragraphs in comments.
+	(sml-mode-variables): Clean up paragraph settings.
+	(sml-electric-pipe): Fix a boundary bug.
+	(sml-indent-starter, sml-get-sym-indent, sml-find-matching-starter):
+	Fix indentation algorithm.  Can't remember what it was about.
+	This code is nasty, I just can't understand what's doing what.
+	(completion-ignored-extensions): Add the new .cm directory.
+
 2003-12-09  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* sml-defs.el (sml-mode-menu): Fix typo.  Use std names.

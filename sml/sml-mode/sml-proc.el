@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 1989       Lars Bo Nielsen
 ;; Copyright (C) 1994-1997  Matthew J. Morley
-;; Copyright (C) 1999-2000  Stefan Monnier
+;; Copyright (C) 1999,2000,03,04  Stefan Monnier
 
 ;; $Revision$
 ;; $Date$
@@ -213,7 +213,7 @@ specified when running the command \\[sml-cd].")
     ("File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
     ;; SML/NJ:  the file-pattern is anchored to avoid
     ;; pathological behavior with very long lines.
-    ("^[-= ]*\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
+    ("^[-= ]*\\(.*[^\n)]\\)\\( (.*)\\)?:\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 3 4 6 7)
     ;; SML/NJ's exceptions:  see above.
     ("^ +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7))
   "Alist that specifies how to match errors in compiler output.
@@ -684,7 +684,15 @@ non-nil.  With prefix arg, always prompts."
 	    (goto-char marker)
 	    (forward-line (1- linenum))
 	    (forward-char (1- column))
-	    (cons err (point-marker))))
+	    ;; A pair of markers is the right thing to return, but some
+	    ;; code in compile.el doesn't like it (when we reach the end
+	    ;; of the errors).  So we could try to avoid it, but we don't
+	    ;; because that doesn't work correctly if the current buffer
+	    ;; has unsaved modifications.  And it's fixed in Emacs-21.
+	    ;; (if buffer-file-name
+	    ;; 	(list err buffer-file-name
+	    ;; 	      (count-lines (point-min) (point)) (current-column))
+	    (cons err (point-marker))))	;; )
       ;; taken from compile.el
       (list err filename linenum column))))
 

@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 1989       Lars Bo Nielsen
 ;; Copyright (C) 1994-1997  Matthew J. Morley
-;; Copyright (C) 1999-2000  Stefan Monnier
+;; Copyright (C) 1999,2000,2004  Stefan Monnier
 
 ;; Author: Lars Bo Nielsen
 ;;      Olin Shivers
@@ -299,6 +299,10 @@ This mode runs `sml-mode-hook' just before exiting.
        'sml-imenu-create-index)
   (set (make-local-variable 'add-log-current-defun-function)
        'sml-current-fun-name)
+  ;; Treat paragraph-separators in comments as paragraph-separators.
+  (set (make-local-variable 'paragraph-separate)
+       (concat "\\([ \t]*\\*)?\\)?\\(" paragraph-separate "\\)"))
+  (set (make-local-variable 'require-final-newline) t)
   ;; forward-sexp-function is an experimental variable in my hacked Emacs.
   (set (make-local-variable 'forward-sexp-function) 'sml-user-forward-sexp)
   ;; For XEmacs
@@ -312,9 +316,6 @@ This mode runs `sml-mode-hook' just before exiting.
   (setq local-abbrev-table sml-mode-abbrev-table)
   ;; A paragraph is separated by blank lines or ^L only.
   
-  (set (make-local-variable 'paragraph-start)
-       (concat "^[\t ]*$\\|" page-delimiter))
-  (set (make-local-variable 'paragraph-separate) paragraph-start)
   (set (make-local-variable 'indent-line-function) 'sml-indent-line)
   (set (make-local-variable 'comment-start) "(* ")
   (set (make-local-variable 'comment-end) " *)")
@@ -377,7 +378,7 @@ Depending on the context insert the name of function, a \"=>\" etc."
      (skip-chars-forward "\t |")
      (skip-syntax-forward "w")
      (skip-chars-forward "\t ")
-     (when (= ?= (char-after)) (backward-char)))))
+     (when (eq ?= (char-after)) (backward-char)))))
 
 (defun sml-electric-semi ()
   "Insert a \;.
@@ -497,7 +498,7 @@ Point should be just before the symbol ORIG-SYM and is not preserved."
   (let ((sym (unless (save-excursion (sml-backward-arg))
 	       (sml-backward-spaces)
 	       (sml-backward-sym))))
-    (if (equal sym "d=") (setq sym nil))
+    (if (member sym '(";" "d=")) (setq sym nil))
     (if sym (sml-get-sym-indent sym)
       ;; FIXME: this can take a *long* time !!
       (setq sym (sml-find-matching-starter sml-starters-syms))
@@ -589,7 +590,7 @@ If indentation is delegated, point will move to the start of the parent.
 Optional argument STYLE is currently ignored."
   (assert (equal sym (save-excursion (sml-forward-sym))))
   (save-excursion
-    (let ((delegate (assoc sym sml-close-paren))
+    (let ((delegate (and (not (equal sym "end")) (assoc sym sml-close-paren)))
 	  (head-sym sym))
       (when (and delegate (not (eval (third delegate))))
 	;;(sml-find-match-backward sym delegate)
@@ -686,7 +687,7 @@ Optional argument STYLE is currently ignored."
 	  (progn (sml-backward-sexp prec)
 		 (setq sym (save-excursion (sml-forward-sym)))
 		 (not (or (member sym syms) (bobp)))))
-      (unless (bobp) sym))))
+      (if (member sym syms) sym))))
 
 (defun sml-skip-siblings ()
   (while (and (not (bobp)) (sml-backward-arg))
@@ -881,6 +882,7 @@ See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
 	    "\\>")))
 ;;;###autoload
 (add-to-list 'completion-ignored-extensions "CM/")
+(add-to-list 'completion-ignored-extensions ".cm/")
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cm\\'" . sml-cm-mode))
 ;;;###autoload

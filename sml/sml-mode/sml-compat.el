@@ -57,7 +57,7 @@ If DIR-FLAG is non-nil, create a new empty directory instead of a file."
 			(expand-file-name prefix temporary-file-directory)))
 		 (if dir-flag
 		     (make-directory file)
-		   (write-region "" nil file nil 'silent nil 'excl))
+		   (write-region "" nil file nil 'silent))
 		 nil)
 	    (file-already-exists t))
       ;; the file was somehow created by someone else between

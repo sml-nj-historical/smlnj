@@ -1,10 +1,18 @@
-(* copyright 1999 YALE FLINT project *)
-(* monnier@cs.yale.edu *)
+(* Copyright 1999, 2004 Stefan Monnier <monnier@gnu.org> *)
 
 (let val a = 1 val b = 2
      val c = 3
  in 1
  end);
+
+(* sml-mode here treats the second `=' as an equal op because it assumes
+ * that the first is the definitional equal for the structure.  FIXME!  *)
+functor foo (structure s : S) where type t = s.t =
+struct
+val bar = 0
+val ber = 1;
+val sdfg = 1
+end
 
 (x := 1;
  case x of
