@@ -43,10 +43,16 @@ structure Date : DATE =
 	    val monthTbl = #[Jan, Feb, Mar, Apr, May, Jun,
 			     Jul, Aug, Sep, Oct, Nov, Dec]
 
+	    fun intToDay i = InlineT.PolyVector.sub (dayTbl, i)
+	    fun intToMonth i = InlineT.PolyVector.sub (monthTbl, i)
+
 	    (* tables for mapping integers to day/month-strings *)
 	    val str_dayTbl = #["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 	    val str_monthTbl = #["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 				 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+	    fun intToDayS i = InlineT.PolyVector.sub (str_dayTbl, i)
+	    fun intToMonthS i = InlineT.PolyVector.sub (str_monthTbl, i)
 
 	    (* the tuple type used to communicate with C; this 9-tuple has the
 	     * fields:
@@ -55,7 +61,6 @@ structure Date : DATE =
 	     *)
             type tm = SMLBasis.Date_t
 
-
 	    (* 
 	     * This code is taken from Reingold's paper
 	     *)
@@ -63,14 +68,17 @@ structure Date : DATE =
 	    val op // = Int.quot
 	    val op %% = Int.rem
 
-	    fun sum (f,k,p) = 
-		let fun loop (f,i,p,acc) = if (not(p(i))) then acc
-					   else loop(f,i+1,p,acc+f(i))
+	    fun sum (f, start, continue) = 
+		let fun loop (i, acc) = if not (continue i) then acc
+					else loop (i + 1, acc + f i)
 		in
-		    loop (f,k,p,0)
+		    loop (start, 0)
 		end
 
-	    fun lastDayOfGregorianMonth (month,year) =
+	    fun count (start, continue) = sum (fn _ => 1, start, continue)
+
+	    (* last day of gregorian month: *)
+	    fun ldgm (month,year) =
 		if month = 1 andalso 
 		   (year %% 4) = 0 andalso
 		   let val m = year %% 400
@@ -84,8 +92,7 @@ structure Date : DATE =
 		val year1 = year - 1
 	    in
 		day  
-		+ sum (fn (m) => lastDayOfGregorianMonth(m,year),0,
-		       fn (m) => (m<month)) 
+		+ sum (fn m => ldgm (m, year), 0, fn m => m < month) 
 		+ 365 * year1
 		+ (year1 // 4)
 		- (year1 // 100)
@@ -94,25 +101,17 @@ structure Date : DATE =
 
 	    fun fromAbsolute abs =
 		let val approx = abs // 366
-		    val year =
-			approx +
-			sum(fn _ => 1,
-			    approx, 
-			    fn y => abs >= toAbsolute (0, 1, y+1))
-		    val month =
-			sum (fn _ =>1,
-			     0,
-			     fn m => abs > toAbsolute(m,lastDayOfGregorianMonth(m,year),year))
+		    fun ycont y = abs >= toAbsolute (0, 1, y + 1)
+		    val year = approx + count (approx, ycont)
+		    fun mcont m = abs >= toAbsolute (m, ldgm (m, year), year)
+		    val month =	count (0, mcont)
 		    val day = abs - toAbsolute (month, 1, year) + 1
 		in
 		    (month, day, year)
 		end
 
 	    fun wday (month,day,year) =
-		let val abs = toAbsolute (month,day,year)
-		in
-		    InlineT.PolyVector.sub (dayTbl, abs %% 7)
-		end
+		intToDay (toAbsolute (month,day,year) %% 7)
 
 	    fun yday (month, day, year) = 
 		let val abs = toAbsolute (month, day, year)
@@ -149,16 +148,28 @@ structure Date : DATE =
 	      | monthToInt Dec = 11
 
 	    (*
-	     * this function should also canonicalize the time (hours, etc...)
+	     * make a canonical date
 	     *)
 	    fun canonicalizeDate (DATE d) = 
-		let val args = (monthToInt(#month d), #day d, #year d)
+		let (* u_xxx is an 'unadjusted' xxx *)
+		    (* note that div and mod round towards -neginf
+		     * (which is exactly what we need here) *)
+		    val u_second = #second d
+		    val second = u_second mod 60
+		    val u_minute = #minute d + u_second div 60
+		    val minute = u_minute mod 60
+		    val u_hour = #hour d +u_minute div 60
+		    val hour = u_hour mod 24
+		    val dayadjust = u_hour div 24
+		    val args = (monthToInt(#month d),
+				#day d + dayadjust,
+				#year d)
 		    val (monthC,dayC,yearC) = fromAbsolute (toAbsolute (args))
 		    val yday = yday (args)
 		    val wday = wday (args)
 		in
 		    DATE {year = yearC,
-			  month = InlineT.PolyVector.sub (monthTbl,monthC),
+			  month = intToMonth monthC,
 			  day = dayC,
 			  hour = #hour d,
 			  minute = #minute d,
@@ -192,12 +203,12 @@ structure Date : DATE =
 		let val i = Int32.toInt
 		in
 		    DATE { year = baseYear + i tm_year,
-			   month = InlineT.PolyVector.sub(monthTbl, i tm_mon),
+			   month = intToMonth (i tm_mon),
 			   day = i tm_mday,
 			   hour = i tm_hour,
 			   minute = i tm_min,
 			   second = i tm_sec,
-			   wday = InlineT.PolyVector.sub (dayTbl, i tm_wday),
+			   wday = intToDay (i tm_wday),
 			   yday = i tm_yday,
 			   isDst = if ((tm_isdst : Int32.int) < 0) then NONE
 				   else SOME(tm_isdst <> 0),
@@ -271,9 +282,9 @@ structure Date : DATE =
 		val cd = canonicalizeDate d
 		fun internalDate () =
 		    case offset of
-			NONE => fromTimeLocal (toTime cd) (* why  not cd ?? *)
+			NONE => fromTimeLocal (toTime_local cd)
 		      | SOME off => let
-			    val PB.TIME t = Time.- (toTime cd, off)
+			    val PB.TIME t = Time.- (toTime_local cd, off)
 			in
 			    fromTM (SMLBasis.gmTime t) (SOME off)
 			end
@@ -289,16 +300,44 @@ structure Date : DATE =
 		if size s = 1 then "0" ^ s else s
 	    end
 	in
-	    concat [Vector.sub (str_dayTbl, dayToInt (#wday d)), " ",
-		    Vector.sub (str_monthTbl, monthToInt (#month d)), " ",
+	    concat [intToDayS (dayToInt (#wday d)), " ",
+		    intToMonthS (monthToInt (#month d)), " ",
 		    dd #day, " ",
 		    dd #hour, ":", dd #minute, ":", dd #second, " ",
 		    Int.toString (#year d)]
 	end
 
-    (* FIXME: need support from IDL basis for this... *)
-	fun fmt fmtStr d = (* strfTime (fmtStr, toTM d) *)
-	    raise Fail "fmt not yet implemented"
+    (* fmt uses C's strftime function.
+     *   For this, we first fix up our format string so that
+     *   format characters are interpreted according to the SML Basis spec. *)
+	fun fmt fmtStr d = let
+	    val full = Substring.full
+	    fun just c = full (StringImp.str c)
+	    fun percent c = full ("%" ^ StringImp.str c)
+	    fun notpercent #"%" = false
+	      | notpercent _ = true
+	    fun fixup (f, a) = let
+		val (l, r) = Substring.splitl notpercent f
+		fun ret x = Substring.concat (x :: a)
+	    in
+		case Substring.getc r of
+		    NONE => ret l	(* no more % *)
+		  | SOME (_, r') => 
+		    (case Substring.getc r' of
+			 NONE => ret (percent #"%") (* trailing % *)
+		       | SOME (c, r'') =>
+			 if CharImp.contains "aAbBcdHIjmMpSUwWxXyYZ%" c then
+			     (* %c sequences defined by SML Basis spec *)
+			     fixup (r'', percent c :: l :: a)
+			 else
+			     (* according to the SML Basis spec, all
+			      * other %c sequences stand for c itself: *)
+			     fixup (r'', just c :: l :: a))
+	    end
+	    val canonicalFmtStr = fixup (full fmtStr, [])
+	in
+	    SMLBasis.strFTime (canonicalFmtStr, toTM d)
+	end
 
 	(* Scanning in fairly high-level style. *)
 	fun scan gc = let
@@ -311,7 +350,7 @@ structure Date : DATE =
 
 	    (* see if we can match any of the given keywords.
 	     * if so, then invoke associated continuation.
-	     *    n -- size of all keywords
+	     *    n -- size of keyword (must be the same for each)
 	     *    kws -- list of pairs (keyword, continuation)
 	     *           continuation takes stream state
 	     *    ss -- initial stream state *)

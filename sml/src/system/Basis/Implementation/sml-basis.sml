@@ -582,6 +582,7 @@ in
   (date)
 end
 fun mkTime _ = raise Fail "mkTime missing"
+fun strFTime _ = raise Fail "strFTime missing"
 val cfun_getCPUTime : unit -> (cfun_Time_t * cfun_Time_t * cfun_Time_t) = C.c_function "SMLBasis" "getCPUTime"
 fun getCPUTime() = let
   val (m_u,m_s,m_g) = cfun_getCPUTime ()

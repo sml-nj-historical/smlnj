@@ -37,15 +37,15 @@ typedef [sml_type ("int option")] sml_value ML_int_opt_t;
 /******************** Exported run-time system types ********************/
 /* typedef [ptr] struct struct_iodesc *IODesc_t; */
 /* typedef [ptr] struct struct_directory *Directory_t; */
-typedef [sml_type("Unsafe.Object.object")] sml_value ML_iodesc_t;
+typedef [sml_type("word")] sml_value ML_iodesc_t;
 typedef [sml_type("Unsafe.Object.object")] sml_value ML_directory_t;
 typedef [exclude] struct struct_time {
   int seconds;
   int uSeconds;
 } Time_t;
-typedef [sml_type ("(word * Unsafe.Object.object) list")] sml_value
+typedef [sml_type ("(word * word) list")] sml_value
 	ML_polldesc_list_t;
-typedef [sml_type ("(word * Unsafe.Object.object) list")] sml_value
+typedef [sml_type ("(word * word) list")] sml_value
 	ML_pollinfo_list_t;
 
 /******************** Types for argument passing ********************/
@@ -225,7 +225,9 @@ void now ([out, ref] Time_t *t);
 
 void gmTime ([in, ref] Time_t *t, [out, ref] Date_t *date);
 void localTime ([in, ref] Time_t *t, [out, ref] Date_t *date);
-
+void mkTime ([in, ref] Date_t *date, [out, ref] Time_t *t);
+[sml_context] ML_string_t strFTime ([in] idl_string fmt,
+				    [in, ref] Date_t *date);
 
 /******************** Timer support ********************/
 
