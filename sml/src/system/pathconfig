@@ -16,7 +16,7 @@ ml-yacc-lib.cm		../ml-yacc/lib
 pp-lib.cm		../smlnj-lib/PP
 html-lib.cm		../smlnj-lib/HTML
 controls-lib.cm		../smlnj-lib/Controls
-smlnj-tdp		../smlnj-lib/TraceDebugProf
+smlnj-tdp		../tools/TraceDebugProf
 
 mlyacc-tool.cm		../cm/tools/mlyacc
 grm-ext.cm		../cm/tools/mlyacc
