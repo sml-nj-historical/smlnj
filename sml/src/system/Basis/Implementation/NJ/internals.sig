@@ -36,8 +36,10 @@ signature INTERNALS =
 				   reserve: int -> int,
 				   register: int * int * string -> unit,
 				   report: unit -> unit -> string list },
-			reset: unit -> unit }
+			reset: unit -> unit,
+			mode: bool option -> bool }
 		      -> unit
+	val mode : bool option -> bool
 	val report : unit -> unit -> string list
 	val bthandle : { work : unit -> 'a,
 			 hdl : exn * string list -> 'a } -> 'a

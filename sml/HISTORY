@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/05/31
+Tag: blume-20020531-btrace-mode
+Description:
+
+Resurrected SMLofNJ.Internals.BTrace.mode.  (It accidentally fell by
+the wayside when I switched over to using Controls everywhere.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/05/23 12:21:40 EDT
 Tag: george-20020523-visual-labels

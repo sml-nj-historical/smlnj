@@ -16,8 +16,6 @@ local
     structure VC = VarCon
     structure BT = CoreBasicTypes
     structure AU = AbsynUtil
-
-    structure Dummy = BTImp		(* mention it, so it gets made! *)
 in
 
 signature BTRACE = sig
@@ -57,6 +55,8 @@ structure BTrace :> BTRACE = struct
 	      envName = SOME "INSTUMENT_BTRACE_MODE" };
 	r
     end
+
+    val _ = BTImp.install enabled
 
     fun impossible s = EM.impossible ("BTrace: " ^ s)
 
