@@ -14,6 +14,23 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/06/27 15:10:00 EDT
+Tag: blume-20010627-concur
+Description:
+
+Fixed a small bug in CM's handling of parallel compilation.
+(You could observe the bug by Control-C-interrupting an ordinary
+CMB.make or CM.stabilize and then attaching some compile servers.
+The result was that all of a sudden the previously interrupted
+compilation would continue on its own.  This was because of
+an over-optimization: CM did not bother to clean out certain queues
+when no servers were attached "anyway", resulting in the contents
+of these queues to grab control when new servers did get attached.)
+
+There is also another minor update to the CM manual.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/06/26 16:15:00 EDT
 Tag: blume-20010626-cmdoc
 Description:

@@ -286,8 +286,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   stabilize_dummy_runner root)
 	  in
 	      (* Don't bother with the 2-phase thing if there are
-	       * no compile servers attached... *)
-	      if Servers.noServers () then phase2 ()
+	       * no compile servers attached.  (We still need
+	       * the "withServers" call to clean up our queues in case
+	       * of an interrupt or error.) *)
+	      if Servers.noServers () then Servers.withServers phase2
 	      else
 		  (* We do this in two phases:
 		   *    1. recompile everything without stabilization but

@@ -290,8 +290,12 @@ struct
 	    val initial_parse_result =
 		if master then
 		    if lonely_master then
-			(* no slaves available; do everything alone *)
-			Parse.parse (parse_arg (SOME true, true))
+			(* no slaves available; do everything alone
+			 * (Still wrap "withServers" around it to make sure
+			 * our queues get cleaned when an interrupt or error
+			 * occurs.) *)
+			Servers.withServers
+			    (fn () => Parse.parse (parse_arg (SOME true, true)))
 		    else
 			(* slaves available; we want master
 			 * and slave initialization to overlap, so
@@ -315,7 +319,6 @@ struct
 		else
 		    (* slave case *)
 		    Parse.parse (parse_arg (NONE, false))
-
 	in
 	    case initial_parse_result of
 		NONE => NONE
