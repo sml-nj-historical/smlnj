@@ -1,3 +1,8 @@
+(* mltree-hash.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *)
+
 functor MLTreeHash
   (structure T : MLTREE
    (* Hashing extensions *)

@@ -1,6 +1,10 @@
-(*
+(* instructions.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies.
+ *
  *  This signature specifies the abstract view of an instruction.
  *)
+
 signature INSTRUCTIONS =
 sig
    structure C   : CELLS
