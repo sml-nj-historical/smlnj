@@ -23,8 +23,7 @@ OBJS =		unix-dynload-lib.obj \
                 dlopen.obj \
                 dlclose.obj \
                 dlsym.obj \
-                dlerror.obj \
-                dldummy.obj
+                dlerror.obj
 
 $(LIBRARY)	: $(VERSION) $(OBJS)
 	del /F /Q $(LIBRARY)
@@ -53,9 +52,6 @@ dlerror.obj: dlerror.c $(DEPENDENTS)
 
 dlsym.obj: dlsym.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c dlsym.c
-
-dldummy.obj: dldummy.c $(DEPENDENTS)
-	$(CC) $(CFLAGS) $(DEFS) $(INCLUDES) /c dldummy.c
 
 clean :
 	del /F /Q v-* *.obj *.pdb $(LIBRARY)
