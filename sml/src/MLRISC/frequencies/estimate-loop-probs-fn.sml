@@ -6,6 +6,10 @@
  * (represented as BRANCHPROB annotations) add probabilities
  * based on the loop structure using the heuristics from Ball-Larus
  * and Wu-Larus.
+ *
+ * TODO:
+ *	generalize to switch edges
+ *	Loop Header Heuristic
  *)
 
 functor EstimateLoopProbsFn (
@@ -26,6 +30,15 @@ functor EstimateLoopProbsFn (
     structure An = Annotations
     structure Prob = Probability
 
+  (* flags *)
+    val disable = MLRiscControl.mkFlag (
+	  "disable-loop-probabilities",
+	  "when true, loop probability estimates are disabled")
+    val dumpCFG = MLRiscControl.mkFlag (
+	  "dump-cfg-jump-chain-elim",
+	  "when true, flow graph is shown after loop probability estimates")
+    val dumpStrm = MLRiscControl.debug_stream
+
     local
       structure A = MLRiscAnnotations
       val {get, set, ...} = A.BRANCH_PROB
@@ -34,28 +47,29 @@ functor EstimateLoopProbsFn (
     fun setEdgeProb ((_, _, CFG.EDGE{a, ...}), p) = a := set(p, !a)
     end
 
-  (* the "Loop branch heuristic" *)
-    val probLBH = Prob.percent 88
+  (* probabilities *)
+    val probLBH = Prob.percent 88	(* Loob Branch Heuristic *)
+    val probLEH = Prob.percent 80	(* Loop Exit Heuristic *)
     val prob50_50 = 50
 
   (* Compute loop structure information *)
     fun computeLoopStructure cfg = let
 	  val domTree = Dom.makeDominator cfg
 	  val dominates = Dom.dominates domTree
-	  val Graph.GRAPH{has_node, ...} = LP.loop_structure domTree
+	  val Graph.GRAPH{has_node,  forall_nodes, ...} = LP.loop_structure domTree
 	  in
 	    { isLoopHeader = has_node,
-	      isBackEdge = 
-		fn (src, dst, _) => has_node dst andalso dominates(dst, src)
+	      forallLoops = forall_nodes
 	    }
 	  end
 
+    fun sameEdge ((_, _, CFG.EDGE{a, ...}), (_, _, CFG.EDGE{a=a', ...})) = (a = a')
+
   (* add loop probabilities *)
-    fun estimate (cfg as Graph.GRAPH{forall_nodes, out_edges, ...}) = let
-	  val {isLoopHeader, isBackEdge} = computeLoopStructure cfg
-	  fun edgeProb [e1, e2] = let
-		fun computeProbs (trueE, falseE, takenProb) = (
-		      case (getEdgeProb trueE, getEdgeProb falseE)
+    fun doEstimate (cfg as Graph.GRAPH{out_edges, ...}) = let
+	  val {isLoopHeader, forallLoops} = computeLoopStructure cfg
+	  fun computeProbs (trueE, falseE, takenProb) = let
+		val {t, f} = (case (getEdgeProb trueE, getEdgeProb falseE)
 		       of (NONE, NONE) =>
 			    {t=takenProb, f=Prob.-(Prob.always, takenProb)}
 			| (SOME p, _) =>
@@ -67,28 +81,45 @@ functor EstimateLoopProbsFn (
 			      }
 		      (* end case *))
 		in
-		  case (isBackEdge e1, isBackEdge e2)
-		   of (true, false) => let
-			val {t, f} = computeProbs(e1, e2, probLBH)
-			in
-			  setEdgeProb(e1, t);
-			  setEdgeProb(e2, f)
-			end
-		    | (false, true) => let
-			val {t, f} = computeProbs(e2, e1, probLBH)
-			in
-			  setEdgeProb(e2, t);
-			  setEdgeProb(e1, f)
-			end
-		    | _ => ()
-		  (* end case *)
+		  setEdgeProb (trueE, t);
+		  setEdgeProb (falseE, f)
 		end
-	    | edgeProb _ = ()
-	  fun doBlock (id, CFG.BLOCK{kind=CFG.NORMAL, ...}) =
-		edgeProb (out_edges id)
-	    | doBlock _ = ()
+	  fun doLoop (hdrId, LP.LOOP{backedges, exits, ...}) = let
+	      (* apply the Loop Branch Heuristic to a back edge *)
+		fun doBackEdge (e as (src, _, _)) = (case out_edges src
+		       of [e1, e2] => if sameEdge(e, e1)
+			    then computeProbs (e1, e2, probLBH)
+			    else computeProbs (e2, e1, probLBH)
+			| _ => ()
+		      (* end case *))
+	      (* apply the Loop Exit Heuristic to an exit edges *)
+		fun doExitEdge (e as (src, _, _)) = (case out_edges src
+		       of [e1, e2] =>
+			    if sameEdge(e, e1)
+			      then if isLoopHeader (#2 e2)
+				then ()
+				else computeProbs (e1, e2, probLEH)
+			      else if isLoopHeader (#2 e1)
+				then ()
+				else computeProbs (e2, e1, probLEH)
+			| _ => ()
+		      (* end case *))
+		in
+		  List.app doBackEdge backedges;
+		  List.app doExitEdge exits
+		end
 	  in
-	    forall_nodes doBlock
+	    forallLoops doLoop
 	  end
+
+    fun estimate cfg = if !disable
+	  then  ()
+	  else (
+	    doEstimate cfg;
+	    if !dumpCFG
+	      then CFG.dump (
+		  !MLRiscControl.debug_stream,
+		  "after loop probability estimates", cfg)
+	      else ())
 
   end
