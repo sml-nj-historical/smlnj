@@ -9,7 +9,7 @@ functor X86AsmEmitter(structure Instr : X86INSTR
                       structure Shuffle : X86SHUFFLE
                          where I = Instr
 
-(*#line 181.7 "x86/x86.md"*)
+(*#line 195.7 "x86/x86.md"*)
                       structure MemRegs : MEMORY_REGISTERS where I=Instr
                      ) : INSTRUCTION_EMITTER =
 struct
@@ -203,16 +203,16 @@ struct
      | asm_fenvOp (I.FNSTENV) = "fnstenv"
    and emit_fenvOp x = emit (asm_fenvOp x)
 
-(*#line 183.6 "x86/x86.md"*)
+(*#line 197.6 "x86/x86.md"*)
    val memReg = MemRegs.memReg regmap
 
-(*#line 184.6 "x86/x86.md"*)
+(*#line 198.6 "x86/x86.md"*)
    fun emitInt32 i = let
 
-(*#line 185.10 "x86/x86.md"*)
+(*#line 199.10 "x86/x86.md"*)
           val s = Int32.toString i
 
-(*#line 186.10 "x86/x86.md"*)
+(*#line 200.10 "x86/x86.md"*)
           val s = (if (i >= 0)
                  then s
                  else ("-" ^ (String.substring (s, 1, (size s) - 1))))
@@ -220,7 +220,7 @@ struct
        end
 
 
-(*#line 189.6 "x86/x86.md"*)
+(*#line 203.6 "x86/x86.md"*)
    fun emitScale 0 = emit "1"
      | emitScale 1 = emit "2"
      | emitScale 2 = emit "4"
@@ -271,12 +271,12 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 229.7 "x86/x86.md"*)
+(*#line 243.7 "x86/x86.md"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas (I.LabelEA _) = error "stupidGas"
      | stupidGas opnd = emit_operand opnd
 
-(*#line 234.7 "x86/x86.md"*)
+(*#line 248.7 "x86/x86.md"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -284,10 +284,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 240.7 "x86/x86.md"*)
+(*#line 254.7 "x86/x86.md"*)
    fun chop fbinOp = let
 
-(*#line 241.15 "x86/x86.md"*)
+(*#line 255.15 "x86/x86.md"*)
           val n = size fbinOp
        in 
           (
@@ -298,25 +298,25 @@ struct
        end
 
 
-(*#line 247.7 "x86/x86.md"*)
+(*#line 261.7 "x86/x86.md"*)
    val emit_dst = emit_operand
 
-(*#line 248.7 "x86/x86.md"*)
+(*#line 262.7 "x86/x86.md"*)
    val emit_src = emit_operand
 
-(*#line 249.7 "x86/x86.md"*)
+(*#line 263.7 "x86/x86.md"*)
    val emit_opnd = emit_operand
 
-(*#line 250.7 "x86/x86.md"*)
+(*#line 264.7 "x86/x86.md"*)
    val emit_rsrc = emit_operand
 
-(*#line 251.7 "x86/x86.md"*)
+(*#line 265.7 "x86/x86.md"*)
    val emit_lsrc = emit_operand
 
-(*#line 252.7 "x86/x86.md"*)
+(*#line 266.7 "x86/x86.md"*)
    val emit_addr = emit_operand
 
-(*#line 253.7 "x86/x86.md"*)
+(*#line 267.7 "x86/x86.md"*)
    val emit_src1 = emit_operand
    fun emitInstr instr = 
        ( tab (); 

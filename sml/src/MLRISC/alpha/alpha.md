@@ -73,6 +73,8 @@ struct
      rtl LDAH{r,b,d} = $r[r] := $r[b] + %d << 16
 
      (* Integer loads *)
+     rtl LDBU{r,b,d,mem}   = $r[r] := zx (byte $m[disp(b,d):mem])
+     rtl LDWU{r,b,d,mem}   = $r[r] := zx (word $m[disp(b,d):mem])
      rtl LDL{r,b,d,mem}    = $r[r] := sx (dword $m[disp(b,d):mem])
      rtl LDL_L{r,b,d,mem}  = $r[r] := sx (dword $m[align4(disp(b,d)):mem])
      rtl LDQ{r,b,d,mem}    = $r[r] := qword $m[disp(b,d):mem]
@@ -80,6 +82,8 @@ struct
      rtl LDQ_U{r,b,d,mem}  = $r[r] := qword $m[align8Upper(disp(b,d)):mem]
 
      (* Integer stores *)
+     rtl STB{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] at [0..7]
+     rtl STW{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] at [0..15]
      rtl STL{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] at [0..31]
      rtl STQ{r,b,d,mem}    = $m[disp(b,d):mem] := $r[r] 
      rtl STQ_U{r,b,d,mem}  = $m[align8(disp(b,d)):mem] := $r[r] 
@@ -294,12 +298,14 @@ struct
        | FBGE 0x36 | FBGT 0x37 
     
       datatype load! =  (* table C-1 *)
-         LDL   0x28    
+         LDBU  0x02 
+       | LDWU  0x04
+       | LDL   0x28    
        | LDL_L 0x2A  
        | LDQ   0x29    
        | LDQ_L 0x2B 
        | LDQ_U 0x0B
-      datatype store! = STL 0x2C | STQ 0x2D | STQ_U 0x0F
+      datatype store! = STB 0x0E | STW 0x0D | STL 0x2C | STQ 0x2D | STQ_U 0x0F
       datatype fload [0x20..0x23] ! = LDF | LDG | LDS | LDT 
       datatype fstore [0x24..0x27] ! = STF | STG | STS | STT 
    

@@ -92,12 +92,16 @@ struct
      | emit_fbranch (I.FBNE) = (0wx35 : Word32.word)
      | emit_fbranch (I.FBGE) = (0wx36 : Word32.word)
      | emit_fbranch (I.FBGT) = (0wx37 : Word32.word)
-   and emit_load (I.LDL) = (0wx28 : Word32.word)
+   and emit_load (I.LDBU) = (0wx2 : Word32.word)
+     | emit_load (I.LDWU) = (0wx4 : Word32.word)
+     | emit_load (I.LDL) = (0wx28 : Word32.word)
      | emit_load (I.LDL_L) = (0wx2a : Word32.word)
      | emit_load (I.LDQ) = (0wx29 : Word32.word)
      | emit_load (I.LDQ_L) = (0wx2b : Word32.word)
      | emit_load (I.LDQ_U) = (0wxb : Word32.word)
-   and emit_store (I.STL) = (0wx2c : Word32.word)
+   and emit_store (I.STB) = (0wxe : Word32.word)
+     | emit_store (I.STW) = (0wxd : Word32.word)
+     | emit_store (I.STL) = (0wx2c : Word32.word)
      | emit_store (I.STQ) = (0wx2d : Word32.word)
      | emit_store (I.STQ_U) = (0wxf : Word32.word)
    and emit_fload (I.LDF) = (0wx20 : Word32.word)
@@ -247,16 +251,16 @@ struct
 
    and Split {le} = let
 
-(*#line 404.22 "alpha/alpha.md"*)
+(*#line 410.22 "alpha/alpha.md"*)
           val i = LabelExp.valueOf le
 
-(*#line 405.22 "alpha/alpha.md"*)
+(*#line 411.22 "alpha/alpha.md"*)
           val w = itow i
 
-(*#line 406.22 "alpha/alpha.md"*)
+(*#line 412.22 "alpha/alpha.md"*)
           val hi = w ~>> 0wx10
 
-(*#line 407.22 "alpha/alpha.md"*)
+(*#line 413.22 "alpha/alpha.md"*)
           val lo = w && 0wxffff
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -265,21 +269,21 @@ struct
 
    and High {le} = let
 
-(*#line 410.21 "alpha/alpha.md"*)
+(*#line 416.21 "alpha/alpha.md"*)
           val (hi, _) = Split {le=le}
        in hi
        end
 
    and Low {le} = let
 
-(*#line 411.21 "alpha/alpha.md"*)
+(*#line 417.21 "alpha/alpha.md"*)
           val (_, lo) = Split {le=le}
        in lo
        end
 
    and LoadStore {opc, ra, rb, disp} = let
 
-(*#line 413.12 "alpha/alpha.md"*)
+(*#line 419.12 "alpha/alpha.md"*)
           val disp = 
               (
                case disp of
@@ -364,7 +368,7 @@ struct
 
    and Pal {func} = eWord32 func
 
-(*#line 448.7 "alpha/alpha.md"*)
+(*#line 454.7 "alpha/alpha.md"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
    fun emitInstr (I.DEFFREG FP) = ()
      | emitInstr (I.LDA{r, b, d}) = ILoadStore {opc=0wx8, r=r, b=b, d=d}
@@ -380,14 +384,14 @@ struct
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = let
 
-(*#line 540.15 "alpha/alpha.md"*)
+(*#line 546.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
 
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = let
 
-(*#line 547.15 "alpha/alpha.md"*)
+(*#line 553.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
@@ -398,14 +402,14 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = let
 
-(*#line 576.15 "alpha/alpha.md"*)
+(*#line 582.15 "alpha/alpha.md"*)
           val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
 
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = let
 
-(*#line 584.15 "alpha/alpha.md"*)
+(*#line 590.15 "alpha/alpha.md"*)
           val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end

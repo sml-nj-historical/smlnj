@@ -13,6 +13,23 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2000/03/23 16:25:00
+Tag: leunga-20000323-fix_x86_alpha
+Description:
+
+1. X86 fixes/changes  
+
+   a.  The old code generated for SETcc was completely wrong.  
+       The Intel optimization guide is VERY misleading.
+
+2. ALPHA fixes/changes
+
+   a.  Added the instructions LDBU, LDWU, STB, STW as per Fermin's suggestion.
+   b.  Added a new mode byteWordLoadStores to the functor parameter to Alpha()
+   c.  Added reassociation code for address computation.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2000/03/22 01:23:00
 Tag: leunga-20000322-fix_x86_hppa_ra
 Description:

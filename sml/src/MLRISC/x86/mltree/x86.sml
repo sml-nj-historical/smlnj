@@ -1,4 +1,4 @@
-(* X86.sml -- pattern matching version of x86 instruction set generation. 
+(*
  *
  * COPYRIGHT (c) 1998 Bell Laboratories.
  * 
@@ -581,52 +581,76 @@ struct
         
                  (* Generate setcc instruction:
                   *  semantics:  MV(rd, COND(_, T.CMP(ty, cc, t1, t2), yes, no))
+                  * Bug, if eax is either t1 or t2 then problem will occur!!!
+                  * Note that we have to use eax as the destination of the
+                  * setcc because it only works on the registers
+                  * %al, %bl, %cl, %dl and %[abcd]h.  The last four registers
+                  * are inaccessible in 32 bit mode.
                   *)
               fun setcc(ty, cc, t1, t2, yes, no) = 
-              let val tmpR = newReg()
-                  val tmp = I.Direct tmpR
-                  (* We create a temporary here just in 
-                   * case t1 or t2 contains a use of rd.
-                   *)
+              let val (cc, yes, no) = 
+                         if yes > no then (cc, yes, no)
+                         else (T.Basis.negateCond cc, no, yes)
               in  (* Clear the destination first.
                    * This this because stupid SETcc 
                    * only writes to the low order
                    * byte.  That's Intel architecture, folks.
                    *)
-                  zero tmp;
+                  zero eax;
                   case (yes, no) of
                     (1, 0) => (* normal case *)
                     let val cc = cmp(true, ty, cc, t1, t2, []) 
-                    in  mark(I.SET{cond=cond cc, opnd=tmp}, an) end 
-                  | (0, 1) => (* flip *)
-                    let val cc = cmp(true, ty, 
-                                     T.Basis.negateCond cc, t1, t2, []) 
-                    in  mark(I.SET{cond=cond cc, opnd=tmp}, an) end 
+                    in  mark(I.SET{cond=cond cc, opnd=eax}, an);
+                        move(eax, rdOpnd)
+                    end
                   | (C1, C2)  => 
                     (* general case; 
-                     * from the Intel optimization guide p3-5 *)
-                    let val C1 = toInt32 C1
-                        val C2 = toInt32 C2
-                        val cc = cmp(true, ty, cc, t1, t2, []) 
-                    in  emit(I.SET{cond=cond cc, opnd=tmp}); 
-                        case Int32.abs(C1-C2)-1 of
-                          D as (1 | 2 | 4 | 8) =>
-                          let val addr = I.Indexed{base=SOME tmpR,
-                                                   index=tmpR,
-                                                   scale=Int32.toInt D,
-                                                   disp=I.Immed(C1-C2),
+                     * from the Intel optimization guide p3-5 
+                     *)
+                    let val cc = cmp(true, ty, cc, t1, t2, []) 
+                    in  case C1-C2 of
+                          D as (1 | 2 | 3 | 4 | 5 | 8 | 9) =>
+                          let val (base,scale) = 
+                                  case D of
+                                    1 => (NONE, 0)
+                                  | 2 => (NONE, 1)
+                                  | 3 => (SOME C.eax, 1)
+                                  | 4 => (NONE, 2)
+                                  | 5 => (SOME C.eax, 2)
+                                  | 8 => (NONE, 3)
+                                  | 9 => (SOME C.eax, 3)
+                              val addr = I.Indexed{base=base,
+                                                   index=C.eax,
+                                                   scale=scale,
+                                                   disp=I.Immed C2,
                                                    mem=readonly}
-                          in  mark(I.LEA{r32=tmpR, addr=addr}, an) end
-                        | _ =>
-                         (emit(I.UNARY{unOp=I.DECL, opnd=tmp});
-                          emit(I.BINARY{binOp=I.ANDL,
-                                        src=I.Immed(C2-C1), dst=tmp});
-                          mark(I.BINARY{binOp=I.ADDL,
-                                        src=I.Immed(Int32.min(C1,C2)), 
-                                        dst=tmp}, an)
-                         )
-                    end; 
-                  move(tmp, rdOpnd)
+                              val tmpR = newReg()
+                              val tmp  = I.Direct tmpR
+                          in  emit(I.SET{cond=cond cc, opnd=eax}); 
+                              mark(I.LEA{r32=tmpR, addr=addr}, an);
+                              move(tmp, rdOpnd)
+                          end
+                        | D =>
+                           (emit(I.SET{cond=cond(T.Basis.negateCond cc), 
+                                       opnd=eax}); 
+                            emit(I.UNARY{unOp=I.DECL, opnd=eax});
+                            emit(I.BINARY{binOp=I.ANDL,
+                                          src=I.Immed D, dst=eax});
+                            if C2 = 0 then 
+                               move(eax, rdOpnd)
+                            else
+                               let val tmpR = newReg()
+                                   val tmp  = I.Direct tmpR
+                               in  mark(I.LEA{addr=
+                                         I.Displace{
+                                             base=C.eax,
+                                             disp=I.Immed C2,
+                                             mem=readonly},
+                                             r32=tmpR}, an);
+                                    move(tmp, rdOpnd)
+                                end
+                           )
+                    end
               end (* setcc *)
     
                   (* Generate cmovcc instruction.
@@ -727,7 +751,10 @@ struct
              | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem)) => load16s(ea, mem)
 
              | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI yes, T.LI no) => 
-                 setcc(ty, cc, t1, t2, yes, no)
+                 setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
+             | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI32 yes, T.LI32 no) => 
+                 setcc(ty, cc, t1, t2, Word32.toLargeIntX yes, 
+                                       Word32.toLargeIntX no)
              | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) => 
                 (case !arch of (* PentiumPro and higher has CMOVcc *)
                    Pentium => unknownExp exp

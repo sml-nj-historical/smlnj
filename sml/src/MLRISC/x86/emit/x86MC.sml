@@ -56,11 +56,35 @@ struct
    
        fun emitter regmap =
        let
+   fun eWord8 w = let
+          val b8 = w
+       in eByteW b8
+       end
+
+   and eWord32 w = let
+          val b8 = w
+          val w = w >> 0wx8
+          val b16 = w
+          val w = w >> 0wx8
+          val b24 = w
+          val w = w >> 0wx8
+          val b32 = w
+       in 
+          ( eByteW b8; 
+          eByteW b16; 
+          eByteW b24; 
+          eByteW b32 )
+       end
+
    fun emit_GP r = itow (regmap r)
    and emit_FP r = itow ((regmap r) - 32)
    and emit_CC r = itow ((regmap r) - 64)
    and emit_MEM r = itow ((regmap r) - 64)
    and emit_CTRL r = itow ((regmap r) - 64)
+   fun modrm {mod, reg, rm} = eWord8 ((op mod << 0wx6) + ((reg << 0wx3) + rm))
+   and sib {ss, index, base} = eWord8 ((ss << 0wx6) + ((index << 0wx3) + base))
+   and immed8 {imm} = eWord8 imm
+   and immed32 {imm} = eWord32 imm
    fun emitInstr (I.NOP) = error "NOP"
      | emitInstr (I.JMP(operand, label)) = error "JMP"
      | emitInstr (I.JCC{cond, opnd}) = error "JCC"
@@ -90,18 +114,29 @@ struct
      | emitInstr (I.COPY{dst, src, tmp}) = error "COPY"
      | emitInstr (I.FCOPY{dst, src, tmp}) = error "FCOPY"
      | emitInstr (I.FBINARY{binOp, src, dst}) = error "FBINARY"
+     | emitInstr (I.FIBINARY{binOp, src}) = error "FIBINARY"
      | emitInstr (I.FUNARY funOp) = error "FUNARY"
      | emitInstr (I.FUCOMPP) = error "FUCOMPP"
-     | emitInstr (I.FCOM) = error "FCOM"
      | emitInstr (I.FCOMPP) = error "FCOMPP"
      | emitInstr (I.FXCH{opnd}) = error "FXCH"
      | emitInstr (I.FSTPL operand) = error "FSTPL"
      | emitInstr (I.FSTPS operand) = error "FSTPS"
      | emitInstr (I.FSTPT operand) = error "FSTPT"
+     | emitInstr (I.FSTL operand) = error "FSTL"
+     | emitInstr (I.FSTS operand) = error "FSTS"
+     | emitInstr (I.FLD1) = error "FLD1"
+     | emitInstr (I.FLDL2E) = error "FLDL2E"
+     | emitInstr (I.FLDL2T) = error "FLDL2T"
+     | emitInstr (I.FLDLG2) = error "FLDLG2"
+     | emitInstr (I.FLDLN2) = error "FLDLN2"
+     | emitInstr (I.FLDPI) = error "FLDPI"
+     | emitInstr (I.FLDZ) = error "FLDZ"
      | emitInstr (I.FLDL operand) = error "FLDL"
      | emitInstr (I.FLDS operand) = error "FLDS"
      | emitInstr (I.FLDT operand) = error "FLDT"
      | emitInstr (I.FILD operand) = error "FILD"
+     | emitInstr (I.FILDL operand) = error "FILDL"
+     | emitInstr (I.FILDLL operand) = error "FILDLL"
      | emitInstr (I.FNSTSW) = error "FNSTSW"
      | emitInstr (I.FENV{fenvOp, opnd}) = error "FENV"
      | emitInstr (I.SAHF) = error "SAHF"

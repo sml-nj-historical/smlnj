@@ -29,6 +29,11 @@ functor Alpha
        * This should be set to false for C-like clients but true for SML/NJ.
        *)
     val SMLNJfloatingPoint : bool 
+
+      (* Should we use generate special byte/word load instructions
+       * like LDBU, LDWU, STB, STW.
+       *)
+    val byteWordLoadStores : bool ref
    ) : MLTREECOMP =
 struct
 
@@ -284,6 +289,12 @@ struct
   datatype zeroOne   = ZERO | ONE | OTHER
   datatype commutative = COMMUTE | NOCOMMUTE
 
+  val zeroFR = C.FPReg 31
+  val zeroEA = I.Direct zeroR
+  val zeroT  = T.LI 0
+  val trapb = [I.TRAPB]
+  val zeroImm = I.IMMop 0
+
   fun selectInstructions
         (instrStream as
          S.STREAM{emit,beginCluster,endCluster,
@@ -301,14 +312,8 @@ struct
       val itow = Word.fromInt
       val wtoi = Word.toIntX
 
-      val zeroFR = C.FPReg 31
-      val zeroEA = I.Direct zeroR
-      val zeroT  = T.LI 0
-
       val newReg = C.newReg
       val newFreg = C.newFreg
-
-      val trapb = [I.TRAPB]
 
       (* Choose the appropriate rounding mode to generate.
        * This stuff is used to support the alpha32x SML/NJ backend.
@@ -480,15 +485,45 @@ struct
         | opn(T.CONST c) = I.LABop(LE.CONST c)
         | opn e = I.REGop(expr e)
 
-      (* compute base+displacement from an expression *)
+      (* compute base+displacement from an expression 
+       *)
       and addr exp =
-          case exp of 
-            T.ADD(_,e,T.LI n) => makeEA(expr e,n)
-          | T.ADD(_,T.LI n,e) => makeEA(expr e,n)
-          | T.ADD(_,e,T.CONST c) => (expr e,I.LABop(LE.CONST c))
-          | T.ADD(_,T.CONST c,e) => (expr e,I.LABop(LE.CONST c))
-          | T.SUB(_,e,T.LI n) => makeEA(expr e,~n)
-          | e => makeEA(expr e,0)
+          let fun toLexp(I.IMMop i) = LE.INT i
+                | toLexp(I.LABop le) = le
+                | toLexp _ = error "addr.toLexp"
+
+              fun add(n,I.IMMop m) = I.IMMop(n+m)
+                | add(n,I.LABop le) = I.LABop(LE.PLUS(LE.INT n,le))
+                | add(n,_) = error "addr.add"
+              fun add32(n,disp) = add(W32.toIntX n,disp) (* overflow XXX *)
+              fun addC(c,I.IMMop 0) = I.LABop(LE.CONST c)
+                | addC(c,disp) = I.LABop(LE.PLUS(LE.CONST c,toLexp disp))
+              fun addL(l,I.IMMop 0) = I.LABop l
+                | addL(l,disp) = I.LABop(LE.PLUS(l,toLexp disp))
+              fun sub(n,I.IMMop m) = I.IMMop(m-n)
+                | sub(n,I.LABop le) = I.LABop(LE.MINUS(le,LE.INT n))
+                | sub(n,_) = error "addr.sub"
+              fun sub32(n,disp) = sub(W32.toIntX n,disp)
+              fun subC(c,disp) = I.LABop(LE.MINUS(toLexp disp, LE.CONST c))
+              fun subL(l,disp) = I.LABop(LE.MINUS(toLexp disp, l))
+             
+              (* Should really take into account of the address width XXX *) 
+              fun fold(T.ADD(_,e,T.LI n),disp) = fold(e, add(n,disp))
+                | fold(T.ADD(_,e,T.LI32 n),disp) = fold(e, add32(n,disp))
+                | fold(T.ADD(_,e,T.CONST c),disp) = fold(e, addC(c,disp))
+                | fold(T.ADD(_,e,T.LABEL l),disp) = fold(e, addL(l,disp))
+                | fold(T.ADD(_,T.LI n,e),disp) = fold(e, add(n,disp))
+                | fold(T.ADD(_,T.LI32 n, e),disp) = fold(e, add32(n,disp))
+                | fold(T.ADD(_,T.CONST n, e),disp) = fold(e, addC(n,disp))
+                | fold(T.ADD(_,T.LABEL l, e),disp) = fold(e, addL(l,disp))
+                | fold(T.SUB(_,e,T.LI n),disp) = fold(e, sub(n,disp))
+                | fold(T.SUB(_,e,T.LI32 n),disp) = fold(e, sub32(n,disp))
+                | fold(T.SUB(_,e,T.CONST n),disp) = fold(e, subC(n,disp))
+                | fold(T.SUB(_,e,T.LABEL l),disp) = fold(e, subL(l,disp))
+                | fold(e,disp) = (expr e,disp)
+
+          in  makeEA(fold(exp, zeroImm))
+          end
 
       (* compute base+displacement+small offset *)
       and offset(base,disp as I.IMMop n,off) =
@@ -500,15 +535,18 @@ struct
                    (tmp,I.IMMop off)
                end
            end
+        | offset(base,disp as I.LABop le,off) =
+           (base, I.LABop(LE.PLUS(le,LE.INT off)))
         | offset(base,disp,off) =
            let val tmp = newReg()
            in  emit(I.OPERATE{oper=I.ADDQ,ra=base,rb=disp,rc=tmp});
                (tmp,I.IMMop off)
            end
 
-      (* check if base offset *)
-      and makeEA(base, offset) =
-         if ~32768 <= offset andalso offset <= 32767 then (base, I.IMMop offset)
+      (* check if base offset fits within the field *)
+      and makeEA(base, off as I.IMMop offset) =
+         if ~32768 <= offset andalso offset <= 32767 
+         then (base, off)
          else 
          let val tmpR = newReg()
                 (* unsigned low 16 bits *)
@@ -520,6 +558,7 @@ struct
              (emit(I.LDAH{r=tmpR, b=base, d=I.IMMop highsgn});
              (tmpR, I.IMMop lowsgn))
          end
+       | makeEA(base, offset) = (base, offset)
 
       (* look for multiply by 4 and 8 of the given type *)
       and times4or8(ty,e) =
@@ -799,6 +838,16 @@ struct
           let val (base,disp) = addr ea
           in  mark(I.LOAD{ldOp=ldOp,r=d,b=base,d=disp,mem=mem},an) end
 
+      (* generate a load and sign extension *)
+      and loadSigned(ldOp,bits,ea,rd,mem,an) =
+          let val t1 = newReg()
+              val t2 = newReg()
+              val shift = I.IMMop(64-bits)
+          in  load(ldOp,ea,t1,mem,an);
+              emit(I.OPERATE{oper=I.SLL, ra=t1, rb=shift, rc=t2});
+              emit(I.OPERATE{oper=I.SRA, ra=t2, rb=shift, rc=rd})
+          end 
+
       (* generate a load with zero extension *)
       and loadZext(ea,rd,mem,EXT,an) = 
           let val (b, d) = addr ea
@@ -821,16 +870,24 @@ struct
           end
 
       (* generate a load byte with zero extension (page 4-48) *)
-      and load8(ea,rd,mem,an) = loadZext(ea,rd,mem,I.EXTBL,an)
+      and load8(ea,rd,mem,an) = 
+          if !byteWordLoadStores then load(I.LDBU,ea,rd,mem,an)
+          else loadZext(ea,rd,mem,I.EXTBL,an)
 
       (* generate a load byte with sign extension (page 4-48) *)
-      and load8s(ea,rd,mem,an) = loadSext(ea,rd,mem,1,I.EXTQH,56,an)
+      and load8s(ea,rd,mem,an) = 
+          if !byteWordLoadStores then loadSigned(I.LDBU,8,ea,rd,mem,an)
+          else loadSext(ea,rd,mem,1,I.EXTQH,56,an)
 
       (* generate a load 16 bit *)
-      and load16(ea,rd,mem,an) = loadZext(ea,rd,mem,I.EXTWL,an)
+      and load16(ea,rd,mem,an) = 
+          if !byteWordLoadStores then load(I.LDWU,ea,rd,mem,an)
+          else loadZext(ea,rd,mem,I.EXTWL,an)
 
       (* generate a load 16 bit with sign extension *)
-      and load16s(ea,rd,mem,an) = loadSext(ea,rd,mem,2,I.EXTQH,48,an)
+      and load16s(ea,rd,mem,an) = 
+          if !byteWordLoadStores then loadSigned(I.LDWU,16,ea,rd,mem,an) 
+          else loadSext(ea,rd,mem,2,I.EXTQH,48,an)
 
       (* generate a load 32 bit with sign extension *)
       and load32s(ea,rd,mem,an) = load(I.LDL,ea,rd,mem,an)

@@ -40,13 +40,17 @@ sig
    | FBGE
    | FBGT
    datatype load =
-     LDL
+     LDBU
+   | LDWU
+   | LDL
    | LDL_L
    | LDQ
    | LDQ_L
    | LDQ_U
    datatype store =
-     STL
+     STB
+   | STW
+   | STL
    | STQ
    | STQ_U
    datatype fload =
@@ -279,13 +283,17 @@ struct
    | FBGE
    | FBGT
    datatype load =
-     LDL
+     LDBU
+   | LDWU
+   | LDL
    | LDL_L
    | LDQ
    | LDQ_L
    | LDQ_U
    datatype store =
-     STL
+     STB
+   | STW
+   | STL
    | STQ
    | STQ_U
    datatype fload =
