@@ -32,8 +32,7 @@ struct
        val L           = Dom.max_levels Dom
        val N           = #capacity dom ()
        val levelsMap   = Dom.levelsMap Dom
-       val J           = A.array(L+1, [])
-       val outdeg      = A.array(N, 0) 
+       val rank_J      = A.array(N, 0)
        val trees       = A.array(N, NONE)
        val jedges      = A.array(N, [])
        val buckets     = A.array(L, [])
@@ -43,21 +42,15 @@ struct
              | foreachDedge((_,b,_)::es) = (ExitTrees b; foreachDedge es)
            val _     = foreachDedge (#out_edges dom a)
            val lvl_a = A.sub(levelsMap, a)
-           fun foreachJedge [] = ()
-             | foreachJedge((a,b,_)::es) = 
+           fun foreachJedge([], rank) = A.update(rank_J,a,rank)
+             | foreachJedge((a,b,_)::es, rank) = 
                let val lvl_b = A.sub(levelsMap, b)  
                in  if lvl_b <= lvl_a then 
-                      (A.update(J, lvl_b, a::A.sub(J, lvl_b));
-                       A.update(buckets, lvl_b, (a,b)::A.sub(buckets,lvl_b));
-                       A.update(outdeg, a, A.sub(outdeg, a) + 1))
-                   else ();
-                   foreachJedge es
+                      foreachJedge(es, if lvl_b < rank then lvl_b else rank)
+                   else 
+                      foreachJedge(es, rank)
                end
-           val _ = foreachJedge (#out_edges cfg a)
-           fun removeNonExit [] = ()
-             | removeNonExit(x::xs) = 
-               (A.update(outdeg, x, A.sub(outdeg, x) - 1); removeNonExit xs)      
-           val _  = removeNonExit(A.sub(J, lvl_a + 1))
+           val _ = foreachJedge (#out_edges cfg a, L+1)
            fun buildTree([], succ) = NODE(a,succ)
              | buildTree((_,b,_)::es, succ) = 
                (case A.sub(trees, b) of
@@ -65,20 +58,22 @@ struct
                 | SOME t => buildTree(es, t::succ)
                )
            val t_a = buildTree(#out_edges dom a, []) 
-       in  A.update(trees, a, pruneTree(t_a))
+       in  A.update(trees, a, pruneTree(A.sub(levelsMap, a), t_a))
        end
 
-       and pruneTree(NODE(x,succ)) =
+       and pruneTree(lvl_a, NODE(x,succ)) =
            let fun foreachSucc([], subtrees) = subtrees
                  | foreachSucc(t::ts, subtrees) = 
                      foreachSucc(ts, 
-                        case pruneTree t of NONE => subtrees 
-                                          | SOME t => t::subtrees)
+                        case pruneTree(lvl_a, t) of 
+                           NONE => subtrees 
+                         | SOME t => t::subtrees
+                     )
                val subtrees = foreachSucc(succ, []) 
-           in  case (A.sub(outdeg,x), subtrees) of
-                 (0,[])  => NONE
-               | (0,[t]) => SOME t
-               | (_,ts)  => SOME(NODE(x,ts))
+           in  case (A.sub(rank_J,x) <= lvl_a, subtrees) of
+                 (false,[])  => NONE
+               | (false,[t]) => SOME t
+               | (_,ts)      => SOME(NODE(x,ts))
            end
 
        fun fillJedges l =

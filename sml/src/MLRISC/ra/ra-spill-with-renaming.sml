@@ -409,7 +409,8 @@ struct
             *    spill tmp to spillLoc /* spill d */
             * 
             *)
-           fun spillCopyDst(instr,regToSpill,spillLoc,kill,env,don'tOverwrite) =
+           fun spillCopyDst(pt,instr,regToSpill,spillLoc,
+                            kill,env,don'tOverwrite) =
            let val (dst, src) = P.moveDstSrc instr
                val (mvSrc,copyDst,copySrc,kill) = 
                     extractDef(regToSpill,dst,src,kill)
@@ -433,14 +434,14 @@ struct
                      val spillCode = spillSrc{src=tmp,reg=regToSpill,
                                               spillLoc=spillLoc,
                                               annotations=annotations}
-                 in  (copy @ spillCode, [])
+                 in  (copy @ spillCode, [(regToSpill,tmp,pt)])
                  end
                  else
                  let (* spill the move instruction *)
                      val spillCode = spillSrc{src=mvSrc,reg=regToSpill,
                                               spillLoc=spillLoc,
                                               annotations=annotations}
-                 in  (spillCode @ copy, [])
+                 in  (spillCode @ copy, [(regToSpill,mvSrc,pt)])
                  end
            end
     
@@ -449,14 +450,14 @@ struct
             *)
            fun spillCopy(pt,instr,regToSpill,spillLoc,kill,env,don'tOverwrite) =
                case P.moveTmpR instr of
-                 NONE => spillCopyDst(instr,regToSpill,spillLoc,kill,env,
+                 NONE => spillCopyDst(pt,instr,regToSpill,spillLoc,kill,env,
                                       don'tOverwrite)
                | SOME tmp => 
                    if regmap tmp = regToSpill 
                    then ((* spilledCopyTmps := !spilledCopyTmps + 1; *)
                          [spillCopyTmp{copy=instr, spillLoc=spillLoc,
                                       annotations=annotations}], [])
-                   else spillCopyDst(instr,regToSpill,spillLoc,kill,
+                   else spillCopyDst(pt,instr,regToSpill,spillLoc,kill,
                                      env, don'tOverwrite)
     
            (*

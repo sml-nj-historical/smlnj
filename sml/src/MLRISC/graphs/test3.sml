@@ -1,4 +1,4 @@
-CM.make "sources.cm";
+CM.make "../cm/Graphs.cm";
 structure TestMinCut =
 struct
 val G as Graph.GRAPH g = DirectedGraph.graph("foo",(),10) :

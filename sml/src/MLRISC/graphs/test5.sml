@@ -1,4 +1,4 @@
-CM.make "sources.cm";
+CM.make "../cm/Graphs.cm";
 
 (* page 556 in CLR *)
 functor TestAllPairsShortestPaths(AP : ALL_PAIRS_SHORTEST_PATHS 
