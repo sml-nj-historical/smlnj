@@ -401,12 +401,12 @@ re-configuration of the root environment that affects {\tt \$mystuff}
 now also affects how {\tt \$lib} is resolved as it occurs within {\tt
 a.cm}.
 
-The list of {\tt bind:}-directives is processed ``in parallel,'' which
+The list of {\tt bind}-directives is processed ``in parallel,'' which
 means that {\tt \$support} is {\em not} being bound to\linebreak {\tt
 \$mystuff/a-lib/asupport} but will refer to the original meaning of
 {\tt \$lib}.
 
-The example also demonstrates that {\tt value:}-paths can be single
+The example also demonstrates that {\tt value}-paths can be single
 anchors. In other words, the restriction that there has to be at least
 one arc after the anchor does not apply here.
 
@@ -871,7 +871,7 @@ sorted list of strings that, when written to a file, can be passed to the
 runtime system in order to perform stand-alone linkage of the given
 program. Upon failure, {\tt CM.mk\_standalone} returns {\tt NONE}.
 
-\paragraph {\bf ml-build}: The programmer should normally have no need
+\paragraph*{\bf ml-build:} The programmer should normally have no need
 to invoke {\tt CM.mk\_standalone} directly.  Instead, SML/NJ provides
 a command {\tt ml-build} which does all the work.  To be able to use
 {\tt ml-build}, one must implement a library exporting a structure
