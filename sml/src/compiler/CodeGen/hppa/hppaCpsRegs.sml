@@ -26,41 +26,50 @@ struct
      31    millicode return and scratch.
    *)
 
-  val stdarg	= T.REG 11
-  val stdcont	= T.REG 12
-  val stdclos	= T.REG 10
-  val stdlink	= T.REG 9
-  val baseptr	= T.REG 8
+  val GP = HppaCells.GPReg
+  val FP = HppaCells.FPReg
 
-  val limitptr	= T.REG 4
-  val varptr	= T.REG 7
+  val stdarg	= T.REG(32,GP 11)
+  val stdcont	= T.REG(32,GP 12)
+  val stdclos	= T.REG(32,GP 10)
+  val stdlink	= T.REG(32,GP 9)
+  val baseptr	= T.REG(32,GP 8)
+
+  val limitptr	= T.REG(32,GP 4)
+  val varptr	= T.REG(32,GP 7)
   val exhausted	= NONE
-  val storeptr	= T.REG 5
-  val allocptr	= T.REG 3
-  val exnptr	= T.REG 6
+  val storeptr	= T.REG(32,GP 5)
+  val allocptr	= T.REG(32,GP 3)
+  val exnptr	= T.REG(32,GP 6)
 
-  val returnPtr	= 31
-  val gcLink	= T.REG returnPtr
-  val stackptr	= T.REG 30
+  val returnPtr	= GP 31
+  val gcLink	= T.REG(32,returnPtr)
+  val stackptr	= T.REG(32,GP 30)
 
   val miscregs = 
-    map T.REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
+    map (fn r => T.REG(32,GP r)) 
+       [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
   val calleesave = Array.fromList miscregs
 
   (* Note: We need at least one register for shuffling purposes. *)
   fun fromto(n, m) = if n>m then [] else n :: fromto(n+1, m)
-  val floatregs = map T.FREG (fromto(6, 30))
+  val floatregs = map (fn f => T.FREG(64,FP f)) (fromto(6, 30))
   val savedfpregs = []
 
-  val allRegs = SL.uniq(fromto(0,31))
+  val allRegs = SL.uniq(fromto(GP 0,GP 31))
 
   val availR = 
-    map (fn T.REG r => r)
+    map (fn T.REG(_,r) => r)
         ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
   val dedicatedR = SL.remove(SL.uniq availR, allRegs)
 
-  val availF = SL.uniq(fromto(6, 30))
-  val dedicatedF = SL.remove(availF, allRegs)
+  val availF = SL.uniq(fromto(FP 6, FP 30))
+
+  val allFRegs = SL.uniq(fromto(FP 0,FP 31))
+
+  val dedicatedF = SL.remove(availF, allFRegs)
+
+  val signedGCTest = false
 end
 
 (*

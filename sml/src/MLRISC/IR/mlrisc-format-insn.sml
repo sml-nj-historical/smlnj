@@ -1,3 +1,11 @@
+(*
+ * This just provide a very simple pretty printing function.
+ * It is used for visualization.
+ *
+ * -- Allen 
+ * 
+ *)
+
 signature FORMAT_INSTRUCTION =
 sig
    structure I  : INSTRUCTIONS
@@ -6,14 +14,19 @@ sig
 
 end
 
-functor FormatInstructionFn(Emitter : EMITTER_NEW) : FORMAT_INSTRUCTION =
+functor FormatInstructionFn
+   (Emitter : INSTRUCTION_EMITTER) : FORMAT_INSTRUCTION =
 struct
    structure I = Emitter.I
 
    fun toString regmap insn =
    let val buffer = StringStream.mkStreamBuf()
        val S      = StringStream.openStringOut buffer
-       val _      = AsmStream.withStream S Emitter.emitInstr (insn,regmap) 
+       val _      = AsmStream.withStream S 
+                    (fn _ =>
+                    let val Emitter.S.STREAM{emit,...} = Emitter.makeStream()
+                    in  emit (I.C.lookup regmap) insn 
+                    end) ()
        val text   = StringStream.getString buffer
        fun isSpace #" "  = true
          | isSpace #"\t" = true
@@ -30,6 +43,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

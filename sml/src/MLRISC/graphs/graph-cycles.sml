@@ -1,6 +1,14 @@
 (*
- *  Enumerate all simple cycles in a graph with no duplicates 
+ * Enumerate all simple cycles in a graph with no duplicates.
+ *
+ * This module enumerates all simple cycles in a graph.
+ * Each cycle is reprensented as a list of edges.  Adjacent edges
+ * are adjacent in the list.  The function works like fold: all cycles
+ * are ``folded'' together with a user supplied function.
+ *
+ * -- Allen
  *)
+
 structure GraphCycles : GRAPH_SIMPLE_CYCLES =
 struct
 
@@ -47,11 +55,8 @@ struct
            enumerateAll(0,scc,x)
        end
        
-   in  GraphSCC.scc graph processSCC x
+   in  GraphSCC.strong_components graph processSCC x
    end
 
 end
 
-(*
- * $Log$
- *)

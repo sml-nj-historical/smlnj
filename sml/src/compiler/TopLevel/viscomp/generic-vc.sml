@@ -12,6 +12,7 @@ structure GenericVC : GENERIC_VC = struct
     structure SourceMap = SourceMap
     structure ErrorMsg = ErrorMsg
     structure Symbol = Symbol
+    structure SymPath = SymPath
     structure StaticEnv = StaticEnv
     structure DynamicEnv = DynamicEnv
     structure BareEnvironment = Environment
@@ -32,6 +33,7 @@ structure GenericVC : GENERIC_VC = struct
 	    #hash (PickMod.pickleEnv (context, CMStaticEnv.unCM se))
     end
     structure Ast = Ast
+    structure SmlFile = SmlFile
 
     structure PrintHooks : PRINTHOOKS = struct
 	fun prAbsyn env d  = 
@@ -50,5 +52,10 @@ structure GenericVC : GENERIC_VC = struct
 end
 
 (*
- * $Log$
+ * $Log: generic-vc.sml,v $
+ * Revision 1.1  1998/10/16 14:04:03  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  *)

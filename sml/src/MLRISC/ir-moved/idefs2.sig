@@ -6,6 +6,7 @@
  *                           idom(x) v_1 v_2 ... v_n x where n >= 1 and
  *                                   v_i <> idom(x) for all 1 <= i <= n
  *             }
+ * -- Allen
  *)
 signature IDEFS =
 sig
@@ -22,6 +23,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -4,16 +4,16 @@
 signature INTSTRMAPV = 
 sig 
   type 'a intstrmap
-  val new : (int * string * 'a) list -> 'a intstrmap
+  val new : (word * string * 'a) list -> 'a intstrmap
 
   (* in case of duplicates, the element towards the head of the 
    * list is discarded,and the one towards the tail is kept.
    *)
   val elems : 'a intstrmap -> int
-  val map : 'a intstrmap -> int * string -> 'a
-  val app : (int * string * 'a -> unit) -> 'a intstrmap -> unit
+  val map : 'a intstrmap -> word * string -> 'a
+  val app : (word * string * 'a -> unit) -> 'a intstrmap -> unit
   val transform : ('a -> 'b) -> 'a intstrmap -> 'b intstrmap
-  val fold : ((int*string*'a)*'b->'b)->'b->'a intstrmap->'b
+  val fold : ((word*string*'a)*'b->'b)->'b->'a intstrmap->'b
 
 end (* signature INTSTRMAP *)
 
@@ -29,11 +29,11 @@ fun debugmsg (msg: string) =
 
 structure Symbol = 
 struct
-  val varInt = 0 and sigInt = 1 and strInt = 2 and fsigInt = 3 and 
-      fctInt = 4 and tycInt = 5 and labInt = 6 and tyvInt = 7 and
-      fixInt = 8
+  val varInt = 0w0 and sigInt = 0w1 and strInt = 0w2 and fsigInt = 0w3 and 
+      fctInt = 0w4 and tycInt = 0w5 and labInt = 0w6 and tyvInt = 0w7 and
+      fixInt = 0w8
 
-  datatype symbol = SYMBOL of int * string
+  datatype symbol = SYMBOL of word * string
   datatype namespace =
      VALspace | TYCspace | SIGspace | STRspace | FCTspace | FIXspace |
      LABspace | TYVspace | FSIGspace 
@@ -44,42 +44,42 @@ struct
         a1 < a2 orelse a1 = a2 andalso s1 < s2
 
   fun varSymbol (name: string) =
-        SYMBOL(StrgHash.hashString name + varInt,name)
+        SYMBOL(HashString.hashString name + varInt,name)
   fun tycSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + tycInt, name)
+	SYMBOL(HashString.hashString name + tycInt, name)
   fun fixSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + fixInt, name)
+	SYMBOL(HashString.hashString name + fixInt, name)
   fun labSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + labInt, name)
+	SYMBOL(HashString.hashString name + labInt, name)
   fun tyvSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + tyvInt, name)
+	SYMBOL(HashString.hashString name + tyvInt, name)
   fun sigSymbol (name: string) =
-        SYMBOL(StrgHash.hashString name + sigInt, name)
+        SYMBOL(HashString.hashString name + sigInt, name)
   fun strSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + strInt, name)
+	SYMBOL(HashString.hashString name + strInt, name)
   fun fctSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + fctInt, name)
+	SYMBOL(HashString.hashString name + fctInt, name)
   fun fsigSymbol (name: string) =
-	SYMBOL(StrgHash.hashString name + fsigInt, name)
+	SYMBOL(HashString.hashString name + fsigInt, name)
 
   fun var'n'fix name =
-        let val h = StrgHash.hashString name
+        let val h = HashString.hashString name
 	 in (SYMBOL(h+varInt,name),SYMBOL(h+fixInt,name))
 	end
 
   fun name (SYMBOL(_,name)) = name
   fun number (SYMBOL(number,_)) = number
   fun nameSpace (SYMBOL(number,name)) : namespace =
-        case number - StrgHash.hashString name
-	 of 0 => VALspace
-          | 5 => TYCspace
-          | 1 => SIGspace
-          | 2 => STRspace
-          | 4 => FCTspace
-          | 8 => FIXspace
-          | 6 => LABspace
-          | 7 => TYVspace
-	  | 3 => FSIGspace
+        case number - HashString.hashString name
+	 of 0w0 => VALspace
+          | 0w5 => TYCspace
+          | 0w1 => SIGspace
+          | 0w2 => STRspace
+          | 0w4 => FCTspace
+          | 0w8 => FIXspace
+          | 0w6 => LABspace
+          | 0w7 => TYVspace
+	  | 0w3 => FSIGspace
 	  | _ => ErrorMsg.impossible "Symbol.nameSpace"
 
   fun nameSpaceToString (n : namespace) : string =
@@ -95,16 +95,16 @@ struct
 	  | FSIGspace => "functor signature"
 
   fun symbolToString(SYMBOL(number,name)) : string =
-        case number - StrgHash.hashString name
-         of 0 => "VAL$"^name
-          | 1 => "SIG$"^name
-          | 2 => "STR$"^name
-          | 3 => "FSIG$"^name
-          | 4 => "FCT$"^name
-          | 5 => "TYC$"^name
-          | 6 => "LAB$"^name
-          | 7 => "TYV$"^name
-          | 8 => "FIX$"^name
+        case number - HashString.hashString name
+         of 0w0 => "VAL$"^name
+          | 0w1 => "SIG$"^name
+          | 0w2 => "STR$"^name
+          | 0w3 => "FSIG$"^name
+          | 0w4 => "FCT$"^name
+          | 0w5 => "TYC$"^name
+          | 0w6 => "LAB$"^name
+          | 0w7 => "TYV$"^name
+          | 0w8 => "FIX$"^name
           | _ => ErrorMsg.impossible "Symbol.toString"
 
 end (* structure Symbol *)
@@ -118,7 +118,7 @@ struct
 
   (* Another version of symbols but hash numbers have no increments
    * according to their nameSpace *)
-  datatype raw_symbol = RAWSYM of int * string
+  datatype raw_symbol = RAWSYM of word * string
 
   (* builds a raw symbol from a pair name, hash number *)
   fun rawSymbol hash_name = RAWSYM hash_name
@@ -126,7 +126,7 @@ struct
   (* builds a symbol from a raw symbol belonging to the same space as
    * a reference symbol *)
   fun sameSpaceSymbol (SYMBOL(i,s)) (RAWSYM(i',s')) =
-        SYMBOL(i' + (i - StrgHash.hashString s), s')
+        SYMBOL(i' + (i - HashString.hashString s), s')
 
   (* build symbols in various name space from raw symbols *)
   fun varSymbol (RAWSYM (hash,name)) =
@@ -159,7 +159,7 @@ structure IntStrMapV :> INTSTRMAPV =
 struct 
 
   structure V = Vector
-  datatype 'a bucket = NIL | B of (int * string * 'a * 'a bucket)
+  datatype 'a bucket = NIL | B of (word * string * 'a * 'a bucket)
   type 'a intstrmap = 'a bucket V.vector
 
   val elems = V.length
@@ -177,10 +177,13 @@ struct
 
   fun transform f v = V.tabulate(V.length v, fn i => bucketmap f (V.sub(v,i)))
 
+  fun index(len, i) = Word.toInt(Word.mod(i, Word.fromInt len))
   fun map v (i,s) =
     let fun find NIL = raise Unbound
           | find (B(i',s',j,r)) = if i=i' andalso s=s' then j else find r
-     in (find (V.sub(v,Int.rem(i,V.length v)))) handle Div => raise Unbound
+      
+     in (find (V.sub(v, index(V.length v, i))))
+          handle Div => raise Unbound
     end
 
   fun app f v =
@@ -199,19 +202,19 @@ struct
      in g(0,zero)
     end
 
-  fun new (bindings: (int*string*'b) list) =
+  fun new (bindings: (word*string*'b) list) =
     let val n = List.length bindings
         val a0 = Array.array(n,NIL: 'b bucket)
         val dups = ref 0
 
         fun add a (i,s,b) =
-          let val index = i mod (Array.length a)
+          let val indx = index(Array.length a, i)
               fun f NIL = B(i,s,b,NIL)
                 | f (B(i',s',b',r)) =
                      if i'=i andalso s'=s
                      then (dups := !dups+1; B(i,s,b,r))
                      else B(i',s',b',f r)
-           in Array.update(a,index,f(Array.sub(a,index)))
+           in Array.update(a,indx,f(Array.sub(a,indx)))
           end
 
         val _ = List.app (add a0) bindings
@@ -224,7 +227,7 @@ struct
      in Vector.tabulate(Array.length a1, fn i => Array.sub(a1,i))
     end
     handle Div => (ErrorMsg.impossible "IntStrMapV.new raises Div";
-                 raise Div)
+		   raise Div)
 
 end (* structure IntStrMapV *)
 
@@ -233,7 +236,7 @@ end (* structure IntStrMapV *)
 
 datatype 'b env
   = EMPTY
-  | BIND of int * string * 'b * 'b env
+  | BIND of word * string * 'b * 'b env
   | TABLE of 'b IntStrMapV.intstrmap * 'b env
   | SPECIAL of (Symbol.symbol -> 'b) * (unit -> Symbol.symbol list) * 'b env
          (* for, e.g., debugger *)
@@ -378,6 +381,9 @@ end (* structure Env *)
 
 (*
  * $Log: env.sml,v $
+ * Revision 1.2  1998/08/05 15:29:37  dbm
+ * clean out old imperative type variables
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:34  george
  * Version 110.5
  *

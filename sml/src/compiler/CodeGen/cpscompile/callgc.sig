@@ -19,11 +19,12 @@ signature CALLGC = sig
 	    regfmls:  T.mlrisc list,
 	    regtys : CPS.cty list,
 	    return: T.stm}
+  type emitter = {emit:T.stm -> unit, comp:T.mltree -> unit}
 
-  val stdCheckLimit : t -> unit
-  val knwCheckLimit : t -> unit
-  val emitLongJumpsToGCInvocation : int Intmap.intmap -> unit
-  val emitModuleGC : int Intmap.intmap -> unit
+  val stdCheckLimit : emitter -> t -> unit
+  val knwCheckLimit : emitter -> t -> unit
+  val emitLongJumpsToGCInvocation : emitter -> int Intmap.intmap -> unit
+  val emitModuleGC : emitter -> int Intmap.intmap -> unit
 end
 
 (*

@@ -9,10 +9,8 @@ Library
 
   signature PP_DEVICE
   signature PP_TOKEN
-  signature PP_DESC
   signature PP_STREAM
 
-  functor PPDescFn
   functor PPStreamFn
   functor PPDebugFn
 

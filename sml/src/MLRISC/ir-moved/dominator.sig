@@ -1,3 +1,10 @@
+(*
+ * This is the signature of a dominator tree.
+ * The dominator tree includes lots of query methods.
+ * 
+ * -- Allen
+ *)
+
 signature DOMINATOR_TREE =
 sig
 
@@ -41,9 +48,8 @@ sig
     val methods    : ('n,'e,'g) dominator_tree -> dominator_methods
     val cfg        : ('n,'e,'g) dominator_tree -> ('n,'e,'g) Graph.graph
     val max_levels : ('n,'e,'g) dominator_tree -> int
+    val levels     : ('n,'e,'g) dominator_tree -> int Array.array
+    val idoms      : ('n,'e,'g) dominator_tree -> int Array.array
 
 end
 
-(*
- * $Log$
- *)

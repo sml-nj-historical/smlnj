@@ -166,12 +166,12 @@ fun cuthead(n,[]) = []
 fun cuttail(n,l) = rev(cuthead(n,rev l))
 
 (* sort according to each variable's life time etc. *)
-fun sortlud0 x = Sort.sort (fn ((_,_,i : int),(_,_,j)) => (i>j)) x
+fun sortlud0 x = ListMergeSort.sort (fn ((_,_,i : int),(_,_,j)) => (i>j)) x
 
 fun sortlud1 x = 
   let fun ludfud1((_,m:int,i:int),(_,n,j)) = 
                     (i>j) orelse ((i=j) andalso (m>n))
-   in Sort.sort ludfud1 x
+   in ListMergeSort.sort ludfud1 x
   end
 
 fun sortlud2(l,vl) = 
@@ -181,7 +181,7 @@ fun sortlud2(l,vl) =
                   (m>n) orelse ((m=n) andalso (v<w))
 
       val nl = map (fn (u as (v,_,_)) => (u,h u,v)) l
-   in map #1 (Sort.sort ludfud2 nl)
+   in map #1 (ListMergeSort.sort ludfud2 nl)
   end
 
 (* cut out the first n elements, returns both the header and the rest *)
@@ -1123,7 +1123,7 @@ fun thinFree(vfree,vlen,closlist,limit) =
                   in if len < limit then m(y,s,r,k)
                      else m(y,addV([v],i,n,s),removeV(nx,r),k-len)
                  end)
-      val clist = Sort.sort worse (foldr h [] closlist)
+      val clist = ListMergeSort.sort worse (foldr h [] closlist)
    in m(clist,[],vfree,vlen)
   end
 
@@ -2046,5 +2046,11 @@ end (* functor Closure *)
 
 
 (*
- * $Log$
+ * $Log: closure.sml,v $
+ * Revision 1.1  1998/05/20 18:36:49  george
+ *   New code that avoids sharing a single closure among
+ *   mututually recursive functions. This way, we'll no longer
+ *   have pointers that point to the middle of a record.
+ * 						-- zsh
+ *
  *)

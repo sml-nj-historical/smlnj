@@ -1,3 +1,9 @@
+(*
+ * This is a simple cache datatype.
+ *
+ * -- Allen
+ *) 
+
 signature CACHE_REF =
 sig
 
@@ -24,6 +30,3 @@ struct
 
 end 
 
-(*
- * $Log$
- *)

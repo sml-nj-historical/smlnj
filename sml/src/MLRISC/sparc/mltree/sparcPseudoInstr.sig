@@ -5,24 +5,34 @@
 signature SPARC_PSEUDO_INSTR = sig
    structure I : SPARCINSTR
 
-   type reduceOpnd = I.operand -> int
+   type format1 = 
+       {r:I.C.register, i:I.operand, d:I.C.register} * 
+       (I.operand -> I.C.register) -> I.instruction list
 
+   type format2 = 
+       {i:I.operand, d:I.C.register} * 
+       (I.operand -> I.C.register) -> I.instruction list
    (* 
     * Signed and unsigned multiplications.
     * For signed operations, trap on overflow and division by zero.
     * For unsigned operations, trap on division by zero.
+    * These are all 32 bit operations 
     *)
-   val umul : {r:int, i:I.operand, d:int} * reduceOpnd -> I.instruction list
-   val smul : {r:int, i:I.operand, d:int} * reduceOpnd -> I.instruction list
-   val udiv : {r:int, i:I.operand, d:int} * reduceOpnd -> I.instruction list
-   val sdiv : {r:int, i:I.operand, d:int} * reduceOpnd -> I.instruction list
-   val cvti2d : {i:I.operand, d:int} * reduceOpnd -> I.instruction list
+   val umul : format1
+   val smul : format1
+   val udiv : format1
+   val sdiv : format1
+
+       (* convert integer into floating point *)
+   val cvti2d : format2
+   val cvti2s : format2
+   val cvti2q : format2
+
+       (* 32-bit overflow detection *)
+   val overflowtrap32 : I.instruction list
+ 
+       (* 64-bit overflow detection *)
+   val overflowtrap64 : I.instruction list
 
 end
 
-(* 
- * $Log: sparcPseudoInstr.sig,v $
- * Revision 1.1.1.1  1998/08/05 19:38:49  george
- *   Release 110.7.4
- *
- *)

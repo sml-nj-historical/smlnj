@@ -1,3 +1,10 @@
+(*
+ * These graph wrappers allow the client to attach triggers to 
+ * various graph methods.
+ *
+ * -- Allen
+ *)
+
 signature GRAPH_WRAPPERS =
 sig
 
@@ -655,6 +662,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

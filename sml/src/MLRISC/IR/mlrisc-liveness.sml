@@ -1,3 +1,10 @@
+(*
+ * This module performs liveness analysis.
+ * It is implemented by instantiating the data flow analyzer module.
+ *
+ * -- Allen
+ *)
+
 signature LIVENESS_ANALYSIS =
 sig
   
@@ -11,7 +18,8 @@ sig
          defUse  : CFG.block Graph.node -> RegSet.regset * RegSet.regset
        } -> unit
 
-   val getLiveness : CFG.cfg -> Graph.node_id -> RegSet.regset * RegSet.regset
+   val getLiveness : CFG.cfg -> Graph.node_id -> 
+                           {livein: RegSet.regset, liveout: RegSet.regset}
 
 end
 
@@ -53,7 +61,7 @@ struct
                       }
                   end
 
-              fun epilogue _ { node = (_,CFG.BLOCK{annotations,...}), 
+              fun epilogue _ { node = (b,CFG.BLOCK{annotations,...}), 
                                input=liveOut, output=liveIn } = 
                   annotations := put((liveIn,liveOut),!annotations)
          end
@@ -65,12 +73,9 @@ struct
    fun getLiveness (G.GRAPH cfg) b = 
        let val CFG.BLOCK{annotations,...} = #node_info cfg b
        in  case get(!annotations) of
-              SOME x => x
-           |  NONE => (S.empty,S.empty)
+              SOME(x,y) => {livein=x,liveout=y}
+           |  NONE => {livein=S.empty,liveout=S.empty}
        end
 
 end
 
-(*
- * $Log$
- *)

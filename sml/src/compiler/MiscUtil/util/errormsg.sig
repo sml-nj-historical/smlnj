@@ -14,6 +14,9 @@ signature ERRORMSG =
     val defaultConsumer : unit -> PrettyPrint.ppconsumer
     val nullErrorBody : PrettyPrint.ppstream -> unit
     val error : Source.inputSource -> SourceMap.region -> complainer
+    (* with a known location string but without access to the actual source: *)
+    val errorNoSource :
+	PrettyPrint.ppconsumer * bool ref -> string -> complainer
     val errorNoFile : PrettyPrint.ppconsumer * bool ref -> SourceMap.region
                       -> complainer
 
@@ -26,5 +29,8 @@ signature ERRORMSG =
  end
 
 (*
- * $Log$
+ * $Log: errormsg.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
  *)

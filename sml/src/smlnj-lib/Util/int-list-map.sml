@@ -30,6 +30,8 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
     fun firsti [] = NONE
       | firsti ((key, value)::_) = SOME(key, value)
 
+    fun singleton (key, item) = [(key, item)]
+
     fun insert (l, key, item) = let
 	  fun f [] = [(key, item)]
 	    | f ((elem as (key', _))::r) = (case Key.compare(key, key')
@@ -42,14 +44,21 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
 	  end
     fun insert' ((k, x), m) = insert(m, k, x)
 
+  (* return true if the key is in the map's domain *)
+    fun inDomain (l, key) = let
+	  fun f [] = false
+	    | f ((key', x) :: r) = (key' <= key) andalso ((key' = key) orelse f r)
+	  in
+	    f l
+	  end
+
   (* Look for an item, return NONE if the item doesn't exist *)
     fun find (l, key) = let
 	  fun f [] = NONE
-	    | f ((key', x) :: r) = (case Key.compare(key, key')
-		   of LESS => NONE
-		    | EQUAL => SOME x
-		    | GREATER => f r
-		  (* end case *))
+	    | f ((key', x) :: r) =
+		if (key < key') then NONE
+		else if (key = key') then SOME x
+		else f r
 	  in
 	    f l
 	  end
@@ -74,6 +83,8 @@ structure IntListMap :> ORD_MAP where type Key.ord_key = Int.int =
   (* Return a list of the items (and their keys) in the map *)
     fun listItems (l : 'a map) = List.map #2 l
     fun listItemsi l = l
+
+    fun listKeys (l : 'a map) = List.map #1 l
 
     fun collate cmpRng = let
 	  fun cmp ([], []) = EQUAL

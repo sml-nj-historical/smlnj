@@ -1,3 +1,9 @@
+(*
+ * Bag datatype that uses hashing
+ * 
+ * -- Allen
+ *)
+
 signature HASH_BAG =
 sig
 
@@ -29,6 +35,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -55,6 +55,3 @@ fun difference(nil,_) = nil
 	else difference(l,d)	
 end
 
-(*
- * $Log$
- *)

@@ -1,6 +1,14 @@
 (*
- * MLRISC Internal IR
+ * MLRISC IR
+ *
  * This is for performing whole program analysis.
+ * All optimizations are based on this representation.
+ * It provides a few useful views: dominator tree, control dependence graph,
+ * loop nesting (interval) structure etc. Also there is a mechanism to
+ * incrementally attach additional views to the IR.  The SSA infrastructure
+ * is implemented in such a manner.
+ *
+ * -- Allen
  *)
 
 signature MLRISC_IR =
@@ -29,6 +37,7 @@ sig
     *) 
    val dom   : IR -> dom
    val pdom  : IR -> pdom
+   val doms  : IR -> dom * pdom
    val cdg   : IR -> cdg
    val loop  : IR -> loop
 
@@ -40,17 +49,16 @@ sig
    (*
     *  View as a picture  
     *) 
-   val view : string -> IR -> unit       (* view some aspect of the IR *)
-   val viewSubgraph : IR -> cfg -> unit  (* view a subgraph of the IR *)
+   val view  : string -> IR -> unit       (* view some facet of the IR *)
+   val views : string list -> IR -> unit  (* view a set of facets *) 
+   val viewSubgraph : IR -> cfg -> unit   (* view a subgraph of the IR *)
 
    (*
     *  This function allows the client to design a new view and extend
     *  the functionality of the IR
     *) 
-   val memo : (IR -> 'facet) -> IR -> 'facet
+   val memo : string -> (IR -> 'facet) -> IR -> 'facet
+   val addLayout : string -> (IR -> GraphLayout.layout) -> unit
 
 end
 
-(*
- * $Log$
- *)

@@ -18,17 +18,21 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.LOADI{li=li, r=replc r, i=i, t=t, mem=mem} 
      | I.ARITH{a, r1, r2, t} => I.ARITH{a=a, r1=replc r1, r2=replc r2, t=t}
      | I.ARITHI{ai, r, i, t} => I.ARITHI{ai=ai, r=replc r, i=i, t=t}
-     | I.COMCLR{cc, r1, r2, t} => I.COMCLR{cc=cc, r1=replc r1, r2=replc r2, t=t}
+     | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
+         I.COMCLR_LDO{cc=cc, r1=replc r1, r2=replc r2, b=replc b, i=i, 
+                      t1=t1, t2=t2}
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=replc r, len=len, t=t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=replc r, p=p, len=len, t=t} 
-     | I.BCOND{cmp, bc, r1, r2, t, f, n} => 
-	I.BCOND{cmp=cmp, bc=bc, r1=replc r1, r2=replc r2, t=t, f=f,n=n}
-     | I.BCONDI{cmpi, bc, i, r2, t, f, n} => 
-        I.BCONDI{cmpi=cmpi, bc=bc, i=i, r2=replc r2, t=t, f=f,n=n} 
+     | I.BCOND{cmp, bc, r1, r2, t, f, n, nop} => 
+	I.BCOND{cmp=cmp, bc=bc, r1=replc r1, r2=replc r2, t=t, f=f,n=n, nop=nop}
+     | I.BCONDI{cmpi, bc, i, r2, t, f, n, nop} => 
+        I.BCONDI{cmpi=cmpi, bc=bc, i=i, r2=replc r2, t=t, f=f,n=n, nop=nop} 
+     | I.BB{bc, r, p, t, f, n, nop} => 
+        I.BB{bc=bc, r=replc r, p=p, t=t, f=f,n=n, nop=nop} 
      | I.BV{x, b, labs, n} => I.BV{x=replc x, b=replc b, labs=labs,n=n} 
      | I.BLR{x, t, labs, n} => I.BLR{x=replc x, t=t, labs=labs,n=n} 
-     | I.BLE{b, d, sr, t, defs, uses=(i,f)} => 
-	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f)} 
+     | I.BLE{b, d, sr, t, defs, uses=(i,f), mem} => 
+	I.BLE{b=replc b, d=d, sr=sr, t=t, defs=defs, uses=(map replc i, f), mem=mem} 
      | I.LDO{b, t, i} => I.LDO{b=replc b, t=t, i=i} 
      | I.COPY{dst, src, tmp, impl} => 
 	I.COPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
@@ -41,6 +45,7 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FLOAD{fl=fl, b=replc b, d=d, t=t, mem=mem} 
      | I.FLOADX{flx, b, x, t, mem} =>
 	I.FLOADX{flx=flx, b=replc b, x=replc x, t=t, mem=mem} 
+     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
      | _ => instr
   end
 
@@ -54,16 +59,18 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.ARITHI{ai, i, r, t} => I.ARITHI{ai=ai, i=i, r=r, t=replc t}
      | I.LOAD{l, r1, r2, t, mem} => I.LOAD{l=l,r1=r1,r2=r2,t=replc t,mem=mem} 
      | I.LOADI{li, i, r, t, mem} => I.LOADI{li=li,i=i,r=r,t=replc t,mem=mem} 
-     | I.COMCLR{cc, r1, r2, t} => I.COMCLR{cc=cc, r1=r1, r2=r2, t=replc t} 
+     | I.COMCLR_LDO{cc, r1, r2, b, i, t1, t2} => 
+          I.COMCLR_LDO{cc=cc, r1=r1, r2=r2, b=b, i=i, t1=replc t1, t2=replc t2} 
      | I.SHIFTV{sv, r, len, t} => I.SHIFTV{sv=sv, r=r, len=len, t=replc t}
      | I.SHIFT{s, r, p, len, t} => I.SHIFT{s=s, r=r, p=p, len=len, t=replc t}
      | I.BLR{x, t, labs, n} => I.BLR{x=x, t=replc t, labs=labs,n=n} 
-     | I.BLE{d, b, sr, t, defs=(i,f), uses} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses}
+     | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(map replc i, f), uses=uses, mem=mem}
      | I.LDIL{i, t} => I.LDIL{i=i, t=replc t} 
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
 	  I.COPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
+     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
      | _ => instr
   end
 
@@ -78,12 +85,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.FARITH{fa, r1, r2, t}  => 
 	I.FARITH{fa=fa, r1=replc r1, r2=replc r2, t=t}
      | I.FUNARY{fu, f, t} => I.FUNARY{fu=fu, f=replc f, t=t} 
-     | I.FBRANCH{cc,f1,f2,t,f,n,long} =>
-         I.FBRANCH{cc=cc,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
+     | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=replc f, t=t} 
+     | I.FBRANCH{cc,fmt,f1,f2,t,f,n,long} =>
+         I.FBRANCH{cc=cc,fmt=fmt,f1=replc f1,f2=replc f2,t=t,f=f,n=n,long=long}
      | I.FCOPY{dst, src, tmp, impl} => 
 	I.FCOPY{dst=dst, src=map replc src, impl=impl, tmp=tmp}
-     | I.BLE{d, b, sr, t, defs=defs, uses=(i,f)} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f)}
+     | I.BLE{d, b, sr, t, defs=defs, uses=(i,f), mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f), mem=mem}
+     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
      | _ => instr
     (*esac*)
   end
@@ -100,24 +109,14 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
          I.FLOADX{flx=flx, b=b, x=x, t=replc t, mem=mem} 
      | I.FARITH {fa, r1, r2, t} => I.FARITH{fa=fa, r1=r1, r2=r2, t=replc t}
      | I.FUNARY{fu, f, t} => I.FUNARY{fu=fu, f=f, t=replc t}
+     | I.FCNV{fcnv, f, t} => I.FCNV{fcnv=fcnv, f=f, t=replc t}
      | I.FCOPY{dst, src, impl, tmp} => 
 	I.FCOPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
-     | I.BLE{d, b, sr, t, defs=(i,f), uses} => 
-        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses}
+     | I.BLE{d, b, sr, t, defs=(i,f), uses, mem} => 
+        I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses, mem=mem}
+     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
      | _ => instr
     (*esac*)
   end
 end
 
-(*
- * $Log: hppaRewrite.sml,v $
- * Revision 1.4  1998/10/06 14:04:37  george
- *   The instruction sequence FCMP, FTEST, FBCC is being replaced
- *   by the composite instruction FBRANCH.  This makes scheduling and
- *   other tasks easier.  Also, added BLR and BL in the instruction set.
- * 							[leunga]
- *
- * Revision 1.3  1998/05/25 15:11:00  george
- *   Fixed RCS keywords
- *
- *)

@@ -1,3 +1,9 @@
+(*
+ * Constant time concatenable list.  
+ *
+ * -- Allen
+ *)
+
 signature CATNETABLE_LIST =
 sig
    type 'a catlist 
@@ -68,6 +74,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

@@ -12,7 +12,8 @@ signature MK_RECORD = sig
      fields: (T.rexp * CPS.accesspath) list,
      ans: int,
      mem: CPSRegions.region,
-     hp : int
+     hp : int,
+     emit : T.stm -> unit
     } -> unit
 
   val frecord : 
@@ -20,7 +21,8 @@ signature MK_RECORD = sig
      fields: (T.mlrisc * CPS.accesspath) list,
      ans: int,
      mem: CPSRegions.region,
-     hp : int
+     hp : int,
+     emit : T.stm -> unit
     } -> unit
 end
 

@@ -1,3 +1,9 @@
+(*
+ * Multimap datatype that uses hashing.
+ *
+ * -- allen
+ *)
+
 structure HashMultimap :> HASH_MULTIMAP =
 struct
 
@@ -68,6 +74,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

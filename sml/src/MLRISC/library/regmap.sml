@@ -1,3 +1,9 @@
+(*
+ * Register map
+ *
+ * -- Allen
+ *)
+
 functor RegMapFn(type value 
                  val join : value * value -> value
                  val meet : value * value -> value
@@ -98,6 +104,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

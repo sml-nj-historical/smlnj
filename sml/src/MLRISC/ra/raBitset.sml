@@ -20,8 +20,8 @@ signature BITMATRIX = sig
     val new         : int -> bitMatrix
     val add         : bitMatrix -> (int * int) -> bool
     val member      : bitMatrix -> (int * int) -> bool
-(*  val delete      : bitMatrix -> (int * int) -> unit
-    val clear 	    : bitMatrix * int -> unit
+    val delete      : bitMatrix -> (int * int) -> bool
+(*  val clear 	    : bitMatrix * int -> unit
 *)
 end
 
@@ -113,7 +113,9 @@ struct
       | find(B(i',j',b)) =
 	  if i=i' andalso j=j' then (elems := !elems-1; b) else B(i',j',find b)
     val indx = moduloSize(i, j, shift, !size)
-  in Unsafe.Array.update(table, indx, find(Array.sub(table,indx)))
+    val n = !elems
+  in Unsafe.Array.update(table, indx, find(Array.sub(table,indx)));
+     !elems <> n (* changed? *)
   end
 
   fun clear (INTPAIRMAP{table,elems,original,size, ...}, _) = let
@@ -126,9 +128,3 @@ struct
   end
 end
 
-(*
- * $Log: raBitset.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

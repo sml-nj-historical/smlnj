@@ -1,6 +1,9 @@
 (*
  *  A generic directed graph data structure.  
  *  Implemented in an ``object oriented style''
+ *  All graphs are based on this interface.
+ * 
+ *  -- Allen
  *)
 
 signature GRAPH =
@@ -11,6 +14,8 @@ sig
    exception NotFound        (* element not located *)
    exception Unimplemented   (* method is not implemented *)
    exception Readonly        (* modification fails *)
+   exception NotSingleEntry  (* should be single entry *)
+   exception NotSingleExit   (* should be single exit *)
 
 
    type node_id = int
@@ -72,6 +77,3 @@ sig
                 node_id * node_id * ('e -> bool) -> unit
 end
 
-(*
- * $Log$
- *)

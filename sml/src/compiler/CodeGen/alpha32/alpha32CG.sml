@@ -3,13 +3,16 @@
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
  *)
-functor Alpha32CG(structure Emitter : EMITTER_NEW
+functor Alpha32CG(structure Emitter : INSTRUCTION_EMITTER
 		    where I = Alpha32Instr
-		    where P = Alpha32PseudoOps) : MACHINE_GEN = 
+		    where P = Alpha32PseudoOps
+		    where S.B = Alpha32MLTree.BNames
+                  val alpha32x : bool (* the alpha32x backend or what? *)
+                 ) : MACHINE_GEN = 
 struct
 
   structure I = Alpha32Instr
-  structure C = Alpha32Cells
+  structure C = AlphaCells
   structure R = Alpha32CpsRegs
   structure B = Alpha32MLTree.BNames
   structure F = Alpha32FlowGraph
@@ -22,26 +25,27 @@ struct
 
   val stack = Alpha32Instr.Region.stack
 
-  structure Alpha32Rewrite = Alpha32Rewrite(Alpha32Instr)
+  structure Alpha32Rewrite = AlphaRewrite(Alpha32Instr)
 
   (* properties of instruction set *)
-  structure P = 
-    Alpha32Props(structure Alpha32Instr= I
-		 structure Shuffle=Alpha32Shuffle)
+  structure P = AlphaProps(Alpha32Instr)
 
+  structure FreqProps = FreqProps(P)
 
   (* Label backpatching and basic block scheduling *)
   structure BBSched =
     BBSched2(structure Flowgraph = F
 	     structure Jumps = 
-	       Alpha32Jumps(structure Instr=Alpha32Instr
-			    structure Shuffle=Alpha32Shuffle)
+	       AlphaJumps(structure Instr=Alpha32Instr
+			  structure Shuffle=Alpha32Shuffle)
 	     structure Emitter = Emitter)
 
   (* flow graph pretty printing routine *)
+  (*
   structure PrintFlowGraph = 
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
+   *)
 
   val intSpillCnt = Ctrl.getInt "ra-int-spills"
   val floatSpillCnt = Ctrl.getInt "ra-float-spills"
@@ -155,14 +159,14 @@ struct
        regSpills := Intmap.new(8, RegSpills);
        fregSpills := Intmap.new(8, FregSpills))
 
-    structure GR = GetReg(val nRegs=32 val available=R.availR)
-    structure FR = GetReg(val nRegs=32 val available=R.availF)
+    structure GR = GetReg(val nRegs=32 val available=R.availR val first=0)
+    structure FR = GetReg(val nRegs=32 val available=R.availF val first=32)
 
     structure Alpha32Ra = 
-       Alpha32RegAlloc(structure P = P
-		       structure I = Alpha32Instr
-		       structure F = F
-		       structure Asm = Asm)
+       AlphaRegAlloc(structure P = P
+		     structure I = Alpha32Instr
+		     structure F = F
+		     structure Asm = Asm)
 
     (* register allocation for general purpose registers *)
     structure IntRa = 
@@ -206,7 +210,7 @@ struct
     val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION []
 
     fun ra cluster = let
-      val pg = PrintFlowGraph.printCluster TextIO.stdOut
+      (* val pg = PrintFlowGraph.printCluster TextIO.stdOut *)
       fun intRa cluster = (GR.reset(); iRegAlloc cluster)
       fun floatRa cluster = (FR.reset(); fRegAlloc cluster)
     in spillInit(); (floatRa o intRa) cluster
@@ -218,21 +222,28 @@ struct
 
  (* primitives for generation of DEC alpha instruction flowgraphs *)
   structure FlowGraphGen =
-     FlowGraphGen(structure Flowgraph = F
-		  structure InsnProps = P
-		  structure MLTree = MLTree
-		  val optimize = optimizerHook
-		  val output = BBSched.bbsched o RegAllocation.ra)
+     ClusterGen(structure Flowgraph = F
+		structure InsnProps = P
+		structure MLTree = MLTree
+		structure Stream = Emitter.S
+		val optimize = optimizerHook
+		val output = BBSched.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen = 
      MLRiscGen(structure MachineSpec=Alpha32Spec
 	       structure MLTreeComp=
-		  Alpha32(structure Flowgen=FlowGraphGen
-			  structure Alpha32Instr=Alpha32Instr
-			  structure Alpha32MLTree=Alpha32MLTree
-			  structure PseudoInstrs=Alpha32PseudoInstrs)
-	       structure Cells=Alpha32Cells
+		  Alpha(structure AlphaInstr=Alpha32Instr
+		        structure AlphaMLTree=Alpha32MLTree
+		        structure Stream = Emitter.S
+			structure PseudoInstrs=Alpha32PseudoInstrs
+                        val mode32bit = true (* simulate 32 bit mode *)
+                        val useSU = alpha32x 
+                        val multCost = ref 8 (* just guessing *)
+                        val useMultByConst = ref false (* just guessing *)
+                       )
+               structure Flowgen=FlowGraphGen
+	       structure Cells=AlphaCells
 	       structure C=Alpha32CpsRegs
 	       structure PseudoOp=Alpha32PseudoOps)
 
@@ -244,9 +255,6 @@ end
 
 (*
  * $Log: alpha32CG.sml,v $
- * Revision 1.8  1999/03/22 21:06:15  george
- *  new GC API (take II)
- *
  * Revision 1.7  1999/03/22 17:22:11  george
  *   Changes to support new GC API
  *

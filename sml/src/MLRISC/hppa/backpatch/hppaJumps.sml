@@ -13,7 +13,7 @@ struct
   structure LE = LabelExp
   structure Const = I.Constant
 
-  fun error msg = MLRiscErrorMsg.impossible ("HppaJumps." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("HppaJumps",msg)
 
   val branchDelayedArch = false
 
@@ -21,18 +21,19 @@ struct
     | minSize(I.FCOPY _)   = 0
     | minSize(I.FBRANCH _) = 12 (* FCMP/FTEST/B *)
     | minSize(I.BLR{labs,...}) = 8 + 8 * length labs (* FCMP/FTEST/B *)
+    | minSize(I.ANNOTATION{i,...}) = minSize i
+    | minSize(I.COMCLR_LDO _) = 8
     | minSize _            = 4
   
   fun maxSize (I.BCOND _)  = 20
     | maxSize (I.BCONDI _) = 20
+    | maxSize (I.BB _)     = 20
     | maxSize (I.B _)	   = 16
     | maxSize (I.FBRANCH _)= 24
     | maxSize (I.COPY _)   = error "maxSize:COPY"
     | maxSize (I.FCOPY _)  = error "maxSize:FCOPY"
+    | maxSize (I.ANNOTATION{i,...}) = maxSize i
     | maxSize _		   = 4
-
-  fun mayNeedNops _ = 0
-  fun needsNop _ = 0
 
   fun isSdi instr = let
     fun opnd (I.LabExp _) = true
@@ -42,6 +43,7 @@ struct
     case instr
     of I.BCOND _		=> true
      | I.BCONDI _		=> true
+     | I.BB _			=> true
      | I.B _			=> true
      | I.FBRANCH _		=> true
      | I.BLR _                  => true
@@ -51,6 +53,7 @@ struct
      | I.LOADI{i, ...}          => opnd i
      | I.FCOPY _		=> true
      | I.COPY _			=> true
+     | I.ANNOTATION{i,...}	=> isSdi i
      | _			=> false
   end
 
@@ -61,13 +64,14 @@ struct
 
   fun sdiSize(instr, regmap, labMap, loc) = let
     fun branchOffset lab = ((labMap lab) - loc - 8) div 4
-    fun branch lab = let
+    fun branch(lab,nop) = let
       val offset = branchOffset lab
     in
-      if im12 offset then 4 else if im17 offset then 8 else 20
+       if im12 offset then 
+          if nop then 8 else 4 
+       else if im17 offset then 8 else 20
     end
     fun memDisp(c, short, long) = if im14(c) then short else long
-    val lookup = Intmap.map regmap
   in
     case instr 
      of I.LDO{i=I.LabExp(lexp, _), ...} => memDisp(LE.valueOf lexp, 4, 12)
@@ -97,10 +101,11 @@ struct
 	   | _ => error "sdiSize: ARITHI LabelExp"
 	 (*esac*)
         end
-      | I.BCOND{t, ...}  => branch t
-      | I.BCONDI{t, ...} => branch t
-      | I.B{lab, ...}    => if im17 (branchOffset lab) then 4 else 16
-      | I.FBRANCH{t, ...}   => if im17 (branchOffset t) then 12 else 24
+      | I.BCOND{t, nop, ...}   => branch(t,nop)
+      | I.BCONDI{t, nop, ...}  => branch(t,nop)
+      | I.BB{t, nop, ...}      => branch(t,nop)
+      | I.B{lab, ...}          => if im17 (branchOffset lab) then 4 else 16
+      | I.FBRANCH{t, ...}      => if im17 (branchOffset t) then 12 else 24
       | I.BLR{labs,...} => let
 	  val l = length labs * 8
 	  fun badOffsets(t::ts,n) =
@@ -111,13 +116,14 @@ struct
       | I.COPY{impl=ref(SOME l), ...} => 4 * length l
       | I.FCOPY{impl=ref(SOME l), ...} => 4 * length l
       | I.COPY{dst, src, impl, tmp} => let
-	  val instrs = Shuffle.shuffle {regMap=lookup, temp=tmp, dst=dst, src=src}
+	  val instrs = Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src}
         in impl := SOME(instrs); 4 * length instrs
 	end
       | I.FCOPY{dst, src, impl, tmp} => let
-	  val instrs = Shuffle.shufflefp {regMap=lookup, temp=tmp, dst=dst, src=src}
+	  val instrs = Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src}
         in impl := SOME instrs;  4 * length instrs
         end
+      | I.ANNOTATION{i,...} => sdiSize(i,regmap,labMap,loc)
       | _  => error "sdiSize"
   end
 
@@ -237,26 +243,37 @@ struct
 		r1=C.asmTmpR,
 		r2=r}]
       (*esac*))
-    | expand(instr as I.BCOND{cmp,bc, t, f, r1, r2, n}, size, _) = let
-	fun rev I.COMBT=I.BCOND{cmp=I.COMBF,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true}
-	  | rev I.COMBF=I.BCOND{cmp=I.COMBT,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true}
+    | expand(instr as I.BCOND{cmp,bc, t, f, r1, r2, n, nop}, size, _) = let
+	fun rev I.COMBT=I.BCOND{cmp=I.COMBF,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true,nop=false}
+	  | rev I.COMBF=I.BCOND{cmp=I.COMBT,bc=bc,t=f,f=f,r1=r1,r2=r2,n=true,nop=false}
       in
-	case size 
-	of 4 => [instr]
-	 | 8 => [rev cmp, I.B{lab=t, n=n}]
-	 | 20 => rev cmp :: longJump{lab=t, n=n}
+	case (size,nop)
+	of (4,false) => [instr]
+	 | (8,true)  => [instr]
+	 | (8,_)     => [rev cmp, I.B{lab=t, n=n}]
+	 | (20,_)    => rev cmp :: longJump{lab=t, n=n}
         (*esac*)
       end
-    | expand(instr as I.BCONDI{cmpi, bc, t, f, i, r2, n}, size, _) = let
-        fun rev I.COMIBT=I.BCONDI{cmpi=I.COMIBF,bc=bc,i=i,r2=r2,t=f,f=f,n=true}
-	  | rev I.COMIBF=I.BCONDI{cmpi=I.COMIBT,bc=bc,i=i,r2=r2,t=f,f=f,n=true}
+    | expand(instr as I.BCONDI{cmpi, bc, t, f, i, r2, n, nop}, size, _) = let
+        fun rev I.COMIBT=I.BCONDI{cmpi=I.COMIBF,bc=bc,i=i,r2=r2,t=f,f=f,n=true,nop=false}
+	  | rev I.COMIBF=I.BCONDI{cmpi=I.COMIBT,bc=bc,i=i,r2=r2,t=f,f=f,n=true,nop=false}
       in
-	(case size 
-	  of 4 => [instr]
-	   | 8 => [rev cmpi, I.B{lab=t, n=n}]
-	   | 20 => rev cmpi :: longJump{lab=t, n=n}
-	(*esac*))
+	case (size,nop)
+	  of (4,false) => [instr]
+	   | (8,true) => [instr]
+	   | (8,_) => [rev cmpi, I.B{lab=t, n=n}]
+	   | (20,_) => rev cmpi :: longJump{lab=t, n=n}
+	(*esac*)
       end
+    | expand(instr as I.BB{bc, r, p, t, f, n, nop}, size, _) = let
+        fun rev I.BSET = I.BB{bc=I.BCLR,r=r,p=p,t=f,f=f,n=true,nop=false}
+          | rev I.BCLR = I.BB{bc=I.BSET,r=r,p=p,t=f,f=f,n=true,nop=false}
+      in case (size,nop) of
+           (4,false) => [instr] 
+         | (8,true) => [instr] 
+         | (8,_) => [rev bc, I.B{lab=t,n=n}] 
+         | (20,_) => rev bc :: longJump{lab=t, n=n}
+      end    
     | expand(instr as I.B{lab=lab, n=n}, size, _) =
       (case size 
 	of 4 => [instr]
@@ -274,7 +291,7 @@ struct
 	      *)
 	        error "FBRANCH"
       (*esac*))
-    | expand(I.BLR{labs,n,t,x,...},size,_) = 
+    | expand(I.BLR{labs,n,t,x,...},size, _) = 
        (if size = 8 + 8 * length labs then
            I.BLR{labs=[],n=n,t=t,x=x}::
            I.NOP::
@@ -283,22 +300,8 @@ struct
        )
     | expand(I.COPY{impl=ref(SOME instrs),...}, _, _) = instrs
     | expand(I.FCOPY{impl=ref(SOME instrs),...}, _, _) = instrs
+    | expand(I.ANNOTATION{i,...},size,pos) = expand(i,size,pos)
     | expand _ = error "expand"
 
 end
 
-(*
- * $Log: hppaJumps.sml,v $
- * Revision 1.1.1.1  1999/01/04 21:56:28  george
- *   Version 110.12
- *
- * Revision 1.2  1998/10/06 14:04:32  george
- *   The instruction sequence FCMP, FTEST, FBCC is being replaced
- *   by the composite instruction FBRANCH.  This makes scheduling and
- *   other tasks easier.  Also, added BLR and BL in the instruction set.
- * 							[leunga]
- *
- * Revision 1.1.1.1  1998/04/08 18:39:01  george
- * Version 110.5
- *
- *)

@@ -1181,9 +1181,9 @@ in
 (* 
  * Entry point for compiling matches induced by val declarations
  * (e.g., val listHead::listTail = list).  match is a two 
- * element list.  If the control flag Control.MC.bindExhaustive 
- * is set, and match is inexhaustive a warning is printed.  If the control
- * flag Control.MC.bindContainsVar is set, and the first pattern
+ * element list.  If the control flag Control.MC.bindNonExhaustiveWarn
+ * is set, and match is nonexhaustive a warning is printed.  If the control
+ * flag Control.MC.bindNoVariableWarn is set, and the first pattern
  * (i.e., the only non-dummy pattern) of match contains no variables or 
  * wildcards, a warning is printed.    Arguably, a pattern containing no 
  * variables, but one or more wildcards, should also trigger a warning, 
@@ -1197,14 +1197,16 @@ fun bindCompile (env, rules, finish, rootv, toTcLt, err) =
       val (code, _, _, exhaustive) = 
         doMatchCompile(rules, finish, rootv, toTcLt, err)
 
-      val inexhaustiveF = !bindExhaustive andalso not exhaustive
-      val noVarsF = !bindContainsVar andalso noVarsIn rules
+      val nonexhaustiveF = !bindNonExhaustiveWarn andalso not exhaustive
+      val noVarsF = !bindNoVariableWarn andalso noVarsIn rules
 
-   in if inexhaustiveF
-      then err EM.WARN "binding not exhaustive" (bindPrint(env,rules))
+   in if nonexhaustiveF
+      then err EM.WARN ("binding not exhaustive" ^
+	                (if noVarsF then " and contains no variables" else ""))
+		       (bindPrint(env,rules))
       else if noVarsF
            then err EM.WARN "binding contains no variables" 
-                      (bindPrint(env,rules))
+                    (bindPrint(env,rules))
            else ();
 
       if !printRet then 
@@ -1248,7 +1250,7 @@ fun handCompile (env, rules, finish, rootv, toTcLt, err) =
  * Control.MC.matchRedundantWarn is set, and match is redundant, a warning 
  * is printed; if Control.MC.matchRedundantError is also set, the warning
  * is promoted to an error. If the control flag Control.MC.matchExhaustive
- * is set, and match is inexhaustive, a warning is printed.   
+ * is set, and match is nonexhaustive, a warning is printed.   
  *)
 fun matchCompile (env, rules, finish, rootv, toTcLt, err) =
   let val _ = 
@@ -1295,5 +1297,8 @@ end (* topleve local *)
 end (* structure MatchComp *)
 
 (*
- * $Log$
+ * $Log: matchcomp.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:42  george
+ * Version 110.5
+ *
  *)

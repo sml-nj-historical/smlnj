@@ -1,19 +1,34 @@
 (*
  *  Directed graph in adjacency list format.
  *
+ * -- Allen
  *)
 
-functor DirectedGraphFn(A : ARRAY_SIG) : GRAPH_IMPLEMENTATION =
+functor DirectedGraphFn(A : ARRAY) : 
+sig include GRAPH_IMPLEMENTATION 
+
+    type 'e adjlist   = 'e Graph.edge list A.array
+    type 'n nodetable = 'n option A.array
+
+    (* This function exposes the internal representation! *)
+    val newGraph : 
+        { name  : string,
+          info  : 'g,
+          succ  : 'e adjlist,
+          pred  : 'e adjlist,
+          nodes : 'n nodetable
+        } -> ('n,'e,'g) Graph.graph
+end =
 struct
 
    structure G = Graph
    structure A = A
 
-   fun graph(name,graph_info,n) =
-   let val succ          = A.array(n,[])
-       val pred          = A.array(n,[])
-       val nodes         = A.array(n,NONE)
-       val node_count    = ref 0
+   type 'e adjlist   = 'e Graph.edge list A.array
+   type 'n nodetable = 'n option A.array
+
+   fun newGraph{name,info,succ,pred,nodes} =
+   let val node_count    = ref 0
        val edge_count    = ref 0
        val entries       = ref []
        val exits         = ref []
@@ -25,7 +40,7 @@ struct
           (new_nodes := (!new_nodes) @ (!garbage_nodes); garbage_nodes := [])
        fun get_nodes() =
           A.foldri(fn(i,SOME n,l) =>(i,n)::l|(_,_,l) => l) [] (nodes,0,NONE)
-       fun get_edges() = List.concat(A.foldl op:: [] succ)
+       fun get_edges() = List.concat(A.foldr op:: [] succ)
        fun order() = !node_count
        fun size()  = !edge_count
        fun capacity() = A.length nodes
@@ -100,7 +115,7 @@ struct
 
    in  G.GRAPH {
           name            = name,
-          graph_info      = graph_info,
+          graph_info      = info,
           new_id          = new_id,
           add_node        = add_node,
           add_edge        = add_edge,
@@ -131,10 +146,12 @@ struct
        }
    end 
 
+   fun graph(name,info,n) = 
+   let val succ  = A.array(n,[])
+       val pred  = A.array(n,[])
+       val nodes = A.array(n,NONE)
+   in  newGraph{name=name,info=info,nodes=nodes,succ=succ,pred=pred} end
 end
 
 structure DirectedGraph = DirectedGraphFn(DynamicArray)
 
-(*
- * $Log$
- *)

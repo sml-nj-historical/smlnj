@@ -505,13 +505,14 @@ functor BinfileFun (C : COMPILE) : BINFILE = struct
 		        dynamic = ndenv,
 			symbolic = symenvOf bfc }
 	end
-
-	val parse = C.parse
     end
 end
 
 (*
  * $Log: binfile.sml,v $
+ * Revision 1.5  1998/12/30 20:21:26  jhr
+ *   Modifications to support code generation directly into code objects.
+ *
  * Revision 1.4  1998/10/16 14:03:44  george
  *   Implemented a hierachical bin directory structure and
  *   broke up the Compiler structure into a machine dependent

@@ -1,22 +1,20 @@
+(* 
+ * A simple fixed point datatype
+ * 
+ * -- Allen
+ *)
+
 signature FIXED_POINT =
 sig
-   eqtype fixed_point
+   type fixed_point = Word31.word
 
    val fixed_point  : int * int -> fixed_point
 
    val zero     : fixed_point
    val one      : fixed_point
 
-   val <        : fixed_point * fixed_point -> bool
-   val >        : fixed_point * fixed_point -> bool
-   val >=       : fixed_point * fixed_point -> bool
-   val <=       : fixed_point * fixed_point -> bool
-   val !=       : fixed_point * fixed_point -> bool
-   val ==       : fixed_point * fixed_point -> bool
    val compare  : fixed_point * fixed_point -> order
 
-   val +        : fixed_point * fixed_point -> fixed_point
-   val -        : fixed_point * fixed_point -> fixed_point
    val *        : fixed_point * fixed_point -> fixed_point
    val /        : fixed_point * fixed_point -> fixed_point
    val scale    : fixed_point * int -> fixed_point
@@ -31,6 +29,3 @@ sig
    val fromInt  : int -> fixed_point
 end
 
-(*
- * $Log$
- *)

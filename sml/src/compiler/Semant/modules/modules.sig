@@ -128,7 +128,7 @@ and entityDec
 
 and entityEnv 
   = MARKeenv of Stamps.stamp * entityEnv
-  | BINDeenv of entity EntPath.EvDict.dict * entityEnv
+  | BINDeenv of entity EntPath.EvDict.map * entityEnv
   | NILeenv
   | ERReenv
 
@@ -161,6 +161,9 @@ end (* signature MODULES *)
 
 (*
  * $Log: modules.sig,v $
+ * Revision 1.2  1998/09/30 19:16:00  dbm
+ * change in types of TYCspec (bug 1432) and TYCdef
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:28  george
  * Version 110.5
  *

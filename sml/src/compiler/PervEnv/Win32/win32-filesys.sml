@@ -89,5 +89,8 @@ structure Win32_FileSys : WIN32_FILESYS =
     end
 
 (*
- * $Log$
+ * $Log: win32-filesys.sml,v $
+ * Revision 1.1.1.1  1997/01/14 01:38:26  george
+ *   Version 109.24
+ *
  *)

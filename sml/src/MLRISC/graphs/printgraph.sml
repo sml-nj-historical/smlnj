@@ -1,5 +1,7 @@
 (*
  *  Print a graph 
+ *
+ *  -- Allen
  *)
 
 signature PRINT_GRAPH =
@@ -33,6 +35,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

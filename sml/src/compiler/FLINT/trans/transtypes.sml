@@ -413,8 +413,8 @@ and fctLty (fct, depth, compInfo) =
  *           A HASH-CONSING VERSION OF THE ABOVE TRANSLATIONS               *
  ****************************************************************************)
 
-structure MIDict = BinaryDict(struct type ord_key = ModuleId.modId
-                                     val cmpKey = ModuleId.cmp
+structure MIDict = BinaryMapFn(struct type ord_key = ModuleId.modId
+                                     val compare = ModuleId.cmp
                               end)
 
 fun genTT() = 
@@ -478,5 +478,8 @@ end (* structure TransTypes *)
 
 
 (*
- * $Log$
+ * $Log: transtypes.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:42  george
+ * Version 110.5
+ *
  *)

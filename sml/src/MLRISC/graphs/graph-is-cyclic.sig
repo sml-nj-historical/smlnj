@@ -1,3 +1,9 @@
+(*
+ * Tests if a graph is cyclie
+ *
+ * -- Allen
+ *)
+
 signature GRAPH_IS_CYCLIC =
 sig
 
@@ -7,6 +13,3 @@ sig
 
 end
 
-(* 
- * $Log$
- *)

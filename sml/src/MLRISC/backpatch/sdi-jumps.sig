@@ -18,8 +18,8 @@ signature SDI_JUMPS = sig
        * instructions that may require NOPs after them, etc. 
        *)
 
-  val sdiSize : I.instruction * int Intmap.intmap
-			      * (Label.label -> int) * int -> int
+  val sdiSize : I.instruction * (C.register -> C.register)
+                              * (Label.label -> int) * int -> int
       (* sdiSize(instr, regmaps, labMap, loc) -- return the size of
        * instr at location loc, assuming an assignment of labels
        * given by labMap.
@@ -33,12 +33,3 @@ signature SDI_JUMPS = sig
 end
 
 
-(*
- * $Log: sdi-jumps.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:47:14  george
- *   Version 110.10
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

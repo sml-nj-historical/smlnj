@@ -1,5 +1,7 @@
 (*
  * Priority queues implemented as leftist trees
+ * 
+ * -- Allen
  *)
 
 structure PriorityQueue :> PRIORITY_QUEUE =
@@ -75,11 +77,5 @@ struct
 
    fun toList (PQ { root = ref t, ... }) = collect (t, [])
 
-   fun rerank (PQ { root = root as ref t, less, ... }) =
-       root := mergeElems(less, EMPTY, collect(t,[]))
-
 end
 
-(*
- * $Log$
- *)

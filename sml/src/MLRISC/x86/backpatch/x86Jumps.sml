@@ -5,7 +5,6 @@
 
 functor X86Jumps
   (structure Instr : X86INSTR
-   structure AsmEmitter : EMITTER_NEW where I = Instr
    structure Shuffle : X86SHUFFLE where I = Instr
    structure MCEmitter : MC_EMIT where I = Instr) : SDI_JUMPS = 
 struct
@@ -14,7 +13,7 @@ struct
   structure Const = I.Constant
   structure LE = LabelExp
 
-  fun error msg = MLRiscErrorMsg.impossible ("X86Jumps." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("X86Jumps",msg)
 
   val esp = 4
   val ebp = 5
@@ -46,11 +45,13 @@ struct
      | I.FLD opnd => operand opnd
      | I.FBINARY{src, dst, ...} => operand src orelse operand dst
      | I.FILD opnd => operand opnd
+     | I.ANNOTATION{i,...} => isSdi i
      | _ => false
   end
 
   fun minSize(I.JMP _) = 2
     | minSize(I.JCC _) = 2
+    | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize _ = 1
 
   fun maxSize _ = 12
@@ -68,19 +69,20 @@ struct
     end
   
     val encode = MCEmitter.emitInstr
-    fun lookup r = Intmap.map regmap r handle _ => r
   in
     case instr
     of I.JMP(opnd, _) => branch(opnd, 2, 5)
      | I.JCC{opnd, ...} => branch(opnd, 2, 6)
+     | I.ANNOTATION{i,...} => sdiSize(i, regmap, labmap, loc)
      | _ => Word8Vector.length(encode(instr, regmap))
   end  (*sdiSize*)
 
-  fun expand(instr, _, loc) =
+  fun expand(instr, size, loc) =
     case instr 
     of I.JMP(opnd, labs)  => [I.JMP(I.Relative(operand opnd-loc), labs)]
      | I.JCC{cond, opnd} => 
         [I.JCC{cond=cond, opnd=I.Relative(operand opnd-loc)}]
+     | I.ANNOTATION{i,...} => expand(i, size, loc)
      | opnd => [opnd]
 end
 

@@ -1,3 +1,9 @@
+(*
+ * This starts a transaction
+ *
+ * -- Allen
+ *)
+
 functor TransactionFn(Log : TRANSACTION_LOG) : TRANSACTION =
 struct
 
@@ -16,6 +22,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

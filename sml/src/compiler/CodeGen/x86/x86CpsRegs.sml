@@ -9,16 +9,20 @@ end
 
 structure X86CpsRegs : CPSREGS = struct
   structure T = X86MLTree
+  structure C = X86Cells
 
   fun upto(from, to) = if from>to then [] else from::(upto (from+1,to))
   infix upto 
 
-  val eax = T.REG 0	val esp = T.REG 4
-  val ecx = T.REG 1	val ebp = T.REG 5
-  val edx = T.REG 2	val esi = T.REG 6
-  val ebx = T.REG 3	val edi = T.REG 7
+  val GP = C.GPReg
+  val FP = C.FPReg
 
-  fun regInMem i = T.LOAD32(T.ADD(esp, T.LI i), CPSRegions.memory)
+  val eax = T.REG(32, C.eax)	val esp = T.REG(32, C.esp)
+  val ecx = T.REG(32, C.ecx)	val ebp = T.REG(32, C.ebp)
+  val edx = T.REG(32, C.edx)	val esi = T.REG(32, C.esi)
+  val ebx = T.REG(32, C.ebx)	val edi = T.REG(32, C.edi)
+
+  fun regInMem i = T.LOAD(32, T.ADD(32, esp, T.LI i), CPSRegions.memory)
 
   val allocptr 	= edi
   val stdarg 	= ebp
@@ -32,11 +36,11 @@ structure X86CpsRegs : CPSREGS = struct
   val storeptr 	= regInMem 24
   val varptr  	= regInMem 28
 
-  val stdlink	= T.REG 8		(* vreg 0 *)
-  val stdclos	= T.REG 9		(* vreg 1 *)
+  val stdlink	= T.REG(32, GP 8)		(* vreg 0 *)
+  val stdclos	= T.REG(32, GP 9)		(* vreg 1 *)
 
   fun mkVregList(n, 0) = []
-    | mkVregList(n, cnt) = T.REG n::mkVregList(n+1, cnt-1)
+    | mkVregList(n, cnt) = T.REG(32, GP n)::mkVregList(n+1, cnt-1)
 
   (* miscregs = {ebx,ecx,edx,r10,r11,...r31} *)
   val miscregs  = ebx::ecx::edx::mkVregList(10, X86Runtime.numVregs - 2)
@@ -44,13 +48,14 @@ structure X86CpsRegs : CPSREGS = struct
   val calleesave = Array.fromList miscregs
   val exhausted = NONE
 
-  val floatregs = map T.FREG (8 upto 31)
+  val floatregs = map (fn f => T.FREG(64,f)) ((FP 8) upto (FP 31))
   val savedfpregs = []
 
-  val availR = map (fn T.REG r => r) [ebp, esi, ebx, ecx, edx, eax]
-  val dedicatedR = map (fn T.REG r => r) [edi, esp]
-  val availF = 8 upto 31
-  val dedicatedF = [0,1,2,3,4,5,6,7]
+  val availR = map (fn T.REG(_,r) => r) [ebp, esi, ebx, ecx, edx, eax]
+  val dedicatedR = map (fn T.REG(_,r) => r) [edi, esp]
+  val availF = (FP 8) upto (FP 31)
+  val dedicatedF = map FP [0,1,2,3,4,5,6,7]
+  val signedGCTest = false
 end
 
 

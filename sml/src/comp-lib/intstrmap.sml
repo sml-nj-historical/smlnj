@@ -5,7 +5,7 @@ struct
   infix 9 sub
   val itow = Word.fromInt
   val wtoi = Word.toIntX
-  datatype 'a bucket = NIL | B of (int * string * 'a * 'a bucket)
+  datatype 'a bucket = NIL | B of (word * string * 'a * 'a bucket)
   datatype 'a intstrmap =
     H of {table: 'a bucket array ref,elems: int ref,exn: exn,name: string option}
   fun bucketapp f =
@@ -23,7 +23,7 @@ struct
   fun new(size, exn) =
       H {table=ref(array(roundsize size,NIL)),elems=ref 0,exn=exn,name=NONE}
   val elems = fn (H{elems,...}) => !elems
-  fun index(a, i) = wtoi (Word.andb(itow i, itow(Array.length a - 1)))
+  fun index(a, i) = wtoi (Word.andb(i, itow(Array.length a - 1)))
   fun map (H{table,exn,...}) =
       let fun find(i,s,NIL) = raise exn
             | find(i,s,B(i',s',j,r)) = if i=i' andalso s=s' then j else find(i,s,r)
@@ -47,7 +47,7 @@ struct
   fun add (m as H{table as ref a, elems, name, ...}) (v as (i,s,j)) =
       let val size = Array.length a
        in if !elems <> size
-	  then let val index = wtoi (Word.andb(itow i, itow(size-1)))
+	  then let val index = wtoi (Word.andb(i, itow(size-1)))
 		   fun f(B(i',s',j',r)) =
 		         if i=i' andalso s=s' then B(i,s,j,r) else B(i',s',j',f r)
 		     | f x = (elems := !elems+1; B(i,s,j,x))
@@ -58,7 +58,7 @@ struct
 		   val new = array(newsize,NIL)
 		   fun bucket n =
 		       let fun add'(a,b,B(i,s,j,r)) =
-			       if wtoi (Word.andb(itow i, itow newsize1)) = n
+			       if wtoi (Word.andb(i, itow newsize1)) = n
 			       then add'(B(i,s,j,a),b,r)
 			       else add'(a,B(i,s,j,b),r)
 			     | add'(a,b,NIL) = 
@@ -92,5 +92,8 @@ struct
 end
 
 (*
- * $Log$
+ * $Log: intstrmap.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
  *)

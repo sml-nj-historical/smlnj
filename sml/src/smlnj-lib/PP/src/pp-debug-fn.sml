@@ -7,7 +7,8 @@
  *)
 
 functor PPDebugFn (PP : sig
-    include PP_STREAM val dump : (TextIO.outstream * stream) -> unit
+    include PP_STREAM
+    val dump : (TextIO.outstream * stream) -> unit
   end) : sig
     include PP_STREAM
     val debugStrm : TextIO.outstream ref
@@ -56,6 +57,11 @@ functor PPDebugFn (PP : sig
     val nbSpace = debug "nbSpace" PP.nbSpace
     val onNewline = debug "onNewline" PP.onNewline
     val control = debug "control" PP.control
+
+    type pp_desc = PP.pp_desc
+    val description = debug "description" PP.description
+
+    structure Desc = PP.Desc
 
   end;
 

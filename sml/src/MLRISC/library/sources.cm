@@ -1,9 +1,9 @@
 Library
 	signature ANNOTATIONS
-	signature ARRAY_SIG
 	signature BITSET
 	signature FIXED_POINT
-	signature HASH_TABLE
+	signature FREQ
+	signature HASHTABLE
 	signature HASH_BAG
 	signature HASH_MAP
 	signature HASH_MULTIMAP
@@ -31,8 +31,9 @@ Library
 	structure CatnetableList
 	structure DynamicArray
 	structure DynamicBitSet
+	structure Freq
 	structure HashArray
-	structure HashTable
+	structure Hashtable
 	structure HashBag
 	structure HashMap
 	structure HashMultimap
@@ -51,6 +52,7 @@ Library
 	structure TransactionLog
 	structure Unionfind
 	structure UnionFindRef
+	structure Word64
 	functor FixedPointFn
 	functor RegMapFn
 	functor TransactionFn
@@ -60,7 +62,6 @@ Library
 is
 	annotations.sig
 	annotations.sml
-	array-sig.sig
 	bitset.sig
 	bitset.sml
 	cache.sml
@@ -69,6 +70,8 @@ is
 	dynamic-bitset.sml
 	fixed-point.sig
 	fixed-point.sml
+	freq.sig
+	freq.sml
 	hash-array.sml
 	hash-table.sig
 	hash-table.sml
@@ -89,7 +92,7 @@ is
 	regmap.sml
 	regset.sig
 	regset.sml
-	sorting.sml
+	sorting2.sml
 	stringStream.sml
 	susp.sml
 	transaction-glue.sml
@@ -102,3 +105,4 @@ is
 	undoable-ref.sml
 	union-find.sml
 	uref.sml
+	word64.sml

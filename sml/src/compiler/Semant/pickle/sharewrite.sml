@@ -42,15 +42,15 @@ struct
      else if (a:string)<b then LESS else GREATER
         
 
-  structure CodeDict = BinaryDict(struct type ord_key = tree
-				     val cmpKey = cmpTree
+  structure CodeDict = BinaryMapFn(struct type ord_key = tree
+				     val compare = cmpTree
                               end)
-  structure KeyDict = BinaryDict(KeyID)
+  structure KeyDict = BinaryMapFn(KeyID)
 
 
   type context = {data: char list, count: int, 
-		  table: int CodeDict.dict, 
-		  keytable: int KeyDict.dict}
+		  table: int CodeDict.map, 
+		  keytable: int KeyDict.map}
 
   datatype traversal = REP of  context -> context * int
 
@@ -72,7 +72,7 @@ struct
 	val c = String.sub(st,0)
         val d2 = datachar(c,d0)
         val tree = (st, nil)
-     in case CodeDict.peek(t0,tree)
+     in case CodeDict.find(t0,tree)
          of SOME n => ({count=c0+1,data=d2, table=t0,keytable=k0},
 		       n)
           | NONE => ({count=c0+1,data=d2, table=CodeDict.insert(t0,tree,c0),
@@ -94,7 +94,7 @@ struct
         val (ctx4 as {count=c2,data=d2,table=t2, keytable=k2}, codes) = 
 	        f(ctx0', nil, children)
         val tree = (st, codes)
-     in case CodeDict.peek(t0,tree)
+     in case CodeDict.find(t0,tree)
          of SOME n => ({count=c0+1,data=pastref(n,d0), table=t0,keytable=k0},n)
           | NONE => ({count=c2,data=d2, table=CodeDict.insert(t2,tree,c0),
 		      keytable=k2},  c0)
@@ -117,7 +117,7 @@ struct
   fun rawstring st =
   REP(fn {count=c0,table=t0,data=d0,keytable=k0} =>
     let val tree = (implode st,nil)
-     in case CodeDict.peek(t0,tree)
+     in case CodeDict.find(t0,tree)
          of SOME n => ({count=c0+1,data=foldl datachar d0 st,
 		        table=t0,keytable=k0},
 		       n)
@@ -135,7 +135,7 @@ struct
   fun identify key travgen =
        REP(
 	     fn context as {keytable=k0,table=t0,count=c0,data=d0} =>
-               case KeyDict.peek(k0,key)
+               case KeyDict.find(k0,key)
                 of SOME n => ({data=pastref(n,d0),count=c0+1,
 				      table=t0,keytable=k0},
 				     n)
@@ -150,8 +150,8 @@ struct
 
   fun root tree =
     let val REP(tree') = tree()
-     in tree'  {data=nil,count=0,table=CodeDict.mkDict(),
-		keytable=KeyDict.mkDict()}
+     in tree'  {data=nil,count=0,table=CodeDict.empty,
+		keytable=KeyDict.empty}
     end
 
   fun pickle tree = let
@@ -162,7 +162,7 @@ struct
 	  end
 
   and analyze {table,keytable,count,data} = 
-    let val codemems = CodeDict.members table
+    let val codemems = CodeDict.listItemsi table
 
         val numToTree = 
 	  let val a = Array.array(count+1, ("",[]:int list))
@@ -183,12 +183,12 @@ struct
 	  | isInternal _ = true
 
         val countkeys : (string * int) list = 
-	          uniqcount(Sort.sort(String.>) 
+	          uniqcount(ListMergeSort.sort(String.>) 
 			  (map (#1 o #1) (List.filter isInternal codemems)))
 
 	val seen = Array.array(count+1,false)
 	val identified = Array.array(count+1,false)
-	val dags = count :: map #2 (KeyDict.members keytable)
+	val dags = count :: map #2 (KeyDict.listItemsi keytable)
         val _ = app (fn node => Array.update(identified,node,true)) dags
         
 	fun sum f = List.foldl (fn (a,b)=> f a + b) 0
@@ -215,7 +215,7 @@ struct
 
         val base = costOf ("",0)
 	val keycosts = map (fn (key,count) => (key,costOf(key,count))) countkeys
-	val keycosts = Sort.sort (fn((_,i),(_,j))=>i>j) keycosts
+	val keycosts = ListMergeSort.sort (fn((_,i),(_,j))=>i>j) keycosts
 
 	fun percent(base,cost) = (base - cost) * 100 div base
 	      handle Overflow => percent(base div 100, cost div 100)
@@ -236,5 +236,8 @@ end
 
 
 (*
- * $Log$
+ * $Log: sharewrite.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:34  george
+ * Version 110.5
+ *
  *)

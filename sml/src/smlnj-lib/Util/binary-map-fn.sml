@@ -153,6 +153,8 @@ local
 in
     fun mkDict () = E
     
+    fun singleton (x,v) = T{key=x,value=v,cnt=1,left=E,right=E}
+
     fun insert (E,x,v) = T{key=x,value=v,cnt=1,left=E,right=E}
       | insert (T(set as {key,left,right,value,...}),x,v) =
           case K.compare (key,x) of
@@ -160,6 +162,17 @@ in
           | LESS => T'(key,value,left,insert(right,x,v))
           | _ => T{key=x,value=v,left=left,right=right,cnt= #cnt set}
     fun insert' ((k, x), m) = insert(m, k, x)
+
+    fun inDomain (set, x) = let 
+	  fun mem E = false
+	    | mem (T(n as {key,left,right,...})) = (case K.compare (x,key)
+		 of GREATER => mem right
+		  | EQUAL => true
+		  | LESS => mem left
+		(* end case *))
+	  in
+	    mem set
+	  end
 
     fun find (set, x) = let 
 	  fun mem E = NONE
@@ -200,6 +213,13 @@ in
 	  fun d2l (E, l) = l
 	    | d2l (T{key,value,left,right,...}, l) =
 		d2l(left, (key,value)::(d2l(right,l)))
+	  in
+	    d2l (d,[])
+	  end
+
+    fun listKeys d = let
+	  fun d2l (E, l) = l
+	    | d2l (T{key,left,right,...}, l) = d2l(left, key::(d2l(right,l)))
 	  in
 	    d2l (d,[])
 	  end

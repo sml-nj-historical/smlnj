@@ -74,10 +74,11 @@ ENABLE_AUTOLOADING=TRUE
 #
 AUTOLOAD_SMLNJ_LIB=TRUE		# lib/smlnj-lib.cm
 AUTOLOAD_SMLNJ_UNIX=TRUE	# lib/unix-lib.cm
+AUTOLOAD_SMLNJ_INET=TRUE	# lib/inet-lib.cm
 #AUTOLOAD_SMLNJ_HTML=TRUE	# lib/html-lib.cm
-#AUTOLOAD_SMLNJ_REACTIVE=TRUE	# lib/reactive-lib.cm
 #AUTOLOAD_SMLNJ_PP=TRUE		# lib/pp-lib.cm
 #AUTOLOAD_SMLNJ_REGEXP=TRUE	# lib/regexp-lib.cm
+#AUTOLOAD_SMLNJ_REACTIVE=TRUE	# lib/reactive-lib.cm
 
 # These flags control which libraries cml-cm will autoload.
 #

@@ -38,11 +38,14 @@ functor SCCUtilFun (structure Node: SCCNODE): SCC = struct
     structure Node = Node
 
     structure NodeOrdSet = struct
-	type elem = Node.node
-	val (op <) = Node.lt
+	type ord_key = Node.node
+	fun compare(n1, n2) = 
+	  if Node.eq(n1,n2) then General.EQUAL
+	  else if Node.lt(n1,n2) then General.LESS 
+	       else General.GREATER
     end
 
-    structure Map = MapF (NodeOrdSet)
+    structure Map = BinaryMapFn(NodeOrdSet)
 
     type node = Node.node
 
@@ -53,13 +56,14 @@ functor SCCUtilFun (structure Node: SCCNODE): SCC = struct
     fun topOrder { root, follow } = let
 
 	fun getNode (n, nm as (npre, m)) =
-	    (nm, (Map.lookup m n))
-	    handle Map.MapF => let
-		val r = { pre = npre, low = ref npre }
-		val m' = Map.add (m, n, r)
-	    in
-		((npre + 1, m'), r)
-	    end
+	  (case Map.find(m, n)
+	     of NONE => let
+		  val r = { pre = npre, low = ref npre }
+		  val m' = Map.insert (m, n, r)
+	        in ((npre + 1, m'), r)
+	        end
+	      | SOME r => (nm, r)
+          (*esac*))
 
 	fun theNode x y = Node.eq (x, y)
 
@@ -105,32 +109,35 @@ functor SCCUtilFun (structure Node: SCCNODE): SCC = struct
 			cont (nodemap, stack, sccl)
 		    end
 		end
-	      | loop (tn :: tnl) (nodemap as (npre, theMap), stack, sccl) = let
-		    val { pre = tn_pre, low = tn_low } = Map.lookup theMap tn
-		    (* the lookup succeeded -> we have seen tn before *)
-		    val tl = !tn_low
-		in
-		    if tl < (!node_low) andalso
-		       List.exists (theNode tn) stack then
-			node_low := tl
-		    else ();
-			loop tnl (nodemap, stack, sccl)
-		end handle Map.MapF => let
-		    (* lookup failed -> tn is a new node *)
-		    val tn_pre = npre
-		    val tn_low = ref npre
-		    val npre = npre + 1
-		    val theMap = Map.add (theMap, tn,
-					  { pre = tn_pre, low = tn_low })
-		    val nodemap = (npre, theMap)
-		in
-		    dfs { node = tn, node_pre = tn_pre, node_low = tn_low,
-			  parent_low = node_low,
-			  nodemap = nodemap,
-			  stack = tn :: stack,
-			  sccl = sccl,
-			  cont = loop tnl }
-		end
+	      | loop (tn :: tnl) (nodemap as (npre, theMap), stack, sccl) = 
+		(case Map.find(theMap, tn)
+                  of SOME{ pre = tn_pre, low = tn_low } => let
+			val tl = !tn_low
+		     in
+			if tl < (!node_low) andalso
+			   List.exists (theNode tn) stack then
+			    node_low := tl
+			else ();
+			    loop tnl (nodemap, stack, sccl)
+                     end
+                  | NONE =>let
+		      (* lookup failed -> tn is a new node *)
+		      val tn_pre = npre
+		      val tn_low = ref npre
+		      val npre = npre + 1
+		      val theMap = 
+			Map.insert (theMap, tn,
+				    { pre = tn_pre, low = tn_low })
+		      val nodemap = (npre, theMap)
+		    in
+		      dfs { node = tn, node_pre = tn_pre, node_low = tn_low,
+			    parent_low = node_low,
+			    nodemap = nodemap,
+			    stack = tn :: stack,
+			    sccl = sccl,
+			    cont = loop tnl }
+		    end
+		 (*esac*))
 	in
 	    loop (follow node) (nodemap, stack, sccl)
 	end
@@ -139,7 +146,7 @@ functor SCCUtilFun (structure Node: SCCNODE): SCC = struct
     in
 	dfs { node = root, node_pre = 0, node_low = root_low,
 	      parent_low = ref 0,	(* dummy *)
-	      nodemap = (1, Map.singleton (root, { pre = 0, low = root_low })),
+	      nodemap = (1, Map.insert (Map.empty, root, { pre = 0, low = root_low })),
 	      stack = [root],
 	      sccl = [],
 	      cont = fn (_, _, sccl) => sccl }
@@ -147,5 +154,8 @@ functor SCCUtilFun (structure Node: SCCNODE): SCC = struct
 end
 
 (*
- * $Log$
+ * $Log: scc.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:14  george
+ * Version 110.5
+ *
  *)

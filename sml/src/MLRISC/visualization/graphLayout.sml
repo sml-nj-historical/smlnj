@@ -1,3 +1,9 @@
+(*
+ * Here are some graph layout annotations.
+ *
+ * -- Allen
+ *)
+
 structure GraphLayout =
 struct
 
@@ -10,6 +16,7 @@ struct
    exception BACKARROW_COLOR of string
    exception BORDER_COLOR of string
    exception BORDERLESS 
+   exception SHAPE of string 
    exception ALGORITHM of string
    exception EDGEPATTERN of string
 
@@ -28,6 +35,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

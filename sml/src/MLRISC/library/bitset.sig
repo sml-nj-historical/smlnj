@@ -1,5 +1,7 @@
 (*
- * Expandable set in bitvector format
+ * Dense set in bitvector format.
+ * 
+ * -- Allen
  *)
 
 signature BITSET =
@@ -19,6 +21,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -19,9 +19,9 @@
 
        structure M = Compiler.Control.MLRISC;
 
-       M.mlrisc :=true;				(* enable optimizer *)
+       M.mlrisc" :=true;		(* enable optimizer *)
        M.getString "viewer" := "daVinci";	(* set viewer *)
-       M.getFlag "view_IR" := true;		(* enable viewer *)
+       M.getFlag "view-IR" := true;		(* enable viewer *)
        M.mlrisc_phases :=			(* set phases *)
 	["cluster->cfg", "view-dom", "cfg->cluster"];
 
@@ -60,54 +60,13 @@ Group is
 CodeGen/optimizer/mlrisc-optimizer.sml
 CodeGen/optimizer/mlrisc-environment.sml
 
-../MLRISC/library/annotations.sig 
-../MLRISC/library/annotations.sml
-../MLRISC/library/array-sig.sig
-../MLRISC/library/bitset.sig
-../MLRISC/library/bitset.sml
-../MLRISC/library/dynamic-array.sml
-../MLRISC/library/fixed-point.sig
-../MLRISC/library/fixed-point.sml
-../MLRISC/library/hash-array.sml
-../MLRISC/library/priQueue.sig
-../MLRISC/library/priQueue.sml
-../MLRISC/library/regset.sig
-../MLRISC/library/regset.sml
-../MLRISC/library/sorting.sml
-../MLRISC/library/stringStream.sml
-
-../MLRISC/graphs/digraph.sml
-../MLRISC/graphs/graph-comb.sig
-../MLRISC/graphs/graph-comb.sml
-../MLRISC/graphs/graph-topsort.sig
-../MLRISC/graphs/graph-topsort.sml
-../MLRISC/graphs/graph.sig
-../MLRISC/graphs/graph.sml
-../MLRISC/graphs/graphimpl.sig
-../MLRISC/graphs/isograph.sml
-../MLRISC/graphs/renamegraph.sml
-../MLRISC/graphs/revgraph.sml
-../MLRISC/graphs/uniongraph.sml
-../MLRISC/graphs/update-graph-info.sml
-
-../MLRISC/visualization/allDisplays.sml
-../MLRISC/visualization/daVinci.sml
-../MLRISC/visualization/graphDisplay.sig
-../MLRISC/visualization/graphLayout.sml
-../MLRISC/visualization/graphViewer.sig
-../MLRISC/visualization/graphViewer.sml
-../MLRISC/visualization/vcg.sml
-
-../MLRISC/ir/cdg.sig
-../MLRISC/ir/cdg.sml
-../MLRISC/ir/dominator.sig
-../MLRISC/ir/dominator.sml
-../MLRISC/ir/loop-structure.sig
-../MLRISC/ir/loop-structure.sml 
+../MLRISC/library/sources.cm
+../MLRISC/graphs/sources.cm
+../MLRISC/visualization/sources.cm
+../MLRISC/ir/sources.cm
 
 ../MLRISC/IR/dataflow.sig
 ../MLRISC/IR/dataflow.sml
-(* ../MLRISC/IR/mlrisc-cfg-structuring.sml*)
 ../MLRISC/IR/mlrisc-cfg-util.sig
 ../MLRISC/IR/mlrisc-cfg-util.sml
 ../MLRISC/IR/mlrisc-cfg.sig
@@ -125,3 +84,4 @@ CodeGen/optimizer/mlrisc-environment.sml
 
 ../MLRISC/Glue/mlrisc-glue.sig
 ../MLRISC/Glue/mlrisc-glue.sml
+

@@ -2,9 +2,9 @@ functor SparcShuffle(I:SPARCINSTR) = struct
   structure I = I
   structure W = Word32
   structure Shuffle = Shuffle(I)
-  type t = {regMap:int->int, temp:I.ea option, dst:int list, src:int list}
+  type t = {regmap:I.C.register->I.C.register, tmp:I.ea option,                             dst:I.C.register list, src:I.C.register list}
 
-  fun error msg = MLRiscErrorMsg.impossible ("SparcShuffle." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("SparcShuffle",msg)
   val mem = I.Region.memory
 
   fun immed13 n = ~4096 <= n andalso n < 4096
@@ -17,12 +17,12 @@ functor SparcShuffle(I:SPARCINSTR) = struct
       else let val {lo,hi} = split disp
                val r = I.C.newReg()
            in  ([I.SETHI{i=hi,d=r},
-                 I.ARITH{a=I.OR,r=r,i=I.IMMED lo,d=r,cc=false}],
+                 I.ARITH{a=I.OR,r=r,i=I.IMMED lo,d=r}],
                 I.REG r) 
            end
 
   fun move{src=I.Direct rs, dst=I.Direct rt} = 
-       [I.ARITH{a=I.OR, cc=false, r=0, i=I.REG rs, d=rt}]
+       [I.ARITH{a=I.OR, r=0, i=I.REG rs, d=rt}]
     | move{src=I.Displace{base, disp}, dst=I.Direct rt} =
        let val (insns,i) = offset disp
        in  insns@[I.LOAD{l=I.LD, r=base, i=i, d=rt, mem=mem}] end
@@ -47,9 +47,3 @@ functor SparcShuffle(I:SPARCINSTR) = struct
 end
 
 
-(*
- * $Log: sparcShuffle.sml,v $
- * Revision 1.1.1.1  1998/08/05 19:38:49  george
- *   Release 110.7.4
- *
- *)

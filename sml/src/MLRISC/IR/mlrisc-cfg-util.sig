@@ -1,5 +1,7 @@
 (*
  * This module includes some very basic CFG transformations.
+ *
+ * -- Allen
  *)
 signature CFG_UTIL =
 sig
@@ -85,6 +87,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

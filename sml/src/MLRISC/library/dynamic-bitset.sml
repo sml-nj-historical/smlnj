@@ -1,3 +1,9 @@
+(*
+ * Growable bitset.
+ *
+ * -- Allen
+ *)
+
 structure DynamicBitSet :> BITSET =
 struct
 
@@ -120,6 +126,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

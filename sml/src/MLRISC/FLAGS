@@ -28,5 +28,13 @@ These flags are set via the MLRISC_Control structure.
 	"ra-float-reloads"
 		Counts the number of floating point reload instructions.
 
+	"ra-counts"
+		Counts the number of times the RA is called
+
+	"ra-rewrites"
+		Counts the number of times the flowgraph is rewritten (after
+		an actual spill).
+	
+		
 	
     

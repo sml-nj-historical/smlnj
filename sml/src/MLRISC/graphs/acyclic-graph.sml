@@ -1,5 +1,9 @@
 (*
- * Acyclic subgraph adaptor
+ * Acyclic subgraph adaptor.  This takes a linear order of node id
+ * return a view in which only the edges (and nodes) consistent with
+ * the linear order is visible.
+ *
+ * -- Allen
  *)
 
 signature ACYCLIC_SUBGRAPH_VIEW = 
@@ -32,6 +36,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

@@ -19,7 +19,7 @@ sig
 
   val bogusEntVar : entVar
 
-  structure EvDict : BINARY_DICT
+  structure EvDict : ORD_MAP
 
 end  (* signature ENT_PATH *)
 
@@ -57,8 +57,8 @@ fun cmpEntPath (ep1, ep2) =
    in f(ep1,ep2)
   end
 
-structure EvDict = BinaryDict(struct type ord_key = entVar 
-                                     val cmpKey = cmpEntVar
+structure EvDict = BinaryMapFn(struct type ord_key = entVar 
+                                     val compare = cmpEntVar
                               end)
 
 (* ListPair.all didn't cut it because it doesn't require lists of equal length
@@ -82,5 +82,8 @@ end (* local *)
 end (* structure EntPath *)
 
 (*
- * $Log$
+ * $Log: entpath.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
+ *
  *)

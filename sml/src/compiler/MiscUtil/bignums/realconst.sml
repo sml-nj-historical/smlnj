@@ -114,7 +114,7 @@ fun mult {frac=f1,exp=e1} {frac=f2,exp=e2} =
     end
 
 (* Create a dynamic array of powers of ten *)
-structure DFA = Dynamic(
+structure DFA = DynamicArrayFn(
   struct open Array
     type float = {frac : Bigint.bigint, exp : int}
     type elem = unit->float
@@ -128,9 +128,9 @@ local open Array List DFA
       fun makelem e = (fn () => e)
       val one = {frac=bigint 1,exp=0}
 in
-    val pos10 = array(fn () => raise Unknown)	(* 10^2^n *)
+    val pos10 = array(0, fn () => raise Unknown)	(* 10^2^n *)
     val _ = update(pos10,0,makelem ten)
-    val neg10 = array(fn () => raise Unknown)	(* 10^~2^n *)
+    val neg10 = array(0, fn () => raise Unknown)	(* 10^~2^n *)
     val _ = update(neg10,0,makelem tenth)
     fun access(arr,n) = (arr sub n) ()
 			handle Unknown => let val last = access(arr,n-1)
@@ -232,5 +232,8 @@ fun realconst f =
 end (* functor RealConst *)
 
 (*
- * $Log$
+ * $Log: realconst.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:18  george
+ * Version 110.5
+ *
  *)

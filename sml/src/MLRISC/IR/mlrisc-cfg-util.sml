@@ -1,5 +1,7 @@
 (*
- * Some basic local CFG transformations
+ * Some basic local CFG transformations.  See the signature for descriptions.
+ *
+ * -- Allen
  *)
 functor CFGUtilFn
      (structure CFG : CONTROL_FLOW_GRAPH
@@ -17,7 +19,7 @@ struct
 
    exception Can'tMerge
 
-   fun error msg = MLRiscErrorMsg.impossible("CFGTransforms."^msg)
+   fun error msg = MLRiscErrorMsg.error("CFGTransforms",msg)
 
    fun labelOf(G.GRAPH cfg) node = CFG.defineLabel(#node_info cfg node)
 
@@ -49,7 +51,9 @@ struct
    fun hasSideExits (G.GRAPH cfg) node = 
          List.exists (fn (_,_,CFG.EDGE{k=CFG.SIDEEXIT _,...}) => true 
                        | _ => false) (#out_edges cfg node)
-   fun isCriticalEdge CFG (i,j,_) = isMerge CFG i andalso isSplit CFG j
+   fun isCriticalEdge CFG (_,_,CFG.EDGE{k=CFG.ENTRY,...}) = false
+     | isCriticalEdge CFG (_,_,CFG.EDGE{k=CFG.EXIT,...}) = false
+     | isCriticalEdge CFG (i,j,_) = isSplit CFG i andalso isMerge CFG j
 
    (*=====================================================================
     *
@@ -84,7 +88,8 @@ struct
                         | cmp _ = error "cmp"
                       val es = Sorting.sort cmp es
                       val labels = map (fn (_,j,_) => labelOf j) es
-                  in  insns := P.setTargets(jmp,labels)::rest
+                  in  insns := P.setTargets(jmp,labels)::rest;
+                      error "updateJumpLabel"
                   end
              )
    in  update
@@ -107,9 +112,13 @@ struct
                      else ()
                |  _ => raise Can'tMerge  
        val _ = if mustPreceed CFG (i,j) then raise Can'tMerge else ()
-       val CFG.BLOCK{data=d2,insns=i2,annotations=a2,...} = #node_info cfg j
+       val CFG.BLOCK{data=d2,name=n2,insns=i2,annotations=a2,...} = 
+              #node_info cfg j
        val _  = case !d2 of [] => () | _ => raise Can'tMerge
-       val CFG.BLOCK{data=d1,insns=i1,annotations=a1,...} = #node_info cfg i
+       val CFG.BLOCK{data=d1,name=n1,insns=i1,annotations=a1,...} = 
+              #node_info cfg i
+          (* If the two blocks have different names then don't merge them *)
+       val _ = if CFG.B.==(n1,n2) then () else raise Can'tMerge
        val insns1 = case !i1 of
                       [] => []
                     | insns as jmp::rest => 
@@ -180,7 +189,7 @@ struct
               (case CFG.fallsThruFrom(CFG,j) of 
                 NONE => false
               | SOME _ => true)
-       val node as CFG.BLOCK{insns,freq,...} = CFG.newBlock(k,CFG.B.default)
+       val node as CFG.BLOCK{insns,...} = CFG.newBlock(k,CFG.B.default,ref(!w))
        val kind = if jump then CFG.JUMP else CFG.FALLSTHRU
        val _    = if jump then insns := [P.jump(labelOf CFG j)] else ()
        val edge = (k,j,CFG.EDGE{w=ref(!w),a=ref [],k=kind})
@@ -188,7 +197,6 @@ struct
        #add_edge cfg (i,k,e);
        #add_node cfg (k,node);
        #add_edge cfg edge;
-       freq := !w;
        updateJumpLabel CFG i;
        {node=(k,node),edge=edge}
    end 
@@ -199,9 +207,11 @@ struct
     *
     *=====================================================================*)
    fun splitAllCriticalEdges (CFG as G.GRAPH cfg) =
-       #forall_edges cfg (fn e => if isCriticalEdge CFG e then
-                                    (splitEdge CFG {edge=e,jump=false}; ())
-                                  else ())
+       (#forall_edges cfg (fn e => if isCriticalEdge CFG e then
+                                     (splitEdge CFG {edge=e,jump=false}; ())
+                                  else ());
+        CFG.changed CFG
+       )
 
    (*=====================================================================
     *
@@ -299,8 +309,7 @@ struct
     *=====================================================================*)
    fun mergeAllEdges(CFG as G.GRAPH cfg) =
    let val mergeEdge = mergeEdge CFG
-       fun higherFreq((_,_,CFG.EDGE{w=x,...}),(_,_,CFG.EDGE{w=y,...})) =
-           W.<(!x,!y)
+       fun higherFreq((_,_,CFG.EDGE{w=x,...}),(_,_,CFG.EDGE{w=y,...}))= !x < !y
        fun mergeAll([],changed) = changed
          | mergeAll(e::es,changed) = mergeAll(es,mergeEdge e orelse changed) 
        val changed = mergeAll(Sorting.sort higherFreq (#edges cfg ()),false)
@@ -309,6 +318,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

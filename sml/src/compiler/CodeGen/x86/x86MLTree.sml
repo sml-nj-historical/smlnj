@@ -18,18 +18,23 @@ structure X86FlowGraph =
 	    structure P=X86PseudoOps
 	    structure B=FunctionNames)
 
+structure X86Stream = InstructionStreamFn(structure P = X86PseudoOps
+                                          structure B = FunctionNames)
+
+
 (* Assembly code emmitter *)
 structure X86AsmEmitter=
   X86AsmEmitter(structure Instr=X86Instr
 		structure PseudoOps=X86PseudoOps
 		structure Shuffle=X86Shuffle
+                structure Stream=X86Stream
 		structure MemRegs=X86MemRegs)
   
 (* Machine code emitter *)
 structure X86MCEmitter = 
   X86MCEmitter(structure Instr=X86Instr
 	       structure Shuffle=X86Shuffle
-	       structure AsmEmitter = X86AsmEmitter
+	       structure AsmEmitter=X86AsmEmitter
 	       structure MemRegs=X86MemRegs)
 
 (* MLTree specialization *)
@@ -37,4 +42,7 @@ structure X86MLTree =
   MLTreeF(structure Const=SMLNJConstant
 	  structure P=X86PseudoOps
 	  structure R=CPSRegions
-	  structure B=FunctionNames)
+	  structure B=FunctionNames
+          type rextension = unit
+          type fextension = unit
+         )

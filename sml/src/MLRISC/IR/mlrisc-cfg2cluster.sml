@@ -1,5 +1,7 @@
 (*
  *  Convert the new control flow graph format back into the old cluster format
+ *
+ *  -- Allen
  *)
 
 signature CFG2CLUSTER =
@@ -26,8 +28,6 @@ functor CFG2ClusterFn
        sharing CFG.I = F.I
        sharing CFG.P = F.P
        sharing CFG.B = F.B
-    val patchBranch : {instr:CFG.I.instruction, backwards:bool} -> 
-                         CFG.I.instruction list
    ) : CFG2CLUSTER =
 struct
 
@@ -39,25 +39,30 @@ struct
     structure Set      = BitSet
     structure A        = Array
 
-    fun error msg = MLRiscErrorMsg.impossible("CFG2Cluster."^msg)
+    fun error msg = MLRiscErrorMsg.error("CFG2Cluster",msg)
 
     fun pseudo_op (CFG.LABEL l) = F.LABEL l
       | pseudo_op (CFG.PSEUDO p) = F.PSEUDO p
 
         (* create a new BBLOCK with id i *)
     fun bblock M (i,b as 
-                    CFG.BLOCK{kind,name,annotations,insns,labels,data,...}) =
+                 CFG.BLOCK{kind,freq,name,annotations,insns,labels,data,...}) =
     let val labels = map F.LABEL (!labels)
     in  case kind of
            CFG.STOP => map pseudo_op (!data)
         |  _ =>
-        let val block = F.BBLOCK{blknum  =i,
-                                 name    =name,
-                                 insns   =ref(! insns),
-                                 liveIn  =ref F.C.empty,
-                                 liveOut =ref (CFG.liveOut b),
-                                 pred    =ref [],
-                                 succ    =ref []
+        let fun filter(CFG.LIVEOUT _::an,an') = filter(an,an')
+              | filter(a::an,an') = filter(an,a::an')
+              | filter([],an') = an'
+            val block = F.BBLOCK{blknum      = i,
+                                 freq        = freq,
+                                 annotations = ref(filter(!annotations,[])),
+                                 name        = name,
+                                 insns       = insns,
+                                 liveIn      = ref F.C.empty,
+                                 liveOut     = ref (CFG.liveOut b),
+                                 pred        = ref [],
+                                 succ        = ref []
                                 }
        in  A.update(M,i,block); 
            map pseudo_op (!data) @ labels @ [block]
@@ -72,26 +77,26 @@ struct
     end
 
         (* create a new ENTRY with id i *)
-    fun entry(M,i) =
-    let val entry = F.ENTRY{succ=ref [], blknum=i}
+    fun entry(M,i,freq) =
+    let val entry = F.ENTRY{succ=ref [], blknum=i, freq=freq}
     in  A.update(M,i,entry); 
         entry
     end
 
-    fun entry'(M,M',M'',i,id) =
-    let val entry = entry(M,i)
+    fun entry'(M,M',M'',i,id,freq) =
+    let val entry = entry(M,i,freq)
     in  A.update(M',i,id); A.update(M'',id,i); entry
     end
 
         (* create a new EXIT with id i *)
-    fun exit(M,i) = 
-    let val exit = F.EXIT{pred=ref [], blknum=i}
+    fun exit(M,i,freq) = 
+    let val exit = F.EXIT{pred=ref [], blknum=i, freq=freq}
     in  A.update(M,i,exit); 
         exit
     end
 
-    fun exit'(M,M',M'',i,id) =
-    let val exit = exit(M,i)
+    fun exit'(M,M',M'',i,id,freq) =
+    let val exit = exit(M,i,freq)
     in  A.update(M',i,id); A.update(M'',id,i); exit
     end
 
@@ -100,14 +105,16 @@ struct
       | id_of(F.EXIT{blknum,...})   = blknum
 
     fun delete_preentries (ENTRY,G.GRAPH cfg) =
-    let fun remove (ENTRY,i,_) =
-            let val CFG.BLOCK{kind,insns,...} = #node_info cfg i
+    let val CFG.INFO{regmap=ref regmap,...} = #graph_info cfg 
+      	fun remove (ENTRY,i,_) =
+            let val block as CFG.BLOCK{kind,insns,...} = #node_info cfg i
             in  if kind = CFG.FUNCTION_ENTRY then
                    let val out_edges = #out_edges cfg i
                        val out_edges' = map (fn (i,j,e)=>(ENTRY,j,e)) out_edges 
                    in  case !insns of
                           [] => ()
-                       |  _  => error "delete_preentries";
+                       |  _  => (print (CFG.show_block regmap block);	
+                                 error "delete_preentries");
                        app (#add_edge cfg) out_edges';
                        #remove_node cfg i
                    end
@@ -119,38 +126,48 @@ struct
     fun remove_entry_to_exit (ENTRY,EXIT,CFG) =
         Graph.remove_edge CFG (ENTRY,EXIT)
 
+    fun freqOf (G.GRAPH cfg) id =
+        let val CFG.BLOCK{freq,...} = #node_info cfg id in freq end
+
        (*
         * Convert cfg -> cluster, assuming the layout is unchanged
         *)
     fun computeOldLayout (CFG as G.GRAPH cfg) =
     let val M       = #capacity cfg ()
-        val [ENTRY] = #entries cfg ()
-        val [EXIT]  = #exits cfg ()
-        val regmap  = CFG.regmap CFG
+        val ENTRY   = case #entries cfg () of
+                        [ENTRY] => ENTRY
+                      | _ => raise Graph.NotSingleEntry
+        val EXIT    = case #exits cfg () of
+                        [EXIT] => EXIT
+                      | _ => raise Graph.NotSingleExit
+        val CFG.INFO{regmap,annotations,...} = #graph_info cfg
         val _       = delete_preentries(ENTRY,CFG)
         val _       = remove_entry_to_exit(ENTRY,EXIT,CFG)
-        val A       = A.array(M,F.ORDERED [])
+        val A       = A.array(M,F.LABEL(Label.newLabel ""))
         val nodes   = List.filter(fn (i,CFG.BLOCK{kind,...}) => 
                            i <> ENTRY andalso i <> EXIT andalso 
                            kind <> CFG.FUNCTION_ENTRY)
                                  (#nodes cfg ())
         val blocks  = List.concat(
                         map (bblock A) (nodes @ [(EXIT,#node_info cfg EXIT)]))
-        val entry   = entry (A,ENTRY)
-        val exit    = exit (A,EXIT)
-        fun succs i = map (fn i => A.sub(A,i)) (#succ cfg i)
-        fun preds i = map (fn i => A.sub(A,i)) (#pred cfg i)
+        val entry   = entry (A,ENTRY,freqOf CFG ENTRY)
+        val exit    = exit (A,EXIT,freqOf CFG EXIT)
+        fun succs i = map (fn (_,i,CFG.EDGE{w,...}) => (A.sub(A,i),w)) 
+                            (#out_edges cfg i)
+        fun preds i = map (fn (i,_,CFG.EDGE{w,...}) => (A.sub(A,i),w)) 
+                            (#in_edges cfg i)
         fun set_links(F.BBLOCK{blknum,pred,succ,insns,...}) = 
                   (pred := preds blknum; succ := succs blknum)
           | set_links(F.ENTRY{blknum,succ,...}) = succ := succs blknum
           | set_links(F.EXIT{blknum,pred,...})  = pred := preds blknum
           | set_links _ = ()
         val _ = A.app set_links A
-    in  F.CLUSTER{ blkCounter= ref M,
-                   regmap    = regmap,
-                   blocks    = blocks,
-                   entry     = entry,
-                   exit      = exit
+    in  F.CLUSTER{ blkCounter  = ref M,
+                   regmap      = !regmap,
+                   blocks      = blocks,
+                   entry       = entry,
+                   exit        = exit,
+                   annotations = annotations
                  }
     end
 
@@ -159,11 +176,16 @@ struct
         *)
     fun computeNewLayout (CFG as G.GRAPH cfg) =
     let val M        = #capacity cfg ()
-        val [ENTRY]  = #entries cfg ()
-        val [EXIT]   = #exits cfg ()
+        val ENTRY   = case #entries cfg () of
+                        [ENTRY] => ENTRY
+                      | _ => raise Graph.NotSingleEntry
+        val EXIT    = case #exits cfg () of
+                        [EXIT] => EXIT
+                      | _ => raise Graph.NotSingleExit
         val _        = delete_preentries(ENTRY,CFG)
-        val CFG.INFO{firstBlock,regmap,...} = #graph_info cfg
-        val A        = A.array(M,F.ORDERED []) (* new id -> F.block *)
+        val CFG.INFO{firstBlock,regmap=ref regmap,annotations,...} = 
+               #graph_info cfg
+        val A        = A.array(M,F.LABEL(Label.newLabel "")) (* new id -> F.block *)
         val A'       = A.array(M,~1)           (* new id -> old id *)
         val A''      = A.array(M,~1)           (* old id -> new id *)
         val min_pred = A.array(M,10000000)
@@ -173,7 +195,7 @@ struct
         fun higher_freq(i,j) =
             let val CFG.BLOCK{freq=w1,...} = #node_info cfg i
                 val CFG.BLOCK{freq=w2,...} = #node_info cfg j
-            in  W.>(!w1,!w2) 
+            in  !w1 > !w2
             end
 
         fun older(i,j) = A.sub(min_pred,i) < A.sub(min_pred,j)
@@ -237,37 +259,38 @@ struct
         val (id,blocks) = layout_all(0,(!firstBlock)::nodes,[])
         (*val _ = print("M="^Int.toString M^ " id="^Int.toString id^"\n")*)
 
-        val exit    = exit'(A,A',A'',id,EXIT)
-        val entry   = entry'(A,A',A'',id+1,ENTRY)
+        val exit    = exit'(A,A',A'',id,EXIT,freqOf CFG EXIT)
+        val entry   = entry'(A,A',A'',id+1,ENTRY,freqOf CFG ENTRY)
         val blocks  = blocks @ bblock A (EXIT,#node_info cfg EXIT)
-        fun succs i = map (fn i=> A.sub(A,A.sub(A'',i)))
-                                 (#succ cfg (A.sub(A',i)))
-        fun preds i = map (fn i=> A.sub(A,A.sub(A'',i))) 
-                                 (#pred cfg (A.sub(A',i)))
-
+        fun succs i = map (fn (_,i,CFG.EDGE{w,...}) => 
+                               (A.sub(A,A.sub(A'',i)),w))
+                                 (#out_edges cfg (A.sub(A',i)))
+        fun preds i = map (fn (i,_,CFG.EDGE{w,...}) => 
+                               (A.sub(A,A.sub(A'',i)),w)) 
+                                 (#in_edges cfg (A.sub(A',i)))
+        local  
+            val look = Intmap.map regmap
+        in  fun reglookup r = look r handle _ => r
+        end
 
         fun set_links(F.BBLOCK{blknum,pred,succ,insns,...}) = 
-            let fun isBackwardBranch(F.BBLOCK{blknum=next,...}::bs) =
+            let fun isBackwardBranch((F.BBLOCK{blknum=next,...},_)::bs) =
                       next <= blknum orelse isBackwardBranch bs
                   | isBackwardBranch(_::bs) = isBackwardBranch bs
                   | isBackwardBranch []     = false
             in  pred := preds blknum; 
-                succ := succs blknum;
-                case !insns of
-                  [] => ()
-                | jmp::rest => insns := 
-                     patchBranch{instr=jmp,backwards=isBackwardBranch(!succ)}
-                    @rest
+                succ := succs blknum
             end
           | set_links(F.ENTRY{blknum,succ,...}) = succ := succs blknum
           | set_links(F.EXIT{blknum,pred,...})  = pred := preds blknum
           | set_links _ = ()
         val _ = A.app set_links A
-    in  F.CLUSTER{ blkCounter= ref(id+2),
-                   regmap    = regmap,
-                   blocks    = blocks,
-                   entry     = entry,
-                   exit      = exit
+    in  F.CLUSTER{ blkCounter  = ref(id+2),
+                   regmap      = regmap,
+                   blocks      = blocks,
+                   entry       = entry,
+                   exit        = exit,
+                   annotations = annotations
                  }
     end
 
@@ -279,6 +302,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

@@ -391,7 +391,7 @@ fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
 		     | _ => NONE)
 		   elements
 		| CONSTstrDef ERRORstr => nil)
-      in Sort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) comps
+      in ListMergeSort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) comps
      end
 
 
@@ -449,7 +449,7 @@ fun mkElemSlots(SIG{elements,...},slotEnv,rpath,epath,sigDepth) =
 	  | mkSlot _ = NONE  (* value element *)
 
 	fun mkSlots(nil,slotEnv,slots) =
-	    (slotEnv, Sort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) slots)
+	    (slotEnv, ListMergeSort.sort(fn((s1,_),(s2,_)) => S.symbolGt(s1,s2)) slots)
 	  | mkSlots((element as (sym,_))::rest,slotEnv,slots) =
 	      (case mkSlot(element,slotEnv)
 		of SOME(binder as (_,slot)) =>
@@ -1044,7 +1044,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
                    EM.nullErrorBody;
                  false)
 
-      val sortD = Sort.sort
+      val sortD = ListMergeSort.sort
            (fn ({name=name1,rep=_,domain=_},{name=name2,rep=_,domain=_}) =>
                  S.symbolGt(name1,name2))
 
@@ -1785,6 +1785,9 @@ end (* structure Instantiate *)
 
 (*
  * $Log: instantiate.sml,v $
+ * Revision 1.3  1998/09/30 19:14:27  dbm
+ * fixes for bugs 1364 and 1432
+ *
  * Revision 1.2  1998/08/19 18:17:15  dbm
  * bug fixes for 110.9 [dbm]
  *

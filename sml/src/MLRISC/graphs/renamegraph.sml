@@ -1,3 +1,10 @@
+(*
+ * This view adds some number k to all node ids of the graph,
+ * i.e. rename all node ids.
+ *
+ * -- Allen
+ *)
+
 signature RENAMED_GRAPH_VIEW =
 sig
 
@@ -52,6 +59,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

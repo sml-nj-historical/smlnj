@@ -1,3 +1,9 @@
+(*
+ * Interface of an actual graph implementation
+ *
+ * -- Allen
+ *)
+
 signature GRAPH_IMPLEMENTATION =
 sig
 
@@ -5,6 +11,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

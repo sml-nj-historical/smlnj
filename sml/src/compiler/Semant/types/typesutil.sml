@@ -631,7 +631,7 @@ fun isVarTy(VARty(ref(INSTANTIATED ty))) = isVarTy ty
    (typecheck.sml, mtderiv.sml, reconstruct.sml) *)
 
 fun sortFields fields =
-    Sort.sort (fn ((Absyn.LABEL{number=n1,...},_),
+    ListMergeSort.sort (fn ((Absyn.LABEL{number=n1,...},_),
 		   (Absyn.LABEL{number=n2,...},_)) => n1>n2)
               fields
 
@@ -717,20 +717,20 @@ fun mapTypeEntire f =
  * I am using a binary dictionary instead. (ZHONG)
  *)
 local
-  structure TycSet = BinaryDict(struct type ord_key = ST.stamp
-                                     val cmpKey = ST.cmp
-                                end)
+  structure TycSet = BinaryMapFn(struct type ord_key = ST.stamp
+					val compare = ST.cmp
+				 end)
 in
-  type tycset = tycon TycSet.dict
+  type tycset = tycon TycSet.map
 
-  val mkTycSet = TycSet.mkDict
+  val mkTycSet = fn () => TycSet.empty
 
   fun addTycSet(tyc as GENtyc{stamp, ...}, tycset) = 
         TycSet.insert(tycset, stamp, tyc)
     | addTycSet _ = bug "unexpected tycons in addTycSet"
 
   fun inTycSet(tyc as GENtyc{stamp, ...}, tycset) =
-        (case TycSet.peek(tycset, stamp) of SOME _ => true | _ => false)
+        (case TycSet.find(tycset, stamp) of SOME _ => true | _ => false)
     | inTycSet _ = false
 
   fun filterSet(ty, tycs) = 
@@ -869,6 +869,9 @@ end (* structure TypesUtil *)
 
 (*
  * $Log: typesutil.sml,v $
+ * Revision 1.6  1998/09/30 19:26:53  dbm
+ * added comments
+ *
  * Revision 1.5  1998/08/19 18:17:18  dbm
  * bug fixes for 110.9 [dbm]
  *

@@ -1,6 +1,13 @@
+(*
+ * Dynamic (dense) array.
+ *
+ * -- Allen
+ *)
+
 structure DynamicArray : 
-  sig include ARRAY_SIG 
+  sig include ARRAY
       val baseArray : 'a array -> 'a Array.array
+      val checkArray: 'a array * 'a Array.array -> unit
       val clear     : 'a array * int -> unit
   end =
   struct
@@ -20,6 +27,7 @@ structure DynamicArray :
      fun clear (ARRAY(a,def,cnt),n) = (a := A.array(n,def); cnt := n)
 
      fun baseArray(ARRAY(ref a,_,_)) = a
+     fun checkArray(ARRAY(ref a,_,_),a') = if a = a' then () else raise Match
 
      fun length (ARRAY (ref a,_,ref n)) = n
 
@@ -85,6 +93,3 @@ structure DynamicArray :
 
 end
 
-(*
- * $Log$
- *)

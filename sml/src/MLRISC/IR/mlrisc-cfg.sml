@@ -1,10 +1,15 @@
+(*
+ * The control flow graph representation used for optimizations.
+ *
+ * -- Allen
+ *)
 functor ControlFlowGraphFn
    (structure I : INSTRUCTIONS
     structure B : BLOCK_NAMES
     structure P : PSEUDO_OPS
-    structure W : FIXED_POINT
     structure GraphImpl : GRAPH_IMPLEMENTATION
-    structure Asm : EMITTER_NEW
+    structure Asm : INSTRUCTION_EMITTER
+    structure Ctrl : MLRISC_CONTROL
        sharing Asm.I = I
        sharing Asm.P = P
    ) : CONTROL_FLOW_GRAPH =
@@ -14,12 +19,13 @@ struct
     structure B = B
     structure P = P
     structure C = I.C
-    structure W = W
+    structure W = Freq
     structure G = Graph
     structure L = GraphLayout
     structure A = Annotations
+    structure S = Asm.S
    
-    type weight = W.fixed_point
+    type weight = W.freq
 
     datatype block_kind = 
         START          (* entry node *)
@@ -60,7 +66,7 @@ struct
     type node = block Graph.node
 
     datatype info = 
-        INFO of { regmap      : C.regmap,
+        INFO of { regmap      : C.regmap ref,
                   annotations : Annotations.annotations ref,
                   firstBlock  : int ref,
                   reorder     : bool ref
@@ -86,11 +92,11 @@ struct
       | defineLabel(BLOCK{labels,...}) = let val l = Label.newLabel ""
                                          in  labels := [l]; l end
 
-    fun newBlock'(id,kind,name,insns) =
+    fun newBlock'(id,kind,name,insns,freq) =
         BLOCK{ id          = id,
                kind        = kind,
                name        = name,
-               freq        = ref W.zero,
+               freq        = freq,
                data        = ref [],
                labels      = ref [],
                insns       = ref insns,
@@ -101,17 +107,18 @@ struct
         BLOCK{ id          = id,
                kind        = kind,
                name        = name,
-               freq        = ref W.zero,
+               freq        = ref (!freq),
                data        = ref (!data),
                labels      = ref [],
                insns       = ref (!insns),
                annotations = ref (!annotations) 
              }
 
-    fun newBlock(id,name) = newBlock'(id,NORMAL,name,[])
-    fun newStart(id) = newBlock'(id,START,B.default,[])
-    fun newStop(id) = newBlock'(id,STOP,B.default,[])
-    fun newFunctionEntry(id) = newBlock'(id,FUNCTION_ENTRY,B.default,[])
+    fun newBlock(id,name,freq) = newBlock'(id,NORMAL,name,[],freq)
+    fun newStart(id,freq) = newBlock'(id,START,B.default,[],freq)
+    fun newStop(id,freq) = newBlock'(id,STOP,B.default,[],freq)
+    fun newFunctionEntry(id,freq) = 
+        newBlock'(id,FUNCTION_ENTRY,B.default,[],freq)
 
    (*========================================================================
     *
@@ -125,37 +132,43 @@ struct
       | kindName NORMAL         = "Block"
 
     fun nl() = TextIO.output(!AsmStream.asmOutStream,"\n")
-    fun comment msg = (Asm.comment msg; nl())
 
-    fun emitHeader (BLOCK{id,kind,freq,annotations,...}) = 
+    fun emitHeader (S.STREAM{comment,annotation,...}) 
+                   (BLOCK{id,kind,freq,annotations,...}) = 
        (comment(kindName kind ^"["^Int.toString id^
                     "] ("^W.toString (!freq)^")");
-        app (fn A.COMMENT msg => comment msg | _ => ()) (!annotations)
+        nl();
+        app annotation (!annotations)
        ) 
 
-    fun emitFooter (BLOCK{annotations,...}) = 
+    fun emitFooter (S.STREAM{comment,...}) (BLOCK{annotations,...}) = 
         (case A.get (fn LIVEOUT x => SOME x | _ => NONE) (!annotations) of
             SOME s => 
-            let val regs = String.tokens Char.isSpace(C.cellset2string s)
+            let val regs = String.tokens Char.isSpace(C.cellsetToString s)
                 val K = 7
                 fun f(_,[],s,l)    = s::l
                   | f(0,vs,s,l)    = f(K,vs,"   ",s::l)
                   | f(n,[v],s,l)   = v^s::l
                   | f(n,v::vs,s,l) = f(n-1,vs,s^" "^v,l)
                 val text = rev(f(K,regs,"",[]))
-            in  app comment text
+            in  app (fn c => (comment c; nl())) text
             end
          |  NONE => ()
         ) handle Overflow => print("Bad footer\n")
 
-    fun emit regmap (block as BLOCK{insns,data,labels,...}) =
-       (emitHeader block;
-        app (fn PSEUDO p => Asm.pseudoOp p
-              | LABEL l  => Asm.defineLabel l) (!data);
-        app Asm.defineLabel (!labels);
-        app (fn i => Asm.emitInstr(i,regmap)) (rev (!insns));
-        emitFooter block
-       )
+    fun emitStuff outline regmap (block as BLOCK{insns,data,labels,...}) =
+       let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = Asm.makeStream()
+           val emit = emit (I.C.lookup regmap)
+       in  emitHeader S block;
+           app (fn PSEUDO p => pseudoOp p
+                 | LABEL l  => defineLabel l) (!data);
+           app defineLabel (!labels);
+           if outline then () else app emit (rev (!insns));
+           emitFooter S block
+       end
+
+    val emit = emitStuff false
+    val emitOutline = emitStuff true
  
    (*========================================================================
     *
@@ -163,8 +176,8 @@ struct
     *
     *========================================================================*)
     fun cfg info = GraphImpl.graph("CFG",info,10)
-    fun new regmap =
-        let val info = INFO{ regmap = regmap,  
+    fun new(regmap) =
+        let val info = INFO{ regmap      = ref regmap,  
                              annotations = ref [],
                              firstBlock  = ref 0,
                              reorder     = ref false
@@ -172,7 +185,7 @@ struct
         in  cfg info end
 
     fun subgraph(CFG as G.GRAPH{graph_info=INFO graph_info,...}) =
-        let val info = INFO{ regmap      = #regmap graph_info,
+        let val info = INFO{ regmap      = ref(! (#regmap graph_info)),
                              annotations = ref [],
                              firstBlock  = #firstBlock graph_info,
                              reorder     = #reorder graph_info
@@ -182,27 +195,25 @@ struct
     fun init(G.GRAPH cfg) =
         if #order cfg () = 0 then 
            let val i     = #new_id cfg ()
-               val start = newStart i
+               val start = newStart(i,ref 0)
                val _     = #add_node cfg (i,start)
                val j     = #new_id cfg ()
-               val stop  = newStop i
+               val stop  = newStop(i,ref 0)
                val _     = #add_node cfg (j,stop) 
-           in  #add_edge cfg (i,j,EDGE{k=ENTRY,w=ref W.zero,a=ref []});
+           in  #add_edge cfg (i,j,EDGE{k=ENTRY,w=ref 0,a=ref []});
                #set_entries cfg [i];
                #set_exits cfg [j]
            end
         else ()
 
     fun changed(G.GRAPH{graph_info=INFO{reorder,annotations,...},...}) = 
-        let fun process((a as CHANGED f)::l) = (f(); a::process l)
-              | process(CHANGEDONCE f::l) = (f(); process l)
-              | process(a::l) = a::process l
-              | process [] = []
-        in  annotations := process(!annotations);
-            reorder := true
-        end 
+         (app (fn CHANGED f => f() | _ => ()) (!annotations);
+          reorder := true)
 
-    fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = regmap
+    fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = !regmap
+    fun setRegmap(G.GRAPH{graph_info=INFO{regmap,...},...},r) = regmap := r
+    fun setAnnotations(G.GRAPH{graph_info=INFO{annotations,...},...},a) = 
+        annotations := a
     fun reglookup cfg =
         let val regmap = regmap cfg
             val look   = Intmap.map regmap
@@ -270,8 +281,10 @@ struct
             (String.tokens (fn #" " => true | _ => false) text)
    end
 
-   fun headerText block = getString emitHeader block
-   fun footerText block = getString emitFooter block
+   fun headerText block = getString 
+        (fn b => emitHeader (Asm.makeStream()) b) block
+   fun footerText block = getString 
+        (fn b => emitFooter (Asm.makeStream()) b) block
 
    fun edgeStyle(i,j,e as EDGE{k,a,...}) = 
    let val a = L.LABEL(show_edge e) :: !a
@@ -280,10 +293,15 @@ struct
        | _ => L.COLOR "red" :: a
    end 
 
+   val outline = Ctrl.getFlag "view-outline"
+
    fun viewStyle cfg =
    let val regmap = regmap cfg
-       fun node (_,b as BLOCK{annotations,...}) = 
-            L.LABEL(show_block regmap b) :: !annotations
+       fun node (n,b as BLOCK{annotations,...}) = 
+           if !outline then
+              L.LABEL(getString (emitOutline regmap) b) :: !annotations
+           else
+              L.LABEL(show_block regmap b) :: !annotations
    in  { graph = fn _ => [],
          edge  = edgeStyle,
          node  = node
@@ -309,6 +327,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

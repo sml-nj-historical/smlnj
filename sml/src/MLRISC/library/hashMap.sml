@@ -1,3 +1,9 @@
+(*
+ * map datatype that uses hashing.
+ *
+ * -- allen
+ *)
+
 structure HashMap :> HASH_MAP =
 struct
 
@@ -146,6 +152,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

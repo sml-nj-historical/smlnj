@@ -18,14 +18,20 @@ structure PPCFlowGraph =
 	    structure P=PPCPseudoOps
 	    structure B=FunctionNames)
 
+structure PPCStream = 
+  InstructionStreamFn(structure P=PPCPseudoOps
+                      structure B=FunctionNames)
+
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr
-		structure PseudoOps=PPCPseudoOps
+		structure PseudoOps=PPCPseudoOps  
+                structure Stream=PPCStream
 		structure Shuffle = PPCShuffle)
 
 structure PPCMCEmitter = 
   PPCMCEmitter(structure Instr=PPCInstr
 	       structure PseudoOps=PPCPseudoOps
+               structure Stream=PPCStream
 	       structure CodeString=CodeString)
 
 
@@ -33,4 +39,6 @@ structure PPCMLTree =
   MLTreeF(structure Const=PPCConst
 	  structure P=PPCPseudoOps
 	  structure R=CPSRegions
-	  structure B=FunctionNames)
+	  structure B=FunctionNames
+          type rextension=unit
+          type fextension=unit)

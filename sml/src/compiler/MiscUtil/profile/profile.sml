@@ -82,7 +82,7 @@ structure Profile : sig
 		ENTRY{time=b,count=cb,name=nb,...}
 	      ) = a<b orelse a=b andalso (ca<cb orelse ca=cb andalso na>nb)
 	  in
-	    Sort.sort compare biglist
+	    ListMergeSort.sort compare biglist
 	  end
 
     fun reportData() = let
@@ -130,5 +130,8 @@ structure Profile : sig
 end;
 
 (*
- * $Log$
+ * $Log: profile.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:17  george
+ * Version 110.5
+ *
  *)

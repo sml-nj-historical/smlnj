@@ -1,3 +1,16 @@
+(*
+ * MLRISC IR
+ *
+ * This is for performing whole program analysis.
+ * All optimizations are based on this representation.
+ * It provides a few useful views: dominator tree, control dependence graph,
+ * loop nesting (interval) structure etc. Also there is a mechanism to
+ * incrementally attach additional views to the IR.  The SSA infrastructure
+ * is implemented in such a manner.
+ *
+ * -- Allen
+ *)
+
 functor MLRISC_IRFn
    (structure CFG         : CONTROL_FLOW_GRAPH
     structure CDG         : CONTROL_DEPENDENCE_GRAPH
@@ -6,6 +19,7 @@ functor MLRISC_IRFn
     structure Util        : CFG_UTIL
        sharing Loop.Dom = CDG.Dom
        sharing Util.CFG = CFG
+    structure Ctrl : MLRISC_CONTROL
    ) : MLRISC_IR =
 struct
 
@@ -34,11 +48,20 @@ struct
          | f [] = [(name,layout)]
    in  layouts := f(!layouts) end
 
-   fun view name IR =
-   let fun f [] = print ("[Can't find "^name^"]\n")
-         | f((x,layout)::rest) =
-           if x = name then GraphViewer.view (layout IR) else f rest
+   exception NoLayout 
+
+   fun findLayout name =
+   let fun f [] = (print ("[Can't find "^name^"]\n"); raise NoLayout)
+         | f((x,layout)::rest) = if x = name then layout else f rest
    in  f(!layouts) end
+
+   fun view name IR = GraphViewer.view(findLayout name IR) 
+           handle NoLayout => ()
+
+   fun views names IR = 
+       let val layouts = map (fn n => findLayout n IR) names
+       in  GraphViewer.view(GraphCombinations.sums layouts)
+       end handle NoLayout => ()
 
    fun viewSubgraph IR subgraph = 
          GraphViewer.view (CFG.subgraphLayout{cfg=IR,subgraph=subgraph})
@@ -47,18 +70,28 @@ struct
     * This function defines how we compute a new view 
     *)
 
-   fun memo compute = 
+   val verbose = Ctrl.getFlag "verbose"
+
+   fun memo name compute = 
    let val {get,put,rmv,...} = A.new()
-       fun getView
-           (IR as G.GRAPH{graph_info=CFG.INFO{annotations,...},...} : IR) =
-           case get (!annotations) of
-              SOME info => info
-           |  NONE => let val info = compute IR
-                          fun kill() = annotations := rmv(!annotations)
-                      in  annotations := 
-                             CFG.CHANGEDONCE kill::put(info,!annotations);
-                          info
-                      end
+       fun getView(IR as G.GRAPH{graph_info=CFG.INFO{annotations,...},...}:IR)=
+       let fun process(SOME(ref(SOME info))) =
+                 (if !verbose then print ("[reusing "^name^"]") else (); info)
+             | process(SOME r) =
+                 let val _    = if !verbose then print("[computing "^name)
+                                else ()
+                     val info = compute IR
+                     val _    = if !verbose then print "]" else ()
+                 in  r := SOME info; info end
+           |  process NONE = 
+              let val r = ref NONE
+                  fun kill() = (r := NONE; 
+                                if !verbose then print("[uncaching "^name^"]")
+                                else ())
+              in  annotations := CFG.CHANGED kill :: put(r,!annotations);
+                  process(SOME r) 
+              end
+       in  process(get (!annotations)) end
    in  getView
    end
 
@@ -66,11 +99,12 @@ struct
     *  Extract various views from an IR
     *) 
 
-   val doms = memo Dom.dominator_trees
+   val doms = memo "dom" Dom.dominator_trees
    fun dom IR  = #1 (doms IR)
    fun pdom IR = #2 (doms IR)
-   val cdg  = memo (fn IR => CDG.control_dependence_graph CFG.cdgEdge (doms IR))
-   val loop = memo (Loop.loop_structure o dom)
+   val cdg  = memo "cdg" 
+             (fn IR => CDG.control_dependence_graph CFG.cdgEdge (doms IR))
+   val loop = memo "loop" (Loop.loop_structure o dom)
    val changed = CFG.changed 
 
    (*
@@ -124,8 +158,4 @@ struct
    val _ = addLayout "loop" layoutLoop
 
 end
-
-(*
- * $Log$
- *)
 

@@ -1,19 +1,14 @@
-functor SparcProps 
-  (structure SparcInstr : SPARCINSTR
-   structure Shuffle : SPARCSHUFFLE
-      sharing Shuffle.I = SparcInstr) : INSN_PROPERTIES =
+functor SparcProps(SparcInstr : SPARCINSTR) : INSN_PROPERTIES =
 struct
   structure I = SparcInstr
   structure C = I.C
-(*
-  structure A = I.A
-*)
 
   exception NegateConditional
 
-  fun error msg = MLRiscErrorMsg.impossible ("sparcProps."^msg)
+  fun error msg = MLRiscErrorMsg.error("SparcProps",msg)
 
-  datatype kind = IK_JUMP | IK_NOP | IK_INSTR
+  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+                | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
   (*========================================================================
@@ -23,21 +18,26 @@ struct
     | instrKind(I.FBfcc _) = IK_JUMP
     | instrKind(I.JMP _)   = IK_JUMP
     | instrKind(I.RET _)   = IK_JUMP
-(*
-    | instrKind(I.ANNOTATION(i,_)) = instrKind i
-*)
+    | instrKind(I.BR _)    = IK_JUMP
+    | instrKind(I.BP _)    = IK_JUMP
+    | instrKind(I.COPY _)  = IK_COPY
+    | instrKind(I.FCOPY _) = IK_COPY
+    | instrKind(I.CALL _)  = IK_CALL
+    | instrKind(I.JMPL _)  = IK_CALL
+    | instrKind(I.ANNOTATION{i,...}) = instrKind i
+    | instrKind(I.GROUP _) = IK_GROUP
     | instrKind _          = IK_INSTR
 
   fun branchTargets(I.Bicc{b=I.BA,label,...}) = [LABELLED label]
     | branchTargets(I.Bicc{label,...}) = [LABELLED label, FALLTHROUGH] 
     | branchTargets(I.FBfcc{b=I.FBA,label,...}) = [LABELLED label]
     | branchTargets(I.FBfcc{label,...}) = [LABELLED label, FALLTHROUGH]
+    | branchTargets(I.BR{label,...}) = [LABELLED label, FALLTHROUGH]
+    | branchTargets(I.BP{label,...}) = [LABELLED label, FALLTHROUGH]
     | branchTargets(I.JMP{labs=[],...}) = [ESCAPES] 
     | branchTargets(I.RET _)   = [ESCAPES]
     | branchTargets(I.JMP{labs,...})    = map LABELLED labs
-(*
-    | branchTargets(I.ANNOTATION(i,_)) = branchTargets i
-*)
+    | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
   fun setTargets(I.Bicc{b=I.BA,a,nop,...},[L]) = 
@@ -46,30 +46,81 @@ struct
           I.Bicc{b=b,a=a,label=T,nop=nop}
     | setTargets(I.FBfcc{b,a,nop,...},[F,T]) = 
           I.FBfcc{b=b,a=a,label=T,nop=nop}
+    | setTargets(I.BR{rcond,p,r,a,nop,...},[F,T]) = 
+          I.BR{rcond=rcond,p=p,r=r,a=a,label=T,nop=nop}
+    | setTargets(I.BP{b,cc,p,a,nop,...},[F,T]) = 
+          I.BP{b=b,cc=cc,p=p,a=a,label=T,nop=nop}
     | setTargets(I.JMP{r,i,nop,...},labels) = 
           I.JMP{r=r,i=i,labs=labels,nop=nop}
-(*
-    | setTargets(I.ANNOTATION(i,a),labs) = I.ANNOTATION(setTargets(i,labs),a)
-*)
+    | setTargets(I.ANNOTATION{i,a},labs) = 
+          I.ANNOTATION{i=setTargets(i,labs),a=a}
     | setTargets(i,_) = i
 
+   fun revCond I.BA = I.BN
+     | revCond I.BN = I.BA
+     | revCond I.BNE = I.BE
+     | revCond I.BE  = I.BNE
+     | revCond I.BG  = I.BLE
+     | revCond I.BLE = I.BG
+     | revCond I.BGE = I.BL
+     | revCond I.BL  = I.BGE
+     | revCond I.BGU = I.BLEU
+     | revCond I.BLEU = I.BGU
+     | revCond I.BCC  = I.BCS
+     | revCond I.BCS  = I.BCC
+     | revCond I.BPOS = I.BNEG
+     | revCond I.BNEG = I.BPOS
+     | revCond I.BVC  = I.BVS
+     | revCond I.BVS  = I.BVC
+
+   fun revFcond I.FBA   = I.FBN
+     | revFcond I.FBN   = I.FBA
+     | revFcond I.FBU   = I.FBO
+     | revFcond I.FBG   = I.FBULE
+     | revFcond I.FBUG  = I.FBLE
+     | revFcond I.FBL   = I.FBUGE
+     | revFcond I.FBUL  = I.FBGE
+     | revFcond I.FBLG  = I.FBUE
+     | revFcond I.FBNE  = I.FBE
+     | revFcond I.FBE   = I.FBNE
+     | revFcond I.FBUE  = I.FBLG
+     | revFcond I.FBGE  = I.FBUL
+     | revFcond I.FBUGE = I.FBL
+     | revFcond I.FBLE  = I.FBUG
+     | revFcond I.FBULE = I.FBG
+     | revFcond I.FBO   = I.FBU
+
+  fun revRcond I.RZ   = I.RNZ
+    | revRcond I.RLEZ = I.RGZ
+    | revRcond I.RLZ  = I.RGEZ
+    | revRcond I.RNZ  = I.RZ
+    | revRcond I.RGZ  = I.RLEZ
+    | revRcond I.RGEZ = I.RLZ
+
+  fun revP I.PT = I.PN
+    | revP I.PN = I.PT
+
   fun negateConditional(I.Bicc{b,a,label,nop}) =
-         I.Bicc{b=I.revCond b,a=a,label=label,nop=nop}
+         I.Bicc{b=revCond b,a=a,label=label,nop=nop}
     | negateConditional(I.FBfcc{b,a,label,nop}) =
-         I.FBfcc{b=I.revFcond b,a=a,label=label,nop=nop} 
-(*
-    | negateConditional(I.ANNOTATION(i,a)) = 
-         I.ANNOTATION(negateConditional i,a)
-*)
+         I.FBfcc{b=revFcond b,a=a,label=label,nop=nop} 
+    | negateConditional(I.BR{p,r,rcond,a,label,nop}) =
+         I.BR{p=revP p,a=a,r=r,rcond=revRcond rcond,label=label,nop=nop} 
+    | negateConditional(I.BP{b,cc,p,a,label,nop}) =
+         I.BP{p=revP p,a=a,b=revCond b,cc=cc,label=label,nop=nop} 
+    | negateConditional(I.ANNOTATION{i,a}) = 
+         I.ANNOTATION{i=negateConditional i,a=a}
     | negateConditional _ = raise NegateConditional
 
   fun jump label = I.Bicc{b=I.BA,a=true,label=label,nop=true}
 
+  val immedRange = {lo= ~4096, hi = 4095}
+
+  fun loadImmed{immed,t} = I.ARITH{a=I.OR,r=0,i=I.IMMED immed,d=t}
+
   fun moveInstr(I.COPY _)  = true
     | moveInstr(I.FCOPY _) = true
-(*
-    | moveInstr(I.ANNOTATION(i,_)) = moveInstr i
-*)
+    | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _          = false
 
   fun nop() = I.SETHI{d=0, i=0}
@@ -79,43 +130,30 @@ struct
    *========================================================================*)
   fun moveTmpR(I.COPY{tmp=SOME(I.Direct r),...}) = SOME r
     | moveTmpR(I.FCOPY{tmp=SOME(I.FDirect f),...}) = SOME f
-(*
-    | moveTmpR(I.ANNOTATION(i,_)) = moveTmpR i
-*)
+    | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
   fun moveDstSrc(I.COPY{dst,src,...}) = (dst,src)
     | moveDstSrc(I.FCOPY{dst,src,...}) = (dst,src)
-(*
-    | moveDstSrc(I.ANNOTATION(i,_)) = moveDstSrc i
-*)
+    | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
 
-  fun copy{src,dst} =
-     I.COPY{src=src,dst=dst,impl=ref NONE,
-            tmp=case src of [_] => NONE | _ => SOME(I.Direct(C.newReg()))}
-
-  fun fcopy{dst,src} = let
-  fun trans r = if r >= 32 andalso r < 64 then r-32 else r
-      val src = map trans src
-      val dst = map trans dst
-  in
-      I.FCOPY{dst=dst,src=src,impl=ref NONE,
-              tmp=case src of [_] => NONE | _   => SOME(I.FDirect(C.newFreg()))}
-  end
-
-  fun splitCopies{regmap, insns} = let
-    val shuffle = Shuffle.shuffle
-    val shufflefp = Shuffle.shufflefp
-    fun scan([],is') = rev is'
-      | scan(I.COPY{dst, src, tmp,...}::is,is') =
-          scan(is, shuffle{regMap=regmap,temp=tmp,dst=dst,src=src}@is')
-      | scan(I.FCOPY{dst, src, tmp,...}::is,is') =
-          scan(is, shufflefp{regMap=regmap,temp=tmp,dst=dst,src=src}@is')
-      | scan(i::is, is') = scan(is, i::is')
-  in scan(insns,[])
-  end
-
+  (*========================================================================
+   *  Equality and hashing
+   *========================================================================*)
+   fun hashOpn(I.REG r) = Word.fromInt r
+     | hashOpn(I.IMMED i) = Word.fromInt i
+     | hashOpn(I.LAB l) = LabelExp.hash l
+     | hashOpn(I.LO l) = LabelExp.hash l
+     | hashOpn(I.HI l) = LabelExp.hash l
+     | hashOpn(I.CONST c) = I.Constant.hash c
+   fun eqOpn(I.REG a,I.REG b) = a = b
+     | eqOpn(I.IMMED a,I.IMMED b) = a = b
+     | eqOpn(I.LAB a,I.LAB b) = LabelExp.==(a,b)
+     | eqOpn(I.LO a,I.LO b) = LabelExp.==(a,b)
+     | eqOpn(I.HI a,I.HI b) = LabelExp.==(a,b)
+     | eqOpn(I.CONST a,I.CONST b) = I.Constant.==(a,b)
+     | eqOpn _ = false
 
   fun defUseR instr =
     let
@@ -132,6 +170,10 @@ struct
         | I.ARITH {r,i,d,...} => oper(i,[d],[r])
         | I.SHIFT {r,i,d,...} => oper(i,[d],[r])
         | I.JMPL{defs,uses,d,r,i,...} => oper(i,d:: #1 defs,r:: #1 uses)
+        | I.BR{r,...} => ([],[r])
+        | I.MOVicc{i,d,...} => oper(i,[d],[d])
+        | I.MOVfcc{i,d,...} => oper(i,[d],[d])
+        | I.MOVR{r,i,d,...} => oper(i,[d],[r,d])
         | I.CALL{defs,uses,...} => (15 :: #1 defs, #1 uses)
         | I.JMP{r,i,...} => oper(i,[],[r])
         | I.RET{leaf=false,...} => ([],[31])
@@ -143,9 +185,7 @@ struct
         | I.Ticc{r,i,...} => oper(i,[],[r]) 
         | I.RDY{d,...} => ([d],[]) 
         | I.WRY{r,i,...} => oper(i,[],[r]) 
-(*
-        | I.ANNOTATION(i,_) => defUseR i
-*)
+        | I.ANNOTATION{i,...} => defUseR i
         | _ => ([],[])  
     end
 
@@ -159,25 +199,32 @@ struct
       | I.FCMP{r1,r2,...} => ([],[r1,r2])
       | I.JMPL{defs,uses,...} => (#2 defs,#2 uses)
       | I.CALL{defs,uses,...} => (#2 defs,#2 uses)
+      | I.FMOVicc{r,d,...} => ([d],[r,d])
+      | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)
       | I.FCOPY{src,dst,...} => (dst,src)
-(*
-      | I.ANNOTATION(i,_) => defUseF i
-*)
+      | I.ANNOTATION{i,...} => defUseF i
       | _ => ([],[])
 
   fun defUse C.GP = defUseR
     | defUse C.FP = defUseF
     | defUse _    = error "defUse"
 
-(*
-  fun annotate(i,a) = I.ANNOTATION(i,a)
-  fun annotations i =
-      let fun f(I.ANNOTATION(i,a),l) = f(i,a::l)
-            | f(i,l) = (i,l)
-      in  f(i,[]) end
-*)
+  (*========================================================================
+   *  Annotations 
+   *========================================================================*)
+  fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
+    | getAnnotations _ = []
+  fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
+  (*========================================================================
+   *  Groups 
+   *========================================================================*)
+  fun getGroup(I.ANNOTATION{i,...}) = getGroup i
+    | getGroup(I.GROUP r) = r
+    | getGroup _ = error "getGroup"
+
+  val makeGroup = I.GROUP
 end
 
 

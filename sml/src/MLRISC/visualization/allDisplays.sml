@@ -1,3 +1,9 @@
+(*
+ * This module ties together all the visualization backends.
+ *
+ * -- Allen
+ *)
+
 functor AllDisplaysFn (val viewer : string ref) : 
 sig
    include GRAPH_DISPLAY

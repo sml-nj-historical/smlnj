@@ -1,3 +1,9 @@
+(*
+ * Probability datatype (what the hell is this?)
+ *
+ * -- Allen
+ *)
+
 signature PROBABILITY =
 sig
    eqtype prob
@@ -85,6 +91,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

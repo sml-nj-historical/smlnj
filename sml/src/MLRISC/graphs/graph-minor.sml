@@ -2,6 +2,8 @@
  *  Graph minor.
  *  Allows contraction of nodes.  
  *  Remove self-edges during contraction. 
+ *  
+ *  -- Allen
  *) 
 signature GRAPH_MINOR_VIEW =
 sig
@@ -135,6 +137,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

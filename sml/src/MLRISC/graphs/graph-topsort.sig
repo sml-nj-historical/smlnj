@@ -1,3 +1,9 @@
+(*
+ * This module returns a topological sort of an acyclic graph.
+ * 
+ * -- Allen
+ *)
+
 signature GRAPH_TOPOLOGICAL_SORT = 
 sig
 
@@ -8,6 +14,3 @@ sig
 
 end
 
-(* 
- * $Log$
- *)

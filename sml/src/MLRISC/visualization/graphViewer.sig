@@ -1,3 +1,9 @@
+(*
+ * Graph viewer signature.
+ *
+ * -- Allen
+ *)
+
 signature GRAPH_VIEWER =
 sig
 
@@ -5,6 +11,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -21,7 +21,7 @@ end
 
 
 functor X86Spill(structure Instr: X86INSTR
-		 structure Asm : EMITTER_NEW where I = Instr (* XXX *)
+		 structure Asm : INSTRUCTION_EMITTER where I = Instr (* XXX *)
 		   
 		 ) : X86SPILL = struct
 
@@ -31,7 +31,7 @@ functor X86Spill(structure Instr: X86INSTR
   structure I = Instr
   structure C = I.C
 
-  fun error msg = MLRiscErrorMsg.impossible ("X86Spill: " ^ msg)
+  fun error msg = MLRiscErrorMsg.impossible("X86Spill: "^ msg)
 
   type s = I.instruction * int * I.operand -> 
 	     {code:I.instruction list, proh:int list, instr:I.instruction option}
@@ -48,7 +48,7 @@ functor X86Spill(structure Instr: X86INSTR
   fun immedOrReg(I.Direct r) = true
     | immedOrReg opnd = immed opnd
 
-  fun eqEA(I.Displace{base=b1, disp=d1}, I.Displace{base=b2, disp=d2}) = 
+  fun eqEA(I.Displace{base=b1, disp=d1,...},I.Displace{base=b2, disp=d2,...}) = 
       b1=b2 andalso
        (case (d1, d2) 
 	 of (I.Immed i1, I.Immed i2) => i1 = i2
@@ -63,13 +63,13 @@ functor X86Spill(structure Instr: X86INSTR
   fun spill(instr, reg, spillLoc) = let
     fun done code = {code=code, proh=[], instr=NONE}
     fun rewrite new old = if old=reg then new else old
-  in
+    fun spillIt instr =
     case instr
-    of I.CALL(opnd, (r,f,c), uses) => let
+    of I.CALL(opnd, (r,f,c), uses, mem) => let
          val tmpR = newReg()
        in
 	 {proh=[tmpR],
-	  instr=SOME(I.CALL(opnd, (map (rewrite tmpR) r,f,c), uses)),
+	  instr=SOME(I.CALL(opnd, (map (rewrite tmpR) r,f,c), uses, mem)),
 	  code=[I.MOVE{mvOp=I.MOVL, src=I.Direct tmpR, dst=spillLoc}] }
        end
      | I.MOVE{mvOp=I.MOVZX, src, dst} => let(* dst must always be a register *)
@@ -122,33 +122,36 @@ functor X86Spill(structure Instr: X86INSTR
      | I.POP _ => done [I.POP spillLoc]
      | I.COPY _ => error "spill: COPY"
      | I.FNSTSW  => error "spill: FNSTSW"
+     | I.ANNOTATION{i,a} => spillIt i
      | _ => error "spill"
+  in spillIt instr
   end
 
   fun reload(instr, reg, spillLoc) = let
     fun operand(rt, opnd) =
       (case opnd
        of I.Direct r => if r=reg then I.Direct rt else opnd
-        | I.Displace{base, disp} => 
-	   if base=reg then I.Displace{base=rt, disp=disp} else opnd
-	| I.Indexed{base=NONE, index, scale, disp} => 
+        | I.Displace{base, disp, mem} => 
+	   if base=reg then I.Displace{base=rt, disp=disp, mem=mem} else opnd
+	| I.Indexed{base=NONE, index, scale, disp, mem=mem} => 
 	   if index=reg then
-	     I.Indexed{base=NONE, index=rt, scale=scale, disp=disp}
+	     I.Indexed{base=NONE, index=rt, scale=scale, disp=disp, mem=mem}
 	   else opnd
-	| I.Indexed{base as SOME b, index, scale, disp} => 
+	| I.Indexed{base as SOME b, index, scale, disp, mem=mem} => 
 	   if b=reg then 
 	     operand(rt, I.Indexed{base=SOME rt, index=index, 
-				   scale=scale, disp=disp})
+				   scale=scale, disp=disp, mem=mem})
 	   else if index=reg then
-	     I.Indexed{base=base, index=rt, scale=scale, disp=disp}
+	     I.Indexed{base=base, index=rt, scale=scale, disp=disp, mem=mem}
 		else opnd
 	| opnd => opnd
       (*esac*))
 
     fun uses(I.Direct r) = r = reg	(* XXX *)
-      | uses(I.Displace{base, disp}) = base=reg
-      | uses(I.Indexed{base=NONE, index, scale, disp}) = index=reg
-      | uses(I.Indexed{base=SOME b, index, scale, disp})= b=reg orelse index=reg
+      | uses(I.Displace{base, disp, mem}) = base=reg
+      | uses(I.Indexed{base=NONE, index, scale, disp, mem}) = index=reg
+      | uses(I.Indexed{base=SOME b, index, scale, disp, mem})= 
+          b=reg orelse index=reg
       | uses _ = false
     fun done c = {code=c, proh=[]}
     fun rewrite rt r = if r=reg then rt else r
@@ -157,16 +160,17 @@ functor X86Spill(structure Instr: X86INSTR
       val tmpR = newReg()
     in {code=[ldSpillLoc(tmpR), f tmpR], proh=[tmpR]}
     end
-  in
+    fun reloadIt instr =
     case instr
     of I.JMP(I.Direct _, labs) => {code=[I.JMP(spillLoc, labs)], proh=[]}
      | I.JMP(opnd, labs) => withTmp(fn tmpR => I.JMP(operand(tmpR, opnd), labs))
      | I.JCC{opnd=I.Direct _, cond} => done[I.JCC{opnd=spillLoc, cond=cond}]
      | I.JCC{opnd, cond} => 
 	withTmp(fn tmpR => I.JCC{opnd=operand(tmpR, opnd), cond=cond})
-     | I.CALL(opnd, defs, uses as (r,f,c)) => 
+     | I.CALL(opnd, defs, uses as (r,f,c), mem) => 
 	withTmp(fn tmpR =>
-		  I.CALL(operand(tmpR, opnd), defs, (map (rewrite tmpR) r, f,c)))
+		  I.CALL(operand(tmpR, opnd), defs, 
+                         (map (rewrite tmpR) r, f,c), mem))
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
 	withTmp(fn tmpR =>I.MOVE{mvOp=mvOp, src=operand(tmpR, src), dst=dst})
      | I.MOVE{mvOp, src as I.Direct _, dst} => 
@@ -207,12 +211,15 @@ functor X86Spill(structure Instr: X86INSTR
 	withTmp(fn tmpR => 
 		  I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst})
 				     
+     | I.ANNOTATION{i,a} => reloadIt i
      | _ => error "reload"
+  in reloadIt instr
   end (*reload*)
 
   fun fspill(instr, reg, spillLoc) = 
     (case instr
       of I.FSTP _ => {proh=[], instr=NONE, code=[I.FSTP spillLoc]}
+       | I.ANNOTATION{i,a} => fspill(i, reg, spillLoc)
        | _ => error "fspill"
     (*esac*))
 
@@ -224,6 +231,7 @@ functor X86Spill(structure Instr: X86INSTR
 	     {code=[I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}],
 	      proh=[]}
 	   else error "freload:FBINARY"
+       | I.ANNOTATION{i,a} => freload(i, reg, spillLoc)
        | _  => error "freload"
     (*esac*))
 end

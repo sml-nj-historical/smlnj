@@ -149,7 +149,7 @@ fun switch1(e : 'value, cases : (int*'cexp) list, default : 'cexp, (lo,hi)) =
    in g (List.length chunks, chunks, (lo, hi))
   end
 
-val sortcases = Sort.sort (fn ((i:int,_),(j,_)) => i>j)
+val sortcases = ListMergeSort.sort (fn ((i:int,_),(j,_)) => i>j)
 
 fun int_switch(e: 'value, l, default, inrange) =
   let val len = List.length l
@@ -236,7 +236,8 @@ fun int_switch(e: 'value, l, default, inrange) =
    end
 
  fun coalesce(l:(string * 'a)list) : (int * (string * 'a) list) list = let
-     val l' as (s,_)::_ = Sort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
+     val l' as (s,_)::_ = 
+       ListMergeSort.sort (fn ((s1,_),(s2,_)) => size s1 > size s2) l
      fun gather(n,[],current,acc) = (n,current)::acc
        | gather(n,(x as (s,a))::rest,current,acc) = let val s1 = size s
 	 in
@@ -313,5 +314,8 @@ end (* toplevel local *)
 end (* structure Switch *)
 
 (*
- * $Log$
+ * $Log: switch.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:47  george
+ * Version 110.5
+ *
  *)

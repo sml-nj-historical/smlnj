@@ -49,6 +49,7 @@ Library
 	structure TransactionLog
 	structure Unionfind
 	structure UnionFindRef
+	structure Word64
 	functor FixedPointFn
 	functor RegMapFn
 	functor TransactionFn
@@ -98,3 +99,4 @@ is
 	undoable-ref.sml
 	union-find.sml
 	uref.sml
+	word64.sml

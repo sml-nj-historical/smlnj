@@ -1,13 +1,17 @@
+(*
+ * Simple module for building the IR etc.  Doesn't do any real optimizations.
+ *
+ * -- Allen
+ *)
+
 functor MLRISCGlue
-   (structure Asm  : EMITTER_NEW
+   (structure Asm : INSTRUCTION_EMITTER
     structure F  : FLOWGRAPH
     structure P  : INSN_PROPERTIES
-       sharing P.I = Asm.I = F.I
-       sharing F.P = Asm.P
+    structure FreqProps : FREQUENCY_PROPERTIES
+       sharing P.I = Asm.I = F.I = FreqProps.I
+       sharing F.P = Asm.P 
     val copyProp : F.cluster -> F.cluster
-    val branchProb : P.I.instruction -> int
-    val patchBranch : {instr:P.I.instruction,backwards:bool} -> 
-          P.I.instruction list
    ) : MLRISC_GLUE =
 struct
 
@@ -15,14 +19,13 @@ struct
    structure I = F.I
    structure B = F.B
  
-   val mlrisc  = MLRISC_Control.mlrisc
-   val phases  = MLRISC_Control.mlrisc_phases
+   val viewer  = MLRISC_Control.getString     "viewer"
+   val mlrisc  = MLRISC_Control.getFlag       "mlrisc"
+   val phases  = MLRISC_Control.getStringList "mlrisc-phases"
+   val view_IR = MLRISC_Control.getFlag       "view-IR"
+   val verbose = MLRISC_Control.getFlag       "verbose"
 
-   val view_IR = MLRISC_Control.getFlag "view_IR"
-   val verbose = MLRISC_Control.getFlag "verbose"
-   val viewer  = MLRISC_Control.getString "viewer"
-
-   fun error msg = MLRiscErrorMsg.impossible("MLRISCGlue."^msg)
+   fun error msg = MLRiscErrorMsg.error("MLRISCGlue",msg)
 
    structure GraphViewer = GraphViewerFn(AllDisplaysFn(val viewer = viewer))
 
@@ -32,15 +35,14 @@ struct
       (structure I = I
        structure B = B
        structure P = F.P
-       structure W = FixedPointFn(val decimal_bits = 8)
        structure GraphImpl = DirectedGraph
        structure Asm = Asm
+       structure Ctrl = MLRISC_Control
       )
 
    structure CFG2Cluster = CFG2ClusterFn
       (structure CFG = CFG
        structure F   = F
-       val patchBranch = patchBranch
       )
 
    structure Cluster2CFG = Cluster2CFGFn
@@ -72,9 +74,14 @@ struct
        structure Loop        = Loop
        structure GraphViewer = GraphViewer
        structure Util        = Util
+       structure Ctrl        = MLRISC_Control
       )
 
-   structure Guess = StaticBranchPredictionFn(IR)
+   structure Guess = StaticBranchPredictionFn
+                        (structure IR = IR
+                         structure Props = P
+                         structure FreqProps = FreqProps
+                        )
       
    structure Liveness = LivenessAnalysisFn(CFG)
 
@@ -93,12 +100,7 @@ struct
          | doPhase "cfg->cluster" (IR cfg) = 
             CLUSTER(CFG2Cluster.cfg2cluster{cfg=cfg,relayout=false})
          | doPhase "guess" (r as IR ir) =
-            let fun prob(CFG.BLOCK{insns,...}) = 
-                    case !insns of
-                       [] => 100
-                    |  jmp::_ => branchProb jmp
-            in  Guess.profile {loopMultiplier=10,branchProb=prob} ir; r
-            end
+            (Guess.profile {loopMultiplier=10} ir; r)
          | doPhase "reshape"   (r as IR ir) = (Reshape.reshapeBranches ir; r)
          | doPhase "view-cfg"  (r as IR ir) = (view "cfg" ir; r)
          | doPhase "view-dom"  (r as IR ir) = (view "dom" ir; r)

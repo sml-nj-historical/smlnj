@@ -1,4 +1,9 @@
-(* The basis seems to be missing a string stream type *)
+(* 
+ * The basis seems to be missing a string (out)stream type.
+ * This is it.
+ *
+ * -- Allen.
+ *)
 signature STRING_STREAM =
 sig
    type streambuf 
@@ -51,6 +56,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

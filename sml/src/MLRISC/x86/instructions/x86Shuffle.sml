@@ -3,7 +3,7 @@ struct
   structure I = I
   structure Shuffle = Shuffle(I)
 
-  type t = {regMap:int->int, temp:I.ea option, dst:int list, src:int list}
+  type t = {regmap:int->int, tmp:I.ea option, dst:int list, src:int list}
 
   exception foo
   val shuffle =

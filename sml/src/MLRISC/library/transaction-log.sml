@@ -1,3 +1,10 @@
+(*
+ * This implements a transaction log.  This is used
+ * for undoable data structures.
+ *
+ * -- Allen
+ *)
+
 structure TransactionLog : TRANSACTION_LOG =
 struct
    exception TransactionLog
@@ -41,6 +48,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

@@ -1,5 +1,7 @@
 (*
- *  Make a graph readonly
+ *  This view make a graph readonly.
+ *
+ *  -- Allen
  *)
 
 signature READONLY_GRAPH_VIEW =
@@ -53,6 +55,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

@@ -1,3 +1,9 @@
+(*
+ * Non growable dense set in bitvector format.
+ * 
+ * -- Allen
+ *)
+
 structure BitSet :> BITSET =
 struct
 
@@ -66,6 +72,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

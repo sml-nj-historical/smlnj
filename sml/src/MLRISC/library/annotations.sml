@@ -1,13 +1,28 @@
+(*
+ *  User definable annotations.
+ *
+ *  Note: annotations will now be used extensively in all part of
+ *  the optimizer.
+ *
+ *  Idea is stolen from Stephen Weeks
+ * 
+ *  -- Allen
+ *)
+
 structure Annotations : ANNOTATIONS =
 struct
 
    type annotation = exn
    type annotations = annotation list
 
-   exception COMMENT of string
+   val prettyPrinters = ref [] : (annotation -> string) list ref 
 
-   fun toString(COMMENT s) = s
-     | toString e          = "<"^exnName e^">"
+   fun attachPrettyPrinter p = prettyPrinters := p :: !prettyPrinters
+
+   fun toString a =
+   let fun pr([]) = "<"^exnName a^">"
+         | pr(p::ps) = (p a handle _ => pr ps)
+   in  pr(!prettyPrinters) end
 
    (*
     * Look ma, a real use of generative exceptions!
@@ -36,6 +51,3 @@ struct
 
 end
 
-(* 
- * $Log$
- *)

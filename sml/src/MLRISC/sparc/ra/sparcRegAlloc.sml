@@ -11,21 +11,18 @@
 functor SparcRegAlloc(structure I : INSTRUCTIONS where C = SparcCells
 		      structure P : INSN_PROPERTIES where I = I
 		      structure F : FLOWGRAPH where I = I 
-		      structure Asm : EMITTER_NEW where I = I and P=F.P
+		      structure Asm : INSTRUCTION_EMITTER where I = I and P=F.P
 		     ) :
   sig
+    structure I : INSTRUCTIONS
     functor IntRa (structure RaUser : RA_USER_PARAMS
-		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : RA
-
+		     where I = I and B = F.B) : RA
     functor FloatRa (structure RaUser : RA_USER_PARAMS
-		     where type I.operand = I.operand
-		       and type I.instruction = I.instruction
-		       and type B.name = F.B.name) : RA
-   end =
+		     where I = I and B = F.B) : RA
+   end=
 struct
 
+  structure I = I
   structure C=I.C
 
   (* liveness analysis for general purpose registers *)
@@ -33,8 +30,8 @@ struct
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.GP
-	     fun regSet c = #1 (c:SparcCells.cellset)
-	     fun cellset((_,f),r) = (r,f))
+	     val regSet = C.getCell C.GP
+	     val cellset = C.updateCell C.GP)
 
 
   functor IntRa =
@@ -49,7 +46,7 @@ struct
 	   val firstPseudoR = 32
 	   val maxPseudoR = SparcCells.maxCell
 	   val numRegs = SparcCells.numCell SparcCells.GP
-	   fun regSet c = #1 (c:SparcCells.cellset)
+	   val regSet = C.getCell C.GP
 	end)
 
   (* liveness analysis for floating point registers *)
@@ -57,8 +54,8 @@ struct
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.FP
-	     fun regSet c = #2 (c:SparcCells.cellset)
-	     fun cellset((r,_),f) = (r,f))
+	     val regSet = C.getCell C.FP
+	     val cellset = C.updateCell C.FP)
 
   functor FloatRa =
     RegAllocator
@@ -69,25 +66,10 @@ struct
 	   structure Liveness=FregLiveness
 
  	   val defUse = P.defUse C.FP
-	   val firstPseudoR = 32
+	   val firstPseudoR = 64
 	   val maxPseudoR = SparcCells.maxCell 
 	   val numRegs = SparcCells.numCell SparcCells.FP
-	   fun regSet c = #2 (c:SparcCells.cellset)
+	   val regSet = C.getCell C.FP
 	end)
 end
 
-(*
- * $Log: sparcRegAlloc.sml,v $
- * Revision 1.1.1.1  1999/01/04 21:56:27  george
- *   Version 110.12
- *
- * Revision 1.3  1998/10/06 14:06:27  george
- *  fixed up some machine description problems. [leunga]
- *
- * Revision 1.2  1998/09/30 19:38:39  dbm
- * fixing sharing/defspec conflict
- *
- * Revision 1.1.1.1  1998/08/05 19:38:49  george
- *   Release 110.7.4
- *
- *)

@@ -7,11 +7,10 @@ functor CallGC
   (structure Cells : CELLS
    structure C : CPSREGS where T.Region=CPSRegions
    structure MS: MACH_SPEC
-   structure MLTreeComp : MLTREECOMP where T = C.T
    structure MkRecord : MK_RECORD where T = C.T
    ) : CALLGC =
 struct
-  structure T : MLTREE = MLTreeComp.T
+  structure T : MLTREE = C.T
   structure D = MS.ObjDesc
   structure LE = LabelExp
   structure R = CPSRegions
@@ -19,8 +18,6 @@ struct
   structure S = SortedList
 
   val dtoi = LargeWord.toInt
-  val emit = MLTreeComp.mlriscComp
-  val comp = MLTreeComp.mltreeComp
 
   val skidPad = 4096			(* extra space in allocation space *)
 
@@ -31,6 +28,8 @@ struct
      regfmls:  T.mlrisc list,
      regtys: CPS.cty list,
      return: T.stm}
+
+  type emitter = {emit:T.stm -> unit, comp:T.mltree -> unit}
 
   datatype binding =
       Reg of int			(* register *)
@@ -49,21 +48,21 @@ struct
   val sp = Cells.stackptrR
   val unit = 1				(* used to initialize registers *)
 
-  fun stackEA 0 = T.REG sp
-    | stackEA n = T.ADD(T.REG sp, T.LI n)
+  fun stackEA 0 = T.REG(32,sp)
+    | stackEA n = T.ADD(32,T.REG(32,sp), T.LI n)
 
-  fun storeToSp(n, e) = emit(T.STORE32(stackEA n, e, R.STACK))
-  fun loadFromSp(r, n) = emit(T.MV(r, T.LOAD32(stackEA n, R.STACK)))
+  fun storeToSp(n, e) = T.STORE(32, stackEA n, e, R.stack)
+  fun loadFromSp(r, n) = T.MV(32, r, T.LOAD(32, stackEA n, R.stack))
 
   fun set bindings = let
     fun isStackPtr sp = (sp = Cells.stackptrR)
     fun live(rexp, {regs, mem}) = 
       (case rexp
-       of T.REG r => {regs=r::regs, mem=mem}
-        | T.LOAD32(T.REG sp, _) => 
+       of T.REG(_,r) => {regs=r::regs, mem=mem}
+        | T.LOAD(32,T.REG(_,sp), _) => 
            if isStackPtr sp then {regs=regs, mem=0::mem} 
 	   else error "set:LOAD32"
-	| T.LOAD32(T.ADD(T.REG sp, T.LI i), _) => 
+	| T.LOAD(32,T.ADD(_,T.REG(_,sp), T.LI i), _) => 
            if isStackPtr sp then {regs=regs, mem=i::mem} 
 	   else error "set:ADD"
 	| _ => error "set"
@@ -114,23 +113,26 @@ struct
     (* generate the checklimit, returning the label to 
      * branch to to invoke GC.
      *)
-    fun checkLimit (maxAlloc) = let
+    val unlikely = BasicAnnotations.BRANCH_PROB 0
+    val gcCmp    = if C.signedGCTest then T.GT else T.GTU
+    fun testLimit(allocR) = T.CMP(32, gcCmp, allocR, C.limitptr)
+    val normalTestLimit = testLimit(C.allocptr) 
+    fun checkLimit emit (maxAlloc) = let
       val lab = Label.newLabel ""
       
       fun assignCC(T.CC cc, v) = T.CCMV(cc, v)
-	| assignCC(T.LOADCC(ea,region), v) = T.STORECC(ea, v, region)
+	(*| assignCC(T.LOADCC(ea,region), v) = T.STORECC(ea, v, region)*)
 	| assignCC _ = error "checkLimit.assign"
 
-      fun gotoGC(cc) = emit(T.BCC(T.GTU, cc, lab))
-      fun testLimit(allocR) = T.CMP(T.GTU, allocR, C.limitptr, T.LR)
+      fun gotoGC(cc) = emit(T.ANNOTATION(T.BCC(gcCmp, cc, lab),unlikely))
     in
       if maxAlloc < skidPad then 
 	(case C.exhausted 
 	 of SOME cc => gotoGC(cc) 
-	  | NONE => gotoGC(testLimit(C.allocptr))
+	  | NONE => gotoGC(normalTestLimit)
 	 (*esac*))
       else let
-	  val shiftedAllocPtr = T.ADD(C.allocptr, T.LI(maxAlloc-4096))
+	  val shiftedAllocPtr = T.ADD(32, C.allocptr, T.LI(maxAlloc-4096))
 	in
 	  case C.exhausted
  	  of SOME cc => 
@@ -146,19 +148,20 @@ struct
       | maskList(T.GPR r::rl, t::tl, b, i, f) = 
         (case t
 	  of CPS.INT32t => maskList(rl, tl, b, r::i, f)
-	   | CPS.FLTt => error "checkLimit.maskList: T.GPR"
+           | CPS.FLTt => error "checkLimit.maskList: T.GPR"
 	   | _ => maskList(rl, tl, r::b, i, f)
 	(*esac*))
       | maskList(T.FPR r::rl, CPS.FLTt::tl, b, i, f) = 
 	 maskList(rl, tl, b, i, r::f)
       | maskList _ = error "checkLimit.maskList"
 
-    fun genGcInfo (clusterRef,known) {maxAlloc, regfmls, regtys, return} = let
+    fun genGcInfo (clusterRef,known) ({emit,comp}:emitter)
+                  {maxAlloc, regfmls, regtys, return} = let
       val (boxed, int32, float) = maskList(regfmls, regtys, [], [], [])
     in
       clusterRef :=
 	 GCINFO{known=known,
-		lab=ref (checkLimit(maxAlloc)),
+		lab=ref (checkLimit emit (maxAlloc)),
 		boxed=boxed,
 		int32=int32,
 		float=float,
@@ -171,13 +174,13 @@ struct
   end (*local*)
 
   (* allocptr must always be in a register *)
-  val T.REG allocptrR = C.allocptr
+  val T.REG(_,allocptrR) = C.allocptr
 
-  fun invokeGC (external, regmap) gcInfo = let
+  fun invokeGC {emit,comp} (external, regmap) gcInfo = let
     val {known, boxed, int32, float, regfmls, ret, lab} =
       (case gcInfo
 	of GCINFO info => info
-         | MODULE {info=GCINFO info, addrs} => info
+         | MODULE {info=GCINFO info, ...} => info
 	 | _ => error "invokeGC:gcInfo"
       (*esac*))
 
@@ -186,16 +189,16 @@ struct
     val gcRoots = difference(allRoots, liveBoxed)
 
     fun copy([], []) = ()
-      | copy(dst, src) = emit(T.COPY(dst, src))
+      | copy(dst, src) = emit(T.COPY(32, dst, src))
 
     fun assign(dst, src) = 
       (case (dst, src)
-       of (Reg i, None) => emit(T.MV(i, T.LI unit))
-	| (Mem i, None) => emit(T.STORE32(stackEA i, T.LI unit, R.STACK))
-	| (Reg i, Mem j) => loadFromSp(i, j)
-	| (Mem i, Reg j) => emit(T.STORE32(stackEA i, T.REG j, R.STACK))
-	| (Reg i, Reg j) => emit(T.COPY([i],[j]))
-	| (Mem i, Mem j) => storeToSp(i, T.LOAD32(stackEA j, R.STACK))
+       of (Reg i, None) => emit(T.MV(32, i, T.LI unit))
+	| (Mem i, None) => emit(T.STORE(32, stackEA i, T.LI unit, R.stack))
+	| (Reg i, Mem j) => emit(loadFromSp(i, j))
+	| (Mem i, Reg j) => emit(T.STORE(32, stackEA i, T.REG(32, j), R.stack))
+	| (Reg i, Reg j) => emit(T.COPY(32, [i],[j]))
+	| (Mem i, Mem j) => emit(storeToSp(i, T.LOAD(32, stackEA j, R.stack)))
 	| _ => error "assign"
       (*esac*))
 
@@ -222,10 +225,10 @@ struct
 	  | SOME(recd as Record{reg, ...}) => 
 	     (case gcRoots
 	       of Reg r::rest =>
-		  (emit(T.COPY([r], [reg]));
+		  (emit(T.COPY(32, [r], [reg]));
 		   doMem(live, rest, {loc=Reg r, value=recd}::tbl, dst, src))
 		| Mem i::rest => 
-		   (emit(T.STORE32(stackEA i, T.REG reg, R.STACK));
+		   (emit(T.STORE(32, stackEA i, T.REG(32,reg), R.stack));
 		    doMem(live, rest, {loc=Mem i, value=recd}::tbl, dst, src))
 	     (*esac*))
 	(*esac*))
@@ -236,10 +239,10 @@ struct
 	 | SOME(rw as Raw{reg, ...}) => 
 	   (case gcRoots
 	    of Reg r::rest =>
-	        (emit(T.COPY([r], [reg]));
+	        (emit(T.COPY(32, [r], [reg]));
  	 	 doRecord(live, rest, [{loc=Reg r, value=rw}], dst, src))
 	     | Mem i::rest => 
-		(emit(T.STORE32(stackEA i, T.REG reg, R.STACK));
+		(emit(T.STORE(32, stackEA i, T.REG(32,reg), R.stack));
 		 doRecord(live, rest, [{loc=Mem i, value=rw}], dst, src))
 	     | _ => error "doRaw"
 	  (*esac*))
@@ -266,10 +269,10 @@ struct
       fun mkRaw64Array() = let
 	fun storefields() = let
 	  fun storefloat(f, offset) =
-	    (emit(T.STORED(T.ADD(C.allocptr, T.LI offset), f, R.RW_MEM));
+	    (emit(T.FSTORE(64,T.ADD(32, C.allocptr, T.LI offset), f, R.memory));
 	     offset+8)
 	  fun storeint32(i32, offset) =
-	    (emit(T.STORE32(T.ADD(C.allocptr, T.LI offset), i32, R.RW_MEM));
+	    (emit(T.STORE(32,T.ADD(32,C.allocptr, T.LI offset), i32, R.memory));
 	     offset+4)
 	in 
 	  List.foldl storeint32 (List.foldl storefloat 4 float) int32
@@ -278,11 +281,11 @@ struct
 	val desc = dtoi(D.makeDesc(len + len, D.tag_raw64))
 	val ans = Cells.newReg()
       in
-	emit(T.MV(allocptrR, T.ORB(C.allocptr, T.LI 4))); (* align *)
-	emit(T.STORE32(C.allocptr, T.LI desc, R.RW_MEM));
-	emit(T.MV(ans, T.ADD(C.allocptr, T.LI 4)));
+	emit(T.MV(32, allocptrR, T.ORB(32, C.allocptr, T.LI 4))); (* align *)
+	emit(T.STORE(32, C.allocptr, T.LI desc, R.memory));
+	emit(T.MV(32, ans, T.ADD(32, C.allocptr, T.LI 4)));
 	storefields();
-	emit(T.MV(allocptrR, T.ADD(C.allocptr, T.LI(len * 8 + 4))));
+	emit(T.MV(32, allocptrR, T.ADD(32, C.allocptr, T.LI(len * 8 + 4))));
 	Raw{reg=ans, orig=mapOnto(T.FPR, float, map T.GPR int32)}
       end (* mkRaw64Array *)
 
@@ -292,19 +295,20 @@ struct
 	    | f(Raw{reg, ...}) = reg
 	    | f(Mem i) = let
 		val tmp = Cells.newReg()
-	      in loadFromSp(tmp, i); tmp
+	      in emit(loadFromSp(tmp, i)); tmp
 	      end
 	    | f _ = error  "mkRecord.getReg.f"
 	  val offp0 = CPS.OFFp 0
-	in (T.REG(f boxed), offp0)
+	in (T.REG(32, f boxed), offp0)
 	end
 	val vl = map getReg fields
 	val len = length fields
 	val desc = T.LI(dtoi(D.makeDesc(len, D.tag_record)))
 	val ans = Cells.newReg()
       in 
-	MkRecord.record{desc=desc, fields=vl, ans=ans, mem=R.RW_MEM, hp=0};
-	emit(T.MV(allocptrR, T.ADD(C.allocptr, T.LI (len*4+4))));
+	MkRecord.record{desc=desc, fields=vl, ans=ans, mem=R.memory, 
+                        hp=0, emit=emit};
+	emit(T.MV(32, allocptrR, T.ADD(32, C.allocptr, T.LI (len*4+4))));
 	Record{reg=ans, orig=fields}
       end (* mkRecord *)
 
@@ -350,17 +354,18 @@ struct
     fun unzip(dst, src, tbl) = let
       fun move {loc, value=Raw{orig, ...}} = let
 	   val tmp = Cells.newReg()
-	   fun srcAddr i = T.ADD(T.REG tmp, T.LI i)
+	   fun srcAddr i = T.ADD(32, T.REG(32, tmp), T.LI i)
 	   fun unbundle(fexp, offset) = 
 	     (case fexp
-	      of T.FPR(T.FREG f) => 
-		  (emit(T.FMV(f, T.LOADD(srcAddr offset, R.RO_MEM))); 
+	      of T.FPR(T.FREG(64, f)) => 
+		  (emit(T.FMV(64, f, T.FLOAD(64, srcAddr offset, R.readonly))); 
 		   offset+8)
-	       | T.FPR(T.LOADD(ea, _)) =>
-		  (emit(T.STORED(ea, T.LOADD(srcAddr offset, R.RO_MEM), R.RO_MEM));
+	       | T.FPR(T.FLOAD(64,ea, _)) =>
+		  (emit(T.FSTORE(64,ea,
+                           T.FLOAD(64,srcAddr offset, R.readonly), R.readonly));
 		   offset+8)
-	       | T.GPR(T.REG r) => 
-		  (emit(T.MV(r, T.LOAD32(srcAddr offset, R.RO_MEM))); 
+	       | T.GPR(T.REG(32, r)) => 
+		  (emit(T.MV(32, r, T.LOAD(32, srcAddr offset, R.readonly))); 
 		   offset+4)
 	      (*esac*))
 	  in 
@@ -368,20 +373,20 @@ struct
 	  end
 	| move {loc, value=Record{orig, ...}} = let
 	    val tmp = Cells.newReg()
-	    fun srcValue i = T.LOAD32(T.ADD(T.REG tmp, T.LI i), R.RO_MEM)
+	    fun srcValue i = T.LOAD(32,T.ADD(32,T.REG(32,tmp),T.LI i),R.readonly)
 	    fun unbundle(elem, offset) = 
 	      (case elem
 	       of Raw{reg, ...} => let
 		    val tmp = Cells.newReg()
 		  in
-		   (emit(T.MV(tmp, srcValue offset));  
+		   (emit(T.MV(32, tmp, srcValue offset));  
 		    move{loc=Reg tmp, value=elem};
 		    offset+4)
 		  end
 	        | Reg r => 
-		   (emit(T.MV(r, srcValue(offset))); offset+4)
+		   (emit(T.MV(32, r, srcValue(offset))); offset+4)
 		| Mem m => 
-		   (emit(T.STORE32(stackEA m, srcValue offset, R.RO_MEM));
+		   (emit(T.STORE(32, stackEA m, srcValue offset, R.readonly));
 		    offset+4) 
 	       (*esac*))
 	  in 
@@ -396,20 +401,20 @@ struct
       val roots = map T.GPR allregs
       val def = case C.exhausted of NONE => roots | SOME cc => T.CCR cc::roots
       val use = roots
-      val gcAddr = T.ADD (C.stackptr, T.LI MS.startgcOffset)
+      val gcAddr = T.ADD (32, C.stackptr, T.LI MS.startgcOffset)
     in
-      emit(T.CALL(T.LOAD32(gcAddr, R.STACK), def, use));
+      emit(T.CALL(T.LOAD(32, gcAddr, R.stack), def, use, R.stack));
       if known then let			(* recompute base address *)
 	  val returnLab = Label.newLabel ""
 	  fun assignBasePtr baseptr = let
 	    val baseExp =
-	      T.ADD(C.gcLink, 
+	      T.ADD(32, C.gcLink, 
 		    T.LABEL(LE.MINUS(LE.CONST MS.constBaseRegOffset, 
 				     LE.LABEL returnLab)))
 	  in
 	    case baseptr
-	    of T.REG bpt => T.MV(bpt, baseExp)
-	     | T.LOAD32(ea, mem) => T.STORE32(ea, baseExp, mem)
+	    of T.REG(ty, bpt) => T.MV(ty, bpt, baseExp)
+	     | T.LOAD(ty, ea, mem) => T.STORE(ty, ea, baseExp, mem)
 	     | _  => error "callGc: baseptr"
           end
 	in
@@ -434,31 +439,31 @@ struct
   (* Generates long jumps to the end of the module unit for
    * standard functions, and directly invokes GC for known functions.
    *)
-  fun emitLongJumpsToGCInvocation regmap = let
+  fun emitLongJumpsToGCInvocation {emit,comp} regmap = let
     (* GC code can be shared if the calling convention is the same *)
     fun equal
 	 (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _), ...},
 	  GCINFO{boxed=b2, int32=i2, float=f2, ret=T.JMP(ret2, _), ...}) = let
-	 fun eqEA(T.REG r1, T.REG r2) = (r1 = r2)
-	   | eqEA(T.ADD(T.REG r1, T.LI i), T.ADD(T.REG r2, T.LI j)) =
+	 fun eqEA(T.REG(_,r1), T.REG(_,r2)) = (r1 = r2)
+	   | eqEA(T.ADD(_,T.REG(_,r1),T.LI i), T.ADD(_,T.REG(_,r2),T.LI j)) =
 	       r1=r2 andalso i=j		
 	   | eqEA _ = false
-	 fun eqR(T.REG r1, T.REG r2) = (r1 = r2)
-	   | eqR(T.LOAD32(ea1, _), T.LOAD32(ea2, _)) = eqEA(ea1, ea2)
+	 fun eqR(T.REG(_,r1), T.REG(_, r2)) = (r1 = r2)
+	   | eqR(T.LOAD(32,ea1, _), T.LOAD(32,ea2, _)) = eqEA(ea1, ea2)
 	   | eqR _ = false
 
-	  fun eqF(T.FREG f1, T.FREG f2) = (f1=f2)
-	    | eqF(T.LOADD(ea1, _), T.LOADD(ea2, _)) = eqEA(ea1, ea2)
+	  fun eqF(T.FREG(_,f1), T.FREG(_,f2)) = (f1=f2)
+	    | eqF(T.FLOAD(64,ea1, _), T.FLOAD(64,ea2, _)) = eqEA(ea1, ea2)
 	    | eqF _ = false
 
-	  fun all pred = let
-	    fun allp (a::r1, b::r2) = pred(a,b) andalso (allp (r1, r2))
-	      | allp ([], []) = true
-	      | allp _ = false
-	  in allp
-	  end
-	    
-	  val eqRexp = all eqR
+          fun all pred = let
+            fun allp (a::r1, b::r2) = pred(a,b) andalso (allp (r1, r2))
+              | allp ([], []) = true
+              | allp _ = false
+          in allp 
+          end
+
+          val eqRexp = all eqR
 	in 
 	  eqRexp (b1, b2) andalso  eqRexp (ret1::i1, ret2::i2) 
 	    andalso all eqF (f1, f2)
@@ -492,12 +497,13 @@ struct
   in
     (app find (!clusterGcBlocks)) before clusterGcBlocks := [];
     app longJumps (!moduleGcBlocks);
-    (app (invokeGC (false,regmap)) (!knownGcBlocks)) before knownGcBlocks:=[]
+    (app (invokeGC {emit=emit,comp=comp}
+          (false,regmap)) (!knownGcBlocks)) before knownGcBlocks:=[]
   end (*emitLongJumpsToGC*)
 
   (* module specific gc invocation code *)
-  fun emitModuleGC regmap = 
-    (app (invokeGC (true,regmap)) (!moduleGcBlocks)) before moduleGcBlocks:=[]
+  fun emitModuleGC emit regmap = 
+    (app (invokeGC emit (true,regmap)) (!moduleGcBlocks)) before moduleGcBlocks:=[]
 
 end
 

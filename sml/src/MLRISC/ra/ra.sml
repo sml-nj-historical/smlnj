@@ -80,8 +80,16 @@ struct
 		(*-------------------------------*)
   (* set of dedicated registers *)
   val spillRegSentinel  = ~1
-  val dedicated         = SL.uniq (spillRegSentinel :: RaUser.dedicated)
-  val isDedicated       = SL.member dedicated
+  val dedicated         = SL.uniq(RaUser.dedicated)
+  val firstPseudoR      = RaArch.firstPseudoR
+  val dedicatedRegs     = Array.array(firstPseudoR,false)
+  val _                 = app (fn r => Array.update(dedicatedRegs,r,true)) 
+                             dedicated
+   
+  (* A faster version of isDedicated *)
+  fun isDedicated r     = r < 0 orelse r < firstPseudoR andalso
+                                       Unsafe.Array.sub(dedicatedRegs,r)
+
 
   (* Note: This function maintains the order of members in rset
    * which is important when dealing with parallel copies.
@@ -108,16 +116,18 @@ struct
   end
 
   fun printBlocks(blks, regmap) = let
+    val regmap = C.lookup regmap
+    val RaArch.AsmEmitter.S.STREAM{emit,...} = 
+         RaArch.AsmEmitter.makeStream()
+    val emit = emit regmap
     fun prBlks([]) = print"\n"
       | prBlks(F.BBLOCK{blknum,insns,liveOut,liveIn,succ,pred,...}::blocks)=let
-          fun rmap r = (Intmap.map regmap r) handle _ => r
-	  fun regset cellset = map rmap (RaArch.regSet(cellset))
+	  fun regset cellset = map regmap (RaArch.regSet(cellset))
 	  fun pr [] = prList(regset(!liveOut), "liveOut: ")
-	    | pr (instr::rest) = 
-	       (RaArch.AsmEmitter.emitInstr(instr,regmap); pr rest)
-	  fun blkNum(F.BBLOCK{blknum, ...}) = blknum
-	    | blkNum(F.ENTRY{blknum, ...}) = blknum
-	    | blkNum(F.EXIT{blknum, ...}) = blknum
+	    | pr (instr::rest) = (emit instr; pr rest)
+	  fun blkNum(F.BBLOCK{blknum, ...},_) = blknum
+	    | blkNum(F.ENTRY{blknum, ...},_) = blknum
+	    | blkNum(F.EXIT{blknum, ...},_) = blknum
 	    | blkNum _ = error "printBlocks.prBlks.blkNum"
 	in
 	  print("BLOCK" ^ Int.toString blknum ^ "\n");
@@ -132,15 +142,10 @@ struct
       | prBlks(F.LABEL lab::blocks) = 
 	  (print(Label.nameOf lab^":\n");
 	   prBlks(blocks)) 
-      | prBlks(F.ORDERED blks::blocks) = (prBlks blks; prBlks blocks)
       | prBlks(F.PSEUDO pOp::blocks) = (print (F.P.toString pOp); prBlks(blocks))
       | prBlks(_::blocks) = prBlks(blocks)
 
-    val saveStrm= !AsmStream.asmOutStream
-  in
-    AsmStream.asmOutStream:=TextIO.stdOut;
-    prBlks blks;
-    AsmStream.asmOutStream:=saveStrm
+  in AsmStream.withStream TextIO.stdOut prBlks blks
   end
 
   fun debug(flag, msg, blocks, regmap) =
@@ -152,7 +157,7 @@ struct
 
 		(*------------------------------*)
   fun graphColoring(mode, blocks, cblocks, blockDU, prevSpills, 
-						    nodes, regmap) = let
+		    nodes, regmap) = let
     datatype worklists = WKL of
       {simplifyWkl: node list,	(* nodes that can be simplified *)
        moveWkl : move list,	(* moves to be considered for coalescing *)
@@ -171,6 +176,8 @@ struct
     (* Info to undo a spill when an optimistic spill has occurred *)
     val spillFlag = ref false		
     val undoInfo : (node * moveStatus ref) list ref  = ref []
+
+    val proh     = Array.array(RaArch.firstPseudoR,~1)
 
     (* lower triangular bitmatrix primitives *)
     (* NOTE: The average ratio of E/N is about 16 *)
@@ -259,22 +266,35 @@ struct
 
 		      This is not currently done.
 		   *)
-		  fun zip(defs, uses) = let
-		    fun f([], []) = mvs
-                      | f(d::defs, u::uses) = 
-		        if d=u then f(defs, uses) 
-			else MV{dst=d, src=u, status=ref WORKLIST}::f(defs, uses)
-		  in if length defs <> length uses then mvs else f(defs, uses)
-		  end
+		  fun zip(d::defs, u::uses) = 
+                      if isDedicated d orelse
+                         isDedicated u then zip(defs, uses)
+                      else
+                      let val d as NODE{number=x,...} = chaseReg d
+                          val u as NODE{number=y,...} = chaseReg u
+                      in  if x = y then zip(defs,uses)
+                          else
+                           MV{dst=d, src=u, status=ref WORKLIST}::
+                            zip(defs, uses)
+                      end
+                    | zip([],[]) = mvs
+
+
 
 		  (* Assumes that the move temporary if present is always the
 		   * first thing on the definition list.
 		   *)
 		  val moves = 
 		    if P.moveInstr instr then 
-		       (case P.moveTmpR instr
-			 of NONE => zip(def, use)
-		          | SOME r => if null def then mvs  else zip(tl def, use))
+		    let val (defs,uses) = RaArch.defUse instr
+                        val defs = 
+                            case defs of
+                              [] => []
+                            | _::rest => case P.moveTmpR instr of
+                                            SOME _ => rest
+                                         |  NONE => defs
+                    in  zip(defs,uses)
+                    end
 		    else mvs
 
 		  val live = 
@@ -384,7 +404,7 @@ struct
 	     add(ns, addMvWkl(!movelist, wkl))
 	   else
 	     add(ns, wkl)
-	| add(_::ns, wkl) = add(ns, wkl)
+	| add(_::ns, wkl) = add(ns,wkl)
     in
       add(node:: (!adj), moveWkl)
     end
@@ -709,7 +729,7 @@ struct
 	  val liveout = uniqMap (rNum, rmvDedicated(RaArch.regSet(!liveOut)))
 	in
 	  case !succ
-	  of [F.EXIT _] => 
+	  of [(F.EXIT _,_)] => 
 	      (case SL.intersect(spillable,liveout) 
 	       of [] => doBBlocks(n+1)
 		| some =>
@@ -860,7 +880,7 @@ struct
 		      | f([], [], _, _) = error "newReloadCopy.f"
 		  in f(rds, rss, [], [])
 		  end
-
+		
 		  (* insert reloading code and continue *)
 		  fun reloadInstr(instr, du, newI, newBDU, prevSpills) = let
 		    val {code, proh} = 
@@ -915,10 +935,8 @@ struct
 		    val {newI, newBDU} = outputInstrs(code, newI, newBDU)
 		  in 
 		    case instr
-		    of NONE => 
-		        doInstrs(rest, bDU, newI, newBDU, prevSpills)
-		     | SOME instr => 
-		        reload(defUse instr, instr, newI, newBDU, prevSpills)
+		    of NONE => doInstrs(rest, bDU, newI, newBDU, prevSpills)
+		     | SOME instr => reload(defUse instr, instr, newI, newBDU, prevSpills)
 		  end
 		
 		  fun spillCopy() = let
@@ -1043,17 +1061,17 @@ struct
     fun assignColors(WKL{stack,  ...}) = let 
       (* Briggs's optimistic spilling heuristic *)
       fun optimistic([], spills) = spills
-	| optimistic((node as NODE{color, adj, ...}) ::ns, spills) = let
-	    fun neighbors [] = []
+	| optimistic((node as NODE{color, number, adj, ...}) ::ns, spills) = let
+	    fun neighbors [] = ()
 	      | neighbors(r::rs) = 
 	        (case chase r
-		  of NODE{color=ref (COLORED col), number, ...} => 
+		  of NODE{color=ref (COLORED col), ...} => 
 		       if col = spillRegSentinel then neighbors rs
-		       else col::neighbors rs
+		       else (Array.update(proh,col,number); neighbors rs)
 		   | _ => neighbors rs
 		 (*esac*))
-	    val neighs = neighbors(!adj)
-	    fun getcolor () = RaUser.getreg{pref=[], proh=neighs}
+	    val _ = neighbors(!adj)
+	    fun getcolor () = RaUser.getreg{pref=[], stamp=number, proh=proh}
 	  in
 	    let val col = getcolor()
 	    in
@@ -1151,7 +1169,7 @@ struct
 	      Unsafe.Array.update(cblocks, n, blk);
 	      Unsafe.Array.update(blockDU, n, map insnDefUse (!insns));
               case !succ
-              of [F.EXIT _] => 
+              of [(F.EXIT _,_)] => 
 		 app (fn i => (getnode i; ()))
 		     (rmvDedicated(RaArch.regSet(!liveOut)))
                | _  => ();
@@ -1183,15 +1201,58 @@ struct
 end (* functor *)
 
 (*
- * $Log: ra.sml,v $
- * Revision 1.6  1999/04/16 14:58:33  george
- *   changes to support new x86 code generator
+ * Log: ra.sml,v
+ * Revision 1.16  1999/06/15 19:32:02  leunga
  *
- * Revision 1.5  1999/03/24 21:26:02  george
- *   fixed bug in implementation of flags
+ * Changed IteratedCoalescing back to RegAllocator
  *
- * Revision 1.4  1999/03/22 21:06:44  george
- *  new GC API (take II)
+ * Revision 1.15  1999/06/15 03:42:36  leunga
+ *
+ * Fixed up isDedicated
+ *
+ * Revision 1.14  1999/06/15 03:40:06  leunga
+ *
+ * Faster isDedicated and more correct zip.
+ *
+ * Revision 1.13  1999/06/15 03:37:55  mlrisc
+ * Improved the function isDedicated.  And added the zip parallel copy fix.
+ *
+ * Revision 1.12  1999/05/20 23:55:42  leunga
+ *
+ * Sparc has been converted to V9.
+ * PowerPC instruction selection module has been converted to the new MLTREE
+ *
+ * Revision 1.11  1999/05/13 19:31:01  leunga
+ * *** empty log message ***
+ *
+ * Revision 1.10  1999/05/11 21:03:22  leunga
+ * *** empty log message ***
+ *
+ * Revision 1.9  1999/05/11 20:37:02  leunga
+ * *** empty log message ***
+ *
+ * Revision 1.8  1999/04/25 21:07:34  mlrisc
+ *
+ * Merged with changes in 110.16
+ *
+ * Revision 1.7  1999/04/25 07:11:53  mlrisc
+ *
+ * Added execution frequencies to clusters
+ *
+ * Revision 1.6  1999/04/06 20:15:45  leunga
+ * *** empty log message ***
+ *
+ * Revision 1.5  1999/04/06 03:00:23  leunga
+ *
+ * Changed the stream interface; emit now takes a regmap
+ *
+ * Revision 1.4  1999/04/06 00:25:24  leunga
+ *
+ * Revert back to old instruction representation.
+ *
+ * Revision 1.3  1999/04/02 16:12:54  leunga
+ *
+ * Added Lal's ra changes from 110.15
  *
  * Revision 1.3  1999/03/22 17:25:26  george
  *   Changes for new MLRISC Control

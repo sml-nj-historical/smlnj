@@ -1,3 +1,9 @@
+(*
+ * This backend communicates with the daVinci tool.
+ *
+ * -- Allen
+ *)
+
 structure daVinci : GRAPH_DISPLAY =
 struct
 
@@ -6,7 +12,7 @@ struct
 
    exception DIR
 
-   fun suffix() = "daVinci"
+   fun suffix() = ".daVinci"
    fun program() = "daVinci"
 
    fun visualize out (G.GRAPH G) =
@@ -111,6 +117,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

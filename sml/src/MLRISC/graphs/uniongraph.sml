@@ -1,5 +1,7 @@
 (*
- *  The union of two graphs
+ *  The union of two graphs.
+ *
+ *  -- Allen
  *)
 
 signature UNION_GRAPH_VIEW =
@@ -97,6 +99,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

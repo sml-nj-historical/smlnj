@@ -1,6 +1,7 @@
-
 (*
- *  Make a singleton graph 
+ *  A singleton graph view (i.e. graph with one node.)
+ *
+ * -- Allen
  *)
 
 signature SINGLETON_GRAPH_VIEW =
@@ -56,6 +57,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

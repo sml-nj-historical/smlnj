@@ -50,31 +50,47 @@ structure OS_IO : OS_IO =
         (* no win32 polling devices for now *)
 	val noPolling = "polling not implemented for win32 for this device/type"
 
-	datatype poll_desc = PollDesc of iodesc
+	type poll_flags = {rd : bool, wr: bool, pri: bool}
+	datatype poll_desc = PollDesc of (iodesc * poll_flags)
 	datatype poll_info = PollInfo of poll_desc
 	
-	fun pollDesc id = SOME (PollDesc id) (* NONE *)
-	fun pollToIODesc (PollDesc pd) = pd (* raise Fail("pollToIODesc: "^noPolling) *)
+	fun pollDesc id = SOME (PollDesc (id,{rd=false,wr=false,pri=false}))
+	fun pollToIODesc (PollDesc (pd,_)) = pd 
+
 	exception Poll
 
-	fun pollIn pd = pd (* raise Fail("pollIn: "^noPolling) *)
-	fun pollOut pd = pd (* raise Fail("pollOut: "^noPolling) *)
-	fun pollPri pd = pd (* raise Fail("pollPri: "^noPolling) *)
+	fun pollIn (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=true,wr=wr,pri=pri})
+	fun pollOut (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=rd,wr=true,pri=pri})
+	fun pollPri (PollDesc (iod,{rd,wr,pri})) = PollDesc (iod,{rd=rd,wr=wr,pri=true})
 
 	local 
-	    val poll' : (word32 list * (Int32.int * int) option -> word32 list) = 
+	    val poll' : (word32 list * (int * word) list * (Int32.int * int) option -> (word32 list * (int * word) list)) = 
 		CInterface.c_function "WIN32-IO" "poll"
-	    fun toPollInfo (w) = PollInfo (PollDesc (OS.IO.IODesc (ref w)))
-	    fun fromPollDesc (PollDesc (OS.IO.IODesc (ref w))) = w
+
+	    fun join (false, _, w) = w
+	      | join (true, b, w) = Word.orb(w, b)
+	    fun test (w, b) = (Word.andb(w, b) <> 0w0)
+	    val rdBit = 0w1 and wrBit = 0w2 and priBit = 0w4
+
+	    fun toPollInfoIO (fd) = PollInfo (PollDesc (OS.IO.IODesc (ref fd),{rd=false,wr=false,pri=false}))
+	    fun toPollInfoSock (i,w) = PollInfo (PollDesc (OS.IO.SockDesc (i),{rd = test(w,rdBit),
+									       wr = test(w,wrBit),
+									       pri = test(w,priBit)}))
+	    fun fromPollDescIO (PollDesc (OS.IO.IODesc (ref w),_)) =SOME (w)
+	      | fromPollDescIO _ = NONE
+	    fun fromPollDescSock (PollDesc (OS.IO.SockDesc (i),{rd,wr,pri})) = SOME (i,join (rd,rdBit, join (wr,wrBit, join (pri,priBit,0w0))))
+	      | fromPollDescSock _ = NONE
 	in
 	    fun poll (pdl,t) = 
 		let val timeout = (case t
 				     of SOME (t) => SOME (Time.toSeconds (t),
 							  Int.fromLarge (Time.toMicroseconds t))
 				      | NONE => NONE)
-		    val info = poll' (List.map fromPollDesc pdl,timeout)
+		    val (infoIO,infoSock) = poll' (List.mapPartial fromPollDescIO pdl,
+						   List.mapPartial fromPollDescSock pdl,
+						   timeout)
 		in
-		    List.map toPollInfo info
+		    List.@ (List.map toPollInfoIO infoIO,List.map toPollInfoSock infoSock)
 		end
 	end
 		    
@@ -84,3 +100,16 @@ structure OS_IO : OS_IO =
 
 	fun infoToPollDesc (PollInfo pd) = pd (* raise Fail("infoToPollDesc: "^noPolling) *)
     end
+
+(*
+ * $Log: os-io.sml,v $
+ * Revision 1.2.2.2  1999/06/29 18:28:45  riccardo
+ * Winsock support
+ *
+ * Revision 1.2  1997/06/02 19:16:29  jhr
+ *   SML'97 Basis Library changes (phase 2)
+ *
+ * Revision 1.1.1.1  1997/01/14  01:38:26  george
+ *   Version 109.24
+ *
+ *)

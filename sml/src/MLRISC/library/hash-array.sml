@@ -1,5 +1,11 @@
+(*
+ * Dynamic (sparse) array that uses hashing
+ *
+ * -- Allen
+ *)
+
 structure HashArray : 
-     sig include ARRAY_SIG
+     sig include ARRAY
          val array' : int * (int -> 'a) -> 'a array
          val array'': int * (int -> 'a) -> 'a array
          val clear  : 'a array -> unit 
@@ -166,6 +172,3 @@ struct
     end
 end
 
-(*
- * $Log$
- *)

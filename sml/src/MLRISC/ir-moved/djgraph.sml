@@ -26,9 +26,7 @@ struct
        val methods     = Dom.methods D
        val L           = Dom.max_levels D
        val N           = #capacity dom ()
-       val node_info   = #node_info dom
-       val idom        = #immediately_dominates methods 
-       fun levelOf x   = let val Dom.DOM{level,...} = node_info x in level end
+       val levels      = Dom.levels D
        val in_DF       = A.array(N,0)  (* has appeared in the DF set? *)
        val stamp       = ref 0
        fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end
@@ -46,10 +44,10 @@ struct
         *)
        fun DF x =
        let val stamp = new_stamp()
-           val level_x = levelOf x
+           val level_x = A.sub(levels,x)
            fun walk(z, S) = 
                let fun scan((_,y,_)::es,S) =
-                       if levelOf y <= level_x andalso
+                       if A.sub(levels,y) <= level_x andalso
                            unmarked(in_DF,y,stamp) then scan(es,y::S)
                        else scan(es,S)
                      | scan([],S) = S
@@ -72,7 +70,7 @@ struct
        let val stamp = new_stamp()
            fun init([],l) = l
              | init(x::xs,l) = 
-               let val l_x = levelOf x
+               let val l_x = A.sub(levels,x)
                in  A.update(in_alpha,x,stamp);
                    A.update(piggybank,l_x,x::A.sub(piggybank,l_x));
                    init(xs,if l < l_x then l_x else l)
@@ -80,7 +78,7 @@ struct
            fun visit(y,level_x,S) =
            let fun scan([],S) = S
                  | scan((_,z,_)::es,S) =
-                   let val level_z = levelOf z
+                   let val level_z = A.sub(levels,z)
                    in  if level_z <= level_x andalso unmarked(in_DF,z,stamp) 
                        then (if A.sub(in_alpha,z) <> stamp 
                              then A.update(piggybank,level_z,
@@ -103,7 +101,7 @@ struct
                  [] => visitAll(l-1,S)
                | x::xs => (A.update(visited,x,stamp);
                            A.update(piggybank,l,xs);
-                           visitAll(l,visit(x,levelOf x,S)))
+                           visitAll(l,visit(x,A.sub(levels,x),S)))
 
            val L = init(xs,~1) 
        in  visitAll(L,[])
@@ -116,6 +114,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

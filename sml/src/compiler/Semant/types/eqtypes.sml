@@ -249,7 +249,7 @@ let val tycons: tycon list stampMap = newMap UnboundStamp
     (* phase 0: scan signature strenv, joining eqprops of shared tycons *)
     val _ = addstr str
     val tycStamps = 
-      Sort.sort (fn xy => Stamps.cmp xy = GREATER) (!tycStampsRef)
+      ListMergeSort.sort (fn xy => Stamps.cmp xy = GREATER) (!tycStampsRef)
  in 
     (* phase 1: propagate YES backwards and NO forward *)
     app propagate_YES_NO tycStamps;
@@ -481,6 +481,9 @@ end (* structure EqTypes *)
 
 (*
  * $Log: eqtypes.sml,v $
+ * Revision 1.2  1998/09/30 19:25:31  dbm
+ * added comment
+ *
  * Revision 1.1.1.1  1998/04/08 18:39:36  george
  * Version 110.5
  *

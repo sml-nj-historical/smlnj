@@ -1,3 +1,10 @@
+(*
+ * These modules provide views in which all entry or exit edges
+ * are invisible.
+ *
+ * -- Allen
+ *)
+
 signature NO_ENTRY_VIEW = 
 sig
     val no_entry_view : ('n,'e,'g) Graph.graph -> ('n,'e,'g) Graph.graph
@@ -93,6 +100,3 @@ struct
        }
    end
 end
-(*
- * $Log$
- *)

@@ -1,5 +1,7 @@
 (*
  * Start-stop adaptor.  Add a new start/stop node to a graph view.
+ *
+ * -- Allen
  *)
 
 signature START_STOP_VIEW = 
@@ -83,6 +85,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

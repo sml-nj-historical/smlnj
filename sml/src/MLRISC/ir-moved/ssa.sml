@@ -10,7 +10,9 @@
  *
  * For the stack of renamed variables, we use the scheme proposed
  * by Briggs, Cooper, Harvey and Simpson in Software Practice & Experience
- * 1988.
+ * 1988.  (Actually we don't)
+ *
+ * -- Allen
  *)
 
 functor StaticSingleAssignmentFormFn
@@ -27,6 +29,11 @@ struct
    type copy    = {dst : var list, src : var list} -> unit
 
    structure DJ = DJGraphFn(Dom)  
+
+   fun app f = 
+   let fun g [] = ()
+         | g (x::xs) = (f x; g xs)
+   in  g end
 
    (*
     * Place join nodes at the iterated dominance frontier of def_sites(v)
@@ -95,6 +102,9 @@ struct
            in  v'
            end
 
+           fun rename_uses [] = []
+             | rename_uses (v::vs) = rename_use v::rename_uses vs
+
                (* rename a definition of v *)
            fun rename_def v =
            let val v' = rename_var v
@@ -104,28 +114,32 @@ struct
                v'
            end
 
+           fun rename_defs [] = []
+             | rename_defs (v::vs) = rename_def v::rename_defs vs
+
            fun copy_def(v,v') =
                (A.update(stacks,v,v'::A.sub(stacks,v));
                 old_defs := v :: !old_defs)
 
                (* parallel copy *)
            fun copy {dst,src} =
-               ListPair.app copy_def (dst,map rename_use src)
+               ListPair.app copy_def (dst,rename_uses src)
 
                (* rename statement of the form defs := uses in block X 
                 * We must rename the uses first!!! 
                 *)
            fun rename {defs,uses} =
-           let val uses' = map rename_use uses
-               val defs' = map rename_def defs
+           let val uses' = rename_uses uses
+               val defs' = rename_defs defs
            in  {defs=defs',uses=uses'}
            end
 
                (* rename the definition of phi functions *) 
            fun rename_phi_def X =
            let val X_phis = A.sub(phis,X)
-               val X_phis = map(fn (v',v,uses) =>
-                                   (v',rename_def v,uses)) X_phis
+               fun rn [] = []
+                 | rn((v',v,uses)::rest) = (v',rename_def v,uses)::rn rest
+               val X_phis = rn X_phis
            in  A.update(phis,X,X_phis) 
            end
 
@@ -134,10 +148,11 @@ struct
            let val out_edges = #out_edges cfg X
                fun rename_phi_of_Y (e as (X,Y,_)) =
                let val Y_phis = A.sub(phis,Y)
-                   fun insert_use (v',v,uses) = 
-                            (v',v,rename_use v'::uses)
+                   fun insert_uses [] = []
+                     | insert_uses((v',v,uses)::rest) = 
+                         (v',v,rename_use v'::uses)::insert_uses rest
                in  A.update(in_edges,Y,e::A.sub(in_edges,Y));
-                   A.update(phis,Y,map insert_use Y_phis)
+                   A.update(phis,Y,insert_uses Y_phis)
                end
            in  app rename_phi_of_Y out_edges
            end
@@ -161,6 +176,3 @@ struct
                          
 end
 
-(*
- * $Log$
- *) 

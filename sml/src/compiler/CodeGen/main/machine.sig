@@ -6,8 +6,10 @@ signature MACHINE = sig
   structure F : FLOWGRAPH
   structure P : INSN_PROPERTIES
 	where I = F.I and C = F.C
-  structure Asm  : EMITTER_NEW
-        where I = F.I and  P = F.P
+  structure Asm : INSTRUCTION_EMITTER
+        where I = F.I and  P = F.P 
+  structure FreqProps : FREQUENCY_PROPERTIES
+        where I = F.I
 
   val copyProp :  F.cluster -> F.cluster
 

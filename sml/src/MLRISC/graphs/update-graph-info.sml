@@ -1,5 +1,7 @@
 (*
- *  Update graph info
+ *  Update graph info.
+ *
+ *  -- Allen
  *)
 
 signature UPDATE_GRAPH_INFO =
@@ -48,6 +50,3 @@ struct
        }
 end
 
-(*
- * $Log$
- *)

@@ -339,19 +339,19 @@ XXXX
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/Unix/sources.cm" > unix-lib.cm
 	fi
+      # make the INet library
+        cd $SRCDIR/smlnj-lib/INet
+        echo "$CM_MAKE_LIB" | $BINDIR/sml-cm
+	if [ ! -f $LIBDIR/inet-lib.cm ]; then
+          cd $LIBDIR
+          echo "Alias $SRCDIR/smlnj-lib/INet/sources.cm" > inet-lib.cm
+	fi
       # make the HTML library
         cd $SRCDIR/smlnj-lib/HTML
         echo "$CM_MAKE_LIB" | $BINDIR/sml
 	if [ ! -f $LIBDIR/html-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/HTML/sources.cm" > html-lib.cm
-	fi
-      # make the Reactive library
-        cd $SRCDIR/smlnj-lib/Reactive
-        echo "$CM_MAKE_LIB" | $BINDIR/sml
-	if [ ! -f $LIBDIR/reactive-lib.cm ]; then
-          cd $LIBDIR
-          echo "Alias $SRCDIR/smlnj-lib/Reactive/sources.cm" > reactive-lib.cm
 	fi
       # make the PP library
         cd $SRCDIR/smlnj-lib/PP
@@ -366,6 +366,13 @@ XXXX
 	if [ ! -f $LIBDIR/regexp-lib.cm ]; then
           cd $LIBDIR
           echo "Alias $SRCDIR/smlnj-lib/RegExp/sources.cm" > regexp-lib.cm
+	fi
+      # make the Reactive library
+        cd $SRCDIR/smlnj-lib/Reactive
+        echo "$CM_MAKE_LIB" | $BINDIR/sml
+	if [ ! -f $LIBDIR/reactive-lib.cm ]; then
+          cd $LIBDIR
+          echo "Alias $SRCDIR/smlnj-lib/Reactive/sources.cm" > reactive-lib.cm
 	fi
       ;;
       ml-yacc-lib)
@@ -466,17 +473,20 @@ if [ "$ENABLE_AUTOLOADING" = "TRUE" ]; then
   if [ "$AUTOLOAD_SMLNJ_UNIX" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/unix-lib.cm\");"
   fi
+  if [ "$AUTOLOAD_SMLNJ_INET" = "TRUE" ]; then
+    CMD="$CMD CM.autoload'(\"$LIBDIR/inet-lib.cm\");"
+  fi
   if [ "$AUTOLOAD_SMLNJ_HTML" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/html-lib.cm\");"
-  fi
-  if [ "$AUTOLOAD_SMLNJ_REACTIVE" = "TRUE" ]; then
-    CMD="$CMD CM.autoload'(\"$LIBDIR/reactive-lib.cm\");"
   fi
   if [ "AUTOLOAD_SMLNJ_PP" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/pp-lib.cm\");"
   fi
   if [ "AUTOLOAD_SMLNJ_REGEXP" = "TRUE" ]; then
     CMD="$CMD CM.autoload'(\"$LIBDIR/regexp-lib.cm\");"
+  fi
+  if [ "$AUTOLOAD_SMLNJ_REACTIVE" = "TRUE" ]; then
+    CMD="$CMD CM.autoload'(\"$LIBDIR/reactive-lib.cm\");"
   fi
   cd $ROOT
   $BINDIR/sml <<XXXX

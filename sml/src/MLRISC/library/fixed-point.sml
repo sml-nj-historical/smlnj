@@ -1,3 +1,9 @@
+(* 
+ * A simple fixed point datatype
+ * 
+ * -- Allen
+ *)
+
 functor FixedPointFn (val decimal_bits : int) : FIXED_POINT =
 struct
 
@@ -27,17 +33,10 @@ struct
    val one      = 0w1 << bits
    val realOne  = Real.fromInt(int one)
 
-   val op+      = W.+
-   val op-      = W.-
+   val compare  = W.compare
+
    val op*      = fn(i:fixed_point,j:fixed_point) => W.*(i >> bits2,j >> bits2)
    val op/      = fn(i:fixed_point,j:fixed_point) => (i << bits) div j
-   val op<      = W.<
-   val op>      = W.>
-   val op>=     = W.>=
-   val op<=     = W.<=
-   val !=       = fn(i:fixed_point,j:fixed_point) => i <> j
-   val ==       = fn(i:fixed_point,j:fixed_point) => i = j
-   val compare  = W.compare
 
    val mask     = one - 0w1
 
@@ -53,11 +52,8 @@ struct
    fun scale(i,j)   = W.*(i, word j)
    fun i div j      = W.div(i,word j)
 
-   val max = W.max
-   val min = W.min
+   val min = W.min 
+   val max = W.max 
 
 end
 
-(*
- * $Log$
- *)

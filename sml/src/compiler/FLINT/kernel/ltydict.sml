@@ -28,23 +28,23 @@ in
 fun bug s = ErrorMsg.impossible ("LtyDict: " ^ s)
 val say = Control.Print.say
 
-structure TcDict = BinaryDict(struct type ord_key = tyc
-                                     val cmpKey = tc_cmp
-                              end)
+structure TcDict = BinaryMapFn(struct type ord_key = tyc
+				      val compare = tc_cmp
+			       end)
 
-structure LtDict = BinaryDict(struct type ord_key = lty
-                                     val cmpKey = lt_cmp
-                              end)
+structure LtDict = BinaryMapFn(struct type ord_key = lty
+				      val compare = lt_cmp
+			       end)
 
 type tyc = tyc
 type lty = lty
 
 fun tmemo_gen {tcf, ltf} =
-  let val m1 = ref (TcDict.mkDict())
-      val m2 = ref (LtDict.mkDict())
+  let val m1 = ref (TcDict.empty)
+      val m2 = ref (LtDict.empty)
 
       fun tc_look t = 
-        (case TcDict.peek(!m1, t)
+        (case TcDict.find(!m1, t)
           of SOME t' => t'
            | NONE => 
                let val x = (tcf tc_look) t
@@ -53,7 +53,7 @@ fun tmemo_gen {tcf, ltf} =
                end)
 
       and lt_look t = 
-        (case LtDict.peek(!m2, t)
+        (case LtDict.find(!m2, t)
           of SOME t' => t'
            | NONE => 
                let val x = ltf (tc_look, lt_look) t
@@ -64,12 +64,12 @@ fun tmemo_gen {tcf, ltf} =
   end (* tmemo_gen *)
 
 fun wmemo_gen {tc_wmap, tc_umap, lt_umap} = 
-  let val m1 = ref (TcDict.mkDict())
-      val m2 = ref (TcDict.mkDict())
-      val m3 = ref (LtDict.mkDict())
+  let val m1 = ref (TcDict.empty)
+      val m2 = ref (TcDict.empty)
+      val m3 = ref (LtDict.empty)
 
       fun tcw_look t = 
-        (case TcDict.peek(!m1, t)
+        (case TcDict.find(!m1, t)
           of SOME t' => t'
            | NONE => 
                let val x = (tc_wmap (tcw_look, tcu_look)) t
@@ -78,7 +78,7 @@ fun wmemo_gen {tc_wmap, tc_umap, lt_umap} =
                end)
 
       and tcu_look t = 
-        (case TcDict.peek(!m2, t)
+        (case TcDict.find(!m2, t)
           of SOME t' => t'
            | NONE => 
                let val x = (tc_umap (tcu_look, tcw_look)) t
@@ -87,7 +87,7 @@ fun wmemo_gen {tc_wmap, tc_umap, lt_umap} =
                end)
 
       and ltu_look t = 
-        (case LtDict.peek(!m3, t)
+        (case LtDict.find(!m3, t)
           of SOME t' => t'
            | NONE => 
                let val x = lt_umap (tcu_look, ltu_look) t
@@ -107,5 +107,8 @@ end (* structure LtyDict *)
 
 
 (*
- * $Log$
+ * $Log: ltydict.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:40  george
+ * Version 110.5
+ *
  *)

@@ -3,8 +3,6 @@
  * COPYRIGHT (c) 1994 AT&T Bell Laboratories.
  *
  * Utility code for generating assembler code.
- *
- * $Log$
  *)
 
 structure AsmUtil : sig

@@ -1,3 +1,10 @@
+(*
+ * This implenments node partitions (i.e. a union-find data structure)
+ * on nodes.
+ *
+ * -- Allen
+ *)
+
 signature NODE_PARTITION =
 sig
 
@@ -38,6 +45,3 @@ struct
    fun union' P (x,y)  = U.union' (M.lookup P x, M.lookup P y)
 end
 
-(*
- * $Log$
- *)
