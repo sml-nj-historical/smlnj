@@ -1,0 +1,2 @@
+val it = () : unit
+structure Blah : sig exception BLAH end

@@ -1,0 +1,3 @@
+val it = () : unit
+bug235E.sml:5.3-6.19 Error: duplicate type variable name: a
+bug235E.sml:5.3-6.19 Error: duplicate type variable name: a

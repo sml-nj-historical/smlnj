@@ -1,0 +1,34 @@
+val it = () : unit
+val MAXDOUBLE = 1.79769313486e308 : real
+val MINDOUBLE = 4.94065645841e~324 : real
+val pi = 3.14159265359 : real
+val eps = 1e~14 : real
+infix seq
+val seq = fn : 'a * 'b -> 'b
+val check1 = fn : ('a -> real) * 'a * real -> string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val check2 = fn : ('a * 'b -> real) * 'a * 'b * real -> string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val isInf = fn : real -> string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val it = "OK" : string
+val f = fn : real -> real
+

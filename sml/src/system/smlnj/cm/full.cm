@@ -1,0 +1,13 @@
+(*
+ * Library exporting the "full" structure CM.
+ *
+ * (C) 2000 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Library
+	signature CM
+	structure CM
+is
+	$smlnj/internal/host-compiler-0.cm
+	fetch-full-cm.sml

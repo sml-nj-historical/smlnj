@@ -1,0 +1,6 @@
+val it = () : unit
+r026a-fl.sml:13.1-13.18 Error: pattern and expression in val dec don't agree [literal]
+  pattern:    real
+  expression:    int
+  in declaration:
+    x : real = 12

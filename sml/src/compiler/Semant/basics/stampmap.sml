@@ -1,0 +1,1 @@
+structure StampMap = RedBlackMapFn (Stamps)

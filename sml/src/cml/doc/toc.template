@@ -1,0 +1,25 @@
+<!-- template for CML Manual table of contents page -->
+<HTML>
+<HEAD>
+<TITLE>&title;</TITLE>
+<BODY>
+<A NAME="top"></A>
+<H1 align=center>The Standard ML Basis Library</H1>
+<HR>
+&body;
+<HR>
+<CENTER>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="&parent.url;">Parent</A>
+   | Contents
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="&root.url;">Root</A>
+   ]</B>
+</CENTER>
+<P>
+<I>Generated &today.date;</I><BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
+<HR>
+</BODY>
+</HTML>

@@ -1,0 +1,7 @@
+val it = () : unit
+val divmod = fn : int * int -> int * int
+val it = (1,2) : int * int
+val it = (~2,1) : int * int
+val it = (~2,~1) : int * int
+val it = (1,~2) : int * int
+

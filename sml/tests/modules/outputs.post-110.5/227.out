@@ -1,0 +1,27 @@
+val it = () : unit
+signature S1 =
+  sig
+    eqtype t
+    val x : t
+  end
+functor F : <sig>
+funsig FS1(A: sig
+                eqtype t
+                val x : t
+              end) :
+          sig functor G : <fctsig> end
+funsig FS2(A: sig
+                eqtype t
+                val x : t
+              end) :
+          sig functor G : <fctsig> end
+functor H : <sig>
+functor K : <sig>
+structure a : S1
+structure b : sig functor G : <fctsig> end
+structure c : sig structure B : <sig> end
+val it = true : bool
+structure d : sig functor G : <fctsig> end
+structure e : sig structure B : <sig> end
+val it = true : bool
+

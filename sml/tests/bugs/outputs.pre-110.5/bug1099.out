@@ -1,0 +1,4 @@
+val it = () : unit
+val uniq0 = fn : real list * real -> real list
+val uniq = fn : real list -> real list
+val it = [3.0,4.0,5.0,9.0] : real list

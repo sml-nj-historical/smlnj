@@ -1,0 +1,2 @@
+val it = () : unit
+bug1418.sml:3.1-3.12 Error: unbound structure: CM in path CM.set_path

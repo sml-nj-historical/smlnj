@@ -1,0 +1,3 @@
+val it = () : unit
+bug251.1.sml:3.1-3.28 Error: duplicate type definition: t
+

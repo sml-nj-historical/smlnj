@@ -1,0 +1,21 @@
+val it = () : unit
+signature PROTOBUG =
+  sig
+    type address
+    datatype session = S of address -> int
+    val session : session
+  end
+structure Arg :
+  sig
+    structure Lower : <sig>
+    datatype address = A of Word32.word
+    val resolve : address -> Word32.word
+  end
+functor Connectbug : <sig>
+structure AA :
+  sig
+    type  address = address
+    datatype session = S of address -> int
+    val session : session
+  end
+val should_be_one = 1 : int

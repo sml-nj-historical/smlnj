@@ -1,0 +1,14 @@
+val it = () : unit
+signature S =
+  sig
+    type aa
+    datatype bb = BB of aa
+    val eq_bb : bb -> bb -> bool
+  end
+structure s : S
+signature T =
+  sig
+    type aa
+    val eq_aa : aa -> aa -> bool
+  end
+structure t : T

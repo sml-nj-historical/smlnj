@@ -1,0 +1,4 @@
+val it = () : unit
+datatype t1 = c1 of t1 list * t1 list list
+type  t2 = t1 list
+type  t3 = t2 list

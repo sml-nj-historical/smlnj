@@ -1,0 +1,5 @@
+val it = () : unit
+val f = fn : unit -> 'a list
+bug1066.1.sml:4.1-4.25 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+val it = [] : ?.X1 list

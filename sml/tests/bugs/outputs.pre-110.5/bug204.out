@@ -1,0 +1,3 @@
+val it = () : unit
+signature S1 = sig type d end
+structure X : S1

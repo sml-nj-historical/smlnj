@@ -1,0 +1,16 @@
+val it = () : unit
+structure S :
+  sig
+    type t = int
+    val x : int
+  end
+opening S
+  type t = int
+  val x : int
+structure S :
+  sig
+    type t = bool
+    val x : bool
+  end
+val it = 1 : int
+

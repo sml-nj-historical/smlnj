@@ -1,0 +1,8 @@
+val it = () : unit
+signature S = sig end
+funsig FOO(X: sig end) : sig functor <functor> : <fctsig> end
+functor Foo : <sig>
+functor Foo : <sig>
+structure A : S
+bug684.sml:9.17-9.23 Error: structure C defined by partially applied functor
+

@@ -1,0 +1,10 @@
+(* sources file for mixer example *)
+Group 
+is
+
+cml.cm
+../../sources.cm
+
+color-state.sml  
+spot.sml    
+mixer.sml    

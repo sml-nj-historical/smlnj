@@ -1,0 +1,9 @@
+val it = () : unit
+bug571.sml:4.38-4.43 Error: operator and operand don't agree [circularity]
+  operator domain: {x:'Z, y:'Y, z:{'X}}
+  operand:         {'X}
+  in expression:
+    foo z
+bug571.sml:4.1-4.43 Error: unresolved flex record (need to know the names of ALL the fields
+ in this context)
+  type: {'Z}

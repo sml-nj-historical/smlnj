@@ -1,0 +1,44 @@
+Library
+	structure CMB
+is
+	(* based on current architecture and OS, select CMB *)
+
+# if defined(ARCH_ALPHA)
+	$smlnj/cmb/alpha32-unix.cm
+	select-alpha32-unix.sml
+# elif defined(ARCH_MIPS)
+#   if defined(BIG_ENDIAN)
+	$smlnj/cmb/mipseb-unix.cm
+	select-mipseb-unix.sml
+#   else
+	$smlnj/cmb/mipsel-unix.cm
+	select-mipsel-unix.sml
+#   endif
+# elif defined(ARCH_HPPA)
+	$smlnj/cmb/hppa-unix.cm
+	select-hppa-unix.sml
+# elif defined(ARCH_RS6000)
+	$smlnj/cmb/rs6000-unix.cm
+	select-rs6000-unix.sml
+# elif defined(ARCH_PPC)
+#   if defined(OS_MACOS)
+	$smlnj/cmb/ppc-macos.cm
+	select-ppc-macos.sml
+#   else
+	$smlnj/cmb/ppc-unix.cm
+	select-ppc-unix.sml
+#   endif
+# elif defined(ARCH_SPARC)
+	$smlnj/cmb/sparc-unix.cm
+	select-sparc-unix.sml
+# elif defined(ARCH_X86)
+#   if defined(OS_WIN32)
+	$smlnj/cmb/x86-win32.cm
+	select-x86-win32.sml
+#   else
+	$smlnj/cmb/x86-unix.cm
+	select-x86-unix.sml
+#   endif
+# else
+#   error Strange architecture and/or OS!
+# endif

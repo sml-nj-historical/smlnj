@@ -1,0 +1,43 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+Two lines of output follow:
+1234  <--- this should read 1234
+12345 <--- this should read 12345
+Two lines of output follow:
+abcde <--- this should read abcde
+abcde <--- this should read abcde
+val empty = - : TextIO.outstream
+val small = - : TextIO.outstream
+val medium = - : TextIO.outstream
+val text = - : TextIO.outstream
+val test1 = "OK" : string
+val test2 = "OK" : string
+val test3 = "OK" : string
+val test4 = "OK" : string
+val test5 = "OK" : string
+val test6 = "OK" : string
+val test7a = "OK" : string
+val test7b = "OK" : string
+val test7c = "OK" : string
+val test8a = "OK" : string
+val test8b = "OK" : string
+val test8c = "OK" : string
+val test8d = "OK" : string
+val test8e = "OK" : string
+val test8f = "OK" : string
+val test9a = "OK" : string
+val test9b = "OK" : string
+val test9c = "OK" : string
+val test9d = "OK" : string
+val test9e = "OK" : string
+val test10 = "OK" : string
+val test11 = "OK" : string
+val test12a = "OK" : string
+val test12b = "OK" : string
+val test12c = "OK" : string
+val test12d = "OK" : string

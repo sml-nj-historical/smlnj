@@ -1,0 +1,22 @@
+val it = () : unit
+val map = fn : ('a -> 'b) -> 'a list -> 'b list
+val it = [2,3,4] : int list
+infix 5 ++
+val ++ = fn : 'a list * 'a list -> 'a list
+val it = [1,2,3,4,5,6] : int list
+val reverse = fn : 'a list -> 'a list
+val it = [4,3,2,1] : int list
+val it = [false,true] : bool list
+infix 3 o
+val o = fn : ('a -> 'b) * ('c -> 'a) -> 'c -> 'b
+val it = [1,2,3] : int list
+val zl = [(1,true),(2,false),(3,true)] : (int * bool) list
+val fst = fn : 'a * 'b -> 'a
+val snd = fn : 'a * 'b -> 'b
+val it = [1,2,3] : int list
+val split = fn : ('a * 'b) list -> 'a list * 'b list
+val it = ([1,2,3],[true,false,true]) : int list * bool list
+val member = fn : ''a -> ''a list -> bool
+val it = true : bool
+val it = false : bool
+

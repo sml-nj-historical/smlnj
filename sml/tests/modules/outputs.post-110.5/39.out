@@ -1,0 +1,9 @@
+val it = () : unit
+signature T6 =
+  sig
+    structure A : sig type t end
+    structure B : sig type s end
+    sharing type B.s = A.t
+  end
+functor F : <sig>
+

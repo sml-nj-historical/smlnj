@@ -1,0 +1,11 @@
+-*- text -*-
+
+Here are the current known bugs.
+If you find any other, send it to <monnier+lists.emacs.sml@tequila.cs.yale.edu>.
+
+* indentation of a declaration after a long `datatype' is slow
+
+* TAB moves the cursor to the begining of the text
+
+* buggy indentation samples
+  Try `make test' to see the known problems in testcases.sml

@@ -1,0 +1,4 @@
+val it = () : unit
+signature S0 = sig type u end
+structure D : S0
+functor F2 : <sig>

@@ -1,0 +1,10 @@
+val it = () : unit
+type abs
+datatype rep = Y of abs
+val foo = - : abs
+bug317.sml:8.14-8.23 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         rep * rep
+  in expression:
+    Y x = Y y
+

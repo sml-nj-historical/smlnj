@@ -1,0 +1,59 @@
+(* Copyright YALE FLINT PROJECT 1997 *)
+(* Copyright Bell Labs, Lucent Technologies 1999 *)
+(* intsys.cm *)
+
+(*
+ * Revised for using the new CM. (M.Blume, 7/1999)
+ *)
+
+(primitive)
+Library
+	(* bootstrap stuff *)
+	structure InteractiveSystem
+is
+	$smlnj/init/init.cmi : cm
+
+	$/basis.cm
+	$smlnj/viscomp/core.cm
+
+	(* need access to CM's "init" function *)
+	$smlnj/internal/host-compiler-0.cm
+
+	(* these are just here so they get made... *)
+	$smlnj/compiler.cm
+	$smlnj/cm.cm
+	$smlnj/cmb.cm
+
+	$smlnj/cm/tools.cm
+        (* We need the ml-yacc and ml-lex tool plugins here. They must
+         * always be "plugged in" because they are needed for -rebuild. *)
+	$/mlyacc-tool.cm
+	$/mllex-tool.cm
+	$/grm-ext.cm
+	$/lex-ext.cm
+        (* Technically, the ml-burg tool is not needed here.  It should
+         * eventually be moved into the ML-Burg source tree and installed
+         * from there. *)
+	$/mlburg-tool.cm
+	$/burg-ext.cm
+        (* Technically, the noweb tool is not needed here.  It should
+         * eventually be moved into the noweb source tree and installed
+         * from there. *)
+	$/noweb-tool.cm
+	$/nw-ext.cm
+	(* Register the make tool here. (Kinda unrealistic to hope that
+	 * Unix' make suddenly comes with a CM plugin... *)
+	$/make-tool.cm
+	(* Same for shell tool... *)
+	$/shell-tool.cm
+
+# if not defined(LIGHT)
+	$smlnj/compiler/all.cm
+# endif
+
+	(* build boot environments *)
+	boot-env-fn.sml
+	boot-env.sml
+
+	(* glue code (build the interactive system) *)
+	int-sys.sml

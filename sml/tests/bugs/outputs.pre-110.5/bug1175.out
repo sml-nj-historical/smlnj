@@ -1,0 +1,5 @@
+val it = () : unit
+datatype ('a,'b) Monad = St of 'a -> 'b * 'a
+val unit = fn : 'a -> ('b,'a) Monad
+val bind = fn : ('a,'b) Monad -> ('b -> ('a,'c) Monad) -> ('a,'c) Monad
+val monadmap = fn : ('a -> ('b,'c) Monad) -> 'a list -> ('b,'c list) Monad

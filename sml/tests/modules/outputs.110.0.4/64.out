@@ -1,0 +1,5 @@
+val it = () : unit
+functor F : <sig>
+structure A : sig type  t = int end
+structure B : sig end
+64.sml:18.15-18.20 Error: nonlocal path in structure sharing: B

@@ -1,0 +1,3 @@
+val it = () : unit
+signature SIG = sig structure A : sig end end
+bug1174.1.sml:8.1-8.32 Error: unmatched structure specification: A

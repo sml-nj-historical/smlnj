@@ -1,0 +1,34 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure U : sig type t end
+    datatype r = Kr of U.t
+  end
+signature S3 =
+  sig
+    structure T :
+      sig
+        structure U : <sig>
+        datatype r = Kr of U.t
+      end
+  end
+signature S4 =
+  sig
+    type s
+    datatype t = Kt of s
+  end
+signature S5 =
+  sig
+    structure C : sig structure T : <sig> end
+    structure D : sig structure T : <sig> end
+    structure E :
+      sig
+        type s
+        datatype t = Kt of s
+      end
+    sharing type E.t = C.T.U.t
+  end
+
+uncaught exception Unbound
+  raised at: elaborate/elabmod.sml:1329.39-1329.49

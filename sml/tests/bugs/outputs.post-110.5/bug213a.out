@@ -1,0 +1,5 @@
+val it = () : unit
+datatype 'a $$$ = $ of 'a | $$
+val Fn1 = fn
+  : (int * int) list -> {c:int $$$, p:int $$$} -> {c:int $$$, p:int $$$} list
+

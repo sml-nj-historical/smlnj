@@ -1,0 +1,2 @@
+val it = () : unit
+bug47E.sml:6.16-6.30 Error: explicit type variable cannot be  generalized at its binding  declaration: 'aU

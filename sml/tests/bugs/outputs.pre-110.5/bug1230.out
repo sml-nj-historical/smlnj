@@ -1,0 +1,8 @@
+val it = () : unit
+signature CONS =
+  sig
+    type 'a sign
+    type 'a constructor
+    val new : {name:string, signa:'a sign} -> 'a constructor
+  end
+structure Cons : CONS

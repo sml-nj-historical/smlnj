@@ -1,0 +1,7 @@
+val it = () : unit
+signature S = sig val f : 'a -> int end
+bug545.sml:9.1-12.4 Error: value type in structure doesn't match signature spec
+    name: f
+  spec:   'a -> int
+  actual: 'a -> 'a
+

@@ -1,0 +1,19 @@
+Utility library
+---------------
+  Polymorphic version of dynamic arrays.
+
+HTML Library
+------------
+
+  Rewrite parser as recursive descent (the ML-Yacc version doesn't handle
+  whitespace in the HEAD element very well).
+
+PP Library
+----------
+
+  Add support for tabular layout.
+
+New libraries
+-------------
+
+  CGI scripting

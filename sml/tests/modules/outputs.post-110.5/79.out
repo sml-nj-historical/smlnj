@@ -1,0 +1,13 @@
+val it = () : unit
+79.sml:3.57-3.66 Error: nonlocal path in type sharing: A.t
+79.sml:3.57-3.66 Error: nonlocal path in type sharing: int
+
+uncaught exception in compiler: nonexhaustive match failure
+  raised at: modules/sigmatch.sml:433.37
+             modules/sigmatch.sml:748.36
+             modules/sigmatch.sml:828.24
+             elaborate/elabmod.sml:1231.33
+             util/stats.sml:164.40
+             build/evalloop.sml:123.38
+             build/evalloop.sml:194.58
+

@@ -1,0 +1,9 @@
+val it = () : unit
+bug163.sml:3.8 Error: infix operator "-" used without "op" in fun dec
+bug163.sml:3.20-3.32 Error: case object and rules don't agree [circularity]
+  rule domain: (('Z -> 'Y) * 'X -> 'W) * ('V -> 'U -> 'X) * 'V * 'U
+  object: 'Z * 'T * 'S * 'R
+  in expression:
+    (case (arg,arg,arg,arg)
+      of (-,fact,n,k) => cps - (fact <exp>) k)
+

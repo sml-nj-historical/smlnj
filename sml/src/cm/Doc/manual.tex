@@ -1,0 +1,3200 @@
+\documentclass[titlepage,letterpaper]{article}
+\usepackage{times}
+\usepackage{epsfig}
+
+\marginparwidth0pt\oddsidemargin0pt\evensidemargin0pt\marginparsep0pt
+\topmargin0pt\advance\topmargin by-\headheight\advance\topmargin by-\headsep
+\textwidth6.7in\textheight9.1in
+\columnsep0.25in
+
+\newcommand{\smlmj}{110}
+\newcommand{\smlmn}{30}
+
+\author{Matthias Blume \\
+Research Institute for Mathematical Sciences \\
+Kyoto University}
+
+\title{{\bf CM}\\
+The SML/NJ Compilation and Library Manager \\
+{\it\small (for SML/NJ version \smlmj.\smlmn~and later)} \\
+User Manual}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 3pt minus 2pt}
+
+\newcommand{\nt}[1]{{\it #1}}
+\newcommand{\tl}[1]{{\underline{\bf #1}}}
+\newcommand{\ttl}[1]{{\underline{\tt #1}}}
+\newcommand{\ar}{$\rightarrow$\ }
+\newcommand{\vb}{~$|$~}
+
+\begin{document}
+
+\bibliographystyle{alpha}
+
+\maketitle
+
+\pagebreak
+
+\tableofcontents
+
+\pagebreak
+
+\section{Introduction}
+
+This manual describes a new implementation of CM, the ``Compilation
+and Library Manager'' for Standard ML of New Jersey (SML/NJ).  Like its
+previous version, CM is in charge of managing separate compilation and
+facilitates access to stable libraries.
+
+Programming projects that use CM are typically composed of separate
+{\em libraries}.  Libraries are collections of ML compilation units
+and themselves can be internally sub-structured using CM's notion of
+{\em library components}.
+
+CM offers the following features to the programmer:
+
+\begin{itemize}
+\item separate compilation and type-safe linking~\cite{appel94:sepcomp}
+\item hierarchical modularity~\cite{blume:appel:cm99}
+\item automatic dependency analysis~\cite{blume:depend99}
+\item optimization of the compilation process via {\em
+cutoff}-recompilation techniques~\cite{tichy94}
+\item management of program libraries, distinguishing between libraries
+that are {\em under development} and libraries that are {\em stable}
+\item operating-system independent file naming (with optional escape
+to native file names)
+\item adaptability to changing environments using the {\em path anchor}
+facility
+\item an extensible set of auxiliary {\em tools} that lets CM
+seemlessly interoperate with other program generators, source-control
+systems, literate-programming facilities, or shell-scripts
+\item checked version numbers on libraries
+\item (still rudimentary) support for access control
+\item access to libraries from the interactive toplevel loop
+\item sharing of code that is common to several programs or code that
+is common to both user programs and SML/NJ itself
+\item management of (the sharing of) link-time state
+\item conditional compilation (at compilation unit granularity)
+\item support for parallel and distributed compilation
+\item facilities for generating stand-alone ML programs
+\item a mechanism for deriving dependency information that can be used
+by other compilation managers such as Unix' {\bf make}
+\item an API to access all these facilities at SML/NJ's interactive
+prompt
+\end{itemize}
+
+CM puts emphasis on {\em working with libraries}.  This contrasts with
+previous compilation managers for SML/NJ where the focus was on
+compilation management while libraries were added as an afterthought.
+
+\section{The CM model}
+
+\subsection{Basic philosophy}
+
+The venerable {\bf make} of Unix~\cite{feldman79} is {\em
+target-oriented}\/: one starts with a main goal (target) and applies
+production rules (with associated actions such as invoking a compiler)
+until no more rules are applicable. The leaves of the resulting
+derivation tree\footnote{``Tree'' is figurative speech here since the
+derivation really yields a DAG.} can be seen as defining the set of
+source files that are used to make the main target.
+
+CM, on the other hand, is largely {\em source-oriented}\/: Whereas
+with {\bf make} one specifies the tree and lets the program derive the
+leaves, with CM one specifies the leaves and lets the program derive
+the tree.  Thus, the programmer writes down a list of sources, and CM
+will calculate and then execute a series of steps to make the
+corresponding program.  In {\bf make} terminology, this resulting
+program acts as the ``main goal'', but under CM it does not need to be
+explicitly named.  In fact, since there typically is no corresponding
+single file system object for it, a ``natural'' name does not even
+exist.
+
+For simple projects it is literally true that all the programmer has
+to do is tell CM about the set of sources: a description file lists
+little more than the names of participating ML source files. However,
+larger projects typically benefit from a hierarchical structuring.
+This can be achieved by grouping ML source files into separate
+libraries and library components.  Dependencies between such libraries
+have to be specified explicitly and must form an acyclic directed
+graph (DAG).
+
+CM's own semantics, particularly its dependency analysis, interact
+with the ML language in such a way that for any well-formed project
+there will be exactly one possible interpretation as far as static
+semantics are concerned.  Only well-formed projects are accepted by
+CM; projects that are not well-formed will cause error messages.
+(Well-formedness is {\em defined} to enforce a unique definition-use
+relation for ML definitions~\cite{blume:depend99}.)
+
+\subsection{Description files}
+
+Technically, a CM library is a (possibly empty) collection of ML
+source files and may also contain references to other libraries.  Each
+library comes with an explicit export interface which lists all
+toplevel-defined symbols of the library that shall be exported to its
+clients.  A library is described by the contents of its {\em
+description file}.\footnote{The description file may also contain
+references to input files for {\em tools} like {\tt ml-lex} or {\tt
+ml-yacc} that produce ML source files.  See section~\ref{sec:tools}.}
+
+\noindent Example:
+
+\begin{verbatim}
+  Library
+      signature BAR
+      structure Foo
+  is
+      bar.sig
+      foo.sml
+      helper.sml
+
+      $/basis.cm
+      $/smlnj-lib.cm
+\end{verbatim}
+
+This library exports two definitions, one for a structure named {\tt
+Foo} and one for a signature named {\tt BAR}.  The specification for
+such exports appear between the keywords {\tt Library} and {\tt is}.
+The {\em members} of the library are specified after the keyword {\tt
+is}.  Here we have three ML source files ({\tt bar.sig}, {\tt
+foo.sml}, and {\tt helper.sml}) as well as references to two external
+libraries ({\tt \$/basis.cm} and {\tt \$/smlnj-lib.cm}).  The entry
+{\tt \$/basis.cm} typically denotes the description file for the {\it
+Standard ML Basis Library}~\cite{reppy99:basis}; most programs will
+want to list it in their own description file(s).  The other library
+in this example ({\tt \$/smlnj-lib.cm}) is a library of data
+structures and algorithms that comes bundled with SML/NJ.
+
+\subsection{Invoking CM}
+
+Once a library has been set up as shown in the example above, one can
+load it into a running interactive session by invoking function {\tt
+CM.make}.  If the name of the library's description file is, say, {\tt
+fb.cm}, then one would type
+
+\begin{verbatim}
+  CM.make "fb.cm";
+\end{verbatim}
+
+at SML/NJ's interactive prompt.  This will cause CM to
+
+\begin{enumerate}
+\item parse the description file {\tt fb.cm},
+\item locate all its sources and all its sub-libraries,
+\item calculate the dependency graph,
+\item issue warnings and errors (and skip the remaining steps) if
+necessary,
+\item compile those sources for which that is required,
+\item execute module initialization code,
+\item and augment the toplevel environment with bindings for exported
+symbols, i.e., in our example for {\tt signature BAR} and {\tt
+structure Foo}.
+\end{enumerate}
+
+CM does not compile sources that are not ``reachable'' from the
+library's exports.  For every other source, it will avoid
+recompilation if all of the following is true:
+
+\begin{itemize}
+\item The {\em binfile} for the source exists.
+\item The binfile has the same time stamp as the source.
+\item The current compilation environment for the source is precisely
+the same as the compilation environment that was in effect when the
+binfile was produced.
+\end{itemize}
+
+\subsection{Members of a library}
+
+Members of a library do not have to be listed in any particular order
+since CM will automatically calculate the dependency graph.  Some
+minor restrictions on the source language are necessary to make this
+work:
+\begin{enumerate}
+\item All top-level definitions must be {\em module} definitions
+(structures, signatures, functors, or functor signatures).  In other
+words, there can be no top-level type-, value-, or infix-definitions.
+\item For a given symbol, there can be at most one ML source file per
+library (or---more correctly---one file per library component; see
+Section~\ref{sec:groups}) that defines the symbol at top level.
+\item If more than one sub-library or sub-group is exporting the same
+symbol, then the definition (i.e., the ML source file that actually
+defines the symbol) must be identical in all cases.
+\label{rule:diamond}
+\item The use of ML's {\bf open} construct is not permitted at the top
+level of ML files compiled by CM.  (The use is still ok at the
+interactive top level.)
+\end{enumerate}
+
+Note that these rules do not require the exports of sub-groups or
+sub-libraries to be distinct from the exports of ML source files in
+the current library or group.  If an ML source file $f$ re-defines a
+name $n$ that is also imported from library or library component $l$,
+then the disambiguating rule is that the definition from $f$ takes
+precedence over that from $l$ in all sources except $f$ itself.  Free
+occurences of $n$ in $f$ refer to $l$'s definition.  This rule makes
+it possible to easily write code for exporting an ``augmented''
+version of some module.  Example:
+
+\begin{verbatim}
+  structure A = struct (* defines augmented A *)
+      open A           (* refers to imported A *)
+      fun f x = B.f x + C.g (x + 1)
+  end
+\end{verbatim}
+
+Rule~\ref{rule:diamond} may come as a bit of a surprise considering
+that each ML source file can be a member of at most one group or
+library (see section~\ref{sec:multioccur}).  However, it is indeed
+possible for two libraries to (re-)export the ``same'' definition
+provided they both import that definition from a third library.  For
+example, let us assume that {\tt a.cm} exports a structure {\tt X}
+which was defined in {\tt x.sml}---one of {\tt a.cm}'s members.  Now,
+if both {\tt b.cm} and {\tt c.cm} re-export that same structure {\tt
+X} after importing it from {\tt a.cm}, it is legal for a fourth
+library {\tt d.cm} to import from both {\tt b.cm} and {\tt c.cm}.
+
+The full syntax for library description files also includes provisions
+for a simple ``conditional compilation'' facility (see
+Section~\ref{sec:preproc}), for access control (see
+Section~\ref{sec:access}), and it accepts ML-style nestable comments
+delimited by \verb|(*| and \verb|*)|.
+
+\subsection{Name visibility}
+
+In general, all definitions exported from members (i.e., ML source
+files, subgroups and sublibraries) of a library are visible in all
+other ML source files of that library.  The source code in those
+source files can refer to them directly without further qualification.
+Here, ``exported'' means either a top-level definition within an ML
+source file or a definition listed in a sublibrary's export list.
+
+If a library is structured into library components using {\em groups}
+(see Section~\ref{sec:groups}), then---as far as name visibility is
+concerned---each component (group) is treated like a separate library.
+
+Cyclic dependencies among libraries, library components, or ML source
+files within a library are detected and flagged as errors.
+
+\subsection{Groups}
+\label{sec:groups}
+
+CM's group model eliminates a whole class of potential naming problems
+by providing control over name spaces for program linkage.  The group
+model in full generality sometimes requires bindings to be renamed at
+the time of import. As has been described
+separately~\cite{blume:appel:cm99}, in the case of ML this can also be
+achieved using ``administative'' libaries, which is why CM can get
+away with not providing more direct support for renaming.
+
+However, under CM, the term ``library'' does not only mean namespace
+management (as it would from the point of view of the pure group
+model) but also refers to actual file system objects (e.g., CM
+description files and stable library files).  It would be inconvenient
+if name resolution problems would result in a proliferation of
+additional library files.  Therefore, CM also provides the notion of
+groups (or: ``library components'').  Name resolution for groups works
+like name resolution for entire libraries, but grouping is entirely
+internal to each library.
+
+When a library is {\em stabilized} (via {\tt CM.stabilize} -- see
+Section~\ref{sec:stable}), the entire library is compiled to a single
+file (hence groups do not result in separate stable files).
+
+During development, each group has its own description file which will
+be referred to by the surrounding library or by other groups of that
+library. The syntax of group description files is the same as that of
+library description files with the following exceptions:
+
+\begin{itemize}
+\item The initial keyword {\tt Library} is replaced with {\tt Group}.
+It is followed by the name of the surrounding library's description
+file in parentheses.
+\item The export list can be left empty, in which case CM will provide
+a default export list: all exports from ML source files plus all
+exports from subcomponents of the component.  (Note that this does not
+include the exports of other libraries.)
+\item There are some small restrictions on access control
+specifications (see Section~\ref{sec:access}).
+\end{itemize}
+
+As an example, let us assume that
+{\tt foo-utils.cm} contains the following text:
+
+%note: emacs gets temporarily confused by the single dollar
+\begin{verbatim}
+  Group (foo-lib.cm)
+  is
+      set-util.sml
+      map-util.sml
+      $/basis.cm
+\end{verbatim}
+
+This description defines group {\tt foo-utils.cm} to have the
+following properties:
+
+\begin{itemize}
+\item it is a component of library {\tt foo-lib.cm} (meaning that only
+foo-lib.cm itself or other groups thereof may list {\tt foo-utils.cm} as one
+of their members)
+\item {\tt set-utils.sml} and {\tt map-util.sml} are ML source files
+belonging to this component
+\item exports from the Standard Basis Library are available when
+compiling these ML source files
+\item since the export list has been left blank, the only (implicitly
+specified) exports of this component are the top-level definitions in
+its ML source files
+\end{itemize}
+
+With this, the library description file {\tt foo-lib.cm} could list
+{\tt foo-utils.cm} as one of its members:
+
+\begin{verbatim}
+  Library
+      signature FOO
+      structure Foo
+  is
+      foo.sig
+      foo.sml
+      foo-utils.cm
+      $/basis.cm
+\end{verbatim}
+%note: emacs should be sufficiently un-confused again by now
+
+No harm is done if {\tt foo-lib.cm} does not actually mention {\tt
+foo-utils.cm}.  In this case it could be that\linebreak {\tt
+foo-utils.cm} is mentioned indirectly via a chain of other components
+of {\tt foo-lib.cm}.  The other possibility is that it is not
+mentioned at all (in which case CM would never know about it, so it
+cannot complain).
+
+\subsection{Multiple occurences of the same member}
+\label{sec:multioccur}
+
+The following rules apply to multiple occurences of the same ML source
+file, the same library, or the same group within a program:
+
+\begin{itemize}
+\item Within the same description file, each member can be specified
+at most once.
+\item Libraries can be referred to freely from as many other groups or
+libraries as the programmer desires.
+\item A group cannot be used from outside the uniquely defined library
+(as specified in its description file) of which it is a component.
+However, within that library it can be referred to from arbitrarily
+many other groups.
+\item The same ML source file cannot appear more than once.  If an ML
+source file is to be referred to by multiple clients, it must first be
+``wrapped'' into a library (or---if all references are from within the
+same library---a group).
+\end{itemize}
+
+\subsection{Stable libraries}
+\label{sec:stable}
+
+CM distinguishes between libraries that are {\em under development}
+and libraries that are {\em stable}.  A stable library is created by a
+call to {\tt CM.stabilize} (see Section~\ref{sec:api:compiling}).
+
+Access to stable libraries is subject to less internal
+consistency-checking and touches far fewer file-system
+objects. Therefore, it is typically more efficient.  Stable libraries
+play an additional semantic role in the context of access control (see
+Section~\ref{sec:access}).
+
+From the client program's point of view, using a stable library is
+completely transparent.  When referring to a library---regardless of
+whether it is under development or stable---one {\em always} uses the
+name of the library's description file.  CM will check whether there
+is a stable version of the library and provided that is the case use
+it.  This means that in the presence of a stable version, the
+library's actual description file does not have to physically exists
+(even though its name is used by CM to find the corresponding stable
+file).
+
+\subsection{Top-level groups}
+
+Mainly to facilitate some superficial backward-compatibility, CM also
+allows groups to appear at top level, i.e., outside of any library.
+Such groups must omit the parenthetical library specification and then
+cannot also be used within libraries. One could think of the top level
+itself as a ``virtual unnamed library'' whose components are these
+top-level groups.
+
+\section{Naming objects in the file system}
+
+\subsection{Motivation}
+
+The main difficulty with file naming lies in the fact that files or
+even whole directories may move after CM has already partially (but
+not fully) processed them.  For example, this happens when the {\em
+autoloader} (see Section~\ref{sec:autoload}) has been invoked and the
+session (including CM's internal state) is then frozen (i.e., saved to
+a file) via {\tt SMLofNJ.exportML}.
+
+CM's configurable {\em path anchor} mechanism enables it to resume
+such a session even when operating in a different environment, perhaps
+on a different machine with different file systems mounted, or a
+different location of the SML/NJ installation.  Evaluation of path
+anchors always takes place as late as possible, and CM will re-evaluate
+path anchors as this becomes necessary due to changes to their
+configuration.
+
+\subsection{Basic rules}
+\label{sec:basicrules}
+
+CM uses its own ``standard'' syntax for pathnames which for the most
+part happens to be the same as the one used by most Unix-like systems:
+\begin{itemize}
+\item Path name components are separated by ``{\bf /}''.
+\item Special components ``{\bf .}'' and ``{\bf ..}'' denote {\em
+current} and {\em previous} directory, respectively.
+\item Paths beginning
+with ``{\bf /}'' are considered {\em absolute}.
+\item Other paths are {\em relative} unless they start with ``{\bf \$}''.
+\end{itemize}
+\noindent There is an important third form of standard paths: {\em
+anchored} paths.  Anchored paths always start with ``{\bf \$}''.
+
+Since this standard syntax does not cover system-specific aspects such
+as volume names, it is also possible to revert to ``native'' syntax by
+enclosing a path name in double-quotes.  Of course, description files
+that use path names in native syntax are not portable across operating
+systems.
+
+\begin{description}
+\item[Absolute pathnames] are resolved in the usual manner
+specific to the operating system.  However, it is advisable to avoid
+absolute pathnames because they are certain to ``break'' if the
+corresponding file moves to a different location.
+\item[Relative pathnames that occur in some CM description file] whose
+name is {\it path}{\tt /}{\it file}{\tt .cm} will be resolved relative
+to {\it path}, i.e., relative to the directory that contains the
+description file.
+\item[Relative pathnames that have been entered interactively,] for
+example as an argument to one of CM's interface functions,
+will be resolved in the OS-specific manner, i.e., relative to the
+current working directory.  However, CM will internally represent the
+name in such a way that it remembers the corresponding working
+directory.  Should the working directory change during an ongoing CM
+session while there still is a reference to the name, then CM will
+switch its mode of operation and prepend the path of the original
+working directory. As a result, two names specified using identical
+strings but at different times when different working directories were
+in effect will be kept distinct and continue to refer to the file
+system locations that they referred to when they were first seen.
+\item[Anchored paths] consist of an anchor name (of non-zero length)
+and a non-empty list of additional arcs.  The name is enclosed by
+the path's leading {\bf \$} on the left and the path's first {\bf /}
+on the right.  The list of arcs follows the first {\bf /}.  As with
+all standard paths, the arcs themselves are also separated by {\bf /}.
+An error is signalled if the anchor name is not known to CM.
+If $a$ is a know anchor name currently bound to some directory name
+$d$, then the standard path {\tt \$}$a${\tt /}$p$ (where $p$ is a list
+of arcs) refers to $d${\tt /}$p$.  The frequently occuring case where
+$a$ coincides with the first arc of $p$ can be abbreviated as {\tt
+\$/}$p$.
+\end{description}
+
+\subsection{Anchor environments}
+\label{sec:anchor:env}
+
+Anchor names are resolved in the {\em anchor environment} that is in
+effect at the time the anchor is read.
+
+The basis for all anchor environments is the {\em root environment}.
+Conceptually, the root environments is a fixed mapping that binds
+every possible anchor to a mutable location.  The location can store a
+native directory name or can be marked ``undefined''.  Most locations
+initially start out undefined.  The contents of each location is
+configurable (see Section~\ref{sec:anchor:config}).
+
+At the time a CM description file $a${\tt .cm} refers to another
+library's or library component's description file $b${\tt .cm}, it can
+augment the current anchor environment with new bindings.  The new
+bindings are in effect while $b${\tt .cm} (including any description
+files {\it it}\/ mentions!) is being processed.  If a new binding
+binds an anchor name that was already bound in the current
+environment\footnote{which is technically always the case given our
+explanation of the root environment}, then the old binding is being
+hidden.  The effect is scoping for anchor names.
+
+Using CM's {\em tool parameter} mechanism (see
+Section~\ref{sec:toolparam}), a new binding is specified as a pair of
+anchor name and anchor value.  The value has the form of another path
+name (standard or native). Example:
+
+\begin{verbatim}
+  a.cm (bind:(anchor:lib value:$mystuff/a-lib)
+        bind:(anchor:support value:$lib)
+        bind:(anchor:utils value:/home/bob/stuff/ML/utils))
+\end{verbatim}
+
+As shown in this example, it is perfectly legal for the specification
+of the value to involve the use of another anchor.  That anchor will
+be resolved in the original anchor environment. Thus, a path anchored
+at {\tt \$lib} in {\tt a.cm} will be resolved using the binding for
+{\tt \$mystuff} that is currently in effect.  The point here is that a
+re-configuration of the root environment that affects {\tt \$mystuff}
+now also affects how {\tt \$lib} is resolved as it occurs within {\tt
+a.cm}.
+
+The list of {\tt bind}-directives is processed ``in parallel,'' which
+means that {\tt \$support} is {\em not} being bound to\linebreak {\tt
+\$mystuff/a-lib/asupport} but will refer to the original meaning of
+{\tt \$lib}.
+
+The example also demonstrates that {\tt value}-paths can be single
+anchors. In other words, the restriction that there has to be at least
+one arc after the anchor does not apply here. This makes it possible
+to ``rename'' anchors, or, to put it more precisely, for one anchor
+name to be established as an ``alias'' for another anchor name.
+
+\subsection{Anchor configuration}
+\label{sec:anchor:config}
+
+Anchor configuration is concerned with the values that are stored in
+the root anchor environment.  At startup time, the root environment is
+initialized by reading two configuration files: an
+installation-specific one and a user-specific one.  After that, the
+contents of root locations can be maintained using CM's interface
+functions {\tt CM.Anchor.anchor} and {\tt CM.Anchor.reset} (see
+Section~\ref{sec:api:anchors}).
+
+Although there is a hard-wired default for the installation-specific
+configuration file\footnote{which happens to be {\tt
+/usr/lib/smlnj-pathconfig}}, this default in rarely being used.
+Instead, in a typical installation of SML/NJ the default will be a
+file $r${\tt /lib/pathconfig} where $r$ is the {\it root} directory
+into which SML/NJ had been installed.  (The installation procedure
+establishes this new default by setting the environment variable {\tt
+CM\_PATHCONFIG\_DEFAULT} at the time it produces the heap image for
+the interactive system.)  The user can specify a new location at
+startup time using the environment variable {\tt CM\_PATHCONFIG}.
+
+The default location of the user-specific configuration file is {\tt
+.smlnj-pathconfig} in the user's home directory (which must be given
+by the {\tt HOME} environment variable).  At startup time, this
+default can be overridden by a fixed location which must be given as
+the value of the environment variable {\tt CM\_LOCAL\_PATHCONFIG}.
+
+The syntax of all configuration files is identical.  Lines are
+processed from top to bottom. White space divides lines into tokens.
+\begin{itemize}
+\item A line with exactly two tokens associates an anchor (the first
+token) with a directory in native syntax (the second token).  Neither
+anchor nor directory name may contain white space and the anchor
+should not contain a {\bf /}.  If the directory name is a relative
+name, then it will be expanded by prepending the name of the directory
+that contains the configuration file.
+\item A line containing exactly one token that is the name of an
+anchor cancels any existing association of that anchor with a
+directory.
+\item A line with a single token that consists of a single minus sign
+{\bf -} cancels all existing anchors.  This typically makes sense only
+at the beginning of the user-specific configuration file and
+erases any settings that were made by the installation-specific
+configuration file.
+\item Lines with no token (i.e., empty lines) will be silently ignored.
+\item Any other line is considered malformed and will cause a warning
+but will otherwise be ignored.
+\end{itemize}
+
+\section{Using CM}
+
+\subsection{Structure CM}
+\label{sec:api}
+
+Functions that control CM's operation are accessible as members of a
+structure named {\tt CM} which itself is exported from a library
+called {\tt \$smlnj/cm.cm} (or, alternatively, {\tt
+\$smlnj/cm/full.cm}).  This library is pre-registered for auto-loading
+at the interactive top level.
+
+Other libraries can exploit CM's functionality simply by putting a
+{\tt \$smlnj/cm.cm} entry into their own description file.
+Section~\ref{sec:dynlink} shows one interesting use of this feature.
+
+Here is a description of all members:
+
+\subsubsection{Compiling}
+\label{sec:api:compiling}
+
+Two main activities when using CM are to compile ML source code and to
+build stable libraries:
+
+\begin{verbatim}
+  val recomp : string -> bool
+  val stabilize : bool -> string -> bool
+\end{verbatim}
+
+{\tt CM.recomp} takes the name of a program's ``root'' description
+file and compiles or recompiles all ML source files that are necessary
+to provide definitions for the root library's export list.  ({\em
+Note:} The difference to {\tt CM.make} is that no linking takes
+place.)
+
+{\tt CM.stabilize} takes a boolean flag and then the name of a library
+and {\em stabilizes} this library.  A library is stabilized by writing
+all information pertaining to it, including all of its library
+components (i.e., subgroups), into a single file.  Sublibraries do not
+become part of the stabilized library; CM records stub entries for them.
+When a stabilized library is used in other programs, all members of
+the library are guaranteed to be up-to-date; no dependency analysis
+work and no recompilation work will be necessary.  If the boolean flag
+is {\tt false}, then all sublibraries of the library must already be
+stable.  If the flag is {\tt true}, then CM will recursively stabilize
+all libraries reachable from the given root.
+
+After a library has been stabilized it can be used even if none of its
+original sources---including the description file---are present.
+
+The boolean result of {\tt CM.recomp} and {\tt CM.stabilize} indicates
+success or failure of the operation ({\tt true} = success).
+
+\subsubsection{Linking}
+
+In SML/NJ, linking means executing top-level code (i.e., module
+creation and initialization code) of each compilation unit.  The
+resulting bindings can then be registered at the interactive top
+level.
+
+\begin{verbatim}
+  val make : string -> bool
+  val autoload : string -> bool
+\end{verbatim}
+
+{\tt CM.make} first acts like {\tt CM.recomp}.  If the
+(re-)compilation is successful, then it proceeds by linking all
+modules that require linking.  Provided there are no link-time errors,
+it finally introduces new bindings at top level.
+
+During the course of the same {\tt CM.make}, the code of each
+compilation module that is reachable from the root will be executed at
+most once.  Code in units that are marked as {\it private} (see
+Section~\ref{sec:sharing}) will be executed exactly once.  Code in
+other units will be executed only if the unit has been recompiled
+since it was executed last time or if it depends on another
+compilation unit whose code has been executed since.
+
+In effect, different invocations of {\tt CM.make} (and {\tt
+CM.autoload}) will share dynamic state created at link time as much as
+possible unless the compilation units in question have been explicitly
+marked private.
+
+{\tt CM.autoload} acts like {\tt CM.make}, only ``lazily''. See
+Section~\ref{sec:autoload} for more information.
+
+As before, the result of {\tt CM.make} indicates success or failure of
+the operation.  The result of {\tt CM.autoload} indicates success or
+failure of the {\em registration}.  (It does not know yet whether
+loading will actually succeed.)
+
+\subsubsection{Registers}
+
+Several internal registers control the operation of CM.  A register of
+type $T$ is accessible via a variable of type $T$ {\tt controller},
+i.e., a pair of {\tt get} and {\tt set} functions.\footnote{The type
+constructor {\tt controller} is defined as part of {\tt structure
+CM}.}  Any invocation of the corresponding {\tt get} function reads
+the current value of the register.  An invocation of the {\tt set}
+function replaces the current value with the argument given to {\tt
+set}.
+
+Controllers are members of {\tt CM.Control}, a sub-structure of
+structure {\tt CM}.
+
+\begin{verbatim}
+  type 'a controller = { get: unit -> 'a, set: 'a -> unit }
+  structure Control : sig
+    val verbose : bool controller
+    val debug : bool controller
+    val keep_going : bool controller
+    val parse_caching : int controller
+    val warn_obsolete : bool controller
+    val conserve_memory : bool controller
+  end
+\end{verbatim}
+
+{\tt CM.Control.verbose} can be used to turn off CM's progress
+messages.  The default is {\em true} and can be overriden at startup
+time by the environment variable {\tt CM\_VERBOSE}.
+
+In the case of a compile-time error {\tt CM.Contol.keep\_going}
+instructs the {\tt CM.recomp} phase to continue working on parts of
+the dependency graph that are not related to the error.  (This does
+not work for outright syntax errors because a correct parse is needed
+before CM can construct the dependency graph.)  The default is {\em
+false}, meaning ``quit on first error'', and can be overriden at
+startup by the environment variable {\tt CM\_KEEP\_GOING}.
+
+{\tt CM.Control.parse\_caching} sets a limit on how many parse trees
+are cached in main memory.  In certain cases CM must parse source
+files in order to be able to calculate the dependency graph.  Later,
+the same files may need to be compiled, in which case an existing
+parse tree saves the time to parse the file again.  Keeping parse
+trees can be expensive in terms of memory usage.  Moreover, CM makes
+special efforts to avoid re-parsing files in the first place unless
+they have actually been modified.  Therefore, it may not make much
+sense to set this value very high.  The default is {\em 100} and can
+be overriden at startup time by the environment variable {\tt
+CM\_PARSE\_CACHING}.
+
+This version of CM uses an ML-inspired syntax for expressions in its
+conditional compilation subsystem (see Section~\ref{sec:preproc}).
+However, for the time being it will accept most of the original
+C-inspired expressions but produces a warning for each occurrence of
+an old-style operator. {\tt CM.Control.warn\_obsolete} can be used to
+turn these warnings off. The default is {\em true}, meaning ``warnings
+are issued'', and can be overriden at startup time by the environment
+variable {\tt CM\_WARN\_OBSOLETE}.
+
+{\tt CM.Control.debug} can be used to turn on debug mode.  This
+currently has the effect of dumping a trace of the master-slave
+protocol for parallel and distributed compilation (see
+Section~\ref{sec:parmake}) to TextIO.stdOut. The default is {\em
+false} and can be overriden at startup time by the environment
+variable {\tt CM\_DEBUG}.
+
+Using {\tt CM.Control.conserve\_memory}, CM can be told to be slightly
+more conservative with its use of main memory at the expense of
+occasionally incurring additional input from stable library files.
+This does not save very much and, therefore, is normally turned off.
+The default ({\em false}) can be overridden at startup by the
+environment variable {\tt CM\_CONSERVE\_MEMORY}.
+
+\subsubsection{Path anchors}
+\label{sec:api:anchors}
+
+Structure {\tt CM} also provides functions to explicitly manipulate
+the path anchor configuration.  These functions are members of
+structure {\tt CM.Anchor}.
+
+\begin{verbatim}
+  structure Anchor : sig
+    val anchor : string -> string option controller
+    val reset : unit -> unit
+  end
+\end{verbatim}
+
+{\tt CM.Anchor.anchor} returns a pair of {\tt get} and {\tt set}
+functions that can be used to query and modify the status of the named
+anchor.  Note that the {\tt get}-{\tt set}-pair operates over type
+{\tt string option}; a value of {\tt NONE} means that the anchor is
+currently not bound (or, in the case of {\tt set}, that it is being
+cancelled).  The (optional) string given to {\tt set} must be a
+directory name in native syntax ({\em without} trailing arc separator,
+e.g., {\bf /} in Unix).  If it is specified as a relative path name,
+then it will be expanded by prepending the name of the current working
+directory.
+
+{\tt CM.Anchor.reset} erases the entire existing path configuration.
+After a call of this function has completed, all root environment
+locations are marked as being ``undefined''.
+
+\subsubsection{Setting CM variables}
+
+CM variables are used by the conditional compilation system (see
+Section~\ref{sec:cmvars}).  Some of these variables are predefined,
+but the user can add new ones and alter or remove those that already
+exist.
+
+\begin{verbatim}
+  val symval : string -> int option controller
+\end{verbatim}
+
+Function {\tt CM.symval} returns a {\tt get}-{\tt set}-pair for the
+symbol whose name string was specified as the argument.  Note that the
+{\tt get}-{\tt set}-pair operates over type {\tt int option}; a value
+of {\tt NONE} means that the variable is not defined.
+
+\noindent Examples:
+\begin{verbatim}
+  #get (CM.symval "X") ();       (* query value of X *)
+  #set (CM.symval "Y") (SOME 1); (* set Y to 1 *)
+  #set (CM.symval "Z") NONE;     (* remove definition for Z *)
+\end{verbatim}
+
+Some care is necessary as {\tt CM.symval} does not check whether the
+syntax of the argument string is valid.  (However, the worst thing
+that could happen is that a variable defined via {\tt CM.symval} is
+not accessible\footnote{from within CM's description files} because
+there is no legal syntax to name it.)
+
+\subsubsection{Library registry}
+\label{sec:libreg}
+
+To be able to share associated data structures such as symbol tables
+and dependency graphs, CM maintains an internal registry of all stable
+libraries that it has encountered during an ongoing interactive
+session.  The {\tt CM.Library} sub-structure of structure {\tt CM}
+provides access to this registry.
+
+\begin{verbatim}
+  structure Library : sig
+    type lib
+    val known : unit -> lib list
+    val descr : lib -> string
+    val osstring : lib -> string
+    val dismiss : lib -> unit
+    val unshare : lib -> unit
+  end
+\end{verbatim}
+
+{\tt CM.Library.known}, when called, produces a list of currently
+known stable libraries.  Each such library is represented by an
+element of the abstract data type {\tt CM.Library.lib}.
+
+{\tt CM.Library.descr} extracts a string describing the location of
+the CM description file associated with the given library.  The syntax
+of this string is almost the same as that being used by CM's
+master-slave protocol (see section~\ref{sec:pathencode}).
+
+{\tt CM.Library.osstring} produces a string denoting the given
+library's description file using the underlying operating system's
+native pathname syntax.  In other words, the result of a call to {\tt
+CM.Library.osstring} is suitable as an argument to {\tt
+TextIO.openIn}.
+
+{\tt CM.Library.dismiss} is used to remove a stable library from CM's
+internal registry.  Although removing a library from the registry may
+recover considerable amounts of main memory, doing so also eliminates
+any chance of sharing the associated data structures with later
+references to the same library.  Therefore, it is not always in the
+interest of memory-conscious users to use this feature.
+
+While dependency graphs and symbol tables need to be reloaded when a
+previously dismissed library is referenced again, the sharing of
+link-time state created by this library is {\em not} affected.
+(Link-time state is independently maintained in a separate data
+structure.  See the discussion of {\tt CM.unshare} below.)
+
+{\tt CM.Library.unshare} is used to remove a stable library from CM's
+internal registry, and---at the same time---to inhibit future sharing
+with its existing link-time state.  Any future references to this
+library will see newly created state (which will then be properly
+shared again).  ({\bf Warning:} {\it This feature is not the preferred
+way of creating unshared state; use functors for that.  However, it
+can come in handy when two different (and perhaps incompatible)
+versions of the same library are supposed to coexist---especially if
+one of the two versions is used by SML/NJ itself.  Normally, only
+programmers working on SML/NJ's compiler are expected to be using this
+facility.})
+
+\subsubsection{Internal state}
+
+For CM to work correctly, it must maintain an up-to-date picture of
+the state of the surrounding world (as far as that state affects CM's
+operation).  Most of the time, this happens automatically and should be
+transparent to the user.  However, occasionally it may become
+necessary to intervene expliticly.
+
+Access to CM's internal state is facilitated by members of the {\tt
+CM.State} structure.
+
+\begin{verbatim}
+  structure State : sig
+    val pending : unit -> string list
+    val synchronize : unit -> unit
+    val reset : unit -> unit
+  end
+\end{verbatim}
+
+{\tt CM.State.pending} produces a list of strings, each string naming
+one of the symbols that are currently registered (i.e., ``virtually
+bound'') but not yet resolved by the autoloading mechanism.
+
+{\tt CM.State.synchronize} updates tables internal to CM to reflect
+changes in the file system.  In particular, this will be necessary
+when the association of file names to ``file IDs'' (in Unix: inode
+numbers) changes during an ongoing session.  In practice, the need for
+this tends to be rare.
+
+{\tt CM.State.reset} completely erases all internal state in CM.  To
+do this is not very advisable since it will also break the association
+with pre-loaded libraries.  It may be a useful tool for determining
+the amount of space taken up by the internal state, though.
+
+\subsubsection{Compile servers}
+
+On Unix-like systems, CM supports parallel compilation.  For computers
+connected using a LAN, this can be extended to distributed compilation
+using a network file system and the operating system's ``rsh''
+facility.  For a detailed discussion, see Section~\ref{sec:parmake}.
+
+Sub-structure {\tt CM.Server} provides access to and manipulation of
+compile servers.  Each attached server is represented by a value of
+type {\tt CM.Server.server}.
+
+\begin{verbatim}
+  structure Server : sig
+    type server
+    val start : { name: string,
+                  cmd: string * string list,
+                  pathtrans: (string -> string) option,
+                  pref: int } -> server option
+    val stop : server -> unit
+    val kill : server -> unit
+    val name : server -> string
+  end
+\end{verbatim}
+
+CM is put into ``parallel'' mode by attaching at least one compile
+server.  Compile servers are attached using invocations of {\tt
+CM.Server.start}.  The function takes the name of the server (as an
+arbitrary string) ({\tt name}), the Unix command used to
+start the server in a form suitable as an argument to {\tt
+Unix.execute} ({\tt cmd}), an optional ``path transformation
+function'' for converting local path names to remote pathnames ({\tt
+pathtrans}), and a numeric ``preference'' value that is used to choose
+servers at times when more than one is idle ({\tt pref}).  The
+optional result is the handle representing the successfully attached
+server.
+
+An existing server can be shut down and detached using {\tt
+CM.Server.stop} or {\tt CM.Server.kill}.  The argument in either case
+must be the result of an earlier call to {\tt CM.Server.start}.
+Function {\tt CM.Server.stop} uses CM's master-slave protocol to
+instruct the server to shut down gracefully.  Only if this fails it
+may become necessary to use {\tt CM.Server.kill}, which will send a
+Unix TERM signal to destroy the server.
+
+Given a server handle, function {\tt CM.Server.name} returns the
+string that was originally given to the call of\linebreak {\tt
+CM.Server.start} used to created the server.
+
+\subsubsection{Plug-ins}
+
+As an alternative to {\tt CM.make} or {\tt CM.autoload}, where the
+main purpose is to subsequently be able to access the library from
+interactively entered code, one can instruct CM to load libraries
+``for effect''.
+
+\begin{verbatim}
+  val load_plugin : string -> bool
+\end{verbatim}
+
+Function {\tt CM.load\_plugin} acts exactly like {\tt CM.make} except
+that even in the case of success no new symbols will be bound in the
+interactive top-level environment.  That means that link-time
+side-effects will be visible, but none of the exported definitions
+become available.  This mechanism can be used for ``plug-in'' modules:
+a core library provides hooks where additional functionality can be
+registered later via side-effects; extensions to this core are
+implemented as additional libraries which, when loaded, register
+themselves with those hooks.  By using {\tt CM.load\_plugin} instead
+of {\tt CM.make}, one can avoid polluting the interactive top-level
+environment with spurious exports of the extension module.
+
+CM itself uses plug-in modules in its member-class subsystem (see
+section~\ref{sec:classes}).  This makes it possible to add new classes
+and tools very easily without having to reconfigure or recompile CM,
+not to mention modify its source code.
+
+\subsubsection{Support for stand-alone programs}
+\label{sec:mlbuild:support}
+
+CM can be used to build stand-alone programs. In fact SML/NJ
+itself---including CM---is an example of this.  (The interactive
+system cannot rely on an existing compilation manager when starting
+up.)
+
+A stand-alone program is constructed by the runtime system from
+existing binfiles or members of existing stable libraries.  CM must
+prepare those binfiles or libraries together with a list that
+describes them to the runtime system.
+
+\begin{verbatim}
+  val mk_standalone : bool option ->
+                      { project: string, wrapper: string, target: string } ->
+                      string list option
+\end{verbatim}
+
+Here, {\tt project} and {\tt wrapper} name description files and {\tt
+target} is the name of a heap image---with or without the usual
+implicit heap image suffix; see the description of {\tt
+SMLofNJ.exportFn} from the (SML/NJ-specific extension of the) Basis
+Library~\cite{reppy99:basis}.
+
+A call of {\tt mk\_standalone} triggers the following three-stage
+procedure:
+\begin{enumerate}
+\item Depending on the optional boolean argument, {\tt project} is
+subjected to the equivalent of either {\tt CM.recomp} or {\tt
+CM.stabilize}.  {\tt NONE} means {\tt CM.recomp}, and {\tt (SOME $r$)}
+means {\tt CM.stabilize $r$}.
+There are tree ways of how to continue from here:
+\begin{enumerate}
+\item If recompilation of {\tt project}
+failed, then a result of {\tt NONE} will be returned immediately.
+\item If everything was up-to-date (i.e, if no ML source had to be compiled
+and all these sources were older than the existing {\tt target}), then
+a result of {\tt SOME []} will be returned.
+\item Otherwise execution proceeds to the next stage.
+\end{enumerate}
+\item The {\em wrapper library} named by {\tt wrapper} is being
+recompiled (using the equivalent of {\tt CM.recomp}).  If this
+fails, {\tt NONE} is returned.  Otherwise execution proceeds to the
+next stage.
+\item {CM.mk\_standalone} constructs a topologically sorted list $l$
+of strings that, when written to a file, can be passed to the runtime
+system in order to perform stand-alone linkage of the program given by
+{\tt wrapper}.  The final result is {\tt SOME $l$}.
+\end{enumerate}
+
+The idea is that {\tt project} names the library that actually
+implements the main program while {\tt wrapper} names an auxiliary
+wrapper library responsible for issuing a call of {\tt
+SMLofNJ.exportFn} (generating {\tt target}) on behalf of {\tt
+project}.
+
+The programmer should normally never have a need to invoke {\tt
+CM.mk\_standalone} directly.  Instead, this function is used by an
+auxiliary script called {\tt ml-build} (see
+Section~\ref{sec:mlbuild}).
+
+\subsubsection{Finding all sources}
+\label{sec:makedepend:support}
+
+The {\tt CM.sources} function can be used to find the names of all
+source files that a given library depends on.  It returns the names of
+all files involved with the exception of skeleton files and binfiles
+(see Section~\ref{sec:files}).  Stable libraries are represented by
+their library file; their description file or consitutent members are
+{\em not} listed.
+
+Normally, the function reports actual file names as used for accessing
+the file system.  For (stable) library files this behavior can be
+inconvenient because these names depend on architecture and operating
+system.  For this reason, {\tt CM.sources} accepts an optional pair of
+strings that then will be used in place of the architecture- and
+OS-specific part of these names.
+
+\begin{verbatim}
+  val sources :
+    { arch: string, os: string } option ->
+    string ->
+    { file: string, class: string, derived: bool } list option
+\end{verbatim}
+
+In case there was some error analyzing the specified library or group,
+{\tt CM.sources} returns {\tt NONE}.  Otherwise the result is a list
+of records, each carrying a file name, the corresponding class, and
+information about whether or not the source was created by some tool.
+
+Examples:
+
+\begin{description}
+\item[generating ``make'' dependencies:]
+To generate dependency information usable by Unix' {\tt make} command,
+one would be interested in all files that were not derived by some
+tool application.  Moreover, one would probably like to use shell
+variables instead of concrete architecture- and OS-names:
+\begin{verbatim}
+  Option.map (List.filter (not o #derived))
+    (CM.sources (SOME { arch = "$ARCH", os = "$OPSYS" })
+         "foo.cm");
+\end{verbatim}
+A call of {\tt CM.sources} similar to the one shown here is used by
+the auxiliary script {\tt ml-makedepend} (see
+Section~\ref{sec:makedepend}).
+\item[finding all {\tt noweb} sources:]
+To find all {\tt noweb} sources (see Section~\ref{sec:builtin-tools:noweb}),
+e.g., to be able to run the document preparation program {\tt noweave}
+on them, one can simply look for entries of the {\tt noweb} class.
+Here, one would probably want to include derived sources:
+\begin{verbatim}
+  Option.map (List.filter (fn x => #class x = "noweb"))
+    (CM.sources NONE "foo.cm");
+\end{verbatim}
+\end{description}
+
+\subsection{The autoloader}
+\label{sec:autoload}
+
+From the user's point of view, a call to {\tt CM.autoload} acts very
+much like the corresponding call to {\tt CM.make} because the same
+bindings that {\tt CM.make} would introduce into the top-level
+enviroment are also introduced by {\tt CM.autoload}.  However, most
+work will be deferred until some code that is entered later refers to
+one or more of these bindings.  Only then will CM go and perform just
+the minimal work necessary to provide the actual definitions.
+
+The autoloader plays a central role for the interactive system.
+Unlike in earlier versions, it cannot be turned off since it provides
+many of the standard pre-defined top-level bindings.
+
+The autoloader is a convenient mechanism for virtually ``loading'' an
+entire library without incurring an undue increase in memory
+consumption for library modules that are not actually being used.
+
+\subsection{Sharing of state}
+\label{sec:sharing}
+
+Whenever it is legal to do so, CM lets multiple invocations of {\tt
+CM.make} or {\tt CM.autoload} share dynamic state created by link-time
+effects.  Of course, sharing is not possible (and hence not ``legal'')
+if the compilation unit in question has recently been recompiled or
+depends on another compilation unit whose code has recently been
+re-executed.  The programmer can explicitly mark certain ML files as
+{\em shared}, in which case CM will issue a warning whenever the
+unit's code has to be re-executed.
+
+State created by compilation units marked as {\em private} is never
+shared across multiple calls to {\tt CM.make} or {\tt CM.autoload}.
+To understand this behavior it is useful to introduce the notion of a
+{\em traversal}.  A traversal is the process of traversing the
+dependency graph on behalf of {\tt CM.make} or {\tt CM.autoload}.
+Several traversals can be executed interleaved with each other because
+a {\tt CM.autoload} traversal normally stays suspended and is
+performed incrementally driven by input from the interactive top level
+loop.
+
+As far as sharing is concerned, the rule is that during one traversal
+each compilation unit will be executed at most once.  This means that
+the same ``program'' will not see multiple instantiations of the same
+compilation unit (where ``program'' refers to the code managed by one
+call to {\tt CM.make} or {\tt CM.autoload}).  Each compilation unit
+will be linked at most once during a traversal and private state
+will not be confused with private state of other traversals that might
+be active at the same time.
+
+% Need a good example here.
+
+\subsubsection{Sharing annotations}
+
+ML source files in CM description files can be specified as being {\em
+private} or {\em shared}.  This is done by adding a {\em tool
+parameter} specification for the file in the library- or group
+description file (see Section~\ref{sec:classes}). To mark an ML file
+as {\em private}, follow the file name with the word {\tt private} in
+parentheses.  For {\em shared} ML files, replace {\tt private} with
+{\tt shared}.
+
+An ML source file that is not annotated will typically be treated as
+{\em shared} unless it statically depends on some other {\em private}
+source.  It is an error, checked by CM, for a {\em shared} source to
+depend on a {\em private} source.
+
+\subsubsection{Sharing with the interactive system}
+
+The SML/NJ interactive system, which includes the compiler, is itself
+created by linking modules from various libraries. Some of these
+libraries can also be used in user programs.  Examples are the
+Standard ML Basis Library {\tt \$/basis.cm}, the SML/NJ library {\tt
+\$/smlnj-lib.cm}, and the ML-Yacc library {\tt \$/ml-yacc-lib.cm}.
+
+If a module from a library is used by both the interactive system and
+a user program running under control of the interactive system, then
+CM will let them share code and dynamic state.  Moreover, the affected
+portion of the library will never have to be ``relinked''.
+
+\section{Version numbers}
+\label{sec:versions}
+
+A CM library can carry a version number.  Version numbers are
+specified in parentheses after the keyword {\tt Library} as non-empty
+dot-separated sequences of non-negative integers.  Example:
+
+\begin{verbatim}
+  Library (1.4.1.4.2.1.3.5)
+      structure Sqrt2
+  is
+      sqrt2.sml
+\end{verbatim}
+
+\subsection{How versions are compared}
+
+Version numbers are compared lexicographically, dot-separated
+component by dot-separated component, from left to right.  The
+components themselves are compared numerically.
+
+\subsection{Version checking}
+
+An importing library or library component can specify which version of
+the imported library it would like to see.  See the discussion is
+section~\ref{sec:toolparam:cm} for how this is done.  Where a version
+number is requested, an error is signalled if one of the following is
+true:
+
+\begin{itemize}
+\item the imported library does not carry a version number
+\item the imported library's version number is smaller than the
+one requested
+\item the imported library's version number has a first component
+(known as the ``major'' version number) that is greater than the one
+requested
+\end{itemize}
+
+A warning (but no error) is issued if the imported library has the
+same major version but the version as a whole is greater than the one
+requested.
+
+Note: {\it Version numbers should be incremented on every change to a
+library.  The major version number should be increased on every change
+that is not backward-compatible.}
+
+\section{Member classes and tools}
+\label{sec:classes}
+
+Most members of groups and libraries are either plain ML files or
+other description files.  However, it is possible to incorporate other
+types of files---as long as their contents can in some way be expanded
+into ML code or CM descriptions.  The expansion is carried out by CM's
+{\it tools} facility.
+
+CM maintains an internal registry of {\em classes} and associated {\em
+rules}.  Each class represents the set of source files that its
+corresponding rule is applicable to.  For example, the class {\tt
+mlyacc} is responsible for files that contain input for the parser
+generator ML-Yacc~\cite{tarditi90:yacc}.  The rule for {\tt mlyacc}
+takes care of expanding an ML-Yacc specifications {\tt foo.grm} by
+invoking the auxiliary program {\tt ml-yacc}.  The resulting ML files
+{\tt foo.grm.sig} and {\tt foo.grm.sml} are then used as if their
+names had directly been specified in place of {\tt foo.grm}.
+
+CM knows a small number of built-in classes.  In many situations these
+classes will be sufficient, but in more complicated cases it may be
+worthwhile to add a new class.  Since class rules are programmed in
+ML, adding a class is not as simple a matter as writing a rule for
+{\sc Unix}' {\tt make} program~\cite{feldman79}.  Of course,
+using ML has also advantages because it keeps CM extremely flexible in
+what rules can do.  Moreover, it is not necessary to learn yet another
+``little language'' in order to be able to program CM's tool facility.
+
+When looking at the member of a description file, CM determines which
+tool to use by looking at clues like the file name suffix.  However,
+it is also possible to specify the class of a member explicitly.  For
+this, the member name is followed by a colon {\bf :} and the name of
+the member class.  All class names are case-insensitive.
+
+In addition to genuine tool classes, there are two member classes
+that refer to facilities internal to CM: {\tt sml} is the class of
+ordinary ML source files and {\tt cm} is the class of CM library or
+group description files.
+
+CM automatically classifies files with a {\tt .sml} suffix, a {\tt
+.sig} suffix, or a {\tt .fun} suffix as ML-source, file names ending
+in {\tt .cm} as CM descriptions.\footnote{Suffixes that are not known
+and for which no plugin module can be found are treated as ML source
+code.  However, as new tools are added there is no guarantee that
+this behavior will be preserved in future versions of CM.}
+
+\subsection{Tool parameters}
+\label{sec:toolparam}
+
+In many cases the name of the member that caused a rule to be invoked
+is the only input to that rule.  However, rules can be written in such
+a way that they take additional parameters.  Those parameters, if
+present, must be specified in the CM description file between
+parentheses following the name of the member and the optional member
+class.
+
+CM's core mechanism parses these tool options and breaks them up into
+a list of items, where each item is either a filename (i.e., {\em
+looks} like a filename) or a named list of sub-options.  However, CM
+itself does not interpret the result but passes it on to the tool's
+rule function.  It is in each rule's own responsibility to assign
+meaning to its options.
+
+\subsubsection{Parameters for class {\tt sml}}
+
+The {\tt sml} class accepts two optional parameters.  One is the {\em
+sharing annotation} that was explained earlier (see
+Section~\ref{sec:sharing}).  The sharing annotation must be one of the
+two strings {\tt shared} and {\tt private}.  If {\tt shared} is
+specified, then dynamic state created by the compilation unit at
+link-time must be shared across invocations of {\tt CM.make} or {\tt
+CM.autoload}.  The {\tt private} annotation, on the other hand, means
+that dynamic state cannot be shared across such calls to {\tt CM.make}
+or {\tt CM.autoload}.
+
+The other possible parameter for class {\tt sml} is a sub-option
+list labeled {\tt setup} and can be used to specify code that will be
+executed just before and just after the compiler is invoked for the
+ML source file.  Code to be executed before compilation is labeled
+{\tt pre}, code to be executed after compilation is complete is
+labeled {\tt post}; either part is optional.  Executable code itself
+is specified using strings that contain ML source text.
+
+For example, if one wishes to disable warning messages for a specific
+source file {\tt poorlywritten.sml} (but not for others), then one
+could write:
+
+\begin{verbatim}
+  poorlywritten.sml (setup:(pre: "local open Compiler.Control\n\
+                                 \   in val w = !printWarnings before\n\
+                                 \              printWarnings := false\n\
+                                 \  end;"
+                            post:"Compiler.Control.printWarnings := w;"))
+\end{verbatim}
+
+\noindent Note that neither the pre- nor the post-section will be
+executed if the ML file does not need to be compiled.
+
+The pre-section is compiled and executed in the current
+toplevel-environment while the post-section uses the
+toplevel-environment augmented with definitions from the pre-section.
+After the ML file has been compiled and the post-section (if present)
+has completed execution, definitions made by either section will be
+erased.  This means that setup code for other files {\em cannot} refer
+to them, and neither can code that in the future might be entered at
+top level.
+
+\subsubsection{Parameters for class {\tt cm}}
+\label{sec:toolparam:cm}
+
+The {\tt cm} class understands two kinds of parameters.  The first is
+a named parameter labeled by the string {\tt version}.  It must have
+the format of a version number.  CM will interpret this as a version
+request, thereby insuring that the imported library is not too old or
+too new. (See section~\ref{sec:versions} for more on this topic.)
+
+All named sub-option lists (for any class) are specified by a name
+string followed by a colon {\bf :} and a parenthesized list of other
+tool options.  If the list contains precisely one element, the
+parentheses may be omitted.  Example:
+
+\begin{verbatim}
+  euler.cm (version:2.71828)
+  pi.cm    (version:3.14159)
+\end{verbatim}
+
+Normally, CM looks for stable library files in directory
+{\tt CM/}{\it arch}{\tt -}{\it os} (see section~\ref{sec:files}).
+However, if an explicit version has been requested, it will first try
+directory {\tt CM/}{\it version}{\tt /}{\it arch}{\tt -}{\it os}
+before looking at the default location.  This way it is possible to
+keep several versions of the same library in the file system.
+
+However, CM normally does {\em not} permit the simultaneous use of
+multiple versions of the same library in one session.  The
+disambiguating rule is that the version that gets loaded first
+``wins''; subsequent attempts to load different versions result in
+warnings or errors.  (See the discussion of {\tt CM.unshare} in
+section~\ref{sec:libreg} for how to to circumvent this restriction.)
+
+The second kind of parameter understood by {\tt cm} is a named
+parameter labeled by the string {\tt bind} (see
+Section~\ref{sec:anchor:env}).  It can occur arbitrarily many times
+and each occurence must be a suboption-list of the form {\tt
+(anchor:$a$ value:$v$)}.  The set of {\tt bind}-parameters augments
+the current anchor environment to form the environment that is used
+while processing the contents of the named CM description file.
+
+\subsection{Built-in tools}
+\label{sec:builtin-tools}
+
+\subsubsection{ML-Yacc}
+
+The ML-Yacc tool is responsible for files that are input to the
+ML-Yacc parser generator.  Its class name is {\tt mlyacc}.  Recognized
+file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
+$f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
+both of which are always treated as ML source files.  The {\tt mlyacc}
+class accepts two optional tool parameters labeled {\tt sigoptions}
+and {\tt smloptions}.  They specify tool options to be passed on to
+the generated {\tt .sig}- and {\tt .sml}-files, respectively.
+Example\footnote{Since the generated {\tt .sig}-file contains nothing
+more than an ML signature definition, it is typically not very useful
+to pass any options to it.}:
+
+\begin{verbatim}
+  lang.grm (sigoptions:(setup:(pre:"print \"compiling lang.grm.sig\\n\";"))
+            smloptions:(private))
+\end{verbatim}
+
+The tool invokes the {\tt ml-yacc} command if the targets are
+``outdated''.  A target is outdated if it is missing or older than the
+source.  Unless anchored using the path anchor mechanism (see
+Section~\ref{sec:anchor:env}), the command {\tt ml-yacc} will be located
+using the operating system's path search mechanism (e.g., the {\tt
+\$PATH} environment variable).
+
+\subsubsection{ML-Lex}
+
+The ML-Lex tool governs files that are input to the ML-Lex lexical
+analyzer generator~\cite{appel89:lex}.  Its class name is {\tt mllex}.
+Recognized file name suffixes are {\tt .lex} and {\tt .l}.  For a
+source file $f$, the tool produces one targets $f${\tt .sml} which
+will always be treated as ML source code.  Tool parameters are passed
+on without change to that file.
+
+The tool invokes the {\tt ml-lex} command if the target is outdated
+(just like in the case of ML-Yacc).  Unless anchored using the path
+anchor mechanism (see Section~\ref{sec:anchor:env}), the command {\tt
+ml-lex} will be located using the operating system's path search
+mechanism (e.g., the {\tt \$PATH} environment variable).
+
+\subsubsection{ML-Burg}
+
+The ML-Burg tool deals with files that are input to the ML-Burg
+code-generater generator~\cite{mlburg93}.  Its class name is {\tt
+mlburg}.  The only recognized file name suffix is {\tt .burg}.  For a
+source file $f${\tt .burg}, the tool produces one targets $f${\tt
+.sml} which will always be treated as ML source code.  Any tool
+parameters are passed on without change to the target.
+
+The tool invokes the {\tt ml-burg} command if the target is outdated.
+Unless anchored using the path anchor mechanism (see
+Section~\ref{sec:anchor:env}), the command {\tt ml-lex} will be located
+using the operating system's path search mechanism (e.g., the {\tt
+\$PATH} environment variable).
+
+\subsubsection{Shell}
+
+The Shell tool can be used to specify arbitrary shell commands to be
+invoked on behalf of a given file.  The name of the class is {\tt
+shell}.  There are no recognized file name suffixes.  This means that
+in order to use the shell tool one must always specify the {\tt shell}
+member class explicitly.
+
+The rule for the {\tt shell} class relies on tool parameters.  The
+parameter list must be given in parentheses and follow the {\tt shell}
+class specification.
+
+Consider the following example:
+
+\begin{verbatim}
+  foo.pp : shell (target:foo.sml options:(shared)
+                        /lib/cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+This member specification says that file {\tt foo.sml} can be obtained
+from {\tt foo.pp} by running it through the C preprocessor {\tt cpp}.
+The fact that the target file is given as a tool parameter implies
+that the member itself is the source.  The named parameter {\tt
+options} lists the tool parameters to be used for that target. (In the
+example, the parentheses around {\tt shared} are optional because it
+is the only element of the list.) The command line itself is given by
+the remaining non-keyword parameters.  Here, a single {\bf \%s} is
+replaced by the source file name, and a single {\bf \%t} is replaced
+by the target file name; any other string beginning with {\bf \%} is
+shortened by its first character.
+
+In the specification one can swap the positions of source and target
+(i.e., let the member name be the target) by using a {\tt source}
+parameter:
+
+\begin{verbatim}
+  foo.sml : shell (source:foo.pp options:shared
+                         /lib/cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+Exactly one of the {\tt source} and {\tt target} parameters must be
+specified; the other one is taken to be the member name itself.  The
+target class can be given by writing a {\tt class} parameter whose
+single sub-option must be the desired class name.
+
+The usual distinction between native and standard filename syntax
+applies to any given {\tt source} or {\tt target} parameters.
+
+For example, if one were working on a Win32 system and the target file
+is supposed to be in the root directory on volume {\tt D:},
+then one must use native syntax to write it.  One way of doing this
+would be:
+
+\begin{verbatim}
+  "D:\\foo.sml" : shell (source : foo.pp options : shared
+                               cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+\noindent As a result, {\tt foo.sml} is interpreted using native
+syntax while {\tt foo.pp} uses standard conventions (although in this
+case it does not make a difference).  Had we used the {\tt target}
+version from above, one would have to write:
+
+\begin{verbatim}
+  foo.pp : shell (target : "D:\\foo.sml" options : shared
+                                 cpp -P -Dbar=baz %s %t)
+\end{verbatim}
+
+The shell tool invokes its command whenever the target is outdated
+with respect to the source.
+
+\subsubsection{Make}
+
+The Make tool (class {\tt make}) can (almost) be seen as a specialized
+version of the Shell tool.  It has no source and one target (the
+member itself) which is always considered outdated.  As with the Shell
+tool, it is possible to specify target class and parameters using the
+{\tt class} and {\tt options} keyword parameters.
+
+The tool invokes the shell command {\tt make} on the target.  Unless
+anchored using the path anchor mechanism~\ref{sec:anchor:env}, the
+command will be located using the operating system's path search
+mechanism (e.g., the {\tt \$PATH} environment variable).
+
+Any parameters other than the {\tt class} and {\tt options}
+specifications must be plain strings and are given as additional
+command line arguments to {\tt make}.  The target name is always the
+last command line argument.
+
+Example:
+
+\begin{verbatim}
+  bar-grm : make (class:mlyacc -f bar-grm.mk)
+\end{verbatim}
+
+Here, file {\tt bar-grm} is generated (and kept up-to-date) by
+invoking the command:
+\begin{verbatim}
+  make -f bar-grm.mk bar-grm
+\end{verbatim}
+\noindent The target file is then treated as input for {\tt ml-yacc}.
+
+Cascading Shell- and Make-tools is easily possible.  Here is an
+example that first uses Make to build {\tt bar.pp} and then filters
+the contens of {\tt bar.pp} through the C preprocessor to arrive at
+{\tt bar.sml}:
+
+\begin{verbatim}
+  bar.pp : make (class:shell
+                     options:(target:bar.sml cpp -Dbar=baz %s %t)
+                 -f bar-pp.mk)
+\end{verbatim}
+
+\subsubsection{Noweb}
+\label{sec:builtin-tools:noweb}
+
+The {\tt noweb} class handles sources written for Ramsey's {\it noweb}
+literate programming facility~\cite{ramsey:simplified}.  Files ending
+with suffix {\tt .nw} are automatically recognized as belonging to
+this class.
+
+The list of targets that are to be extracted from a noweb file must be
+specified using tool options.  A target can then have a variety of its
+own options.  Each target is specified by a separate tool option
+labelled {\tt target}.  The option usually has the form of a
+sub-option list.  Recognized sub-options are:
+
+\begin{description}
+\item[name] the name of the target
+\item[root] the (optional) root tag for the target (given to the {\tt
+-R} command line switch for the {\tt notangle} command); if {\tt root}
+is missing, {\tt name} is used instead
+\item[class] the (optional) class of the target
+\item[options] (optional) options for the tool that handles the
+target's class
+\item[lineformat] a string that will be passed to the {\tt -L} command
+line option of {\tt notangle}
+\end{description}
+
+Example:
+
+\begin{verbatim}
+  project.nw (target:(name:main.sml options:(private))
+              target:(name:grammar class:mlyacc)
+              target:(name:parse.sml))
+\end{verbatim}
+
+In place of the sub-option list there can be a single string option
+which will be used for {\tt name} or even an unnamed parameter (i.e.,
+without the {\tt target} label).  If no targets are specified, the
+tool will assume two default targets by stripping the {\tt .nw}
+suffix (if present) from the source name and adding {\tt .sig} as well
+as {\tt .sml}.
+
+The following four examples are all equivalent:
+
+\begin{verbatim}
+  foo.nw (target:(name:foo.sig) target:(name:foo.sml))
+  foo.nw (target:foo.sig target:foo.sml)
+  foo.nw (foo.sig foo.sml)
+  foo.nw
+\end{verbatim}
+
+If {\tt lineformat} is missing, then a default based on the target
+class is used.  Currently only the {\tt sml} and {\tt cm} classes are
+known to CM; other classes can be added or removed by using the {\tt
+NowebTool.lineNumbering} controller function exported from library
+{\tt \$/noweb-tool.cm}:
+
+\begin{verbatim}
+  val lineNumbering: string -> { get: unit -> string option,
+                                 set: string option -> unit }
+\end{verbatim}
+
+The {\tt noweb} class accepts two other parameter besides {\tt
+target}:
+
+\begin{description}
+\item[subdir] specifies a sub-option that is used to specify a
+directory where derived files (i.e., target files and witness files as
+far as they have been specified using relative path names) are
+created.  If the {\tt subdir} option is missing, its value defaults to
+{\tt NW}.
+\item[witness] specifies an auxiliary derived file whose time stamp is
+used by CM to avoid recompiling extracted files whose contents have
+not changed.  If {\tt witness} has not been specified, then CM uses
+time stamps on extracted files directly to determine whether {\tt
+notangle} needs to be run.  Thus, with no witness, any change to the
+master file causes time stamps on all extracted files to be updated as
+well.  If a witness was specified, then CM will write over extracted
+files, causing their time stamps to change, only if their contents
+have also changed.  The {\tt subdir} specification also applies to the
+name of the witness file.
+\end{description}
+
+Example:
+
+\begin{verbatim}
+  foo.nw (subdir:NOWEBFILES
+          witness:foo.wtn
+          target:(name:main.sml))
+\end{verbatim}
+
+Here, the files named {\tt main.sml} and {\tt foo.wtn} will be
+created as
+\begin{verbatim}
+  NOWEBFILES/main.sml
+  NOWEBFILES/foo.wtn
+\end{verbatim}
+\noindent while without the {\tt subdir}-option it would have been
+\begin{verbatim}
+  NW/main.sml
+  NW/foo.wtn
+\end{verbatim}
+\noindent To avoid the creation of such a sub-directory, one can use
+the {\em current arc} ``{\bf .}'' and write:
+\begin{verbatim}
+  foo.nw (subdir:.
+          witness:foo.wtn
+          target:(name:main.sml))
+\end{verbatim}
+
+\section{Conditional compilation}
+\label{sec:preproc}
+
+In its description files, CM offers a simple conditional compilation
+facility inspired by the preprocessor for the C language~\cite{k&r2}.
+However, it is not really a {\it pre}-processor, and the syntax of the
+controlling expressions is borrowed from SML.
+
+Sequences of members can be guarded by {\tt \#if}-{\tt \#endif}
+brackets with optional {\tt \#elif} and {\tt \#else} lines in between.
+The same guarding syntax can also be used to conditionalize the export
+list.  {\tt \#if}-, {\tt \#elif}-, {\tt \#else}-, and {\tt
+\#endif}-lines must start in the first column and always
+extend to the end of the current line.  {\tt \#if} and {\tt \#elif}
+must be followed by a boolean expression.
+
+Boolean expressions can be formed by comparing arithmetic expressions
+(using operators {\tt <}, {\tt <=}, {\tt =}, {\tt >=}, {\tt >}, or
+{\tt <>}), by logically combining two other boolean expressions (using
+operators {\tt andalso}, {\tt orelse}, {\tt =}, or {\tt <>}, by
+querying the existence of a CM symbol definition, or by querying the
+existence of an exported ML definition.
+
+Arithmetic expressions can be numbers or references to CM symbols, or
+can be formed from other arithmetic expressions using operators {\tt
++}, {\tt -} (subtraction), \verb|*|, {\tt div}, {\tt mod}, or $\tilde{~}$
+(unary minus).  All arithmetic is done on signed integers.
+
+Any expression (arithmetic or boolean) can be surrounded by
+parentheses to enforce precedence.
+
+\subsection{CM variables}
+\label{sec:cmvars}
+
+CM provides a number of ``variables'' (names that stand for certain
+integers). These variables may appear in expressions of the
+conditional-compilation facility. The exact set of variables provided
+depends on SML/NJ version number, machine architecture, and
+operating system.  A reference to a CM variable is considered an
+arithmetic expression. If the variable is not defined, then it
+evaluates to 0.  The expression {\tt defined}($v$) is a boolean
+expression that yields true if and only if $v$ is a defined CM
+variable.
+
+The names of CM variables are formed starting with a letter followed
+by zero or more occurences of letters, decimal digits, apostrophes, or
+underscores.
+
+The following variables will be defined and bound to 1:
+\begin{itemize}
+\item depending on the operating system: {\tt OPSYS\_UNIX}, {\tt
+OPSYS\_WIN32}, {\tt OPSYS\_MACOS}, {\tt OPSYS\_OS2}, or \linebreak
+{\tt OPSYS\_BEOS}
+\item depending on processor architecture: {\tt ARCH\_SPARC}, {\tt
+ARCH\_ALPHA}, {\tt ARCH\_MIPS}, {\tt ARCH\_X86}, {\tt ARCH\_HPPA},
+{\tt ARCH\_RS6000}, or {\tt ARCH\_PPC}
+\item depending on the processor's endianness: {\tt BIG\_ENDIAN} or
+{\tt LITTLE\_ENDIAN}
+\item depending on the native word size of the implementation: {\tt
+SIZE\_32} or {\tt SIZE\_64}
+\item the symbol {\tt NEW\_CM}
+\end{itemize}
+
+Furthermore, the symbol {\tt SMLNJ\_VERSION} will be bound to the
+major version number of SML/NJ (i.e., the number before the first dot)
+and {\tt SMLNJ\_MINOR\_VERSION} will be bound to the system's minor
+version number (i.e., the number after the first dot).
+
+Using the {\tt CM.symval} interface one can define additional
+variables or modify existing ones.
+
+\subsection{Querying exported definitions}
+
+An expression of the form {\tt defined}($n$ $s$), where $s$ is an ML
+symbol and $n$ is an ML namespace specifier, is a boolean expression
+that yields true if and only if any member included before this test
+exports a definition under this name.  Therefore, order among members
+matters after all (but it remains unrelated to the problem of
+determining static dependencies)!  The namespace specifier must be one
+of: {\tt structure}, {\tt signature}, {\tt functor}, or {\tt funsig}.
+
+If the query takes place in the ``exports'' section of a description
+file, then it yields true if {\em any} of the included members exports
+the named symbol.
+
+\noindent Example:
+
+\begin{verbatim}
+  Library
+      structure Foo
+  #if defined(structure Bar)
+      structure Bar
+  #endif
+  is
+  #if SMLNJ_VERSION > 110
+      new-foo.sml
+  #else
+      old-foo.sml
+  #endif
+  #if defined(structure Bar)
+      bar-client.sml
+  #else
+      no-bar-so-far.sml
+  #endif
+\end{verbatim}
+
+Here, the file {\tt bar-client.sml} gets included if {\tt
+SMLNJ\_VERSION} is greater than 110 and {\tt new-foo.sml} exports a
+structure {\tt Bar} {\em or} if {\tt SMLNJ\_VERSION <= 110} and {\tt
+old-foo.sml} exports structure {\tt Bar}.  Otherwise\linebreak {\tt
+no-bar-so-far.sml} gets included instead.  In addition, the export of
+structure {\tt Bar} is guarded by its own existence.  (Structure {\tt
+Bar} could also be defined by {\tt no-bar-so-far.sml} in
+which case it would get exported regardless of the outcome of the
+other {\tt defined} test.)
+
+\subsection{Explicit errors}
+
+A pseudo-member of the form {\tt \#error $\ldots$}, which---like other
+{\tt \#}-items---starts in the first column and extends to the end of
+the line, causes an explicit error message to be printed unless it
+gets excluded by the conditional compilation logic.  The error message
+is given by the remainder of the line after the word {\tt error}.
+
+\section{Access control}
+\label{sec:access}
+
+The basic idea behind CM's access control is the following: In their
+description files, groups and libraries can specify a list of
+{\em privileges} that the client must have in order to be able to use them.
+Privileges at this level are just names (strings) and must be written
+in front of the initial keyword {\tt Library} or {\tt Group}.  If one
+group or library imports from another group or library, then
+privileges (or rather: privilege requirements) are being inherited.
+In effect, to be able to use a program, one must have all privileges
+for all its libraries, sub-libraries and library components,
+components of sub-libraries, and so on.
+
+Of course, this alone would not yet be satisfactory.  The main service
+of the access control system is that it can let a client use an
+``unsafe'' library ``safely''.  For example, a library {\tt LSafe.cm}
+could ``wrap'' all the unsafe operations in {\tt LUnsafe.cm} with
+enough error checking that they become safe.  Therefore, a user of
+{\tt LSafe.cm} should not also be required to possess the privileges
+that would be required if one were to use {\tt LUnsafe.cm} directly.
+
+In CM's access control model it is possible for a library to ``wrap''
+privileges.  If a privilege $P$ has been wrapped, then the user of the
+library does not need to have privilege $P$ even though the library is
+using another library that requires privilege $P$.  In essence, the
+library acts as a ``proxy'' who provides the necessary credentials for
+privilege $P$ to the sub-library.
+
+Of course, not everybody can be allowed to establish a library with
+such a ``wrapped'' privilege $P$.  The programmer who does that should at
+least herself have privilege P (but perhaps better, she should have
+{\em permission to wrap $P$}---a stronger requirement).
+
+In CM, wrapping a privilege is done by specifying the name of that
+privilege within parenthesis.  The wrapping becomes effective once the
+library gets stabilized via {\tt CM.stabilize}.  The (not yet
+implemented) enforcement mechanism must ensure that anyone who
+stabilizes a library that wraps $P$ has permission to wrap $P$.
+
+Note that privileges cannot be wrapped at the level of CM groups.
+
+Access control is a new feature. At the moment, only the basic
+mechanisms are implemented, but there is no enforcement.  In other
+words, everybody is assumed to have every possible privilege.  CM
+merely reports which privileges ``would have been required''.
+
+\section{The pervasive environment}
+
+The {\em pervasive environment} can be thought of as a compilation
+unit that all compilation units implicitly depend upon.  The pervasive
+enviroment exports all non-modular bindings (types, values, infix
+operators, overloaded symbols) that are mandated by the specification
+for the Standard ML Basis Library~\cite{reppy99:basis}.  (All other
+bindings of the Basis Library are exported by {\tt \$/basis.cm} which is
+a genuine CM library.)
+
+The pervasive environment is the only place where CM conveys
+non-modular bindings from one compilation unit to another, and its
+definition is fixed.
+
+\section{Files}
+\label{sec:files}
+
+CM uses three kinds of files to store derived information during and
+between sessions:
+
+\begin{enumerate}
+\item {\it Skeleton files} are used to store a highly abbreviated
+version of each ML source file's abstract syntax tree---just barely
+sufficient to drive CM's dependency analysis.  Skeleton files are much
+smaller and (for a program) easier to read than actual ML source code.
+Therefore, the existence of valid skeleton files makes CM a lot faster
+because usually most parsing operations can be avoided that way.
+\item {\it Binfiles} are the SML/NJ equivalent of object files.  They
+contain executable code and a symbol table for the associated ML
+source file.
+\item {\it Library files} (sometimes called: {\em stablefiles}) contain
+dependency graph, executable code, and symbol tables for an entire CM
+library including all of its components (groups).  Other libraries
+used by a stable library are not included in full.  Instead,
+references to those libraries are recorded using their (preferably
+anchored) pathnames.
+\end{enumerate}
+
+Normally, all these files are stored in a subdirectory of directory
+{\tt CM}. {\tt CM} itself is a subdirectory of the directory where the
+original ML source file or---in the case of library files---the
+original CM description file is located.
+
+Skeleton files are machine- and operating system-independent.
+Therefore, they are always placed into the same directory {\tt
+CM/SKEL}. Parsing (for the purpose of dependency analysis) will be
+done only once even if the same file system is accessible from
+machines of different type.
+
+Binfiles and library files contain executable code and other
+information that is potentially system- and architecture-dependent.
+Therefore, they are stored under {\tt CM/}{\it arch}{\tt -}{\it os}
+where {\it arch} is a string indicating the type of the current
+CPU architecture and {\it os} a string denoting the current operating
+system type.
+
+As explained in Section~\ref{sec:stable}, library files are a bit of
+an exception in the sense that they do not require any source files or
+any other derived files of the same library to exist.  As a
+consequence, the location of such a library file should be described
+as being relative to ``the location of the original CM description
+file if that description file still existed''.  (Of course, nothing
+precludes the CM description file from actually existing, but in the
+presence of a corresponding library file CM will not take any notice
+of that.)
+
+{\em Note:} As discussed in section~\ref{sec:toolparam:cm}, CM sometimes
+looks for library files in {\tt CM/}{\it version}{\tt /}{\it arch}{\tt
+-}{\it os}.  However, library files are never {\em created} there by
+CM.  If several versions of the same library are to be provided, an
+administrator must arrange the directory hierarchy accordingly ``by
+hand''.
+
+\subsection{Time stamps}
+
+For skeleton files and binfiles, CM uses file system time stamps
+(i.e., modification time) to determine whether a file has become
+outdated.  The rule is that in order to be considered ``up-to-date''
+the time stamp on skeleton file and binfile has to be exactly the
+same\footnote{CM explicitly sets the time stamp to be the same.} as
+the one on the ML source file.  This guarantees that all changes to a
+source will be noticed---even those that revert to an older version of
+a source file.\footnote{except for the pathological case where two
+different versions of the same source file have exactly the same time
+stamp}
+
+CM also uses time stamps to decide whether tools such as ML-Yacc or
+ML-Lex need to be run (see Section~\ref{sec:tools}).  However, the
+difference is that a file is considered outdated if it is older than
+its source.  Some care on the programmers side is necessary since this
+scheme does not allow CM to detect the situation where a source file
+gets replaced by an older version of itself.
+
+\section{Tools}
+\label{sec:tools}
+
+CM's tool set is extensible: new tools can be added by writing a few
+lines of ML code.  The necessary hooks for this are provided by a
+structure {\tt Tools} which is exported by the {\tt \$smlnj/cm/tools.cm}
+library.
+
+If the tool is implemented as a ``typical'' shell command, then all
+that needs to be done is a single call to:
+
+\begin{verbatim}
+  Tools.registerStdShellCmdTool
+\end{verbatim}
+
+For example, suppose you have made a
+new, improved version of ML-Yacc (``New-ML-Yacc'') and want to
+register it under a class called {\tt nmlyacc}.  Here is what you
+write:
+
+\begin{verbatim}
+  val _ = Tools.registerStdShellCmdTool
+    { tool = "New-ML-Yacc",
+      class = "nmlyacc",
+      suffixes = ["ngrm", "ny"],
+      cmdStdPath = "new-ml-yacc",
+      template = NONE,
+      extensionStyle =
+          Tools.EXTEND [("sig", SOME "sml", fn _ => NONE),
+                        ("sml", SOME "sml", fn x => x)],
+      dflopts = [] }
+\end{verbatim}
+
+\begin{sloppy}
+This code can either be packaged as a CM library or entered at the
+interactive top level after loading the {\tt \$smlnj/cm/ tools.cm}
+library via {\tt CM.make} or {\tt CM.load\_plugin}.  ({\tt
+CM.autoload} is not enough because of its lazy nature which prevents
+the required side-effects to occur.)
+\end{sloppy}
+
+In our example, the shell command name for our tool is {\tt
+new-ml-yacc}.  When looking for this command in the file system, CM
+first tries to treat it as a path anchor (see
+section~\ref{sec:anchor:env}).  For example, suppose {\tt new-ml-yacc} is
+mapped to {\tt /bin}.  In this case the command to be
+invoked would be {\tt /bin/new-ml-yacc}.  If path anchor resolution
+fails, then the command name will be used as-is.  Normally this
+causes the shell's path search mechanism to be used as a fallback.
+
+{\tt Tools.registerStdShellCmdTool} creates the class and installs the
+tool for it.  The arguments must be specified as follows:
+
+\begin{description}
+\item[tool] a descriptive name of the tool (used in error messages);
+type: {\tt string}
+\item[class] the name of the class; the string must not contain
+upper-case letters; type: {\tt string}
+\item[suffixes] a list of file name suffixes that let CM automatically
+recognize files of the class; type: {\tt string list}
+\item[cmdStdPath] the command string from above; type: {\tt string}
+\item[template] an optional string that describes how the command line
+is to be constructed from pieces; \\
+The string is taken verbatim except for embedded \% format specifiers:
+  \begin{description}\setlength{\itemsep}{0pt}
+  \item[\%c] the command name (i.e., the elaboration of {\tt cmdStdPath})
+  \item[\%s] the source file name in native pathname syntax
+  \item[\%$n$t] the $n$-th target file in native pathname syntax; \\
+    ($n$ is specified as a decimal number, counting starts at $1$, and
+    each target file name is constructed from the corresponding {\tt
+    extensionStyle} entry; if $n$ is $0$ (or missing), then all
+    targets---separated by single spaces---are inserted;
+    if $n$ is not in the range between $0$ and the number of available
+    targets, then {\bf \%$n$t} expands into itself) 
+  \item[\%$n$o] the $n$-th tool parameter; \\
+    (named sub-option parameters are ignored;
+     $n$ is specified as a decimal number, counting starts at $1$;
+     if $n$ is $0$ (or missing), then all options---separated by single
+     spaces---are inserted;
+     if $n$ is not in the range between $0$ and the number of available
+     options, then {\bf \%$n$o} expands into itself) 
+  \item[\%$x$] the character $x$ (where $x$ is neither {\bf c}, nor
+    {\bf s}, {\bf t}, or {\bf o})
+  \end{description}
+If no template string is given, then it defaults to {\tt "\%c \%s"}.
+\item[extensionStyle] a specification of how the names of files
+generated by the tool relate to the name of the tool input file;
+type: {\tt Tools.extensionStyle}. \\
+Currently, there are two possible cases:
+\begin{enumerate}
+\item ``{\tt Tools.EXTEND} $l$'' says that if the tool source file is
+{\it file} then for each suffix {\it sfx} in {\tt (map \#1 $l$)} there
+will be one tool output file named {\it file}{\tt .}{\it sfx}.  The
+list $l$ consists of triplets where the first component specifies the
+suffix string, the second component optionally specifies the
+member class name of the corresponding derived file, and the
+third component is a function to calculate tool options for the 
+target from those of the source. (Argument and result type of these
+functions is {\tt Tools.toolopts option}.)
+\item ``{\tt Tools.REPLACE }$(l_1, l_2)$'' specifies that given the
+base name {\it base} there will be one tool output file {\it base}{\tt
+.}{\it sfx} for each suffix {\it sfx} in {\tt (map \#1 $l_2$)}.  Here,
+{\it base} is determined by the following rule: If the name of the
+tool input file has a suffix that occurs in $l_1$, then {\it base} is
+the name without that suffix.  Otherwise the whole file name is taken
+as {\it base} (just like in the case of {\tt Tools.EXTEND}).  As with
+{\tt Tools.EXTEND}, the second components of the elements of $l_2$ can
+optionally specify the member class name of the corresponding derived
+file, and the third component maps source options to target options.
+\end{enumerate}
+\item[dflopts] a list of tool options which is used for
+substituting {\bf \%$n$o} fields in {\tt template} (see above) if no
+options were specified.  (Note that the value of {\tt dflopts} is never
+passed to the option mappers in {\tt Tools.EXTEND} or {\tt
+Tools. REPLACE}.)  Type: {\tt Tools.toolopts}.
+\end{description}
+
+Less common kinds of rules can also be defined using the generic
+interface {\tt Tools.registerClass}.
+
+\subsection{Plug-in Tools}
+
+If CM comes across a member class name $c$ that it does not know
+about, then it tries to load a plugin module named {\tt \$/}$c${\tt
+-tool.cm} or {\tt ./}$c${\tt -tool.cm}.  If it sees a file whose name
+ends in suffix $s$ for which no explicit member class has been
+specified in the CM description file and for which automatic
+member classification fails, then it tries to load a plugin module
+named {\tt \$/}$s${\tt -ext.cm} or {\tt ./}$s${\tt -ext.cm}.  The
+so-loaded module can then register the required tool which enables CM
+to successfully deal with the previously unknown member.
+
+This mechanism makes it possible for new tools to be added by simply
+placing appropriately-named plug-in libraries in such a way that CM
+can find them.  This can be done in one of two ways:
+
+\begin{enumerate}
+\item For general-purpose tools that are installed in some central
+place, corresponding tool description files {\tt \$/}$c${\tt -tool.cm}
+and {\tt \$/}$s${\tt -ext.cm} should be registered using the path
+anchor mechanism.  If this is done, actual description files can be
+placed in arbitrary locations.
+\item For special-purpose tools that are part of a specific program
+and for which there is no need for central installation, one should
+simply put the tool description files into the same directory as the
+one that contains their ``client'' description file.
+\end{enumerate}
+
+\section{Parallel and distributed compilation}
+\label{sec:parmake}
+
+To speed up recompilation of large projects with many ML source files,
+CM can exploit parallelism that is inherent in the dependency graph.
+Currently, the only kind of operating system for which this is
+implemented is Unix ({\tt OPSYS\_UNIX}), where separate processes are
+used.  From there, one can distribute the work across a network of
+machines by taking advantage of the network file system and the
+``rsh'' facility.
+
+To perform parallel compilations, one must attach ``compile servers''
+to CM.  This is done using function\linebreak {\tt CM.Server.start}
+with the following signature:
+
+\begin{verbatim}
+  structure Server : sig
+      type server
+      val start : { name: string,
+                    cmd: string * string list,
+                    pathtrans: (string -> string) option,
+                    pref: int } -> server option
+  end
+\end{verbatim}
+
+Here, {\tt name} is an arbitrary string that is used by CM when
+issuing diagnostic messages concerning the server\footnote{Therefore,
+it is useful to choose {\tt name} uniquely.} and {\tt cmd} is a value
+suitable as argument to {\tt Unix.execute}.
+
+The program to be specified by {\tt cmd} should be another instance of
+CM---running in ``slave mode''.  To start CM in slave mode, start {\tt
+sml} with a single command-line argument of {\tt @CMslave}.  For
+example, if you have installed in /path/to/smlnj/bin/sml, then a
+server process on the local machine could be started by
+
+\begin{verbatim}
+  CM.Server.start { name = "A", pathtrans = NONE, pref = 0,
+                    cmd = ("/path/to/smlnj/bin/sml",
+                           ["@CMslave"]) };
+\end{verbatim}
+
+To run a process on a remote machine, e.g., ``thatmachine'', as
+compute server, one can use ``rsh''.\footnote{On certain systems it
+may be necessary to wrap {\tt rsh} into a script that protects rsh
+from interrupt signals.}  Unfortunately, at the moment it
+is necessary to specify the full path to ``rsh'' because {\tt
+Unix.execute} (and therefore {\tt CM.Server.start}) does not perform
+a {\tt PATH} search. The remote machine
+must share the file system with the local machine, for example via NFS.
+
+\begin{verbatim}
+  CM.Server.start { name = "thatmachine",
+                    pathtrans = NONE, pref = 0,
+                    cmd = ("/usr/ucb/rsh",
+                           ["thatmachine",
+                            "/path/to/smlnj/bin/sml",
+                            "@CMslave"]) };
+\end{verbatim}
+
+You can start as many servers as you want, but they all must have
+different names.  If you attach any servers at all, then you should
+attach at least two (unless you want to attach one that runs on a
+machine vastly more powerful than your local one).  Local servers make
+sense on multi-CPU machines: start as many servers as there are CPUs.
+Parallel make is most effective on multiprocessor machines because
+network latencies can have a severely limiting effect on what can be
+gained in the distributed case.
+(Be careful, though.  Since there is no memory-sharing to speak of
+between separate instances of {\tt sml}, you should be sure to check
+that your machine has enough main memory.)
+
+If servers on machines of different power are attached, one can give
+some preference to faster ones by setting the {\tt pref} value higher.
+(But since the {\tt pref} value is consulted only in the rare case
+that more than one server is idle, this will rarely lead to vastly
+better throughput.) All attached servers must use the same
+architecture-OS combination as the controlling machine.
+
+In parallel mode, the master process itself normally does not compile
+anything.  Therefore, if you want to utilize the master's CPU for
+compilation, you should start a compile server on the same machine
+that the master runs on (even if it is a uniprocessor machine).
+
+The {\tt pathtrans} argument is used when connecting to a machine with
+a different file-system layout.  For local servers, it can safely be
+left at {\tt NONE}.  The ``path transformation'' function is used to
+translate local path names to their remote counterparts.  This can be
+a bit tricky to get right, especially if the machines use automounters
+or similar devices.  The {\tt pathtrans} functions consumes and
+produces names in CM's internal ``protocol encoding'' (see
+Section~\ref{sec:pathencode}).
+
+Once servers have been attached, one can invoke functions like
+{\tt CM.recomp}, {\tt CM.make}, and {\tt CM.stabilize}.  They should
+work the way the always do, but during compilation they will take
+advantage of parallelism.
+
+When CM is interrupted using Control-C (or such), one will sometimes
+experience a certain delay if servers are currently attached and busy.
+This is because the interrupt-handling code will wait for the servers
+to finish what they are currently doing and bring them back to an
+``idle'' state first.
+
+\subsection{Pathname protocol encoding}
+\label{sec:pathencode}
+
+A path encoded by CM's master-slave protocol encoding does not only
+specify which file a path refers to but also, in some sense, specifies
+why CM constructed this path in the first place.  For example, the
+encoding {\tt a/b/c.cm:d/e.sml} represents the file {\tt a/b/d/e.sml}
+but also tells us that it was constructed by putting {\tt d/e.sml}
+into the context of description file {\tt a/b/c.cm}.  Thus, an encoded
+path name consists of one or more colon-separated ({\bf :}) sections,
+and each section consists of slash-separated ({\bf /}) arcs.  To find
+out what actual file a path refers to, it is necessary to erase all
+arcs that precede colons.
+
+The first section is special because it also specifies whether the
+whole path was relative or absolute, or whether it was an anchored
+path.
+
+\begin{description}
+\item[Anchored paths] start with a dollar-symbol {\bf \$}.  The name
+of the anchor is the string between this leading dollar-symbol and the
+first occurence of a slash {\bf /} within the first section.  The
+remaining arcs of the first section are interpreted relative to the
+current value of the anchor.
+\item[Absolute paths] start either with a percent-sign {\bf \%} or a
+slash {\bf /}.  The canonical form is the one with the percent-sign:
+it specifies the volume name between the {\bf \%} and the first slash.
+The common case where the volume name is empty (i.e, {\em always} on
+Unix systems), the path starts with {\bf /}.
+\item[Relative paths] are all other paths.
+\end{description}
+
+Encoded path names never contain white space.  Moreover, the encoding
+for path arcs, volume names, or anchor names does not contain special
+characters such as {\bf /}, {\bf \$}, {\bf \%}, {\bf :}, {\bf
+\verb|\|}, {\bf (}, and {\bf )}.  Instead, should white space or
+special characters occur in the non-encoded name, then they will be
+encoded using the escape-sequence \verb|\ddd| where {\tt ddd} is the
+decimal value of the respective character's ordinal number (i.e, the
+result of applying {\tt Char.ord}).
+
+The so-called {\em current} arc is encoded as {\bf .}, the {\em
+parent} arc uses {\bf ..} as its representation.  On some operating
+systems it can happen that although an arc is either {\tt .} or {\tt
+..}, it still does not actually refer to the current or the parent
+arc.  In such a case, CM will encode the dots in these names using the
+\verb|\ddd| method, too.
+
+When issuing progress messages, CM shows path names in a form that is
+almost the same as the protocol encoding.  The only difference is that
+arcs that precede colon-sign {\bf :} are enclosed within parentheses
+to emphasize that they are ``not really there''.  The same form is
+also used by {\tt CM.Library.descr}.
+
+\subsection{Parallel bootstrap compilation}
+
+The bootstrap compiler\footnote{otherwise not mentioned in this
+document} with its main function {\tt CMB.make} and the corresponding
+cross-compilation variants of the bootstrap compiler will also use any
+attached compile servers.  If one intends to exclusively use the
+bootstrap compiler, one can even attach servers that run on machines
+with different architecture or operating system.
+
+Since the master-slave protocol is fairly simple, it cannot handle
+complicated scenarios such as the one necessary for compiling the
+``init group'' (i.e., the small set of files necessary for setting up
+the ``pervasive'' environment) during {\tt CMB.make}.  Therefore, this
+will always be done locally by the master process.
+
+\section{The {\tt sml} command line}
+
+The SML/NJ interactive system---including CM---is started from the
+operating system shell by invoking the command {\tt sml}.
+This section describes those arguments accepted by {\tt sml} that
+are related to (and processed by) CM.
+
+CM accepts {\em file names}, {\em mode switching flags}, and {\em
+preprocessor definitions} as arguments.  All these arguments are
+processed one-by-one from left to right.
+
+\subsection{File arguments}
+
+Names of ML source files and CM description files can appear as
+arguments in any order.
+
+\begin{description}
+\item[ML source files] are recognized by their filename extensions
+({\tt .sig}, {\tt .sml}, or {\tt .fun}) and cause the named file to be
+loaded via {\tt use} at the time the argument is being considered.
+Names of ML source files are specified using the underlying operating
+system's native pathname syntax.
+\item[CM description files] are recognized by their extension {\tt
+.cm}.  They must be specified in CM's {\em standard} pathname syntax.
+At the time the argument is being considered, the named library (or
+group) will be loaded by passing the name to either {\tt CM.autoload}
+or {\tt CM.make}---depending on which {\em mode switching flag} ({\tt
+-a} or {\tt -m}) was specified last.  The default is {\tt -a} (i.e.,
+{\tt CM.autoload}).
+\end{description}
+
+\subsection{Mode-switching flags}
+
+By default, CM description files are loaded via {\tt CM.autoload}.  By
+specifying {\tt -m} somewhere on the command line one can force the
+system to use {\tt CM.make} for all following description files up to
+the next occurence of {\tt -a}.  The {\tt -a} flag switches back to
+the default behavior, using {\tt CM.autoload}, which will then again
+be in effect up to the next occurrence of another {\tt -m}.
+
+Mode-switching flags can be specified arbitrarily often on the same
+command line.
+
+\subsection{Defining and undefining CM preprocessor symbols}
+\label{sec:cmdline:defundef}
+
+The following options for defining and undefining CM preprocessor
+symbols can also occur arbitrarily often.  Their effects accumulate
+while processing the command line from left to right.  The resulting
+final state of the internal preprocessor registry becomes observable
+in the interactive system.
+
+\begin{description}
+\item[{\tt -D$v$=$n$}] acts like {\tt (\#set (CM.symval "$v$") (SOME $n$))}.
+\item[{\tt -D$v$}] is equivalent to {\tt -D$v$=1}.
+\item[{\tt -U$v$}] acts like {\tt (\#set (CM.symval "$v$") NONE)}.
+\end{description}
+
+\section{Auxiliary scripts}
+
+\subsection{Building stand-alone programs}
+\label{sec:mlbuild}
+
+The programmer should normally have no need to invoke {\tt
+CM.mk\_standalone} (see Section~\ref{sec:mlbuild:support}) directly.
+Instead, SML/NJ provides a command {\tt ml-build} which does all the
+work.  To be able to use {\tt ml-build}, one must implement a library
+exporting a structure that has some function suitable to be an
+argument to {\tt SMLofNJ.exportFn}.  Suppose the library is called
+{\tt myproglib.cm}, the structure is called {\tt MyProg}, and the
+function is called {\tt MyProg.main}.  If one wishes to produce a heap
+image file {\tt myprog} one simply has to invoke the following
+command:
+
+\begin{verbatim}
+  ml-build myproglib.cm MyProg.main myprog
+\end{verbatim}
+
+The heap image is written only when needed: if a heap image exists and
+is newer than all ML sources involved, provided that none of the ML
+sources have to be recompiled, {\tt ml-build} will just issue a
+message indicating that everything is up-to-date.
+
+As in the case of {\tt sml}, it is possible to define or undefine
+preprocessor symbols using {\tt -D} or {\tt -U} options (see
+Section~\ref{sec:cmdline:defundef}).  These options must be specified
+before the three regular arguments.  Thus, the full command line
+syntax is:
+
+\begin{verbatim}
+  ml-build [DU-options] myproglib.cm MyProg.main myprog
+\end{verbatim}
+
+\subsubsection{Bootstrapping: How {\tt ml-build} works}
+
+Internally, {\tt ml-build} generates a temporary wrapper library
+containing a single call of {\tt SMLofNJ.exportFn} as part of the
+library's module-initialization code.  Once this is done, CM is
+started, {\tt CM.mk\_standalone} is invoked (with the main project
+description file, the generated wrapper library file, and the heap
+image name as arguments), and a {\em bootlist} file is written.
+If all these steps were successful, {\tt ml-build} invokes the (bare)
+SML/NJ runtime with a special option, causing it to {\em bootstrap}
+using the {\em bootlist} file.
+
+Each line of the {\em bootlist} file specifies one module to be linked
+into the final stand-alone program.  The runtime system reads these
+lines one-by-one, loads the corresponding modules, and executes their
+initialization code.  Since the last module has been arranged (by way
+of using the wrapper library from above) to contain a call of {\tt
+SMLofNJ.exportFn}, initialization of this module causes the program's
+heap image to be written and the bootstrap procedure to terminate.
+
+\subsection{Generating dependencies for {\tt make}}
+\label{sec:makedepend}
+
+When ML programs are used as parts of larger projects, it can become
+necessary to use CM (or, e.g., {\tt ml-build} as described in
+Section~\ref{sec:mlbuild}) in a traditional makefile for Unix' {\bf
+make}.  To avoid repeated invocations, the dependency information that
+CM normally manages internally must be described externally so that
+{\bf make} can process it.
+
+For this purpose, it is possible to let CM's dependency analyzer
+generate a list of files that a given ML program depends on (see
+Section~\ref{sec:makedepend:support}).  The {\tt ml-makedepend}
+scripts conveniently wraps this functionality in such a way that it
+resembles the familiar {\bf makedepend} facility found on many Unix
+installations for the use by C projects.
+
+An invocation of {\tt ml-makedepend} takes two mandatory arguments:
+the root description file of the ML program in question and the name
+of the target that is to be used by the generated makefile entry.
+Thus, a typical command line has the form:
+
+\begin{verbatim}
+  ml-makedepend project.cm targetname
+\end{verbatim}
+
+This will cause {\tt ml-makedepend} to first look for a file named
+{\tt makefile} and if that cannot be found for {\tt Makefile}.  (An
+error message is issued if neither of the two exists.)  After deleting
+any previously generated entry for this description-target
+combination, the script will invoke CM and add up-to-date dependency
+information to the file.
+
+Using the {\tt -f} option it is possible to force an arbitrary
+programmer-specified file to be used in place of {\tt makefile} or
+{\tt Makefile}.
+
+Some of the files a CM-managed program depends on are stable
+libraries.  Since the file names for stable libraries vary according
+to current CPU architecture and operating system, writing them
+directly would require different entries for different systems.  To
+avoid this problem (most of the time\footnote{The careful reader may
+have noticed that because of CM's conditional compilation it is
+possible that dependency information itself varies between different
+architectures or operating systems.}), {\tt ml-makedepend} will use
+{\bf make}-variables {\tt \$(ARCH)} and {\tt \$(OPSYS)} as
+placeholders within the information it generates.  It is the
+programmer's responsibility to make sure that these variables are set
+to meaningful values at the time {\bf make} is eventually being
+invoked.  This feature can be turned off (causing actual file names to
+be used) by specifying the {\tt -n} option to {\tt ml-makedepend}.
+
+In cases where the programmer prefers other strings to be used in
+place of {\tt \$(ARCH)} or {\tt \$(OPSYS)} (or both) one can specify
+those strings using the {\tt -a} and {\tt -o} options, respectively.
+
+Like {\tt ml-build} (Section~\ref{sec:mlbuild}) and {\tt sml}
+(Section~\ref{sec:cmdline:defundef}), the {\tt ml-makedepend} command
+also accepts {\tt -D} and {\tt -U} command line options.
+
+Thus, the full command line syntax for {\tt ml-makedepend} is:
+
+\begin{verbatim}
+  ml-makedepend [DU-options] [-n] [-f makefile] project.cm target
+  ml-makedepend [DU-options] [-a arch] [-o os] [-f makefile] project.cm target
+\end{verbatim}
+
+(If {\tt -n} is given, then any additional {\tt -a} or {\tt -o}
+options---while not illegal---will be ignored.)
+
+\section{Example: Dynamic linking}
+\label{sec:dynlink}
+
+Autoloading is convenient and avoids wasted memory for modules that
+should be available at the interactive prompt but have not actually
+been used so far.  However, sometimes one wants to be even more
+aggressive and save the space needed for a function until---at
+runtime---that function is actually being dynamically invoked.
+
+CM does not provide immediate support for this kind of {\em dynamic
+linking}, but it is quite simple to achieve the effect by carefully
+arranging some helper libraries and associated stub code.
+
+Consider the following module:
+\begin{verbatim}
+  structure F = struct
+      fun f (x: int): int =
+          G.g x + H.h (2 * x + 1)
+  end
+\end{verbatim}
+
+Let us further assume that the implementations of structures {\tt G}
+and {\tt H} are rather large so that it would be worthwhile to avoid
+loading the code for {\tt G} and {\tt H} until {\tt F.f} is called
+with some actual argument.  Of course, if {\tt F} were bigger, then we
+also want to avoid loading {\tt F} itself.
+
+To achieve this goal, we first define a {\em hook} module which will
+be the place where the actual implementation of our function will be
+registered once it has been loaded.  This hook module is then wrapped
+into a hook library.  Thus, we have {\tt f-hook.cm}:
+\begin{verbatim}
+  Library
+      structure F_Hook
+  is
+      f-hook.sml
+\end{verbatim}
+
+and {\tt f-hook.sml}:
+
+\begin{verbatim}
+  structure F_Hook = struct
+      local
+          fun placeholder (i: int) : int =
+              raise Fail "F_Hook.f: unitinialized"
+          val r = ref placeholder
+      in
+          fun init f = r := f
+          fun f x = !r x
+      end
+  end
+\end{verbatim}
+
+The hook module provides a reference cell into which a function of
+type equal to {\tt F.f} can be installed.  Here we have chosen to hide
+the actual reference cell behind a {\bf local} construct.  Accessor
+functions are provided to install something into the hook
+({\tt init}) and to invoke the so-installed value ({\tt f}).
+
+With this preparation we can write the implementation module {\tt f-impl.sml}
+in such a way that not only does it provide the actual
+code but also installs itself into the hook:
+\begin{verbatim}
+  structure F_Impl = struct
+      local
+          fun f (x: int): int =
+              G.g x + H.h (2 * x + 1)
+      in
+          val _ = F_Hook.init f
+      end
+  end
+\end{verbatim}
+\noindent The implementation module is wrapped into its implementation
+library {\tt f-impl.cm}:
+\begin{verbatim}
+  Library
+      structure F_Impl
+  is
+      f-impl.sml
+      f-hook.cm
+      g.cm       (* imports G *)
+      h.cm       (* imports H *)
+\end{verbatim}
+\noindent Note that {\tt f-impl.cm} must mention {\tt f-hook.cm} for
+{\tt f-impl.sml} to be able to access structure {\tt F\_Hook}.
+
+Finally, we replace the original contents of {\tt f.sml} with a stub
+module that defines structure {\tt F}:
+\begin{verbatim}
+  structure F = struct
+      local
+          val initialized = ref false
+      in
+          fun f x =
+              (if !initialized then ()
+               else if CM.make "f-impl.cm" then initialized := true
+               else raise Fail "dynamic linkage for F.f failed";
+               F_Hook.f x)
+      end
+  end
+\end{verbatim}
+\noindent The trick here is to explicitly invoke {\tt CM.make} the
+first time {\tt F.f} is called.  This will then cause {\tt f-impl.cm}
+(and therefore {\tt g.cm} and also {\tt h.cm}) to be loaded and the
+``real'' implementation of {\tt F.f} to be registered with the hook
+module from where it will then be available to this and future calls
+of {\tt F.f}.
+
+For the new {\tt f.sml} to be compiled successfully it must be placed
+into a library {\tt f.cm} that mentions {\tt f-hook.cm} and {\tt
+\$smlnj/cm/full.cm}.  As we have seen, {\tt f-hook.cm} exports {\tt
+F\_Hook.f} and {\tt \$smlnj/cm/full.cm} is needed because it exports
+{\tt CM.make}:
+
+\begin{verbatim}
+  Library
+      structure F
+  is
+      f.sml
+      f-hook.cm
+      $smlnj/cm.cm (* or $smlnj/cm/full.cm *)
+\end{verbatim}
+
+\noindent{\bf Beware!}  This solution makes use of {\tt \$smlnj/cm.cm}
+which in turn requires the SML/NJ compiler to be present.  Therefore,
+is worthwhile only for really large program modules where the benefits
+of their absence are not outweighed be the need for the compiler.
+
+\section{Some history}
+
+Although its programming model is more general, CM's implementation is
+closely tied to the Standard ML programming language~\cite{milner97}
+and its SML/NJ implementation~\cite{appel91:sml}.
+
+The current version is preceded by several other compilation managers.
+Of those, the most recent went by the same name
+``CM''~\cite{blume95:cm}, while earlier ones were known as IRM ({\it
+Incremental Recompilation Manager})~\cite{harper94:irm} and SC (for
+{\it Separate Compilation})~\cite{harper-lee-pfenning-rollins-CM}.  CM
+owes many ideas to SC and IRM.
+
+Separate compilation in the SML/NJ system heavily relies on mechanisms
+for converting static environments (i.e., the compiler's symbol
+tables) into linear byte stream suitable for storage on
+disks~\cite{appel94:sepcomp}.  However, unlike all its predecessors,
+the current implementation of CM is integrated into the main compiler
+and no longer relies on the {\em Visible Compiler} interface.
+
+\pagebreak
+
+\appendix
+
+\section{CM description file syntax}
+
+\subsection{Lexical Analysis}
+
+The CM parser employs a context-sensitive scanner.  In many cases this
+avoids the need for ``escape characters'' or other lexical devices
+that would make writing description files cumbersome.  On the other
+hand, it increases the complexity of both documentation and implementation.
+
+The scanner skips all nestable SML-style comments (enclosed with {\bf
+(*} and {\bf *)}).
+
+Lines starting with {\bf \#line} may list up to three fields separated
+by white space.  The first field is taken as a line number and the
+last field (if more than one field is present) as a file name.  The
+optional third (middle) field specifies a column number.  A line of
+this form resets the scanner's idea about the name of the file that it
+is currently processing and about the current position within that
+file.  If no file is specified, the default is the current file.  If
+no column is specified, the default is the first column of the
+(specified) line.  This feature is meant for program-generators or
+tools such as {\tt noweb} but is not intended for direct use by
+programmers.
+
+The following lexical classes are recognized:
+
+\begin{description}
+\item[Namespace specifiers:] {\bf structure}, {\bf signature},
+{\bf functor}, or {\bf funsig}.  These keywords are recognized
+everywhere.
+\item[CM keywords:] {\bf group}, {\bf Group}, {\bf GROUP}, {\bf
+library}, {\bf Library}, {\bf LIBRARY}, {\bf is}, {\bf IS}.  These
+keywords are recognized everywhere except within ``preprocessor''
+lines (lines starting with {\bf \#}) or following one of the namespace
+specifiers.
+\item[Preprocessor control keywords:] {\bf \#if}, {\bf \#elif}, {\bf
+\#else}, {\bf \#endif}, {\bf \#error}.  These keywords are recognized
+only at the beginning of the line and indicate the start of a
+``preprocessor'' line.  The initial {\bf \#} character may be
+separated from the rest of the token by white space (but not by comments).
+\item[Preprocessor operator keywords:] {\bf defined}, {\bf div}, {\bf
+mod}, {\bf andalso}, {\bf orelse}, {\bf not}.  These keywords are
+recognized only when they occur within ``preprocessor'' lines.  Even
+within such lines, they are not recognized as keywords when they
+directly follow a namespace specifier---in which case they are
+considered SML identifiers.
+\item[SML identifiers (\nt{mlid}):] Recognized SML identifiers
+include all legal identifiers as defined by the SML language
+definition. (CM also recognizes some tokens as SML identifiers that
+are really keywords according to the SML language definiten. However,
+this can never cause problems in practice.)  SML identifiers are
+recognized only when they directly follow one of the namespace
+specifiers.
+\item[CM identifiers (\nt{cmid}):] CM identifiers have the same form
+as those ML identifiers that are made up solely of letters, decimal
+digits, apostrophes, and underscores.  CM identifiers are recognized when they
+occur within ``preprocessor'' lines, but not when they directly follow
+some namespace specifier.
+\item[Numbers (\nt{number}):] Numbers are non-empty sequences of
+decimal digits.  Numbers are recognized only within ``preprocessor''
+lines.
+\item[Preprocessor operators:] The following unary and binary operators are
+recognized when they occur within ``preprocessor'' lines: {\tt +},
+{\tt -}, {\tt *}, {\tt /}, {\tt \%}, {\tt <>}, {\tt !=}, {\tt <=},
+{\tt <}, {\tt >=}, {\tt >}, {\tt ==}, {\tt =}, $\tilde{~}$, {\tt
+\&\&}, {\tt ||}, {\tt !}.  Of these, the following (``C-style'')
+operators are considered obsolete and trigger a warning
+message\footnote{The use of {\tt -} as a unary minus also triggers
+this warning.} as long as {\tt CM.Control.warn\_obsolete} is set to
+{\tt true}: {\tt /}, {\tt \%}, {\tt !=}, {\tt ==}, {\tt \&\&}, {\tt
+||}, {\tt !}.
+\item[Standard path names (\nt{stdpn}):] Any non-empty sequence of
+upper- and lower-case letters, decimal digits, and characters drawn
+from {\tt '\_.;,!\%\&\$+/<=>?@$\tilde{~}$|\#*-\verb|^|} that occurs
+outside of ``preprocessor'' lines and is neither a namespace specifier
+nor a CM keyword will be recognized as a stardard path name.  Strings
+that lexically constitute standard path names are usually---but not
+always---interpreted as file names. Sometimes they are simply taken as
+literal strings.  When they act as file names, they will be
+interpreted according to CM's {\em standard syntax} (see
+Section~\ref{sec:basicrules}).  (Member class names, names of
+privileges, and many tool optios are also specified as standard path
+names even though in these cases no actual file is being named.)
+\item[Native path names (\nt{ntvpn}):] A token that has the form of an
+SML string is considered a native path name.  The same rules as in SML
+regarding escape characters apply.  Like their ``standard''
+counterparts, native path names are not always used to actually name
+files, but when they are, they use the native file name syntax of the
+underlying operating system.
+\item[Punctuation:] A colon {\bf :} is recognized as a token
+everywhere except within ``preprocessor'' lines. Parentheses {\bf ()}
+are recognized everywhere.
+\end{description}
+
+\subsection{EBNF for preprocessor expressions}
+
+\noindent{\em Lexical conventions:}\/ Syntax definitions use {\em
+Extended Backus-Naur Form} (EBNF).  This means that vertical bars
+\vb separate two or more alternatives, curly braces \{\} indicate
+zero or more copies of what they enclose (``Kleene-closure''), and
+square brackets $[]$ specify zero or one instances of their enclosed
+contents.  Round parentheses () are used for grouping.  Non-terminal
+symbols appear in \nt{this}\/ typeface; terminal symbols are
+\tl{underlined}.
+
+\noindent The following set of rules defines the syntax for CM's
+preprocessor expressions (\nt{ppexp}):
+
+\begin{tabular}{rcl}
+\nt{aatom}  &\ar& \nt{number} \vb \nt{cmid} \vb \tl{(} \nt{asum} \tl{)} \vb (\ttl{$\tilde{~}$} \vb \ttl{-}) \nt{aatom} \\
+\nt{aprod}  &\ar& \{\nt{aatom} (\ttl{*} \vb \tl{div} \vb \tl{mod}) \vb \ttl{/} \vb \ttl{\%} \} \nt{aatom} \\
+\nt{asum}   &\ar& \{\nt{aprod} (\ttl{+} \vb \ttl{-})\} \nt{aprod} \\
+\\
+\nt{ns}     &\ar& \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb \tl{funsig} \\
+\nt{mlsym}  &\ar& \nt{ns} \nt{mlid} \\
+\nt{query}  &\ar& \tl{defined} \tl{(} \nt{cmid} \tl{)} \vb \tl{defined} \tl{(} \nt{mlsym} \tl{)} \\
+\\
+\nt{acmp}   &\ar& \nt{asum} (\ttl{<} \vb \ttl{<=} \vb \ttl{>} \vb \ttl{>=} \vb \ttl{=} \vb \ttl{==} \vb \ttl{<>} \vb \ttl{!=}) \nt{asum} \\
+\\
+\nt{batom}  &\ar& \nt{query} \vb \nt{acmp} \vb (\tl{not} \vb \ttl{!}) \nt{batom} \vb \tl{(} \nt{bdisj} \tl{)} \\
+\nt{bcmp}   &\ar& \nt{batom} [(\ttl{=} \vb \ttl{==} \vb \ttl{<>} \vb \ttl{!=}) \nt{batom}] \\
+\nt{bconj}  &\ar& \{\nt{bcmp} (\tl{andalso} \vb \ttl{\&\&})\} \nt{bcmp} \\
+\nt{bdisj}  &\ar& \{\nt{bconj} (\tl{orelse} \vb \ttl{||})\} \nt{bconj} \\
+\\
+\nt{ppexp} &\ar& \nt{bdisj}
+\end{tabular}
+
+\subsection{EBNF for export lists}
+
+The following set of rules defines the syntax for export lists (\nt{elst}):
+
+\begin{tabular}{rcl}
+\nt{guardedexports} &\ar& \{ \nt{export} \} (\tl{\#endif} \vb
+\tl{\#else} \{ \nt{export} \} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp}
+\nt{guardedexports}) \\
+\nt{restline}      &\ar& rest of current line up to next newline character \\
+\nt{export}        &\ar& \nt{mlsym} \vb \tl{\#if} \nt{ppexp}
+\nt{guardedexports} \vb \tl{\#error} \nt{restline}  \\
+\nt{elst}       &\ar& \nt{export} \{ \nt{export} \} \\
+\end{tabular}
+
+\subsection{EBNF for tool options}
+
+The following set of rules defines the syntax for tool options
+(\nt{toolopts}):
+
+\begin{tabular}{rcl}
+\nt{pathname} &\ar& \nt{stdpn} \vb \nt{ntvpn} \\
+\nt{toolopts} &\ar& \{ \nt{pathname} [\tl{:} (\tl{(} \nt{toolopts} \tl{)} \vb \nt{pathname})] \}
+\end{tabular}
+
+\subsection{EBNF for member lists}
+
+The following set of rules defines the syntax for member lists (\nt{members}):
+
+\begin{tabular}{rcl}
+\nt{class}          &\ar& \nt{stdpn} \\
+\nt{member}         &\ar& \nt{pathname} [\tl{:} \nt{class}] [\tl{(} \nt{toolopts} \tl{)}] \\
+\nt{guardedmembers} &\ar& \nt{members} (\tl{\#endif} \vb \tl{\#else} \nt{members} \tl{\#endif} \vb \tl{\#elif} \nt{ppexp} \nt{guardedmembers}) \\
+\nt{members}        &\ar& \{ (\nt{member} \vb \tl{\#if} \nt{ppexp}
+\nt{guardedmembers} \vb \tl{\#error} \nt{restline}) \} 
+\end{tabular}
+
+\subsection{EBNF for library descriptions}
+
+The following set of rules defines the syntax for library descriptions
+(\nt{library}).  Notice that although the syntax used for \nt{version}
+is the same as that for \nt{stdpn}, actual version strings will
+undergo further analysis according to the rules given in
+section~\ref{sec:versions}:
+
+\begin{tabular}{rcl}
+\nt{libkw}     &\ar& \tl{library} \vb \tl{Library} \vb \tl{LIBRARY} \\
+\nt{version}   &\ar& \nt{stdpn} \\
+\nt{privilege} &\ar& \nt{stdpn} \\
+\nt{lprivspec} &\ar& \{ \nt{privilege} \vb \tl{(} \{ \nt{privilege} \} \tl{)} \} \\
+\nt{library}   &\ar& [\nt{lprivspec}] \nt{libkw} [\tl{(} \nt{version} \tl{)}] \nt{elst} (\tl{is} \vb \tl{IS}) \nt{members}
+\end{tabular}
+
+\subsection{EBNF for library component descriptions (group descriptions)}
+
+The main differences between group- and library-syntax can be
+summarized as follows:
+
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item Groups use keyword \tl{group} instead of \tl{library}.
+\item Groups may have an empty export list.
+\item Groups cannot wrap privileges, i.e., names of privileges (in
+front of the \tl{group} keyword) never appear within parentheses.
+\item Groups have no version.
+\item Groups have an optional owner.
+\end{itemize}
+
+\noindent The following set of rules defines the syntax for library
+component (group) descriptions (\nt{group}):
+
+\begin{tabular}{rcl}
+\nt{groupkw}   &\ar& \tl{group} \vb \tl{Group} \vb \tl{GROUP} \\
+\nt{owner}     &\ar& \nt{pathname} \\
+\nt{gprivspec} &\ar& \{ \nt{privilege} \} \\
+\nt{group}     &\ar& [\nt{gprivspec}] \nt{groupkw} [\tl{(} \nt{owner} \tl{)}] [\nt{elst}] (\tl{is} \vb \tl{IS}) \nt{members}
+\end{tabular}
+
+\section{Full signature of {\tt structure CM}}
+
+Structure {\tt CM} serves as the compilation manager's user interface
+and also constitutes the major part of the API.  The structure is the
+(only) export of library {\tt \$smlnj/cm.cm}.  The standard
+installation procedure of SML/NJ registers this library for
+autoloading at the interactive top level.
+
+\begin{small}
+\begin{verbatim}
+  signature CM = sig
+
+      val autoload : string -> bool
+      val make : string -> bool
+      val recomp : string -> bool
+      val stabilize : bool -> string -> bool
+
+      type 'a controller = { get : unit -> 'a, set : 'a -> unit }
+
+      structure Anchor : sig
+          val anchor : string -> string option controller
+          val reset : unit -> unit
+      end
+
+      structure Control : sig
+          val keep_going : bool controller
+          val verbose : bool controller
+          val parse_caching : int controller
+          val warn_obsolete : bool controller
+          val debug : bool controller
+          val conserve_memory : bool controller
+      end
+
+      structure Library : sig
+          type lib
+          val known : unit -> lib list
+          val descr : lib -> string
+          val osstring : lib -> string
+          val dismiss : lib -> unit
+          val unshare : lib -> unit
+      end
+
+      structure State : sig
+          val synchronize : unit -> unit
+          val reset : unit -> unit
+          val pending : unit -> string list
+      end
+
+      structure Server : sig
+          type server
+          val start : { cmd : string * string list,
+                        name : string,
+                        pathtrans : (string -> string) option,
+                        pref : int } -> server option
+          val stop : server -> unit
+          val kill : server -> unit
+          val name : server -> string
+      end
+
+      val sources :
+          { arch: string, os: string } option ->
+          string ->
+          { file: string, class: string, derived: bool } list option
+
+      val symval : string -> int option controller
+      val load_plugin : string -> bool
+
+      val mk_standalone : bool option -> string -> string list option
+  end
+
+  structure CM : CM
+\end{verbatim}
+\end{small}
+
+\section{Listing of all pre-defined CM identifiers}
+
+\begin{center}
+\begin{tabular}{l||c|c|c|c|c|c|c}
+   & Alpha32 & HP-PA & PowerPC & PowerPC & Sparc & IA32 & IA32 \\
+   & Unix & Unix & MACOS & Unix & Unix & Unix & Win32 \\
+\hline \hline
+{\tt ARCH\_ALPHA}    & 1 & & & & & & \\
+{\tt ARCH\_HPPA}     & & 1 & & & & & \\
+{\tt ARCH\_PPC}      & & & 1 & 1 & & & \\
+{\tt ARCH\_SPARC}    & & & & & 1 & & \\
+{\tt ARCH\_X86}      & & & & & & 1 & 1 \\
+{\tt OPSYS\_UNIX}    & 1 & 1 & & 1 & 1 & 1 & \\
+{\tt OPSYS\_MACOS}   & & & 1 & & & & \\
+{\tt OPSYS\_WIN32}   & & & & & & & 1 \\
+{\tt BIG\_ENDIAN}    & & & & & 1 & & \\
+{\tt LITTLE\_ENDIAN} & 1 & 1 & 1 & 1 & & 1 & 1 \\
+{\tt SIZE\_32}       & 1 & 1 & 1 & 1 & 1 & 1 & 1 \\
+{\tt NEW\_CM}        & 1 & 1 & 1 & 1 & 1 & 1 & 1 \\
+{\tt SMLNJ\_VERSION} & \smlmj & \smlmj & \smlmj & \smlmj & \smlmj & \smlmj & \smlmj \\
+{\tt SMLNJ\_MINOR\_VERSION} & \smlmn & \smlmn & \smlmn & \smlmn & \smlmn & \smlmn & \smlmn
+\end{tabular}
+\end{center}
+
+\section{Listing of all CM-specific environment variables}
+
+Most control parameters that affect CM's operation can be adjusted
+using environment variables $v_s$ at startup time, i.e, when the {\tt
+sml} command is invoked.  Each such parameter has a default setting.
+Default settings are determined at bootstrap time, i.e., the time when
+the heap image for SML/NJ's interactive system is
+built.\footnote{Normally this is the same as installation time, but
+for SML/NJ compiler hackers there is also a {\tt makeml} script for the
+purpose of bootstrapping.}  At bootstrap time, it is possible to
+adjust defaults by using a different set of environment variables
+$v_b$.  If neither $v_s$ nor $v_b$ were set, a hard-wired fallback
+value will be used.
+
+The rule for constructing (the names of) $v_s$ and $v_b$ is the
+following: For each adjustable parameter $x$ there is a {\em name
+stem}.  If the stem for $x$ is $s$, then $v_s = \mbox{\tt CM\_}s$ and
+$v_b = v_s\mbox{\tt \_DEFAULT}$.
+
+Since the normal installation procedure for SML/NJ sets some of the
+$v_b$ variables at bootstrap time, there are two columns with default
+values in the following table.  The value labeled {\em fallback} is
+the one that would have been used had there been no environment
+variable at bootrap time, the one labeled {\em default} is the one the
+user will actually see.
+
+To save space, the table lists the stem but not the names for its
+associated (longer) $v_s$ and $v_b$.  For example, since the the table
+shows {\tt VERBOSE} in the row for {\tt CM.Control.verbose}, CM's
+per-session verbosity can be adjusted using {\tt CM\_VERBOSE} and the
+boot-time default can be set using {\tt CM\_VERBOSE\_DEFAULT}.
+
+\begin{center}
+\begin{small}
+\begin{tabular}{@{}l||c|c|c|c|p{1.5in}@{}}
+{\tt CM.Control.}$c$ & stem & type & fallback & default & default's meaning \\
+\hline \hline
+{\tt verbose} & {\tt VERBOSE} & {\tt bool} & {\tt true} & same & issue
+progess messages \\
+{\tt debug} & {\tt DEBUG} & {\tt bool} & {\tt false} & same & do not
+issue debug messages \\
+{\tt keep\_going} & {\tt KEEP\_GOING} & {\tt bool} & {\tt false} &
+same & quit on first error \\
+(none) & {\tt PATHCONFIG} & {\tt string} & see below & see below &
+standard library directory of SML/NJ installation \\
+{\tt parse\_caching} & {\tt PARSE\_CACHING} & {\tt int} & {\tt 100} &
+same & at most 100 parse trees will be cached in main memory \\
+(none) & {\tt LOCAL\_PATHCONFIG} & {\tt string} & see below & same &
+user-specific path configuration file \\
+{\tt warn\_obsolete} & {\tt WARN\_OBSOLETE} & {\tt bool} & {\tt true}
+& same & issue warnings about obsolete C-style operators in
+description files \\
+{\tt conserve\_memory} & {\tt CONSERVE\_MEMORY} & {\tt bool} & {\tt
+false} & same & avoid repeated I/O operations by keeping certain
+information in main memory
+\end{tabular}
+\end{small}
+\end{center}
+
+The fallback for {\tt PATHCONFIG} is {\tt /usr/lib/smlnj-pathconfig},
+but the standard installation overrides this and uses {\tt
+\$INSTALLDIR/lib/pathconfig} (where {\tt \$INSTALLDIR} is the SML/NJ
+installation directory) instead.
+
+The default for the ``local'' path configuration file is {\tt
+.smlnj-pathconfig}. This file is located in the user's home directory
+(given by the environment variable {\tt \$HOME}).
+
+\section{Listing of all class names and their tools}
+
+\begin{center}
+\begin{tabular}{c|l|c|l}
+class & file contents & tool & file name suffixes \\
+\hline\hline
+sml & ML source code & built-in & {\tt .sig}, {\tt .sml}, {\tt .fun} \\
+cm  & CM description file & built-in & {\tt .cm} \\
+mlyacc & ML-Yacc grammar & ml-yacc & {\tt .grm}, {\tt .y} \\
+mllex & ML-Lex specification & ml-lex & {\tt .lex}, {\tt .l} \\
+mlburg & ML-Burg specification & ml-burg & {\tt .burg} \\
+noweb & literate program & noweb & {\tt .nw} \\
+make & makefile & make & \\
+shell & arbitrary & shell command & 
+\end{tabular}
+\end{center}
+
+\section{Available libraries}
+
+Compiler and interactive system of SML/NJ consist of several hundred
+individual compilation units.  Like modules of application programs,
+these compilation units are also organized using CM libraries.  
+
+Some of the libraries that make up SML/NJ are actually the same ones
+that application programmers are likely to use, others exist for
+organizational purposes only.  There are ``plugin'' libraries---mainly
+for the CM ``tools'' subsystem---that will be automatically loaded on
+demand, and libraries such as {\tt \$smlnj/cmb.cm} can be used to
+obtain access to functionality that by default is not present.
+
+\subsection{Libraries for general programming}
+
+Libraries listed in the following table provide a broad palette of
+general-purpose programming tools\footnote{Recall that anchored paths
+of the form {\tt \$$/x[/\cdots]$} act as an abbreviation for {\tt
+\$$x/x[/\cdots]$}.}:
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$/basis.cm} & Standard Basis Library & always & auto \\
+\hline\hline
+{\tt \$/ml-yacc-lib.cm} & ML-Yacc library & always & no \\
+\hline\hline
+{\tt \$/smlnj-lib.cm} & SML/NJ general-purpose utility library &
+always & no \\
+\hline
+{\tt \$/unix-lib.cm} & SML/NJ Unix programming utility library &
+optional & no \\
+\hline
+{\tt \$/inet-lib.cm} & SML/NJ internet programming utility library &
+optional & no \\
+\hline
+{\tt \$/regexp-lib.cm} & SML/NJ regular expression library & optional
+& no \\
+\hline
+{\tt \$/reactive-lib.cm} & SML/NJ reactive programming library &
+optional & no \\
+\hline
+{\tt \$/pp-lib.cm} & SML/NJ pretty-printing library & always & no \\
+\hline
+{\tt \$/html-lib.cm} & SML/NJ HTML handling library & always & no
+\end{tabular}
+\end{center}
+
+\subsection{Libraries for controlling SML/NJ's operation}
+
+The following table lists those libraries that provide access to the
+so-called {\em visible compiler} infrastructure and to the compilation
+manager API.
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.5in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$smlnj/compiler.cm} \newline
+{\tt \$smlnj/compiler/current.cm} & visible compiler for current
+architecture & always & auto \\
+\hline\hline
+{\tt \$smlnj/cm.cm} \newline
+{\tt \$smlnj/cm/full.cm} & compilation manager & always & auto \\
+\hline
+{\tt \$smlnj/cm/tools.cm} & API for extending CM with new tools &
+always & no \\
+\hline\hline
+{\tt \$/mllex-tool.cm} & plugin library for class {\tt mllex} & always
+& on demand \\
+\hline
+{\tt \$/lex-ext.cm} & plugin library for extension {\tt .lex} & always
+& on demand \\
+\hline
+{\tt \$/mlyacc-tool.cm} & plugin library for class {\tt mlyacc} &
+always & on demand \\
+\hline
+{\tt \$/grm-ext.cm} & plugin library for extension {\tt .grm} & always
+& on demand \\
+\hline
+{\tt \$/mlburg-tool.cm} & plugin library for class {\tt mlburg} &
+always & on demand \\
+\hline
+{\tt \$/burg-ext.cm} & plugin library for extension {\tt .burg} &
+always & on demand \\
+\hline
+{\tt \$/noweb-tool.cm} & plugin library for class {\tt noweb} & always
+& on demand \\
+\hline
+{\tt \$/nw-ext.cm} & plugin library for extension {\tt .nw} & always &
+on demand \\
+\hline
+{\tt \$/make-tool.cm} & plugin library for class {\tt make} & always &
+on demand \\
+\hline
+{\tt \$/shell-tool.cm} & plugin library for class {\tt shell} & always
+& on demand \\
+\end{tabular}
+\end{center}
+
+\subsection{Libraries for SML/NJ compiler hackers}
+
+The following table lists libraries that provide access to the SML/NJ
+{\em bootstrap compiler}.  The bootstrap compiler is a derivative of
+the compilation manager.  In addition to being able to recompile
+SML/NJ for the ``host'' system there are also cross-compilers that
+can target all of SML/NJ's supported platforms.
+
+\begin{center}
+\begin{tabular}{p{2.3in}||p{2.8in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$smlnj/cmb.cm} \newline
+{\tt \$smlnj/cmb/current.cm} & bootstrap compiler for current
+architecture and OS & always & no \\
+\hline\hline
+{\tt \$smlnj/cmb/alpha32-unix.cm} & bootstrap compiler for Alpha/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/hppa-unix.cm} & bootstrap compiler for HP-PA/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/ppc-macos.cm} & bootstrap compiler for PowerPC/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/ppc-unix.cm} & bootstrap compiler for PowerPC/MacOS
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/sparc-unix.cm} & bootstrap compiler for Sparc/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/x86-unix.cm} & bootstrap compiler for IA32/Unix
+systems & always & no \\
+\hline
+{\tt \$smlnj/cmb/x86-win32.cm} & bootstrap compiler for IA32/Win32
+systems & always & no \\
+\hline\hline
+{\tt \$smlnj/compiler/alpha32.cm} & visible compiler for
+Alpha-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/hppa.cm} & visible compiler for
+HP-PA-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/ppc.cm} & visible compiler for
+PowerPC-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/sparc.cm} & visible compiler for
+Sparc-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/x86.cm} & visible compiler for
+IA32-specific cross-compiler & always & no \\
+\hline
+{\tt \$smlnj/compiler/all.cm} & visible compilers for all
+architecture-specific cross-compilers and all cross-compilation
+bootstrap compilers & always & no \\
+\end{tabular}
+\end{center}
+
+\subsection{Internal libraries}
+
+For completeness, here is the list of other libraries that are part of
+SML/NJ's implementation:
+
+\begin{center}
+\begin{tabular}{p{2.8in}||p{2.3in}|c|c}
+name & description & installed & loaded \\
+\hline\hline
+{\tt \$MLRISC/Lib.cm} & utility library for MLRISC backend & always &
+no \\
+\hline 
+{\tt \$MLRISC/Control.cm} & control facilities for MLRISC backend &
+always & no \\
+\hline
+{\tt \$MLRISC/MLRISC.cm} & architecture-neutral core of MLRISC backend
+& always & no \\
+\hline
+{\tt \$MLRISC/ALPHA.cm} & Alpha-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/HPPA.cm} & HP-PA-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/PPC.cm} & PowerPC-specific MLRISC backend & always & no \\
+\hline
+{\tt \$MLRISC/SPARC.cm} & Sparc-specific MLRISC backend & always & no \\
+\hline 
+{\tt \$MLRISC/IA32.cm} & IA32-specific MLRISC backend & always & no \\
+\hline\hline
+{\tt \$/comp-lib.cm} & utility library for compiler & always & no \\
+\hline
+{\tt \$smlnj/viscomp/core.cm} & architecture-neutral core of compiler
+& always & no \\
+\hline
+{\tt \$smlnj/viscomp/alpha32.cm} & Alpha-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/hppa.cm} & HP-PA-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/ppc.cm} & PowerPC-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/sparc.cm} & Sparc-specific part of compiler &
+always & no \\
+\hline
+{\tt \$smlnj/viscomp/x86.cm} & IA32-specific part of compiler & always
+& no \\
+\hline \hline
+{\tt \$smlnj/init/init.cmi} & initial ``glue''; implementation of
+pervasive environment & always & no \\
+\hline \hline
+{\tt \$smlnj/internal/cm-lib.cm} & implementation of compilation
+manager (not yet specialized to specific backends) & always & no \\
+\hline
+{\tt \$smlnj/internal/host-compiler-0.cm} & selection of host-specific
+visible compiler and specialization of compilation manager & always &
+no \\
+\hline
+{\tt \$smlnj/internal/intsys.cm} & root library implementing the
+interactive system and glueing all the other parts together & always &
+no
+\end{tabular}
+\end{center}
+
+\pagebreak
+
+\bibliography{blume,appel,ml}
+
+\end{document}

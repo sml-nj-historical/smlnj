@@ -1,0 +1,8 @@
+val it = () : unit
+signature S = sig type t end
+signature S1 =
+  sig
+    type s
+    structure A : sig type t = s end
+  end
+282.sml:15.1-22.4 Error: type t does not match definitional specification

@@ -1,0 +1,12 @@
+val it = () : unit
+signature S1 =
+  sig
+    type t
+    structure A : sig type z end
+  end
+124.sml:10.4-11.8 Error: syntax error: deleting  OPEN ID OPEN
+124.sml:11.9-12.4 Error: syntax error: deleting  ID END
+124.sml:12.4-14.13 Error: syntax error: deleting  SEMICOLON SIGNATURE ID
+124.sml:15.1-16.13 Error: syntax error: deleting  SIG STRUCTURE
+124.sml:16.16-17.8 Error: syntax error: deleting  COLON ID OPEN
+

@@ -1,0 +1,50 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+val a = - : Word8Vector.vector
+val b = - : Word8Vector.vector
+val c = - : Word8Vector.vector
+val test1 = "OK" : string
+val test2 = "OK" : string
+val d = - : Word8Vector.vector
+val test3 = "OK" : string
+val test4a = "OK" : string
+val test4b = "OK" : string
+val test4c = "OK" : string
+val test5 = "OK" : string
+val test6a = "OK" : string
+val test6b = "OK" : string
+val test6c = "OK" : string
+val e = - : Word8Vector.vector
+val test7 = "OK" : string
+val test8 = "OK" : string
+val f = - : Word8Vector.vector
+val test9 = "OK" : string
+val test9a = "OK" : string
+val test9b = "OK" : string
+val test9c = "OK" : string
+val test9d = "OK" : string
+val test9e = "OK" : string
+val test9f = "OK" : string
+val test9g = "OK" : string
+val test9h = "OK" : string
+val test9i = "OK" : string
+val chkiter = fn
+  : ((Word8Vector.elem -> 'a) -> 'b -> ''c)
+    -> (Word8Vector.elem -> 'a) -> 'b -> ''c * Word8Vector.elem -> string
+val chkiteri = fn
+  : ((int * 'a -> 'b) -> 'c -> ''d) -> ('a -> 'b) -> 'c -> ''d * int -> string
+val test10a = "OK" : string
+val test11a = "OK" : string
+val test11b = "OK" : string
+val test11c = "OK" : string
+val test11d = "OK" : string
+val test11e = "OK" : string
+val test11f = "OK" : string
+val test11g = "OK" : string
+val test11h = "OK" : string
+val test11i = "OK" : string

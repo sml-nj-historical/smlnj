@@ -1,0 +1,8 @@
+val it = () : unit
+signature D =
+  sig
+    type  'a snark = 'a list
+    datatype x = Y of int snark
+  end
+functor Test : <sig>
+

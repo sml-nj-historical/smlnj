@@ -1,0 +1,9 @@
+val it = () : unit
+datatype t = A of int * bool
+infix A
+exception E of string
+val z = {name=E(-),testexc=3 A true} : {name:exn, testexc:t}
+r041a-ac.sml:20.1-20.41 Warning: binding not exhaustive
+          {name=E s,testexc=x} = ...
+val s = "Foo" : string
+val x = 3 A true : t

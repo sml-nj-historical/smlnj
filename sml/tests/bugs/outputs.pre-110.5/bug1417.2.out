@@ -1,0 +1,10 @@
+val it = () : unit
+signature DB =
+  sig
+    datatype transaction = TRANSACTION of lockinfo
+    datatype lockinfo = READLOCK of unit
+  end
+bug1417.2.sml:9.9-13.4 Error: value type in structure doesn't match signature spec
+    name: TRANSACTION
+  spec:   Db.lockinfo -> Db.transaction
+  actual: ?.lockinfo -> Db.transaction

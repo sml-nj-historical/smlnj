@@ -1,0 +1,5 @@
+val it = () : unit
+datatype 'a testtype = empty | leaf of int * 'a
+type x = bool testtype
+val y = leaf (3,true) : x
+

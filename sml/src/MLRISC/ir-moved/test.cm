@@ -1,0 +1,15 @@
+Group is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
+  $basis.cm
+#else
+  basis.cm
+#endif
+#endif
+
+  ../cm/Graphs.cm
+  ../cm/ir.cm
+  ../cm/Visual.cm
+  test1.sml
+  test2.sml
+  test3.sml

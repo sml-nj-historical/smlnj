@@ -1,0 +1,14 @@
+val it = () : unit
+structure Util : sig exception Bug of string end
+structure InstProto :
+  sig
+    structure S : <sig>
+    structure U : <sig>
+  end
+opening InstProto
+  structure S : sig end
+  structure U : sig exception Bug of string end
+
+uncaught exception Bug
+  raised at: bug453.sml:16.8-16.18
+

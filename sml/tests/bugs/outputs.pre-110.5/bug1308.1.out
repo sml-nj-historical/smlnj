@@ -1,0 +1,100 @@
+val it = () : unit
+structure Ast :
+  sig
+    datatype Aexp
+      = ADD of Aexp * Aexp
+      | LIT of int
+      | MUL of Aexp * Aexp
+      | SUB of Aexp * Aexp
+      | VAR of ide
+    datatype Bexp
+      = CUNJ of Bexp * Bexp
+      | DISJ of Bexp * Bexp
+      | EQ of Aexp * Aexp
+      | FALSE
+      | LTE of Aexp * Aexp
+      | NOT of Bexp
+      | TRUE
+    datatype Com
+      = ASSIGN of ide * Aexp
+      | COND of Bexp * Com * Com
+      | SEQ of Com * Com
+      | SKIP
+      | WHILE of Bexp * Com
+    type ide = string
+  end
+signature STO =
+  sig
+    eqtype store
+    val fetch : Ast.ide * store * (int -> 'a) * (string -> 'a) -> 'a
+    val update : Ast.ide * int * store * (store -> 'a) * (string -> 'a) -> 'a
+  end
+structure Sto : STO
+structure Sto' : STO
+signature COMPUTATION =
+  sig
+    type 'a lift
+    val VAL : 'a -> 'a lift
+    val BOT : string -> 'a lift
+    val oplift1 : ('a -> 'b) -> 'a lift -> 'b lift
+    val oplift2 : ('a * 'b -> 'c) -> 'a lift * 'b lift -> 'c lift
+    val uplift : ('a -> 'b lift) -> 'a lift -> 'b lift
+  end
+structure ComputationNaive : COMPUTATION
+structure ComputationDS : COMPUTATION
+signature ANSWER =
+  sig
+    type result
+    datatype answer = BOT of string | VAL of result
+    val k_init : result -> answer
+  end
+functor mkAnswer : <sig>
+functor mkComputationCPS : <sig>
+functor Imp : <sig>
+structure ImpNaive :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+structure ImpNaive' :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+structure ImpDS :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+structure ImpDS' :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+structure Ans : ANSWER
+structure ImpCPS :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+structure Ans' : ANSWER
+structure ImpCPS' :
+  sig
+    val A : Ast.Aexp -> store -> int lift
+    val B : Ast.Bexp -> store -> bool lift
+    val C : Ast.Com -> store -> store lift
+  end
+val p0 = SKIP : Ast.Com
+val s0 = [] : Sto.store ComputationNaive.lift
+val s0' = ([],[]) : Sto'.store ComputationNaive.lift
+val p1 = ASSIGN ("x",LIT 42) : Ast.Com
+val s1 = VAL [("x",42)] : Sto.store ComputationDS.lift
+val s1' = VAL (["x"],[42]) : Sto'.store ComputationDS.lift
+val p2 = SEQ (ASSIGN ("x",LIT #),ASSIGN ("x",LIT #)) : Ast.Com
+val s2 = VAL [("x",43)] : Ans.answer
+val s2' = VAL (["x"],[43]) : Ans'.answer

@@ -1,0 +1,12 @@
+val it = () : unit
+signature EQTYPE =
+  sig
+    type T
+    val eq : T * T -> bool
+  end
+structure S : EQTYPE
+bug749.sml:16.9-21.4 Error: value type in structure doesn't match signature spec
+    name: eq
+  spec:   ?.T * ?.T -> bool
+  actual: ''a * ''a -> bool
+

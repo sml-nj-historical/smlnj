@@ -1,0 +1,6 @@
+Library
+	structure PPCCompiler
+is
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/ppc.cm
+	ppc.sml

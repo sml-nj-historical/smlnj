@@ -1,0 +1,6 @@
+val it = () : unit
+datatype 'a Xlist
+  = Xappend of 'a Xlist * 'a Xlist | Xcons of 'a * 'a Xlist | Xnil
+bug256a.sml:9.5-10.47 Error: data constructor Xappend used without argument in pattern
+bug256a.sml:9.5-10.47 Error: data constructor Xappend used without argument in pattern
+

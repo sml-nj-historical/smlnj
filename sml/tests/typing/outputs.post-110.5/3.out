@@ -1,0 +1,5 @@
+val it = () : unit
+val h = fn : 'a -> 'a ref
+val f = fn : 'a -> 'a ref
+val f = fn : 'a -> 'a ref
+

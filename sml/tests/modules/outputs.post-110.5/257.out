@@ -1,0 +1,13 @@
+val it = () : unit
+signature T =
+  sig
+    type parse_context
+    structure Tacticals : sig type tactic_tree end
+    val parse : unit -> Tacticals.tactic_tree list
+  end
+functor PD : <sig>
+257.sml:22.9-31.4 Error: value type in structure doesn't match signature spec
+    name: mkTactic
+  spec:   ?.parse_context -> ?.resulttype option
+  actual: 'a * 'b -> ?.result_type
+

@@ -1,0 +1,4 @@
+val it = () : unit
+type  'a church = ('a -> 'a) -> 'a -> 'a
+val zero = fn : 'a -> 'b -> 'b
+val succ = fn : 'a church -> ('a -> 'a) -> 'a -> 'a

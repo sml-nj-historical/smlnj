@@ -1,0 +1,19 @@
+(*
+ * Toplevel description file for new implementation of CM
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Library
+	signature CM
+
+	functor LinkCM
+	functor BootstrapCompileFn
+
+	signature VERSION
+	structure Version
+	structure Sharing
+	signature TOOLS
+is
+	$cm/cm-lib.cm

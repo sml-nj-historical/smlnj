@@ -1,0 +1,8 @@
+Library
+	structure PPCMacOSCMB
+is
+	$/basis.cm
+	$smlnj/internal/cm-lib.cm
+	$smlnj/internal/host-compiler-0.cm
+	$smlnj/viscomp/ppc.cm
+	ppc-macos.sml

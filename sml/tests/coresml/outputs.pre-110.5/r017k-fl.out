@@ -1,0 +1,7 @@
+val it = () : unit
+r017k-fl.sml:15.10-15.56 Error: operator and operand don't agree [UBOUND match]
+  operator domain: 'a
+  operand:         'a -> 'a
+  in expression:
+    Id Id
+r017k-fl.sml:15.1-16.25 Error: explicit type variable cannot be generalized at its binding declaration: 'a

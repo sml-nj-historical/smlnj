@@ -1,0 +1,17 @@
+val it = () : unit
+signature S =
+  sig
+    type s
+    val x : s
+    datatype d = D of s
+    datatype e = E of d
+  end
+structure A :
+  sig
+    datatype d = D of s
+    datatype e = E of d
+    type  s = string
+    val x : string
+  end
+structure B : S
+val it = E (D -) : B.e

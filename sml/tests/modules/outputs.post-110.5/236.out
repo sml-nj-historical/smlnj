@@ -1,0 +1,6 @@
+val it = () : unit
+functor f : <sig>
+structure a : sig structure a : <sig> end
+functor g : <sig>
+structure b : sig val b1 : bool end
+

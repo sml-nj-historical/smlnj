@@ -1,0 +1,7 @@
+val it = () : unit
+signature S =
+  sig
+    type ('a,'b) t
+    val x : 'a -> 'b -> ('a,'b) t
+  end
+structure A : S

@@ -1,0 +1,5 @@
+val it = () : unit
+datatype testtype = f of testtype * testtype | no | yes
+val x = f (no,f (no,yes)) : testtype
+val y = f (no,f (yes,no)) : testtype
+val test = true : bool

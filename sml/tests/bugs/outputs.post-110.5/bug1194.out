@@ -1,0 +1,4 @@
+val it = () : unit
+signature SS = sig type 'a t end
+bug1194.sml:10.3-10.28 Error: rhs of datatype replication not a datatype
+

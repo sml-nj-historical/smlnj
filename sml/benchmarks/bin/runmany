@@ -1,0 +1,26 @@
+#!/bin/sh
+
+prg=$1; shift
+repeat=$1; shift
+output=$1; shift
+
+echo "######################################################" >>$output
+while read line; do
+    case "$line" in
+	\#*) echo "$line" >>$output;;
+	*)
+	    line3=""
+	    while read line2; do
+		case "$line2" in
+		    \#*)  line3="$line2"; break ;;
+		    *) line="$line $line2" ;;
+		esac
+	    done
+	    (echo "### $line"; echo) >>$output
+	    (echo 'CM.autoload "host-compiler.cm";' "$line";
+		bin/runit "$repeat" "$output" "$@") | $prg
+	    (echo; echo;
+	     echo "######################################################";
+	     echo "$line3") >>$output ;;
+    esac
+done

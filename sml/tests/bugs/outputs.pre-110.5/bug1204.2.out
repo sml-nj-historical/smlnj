@@ -1,0 +1,3 @@
+val it = () : unit
+signature S = sig type t end
+bug1204.2.sml:8.9-9.11 Error: unbound left hand side in where type: A.t

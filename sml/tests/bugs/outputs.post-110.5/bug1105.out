@@ -1,0 +1,6 @@
+val it = () : unit
+exception Foo
+
+uncaught exception Foo
+  raised at: bug1105.sml:4.8-4.11
+

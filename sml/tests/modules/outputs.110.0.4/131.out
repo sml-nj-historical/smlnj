@@ -1,0 +1,13 @@
+val it = () : unit
+signature TOK = sig datatype t = TOK end
+signature LEX =
+  sig
+    type t
+    val x : t
+  end
+signature P =
+  sig
+    structure T : sig datatype t = TOK end
+    val y : T.t
+  end
+functor F : <sig>

@@ -1,0 +1,22 @@
+(*
+ * Pathname handling for CM.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Group (../../system/smlnj/internal/cm-lib.cm)
+	signature SRCPATH
+	structure SrcPath
+	structure SrcPathMap
+	structure SrcPathSet
+is
+	fileid.sml
+	srcpath.sml
+	srcpathmap.sml
+	srcpathset.sml
+
+	../util/sources.cm
+	../concur/sources.cm
+	$/basis.cm
+	$smlnj/viscomp/core.cm

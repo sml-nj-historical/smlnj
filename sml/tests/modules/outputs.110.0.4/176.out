@@ -1,0 +1,8 @@
+val it = () : unit
+signature CSIG = sig type const end
+signature TSIG =
+  sig
+    type root
+    datatype const = REGLIST of root
+  end
+functor CallGc : <sig>

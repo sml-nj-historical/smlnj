@@ -1,0 +1,3 @@
+val it = () : unit
+bug1107.sml:50.1-50.21 Error: syntax error: deleting  ID ID COLON
+bug1107.sml:50.22 Error: syntax error found at ID

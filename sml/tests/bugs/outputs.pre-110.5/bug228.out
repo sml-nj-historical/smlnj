@@ -1,0 +1,4 @@
+val it = () : unit
+exception bad_number
+val string2real_bug = fn : string -> real
+val it = 123.456 : real

@@ -1,0 +1,50 @@
+val it = () : unit
+signature TREE = sig datatype 'a T = Br of 'a * 'a T * 'a T | Lf end
+functor TreeFUN : <sig>
+nonfix sub
+signature ARRAYOPS =
+  sig
+    structure Tree : sig datatype 'a T = Br of 'a * 'a T * 'a T | Lf end
+    exception E
+    val sub : 'a Tree.T * int -> 'a
+    val update : 'a Tree.T * int * 'a -> 'a Tree.T
+    val hirem : 'a Tree.T * int -> 'a Tree.T
+  end
+functor ArrayOpsFUN : <sig>
+signature ARRAY =
+  sig
+    type 'a T
+    exception Sub
+    exception Update
+    exception Hirem
+    val empty : 'a T
+    val sub : 'a T * int -> 'a
+    val update : 'a T * int * 'a -> 'a T
+    val hiext : 'a T * 'a -> 'a T
+    val hirem : 'a T -> 'a T
+  end
+functor ArrayFUN : <sig>
+structure Tree : TREE
+structure ArrayOps : ARRAYOPS
+structure Array : ARRAY
+opening Array
+  datatype 'a T = ...
+  exception Sub
+  exception Update
+  exception Hirem
+  val empty : 'a T
+  val sub : 'a T * int -> 'a
+  val update : 'a T * int * 'a -> 'a T
+  val hiext : 'a T * 'a -> 'a T
+  val hirem : 'a T -> 'a T
+val it = Array (Br ("A",Lf,Lf),1) : string T
+val it = Array (Br ("A",Br #,Lf),2) : string T
+val it = Array (Br ("A",Br #,Br #),3) : string T
+val tletters = Array (Br ("A",Br #,Br #),4) : string T
+val tdag = Array (Br ("A",Br #,Br #),4) : string T
+val it = "D" : string
+val it = "dagger" : string
+val it = Array (Br ("A",Br #,Br #),3) : string T
+val it = Array (Br ("A",Br #,Lf),2) : string T
+val it = true : bool
+

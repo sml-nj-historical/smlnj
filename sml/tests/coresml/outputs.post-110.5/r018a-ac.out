@@ -1,0 +1,6 @@
+val it = () : unit
+val one = 1 : int
+type testtype = int
+val one' = 1 : testtype
+val test = true : bool
+

@@ -1,0 +1,2 @@
+val it = () : unit
+s004b-fl.sml:13.9-13.35 Error: fn expression required on rhs of val rec

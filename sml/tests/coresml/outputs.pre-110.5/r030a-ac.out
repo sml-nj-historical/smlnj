@@ -1,0 +1,7 @@
+val it = () : unit
+datatype color = Red | White of int * bool
+infix White
+val x = Red : color
+val y = 13 White true : color
+nonfix White
+val z = White (1,false) : color

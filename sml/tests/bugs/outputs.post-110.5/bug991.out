@@ -1,0 +1,19 @@
+val it = () : unit
+signature S =
+  sig
+    type 'a t
+    type s
+  end
+signature T = sig type  u = int end
+signature U =
+  sig
+    structure A :
+      sig
+        type 'a t
+        type s
+      end
+    structure B : sig type  u = int end
+    type  v = B.u A.t
+    sharing type v = A.s
+  end
+

@@ -1,0 +1,43 @@
+(*
+ * This library contains some simple MLTree utilities 
+ *)
+
+Library 
+	signature INSTR_GEN
+	signature MLTREE_FOLD
+	signature MLTREE_REWRITE
+	signature MLTREE_SIMPLIFIER
+	signature MLTREE_UTILS
+	functor InstrGen
+	functor MLTreeFold
+	functor MLTreeRewrite
+	functor MLTreeSimplifier
+	functor MLTreeUtils
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
+	$basis.cm
+	$smlnj-lib.cm
+#else
+	basis.cm
+	smlnj-lib.cm
+#endif
+#else
+	smlnj-lib.cm
+#endif
+	
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+
+	mltree/mltree-utils.sig
+	mltree/mltree-utils.sml
+	mltree/mltree-fold.sig
+	mltree/mltree-fold.sml
+	mltree/mltree-rewrite.sig
+	mltree/mltree-rewrite.sml
+	mltree/mltree-simplify.sig
+	mltree/mltree-simplify.sml
+	mltree/instr-gen.sig
+	mltree/instr-gen.sml

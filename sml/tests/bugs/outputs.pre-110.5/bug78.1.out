@@ -1,0 +1,2 @@
+val it = () : unit
+bug78.1.sml:6.13-6.17 Error: type constructor Fred given 1 arguments, wants 0

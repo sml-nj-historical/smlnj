@@ -1,0 +1,9 @@
+val it = () : unit
+val a = - : CharArray.array
+val v = "abcd" : CharArray.vector
+val it = 4 : int
+val a = - : Word8Array.array
+val v = - : Word8Array.vector
+val it = 4 : int
+val it = "AAAA" : string
+

@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIG = sig type v end
+functor F : <sig>
+structure S :
+  sig
+    structure S : <sig>
+    structure T : <sig>
+  end
+

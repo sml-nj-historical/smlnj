@@ -1,0 +1,13 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure T : sig type t end
+    datatype r = Kr of T.t
+  end
+signature S3 =
+  sig
+    type s
+    datatype t = Kt of s
+  end
+300.sml:21.1-27.4 Error: dependency cycle in instantiate

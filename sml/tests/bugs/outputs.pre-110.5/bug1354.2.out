@@ -1,0 +1,67 @@
+val it = () : unit
+signature IR = sig datatype irexp = EXP of int end
+signature TYPE =
+  sig
+    structure Ir : sig datatype irexp = EXP of int end
+    datatype ty = TY of int * Ir.irexp
+  end
+signature UCONSTRAINT =
+  sig
+    structure Type :
+      sig
+        structure Ir : <sig>
+        datatype ty = TY of int * Ir.irexp
+      end
+    structure Ir : sig datatype irexp = EXP of int end
+    datatype uconstraint = OP of Type.ty * Ir.irexp
+    sharing Type.Ir = Ir
+  end
+signature CONTEXT =
+  sig
+    structure UC :
+      sig
+        structure Type : <sig>
+        structure Ir : <sig>
+        datatype uconstraint = OP of Type.ty * Ir.irexp
+        sharing Type.Ir = Ir
+      end
+    structure Type :
+      sig
+        structure Ir : <sig>
+        datatype ty = TY of int * Ir.irexp
+      end
+    structure Ir : sig datatype irexp = EXP of int end
+    datatype context = CONTEXT of (Type.ty * Ir.irexp * UC.uconstraint) list
+    sharing UC.Ir = Ir
+    sharing UC.Type = Type
+  end
+signature INFER =
+  sig
+    structure Context :
+      sig
+        structure UC : <sig>
+        structure Type : <sig>
+        structure Ir : <sig>
+        datatype context
+          = CONTEXT of (Type.ty * Ir.irexp * UC.uconstraint) list
+        sharing UC.Ir = Ir
+        sharing UC.Type = Type
+      end
+    structure UC :
+      sig
+        structure Type : <sig>
+        structure Ir : <sig>
+        datatype uconstraint = OP of Type.ty * Ir.irexp
+        sharing Type.Ir = Ir
+      end
+    structure Type :
+      sig
+        structure Ir : <sig>
+        datatype ty = TY of int * Ir.irexp
+      end
+    structure Ir : sig datatype irexp = EXP of int end
+    datatype inf
+      = INF of Context.context -> Type.ty * Ir.irexp * UC.uconstraint
+    sharing Context.Ir = Ir
+    sharing Context.Type = Type
+  end

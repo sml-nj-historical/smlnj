@@ -1,0 +1,4 @@
+val it = () : unit
+
+uncaught exception FPRegEA
+  raised at: cps/generic.sml:98.67-98.74

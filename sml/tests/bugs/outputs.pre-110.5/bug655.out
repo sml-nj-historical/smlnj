@@ -1,0 +1,12 @@
+val it = () : unit
+structure A :
+  sig end
+bug655.sml:6.1-7.13 Error: syntax error: deleting  SIG LOCAL OPEN
+bug655.sml:7.14-8.8 Error: syntax error: deleting  ID IN VAL
+bug655.sml:8.11-8.17 Error: syntax error: deleting  COLON ID
+bug655.sml:10.3-11.5 Error: syntax error: deleting  END END SEMICOLON
+bug655.sml:13.1-13.12 Error: syntax error: deleting  STRUCTURE ID
+bug655.sml:14.1-15.6 Error: syntax error: deleting  STRUCT VAL
+bug655.sml:17.1-19.4 Error: syntax error: deleting  END SEMICOLON VAL
+bug655.sml:19.5-19.10 Error: syntax error: deleting  WILD EQUALOP ID
+bug655.sml:19.10-19.13 Error: syntax error: deleting  DOT ID LPAREN

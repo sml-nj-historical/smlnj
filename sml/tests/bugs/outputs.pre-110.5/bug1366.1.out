@@ -1,0 +1,5 @@
+val it = () : unit
+bug1366.1.sml:3.1-16.4 Error: value type in structure doesn't match signature spec
+    name: s
+  spec:   int
+  actual: ?.Opaque.sort

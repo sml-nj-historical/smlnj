@@ -1,0 +1,4 @@
+val it = () : unit
+bug590.sml:4.9 Error: illegal token
+bug590.sml:4.10-4.16 Error: syntax error: deleting  WILD INT ID
+

@@ -1,0 +1,7 @@
+val it = () : unit
+signature EXCHANGE_STRUCTURE =
+  sig
+    type tree
+    val new_node : tree -> tree
+  end
+structure ex : EXCHANGE_STRUCTURE

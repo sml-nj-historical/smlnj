@@ -1,0 +1,4 @@
+val it = () : unit
+structure S : sig datatype t = ... end
+datatype t = T
+val x = T : S.t

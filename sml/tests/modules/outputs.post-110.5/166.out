@@ -1,0 +1,4 @@
+val it = () : unit
+signature SORTED_SET_ITEM = sig type t end
+functor SortedSet : <sig>
+

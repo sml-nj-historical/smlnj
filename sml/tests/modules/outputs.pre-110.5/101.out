@@ -1,0 +1,2 @@
+val it = () : unit
+101.sml:9.18-9.25 Error: unbound type constructor: x in path A.x

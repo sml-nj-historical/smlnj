@@ -1,0 +1,9 @@
+val it = () : unit
+s001c-fl.sml:14.5-14.27 Error: duplicate label in record: name
+s001c-fl.sml:14.1-14.31 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    {name:'Z, name:'Y}
+  expression:    {name:string, used:bool}
+  in declaration:
+    {name=u,name=n} =
+      (case x
+        of {name=u,name=n} => (u,n))

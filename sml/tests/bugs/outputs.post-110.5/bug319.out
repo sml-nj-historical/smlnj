@@ -1,0 +1,6 @@
+val it = () : unit
+val f = fn : 'a -> 'a ref
+bug319.sml:6.1-6.13 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+val r = ref [] : ?.X1 list ref
+

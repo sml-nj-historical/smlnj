@@ -1,0 +1,4 @@
+val it = () : unit
+val f = fn : bool -> int
+val g = fn : 'a -> 'a
+

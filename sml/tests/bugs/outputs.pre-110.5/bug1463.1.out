@@ -1,0 +1,7 @@
+val it = () : unit
+val x = - : int Array2.array
+val it = #[0,1,2] : int vector
+val it = #[10,11,12] : int vector
+val it = #[0,10] : int vector
+val it = #[1,11] : int vector
+val it = #[2,12] : int vector

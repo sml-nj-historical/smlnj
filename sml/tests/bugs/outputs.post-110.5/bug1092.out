@@ -1,0 +1,6 @@
+val it = () : unit
+datatype m = M of ifc option
+datatype ifc = IFC
+val x = SOME IFC : ifc option
+val y = M (SOME IFC) : m
+

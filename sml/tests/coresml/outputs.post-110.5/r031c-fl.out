@@ -1,0 +1,8 @@
+val it = () : unit
+r031c-fl.sml:14.4-14.22 Error: type variable in top level exception type
+r031c-fl.sml:13.1-17.4 Error: operator and operand don't agree [literal]
+  operator domain: '_a
+  operand:         int
+  in expression:
+    A 5
+

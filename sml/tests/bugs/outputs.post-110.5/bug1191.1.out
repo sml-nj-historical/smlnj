@@ -1,0 +1,13 @@
+val it = () : unit
+structure S :
+  sig
+    datatype d = D | E
+    datatype h = H of d
+  end
+structure A : sig datatype h = H of ?.d end
+val f = fn : S.h -> bool
+bug1191.1.sml:15.1-15.35 Error: match redundant
+          H x => ...
+    -->   _ => ...
+  
+

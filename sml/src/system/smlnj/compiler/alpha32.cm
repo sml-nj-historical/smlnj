@@ -1,0 +1,6 @@
+Library
+	structure Alpha32Compiler
+is
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/alpha32.cm
+	alpha32.sml

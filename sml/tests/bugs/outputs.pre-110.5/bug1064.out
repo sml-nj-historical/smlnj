@@ -1,0 +1,16 @@
+val it = () : unit
+signature ORD_KEY =
+  sig
+    type ord_key
+    val compare : ord_key * ord_key -> order
+  end
+signature ORD_LIST =
+  sig
+    structure Key :
+      sig
+        type ord_key
+        val compare : ord_key * ord_key -> order
+      end
+    type 'a ord_list
+    val find : 'a ord_list * Key.ord_key -> 'a
+  end

@@ -1,0 +1,6 @@
+val it = () : unit
+signature S = sig end
+funsig FOO(X: sig end) : sig functor <functor> : <fctsig> end
+functor Foo : <sig>
+functor Foo : <sig>
+functor C : <sig>

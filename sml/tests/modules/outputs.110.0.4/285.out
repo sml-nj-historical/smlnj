@@ -1,0 +1,5 @@
+val it = () : unit
+signature S = sig type t end
+signature S1 = sig type t = int end
+signature S2 = sig type t = int end
+285.sml:18.1-21.4 Error: type t does not match definitional specification

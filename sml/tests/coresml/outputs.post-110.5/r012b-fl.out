@@ -1,0 +1,11 @@
+val it = () : unit
+exception exc_test
+r012b-fl.sml:15.1-15.34 Error: expression and handler don't agree [literal]
+  body:          int
+  handler range:          bool
+  in expression:
+    1
+    handle 
+        exc_test => true
+    | exn => raise exn
+

@@ -1,0 +1,5 @@
+val it = () : unit
+82.sml:7.19-7.35 Error: nonlocal path in type sharing: int
+82.sml:7.19-7.35 Error: nonlocal path in type sharing: string
+82.sml:13.13-13.31 Error: nonlocal path in structure sharing: Integer
+82.sml:13.13-13.31 Error: nonlocal path in structure sharing: Real

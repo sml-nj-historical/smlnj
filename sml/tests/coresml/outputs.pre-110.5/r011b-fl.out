@@ -1,0 +1,6 @@
+val it = () : unit
+r011b-fl.sml:13.1-13.40 Error: expression doesn't match constraint [tycon mismatch]
+  expression: int * (bool * real)
+  constraint: int * bool * real
+  in expression:
+    (12,(true,3.3)): int * bool * real

@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG0 = sig end
+functor F0 : <sig>
+

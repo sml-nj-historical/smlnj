@@ -1,0 +1,107 @@
+(*
+ * This library contains the definitions of the MLRISC IR 
+ * and simple optimizations.
+ *)
+
+Library 
+	signature CFG2CLUSTER
+	signature CFG_UTIL
+	signature CLUSTER2CFG
+	signature CLUSTER_GRAPH
+	signature CLUSTER_VIEWER
+	signature CONTROL_FLOW_GRAPH
+	signature CONTROL_FLOW_GRAPH_GEN
+	signature DATAFLOW_ANALYZER
+	signature DATAFLOW_PROBLEM
+	signature FORMAT_INSTRUCTION
+	signature LIVENESS_ANALYSIS
+	signature MLRISC_GLUE
+	signature MLRISC_IDEFS
+	signature MLRISC_IR
+	signature MLRISC_IR_OPTIMIZATION
+	signature MLTREE_SIMPLIFIER
+	functor BranchChaining
+	functor CFG2Cluster
+	functor CFGGen
+	functor CFGUtil
+	functor Cluster2CFG
+	functor ClusterGraph
+	functor ClusterViewer
+	functor ControlFlowGraph
+	functor ControlFlowGraphGen
+	functor Dataflow
+	functor FormatInstruction
+	functor IDefs
+	functor InsertPreheaders
+	functor LivenessAnalysis
+	functor MLRISCGlue
+	functor MLRISC_IR
+	functor MLTreeSimplifier
+	functor ReshapeBranches
+	functor StaticBranchPrediction
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
+	$basis.cm
+	$smlnj-lib.cm
+#else
+	basis.cm
+	smlnj-lib.cm
+#endif
+#else
+	smlnj-lib.cm
+#endif
+	
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+
+	(* These modules perform very simple local optimizations on MLTREE
+	 *)
+	mltree/mltree-simplify.sig
+	mltree/mltree-simplify.sml
+	
+	(* These provide a graph view for clusters.  Required if you 
+	 * want to perform any non-trivial analysis on the program.
+	 * Also required if you want to use the visualization stuff on clusters.
+	 *)
+	cluster/clusterGraph.sig
+	cluster/clusterGraph.sml
+	cluster/clusterViewer.sig
+	cluster/clusterViewer.sml
+	
+	(* MLRISC IR for optimizations. These are necessary only if you want
+	 * to use various optional MLRISC optimizations.
+	 *)
+	IR/dataflow.sig
+	IR/dataflow.sml
+	IR/mlrisc-branch-chaining.sml
+	IR/mlrisc-cfg-gen.sig
+	IR/mlrisc-cfg-gen.sml
+	IR/mlrisc-cfg-gen2.sml
+	IR/mlrisc-cfg-util.sig
+	IR/mlrisc-cfg-util.sml
+	IR/mlrisc-cfg.sig
+	IR/mlrisc-cfg.sml
+	IR/mlrisc-cluster2cfg.sml
+	IR/mlrisc-cfg2cluster.sml
+	IR/mlrisc-format-insn.sml
+	IR/mlrisc-idefs.sig
+	IR/mlrisc-idefs.sml
+	IR/mlrisc-ir.sig
+	IR/mlrisc-ir.sml
+	IR/mlrisc-ir-optimization.sig
+	IR/mlrisc-liveness.sml
+	IR/mlrisc-preheaders.sml
+	IR/mlrisc-reshape-branches.sml
+	IR/static-branch-prediction.sml
+	
+	(* Glue modules.  These are required only if you want to 
+	 * play with optimizations.
+	 *)
+	Glue/mlrisc-glue.sig
+	Glue/mlrisc-glue.sml

@@ -1,0 +1,15 @@
+val it = () : unit
+signature SET =
+  sig
+    structure Key : sig type key end
+    type  item = Key.key
+  end
+signature FOO =
+  sig
+    structure StringSet :
+      sig
+        structure Key : <sig>
+        type  item = Key.key
+      end
+  end
+functor FooFun : <sig>

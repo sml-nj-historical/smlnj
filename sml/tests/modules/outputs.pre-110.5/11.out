@@ -1,0 +1,7 @@
+val it = () : unit
+signature GRAPH = sig type e end
+signature GRAM = sig type s end
+signature LRG = sig structure L : sig type e end end
+functor Graph : <sig>
+functor LrGraph : <sig>
+structure Graph : LRG

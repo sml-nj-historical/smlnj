@@ -1,0 +1,26 @@
+val it = () : unit
+signature TERM =
+  sig
+    datatype term = Const of string
+    datatype varbind = Varbind of string * term
+    
+  end
+functor Term : <sig>
+signature BUG =
+  sig
+    structure Term :
+      sig
+        datatype term = Const of string
+        datatype varbind = Varbind of string * term
+        
+      end
+    type progentry
+    val bug : progentry list
+  end
+functor Bug : <sig>
+structure Term :
+  TERM?
+structure Bug :
+  BUG
+val it = [Progentry ("test",Const "test",[Varbind #],Const "test")]
+  : ?.progentry list

@@ -1,0 +1,16 @@
+@FILES
+  {"multicast"; "The Multicast structure";}
+@SIGNATURE MULTICAST "multicast" {
+  @TYPES 
+    @TYPE port
+    @TYPE event
+    @TYPE mchan
+  @VALS 
+    port
+    multicast
+    mChannel
+    recvEvt
+    recv
+    copy
+}
+@STRUCTURE Multicast "multicast" MULTICAST

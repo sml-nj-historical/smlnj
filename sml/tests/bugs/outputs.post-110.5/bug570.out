@@ -1,0 +1,6 @@
+val it = () : unit
+val force_record = fn : {x:'a, y:'b} -> int
+val force_eq = fn : ''a -> bool
+val bar = fn : {x:''a, y:''b} -> bool
+val foo = fn : {x:''a, y:''b} -> int
+

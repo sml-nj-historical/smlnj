@@ -1,0 +1,7 @@
+val it = () : unit
+signature K =
+  sig
+    type s
+    type t = s
+  end
+

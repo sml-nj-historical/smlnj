@@ -1,0 +1,8 @@
+val it = () : unit
+signature S1 =
+  sig
+    type a
+    val intro : unit -> a
+  end
+functor F4 : <sig>
+

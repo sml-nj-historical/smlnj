@@ -1,0 +1,24 @@
+val it = () : unit
+val test1 = true : bool
+val test2 = true : bool
+val test3 = true : bool
+val test4 = true : bool
+val test5 = false : bool
+val test6a = true : bool
+val test6b = true : bool
+val test7a = true : bool
+val test7b = true : bool
+val test7c = true : bool
+val test7d = true : bool
+val test8a = true : bool
+val test8b = true : bool
+val test8c = true : bool
+val test8d = true : bool
+val test9 = true : bool
+d001a-ac.sml:46.18-46.44 Warning: binding not exhaustive
+          10 = ...
+val test10 = true : bool
+val test11 = true : bool
+val test12a = true : bool
+val test12b = true : bool
+val alltrue = false : bool

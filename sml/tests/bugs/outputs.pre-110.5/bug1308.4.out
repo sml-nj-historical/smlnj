@@ -1,0 +1,12 @@
+val it = () : unit
+signature STOCOMP =
+  sig
+    type store
+    val update : (store -> 'a) -> 'a
+    type 'a lift
+    val rap : 'a -> 'a lift
+  end
+functor F : <sig>
+structure StoComp : STOCOMP
+structure R : sig val x : store lift end
+val s2' = (["x"],0) : StoComp.store

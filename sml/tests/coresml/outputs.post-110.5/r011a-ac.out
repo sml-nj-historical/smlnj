@@ -1,0 +1,5 @@
+val it = () : unit
+val x = 12 : int
+val y = (12,(true,3.3)) : int * (bool * real)
+val z = [5,6,7] : int list
+

@@ -1,0 +1,18 @@
+val it = () : unit
+signature S1 = sig datatype t = U end
+signature S2 =
+  sig
+    structure A : sig datatype t = U end
+    datatype u = U of A.t
+  end
+signature S3 =
+  sig
+    structure B :
+      sig
+        structure A : <sig>
+        datatype u = U of A.t
+      end
+  end
+functor F1 : <sig>
+bug1327.sml:30.20 Error: unbound structure: Z
+bug1327.sml:29.17-30.22 Error: unmatched structure specification: Y

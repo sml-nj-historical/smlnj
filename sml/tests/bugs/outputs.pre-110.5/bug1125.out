@@ -1,0 +1,7 @@
+val it = () : unit
+
+uncaught exception in compiler: Unbound
+  raised at: elaborate/elabmod.sml:1232.39-1232.49
+             util/stats.sml:164.40
+             build/evalloop.sml:123.38
+             build/evalloop.sml:194.58

@@ -1,0 +1,11 @@
+val it = () : unit
+structure C : sig structure Elem : <sig> end
+signature MV = sig structure Elem : sig end end
+signature MA =
+  sig
+    structure Elem : sig end
+    structure Vector : sig structure Elem : <sig> end
+    sharing Elem = Vector.Elem
+  end
+bug1039.1.sml:20.1-20.21 Error: unmatched structure specification: Vector
+

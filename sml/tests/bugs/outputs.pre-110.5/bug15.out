@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG = sig type t end
+bug15.sml:4.56-4.63 Error: unbound structure: t in path X.t
+bug15.sml:4.56-4.63 Error: unbound structure: t in path Y.t

@@ -1,0 +1,3 @@
+val it = () : unit
+bug481.sml:4.3-5.22 Error: duplicate specifications for variable or constructor B in signature
+

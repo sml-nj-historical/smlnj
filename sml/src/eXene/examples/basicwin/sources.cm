@@ -1,0 +1,11 @@
+(* sources file for BasicWin example *)
+Group 
+is
+
+cml.cm
+cml-lib.cm
+../../lib/sources.cm
+
+icon-bitmap.sml
+basicwin.sml
+export.sml

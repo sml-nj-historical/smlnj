@@ -1,0 +1,3 @@
+val it = () : unit
+41.sml:4.1-9.4 Error: inconsistent equality properties in type sharing
+

@@ -1,0 +1,22 @@
+Group
+	functor ImprovedChaitinSpillHeur
+	functor ImprovedChowHennessySpillHeur
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11028 
+	$basis.cm
+	$smlnj-lib.cm
+#else
+	basis.cm
+	smlnj-lib.cm
+#endif
+#else
+	smlnj-lib.cm
+#endif
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+
+	ra/chaitin-spillheur2.sml
+	ra/chow-hennessy-spillheur2.sml

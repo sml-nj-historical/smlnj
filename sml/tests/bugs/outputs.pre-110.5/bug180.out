@@ -1,0 +1,9 @@
+val it = () : unit
+signature S1 = sig type t end
+signature S2 =
+  sig
+    structure A : sig type t end
+    structure B : sig type t end
+    sharing type B.t = A.t
+  end
+bug180.sml:15.1-19.4 Error: type sharing violation: A.t # B.t

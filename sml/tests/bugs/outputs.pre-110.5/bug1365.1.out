@@ -1,0 +1,18 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    datatype foo = A of t | B
+    val a : unit -> foo
+    val f : foo -> string
+  end
+functor F : <sig>
+structure S1 : S
+structure S2 : S
+structure Test :
+  sig
+    structure T1 : <sig>
+    structure T2 : <sig>
+    val x : (string * string) list
+  end
+val y = [("A","A"),("A","A")] : (string * string) list

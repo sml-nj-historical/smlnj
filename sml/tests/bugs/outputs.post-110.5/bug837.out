@@ -1,0 +1,5 @@
+val it = () : unit
+exception NoInverse
+val vinv = fn : real * real -> real
+val it = inf : real
+

@@ -1,0 +1,11 @@
+val it = () : unit
+type 'a Stack
+type 'a StackTop = 'a * 'a Stack
+exception EmptyStack
+val empty = - : 'a Stack
+val top = fn : 'a Stack -> 'a
+val push = fn : 'a -> 'a Stack -> 'a Stack
+val pop = fn : 'a Stack -> 'a Stack
+val st1 = - : int Stack
+val top1 = 3 : int
+val rest1 = - : int Stack

@@ -1,0 +1,10 @@
+val it = () : unit
+type 'a tree
+type Color
+type A = int
+type B = A
+type C = B tree
+val x = (-,2) : C * A
+val y = <poly-record> : 'a tree * B
+val test = true : bool
+

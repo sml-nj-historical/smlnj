@@ -1,0 +1,18 @@
+Group is 
+ 
+#if defined(NEW_CM)
+        (* standard basis *)
+        basis.cm  
+#endif
+
+         parse-control-sig.sml
+         type-check-control-sig.sml
+         config-sig.sml
+
+#if (defined(d))
+        d/config.sml
+#elif (defined(fiveessc))
+        5essc/config.sml
+#else
+        ansic/config.sml
+#endif
