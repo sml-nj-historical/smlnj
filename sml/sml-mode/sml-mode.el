@@ -169,7 +169,7 @@ Full documentation will be available after autoloading the function."))
   "A regexp that matches any and all keywords of SML.")
 
 (defconst sml-tyvarseq-re
-  "\\(\\('+\\(\\sw\\s_\\)+\\|(\\([,']\\|\\sw\\|\\s_\\|\\s-\\)+)\\)\\s-+\\)?")
+  "\\(\\('+\\(\\sw\\|\\s_\\)+\\|(\\([,']\\|\\sw\\|\\s_\\|\\s-\\)+)\\)\\s-+\\)?")
 
 (defconst sml-font-lock-keywords
   `(;;(sml-font-comments-and-strings)
