@@ -67,8 +67,16 @@ fun string(err,s,pos) =
 fun char(err,s,pos) = 
   CHAR(check(err,pos,s,Char.fromString(String.substring(s,2,String.size s-3))),
        pos,pos + size s)
+fun transAsm s = 
+let fun loop(#"\\" :: #"<" ::s) = #"<"::loop s
+      | loop(#"\\" :: #">" ::s) = #">"::loop s
+      | loop(c::s) = c::loop s
+      | loop [] = []  
+in  String.implode(loop(String.explode s))
+end
+
 fun asmtext(err,s,pos) = 
-  ASMTEXT(check(err,pos,s,String.fromString s),pos,pos + size s)
+  ASMTEXT(check(err,pos,s,String.fromString(transAsm s)),pos,pos + size s)
 
 infix $$ 
 fun x $$ y = y :: x 
@@ -228,7 +236,8 @@ string=\"([^\\\n\t"]|\\.)*\";
 char=#\"([^\\\n\t"]|\\.)*\";
 sym1=(\-|[=\.+~/*:!@#$%^&*|?])+;
 sym2=`+|'+|\<+|\>+|\=\>|~\>\>;
-asmsymbol={sym1}|{sym2};
+sym3=\\.;
+asmsymbol={sym1}|{sym2}|{sym3};
 symbol=(\-|[=+~/*:!@#$%^&*|?<>])+|``|'';
 asmtext=([^\n\t<>']+|');
 inf=i;
