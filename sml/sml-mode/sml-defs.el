@@ -77,16 +77,15 @@ notion of \"the end of an outline\".")
 (easy-menu-define sml-mode-menu sml-mode-map "Menu used in `sml-mode'."
   '("SML"
     ("Process"
-     ["Start default ML compiler" sml		t]
+     ["Start default ML compiler" run-sml		t]
      ["-" nil nil]
-     ["run CM.make"		sml-make	(featurep 'sml-proc)]
-     ["load ML source file"	sml-load-file	(featurep 'sml-proc)]
-     ["switch to ML buffer"	switch-to-sml	(featurep 'sml-proc)]
+     ["run CM.make"		sml-make	t]
+     ["load ML source file"	sml-load-file	t]
+     ["switch to ML buffer"	switch-to-sml	t]
      ["--" nil nil]
-     ["send buffer contents"	sml-send-buffer	(featurep 'sml-proc)]
-     ["send region"		sml-send-region	(featurep 'sml-proc)]
-     ["send paragraph"		sml-send-function (featurep 'sml-proc)]
-     ;;["goto next error"		sml-next-error	(featurep 'sml-proc)]
+     ["send buffer contents"	sml-send-buffer	t]
+     ["send region"		sml-send-region	t]
+     ["send paragraph"		sml-send-function t]
      ["goto next error"		next-error	(featurep 'sml-proc)]
      ["---" nil nil]
      ;; ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
