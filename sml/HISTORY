@@ -18,6 +18,17 @@ Date: 2001/07/10 17:30:00 EDT
 Tag: Release_110_34
 Description:
 
+Minor tweak to 110.34 (re-tagged):
+
+  - README.html file added to CVS repository
+  - runtime compiles properly under FreeBSD 3.X and 4.X
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/07/10 17:30:00 EDT
+Tag: Release_110_34
+Description:
+
 New version number (110.34). New bootfiles.
 
 ----------------------------------------------------------------------
