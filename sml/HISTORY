@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2004/09/13 16:20:00 CDT
+Tag: blume-20040913-config-mlrisc
+Description:
+
+Put target "mlrisc" back into the default list.
+(There is no harm in having it, and some users have expressed their
+wish to have "mlrisc" included by default.)
+
+----------------------------------------------------------------------
 Name: John Reppy
 Date: 2004/09/13
 Tag: jhr-20040913-signals
