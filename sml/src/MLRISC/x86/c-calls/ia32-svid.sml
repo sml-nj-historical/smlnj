@@ -92,6 +92,12 @@ functor IA32SVID_CCalls (
     val eax = C.eax
     val st0 = C.ST(0)
 
+  (* the C calling convention requires that the FP stack be empty on function
+   * entry.  We add the fpStk list to the defs when the fast_floating_point flag
+   * is set.
+   *)
+    val fpStk = List.tabulate(8, fn i => fpr(xdblTy, C.ST i))
+
   (* note that the caller saves includes the result register (%eax) *)
     val callerSaves = [gpr(wordTy, eax), gpr(wordTy, C.ecx), gpr(wordTy, C.edx)]
 
@@ -262,12 +268,24 @@ functor IA32SVID_CCalls (
   (* List of registers defined by a C Call with the given return type; this list
    * is the result registers plus the caller-save registers.
    *)
-    fun definedRegs (Ty.C_float) = fpr(fltTy, st0) :: callerSaves
-      | definedRegs (Ty.C_double) = fpr(dblTy, st0) :: callerSaves
-      | definedRegs (Ty.C_long_double) = fpr(xdblTy, st0) :: callerSaves
-      | definedRegs (Ty.C_unsigned(Ty.I_long_long)) = gpr(wordTy, C.edx) :: callerSaves
-      | definedRegs (Ty.C_signed(Ty.I_long_long)) = gpr(wordTy, C.edx) :: callerSaves
-      | definedRegs _ = callerSaves
+    fun definedRegs resTy = if !fast_floating_point
+	  then let
+	    val defs = callerSaves @ fpStk
+	    in
+	      case resTy
+	       of (Ty.C_unsigned(Ty.I_long_long)) => gpr(wordTy, C.edx) :: defs
+		| (Ty.C_signed(Ty.I_long_long)) => gpr(wordTy, C.edx) :: defs
+		| _ => defs
+	      (* end case *)
+	    end
+	  else (case resTy
+	     of (Ty.C_float) => fpr(fltTy, st0) :: callerSaves
+	      | (Ty.C_double) => fpr(dblTy, st0) :: callerSaves
+	      | (Ty.C_long_double) => fpr(xdblTy, st0) :: callerSaves
+	      | (Ty.C_unsigned(Ty.I_long_long)) => gpr(wordTy, C.edx) :: callerSaves
+	      | (Ty.C_signed(Ty.I_long_long)) => gpr(wordTy, C.edx) :: callerSaves
+	      | _ => callerSaves
+	    (* end case *))
 
     fun fstp (32, f) = T.EXT(ix(IX.FSTPS(f)))
       | fstp (64, f) = T.EXT(ix(IX.FSTPL(f)))
@@ -413,7 +431,7 @@ functor IA32SVID_CCalls (
 		      end
 		  | SOME(FReg(ty, r, _)) => let
 		      val resReg = C.newFreg()
-		      val res = [T.FPR(T.FREG(ty, r))]
+		      val res = [T.FPR(T.FREG(ty, resReg))]
 		      in
         	      (* If we are using fast floating point mode then do NOT 
         	       * generate FSTP.
