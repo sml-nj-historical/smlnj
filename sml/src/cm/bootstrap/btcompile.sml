@@ -283,5 +283,6 @@ end = struct
     fun reset () =
 	(RecompPersstate.reset ();
 	 RT.resetAll ();
-	 Recomp.reset ())
+	 Recomp.reset ();
+	 Parse.reset ())
 end

@@ -206,6 +206,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	       Recomp.reset ();
 	       Exec.reset ();
 	       AutoLoad.reset ();
+	       Parse.reset ();
 	       SmlInfo.forgetAllBut SrcPathSet.empty)
 
 	  fun initTheValues (bootdir, er) = let

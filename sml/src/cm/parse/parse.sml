@@ -10,6 +10,7 @@ signature PARSE = sig
 	GroupReg.groupreg option ->
 	GeneralParams.param -> bool option ->
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
+    val reset : unit -> unit
 end
 
 functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
@@ -29,6 +30,10 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
+    (* the "stable group cache" *)
+    val sgc = ref (SrcPathMap.empty: CMSemant.group SrcPathMap.map)
+    fun reset () = sgc := SrcPathMap.empty
+
     fun parse gropt param stabflag group = let
 
 	val stabthis = isSome stabflag
@@ -46,17 +51,35 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	 * to parse it had failed. *)
 	val gc = ref (SrcPathMap.empty: CMSemant.group option SrcPathMap.map)
 
-	fun mparse (group, groupstack, pErrFlag, stabthis) =
-	    case SrcPathMap.find (!gc, group) of
-		SOME g => g
-	      | NONE => let
-		    val g = parse' (group, groupstack, pErrFlag, stabthis)
-		in
-		    gc := SrcPathMap.insert (!gc, group, g);
-		    g
-		end
+	fun mparse (group, groupstack, pErrFlag, stabthis, curlib) =
+	    case SrcPathMap.find (!sgc, group) of
+		SOME g => SOME g
+	      | NONE =>
+		    (case SrcPathMap.find (!gc, group) of
+			 SOME gopt => gopt
+		       | NONE => let
+			     fun cache_nonstable gopt =
+				 (gc := SrcPathMap.insert (!gc, group, gopt);
+				  gopt)
+			     fun cache_stable g =
+				 (sgc := SrcPathMap.insert (!sgc, group, g);
+				  SOME g)
+			     fun isStable (GG.GROUP { kind, ... }) =
+				 case kind of
+				     GG.STABLELIB _ => true
+				   | _ => false
+			     val pres =
+				 parse' (group, groupstack, pErrFlag,
+					 stabthis, curlib)
+			 in
+			     case pres of
+				 NONE => cache_nonstable NONE
+			       | SOME g =>
+				     if isStable g then cache_stable g
+				     else cache_nonstable (SOME g)
+			 end)
 
-	and parse' (group, groupstack, pErrFlag, stabthis) = let
+	and parse' (group, groupstack, pErrFlag, stabthis, curlib) = let
 	    (* checking for cycles among groups and printing them nicely *)
 	    fun findCycle ([], _) = []
 	      | findCycle ((h as (g, (s, p1, p2))) :: t, cyc) =
@@ -90,7 +113,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		 * one must use aliases.  The cycle will be detected
 		 * amoung those aliases... (?? - hopefully) *)
 		fun getStableSG p =
-		    mparse (p, groupstack, pErrFlag, staball)
+		    mparse (p, groupstack, pErrFlag, staball, SOME gpath)
 	    in
 		Stabilize.loadStable (ginfo, getStableSG, pErrFlag) gpath
 	    end
@@ -124,12 +147,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		     * This function is used to parse aliases and sub-groups.
 		     * Errors are propagated by explicitly setting the
 		     * "anyErrors" flag of the parent group. *)
-		    fun recParse (p1, p2) p = let
-			val groupstack' =
-			    (group, (source, p1, p2)) :: groupstack
+		    fun recParse (p1, p2) curlib p = let
+			val gs' = (group, (source, p1, p2)) :: groupstack
 			val myErrorFlag = #anyErrors source
 		    in
-			case mparse (p, groupstack', myErrorFlag, staball) of
+			case mparse (p, gs', myErrorFlag, staball, curlib) of
 			    NONE => (myErrorFlag := true;
 				     CMSemant.emptyGroup group)
 			  | SOME res => res
@@ -235,7 +257,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			CMParse.parse (lookAhead, tokenStream,
 				       fn (s,p1,p2) => error (p1, p2) s,
 				       (group, context, error, recParse,
-					doMember, ginfo))
+					doMember, curlib, ginfo))
 		in
 		    if !(#anyErrors source) then NONE
 		    else SOME parseResult
@@ -269,7 +291,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			      SOME g))
 	end
     in
-	case mparse (group, [], ref false, stabthis) of
+	case mparse (group, [], ref false, stabthis, NONE) of
 	    NONE => NONE
 	  | SOME g =>
 		if CheckSharing.check (g, ginfo) then

@@ -7,6 +7,9 @@
  *)
 signature ABSPATH = sig
 
+    exception Format	    (* if something is seriously wrong with a pickle *)
+    exception BadAnchor of string	(* if anchor cannot be resolved *)
+
     type context
     type t
     type ord_key = t
@@ -34,7 +37,7 @@ signature ABSPATH = sig
     (* the second path argument is the path of the group spec that
      * pickling is based upon. *)
     val pickle : (bool -> unit) -> t * t -> string list
-    val unpickle : PathConfig.mode -> string list * t -> t option
+    val unpickle : PathConfig.mode -> string list * t -> t
 
     val tstamp : t -> TStamp.t
 end
@@ -44,6 +47,9 @@ structure AbsPath :> ABSPATH = struct
     structure P = OS.Path
     structure F = OS.FileSys
     val impossible = GenericVC.ErrorMsg.impossible
+
+    exception Format
+    exception BadAnchor of string
 
     (* unique file id that can handle absent files *)
     datatype id =
@@ -256,20 +262,18 @@ structure AbsPath :> ABSPATH = struct
 
 	fun unpickle mode (l, gpath) = let
 	    fun u_p (s :: l) =
-		Option.map
-		   (fn c => PATH { spec = s, context = c, cache = ref NONE })
-		(u_c l)
-	      | u_p [] = NONE
-	    and u_c ["r"] = SOME ROOT
-	      | u_c ["c"] = SOME (DIR_OF gpath)
+		PATH { spec = s, context = u_c l, cache = ref NONE }
+	      | u_p [] = raise Format
+	    and u_c ["r"] = ROOT
+	      | u_c ["c"] = DIR_OF gpath
 	      | u_c [n, "a"] =
 		(case PathConfig.configAnchor mode n of
-		     NONE => NONE
+		     NONE => raise BadAnchor n
 		   | SOME fetch =>
-			 SOME (CONFIG_ANCHOR { config_name = n,
-					       fetch = fetch,
-					       cache = ref NONE }))
-	      | u_c l = Option.map DIR_OF (u_p l)
+			 CONFIG_ANCHOR { config_name = n,
+					 fetch = fetch,
+					 cache = ref NONE })
+	      | u_c l = DIR_OF (u_p l)
 	in
 	    u_p l
 	end

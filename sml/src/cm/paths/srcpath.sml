@@ -12,6 +12,10 @@
  * Author: Matthias Blume (blume@cs.princeton.edu)
  *)
 signature SRCPATH = sig
+
+    exception Format	    (* if something is seriously wrong with a pickle *)
+    exception BadAnchor of string	(* if anchor cannot be resolved *)
+
     type context
     type t
     type ord_key = t
@@ -44,12 +48,15 @@ signature SRCPATH = sig
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
     val pickle : (bool -> unit) -> t * t -> string list
-    val unpickle : PathConfig.mode -> string list * t -> t option
+    val unpickle : PathConfig.mode -> string list * t -> t
 
     val tstamp : t -> TStamp.t
 end
 
 structure SrcPath :> SRCPATH = struct
+
+    exception Format = AbsPath.Format
+    exception BadAnchor = AbsPath.BadAnchor
 
     type context = AbsPath.context
     type t = AbsPath.t * int
@@ -94,6 +101,5 @@ structure SrcPath :> SRCPATH = struct
     val cwdContext = AbsPath.cwdContext
 
     fun pickle warn ((ap, _), (cap, _)) = AbsPath.pickle warn (ap, cap)
-    fun unpickle m (l, (cap, _)) =
-	Option.map intern (AbsPath.unpickle m (l, cap))
+    fun unpickle m (l, (cap, _)) = intern (AbsPath.unpickle m (l, cap))
 end

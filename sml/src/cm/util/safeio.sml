@@ -17,8 +17,6 @@ end
 structure SafeIO :> SAFEIO = struct
 
     structure S = Signals
-    val callcc = SMLofNJ.Cont.callcc
-    val throw = SMLofNJ.Cont.throw
 
     fun perform { openIt, closeIt, work, cleanup } = let
 	val oh = S.inqHandler S.sigINT

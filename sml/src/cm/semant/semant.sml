@@ -36,7 +36,7 @@ signature CM_SEMANT = sig
     val emptyGroup : pathname -> group
     val group :
 	pathname * privilegespec * exports option * members *
-	GeneralParams.info
+	GeneralParams.info * pathname option * pathname option * complainer
 	-> group
     val library :
 	pathname * privilegespec * exports * members *
@@ -51,7 +51,7 @@ signature CM_SEMANT = sig
     (* constructing member collections *)
     val emptyMembers : members
     val member :
-	GeneralParams.info * (pathname -> group)
+	GeneralParams.info * (pathname option -> pathname -> group)
 	-> { sourcepath: pathname, group: pathname * region,
 	     class: cm_symbol option }
 	-> members
@@ -113,7 +113,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     type aexp = environment -> int
     type exp = environment -> bool
-    type members = environment -> MemberCollection.collection
+    type members = environment * pathname option -> MemberCollection.collection
     type exports = environment -> SymbolSet.set
 
     type complainer = string -> unit
@@ -155,8 +155,8 @@ structure CMSemant :> CM_SEMANT = struct
 	foldl oneSG [] subgroups
     end
 
-    fun grouplib (islib, g, p, e, m, gp) = let
-	val mc = applyTo MemberCollection.empty m
+    fun grouplib (islib, g, p, e, m, gp, curlib) = let
+	val mc = applyTo (MemberCollection.empty, curlib) m
 	val filter = Option.map (applyTo mc) e
 	val (exports, rp) = MemberCollection.build (mc, filter, gp)
 	val subgroups = MemberCollection.subgroups mc
@@ -174,10 +174,23 @@ structure CMSemant :> CM_SEMANT = struct
 		   sublibs = sgl2sll subgroups }
     end
 
-    fun group (g, p, e, m, gp) =
-	grouplib (false, g, p, e, m, gp)
+    fun group (g, p, e, m, gp, curlib, owner, error) = let
+	fun libname NONE = "<toplevel>"
+	  | libname (SOME p) = SrcPath.descr p
+	fun eq (NONE, NONE) = true
+	  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL
+	  | eq _ = false
+	fun checkowner () =
+	    if eq (curlib, owner) then ()
+	    else error (concat ["owner specified as ",
+				libname owner, " but found to be ",
+				libname curlib])
+    in
+	checkowner ();
+	grouplib (false, g, p, e, m, gp, curlib)
+    end
     fun library (g, p, e, m, gp) =
-	grouplib (true, g, p, SOME e, m, gp)
+	grouplib (true, g, p, SOME e, m, gp, SOME g)
 
     local
 	val isMember = StringSet.member
@@ -196,19 +209,19 @@ structure CMSemant :> CM_SEMANT = struct
 	     { required = required, wrapped = StringSet.add (wrapped, s) })
     end
 
-    fun emptyMembers env = env
-    fun member (gp, rparse) arg env = let
-	val coll = MemberCollection.expandOne (gp, rparse) arg
+    fun emptyMembers (env, _) = env
+    fun member (gp, rparse) arg (env, curlib) = let
+	val coll = MemberCollection.expandOne (gp, rparse curlib) arg
 	val group = #group arg
 	val error = GroupReg.error (#groupreg gp) group
 	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
     in
 	MemberCollection.sequential (env, coll, e0)
     end
-    fun members (m1, m2) env = m2 (m1 env)
-    fun guarded_members (c, (m1, m2), error) env =
-	if saveEval (c, env, error) then m1 env else m2 env
-    fun error_member thunk env = (thunk (); env)
+    fun members (m1, m2) (env, curlib) = m2 (m1 (env, curlib), curlib)
+    fun guarded_members (c, (m1, m2), error) (env, curlib) =
+	if saveEval (c, env, error) then m1 (env, curlib) else m2 (env, curlib)
+    fun error_member thunk (env, _) = (thunk (); env)
 
     fun emptyExports env = SymbolSet.empty
     fun export (s, error) env =

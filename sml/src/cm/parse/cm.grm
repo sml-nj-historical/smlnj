@@ -52,15 +52,17 @@ structure S = CMSemant
        | nativepath of S.pathname
        | sym of S.cm_symbol
        | word of S.cm_symbol
+       | owner of S.pathname option
 
 %pos int
 %verbose
-%arg (grouppath, context, error, recParse, doMember, gp) :
+%arg (grouppath, context, error, recParse, doMember, curlib, gp) :
     S.pathname *
     S.context *
     (pos * pos -> string -> unit) *
-    (pos * pos -> S.pathname -> S.group) *
+    (pos * pos -> S.pathname option -> S.pathname -> S.group) *
     (S.pathname * pos * pos * S.cm_symbol option -> S.members) *
+    S.pathname option *
     GeneralParams.info
 %start description
 %eop EOF
@@ -88,16 +90,21 @@ description : alias				(alias)
 
 alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
-						 pathname)
+						 curlib pathname)
 
-group : gprivspec opt_exports IS members        (S.group
+group : gprivspec owner opt_exports IS members (S.group
 						 (grouppath,
 						  gprivspec, opt_exports,
-						  members, gp))
-      | lprivspec mand_exports IS members       (S.library
+						  members, gp, curlib, owner,
+						  error (ownerleft,
+							 ownerright)))
+      | lprivspec mand_exports IS members      (S.library
 						 (grouppath,
 						  lprivspec, mand_exports,
 						  members, gp))
+
+owner : (* empty *)                            (NONE)
+      | LPAREN pathname RPAREN                 (SOME pathname)
 
 wrapspec : (* empty *)                         (fn p => p)
           | wrapspec word                      (fn p =>

@@ -446,7 +446,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val grpSrcInfo = (errcons, anyerrors)
 	val gdescr = SrcPath.descr group
 	fun error l = EM.errorNoFile (errcons, anyerrors) SM.nullRegion
-	    EM.COMPLAIN (concat (gdescr :: ": " :: l)) EM.nullErrorBody
+	    EM.COMPLAIN (concat ("(stable) " :: gdescr :: ": " :: l))
+	    EM.nullErrorBody
 
 	exception Format
 
@@ -553,9 +554,12 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    end
 
 	    fun r_abspath () =
-		case SrcPath.unpickle pcmode (r_list r_string (), group) of
-		    SOME p => p
-		  | NONE => raise Format
+		SrcPath.unpickle pcmode (r_list r_string (), group)
+		handle SrcPath.Format => raise Format
+		     | SrcPath.BadAnchor a =>
+		       (error ["configuration anchor \"", a, "\" undefined"];
+			raise Format)
+
 
 	    val r_symbol = let
 		fun r_symbol_raw () = let
