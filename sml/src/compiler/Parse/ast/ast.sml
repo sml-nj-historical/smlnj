@@ -95,6 +95,7 @@ and strexp = VarStr of path			(* variable structure *)
 	   | AppStrI of path * (strexp * bool) list
 						(* application (internal) *)
 	   | LetStr of dec * strexp		(* let in structure *)
+	   | PluginStr of { def: symbol, sgn: symbol }
 	   | MarkStr of strexp * region         (* mark *)
 
 (* FUNCTOR EXPRESSION *)
@@ -195,7 +196,6 @@ and eb = EbGen of {exn: symbol, etype: ty option} (* Exception definition *)
 
 (* STRUCTURE BINDING *)
 and strb = Strb of {name: symbol,def: strexp,constraint: sigexp sigConst}
-         | StrPlugin of {name: symbol, def: exp, constraint: symbol}
 	 | MarkStrb of strb * region
 
 (* FUNCTOR BINDING *)

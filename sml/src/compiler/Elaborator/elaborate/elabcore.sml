@@ -15,13 +15,13 @@ sig
         -> Absyn.dec * StaticEnv.staticEnv (* * Modules.entityEnv ??? *)
 
   val elabDec : 
-        { dec: Ast.dec,
-	  env: StaticEnv.staticEnv,
-	  isFree: Types.tycon -> bool,
-	  rpath: InvPath.path,
-	  region: SourceMap.region,
-	  compInfo: ElabUtil.compInfo }
-        -> Absyn.dec * StaticEnv.staticEnv
+      { env: StaticEnv.staticEnv,
+	isFree: Types.tycon -> bool,
+	compInfo: ElabUtil.compInfo,
+	dec: Ast.dec,
+	rpath: InvPath.path,
+	region: SourceMap.region }
+      -> Absyn.dec * StaticEnv.staticEnv
 
   val debugging : bool ref
 
@@ -138,9 +138,9 @@ fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
                            [], EE.empty, isFree, rpath, region, compInfo)
 
       val (body,env2) = 
-        elabDec { dec = body, env = SE.atop(env1,env),
-		  isFree = isFree, rpath = rpath, region = region,
-		  compInfo = compInfo }
+        elabDec { isFree = isFree, env = SE.atop (env1, env),
+		  compInfo = compInfo,
+		  dec = body, rpath = rpath, region = region }
 
       (* datatycs will be changed to abstycs during type checking
 	 by changing the eqprop field *)
@@ -153,8 +153,8 @@ fun elabABSTYPEdec { atd = {abstycs,withtycs,body},env,context,isFree,
 
 
 (**** ELABORATE GENERAL (core) DECLARATIONS ****)
-and elabDec { dec, env, isFree, rpath, region,
-              compInfo as {mkLvar=mkv,error,errorMatch,...} } =
+and elabDec { isFree, env, compInfo as {mkLvar=mkv,error,errorMatch,...},
+	      dec, rpath, region } =
 
 let
     val _ = debugmsg ">>ElabCore.elabDec"
@@ -1251,13 +1251,14 @@ let
 	 in (SEQdec(rev ds1),env1,tv1,updt)
 	end
 
+    
+
     val _ = debugmsg ("EC.elabDec calling elabDec' - foo")
     val (dec',env',tyvars,tyvUpdate) = elabDec'(dec,env,rpath,region)
-
- in tyvUpdate tyvars;
+in
+    tyvUpdate tyvars;
     (dec',env')
-
-end (* function elabDec *)
+end (* fun elabDec *)
 
 end (* top-level local *)
 end (* structure ElabCore *)

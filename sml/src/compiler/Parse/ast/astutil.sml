@@ -14,7 +14,7 @@ val antiquoteDcon = [strSymbol "SMLofNJ", varSymbol "ANTIQUOTE"]
 val arrowTycon = tycSymbol "->"
 val exnID = Symbol.tycSymbol "exn"
 val bogusID = varSymbol "BOGUS"
-val symArg = strSymbol "<Parameter>"
+val pluginID = varSymbol "<plugin>"
 val itsym = [varSymbol "it"]
 
 fun checkFix (i, err) =

@@ -345,6 +345,8 @@ structure SkelCvt :> SKELCVT = struct
 	    (s, foldl Ign1 (Var (SP.SPATH p)) el)
 	end
       | strexp_p (LetStr (bdg, b)) = letexp (dec_dl (bdg, []), strexp_p b)
+      | strexp_p (PluginStr { def, sgn }) =
+	  (SS.singleton def, Var (SP.SPATH [sgn]))
       | strexp_p (MarkStr (s, _)) = strexp_p s
 
     and dec_dl (ValDec (l, _), d) = foldl vb_dl d l
@@ -364,6 +366,7 @@ structure SkelCvt :> SKELCVT = struct
 		in
 		    (SS.union (s, s'), (name, e) :: bl)
 		end
+(*
 	      | one (StrPlugin { name, def, constraint }, (s, bl)) = let
 		    val (s', dl) = split_dl (exp_dl (def, []))
 		    val e =
@@ -373,6 +376,7 @@ structure SkelCvt :> SKELCVT = struct
 		in
 		    (SS.union (s, s'), (name, e) :: bl)
 		end
+*)
 	in
 	    parbind one l d
 	end

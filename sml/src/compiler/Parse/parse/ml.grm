@@ -687,9 +687,16 @@ strb	: ident EQUALOP str
 				constraint=Opaque sign'},
 			   (identleft,strright))])
 	| ident COLONGT ident EQUALOP LINK_PLUGIN exp
-	        ([MarkStrb(StrPlugin{name = strSymbol ident1,
-				     def = exp,
-				     constraint = sigSymbol ident2},
+		([MarkStrb(Strb{name = strSymbol ident1,
+				def = LetStr (ValDec ([Vb { pat = VarPat [pluginID],
+							    exp = MarkExp (exp,
+									   (expleft,expright)),
+							    lazyp = false }],
+						      []),
+					      MarkStr(PluginStr { def = pluginID,
+								  sgn = sigSymbol ident2 },
+						      (LINK_PLUGINleft, expright))),
+				constraint = NoSig},
 			   (ident1left,expright))])
 	| strb AND strb		(strb1 @ strb2)
 

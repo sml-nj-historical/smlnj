@@ -15,8 +15,8 @@ signature ASTUTIL =
     val arrowTycon : Symbol.symbol
     val bogusID : Symbol.symbol
     val exnID : Symbol.symbol
-    val symArg : Symbol.symbol
     val itsym : Symbol.symbol list
+    val pluginID : Symbol.symbol
 
     val unitExp : Ast.exp
     val unitPat : Ast.pat

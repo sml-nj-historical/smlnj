@@ -19,7 +19,6 @@ in
 			     constraint = constraint }
 		else x
 	      | strb (A.MarkStrb (x, r)) = A.MarkStrb (strb x, r)
-	      | strb (sb as A.StrPlugin _) = sb
 		  
 	    fun dec (A.StrDec l) = A.StrDec (map strb l)
 	      | dec (A.LocalDec (d1, d2)) = A.LocalDec (d1, dec d2)

@@ -46,9 +46,7 @@ local structure S  = Symbol
       structure ES = ElabSig
       structure B  = Bindings
       structure LU = Lookup
-      (* structure SM = SigMatch *)
       structure INS = SM.EvalEntity.Instantiate
-      (* structure II = InlInfo *)
       structure SE = StaticEnv
       structure EM = ErrorMsg
       structure PP = PrettyPrint
@@ -116,11 +114,16 @@ fun stripMarkFctb(MarkFctb(fctb',region'),region) =
 
 fun stripMarkStrb(MarkStrb(strb',region'),region) =
       stripMarkStrb(strb',region')
-  | stripMarkStrb (x, region) = (x, region)
+  | stripMarkStrb (Strb x, region) = (x, region)
 
 (* change of context on entering a structure *)
 fun inStr (EU.TOP) = EU.INSTR
   | inStr z = z 
+
+
+fun isFree (EU.INFCT _, epContext) tyc = 
+    isSome (EPC.lookTycPath (epContext, MU.tycId tyc))
+  | isFree _ _ = false
 
 (* 
  * Add modId to entPath mappings for all appropriate elements of a structure
@@ -716,7 +719,35 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
        in (resDec, bodyStr, resExp, EE.mark(mkStamp,EE.atopSp(bodyDee,entEnv')))
       end
-
+  | elab (PluginStr { def, sgn }, env, entEnv, region) = let
+	(* FIXME FIXME FIXME *)
+	val sg = LU.lookSig (env, sgn, error region)
+	val { rlzn, tycpaths } =
+	    (* ??? What do we do with tycpaths? *)
+	    INS.instParam { sign = sg,
+			    entEnv = entEnv,
+			    depth = depth, (* ?? *)
+			    rpath = rpath,
+			    region = region,
+			    compInfo = compInfo }
+    in
+	case LU.lookVal (env, SP.SPATH [def], error region) of
+	    V.VAL (V.VALvar { access, typ, ... }) => let
+		(* !!! typ must be "plugin * stamp" *)
+		val resStr = M.STR { sign = sg,
+				     rlzn = rlzn,
+				     (* This is definitely the wrong access:
+				      * We need to fish out the stamp and check
+				      * it.  Then we need to fish out the
+				      * structure access and use that.
+				      * FIXME!!! *)
+				     access = access,
+				     info = II.Null }
+	    in
+		(A.SEQdec [], resStr, M.CONSTstr rlzn, EE.empty)
+	    end
+	  | _ => bug "elabmod:PluginStr:lookVal"
+    end
   | elab (ConstrainedStr(strexp,constraint), env, entEnv, region) =
       let val (entsv, evOp, csigOp, transp) = 
             let fun h x = 
@@ -1078,10 +1109,9 @@ fun loop([], decls, entDecls, env, entEnv) =
       end
 
   | loop(strb::rest, decls, entDecls, env, entEnv) =
-    (debugmsg ">>elabStrbs";
-     case stripMarkStrb (strb, region) of
-      (Strb { name, constraint, def}, region') =>
-      let val _ = debugmsg("--elabStrbs: structure "^S.name name)
+    let val _ = debugmsg ">>elabStrbs"
+	val ({ name, constraint, def }, region') = stripMarkStrb (strb, region)
+	val _ = debugmsg("--elabStrbs: structure "^S.name name)
 
           (* make up an entity variable for the current str declaration *)
           val entv = mkStamp()   (* we don't always have to do this *)
@@ -1230,10 +1260,6 @@ fun loop([], decls, entDecls, env, entEnv) =
 
        in loop(rest, decls', entDecls', env', entEnv')
       end
-    | (StrPlugin { name, def, constraint }, region') =>
-      (* FIXME *)
-        raise Fail "elabmod:StrPlugin:not yet implemented"
-    | (MarkStrb _, _) => bug "stripMarkStrb")
 
  in loop(strbs, [], [], SE.empty, EE.empty)
       handle EE.Unbound => 
@@ -1486,14 +1512,7 @@ and elabDecl0
    | DatatypeDec (x as {datatycs,withtycs}) =>
       (case datatycs
 	 of (Db{rhs=(Constrs _), ...}) :: _ =>
-	      let val isFree = 
-                    (case context 
-                      of EU.INFCT _ =>
-                          (fn tyc => 
-                            (case EPC.lookTycPath(epContext, MU.tycId tyc)
-                              of SOME _ => true 
-                               | _ => false))
-                       | _ => (fn _ => false))
+	      let val isFree = isFree (context, epContext)
 
                   val (datatycs,withtycs,_,env) =
 		    ET.elabDATATYPEdec(x, env0, [], EE.empty, isFree, rpath,
@@ -1564,15 +1583,7 @@ and elabDecl0
 		  (A.SEQdec[],M.ERRORdec,SE.empty,EE.empty)))
 
    | AbstypeDec x =>
-       (let val isFree = 
-              (case context 
-                of EU.INFCT _ =>
-                     (fn tyc => 
-                       (case EPC.lookTycPath(epContext, MU.tycId tyc)
-                         of SOME _ => true 
-                          | _ => false))
-                 | _ => (fn _ => false))
-
+       (let val isFree = isFree (context, epContext)
             val (decl, env', abstycs, withtycs) =
 		case  EC.elabABSTYPEdec { atd = x,
 					  env = env0,
@@ -1607,20 +1618,13 @@ and elabDecl0
                  epContext, rpath, region', compInfo)
 
    | dec =>
-       (let val isFree = 
-             (case context 
-               of EU.INFCT _ =>
-                    (fn tyc => 
-                       (case EPC.lookTycPath(epContext, MU.tycId tyc)
-                         of SOME _ => true 
-                          | _ => false))
-                      | _ => (fn _ => false))
-
-            val (decl,env') = EC.elabDec { dec = dec, env = env0,
+       (let val isFree = isFree (context, epContext)
+            val (decl,env') = EC.elabDec { env = env0,
 					   isFree = isFree,
-                                           rpath = rpath,
-					   region = region,
-					   compInfo = compInfo }
+					   compInfo = compInfo,
+					   dec = dec,
+					   rpath = rpath,
+					   region = region }
 		handle EE.Unbound => (debugmsg("$EC.elabDec");
 				      raise EE.Unbound)
             val _ = debugmsg (">>elabDecl0.dec[after EC.elabDec: top=" 

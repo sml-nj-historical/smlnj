@@ -90,6 +90,7 @@ sig
 	     | AppStr of path * (strexp * bool) list (* application (external) *)
              | AppStrI of path * (strexp * bool) list (* application (internal) *)
 	     | LetStr of dec * strexp		(* let in structure *)
+	     | PluginStr of { def: symbol, sgn: symbol }
 	     | MarkStr of strexp * region (* mark *)
 
   (* FUNCTOR EXPRESSION *)
@@ -190,7 +191,6 @@ sig
 
   (* STRUCTURE BINDING *)
   and strb = Strb of {name: symbol,def: strexp,constraint: sigexp sigConst}
-           | StrPlugin of {name: symbol, def: exp, constraint: symbol}
 	   | MarkStrb of strb * region
 
   (* FUNCTOR BINDING *)

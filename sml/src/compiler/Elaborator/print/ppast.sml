@@ -557,6 +557,9 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 	       ppsay "end";
 	       closeBox ppstrm)
 
+	   | ppStrExp'(PluginStr _,d) =
+	       ppsay "<plugin>" (* FIXME *)
+
          | ppStrExp'(MarkStr(body,(s,e)),d) =
              ppStrExp' (body,d)
 (*	      (case source_opt
@@ -1193,8 +1196,6 @@ and ppStrb (context as (_,source_opt)) ppstrm =
 	      (* ???? missing constraint *)
 	      break ppstrm {nsp=1,offset=2}; ppStrExp context ppstrm (def,d-1);
 	      closeBox ppstrm)
-	  | ppStrb' (StrPlugin{name,def,constraint},d) =
-	      PP.string ppstrm "<StrPlugin>" (* FIXME *)
 	  | ppStrb'(MarkStrb (t,r),d) = ppStrb context ppstrm (t,d)
     in
 	ppStrb'
