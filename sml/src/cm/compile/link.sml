@@ -199,85 +199,92 @@ in
 	end
 
 	fun registerGroup g = let
-	    val GG.GROUP { grouppath, kind, sublibs, ... } = g
 	    val visited = ref SrcPathSet.empty
-	    fun registerStableLib (GG.GROUP { exports, ... }) = let
-		val localmap = ref StableMap.empty
-		fun bn (DG.PNODE p) =
-		    (fn gp => fn _ => prim2dyn p gp, NONE)
-		  | bn (DG.BNODE n) = let
-			val { bininfo = i, localimports, globalimports } = n
-			fun new () = let
-			    val e0 = (getPerv, [])
-			    fun join ((f, NONE), (e, l)) =
-				(fn gp => DE.atop (f gp emptyDyn, e gp), l)
-			      | join ((f, SOME (i, l')), (e, l)) =
-				(e, B (f, i, l') :: l)
-			    val ge = foldl join e0 (map fbn globalimports)
-			    val le = foldl join ge (map bn localimports)
+	    fun registerGroup' g = let
+		val GG.GROUP { grouppath, kind, sublibs, ... } = g
+		fun registerStableLib (GG.GROUP { exports, ... }) = let
+		    val localmap = ref StableMap.empty
+		    fun bn (DG.PNODE p) =
+			(fn gp => fn _ => prim2dyn p gp, NONE)
+		      | bn (DG.BNODE n) = let
+			    val { bininfo = i, localimports, globalimports } =
+				n
+			    fun new () = let
+				val e0 = (getPerv, [])
+				fun join ((f, NONE), (e, l)) =
+				    (fn gp => DE.atop (f gp emptyDyn, e gp), l)
+				  | join ((f, SOME (i, l')), (e, l)) =
+				    (e, B (f, i, l') :: l)
+				val ge = foldl join e0 (map fbn globalimports)
+				val le = foldl join ge (map bn localimports)
+			    in
+				case (BinInfo.sh_mode i, le) of
+				    (Sharing.SHARE _, (e, [])) => let
+					fun thunk gp = link_stable (i, e gp)
+					val m_thunk = memoize thunk
+				    in
+					(fn gp => fn _ => m_thunk gp, NONE)
+				    end
+				  | (Sharing.SHARE _, _) =>
+				    EM.impossible "Link: sh_mode inconsistent"
+				  | (Sharing.DONTSHARE, (e, l)) =>
+				    (fn gp => fn e' =>
+				     link_stable (i, (DE.atop (e', e gp))),
+				     SOME (i, l))
+			    end
 			in
-			    case (BinInfo.sh_mode i, le) of
-				(Sharing.SHARE _, (e, [])) => let
-				    fun thunk gp = link_stable (i, e gp)
-				    val m_thunk = memoize thunk
-				in
-				    (fn gp => fn _ => m_thunk gp, NONE)
-				end
-			      | (Sharing.SHARE _, _) =>
-				EM.impossible "Link: sh_mode inconsistent"
-			      | (Sharing.DONTSHARE, (e, l)) =>
-				(fn gp => fn e' =>
-				   link_stable (i, (DE.atop (e', e gp))),
-				 SOME (i, l))
+			    case StableMap.find (!stablemap, i) of
+				SOME (B (f, i, [])) =>
+				    (case BinInfo.sh_mode i of
+					 Sharing.DONTSHARE => (f, SOME (i, []))
+				       | _ => (f, NONE))
+			      | SOME (B (f, i, l)) => (f, SOME (i, l))
+			      | NONE =>
+					 (case StableMap.find (!localmap, i) of
+					      SOME x => x
+					    | NONE => let
+						  val x = new ()
+					      in
+						  localmap := StableMap.insert
+						       (!localmap, i, x);
+						  x
+					      end)
 			end
-		    in
-			case StableMap.find (!stablemap, i) of
-			    SOME (B (f, i, [])) =>
-				(case BinInfo.sh_mode i of
-				     Sharing.DONTSHARE => (f, SOME (i, []))
-				   | _ => (f, NONE))
-			  | SOME (B (f, i, l)) => (f, SOME (i, l))
-			  | NONE =>
-				(case StableMap.find (!localmap, i) of
-				     SOME x => x
-				   | NONE => let
-					 val x = new ()
-				     in
-					 localmap :=
-					    StableMap.insert (!localmap, i, x);
-					 x
-				     end)
-		    end
 
-		and fbn (_, n) = bn n
+		    and fbn (_, n) = bn n
 
-		fun sbn (DG.SB_SNODE n) =
-		    EM.impossible "Link:SNODE in stable lib"
-		  | sbn (DG.SB_BNODE (DG.PNODE _, _)) = ()
-		  | sbn (DG.SB_BNODE (n as DG.BNODE { bininfo, ... }, _)) = let
-			val b as B (_, i, _) =
-			    case bn n of
-				(f, NONE) => B (f, bininfo, [])
-			      | (f, SOME (i, l)) => B (f, i, l)
-		    in
-			stablemap := StableMap.insert (!stablemap, i, b)
-		    end
+		    fun sbn (DG.SB_SNODE n) =
+			EM.impossible "Link:SNODE in stable lib"
+		      | sbn (DG.SB_BNODE (DG.PNODE _, _)) = ()
+		      | sbn (DG.SB_BNODE (n as DG.BNODE { bininfo, ... }, _)) =
+			let
+			    val b as B (_, i, _) =
+				case bn n of
+				    (f, NONE) => B (f, bininfo, [])
+				  | (f, SOME (i, l)) => B (f, i, l)
+			in
+			    stablemap := StableMap.insert (!stablemap, i, b)
+			end
 
-                fun fsbn (_, n) = sbn n
-		fun impexp (n, _) = fsbn n
+		    fun fsbn (_, n) = sbn n
+		    fun impexp (n, _) = fsbn n
+		in
+		    SymbolMap.app impexp exports
+		end
 	    in
-		SymbolMap.app impexp exports
+		if SrcPathSet.member (!visited, grouppath) then ()
+		else (visited := SrcPathSet.add (!visited, grouppath);
+		      app (registerGroup' o #2) sublibs;
+		      case kind of
+			  GG.STABLELIB => registerStableLib g
+			| _ => ())
 	    end
 	in
-	    if SrcPathSet.member (!visited, grouppath) then ()
-	    else (visited := SrcPathSet.add (!visited, grouppath);
-		  app (registerGroup o #2) sublibs;
-		  case kind of
-		      GG.STABLELIB => registerStableLib g
-		    | _ => ())
+	    registerGroup' g
 	end
 
 	fun newTraversal (group as GG.GROUP { exports, ... }, getBFC) = let
+	    
 	    val _ = registerGroup group
 
 	    val l_stablemap = ref StableMap.empty
