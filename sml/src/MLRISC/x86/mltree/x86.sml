@@ -290,6 +290,7 @@ struct
         | cond T.EQ = I.EQ | cond T.NE  = I.NE
         | cond T.GE = I.GE | cond T.GEU = I.AE
         | cond T.GT = I.GT | cond T.GTU = I.A
+	| cond cc = error(concat["cond(", T.Basis.condToString cc, ")"])
 
       fun zero dst = emit(I.BINARY{binOp=I.XORL, src=dst, dst=dst})
 
@@ -1178,7 +1179,9 @@ struct
                    | T.?>   => (sahf(); j(I.P,lab); testil 0x4100; j(I.EQ,lab))
                    | T.<>   => (testil 0x4400; j(I.EQ,lab))
                    | T.?=   => (testil 0x4400; j(I.NE,lab))
-                   | _      => error "fbranch"
+                   | _      => error(concat[
+				  "fbranch(", T.Basis.fcondToString fcc, ")"
+				])
                  (*esac*)
               val fcc = compare() 
           in  emit I.FNSTSW;   
