@@ -1,0 +1,21 @@
+(* load-util
+ *
+ * Load the utility library code.
+ *)
+
+app use (map library [
+    "lib-base-sig.sml",		"lib-base.sml",
+    "ctype-sig.sml",		"ctype.sml",
+				"hash-string.sml",
+    "hash-key-sig.sml",
+    "hash-table-sig.sml",	"hash-table.sml",
+				"hash-string.sml",
+    "makestring-sig.sml",	"makestring.sml",
+    "string-cvt-sig.sml",	"string-cvt.sml",
+    "format-sig.sml",		"format.sml",
+    "random-sig.sml",		"random.sml",
+    "charset-sig.sml",		"charset.sml",
+    "string-util-sig.sml",	"string-util.sml",
+    "listsort-sig.sml",
+				"list-mergesort.sml"
+  ]);
