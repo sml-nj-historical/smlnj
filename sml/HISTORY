@@ -14,6 +14,79 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/04/23 17:40:00 CDT
+Tag: blume-20040423-ieee-scan
+Description:
+
+Fixed IEEEReal.scan (and .fromString) so that if there is an overflow
+in the exponent calculation we get INF or ZERO (depending on the mantissa
+and the sign of the exponent).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/04/23 10:40:00 CDT
+Tag: blume-20040423-ml-build
+Description:
+
+The ml-build script now terminates with a non-0 status when something
+goes wrong.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/04/22 16:35:00 CDT
+Tag: blume-20040422-Option
+Description:
+
+Made exception Option to be the same as exception Option.Option
+(as it should be).
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/03/19 14:40:00 EST
+Tag: leunga-20040319-cygwin-nlffi
+Description:
+
+Fixed the runtime so that ml-nlffi-lib runs on the cygwin version
+of SML/NJ.  The problem is that
+
+   lib = dlopen(NULL, ...)
+   f   = dlsym(lib, "malloc");
+
+does not work on Windows unless we explicitly export symbols 
+such as 'malloc' during linking.  We fixed this by explicitly 
+exporting the required symbols with the magic gcc incantation:
+
+    -Wl,--export-all cygwin.def
+
+where cygwin.def is a file containing all the symbols that
+we wish to export.   
+
+I suspect this is a Windows problem and we'll have to 
+do the same (somehow with windows compilers) when 
+we build the native win32 version with the system
+calls LoadLibrary/GetProcAddress. 
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/03/04 16:35:00 CST
+Tag: blume-20040304-intinf-fmt
+Description:
+
+Fixed problem with IntInf.fmt (sign would show up on the right instead
+of on the left for BIN, OCT, and HEX).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/03/04 11:25:00 CST
+Tag: blume-20040304-symlinks
+Description:
+
+Fixed problem with installer script (unix only) where bin/ml-yacc and
+friends pointed (via symlinks) to absolute locations instead of just
+.run-sml.  This was reported by Vesa A Norrman.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/02/13 14:50:00 CST
 Tag: Release_110_45
 Description:

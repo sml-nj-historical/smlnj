@@ -134,27 +134,44 @@ structure IEEEReal : IEEE_REAL =
 	end
 
 	(* scanned exponent (e), adjusted by position of decimal point (n) *)
-	fun exponent (n, esign, e) = n + (if esign then ~e else e)
+	fun exponent (n, esign, edl) =
+	    let val e = foldr (fn (d, e) => 10 * e + d) 0 edl
+	    in
+		n + (if esign then ~e else e)
+	    end
 
 	(* scanning the remaining digits of the exponent *)
-	fun edigits (ss, sign, dl, n, esign, e) =
+	fun edigits (ss, sign, dl, n, esign, edl) = let
+	    fun isZero 0 = true | isZero _ = false
+	    fun ovfl () =
+		SOME ({ kind =
+			  if esign orelse List.all isZero dl then ZERO
+			  else INF,
+			sign = sign,
+			digits = [],
+			exp = 0 },
+		      ss)
+	in
 	    case gc ss of
-		NONE => normal (ss, sign, dl, exponent (n, esign, e))
+		NONE => (normal (ss, sign, dl, exponent (n, esign, edl))
+			 handle General.Overflow => ovfl ())
 	      | SOME (dg, ss') =>
-		if isDigit dg then
-		    edigits (ss', sign, dl, n, esign,
-			     10 * e + ord dg - ord #"0")
-		else
-		    normal (ss, sign, dl, exponent (n, esign, e))
+		  if isDigit dg then
+		      edigits (ss', sign, dl, n, esign,
+			       (ord dg - ord #"0") :: edl)
+		  else
+		      (normal (ss, sign, dl, exponent (n, esign, edl))
+		       handle General.Overflow => ovfl ())
+	end
 
 	(* scanning first digit of exponent *)
 	fun edigit1 (ss, sign, dl, n, esign) =
 	    case gc ss of
 		NONE => NONE
 	      | SOME (dg, ss') =>
-		if isDigit dg then
-		    edigits (ss', sign, dl, n, esign, ord dg - ord #"0")
-		else NONE
+		  if isDigit dg then
+		      edigits (ss', sign, dl, n, esign, [ord dg - ord #"0"])
+		  else NONE
 
 	(* we have seen the "e" (or "E") and are now scanning an exponent *)
 	fun exp (ss, sign, dl, n) =

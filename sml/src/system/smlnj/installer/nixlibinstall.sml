@@ -16,7 +16,7 @@ structure UnixLibInstall : sig end = struct
 	val bindir = getOpt (OS.Process.getEnv "BINDIR",
 			     OS.Path.concat (installdir, "bin"))
 	fun bincmd cmd = OS.Path.concat (bindir, cmd)
-	val runsml = bincmd ".run-sml"
+	val runsml = ".run-sml"		(* don't prepend bindir! *)
     in
 	LibInstall.proc { smlnjroot = home,
 			  installdir = installdir,

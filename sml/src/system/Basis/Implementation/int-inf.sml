@@ -116,7 +116,11 @@ structure IntInfImp :> INT_INF = struct
      * bits... *)
     fun bitfmt (bits, maxdig, digvec) i = let
 	fun dig d = StringImp.sub (digvec, Word31Imp.toIntX d)
-	fun loop (chars, [], 0w0, _) = StringImp.implode chars
+
+	val BI { digits, negative } = concrete i
+	fun addsign l = if negative then #"~" :: l else l
+
+	fun loop (chars, [], 0w0, _) = StringImp.implode (addsign chars)
 	  | loop (chars, xs, c, cb) =
 	    if cb >= bits then
 		loop (dig (c && maxdig) :: chars,
@@ -131,10 +135,9 @@ structure IntInfImp :> INT_INF = struct
 			   CoreIntInf.baseBits - bits + cb)
 		 end
     in
-	case concrete i of
-	    BI { digits = [], ... } => "0"
-	  | BI { negative, digits } =>
-	    loop (if negative then [#"~"] else [], digits, 0w0, 0w0)
+	case digits of
+	    [] => "0"
+	  | _ => loop ([], digits, 0w0, 0w0)
     end			    
 
     val (decBase, decDigs) = let
