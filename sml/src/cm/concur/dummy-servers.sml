@@ -9,9 +9,13 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 structure Servers :> SERVERS = struct
-    fun start _ = raise Fail "compile server facility not available"
-    fun stop _ = ()
-    fun kill _ = ()
+    type server = unit
+    fun start _ =
+	(Say.say ["Compile server facility not available."];
+	 NONE)
+    fun stop () = ()
+    fun kill () = ()
+    fun name () = "<NoServer>"
     fun reset _ = Concur.reset ()
     fun dirbase _ = ()
     fun cd _ = ()

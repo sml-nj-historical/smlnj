@@ -147,7 +147,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
-	  fun setAnchor (a, s) =
+	  fun setAnchor { anchor = a, path = s } =
 	      (PathConfig.set (pcmode, a, s); SrcPath.sync ())
 	  (* cancelling anchors cannot affect the order of existing paths
 	   * (it may invalidate some paths; but all other ones stay as
@@ -156,15 +156,15 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  (* same goes for reset because it just cancels all anchors... *)
 	  fun resetPathConfig () = PathConfig.reset pcmode
 
-	  fun showPending () = let
+	  fun getPending () = let
 	      fun one (s, _) = let
 		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
 		  val n = Symbol.name s
 	      in
-		  Say.say ["  ", nss, " ", n, "\n"]
+		  concat ["  ", nss, " ", n, "\n"]
 	      end
 	  in
-	      SymbolMap.appi one (AutoLoad.getPending ())
+	      map one (SymbolMap.listItemsi (AutoLoad.getPending ()))
 	  end
 
 	  fun initPaths () = let
@@ -220,14 +220,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      case Parse.parse NONE (param ()) sflag p of
 		  NONE => false
 		| SOME (g, gp) => f gp g
-	  end
-
-	  val listLibs = Parse.listLibs
-	  fun dismissLib l = let
-	      val c = SrcPath.cwdContext ()
-	      val p = SrcPath.standard pcmode { context = c, spec = l }
-	  in
-	      Parse.dismissLib p
 	  end
 
 	  fun stabilize_runner gp g = true
@@ -457,31 +449,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			      (HostMachDepVC.Interact.installCompManager
 			            (SOME al_manager');
 			       autoload "basis.cm";
-			       autoload "host-cm.cm";
+			       autoload "minimal-cm.cm";
 			       CmHook.init
 			         { stabilize = stabilize,
 				   recomp = recomp,
 				   make = make,
-				   autoload = autoload,
-				   reset = reset,
-				   verbose = StdConfig.verbose,
-				   debug = StdConfig.debug,
-				   keep_going = StdConfig.keep_going,
-				   warn_obsolete = StdConfig.warn_obsolete,
-				   parse_caching = StdConfig.parse_caching,
-				   setAnchor = setAnchor,
-				   cancelAnchor = cancelAnchor,
-				   resetPathConfig = resetPathConfig,
-				   synchronize = SrcPath.sync,
-				   showPending = showPending,
-				   listLibs = listLibs,
-				   dismissLib = dismissLib,
-				   symval = SSV.symval,
-				   server_start =
-				     fn x => (Servers.start x
-					      before SrcPath.invalidateCwd ()),
-				   server_stop = Servers.stop,
-				   server_kill = Servers.kill })
+				   autoload = autoload })
 
 		  end
 	  end
@@ -505,6 +478,53 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	case SMLofNJ.getArgs () of
 	    ["@CMslave"] => (#set StdConfig.verbose false; slave ())
 	  | l => app (p o c) l
+    end
+
+    structure CM :> CM = struct
+	type 'a controller = { get : unit -> 'a, set : 'a -> unit }
+
+	structure Anchor = struct
+	    val set = setAnchor
+	    val cancel = cancelAnchor
+	    val reset = resetPathConfig
+	end
+
+	structure Control = struct
+	    val keep_going = StdConfig.keep_going
+	    val verbose = StdConfig.verbose
+	    val parse_caching = StdConfig.parse_caching
+	    val warn_obsolete = StdConfig.warn_obsolete
+	    val debug = StdConfig.debug
+	end
+
+	structure Library = struct
+	    type lib = SrcPath.t
+	    val known = Parse.listLibs
+	    val descr = SrcPath.descr
+	    val osstring = SrcPath.osstring
+	    val dismiss = Parse.dismissLib
+	end
+
+	structure State = struct
+	    val synchronize = SrcPath.sync
+	    val reset = reset
+	    val pending = getPending
+	end
+
+	structure Server = struct
+	    type server = Servers.server
+	    fun start x = Servers.start x before SrcPath.invalidateCwd ()
+	    val stop = Servers.stop
+	    val kill = Servers.kill
+	    val name = Servers.name
+	end
+
+	val autoload = autoload
+	val make = make
+	val recomp = recomp
+	val stabilize = stabilize
+
+	val symval = SSV.symval
     end
   end
 end

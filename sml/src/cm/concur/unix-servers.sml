@@ -22,21 +22,29 @@ structure Servers :> SERVERS = struct
     val idle = ref ([]: server list)
     val someIdle = ref (Concur.pcond ())
 
-    fun fname (n, S { pt = NONE, ... }) = n
-      | fname (n, S { pt = SOME f, ... }) =
-	(if String.sub (n, 0) = #"/" then f n else n)
-	handle _ => n
+    (* This really shouldn't be here, but putting it into SrcPath would
+     * create a dependency cycle.  Some better structuring will fix this. *)
+    fun isAbsoluteDescr d =
+	(case String.sub (d, 0) of #"/" => true | #"%" => true | _ => false)
+	handle _ => false
 
     fun servName (S { name, ... }) = name
+    fun servPref (S { pref, ... }) = pref
+    fun servPT (S { pt, ... }) = pt
+    fun servProc (S { proc, ... }) = proc
+    val servIns = #1 o Unix.streamsOf o servProc
+    val servOuts = #2 o Unix.streamsOf o servProc
+
+    fun fname (n, s) =
+	case servPT s of
+	    NONE => n
+	  | SOME f => if isAbsoluteDescr n then f n else n
 
     fun send (s, msg) = let
-	val S { name, proc = p, ... } = s
-	val (_, outs) = Unix.streamsOf p
-	fun send0 m =
-	    (Say.dsay ["-> ", name, " : ", m];
-	     TextIO.output (outs, m))
+	val outs = servOuts s
     in
-	send0 msg;
+	Say.dsay ["-> ", servName s, " : ", msg];
+	TextIO.output (outs, msg);
 	TextIO.flushOut outs
     end
 
@@ -66,8 +74,8 @@ structure Servers :> SERVERS = struct
 	  | first :: more => let
 		fun best (b, [], rest) = (b, rest)
 		  | best (b, s :: r, rest) = let
-			val S { pref = bp, ... } = b
-			val S { pref = sp, ... } = s
+			val bp = servPref b
+			val sp = servPref s
 		    in
 			if sp > bp then best (s, r, b :: rest)
 			else best (b, r, s :: rest)
@@ -82,8 +90,8 @@ structure Servers :> SERVERS = struct
 	    end
 
     fun wait_status (s, echo) = let
-	val S { name, proc = p, ... } = s
-	val (ins, _) = Unix.streamsOf p
+	val name = servName s
+	val ins = servIns s
 
 	fun unexpected l = let
 	    fun word (w, l) = " " :: w :: l
@@ -94,7 +102,7 @@ structure Servers :> SERVERS = struct
 	     
 	fun crashed () =
 	    (Say.say ["! Slave ", name, " has crashed\n"];
-	     Unix.reap p)
+	     Unix.reap (servProc s))
 
 	val show =
 	    if echo then (fn report => Say.say (rev report))
@@ -145,8 +153,9 @@ structure Servers :> SERVERS = struct
      * "ok" and marking the corresponding slave idle). *)
     fun wait_all is_int = let
 	val al = StringMap.listItems (!all)
-	fun ping (s as S { name, proc = p, ... }) = let
-	    val (ins, _) = Unix.streamsOf p
+	fun ping s = let
+	    val name = servName s
+	    val ins = servIns s
 	    fun loop () = let
 		val line = TextIO.inputLine ins
 	    in
@@ -174,7 +183,7 @@ structure Servers :> SERVERS = struct
 
     fun shutdown (name, method) = let
 	val (m, s) = StringMap.remove (!all, name)
-	val S { proc = p, ... } = s
+	val p = servProc s
 	val (_, il) = List.partition (fn s => name = servName s) (!idle)
     in
 	method s;
@@ -184,23 +193,23 @@ structure Servers :> SERVERS = struct
 	idle := il
     end handle LibBase.NotFound => ()
 
-    fun stop name =
-	shutdown (name, fn s => send (s, "shutdown\n"))
+    fun stop_by_name name = shutdown (name, fn s => send (s, "shutdown\n"))
 
-    fun kill name =
-	shutdown (name, fn (S { proc = p, ... }) =>
-		           Unix.kill (p, Posix.Signal.term))
+    fun stop s = stop_by_name (servName s)
+
+    fun kill s = shutdown (servName s,
+			   fn s => Unix.kill (servProc s, Posix.Signal.term))
 
     fun start { name, cmd, pathtrans, pref } = let
-	val _ = stop name
+	val _ = stop_by_name name
 	val p = Unix.execute cmd
 	val s = S { name = name, proc = p, pt = pathtrans, pref = pref }
     in
 	if wait_status (s, false) then
 	    (all := StringMap.insert (!all, name, s);
 	     nservers := 1 + !nservers;
-	     true)
-	else false
+	     SOME s)
+	else NONE
     end
 	
     fun compile p =
@@ -273,4 +282,6 @@ structure Servers :> SERVERS = struct
 			 closeIt = disable,
 			 work = f,
 			 cleanup = reset }
+
+    val name = servName
 end

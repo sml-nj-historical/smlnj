@@ -7,6 +7,8 @@
  *)
 (cm-hook)
 Library
+	signature CM
+
 	functor LinkCM
 	functor BootstrapCompileFn
 
@@ -74,6 +76,7 @@ is
 	main/specific-symval-fn.sml
 	main/autoload.sml
 	main/cleanup.sml
+	main/cm.sig
 	main/cm-boot.sml
 
 	(* pathname abstraction *)

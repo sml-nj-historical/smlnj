@@ -11,7 +11,7 @@ signature PARSE = sig
 	GeneralParams.param -> bool option ->
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
     val reset : unit -> unit
-    val listLibs : unit -> unit
+    val listLibs : unit -> SrcPath.t list
     val dismissLib : SrcPath.t -> unit
 end
 
@@ -36,12 +36,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     val sgc = ref (SrcPathMap.empty: CMSemant.group SrcPathMap.map)
     fun reset () = sgc := SrcPathMap.empty
 
-    fun listLibs () = let
-	fun show (sp, _) =
-	    Say.say [SrcPath.descr sp, "\n"]
-    in
-	SrcPathMap.appi show (!sgc)
-    end
+    fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
 
     fun dismissLib l =
 	(sgc := #1 (SrcPathMap.remove (!sgc, l)))
