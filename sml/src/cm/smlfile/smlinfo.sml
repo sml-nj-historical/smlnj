@@ -49,7 +49,7 @@ signature SMLINFO = sig
     val name : info -> string		(* sname *)
     val fullName : info -> string	(* gname(sspec) *)
 
-    val mkBinInfo : info -> int -> BinInfo.info
+    val errorLocation : GeneralParams.info -> info -> string
 end
 
 structure SmlInfo :> SMLINFO = struct
@@ -255,12 +255,9 @@ structure SmlInfo :> SMLINFO = struct
     fun fullName (INFO { sourcepath, persinfo = PERS { group, ... }, ... }) =
 	concat [AbsPath.name (#1 group), "(", AbsPath.spec sourcepath, ")"]
 
-    fun mkBinInfo (INFO i) offset = let
-	val { persinfo = PERS { group, ... }, sourcepath, share, ... } = i
+    fun errorLocation (gp: GeneralParams.info) (INFO i) = let
+	val { persinfo = PERS { group = (group, reg), ... }, ... } = i
     in
-	BinInfo.new { group = group,
-		      spec = AbsPath.spec sourcepath,
-		      offset = offset,
-		      share = share }
+	EM.matchErrorString (GroupReg.lookup (#groupreg gp) group) reg
     end
 end

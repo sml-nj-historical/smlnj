@@ -9,7 +9,6 @@ signature SKELIO = sig
     exception InternalError
     val read : AbsPath.t * TStamp.t -> Skeleton.decl option
     val write : AbsPath.t * Skeleton.decl -> unit
-    val w_name : Symbol.symbol * string list -> string list
 end
 
 structure SkelIO :> SKELIO = struct

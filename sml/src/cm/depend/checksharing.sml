@@ -55,7 +55,7 @@ structure CheckSharing :> CHECKSHARING = struct
 		    val gs = foldl fbn empty globalimports
 		    val ls = foldl bn gs localimports
 		    val s' = check (BinInfo.share i, BinInfo.describe i, ls,
-				    BinInfo.error gp i)
+				    BinInfo.error i)
 		in
 		    stablemap := StableMap.insert (!stablemap, i, s');
 		    StringSet.union (s, s')

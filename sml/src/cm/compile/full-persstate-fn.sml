@@ -51,7 +51,7 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 
 	fun exec_look (k, newCtxt, gp) = let
 	    fun error (SML i) = SmlInfo.error gp i
-	      | error (STABLE i) = BinInfo.error gp i
+	      | error (STABLE i) = BinInfo.error i
 	    fun descr (SML i) = SmlInfo.name i
 	      | descr (STABLE i) = BinInfo.describe i
 	    fun didExist () = isSome (Map.find (!persmap, k))

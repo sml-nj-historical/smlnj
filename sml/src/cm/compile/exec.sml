@@ -64,7 +64,7 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 		(case PS.exec_look_stable (i, newCtxt, gp) of
 		     SOME m => SOME (thunkify m)
 		   | NONE => execute (PS.bfc_fetch_stable i, e,
-				      BinInfo.error gp i EM.COMPLAIN,
+				      BinInfo.error i EM.COMPLAIN,
 				      BinInfo.describe i,
 				      fn e => PS.exec_memo_stable (i, e)))
 

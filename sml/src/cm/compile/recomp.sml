@@ -109,7 +109,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  sym = (BF.symenvOf bfc, BF.lambdaPidOf bfc),
 	  ctxt = ctxt }
 
-    fun dostable (i, mkenv, gp) = let
+    fun dostable (i, mkenv, gp: GeneralParams.info) = let
 	fun load be = let
 	    val fnp = #fnpolicy (#param gp)
 	    val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
@@ -134,7 +134,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		     PP.add_newline pps)
 	    in
 		BinIO.closeIn s;
-		BinInfo.error gp i EM.COMPLAIN
+		BinInfo.error i EM.COMPLAIN
 		       "unable to load stable library module" ppb;
 		NONE
 	    end
