@@ -7,10 +7,6 @@
  *)
 
 Library 
-(*	
-*)
-(*
-*)
 	signature CELLS_BASIS
 	signature CELLS
 	functor CellsBasis
@@ -97,7 +93,7 @@ Library
 	signature MC_EMIT
 	functor BackPatch
 	structure CTypes
-	signature C_CALL
+	signature C_CALLS
 is
 
 #if defined(NEW_CM)
