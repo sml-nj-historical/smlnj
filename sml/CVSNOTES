@@ -37,16 +37,15 @@
 	config/install.sh
 	rm -rf bin.* src/sml-nj
 ** upgrade
-	cvs -q update
+	cvs update
 	cd src/compiler
-	rm -rf bin.*; ln -s ~/flint/bin.x86-unix
+	rm -rf bin.*; ln -s some/full/bin.arch-unix/directory bin.<arch>-unix
 	./xmakeml; rm bin.*
-	./xrun sml.x86-linux <<EOF
-		   CMB.make();
-	EOF
-	# rm sml*.*
+	echo 'CMB.make();' | ./xrun sml
+	rm sml*.*
 	cd ../..
-	rm -r bin lib **/CM
+	rm -r bin* lib **/CM
+	ln -s src/compiler/bin.* .
 	config/install.sh
 	# rm -rf bin.*/*
 

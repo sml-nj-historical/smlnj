@@ -32,11 +32,15 @@ struct
        in LT.ffw_var (ff, fn (b1,b2) => (h b1)^(h b2), fn _ => "f")
       end
 
-    fun toStringFKind ({isrec=SOME _, cconv=F.CC_FUN fixed, ...} : F.fkind) = 
-          "REC " ^ (toStringFFlag fixed)
-      | toStringFKind ({cconv=F.CC_FUN fixed, ...}) = 
-          "FUN " ^ (toStringFFlag fixed)
-      | toStringFKind ({cconv=F.CC_FCT, ...}) = "FCT"
+    fun toStringFKind ({isrec,cconv,inline,...}:F.fkind) =
+	(case inline of F.IH_ALWAYS => "(i)"
+		      | F.IH_UNROLL => "(u)"
+		      | F.IH_SAFE => "")^
+	     (if isSome isrec then "R" else "")^
+		  (case cconv
+		    of F.CC_FCT => "FCT"
+		     | F.CC_FUN fixed => ("FUN "^(toStringFFlag fixed)))
+
 (*
     fun toStringFKind F.FK_ESCAPE  = "FK_ESCAPE"
       | toStringFKind F.FK_KNOWN   = "FK_KNOWN"

@@ -122,7 +122,9 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	  ((*  say("Phase "^p^"..."); *)
 	   (runphase arg) (*  before *)
 (*  	   say("..."^p^" Done.\n") *))
-	      handle x => (dumpTerm(PPFlint.printFundec,"FLINT.bug", f); raise x)
+	      handle x => (say ("\nwhile in "^p^" phase");
+			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
+			   raise x)
 
       (* the "id" phases is just added to do the print/check at the entrance *)
       val (flint,r,_) = foldl (check o print o runphase')

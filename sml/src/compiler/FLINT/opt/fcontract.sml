@@ -213,6 +213,10 @@ fun tycs_eq ([],[]) = true
     LT.tc_eqv(tyc1,tyc2) andalso tycs_eq(tycs1,tycs2)
   | tycs_eq _ = false
 
+fun contract (fdec as (_,f,_,_)) = let
+
+val inlineWitness = ref false
+
 (* cfg: is used for deBruijn renumbering when inlining at different depths
  * ifs (inlined functions): records which functions we're currently inlining
  *     in order to detect loops
@@ -328,7 +332,8 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		  * and kill only the function name.  This inlining strategy
 		  * looks inoffensive enough, but still requires some care:
 		  * see comments at the begining of this file and in cfun *)
-		 (C.unuse (fn _ => ()) true g;
+		 (inlineWitness := true;
+		  C.unuse (fn _ => ()) true g;
 		  ASSERT(not (used g), "killed");
 		  (SOME(F.LET(map #1 args, F.RET vs, body), od), ifs))
 		 
@@ -344,6 +349,7 @@ fun cexp (cfg as (d,od)) ifs m le cont = let
 		 let val nle =
 			 C.copylexp M.empty (F.LET(map #1 args, F.RET vs, body))
 		 in
+		     inlineWitness := true;
 		     (*  say ("\nInlining "^(C.LVarString g)); *)
 		     (app (unuseval (undertake m)) vs) handle x => raise x;
 		     (C.unuse (undertake m) true g) handle x => raise x;
@@ -425,21 +431,23 @@ in
 	      | cfun (m,fdec as ({inline,cconv,known,isrec},f,args,body)::fs,acc) =
 		if used f then
 		    let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
+			val oldWitness =
+			    (!inlineWitness before inlineWitness := false)
 			(* make up the bindings for args inside the body *)
 			fun addnobind ((lv,lty),m) =
 			    addbind(m, lv, Var(lv, SOME lty))
 			val nm = foldl addnobind m args
 			(* contract the body and create the resulting fundec *)
 			val nbody = cexp cfg (S.add(f, ifs)) nm body #2
-			(* The `inline' bit has to be turned off because
-			 * it applied to the function before contraction
-			 * but might not apply to its new form (inlining might
-			 * have increased its size substantially or made it
-			 * recursive in a different way which could make further
-			 * inlining even dangerous) *)
-			val nknown = known orelse not(C.escaping f)
+			(* if inlining took place, the body might be completely
+			 * changed (read: bigger), so we have to reset the
+			 * `inline' bit *)
 			val nfk = {isrec=isrec, cconv=cconv,
-				   inline=F.IH_SAFE, known=nknown}
+				   known=known orelse not(C.escaping f),
+				   inline=if !inlineWitness
+					  then F.IH_SAFE
+					  else (inline before
+						inlineWitness := oldWitness)}
 			(* update the binding in the map.  This step is not
 			 * not just a mere optimization but is necessary
 			 * because if we don't do it and the function
@@ -467,8 +475,7 @@ in
 		     * escaping one.  It's dangerous for optimisations based
 		     * on known functions (elimination of dead args, f.ex)
 		     * and could generate cases where call>use in collect *)
-		    in if not (C.escaping f andalso
-			       not (C.escaping g))
+		    in if not (C.escaping f andalso not (C.escaping g))
 		       then let
 			   (* if an earlier function h has been eta-reduced
 			    * to f, we have to be careful to update its
@@ -518,7 +525,7 @@ in
 			(* construct the new body *)
 			val nbody =
 			    F.LET(map #1 (filter args),
-				  F.RET(map valOf (filter (C.actuals g))),
+				  F.RET(map O.valOf (filter (C.actuals g))),
 				  body)
 		    in (fk, g, nargs, nbody)
 		    end
@@ -613,34 +620,7 @@ in
 
       | F.SWITCH (v,ac,arms,def) =>
 	(case ((val2sval m v) handle x => raise x)
-	  of sv as (Var{1=lvc,...} | Select{1=lvc,...} | Decon{1=lvc, ...}
-	            | (* will probably never happen *) Record{1=lvc,...}) =>
-	     let fun carm (F.DATAcon(dc,tycs,lv),le) =
-		      let val ndc = cdcon dc
-			  val nm = addbind(m, lv, Decon(lv, F.VAR lvc, ndc, tycs))
-			  (* we can rebind lv to a more precise value
-			   * !!BEWARE!!  This rebinding is misleading:
-			   * - it gives the impression that `lvc' is built from
-			   *   `lv' although the reverse is true:  if `lvc' is
-			   *   undertaken, `lv's count should *not* be updated!
-			   *   Luckily, `lvc' will not become dead while rebound
-			   *   to Con(lv) because it's used by the SWITCH.
-			   *   All in all, it works fine, but it's not as
-			   *   straightforward as it seems.
-			   * - it seems to be a good idea, but it can hide
-			   *   other opt-opportunities since it hides the
-			   *   previous binding. *)
-			  val nm = addbind(nm, lvc, Con(lvc, F.VAR lv, ndc, tycs))
-		      in (F.DATAcon(ndc, tycs, lv), loop nm le #2)
-		      end
-		    | carm (con,le) = (con, loop m le #2)
-		  val narms = map carm arms
-		  val ndef = Option.map (fn le => loop m le #2) def
-	     in
-		  cont(m, F.SWITCH(sval2val sv, ac, narms, ndef))
-	     end
-
-	   | Con (lvc,v,dc1,tycs1) =>
+	  of sv as Con (lvc,v,dc1,tycs1) =>
 	     let fun killle le = ((#1 (C.unuselexp (undertake m))) le) handle x => raise x
 		 fun kill lv le =
 		     ((#1 (C.unuselexp (undertake (addbind(m,lv,Var(lv,NONE)))))) le) handle x => raise x
@@ -648,30 +628,81 @@ in
 		   | killarm _ = buglexp("bad arm in switch(con)", le)
 
 		 fun carm ((F.DATAcon(dc2,tycs2,lv),le)::tl) =
-		     if FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) then
+		     (* sometimes lty1 <> lty2 :-( so this doesn't work:
+		      *  FU.dcon_eq(dc1, dc2) andalso tycs_eq(tycs1,tycs2) *)
+		     if #2 dc1 = #2 (cdcon dc2) then
 			 (map killarm tl; (* kill the rest *)
-			  Option.map killle def; (* and the default case *)
+			  O.map killle def; (* and the default case *)
 			  loop (substitute(m, lv, val2sval m v, F.VAR lvc))
 			       le cont)
 		     else
 			 (* kill this arm and continue with the rest *)
 			 (kill lv le; carm tl)
-		   | carm [] = loop m (Option.valOf def) cont
+		   | carm [] = loop m (O.valOf def) cont
 		   | carm _ = buglexp("unexpected arm in switch(con,...)", le)
 	     in carm arms
 	     end
 
-	   | Val v =>
+	   | sv as Val v =>
 	     let fun kill le = ((#1 (C.unuselexp (undertake m))) le) handle x => raise x
 		 fun carm ((con,le)::tl) =
 		     if eqConV(con, v) then
 			  (map (kill o #2) tl;
-			   Option.map kill def;
+			   O.map kill def;
 			   loop m le cont)
 		     else (kill le; carm tl)
-		   | carm [] = loop m (Option.valOf def) cont
+		   | carm [] = loop m (O.valOf def) cont
 	     in carm arms
 	     end
+
+	   | sv as (Var{1=lvc,...} | Select{1=lvc,...} | Decon{1=lvc, ...}
+	     | (* will probably never happen *) Record{1=lvc,...}) =>
+	     (case (arms,def)
+	       of ([(F.DATAcon(dc,tycs,lv),le)],NONE) =>
+		  (* this is a mere DECON, so we can push the let binding
+		   * (hidden in cont) inside and maybe even drop the DECON *)
+		  let val ndc = cdcon dc
+		      val nm = addbind(m, lv, Decon(lv, F.VAR lvc, ndc, tycs))
+		      (* see below *)
+		      val nm = addbind(nm, lvc, Con(lvc, F.VAR lv, ndc, tycs))
+		      val nle = loop nm le cont
+		      val nv = sval2val sv
+		  in
+		      if used lv then
+			  F.SWITCH(nv,ac,[(F.DATAcon(ndc,tycs,lv),nle)],NONE)
+		      else (unuseval (undertake m) nv; nle)
+		  end
+		| (([(_,le)],NONE) | ([],SOME le)) =>
+		  (* This should never happen, but we can optimize it away *)
+		  (unuseval (undertake m) (sval2val sv); loop m le cont)
+		| _ =>
+		  let fun carm (F.DATAcon(dc,tycs,lv),le) =
+			  let val ndc = cdcon dc
+			      val nm = addbind(m, lv,
+					       Decon(lv, F.VAR lvc, ndc, tycs))
+			      (* we can rebind lv to a more precise value
+			       * !!BEWARE!!  This rebinding is misleading:
+			       * - it gives the impression that `lvc' is built
+			       *   from`lv' although the reverse is true:
+			       *   if `lvc' is undertaken, `lv's count should
+			       *   *not* be updated!
+			       *   Luckily, `lvc' will not become dead while
+			       *   rebound to Con(lv) because it's used by the
+			       *   SWITCH. All in all, it works fine, but it's
+			       *   not as straightforward as it seems.
+			       * - it seems to be a good idea, but it can hide
+			       *   other opt-opportunities since it hides the
+			       *   previous binding. *)
+			      val nm = addbind(nm, lvc,
+					       Con(lvc, F.VAR lv, ndc, tycs))
+			  in (F.DATAcon(ndc, tycs, lv), loop nm le #2)
+			  end
+			| carm (con,le) = (con, loop m le #2)
+		      val narms = map carm arms
+		      val ndef = Option.map (fn le => loop m le #2) def
+		  in cont(m, F.SWITCH(sval2val sv, ac, narms, ndef))
+		  end)
+
 	   | sv as (Fun _ | TFun _) =>
 	     bugval("unexpected switch arg", sval2val sv))
 
@@ -769,12 +800,13 @@ in
 	end
 end
 		 
-fun contract (fdec as (_,f,_,_)) =
-    ((*  C.collect fdec; *)
-     case cexp (DI.top,DI.top) S.empty
-	       M.empty (F.FIX([fdec], F.RET[F.VAR f])) #2
-      of F.FIX([fdec], F.RET[F.VAR f]) => fdec
-       | fdec => bug "invalid return fundec")
+in
+    (*  C.collect fdec; *)
+    case cexp (DI.top,DI.top) S.empty
+	      M.empty (F.FIX([fdec], F.RET[F.VAR f])) #2
+     of F.FIX([fdec], F.RET[F.VAR f]) => fdec
+      | fdec => bug "invalid return fundec"
+end
 	    
 end
 end

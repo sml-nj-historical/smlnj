@@ -3,10 +3,13 @@
 
 signature COLLECT =
 sig
+    type info
     
     (* Collect information about variables and function uses.
      * The info is accumulated in the map `m' *)
     val collect : FLINT.fundec -> FLINT.fundec
+
+(*      val get : FLINT.lvar -> info *)
 
     (* query functions *)
     val escaping  : FLINT.lvar -> bool	(* non-call uses *)

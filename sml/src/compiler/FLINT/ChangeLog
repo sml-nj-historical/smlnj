@@ -1,3 +1,10 @@
+1998-11-09  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml: take advantage of single-arm SWITCH (aka decon)
+	(SWITCH(CON)): just compare the conreps because types may differ (?)
+	(inlineWitness): ugly hack used to figure out if inlining happened,
+	  in order to decide whether to keep the inline bit or not (in cfun).
+
 1998-11-06  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/fcontract.sml: added unrolling support
