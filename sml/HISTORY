@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2000/05/25 17:28 EDT
+Tag: leunga-20000525-ra
+Description:
+
+  Fixed a bug in freezing phase of the register allocator.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2000/05/15 22:53 EDT
 Tag: leunga-20000515-alpha-x86-ra
 Description:

@@ -1193,7 +1193,7 @@ struct
                      if !degree >= K (* can't be frozen yet? *)
                      then 
                         ((*if tally then bad_freeze := !bad_freeze+1 else ();*)
-                         loop(fz, newFz, stack))
+                         loop(fz, FZ.add(node,newFz), stack))
                      else (* freeze node *)
                      let val _ = 
                             if debug then print("Freezing "^show node^"\n")
