@@ -1,3 +1,8 @@
+(* mlriscErrormsg.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 signature MLRISC_ERROR_MSG =
 sig
    exception Error

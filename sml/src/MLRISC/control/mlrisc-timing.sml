@@ -1,3 +1,8 @@
+(* mlrisc-timing.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 signature MLRISC_TIMING =
 sig
 
