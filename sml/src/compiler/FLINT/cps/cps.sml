@@ -193,6 +193,8 @@ datatype cexp
   | LOOKER of P.looker * value list * lvar * cty * cexp
   | ARITH of P.arith * value list * lvar * cty * cexp
   | PURE of P.pure * value list * lvar * cty * cexp
+  (* experimental "raw C call" (Blume, 1/2001) *)
+  | RCC of CTypes.c_proto * value list * lvar * cty * cexp
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
 fun ctyToString(INTt) =  "[I]"

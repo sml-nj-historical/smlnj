@@ -69,6 +69,7 @@ struct
 	    | calls (CPS.LOOKER(_,_,_,_,e))   = calls e
 	    | calls (CPS.ARITH(_,_,_,_,e))    = calls e
 	    | calls (CPS.PURE(_,_,_,_,e))     = calls e
+	    | calls (CPS.RCC(_,_,_,_,e))    = calls e
 	    | calls (CPS.FIX _)               = error "calls.f:FIX"
         in 
 	  calls body; build rest

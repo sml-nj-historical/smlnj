@@ -28,10 +28,11 @@ fun freein v =
 	  | RECORD(_,l,w,ce) => any1 l orelse g ce
 	  | SELECT(_,v,w,_,ce) => try v orelse g ce
 	  | OFFSET(_,v,w,ce) => try v orelse g ce
-	  | SETTER(_,vl,e) => any vl orelse g e
-	  | LOOKER(_,vl,w,_,e) => any vl orelse g e
-	  | ARITH(_,vl,w,_,e) => any vl orelse g e
-	  | PURE(_,vl,w,_,e) => any vl orelse g e
+	  | (SETTER(_,vl,e) |
+	     LOOKER(_,vl,_,_,e) |
+	     ARITH(_,vl,_,_,e) |
+	     PURE(_,vl,_,_,e) |
+	     RCC(_,vl,_,_,e)) => any vl orelse g e
 	  | BRANCH(_,vl,c,e1,e2) => any vl orelse g e1 orelse g e2
 	  | FIX(fl, e) => List.exists (g o #5) fl  orelse  g e
    in g
@@ -102,6 +103,7 @@ val rec reduce =
     | LOOKER(i,vl,w,t,e) => LOOKER(i, vl, w, t, reduce e)
     | ARITH(i,vl,w,t,e) => ARITH(i, vl, w, t, reduce e)
     | PURE(i,vl,w,t,e) => PURE(i, vl, w, t, reduce e)
+    | RCC(p,vl,w,t,e) => RCC(p, vl, w, t, reduce e)
     | SETTER(i,vl,e) => SETTER(i, vl, reduce e)
     | FIX(l,e) =>
        let fun uncurry(fd as (CONT,_,_,_,_)) = [reduce_body(fd)]

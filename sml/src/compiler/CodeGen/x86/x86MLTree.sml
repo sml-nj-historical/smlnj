@@ -43,4 +43,4 @@ structure X86MLTree =
   MLTreeF(structure LabelExp=SMLNJLabelExp
 	  structure Region=CPSRegions
 	  structure Stream=X86Stream
-	  structure Extension=SMLNJMLTreeExt)
+	  structure Extension=X86_SMLNJMLTreeExt)

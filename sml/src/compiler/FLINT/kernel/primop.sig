@@ -218,7 +218,14 @@ datatype primop
 (* Primops to support new experimental C FFI. *)
   | RAW_LOAD of numkind		(* load from arbitrary memory location *)
   | RAW_STORE of numkind	(* store to arbitrary memory location *)
-  | RAW_CCALL			(* make a call to a C-function *)
+    (* make a call to a C-function;
+     * The primop carries C function prototype information and specifies
+     * which of its (ML-) arguments are floating point. C prototype
+     * information is for use by the backend, ML information is for
+     * use by the CPS converter. *)
+  | RAW_CCALL of { c_proto: CTypes.c_proto,
+		   ml_flt_args: bool list,
+		   ml_flt_res: bool } option
 
 
 val IADD : primop  (* default integer addition *)

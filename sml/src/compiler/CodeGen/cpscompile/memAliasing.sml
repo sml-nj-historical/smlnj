@@ -99,6 +99,7 @@ struct
          | sizeOf(C.PURE(p,vs,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.ARITH(a,vs,x,cty,k),hp) = sizeOf(k,hp)
          | sizeOf(C.LOOKER(lk,vs,x,cty,k),hp) = sizeOf(k,hp)
+	 | sizeOf(C.RCC(_,_,_,_,k),hp) = sizeOf(k,hp)
  
        and sizeOfs([],hp)    = hp
          | sizeOfs(k::ks,hp) = Int.max(sizeOf(k,hp),sizeOfs(ks,hp))

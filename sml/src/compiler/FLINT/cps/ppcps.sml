@@ -240,6 +240,9 @@ fun show0 say =
 		    indent (n+3) e1;
 		    space n; say "else\n";
 		    indent (n+3) e2)
+	      | RCC(p,vl,w,t,e) =>
+		   (space n; say "rcc("; sayvlist vl; say ") -> "; sayv(VAR w);
+		    sayt(t);nl(); f e)
          in f
         end
  in  indent

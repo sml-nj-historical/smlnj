@@ -33,6 +33,7 @@ case ce
   | LOOKER(i,vl,w,t,c) => let val (f,c') = gfix c in (f,LOOKER(i,vl,w,t,c')) end
   | ARITH(i,vl,w,t,c) => let val (f,c') = gfix c in (f,ARITH(i,vl,w,t,c')) end
   | PURE(i,vl,w,t,c) => let val (f,c') = gfix c in (f,PURE(i,vl,w,t,c')) end
+  | RCC(p,vl,w,t,c) => let val (f,c') = gfix c in (f,RCC(p,vl,w,t,c')) end
   | BRANCH(i,args,c,e1,e2) =>
 	let val (f1,e1') = gfix e1
             val (f2,e2') = gfix e2

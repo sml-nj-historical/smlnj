@@ -228,7 +228,6 @@ fun map_primop p =
 
      | AP.RAW_LOAD nk => PKL (P.rawload { kind = numkind nk })
      | AP.RAW_STORE nk => PKS (P.rawstore { kind = numkind nk })
-     | AP.RAW_CCALL => bug "RAW_CCALL not implemented yet"
      
      | _ => bug ("bad primop in map_primop: " ^ (AP.prPrimop p) ^ "\n"))
 
@@ -599,7 +598,46 @@ fun convert fdec =
                                       PURE(P.wrap,[VAR y],v,BOGt,
                                            loop(e,c)))))))))
               end
-     	  
+
+	  | F.PRIMOP ((_,AP.RAW_CCALL NONE,_,_),[_,_,a],v,e) =>
+	    (* code generated here should never be executed anyway,
+	     * so we just fake it... *)
+	    (print "*** pro-forma raw-ccall\n";
+	     newname (v, lpvar a); loop(e,c))
+
+	  | F.PRIMOP ((_,AP.RAW_CCALL (SOME i),lt,ts),[f,a,_],v,e) => let
+		val { c_proto = p, ml_flt_args, ml_flt_res } = i
+		fun cty true = FLTt
+		  | cty false = INT32t
+		val res_cty = cty ml_flt_res
+		val a' = lpvar a
+		val v' = mkv ()
+		fun rcc args =
+		    RCC (p, lpvar f :: map VAR args, v', res_cty,
+			 PURE(primwrap res_cty, [VAR v'], v, BOGt,
+			      loop (e, c)))
+		fun build ([], rvl, _) = rcc (rev rvl)
+		  | build (ft :: ftl, rvl, i) = let
+			val t = cty ft
+			val v = mkv ()
+		    in
+			selectNM (i, a', v, t, build (ftl, v :: rvl, i + 1))
+		    end
+	    in
+		case ml_flt_args of
+		    [ft] => let
+			(* if there is precisely one arg, then it will not
+			 * come packaged into a record *)
+			val t = cty ft
+			val v = mkv ()
+		    in
+			PURE (primunwrap t, [a'], v, t, rcc [v])
+		    end
+		  | _ => build (ml_flt_args, [], 0)
+	    end
+
+	  | F.PRIMOP ((_,AP.RAW_CCALL _,_,_),_,_,_) => bug "bad raw_ccall"
+
           | F.PRIMOP(po as (_,p,lt,ts), ul, v, e) => 
               let val ct = 
                     case (#3(LT.ltd_arrow(LT.lt_pinst (lt, ts))))

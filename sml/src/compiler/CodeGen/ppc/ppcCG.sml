@@ -5,10 +5,13 @@ structure PPCCG =
   MachineGen
   ( structure MachSpec   = PPCSpec
     structure PseudoOps  = PPCPseudoOps
+    structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = PPCCpsRegs
     structure InsnProps  = PPCProps
     structure Asm        = PPCAsmEmitter
     structure Shuffle    = PPCShuffle
+
+    structure CCalls     = DummyCCallsFn (PPCMLTree)
 
     structure MLTreeComp=
        PPC(structure PPCInstr = PPCInstr

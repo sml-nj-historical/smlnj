@@ -1,4 +1,4 @@
-structure SMLNJMLTreeExt =
+structure SMLNJMLTreeExt : SMLNJ_MLTREE_EXT =
 struct
    type ('s,'r,'f,'c) sx = unit
    type ('s,'r,'f,'c) rx = unit
@@ -7,7 +7,6 @@ struct
        FSINE of 'f
      | FCOSINE of 'f
      | FTANGENT of 'f
-
 end
 
 (* This is the default extension compilation module 

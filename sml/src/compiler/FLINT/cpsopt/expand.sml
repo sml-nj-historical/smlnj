@@ -256,6 +256,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | PURE(P.real{tokind=P.FLOAT 64,...},vl,w,_,e) =>
 		  (notereal w; prim(level,vl,e))
      | PURE(_,vl,w,_,e) => (noteother w; prim(level,vl,e))
+     | RCC(p,vl,w,t,e) => (noteother w; prim(level,vl,e)) (* ? *)
 
 
    (*********************************************************************)
@@ -306,6 +307,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	| ARITH(i,vl,w,t,e) => ARITH(i, map use vl, def w, t, g e)
 	| PURE(i,vl,w,t,e) => PURE(i, map use vl, def w, t, g e)
 	| SETTER(i,vl,e) => SETTER(i, map use vl, g e)
+	| RCC(p,vl,w,t,e) => RCC(p, map use vl, def w, t, g e)
 	| BRANCH(i,vl,c,e1,e2) => BRANCH(i, map use vl, def c, g e1, g e2)
 
     in  bind(args,wl); g e
@@ -467,10 +469,11 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
 	       pass2(d+length l,u,ce)
 	   end
      | SWITCH(v,c,l) => app (fn e => pass2(d+2,u,e)) l
-     | LOOKER(i,vl,w,t,e) => pass2(d+2,u,e)
-     | ARITH(i,vl,w,t,e) => pass2(d+2,u,e)
-     | PURE(i,vl,w,t,e) => pass2(d+2,u,e)
-     | SETTER(i,vl,e) => pass2(d+2,u,e)
+     | (LOOKER(_,_,_,_,e) |
+	ARITH(_,_,_,_,e) |
+	PURE(_,_,_,_,e) |
+	SETTER(_,_,e) |
+	RCC(_,_,_,_,e)) => pass2(d+2,u,e)
      | BRANCH(i,vl,c,e1,e2) => (pass2(d+2,u,e1); 
 				pass2(d+2,u,e2))
 
@@ -513,6 +516,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | ARITH(i,vl,w,t,e) => ARITH(i, vl, w, t, gamma e)
      | PURE(i,vl,w,t,e) => PURE(i, vl, w, t, gamma e)
      | SETTER(i,vl,e) => SETTER(i, vl, gamma e)
+     | RCC(p,vl,w,t,e) => RCC(p, vl, w, t, gamma e)
      | BRANCH(i,vl,c,e1,e2) => BRANCH(i, vl, c,gamma e1, gamma e2)
 
 
@@ -540,6 +544,7 @@ fun expand{function=(fkind,fvar,fargs,ctyl,cexp),unroll,bodysize,click,
      | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,beta e)
      | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,beta e)
      | SETTER(i,vl,e) => SETTER(i,vl,beta e)
+     | RCC(p,vl,w,t,e) => RCC(p,vl,w,t,beta e)
      | BRANCH(i,vl,c,e1,e2) => BRANCH(i,vl,c,beta e1,beta e2)
 
 

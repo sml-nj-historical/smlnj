@@ -13,6 +13,7 @@ structure DAEnv = struct
       | BINDING of Symbol.symbol * value
       | LAYER of env * env
       | FILTER of SymbolSet.set * env
+      | SUSPEND of unit -> env
 
     withtype value = env
 end

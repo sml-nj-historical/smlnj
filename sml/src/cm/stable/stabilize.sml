@@ -485,6 +485,39 @@ struct
 			    in
 				(sy, (Memoize.memoize ieth, e', allsyms))
 			    end
+			  | ie #"j" = let
+				val sy = symbol ()
+				val nth = lazy_fsbn ()
+				val allsyms = symbolset ()
+				(* This seems (is?) a bit clumsy... *)
+				fun xth () = let
+				    val (f, n, pos) = nth ()
+				    val (sbnth, e, _) =
+					valOf (SymbolMap.find
+						   (#exports
+							(getSublib
+							     (valOf pos)), sy))
+					handle _ => raise Format
+				in
+				    (f, n, pos, sbnth, e)
+				end
+				val xth = Memoize.memoize xth
+				fun eth () = #5 (xth ())
+				val e' = DAEnv.FILTER
+					 (SymbolSet.singleton sy,
+					  DAEnv.SUSPEND eth)
+				fun ieth () = let
+				    val (f, n, pos, sbnth, _) = xth ()
+				    val ii =
+					case #2 (sbnth ()) of
+					    DG.SB_BNODE (_, ii, _) => ii
+					  | _ => raise Format
+				in
+				    (f, DG.SB_BNODE (n, ii, pos))
+				end
+			    in
+				(sy, (Memoize.memoize ieth, e', allsyms))
+			    end
 			  | ie _ = raise Format
 		    in
 			share impexpM ie
@@ -816,19 +849,27 @@ struct
 		(* Here is the place where we need to write interface info. *)
 		fun impexp (s, (nth, _, allsyms)) = let
 		    val op $ = PU.$ IMPEXP
-		    val { statenv, symenv, statpid, sympid } =
-			case nth () of
-			    (_, DG.SB_BNODE (_, ii, _)) => ii
-			  | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
-			    getII smlinfo
 		in
-		    "i" $ [symbol s,
-			   lazy_fsbn nth,
-			   lazy_env statenv,
-			   lazy_symenv symenv,
-			   pid statpid,
-			   pid sympid,
-			   symbolset allsyms]
+		    case nth () of
+			(_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
+			(* this is the case of an actual internal node *)
+			let val { statenv, symenv, statpid, sympid } =
+				getII smlinfo
+			in
+			    "i" $ [symbol s,
+				   lazy_fsbn nth,
+				   lazy_env statenv,
+				   lazy_symenv symenv,
+				   pid statpid,
+				   pid sympid,
+				   symbolset allsyms]
+			end
+		      | (f, DG.SB_BNODE (DG.BNODE n, _, _)) =>
+			(* This is the case of a simple re-export;
+			 * we avoid pickling any environments here because
+			 * they can be re-fetched from the sublib directly
+			 * when unpickling. *)
+			"j" $ [symbol s, lazy_fsbn nth, symbolset allsyms]
 		end
 
 		fun w_exports e = let

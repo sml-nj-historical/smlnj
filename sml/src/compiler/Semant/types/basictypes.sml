@@ -107,6 +107,10 @@ fun recordTy(fields: (label * ty) list) : ty =
 fun tupleTy(tys: ty list) : ty =
     CONty(Tuples.mkTUPLEtyc(length tys), tys)
 
+fun getFields (CONty(RECORDtyc _, fl)) = SOME fl
+  | getFields (VARty(ref(INSTANTIATED ty))) = getFields ty
+  | getFields _ = NONE
+
 (* 
  * I believe that unitTycon only needs to be a DEFtyc because of
  * the "structure PrimTypes = struct open PrimTypes end" declaration

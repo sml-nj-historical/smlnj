@@ -51,9 +51,10 @@ val rec freevars =
    | SELECT(_,v,w,_,ce) => enter(v, rmv(w, freevars ce))
    | OFFSET(_,v,w,ce) => enter(v, rmv(w, freevars ce))
    | SETTER(_,vl,e) => merge(clean vl, freevars e)
-   | LOOKER(_,vl,w,_,e) => merge(clean vl, rmv(w, freevars e))
-   | ARITH(_,vl,w,_,e) => merge(clean vl, rmv(w, freevars e))
-   | PURE(_,vl,w,_,e) => merge(clean vl, rmv(w, freevars e))
+   | (LOOKER(_,vl,w,_,e) |
+      ARITH(_,vl,w,_,e) |
+      PURE(_,vl,w,_,e) |
+      RCC(_,vl,w,_,e)) => merge(clean vl, rmv(w, freevars e))
    | BRANCH(_,vl,c,e1,e2) => merge(clean vl, merge(freevars e1, freevars e2))
    | FIX(fl,e) =>
 	let fun g(_,f,vl,_,ce) = difference(freevars ce, uniq vl)
@@ -79,9 +80,10 @@ let (* Doesn't apply "add" to the rebound variables of a branch *)
 	  | SELECT(_,v,w,_,ce) => enter(v, setvars(w, freevars ce))
 	  | OFFSET(_,v,w,ce) => enter(v, setvars(w, freevars ce))
 	  | SETTER(_,vl,e) => merge(clean vl, freevars e)
-	  | LOOKER(_,vl,w,_,e) => merge(clean vl, setvars(w, freevars e))
-	  | ARITH(_,vl,w,_,e) => merge(clean vl, setvars(w, freevars e))
-	  | PURE(_,vl,w,_,e) => merge(clean vl, setvars(w, freevars e))
+	  | (LOOKER(_,vl,w,_,e) |
+	     ARITH(_,vl,w,_,e) |
+	     PURE(_,vl,w,_,e) |
+	     RCC(_,vl,w,_,e)) => merge(clean vl, setvars(w, freevars e))
 	  | BRANCH(_,vl,c,e1,e2) => 
 		let val s = merge(clean vl,merge(freevars e1, freevars e2))
                  in add(c,s); s
@@ -109,6 +111,7 @@ fun cexp_freevars lookup cexp =
 	 | LOOKER(_,vl,w,_,e) => merge(clean vl, lookup w)
 	 | ARITH(_,vl,w,_,e) => merge(clean vl, lookup w)
 	 | PURE(_,vl,w,_,e) => merge(clean vl, lookup w)
+	 | RCC(_,vl,w,_,e) => merge(clean vl, lookup w)
 	 | BRANCH(_,vl,c,e1,e2) => merge(clean vl,merge(f e1, f e2))
     in f cexp
     end
@@ -161,6 +164,8 @@ let exception Freemap
 	  | PURE(_,vl,w,_,ce) => (app escapesM vl;
 			       merge(clean vl, rmv(w,freevars ce)))
 	  | SETTER(_,vl,ce) => (app escapesM vl; merge(clean vl, freevars ce))
+	  | RCC(_,vl,w,_,ce) => (app escapesM vl;
+				 merge (clean vl, rmv(w, freevars ce)))
 	  | BRANCH(_,vl,c,e1,e2) =>
 	          (app escapesM vl; 
 		   merge(clean vl,merge(freevars e1, freevars e2)))

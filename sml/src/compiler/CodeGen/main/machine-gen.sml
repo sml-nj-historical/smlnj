@@ -6,11 +6,12 @@
 functor MachineGen
   (structure MachSpec   : MACH_SPEC            (* machine specifications *) 
    structure PseudoOps  : SMLNJ_PSEUDO_OP_TYPE (* pseudo ops *)
+   structure Ext        : SMLNJ_MLTREE_EXT
    structure CpsRegs    : CPSREGS              (* CPS registers *)
       where T.Region=CPSRegions
         and T.Constant=SMLNJConstant 
         and T.PseudoOp=PseudoOps
-        and T.Extension=SMLNJMLTreeExt
+	and T.Extension=Ext
    structure InsnProps  : INSN_PROPERTIES      (* instruction properties *)
       where I.Constant = CpsRegs.T.Constant
    structure MLTreeComp : MLTREECOMP           (* instruction selection *)
@@ -25,8 +26,10 @@ functor MachineGen
    structure BackPatch  : BBSCHED              (* machine code emitter *)
       where F.P = PseudoOps
         and F.I = Asm.I
-   structure RA         : CLUSTER_OPTIMIZATION  (* register allocator *)
+   structure RA         : CLUSTER_OPTIMIZATION (* register allocator *)
       where F = BackPatch.F
+   structure CCalls     : C_CALLS	       (* native C call generator *)
+      where T = CpsRegs.T
   ) : MACHINE_GEN =
 struct
 
@@ -78,10 +81,12 @@ struct
       MLRiscGen(structure MachineSpec=MachSpec
                 structure MLTreeComp=MLTreeComp
                 structure Cells=Cells
+		structure Ext = Ext
                 structure C=CpsRegs
                 structure InvokeGC=InvokeGC
                 structure PseudoOp=PseudoOps
                 structure Flowgen=FlowGraphGen
+		structure CCalls = CCalls
                 val compile = compile
                )
 

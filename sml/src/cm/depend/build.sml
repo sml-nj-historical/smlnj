@@ -53,6 +53,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 	(case looker s of NONE => otherwise s | SOME v => v)
       | look otherwise (DE.FILTER (ss, e)) s =
 	if SymbolSet.member (ss, s) then look otherwise e s else otherwise s
+      | look otherwise (DE.SUSPEND eth) s = look otherwise (eth ()) s
 
     fun evalOneSkeleton lookimport = let
 	(* build the lookup function for DG.env *)

@@ -365,20 +365,26 @@ fun liftlits (body, root, offset) =
                in g(exports, [])
               end
 
-            fun mklit (v, lit) = 
-              (case IntHashTable.lookup m v
-                of (ZZ_FLT _) => (* float is wrapped *)
-                     bug "currently we don't expect ZZ_FLT in mklit"
-                     (* LI_F64BLOCK([s], v, lit) *)
-                 | (ZZ_STR s) => 
-                     bug "currently we don't expect ZZ_STR in mklit"
-                     (* lit   --- or we could inline string *)
-                 | (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
-		     LI_F64BLOCK(map (fn (CPS.REAL s) => s) vs, v, lit)
-                 | (ZZ_RCD(CPS.RK_I32BLOCK, vs)) => 
-		     LI_I32BLOCK(map (fn (CPS.INT32 w) => w) vs, v, lit)
+            fun mklit (v, lit) = let
+		fun unREAL (CPS.REAL s) = s
+		  | unREAL _ = bug "unREAL"
+		fun unINT32 (CPS.INT32 w) = w
+		  | unINT32 _ = bug "unINT32"
+	    in
+		case IntHashTable.lookup m v of
+		    (ZZ_FLT _) => (* float is wrapped *)
+                    bug "currently we don't expect ZZ_FLT in mklit"
+                  (* LI_F64BLOCK([s], v, lit) *)
+                  | (ZZ_STR s) => 
+                    bug "currently we don't expect ZZ_STR in mklit"
+                  (* lit   --- or we could inline string *)
+                  | (ZZ_RCD(CPS.RK_FBLOCK, vs)) =>
+		    LI_F64BLOCK(map unREAL vs, v, lit)
+                 | (ZZ_RCD(CPS.RK_I32BLOCK, vs)) =>
+		   LI_I32BLOCK(map unINT32 vs, v, lit)
                  | (ZZ_RCD(rk, vs)) => 
-                     LI_BLOCK(rk2bk rk, map val2lit vs, v, lit))
+                     LI_BLOCK(rk2bk rk, map val2lit vs, v, lit)
+	    end
 
             (** build up the literal structure *)
             val lit = foldl mklit toplit allvars
@@ -457,7 +463,11 @@ fun liftlits (body, root, offset) =
            | PURE (p, ul, v, t, e) => 
                let val (nl, hh) = lpvs ul
                 in hh(PURE(p, nl, v, t, loop e))
-               end)
+               end
+	   | RCC (p, ul, v, t, e) =>
+	       let val (nl, hh) = lpvs ul
+	        in hh(RCC(p, nl, v, t, loop e))
+	       end)
 
       val newbody = loop body
       val (lit, hdr) = getInfo ()

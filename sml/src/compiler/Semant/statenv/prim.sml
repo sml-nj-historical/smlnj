@@ -274,17 +274,14 @@ val cc_b = binp BT.charTy
  * is:
  *    word32 * 'a * 'b -> 'c
  * However, the primop cannot be used without having 'a, 'b, 'c monomorphically
- * instantiated.  In particular, 'b will be the type of the ML argument
- * list, 'c will be the type of the result, and 'a will be a type for
- * a fake argument.  Type 'a will be instantiated with some ML type that
- * encodes the type of the actual C function in order to be able to
+ * instantiated.  In particular, 'a will be the type of the ML argument
+ * list, 'c will be the type of the result, and 'b will be a type for
+ * a fake argument.  The idea is that 'b will be instantiated with some ML
+ * type that encodes the type of the actual C function in order to be able to
  * generate code according to the C calling convention.
- *
- * To see why this info cannot be encoded in 'b, consider the C types "float"
- * and "double".  The corresponding ML type for both is "real", so "real"
- * will appear somewhere within 'b.  But the code to be generated for
- * a C function expecting a "float" is different from that for a function
- * expecting a "double"... *)
+ * (In other words, 'b will be a completely ad-hoc encoding of a CTypes.c_proto
+ * value in ML types.)
+ *)
 val rccType = p3(ar(tp(w32,v1,v2),v3))
 
 in
@@ -673,7 +670,7 @@ val allPrimops =
        ("rawi32s",      P.RAW_STORE (P.INT 32),   w32i32_u) :-:
        ("rawf32s",      P.RAW_STORE (P.FLOAT 32), w32f64_u) :-:
        ("rawf64s",      P.RAW_STORE (P.FLOAT 64), w32f64_u) :-:
-       ("rawccall",     P.RAW_CCALL,              rccType)
+       ("rawccall",     P.RAW_CCALL NONE,         rccType)
 
 end (* local *)
 

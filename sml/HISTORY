@@ -13,6 +13,46 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/01/09 01:20:00 JST
+Tag: blume-20010109-rcc
+Description:
+
+This is a fairly big patch, flushing out a large number of pending
+changes that I made to my development copy over the last couple of days.
+
+Of practical relevance at this moment is a workaround for a pickling
+bug that Allen ran into the other day.  The cause of the bug itself is
+still unknown and it might be hard to fix it properly, but the
+workaround has some merits of its own (namely somewhat reducing pickling
+overhead for certain libraries).  Therefore, I think this solution should
+be satisfactory at this time.
+
+The rest of the changes (i.e., the vast majority) has to do with my
+ongoing efforts of providing direct support for C function calls from
+ML.  At the moment there is a new primop "RAW_CCALL", typing magic
+in types/cproto.sml (invoked from FLINT/trans/translate.sml), a new
+case in the FLINT CPS datatype (RCC), changes to cps/convert.sml to
+translate uses of RAW_CCALL into RCC, and changes to mlriscGen.sml to
+handle RCC.
+
+The last part (the changes to mlriscGen.sml) are still known to be
+wrong on the x86 and not implemented on all other architectures.  But
+the infrastructure is in place. I had to change a few functor
+signatures in the backend to be able to route the CCalls interface
+from MLRISC there, and I had to specialize the mltree type (on the
+x86) to include the necessary extensions. (The extensions themselves
+were already there and redy to go in MLRISC/x86).
+
+Everything should be very happy as soon as someone helps me with
+mlriscGen.sml...
+
+In any case, nothing of this should matter to anyone as long as the
+new primop is not being used (which is going to be the case unless you
+find it where I hid it :). The rest of the compiler is completely
+unaffected.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/01/05 00:30:00 JST
 Tag: blume-20010105-primops
 Description:

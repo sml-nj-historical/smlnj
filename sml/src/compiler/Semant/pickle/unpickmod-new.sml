@@ -132,7 +132,7 @@ structure UnpickMod : UNPICKMOD = struct
 	  P.SUBSCRIPT_REC,
 	  P.SUBSCRIPT_RAW64,
 	  P.UNBOXEDASSIGN,
-	  P.RAW_CCALL]
+	  P.RAW_CCALL NONE]
 
     val cmpop_table =
 	#[P.>, P.>=, P.<, P.<=, P.LEU, P.LTU, P.GEU, P.GTU, P.EQL, P.NEQ]
@@ -143,6 +143,23 @@ structure UnpickMod : UNPICKMOD = struct
 
     val eqprop_table =
 	#[T.YES, T.NO, T.IND, T.OBJ, T.DATA, T.ABS, T.UNDEF]
+
+    val ctype_table =
+	#[CTypes.C_void,
+	  CTypes.C_float,
+	  CTypes.C_double,
+	  CTypes.C_long_double,
+	  CTypes.C_unsigned CTypes.I_char,
+	  CTypes.C_unsigned CTypes.I_short,
+	  CTypes.C_unsigned CTypes.I_int,
+	  CTypes.C_unsigned CTypes.I_long,
+	  CTypes.C_unsigned CTypes.I_long_long,
+	  CTypes.C_signed CTypes.I_char,
+	  CTypes.C_signed CTypes.I_short,
+	  CTypes.C_signed CTypes.I_int,
+	  CTypes.C_signed CTypes.I_long,
+	  CTypes.C_signed CTypes.I_long_long,
+	  CTypes.C_PTR]
 
     fun & c (x, t) = (c x, t)
 
@@ -179,6 +196,9 @@ structure UnpickMod : UNPICKMOD = struct
 	val boolListM = UU.mkMap ()
 	val tkindM = UU.mkMap ()
 	val tkindListM = UU.mkMap ()
+	val ctypeM = UU.mkMap ()
+	val ctypeListM = UU.mkMap ()
+	val cciM = UU.mkMap ()
 
 	val boollist = list boolListM bool
 
@@ -255,6 +275,30 @@ structure UnpickMod : UNPICKMOD = struct
 	    nonshare co
 	end
 
+	fun ctype () = let
+	    fun ct #"\020" = CTypes.C_ARRAY (ctype (), int ())
+	      | ct #"\021" = CTypes.C_STRUCT (ctypelist ())
+	      | ct c =
+		Vector.sub (ctype_table, Char.ord c)
+		handle General.Subscript => raise Format
+	in
+	    share ctypeM ct
+	end
+
+	and ctypelist () = list ctypeListM ctype ()
+
+	fun ccall_info () = let
+	    fun cp #"C" =
+		{ c_proto = { conv = string (),
+			      retTy = ctype (),
+			      paramTys = ctypelist () },
+		  ml_flt_args = boollist (),
+		  ml_flt_res = bool () }
+	      | cp _ = raise Format
+	in
+	    share cciM cp
+	end
+
 	fun primop () = let
 	    fun po #"\100" = P.ARITH { oper = arithop (), overflow = bool (),
 				       kind = numkind () }
@@ -280,6 +324,7 @@ structure UnpickMod : UNPICKMOD = struct
 	      | po #"\115" = P.INL_MONOVECTOR (numkind ())
 	      | po #"\116" = P.RAW_LOAD (numkind ())
 	      | po #"\117" = P.RAW_STORE (numkind ())
+	      | po #"\118" = P.RAW_CCALL (SOME (ccall_info ()))
 	      | po c =
 		Vector.sub (primop_table, Char.ord c)
 		handle General.Subscript => raise Format

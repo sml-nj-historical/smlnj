@@ -192,6 +192,8 @@ and proc(ce) =
            (app escapesM vl; PURE(p,vl,w,t,proc ce))
 	| SETTER(p,vl,ce) => 
            (app escapesM vl; SETTER(p,vl,proc ce))
+	| RCC(p, vl, w, t, ce) =>
+	    (app escapesM vl; RCC(p, vl, w, t, proc ce))
 	| BRANCH(p,vl,c,e1,e2) =>
            (app escapesM vl; BRANCH(p,vl,c,proc e1,proc e2))
 
@@ -225,7 +227,8 @@ fun mkgraph f = let
 		 SETTER (_, _, e) |
 		 LOOKER (_, _, _, _, e) |
 		 ARITH (_, _, _, _, e) |
-		 PURE (_, _, _, _, e)) = collect e
+		 PURE (_, _, _, _, e) |
+		 RCC (_, _, _, _, e)) = collect e
       | collect (BRANCH (_, _, _, x, y)) = comb (collect x, collect y)
       | collect (APP (u, ul)) = (vl2sKUC (u :: ul), [])
       | collect (FIX (fl, b)) = combf (collect b, fl)
@@ -659,6 +662,13 @@ and freevars(n,sn,ce) =
            val wl' = overL(new,wl)
         in (SETTER(p,vl,ce'),free',wl',gsz,fsz)
        end
+    | RCC(p,vl,w,t,ce) =>
+      let val (ce',free,wl,gsz,fsz) = freevars(n,sn,ce)
+	  val new = clean vl
+	  val free' = addV(new,sn,rmvsV(w,free))
+	  val wl' = overL(new,rmvL(w,wl))
+       in (RCC(p,vl,w,t,ce'),free',wl',gsz,fsz)
+      end
     | BRANCH(p,vl,c,e1,e2) =>
        let val (e1',free1,wl1,gsz1,fsz1) = freevars(n,sn,e1)
            val (e2',free2,wl2,gsz2,fsz2) = freevars(n,sn,e2)

@@ -6,10 +6,13 @@ structure Alpha32CG =
   ( structure I          = Alpha32Instr
     structure MachSpec   = Alpha32Spec
     structure PseudoOps  = Alpha32PseudoOps
+    structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = Alpha32CpsRegs
     structure InsnProps  = Alpha32Props
     structure Asm        = Alpha32AsmEmitter
     structure Shuffle    = Alpha32Shuffle
+
+    structure CCalls     = DummyCCallsFn (Alpha32MLTree)
 
     structure MLTreeComp=
        Alpha(structure AlphaInstr = Alpha32Instr

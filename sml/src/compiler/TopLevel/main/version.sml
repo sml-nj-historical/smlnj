@@ -25,7 +25,6 @@ structure Version : sig
 
     val banner = concat (
 	    #system version :: "v" :: 
-	    f (#version_id version, [" [FLINT v1.5], ", #date version,
-				     "\n(``A Space Oddysey'' version)"]))
+	    f (#version_id version, [" [FLINT v1.5], ", #date version]))
 
   end

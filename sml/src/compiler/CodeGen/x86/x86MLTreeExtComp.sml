@@ -1,5 +1,5 @@
 functor X86MLTreeExtComp
-   (structure T : MLTREE  where Extension = SMLNJMLTreeExt
+   (structure T : MLTREE  where Extension = X86_SMLNJMLTreeExt
     structure I : X86INSTR
       sharing T.LabelExp = I.LabelExp
    ) : MLTREE_EXTENSION_COMP =
@@ -7,7 +7,9 @@ struct
    structure T = T
    structure I = I
    structure C = I.C
-   structure Ext = SMLNJMLTreeExt
+   structure Ext = X86_SMLNJMLTreeExt
+   structure X86CompInstrExt = X86CompInstrExt
+				   (structure T = T structure I = I)
    type reducer = 
      (I.instruction,C.cellset,I.operand,I.addressing_mode) T.reducer
 
@@ -15,7 +17,7 @@ struct
 
    fun unimplemented _ = MLRiscErrorMsg.impossible "X86MLTreeExtComp" 
 
-   val compileSext  = unimplemented
+   val compileSext  = X86CompInstrExt.compileSext
    val compileRext  = unimplemented
    val compileCCext = unimplemented
    fun compileFext (T.REDUCER{reduceFexp, emit, ...}:reducer) = let

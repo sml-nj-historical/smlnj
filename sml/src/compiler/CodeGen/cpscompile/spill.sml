@@ -318,6 +318,8 @@ fun f(results : lvar list, uniques : lvar list, dups : (lvar*lvar) list,
             (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>ARITH(i,vl,w,t,c)))
 	| PURE(i,vl,w,t,c) => 
             (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>PURE(i,vl,w,t,c)))
+	| RCC(p,vl,w,t,c) =>
+	    (addty(w,t); g(vl,[w],[c],0, fn(vl,[w],[c])=>RCC(p,vl,w,t,c)))
         | BRANCH(i as P.streq,vl,c,c1,c2) =>
             g(vl,[],[c1,c2],sregN, fn(vl,_,[c1,c2])=>BRANCH(i,vl,c,c1,c2))
         | BRANCH(i as P.strneq,vl,c,c1,c2) =>
@@ -380,6 +382,7 @@ fun check((_,f,args,cl,body),skind) =
          | LOOKER(_,vl,w,t,e) => (varM(w,t); sift(vl,verify(w,freevars e)))
          | ARITH(_,vl,w,t,e) => (varM(w,t); sift(vl,verify(w,freevars e)))
          | PURE(_,vl,w,t,e) => (varM(w,t); sift(vl,verify(w,freevars e)))
+	 | RCC(_,vl,w,t,e) => (varM(w,t); sift(vl,verify(w,freevars e)))
          | BRANCH(_,vl,c,e1,e2) => sift(vl,merge(freevars e1,freevars e2))
          | FIX _ => error "FIX in Freemap.freemap"
 
@@ -420,6 +423,7 @@ fun improve cexp =
 	 | LOOKER(i,vl,w,_,e) => (app kill vl; pass1 e)
 	 | ARITH(i,vl,w,_,e) => (app kill vl; pass1 e)
 	 | PURE(i,vl,w,_,e) => (app kill vl; pass1 e)
+	 | RCC(p,vl,w,_,e) => (app kill vl; pass1 e)
 
       fun ren(v,p) = case get v of SOME(_,i,w) => (w,SELp(i,p))
 			         | NONE => (v,p)
@@ -439,6 +443,7 @@ fun improve cexp =
 	 | LOOKER(i,vl,w,t,e) => LOOKER(i,vl,w,t,g e)
 	 | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,g e)
 	 | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,g e)
+	 | RCC(p,vl,w,t,e) => RCC(p,vl,w,t,g e)
 
       val count = (pass1 cexp; IntHashTable.numItems m)
 

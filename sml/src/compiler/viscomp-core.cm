@@ -57,6 +57,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	structure DefaultMachSpec
 	structure SMLNJConstant
 	structure SMLNJLabelExp
+	signature SMLNJ_MLTREE_EXT
 	structure SMLNJMLTreeExt
         functor   SMLNJMLTreeExtComp
 	structure CodeString
@@ -67,6 +68,8 @@ Group (../system/smlnj/viscomp/core.cm)
 	functor SpillTable
 	functor FLINTComp
 	functor MachDepVCFun
+
+	functor DummyCCallsFn
 is
 
 TopLevel/batch/batchconfig.sml
@@ -185,6 +188,7 @@ Semant/types/overload.sml
 Semant/types/overloadlit.sml
 Semant/types/reconstruct.sml
 Semant/types/typecheck.sml
+Semant/types/cproto.sml
 
 FLINT/clos/allocprof.sml
 FLINT/clos/cps-split.sml
@@ -290,6 +294,7 @@ CodeGen/cpscompile/pseudoOpsLittle.sml
 CodeGen/cpscompile/smlnj-const.sml
 CodeGen/cpscompile/smlnj-gctype.sig
 CodeGen/cpscompile/smlnj-gctype.sml
+CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/spill.sml
 CodeGen/main/code-string.sml
@@ -302,6 +307,7 @@ CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
 CodeGen/main/spill-table.sml
+CodeGen/main/dummy-ccalls.sml
 
 MiscUtil/bignums/bigint.sig
 MiscUtil/bignums/bigint.sml
@@ -353,5 +359,6 @@ $/smlnj-lib.cm
 $/ml-yacc-lib.cm
 $/pickle-lib.cm
 $smlnj/MLRISC/Control.cm
+(* $smlnj/MLRISC/Lib.cm			(* provides SortedList *) *)
 $smlnj/MLRISC/MLRISC.cm
 $/pp-lib.cm

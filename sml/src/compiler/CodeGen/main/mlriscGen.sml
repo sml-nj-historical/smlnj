@@ -17,21 +17,23 @@ end
 functor MLRiscGen
  (  structure MachineSpec: MACH_SPEC
     structure PseudoOp   : SMLNJ_PSEUDO_OP_TYPE
+    structure Ext        : SMLNJ_MLTREE_EXT
     structure C          : CPSREGS where T.Region = CPSRegions 
                                    and   T.Constant = SMLNJConstant
-				   and   T.Extension =  SMLNJMLTreeExt 
+				   and   T.Extension = Ext
     structure InvokeGC   : INVOKE_GC where T = C.T
     structure MLTreeComp : MLTREECOMP where T = C.T
     structure Flowgen    : FLOWGRAPH_GEN where T = C.T
     structure Cells      : CELLS
+    structure CCalls     : C_CALLS where T = C.T
        sharing C.T.PseudoOp = PseudoOp
-       sharing Flowgen.I = MLTreeComp.I  
+       sharing Flowgen.I = MLTreeComp.I
     val compile : Flowgen.flowgraph -> unit
  ) : MLRISCGEN =
 struct
 
   structure M  = C.T            (* MLTree *)
-  structure E  = SMLNJMLTreeExt (* Extensions *)
+  structure E  = Ext            (* Extensions *)
   structure P  = CPS.P          (* CPS primitive operators *)
   structure LE = M.LabelExp     (* Label Expression *)
   structure R  = CPSRegions     (* Regions *)
@@ -885,6 +887,7 @@ struct
                      add(x,t); init e
                     )
                | ARITH(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
+	       | RCC(_,vl,x,t,e) => (addValues vl; add(x,t); init e)
                | PURE(p,vl,x,t,e) => 
                     (case p of
                        P.fwrap => hasFloats := true
@@ -1306,7 +1309,7 @@ struct
 	    | rawload (P.FLOAT (sz as (32 | 64)), i, x, e, hp) =
 	      treeifyDefF64 (x, M.FLOAD (sz, regbind i, R.memory), e, hp)
 	    | rawload (P.FLOAT sz, _, _, _, _) =
-	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
+	      error ("rawload: unsupported float size: " ^ Int.toString sz)
 
 	  and rawstore ((P.UINT (sz as (8 | 16 | 32)) |
 			 P.INT (sz as (8 | 16 | 32))), i, x) =
@@ -1319,6 +1322,7 @@ struct
 	      emit (M.FSTORE (sz, regbind i, fregbind x, R.memory))
 	    | rawstore (P.FLOAT sz, _, _) =
 	      error ("rawstore: unsupported float size: " ^ Int.toString sz)
+
 
           (* 
            * Generate code 
@@ -1756,6 +1760,64 @@ struct
                 (print "setpseudo not implemented\n"; gen(e, hp))
 	    | gen (SETTER (P.rawstore { kind }, [i, x], e), hp) =
 	        (rawstore (kind, i, x); gen (e, hp))
+
+	    | gen (RCC (p, vl, w, _, e), hp) = let
+		  val { retTy, paramTys, ... } = p
+		  fun build_args vl = let
+		      open CTypes
+		      fun m ((C_float | C_double), v :: vl) =
+			  (CCalls.FARG (fregbind v), vl)
+			| m ((C_unsigned (I_char | I_short | I_int | I_long) |
+			      C_signed (I_char | I_short | I_int | I_long) |
+			      C_PTR),
+			     v :: vl) =
+			  (CCalls.ARG (regbind v), vl)
+			| m (C_STRUCT tl, vl) = let val (al, vl') = ml (tl, vl)
+						in (CCalls.ARGS al, vl') end
+			| m (_, []) = error "RCC: not enough ML args"
+			| m _ = error "RCC: unexpected C-type"
+		      and ml (tl, vl) = let
+			  fun one (t, (ral, vl)) = let val (a, vl') = m (t, vl)
+						   in (a :: ral, vl') end
+			  val (ral, vl') = foldl one ([], vl) tl
+		      in
+			  (rev ral, vl')
+		      end
+		  in
+		      case ml (paramTys, vl) of
+			  (al, []) => al
+			| _ => error "RCC: too many ML args"
+		  end
+		  val (f, sr, a) =
+		      case (retTy, vl) of
+			  (CTypes.C_STRUCT _, fv :: srv :: avl) =>
+			  let val s = regbind srv
+			  in (regbind fv, fn _ => s, build_args avl)
+			  end
+			| (_, fv :: avl) =>
+			  (regbind fv,
+			   fn _ => error "RCC: unexpected struct return",
+			   build_args avl)
+			| _ => error "RCC: prototype/arglist mismatch"
+		  val { callseq, result } =
+		      CCalls.genCall
+			  { name = f, proto = p, structRet = sr, args = a }
+	      in
+		  (* just for testing... *)
+	          print ("$$$ RCC: " ^ CProto.pshow p ^ "\n");
+
+		  (* now do it! *)
+		  app emit callseq;
+		  case (result, retTy) of
+		      ([], CTypes.C_void) => defI32 (w, zero, e, hp)
+		    | ([], _) => error "RCC: unexpectedly few results"
+		    | ([M.FPR x], (CTypes.C_float | CTypes.C_double)) =>
+		      treeifyDefF64 (w, x, e, hp)
+		    | ([M.FPR _], _) => error "RCC: unexpected FP result"
+		    | ([M.GPR x], _) => (* more sanity checking here ? *)
+		      defI32 (w, x, e, hp)
+		    | _ => error "RCC: unexpectedly many results"
+	      end
     
             (*** BRANCH  ***)
             | gen(BRANCH(P.cmp{oper,kind=P.INT 31},[INT v, INT k],_,e,d), hp) =

@@ -325,6 +325,3 @@ struct
 	error(concat["unknown calling convention \"", String.toString conv, "\""])
 
 end
-
-     
-

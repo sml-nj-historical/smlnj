@@ -11,10 +11,14 @@ structure X86CG =
 
     structure MachSpec   = X86Spec
     structure PseudoOps  = X86PseudoOps
+    structure Ext        = X86_SMLNJMLTreeExt(* x86-specific *)
     structure CpsRegs    = X86CpsRegs
     structure InsnProps  = X86Props
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
+
+    structure CCalls     = IA32SVID_CCalls (structure T = X86MLTree
+					    fun ix x = x)
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 

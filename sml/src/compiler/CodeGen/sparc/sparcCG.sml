@@ -5,10 +5,13 @@ structure SparcCG =
   MachineGen
   ( structure MachSpec   = SparcSpec
     structure PseudoOps  = SparcPseudoOps
+    structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = SparcCpsRegs
     structure InsnProps  = SparcProps
     structure Asm        = SparcAsmEmitter
     structure Shuffle    = SparcShuffle
+
+    structure CCalls     = DummyCCallsFn (SparcMLTree)
 
     structure MLTreeComp=
        Sparc(structure SparcInstr = SparcInstr

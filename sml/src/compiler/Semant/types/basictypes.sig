@@ -56,6 +56,8 @@ sig
 
   val recordTy : (Types.label * Types.ty) list -> Types.ty
   val tupleTy : Types.ty list -> Types.ty
+  (* get the types of a tuple-type's fields *)
+  val getFields : Types.ty -> Types.ty list option
 
   val boolTycon : Types.tycon 
   val boolTy : Types.ty

@@ -142,13 +142,13 @@ in
 	 DTF, TYCON, T, II, VAR, SD, SG, FSG,  SP, EN,
 	 STR, F, STE, TCE, STRE, FE, EE, ED, EEV, FX,
 	 B, DCON, DICT, FPRIM, FUNDEC, TFUNDEC, DATACON, DTMEM, NRD,
-	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID) =
+	 OVERLD, FCTC, SEN, FEN, SPATH, IPATH, STRID, FCTID, CCI, CTYPE) =
 	(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
 	 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 	 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 	 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
 	 41, 42, 43, 44, 45, 46, 47, 48, 49,
-	 50, 51, 52, 53, 54, 55, 56, 57)
+	 50, 51, 52, 53, 54, 55, 56, 57, 58, 59)
 
     (* this is a bit awful...
      * (we really ought to have syntax for "functional update") *)
@@ -312,6 +312,40 @@ in
     in
 	cmpopc oper $ []
     end
+
+    fun ctype t = let
+	val op $ = PU.$ CTYPE
+	fun ?n = String.str (Char.chr n)
+	fun %?n = ?n $ []
+    in
+	case t of
+	    CTypes.C_void => %?0
+	  | CTypes.C_float => %?1
+	  | CTypes.C_double => %?2
+	  | CTypes.C_long_double => %?3
+	  | CTypes.C_unsigned CTypes.I_char => %?4
+	  | CTypes.C_unsigned CTypes.I_short => %?5
+	  | CTypes.C_unsigned CTypes.I_int => %?6
+	  | CTypes.C_unsigned CTypes.I_long => %?7
+	  | CTypes.C_unsigned CTypes.I_long_long => %?8
+	  | CTypes.C_signed CTypes.I_char => %?9
+	  | CTypes.C_signed CTypes.I_short => %?10
+	  | CTypes.C_signed CTypes.I_int => %?11
+	  | CTypes.C_signed CTypes.I_long => %?12
+	  | CTypes.C_signed CTypes.I_long_long => %?13
+	  | CTypes.C_PTR => %?14
+
+	  | CTypes.C_ARRAY (t, i) => ?20 $ [ctype t, int i]
+	  | CTypes.C_STRUCT l => ?21 $ [list ctype l]
+    end
+
+    fun ccall_info { c_proto = { conv, retTy, paramTys },
+		     ml_flt_args, ml_flt_res } = let
+	val op $ = PU.$ CCI
+    in
+	"C" $ [string conv, ctype retTy, list ctype paramTys,
+	       list bool ml_flt_args, bool ml_flt_res]
+    end
 	    
     fun primop p = let
 	val op $ = PU.$ PO
@@ -343,6 +377,7 @@ in
 	      | P.INL_MONOVECTOR kind => ?115 $ [numkind kind]
 	      | P.RAW_LOAD kind => ?116 $ [numkind kind]
 	      | P.RAW_STORE kind => ?117 $ [numkind kind]
+	      | P.RAW_CCALL (SOME i) => ?118 $ [ccall_info i]
 		    
 	      | P.MKETAG => %?0
 	      | P.WRAP => %?1
@@ -408,7 +443,7 @@ in
 	      | P.SUBSCRIPT_REC => %?58
 	      | P.SUBSCRIPT_RAW64 => %?59
 	      | P.UNBOXEDASSIGN => %?60
-	      | P.RAW_CCALL => %?61
+	      | P.RAW_CCALL NONE => %?61
     end
 
     fun consig arg = let
@@ -764,6 +799,10 @@ in
 	fun spath (SP.SPATH p) = "s" $ [list symbol p]
 	val op $ = PU.$ IPATH
 	fun ipath (IP.IPATH p) = "i" $ [list symbol p]
+
+	  (* for debugging *)
+	fun showipath (IP.IPATH p) =
+	    concat (map (fn s => Symbol.symbolToString s ^ ".") (rev p))
 
 	val label = symbol
 

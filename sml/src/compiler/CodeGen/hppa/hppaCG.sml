@@ -5,10 +5,13 @@ structure HppaCG =
   MachineGen
   ( structure MachSpec   = HppaSpec
     structure PseudoOps  = HppaPseudoOps
+    structure Ext        = SMLNJMLTreeExt(* generic extension *)
     structure CpsRegs    = HppaCpsRegs
     structure InsnProps  = HppaProps
     structure Asm        = HppaAsmEmitter
     structure Shuffle    = HppaShuffle
+
+    structure CCalls     = DummyCCallsFn (HppaMLTree)
 
     structure HppaMillicode =
       HppaMillicode(structure MLTree=HppaMLTree
