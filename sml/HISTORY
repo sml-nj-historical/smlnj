@@ -2939,7 +2939,7 @@ This update contains:
      elaborator). There were a lot of changes during my "linkpath" trials
      that could have been reverted to their original state but weren't.
      Please, don't be too harsh on me for messing with this code a bit more
-     than what was strictly necessary...  (I _did_ resist the tempation
+     than what was strictly necessary...  (I _did_ resist the temptation
      of doing any "global reformatting" to avoid an untimely death at
      Dave's hands. :)
 
