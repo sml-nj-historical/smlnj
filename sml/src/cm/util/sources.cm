@@ -25,4 +25,4 @@ is
 
 	../../compiler/viscomp-lib.cm
 
-	smlnj-lib.cm
+	../../smlnj-lib/Util/sources.cm

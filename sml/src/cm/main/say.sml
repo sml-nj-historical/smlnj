@@ -18,6 +18,6 @@ structure Say :> SAY = struct
     fun say s = (Print.say s; Print.flush ())
 
     fun csay cnd s = if cnd NONE then say s else ()
-    val vsay = csay EnvConfig.verbose
-    val dsay = csay EnvConfig.debug
+    val vsay = csay StdConfig.verbose
+    val dsay = csay StdConfig.debug
 end

@@ -14,7 +14,7 @@ signature SMLINFO = sig
     type fileoffset = AbsPath.t * int
     type stableinfo = { skeleton: Skeleton.decl, binary: fileoffset }
 
-    val new : policy ->
+    val info : policy ->
 	{ sourcepath: AbsPath.t,
 	  group: AbsPath.t,
 	  error: string -> unit,
@@ -43,7 +43,7 @@ structure SmlInfo :> SMLINFO = struct
 	INFO of {
 		 sourcepath: AbsPath.t,
 		 group: AbsPath.t,
-		 error: string -> unit,
+		 error: string -> unit,	(* reports wrt. group description *)
 		 lastseen: TStamp.t ref,
 		 parsetree: { tree: parsetree, source: source } option ref,
 		 skelpath: AbsPath.t,
@@ -54,7 +54,7 @@ structure SmlInfo :> SMLINFO = struct
     type fileoffset = AbsPath.t * int
     type stableinfo = { skeleton: Skeleton.decl, binary: fileoffset }
 
-    fun new policy { sourcepath, group, error, history, share, stableinfo } =
+    fun info policy { sourcepath, group, error, history, share, stableinfo } =
 	case stableinfo of
 	    NONE => INFO {
 			  sourcepath = sourcepath,
@@ -87,12 +87,12 @@ structure SmlInfo :> SMLINFO = struct
      * not with checking time stamps *)
     fun getParseTree (INFO ir, quiet) = let
 	val { sourcepath, parsetree, error, ... } = ir
+	val name = AbsPath.name sourcepath
     in
 	case !parsetree of
 	    SOME pt => SOME pt
 	  | NONE => let
 		val stream = AbsPath.openTextIn sourcepath
-		val name = AbsPath.name sourcepath
 		val _ = if quiet then ()
 			else Say.vsay (concat ["[parsing ", name, "]\n"])
 		val source =
@@ -105,22 +105,15 @@ structure SmlInfo :> SMLINFO = struct
 		in
 		    SOME { tree = tree, source = source }
 		end handle SF.Compile msg => (TextIO.closeIn stream;
-					      error "parse error";
+					      error msg;
 					      NONE)
-	                 | exn as IO.Io _ =>
-		                  (TextIO.closeIn stream;
-				   error (General.exnMessage exn);
-				   NONE)
-	                 | exn => (TextIO.closeIn stream;
-				   error (concat ["parsing of \"", name,
-						  "\" failed: ",
-						  General.exnMessage exn]);
-				   raise exn)
+		         | exn => (TextIO.closeIn stream; raise exn)
 	    in
 		TextIO.closeIn stream;
 		parsetree := pto;
 		pto
-	    end
+	    end handle exn as IO.Io _ => (error (General.exnMessage exn);
+					  NONE) 
     end
 
     fun getSkeleton (INFO ir) = let

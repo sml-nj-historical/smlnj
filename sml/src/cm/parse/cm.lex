@@ -48,8 +48,15 @@ in
 end
 
 val cm_ids = [("Alias", Tokens.ALIAS),
+	      ("ALIAS", Tokens.ALIAS),
+	      ("alias", Tokens.ALIAS),
 	      ("Group", Tokens.GROUP),
+	      ("GROUP", Tokens.GROUP),
+	      ("group", Tokens.GROUP),
 	      ("Library", Tokens.LIBRARY),
+	      ("LIBRARY", Tokens.LIBRARY),
+	      ("library", Tokens.LIBRARY),
+	      ("IS", Tokens.IS),
 	      ("is", Tokens.IS)]
 
 val ml_ids = [("structure", Tokens.STRUCTURE),

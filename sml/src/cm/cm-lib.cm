@@ -8,16 +8,20 @@
 Group
 	(* for the time being leave this empty *)
 is
+	(* the CM description file parser *)
 	parse/parse.sml
 	parse/cm.grm
 	parse/cm.lex
 
+	(* semantic actions for description file parser *)
 	semant/members.sml
 	semant/semant.sml
 	semant/primitive.sml
 
+	(* dependency graphs *)
 	depend/graph.sml
 
+	(* handling SML source code *)
 	smlfile/policy.sml
 	smlfile/smlinfo.sml
 	smlfile/skeleton.sml
@@ -25,20 +29,28 @@ is
 	smlfile/skel-io.sml
 	smlfile/skel-exports.sml
 
-	paths/pathconfig.sml
-	paths/abspath.sml
-
+	(* tools for handling other source types *)
 	tools/tools.sml
+	tools/stdtool.sml
+	tools/yacctool.sml
+	tools/lextool.sml
+	tools/burgtool.sml
 
-	util/sources.cm
-
+	(* overall control of CM *)
 	main/say.sml
 	main/envcfg.sml
+	main/stdcfg.sml
 
+	(* CM-internal libraries *)
+	paths/sources.cm
+	util/sources.cm
+
+	(* compiler libraries *)
 	../compiler/viscomp-lib.cm
 	../comp-lib/UTIL.cm
 
-	ml-yacc-lib.cm
+	(* auxiliary libraries *)
+	../ml-yacc/lib/sources.cm
 
 	(* dummy modules for testing *)
 	dummy.sml

@@ -2,7 +2,14 @@
 
 functor LinkCM () = struct
 
+  local
+      structure YaccTool = YaccTool
+      structure LexTool = LexTool
+      structure BurgTool = BurgTool
+      val _ = EnvConfig.init ()
+  in
     structure CM = struct
+	
 	fun parse s = let
 	    val c = AbsPath.cwdContext ()
 	    val p = AbsPath.native { context = AbsPath.cwdContext (),
@@ -17,6 +24,7 @@ functor LinkCM () = struct
 	fun wipeOut () = ()
 	fun make' _ = ()
     end
+  end
 end
 
 signature CMTOOLS = sig end

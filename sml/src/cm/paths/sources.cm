@@ -1,0 +1,13 @@
+Library
+	signature ABSPATH
+	structure AbsPath
+	signature PATHCONFIG
+	structure PathConfig
+	structure AbsPathMap
+is
+	abspath.sml
+	pathconfig.sml
+	abspathmap.sml
+
+	../util/sources.cm
+	../../smlnj-lib/Util/sources.cm

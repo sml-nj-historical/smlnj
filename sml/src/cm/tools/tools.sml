@@ -38,10 +38,21 @@ signature TOOLS = sig
     (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of string -> class option
+      | GEN_CLASSIFIER of fname -> class option
 
     (* make a classifier which looks for a specific file name suffix *)
     val stdSfxClassifier : { sfx: string, class: class } -> classifier
+
+    (* two standard ways of dealing with filename extensions... *)
+    datatype extensionStyle =
+	EXTEND of string list
+      | REPLACE of string list * string list
+
+    (* perform filename extension *)
+    val extend : extensionStyle -> fname -> fname list
+
+    (* check for outdated files *)
+    val outdated : string -> fname list * fname -> bool
 
     (* install a classifier *)
     val registerClassifier : classifier -> unit
@@ -108,7 +119,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
     (* classifiers are used when the class is not given explicitly *)
     datatype classifier =
 	SFX_CLASSIFIER of string -> class option
-      | GEN_CLASSIFIER of string -> class option
+      | GEN_CLASSIFIER of fname -> class option
 
     (* make a classifier which looks for a specific file name suffix *)
     fun stdSfxClassifier { sfx, class } =
@@ -214,24 +225,58 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    fn l => loop ([], l)
 	end
 
-	fun expand0 (ap, SOME class) =
-	    (case class2rule class of
-		 ISSML share =>
-		     [SMLSOURCE { sourcepath = ap, history = [],
-				  share = share }]
-	       | ISGROUP =>
-		     [GROUP ap]
-	       | ISTOOL (class, rule) => let
-		     val c = AbsPath.context ap
-		     val l = apply (rule, AbsPath.spec ap, c)
-		     val l' = map (fn i => (i, [class])) l
-		 in
-		     expand' (AbsPath.context ap) l'
-		 end)
-	  | expand0 (ap, NONE) =
-		 expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+	fun expand0 (ap, NONE) =
+	    expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+	  | expand0 (ap, SOME class0) = let
+		(* classes are case-insensitive, internally we use lowercase *)
+		val class = String.map Char.toLower class0
+	    in
+		case class2rule class of
+		    ISSML share =>
+			[SMLSOURCE { sourcepath = ap, history = [],
+				     share = share }]
+		  | ISGROUP =>
+			[GROUP ap]
+		  | ISTOOL (class, rule) => let
+			val c = AbsPath.context ap
+			val l = apply (rule, AbsPath.spec ap, c)
+			val l' = map (fn i => (i, [class])) l
+		    in
+			expand' (AbsPath.context ap) l'
+		    end
+	    end
     in
 	expand0
+    end
+
+    (* make the most common kind of rule *)
+    datatype extensionStyle =
+	EXTEND of string list
+      | REPLACE of string list * string list
+
+    fun extend (EXTEND l) f = map (fn s => concat [f, ".", s]) l
+      | extend (REPLACE (ol, nl)) f = let
+	    val { base, ext } = OS.Path.splitBaseExt f
+	    fun join b e = OS.Path.joinBaseExt { base = b, ext = SOME e }
+	    fun gen b = map (join b) nl
+	    fun sameExt (e1: string) (e2: string) = e1 = e2
+	in
+	    case ext of
+		NONE => gen base
+	      | SOME e =>
+		    if List.exists (sameExt e) ol then gen base else gen f
+	end
+
+    fun outdated tool (l, f) = let
+	val (ftime, fexists) =
+	    (OS.FileSys.modTime f, true)
+	    handle _ => (Time.zeroTime, false)
+	fun olderThan t f = Time.< (OS.FileSys.modTime f, t)
+    in
+	(List.exists (olderThan ftime) l)
+	handle _ => if fexists then true
+		    else raise ToolError { tool = tool,
+					   msg = "cannot access " ^ f }
     end
 
     (* registering standard classes and classifiers *)
@@ -250,4 +295,4 @@ structure PrivateTools :> PRIVATETOOLS = struct
     end
 end
 
-structure Tools :> TOOLS = PrivateTools
+structure Tools : TOOLS = PrivateTools

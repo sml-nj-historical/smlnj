@@ -80,7 +80,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			     localdefs = SymbolMap.empty }
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
-		    val i =  SmlInfo.new
+		    val i =  SmlInfo.info
 			Policy.default
 			{ sourcepath = p, group = group,
 			  error = error, history = h,
