@@ -6,9 +6,8 @@
 
 structure Alpha32MC = 
   FLINTComp(
-    structure Alpha32Gen = Alpha32CG(structure Emitter=Alpha32MCEmitter)
-    structure Gen=Alpha32Gen
-    fun collect() = (Alpha32Gen.finish(); CodeString.getCodeString()))
+    structure Gen=Alpha32CG
+    fun collect() = (Alpha32CG.finish(); CodeString.getCodeString()))
 
 
 

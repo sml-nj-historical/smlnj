@@ -30,7 +30,8 @@ structure GenericVC : GENERIC_VC = struct
     end (* PPTable *)
     structure MakePid = struct
 	fun makePid (context, se) =
-	    #hash (PickMod.pickleEnv (context, CMStaticEnv.unCM se))
+	    #hash (PickMod.pickleEnv { context = context,
+				       env = CMStaticEnv.unCM se })
     end
     structure Ast = Ast
     structure SmlFile = SmlFile

@@ -16,17 +16,18 @@ struct
 
   fun error msg = ErrorMsg.impossible ("MkRecord." ^ msg)
 
+  val addrTy = C.addressWidth
   val pty = 32
   val ity = 32
   val fty = 64
 
-  val T.REG(pty,allocptrR) = C.allocptr
+  val T.REG(_, allocptrR) = C.allocptr
 
   fun ea(r, 0) = r
-    | ea(r, n) = T.ADD(pty, r, T.LI n)
+    | ea(r, n) = T.ADD(addrTy, r, T.LI n)
 
   fun indexEA(r, 0) = r
-    | indexEA(r, n) = T.ADD(pty, r, T.LI(n*4))
+    | indexEA(r, n) = T.ADD(addrTy, r, T.LI(n*4))
 
   fun pi(x as ref(R.PT.TOP _),_) = x
     | pi(x as ref(R.PT.NAMED _),_) = x
@@ -37,24 +38,24 @@ struct
         let val mem = pi(mem,n)
         in  getfield(T.LOAD(ity, indexEA(r, n), mem), p, mem) end
       | getfield(r, CPS.OFFp 0, _) = r
-      | getfield(r, CPS.OFFp n, _) = T.ADD(pty, r, T.LI(n*4))
+      | getfield(r, CPS.OFFp n, _) = T.ADD(addrTy, r, T.LI(n*4))
 
     fun storeFields ([], _, _, _) = ()
       | storeFields ((v, p)::rest, n, mem, i) = 
-	 (emit(T.STORE(ity, T.ADD(pty, C.allocptr, T.LI n), 
+	 (emit(T.STORE(ity, T.ADD(addrTy, C.allocptr, T.LI n), 
                getfield(v,p,mem), pi(mem,i)));
 	  storeFields(rest, n + 4, mem, i+1))
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     storeFields(fields, hp+4, mem, 0);
-    emit(T.MV(pty, ans, T.ADD(pty, C.allocptr, T.LI(hp+4))))
+    emit(T.MV(pty, ans, T.ADD(addrTy, C.allocptr, T.LI(hp+4))))
   end
 
   fun frecord {desc, fields, ans, mem, hp, emit} = let
     fun fgetfield(T.FPR fp, CPS.OFFp 0, _) = fp
       | fgetfield(T.GPR r, path, mem) = let
 	  fun fea(r, 0) = r
-	    | fea(r, n) = T.ADD(pty, r, T.LI(n*8))
+	    | fea(r, n) = T.ADD(addrTy, r, T.LI(n*8))
 
 	  fun chase(r, CPS.SELp(n, CPS.OFFp 0), mem) =
 		T.FLOAD(fty, fea(r,n), pi(mem,n))
@@ -67,12 +68,12 @@ struct
     fun fstoreFields ([], _, _, _) = ()
       | fstoreFields ((v, p)::rest, n, mem, i) =
 	  (emit(T.FSTORE(fty, 
-                T.ADD(pty, C.allocptr, T.LI n),fgetfield(v,p,mem), pi(mem,i)));
+                T.ADD(addrTy,C.allocptr,T.LI n),fgetfield(v,p,mem), pi(mem,i)));
 	   fstoreFields(rest, n + 8, mem, i+2))
   in
     emit(T.STORE(ity, ea(C.allocptr, hp), desc, pi(mem,~1)));
     fstoreFields(fields, hp+4, mem, 0);
-    emit(T.MV(pty, ans, T.ADD(pty, C.allocptr, T.LI(hp+4))))
+    emit(T.MV(pty, ans, T.ADD(addrTy, C.allocptr, T.LI(hp+4))))
   end	
 end
 

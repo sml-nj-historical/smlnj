@@ -17,14 +17,15 @@ end
 structure SubgraphView : SUBGRAPH_VIEW =
 struct
 
-   structure G = Graph
-   structure Set = HashSet
+   structure G   = Graph
 
    fun subgraph_view nodes edge_pred (G.GRAPH G) =
-   let val set  = Set.create{order=Int.compare,hash=fn i=>i} 10
-       val ins  = Set.insert set
-       val rmv  = Set.remove set
-       val find = Set.contains set
+   let val set  = Intmap.new(32,G.NotFound)
+       val ins  = Intmap.add set
+       val ins  = fn i => ins (i,true)
+       val rmv  = Intmap.rmv set
+       val find = Intmap.mapWithDefault (set,false)
+
        val _    = app ins nodes
        fun edge_p (e as (i,j,_)) = find i andalso find j andalso edge_pred e
        fun check i = if find i then () else raise G.Subgraph
@@ -36,19 +37,22 @@ struct
            (check i; app check_edge es; #set_out_edges G (i,es))
        fun set_in_edges (j,es) =
            (check j; app check_edge es; #set_in_edges G (j,es))
-       fun get_nodes () = Set.fold (fn (i,l) => (i,#node_info G i)::l) [] set
+       fun get_nodes () = map (fn (i,_) => (i,#node_info G i)) 
+                            (Intmap.intMapToList set)
        fun get_edges () = 
        let fun find_edges([],l) = l
              | find_edges(e::es,l) =
                  if edge_p e then find_edges(es,e::l) else find_edges(es,l)
-       in  Set.fold (fn (i,l) => find_edges(#out_edges G i,l)) [] set
+       in  foldr (fn ((i,_),l) => find_edges(#out_edges G i,l)) [] 
+               (Intmap.intMapToList set)
        end
-       fun order () = Set.size set
+       fun order () = Intmap.elems set
        fun size  () =
        let fun find_edges([],n) = n
              | find_edges(e::es,n) =
                  if edge_p e then find_edges(es,n+1) else find_edges(es,n)
-       in  Set.fold (fn (i,n) => find_edges(#out_edges G i,n)) 0 set
+       in  foldr (fn ((i,_),n) => find_edges(#out_edges G i,n)) 0 
+              (Intmap.intMapToList set)
        end
        fun out_edges i = (List.filter edge_p (#out_edges G i))
        fun in_edges i  = (List.filter edge_p (#in_edges G i))
@@ -62,14 +66,16 @@ struct
                                        (#in_edges G i))
        fun exit_edges i = (List.filter(fn (_,j,_) => not(find j))
                                        (#out_edges G i))
-       fun entries() =  Set.fold (fn (i,l) =>
+       fun entries() =  foldr (fn ((i,_),l) =>
                            if List.exists (fn (j,_,_) => not(find j)) 
-                                (#in_edges G i) then i::l else l) [] set
-       fun exits() =  Set.fold (fn (i,l) =>
+                                (#in_edges G i) then i::l else l) [] 
+                            (Intmap.intMapToList set)
+       fun exits() =  foldr (fn ((i,_),l) =>
                            if List.exists (fn (_,j,_) => not(find j)) 
-                                (#out_edges G i) then i::l else l) [] set
-       fun forall_nodes f = Set.app (fn i => f(i,#node_info G i)) set
-       fun forall_edges f = Set.app (fn i => app (fn e =>
+                                (#out_edges G i) then i::l else l) [] 
+                              (Intmap.intMapToList set)
+       fun forall_nodes f = Intmap.app (fn (i,_) => f(i,#node_info G i)) set
+       fun forall_edges f = Intmap.app (fn (i,_) => app (fn e =>
                                                   if edge_p e then f e else ())
                                              (#out_edges G i)) set
    in

@@ -4,7 +4,8 @@ functor PPCShuffle(I:PPCINSTR) = struct
 
   val mem=I.Region.memory
 
-  type t = {regmap:I.C.register->I.C.register, tmp:I.ea option,                             dst:I.C.register list, src:I.C.register list}
+  type t = {regmap:I.C.cell->I.C.cell, tmp:I.ea option,
+            dst:I.C.cell list, src:I.C.cell list}
 
   fun error msg = MLRiscErrorMsg.error("PPCShuffle",msg)
 

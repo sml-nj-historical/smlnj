@@ -16,10 +16,13 @@ struct
   structure R = CPSRegions
   structure W = Word
   structure S = SortedList
+  structure St = T.Stream
 
   val dtoi = LargeWord.toInt
 
   val skidPad = 4096			(* extra space in allocation space *)
+
+  type emitter = (T.stm,int Intmap.intmap) T.stream
 
   fun error msg = ErrorMsg.impossible ("CallGC." ^ msg)
 
@@ -28,8 +31,6 @@ struct
      regfmls:  T.mlrisc list,
      regtys: CPS.cty list,
      return: T.stm}
-
-  type emitter = {emit:T.stm -> unit, comp:T.mltree -> unit}
 
   datatype binding =
       Reg of int			(* register *)
@@ -155,7 +156,7 @@ struct
 	 maskList(rl, tl, b, i, r::f)
       | maskList _ = error "checkLimit.maskList"
 
-    fun genGcInfo (clusterRef,known) ({emit,comp}:emitter)
+    fun genGcInfo (clusterRef,known) (St.STREAM{emit,...} : emitter)
                   {maxAlloc, regfmls, regtys, return} = let
       val (boxed, int32, float) = maskList(regfmls, regtys, [], [], [])
     in
@@ -176,7 +177,10 @@ struct
   (* allocptr must always be in a register *)
   val T.REG(_,allocptrR) = C.allocptr
 
-  fun invokeGC {emit,comp} (external, regmap) gcInfo = let
+  fun invokeGC 
+      (emitter as
+       St.STREAM{emit,defineLabel,entryLabel,exitBlock,annotation,...},
+       external) gcInfo = let
     val {known, boxed, int32, float, regfmls, ret, lab} =
       (case gcInfo
 	of GCINFO info => info
@@ -403,6 +407,7 @@ struct
       val use = roots
       val gcAddr = T.ADD (32, C.stackptr, T.LI MS.startgcOffset)
     in
+      annotation(BasicAnnotations.CALLGC);
       emit(T.CALL(T.LOAD(32, gcAddr, R.stack), def, use, R.stack));
       if known then let			(* recompute base address *)
 	  val returnLab = Label.newLabel ""
@@ -418,17 +423,17 @@ struct
 	     | _  => error "callGc: baseptr"
           end
 	in
-	  comp(T.DEFINELABEL returnLab);
+	  defineLabel returnLab;
 	  emit(assignBasePtr(C.baseptr))
 	end
       else ()
     end
     fun gcReturn () = let
       val live = case C.exhausted of NONE => regfmls | SOME cc => T.CCR cc::regfmls
-    in emit ret; comp(T.ESCAPEBLOCK live)
+    in emit ret; exitBlock live
     end
   in 
-    comp ((if external then T.ENTRYLABEL else T.DEFINELABEL)(!lab));
+    (if external then entryLabel else defineLabel)(!lab);
     unzip(zip() before callGc());
     gcReturn()
   end (*invokeGC*)
@@ -439,7 +444,8 @@ struct
   (* Generates long jumps to the end of the module unit for
    * standard functions, and directly invokes GC for known functions.
    *)
-  fun emitLongJumpsToGCInvocation {emit,comp} regmap = let
+  fun emitLongJumpsToGCInvocation 
+       (emitter as St.STREAM{emit,defineLabel,entryLabel,exitBlock,...}) = let
     (* GC code can be shared if the calling convention is the same *)
     fun equal
 	 (GCINFO{boxed=b1, int32=i1, float=f1, ret=T.JMP(ret1, _), ...},
@@ -490,20 +496,23 @@ struct
       val liveOut = fregRoots @ regRoots
       val l = !lab
     in
-      app (fn lab => comp(T.DEFINELABEL lab)) (!addrs) before addrs:=[];
+      app defineLabel (!addrs) before addrs:=[];
       emit(T.JMP(T.LABEL(LE.LABEL(l)), [l]));
-      comp(T.ESCAPEBLOCK liveOut)
+      exitBlock liveOut
     end
   in
     (app find (!clusterGcBlocks)) before clusterGcBlocks := [];
     app longJumps (!moduleGcBlocks);
-    (app (invokeGC {emit=emit,comp=comp}
-          (false,regmap)) (!knownGcBlocks)) before knownGcBlocks:=[]
+    (app (invokeGC (emitter,false)) (!knownGcBlocks)) before knownGcBlocks:=[]
   end (*emitLongJumpsToGC*)
 
   (* module specific gc invocation code *)
-  fun emitModuleGC emit regmap = 
-    (app (invokeGC emit (true,regmap)) (!moduleGcBlocks)) before moduleGcBlocks:=[]
+  fun emitModuleGC stream = 
+    (app (invokeGC (stream,true)) (!moduleGcBlocks)) before moduleGcBlocks:=[]
+
+  fun init() = (clusterGcBlocks := []; 
+                knownGcBlocks := []; 
+                moduleGcBlocks := [])
 
 end
 

@@ -24,6 +24,7 @@ signature CPSREGS = sig
   val calleesave: T.rexp Array.array
   val exhausted : T.ccexp option
   val signedGCTest : bool
+  val addressWidth : int
 
   val miscregs  : T.rexp list
   val floatregs : T.fexp list

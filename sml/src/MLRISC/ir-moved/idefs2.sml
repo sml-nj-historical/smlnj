@@ -13,7 +13,7 @@ structure IDefs : IDEFS =
 struct
 
    structure G    = Graph
-   structure R    = RegSet
+   structure SL   = SortedList
    structure A    = Array
    structure Rev  = ReversedGraphView
 
@@ -22,10 +22,10 @@ struct
    fun compute_idefs {def_use, cfg} =
    let val CFG as G.GRAPH cfg  = cfg
        val N                   = #capacity cfg ()
-       val DU                  = A.array(N,(R.empty,R.empty))
+       val DU                  = A.array(N,([],[]))
        val _ = #forall_nodes cfg 
             (fn (b,b') => let val (d,u) = def_use(b,b')
-                          in  A.update(DU,b,(R.fromList d,R.fromList u))
+                          in  A.update(DU,b,(SL.uniq d,SL.uniq u))
                           end)
        fun dump(name,a) =
           (print(name^"=");
@@ -41,8 +41,8 @@ struct
            val semi       = A.array(N,~1)
            val bucket     = A.array(N,[])
            val dom        = A.array(N,~1)
-           val sdefuse    = A.array(N,(R.empty,R.empty))
-           val idefuse    = A.array(N,(R.empty,R.empty))
+           val sdefuse    = A.array(N,([],[]))
+           val idefuse    = A.array(N,([],[]))
            val ancestor   = A.array(N,~1)
            val treeparent = A.array(N,~1)
            val label      = A.array(N,~1)
@@ -84,11 +84,12 @@ struct
                    in  if p = ~1 then (D,U)
                        else let val (d,u)   = A.sub(DU,v)
                                 val (d',u') = A.sub(sdefuse,v)
-                            in  up(p,R.+(d,R.+(d',D)),R.+(u,R.+(u',U)))
+                            in  up(p,SL.merge(d,SL.merge(d',D)),
+                                     SL.merge(u,SL.merge(u',U)))
                             end
                    end
                in
-                   up(v,R.empty,R.empty)
+                   up(v,[],[])
                end
            fun step2_3 0 = ()
              | step2_3 i = 
@@ -103,7 +104,8 @@ struct
                            else ();
                            let val (d,u) = EVALDEFUSE v
                                val (d',u') = A.sub(sdefuse,w)
-                           in  A.update(sdefuse,w,(R.+(d,d'),R.+(u,u')))
+                           in  A.update(sdefuse,w,(SL.merge(d,d'),
+                                                   SL.merge(u,u')))
                            end;
                            step2 vs
                        end
@@ -119,7 +121,8 @@ struct
                                           then u else parent_w);
                            let val (d,u) = A.sub(sdefuse,v)
                                val (d',u') = EVALDEFUSE(A.sub(parent,v))
-                           in  A.update(idefuse,v,(R.+(d,d'),R.+(u,u')))
+                           in  A.update(idefuse,v,(SL.merge(d,d'),
+                                                   SL.merge(u,u')))
                            end;
                            step3 vs
                        end
@@ -143,7 +146,8 @@ struct
                     in  if A.sub(dom,w) <> A.sub(vertex,A.sub(semi,w)) then
                            let val (d,u) = A.sub(idefuse,A.sub(dom,w))
                                val (d',u') = A.sub(idefuse,w)
-                           in  A.update(idefuse,w,(R.+(d,d'),R.+(u,u')));
+                           in  A.update(idefuse,w,(SL.merge(d,d'),
+                                                   SL.merge(u,u')));
                                A.update(dom,w,A.sub(dom,A.sub(dom,w)))
                            end
                         else ();

@@ -6,7 +6,7 @@ signature MC_EMIT = sig
   structure I : INSTRUCTIONS
 
   val emitInstr : I.instruction * 
-       (I.C.register -> I.C.register) -> Word8Vector.vector
+       (I.C.cell -> I.C.cell) -> Word8Vector.vector
 end
 
   
@@ -32,11 +32,13 @@ struct
     | LABEL of Label.label * desc
     | NIL
 
-  datatype cluster = CLUSTER of {cluster: desc, regmap:C.register -> C.register}
+  datatype cluster = CLUSTER of {cluster: desc, regmap:C.cell -> C.cell}
 
   fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
 
   val clusters = ref ([] : cluster list)
+
+  fun cleanUp() = clusters := []
 
   fun bbsched(F.CLUSTER{blocks, regmap,  ...}) = let
     val regmap = C.lookup regmap
@@ -103,7 +105,7 @@ struct
     fun output v = 
       W8V.app (fn v => (CodeString.update(!loc, v); loc:= !loc+1)) v
 
-    val Asm.S.STREAM{emit,...} = Asm.makeStream()
+    val Asm.S.STREAM{emit,...} = Asm.makeStream []
 
     fun chunk(pos, []) = ()
       | chunk(pos, CLUSTER{cluster, regmap}::rest) = let
@@ -157,7 +159,6 @@ struct
     loc := 0; chunk(0, clusters)
   end (* finish *)
 
-  fun cleanUp _ = ()
 end (* functor BackPatch *)
 
 

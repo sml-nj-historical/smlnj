@@ -1,264 +1,74 @@
-functor PPCCG
-  (structure Emitter : INSTRUCTION_EMITTER
-     where I = PPCInstr 
-       and P = PPCPseudoOps 
-       and S.B = PPCMLTree.BNames) : MACHINE_GEN = 
-struct
-  structure I = PPCInstr
-  structure C = PPCCells
-  structure R = PPCCpsRegs
-  structure B = PPCMLTree.BNames
-  structure F = PPCFlowGraph
-  structure Asm	     = PPCAsmEmitter
-  structure MLTree   = PPCMLTree
-  structure MachSpec = PPCSpec
-  structure Ctrl = Control.MLRISC
-  
-  fun error msg = ErrorMsg.impossible ("PPCCG." ^ msg)
+(*
+ * PPC specific backend
+ *)
+structure PPCCG = 
+  MachineGen
+  ( structure MachSpec   = PPCSpec
+    structure PseudoOps  = PPCPseudoOps
+    structure CpsRegs    = PPCCpsRegs
+    structure InsnProps  = PPCProps(PPCInstr)
+    structure Asm        = PPCAsmEmitter
 
-  val stack = PPCInstr.Region.stack
-  structure PPCRewrite = PPCRewrite(PPCInstr)
+    structure MLTreeComp=
+       PPC(structure PPCInstr = PPCInstr
+           structure PPCMLTree = PPCMLTree
+           structure PseudoInstrs=
+               PPCPseudoInstr(structure Instr=PPCInstr)
+           val bit64mode=false
+           val multCost=ref 6 (* an estimate *)
+         )
 
-  (* properties of instruction set *)
-  structure P = PPCProps(PPCInstr)
+    structure PPCJumps =
+       PPCJumps(structure Instr=PPCInstr
+                structure Shuffle=PPCShuffle)
 
-  structure FreqProps = FreqProps(P)
+    structure BackPatch =
+       BBSched2(structure Flowgraph = PPCFlowGraph
+                structure Jumps = PPCJumps
+                structure Emitter = PPCMCEmitter)
 
-  (* Label backpatching and basic block scheduling *)
-  structure BBSched =
-    BBSched2(structure Flowgraph = F
-	     structure Jumps = 
-	       PPCJumps(structure Instr=PPCInstr
-			structure Shuffle=PPCShuffle)
-	     structure Emitter = Emitter)
+    structure RA = 
+       RegAlloc
+         (structure I         = PPCInstr
+          structure MachSpec  = PPCSpec
+          structure Flowgraph = PPCFlowGraph
+          structure CpsRegs   = PPCCpsRegs
+          structure InsnProps = InsnProps 
+          structure Rewrite   = PPCRewrite(PPCInstr) 
+          structure Asm       = PPCAsmEmitter
+          functor Ra = PPCRegAlloc 
 
-  (* flow graph pretty printing routine *)
-  (*
-  structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = F
-                       structure Emitter   = Asm)
-   *)
+          val sp = I.C.stackptrR
+          val stack = I.Region.stack
 
-  val intSpillCnt = Ctrl.getInt "ra-int-spills"
-  val floatSpillCnt = Ctrl.getInt "ra-float-spills"
-  val intReloadCnt = Ctrl.getInt "ra-int-reloads"
-  val floatReloadCnt = Ctrl.getInt "ra-float-reloads"
+          (* make copy *)
+          fun copyR((rds as [_], rss as [_]), _) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE}
+            | copyR((rds, rss), I.COPY{tmp, ...}) =
+              I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
+          fun copyF((fds as [_], fss as [_]), _) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE}
+            | copyF((fds, fss), I.FCOPY{tmp, ...}) =
+              I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
 
-  (* register allocation *)
-  structure RegAllocation : 
-    sig
-      val ra : F.cluster -> F.cluster
-      val cp : F.cluster -> F.cluster
-    end =
-  struct
+          (* spill copy temp *)
+          fun spillCopyTmp(I.COPY{dst,src,tmp,impl},offset) =
+              I.COPY{dst=dst, src=src, impl=impl,
+                     tmp=SOME(I.Displace{base=sp, disp=I.ImmedOp offset})}
+          fun spillFcopyTmp(I.FCOPY{dst,src,tmp,impl},offset) =
+              I.FCOPY{dst=dst, src=src, impl=impl,
+                     tmp=SOME(I.Displace{base=sp, disp=I.ImmedOp offset})}
 
-   (* spill area management *)
-    val initialSpillOffset = 144
-    val spillOffset = ref initialSpillOffset
-    fun newOffset n =
-	if n > 4096
-	then error "newOffset - spill area is too small"
-	else spillOffset := n
-    exception RegSpills and FregSpills
+          (* spill register *)
+          fun spillInstrR(rs,offset) =
+              [I.ST{st=I.STW, ra=sp, d=I.ImmedOp offset, rs=rs, mem=stack}]
+          fun spillInstrF(fs,offset) =
+              [I.STF{st=I.STFD, ra=sp, d=I.ImmedOp offset, fs=fs, mem=stack}]
 
-    val regSpills : int Intmap.intmap ref = ref(Intmap.new(0, RegSpills))
-    val fregSpills : int Intmap.intmap ref = ref(Intmap.new(0, FregSpills))
-
-    (* get spill location for general registers *)
-    fun getRegLoc reg = Intmap.map (!regSpills) reg
-      handle RegSpills => let
-	  val offset = !spillOffset
-	in
-	  newOffset(offset+4);
-	  Intmap.add (!regSpills) (reg, offset);
-	  offset
-        end
-
-    (* get spill location for floating registers *)
-    fun getFregLoc freg = Intmap.map (!fregSpills) freg
-      handle FregSpills => let
-	  val offset = !spillOffset
-	  val fromInt = Word.fromInt
-	  val aligned = Word.toIntX(Word.andb(fromInt offset+0w7, fromInt ~8))
-	in
-	  newOffset(aligned+8);
-	  Intmap.add (!fregSpills) (freg, aligned);
-	  aligned
-	end
-
-    fun spill {regmap,instr,reg,id:B.name} = let
-      val offset = I.ImmedOp (getRegLoc(reg))
-      fun spillInstr(src) = 
-	[I.ST{st=I.STW, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
-    in
-      intSpillCnt := !intSpillCnt + 1;
-      case instr
-       of I.COPY{dst as [rd], src as [rs], tmp, impl} =>
-	  if rd=reg then
-	    {code=spillInstr(rs),  instr=NONE,   proh=[]:int list}
-	  else (case tmp
-	     of SOME(I.Direct r) => let
-		  val disp = I.ImmedOp(getRegLoc(r))
-		  val loc = I.Displace{base=C.stackptrR, disp=disp}
-		  val instr=I.COPY{dst=dst, src=src, tmp=SOME(loc), impl=impl}
-		in {code=[], instr=SOME instr, proh=[]}
-		end
-              | _ => error "spill: COPY"
-	    (*esac*))
-       | _ => let
-	    val newR = C.newReg()
-	    val instr' = PPCRewrite.rewriteDef(regmap, instr, reg, newR)
-	  in {code=spillInstr(newR),  instr=SOME instr',  proh=[newR]}
-	  end
-    end
-
-    fun fspill {regmap,instr,reg,id:B.name} = let
-      val offset = I.ImmedOp (getFregLoc(reg))
-      fun spillInstr(src) = 
-	[I.STF{st=I.STFD, fs=src, ra=C.stackptrR, d=offset, mem=stack}]
-    in
-      floatSpillCnt := !floatSpillCnt + 1;
-      case instr
-      of I.FCOPY{dst as [fd], src as [fs], tmp, impl} => 	 (* reg = fd *)
-       	  if reg=fd then
-	    {code=spillInstr(fs),   instr=NONE,   proh=[]}
-	  else (case tmp
-	     of SOME(I.FDirect r) => let
-		  val disp=I.ImmedOp(getFregLoc(r))
-		  val loc = I.Displace{base=C.stackptrR, disp=disp}
-		  val instr=I.FCOPY{dst=dst, src=src, tmp=SOME(loc), impl=impl}
-		in {code=[], instr=SOME instr, proh=[]}
-		end
-              | _ => error "spill: COPY"
-	    (*esac*))
-       | _ => let
-	    val newR = C.newFreg()
-	    val instr' = PPCRewrite.frewriteDef(regmap, instr, reg, newR)
-	  in {code=spillInstr(newR),  instr=SOME instr',  proh=[newR]}
-	  end
-    end
-
-    fun reload{regmap,instr,reg,id:B.name} = let
-      val offset = I.ImmedOp (getRegLoc(reg))
-      fun reloadInstr(dst, rest) =
-	I.L{ld=I.LWZ, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
-    in 
-      intReloadCnt := !intReloadCnt + 1;
-      case instr
-      of I.COPY{dst=[rd], src=[rs], ...} =>	(* reg = rs *)
-	   {code=reloadInstr(rd, []),   proh=[]:int list}
-       | _ => let
-	     val newR = C.newReg()
-	     val instr' = PPCRewrite.rewriteUse(regmap, instr, reg, newR)
-	   in {code=reloadInstr(newR, [instr']), proh=[newR]}
-	   end
-    end
-
-    fun freload {regmap, instr, reg, id:B.name} = let
-      val offset = I.ImmedOp (getFregLoc(reg))
-      fun reloadInstr(dst, rest) =
-	I.LF{ld=I.LFD, ft=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
-    in 
-      floatReloadCnt := !floatReloadCnt + 1;
-      case instr
-      of I.FCOPY{dst=[fd], src=[fs], ...} =>	(* reg = fs *)
-	   {code=reloadInstr(fd, []), proh=[]}
-       | _ => let
-	     val newR = C.newFreg()
-	     val instr' = PPCRewrite.frewriteUse(regmap, instr, reg, newR)
-	   in {code=reloadInstr(newR, [instr']), proh=[newR]}
-	   end
-    end
-
-    fun spillInit () = 
-      (spillOffset := initialSpillOffset;
-       regSpills := Intmap.new(8, RegSpills);
-       fregSpills := Intmap.new(8, FregSpills))
-
-    structure GR = GetReg(val nRegs=32 val available=R.availR val first=0)
-    structure FR = GetReg(val nRegs=32 val available=R.availF val first=32)
-
-    structure PPCRa = 
-       PPCRegAlloc(structure P = P
-		       structure I = PPCInstr
-		       structure F = F
-		       structure Asm = Asm)
-
-    (* register allocation for general purpose registers *)
-    structure IntRa = 
-      PPCRa.IntRa
-        (structure RaUser = struct
-           structure I = PPCInstr
-	   structure B = B
-
-	   val getreg = GR.getreg
-	   val spill = spill
-	   val reload = reload
-	   val nFreeRegs = length R.availR
-	   val dedicated = R.dedicatedR
-	   fun copyInstr((rds, rss), I.COPY{tmp, ...}) = 
- 	     I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
-         end)
-
-    (* register allocation for floating point registers *)
-    structure FloatRa = 
-      PPCRa.FloatRa
-        (structure RaUser = struct
-	   structure I = PPCInstr
-	   structure B = B
-
-	   val getreg = FR.getreg
-	   val spill = fspill
-	   val reload = freload 
-	   val nFreeRegs = length R.availF
-	   val dedicated = R.dedicatedF
-	   fun copyInstr((fds, fss), I.FCOPY{tmp, ...}) = 
-	     I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
-         end)
-
-    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION []
-    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION []
-    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION []
-    val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION []
-
-    fun ra cluster = let
-      (* val pg = PrintFlowGraph.printCluster TextIO.stdOut *)
-      fun intRa cluster = (GR.reset(); iRegAlloc cluster)
-      fun floatRa cluster = (FR.reset(); fRegAlloc cluster)
-    in spillInit(); (floatRa o intRa) cluster
-    end
-    val cp = fCopyProp o iCopyProp
-  end (* RegAllocation *)
-  
-  val optimizerHook : (F.cluster->F.cluster) option ref = ref NONE
-
- (* primitives for generation of DEC alpha instruction flowgraphs *)
-  structure FlowGraphGen =
-     ClusterGen(structure Flowgraph = F
-		structure InsnProps = P
-		structure MLTree = MLTree
-                structure Stream=PPCStream
-		val optimize = optimizerHook
-		val output = BBSched.bbsched o RegAllocation.ra)
-
-  (* compilation of CPS to MLRISC *)
-  structure MLTreeGen = 
-     MLRiscGen(structure MachineSpec=PPCSpec
-	       structure MLTreeComp=
-		  PPC(structure Stream=PPCStream
-		      structure PPCInstr=PPCInstr
-		      structure PPCMLTree=PPCMLTree
-		      structure PseudoInstrs=
-			PPCPseudoInstr(structure Instr=PPCInstr)
-		      val bit64mode=false
-		      val multCost=ref 6 (* an estimate *))
-               structure Flowgen=FlowGraphGen
-	       structure Cells=PPCCells
-	       structure C=PPCCpsRegs
-	       structure PseudoOp=PPCPseudoOps)
-
-  val copyProp = RegAllocation.cp
-  val codegen = MLTreeGen.codegen
-  val finish = BBSched.finish
-end
-
+          (* reload register *)
+          fun reloadInstrR(rt,offset,rest) =
+              I.L{ld=I.LWZ, ra=sp, d=I.ImmedOp offset, rt=rt, mem=stack}::rest
+          fun reloadInstrF(ft,offset,rest) =
+              I.LF{ld=I.LFD, ra=sp, d=I.ImmedOp offset, ft=ft, mem=stack}::rest
+         )
+  )

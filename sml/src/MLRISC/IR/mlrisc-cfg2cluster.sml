@@ -41,6 +41,8 @@ struct
 
     fun error msg = MLRiscErrorMsg.error("CFG2Cluster",msg)
 
+    val dummyNode = F.LABEL(Label.Label{id= ~1, addr=ref ~1, name=""})
+
     fun pseudo_op (CFG.LABEL l) = F.LABEL l
       | pseudo_op (CFG.PSEUDO p) = F.PSEUDO p
 
@@ -104,22 +106,23 @@ struct
       | id_of(F.ENTRY{blknum,...})  = blknum
       | id_of(F.EXIT{blknum,...})   = blknum
 
-    fun delete_preentries (ENTRY,G.GRAPH cfg) =
-    let val CFG.INFO{regmap=ref regmap,...} = #graph_info cfg 
+    fun delete_preentries (ENTRY,CFG as G.GRAPH cfg) =
+    let val CFG.INFO{regmap,...} = #graph_info cfg 
       	fun remove (ENTRY,i,_) =
-            let val block as CFG.BLOCK{kind,insns,...} = #node_info cfg i
-            in  if kind = CFG.FUNCTION_ENTRY then
-                   let val out_edges = #out_edges cfg i
-                       val out_edges' = map (fn (i,j,e)=>(ENTRY,j,e)) out_edges 
-                   in  case !insns of
-                          [] => ()
-                       |  _  => (print (CFG.show_block regmap block);	
-                                 error "delete_preentries");
-                       app (#add_edge cfg) out_edges';
-                       #remove_node cfg i
-                   end
-                else ()
+        let val block as CFG.BLOCK{labels,kind,insns,...} = #node_info cfg i
+        in  if kind = CFG.FUNCTION_ENTRY then
+            let val [(i,j,e)] = #out_edges cfg i
+                val CFG.BLOCK{labels=l,...} = #node_info cfg j
+            in  case !insns of
+                   [] => ()
+                |  _  => (print (CFG.show_block [] regmap block);	
+                          error "delete_preentries");
+                #add_edge cfg (ENTRY,j,e);
+                l := !labels @ !l;
+                #remove_node cfg i
             end
+            else ()
+        end
     in  app remove (#out_edges cfg ENTRY)
     end
 
@@ -143,7 +146,7 @@ struct
         val CFG.INFO{regmap,annotations,...} = #graph_info cfg
         val _       = delete_preentries(ENTRY,CFG)
         val _       = remove_entry_to_exit(ENTRY,EXIT,CFG)
-        val A       = A.array(M,F.LABEL(Label.newLabel ""))
+        val A       = A.array(M,dummyNode)
         val nodes   = List.filter(fn (i,CFG.BLOCK{kind,...}) => 
                            i <> ENTRY andalso i <> EXIT andalso 
                            kind <> CFG.FUNCTION_ENTRY)
@@ -163,7 +166,7 @@ struct
           | set_links _ = ()
         val _ = A.app set_links A
     in  F.CLUSTER{ blkCounter  = ref M,
-                   regmap      = !regmap,
+                   regmap      = regmap,
                    blocks      = blocks,
                    entry       = entry,
                    exit        = exit,
@@ -183,9 +186,9 @@ struct
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
         val _        = delete_preentries(ENTRY,CFG)
-        val CFG.INFO{firstBlock,regmap=ref regmap,annotations,...} = 
+        val CFG.INFO{firstBlock,regmap=regmap,annotations,...} = 
                #graph_info cfg
-        val A        = A.array(M,F.LABEL(Label.newLabel "")) (* new id -> F.block *)
+        val A        = A.array(M,dummyNode)    (* new id -> F.block *)
         val A'       = A.array(M,~1)           (* new id -> old id *)
         val A''      = A.array(M,~1)           (* old id -> new id *)
         val min_pred = A.array(M,10000000)
@@ -268,11 +271,6 @@ struct
         fun preds i = map (fn (i,_,CFG.EDGE{w,...}) => 
                                (A.sub(A,A.sub(A'',i)),w)) 
                                  (#in_edges cfg (A.sub(A',i)))
-        local  
-            val look = Intmap.map regmap
-        in  fun reglookup r = look r handle _ => r
-        end
-
         fun set_links(F.BBLOCK{blknum,pred,succ,insns,...}) = 
             let fun isBackwardBranch((F.BBLOCK{blknum=next,...},_)::bs) =
                       next <= blknum orelse isBackwardBranch bs

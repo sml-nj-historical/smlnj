@@ -56,6 +56,7 @@ structure X86CpsRegs : CPSREGS = struct
   val availF = (FP 8) upto (FP 31)
   val dedicatedF = map FP [0,1,2,3,4,5,6,7]
   val signedGCTest = false
+  val addressWidth = 32
 end
 
 

@@ -17,9 +17,6 @@ functor Sparc
         and type cond = MLTreeBasis.cond 
         and type fcond = MLTreeBasis.fcond 
         and type rounding_mode = MLTreeBasis.rounding_mode 
-   structure Stream : INSTRUCTION_STREAM
-      where B = SparcMLTree.BNames
-        and P = SparcMLTree.PseudoOp
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
       where I = SparcInstr
    (* 
@@ -45,8 +42,8 @@ functor Sparc
          *)
   ) : MLTREECOMP = 
 struct
-  structure S  = Stream
   structure T  = SparcMLTree
+  structure S  = T.Stream
   structure R  = SparcMLTree.Region
   structure I  = SparcInstr
   structure C  = I.C
@@ -57,13 +54,15 @@ struct
   structure Gen = MLTreeGen(structure T = T
                             val intTy = if V9 then 64 else 32
                             val naturalWidths = if V9 then [32,64] else [32]
+                            datatype rep = SE | ZE | NEITHER
+                            val rep = NEITHER 
                            )
 
   functor Multiply32 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
   
      val intTy = 32    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -76,8 +75,8 @@ struct
   functor Multiply64 = MLTreeMult
     (structure I = I
      structure T = T
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
       
      val intTy = 64    
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
@@ -90,7 +89,6 @@ struct
   (* signed, trapping version of multiply and divide *)
   structure Mult32 = Multiply32
     (val trapping = true
-     val signed = true
      val multCost = multCost 
      fun addv{r1,r2,d} = 
          I.ARITH{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap32 
@@ -100,11 +98,11 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
+    (val signed = true)
 
   (* unsigned, non-trapping version of multiply and divide *)
   structure Mulu32 = Multiply32
     (val trapping = false
-     val signed = false
      val multCost = muluCost
      fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
      fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r=r1,i=I.REG r2,d=d}]
@@ -112,11 +110,11 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
+    (val signed = false)
 
   (* signed, trapping version of multiply and divide *)
   structure Mult64 = Multiply64
     (val trapping = true
-     val signed = true
      val multCost = multCost 
      fun addv{r1,r2,d} = 
          I.ARITH{a=I.ADDCC,r=r1,i=I.REG r2,d=d}::PseudoInstrs.overflowtrap64 
@@ -126,11 +124,11 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
+    (val signed = true)
 
   (* unsigned, non-trapping version of multiply and divide *)
   structure Mulu64 = Multiply64
     (val trapping = false
-     val signed = false
      val multCost = muluCost
      fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
      fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r=r1,i=I.REG r2,d=d}]
@@ -138,6 +136,7 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
+    (val signed = false)
 
   datatype commutative = COMMUTE | NOCOMMUTE
   datatype cc = REG    (* write to register *)
@@ -148,7 +147,7 @@ struct
 
   fun selectInstructions
        (S.STREAM{emit,defineLabel,entryLabel,blockName,pseudoOp,annotation,
-                 init,finish,exitBlock,...}) =
+                 beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
   let
       (* Flags *)
       val useBR          = !useBR
@@ -156,7 +155,6 @@ struct
 
       val trap32 = PseudoInstrs.overflowtrap32 
       val trap64 = PseudoInstrs.overflowtrap64 
-      val emit = emit(fn _ => 0)
       val newReg = C.newReg
       val newFreg = C.newFreg
       fun immed13 n = ~4096 <= n andalso n < 4096
@@ -703,26 +701,23 @@ struct
         | opn e              = I.REG(expr e)
 
 
-      fun mltreeComp mltree =
-      let fun cc((r as T.CCR(T.CC 65))::l) = r::cc l
-            | cc(T.CCR(T.CC r)::l) = T.GPR(T.REG(32,r))::cc l  
-            | cc(r::l) = r::cc l
-            | cc []    = []
-          fun comp(T.BEGINCLUSTER)      = init 0
-            | comp(T.PSEUDO_OP p)       = pseudoOp p
-            | comp(T.DEFINELABEL l)     = defineLabel l
-            | comp(T.ENTRYLABEL l)      = entryLabel l
-            | comp(T.CODE stmts)        = app doStmt stmts
-            | comp(T.BLOCK_NAME n)      = blockName n
-            | comp(T.BLOCK_ANNOTATION a)= annotation a
-            | comp(T.ESCAPEBLOCK regs)  = exitBlock(cc regs)
-            | comp(T.ENDCLUSTER regmap) = finish regmap 
-            | comp _                    = error "mltreeComp"
-      in  comp mltree end
-
-  in  { mltreeComp = mltreeComp,
-        mlriscComp = doStmt,
-        emitInstr  = emit
+      fun cc((r as T.CCR(T.CC 65))::l) = r::cc l
+        | cc(T.CCR(T.CC r)::l) = T.GPR(T.REG(32,r))::cc l  
+        | cc(r::l) = r::cc l
+        | cc []    = []
+  in  S.STREAM
+      { beginCluster= beginCluster,
+        endCluster  = endCluster,
+        emit        = doStmt,
+        pseudoOp    = pseudoOp,
+        defineLabel = defineLabel,
+        entryLabel  = entryLabel,
+        blockName   = blockName,
+        comment     = comment,
+        annotation  = annotation,
+        exitBlock   = fn regs => exitBlock(cc regs),
+        alias       = alias,
+        phi         = phi
       }
   end
 

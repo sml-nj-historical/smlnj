@@ -23,6 +23,7 @@ is
 	host-compiler.cm
 	host-cm.cm
 	host-cmb.cm
+	cm-tools.cm
 
 	(* build boot environments *)
 	boot-env-fn.sml

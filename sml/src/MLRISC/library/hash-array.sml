@@ -28,22 +28,31 @@ struct
 
     fun unimplemented _ = raise HashArrayUnimplemented
 
-    fun array(n,d) = ARRAY(ref(A.array(13,[])),V d,ref n,ref 0)
-    fun array'(n,f) = ARRAY(ref(A.array(13,[])),F f,ref n,ref 0)
-    fun array''(n,f) = ARRAY(ref(A.array(13,[])),U f,ref n,ref 0)
-    fun clear(ARRAY(r,d,n,c)) = (r := A.array(13,[]); n := 0; c := 0)
+    fun array(n,d) = ARRAY(ref(A.array(16,[])),V d,ref n,ref 0)
+    fun array'(n,f) = ARRAY(ref(A.array(16,[])),F f,ref n,ref 0)
+    fun array''(n,f) = ARRAY(ref(A.array(16,[])),U f,ref n,ref 0)
+    fun clear(ARRAY(r,d,n,c)) = (r := A.array(16,[]); n := 0; c := 0)
+
+    fun roundsize n =
+    let fun loop i = if i >= n then i else loop(i+i)
+    in  loop 1 end 
+
     fun copy_array(ARRAY(ref a,d,ref n,ref c)) = 
          let val a' = A.array(n,[])
              val _  = A.copy{src=a,dst=a',si=0,di=0,len=NONE}
          in  ARRAY(ref a',d,ref n,ref c)
          end
 
+    val itow = Word.fromInt
+    val wtoi = Word.toIntX
+    fun index(a, i) = wtoi(Word.andb(itow i, itow(Array.length a - 1)))
+
     fun tabulate(n,f) =
     let val N = n*n+1
-        val N = if N < 13 then 13 else N
+        val N = if N < 16 then 16 else roundsize N
         val a = A.array(N,[])
         fun ins i = 
-            let val pos = i mod N
+            let val pos = index(a, i)
                 val x   = f i
             in  A.update(a,pos,(i,x)::A.sub(a,pos)); x
             end
@@ -58,10 +67,10 @@ struct
     fun fromList l =
     let val n = length l
         val N = n*n+1
-        val N = if N < 13 then 13 else N
+        val N = if N < 16 then 16 else roundsize N
         val a = A.array(N,[])
         fun ins(i,x) = 
-            let val pos = i mod N
+            let val pos = index(a,i)
             in  A.update(a,pos,(i,x)::A.sub(a,pos)); x
             end
         fun insert(i,[])   = F(fn _ => raise Subscript)
@@ -73,7 +82,7 @@ struct
     fun length(ARRAY(_,_,ref n,_)) = n
 
     fun sub(a' as ARRAY(ref a,d,_,_),i) = 
-    let val pos = i mod A.length a
+    let val pos = index(a,i)
         fun search [] = (case d of
                            V d => d
                          | F f => f i
@@ -85,7 +94,7 @@ struct
 
     and update(a' as ARRAY(ref a,_,n,s as ref size),i,x) =
     let val N   = A.length a
-        val pos = i mod N
+        val pos = index(a,i)
         fun change([],l) = 
               if size+size >= N then grow(a',i,x)
               else (s := size + 1; A.update(a,pos,(i,x)::l))
@@ -99,10 +108,10 @@ struct
 
     and grow(ARRAY(a' as ref a,_,_,_),i,x) = 
     let val N   = A.length a
-        val N'  = N+N+1
+        val N'  = N+N
         val a'' = A.array(N',[])
         fun insert(i,x) = 
-            let val pos = i mod N'
+            let val pos = index(a'',i)
             in  A.update(a'',pos,(i,x)::A.sub(a'',pos)) end
     in  
         A.app (List.app insert) a;
@@ -112,7 +121,7 @@ struct
 
     fun remove(a' as ARRAY(ref a,_,n,s as ref size),i) =
     let val N   = A.length a
-        val pos = i mod N
+        val pos = index(a,i)
         fun change([],_) = ()
           | change((y as (j,_))::l',l) = 
               if j = i then (s := size - 1; A.update(a,pos,l'@l))

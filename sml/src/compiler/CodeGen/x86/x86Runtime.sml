@@ -8,6 +8,6 @@ structure X86Runtime = struct
   val vFpStart = 184			(* floating point registers  *)
   val vregStart = 72			(* virtual regs *)
   val regStart = 40			(* area for physcial registers *)
-  val spillStart = 512			(* spill area *)
+  val spillStart = X86Spec.initialSpillOffset (* spill area *)
   val spillAreaSz = X86Spec.spillAreaSz
 end

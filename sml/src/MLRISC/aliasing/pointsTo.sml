@@ -17,15 +17,15 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("PointsTo",msg)
 
-   fun lessKind(PI,PI) = false   
-     | lessKind(DOM,(PI | DOM)) = false
-     | lessKind(RAN,(PI | DOM | RAN)) = false
-     | lessKind _ = false
+   fun greaterKind(PI,PI) = false   
+     | greaterKind(DOM,(PI | DOM)) = false
+     | greaterKind(RAN,(PI | DOM | RAN)) = false
+     | greaterKind _ = false
 
-   fun preceed(k,i,k',i') = k=k' andalso i < i' orelse lessKind(k,k')
+   fun follows(k,i,k',i') = k=k' andalso i > i' orelse greaterKind(k,k')
 
    val sort : (kind * int * loc) list -> (kind * int * loc) list = 
-      Sorting.sort (fn ((k,i,_),(k',i',_)) => preceed(k,i,k',i'))
+      ListMergeSort.sort (fn ((k,i,_),(k',i',_)) => follows(k,i,k',i'))
 
    val newMem = ref(fn () => 0)
 
@@ -73,8 +73,8 @@ struct
              | merge(l,[]) = l
              | merge(a as (c as (k,i,x))::u,b as (d as (k',i',y))::v) =
                 if k=k' andalso i=i' then (unify(x,y); c::merge(u,v)) 
-                else if preceed(k,i,k',i') then c::merge(u,b)
-                else d::merge(a,v)
+                else if follows(k,i,k',i') then d::merge(a,v)
+                else c::merge(u,b)
        in merge(sort l1,sort l2) end
 
    fun pi(x,i)  = getIth(PI,i,x)

@@ -25,30 +25,32 @@ struct
    (* Table to record number of uses *)
     exception UseCntTbl
     val useCntTbl : treeify  Intmap.intmap = Intmap.new(32, UseCntTbl)
-    fun uses v = (Intmap.map useCntTbl v) handle UseCntTbl => DEAD
-    fun addUse v = let
-      val add = Intmap.add useCntTbl
-    in
+    val uses = Intmap.mapWithDefault (useCntTbl,DEAD)
+    val addCntTbl = Intmap.add useCntTbl
+    fun addUse v = 
       case uses v
-       of DEAD => add(v, TREEIFY)
-        | TREEIFY => add(v, COMPUTE)
+       of DEAD => addCntTbl(v, TREEIFY)
+        | TREEIFY => addCntTbl(v, COMPUTE)
 	| _ => ()
-    end
+
     fun addValue(C.VAR v) = addUse v
       | addValue _ = ()
+    fun addValues [] = ()
+      | addValues(C.VAR v::vl) = (addUse v; addValues vl)
+      | addValues(_::vl) = addValues vl
 
     fun cntUsesCps(C.RECORD(_, vl, w, e)) =
-	 (app addValue (map #1 vl); cntUsesCps e)
+	 (addValues (map #1 vl); cntUsesCps e)
       | cntUsesCps(C.SELECT(i, v, x, _, e)) = (addValue v; cntUsesCps e)
       | cntUsesCps(C.OFFSET(i, v, x, e)) = (addValue v; cntUsesCps e)
-      | cntUsesCps(C.APP(v, vl)) = (addValue v; app addValue vl)
+      | cntUsesCps(C.APP(v, vl)) = (addValue v; addValues vl)
       | cntUsesCps(C.FIX _) = error "pass1: FIX"
       | cntUsesCps(C.SWITCH(v, _, el)) = (addValue v; app cntUsesCps el)
       | cntUsesCps(C.BRANCH(_, vl, _, c1, c2)) =
-	 (app addValue vl; cntUsesCps c1; cntUsesCps c2)
-      | cntUsesCps(C.SETTER(_, vl, e)) = (app addValue vl; cntUsesCps e)
+	 (addValues vl; cntUsesCps c1; cntUsesCps c2)
+      | cntUsesCps(C.SETTER(_, vl, e)) = (addValues vl; cntUsesCps e)
       | cntUsesCps(C.LOOKER(looker, vl, x, _, e)) = 
-	 (app addValue vl; 
+	 (addValues vl; 
 	  (* floating subscript cannot move past a floating update.
 	   * For now subscript operations cannot be treeified.
 	   * This is hacked by making it (falsely) used more than once.
@@ -58,8 +60,8 @@ struct
 	    | _ => ()
           (*esac*);
 	  cntUsesCps e)
-      | cntUsesCps(C.ARITH(_, vl, _, _, e)) = (app addValue vl; cntUsesCps e)
-      | cntUsesCps(C.PURE(_, vl, _, _, e)) = (app addValue vl; cntUsesCps e)
+      | cntUsesCps(C.ARITH(_, vl, _, _, e)) = (addValues vl; cntUsesCps e)
+      | cntUsesCps(C.PURE(_, vl, _, _, e)) = (addValues vl; cntUsesCps e)
   in 
     app (fn (_, _, _, _, e) => cntUsesCps e) fl;
     uses

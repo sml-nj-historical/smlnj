@@ -163,6 +163,7 @@ struct
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
 	 | I.CALL_PAL{def,use, ...} => (def, use)
+         | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
          | I.ANNOTATION{i,...} => defUseR i
 
 	 | _  		=> ([],[])
@@ -183,6 +184,7 @@ struct
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR(_,def,use, mem)	     => (#2 def,#2 use)
+      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
       | I.ANNOTATION{i,...} => defUseF i
       | _ => ([],[])
 

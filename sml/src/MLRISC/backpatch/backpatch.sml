@@ -107,8 +107,8 @@ struct
     in if adjust(zl, 0, false) then fixpoint zl else size
     end
 
-    val Emitter.S.STREAM{emit,defineLabel,init,pseudoOp,...} = 
-            Emitter.makeStream()
+    val Emitter.S.STREAM{emit,defineLabel,beginCluster,pseudoOp,...} = 
+            Emitter.makeStream []
 
     fun emitCluster(CLUSTER{comp, regmap},loc) = let
       val emit = emit regmap
@@ -126,7 +126,7 @@ struct
 
     val compressed = (rev (!clusterList)) before cleanUp()
   in
-    init(fixpoint compressed);
+    beginCluster(fixpoint compressed);
     foldl emitCluster 0 compressed; 
     ()
   end (*finish*)

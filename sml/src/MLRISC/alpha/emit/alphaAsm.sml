@@ -19,14 +19,21 @@ struct
    
    fun error msg = MLRiscErrorMsg.error("AlphaAsm",msg)
    
-   fun makeStream() =
+   fun makeStream formatAnnotations =
    let val stream = !AsmStream.asmOutStream
-       fun emit s = TextIO.output(stream,s)
-       fun nl() = emit "\n"
+       fun emit' s = TextIO.output(stream,s)
+       val newline = ref true
+       val tabs = ref 0
+       fun tabbing 0 = ()
+         | tabbing n = (emit' "\t"; tabbing(n-1))
+       fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
+       fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = emit "\t"
-       fun ms n = if n<0 then "-"^Int.toString(~n) 
-                  else Int.toString n
+       fun tab() = tabs := !tabs + 1
+       fun ms n = let val s = Int.toString n
+                  in  if n<0 then "-"^String.substring(s,1,size s-1)
+                      else s
+                  end
        fun emit_label lab = emit(Label.nameOf lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
@@ -41,14 +48,34 @@ struct
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
        fun doNothing _ = ()
+       val emitRegInfo = AsmFormatUtil.reginfo(emit,formatAnnotations)
        fun emitter regmap =
        let
 
-   fun emit_CC r = (emit (C.showCC (regmap r)))
-   and emit_GP r = (emit (C.showGP (regmap r)))
-   and emit_FP r = (emit (C.showFP (regmap r)))
+   fun emit_CC r = 
+       ((emit (C.showCC (regmap r))); 
+       (emitRegInfo r))
+   and emit_FP r = 
+       ((emit (C.showFP (regmap r))); 
+       (emitRegInfo r))
+   and emit_GP r = 
+       ((emit (C.showGP (regmap r))); 
+       (emitRegInfo r))
 
-   fun asm_osf_user_palcode (I.BPT) = "bpt"
+   fun asm_pseudo_op (I.DIVL) = "divl"
+     | asm_pseudo_op (I.DIVLU) = "divlu"
+     | asm_pseudo_op (I.DIVQ) = "divq"
+     | asm_pseudo_op (I.DIVQU) = "divqu"
+     | asm_pseudo_op (I.REML) = "reml"
+     | asm_pseudo_op (I.REMLU) = "remlu"
+     | asm_pseudo_op (I.REMQ) = "remq"
+     | asm_pseudo_op (I.REMQU) = "remqu"
+   and emit_pseudo_op x = (emit (asm_pseudo_op x))
+   and asm_store (I.STL) = "stl"
+     | asm_store (I.STQ) = "stq"
+     | asm_store (I.STQ_U) = "stq_u"
+   and emit_store x = (emit (asm_store x))
+   and asm_osf_user_palcode (I.BPT) = "bpt"
      | asm_osf_user_palcode (I.BUGCHK) = "bugchk"
      | asm_osf_user_palcode (I.CALLSYS) = "callsys"
      | asm_osf_user_palcode (I.GENTRAP) = "gentrap"
@@ -56,66 +83,6 @@ struct
      | asm_osf_user_palcode (I.RDUNIQUE) = "rdunique"
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = (emit (asm_osf_user_palcode x))
-   and asm_store (I.STL) = "stl"
-     | asm_store (I.STQ) = "stq"
-     | asm_store (I.STQ_U) = "stq_u"
-   and emit_store x = (emit (asm_store x))
-   and asm_fcmove (I.FCMOVEQ) = "fcmoveq"
-     | asm_fcmove (I.FCMOVEGE) = "fcmovege"
-     | asm_fcmove (I.FCMOVEGT) = "fcmovegt"
-     | asm_fcmove (I.FCMOVLE) = "fcmovle"
-     | asm_fcmove (I.FCMOVELT) = "fcmovelt"
-     | asm_fcmove (I.FCMOVENE) = "fcmovene"
-   and emit_fcmove x = (emit (asm_fcmove x))
-   and asm_foperate (I.CPYS) = "cpys"
-     | asm_foperate (I.CPYSE) = "cpyse"
-     | asm_foperate (I.CPYSN) = "cpysn"
-     | asm_foperate (I.MF_FPCR) = "mf_fpcr"
-     | asm_foperate (I.MT_FPCR) = "mt_fpcr"
-     | asm_foperate (I.CMPTEQ) = "cmpteq"
-     | asm_foperate (I.CMPTLT) = "cmptlt"
-     | asm_foperate (I.CMPTLE) = "cmptle"
-     | asm_foperate (I.CMPTUN) = "cmptun"
-     | asm_foperate (I.CMPTEQSU) = "cmpteqsu"
-     | asm_foperate (I.CMPTLTSU) = "cmptltsu"
-     | asm_foperate (I.CMPTLESU) = "cmptlesu"
-     | asm_foperate (I.CMPTUNSU) = "cmptunsu"
-   and emit_foperate x = (emit (asm_foperate x))
-   and asm_pseudo_op (I.DIVL) = "divl"
-     | asm_pseudo_op (I.DIVLU) = "divlu"
-   and emit_pseudo_op x = (emit (asm_pseudo_op x))
-   and asm_cmove (I.CMOVEQ) = "cmoveq"
-     | asm_cmove (I.CMOVLBC) = "cmovlbc"
-     | asm_cmove (I.CMOVLBS) = "cmovlbs"
-     | asm_cmove (I.CMOVGE) = "cmovge"
-     | asm_cmove (I.CMOVGT) = "cmovgt"
-     | asm_cmove (I.CMOVLE) = "cmovle"
-     | asm_cmove (I.CMOVLT) = "cmovlt"
-     | asm_cmove (I.CMOVNE) = "cmovne"
-   and emit_cmove x = (emit (asm_cmove x))
-   and asm_operateV (I.ADDLV) = "addlv"
-     | asm_operateV (I.ADDQV) = "addqv"
-     | asm_operateV (I.SUBLV) = "sublv"
-     | asm_operateV (I.SUBQV) = "subqv"
-     | asm_operateV (I.MULLV) = "mullv"
-     | asm_operateV (I.MULQV) = "mulqv"
-   and emit_operateV x = (emit (asm_operateV x))
-   and asm_fload (I.LDF) = "ldf"
-     | asm_fload (I.LDG) = "ldg"
-     | asm_fload (I.LDS) = "lds"
-     | asm_fload (I.LDT) = "ldt"
-   and emit_fload x = (emit (asm_fload x))
-   and asm_branch (I.BR) = "br"
-     | asm_branch (I.BSR) = "bsr"
-     | asm_branch (I.BLBC) = "blbc"
-     | asm_branch (I.BEQ) = "beq"
-     | asm_branch (I.BLT) = "blt"
-     | asm_branch (I.BLE) = "ble"
-     | asm_branch (I.BLBS) = "blbs"
-     | asm_branch (I.BNE) = "bne"
-     | asm_branch (I.BGE) = "bge"
-     | asm_branch (I.BGT) = "bgt"
-   and emit_branch x = (emit (asm_branch x))
    and asm_foperateV (I.ADDSSUD) = "addssud"
      | asm_foperateV (I.ADDSSU) = "addssu"
      | asm_foperateV (I.ADDTSUD) = "addtsud"
@@ -133,6 +100,97 @@ struct
      | asm_foperateV (I.SUBTSUD) = "subtsud"
      | asm_foperateV (I.SUBTSU) = "subtsu"
    and emit_foperateV x = (emit (asm_foperateV x))
+   and emit_operand (I.REGop GP) = (emit_GP GP)
+     | emit_operand (I.IMMop int) = (emit_int int)
+     | emit_operand (I.HILABop labexp) = 
+       ((emit "hi("); 
+       (emit_labexp labexp); 
+       (emit ")"))
+     | emit_operand (I.LOLABop labexp) = 
+       ((emit "lo("); 
+       (emit_labexp labexp); 
+       (emit ")"))
+     | emit_operand (I.LABop labexp) = (emit_labexp labexp)
+     | emit_operand (I.CONSTop const) = (emit_const const)
+   and asm_fload (I.LDF) = "ldf"
+     | asm_fload (I.LDG) = "ldg"
+     | asm_fload (I.LDS) = "lds"
+     | asm_fload (I.LDT) = "ldt"
+   and emit_fload x = (emit (asm_fload x))
+   and asm_foperate (I.CPYS) = "cpys"
+     | asm_foperate (I.CPYSE) = "cpyse"
+     | asm_foperate (I.CPYSN) = "cpysn"
+     | asm_foperate (I.MF_FPCR) = "mf_fpcr"
+     | asm_foperate (I.MT_FPCR) = "mt_fpcr"
+     | asm_foperate (I.CMPTEQ) = "cmpteq"
+     | asm_foperate (I.CMPTLT) = "cmptlt"
+     | asm_foperate (I.CMPTLE) = "cmptle"
+     | asm_foperate (I.CMPTUN) = "cmptun"
+     | asm_foperate (I.CMPTEQSU) = "cmpteqsu"
+     | asm_foperate (I.CMPTLTSU) = "cmptltsu"
+     | asm_foperate (I.CMPTLESU) = "cmptlesu"
+     | asm_foperate (I.CMPTUNSU) = "cmptunsu"
+   and emit_foperate x = (emit (asm_foperate x))
+   and asm_funary (I.CVTLQ) = "cvtlq"
+     | asm_funary (I.CVTQL) = "cvtql"
+     | asm_funary (I.CVTQLSV) = "cvtqlsv"
+     | asm_funary (I.CVTQLV) = "cvtqlv"
+     | asm_funary (I.CVTQS) = "cvtqs"
+     | asm_funary (I.CVTQSC) = "cvtqsc"
+     | asm_funary (I.CVTQT) = "cvtqt"
+     | asm_funary (I.CVTQTC) = "cvtqtc"
+     | asm_funary (I.CVTTS) = "cvtts"
+     | asm_funary (I.CVTTSC) = "cvttsc"
+     | asm_funary (I.CVTST) = "cvtst"
+     | asm_funary (I.CVTSTS) = "cvtsts"
+     | asm_funary (I.CVTTQ) = "cvttq"
+     | asm_funary (I.CVTTQC) = "cvttqc"
+   and emit_funary x = (emit (asm_funary x))
+   and asm_fstore (I.STF) = "stf"
+     | asm_fstore (I.STG) = "stg"
+     | asm_fstore (I.STS) = "sts"
+     | asm_fstore (I.STT) = "stt"
+   and emit_fstore x = (emit (asm_fstore x))
+   and asm_branch (I.BR) = "br"
+     | asm_branch (I.BSR) = "bsr"
+     | asm_branch (I.BLBC) = "blbc"
+     | asm_branch (I.BEQ) = "beq"
+     | asm_branch (I.BLT) = "blt"
+     | asm_branch (I.BLE) = "ble"
+     | asm_branch (I.BLBS) = "blbs"
+     | asm_branch (I.BNE) = "bne"
+     | asm_branch (I.BGE) = "bge"
+     | asm_branch (I.BGT) = "bgt"
+   and emit_branch x = (emit (asm_branch x))
+   and asm_cmove (I.CMOVEQ) = "cmoveq"
+     | asm_cmove (I.CMOVLBC) = "cmovlbc"
+     | asm_cmove (I.CMOVLBS) = "cmovlbs"
+     | asm_cmove (I.CMOVGE) = "cmovge"
+     | asm_cmove (I.CMOVGT) = "cmovgt"
+     | asm_cmove (I.CMOVLE) = "cmovle"
+     | asm_cmove (I.CMOVLT) = "cmovlt"
+     | asm_cmove (I.CMOVNE) = "cmovne"
+   and emit_cmove x = (emit (asm_cmove x))
+   and asm_operateV (I.ADDLV) = "addlv"
+     | asm_operateV (I.ADDQV) = "addqv"
+     | asm_operateV (I.SUBLV) = "sublv"
+     | asm_operateV (I.SUBQV) = "subqv"
+     | asm_operateV (I.MULLV) = "mullv"
+     | asm_operateV (I.MULQV) = "mulqv"
+   and emit_operateV x = (emit (asm_operateV x))
+   and asm_fbranch (I.FBEQ) = "fbeq"
+     | asm_fbranch (I.FBLT) = "fblt"
+     | asm_fbranch (I.FBLE) = "fble"
+     | asm_fbranch (I.FBNE) = "fbne"
+     | asm_fbranch (I.FBGE) = "fbge"
+     | asm_fbranch (I.FBGT) = "fbgt"
+   and emit_fbranch x = (emit (asm_fbranch x))
+   and asm_load (I.LDL) = "ldl"
+     | asm_load (I.LDL_L) = "ldl_l"
+     | asm_load (I.LDQ) = "ldq"
+     | asm_load (I.LDQ_L) = "ldq_l"
+     | asm_load (I.LDQ_U) = "ldq_u"
+   and emit_load x = (emit (asm_load x))
    and asm_operate (I.ADDL) = "addl"
      | asm_operate (I.ADDQ) = "addq"
      | asm_operate (I.CMPBGE) = "cmpbge"
@@ -188,49 +246,13 @@ struct
      | asm_operate (I.UMULH) = "umulh"
      | asm_operate (I.SGNXL) = "addl"
    and emit_operate x = (emit (asm_operate x))
-   and asm_load (I.LDL) = "ldl"
-     | asm_load (I.LDL_L) = "ldl_l"
-     | asm_load (I.LDQ) = "ldq"
-     | asm_load (I.LDQ_L) = "ldq_l"
-     | asm_load (I.LDQ_U) = "ldq_u"
-   and emit_load x = (emit (asm_load x))
-   and asm_funary (I.CVTLQ) = "cvtlq"
-     | asm_funary (I.CVTQL) = "cvtql"
-     | asm_funary (I.CVTQLSV) = "cvtqlsv"
-     | asm_funary (I.CVTQLV) = "cvtqlv"
-     | asm_funary (I.CVTQS) = "cvtqs"
-     | asm_funary (I.CVTQSC) = "cvtqsc"
-     | asm_funary (I.CVTQT) = "cvtqt"
-     | asm_funary (I.CVTQTC) = "cvtqtc"
-     | asm_funary (I.CVTTS) = "cvtts"
-     | asm_funary (I.CVTTSC) = "cvttsc"
-     | asm_funary (I.CVTTQ) = "cvttq"
-     | asm_funary (I.CVTTQC) = "cvttqc"
-   and emit_funary x = (emit (asm_funary x))
-   and asm_fbranch (I.FBEQ) = "fbeq"
-     | asm_fbranch (I.FBLT) = "fblt"
-     | asm_fbranch (I.FBLE) = "fble"
-     | asm_fbranch (I.FBNE) = "fbne"
-     | asm_fbranch (I.FBGE) = "fbge"
-     | asm_fbranch (I.FBGT) = "fbgt"
-   and emit_fbranch x = (emit (asm_fbranch x))
-   and emit_operand (I.REGop GP) = (emit_GP GP)
-     | emit_operand (I.IMMop int) = (emit_int int)
-     | emit_operand (I.HILABop labexp) = 
-       ((emit "hi("); 
-       (emit_labexp labexp); 
-       (emit ")"))
-     | emit_operand (I.LOLABop labexp) = 
-       ((emit "lo("); 
-       (emit_labexp labexp); 
-       (emit ")"))
-     | emit_operand (I.LABop labexp) = (emit_labexp labexp)
-     | emit_operand (I.CONSTop const) = (emit_const const)
-   and asm_fstore (I.STF) = "stf"
-     | asm_fstore (I.STG) = "stg"
-     | asm_fstore (I.STS) = "sts"
-     | asm_fstore (I.STT) = "stt"
-   and emit_fstore x = (emit (asm_fstore x))
+   and asm_fcmove (I.FCMOVEQ) = "fcmoveq"
+     | asm_fcmove (I.FCMOVEGE) = "fcmovege"
+     | asm_fcmove (I.FCMOVEGT) = "fcmovegt"
+     | asm_fcmove (I.FCMOVLE) = "fcmovle"
+     | asm_fcmove (I.FCMOVELT) = "fcmovelt"
+     | asm_fcmove (I.FCMOVENE) = "fcmovene"
+   and emit_fcmove x = (emit (asm_fcmove x))
 
    fun emitInstr instr = 
        ((tab ()); 
@@ -336,7 +358,7 @@ struct
         (emit_label label))
       | I.OPERATE{oper, ra, rb, rc} => let
 
-(*#line 304.1 "alpha/alpha.md"*)
+(*#line 306.1 "alpha/alpha.md"*)
 
            fun f (oper, ra, rb, rc) = 
                ((emit oper); 
@@ -350,7 +372,7 @@ struct
            (
             case (oper, ra, rb, rc) of
             (I.BIS, 27, I.REGop 31, 29) => (emit "ldgp\t$29, 0($27)")
-          | (I.BIS, 26, I.REGop 31, 29) => (emit "ldgp\t$26, 0($27)")
+          | (I.BIS, 26, I.REGop 31, 29) => (emit "ldgp\t$29, 0($26)")
           | (I.ADDL, 30, I.CONSTop b, 30) => (if ((Constant.valueOf b) = 0)
                then ()
                else (f ("addl", ra, rb, rc)))
@@ -438,16 +460,18 @@ struct
            (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
       in  emitInstr end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
                 blockName=blockName,
-                annotation=annotation
+                annotation=annotation,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

@@ -20,9 +20,11 @@ struct
                       exportPid: pid option, newenv: statenv}
     = fn (compenv, newenv) =>
         let val {hash,pickle,exportLvars,exportPid} = 
-              PickMod.pickleEnv(compenv,newenv)
+              PickMod.pickleEnv { context = compenv, env = newenv }
             val newenv' = 
-              UnpickMod.unpickleEnv(compenv, {hash=hash,pickle=pickle})
+              UnpickMod.unpickleEnv { context = compenv,
+				      hash = hash,
+				      pickle = pickle}
          in {hash=hash, pickle=pickle, exportLvars=exportLvars,
              exportPid=exportPid, newenv=newenv'}
         end

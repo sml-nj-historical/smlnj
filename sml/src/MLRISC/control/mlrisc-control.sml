@@ -24,7 +24,7 @@ sig
     val getTiming     : string -> cpu_time ref
 end
 
-structure MLRISC_Control : MLRISC_CONTROL =
+structure MLRiscControl : MLRISC_CONTROL =
 struct
    type cpu_time = {gc:Time.time,usr:Time.time,sys:Time.time}
 

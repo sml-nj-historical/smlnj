@@ -512,6 +512,13 @@ struct
         nullified when n = true
 	candidate of delayslot never
 
+    | BE of {b: $GP, d:operand, sr:int, n:bool, labs: Label.label list}
+	``be<n>\t<d>(<sr>,<b>)''
+	(let val (w,w1,w2) = assemble_17(opn d)
+	 in  BranchExternal{Op=0wx38,b=b,w1=w1,s=assemble_3(itow sr),
+                            w2=w2,n=n,w=w}
+	 end)
+
     | BV of {x: $GP, b: $GP, labs: Label.label list, n:bool}
 	``bv<n>\t<x>(<b>)''
         BranchVectored{Op=0wx3a,t=b,x=x,ext3=0w6,n=n}

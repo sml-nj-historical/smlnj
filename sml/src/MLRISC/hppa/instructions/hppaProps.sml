@@ -26,6 +26,7 @@ struct
     | instrKind(I.BCONDI _) = IK_JUMP
     | instrKind(I.BB _)     = IK_JUMP
     | instrKind(I.B _)      = IK_JUMP
+    | instrKind(I.BE _)     = IK_JUMP
     | instrKind(I.FBRANCH _)= IK_JUMP
     | instrKind(I.BV _)     = IK_JUMP
     | instrKind(I.BLR _)    = IK_JUMP
@@ -66,6 +67,8 @@ struct
     | branchTargets(I.BB{t, ...})       = [LABELLED t, FALLTHROUGH]
     | branchTargets(I.B{lab, ...})      = [LABELLED lab]
     | branchTargets(I.FBRANCH{t,...})   = [LABELLED t, FALLTHROUGH]
+    | branchTargets(I.BE{labs=[],...})  = [ESCAPES]
+    | branchTargets(I.BE{labs,...})     = map LABELLED labs
     | branchTargets(I.BV{labs=[],...})  = [ESCAPES]
     | branchTargets(I.BV{labs,...})     = map LABELLED labs
     | branchTargets(I.BLR{labs,...})    = map LABELLED labs
@@ -87,6 +90,7 @@ struct
     | setTargets(I.FBRANCH{cc,fmt,n,long,f1,f2,...},[F,T]) =
           I.FBRANCH{cc=cc,fmt=fmt,t=T,f=F,n=n,long=long,f1=f1,f2=f2} 
     | setTargets(I.BV{x,b,n,...},labels) = I.BV{x=x,b=b,labs=labels,n=n}
+    | setTargets(I.BE{b,d,n,sr,...},labs) = I.BE{b=b,d=d,n=n,sr=sr,labs=labs}
     | setTargets(I.BLR{x,t,n,...},labels) = I.BLR{x=x,t=t,labs=labels,n=n}
     | setTargets(I.ANNOTATION{i,a},labels) =
           I.ANNOTATION{i=setTargets(i,labels),a=a}
@@ -181,6 +185,7 @@ struct
       | I.BCONDI {r2, ...} 	    => ([],  [r2])
       | I.BB {r, ...} 	            => ([],  [r])
       | I.BV {x, b, ...}	    => ([],  [x,b])
+      | I.BE {b, ...}	            => ([],  [b])
       | I.BLR{x, t, ...}            => ([t], [x])
       | I.BL{defs, uses, ...}       => (#1 defs, #1 uses)
       | I.BLE{t, b, defs, uses, ...}=> (31 :: t :: #1 defs, b :: #1 uses)
@@ -193,6 +198,7 @@ struct
       | I.FSTOREX {b, x, ...}  	    => ([],  [b,x])
       | I.FLOAD {b, ...}	    => ([],  [b])
       | I.FLOADX{b, x, ...} 	    => ([],  [b,x])
+      | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
       | I.ANNOTATION{i,...}         => defUseR i
       | _   => ([],[])
   end
@@ -211,6 +217,7 @@ struct
        | I.BLE{defs, uses, ...}    => (#2 defs, #2 uses)
        | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
        | I.FCOPY{dst, src, ...}    => (dst, src)
+       | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
        | I.ANNOTATION{i,...}       => defUseF i
        | _ => ([],[])
 

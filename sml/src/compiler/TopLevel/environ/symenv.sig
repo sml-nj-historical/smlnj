@@ -13,6 +13,7 @@ signature SYMENV = sig
     val remove: pid list * symenv -> symenv
     val consolidate: symenv -> symenv
     val singleton: pid * flint -> symenv
-
+    val listItemsi: symenv -> (pid * flint) list
+    val fromListi: (pid * flint) list -> symenv
 end (* signature SYMENV *)
 

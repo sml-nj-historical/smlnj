@@ -4,13 +4,11 @@ sig
     val timePhase : string -> ('a -> 'b) -> 'a -> 'b
 end
 
-structure MLRISC_Timing : MLRISC_TIMING =
+structure MLRiscTiming : MLRISC_TIMING =
 struct
 
-   structure C = MLRISC_Control
-
    fun timePhase name f =
-   let val timing as ref {gc,usr,sys} = C.getTiming name
+   let val timing as ref {gc,usr,sys} = MLRiscControl.getTiming name
        fun run x = 
        let val timer = Timer.startCPUTimer()
            fun update timer = 

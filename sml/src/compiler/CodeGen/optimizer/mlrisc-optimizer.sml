@@ -3,7 +3,7 @@
 structure MLRISCOptimizer = struct
   structure Glue = 
     MLRISCGlue(open Compiler.Machine
-	       fun patchBranch{instr,backwards} = [instr]
-	       fun branchProb _ = 50)
+               structure FreqProps = FreqProps(P)
+              )
   val _ = Compiler.Machine.optimizerHook := SOME(Glue.codegen)
 end

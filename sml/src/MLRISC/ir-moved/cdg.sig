@@ -17,7 +17,6 @@ sig
 
     val control_dependence_graph : 
           ('e -> bool) ->
-          ('n,'e,'g) Dom.dominator_tree * 
           ('n,'e,'g) Dom.postdominator_tree ->
           ('n,'e,'g) cdg 
 
@@ -26,7 +25,6 @@ sig
           ('e Graph.edge -> 'e2 Graph.edge) ->
           ('g -> 'g2) ->
           ('e -> bool) ->
-          ('n,'e,'g) Dom.dominator_tree * 
           ('n,'e,'g) Dom.postdominator_tree ->
           ('n2,'e2,'g2) cdg 
 

@@ -8,7 +8,8 @@ struct
   datatype 'a bucket = NIL | B of (int * 'a * 'a bucket)
   datatype 'a intmap =
     H of {table: 'a bucket array ref,elems: int ref,exn: exn,name: string option}
-  fun clear(H{table,elems,...}) = (table := array(32,NIL); elems := 0)
+  fun clear(H{table,elems,...}) = 
+      if !elems > 0 then (table := array(32,NIL); elems := 0) else ()
   fun bucketapp f =
       let fun loop NIL = ()
 	    | loop(B(i,j,r)) = (f(i,j); loop r)
@@ -26,6 +27,18 @@ struct
   fun index(a, i) = wtoi (Word.andb(itow i, itow(Array.length a - 1)))
   fun map (H{table,exn,...}) =
       (fn i => let fun find NIL = raise exn
+		     | find(B(i',j,r)) = if i=i' then j else find r
+		   val ref a = table
+	       in find(a sub (index(a, i)))
+	       end)
+  fun mapWithDefault (H{table,exn,...},default) =
+      (fn i => let fun find NIL = default
+		     | find(B(i',j,r)) = if i=i' then j else find r
+		   val ref a = table
+	       in find(a sub (index(a, i)))
+	       end)
+  fun mapInt (H{table,exn,...}) =
+      (fn i => let fun find NIL = i
 		     | find(B(i',j,r)) = if i=i' then j else find r
 		   val ref a = table
 	       in find(a sub (index(a, i)))
@@ -77,5 +90,28 @@ struct
          |   loop (n, NIL, acc) = loop(n-1, a sub (n-1), acc)
       in loop(last,a sub last,[])
      end
+  fun values(H{table,...})=
+   let val a = !table;
+	 val last = Array.length a - 1
+         fun loop (0, NIL, acc) = acc
+         |   loop (n, B(i,j,r), acc) = loop(n, r, j::acc)
+         |   loop (n, NIL, acc) = loop(n-1, a sub (n-1), acc)
+      in loop(last,a sub last,[])
+     end
+  fun keys(H{table,...})=
+   let val a = !table;
+	 val last = Array.length a - 1
+         fun loop (0, NIL, acc) = acc
+         |   loop (n, B(i,j,r), acc) = loop(n, r, i::acc)
+         |   loop (n, NIL, acc) = loop(n-1, a sub (n-1), acc)
+      in loop(last,a sub last,[])
+     end
+
+  fun copy(H{table=ref a,elems,exn,name}) =
+  let val a' = Array.array(Array.length a,NIL)
+  in  Array.copy{di=0, dst=a', len=NONE, si=0, src=a};
+      H{table=ref a', elems=ref(!elems), exn=exn, name=name}
+  end
+
 end
 

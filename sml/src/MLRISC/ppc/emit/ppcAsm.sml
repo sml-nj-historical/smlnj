@@ -19,14 +19,21 @@ struct
    
    fun error msg = MLRiscErrorMsg.error("PPCAsm",msg)
    
-   fun makeStream() =
+   fun makeStream formatAnnotations =
    let val stream = !AsmStream.asmOutStream
-       fun emit s = TextIO.output(stream,s)
-       fun nl() = emit "\n"
+       fun emit' s = TextIO.output(stream,s)
+       val newline = ref true
+       val tabs = ref 0
+       fun tabbing 0 = ()
+         | tabbing n = (emit' "\t"; tabbing(n-1))
+       fun emit s = (tabbing(!tabs); tabs := 0; newline := false; emit' s)
+       fun nl() = (tabs := 0; if !newline then () else (newline := true; emit' "\n"))
        fun comma() = emit ","
-       fun tab() = emit "\t"
-       fun ms n = if n<0 then "-"^Int.toString(~n) 
-                  else Int.toString n
+       fun tab() = tabs := !tabs + 1
+       fun ms n = let val s = Int.toString n
+                  in  if n<0 then "-"^String.substring(s,1,size s-1)
+                      else s
+                  end
        fun emit_label lab = emit(Label.nameOf lab)
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
@@ -41,60 +48,30 @@ struct
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
        fun doNothing _ = ()
+       val emitRegInfo = AsmFormatUtil.reginfo(emit,formatAnnotations)
        fun emitter regmap =
        let
 
-   fun emit_SPR r = (emit (C.showSPR (regmap r)))
-   and emit_CC r = (emit (C.showCC (regmap r)))
-   and emit_GP r = (emit (C.showGP (regmap r)))
-   and emit_FP r = (emit (C.showFP (regmap r)))
+   fun emit_SPR r = 
+       ((emit (C.showSPR (regmap r))); 
+       (emitRegInfo r))
+   and emit_CC r = 
+       ((emit (C.showCC (regmap r))); 
+       (emitRegInfo r))
+   and emit_FP r = 
+       ((emit (C.showFP (regmap r))); 
+       (emitRegInfo r))
+   and emit_GP r = 
+       ((emit (C.showGP (regmap r))); 
+       (emitRegInfo r))
 
-   fun asm_store (I.STB) = "stb"
-     | asm_store (I.STBE) = "stbe"
-     | asm_store (I.STH) = "sth"
-     | asm_store (I.STHE) = "sthe"
-     | asm_store (I.STW) = "stw"
-     | asm_store (I.STWE) = "stwe"
-     | asm_store (I.STDE) = "stde"
-   and emit_store x = (emit (asm_store x))
-   and asm_rotatei (I.RLWINM) = "rlwinm"
-     | asm_rotatei (I.RLWIMI) = "rlwimi"
-     | asm_rotatei (I.RLDICL) = "rldicl"
-     | asm_rotatei (I.RLDICR) = "rldicr"
-     | asm_rotatei (I.RLDIC) = "rldic"
-     | asm_rotatei (I.RLDIMI) = "rldimi"
-   and emit_rotatei x = (emit (asm_rotatei x))
-   and asm_arithi (I.ADDI) = "addi"
-     | asm_arithi (I.ADDIS) = "addis"
-     | asm_arithi (I.SUBFIC) = "subfic"
-     | asm_arithi (I.MULLI) = "mulli"
-     | asm_arithi (I.ANDI_Rc) = "andi."
-     | asm_arithi (I.ANDIS_Rc) = "andis."
-     | asm_arithi (I.ORI) = "ori"
-     | asm_arithi (I.ORIS) = "oris"
-     | asm_arithi (I.XORI) = "xori"
-     | asm_arithi (I.XORIS) = "xoris"
-     | asm_arithi (I.SRAWI) = "srawi"
-     | asm_arithi (I.SRADI) = "sradi"
-   and emit_arithi x = (emit (asm_arithi x))
-   and asm_fload (I.LFS) = "lfs"
-     | asm_fload (I.LFSE) = "lfse"
-     | asm_fload (I.LFD) = "lfd"
-     | asm_fload (I.LFDE) = "lfde"
-   and emit_fload x = (emit (asm_fload x))
-   and asm_farith3 (I.FMADD) = "fmadd"
-     | asm_farith3 (I.FMADDS) = "fmadds"
-     | asm_farith3 (I.FMSUB) = "fmsub"
-     | asm_farith3 (I.FMSUBS) = "fmsubs"
-     | asm_farith3 (I.FNMADD) = "fnmadd"
-     | asm_farith3 (I.FNMADDS) = "fnmadds"
-     | asm_farith3 (I.FNMSUB) = "fnmsub"
-     | asm_farith3 (I.FNMSUBS) = "fnmsubs"
-     | asm_farith3 (I.FSEL) = "fsel"
-   and emit_farith3 x = (emit (asm_farith3 x))
-   and asm_cmp (I.CMP) = "cmp"
-     | asm_cmp (I.CMPL) = "cmpl"
-   and emit_cmp x = (emit (asm_cmp x))
+   fun asm_unary (I.NEG) = "neg"
+     | asm_unary (I.EXTSB) = "extsb"
+     | asm_unary (I.EXTSH) = "extsh"
+     | asm_unary (I.EXTSW) = "extsw"
+     | asm_unary (I.CNTLZW) = "cntlzw"
+     | asm_unary (I.CNTLZD) = "cntlzd"
+   and emit_unary x = (emit (asm_unary x))
    and asm_farith (I.FADD) = "fadd"
      | asm_farith (I.FSUB) = "fsub"
      | asm_farith (I.FMUL) = "fmul"
@@ -104,10 +81,70 @@ struct
      | asm_farith (I.FMULS) = "fmuls"
      | asm_farith (I.FDIVS) = "fdivs"
    and emit_farith x = (emit (asm_farith x))
-   and asm_spr (I.XER) = "xer"
-     | asm_spr (I.LR) = "lr"
-     | asm_spr (I.CTR) = "ctr"
-   and emit_spr x = (emit (asm_spr x))
+   and asm_store (I.STB) = "stb"
+     | asm_store (I.STBE) = "stbe"
+     | asm_store (I.STH) = "sth"
+     | asm_store (I.STHE) = "sthe"
+     | asm_store (I.STW) = "stw"
+     | asm_store (I.STWE) = "stwe"
+     | asm_store (I.STDE) = "stde"
+   and emit_store x = (emit (asm_store x))
+   and emit_operand (I.RegOp GP) = (emit_GP GP)
+     | emit_operand (I.ImmedOp int) = (emit_int int)
+     | emit_operand (I.LabelOp labexp) = (emit_labexp labexp)
+     | emit_operand (I.ConstOp const) = (emit_const const)
+   and asm_fload (I.LFS) = "lfs"
+     | asm_fload (I.LFSE) = "lfse"
+     | asm_fload (I.LFD) = "lfd"
+     | asm_fload (I.LFDE) = "lfde"
+   and emit_fload x = (emit (asm_fload x))
+   and asm_funary (I.FMR) = "fmr"
+     | asm_funary (I.FNEG) = "fneg"
+     | asm_funary (I.FABS) = "fabs"
+     | asm_funary (I.FNABS) = "fnabs"
+     | asm_funary (I.FSQRT) = "fsqrt"
+     | asm_funary (I.FSQRTS) = "fsqrts"
+     | asm_funary (I.FRSP) = "frsp"
+     | asm_funary (I.FCTIW) = "fctiw"
+     | asm_funary (I.FCTIWZ) = "fctiwz"
+     | asm_funary (I.FCTID) = "fctid"
+     | asm_funary (I.FCTIDZ) = "fctidz"
+     | asm_funary (I.FCFID) = "fcfid"
+   and emit_funary x = (emit (asm_funary x))
+   and asm_fstore (I.STFS) = "stfs"
+     | asm_fstore (I.STFSE) = "stfse"
+     | asm_fstore (I.STFD) = "stfd"
+     | asm_fstore (I.STFDE) = "stfde"
+   and emit_fstore x = (emit (asm_fstore x))
+   and asm_cmp (I.CMP) = "cmp"
+     | asm_cmp (I.CMPL) = "cmpl"
+   and emit_cmp x = (emit (asm_cmp x))
+   and asm_rotate (I.RLWNM) = "rlwnm"
+     | asm_rotate (I.RLDCL) = "rldcl"
+     | asm_rotate (I.RLDCR) = "rldcr"
+   and emit_rotate x = (emit (asm_rotate x))
+   and asm_bit (I.LT) = "lt"
+     | asm_bit (I.GT) = "gt"
+     | asm_bit (I.EQ) = "eq"
+     | asm_bit (I.SO) = "so"
+     | asm_bit (I.FL) = "lt"
+     | asm_bit (I.FG) = "gt"
+     | asm_bit (I.FE) = "eq"
+     | asm_bit (I.FU) = "un"
+     | asm_bit (I.FX) = "lt"
+     | asm_bit (I.FEX) = "gt"
+     | asm_bit (I.VX) = "eq"
+     | asm_bit (I.OX) = "so"
+   and emit_bit x = (emit (asm_bit x))
+   and asm_ccarith (I.CRAND) = "crand"
+     | asm_ccarith (I.CROR) = "cror"
+     | asm_ccarith (I.CRXOR) = "crxor"
+     | asm_ccarith (I.CRNAND) = "crnand"
+     | asm_ccarith (I.CRNOR) = "crnor"
+     | asm_ccarith (I.CREQV) = "creqv"
+     | asm_ccarith (I.CRANDC) = "crandc"
+     | asm_ccarith (I.CRORC) = "crorc"
+   and emit_ccarith x = (emit (asm_ccarith x))
    and asm_arith (I.ADD) = "add"
      | asm_arith (I.SUBF) = "subf"
      | asm_arith (I.MULLW) = "mullw"
@@ -133,18 +170,43 @@ struct
      | asm_arith (I.SRAW) = "sraw"
      | asm_arith (I.SRAD) = "srad"
    and emit_arith x = (emit (asm_arith x))
+   and asm_rotatei (I.RLWINM) = "rlwinm"
+     | asm_rotatei (I.RLWIMI) = "rlwimi"
+     | asm_rotatei (I.RLDICL) = "rldicl"
+     | asm_rotatei (I.RLDICR) = "rldicr"
+     | asm_rotatei (I.RLDIC) = "rldic"
+     | asm_rotatei (I.RLDIMI) = "rldimi"
+   and emit_rotatei x = (emit (asm_rotatei x))
    and asm_fcmp (I.FCMPO) = "fcmpo"
      | asm_fcmp (I.FCMPU) = "fcmpu"
    and emit_fcmp x = (emit (asm_fcmp x))
-   and asm_ccarith (I.CRAND) = "crand"
-     | asm_ccarith (I.CROR) = "cror"
-     | asm_ccarith (I.CRXOR) = "crxor"
-     | asm_ccarith (I.CRNAND) = "crnand"
-     | asm_ccarith (I.CRNOR) = "crnor"
-     | asm_ccarith (I.CREQV) = "creqv"
-     | asm_ccarith (I.CRANDC) = "crandc"
-     | asm_ccarith (I.CRORC) = "crorc"
-   and emit_ccarith x = (emit (asm_ccarith x))
+   and asm_spr (I.XER) = "xer"
+     | asm_spr (I.LR) = "lr"
+     | asm_spr (I.CTR) = "ctr"
+   and emit_spr x = (emit (asm_spr x))
+   and asm_farith3 (I.FMADD) = "fmadd"
+     | asm_farith3 (I.FMADDS) = "fmadds"
+     | asm_farith3 (I.FMSUB) = "fmsub"
+     | asm_farith3 (I.FMSUBS) = "fmsubs"
+     | asm_farith3 (I.FNMADD) = "fnmadd"
+     | asm_farith3 (I.FNMADDS) = "fnmadds"
+     | asm_farith3 (I.FNMSUB) = "fnmsub"
+     | asm_farith3 (I.FNMSUBS) = "fnmsubs"
+     | asm_farith3 (I.FSEL) = "fsel"
+   and emit_farith3 x = (emit (asm_farith3 x))
+   and asm_arithi (I.ADDI) = "addi"
+     | asm_arithi (I.ADDIS) = "addis"
+     | asm_arithi (I.SUBFIC) = "subfic"
+     | asm_arithi (I.MULLI) = "mulli"
+     | asm_arithi (I.ANDI_Rc) = "andi."
+     | asm_arithi (I.ANDIS_Rc) = "andis."
+     | asm_arithi (I.ORI) = "ori"
+     | asm_arithi (I.ORIS) = "oris"
+     | asm_arithi (I.XORI) = "xori"
+     | asm_arithi (I.XORIS) = "xoris"
+     | asm_arithi (I.SRAWI) = "srawi"
+     | asm_arithi (I.SRADI) = "sradi"
+   and emit_arithi x = (emit (asm_arithi x))
    and asm_load (I.LBZ) = "lbz"
      | asm_load (I.LBZE) = "lbze"
      | asm_load (I.LHZ) = "lhz"
@@ -155,52 +217,6 @@ struct
      | asm_load (I.LWZE) = "lwze"
      | asm_load (I.LDE) = "lde"
    and emit_load x = (emit (asm_load x))
-   and asm_bit (I.LT) = "lt"
-     | asm_bit (I.GT) = "gt"
-     | asm_bit (I.EQ) = "eq"
-     | asm_bit (I.SO) = "so"
-     | asm_bit (I.FL) = "lt"
-     | asm_bit (I.FG) = "gt"
-     | asm_bit (I.FE) = "eq"
-     | asm_bit (I.FU) = "un"
-     | asm_bit (I.FX) = "lt"
-     | asm_bit (I.FEX) = "gt"
-     | asm_bit (I.VX) = "eq"
-     | asm_bit (I.OX) = "so"
-   and emit_bit x = (emit (asm_bit x))
-   and asm_funary (I.FMR) = "fmr"
-     | asm_funary (I.FNEG) = "fneg"
-     | asm_funary (I.FABS) = "fabs"
-     | asm_funary (I.FNABS) = "fnabs"
-     | asm_funary (I.FSQRT) = "fsqrt"
-     | asm_funary (I.FSQRTS) = "fsqrts"
-     | asm_funary (I.FRSP) = "frsp"
-     | asm_funary (I.FCTIW) = "fctiw"
-     | asm_funary (I.FCTIWZ) = "fctiwz"
-     | asm_funary (I.FCTID) = "fctid"
-     | asm_funary (I.FCTIDZ) = "fctidz"
-     | asm_funary (I.FCFID) = "fcfid"
-   and emit_funary x = (emit (asm_funary x))
-   and asm_rotate (I.RLWNM) = "rlwnm"
-     | asm_rotate (I.RLDCL) = "rldcl"
-     | asm_rotate (I.RLDCR) = "rldcr"
-   and emit_rotate x = (emit (asm_rotate x))
-   and asm_fstore (I.STFS) = "stfs"
-     | asm_fstore (I.STFSE) = "stfse"
-     | asm_fstore (I.STFD) = "stfd"
-     | asm_fstore (I.STFDE) = "stfde"
-   and emit_fstore x = (emit (asm_fstore x))
-   and emit_operand (I.RegOp GP) = (emit_GP GP)
-     | emit_operand (I.ImmedOp int) = (emit_int int)
-     | emit_operand (I.LabelOp labexp) = (emit_labexp labexp)
-     | emit_operand (I.ConstOp const) = (emit_const const)
-   and asm_unary (I.NEG) = "neg"
-     | asm_unary (I.EXTSB) = "extsb"
-     | asm_unary (I.EXTSH) = "extsh"
-     | asm_unary (I.EXTSW) = "extsw"
-     | asm_unary (I.CNTLZW) = "cntlzw"
-     | asm_unary (I.CNTLZD) = "cntlzd"
-   and emit_unary x = (emit (asm_unary x))
 
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, ((size s) - 1))) = #"e")
           then 
@@ -489,16 +505,18 @@ struct
            (emitInstr i; app (fn i => (tab(); emitInstr i)) is)
       in  emitInstr end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=defineLabel,
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
                 blockName=blockName,
-                annotation=annotation
+                annotation=annotation,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

@@ -1,7 +1,8 @@
 structure FunctionNames = struct
-  type name = string
-  val default = ""
-  fun toString name = name
+  type name = int
+  val default = ~1 
+  fun toString ~1 = ""
+    | toString f = Int.toString f
   fun ==(x:name,y:name) = x=y
 end
 

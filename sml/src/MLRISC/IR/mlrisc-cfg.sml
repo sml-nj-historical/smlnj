@@ -9,7 +9,6 @@ functor ControlFlowGraphFn
     structure P : PSEUDO_OPS
     structure GraphImpl : GRAPH_IMPLEMENTATION
     structure Asm : INSTRUCTION_EMITTER
-    structure Ctrl : MLRISC_CONTROL
        sharing Asm.I = I
        sharing Asm.P = P
    ) : CONTROL_FLOW_GRAPH =
@@ -66,7 +65,7 @@ struct
     type node = block Graph.node
 
     datatype info = 
-        INFO of { regmap      : C.regmap ref,
+        INFO of { regmap      : C.regmap,
                   annotations : Annotations.annotations ref,
                   firstBlock  : int ref,
                   reorder     : bool ref
@@ -156,8 +155,10 @@ struct
          |  NONE => ()
         ) handle Overflow => print("Bad footer\n")
 
-    fun emitStuff outline regmap (block as BLOCK{insns,data,labels,...}) =
-       let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = Asm.makeStream()
+    fun emitStuff outline annotations regmap
+           (block as BLOCK{insns,data,labels,...}) =
+       let val S as S.STREAM{pseudoOp,defineLabel,emit,...} = 
+               Asm.makeStream annotations
            val emit = emit (I.C.lookup regmap)
        in  emitHeader S block;
            app (fn PSEUDO p => pseudoOp p
@@ -167,8 +168,8 @@ struct
            emitFooter S block
        end
 
-    val emit = emitStuff false
-    val emitOutline = emitStuff true
+    val emit = emitStuff false 
+    val emitOutline = emitStuff true []
  
    (*========================================================================
     *
@@ -177,7 +178,7 @@ struct
     *========================================================================*)
     fun cfg info = GraphImpl.graph("CFG",info,10)
     fun new(regmap) =
-        let val info = INFO{ regmap      = ref regmap,  
+        let val info = INFO{ regmap      = regmap,  
                              annotations = ref [],
                              firstBlock  = ref 0,
                              reorder     = ref false
@@ -185,7 +186,7 @@ struct
         in  cfg info end
 
     fun subgraph(CFG as G.GRAPH{graph_info=INFO graph_info,...}) =
-        let val info = INFO{ regmap      = ref(! (#regmap graph_info)),
+        let val info = INFO{ regmap      = #regmap graph_info,
                              annotations = ref [],
                              firstBlock  = #firstBlock graph_info,
                              reorder     = #reorder graph_info
@@ -193,7 +194,8 @@ struct
         in  UpdateGraphInfo.update CFG info end
 
     fun init(G.GRAPH cfg) =
-        if #order cfg () = 0 then 
+        (case #entries cfg () of
+           [] =>
            let val i     = #new_id cfg ()
                val start = newStart(i,ref 0)
                val _     = #add_node cfg (i,start)
@@ -204,21 +206,22 @@ struct
                #set_entries cfg [i];
                #set_exits cfg [j]
            end
-        else ()
+        |  _ => () 
+        )
 
     fun changed(G.GRAPH{graph_info=INFO{reorder,annotations,...},...}) = 
          (app (fn CHANGED f => f() | _ => ()) (!annotations);
           reorder := true)
 
-    fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = !regmap
-    fun setRegmap(G.GRAPH{graph_info=INFO{regmap,...},...},r) = regmap := r
+    fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = regmap
+
     fun setAnnotations(G.GRAPH{graph_info=INFO{annotations,...},...},a) = 
         annotations := a
-    fun reglookup cfg =
-        let val regmap = regmap cfg
-            val look   = Intmap.map regmap
-            fun lookup r = look r handle _ => r
-        in  lookup end
+
+    fun getAnnotations(G.GRAPH{graph_info=INFO{annotations=ref a,...},...}) = a
+
+    fun reglookup cfg = C.lookup(regmap cfg)
+
     fun get f (BLOCK{annotations,...}) = A.get f (!annotations)
     fun liveOut b = 
          case get (fn LIVEOUT x => SOME x | _ => NONE) b of
@@ -275,16 +278,16 @@ struct
        val _      = AsmStream.withStream S f x 
    in  StringStream.getString buffer end
 
-   fun show_block regmap block = 
-   let val text = getString (emit regmap) block
+   fun show_block an regmap block = 
+   let val text = getString (emit an regmap) block
    in  foldr (fn (x,"") => x | (x,y) => x^" "^y) ""
             (String.tokens (fn #" " => true | _ => false) text)
    end
 
    fun headerText block = getString 
-        (fn b => emitHeader (Asm.makeStream()) b) block
+        (fn b => emitHeader (Asm.makeStream []) b) block
    fun footerText block = getString 
-        (fn b => emitFooter (Asm.makeStream()) b) block
+        (fn b => emitFooter (Asm.makeStream []) b) block
 
    fun edgeStyle(i,j,e as EDGE{k,a,...}) = 
    let val a = L.LABEL(show_edge e) :: !a
@@ -293,15 +296,16 @@ struct
        | _ => L.COLOR "red" :: a
    end 
 
-   val outline = Ctrl.getFlag "view-outline"
+   val outline = MLRiscControl.getFlag "view-outline"
 
    fun viewStyle cfg =
    let val regmap = regmap cfg
+       val an     = getAnnotations cfg
        fun node (n,b as BLOCK{annotations,...}) = 
            if !outline then
               L.LABEL(getString (emitOutline regmap) b) :: !annotations
            else
-              L.LABEL(show_block regmap b) :: !annotations
+              L.LABEL(show_block an regmap b) :: !annotations
    in  { graph = fn _ => [],
          edge  = edgeStyle,
          node  = node
@@ -312,9 +316,10 @@ struct
 
    fun subgraphLayout {cfg,subgraph = G.GRAPH subgraph} =
    let val regmap = regmap cfg
+       val an     = getAnnotations cfg
        fun node(n,b as BLOCK{annotations,...}) = 
           if #has_node subgraph n then
-             L.LABEL(show_block regmap b) :: !annotations
+             L.LABEL(show_block an regmap b) :: !annotations
           else
              L.COLOR "lightblue"::L.LABEL(headerText b) :: !annotations
        fun edge(i,j,e) = 

@@ -8,14 +8,12 @@ functor ClusterGen
   (structure Flowgraph : FLOWGRAPH
    structure InsnProps : INSN_PROPERTIES
    structure MLTree : MLTREE
-   structure Stream : INSTRUCTION_STREAM
 
-   val optimize : (Flowgraph.cluster -> Flowgraph.cluster) option ref
    val output : Flowgraph.cluster -> unit
      sharing Flowgraph.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant  
-     sharing MLTree.PseudoOp = Flowgraph.P = Stream.P 
-     sharing Flowgraph.B = MLTree.BNames = Stream.B 
+     sharing MLTree.PseudoOp = Flowgraph.P 
+     sharing Flowgraph.B = MLTree.BNames 
   ) : FLOWGRAPH_GEN = 
 struct
 
@@ -27,8 +25,7 @@ struct
   structure T = MLTree
   structure B = MLTree.BNames
   structure P = T.PseudoOp
-  structure S = Stream
-  structure Control = MLRISC_Control
+  structure S = T.Stream
   
   type label = Label.label
 
@@ -40,6 +37,9 @@ struct
   let val bblkCnt = ref 0 
       val entryLabels = ref ([] : Label.label list)
       val blkName  = ref B.default 
+      val regmap  = ref NONE
+      fun can'tUse _ = error "unimplemented" 
+      val aliasF  = ref can'tUse : (T.alias -> unit) ref
       val NOBLOCK = F.EXIT{blknum=0,freq=ref 0,pred=ref []}
       val currBlock : F.block ref = ref NOBLOCK
       val blockList : F.block list ref = ref []
@@ -78,16 +78,6 @@ struct
         fun defineLabel lab = blockListAdd(F.LABEL lab)
         fun entryLabel lab = 
           (entryLabels := lab::(!entryLabels);  blockListAdd(F.LABEL lab))
-        (*
-        fun ordered(mlts)        = 
-          blockListAdd
-            (F.ORDERED(map (fn T.PSEUDO_OP pOp => F.PSEUDO pOp
-                             | T.DEFINELABEL lab => F.LABEL lab
-                             | T.ENTRYLABEL lab => 
-                                 (entryLabels := lab :: !entryLabels;
-                                  F.LABEL lab)
-                             | _ => error "ordered ")
-                       mlts)) *)
       end (*local*)
     
       (** emitInstr - instructions are always added to currBlock. **)
@@ -137,7 +127,7 @@ struct
        (*esac*)
       end
 
-      fun endCluster(regmap,annotations) = let
+      fun endCluster(annotations) = let
           exception LabTbl
           val labTbl : F.block Intmap.intmap = Intmap.new(16, LabTbl)
           val addLabTbl = Intmap.add labTbl
@@ -214,40 +204,47 @@ struct
             of blk as F.BBLOCK _ => blockList := blk :: !blockList
              | _ => ()
     
-          val blocks = rev(!blockList) before blockList := []
+          val blocks = rev(!blockList) 
+          val _ = blockList := []
           val _ = fillLabTbl(blocks)
           val _ = graphEdges(blocks)
           val cluster =
            F.CLUSTER{blocks=blocks, entry=mkEntryBlock(), exit=exitBlk,
-                     blkCounter=ref(!bblkCnt), regmap=regmap,
+                     blkCounter=ref(!bblkCnt), regmap= Option.valOf(!regmap),
                      annotations=ref(annotations)}
-          val codegen =
-             case !optimize of
-               NONE => output
-             | SOME optimizer => output o optimizer
-        in  codegen cluster
+          val _ = regmap := NONE
+          val _ = aliasF := can'tUse
+        in  output cluster
         end
     
       fun beginCluster _ = 
-        (entryLabels := [];
-         bblkCnt := 0;
-         blkName := B.default;
-         blockList := [];
-         currBlock := NOBLOCK)
+      let val map = C.regmap()
+      in  entryLabels := [];
+          bblkCnt := 0;
+          blkName := B.default;
+          blockList := [];
+          currBlock := NOBLOCK;
+          regmap := SOME map;
+          aliasF := Intmap.add map;
+          map
+      end 
 
-      fun comment _ = ()  (* unimplemented *)
+      fun comment msg = annotation(BasicAnnotations.COMMENT msg)
+      fun alias(v,r) = !aliasF(v,r)
 
    in S.STREAM
-      { init        = beginCluster,
-        finish      = endCluster,
-        emit        = fn _ => emitInstr,
+      { beginCluster= beginCluster,
+        endCluster  = endCluster,
+        emit        = emitInstr,
         defineLabel = defineLabel,
         entryLabel  = entryLabel,
         pseudoOp    = pseudoOp,
         exitBlock   = exitBlock,
         blockName   = blockName,
         annotation  = annotation,
-        comment     = comment 
+        comment     = comment,
+        alias       = alias,
+        phi         = can'tUse
       }
    end
   

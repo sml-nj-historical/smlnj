@@ -34,7 +34,8 @@ sig
     *  new block; otherwise, we try to eliminate the jump when feasible.
     *=======================================================================*)
    val splitEdge  : CFG.cfg -> 
-                      { edge : CFG.edge,
+                      { kind : CFG.block_kind,
+                        edge : CFG.edge,
                         jump : bool
                       } ->
                       { edge : CFG.edge,

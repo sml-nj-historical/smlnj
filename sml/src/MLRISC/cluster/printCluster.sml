@@ -43,7 +43,7 @@ struct
        val prList = printList stream
        val regmap = C.lookup regmap
        val E.S.STREAM{emit,pseudoOp,defineLabel,annotation,...} = 
-             AsmStream.withStream stream E.makeStream()
+             AsmStream.withStream stream E.makeStream (!annotations)
        val emit = emit regmap
 
        fun printEntry(F.ENTRY{blknum, succ, freq, ...}) = 

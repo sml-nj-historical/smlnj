@@ -8,7 +8,7 @@
 structure Cont : CONT =
   struct
 
-    type 'a cont = 'a cont
+    type 'a cont = 'a PrimTypes.cont
 
     val callcc : ('a cont -> 'a) -> 'a = InlineT.callcc
     val throw : 'a cont -> 'a -> 'b = InlineT.throw

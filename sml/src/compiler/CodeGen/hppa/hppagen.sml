@@ -6,9 +6,8 @@
 
 structure HppaMC = 
   FLINTComp(
-    structure HppaGen = HppaCG(structure Emitter=HppaMCEmitter)
-    structure Gen=HppaGen
-    fun collect() = (HppaGen.finish(); CodeString.getCodeString()))
+    structure Gen = HppaCG
+    fun collect() = (HppaCG.finish(); CodeString.getCodeString()))
 
 
 

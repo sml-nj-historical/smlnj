@@ -15,23 +15,27 @@ structure UndirectedGraphView : UNDIRECTED_GRAPH_VIEW =
 struct
    
    structure G = Graph
-   structure Sort = Sorting
+   structure Sort = ListMergeSort
 
    fun undirected_view (G.GRAPH G) =
    let fun adjacent_edges i =
        let val in_edges  = map (fn (i,j,e) => (j,i,e)) (#in_edges G i)
            val out_edges = #out_edges G i
        in
-           Sort.sort_uniq (fn ((i,j,_),(i',j',_)) =>
-                               i < i' orelse i = i' andalso j < j')
-                          (fn ((i,j,_),(i',j',_)) => i = i' andalso j = j')
+           Sort.uniqueSort (fn ((i,j,_),(i',j',_)) =>
+                              if i < i' then LESS 
+                              else if i = i' then 
+                                   if j < j' then LESS
+                                   else if j = j' then EQUAL
+                                   else GREATER
+                              else GREATER)
                           (in_edges @ out_edges)
        end
        fun adjacent_nodes i =
        let val succ = #succ G i
            val pred = #pred G i
        in
-           Sort.sort_uniq op< op= (succ @ pred)
+           Sort.uniqueSort Int.compare (succ @ pred)
        end
 
        fun has_edge (i,j) = #has_edge G (i,j) orelse #has_edge G (j,i)

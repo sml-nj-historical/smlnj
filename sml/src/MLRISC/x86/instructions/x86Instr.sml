@@ -81,7 +81,7 @@ sig
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of (operand * C.cellset * C.cellset * Region.region)
-   | RET
+   | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
    | LEA of {r32:int, addr:operand}
    | CMP of {lsrc:operand, rsrc:operand}
@@ -187,7 +187,7 @@ struct
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
    | CALL of (operand * C.cellset * C.cellset * Region.region)
-   | RET
+   | RET of operand option
    | MOVE of {mvOp:move, src:operand, dst:operand}
    | LEA of {r32:int, addr:operand}
    | CMP of {lsrc:operand, rsrc:operand}

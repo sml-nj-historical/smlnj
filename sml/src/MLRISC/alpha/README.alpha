@@ -18,7 +18,10 @@ Special flags in the Alpha backend
 ======================================
 1.  mode32bit -- when this flag is set, 
     LOAD(32,...) will always be sign extended.
+    (NOTE: this flag has been eliminated.)
 2.  useSU -- when this flag is set the floating point arithmetic
      will use the /SU rounding mode.  Otherwise, /SUD is used.
 3.  multCost -- the estimated cost of integer multiplication. The 
     multiplication/division by a constant module uses this parameter.
+4.  useMultByConst -- when this flag is set, multiplication by a constant
+    that fits into one single instruction are always generated.

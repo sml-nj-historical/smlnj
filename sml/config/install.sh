@@ -159,14 +159,21 @@ movelib() {
 # the end by putting a "movelib" line into $LIBMOVESCRIPT.
 
 reglib() {
-    echo Scheduling library $1 to be built.
-    echo "andalso CM.stabilize false \"$1\"" >>$LIBLIST
-    echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
     if [ x$MOVE_LIBRARIES = xtrue ] ; then
-	echo movelib $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
-	echo $1 $LIBDIR/$1 >>$CM_PATHCONFIG_DEFAULT
+	FINALLOCATION=$LIBDIR/$1
     else
-	echo $1 $SRCDIR/$2 >>$CM_PATHCONFIG_DEFAULT
+	FINALLOCATION=$SRCDIR/$2
+    fi
+    if [ -d $FINALLOCATION ] ; then
+	echo "Library $1 already exists in $FINALLOCATION."
+    else
+        echo "Scheduling library $1 to be built in $FINALLOCATION."
+        echo "andalso CM.stabilize false \"$1\"" >>$LIBLIST
+        echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
+        if [ x$MOVE_LIBRARIES = xtrue ] ; then
+	    echo movelib $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
+        fi
+	echo $1 $FINALLOCATION >>$CM_PATHCONFIG_DEFAULT
     fi
 }
 
@@ -357,7 +364,7 @@ echo Installing other targets.
 for i in $TARGETS ; do
     case $i in
       src-smlnj)
-	for src in compiler comp-lib new-cm MLRISC smlnj-lib ml-yacc system
+	for src in compiler comp-lib cm MLRISC smlnj-lib ml-yacc system
 	do
 	    unpack $src $ROOT/src $src $ROOT/$VERSION-$src
         done

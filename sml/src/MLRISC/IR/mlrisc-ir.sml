@@ -19,7 +19,6 @@ functor MLRISC_IRFn
     structure Util        : CFG_UTIL
        sharing Loop.Dom = CDG.Dom
        sharing Util.CFG = CFG
-    structure Ctrl : MLRISC_CONTROL
    ) : MLRISC_IR =
 struct
 
@@ -70,7 +69,7 @@ struct
     * This function defines how we compute a new view 
     *)
 
-   val verbose = Ctrl.getFlag "verbose"
+   val verbose = MLRiscControl.getFlag "verbose"
 
    fun memo name compute = 
    let val {get,put,rmv,...} = A.new()
@@ -99,11 +98,11 @@ struct
     *  Extract various views from an IR
     *) 
 
-   val doms = memo "dom" Dom.dominator_trees
-   fun dom IR  = #1 (doms IR)
-   fun pdom IR = #2 (doms IR)
+   val dom = memo "dom" Dom.makeDominator
+   val pdom = memo "pdom" Dom.makePostdominator
+   fun doms IR = (dom IR,pdom IR)
    val cdg  = memo "cdg" 
-             (fn IR => CDG.control_dependence_graph CFG.cdgEdge (doms IR))
+             (fn IR => CDG.control_dependence_graph CFG.cdgEdge (pdom IR))
    val loop = memo "loop" (Loop.loop_structure o dom)
    val changed = CFG.changed 
 
@@ -116,7 +115,7 @@ struct
    let val {node,...} = CFG.viewStyle IR
    in  L.makeLayout {edge = defaultEdge,
                      graph= defaultGraph,
-                     node = fn (x,Dom.DOM{node=n,...}) => node(x,n)} G
+                     node = node} G
    end
  
    fun layoutDom IR  = layoutDom' IR (dom IR)
@@ -127,8 +126,9 @@ struct
        end
    fun layoutCDG IR = CFG.viewLayout(cdg IR)
    fun layoutLoop (IR as G.GRAPH cfg) = 
-       let val loop = loop IR
+       let val loop   = loop IR
            val regmap = CFG.regmap IR
+           val an     = CFG.getAnnotations IR
            fun mkNodes nodes =
               String.concat(map (fn i => Int.toString i^" ") nodes)
            fun mkEdges edges = 
@@ -137,7 +137,7 @@ struct
            fun node(_,Loop.LOOP{nesting,header,loop_nodes,
                                 backedges,exits,...}) =
                [L.LABEL("nesting: "^Int.toString nesting^"\n"^
-                        CFG.show_block regmap (#node_info cfg header)^
+                        CFG.show_block an regmap (#node_info cfg header)^
                         "loop_nodes: "^mkNodes loop_nodes^"\n"^
                         "backedges: "^mkEdges backedges^"\n"^
                         "exits: "^mkEdges exits^"\n"

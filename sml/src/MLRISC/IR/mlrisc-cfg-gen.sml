@@ -15,7 +15,6 @@ functor ControlFlowGraphGenFn
 struct
 
    structure CFG     = CFG
-   structure Props   = InsnProps
    structure I       = CFG.I
    structure B       = CFG.B
    structure P       = CFG.P
@@ -25,115 +24,119 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("ControlFlowGraphGen",msg)
 
-   fun warning msg = print("Warning: "^msg^"\n")
-
    fun builder(CFG) = 
-   let val currentBlock = ref NONE : CFG.block option ref
+   let val NOBLOCK      = CFG.newBlock(~1,B.default,ref 0)
+       val currentBlock = ref NOBLOCK 
        val newBlocks    = ref [] : CFG.block list ref 
        val blkName      = ref B.default
+       val entryLabels  = ref [] : Label.label list ref
+       fun can'tUse _   = error "unimplemented"
        exception NotFound
-       val labelMap = Intmap.new(43,NotFound)
+       val labelMap = Intmap.new(32,NotFound)
        val newLabel = Intmap.add labelMap
-       val CFG = ref CFG
+       val CFG    = ref CFG
+       val aliasF = ref can'tUse : (int * int -> unit) ref
 
        fun init _ =
-           (currentBlock := NONE;
+           (currentBlock := NOBLOCK;
             newBlocks := [];
+            entryLabels := [];
             blkName := B.default; 
             Intmap.clear labelMap;
-            CFG.init(!CFG)
+            aliasF := can'tUse
            ) 
 
        val _ = init()
 
-       fun next cfg = (CFG := cfg; init())
+       fun next cfg = CFG := cfg
 
        fun newBlock() = 
-             let val G.GRAPH cfg = !CFG
-                 val id = #new_id cfg ()
-                 val b  = CFG.newBlock(id,!blkName,ref 0)
-             in  currentBlock := SOME b; 
-                 newBlocks := b :: !newBlocks;
-                 #add_node cfg (id,b);
-                 b 
-             end
+       let val G.GRAPH cfg = !CFG
+           val id = #new_id cfg ()
+           val b  = CFG.newBlock(id,!blkName,ref 0)
+       in  currentBlock := b; 
+           newBlocks := b :: !newBlocks;
+           #add_node cfg (id,b);
+           b 
+       end
 
        fun getBlock() = 
            case !currentBlock of
-              NONE   => newBlock()
-           |  SOME b => b
+              CFG.BLOCK{id= ~1,...} => newBlock()
+           |  b => b
 
        fun newPseudoOpBlock() =
             (case !currentBlock of
-                SOME(b as CFG.BLOCK{insns=ref [],...}) => b
+                CFG.BLOCK{id= ~1,...} => newBlock()
+             |  b as CFG.BLOCK{insns=ref [],...} => b
              |  _ => newBlock()
             )  
 
        fun insertOp p = 
-            let val CFG.BLOCK{data,...} = newPseudoOpBlock()
-            in  data := !data @ [p] end
+       let val CFG.BLOCK{data,...} = newPseudoOpBlock()
+       in  data := !data @ [p] end
 
-       fun defineLabel(l as Label.Label{id,...}) = 
-           let val b as CFG.BLOCK{labels,...} = newPseudoOpBlock()
-           in  labels := l :: !labels;
-               newLabel(id,b)
-           end
+       fun defineLabel(l as Label.Label{id=labelId,...}) = 
+       let val CFG.BLOCK{id,labels,...} = newPseudoOpBlock()
+       in  labels := l :: !labels;
+           newLabel(labelId,id)
+       end
+
+       fun entryLabel l = (defineLabel l; entryLabels := l :: !entryLabels)
 
        fun pseudoOp p = insertOp(CFG.PSEUDO p)
 
-       fun exitBlock liveOut = 
-           let val CFG.BLOCK{annotations,...} = getBlock()
-           in  annotations := CFG.LIVEOUT liveOut :: !annotations
-           end
-
-       fun comment msg = 
-           let val CFG.BLOCK{annotations,...} = getBlock()
-           in  annotations := BasicAnnotations.COMMENT msg :: !annotations
-           end
-
        fun annotation a = 
-           let val CFG.BLOCK{annotations,...} = getBlock()
-           in  annotations := a :: !annotations
-           end
+       let val CFG.BLOCK{annotations,...} = getBlock()
+       in  annotations := a :: !annotations
+       end
+
+       fun exitBlock liveOut = 
+       let fun setLiveOut(CFG.BLOCK{annotations,...}) = 
+                 annotations := CFG.LIVEOUT liveOut :: !annotations
+       in  case !currentBlock of
+              CFG.BLOCK{id= ~1,...} => 
+                (case !newBlocks of
+                   [] => error "exitBlock"
+                 | b::_ => setLiveOut b
+                )
+            | b => setLiveOut b
+       end
+
+       fun comment msg = annotation(BasicAnnotations.COMMENT msg)
 
        fun blockName name = blkName := name
 
-       fun entryLabel(l as Label.Label{id,...}) = 
-       let val G.GRAPH cfg = !CFG
-           val b as CFG.BLOCK{id=j,labels,...} = newPseudoOpBlock()
-           val ENTRY = case #entries cfg () of
-                          [ENTRY] => ENTRY
-                       |  _ => raise Graph.NotSingleEntry
-       in  labels := l :: !labels;
-           newLabel(id,b);
-           #add_edge cfg (ENTRY,j,CFG.EDGE{k=CFG.ENTRY,a=ref [],w=ref 0})
+       fun emitInstr i =
+       let val CFG.BLOCK{insns,...} = getBlock()
+       in  insns := i :: !insns;
+           if InsnProps.instrKind i = InsnProps.IK_JUMP then
+              currentBlock := NOBLOCK
+           else () 
        end
 
-       fun emitInstr i =
-           let val CFG.BLOCK{insns,...} = getBlock()
-           in  insns := i :: !insns;
-               if Props.instrKind i = Props.IK_JUMP then
-                  currentBlock := NONE
-               else () 
-           end
-
-       fun finish(regmap,annotations) =
+       fun finish(annotations) =
        let val G.GRAPH cfg = !CFG
-           val EXIT = case #exits cfg () of
-                        [EXIT] => EXIT
-                      | _ => raise Graph.NotSingleExit
-           fun nextBlock(CFG.BLOCK{id,data=ref [],...}::_) = id
-             | nextBlock _ = error "nextBlock"
-           fun target (Label.Label{id,...}) = 
-               let val CFG.BLOCK{id,...} = Intmap.map labelMap id
-               in  id end
+           val _ = CFG.init(!CFG) (* create entry/exit *)
+           val ENTRY = hd(#entries cfg ())
+           val EXIT = hd(#exits cfg ())
+
+           fun next(CFG.BLOCK{id,data=ref [],...}::_) = id
+             | next _ = error "next"
+           val lookupLabelMap = Intmap.mapWithDefault(labelMap,EXIT)
+           val TRUE = CFG.BRANCH true
+           val FALSE = CFG.BRANCH false
+           val addEdge = #add_edge cfg
+
+           fun target(Label.Label{id,...}) = lookupLabelMap id
+
            fun addEdges [] = ()
              | addEdges(CFG.BLOCK{id,insns,...}::blocks) =
                (case !insns of
                   [] => fallsThru(id,blocks)
                 | instr::_ =>
-                   if Props.instrKind instr = Props.IK_JUMP then
-                      jump(id,Props.branchTargets instr,blocks)
+                   if InsnProps.instrKind instr = InsnProps.IK_JUMP then
+                      jump(id,InsnProps.branchTargets instr,blocks)
                    else 
                      fallsThru(id,blocks);
                 addEdges blocks
@@ -141,61 +144,67 @@ struct
            and fallsThru(i,CFG.BLOCK{id=j,data,...}::_) =
                  (case !data of
                      [] => ()
-                  |  _  => warning("falls thru into pseudo ops: "^
-                                   Int.toString i^" -> "^Int.toString j)
+                  |  _  => error("falls thru into pseudo ops: "^
+                                 Int.toString i^" -> "^Int.toString j)
                   ;
-                  #add_edge cfg (i,j,CFG.EDGE{k=CFG.FALLSTHRU,
-                                              w=ref 0, a=ref []
-                                             })
+                  addEdge(i,j,CFG.EDGE{k=CFG.FALLSTHRU,w=ref 0, a=ref []})
                  )
              | fallsThru(i,[]) =
-                  error("missing return in block "^Int.toString i)
-           and jump(i,[Props.ESCAPES],_) =
-                   #add_edge cfg (i,EXIT,CFG.EDGE{k=CFG.EXIT,
-                                                  w=ref 0,a=ref []
-                                                 })
-             | jump(i,[Props.LABELLED L],_) =
-                  #add_edge cfg (i,target L,CFG.EDGE{k=CFG.JUMP,
-                                                     w=ref 0, a=ref []})
-             | jump(i,[Props.LABELLED L,Props.FALLTHROUGH],bs) =
-                  (#add_edge cfg (i,target L,CFG.EDGE{k=CFG.BRANCH true,
-                                                      w=ref 0, a=ref []
-                                                     });
-                   #add_edge cfg (i,nextBlock bs,CFG.EDGE
-                                                     {k=CFG.BRANCH false,
-                                                      w=ref 0, a=ref []
-                                                     })
+                  (* error("missing return in block "^Int.toString i) *)
+                  addEdge(i,EXIT,CFG.EDGE{k=CFG.EXIT,w=ref 0,a=ref []})
+           and jump(i,[InsnProps.ESCAPES],_) =
+                  addEdge(i,EXIT,CFG.EDGE{k=CFG.EXIT,w=ref 0,a=ref []})
+             | jump(i,[InsnProps.LABELLED L],_) =
+                  addEdge(i,target L,CFG.EDGE{k=CFG.JUMP,w=ref 0,a=ref []})
+             | jump(i,[InsnProps.LABELLED L,InsnProps.FALLTHROUGH],bs) =
+                  (addEdge(i,target L,CFG.EDGE{k=TRUE,w=ref 0,a=ref[]});
+                   addEdge(i,next bs,CFG.EDGE{k=FALSE,w=ref 0,a=ref []})
+                  )
+             | jump(i,[InsnProps.FALLTHROUGH,InsnProps.LABELLED L],bs) =
+                  (addEdge(i,target L,CFG.EDGE{k=TRUE,w=ref 0,a=ref []});
+                   addEdge(i,next bs,CFG.EDGE{k=FALSE,w=ref 0,a=ref []})
                   )
              | jump(i,targets,_) =
-                  let fun f(n,[]) = ()
-                        | f(n,Props.LABELLED L::targets) =
-                        (#add_edge cfg (i,target L,CFG.EDGE
-                                                   {k=CFG.SWITCH n,
-                                                    w=ref 0, a=ref []});
-                         f(n+1,targets))
-                        | f _ = error "jump"
-                  in  f(0,targets) end
+               let fun loop(n,[]) = ()
+                     | loop(n,InsnProps.LABELLED L::targets) =
+                        (addEdge(i,target L, 
+                           CFG.EDGE{k=CFG.SWITCH n,w=ref 0,a=ref []});
+                       loop(n+1,targets))
+                     | loop _ = error "jump"
+               in  loop(0,targets) end
           in  addEdges(rev(!newBlocks));
-              CFG.setRegmap(!CFG,regmap);
-              CFG.setAnnotations(!CFG,annotations);
+              app (fn l => addEdge(ENTRY,target l,
+                              CFG.EDGE{k=CFG.ENTRY,a=ref [],w=ref 0})) 
+                     (!entryLabels);
+              CFG.setAnnotations(!CFG,annotations @ CFG.getAnnotations(!CFG));
               init()
           end
 
+        fun beginGraph _ = 
+        let val regmap = CFG.regmap(!CFG)
+        in  init();
+            aliasF := Intmap.add regmap;
+            regmap
+        end
+
+        fun alias(v,r) = !aliasF(v,r)
+
     in  {stream=S.STREAM
-           {  init        = init,
+           {  beginCluster= beginGraph,
+              endCluster  = finish,
               defineLabel = defineLabel,
               entryLabel  = entryLabel,
               pseudoOp    = pseudoOp,
-              emit        = fn _ => emitInstr,
+              emit        = emitInstr,
               exitBlock   = exitBlock,
               blockName   = blockName,
               comment     = comment,
               annotation  = annotation,
-              finish      = finish
+              alias       = alias,
+              phi         = can'tUse
            },
          next = next
         }
     end  
 
 end
-

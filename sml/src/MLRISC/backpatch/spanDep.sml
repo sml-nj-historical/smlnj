@@ -48,7 +48,7 @@ struct
     | LABEL  of Label.label
     | CODE of Label.label * code list
     | CLUSTER of {comp : compressed list,
-                  regmap : C.register -> C.register
+                  regmap : C.cell -> C.cell
                  }
 
   val clusterList : compressed list ref = ref []
@@ -358,7 +358,7 @@ struct
     in if adjust(zl, 0, false) then fixpoint zl else size
     end
 
-    val E.S.STREAM{defineLabel,pseudoOp,emit,init,...} = E.makeStream()
+    val E.S.STREAM{defineLabel,pseudoOp,emit,beginCluster,...} = E.makeStream []
     fun emitCluster(CLUSTER{comp, regmap},loc) = let
       val emit = emit regmap
       val emitInstrs = app emit 
@@ -379,7 +379,7 @@ struct
 
     val compressed = (rev (!clusterList)) before cleanUp()
     val size = fixpoint compressed
-  in init size;
+  in beginCluster size;
      foldl emitCluster 0 compressed handle e => raise e;
      ()
   end (*finish*)

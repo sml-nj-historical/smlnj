@@ -28,7 +28,7 @@ structure InternalSignals : sig
     datatype sig_action
       = IGNORE
       | DEFAULT
-      | HANDLER of (signal * int * unit cont) -> unit cont
+      | HANDLER of (signal * int * unit PrimTypes.cont) -> unit PrimTypes.cont
 
     fun sigToConst (SIG sc) = sc
     fun constToSig sc = SIG sc

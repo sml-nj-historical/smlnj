@@ -10,9 +10,9 @@
 structure NumScan : sig
 
     val scanWord : StringCvt.radix
-	  -> (char, 'a) StringCvt.reader -> (word32, 'a) StringCvt.reader
+	  -> (char, 'a) StringCvt.reader -> (Word32.word, 'a) StringCvt.reader
     val scanInt  : StringCvt.radix
-	  -> (char, 'a) StringCvt.reader -> (int32, 'a) StringCvt.reader
+	  -> (char, 'a) StringCvt.reader -> (Int32.int, 'a) StringCvt.reader
     val scanReal : (char, 'a) StringCvt.reader -> (real, 'a) StringCvt.reader
 	(** should be to LargeReal.real **)
 
@@ -22,7 +22,7 @@ structure NumScan : sig
     structure I = InlineT.Int31
     structure I32 = InlineT.Int32
     structure R = InlineT.Real64
-    type word = word32
+    type word = Word32.word
 
     val op <  = W.<
     val op >= = W.>=
@@ -35,7 +35,7 @@ structure NumScan : sig
 
     val largestNegInt32 : word = 0wx80000000
     val largestPosInt32 : word = 0wx7fffffff
-    val minInt32 : int32 = ~2147483648
+    val minInt32 : Int32.int = ~2147483648
 
   (* A table for mapping digits to values.  Whitespace characters map to
    * 128, "+" maps to 129, "-","~" map to 130, "." maps to 131, and the

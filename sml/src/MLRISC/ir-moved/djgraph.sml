@@ -23,10 +23,9 @@ struct
 
    fun dj_graph (D as G.GRAPH dom) =
    let val G.GRAPH cfg = Dom.cfg D
-       val methods     = Dom.methods D
        val L           = Dom.max_levels D
        val N           = #capacity dom ()
-       val levels      = Dom.levels D
+       val levels      = Dom.levelsMap D
        val in_DF       = A.array(N,0)  (* has appeared in the DF set? *)
        val stamp       = ref 0
        fun new_stamp() = let val s = !stamp + 1 in stamp := s; s end

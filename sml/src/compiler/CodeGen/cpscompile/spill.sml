@@ -155,7 +155,7 @@ fun partition f l =
 exception SpillCtyMap
 val ctymap : cty Intmap.intmap = Intmap.new(32,SpillCtyMap)
 fun clearCtyMap() = Intmap.clear ctymap
-fun getty v = (Intmap.map ctymap v) handle _ => BOGt
+fun getty v = Intmap.mapWithDefault (ctymap,BOGt) v
 val addty = Intmap.add ctymap 
 fun copyLvar v = let val p = (LV.dupLvar v, getty v) in addty p; p end
 fun floatP v = case (getty v) of FLTt => true | _ => false
@@ -340,7 +340,7 @@ local
   val floatset : bool Intmap.intmap = Intmap.new(32,FloatSet)
   fun fltM(v,FLTt) = Intmap.add floatset (v,true)
     | fltM _ = ()
-  fun fltP v = (Intmap.map floatset v) handle _ => false
+  val fltP = Intmap.mapWithDefault (floatset,false)
   fun clearSet() = Intmap.clear floatset
   val dummyM = fn _ => ()
   val dummyP = fn _ => true
@@ -396,7 +396,8 @@ fun improve cexp =
   let exception Spillmap
       val m : (int ref*int*value) Intmap.intmap = Intmap.new(32,Spillmap)
       val enter = Intmap.add m
-      fun get(VAR x) = (SOME(Intmap.map m x) handle Spillmap => NONE)
+      val lookup = Intmap.map m
+      fun get(VAR x) = (SOME(lookup x) handle Spillmap => NONE)
         | get _ = NONE
       fun kill(VAR v) = Intmap.rmv m v
         | kill _ = ()
@@ -436,7 +437,7 @@ fun improve cexp =
 	 | ARITH(i,vl,w,t,e) => ARITH(i,vl,w,t,g e)
 	 | PURE(i,vl,w,t,e) => PURE(i,vl,w,t,g e)
 
-      val count = (pass1 cexp; length(Intmap.intMapToList m))
+      val count = (pass1 cexp; Intmap.elems m)
 
       val _ = if (!CGoptions.debugcps) then
                 (pr "count="; (pr o Int.toString) count; pr "\n") 

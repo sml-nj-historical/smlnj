@@ -17,8 +17,8 @@ sig
        {def_use : 'n Graph.node -> var list * var list,
         cfg     : ('n,'e,'g) Graph.graph
        } ->
-       { idefuse      : unit -> (RegSet.regset * RegSet.regset) Array.array,
-         ipostdefuse  : unit -> (RegSet.regset * RegSet.regset) Array.array
+       { idefuse      : unit -> (int list * int list) Array.array,
+         ipostdefuse  : unit -> (int list * int list) Array.array
        }
 
 end

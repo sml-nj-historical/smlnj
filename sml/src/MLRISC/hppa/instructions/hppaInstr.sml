@@ -230,6 +230,7 @@ sig
    | BB of {bc:bitcond, r:int, p:int, n:bool, nop:bool, t:Label.label, f:Label.label
      }
    | B of {lab:Label.label, n:bool}
+   | BE of {b:int, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:int, b:int, labs:Label.label list, n:bool}
    | BLR of {x:int, t:int, labs:Label.label list, n:bool}
    | BL of {x:operand, t:int, defs:C.cellset, uses:C.cellset, n:bool}
@@ -485,6 +486,7 @@ struct
    | BB of {bc:bitcond, r:int, p:int, n:bool, nop:bool, t:Label.label, f:Label.label
      }
    | B of {lab:Label.label, n:bool}
+   | BE of {b:int, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:int, b:int, labs:Label.label list, n:bool}
    | BLR of {x:int, t:int, labs:Label.label list, n:bool}
    | BL of {x:operand, t:int, defs:C.cellset, uses:C.cellset, n:bool}

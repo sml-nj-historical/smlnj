@@ -28,8 +28,9 @@ functor X86Spill(structure Instr: X86INSTR
   (* XXX: Looks like the wrong thing is done with CMPL. 
    * That is to say, does not recognize memory arguments.
    *)
-  structure I = Instr
-  structure C = I.C
+  structure I  = Instr
+  structure C  = I.C
+  structure SL = SortedList
 
   fun error msg = MLRiscErrorMsg.impossible("X86Spill: "^ msg)
 
@@ -65,13 +66,10 @@ functor X86Spill(structure Instr: X86INSTR
     fun rewrite new old = if old=reg then new else old
     fun spillIt instr =
     case instr
-    of I.CALL(opnd, (r,f,c), uses, mem) => let
-         val tmpR = newReg()
-       in
-	 {proh=[tmpR],
-	  instr=SOME(I.CALL(opnd, (map (rewrite tmpR) r,f,c), uses, mem)),
-	  code=[I.MOVE{mvOp=I.MOVL, src=I.Direct tmpR, dst=spillLoc}] }
-       end
+    of I.CALL(opnd, defs, uses, mem) =>
+	 {proh=[],
+	  instr=SOME(I.CALL(opnd, C.rmvReg(reg,defs), uses, mem)),
+	  code=[] }
      | I.MOVE{mvOp=I.MOVZX, src, dst} => let(* dst must always be a register *)
          val tmpR = newReg()
        in 
@@ -167,10 +165,12 @@ functor X86Spill(structure Instr: X86INSTR
      | I.JCC{opnd=I.Direct _, cond} => done[I.JCC{opnd=spillLoc, cond=cond}]
      | I.JCC{opnd, cond} => 
 	withTmp(fn tmpR => I.JCC{opnd=operand(tmpR, opnd), cond=cond})
-     | I.CALL(opnd, defs, uses as (r,f,c), mem) => 
-	withTmp(fn tmpR =>
-		  I.CALL(operand(tmpR, opnd), defs, 
-                         (map (rewrite tmpR) r, f,c), mem))
+     | I.CALL(opnd, defs, uses, mem) => let
+	 val tmpR = newReg()
+       in
+	 {code=[I.CALL(operand(tmpR, opnd), defs, C.rmvReg(reg,uses), mem)],
+	  proh=[tmpR]}
+       end
      | I.MOVE{mvOp, src, dst as I.Direct _} => 
 	withTmp(fn tmpR =>I.MOVE{mvOp=mvOp, src=operand(tmpR, src), dst=dst})
      | I.MOVE{mvOp, src as I.Direct _, dst} => 
@@ -219,6 +219,10 @@ functor X86Spill(structure Instr: X86INSTR
   fun fspill(instr, reg, spillLoc) = 
     (case instr
       of I.FSTP _ => {proh=[], instr=NONE, code=[I.FSTP spillLoc]}
+       | I.CALL(opnd, defs, uses, mem) =>
+	 {proh=[],
+	  instr=SOME(I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem)),
+	  code=[] }
        | I.ANNOTATION{i,a} => fspill(i, reg, spillLoc)
        | _ => error "fspill"
     (*esac*))
@@ -231,6 +235,9 @@ functor X86Spill(structure Instr: X86INSTR
 	     {code=[I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}],
 	      proh=[]}
 	   else error "freload:FBINARY"
+       | I.CALL(opnd, defs, uses, mem) =>
+	 {proh=[],
+	  code=[I.CALL(opnd, C.rmvFreg(reg,defs), uses, mem)]}
        | I.ANNOTATION{i,a} => freload(i, reg, spillLoc)
        | _  => error "freload"
     (*esac*))

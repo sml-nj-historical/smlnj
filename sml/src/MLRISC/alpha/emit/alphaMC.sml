@@ -19,7 +19,7 @@ struct
    (* Alpha is a little endian architecture *)
    
    fun error msg = MLRiscErrorMsg.error("AlphaMC",msg)
-   fun makeStream() =
+   fun makeStream _ =
    let infix && || << >> ~>>
        val op << = W.<<
        val op >> = W.>>
@@ -73,66 +73,19 @@ struct
 
 
    fun emit_CC r = (itow ((regmap r) - 64))
-   and emit_GP r = (itow (regmap r))
    and emit_FP r = (itow ((regmap r) - 32))
+   and emit_GP r = (itow (regmap r))
 
-   fun emit_osf_user_palcode (I.BPT) = (0wx80 : Word32.word)
+   fun emit_store (I.STL) = (0wx2c : Word32.word)
+     | emit_store (I.STQ) = (0wx2d : Word32.word)
+     | emit_store (I.STQ_U) = (0wxf : Word32.word)
+   and emit_osf_user_palcode (I.BPT) = (0wx80 : Word32.word)
      | emit_osf_user_palcode (I.BUGCHK) = (0wx81 : Word32.word)
      | emit_osf_user_palcode (I.CALLSYS) = (0wx83 : Word32.word)
      | emit_osf_user_palcode (I.GENTRAP) = (0wxaa : Word32.word)
      | emit_osf_user_palcode (I.IMB) = (0wx86 : Word32.word)
      | emit_osf_user_palcode (I.RDUNIQUE) = (0wx9e : Word32.word)
      | emit_osf_user_palcode (I.WRUNIQUE) = (0wx9f : Word32.word)
-   and emit_store (I.STL) = (0wx2c : Word32.word)
-     | emit_store (I.STQ) = (0wx2d : Word32.word)
-     | emit_store (I.STQ_U) = (0wxf : Word32.word)
-   and emit_fcmove (I.FCMOVEQ) = (0wx2a : Word32.word)
-     | emit_fcmove (I.FCMOVEGE) = (0wx2d : Word32.word)
-     | emit_fcmove (I.FCMOVEGT) = (0wx2f : Word32.word)
-     | emit_fcmove (I.FCMOVLE) = (0wx2e : Word32.word)
-     | emit_fcmove (I.FCMOVELT) = (0wx2c : Word32.word)
-     | emit_fcmove (I.FCMOVENE) = (0wx2b : Word32.word)
-   and emit_foperate (I.CPYS) = (0wx17, 0wx20)
-     | emit_foperate (I.CPYSE) = (0wx17, 0wx22)
-     | emit_foperate (I.CPYSN) = (0wx17, 0wx21)
-     | emit_foperate (I.MF_FPCR) = (0wx17, 0wx25)
-     | emit_foperate (I.MT_FPCR) = (0wx17, 0wx24)
-     | emit_foperate (I.CMPTEQ) = (0wx16, 0wxa5)
-     | emit_foperate (I.CMPTLT) = (0wx16, 0wxa6)
-     | emit_foperate (I.CMPTLE) = (0wx16, 0wxa7)
-     | emit_foperate (I.CMPTUN) = (0wx16, 0wxa4)
-     | emit_foperate (I.CMPTEQSU) = (0wx16, 0wx5a5)
-     | emit_foperate (I.CMPTLTSU) = (0wx16, 0wx5a6)
-     | emit_foperate (I.CMPTLESU) = (0wx16, 0wx5a7)
-     | emit_foperate (I.CMPTUNSU) = (0wx16, 0wx5a4)
-   and emit_cmove (I.CMOVEQ) = (0wx24 : Word32.word)
-     | emit_cmove (I.CMOVLBC) = (0wx16 : Word32.word)
-     | emit_cmove (I.CMOVLBS) = (0wx14 : Word32.word)
-     | emit_cmove (I.CMOVGE) = (0wx46 : Word32.word)
-     | emit_cmove (I.CMOVGT) = (0wx66 : Word32.word)
-     | emit_cmove (I.CMOVLE) = (0wx64 : Word32.word)
-     | emit_cmove (I.CMOVLT) = (0wx44 : Word32.word)
-     | emit_cmove (I.CMOVNE) = (0wx26 : Word32.word)
-   and emit_operateV (I.ADDLV) = (0wx10, 0wx40)
-     | emit_operateV (I.ADDQV) = (0wx10, 0wx60)
-     | emit_operateV (I.SUBLV) = (0wx10, 0wx49)
-     | emit_operateV (I.SUBQV) = (0wx10, 0wx69)
-     | emit_operateV (I.MULLV) = (0wx13, 0wx40)
-     | emit_operateV (I.MULQV) = (0wx13, 0wx60)
-   and emit_fload (I.LDF) = (0wx20 : Word32.word)
-     | emit_fload (I.LDG) = (0wx21 : Word32.word)
-     | emit_fload (I.LDS) = (0wx22 : Word32.word)
-     | emit_fload (I.LDT) = (0wx23 : Word32.word)
-   and emit_branch (I.BR) = (0wx30 : Word32.word)
-     | emit_branch (I.BSR) = (0wx34 : Word32.word)
-     | emit_branch (I.BLBC) = (0wx38 : Word32.word)
-     | emit_branch (I.BEQ) = (0wx39 : Word32.word)
-     | emit_branch (I.BLT) = (0wx3a : Word32.word)
-     | emit_branch (I.BLE) = (0wx3b : Word32.word)
-     | emit_branch (I.BLBS) = (0wx3c : Word32.word)
-     | emit_branch (I.BNE) = (0wx3d : Word32.word)
-     | emit_branch (I.BGE) = (0wx3e : Word32.word)
-     | emit_branch (I.BGT) = (0wx3f : Word32.word)
    and emit_foperateV (I.ADDSSUD) = (0wx5c0 : Word32.word)
      | emit_foperateV (I.ADDSSU) = (0wx580 : Word32.word)
      | emit_foperateV (I.ADDTSUD) = (0wx5e0 : Word32.word)
@@ -149,6 +102,82 @@ struct
      | emit_foperateV (I.SUBSSU) = (0wx581 : Word32.word)
      | emit_foperateV (I.SUBTSUD) = (0wx5e1 : Word32.word)
      | emit_foperateV (I.SUBTSU) = (0wx5a1 : Word32.word)
+   and emit_operand (I.REGop GP) = GP
+     | emit_operand (I.IMMop int) = (error "IMMop")
+     | emit_operand (I.HILABop labexp) = (error "HILABop")
+     | emit_operand (I.LOLABop labexp) = (error "LOLABop")
+     | emit_operand (I.LABop labexp) = (error "LABop")
+     | emit_operand (I.CONSTop const) = (error "CONSTop")
+   and emit_fload (I.LDF) = (0wx20 : Word32.word)
+     | emit_fload (I.LDG) = (0wx21 : Word32.word)
+     | emit_fload (I.LDS) = (0wx22 : Word32.word)
+     | emit_fload (I.LDT) = (0wx23 : Word32.word)
+   and emit_foperate (I.CPYS) = (0wx17, 0wx20)
+     | emit_foperate (I.CPYSE) = (0wx17, 0wx22)
+     | emit_foperate (I.CPYSN) = (0wx17, 0wx21)
+     | emit_foperate (I.MF_FPCR) = (0wx17, 0wx25)
+     | emit_foperate (I.MT_FPCR) = (0wx17, 0wx24)
+     | emit_foperate (I.CMPTEQ) = (0wx16, 0wxa5)
+     | emit_foperate (I.CMPTLT) = (0wx16, 0wxa6)
+     | emit_foperate (I.CMPTLE) = (0wx16, 0wxa7)
+     | emit_foperate (I.CMPTUN) = (0wx16, 0wxa4)
+     | emit_foperate (I.CMPTEQSU) = (0wx16, 0wx5a5)
+     | emit_foperate (I.CMPTLTSU) = (0wx16, 0wx5a6)
+     | emit_foperate (I.CMPTLESU) = (0wx16, 0wx5a7)
+     | emit_foperate (I.CMPTUNSU) = (0wx16, 0wx5a4)
+   and emit_funary (I.CVTLQ) = (0wx17, 0wx10)
+     | emit_funary (I.CVTQL) = (0wx17, 0wx30)
+     | emit_funary (I.CVTQLSV) = (0wx17, 0wx530)
+     | emit_funary (I.CVTQLV) = (0wx17, 0wx130)
+     | emit_funary (I.CVTQS) = (0wx16, 0wxbc)
+     | emit_funary (I.CVTQSC) = (0wx16, 0wx3c)
+     | emit_funary (I.CVTQT) = (0wx16, 0wxbe)
+     | emit_funary (I.CVTQTC) = (0wx16, 0wx3e)
+     | emit_funary (I.CVTTS) = (0wx16, 0wxac)
+     | emit_funary (I.CVTTSC) = (0wx16, 0wx2c)
+     | emit_funary (I.CVTST) = (0wx16, 0wx2ac)
+     | emit_funary (I.CVTSTS) = (0wx16, 0wx6ac)
+     | emit_funary (I.CVTTQ) = (0wx16, 0wxaf)
+     | emit_funary (I.CVTTQC) = (0wx16, 0wx2f)
+   and emit_fstore (I.STF) = (0wx24 : Word32.word)
+     | emit_fstore (I.STG) = (0wx25 : Word32.word)
+     | emit_fstore (I.STS) = (0wx26 : Word32.word)
+     | emit_fstore (I.STT) = (0wx27 : Word32.word)
+   and emit_branch (I.BR) = (0wx30 : Word32.word)
+     | emit_branch (I.BSR) = (0wx34 : Word32.word)
+     | emit_branch (I.BLBC) = (0wx38 : Word32.word)
+     | emit_branch (I.BEQ) = (0wx39 : Word32.word)
+     | emit_branch (I.BLT) = (0wx3a : Word32.word)
+     | emit_branch (I.BLE) = (0wx3b : Word32.word)
+     | emit_branch (I.BLBS) = (0wx3c : Word32.word)
+     | emit_branch (I.BNE) = (0wx3d : Word32.word)
+     | emit_branch (I.BGE) = (0wx3e : Word32.word)
+     | emit_branch (I.BGT) = (0wx3f : Word32.word)
+   and emit_cmove (I.CMOVEQ) = (0wx24 : Word32.word)
+     | emit_cmove (I.CMOVLBC) = (0wx16 : Word32.word)
+     | emit_cmove (I.CMOVLBS) = (0wx14 : Word32.word)
+     | emit_cmove (I.CMOVGE) = (0wx46 : Word32.word)
+     | emit_cmove (I.CMOVGT) = (0wx66 : Word32.word)
+     | emit_cmove (I.CMOVLE) = (0wx64 : Word32.word)
+     | emit_cmove (I.CMOVLT) = (0wx44 : Word32.word)
+     | emit_cmove (I.CMOVNE) = (0wx26 : Word32.word)
+   and emit_operateV (I.ADDLV) = (0wx10, 0wx40)
+     | emit_operateV (I.ADDQV) = (0wx10, 0wx60)
+     | emit_operateV (I.SUBLV) = (0wx10, 0wx49)
+     | emit_operateV (I.SUBQV) = (0wx10, 0wx69)
+     | emit_operateV (I.MULLV) = (0wx13, 0wx40)
+     | emit_operateV (I.MULQV) = (0wx13, 0wx60)
+   and emit_fbranch (I.FBEQ) = (0wx31 : Word32.word)
+     | emit_fbranch (I.FBLT) = (0wx32 : Word32.word)
+     | emit_fbranch (I.FBLE) = (0wx33 : Word32.word)
+     | emit_fbranch (I.FBNE) = (0wx35 : Word32.word)
+     | emit_fbranch (I.FBGE) = (0wx36 : Word32.word)
+     | emit_fbranch (I.FBGT) = (0wx37 : Word32.word)
+   and emit_load (I.LDL) = (0wx28 : Word32.word)
+     | emit_load (I.LDL_L) = (0wx2a : Word32.word)
+     | emit_load (I.LDQ) = (0wx29 : Word32.word)
+     | emit_load (I.LDQ_L) = (0wx2b : Word32.word)
+     | emit_load (I.LDQ_U) = (0wxb : Word32.word)
    and emit_operate (I.ADDL) = (0wx10, 0wx0)
      | emit_operate (I.ADDQ) = (0wx10, 0wx20)
      | emit_operate (I.CMPBGE) = (0wx10, 0wxf)
@@ -203,80 +232,14 @@ struct
      | emit_operate (I.MULQ) = (0wx13, 0wx20)
      | emit_operate (I.UMULH) = (0wx13, 0wx30)
      | emit_operate (I.SGNXL) = (0wx10, 0wx0)
-   and emit_load (I.LDL) = (0wx28 : Word32.word)
-     | emit_load (I.LDL_L) = (0wx2a : Word32.word)
-     | emit_load (I.LDQ) = (0wx29 : Word32.word)
-     | emit_load (I.LDQ_L) = (0wx2b : Word32.word)
-     | emit_load (I.LDQ_U) = (0wxb : Word32.word)
-   and emit_funary (I.CVTLQ) = (0wx17, 0wx10)
-     | emit_funary (I.CVTQL) = (0wx17, 0wx30)
-     | emit_funary (I.CVTQLSV) = (0wx17, 0wx530)
-     | emit_funary (I.CVTQLV) = (0wx17, 0wx130)
-     | emit_funary (I.CVTQS) = (0wx16, 0wxbc)
-     | emit_funary (I.CVTQSC) = (0wx16, 0wx3c)
-     | emit_funary (I.CVTQT) = (0wx16, 0wxbe)
-     | emit_funary (I.CVTQTC) = (0wx16, 0wx3e)
-     | emit_funary (I.CVTTS) = (0wx16, 0wxac)
-     | emit_funary (I.CVTTSC) = (0wx16, 0wx2c)
-     | emit_funary (I.CVTTQ) = (0wx16, 0wxaf)
-     | emit_funary (I.CVTTQC) = (0wx16, 0wx2f)
-   and emit_fbranch (I.FBEQ) = (0wx31 : Word32.word)
-     | emit_fbranch (I.FBLT) = (0wx32 : Word32.word)
-     | emit_fbranch (I.FBLE) = (0wx33 : Word32.word)
-     | emit_fbranch (I.FBNE) = (0wx35 : Word32.word)
-     | emit_fbranch (I.FBGE) = (0wx36 : Word32.word)
-     | emit_fbranch (I.FBGT) = (0wx37 : Word32.word)
-   and emit_operand (I.REGop GP) = GP
-     | emit_operand (I.IMMop int) = (error "IMMop")
-     | emit_operand (I.HILABop labexp) = (error "HILABop")
-     | emit_operand (I.LOLABop labexp) = (error "LOLABop")
-     | emit_operand (I.LABop labexp) = (error "LABop")
-     | emit_operand (I.CONSTop const) = (error "CONSTop")
-   and emit_fstore (I.STF) = (0wx24 : Word32.word)
-     | emit_fstore (I.STG) = (0wx25 : Word32.word)
-     | emit_fstore (I.STS) = (0wx26 : Word32.word)
-     | emit_fstore (I.STT) = (0wx27 : Word32.word)
+   and emit_fcmove (I.FCMOVEQ) = (0wx2a : Word32.word)
+     | emit_fcmove (I.FCMOVEGE) = (0wx2d : Word32.word)
+     | emit_fcmove (I.FCMOVEGT) = (0wx2f : Word32.word)
+     | emit_fcmove (I.FCMOVLE) = (0wx2e : Word32.word)
+     | emit_fcmove (I.FCMOVELT) = (0wx2c : Word32.word)
+     | emit_fcmove (I.FCMOVENE) = (0wx2b : Word32.word)
 
-   fun Foperate {opc, fa, fb, func, fc} = let
-          val fa = (emit_FP fa)
-          val fb = (emit_FP fb)
-          val fc = (emit_FP fc)
-       in (eWord32 (fc + ((func << 0wx5) + ((fb << 0wx10) + ((fa << 0wx15) + (opc << 0wx1a))))))
-       end
-
-   and Low {le} = let
-
-(*#line 195.1 "alpha/alpha.md"*)
-          val(_, lo) = (Split {le=le})
-       in lo
-       end
-
-   and ILoadStore {opc, r, b, d} = let
-          val r = (emit_GP r)
-       in (LoadStore {opc=opc, ra=r, rb=b, disp=d})
-       end
-
-   and Jump {ra, rb, h, disp} = let
-          val ra = (emit_GP ra)
-          val rb = (emit_GP rb)
-          val disp = (emit_int disp)
-       in (eWord32 ((disp && 0wx3fff) + ((h << 0wxe) + ((rb << 0wx10) + ((ra << 0wx15) + 0wx68000000)))))
-       end
-
-   and Funary {opc, fb, func, fc} = let
-          val fb = (emit_FP fb)
-          val fc = (emit_FP fc)
-       in (eWord32 (fc + ((func << 0wx5) + ((fb << 0wx10) + ((opc << 0wx1a) + 0wx3e00000)))))
-       end
-
-   and High {le} = let
-
-(*#line 194.1 "alpha/alpha.md"*)
-          val(hi, _) = (Split {le=le})
-       in hi
-       end
-
-   and Operate {opc, ra, rb, func, rc} = 
+   fun Operate {opc, ra, rb, func, rc} = 
        (
         case rb of
         I.REGop rb => (Operate0 {opc=opc, ra=ra, rb=rb, func=func, rc=rc})
@@ -286,18 +249,6 @@ struct
       | I.LABop le => (Operate1 {opc=opc, ra=ra, lit=(itow (LabelExp.valueOf le)), func=func, rc=rc})
       | I.CONSTop c => (Operate1 {opc=opc, ra=ra, lit=(itow (Constant.valueOf c)), func=func, rc=rc})
        )
-   and FLoadStore {opc, r, b, d} = let
-          val r = (emit_FP r)
-       in (LoadStore {opc=opc, ra=r, rb=b, disp=d})
-       end
-
-   and Pal {func} = (eWord32 func)
-   and Memory_fun {opc, ra, rb, func} = let
-          val ra = (emit_GP ra)
-          val rb = (emit_GP rb)
-       in (eWord32 (func + ((rb << 0wx10) + ((ra << 0wx15) + (opc << 0wx1a)))))
-       end
-
    and Operate0 {opc, ra, rb, func, rc} = let
           val ra = (emit_GP ra)
           val rb = (emit_GP rb)
@@ -305,10 +256,11 @@ struct
        in (eWord32 (rc + ((func << 0wx5) + ((rb << 0wx10) + ((ra << 0wx15) + (opc << 0wx1a))))))
        end
 
-   and Fbranch {opc, ra, disp} = let
-          val opc = (emit_fbranch opc)
-          val ra = (emit_FP ra)
-       in (eWord32 ((disp && 0wx1fffff) + ((ra << 0wx15) + (opc << 0wx1a))))
+   and High {le} = let
+
+(*#line 196.1 "alpha/alpha.md"*)
+          val(hi, _) = (Split {le=le})
+       in hi
        end
 
    and Operate1 {opc, ra, lit, func, rc} = let
@@ -317,18 +269,79 @@ struct
        in (eWord32 (rc + ((func << 0wx5) + (((lit && 0wxff) << 0wxd) + ((ra << 0wx15) + ((opc << 0wx1a) + 0wx1000))))))
        end
 
+   and Memory_fun {opc, ra, rb, func} = let
+          val ra = (emit_GP ra)
+          val rb = (emit_GP rb)
+       in (eWord32 (func + ((rb << 0wx10) + ((ra << 0wx15) + (opc << 0wx1a)))))
+       end
+
+   and Low {le} = let
+
+(*#line 197.1 "alpha/alpha.md"*)
+          val(_, lo) = (Split {le=le})
+       in lo
+       end
+
+   and Fbranch {opc, ra, disp} = let
+          val opc = (emit_fbranch opc)
+          val ra = (emit_FP ra)
+       in (eWord32 ((disp && 0wx1fffff) + ((ra << 0wx15) + (opc << 0wx1a))))
+       end
+
+   and Pal {func} = (eWord32 func)
+   and Branch {opc, ra, disp} = let
+          val opc = (emit_branch opc)
+          val ra = (emit_GP ra)
+       in (eWord32 ((disp && 0wx1fffff) + ((ra << 0wx15) + (opc << 0wx1a))))
+       end
+
+   and FLoadStore {opc, r, b, d} = let
+          val r = (emit_FP r)
+       in (LoadStore {opc=opc, ra=r, rb=b, disp=d})
+       end
+
+   and Funary {opc, fb, func, fc} = let
+          val fb = (emit_FP fb)
+          val fc = (emit_FP fc)
+       in (eWord32 (fc + ((func << 0wx5) + ((fb << 0wx10) + ((opc << 0wx1a) + 0wx3e00000)))))
+       end
+
+   and Foperate {opc, fa, fb, func, fc} = let
+          val fa = (emit_FP fa)
+          val fb = (emit_FP fb)
+          val fc = (emit_FP fc)
+       in (eWord32 (fc + ((func << 0wx5) + ((fb << 0wx10) + ((fa << 0wx15) + (opc << 0wx1a))))))
+       end
+
+   and ILoadStore {opc, r, b, d} = let
+          val r = (emit_GP r)
+       in (LoadStore {opc=opc, ra=r, rb=b, disp=d})
+       end
+
+   and Memory {opc, ra, rb, disp} = let
+          val rb = (emit_GP rb)
+       in (eWord32 ((disp && 0wxffff) + ((rb << 0wx10) + ((ra << 0wx15) + (opc << 0wx1a)))))
+       end
+
+   and Jump {ra, rb, h, disp} = let
+          val ra = (emit_GP ra)
+          val rb = (emit_GP rb)
+          val disp = (emit_int disp)
+       in (eWord32 ((disp && 0wx3fff) + ((h << 0wxe) + ((rb << 0wx10) + ((ra << 0wx15) + 0wx68000000)))))
+       end
+
    and Split {le} = let
 
-(*#line 188.1 "alpha/alpha.md"*)
+(*#line 190.1 "alpha/alpha.md"*)
           val i = (LabelExp.valueOf le)
 
-(*#line 189.1 "alpha/alpha.md"*)
+(*#line 191.1 "alpha/alpha.md"*)
           val w = (itow i)
 
-(*#line 190.1 "alpha/alpha.md"*)
+(*#line 192.1 "alpha/alpha.md"*)
           val hi = (w ~>> 0wx10)
 
-(*#line 191.1 "alpha/alpha.md"*)
+(*#line 193.1 "alpha/alpha.md"*)
           val lo = (w && 0wxffff)
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -337,7 +350,7 @@ struct
 
    and LoadStore {opc, ra, rb, disp} = let
 
-(*#line 197.1 "alpha/alpha.md"*)
+(*#line 199.1 "alpha/alpha.md"*)
           val disp = 
              (
               case disp of
@@ -349,17 +362,6 @@ struct
             | I.CONSTop c => (itow (Constant.valueOf c))
              )
        in (Memory {opc=opc, ra=ra, rb=rb, disp=disp})
-       end
-
-   and Branch {opc, ra, disp} = let
-          val opc = (emit_branch opc)
-          val ra = (emit_GP ra)
-       in (eWord32 ((disp && 0wx1fffff) + ((ra << 0wx15) + (opc << 0wx1a))))
-       end
-
-   and Memory {opc, ra, rb, disp} = let
-          val rb = (emit_GP rb)
-       in (eWord32 ((disp && 0wxffff) + ((rb << 0wx10) + ((ra << 0wx15) + (opc << 0wx1a)))))
        end
 
 
@@ -379,14 +381,14 @@ struct
      | emitInstr (I.FBRANCH(fbranch, FP, label)) = (Fbranch {opc=fbranch, ra=FP, disp=(disp label)})
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = let
 
-(*#line 321.1 "alpha/alpha.md"*)
+(*#line 323.1 "alpha/alpha.md"*)
           val(opc, func) = (emit_operate oper)
        in (Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc})
        end
 
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = let
 
-(*#line 327.1 "alpha/alpha.md"*)
+(*#line 329.1 "alpha/alpha.md"*)
           val(opc, func) = (emit_operateV oper)
        in (Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc})
        end
@@ -397,14 +399,14 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = (error "FCOPY")
      | emitInstr (I.FUNARY{oper, fb, fc}) = let
 
-(*#line 351.1 "alpha/alpha.md"*)
+(*#line 353.1 "alpha/alpha.md"*)
           val(opc, func) = (emit_funary oper)
        in (Funary {opc=opc, func=func, fb=fb, fc=fc})
        end
 
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = let
 
-(*#line 358.1 "alpha/alpha.md"*)
+(*#line 360.1 "alpha/alpha.md"*)
           val(opc, func) = (emit_foperate oper)
        in (Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc})
        end
@@ -419,16 +421,18 @@ struct
            emitInstr
        end
    
-   in  S.STREAM{init=init,
+   in  S.STREAM{beginCluster=init,
                 pseudoOp=pseudoOp,
                 emit=emitter,
-                finish=doNothing,
+                endCluster=doNothing,
                 defineLabel=doNothing,
                 entryLabel=doNothing,
                 comment=doNothing,
                 exitBlock=doNothing,
                 blockName=doNothing,
-                annotation=doNothing
+                annotation=doNothing,
+                phi=doNothing,
+                alias=doNothing
                }
    end
 end

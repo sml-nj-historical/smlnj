@@ -48,4 +48,5 @@ struct
   val dedicatedF = [FP 0]
 
   val signedGCTest = false
+  val addressWidth = 32
 end

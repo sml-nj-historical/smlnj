@@ -12,6 +12,7 @@ structure DefaultMachSpec : MACH_SPEC =
     val numFloatRegs = 0
     val bigEndian = false
     val spillAreaSz = 0
+    val initialSpillOffset = 0
     val startgcOffset = 0
     val pseudoRegOffset = 0
     val constBaseRegOffset = 0

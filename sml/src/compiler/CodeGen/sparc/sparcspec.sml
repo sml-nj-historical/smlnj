@@ -16,6 +16,7 @@ struct
     val numFloatRegs	= 16
     val bigEndian	= true
     val spillAreaSz	= 3800
+    val initialSpillOffset = 116
     val startgcOffset	= 100
     val constBaseRegOffset = 4096
 end

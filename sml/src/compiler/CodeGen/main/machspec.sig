@@ -53,6 +53,7 @@ signature MACH_SPEC =
 
     val spillAreaSz : int	(* the size of the area for spilling registers *)
 				(* in bytes *)
+    val initialSpillOffset : int (* the offset of the first spill location *)
 
     val startgcOffset 	: int
     val constBaseRegOffset : int

@@ -40,9 +40,8 @@ structure X86MCEmitter =
 (* MLTree specialization *)
 structure X86MLTree = 
   MLTreeF(structure Const=SMLNJConstant
-	  structure P=X86PseudoOps
 	  structure R=CPSRegions
-	  structure B=FunctionNames
+	  structure S=X86Stream
           type rextension = unit
           type fextension = unit
          )

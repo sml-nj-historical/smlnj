@@ -6,6 +6,8 @@ Library
 	signature INTSTRMAP
 	signature PRETTYPRINT
 	signature PPQUEUE
+	signature PICKLE_UTIL
+	signature UNPICKLE_UTIL
 
 	structure Intmap
 	structure Intset
@@ -14,6 +16,8 @@ Library
 	structure IntStrMap
 	structure PrettyPrint
 	structure PPQueue
+	structure UnpickleUtil
+	structure PickleUtil
 
 	functor SCCUtilFun
 is
@@ -42,6 +46,9 @@ intstrmap.sml
 (* replace with library version *)
 pp.sml
 ppqueue.sml
+
+pickle-util.sml
+unpickle-util.sml
 
 smlnj-lib.cm
 basis.cm

@@ -6,11 +6,11 @@ struct
 
   type format1 =
        {r:int, i:I.operand, d:int} *
-       (I.operand -> I.C.register) -> I.instruction list
+       (I.operand -> I.C.cell) -> I.instruction list
 
   type format2 =
        {i:I.operand, d:int} *
-       (I.operand -> I.C.register) -> I.instruction list
+       (I.operand -> I.C.cell) -> I.instruction list
 
   fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
 

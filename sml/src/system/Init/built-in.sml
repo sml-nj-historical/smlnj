@@ -6,26 +6,21 @@
  *
  *)
 
-infix 7  * /  mod  div
-infix 6 ^ + -
-infix 3 := o
-infix 4 > < >= <= = <>
-infixr 5 :: @
-infix 0 before
-
 structure PrimTypes = struct open PrimTypes end
    (* this silliness is to prevent elabstr.sml from sticking a NO_ACCESS
        in the wrong place *)
 
-open PrimTypes
+local
+    open PrimTypes
+in
 
-structure Assembly = Core.Assembly
+  structure Assembly = Core.Assembly
 
-(* create a type-safe version of the InLine structure while preserving
- * the inline property of the functions.
- *)
-structure InlineT =
-  struct
+  (* create a type-safe version of the InLine structure while preserving
+   * the inline property of the functions.
+   *)
+  structure InlineT =
+   struct
     type 'a control_cont = 'a control_cont
 
     val callcc		: ('a cont -> 'a) -> 'a = InLine.callcc
@@ -365,5 +360,6 @@ structure InlineT =
     structure DfltWord  = Word31
     structure DfltReal = Real64
 
-  end  (* structure InlineT *)
+   end  (* structure InlineT *)
 
+end (* local *)

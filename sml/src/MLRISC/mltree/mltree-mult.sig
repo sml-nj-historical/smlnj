@@ -14,7 +14,7 @@ sig
 
    exception TooComplex
 
-   val multiply : {r:C.register,i:int,d:C.register} -> I.instruction list 
+   val multiply : {r:C.cell,i:int,d:C.cell} -> I.instruction list 
 
    (* The semantics of roundToZero{r,i,d} is:
     *   if r >= 0 then d <- r
@@ -22,9 +22,9 @@ sig
     *)
 
    val divide   : { mode:T.rounding_mode,
-                    roundToZero : {ty:T.ty,r:C.register,i:int,d:C.register} 
+                    roundToZero : {ty:T.ty,r:C.cell,i:int,d:C.cell} 
                                     -> unit
                   } -> 
-                  {r:C.register,i:int,d:C.register} -> I.instruction list
+                  {r:C.cell,i:int,d:C.cell} -> I.instruction list
 
 end

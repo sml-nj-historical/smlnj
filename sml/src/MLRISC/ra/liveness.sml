@@ -48,17 +48,16 @@ struct
 	    | listNeq((x:int)::xs,y::ys) = x<>y orelse listNeq(xs,ys)
 	    | listNeq _ = true
 
-	  fun uniqMap([],sl) = sl
-	    | uniqMap(x::xs,sl) = uniqMap(xs,SL.enter(regmap(x),sl))
+	  fun uniqMap sl = SL.uniq(map regmap sl)
 	    
 	  fun init ~1 = ()
             | init n  = let
 		val F.BBLOCK{blknum,insns,liveIn,...} = Array.sub(blkArr,n)
 		fun defuse(insn::insns,def,use) = let
 		      val (d,u) = defUse insn
-		      val u' = SL.difference(uniqMap(u,[]),def)
+		      val u' = SL.difference(uniqMap u,def)
 		      val use' = SL.merge(u', use)
-		      val d' = SL.difference(uniqMap(d,[]),use')
+		      val d' = SL.difference(uniqMap d,use')
 		    in
 		      defuse(insns, SL.merge(d',def), use')
 		    end

@@ -62,6 +62,7 @@ signature RA = sig
   structure F : FLOWGRAPH
   datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
 
-  val ra: mode -> int list -> F.cluster -> F.cluster
+  val ra: mode -> (int * int) list -> F.cluster -> F.cluster
 end 
+
 

@@ -56,9 +56,9 @@ struct
     fun rNum r = let
       val r' = regmap r
     in if r' >=0 andalso r' <= 7 then r' 
-       else  let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream()
+       else  let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
              in  emit regmap instr;
-   	         error ("rNum: bad register" ^ Int.toString r ^ " --> " ^
+   	         error ("rNum: bad register " ^ Int.toString r ^ " --> " ^
 		        Int.toString r')
              end
     end 
@@ -207,16 +207,18 @@ struct
        end
      | I.CALL(I.Relative _, _, _, _) => error "CALL: Not implemented"
      | I.CALL(opnd, _, _, _) => eBytes(0wxff :: eImmedExt(2, opnd))
-     | I.RET => eByte 0xc3
+     | I.RET NONE => eByte 0xc3
      (* integer *)
      | I.MOVE{mvOp=I.MOVL, src, dst} => 
-       (case (src, dst)
-	of (I.Immed(i), I.Direct r) => 
-	     eBytes(Word8.+(0wxb8, Word8.fromInt(rNum r))::eLong(i))
-         | (I.Immed(i), _) => 
-	     eBytes(0wxc7 :: (eImmedExt(0, dst) @ eLong(i)))
-	 | _ => arith(0wx88, 0) (src, dst)
-       (*esac*))
+       let fun mv(I.Immed(i), I.Direct r) =
+	         eBytes(Word8.+(0wxb8, Word8.fromInt(rNum r))::eLong(i))
+             | mv(I.Immed(i), _) = 
+                 eBytes(0wxc7 :: (eImmedExt(0, dst) @ eLong(i)))
+             | mv(I.Const c, dst) = mv(I.Immed(const c),dst)
+             | mv(I.ImmedLabel le,dst) = mv(I.Immed(lexp le),dst)
+             | mv(I.LabelEA le,dst) = error "MOVL: LabelEA"
+             | mv(src,dst) = arith(0wx88, 0) (src, dst)
+       in  mv(src,dst) end
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Immed(i)} =>
        (case size i
 	 of Bits32 => error "MOVE: MOVB: imm8"

@@ -56,6 +56,7 @@ struct
   *=====================================================================*)
   fun branchTargets(I.JMP(_, [])) = [ESCAPES]
     | branchTargets(I.JMP(_, labs)) = map LABELLED labs
+    | branchTargets(I.RET _) = [ESCAPES]
     | branchTargets(I.JCC{opnd=I.ImmedLabel(LE.LABEL(lab)), ...}) = 
         [FALLTHROUGH, LABELLED lab]
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
@@ -64,7 +65,13 @@ struct
   fun jump label = I.JMP (I.ImmedLabel(LE.LABEL label), [label])
 
   exception NotImplemented
-  fun setTargets _ = raise NotImplemented
+  fun setTargets(I.JMP(I.ImmedLabel _,_),[l]) = jump l
+    | setTargets(I.JMP(opnd,_),_) = error "setTargets"
+    | setTargets(I.JCC{cond,opnd=I.ImmedLabel _},[f,t]) =
+        I.JCC{cond=cond,opnd=I.ImmedLabel(LE.LABEL t)}
+    | setTargets(I.JCC _,_) = error "setTargets"
+    | setTargets(I.ANNOTATION{i,a},l) = I.ANNOTATION{i=setTargets(i,l),a=a}
+    | setTargets(i,_) = i
   fun negateConditional _ = raise NotImplemented
 
   val immedRange={lo= ~1073741824, hi=1073741823}
@@ -152,6 +159,7 @@ struct
       | I.FBINARY{src, ...}   => ([], operandUse src)
       | I.FNSTSW	      => ([C.eax], [])
       | I.SAHF		      => ([], [C.eax])
+      | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
       | I.ANNOTATION{i,...}   => defUseR i
       | _		      => ([], [])
   end (* defUseR *)
@@ -167,6 +175,7 @@ struct
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
+      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
       | I.ANNOTATION{i,...}   => defUseF i
       | _  => ([], [])
   end

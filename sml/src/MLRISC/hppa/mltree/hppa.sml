@@ -20,9 +20,6 @@ functor Hppa
       where type cond = MLTreeBasis.cond
         and type fcond = MLTreeBasis.fcond
         and type rounding_mode = MLTreeBasis.rounding_mode
-   structure Stream : INSTRUCTION_STREAM
-      where B = HppaMLTree.BNames
-        and P = HppaMLTree.PseudoOp 
    structure MilliCode : HPPA_MILLICODE
       where I = HppaInstr
    structure LabelComp : LABEL_COMP 
@@ -32,9 +29,9 @@ functor Hppa
    val costOfDivision : int ref
   ) : MLTREECOMP =
 struct
-   structure S = Stream
    structure I = HppaInstr
    structure T = HppaMLTree
+   structure S = T.Stream
    structure C = HppaCells
    structure MC = MilliCode
    structure LC = LabelComp
@@ -43,6 +40,8 @@ struct
    structure Gen = MLTreeGen(structure T = T
                              val intTy = 32
                              val naturalWidths = [32]
+                             datatype rep = SE | ZE | NEITHER
+                             val rep = NEITHER
                             )
 
    structure W = Word32
@@ -50,8 +49,8 @@ struct
     (structure I = I
      structure T = T
      val intTy = 32
-     type arg  = {r1:C.register,r2:C.register,d:C.register}
-     type argi = {r:C.register,i:int,d:C.register}
+     type arg  = {r1:C.cell,r2:C.cell,d:C.cell}
+     type argi = {r:C.cell,i:int,d:C.cell}
 
      fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
      fun add{r1,r2,d} = I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}
@@ -63,7 +62,6 @@ struct
    (* signed, trapping version of multiply and divide *)
    structure Mult32 = Multiply32
     (val trapping = true
-     val signed = true
      val multCost = costOfMultiply
      val divCost  = costOfDivision
      fun addv{r1,r2,d} = [I.ARITH{a=I.ADDO,r1=r1,r2=r2,t=d}]
@@ -72,6 +70,7 @@ struct
      val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDO,r1=r1,r2=r2,t=d}])
      val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDO,r1=r1,r2=r2,t=d}])
     )
+    (val signed = true)
 
    (* unsigned, non-trapping version of multiply and divide *)
    structure Mulu32 = Multiply32
@@ -85,13 +84,14 @@ struct
      val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
      val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
     )
+    (val signed   = false)
 
    fun error msg = MLRiscErrorMsg.error("Hppa",msg)
 
    datatype ea = 
-     DISPea of C.register * I.operand  (* displacement *)
-   | INDXea of C.register * C.register      (* indexed *)
-   | INDXSCALEDea of C.register * C.register (* indexed with scaling (b,x) *)
+     DISPea of C.cell * I.operand    (* displacement *)
+   | INDXea of C.cell * C.cell       (* indexed *)
+   | INDXSCALEDea of C.cell * C.cell (* indexed with scaling (b,x) *)
 
    datatype opnd = datatype LC.lab_opnd
    datatype times248 = TIMES1
@@ -102,8 +102,9 @@ struct
    val itow = W.fromInt
 
    fun selectInstructions
-        (S.STREAM{emit, defineLabel, entryLabel, init, finish, annotation,
-                  exitBlock, blockName, pseudoOp, ...}) =
+        (S.STREAM{emit, defineLabel, entryLabel, 
+                  beginCluster, endCluster, annotation,
+                  exitBlock, blockName, pseudoOp, phi, alias, comment, ...}) =
    let
        (* operand type and effective addresss *)
  
@@ -116,7 +117,6 @@ struct
        val zeroT = T.REG(32,zeroR)
        val zeroImmed = I.IMMED 0
        val zeroOpn = OPND(zeroImmed)
-       val emit = emit(fn _ => 0)
 
        fun mark(i,an) =
        let fun f(i,[]) = i
@@ -781,27 +781,24 @@ struct
                                 else REG(expr e)
          | opn e              = REG(expr e)
  
-       fun mltreeComp mltree = 
-       let (* condition code registers are mapped onto general registers *)
-           fun cc (T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
-             | cc x = x
- 
-           fun mltc(T.PSEUDO_OP pOp)    = pseudoOp pOp
-             | mltc(T.DEFINELABEL lab)  = defineLabel lab
-             | mltc(T.ENTRYLABEL lab)   = entryLabel lab
-             | mltc(T.BEGINCLUSTER)     = init 0
-             | mltc(T.CODE stms)        = app doStmt stms
-             | mltc(T.BLOCK_NAME name)  = blockName name
-             | mltc(T.BLOCK_ANNOTATION a) = annotation a
-             | mltc(T.ENDCLUSTER regmap) = finish regmap
-             | mltc(T.ESCAPEBLOCK regs) = exitBlock (map cc regs)
-             | mltc _ = error "mltreeComp"
-       in mltc mltree end
- 
-   in  { mltreeComp = mltreeComp,
-         mlriscComp = doStmt,
-         emitInstr  = emit
-       }
+       (* condition code registers are mapped onto general registers *)
+       fun cc (T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
+         | cc x = x
+   in S.STREAM
+      { beginCluster= beginCluster,
+        endCluster  = endCluster,
+        emit        = doStmt,
+        pseudoOp    = pseudoOp,
+        defineLabel = defineLabel,
+        entryLabel  = entryLabel,
+        blockName   = blockName,
+        comment     = comment,
+        annotation  = annotation,
+        exitBlock   = fn regs => exitBlock(map cc regs),
+        alias       = alias,
+        phi         = phi
+      }
    end
+
   
  end

@@ -17,20 +17,22 @@ structure UnionGraphView : UNION_GRAPH_VIEW =
 struct
    
    structure G = Graph
-   structure Sort = Sorting
+   structure Sort = ListMergeSort
 
    fun union_view f (G.GRAPH A, G.GRAPH B) =
    let
        fun merge_nodes ns =
-           Sort.sort_uniq (fn ((i,_),(j,_)) => Int.<(i,j))
-                          (fn ((i,_),(j,_)) => i = j) ns
+           Sort.uniqueSort (fn ((i,_),(j,_)) => Int.compare(i,j)) ns
        fun merge_node_ids ns =
-           Sort.sort_uniq (fn (i,j) => Int.<(i,j))
-                          (fn (i,j) => i = j) ns
+           Sort.uniqueSort (fn (i,j) => Int.compare(i,j)) ns
        fun merge_edges es =
-           Sort.sort_uniq (fn ((i,j,_),(m,n,_)) => Int.<(i,m)
-                              orelse i = m andalso j < n)
-                          (fn ((i,j,_),(m,n,_)) => i = m andalso j = n) es
+           Sort.uniqueSort (fn ((i,j,_),(m,n,_)) => 
+                              if i < m then LESS
+                              else if i = m then 
+                                 if j < n then LESS
+                                 else if j = n then EQUAL
+                                 else GREATER
+                              else GREATER) es
        fun new_id ()  = Int.max(#capacity A (), #capacity B ())
        fun add_node n = (#add_node A n; #add_node B n)
        fun add_edge e = (#add_edge A e; #add_edge B e)

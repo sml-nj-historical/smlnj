@@ -5,17 +5,17 @@
  *)
 
 functor MLTreeF(structure Const : CONSTANT
-		structure P : PSEUDO_OPS
 		structure R : REGION
-		structure B : BLOCK_NAMES
+                structure S : INSTRUCTION_STREAM
                 type rextension 
                 type fextension
                ) : MLTREE =
 struct
   structure Constant = Const
-  structure PseudoOp = P
+  structure PseudoOp = S.P
+  structure BNames = S.B
+  structure Stream = S
   structure Region = R
-  structure BNames = B
 
   open MLTreeBasis
 
@@ -36,9 +36,7 @@ struct
   (* aliasing declarations 
    * These are used to define physical register bindings for SSA names 
    *)
-  datatype alias = ALIAS   of ty * var * reg  
-                 | FALIAS  of fty * var * reg 
-                 | CCALIAS of var * reg
+  type alias = var * reg  
 
   (* statements *)
   datatype stm =
@@ -119,7 +117,7 @@ struct
 
     | SEQ of stm * rexp
 
-    | EXTENSION of rextension * rexp list
+    | EXTENSION of ty * rextension * rexp list
 
     | MARK of rexp * Annotations.annotation
 
@@ -144,7 +142,7 @@ struct
     | CVTF2F of fty * rounding_mode * fexp
     | FSEQ   of stm * fexp
 
-    | FEXTENSION of fextension * fexp list
+    | FEXTENSION of fty * fextension * fexp list
 
     | FMARK of fexp * Annotations.annotation
 
@@ -160,19 +158,10 @@ struct
 
   and mlrisc = CCR of ccexp | GPR of rexp | FPR of fexp
 
-  datatype mltree = 
-      BEGINCLUSTER
-    | PSEUDO_OP of PseudoOp.pseudo_op
-    | DEFINELABEL of Label.label
-    | ENTRYLABEL of Label.label
-    | CODE of stm list
-    | ALIASDECLS of alias list
-    | PHIFUNS of phi list
-    | BLOCK_NAME of BNames.name
-    | BLOCK_ANNOTATION of Annotations.annotation
-    | ESCAPEBLOCK of mlrisc list 
-    | ENDCLUSTER of int Intmap.intmap * Annotations.annotations
-
   exception Unsupported of string * rexp
+
+  type ('i,'regmap) stream =
+       ('i -> unit,'regmap,Annotations.annotations,
+        mlrisc list, alias, phi) Stream.stream
 
 end (* MLTREE *)

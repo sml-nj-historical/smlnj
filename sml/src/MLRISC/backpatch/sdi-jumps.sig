@@ -18,7 +18,7 @@ signature SDI_JUMPS = sig
        * instructions that may require NOPs after them, etc. 
        *)
 
-  val sdiSize : I.instruction * (C.register -> C.register)
+  val sdiSize : I.instruction * (C.cell -> C.cell)
                               * (Label.label -> int) * int -> int
       (* sdiSize(instr, regmaps, labMap, loc) -- return the size of
        * instr at location loc, assuming an assignment of labels

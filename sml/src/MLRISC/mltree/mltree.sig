@@ -15,6 +15,9 @@ signature MLTREE = sig
   structure PseudoOp : PSEUDO_OPS
   structure Region   : REGION
   structure BNames   : BLOCK_NAMES
+  structure Stream   : INSTRUCTION_STREAM
+     sharing Stream.B = BNames
+     sharing Stream.P = PseudoOp
 
   include MLTREE_BASIS
 
@@ -26,6 +29,7 @@ signature MLTREE = sig
   type dst = var (* destination variable *)
   type reg = var (* physical register *)
 
+
   (* phi-functions for SSA form *)
   datatype phi =
       PHI  of ty * dst * src list 
@@ -35,9 +39,7 @@ signature MLTREE = sig
   (* aliasing declarations 
    * These are used to define physical register bindings for SSA names 
    *)
-  datatype alias = ALIAS   of ty * var * reg  
-                 | FALIAS  of fty * var * reg 
-                 | CCALIAS of var * reg
+  type alias = var * reg (* var is aliased to register *) 
 
   (* statements *)
   datatype stm =
@@ -122,7 +124,7 @@ signature MLTREE = sig
 
     | SEQ of stm * rexp
 
-    | EXTENSION of rextension * rexp list
+    | EXTENSION of ty * rextension * rexp list
 
     | MARK of rexp * Annotations.annotation
 
@@ -147,7 +149,7 @@ signature MLTREE = sig
     | CVTF2F of fty * rounding_mode * fexp
     | FSEQ   of stm * fexp
 
-    | FEXTENSION of fextension * fexp list
+    | FEXTENSION of fty * fextension * fexp list
 
     | FMARK of fexp * Annotations.annotation
 
@@ -163,20 +165,11 @@ signature MLTREE = sig
 
   and mlrisc = CCR of ccexp | GPR of rexp | FPR of fexp
 
-  datatype mltree = 
-      BEGINCLUSTER
-    | PSEUDO_OP of PseudoOp.pseudo_op
-    | DEFINELABEL of Label.label
-    | ENTRYLABEL of Label.label
-    | CODE of stm list
-    | ALIASDECLS of alias list
-    | PHIFUNS of phi list
-    | BLOCK_NAME of BNames.name
-    | BLOCK_ANNOTATION of Annotations.annotation
-    | ESCAPEBLOCK of mlrisc list 
-    | ENDCLUSTER of int Intmap.intmap * Annotations.annotations
-
   exception Unsupported of string * rexp
+
+  type ('i,'regmap) stream = 
+       ('i -> unit,'regmap,Annotations.annotations,
+        mlrisc list, alias, phi) Stream.stream 
 
 end (* MLTREE *)
 

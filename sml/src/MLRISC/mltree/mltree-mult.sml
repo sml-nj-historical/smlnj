@@ -12,18 +12,17 @@ functor MLTreeMult
 
    val intTy : int (* width of integer type *)
 
-   type argi = {r:I.C.register, i:int, d:I.C.register}
-   type arg  = {r1:I.C.register, r2:I.C.register, d:I.C.register} 
+   type argi = {r:I.C.cell, i:int, d:I.C.cell}
+   type arg  = {r1:I.C.cell, r2:I.C.cell, d:I.C.cell} 
 
      (* these are always non-overflow trapping *)
-   val mov   : {r:I.C.register,d:I.C.register} -> I.instruction
+   val mov   : {r:I.C.cell,d:I.C.cell} -> I.instruction
    val add   : arg -> I.instruction
    val slli  : argi -> I.instruction list
    val srli  : argi -> I.instruction list
    val srai  : argi -> I.instruction list
   )
   (val trapping : bool (* trap on overflow? *)
-   val signed   : bool (* signed? *)
    val multCost : int ref  (* cost of multiplication *)
 
        (* basic ops; these have to implemented by the architecture *)
@@ -39,7 +38,9 @@ functor MLTreeMult
    val sh1addv  : (arg -> I.instruction list) option (* a*2 + b *)
    val sh2addv  : (arg -> I.instruction list) option (* a*4 + b *)  
    val sh3addv  : (arg -> I.instruction list) option (* a*8 + b *)
-  )  : MLTREE_MULT_DIV =
+  )  
+  (val signed   : bool (* signed? *)
+  ) : MLTREE_MULT_DIV =
 struct
    structure T = T 
    structure I = I 

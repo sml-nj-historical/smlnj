@@ -130,7 +130,8 @@ struct
      | CMOVGE 0wx46 | CMOVGT  0wx66 | CMOVLE  0wx64
      | CMOVLT 0wx44 | CMOVNE  0wx26 
  
-   datatype pseudo_op! = DIVL | DIVLU
+   datatype pseudo_op! = DIVL | DIVLU | DIVQ | DIVQU 
+                       | REML | REMLU | REMQ | REMQU
  
    datatype operateV! = (* table C-5 opc/func *)
         ADDLV (0wx10,0wx40) | ADDQV (0wx10,0wx60)
@@ -146,6 +147,7 @@ struct
     | CVTQS   (0wx16,0wxbc)  | CVTQSC  (0wx16,0wx3c)
     | CVTQT   (0wx16,0wxbe)  | CVTQTC  (0wx16,0wx3e)
     | CVTTS   (0wx16,0wxac)  | CVTTSC  (0wx16,0wx2c)
+    | CVTST   (0wx16,0wx2ac) | CVTSTS  (0wx16,0wx6ac)
     | CVTTQ   (0wx16,0wxaf)  | CVTTQC  (0wx16,0wx2f)
  
    datatype foperate! =   (* table C-6 *)
@@ -307,7 +309,7 @@ struct
                    emit ", "; emit_GP rc)
            in case (oper,ra,rb,rc) of
                 (I.BIS,27,I.REGop 31,29) => emit "ldgp\t$29, 0($27)"
-              | (I.BIS,26,I.REGop 31,29) => emit "ldgp\t$26, 0($27)"
+              | (I.BIS,26,I.REGop 31,29) => emit "ldgp\t$29, 0($26)"
               | (I.ADDL,30,I.CONSTop b,30) => 
                   if Constant.valueOf b = 0 then () else f("addl",ra,rb,rc)
               | (I.ADDQ,30,I.CONSTop b,30) => 

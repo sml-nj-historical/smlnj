@@ -35,8 +35,7 @@ struct
       INTPAIRMAP of {table : bucket Array.array ref, 
 		     elems : int ref, 
 		     size : word ref, 
-		     shift : word,
-		     original : bucket Array.array}
+		     shift : word}
   val itow = Word.fromInt
   val wtoi = Word.toInt
   fun roundsize size = let
@@ -53,8 +52,7 @@ struct
        INTPAIRMAP{table    = ref tbl,
 		  elems    = ref 0, 
 		  size     = ref(itow(tblSize-1)),
-		  shift	   = shift,
-		  original = tbl}
+		  shift	   = shift}
     end
 
   fun moduloSize(i, j, shift, sz) = 
@@ -118,13 +116,5 @@ struct
      !elems <> n (* changed? *)
   end
 
-  fun clear (INTPAIRMAP{table,elems,original,size, ...}, _) = let
-    fun init n = (Array.update(original,n,NIL); init(n+1))
-  in 
-    elems:=0; 
-    size:=itow(Array.length original - 1);
-    table:=original;
-    init 0 handle _ => ()
-  end
 end
 

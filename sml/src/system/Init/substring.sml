@@ -4,6 +4,16 @@
  *
  *)
 
+local
+    infix 7  * /  mod  div
+    infix 6 ^ + -
+    infix 3 := o
+    infix 4 > < >= <= = <>
+    infixr 5 :: @
+    infix 0 before
+
+    open PrimTypes
+in
 structure Substring :> SUBSTRING
     where type char = PrimTypes.char
     where type string = PrimTypes.string
@@ -220,5 +230,6 @@ structure Substring :> SUBSTRING
 	    iter i
 	  end
 
-  end;
+  end
+end
 

@@ -70,5 +70,6 @@ struct
   val dedicatedF = SL.remove(availF, allFRegs)
 
   val signedGCTest = false
+  val addressWidth = 32
 end
 

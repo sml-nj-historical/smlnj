@@ -1,6 +1,30 @@
 Changes to the MLRISC system
 ============================
 
+110.20
+======
+1.  Changed the interface to MLTREECOMP.  It now uses the STREAM interface.
+2.  Library code has been streamlined.  Lot's of things are now replaced
+    by stuff in comp-lib and smlnj-lib.
+3.  Dominator tree code has been improved.  It is now possible to
+    compute the dominator tree without also computing the postdominator
+    tree (and vice versa).  What was I thinking?
+4.  Some changes to the RA that takes advantage of the new Intmap functions.
+5.  CFGGen and friends have been fixed.  CFGGen is the functor that
+    builds the CFG directly.  It now works!  I recompiled the
+    compiler with it.  But it is a few percentages slower because 
+    we have to go thru the CFG -> cluster phase.
+6.  Labels have been improved/simplified.
+7.  Some additions to handle CVTI2I in MLTREE.  Not yet tested.
+8.  Various fixes to x86PseudoR to handle annotation propagation and
+    non identity regmaps.
+9.  Factored the MLRISC sources into separate libraries.
+10. A very subtle bug involving the entry labels has been fixed.
+    How did things work before?
+
+110.19
+======
+
 1.  MLTREE
     ------
     As per Lal's suggestions, the MLTREE language has be extended so that

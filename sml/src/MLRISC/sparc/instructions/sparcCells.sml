@@ -10,47 +10,44 @@ sig
      UNKNOWN
    | MEM
    | CTRL
-   | Y
-   | CC
    | PSR
+   | CC
+   | Y
+   | FP
    | GP
    | FSR
-   | FP
    withtype cellset = (int list * int list * int list)
    include CELLS_BASIS where type cellkind = mycellkind
-   val showY : register -> string
-   val showCC : register -> string
-   val showPSR : register -> string
-   val showGP : register -> string
-   val showFSR : register -> string
-   val showFP : register -> string
-   val newY : unit -> register
-   val newCC : unit -> register
-   val newPSR : unit -> register
-   val newGP : unit -> register
-   val newFSR : unit -> register
-   val newFP : unit -> register
-   val addGP : (register * cellset) -> cellset
-   val addFP : (register * cellset) -> cellset
-   val addPSR : (register * cellset) -> cellset
-   val fsr : register
-   val asmTmpR : register
-   val stackptrR : register
-   val fasmTmp : register
-   val linkReg : register
-   val y : register
-   val psr : register
-   val zeroReg : cellkind -> register option
-   val toString : cellkind -> register -> string
-   val addCell : cellkind -> register * cellset -> cellset
-   val addReg : register * cellset -> cellset
-   val addFreg : register * cellset -> cellset
-   val getCell : cellkind -> cellset -> register list
-   val updateCell : cellkind -> cellset * register list -> cellset
+   val showPSR : cell -> string
+   val showCC : cell -> string
+   val showY : cell -> string
+   val showFP : cell -> string
+   val showGP : cell -> string
+   val showFSR : cell -> string
+   val addGP : (cell * cellset) -> cellset
+   val addFP : (cell * cellset) -> cellset
+   val addPSR : (cell * cellset) -> cellset
+   val psr : cell
+   val fasmTmp : cell
+   val y : cell
+   val stackptrR : cell
+   val asmTmpR : cell
+   val fsr : cell
+   val linkReg : cell
+   val zeroReg : cellkind -> cell option
+   val toString : cellkind -> cell -> string
+   val addCell : cellkind -> cell * cellset -> cellset
+   val rmvCell : cellkind -> cell * cellset -> cellset
+   val addReg : cell * cellset -> cellset
+   val rmvReg : cell * cellset -> cellset
+   val addFreg : cell * cellset -> cellset
+   val rmvFreg : cell * cellset -> cellset
+   val getCell : cellkind -> cellset -> cell list
+   val updateCell : cellkind -> cellset * cell list -> cellset
    val empty : cellset
    val cellsetToString : cellset -> string
-   val cellsetToString' : (register -> register) -> cellset -> string
-   val cellsetToRegs : cellset -> register list
+   val cellsetToString' : (cell -> cell) -> cellset -> string
+   val cellsetToCells : cellset -> cell list
 end
 
 structure SparcCells : SPARCCELLS =
@@ -59,22 +56,22 @@ struct
      UNKNOWN
    | MEM
    | CTRL
-   | Y
-   | CC
    | PSR
+   | CC
+   | Y
+   | FP
    | GP
    | FSR
-   | FP
    withtype cellset = (int list * int list * int list)
    exception SparcCells
    structure SL = SortedList
    fun error msg = MLRiscErrorMsg.error("SparcCells",msg)
-   val cellkindToString = (fn Y => "Y"
+   val cellkindToString = (fn PSR => "PSR"
                             | CC => "CC"
-                            | PSR => "PSR"
+                            | Y => "Y"
+                            | FP => "FP"
                             | GP => "GP"
                             | FSR => "FSR"
-                            | FP => "FP"
                             | MEM => "MEM"
                             | CTRL => "CTRL"
                             | UNKNOWN => "UNKNOWN"
@@ -87,38 +84,33 @@ struct
        val INT = GP
        val FLOAT = FP
        val firstPseudo = 256
-       val kinds = [Y, CC, PSR, GP, FSR, FP, MEM, CTRL]
-       val physical = [{from=64, to=64, kind=Y}, {from=67, to=0, kind=CC}, {from=65, to=65, kind=PSR}, {from=0, to=31, kind=GP}, {from=66, to=66, kind=FSR}, {from=32, to=63, kind=FP}]
+       val kinds = [PSR, CC, Y, FP, GP, FSR, MEM, CTRL]
+       val physical = [{from=65, to=65, kind=PSR}, {from=67, to=0, kind=CC}, {from=64, to=64, kind=Y}, {from=32, to=63, kind=FP}, {from=0, to=31, kind=GP}, {from=66, to=66, kind=FSR}]
       )
 
    open MyCellsBasis
-   val offsetY = 64
+   val offsetPSR = 65
   and offsetCC = 67
-  and offsetPSR = 65
+  and offsetY = 64
+  and offsetFP = 32
   and offsetGP = 0
   and offsetFSR = 66
-  and offsetFP = 32
-  and newY = (newCell Y)
-  and newCC = (newCell CC)
-  and newPSR = (newCell PSR)
-  and newGP = (newCell GP)
-  and newFSR = (newCell FSR)
-  and newFP = (newCell FP)
-  and cellnames = ["Y", "CC", "PSR", "GP", "FSR", "FP"]
+  and cellnames = ["PSR", "CC", "Y", "FP", "GP", "FSR"]
   and cellsetnames = ["GP", "FP", "PSR"]
-   val fsr = (0 + offsetFSR)
-   val asmTmpR = (10 + offsetGP)
-   val stackptrR = (14 + offsetGP)
-   val fasmTmp = (30 + offsetFP)
-   val linkReg = (15 + offsetGP)
-   val y = (0 + offsetY)
    val psr = (0 + offsetPSR)
+   val fasmTmp = (30 + offsetFP)
+   val y = (0 + offsetY)
+   val stackptrR = (14 + offsetGP)
+   val asmTmpR = (10 + offsetGP)
+   val fsr = (0 + offsetFSR)
+   val linkReg = (15 + offsetGP)
 
-   fun showY r = let
-          val r = (if (r <= 64)
-                then (r - 64)
+   fun showPSR r = let
+          val r = (if (r <= 65)
+                then (r - 65)
                 else r)
-       in ((fn _ => "%y"
+       in ((fn 0 => "%psr"
+             | n => ("%psr" ^ (Int.toString n))
            ) r)
        end
 
@@ -130,12 +122,19 @@ struct
            ) r)
        end
 
-   and showPSR r = let
-          val r = (if (r <= 65)
-                then (r - 65)
+   and showY r = let
+          val r = (if (r <= 64)
+                then (r - 64)
                 else r)
-       in ((fn 0 => "%psr"
-             | n => ("%psr" ^ (Int.toString n))
+       in ((fn _ => "%y"
+           ) r)
+       end
+
+   and showFP r = let
+          val r = (if (r <= 63)
+                then (r - 32)
+                else r)
+       in ((fn f => ("%f" ^ (Int.toString f))
            ) r)
        end
 
@@ -162,20 +161,12 @@ struct
            ) r)
        end
 
-   and showFP r = let
-          val r = (if (r <= 63)
-                then (r - 32)
-                else r)
-       in ((fn f => ("%f" ^ (Int.toString f))
-           ) r)
-       end
-
-   and toString Y = showY
+   and toString PSR = showPSR
      | toString CC = showCC
-     | toString PSR = showPSR
+     | toString Y = showY
+     | toString FP = showFP
      | toString GP = showGP
      | toString FSR = showFSR
-     | toString FP = showFP
      | toString MEM = (fn r => ("m" ^ (Int.toString r))
                       )
      | toString CTRL = (fn r => ("ctrl" ^ (Int.toString r))
@@ -184,22 +175,30 @@ struct
                           )
    val empty = ([], [], [])
 
-   fun addCell CC = addGP
-     | addCell PSR = addPSR
-     | addCell GP = addGP
+   fun addCell GP = addGP
      | addCell FP = addFP
+     | addCell CC = addGP
+     | addCell PSR = addPSR
      | addCell _ = (error "addCell")
-   and getCell PSR = getCellPSR
-     | getCell GP = getCellGP
+   and rmvCell GP = rmvGP
+     | rmvCell FP = rmvFP
+     | rmvCell CC = rmvGP
+     | rmvCell PSR = rmvPSR
+     | rmvCell _ = (error "rmvCell")
+   and getCell GP = getCellGP
      | getCell FP = getCellFP
+     | getCell PSR = getCellPSR
      | getCell _ = (error "getCell")
-   and updateCell PSR = updateCellPSR
-     | updateCell GP = updateCellGP
+   and updateCell GP = updateCellGP
      | updateCell FP = updateCellFP
+     | updateCell PSR = updateCellPSR
      | updateCell _ = (error "updateCell")
    and addGP (r, (setGP, setFP, setPSR)) = ((SL.enter (r, setGP)), setFP, setPSR)
    and addFP (r, (setGP, setFP, setPSR)) = (setGP, (SL.enter (r, setFP)), setPSR)
    and addPSR (r, (setGP, setFP, setPSR)) = (setGP, setFP, (SL.enter (r, setPSR)))
+   and rmvGP (r, (setGP, setFP, setPSR)) = ((SL.rmv (r, setGP)), setFP, setPSR)
+   and rmvFP (r, (setGP, setFP, setPSR)) = (setGP, (SL.rmv (r, setFP)), setPSR)
+   and rmvPSR (r, (setGP, setFP, setPSR)) = (setGP, setFP, (SL.rmv (r, setPSR)))
    and getCellGP (setGP, setFP, setPSR) = setGP
    and getCellFP (setGP, setFP, setPSR) = setFP
    and getCellPSR (setGP, setFP, setPSR) = setPSR
@@ -209,9 +208,11 @@ struct
    and cellsetToString (setGP, setFP, setPSR) = (printTuple (cellsetnames, [((printSet showGP) setGP), ((printSet showFP) setFP), ((printSet showPSR) setPSR)]))
    and cellsetToString' regmap = (fn (setGP, setFP, setPSR) => (printTuple (cellsetnames, [((printSet showGP) ((map regmap) setGP)), ((printSet showFP) ((map regmap) setFP)), ((printSet showPSR) ((map regmap) setPSR))]))
                                  )
-   and cellsetToRegs (setGP, setFP, setPSR) = (setGP @ (setFP @ setPSR))
+   and cellsetToCells (setGP, setFP, setPSR) = (setGP @ (setFP @ setPSR))
    val addReg = addGP
    val addFreg = addFP
+   val rmvReg = rmvFP
+   val rmvFreg = rmvFP
 
    fun zeroReg GP = (SOME (0 + offsetGP))
      | zeroReg _ = NONE

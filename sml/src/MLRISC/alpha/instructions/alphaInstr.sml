@@ -125,6 +125,12 @@ sig
    datatype pseudo_op =
      DIVL
    | DIVLU
+   | DIVQ
+   | DIVQU
+   | REML
+   | REMLU
+   | REMQ
+   | REMQU
    datatype operateV =
      ADDLV
    | ADDQV
@@ -143,6 +149,8 @@ sig
    | CVTQTC
    | CVTTS
    | CVTTSC
+   | CVTST
+   | CVTSTS
    | CVTTQ
    | CVTTQC
    datatype foperate =
@@ -347,6 +355,12 @@ struct
    datatype pseudo_op =
      DIVL
    | DIVLU
+   | DIVQ
+   | DIVQU
+   | REML
+   | REMLU
+   | REMQ
+   | REMQU
    datatype operateV =
      ADDLV
    | ADDQV
@@ -365,6 +379,8 @@ struct
    | CVTQTC
    | CVTTS
    | CVTTSC
+   | CVTST
+   | CVTSTS
    | CVTTQ
    | CVTTQC
    datatype foperate =

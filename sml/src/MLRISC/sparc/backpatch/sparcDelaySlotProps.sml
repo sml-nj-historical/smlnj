@@ -50,9 +50,9 @@ struct
 
     val defUseI = P.defUse I.C.GP
     val defUseF = P.defUse I.C.FP
-    val psr     = I.C.psr 
-    val fsr     = I.C.fsr
-    val y       = I.C.y
+    val psr     = [I.C.psr] 
+    val fsr     = [I.C.fsr]
+    val y       = [I.C.y]
     fun conflict{regmap,src=i,dst=j} = 
         let fun cc I.ANDCC  = true
               | cc I.ANDNCC = true
@@ -71,19 +71,19 @@ struct
               | cc I.UDIVCC = true
               | cc I.SDIVCC = true
               | cc _ = false
-            fun defUseOther(I.Ticc _) = ([],[psr])
+            fun defUseOther(I.Ticc _) = ([],psr)
               | defUseOther(I.ARITH{a,...}) = 
-                  if cc a then ([psr],[]) else ([],[])
-              | defUseOther(I.WRY _) = ([y],[])
-              | defUseOther(I.RDY _) = ([],[y])
-              | defUseOther(I.FCMP _) = ([fsr],[])
+                  if cc a then (psr,[]) else ([],[])
+              | defUseOther(I.WRY _) = (y,[])
+              | defUseOther(I.RDY _) = ([],y)
+              | defUseOther(I.FCMP _) = (fsr,[])
               | defUseOther(I.Bicc{b=I.BA,...}) = ([],[])
-              | defUseOther(I.Bicc _) = ([],[psr])
-              | defUseOther(I.FBfcc _) = ([],[fsr])
-              | defUseOther(I.MOVicc _) = ([],[psr])
-              | defUseOther(I.MOVfcc _) = ([],[fsr])
-              | defUseOther(I.FMOVicc _) = ([],[psr])
-              | defUseOther(I.FMOVfcc _) = ([],[fsr])
+              | defUseOther(I.Bicc _) = ([],psr)
+              | defUseOther(I.FBfcc _) = ([],fsr)
+              | defUseOther(I.MOVicc _) = ([],psr)
+              | defUseOther(I.MOVfcc _) = ([],fsr)
+              | defUseOther(I.FMOVicc _) = ([],psr)
+              | defUseOther(I.FMOVfcc _) = ([],fsr)
               | defUseOther(I.ANNOTATION{i,...}) = defUseOther i
               | defUseOther _ = ([],[])
             fun clash(defUse) =

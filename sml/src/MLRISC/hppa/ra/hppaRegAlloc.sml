@@ -19,7 +19,7 @@ functor HppaRegAlloc(structure I : INSTRUCTIONS where C = HppaCells
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
 		     where type B.name = F.B.name) : RA
-  end=
+   end=
 struct
 
   structure C=I.C
@@ -72,21 +72,3 @@ struct
 	end)
 end
 
-(*
- * $Log: hppaRegAlloc.sml,v $
- * Revision 1.6  1998/10/06 14:04:36  george
- *   The instruction sequence FCMP, FTEST, FBCC is being replaced
- *   by the composite instruction FBRANCH.  This makes scheduling and
- *   other tasks easier.  Also, added BLR and BL in the instruction set.
- * 							[leunga]
- *
- * Revision 1.5  1998/09/30 19:36:10  dbm
- * fixing sharing/defspec conflict
- *
- * Revision 1.4  1998/07/25 03:08:16  george
- *   added to support block names in MLRISC
- *
- * Revision 1.3  1998/05/25 15:10:59  george
- *   Fixed RCS keywords
- *
- *)
