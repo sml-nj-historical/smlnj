@@ -377,6 +377,12 @@ structure C_Debug :> C_INT_DEBUG = struct
     fun copy { from = (from, t), to = (to, _: objt) } =
 	copy' (T.sizeof t) { from = from, to = to }
 
+    val ro = addr_type_id
+    val rw = addr_type_id
+
+    val ro' = addr_id
+    val rw' = addr_id
+
     structure Ptr = struct
         val |&| = addr_type_id
 	fun |*| (0w0, _) = raise NullPointer
@@ -414,13 +420,13 @@ structure C_Debug :> C_INT_DEBUG = struct
 	fun sub (p, i) = |*| (|+| (p, i))
 
 	fun sub' t (p, i) = |*! (|+! t (p, i))
+
+	val ro = addr_type_id
+	val rw = addr_type_id
+
+	val ro' = addr_id
+	val rw' = addr_id
     end
-
-    val ro = addr_type_id
-    val rw = addr_type_id
-
-    val ro' = addr_id
-    val rw' = addr_id
 
     structure Arr = struct
         local

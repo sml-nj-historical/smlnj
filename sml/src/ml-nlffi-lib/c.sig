@@ -384,6 +384,23 @@ signature C = sig
     (* alt *)
     val copy' : 't S.size -> { from: ('t, 'c) obj', to: ('t, rw) obj' } -> unit
 
+    (* manipulating object constness
+     * rw -> ro:  this direction just accounts for the fact that
+     *            rw is conceptually a subtype of ro
+     * ro -> rw:  this is not safe, but C makes it so easy that we
+     *            might as well directly support it;
+     * Concretely, we make both operations polymorphic in the argument
+     * constness.  Moreover, the second (unsafe) direction is also
+     * polymorphic in the result.  This can be used to effectively
+     * implement a conversion to "whatever the context wants":
+     *)
+    val ro : ('t, 'c) obj  -> ('t, ro) obj
+    val rw : ('t, 'sc) obj -> ('t, 'tc) obj
+
+    (* alt *)
+    val ro' : ('t, 'c) obj'  -> ('t, ro) obj'
+    val rw' : ('t, 'sc) obj' -> ('t, 'tc) obj'
+
     (* operations on (mostly) pointers *)
     structure Ptr : sig
 
@@ -447,19 +464,13 @@ signature C = sig
 
 	(* alt; needs explicit size (for element) *)
 	val sub' : 't S.size -> ('t, 'c) ptr' * int -> ('t, 'c) obj'
+
+	(* constness manipulation for pointers *)
+	val ro : ('t, 'c) ptr    -> ('t, ro) ptr
+	val rw : ('t, 'sc) ptr   -> ('t, 'tc) ptr
+	val ro' : ('t, 'c) ptr'  -> ('t, ro) ptr'
+	val rw' : ('t, 'sc) ptr' -> ('t, 'tc) ptr'
     end
-
-    (* manipulating object constness
-     * rw -> ro:  this direction just accounts for the fact that
-     *            rw is conceptually a subtype of ro
-     * ro -> rw:  this is not safe, but C makes it so easy that we
-     *            might as well directly support it *)
-    val ro : ('t, 'c) obj -> ('t, ro) obj
-    val rw : ('t, 'c) obj -> ('t, rw) obj
-
-    (* alt *)
-    val ro' : ('t, 'c) obj' -> ('t, ro) obj'
-    val rw' : ('t, 'c) obj' -> ('t, rw) obj'
 
     (* operations on (mostly) arrays *)
     structure Arr : sig
@@ -491,10 +502,10 @@ signature C = sig
     end
 
     (* allocating new objects *)
-    val new : 't T.typ -> ('t, rw) obj
+    val new : 't T.typ -> ('t, 'c) obj
 
     (* alt *)
-    val new' : 't S.size -> ('t, rw) obj'
+    val new' : 't S.size -> ('t, 'c) obj'
 
     (* freeing objects that were allocated earlier *)
     val discard : ('t, 'c) obj -> unit
@@ -503,10 +514,10 @@ signature C = sig
     val discard' : ('t, 'c) obj' -> unit
 
     (* allocating a dynamically-sized array *)
-    val alloc : 't T.typ -> word -> ('t, rw) ptr
+    val alloc : 't T.typ -> word -> ('t, 'c) ptr
 
     (* alt *)
-    val alloc' : 't S.size -> word -> ('t, rw) ptr'
+    val alloc' : 't S.size -> word -> ('t, 'c) ptr'
 
     (* freeing through pointers *)
     val free : ('t, 'c) ptr -> unit

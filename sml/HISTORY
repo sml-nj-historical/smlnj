@@ -12,6 +12,25 @@ Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/16
+Tag: blume-20020116-ffifiddle
+Description:
+
+More fiddling with the FFI interface:
+
+ - Make constness 'c instead of rw wherever possible.  This eliminates
+   the need for certain explicit coercions.  (However, due to ML's
+   value polymorphism, there will still be many cases where explicit
+   coercions are necessary.  Phantom types are not the whole answer
+   to modeling a subtyping relationship in ML.)
+
+ - ro/rw coersions for pointers added.  (Avoids the detour through */&.)
+
+ - "printf" test example added to src/ml-nlffi-lib/Tests.  (Demonstrates
+   clumsy workaround for varargs problem.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/01/15
 Tag: <none>

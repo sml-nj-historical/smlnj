@@ -49,14 +49,14 @@ structure ZString : ZSTRING = struct
 	    val z = C.alloc' C.S.uchar (Word.fromInt (size s + 1))
 	in
 	    cpML' { from = s, to = z };
-	    z
+	    Ptr.rw' z
 	end
 
 	fun dupML s = let
 	    val z = C.alloc C.T.uchar (Word.fromInt (size s + 1))
 	in
 	    cpML { from = s, to = z };
-	    z
+	    Ptr.rw z
 	end
     end
 end
