@@ -1,23 +1,30 @@
 (* Copyright (c) 1997 YALE FLINT PROJECT *)
 (* ltyutil.sml *)
 
-(*** this file will go away soon *)
-
 signature LTYUTIL = sig 
 
 type tkind = LtyDef.tkind
 type tyc = LtyDef.tyc
 type lty = LtyDef.lty
 
-(** used by the coercion and wrapping *)
 val tcWrap : tyc -> tyc option
+val ltWrap : lty -> lty option
+val tcsWrap : tyc list -> tyc list option
+
+val tcc_arw : tyc * tyc -> tyc
+val tcd_arw : tyc -> tyc * tyc
+
+(** based on the given tyc, return its appropriate Update operator *)
+val tcUpd : tyc -> PrimOp.primop 
+
+(** type convertion; used in the ltNarrow phase *)
+val tkLty : tkind -> lty
+val tcNarrow : tyc -> tyc
+val ltNarrow : lty -> lty
+val ltNarrowSt : lty -> lty
+
 val genWrap : bool -> ((tyc -> tyc option) * (lty -> lty option)
                        * (tyc list -> tyc list option))
-
-(** type convertion; used by the reify phase *)
-val tkLty : tkind -> lty
-
-(** used by the ltNarrow phase *)
 val narrowGen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit -> unit))
 
 end 
@@ -51,6 +58,15 @@ type tyc = LtyDef.tyc
 type lty = LtyDef.lty
 type tkindEnv = LT.tkindEnv
 
+val tcc_arw = LT.tcc_parrow
+val tcd_arw = LT.tcd_parrow
+(*
+fun tcc_arw (t1, t2) = LT.tcc_arrow((true, true), [t1], [t2])
+fun tcd_arw t = case LT.tcd_arrow t
+                 of (_, [t1], [t2]) => (t1, t2)
+                  | _ => bug "unexpected case in tcd_arw"
+*)
+
 structure TcDict = BinaryDict(struct type ord_key = tyc
                                      val cmpKey = tc_cmp
                               end)
@@ -59,7 +75,6 @@ structure LtDict = BinaryDict(struct type ord_key = lty
                                      val cmpKey = lt_cmp
                               end)
 
-(*
 (** wrapping over a lambdatyc; assumption: arg is in normal form already *)
 (** warning: this does not handle tycons of non-zero arity *)
 datatype ucvinfo = SOMEB of tyc
@@ -72,6 +87,7 @@ val tcBox = LT.tcc_box
 
 fun genWrap save = 
 let 
+
 val m1 = ref (TcDict.mkDict())
 fun lookTc t = 
   if save then 
@@ -86,12 +102,11 @@ fun lookTc t =
     end
   else tcWrap t
 
-
 and tcWrap x = 
   (case (tc_out x)
     of (TC_PRIM pt) =>  
-         if PT.unboxed pt then SOME (tcBox x) else NONE 
-         (* if (PT.isvoid pt) then NONE else SOME (tcBox x) *)
+         if (PT.isvoid pt) then NONE else SOME (tcBox x) 
+         (* if PT.unboxed pt then SOME (tcBox x) else NONE *)
          (* warning: this does not handle tycons of non-zero arity *)
      | TC_TUPLE _ => SOME(ucvInfo x) 
      | TC_ARROW _ => SOME(ucvInfo x)
@@ -138,7 +153,7 @@ and tcUncover x =
   (case (tc_out x)
     of (TC_PRIM pt) => NOTHING
      | (TC_VAR _ | TC_PROJ _ | TC_ABS _ | TC_NVAR _) => SOMEU x
-     | (TC_TUPLE (_,ts)) => 
+     | (TC_TUPLE ts) => 
          let val nts = map tcUncover ts
           in if (uinfoList nts) then 
                (let fun h(z, NOTHING) = z
@@ -150,10 +165,10 @@ and tcUncover x =
              else NOTHING
          end
      | (TC_ARROW _) => 
-         let val (tc1, tc2) = LT.tcd_parrow x
+         let val (tc1, tc2) = tcd_arw x
              val ntc1 = 
                (case tc_out tc1
-                 of TC_TUPLE (_, ts as [_, _]) =>
+                 of TC_TUPLE (ts as [_, _]) =>
                       let val nts = map lookTc ts
                        in if (opList nts) then 
                             (let fun h(z, NONE) = z
@@ -171,11 +186,11 @@ and tcUncover x =
              val ntc2 = lookTc tc2
           in (case (ntc1, ntc2)
                of (NOTHING, NONE) => NOTHING
-                | (SOMEU z1, NONE) => SOMEU (LT.tcc_parrow(z1, tc2))
-                | (SOMEB z1, NONE) => SOMEB (tcBox(LT.tcc_parrow(z1, tc2)))
-                | (NOTHING, SOME z2) => SOMEU (LT.tcc_parrow(tc1, z2))
-                | (SOMEU z1, SOME z2) => SOMEU (LT.tcc_parrow(z1, z2))
-                | (SOMEB z1, SOME z2) => SOMEB (tcBox(LT.tcc_parrow(z1, z2))))
+                | (SOMEU z1, NONE) => SOMEU (tcc_arw(z1, tc2))
+                | (SOMEB z1, NONE) => SOMEB (tcBox(tcc_arw(z1, tc2)))
+                | (NOTHING, SOME z2) => SOMEU (tcc_arw(tc1, z2))
+                | (SOMEU z1, SOME z2) => SOMEU (tcc_arw(z1, z2))
+                | (SOMEB z1, SOME z2) => SOMEB (tcBox(tcc_arw(z1, z2))))
          end
      | (TC_APP(tc, ts)) => 
          (case tcUncover tc of NOTHING => NOTHING
@@ -184,33 +199,31 @@ and tcUncover x =
 
 in (lookTc, ltWrap, tcsWrap)
 end
-*)
-
-fun genWrap bbb = 
-  let fun tcWrap t = 
-        let val nt = LtyKernel.tcc_wrap t
-         in if LT.tc_eqv(nt,t) then NONE
-            else SOME nt
-        end
-
-      and tcsWrap xs = 
-        let fun p([], flag, bs) = if flag then SOME(rev bs) else NONE
-              | p(a::r, flag, bs) = 
-                  (case (tcWrap a) of NONE => p(r, flag, a::bs)
-                                    | SOME z => p(r, true, z::bs))
-         in p(xs, false, [])
-        end
-
-      and ltWrap x = 
-        (case lt_out x
-          of LT_TYC t => (case tcWrap t
-                           of NONE => NONE
-                            | SOME z => SOME(LT.ltc_tyc z))
-           | _ => bug "unexpected case in ltWrap")
-   in (tcWrap, ltWrap, tcsWrap)
-  end
 
 val (tcWrap, ltWrap, tcsWrap) = genWrap false
+
+(** based on the given tyc, return its appropriate Update operator *)
+fun tcUpd (tc) =  (* tc is in normal form *)
+  let fun h(TC_PRIM pt) = 
+            if PT.ubxupd pt then PO.UNBOXEDUPDATE
+            else if PT.bxupd pt then PO.BOXEDUPDATE 
+                 else PO.UPDATE
+        | h(TC_TUPLE _ | TC_ARROW _) = PO.BOXEDUPDATE
+        | h(TC_FIX ((1,tc,ts), 0)) = 
+            let val ntc = case ts of [] => tc
+                                   | _ => LT.tcc_app(tc, ts)
+             in (case (tc_out ntc)
+                  of TC_FN([k],b) => h (tc_out b)
+                   | _ => PO.UPDATE)
+            end
+        | h(TC_SUM tcs) = 
+            let fun g (a::r) = if tc_eqv(a, LT.tcc_unit) then g r else false
+                  | g [] = true
+             in if (g tcs) then PO.UNBOXEDUPDATE else PO.UPDATE
+            end
+        | h _ = PO.UPDATE
+   in h(tc_out tc)
+  end
 
 (** val tkLty : tkind -> lty *)
 fun tkLty tk = 
@@ -218,13 +231,13 @@ fun tkLty tk =
     of TK_MONO => LT.ltc_int
      | TK_BOX => LT.ltc_int
      | TK_SEQ ks => LT.ltc_tuple (map tkLty ks)
-     | TK_FUN (ks, k) => LT.ltc_parrow(LT.ltc_tuple(map tkLty ks), tkLty k))
+     | TK_FUN (k1, k2) => LT.ltc_arw(tkLty k1, tkLty k2))
 
 fun tcNarrow t = 
   (case (tc_out t)
     of TC_PRIM pt => 
          if PT.isvoid pt then LT.tcc_void else t
-     | TC_TUPLE (_, tcs) => LT.tcc_tuple (map tcNarrow tcs)
+     | TC_TUPLE tcs => LT.tcc_tuple (map tcNarrow tcs)
      | TC_ARROW (r, ts1, ts2) => 
          LT.tcc_arrow(r, map tcNarrow ts1, map tcNarrow ts2)
      | _ => LT.tcc_void)
@@ -247,7 +260,7 @@ fun tcNarrowSt t =
    in (case tc_out nt
         of TC_PRIM pt => 
              if PT.isvoid pt then LT.tcc_void else nt
-         | TC_TUPLE (_, tcs) => LT.tcc_tuple (map tcNarrowSt tcs)
+         | TC_TUPLE tcs => LT.tcc_tuple (map tcNarrowSt tcs)
          | TC_ARROW (r, ts1, ts2) => 
              LT.tcc_arrow(r, map tcNarrowSt ts1, map tcNarrowSt ts2)
          | _ => LT.tcc_void)
@@ -265,6 +278,14 @@ fun ltNarrowSt t =
      | LT_CONT _ => bug "unexpected CNTs in ltNarrowSt"
      | LT_IND _ => bug "unexpected INDs in ltNarrowSt"
      | LT_ENV _ => bug "unexpected ENVs in ltNarrowSt")
+
+(*
+val tcNarrow =
+  Stats.doPhase (Stats.makePhase "Compiler 053 1-tcNarw") tcNarrow
+
+val ltNarrow =
+  Stats.doPhase (Stats.makePhase "Compiler 053 2-ltNarw") ltNarrow
+*)
 
 (* val narrowGen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit -> unit)) *)
 fun narrowGen ()
@@ -296,7 +317,7 @@ fun narrowGen ()
          (case (tc_out t)
            of TC_PRIM pt => 
                 if PT.isvoid pt then LT.tcc_void else t
-            | TC_TUPLE (_, tcs) => LT.tcc_tuple (map lookTc tcs)
+            | TC_TUPLE tcs => LT.tcc_tuple (map lookTc tcs)
             | TC_ARROW (r, ts1, ts2) => 
                  LT.tcc_arrow(r, map lookTc ts1, map lookTc ts2)
             | _ => LT.tcc_void)
