@@ -291,7 +291,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 
     type cmdGetterSetter = string option -> string
 
-    fun newCmdGetterSetter sp = EnvConfig.new SOME sp
+    fun newCmdGetterSetter sp = EnvConfig.getSet (EnvConfig.new SOME sp)
 
     fun registerStdShellCmdTool arg = let
 	val { tool, class, suffixes, command, extensionStyle, sml } = arg

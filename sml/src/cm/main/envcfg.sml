@@ -7,9 +7,10 @@
  *)
 signature ENVCONFIG = sig
 
-    type 'a getterSetter = 'a option -> 'a
+    type 'a getterSetter
 
     val new : (string -> 'a option) -> string * 'a -> 'a getterSetter
+    val getSet : 'a getterSetter -> 'a option -> 'a
 
     val init : unit -> unit
 end
@@ -17,6 +18,8 @@ end
 structure EnvConfig :> ENVCONFIG = struct
 
     type 'a getterSetter = 'a option -> 'a
+
+    fun getSet gs = gs
 
     fun cfg cvt reg session0 fallback = let
 	val session = "CM_" ^ session0

@@ -128,9 +128,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val { mod = basis, nomod = perv } = split (#get ER.pervasive ())
 	    val corenv = #get ER.core ()
 	    val primconf = Primitive.configuration { basis = basis }
+	    val pcmode = PathConfig.hardwire
+		[("smlnj-lib.cm", "/home/blume/ML/current/lib")]
 	    val param = { primconf = primconf,
 			  fnpolicy = FilenamePolicy.default,
-			  pcmode = PathConfig.default,
+			  pcmode = pcmode,
 			  keep_going = true,
 			  pervasive = perv,
 			  corenv = corenv }
