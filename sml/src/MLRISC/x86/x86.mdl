@@ -506,9 +506,10 @@ struct
    *------------------------------------------------------------------------*)
 
   functor Assembly
-     (structure MemRegs : MEMORY_REGISTERS where I = Instr) =
+     (structure MemRegs : MEMORY_REGISTERS where I = Instr
+      val memRegBase : MemRegs.I.C.cell option) =
   struct
-     val memReg = MemRegs.memReg 
+     fun memReg r = MemRegs.memReg {reg=r, base=Option.valOf memRegBase}
      fun emitInt32 i = 
      let val s = Int32.toString i
          val s = if i >= 0 then s else "-"^String.substring(s,1,size s-1)

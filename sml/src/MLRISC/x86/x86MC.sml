@@ -10,6 +10,7 @@ functor X86MCEmitter
   (structure Instr : X86INSTR
    structure Shuffle : X86SHUFFLE where I = Instr
    structure MemRegs : MEMORY_REGISTERS where I = Instr
+   val memRegBase : MemRegs.I.C.cell option
    structure AsmEmitter : INSTRUCTION_EMITTER where I = Instr) : MC_EMIT = 
 struct
   structure I = Instr
@@ -67,7 +68,7 @@ struct
     val rNum = C.physicalRegisterNum 
     val fNum = C.physicalRegisterNum 
 
-    val memReg = MemRegs.memReg 
+    fun memReg r = MemRegs.memReg{reg=r, base=Option.valOf memRegBase}
 
     datatype size = Zero | Bits8 | Bits32
     fun size i = 

@@ -520,14 +520,25 @@ struct
       )
 
     (* Dedicated + available registers *)
-    fun mark(a, l) = app (fn r => Array.update(a, C.registerId r, true)) l
-
-    val dedicatedR   = Array.array(32,false)
-    val dedicatedF32 = Array.array(64,false)
-    val dedicatedF8  = Array.array(64,false)
-    val _ = mark(dedicatedR, Int.dedicated)
-    val _ = mark(dedicatedF32, Float.dedicated)
-
+    local 
+      fun mark(arr, _, [], others) = others
+	| mark(arr, len, r::rs, others) = let
+	    val r = C.registerId r
+          in
+	    if r >= len then mark(arr, len, rs, r::others)
+	    else (Array.update(arr, r, true); mark(arr, len, rs, others))
+          end
+      val dedicatedR   = Array.array(32,false)
+      val dedicatedF32 = Array.array(64,false)
+      val otherR = mark(dedicatedR, 32, Int.dedicated, [])
+      val otherF32 = mark(dedicatedF32, 64, Float.dedicated, [])
+      fun isDedicated (len, arr, other) r = 
+	(r < len andalso Array.sub(arr, r)) orelse List.exists (fn d => r = d) other
+    in
+      val isDedicatedR : int -> bool = isDedicated (32, dedicatedR, otherR)
+      val isDedicatedF32 : int -> bool = isDedicated (64, dedicatedF32, otherF32)
+      val isDedicatedF8 : int -> bool = fn _ => false
+    end
 
     fun phases ps =
     let fun f([], m) = m
@@ -552,7 +563,7 @@ struct
                  K         = K8,
                  getreg    = GR8.getreg,
                  cellkind  = I.C.GP,   
-                 dedicated = dedicatedR,
+                 dedicated = isDedicatedR,
                  spillProh = [],
                  memRegs   = Int.memRegs,
                  mode      = phases(Int.phases)
@@ -572,7 +583,7 @@ struct
                  K         = KF32,
                  getreg    = FR32.getreg,
                  cellkind  = I.C.FP,   
-                 dedicated = dedicatedF32,
+                 dedicated = isDedicatedF32,
                  spillProh = [],
                  memRegs   = Float.memRegs,
                  mode      = phases(Float.phases)
@@ -593,7 +604,7 @@ struct
                  K         = KF8,
                  getreg    = FR8.getreg,
                  cellkind  = I.C.FP,   
-                 dedicated = dedicatedF8,
+                 dedicated = isDedicatedF8,
                  spillProh = [],
                  memRegs   = Float.fastMemRegs,
                  mode      = phases(Float.fastPhases) 

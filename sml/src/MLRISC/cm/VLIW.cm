@@ -1,57 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature C6CELLS
-	signature C6DATAPATHS
-	signature C6FUNITS
-	signature C6INSTR
-	signature C6INSTRCLASS
-	signature C6INTRINSICS
-	signature C6PSEUDO_OPS
-	signature C6SHUFFLE
-	signature DATAPATHS
-	signature DECISION_TREES
-	signature FUNITS
-	signature HYPERBLOCK
-	signature HYPERBLOCK_SCHEDULING
-	signature IF_CONVERSION
-	signature MODULO_RESERVATION_TABLE
-	signature MODULO_SCHEDULING
-	signature MODULO_SCHEDULING_ALGORITHM
-	signature PREDICATED_DDG
-	signature PREDICATED_DDG_BUILDER
-	signature PREDICATED_INSTRUCTIONS
-	signature PREDICATED_VLIW_INSTRUCTIONS
-	signature PREDICATION_PROPERTIES
-	signature PRE_MODULO_SCHEDULING
-	signature RANKING_ALGORITHM
-	signature VLIW_INSTRUCTIONS
-	signature VLIW_PROPERTIES
-	signature VLIW_SCHEDULING_AUTOMATON
-	signature VLIW_SCHEDULING_PROPERTIES
-	structure C6Cells
-	structure C6Datapaths
-	structure C6Funits
-	structure C6Intrinsics
-	structure DecisionTrees
-	functor C6AsmEmitter
-	functor C6Instr
-	functor C6InstrClass
-	functor C6PredicationProps
-	functor C6Props
-	functor C6PseudoOps
-	functor C6SchedulingProps
-	functor C6Shuffle
-	functor C6VLIWProps
-	functor CriticalPath
-	functor Hyperblock
-	functor HyperblockScheduling
-	functor IfConversion
-	functor IteratedModuloScheduling
-	functor ModuloReservationTable
-	functor ModuloScheduling
-	functor PreModuloScheduling
-	functor PredicatedDDG
-	functor PredicatedDDGBuilder
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

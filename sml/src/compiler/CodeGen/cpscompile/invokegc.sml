@@ -40,6 +40,15 @@ struct
 
    val addrTy = C.addressWidth
 
+   (* IMPORTANT: 
+    *   There is never a raw C call in blocks that invoke GC, so it is
+    * not necessary to use the virtual frame pointer. If this should change
+    * in future, then this would need to be re-thought
+    *)
+   val vfp = false
+
+
+
    (* The following datatype is used to encapsulates 
     * all the information needed to generate code to invoke gc.
     * The important fields are:
@@ -92,7 +101,8 @@ struct
        (* 
         * registers that are the roots of gc.
         *)
-   val gcParamRegs  = (C.stdlink::C.stdclos::C.stdcont::C.stdarg::calleesaves)
+   val gcParamRegs  = 
+     (C.stdlink(vfp)::C.stdclos(vfp)::C.stdcont(vfp)::C.stdarg(vfp)::calleesaves)
 
        (*
         * How to call the call the GC 
@@ -134,7 +144,7 @@ struct
 
    val unlikely = #create MLRiscAnnotations.BRANCH_PROB 0
 
-   val normalTestLimit = T.CMP(pty, gcCmp, C.allocptr, C.limitptr)
+   val normalTestLimit = T.CMP(pty, gcCmp, C.allocptr, C.limitptr(vfp))
 
    (*====================================================================
     * Private state
@@ -203,7 +213,7 @@ struct
           )
        else  
        let val shiftedAllocPtr = T.ADD(addrTy,C.allocptr,LI(maxAlloc-skidPad))
-           val shiftedTestLimit = T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr)
+           val shiftedTestLimit = T.CMP(pty, gcCmp, shiftedAllocPtr, C.limitptr(vfp))
        in  case C.exhausted of
              SOME(cc as T.CC(_,r)) => 
                (emit(T.CCMV(r, shiftedTestLimit)); gotoGC(cc))
@@ -220,11 +230,11 @@ struct
    fun computeBasePtr(emit,defineLabel,annotation) =
    let val returnLab = Label.newLabel ""
        val baseExp = 
-           T.ADD(addrTy, C.gcLink,
+           T.ADD(addrTy, C.gcLink(vfp),
                  T.LABEXP(T.SUB(addrTy,baseOffset,T.LABEL returnLab)))
    in  defineLabel returnLab;
        annotation(ZERO_FREQ); 
-       emit(case C.baseptr of 
+       emit(case C.baseptr(vfp) of 
               T.REG(ty, bpt) => T.MV(ty, bpt, baseExp)
             | T.LOAD(ty, ea, mem) => T.STORE(ty, ea, baseExp, mem)
             | _ => error "computeBasePtr")

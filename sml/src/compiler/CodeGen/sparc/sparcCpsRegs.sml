@@ -15,22 +15,25 @@ struct
   fun REG r = T.REG(32,GP r) 
   fun FREG f = T.FREG(64,FP f)
 
-  val stdarg	= REG(24) (* %i0 *)
-  val stdcont	= REG(25) (* %i1 *)
-  val stdclos	= REG(26) (* %i2 *)
-  val stdlink	= REG(1)  (* %g1 *)
-  val baseptr	= REG(27) (* %i3 *)
+  val vfp		= SparcCells.newReg()
+  val vfptr		= T.REG(32, vfp)
+  
+  fun stdarg _		= REG(24) (* %i0 *)
+  fun stdcont _		= REG(25) (* %i1 *)
+  fun stdclos _		= REG(26) (* %i2 *)
+  fun stdlink _		= REG(1)  (* %g1 *)
+  fun baseptr _		= REG(27) (* %i3 *)
 
-  val limitptr	= REG(4)  (* %g4 *)
-  val varptr	= REG(29) (* %i5 *)
-  val exhausted	= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
-  val storeptr	= REG(5)  (* %g5 *)
-  val allocptr	= REG(6)  (* %g6 *)
-  val exnptr	= REG(7)  (* %g7 *)
+  fun limitptr _	= REG(4)  (* %g4 *)
+  fun varptr _		= REG(29) (* %i5 *)
+  val exhausted		= SOME(T.CC(T.GTU,C.psr))  (* %psr *) 
+  fun storeptr _	= REG(5)  (* %g5 *)
+  val allocptr		= REG(6)  (* %g6 *)
+  fun exnptr _		= REG(7)  (* %g7 *)
 
-  val returnPtr	= GP 15        
-  val gcLink	= T.REG(32,returnPtr) 
-  val stackptr	= REG(14)
+  val returnPtr		= GP 15        
+  fun gcLink _		= T.REG(32,returnPtr) 
+  val stackptr		= REG(14)
 
    (* Warning %o2 is used as the asmTmp
     *)    
@@ -50,7 +53,7 @@ struct
 
   val availR = 
     map (fn T.REG(_,r) => r)
-        ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
+        ([stdlink(false), stdclos(false), stdarg(false), stdcont(false), gcLink(false)] @ miscregs)
 
   local
       structure SC = SparcCells.SortedCells

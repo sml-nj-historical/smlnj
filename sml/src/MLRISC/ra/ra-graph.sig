@@ -61,7 +61,7 @@ sig
        nodes        : node IntHashTable.hash_table,
        K            : int,
        firstPseudoR : int,
-       dedicated    : bool Array.array,
+       dedicated    : int -> bool,
        getreg       : {pref:int list, stamp:int, proh:int Array.array} -> int,
        getpair      : {pref:int list, stamp:int, proh:int Array.array} -> int,
        proh         : int Array.array,
@@ -165,7 +165,7 @@ sig
                    maxRegs      : unit -> int,
                    K            : int,
                    firstPseudoR : int,
-                   dedicated    : bool Array.array,
+                   dedicated    : int -> bool,
                    showReg      : C.cell -> string,
                    getreg       : 
                      {pref:int list,stamp:int,proh:int Array.array} -> int,

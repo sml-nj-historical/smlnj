@@ -1,27 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature MLRISC_SSA
-	signature MLRISC_SSA_CONSTANT_FOLDING
-	signature MLRISC_SSA_CONSTRUCTION
-	signature MLRISC_SSA_DECONSTRUCTION
-	signature MLRISC_SSA_FLOWGRAPH
-	signature MLRISC_SSA_GLOBAL_CODE_MOTION
-	signature MLRISC_SSA_GLOBAL_VALUE_NUMBERING
-	signature MLRISC_SSA_INSTRGEN
-	signature MLRISC_SSA_OPTIMIZATION
-	signature MLRISC_SSA_PROPERTIES
-	functor MLRiscSSA
-	functor MLRiscSSAConditionalConstantFolding
-	functor MLRiscSSAConstantFolding
-	functor MLRiscSSAConstruction
-	functor MLRiscSSADeadCodeElim
-	functor MLRiscSSADeconstruction
-	functor MLRiscSSAGCInvariants
-	functor MLRiscSSAGlobalCodeMotion
-	functor MLRiscSSAGlobalValueNumbering
-	functor MLRiscSSAGlobalValueNumbers
-	functor MLRiscSSAInstrGen
-	functor MLRiscSSAOperatorStrengthReduction
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

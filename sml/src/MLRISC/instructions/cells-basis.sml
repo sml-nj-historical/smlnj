@@ -38,6 +38,14 @@ struct
         DESC of
         {kind             : cellkind,
          counter          : int ref,
+	 dedicated	  : int ref,
+	    (* It is sometimes desirable to allocate dedicated 
+	     * pseudo registers that will get rewritten to something else,
+	     * e.g., the virtual frame pointer. 
+	     * Since these registers are never assigned a register  by 
+	     * the register allocator, a limited number of these kinds 
+	     * of registers may be generated.
+	     *)
          low              : int,
          high             : int,
          toString         : register_id -> string,
@@ -294,6 +302,7 @@ struct
         DESC
         {kind             = MEM,
          counter          = ref 0,
+	 dedicated	  = ref 0,
          low              = 0,
          high             = ~1,
          toString         = fn m => "m"^i2s m,

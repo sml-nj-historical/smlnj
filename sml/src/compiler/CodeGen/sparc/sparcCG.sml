@@ -13,6 +13,14 @@ structure SparcCG =
 
     structure CCalls     = DummyCCallsFn (SparcMLTree)
 
+    structure OmitFramePtr = struct
+      exception NotImplemented
+      structure F=SparcFlowGraph
+      structure I=SparcInstr
+      val vfp = CpsRegs.vfp
+      fun omitframeptr _ = raise NotImplemented
+    end
+
     structure MLTreeComp=
        Sparc(structure SparcInstr = SparcInstr
              structure SparcMLTree = SparcMLTree

@@ -39,6 +39,7 @@ Library
 	signature MLTREE_EXTENSION_COMP
 	signature MLTREE_MULT_DIV
 	signature MLTREE_SIZE
+	signature OMIT_FRAME_POINTER
 	signature POINTS_TO
 	signature PRINT_CLUSTER
 	signature PSEUDO_OPS
@@ -216,3 +217,4 @@ is
 	../backpatch/vlBackPatch.sml
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
+ 	../omit-frameptr/omit-frame-pointer.sig

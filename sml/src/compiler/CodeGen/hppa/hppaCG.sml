@@ -13,6 +13,14 @@ structure HppaCG =
 
     structure CCalls     = DummyCCallsFn (HppaMLTree)
 
+    structure OmitFramePtr = struct
+      exception NotImplemented
+      structure F=HppaFlowGraph
+      structure I=HppaInstr
+      val vfp = CpsRegs.vfp
+      fun omitframeptr _ = raise NotImplemented
+    end
+
     structure HppaMillicode = HppaMillicode(HppaInstr)
 
     structure HppaLabelComp = HppaLabelComp(HppaInstr)

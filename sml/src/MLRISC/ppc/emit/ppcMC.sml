@@ -433,7 +433,14 @@ struct
           let 
 (*#line 423.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
-          in x_form {opcd=opcd, rt=ft, ra=0wx0, rb=fb, xo=xo, rc=Rc}
+          in 
+             (case oper of
+               (0wx3f, 0wx16) => a_form {opcd=opcd, frt=ft, fra=0wx0, frb=fb, 
+                  frc=0wx0, xo=xo, rc=Rc}
+             | (0wx3b, 0wx16) => a_form {opcd=opcd, frt=ft, fra=0wx0, frb=fb, 
+                  frc=0wx0, xo=xo, rc=Rc}
+             | _ => x_form {opcd=opcd, rt=ft, ra=0wx0, rb=fb, xo=xo, rc=Rc}
+             )
           end
        end
    and farith {oper, ft, fa, fb, Rc} = 
@@ -442,7 +449,7 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 429.12 "ppc/ppc.mdl"*)
+(*#line 436.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = emit_farith oper
           in 
              (case oper of
@@ -461,14 +468,14 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 438.12 "ppc/ppc.mdl"*)
+(*#line 445.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
           in a_form {opcd=opcd, frt=ft, fra=fa, frb=fb, frc=fc, xo=xo, rc=Rc}
           end
        end
    and cr_bit {cc} = 
        let 
-(*#line 443.12 "ppc/ppc.mdl"*)
+(*#line 450.12 "ppc/ppc.mdl"*)
            val (cr, bit) = cc
        in ((emit_CC cr) << 0wx2) + (itow 
           (case bit of
@@ -671,7 +678,7 @@ struct
           )
        end
 
-(*#line 533.7 "ppc/ppc.mdl"*)
+(*#line 540.7 "ppc/ppc.mdl"*)
    fun relative (I.LabelOp lexp) = (itow ((LabelExp.valueOf lexp) - ( ! loc))) ~>> 0wx2
      | relative _ = error "relative"
        fun emitter instr =

@@ -37,10 +37,12 @@ struct
        cellKindDescs
     *)
 
-   val cellkinds   = map (fn (kind,_) => kind) cellKindDescs
-   val firstPseudo = firstPseudo
-   val name        = ref firstPseudo
-   val cellCounter = name
+   val cellkinds	 = map (fn (kind,_) => kind) cellKindDescs
+   val firstPseudo	 = firstPseudo
+   val maxDedicatedCells = 256
+   val firstName         = firstPseudo + maxDedicatedCells
+   val name		 = ref firstName
+(*   val cellCounter = name *)
 
    val _ = app (fn (_, desc as DESC{physicalRegs, high, low, ...}) =>
                 let val n = high - low + 1
@@ -118,6 +120,18 @@ struct
       end
    end
 
+   fun newDedicatedCell k = 
+       let val desc as DESC{dedicated,...} = desc k
+       in  fn _ => 
+           let val d = !dedicated 
+           in  dedicated := d + 1; 
+	       if d >= maxDedicatedCells then 
+		 error "too many dedicated cells"
+	       else
+               CELL{id=firstPseudo+d, col=ref PSEUDO, an=ref [], desc=desc}
+           end
+       end
+ 
    fun newVar (CELL{desc, an, ...}) =
    let val r = !name
    in  name := r + 1; 
@@ -138,7 +152,7 @@ struct
 
    fun reset() = 
        (app (fn (_,DESC{counter, ...}) => counter := 0) cellKindDescs;
-        name := firstPseudo
+        name := firstName
        )
 
    structure CellSet =

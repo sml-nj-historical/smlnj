@@ -134,24 +134,36 @@ struct
    fun x - y = Word.toIntX(Word.-(Word.fromInt x, Word.fromInt y))
 
    (* GetReg specialized to integer and floating point registers *)
+   fun isDedicated (len, arr, others) r = 
+     (r < len andalso Array.sub(arr, r)) orelse List.exists (fn d => r = d) others
+
+   fun mark(arr, _, [], others) = others
+     | mark(arr, len, r::rs, others) = let
+	 val r = C.registerId r
+       in
+	 if r >= len then mark(arr, len, rs, r::others)
+	 else (Array.update(arr, r, true); mark(arr, len, rs, others))
+       end
+
+
+
    local
-      val {low,high} = C.cellRange C.GP
+       val {low,high} = C.cellRange C.GP
+       val arr = Array.array(high+1,false)
+       val others = mark(arr, high+1, Int.dedicated, [])
    in
        structure GR = GetReg(val first=low val nRegs=high-low+1 
                              val available=map C.registerId Int.avail)
-       val dedicatedR = Array.array(high+1,false)
-       val _ = app (fn r => Array.update(dedicatedR,C.registerId r,true)) 
-                            Int.dedicated
-
+       val dedicatedR : int -> bool = isDedicated (high+1, arr, others)
    end
    local 
       val {low,high} = C.cellRange C.FP
+      val arr = Array.array(high+1,false)
+      val others = mark(arr, high+1, Float.dedicated, [])
    in
       structure FR = GetReg(val first=low val nRegs=high-low+1 
                             val available=map C.registerId Float.avail)
-      val dedicatedF = Array.array(high+1,false)
-      val _ = app (fn r => Array.update(dedicatedF,C.registerId r,true)) 
-                      Float.dedicated
+      val dedicatedF : int -> bool = isDedicated(high+1, arr, others)
    end
 
    (* Spill integer register *)

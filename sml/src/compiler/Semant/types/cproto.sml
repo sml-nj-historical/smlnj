@@ -124,7 +124,7 @@ end = struct
 	    case getDomainRange (unlist t) of
 		NONE => bad ()
 	      | SOME (d, r) =>
-		{ conv = "SMLNJ", (* select special treatment for vregs etc. *)
+		{ conv = "", 
 		  retTy = dt r,
 		  paramTys = if TU.equalType (d, BT.unitTy) then []
 			     else case BT.getFields d of

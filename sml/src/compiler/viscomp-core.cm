@@ -68,6 +68,7 @@ Group (../system/smlnj/viscomp/core.cm)
 	functor MachDepVCFun
 
 	functor DummyCCallsFn
+	structure ClusterAnnotation
 is
 
 TopLevel/batch/batchconfig.sml
@@ -295,6 +296,7 @@ CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/spill.sml
+CodeGen/main/clusterAnnotation.sml	(* temporary hack; see comment in file *)
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig
 CodeGen/main/machine-gen.sig

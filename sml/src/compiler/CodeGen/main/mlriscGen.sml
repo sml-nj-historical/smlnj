@@ -40,6 +40,7 @@ struct
   structure CG = Control.CG     (* Compiler Control *)
   structure MS = MachineSpec    (* Machine Specification *)
   structure D  = MS.ObjDesc     (* ML Object Descriptors *)
+  structure An = MLRiscAnnotations
 
   structure ArgP =              (* Argument passing *)
     ArgPassing(structure Cells=Cells
@@ -75,14 +76,14 @@ struct
   val I32    = SMLGCType.I32     (* untagged integers *)
   val REAL64 = SMLGCType.REAL64  (* untagged floats *)
   val PTR    = SMLGCType.PTR     (* boxed objects *)
-  val NO_OPT = [#create MLRiscAnnotations.NO_OPTIMIZATION ()]
+  val NO_OPT = [#create An.NO_OPTIMIZATION ()]
 
   val enterGC = GCCells.setGCType
 
-  val ptr = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,PTR))
-  val i32 = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,I32))
-  val i31 = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,I31))
-  val flt = #create MLRiscAnnotations.MARK_REG(fn r => enterGC(r,REAL64))
+  val ptr = #create An.MARK_REG(fn r => enterGC(r,PTR))
+  val i32 = #create An.MARK_REG(fn r => enterGC(r,I32))
+  val i31 = #create An.MARK_REG(fn r => enterGC(r,I31))
+  val flt = #create An.MARK_REG(fn r => enterGC(r,REAL64))
   fun ctyToAnn CPS.INTt   = i31 
     | ctyToAnn CPS.INT32t = i32 
     | ctyToAnn CPS.FLTt   = flt 
@@ -173,13 +174,14 @@ struct
   (*
    * This dummy annotation is used to get an empty block  
    *)
-  val EMPTY_BLOCK = #create MLRiscAnnotations.EMPTY_BLOCK ()
+  val EMPTY_BLOCK = #create An.EMPTY_BLOCK ()
   
   (*
    * convert object descriptor to int 
    *)
   val dtoi = LargeWord.toInt   
 
+   
   (*
    * The mltree stream
    *)
@@ -288,21 +290,34 @@ struct
             | _ => addTypBinding(f, CPS.BOGt)
            (*esac*))
 
-      (*
-       * This is the GC comparison test used.  We have a choice of signed
-       * and unsigned comparisons.  This usually doesn't matter, but some
-       * architectures work better in one way or the other, so we are given 
-       * a choice here.   For example, the Alpha has to do extra for unsigned
-       * tests, so on the Alpha we use signed tests.
-       *)
-      val gcTest = M.CMP(pty, if C.signedGCTest then M.GT else M.GTU, 
-                         C.allocptr, C.limitptr)
  
       (*
        * Function for generating code for one cluster.
        *)
       fun genCluster(cluster) = 
       let val _ = if !Control.debugging then app PPCps.printcps0 cluster else ()
+
+	 (*
+	  * If RCC is present we need to use the virtual frame pointer
+	  *)
+	  local
+	    fun hasRCC([]) = false
+	      | hasRCC((_,_,_,_,cexp)::rest) = CPS.hasRCC(cexp) orelse hasRCC(rest)
+          in
+	    val vfp = hasRCC(cluster)
+	    val _ = ClusterAnnotation.useVfp := vfp
+          end
+
+	  (*
+	   * This is the GC comparison test used.  We have a choice of signed
+	   * and unsigned comparisons.  This usually doesn't matter, but some
+	   * architectures work better in one way or the other, so we are given 
+	   * a choice here.   For example, the Alpha has to do extra for unsigned
+	   * tests, so on the Alpha we use signed tests.
+	   *)
+	  val gcTest = M.CMP(pty, if C.signedGCTest then M.GT else M.GTU, 
+			     C.allocptr, C.limitptr(vfp))
+
           val clusterSize = length cluster
 
           (* per-cluster tables *)
@@ -416,7 +431,7 @@ struct
            *)
           fun laddr(lab, k) =
           let val e = 
-              M.ADD(addrTy, C.baseptr,
+              M.ADD(addrTy, C.baseptr(vfp),
                     M.LABEXP(M.ADD(addrTy,M.LABEL lab, 
                              M.LI(IntInf.fromInt
                                   (k-MachineSpec.constBaseRegOffset)))))
@@ -794,8 +809,8 @@ struct
             (emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp)),
                                     tmp,R.storelist));
              emit(M.STORE(pty,M.ADD(addrTy,C.allocptr,LI(hp+4)),
-                                    C.storeptr,R.storelist));
-             emit(assign(C.storeptr, M.ADD(addrTy, C.allocptr, LI(hp)))))
+                                    C.storeptr(vfp),R.storelist));
+             emit(assign(C.storeptr(vfp), M.ADD(addrTy, C.allocptr, LI(hp)))))
                
           fun unsignedCmp oper = 
               case oper
@@ -939,7 +954,7 @@ struct
                                    M.LABEXP(M.SUB(addrTy,
                                        constBaseRegOffset,
                                        M.LABEL entryLab)))
-                       in  emit(assign(C.baseptr, baseval)) end
+                       in  emit(assign(C.baseptr(vfp), baseval)) end
                      else ();
                      InvokeGC.stdCheckLimit stream
                          {maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
@@ -1239,7 +1254,8 @@ struct
            *)
           and externalApp(f, args, hp) = 
               let val ctys = map grabty args
-                  val formals as (M.GPR dest::_) = ArgP.standard(typmap f, ctys)
+                  val formals as (M.GPR dest::_) = 
+		    ArgP.standard{fnTy=typmap f, vfp=vfp, argTys=ctys}
               in  callSetup(formals, args);
                   if gctypes then
                     annotation(gcAnnotation(#create GCCells.GCLIVEOUT, 
@@ -1269,7 +1285,7 @@ struct
                    end
                  | Frag.KNOWNCHK(r as ref(Frag.UNGEN(f,vl,tl,e))) => 
                    let val formals = 
-                           if MS.fixedArgPassing then ArgP.fixed tl
+                           if MS.fixedArgPassing then ArgP.fixed{argTys=tl, vfp=vfp}
                            else known tl
                        val lab = functionLabel f
                    in  r := Frag.GEN formals;
@@ -1282,7 +1298,7 @@ struct
                       testLimit hp;
                       emit(branchToLabel(functionLabel f)))
                  | Frag.STANDARD{fmlTyps, ...} => 
-                   let val formals = ArgP.standard(typmap f, fmlTyps)
+                   let val formals = ArgP.standard{fnTy=typmap f, argTys=fmlTyps, vfp=vfp}
                    in  callSetup(formals, args);
                        testLimit hp;
                        emit(branchToLabel(functionLabel f))
@@ -1667,8 +1683,8 @@ struct
                   val mem' = arrayRegion mem
               in  treeifyDefF64(x, M.FLOAD(fty,scale8(a, i), mem'), e, hp)
               end
-            | gen(LOOKER(P.gethdlr,[],x,_,e), hp) = defBoxed(x, C.exnptr, e, hp)
-            | gen(LOOKER(P.getvar, [], x, _, e), hp)= defBoxed(x, C.varptr, e, hp)
+            | gen(LOOKER(P.gethdlr,[],x,_,e), hp) = defBoxed(x, C.exnptr(vfp), e, hp)
+            | gen(LOOKER(P.getvar, [], x, _, e), hp)= defBoxed(x, C.varptr(vfp), e, hp)
             | gen(LOOKER(P.deflvar, [], x, _, e), hp)= defBoxed(x, zero, e, hp)
             | gen(LOOKER(P.getspecial, [v], x, _, e), hp) = 
                 defBoxed(x, orTag(M.SRA(ity, getObjDescriptor(v),
@@ -1744,9 +1760,9 @@ struct
                   gen(e, hp)
               end
             | gen(SETTER(P.sethdlr,[x],e), hp) = 
-                (emit(assign(C.exnptr, regbind x)); gen(e, hp))
+                (emit(assign(C.exnptr(vfp), regbind x)); gen(e, hp))
             | gen(SETTER(P.setvar,[x],e), hp) = 
-                (emit(assign(C.varptr, regbind x)); gen(e, hp))
+                (emit(assign(C.varptr(vfp), regbind x)); gen(e, hp))
             | gen(SETTER(P.uselvar,[x],e), hp) = gen(e, hp)
             | gen(SETTER(P.acclink,_,e), hp) = gen(e, hp)
             | gen(SETTER(P.setmark,_,e), hp) = gen(e, hp)
@@ -1799,26 +1815,21 @@ struct
 			  { name = f, proto = p, structRet = sr, args = a }
 
 		  fun withVSP f = let
-		      (***** must be a real frame pointer once that is
-		       * implemented!!*)
-		      val frameptr = C.stackptr
+		      val frameptr = C.vfptr 
 
 		      val msp =
 			  M.LOAD (addrTy, ea (frameptr, MS.ML_STATE_OFFSET),
-				  R.memory)
+				  R.stack)
 		      val vsp =
 			  M.LOAD (addrTy, ea (msp, MS.VProcOffMSP), R.memory)
 
-		      val vsp' = M.REG (addrTy, Cells.newReg ())
-		      val inML =
-			  M.LOAD (ity, ea (vsp', MS.InMLOffVSP),
-				  R.memory)
+		      val vsp' = M.REG (addrTy, Cells.newReg ())     
+		      val inML = M.LOAD (ity, ea (vsp', MS.InMLOffVSP), R.memory)
 		      val LimitPtrMask =
-			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP),
-				  R.memory)
+			  M.LOAD (32, ea (vsp', MS.LimitPtrMaskOffVSP), R.memory)
 		  in
 		      (* move vsp to its register *)
-		      emit (assign (vsp', vsp));
+		      emit (assign (vsp', vsp));   
 		      f { inML = inML, LimitPtrMask = LimitPtrMask }
 		  end
 
@@ -1841,9 +1852,9 @@ struct
 			      ((* set vp_inML back to 1 *)
 			       emit (assign (inML, LW 0w1));
 			       (* limitPtr := limitPtr & vp_limitPtrMask *)
-			       emit (assign (C.limitptr,
+			       emit (assign (C.limitptr(vfp),
 					     M.ANDB (pty, LimitPtrMask,
-						          C.limitptr)))));
+						          C.limitptr(vfp))))));
 
 		  case (result, retTy) of
 		      (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) =>
@@ -1952,7 +1963,7 @@ struct
                 | fcomp(SOME(lab, 
                         Frag.STANDARD{func as ref(SOME (zz as (k,f,vl,tl,e))), 
                                               ...})) = 
-                  let val formals = ArgP.standard(typmap f, tl)
+                  let val formals = ArgP.standard{fnTy=typmap f, argTys=tl, vfp=vfp}
                   in  func := NONE;
                       pseudoOp PseudoOp.ALIGN4;
                       genCPSFunction(lab, k, f, vl, formals, tl, e);
@@ -1977,32 +1988,38 @@ struct
            * Currently, we only need to enter the appropriate
            * gc map information.
            *)
-          fun clusterAnnotations() = 
-             if gctypes then 
-                let fun enter(M.REG(_,r),ty) = enterGC(r, ty)
-                      | enter _ = ()
-                in  enterGC(allocptrR, SMLGCType.ALLOCPTR);
-                    enter(C.limitptr, SMLGCType.LIMITPTR);
-                    enter(C.baseptr, PTR);
-                    enter(C.stdlink, PTR);
-                    [#create MLRiscAnnotations.PRINT_CELLINFO(GCCells.printType)
-                    ]
-                end
-             else []
+          fun clusterAnnotations() = let
+	    val cellinfo =
+               if gctypes then 
+                  let fun enter(M.REG(_,r),ty) = enterGC(r, ty)
+                        | enter _ = ()
+                  in  enterGC(allocptrR, SMLGCType.ALLOCPTR);
+                      enter(C.limitptr(vfp), SMLGCType.LIMITPTR);
+                      enter(C.baseptr(vfp), PTR);
+                      enter(C.stdlink(vfp), PTR);
+                      [#create An.PRINT_CELLINFO(GCCells.printType)
+                       ]
+                  end
+               else []
+	   in
+	     if vfp then #set An.USES_VIRTUAL_FRAME_POINTER ((), cellinfo)
+	     else cellinfo
+	   end
       in
-          initFrags cluster;
-          beginCluster 0;
-          fragComp();
-          InvokeGC.emitLongJumpsToGCInvocation stream;
-          endCluster(clusterAnnotations())
+	initFrags cluster;
+	beginCluster 0;
+	fragComp();
+	InvokeGC.emitLongJumpsToGCInvocation stream;
+	endCluster(clusterAnnotations())
       end (* genCluster *)
 
       fun emitMLRiscUnit f = 
-          (Cells.reset();
-           beginCluster 0; 
-           f stream;
-           endCluster NO_OPT
-          )
+	(Cells.reset();
+	 ClusterAnnotation.useVfp := false;
+	 beginCluster 0; 
+	 f stream;
+	 endCluster NO_OPT
+         )
   in  app mkGlobalTables funcs;
       app genCluster (Cluster.cluster funcs);
       emitMLRiscUnit InvokeGC.emitModuleGC

@@ -29,7 +29,7 @@ sig
        *)
    val firstPseudo : cell_id      (* first pseudo register *)
    val cellkindDesc : cellkind -> cellkindDesc (* find descriptor *)
-   val cellCounter  : int ref
+(*   val cellCounter  : int ref *)
 
        (* given a cellkind returns its encoding range *)
    val cellRange : cellkind -> {low:int, high:int}
@@ -66,6 +66,8 @@ sig
    val newCell   : cellkind -> ('a -> cell)
    val newReg    : 'a -> cell  (* abbreviation for newCell GP *)
    val newFreg   : 'a -> cell  (* abbreviation for newCell FP *)
+
+   val newDedicatedCell : cellkind -> ('a -> cell)
 
        (* lookup the number of virtual registers in a cellkind *)
    val numCell   : cellkind -> (unit -> int) 

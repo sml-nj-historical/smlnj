@@ -79,7 +79,7 @@ struct
          | loop(_::l,n) = loop(l,n+1)
    in  loop(l,0) end
 
-   fun services(cluster as F.CLUSTER{blocks, blkCounter, ...}) =
+   fun services(cluster as F.CLUSTER{blocks, blkCounter, annotations=clAnns, ...}) =
    let (* Create a graph based view of cluster *)
        val N = !blkCounter
 
@@ -276,16 +276,14 @@ struct
            val insnDefUse = Props.defUse cellkind
            val getCell    = C.CellSet.get cellkind
 
-           fun isDedicated r =
-              Word.fromInt r < Word.fromInt(A.length dedicated) 
-              andalso UA.sub(dedicated, r) 
+           fun isDedicated r = dedicated r
 
           (* Remove all dedicated or spilled registers from the list *)
            fun rmvDedicated regs =
            let fun loop([], rs') = rs'
                  | loop(r::rs, rs') = 
-                   let fun rmv(r as C.CELL{col=ref(C.PSEUDO), ...}) =
-                             loop(rs, r::rs')
+                   let fun rmv(r as C.CELL{col=ref(C.PSEUDO), id, ...}) = 
+			     if isDedicated(id) then loop(rs, rs') else loop(rs, r::rs')
                          | rmv(C.CELL{col=ref(C.ALIASED r), ...}) = rmv r
                          | rmv(r as C.CELL{col=ref(C.MACHINE col), ...}) = 
                              if isDedicated col then loop(rs, rs')

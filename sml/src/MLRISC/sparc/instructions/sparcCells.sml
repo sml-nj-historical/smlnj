@@ -103,28 +103,28 @@ struct
        val firstPseudo = 256
        val desc_GP = CellsInternal.DESC {low=0, high=31, kind=CellsBasis.GP, 
               defaultValues=[(0, 0)], zeroReg=SOME 0, toString=showGP, toStringWithSize=showGPWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_FP = CellsInternal.DESC {low=32, high=63, kind=CellsBasis.FP, 
               defaultValues=[], zeroReg=NONE, toString=showFP, toStringWithSize=showFPWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_Y = CellsInternal.DESC {low=64, high=64, kind=Y, defaultValues=[], 
               zeroReg=NONE, toString=showY, toStringWithSize=showYWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_PSR = CellsInternal.DESC {low=65, high=65, kind=PSR, defaultValues=[], 
               zeroReg=NONE, toString=showPSR, toStringWithSize=showPSRWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_FSR = CellsInternal.DESC {low=66, high=66, kind=FSR, defaultValues=[], 
               zeroReg=NONE, toString=showFSR, toStringWithSize=showFSRWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_MEM = CellsInternal.DESC {low=67, high=66, kind=CellsBasis.MEM, 
               defaultValues=[], zeroReg=NONE, toString=showMEM, toStringWithSize=showMEMWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_CTRL = CellsInternal.DESC {low=67, high=66, kind=CellsBasis.CTRL, 
               defaultValues=[], zeroReg=NONE, toString=showCTRL, toStringWithSize=showCTRLWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        and desc_CELLSET = CellsInternal.DESC {low=67, high=66, kind=CELLSET, 
               defaultValues=[], zeroReg=NONE, toString=showCELLSET, toStringWithSize=showCELLSETWithSize, 
-              counter=ref 0, physicalRegs=ref CellsInternal.array0}
+              counter=ref 0, dedicated=ref 0, physicalRegs=ref CellsInternal.array0}
        val cellKindDescs = [(CellsBasis.GP, desc_GP), (CellsBasis.FP, desc_FP), 
               (Y, desc_Y), (PSR, desc_PSR), (FSR, desc_FSR), (CellsBasis.CC, 
               desc_GP), (CellsBasis.MEM, desc_MEM), (CellsBasis.CTRL, desc_CTRL), 

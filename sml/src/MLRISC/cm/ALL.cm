@@ -258,6 +258,9 @@ IA32.cm:
         (* c calls *)
         ../x86/c-calls/ia32-svid.sml
 
+	(* omit frame pointer *)
+	../x86/omit-frameptr/x86omit-frameptr.sml
+
 	(* X86 specific backend *)
 	../x86/instructions/x86Cells.sml
 	../x86/instructions/x86comp-instr-ext.sml
@@ -285,6 +288,8 @@ IA32.cm:
 
 	(* register allocator *)
 	../x86/ra/x86RA.sml
+
+
 IA32-GC.cm:
 
         smlnj-lib.cm
@@ -656,6 +661,9 @@ MLRISC.cm:
         (* c calls *)
         ../c-calls/c-types.sml
         ../c-calls/c-calls.sig
+
+ 	(* omit frame pointer optimization *)
+ 	../omit-frameptr/omit-frame-pointer.sig
 
 MLTREE.cm:
 (*

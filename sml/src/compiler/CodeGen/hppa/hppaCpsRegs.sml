@@ -7,6 +7,7 @@
 structure HppaCpsRegs : CPSREGS = 
 struct
   structure T = HppaMLTree
+  structure C = HppaCells
 
   (* HPPA register conventions 
      0     zero
@@ -29,23 +30,26 @@ struct
   val FP = HppaCells.FPReg
   fun REG r = T.REG(32, GP r) 
   fun FREG f = T.FREG(64, FP f)
+  
+  val vfp       = HppaCells.newReg()
+  val vfptr     = T.REG(32, vfp)
 
-  val stdarg	= REG(11)
-  val stdcont	= REG(12)
-  val stdclos	= REG(10)
-  val stdlink	= REG(9)
-  val baseptr	= REG(8)
+  fun stdarg _		= REG(11)
+  fun stdcont _		= REG(12)
+  fun stdclos _		= REG(10)
+  fun stdlink _		= REG(9)
+  fun baseptr _		= REG(8)
 
-  val limitptr	= REG(4)
-  val varptr	= REG(7)
-  val exhausted	= NONE
-  val storeptr	= REG(5)
-  val allocptr	= REG(3)
-  val exnptr	= REG(6)
+  fun limitptr _	= REG(4)
+  fun varptr _		= REG(7)
+  val exhausted		= NONE
+  fun storeptr _	= REG(5)
+  val allocptr		= REG(3)
+  fun exnptr _		= REG(6)
 
-  val returnPtr	= GP 31
-  val gcLink	= T.REG(32,returnPtr) 
-  val stackptr	= REG(30)
+  val returnPtr		= GP 31
+  fun gcLink _		= T.REG(32,returnPtr) 
+  val stackptr		= REG(30)
 
   val miscregs = map REG [1,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,2]
   val calleesave = Array.fromList miscregs 
@@ -57,7 +61,7 @@ struct
 
   val availR = 
     map (fn T.REG(_,r) => r)
-        ([stdlink, stdclos, stdarg, stdcont, gcLink] @ miscregs)
+        ([stdlink(false), stdclos(false), stdarg(false), stdcont(false), gcLink(false)] @ miscregs)
 
   local
       structure SC = HppaCells.SortedCells

@@ -197,6 +197,25 @@ datatype cexp
   | RCC of CTypes.c_proto * value list * lvar * cty * cexp
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
+fun hasRCC(cexp) = let
+  fun chkList(c::rest) = hasRCC(c) orelse chkList(rest)
+    | chkList [] = false
+in 
+  case cexp
+  of RCC _ => true
+   | RECORD(_, _, _, e) => hasRCC e
+   | SELECT(_, _, _, _, e) => hasRCC e
+   | OFFSET(_, _, _, e) => hasRCC e
+   | APP _ => false
+   | FIX(fl, e) => hasRCC(e) orelse chkList(map (fn (_, _, _, _, e) => e) fl)
+   | SWITCH(_, _, ce) => chkList(ce)
+   | BRANCH(_, _, _, c1, c2) => hasRCC(c1) orelse hasRCC(c2)
+   | SETTER(_, _, e) => hasRCC(e)
+   | LOOKER(_, _, _, _, e) => hasRCC(e)
+   | ARITH(_, _, _, _, e) => hasRCC(e)
+   | PURE(_, _, _, _, e) => hasRCC(e)
+end
+
 fun ctyToString(INTt) =  "[I]"
   | ctyToString(INT32t) =  "[I32]"
   | ctyToString(FLTt) =  "[R]"

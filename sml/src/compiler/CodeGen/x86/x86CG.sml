@@ -17,16 +17,26 @@ structure X86CG =
     structure Asm        = X86AsmEmitter
     structure Shuffle    = X86Shuffle
 
-    structure CCalls     = IA32SVID_CCalls (structure T = X86MLTree
-                                            fun ix x = x)
+    structure CCalls     = 
+      IA32SVID_CCalls (structure T = X86MLTree  fun ix x = x)
+
+    structure OmitFramePtr = 
+      X86OmitFramePointer(structure I=X86Instr  structure F=X86FlowGraph 
+			  structure PC=X86PrintCluster
+			  structure MemRegs=X86MemRegs
+			  val memRegBase = SOME(X86CpsRegs.vfp))
 
     val spill = CPSRegions.spill 
     val stack = CPSRegions.stack 
-    val esp   = I.C.esp
 
     fun error msg = MLRiscErrorMsg.error("X86CG",msg)
 
     val fast_floating_point = MLRiscControl.getFlag "x86-fast-fp"
+
+
+    fun base() = (* XXXX *)
+      if !ClusterAnnotation.useVfp then X86CpsRegs.vfp else I.C.esp 
+
 
     structure MLTreeComp=
        X86(structure X86Instr=X86Instr
@@ -54,12 +64,14 @@ structure X86CG =
                 fun showFext  _ _ = ""
                 fun showCCext _ _ = ""
                )
-           val tempMem = I.Displace{base=esp, disp=I.Immed 304, mem=stack}
-           fun cvti2f{src,ty,an} = (* ty is always 32 for SML/NJ *)
+           fun cvti2f{src,ty,an} = let (* ty is always 32 for SML/NJ *)
+	     val tempMem = I.Displace{base=base(), disp=I.Immed 304, mem=stack}
+           in
                {instrs  = [I.MOVE{mvOp=I.MOVL, src=src, dst=tempMem}],
-                tempMem = tempMem, 
+                tempMem = tempMem,
                 cleanup = []
                }
+           end
            datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
            val arch = ref Pentium (* Lowest common denominator *)
            val fast_floating_point = fast_floating_point
@@ -136,7 +148,7 @@ structure X86CG =
           val getRegLoc' = X86StackSpills.getRegLoc
  
           fun spillLoc{info, an, cell, id} = 
-              {opnd=I.Displace{base=esp, disp=getRegLoc' id, mem=spill},
+              {opnd=I.Displace{base=base(), disp=getRegLoc' id, mem=spill},
                kind=SPILL_LOC
               }
  
@@ -168,7 +180,7 @@ structure X86CG =
               else ()
 
           fun spillLoc(S, an, loc) =
-            I.Displace{base=esp, disp=X86StackSpills.getFregLoc loc, mem=spill}
+            I.Displace{base=base(), disp=X86StackSpills.getFregLoc loc, mem=spill}
 
           val fastMemRegs = C.Regs C.FP {from=8, to=31, step=1}
           val fastPhases  = [SPILL_PROPAGATION,SPILL_COLORING]

@@ -49,7 +49,7 @@ struct
               nodes        : node IntHashTable.hash_table,
               K            : int,
               firstPseudoR : int,
-              dedicated    : bool Array.array,
+              dedicated    : int -> bool,
               getreg       : 
                   {pref:int list, stamp:int, proh:int Array.array} -> int,
               getpair       : 

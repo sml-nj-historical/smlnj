@@ -13,6 +13,14 @@ structure PPCCG =
 
     structure CCalls     = DummyCCallsFn (PPCMLTree)
 
+    structure OmitFramePtr = struct
+      exception NotImplemented
+      structure F=PPCFlowGraph
+      structure I=PPCInstr
+      val vfp = PPCCpsRegs.vfp
+      fun omitframeptr _ = raise NotImplemented
+    end
+
     structure MLTreeComp=
        PPC(structure PPCInstr = PPCInstr
            structure PPCMLTree = PPCMLTree

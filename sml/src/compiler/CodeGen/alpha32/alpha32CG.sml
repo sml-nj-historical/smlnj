@@ -13,6 +13,14 @@ structure Alpha32CG =
     structure Shuffle    = Alpha32Shuffle
 
     structure CCalls     = DummyCCallsFn (Alpha32MLTree)
+    structure OmitFramePtr = struct
+      exception NotImplemented
+      structure F=Alpha32FlowGraph
+      structure I=Alpha32Instr
+      val vfp = CpsRegs.vfp
+      fun omitframeptr _ = raise NotImplemented
+    end
+      
 
     structure MLTreeComp=
        Alpha(structure AlphaInstr = Alpha32Instr

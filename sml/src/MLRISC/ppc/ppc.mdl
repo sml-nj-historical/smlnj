@@ -424,9 +424,9 @@ struct
        in 
         case oper
         of (0wx3f, 0wx16)  => (* FSQRT *)
-             a_form{opcd=opcd,frt=ft,fra=0,frb=fb,frc=0,xo=xo,rc=Rc}
+             a_form{opcd=opcd,frt=ft,fra=0w0,frb=fb,frc=0w0,xo=xo,rc=Rc}
            | (0wx3b, 0wx16)  => (* FSQRTS *) 
-             a_form{opcd=opcd,frt=ft,fra=0,frb=fb,frc=0,xo=xo,rc=Rc}
+             a_form{opcd=opcd,frt=ft,fra=0w0,frb=fb,frc=0w0,xo=xo,rc=Rc}
            | _ => 
              x_form{opcd=opcd,rt=ft,ra=0w0,rb=fb,xo=xo,rc=Rc} 
        end

@@ -1,21 +1,5 @@
 (* This file is created by makeallcm *)
 Library
-	signature MIPSCELLS
-	signature MIPSINSTR
-	signature MIPSSHUFFLE
-	signature MIPS_PSEUDO_INSTR
-	structure MIPSCells
-	functor MIPS
-	functor MIPSAsmEmitter
-	functor MIPSDelaySlots
-	functor MIPSExpandCopies
-	functor MIPSFreqProps
-	functor MIPSInstr
-	functor MIPSJumps
-	functor MIPSMCEmitter
-	functor MIPSProps
-	functor MIPSRewrite
-	functor MIPSShuffle
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030

@@ -7,6 +7,7 @@
 structure PPCCpsRegs : CPSREGS = 
 struct
   structure T = PPCMLTree
+  structure C = PPCCells
   fun upto (from,to) = if from>to then [] else from::(upto (from+1,to))
   infix upto
 
@@ -19,19 +20,22 @@ struct
 
   val exhaustedR = CC 0
   val exhausted	= SOME(T.CC(T.GTU,exhaustedR)) 
+  
+  val vfp		= PPCCells.newReg()
+  val vfptr		= T.REG(32, vfp)
 
-  val allocptr 	= REG(14) 
-  val limitptr 	= REG(15)
-  val storeptr	= REG(16)
-  val stdlink	= REG(17)
-  val stdclos	= REG(18)
-  val stdarg	= REG(19)
-  val stdcont  	= REG(20)
-  val exnptr	= REG(21)
-  val varptr	= REG(22)
-  val baseptr   = REG(23)
-  val stackptr	= REG(1)
-  val gcLink	= T.REG(32,PPCCells.lr) 
+  val stackptr		= REG(1)
+  val allocptr		= REG(14) 
+  fun limitptr _ 	= REG(15)
+  fun storeptr _	= REG(16)
+  fun stdlink _		= REG(17)
+  fun stdclos _		= REG(18)
+  fun stdarg _		= REG(19)
+  fun stdcont _  	= REG(20)
+  fun exnptr _		= REG(21)
+  fun varptr _		= REG(22)
+  fun baseptr _		= REG(23)
+  fun gcLink _		= T.REG(32,PPCCells.lr) 
 
   val miscregs =  map REG ([24,25,26,27,29,30,31] @ (3 upto 13)) 
   val calleesave = Array.fromList(miscregs)
@@ -40,7 +44,7 @@ struct
 
   val availR = 
     map (fn T.REG(_,r) => r)
-         ([stdlink, stdclos, stdarg, stdcont] @ miscregs)
+         ([stdlink(false), stdclos(false), stdarg(false), stdcont(false)] @ miscregs)
 
   local
       structure SC = PPCCells.SortedCells

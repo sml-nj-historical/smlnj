@@ -161,6 +161,7 @@ withtype function = fun_kind * lvar * lvar list * cty list * cexp
 val combinepaths : accesspath * accesspath -> accesspath
 val lenp : accesspath -> int
 val ctyToString : cty -> string
+val hasRCC : cexp -> bool
 
 val BOGt : cty
 

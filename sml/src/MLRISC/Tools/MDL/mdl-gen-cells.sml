@@ -145,6 +145,7 @@ struct
                          ("toString",       ID("show"^id)),
                          ("toStringWithSize", ID("show"^id^"WithSize")),
                          ("counter",          newCounter),
+			 ("dedicated",	      newCounter),
                          ("physicalRegs",     physicalRegs)
                         ]
               )
