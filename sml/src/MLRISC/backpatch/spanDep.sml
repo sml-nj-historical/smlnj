@@ -8,14 +8,22 @@
 functor SpanDependencyResolution
     (structure CFG       : CONTROL_FLOW_GRAPH
      structure Emitter   : INSTRUCTION_EMITTER
+     			where P = CFG.P
+			  and I = CFG.I
      structure Jumps     : SDI_JUMPS
+     			where I = CFG.I
      structure DelaySlot : DELAY_SLOT_PROPERTIES
+     			where I = CFG.I
      structure Props     : INSN_PROPERTIES
+     			where I = CFG.I
      structure Placement : BLOCK_PLACEMENT
+			where CFG = CFG
+     ) : BBSCHED = 
+     (*
        sharing Placement.CFG = CFG
        sharing CFG.P = Emitter.P
        sharing CFG.I = Jumps.I = DelaySlot.I = Props.I = Emitter.I)
-         : BBSCHED =
+         : BBSCHED = *)
 struct
 
   structure CFG = CFG

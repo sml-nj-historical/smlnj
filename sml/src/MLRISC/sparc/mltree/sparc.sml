@@ -12,9 +12,12 @@
 functor Sparc
   (structure SparcInstr : SPARCINSTR
    structure PseudoInstrs : SPARC_PSEUDO_INSTR 
+   			where I = SparcInstr
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = SparcInstr 
-      sharing PseudoInstrs.I = SparcInstr
+   			where I = SparcInstr
+			  and T = SparcInstr.T
+
+			  
    (* 
     * The client should also specify these parameters.
     * These are the estimated cost of these instructions.

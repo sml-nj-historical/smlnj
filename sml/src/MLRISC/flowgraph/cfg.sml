@@ -8,9 +8,10 @@ functor ControlFlowGraph
     structure I : INSTRUCTIONS
     structure GraphImpl : GRAPH_IMPLEMENTATION
     structure InsnProps : INSN_PROPERTIES
+    			where I = I
     structure Asm : INSTRUCTION_EMITTER
-    sharing I.T.PseudoOp = Asm.P = PseudoOps
-    sharing InsnProps.I = Asm.I = I
+    			where P = PseudoOps
+			  and I = I
    ) : CONTROL_FLOW_GRAPH =
 struct
 

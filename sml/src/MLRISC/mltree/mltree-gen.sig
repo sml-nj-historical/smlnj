@@ -10,7 +10,7 @@ sig
 
    structure T : MLTREE
    structure Size : MLTREE_SIZE
-     sharing Size.T = T
+   	where T = T
 
    val condOf : T.ccexp -> T.Basis.cond
    val fcondOf : T.ccexp -> T.Basis.fcond

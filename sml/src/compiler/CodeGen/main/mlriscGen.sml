@@ -306,7 +306,7 @@ struct
 	      pseudoOp,      (* emit a pseudo op *)
 	      annotation,    (* add an annotation *)
 	      ... 
-	     } = MLTreeComp.selectInstructions (Flowgen.build (NONE))
+	     } = MLTreeComp.selectInstructions (Flowgen.build ())
 
 	 (*
 	  * If RCC is present we need to use the virtual frame pointer
@@ -2054,7 +2054,7 @@ struct
       end (* genCluster *)
 
       fun emitMLRiscUnit f = let
-	val stream = MLTreeComp.selectInstructions (Flowgen.build (NONE))
+	val stream = MLTreeComp.selectInstructions (Flowgen.build ())
 	val M.Stream.STREAM{beginCluster, endCluster, ...} = stream
       in
 	Cells.reset();

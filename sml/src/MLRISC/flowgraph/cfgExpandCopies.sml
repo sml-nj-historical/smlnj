@@ -8,7 +8,7 @@
 functor CFGExpandCopies
    (structure CFG    : CONTROL_FLOW_GRAPH
     structure ExpandCopies : EXPAND_COPIES
-       sharing CFG.I = ExpandCopies.I
+    			where I = CFG.I
    ) : CFG_OPTIMIZATION =
   struct
     structure CFG = CFG

@@ -7,10 +7,8 @@ signature MLTREE_MULT_DIV =
 sig
 
    structure T : MLTREE
-   structure I : INSTRUCTIONS
-   structure C : CELLS
-      sharing C = I.C
-      sharing I.Constant = T.Constant
+   structure C : CELLS 
+   structure I : INSTRUCTIONS where C=C
 
    exception TooComplex
 

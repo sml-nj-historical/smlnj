@@ -7,9 +7,10 @@
 
 functor PPC
   (structure PPCInstr : PPCINSTR
-   structure ExtensionComp : MLTREE_EXTENSION_COMP where I = PPCInstr 
    structure PseudoInstrs : PPC_PSEUDO_INSTR 
-      sharing PseudoInstrs.I = PPCInstr 
+   			where I = PPCInstr
+   structure ExtensionComp : MLTREE_EXTENSION_COMP 
+   			where I = PPCInstr and T = PPCInstr.T
 
    (* 
     * Support 64 bit mode? 
@@ -21,7 +22,7 @@ functor PPC
     * Cost of multiplication in cycles
     *)
    val multCost : int ref
-  ) : MLTREECOMP = 
+  ) = 
 struct
   structure I   = PPCInstr
   structure T   = I.T

@@ -12,7 +12,7 @@ functor MLTreeSimplifier(
                          structure Size : MLTREE_SIZE
 
 (*#line 18.7 "mltree-simplify.in"*)
-                         sharing T = Size.T
+                         where T = T
 
 (*#line 20.4 "mltree-simplify.in"*)
                          val sext : T.rewriter -> (T.sext -> T.sext)

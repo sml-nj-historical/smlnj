@@ -8,7 +8,10 @@
 signature SPARCCOMP_INSTR_EXT = sig
     structure T : MLTREE
     structure I : SPARCINSTR
-    structure CFG : CONTROL_FLOW_GRAPH where I = I and P = T.PseudoOp
+    		where T = T
+    structure CFG : CONTROL_FLOW_GRAPH 
+    		where I = I 
+		  and P = T.PseudoOp
 
 
     type reducer =
@@ -23,7 +26,9 @@ end
 
 functor SparcCompInstrExt 
   (structure I   : SPARCINSTR
-   structure CFG : CONTROL_FLOW_GRAPH where I = I
+   structure CFG : CONTROL_FLOW_GRAPH 
+   		where I = I
+		  and P = I.T.PseudoOp
   ) : SPARCCOMP_INSTR_EXT = 
 struct
     structure CFG = CFG

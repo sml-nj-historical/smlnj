@@ -11,10 +11,7 @@ sig
    structure T : MLTREE
    structure I : INSTRUCTIONS
    structure CFG : CONTROL_FLOW_GRAPH
-
-   sharing I.T = T
-   sharing CFG.I = I
-   sharing CFG.P = T.PseudoOp
+		where I = I and P = T.PseudoOp
 
    (* 
     * The reducer is given to the client during the compilation of
@@ -32,18 +29,11 @@ end
 signature MLTREECOMP = 
 sig
    structure T : MLTREE 
-   structure I : INSTRUCTIONS where T = T
-   structure Gen : MLTREEGEN where T = T
-(*
-      sharing T = Gen.T = I.T
-*)
-
+   structure I : INSTRUCTIONS 
+   structure Gen : MLTREEGEN 
+   		where T = T
    structure CFG : CONTROL_FLOW_GRAPH 
-      where I = I and P = T.PseudoOp
-(*
-	  sharing CFG.I = I
-	  sharing CFG.P = Gen.T.PseudoOp
-*)
+      		where I = I and P = T.PseudoOp
 
    type instrStream = (I.instruction, I.C.cellset, CFG.cfg) T.stream  
    type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) T.stream 

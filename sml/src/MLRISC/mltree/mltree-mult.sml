@@ -7,7 +7,6 @@
 functor MLTreeMult
   (structure I : INSTRUCTIONS
    structure T : MLTREE
-      sharing I.Constant   = T.Constant
 
    structure CB : CELLS_BASIS = CellsBasis
    val intTy : int (* width of integer type *)

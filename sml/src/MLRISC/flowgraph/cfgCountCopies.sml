@@ -5,8 +5,9 @@
 functor CFGCountCopies
    ( structure CFG : CONTROL_FLOW_GRAPH
      structure InsnProps : INSN_PROPERTIES
+     		where I = CFG.I
      structure SdiJumps : SDI_JUMPS
-       sharing CFG.I = InsnProps.I = SdiJumps.I
+     		where I = CFG.I
     ) : CFG_OPTIMIZATION =
 struct
    structure CFG = CFG

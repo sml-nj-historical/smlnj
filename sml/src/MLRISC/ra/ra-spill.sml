@@ -57,7 +57,7 @@ in
 functor RASpill
    (structure InsnProps : INSN_PROPERTIES
     structure Asm       : INSTRUCTION_EMITTER
-      sharing InsnProps.I = Asm.I   
+    			where I = InsnProps.I
    ) : RA_SPILL =
 struct
 

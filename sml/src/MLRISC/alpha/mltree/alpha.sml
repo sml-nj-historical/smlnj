@@ -11,9 +11,10 @@
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR 
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
+    			where I = AlphaInstr
     structure ExtensionComp : MLTREE_EXTENSION_COMP
-       where I = AlphaInstr
-       sharing PseudoInstrs.I = AlphaInstr
+    			where I = AlphaInstr
+			  and T = AlphaInstr.T
 
       (* Cost of multiplication in cycles *)
     val multCost : int ref

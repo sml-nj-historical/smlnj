@@ -12,10 +12,12 @@
 functor ClusterRA
    (structure Flowgraph : CONTROL_FLOW_GRAPH
     structure Asm       : INSTRUCTION_EMITTER
+    			where I = Flowgraph.I 
+			  and P = Flowgraph.P
     structure InsnProps : INSN_PROPERTIES
+    			where I = Flowgraph.I 
     structure Spill : RA_SPILL 
-      sharing Flowgraph.I = InsnProps.I = Asm.I = Spill.I 
-      sharing Asm.P = Flowgraph.P
+    			where I = Flowgraph.I
    ) : RA_FLOWGRAPH =
 struct
    structure CFG    = Flowgraph

@@ -5,8 +5,8 @@ functor InstrGen
    (structure I      : INSTRUCTIONS
     structure Stream : INSTRUCTION_STREAM
     structure CFG    : CONTROL_FLOW_GRAPH
-      sharing CFG.I = I 
-      sharing CFG.P = Stream.P
+    			where I = I
+			  and P = Stream.P
    ) : INSTR_GEN =
 struct
    structure C   = I.C

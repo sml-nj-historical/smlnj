@@ -9,12 +9,13 @@
 functor BBSched2
     (structure CFG     : CONTROL_FLOW_GRAPH
      structure Jumps   : SDI_JUMPS
+     			where I = CFG.I
      structure Emitter : INSTRUCTION_EMITTER
+     			where P = CFG.P
+			  and I = CFG.I
      structure Placement : BLOCK_PLACEMENT
-       sharing Placement.CFG = CFG
-       sharing Emitter.P = CFG.P
-       sharing CFG.I = Jumps.I = Emitter.I): BBSCHED =
-
+     			where CFG=CFG
+    ) = 
 struct
 
   structure CFG = CFG

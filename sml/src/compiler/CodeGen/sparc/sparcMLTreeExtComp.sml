@@ -1,7 +1,11 @@
 functor SparcMLTreeExtComp
-   (structure T : MLTREE where Extension = Sparc_SMLNJMLTreeExt
-    structure I : SPARCINSTR where T = T
-    structure CFG : CONTROL_FLOW_GRAPH where I = I) : MLTREE_EXTENSION_COMP =
+   (structure T : MLTREE 
+   		where Extension = Sparc_SMLNJMLTreeExt
+    structure I : SPARCINSTR
+    		where T = T
+    structure CFG : CONTROL_FLOW_GRAPH 
+    		where I = I
+		  and P = T.PseudoOp) : MLTREE_EXTENSION_COMP =
 struct
    structure T = T
    structure I = I

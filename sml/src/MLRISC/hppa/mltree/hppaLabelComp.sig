@@ -1,7 +1,6 @@
 signature LABEL_COMP = sig
   structure T : MLTREE
   structure I : INSTRUCTIONS
-    sharing I.T = T
 
   type reduce = 
     {stm: T.stm -> unit, 

@@ -88,7 +88,7 @@ in
 functor RASpillWithRenaming
    (structure InsnProps : INSN_PROPERTIES 
     structure Asm       : INSTRUCTION_EMITTER
-      sharing InsnProps.I = Asm.I   
+    			where I = InsnProps.I
 
     (* Spilling a variable v creates tiny live-ranges at all its definitions
      * and uses.  The following parameter is the maximal distance of

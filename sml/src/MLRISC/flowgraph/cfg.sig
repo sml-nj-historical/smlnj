@@ -13,7 +13,6 @@ sig
 
    structure P : PSEUDO_OPS 
    structure I : INSTRUCTIONS 
-   sharing I.T.PseudoOp = P
 
    structure W : FREQ
    

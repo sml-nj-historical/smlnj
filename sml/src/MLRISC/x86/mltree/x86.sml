@@ -40,9 +40,9 @@ in
 functor X86
   (structure X86Instr : X86INSTR
    structure MLTreeUtils : MLTREE_UTILS
-     where T = X86Instr.T
+			where T = X86Instr.T
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-     where I = X86Instr
+     			where I = X86Instr and T = X86Instr.T
     datatype arch = Pentium | PentiumPro | PentiumII | PentiumIII
     val arch : arch ref
     val cvti2f : 

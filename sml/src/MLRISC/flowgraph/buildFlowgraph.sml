@@ -9,16 +9,15 @@ sig
    structure S   : INSTRUCTION_STREAM
    structure I   : INSTRUCTIONS
    structure CFG : CONTROL_FLOW_GRAPH
-
-   sharing CFG.I = I
-   sharing CFG.P = S.P 
-     (*
+   		where I = I
+		  and P = S.P
+   (*
     * This creates an emitter which can be used to build a CFG incrementally
     *)
    type instrStream = 
      (I.instruction, Annotations.annotations, I.C.cellset, CFG.cfg) S.stream
 
-   val build : CFG.cfg option -> instrStream
+   val build : unit -> instrStream
 
 end
 
@@ -47,9 +46,8 @@ struct
 
   val hashLabel = Word.toInt o Label.hash
 
-  (* The control flow graph may be built up incrementally. *)
-  fun build cfgOpt  = let
-    val cfg as ref(G.GRAPH graph) = ref(Option.getOpt(cfgOpt, CFG.new()))
+  fun build ()  = let
+    val cfg as ref(G.GRAPH graph) = ref(CFG.new())
    
     (* list of blocks generated so far *)
     val blockList   = ref ([] : CFG.block list)
@@ -76,10 +74,6 @@ struct
        blockList := [];
        entryLabels := [];
        IntHashTable.clear labelMap;
-       #forall_nodes cfg 
-          (fn (blockId,CFG.BLOCK{labels, ...}) =>
-                  app (fn lab => addLabel(hashLabel lab, blockId))
-                      (!labels));
        blockNames := [];
        currentBlock := noBlock
     end

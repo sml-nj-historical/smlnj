@@ -6,9 +6,14 @@
 functor RISC_RA
   (structure I         : INSTRUCTIONS
    structure Flowgraph : CONTROL_FLOW_GRAPH 
+   			where I = I
    structure InsnProps : INSN_PROPERTIES
+   			where I = I
    structure Rewrite   : REWRITE_INSTRUCTIONS
+   			where I = I
    structure Asm       : INSTRUCTION_EMITTER
+   			where I = I 
+			  and P = Flowgraph.P
 
       (* Spilling heuristics determines which node should be spilled.
        * You can use Chaitin, ChowHenessey, or one of your own.
@@ -21,9 +26,6 @@ functor RISC_RA
        *)
    structure Spill : RA_SPILL where I = I
           
-   sharing InsnProps.I = Flowgraph.I = Asm.I = Rewrite.I = I
-   sharing Asm.P = Flowgraph.P
-
    val architecture : string
 
    (* Is this a pure instruction *)

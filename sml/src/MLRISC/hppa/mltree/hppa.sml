@@ -15,10 +15,13 @@
 functor Hppa
   (structure HppaInstr : HPPAINSTR
    structure ExtensionComp : MLTREE_EXTENSION_COMP
-      where I = HppaInstr 
+      		where I = HppaInstr 
+		  and T = HppaInstr.T
    structure MilliCode : HPPA_MILLICODE
-      where I = HppaInstr
-   structure LabelComp : LABEL_COMP where I = HppaInstr 
+      		where I = HppaInstr
+   structure LabelComp : LABEL_COMP 
+   		where I = HppaInstr  
+		  and T = HppaInstr.T
    val costOfMultiply : int ref
    val costOfDivision : int ref
   ) : MLTREECOMP =

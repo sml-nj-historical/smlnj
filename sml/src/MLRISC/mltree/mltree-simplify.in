@@ -15,7 +15,7 @@ in
 functor MLTreeSimplifier
   (structure T    : MLTREE
    structure Size : MLTREE_SIZE
-      sharing T = Size.T
+      where T = T
    (* Extension *)
    val sext : T.rewriter -> T.sext -> T.sext
    val rext : T.rewriter -> T.rext -> T.rext
