@@ -41,6 +41,14 @@ signature PROBABILITY =
 structure Probability :> PROBABILITY =
   struct
 
+    open IntInf
+
+    val zero = fromInt 0
+    val one = fromInt 1
+    val two = fromInt 2
+    val hundred = fromInt 100
+    fun eq (a, b) = (compare(a, b) = EQUAL)
+
   (* Probabilities are represented as positive rationals.  Zero is
    * represented as PROB(0w0, 0w0) and one is represented as
    * PROB(0w1, 0w1).  There are several invariants about PROB(n, d):
@@ -48,52 +56,35 @@ structure Probability :> PROBABILITY =
    *	2) if n = 0w0, then d = 0w0 (uniqueness of zero)
    *	3) if d = 0w1, then n = 0w1 (uniqueness of one)
    *)
-    datatype prob = PROB of (word * word)
+    datatype prob = PROB of (IntInf.int * IntInf.int)
 
     exception BadProb
 
-    val never = PROB(0w0, 0w1)
-    val unlikely = PROB(0w1, 0w1000)
-    val likely = PROB(0w999, 0w1000)
-    val always = PROB(0w1, 0w1)
+    val never = PROB(zero, one)
+    val unlikely = PROB(one, fromInt 1000)
+    val likely = PROB(fromInt 999, fromInt 1000)
+    val always = PROB(one, one)
 
-  (* Fast GCD on words.  This algorithm is based on the following
-   * observations:
-   *	- If u and v are both even, then gcd(u, v) = 2*gcd(u/2, v/2)
-   *	- If u is even and v is odd, then gcd(u, v) = gcd(u/2, v)
-   *	- If both are odd, then gcd(u, v) = gcd(abs(u-v), v)
-   *)
-    fun gcd (u : word, v : word) = let
-	  fun isEven x = (Word.andb(x, 0w1) = 0w0)
-	  fun divBy2 x = Word.>>(x, 0w1)
-	  fun lp1 (g, u, v) =
-		if isEven(Word.orb(u, v))
-		  then lp1 (Word.<<(g, 0w1), divBy2 u, divBy2 v)
-		  else lp2 (g, u, v)
-	  and lp2 (g, 0w0, v) = g*v
-	    | lp2 (g, u, v) =
-		if (isEven u) then lp2 (g, divBy2 u, v)
-		else if (isEven v) then lp2 (g, u, divBy2 v)
-		else if (u < v) then lp2 (g, u, divBy2(v-u))
-		else lp2 (g, divBy2(u-v), v)
-	  in
-	    lp1 (0w1, u, v)
-	  end
+    fun gcd (m, n) = if eq(n, zero) then m else gcd(n, m mod n)
 
-    fun normalize (0w0, _) = never
-      | normalize (n, d) = (case Word.compare(n, d)
-	   of LESS => (case gcd(n, d)
-		 of 0w1 => PROB(n, d)
-		  | g => PROB(Word.div(n, g), Word.div(d, g))
-		(* end case *))
-	    | EQUAL => always
-	    | GREATER => raise BadProb
+    fun normalize (n, d) =
+	  if eq(n, zero) then never
+	  else (case compare(n, d)
+	     of LESS => let
+		  val g = gcd(n, d)
+		  in
+		    if eq(g, one)
+		      then PROB(n, d)
+		      else PROB(n div g, d div g)
+		  end
+	      | EQUAL => always
+	      | GREATER => raise BadProb
 	  (* end case *))
 	    
     fun prob (n, d) =
-	  if (n > d) orelse (n < 0) orelse (d <= 0)
+	  if Int.>(n, d) orelse Int.<(n, 0) orelse Int.<=(d, 0)
 	    then raise Domain
-	    else normalize(Word.fromInt n, Word.fromInt d)
+	    else normalize(fromInt n, fromInt d)
 
     fun add (PROB(n1, d1), PROB(n2, d2)) = normalize(d2*n1 + d1*n2, d1*d2)
 
@@ -106,40 +97,47 @@ structure Probability :> PROBABILITY =
 
     fun mul (PROB(n1, d1), PROB(n2, d2)) = normalize (n1*n2, d1*d2)
 
-    fun divide (PROB(n, d), m) = if (m <= 0)
+    fun divide (PROB(n, d), m) = if Int.<=(m, 0)
 	  then raise BadProb
-	  else if (n = 0w0) then never
-	  else normalize(n, d * Word.fromInt m)
+	  else if eq(n, zero) then never
+	  else normalize(n, d * fromInt m)
 
     fun percent n =
-	  if (n < 0) then raise BadProb
-	  else normalize(Word.fromInt n, 0w100)
+	  if Int.<(n, 0) then raise BadProb
+	  else normalize(fromInt n, hundred)
 
     fun fromFreq l = let
 	  fun sum ([], tot) = tot
-	    | sum (w::r, tot) = if (w < 0)
+	    | sum (w::r, tot) = if Int.<(w, 0)
 		then raise BadProb
-		else sum(r, Word.fromInt w + tot)
-	  val tot = sum (l, 0w0)
+		else sum(r, fromInt w + tot)
+	  val tot = sum (l, zero)
 	  in
-	    List.map (fn w => normalize(Word.fromInt w, tot)) l
+	    List.map (fn w => normalize(fromInt w, tot)) l
 	  end
 
-    fun toReal (PROB(0w0, _)) = 0.0
-      | toReal (PROB(_, 0w1)) = 1.0
-      | toReal (PROB(n, d)) = let
-	  fun toReal n = Real.fromLargeInt(Word.toLargeIntX n)
-	  in
-	    toReal n / toReal d
-	  end
+    fun toReal (PROB(n, d)) =
+	  if eq(n, zero) then 0.0
+	  else if eq(d, one) then 1.0
+	  else let
+	    val sz = log2 d
+	    val (n, d) = if Int.>=(sz, 30)
+		  then let
+		    val scale = pow(two, Int.-(sz, 30))
+		    val n = n div scale
+		    in
+		      (if n > zero then n else one, d div scale)
+		    end
+		  else (n, d)
+	    fun toReal n = Real.fromLargeInt(toLarge n)
+	    in
+	      toReal n / toReal d
+	    end
 
-    fun toString (PROB(0w0, _)) = "0"
-      | toString (PROB(_, 0w1)) = "1"
-      | toString (PROB(n, d)) = let
-	  val toStr = Word.fmt StringCvt.DEC
-	  in
-	    concat [toStr n, "/", toStr d]
-	  end
+    fun toString (PROB(n, d)) =
+	  if eq(n, zero) then "0"
+	  else if eq(d, one) then "1"
+	  else concat [IntInf.toString n, "/", IntInf.toString d]
 
   (* combine a conditional branch probability (trueProb) with a
    * prediction heuristic (takenProb) using Dempster-Shafer theory.
@@ -150,40 +148,25 @@ structure Probability :> PROBABILITY =
    *	d = trueProb*takenProb + ((1-trueProb)*(1-takenProb))
    *)
     fun combineProb2 {trueProb=PROB(n1, d1), takenProb=PROB(n2, d2)} = let
-	(* compute sd/sn, where
-	 *    sn/sd = (trueProb*takenProb) + (1-trueProb)*(1-takenProb)
+	(* compute sn/sd, where
+	 *    sd/sn = (trueProb*takenProb) + (1-trueProb)*(1-takenProb)
 	 *)
 	  val d12 = d1*d2
 	  val n12 = n1*n2
 	  val (sn, sd) = let
-		val n = d12 + 0w2*n12 - (d2*n1) - (d1*n2)
+		val n = d12 + two*n12 - (d2*n1) - (d1*n2)
 		in
 		  (d12, n)
 		end
 	(* compute the true probability *)
 	  val t as PROB(tn, td) = normalize(n12*sn, d12*sd)
-	  val maxDenom = 0wx8000
-	  val t as PROB(tn, td) = if td > maxDenom
-		then let
-		(* round down a bit to avoid future overflow *)
-		  fun lp (d, i) = let
-			val d' = Word.>>(d, 0w1)
-			in
-			  if (d' > maxDenom) then lp(d', i+0w1) else (d', i)
-			end
-		  val (d, i) = lp(td, 0w1)
-		  val n = Word.>>(tn, i)
-		  in
-		    PROB(if n > 0w0 then n else 0w1, d)
-		  end
-		else t
 	(* compute the false probability *)
 	  val f = PROB(td-tn, td)
 	  in
 	    {t = t, f = f}
 	  end
 
-    fun not (PROB(n, d)) = PROB(d-n, n)
+    fun not (PROB(n, d)) = PROB(d-n, d)
 
     val op + = add
     val op - = sub
