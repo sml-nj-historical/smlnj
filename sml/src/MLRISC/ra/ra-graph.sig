@@ -155,8 +155,7 @@ sig
                    proh         : int Array.array,
                    mode         : mode,
                    spillLoc     : int ref,
-                   firstMemReg  : int,
-                   numMemRegs   : int
+                   memRegs      : (int * int) list
                  } -> interferenceGraph
 
 end

@@ -315,8 +315,7 @@ structure X86CG =
                             cellkind  = I.C.GP,   
                             dedicated = dedicatedR,
                             spillProh = [],
-                            firstMemReg= 8,
-                            numMemRegs= 24,
+                            memRegs   = [(8,31)],
                             mode      = Ra.SPILL_PROPAGATION+Ra.SPILL_COLORING
                            },
                            {spill     = spillF,
@@ -331,8 +330,7 @@ structure X86CG =
                             cellkind  = I.C.FP,   
                             dedicated = dedicatedF,
                             spillProh = [],
-                            firstMemReg=0,
-                            numMemRegs= 0,
+                            memRegs   = [],
                             mode      = Ra.SPILL_PROPAGATION
                            }] cluster
           val _ = removeDeadCode cluster

@@ -58,6 +58,7 @@ struct
    type raClient =
    { cellkind     : C.cellkind,             (* kind of register *)
      spillProh    : (C.cell * C.cell) list, (* don't spill these *)
+     memRegs      : (C.cell * C.cell) list, (* memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : bool Array.array,       (* dedicated registers *)
      getreg       : getreg,                 (* how to find a color *)
@@ -68,21 +69,19 @@ struct
      reload       : F.Spill.reload,         (* reload callback *)
      reloadDst    : F.Spill.reloadDst,      (* reload callback *)
      renameSrc    : F.Spill.renameSrc,      (* rename callback *)
-     firstMemReg  : C.cell,
-     numMemRegs   : int,
      mode         : mode                    (* mode *)
    } 
 
    val debug = false
 
-   val NO_OPTIMIZATION      = 0wx0
-   val DEAD_COPY_ELIM       = Core.DEAD_COPY_ELIM
-   val BIASED_SELECTION     = Core.BIASED_SELECTION
-   val HAS_PARALLEL_COPIES  = Core.HAS_PARALLEL_COPIES
-   val SPILL_COALESCING     = 0wx100
-   val SPILL_COLORING       = 0wx200
-   val SPILL_PROPAGATION    = 0wx400
-   val COPY_PROPAGATION     = 0wx800
+   val NO_OPTIMIZATION        = 0wx0
+   val DEAD_COPY_ELIM         = Core.DEAD_COPY_ELIM
+   val BIASED_SELECTION       = Core.BIASED_SELECTION
+   val HAS_PARALLEL_COPIES    = Core.HAS_PARALLEL_COPIES
+   val SPILL_COALESCING       = 0wx100
+   val SPILL_COLORING         = 0wx200
+   val SPILL_PROPAGATION      = 0wx400
+   val COPY_PROPAGATION       = 0wx800
 
    fun isOn(flag, mask) = Word.andb(flag,mask) <> 0w0
 
@@ -143,7 +142,7 @@ struct
        fun regalloc{getreg, K, dedicated, copyInstr,
                     spill, spillSrc, spillCopyTmp, renameSrc,
                     reload, reloadDst, spillProh, cellkind, mode, 
-                    firstMemReg, numMemRegs} =
+                    memRegs} =
        let val numCell = C.numCell cellkind () 
        in  if numCell = 0
        then ()
@@ -171,8 +170,7 @@ struct
                                    mode=Word.orb(Flowgraph.mode,
                                          Word.orb(mode,SpillHeuristics.mode)),
                                    spillLoc=spillLoc,
-                                   firstMemReg=firstMemReg,
-                                   numMemRegs=numMemRegs
+                                   memRegs=memRegs
                                   }
            val G.GRAPH{spilledRegs, pseudoCount, spillFlag, ...} = G
     
@@ -350,11 +348,16 @@ struct
                          end
                    end
 
-                   (* simplify the nodes *)
-                   val stack = iterate
-                          (simplifyWkl,moveWkl,freezeWkl,spillWkl,stack)
-                   (* color the nodes *)
-                   val {spills} = (Core.select G) {stack=stack} 
+                   val {spills} = 
+                       if K = 0 then
+                         {spills=spillWkl}
+                       else 
+                         let (* simplify the nodes *)
+                             val stack = iterate
+                                (simplifyWkl,moveWkl,freezeWkl,spillWkl,stack)
+                             (* color the nodes *)
+                         in  (Core.select G) {stack=stack} 
+                         end
                in  (* check for actual spills *)
                    case spills of
                      [] => ()

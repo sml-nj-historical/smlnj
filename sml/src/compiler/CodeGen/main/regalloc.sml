@@ -251,8 +251,7 @@ struct
             dedicated    = dedicatedR,
             copyInstr    = fn i => [copyR i],
             spillProh    = [],
-            firstMemReg  = 0,
-            numMemRegs   = 0,
+            memRegs      = [],
             mode         = Word.orb(Ra.SPILL_COLORING, Ra.HAS_PARALLEL_COPIES)
           },
           { cellkind     = I.C.FP,
@@ -267,8 +266,7 @@ struct
             dedicated    = dedicatedF,
             copyInstr    = fn i => [copyF i],
             spillProh    = [],
-            firstMemReg  = 0,
-            numMemRegs   = 0,
+            memRegs      = [],
             mode         = Ra.NO_OPTIMIZATION
           }
        ] : Ra.raClient list

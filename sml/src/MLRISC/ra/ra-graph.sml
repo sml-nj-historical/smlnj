@@ -139,27 +139,30 @@ struct
   (* Create a new interference graph *)
   fun newGraph{nodes,regmap,K,firstPseudoR,dedicated,spillLoc,
                getreg,getpair,showReg,maxRegs,numRegs,proh,
-               firstMemReg, numMemRegs,mode} =
+               memRegs,mode} =
   let (* lower triangular bitmatrix primitives *)
       (* NOTE: The average ratio of E/N is about 16 *)
       val bitMatrix = newBitMatrix{edges=numRegs * 16,maxRegs=maxRegs()}
 
       (* Make memory register nodes *)
-      fun makeMemRegs(_, 0) = [] 
-        | makeMemRegs(reg, n) = 
+      fun makeMemRegs [] = []
+        | makeMemRegs(ranges) = 
           let val add = Intmap.add nodes
-              fun loop(r, 0, ns) = ns
-                | loop(r, n, ns) =
+              fun loop(from, to, ns) = 
+                  if from > to then ns 
+                  else 
                   let val node = 
                       NODE{pri=ref 0,adj=ref [],degree=ref 0,movecnt=ref 0,
-                           color=ref(SPILLED r), defs=ref [], uses=ref [],
-                           movecost=ref 0,movelist=ref [], number=r}
-                  in  add(r, node); loop(r+1, n-1, node::ns)
+                           color=ref(SPILLED from), defs=ref [], uses=ref [],
+                           movecost=ref 0,movelist=ref [], number=from}
+                  in  add(from, node); loop(from+1, to, node::ns)
                   end
-          in  loop(reg, n, [])
+              fun loop2([], ns) = ns
+                | loop2((from,to)::ranges, ns) = loop2(ranges, loop(from,to,ns))
+          in  loop2(ranges, [])
           end 
 
-      val memRegs = makeMemRegs(firstMemReg, numMemRegs)
+      val memRegs = makeMemRegs memRegs
 
   in  if !stampCounter > 10000000 then stampCounter := 0 else ();
       GRAPH{ bitMatrix    = ref bitMatrix,

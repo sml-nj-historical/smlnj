@@ -11,6 +11,20 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+----------------------------------------------------------------------
+Name: Allen Leung
+Date: 00/03/10 02:20:00
+Tag: leunga-20000310-fix_x86_asm_ra
+Description:
+
+More assembly output problems involving the indexed addressing mode
+on the x86 have been found and corrected. Thanks to Fermin Reig for the
+fix.
+
+The interface and implementation of the register allocator have been changed
+slightly to accommodate the possibility to skip the register allocation 
+phases completely and go directly to memory allocation.  This is needed
+for C-- use.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume

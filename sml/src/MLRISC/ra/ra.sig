@@ -44,11 +44,10 @@ sig
     *)
    type raClient = 
    { cellkind     : C.cellkind,             (* kind of register *)
-     spillProh    : (C.cell * C.cell) list, (* don't spill these *)
+     spillProh    : (C.cell * C.cell) list, (* don't spill these (ranges) *)
+     memRegs      : (C.cell * C.cell) list, (* ranges of memory registers *)
      K            : int,                    (* number of colors *)
      dedicated    : bool Array.array,       (* dedicated registers *)
-     firstMemReg  : C.cell,                 (* first memory registers *)
-     numMemRegs   : int,                    (* number of memory registers *)
      getreg       : getreg,                 (* how to find a color *)
      copyInstr    : F.Spill.copyInstr,      (* how to make a copy *)
      spill        : F.Spill.spill,          (* spill callback *)
