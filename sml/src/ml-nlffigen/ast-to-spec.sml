@@ -19,9 +19,11 @@ structure AstToSpec = struct
 
     fun build (bundle, sizes: Sizes.sizes, idlfile, allSU, eshift) = let
 
+	val curLoc = ref "?"
+
 	val errorState = Error.mkErrState TextIO.stdErr
 
-	fun warnLoc (l, m) = Error.warning (errorState, l, m)
+	fun warnLoc m = warn (concat [!curLoc, ": ", m])
 
 	val { ast, tidtab, errorCount, warningCount,
 	      auxiliaryInfo = { aidtab, implicits, env } } = bundle
@@ -289,7 +291,19 @@ structure AstToSpec = struct
 			 [arg] => (case getCoreType arg of
 				       A.Void => []
 				     | _ => [valty_nonvoid arg])
-		       | _ => map valty_nonvoid args }
+		       | _ => let fun build [] = []
+				    | build [x] =
+				      ([valty_nonvoid x]
+				       handle Ellipsis =>
+					      (warnLoc
+						   ("varargs not supported; \
+						    \ignoring the ellipsis\n");
+						   []))
+				    | build (x :: xs) =
+				      valty_nonvoid x :: build xs
+			      in
+				  build args
+			      end }
 
 	fun functionName (f: A.id) = let
 	    val n = Symbol.name (#name f)
@@ -333,11 +347,8 @@ structure AstToSpec = struct
 	  | coreExternalDecl (A.ExternalDeclExt _) = ()
 
 	fun externalDecl (A.DECL (d, _, l)) =
-	    if isThisFile l then
-		coreExternalDecl d
-		handle Ellipsis =>
-		       warnLoc (l, "varargs not supported; \
-				   \skipping this function or function type")
+	    if isThisFile l then (curLoc := SourceMap.locToString l;
+				  coreExternalDecl d)
 	    else ()
 
 	fun doast l = app externalDecl l

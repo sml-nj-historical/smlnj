@@ -14,6 +14,25 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/07/09 16:00:00 EDT
+Tag: blume-20010709-more-varargs
+Description:
+
+I changed the handling of varargs in ml-nlffigen again:
+The ellipsis ... will now simply be ignored (with an accompanying warning).
+
+The immediate effect is that you can actually call a varargs function
+from ML -- but you can't actually supply any arguments beyond the ones
+specified explicitly.  (For example, you can call printf with its format
+string, but you cannot pass additional arguments.)
+
+This behavior is only marginally more useful than the one before, but
+it has the advantage that a function or, more importantly, a function
+type never gets dropped on the floor, thus avoiding follow-up problems with
+other types that refer to the offending one.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/07/09 11:25:00 EDT
 Tag: blume-20010709-varargs
 Description:
