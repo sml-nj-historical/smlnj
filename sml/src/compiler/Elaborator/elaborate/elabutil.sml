@@ -233,11 +233,11 @@ fun TPSELexp(e, i) =
    KLUDGE! The debugger distinguishes marks in the default case by
      the fact that start and end locations for these marks 
      are the same! *)
-fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(left,_)))] =
-    [r, rule (fn exp => MARKexp(exp,(left,left)))]
+fun completeMatch'' rule [r as RULE(pat,MARKexp(_,(_,right)))] =
+      [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule 
-                    [r as RULE(pat,CONSTRAINTexp(MARKexp(_,(left,_)),_))] =
-    [r, rule (fn exp => MARKexp(exp,(left,left)))]
+                    [r as RULE(pat,CONSTRAINTexp(MARKexp(_,(_,right)),_))] =
+      [r, rule (fn exp => MARKexp(exp,(right,right)))]
   | completeMatch'' rule [r] = [r,rule (fn exp => exp)]
   | completeMatch'' rule (a::r) = a :: completeMatch'' rule r
   | completeMatch'' _ _ = bug "completeMatch''"
@@ -332,16 +332,19 @@ fun FUNdec (completeMatch, fbl,
 		  | doclause ({pats,exp,resultty=SOME ty}) =
 			      RULE(not1(TUPLEpat,pats),CONSTRAINTexp(exp,ty))
 
+(*  -- Matthias says: this seems to generate slightly bogus marks:
+ *
 		val mark =  case (hd clauses, List.last clauses)
 	                     of ({exp=MARKexp(_,(a,_)),...},
 				 {exp=MARKexp(_,(_,b)),...}) =>
 			         (fn e => MARKexp(e,(a,b)))
 			      | _ => fn e => e
+*)
 		fun makeexp [var] = 
                       FNexp(completeMatch(map doclause clauses),UNDEFty)
 		  | makeexp vars = 
                       foldr (fn (w,e) => 
-                             FNexp(completeMatch [RULE(VARpat w,mark e)],
+                             FNexp(completeMatch [RULE(VARpat w,(*mark*) e)],
                                    UNDEFty))
 				(CASEexp(TUPLEexp(map dovar vars),
 					 completeMatch (map doclause clauses),
