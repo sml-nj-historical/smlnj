@@ -310,6 +310,10 @@ struct
                | _ => error "MOV[SZ]X"
        in  eBytes(0wx0f :: byte2 :: eImmedExt(rNum r, src)) end
      | I.MOVE _ => error "MOVE"
+     | I.CMOV{cond,src,dst} => 
+       let val cond = condCode cond
+       in  eBytes(0wx0f :: Word8.+(cond,0wx40) :: eImmedExt(rNum dst, src))
+       end
      | I.LEA{r32, addr} => encodeReg(0wx8d, r32, addr)
      | I.CMPL{lsrc, rsrc} => arith(0wx38, 7) (rsrc, lsrc)
      | (I.CMPW _ | I.CMPB _) => error "CMP"

@@ -762,7 +762,8 @@ struct
               let fun genCmov(dstR, _) = 
                   let val _ = doExpr(no, dstR, []) (* false branch *)
                       val cc = cmp(true, ty, cc, t1, t2, [])  (* compare *)
-                  in  mark(I.CMOV{cond=cond cc, src=operand yes, dst=dstR}, an) 
+                  in  mark(I.CMOV{cond=cond cc, src=regOrMem(operand yes), 
+                                  dst=dstR}, an) 
                   end
               in  dstMustBeReg genCmov
               end
@@ -901,8 +902,11 @@ struct
              | T.ZX(32,8,T.LOAD(8,ea,mem)) => load8(ea, mem)
              | T.ZX(32,16,T.LOAD(16,ea,mem)) => load16(ea, mem)
 
-             | T.COND(32, T.CMP(ty, cc, t1, t2), T.LI yes, T.LI no) => 
-                 setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
+             | T.COND(32, T.CMP(ty, cc, t1, t2), y as T.LI yes, n as T.LI no) =>
+                (case !arch of (* PentiumPro and higher has CMOVcc *)
+                  Pentium => setcc(ty, cc, t1, t2, toInt32 yes, toInt32 no)
+                | _ => cmovcc(ty, cc, t1, t2, y, n)
+                )
              | T.COND(32, T.CMP(ty, cc, t1, t2), yes, no) => 
                 (case !arch of (* PentiumPro and higher has CMOVcc *)
                    Pentium => unknownExp exp

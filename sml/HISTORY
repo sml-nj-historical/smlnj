@@ -13,6 +13,18 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/07 20:45:00 EST
+Tag: leunga-20020307-x86-cmov
+Description:
+
+   Bug fixes for CMOVcc on x86.
+
+   1. Added machine code generation for CMOVcc
+   2. CMOVcc is now generated in preference over SETcc on PentiumPro or above.
+   3. CMOVcc cannot have an immediate operand as argument.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/07 16:15:00 EST
 Tag: blume-20020307-controls
