@@ -87,6 +87,8 @@ datatype lexp
   | WRAP of tyc * bool * lexp
   | UNWRAP of tyc * bool * lexp
 
+  | SUPERCAST of lexp * lty
+
 withtype dict = {default: lexp, table: (tyc list * lexp) list}
 
 end (* local *)

@@ -104,8 +104,10 @@ fun complex le =
 
         | g (WRAP(_, _, l)) = g l
         | g (UNWRAP(_, _, l)) = g l
-        | g _ = false
 
+	| g (SUPERCAST _) = true
+
+        | g _ = false
    in g le
   end
 
@@ -290,6 +292,9 @@ fun printLexp l =
             (say "UNWRAP("; prTyc t; say ","; indent 7; 
              newline(); dent(); g l; say ")"; undent 7)
 
+	| g (SUPERCAST (e, t)) =
+	    (say "SUPERCAST("; g e; say ","; prLty t; say ")")
+
    in g l; newline(); newline()
   end
 
@@ -343,6 +348,7 @@ fun printFun l v =
              (find e1; app (fn (_, x) => find x) es)
          | WRAP(_, _, e) => find e
          | UNWRAP(_, _, e) => find e
+	 | SUPERCAST (e, _) => find e
 
    in find l
   end
@@ -374,6 +380,7 @@ fun stringTag (VAR _) = "VAR"
   | stringTag (PACK _) = "PACK"
   | stringTag (WRAP _) = "WRAP"
   | stringTag (UNWRAP _) = "UNWRAP"
+  | stringTag (SUPERCAST _) = "SUPERCAST"
 
 end (* toplevel local *)
 end (* struct PPLexp *)

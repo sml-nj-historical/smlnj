@@ -572,6 +572,9 @@ and tolvar (venv,d,lvar,lexp,cont) =
 (*       | L.WRAP _ => bug "unexpected WRAP in plambda" *)
 (*       | L.UNWRAP _ => bug "unexpected UNWRAP in plambda" *)
 
+      | L.SUPERCAST (e, lty) =>
+	    bug "SUPERCAST is not currently supported"
+
       | _ => default_tolexp ()
     end
 

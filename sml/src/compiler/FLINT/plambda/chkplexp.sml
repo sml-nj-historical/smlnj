@@ -62,6 +62,7 @@ fun simplify(le,0) = STRING "<dummy>"
             | HANDLE(e1, e2) => HANDLE(h e1, h e2)
             | WRAP(t, b, e) => WRAP(t, b, h e)
             | UNWRAP(t, b, e) => UNWRAP(t, b, h e)
+	    | MKSTRUCT(e, t) => MKSTRUCT(h e, t)
             | _ => le
       end (* end of simplify *)
 
@@ -329,7 +330,11 @@ fun check (kenv, venv, d) =
                             else (if b then LT.tcc_box t else LT.tcc_abs t)
                   val nt = LT.ltc_tyc ntc
                in (ltMatch le "UNWRAP" (loop e, nt); LT.ltc_tyc t)
-              end)
+              end
+
+	  | MKSTRUCT (e, lt) => 
+	      (ltMatch le "MKSTRUCT" (loop e, LT.ltc_obj); lt)
+		  )
                             
 
   in loop 
