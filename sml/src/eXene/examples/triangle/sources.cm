@@ -1,0 +1,17 @@
+(* sources file for triangle demo *)
+Group
+is
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $cml-lib/smlnj-lib.cm
+  $/eXene.cm
+#else
+  cml.cm
+  cml-lib.cm
+  ../../sources.cm
+#endif
+
+icon-bitmap.sml
+tri.sml
+

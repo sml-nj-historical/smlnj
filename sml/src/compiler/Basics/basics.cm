@@ -1,0 +1,80 @@
+(* basics.cm
+ *
+ * Basic definitions and utilities used within the SML/NJ compiler.
+ *
+ * (C) 2001 Lucent Technologies, Bell Labs
+ *)
+Group (../../system/smlnj/viscomp/basics.cm)
+
+	signature BASIC_CONTROL
+	structure BasicControl
+
+	signature PRINTCONTROL
+	structure Control_Print
+
+	signature SYMBOL
+	signature FASTSYMBOL
+	signature PERSSTAMPS
+	signature FIXITY
+	structure Symbol
+	structure FastSymbol
+	structure PersStamps
+	structure PersMap
+	structure Fixity
+
+	signature SOURCE
+	signature SOURCE_MAP
+	signature ERRORMSG
+	signature PRETTYPRINT
+	signature STATS
+
+	structure Source
+	structure SourceMap
+	structure ErrorMsg
+	structure CompileExn
+	structure PrettyPrint
+	structure Stats
+	structure PrintUtil
+	structure IntStrMap
+
+	signature PIDENV
+	functor PidEnvFn
+is
+	main/basiccontrol.sml
+
+	mlcomp/symbol.sig
+	mlcomp/fastsymbol.sig
+	mlcomp/symbol.sml
+	mlcomp/fastsymbol.sml
+	mlcomp/fixity.sml
+	mlcomp/compileexn.sml
+	mlcomp/persstamps.sig
+	mlcomp/persstamps.sml
+	mlcomp/persmap.sml
+	mlcomp/pidenv.sig
+	mlcomp/pidenv.sml
+
+	source/source.sig
+	source/source.sml
+	source/sourcemap.sig
+	source/sourcemap.sml
+	source/pathnames.sig
+	source/pathnames.sml
+
+	errormsg/errormsg.sig
+	errormsg/errormsg.sml
+
+	stats/stats.sml
+
+	print/printcontrol.sml
+	print/printutil.sig
+	print/printutil.sml
+	print/pp-init.sml
+
+	miscutil/intstrmap.sig
+	miscutil/intstrmap.sml
+
+	$/basis.cm
+	$/smlnj-lib.cm
+	$/pp-lib.cm
+	$/controls-lib.cm
