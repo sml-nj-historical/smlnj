@@ -100,7 +100,7 @@
     st))
 
 (defmacro defsyntax (st css doc &rest args)
-  `(defconst ,st (custom-create-syntax ,css ,(cons 'list args)) doc))
+  `(defconst ,st (custom-create-syntax ,css ,(cons 'list args)) ,doc))
 
 ;;;; 
 ;;;; Compatibility info
