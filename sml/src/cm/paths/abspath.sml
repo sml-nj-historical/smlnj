@@ -173,8 +173,7 @@ structure AbsPath :> ABSPATH = struct
 	    case validElab (!cache) of
 		SOME e => e
 	      | NONE => mkElab (cache,
-				P.mkCanonical (P.concat
-					 (#name (elabContext context), spec)))
+				P.concat (#name (elabContext context), spec))
 
 	(* get the file id (calls elab, so don't cache externally!) *)
 	fun id p = let
@@ -307,7 +306,7 @@ structure AbsPath :> ABSPATH = struct
 	      | ctxt (THEN_CWD _) = (Say.say ["."]; NONE)
 	      | ctxt ROOT = (Say.say ["/"]; NONE)
 	in
-	    Option.map P.mkCanonical (path p)
+	    path p
 	end
     end
 end
