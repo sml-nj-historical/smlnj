@@ -42,14 +42,21 @@ struct
 
   and toStr(T.LABEL lab, _) = Label.fmt labFmt lab 
     | toStr(T.LABEXP le, p) = toStr(le, p)
+    | toStr(T.NEG(_, T.CONST c), _) =
+        (prInt(~(T.Constant.valueOf c)) handle _ => "-"^T.Constant.toString c)
+    | toStr(T.NEG(_, T.LI i), _) = prIntInf(~i)
+    | toStr(T.NEG(_, lexp), prec) = parens(toStr(lexp, 3), prec, 3)
     | toStr(T.CONST c, _) = 
         (prInt(T.Constant.valueOf c) handle _ => T.Constant.toString c)
     | toStr(T.LI i, _) = prIntInf i
-    | toStr(T.MULS(_,lexp1, lexp2), _) = toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2)
-    | toStr(T.DIVS(T.DIV_TO_ZERO,_,lexp1, lexp2), _) =
-      toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2) (* what if DIV_TO_NEGINF ?? *)
-    | toStr(T.SLL(_,lexp, cnt), prec) = toStr(lexp,2) ^ "<<" ^ toStr(cnt,2)
-    | toStr(T.SRL(_,lexp, cnt), prec) = toStr(lexp,2) ^ ">>" ^ toStr(cnt,2)
+    | toStr(T.MULS(_,lexp1, lexp2), prec) =
+	parens(toStr(lexp1, 2) ^ "*" ^ toStr(lexp2,2), prec, 2)
+    | toStr(T.DIVS(T.DIV_TO_ZERO, _, lexp1, lexp2), prec) =
+	parens(toStr(lexp1, 2) ^ "/" ^ toStr(lexp2,2), prec, 2)
+    | toStr(T.SLL(_,lexp, cnt), prec) =
+	parens(toStr(lexp,2) ^ "<<" ^ toStr(cnt,2), prec, 2)
+    | toStr(T.SRL(_,lexp, cnt), prec) =
+	parens(toStr(lexp,2) ^ ">>" ^ toStr(cnt,2), prec, 2)
     | toStr(T.ANDB(_,lexp, mask), prec) = 
         parens(toStr(lexp,1) ^ "&" ^ toStr(mask, 1), prec, 1)
     | toStr(T.ORB(_,lexp, mask), prec) = 
