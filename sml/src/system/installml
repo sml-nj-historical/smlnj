@@ -1,0 +1,58 @@
+#!/bin/sh
+
+MAIN_HEAP_DIR=../../bin/.heap
+MAIN_LIB_DIR=../../lib
+
+if [ $# -gt 0 ] ; then
+    STEM=$1
+else
+    STEM=sml
+fi
+
+if [ -f ../../bin/.arch-n-opsys ]; then
+  ARCH_N_OPSYS=`../../bin/.arch-n-opsys`
+  if [ "$?" = "0" ]; then
+    eval $ARCH_N_OPSYS
+  else
+    echo "Cannot determine architecture/os."
+    exit 1
+  fi
+fi
+
+HEAP_FILE=$STEM.$ARCH-$OPSYS
+LIB_DIR=$STEM.lib
+
+if [ ! -f $HEAP_FILE ] ; then
+    echo "The heap file $HEAP_FILE is missing."
+    exit 1
+fi
+
+if [ ! -d $LIB_DIR ] ; then
+    echo "The library directory $LIB_DIR is missing."
+    exit 1
+fi
+
+# Moving the heap image to its place
+mv $HEAP_FILE $MAIN_HEAP_DIR/sml.$ARCH-$OPSYS
+
+# Moving each individual library...
+cd $LIB_DIR
+list=`echo *.cm`
+cd ..
+for lib in $list ; do
+    if [ -d $MAIN_LIB_DIR/$lib/CM/$ARCH-unix ] ; then
+	rm -r $MAIN_LIB_DIR/$lib/CM/$ARCH-unix
+    fi
+    # Be careful not to clobber libraries for other architectures...
+    if [ -d $MAIN_LIB_DIR/$lib ] ; then
+	if [ -d $MAIN_LIB_DIR/$lib/CM ] ; then
+	    mv $LIB_DIR/$lib/CM/$ARCH-unix $MAIN_LIB_DIR/$lib/CM/$ARCH-unix
+	else
+	    mv $LIB_DIR/$lib/CM $MAIN_LIB_DIR/$lib/CM
+	fi
+    else
+	mv $LIB_DIR/$lib $MAIN_LIB_DIR/$lib
+    fi
+done
+
+rm -r $LIB_DIR
