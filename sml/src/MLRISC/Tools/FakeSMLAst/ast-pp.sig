@@ -6,10 +6,13 @@ sig
    val ident   : Ast.ident -> PP.pp
    val literal : Ast.literal -> PP.pp
    val exp     : Ast.exp -> PP.pp
+   val labexp  : Ast.id * Ast.exp -> PP.pp
    val sexp    : Ast.structexp -> PP.pp
    val sigexp  : Ast.sigexp -> PP.pp
    val pat     : Ast.pat -> PP.pp
+   val labpat  : Ast.id * Ast.pat -> PP.pp
    val ty      : Ast.ty -> PP.pp
+   val labty   : Ast.id * Ast.ty -> PP.pp
    val tyvar   : Ast.tyvar -> PP.pp
    val decl    : Ast.decl -> PP.pp
    val decls   : Ast.decl list -> PP.pp

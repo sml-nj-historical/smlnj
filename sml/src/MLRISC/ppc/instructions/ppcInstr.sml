@@ -25,7 +25,7 @@ sig
      RegOp of CellsBasis.cell
    | ImmedOp of int
    | LabelOp of T.labexp
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
@@ -186,7 +186,7 @@ sig
    | SO32
    | OV32
    | CA32
-   type cr_bit = (CellsBasis.cell * bit)
+   type cr_bit = (CellsBasis.cell) * bit
    datatype instruction =
      L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
@@ -219,9 +219,9 @@ sig
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
@@ -248,7 +248,7 @@ struct
      RegOp of CellsBasis.cell
    | ImmedOp of int
    | LabelOp of T.labexp
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
@@ -409,7 +409,7 @@ struct
    | SO32
    | OV32
    | CA32
-   type cr_bit = (CellsBasis.cell * bit)
+   type cr_bit = (CellsBasis.cell) * bit
    datatype instruction =
      L of {ld:load, rt:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
    | LF of {ld:fload, ft:CellsBasis.cell, ra:CellsBasis.cell, d:operand, mem:Region.region}
@@ -442,9 +442,9 @@ struct
    | BCLR of {bo:bo, bf:CellsBasis.cell, bit:bit, LK:bool, labels:Label.label list}
    | B of {addr:operand, LK:bool}
    | CALL of {def:C.cellset, use:C.cellset, cutsTo:Label.label list, mem:Region.region}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}

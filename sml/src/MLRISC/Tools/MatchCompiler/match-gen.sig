@@ -7,7 +7,20 @@ sig
    structure MC  : MATCH_COMPILER
    structure LitMap : ORD_MAP where type Key.ord_key = Ast.literal 
 
-   type compiled_type_info
+   datatype conrep = CONREP of Ast.id list * Ast.consbind * Ast.datatypebind
+                   | EXN of Ast.id list * Ast.id * Ast.ty option 
+   
+   structure Env :
+   sig
+      type env
+      val insertSig  : env * Ast.id * env -> env
+      val insertCons : env * Ast.id * conrep -> env
+      val lookupSig  : env * Ast.id -> env option
+      val lookupCons : env * Ast.id -> conrep option
+      val empty      : env
+   end
+
+   type compiled_type_info = Env.env
 
    val compileTypes : Ast.decl list -> compiled_type_info
 

@@ -18,13 +18,13 @@ sig
    | TYPESIGdecl of id * tyvar list
    | LOCALdecl of decl list * decl list
    | SEQdecl of decl list 
-   | STRUCTUREdecl of id * decl list * sigexp option * structexp
-   | FUNCTORdecl of id * decl list * sigexp option * structexp
+   | STRUCTUREdecl of id * decl list * sigconstraint option * structexp
+   | FUNCTORdecl of id * decl list * sigconstraint option * structexp
    | STRUCTURESIGdecl of id * sigexp
    | SIGNATUREdecl of id * sigexp
    | SHARINGdecl of share list
    | OPENdecl of ident list
-   | FUNCTORARGdecl of id * sigexp
+   | FUNCTORARGdecl of id * sigconstraint
    | INCLUDESIGdecl of sigexp
    | INFIXdecl of int * id list
    | INFIXRdecl of int * id list
@@ -231,11 +231,13 @@ sig
                       | REPEATcycle of cycle * int
                       | IDcycle of id 
 
+
    withtype range = int * int
    and      id    = string
    and      guard = exp option
    and      opcodeencoding = int list option 
    and      cellset = bool
    and      rtl     = rtlterm list
+   and      sigconstraint = {abstract: bool, sigexp:sigexp}
 
 end  

@@ -90,6 +90,12 @@ TARGETS="$TARGETS smlnj-lib"
 #
 #TARGETS="$TARGETS ml-nlffigen"
 
+# pre-compile and install the MLRISC Tools library.
+# This library is for parsing and pretty printing SML code.
+# It's used by various MLRISC code generator generator.
+#
+#TARGETS="$TARGETS mlrisc-tools"
+
 # unpack and install the documentation directory.
 #
 #TARGETS="$TARGETS doc"

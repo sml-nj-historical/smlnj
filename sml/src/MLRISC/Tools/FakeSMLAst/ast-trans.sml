@@ -226,6 +226,9 @@ struct
    in
       val simplifyExp = #exp simplifier 
       val simplifyDecl = #decl simplifier 
+      val simplifyPat = #pat simplifier 
+      val simplifySexp = #sexp simplifier 
+      val simplifyTy = #ty simplifier 
 
       fun stripMarks d =
       let fun decl ==> (A.MARKdecl(_,d)) = d

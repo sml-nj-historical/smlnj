@@ -102,6 +102,12 @@ fun enumExp'(err, loc, es, id) =
 fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
   | clause(pats, guard, SOME x, e) = CLAUSE(pats, guard, CONTexp(e, x))
 
+fun seqdecl [d] = d
+  | seqdecl ds  = SEQdecl ds
+
+fun idty(IDENT([],"unit")) = TUPLEty []
+  | idty x = IDty x
+
 %%
 %header (functor MDLParser(structure Token   : TOKEN
                            structure AstPP   : MDL_AST_PRETTY_PRINTER
@@ -120,7 +126,8 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
         LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE | SEMICOLON |
         LDQUOTE | RDQUOTE | LMETA | RMETA |
 	CELLSET | FN | STORAGE | LOCATIONS | HASH |
-	COMMA | COLON | DOT | DOTDOT | AT | BAR | ARROW | DARROW | PAR | BITS |
+	COMMA | COLON | COLONGREATER |
+        DOT | DOTDOT | AT | BAR | ARROW | DARROW | PAR | BITS |
 	IF | THEN | ELSE | TRUE | FALSE | WILD | RAISE |
         HANDLE | LET | STRUCTURE | FUNCTOR | SIGNATURE | SIG | STRUCT | WHERE |
 	SHARING | INSTRUCTION | REGISTER | CELL | CELLS | ORDERING |
@@ -149,6 +156,7 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
 
 %nonterm architecture of decl list |
 	 structexp of structexp |
+	 sigcon of sigconstraint |
 	 opt_of of unit |
          id of id |
          sym of id |
@@ -359,7 +367,7 @@ optsemi:				()
 decl:		mldecl optsemi	(mldecl)
 |		mddecl optsemi	(mddecl)
 |		INCLUDE string optsemi
-		(SEQdecl(import
+		(seqdecl(import
                   (SourceMapping.location srcMap 
                       (INCLUDEleft,stringright), string)))
 
@@ -464,16 +472,18 @@ mymldecl:	DATATYPE datatypebinds withtypeclause
 |		TYPE tyvarseq tid (TYPESIGdecl(tid,tyvarseq))
 |		LOCAL scopeddecls IN scopeddecls END 
 			(LOCALdecl(scopeddecls1,scopeddecls2))
-|		STRUCTURE id EQ structexp (STRUCTUREdecl(id,[],NONE,structexp))
-|		STRUCTURE id COLON sigexp EQ structexp 
-			(STRUCTUREdecl(id,[],SOME sigexp,structexp))
+|		STRUCTURE id EQ structexp 
+			(STRUCTUREdecl(id,[],NONE,structexp))
+|		STRUCTURE id sigcon EQ structexp 
+			(STRUCTUREdecl(id,[],SOME sigcon,structexp))
 |		STRUCTURE id COLON sigexp (STRUCTURESIGdecl(id,sigexp))
 |		SIGNATURE id EQ sigexp (SIGNATUREdecl(id,sigexp))
 |		FUNCTOR id LPAREN functorarg RPAREN EQ structexp
 			(STRUCTUREdecl(id,functorarg,NONE,structexp))
-|		FUNCTOR id LPAREN functorarg RPAREN COLON sigexp EQ structexp
-			(STRUCTUREdecl(id,functorarg,SOME sigexp,structexp))
-|		FUNCTOR id EQ structexp (FUNCTORdecl(id,[],NONE,structexp))
+|		FUNCTOR id LPAREN functorarg RPAREN sigcon EQ structexp
+			(STRUCTUREdecl(id,functorarg,SOME sigcon,structexp))
+|		FUNCTOR id EQ structexp 
+			(FUNCTORdecl(id,[],NONE,structexp))
 |		SHARING sharingdecls (SHARINGdecl sharingdecls)
 |		INFIX intopt syms (Infix precStack (intopt,syms); INFIXdecl(intopt,syms))
 |		INFIXR intopt syms (Infixr precStack (intopt,syms); INFIXRdecl(intopt,syms))
@@ -491,11 +501,14 @@ exceptionbind:	id 		(EXCEPTIONbind(id,NONE))
 
 
 functorarg:	scopeddecls		(scopeddecls)
-|		id COLON sigexp		([FUNCTORARGdecl(id,sigexp)])
+|		id sigcon		([FUNCTORARGdecl(id,sigcon)])
 
 sigexp:		ident			(IDsig ident)
 |		SIG decls END		(DECLsig decls)
 |		sigexp WHERE sigsubs 	(sigsubs sigexp)
+
+sigcon:		COLON sigexp		({abstract=false,sigexp=sigexp})
+|		COLONGREATER sigexp	({abstract=true,sigexp=sigexp})
 
 sigsubs:	sigsub			(sigsub)
 |		sigsub AND sigsubs	(sigsub o sigsubs)
@@ -936,11 +949,11 @@ funguard:				(NONE)
 funclauses:	funclause		(#1 funclause,[#2 funclause])
 |		funclause BAR funclauses (#1 funclause,#2 funclause:: #2 funclauses)
 
-aty:		tident			(IDty tident)
+aty:		tident			(idty(tident))
 |		HASH int		(INTVARty int)
 |		tyvar			(TYVARty tyvar)
 |		DOLLAR id		(CELLty id)
-|		LPAREN RPAREN		(IDty(IDENT([],"unit")))
+|		LPAREN RPAREN		(TUPLEty [])
 |		LPAREN ty RPAREN	(ty)
 |		LBRACE labtys RBRACE	(RECORDty labtys)
 

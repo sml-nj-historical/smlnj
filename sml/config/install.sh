@@ -666,6 +666,15 @@ for i in $TARGETS ; do
 	unpack "CM source code" $SRCDIR cm cm
 	reglib pgraph-util.cm pgraph-util.cm cm/pgraph
 	;;
+      mlrisc-tools)
+	unpack "MLRISC Tools Library" $SRCDIR MLRISC MLRISC
+        reglib mlrisc-tools pp.cm MLRISC/Tools
+        reglib mlrisc-tools source-map.cm MLRISC/Tools
+        reglib mlrisc-tools sml-ast.cm MLRISC/Tools
+        reglib mlrisc-tools prec-parser.cm MLRISC/Tools
+        reglib mlrisc-tools parser.cm MLRISC/Tools
+        reglib mlrisc-tools match-compiler.cm MLRISC/Tools
+	;;
       doc)
 	unpack Doc $ROOT doc doc
         cd $ROOT/doc

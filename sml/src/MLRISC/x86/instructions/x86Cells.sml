@@ -19,14 +19,14 @@ sig
    val showMEM : CellsBasis.register_id -> string
    val showCTRL : CellsBasis.register_id -> string
    val showCELLSET : CellsBasis.register_id -> string
-   val showGPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCCWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showEFLAGSWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFFLAGSWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showMEMWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCTRLWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCELLSETWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showGPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCCWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showEFLAGSWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFFLAGSWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showMEMWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCTRLWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCELLSETWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val eax : CellsBasis.cell
    val ecx : CellsBasis.cell
    val edx : CellsBasis.cell
@@ -38,14 +38,14 @@ sig
    val ST : int -> CellsBasis.cell
    val ST0 : CellsBasis.cell
    val eflags : CellsBasis.cell
-   val addGP : (CellsBasis.cell * cellset) -> cellset
-   val addFP : (CellsBasis.cell * cellset) -> cellset
-   val addCC : (CellsBasis.cell * cellset) -> cellset
-   val addEFLAGS : (CellsBasis.cell * cellset) -> cellset
-   val addFFLAGS : (CellsBasis.cell * cellset) -> cellset
-   val addMEM : (CellsBasis.cell * cellset) -> cellset
-   val addCTRL : (CellsBasis.cell * cellset) -> cellset
-   val addCELLSET : (CellsBasis.cell * cellset) -> cellset
+   val addGP : CellsBasis.cell * cellset -> cellset
+   val addFP : CellsBasis.cell * cellset -> cellset
+   val addCC : CellsBasis.cell * cellset -> cellset
+   val addEFLAGS : CellsBasis.cell * cellset -> cellset
+   val addFFLAGS : CellsBasis.cell * cellset -> cellset
+   val addMEM : CellsBasis.cell * cellset -> cellset
+   val addCTRL : CellsBasis.cell * cellset -> cellset
+   val addCELLSET : CellsBasis.cell * cellset -> cellset
 end
 
 structure X86Cells : X86CELLS =

@@ -188,7 +188,7 @@ sig
    | LAB of T.labexp
    | LO of T.labexp
    | HI of T.labexp
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
      LOAD of {l:load, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
    | STORE of {s:store, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
@@ -218,9 +218,9 @@ sig
    | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
    | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
    | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
@@ -415,7 +415,7 @@ struct
    | LAB of T.labexp
    | LO of T.labexp
    | HI of T.labexp
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
      LOAD of {l:load, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
    | STORE of {s:store, d:CellsBasis.cell, r:CellsBasis.cell, i:operand, mem:Region.region}
@@ -445,9 +445,9 @@ struct
    | FPop1 of {a:farith1, r:CellsBasis.cell, d:CellsBasis.cell}
    | FPop2 of {a:farith2, r1:CellsBasis.cell, r2:CellsBasis.cell, d:CellsBasis.cell}
    | FCMP of {cmp:fcmp, r1:CellsBasis.cell, r2:CellsBasis.cell, nop:bool}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | SAVE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}
    | RESTORE of {r:CellsBasis.cell, i:operand, d:CellsBasis.cell}

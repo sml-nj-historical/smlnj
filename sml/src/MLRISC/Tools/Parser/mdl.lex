@@ -187,6 +187,7 @@ val _ = app (HashTable.insert symbols)
   ("=",	EQ) $$
   ("*",	TIMES) $$
   (":",	COLON) $$
+  (":>",COLONGREATER) $$
   ("|", BAR) $$
   ("->", ARROW) $$
   ("=>", DARROW) $$

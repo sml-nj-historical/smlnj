@@ -15,21 +15,21 @@ sig
    val showMEM : CellsBasis.register_id -> string
    val showCTRL : CellsBasis.register_id -> string
    val showCELLSET : CellsBasis.register_id -> string
-   val showGPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCCWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showMEMWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCTRLWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCELLSETWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showGPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCCWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showMEMWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCTRLWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCELLSETWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val returnAddr : CellsBasis.cell
    val r31 : CellsBasis.cell
    val f31 : CellsBasis.cell
-   val addGP : (CellsBasis.cell * cellset) -> cellset
-   val addFP : (CellsBasis.cell * cellset) -> cellset
-   val addCC : (CellsBasis.cell * cellset) -> cellset
-   val addMEM : (CellsBasis.cell * cellset) -> cellset
-   val addCTRL : (CellsBasis.cell * cellset) -> cellset
-   val addCELLSET : (CellsBasis.cell * cellset) -> cellset
+   val addGP : CellsBasis.cell * cellset -> cellset
+   val addFP : CellsBasis.cell * cellset -> cellset
+   val addCC : CellsBasis.cell * cellset -> cellset
+   val addMEM : CellsBasis.cell * cellset -> cellset
+   val addCTRL : CellsBasis.cell * cellset -> cellset
+   val addCELLSET : CellsBasis.cell * cellset -> cellset
 end
 
 structure AlphaCells : ALPHACELLS =

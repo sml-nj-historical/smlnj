@@ -21,30 +21,30 @@ sig
    val showMEM : CellsBasis.register_id -> string
    val showCTRL : CellsBasis.register_id -> string
    val showCELLSET : CellsBasis.register_id -> string
-   val showGPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showYWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showPSRWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFSRWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCCWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showMEMWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCTRLWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCELLSETWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showGPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showYWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showPSRWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFSRWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCCWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showMEMWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCTRLWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCELLSETWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val frameptrR : CellsBasis.cell
    val linkReg : CellsBasis.cell
    val y : CellsBasis.cell
    val psr : CellsBasis.cell
    val fsr : CellsBasis.cell
    val r0 : CellsBasis.cell
-   val addGP : (CellsBasis.cell * cellset) -> cellset
-   val addFP : (CellsBasis.cell * cellset) -> cellset
-   val addY : (CellsBasis.cell * cellset) -> cellset
-   val addPSR : (CellsBasis.cell * cellset) -> cellset
-   val addFSR : (CellsBasis.cell * cellset) -> cellset
-   val addCC : (CellsBasis.cell * cellset) -> cellset
-   val addMEM : (CellsBasis.cell * cellset) -> cellset
-   val addCTRL : (CellsBasis.cell * cellset) -> cellset
-   val addCELLSET : (CellsBasis.cell * cellset) -> cellset
+   val addGP : CellsBasis.cell * cellset -> cellset
+   val addFP : CellsBasis.cell * cellset -> cellset
+   val addY : CellsBasis.cell * cellset -> cellset
+   val addPSR : CellsBasis.cell * cellset -> cellset
+   val addFSR : CellsBasis.cell * cellset -> cellset
+   val addCC : CellsBasis.cell * cellset -> cellset
+   val addMEM : CellsBasis.cell * cellset -> cellset
+   val addCTRL : CellsBasis.cell * cellset -> cellset
+   val addCELLSET : CellsBasis.cell * cellset -> cellset
 end
 
 structure SparcCells : SPARCCELLS =

@@ -209,13 +209,13 @@ sig
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int
-   | LabExp of (T.labexp * field_selector)
-   | HILabExp of (T.labexp * field_selector)
-   | LOLabExp of (T.labexp * field_selector)
+   | LabExp of T.labexp * field_selector
+   | HILabExp of T.labexp * field_selector
+   | LOLabExp of T.labexp * field_selector
    datatype addressing_mode =
-     DISPea of (CellsBasis.cell * operand)
-   | INDXea of (CellsBasis.cell * CellsBasis.cell)
-   | INDXSCALEDea of (CellsBasis.cell * CellsBasis.cell)
+     DISPea of CellsBasis.cell * operand
+   | INDXea of CellsBasis.cell * CellsBasis.cell
+   | INDXSCALEDea of CellsBasis.cell * CellsBasis.cell
    datatype instruction =
      LOADI of {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, mem:Region.region}
    | LOAD of {l:load, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell, 
@@ -260,9 +260,9 @@ sig
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}
@@ -473,13 +473,13 @@ struct
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int
-   | LabExp of (T.labexp * field_selector)
-   | HILabExp of (T.labexp * field_selector)
-   | LOLabExp of (T.labexp * field_selector)
+   | LabExp of T.labexp * field_selector
+   | HILabExp of T.labexp * field_selector
+   | LOLabExp of T.labexp * field_selector
    datatype addressing_mode =
-     DISPea of (CellsBasis.cell * operand)
-   | INDXea of (CellsBasis.cell * CellsBasis.cell)
-   | INDXSCALEDea of (CellsBasis.cell * CellsBasis.cell)
+     DISPea of CellsBasis.cell * operand
+   | INDXea of CellsBasis.cell * CellsBasis.cell
+   | INDXSCALEDea of CellsBasis.cell * CellsBasis.cell
    datatype instruction =
      LOADI of {li:loadi, r:CellsBasis.cell, i:operand, t:CellsBasis.cell, mem:Region.region}
    | LOAD of {l:load, r1:CellsBasis.cell, r2:CellsBasis.cell, t:CellsBasis.cell, 
@@ -524,9 +524,9 @@ struct
         t:Label.label, f:Label.label, n:bool, long:bool}
    | BREAK of {code1:int, code2:int}
    | NOP
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
    | SOURCE of {}

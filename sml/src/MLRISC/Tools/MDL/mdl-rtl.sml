@@ -17,17 +17,6 @@ structure MDLRegion   =
      fun toString _ = ""
   end
 
-structure MDLPseudoOps = 
-  struct
-     type pseudo_op = unit
-     fun toString _ = ""
-     fun emitValue _ = () 
-     fun sizeOf _ = 0 
-     fun adjustLabels _ = false
-  end
-
-structure MDLStream   = InstructionStream(MDLPseudoOps)
-
 structure MDLExtension =
   struct
      type ('s,'r,'f,'c) sx = unit 
@@ -39,8 +28,33 @@ structure MDLExtension =
 structure MDLMLTree   =
   MLTreeF(structure Constant=MDLConstant
           structure Region=MDLRegion
-          structure Stream=MDLStream
           structure Extension=MDLExtension)      
+
+
+structure MDLClientPseudoOps = 
+  struct 
+     structure AsmPseudoOps = 
+     struct
+         structure T = MDLMLTree
+         structure PB = PseudoOpsBasisTyp
+         type 'a pseudo_op = (T.labexp,'a) PB.pseudo_op
+         fun toString _ = ""
+         fun lexpToString _ = ""
+         fun defineLabel _ = ""
+         fun emitValue _ = () 
+         fun sizeOf _ = 0 
+      end
+      type pseudo_op = unit
+      fun toString _ = ""
+      fun emitValue _ = () 
+      fun sizeOf _ = 0 
+      fun adjustLabels _ = false
+   end
+
+structure MDLPseudoOps = 
+     PseudoOps(structure Client = MDLClientPseudoOps)
+
+structure MDLStream  = InstructionStream(MDLPseudoOps)
 
 structure MDLMLTreeUtil = 
   MLTreeUtils(structure T = MDLMLTree

@@ -65,18 +65,22 @@ struct
             | LOCALdecl(d1,d2) => LOCALdecl(map decl d1,map decl d2)
             | SEQdecl ds => SEQdecl(map decl ds)
             | STRUCTUREdecl(id,ds,s,se) => 
-                 STRUCTUREdecl(id,map decl ds,s, sexp se)
+                 STRUCTUREdecl(id,map decl ds,sigconopt s,sexp se)
             | FUNCTORdecl(id,ds,s,se) => 
-                 FUNCTORdecl(id, map decl ds,s, sexp se)
+                 FUNCTORdecl(id, map decl ds,sigconopt s, sexp se)
             | INCLUDESIGdecl s => INCLUDESIGdecl(sigexp s)
             | SIGNATUREdecl(id,s) => SIGNATUREdecl(id, sigexp s)
             | STRUCTURESIGdecl(id,s) => STRUCTURESIGdecl(id, sigexp s)
             | OPENdecl ids => OPENdecl ids 
-            | FUNCTORARGdecl(id,se) => FUNCTORARGdecl(id, sigexp se)
+            | FUNCTORARGdecl(id,se) => FUNCTORARGdecl(id,sigcon se)
             | EXCEPTIONdecl ebs => EXCEPTIONdecl(map ebind ebs)
             | MARKdecl(l,d) => (Error.setLoc l; MARKdecl(l,decl d))
             | d => d
         in rwDecl decl d end
+
+        and sigcon{abstract,sigexp=se} = {abstract=abstract,sigexp=sigexp se}
+
+        and sigconopt s = Option.map sigcon s
 
         and ebind(b as EXCEPTIONbind(id,NONE)) = b
           | ebind(EXCEPTIONbind(id,SOME t)) = EXCEPTIONbind(id,SOME(ty t))

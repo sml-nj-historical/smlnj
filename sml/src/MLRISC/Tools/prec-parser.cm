@@ -1,8 +1,6 @@
 Library
-	signature MATCH_COMPILER
-	signature MATCH_GEN
-	functor MatchCompiler
-	functor MatchGen
+	signature PRECEDENCE_PARSER
+	structure PrecedenceParser
 is
 
 #if defined(NEW_CM)
@@ -16,10 +14,7 @@ is
 #else
         smlnj-lib.cm
 #endif
-	../PP/sources.cm
-	../FakeSMLAst/sources.cm
 
-	match-compiler.sig
-	match-compiler.sml
-	match-gen.sig
-	match-gen.sml
+	$mlrisc-tools/source-map.cm
+
+	PrecParser/prec-parse.sml

@@ -212,27 +212,27 @@ struct
      | decl(SEQdecl ds) = decls ds
      | decl($ ds) = concat(map line (map !! ds))
      | decl(STRUCTUREdecl(id,[],s,se)) = 
-           line(! "structure" ++ ! id ++ sigexpOpt s ++ ! "=" ++ sexp se)
+           line(! "structure" ++ ! id ++ sigconOpt(s) ++ ! "=" ++ sexp se)
      | decl(STRUCTURESIGdecl(id,se)) = 
-           line(! "structure" ++ ! id ++ ! ":" ++ sigexp se)
+           line(! "structure" ++ ! id ++ !":" ++ sigexp se)
      | decl(STRUCTUREdecl(id,ds,s,se)) = 
            line(! "functor" ++ ! id ++ settab ++ !! "(" ++ settab ++
                  decls ds ++ unindent ++
-                 tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
+                 tab ++ !! ")" ++ unindent ++ sigconOpt(s) ++ 
                  ! "=" ++ nl ++ sexp se)
      | decl(FUNCTORdecl(id,[],s,se)) = 
-           line(! "functor" ++ ! id ++ sigexpOpt s ++ ! "=" ++ nl ++ sexp se)
+           line(! "functor" ++ ! id ++ sigconOpt(s) ++ ! "=" ++ nl ++ sexp se)
      | decl(FUNCTORdecl(id,ds,s,se)) = 
            line(! "functor" ++ ! id ++ settab ++ !! "(" ++ settab ++
                  decls ds ++ unindent ++
-                 tab ++ !! ")" ++ unindent ++ sigexpOpt s ++ 
+                 tab ++ !! ")" ++ unindent ++ sigconOpt(s) ++ 
                  ! "=" ++ nl ++ sexp se)
      | decl(SIGNATUREdecl(id,se)) = 
            line(! "signature" ++ ! id ++ ! "=" ++ sigexp se)
      | decl(OPENdecl ids) = 
            line(! "open" ++ seq(nop,sp,nop)(map ident ids))
      | decl(INCLUDESIGdecl s) = line(! "include" ++ sigexp s) 
-     | decl(FUNCTORARGdecl(id,se)) = ! id ++ ! ":" ++ sigexp se
+     | decl(FUNCTORARGdecl(id,se)) = ! id ++ sigcon se
      | decl(EXCEPTIONdecl ebs) =
            line(!"exception" ++ ands(map exceptionbind ebs))
      | decl(SHARINGdecl s) = line(! "sharing" ++ ands(map share s))
@@ -276,8 +276,11 @@ struct
 	sigexp se ++ !"where type" ++ ident x ++ !! "=" ++ ty t
      | sigexp(DECLsig ds) = line(!"sig") ++ block(decls ds) ++ line(!"end")
 
-   and sigexpOpt NONE = nop
-     | sigexpOpt (SOME s) = !":" ++ sigexp s
+   and sigconOpt(NONE) = nop
+     | sigconOpt(SOME s) = sigcon s
+
+   and sigcon{abstract=false,sigexp=s} = !":" ++ sigexp s
+     | sigcon{abstract=true,sigexp=s} = !":>" ++ sigexp s
 
    and sexp (IDsexp id) = ident id
      | sexp (APPsexp(a,DECLsexp ds)) = sexp a ++ nl ++ 
@@ -302,12 +305,12 @@ struct
 
    and ty(IDty id) = ident id
      | ty(TYVARty tv) = tyvar tv
-     | ty(APPty(id,[t])) = ty t ++ ident id
+     | ty(APPty(id,[t])) = pty t ++ sp ++ ident id
      | ty(APPty(id,tys)) = tuple(map ty tys) ++ sp ++ ident id
      | ty(FUNty(x,y)) = ty x ++ !! " -> " ++ pty y
      | ty(TUPLEty []) = ! "unit"
      | ty(TUPLEty [t]) = ty t
-     | ty(TUPLEty tys) = seq(!! "(",!! " * ",!! ")") (map pty tys)
+     | ty(TUPLEty tys) = seq(nop,!! " * ",nop) (map pty tys)
      | ty(RECORDty labtys) = record(map labty labtys)
      | ty(CELLty id) = 
            select( fn "pretty" => !!"$" ++ !id 
@@ -326,8 +329,15 @@ struct
      | ty(LAMBDAty(vars,t)) = !!"\\" ++ tuple(map ty vars) ++ !!"." ++ ty t 
 
    and pty(t as FUNty _) = paren(ty t)
+     | pty(TUPLEty[t]) = pty t
+     | pty(t as TUPLEty []) = ty t
      | pty(t as TUPLEty _) = paren(ty t)
-     | pty t = ty t
+     | pty(t as RECORDty _) = ty t
+     | pty(t as IDty _) = ty t
+     | pty(t as APPty _) = ty t
+     | pty(t as VARty _) = ty t
+     | pty(t as TYVARty _) = ty t
+     | pty t = paren(ty t)
 
    and labty (id,t) = ! id ++ !! ":" ++ ty t 
 

@@ -17,24 +17,24 @@ sig
    val showMEM : CellsBasis.register_id -> string
    val showCTRL : CellsBasis.register_id -> string
    val showCELLSET : CellsBasis.register_id -> string
-   val showGPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showFPWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCCWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showSPRWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showMEMWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCTRLWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
-   val showCELLSETWithSize : (CellsBasis.register_id * CellsBasis.sz) -> string
+   val showGPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showFPWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCCWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showSPRWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showMEMWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCTRLWithSize : CellsBasis.register_id * CellsBasis.sz -> string
+   val showCELLSETWithSize : CellsBasis.register_id * CellsBasis.sz -> string
    val r0 : CellsBasis.cell
    val xer : CellsBasis.cell
    val lr : CellsBasis.cell
    val ctr : CellsBasis.cell
-   val addGP : (CellsBasis.cell * cellset) -> cellset
-   val addFP : (CellsBasis.cell * cellset) -> cellset
-   val addCC : (CellsBasis.cell * cellset) -> cellset
-   val addSPR : (CellsBasis.cell * cellset) -> cellset
-   val addMEM : (CellsBasis.cell * cellset) -> cellset
-   val addCTRL : (CellsBasis.cell * cellset) -> cellset
-   val addCELLSET : (CellsBasis.cell * cellset) -> cellset
+   val addGP : CellsBasis.cell * cellset -> cellset
+   val addFP : CellsBasis.cell * cellset -> cellset
+   val addCC : CellsBasis.cell * cellset -> cellset
+   val addSPR : CellsBasis.cell * cellset -> cellset
+   val addMEM : CellsBasis.cell * cellset -> cellset
+   val addCTRL : CellsBasis.cell * cellset -> cellset
+   val addCELLSET : CellsBasis.cell * cellset -> cellset
 end
 
 structure PPCCells : PPCCELLS =

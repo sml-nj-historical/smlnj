@@ -24,7 +24,7 @@ sig
    | ST of CellsBasis.cell
    | MemReg of CellsBasis.cell
    | Displace of {base:CellsBasis.cell, disp:operand, mem:Region.region}
-   | Indexed of {base:CellsBasis.cell option, index:CellsBasis.cell, scale:int, 
+   | Indexed of {base:(CellsBasis.cell) option, index:CellsBasis.cell, scale:int, 
         disp:operand, mem:Region.region}
    type addressing_mode = operand
    type ea = operand
@@ -223,7 +223,7 @@ sig
    | I64
    datatype instruction =
      NOP
-   | JMP of (operand * Label.label list)
+   | JMP of operand * Label.label list
    | JCC of {cond:cond, opnd:operand}
    | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
@@ -254,8 +254,8 @@ sig
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
@@ -316,7 +316,7 @@ struct
    | ST of CellsBasis.cell
    | MemReg of CellsBasis.cell
    | Displace of {base:CellsBasis.cell, disp:operand, mem:Region.region}
-   | Indexed of {base:CellsBasis.cell option, index:CellsBasis.cell, scale:int, 
+   | Indexed of {base:(CellsBasis.cell) option, index:CellsBasis.cell, scale:int, 
         disp:operand, mem:Region.region}
    type addressing_mode = operand
    type ea = operand
@@ -515,7 +515,7 @@ struct
    | I64
    datatype instruction =
      NOP
-   | JMP of (operand * Label.label list)
+   | JMP of operand * Label.label list
    | JCC of {cond:cond, opnd:operand}
    | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, return:C.cellset, 
         cutsTo:Label.label list, mem:Region.region, pops:Int32.int}
@@ -546,8 +546,8 @@ struct
    | POP of operand
    | CDQ
    | INTO
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, tmp:operand option}
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
    | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp

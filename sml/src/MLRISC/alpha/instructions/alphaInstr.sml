@@ -214,7 +214,7 @@ sig
    | IMB
    | RDUNIQUE
    | WRUNIQUE
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
      DEFFREG of CellsBasis.cell
    | LDA of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
@@ -226,7 +226,7 @@ sig
         mem:Region.region}
    | FSTORE of {stOp:fstore, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | JMPL of ({r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list)
+   | JMPL of {r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list
    | JSR of {r:CellsBasis.cell, b:CellsBasis.cell, d:int, defs:C.cellset, uses:C.cellset, 
         cutsTo:Label.label list, mem:Region.region}
    | BSR of {r:CellsBasis.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, 
@@ -239,9 +239,9 @@ sig
    | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
    | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
         tmps:C.cellset}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}
@@ -464,7 +464,7 @@ struct
    | IMB
    | RDUNIQUE
    | WRUNIQUE
-   type addressing_mode = (CellsBasis.cell * operand)
+   type addressing_mode = CellsBasis.cell * operand
    datatype instruction =
      DEFFREG of CellsBasis.cell
    | LDA of {r:CellsBasis.cell, b:CellsBasis.cell, d:operand}
@@ -476,7 +476,7 @@ struct
         mem:Region.region}
    | FSTORE of {stOp:fstore, r:CellsBasis.cell, b:CellsBasis.cell, d:operand, 
         mem:Region.region}
-   | JMPL of ({r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list)
+   | JMPL of {r:CellsBasis.cell, b:CellsBasis.cell, d:int} * Label.label list
    | JSR of {r:CellsBasis.cell, b:CellsBasis.cell, d:int, defs:C.cellset, uses:C.cellset, 
         cutsTo:Label.label list, mem:Region.region}
    | BSR of {r:CellsBasis.cell, lab:Label.label, defs:C.cellset, uses:C.cellset, 
@@ -489,9 +489,9 @@ struct
    | CMOVE of {oper:cmove, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell}
    | PSEUDOARITH of {oper:pseudo_op, ra:CellsBasis.cell, rb:operand, rc:CellsBasis.cell, 
         tmps:C.cellset}
-   | COPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | COPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
-   | FCOPY of {dst:CellsBasis.cell list, src:CellsBasis.cell list, impl:instruction list option ref, 
+   | FCOPY of {dst:(CellsBasis.cell) list, src:(CellsBasis.cell) list, impl:instruction list option ref, 
         tmp:ea option}
    | FUNARY of {oper:funary, fb:CellsBasis.cell, fc:CellsBasis.cell}
    | FOPERATE of {oper:foperate, fa:CellsBasis.cell, fb:CellsBasis.cell, fc:CellsBasis.cell}

@@ -16,10 +16,11 @@ is
 #else
         smlnj-lib.cm
 #endif
-	../PP/sources.cm
-	../FakeSMLAst/sources.cm
+	$mlrisc-tools/pp.cm
+	$mlrisc-tools/sml-ast.cm
 
-	match-compiler.sig
-	match-compiler.sml
-	match-gen.sig
-	match-gen.sml
+	MatchCompiler/match-compiler.sig
+	MatchCompiler/match-compiler.sml
+	MatchCompiler/match-gen.sig
+	MatchCompiler/match-gen.sml
+
