@@ -58,8 +58,9 @@ sig
                   regionDef:int->string, regionUse:int->string} -> T.printer
    val rtlToString : action -> string
    val expToString : exp -> string
-   val new    : action -> rtl 
    val newOp  : {name:string, attribs:T.Basis.attribs} -> T.Basis.misc_op ref
+   val new    : action -> rtl 
+   val pin    : rtl -> rtl
 
    val COPY   : rtl
    val JMP    : rtl 
@@ -67,10 +68,12 @@ sig
    (* Queries *)
    val can'tMoveUp         : rtl -> bool
    val can'tMoveDown       : rtl -> bool
+   val pinned              : rtl -> bool
    val hasSideEffect       : rtl -> bool
    val can'tBeRemoved      : rtl -> bool
 
    val isConditionalBranch : rtl -> bool
    val isJump              : rtl -> bool
+   val isLooker            : rtl -> bool
 
 end 

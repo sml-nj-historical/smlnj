@@ -12,10 +12,10 @@ sig
       sharing RTL.T = T
 
    datatype opnkind = 
-     IMM (* immed value *)
-   | REG (* normal register *)
-   | FIX (* fixed register *)
-   | MEM (* memory *)
+     IMM  (* immed value *)
+   | REG  (* normal register *)
+   | FIX  (* fixed register *)
+   | MEM  (* memory *)
    | CTRL (* control dependence *)
 
    (* Return the RTL describing the semantics of an instruction *)

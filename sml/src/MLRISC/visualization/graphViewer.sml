@@ -10,6 +10,8 @@ struct
    structure L = GraphLayout
    structure G = Graph
    structure FileSys = OS.FileSys
+   
+   val tmpName = MLRiscControl.getString "tmpName"
 
    fun display exec (layout as G.GRAPH l) filename = 
       let val filename  = filename ^ D.suffix()
@@ -36,6 +38,9 @@ struct
 			  "(" ^ (D.program()) ^ " " ^ filename ^ 
 			      "; /bin/rm " ^ filename ^ ") &"))
 
-   fun view layout = display system layout (FileSys.tmpName())
+   fun getTmpName() =
+       if !tmpName = "" then FileSys.tmpName() else !tmpName
+
+   fun view layout = display system layout (getTmpName())
 end
 

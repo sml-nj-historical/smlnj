@@ -5,6 +5,7 @@
 
 functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   structure I=Instr
+  structure C=I.C
 
   fun rewriteUse(mapr : I.C.cell -> I.C.cell, instr, rs, rt) = let
     fun isRegOp (opnd as I.REGop r) = mapr r=rs
@@ -66,7 +67,13 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps} => 
          I.PSEUDOARITH{oper=oper, ra=replace ra, rb=rwOperand rb, rc=rc,
                        tmps=tmps}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} =>
+           I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+                        a=case a of 
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,defs=defs,
+                                       uses=map replace uses}
+                          | _ => a}
      | _ => instr
   end
 
@@ -96,7 +103,14 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
          I.JSR{r=r, b=b, d=d, defs=defs, uses=(i, map replace f), mem=mem}
      | I.BSR{r, lab, defs, uses=(i,f), mem} => 
          I.BSR{r=r, lab=lab, defs=defs, uses=(i, map replace f), mem=mem}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+         I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+                      a=case a of 
+                         C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                           C.DEF_USE{cellkind=C.FP,defs=defs,
+                                     uses=map replace uses}
+                        | _ => a}
+
      | _ => instr
   end
 
@@ -133,7 +147,13 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps=(i,f)} => 
          I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rewrite rc,
                        tmps=(map rewrite i,f)}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} => 
+         I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+                        a=case a of 
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                                       defs=map rewrite defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -161,7 +181,13 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
         I.BSR{r=r, lab=lab, defs=(i, map rewrite f), uses=uses, mem=mem}
      | I.PSEUDOARITH{oper, ra, rb, rc, tmps=(i,f)} => 
          I.PSEUDOARITH{oper=oper, ra=ra, rb=rb, rc=rc, tmps=(i,map rewrite f)}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+         I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                                       defs=map rewrite defs}
+                          | _ => a}
      | _  => instr
   end
 end

@@ -93,6 +93,11 @@ struct
       structure InsnProps = InsnProps
      )
 
+   structure CPR = CriticalPathReduction
+     (structure IR        = IR
+      structure InsnProps = InsnProps
+     )
+
    structure ClusterGraph = ClusterGraph(Flowgraph)
 
    structure ClusterViewer = ClusterViewer
@@ -105,8 +110,6 @@ struct
    fun view' cluster = if !view_IR then 
       ClusterViewer.view(ClusterGraph.clusterGraph cluster) else ()
 
-   val ssaParams = {copyPropagation=false,keepName=true,semiPruned=false} 
-
    fun optimize cluster =
    let datatype rep = IR of IR.IR
                     | CLUSTER of F.cluster
@@ -116,6 +119,7 @@ struct
          | doPhase "guess" (r as IR ir) = (Guess.run ir; r)
          | doPhase "reshape"   (r as IR ir) = (Reshape.run ir; r)
          | doPhase "branch-chaining" (r as IR ir) = (BranchChaining.run ir; r)
+         | doPhase "cpr"   (r as IR ir) = (CPR.run ir; r)
          | doPhase "view-cfg"  (r as IR ir) = (view "cfg" ir; r)
          | doPhase "view-dom"  (r as IR ir) = (view "dom" ir; r)
          | doPhase "view-pdom" (r as IR ir) = (view "pdom" ir; r)

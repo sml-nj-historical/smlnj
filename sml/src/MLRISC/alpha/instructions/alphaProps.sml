@@ -73,7 +73,11 @@ struct
     fun jump label = I.BRANCH{b=I.BR,r=31,lab=label}
 
     val immedRange = {lo= ~32768, hi = 32768}
-    fun loadImmed{immed,t} = I.LDA{r=t,b=31,d=I.IMMop immed}
+    fun loadImmed{immed,t} = 
+        I.LDA{r=t,b=31,
+              d=if #lo immedRange <= immed andalso immed <= #hi immedRange
+              then I.IMMop immed else I.LABop(LE.INT immed)}
+    fun loadOperand{opn,t} = I.LDA{r=t,b=31,d=opn}
 
     fun setTargets(I.BRANCH{b=I.BR,r=31,...},[L]) = I.BRANCH{b=I.BR,r=31,lab=L}
       | setTargets(I.BRANCH{b,r,...},[F,T])  = I.BRANCH{b=b,r=r,lab=T}
@@ -165,6 +169,8 @@ struct
 	 | I.TRAPB 	=> trap([],[])
 	 (* macro *)
 	 | I.CALL_PAL{def,use, ...} => (def, use)
+         | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+           let val (d,u) = defUseR i in (defs@d, u@uses) end
          | I.ANNOTATION{a, i, ...} => defUseR i
 	 | _  		=> ([],[])
       end
@@ -185,6 +191,8 @@ struct
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR{defs,uses, ...}	     => (#2 defs,#2 uses)
       | I.BSR{defs,uses, ...}	     => (#2 defs,#2 uses)
+      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+        let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
@@ -199,4 +207,15 @@ struct
          let val (i,an) = getAnnotations i in (i,a::an) end
       | getAnnotations i = (i,[])
     fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Replicate an instruction
+   *========================================================================*)
+  fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+    | replicate(I.COPY{tmp=SOME _, dst, src, impl}) =  
+        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
+    | replicate(I.FCOPY{tmp=SOME _, dst, src, impl}) = 
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), 
+                dst=dst, src=src, impl=ref NONE}
+    | replicate i = i
 end

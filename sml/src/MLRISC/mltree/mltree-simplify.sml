@@ -263,9 +263,21 @@ struct
 
    in (* perform algebraic simplification and constant folding *)
       case exp of
-        T.ADD(ty,a,b) => ADD(add,true,ty,a,b)
+        T.ADD(ty,T.ADD(ty', a, T.LI32 x), T.LI32 y) => 
+            (if ty = ty' then T.ADD(ty,a,T.LI32 (x+y)) else exp
+                handle _ => exp)
+      | T.ADD(ty,T.ADD(ty', a, T.LI x), T.LI y) => 
+            (if ty = ty' then T.ADD(ty,a,T.LI (x+y)) else exp
+                handle _ => exp)
+      | T.ADD(ty,a,b) => ADD(add,true,ty,a,b)
       | T.SUB(ty,(T.LI 0 | T.LI32 0w0),T.SUB(ty',(T.LI 0 | T.LI32 0w0), a)) =>
             if ty = ty' then a else exp
+      | T.SUB(ty,T.SUB(ty', a, T.LI32 x), T.LI32 y) => 
+            (if ty = ty' then T.SUB(ty,a,T.LI32 (x+y)) else exp
+                handle _ => exp)
+      | T.SUB(ty,T.SUB(ty', a, T.LI x), T.LI y) => 
+            (if ty = ty' then T.SUB(ty,a,T.LI (x+y)) else exp
+                handle _ => exp)
       | T.SUB(ty,a,b) => SUB(sub,true,ty,a,b)
 
       | T.MULS(ty,a,b) => MUL(muls,signedAddress,ty,a,b)

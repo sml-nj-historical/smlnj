@@ -42,6 +42,8 @@ struct
 
    fun error msg = MLRiscErrorMsg.error("GCGen",msg)
 
+   val gc_bug = MLRiscControl.getCounter "gc-bug"
+
    val name = "Generate GC code"
 
    fun run (IR as G.GRAPH cfg) =
@@ -72,7 +74,7 @@ struct
                  returnLabel = CFG.defineLabel return,
                  roots       = liveIn,
                  stream      = stream
-               } handle _ => () (* continue on error *)
+               } handle _ => gc_bug := !gc_bug + 1 (* continue on error *)
            end
            
    in  beginCluster 0;

@@ -16,8 +16,9 @@ struct
 
    lowercase assembly
 
-   instruction delayslot 4
-   (*
+   instruction delayslot 4 (* bytes *)
+
+   (*======================================================================== 
     * On the HP, handling of delay slots is quite complicated:
     *
     *  For conditional branches:
@@ -32,11 +33,14 @@ struct
     *       
     *  Nullify bit on    Delay slot nullified
     *  Nullify bit off   Delay slot active       
-    *)
+    *========================================================================*)
 
 
    (* debug MC *)
 
+   (*======================================================================== 
+    * Storage types definitions
+    *========================================================================*)
    storage
      GP "r" = 32 cells of 32 bits in cellset called "register"
               assembly as (fn (r,_) => "%r"^Int.toString r)
@@ -60,9 +64,9 @@ struct
    and fasmTmp   = $FP[31]
    and sar       = $CR[11]
 
-   (* 
+   (*======================================================================== 
     * RTL specification.
-    *)
+    *========================================================================*)
    structure RTL = 
    struct
       include "MD-2.0/basis.md"
@@ -352,6 +356,9 @@ struct
           
    end (* RTL *)
 
+   (*======================================================================== 
+    * Instruction representation
+    *========================================================================*)
    structure Instruction = 
    struct
    
@@ -569,7 +576,7 @@ struct
     * all fucked up.
     *
     * See Appendix C.
-    *)
+    *========================================================================*)
    instruction formats 32 bits
       (* sr=0 for load store, why? *)
      Load{Op:6,b:GP 5,t:GP 5,s:2=0,im14:signed 14}
@@ -639,9 +646,9 @@ struct
       fun emit_nop false = () | emit_nop true = emit "\n\tnop"
    end
 
-   (*
+   (*======================================================================== 
     * Various utility functions for emitting assembly code
-    *)
+    *========================================================================*) 
    structure MC =
    struct
       fun opn opnd = 
@@ -721,6 +728,78 @@ struct
 
    end (* MC *)
 
+   (*======================================================================== 
+    * Reservation tables and pipeline definitions for scheduling.
+    * All information are (uneducated) guesses.
+    * But see http://www.cpus.hp.com/techreports/parisc.shtml 
+    *========================================================================*) 
+
+   (* 
+    * Function units.
+    *
+    *)
+   resource mem    (* load/store *)
+        and alu    (* integer alu *) 
+        and falu   (* floating point alu *)
+        and fmul   (* floating point multiplier *)
+        and fdiv   (* floating point divider (also sqrt on the HP) *)
+        and branch (* branch unit *)
+
+   (* 
+    *  Different implementations of cpus. 
+    *                   Max
+    *  Name   Aliases Issues    Function units 
+    *)
+   cpu PA_700            2 [1 mem, 1 alu, 1 falu, 1 fmul, 1 branch]
+   and PA_7100           2 [1 mem, 1 alu, 2 fmul, 2 falu, 1 fdiv, 1 branch]
+   and PA_7100LC         2 [1 mem, 1 alu, 2 fmul, 2 falu, 1 fdiv, 1 branch]
+   and PA_7200           2 [1 mem, 1 alu, 2 fmul, 2 falu, 1 fdiv, 1 branch]
+   and PA_8000           4 [2 mem, 2 alu, 2 fmul, 2 falu, 2 fdiv, 1 branch]
+   and PA_8200 "default" 4 [2 mem, 2 alu, 2 fmul, 2 falu, 2 fdiv, 1 branch]
+   and PA_8500           4 [2 mem, 2 alu, 2 fmul, 2 falu, 2 fdiv, 1 branch]
+
+   (* Definitions of various reservation tables *) 
+   pipeline NOP _         = [] 
+        and ARITH (PA_700 | PA_7100 | PA_7100LC | PA_7200) = [alu]
+          | ARITH (PA_8000 | PA_8200 | PA_8500) = [alu]
+        and LOAD _        = [mem]
+        and STORE _       = [mem] 
+        and FARITH (PA_700 | PA_7100 | PA_7100LC | PA_7200) = [falu,falu]
+          | FARITH (PA_8000 | PA_8200 | PA_8500) = [falu]
+        and FMPY (PA_700 | PA_7100 | PA_7100LC | PA_7200) = [fmul,fmul]
+          | FMPY (PA_8000 | PA_8200 | PA_8500) = [fmul]
+            (* division is apparently non-pipelined, so we have to
+             * hog up the pipeline for a bunch of cycles
+             *)
+        and FDIV PA_700   = [fmul*10] (* multiplier does division too *)
+          | FDIV (PA_7100 | PA_7100LC | PA_7200) = [fdiv*15]
+          | FMPY (PA_8000 | PA_8200 | PA_8500) = [fdiv,fdiv*14]
+        and BRANCH (PA_700 | PA_7100 | PA_7100LC | PA_7200) = [branch,branch]
+          | BRANCH (PA_8000 | PA_8200 | PA_8500) = [branch,branch]
+
+   (* 
+    * Latencies 
+    * Note: the number refers the *additional* delay, so 0 means that
+    * the result computed in cycle t is available in cycle t+1. 
+    *) 
+   latency  NOP _           = 0
+       and  ARITH _         = 0
+       and  LOAD  _         = 1
+       and  FARITH PA_700   = 2
+         |  FARITH _        = 1
+       and  FMPY  PA_700    = 2
+         |  FMPY  PA_7100   = 2
+         |  FMPY  _         = 1
+       and  FDIV  PA_700    = 9
+         |  FDIV  PA_7100   = 14
+         |  FDIV  _         = 14
+       and  FSQRT PA_700    = 17
+         |  FSQRT PA_7100   = 14
+         |  FSQRT _         = 14
+
+   (*======================================================================== 
+    * Instruction definitions 
+    *========================================================================*) 
    (* FLDWS, FLDWX = define the R half of the FP register.
     * FSTWS = uses the R half of the FP register.
     *)
@@ -729,7 +808,8 @@ struct
         asm: ``<li>\t<i>(<r>), <t><mem>'' 
         mc:  Load{Op=emit_loadi li,b=r,im14=low_sign_ext_im14(opn i),t=t}
         rtl: [[ li ]]
-	latency: 1
+	latency:  LOAD
+	pipeline: LOAD
 
     | LOAD of {l:load, r1: $GP, r2: $GP, t: $GP, mem:Region.region}
         asm: ``<l>\t<r2>(<r1>), <t><mem>''
@@ -737,17 +817,21 @@ struct
              in  IndexedLoad{Op=0w3,b=r1,x=r2,ext4,u,t,m} 
              end
         rtl: [[ l ]]
-	latency: 1
+	latency:  LOAD
+	pipeline: LOAD
 
     | STORE of {st:store,b: $GP,d:operand,r: $GP, mem:Region.region}
         asm: ``<st>\t<r>, <d>(<b>)<mem>''
         mc:  Store{st,b=b,im14=low_sign_ext_im14(opn d),r=r}
         rtl: [[ st ]]
+	pipeline: STORE
 
     | ARITH of {a:arith,r1: $GP, r2: $GP, t: $GP}
         asm: ``<a>\t<r1>, <r2>, <t>''
         mc:  Arith{a,r1,r2,t}
         rtl: [[ a ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | ARITHI  of {ai:arithi, i:operand, r: $GP, t: $GP}
         asm: ``<ai>\t<i>, <r>, <t>''
@@ -758,6 +842,8 @@ struct
                      end
              )
         rtl: [[ ai ]]
+	latency:  ARITH
+	pipeline: ARITH
 
       (* This is a composite instruction. 
        * The effect is the same as t <- if r1 cc r2 then i+b else 0
@@ -777,6 +863,8 @@ struct
 	rtl: if t1 = t2 then [[ "COMCLR_LDO2_" cc ]]
 	     else if t1 = 0 then [[ "COMCLR_LDO3_" cc ]]
              else [[ "COMCLR_LDO_" cc ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | COMICLR_LDO of {cc:bcond, i1:operand, r2: $GP, t1 : $GP, 
                       i2:int, b: $GP, t2: $GP}
@@ -790,6 +878,8 @@ struct
 	rtl: if t1 = t2 then [[ "COMICLR_LDO2_" cc ]]
 	     else if t1 = 0 then [[ "COMICLR_LDO3_" cc ]]
              else [[ "COMICLR_LDO_" cc ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | SHIFTV  of {sv:shiftv, r: $GP, len:int, t: $GP}
         asm: ``<sv>\t<r>, <len>, <t>''
@@ -799,6 +889,8 @@ struct
              | I.ZVDEP  => Deposit{Op=0wx35,t,r,ext3=0w0,cp=0,clen=32-len}
              )
         rtl: [[ sv ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | SHIFT   of {s:shift, r: $GP,  p:int,  len:int, t: $GP}
         asm: ``<s>\t<r>, <p>, <len>, <t>''
@@ -808,6 +900,8 @@ struct
              | I.ZDEP  => Deposit{Op=0wx35,t,r,ext3=0w2,cp=31-p,clen=32-len}
              )
         rtl: [[ s ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | BCOND   of {cmp: cmp, bc:bcond,r1: $GP,r2: $GP,n:bool,nop:bool,
                   t:Label.label, f:Label.label}
@@ -821,6 +915,7 @@ struct
                                    else delayslot when branching
            else delayslot
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BCONDI  of {cmpi: cmpi, bc:bcond, i:int,  r2: $GP, n:bool, nop:bool,
                   t:Label.label, f:Label.label}
@@ -834,6 +929,7 @@ struct
                                     else delayslot when branching
            else delayslot
         delayslot candidate: false
+	pipeline: BRANCH
 
          (* bc must be either < or >= *)
     | BB of {bc:bitcond,r: $GP, p:int, n:bool, nop:bool,
@@ -848,6 +944,7 @@ struct
                                    else delayslot when branching
            else delayslot
         delayslot candidate: false
+	pipeline: BRANCH
 
     | B of {lab:Label.label, n:bool}
         asm: ``b<n>\t<lab>''
@@ -855,6 +952,7 @@ struct
 	rtl: [[ "B" ]]
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
       (* 
        * This composite instruction is generated only during span dependence
@@ -884,6 +982,7 @@ struct
 	rtl: [[ "B" ]]
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BE of {b: $GP, d:operand, sr:int, n:bool, labs: Label.label list}
         asm: ``be<n>\t<d>(<sr>,<b>)''
@@ -893,6 +992,7 @@ struct
                 end
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BV of {x: $GP, b: $GP, labs: Label.label list, n:bool}
         asm: ``bv<n>\t<x>(<b>)''
@@ -900,12 +1000,14 @@ struct
 	rtl: [[ "BV" ]]
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BLR of {x: $GP, t: $GP, labs: Label.label list, n:bool}
         asm: ``blr<n>\t<x>(<t>)''
         mc:  BranchVectored{Op=0wx3a,t=t,x=x,ext3=0w2,n=n}
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BL of {lab:Label.label ,t: $GP, defs: C.cellset, uses:C.cellset, 
              mem:Region.region, n:bool}
@@ -913,6 +1015,7 @@ struct
         mc:  branchLink(0wx3a,t,lab,0w0,n)
         nullified: n = true
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BLE of {d:operand,b: $GP, sr:int, t: $GP,
               defs: C.cellset, uses:C.cellset, mem:Region.region}
@@ -927,6 +1030,7 @@ struct
 	rtl: [[ "BLE" ]]
         nullified: false
         delayslot candidate: false
+	pipeline: BRANCH
 
       (* BLE implicitly defines %r31. The destination register t 
        * is assigned in the delay slot.
@@ -935,16 +1039,22 @@ struct
         asm: ``ldil\t<i>, <t>''
         mc:  LongImmed{Op=0wx8,r=t,im21=assemble_21(opn i)}
 	rtl: [[ "LDIL" ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | LDO of {i:operand,  b: $GP, t: $GP}
         asm: ``ldo\t<i>(<b>), <t>''
         mc:  Load{Op=0wx0d,b,im14=low_sign_ext_im14(opn i),t=t}
 	rtl: if b = 0 then [[ "LDO2" ]] else [[ "LDO" ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | MTCTL of {r: $GP, t: $CR}
         asm: ``mtctl\t<r>, <t>''
         mc:  MoveToControlReg{Op=0w0,t,r,rv=0w0,ext8=0wxc2}
 	rtl: [[ "MTCTL" ]]
+	latency:  ARITH
+	pipeline: ARITH
 
     | FSTORE  of {fst:fstore,b: $GP, d:int, r: $FP,mem:Region.region}
         asm: ``<fst>\t<r>, <d>(<b>)<mem>''
@@ -955,6 +1065,7 @@ struct
                                      s=0w0,a=0w0,ls=0w1,uid=0w1,rt=r}
             )
         rtl: [[ fst ]]
+	pipeline: STORE
 
     | FSTOREX of {fstx:fstorex, b: $GP, x: $GP,r: $FP,mem:Region.region}
         asm: ``<fstx>\t<r>, <x>(<b>)<mem>''
@@ -962,6 +1073,7 @@ struct
              in  CoProcIndexed{Op=Op,b,x,s=0w0,u,m,ls=0w1,uid=uid,rt=r}
              end
         rtl: [[ fstx ]]
+	pipeline: STORE
 
     | FLOAD   of {fl:fload, b: $GP, d:int, t: $FP, mem:Region.region}
         asm: ``<fl>\t<d>(<b>), <t><mem>''
@@ -972,7 +1084,8 @@ struct
                                       s=0w0,a=0w0,ls=0w0,uid=0w1,rt=t}
              )
         rtl: [[ fl ]]
-	latency: 1
+	latency:  LOAD
+	pipeline: LOAD
 
     | FLOADX of {flx:floadx, b: $GP, x: $GP, t: $FP, mem:Region.region}
         asm: ``<flx>\t<x>(<b>), <t><mem>''
@@ -980,7 +1093,8 @@ struct
              in  CoProcIndexed{Op=Op,b,x,s=0w0,u,m,ls=0w0,uid=uid,rt=t}
              end
         rtl: [[ flx ]]
-	latency: 1
+	latency:  LOAD
+	pipeline: LOAD
 
     | FARITH of {fa:farith,r1: $FP, r2: $FP,t: $FP}
         asm: ``<fa>\t<r1>, <r2>, <t>''
@@ -990,7 +1104,16 @@ struct
                     in  FloatOp3Maj0C{sop,r1,r2,t,n=0w0,fmt} end
              )
 	rtl: [[ fa ]]
-        latency: 1
+        latency:  (case fa of
+                     (I.FMPY_S | I.FMPY_D | I.FMPY_Q) => FMPY
+                   | (I.FDIV_S | I.FDIV_D | I.FDIV_Q) => FDIV
+                   | _ => FARITH
+                  )
+	pipeline: (case fa of
+                     (I.FMPY_S | I.FMPY_D | I.FMPY_Q) => FMPY
+                   | (I.FDIV_S | I.FDIV_D | I.FDIV_Q) => FDIV
+                   | _ => FARITH
+                  )
 
     | FUNARY of {fu:funary,f: $FP, t: $FP}
         asm: ``<fu>\t<f>, <t>''
@@ -998,6 +1121,8 @@ struct
              in  FloatOp0Maj0C{r=f,t=t,sop=sop,fmt=fmt}
              end
 	rtl: [[ fu ]]
+	latency:  FARITH
+	pipeline: FARITH
 
     | FCNV of {fcnv:fcnv, f: $FP, t: $FP}
         asm: ``<fcnv>\t<f>, <t>''
@@ -1005,6 +1130,8 @@ struct
              in  FloatOp1Maj0E{r=f,t=t,sop=sop,sf=sf,df=df,r2=0w1,t2=0w0}
              end
 	rtl: [[ fcnv ]]
+	latency:  FARITH
+	pipeline: FARITH
 
  (* The following three instructions have been replaced by FBRANCH.
     This make life much easier for instruction schedulers.
@@ -1027,6 +1154,7 @@ struct
 	rtl: [[ "FBRANCH_" cc ]]
         nullified: n
         delayslot candidate: false
+	pipeline: BRANCH
 
     | BREAK   of {code1:int, code2:int}
         asm: ``break\t<code1>, <code2>''
@@ -1036,16 +1164,19 @@ struct
         asm: ``nop''
         mc: NOP{}
 	rtl: [[ "NOP" ]]
+	pipeline: NOP
 
     | COPY of {dst: $GP list, src: $GP list, 
                impl:instruction list option ref, tmp: ea option}
         asm: emitInstrs (Shuffle.shuffle{regmap,tmp,src,dst})
 	rtl: [[ "COPY" ]]
+	pipeline: ARITH
 
     | FCOPY of {dst: $FP list, src: $FP list, 
                 impl:instruction list option ref, tmp: ea option}
         asm: emitInstrs (Shuffle.shufflefp{regmap,tmp,src,dst})
 	rtl: [[ "FCOPY" ]]
+	pipeline: ARITH
 
     | ANNOTATION of {i:instruction, a:Annotations.annotation}
         asm: (comment(Annotations.toString a); nl(); emitInstr i)
@@ -1063,5 +1194,15 @@ struct
     | PHI of {}
         asm: ``phi''
         mc:  ()
+
+   structure SSA =
+   struct
+
+      fun operand(ty,I.REG r) = T.REG(ty, r)
+        | operand(ty,I.IMMED i) = T.LI i
+        (*| operand(ty,I.LabExp(le,_)) = T.LABEL le*)
+        | operand _ = error "operand"
+
+   end
 
 end

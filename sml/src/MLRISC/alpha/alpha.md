@@ -266,6 +266,27 @@ struct
          [BPT, BUGCHK, CALLSYS, GENTRAP, IMB, RDUNIQUE, WRUNIQUE] 
    end (* RTL *)
 
+
+   (*
+    * Reservation tables and pipeline definitions for scheduling
+    *)
+
+   (* Function units *)
+   resource issue and mem and alu and falu and fmul and fdiv and branch
+
+   (* Different implementations of cpus *)
+   cpu default 2 [2 issue, 2 mem, 1 alu]  (* 2 issue machine *)
+
+   (* Definitions of various reservation tables *) 
+   pipeline NOP _    = [issue] 
+    and     ARITH _  = [issue^^alu]
+    and     LOAD _   = [issue^^mem]
+    and     STORE _  = [issue^^mem,mem,mem] 
+    and     FARITH _ = [issue^^falu]
+    and     FMUL _   = [issue^^fmul,fmul]
+    and     FDIV _   = [issue^^fdiv,fdiv*50]
+    and     BRANCH _ = [issue^^branch]
+
    (* 
     * We now specify the instruction representation, assembly,
     * machine code encoding and ``semantics''
@@ -645,5 +666,12 @@ struct
    | PHI of {}
      asm: ``phi''
      mc:  ()
+
+   structure SSA =
+   struct
+     fun operand(ty, I.REGop r) = T.REG(ty, r)
+       | operand(ty, I.IMMop i) = T.LI i
+       | operand(ty, _) = error "operand"
+   end
 
  end

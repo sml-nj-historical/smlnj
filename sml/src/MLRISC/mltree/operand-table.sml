@@ -42,7 +42,9 @@ struct
        val immTable   = HA.array''(37,newImmed)
        val opnTable   = HT.mkTable(Props.hashOpn,Props.eqOpn) (32,NoOperand)
        (*val labelTable = HT.mkTable(hashLabel,eqLabel) (32,NoLabel)*)
-   in  TABLE{ immTable   = immTable,
+       fun init(n,m) = if n > m then () else (newImmed n; init(n+1,m))
+   in  init(0,2);
+       TABLE{ immTable   = immTable,
               (*labelTable = labelTable,*)
               opnTable   = opnTable,
               constTable = constTable,

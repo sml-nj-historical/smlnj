@@ -38,14 +38,14 @@ structure X86CG =
            val arch = ref Pentium (* Lowest common denominator *)
           )
 
-    structure X86Jumps = 
+    structure Jumps = 
        X86Jumps(structure Instr=X86Instr
                 structure AsmEmitter=X86AsmEmitter
                 structure Shuffle=X86Shuffle
                 structure MCEmitter=X86MCEmitter)
    
     structure BackPatch = 
-       BackPatch(structure Jumps=X86Jumps
+       BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
                  structure Flowgraph=X86FlowGraph

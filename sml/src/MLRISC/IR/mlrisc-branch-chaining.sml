@@ -21,6 +21,10 @@ struct
  
    val name = "BranchChaining"
 
+   fun error msg = MLRiscErrorMsg.error("BranchChaining",msg)
+   
+   val branchChainingCount = MLRiscControl.getCounter "branch-chaining-count"
+
    fun run (IR as G.GRAPH cfg : IR.IR) = 
    let exception NoTarget
        val N = #capacity cfg ()
@@ -34,6 +38,27 @@ struct
        val stamp   = ref 0
 
        val changed = ref false
+
+       val regmap  = CFG.regmap IR
+       val lookup  = IR.I.C.lookup regmap
+
+       fun isTrivialCopy(instr) =  
+           let fun isTrivial([], []) = true
+                 | isTrivial(d::ds, s::ss) =
+                   lookup d = lookup s andalso isTrivial(ds,ss)
+                 | isTrivial _ = error "isTrivialCopy"
+               val (dst, src) = InsnProps.moveDstSrc instr
+           in  isTrivial(dst, src) 
+           end
+
+       fun isNop(instr) = 
+           case InsnProps.instrKind instr of
+             InsnProps.IK_NOP => true 
+           | InsnProps.IK_COPY => isTrivialCopy(instr) 
+           | _ => false
+
+       fun isAllNop [] = true
+         | isAllNop (i::is) = isNop i andalso isAllNop is
 
        (* Given a blockId, finds out which block it really branches to
         * eventually.  The visited array is to prevent looping in programs
@@ -50,27 +75,37 @@ struct
                else
                  (A.update(visited, blockId, st);
                   case #node_info cfg blockId of
-                    CFG.BLOCK{insns=ref [], ...} => (* falls thru to next *)
+                    CFG.BLOCK{insns=ref [], ...} =>
+                       (* falls thru to next *)
                        (case #out_edges cfg blockId of 
                           [(_,next,CFG.EDGE{k=CFG.FALLSTHRU, ...})] => 
                              follow next 
                         | _ => blockId (* terminates here *) 
                        )
-                  | CFG.BLOCK{insns=ref [jmp], ...} => (* may be a jump *)
+                  | CFG.BLOCK{insns=ref(insns as jmp::rest), ...} =>
+                          (* may be a jump *)
                     let val (_, a) = InsnProps.getAnnotations jmp
                     in  if #contains MLRiscAnnotations.NO_BRANCH_CHAINING a then
                             blockId (* no branch chaining! *)
                         else 
                         (case #out_edges cfg blockId of
-                           [(_,next,CFG.EDGE{k=CFG.JUMP, ...})] => follow next
+                           [(_,next,CFG.EDGE{k=CFG.JUMP, ...})] => 
+                              if isAllNop rest then follow next 
+                              else blockId (* terminates here *)
+                         | [(_,next,CFG.EDGE{k=CFG.FALLSTHRU, ...})] => 
+                              if isAllNop insns then follow next
+                              else blockId (* terminates here *)
                          | _ => blockId (* terminates here *)
                         )
                     end
-                  | _ => blockId (* terminates here *)
                  )
            val targetBlockId = follow blockId
        in  addBranch(blockId, targetBlockId);
-           if blockId <> targetBlockId then changed := true else ();
+           if blockId <> targetBlockId then 
+              ((* print "BRANCHING CHAINING\n"; *)
+               branchChainingCount := !branchChainingCount + 1;
+               changed := true) 
+           else ();
            targetBlockId 
        end
 
@@ -81,9 +116,14 @@ struct
                  | get(i,j,e as CFG.EDGE{k=CFG.BRANCH true,...}) = (i,chase j,e)
                  | get(i,j,e as CFG.EDGE{k=CFG.SWITCH _,...}) = (i,chase j,e) 
                  | get e = e
-               val edges = map get (#out_edges cfg i)
-           in  #set_out_edges cfg (i,edges);
-               Util.updateJumpLabel IR i
+               val out_edges = #out_edges cfg i
+           in  case out_edges of
+                 ([_] | [_,_]) =>
+                  let val edges = map get out_edges
+                  in  #set_out_edges cfg (i,edges);
+                      Util.updateJumpLabel IR i
+                  end
+               | _ => () (* Can't do branch chaining on multiway jumps yet! *)
            end
            else ()
 

@@ -23,13 +23,13 @@ structure PPCCG =
            val multCost=ref 6 (* an estimate *)
          )
 
-    structure PPCJumps =
+    structure Jumps =
        PPCJumps(structure Instr=PPCInstr
                 structure Shuffle=PPCShuffle)
 
     structure BackPatch =
        BBSched2(structure Flowgraph = PPCFlowGraph
-                structure Jumps = PPCJumps
+                structure Jumps = Jumps
                 structure Emitter = PPCMCEmitter)
 
     structure RA = 

@@ -65,7 +65,12 @@ struct
   val immedRange = {lo= ~32768, hi=32767}
 
   fun loadImmed{immed,t} = 
-       I.ARITHI{oper=I.ADDI, rt=t, ra=0, im=I.ImmedOp immed}
+       I.ARITHI
+         {oper=I.ADDI, rt=t, ra=0, 
+          im=if #lo immedRange <= immed andalso immed <= #hi immedRange
+             then I.ImmedOp immed else I.LabelOp(LE.INT immed)}
+  fun loadOperand{opn,t} = 
+       I.ARITHI{oper=I.ADDI, rt=t, ra=0, im=opn}
 
   fun setTargets _ = error " setTargets"
 
@@ -105,6 +110,8 @@ struct
 	   | SOME(I.Direct r) => (r::dst, src)
 	(* | SOME(I.Displace{base, disp}) => (dst, base::src) *)
 	 (*esac*))
+     | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+       let val (d,u) = defUseR i in (defs@d, u@uses) end
      | I.ANNOTATION{a, i, ...} => defUseR i
      | _ => ([], [])
   end
@@ -123,6 +130,8 @@ struct
 	  of SOME(I.FDirect f) => (f::dst, src)
 	   | _ => (dst, src)
 	 (*esac*))
+     | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+       let val (d,u) = defUseF i in (defs@d, u@uses) end
      | I.ANNOTATION{a, i, ...} => defUseF i
      | _ => ([], [])
     (*esac*))
@@ -141,6 +150,17 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Replicate an instruction
+   *========================================================================*)
+  fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+    | replicate(I.COPY{tmp=SOME _, dst, src, impl}) =  
+        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
+    | replicate(I.FCOPY{tmp=SOME _, dst, src, impl}) = 
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), 
+                dst=dst, src=src, impl=ref NONE}
+    | replicate i = i
 end
 
 

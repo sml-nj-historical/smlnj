@@ -29,6 +29,7 @@ struct
          levelsMap  : int Array.array,
          preorder   : int Array.array option ref,
          postorder  : int Array.array option ref,
+         entryPos   : int Array.array option ref,
          max_levels : int ref
        }
    type ('n,'e,'g) dominator_tree     = ('n,unit,('n,'e,'g) dom_info) G.graph
@@ -67,6 +68,7 @@ struct
                                levelsMap  = levelsMap,
                                preorder   = ref NONE,
                                postorder  = ref NONE,
+                               entryPos   = ref NONE,
                                max_levels = max_levels 
                              }
        val Dom as G.GRAPH domtree = GI.graph(name, dom_info, N)
@@ -246,10 +248,10 @@ struct
            val pre  = A.array(N,~1000000)
            val post = A.array(N,~1000000)
            fun computeNumbering(preorder,postorder,n) = 
-           let val (preorder',postorder') =
+           let val _ = A.update(pre,n,preorder)
+               val (preorder',postorder') =
                      computeNumbering'(preorder+1,postorder,#out_edges dom n)
-           in  A.update(pre,n,preorder);
-               A.update(post,n,postorder');
+           in  A.update(post,n,postorder');
                (preorder',postorder'+1)
            end
 
@@ -276,6 +278,25 @@ struct
    fun level (G.GRAPH D) = 
    let val INFO{levelsMap,...} = #graph_info D
    in  fn i => A.sub(levelsMap,i) end
+
+   (* Entry position *) 
+   fun entryPos(G.GRAPH D) =
+   let val INFO{entryPos,...} = #graph_info D
+   in  case !entryPos of
+         SOME t => t
+       | NONE => 
+         let val [ENTRY] = #entries D ()  
+             val N       = #capacity D ()
+             val t       = A.array(N, ENTRY)
+             fun init(X,Y) = 
+               (A.update(t,X,Y);
+                app (fn Z => init(Z,Y)) (#succ D X)
+               )
+         in  entryPos := SOME t;
+             app (fn Z => init(Z,Z)) (#succ D ENTRY);
+             t
+         end
+   end
     
    (* Least common ancestor *)
    fun lca (Dom as G.GRAPH D) (a,b) =

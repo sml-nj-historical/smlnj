@@ -27,14 +27,14 @@ structure SparcCG =
              val useBR = ref false
             )
 
-    structure SparcJumps =
+    structure Jumps =
        SparcJumps(structure Instr=SparcInstr
                   structure Shuffle=SparcShuffle)
 
     structure BackPatch =
        SpanDependencyResolution
          (structure Flowgraph = SparcFlowGraph
-          structure Jumps     = SparcJumps
+          structure Jumps     = Jumps
           structure Emitter   = SparcMCEmitter
           structure DelaySlot = SparcDelaySlots
              (structure I=SparcInstr

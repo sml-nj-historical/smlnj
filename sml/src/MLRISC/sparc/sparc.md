@@ -119,6 +119,8 @@ struct
       fun arith opc {r,i,d} = $r[d] := opc($r[r],%i)
       fun arithcc opc {r,i,d} = $r[d] := opc($r[r],%i) || cc{}
 
+      rtl li{i,d} = $r[d] := %i (* load immediate *)
+
       rtl [AND,ANDN,OR,ORN,XOR,XNOR] = 
           map logical [andb, andn, orb, orn, xorb, xnor]
 
@@ -601,6 +603,27 @@ struct
       fun disp label = itow((Label.addrOf label - !loc)) ~>> 0w2
    end
 
+
+   (*
+    * Reservation tables and pipeline definitions for scheduling
+    *)
+
+   (* Function units *)
+   resource issue and mem and alu and falu and fmul and fdiv and branch
+
+   (* Different implementations of cpus *)
+   cpu  default 2 [2 issue, 2 mem, 1 alu]  (* 2 issue machine *)
+
+   (* Definitions of various reservation tables *) 
+   pipeline NOP _    = [issue] 
+    and     ARITH _  = [issue^^alu]
+    and     LOAD _   = [issue^^mem]
+    and     STORE _  = [issue^^mem,mem,mem] 
+    and     FARITH _ = [issue^^falu]
+    and     FMUL _   = [issue^^fmul,fmul]
+    and     FDIV _   = [issue^^fdiv,fdiv*50]
+    and     BRANCH _ = [issue^^branch]
+
    (*
     * Notation:
     *   r -- source register
@@ -638,9 +661,16 @@ struct
 	rtl: [[ "SETHI" ]]
 
    |  ARITH of { a:arith, r: $GP, i:operand, d: $GP }
-        asm: ``<a>\t<r>, <i>, <d>'' 
+        asm: (case (a,r,d) of (* generate abbreviations! *)
+               (I.OR,0,_)    => ``mov\t<i>, <d>''
+             | (I.SUBCC,_,0) => ``cmp\t<r>, <i>''
+             |  _            => ``<a>\t<r>, <i>, <d>'' 
+             )
         mc:  arith{a,r,i,d}
-	rtl: [[ a ]]
+	rtl: (case (a,r) of 
+               (I.OR, 0) => [[ "li" ]]
+             | _         => [[ a ]]
+             )
 
    |  SHIFT of { s:shift, r: $GP, i:operand, d: $GP }
         asm: ``<s>\t<r>, <i>, <d>'' 
@@ -830,5 +860,13 @@ struct
    | PHI of {}
         asm: ``phi''
         mc:  ()
+
+   structure SSA = 
+   struct
+      fun operand(ty,I.REG r)   = T.REG(ty, r)
+        | operand(ty,I.IMMED i) = T.LI i
+        (*| operand(ty,I.LAB le)  = T.LABEL le*)
+        | operand(ty,_) = error "operand"
+   end
 
 end

@@ -1,6 +1,7 @@
 functor SparcRewrite(Instr:SPARCINSTR) = 
 struct
    structure I = Instr
+   structure C = I.C
 
    fun rwset(S,rw) = SortedList.uniq(map rw S)
 
@@ -31,7 +32,13 @@ struct
        | I.Ticc{t,cc,r,i} => I.Ticc{t=t,cc=cc,r=R r,i=O i}
        | I.COPY{src,dst,tmp,impl} => 
            I.COPY{src=map R src,dst=dst,tmp=tmp,impl=impl}
-       | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
+       | I.ANNOTATION{i,a} => 
+           I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=map R uses,
+                                       defs=defs}
+                          | _ => a}
        | _ => instr
    end
 
@@ -56,7 +63,13 @@ struct
        | I.RDY{d} => I.RDY{d=R d}
        | I.COPY{src,dst,tmp,impl} => 
            I.COPY{src=src,dst=map R dst,tmp=ea tmp,impl=impl}
-       | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
+       | I.ANNOTATION{i,a} => 
+           I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                                       defs=map R defs}
+                          | _ => a}
        | _ => instr
    end
 
@@ -75,7 +88,13 @@ struct
            I.CALL{defs=defs,uses=(A,rwset(B,R),C),label=label,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=map R src,dst=dst,tmp=tmp,impl=impl}
-       | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,rs,rt),a=a}
+       | I.ANNOTATION{i,a} => 
+           I.ANNOTATION{i=frewriteUse(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=map R uses,
+                                       defs=defs}
+                          | _ => a}
        | _ => instr
    end
 
@@ -95,7 +114,13 @@ struct
            I.CALL{defs=(A,rwset(B,R),C),uses=uses,label=label,nop=nop,mem=mem}
        | I.FCOPY{src,dst,tmp,impl} => 
            I.FCOPY{src=src,dst=map R dst,tmp=ea tmp,impl=impl}
-       | I.ANNOTATION{i,a}=> I.ANNOTATION{i=frewriteDef(mapr,i,rs,rt),a=a}
+       | I.ANNOTATION{i,a}=> 
+           I.ANNOTATION{i=frewriteDef(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                                       defs=map R defs}
+                          | _ => a}
        | _ => instr
    end
   

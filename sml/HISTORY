@@ -12,6 +12,22 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/06/09 01:25:00
+Tag: leunga-20000609-various
+
+None of these things should affect normal SML/NJ operations
+
+1. Peephole improvements provided by Fermin (c--)
+2. New annotation DEFUSE for adding extra dependence (moby)
+3. New X86 LOCK instructions (moby)
+4. New machine description language for reservation tables (scheduling)
+5. Fixes to various optimization/analysis modules (branch chaining, dominator
+   trees etc.)
+6. I've changed the CM files so that they can work with versions
+   110.0.6, 110.25 and 110.28
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/06/09 12:40:00
 Tag: blume-20000609-log

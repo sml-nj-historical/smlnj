@@ -105,7 +105,7 @@ struct
     (val signed = true)
 
   (* unsigned, non-trapping version of multiply and divide *)
-  structure Mulu32 = Multiply32
+  functor Mul32 = Multiply32
     (val trapping = false
      val multCost = muluCost
      fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
@@ -114,7 +114,9 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
-    (val signed = false)
+  structure Mulu32 = Mul32(val signed = false)
+
+  structure Muls32 = Mul32(val signed = true)
 
   (* signed, trapping version of multiply and divide *)
   structure Mult64 = Multiply64
@@ -131,7 +133,7 @@ struct
     (val signed = true)
 
   (* unsigned, non-trapping version of multiply and divide *)
-  structure Mulu64 = Multiply64
+  functor Mul64 = Multiply64
     (val trapping = false
      val multCost = muluCost
      fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r=r1,i=I.REG r2,d=d}]
@@ -140,7 +142,9 @@ struct
      val sh2addv = NONE 
      val sh3addv = NONE 
     )
-    (val signed = false)
+  structure Mulu64 = Mul64(val signed = false)
+
+  structure Muls64 = Mul64(val signed = true)
 
   datatype commutative = COMMUTE | NOCOMMUTE
   datatype cc = REG    (* write to register *)
@@ -352,8 +356,10 @@ struct
 
           (* divisions *)
       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,stm=doStmt} x
+      and divs32 x = Muls32.divide{mode=T.TO_ZERO,stm=doStmt} x
       and divt32 x = Mult32.divide{mode=T.TO_ZERO,stm=doStmt} x
       and divu64 x = Mulu64.divide{mode=T.TO_ZERO,stm=doStmt} x
+      and divs64 x = Muls64.divide{mode=T.TO_ZERO,stm=doStmt} x
       and divt64 x = Mult64.divide{mode=T.TO_ZERO,stm=doStmt} x
 
       (*
@@ -569,10 +575,15 @@ struct
                arith(I.ADDCC,I.ADDCC,a,b,d,CC_REG,COMMUTE,trap32,an)
           | T.SUBT(32,a,b)=> 
                arith(I.SUBCC,I.SUBCC,a,b,d,CC_REG,NOCOMMUTE,trap32,an)
-          | T.MULU(32,a,b) => extarith(P.umul,Mulu32.multiply,a,b,d,cc,COMMUTE)
-          | T.MULT(32,a,b) => extarith(P.smul,Mult32.multiply,a,b,d,cc,COMMUTE)
-          | T.DIVU(32,a,b) => extarith(P.udiv,divu32,a,b,d,cc,NOCOMMUTE)
-          | T.DIVT(32,a,b) => extarith(P.sdiv,divt32,a,b,d,cc,NOCOMMUTE)
+          | T.MULU(32,a,b) => extarith(P.umul32,
+                                       Mulu32.multiply,a,b,d,cc,COMMUTE)
+          | T.MULS(32,a,b) => extarith(P.smul32,
+                                       Muls32.multiply,a,b,d,cc,COMMUTE)
+          | T.MULT(32,a,b) => extarith(P.smul32trap,
+                                       Mult32.multiply,a,b,d,cc,COMMUTE)
+          | T.DIVU(32,a,b) => extarith(P.udiv32,divu32,a,b,d,cc,NOCOMMUTE)
+          | T.DIVS(32,a,b) => extarith(P.sdiv32,divs32,a,b,d,cc,NOCOMMUTE)
+          | T.DIVT(32,a,b) => extarith(P.sdiv32trap,divt32,a,b,d,cc,NOCOMMUTE)
 
                (* 64 bit support *)
           | T.SRA(64,a,b) => shift(I.SRAX,a,b,d,cc,an)
@@ -584,10 +595,13 @@ struct
                arith(I.SUBCC,I.SUBCC,a,b,d,CC_REG,NOCOMMUTE,trap64,an)
           | T.MULU(64,a,b) => 
               muldiv64(I.MULX,Mulu64.multiply,a,b,d,cc,COMMUTE,an)
+          | T.MULS(64,a,b) => 
+              muldiv64(I.MULX,Muls64.multiply,a,b,d,cc,COMMUTE,an)
           | T.MULT(64,a,b) => 
               (muldiv64(I.MULX,Mult64.multiply,a,b,d,CC_REG,COMMUTE,an);
                app emit trap64)
           | T.DIVU(64,a,b) => muldiv64(I.UDIVX,divu64,a,b,d,cc,NOCOMMUTE,an)
+          | T.DIVS(64,a,b) => muldiv64(I.SDIVX,divs64,a,b,d,cc,NOCOMMUTE,an)
           | T.DIVT(64,a,b) => muldiv64(I.SDIVX,divt64,a,b,d,cc,NOCOMMUTE,an)
 
               (* loads *) 

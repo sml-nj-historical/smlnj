@@ -5,6 +5,7 @@
 
 functor HppaRewrite(Instr:HPPAINSTR) = struct
   structure I = Instr
+  structure C = I.C
 
   fun error msg = MLRiscErrorMsg.error("HppaRewrite",msg)
 
@@ -59,7 +60,13 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 	I.FLOAD{fl=fl, b=replc b, d=d, t=t, mem=mem} 
      | I.FLOADX{flx, b, x, t, mem} =>
 	I.FLOADX{flx=flx, b=replc b, x=replc x, t=t, mem=mem} 
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} => 
+        I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=map replc uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -95,7 +102,13 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
      | I.LDO{i, b, t} => I.LDO{i=i, b=b, t=replc t}
      | I.COPY{dst, src, impl, tmp} =>
 	  I.COPY{dst=map replc dst, src=src, impl=impl, tmp=ea tmp}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} => 
+          I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                                       defs=map replc defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -119,7 +132,13 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=defs, uses=(i, map replc f), mem=mem}
      | I.BL{lab, t, defs=defs, uses=(i,f), mem, n} => 
 	I.BL{lab=lab, t=t, defs=defs, uses=(i,map replc f), mem=mem, n=n} 
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+        I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=map replc uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
     (*esac*)
   end
@@ -143,7 +162,13 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
         I.BLE{d=d, b=b, sr=sr, t=replc t, defs=(i, map replc f), uses=uses, mem=mem}
      | I.BL{lab, t, defs=(i,f), uses=uses, mem, n} => 
 	I.BL{lab=lab, t=t, defs=(i, map replc f), uses=uses, mem=mem, n=n} 
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+        I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                                       defs=map replc defs}
+                          | _ => a}
      | _ => instr
     (*esac*)
   end

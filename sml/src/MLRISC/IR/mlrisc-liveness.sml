@@ -13,13 +13,12 @@ sig
        sharing CFG.I = I
 
    val liveness : 
-       { cfg     : CFG.cfg,
-         liveOut : CFG.block Graph.node -> I.C.cell list,
-         defUse  : CFG.block Graph.node -> I.C.cell list * I.C.cell list
+       { cfg      : CFG.cfg,
+         liveOut  : CFG.block Graph.node -> I.C.cell list,
+         defUse   : CFG.block Graph.node -> I.C.cell list * I.C.cell list,
+         result   : {block: CFG.block Graph.node, 
+                     liveIn: I.C.cell list, liveOut: I.C.cell list} -> unit
        } -> unit
-
-   val getLiveness : CFG.cfg -> Graph.node_id -> 
-                           {livein: I.C.cell list, liveout: I.C.cell list}
 
 end
 
@@ -32,9 +31,6 @@ struct
    structure A   = Annotations
    structure SL  = SortedList
    structure G   = Graph
-
-   val livenessProp = A.new (SOME(fn _ => "liveness")) : 
-          (C.cell list * C.cell list) A.property
 
    structure Liveness =
       Dataflow
@@ -50,10 +46,13 @@ struct
               type dataflow_info = 
                   { liveOut : CFG.block Graph.node -> C.cell list,
                     defUse  : CFG.block Graph.node -> 
-                                  C.cell list * C.cell list
+                                C.cell list * C.cell list,
+                    result  : {block: CFG.block Graph.node, 
+                               liveIn: I.C.cell list, 
+                               liveOut: I.C.cell list} -> unit
                   }
 
-              fun prologue(cfg,{defUse,liveOut}) (b,b') =
+              fun prologue(cfg,{defUse,liveOut,...}:dataflow_info) (b,b') =
                   let val (def,use) = defUse(b,b')
                       val live_out  = liveOut(b,b')
                   in  { input    = live_out,
@@ -62,22 +61,15 @@ struct
                       }
                   end
 
-              fun epilogue _ { node = (b,CFG.BLOCK{annotations,...}), 
-                               input=liveOut, output=liveIn } = 
-                  annotations := #set livenessProp 
-                                  ((liveIn,liveOut),!annotations)
+              fun epilogue(cfg,{result, ...}:dataflow_info)
+                          { node, input=liveOut, output=liveIn } = 
+                  result{block=node, liveIn=liveIn, liveOut=liveOut}
          end
         )
 
-   fun liveness {cfg,liveOut,defUse} = 
-      (Liveness.analyze(cfg,{liveOut=liveOut,defUse=defUse}); ())
-
-   fun getLiveness (G.GRAPH cfg) b = 
-       let val CFG.BLOCK{annotations,...} = #node_info cfg b
-       in  case #get livenessProp (!annotations) of
-              SOME(x,y) => {livein=x,liveout=y}
-           |  NONE => {livein=[],liveout=[]}
-       end
+   fun liveness {cfg,liveOut,defUse,result} = 
+       (Liveness.analyze(cfg, {liveOut=liveOut,defUse=defUse,result=result});
+        ()
+       )
 
 end
-

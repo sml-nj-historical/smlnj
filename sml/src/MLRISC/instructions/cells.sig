@@ -79,6 +79,13 @@ sig
         (* auxiliary functions *)
    val printSet : (cell -> string) -> (cell list -> string)
    val printTuple : string list * string list -> string
+
+    (*
+     * These annotations adds extract definitions and uses to an instruction
+     *)
+   exception DEF_USE of {cellkind:cellkind, defs:cell list, uses:cell list}
+   val DEFUSE : {cellkind:cellkind, defs:cell list, uses:cell list}
+                  Annotations.property
 end
 
 (*

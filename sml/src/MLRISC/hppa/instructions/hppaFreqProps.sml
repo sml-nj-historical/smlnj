@@ -25,6 +25,8 @@ struct
      | branchProb(I.BCOND _) = 50 (* default *)
      | branchProb(I.BCONDI _) = 50 (* default *)
      | branchProb(I.FBRANCH _) = 50 (* default *)
+     (*| branchProb(I.BB{bc=I.BCLR, p=31, ...}) = 10 
+     | branchProb(I.BB{bc=I.BSET, p=31, ...}) = 90 *)
      | branchProb(I.BB _) = 50 (* branch on bit *)
      | branchProb(I.B _) = 100 (* unconditional *)
      | branchProb(I.BE{labs=[], ...}) = 100 (* escapes *)

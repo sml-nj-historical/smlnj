@@ -4,6 +4,7 @@
  *)
 functor X86Rewrite(Instr : X86INSTR) = struct
   structure I=Instr
+  structure C=I.C
 
   fun operand (mapr : I.C.cell -> I.C.cell,rs,rt) opnd =
     (case opnd
@@ -75,7 +76,13 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FIBINARY{binOp, src} => 
 	I.FIBINARY{binOp=binOp, src=operand src}
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
-     | I.ANNOTATION{i,a}=> I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a}=> 
+        I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=map replace uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
   end (* rewriteUse *)
 
@@ -94,7 +101,14 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.SET{cond, opnd} => I.SET{cond=cond, opnd=operand opnd}
      | I.COPY{dst, src, tmp} => I.COPY{dst=map replace dst, src=src, tmp=tmp}
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=src, dst=replace dst}
-     | I.ANNOTATION{i,a}=> I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a}=> 
+         I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                                       defs=map replace defs}
+                          | _ => a}
+
      | _ => instr
   end
 
@@ -114,7 +128,13 @@ functor X86Rewrite(Instr : X86INSTR) = struct
          I.CALL(opnd, defs, (ur, map replace uf, uc), mem)
      | I.FBINARY{binOp, src, dst} => 
 	 I.FBINARY{binOp=binOp, src=foperand src, dst=foperand dst}
-     | I.ANNOTATION{i,a}=> I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a}=> 
+         I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=map replace uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -134,7 +154,13 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.CALL(opnd, (dr,df,dc), uses, mem) => 
          I.CALL(opnd, (dr, map replace df, dc), uses, mem)
      | I.FBINARY{binOp, src, dst} => I.FBINARY{binOp=binOp, src=src, dst=foperand dst}
-     | I.ANNOTATION{i,a}=> I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a}=> 
+         I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                                       defs=map replace defs}
+                          | _ => a}
      | _  => instr
   end
 end

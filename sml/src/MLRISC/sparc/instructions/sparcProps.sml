@@ -2,6 +2,7 @@ functor SparcProps(SparcInstr : SPARCINSTR) : INSN_PROPERTIES =
 struct
   structure I = SparcInstr
   structure C = I.C
+  structure LE = I.LabelExp
 
   exception NegateConditional
 
@@ -118,7 +119,11 @@ struct
 
   val immedRange = {lo= ~4096, hi = 4095}
 
-  fun loadImmed{immed,t} = I.ARITH{a=I.OR,r=0,i=I.IMMED immed,d=t}
+  fun loadImmed{immed,t} = 
+      I.ARITH{a=I.OR,r=0,i=
+              if #lo immedRange <= immed andalso immed <= #hi immedRange 
+              then I.IMMED immed else I.LAB(LE.INT immed),d=t}
+  fun loadOperand{opn, t} = I.ARITH{a=I.OR,r=0,i=opn, d=t}
 
   fun moveInstr(I.COPY _)  = true
     | moveInstr(I.FCOPY _) = true
@@ -185,6 +190,8 @@ struct
         | I.Ticc{r,i,...} => oper(i,[],[r]) 
         | I.RDY{d,...} => ([d],[]) 
         | I.WRY{r,i,...} => oper(i,[],[r]) 
+        | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+          let val (d,u) = defUseR i in (defs@d, u@uses) end
         | I.ANNOTATION{a, i, ...} => defUseR i
         | _ => ([],[])  
     end
@@ -203,6 +210,8 @@ struct
       | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)
       | I.FCOPY{src,dst,...} => (dst,src)
+      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+        let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 
@@ -217,4 +226,15 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Replicate an instruction
+   *========================================================================*)
+  fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+    | replicate(I.COPY{tmp=SOME _, dst, src, impl}) =  
+        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
+    | replicate(I.FCOPY{tmp=SOME _, dst, src, impl}) = 
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), 
+                dst=dst, src=src, impl=ref NONE}
+    | replicate i = i
 end

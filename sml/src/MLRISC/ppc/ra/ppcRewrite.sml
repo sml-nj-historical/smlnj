@@ -1,5 +1,6 @@
 functor PPCRewrite(Instr : PPCINSTR) = struct
   structure I = Instr
+  structure C = I.C
 
   fun ea(NONE, _, _, _) = NONE
     | ea(e as SOME(I.Direct r), rs, rt, mapr : I.C.cell -> I.C.cell) = 
@@ -46,7 +47,13 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
 	I.COPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
      | I.FCOPY{dst, src, impl, tmp} =>
 	I.FCOPY{dst=dst, src=src, impl=impl, tmp=ea(tmp, rs, rt, mapr)}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} => 
+         I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=map rplac uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -71,7 +78,13 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
         I.CALL{def=(map rplac r, f, c), use=use, mem=mem}
      | I.COPY {dst, src, impl, tmp} =>
 	I.COPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,rs,rt,mapr)}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),a=a}
+     | I.ANNOTATION{i,a} => 
+        I.ANNOTATION{i=rewriteDef(mapr,i,rs,rt),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.GP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.GP,uses=uses,
+                                       defs=map rplac defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -93,7 +106,13 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
 	 I.FARITH3{oper=oper,ft=ft,fa=rplac fa, fb=rplac fb, fc=rplac fc,Rc=Rc}
      | I.FCOPY {dst, src, impl, tmp} =>
 	 I.FCOPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+         I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=map rplac uses,
+                                       defs=defs}
+                          | _ => a}
      | _ => instr
   end
 
@@ -115,7 +134,13 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
         I.CALL{def=(r, map rplac f, c), use=use, mem=mem}
      | I.FCOPY {dst, src, impl, tmp} =>
         I.FCOPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,fs,ft,mapr)}
-     | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
+     | I.ANNOTATION{i,a} => 
+        I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),
+                        a=case a of
+                           C.DEF_USE{cellkind=C.FP,defs,uses} =>
+                             C.DEF_USE{cellkind=C.FP,uses=uses,
+                                       defs=map rplac defs}
+                          | _ => a}
      | _ => instr
   end
 end

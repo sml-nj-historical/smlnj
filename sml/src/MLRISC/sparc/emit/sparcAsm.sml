@@ -9,7 +9,7 @@ functor SparcAsmEmitter(structure Instr : SPARCINSTR
                         structure Shuffle : SPARCSHUFFLE
                            where I = Instr
 
-(*#line 473.21 "sparc/sparc.md"*)
+(*#line 475.21 "sparc/sparc.md"*)
                         val V9 : bool
                        ) : INSTRUCTION_EMITTER =
 struct
@@ -266,19 +266,19 @@ struct
        emit_labexp labexp; 
        emit ")" )
 
-(*#line 476.7 "sparc/sparc.md"*)
+(*#line 478.7 "sparc/sparc.md"*)
    fun emit_leaf false = ()
      | emit_leaf true = emit "l"
 
-(*#line 477.7 "sparc/sparc.md"*)
+(*#line 479.7 "sparc/sparc.md"*)
    fun emit_nop false = ()
      | emit_nop true = emit "\n\tnop"
 
-(*#line 478.7 "sparc/sparc.md"*)
+(*#line 480.7 "sparc/sparc.md"*)
    fun emit_a false = ()
      | emit_a true = emit ",a"
 
-(*#line 479.7 "sparc/sparc.md"*)
+(*#line 481.7 "sparc/sparc.md"*)
    fun emit_cc false = ()
      | emit_cc true = emit "cc"
    fun emitInstr' instr = 
@@ -323,7 +323,7 @@ struct
         emit_region mem )
       | I.SETHI{i, d} => let
 
-(*#line 634.18 "sparc/sparc.md"*)
+(*#line 657.18 "sparc/sparc.md"*)
            val i = Word32.toString (Word32  .<< (Word32.fromInt i, 0wxa))
         in 
            ( emit "sethi\t%hi(0x"; 
@@ -333,13 +333,27 @@ struct
         end
 
       | I.ARITH{a, r, i, d} => 
-        ( emit_arith a; 
-        emit "\t"; 
-        emit_GP r; 
-        emit ", "; 
-        emit_operand i; 
-        emit ", "; 
-        emit_GP d )
+        (
+         case (a, r, d) of
+         (I.OR, 0, _) => 
+         ( emit "mov\t"; 
+         emit_operand i; 
+         emit ", "; 
+         emit_GP d )
+       | (I.SUBCC, _, 0) => 
+         ( emit "cmp\t"; 
+         emit_GP r; 
+         emit ", "; 
+         emit_operand i )
+       | _ => 
+         ( emit_arith a; 
+         emit "\t"; 
+         emit_GP r; 
+         emit ", "; 
+         emit_operand i; 
+         emit ", "; 
+         emit_GP d )
+        )
       | I.SHIFT{s, r, i, d} => 
         ( emit_shift s; 
         emit "\t"; 
@@ -459,7 +473,7 @@ struct
         emit_operand i )
       | I.FPop1{a, r, d} => let
 
-(*#line 731.18 "sparc/sparc.md"*)
+(*#line 761.18 "sparc/sparc.md"*)
            fun f (a, r, d) = 
                ( emit a; 
                emit "\t"; 
@@ -467,10 +481,10 @@ struct
                emit ", "; 
                emit_FP d )
 
-(*#line 733.18 "sparc/sparc.md"*)
+(*#line 763.18 "sparc/sparc.md"*)
            fun g (a, r, d) = let
 
-(*#line 734.25 "sparc/sparc.md"*)
+(*#line 764.25 "sparc/sparc.md"*)
                   val r = regmap r
                   and d = regmap d
                in f (a, r, d); 
@@ -479,10 +493,10 @@ struct
                end
 
 
-(*#line 738.18 "sparc/sparc.md"*)
+(*#line 768.18 "sparc/sparc.md"*)
            fun h (a, r, d) = let
 
-(*#line 739.25 "sparc/sparc.md"*)
+(*#line 769.25 "sparc/sparc.md"*)
                   val r = regmap r
                   and d = regmap d
                in f (a, r, d); 

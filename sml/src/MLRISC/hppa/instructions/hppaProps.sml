@@ -80,7 +80,11 @@ struct
   fun jump label = I.B{lab=label,n=true}
 
   val immedRange = {lo= ~8192, hi=8191}
-  fun loadImmed{immed,t} = I.LDO{i=I.IMMED immed,b=0,t=t}
+  fun loadImmed{immed,t} = 
+      I.LDO{i=if #lo immedRange <= immed andalso immed <= #hi immedRange 
+              then I.IMMED immed
+              else I.LabExp(LE.INT immed,I.F),b=0,t=t}
+  fun loadOperand{opn,t} = I.LDO{i=opn,b=0,t=t}
 
   fun setTargets(I.BCOND{cmp,bc,r1,r2,t,f,n,nop},[F,T]) =
           I.BCOND{cmp=cmp,bc=bc,r1=r1,r2=r2,t=T,f=F,n=n,nop=nop}
@@ -202,6 +206,8 @@ struct
       | I.FSTOREX {b, x, ...}  	    => ([],  [b,x])
       | I.FLOAD {b, ...}	    => ([],  [b])
       | I.FLOADX{b, x, ...} 	    => ([],  [b,x])
+      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+        let val (d,u) = defUseR i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseR i
       | _   => ([],[])
   end
@@ -220,6 +226,8 @@ struct
        | I.BLE{defs, uses, ...}    => (#2 defs, #2 uses)
        | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
        | I.FCOPY{dst, src, ...}    => (dst, src)
+       | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+         let val (d,u) = defUseF i in (defs@d, u@uses) end
        | I.ANNOTATION{a, i, ...} => defUseF i
        | _ => ([],[])
 
@@ -234,6 +242,17 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Replicate an instruction
+   *========================================================================*)
+  fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+    | replicate(I.COPY{tmp=SOME _, dst, src, impl}) = 
+        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src, impl=ref NONE}
+    | replicate(I.FCOPY{tmp=SOME _, dst, src, impl}) = 
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), 
+                dst=dst, src=src, impl=ref NONE}
+    | replicate i = i
 end
 
 

@@ -41,6 +41,13 @@ sig
         (* Return a map from node id -> level (level(root) = 0) *)
     val levelsMap  : ('n,'e,'g) dominator_tree -> int Array.array
 
+        (* Return a map from node id i -> the node_id j,
+         * where j is the level 1 node that dominates i.
+         * Special case: if i = ENTRY, then j = ENTRY.
+         * This table is cached.
+         *)
+    val entryPos   : ('n,'e,'g) dominator_tree -> int Array.array
+
         (* Return a map from node id -> immediate (post)dominator *)
     val idomsMap   : ('n,'e,'g) dominator_tree -> int Array.array
 

@@ -14,14 +14,14 @@ signature SPARC_PSEUDO_INSTR = sig
        (I.operand -> I.C.cell) -> I.instruction list
    (* 
     * Signed and unsigned multiplications.
-    * For signed operations, trap on overflow and division by zero.
-    * For unsigned operations, trap on division by zero.
     * These are all 32 bit operations 
     *)
-   val umul : format1
-   val smul : format1
-   val udiv : format1
-   val sdiv : format1
+   val umul32     : format1 (* unsigned/non-trapping *)
+   val smul32     : format1 (* signed/non-trapping *)
+   val smul32trap : format1 (* trap on overflow *)
+   val udiv32     : format1 (* unsigned/non-trapping *)
+   val sdiv32     : format1 (* signed/non-trapping *)
+   val sdiv32trap : format1 (* trap on overflow/zero *)
 
        (* convert integer into floating point *)
    val cvti2d : format2

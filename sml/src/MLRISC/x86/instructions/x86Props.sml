@@ -83,6 +83,7 @@ struct
   val toInt32 = Int32.fromLarge o Int.toLarge
   fun loadImmed{immed,t} =
       I.MOVE{mvOp=I.MOVL,src=I.Immed(toInt32 immed),dst=I.Direct t}
+  fun loadOperand{opn,t} = I.MOVE{mvOp=I.MOVL,src=opn,dst=I.Direct t}
 
  (*=====================================================================
   *  Hashing and Equality on operands
@@ -194,6 +195,8 @@ struct
          * do potentially it may define *and* use 
          *)
       | I.CMOV{src,dst,...} => ([dst], operandAcc(src, [dst]))
+      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.GP,defs,uses}, i, ...} => 
+        let val (d,u) = defUseR i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseR i
       | _		      => ([], [])
   end (* defUseR *)
@@ -215,6 +218,8 @@ struct
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
+      | I.ANNOTATION{a=C.DEF_USE{cellkind=C.FP,defs,uses}, i, ...} => 
+        let val (d,u) = defUseF i in (defs@d, u@uses) end
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _  => ([], [])
   end
@@ -230,5 +235,15 @@ struct
        let val (i,an) = getAnnotations i in (i,a::an) end
     | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Replicate an instruction
+   *========================================================================*)
+  fun replicate(I.ANNOTATION{i,a}) = I.ANNOTATION{i=replicate i,a=a}
+    | replicate(I.COPY{tmp=SOME _, dst, src}) =  
+        I.COPY{tmp=SOME(I.Direct(C.newReg())), dst=dst, src=src}
+    | replicate(I.FCOPY{tmp=SOME _, dst, src}) = 
+        I.FCOPY{tmp=SOME(I.FDirect(C.newFreg())), dst=dst, src=src}
+    | replicate i = i
 end
 

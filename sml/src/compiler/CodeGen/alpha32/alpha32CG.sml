@@ -26,13 +26,13 @@ structure Alpha32CG =
              val SMLNJfloatingPoint = true (* must be true for SML/NJ *)
             )
 
-    structure Alpha32Jumps =
+    structure Jumps =
        AlphaJumps(structure Instr=Alpha32Instr
                   structure Shuffle=Alpha32Shuffle)
 
     structure BackPatch =
        BBSched2(structure Flowgraph = Alpha32FlowGraph
-                structure Jumps = Alpha32Jumps
+                structure Jumps = Jumps
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 

@@ -115,4 +115,16 @@ struct
 
    fun printTuple(c::cs,s::sets) = c^"="^s^"  "^printTuple(cs,sets)
      | printTuple _ = ""
+
+    (*
+     * These annotations specifies definitions and uses 
+     * for a pseudo instruction.
+     *)
+   exception DEF_USE of {cellkind:cellkind, defs:cell list, uses:cell list}
+   val DEFUSE = Annotations.new'
+                      {create=DEF_USE,
+                       get=fn DEF_USE x => x | e => raise e,
+                       toString=fn{cellkind,defs,uses} => 
+                          "DEFUSE"^cellkindToString cellkind
+                      }
 end

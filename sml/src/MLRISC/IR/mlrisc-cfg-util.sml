@@ -19,7 +19,7 @@ struct
 
    exception Can'tMerge
 
-   fun error msg = MLRiscErrorMsg.error("CFGTransforms",msg)
+   fun error msg = MLRiscErrorMsg.error("CFGUtil",msg)
 
    fun labelOf(G.GRAPH cfg) node = CFG.defineLabel(#node_info cfg node)
 

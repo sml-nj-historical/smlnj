@@ -235,7 +235,7 @@ struct
      | asm_bit (I.OX) = "so"
    and emit_bit x = emit (asm_bit x)
 
-(*#line 551.7 "ppc/ppc.md"*)
+(*#line 571.7 "ppc/ppc.md"*)
    fun emitx (s, I.RegOp _) = (if ((String.sub (s, (size s) - 1)) = #"e")
           then 
           ( emit (String.substring (s, 0, (size s) - 1)); 
@@ -245,20 +245,20 @@ struct
           emit "x" ))
      | emitx (s, _) = emit s
 
-(*#line 557.7 "ppc/ppc.md"*)
+(*#line 577.7 "ppc/ppc.md"*)
    fun eOERc {OE=false, Rc=false} = ()
      | eOERc {OE=false, Rc=true} = emit "."
      | eOERc {OE=true, Rc=false} = emit "o"
      | eOERc {OE=true, Rc=true} = emit "o."
 
-(*#line 561.7 "ppc/ppc.md"*)
+(*#line 581.7 "ppc/ppc.md"*)
    fun eRc false = ""
      | eRc true = "."
 
-(*#line 562.7 "ppc/ppc.md"*)
+(*#line 582.7 "ppc/ppc.md"*)
    val CR0 = C.Reg C.CC 0
 
-(*#line 563.7 "ppc/ppc.md"*)
+(*#line 583.7 "ppc/ppc.md"*)
    fun cr_bit (cr, bit) = (4 * ((regmap cr) - CR0)) + 
        (
         case bit of
@@ -276,18 +276,18 @@ struct
       | I.OX => 3
        )
 
-(*#line 570.7 "ppc/ppc.md"*)
+(*#line 590.7 "ppc/ppc.md"*)
    fun eCRbit x = emit (Int.toString (cr_bit x))
 
-(*#line 571.7 "ppc/ppc.md"*)
+(*#line 591.7 "ppc/ppc.md"*)
    fun eLK true = emit "l"
      | eLK false = ()
 
-(*#line 572.7 "ppc/ppc.md"*)
+(*#line 592.7 "ppc/ppc.md"*)
    fun eI (I.RegOp _) = ()
      | eI _ = emit "i"
 
-(*#line 573.7 "ppc/ppc.md"*)
+(*#line 593.7 "ppc/ppc.md"*)
    fun eBI (bo, bf, bit) = 
        (
         case (bo, (regmap bf) - CR0) of
@@ -297,7 +297,7 @@ struct
       | (_, n) => emit ((("4*cr" ^ (Int.toString n)) ^ "+") ^ (asm_bit bit))
        )
 
-(*#line 579.7 "ppc/ppc.md"*)
+(*#line 599.7 "ppc/ppc.md"*)
    fun emit_bo bo = emit 
        (
         case bo of
@@ -314,13 +314,13 @@ struct
            else "f")
        )
 
-(*#line 590.7 "ppc/ppc.md"*)
+(*#line 610.7 "ppc/ppc.md"*)
    fun eME (SOME me) = 
        ( emit ", "; 
        emit_int me )
      | eME NONE = ()
 
-(*#line 593.7 "ppc/ppc.md"*)
+(*#line 613.7 "ppc/ppc.md"*)
    fun addr (ra, I.RegOp rb) = 
        ( emit_GP ra; 
        emit ", "; 

@@ -47,7 +47,8 @@ struct
          | T(T.SRL(t,a,b))    = binaryArith(t,a,b)
          | T(T.NOTB(t,a))     = unaryArith(t,a)
          | T(T.LOAD(t,ea,_))  = GC.TOP
-         | T(T.COND(t,a,b,c)) = GC.TOP
+         | T(T.COND(t,a,b,c)) = GC.TOP 
+         | T(T.CVTI2I _)      = GC.TOP 
          | T(T.PRED(e, _))    = T e
          | T(T.REXT(t,RTL.OP(misc_op,es))) = GC.INT
          | T(T.REXT(t,RTL.FETCH(RTL.AGG(_,_,RTL.CELL(k,ty,e,_))))) = GC.TOP

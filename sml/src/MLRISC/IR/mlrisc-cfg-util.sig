@@ -21,6 +21,11 @@ sig
    val updateJumpLabel : CFG.cfg -> Graph.node_id -> unit
 
    (*=======================================================================
+    *  Copy an edge
+    *=======================================================================*)
+   val copyEdge : CFG.edge_info -> CFG.edge_info
+
+   (*=======================================================================
     *  Merge a control flow edge.  Return false if merging is unsuccessful.
     *=======================================================================*)
    val mergeEdge : CFG.cfg -> CFG.edge -> bool

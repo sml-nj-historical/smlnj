@@ -163,6 +163,8 @@ struct
 
            fun check_for_bad_entries() =
                app (fn (i,j,e) =>
+                     if j = EXIT then ()
+                     else
                      case #in_edges cfg j of 
                         [_] => () (* only edge from ENTRY, okay *)
                      |  _ => 
@@ -171,7 +173,8 @@ struct
 
            (* add edge from entry to exit *)
            fun insert_entry_to_exit () = 
-                 add_edge (ENTRY,EXIT,CFG.JUMP,ref 0)
+               if #has_edge cfg (ENTRY,EXIT) then ()
+               else add_edge (ENTRY,EXIT,CFG.JUMP,ref 0)
     in 
         add(entry::exit::blocks,[],[]);
         check_for_bad_entries();

@@ -75,9 +75,9 @@ struct
   end
 
   fun umul({r, i, d}, reduceOpnd) = callRoutine(umulOffset,reduceOpnd,r,i,d)
-  fun smul({r, i, d}, reduceOpnd) = callRoutine(smulOffset,reduceOpnd,r,i,d)
+  fun smultrap({r, i, d}, reduceOpnd) = callRoutine(smulOffset,reduceOpnd,r,i,d)
   fun udiv({r, i, d}, reduceOpnd) = callRoutine(udivOffset,reduceOpnd,r,i,d)
-  fun sdiv({r, i, d}, reduceOpnd) = callRoutine(sdivOffset,reduceOpnd,r,i,d)
+  fun sdivtrap({r, i, d}, reduceOpnd) = callRoutine(sdivOffset,reduceOpnd,r,i,d)
 
   fun cvti2d({i, d}, reduceOpnd) = 
       [I.STORE{s=I.ST,r=C.stackptrR,i=floatTmpOffset,d=reduceOpnd i,mem=stack},
@@ -88,10 +88,12 @@ struct
   fun cvti2q _ = error "cvti2q"
 
      (* Generate native versions of the instructions *)
-  val umul = if native then umul_native else umul
-  val smul = if native then smul_native else smul
-  val udiv = if native then udiv_native else udiv
-  val sdiv = if native then sdiv_native else sdiv
+  val umul32 = if native then umul_native else umul
+  fun smul32 _ = error "smul32"
+  val smul32trap = if native then smul_native else smultrap
+  val udiv32 = if native then udiv_native else udiv
+  fun sdiv32 _ = error "sdiv32"
+  val sdiv32trap = if native then sdiv_native else sdivtrap
 
   val overflowtrap32 = (* tvs 0x7 *)
                        [I.Ticc{t=I.BVS,cc=I.ICC,r=0,i=I.IMMED 7}]

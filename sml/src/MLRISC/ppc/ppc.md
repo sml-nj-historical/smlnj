@@ -543,6 +543,26 @@ struct
    end
 
    (*
+    * Reservation tables and pipeline definitions for scheduling
+    *)
+
+   (* Function units *)
+   resource issue and mem and alu and falu and fmul and fdiv and branch
+
+   (* Different implementations of cpus *)
+   cpu default 2 [2 issue, 2 mem, 1 alu]  (* 2 issue machine *)
+
+   (* Definitions of various reservation tables *) 
+   pipeline NOP _    = [issue] 
+    and     ARITH _  = [issue^^alu]
+    and     LOAD _   = [issue^^mem]
+    and     STORE _  = [issue^^mem,mem,mem] 
+    and     FARITH _ = [issue^^falu]
+    and     FMUL _   = [issue^^fmul,fmul]
+    and     FDIV _   = [issue^^fdiv,fdiv*50]
+    and     BRANCH _ = [issue^^branch]
+
+   (*
     * Some helper functions for generating assembly code.
     *)
    structure Assembly = 
@@ -723,5 +743,14 @@ struct
      | PHI of {}
         asm: ``phi''
         mc:  ()
+
+     structure SSA =
+     struct
+
+        fun operand(ty, I.RegOp r) = T.REG(32, r)
+          | operand(ty, I.ImmedOp i) = T.LI i
+          (*| operand(ty, I.LabelOp le) = T.LABEL le*)
+
+     end
 
  end

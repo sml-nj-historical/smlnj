@@ -638,8 +638,11 @@ struct
         * until later.
         *)
        if optimized then 
-            (annotation(#create MLRiscAnnotations.GCSAFEPOINT
-                (rootSetToString{boxed=boxed, int32=int32, float=float})); 
+            (annotation(#create MLRiscAnnotations.GCSAFEPOINT 
+               (if !debug then
+                 rootSetToString{boxed=boxed, int32=int32, float=float}
+                else ""
+               ));
              emit ret
             )
        else emitCallGC{stream=stream, known=known,

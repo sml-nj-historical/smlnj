@@ -86,8 +86,6 @@ sig
    | LOCK_ADCL
    | LOCK_ADDW
    | LOCK_ADDL
-   | LOCK_ANBW
-   | LOCK_ANBL
    | LOCK_ANDW
    | LOCK_ANDL
    | LOCK_BTSW
@@ -104,9 +102,12 @@ sig
    | LOCK_SUBL
    | LOCK_XORW
    | LOCK_XORL
-   | LOCK_XCHGB
-   | LOCK_XCHGW
-   | LOCK_XCHGL
+   | LOCK_XADDB
+   | LOCK_XADDW
+   | LOCK_XADDL
+   | LOCK_CMPXCHGB
+   | LOCK_CMPXCHGW
+   | LOCK_CMPXCHGL
    datatype multDivOp =
      MULL
    | IDIVL
@@ -340,8 +341,6 @@ struct
    | LOCK_ADCL
    | LOCK_ADDW
    | LOCK_ADDL
-   | LOCK_ANBW
-   | LOCK_ANBL
    | LOCK_ANDW
    | LOCK_ANDL
    | LOCK_BTSW
@@ -358,9 +357,12 @@ struct
    | LOCK_SUBL
    | LOCK_XORW
    | LOCK_XORL
-   | LOCK_XCHGB
-   | LOCK_XCHGW
-   | LOCK_XCHGL
+   | LOCK_XADDB
+   | LOCK_XADDW
+   | LOCK_XADDL
+   | LOCK_CMPXCHGB
+   | LOCK_CMPXCHGW
+   | LOCK_CMPXCHGL
    datatype multDivOp =
      MULL
    | IDIVL

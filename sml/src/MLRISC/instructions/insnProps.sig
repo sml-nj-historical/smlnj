@@ -34,8 +34,9 @@ sig
    val jump       : Label.label -> I.instruction
 
       (* load immediate; must be within immedRange *)
-   val immedRange : {lo:int, hi:int}
-   val loadImmed  : {immed:int, t:C.cell} -> I.instruction
+   val immedRange  : {lo:int, hi:int}
+   val loadImmed   : {immed:int, t:C.cell} -> I.instruction
+   val loadOperand : {opn:I.operand, t:C.cell} -> I.instruction
 
      (* 
       * Targets of a branch instruction 
@@ -65,5 +66,7 @@ sig
    val getAnnotations : I.instruction ->
                            I.instruction * Annotations.annotation list
    val annotate       : I.instruction * Annotations.annotation -> I.instruction
+
+   val replicate : I.instruction -> I.instruction
 end
 

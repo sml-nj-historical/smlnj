@@ -31,14 +31,14 @@ structure HppaCG =
             val costOfDivision = ref 7
            )
 
-    structure HppaJumps =
+    structure Jumps =
        HppaJumps(structure Instr=HppaInstr
                  structure Shuffle=HppaShuffle)
 
     structure BackPatch =
        SpanDependencyResolution
          (structure Flowgraph = HppaFlowGraph
-          structure Jumps     = HppaJumps
+          structure Jumps     = Jumps
           structure Emitter   = HppaMCEmitter
           structure DelaySlot = HppaDelaySlots
              (structure I=HppaInstr
