@@ -8,7 +8,8 @@ sig
   val transDec : Absyn.dec * Access.lvar list 
                  * StaticEnv.staticEnv * CompBasic.compInfo
                  -> {flint: FLINT.prog,
-                     imports: PersStamps.persstamp list}
+                     imports: (PersStamps.persstamp 
+                               * CompBasic.importTree) list}
 
 end (* signature TRANSLATE *)
 
@@ -28,6 +29,7 @@ local structure B  = Bindings
       structure PO = PrimOp
       structure PP = PrettyPrint
       structure S  = Symbol
+      structure SP = SymPath
       structure LN = LiteralToNum
       structure TT = TransTypes
       structure TP = Types
@@ -56,6 +58,8 @@ fun ppType ty =
 fun ident x = x
 val unitLexp = RECORD []
 
+fun getNameOp p = if SP.null p then NONE else SOME(SP.last p)
+
 type pid = PersStamps.persstamp
 
 (** old-style fold for cases where it is partially applied *)
@@ -67,12 +71,19 @@ fun fold f l init = foldr f init l
  * "compInfo". Similarly, should we replace all mkLvar in the backend
  * with the mkv in "compInfo" ? (ZHONG)
  *)
-val mkv = LambdaVar.mkLvar
+val mkv = LambdaVar.mkLvar 
+fun mkvN NONE = mkv()
+  | mkvN (SOME s) = LambdaVar.namedLvar s
 
 (** sorting the record fields for record types and record expressions *)
 fun elemgtr ((LABEL{number=x,...},_),(LABEL{number=y,...},_)) = (x>y)
 fun sorted x = Sort.sorted elemgtr x 
 fun sortrec x = Sort.sort elemgtr x
+
+(** check if an access is external *)
+fun extern (DA.EXTERN _) = true
+  | extern (DA.PATH(a, _)) = extern a
+  | extern _ = false
 
 (** an exception raised if coreEnv is not available *)
 exception NoCore
@@ -80,11 +91,11 @@ exception NoCore
 (****************************************************************************
  *                          MAIN FUNCTION                                   *
  *                                                                          *
- *  val transDec: Absyn.dec * Lambda.lexp * StaticEnv.staticEnv             *
- *                * ElabUtil.compInfo                                       *
- *                -> {genLambda : Lambda.lexp option list -> Lambda.lexp,   *
- *                    importPids : PersStamps.persstamp list}               *
- *                                                                          *
+ *  val transDec : Absyn.dec * Access.lvar list                             *
+ *                 * StaticEnv.staticEnv * CompBasic.compInfo               *
+ *                 -> {flint: FLINT.prog,                                   *
+ *                     imports: (PersStamps.persstamp                       *
+ *                               * CompBasic.importTree) list}              *
  ****************************************************************************)
 
 fun transDec (rootdec, exportLvars, env,
@@ -153,78 +164,101 @@ fun repErr x = complain EM.COMPLAIN x EM.nullErrorBody
 
 end (* markexn-local *)
 
-(**************** a temporary fix for the exportFn bug ****************)
+(***************************************************************************
+ *          SHARING AND LIFTING OF STRUCTURE IMPORTS AND ACCESSES          *
+ ***************************************************************************)
+
 exception HASHTABLE
 type key = int
 
-(** hashkey of accesspath + accesspath + encoding of typ params + resvar *)
-type info = (key * int list * tyc * lvar) 
+(** hashkey of accesspath + accesspath + resvar *)
+type info = (key * int list * lvar) 
 val hashtable : info list Intmap.intmap = Intmap.new(32,HASHTABLE)    
 fun hashkey l = foldr (fn (x,y) => ((x * 10 + y) mod 1019)) 0 l
 
-fun toHt NONE = LT.tcc_void
-  | toHt (SOME(ts)) = LT.tcc_tuple ts
-
-fun fromHt x = if LT.tc_eqv(x, LT.tcc_void) then NONE else SOME(LT.tcd_tuple x)
-
-fun buildHdr(v) = 
+fun buildHdr v = 
   let val info = Intmap.map hashtable v
-      fun h((_, l, tsEnc, w), hdr) = 
+      fun h((_, l, w), hdr) = 
              let val le = foldl (fn (k,e) => SELECT(k,e)) (VAR v) l
-                 val be = case (fromHt tsEnc) 
-                           of NONE => le
-                            | SOME ts => TAPP(le, ts)
-	      in fn e => hdr(LET(w, be, e))
+	      in fn e => hdr(LET(w, le, e))
 	     end
    in foldr h ident info
   end handle _ => ident
 
-fun lookbind(v, l, tsOp) =
-  let val info = (Intmap.map hashtable v) handle _ => []
-      val key = hashkey l
-      val tsEnc = toHt tsOp
+fun bindvar (v, [], _) =  v
+  | bindvar (v, l, nameOp) = 
+      let val info = (Intmap.map hashtable v) handle _ => []
+          val key = hashkey l
+          fun h [] =  
+                let val u = mkvN nameOp
+                 in Intmap.add hashtable (v,(key,l,u)::info); u
+                end
+            | h((k',l',w)::r) = 
+                if (k' = key) then (if (l'=l) then w else h r) else h r    
+       in h info 
+      end
 
-      fun h [] = (let val u = mkv()
-                   in Intmap.add hashtable (v,(key,l,tsEnc,u)::info); u
-                  end)
-        | h((k',l', t', w)::r) = 
-             if ((k' = key) andalso LT.tc_eqv(t', tsEnc)) 
-             then (if (l'=l) then w else h r) else h r    
-   in h info 
+datatype pidInfo = ANON of (int * pidInfo) list
+                 | NAMED of lvar * lty * (int * pidInfo) list
+
+fun mkPidInfo (t, l, nameOp) = 
+  let val v = mkvN nameOp
+      fun h [] = NAMED(v, t, [])
+        | h (a::r) = ANON [(a, h r)]
+   in (h l, v)
   end
 
-fun bindvar(v, [], NONE) = v
-  | bindvar(v, l, tsOp) = lookbind(v, l, tsOp)
+fun mergePidInfo (pi, t, l, nameOp) = 
+  let fun h (z as NAMED(v,_,_), []) = (z, v)
+        | h (ANON xl, [])  = 
+              let val v = mkvN nameOp
+               in (NAMED(v, t, xl), v)
+              end
+        | h (z, a::r) = 
+              let val (xl, mknode) = 
+                    case z of ANON c => (c, ANON)
+                            | NAMED (v,tt,c) => (c, fn x => NAMED(v,tt,x))
+
+                  fun dump ((np, v), z, y) = 
+                        let val nz = (a, np)::z
+                         in (mknode((rev y) @ nz), v)
+                        end
+
+                  fun look ([], y) = dump(mkPidInfo(t, r, nameOp), [], y)
+                    | look (u as ((x as (i,pi))::z), y) = 
+                        if i < a then look(z, x::y)
+                        else if i = a then dump(h(pi, r), z, y)
+                             else dump(mkPidInfo(t, r, nameOp), u, y)
+
+               in look(xl, [])
+              end
+   in h(pi, l)
+  end (* end of mergePidInfo *)
 
 (** a map that stores information about external references *)
-val persmap = ref (Map.empty : (lvar * LT.lty) Map.map)
+val persmap = ref (Map.empty : pidInfo Map.map)
 
-fun mkPid (pid, t, l) =
-  (let val (var, t0) = Map.lookup (!persmap) pid
-    in (persmap := Map.add(Map.delete(pid, !persmap),
-                           pid, (var, LT.lt_merge(t0, t))));
-       bindvar(var, l, (* tsOp *) NONE)
+fun mkPid (pid, t, l, nameOp) =
+  (let val pinfo = Map.lookup (!persmap) pid
+       val (npinfo, var) = mergePidInfo (pinfo, t, l, nameOp)
+    in persmap := Map.add(Map.delete(pid, !persmap), pid, npinfo); var
    end handle Map.MapF => 
-	 let val nv = mkv()
-	  in (persmap := Map.add(!persmap, pid, (nv, t)); 
-              bindvar(nv, l, (* tsOp *) NONE))
+	 let val (pinfo, var) = mkPidInfo (t, l, nameOp)
+	  in persmap := Map.add(!persmap, pid, pinfo); var
 	 end)
 
 (** converting an access w. type into a lambda expression *)
-fun mkAccT (p, t) = 
-  let fun h(DA.LVAR v, l) = bindvar(v, l, NONE)
-        | h(DA.EXTERN pid, l) = 
-             (let val nt = foldr (fn (k,b) => LT.ltc_pst[(k,b)]) t l
-               in mkPid(pid, nt, l)
-              end)
+fun mkAccT (p, t, nameOp) = 
+  let fun h(DA.LVAR v, l) = bindvar(v, l, nameOp)
+        | h(DA.EXTERN pid, l) = mkPid(pid, t, l, nameOp)
         | h(DA.PATH(a,i), l) = h(a, i::l)
         | h _ = bug "unexpected access in mkAccT"
    in VAR (h(p, []))
   end (* new def for mkAccT *)
 
 (** converting an access into a lambda expression *)
-fun mkAcc p = 
-  let fun h(DA.LVAR v, l) = bindvar(v, l, NONE)
+fun mkAcc (p, nameOp) = 
+  let fun h(DA.LVAR v, l) = bindvar(v, l, nameOp)
         | h(DA.PATH(a,i), l) = h(a, i::l)
         | h _ = bug "unexpected access in mkAcc"
    in VAR (h(p, []))
@@ -242,7 +276,7 @@ fun coreExn id =
   ((case coreLookup(id, coreEnv)
      of V.CON(TP.DATACON{name, rep as DA.EXN _, typ, ...}) => 
           let val nt = toDconLty DI.top typ
-              val nrep = mkRep(rep, nt)
+              val nrep = mkRep(rep, nt, name)
            in CON'((name, nrep, nt), [], unitLexp)
           end
       | _ => bug "coreExn in translate")
@@ -250,18 +284,18 @@ fun coreExn id =
 
 and coreAcc id =
   ((case coreLookup(id, coreEnv)
-     of V.VAL(V.VALvar{access, typ, ...}) => 
-           mkAccT(access, toLty DI.top (!typ))
+     of V.VAL(V.VALvar{access, typ, path, ...}) => 
+           mkAccT(access, toLty DI.top (!typ), getNameOp path)
       | _ => bug "coreAcc in translate")
    handle NoCore => (say "WARNING: no Core access \n"; INT 0))
 
 
 (** expands the flex record pattern and convert the EXN access pat *)
 (** internalize the conrep's access, always exceptions *)
-and mkRep (rep, lt) = 
-  let fun g (DA.LVAR v, l, t)  = bindvar(v, l, NONE)
-        | g (DA.PATH(a, i), l, t) = g(a, i::l, LT.ltc_pst [(i, t)])
-        | g (DA.EXTERN p, l, t) = mkPid(p, t, l)
+and mkRep (rep, lt, name) = 
+  let fun g (DA.LVAR v, l, t)  = bindvar(v, l, SOME name)
+        | g (DA.PATH(a, i), l, t) = g(a, i::l, t)
+        | g (DA.EXTERN p, l, t) = mkPid(p, t, l, SOME name)
         | g _ = bug "unexpected access in mkRep"
 
    in case rep
@@ -277,17 +311,9 @@ and mkRep (rep, lt) =
         | _ => rep 
   end
 
-(** converting a non-value-carrying exn into a lambda expression *)
-fun mkExnAcc acc = mkAccT (acc, LT.ltc_exn)
-
 (** converting a value of access+info into the lambda expression *)
-fun mkAccInfo (acc, info, getLty) = 
-  let fun extern (DA.EXTERN _) = true
-        | extern (DA.PATH(a, _)) = extern a
-        | extern _ = false
-
-   in if extern acc then mkAccT(acc, getLty()) else mkAcc acc
-  end
+fun mkAccInfo (acc, info, getLty, nameOp) = 
+  if extern acc then mkAccT(acc, getLty(), nameOp) else mkAcc (acc, nameOp)
 
 fun fillPat(pat, d) = 
   let fun fill (CONSTRAINTpat (p,t)) = fill p
@@ -325,10 +351,10 @@ fun fillPat(pat, d) =
         | fill (ORpat(p1, p2)) = ORpat(fill p1, fill p2)
         | fill (CONpat(TP.DATACON{name, const, typ, rep, sign}, ts)) = 
             CONpat(TP.DATACON{name=name, const=const, typ=typ, 
-                        sign=sign, rep=mkRep(rep, toDconLty d typ)}, ts)
+                        sign=sign, rep=mkRep(rep, toDconLty d typ, name)}, ts)
         | fill (APPpat(TP.DATACON{name, const, typ, rep, sign}, ts, pat)) = 
             APPpat(TP.DATACON{name=name, const=const, typ=typ, sign=sign,
-                       rep=mkRep(rep, toDconLty d typ)}, ts, fill pat)
+                       rep=mkRep(rep, toDconLty d typ, name)}, ts, fill pat)
         | fill xp = xp
 
    in fill pat
@@ -693,8 +719,8 @@ fun transPrim (prim, lt, ts) =
  *   val mkBnd : DI.depth -> B.binding -> L.lexp                           *
  *                                                                         *
  ***************************************************************************)
-fun mkVar (v as V.VALvar{access, info, typ, ...}, d) = 
-      mkAccInfo(access, info, fn () => toLty d (!typ))
+fun mkVar (v as V.VALvar{access, info, typ, path}, d) = 
+      mkAccInfo(access, info, fn () => toLty d (!typ), getNameOp path)
   | mkVar _ = bug "unexpected vars in mkVar"
 
 fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) = 
@@ -726,7 +752,7 @@ fun mkVE (v as V.VALvar {info=II.INL_PRIM(p, SOME typ), ...}, ts, d) =
 
 fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) = 
   let val lt = toDconLty d typ
-      val rep' = mkRep(rep, lt)
+      val rep' = mkRep(rep, lt, name)
       val dc = (name, rep', lt)
       val ts' = map (toTyc d) ts
    in if const then CON'(dc, ts', unitLexp)
@@ -740,21 +766,21 @@ fun mkCE (TP.DATACON{const, rep, name, typ, ...}, ts, apOp, d) =
   end 
 
 fun mkStr (s as M.STR{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => strLty(s, d, compInfo))
+      mkAccInfo(access, info, fn () => strLty(s, d, compInfo), NONE)
   | mkStr _ = bug "unexpected structures in mkStr"
 
 fun mkFct (f as M.FCT{access, info, ...}, d) =
-      mkAccInfo(access, info, fn () => fctLty(f, d, compInfo))
+      mkAccInfo(access, info, fn () => fctLty(f, d, compInfo), NONE)
   | mkFct _ = bug "unexpected functors in mkFct"
 
 fun mkBnd d =
   let fun g (B.VALbind v) = mkVar(v, d)
         | g (B.STRbind s) = mkStr(s, d)
         | g (B.FCTbind f) = mkFct(f, d)
-        | g (B.CONbind (TP.DATACON{rep=(DA.EXN acc), typ, ...})) =
+        | g (B.CONbind (TP.DATACON{rep=(DA.EXN acc), name, typ, ...})) =
               let val nt = toDconLty d typ
                   val (argt,_) = LT.ltd_parrow nt
-               in mkAccT (acc, LT.ltc_etag argt)
+               in mkAccT (acc, LT.ltc_etag argt, SOME name)
               end
         | g _ = bug "unexpected bindings in mkBnd"
    in g
@@ -843,11 +869,11 @@ and mkEBs (ebs, d) =
                   val (argt, _) = LT.ltd_parrow nt
                in LET(v, ETAG(mkExp(ident, d), argt), b)
               end
-        | g (EBdef {exn=TP.DATACON{rep=DA.EXN(DA.LVAR v), typ, ...},
+        | g (EBdef {exn=TP.DATACON{rep=DA.EXN(DA.LVAR v), typ, name, ...},
                     edef=TP.DATACON{rep=DA.EXN(acc), ...}}, b) =
               let val nt = toDconLty d typ
                   val (argt, _) = LT.ltd_parrow nt
-               in LET(v, mkAccT(acc, LT.ltc_etag argt), b)
+               in LET(v, mkAccT(acc, LT.ltc_etag argt, SOME name), b)
               end
         | g _ = bug "unexpected exn bindings in mkEBs"
 
@@ -941,6 +967,17 @@ and mkDec (dec, d) =
         | g (MARKdec(x, reg)) = 
               let val f = withRegion reg g x
                in fn y => withRegion reg f y
+              end
+        | g (OPENdec xs) = 
+              let (* special hack to make the import tree simpler *)
+                  fun mkos (_, s as M.STR{access=acc, ...}) =
+                        if extern acc then 
+                          let val _ = mkAccT(acc, strLty(s, d, compInfo), NONE)
+                           in ()
+                          end
+                        else ()
+                    | mkos _ = ()
+               in app mkos xs; ident
               end
         | g _ = ident
    in g dec
@@ -1056,34 +1093,76 @@ and mkExp (exp, d) =
   end 
 
 
-(* 
- * closeLexp `closes' over all free (EXTERN) variables [`inlining' version]
- *  - make sure that all operations on various imparative data structures
- *    are carried out NOW and not later when the result function is called. 
- *)
-fun closeLexp body = 
-  let (* free variable + pid + inferred lty *)
-      val l: (pid * (lvar * LT.lty)) list = Map.members (!persmap)
-      
-      (* the name of the `main' argument *)
-      val imports = mkv ()
-      val impVar = VAR (imports)
-      val impLty = LT.ltc_str (map (fn (_, (_, lt)) => lt) l)
+(* wrapPidInfo: lexp * (pid * pidInfo) list -> lexp * importTree *)
+fun wrapPidInfo (body, pidinfos) = 
+  let val imports = 
+        let fun p2itree (ANON xl) = 
+                  CB.ITNODE (map (fn (i,z) => (i, p2itree z)) xl)
+              | p2itree (NAMED _) = CB.ITNODE []
+         in map (fn (p, pi) => (p, p2itree pi)) pidinfos
+        end
+(*
+      val _ = let val _ = say "\n ****************** \n"
+                  val _ = say "\n the current import tree is :\n"
+                  fun tree (CB.ITNODE []) = ["\n"]
+                    | tree (CB.ITNODE xl) = 
+                        foldr (fn ((i, x), z) => 
+                          let val ts = tree x
+                              val u = (Int.toString i)  ^ "   "
+                           in (map (fn y => (u ^ y)) ts) @ z
+                          end) [] xl
+                  fun pp (p, n) = 
+                    (say ("Pid " ^ (PersStamps.toHex p) ^ "\n"); 
+                     app say (tree n))
+               in app pp imports; say "\n ****************** \n"
+              end
+*)
+      val plexp = 
+        let fun get ((_, ANON xl), z) = foldl get z xl
+              | get ((_, u as NAMED (_,t,_)), (n,cs,ts)) = 
+                  (n+1, (n,u)::cs, t::ts)
 
-      fun h ((_, (lvar, lt)) :: rest, i, lexp) =
-            let val hdr = buildHdr lvar
-                val bindexp = LET(lvar, SELECT(i, impVar), hdr lexp)
-             in h (rest, i + 1, bindexp)
-            end
-        | h ([], _, lexp) = FN (imports, impLty, lexp)
+            (* get the fringe information *)
+            val getp = fn ((_, pi), z) => get((0, pi), z) 
+            val (finfos, lts) = 
+              let val (_, fx, lx) = foldl getp (0,[],[]) pidinfos
+               in (rev fx, rev lx)
+              end
 
-      val plexp = h(l, 0, body)
-   in {flint = FlintNM.norm plexp, imports = (map #1 l)}
-  end 
+            (* do the selection of all import variables *)
+            fun mksel (u, xl, be) = 
+              let fun g ((i, pi), be) = 
+                    let val (v, xs) = case pi of ANON z => (mkv(), z)
+                                               | NAMED(v,_,z) => (v, z)
+                     in LET(v, SELECT(i, u), mksel(VAR v, xs, be))
+                    end
+               in foldr g be xl
+              end
+            val impvar = mkv()
+            val implty = LT.ltc_str lts
+            val nbody = mksel (VAR impvar, finfos, body) 
+         in FN(impvar, implty, nbody)
+        end
+   in (plexp, imports)
+  end (* function wrapPidInfo *)
 
+(** the list of things being exported from the current compilation unit *)
 val exportLexp = SRECORD (map VAR exportLvars)
 
-in closeLexp (mkDec (rootdec, DI.top) exportLexp)
+(** translating the ML absyn into the PLambda expression *)
+val body = mkDec (rootdec, DI.top) exportLexp
+
+(** wrapping up the body with the imported variables *)
+val (plexp, imports) = wrapPidInfo (body, Map.members (!persmap))
+
+fun prGen (flag,printE) s e =
+  if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
+val _ = prGen(Control.CG.printLambda, PPLexp.printLexp) "Translate" plexp
+
+(** normalizing the plambda expression into FLINT *)
+val flint = FlintNM.norm plexp
+
+in {flint = flint, imports = imports}
 end (* function transDec *)
 
 end (* top-level local *)

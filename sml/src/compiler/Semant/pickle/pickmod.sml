@@ -346,9 +346,8 @@ fun mkPickleLty (stamp,tvar) =
 	  (case LK.lt_out x
 	    of LK.LT_TYC tc   => "An" $ [tyc tc]
 	     | LK.LT_STR l    => "Bn" $ [list lty l]
-	     | LK.LT_PST l    => "Cn" $ [list (tuple2 (int, lty)) l]
-	     | LK.LT_FCT (ts1,ts2) => "Dn" $ [list lty ts1, list lty ts2]
-	     | LK.LT_POLY(ks,ts)  => "En" $ [list tkind ks, list lty ts]
+	     | LK.LT_FCT (ts1,ts2) => "Cn" $ [list lty ts1, list lty ts2]
+	     | LK.LT_POLY(ks,ts)  => "Dn" $ [list tkind ks, list lty ts]
              | LK.LT_IND _ => 
                  bug "unexpected LT_IND in mkPickeLty"
              | LK.LT_ENV (lt,ol,nl,te) => 

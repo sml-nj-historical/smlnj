@@ -1495,7 +1495,8 @@ let
                   (fetchindexd(gpregbind v,w',gpregbind (INT i)); gen e))
               else alloc(w,any, fn w' => (select(i,gpregbind v,w'); gen e))
 	  | OFFSET(i,v,w,e) =>
-	      alloc(w, v, fn w' => (offset(i,gpregbind v,w'); gen e))
+              bug "unexpected OFFSET in cps generic"
+(*	      alloc(w, v, fn w' => (offset(i,gpregbind v,w'); gen e)) *)
 	  | APP(func as VAR f, args) => 
 		   let val formals as dest::_ = 
                          if iscont f then standardcont (map grabty args)

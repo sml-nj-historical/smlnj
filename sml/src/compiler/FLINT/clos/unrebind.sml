@@ -23,6 +23,8 @@ local
   open CPS 
 in
 
+fun bug s = ErrorMsg.impossible ("UnRebind: " ^ s)
+
 fun unrebind (fk,v,args,cl,ce) =
 let fun rename rebind(VAR v) =
 	  let fun f nil = VAR v
@@ -45,15 +47,20 @@ let fun rename rebind(VAR v) =
       let val rename = rename rebind
 	  val rec h =
 	       fn RECORD(kind,vl,w,e) =>
-		    RECORD(kind,map (fn(v,p) => (rename v,p)) vl,w,h e)
-		| OFFSET(0,v,w,e) => g ((w,rename v)::rebind) e
-		| OFFSET(i,v,w,e) =>
                     let val w' = LambdaVar.dupLvar w
-		     in  OFFSET(i,rename v,w',g ((w, VAR w')::rebind) e)
+                     in RECORD(kind, map (fn(v,p) => (rename v,p)) vl,
+                               w', g ((w, VAR w')::rebind) e)
+                    end
+		| OFFSET(0,v,w,e) => g ((w,rename v)::rebind) e
+		| OFFSET(i,v,w,e) => bug "unexpected none-zero OFFSET"
+(*
+                    let val w' = LambdaVar.dupLvar w
+		     in OFFSET(i, rename v, w', g ((w, VAR w')::rebind) e)
 		    end
+*)
 		| SELECT(i,v,w,t,e) =>
 		    let val w' = LambdaVar.dupLvar w
-		     in  SELECT(i,rename v,w',t,g((w, VAR w')::rebind) e)
+		     in SELECT(i, rename v, w', t, g((w, VAR w')::rebind) e)
 		    end
 		| APP(f,vl) => APP(rename f,map rename vl)
 		| FIX(l,e) => FIX(map f l,h e)

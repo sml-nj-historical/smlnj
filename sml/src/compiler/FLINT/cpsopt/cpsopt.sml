@@ -2,9 +2,8 @@
 (* cpsopt.sml *)
 
 signature CPSOPT = sig
-    val reduce : (CPS.function * LtyDef.lty Intmap.intmap 
-                  * Unsafe.Object.object option * bool) 
-	         -> CPS.function * LtyDef.lty Intmap.intmap
+    val reduce : (CPS.function * Unsafe.Object.object option * bool) 
+	         -> CPS.function
 end (* signature CPSOPT *)
 
 functor CPSopt(MachSpec: MACH_SPEC) : CPSOPT = struct
@@ -18,11 +17,17 @@ structure Flatten = Flatten(MachSpec)
 structure Uncurry = Uncurry(MachSpec)
 val say = Control.Print.say
 
-fun reduce (function, table, _, afterClosure) = 
+(** obsolete table: used by cpsopt as a dummy template *)
+exception ZZZ
+val dummyTable : FLINT.lty Intmap.intmap = Intmap.new(32, ZZZ) 
+
+(** the main function reduce *)
+fun reduce (function, _, afterClosure) = 
 (* NOTE: The third argument to reduce is currently ignored.
    It used to be used for reopening closures. *)
 let
 
+val table = dummyTable
 val debug = !CG.debugcps (* false *)
 fun debugprint s = if debug then say s else ()
 fun debugflush() = if debug then Control.Print.flush() else ()
@@ -30,14 +35,13 @@ val clicked = ref 0
 fun click (s:string) = (debugprint s; clicked := !clicked+1)
 
 val cpssize = ref 0
-(*
+
 val prC = 
   let fun prGen (flag,printE) s e =
         if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e; e) 
         else e
    in prGen (Control.CG.printit, PPCps.printcps0)
   end
-*)
 
 fun contract last f = 
   let val f' = (clicked := 0;
@@ -159,6 +163,8 @@ fun cycle(0,true,func) = func
 	       if !CG.betaexpand orelse !CG.flattenargs
 		   then expand_flatten_contract(func,linear_decrease k)
 	       else (0,func)
+           (* val _ = prC "cycle_contract" func *)
+
        in  if c * 1000 <= !cpssize * reducemore
 	   then if unrolled then func
                             else unroll func
@@ -171,7 +177,7 @@ and unroll func =
 	   else func'
        end
 
-in  (if rounds < 0 then (function,table)
+in  (if rounds < 0 then function
      else (let val function1 = first_contract function
                val function2 = eta function1
                val function3 = uncurry function2
@@ -179,7 +185,7 @@ in  (if rounds < 0 then (function,table)
                val function5 = cycle(rounds, not(!CG.unroll), function4)
                val function6 = eta function5 (* ZSH added this new phase *)
                val function7 = last_contract function6
-            in (function7, table)
+            in function7
            end))
     before (debugprint "\n"; debugflush())
 

@@ -214,12 +214,13 @@ in
 fun tcflt tc = if LT.tc_eqv(tc, tc_real) then true else false
 fun ltflt lt = if LT.lt_eqv(lt, lt_real) then true else false
 
-fun rtyc (f, ts) =
-  let fun loop (a::r, b, len) = 
-           if f a then loop(r, b, len+1) else loop(r, false, len+1)
-        | loop ([], b, len) = if b then FPT len else RPT len  
-   in loop(ts, true, 0)
-  end
+fun rtyc (f, []) = RPT 0
+  | rtyc (f, ts) =
+      let fun loop (a::r, b, len) = 
+                if f a then loop(r, b, len+1) else loop(r, false, len+1)
+            | loop ([], b, len) = if b then FPT len else RPT len  
+       in loop(ts, true, 0)
+      end
 
 fun ctyc tc =
   LT.tcw_prim(tc, 

@@ -34,6 +34,7 @@ val fromCM      : cmstatenv -> statenv
 
 type lvar       = Access.lvar          (* local id *)
 type pid        = PersStamps.persstamp (* persistant id *)
+type import     = pid * CompBasic.importTree  (* import specification *)
 type pickle                            (* pickled format *)
 type hash                              (* environment hash id *)
 val makePid     : cmstatenv * cmstatenv -> pid
@@ -57,7 +58,7 @@ val compile     : {source: source, ast: ast, statenv: cmstatenv,
                        absyn: absyn (* for pretty printing only *),
                        exportPid: pid option, exportLvars: lvar list,
                        staticPid: hash, pickle: pickle, 
-                       inlineExp: flint option, imports: pid list}
+                       inlineExp: flint option, imports: import list}
 
 (** build the new symbolic environment *)
 val mksymenv    : pid option * flint option -> symenv 
@@ -69,7 +70,7 @@ val mkexec      : csegments -> executable
 val isolate     : ('a -> 'b) -> 'a -> 'b
 
 (** perform the execution of the excutable, output the new dynenv *)
-val execute     : {executable: executable, imports: pid list, 
+val execute     : {executable: executable, imports: import list, 
                    exportPid: pid option, dynenv: dynenv} -> dynenv
 
 end (* signature COMPILE0 *)

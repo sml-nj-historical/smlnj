@@ -396,12 +396,10 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
     fun lty #"A" = ?tyc (fn Utyc tc => %Ulty(LT.ltc_tyc tc))
       | lty #"B" = ?ltyList (fn UltyList l => %Ulty(LT.ltc_str l))
       | lty #"C" = 
-          ?intltyList (fn UintltyList l => %Ulty(LT.ltc_pst l))
-      | lty #"D" = 
           ?ltyList (fn UltyList ts1 => 
            ?ltyList (fn UltyList ts2 => 
 		 %Ulty(LT.ltc_fct(ts1,ts2))))
-      | lty #"E" = ?tkindList (fn UtkindList ks =>
+      | lty #"D" = ?tkindList (fn UtkindList ks =>
  		     ?ltyList (fn UltyList ts => 
                          %Ulty(LT.ltc_poly(ks,ts))))
       | lty _ = raise Fail "    | lty"

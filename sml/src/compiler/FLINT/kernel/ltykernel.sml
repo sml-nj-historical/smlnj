@@ -101,7 +101,6 @@ datatype ltyI
   | LT_FCT of lty list * lty list              (* functor arrow type *)
   | LT_POLY of tkind list * lty list           (* polymorphic type *)
 
-  | LT_PST of (int * lty) list                 (* partial-structure type *)
   | LT_CONT of lty list                        (* internal cont type *)
   | LT_IND of lty * ltyI                       (* a lty thunk and its sig *)
   | LT_ENV of lty * int * int * tycEnv         (* lty closure *)
@@ -283,14 +282,13 @@ local structure Weak = SMLofNJ.Weak
       fun lt_hash lt = 
         let fun g (LT_TYC t) = combine [1, getnum t]
               | g (LT_STR ts) = combine (2::(map getnum ts))
-              | g (LT_PST ts) = combine (3::(tagnums ts))
               | g (LT_FCT(ts1, ts2)) = 
-                     combine (4::(map getnum (ts1@ts2)))
+                     combine (3::(map getnum (ts1@ts2)))
               | g (LT_POLY(ks, ts)) = 
-                     combine (5::((map getnum ts)@(map getnum ks)))
-              | g (LT_CONT ts) = combine (6::(map getnum ts))
+                     combine (4::((map getnum ts)@(map getnum ks)))
+              | g (LT_CONT ts) = combine (5::(map getnum ts))
               | g (LT_ENV(t,i,j,env)) = 
-                     combine [7, getnum t, i, j, getnum env]
+                     combine [6, getnum t, i, j, getnum env]
               | g (LT_IND _) = bug "unexpected LT_IND in tc_hash"
          in g lt
         end
@@ -363,7 +361,6 @@ local structure Weak = SMLofNJ.Weak
       fun lt_aux lt = 
         let fun g (LT_TYC t) = getAux t
               | g (LT_STR ts) = fsmerge ts
-              | g (LT_PST ts) = fsmerge (map #2 ts)
               | g (LT_FCT(ts1, ts2)) = fsmerge (ts1@ts2)
               | g (LT_POLY(ks, ts)) = exitAux(fsmerge ts)
               | g (LT_CONT ts) = fsmerge ts
@@ -581,15 +578,26 @@ val tcc_box = tc_injX o TC_BOX
 val tcc_real = tc_injX (TC_PRIM PT.ptc_real)
 val ltc_tyc = lt_injX o LT_TYC
 val ltc_str = lt_injX o LT_STR
-val ltc_pst = lt_injX o LT_PST
 val ltc_fct = lt_injX o LT_FCT
 val ltc_poly = lt_injX o LT_POLY
 val tcc_sum = tc_injX o TC_SUM
 val tcc_token = tc_injX o TC_TOKEN
 
-(** the following function contains the procedure on how to
- *  flatten the arguments and results of an arbitrary FLINT function
+(* The following functions decide on how to flatten the arguments 
+ * and results of an arbitrary FLINT function. The current threshold
+ * is maintained by the "flatten_limit" parameter. This parameter
+ * is designed as architecture independent, however, some implicit
+ * constraints are:
+ *     (1) flatten_limit <= numgpregs - numcalleesaves - 3
+ *     (2) flatten_limit <= numfpregs - 2
+ * Right now (2) is in general not true for x86; we inserted a 
+ * special hack at cpstrans phase to deal with this case. In the
+ * long term, if the spilling phase in the backend can offer more
+ * supports on large-number of arguments, then we can make this
+ * flattening more aggressive. (ZHONG)
  *) 
+val flatten_limit = 9  
+
 fun isKnown tc = 
   (case tc_outX(tc_whnm tc)
     of (TC_PRIM _ | TC_ARROW _ | TC_BOX _ | TC_ABS _ | TC_PARROW _) => true 
@@ -608,7 +616,7 @@ and tc_autoflat tc =
          | TC_TUPLE (_, []) =>  (* unit is not flattened to avoid coercions *)
              (true, [ntc], false)
          | TC_TUPLE (_, ts) => 
-             if length ts < 10 then (true, ts, true)
+             if length ts <= flatten_limit then (true, ts, true)
              else (true, [ntc], false)  (* ZHONG added the magic number 10 *)
          | _ => if isKnown ntc then (true, [ntc], false)
                 else (false, [ntc], false))
@@ -616,7 +624,7 @@ and tc_autoflat tc =
 
 and tc_autotuple [x] = x 
   | tc_autotuple xs = 
-       if length xs < 10 then tcc_tup (RF_TMP, xs)
+       if length xs <= flatten_limit then tcc_tup (RF_TMP, xs)
        else bug "fatal error with tc_autotuple"
 
 and tcs_autoflat (flag, ts) = 
@@ -717,7 +725,6 @@ and lt_lzrd t =
              in (case lt_outX x
                   of LT_TYC tc => ltc_tyc (tcc_env(tc, ol, nl, tenv))
                    | LT_STR ts => ltc_str (map prop ts)
-                   | LT_PST its => ltc_pst (map (fn (i, t) => (i, prop t)) its)
                    | LT_FCT (ts1, ts2) => ltc_fct(map prop ts1, map prop ts2)
                    | LT_POLY (ks, ts) => 
                        let val tenv' = tcInsert(tenv, (NONE, nl))
@@ -843,8 +850,6 @@ fun lt_norm t = if (ltp_norm t) then t else
               (case lt_outX nt
                 of LT_TYC tc => ltc_tyc(tc_norm tc)
                  | LT_STR ts => ltc_str(map lt_norm ts)
-                 | LT_PST its => 
-                     ltc_pst(map (fn (i, t) => (i, lt_norm t)) its)
                  | LT_FCT (ts1, ts2) => 
                      ltc_fct(map lt_norm ts1, map lt_norm ts2)
                  | LT_POLY (ks, ts) => ltc_poly (ks, map lt_norm ts)
@@ -1185,27 +1190,10 @@ val tc_eqv_x = tc_eqv_x' null_hyp
 
 end (* tyc equivalence utilities *)
 
-(* 
- * all the complexity of lt_eqv comes from the partial-structure (or
- * partial record) type (the LT_PST type). If we can remove LT_PST
- * type, then the following can be considerabily simplified. (ZHONG)
- *)
 
 (** lt_eqv_generator, invariant: x and y are in the wh-normal form *)
 fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) = 
-  let fun sp (r, []) = true
-        | sp (r, (i,t)::s) = 
-            (if (eqop1(List.nth(r,i),t)) 
-             then sp(r,s) else false) handle _ => false
-
-      fun pp ([], _) = true
-        | pp (_, []) = true
-        | pp (a as ((i,t)::l), b as ((j,s)::r)) = 
-            if i > j then pp(a,r) 
-            else if i < j then pp(l,b) 
-                 else if (eqop1(t,s)) then pp(l,r) else false 
-
-      (* seq should be called if t1 and t2 are weak-head normal form *)
+  let (* seq should be called if t1 and t2 are weak-head normal form *)
       fun seq (t1, t2) = 
         (case (lt_outX t1, lt_outX t2)
           of (LT_POLY(ks1, b1), LT_POLY(ks2, b2)) =>
@@ -1214,9 +1202,6 @@ fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) =
                (eqlist eqop1 (as1, as2)) andalso (eqlist eqop1 (bs1, bs2))
            | (LT_TYC a, LT_TYC b) => eqop2(a, b)
            | (LT_STR s1, LT_STR s2) => eqlist eqop1 (s1, s2)
-           | (LT_PST s1, LT_PST s2) => pp(s1, s2)
-           | (LT_PST s1, LT_STR s2) => sp(s2, s1)
-           | (LT_STR s1, LT_PST s2) => sp(s1, s2)
            | (LT_CONT s1, LT_CONT s2) => eqlist eqop1 (s1, s2)
            | _ => false)
    in seq(x, y)
@@ -1224,12 +1209,10 @@ fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) =
 
 fun lt_eqv(x : lty, y) = 
   let val seq = lt_eqv_gen (lt_eqv, tc_eqv) 
-   in if ((ltp_norm x) andalso (ltp_norm y)) then 
-           (lt_eq(x, y)) orelse (seq(x, y))
+   in if ((ltp_norm x) andalso (ltp_norm y)) then lt_eq(x,y)
       else (let val t1 = lt_whnm x
                 val t2 = lt_whnm y
-             in if (ltp_norm t1) andalso (ltp_norm t2) then 
-                  (lt_eq(t1, t2)) orelse (seq(t1, t2))
+             in if (ltp_norm t1) andalso (ltp_norm t2) then lt_eq(x, y)
                 else seq(t1, t2)
             end)
   end (* function lt_eqv *)

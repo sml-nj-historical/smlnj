@@ -291,7 +291,6 @@ fun tcw_arrow (tc, f, g) =
  *      | LT_STR of lty list
  *      | LT_FCT of lty list * lty list
  *      | LT_POLY of tkind list * lty list
- *      | LT_PST of (int * lty) list         (* soon obsolete *)
  *
  * We treat lty as an abstract type so we can no longer use pattern
  * matching. The client does not need to worry about whether an lty
@@ -303,7 +302,6 @@ val ltc_tyc    : tyc -> lty = lt_inj o LK.LT_TYC
 val ltc_str    : lty list -> lty = lt_inj o LK.LT_STR
 val ltc_fct    : lty list * lty list -> lty = lt_inj o LK.LT_FCT
 val ltc_poly   : tkind list * lty list -> lty = lt_inj o LK.LT_POLY
-val ltc_pst    : (int * lty) list -> lty = lt_inj o LK.LT_PST
 
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc = fn lt => 
@@ -318,9 +316,6 @@ val ltd_fct    : lty -> lty list * lty list = fn lt =>
 val ltd_poly   : lty -> tkind list * lty list = fn lt => 
       (case lt_out lt of LK.LT_POLY x => x
                        | _ => bug "unexpected lty in ltd_poly")
-val ltd_pst    : lty -> (int * lty) list = fn lt => 
-      (case lt_out lt of LK.LT_PST x => x
-                       | _ => bug "unexpected lty in ltd_pst")
 
 (** lty predicates *)
 val ltp_tyc    : lty -> bool = fn lt =>
@@ -331,8 +326,6 @@ val ltp_fct    : lty -> bool = fn lt =>
       (case lt_out lt of LK.LT_FCT _ => true | _ => false)
 val ltp_poly   : lty -> bool = fn lt =>
       (case lt_out lt of LK.LT_POLY _ => true | _ => false)
-val ltp_pst    : lty -> bool = fn lt =>
-      (case lt_out lt of LK.LT_PST _ => true | _ => false)
 
 (** lty one-arm switches *)
 fun ltw_tyc (lt, f, g) = 
@@ -343,8 +336,6 @@ fun ltw_fct (lt, f, g) =
       (case lt_out lt of LK.LT_FCT x => f x | _ => g lt)
 fun ltw_poly (lt, f, g) = 
       (case lt_out lt of LK.LT_POLY x => f x | _ => g lt)
-fun ltw_pst (lt, f, g) = 
-      (case lt_out lt of LK.LT_PST x => f x | _ => g lt)
 
 
 (* 

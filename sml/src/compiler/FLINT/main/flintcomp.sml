@@ -11,7 +11,7 @@ local structure CB = CompBasic
       structure Convert = Convert(MachSpec)
       structure CPStrans = CPStrans(MachSpec)
       structure CPSopt = CPSopt(MachSpec)
-      structure NewClosure = NClosure(MachSpec)
+      structure Closure = Closure(MachSpec)
       structure Spill = Spill(MachSpec)
       structure CpsSplit = CpsSplitFun (MachSpec) 
 in 
@@ -31,7 +31,9 @@ val reify     = phase "Compiler 055 reify" Reify.reify
 val convert   = phase "Compiler 060 convert" Convert.convert
 val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
 val cpsopt    = phase "Compiler 070 cpsopt" CPSopt.reduce
-val closure   = phase "Compiler 080 closure"  NewClosure.closeCPS
+val litsplit  = phase "Compiler 075 litsplit" Literals.litsplit
+val lit2cps   = phase "Compiler 076 lit2cps" Literals.lit2cps
+val closure   = phase "Compiler 080 closure"  Closure.closeCPS
 val globalfix = phase "Compiler 090 globalfix" GlobalFix.globalfix
 val spill     = if MachSpec.spillAreaSz < 500 * MachSpec.valueSize
                 then phase "Compiler 100 spill" Spill.spill
@@ -39,11 +41,19 @@ val spill     = if MachSpec.spillAreaSz < 500 * MachSpec.valueSize
 val limit     = phase "Compiler 110 limit" Limit.nolimit
 val codegen   = phase "Compiler 120 cpsgen" Gen.codegen
 
+val closureD  = phase "Compiler 081 closureD"  Closure.closeCPS
+val globalfixD= phase "Compiler 091 globalfixD" GlobalFix.globalfix
+val spillD    = if MachSpec.spillAreaSz < 500 * MachSpec.valueSize
+                then phase "Compiler 101 spillD" Spill.spill
+                else fn x => x
+val limitD    = phase "Compiler 110 limitD" Limit.nolimit
+val codegenD  = phase "Compiler 121 cpsgenD" Gen.codegen
 
 (** pretty printing for the FLINT and CPS code *)
 val (prF, prC) = 
   let fun prGen (flag,printE) s e =
-        if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e; e) 
+        if !flag then (say ("\n[After " ^ s ^ " ...]\n\n"); printE e; 
+                       say "\n"; e) 
         else e
    in (prGen (CGC.printLambda, PPFlint.printProg),
        prGen (CGC.printit, PPCps.printcps0))
@@ -76,7 +86,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
         check (ChkFlint.checkTop, PPFlint.printFundec, 
                "FLINT") (CGC.checkFlint, b, s)
 
-      val _ = (chkF (false,"1") o prF "Translation") flint
+      val _ = (chkF (false,"1") o prF "Translation/Normalization") flint
       val flint = (chkF (false,"2") o prF "Lcontract" o lcontract) flint
       val flint =
         if !CGC.specialize then
@@ -85,18 +95,20 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 
       val flint = (chkF (false, "4") o prF "Wrapping" o wrapping) flint
       val flint = (chkF (true, "5") o prF "Reify" o reify) flint
-      val function = convert flint
-      val (nc0, ncn) = 
-        let val _ = prC "convert" function
+
+      val (nc0, ncn, dseg) = 
+        let val function = convert flint
+            val _ = prC "convert" function
             val function = (prC "cpstrans" o cpstrans) function
-            local exception ZZZ
-            in
-            val table : FLINT.lty Intmap.intmap = Intmap.new(32, ZZZ) 
-            end
-            val (function,table) = 
-              if !CGC.cpsopt then cpsopt (function,table,NONE,false) 
-              else (function,table)
+            val function = 
+              if !CGC.cpsopt then cpsopt (function,NONE,false) 
+              else function
             val _ = prC "cpsopt" function
+
+            val (function, dlit) = litsplit function
+            val data = lit2cps dlit
+            val _ = prC "cpsopt-code" function
+            val _ = prC "cpsopt-data" data
 
             fun gen fx = 
               let val fx = (prC "closure" o closure) fx
@@ -106,11 +118,23 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
                in codegen (carg, limit, err);
                   collect ()
               end
+
+            fun gdata dd = 
+              let val x = Control.CG.printit
+                  val y = !x
+                  val _ = (x := false)
+                  val fx = (prC "closure" o closureD) dd
+                  val carg = globalfixD fx
+                  val carg = spillD carg
+                  val (carg, limit) = limitD carg
+               in codegenD (carg, limit, err);
+                  (collect ()) before (x := y)
+              end
          in case CpsSplit.cpsSplit function
-             of (fun0 :: funn) => (gen fun0, map gen funn)
+             of (fun0 :: funn) => (gen fun0, map gen funn, gdata data)
               | [] => bug "unexpected case on gen in flintcomp"
         end
-   in {c0=nc0, cn=ncn , name=ref (SOME src)}
+   in {c0=nc0, cn=ncn, data=dseg, name=ref (SOME src)}
   end (* function flintcomp *)
 
 val flintcomp = phase "Compiler 050 flintcomp" flintcomp

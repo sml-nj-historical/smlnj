@@ -58,7 +58,6 @@ datatype ltyI
   | LT_FCT of lty list * lty list             (* functor type *)
   | LT_POLY of tkind list * lty list          (* polymorphic type *)
     
-  | LT_PST of (int * lty) list                (* partial-str type *)
   | LT_CONT of lty list                       (* internal cont type *)
   | LT_IND of lty * ltyI                      (* indirect type thunk *)
   | LT_ENV of lty * int * int * tycEnv        (* type closure *)

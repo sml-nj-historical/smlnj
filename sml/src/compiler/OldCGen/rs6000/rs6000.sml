@@ -16,7 +16,7 @@ struct
 
   open M
  
-  val error 		= fn msg => ErrorMsg.impossible ("RS6kCM." ^ msg)
+  val bug 		= fn msg => ErrorMsg.impossible ("RS6kCM." ^ msg)
 
   val wtoi              = Word.toIntX
 
@@ -34,10 +34,10 @@ struct
   val emit		= C.emit
 
   fun emitlab(k,ImmedLab lab) = C.emitLabel(lab,k)
-    | emitlab _ = error "emitlab"
+    | emitlab _ = bug "emitlab"
 
   fun define(ImmedLab lab) = C.define lab
-    | define _ = error "RS6kCM.define"
+    | define _ = bug "RS6kCM.define"
 
   (** 
      Register Map
@@ -95,7 +95,7 @@ struct
       val queue 	= Array.array(qsize,~1)
       fun insert(Reg r) = Array.update(queue,!back,r) 
 				  before back := (!back+1) mod qsize
-	| insert _      = error "insert"
+	| insert _      = bug "insert"
       fun remove() 	= if !front = !back then raise NoTmpRegs
 			  else Array.sub(queue,!front) 
 				   before front := (!front+1) mod qsize
@@ -173,14 +173,14 @@ struct
 	       
  (* move(a,b) means a -> b *)
   fun move (Direct(fp1 as Freg _),Direct(fp2 as Freg _)) = emit (M.FMR(fp2,fp1))
-    | move (_, Direct(Freg _))        = error "move: bad src"
+    | move (_, Direct(Freg _))        = bug "move: bad src"
     | move (Immed n, Direct dst)      = load_immed(dst,n)
     | move (Immed32 w, Direct dst)    = load_immed32(dst,w)
     | move (ImmedLab lab, Direct dst) = emitSDI(LOADADDR(dst,lab,0))
     | move (Direct src, Direct dst)   = if src = dst 
 				        then ()
 				        else emit (M.AND(dst,src,RegOp src))
-    | move _ 			      = error "move"
+    | move _ 			      = bug "move"
 
   fun compare_immed(cmp,ra,n) = 
       if   n >= ~32768 andalso n <= 32767 
@@ -194,7 +194,7 @@ struct
 
   fun jmp (Direct r)     = (emit (M.MTSPR(M.LR,r)); emit (M.BR()))
     | jmp (ImmedLab lab) = emit (B(Label24Off(M.POSLAB lab,0)))
-    | jmp _		 = error "jmp"
+    | jmp _		 = bug "jmp"
 
   (* stackptr' is the stack pointer; pregs_offset is the initial stack 
    * offset for pseudo registers, it should be consistent with the
@@ -211,7 +211,7 @@ struct
             do_immed_signed(M.L, x, tmpR, pregs_offset-2);
             freeTmpReg tmpR
         end
-    | loadpseudo _ = error "[loadpseudo]"
+    | loadpseudo _ = bug "[loadpseudo]"
 
   fun storepseudo(Direct x,Immed i) = 
         do_immed_signed(M.ST, x, stackptr', 2*(i-1)+pregs_offset)
@@ -222,7 +222,7 @@ struct
             do_immed_signed(M.ST, x, tmpR, pregs_offset-2);
             freeTmpReg tmpR
         end
-    | storepseudo _ = error "[storepseudo]"
+    | storepseudo _ = bug "[storepseudo]"
 
  (* jmpindexb(x,y) means pc <- x + y *)
   fun jmpindexb (ImmedLab lab,Direct y) = let
@@ -234,7 +234,7 @@ struct
 	  freeTmpReg tmpR;
 	  emit (M.BR())
       end
-    | jmpindexb _ = error "jmpindexb"
+    | jmpindexb _ = bug "jmpindexb"
 
   fun record(vl, Direct z) = let
         open CPS
@@ -249,8 +249,12 @@ struct
 	        (do_immed_signed(M.ST,r,dataptr',i*4);
 		 f(t,i-1,rest))
 	  | f((t1,t2),i,(Direct r, OFFp j)::rest) = 
+               bug "unexpected non-zero OFFp record fields"
+(*
+	  | f((t1,t2),i,(Direct r, OFFp j)::rest) = 
 		(emit (M.A(t1,r,Immed16Op(4*j))); 
 		 f((t2,t1),i,(Direct t1,OFFp 0)::rest))
+*)
 	  | f((t1,t2),i,(ea,p)::rest) =
 	       (* convert to register-based  *)
 		(move(ea,Direct t1);  
@@ -265,7 +269,7 @@ struct
 	emit (M.A(z,dataptr',Immed16Op 4));
 	do_immed_signed(M.A,dataptr',dataptr',4*len)
       end
-    | record _ = error "record"
+    | record _ = bug "record"
 
   fun recordStore(x,y,_) = 
     let fun storeListUpdate r = (
@@ -296,7 +300,7 @@ struct
 
   fun select (i,Direct v',Direct w)    = do_immed_signed(M.L,w,v',i*4)
     | select (i,ImmedLab lab,Direct w) = emitSDI(LOAD(w,lab,i*4))
-    | select _ 			       = error "select"
+    | select _ 			       = bug "select"
 
   fun offset (i,Direct v',Direct w)    = do_immed_signed(M.A,w,v',i*4)
     | offset (i,ImmedLab lab,Direct w) = let val tmpR = getTmpReg()
@@ -305,12 +309,12 @@ struct
 					     do_immed_signed(M.A,w,tmpR,i*4);
 					     freeTmpReg tmpR
 					 end
-    | offset _ 			       = error "offset"
+    | offset _ 			       = bug "offset"
 
   fun fetchindexb(Direct x,Direct y,Immed indx) = 
                                           do_immed_signed(M.LBZ,y,x,indx)
     | fetchindexb(Direct x,Direct y,Direct indx)= emit (M.LBZ(y,x,RegOp indx))
-    | fetchindexb _ 				= error "fetchindexb"
+    | fetchindexb _ 				= bug "fetchindexb"
 
   fun storeindexb(Immed xi,y,z) = 
         let val tmpR = getTmpReg()
@@ -321,7 +325,7 @@ struct
     | storeindexb(Direct x,Direct y,Direct indx)= emit (M.STB(x,y,RegOp indx))
     | storeindexb(Direct x,Direct y,Immed indx) = 
                                          do_immed_signed(M.STB,x,y,indx)
-    | storeindexb _ = error "storeindexb"
+    | storeindexb _ = bug "storeindexb"
 
   fun fetchindexl(x,Direct y,Direct z') = let
         val tmpR = getTmpReg()
@@ -346,7 +350,7 @@ struct
 	 of Direct x'    => do_immed_signed(M.L,y,x',2*(z'-1))
 	  | Immed n      => do_immed_signed(M.L,y,Reg 0,n+2*(z'-1))
 	  | ImmedLab lab => emitSDI(LOAD(y,lab,2*(z'-1))))
-    | fetchindexl _ = error "fetchindexl"
+    | fetchindexl _ = bug "fetchindexl"
 
   fun storeindexl(Direct x,Direct y,Direct z) = let
         val tmpR = getTmpReg()
@@ -377,7 +381,7 @@ struct
 	  do_immed_signed(M.ST,x,tmpR,2*(zi-1));
 	  freeTmpReg tmpR
       end
-    | storeindexl _ = error "storeindexl: bad args"
+    | storeindexl _ = bug "storeindexl: bad args"
 
   local
     fun three f (Direct x',Direct y',Immed zi)     = do_immed_signed(f,x',y',zi)
@@ -426,7 +430,7 @@ struct
 	    freeTmpReg tmpR
 	end
       | three f (Direct x,ea,Direct z) = three f (Direct x,Direct z,ea)
-      | three _ _ 		       = error "three: bad args"
+      | three _ _ 		       = bug "three: bad args"
   in
     fun add(x,y,z) 		= three M.A   (z,x,y)
     fun orb(x,y,z) 		= three M.OR  (z,x,y) 
@@ -459,7 +463,7 @@ struct
 		    f(t1,t2,f1,i-8,rest))
 
 	      | f(t1,t2,f1,i,(Direct _, OFFp _)::rest) =
-                   error "wrong-type in fprecord in rs6000.sml"
+                   bug "wrong-type in fprecord in rs6000.sml"
 	      
 	      | f(t1,t2,f1,i,(ea, p)::rest) =
                    (move (ea, Direct t1);
@@ -478,9 +482,9 @@ struct
             freeTmpReg tmpR2;
 	    do_immed_signed(M.A,dataptr',dataptr',len)
         end
-    | fprecord _ = error "[SparcCM.fprecord]"
+    | fprecord _ = bug "[SparcCM.fprecord]"
 
-  fun recordcont _ = error "record_cont not implemented yet"
+  fun recordcont _ = bug "record_cont not implemented yet"
 
   val startgc_offset = RS6000Spec.startgcOffset
 
@@ -491,7 +495,7 @@ struct
       do_immed_signed(M.A,limitptr',limitptr',~n) 
 
   fun beginStdFn (ImmedLab lab,Direct reg) = emitSDI(M.SETBASEADDR(lab,reg))
-    | beginStdFn _  			   = error "beginStdFn"
+    | beginStdFn _  			   = bug "beginStdFn"
 
   fun checkLimit(max_allocation, restart, mask, rlab, fregs) = 
     let val lab = C.newLabel()
@@ -600,7 +604,7 @@ struct
 				     move(Immed32 w, Direct tmpR);
 				     (tmpR, SOME tmpR)
 				   end
-      | move2reg _ 		 = error "move2reg"
+      | move2reg _ 		 = bug "move2reg"
 
     fun free NONE = () 
       | free (SOME r) = freeTmpReg r
@@ -613,7 +617,7 @@ struct
 				 free tmpx; 
 				 free tmpy
 			     end
-      | addt _ 		   = error "addt"
+      | addt _ 		   = bug "addt"
 				      
     fun mult(x,Direct y) = let val (x',tmpx) = move2reg x
 			   in
@@ -621,7 +625,7 @@ struct
 			       trapOnOverflow();
 			       free tmpx
 			   end
-      | mult _ 		 = error "mult"
+      | mult _ 		 = bug "mult"
   end
 
   fun sub (Direct x,Direct y,Direct z) = emit (M.SF(z,x,RegOp y))
@@ -642,7 +646,7 @@ struct
 	sub(Direct tmpR,y,z);
 	freeTmpReg tmpR
       end
-    | sub _			       = error "sub"
+    | sub _			       = bug "sub"
 
   fun notb(a,b)	= sub(a, Immed ~1, b)
 
@@ -673,7 +677,7 @@ struct
 					freeTmpReg tmpR
 				    end
 
-	| subtract _ 	          = error "subtract"
+	| subtract _ 	          = bug "subtract"
   in
       fun subt arg = (subtract arg; trapOnOverflow())
   end
@@ -709,7 +713,7 @@ struct
 	  divide(x, Direct tmpR);
 	  freeTmpReg tmpR
 	end
-      | divide _ = error "divide"
+      | divide _ = bug "divide"
   in
       fun divt arg = (divide arg; trapOnDivZero())
   end
@@ -717,7 +721,7 @@ struct
   fun ashl (Direct rs,Direct rt,Direct rd) = emit (M.SL(rd,rt,RegShift rs))
     | ashl (Immed n,Direct rt,Direct rd) = 
       if n >= 32 orelse n < 0 then
-	  error "ashl: shift distance"
+	  bug "ashl: shift distance"
       else
 	  emit (M.SL(rd,rt,Int5Shift n))
     | ashl(shamt,Immed n,dst) = let 
@@ -734,13 +738,13 @@ struct
 	ashl(shamt,Direct tmpR, dst);
 	freeTmpReg tmpR
       end
-    | ashl _ = error "ashl"
+    | ashl _ = bug "ashl"
 
   fun ashr (Direct rs,Direct rt,Direct rd) = 
       emit (M.SRA(rd,rt,RegShift rs))
     | ashr (Immed n,Direct rt,Direct rd) = 
       if n >= 32 orelse n < 0 then
-	  error "ashr: shift distance"
+	  bug "ashr: shift distance"
       else
 	  emit (M.SRA(rd,rt,Int5Shift n))
     | ashr(shamt,Immed n,dst) = let
@@ -757,12 +761,12 @@ struct
 	ashr(shamt,Direct tmpR,dst);
 	freeTmpReg tmpR
       end
-    | ashr _ = error "ashr: bad args"
+    | ashr _ = bug "ashr: bad args"
 
   fun lshr(Direct rs,Direct rt,Direct rd) = emit(M.SRL(rd,rt,RegShift rs))
     | lshr(Immed n,Direct rt,Direct rd) = 
       if n >= 32 orelse n < 0 then
-	  error "lshr: shift distance"
+	  bug "lshr: shift distance"
       else
 	  emit (M.SRL(rd,rt,Int5Shift n))
     | lshr(shamt,Immed n,dst) = let val tmpR = getTmpReg()
@@ -778,7 +782,7 @@ struct
 	lshr(shamt,Direct tmpR,dst);
 	freeTmpReg tmpR
       end
-    | lshr _ = error "lshr"
+    | lshr _ = bug "lshr"
 
   fun mulu(Direct x,Direct y) = emit(M.MULS(y,x,y))
     | mulu(Immed32 xi,y) = let val tmpR = getTmpReg()
@@ -787,7 +791,7 @@ struct
         mulu(Direct tmpR,y);
 	freeTmpReg tmpR
       end
-    | mulu _ = error "mulu"
+    | mulu _ = bug "mulu"
 
   (* divtu(a,b) = b <- b / a *)
   fun divtu(Direct ra,Direct rb) = let
@@ -818,11 +822,11 @@ struct
 	divtu(Direct tmpR,y);
 	freeTmpReg tmpR
       end
-    | divtu _ = error "divtu"
+    | divtu _ = bug "divtu"
 
   local 
     fun floatreg (Direct(fpr as Freg _)) = fpr
-      | floatreg _ 			 = error "floatreg"
+      | floatreg _ 			 = bug "floatreg"
 
     fun floating_arith f (x,y,z) = let 
           val lab = C.newLabel()
@@ -847,7 +851,7 @@ struct
 	    do_immed_signed(M.ST,tmpR,dst,offset+4);
 	    freeTmpReg tmpR
 	end
-      | store_float _ = error "store_float"	    
+      | store_float _ = bug "store_float"	    
 
     fun load_float (Freg dst,Direct src,offset) = let
 	  val tmpR = getTmpReg()
@@ -866,7 +870,7 @@ struct
 	    emitSDI(LOADF(Freg dst,lab,offset,tmpR));
 	    freeTmpReg tmpR
 	end
-      | load_float _ = error "load_float"
+      | load_float _ = bug "load_float"
   in
       fun fmuld(x,y,z) 	    = floating_arith M.FMO (z,x,y)
       fun fdivd(x,y,z) 	    = floating_arith M.FDO (z,x,y)
@@ -885,7 +889,7 @@ struct
 		 emit (M.A(dataptr',dataptr',Immed16Op 12));
 		 freeTmpReg tmpR
 	     end)
-	| storefloat  _ = error "storefloat"
+	| storefloat  _ = bug "storefloat"
   
       fun loadfloat(src, dst) = load_float(floatreg dst,src,0)
 
@@ -900,7 +904,7 @@ struct
 	    load_float(floatreg y,Direct tmpR,~4);
 	    freeTmpReg tmpR
 	  end
-	| fetchindexd _ = error "fetchindexd"
+	| fetchindexd _ = bug "fetchindexd"
 
     fun storeindexd (x,Direct y,Immed i) = 
 	  store_float(floatreg x,Direct y, 4*(i-1))
@@ -912,7 +916,7 @@ struct
 	    store_float(floatreg x,Direct tmpR,~4);
 	    freeTmpReg tmpR
     	end
-      | storeindexd _ = error "storeindexd"		
+      | storeindexd _ = bug "storeindexd"		
   end
 
   datatype condition = NEQ | EQL | LEQ | GEQ | LSS | GTR 
@@ -995,7 +999,7 @@ struct
 	(emit(M.CMPL(ra,rb)); emitBRANCH(M.GT,false,lab))
     | ibranch(LTU,Direct ra,Direct rb,ImmedLab lab) = 
 	(emit(M.CMPL(ra,rb)); emitBRANCH(M.LT,true,lab))
-    | ibranch _ = error "ibranch"
+    | ibranch _ = bug "ibranch"
 
   fun fbranchd(cond,Direct fra,Direct frb,ImmedLab lab) = let
         fun test2bits(bit1, bit2) =
@@ -1020,7 +1024,7 @@ struct
 	  | P.fUE  => test2bits(M.UN, M.FE)
          (*esac*))
       end
-    | fbranchd _ = error "fbranch"
+    | fbranchd _ = bug "fbranch"
 
  (* Should implement ANDcc and do this better *)
   fun bbs(Immed k,Direct y,ImmedLab label) =
@@ -1032,7 +1036,7 @@ struct
 	  freeTmpReg tmpR;
 	  emitBRANCH(M.EQ,true,label)
       end
-    | bbs _ = error "bbs: bad args"
+    | bbs _ = bug "bbs: bad args"
 
 
   val cvti2dTmpOffset   = 16

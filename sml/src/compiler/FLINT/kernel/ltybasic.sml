@@ -197,7 +197,6 @@ fun lt_print (x : lty) =
 
       fun g (LK.LT_TYC t) = tc_print t
         | g (LK.LT_STR zs) = "S{" ^ (plist(lt_print, zs)) ^ "}"
-        | g (LK.LT_PST zs) = "PS{" ^ (plist(h, zs)) ^ "}"
         | g (LK.LT_FCT (ts1,ts2)) = 
              "(" ^ (plist(lt_print, ts1)) ^ ") ==> ("
                  ^ (plist(lt_print, ts2)) ^ ")"

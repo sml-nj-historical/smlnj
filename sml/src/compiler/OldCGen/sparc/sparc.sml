@@ -18,6 +18,8 @@ functor SparcCM (
     structure P = CPS.P
     structure D = SparcSpec.ObjDesc
 
+    fun bug s = ErrorMsg.impossible ("sparc/sparc.sml: " ^ s)
+
     val lwtoi = LargeWord.toInt		(* for converting descriptors *)
 
     val itow = Word.fromInt
@@ -225,11 +227,11 @@ functor SparcCM (
     val emitstring = C.emitString
 
     fun emitlab (n, ImmedLab lab) = C.emitLabel (lab, n)
-      | emitlab _ = ErrorMsg.impossible "[SparcCM.emitlab]"
+      | emitlab _ = bug "[SparcCM.emitlab]"
 
     val newlabel = ImmedLab o C.newLabel
     fun define (ImmedLab lab) = C.define lab
-      | define _ = ErrorMsg.impossible "[SparcCM.define]"
+      | define _ = bug "[SparcCM.define]"
 
     datatype immed_size = Immed13 | Immed32
 
@@ -323,10 +325,10 @@ functor SparcCM (
 	      then (
 		emit_fmov(FREG fs, FREG fd);
 		emit_fmov(FREG (fs+1), FREG (fd+1)))
-	      else ErrorMsg.impossible "[SparcCM.move: bad floating point registers]"
+	      else bug "[SparcCM.move: bad floating point registers]"
 	end
       | move (Direct r1, Direct r2) = if (r1 = r2) then () else emitMove (r1, r2)
-      | move _ = ErrorMsg.impossible "[SparcCM.move]"
+      | move _ = bug "[SparcCM.move]"
 
 
   (* spR is the stack pointer; pregs_offset is the initial stack offset
@@ -345,7 +347,7 @@ functor SparcCM (
             emit_ld(tmpR, IMrand (pregs_offset-2), x);
             freeTmpReg tmpR
         end
-    | loadpseudo _ = ErrorMsg.impossible "[loadpseudo]"
+    | loadpseudo _ = bug "[loadpseudo]"
 
   fun storepseudo(Direct x,Immed i) = 
         emit_st(spR, IMrand(2*(i-1)+pregs_offset), x)
@@ -357,7 +359,7 @@ functor SparcCM (
             emit_st(tmpR, IMrand (pregs_offset-2), x);
             freeTmpReg tmpR
         end
-    | storepseudo _ = ErrorMsg.impossible "[storepseudo]"
+    | storepseudo _ = bug "[storepseudo]"
 
 (*  fun loadpseudo (x, i) = () 
     fun storepseudo (x, i) = () 
@@ -452,7 +454,7 @@ functor SparcCM (
    *)
     fun jmp (ImmedLab lab) = emit_bcc (CC_A, lab)
       | jmp (Direct r) = emit_jmp (r, zeroRand)
-      | jmp _ = ErrorMsg.impossible "[SparcCM.jmp]"
+      | jmp _ = bug "[SparcCM.jmp]"
 
   (* record (vl, dst):
    * makes a new record, puts address of it into the destination specified
@@ -538,6 +540,10 @@ functor SparcCM (
 		store (r, dataptrR, dstOffset);
 		freeReg r;
 		fields (dstOffset+wordSzB, rest))
+
+	    | fields (dstOffset, (Direct r, CPS.OFFp j) :: rest) = 
+                bug "unexpected non-zero OFFp fields"
+(*
 	    | fields (dstOffset, (Direct r, CPS.OFFp j) :: rest) = let
 		val tmpR = getTmpReg()
 		val offset = j*wordSzB
@@ -552,6 +558,7 @@ functor SparcCM (
 		  freeTmpReg tmpR; freeReg r;
 		  fields (dstOffset+wordSzB, rest)
 		end
+*)
 	    | fields (dstOffset, (x, p) :: rest) =  let
 		val tmpR = getTmpReg()
 		in
@@ -563,7 +570,7 @@ functor SparcCM (
 	    addImmed (dataptrR, wordSzB, dst);
 	    addImmed (dataptrR, szB, dataptrR)
 	end
-      | record _ = ErrorMsg.impossible "[SparcCM.record]"
+      | record _ = bug "[SparcCM.record]"
 
   (* recordStore(x, y, alwaysBoxed) records a store operation into mem[x+2*(y-1)].
    * The flag alwaysBoxed is true if the value stored is guaranteed to be boxed.
@@ -591,7 +598,7 @@ functor SparcCM (
 		    storeListUpdate tmpR;
 		    freeTmpReg tmpR
 		  end
-	      | _ => ErrorMsg.impossible "[SparcCM.recordStore]"
+	      | _ => bug "[SparcCM.recordStore]"
 	    (* end case *)
 	  end (* recordStore *)
 (*** STOREPTR
@@ -617,7 +624,7 @@ functor SparcCM (
 		    storeVectorUpdate tmpR;
 		    freeTmpReg tmpR
 		  end
-	      | _ => ErrorMsg.impossible "[SparcCM.recordStore]"
+	      | _ => bug "[SparcCM.recordStore]"
 	    (* end case *)
 	  end (* recordStore *)
 ***)
@@ -630,7 +637,7 @@ functor SparcCM (
 
 
 
-  fun recordcont _ = ErrorMsg.impossible "[SparcCM.recordcont not implemented yet]"
+  fun recordcont _ = bug "[SparcCM.recordcont not implemented yet]"
 
   (* select (i, x, y):  y <- mem[x + 4*i] *)
   fun select (i, Direct r, Direct dst) = loadReg(r, i*4, dst)
@@ -639,12 +646,12 @@ functor SparcCM (
 	 in load (lab, i*4, dst, tmpR);
 	    freeTmpReg tmpR
         end
-    | select _ = ErrorMsg.impossible "[SparcCM.select]"
+    | select _ = bug "[SparcCM.select]"
 
   (* offset (i, x, y):  y <- (x + 4*i) *)
   fun offset (i, Direct r, Direct dst) = addImmed (r, 4*i, dst)
     | offset (i, ImmedLab lab, Direct dst) = loadAddr (lab, i, dst)
-    | offset _ = ErrorMsg.impossible "[SparcCM.offset]"
+    | offset _ = bug "[SparcCM.offset]"
 
     local
       fun moveByte movFn = let
@@ -653,7 +660,7 @@ functor SparcCM (
 		  case (sizeImmed indx)
 		   of Immed13 => movFn (base, IMrand indx, r)
 		    | Immed32 => (op32 movFn) (base, indx, r))
-	      | mov _ = ErrorMsg.impossible "[SparcCM.moveByte]"
+	      | mov _ = bug "[SparcCM.moveByte]"
 	    in
 	      mov
 	    end
@@ -683,7 +690,7 @@ functor SparcCM (
 	    emit_jmp (tmpR1, REGrand y);
 	    freeTmpReg tmpR1
 	  end
-      | jmpindexb _ = ErrorMsg.impossible "[SparcCM.jmpindexb]"
+      | jmpindexb _ = bug "[SparcCM.jmpindexb]"
 
   (* fetchindexl (x, y, z) fetches a word:  y <- mem[x+2*(z-1)] *)
     fun fetchindexl (Direct r1, Direct dst, Direct r2) = let
@@ -703,7 +710,7 @@ functor SparcCM (
 	    emit_ld (r, REGrand tmpR1, dst);
 	    freeTmpReg tmpR1
 	  end
-      | fetchindexl _ = ErrorMsg.impossible "[SparcCM.fetchindexl]"
+      | fetchindexl _ = bug "[SparcCM.fetchindexl]"
 
   (*storeindexl (x, y, z) stores a word:  mem[y+2*(z-1)] <- x *)
     fun storeindexl (Direct src, Direct r1, Direct r2) = let val tmpR = getTmpReg()
@@ -727,7 +734,7 @@ functor SparcCM (
 	    storeindexl (Direct tmpR1, x, y);
 	    freeTmpReg tmpR1
 	  end
-      | storeindexl _ = ErrorMsg.impossible "[SparcCM.storeindexl]"
+      | storeindexl _ = bug "[SparcCM.storeindexl]"
 
 
    (* fetchindexd(x,y,z): y <- mem[x+4*(z-1)] *)
@@ -756,7 +763,7 @@ functor SparcCM (
 		    freeTmpReg tmpR
 		  end
           end
-      | fetchindexd _ = ErrorMsg.impossible "[SparcCM.fetchindexd]"
+      | fetchindexd _ = bug "[SparcCM.fetchindexd]"
 
   (* storeindexd: mem[y+4*(z-1)] <- x *)
     fun storeindexd (FDirect(FREG fp), Direct y, Direct z) = let
@@ -785,7 +792,7 @@ functor SparcCM (
 		    freeTmpReg tmpR
 		  end
 	  end
-      | storeindexd _ = ErrorMsg.impossible "[SparcCM.storeindexd]"
+      | storeindexd _ = bug "[SparcCM.storeindexd]"
 
   (* ashl (n, x, y) shift left: y <- (x << n), with  n >= 0 *)
     fun ashl (Direct cntR, Direct src, Direct dst) =
@@ -806,7 +813,7 @@ functor SparcCM (
 	  ashl (shamt, Direct tmpR, dst);
 	  freeTmpReg tmpR
 	end
-      | ashl _ = ErrorMsg.impossible "[SparcCM.ashl]"
+      | ashl _ = bug "[SparcCM.ashl]"
 
   (* ashr (n, x, y) shift right: y <- (x >> n), with  n >= 0 *)
     fun ashr (Direct cntR, Direct src, Direct dst) =
@@ -827,7 +834,7 @@ functor SparcCM (
 	  ashr(shamt, Direct tmpR, dst);
 	  freeTmpReg tmpR
 	end
-      | ashr _ = ErrorMsg.impossible "[SparcCM.ashr]"
+      | ashr _ = bug "[SparcCM.ashr]"
 
     local
 	fun adjArgs f (a as Immed _, b, c) = f (b, a, c)
@@ -892,7 +899,7 @@ functor SparcCM (
 		      f (r, REGrand tmpR, dst);
 		      freeTmpReg tmpR
 		    end)
-	  | arithOp _ _ = ErrorMsg.impossible "[SparcCM.arithOp]"
+	  | arithOp _ _ = bug "[SparcCM.arithOp]"
 	val addt' = adjArgs (arithOp (fn args => (emit_addcc args; emit_tvs())))
     in
 
@@ -900,7 +907,7 @@ functor SparcCM (
     val andb = adjArgs (arithOp emit_and)
     val xorb = adjArgs (arithOp emit_xor)
     fun notb (Direct src, Direct dst) = emit_not (src, dst)
-      | notb _ = ErrorMsg.impossible "[SparcCM.notb]"
+      | notb _ = bug "[SparcCM.notb]"
 
     val add = adjArgs (arithOp emit_add)
     fun addt (Immed a, b as Immed _, dst) = let val tmpR = getTmpReg ()
@@ -946,7 +953,7 @@ functor SparcCM (
 	    lshr (shamt, Direct tmpR, dst);
 	    freeTmpReg tmpR
 	  end
-      | lshr _ = ErrorMsg.impossible "[SparcCM.lshr]"
+      | lshr _ = bug "[SparcCM.lshr]"
 
     end (* local *)
 
@@ -964,7 +971,7 @@ functor SparcCM (
 	      move (b, arg1EA);
 	      emit_jmpl (opAddrR, zeroRand, linkR);
 	      move (arg1EA, b))
-	  | intOp _ _ = ErrorMsg.impossible "[SparcCM.intOp]"
+	  | intOp _ _ = bug "[SparcCM.intOp]"
     in
     val mult = intOp mulAddrOffset
     val divt = intOp divAddrOffset
@@ -976,7 +983,7 @@ functor SparcCM (
     fun bbs (Immed i, Direct r, ImmedLab lab) = (
 	  emit_andcc (r, IMrand(wtoi (Word.<<((0w1, itow i)))), zeroR);
 	  emit_bcc (CC_NE, lab))
-      | bbs _ = ErrorMsg.impossible "[SparcCM.bbs]"
+      | bbs _ = bug "[SparcCM.bbs]"
 
     local
       fun revCC CC_A = CC_A
@@ -1009,7 +1016,7 @@ functor SparcCM (
 	    loadWord32(w, tmpR);
 	    compare(cc, a, Direct tmpR) before freeTmpReg tmpR
 	  end
-	| compare _ = ErrorMsg.impossible "[SparcCM.compare]"
+	| compare _ = bug "[SparcCM.compare]"
     in
   (* ibranch (cond, a, b, lab): if (a <cond> b) then pc <- lab *)
     fun ibranch (cond, a, b, ImmedLab lab) = 
@@ -1030,13 +1037,13 @@ functor SparcCM (
 	      loadF (lab, 0, dst, tmpR);
 	      freeTmpReg tmpR
 	    end
-	| fetchReal _ = ErrorMsg.impossible "[SparcCM.fetchReal]"
+	| fetchReal _ = bug "[SparcCM.fetchReal]"
       fun floatOp fOp (FDirect fpr1, FDirect fpr2, FDirect fpr3) = fOp(fpr1,fpr2,fpr3)
-	| floatOp _ _ = ErrorMsg.impossible "[SparcCM.floatOp]"
+	| floatOp _ _ = bug "[SparcCM.floatOp]"
     in
 
     fun loadfloat (src, FDirect fpr) = fetchReal(src, fpr)
-      | loadfloat _ = ErrorMsg.impossible "[SparcCM.loadfloat]"
+      | loadfloat _ = bug "[SparcCM.loadfloat]"
 
     fun storefloat (FDirect(FREG fpr), Direct gpr) = let val tmpR = getTmpReg()
 	  in
@@ -1049,7 +1056,7 @@ functor SparcCM (
 	    emit_add (dataptrR, IMrand 12, dataptrR);
 	    freeTmpReg tmpR
 	  end
-      | storefloat _ = ErrorMsg.impossible "[SparcCM.storefloat]"
+      | storefloat _ = bug "[SparcCM.storefloat]"
 
     fun fprecord (tag, vl : (EA * CPS.accesspath) list, Direct dst) = 
       let open CPS
@@ -1068,7 +1075,7 @@ functor SparcCM (
                  storeFReg(FREG(fpr + 1), dataptrR, i+4);
 		 fields (t1,t2,f1,i-8,rest))
             | fields (t1,t2,f1,i,(Direct r, OFFp _)::rest) = 
-                ErrorMsg.impossible "wrong-type in fprecord in sparc.sml"
+                bug "wrong-type in fprecord in sparc.sml"
 	    | fields (t1,t2,f1,i,(x,p)::rest) =  
                 (move (x, Direct t1);
                  fields(t2,t1,f1,i,(Direct t1,p)::rest))
@@ -1086,7 +1093,7 @@ functor SparcCM (
           freeTmpReg tmpR2;
 	  addImmed (dataptrR, len, dataptrR)
       end
-      | fprecord _ = ErrorMsg.impossible "[SparcCM.fprecord]"
+      | fprecord _ = bug "[SparcCM.fprecord]"
 
     val faddd = floatOp emit_fadd
     val fsubd = floatOp emit_fsub
@@ -1096,12 +1103,12 @@ functor SparcCM (
     fun fnegd (FDirect (fpr1 as FREG f1), FDirect (fpr2 as FREG f2)) = (
 	  emit_fneg (fpr1, fpr2);
 	  if (fpr1 <> fpr2) then emit_fmov (FREG(f1+1), FREG(f2+1)) else ())
-      | fnegd _ = ErrorMsg.impossible "[SparcCM.fnegd]"
+      | fnegd _ = bug "[SparcCM.fnegd]"
 
     fun fabsd (FDirect (fpr1 as FREG f1), FDirect (fpr2 as FREG f2)) = (
 	  emit_fabs (fpr1, fpr2);
 	  if (fpr1 <> fpr2) then emit_fmov (FREG(f1+1), FREG(f2+1)) else ())
-      | fabsd _ = ErrorMsg.impossible "[SparcCM.fabsd]"
+      | fabsd _ = bug "[SparcCM.fabsd]"
 
   (* convert an int to a double.  Because there is no data-path from general
    * purpose registers to the FP registers, we use the heap as a staging point.
@@ -1119,7 +1126,7 @@ functor SparcCM (
 	    convert (tmpR, fpr);
 	    freeTmpReg tmpR
 	  end
-      | cvti2d _ = ErrorMsg.impossible "[SparcCM.cvti2d]"
+      | cvti2d _ = bug "[SparcCM.cvti2d]"
     end (* local fun convert ... *)
 
     fun fbranchd (cond, FDirect fp1, FDirect fp2, ImmedLab lab) = let
@@ -1141,7 +1148,7 @@ functor SparcCM (
 	  emit_fcmp(fp1,fp2);
 	  emit_fbcc(sparcFCC cond, lab)
 	end
-      | fbranchd _ = ErrorMsg.impossible "[SparcCM.fbranchd]"
+      | fbranchd _ = bug "[SparcCM.fbranchd]"
     end (* local *)
 
     end (* local *)

@@ -13,6 +13,9 @@ type csegments                      (* binary code segments *)
 type executable                     (* machine executables *)
 type object                         (* resulting runtime object *)
 
+datatype importTree = ITNODE of (int * importTree) list
+                                    (* import selection specification *)
+
 (** important context, environment, and utility functions *)
 type compInfo
 val mkCompInfo  : source * StaticEnv.staticEnv 

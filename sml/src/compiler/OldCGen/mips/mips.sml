@@ -18,7 +18,7 @@ struct
   open M
   type EA = C.label M.EA
 
-  val error = ErrorMsg.impossible
+  fun bug s = ErrorMsg.impossible ("mips/mips.sml: " ^ s)
 
   val wtoi = Word.toIntX
 
@@ -34,10 +34,10 @@ struct
   val emit		= C.emit
 
   fun emitlab(k,ImmedLab lab) = C.emitLabel(lab,k)
-    | emitlab _ = error "MipsCM.emitlab"
+    | emitlab _ = bug "MipsCM.emitlab"
 
   fun define(ImmedLab lab) = C.define lab
-    | define _ = error "MipsCM.define"
+    | define _ = bug "MipsCM.define"
 
 
   (* Register Map
@@ -193,18 +193,18 @@ struct
   fun move(Direct a, Direct b) =
         (case (reg_rep a, reg_rep b)
           of (Freg' _, Freg' _) => emit(M.MOV_DOUBLE(b,a))
- 	   | (Freg' _, _) => error "MipsCM.move: destination not a float reg"
-	   | (_, Freg' _) => error "MipsCM.move: source not a float reg"
+ 	   | (Freg' _, _) => bug "MipsCM.move: destination not a float reg"
+	   | (_, Freg' _) => bug "MipsCM.move: source not a float reg"
 	   | (Reg' a', Reg' b') => if a'=b' then ()
 		                   else emit(M.ADD(b,a,RegOp0)))
     | move(ImmedLab lab, Direct dst) = emitSDI(LOADADDR(dst,lab,0))
     | move(Immed n, Direct dst) = load_immed(n,dst)
     | move(Immed32 w, rd as Direct dst) = load_immed32(w,dst)
-    | move _ = error "MipsCM.move"
+    | move _ = bug "MipsCM.move"
 
   fun jmp (Direct r)     = emit(M.JUMP r)
     | jmp (ImmedLab lab) = emitBRANCH(true,Reg0,Reg0,lab)
-    | jmp _              = error "MipsCM.jmp: bad target"
+    | jmp _              = bug "MipsCM.jmp: bad target"
 
   (* stackptr' is the stack pointer; pregs_offset is the stack offset
    * of pseudo registers, it should be consistent with the offset in 
@@ -221,7 +221,7 @@ struct
             emit(M.LW(x,tmpR,Immed16Off (pregs_offset-2)));
             freeTmpReg tmpR
         end
-    | loadpseudo _ = error "[loadpseudo]"
+    | loadpseudo _ = bug "[loadpseudo]"
 
   fun storepseudo(Direct x,Immed i) = 
         do_immed_mem(M.SW,x,stackptr',2*(i-1)+pregs_offset)
@@ -232,7 +232,7 @@ struct
             emit (M.SW(x,tmpR,Immed16Off (pregs_offset-2)));
             freeTmpReg tmpR
         end
-    | storepseudo _ = error "[storepseudo]"
+    | storepseudo _ = bug "[storepseudo]"
 
 
  (*
@@ -246,7 +246,7 @@ struct
 	emit(M.JUMP tmpR);
 	freeTmpReg tmpR
       end
-    | jmpindexb _ = error "MipsCM.jmpindexb"
+    | jmpindexb _ = bug "MipsCM.jmpindexb"
 
 
  (* should be rewritten to use all the temp registers *)
@@ -261,9 +261,13 @@ struct
 	  | f(t,i,(Direct r,OFFp 0)::rest) = 
 	       (*  simple store, last first  *) 
 		(emit(M.SW(r,dataptr',Immed16Off(i*4)));  f(t,i-1,rest))
+	  | f((t1,t2),i,(Direct r, OFFp j)::rest) =          
+               bug "unexpected non-zero OFFp record fields"
+(*
 	  | f((t1,t2),i,(Direct r, OFFp j)::rest) = 
 		(emit(M.ADD(t1,r,Immed16Op(4*j))); 
 		 f((t2,t1),i,(Direct t1,OFFp 0)::rest))
+*)
 	  | f((t1,t2),i,(ea,p)::rest) =
 	       (* convert to register-based  *)
 		(move(ea,Direct t1);  f((t2,t1),i,(Direct t1,p)::rest))
@@ -277,7 +281,7 @@ struct
 	emit (M.ADD(z,dataptr',Immed16Op 4));
 	do_immed_arith(M.ADD,dataptr',dataptr',4*len)
       end
-    | record _ = error "MipsCM.record: result not a register"
+    | record _ = bug "MipsCM.record: result not a register"
 
 
  (* should be rewritten to use all the temp registers *)
@@ -285,7 +289,7 @@ struct
         open CPS
 	val len = List.length vl
         val _ = if (len > n) 
-                then error "continuation records is larger than framesize"
+                then bug "continuation records is larger than framesize"
                 else ()
 	fun f(_,i,nil) = ()
 	  | f((t1,t2),i,(Direct r, SELp(j,p))::rest) = 
@@ -311,7 +315,7 @@ struct
 	emit (M.ADD(z,dataptr',Immed16Op 4));
 	do_immed_arith(M.ADD,dataptr',dataptr',4*n)
       end
-    | recordcont _ = error "MipsCM.record: result not a register"
+    | recordcont _ = bug "MipsCM.record: result not a register"
 
 
   (* recordStore(x, y, alwaysBoxed) records a store operation into mem[x+2*(y-1)].
@@ -380,7 +384,7 @@ struct
 
     fun select(i,Direct v',Direct w) = do_immed_mem(M.LW,w,v',i*4)
       | select(i,ImmedLab lab,Direct w) = emitSDI(LOAD(w,lab,i*4))
-      | select _ = error "MipsCM.select: bad dst"
+      | select _ = bug "MipsCM.select: bad dst"
 
 
   fun offset(i,v,Direct w) =
@@ -392,8 +396,8 @@ struct
 				do_immed_arith(M.ADD,w,tmpR,i*4);
 				freeTmpReg tmpR
 			    end
-	  | _ 	       => error "MipsCM.offset: bad src")
-    | offset _ = error "MipsCM.offset: bad dst"
+	  | _ 	       => bug "MipsCM.offset: bad src")
+    | offset _ = bug "MipsCM.offset: bad dst"
 
 
  (* fetchindexb(x,y,z) fetches a byte: y <- mem[x+z], 
@@ -407,7 +411,7 @@ struct
 	  emit (M.LBU(y,tmpR,Immed16Off 0));
 	  freeTmpReg tmpR
       end
-    | fetchindexb _ = error "MipsCM.fetchindexb"
+    | fetchindexb _ = bug "MipsCM.fetchindexb"
 
 
  (* 
@@ -428,7 +432,7 @@ struct
 	  freeTmpReg tmpR
       end
     | storeindexb(Direct x,Direct y,Immed indx) = do_immed_mem(M.SB,x,y,indx)
-    | storeindexb _ = error "MipsCM.storeindexb" 
+    | storeindexb _ = bug "MipsCM.storeindexb" 
 
 
  (* 
@@ -457,7 +461,7 @@ struct
 	 of Direct x'    => do_immed_mem(M.LW,y,x',2*(z'-1))
 	  | Immed n      => do_immed_mem(M.LW,y,Reg0,n+2*(z'-1))
 	  | ImmedLab lab => emitSDI(LOAD(y,lab,2*(z'-1))))
-    | fetchindexl _ = error "MipsCM.fetchindexl"
+    | fetchindexl _ = bug "MipsCM.fetchindexl"
 
 
  (* 
@@ -484,7 +488,7 @@ struct
 					  storeindexl(Direct tmpR,y,z);
 					  freeTmpReg tmpR
 				      end
-    | storeindexl _ = error "MipsCM.storeindexl: bad args"
+    | storeindexl _ = bug "MipsCM.storeindexl: bad args"
 
 
  (*
@@ -520,7 +524,7 @@ struct
 	three f (do_immed,x,Direct tmpR,z);
 	freeTmpReg tmpR
       end
-    | three _ _ = error "MipsCM.three: bad args"
+    | three _ _ = bug "MipsCM.three: bad args"
 
   fun add(x,y,z)	= three M.ADDU (do_immed_arith,z,x,y)
   fun orb(x,y,z) 	= three M.OR  (do_immed_logical,z,x,y) 
@@ -557,7 +561,7 @@ struct
 				 sub(x, Direct tmpR, z);
 				 freeTmpReg tmpR
 			      end
-    | sub  _ = error "MipsCM.sub: mismatched args"
+    | sub  _ = bug "MipsCM.sub: mismatched args"
 
   fun notb(a,b) 	= sub (a, Immed ~1, b)
 
@@ -593,7 +597,7 @@ struct
 					    freeTmpReg tmpR
 					 end
 
-    | subt  _ = error "MipsCM.subt: mismatched args"
+    | subt  _ = bug "MipsCM.subt: mismatched args"
 
  (* The Mips multiplies two 32-bit quantities to get a 64-bit result.
   * That result fits in 32 bits if and only if the high-order word is zero
@@ -622,10 +626,10 @@ struct
 		   emit (M.ADD(tmpR,tmpR,RegOp tmpR));
 		   C.define ok
 	       end
-	    | _ => error "MipsCM.mult");
+	    | _ => bug "MipsCM.mult");
 	  freeTmpReg tmpR
       end
-    | mult _ = error "MipsCM.mult: result not a register"
+    | mult _ = bug "MipsCM.mult: result not a register"
 
   fun mulu(Direct x,Direct y) = 
       (emit(M.MULTU(x,y)); emit(M.MFLO y))
@@ -635,7 +639,7 @@ struct
 	mulu(Direct tmpR,y); 
 	freeTmpReg tmpR
       end
-    | mulu _ = error "mulu"
+    | mulu _ = bug "mulu"
 
 
  (*
@@ -665,7 +669,7 @@ struct
 	divt(Direct tmpR, y);
 	freeTmpReg tmpR
       end
-    | divt _ = error "MipsCM.divt: mismatched args"
+    | divt _ = bug "MipsCM.divt: mismatched args"
 
   fun divtu(Direct x',Direct y') = let
         val oklabel = C.newLabel()
@@ -690,10 +694,10 @@ struct
 	   of Direct rs => emit(M.SRAV(rd,rt,rs))
 	    | Immed n      => 
 	       if n >= 32 orelse n < 0 then
-		   error "MipsCM.ashr: Too large a shift distance"
+		   bug "MipsCM.ashr: Too large a shift distance"
 	       else
 		   emit(M.SRA(rd,rt,Int5 n))
-	    | _ => error "MipsCM.ashr")
+	    | _ => bug "MipsCM.ashr")
     | ashr(shamt,Immed n,dst) = let val tmpR = getTmpReg()
 				in  
 				    load_immed(n,tmpR);
@@ -705,17 +709,17 @@ struct
 				       ashr(shamt, Direct tmpR, dst);
 				       freeTmpReg tmpR
 				    end
-    | ashr _ = error "MipsCM.ashr: bad args"
+    | ashr _ = bug "MipsCM.ashr: bad args"
 
   fun lshr(shamt,Direct rt,Direct rd) = 
       (case shamt
        of Direct rs => emit(M.SRLV(rd,rt,rs))
         | Immed n => 
 	    if n >= 32 orelse n < 0 then
-		error "MipsCM.lshr: bad shift distance"
+		bug "MipsCM.lshr: bad shift distance"
 	    else
 		emit(M.SRL(rd,rt,Int5 n))
-	| _ => error "MipsCM.ashr")
+	| _ => bug "MipsCM.ashr")
     | lshr(shamt,Immed n,dst) = let val tmpR = getTmpReg()
       in
 	  load_immed(n,tmpR);
@@ -729,17 +733,17 @@ struct
 	  freeTmpReg tmpR
       end
 
-    | lshr _ = error "MipsCM.ashr: bad args"
+    | lshr _ = bug "MipsCM.ashr: bad args"
 
   fun ashl(shamt,Direct rt,Direct rd) =
       (case shamt
 	   of Direct rs => emit(M.SLLV(rd,rt,rs))
 	 | Immed n      => 
 	       if n >= 32 orelse n < 0 then
-		   error "MipsCM.ashl: Too large a shift distance"
+		   bug "MipsCM.ashl: Too large a shift distance"
 	       else
 		   emit(M.SLL(rd,rt,Int5 n))
-	 | _ => error "MipsCM.ashl")
+	 | _ => bug "MipsCM.ashl")
     | ashl(shamt,Immed n,dst) = let val tmpR = getTmpReg()
 				in  
 				    load_immed(n,tmpR);
@@ -752,7 +756,7 @@ struct
 				    ashl(shamt,Direct tmpR,dst);
 				    freeTmpReg tmpR
 				  end
-    | ashl _ = error "MipsCM.ashl: bad args"
+    | ashl _ = bug "MipsCM.ashl: bad args"
 
   datatype condition = NEQ | EQL | LEQ | GEQ | LSS | GTR
 	             | GEU | GTU | LTU | LEU
@@ -842,7 +846,7 @@ struct
 	(*esac*);
 	freeTmpReg tmpR
       end
-    | ibranch _ = error "MipsCM.ibranch: bad args"
+    | ibranch _ = bug "MipsCM.ibranch: bad args"
 
  (*
   * bbs - branch on bit set.
@@ -855,14 +859,14 @@ struct
 	  emitBRANCH(false,tmpR,Reg0,label);
 	  freeTmpReg tmpR
       end
-    | bbs _ = error "MipsCM.bbs: bad args"
+    | bbs _ = bug "MipsCM.bbs: bad args"
 
 
   fun floatreg (Direct fpr) = 
          (case reg_rep fpr 
 	   of Freg' _ => fpr 
-	    | _ => error "MipsCM.floatreg: expected floatreg")
-    | floatreg _ = error "MipsCM.floatreg: expected floatreg"
+	    | _ => bug "MipsCM.floatreg: expected floatreg")
+    | floatreg _ = bug "MipsCM.floatreg: expected floatreg"
 
   local 
     val real_tag = dtoi D.desc_reald
@@ -872,15 +876,15 @@ struct
           case (reg_rep n', dst)
 	   of (Freg' n, Direct dst') =>
 	       if n mod 2 <> 0 then
-		    error "MipsCM.store_float: bad float reg"
+		    bug "MipsCM.store_float: bad float reg"
 	       else (do_immed_mem (M.SWC1,Freg(n+1-lowOff),dst',offset+4);
 		     do_immed_mem (M.SWC1,Freg(n+lowOff),dst',offset))
-	    | _ => error "MipsCM.store_float: bad args"
+	    | _ => bug "MipsCM.store_float: bad args"
 
     fun load_float(dest',src,offset) =
           case reg_rep dest'
 	   of Freg' dest =>
-	       if dest mod 2 <> 0 then error "MipsCM.load_float.1"
+	       if dest mod 2 <> 0 then bug "MipsCM.load_float.1"
 	       else 
                 (case src
      	          of Direct src' => 
@@ -891,8 +895,8 @@ struct
 		       in emitSDI(LOADF(Freg dest,lab,offset,tmpR));
 		          freeTmpReg tmpR
 		      end
-		   | _ => error "MipsCM.load_float.3")
-	    | _ => error "MipsCM.load_float.2"
+		   | _ => bug "MipsCM.load_float.3")
+	    | _ => bug "MipsCM.load_float.2"
 
   in
     fun storefloat(src,Direct dst) =
@@ -907,8 +911,8 @@ struct
 		     emit (M.ADD(dataptr',dataptr',Immed16Op 12));
 		    freeTmpReg tmpR
 		end)
-	     | _ => error "MipsCM.storefloat: bad args")
-      | storefloat _ = error "MipsCM.storefloat: bad args.2"
+	     | _ => bug "MipsCM.storefloat: bad args")
+      | storefloat _ = bug "MipsCM.storefloat: bad args.2"
 
     fun loadfloat(src, dst) = load_float(floatreg dst,src,0)
 					  (* y <- mem[x+4*(z-1)] *)
@@ -922,8 +926,8 @@ struct
 				load_float(floatreg y, Direct tmpR, ~4);
 				freeTmpReg tmpR
 			    end
-	     | _ => error "MipsCM.fetchindexd")
-      | fetchindexd _ = error "MipsCM.fetchindexd"
+	     | _ => bug "MipsCM.fetchindexd")
+      | fetchindexd _ = bug "MipsCM.fetchindexd"
 
 					  (* mem[y+4*(z-1)] <- x *)
     fun storeindexd(x, Direct y, z) =
@@ -936,8 +940,8 @@ struct
 				store_float(floatreg x,Direct tmpR,~4);
 				freeTmpReg tmpR
 			    end
-	     | _ => error "MipsCM.storeindexd")
-      | storeindexd _ = error "MipsCM.storeindexd"
+	     | _ => bug "MipsCM.storeindexd")
+      | storeindexd _ = bug "MipsCM.storeindexd"
 
   fun fprecord(tag, vl, Direct z) = 
         let open CPS
@@ -949,22 +953,22 @@ struct
                        (do_immed_mem(M.LWC1,Freg(dest+lowOff),r,j*8);
                         do_immed_mem(M.LWC1,Freg(dest+1-lowOff),r,j*8+4);
                         f(t1,t2,f1,i,(Direct f1, OFFp 0)::rest))
-                     | _ => error "wrong register assignment1 in mips.sml")
+                     | _ => bug "wrong register assignment1 in mips.sml")
               | f(t1,t2,f1,i,(Direct r, SELp(j,p))::rest) = 
                    (case reg_rep r 
                      of (Reg' src) =>
                         (do_immed_mem(M.LW,t1,r,j*4);
                          f(t2,t1,f1,i,(Direct t1,p)::rest))
-                      | _ => error "wrong register assignment3 in mips.sml")
+                      | _ => bug "wrong register assignment3 in mips.sml")
 	      | f(t1,t2,f1,i,(Direct r, OFFp 0)::rest) = 
                   (case reg_rep r 
                     of (Freg' n) =>
                        (do_immed_mem(M.SWC1,Freg(n+1-lowOff),dataptr',i+4);
                         do_immed_mem(M.SWC1,Freg(n+lowOff),dataptr',i);
                         f(t1,t2,f1,i-8,rest))
-                     | _ => error "wrong register assignment2 in mips.sml")
+                     | _ => bug "wrong register assignment2 in mips.sml")
 	      | f(t1,t2,f1,i,(Direct r, OFFp j)::rest) = 
-                  error "non-zero offset elements in fprecord in mips.sml"
+                  bug "non-zero offset elements in fprecord in mips.sml"
 	      | f(t1,t2,f1,i,(ea, p)::rest) =
 		  (move(ea,Direct t1); f(t2,t1,f1,i,(Direct t1,p)::rest))
 
@@ -981,7 +985,7 @@ struct
             emit (M.ADD(z,dataptr',Immed16Op 4));
             do_immed_arith(M.ADD,dataptr',dataptr',len)
         end
-    | fprecord _ = error "MipsCM.fprecord: result not a register"
+    | fprecord _ = bug "MipsCM.fprecord: result not a register"
 
   end
 
@@ -1026,7 +1030,7 @@ struct
                                      do_immed_mem(M.SWC1,Freg(n+lowOff),
                                                   dataptr',i);
 		                     deposit(r, i+8))
-                                | _ => error "wrong register checkLimit")
+                                | _ => bug "wrong register checkLimit")
 
                        fun restore(s, [], _) = ()
                          | restore(s, (Direct x)::r, i) = 
@@ -1037,7 +1041,7 @@ struct
                                      do_immed_mem(M.LWC1,Freg(n+lowOff),
                                                   s,i);
                                      restore(s, r, i+8))
-                                | _ => error "wrong register checkLimit")
+                                | _ => bug "wrong register checkLimit")
 
                     in deposit(fregs,4);
                        move(immed desc, Direct M.heapExhaustedReg);
@@ -1098,7 +1102,7 @@ struct
 	    emit(M.FCMP(cmp, floatreg op1, floatreg op2));
 	    emitBRANCH_COP1(test, label)
 	  end
-	| fbranchd _ = error "MipsCM.fbranchd: insane target"
+	| fbranchd _ = bug "MipsCM.fbranchd: insane target"
   end
 
 
