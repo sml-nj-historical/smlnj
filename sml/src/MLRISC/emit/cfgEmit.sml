@@ -31,6 +31,7 @@ struct
 	and emitAn a = if Annotations.toString a = "" then () else annotation(a)
 	in
 	  List.app emitAn (!an);
+	  pseudoOp(PseudoOpsBasisTyp.TEXT);
 	  List.app emitIt blocks;
 	  List.app pseudoOp (rev (!data))
 	  

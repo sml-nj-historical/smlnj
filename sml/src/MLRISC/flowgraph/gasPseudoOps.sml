@@ -89,7 +89,8 @@ struct
 	    (*esac*)) :: map (fn lexp => lexpToString lexp ^ " ") i)
 
     | toString(PB.ASCII s)        = Fmt.format ".ascii \"%s\"" [Fmt.STR s]
-    | toString(PB.ASCIIZ s)       = Fmt.format ".asciiz \"%s\"" [Fmt.STR s]
+    | toString(PB.ASCIIZ s)       = 
+         Fmt.format ".ascii \"%s\"" [Fmt.STR (String.toCString s)]
 
     | toString(PB.SPACE sz)	  = Fmt.format ".space %d" [Fmt.INT sz]
 
