@@ -29,6 +29,7 @@
  *				sigsetmask).
  *   HAS_SIGCONTEXT		if signal handlers have a struct sigcontext
  *				argument.
+ *   INCLUDE_SIGINFO_H		include file that contains siginfo (if needed).
  *   HAS_UCONTEXT		if signal handlers have a ucontext_t argument.
  *   HAS_STRERROR		if the system provides the ISO C strerror function.
  *   INT_GIDLIST		if the second argument to getgroups is int[].
@@ -135,6 +136,7 @@ extern char	*sys_errlist[];
 #  define HAS_ILOGB
 #  define HAS_POLL
 #  define HAS_UCONTEXT
+#  define INCLUDE_SIGINFO_H <siginfo.h>
 #  define HAS_STRERROR
 
 /* These declarations are not in <errno.h> */
@@ -165,6 +167,7 @@ typedef int ssize_t;
 #  define HAS_MMAP
 #  define HAS_POLL
 #  define HAS_UCONTEXT
+#  define INCLUDE_SIGINFO_H <siginfo.h>
 #  define HAS_STRERROR
 
 #elif (defined(OPSYS_OSF1) || defined(OPSYS_DUNIX)) /** OSF/1 aka Digital Unix **/
@@ -194,7 +197,7 @@ typedef int ssize_t;
 extern int	sys_nerr;
 extern char	*sys_errlist[];
 
-#elif defined(OPSYS_DARWIN) /** MacOS X **/
+#elif defined(OPSYS_DARWIN) && defined(OPSYS_MACOS_10_1) /** MacOS X 10.1 **/
 #  define OS_NAME       "Darwin"
 #  define HAS_POSIX_LIBRARIES
 #  define HAS_POSIX_SIGS
@@ -202,7 +205,17 @@ extern char	*sys_errlist[];
 #  define HAS_SETITIMER
 #  define HAS_ANON_MMAP
 #  define HAS_SIGCONTEXT
+#  define HAS_STRERROR
+#  define HAS_SELECT
+
+#elif defined(OPSYS_DARWIN) && defined(OPSYS_MACOS_10_2) /** MacOS X 10.2 **/
+#  define OS_NAME       "Darwin"
+#  define HAS_POSIX_LIBRARIES
 #  define HAS_POSIX_SIGS
+#  define HAS_GETRUSAGE
+#  define HAS_SETITIMER
+#  define HAS_ANON_MMAP
+#  define HAS_UCONTEXT
 #  define HAS_STRERROR
 #  define HAS_SELECT
 

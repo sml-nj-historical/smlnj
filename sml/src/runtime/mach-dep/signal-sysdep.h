@@ -68,18 +68,14 @@
 
 #if defined(HAS_UCONTEXT)
 #include <ucontext.h>
-#include <siginfo.h>
+#ifdef INCLUDE_SIGINFO_H
+#  include INCLUDE_SIGINFO_H
+#endif
 
 typedef void SigReturn_t;
 typedef siginfo_t *SigInfo_t;
 typedef ucontext_t SigContext_t;
 
-#define SIG_FAULT1	SIGFPE
-
-#define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTDIV))
-#define INT_OVFLW(s, c)		(((s) == SIGFPE) && ((c) == FPE_INTOVF))
-
-#define SIG_GetCode(info,scp)	((info)->si_code)
 #define SIG_Flags		SA_SIGINFO
 
 #elif defined(HAS_SIGCONTEXT)
@@ -176,6 +172,12 @@ extern void SetFSR(int);
 
 #  elif defined(OPSYS_SOLARIS)
     /** SPARC, SOLARIS **/
+#    define SIG_FAULT1	SIGFPE
+#    define INT_DIVZERO(s, c)		(((s) == SIGFPE) && ((c) == FPE_INTDIV))
+#    define INT_OVFLW(s, c)		(((s) == SIGFPE) && ((c) == FPE_INTOVF))
+
+#    define SIG_GetCode(info,scp)	((info)->si_code)
+
 #    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[REG_PC])
 #    define SIG_SetPC(scp, addr)	{			\
 	(scp)->uc_mcontext.gregs[REG_PC] = (long)(addr);	\
@@ -206,7 +208,13 @@ extern void SetFSR();
 
 #  elif defined(OPSYS_IRIX5)
     /** MIPS, IRIX 5.x **/
+#    define SIG_FAULT1		SIGFPE
 #    define SIG_FAULT2		SIGTRAP
+
+#    define INT_DIVZERO(s, c)		(((s) == SIGFPE) && ((c) == FPE_INTDIV))
+#    define INT_OVFLW(s, c)		(((s) == SIGFPE) && ((c) == FPE_INTOVF))
+
+#    define SIG_GetCode(info,scp)	((info)->si_code)
    /* We use a TRAP to signal zero divide on the mips, but IRIX 5.3 maps
     * this back to SIGFPE.
     */
@@ -247,24 +255,31 @@ extern void SetFSR();
 
 #  elif defined(OPSYS_DARWIN)
     /* PPC, Darwin */
-     typedef void SigReturn_t;
-     
 #    define SIG_InitFPE()        set_fsr()
 #    define SIG_ResetFPE(scp)    
 #    define SIG_FAULT1           SIGTRAP
 #    define INT_DIVZERO(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
 #    define INT_OVFLW(s, c)	 ((s) == SIGTRAP)	/* This needs to be refined */
-#    define SIG_GetPC(scp)	 ((scp)->sc_ir)
-#    define SIG_SetPC(scp, addr) {(scp)->sc_ir = (int) addr;}
+   /* info about siginfo_t is missing in the include files 4/17/2001 */
+#    define SIG_GetCode(info,scp) 0
+#    if defined(OPSYS_MACOS_10_1)
+#      define SIG_GetPC(scp)	 ((scp)->sc_ir)
+#      define SIG_SetPC(scp, addr) {(scp)->sc_ir = (int) addr;}
      /* The offset of 17 is hardwired from reverse engineering the contents of
       * sc_regs. 17 is the offset for register 15.
       */
-#    define SIG_ZeroLimitPtr(scp)	\
-     {  int * regs = (scp)->sc_regs;    \
-	regs[17] = 0;                   \
-     }
-     /* info about siginfo_t is missing in the include files 4/17/2001 */
-#    define SIG_GetCode(info,scp) (info)
+#      define SIG_ZeroLimitPtr(scp)	\
+       {  int * regs = (scp)->sc_regs;	\
+	  regs[17] = 0;			\
+       }
+#    elif defined(OPSYS_MACOS_10_2)
+#      define SIG_GetPC(scp)		((scp)->uc_mcontext->ss.srr0)
+#      define SIG_SetPC(scp, addr)	{(scp)->uc_mcontext->ss.srr0 = (int) addr;}
+     /* The offset of 17 is hardwired from reverse engineering the contents of
+      * sc_regs. 17 is the offset for register 15.
+      */
+#      define SIG_ZeroLimitPtr(scp)	{  (scp)->uc_mcontext->ss.r15 = 0; }
+#    endif
 #  elif defined(OPSYS_MKLINUX)
     /* RS6000, MkLinux */
 
