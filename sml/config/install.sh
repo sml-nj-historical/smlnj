@@ -95,13 +95,17 @@ isnotin() {
 require() {
     require_who=$1
     shift
-    for required_x in "$@" ; do
-	if isnotin ${required_x} ${TARGETS} ; then
-	    echo "Including ${required_x} (needed by ${require_who})."
-	    request ${required_x}
-	    CHANGED=true
- 	fi
-    done
+    if isnotin ${require_who} ${TARGETS} ; then
+	:
+    else
+	for required_x in "$@" ; do
+	    if isnotin ${required_x} ${TARGETS} ; then
+		echo "Including ${required_x} (needed by ${require_who})."
+		request ${required_x}
+		CHANGED=true
+	    fi
+	done
+    fi
 }
 
 onepass() {

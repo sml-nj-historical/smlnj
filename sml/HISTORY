@@ -13,6 +13,21 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/13 14:00:00 EST
+Tag: blume-20020313-overload-etc
+Description:
+
+1. Added _overload as a synonym for overload for backward compatibility.
+   (Control.overloadKW must be true for either version to be accepted.)
+
+2. Fixed bug in install script that caused more things to be installed
+   than what was requested in config/targets.
+
+3. Made CM aware of the (_)overload construct so that autoloading
+   works.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/12 22:03:00 EST
 Tag: blume-20020312-url
 Description:
