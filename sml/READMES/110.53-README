@@ -69,8 +69,8 @@ Scripts
     script in the background).  This is experimental and so far
     only works under Mac OS X.
   - Made ml-build script slightly smarter.  (One can now omit the
-    3rd argument -- which is then taken to be the same as the 1st
-    argument without the extension.)
+    3rd argument -- which in this case is taken to be the same as the
+    1st argument without the extension.)
   - _run-sml now converts SMLNJ_HOME to a POSIX pathname on cygwin.
 
 CM
