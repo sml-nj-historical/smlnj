@@ -12,18 +12,16 @@
 functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 
     structure E = GenericVC.Environment
-    structure DTS = DynTStamp
     structure DE = GenericVC.DynamicEnv
     structure BF = PS.MachDepVC.Binfile
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
 
-    type env = { dyn: unit -> E.dynenv, dts: DTS.dts }
+    type env = (unit -> E.dynenv) * bool
     type benv = env
     type envdelta = env
 
-    fun layer ({ dyn = d, dts = s }, { dyn = d', dts = s' }) =
-	{ dyn = fn () => DE.atop (d (), d' ()), dts = DTS.join (s, s') }
+    fun layer ((d, n), (d', n')) = (fn () => DE.atop (d (), d'()), n orelse n')
 
     fun filter (e, _) = e
     fun nofilter e = e
@@ -33,81 +31,47 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     val bnofilter = nofilter
 
     fun primitive (gp: GeneralParams.info) p =
-	{ dyn = fn () => E.dynamicPart (Primitive.env
-					(#primconf (#param gp)) p),
-	  dts = DTS.ancient }
+	(fn () => E.dynamicPart (Primitive.env (#primconf (#param gp)) p),
+	 false)
 
     fun pervasive (gp: GeneralParams.info) =
-	{ dyn = fn () => E.dynamicPart (#pervasive (#param gp)),
-	  dts = DTS.ancient }
+	(fn () => E.dynamicPart (#pervasive (#param gp)), false)
 
     val bpervasive = pervasive
 
-    fun thunkify { dyn, dts } = { dyn = fn () => dyn, dts = dts }
+    fun thunkify (d, n) = (fn () => d, n)
 
-    fun execute (bfc, { dyn = mkdyn, dts }, share, error, descr, memo) = let
-	val (tryshare, mustshare) =
-	    case share of
-		NONE => (true, false)
-	      | SOME true => (true, true)
-	      | SOME false => (false, false)
-	fun doit () = let
-	    val dts' = if tryshare then DTS.current ()
-		       else DTS.noshare descr
-	    val e = BF.exec (bfc, mkdyn ())
-	    val m = { dyn = E.dynamicPart e, dts = DTS.join (dts, dts') }
-	in
-	    memo m;
-	    SOME (thunkify m)
-	end handle exn => let
-	    fun ppb pps =
-		(PP.add_newline pps;
-		 PP.add_string pps (General.exnMessage exn);
-		 PP.add_newline pps)
-	in
-	    error ("link-time error in " ^ descr) ppb;
-	    NONE
-	end
+    fun execute (bfc, (mkdyn, newCtxt), error, descr, memo) = let
+	val e = BF.exec (bfc, mkdyn ())
+	val de = E.dynamicPart e
     in
-	if mustshare then
-	    case DTS.can'tShare dts of
-		NONE => doit ()
-	      | SOME sl => let
-		    fun ppb pps = let
-			fun loop [] = ()
-			  | loop (h :: t) =
-			    (PP.add_string pps h; PP.add_newline pps; loop t)
-		    in
-			PP.add_newline pps;
-			PP.add_string pps
-			        "because of dependence on private module(s):";
-			PP.add_newline pps;
-			loop sl
-		    end
-		in
-		    error ("cannot share state of " ^ descr) ppb;
-		    NONE
-		end
-	else doit ()
+	memo de;
+	SOME (thunkify (de, newCtxt))
+    end handle exn => let
+	fun ppb pps =
+	    (PP.add_newline pps;
+	     PP.add_string pps (General.exnMessage exn);
+	     PP.add_newline pps)
+    in
+	error ("link-time error in " ^ descr) ppb;
+	NONE
     end
 
     fun dostable (i, mkenv, gp) =
 	case mkenv () of
 	    NONE => NONE
-	  | SOME (e as { dyn, dts }) =>
-		(case PS.exec_look_stable (i, dts, gp) of
-		     SOME memo => SOME (thunkify memo)
+	  | SOME (e as (dyn, newCtxt)) =>
+		(case PS.exec_look_stable (i, newCtxt, gp) of
+		     SOME m => SOME (thunkify m)
 		   | NONE => execute (PS.bfc_fetch_stable i, e,
-				      BinInfo.share i,
 				      BinInfo.error gp i EM.COMPLAIN,
 				      BinInfo.describe i,
-				      fn m => PS.exec_memo_stable (i, m)))
+				      fn e => PS.exec_memo_stable (i, e)))
 
-    fun dosml (i, e as { dyn, dts }, gp) =
-	case PS.exec_look_sml (i, dts, gp) of
-	    SOME memo => SOME (thunkify memo)
+    fun dosml (i, e as (dyn, newCtxt), gp) =
+	case PS.exec_look_sml (i, newCtxt, gp) of
+	    SOME m => SOME (thunkify m)
 	  | NONE => execute (PS.bfc_fetch_sml i, e,
-			     SmlInfo.share i,
 			     SmlInfo.error gp i EM.COMPLAIN,
 			     SmlInfo.name i,
 			     fn m => PS.exec_memo_sml (i, m))

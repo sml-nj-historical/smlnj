@@ -50,9 +50,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       val recomp_group = doall RecompTraversal.farsbnode
       fun exec_group arg =
-	  (DynTStamp.new ();
-	   (doall ExecTraversal.farsbnode arg)
-	   before FullPersstate.forgetNonShared ())
+	  (doall ExecTraversal.farsbnode arg)
+	  before FullPersstate.rememberShared ()
       fun make_group arg =
 	  (if recomp_group arg then exec_group arg else false)
   in
@@ -71,9 +70,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  keep_going = false,
 			  pervasive = perv,
 			  corenv = corenv }
+	    val g = CMParse.parse param p
 	in
-	    Say.vsay "[starting]\n";
-	    Option.map f (CMParse.parse param p)
+	    Option.map f g
 	end
 
 	val parse = run #1

@@ -11,17 +11,15 @@ signature FULL_PERSSTATE = sig
 
     include RECOMP_PERSSTATE
 
-    type exec_memo = { dyn: GenericVC.Environment.dynenv, dts: DynTStamp.dts }
+    type env = GenericVC.Environment.dynenv
 
     val exec_look_sml :
-	SmlInfo.info * DynTStamp.dts * GeneralParams.info -> exec_memo option
-    val exec_memo_sml :
-	SmlInfo.info * exec_memo -> unit
+	SmlInfo.info * bool * GeneralParams.info -> (env * bool) option
+    val exec_memo_sml :	SmlInfo.info * env -> unit
 
     val exec_look_stable :
-	BinInfo.info * DynTStamp.dts * GeneralParams.info -> exec_memo option
-    val exec_memo_stable :
-	BinInfo.info * exec_memo -> unit
+	BinInfo.info * bool * GeneralParams.info -> (env * bool) option
+    val exec_memo_stable : BinInfo.info * env -> unit
 
-    val forgetNonShared : unit -> unit
+    val rememberShared : unit -> unit
 end

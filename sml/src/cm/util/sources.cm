@@ -16,8 +16,6 @@ Library
 	signature INTERRUPT
 	structure Interrupt
 	structure TStamp
-	signature DYNTSTAMP
-	structure DynTStamp
 	structure Seek
 
 	structure LibBase	(* from SML/NJ library *)
@@ -33,7 +31,6 @@ is
 	pidset.sml
 	interrupt.sml
 	tstamp.sml
-	dyn-tstamp.sml
 	seek.sml
 
 	../../compiler/viscomp-lib.cm

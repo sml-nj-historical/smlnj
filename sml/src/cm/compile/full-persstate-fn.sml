@@ -8,23 +8,32 @@
 functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
     struct
 	structure E = GenericVC.Environment
-	structure DTS = DynTStamp
 
-	type exec_memo = { dyn: E.dynenv, dts: DTS.dts }
+	type env = GenericVC.Environment.dynenv
 
-	val smlmap = ref (AbsPathMap.empty: exec_memo AbsPathMap.map)
-	val stablemap = ref (StableMap.empty: exec_memo StableMap.map)
+	datatype ord_key =
+	    SML of SmlInfo.info
+	  | STABLE of BinInfo.info
+
+	fun compare (SML _, STABLE _) = LESS
+	  | compare (STABLE _, SML _) = GREATER
+	  | compare (SML i, SML i') = SmlInfo.compare (i, i')
+	  | compare (STABLE i, STABLE i') = BinInfo.compare (i, i')
+
+	structure Map =
+	    BinaryMapFn (struct
+		type ord_key = ord_key
+		val compare = compare
+	    end)
+
+	val persmap = ref (Map.empty: env Map.map)
+	val tmpmap = ref (Map.empty: env Map.map)
 
 	local
-	    fun discard_value i = let
-		val p = SmlInfo.sourcepath i
-		val m = !smlmap
-		val m' =
-		    #1 (AbsPathMap.remove (m, p))
-		    handle LibBase.NotFound => m
-	    in
-		smlmap := m'
-	    end
+	    fun discard_value i =
+		persmap := (#1 (Map.remove (!persmap, SML i)))
+		handle LibBase.NotFound => ()
+
 	    structure RecompPersstate =
 		RecompPersstateFn (structure MachDepVC = MachDepVC
 				   val discard_code = false
@@ -37,60 +46,49 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC) :> FULL_PERSSTATE =
 	fun (f o' g) (x, y) = f (g x, y)
 	fun (f o'' g) (x, y, z) = f (g x, y, z)
 
-	datatype key =
-	    SML of SmlInfo.info
-	  | STABLE of BinInfo.info
-
-	fun find (SML i) = AbsPathMap.find (!smlmap, SmlInfo.sourcepath i)
-	  | find (STABLE i) = StableMap.find (!stablemap, i)
-
-	fun insert (SML i, m) =
-	    smlmap := AbsPathMap.insert (!smlmap, SmlInfo.sourcepath i, m)
-	  | insert (STABLE i, m) =
-	    stablemap := StableMap.insert (!stablemap, i, m)
-
-	fun remove (SML i) =
-	    smlmap := #1 (AbsPathMap.remove (!smlmap, SmlInfo.sourcepath i))
-	  | remove (STABLE i) =
-	    stablemap := #1 (StableMap.remove (!stablemap, i))
-
 	fun share (SML i) = SmlInfo.share i
 	  | share (STABLE i) = BinInfo.share i
 
-	fun error gp (SML i) = SmlInfo.error gp i
-	  | error gp (STABLE i) = BinInfo.error gp i
-
-	fun descr (SML i) = SmlInfo.name i
-	  | descr (STABLE i) = BinInfo.describe i
-
-	fun exec_look (i, s, gp) =
-	    case find i of
-		NONE => NONE
-	      | SOME (memo as { dts = s', ... }) => let
-		    fun warn () =
-			error gp i GenericVC.ErrorMsg.WARN
-			      (concat ["reinstantiating ", descr i,
-				       " (sharing may be lost)"])
-			      GenericVC.ErrorMsg.nullErrorBody
-		in
-		    if DTS.outdated { context = s, oldresult = s' } then
-			(if share i = SOME true then warn () else ();
-			 (remove i; NONE))
-		    else SOME memo
-		end
-
-	fun exec_memo (i, memo) = insert (i, memo)
+	fun exec_look (k, newCtxt, gp) = let
+	    fun error (SML i) = SmlInfo.error gp i
+	      | error (STABLE i) = BinInfo.error gp i
+	    fun descr (SML i) = SmlInfo.name i
+	      | descr (STABLE i) = BinInfo.describe i
+	    fun didExist () = isSome (Map.find (!persmap, k))
+	    fun warn_reinst () =
+		if share k = SOME true andalso didExist () then
+		    error k GenericVC.ErrorMsg.WARN
+		            (concat ["re-instantiating ", descr k,
+				     " (sharing may be lost)"])
+			    GenericVC.ErrorMsg.nullErrorBody
+		else ()
+	in
+	    case Map.find (!tmpmap, k) of
+		NONE =>
+		    if newCtxt then (warn_reinst (); NONE)
+		    else (case Map.find (!persmap, k) of
+			      NONE => NONE
+			    | SOME e =>
+				  if share k = SOME false then
+				     (persmap := #1 (Map.remove (!persmap, k));
+				      NONE)
+				  else  SOME (e, false))
+	      | SOME e => SOME (e, true)
+	end
 
 	val exec_look_sml = exec_look o'' SML
 	val exec_look_stable = exec_look o'' STABLE
+
+	fun exec_memo (k, e) = tmpmap := Map.insert (!tmpmap, k, e)
+
 	val exec_memo_sml = exec_memo o' SML
 	val exec_memo_stable = exec_memo o' STABLE
 
-	fun forgetNonShared () = let
-	    fun isShareable { dyn, dts } =
-		not (isSome (DynTStamp.can'tShare dts))
+	fun rememberShared () = let
+	    fun retainShared (k, e, m) =
+		if share k = SOME false then m else Map.insert (m, k, e)
 	in
-	    smlmap := AbsPathMap.filter isShareable (!smlmap);
-	    stablemap := StableMap.filter isShareable (!stablemap)
+	    persmap := Map.foldli retainShared (!persmap) (!tmpmap);
+	    tmpmap := Map.empty
 	end
     end

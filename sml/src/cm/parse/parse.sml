@@ -201,11 +201,13 @@ structure CMParse :> CMPARSE = struct
 		h :: t => (report (h, t); NONE)
 	      | [] => normal_processing ()
 	end
-
-	fun finalResult g =
-	    (SmlInfo.forgetAllBut (Reachable.reachable g);
-	     (g, ginfo))
     in
-	Option.map finalResult (mparse (group, []))
+	case mparse (group, []) of
+	    NONE => NONE
+	  | SOME g =>
+		if CheckSharing.check (g, ginfo) then
+		    (SmlInfo.forgetAllBut (Reachable.reachable g);
+		     SOME (g, ginfo))
+		else NONE
     end
 end
