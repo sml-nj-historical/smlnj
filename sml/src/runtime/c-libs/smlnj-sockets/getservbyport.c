@@ -3,9 +3,8 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  */
 
-#include "ml-unixdep.h"
 #include "sockets-osdep.h"
-#include <netdb.h>
+#include INCLUDE_SOCKET_H
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"

@@ -3,9 +3,8 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  */
 
-#include "ml-unixdep.h"
 #include "sockets-osdep.h"
-#include <netdb.h>
+#include INCLUDE_SOCKET_H
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-c.h"
@@ -21,6 +20,11 @@
  */
 ml_val_t _ml_NetDB_getnetbyname (ml_state_t *msp, ml_val_t arg)
 {
+#if defined(OPSYS_WIN32)
+  /* FIXME:  getnetbyname() does not seem to exist under Windows.  What is
+     the equivalent? */
+  return RAISE_ERROR(msp, "<getnetbyname not implemented>");
+#else
     return _util_NetDB_mknetent (msp, getnetbyname (STR_MLtoC(arg)));
-
+#endif
 } /* end of _ml_NetDB_getnetbyname */

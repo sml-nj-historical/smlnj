@@ -3,9 +3,8 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  */
 
-#include "ml-unixdep.h"
 #include "sockets-osdep.h"
-#include <netdb.h>
+#include INCLUDE_SOCKET_H
 #include "ml-base.h"
 #include "ml-values.h"
 #include "ml-objects.h"
@@ -34,5 +33,4 @@ ml_val_t _util_NetDB_mknetent (ml_state_t *msp, struct netent *nentry)
 	OPTION_SOME (msp, res, res);
 	return res;
     }
-
 } /* end of _util_NetDB_mknetent */

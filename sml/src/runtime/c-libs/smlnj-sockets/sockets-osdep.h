@@ -38,8 +38,23 @@ typedef void *sockoptval_t;	/* The pointer type used to pass values to */
 #    define INCLUDE_RPCENT_H	<rpc/rpc.h>
 #  endif
 
+#include "ml-unixdep.h"
+/* FIXME: The following includes are not needed in every file, yet they
+   cannot be moved to where they are used since that would break compilation
+   under Windows */
+#include INCLUDE_TYPES_H
+#include INCLUDE_IN_H
+#include INCLUDE_TCP_H
+#include <netdb.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #elif defined(OPSYS_WIN32) || defined(OPSYS_CYGWIN)
-#  include <winsock.h>
+#  define INCLUDE_SOCKET_H      <winsock2.h>
+
+/* FIXME:  Is ioctlsocket() on Windows really the same as ioctl() on Unix?
+   It does seem so, yet the second parameter is of a different type */
+#  define ioctl ioctlsocket
 
 typedef char *sockoptval_t;	/* The pointer type used to pass values to */
 				/* getsockopt/setsockopt */

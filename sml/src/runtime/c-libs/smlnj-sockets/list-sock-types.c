@@ -7,6 +7,7 @@
 #include "ml-objects.h"
 #include "sock-util.h"
 #include "cfun-proto-list.h"
+#include "ml-c.h"
 
 /* _ml_Sock_listsocktypes
  *
