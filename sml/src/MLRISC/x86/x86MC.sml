@@ -1,4 +1,4 @@
-(* X86MC.sml
+(*
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -9,6 +9,7 @@
 functor X86MCEmitter
   (structure Instr : X86INSTR
    structure Shuffle : X86SHUFFLE where I = Instr
+   structure MLTreeEval : MLTREE_EVAL where T = Instr.T
    structure MemRegs : MEMORY_REGISTERS where I = Instr
    val memRegBase : CellsBasis.cell option
    structure AsmEmitter : INSTRUCTION_EMITTER where I = Instr) : MC_EMIT = 
@@ -20,12 +21,7 @@ struct
   structure W8 = Word8
   structure W = LargeWord
   structure CB = CellsBasis
-  structure LE = 
-    MLTreeEval
-      (structure T = I.T
-       fun eq _ _ = false 
-       val eqSext = eq  val eqRext = eq
-       val eqFext = eq val eqCCext = eq)
+  structure LE = MLTreeEval 
 
   val itow  = Word.fromInt
   val wtoi  = Word.toInt
@@ -262,7 +258,7 @@ struct
              | _ => 
                 eBytes[Word8.+(0wx70,code), Word8.fromInt(i-2)]
        end 
-     | I.CALL{opnd=I.Relative _, ...} => error "CALL: Not implemented"
+     | I.CALL{opnd=I.Relative i,...} => eBytes(0wxe8::eLong(Int32.fromInt(i-5)))
      | I.CALL{opnd, ...} => encode(0wxff, 2, opnd)
      | I.RET NONE => eByte 0xc3
      (* integer *)

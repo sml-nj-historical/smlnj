@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2002/03/10 23:55:00 EST
+Tag: leunga-20020310-x86-call
+Description:
+
+   Added machine generation for CALL instruction (relative displacement mode)
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/08 16:05:00
 Tag: blume-20020308-entrypoints
