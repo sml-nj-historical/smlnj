@@ -1,0 +1,29 @@
+This is substantially new version of the SML/NJ Library.  It is
+now organized into a utility library, and a collection of application
+libraries; each with its own subdirectory.  Here is a roadmap of
+the library structure:
+
+  Directory	Sources File		Description
+  -------------------------------------------------
+  Util		smlnj-lib.cm		This is the general utility library.
+
+  RegExp	regexp-lib.cm		Regular-expression library.
+
+  PP		pp-lib.cm		Pretty-printing library.
+
+  HTML		html-lib.cm		This library provides parsing and pretty
+					printing of HTML (Version 3.2).
+
+  Unix		unix-lib.cm		Unix specific utilities (including
+					networking).
+
+  INet		inet-lib.cm		Networking utilities (for both Unix
+					and Windows).
+
+  Reactive	reactive-lib.cm		A low-level reactive scripting library.
+
+The first column is the source directory, the second gives the library sources
+file alias (to be used in your application's sources.cm file), and the third
+column gives a brief description.  Look at the Doc dicrectory and at the README
+files in the individual subdirectories for more documentation.
+

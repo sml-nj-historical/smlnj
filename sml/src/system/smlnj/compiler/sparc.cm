@@ -1,0 +1,13 @@
+(*
+ * Library exporting "visible" compiler for Sparc.
+ *
+ * (C) 2001, Lucent Technologies, Bell Labs
+ *
+ * author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	structure SparcCompiler
+is
+	$smlnj/viscomp/core.cm
+	$smlnj/viscomp/sparc.cm
+	sparc.sml

@@ -1,0 +1,40 @@
+(* This file is created by makeallcm *)
+Library
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	ALPHA.cm
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/MLRISC.cm
+	$/RTL.cm
+	$/Region.cm
+	$/ALPHA.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	ALPHA.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	MLRISC.cm
+	RTL.cm
+	Region.cm
+	ALPHA.cm
+#endif
+	../alpha/mltree/alphaRTL.sml 
+	../alpha/mltree/alphaRTLProps.sml 

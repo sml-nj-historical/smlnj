@@ -1,0 +1,16 @@
+(*
+ * Library implementing the bootstrap compiler for Alpha32/Unix.
+ *
+ * (C) 2001 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@research.bell-labs.com)
+ *)
+Library
+	structure Alpha32UnixCMB
+is
+	$/basis.cm
+	$smlnj/internal/cm-sig-lib.cm
+	$smlnj/internal/cm-lib.cm
+	$smlnj/internal/host-compiler-0.cm
+	$smlnj/viscomp/alpha32.cm
+	alpha32-unix.sml

@@ -1,0 +1,14 @@
+@FILES
+  {"mailbox"; "The Mailbox structure";}
+@SIGNATURE MAILBOX "mailbox" {
+  @TYPES 
+    @TYPE mbox
+  @VALS 
+    sameMailbox
+    recvPoll
+    send
+    recvEvt
+    recv
+    mailbox
+}
+@STRUCTURE Mailbox "mailbox" MAILBOX
