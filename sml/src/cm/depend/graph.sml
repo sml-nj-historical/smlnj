@@ -1,14 +1,20 @@
+(*
+ * Internal data structure representing a CM dependency graph.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 structure DependencyGraph = struct
 
-    type smlinfo = unit
-    type groupinfo = unit
-    type primitive = unit
+    type groupinfo = Dummy.t
+    type primitive = Dummy.t
 
     type filter = SymbolSet.set option
 
     datatype node =
 	PNODE of primitive
-      | NODE of { smlinfo: smlinfo,
+      | NODE of { smlinfo: SmlInfo.info,
 		  localimports: node list,
 		  globalimports: farnode list }
 
@@ -23,4 +29,7 @@ structure DependencyGraph = struct
 		   exports: farnode SymbolMap.map,
 		   dangling: node list }
 
+
+    fun describeNode (PNODE p) = Dummy.f ()
+      | describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo
 end

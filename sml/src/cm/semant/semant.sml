@@ -10,6 +10,7 @@ signature CM_SEMANT = sig
     exception ExplicitError of string
     exception ExpressionError of exn
 
+    type context = AbsPath.context
     type pathname = AbsPath.t
     type ml_symbol
     type cm_symbol
@@ -25,16 +26,15 @@ signature CM_SEMANT = sig
     type complainer = string -> unit
 
     (* getting elements of primitive types (pathnames and symbols) *)
-    val file_native : string * pathname -> pathname
-    val file_standard : string * pathname -> pathname
+    val file_native : string * context -> pathname
+    val file_standard : string * context -> pathname
     val cm_symbol : string -> cm_symbol
     val ml_structure : string -> ml_symbol
     val ml_signature : string -> ml_symbol
     val ml_functor : string -> ml_symbol
     val ml_funsig : string -> ml_symbol
 
-    (* getting the full analysis for a group/library (or an alias thereof) *)
-    val alias : pathname -> group
+    (* getting the full analysis for a group/library *)
     val group : perms * exports * members -> group
     val library : perms * exports * members -> group
 
@@ -45,7 +45,9 @@ signature CM_SEMANT = sig
 
     (* constructing member collections *)
     val emptyMembers : members
-    val member : pathname * cm_symbol option -> members
+    val member : (pathname -> group)
+	-> { sourcepath: pathname, group: pathname, class: cm_symbol option }
+	-> members
     val members : members * members -> members
     val guarded_members : exp * (members * members) -> members
     val error_member : string -> members
@@ -92,10 +94,11 @@ structure CMSemant :> CM_SEMANT = struct
     structure SymPath = GenericVC.SymPath
 
     type pathname = AbsPath.t
+    type context = AbsPath.context
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
 
-    type group = unit
+    type group = Dummy.t
 
     type environment = MemberCollection.collection
 
@@ -121,9 +124,8 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_functor = Symbol.fctSymbol
     val ml_funsig = Symbol.fsigSymbol
 
-    fun alias (f: pathname) = ()
-    fun group (p: perms, e: exports, m: members) = ()
-    fun library (p: perms, e: exports, m: members) = ()
+    fun group (p: perms, e: exports, m: members) = Dummy.v
+    fun library (p: perms, e: exports, m: members) = Dummy.v
 
     local
 	val isMember = StringSet.member
@@ -142,9 +144,16 @@ structure CMSemant :> CM_SEMANT = struct
 	     { required = required, granted = StringSet.add (granted, s) })
     end
 
+    (* get the export map from a group *)
+    fun getExports (g: group) =
+	(Dummy.f ()) : DependencyGraph.farnode SymbolMap.map
+
     fun emptyMembers env = env
-    fun member (f, c) env =
-	MemberCollection.sequential (env, MemberCollection.expandOne (f, c))
+    fun member rparse arg env = let
+	val coll = MemberCollection.expandOne (getExports o rparse) arg
+    in
+	MemberCollection.sequential (env, coll)
+    end
     fun members (m1, m2) env = m2 (m1 env)
     fun guarded_members (c, (m1, m2)) env =
 	if saveEval (c, env) then m1 env else m2 env

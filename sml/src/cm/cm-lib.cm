@@ -14,14 +14,22 @@ is
 
 	semant/members.sml
 	semant/semant.sml
+	semant/primitive.sml
 
 	depend/graph.sml
 
+	smlfile/smlinfo.sml
+	smlfile/skeleton.sml
+
 	paths/pathconfig.sml
 	paths/abspath.sml
+
+	tools/tools.sml
 
 	util/sources.cm
 
 	../compiler/viscomp-lib.cm
 
 	ml-yacc-lib.cm
+
+	dummy.sml

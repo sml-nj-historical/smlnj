@@ -1,3 +1,10 @@
+(*
+ * Parser for CM description files.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature CMPARSE = sig
     val parse : AbsPath.t -> CMSemant.group option
 end
@@ -18,9 +25,26 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    fun parse filename = let
-	val currentDir = AbsPath.dir filename
-	val filename = AbsPath.name filename
+    fun parse group = let
+
+	(* recParse returns a group (not an option)
+	 * and re-raises LrParser.ParseError.
+	 * This exception will be handled by the surrounding
+	 * call to parse.
+	 * This function is used to parse aliases and sub-groups. *)
+	fun recParse p =
+	    case parse p of
+		NONE => raise LrParser.ParseError
+	      | SOME res => res
+
+	fun doMember (p, c) =
+	    CMSemant.member recParse { sourcepath = p,
+				       group = group,
+				       class = c }
+
+	val currentDir = AbsPath.dir group
+	val context = AbsPath.relativeContext (AbsPath.dir group)
+	val filename = AbsPath.name group
 	val stream = TextIO.openIn filename
 	val errcons =
 	    { linewidth = !P.linewidth, flush = P.flush, consumer = P.say }
@@ -92,7 +116,7 @@ structure CMParse :> CMPARSE = struct
 	val (parseResult, _) =
 	    CMParse.parse (lookAhead, tokenStream,
 			   fn (s,p1,p2) => error (p1, p2) s,
-			   (currentDir, error))
+			   (context, error, recParse, doMember))
     in
 	TextIO.closeIn stream;
 	SOME parseResult

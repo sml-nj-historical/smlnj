@@ -7,15 +7,20 @@
  *)
 signature ABSPATH = sig
 
+    type context
     type t
 
     val revalidateCwd : unit -> unit
 
+    val cwdContext: unit -> context
+    val configContext: (unit -> string) -> context
+    val relativeContext: t -> context
+
     val name : t -> string
     val compare : t * t -> order
 
-    val native : { context: t, spec: string } -> t
-    val standard : { context: t, spec: string } -> t
+    val native : { context: context, spec: string } -> t
+    val standard : { context: context, spec: string } -> t
 
     val joinDirFile : { dir: t, file: string } -> t
     val splitDirFile : t -> { dir: t, file: string }
@@ -39,12 +44,12 @@ structure AbsPath :> ABSPATH = struct
       | compareId (PRESENT _, ABSENT _) = GREATER
       | compareId (ABSENT s, ABSENT s') = String.compare (s, s')
 
-    fun getId f = PRESENT (F.fileId f) handle _ => ABSENT f
+    fun getId f = (PRESENT (F.fileId f) handle _ => ABSENT f)
 
     type elaboration = { stamp : unit ref,
 			 name : string,
 			 id : id option ref }
-	 
+
     (* When a relative name is to be looked up wrt. CUR:
      *  - if the cwd hasn't changed since, then use relative path
      *  - if the cwd has changed, then make absolute path using name
@@ -54,11 +59,15 @@ structure AbsPath :> ABSPATH = struct
      *)
 
     type cwdinfo = { stamp: unit ref, name: string, id: id }
-    datatype t =
+
+    datatype context =
 	CUR of cwdinfo
       | CONFIG_ANCHOR of { fetch: unit -> string,
 			   cache: elaboration option ref }
-      | SPEC of { context: t,
+      | RELATIVE of t
+
+    and  t =
+	PATH of { context: context,
 		  spec: string,
 		  cache: elaboration option ref }
 
@@ -100,40 +109,50 @@ structure AbsPath :> ABSPATH = struct
 		    else ()
 		end
 
-	(* elaborate a path -- uses internal caching, don't cache
-	 * results externally! *)
-	fun elab p = let
-	    fun mkElab (cache, name) = let
-		val e = { stamp = !elabStamp, name = name, id = ref NONE }
-	    in
-		cache := SOME e; e
-	    end
-	    fun resolve_anchor { fetch, cache } = mkElab (cache, fetch ())
-	    fun resolve_spec { context, spec, cache } = let
-		val name =
-		    if P.isAbsolute spec then spec
-		    else P.mkCanonical (P.concat (#name (elab context), spec))
-	    in
-		mkElab (cache, name)
-	    end
+	fun cwdContext () =
+	    CUR { stamp = cwdStamp (), name = cwdName (), id = cwdId () }
+
+	fun configContext fetch =
+	    CONFIG_ANCHOR { fetch = fetch, cache = ref NONE }
+
+	fun relativeContext p = RELATIVE p
+
+	fun mkElab (cache, name) = let
+	    val e : elaboration =
+		{ stamp = !elabStamp, name = name, id = ref NONE }
 	in
-	    case p of
+	    cache := SOME e; e
+	end
+
+	fun validElab NONE = NONE
+	  | validElab (SOME (e as { stamp, name, id })) =
+	    if stamp = !elabStamp then SOME e else NONE
+
+	fun elabContext c =
+	    case c of
 		CUR { stamp, name, id } =>
 		    { stamp = !elabStamp, id = ref (SOME id),
-		      name = if stamp = cwdStamp ()
-		                   orelse name = cwdName () then
-				 P.currentArc
-			    else name }
-	      | CONFIG_ANCHOR (a as { cache = ref NONE, ... }) =>
-		    resolve_anchor a
-	      | CONFIG_ANCHOR (a as { cache = ref (SOME (e as { stamp, ... })),
-				      ... }) =>
-		    if stamp = !elabStamp then e else resolve_anchor a
-	      | SPEC (s as { cache = ref NONE, ... }) =>
-		    resolve_spec s
-	      | SPEC (s as { cache = ref (SOME (e as { stamp, ... })), ...}) =>
-		    if stamp = !elabStamp then e else resolve_spec s
-	end
+		      name = if stamp = cwdStamp () orelse 
+		                name = cwdName ()
+			     then P.currentArc else name }
+	      | CONFIG_ANCHOR { fetch, cache } =>
+		    (case validElab (!cache) of
+			 SOME e => e
+		       | NONE => mkElab (cache, fetch ()))
+	      | RELATIVE p => elab p
+
+	and elab (PATH { context, spec, cache }) =
+	    (case validElab (!cache) of
+		 SOME e => e
+	       | NONE => let
+		     val name =
+			 if P.isAbsolute spec then spec
+			 else P.mkCanonical
+			     (P.concat (#name (elabContext context),
+					spec))
+		 in
+		     mkElab (cache, name)
+		 end)
 
 	(* get the file id (calls elab, so don't cache externally!) *)
 	fun id p = let
@@ -155,7 +174,7 @@ structure AbsPath :> ABSPATH = struct
 	fun compare (p1, p2) = compareId (id p1, id p2)
 
 	fun fresh (context, spec) =
-	    SPEC { context = context, spec = spec, cache = ref NONE }
+	    PATH { context = context, spec = spec, cache = ref NONE }
 
 	(* make an abstract path from a native string *)
 	fun native { spec, context } = fresh (context, spec)
@@ -191,34 +210,29 @@ structure AbsPath :> ABSPATH = struct
 	end
 
 	(* . and .. are not permitted as file parameter *)
-	fun joinDirFile { dir, file } =
+	fun joinDirFile { dir = PATH { context, spec, ... }, file } =
 	    if file = P.currentArc orelse file = P.parentArc then
 		raise Fail "AbsPath.joinDirFile: . or .."
-	    else case dir of
-		(CUR _ | CONFIG_ANCHOR _) => fresh (dir, file)
-	      | SPEC { context, spec, ... } =>
-		    fresh (context, P.joinDirFile { dir = spec, file = file })
+	    else fresh (context, P.joinDirFile { dir = spec, file = file })
 
 	(* splitDirFile never walks past a context.
 	 * Moreover, it is an error to split something that ends in "..". *)
-	fun splitDirFile (x as (CUR _ | CONFIG_ANCHOR _)) =
-	    raise Fail "AbsPath.splitDirFile: CUR or CONFIG_ANCHOR"
-	  | splitDirFile (SPEC { context, spec, ... }) = let
-		fun loop "" =
-		    raise Fail "AbsPath.splitDirFile: tried to split context"
-		  | loop spec = let
-			val { dir, file } = P.splitDirFile spec
-		    in
-			if file = P.currentArc then loop dir
-			else if file = P.parentArc then
-			    raise Fail "AbsPath.splitDirFile: <path>/.."
-			else (dir, file)
-		    end
-		val (dir, file) = loop spec
-		val dir = if dir = "" then context else fresh (context, dir)
-	    in
-		{ dir = dir, file = file }
-	    end
+	fun splitDirFile (PATH { context, spec, ... }) = let
+	    fun loop "" =
+		raise Fail "AbsPath.splitDirFile: tried to split a context"
+	      | loop spec = let
+		    val { dir, file } = P.splitDirFile spec
+		in
+		    if file = P.currentArc then loop dir
+		    else if file = P.parentArc then
+			raise Fail "AbsPath.splitDirFile: <path>/.."
+		    else (dir, file)
+		end
+	    val (dir, file) = loop spec
+	    val dir = if dir = "" then P.currentArc else dir
+	in
+	    { dir = fresh (context, dir), file = file }
+	end
 
 	val dir = #dir o splitDirFile
 	val file = #file o splitDirFile
