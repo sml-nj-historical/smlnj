@@ -1,0 +1,87 @@
+Basic SML version of the hierachical N-body problem (Barnes-Hut),
+adapted from the C version.
+
+Load the BarnesHut structure as follows:
+
+	 use "random.sml";
+	 use "bhmath.sml";
+	 use "bhutil.sml";
+	 use "bh.sml";
+
+To run it on the Plummer model, evaluate
+	(BarnesHut.testit n)
+where n is the number of bodies. (n=128 is a good value.)
+
+Currently, no "body" interface is provided, i.e., it's not possible to 
+load a set of bodies from a file nor are final positions, velocities, etc.
+reported.
+ 
+
+
+README file for the C version:
+---------------------------------------------------------------------------
+								January 3 1991
+
+    This is the third release of the hierarchical N-body program.  The
+algorithm used to compute gravitational forces has asymptotic complexity of
+O(N log N).  This is achieved by building a tree structure to represent the
+mass distribution and estimating forces by a partial recursive descent of this
+tree.  See "A Hierarchical O(N log N) Force Calculation Algorithm", by Joshua
+Barnes and Piet Hut, Nature, 324, 446, and "Error Analysis of a Tree Code", by
+Joshua Barnes and Piet Hut, Astrophysical Journal Supplement, 70, 389, for
+more information.
+
+    This version includes several improvements on version one.  At the cost of
+3 real numbers per particle, used to remember the acceleration from the last
+step, the leap-frog integrator has been reorganized so as to synchronize
+positions and velocities at the end of each step; this makes the control and
+output procedures simpler.  Tree construction has been recast as an iterative
+rather than recursive procedure, again reducing the complexity. Last but not
+least, Lars Hernquist has implemented quadrupole corrections for body-cell
+interactions, much improving the accuracy of the method; see "Performance
+Characteristics of Tree Codes", by Lars Hernquist, Astrophysical Journal
+Supplement, 64, 715.
+
+    The source files for our tree code have been bundled together for ease of
+distribution.  On a UNIX system, you can split this file simply by invoking
+the Bourne shell on it (use the sh command).  On other systems, you may have
+to edit this file and split it up by hand; note that file X is delimited by
+lines containing the message End of X.  Once you have split this file, you can
+compile it by running make on a UNIX system (NOTE: on a CRAY, you must first
+uncomment the Makefile line defining CFLAGS = -DCRAY).  On other systems, you
+will have to figure out how to run the C compiler; take a look at the Makefile
+for hints.  Running the program with the default input parameters (type a <CR>
+to all prompts) will start a short calculation with a few particles to test
+things out.
+
+    These sources include a few files which you may find generally useful:
+"stdinc.h", a standard include file with common definitions, "vectmath.h", a
+set of macros for elementary vector and matrix operations, "getparam.c", a
+simple, standardized user interface, and "util.c", some miscellaneous
+utilities.  These are part of a large collection of software for numerical
+experiments with gravitating systems.
+
+    We offer NO WARRANTY on the software supplied here -- use it at your own
+risk.  We impose NO RESTRICTIONS on use and distribution of our code -- you
+are free to use this software for any application, modify it in any way, use
+pieces in other programs, and give it away to anyone else.  We encourage you
+to extend these rights to others who receive this software from you (in this
+we follow the philosophy and intentions of the Free Software Foundation).  We
+would appreciate a brief acknowledgement in any scientific papers you write
+using our code, and we would also like to receive preprints of such papers.
+To avoid placing lengthy copyright notices in each file, we simply state that
+"It's free because it's yours".
+
+    Have fun and stay in touch.
+
+	Joshua E. Barnes
+
+	Institute for Astronomy
+	University of Hawaii
+	2680 Woodlawn Drive
+	Honolulu, Hawaii  96822
+
+	(808) 956-8138
+
+	barnes@zeno.ifa.hawaii.edu
+

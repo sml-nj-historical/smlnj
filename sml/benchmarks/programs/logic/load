@@ -1,0 +1,13 @@
+app use [
+    "term.sml",
+    "trail.sml",
+    "unify.sml",
+(** these three modules are only for debugging
+    "get.sml",
+    "name.sml",
+    "makestring.sml",
+**)
+    "data.sml",
+    "main.sml"
+  ];
+

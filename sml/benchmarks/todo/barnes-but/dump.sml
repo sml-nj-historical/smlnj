@@ -1,0 +1,176 @@
+(* dump.sml
+ *
+ * COPYRIGHT (c) 1993, AT&T Bell Laboratories.
+ *
+ * Code to dump out the tree as a ``dot'' specification.
+ *)
+
+functor Dump (V : VECTOR) =
+  struct
+    structure M = Main(V)
+    structure S = M.S
+    structure V = M.V
+
+    fun assignProcs (root, nbodies, nprocs) = let
+	  val bodiesPerProc = nbodies quot nprocs
+	  fun assignBody (S.Body{proc, ...}, cnt) = (
+		proc := (cnt quot bodiesPerProc);
+		cnt+1)
+	  fun assignNode (S.Empty, cnt) = cnt
+	    | assignNode (S.Node{cell = S.BodyCell b, ...}, cnt) =
+		assignBody (b, cnt)
+	    | assignNode (S.Node{proc, cell = S.Cell a, ...}, cnt) = let
+		fun assign1 i = (case Array.sub(a, i)
+		       of S.Empty => assign1 (i+1)
+			| (nd as S.Node{proc=p, ...}) => let
+			    val cnt' = assignNode (nd, cnt)
+			    in
+			      proc := !p;
+			      assign (i+1, cnt')
+			    end
+		      (* end case *))
+		and assign (i, cnt) = if (i < S.nsub)
+		      then assign (i+1, assignNode(Array.sub(a, i), cnt))
+		      else cnt
+		in
+		  assign1 0
+		end
+	  in
+	    assignNode (root, 0)
+	  end
+
+    fun assignProcs' (root, nbodies, nprocs) = let
+	  val bodiesPerProc = nbodies quot nprocs
+	  fun assignBody (S.Body{proc, ...}, p) = proc := p
+	  fun assignNode (S.Empty, cnt, level, proc) = cnt
+	    | assignNode (S.Node{cell = S.BodyCell b, ...}, cnt, 0, p) = (
+		assignBody (b, p); cnt+1)
+	    | assignNode (S.Node{cell = S.BodyCell b, ...}, cnt, _, _) = (
+		assignBody (b, cnt quot bodiesPerProc); cnt+1)
+	    | assignNode (S.Node{proc, cell = S.Cell a, ...}, cnt, level, p) = let
+		val p' = if (level <> 1) then p else (cnt quot bodiesPerProc)
+		val level = max(0, level-1)
+		fun assign1 i = (case Array.sub(a, i)
+		       of S.Empty => assign1 (i+1)
+			| nd => let
+			    val cnt' = assignNode (nd, cnt, level, p')
+			    in
+			      proc := p;
+			      assign (i+1, cnt')
+			    end
+		      (* end case *))
+		and assign (i, cnt) = if (i < S.nsub)
+		      then assign (i+1, assignNode(Array.sub(a, i), cnt, level, p'))
+		      else cnt
+		in
+		  assign1 0
+		end
+	  in
+	    assignNode (root, 0, 4, 0)
+	  end
+
+    val ctable = #[
+	    "yellow", "blue", "green", "red",
+	    "lightgrey", "yellowgreen", "navyblue", "coral"
+          ]
+
+    fun dumpTree (fname, root, bodies, colorNodes) = let
+	  val strm = IO.open_out fname
+	  fun print (fmt, items) = IO.output (strm, Format.format fmt items)
+(**
+	  fun indent i = Format.LEFT(i+i, Format.STR "")
+**)
+	  fun indent i = Format.STR ""  (* because of a bug in Format *)
+	  fun color (i, id, proc) =
+		print ("%s  nd%d [style=filled, color=%s];\n", [
+		    indent i, Format.INT id, Format.STR(Vector.sub(ctable, proc))
+		  ])
+	  val color = if colorNodes then color else (fn _ => ())
+	  fun bodyName b = let
+		fun find ([], _) = raise Fail "bodyNd"
+		  | find (b'::r, i) = if (b = b') then i else find(r, i+1)
+		in
+		  find (bodies, 0)
+		end
+	  fun bodyNd (i, id, b) =
+		print ("%s  nd%d [label=\"%d\", shape=ellipse, height=0.2, width=0.3];\n", [
+		    indent i, Format.INT id, Format.INT(bodyName b)
+		  ])
+	  fun cellNd (i, id) =
+		print ("%s  nd%d [label=\"\", shape=box, height=0.1, width=0.4];\n", [
+		    indent i, Format.INT id
+		  ])
+	  fun edge (i, fromId, toId) = print ("%s  nd%d -> nd%d;\n", [
+		  indent i, Format.INT fromId, Format.INT toId
+		])
+	  val levels = Array.array(32, [] : int list)
+	  fun addNd (lvl, id) =
+		Array.update(levels, lvl, id :: Array.sub(levels, lvl))
+	  fun prLevels () = let
+		fun loop i = (case Array.sub(levels, i)
+		       of [] => ()
+			| l => (
+			    print ("  { rank = same;", []);
+			    app (fn id => print(" nd%d;", [Format.INT id])) l;
+			    print ("};\n", []);
+			    loop (i+1))
+		      (* end case *))
+		in
+		  loop 0
+		end
+	  fun walk (_, _, S.Empty, nextId) = nextId
+	    | walk (lvl, parentId, S.Node{proc, cell, ...}, nextId) = (
+		addNd (lvl, nextId);
+		edge (lvl, parentId, nextId);
+		case cell
+		 of (S.BodyCell b) => (
+		      bodyNd(lvl+1, nextId, b);
+		      color (lvl+1, nextId, !proc);
+		      nextId+1)
+		  | (S.Cell a) => (
+		      cellNd(lvl+1, nextId);
+		      color (lvl+1, nextId, !proc);
+		      walkCell(lvl+1, a, nextId))
+		(* end case *))
+	  and walkCell (lvl, a, parentId) = let
+		fun lp (i, nextId') = if (i < S.nsub)
+		      then lp (i+1, walk (lvl, parentId, Array.sub(a, i), nextId'))
+		      else nextId'
+		in
+		  lp (0, parentId+1)
+		end
+	  in
+	    print ("digraph tree {\n", []);
+            print ("  orientation = land;\n", []);
+	    print ("  size = \"10,7\";\n", []);
+	    print ("  ordering = out;\n", []);
+	    print ("  fontsize = 8\n", []);
+	    print ("  ranksep = 2\n", []);
+	    case root
+	     of S.Empty => ()
+	      | (S.Node{proc, cell=S.BodyCell b, ...}) => (
+		  addNd (0, 0); bodyNd(0, 0, b); color (0, 0, !proc); ())
+	      | (S.Node{proc, cell=S.Cell a, ...}) => (
+		  addNd (0, 0); cellNd (0, 0); color (0, 0, !proc);
+		  walkCell(1, a, 0); ())
+	    (* end case *);
+	    prLevels ();
+	    print ("}\n", []);
+	    IO.close_out strm
+	  end
+
+    fun dumpTest mkData {fname, nbodies, nprocs} = let
+	  val _ = M.srand 123
+	  val data = mkData nbodies
+	  val S.Space{root, ...} =
+		M.L.makeTree (data, V.tabulate (fn _ => ~2.0), 4.0);
+	  in
+	    if (nprocs <= 1)
+	      then dumpTree (fname, root, data, false)
+	      else (
+	        assignProcs' (root, nbodies, nprocs);
+	        dumpTree (fname, root, data, true))
+	  end
+
+  end;
+
