@@ -142,8 +142,6 @@ set-variable command.")
   "*Run upon entering `sml-mode'.
 This is a good place to put your preferred key bindings.")
 
-(defvar sml-mode-abbrev-table nil "*Abbrev table for `sml-mode'.")
-
 ;;; CODE FOR SML-MODE
 
 (defun sml-mode-info ()
@@ -275,6 +273,10 @@ This mode runs `sml-mode-hook' just before exiting.
 \\{sml-mode-map}"
   (set (make-local-variable 'font-lock-defaults) sml-font-lock-defaults)
   (set (make-local-variable 'outline-regexp) sml-outline-regexp)
+  (set (make-local-variable 'add-log-current-defun-function)
+       'sml-current-fun-name)
+  ;; forward-sexp-function is an experimental variable in my hacked Emacs.
+  (set (make-local-variable 'forward-sexp-function) 'sml-user-forward-sexp)
   (sml-mode-variables))
 
 (defun sml-mode-variables ()
@@ -379,7 +381,7 @@ If anyone has a good algorithm for this..."
   "Indent current line of ML code."
   (interactive)
   (let ((savep (> (current-column) (current-indentation)))
-	(indent (or (ignore-errors (sml-calculate-indentation)) 0)))
+	(indent (max (or (ignore-errors (sml-calculate-indentation)) 0) 0)))
     (if savep
 	(save-excursion (indent-line-to indent))
       (indent-line-to indent))))
@@ -617,13 +619,50 @@ Optional argument STYLE is currently ignored"
 		 (not (or (member sym syms) (bobp)))))
       (unless (bobp) sym))))
 
+(defun sml-skip-siblings ()
+  (while (and (not (bobp)) (sml-backward-arg))
+    (sml-find-matching-starter sml-starters-syms))
+  (when (looking-at "in\\>\\|local\\>")
+    ;;skip over `local...in' and continue
+    (forward-word 1)
+    (sml-backward-sexp nil)
+    (sml-skip-siblings)))
+
+(defun sml-beginning-of-defun ()
+  (let ((sym (sml-find-matching-starter sml-starters-syms)))
+    (if (member sym '("fun" "functor" "signature" "structure"
+		      "abstraction" "datatype" "abstype"))
+	(save-excursion (sml-forward-sym) (sml-forward-spaces)
+			(sml-forward-sym))
+      ;; We're inside a "non function declaration": let's skip all other
+      ;; declarations that we find at the same level and try again.
+      (sml-skip-siblings)
+      ;; Obviously, let's not try again if we're at bobp.
+      (unless (bobp) (sml-beginning-of-defun)))))
+
+(defcustom sml-max-name-components 3
+  "Maximum number of components to use for the current function name."
+  :group 'sml
+  :type 'integer)
+
+(defun sml-current-fun-name ()
+  (save-excursion
+    (let ((count sml-max-name-components)
+	  fullname name)
+      (end-of-line)
+      (while (and (> count 0)
+		  (setq name (sml-beginning-of-defun)))
+	(decf count)
+	(setq fullname (if fullname (concat name "." fullname) name))
+	;; Skip all other declarations that we find at the same level.
+	(sml-skip-siblings))
+      fullname)))
+    
+
 (defun sml-comment-indent ()
   (if (looking-at "^(\\*")              ; Existing comment at beginning
       0                                 ; of line stays there.
-    (save-excursion
-      (skip-chars-backward " \t")
-      (max (1+ (current-column))        ; Else indent at comment column
-           comment-column))))           ; except leave at least one space.
+    comment-column))
 
 ;;; INSERTING PROFORMAS (COMMON SML-FORMS)
 
@@ -644,6 +683,7 @@ signature, structure, and functor by default.")
   (let ((fsym (intern (concat "sml-form-" name))))
     `(progn
        (add-to-list 'sml-forms-alist ',(cons name fsym))
+       (define-abbrev sml-mode-abbrev-table ,name "" ',fsym)
        (define-skeleton ,fsym
 	 ,(format "SML-mode skeleton for `%s..' expressions" name)
 	 ,interactor
@@ -672,11 +712,28 @@ signature, structure, and functor by default.")
 (sml-def-skeleton "functor" "Functor name: "
   str " () : =\nstruct" > "\n" > _ "\nend" >)
 
-(sml-def-skeleton "datatype" "Datatype name and type parameters: "
+(sml-def-skeleton "datatype" "Datatype name and type params: "
   str " =" \n)
 
-(sml-def-skeleton "abstype" "Abstype name and type parameters: "
+(sml-def-skeleton "abstype" "Abstype name and type params: "
   str " =" \n _ "\nwith" > "\nend" >)
+
+;;
+
+(sml-def-skeleton "struct" nil
+  _ "\nend" >)
+
+(sml-def-skeleton "sig" nil
+  _ "\nend" >)
+
+(sml-def-skeleton "val" nil
+  _ " = " >)
+
+(sml-def-skeleton "fn" nil
+  _ " =>" >)
+
+(sml-def-skeleton "fun" nil
+  _ " =" >)
 
 ;;
 
@@ -696,12 +753,11 @@ signature, structure, and functor by default.")
 If the point directly precedes a symbol for which an SML form exists,
 the corresponding form is inserted."
   (interactive)
-  (let* ((point (point))
-	 (sym (sml-backward-sym)))
-    (if (not (and sym (assoc sym sml-forms-alist)))
-	(progn (goto-char point) (insert " "))
-      (delete-region (point) point)
-      (sml-insert-form sym nil))))
+  (let ((abbrev-mode (not abbrev-mode))
+	(last-command-char ?\ )
+	;; Bind `this-command' to fool skeleton's special abbrev handling.
+	(this-command 'self-insert-command))
+    (call-interactively 'self-insert-command)))
 
 (defun sml-insert-form (name newline)
   "Interactive short-cut to insert the NAME common ML form.

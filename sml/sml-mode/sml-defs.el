@@ -36,7 +36,7 @@
 ;;; Internal defines
 ;;; 
 
-(defmap sml-bindings
+(defmap sml-mode-map
   ;; smarter cursor movement
   '((forward-sexp	. sml-user-forward-sexp)
     (backward-sexp	. sml-user-backward-sexp)
@@ -44,26 +44,18 @@
     ("\C-c\C-m"	. sml-insert-form)
     ("\C-c\C-i"	. sml-mode-info)
     ("\M-|"	. sml-electric-pipe)
-    ("\M-\ "	. sml-electric-pipe)
+    ("\M-\ "	. sml-electric-space)
     ("\;"	. sml-electric-semi)
     ("\M-\t"	. sml-back-to-outer-indent)
-    ;;("\C-\M-\\"	. sml-indent-region)
-    ;;("\t"	. sml-indent-line)	; ...except this one
     ;; Process commands added to sml-mode-map -- these should autoload
     ("\C-c\C-l"	. sml-load-file)
-    ;;("\C-c`"	. sml-next-error)
-    )
-  "Generic bindings used in `sml-mode' and `inferior-sml-mode'."
-  :group 'sml)
-
-(defmap sml-mode-map
-  '(("\C-c\C-c" . sml-compile)
+    ("\C-c\C-c" . sml-compile)
     ("\C-c\C-s" . switch-to-sml)
     ("\C-c\C-r" . sml-send-region)
     ("\C-c\C-b" . sml-send-buffer)
     ([(meta shift down-mouse-1)] . sml-drag-region))
   "The keymap used in `sml-mode'."
-  :inherit sml-bindings
+  ;; :inherit sml-bindings
   :group 'sml)
 
 (defsyntax sml-mode-syntax-table
@@ -75,8 +67,7 @@
     ;; `!' is not really a prefix-char, oh well!
     ("~#!" . "'")
     ("%&$+-/:<=>?@`^|"	 . "."))
-  "The syntax table used in sml-mode.")
-
+  "The syntax table used in `sml-mode'.")
 
 
 (easy-menu-define sml-mode-menu sml-mode-map "Menu used in sml-mode."
@@ -94,9 +85,9 @@
      ;;["goto next error"		sml-next-error	(featurep 'sml-proc)]
      ["goto next error"		next-error	(featurep 'sml-proc)]
      ["---" nil nil]
-     ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
-     ["Poly/ML"			sml-poly-ml	(fboundp 'sml-poly-ml)]
-     ["Moscow ML"		sml-mosml	(fboundp 'sml-mosml)]
+     ;; ["Standard ML of New Jersey" sml-smlnj	(fboundp 'sml-smlnj)]
+     ;; ["Poly/ML"			sml-poly-ml	(fboundp 'sml-poly-ml)]
+     ;; ["Moscow ML"		sml-mosml	(fboundp 'sml-mosml)]
      ["Help for Inferior ML"	(describe-function 'inferior-sml-mode) :active (featurep 'sml-proc)])
     ["electric pipe"     sml-electric-pipe t]
     ["insert SML form"   sml-insert-form t]

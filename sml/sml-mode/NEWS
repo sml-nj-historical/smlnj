@@ -1,5 +1,11 @@
 Changes since 3.9.3:
 
+* New add-log support.
+
+* sml-bindings has disappeared.
+
+* The code skeletons are now abbrevs as well.
+
 * A new *sml* process is sent the content of sml-config-file (~/.sml-proc.sml)
   if it exists.
 
@@ -7,7 +13,7 @@ Changes since 3.9.3:
   with `cd "path";' and it will be replaced by OS.FileSys.chDir.
 
 * run-sml now pops up the new buffer.  It can also run the command on another
-  machine.  And it always prompts for the command name.  Use aprefix
+  machine.  And it always prompts for the command name.  Use a prefix
   argument if you want to give args or to specify a host on which
   to run the command.
 
@@ -16,7 +22,7 @@ Changes since 3.9.3:
 
 * Added a trivial CM major-mode.
 
-* sml-load-hook has disappeared.
+* sml-load-hook has disappeared as has inferior-sml-load-hook.
 
 * sml-mode-startup.el is now automatically generated and you're supposed to
   `load' it from .emacs or siate-start.el.

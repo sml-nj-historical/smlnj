@@ -126,6 +126,7 @@ This assumes that we are `looking-at' the OP."
 (defun sml-find-match-forward (this match)
   "Only works for word matches."
   (let ((level 1)
+	(forward-sexp-function nil)
 	(either (concat this "\\|" match)))
     (while (> level 0)
       (forward-sexp 1)
@@ -140,6 +141,7 @@ This assumes that we are `looking-at' the OP."
 
 (defun sml-find-match-backward (this match)
   (let ((level 1)
+	(forward-sexp-function nil)
 	(either (concat this "\\|" match)))
     (while (> level 0)
       (backward-sexp 1)
@@ -161,7 +163,7 @@ This assumes that we are `looking-at' the OP."
     `(let ((,pt-sym (point)))
        ,@body
        (when (/= (point) ,pt-sym)
-	 (buffer-substring (point) ,pt-sym)))))
+	 (buffer-substring-no-properties (point) ,pt-sym)))))
 (def-edebug-spec sml-move-read t)
 
 (defun sml-poly-equal-p ()
@@ -174,8 +176,8 @@ This assumes that we are `looking-at' the OP."
      (sml-point-after (re-search-backward "\\<case\\>" nil 'move))))
 
 (defun sml-forward-sym-1 ()
-  (or (/= 0 (skip-syntax-forward ".'"))
-      (/= 0 (skip-syntax-forward "'w_"))))
+  (or (/= 0 (skip-syntax-forward "'w_"))
+      (/= 0 (skip-syntax-forward ".'"))))
 (defun sml-forward-sym ()
   (let ((sym (sml-move-read (sml-forward-sym-1))))
     (cond
@@ -223,8 +225,8 @@ Returns T if the move indeed moved through one sexp and NIL if not."
       (cond
        ((not op)
 	(let ((point (point)))
-	  (ignore-errors (backward-sexp 1))
-	  (if (/= point (point)) t (backward-char 1) nil)))
+	  (ignore-errors (let ((forward-sexp-function nil)) (backward-sexp 1)))
+	  (if (/= point (point)) t (ignore-errors (backward-char 1)) nil)))
        ;; stop as soon as precedence is smaller than `prec'
        ((and prec op-prec (>= prec op-prec)) nil)
        ;; special rules for nested constructs like if..then..else
@@ -257,7 +259,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
       (cond
        ((not op)
 	(let ((point (point)))
-	  (ignore-errors (forward-sexp 1))
+	  (ignore-errors (let ((forward-sexp-function nil)) (forward-sexp 1)))
 	  (if (/= point (point)) t (forward-char 1) nil)))
        ;; stop as soon as precedence is smaller than `prec'
        ((and prec op-prec (>= prec op-prec)) nil)
@@ -265,7 +267,7 @@ Returns T if the move indeed moved through one sexp and NIL if not."
        ((and (or (not prec) (and prec op-prec))
 	     (setq match (cdr (assoc op sml-open-paren))))
 	(sml-find-match-forward (first match) (second match)))
-       ;; don't back over open-parens
+       ;; don't forw over close-parens
        ((assoc op sml-close-paren) nil)
        ;; infix ops precedence
        ((and prec op-prec) (< prec op-prec))

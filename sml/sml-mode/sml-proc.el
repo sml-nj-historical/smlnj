@@ -256,9 +256,10 @@ See `compilation-error-regexp-alist' for a description of the format.")
 
 (defmap inferior-sml-mode-map
   '(("\C-c\C-s"	. run-sml)
+    ("\C-c\C-l"	. sml-load-file)
     ("\t"	. comint-dynamic-complete))
   "Keymap for inferior-sml mode"
-  :inherit (list sml-bindings comint-mode-map)
+  :inherit comint-mode-map
   :group 'sml-proc)
 
 
@@ -348,11 +349,11 @@ TAB file name completion, as in shell-mode, etc.."
   (setq comint-prompt-regexp sml-prompt-regexp)
   (sml-mode-variables)
 
+  (set (make-local-variable 'font-lock-defaults)
+       inferior-sml-font-lock-defaults)
   ;; For sequencing through error messages:
   (set (make-local-variable 'sml-error-cursor) (point-max-marker))
   (set-marker-insertion-type sml-error-cursor nil)
-  (set (make-local-variable 'font-lock-defaults)
-       inferior-sml-font-lock-defaults)
 
   ;; compilation support (used for next-error)
   (set (make-local-variable 'compilation-error-regexp-alist)
@@ -411,7 +412,12 @@ on which to run CMD using `remote-shell-program'.
       (setq args (list* host "cd" default-directory ";" cmd args))
       (setq cmd remote-shell-program))
     ;; go for it
-    (setq sml-buffer (apply 'make-comint pname cmd file args))
+    (let ((exec-path (if (file-name-directory cmd)
+			 ;; If the command has slashes, make sure we
+			 ;; first look relative to the current directory.
+			 ;; Emacs-21 does it for us, but not Emacs-20.
+			 (cons default-directory exec-path) exec-path)))
+      (setq sml-buffer (apply 'make-comint pname cmd file args)))
 
     (pop-to-buffer sml-buffer)
     ;;(message (format "Starting \"%s\" in background." pname))

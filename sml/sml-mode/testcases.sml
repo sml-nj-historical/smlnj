@@ -1,6 +1,23 @@
 (* copyright 1999 YALE FLINT project *)
 (* monnier@cs.yale.edu *)
 
+(let val a = 1 val b = 2
+     val c = 3
+ in 1
+ end)
+
+(x := 1;
+ case x of
+     FOO => 1
+   | BAR => 2;
+ case x of
+     FOO => 1
+   | BAR =>
+     (case y of
+	  FAR => 2
+	| FRA => 3);
+ hello)
+
 let datatype foobar
       = FooB of int
       | FooA of bool * int
@@ -39,7 +56,7 @@ in if a then
    else
        c
 end
-    
+
 let
 in case a of
     (* Do I really want that ? *)
