@@ -34,6 +34,15 @@ struct
 
        val (loWt, range) = weightRange( #edges g (), ~1.0, ~1.0)
 
+       fun color w = let
+	   val pos = 
+	       if range < 100.0 
+	       then floor(((w-loWt) * 10.0) / range)
+	       else floor (Math.log10(w-loWt) * 10.0 / Math.log10 range)
+       in
+	   Array.sub(colorScale, pos)
+       end
+
        val ENTRY = hd(#entries g ())
        val EXIT  = hd(#exits g ())
 
@@ -43,12 +52,8 @@ struct
 
        fun edge(i,j,CFG.EDGE{w, ...}) = 
        let val label = L.LABEL(Real.toString (!w))
-           val color = let
-	       val pos = floor (((!w - loWt) * 10.0 )/ range)  
-	    in
-	       L.COLOR(Array.sub(colorScale, pos))
-            end
-       in  [label, color] end
+       in  [label, L.COLOR(color(!w))] 
+       end
 
        fun title(blknum,ref freq) = 
            " "^Int.toString blknum ^ " freq="^Real.toString freq
