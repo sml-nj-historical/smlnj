@@ -4,7 +4,7 @@ eval $(../../bin/.arch-n-opsys)
 
 ./xmakeml &&
 ./buildcm sml &&
-mv bin.$HEAP_SUFFIX bin.$HEAP_SUFFIX.$$ &&
+mv bin.$ARCH-unix bin.$ARCH-unix.$$ &&
 ./xrun sml-cm <<EOF
 	CMB.make();
 	Compiler.Stats.summary();

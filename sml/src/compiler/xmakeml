@@ -138,6 +138,6 @@ val _ = (SMLofNJ.exportML "$HEAP_IMAGE";
          print "[built `date`]\n"; print "$NOTE");
 XXXX
 
-if [ -L ./bin.$ARCH-unix ]; then
-  rm -f ./bin.$ARCH-unix
-fi
+#  if [ -L ./bin.$ARCH-unix ]; then
+#    rm -f ./bin.$ARCH-unix
+#  fi
