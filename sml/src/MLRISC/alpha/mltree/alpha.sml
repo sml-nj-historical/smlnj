@@ -198,6 +198,7 @@ struct
    * This module is used to simulate operations of non-standard widths.
    *)
   structure Gen = MLTreeGen(structure T = T
+			    structure Cells = C
                             val intTy = 64
                             val naturalWidths = [32,64]
                             datatype rep = SE | ZE | NEITHER

@@ -1,4 +1,7 @@
-(*
+(* sparc.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * This is a new instruction selection module for Sparc, 
  * using the new instruction representation and the new MLTREE representation.
  * Support for V9 has been added.
@@ -67,6 +70,7 @@ struct
 
   val intTy = if V9 then 64 else 32
   structure Gen = MLTreeGen(structure T = T
+			    structure Cells = C
                             val intTy = intTy
                             val naturalWidths = if V9 then [32,64] else [32]
                             datatype rep = SE | ZE | NEITHER

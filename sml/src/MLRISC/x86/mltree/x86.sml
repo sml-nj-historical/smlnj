@@ -1,4 +1,4 @@
-(*
+(* x86.sml
  *
  * COPYRIGHT (c) 1998 Bell Laboratories.
  * 
@@ -82,6 +82,7 @@ struct
  
   structure Gen = MLTreeGen
      (structure T = T
+      structure Cells = C
       val intTy = 32
       val naturalWidths = [32]
       datatype rep = SE | ZE | NEITHER

@@ -41,6 +41,7 @@ struct
    type mltreeStream = (T.stm, T.mlrisc list, CFG.cfg) TS.stream
 
    structure Gen = MLTreeGen(structure T = T
+			     structure Cells = C
                              val intTy = 32
                              val naturalWidths = [32]
                              datatype rep = SE | ZE | NEITHER

@@ -1,4 +1,7 @@
-(*
+(* ppc.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * I've substantially modified this code generator to support the new MLTREE.
  * Please see the file README.hppa for the ugly details.
  *
@@ -42,6 +45,7 @@ struct
   val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
   structure Gen = MLTreeGen
     (structure T = T
+     structure Cells = C
      val intTy = intTy
      val naturalWidths = naturalWidths
      datatype rep = SE | ZE | NEITHER

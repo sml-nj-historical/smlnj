@@ -1,4 +1,7 @@
-(*
+(* mltree-gen.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * This is a generic module for transforming MLTREE expressions:
  *   (1) expressions involving non-standard type widths are promoted when
  *       necessary.
@@ -8,26 +11,26 @@
  * -- Allen
  *)
 
-functor MLTreeGen
-    (structure T : MLTREE
-     val intTy : T.ty (* size of integer word *)
+functor MLTreeGen (
+    structure T : MLTREE
+    structure Cells : CELLS
+    val intTy : T.ty (* size of integer word *)
 
      (* This is a list of possible data widths to promote to.
       * The list must be in increasing sizes.  
       * We'll try to promote to the next largest size.
       *)
-     val naturalWidths : T.ty list  
+    val naturalWidths : T.ty list  
 
      (*
       * Are integers of widths less than the size of integer word.
       * automatically sign extended, zero extended, or neither.
       * When in doubt, choose neither since it is conservative.
       *)
-     datatype rep = SE | ZE | NEITHER
-     val rep : rep
+    datatype rep = SE | ZE | NEITHER
+    val rep : rep
 
-    ) : MLTREEGEN =
-struct
+  ) : MLTREEGEN = struct
 
    structure T = T
    structure Size = MLTreeSize(structure T = T val intTy = intTy)
@@ -115,13 +118,15 @@ struct
        | T.COND(ty,T.CMP(t,cc,e1,e2),x as (T.LI 0 | T.LI32 0w0),y) => 
            T.COND(ty,T.CMP(t,T.Basis.negateCond cc,e1,e2),y,T.LI 0)
            (* we'll let others strength reduce the multiply *)
-       | T.COND(ty,cc as T.FCMP _, yes, no) =>
-         let val tmp = C.newReg()
-         in  T.LET(T.SEQ[T.MV(ty, tmp, no),
-                         T.IF(cc, T.MV(ty, tmp, yes), T.SEQ [])],
-                   T.REG(ty,tmp)
-                  )
-         end
+***)
+       | T.COND(ty,cc as T.FCMP _, yes, no) => let
+	  val tmp = Cells.newReg()
+          in 
+	    T.LET(
+	      T.SEQ[T.MV(ty, tmp, no), T.IF(cc, T.MV(ty, tmp, yes), T.SEQ [])],
+              T.REG(ty,tmp))
+          end
+(*** XXX: TODO
        | T.COND(ty,cc,e1,(T.LI 0 | T.LI32 0w0)) => 
            T.MULU(ty,T.COND(ty,cc,T.LI 1,T.LI 0),e1)
        | T.COND(ty,cc,T.LI m,T.LI n) =>
