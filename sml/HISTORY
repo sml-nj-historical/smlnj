@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/07/12 21:19:00 EDT
+Tag: blume-20020712-liveness
+Description:
+
+Exported two useful "step" functions from liveness module (MLRISC).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/07/05 16:00 EDT
 Tag: Release_110_41
 Description:

@@ -24,9 +24,20 @@ signature LIVENESS = sig
   type liveness_table = 
          CellsBasis.SortedCells.sorted_cells IntHashTable.hash_table
 
+  type du = CellsBasis.cell list * CellsBasis.cell list
+
+  (* one def/use step (given defUse function, take du after instruction
+   * to du before instruction *)
+  val duStep : (CFG.I.instruction -> du) ->
+	       CFG.I.instruction * du -> du
+
+  (* one step for liveness (on a per-instruction basis) *)
+  val liveStep : (CFG.I.instruction -> du) ->
+		 CFG.I.instruction * CellsBasis.SortedCells.sorted_cells ->
+		 CellsBasis.SortedCells.sorted_cells
+
   val liveness : {
-	  defUse : CFG.I.instruction
-			-> (CellsBasis.cell list * CellsBasis.cell list),
+	  defUse : CFG.I.instruction -> du,
 	  getCell    : CellsBasis.CellSet.cellset -> CellsBasis.cell list 
 	} -> CFG.cfg 
 	    -> {liveIn  : liveness_table,
@@ -46,6 +57,8 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
 
   type liveness_table = SC.sorted_cells HT.hash_table
 
+  type du = CellsBasis.cell list * CellsBasis.cell list
+
   fun error msg = MLRiscErrorMsg.error("Liveness",msg)
 
   val NotFound = General.Fail("Liveness: Not Found")		(* exception *)
@@ -55,6 +68,21 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
         | pr(x::xs) = (print(Int.toString x ^ " "); pr xs)
     in print msg; pr l
     end
+
+  fun duStep defUse (insn, (def, use)) = let
+      val (d, u) = defUse insn
+      val d0 = SC.uniq d
+      val def' = SC.union (d0, def)
+      val use' = SC.union (SC.uniq u, SC.difference (use, d0))
+  in
+      (def', use')
+  end
+
+  fun liveStep defUse (insn, liveout) = let
+      val (d, u) = defUse insn
+  in
+      SC.union (SC.uniq u, SC.difference (liveout, SC.uniq d))
+  end
 
   fun liveness {defUse,getCell} = let
     val getCell = SC.uniq o getCell
@@ -70,17 +98,10 @@ functor Liveness(Flowgraph : CONTROL_FLOW_GRAPH) : LIVENESS = struct
 
       (* compute block aggregate definition use. *)
       fun initDefUse(nid, CFG.BLOCK{insns, ...}) = let
-	fun defuse (insn::insns,def,use) = let
-	      val (d,u) = defUse insn
-	      val u' = SC.difference(SC.uniq u,def)
-	      val use' = SC.union(u', use)
-	      val d' = SC.difference(SC.uniq d,use')
-	    in defuse(insns, SC.union(d',def), use')
-	    end
-	  | defuse([],def,use) = 
-	      (HT.insert uses (nid, use);  HT.insert defs (nid, def))
+	  val (def, use) = foldl (duStep defUse) (SC.empty, SC.empty) (!insns)
       in
-	defuse(rev(!insns), SC.empty, SC.empty)
+	  HT.insert uses (nid, use);
+	  HT.insert defs (nid, def)
       end
 
       (* gather the liveOut information *)
