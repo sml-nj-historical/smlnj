@@ -1,3 +1,8 @@
+(* mltree-basis.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *)
+
 structure MLTreeBasis : MLTREE_BASIS =
 struct
 
@@ -9,10 +14,12 @@ struct
                 | SETCC 
                 | MISC_COND of {name:string, hash:word, attribs:attribs ref}
 
-  datatype fcond = ? | !<=> | == | ?= | !<> | !?>= | < | ?< | !>= | !?> |
-                   <= | ?<= | !> | !?<= | > | ?> | !<= | !?< | >= | ?>= |
-                   !< | !?= | <> | != | !? | <=> | ?<> | SETFCC |
-                   MISC_FCOND of {name:string, hash:word, attribs:attribs ref}
+(* Floating-point conditions: see mltree-basis.sig for documentation *)
+  datatype fcond
+    = == | ?<> | > | >= | < | <= | ? | <> | <=>
+    | ?> | ?>= | ?< | ?<= | ?=
+    | SETFCC
+    | MISC_FCOND of {name:string, hash:word, attribs:word ref}
 
   datatype ext = SIGN_EXTEND | ZERO_EXTEND
 
@@ -34,15 +41,11 @@ struct
       | SETCC => "SETCC"
       | MISC_COND{name,...} => name
 
-  fun fcondToString fcond =
-      case fcond of
-        ?     => "?"   | !<=>  => "!<=>" | ==    => "==" | ?=    => "?="
-      | !<>   => "!<>" | !?>=  => "!?>=" | <     => "<"  | ?<    => "?<"
-      | !>=   => "!>=" | !?>   => "!?>"  | <=    => "<=" | ?<=   => "?<="
-      | !>    => "!>"  | !?<=  => "!?<=" | >     => ">"  | ?>    => "?>"
-      | !<=   => "!<=" | !?<   => "!?<"  | >=    => ">=" | ?>=   => "?>="
-      | !<    => "!<"  | !?=   => "!?="  | <>    => "<>" | !=    => "!="
-      | !?    => "!?"  | <=>   => "<=>"  | ?<>   => "?<>"
+  fun fcondToString fcond = case fcond
+     of ==  => "==" | ?<> => "?<>"
+      | > => ">"    | >= => ">="   | <   => "<"  | <=  => "<="
+      | ? => "?"    | <>  => "<>"  | <=> => "<=>"
+      | ?> => "?<"  | ?>= => "?>=" | ?< => "?<"  | ?<= => "?<=" | ?= => "?="
       | SETFCC => "SETFCC"
       | MISC_FCOND{name, ...} => name
 
@@ -52,17 +55,18 @@ struct
       | NE  => NE | GE  => LE | GEU => LEU | GT  => LT | GTU => LTU
       | cond => error("swapCond",condToString cond)
 
+(* swap order of arguments *)
   fun swapFcond fcond =
       case fcond of
-        ?     => ?   | !<=>  => !<=> | ==    => ==
-      | ?=    => ?=  | !<>   => !<>  | !?>=  => !?<=
-      | <     => >   | ?<    => ?>   | !>=   => !<=
-      | !?>   => !?< | <=    => >=   | ?<=   => ?>=
-      | !>    => !<  | !?<=  => !?>= | >     => <
-      | ?>    => ?<  | !<=   => !>=  | !?<   => !?>
-      | >=    => <=  | ?>=   => ?<=  | !<    => !>
-      | !?=   => !?= | <>    => <>   | !=    => !=
-      | !?    => !?  | <=>   => <=>  | ?<>   => ?<>
+        ?     => ?   | ==    => ==
+      | ?=    => ?=
+      | <     => >   | ?<    => ?>
+      | <=    => >=  | ?<=   => ?>=
+      | >     => <
+      | ?>    => ?<
+      | >=    => <=  | ?>=   => ?<=
+      | <>    => <>
+      | <=>   => <=> | ?<>   => ?<>
       | fcond => error("swapFcond",fcondToString fcond)
 
   fun negateCond cond =
@@ -73,11 +77,11 @@ struct
 
   fun negateFcond fcond =
       case fcond of
-        ==   => != | ?<>  => ==   | ?    => <=>
+        ==   => ?<> | ?<>  => ==   | ?    => <=>
       | <=>  => ?  | >    => ?<=  | >=   => ?<
       | ?>   => <= | ?>=  => <    | <    => ?>=
       | <=   => ?> | ?<   => >=   | ?<=  => >
-      | <>   => ?= | ?=   => <>   (* missing some cases here XXX *)
+      | <>   => ?= | ?=   => <>
       | _    => error("negateFcond", fcondToString fcond)
 
   fun hashCond cond =
@@ -90,13 +94,13 @@ struct
 
   fun hashFcond fcond =
       case fcond of
-        ?     => 0w123 | !<=>  => 0w1234 | ==    => 0w12345 | ?=    => 0w123456
-      | !<>   => 0w234 | !?>=  => 0w2345 | <   => 0w23456 | ?<    => 0w345
-      | !>=   => 0w3456 | !?>   => 0w34567 | <=  => 0w456   | ?<=   => 0w4567
-      | !>    => 0w45678 | !?<=  => 0w567 | >  => 0w5678  | ?>    => 0w56789
-      | !<=   => 0w678 | !?<   => 0w6789 | >=    => 0w67890 | ?>=   => 0w789
-      | !<    => 0w7890 | !?=   => 0w78901 | <>    => 0w890 | !=    => 0w8901
-      | !?    => 0w89012 | <=>   => 0w991 | ?<>   => 0w391
+        ?     => 0w123 | ==    => 0w12345 | ?=    => 0w123456
+      | <   => 0w23456 | ?<    => 0w345
+      | <=  => 0w456   | ?<=   => 0w4567
+      | >  => 0w5678  | ?>    => 0w56789
+      | >=    => 0w67890 | ?>=   => 0w789
+      | <>    => 0w890
+      | <=>   => 0w991 | ?<>   => 0w391
       | SETFCC => 0w94
       | MISC_FCOND{hash, ...} => hash
   

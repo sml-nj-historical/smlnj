@@ -24,7 +24,7 @@ functor WeightedBlockPlacementFn (
     structure PQ = LeftPriorityQFn (
       struct
 	type priority = CFG.weight
-	val compare = Real.compare
+	val compare = Freq.compare
 	type item = CFG.edge
 	fun priority (_, _, CFG.EDGE{w, ...}) = !w
       end)
