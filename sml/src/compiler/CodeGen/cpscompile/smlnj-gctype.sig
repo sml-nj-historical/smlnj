@@ -9,7 +9,8 @@ sig
    | NONREF of CPS.cty ref         (* non-reference value *)
    | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
    | PLUS of ty * gctype * gctype  (* address arithmetic + *)
-   | MINUS of ty * gctype * gctype (* address arithmetic - *)
+   | MINUS of ty * gctype * gctype (* address arithmetic - *)  
+   | ALLOCPTR                      (* SML/NJ allocation pointer *)
    | BOT
    | TOP
 

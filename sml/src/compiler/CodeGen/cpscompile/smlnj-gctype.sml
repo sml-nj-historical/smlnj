@@ -11,6 +11,7 @@ struct
    | REF of CPS.cty ref            (* a reference, pointer to a gc object *)
    | PLUS of ty * gctype * gctype   (* address arithmetic + *)
    | MINUS of ty * gctype * gctype   (* address arithmetic - *)
+   | ALLOCPTR 
    | BOT
    | TOP
 
@@ -23,6 +24,7 @@ struct
      | toString (REF(ref obj)) =  CPS.ctyToString obj
      | toString (PLUS(ty,a,b)) = "("^toString a^"+"^toString b^")"
      | toString (MINUS(ty,a,b)) = "("^toString a^"-"^toString b^")"
+     | toString ALLOCPTR = "allocptr"
 
    fun ==(x:gctype, y:gctype) = x = y
 

@@ -206,7 +206,8 @@ struct
 
       val _       = if gctypes then
                     let val gcMap = GCCells.newGCMap()
-                    in  enterGC := Intmap.add gcMap;
+                        val enterGCTy = Intmap.add gcMap;
+                    in  enterGC := enterGCTy;
                         GCCells.setGCMap gcMap 
                     end
                     else ()
@@ -1787,16 +1788,20 @@ struct
           in  app init rest;
               init start
           end
-      in
-          initFrags cluster;
-          beginCluster 0;
-          if gctypes then Intmap.clear(GCCells.getGCMap()) else ();
-          fragComp();
-          InvokeGC.emitLongJumpsToGCInvocation stream;
-          endCluster(
+
+          (*
+           * Create cluster annotations.
+           * Currently, we only need to enter the appropriate
+           * gc map information.
+           *)
+          fun clusterAnnotations() = 
              if gctypes then 
                 let val gcmap = GCCells.getGCMap()
-                in  [#create SMLGCMap.GCMAP gcmap,
+                in  !enterGC(allocptrR, SMLGCType.ALLOCPTR);
+                    case C.baseptr of
+                      M.REG(_,r) => !enterGC(r, PTR)
+                    | _ => ();
+                    [#create SMLGCMap.GCMAP gcmap,
                      #create 
                         MLRiscAnnotations.REGINFO(
                            let val pr = SMLGCMap.toString gcmap
@@ -1805,7 +1810,13 @@ struct
                     ]
                 end
              else []
-          )
+      in
+          initFrags cluster;
+          beginCluster 0;
+          if gctypes then Intmap.clear(GCCells.getGCMap()) else ();
+          fragComp();
+          InvokeGC.emitLongJumpsToGCInvocation stream;
+          endCluster(clusterAnnotations())
       end (* genCluster *)
 
       fun emitMLRiscUnit f = 
