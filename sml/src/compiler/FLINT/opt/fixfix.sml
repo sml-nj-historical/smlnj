@@ -39,6 +39,7 @@ fun bug msg = ErrorMsg.impossible ("FixFix: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
 fun assert p = if p then () else bug ("assertion failed")
+fun bugsay s = say ("!*!*! Fixfix: "^s^" !*!*!\n")
 
 val cplv = LambdaVar.dupLvar
 
@@ -271,7 +272,7 @@ in case lexp
 		       else let val cs = map (fn ref(sp,ti) => sp + ti div 2) cs
 				val s' = foldl (op+) 0 cs
 		       in if s < 2*s' + ilthreshold
-			  then ((*; say((Collect.LVarString f)^
+			  then ((* say((Collect.LVarString f)^
 				" {"^(Int.toString(!cf))^
 				"} = F.IH_MAYBE "^
 				(Int.toString (s-ilthreshold))^
@@ -305,7 +306,7 @@ in case lexp
        in
 	   case top
 	    of (SCC.SIMPLE f)::sccs =>
-	       (assert(f = lename);
+	       ((if (f = lename) then () else bugsay "f != lename");
 		(s, S.diff(fv, funs), foldl sccconvert le sccs))
 	     | (SCC.RECURSIVE _)::_ => bug "recursive main body in SCC ?!?!?"
 	     | [] => bug "SCC going crazy"
