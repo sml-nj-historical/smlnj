@@ -106,7 +106,7 @@ val rfw_tmp    : rflag * (unit -> 'a) * (rflag -> 'a) -> 'a
  *
  *    datatype tyc
  *      = TC_VAR of index * int
- *      | TC_NVAR of tvar * depth * int    (* NOT USED *)
+ *      | TC_NVAR of tvar
  *      | TC_PRIM of primtyc
  *      | TC_FN of tkind list * tyc
  *      | TC_APP of tyc * tyc list
@@ -130,7 +130,7 @@ val rfw_tmp    : rflag * (unit -> 'a) * (rflag -> 'a) -> 'a
 
 (** tyc constructors *)
 val tcc_var    : index * int -> tyc
-val tcc_nvar   : tvar * depth * int -> tyc
+val tcc_nvar   : tvar -> tyc
 val tcc_prim   : primtyc -> tyc
 val tcc_fn     : tkind list * tyc -> tyc
 val tcc_app    : tyc * tyc list -> tyc
@@ -146,7 +146,7 @@ val tcc_arrow  : fflag * tyc list * tyc list -> tyc
 
 (** tyc deconstructors *)
 val tcd_var    : tyc -> index * int 
-val tcd_nvar   : tyc -> tvar * depth * int 
+val tcd_nvar   : tyc -> tvar
 val tcd_prim   : tyc -> primtyc 
 val tcd_fn     : tyc -> tkind list * tyc 
 val tcd_app    : tyc -> tyc * tyc list 
@@ -178,7 +178,7 @@ val tcp_arrow  : tyc -> bool
 
 (** tyc one-arm switch *)
 val tcw_var    : tyc * (index * int -> 'a) * (tyc -> 'a) -> 'a
-val tcw_nvar   : tyc * (tvar * depth * int -> 'a) * (tyc -> 'a) -> 'a
+val tcw_nvar   : tyc * (tvar -> 'a) * (tyc -> 'a) -> 'a
 val tcw_prim   : tyc * (primtyc -> 'a) * (tyc -> 'a) -> 'a
 val tcw_fn     : tyc * (tkind list * tyc -> 'a) * (tyc -> 'a) -> 'a
 val tcw_app    : tyc * (tyc * tyc list -> 'a) * (tyc -> 'a) -> 'a

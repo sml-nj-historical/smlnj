@@ -165,9 +165,9 @@ fun spillOut (origargs, origctys, spgvars, spgctys, spfvars) =
           | ([x], t::_) => (SOME (x,t), fhdr)
           | _ => let val v = mkv()
                      val u = VAR v
-                     fun g (sv, (i,hdr)) = 
-                       (i+1, fn e =>hdr(SELECT(i, u, sv, FLTt, e)))
-                     val (n, gh) = foldl g (0, fhdr) spgvars
+                     fun g (sv, st, (i,hdr)) = 
+                       (i+1, fn e =>hdr(SELECT(i, u, sv, st, e)))
+                     val (n, gh) = ListPair.foldl g (0, fhdr) (spgvars,spgctys)
                      val ct = PTRt(RPT n)
                   in (SOME (v, ct), gh)
                  end

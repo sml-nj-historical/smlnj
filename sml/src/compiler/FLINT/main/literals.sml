@@ -17,7 +17,7 @@ in
 
 fun bug msg = ErrorMsg.impossible ("Literals: "^msg) 
 val ident = fn x => x
-val liftLiterals = Control.CG.liftLiterals
+val liftLiterals = Control.FLINT.liftLiterals
 fun mkv _ = LV.mkLvar()
 
 (****************************************************************************

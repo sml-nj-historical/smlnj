@@ -535,7 +535,7 @@ let val rec g' =
 				     of {info=RECinfo vl,...} =>
 					 (let val z = #1(List.nth(vl,i))
 					      val z' = ren z
-					  in if (!CG.liftLiterals)
+					  in if (!Control.FLINT.liftLiterals)
                                              then (case z' 
                                                     of REAL _ => NONE 
                                                      | _  => SOME z')
@@ -1032,7 +1032,7 @@ in  debugprint "Contract: "; debugflush();
     cpssize := Intmap.elems m;
     let val cexp' = reduce cexp
     in  debugprint "\n";
-	if debug andalso !CG.misc4=16
+	if debug
 	    then (debugprint "After contract: \n"; 
 		  PPCps.prcps cexp')
 	else ();

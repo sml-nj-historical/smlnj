@@ -6,6 +6,20 @@
 signature STATS = 
   sig
     type stat
+    type counter
+
+    (* The counters (argument) will be add'd whenever the new counter is *)
+    val newCounter : counter list -> counter
+    val getCounter : counter -> int
+    val addCounter : counter -> int -> unit
+
+    (* A stat contains the sum of the argument counters. *)
+    val newStat : string * counter list -> stat
+    val getStat : stat -> int
+    (* Add the stat to the summary *)
+    val registerStat : stat -> unit
+
+    (* old interface, deprecated. *)
     val makeStat : string -> stat
     val addStat : stat -> int -> unit
 
@@ -28,7 +42,9 @@ structure Stats :> STATS =
 
     val timeToStr = T.fmt 2
 
-    datatype stat = STAT of {name:string, tot: int ref}
+    datatype counter = C of {c:int ref, cs:counter list}
+
+    datatype stat = STAT of {name:string, tot: counter list}
     val allStats = ref (nil : stat list)
 
     fun lookSt(name,nil) = NONE
@@ -39,16 +55,25 @@ structure Stats :> STATS =
           if pn<qn then p::q::rest else q::insert(p,rest)
       | insert(p,nil) = p::nil
 
+    fun newCounter cs = C{c=ref 0, cs=cs}
+    fun addCounter (C{c,cs}) n = (c := !c + n; app (fn c => addCounter c n) cs)
+    fun getCounter (C{c=ref c,...}) = c
+
+    fun newStat (name,cs) = STAT{name=name,tot=cs}
+    fun registerStat (p as STAT{name,tot}) = 
+	(case lookSt (name,!allStats)
+	  of SOME p => ()
+	   | NONE => allStats := insert(p,!allStats))
+
     fun makeStat name = (case lookSt (name,!allStats)
 	   of SOME p => p
 	    | NONE => let
-		val p = STAT{name=name, tot=ref 0}
+		val p = newStat(name, [newCounter[]])
 		in
 		  allStats := insert(p,!allStats); p
 		end
 	  (* end case *))
-
-    fun addStat(STAT{tot,...}) n = tot := !tot + n
+    fun addStat(STAT{tot=[c],...}) n = addCounter c n
 
     val say = Control.Print.say
     val flush = Control.Print.flush
@@ -105,7 +130,7 @@ structure Stats :> STATS =
 	  last := gettime();
 	  app (fn PHASE{this,accum,...} => (this := zeros; accum := zeros)) 
             (!allPhases);
-	  app (fn STAT{tot,...} => tot:=0) (!allStats))
+	  app (fn STAT{tot,...} => app (fn C{c,...} => c:=0) tot) (!allStats))
 
     structure CU = SMLofNJ.Internals.CleanUp
     val _ = CU.addCleaner (
@@ -166,9 +191,10 @@ structure Stats :> STATS =
               before finish()
           end
   
-    fun showStat(STAT{name,tot}) = (
+    fun getStat (STAT{tot,...}) = foldl (fn (c,s) => getCounter c + s) 0 tot
+    fun showStat(s as STAT{name,tot}) = (
 	  sayfield(40, name);
-	  say(Int.toString(!tot));
+	  say(Int.toString(getStat s));
 	  say "\n")
 
     fun showPhase(PHASE{name,this,accum}) = let

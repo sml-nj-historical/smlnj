@@ -28,17 +28,41 @@ sig
   val expandResult : bool ref
 end
 
+signature FLINTCONTROL =
+sig
+    val print		: bool ref
+    val printPhases	: bool ref
+    val phases		: string list ref
+
+    val inlineThreshold	: int ref
+    val unrollThreshold	: int ref
+    val maxargs		: int ref	(* to put a cap on arity raising *)
+    val dropinvariant	: bool ref
+
+    val specialize	: bool ref
+    val liftLiterals	: bool ref
+    val sharewrap	: bool ref
+    val saytappinfo	: bool ref	(* for verbose typelifting *)
+
+    (* only for temporary debugging *)
+    val misc		: int ref
+
+    (* FLINT internal type-checking controls *)
+    val check		: bool ref
+    val checkDatatypes	: bool ref
+    val checkKinds	: bool ref
+end
+
 signature CGCONTROL =
 sig
   val tailrecur : bool ref
   val recordopt : bool ref
-  val specialize : bool ref
   val tail : bool ref
   val allocprof : bool ref
   val closureprint : bool ref
   val closureStrategy : int ref
   val lambdaopt : bool ref
-  val cpsopt : bool ref
+  val cpsopt : string list ref		(* list of cpsopt phases *)
   val rounds : int ref
   val path : bool ref
   val betacontract : bool ref
@@ -81,7 +105,6 @@ sig
   val spillGen : int ref
   val foldconst : bool ref
   val etasplit : bool ref
-  val printLambda : bool ref
   val printit : bool ref
   val printsize : bool ref
   val scheduling : bool ref
@@ -94,7 +117,6 @@ sig
   val rangeopt : bool ref
   val icount : bool ref
   val debugRep : bool ref  
-  val sharewrap : bool ref
   val checklty1 : bool ref
   val checklty2 : bool ref
   val checklty3 : bool ref
@@ -102,7 +124,6 @@ sig
   val checkcps2 : bool ref
   val checkcps3 : bool ref
   val checkcps  : bool ref
-  val liftLiterals : bool ref
   val flatfblock : bool ref
   val deadup : bool ref
   val pollChecks : bool ref
@@ -119,11 +140,6 @@ sig
 
   val memDisambiguate : bool ref
   val controlDependence : bool ref
-
-  (* FLINT internal type-checking controls *)
-  val checkFlint    : bool ref
-  val checkDatatypes: bool ref
-  val checkKinds    : bool ref
 
   val compdebugging : bool ref
   val mudebugging   : bool ref
@@ -143,6 +159,7 @@ sig
   structure CG : CGCONTROL
   structure MLRISC : MLRISC_CONTROL
   structure Print : PRINTCONTROL
+  structure FLINT : FLINTCONTROL
   val debugging : bool ref
   val primaryPrompt : string ref
   val secondaryPrompt : string ref

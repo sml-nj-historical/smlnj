@@ -14,14 +14,35 @@ type lvar = LambdaVar.lvar
 type fflag = LtyDef.fflag
 type rflag = LtyDef.rflag
 
+
+(* what kind of inlining behavior is desired for the function *)
+datatype ilhint
+  = IH_SAFE				(* only if trivially size-safe *)
+  | IH_ALWAYS				(* inline whenever possible *)
+  | IH_UNROLL				(* only inline once within itself *)
+  (* call-site dependent inlining:
+   *     #1 < sum (map2 (fn (a,w) => (known a) * w) (actuals, #2) *)
+  | IH_MAYBE of int * int list
+
+(* what kind of recursive function (aka loop) is this *)
+(* the distinction between LK_LOOP and LK_UNKNOWN is not clear
+ * and might get dropped so that we only need `tail:bool' *)
+datatype loopkind
+  = LK_UNKNOWN				(* something else *)
+  | LK_LOOP				(* loop wrapped in a preheader *)
+  | LK_TAIL				(* like LK_LOOP but tail-recursive *)
+
+(* calling convention *)
+datatype cconv
+  = CC_FCT				(* it's a functor *)
+  | CC_FUN of fflag			(* it's a function *)
+
 (** classifying various kinds of functions *)
-datatype fkind 
-  = FK_FCT
-  | FK_FUN of 
-      {isrec : lty list option,  (* is this function recursive ? *)
-       fixed : fflag,            (* is calling convention fixed ? *)
-       known : bool,             (* is this function known, default: false *)
-       inline: bool}             (* is this inlinable, default: not isrec *)
+type fkind
+ = {inline: ilhint,			(* when should it be inlined *)
+    known : bool,			(* are all the call sites known *)
+    cconv : cconv,			(* calling convention *)
+    isrec : (lty list * loopkind) option} (* is it recursive *)
 
 (** classifying various kinds of records *)
 datatype rkind

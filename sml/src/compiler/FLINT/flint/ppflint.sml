@@ -32,11 +32,20 @@ struct
        in LT.ffw_var (ff, fn (b1,b2) => (h b1)^(h b2), fn _ => "f")
       end
 
-    fun toStringFKind (F.FK_FUN {isrec=SOME _, fixed, ...} : F.fkind) = 
-          "REC " ^ (toStringFFlag fixed)
-      | toStringFKind (F.FK_FUN {fixed, ...}) = 
-          "FUN " ^ (toStringFFlag fixed)
-      | toStringFKind (F.FK_FCT) = "FCT"
+    fun toStringFKind ({isrec,cconv,inline,...}:F.fkind) =
+	(case inline of F.IH_ALWAYS => "(i)"
+		      | F.IH_UNROLL => "(u)"
+		      | F.IH_MAYBE(s,ws) => "(i:"^(Int.toString s)^")"
+		      | F.IH_SAFE => "")^
+	     (case isrec
+	       of SOME(_,F.LK_UNKNOWN) => "R"
+		| SOME(_,F.LK_LOOP) => "LR"
+		| SOME(_,F.LK_TAIL) => "TR"
+		| NONE => "")^
+		  (case cconv
+		    of F.CC_FCT => "FCT"
+		     | F.CC_FUN fixed => ("FUN "^(toStringFFlag fixed)))
+
 (*
     fun toStringFKind F.FK_ESCAPE  = "FK_ESCAPE"
       | toStringFKind F.FK_KNOWN   = "FK_KNOWN"
@@ -77,12 +86,13 @@ struct
       | toStringValue (F.STRING s) = PU.mlstr s
 
     val printSval = say o toStringValue
+    val LVarString = ref LV.lvarName
 
-    val printVar = say o LV.lvarName
+    fun printVar v = say (!LVarString v)
     val printTyc = say o LT.tc_print
     val printLty = say o LT.lt_print
     fun printTvTk (tv:LT.tvar,tk) = 
-	say (LT.tk_print tk)
+	say ((LV.lvarName tv)^":"^(LT.tk_print tk))
 
     val parenCommaSep = ("(", ",", ")")
     val printValList = PU.printClosedSequence ("[",",","]") printSval
@@ -151,7 +161,7 @@ struct
 			    + 2		(* for the "[]" *)
 			    + (length vars) (* for each comma *)
 			    + (foldl	(* sum of varname lengths *)
-			       (fn (v,n) => n + (size (LV.lvarName v)))
+			       (fn (v,n) => n + (size (!LVarString v)))
 			       0 vars))
 	     in
 		 indent len;  pLexp lexp;  undent len

@@ -10,10 +10,11 @@ sig
 end (* signature SPECIALIZE *)
 
 structure Specialize : SPECIALIZE = 
-struct 
+struct
 
 local structure LD = LtyDef
       structure LT = LtyExtern
+      structure LK = LtyKernel
       structure DI = DebIndex
       structure PT = PrimTyc
       structure PF = PFlatten
@@ -21,10 +22,9 @@ local structure LD = LtyDef
 in
 
 val say = Control.Print.say
-fun bug s = ErrorMsg.impossible ("Specialize: " ^ s)
+fun bug s = ErrorMsg.impossible ("SpecializeNvar: " ^ s)
 fun mkv _ = LambdaVar.mkLvar()
 val ident = fn le : FLINT.lexp => le
-fun tvar i = LT.tcc_var(DI.innermost, i)
 
 val tk_tbx = LT.tkc_box (* the special boxed tkind *)
 val tk_tmn = LT.tkc_mono
@@ -132,15 +132,15 @@ fun bndGen(oks, bnds, d, info) =
                     of PART masks =>
                         PARTSP {ntvks=rev ks, nts=rev ts, masks=masks}
                      | _ => bug "unexpected case 1 in bndGen")
-        | h(ok::oks, KTOP::bs, i, ks, ts, b) = 
-             h(oks, bs, i+1, ok::ks, (tvar i)::ts, b)
         | h(ok::oks, (TBND tc)::bs, i, ks, ts, b) = 
              h(oks, bs, i, ks, (adj tc)::ts, false)
+        | h((ok as (tv,_))::oks, KTOP::bs, i, ks, ts, b) = 
+             h(oks, bs, i+1, ok::ks, (LT.tcc_nvar tv)::ts, b)
         | h((tv,ok)::oks, KBOX::bs, i, ks, ts, b) = 
              let (* val nk = if tk_eqv(tk_tbx, ok) then ok else tk_tbx *)
                  val (nk, b) = 
                    if tk_eqv(tk_tmn, ok) then (tk_tbx, false) else (ok, b)
-              in h(oks, bs, i+1, (tv,nk)::ks, (tvar i)::ts, b)
+              in h(oks, bs, i+1, (tv,nk)::ks, (LT.tcc_nvar tv)::ts, b)
              end
         | h _ = bug "unexpected cases 2 in bndGen"
 
@@ -237,12 +237,15 @@ fun sumDtable(IENV(kenv, dtable), v, infos) =
               end))
   end
 
+(** find out the set of nvars in a list of tycs *)
+fun tcs_nvars tcs = SortedList.foldmerge (map LK.tc_nvars tcs)
+
 (** look and add a new type instance into the itable *)
-fun lookItable (IENV (itabs,dtab), d, v, ts, getlty) = 
+fun lookItable (IENV (itabs,dtab), d, v, ts, getlty, nv_depth) = 
   let val (dd, _) = 
         ((Intmap.map dtab v) handle _ => bug "unexpected cases in lookItable")
 
-      val nd = Int.max(dd, LT.tcs_depth(ts, d))
+      val nd = List.foldr Int.max dd (map nv_depth (tcs_nvars ts))
 
       val (itab,_) = ((List.nth(itabs, d-nd)) handle _ => 
                       bug "unexpected itables in lookItable")
@@ -334,6 +337,47 @@ fun chkOutNorm (IENV([], _), v, oks, d) =
  *                         MAIN FUNCTION                                    *
  ****************************************************************************)
 
+(***** the substitution intmapf: named variable -> tyc *********)
+type smap = (tvar * tyc) list
+val initsmap = []
+
+fun mergesmaps (s1:smap as h1::t1, s2:smap as h2::t2) =
+    (case Int.compare (#1 h1, #1 h2) of
+         LESS => h1 :: (mergesmaps (t1, s2))
+       | GREATER => h2 :: (mergesmaps (s1, t2))
+       | EQUAL => h1 :: (mergesmaps (t1, t2)) (* drop h2 *)
+         )
+  | mergesmaps (s1, []) = s1
+  | mergesmaps ([], s2) = s2
+
+fun addsmap (tvks, ts, smap) = 
+    let
+        fun select ((tvar,tkind),tyc) = (tvar,tyc)
+        val tvtcs = ListPair.map select (tvks, ts)
+        fun cmp ((tvar1,_), (tvar2,_)) = tvar1 > tvar2
+        val tvtcs = Sort.sort cmp tvtcs
+    in
+        mergesmaps (tvtcs, smap)
+    end
+(***** end of the substitution intmapf hack *********************)
+
+(***** the nvar-depth intmapf: named variable -> DI.depth *********)
+type nmap = DI.depth IntmapF.intmap
+val initnmap = IntmapF.empty
+fun addnmap (tvks, d, nmap) = 
+  let fun h ((tv,_)::xs, nmap) = 
+           h(xs, IntmapF.add(nmap, tv, d))
+        | h ([], nmap) = nmap
+   in h(tvks, nmap)
+  end 
+fun looknmap nmap nvar = 
+    ((IntmapF.lookup nmap nvar) handle IntmapF.IntmapF => 
+     bug "unexpected case in looknmap")
+(***** end of the substitution intmapf hack *********************)
+
+fun phase x = Stats.doPhase (Stats.makePhase x)
+val recover = (* phase "Compiler 053 recover" *) Recover.recover
+
 fun specialize fdec = 
 let 
 
@@ -344,22 +388,24 @@ val (click, num_click) = mk_click ()
  * that the main pass traverse the code in different order.
  * There must be a simpler way, but I didn't find one yet (ZHONG).
  *)
-val {getLty=getLtyGen, cleanUp} = Recover.recover(fdec, false)
+val {getLty=getlty, cleanUp} = recover(fdec, false)
 
 (* transform: infoEnv * DI.depth * lty cvt * tyc cvt 
-              * (value -> lty) * bool -> (lexp -> lexp)
+              * smap * bool -> (lexp -> lexp)
  *            where type 'a cvt = DI.depth -> 'a -> 'a
  * The 2nd argument is the depth of the resulting expression.
  * The 3rd and 4th arguments are used to encode the type translations. 
- * The 5th argument is the depth information in the original code,
- *    it is useful for the getlty.
+ * The 5th argument is the substitution map.
  * The 6th argument is a flag that indicates whether we need to 
  * flatten the return results of the current function.
  *)
-fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) = 
-  let val ltf = ltfg d
-      val tcf = tcfg d
-      val getlty = getLtyGen gtd
+val tc_nvar_subst = LT.tc_nvar_subst_gen()
+val lt_nvar_subst = LT.lt_nvar_subst_gen()
+
+fun transform (ienv, d, nmap, smap, did_flat) = 
+  let val tcf = tc_nvar_subst smap
+      val ltf = lt_nvar_subst smap
+      val nv_depth = looknmap nmap
 
       (* we chkin and chkout polymorphic values only *)
       fun chkin v = entDtable (ienv, v, (d, ESCAPE))
@@ -400,10 +446,10 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
         | lpcon (c, e) = (c, loop e)
 
       (* lpfd : fundec -> fundec *** requires REWORK *** *)
-      and lpfd (fk as FK_FCT, f, vts, be) = 
+      and lpfd (fk as {cconv=CC_FCT, ...}, f, vts, be) = 
            (fk, f, map (fn (v,t) => (v, ltf t)) vts, 
                    lplets (map #1 vts, be, fn e => e))
-        | lpfd (fk as FK_FUN {fixed=fflag,isrec,known,inline}, f, vts, be) = 
+        | lpfd (fk as {cconv=CC_FUN fflag,isrec,known,inline}, f, vts, be) = 
            let (** first get the original arg and res types of f *)
                val (fflag', atys, rtys) = LT.ltd_arrow (getlty (VAR f))
 
@@ -411,7 +457,6 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
                val (b1,b2) = 
                  if LT.ff_eqv (fflag, fflag') then LT.ffd_fspec fflag
                  else bug "unexpected code in lpfd"
-               
 
                (** get the newly specialized types **)
                val (natys, nrtys) = (map ltf atys, map ltf rtys)
@@ -425,16 +470,16 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
                (** process the function body *)
                val nbe = 
                  if ndid_flat = did_flat then loop be
-                 else transform (ienv, d, ltfg, tcfg, gtd, ndid_flat) be
+                 else transform (ienv, d, nmap, smap, ndid_flat) be
 
                val (arg_lvs, nnbe) = unflatten (map #1 vts, nbe)
 
                (** fix the isrec information *)
                val nisrec = case isrec of NONE => NONE
-                                        | SOME _ => SOME body_ltys
+                                        | SOME _ => SOME(body_ltys, LK_UNKNOWN)
                val nfixed = LT.ffc_fspec(fflag, (arg_raw, body_raw))
-               val nfk = FK_FUN {isrec=nisrec, fixed=nfixed,
-                                 known=known, inline=inline}
+               val nfk = {isrec=nisrec, cconv=CC_FUN nfixed,
+			  known=known, inline=inline}
 
             in (nfk, f, ListPair.zip(arg_lvs, arg_ltys), nnbe)
            end
@@ -443,7 +488,8 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
       and lptf ((v, tvks, e1), ne2) = 
         let val nienv = pushItable(ienv, tvks)
             val nd = DI.next d
-            val ne1 = transform (nienv, nd, ltfg, tcfg, DI.next gtd, false) e1
+            val nnmap = addnmap(tvks, nd, nmap)
+            val ne1 = transform (nienv, nd, nnmap, smap, false) e1
             val hdr = popItable nienv
          in TFN((v, tvks, hdr ne1), ne2)
         end
@@ -476,7 +522,7 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
 
                    val ne1 = 
                     if ndid_flat = did_flat then loop e1
-                    else transform (ienv, d, ltfg, tcfg, gtd, ndid_flat) e1 
+                    else transform (ienv, d, nmap, smap, ndid_flat) e1 
                 in LET(nvs, ne1, ne2)
                end
 
@@ -521,39 +567,26 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
                       | PARTSP {ntvks, nts, ...} =>
                           (* assume nts is already shifted one level down *)
                           let val nienv = pushItable(ienv, ntvks)
-                              val xd = DI.next d                         
-                              fun nltfg nd lt = 
-                                let val lt1 = LT.lt_sp_sink(ks, lt, d, nd)
-                                    val lt2 = ltfg (DI.next nd) lt1
-                                 in (LT.lt_sp_adj(ks, lt2, nts, nd-xd, 0))
-                                end
-                              fun ntcfg nd tc = 
-                                let val tc1 = LT.tc_sp_sink(ks, tc, d, nd)
-                                    val tc2 = tcfg (DI.next nd) tc1
-                                 in (LT.tc_sp_adj(ks, tc2, nts, nd-xd, 0))
-                                end
+                              val xd = DI.next d
+                              val nnmap = addnmap(ntvks, xd, nmap)
+                              val nsmap = addsmap(tvks, nts, smap)
                               val ne1 = 
-                                transform (nienv, xd, nltfg, ntcfg,
-                                           DI.next gtd, false) e1
+                                transform (nienv, xd, nnmap, nsmap, false) e1
                               val hdr0 = popItable nienv
                            in TFN((v, ntvks, hdr0 ne1), ne2)
                           end
                       | FULLSP (nts, xs) => 
-                          let fun nltfg nd lt = 
-                                (LT.lt_sp_adj(ks, ltfg (DI.next nd) lt, 
-                                              nts, nd-d, 0))
-                              fun ntcfg nd tc = 
-                                (LT.tc_sp_adj(ks, tcfg (DI.next nd) tc, 
-                                              nts, nd-d, 0))
-                              val ne1 = transform (ienv, d, nltfg, ntcfg,
-                                                   DI.next gtd, false) e1
+                          let 
+                              val nnmap = addnmap(tvks, d, nmap)
+                              val nsmap = addsmap(tvks, nts, smap)
+                              val ne1 = transform (ienv, d, nnmap, nsmap, false) e1
                            in click(); LET(xs, ne1, ne2)
                           end)
                end  (* case TFN *)
 
            | TAPP(u as VAR v, ts) => 
                let val nts = map tcf ts
-                   val vs = lookItable(ienv, d, v, nts, getlty)
+                   val vs = lookItable(ienv, d, v, nts, getlty, nv_depth)
                 in if did_flat then 
                      let val vts = LT.lt_inst(ltf (getlty u), nts)
                          val ((_,_,ndid_flat),flatten) = 
@@ -603,20 +636,18 @@ fun transform (ienv, d, ltfg, tcfg, gtd, did_flat) =
 
 in 
 (case fdec
-  of (fk as FK_FCT, f, vts, e) => 
-      let val tcfg = fn (d : DI.depth) => fn (x : LD.tyc) => x
-          val ltfg = fn (d : DI.depth) => fn (x : LD.lty) => x
-          val ienv = initInfoEnv()
+  of (fk as {cconv=CC_FCT, ...}, f, vts, e) => 
+      let val ienv = initInfoEnv()
           val d = DI.top
           val _ = app (fn (x,_) => entDtable(ienv, x, (d, ESCAPE))) vts
-          val ne = transform (ienv, d, ltfg, tcfg, d, false) e
+          val ne = transform (ienv, d, initnmap, initsmap, false) e
           val hdr = chkOutEscs (ienv, map #1 vts)
           val nfdec = (fk, f, vts, hdr ne) before (cleanUp())
-       in if (num_click()) > 0 then LContract.lcontract nfdec
+       in if (num_click()) > 0 then (*  LContract.lcontract *) nfdec
           (* if we did specialize, we run a round of lcontract on the result *)
           else nfdec
       end
-   | _ => bug "non FK_FCT program in specialize")
+   | _ => bug "non functor program in specialize")
 end (* function specialize *)
 
 end (* toplevel local *)

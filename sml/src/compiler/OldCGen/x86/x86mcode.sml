@@ -206,7 +206,11 @@ fun movl(Immed i, Direct r) =
 
 fun movb(Immed i, y) = 
        if sizeint i <> Byte 
-	   then die "movb: immediate value is not byte-sized"
+	   then (if i>255 then die ("movb: immediate value " ^ Int.toString(i) ^ " is not byte-sized")
+                 else (* Apparently, update on word8array is currently implemented 
+                         as int8array update --- so the Immed i can be 255. See
+                         the eXene/lib/protocol/xrequest.sml file. *)
+                      emit (ebyte 198 ^ emitImmext(0, y) ^ ebyte i))
        else emit (ebyte 198 ^ emitImmext(0, y) ^ ebyte i)
   | movb(Immed32 w, y) = 
     if sizeintW32 w <> SevenBits

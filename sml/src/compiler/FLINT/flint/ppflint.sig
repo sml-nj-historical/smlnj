@@ -11,6 +11,9 @@ sig
     val printFundec: FLINT.fundec -> unit
     val printProg  : FLINT.prog -> unit
 
+    (* defaults to LV.lvarName *)
+    val LVarString  : (FLINT.lvar -> string) ref
+
 end (* signature PPFLINT *)
 
 

@@ -1,5 +1,5 @@
 (* COPYRIGHT (c) 1997 YALE FLINT PROJECT *)
-(* flintnm.sml *)
+(* monnier@cs.yale.edu *)
 
 (* Converting the Standard PLambda.lexp into the FLINT IL *)
 signature FLINTNM = 
@@ -12,7 +12,6 @@ struct
 
 local structure LT = PLambdaType
       structure FL = PFlatten		(* argument flattening *)
-      structure LV = LambdaVar
       structure DI = DebIndex
       structure PT = PrimTyc
       structure PO = PrimOp
@@ -25,6 +24,7 @@ in
 
 val say = Control.Print.say
 val mkv = LambdaVar.mkLvar
+val cplv = LambdaVar.dupLvar
 val ident = fn le : L.lexp => le
 
 val (iadd_prim, uadd_prim) = 
@@ -35,9 +35,6 @@ val (iadd_prim, uadd_prim) =
   end
 
 fun bug msg = ErrorMsg.impossible("FlintNM: "^msg)
-
-fun optmap f (SOME v)	= SOME (f v)
-  | optmap _ NONE	= NONE
 
 
 local val (trueDcon', falseDcon') = 
@@ -58,7 +55,7 @@ fun flint_prim (po as (d, p, lt, ts), vs, v, e) =
   (case p
     of (PO.BOXED  | PO.UNBOXED | PO.CMP _ | PO.PTREQL | 
         PO.PTRNEQ | PO.POLYEQL | PO.POLYNEQ) =>
-          (*** branch primops gets translated into F.BRANCH ***)
+          (*** branch primops get translated into F.BRANCH ***)
           F.LET([v], F.BRANCH(po, vs, boolLexp true, boolLexp false), e)
      | (PO.GETRUNVEC | PO.GETHDLR | PO.GETVAR | PO.DEFLVAR) =>
           (*** primops that take zero arguments; argument types
@@ -123,17 +120,19 @@ fun tofundec (venv,d,f_lv,arg_lv,arg_lty,body,isrec) =
 	(* construct the return type if necessary *)
 	val (body_raw, body_ltys, _) = FL.t_pflatten body_lty
 	val rettype = if not isrec then NONE
-		      else SOME(map FL.ltc_raw body_ltys)
+		      else SOME(map FL.ltc_raw body_ltys, F.LK_UNKNOWN)
 
-	val isfct = not (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty)
-	val f_lty = if isfct then LT.ltc_pfct(arg_lty, body_lty)
-		    else LT.ltc_parrow(arg_lty, body_lty)
-
-        val fkind = if isfct then F.FK_FCT
-                    else F.FK_FUN{isrec=rettype, 
-                                  fixed=LT.ffc_var(arg_raw, body_raw),
-                                  known=false,
-                                  inline=not isrec}
+	val (f_lty, fkind) =
+	    if (LT.ltp_tyc arg_lty andalso LT.ltp_tyc body_lty) then
+		(* a function *)
+		(LT.ltc_parrow(arg_lty, body_lty),
+		 {isrec=rettype, known=false, inline=F.IH_SAFE,
+		  cconv=F.CC_FUN(LT.ffc_var(arg_raw, body_raw))})
+	    else 
+		(* a functor *)
+		(LT.ltc_pfct(arg_lty, body_lty),
+		 {isrec=rettype, known=false, inline=F.IH_SAFE,
+		  cconv=F.CC_FCT})
 			
     in ((fkind, f_lv, ListPair.zip(arg_lvs, map FL.ltc_raw arg_ltys), body''),
 	f_lty)
@@ -177,7 +176,8 @@ and tolexp (venv,d) lexp =
                 (* then translate each function in turn *)
                 val funs = map (fn ((f_lv,f_lty),L.FN(arg_lv,arg_lty,body)) =>
                                 #1(tofundec(venv', d, 
-					    f_lv, arg_lv, arg_lty, body, true)))
+					    f_lv, arg_lv, arg_lty, body, true))
+				 | _ => bug "non-function in L.FIX")
                                (ListPair.zip(ListPair.zip(lvs,ltys),lexps))
 
                 (* finally, translate the lexp *)
@@ -189,18 +189,6 @@ and tolexp (venv,d) lexp =
             tolvar(venv, d, lvar, lexp1,
                    fn lty1 =>
                    tolexp (LT.ltInsert(venv,lvar,lty1,d), d) lexp2)
-
-      | L.TAPP (f,tycs) =>
-            (* similar to APP *)
-            tovalue(venv, d, f,
-                    fn (f_val,f_lty) =>
-                    let val r_lty = LT.lt_pinst(f_lty, tycs)
-                        val x = mkv()
-                        val u = F.VAR x
-		        val (vs,wrap) = (#2(FL.v_pflatten r_lty)) u
-                    in  (F.LET([x], F.TAPP(f_val, map FL.tcc_raw tycs),
-                               wrap(F.RET(vs))), r_lty)
-                    end)
 
       | L.RAISE (le, r_lty) => 
             tovalue(venv, d, le,
@@ -237,7 +225,7 @@ and tolexp (venv,d) lexp =
 		    end
 	    in tovalue(venv, d, le,
 		       fn (v, lty) =>
-		       let val default = optmap (#1 o tolexp(venv,d)) default
+		       let val default = Option.map (#1 o tolexp(venv,d)) default
 			   val conlexps as ((_,lty)::_) = map f conlexps
 		       in (F.SWITCH(v, acs, map #1 conlexps, default), lty)
 		       end)
@@ -491,6 +479,16 @@ and tolvar (venv,d,lvar,lexp,cont) =
                  lty)
             end
 
+      | L.TAPP (f,tycs) =>
+            (* similar to APP *)
+            tovalue(venv, d, f,
+                    fn (f_val,f_lty) =>
+                    let val f_lty = LT.lt_pinst(f_lty, tycs)
+			val (c_lexp, c_lty) = cont(f_lty)
+                    in  (F.LET([lvar], F.TAPP(f_val, map FL.tcc_raw tycs),
+                               c_lexp), c_lty)
+                    end)
+
       | L.ETAG (le,lty) =>
             tovalue(venv, d, le,
                     fn (le_lv, le_lty) =>
@@ -567,7 +565,7 @@ and tolvar (venv,d,lvar,lexp,cont) =
 fun norm (lexp as L.FN(arg_lv,arg_lty,e)) =
     (#1(tofundec(LT.initLtyEnv, DI.top, mkv(), arg_lv, arg_lty, e, false))
     handle x => raise x)
-(*   | norm _ = bug "unexpected toplevel lexp" *)
+  | norm _ = bug "unexpected toplevel lexp"
 
 end (* toplevel local *)
 end (* structure FlintNM *)

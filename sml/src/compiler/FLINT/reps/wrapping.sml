@@ -21,7 +21,7 @@ in
 fun bug s = ErrorMsg.impossible ("Wrapping: " ^ s)
 val say = Control.Print.say
 fun mkv _ = LambdaVar.mkLvar()
-val fkfun = FK_FUN{isrec=NONE,known=false,inline=true, fixed=LT.ffc_fixed}
+val fkfun = {isrec=NONE,known=false,inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
 val ident = fn le => le
 fun option f NONE = NONE
   | option f (SOME x) = SOME (f x)
@@ -90,7 +90,7 @@ fun wrapping fdec =
 let (* In pass1, we calculate the old type of each variables in the FLINT
      * expression. We do this for the sake of having simpler wrapping code.
      *)
-    val {getLty=getLtyGen, cleanUp} = Recover.recover (fdec, false)
+    val {getLty=getlty, cleanUp} = Recover.recover (fdec, false)
 
     (** generate a set of new wrappers *)
     val (tcWrap, ltWrap, tcf, ltf, cleanup2) = LT.twrap_gen true
@@ -104,20 +104,18 @@ let (* In pass1, we calculate the old type of each variables in the FLINT
 
     (* transform : CO.wpEnv * DI.depth -> (lexp -> lexp) *)
     fun transform (wenv, d) = 
-      let val getlty = getLtyGen d 
-
-          fun lpfd (fk, v, vts, e) = 
-            ((case fk 
-               of FK_FUN {isrec,known,inline,fixed} =>  
-                    let val nisrec = case isrec of SOME ts => SOME (map ltf ts)
-                                                 | NONE => NONE
-                     in FK_FUN {isrec=nisrec, known=known, 
-                                fixed=LT.ffc_fixed, inline=inline}
-                    end
-                | _ => fk), 
-             v, 
-             map (fn (x,t) => (x, ltf t)) vts, 
-             loop e)
+      let 
+          fun lpfd ({isrec,known,inline,cconv}, v, vts, e) = 
+	      let val nisrec = case isrec of SOME(ts,l) => SOME(map ltf ts, l)
+					   | NONE => NONE
+		  val ncconv = case cconv of CC_FUN fixed => CC_FUN LT.ffc_fixed
+					   | CC_FCT => cconv
+	      in ({isrec=nisrec, known=known,
+		   cconv=ncconv, inline=inline},
+		  v, 
+		  map (fn (x,t) => (x, ltf t)) vts, 
+		  loop e)
+	      end
 
           (* lpdc : dcon * tyc list * value * bool -> 
                        (dcon * tyc list * (lexp -> lexp) * value)  *) 
