@@ -15,13 +15,13 @@ Description:
 ----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/03/22 14:18:25 EST 
-Tag: blume-20020321-cps-branch-prob
+Tag: george-20020322-cps-branch-prob
 Description:
 
-Implemented the Ball-Larus branch prediction-heuristic, and 
+Implemented the Ball-Larus branch prediction-heuristics, and 
 incorporated graphical viewers for control flow graphs.
 
-Ball-Larus Heuristic:
+Ball-Larus Heuristics:
 ---------------------
 See the file compiler/CodeGen/cpscompile/cpsBranchProb.sml.
 
@@ -33,7 +33,7 @@ probabilities.  For example, in the function:
 the ball-larus heuristics predicts that the n=0 is unlikely
 (OH-heuristic), and the 'then' branch is unlikely because of the
 RH-heuristic -- giving the 'then' branch an even lower combined
-probability using the Dempster-Shater theory.
+probability using the Dempster-Shafer theory.
 
 Finally, John Reppy's loop analysis in MLRISC, further lowers the
 probability of the 'then' branch because of the loop in the else
