@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/22 18:06:00 EDT
+Tag: blume-20010522-targets
+Description:
+
+Made install.sh use file config/targets.customized if it exists, falling
+back to config/targets if it doesn't.  This way one can have a customized
+version of the targets file without touching the "real thing", thus
+eliminating the constant fear of accidentally checking something bogus
+back into the CVS repository...  (File config/targets.customized must
+not be added to the repository!)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/22 16:30:00 EDT
 Tag: blume-20010522-minitut
 Description:

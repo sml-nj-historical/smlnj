@@ -14,11 +14,14 @@ this=$0
 #
 # get the target list
 #
-if [ ! -r config/targets ]; then
+if [ -r config/targets.customized ] ; then
+    . config/targets.customized
+elif [ ! -r config/targets ]; then
     echo "$this: !!! File config/targets is missing."
     exit 1
+else
+    . config/targets
 fi
-. config/targets
 
 #
 # create the preloads.standard file
