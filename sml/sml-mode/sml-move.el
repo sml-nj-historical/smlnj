@@ -81,7 +81,8 @@
 
 (defconst sml-syntax-prec
   (sml-preproc-alist
-   `(((";" "," "in" "with") . 10)
+   `((("in" "with") . 10)
+     ((";" ",") . 20)
      (("=>" "d=" "=of") . (65 . 40))
      ("|" . (47 . 30))
      (("case" "of" "fn") . 45)
@@ -192,6 +193,11 @@ This assumes that we are `looking-at' the OP."
       (save-excursion
 	(sml-backward-sym-1)
 	(if (sml-nested-of-p) "of" "=of")))
+     ;; ((equal sym "datatype")
+     ;;  (save-excursion
+     ;; 	(sml-backward-sym-1)
+     ;; 	(sml-backward-spaces)
+     ;; 	(if (eq (preceding-char) ?=) "=datatype" sym)))
      (t sym))))
 
 (defun sml-backward-sym-1 ()
@@ -209,12 +215,16 @@ This assumes that we are `looking-at' the OP."
 	  (cond
 	   ((string= sym "=") (if (sml-poly-equal-p) "=" "d="))
 	   ((string= sym "of") (if (sml-nested-of-p) "of" "=of"))
+	   ;; ((string= sym "datatype")
+	   ;;  (save-excursion (sml-backward-spaces)
+	   ;; 		    (if (eq (preceding-char) ?=) "=datatype" sym)))
 	   (t sym)))))))
     
 
 (defun sml-backward-sexp (prec)
-  "Moves one sexp backward if possible, or one char else.
-Returns T if the move indeed moved through one sexp and NIL if not."
+  "Move one sexp backward if possible, or one char else.
+Returns t if the move indeed moved through one sexp and nil if not.
+PREC is the precedence currently looked for."
   (let ((parse-sexp-lookup-properties t)
 	(parse-sexp-ignore-comments t))
     (sml-backward-spaces)
