@@ -29,7 +29,7 @@ Description:
 CM now ignores (but still accepts) the "owner" information in group
 descriptions.  The owner of a group is its next enclosing
 library. Each group must have a unique owner.  (There is a virtual
-"toplevel" library that own groups which are not nested within a real
+"toplevel" library that owns groups which are not nested within a real
 library.)  Previously, each group had to explicitly declare its owner,
 and CM would check that such a declaration is correct.  The new scheme
 is to have CM check that for each group there is precisely one owning

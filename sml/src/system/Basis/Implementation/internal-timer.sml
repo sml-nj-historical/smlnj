@@ -61,17 +61,20 @@ end = struct
 	val op ++ = usop Time.+
     in
 
-    fun checkCPUTimer (CPUT t) = let
-	val t' = getTime ()
-    in
-	#nongc t' ++ #gc t' -- #nongc t -- #gc t
-    end
-
-    fun checkGCTime (CPUT t) = let
+    fun checkCPUTimes (CPUT t) = let
 	val t' = getTime ()
     in
 	{ nongc = #nongc t' -- #nongc t, gc = #gc t' -- #gc t }
     end
+
+    fun checkCPUTimer tmr = let
+	val t = checkCPUTimes tmr
+    in
+	#nongc t ++ #gc t
+    end
+
+    fun checkGCTime (CPUT t) = Time.- (#usr (#gc (getTime ())), #usr (#gc t))
+
     end (* local *)
 
     fun checkRealTimer (RealT t) = Time.-(Time.now(), t)
