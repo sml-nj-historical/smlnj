@@ -31,11 +31,13 @@ signature MONO_ARRAY_SORT
 signature MONO_DYNAMIC_ARRAY
 signature MONO_HASH_TABLE
 signature MONO_HASH2_TABLE
+signature MONO_PRIORITYQ
 signature ORD_KEY
 signature ORD_MAP
 signature ORD_SET
 signature PARSER_COMB
 signature PATH_UTIL
+signature PRIORITY
 signature PROP_LIST
 signature QUEUE
 signature RAND
@@ -102,6 +104,7 @@ functor GraphSCCFn
 functor HashTableFn
 functor Hash2TableFn
 functor KeywordFn
+functor LeftPriorityQFn
 functor ListMapFn
 functor ListSetFn
 functor MonoArrayFn
@@ -170,6 +173,7 @@ io-util-sig.sml
 io-util.sml
 getopt-sig.sml
 getopt.sml
+left-priorityq-fn.sml
 lib-base-sig.sml
 lib-base.sml
 list-format-sig.sml
@@ -185,6 +189,7 @@ mono-array-sort-sig.sml
 mono-dynamic-array-sig.sml
 mono-hash-table-sig.sml
 mono-hash2-table-sig.sml
+mono-priorityq-sig.sml
 ord-key-sig.sml
 ord-map-sig.sml
 ord-set-sig.sml
@@ -195,6 +200,7 @@ path-util.sml
 plist-sig.sml
 plist.sml
 prime-sizes.sml
+priority-sig.sml
 queue-sig.sml
 queue.sml
 rand-sig.sml
