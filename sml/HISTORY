@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/03/20 15:55:00 EST
+Tag: blume-20020320-kmp
+Description:
+
+Implemented Knuth-Morris-Pratt string matching in PreString and used
+it for String.isSubstring, Substring.isSubstring, and
+Substring.position.
+
+(Might need some stress-testing.  Simple examples worked fine.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/03/19 16:37:00 EST
 Tag: blume-20020319-witnesses
 Description:

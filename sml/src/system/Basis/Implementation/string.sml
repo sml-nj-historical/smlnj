@@ -205,16 +205,12 @@ structure StringImp : STRING =
 	in
 	    PreString.isPrefix (s1, s2, sz2 - size s1, sz2)
 	end
-    fun isSubstring s1 s2 =   (* FIXME: should we do KMP or BM here... (?) *)
-	let val sz2 = size s2
-	    val stop = sz2 - size s1
-	    fun matches_at_or_after i =
-		i < stop andalso
-		(PreString.isPrefix (s1, s2, i, sz2) orelse
-		 matches_at_or_after (i + 1))
-	in
-	    matches_at_or_after 0
-	end
+    fun isSubstring s = let
+	val stringsearch = PreString.kmp s
+	fun search s' = stringsearch (s', 0, size s') >= 0
+    in
+	search
+    end
 
     fun compare (a, b) =
 	PreString.cmp (a, 0, size a, b, 0, size b)

@@ -190,6 +190,56 @@ structure PreString =
 	    collate cmpFn (s1, i1, n1, s2, i2, n2)
 	  end
 
+    (* Knuth-Morris-Pratt String Matching
+     *
+     * val kmp : string -> string * int * int -> int option
+     * Find the first string within the second, starting at and
+     * ending before the given positions.
+     * Return the starting position of the match
+     * or ~1 if there is no match. *)
+    fun kmp pattern =
+	let val psz = size pattern
+	    val next = InlineT.PolyArray.array (psz, ~1)
+
+	    fun pat x = unsafeSub (pattern, x)
+	    fun nxt x = InlineT.PolyArray.sub (next, x)
+	    fun setnxt (i, x) = InlineT.PolyArray.update (next, i, x)
+
+	    (* trying to fill next at position p (> 0) and higher;
+	     * invariants: x >= 0
+             *             pattern[0..x) = pattern[p-x..p)
+	     *             for i in [0..p) :
+	     *                 pattern[i] <> pattern[next[i]]
+	     *                 pattern[0..next[i]) = pattern[i-next[i]..i) *)
+	    fun fill (p, x) = if p >= psz then ()
+			      else if pat x = pat p then dnxt (p, nxt x, x + 1)
+			      else dnxt (p, x, nxt x + 1)
+	    and dnxt (p, x, y) = (setnxt (p, x); fill (p + 1, y))
+
+	    (* Once next has been initialized, it serves the following purpose:
+	     * Suppose we are looking at text position t and pattern position
+	     * p.  This means that all pattern positions < p have already
+	     * matched the text positions that directly precede t.
+	     * Now, if the text[t] matches pattern[p], then we simply advance
+	     * both t and p and try again.
+	     * However, if the two do not match, then we simply
+	     * try t again, but this time with the pattern position
+	     * given by next[p].
+	     * Success is when p reaches the end of the pattern, failure is
+	     * when t reaches the end of the text without p having reached the
+	     * end of the pattern. *)
+	    fun search (text, start, tsz) =
+		let fun txt x = unsafeSub (text, x)
+		    fun loop (p, t) =
+			if p >= psz then t - psz
+			else if t >= tsz then ~1
+			else if p < 0 orelse pat p = txt t then loop (p+1, t+1)
+			else loop (nxt p, t)
+		in loop (0, start)
+		end
+	in fill (1, 0); search
+	end
+
     end (* local *)
   end; (* PreString *)
 end
