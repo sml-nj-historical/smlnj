@@ -17,12 +17,13 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
 
-    type env = (unit -> E.dynenv) * bool
+    type env = (unit -> E.dynenv) * SmlInfo.info list * BinInfo.info list
     type benv = env
     type envdelta = env
     type result = E.dynenv
 
-    fun layer ((d, n), (d', n')) = (fn () => DE.atop (d (), d'()), n orelse n')
+    fun layer ((d, sl, bl), (d', sl', bl')) =
+	(fn () => DE.atop (d (), d' ()), sl @ sl', bl @ bl')
 
     fun filter (e, _) = e
     fun nofilter e = e
@@ -32,26 +33,27 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
     val bnofilter = nofilter
 
     val empty = DE.empty
-    fun env2result ((mkEnv, flag): env) = mkEnv ()
+    fun env2result ((mkEnv, _, _): env) = mkEnv ()
     fun rlayer (r, r') = DE.atop (r, r')
 
     fun primitive (gp: GeneralParams.info) p =
 	(fn () => E.dynamicPart (Primitive.env (#primconf (#param gp)) p),
-	 false)
+	 [], [])
 
     fun pervasive (gp: GeneralParams.info) =
-	(fn () => E.dynamicPart (#pervasive (#param gp)), false)
+	(fn () => E.dynamicPart (#pervasive (#param gp)),
+	 [], [])
 
     val bpervasive = pervasive
 
-    fun thunkify (d, n) = (fn () => d, n)
+    fun thunkify d () = d
 
-    fun execute (bfc, (mkdyn, newCtxt), error, descr, memo) = let
+    fun execute (bfc, mkdyn, error, descr, memo, sl, bl) = let
 	val e = BF.exec (bfc, mkdyn ())
 	val de = E.dynamicPart e
     in
 	memo de;
-	SOME (thunkify (de, newCtxt))
+	SOME (thunkify de, sl, bl)
     end handle exn => let
 	fun ppb pps =
 	    (PP.add_newline pps;
@@ -62,22 +64,27 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : COMPILATION_TYPE = struct
 	NONE
     end
 
-    fun dostable (i, mkenv, gp) =
-	case mkenv () of
+    fun dostable (i, mkbenv, gp) =
+	case mkbenv () of
 	    NONE => NONE
-	  | SOME (e as (dyn, newCtxt)) =>
-		(case PS.exec_look_stable (i, newCtxt, gp) of
-		     SOME m => SOME (thunkify m)
-		   | NONE => execute (PS.bfc_fetch_stable i, e,
-				      BinInfo.error i EM.COMPLAIN,
-				      BinInfo.describe i,
-				      fn e => PS.exec_memo_stable (i, e)))
+	  | SOME (benv, sl, bl) =>
+		(case PS.exec_look_stable (i, gp) of
+		     SOME m => SOME (thunkify m, [], [i])
+		   | NONE => (execute (PS.bfc_fetch_stable i, benv,
+				       BinInfo.error i EM.COMPLAIN,
+				       BinInfo.describe i,
+				       fn e => PS.exec_memo_stable (i, e, bl),
+				       [], [i])))
+			 
+    fun fetch_sml i =
+	PS.bfc_fetch_sml i handle e => (print "!!! fetch_sml\n"; raise e)
 
-    fun dosml (i, e as (dyn, newCtxt), gp) =
-	case PS.exec_look_sml (i, newCtxt, gp) of
-	    SOME m => SOME (thunkify m)
-	  | NONE => execute (PS.bfc_fetch_sml i, e,
-			     SmlInfo.error gp i EM.COMPLAIN,
-			     SmlInfo.name i,
-			     fn m => PS.exec_memo_sml (i, m))
+    fun dosml (i, (env, sl, bl), gp) =
+	case PS.exec_look_sml (i, gp) of
+	    SOME m => SOME (thunkify m, [i], [])
+	  | NONE => (execute (fetch_sml i, env,
+			      SmlInfo.error gp i EM.COMPLAIN,
+			      SmlInfo.name i,
+			      fn m => PS.exec_memo_sml (i, m, sl, bl),
+			      [i], []))
 end

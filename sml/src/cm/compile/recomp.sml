@@ -233,9 +233,9 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			         | BF.Compile _ => NONE
 		                 | e => let
 				       fun ppb pps =
-					   (PP.add_string pps
-					        (General.exnMessage e);
-					    PP.add_newline pps)
+					   (PP.add_newline pps;
+					    PP.add_string pps
+					       (General.exnMessage e))
 				   in
 				       SmlInfo.error gp i EM.COMPLAIN
 				          ("exception raised while compiling "

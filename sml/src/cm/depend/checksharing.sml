@@ -41,7 +41,7 @@ structure CheckSharing :> CHECKSHARING = struct
 		if StringSet.isEmpty s then ()
 		else (err EM.COMPLAIN ("cannot share state of " ^ x) ppb;
 		      ok := false);
-		StringSet.add (s, x)
+		s
 	    end
 
 	val smlmap = ref SmlInfoMap.empty

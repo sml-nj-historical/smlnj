@@ -46,10 +46,9 @@ functor RecompPersstateFn
 	    smlmap := SmlInfoMap.insert (!smlmap, i, tmemo)
 	end
 
-	fun discard (arg as (_, { bfc, ctxt })) = (BF.discardCode bfc; arg)
-
 	val recomp_memo_sml =
-	    if discard_code then recomp_memo_sml0 o discard
+	    if discard_code then
+		(fn x => (BF.discardCode (#bfc (#2 x)); recomp_memo_sml0 x))
 	    else recomp_memo_sml0
 
 	fun recomp_look_stable i = StableMap.find (!stablemap, i)
@@ -57,7 +56,8 @@ functor RecompPersstateFn
 	    stablemap := StableMap.insert (!stablemap, i, memo)
 
 	val recomp_memo_stable =
-	    if discard_code then recomp_memo_stable0 o discard
+	    if discard_code then
+		(fn x => (BF.discardCode (#bfc (#2 x)); recomp_memo_stable0 x))
 	    else recomp_memo_stable0
 
 	fun bfc_fetch_sml i = #bfc (#1 (valOf (SmlInfoMap.find (!smlmap, i))))

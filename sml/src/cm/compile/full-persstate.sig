@@ -13,13 +13,13 @@ signature FULL_PERSSTATE = sig
 
     type env = GenericVC.Environment.dynenv
 
-    val exec_look_sml :
-	SmlInfo.info * bool * GeneralParams.info -> (env * bool) option
-    val exec_memo_sml :	SmlInfo.info * env -> unit
+    val exec_look_sml : SmlInfo.info * GeneralParams.info -> env option
+    val exec_memo_sml :
+	SmlInfo.info * env * SmlInfo.info list * BinInfo.info list -> unit
 
-    val exec_look_stable :
-	BinInfo.info * bool * GeneralParams.info -> (env * bool) option
-    val exec_memo_stable : BinInfo.info * env -> unit
+    val exec_look_stable : BinInfo.info * GeneralParams.info -> env option
+    val exec_memo_stable :
+	BinInfo.info * env * BinInfo.info list -> unit
 
-    val rememberShared : unit -> unit
+    val rememberShared : GeneralParams.info -> unit
 end

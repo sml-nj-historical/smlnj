@@ -83,7 +83,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   else Say.say ("$Execute: required privileges are:\n" ::
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
 	   ExecTraversal.group gp g
-	   before FullPersstate.rememberShared ())
+	   before FullPersstate.rememberShared gp)
 
       fun recomp_runner gp g = isSome (RecompTraversal.group gp g)
 

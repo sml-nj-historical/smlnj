@@ -15,8 +15,7 @@ signature RECOMP_PERSSTATE = sig
     (* look_sml implicitly removes stale memos *)
     val recomp_look_sml :
 	SmlInfo.info * PidSet.set * GeneralParams.info -> recomp_memo option
-    val recomp_memo_sml :
-	SmlInfo.info * recomp_memo -> unit
+    val recomp_memo_sml : SmlInfo.info * recomp_memo -> unit
 
     val recomp_look_stable : BinInfo.info -> recomp_memo option
     val recomp_memo_stable : BinInfo.info * recomp_memo -> unit
