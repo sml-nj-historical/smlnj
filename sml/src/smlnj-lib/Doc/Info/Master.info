@@ -1,0 +1,438 @@
+@FILES
+  {"binary-map-fn"; "The BinaryMapFn functor";}
+  {"random"; "The Random structure";}
+  {"splay-set-fn"; "The SplaySetFn functor";}
+  {@EMPTY "regexp-lib-part"; "Regular Expression Library";
+    @SECTION "The Regular expression Library" {
+       @FILE "regexp-intro"
+       @FILE "regexp-sig"
+       @FILE "parser-sig"
+       @FILE "engine-sig"
+       @FILE "regexp-fn"
+       @FILE "match-tree"
+       @FILE "syntax"
+    }
+  }
+  {"listsort"; "The LIST_SORT signature";}
+  {"engine-sig"; "The REGEXP_ENGINE signature";}
+  {"syntax"; "The RegExpSyntax structure";}
+  {"char-map"; "The CharMap structure";}
+  {"match-tree"; "The MatchTree structure";}
+  {"mono-array-sort"; "The MONO_ARRAY_SORT signature";}
+  {"binary-set-fn"; "The BinarySetFn functor";}
+  {"array-sort"; "The ARRAY_SORT signature";}
+  {"array-qsort"; "The ArrayQSort structure";}
+  {@EMPTY "util-lib-part"; "Utility Library Manual";
+    @SECTION "The Utility Library" {
+       @FILE "array-qsort-fn"
+       @FILE "array-qsort"
+       @FILE "array-sort"
+       @FILE "binary-map-fn"
+       @FILE "binary-set-fn"
+       @FILE "bit-array"
+       @FILE "bit-vector"
+       @FILE "bsearch"
+       @FILE "char-map"
+       @FILE "dynamic-array"
+       @FILE "fifo"
+       @FILE "iterate"
+       @FILE "lib-base"
+       @FILE "list-format"
+       @FILE "list-map-fn"
+       @FILE "list-set-fn"
+       @FILE "list-xprod"
+       @FILE "listsort"
+       @FILE "mono-array-sort"
+       @FILE "mono-dynamic-array"
+       @FILE "ord-key"
+       @FILE "ord-map"
+       @FILE "ord-set"
+       @FILE "queue"
+       @FILE "rand"
+       @FILE "random"
+       @FILE "splay-map-fn"
+       @FILE "splay-set-fn"
+       @FILE "splaytree"
+    }
+  }
+  {"list-xprod"; "The ListXProd structure";}
+  {"mono-dynamic-array"; "The MONO_DYNAMIC_ARRAY signature";}
+  {"list-map-fn"; "The ListMapFn functor";}
+  {"regexp-fn"; "The RegExpFn functor";}
+  {"iterate"; "The Iterate structure";}
+  {"bit-vector"; "The BitVector structure";}
+  {"lib-base"; "The LibBase structure";}
+  {"ord-map"; "The ORD_MAP signature";}
+  {"dynamic-array"; "The DynamicArrayFn functor";}
+  {"list-format"; "The ListFormat structure";}
+  {"fifo"; "The Fifo structure";}
+  {"regexp-intro"; "Introduction";
+    @SECTION "Introduction" {}
+  }
+  {"rand"; "The Rand structure";}
+  {"array-qsort-fn"; "The ArrayQSortFn functor";}
+  {"list-set-fn"; "The ListSetFn functor";}
+  {"bsearch"; "The BSearchFn functor";}
+  {"splaytree"; "The SplayTree structure";}
+  {"ord-key"; "The ORD_KEY signature";}
+  {"ord-set"; "The ORD_SET signature";}
+  {"intro-part"; "SML/NJ Library Introduction";
+    @SECTION "Introduction" {
+      @SECTION "Overview" {}
+      @SECTION "A quick tour" {}
+    }
+  }
+  {"splay-map-fn"; "The SplayMapFn functor";}
+  {"queue"; "The Queue structure";}
+  {@EMPTY "smlnj-lib"; "SML/NJ Library Manual";
+     @FILE "intro-part"
+     @FILE "util-lib-part"
+     @FILE "regexp-lib-part"
+  }
+  {"regexp-sig"; "The REGEXP signature";}
+  {"bit-array"; "The BitArray structure";}
+  {"parser-sig"; "The REGEXP_PARSER signature";}
+@SIGNATURE ORD_SET "ord-set" {
+  @STRUCTURE Key ORD_KEY
+  @TYPES 
+    @TYPE item
+    @TYPE set
+  @VALS 
+    exists
+    foldl
+    find
+    singleton
+    filter
+    foldr
+    equal
+    difference
+    listItems
+    map
+    add'
+    app
+    isSubset
+    numItems
+    delete
+    addList
+    compare
+    intersection
+    member
+    add
+    union
+    isEmpty
+    empty
+}
+@SIGNATURE REGEXP_SYNTAX "syntax" {
+  @STRUCTURE CharSet ORD_SET
+  @TYPES 
+    @DATATYPE syntax { Group Alt Concat Interval Option Star Plus MatchSet NonmatchSet Char Begin End}
+  @EXCEPTIONS 
+    CannotParse
+    CannotCompile
+  @VALS 
+    allChars
+    addRange
+}
+@SIGNATURE RANDOM "random" {
+  @TYPES 
+    @TYPE rand
+  @VALS 
+    randInt
+    randRange
+    rand
+    randReal
+    fromString
+    randNat
+    toString
+}
+@SIGNATURE FIFO "fifo" {
+  @TYPES 
+    @TYPE fifo
+  @EXCEPTIONS 
+    Dequeue
+  @VALS 
+    foldl
+    length
+    peek
+    foldr
+    enqueue
+    contents
+    map
+    app
+    head
+    delete
+    isEmpty
+    dequeue
+    empty
+}
+@SIGNATURE RAND "rand" {
+  @TYPES 
+    @TYPE rand
+  @VALS 
+    random
+    randMin
+    mkRandom
+    randMax
+    norm
+    range
+}
+@SIGNATURE ARRAY_SORT "array-sort" {
+  @TYPES 
+    @TYPE array
+  @VALS 
+    sort
+    sorted
+}
+@SIGNATURE REGEXP_PARSER "parser-sig" {
+  @VALS 
+    scan
+}
+@SIGNATURE LIST_XPROD "list-xprod" {
+  @VALS 
+    foldX
+    mapX
+    appX
+}
+@SIGNATURE REGEXP "regexp-sig" {
+  @TYPES 
+    @TYPE regexp
+  @VALS 
+    find
+    prefix
+    compileString
+    compile
+    match
+}
+@SIGNATURE BIT_ARRAY "bit-array" {
+  @VALS 
+    clrBit
+    getBits
+    extend0
+    eqBits
+    equal
+    extend1
+    lshift
+    fromString
+    setBit
+    rshift
+    bits
+    orb
+    notb
+    complement
+    andb
+    intersection
+    union
+    toString
+    xorb
+    isZero
+}
+@SIGNATURE MONO_ARRAY_SORT "mono-array-sort" {
+  @STRUCTURE A @EXTERNAL
+  @VALS 
+    sort
+    sorted
+}
+@SIGNATURE REGEXP_ENGINE "engine-sig" {
+  @TYPES 
+    @TYPE regexp
+  @VALS 
+    find
+    prefix
+    compile
+    match
+}
+@SIGNATURE LIB_BASE "lib-base" {
+  @EXCEPTIONS 
+    Unimplemented
+    NotFound
+    Impossible
+  @VALS 
+    version
+    banner
+    failure
+}
+@SIGNATURE BIT_VECTOR "bit-vector" {
+  @VALS 
+    getBits
+    extend0
+    eqBits
+    equal
+    extend1
+    lshift
+    fromString
+    rshift
+    bits
+    orb
+    notb
+    andb
+    toString
+    xorb
+    isZero
+}
+@SIGNATURE ORD_MAP "ord-map" {
+  @STRUCTURE Key ORD_KEY
+  @TYPES 
+    @TYPE map
+  @VALS 
+    foldri
+    find
+    foldl
+    mapPartiali
+    filter
+    listItemsi
+    mapi
+    foldr
+    appi
+    mapPartial
+    insert'
+    remove
+    listItems
+    unionWithi
+    map
+    app
+    numItems
+    collate
+    insert
+    unionWith
+    intersectWithi
+    foldli
+    intersectWith
+    empty
+    filteri
+}
+@SIGNATURE LIST_SORT "listsort" {
+  @VALS 
+    sort
+    sorted
+    uniqueSort
+}
+@SIGNATURE LIST_FORMAT "list-format" {
+  @VALS 
+    scan
+    listToString
+    fmt
+}
+@SIGNATURE QUEUE "queue" {
+  @TYPES 
+    @TYPE queue
+  @EXCEPTIONS 
+    Dequeue
+  @VALS 
+    foldl
+    length
+    peek
+    foldr
+    enqueue
+    mkQueue
+    contents
+    map
+    app
+    head
+    delete
+    clear
+    isEmpty
+    dequeue
+}
+@SIGNATURE SPLAY_TREE "splaytree" {
+  @TYPES 
+    @DATATYPE splay { SplayObj SplayNil}
+  @VALS 
+    join
+    splay
+}
+@SIGNATURE MONO_DYNAMIC_ARRAY "mono-dynamic-array" {
+  @TYPES 
+    @TYPE elem
+    @TYPE array
+  @VALS 
+    update
+    truncate
+    bound
+    subArray
+    array
+    fromList
+    tabulate
+    default
+    sub
+}
+@SIGNATURE CHAR_MAP "char-map" {
+  @TYPES 
+    @TYPE char_map
+  @VALS 
+    mkCharMap
+    mapStrChr
+    mapChr
+}
+@SIGNATURE MATCH_TREE "match-tree" {
+  @TYPES 
+    @DATATYPE match_tree { Match}
+  @VALS 
+    num
+    find
+    root
+    map
+    app
+    nth
+}
+@SIGNATURE ORD_KEY "ord-key" {
+  @TYPES 
+    @TYPE ord_key
+  @VALS 
+    compare
+}
+@SIGNATURE ITERATE "iterate" {
+  @VALS 
+    repeat
+    for
+    iterate
+}
+@STRUCTURE Random "random" RANDOM
+@STRUCTURE LibBase "lib-base" LIB_BASE
+@STRUCTURE BitVector "bit-vector" BIT_VECTOR
+@STRUCTURE ListMergeSort "listsort" LIST_SORT
+@STRUCTURE Fifo "fifo" FIFO
+@STRUCTURE Rand "rand" RAND
+@STRUCTURE IntListMap "ord-map" ORD_MAP
+@STRUCTURE ListFormat "list-format" LIST_FORMAT
+@STRUCTURE SplayTree "splaytree" SPLAY_TREE
+@STRUCTURE BackTrackEngine "engine-sig" REGEXP_ENGINE
+@STRUCTURE CharMap "char-map" CHAR_MAP
+@STRUCTURE MatchTree "match-tree" MATCH_TREE
+@STRUCTURE IntBinaryMap "ord-map" ORD_MAP
+@STRUCTURE DfaEngine "engine-sig" REGEXP_ENGINE
+@STRUCTURE RegExpSyntax "syntax" REGEXP_SYNTAX
+@STRUCTURE IntListSet "ord-set" ORD_SET
+@STRUCTURE Queue "queue" QUEUE
+@STRUCTURE ArrayQSort "array-qsort" ARRAY_SORT
+@STRUCTURE ListXProd "list-xprod" LIST_XPROD
+@STRUCTURE AwkSyntax "parser-sig" REGEXP_PARSER
+@STRUCTURE IntBinarySet "ord-set" ORD_SET
+@STRUCTURE Iterate "iterate" ITERATE
+@STRUCTURE BitArray "bit-array" BIT_ARRAY
+@FUNCTOR BinaryMapFn "binary-map-fn" ORD_KEY
+ORD_MAP
+@FUNCTOR SplaySetFn "splay-set-fn" ORD_KEY
+ORD_SET
+@FUNCTOR ListSetFn "list-set-fn" ORD_KEY
+ORD_SET
+@FUNCTOR ArrayQSortFn "array-qsort-fn" @EXTERNAL
+MONO_ARRAY_SORT
+@FUNCTOR BinarySetFn "binary-set-fn" ORD_KEY
+ORD_SET
+@FUNCTOR DynamicArrayFn "dynamic-array" @EXTERNAL
+MONO_DYNAMIC_ARRAY
+@FUNCTOR SplayMapFn "splay-map-fn" ORD_KEY
+ORD_MAP
+@FUNCTOR BSearchFn "bsearch" @EXTERNAL
+{
+  @STRUCTURE A @EXTERNAL
+  @VALS 
+    bsearch
+}
+@FUNCTOR ListMapFn "list-map-fn" ORD_KEY
+ORD_MAP
+@FUNCTOR RegExpFn "regexp-fn" {
+  @STRUCTURE P REGEXP_PARSER
+  @STRUCTURE E REGEXP_ENGINE
+}
+REGEXP

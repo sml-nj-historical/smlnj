@@ -1,0 +1,4 @@
+@FILES
+  {"array-qsort"; "The ArrayQSort structure";}
+@SIGNATURE ARRAY_SORT
+@STRUCTURE ArrayQSort "array-qsort" ARRAY_SORT

@@ -1,0 +1,12 @@
+@FILES
+  {"regexp-sig"; "The REGEXP signature";}
+@SIGNATURE REGEXP "regexp-sig" {
+  @TYPES 
+    @TYPE regexp
+  @VALS 
+    find
+    prefix
+    compileString
+    compile
+    match
+}

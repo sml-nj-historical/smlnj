@@ -1,0 +1,13 @@
+@FILES
+  {"lib-base"; "The LibBase structure";}
+@SIGNATURE LIB_BASE "lib-base" {
+  @EXCEPTIONS 
+    Unimplemented
+    NotFound
+    Impossible
+  @VALS 
+    banner
+    version
+    failure
+}
+@STRUCTURE LibBase "lib-base" LIB_BASE

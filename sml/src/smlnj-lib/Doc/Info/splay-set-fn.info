@@ -1,0 +1,6 @@
+@FILES
+  {"splay-set-fn"; "The SplaySetFn functor";}
+@SIGNATURE ORD_SET
+@SIGNATURE ORD_KEY
+@FUNCTOR SplaySetFn "splay-set-fn" ORD_KEY
+ORD_SET

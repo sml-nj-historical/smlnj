@@ -1,0 +1,14 @@
+@FILES
+  {"rand"; "The Rand structure";}
+@SIGNATURE RAND "rand" {
+  @TYPES 
+    @TYPE rand
+  @VALS 
+    random
+    mkRandom
+    randMin
+    randMax
+    norm
+    range
+}
+@STRUCTURE Rand "rand" RAND

@@ -1,0 +1,24 @@
+@FILES
+  {"queue"; "The Queue structure";}
+@SIGNATURE QUEUE "queue" {
+  @TYPES 
+    @TYPE queue
+  @EXCEPTIONS 
+    Dequeue
+  @VALS 
+    foldl
+    length
+    peek
+    foldr
+    enqueue
+    mkQueue
+    map
+    contents
+    app
+    head
+    delete
+    clear
+    isEmpty
+    dequeue
+}
+@STRUCTURE Queue "queue" QUEUE

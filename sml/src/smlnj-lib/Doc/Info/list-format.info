@@ -1,0 +1,9 @@
+@FILES
+  {"list-format"; "The ListFormat structure";}
+@SIGNATURE LIST_FORMAT "list-format" {
+  @VALS 
+    scan
+    listToString
+    fmt
+}
+@STRUCTURE ListFormat "list-format" LIST_FORMAT
