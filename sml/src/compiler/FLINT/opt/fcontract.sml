@@ -185,6 +185,7 @@ local
     structure PP = PPFlint
     structure FU = FlintUtil
     structure LT = LtyExtern
+    structure LK = LtyKernel
     structure OU = OptUtils
     structure CTRL = Control.FLINT
 in
@@ -197,6 +198,7 @@ fun bugval (msg,v) = (say "\n"; PP.printSval v; bug msg)
 (* fun sayexn e = app say (map (fn s => s^" <- ") (SMLofNJ.exnHistory e)) *)
 
 val cplv = LambdaVar.dupLvar
+val mklv = LambdaVar.mkLvar
 
 datatype sval
   = Val    of F.value			(* F.value should never be F.VAR lv *)
@@ -219,6 +221,34 @@ fun tycs_eq ([],[]) = true
   | tycs_eq (tyc1::tycs1,tyc2::tycs2) =
     LT.tc_eqv(tyc1,tyc2) andalso tycs_eq(tycs1,tycs2)
   | tycs_eq _ = false
+
+(* calls `code' to append a lexp to each leaf of `le'.
+ * Typically used to transform `let lvs = le in code' so that
+ * `code' is now copied at the end of each branch of `le'.
+ * `lvs' is a list of lvars that should be used if the result of `le'
+ * needs to be bound before calling `code'. *)
+fun append lvs code le =
+    let fun l (F.RET vs) = code vs
+	  | l (le as (F.APP _ | F.TAPP _ | F.RAISE _ | F.HANDLE _)) =
+	    let val lvs = map (fn lv => let val nlv = cplv lv
+	                                in C.new NONE nlv; nlv end)
+			      lvs
+	    in F.LET(lvs, le, code(map F.VAR lvs))
+	    end
+	  | l (F.LET (lvs,body,le)) = F.LET(lvs,body, l le)
+	  | l (F.FIX (fdecs,le)) = F.FIX(fdecs, l le)
+	  | l (F.TFN (tfdec,le)) = F.TFN(tfdec, l le)
+	  | l (F.SWITCH (v,ac,arms,def)) =
+	    let fun larm (con,le) = (con, l le)
+	    in F.SWITCH(v, ac, map larm arms, O.map l def)
+	    end
+	  | l (F.CON (dc,tycs,v,lv,le)) = F.CON(dc, tycs, v, lv, l le)
+	  | l (F.RECORD (rk,vs,lv,le)) = F.RECORD(rk, vs, lv, l le)
+	  | l (F.SELECT (v,i,lv,le)) = F.SELECT(v, i, lv, l le)
+	  | l (F.BRANCH (po,vs,le1,le2)) = F.BRANCH(po, vs, l le1, l le2)
+	  | l (F.PRIMOP (po,vs,lv,le)) = F.PRIMOP(po, vs, lv, l le)
+    in l le
+    end
 
 fun click s c = (if !CTRL.misc = 1 then say s else (); Stats.addCounter c 1)
 
@@ -374,60 +404,93 @@ in case le
      of F.RET vs => cont(m, F.RET(map substval vs))
 
       | F.LET (lvs,le,body) =>
-	let fun clet () =
-		loop m le
-		     (fn (m,F.RET vs) =>
-		      let fun simplesubst (lv,v,m) =
-			      let val sv = val2sval m v
-			      in substitute(m, lv, sv, sval2val sv)
-			      end
-			  val nm = (ListPair.foldl simplesubst m (lvs, vs))
-		      in loop nm body cont
-		      end
-		       | (m,nle) =>
-			 let val nm = (foldl (fn (lv,m) =>
-					      addbind(m, lv, Var(lv, NONE)))
-					     m lvs)
-			 in case loop nm body cont
-			     of F.RET vs => if vs = (map F.VAR lvs) then nle
-					    else F.LET(lvs, nle, F.RET vs)
-			      | nbody => F.LET(lvs, nle, nbody)
-			 end)
-	in (* case le
-	    of F.BRANCH (po,vs,le1,le2) =>
+	let fun k (nm,nle) =
+		let fun cbody () =
+			let val nm = (foldl (fn (lv,m) =>
+					     addbind(m, lv, Var(lv, NONE)))
+					    nm lvs)
+			in case loop nm body cont
+			    of F.RET vs => if vs = (map F.VAR lvs) then nle
+					   else F.LET(lvs, nle, F.RET vs)
+			     | nbody => F.LET(lvs, nle, nbody)
+			end
+		in case nle
+		    of F.RET vs =>
+		       let fun simplesubst (lv,v,m) =
+			       let val sv = val2sval m v
+			       in substitute(m, lv, sv, sval2val sv)
+			       end
+			   val nm = (ListPair.foldl simplesubst nm (lvs, vs))
+		       in loop nm body cont
+		       end
+		     | _ => cbody()
+		end
+	    fun clet () = loop m le k
+	in case le
+	    of (F.BRANCH _ | F.SWITCH _) =>
 	       (* this is a hack originally meant to cleanup the BRANCH mess
 		* introduced in flintnm (where each branch returns just true or
 		* false which is generally only used as input to a SWITCH).
 		* The present code does slightly more than clean up this case *)
- 	       let fun known (F.RECORD(_,_,_,le)) = known le
-		     | known (F.CON(_,_,_,v,F.RET[F.VAR v'])) = (v = v')
-		     | known (F.RET[F.VAR v]) = false
-		     | known (F.RET[_]) = true
-		     | known _ = false
-		   fun cassoc (lv,v,body,wrap) =
- 		       if lv = v andalso ((C.usenb(C.get lv)) handle x=> raise x) = 1 andalso
-			   known le1 andalso known le2 then
-			   (* here I should also check that le1 != le2 *)
- 			   let val nle1 = F.LET([lv], le1, body)
- 			       val nlv = cplv lv
-			       val _ = C.new NONE nlv
- 			       val body2 = C.copylexp (M.add(M.empty, lv, nlv))
-						      body
- 			       val nle2 = F.LET([nlv], le2, body2)
- 			   in
-			       click_branch();
- 			       loop m (wrap(F.BRANCH(po, vs, nle1, nle2))) cont
- 			   end
- 		       else
- 			   clet()
+	       (* As it stands, the code has at least 2 serious shortcomings:
+		* 1 - it applies to the code before fcontraction
+		* 2 - the SWITCH copied into each arm doesn't get reduced
+		*     early, so the inlining that should happen cannot
+		*     take place because by the time we know that the function
+		*     is a simple-inline candidate, fcontract already processed
+		*     the call *)
+
+	       (* `extract' extracts the code of a switch arm into a function
+		* and replaces it with a call to that function *)
+ 	       let fun extract (con,le) =
+		       let val f = mklv()
+			   val fk = {isrec=NONE,known=true,inline=F.IH_SAFE,
+				cconv=F.CC_FUN(LK.FF_FIXED)}
+		       in case con of
+			   F.DATAcon(dc as (_,_,lty),tycs,lv) =>
+			   let val nlv = cplv lv
+			       val _ = C.new (SOME[lv]) f
+			       val _ = C.use NONE (C.new NONE nlv)
+			       val (lty,_) = LT.ltd_parrow(hd(LT.lt_inst(lty, tycs)))
+			   in ((F.DATAcon(dc, tycs, nlv),
+				F.APP(F.VAR f, [F.VAR nlv])),
+			       (fk, f, [(lv, lty)], le))
+			   end
+			 | con =>
+			   let val _ = C.new (SOME[]) f
+			   in ((con, F.APP(F.VAR f, [])),
+			       (fk, f, [], le))
+			   end
+		       end
+		   fun cassoc (lv,F.SWITCH(F.VAR v,ac,arms,NONE),wrap) =
+ 		       if lv <> v orelse C.usenb(C.get lv) > 1 then clet() else
+			   let val (narms,fdecs) =
+				   ListPair.unzip (map extract arms)
+			       fun addswitch [v] =
+				   C.copylexp IntmapF.empty
+					      (F.SWITCH(v,ac,narms,NONE))
+				 | addswitch _ = bug "Wrong number of values"
+			       (* replace each leaf `ret' with a copy
+				* of the switch *)
+			       val nle = append [lv] addswitch le
+			       (* decorate with the functions extracted out
+				* of the switch arms *)
+			       val nle = foldl (fn (f,le) => F.FIX([f],le))
+					       (wrap nle) fdecs
+			       (* Ugly hack to alleviate problem 2 mentioned
+				* above: we go through the code twice *)
+			       val nle = loop m nle #2
+			   in  click_branch();
+			       loop m nle cont
+			   end
  	       in case (lvs,body)
  		   of ([lv],le as F.SWITCH(F.VAR v,_,_,NONE)) =>
- 		      cassoc(lv, v, le, fn x => x)
+ 		      cassoc(lv, le, fn x => x)
  		    | ([lv],F.LET(lvs,le as F.SWITCH(F.VAR v,_,_,NONE),rest)) =>
- 		      cassoc(lv, v, le, fn le => F.LET(lvs,le,rest))
+ 		      cassoc(lv, le, fn le => F.LET(lvs,le,rest))
  		    | _ => clet()
  	       end
-	     | _ => *) clet()
+	     | _ => clet()
 	end
 
       | F.FIX (fs,le) =>
