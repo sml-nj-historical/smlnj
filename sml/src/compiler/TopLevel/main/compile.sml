@@ -12,6 +12,7 @@ struct
 
     type pickle     = CC.pickle		(* pickled format *)
     type hash       = CC.hash		(* environment hash id *)
+    type pid        = CC.pid
 
     (*************************************************************************
      *                             ELABORATION                               *
@@ -32,17 +33,19 @@ struct
 
     (** take ast, do semantic checks,
      ** and output the new env, absyn and pickles *)
-    fun elaborate {ast=ast, statenv=senv, compInfo=cinfo} = let
+    fun elaborate {ast, statenv=senv, compInfo=cinfo, uniquepid} = let
 
 	val (absyn, nenv) = ElabTop.elabTop(ast, senv, cinfo)
 	val (absyn, nenv) = 
             if CompInfo.anyErrors cinfo then
 		(Absyn.SEQdec nil, StaticEnv.empty)
 	    else (absyn, nenv)
-	val { hash, pickle, exportLvars, exportPid, newenv } =
-	    pickUnpick { context = senv, env = nenv }
+	val { pid, fingerprint, pepper, pickle, exportLvars,
+	      exportPid, newenv } =
+	    pickUnpick { context = senv, env = nenv, uniquepid = uniquepid }
     in {absyn=absyn, newstatenv=newenv, exportPid=exportPid, 
-	exportLvars=exportLvars, staticPid = hash, pickle=pickle }
+	exportLvars=exportLvars, staticPid = pid, fingerprint = fingerprint,
+	pepper = pepper, pickle=pickle }
     end (* function elaborate *)
 
     val elaborate =
@@ -133,10 +136,12 @@ struct
      * used by interact/evalloop.sml, cm/compile/compile.sml only            * 
      *************************************************************************)
     (** compiling the ast into the binary code = elab + translate + codegen *)
-    fun compile {source=source, ast=ast, statenv, symenv=symenv, 
-		 compInfo=cinfo, checkErr=check, splitting=splitting} = 
-	let val {absyn, newstatenv, exportLvars, exportPid, staticPid, pickle } =
-		elaborate {ast=ast, statenv=statenv, compInfo=cinfo }
+    fun compile {source, ast, statenv, symenv, compInfo=cinfo,
+		 checkErr=check, splitting, uniquepid } = 
+	let val {absyn, newstatenv, exportLvars, exportPid,
+		 staticPid, fingerprint, pepper, pickle } =
+		elaborate {ast=ast, statenv=statenv, compInfo=cinfo,
+			   uniquepid = uniquepid}
 		before (check "elaborate")
 
 	    val absyn = instrument {source=source, senv = statenv,
@@ -166,6 +171,8 @@ struct
 	      exportPid = exportPid,
 	      exportLvars = exportLvars,
 	      staticPid = staticPid,
+	      fingerprint = fingerprint,
+	      pepper = pepper,
 	      pickle = pickle,
 	      inlineExp = inlineExp,
 	      imports = revisedImports }

@@ -87,9 +87,11 @@ functor AutoLoadFn (structure L : LINK
 		     NONE => NONE
 		   | SOME e' => SOME (E.concatEnv (e', e)))
 	in
+	    UniquePid.reset ();
 	    (* make sure that there are no stale values around... *)
 	    L.cleanup gp;
 	    SymbolMap.foldl one (SOME E.emptyEnv) m
+	    before UniquePid.sync gp
 	end
 
 	val { skeleton, ... } =

@@ -11,5 +11,6 @@ structure IInfo = struct
     type info = { statenv: unit -> StaticEnv.staticEnv,
 		  symenv: unit -> SymbolicEnv.env,
 		  statpid: PersStamps.persstamp,
-		  sympid: PersStamps.persstamp }
+		  sympid: PersStamps.persstamp,
+		  pepper: string }
 end

@@ -74,6 +74,7 @@ is
 	concur/sources.cm
 
 	(* doing actual compilation work *)
+	compile/uniquepid.sml
 	compile/compile.sml
 	compile/corehack.sml
 	compile/link.sml

@@ -13,6 +13,47 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/08 15:00:00 EST
+Tag: blume-20020208-uniquepid
+Description:
+
+0. Version number has been bumped to 110.38.1.  NEW BOOTFILES!!!
+
+1. The installer (config/install.sh) has gotten smarter:
+
+     - Configuration options are a bit easier to specify now
+       (in config/targets).
+     - Bug in recognizing .tar.bz2 files fixed.
+     - Installer automatically resolves dependencies between
+       configuration options (e.g., if you ask for eXene, you will
+       also get cml -- regardless whether you asked for it or not).
+     - Installer can run in "quieter mode" by setting the environment
+       variable INSTALL_QUIETLY to "true".  "Quieter" does not mean
+       "completely silent", though.
+     - Build HashCons library as part of smlnj-lib.
+
+2. A new scheme for assigning persistent identifiers to compilation
+   units (and, by extension, to types etc.) has been put into place.
+   This fixes a long-standing bug where types and even dynamic values
+   can get internally confused, thereby compromising type safety
+   (abstraction) and dynamic correctness.  See
+
+     http://cm.bell-labs.com/cm/cs/who/blume/pid-confusion.tgz
+
+   for an example of how things could go wrong until now.
+
+   The downside of the new scheme is that pids are not quite as
+   persistent as they used to be: CM will generate a fresh pid
+   for every compilation unit that it thinks it sees for the first
+   time.  That means that if you compile starting from a clean, fresh
+   source tree at two different times, you end up with different
+   binaries.
+
+   Cutoff recompilation, however, has not been compromised because
+   CM keeps pid information in special caches between runs.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/02/07 15:34:13 EST 2002
 Tag: <none>

@@ -51,7 +51,7 @@ signature PICKMOD = sig
 		    { hash: PersStamps.persstamp,
 		      pickle: Word8Vector.vector, 
 		      exportLvars: Access.lvar list,
-		      exportPid: PersStamps.persstamp option }
+		      hasExports: bool }
 
     val pickleFLINT: FLINT.prog option -> { hash: PersStamps.persstamp,
 					    pickle: Word8Vector.vector }
@@ -61,9 +61,9 @@ signature PICKMOD = sig
     val pickle2hash: Word8Vector.vector -> PersStamps.persstamp
 	
     val dontPickle : 
-        StaticEnv.staticEnv * int
-                  -> StaticEnv.staticEnv * PersStamps.persstamp *
-	             Access.lvar list * PersStamps.persstamp option
+	{ env: StaticEnv.staticEnv, count: int } ->
+        { newenv: StaticEnv.staticEnv, hash: PersStamps.persstamp,
+	  exportLvars: Access.lvar list, hasExports: bool }
 end
 
 local
@@ -1200,18 +1200,15 @@ in
 	val pickle = Byte.stringToBytes (PU.pickle emptyMap (pickler e))
 	val exportLvars = rev (!lvlist)
 	val hash = pickle2hash pickle
-	val exportPid =
-	    case exportLvars of
-		[] => NONE
-	      | _ => SOME hash
+	val hasExports = not (List.null exportLvars)
     in
 	addPickles (Word8Vector.length pickle);
 	{ hash = hash, pickle = pickle, exportLvars = exportLvars,
-	  exportPid = exportPid }
+	  hasExports = hasExports }
     end
 
     (* the dummy environment pickler *)
-    fun dontPickle (senv : StaticEnv.staticEnv, count) = let
+    fun dontPickle { env = senv, count } = let
 	val hash = let
 	    val toByte = Word8.fromLargeWord o Word32.toLargeWord
 	    val >> = Word32.>>
@@ -1284,12 +1281,10 @@ in
 		end
 	      | binding => (i, StaticEnv.bind (sym, binding, env), lvars)
 	val (_,newenv,lvars) = foldl mapbinding (0, StaticEnv.empty, nil) syms
-	val exportPid =
-	    case lvars of
-		[] => NONE
-	      | _ => SOME hash
+	val hasExports = not (List.null lvars)
     in
-	(newenv, hash, rev lvars, exportPid)
+	{ newenv = newenv, hash = hash,
+	  exportLvars = rev lvars, hasExports = hasExports }
     end
   end
 end

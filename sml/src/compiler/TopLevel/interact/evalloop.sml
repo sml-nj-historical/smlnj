@@ -63,6 +63,7 @@ fun evalLoop source = let
                     E.layerEnv (#get loc (), #get base ())
 
                 val splitting = Control.LambdaSplitting.get ()
+		fun uniquepid () = raise Fail "uniquepid called from evalloop"
                 val {csegments, newstatenv, absyn, exportPid, exportLvars,
                      imports, inlineExp, ...} = 
                     C.compile {source=source, ast=ast,
@@ -70,7 +71,8 @@ fun evalLoop source = let
                                symenv=symenv,
 			       compInfo=cinfo, 
                                checkErr=checkErrors,
-                               splitting=splitting}
+                               splitting=splitting,
+			       uniquepid = uniquepid }
                 (** returning absyn and exportLvars here is a bad idea,
                     they hold on things unnecessarily; this must be 
                     fixed in the long run. (ZHONG)

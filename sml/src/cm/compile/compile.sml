@@ -80,13 +80,6 @@ in
 		      | unequal => unequal
 	    end)
 
-	type bfinfo =
-	    { cmdata: PidSet.set,
-	      statenv: unit -> statenv,
-	      symenv: unit -> symenv,
-	      statpid: pid,
-	      sympid: pid }
-
 	type env = { envs: unit -> result, pids: PidSet.set }
 	type envdelta = IInfo.info
 
@@ -128,7 +121,8 @@ in
 	    val ii = { statenv = Memoize.memoize statenv,
 		       symenv = Memoize.memoize symenv,
 		       statpid = BF.staticPidOf bfc,
-		       sympid = BF.lambdaPidOf bfc }
+		       sympid = BF.lambdaPidOf bfc,
+		       pepper = BF.pepperOf bfc }
 	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
 	in
 	    { ii = ii, ts = ts, cmdata = cmdata }
@@ -137,7 +131,7 @@ in
 	fun pidset (p1, p2) = PidSet.add (PidSet.singleton p1, p2)
 
 	fun nofilter (ed: envdelta) = let
-	    val { statenv, symenv, statpid, sympid } = ed
+	    val { statenv, symenv, statpid, sympid, pepper } = ed
 	    val statenv' = Memoize.memoize statenv
 	in
 	    { envs = fn () => { stat = statenv' (), sym = symenv () },
@@ -154,7 +148,7 @@ in
 	end
 
 	fun filter (ii, s) = let
-	    val { statenv, symenv, statpid, sympid } = ii
+	    val { statenv, symenv, statpid, sympid, pepper } = ii
 	    val ste = statenv ()
 	in
 	    case requiredFiltering s ste of
@@ -168,7 +162,8 @@ in
 			    SOME statpid' => statpid'
 			  | NONE => let
 				val statpid' = Rehash.rehash
-					{ env = ste', orig_hash = statpid }
+					{ env = ste', orig_pid = statpid,
+					  pepper = pepper }
 			    in
 				filtermap :=
 				  FilterMap.insert (!filtermap, key, statpid');
@@ -214,6 +209,18 @@ in
 	fun mkTraversal (notify, storeBFC, getUrgency) = let
 	    val localstate = ref SmlInfoMap.empty
 
+	    fun storeBFC' (gp, i, x) = let
+		val src = SmlInfo.sourcepath i
+		val c = #contents x
+		val triplet = { staticPid = BF.staticPidOf c,
+				fingerprint = BF.fingerprintOf c,
+				pepper = BF.pepperOf c }	
+	    in
+		UniquePid.saveInfo gp src triplet;
+		storeBFC (i, x)
+	    end
+		 
+
 	    fun sbnode gp (DG.SB_SNODE n) = snode gp n
 	      (* The beauty of this scheme is that we don't have
 	       * to do anything at all for SB_BNODEs:  Everything
@@ -257,7 +264,7 @@ in
 		fun fail () =
 		    if #keep_going (#param gp) then NONE else raise Abort
 
-		fun compile_here (stat, sym, pids, split) = let
+		fun compile_here (stat, sym, pids, split, fpinfo) = let
 		    fun perform_setup _ NONE = ()
 		      | perform_setup what (SOME code) =
 			(Say.vsay ["[setup (", what, "): ", code, "]\n"];
@@ -320,13 +327,16 @@ in
 			    val cinfo = C.mkCompInfo { source = source,
 						       transform = fn x => x }
 			    val splitting = Control.LambdaSplitting.get' split
+			    val uniquepid = UniquePid.uniquepid fpinfo
 			    val { csegments, newstatenv, exportPid,
-				  staticPid, imports, pickle = senvP,
+				  staticPid, fingerprint, pepper,
+				  imports, pickle = senvP,
 				  inlineExp, ... } =
 				C.compile { source = source, ast = ast,
 					    statenv = stat, symenv = sym,
 					    compInfo = cinfo, checkErr = check,
-					    splitting = splitting }
+					    splitting = splitting,
+					    uniquepid = uniquepid }
 			    val { hash = lambdaPid, pickle = lambdaP } =
 				PickMod.pickleFLINT inlineExp
 			    val lambdaP = case inlineExp of
@@ -340,13 +350,16 @@ in
 						 pid = staticPid },
 					lambda = { pickle = lambdaP,
 						   pid = lambdaPid },
+					fingerprint = fingerprint,
+					pepper = pepper,
 					csegments = csegments }
 			    val memo =
 				bfc2memo (bfc, SmlInfo.lastseen i, stat)
 			in
 			    perform_setup "post" post;
 			    #set topLevel toplenv;
-			    storeBFC (i, { contents = bfc, stats = save bfc });
+			    storeBFC' (gp, i,
+				       { contents = bfc, stats = save bfc });
 			    SOME memo
 			end handle (EM.Error | CompileExn.Compile _)
 				   (* At this point we handle only
@@ -422,7 +435,7 @@ in
 					in
 					    if isValidMemo (memo, pids, i) then
 						(report stats;
-						 storeBFC (i, contst);
+						 storeBFC' (gp, i, contst);
 						 SOME memo)
 					    else otherwise ()
 					end
@@ -431,9 +444,10 @@ in
 				    (* Are we the only runable task? *)
 				    Servers.allIdle () andalso
 				    Concur.noTasks ()
-				fun compile_again () =
+				fun compile_again fpinfo () =
 				    (Say.vsay ["[compiling ", descr, "]\n"];
-				     compile_here (stat, sym, pids, split))
+				     compile_here (stat, sym, pids, split,
+						   fpinfo))
 				fun compile_there' p =
 				    not (bottleneck ()) andalso
 				    compile_there p
@@ -448,6 +462,8 @@ in
 					 * this is obviously very bad! *)
 					while not (ready ()) do ()
 				    end
+				    val fpinfo = UniquePid.getInfo gp sp
+				    val compile_again = compile_again fpinfo
 				in
 				    OS.FileSys.remove binname handle _ => ();
 				    youngest := TStamp.NOTSTAMP;
@@ -533,7 +549,10 @@ in
 		      | SOME e => SOME (#envs e ())
 		end handle Abort => (Servers.reset false; NONE)
 
-		fun group gp = many (gp, SymbolMap.listItems exports)
+		fun group gp =
+		    (UniquePid.reset ();
+		     many (gp, SymbolMap.listItems exports)
+		     before UniquePid.sync gp)
 
 		fun allgroups gp = let
 		    fun addgroup ((_, th, _), gl) = th () :: gl
@@ -547,9 +566,11 @@ in
 			    collect (foldl addgroup gl (#sublibs g),
 				     SrcPathSet.add (done, #grouppath g),
 				     SymbolMap.foldl (op ::) l (#exports g))
+		    val _ = UniquePid.reset ()
 		    val l = collect ([g], SrcPathSet.empty, [])
 		in
 		    isSome (many (gp, l))
+		    before UniquePid.sync gp
 		end
 
 		fun mkExport ie gp =

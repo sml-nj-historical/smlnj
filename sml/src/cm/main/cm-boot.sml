@@ -203,12 +203,13 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	  fun getTheValues () = valOf (!theValues)
 	      handle Option => raise Fail "CMBoot: theParam not initialized"
 
-	  fun param () =
+	  fun param slave_mode =
 	      { fnpolicy = fnpolicy,
 		penv = penv,
 		symval = SSV.symval,
 		archos = my_archos,
-		keep_going = #get StdConfig.keep_going () }
+		keep_going = #get StdConfig.keep_going (),
+		slave_mode = slave_mode }
 
 	  val init_group = #init_group o getTheValues
 
@@ -217,10 +218,14 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		  Parse.dropPickles ()
 	      else ()
 
-	  fun parse_arg (gr, sflag, p) =
-	      { load_plugin = load_plugin, gr = gr, param = param (),
+	  fun parse_arg0 slave_mode (gr, sflag, p) =
+	      { load_plugin = load_plugin, gr = gr, param = param slave_mode,
 	        stabflag = sflag, group = p,
 		init_group = init_group (), paranoid = false }
+
+	  and parse_arg x = parse_arg0 false x
+
+	  and slave_parse_arg x = parse_arg0 true x
 
 	  and autoload s = let
 	      val p = mkStdSrcPath s
@@ -415,7 +420,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 
 	  fun slave () = let
 	      val gr = GroupReg.new ()
-	      fun parse p = Parse.parse (parse_arg (gr, NONE, p))
+	      fun parse p = Parse.parse (slave_parse_arg (gr, NONE, p))
 	  in
 	      Slave.slave { penv = penv,
 			    parse = parse,
@@ -457,7 +462,7 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 		 | _ => (Say.say ["bad arguments to @CMbuild\n"];
 			 OS.Process.failure))
 
-	  fun al_ginfo () = { param = param (),
+	  fun al_ginfo () = { param = param false,
 			      groupreg = al_greg,
 			      errcons = EM.defaultConsumer (),
 			      youngest = ref TStamp.ancient }
@@ -472,7 +477,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 	       AutoLoad.reset ();
 	       Parse.reset ();
 	       SmlInfo.reset ();
-	       StabModmap.reset ())
+	       StabModmap.reset ();
+	       UniquePid.reset ())
 
 	  fun initTheValues (bootdir, de, er, autoload_postprocess, icm) = let
 	      (* icm: "install compilation manager" *)
@@ -548,7 +554,8 @@ functor LinkCM (structure HostBackend : BACKEND) = struct
 				      penv = penv,
 				      symval = SSV.symval,
 				      archos = my_archos,
-				      keep_going = false },
+				      keep_going = false,
+				      slave_mode = false },
 			    groupreg = GroupReg.new (),
 			    errcons = EM.defaultConsumer (),
 			    youngest = ref TStamp.ancient }

@@ -14,18 +14,25 @@ functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
 			* assigned randomly *)
 		       type pickle = unit
 		       type hash = unit
+		       type pid = PersStamps.persstamp
 		       local
 			   val topCount = ref 0
 		       in
-		           fun pickUnpick { context, env = newenv } = let
+		           fun pickUnpick { context, env = newenv,
+					    uniquepid = _ } = let
 			       val _ = topCount := !topCount + 1
-			       val (newenv', hash, exportLvars, exportPid) = 
-				   PickMod.dontPickle (newenv, !topCount)
+			       val { newenv = newenv', hash,
+				     exportLvars, hasExports } = 
+				   PickMod.dontPickle { env = newenv,
+							count = !topCount }
 			   in
-			       { hash = (),
+			       { pid = (),
+				 fingerprint = (),
+				 pepper = "",
 				 pickle = (),
 				 exportLvars = exportLvars,
-				 exportPid = exportPid,
+				 exportPid = if hasExports then SOME hash
+					     else NONE,
 				 newenv = newenv' }
 			   end
 		       end
@@ -45,19 +52,23 @@ functor BackendFn (M : CODEGENERATOR) : BACKEND = struct
 		   * pid-generation *)
 	          type pickle = Word8Vector.vector
 		  type hash = PersStamps.persstamp
+		  type pid = hash
 
-		  fun pickUnpick { context, env = newenv } = let
+		  fun pickUnpick { context, env = newenv, uniquepid } = let
 		      val m = GenModIdMap.mkMap context
 		      fun up_context _ = m
-		      val { hash, pickle, exportLvars, exportPid } = 
+		      val { hash, pickle, exportLvars, hasExports } = 
 			  PickMod.pickleEnv (PickMod.INITIAL m) newenv
+		      val (pid, pepper) = uniquepid hash
 		      val newenv' =
-			  UnpickMod.unpickleEnv up_context (hash, pickle)
+			  UnpickMod.unpickleEnv up_context (pid, pickle)
 		  in
-		      { hash = hash,
+		      { pid = pid,
+			fingerprint = hash,
+			pepper = pepper,
 			pickle = pickle,
 			exportLvars = exportLvars,
-			exportPid = exportPid,
+			exportPid = if hasExports then SOME pid else NONE,
 			newenv = newenv' }
 		  end
 

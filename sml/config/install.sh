@@ -9,7 +9,63 @@
 # by M.Blume (2/2000).
 #
 
+if [ x${INSTALL_QUIETLY} = xtrue ] ; then
+    export CM_VERBOSE=false
+fi
+
+vsay() {
+    if [ x${INSTALL_DEBUG} = xtrue ] ; then
+	echo "$@"
+    elif [ x${INSTALL_QUIETLY} = xtrue ] ; then
+	:
+    else
+	echo "$@"
+    fi
+}
+
+dsay() {
+    if [ x${INSTALL_DEBUG} = xtrue ] ; then
+	echo "$@"
+    fi
+}
+
+complain() {
+    echo "$@"
+    exit 1
+}
+
+# The following variable holds the name of all possible targets.
+# The names must occur in the order in which targets are to be built.
+ALLTARGETS=\
+"src-smlnj \
+ ml-yacc \
+ ml-lex \
+ ml-burg \
+ ml-nlffigen \
+ smlnj-lib \
+ cml \
+ cml-lib \
+ eXene \
+ ckit \
+ ml-nlffi-lib \
+ pgraph-util \
+ mlrisc-tools \
+ nowhere \
+ doc"
+
 this=$0
+
+# By default, move libraries to lib directory:
+MOVE_LIBRARIES=true
+
+# function to be used in config/targets:
+dont_move_libraries() { MOVE_LIBRARIES=false ; }
+
+# Initialize target list.
+TARGETS=""
+
+# function to be used in config/targets:
+request() { TARGETS="$TARGETS $1" ; }
 
 #
 # get the target list
@@ -17,18 +73,69 @@ this=$0
 if [ -r config/targets.customized ] ; then
     . config/targets.customized
 elif [ ! -r config/targets ]; then
-    echo "$this: !!! File config/targets is missing."
-    exit 1
+    complain "$this: !!! File config/targets is missing."
 else
     . config/targets
 fi
 
 #
+# resolve dependencies
+#
+isnotin() {
+    tested_x=$1
+    shift
+    for set_y ; do
+	if [ ${tested_x} = ${set_y} ] ; then
+	    return 1
+	fi
+    done
+    return 0
+}
+
+require() {
+    require_who=$1
+    shift
+    for required_x ; do
+	if isnotin ${required_x} ${TARGETS} ; then
+	    echo "Including ${required_x} (needed by ${require_who})."
+	    request ${required_x}
+	    CHANGED=true
+ 	fi
+    done
+}
+
+onepass() {
+    while read depline ; do
+	require $depline
+    done
+}
+
+if [ -r config/dependencies ] ; then
+    CHANGED=true
+    while [ $CHANGED = true ]; do
+	CHANGED=false
+	onepass <config/dependencies
+    done
+fi
+
+#
+# Rebuild target list using the order defined by ALLTARGETS.
+#
+NEWTARGETS=""
+for t in ${ALLTARGETS} ; do
+    if isnotin $t ${TARGETS} ; then
+	:
+    else
+	NEWTARGETS="$NEWTARGETS $t"
+    fi
+done
+TARGETS=$NEWTARGETS
+
+#
 # create the preloads.standard file
 #
 if [ ! -r config/preloads ]; then
-    echo "$this: !!! File config/preloads is missing."
-    exit 1
+    complain "$this: !!! File config/preloads is missing."
 fi
 cp config/preloads preloads.standard
 
@@ -45,15 +152,15 @@ MAKE=make
 unset CM_PATHCONFIG
 
 SHELL=/bin/sh
-echo $this: Using shell $SHELL.
+vsay $this: Using shell $SHELL.
 
 #
 # set the SML root directory
 #
 REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
-echo $this: SML root is $ROOT.
-echo $this: Installation directory is ${INSTALLDIR:=$ROOT}.
+vsay $this: SML root is $ROOT.
+vsay $this: Installation directory is ${INSTALLDIR:=$ROOT}.
 
 #
 # set the various directory and file pathname variables
@@ -108,13 +215,13 @@ export CM_PATHCONFIG_DEFAULT
 # the release version that we are installing
 #
 VERSION=`cat $CONFIGDIR/version`
-echo $this: Installing version $VERSION.
+vsay $this: Installing version $VERSION.
 
 #
 # the URL for the (usually remote) source archive
 #
 SRCARCHIVEURL=`cat $CONFIGDIR/srcarchiveurl`
-echo $this: URL of source archive is $SRCARCHIVEURL.
+vsay $this: URL of source archive is $SRCARCHIVEURL.
 
 #
 # Function to make a directory including its ancestors.
@@ -126,12 +233,13 @@ makedir() {
 	:
     else
 	makedir `dirname $1`
-	echo "$this: Making directory $1"
+	if [ x${INSTALL_VERBOSE} = xtrue ] ; then
+	    vsay "$this: Making directory $1"
+	fi
 	if mkdir $1 ; then
 	    :
 	else
-	    echo "$this: !!! Unable to make directory $1!"
-	    exit 1
+	    complain "$this: !!! Unable to make directory $1!"
 	fi
     fi
 }
@@ -159,15 +267,15 @@ askurl() {
 #
 fetchurl() {
     getter=$1 ; shift
-    echo $this: Fetching $1 from $3. Please stand by...
+    vsay $this: Fetching $1 from $3. Please stand by...
     fetched=no
     for base in $2 $VERSION-$2 ; do
 	for ext in tar.gz tgz tar.Z tz tar tar.bz2 ; do
 	    try=$base.$ext
-	    echo $this: Trying $try ...
+	    vsay $this: Trying $try ...
 	    if $getter $3/$try $ROOT/$try ; then
 		fetched=yes
-		echo $this: Fetching $try was a success.
+		vsay $this: Fetching $try was a success.
 		break 2		# get out of both for-loops
 	    else
 		rm -f $ROOT/$try
@@ -238,25 +346,25 @@ urlgetter() {
 
 # wrapper for tar
 un_tar() {
-    echo "$this: Un-TAR-ing $1 archive."
+    vsay "$this: Un-TAR-ing $1 archive."
     tar -xf $2
 }
 
 # wrapper for zcat followed by tar
 un_tar_Z() {
-    echo "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
+    vsay "$this: Un-COMPRESS-ing and un-TAR-ing $1 archive."
     zcat $2 | tar -xf -
 }
 
 # wrapper for gunzip followed by tar
 un_tar_gz() {
-    echo "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
+    vsay "$this: Un-GZIP-ing and un-TAR-ing $1 archive."
     gunzip -c $2 | tar -xf -
 }
 
 # wrapper for bunzip2 followed by tar
 un_tar_bz2() {
-    echo "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
+    vsay "$this: Un-BZIP2-ing and un-TAR-ing $1 archive."
     bunzip2 -c $2 | tar -xf -
 }
 
@@ -291,7 +399,7 @@ fetch_n_unpack() {
        unarchive "$1" $4.tgz un_tar_gz ||
        unarchive "$1" $4.tar.Z un_tar_Z ||
        unarchive "$1" $4.tar un_tar ||
-       unarchive "$1" $4.tar.bz1 un_tar_bz2 ||
+       unarchive "$1" $4.tar.bz2 un_tar_bz2 ||
        unarchive "$1" $4.tz un_tar_Z
     then
 	: we are done
@@ -309,13 +417,12 @@ fetch_n_unpack() {
 unpack() {
     tryfetch=yes
     if [ -d $2/$3 ]; then
-	echo "$this: The $1 tree already exists."
+	vsay "$this: The $1 tree already exists."
     else
 	fetch_n_unpack "$1" "$2" "$3" "$4"
     fi
     if [ ! -d $2/$3 ]; then
-	echo "$this: !!! Unable to unpack $1 archive."
-	exit 1
+	complain "$this: !!! Unable to unpack $1 archive."
     fi
 }
 
@@ -327,8 +434,7 @@ move() {
     if [ -d $1 ] ; then
 	if [ ! -d $2 ] ; then
 	    if [ -f $2 ] ; then
-		echo $this: $2 exists as a non-directory.
-		exit 1
+		complain $this: $2 exists as a non-directory.
 	    fi
 	    mkdir $2
 	fi
@@ -388,9 +494,9 @@ reglib() {
     fi
     
     if [ -f ${FINALLOC} ] ; then
-	echo "$this: Library ${LIBNAME} already exists in ${FINALLOC}"
+	vsay "$this: Library ${LIBNAME} already exists in ${FINALLOC}"
     else
-	echo "$this: Scheduling library ${LIBNAME} to be built as ${FINALLOC}."
+	vsay "$this: Scheduling library ${LIBNAME} to be built as ${FINALLOC}."
 	echo "  andalso CM.stabilize false \"${LIBNAME}\"" >>${LIBLIST}
 	echo ${ANCHOR} ${ADIR} >>${LOCALPATHCONFIG}
 	if [ x$MOVE_LIBRARIES = xtrue ] ; then
@@ -423,7 +529,7 @@ standalone() {
          MYSRCDIR=$SRCDIR
     fi
     if [ -r $HEAPDIR/$TARGET ] ; then
-	echo $this: Target $TARGET already exists.
+	vsay $this: Target $TARGET already exists.
     else
 	echo $this: Building $TARGET.
 	unpack $2 $MYSRCDIR $1 $1
@@ -443,6 +549,8 @@ standalone() {
     fi
 }
 
+######################################################################
+
 #
 # create the various sub directories
 #
@@ -454,14 +562,13 @@ done
 # install the script that tests the architecture, and make sure that it works
 #
 if [ -x $BINDIR/.arch-n-opsys ]; then
-    echo $this: Script $BINDIR/.arch-n-opsys already exists.
+    vsay $this: Script $BINDIR/.arch-n-opsys already exists.
 else
     cat $CONFIGDIR/_arch-n-opsys \
     | sed -e "s,@SHELL@,$SHELL,g" > $BINDIR/.arch-n-opsys
     chmod 555 $BINDIR/.arch-n-opsys
     if [ ! -x $BINDIR/.arch-n-opsys ]; then
-	echo "$this: !!! Installation of $BINDIR/.arch-n-opsys failed."
-	exit 1
+	complain "$this: !!! Installation of $BINDIR/.arch-n-opsys failed."
     fi
 fi
 
@@ -471,7 +578,7 @@ if [ "$?" != "0" ]; then
     echo "$this: !!! You must patch this by hand and repeat the installation."
     exit 2
 else
-    echo $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
+    vsay $this: Script $BINDIR/.arch-n-opsys reports $ARCH_N_OPSYS.
 fi
 eval $ARCH_N_OPSYS
 
@@ -497,8 +604,7 @@ installdriver() {
 	    > $BINDIR/$ddst
 	chmod 555 $BINDIR/$ddst
 	if [ ! -x $BINDIR/$ddst ]; then
-	    echo "$this: !!! Installation of $BINDIR/${ddst} failed."
-	    exit 1
+	    complain "$this: !!! Installation of $BINDIR/${ddst} failed."
 	fi
 #   fi
 }
@@ -538,8 +644,7 @@ case $OPSYS in
     linux)
 	EXTRA_DEFS=`$CONFIGDIR/chk-global-names.sh`
 	if [ "$?" != "0" ]; then
-	    echo "$this: !!! Problems checking for underscores in asm names."
-	    exit 1
+	    complain "$this: !!! Problems checking for underscores in asm names."
 	fi
 	EXTRA_DEFS="XDEFS=$EXTRA_DEFS"
 	;;
@@ -556,7 +661,7 @@ BOOT_FILES=sml.$BOOT_ARCHIVE
 #
 unpack "run-time" $SRCDIR runtime runtime
 if [ -x $RUNDIR/run.$ARCH-$OPSYS ]; then
-    echo $this: Run-time system already exists.
+    vsay $this: Run-time system already exists.
 else
     cd $SRCDIR/runtime/objs
     echo $this: Compiling the run-time system.
@@ -565,8 +670,7 @@ else
 	mv run.$ARCH-$OPSYS $RUNDIR
 	$MAKE MAKE=$MAKE clean
     else
-	echo "$this: !!! Run-time system build failed for some reason."
-	exit 1
+	complain "$this: !!! Run-time system build failed for some reason."
     fi
 fi
 cd $SRCDIR
@@ -575,7 +679,7 @@ cd $SRCDIR
 # boot the base SML system
 #
 if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
-    echo $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
+    vsay $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
 else
     unpack bin $ROOT $BOOT_FILES $BOOT_ARCHIVE
     cd $ROOT/$BOOT_FILES
@@ -602,12 +706,10 @@ else
 	    rm -rf $BOOT_FILES
 
 	else
-	    echo "$this !!! No heap image generated (sml.$HEAP_SUFFIX)."
-	    exit 1
+	    complain "$this !!! No heap image generated (sml.$HEAP_SUFFIX)."
 	fi
     else
-	echo "$this !!! Boot code failed, no heap image (sml.$HEAP_SUFFIX)."
-	exit 1
+	complain "$this !!! Boot code failed, no heap image (sml.$HEAP_SUFFIX)."
     fi
 fi
 
@@ -622,7 +724,7 @@ echo 'ignore (OS.Process.exit (if true' >$LIBLIST
 # now build (or prepare to build) the individual targets
 #
 cd $SRCDIR
-echo $this: Installing other targets.
+vsay $this: Installing other targets.
 for i in $TARGETS ; do
     case $i in
       src-smlnj)
@@ -665,6 +767,8 @@ for i in $TARGETS ; do
 	    reglib regexp-lib.cm regexp-lib.cm smlnj-lib/RegExp
 	# make the Reactive library
 	    reglib reactive-lib.cm reactive-lib.cm smlnj-lib/Reactive
+        # make the HashCons library
+	    reglib hash-cons-lib.cm hash-cons-lib.cm smlnj-lib/HashCons
 	;;
       cml)
         unpack CML $SRCDIR cml cml
@@ -711,9 +815,10 @@ for i in $TARGETS ; do
 	echo nowhere $TOOLDIR >>$CM_PATHCONFIG_DEFAULT
 	;;
       doc)
-	unpack Doc $ROOT doc doc
-        cd $ROOT/doc
-	build $ROOT
+	echo Package doc is currently unavailable.
+	# unpack Doc $ROOT doc doc
+        # cd $ROOT/doc
+	# build $ROOT
 	;;
       *)
         echo "$this: !!! Unknown target $i."
@@ -730,10 +835,9 @@ done
 echo $this: Compiling library code.
 echo 'then OS.Process.success else OS.Process.failure));' >>$LIBLIST
 if CM_LOCAL_PATHCONFIG=$LOCALPATHCONFIG $BINDIR/sml <$LIBLIST ; then
-    echo $this: Libraries compiled successfully.
+    vsay $this: Libraries compiled successfully.
 else
-    echo "$this: !!! Something went wrong when compiling the libraries."
-    exit 1
+    complain "$this: !!! Something went wrong when compiling the libraries."
 fi
 
 #
@@ -741,7 +845,7 @@ fi
 #
 
 if [ -r $LIBMOVESCRIPT ] ; then
-    echo $this: Moving libraries to $LIBDIR.
+    vsay $this: Moving libraries to $LIBDIR.
     . $LIBMOVESCRIPT
 fi
 
@@ -751,7 +855,7 @@ fi
 #
 
 if [ -r $LATESTANDALONES ] ; then
-    echo $this: Building late standalone programs.
+    vsay $this: Building late standalone programs.
     . $LATESTANDALONES
 fi
 

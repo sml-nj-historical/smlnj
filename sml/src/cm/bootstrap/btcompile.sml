@@ -149,12 +149,13 @@ struct
 	    FilenamePolicy.separate { bindir = bindir, bootdir = bootdir }
 	        { arch = arch, os = os }
 
-	val param =
+	fun param slave_mode =
 	    { fnpolicy = fnpolicy,
 	      penv = penv,
 	      symval = SSV.symval,
 	      archos = archos,
-	      keep_going = keep_going }
+	      keep_going = keep_going,
+	      slave_mode = slave_mode }
 
 	val emptydyn = DynamicEnv.empty
 
@@ -163,7 +164,7 @@ struct
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
-	val ginfo = { param = param, groupreg = groupreg,
+	val ginfo = { param = param false, groupreg = groupreg,
 		      errcons = errcons,
 		      youngest = ref TStamp.ancient }
 
@@ -172,6 +173,7 @@ struct
 	    val { pervasive = perv_n, others, src } = arg
 
 	    fun recompInitGroup () = let
+		val _ = UniquePid.reset ()
 		val ovldR = Control.overloadKW
 		val savedOvld = !ovldR
 		val _ = ovldR := true
@@ -215,7 +217,7 @@ struct
 			   (* hack: sources never used for this group *)
 			   sources = SrcPathMap.empty,
 			   sublibs = [] }
-		before (ovldR := savedOvld)
+		before (ovldR := savedOvld; UniquePid.sync ginfo)
 	    end
 
 	    (* just go and load the stable init group or signal failure *)
@@ -276,14 +278,17 @@ struct
 	    val gr = GroupReg.new ()
 	    val _ = GroupReg.register gr (initgspec, src)
 
-	    fun parse_arg (s, p) =
+	    fun parse_arg0 slave_mode (s, p) =
 		{ load_plugin = load_plugin,
 		  gr = gr,
-		  param = param,
+		  param = param slave_mode,
 		  stabflag = s,
 		  group = maingspec,
 		  init_group = init_group,
 		  paranoid = p }
+
+	    val parse_arg = parse_arg0 false
+	    val slave_parse_arg = parse_arg0 true
 
 	    val lonely_master = master andalso Servers.noServers ()
 
@@ -295,7 +300,7 @@ struct
 			 * our queues get cleaned when an interrupt or error
 			 * occurs.) *)
 			Servers.withServers
-			    (fn () => Parse.parse (parse_arg (SOME true, true)))
+			    (fn () => Parse.parse(parse_arg (SOME true, true)))
 		    else
 			(* slaves available; we want master
 			 * and slave initialization to overlap, so
@@ -318,7 +323,7 @@ struct
 			end
 		else
 		    (* slave case *)
-		    Parse.parse (parse_arg (NONE, false))
+		    Parse.parse (slave_parse_arg (NONE, false))
 	in
 	    case initial_parse_result of
 		NONE => NONE
@@ -382,7 +387,7 @@ struct
 		     * executed in slave mode *)
 		    fun stabilize () =
 			(* now we re-parse everything with stabilization
-			 * turnedon (and servers turned off *)
+			 * turned on (and servers turned off) *)
 			case Parse.parse (parse_arg (SOME true, false)) of
 			    NONE => false
 			  | SOME (g, gp) => finish (g, gp)
