@@ -252,7 +252,6 @@ inf=i;
 <INITIAL,COMMENT,ASM>{ws}	=> (continue());
 <ASMQUOTE>\n		=> (err(yypos,yypos+size yytext,
                                 "newline in assembly text!"); continue());
-<INITIAL>\-\-.*\n	=> (continue());
 <INITIAL>"(*"		=> (commentLevel := 1; YYBEGIN COMMENT; continue());
 <INITIAL,ASM>{integer}	=> (decimal(err,yytext,yypos));
 <INITIAL,ASM>{hex}	=> (hex(err,yytext,yypos));
