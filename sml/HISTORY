@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/12/22 13:15:00 JST
+Tag: blume-20001222-cleanup
+Description:
+
+Removed src/cm/ffi which does not (and did not) belong here.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/12/21 23:55:00 JST
 Tag: blume-20001221-exn
 Description:
