@@ -52,13 +52,13 @@ struct
 
     structure BF = MachDepVC.Binfile
 
-    structure SSMap = BinaryMapFn
+    structure SSMap = MapFn
 	(struct
 	     type ord_key = SymbolSet.set
 	     val compare = SymbolSet.compare
 	end)
 
-    structure SNMap = BinaryMapFn
+    structure SNMap = MapFn
 	(struct
 	     type ord_key = DG.snode
 	     fun compare (DG.SNODE n, DG.SNODE n') =

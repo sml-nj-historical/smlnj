@@ -1,5 +1,5 @@
 (*
- * Argument for BinarySetFn and BinaryMapFn for the case of symbols.
+ * Argument for SetFn and MapFn for the case of symbols.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *

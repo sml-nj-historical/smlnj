@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure SrcPathMap = BinaryMapFn (SrcPath)
+structure SrcPathMap = MapFn (SrcPath)

@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure PidSet = BinarySetFn
+structure PidSet = SetFn
     (struct
 	 type ord_key = GenericVC.PersStamps.persstamp
 	 val compare = GenericVC.PersStamps.compare

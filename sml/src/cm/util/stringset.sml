@@ -6,7 +6,7 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure StringSet = BinarySetFn
+structure StringSet = SetFn
     (struct
 	type ord_key = string
 	val compare = String.compare

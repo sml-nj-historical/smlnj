@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure AbsPathMap = BinaryMapFn (AbsPath)
+structure AbsPathMap = MapFn (AbsPath)

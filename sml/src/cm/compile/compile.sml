@@ -58,7 +58,7 @@ in
 
 	type bfcReceiver = SmlInfo.info * bfc -> unit
 
-	structure FilterMap = BinaryMapFn
+	structure FilterMap = MapFn
 	    (struct
 		type ord_key = pid * SymbolSet.set
 		fun compare ((u, f), (u', f')) =

@@ -26,10 +26,10 @@ Group (../cm-lib.cm)
 	structure AutoDir
 
 	structure LibBase	(* from SML/NJ library *)
-	functor BinaryMapFn	(* from SML/NJ library *)
-	functor BinarySetFn	(* from SML/NJ library *)
-	structure IntBinaryMap	(* from SML/NJ library *)
-	structure IntBinarySet	(* from SML/NJ library *)
+	functor MapFn
+	functor SetFn
+	structure IntMap
+	structure IntSet
 is
 	stringset.sml
 	stringmap.sml
@@ -45,6 +45,11 @@ is
 	stdcfg.sml
 	say.sml
 	autodir.sml
+
+	map-fn.sml
+	set-fn.sml
+	int-map.sml
+	int-set.sml
 
 	basis.cm
 	viscomp-lib.cm

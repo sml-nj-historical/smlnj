@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure SmlInfoSet = BinarySetFn (SmlInfo)
+structure SmlInfoSet = SetFn (SmlInfo)
