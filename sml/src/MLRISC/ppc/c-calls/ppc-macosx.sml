@@ -202,47 +202,50 @@ functor PPCMacOSX_CCalls (
 	  end
     end
 
-    datatype arg
-      = Simple of (Ty.c_type * arg_pos)		(* includes arrays *)
-      | Struct of arg list
- 
-  (* layout arguments *)
-    fun layout argTys = let
-	  fun assign ([], _, _, offset, args) = (offset, List.rev args)
-	    | assign (x::xs, gprs, fprs, offset, args) = let
-		fun assignInt sz = (case (sz, gprs)
-		       of (_, []) =>
-			    assign(xs, [], fprs, 
-			| (8, [r]) =>
-			| (8, r1::r2::rs) =>
-			| (_, r::rs) =>
-		      (* end case *))
-		in
-		  case x
-		   of (Ty.C_unsigned _) => assignInt x
-		    | (Ty.C_signed _) => assignInt x
-		    | (Ty.C_PTR) => assignInt x
-		    | (Ty.C_float) => assignFlt x
-		    | (Ty.C_double) => assignFlt x
-		    | (Ty.C_long_double) => assignFlt x
-		    | (Ty.C_ARRAY(ty, n)) =>
-		    | (Ty.CSTRUCT tys) =>
-		  (* end case *)
-		end
+    fun assignIntLoc (ty, gprs, offset) = let
+	  val {sz, alignStk, alignStruct} = szal ty
+	  val offset = align(offset, alignStk)
 	  in
+	    case (sz, gprs)
+	     of (_, []) => ({offset = offset, loc = ARG(??)}, offset+sz, [])
+	      | (8, [r]) =>
+	      | (8, r1::r2::rs) =>
+	      | (_, r::rs) =>({offset = offset, loc = GPR r}, offset+sz, rs)
+	    (* end case *)
 	  end
 
-    fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
-		  callComment, args } = let
-	val { conv, retTy, paramTys } = proto
-	val _ = case conv of
-		    ("" | "ccall") => ()
-		  | _ => error (concat ["unknown calling convention \"",
-					String.toString conv, "\""])
-	val res_szal =
-	    case retTy of
-		(Ty.C_long_double | Ty.C_STRUCT _) => SOME (szal retTy)
-	      | _ => NONE
+    fun genCall {
+	  name, proto, paramAlloc, structRet, saveRestoreDedicated,
+	  callComment, args
+	} = let
+	  val {conv, retTy, paramTys} = proto
+	  val callseq = List.concat [
+		  sp_sub,
+		  copycode,
+		  argsetupcode,
+		  sretsetup,
+		  save,
+		  [call],
+		  srethandshake,
+		  restore,
+		  sp_add
+		]
+	  in
+	  (* check calling convention *)
+	    case conv
+	     of ("" | "ccall") => ()
+	      | _ => error (concat [
+		    "unknown calling convention \"",
+		    String.toString conv, "\""
+		  ])
+	    (* end case *);
+	    {callseq = callseq, result = result}
+	  end
+
+(******
+	val res_szal = (case retTy
+	       of (Ty.C_long_double | Ty.C_STRUCT _) => SOME(szal retTy)
+		| _ => NONE
 
 	val nargwords = let
 	    fun loop ([], n) = n
@@ -541,4 +544,6 @@ functor PPCMacOSX_CCalls (
     in
 	{ callseq = callseq, result = result }
     end
-end
+*****)
+
+  end
