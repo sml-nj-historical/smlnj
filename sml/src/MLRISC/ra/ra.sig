@@ -15,8 +15,10 @@ sig
    datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION
 
    datatype optimization = DEAD_COPY_ELIM
+                         | SPILL_PROPAGATION
                          | SPILL_COALESCING
                          | SPILL_COLORING
+                         | BIASED_SELECTION
 
    type getreg = { pref  : C.cell list,
                    stamp : int, 

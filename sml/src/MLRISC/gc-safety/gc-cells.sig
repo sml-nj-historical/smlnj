@@ -8,10 +8,12 @@ sig
 
    structure C  : CELLS
    structure GC : GC_TYPE
+   structure GCMap : GC_MAP
+      sharing GCMap.GC = GC
 
-   val newGCMap : unit -> GC.gcmap  (* create a new gc map *)
-   val setGCMap : GC.gcmap -> unit  (* set the current gc map *)
-   val getGCMap : unit -> GC.gcmap  (* get the current gc map *)
+   val newGCMap : unit -> GCMap.gcmap  (* create a new gc map *)
+   val setGCMap : GCMap.gcmap -> unit  (* set the current gc map *)
+   val getGCMap : unit -> GCMap.gcmap  (* get the current gc map *)
 
    (*
     * Generate a virtual register and update the gc map at the same time.

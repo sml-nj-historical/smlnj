@@ -2,7 +2,7 @@
  * This functor factors out the machine independent part of the register
  * allocator.   This works well for RISC machines; not applicable to x86.
  *)
-functor RegAlloc2
+functor RegAlloc
   (structure I         : INSTRUCTIONS
    structure MachSpec  : MACH_SPEC
    structure Flowgraph : FLOWGRAPH
@@ -124,12 +124,12 @@ struct
        end
 
    (* Spill integer register *)
-   fun spillR{annotations,kill=true,regmap,reg,spillLoc,node,instr} = 
+   fun spillR{annotations,kill=true,regmap,reg,spillLoc,graph,instr} = 
          if pure instr then {code=[], instr=NONE, proh=[]}
          else spillR{annotations=annotations,kill=false,
                      regmap=regmap,spillLoc=spillLoc,
-                     reg=reg,node=node,instr=instr}
-     | spillR{annotations,kill,regmap,reg,spillLoc,node,instr} = 
+                     reg=reg,graph=graph,instr=instr}
+     | spillR{annotations,kill,regmap,reg,spillLoc,graph,instr} = 
        let val _   = intSpillsCnt := !intSpillsCnt + 1
            val loc = getRegLoc(spillLoc)
            fun spillIt() = 
@@ -141,7 +141,7 @@ struct
              P.IK_COPY => 
                (case P.moveDstSrc instr of 
                   ([rd], [rs]) => 
-                     if rd = reg then 
+                     if regmap rd = reg then 
                        {code=spillInstrR(rs,loc), instr=NONE,proh=[]}
                      else   
                      (case P.moveTmpR instr of
@@ -155,12 +155,12 @@ struct
        end
 
    (* Spill floating point register *)
-   fun spillF{annotations,kill=true,regmap,reg,spillLoc,node,instr} = 
+   fun spillF{annotations,kill=true,regmap,reg,spillLoc,graph,instr} = 
          if pure instr then {code=[], instr=NONE, proh=[]}
          else spillF{annotations=annotations,kill=false,
                      regmap=regmap,spillLoc=spillLoc,
-                     reg=reg,node=node,instr=instr}
-     | spillF{annotations,kill,regmap,reg,spillLoc,node,instr} = 
+                     reg=reg,graph=graph,instr=instr}
+     | spillF{annotations,kill,regmap,reg,spillLoc,graph,instr} = 
        let val _   = floatSpillsCnt := !floatSpillsCnt + 1
            val loc = getFregLoc(spillLoc)
            fun spillIt() =
@@ -173,7 +173,7 @@ struct
              P.IK_COPY => 
                (case P.moveDstSrc instr of 
                   ([fd], [fs]) => 
-                     if fd = reg then 
+                     if regmap fd = reg then 
                       {code=spillInstrF(fs,loc), instr=NONE,proh=[]}
                      else   
                      (case P.moveTmpR instr of
@@ -187,7 +187,7 @@ struct
        end
 
    (* Reload integer register *)
-   fun reloadR{annotations,regmap,reg,spillLoc,node,instr} = 
+   fun reloadR{annotations,regmap,reg,spillLoc,graph,instr} = 
    let val _   = intReloadsCnt := !intReloadsCnt + 1
        val loc = getRegLoc(spillLoc)
        fun reloadIt() =
@@ -205,7 +205,7 @@ struct
    end
                    
    (* Reload floating point register *)
-   fun reloadF{annotations,regmap,reg,spillLoc,node,instr} =
+   fun reloadF{annotations,regmap,reg,spillLoc,graph,instr} =
    let val _   = floatReloadsCnt := !floatReloadsCnt + 1
        val loc = getFregLoc(spillLoc)
        fun reloadIt() =

@@ -11,7 +11,7 @@ structure X86CG =
     structure MachSpec   = X86Spec
     structure PseudoOps  = X86PseudoOps
     structure CpsRegs    = X86CpsRegs
-    structure InsnProps  = X86Props(X86Instr)
+    structure InsnProps  = X86Props
     structure Asm        = X86AsmEmitter
 
     val stack = I.Region.stack 
@@ -97,14 +97,7 @@ structure X86CG =
       val getFregLoc = X86StackSpills.getFregLoc
   
       (* spill floating point *)
-      fun spillF{instr, reg, spillLoc, node, kill=true, regmap, annotations} = 
-          let fun f (I.CALL _ | I.RET _ | I.POP _ | I.FXCH) = 
-                  spillF{instr=instr, reg=reg, spillLoc=spillLoc, node=node,
-                         kill=false, regmap=regmap, annotations=annotations}
-                  | f(I.ANNOTATION{i,...}) = f i
-                  | f _ = {code=[], proh=[], instr=NONE}
-            in  f instr end
-         | spillF{instr, reg, spillLoc, node, kill, regmap, annotations} = let
+      fun spillF{instr, reg, spillLoc, graph, kill, regmap, annotations} = let
           val _ = floatSpillCnt := !floatSpillCnt + 1
           val slot = I.Displace{base=esp, disp=getFregLoc spillLoc, mem=stack}
           fun spillInstr(r) = [I.FLD(I.FDirect(r)), I.FSTP(slot)]
@@ -131,7 +124,7 @@ structure X86CG =
       end
   
       (* reload floating point *)
-      fun reloadF{instr, reg, spillLoc, node, regmap, annotations} = 
+      fun reloadF{instr, reg, spillLoc, graph, regmap, annotations} = 
       let val _ = floatReloadCnt := !floatReloadCnt + 1
           val slot = I.Displace{base=esp, disp=getFregLoc spillLoc, mem=stack}
           fun reloadInstr(r, rest) = I.FLD(slot) :: I.FSTP(I.FDirect r) :: rest
@@ -165,14 +158,7 @@ structure X86CG =
   
       val getRegLoc = X86StackSpills.getRegLoc
 
-      fun spillR32{instr, reg, spillLoc, node, kill=true, regmap, annotations} =
-          let fun f (I.CALL _ | I.RET _ | I.POP _ | I.FXCH) = 
-                  spillR32{instr=instr, reg=reg, spillLoc=spillLoc, node=node,
-                           kill=false, regmap=regmap, annotations=annotations}
-                | f(I.ANNOTATION{i,...}) = f i
-                | f _ = {code=[], proh=[], instr=NONE}
-          in  f instr end
-        | spillR32{instr, reg, spillLoc, node, kill, regmap, annotations} = 
+      fun spillR32{instr, reg, spillLoc, graph, kill, regmap, annotations} = 
           let val _ = intSpillCnt := !intSpillCnt + 1
               val slot = I.Displace{base=esp, disp=getRegLoc spillLoc,mem=stack}
               fun spillInstr(r) =
@@ -199,7 +185,7 @@ structure X86CG =
               | _ => X86Spill.spill(instr, reg, slot)
           end
   
-      fun reloadR32{instr, reg, spillLoc, node, regmap, annotations} = 
+      fun reloadR32{instr, reg, spillLoc, graph, regmap, annotations} = 
       let val _ = intReloadCnt := !intReloadCnt + 1 
           val slot = I.Displace{base=esp, disp=getRegLoc spillLoc, mem=stack}
           fun reloadInstr(r, rest) =
@@ -230,14 +216,7 @@ structure X86CG =
       end  
   
        (* register allocation for general purpose registers *)
-      fun spillR8{instr, reg, spillLoc, node, kill=true, regmap, annotations} = 
-          let fun f (I.CALL _ | I.RET _ | I.POP _ | I.FXCH) = 
-                spillR8{instr=instr, reg=reg, spillLoc=spillLoc, node=node,
-                        kill=false, regmap=regmap, annotations=annotations}
-                | f(I.ANNOTATION{i,...}) = f i
-                | f _ = {code=[], proh=[], instr=NONE}
-          in  f instr end
-        | spillR8{instr, reg, spillLoc, node, kill, regmap, annotations} = 
+      fun spillR8{instr, reg, spillLoc, graph, kill, regmap, annotations} = 
           let val _ = intSpillCnt := !intSpillCnt + 1
               val slot = I.Displace{base=esp, disp=getRegLoc spillLoc,mem=stack}
               fun spillInstr(r) =
@@ -264,7 +243,7 @@ structure X86CG =
           (print ("in spill handler "^ Int.toString reg ^ "\n");
            {code=[instr], proh=[reg], instr=NONE})
   
-      fun reloadR8{instr, reg, spillLoc, node, regmap, annotations} = 
+      fun reloadR8{instr, reg, spillLoc, graph, regmap, annotations} = 
       let val _ = intReloadCnt := !intReloadCnt + 1
           val slot = I.Displace{base=esp, disp=getRegLoc spillLoc, mem=stack}
           fun reloadInstr(r, rest) =

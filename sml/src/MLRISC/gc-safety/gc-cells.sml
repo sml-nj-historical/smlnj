@@ -2,13 +2,14 @@
  * This makes a new cell module that automatically propagate gc type info.
  *)
 functor GCCells(structure C  : CELLS
-                structure GC : GC_TYPE) : GC_CELLS =
+                structure GCMap : GC_MAP) : GC_CELLS =
 struct
 
    structure C  = C
-   structure GC = GC
+   structure GC = GCMap.GC
+   structure GCMap = GCMap
 
-   val gcmap = ref NONE : GC.gcmap option ref
+   val gcmap = ref NONE : GCMap.gcmap option ref
 
    fun setGCMap map = gcmap := SOME map
    fun getGCMap() = Option.valOf(!gcmap) 
@@ -30,7 +31,7 @@ struct
     * Create a new GC map
     *)
    fun newGCMap() =
-   let val gcmap = Intmap.new(129,GC.GCTYPE)
+   let val gcmap = Intmap.new(129,GCMap.GCMap)
    in  case C.zeroReg C.GP of
          SOME r => Intmap.add gcmap (r,GC.CONST 0)
        | _ => ();

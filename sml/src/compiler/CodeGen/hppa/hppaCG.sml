@@ -6,7 +6,7 @@ structure HppaCG =
   ( structure MachSpec   = HppaSpec
     structure PseudoOps  = HppaPseudoOps
     structure CpsRegs    = HppaCpsRegs
-    structure InsnProps  = HppaProps(HppaInstr)
+    structure InsnProps  = HppaProps
     structure Asm        = HppaAsmEmitter
 
     structure HppaMillicode =
@@ -42,7 +42,7 @@ structure HppaCG =
          )
 
     structure RA = 
-       RegAlloc2
+       RegAlloc
          (structure I         = HppaInstr
           structure MachSpec  = HppaSpec
           structure Flowgraph = HppaFlowGraph

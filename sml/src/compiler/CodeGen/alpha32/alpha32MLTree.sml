@@ -5,10 +5,9 @@ structure Alpha32Instr =
   AlphaInstr(structure Const=SMLNJConstant
              structure Region=CPSRegions)
 
-structure Alpha32Shuffle = AlphaShuffle(Alpha32Instr)
+structure Alpha32Props = AlphaProps(Alpha32Instr)
 
-structure Alpha32PseudoInstrs =
-  Alpha32PseudoInstrs(structure Instr = Alpha32Instr)
+structure Alpha32Shuffle = AlphaShuffle(Alpha32Instr)
 
 structure Alpha32PseudoOps = 
     PseudoOpsLittle(structure M = Alpha32Spec val nop = NONE)
@@ -40,4 +39,9 @@ structure Alpha32MLTree =
           type rextension = unit
           type fextension = unit
          )
+
+structure Alpha32PseudoInstrs =
+  Alpha32PseudoInstrs(structure T = Alpha32MLTree
+                      structure Instr = Alpha32Instr)
+
 

@@ -3,16 +3,21 @@
  * the 'iterated register coalescing' scheme described 
  * in POPL'96, and TOPLAS v18 #3, pp 325-353. 
  *
- * Now with numerous extension:
+ * Now with numerous extensions:
  *
+ *   0. Dead copy elimination (optional)
  *   1. Priority based coalescing
  *   2. Priority based freezing
  *   3. Priority based spilling
- *   4. Biased coloring (optional)
- *   5. Rematerialization (optional)
- *   6. Register pair coloring (to support Sparc, C6, and others)
- *   7. Splitting (optional)
- * 
+ *   4. Biased selection (optional)
+ *   5. Spill Coalescing (optional)
+ *   6. Spill Propagation (optional)
+ *   7. Spill Coloring (optional)
+ *
+ * For details, please see the paper from
+ *
+ *    http://cm.bell-labs.com/cm/cs/what/smlnj/compiler-notes/index.html
+ *
  * The basic structure of this register allocator is as follows:
  *   1.  RAGraph.  This module enscapsulates the interference graph 
  *       datatype (adjacency list + interference graph + node table)
@@ -29,7 +34,7 @@
  *       to make spilling fast.
  *   4.  This functor.  This functor drives the entire process.
  *
- * -- Allen
+ * -- Allen Leung (leunga@cs.nyu.edu)
  *)
 
 functor RegisterAllocator
@@ -46,8 +51,10 @@ struct
    datatype mode = REGISTER_ALLOCATION | COPY_PROPAGATION 
 
    datatype optimization = DEAD_COPY_ELIM
+                         | SPILL_PROPAGATION
                          | SPILL_COALESCING
                          | SPILL_COLORING
+                         | BIASED_SELECTION
 
    type getreg = { pref  : C.cell list,
                    stamp : int,
@@ -59,7 +66,7 @@ struct
    fun error msg = MLRiscErrorMsg.error("RegisterAllocator",msg)
 
    (*
-    * Debugging flags
+    * Debugging flags + counters
     *)
    val cfg_before_ra     = MLRiscControl.getFlag "dump-cfg-before-ra"
    val cfg_after_ra      = MLRiscControl.getFlag "dump-cfg-after-ra"
@@ -75,7 +82,6 @@ struct
    (*
     * Optimization flags
     *)
-   val biasedColoring    = MLRiscControl.getFlag "ra-biased-coloring"
    val rematerialization = MLRiscControl.getFlag "ra-rematerialization"
 
    exception NodeTable
@@ -100,16 +106,21 @@ struct
        if C.numCell cellkind () = 0 
        then ()
        else
-       let fun getOpt([], dce, sc, sp) = (dce, sc, sp)
-             | getOpt(DEAD_COPY_ELIM::opts, dce, sc, sp) =
-                 getOpt(opts, true, sc, sp)
-             | getOpt(SPILL_COALESCING::opts, dce, sc, sp) =
-                 getOpt(opts, dce, true, sp)
-             | getOpt(SPILL_COLORING::opts, dce, sc, sp) =
-                 getOpt(opts, dce, sc, true)
+       let fun getOpt([], dce, sp, sc, scolor, bs) = (dce, sp, sc, scolor, bs)
+             | getOpt(DEAD_COPY_ELIM::opts, dce, sp, sc, scolor, bs) =
+                 getOpt(opts, true, sp, sc, scolor, bs)
+             | getOpt(SPILL_PROPAGATION::opts, dce, sp, sc, scolor, bs) =
+                 getOpt(opts, dce, true, sc, scolor, bs)
+             | getOpt(SPILL_COALESCING::opts, dce, sp, sc, scolor, bs) =
+                 getOpt(opts, dce, sp, true, scolor, bs)
+             | getOpt(SPILL_COLORING::opts, dce, sp, sc, scolor, bs) =
+                 getOpt(opts, dce, sp, sc, true, bs)
+             | getOpt(BIASED_SELECTION::opts, dce, sp, sc, scolor, bs) =
+                 getOpt(opts, dce, sp, sc, scolor, true)
 
-           val (deadCopyElim, spillCoalescing, spillColoring) =
-               getOpt(optimizations, false, false, false)
+           val (deadCopyElim, spillProp, spillCoalescing, 
+                spillColoring, biasedSelection) =
+               getOpt(optimizations, false, false, false, false, false)
 
            (* extract the regmap and blocks from the flowgraph *)
            val regmap = F.regmap flowgraph (* the register map *)
@@ -188,22 +199,26 @@ struct
            end 
               
            (*
-            * Rematerialization
+            * Mark spill nodes
             *)
-           fun rematerialize{node} = error "rematerialize"
-    
-           (*
-            * Splitting 
-            *)
-           fun split{node} = error "split"
-    
+           fun markSpillNodes nodesToSpill =
+           let val marker = SPILLED(~1)
+               fun loop [] = ()
+                 | loop(NODE{color, ...}::ns) = (color := marker; loop ns)
+           in  loop nodesToSpill end
+ 
            (*
             * Actual spill phase.  
             *   Insert spill node and incrementally 
             *   update the interference graph. 
             *)
            fun actualSpills{spills} = 
-           let val _ = if spillCoalescing then 
+           let val _ = if spillProp orelse spillCoalescing orelse
+                          spillColoring then markSpillNodes spills
+                       else ()
+               val spills = if spillProp then 
+                              Core.spillPropagation G spills else spills
+               val _ = if spillCoalescing then 
                           Core.spillCoalescing G spills else ()
                val _ = if spillColoring then 
                           Core.spillColoring G spills else ()
@@ -267,7 +282,7 @@ struct
                           (simplifyWkl,moveWkl,freezeWkl,spillWkl,stack)
                    (* color the nodes *)
                    val {spills} = (Core.select G)
-                                    {stack=stack, biased= !biasedColoring}
+                                    {stack=stack, biased= biasedSelection}
                in  (* check for actual spills *)
                    case spills of
                      [] => ()

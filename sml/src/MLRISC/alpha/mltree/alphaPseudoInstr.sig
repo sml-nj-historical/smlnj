@@ -1,7 +1,9 @@
 (* alphaPseudoInstr.sig --- alpha pseudo instructions *)
 
-signature ALPHA_PSEUDO_INSTR = sig
+signature ALPHA_PSEUDO_INSTR = 
+sig
    structure I : ALPHAINSTR
+   structure T : MLTREE
   
    type reduceOpnd = I.operand -> int
 
@@ -23,13 +25,9 @@ signature ALPHA_PSEUDO_INSTR = sig
    val cvtqs : {opnd:I.operand, fd:int} * reduceOpnd -> I.instruction list
    val cvtqt : {opnd:I.operand, fd:int} * reduceOpnd -> I.instruction list
 
-   val cvtsl : {mode:MLTreeBasis.rounding_mode, fs:int, rd:int} ->
-                I.instruction list
-   val cvttl : {mode:MLTreeBasis.rounding_mode, fs:int, rd:int} ->
-                I.instruction list
-   val cvtsq : {mode:MLTreeBasis.rounding_mode, fs:int, rd:int} ->
-                I.instruction list
-   val cvttq : {mode:MLTreeBasis.rounding_mode, fs:int, rd:int} ->
-                I.instruction list
+   val cvtsl : {mode:T.rounding_mode, fs:int, rd:int} -> I.instruction list
+   val cvttl : {mode:T.rounding_mode, fs:int, rd:int} -> I.instruction list
+   val cvtsq : {mode:T.rounding_mode, fs:int, rd:int} -> I.instruction list
+   val cvttq : {mode:T.rounding_mode, fs:int, rd:int} -> I.instruction list
 end 
 

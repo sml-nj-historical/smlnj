@@ -11,13 +11,11 @@
 functor Alpha
    (structure AlphaInstr : ALPHAINSTR
     structure AlphaMLTree : MLTREE 
-       where Region   = AlphaInstr.Region
-       and   Constant = AlphaInstr.Constant
-       where type cond = MLTreeBasis.cond
-       and   type fcond = MLTreeBasis.fcond
-       and   type rounding_mode = MLTreeBasis.rounding_mode
     structure PseudoInstrs : ALPHA_PSEUDO_INSTR
-       where I = AlphaInstr
+       sharing AlphaMLTree.Region   = AlphaInstr.Region
+       sharing AlphaMLTree.Constant = AlphaInstr.Constant
+       sharing PseudoInstrs.I = AlphaInstr
+       sharing PseudoInstrs.T = AlphaMLTree
 
       (* Cost of multiplication in cycles *)
     val multCost : int ref
@@ -34,7 +32,6 @@ struct
   structure C   = AlphaInstr.C
   structure LE  = LabelExp
   structure W32 = Word32
-  structure U   = MLTreeUtil
   structure P   = PseudoInstrs
 
  (*********************************************************
@@ -645,8 +642,12 @@ struct
           let val ra = expr a
               val rb = opn b
               val t  = newReg()
-          in  signExt32(ra,t);
-              mark(I.OPERATE{oper=I.SRA,ra=t,rb=rb,rc=d},an)
+          in  (* On the alpha, all 32 bit values are already sign extended.
+               * So no sign extension is necessary. 
+               * signExt32(ra,t); 
+               * mark(I.OPERATE{oper=I.SRA,ra=t,rb=rb,rc=d},an) 
+               *)
+              mark(I.OPERATE{oper=I.SRA,ra=ra,rb=rb,rc=d},an)
           end
         
       and sra64(a,b,d,an) = 
@@ -964,17 +965,20 @@ struct
           | T.NOTB(_,e) => arith(I.ORNOT,zeroT,e,d,an)
 
             (* loads *)
-          | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(8,ea,mem)) => load8s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(16,ea,mem)) => load16s(ea,d,mem,an)
-          | T.CVTI2I(_,T.SIGN_EXTEND,T.LOAD(32,ea,mem)) => load32s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(8,ea,mem)) => 
+               load8s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(16,ea,mem)) => 
+               load16s(ea,d,mem,an)
+          | T.CVTI2I(_,T.SIGN_EXTEND,_,T.LOAD(32,ea,mem)) => 
+               load32s(ea,d,mem,an)
           | T.LOAD(8,ea,mem) => load8(ea,d,mem,an)
           | T.LOAD(16,ea,mem) => load16(ea,d,mem,an)
           | T.LOAD(32,ea,mem) => load32s(ea,d,mem,an)
           | T.LOAD(64,ea,mem) => load(I.LDQ,ea,d,mem,an) 
 
            (* floating -> int conversion *)
-          | T.CVTF2I(ty,rounding,e) =>
-            (case (Gen.fsize e,ty) of
+          | T.CVTF2I(ty,rounding,fty,e) =>
+            (case (fty,ty) of
                (32,32) => cvtf2i(P.cvtsl,rounding,e,d,an)
              | (32,64) => cvtf2i(P.cvtsq,rounding,e,d,an)
              | (64,32) => cvtf2i(P.cvttl,rounding,e,d,an)
@@ -986,12 +990,17 @@ struct
           | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 1,T.LI 0) => 
                compare(ty,cond,e1,e2,d,an) 
           | T.COND(_,T.CMP(ty,cond,e1,e2),T.LI 0,T.LI 1) => 
-               compare(ty,U.negateCond cond,e1,e2,d,an) 
+               compare(ty,T.Util.negateCond cond,e1,e2,d,an) 
           | T.COND(_,T.CMP(ty,cond,e1,e2),x,y) => 
                cmove(ty,cond,e1,e2,x,y,d,an) 
 
           | T.SEQ(s,e) => (doStmt s; doExpr(e,d,an))
           | T.MARK(e,a) => doExpr(e,d,a::an)
+
+            (* On the alpha: all 32 bit values are already sign extended.
+             * So no sign extension is necessary
+             *)
+          | T.CVTI2I(64, _, 32, e) => doExpr(e, d, an)
     
            (* Defaults *) 
           | e => doExpr(Gen.compile e,d,an)
@@ -1063,8 +1072,8 @@ struct
              * Note: it is not necessary to convert single precision
              * to double on the alpha.
              *)
-          | T.CVTF2F(fty,_,e) => (* ignore rounding mode for now *)
-            (case (fty,Gen.fsize e) of
+          | T.CVTF2F(fty,_,fty',e) => (* ignore rounding mode for now *)
+            (case (fty,fty') of
                (64,64) => doFexpr(e,d,an) 
              | (64,32) => doFexpr(e,d,an) 
              | (32,32) => doFexpr(e,d,an) 
@@ -1073,9 +1082,9 @@ struct
             )
 
             (* integer -> floating point conversion *)
-          | T.CVTI2F(fty,T.SIGN_EXTEND,e) => 
+          | T.CVTI2F(fty,T.SIGN_EXTEND,ty,e) => 
             let val pseudo = 
-                case (Gen.size e,fty) of
+                case (ty,fty) of
                   (ty,32) => if ty <= 32 then P.cvtls else P.cvtqs
                 | (ty,64) => if ty <= 32 then P.cvtlt else P.cvtqt
                 | _       => error "CVTI2F"
@@ -1104,9 +1113,9 @@ struct
       and branch(c,e,lab,an) = 
           case e of
             T.CMP(ty,cc,e1 as T.LI _,e2) => 
-               branchBS(ty,U.swapCond cc,e2,e1,lab,an)
+               branchBS(ty,T.Util.swapCond cc,e2,e1,lab,an)
           | T.CMP(ty,cc,e1 as T.LI32 _,e2) => 
-               branchBS(ty,U.swapCond cc,e2,e1,lab,an)
+               branchBS(ty,T.Util.swapCond cc,e2,e1,lab,an)
           | T.CMP(ty,cc,e1,e2) => branchBS(ty,cc,e1,e2,lab,an)
           | e => mark(I.BRANCH(I.BNE,ccExpr e,lab),an)
 
@@ -1203,7 +1212,7 @@ struct
                 (* move the immed operand to b *)
                 case a of
                   (T.LI _ | T.LI32 _ | T.CONST _) => 
-                       (MLTreeUtil.swapCond cond,b,a)
+                       (T.Util.swapCond cond,b,a)
                 | _ => (cond,a,b)
 
               fun sub(a,(T.LI 0 | T.LI32 0w0)) = expr a
@@ -1264,7 +1273,7 @@ struct
               val (cond,e1,e2) =
 		  case e1 of
                     (T.LI _ | T.LI32 _ | T.CONST _) => 
-                       (MLTreeUtil.swapCond cond,e2,e1)
+                       (T.Util.swapCond cond,e2,e1)
                   | _ => (cond,e1,e2)
           in  case cond of
                 T.EQ  => eq(e1,e2,d)

@@ -267,27 +267,31 @@ structure IntRedBlackMap :> ORD_MAP where type Key.ord_key = int =
 	    fn (MAP(_, m1), MAP(_, m2)) => cmp (start m1, start m2)
 	  end
 
-  (* support for constructing red-black trees in linear time from ordered
-   * sequences (based on a description by R. Hinze).
+  (* support for constructing red-black trees in linear time from increasing
+   * ordered sequences (based on a description by R. Hinze).  Note that the
+   * elements in the digits are ordered with the largest on the left, whereas
+   * the elements of the trees are ordered with the largest on the right.
    *)
     datatype 'a digit
       = ZERO
       | ONE of (int * 'a * 'a tree * 'a digit)
       | TWO of (int * 'a * 'a tree * int * 'a * 'a tree * 'a digit)
+  (* add an item that is guaranteed to be larger than any in l *)
     fun addItem (ak, a, l) = let
 	  fun incr (ak, a, t, ZERO) = ONE(ak, a, t, ZERO)
 	    | incr (ak1, a1, t1, ONE(ak2, a2, t2, r)) =
 		TWO(ak1, a1, t1, ak2, a2, t2, r)
 	    | incr (ak1, a1, t1, TWO(ak2, a2, t2, ak3, a3, t3, r)) =
-		ONE(ak1, a1, t1, incr(ak2, a2, T(B, t2, ak3, a3, t3), r))
+		ONE(ak1, a1, t1, incr(ak2, a2, T(B, t3, ak3, a3, t2), r))
 	  in
 	    incr(ak, a, E, l)
 	  end
+  (* link the digits into a tree *)
     fun linkAll t = let
 	  fun link (t, ZERO) = t
-	    | link (t1, ONE(ak, a, t2, r)) = link(T(B, t1, ak, a, t2), r)
+	    | link (t1, ONE(ak, a, t2, r)) = link(T(B, t2, ak, a, t1), r)
 	    | link (t, TWO(ak1, a1, t1, ak2, a2, t2, r)) =
-		link(T(B, T(R, t, ak1, a1, t1), ak2, a2, t2), r)
+		link(T(B, T(R, t2, ak2, a2, t1), ak1, a1, t), r)
 	  in
 	    link (E, t)
 	  end

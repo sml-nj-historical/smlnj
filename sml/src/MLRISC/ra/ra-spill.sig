@@ -17,7 +17,7 @@ sig
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
        spillLoc : int,                 (* logical spill location *)
-       node     : RAGraph.node,	       (* the current node *)
+       graph    : RAGraph.interferenceGraph,  (* the current graph *)
        kill     : bool,                (* can we kill the current node? *)
        regmap   : C.cell -> C.cell,    (* current register map *)
        annotations : Annotations.annotations ref  (* annotations *)
@@ -31,7 +31,7 @@ sig
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
        spillLoc : int,                 (* logical spill location *)
-       node     : RAGraph.node,	       (* the current node *)
+       graph    : RAGraph.interferenceGraph,  (* the current graph *)
        regmap   : C.cell -> C.cell,    (* current register map *)
        annotations : Annotations.annotations ref  (* annotations *)
       } ->

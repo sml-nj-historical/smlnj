@@ -6,7 +6,6 @@
  *)
 functor MLTreeMult
   (structure T : MLTREE
-      where type rounding_mode = MLTreeBasis.rounding_mode
    structure I : INSTRUCTIONS
       sharing I.Constant = T.Constant
 
@@ -130,7 +129,7 @@ struct
           else ([],r) (* no rounding for unsigned division *)
      | roundDiv{mode,...} = 
           error("Integer rounding mode "^
-                MLTreeUtil.roundingModeToString mode^" is not supported")
+                T.Util.roundingModeToString mode^" is not supported")
 
    fun divideNonTrap{mode,roundToZero}{r,i,d} = 
        if i > 0 andalso isPowerOf2(itow i)

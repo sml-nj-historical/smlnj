@@ -1,6 +1,10 @@
 (*
  * This module provides services for the new RA when using the cluster
  * representation.  
+ * The algorithm is adapted from
+ * Algorithm 19.17 from Appel, Modern Compiler Implementation in ML,
+ * Calculation of live ranges in SSA form.  We don't directly use SSA 
+ * here but the principles are the same.
  *
  * -- Allen
  *)
@@ -349,14 +353,17 @@ struct
            val getReloadSet = get reloadSet
            val getKillSet   = get killSet
 
-           val _ = app (fn G.NODE{number, defs=ref defs, uses=ref uses, ...} =>
-                        (app (fn pt => insSpillSet (pt, number)) defs;
-                         app (fn pt => insReloadSet (pt, number)) uses;
-                         (* Definitions but no use! *) 
-                         case uses of
-                            [] => app (fn pt => insKillSet(pt, number)) defs
-                          | _ => ()
-                        )) nodesToSpill
+           val _ = app 
+              (fn G.NODE{color=ref(G.ALIASED _), ...} => ()
+                | G.NODE{number, defs=ref defs, uses=ref uses, ...} =>
+                  (app (fn pt => insSpillSet (pt, number)) defs;
+                   app (fn pt => insReloadSet (pt, number)) uses;
+                   (* Definitions but no use! *) 
+                   case uses of
+                      [] => app (fn pt => insKillSet(pt, number)) defs
+                    | _ => ()
+                  )
+              ) nodesToSpill
 
            (* Rewrite a basic block *)
            fun rewrite(annotations, blknum, pt, [], newInstrs) = rev newInstrs
@@ -397,7 +404,7 @@ struct
                end
 
        in  Intmap.app rewriteAll affectedBlocks;
-           app (fn G.NODE{color=ref(ALIASED_SPILL _), ...} => ()
+           app (fn G.NODE{color=ref(ALIASED _), ...} => ()
                  | G.NODE{color, ...} => color := (SPILLED 0)
                ) nodesToSpill;
            rebuild(cellkind, graph)

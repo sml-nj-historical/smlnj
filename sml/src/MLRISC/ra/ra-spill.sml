@@ -31,7 +31,7 @@ struct
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
        spillLoc : int,                 (* logical spill location *)
-       node     : RAGraph.node,     (* the current node *)
+       graph    : RAGraph.interferenceGraph, (* the current graph *)
        kill     : bool,                (* can we kill the current node? *)
        regmap   : C.cell -> C.cell,    (* current register map *)
        annotations : Annotations.annotations ref (* annotations *)
@@ -45,7 +45,7 @@ struct
       {instr    : I.instruction,       (* instruction where spill is to occur *)
        reg      : C.cell,              (* register to spill *)
        spillLoc : int,                 (* logical spill location *)
-       node     : RAGraph.node,     (* the current node *)
+       graph    : RAGraph.interferenceGraph, (* the current graph *)
        regmap   : C.cell -> C.cell,    (* current register map *)
        annotations : Annotations.annotations ref (* annotations *)
       } ->
@@ -74,7 +74,7 @@ struct
          | add(SOME i,l) = i::l
 
 
-       fun getLoc(G.NODE{color=ref(G.ALIASED_SPILL n), ...}) = getLoc n
+       fun getLoc(G.NODE{color=ref(G.ALIASED n), ...}) = getLoc n
          | getLoc(G.NODE{color=ref(G.SPILLED ~1), number, ...}) = number
          | getLoc(G.NODE{color=ref(G.SPILLED c), ...}) = c
          | getLoc(G.NODE{number, ...}) = number
@@ -83,10 +83,10 @@ struct
         * Insert reloading code for an instruction.
         * Note: reload code goes after the instruction, if any.
         *)
-       fun reloadInstr(instr,spillReg,spillLoc,node,annotations) = 
+       fun reloadInstr(instr,spillReg,spillLoc,annotations) = 
        let val {code,proh} =
               reload{regmap=regmap,instr=instr,reg=spillReg,
-                     spillLoc=spillLoc,node=node,annotations=annotations}
+                     spillLoc=spillLoc,graph=G,annotations=annotations}
        in  addProh(proh); 
            code
        end
@@ -114,14 +114,14 @@ struct
         *    reload copies
         *
         *)
-       fun reloadCopySrc(instr,dst,src,spillReg,spillLoc,node,annotations) = 
+       fun reloadCopySrc(instr,dst,src,spillReg,spillLoc,annotations) = 
        let val (mvs, copyDst, copySrc) = extractUses(spillReg, dst, src)
            fun processMoves([], reloadCode) = reloadCode 
              | processMoves(mv::mvs, reloadCode) =
                let val mv = copyInstr(mv, instr)
                    val {code, proh} =
                      reload{regmap=regmap,instr=mv,spillLoc=spillLoc,
-                            node=node,reg=spillReg,annotations=annotations}
+                            graph=G,reg=spillReg,annotations=annotations}
                in  addProh(proh);
                    processMoves(mvs, code@reloadCode)
                end
@@ -134,16 +134,16 @@ struct
        (*
         * Insert reload code
         *)
-       fun reload(instr,spillReg,spillLoc,node,annotations) =
+       fun reload(instr,spillReg,spillLoc,annotations) =
            if P.moveInstr instr then   
               let val (dst,src) = P.moveDstSrc instr
               in  case dst of
-                    [_] => reloadInstr(instr,spillReg,spillLoc,node,annotations)
+                    [_] => reloadInstr(instr,spillReg,spillLoc,annotations)
                   | _   => reloadCopySrc(instr,dst,src,spillReg,
-                                         spillLoc,node,annotations)
+                                         spillLoc,annotations)
               end
            else
-              reloadInstr(instr,spillReg,spillLoc,node,annotations)
+              reloadInstr(instr,spillReg,spillLoc,annotations)
 
        (*
         * Check whether the spillReg is in a list
@@ -157,10 +157,10 @@ struct
         * If the value in spillReg is never used, the client also
         * has the opportunity to remove the instruction.
         *)
-       fun spillInstr(instr,spillReg,spillLoc,node,annotations,kill) = 
+       fun spillInstr(instr,spillReg,spillLoc,annotations,kill) = 
        let val {code, instr, proh} =
               spill{regmap=regmap, instr=instr, 
-                    node=node, kill=kill, spillLoc=spillLoc,
+                    graph=G, kill=kill, spillLoc=spillLoc,
                     reg=spillReg, annotations=annotations}
        in  addProh(proh);
            add(instr,code)
@@ -189,7 +189,7 @@ struct
         *    d1...dn/r <- s1...sn/r
         * 
         *)
-       fun spillCopyDst(instr,spillReg,spillLoc,node,annotations,kill) = 
+       fun spillCopyDst(instr,spillReg,spillLoc,annotations,kill) = 
        let val (dst, src) = P.moveDstSrc instr
            val (mvDst,mvSrc,copyDst,copySrc,kill) = 
                 extractDef(spillReg,dst,src,kill)
@@ -204,7 +204,7 @@ struct
            let val mvInstr = copyInstr((mvDst,mvSrc),instr)
                  (* spill the move instruction *)
                val spillCode = spillInstr(mvInstr,spillReg,spillLoc,
-                                          node,annotations,false)
+                                          annotations,false)
            in  spillCode @ [copy]
            end
        end
@@ -212,23 +212,23 @@ struct
        (*
         * Insert spill code for a copy
         *)
-       fun spillCopy(instr,spillReg,spillLoc,node,annotations,kill) =
+       fun spillCopy(instr,spillReg,spillLoc,annotations,kill) =
            case P.moveTmpR instr of
-             NONE => spillCopyDst(instr,spillReg,spillLoc,node,annotations,kill)
+             NONE => spillCopyDst(instr,spillReg,spillLoc,annotations,kill)
            | SOME tmp => 
                if regmap tmp = spillReg 
-               then spillInstr(instr,spillReg,spillLoc,node,annotations,false)
-               else spillCopyDst(instr,spillReg,spillLoc,node,annotations,kill)
+               then spillInstr(instr,spillReg,spillLoc,annotations,false)
+               else spillCopyDst(instr,spillReg,spillLoc,annotations,kill)
 
        (*
         * Insert spill code
         *)
-       fun spill(instr,spillReg,spillLoc,node,annotations,killSet) =
+       fun spill(instr,spillReg,spillLoc,annotations,killSet) =
        let val kill = killable(spillReg,killSet)
        in  if P.moveInstr instr then
-              spillCopy(instr,spillReg,spillLoc,node,annotations,kill)
+              spillCopy(instr,spillReg,spillLoc,annotations,kill)
            else
-              spillInstr(instr,spillReg,spillLoc,node,annotations,kill)
+              spillInstr(instr,spillReg,spillLoc,annotations,kill)
        end
 
        (*
@@ -241,27 +241,27 @@ struct
            fun hasDef(i,reg) = contains(#1(insnDefUse i),reg)
            fun hasUse(i,reg) = contains(#2(insnDefUse i),reg)
 
-           fun spillOneReg([],_,_,_,killSet) = []
-             | spillOneReg(i::instrs,r,spillLoc,node,killSet) = 
+           fun spillOneReg([],_,_,killSet) = []
+             | spillOneReg(i::instrs,r,spillLoc,killSet) = 
                if hasDef(i,r) 
                then 
-                spillOneReg(spill(i,r,spillLoc,node,annotations,killSet)@instrs,
-                                  r,spillLoc,node,killSet)
-               else i::spillOneReg(instrs,r,spillLoc,node,killSet)
+                spillOneReg(spill(i,r,spillLoc,annotations,killSet)@instrs,
+                                  r,spillLoc,killSet)
+               else i::spillOneReg(instrs,r,spillLoc,killSet)
 
-           fun reloadOneReg([],_,_,_) = []
-             | reloadOneReg(i::instrs,r,spillLoc,node) = 
+           fun reloadOneReg([],_,_) = []
+             | reloadOneReg(i::instrs,r,spillLoc) = 
                if hasUse(i,r) 
-               then reloadOneReg(reload(i,r,spillLoc,node,annotations)@instrs,
-                                 r,spillLoc,node)
-               else i::reloadOneReg(instrs,r,spillLoc,node)
+               then reloadOneReg(reload(i,r,spillLoc,annotations)@instrs,
+                                 r,spillLoc)
+               else i::reloadOneReg(instrs,r,spillLoc)
 
            (* This function spills a set of registers for an instruction *)
            fun spillAll(instrs,[],killSet) = instrs 
              | spillAll(instrs,r::rs,killSet) = 
                let val node     = getnode r
                    val spillLoc = getLoc node
-               in  spillAll(spillOneReg(instrs,r,spillLoc,node,killSet),
+               in  spillAll(spillOneReg(instrs,r,spillLoc,killSet),
                             rs,killSet)
                end
 
@@ -270,7 +270,7 @@ struct
              | reloadAll(instrs,r::rs) = 
                let val node     = getnode r
                    val spillLoc = getLoc node
-               in  reloadAll(reloadOneReg(instrs,r,spillLoc,node),rs)
+               in  reloadAll(reloadOneReg(instrs,r,spillLoc),rs)
                end
 
            (* Eliminate duplicates from the spill/reload candidates *)

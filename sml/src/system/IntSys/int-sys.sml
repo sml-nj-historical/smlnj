@@ -45,6 +45,7 @@ structure InteractiveSystem : sig end = struct
 		  Compiler.Stats.reset ();
 		  print Compiler.banner;
 		  print "\n";
+		  CM0.procCmdLine ();
 		  Compiler.Interact.interact())
 	     else
 		 (print "This is...\n";

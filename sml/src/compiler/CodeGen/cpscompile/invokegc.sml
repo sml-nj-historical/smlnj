@@ -564,11 +564,4 @@ struct
    fun emitModuleGC(stream) =
        app (invokeGC(stream,true)) (!moduleGcBlocks) before moduleGcBlocks := []
 
-   (*
-    * Callback to generate gc invocation code.
-    *)
-   fun callgc{id,label,roots,stream=St.STREAM{emit,defineLabel,...}} = 
-       ()
-
-
 end

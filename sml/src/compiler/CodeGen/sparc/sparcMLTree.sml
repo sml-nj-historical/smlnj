@@ -12,6 +12,8 @@ structure SparcInstr =
 	     structure Region = CPSRegions
             )
 
+structure SparcProps = SparcProps(SparcInstr)
+
 structure SparcPseudoInstrs = SparcPseudoInstrs(SparcInstr)
 
 structure SparcShuffle = SparcShuffle(SparcInstr)

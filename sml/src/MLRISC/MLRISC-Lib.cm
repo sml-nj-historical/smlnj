@@ -8,7 +8,7 @@ Library
 	structure BitSet
 	signature CATNETABLE_LIST
 	structure CatnetableList
-	structure DynamicArray
+	structure DynArray
 	signature FREQ
 	structure Freq
 	structure HashArray

@@ -242,26 +242,30 @@ functor RedBlackSetFn (K : ORD_KEY) :> ORD_SET where Key = K =
 	    cmp (start s1, start s2)
 	  end
 
-  (* support for constructing red-black trees in linear time from ordered
-   * sequences (based on a description by R. Hinze).
+  (* support for constructing red-black trees in linear time from increasing
+   * ordered sequences (based on a description by R. Hinze).  Note that the
+   * elements in the digits are ordered with the largest on the left, whereas
+   * the elements of the trees are ordered with the largest on the right.
    *)
     datatype digit
       = ZERO
       | ONE of (item * tree * digit)
       | TWO of (item * tree * item * tree * digit)
+  (* add an item that is guaranteed to be larger than any in l *)
     fun addItem (a, l) = let
 	  fun incr (a, t, ZERO) = ONE(a, t, ZERO)
 	    | incr (a1, t1, ONE(a2, t2, r)) = TWO(a1, t1, a2, t2, r)
 	    | incr (a1, t1, TWO(a2, t2, a3, t3, r)) =
-		ONE(a1, t1, incr(a2, T(B, t2, a3, t3), r))
+		ONE(a1, t1, incr(a2, T(B, t3, a3, t2), r))
 	  in
 	    incr(a, E, l)
 	  end
+  (* link the digits into a tree *)
     fun linkAll t = let
 	  fun link (t, ZERO) = t
-	    | link (t1, ONE(a, t2, r)) = link(T(B, t1, a, t2), r)
+	    | link (t1, ONE(a, t2, r)) = link(T(B, t2, a, t1), r)
 	    | link (t, TWO(a1, t1, a2, t2, r)) =
-		link(T(B, T(R, t, a1, t1), a2, t2), r)
+		link(T(B, T(R, t2, a2, t1), a1, t), r)
 	  in
 	    link (E, t)
 	  end

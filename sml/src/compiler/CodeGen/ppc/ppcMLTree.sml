@@ -8,6 +8,8 @@ structure PPCInstr =
   PPCInstr(structure Const=PPCConst
 	   structure Region=CPSRegions)
 
+structure PPCProps = PPCProps(PPCInstr)
+
 structure PPCShuffle = PPCShuffle(PPCInstr)
 
 structure PPCPseudoOps = PseudoOpsBig(PPCSpec)

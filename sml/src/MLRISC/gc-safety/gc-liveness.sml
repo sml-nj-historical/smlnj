@@ -3,7 +3,7 @@
  *)
 functor GCLiveness
   (structure IR : MLRISC_IR
-   structure GC : GC_TYPE
+   structure GCMap : GC_MAP
    structure InsnProps : INSN_PROPERTIES
       sharing InsnProps.I = IR.I
   ) : GC_LIVENESS =
@@ -12,15 +12,13 @@ struct
   structure IR  = IR
   structure C   = IR.I.C
   structure CFG = IR.CFG
-  structure GC  = GC
+  structure GC  = GCMap.GC
   structure G   = Graph
   structure GCTypeMap = 
      GCTypeMap(structure C = C
                structure GC = GC)
   structure R = GCTypeMap
   structure A = Array
-
-  fun error msg = MLRiscErrorMsg.error("GCLiveness",msg)
 
   structure Liveness =
       DataflowFn
@@ -74,9 +72,7 @@ struct
 
   fun liveness (IR as G.GRAPH cfg) = 
   let val an = CFG.getAnnotations IR
-      val gcmap = case #get GC.GCMAP (CFG.getAnnotations IR) of
-                    SOME gcmap => gcmap
-                  | NONE => error "no gc map"
+      val gcmap = #lookup GCMap.GCMAP (CFG.getAnnotations IR)
       val regmap = CFG.regmap IR
       val table = A.array(#capacity cfg (),{liveIn=R.empty,liveOut=R.empty})
       val gclookup = Intmap.mapWithDefault (gcmap,GC.TOP)

@@ -21,7 +21,7 @@ sig
     *   else d <- r + i
     *)
 
-   val divide   : { mode:T.rounding_mode,
+   val divide   : { mode:T.Basis.rounding_mode,
                     roundToZero : {ty:T.ty,r:C.cell,i:int,d:C.cell} 
                                     -> unit
                   } -> 

@@ -3,6 +3,20 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1999-10-20]
+	Fixed bug in RedBlack trees (the linear time construction of
+	trees from ordered sequences was producing backwards trees).
+
+[1999-10-18]
+	Changed UREF signature so that union, unify, and link operations
+	now return a boolean.
+
+[1999-10-18]
+	Added peekFn to PropList.newProp return result.
+
+[1999-10-14]
+	Added TextIOPP structure to pp-lib.cm (it was not being exported).
+
 [1999-09-21]
 	Changed the getOpt API.  Errors are now reported using a callback
 	and both usage and getOpt take records as arguments.  Also changed

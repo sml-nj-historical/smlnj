@@ -49,7 +49,12 @@ signature PICKMOD = sig
 	             Access.lvar list * PersStamps.persstamp option
 end
 
-structure PickMod :> PICKMOD = struct
+local
+    (* make those into red-black-maps once rb-maps work correcty. *)
+    functor MapFn = RedBlackMapFn
+    structure IntMap = IntRedBlackMap
+in
+  structure PickMod :> PICKMOD = struct
 
     (* to gather some statistics... *)
     val addPickles = Stats.addStat (Stats.makeStat "Pickle Bytes")
@@ -85,14 +90,14 @@ structure PickMod :> PICKMOD = struct
 	if Symbol.symbolGt (a, b) then GREATER
 	else if Symbol.eq (a, b) then EQUAL else LESS
 
-    structure LTMap = BinaryMapFn
+    structure LTMap = MapFn
 	(struct type ord_key = LK.lty val compare = LK.lt_cmp end)
-    structure TCMap = BinaryMapFn
+    structure TCMap = MapFn
 	(struct type ord_key = LK.tyc val compare = LK.tc_cmp end)
-    structure TKMap = BinaryMapFn
+    structure TKMap = MapFn
 	(struct type ord_key = LK.tkind val compare = LK.tk_cmp end)
     local
-	structure StampMap = BinaryMapFn
+	structure StampMap = MapFn
 	    (struct type ord_key = Stamps.stamp val compare = Stamps.cmp end)
     in
 	structure DTMap = StampMap
@@ -119,7 +124,7 @@ structure PickMod :> PICKMOD = struct
       | acc_pid (A.PATH (a, _)) = acc_pid a
       | acc_pid A.NO_ACCESS = NONE
 
-    structure MIMap = BinaryMapFn
+    structure MIMap = MapFn
 	(struct type ord_key = mi val compare = mi_cmp end)
 
     structure PU = PickleUtil
@@ -220,16 +225,16 @@ structure PickMod :> PICKMOD = struct
     val pid = PSymPid.w_pid
 
     fun mkAlphaConvert () = let
-	val m = ref IntBinaryMap.empty
+	val m = ref IntMap.empty
 	val cnt = ref 0
 	fun cvt i =
-	    case IntBinaryMap.find (!m, i) of
+	    case IntMap.find (!m, i) of
 		SOME i' => i'
 	      | NONE => let
 		    val i' = !cnt
 		in
 		    cnt := i' + 1;
-		    m := IntBinaryMap.insert (!m, i, i');
+		    m := IntMap.insert (!m, i, i');
 		    i'
 		end
     in
@@ -1199,4 +1204,6 @@ structure PickMod :> PICKMOD = struct
     in
 	(newenv, hash, rev lvars, exportPid)
     end
+  end
 end
+

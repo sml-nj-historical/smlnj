@@ -293,7 +293,9 @@ struct
      Jump{h=0w0,ra=r,rb=b,disp=d}   (* table C-3 *)
 
    | JSR of {r: $GP, b: $GP, d:int} * C.cellset * C.cellset * Region.region
-     ``jsr\t<r>, (<b>)<region>''
+     ``jsr\t<r>, (<b>)<region><
+        emit_defs(cellset1)><
+        emit_uses(cellset2)>''
      Jump{h=0w1,ra=r,rb=b,disp=d}
 
    | RET of {r: $GP, b: $GP, d:int} 
@@ -343,7 +345,7 @@ struct
  
    | PSEUDOARITH of {oper: pseudo_op, ra: $GP, rb:operand, rc: $GP, 
 		     tmps: C.cellset}
-	``<oper>\t<ra>, <rb>, <rc>''
+	``<oper>\t<ra>, <rb>, <rc><emit_cellset("tmps",tmps)>''
  
    (* Copy instructions *)
    | COPY of {dst: $GP list, src: $GP list, 

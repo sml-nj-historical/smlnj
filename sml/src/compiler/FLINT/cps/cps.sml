@@ -192,6 +192,16 @@ datatype cexp
   | PURE of P.pure * value list * lvar * cty * cexp
 withtype function = fun_kind * lvar * lvar list * cty list * cexp
 
+fun ctyToString(INTt) =  "[I]"
+  | ctyToString(INT32t) =  "[I32]"
+  | ctyToString(FLTt) =  "[R]"
+  | ctyToString(PTRt (RPT k)) =  ("[PR"^(Int.toString(k))^"]")
+  | ctyToString(PTRt (FPT k)) =  ("[PF"^(Int.toString(k))^"]")
+  | ctyToString(PTRt (VPT)) =  "[PV]"
+  | ctyToString(FUNt) =  "[F]"
+  | ctyToString(CNTt) =  "[C]"
+  | ctyToString(DSPt) =  "[D]"
+
 fun combinepaths(p,OFFp 0) = p
   | combinepaths(p,q) = 
     let val rec comb =

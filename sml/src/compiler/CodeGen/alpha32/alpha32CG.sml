@@ -7,7 +7,7 @@ structure Alpha32CG =
     structure MachSpec   = Alpha32Spec
     structure PseudoOps  = Alpha32PseudoOps
     structure CpsRegs    = Alpha32CpsRegs
-    structure InsnProps  = AlphaProps(Alpha32Instr)
+    structure InsnProps  = Alpha32Props
     structure Asm        = Alpha32AsmEmitter
 
     structure MLTreeComp=
@@ -29,7 +29,7 @@ structure Alpha32CG =
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 
-       RegAlloc2
+       RegAlloc
          (structure I         = Alpha32Instr
           structure MachSpec  = Alpha32Spec
           structure Flowgraph = Alpha32FlowGraph

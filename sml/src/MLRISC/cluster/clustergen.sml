@@ -40,6 +40,7 @@ struct
       val NOBLOCK = F.EXIT{blknum=0,freq=ref 0,pred=ref []}
       val currBlock : F.block ref = ref NOBLOCK
       val blockList : F.block list ref = ref []
+      val blockNames : Annotations.annotations ref = ref []
     
       fun nextBlkNum () = !bblkCnt before bblkCnt := !bblkCnt + 1
     
@@ -47,7 +48,7 @@ struct
       fun newBasicBlk init = 
           F.BBLOCK{blknum=nextBlkNum(),
                    freq=ref 1,
-                   annotations=ref [],
+                   annotations=ref(!blockNames),
                    liveIn=ref C.empty,
                    liveOut=ref C.empty,
                    succ=ref [],
@@ -81,10 +82,29 @@ struct
            | _ => ()
          (*esac*)
       end      
+
       fun annotation a = 
-         case !currBlock of
-           F.BBLOCK{annotations,...} => annotations := a :: !annotations
-         | _ => (currBlock := newBasicBlk []; annotation a)
+          case #peek BasicAnnotations.BLOCK_NAMES a of
+            SOME names => 
+            (blockNames := names;
+             case !currBlock of
+               blk as F.BBLOCK _ => (blockList:= blk :: (!blockList);
+                                     currBlock := NOBLOCK)
+             | _ => ()
+            )
+         | NONE =>
+            if #contains BasicAnnotations.EMPTY_BLOCK [a] then
+            (case !currBlock of 
+               blk as F.BBLOCK _ => blockList := blk :: (!blockList)
+             | _ => blockList := newBasicBlk [] :: (!blockList)
+             ;
+             currBlock := NOBLOCK
+            )
+            else
+            (case !currBlock of
+               F.BBLOCK{annotations,...} => annotations := a :: !annotations
+            | _ => (currBlock := newBasicBlk []; annotation a)
+            )
     
       fun exitBlock liveRegs  = let
         val addReg   = C.addCell C.GP
@@ -155,21 +175,22 @@ struct
                   | succBlks(Props.ESCAPES::labs,acc) = 
                        succBlks(labs, (exitBlk,ref 0)::acc)
     
-                val lastInstr = ((hd (!insns))
-                         handle _ => error "endCluster.graphEdges.lastInstr")
-    
                 fun lastCodeBlock(F.BBLOCK _ :: _) = false
                   | lastCodeBlock(_::rest) = lastCodeBlock rest
                   | lastCodeBlock [] = true
               in
-                case Props.instrKind lastInstr
-                 of Props.IK_JUMP => succ:=succBlks 
-                                    (Props.branchTargets lastInstr,[])
-                  | _  => 
-                    if lastCodeBlock blks then
-                      succ := [(exitBlk,ref 0)] 
-                                (* control must escape via trap *)
-                    else succ := [(nextCodeBlock blks,ref 0)] 
+                case !insns of
+                  lastInstr::_ =>
+                    (case Props.instrKind lastInstr of 
+                      Props.IK_JUMP => succ:=succBlks 
+                                        (Props.branchTargets lastInstr,[])
+                      | _  => 
+                        if lastCodeBlock blks then
+                          succ := [(exitBlk,ref 0)] 
+                                    (* control must escape via trap *)
+                        else succ := [(nextCodeBlock blks,ref 0)] 
+                    )
+                | [] => succ := [(nextCodeBlock blks,ref 0)] 
                 (*esac*);
                 app updtPred (!succ);
                 graphEdges(blks)
@@ -195,6 +216,7 @@ struct
     
           val blocks = rev(!blockList) 
           val _ = blockList := []
+          val _ = blockNames := []
           val _ = fillLabTbl(blocks)
           val _ = graphEdges(blocks)
           val cluster =
@@ -211,6 +233,7 @@ struct
       in  entryLabels := [];
           bblkCnt := 0;
           blockList := [];
+          blockNames := [];
           currBlock := NOBLOCK;
           regmap := SOME map;
           aliasF := Intmap.add map;

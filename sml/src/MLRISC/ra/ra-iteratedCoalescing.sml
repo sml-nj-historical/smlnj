@@ -8,7 +8,7 @@
  * 
  * --- Allen
  *)
-functor RegAllocator
+functor OldRegAllocator
     (structure RaArch : RA_ARCH_PARAMS)
     (structure RaUser : RA_USER_PARAMS
        where I = RaArch.I
@@ -17,7 +17,7 @@ functor RegAllocator
 struct
 
    structure F = RaArch.Liveness.F
-   structure Core = RACore
+   structure Core = OldRACore
    structure G = Core.G
    structure A = Array
    structure I = RaArch.I

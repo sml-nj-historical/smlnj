@@ -14,6 +14,8 @@ structure HppaInstr =
 
 structure HppaShuffle = HppaShuffle(HppaInstr)
 
+structure HppaProps = HppaProps(HppaInstr)
+
 structure HppaPseudoOps = PseudoOpsBig(HppaSpec)
 
 (* flowgraph data structure specialized to Hppa instructions *)

@@ -45,6 +45,7 @@ structure PropList :> PROP_LIST =
 
     fun newProp (selHolder : 'a -> holder, init : 'a -> 'b) = let
 	  val {peek, cons, delete} = mkProp() 
+	  fun peekFn a = peek(!(selHolder a))
 	  fun getF a = let
 		val h = selHolder a
 		in
@@ -59,7 +60,7 @@ structure PropList :> PROP_LIST =
 		  h := delete(!h)
 		end
 	  in
-	    {getFn = getF, clrFn = clrF}
+	    {peekFn = peekFn, getFn = getF, clrFn = clrF}
 	  end
 
     fun newFlag (selHolder : 'a -> holder) = let

@@ -60,6 +60,14 @@ struct
    and emit_GP r = 
        ((emit (C.showGP (regmap r))); 
        (emitRegInfo r))
+   
+       fun emit_cellset(title,cellset) =
+       if #contains BasicAnnotations.SHOW_CELLSET formatAnnotations
+       then 
+         (nl(); comment(title^C.cellsetToString' regmap cellset))
+       else ()
+       fun emit_defs cellset = emit_cellset("defs: ",cellset)
+       fun emit_uses cellset = emit_cellset("uses: ",cellset)
 
    fun asm_pseudo_op (I.DIVL) = "divl"
      | asm_pseudo_op (I.DIVLU) = "divlu"
@@ -341,7 +349,9 @@ struct
         (emit ", ("); 
         (emit_GP b); 
         (emit ")"); 
-        (emit_region region))
+        (emit_region region); 
+        (emit_defs cellset1); 
+        (emit_uses cellset2))
       | I.RET{r, b, d} => 
         ((emit "ret\t"); 
         (emit_GP r); 
@@ -362,7 +372,7 @@ struct
         (emit_label label))
       | I.OPERATE{oper, ra, rb, rc} => let
 
-(*#line 313.1 "alpha/alpha.md"*)
+(*#line 315.1 "alpha/alpha.md"*)
 
            fun f (oper, ra, rb, rc) = 
                ((emit oper); 
@@ -416,7 +426,8 @@ struct
         (emit ", "); 
         (emit_operand rb); 
         (emit ", "); 
-        (emit_GP rc))
+        (emit_GP rc); 
+        (emit_cellset ("tmps", tmps)))
       | I.COPY{dst, src, impl, tmp} => (emitInstrs (Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src}))
       | I.FCOPY{dst, src, impl, tmp} => (emitInstrs (Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src}))
       | I.FUNARY{oper, fb, fc} => 

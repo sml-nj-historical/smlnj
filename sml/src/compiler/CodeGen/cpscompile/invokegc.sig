@@ -36,10 +36,4 @@ sig
       (* generate all GC invocation code in a module *)
    val emitModuleGC : (T.stm,int Intmap.intmap) T.stream -> unit
 
-      (* callback to generate GC code *)
-   val callgc       : { id     : int,
-                        label  : Label.label,
-                        roots  : (int * SMLGCType.gctype) list,
-                        stream : (T.stm,int Intmap.intmap) T.stream
-                      } -> unit
 end

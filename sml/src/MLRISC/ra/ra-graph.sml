@@ -74,7 +74,6 @@ struct
       | ALIASED of node       (* coalesced *)
       | COLORED of int        (* colored *)
       | SPILLED of int        (* spilled *)
-      | ALIASED_SPILL of node (* aliased spill node *)
 
   and node = 
     NODE of { number : int,		(* node number *)
@@ -94,7 +93,7 @@ struct
 
   exception Nodes
 
-  fun error msg = MLRiscErrorMsg.error("RAGraph", msg)
+  fun error msg = MLRiscErrorMsg.error("NewRAGraph", msg)
 
   val stampCounter = ref 0
 
