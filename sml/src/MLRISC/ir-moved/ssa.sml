@@ -53,7 +53,7 @@ struct
                        (defs(n,block))
                 )
        (* compute phi placements for a variable *)
-       val {IDFs,...} = DJ.dj_graph Dom
+       val IDFs = DJ.IDFs Dom
        fun place_phi(v,[])        = ()
          | place_phi(v,def_sites) = 
            let fun place_all [] = ()

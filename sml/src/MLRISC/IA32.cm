@@ -7,29 +7,30 @@
 
 Library
 
-	functor IA32SVID_CCalls
-	signature X86CELLS
-	structure X86Cells
-	signature X86COMP_INSTR_EXT
 	functor	X86CompInstrExt
-	signature X86INSTR
-	functor X86Instr
-	structure X86InstrExt
-	signature X86SHUFFLE
-	functor X86Shuffle
-	functor X86Props
 	signature MEMORY_REGISTERS
-	functor X86FreqProps
-	functor X86AsmEmitter
-	functor X86MCEmitter
+	signature X86CELLS
+	signature X86COMP_INSTR_EXT
+	signature X86INSTR
 	signature X86REWRITE
-	functor X86Rewrite
-	signature X86SPILL
-	functor X86Spill
 	signature X86REWRITE_PSEUDO
-	functor X86RewritePseudo
-	functor X86Jumps
+	signature X86SHUFFLE
+	signature X86SPILL
+	structure X86Cells
+	structure X86InstrExt
+	functor IA32SVID_CCalls
 	functor X86
+	functor X86AsmEmitter
+	functor X86CompInstrExt
+	functor X86FreqProps
+	functor X86Instr
+	functor X86Jumps
+	functor X86MCEmitter
+	functor X86Props
+	functor X86Rewrite
+	functor X86RewritePseudo
+	functor X86Shuffle
+	functor X86Spill
 is
 
 #if defined(NEW_CM)

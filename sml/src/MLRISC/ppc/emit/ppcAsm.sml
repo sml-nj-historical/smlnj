@@ -46,7 +46,7 @@ struct
        fun paren f = (emit "("; f(); emit ")")
        fun defineLabel lab = emit(Label.nameOf lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = emit("\t/* " ^ msg ^ " */")
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
@@ -524,8 +524,12 @@ struct
       | I.COPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shuffle {regmap=regmap, tmp=tmp, dst=dst, src=src})
       | I.FCOPY{dst, src, impl, tmp} => emitInstrs (Shuffle.shufflefp {regmap=regmap, tmp=tmp, dst=dst, src=src})
       | I.ANNOTATION{i, a} => 
-        ( emitInstr i; 
-        comment (Annotations.toString a))
+        ( comment (Annotations.toString a); 
+        nl (); 
+        emitInstr i )
+      | I.SOURCE{} => emit "source"
+      | I.SINK{} => emit "sink"
+      | I.PHI{} => emit "phi"
        )
           and emitInstr i = (tab(); emitInstr' i; nl())
           and emitInstrIndented i = (indent(); emitInstr' i; nl())

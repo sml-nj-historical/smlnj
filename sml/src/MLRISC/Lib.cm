@@ -3,22 +3,22 @@
  *)
 Library 
 	signature ANNOTATIONS
-	structure Annotations
 	signature BITSET
-	structure BitSet
 	signature CATNETABLE_LIST
+	signature FREQ
+	signature INTMAP
+	signature PRIORITY_QUEUE
+	signature STRING_OUTSTREAM
+	structure Annotations
+	structure BitSet
 	structure CatnetableList
 	structure DynArray
-	signature FREQ
 	structure Freq
 	structure HashArray
-	signature INTMAP
 	structure Intmap
 	structure PriorityHeap
-	signature PRIORITY_QUEUE
 	structure PriorityQueue
 	structure SortedList
-	signature STRING_OUTSTREAM
 	structure StringOutStream
 	structure Word64
 is

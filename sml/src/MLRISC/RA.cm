@@ -1,0 +1,15 @@
+Group
+	functor ImprovedChaitinSpillHeur
+	functor ImprovedChowHennessySpillHeur
+is
+
+#if defined(NEW_CM)
+	basis.cm
+#endif
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+
+	ra/chaitin-spillheur2.sml
+	ra/chow-hennessy-spillheur2.sml

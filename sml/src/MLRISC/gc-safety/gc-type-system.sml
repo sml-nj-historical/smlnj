@@ -95,7 +95,6 @@ struct
                 | RTL.AGG(_,_,_) => e
             end
          | E(T.EXT(RTL.PAR(a,b)), e) = E(b,E(a,e))
-         | E(T.PINNED s, e) = E(s, e)
          | E(rtl, e) = err()
    in  E(action, effect) end
 

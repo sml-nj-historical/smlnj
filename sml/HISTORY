@@ -12,6 +12,52 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/04/20 23:04:00 EST
+Tag: leunga-20000420-ssa-c---stuff
+Description:
+
+  This update synchronizes my repository with Yale's.  Most of these
+changes, however, do not affect SML/NJ at all (the RA is an exception).
+
+1. Register Allocator
+
+   a. An improvement in the interference graph construction:  
+      Given a copy
+
+            s <- t
+
+      no interference edge between s and t are added for this definition of s.
+ 
+   b. I've added two new spill heuristic modules that Fermin and I developed
+      (in the new library RA.cm). These are unused in SML/NJ but maybe
+      useful for others (Moby?)
+
+2. X86
+
+   a. Various fixes in the backend provided by Fermin [C--] and Lal.
+
+3. Alpha
+
+   a. Added the BSR instruction and code generation that goes with it [C--]
+   b. Other fixes too numerous to recount provided by Fermin [C--]
+
+4. Regmaps
+
+   a. The regmaps are not initialized with the identity physical bindings 
+      at creation time.  This is unneeded.
+
+5. MLRISC Optimizations
+
+   a. The DJ-Graph module can now compute the iterated dominance frontiers
+      intersects with liveness incrementally in linear time! Woohoo! 
+      This is now used in my new SSA construction algorithm.
+
+   b. THe branch reorganization module is now smarter about linear chains of
+      basic blocks.
+  
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/04/12 13:52:00 JST
 Tag: blume_main_v110p27_1

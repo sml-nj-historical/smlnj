@@ -101,26 +101,6 @@ struct
       | id_of(F.ENTRY{blknum,...})  = blknum
       | id_of(F.EXIT{blknum,...})   = blknum
 
-    fun delete_preentries (ENTRY,CFG as G.GRAPH cfg) =
-    let val CFG.INFO{regmap,...} = #graph_info cfg 
-      	fun remove (ENTRY,i,_) =
-        let val block as CFG.BLOCK{labels,kind,insns,...} = #node_info cfg i
-        in  if kind = CFG.FUNCTION_ENTRY then
-            let val [(i,j,e)] = #out_edges cfg i
-                val CFG.BLOCK{labels=l,...} = #node_info cfg j
-            in  case !insns of
-                   [] => ()
-                |  _  => (print (CFG.show_block [] regmap block);	
-                          error "delete_preentries");
-                #add_edge cfg (ENTRY,j,e);
-                l := !labels @ !l;
-                #remove_node cfg i
-            end
-            else ()
-        end
-    in  app remove (#out_edges cfg ENTRY)
-    end
-
     fun remove_entry_to_exit (ENTRY,EXIT,CFG) =
         Graph.remove_edge CFG (ENTRY,EXIT)
 
@@ -139,12 +119,10 @@ struct
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
         val CFG.INFO{regmap,annotations,...} = #graph_info cfg
-        (* val _       = delete_preentries(ENTRY,CFG) *)
         val _       = remove_entry_to_exit(ENTRY,EXIT,CFG)
         val A       = A.array(M,dummyNode)
         val nodes   = List.filter(fn (i,CFG.BLOCK{kind,...}) => 
-                           i <> ENTRY andalso i <> EXIT andalso 
-                           kind <> CFG.FUNCTION_ENTRY)
+                           i <> ENTRY andalso i <> EXIT) 
                                  (#nodes cfg ())
         val blocks  = List.concat(
                         map (bblock A) (nodes @ [(EXIT,#node_info cfg EXIT)]))
@@ -180,7 +158,6 @@ struct
         val EXIT    = case #exits cfg () of
                         [EXIT] => EXIT
                       | _ => raise Graph.NotSingleExit
-        (* val _        = delete_preentries(ENTRY,CFG) *) 
         val CFG.INFO{firstBlock,regmap=regmap,annotations,...} = 
                #graph_info cfg
         val A        = A.array(M,dummyNode)    (* new id -> F.block *)

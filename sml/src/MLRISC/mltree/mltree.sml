@@ -85,8 +85,9 @@ struct
        * The following are used internally for describing instruction semantics.
        * The frontend must not use these.
        *)
-    | PHI    of int                    (* a phi-function at some block id *)
-    | PINNED of stm      (* pinned statement *)
+    | PHI    of {preds:int list, block:int}
+    | SOURCE of {block:int, liveIn:reg list}
+    | SINK   of {block:int, liveOut:reg list}
     | RTL    of {hash:word ref, attribs:Basis.attribs, e:stm}
    
   and rexp = 
@@ -248,3 +249,4 @@ struct
      dstReg : ty * var -> string, srcReg : ty * var -> string}
 
 end (* MLTREE *)
+

@@ -3,14 +3,14 @@
  *)
 
 Library
-	structure AllDisplays
-	structure daVinci
-	structure Dot
 	signature GRAPH_DISPLAY
-	structure GraphLayout
 	signature GRAPH_VIEWER
-	functor GraphViewer
+	structure AllDisplays
+	structure Dot
+	structure GraphLayout
 	structure VCG
+	structure daVinci
+	functor GraphViewer
 is
 
 #if defined(NEW_CM)

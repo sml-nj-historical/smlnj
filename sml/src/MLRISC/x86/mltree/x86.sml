@@ -1014,11 +1014,11 @@ struct
         | doFexpr(fty, T.FLOAD(fty', ea, mem), fd, an) = 
             let val ea = address(ea, mem)
             in  mark(fld(fty', ea), an); 
-                emit(fstp(fty, I.FDirect fd))
+                if fd = ST0 then () else emit(fstp(fty, I.FDirect fd))
             end
         | doFexpr(fty, e, fd, an) =
             (reduceFexp(fty, e, []);
-             mark(fstp(fty, I.FDirect fd), an)
+             if fd = ST0 then () else mark(fstp(fty, I.FDirect fd), an)
             )
 
           (* 

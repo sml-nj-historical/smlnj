@@ -72,13 +72,14 @@ struct
    val verbose = MLRiscControl.getFlag "verbose"
 
    fun memo name compute = 
-   let val {get,set,rmv,...} = A.new(SOME(fn _ => name))
-       fun getView(IR as G.GRAPH{graph_info=CFG.INFO{annotations,...},...}:IR)=
-       let fun process(SOME(ref(SOME info))) =
+   let val {get,set,...} = A.new(SOME(fn _ => name))
+       fun getView(IR as G.GRAPH ir : IR)=
+       let val CFG.INFO{annotations, ...} = #graph_info ir 
+           fun process(SOME(ref(SOME info))) =
                  (if !verbose then print ("[reusing "^name^"]") else (); info)
              | process(SOME r) =
-                 let val _    = if !verbose then print("[computing "^name)
-                                else ()
+                 let val _    = 
+                        if !verbose then print("[computing "^name) else ()
                      val info = compute IR
                      val _    = if !verbose then print "]" else ()
                  in  r := SOME info; info end
@@ -87,7 +88,7 @@ struct
                   fun kill() = (r := NONE; 
                                 if !verbose then print("[uncaching "^name^"]")
                                 else ())
-              in  annotations := #create CFG.CHANGED kill :: 
+              in  annotations := #create CFG.CHANGED(name, kill) :: 
                                  set(r,!annotations);
                   process(SOME r) 
               end
@@ -129,7 +130,7 @@ struct
    fun layoutLoop (IR as G.GRAPH cfg) = 
        let val loop   = loop IR
            val regmap = CFG.regmap IR
-           val an     = CFG.getAnnotations IR
+           val an     = !(CFG.annotations IR)
            fun mkNodes nodes =
               String.concat(map (fn i => Int.toString i^" ") nodes)
            fun mkEdges edges = 

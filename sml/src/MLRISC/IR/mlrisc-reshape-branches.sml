@@ -82,13 +82,20 @@ struct
              else ()
          | _ => ()
 
+       fun follow i = 
+       let fun chase j = 
+               case #out_edges cfg j of
+                 [(_,k,_)] => if k = i then k else chase k
+               | _ => j
+       in chase i end
+
        (* Falls thru case should be likely for forward branches. *)
        fun should_flip_forward_branches(
            (i,j,CFG.EDGE{w=w1,k=CFG.BRANCH b1,...}),
            (_,k,CFG.EDGE{w=w2,k=CFG.BRANCH b2,...})) =
-             (b1 andalso !w1 > !w2 andalso not(dominates(j,i)))
+             (b1 andalso !w1 > !w2 andalso not(dominates(follow j,i)))
              orelse
-             (b2 andalso !w2 > !w1 andalso not(dominates(k,i)))
+             (b2 andalso !w2 > !w1 andalso not(dominates(follow k,i)))
         | should_flip_forward_branches _ = false
 
        (*
@@ -148,6 +155,7 @@ struct
    in  #forall_nodes cfg (fn x => restructure_conditionals x handle _ => ());
        #forall_nodes loop restructure_loop; 
        if !changed then IR.changed IR else ();
+       Util.mergeAllEdges IR;
        IR
    end
 

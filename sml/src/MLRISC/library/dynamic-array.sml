@@ -6,9 +6,11 @@
 
 structure DynArray : 
   sig include ARRAY
+      val fromArray : 'a Array.array * 'a * int -> 'a array
       val baseArray : 'a array -> 'a Array.array
       val checkArray: 'a array * 'a Array.array -> unit
       val clear     : 'a array * int -> unit
+      val expandTo  : 'a array * int -> unit
   end =
   struct
      structure A = Array
@@ -25,6 +27,7 @@ structure DynArray :
 
      fun array (n,d) = ARRAY(ref(A.array (n,d)), d, ref 0) 
      fun clear (ARRAY(a,def,cnt),n) = (a := A.array(n,def); cnt := n)
+     fun fromArray(a,d,n) = ARRAY(ref a, d, ref n)
 
      fun baseArray(ARRAY(ref a,_,_)) = a
      fun checkArray(ARRAY(ref a,_,_),a') = if a = a' then () else raise Match
@@ -34,7 +37,7 @@ structure DynArray :
      fun (ARRAY(ref a, d, _)) sub i = A.sub(a,i) handle _ => d
     
      fun update (ARRAY(r as ref a, d, n), i, e) =
-        (A.update(a,i,e); n := Int.max(!n,i+1)) handle Subscript =>
+        (A.update(a,i,e); n := Int.max(!n,i+1)) handle _ =>
             let val new_size  = Int.max(i+1,!n*2)
                 val new_size  = if new_size < 10 then 10 else new_size
                 val new_array = A.array(new_size,d)
@@ -43,6 +46,8 @@ structure DynArray :
                 n := i+1;
                 A.update(new_array, i, e)
             end
+
+     fun expandTo(arr as ARRAY(_, d, _), N) = update(arr, N-1, d)
 
      fun extract (ARRAY(r as ref a, _, ref n), i, j) = A.extract (a, i, j)
 
@@ -62,14 +67,14 @@ structure DynArray :
              val default = A.sub(array,0)
          in
              ARRAY(ref array, default, ref n)
-         end handle Subscript => raise Size
+         end handle _ => raise Size
 
      fun fromList l =
          let val array   = A.fromList l
              val default = A.sub(array,0)
          in
              ARRAY(ref array, default, ref (List.length l))
-         end handle Subscript => raise Size
+         end handle _ => raise Size
 
      fun app f (ARRAY (ref a,_,ref n)) = 
          A.appi (fn (_,x) => f x) (a,0,SOME n)

@@ -8,18 +8,27 @@ signature CLUSTER_GRAPH =
 sig
 
    structure F : FLOWGRAPH
+   structure I : INSTRUCTIONS
    structure W : FREQ
      sharing F.W = W
+     sharing F.I = I
 
-   type clusterInfo
+   type info
+   type block = F.block
+   type edge_info = W.freq ref
 
-   type clusterGraph = (F.block,W.freq ref,clusterInfo) Graph.graph
+   type cfg = (block,edge_info,info) Graph.graph
 
-   val clusterGraph : F.cluster -> clusterGraph
+   val clusterGraph   : F.cluster -> cfg
+   val cluster        : cfg -> F.cluster
+   val table          : cfg -> block Array.array
+   val isTakenBranch  : edge_info Graph.edge -> bool
 
-   val cluster       : clusterGraph -> F.cluster
-   val table         : clusterGraph -> F.block Array.array
-   val isTakenBranch : W.freq ref Graph.edge -> bool
-   val nodeFreq      : F.block -> W.freq ref
+   val regmap         : cfg -> I.C.regmap
+   val annotations    : cfg -> Annotations.annotations ref
+
+   val insns          : block -> I.instruction list ref
+   val freq           : block -> W.freq ref
+   val liveOut        : block -> I.C.cellset
 
 end

@@ -9,20 +9,20 @@ Library
 
 
 	signature PPCCELLS
-	structure PPCCells
 	signature PPCINSTR
-	functor PPCInstr
 	signature PPCSHUFFLE
-	functor PPCShuffle
-	functor PPCProps
-	functor PPCFreqProps
-	functor PPCAsmEmitter
-	functor PPCMCEmitter
-	functor PPCDelaySlots
-	functor PPCJumps
 	signature PPC_PSEUDO_INSTR
+	structure PPCCells
 	functor PPC
+	functor PPCAsmEmitter
+	functor PPCDelaySlots
+	functor PPCFreqProps
+	functor PPCInstr
+	functor PPCJumps
+	functor PPCMCEmitter
+	functor PPCProps
 	functor PPCRewrite
+	functor PPCShuffle
 is
 
 #if defined(NEW_CM)

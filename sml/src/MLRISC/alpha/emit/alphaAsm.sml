@@ -46,7 +46,7 @@ struct
        fun paren f = (emit "("; f(); emit ")")
        fun defineLabel lab = emit(Label.nameOf lab^":\n")
        fun entryLabel lab = defineLabel lab
-       fun comment msg = emit("\t/* " ^ msg ^ " */")
+       fun comment msg = (tab(); emit("/* " ^ msg ^ " */"))
        fun annotation a = (comment(Annotations.toString a); nl())
        fun doNothing _ = ()
        fun emit_region mem = comment(I.Region.toString mem)
@@ -92,7 +92,6 @@ struct
        emit ")" )
      | emit_operand (I.LABop labexp) = emit_labexp labexp
    and asm_branch (I.BR) = "br"
-     | asm_branch (I.BSR) = "bsr"
      | asm_branch (I.BLBC) = "blbc"
      | asm_branch (I.BEQ) = "beq"
      | asm_branch (I.BLT) = "blt"
@@ -285,7 +284,7 @@ struct
      | asm_osf_user_palcode (I.WRUNIQUE) = "wrunique"
    and emit_osf_user_palcode x = emit (asm_osf_user_palcode x)
 
-(*#line 463.7 "alpha/alpha.md"*)
+(*#line 465.7 "alpha/alpha.md"*)
    fun isZero (I.LABop le) = (LabelExp.valueOf le) = 0
      | isZero _ = false
    fun emitInstr' instr = 
@@ -373,6 +372,14 @@ struct
         emit ", ("; 
         emit_GP b; 
         emit ")"; 
+        emit_region mem; 
+        emit_defs defs; 
+        emit_uses uses )
+      | I.BSR{r, lab, defs, uses, mem} => 
+        ( emit "bsr\t"; 
+        emit_GP r; 
+        emit ", "; 
+        emit_label lab; 
         emit_region mem; 
         emit_defs defs; 
         emit_uses uses )
@@ -470,8 +477,12 @@ struct
         ( emit "call_pal "; 
         emit_osf_user_palcode code )
       | I.ANNOTATION{i, a} => 
-        ( emitInstr i; 
-        comment (Annotations.toString a))
+        ( comment (Annotations.toString a); 
+        nl (); 
+        emitInstr i )
+      | I.SOURCE{} => emit "source"
+      | I.SINK{} => emit "sink"
+      | I.PHI{} => emit "phi"
        )
           and emitInstr i = (tab(); emitInstr' i; nl())
           and emitInstrIndented i = (indent(); emitInstr' i; nl())

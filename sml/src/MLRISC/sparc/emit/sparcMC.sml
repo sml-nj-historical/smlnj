@@ -539,6 +539,9 @@ struct
           else 15), i=I.IMMED 8, d=0}; 
        delay {nop=nop})
      | emitInstr (I.ANNOTATION{i, a}) = emitInstr i
+     | emitInstr (I.SOURCE{}) = ()
+     | emitInstr (I.SINK{}) = ()
+     | emitInstr (I.PHI{}) = ()
        in
            emitInstr
        end

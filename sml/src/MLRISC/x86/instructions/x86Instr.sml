@@ -204,6 +204,9 @@ sig
    | FENV of {fenvOp:fenvOp, opnd:operand}
    | SAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 
 functor X86Instr(structure LabelExp : LABELEXP
@@ -407,5 +410,8 @@ struct
    | FENV of {fenvOp:fenvOp, opnd:operand}
    | SAHF
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 

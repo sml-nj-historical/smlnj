@@ -12,6 +12,7 @@ struct
    | PLUS of ty * gctype * gctype   (* address arithmetic + *)
    | MINUS of ty * gctype * gctype   (* address arithmetic - *)
    | ALLOCPTR 
+   | LIMITPTR 
    | BOT
    | TOP
 
@@ -25,6 +26,7 @@ struct
      | toString (PLUS(ty,a,b)) = "("^toString a^"+"^toString b^")"
      | toString (MINUS(ty,a,b)) = "("^toString a^"-"^toString b^")"
      | toString ALLOCPTR = "allocptr"
+     | toString LIMITPTR = "limitptr"
 
    fun ==(x:gctype, y:gctype) = x = y
 

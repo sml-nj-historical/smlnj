@@ -8,20 +8,20 @@
 Library 
 
 	signature SPARCCELLS
-	structure SparcCells
 	signature SPARCINSTR
-	functor SparcInstr
 	signature SPARCSHUFFLE
-	functor SparcShuffle
-	functor SparcProps
-	functor SparcFreqProps
-	functor SparcAsmEmitter
-	functor SparcMCEmitter
-	functor SparcJumps
 	signature SPARC_PSEUDO_INSTR
+	structure SparcCells
 	functor Sparc
-	functor SparcRewrite
+	functor SparcAsmEmitter
 	functor SparcDelaySlots
+	functor SparcFreqProps
+	functor SparcInstr
+	functor SparcJumps
+	functor SparcMCEmitter
+	functor SparcProps
+	functor SparcRewrite
+	functor SparcShuffle
 is
 
 #if defined(NEW_CM)

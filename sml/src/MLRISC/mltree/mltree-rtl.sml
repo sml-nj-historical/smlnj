@@ -308,7 +308,6 @@ struct
          | stm(T.CALL _, a)     = a || A_SIDEEFFECT
          | stm(T.EXT(ASSIGN(AGG(_,_,CELL("MEM",_,_,_)),_)),a) = 
              a || (A_SIDEEFFECT || A_MUTATOR)
-         | stm(T.PINNED _,a) = a || A_PINNED
          | stm(_, a) = a
        fun rexp(T.ADDT _,a) = a || A_TRAPPING
          | rexp(T.SUBT _,a) = a || A_TRAPPING
@@ -324,15 +323,31 @@ struct
 
    (* Query functions *)
    fun isOn(a,flag) = Word.andb(a,flag) <> 0w0
-   fun can'tMoveUp rtl = true
-   fun can'tMoveDown rtl = true
+
+   fun can'tMoveUp(T.RTL{attribs, ...}) = 
+          isOn(attribs, A_SIDEEFFECT || A_TRAPPING)
+     | can'tMoveUp(T.PHI _) = true
+     | can'tMoveUp(T.SOURCE _) = true
+     | can'tMoveUp(T.SINK _) = true
+     | can'tMoveUp _ = false
+
+   fun can'tMoveDown(T.PHI _) = true
+     | can'tMoveDown(T.SOURCE _) = true
+     | can'tMoveDown(T.SINK _) = true
+     | can'tMoveDown(T.RTL{attribs, ...}) = 
+          isOn(attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP || A_TRAPPING)
+
    fun hasSideEffect(T.RTL{attribs, ...}) = isOn(attribs, A_SIDEEFFECT)
      | hasSideEffect _ = false
    fun can'tBeRemoved(T.RTL{attribs, ...}) = 
          isOn(attribs, A_SIDEEFFECT || A_BRANCH || A_JUMP)
+     | can'tBeRemoved(T.SOURCE _) = true
+     | can'tBeRemoved(T.SINK _) = true
      | can'tBeRemoved _ = false
    fun isConditionalBranch(T.RTL{attribs, ...}) = isOn(attribs,A_BRANCH)
      | isConditionalBranch _ = false
+   fun isJump(T.RTL{attribs, ...}) = isOn(attribs,A_JUMP)
+     | isJump _ = false
 
    (*
     * Create a uniq RTL 

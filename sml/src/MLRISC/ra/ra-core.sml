@@ -662,23 +662,7 @@ struct
                 end
                 else filter(moves, MV.EMPTY, [])
 
-      (* if copy propagation was done prior to register allocation
-       * then some nodes may already be aliased.  This function updates the
-       * aliasing.
-       *)
-      fun updateAliases() =
-      let val alias = Intmap.mapInt regmap   
-          val getnode = Intmap.map nodes
-          fun fixup(num, NODE{color, ...}) =
-              if num < firstPseudoR then ()
-              else let val reg = alias num
-                   in  if reg=num then () else
-                       color := ALIASED(getnode reg)
-                   end
-      in  Intmap.app fixup nodes end
-
-  in  (* updateAliases(); *)
-      memMoves := mem;  (* memory moves *)
+  in  memMoves := mem;  (* memory moves *)
       collect(Intmap.values nodes, [], FZ.EMPTY, mvs, [], 0, 0)
   end
 

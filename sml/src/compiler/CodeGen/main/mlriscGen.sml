@@ -79,7 +79,7 @@ struct
 
   val ptr = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,PTR))
   val i32 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I32))
-  val i31 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I32))
+  val i31 = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,I31))
   val flt = #create MLRiscAnnotations.MARK_REG(fn r => !enterGC(r,REAL64))
   fun ctyToAnn CPS.INTt   = i31 
     | ctyToAnn CPS.INT32t = i32 
@@ -97,6 +97,19 @@ struct
     | ctyToGCty(CPS.INTt)   = I31
     | ctyToGCty(CPS.INT32t) = I32
     | ctyToGCty _           = PTR
+
+  (*
+   * Make a GC livein/liveout annotation
+   *)
+  fun gcAnnotation(an, args, ctys) =
+  let fun collect(M.GPR(M.REG(_,r))::args,cty::ctys,gctys) =
+            collect(args,ctys,(r,ctyToGCty cty)::gctys)
+        | collect(M.FPR(M.FREG(_,r))::args,cty::ctys,gctys) =
+            collect(args,ctys,(r,ctyToGCty cty)::gctys)
+        | collect(_::args,_::ctys,gctys) = collect(args,ctys,gctys)
+        | collect([], [], gctys) = gctys
+        | collect _ = error "gcAnnotation"
+  in  an(collect(args, ctys, [])) end
  
   (*
    * These are the type widths of ML.  They are hardwired for now.
@@ -898,29 +911,30 @@ struct
                  let val regfmls as (M.GPR linkreg::regfmlsTl) = formals
                      val entryLab = 
                          if splitEntry then functionLabel(~f-1) else lab
-                 in if splitEntry then
+                 in  
+                     if splitEntry then
                       (entryLabel entryLab; 
                        annotation EMPTY_BLOCK;
                        defineLabel lab
                       )
-                    else 
+                     else 
                       entryLabel lab;
-                    clearTables();
-                    init e;
-                    if !needBasePtr then 
+                     clearTables();
+                     init e;
+                     if !needBasePtr then 
                        let val baseval = 
                              M.ADD(addrTy,linkreg, 
                                    M.LABEL(LE.MINUS(
                                        LE.INT MachineSpec.constBaseRegOffset,
                                        LE.LABEL entryLab)))
                        in  emit(assign(C.baseptr, baseval)) end
-                    else ();
-                    InvokeGC.stdCheckLimit stream
-                        {maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
-                         regtys=tys, return=M.JMP([], linkreg,[])};
-                    initialRegBindingsEscaping
-                      (List.tl params, regfmlsTl, List.tl tys)
-                end
+                     else ();
+                     InvokeGC.stdCheckLimit stream
+                         {maxAlloc=4 * maxAlloc f, regfmls=regfmls, 
+                          regtys=tys, return=M.JMP([], linkreg,[])};
+                     initialRegBindingsEscaping
+                       (List.tl params, regfmlsTl, List.tl tys)
+                 end
               ;
 
               (* Align the allocation pointer if necessary *)
@@ -1210,9 +1224,13 @@ struct
            * Call an external function
            *)
           and externalApp(f, args, hp) = 
-              let val formals as (M.GPR dest::_) =  
-                       ArgP.standard(typmap f, map grabty args)
+              let val ctys = map grabty args
+                  val formals as (M.GPR dest::_) = ArgP.standard(typmap f, ctys)
               in  callSetup(formals, args);
+                  if gctypes then
+                    annotation(gcAnnotation(#create SMLGCMap.GCLIVEOUT, 
+                                            formals, ctys))
+                  else ();
                   testLimit hp;
                   emit(M.JMP([], dest, []));
                   exitBlock(formals @ dedicated)
@@ -1798,6 +1816,9 @@ struct
              if gctypes then 
                 let val gcmap = GCCells.getGCMap()
                 in  !enterGC(allocptrR, SMLGCType.ALLOCPTR);
+                    case C.limitptr of
+                      M.REG(_,r) => !enterGC(r, SMLGCType.LIMITPTR)
+                    | _ => ();
                     case C.baseptr of
                       M.REG(_,r) => !enterGC(r, PTR)
                     | _ => ();

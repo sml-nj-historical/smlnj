@@ -19,7 +19,6 @@ sig
    datatype block_kind = 
        START          (* entry node *)
      | STOP           (* exit node *)
-     | FUNCTION_ENTRY (* for SSA transformations *)
      | NORMAL         (* normal node *)
      | HYPERBLOCK     (* hyperblock *)
 
@@ -81,8 +80,7 @@ sig
    *========================================================================*)
    val LIVEOUT : C.cellset Annotations.property
                   (* escaping live out information *)
-   val CHANGED : (unit -> unit) Annotations.property
-   val CHANGEDONCE : (unit -> unit) Annotations.property
+   val CHANGED : (string * (unit -> unit)) Annotations.property
 
   (*========================================================================
    *
@@ -92,9 +90,11 @@ sig
    val newBlock          : int * W.freq ref -> block (* empty *)
    val newStart          : int * W.freq ref -> block          (* start node *)
    val newStop           : int * W.freq ref -> block          (* stop node *)
-   val newFunctionEntry  : int * W.freq ref -> block  (* fun entry node *)
    val copyBlock         : int * block -> block       (* copy a block *)
    val defineLabel       : block -> Label.label       (* define a label *)
+   val insns             : block -> I.instruction list ref
+   val freq              : block -> W.freq ref
+   val branchOf          : edge_info -> bool option
 
                (* emit assembly *)
    val emit       : Annotations.annotations -> C.regmap -> block -> unit  
@@ -112,13 +112,12 @@ sig
    val changed  : cfg -> unit      (* mark cfg as changed *)  
 
    val regmap         : cfg -> C.regmap
-   val setAnnotations : cfg * Annotations.annotations -> unit
-   val getAnnotations : cfg -> Annotations.annotations
-   val reglookup : cfg -> C.cell -> C.cell
-   val liveOut   : block -> C.cellset
-   val fallsThruFrom : cfg * Graph.node_id -> Graph.node_id option
-   val fallsThruTo   : cfg * Graph.node_id -> Graph.node_id option
-   val removeEdge    : cfg -> edge -> unit
+   val annotations    : cfg -> Annotations.annotations ref
+   val liveOut        : block -> C.cellset
+   val fallsThruFrom  : cfg * Graph.node_id -> Graph.node_id option
+   val fallsThruTo    : cfg * Graph.node_id -> Graph.node_id option
+   val removeEdge     : cfg -> edge -> unit
+   val setBranch      : cfg * Graph.node_id * bool -> I.instruction
 
   (*========================================================================
    *

@@ -7,8 +7,9 @@ functor ControlFlowGraph
    (structure I : INSTRUCTIONS
     structure PseudoOps : PSEUDO_OPS
     structure GraphImpl : GRAPH_IMPLEMENTATION
+    structure InsnProps : INSN_PROPERTIES
     structure Asm : INSTRUCTION_EMITTER
-       sharing Asm.I = I
+       sharing Asm.I = InsnProps.I = I
        sharing Asm.P = PseudoOps
    ) : CONTROL_FLOW_GRAPH =
 struct
@@ -27,7 +28,6 @@ struct
     datatype block_kind = 
         START          (* entry node *)
       | STOP           (* exit node *)
-      | FUNCTION_ENTRY (* for SSA transformations *)
       | NORMAL         (* normal node *)
       | HYPERBLOCK     (* hyperblock *)
 
@@ -70,6 +70,8 @@ struct
 
     type cfg = (block,edge_info,info) Graph.graph
 
+    fun error msg = MLRiscErrorMsg.error("ControlFlowGraph",msg)
+
    (*========================================================================
     *
     *  Various kinds of annotations 
@@ -79,9 +81,12 @@ struct
     val LIVEOUT = Annotations.new 
           (SOME(fn c => "Liveout: "^
                         (LineBreak.lineBreak 75 (C.cellsetToString c))))
-    val CHANGED = Annotations.new(SOME(fn (f : unit -> unit) => "CHANGED"))
-    val CHANGEDONCE = Annotations.new
-                        (SOME(fn (f : unit -> unit) => "CHANGEDONCE"))
+    exception Changed of string * (unit -> unit) 
+    val CHANGED = Annotations.new'
+          {create=Changed,
+           get=fn Changed x => x | e => raise e,
+           toString=fn (name,_) => "CHANGED:"^name
+          }
 
    (*========================================================================
     *
@@ -91,6 +96,8 @@ struct
     fun defineLabel(BLOCK{labels=ref(l::_),...}) = l
       | defineLabel(BLOCK{labels,...}) = let val l = Label.newLabel ""
                                          in  labels := [l]; l end
+    fun insns(BLOCK{insns, ...}) = insns
+    fun freq(BLOCK{freq, ...}) = freq
 
     fun newBlock'(id,kind,insns,freq) =
         BLOCK{ id          = id,
@@ -115,7 +122,9 @@ struct
     fun newBlock(id,freq) = newBlock'(id,NORMAL,[],freq)
     fun newStart(id,freq) = newBlock'(id,START,[],freq)
     fun newStop(id,freq) = newBlock'(id,STOP,[],freq)
-    fun newFunctionEntry(id,freq) = newBlock'(id,FUNCTION_ENTRY,[],freq)
+
+    fun branchOf(EDGE{k=BRANCH b,...}) = SOME b
+      | branchOf _ = NONE
 
    (*========================================================================
     *
@@ -125,7 +134,6 @@ struct
     fun kindName START          = "START"
       | kindName STOP           = "STOP"
       | kindName HYPERBLOCK     = "Hyperblock"
-      | kindName FUNCTION_ENTRY = "Entry"
       | kindName NORMAL         = "Block"
 
     fun nl() = TextIO.output(!AsmStream.asmOutStream,"\n")
@@ -208,20 +216,16 @@ struct
         )
 
     fun changed(G.GRAPH{graph_info=INFO{reorder,annotations,...},...}) = 
-         (case #get CHANGED (!annotations) of
-            SOME f => f ()
-          | NONE => ();
-          reorder := true
-         )
+        let fun signal [] = ()
+              | signal(Changed(_,f)::an) = (f (); signal an)
+              | signal(_::an) = signal an
+        in  signal(!annotations);
+            reorder := true
+        end 
 
     fun regmap(G.GRAPH{graph_info=INFO{regmap,...},...}) = regmap
 
-    fun setAnnotations(G.GRAPH{graph_info=INFO{annotations,...},...},a) = 
-        annotations := a
-
-    fun getAnnotations(G.GRAPH{graph_info=INFO{annotations=ref a,...},...}) = a
-
-    fun reglookup cfg = C.lookup(regmap cfg)
+    fun annotations(G.GRAPH{graph_info=INFO{annotations=a,...},...}) = a
 
     fun liveOut (BLOCK{annotations, ...}) = 
          case #get LIVEOUT (!annotations) of
@@ -243,6 +247,30 @@ struct
         end
     fun removeEdge CFG (i,j,EDGE{a,...}) =
         Graph.remove_edge' CFG (i,j,fn EDGE{a=a',...} => a = a')
+
+    fun setBranch (CFG as G.GRAPH cfg,b,cond) =
+    let fun loop((i,j,EDGE{k=BRANCH cond',w,a})::es,es',x,y) =
+            if cond' = cond then 
+               loop(es, (i,j,EDGE{k=JUMP,w=w,a=a})::es',j,y)
+            else
+               loop(es, es', x, j)
+          | loop([],es',target,elim) = (es',target,elim)
+          | loop _ = error "setBranch"
+        val outEdges = #out_edges cfg b
+        val (outEdges',target,elim) = loop(outEdges,[],~1,~1)
+        val _ = if elim < 0 then error "setBranch: bad edges" else ();
+        val lab = defineLabel(#node_info cfg target) 
+        val jmp = InsnProps.jump lab
+        val insns = insns(#node_info cfg b) 
+    in  #set_out_edges cfg (b,outEdges');
+        case !insns of
+          []      => error "setBranch: missing branch"
+        | branch::rest => 
+           case InsnProps.instrKind branch of
+             InsnProps.IK_JUMP => insns := jmp::rest
+           | _ => error "setBranch: bad branch instruction";
+        jmp
+    end
 
    (*========================================================================
     *
@@ -291,18 +319,23 @@ struct
 
    fun getStyle a = (case #get L.STYLE (!a) of SOME l => l | NONE => [])
 
+   val green = L.COLOR "green"
+   val red   = L.COLOR "red"
+   val yellow = L.COLOR "yellow"
+
    fun edgeStyle(i,j,e as EDGE{k,a,...}) = 
    let val a = L.LABEL(show_edge e) :: getStyle a
    in  case k of 
-         (ENTRY | EXIT) => L.COLOR "green" :: a
-       | _ => L.COLOR "red" :: a
+         (ENTRY | EXIT) => green :: a
+       | (FALLSTHRU | BRANCH false) => yellow :: a
+       | _ => red :: a
    end 
 
    val outline = MLRiscControl.getFlag "view-outline"
 
    fun viewStyle cfg =
    let val regmap = regmap cfg
-       val an     = getAnnotations cfg
+       val an     = !(annotations cfg)
        fun node (n,b as BLOCK{annotations,...}) = 
            if !outline then
               L.LABEL(getString (emitOutline regmap) b) :: getStyle annotations
@@ -318,7 +351,7 @@ struct
 
    fun subgraphLayout {cfg,subgraph = G.GRAPH subgraph} =
    let val regmap = regmap cfg
-       val an     = getAnnotations cfg
+       val an     = !(annotations cfg)
        fun node(n,b as BLOCK{annotations,...}) = 
           if #has_node subgraph n then
              L.LABEL(show_block an regmap b) :: getStyle annotations

@@ -28,6 +28,7 @@ sig
    val stackptrR : cell
    val asmTmpR : cell
    val fasmTmp : cell
+   val returnAddr : cell
    val addGP : (cell * cellset) -> cellset
    val addFP : (cell * cellset) -> cellset
    val zeroReg : cellkind -> cell option
@@ -88,6 +89,7 @@ struct
    val stackptrR = (30 + offsetGP)
    val asmTmpR = (28 + offsetGP)
    val fasmTmp = (30 + offsetFP)
+   val returnAddr = (26 + offsetGP)
    fun zeroReg GP = SOME (31 + offsetGP)
      | zeroReg FP = SOME (31 + offsetFP)
      | zeroReg _ = NONE

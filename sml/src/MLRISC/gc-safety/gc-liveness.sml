@@ -82,8 +82,8 @@ struct
          )
 
   fun liveness (IR as G.GRAPH cfg) = 
-  let val an = CFG.getAnnotations IR
-      val gcmap = #lookup GCMap.GCMAP (CFG.getAnnotations IR)
+  let val an = !(CFG.annotations IR)
+      val gcmap = #lookup GCMap.GCMAP an
       val regmap = CFG.regmap IR
       val table = A.array(#capacity cfg (),{liveIn=R.empty,liveOut=R.empty})
       val gclookup = Intmap.mapWithDefault (gcmap,GC.TOP)

@@ -49,6 +49,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.JSR{r, b, d, defs, uses=(i,f), mem} =>
 	 I.JSR{r=r, b=replace b, d=d, defs=defs, uses=(map replace i, f), 
                mem=mem}
+     | I.BSR{r, lab, defs, uses=(i,f), mem} =>
+	 I.BSR{r=r, lab=lab, defs=defs, uses=(map replace i, f), mem=mem}
      | I.RET{r,b,d} => I.RET{r=r, b=replace b, d=d}
      | I.BRANCH{b=I.BR, ...} => instr
      | I.BRANCH{b, r, lab} => if mapr r=rs then I.BRANCH{b=b, r=rt, lab=lab} 
@@ -89,6 +91,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
          I.FCMOVE{oper=oper,fa=replace fa,fb=replace fb,fc=replace fc}
      | I.JSR{r, b, d, defs, uses=(i,f), mem} => 
          I.JSR{r=r, b=b, d=d, defs=defs, uses=(i, map replace f), mem=mem}
+     | I.BSR{r, lab, defs, uses=(i,f), mem} => 
+         I.BSR{r=r, lab=lab, defs=defs, uses=(i, map replace f), mem=mem}
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteUse(mapr,i,fs,ft),a=a}
      | _ => instr
   end
@@ -107,6 +111,9 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
        if mapr r=rs then I.JMPL({r=rt, b=b, d=d}, labs) else instr
      | I.JSR{r, b, d, defs=(i,f), uses, mem} =>
          I.JSR{r=rewrite r, b=b, d=d, defs=(map rewrite i, f), uses=uses, 
+               mem=mem}
+     | I.BSR{r, lab, defs=(i,f), uses, mem} =>
+         I.BSR{r=rewrite r, lab=lab, defs=(map rewrite i, f), uses=uses, 
                mem=mem}
      | I.RET{r, b, d} => I.RET{r=rewrite r, b=b, d=d}
      | I.BRANCH{b=I.BR, r, lab} => 
@@ -144,6 +151,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
      | I.FCMOVE{oper,fa,fb,fc} => I.FCMOVE{oper=oper,fa=fa,fb=fb,fc=rewrite fc}
      | I.JSR{r, b, d, defs=(i,f), uses, mem} => 
         I.JSR{r=r, b=b, d=d, defs=(i, map rewrite f), uses=uses, mem=mem}
+     | I.BSR{r, lab, defs=(i,f), uses, mem} => 
+        I.BSR{r=r, lab=lab, defs=(i, map rewrite f), uses=uses, mem=mem}
 	
      | I.ANNOTATION{i,a} => I.ANNOTATION{i=frewriteDef(mapr,i,fs,ft),a=a}
      | _  => instr

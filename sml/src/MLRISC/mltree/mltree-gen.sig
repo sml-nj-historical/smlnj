@@ -9,14 +9,8 @@ signature MLTREEGEN =
 sig
 
    structure T : MLTREE
-
-   exception SizeUnknown
-
-   (*
-    * Return the size of an expression
-    *)
-   val size  : T.rexp -> T.ty
-   val fsize : T.fexp -> T.ty
+   structure Size : MLTREE_SIZE
+     sharing Size.T = T
 
    val condOf : T.ccexp -> T.Basis.cond
    val fcondOf : T.ccexp -> T.Basis.fcond

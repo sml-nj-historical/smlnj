@@ -102,7 +102,13 @@ struct
        let (* definitions indexed by block id+instruction id *)
            val defsTable    = A.array(N, A.array(0, [] : node list))
            val marked       = A.array(N, ~1)
-        
+
+           (* copies indexed by source *)
+           val copyTable    = Intmap.new(N, NotThere)
+           val lookupCopy   = Intmap.mapWithDefault(copyTable, [])
+           val addCopy      = Intmap.add copyTable
+             
+       
            val stamp = ref 0
     
            (* Allocate the arrays *)
@@ -123,93 +129,55 @@ struct
              | rmPseudoUses(NODE{uses,...}::ns) = (uses := []; rmPseudoUses ns)
     
            (*
-            * Mark the use site as definitions so that the traversal would
-            * end properly.
+            * Initialize the definitions before computing the liveness for v.
             *)
-           fun markUseSites(v,[]) = ()
-             | markUseSites(v,u::uses) =
-               let val b    = blockNum u
-                   val i    = instrNum u
-                   val defs = UA.sub(defsTable, b)
-               in  UA.update(defs, i, v::UA.sub(defs, i)); 
-                   markUseSites(v, uses)
-               end
-    
-           (*
-            *  Unmark fake def sites
-            *)
-           fun unmarkUseSites [] = ()
-             | unmarkUseSites(u::uses) = 
-               let val b    = blockNum u
-                   val i    = instrNum u
-                   val defs = UA.sub(defsTable, b)
-                   val _::instrs = UA.sub(defs, i)
-               in  UA.update(defs, i, instrs); 
-                   unmarkUseSites uses
-               end
-    
-           (*
-            * Perform incremental liveness analysis on register v 
-            *)
-           fun liveness(v, v' as NODE{uses, ...}, addEdge) = 
-           let val st = !stamp
-               val _  = stamp := st + 1
-               fun foreachUseSite([]) = ()
-                 | foreachUseSite(u::uses) =   
-                   let val b = blockNum u
-                       val i = instrNum u
-                       val block = UA.sub(blockTable, b)
-                   in  if i = 0 then 
-                           liveOutAtBlock(block) (* live out *)
-                       else 
-                           liveOutAtStmt(block, UA.sub(defsTable, b), i+1);
-                       foreachUseSite(uses)
+           fun initialize(v,v',useSites) =
+           let (* First we remove all definitions for all copies 
+                * with v as source.
+                *)
+               fun markCopies([], trail) = trail
+                 | markCopies({pt, dst}::copies, trail) = 
+                   let val b     = blockNum pt
+                       val i     = instrNum pt
+                       val defs  = UA.sub(defsTable, b)
+                       val nodes = UA.sub(defs, i)
+                       fun revAppend([], nodes) = nodes
+                         | revAppend(n::ns, nodes) = revAppend(ns, n::nodes)
+                       fun removeDst([], nodes') = nodes'
+                         | removeDst((d as NODE{number=r,...})::nodes, nodes')=
+                           if r = dst then revAppend(nodes', nodes)
+                           else removeDst(nodes, d::nodes')
+                       val nodes' = removeDst(nodes, [])
+                   in  UA.update(defs, i, nodes');
+                       markCopies(copies, (defs, i, nodes)::trail)
                    end
-    
-               and visitPred(block) =
-                   let fun foreachPred([]) = ()
-                         | foreachPred((b, _)::pred) =
-                            (liveOutAtBlock(b); foreachPred(pred))
-                   in  case block of
-                         F.BBLOCK{pred, ...} => foreachPred(!pred) 
-                       | _ => error "visitPred"
+
+               (*
+                * Then we mark all use sites of v
+                *) 
+               fun markUseSites([], trail) = trail
+                 | markUseSites(pt::pts, trail) = 
+                   let val b     = blockNum pt
+                       val i     = instrNum pt
+                       val defs  = UA.sub(defsTable, b)
+                       val nodes = UA.sub(defs, i)
+                   in  UA.update(defs, i, v'::nodes);
+                       markUseSites(pts, (defs, i, nodes)::trail)
                    end
+
+               val copies = lookupCopy v
+               val trail  = markCopies(copies, [])
+               val trail  = markUseSites(useSites, trail)
+           in  trail end
     
-               and liveOutAtStmt(block, defs, pos) = 
-                      (* v is live out *)
-                   if pos < A.length defs then
-                   let fun foreachDef([], true) = ()
-                         | foreachDef([], false) = 
-                             liveOutAtStmt(block, defs, pos+1)
-                         | foreachDef((d as NODE{number=r, ...})::ds, kill) = 
-                           if r = v then foreachDef(ds, true)
-                           else if r < 256 andalso v < 256 
-                                then foreachDef(ds, kill)
-                           else (addEdge(d,v'); foreachDef(ds, kill))
-                   in  foreachDef(UA.sub(defs, pos), false)
-                   end
-                   else visitPred(block)
-    
-               and liveOutAtBlock(block as F.BBLOCK{blknum, ...}) = 
-                   (* v is live out at the current block *)
-                   if UA.sub(marked, blknum) = st then ()
-                   else 
-                     (UA.update(marked, blknum, st);
-                      liveOutAtStmt(block, UA.sub(defsTable, blknum), 1)
-                     )
-                 | liveOutAtBlock _ = ()
-    
-               val useSites = SortedList.uniq(!uses)
-           in  markUseSites(v', useSites);
-               foreachUseSite(useSites);
-               unmarkUseSites useSites
-           end 
-    
+           fun cleanup [] = ()
+             | cleanup ((defs, i, nodes)::trail) = 
+                 (UA.update(defs, i, nodes); cleanup trail) 
            (*
             * Perform incremental liveness analysis on register v 
             * and compute the span
             *)
-           fun liveness2(v, v' as NODE{uses, ...}, addEdge, setSpan) = 
+           fun liveness(v, v' as NODE{uses, ...}, addEdge) = 
            let val st = !stamp
                val _  = stamp := st + 1
                fun foreachUseSite([], span) = span
@@ -223,8 +191,9 @@ struct
                                   liveOutAtBlock(block, span) (* live out *)
                               else 
                                   let val f = !freq
-                                  in  liveOutAtStmt(block, UA.sub(defsTable, b),
-                                                    i+1, f, span+f)
+                                      val defs = UA.sub(defsTable, b)
+                                  in  liveOutAtStmt(block, A.length defs,
+                                                    defs, i+1, f, span+f)
                                   end;
                          in  foreachUseSite(uses, span)
                          end
@@ -241,12 +210,13 @@ struct
                        | _ => error "visitPred"
                    end
     
-               and liveOutAtStmt(block, defs, pos, freq, span) = 
+               and liveOutAtStmt(block, nDefs, defs, pos, freq, span) = 
                       (* v is live out *)
-                   if pos < A.length defs then
+                   if pos < nDefs then
                    let fun foreachDef([], true) = span
                          | foreachDef([], false) = 
-                              liveOutAtStmt(block, defs, pos+1, freq, span+freq)
+                              liveOutAtStmt(block, nDefs, defs, 
+                                            pos+1, freq, span+freq)
                          | foreachDef((d as NODE{number=r, ...})::ds, kill) = 
                            if r = v then foreachDef(ds, true)
                            else (addEdge(d, v'); foreachDef(ds, kill)) 
@@ -259,16 +229,18 @@ struct
                    if UA.sub(marked, blknum) = st then span
                    else 
                       (UA.update(marked, blknum, st);
-                       liveOutAtStmt(block, UA.sub(defsTable, blknum),
-                                     1, !freq, span)
+                       let val defs = UA.sub(defsTable, blknum)
+                       in  liveOutAtStmt(block, A.length defs, defs, 
+                                         1, !freq, span)
+                       end
                       )
                  | liveOutAtBlock(_, span) = span
-    
-               val useSites = SortedList.uniq(!uses)
-               val _        = markUseSites(v', useSites)
+   
+               val useSites = SortedList.uniq(!uses) 
+               val trail    = initialize(v, v', useSites)
                val span     = foreachUseSite (useSites, 0)
-               val _        = unmarkUseSites useSites
-           in  setSpan(v, span)
+               val _        = cleanup trail
+           in  span
            end 
     
            val newNodes   = Core.newNodes G
@@ -277,8 +249,8 @@ struct
            val getCell    = C.getCell cellkind
 
            fun isDedicated r =
-              r < 0 orelse 
-              r < A.length dedicated andalso UA.sub(dedicated, r) 
+              Word.fromInt r < Word.fromInt(A.length dedicated) 
+              andalso UA.sub(dedicated, r) 
 
           (* Remove all dedicated or spilled registers from the list *)
            fun rmvDedicated regs =
@@ -291,7 +263,7 @@ struct
            (*
             * Create parallel move
             *)
-           fun mkMoves(insn, dst, src, cost, mv, tmps) =
+           fun mkMoves(insn, pt, dst, src, cost, mv, tmps) =
                if Props.moveInstr insn then
                let val (dst, tmps) = 
                        case (Props.moveTmpR insn, dst) of
@@ -321,11 +293,13 @@ struct
                                 dst as NODE{number=d, ...}) =
                                    chases(getnode s, getnode d)
                        in if d = s then moves(ds, ss, mv)
-                          else moves(ds, ss, MV{dst=dst, src=src,
+                          else (addCopy(s, {dst=d, pt=pt}::lookupCopy s);
+                                moves(ds, ss, MV{dst=dst, src=src,
                                                 status=ref WORKLIST,
                                                 hicount=ref 0,
                                                 (* kind=REG_TO_REG, *)
                                                 cost=cost}::mv)
+                               )
                        end
                      | moves _ = error "moves"
                in  (moves(dst, src, mv), tmps) end
@@ -337,14 +311,14 @@ struct
                                 liveOut, ...}::blks, mv, tmps)= 
                let val dtab = A.sub(defsTable, blknum)
                    fun scan([], pt, i, mv, tmps) = (pt, i, mv, tmps)
-                     | scan(insns as insn::rest, pt, i, mv, tmps) =
+                     | scan(insn::rest, pt, i, mv, tmps) =
                        let val (d, u) = insnDefUse insn
                            val defs = rmvDedicated d
                            val uses = rmvDedicated u
                            val defs = newNodes{cost=w, pt=pt, 
                                                defs=defs, uses=uses}
                            val _    = UA.update(dtab, i, defs)
-                           val (mv, tmps) = mkMoves(insn, d, u, w, mv, tmps)
+                           val (mv, tmps) = mkMoves(insn, pt, d, u, w, mv, tmps)
                        in  scan(rest, pt+1, i+1, mv, tmps)  
                        end
                    val (pt, i, mv, tmps) = 
@@ -372,23 +346,19 @@ struct
            val (moves, tmps) = mkNodes(blocks, [], [])
            val addEdge = Core.addEdge G
        in  Intmap.app 
-             (if isOn(mode,Core.COMPUTE_SPAN) then
-               let val spanMap = Intmap.new(Intmap.elems nodes, NotThere)
-                   val setSpan = Intmap.add spanMap
-                   val _       = span := SOME spanMap
-               in  fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
-                      liveness2(v, v', addEdge, setSpan) 
-                    | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
-                      if c >= 0 then liveness2(v, v', addEdge, setSpan) else ()
-                    | _ => ()
-               end 
-              else
-               (fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
-                    liveness(v, v', addEdge) 
-                 | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
-                      if c >= 0 then liveness(v, v', addEdge) else ()
-                 | _ => ()
-               )
+             (let val setSpan =
+                  if isOn(mode,Core.COMPUTE_SPAN) then
+                  let val spanMap = Intmap.new(Intmap.elems nodes, NotThere)
+                      val setSpan = Intmap.add spanMap
+                      val _       = span := SOME spanMap
+                  in  setSpan end
+                  else fn _ => ()
+              in  fn (v, v' as NODE{color=ref(PSEUDO | COLORED _), ...}) => 
+                     setSpan(v, liveness(v, v', addEdge))
+                   | (v, v' as NODE{color=ref(SPILLED c), ...}) => 
+                     if c >= 0 then setSpan(v, liveness(v, v', addEdge)) else ()
+                   | _ => ()
+              end 
              ) nodes;
            if isOn(Core.SAVE_COPY_TEMPS, mode) then copyTmps := tmps else ();
            rmPseudoUses tmps;

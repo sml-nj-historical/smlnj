@@ -29,7 +29,11 @@ struct
       | instrKind(I.COPY _)    = IK_COPY
       | instrKind(I.FCOPY _)   = IK_COPY
       | instrKind(I.JSR _)     = IK_CALL
+      | instrKind(I.BSR _)     = IK_CALL
       | instrKind(I.RET _)     = IK_JUMP
+      | instrKind(I.PHI _)     = IK_PHI
+      | instrKind(I.SOURCE _)  = IK_SOURCE
+      | instrKind(I.SINK _)    = IK_SINK
       | instrKind(I.ANNOTATION{i,...}) = instrKind i
       | instrKind _            = IK_INSTR
 
@@ -142,6 +146,7 @@ struct
 	 (* branch instructions *)
 	 | I.JMPL ({r, b, ...},_) => ([r], [b])
 	 | I.JSR{r, b, defs, uses, ...} => (r:: #1 defs, b:: #1 uses)
+	 | I.BSR{r, defs, uses, ...} => (r:: #1 defs, #1 uses)
 	 | I.RET{r, b, ...} => ([r],[b])
 	 | I.BRANCH{b=I.BR, r, ...} => ([r], [])
 	 | I.BRANCH{r, ...} => ([], [r])
@@ -179,6 +184,7 @@ struct
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...} => (f::dst, src)
       | I.FCOPY{dst, src, ...}			=> (dst, src) 
       | I.JSR{defs,uses, ...}	     => (#2 defs,#2 uses)
+      | I.BSR{defs,uses, ...}	     => (#2 defs,#2 uses)
       | I.ANNOTATION{a, i, ...} => defUseF i
       | _ => ([],[])
 

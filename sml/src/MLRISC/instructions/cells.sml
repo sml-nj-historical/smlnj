@@ -88,7 +88,8 @@ struct
 
    fun maxCell() = !name
 
-   fun regmap() = 
+   fun regmap() = Intmap.new(32,Cells)
+   (*
    let val map = Intmap.new(32,Cells)
        val add = Intmap.add map
        (* initialize the regmap with physical register bindings *)
@@ -98,6 +99,7 @@ struct
    in  init physical;
        map
    end
+    *)
 
    val lookup = Intmap.mapInt 
 

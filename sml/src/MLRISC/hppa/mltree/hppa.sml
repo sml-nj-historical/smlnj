@@ -501,7 +501,7 @@ struct
            end
 
        and getFmt e =
-           case Gen.fsize e of
+           case Gen.Size.fsize e of
              32  => I.SGL
            | 64  => I.DBL
            | 128 => I.QUAD

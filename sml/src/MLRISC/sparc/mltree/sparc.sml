@@ -54,8 +54,9 @@ struct
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
+  val intTy = if V9 then 64 else 32
   structure Gen = MLTreeGen(structure T = T
-                            val intTy = if V9 then 64 else 32
+                            val intTy = intTy
                             val naturalWidths = if V9 then [32,64] else [32]
                             datatype rep = SE | ZE | NEITHER
                             val rep = NEITHER 
@@ -464,7 +465,7 @@ struct
         | branch _ = error "branch"
 
       and branchV9(cond,a,b,lab,an) =
-          let val size = Gen.size a
+          let val size = Gen.Size.size a
           in  if useBR andalso signedCmp cond then 
                  let val r = newReg()
                  in  doExpr(T.SUB(size,a,b),r,REG,[]); 

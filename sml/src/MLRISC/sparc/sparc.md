@@ -815,7 +815,20 @@ struct
         nullified: false
 
    |  ANNOTATION of {i:instruction, a:Annotations.annotation}
-        asm: (emitInstr i; comment(Annotations.toString a))
+        asm: (comment(Annotations.toString a); nl(); emitInstr i)
         mc:  emitInstr i
 	rtl: [[ #i ]]
+
+   | SOURCE of {}
+        asm: ``source''
+        mc:  ()
+
+   | SINK of {}
+        asm: ``sink''
+        mc:  ()
+
+   | PHI of {}
+        asm: ``phi''
+        mc:  ()
+
 end

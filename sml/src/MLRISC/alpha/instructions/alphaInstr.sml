@@ -23,7 +23,6 @@ sig
    | LABop of LabelExp.labexp
    datatype branch =
      BR
-   | BSR
    | BLBC
    | BEQ
    | BLT
@@ -227,6 +226,8 @@ sig
    | JMPL of ({r:int, b:int, d:int} * Label.label list)
    | JSR of {r:int, b:int, d:int, defs:C.cellset, uses:C.cellset, mem:Region.region
      }
+   | BSR of {r:int, lab:Label.label, defs:C.cellset, uses:C.cellset, mem:Region.region
+     }
    | RET of {r:int, b:int, d:int}
    | BRANCH of {b:branch, r:int, lab:Label.label}
    | FBRANCH of {b:fbranch, f:int, lab:Label.label}
@@ -246,6 +247,9 @@ sig
    | TRAPB
    | CALL_PAL of {code:osf_user_palcode, def:int list, use:int list}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 
 functor AlphaInstr(structure LabelExp : LABELEXP
@@ -268,7 +272,6 @@ struct
    | LABop of LabelExp.labexp
    datatype branch =
      BR
-   | BSR
    | BLBC
    | BEQ
    | BLT
@@ -472,6 +475,8 @@ struct
    | JMPL of ({r:int, b:int, d:int} * Label.label list)
    | JSR of {r:int, b:int, d:int, defs:C.cellset, uses:C.cellset, mem:Region.region
      }
+   | BSR of {r:int, lab:Label.label, defs:C.cellset, uses:C.cellset, mem:Region.region
+     }
    | RET of {r:int, b:int, d:int}
    | BRANCH of {b:branch, r:int, lab:Label.label}
    | FBRANCH of {b:fbranch, f:int, lab:Label.label}
@@ -491,5 +496,8 @@ struct
    | TRAPB
    | CALL_PAL of {code:osf_user_palcode, def:int list, use:int list}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 

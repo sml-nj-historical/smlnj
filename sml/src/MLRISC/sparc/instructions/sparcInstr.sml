@@ -225,6 +225,9 @@ sig
    | WRY of {r:int, i:operand}
    | RET of {leaf:bool, nop:bool}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 
 functor SparcInstr(structure LabelExp : LABELEXP
@@ -449,5 +452,8 @@ struct
    | WRY of {r:int, i:operand}
    | RET of {leaf:bool, nop:bool}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 

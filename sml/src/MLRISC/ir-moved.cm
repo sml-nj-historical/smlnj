@@ -3,29 +3,29 @@
  *)
 
 Library
-	signature CONTROL_DEPENDENCE_GRAPH
-	functor ControlDependenceGraph
-	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
-	functor ControlFlowGraphRestructure
 	signature COMPUTE_FREQUENCIES
-	functor ComputeFrequencies
 	signature COMPUTE_FREQUENCIES2
-	functor ComputeFrequencies2
+	signature CONTROL_DEPENDENCE_GRAPH
+	signature CONTROL_FLOW_GRAPH_RESTRUCTURE
 	signature DERIVED_GRAPH
-	functor DerivedGraph
 	signature DJ_GRAPH
-	functor DJGraph
 	signature DOMINANCE_FRONTIERS
-	functor DominanceFrontiers
 	signature DOMINATOR_TREE
-	functor DominatorTree
 	signature IDEFS
-	structure IDefs
 	signature LOOP_STRUCTURE
-	functor LoopStructure
 	signature REDUCIBILITY
-	functor Reducibility
 	signature STATIC_SINGLE_ASSIGNMENT_FORM
+	structure IDefs
+	functor ComputeFrequencies
+	functor ComputeFrequencies2
+	functor ControlDependenceGraph
+	functor ControlFlowGraphRestructure
+	functor DJGraph
+	functor DerivedGraph
+	functor DominanceFrontiers
+	functor DominatorTree
+	functor LoopStructure
+	functor Reducibility
 	functor StaticSingleAssignmentForm
 is
 

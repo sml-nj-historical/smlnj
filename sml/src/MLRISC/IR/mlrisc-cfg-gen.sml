@@ -210,7 +210,8 @@ struct
               app (fn l => addEdge(ENTRY,target l,
                               CFG.EDGE{k=CFG.ENTRY,a=ref [],w=ref 0})) 
                      (!entryLabels);
-              CFG.setAnnotations(!CFG,annotations @ CFG.getAnnotations(!CFG));
+              let val an = CFG.annotations(!CFG);
+              in  an := annotations @ (!an) end;
               init()
           end
 

@@ -65,8 +65,9 @@ struct
     | T.IF(ctrl,a,b,c) => 
          0w233 + hashCtrls ctrl + hashCCexp a + hashStm b + hashStm c
     | T.ANNOTATION(stm, a) => hashStm stm 
-    | T.PHI block => w block
-    | T.PINNED stm => 0w12312 + hashStm stm
+    | T.PHI{preds, block} => w block + ws preds 
+    | T.SOURCE{block, liveIn} => 0w123 + w block + ws liveIn
+    | T.SINK{block, liveOut} => 0w423 + w block + ws liveOut
     | T.REGION(stm,ctrl) => hashStm stm + hashCtrl ctrl
     | T.RTL{hash,...} => !hash
     | T.SEQ ss => hashStms(ss, 0w23)
@@ -205,11 +206,12 @@ struct
     | eqStm(T.ANNOTATION(s1, _),s2) = eqStm(s1,s2)
     | eqStm(s1,T.ANNOTATION(s2, _)) = eqStm(s1,s2)
     | eqStm(T.PHI x,T.PHI y) = x=y
+    | eqStm(T.SOURCE x,T.SOURCE y) = x=y
+    | eqStm(T.SINK x,T.SINK y) = x=y
     | eqStm(T.BCC(a,b,c),T.BCC(a',b',c')) = 
         a=a' andalso eqCCexp(b,b') andalso eqLabel(c,c')
     | eqStm(T.IF(a,b,c,d),T.IF(a',b',c',d')) = 
         a=a' andalso eqCCexp(b,b') andalso eqStm(c,c') andalso eqStm(d,d')
-    | eqStm(T.PINNED x,T.PINNED y) = eqStm(x,y)
     | eqStm(T.RTL{hash=x,...},T.RTL{hash=y,...}) = x=y
     | eqStm(T.REGION(a,b),T.REGION(a',b')) = b = b' andalso eqStm(a,a')
     | eqStm(T.EXT a,T.EXT a') = eqSext (equality()) (a,a')
@@ -409,8 +411,9 @@ struct
         | stm(T.SEQ s) = stms(";",s)
         | stm(T.REGION(s,cr)) = stm s^usectrl cr
         | stm(T.ANNOTATION(s, a)) = stm s 
-        | stm(T.PHI b) = "phi["^Int.toString b^"]"
-        | stm(T.PINNED s) = "pinned "^stm s
+        | stm(T.PHI{preds, block}) = "phi["^Int.toString block^"]"
+        | stm(T.SOURCE{block,...}) = "source["^Int.toString block^"]"
+        | stm(T.SINK{block,...}) = "sink["^Int.toString block^"]"
         | stm(T.RTL{e,...}) = stm e
         | stm(T.EXT x) = showSext (shower()) x
         | stm _ = error "stm"

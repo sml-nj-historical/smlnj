@@ -261,6 +261,9 @@ sig
    | FCOPY of {dst:int list, src:int list, impl:instruction list option ref
      , tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 
 functor HppaInstr(structure LabelExp : LABELEXP
@@ -521,5 +524,8 @@ struct
    | FCOPY of {dst:int list, src:int list, impl:instruction list option ref
      , tmp:ea option}
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
+   | SOURCE of {}
+   | SINK of {}
+   | PHI of {}
 end
 

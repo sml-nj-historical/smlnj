@@ -7,93 +7,95 @@
  *)
 
 Library 
-	signature CELLS_BASIS
+	signature ASM_FORMAT_UTIL
+	signature ASM_STREAM
+	signature ASSEMBLY_EMITTER
+	signature BBSCHED
 	signature CELLS
-	functor CellsBasis
-	signature REWRITE_INSTRUCTIONS
-	signature INSN_PROPERTIES
-	signature INSTRUCTION_STREAM
-	functor InstructionStream
-	signature INSTRUCTIONS
-	signature SHUFFLE
-	functor Shuffle
+	signature CELLS_BASIS
+	signature CLUSTER_OPTIMIZATION
+	signature CODE_STRING
 	signature CONSTANT
-	signature LABELEXP
-	functor LabelExp
-	signature LABEL
-	structure Label
-	signature PSEUDO_OPS
-	signature REGION
+	signature C_CALLS
+	signature DELAY_SLOT_PROPERTIES
+	signature FLOWGRAPH
+	signature FLOWGRAPH_GEN
 	signature FREQUENCY_PROPERTIES
-	functor FreqProps
+	signature GC_CELLS
+	signature GC_MAP
+	signature GC_TYPE
+	signature GETREG
+	signature INSN_PROPERTIES
+	signature INSTRUCTIONS
+	signature INSTRUCTION_EMITTER
+	signature INSTRUCTION_STREAM
+	signature LABEL
+	signature LABELEXP
+	signature LIVENESS
+	signature MC_EMIT
 	signature MLRISC_ANNOTATIONS
-	structure MLRiscAnnotations
 	signature MLRISC_OPTIMIZATION
 	signature MLRISC_REGION
-	structure MLRiscRegion
-	signature POINTS_TO
-	structure PointsTo
-	signature MLTREE_EXTENSION
-	signature MLTREE_BASIS
-	structure MLTreeBasis
 	signature MLTREE
-	functor MLTreeF
-	signature MLTREE_EXTENSION_COMP
 	signature MLTREECOMP
 	signature MLTREEGEN
-	functor MLTreeGen
-	signature FLOWGRAPH_GEN
+	signature MLTREE_BASIS
+	signature MLTREE_EXTENSION
+	signature MLTREE_EXTENSION_COMP
 	signature MLTREE_MULT_DIV
-	functor MLTreeMult
-	signature FLOWGRAPH
-	functor FlowGraph
-	functor ClusterGen
+	signature MLTREE_SIZE
+	signature POINTS_TO
 	signature PRINT_CLUSTER
-	functor PrintCluster
-	signature CLUSTER_OPTIMIZATION
-	signature GETREG
-	functor GetReg
-	signature LIVENESS
-	functor Liveness
+	signature PSEUDO_OPS
+	signature RA
+	signature RA_CORE
+	signature RA_FLOWGRAPH
+	signature RA_GRAPH
+	signature RA_PRIORITY_QUEUE
+	signature RA_SPILL
+	signature RA_SPILL_HEURISTICS
+	signature REGION
+	signature REWRITE_INSTRUCTIONS
+	signature SDI_JUMPS
+	signature SHUFFLE
+	structure AsmFormatUtil
+	structure AsmStream
+	structure CTypes
 	structure ChaitinSpillHeur
 	structure ChowHennessySpillHeur
-	functor ClusterRA
-	signature RA_GRAPH
-	structure RAGraph
-	signature RA_CORE
+	structure Label
+	structure MLRiscAnnotations
+	structure MLRiscRegion
+	structure MLTreeBasis
+	structure PointsTo
 	structure RACore
-	signature RA_SPILL
-	functor RASpill
-	signature RA_SPILL_HEURISTICS
-	signature RA_FLOWGRAPH
-	signature RA
-	functor RegisterAllocator
-	functor RADeadCodeElim
-	signature RA_PRIORITY_QUEUE
-	functor MemoryRA
-	signature INSTRUCTION_EMITTER
-	signature ASSEMBLY_EMITTER
-	signature ASM_STREAM
-	structure AsmStream
-	signature ASM_FORMAT_UTIL
-	structure AsmFormatUtil
-	functor ClusterEmit
-	signature CODE_STRING
-	signature GC_CELLS
-	functor GCCells
-	signature GC_TYPE
-	signature GC_MAP
-	functor GCMap
+	structure RAGraph
 	functor BBSched2
-	signature BBSCHED
-	functor SpanDependencyResolution
-	signature DELAY_SLOT_PROPERTIES
-	functor NoDelaySlots
-	signature SDI_JUMPS
-	signature MC_EMIT
 	functor BackPatch
-	structure CTypes
-	signature C_CALLS
+	functor CellsBasis
+	functor ClusterEmit
+	functor ClusterGen
+	functor ClusterRA
+	functor FlowGraph
+	functor FreqProps
+	functor GCCells
+	functor GCMap
+	functor GetReg
+	functor InstructionStream
+	functor LabelExp
+	functor Liveness
+	functor MLTreeF
+	functor MLTreeGen
+	functor MLTreeMult
+	functor MLTreeSize
+	functor MemoryRA
+	functor NoDelaySlots
+	functor PrintCluster
+	functor RADeadCodeElim
+	functor RASpill
+	functor RegisterAllocator
+	functor Shuffle
+	functor SpanDependencyResolution
 is
 
 #if defined(NEW_CM)
@@ -143,6 +145,8 @@ is
 	mltree/flowgen.sig
 	mltree/mltree-mult.sig
 	mltree/mltree-mult.sml
+	mltree/mltree-size.sig
+	mltree/mltree-size.sml
 	
 	(* Basic cluster stuff. These are required. *)
 	cluster/flowgraph.sml

@@ -2,7 +2,9 @@
  * Performs simple local optimizations.
  *)
 functor MLTreeSimplifier
-  (structure T : MLTREE
+  (structure T    : MLTREE
+   structure Size : MLTREE_SIZE
+      sharing T = Size.T
    (* Extension *)
    val sext : T.rewriter -> T.sext -> T.sext
    val rext : T.rewriter -> T.rext -> T.rext
@@ -237,8 +239,15 @@ struct
         | SHIFT(f,fold,g,ty,a as (T.LI 0 | T.LI32 0w0),b) = a
         | SHIFT(f,fold,g,ty,a,b) =
             if fold then foldConst2(g, f, ty, a, b) else f(exp,ty,a,b)
-
-      fun identity_ext(8,T.SIGN_EXTEND,T.LI n) = ~128 <= n andalso n <= 127
+      fun simplifyShift(a,b,default) =
+          case b of
+            T.LI n => if Size.size a <= n then T.LI 0 else default()
+          | T.LI32 n => if Word32.fromInt(Size.size a) <= n then T.LI 0 
+                        else default()
+          | _ => default()
+ 
+      fun identity_ext(_,_,(T.LI 0 | T.LI32 0w0)) = true
+        | identity_ext(8,T.SIGN_EXTEND,T.LI n) = ~128 <= n andalso n <= 127
         | identity_ext(16,T.SIGN_EXTEND,T.LI n) = ~32768 <= n andalso n <= 32767
         | identity_ext(ty,T.SIGN_EXTEND,T.LI n) = ty >= 32
         | identity_ext(8,T.SIGN_EXTEND,T.LI32 n) = n <= 0w127
@@ -261,6 +270,7 @@ struct
 
       | T.MULS(ty,a,b) => MUL(muls,signedAddress,ty,a,b)
       | T.DIVS(ty,a,b) => DIV(divs,signedAddress,ty,a,b)
+      | T.REMS(ty,a,(T.LI 1 | T.LI32 0w1)) => T.LI 0
       | T.REMS(ty,a,b) => REM(rems,ty,a,b)
 
       | T.MULU(ty,a,b) => MUL(mulu,not signedAddress,ty,a,b)
@@ -272,6 +282,7 @@ struct
 
       | T.MULT(ty,a,b) => MUL(mult,false,ty,a,b)
       | T.DIVT(ty,a,b) => DIV(divt,false,ty,a,b)
+      | T.REMT(ty,a,(T.LI 1 | T.LI32 0w1)) => T.LI 0
       | T.REMT(ty,a,b) => REM(remt,ty,a,b)
 
       | T.ANDB(_,_,b as (T.LI 0 | T.LI32 0w0)) => b
@@ -297,12 +308,13 @@ struct
       | T.NOTB(ty,a)   => notb(exp,ty,a)
 
       | T.SRA(ty,a,b)  => SHIFT(sra,signedAddress,LE.RSHIFT,ty,a,b)
-      | T.SRL(ty,a,b)  => SHIFT(srl,not signedAddress,LE.RSHIFT,ty,a,b)
-      | T.SLL(ty,a,b)  => SHIFT(sll,true,LE.LSHIFT,ty,a,b)
+      | T.SRL(ty,a,b)  => simplifyShift(a,b,fn _ => 
+                             SHIFT(srl,not signedAddress,LE.RSHIFT,ty,a,b))
+      | T.SLL(ty,a,b)  => simplifyShift(a,b,fn _ =>
+                             SHIFT(sll,true,LE.LSHIFT,ty,a,b))
 
-      | T.CVTI2I(_,_,_,e as (T.LI 0 | T.LI32 0w0)) => e
-      | cvt as T.CVTI2I(ty,ext,_,e) =>
-           if identity_ext(ty,ext,e) then e else cvt
+      | cvt as T.CVTI2I(ty,ext,ty',e) =>
+           if ty = ty' orelse identity_ext(ty,ext,e) then e else cvt
 
       | T.COND(ty,cc,a,b) => 
           (case evalcc cc of TRUE => a | FALSE => b | UNKNOWN => exp)
@@ -318,6 +330,7 @@ struct
      | simStm ==> s = s
    
    and simF ==> (exp as T.FNEG(ty,T.FNEG(ty',e))) = if ty = ty' then e else exp
+     | simF ==> (exp as T.CVTF2F(ty,ty',e)) = if ty = ty' then e else exp
      | simF ==> exp = exp
 
    and simCC ==> (exp as T.CMP _) =

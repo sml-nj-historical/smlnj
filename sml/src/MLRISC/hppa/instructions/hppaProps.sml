@@ -35,6 +35,9 @@ struct
     | instrKind(I.FCOPY _)  = IK_COPY
     | instrKind(I.BL  _)    = IK_CALL
     | instrKind(I.BLE _)    = IK_CALL
+    | instrKind(I.PHI _)    = IK_PHI
+    | instrKind(I.SOURCE _) = IK_SOURCE
+    | instrKind(I.SINK _)   = IK_SINK
     | instrKind(I.ANNOTATION{i,...}) = instrKind i
     | instrKind _	    = IK_INSTR
 

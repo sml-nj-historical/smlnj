@@ -8,21 +8,21 @@
 Library 
 
 	signature HPPACELLS
-	structure HppaCells
 	signature HPPAINSTR
-	functor HppaInstr
 	signature HPPASHUFFLE
-	functor HppaShuffle
-	functor HppaProps
-	functor HppaFreqProps
-	functor HppaAsmEmitter
-	functor HppaMCEmitter
-	functor HppaDelaySlots
-	functor HppaJumps
 	signature HPPA_MILLICODE
 	signature LABEL_COMP
+	structure HppaCells
 	functor Hppa
+	functor HppaAsmEmitter
+	functor HppaDelaySlots
+	functor HppaFreqProps
+	functor HppaInstr
+	functor HppaJumps
+	functor HppaMCEmitter
+	functor HppaProps
 	functor HppaRewrite
+	functor HppaShuffle
 is
 
 #if defined(NEW_CM)

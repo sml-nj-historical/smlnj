@@ -142,6 +142,9 @@ struct
      | emitInstr (I.FENV{fenvOp, opnd}) = error "FENV"
      | emitInstr (I.SAHF) = error "SAHF"
      | emitInstr (I.ANNOTATION{i, a}) = error "ANNOTATION"
+     | emitInstr (I.SOURCE{}) = ()
+     | emitInstr (I.SINK{}) = ()
+     | emitInstr (I.PHI{}) = ()
        in
            emitInstr
        end

@@ -77,7 +77,6 @@ struct
    and emit_MEM r = itow ((regmap r) - 64)
    and emit_CTRL r = itow ((regmap r) - 64)
    fun emit_branch (I.BR) = (0wx30 : Word32.word)
-     | emit_branch (I.BSR) = (0wx34 : Word32.word)
      | emit_branch (I.BLBC) = (0wx38 : Word32.word)
      | emit_branch (I.BEQ) = (0wx39 : Word32.word)
      | emit_branch (I.BLT) = (0wx3a : Word32.word)
@@ -253,16 +252,16 @@ struct
 
    and Split {le} = let
 
-(*#line 414.22 "alpha/alpha.md"*)
+(*#line 415.22 "alpha/alpha.md"*)
           val i = LabelExp.valueOf le
 
-(*#line 415.22 "alpha/alpha.md"*)
+(*#line 416.22 "alpha/alpha.md"*)
           val w = itow i
 
-(*#line 416.22 "alpha/alpha.md"*)
+(*#line 417.22 "alpha/alpha.md"*)
           val hi = w ~>> 0wx10
 
-(*#line 417.22 "alpha/alpha.md"*)
+(*#line 418.22 "alpha/alpha.md"*)
           val lo = w && 0wxffff
        in (if (lo < 0wx8000)
              then (hi, lo)
@@ -271,21 +270,21 @@ struct
 
    and High {le} = let
 
-(*#line 420.21 "alpha/alpha.md"*)
+(*#line 421.21 "alpha/alpha.md"*)
           val (hi, _) = Split {le=le}
        in hi
        end
 
    and Low {le} = let
 
-(*#line 421.21 "alpha/alpha.md"*)
+(*#line 422.21 "alpha/alpha.md"*)
           val (_, lo) = Split {le=le}
        in lo
        end
 
    and LoadStore {opc, ra, rb, disp} = let
 
-(*#line 423.12 "alpha/alpha.md"*)
+(*#line 424.12 "alpha/alpha.md"*)
           val disp = 
               (
                case disp of
@@ -325,6 +324,11 @@ struct
           val opc = emit_branch opc
           val ra = emit_GP ra
        in eWord32 ((opc << 0wx1a) + ((ra << 0wx15) + (disp && 0wx1fffff)))
+       end
+
+   and Bsr {ra, disp} = let
+          val ra = emit_GP ra
+       in eWord32 ((ra << 0wx15) + ((disp && 0wx1fffff) + 0wxd0000000))
        end
 
    and Fbranch {opc, ra, disp} = let
@@ -370,7 +374,7 @@ struct
 
    and Pal {func} = eWord32 func
 
-(*#line 458.7 "alpha/alpha.md"*)
+(*#line 460.7 "alpha/alpha.md"*)
    fun disp lab = (itow (((Label.addrOf lab) - ( ! loc)) - 4)) ~>> 0wx2
    fun emitInstr (I.DEFFREG FP) = ()
      | emitInstr (I.LDA{r, b, d}) = ILoadStore {opc=0wx8, r=r, b=b, d=d}
@@ -381,19 +385,20 @@ struct
      | emitInstr (I.FSTORE{stOp, r, b, d, mem}) = FLoadStore {opc=emit_fstore stOp, r=r, b=b, d=d}
      | emitInstr (I.JMPL({r, b, d}, label)) = Jump {h=0wx0, ra=r, rb=b, disp=d}
      | emitInstr (I.JSR{r, b, d, defs, uses, mem}) = Jump {h=0wx1, ra=r, rb=b, disp=d}
+     | emitInstr (I.BSR{r, lab, defs, uses, mem}) = Bsr {ra=r, disp=disp lab}
      | emitInstr (I.RET{r, b, d}) = Jump {h=0wx2, ra=r, rb=b, disp=d}
      | emitInstr (I.BRANCH{b, r, lab}) = Branch {opc=b, ra=r, disp=disp lab}
      | emitInstr (I.FBRANCH{b, f, lab}) = Fbranch {opc=b, ra=f, disp=disp lab}
      | emitInstr (I.OPERATE{oper, ra, rb, rc}) = let
 
-(*#line 550.15 "alpha/alpha.md"*)
+(*#line 558.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operate oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
 
      | emitInstr (I.OPERATEV{oper, ra, rb, rc}) = let
 
-(*#line 557.15 "alpha/alpha.md"*)
+(*#line 565.15 "alpha/alpha.md"*)
           val (opc, func) = emit_operateV oper
        in Operate {opc=opc, func=func, ra=ra, rb=rb, rc=rc}
        end
@@ -404,14 +409,14 @@ struct
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.FUNARY{oper, fb, fc}) = let
 
-(*#line 586.15 "alpha/alpha.md"*)
+(*#line 594.15 "alpha/alpha.md"*)
           val (opc, func) = emit_funary oper
        in Funary {opc=opc, func=func, fb=fb, fc=fc}
        end
 
      | emitInstr (I.FOPERATE{oper, fa, fb, fc}) = let
 
-(*#line 594.15 "alpha/alpha.md"*)
+(*#line 602.15 "alpha/alpha.md"*)
           val (opc, func) = emit_foperate oper
        in Foperate {opc=opc, func=func, fa=fa, fb=fb, fc=fc}
        end
@@ -421,6 +426,9 @@ struct
      | emitInstr (I.TRAPB) = Memory_fun {opc=0wx18, ra=31, rb=31, func=0wx0}
      | emitInstr (I.CALL_PAL{code, def, use}) = Pal {func=emit_osf_user_palcode code}
      | emitInstr (I.ANNOTATION{i, a}) = emitInstr i
+     | emitInstr (I.SOURCE{}) = ()
+     | emitInstr (I.SINK{}) = ()
+     | emitInstr (I.PHI{}) = ()
        in
            emitInstr
        end

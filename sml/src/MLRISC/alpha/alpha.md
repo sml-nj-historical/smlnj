@@ -37,9 +37,10 @@ struct
                assembly as (fn (r,_) => "ctrl"^Int.toString r)
 
    locations
-       stackptrR = $GP[30]
-   and asmTmpR   = $GP[28]
-   and fasmTmp   = $FP[30]
+       stackptrR  = $GP[30]
+   and asmTmpR    = $GP[28]
+   and fasmTmp    = $FP[30]
+   and returnAddr = $GP[26]
 
    structure RTL =
    struct
@@ -288,7 +289,7 @@ struct
        *)
       datatype branch! =  (* table C-2 *)
          BR   0x30  
-                   | BSR 0x34  
+                   (*| BSR 0x34 *)
                               | BLBC 0x38
        | BEQ  0x39 | BLT 0x3a | BLE  0x3b
        | BLBS 0x3c | BNE 0x3d | BGE  0x3e 
@@ -435,6 +436,7 @@ struct
    | Jump{opc:6=0wx1a,ra:GP 5,rb:GP 5,h:2,disp:int signed 14}   (* table C-3 *)
    | Memory_fun{opc:6, ra:GP 5, rb:GP 5, func:16}     (* p3-9 *)
    | Branch{opc:branch 6, ra:GP 5, disp:signed 21}           (* p3-10 *)
+   | Bsr{opc:6=0wx34, ra:GP 5, disp:signed 21}           (* p3-10 *)
    | Fbranch{opc:fbranch 6, ra:FP 5, disp:signed 21}          (* p3-10 *)
         (* p3-11 *)
    | Operate0{opc:6,ra:GP 5,rb:GP 5,sbz:13..15=0,_:1=0,func:5..11,rc:GP 5} 
@@ -524,6 +526,12 @@ struct
      asm: ``jsr\t<r>, (<b>)<mem><emit_defs(defs)><emit_uses(uses)>''
      mc:  Jump{h=0w1,ra=r,rb=b,disp=d}
      rtl: [[ "JSR" ]]
+
+   | BSR of {r: $GP, lab: Label.label,
+             defs:C.cellset, uses:C.cellset, mem:Region.region}
+     asm: ``bsr\t<r>, <lab><mem><emit_defs(defs)><emit_uses(uses)>''
+     mc:  Bsr{ra=r,disp=disp lab}
+     rtl: [[ "BSR" ]]
 
    | RET of {r: $GP, b: $GP, d:int} 
      asm: ``ret\t<r>, (<b>)''
@@ -619,7 +627,20 @@ struct
      rtl: [[ "CALL_PAL_" code ]]
 
    | ANNOTATION of {i:instruction, a:Annotations.annotation}
-     asm: (emitInstr i; comment(Annotations.toString a))
+     asm: (comment(Annotations.toString a); nl(); emitInstr i)
      mc:  (emitInstr i)
      rtl: [[ #i ]]
+
+   | SOURCE of {}
+     asm: ``source''
+     mc:  ()
+
+   | SINK of {}
+     asm: ``sink''
+     mc:  ()
+
+   | PHI of {}
+     asm: ``phi''
+     mc:  ()
+
  end

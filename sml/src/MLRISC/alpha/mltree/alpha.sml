@@ -936,6 +936,12 @@ struct
       and expr(T.REG(_,r)) = r
         | expr(T.LI 0) = zeroR
         | expr(T.LI32 0w0) = zeroR
+            (* On the alpha: all 32 bit values are already sign extended.
+             * So no sign extension is necessary
+             *)
+        | expr(T.CVTI2I(64, T.SIGN_EXTEND, 32, e)) = expr e
+        | expr(T.CVTI2I(64, T.ZERO_EXTEND, 32, e)) = expr e
+
         | expr e = let val r = newReg()
                    in  doExpr(e,r,[]); r end
 
@@ -1425,13 +1431,17 @@ struct
       and goto(lab,an) = mark(I.BRANCH{b=I.BR,r=zeroR,lab=lab},an)
 
          (* generate an call instruction *)
-      and call(ea,flow,def,use,mem,an) = 
-       let val pv = expr ea
-           val returnPtrR = 26
-       in  mark(I.JSR{r=returnPtrR,b=pv,d=0,defs=cellset def,uses=cellset use,
-                      mem=mem}, an)
+      and call(ea,flow,defs,uses,mem,an) = 
+       let val defs=cellset defs
+           val uses=cellset uses
+           val instr = 
+               case (ea, flow) of
+                 (T.LABEL(LE.LABEL lab), [_]) => 
+                   I.BSR{lab=lab,r=C.returnAddr,defs=defs,uses=uses,mem=mem}
+               | _ => I.JSR{r=C.returnAddr,b=expr ea,
+                            d=0,defs=defs,uses=uses,mem=mem}
+       in  mark(instr,an)
        end
-
 
       and doCCexpr(T.CC(_,r),d,an) = move(r,d,an)
         | doCCexpr(T.FCC(_,r),d,an) = fmove(r,d,an)

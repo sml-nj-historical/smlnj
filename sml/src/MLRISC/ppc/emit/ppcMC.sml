@@ -770,6 +770,9 @@ struct
      | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.ANNOTATION{i, a}) = emitInstr i
+     | emitInstr (I.SOURCE{}) = ()
+     | emitInstr (I.SINK{}) = ()
+     | emitInstr (I.PHI{}) = ()
        in
            emitInstr
        end

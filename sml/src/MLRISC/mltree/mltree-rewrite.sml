@@ -43,7 +43,8 @@ struct
            | T.EXT s => 
                 T.EXT(sext {rexp=rexp, fexp=fexp, ccexp=ccexp, stm=stm} s)
            | T.PHI _ => s 
-           | T.PINNED s => T.PINNED(stm s)
+           | T.SOURCE _ => s 
+           | T.SINK _ => s 
            | T.RTL _ => s
       in doStm stm s end
    

@@ -39,9 +39,11 @@ struct
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
 
+  val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
   structure Gen = MLTreeGen
     (structure T = T
-     val (intTy,naturalWidths) = if bit64mode then (64,[32,64]) else (32,[32])
+     val intTy = intTy
+     val naturalWidths = naturalWidths
      datatype rep = SE | ZE | NEITHER
      val rep = NEITHER
     )
@@ -366,7 +368,7 @@ struct
    
         (* Emit an integer store *) 
       and store(ty, ea, data, mem, an) = 
-          let val (st,size) = case (ty,Gen.size ea) of
+          let val (st,size) = case (ty,Gen.Size.size ea) of
                          (8,32)  => (I.STB,signed16)
                        | (8,64)  => (I.STBE,signed12)
                        | (16,32) => (I.STH,signed16)
@@ -380,7 +382,7 @@ struct
 
         (* Emit a floating point store *) 
       and fstore(ty, ea, data, mem, an) =
-          let val (st,size) = case (ty,Gen.size ea) of
+          let val (st,size) = case (ty,Gen.Size.size ea) of
                          (32,32) => (I.STFS,signed16)
                        | (32,64) => (I.STFSE,signed12)
                        | (64,32) => (I.STFD,signed16)
@@ -421,7 +423,7 @@ struct
       (* Generate a load and annotate the instruction *)
       and load(ld32, ld64, ea, mem, rt, an) = 
           let val (ld,size) = 
-              if bit64mode andalso Gen.size ea = 64 
+              if bit64mode andalso Gen.Size.size ea = 64 
               then (ld64,signed12) 
               else (ld32,signed16)
               val (r, disp) = addr(size,ea)
@@ -627,7 +629,7 @@ struct
       (* Generate a floating point load *) 
       and fload(ld32, ld64, ea, mem, ft, an) =
           let val (ld,size) = 
-               if bit64mode andalso Gen.size ea = 64 then (ld64,signed12) 
+               if bit64mode andalso Gen.Size.size ea = 64 then (ld64,signed12) 
                else (ld32,signed16)
               val (r, disp) = addr(size,ea)
           in  mark(I.LF{ld=ld, ft=ft, ra=r, d=disp, mem=mem}, an) end

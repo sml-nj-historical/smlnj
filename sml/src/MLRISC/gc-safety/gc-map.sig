@@ -9,6 +9,10 @@ sig
 
    val GCMAP       : gcmap Annotations.property
 
+   val GCLIVEIN    : (int * GC.gctype) list Annotations.property 
+
+   val GCLIVEOUT   : (int * GC.gctype) list Annotations.property 
+
    val toString    : gcmap -> (int -> string)
 
 end

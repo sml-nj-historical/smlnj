@@ -89,15 +89,18 @@ struct
        and add_block({blknum,annotations,
                       freq,liveIn,liveOut,succ,pred,insns},
                      Ps,Ls,rest) =
-           let val bb = CFG.BLOCK{id    = blknum,
+           let val an = !annotations
+               val an = 
+                   case !succ of
+                     ([(F.EXIT _,_)] | []) => #create CFG.LIVEOUT(!liveOut)::an
+                   | _ => an
+               val bb = CFG.BLOCK{id    = blknum,
                                   kind  = CFG.NORMAL,
                                   labels= ref Ls,
                                   freq  = freq,
                                   data  = ref Ps,
                                   insns = insns,
-                                  annotations=ref
-                                    (#create CFG.LIVEOUT(!liveOut)::
-                                                  (!annotations))
+                                  annotations=ref an
                                  }
            in  #add_node cfg (blknum,bb);
                add_edges(blknum, !succ, !insns);
@@ -158,45 +161,6 @@ struct
                | js    => add_switch(i,0,js)
            end
 
-           (*
-           fun insert_postentries () = 
-           let fun add_edge(i,j) =
-                   #add_edge cfg 
-                 (i,j,CFG.EDGE{k=CFG.ENTRY,w=ref 0,a=ref []})
-               fun postentry(i,j,e) = 
-                   case #in_edges cfg j of 
-                     [_] => () (* only edge from ENTRY, don't bother *)
-                   | _   => 
-                   let val k = #new_id cfg ()
-                   in  #add_node cfg (k,CFG.newFunctionEntry(k,ref 0));
-                       CFG.removeEdge CFG (i,j,e);
-                       add_edge(i, k);
-                       add_edge(k, j)
-                   end
-                val entries = #out_edges cfg ENTRY
-           in   app postentry entries end
-           *)
-
-           (*
-           fun split_entries() =
-           let fun split(i,j,e) = 
-                   case #in_edges cfg j of
-                      [_] => () (* only edge from ENTRY, don't bother *)
-                   |  _ =>
-                   let val CFG.BLOCK{labels,...} = #node_info cfg j 
-                       val l = !labels 
-                       val _ = labels := []
-                       val { node=(_,CFG.BLOCK{labels=l' as ref [],...}),...} = 
-                           Util.splitEdge CFG {kind=CFG.FUNCTION_ENTRY, 
-                                               edge=(i,j,e), jump=false};
-                   in  l' := l;  
-                       app (fn (k,_,_) => Util.updateJumpLabel CFG k) 
-                          (#in_edges cfg j)
-                   end
-                val entries = #out_edges cfg ENTRY
-           in   app split (#out_edges cfg ENTRY) end
-           *)
-
            fun check_for_bad_entries() =
                app (fn (i,j,e) =>
                      case #in_edges cfg j of 
@@ -210,8 +174,6 @@ struct
                  add_edge (ENTRY,EXIT,CFG.JUMP,ref 0)
     in 
         add(entry::exit::blocks,[],[]);
-        (* insert_postentries(); *)
-        (* split_entries(); *)
         check_for_bad_entries();
         insert_entry_to_exit(); 
         CFG

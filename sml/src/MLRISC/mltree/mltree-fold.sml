@@ -34,7 +34,8 @@ struct
            | T.EXT s => 
                sext {stm=stm, rexp=rexp, fexp=fexp, ccexp=ccexp} (s,x)
            | T.PHI _ => x 
-           | T.PINNED s => stm(s,x)
+           | T.SOURCE _ => x 
+           | T.SINK _ => x 
            | T.RTL _ => x
       in doStm(s,x) end
    

@@ -8,14 +8,17 @@ functor ClusterGraph(F : FLOWGRAPH) : CLUSTER_GRAPH =
 struct
 
    structure F = F
+   structure I = F.I
    structure W = F.W
    structure G = Graph
    structure A = Array
 
-   datatype clusterInfo = INFO of F.cluster * F.block A.array
+   datatype info = INFO of F.cluster * F.block A.array
 
-   type clusterGraph = (F.block,W.freq ref,clusterInfo) Graph.graph
+   type block = F.block
+   type edge_info = W.freq ref
 
+   type cfg = (block,edge_info,info) Graph.graph
 
    fun error msg = MLRiscErrorMsg.error("ClusterGraph",msg)
 
@@ -26,13 +29,29 @@ struct
     *)
    fun isTakenBranch(i,j,_) = i+1 <> j 
 
+   fun regmap(G.GRAPH{graph_info=INFO(F.CLUSTER{regmap, ...},_),...}) = regmap
+   fun regmap(G.GRAPH{graph_info=INFO(F.CLUSTER{regmap, ...},_),...}) = regmap
+   fun annotations(G.GRAPH{graph_info=INFO(F.CLUSTER{annotations=a, ...},_),
+                      ...}) = a
    (*
     * Extract the node frequency of a block
     *)
-   fun nodeFreq(F.BBLOCK{freq,...}) = freq
-     | nodeFreq(F.ENTRY{freq,...})  = freq
-     | nodeFreq(F.EXIT{freq,...})   = freq
-     | nodeFreq _ = error "nodeFreq"
+   fun freq(F.BBLOCK{freq,...}) = freq
+     | freq(F.ENTRY{freq,...})  = freq
+     | freq(F.EXIT{freq,...})   = freq
+     | freq _ = error "freq"
+
+   (*
+    * Extract the instructions 
+    *)
+   fun insns(F.BBLOCK{insns, ...}) = insns
+     | insns _ = error "insns"
+
+   (*
+    * Extract the liveOut set
+    *)
+   fun liveOut(F.BBLOCK{liveOut, ...}) = !liveOut
+     | liveOut _ = I.C.empty
 
    fun clusterGraph(cluster as F.CLUSTER{blocks,blkCounter,exit,entry,...}) =
    let fun readonly _ = raise G.Readonly

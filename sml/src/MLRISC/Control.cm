@@ -1,9 +1,9 @@
 Library 
-	signature MLRISC_ERROR_MSG
-	structure MLRiscErrorMsg
 	signature MLRISC_CONTROL
-	structure MLRiscControl
+	signature MLRISC_ERROR_MSG
 	signature MLRISC_TIMING
+	structure MLRiscControl
+	structure MLRiscErrorMsg
 	structure MLRiscTiming
 is
 #if defined(NEW_CM)

@@ -11,6 +11,7 @@ sig
    | PLUS of ty * gctype * gctype  (* address arithmetic + *)
    | MINUS of ty * gctype * gctype (* address arithmetic - *)  
    | ALLOCPTR                      (* SML/NJ allocation pointer *)
+   | LIMITPTR                      (* SML/NJ limit pointer *)
    | BOT
    | TOP
 

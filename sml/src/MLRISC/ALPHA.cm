@@ -8,19 +8,19 @@
 Library
 
 	signature ALPHACELLS
-	structure AlphaCells
 	signature ALPHAINSTR
-	functor AlphaInstr
 	signature ALPHASHUFFLE
-	functor AlphaShuffle
-	functor AlphaProps
-	functor AlphaFreqProps
-	functor AlphaAsmEmitter
-	functor AlphaMCEmitter
-	functor AlphaJumps
 	signature ALPHA_PSEUDO_INSTR
+	structure AlphaCells
 	functor Alpha
+	functor AlphaAsmEmitter
+	functor AlphaFreqProps
+	functor AlphaInstr
+	functor AlphaJumps
+	functor AlphaMCEmitter
+	functor AlphaProps
 	functor AlphaRewrite
+	functor AlphaShuffle
 is
 
 #if defined(NEW_CM)

@@ -32,6 +32,7 @@ struct
       (structure I         = I
        structure PseudoOps = F.P
        structure GraphImpl = DirectedGraph
+       structure InsnProps = InsnProps
        structure Asm = Asm
       )
 

@@ -10,6 +10,6 @@ sig
 
    structure ClusterGraph : CLUSTER_GRAPH
 
-   val view : ClusterGraph.clusterGraph -> unit
+   val view : ClusterGraph.cfg -> unit
   
 end
