@@ -102,9 +102,9 @@ structure BTrace :> BTRACE = struct
 	     
 	fun cons (s, []) = if isSpecial s then [] else [(s, 0)]
 	  | cons (s, l as ((s', m) :: t)) =
-	    if isSpecial s then l
-	    else if Symbol.eq (s, s') then (s, m+1) :: t
-	    else (s, 0) :: l
+	      if isSpecial s then l
+	      else if Symbol.eq (s, s') then (s, m+1) :: t
+	      else (s, 0) :: l
 
 	fun getCoreVal s = CoreAccess.getVar (senv, s)
 	fun getCoreCon s = CoreAccess.getCon (senv, s)
@@ -148,13 +148,13 @@ structure BTrace :> BTRACE = struct
 	val regexps = ref []
 	val next = ref 0
 
-	fun newid s = let
-	    val id = !next
-	in
-	    next := id + 1;
-	    regexps := mkregexp (id, s) :: !regexps;
-	    id
-	end
+	fun newid s =
+	    let val id = !next
+	    in
+		next := id + 1;
+		regexps := mkregexp (id, s) :: !regexps;
+		id
+	    end
 
 	val mkadd = mkaddexp o newid
 	val mkpush = mkpushexp o newid
@@ -167,7 +167,7 @@ structure BTrace :> BTRACE = struct
 	fun AUexp v = A.APPexp (VARexp v, uExp)	(* apply to unit *)
 
 	fun is_prim_exp (A.VARexp (ref (VC.VALvar v), _)) =
-	    II.isSimple (#info v)
+	      II.isSimple (#info v)
 	  | is_prim_exp (A.CONexp _) = true
 	  | is_prim_exp (A.CONSTRAINTexp (e, _)) = is_prim_exp e
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
@@ -189,46 +189,45 @@ structure BTrace :> BTRACE = struct
 			  A.SEQexp [e]) = is_raise_exp e
 	  | is_raise_exp _ = false
 
-	fun mkDescr ((n, r), what) = let
-	    fun name ((s, 0), a) = Symbol.name s :: a
-	      | name ((s, m), a) = Symbol.name s :: "[" ::
-				   Int.toString (m + 1) :: "]" :: a
-	    fun dot ([z], a) = name (z, a)
-	      | dot (h :: t, a) = dot (t, "." :: name (h, a))
-	      | dot ([], a) = impossible (what ^ ": no path")
-	    val ms = matchstring r
-	in
-	    concat (ms :: ": " :: dot (n, []))
-	end
+	fun mkDescr ((n, r), what) =
+	    let fun name ((s, 0), a) = Symbol.name s :: a
+		  | name ((s, m), a) = Symbol.name s :: "[" ::
+				       Int.toString (m + 1) :: "]" :: a
+		fun dot ([z], a) = name (z, a)
+		  | dot (h :: t, a) = dot (t, "." :: name (h, a))
+		  | dot ([], a) = impossible (what ^ ": no path")
+		val ms = matchstring r
+	    in
+		concat (ms :: ": " :: dot (n, []))
+	    end
 
 	fun i_exp _ loc (A.RECORDexp l) =
-	    A.RECORDexp (map (fn (l, e) => (l, i_exp false loc e)) l)
+	      A.RECORDexp (map (fn (l, e) => (l, i_exp false loc e)) l)
 	  | i_exp _ loc (A.SELECTexp (l, e)) =
-	    A.SELECTexp (l, i_exp false loc e)
+	      A.SELECTexp (l, i_exp false loc e)
 	  | i_exp _ loc (A.VECTORexp (l, t)) =
-	    A.VECTORexp (map (i_exp false loc) l, t)
+	      A.VECTORexp (map (i_exp false loc) l, t)
 	  | i_exp tail loc (A.PACKexp (e, t, tcl)) =
-	    A.PACKexp (i_exp tail loc e, t, tcl)
-	  | i_exp tail loc (e as A.APPexp (f, a)) = let
-		val mainexp =  A.APPexp (i_exp false loc f, i_exp false loc a)
+	      A.PACKexp (i_exp tail loc e, t, tcl)
+	  | i_exp tail loc (e as A.APPexp (f, a)) =
+	    let val mainexp =  A.APPexp (i_exp false loc f, i_exp false loc a)
 	    in
 		if is_prim_exp f then mainexp
 		else if tail then A.SEQexp [mknopush (mkDescr (loc, "GOTO")),
 					    mainexp]
-		else let
-			val ty = Reconstruct.expType e
-			val result = tmpvar ("tmpresult", ty)
-			val restore = tmpvar ("tmprestore", u_u_Ty)
-			val pushexp = mkpush (mkDescr (loc, "CALL"))
-		    in
-			LETexp (restore, pushexp,
-				LETexp (result, mainexp,
-					A.SEQexp [AUexp restore,
-						  VARexp result]))
-		    end
+		else let val ty = Reconstruct.expType e
+			 val result = tmpvar ("tmpresult", ty)
+			 val restore = tmpvar ("tmprestore", u_u_Ty)
+			 val pushexp = mkpush (mkDescr (loc, "CALL"))
+		     in
+			 LETexp (restore, pushexp,
+				 LETexp (result, mainexp,
+					 A.SEQexp [AUexp restore,
+						   VARexp result]))
+		     end
 	    end
-	  | i_exp tail loc (A.HANDLEexp (e, (rl, t))) = let
-		val restore = tmpvar ("tmprestore", u_u_Ty)
+	  | i_exp tail loc (A.HANDLEexp (e, (rl, t))) =
+	    let val restore = tmpvar ("tmprestore", u_u_Ty)
 		fun rule (r as A.RULE (p, e)) =
 		    if is_raise_exp e then r
 		    else A.RULE (p, A.SEQexp [AUexp restore, i_exp tail loc e])
@@ -237,9 +236,9 @@ structure BTrace :> BTRACE = struct
 			A.HANDLEexp (i_exp false loc e, (map rule rl, t)))
 	    end
 	  | i_exp _ loc (A.RAISEexp (e, t)) =
-	    A.RAISEexp (i_exp false loc e, t)
+	      A.RAISEexp (i_exp false loc e, t)
 	  | i_exp tail loc (A.CASEexp (e, rl, b)) =
-	    A.CASEexp (i_exp false loc e, map (i_rule tail loc) rl, b)
+	      A.CASEexp (i_exp false loc e, map (i_rule tail loc) rl, b)
 	  | i_exp tail loc (A.IFexp { test, thenCase, elseCase }) =
 	      A.IFexp { test = i_exp false loc test,
 			thenCase = i_exp tail loc thenCase,
@@ -251,16 +250,15 @@ structure BTrace :> BTRACE = struct
 	  | i_exp _ loc (A.WHILEexp { test, expr }) =
 	      A.WHILEexp { test = i_exp false loc test,
 			   expr = i_exp false loc expr }
-	  | i_exp tail loc (A.FNexp (rl, t)) = let
-		val addexp = mkadd (mkDescr (loc, "FN"))
+	  | i_exp tail loc (A.FNexp (rl, t)) =
+	    let val addexp = mkadd (mkDescr (loc, "FN"))
 		val arg = tmpvar ("fnvar", t)
 		val rl' = map (i_rule true loc) rl
-		val re = let
-		    val A.RULE (_, lst) = List.last rl
-		    val t = Reconstruct.expType lst
-		in
-		    A.RAISEexp (A.CONexp (matchcon, []), t)
-		end
+		val re = let val A.RULE (_, lst) = List.last rl
+			     val t = Reconstruct.expType lst
+			 in
+			     A.RAISEexp (A.CONexp (matchcon, []), t)
+			 end
 	    in
 		A.FNexp ([A.RULE (A.VARpat arg,
 				  A.SEQexp [addexp,
@@ -270,14 +268,15 @@ structure BTrace :> BTRACE = struct
 			 t)
 	    end
 	  | i_exp tail loc (A.LETexp (d, e)) =
-	    A.LETexp (i_dec loc d, i_exp tail loc e)
+	      A.LETexp (i_dec loc d, i_exp tail loc e)
 	  | i_exp tail loc (A.SEQexp l) =
-	    A.SEQexp (#1 (foldr (fn (e, (l, t)) => (i_exp t loc e :: l, false))
-				([], tail) l))
+	      A.SEQexp (#1 (foldr (fn (e, (l, t)) =>
+				      (i_exp t loc e :: l, false))
+				  ([], tail) l))
 	  | i_exp tail loc (A.CONSTRAINTexp (e, t)) =
-	    A.CONSTRAINTexp (i_exp tail loc e, t)
+	      A.CONSTRAINTexp (i_exp tail loc e, t)
 	  | i_exp tail (n, _) (A.MARKexp (e, r)) =
-	    A.MARKexp (i_exp tail (n, r) e, r)
+	      A.MARKexp (i_exp tail (n, r) e, r)
 	  | i_exp _ _ (e as (A.VARexp _ | A.CONexp _ | A.INTexp _ |
 			     A.WORDexp _ | A.REALexp _ | A.STRINGexp _ |
 			     A.CHARexp _)) = e
@@ -285,14 +284,14 @@ structure BTrace :> BTRACE = struct
 	and i_dec loc (A.VALdec l) = A.VALdec (map (i_vb loc) l)
 	  | i_dec loc (A.VALRECdec l) = A.VALRECdec (map (i_rvb loc) l)
 	  | i_dec loc (A.ABSTYPEdec { abstycs, withtycs, body }) =
-	    A.ABSTYPEdec { abstycs = abstycs, withtycs = withtycs,
-			   body = i_dec loc body }
+	      A.ABSTYPEdec { abstycs = abstycs, withtycs = withtycs,
+			     body = i_dec loc body }
 	  | i_dec loc (A.EXCEPTIONdec l) = A.EXCEPTIONdec (map (i_eb loc) l)
 	  | i_dec loc (A.STRdec l) = A.STRdec (map (i_strb loc) l)
 	  | i_dec loc (A.ABSdec l) = A.ABSdec (map (i_strb loc) l)
 	  | i_dec loc (A.FCTdec l) = A.FCTdec (map (i_fctb loc) l)
 	  | i_dec loc (A.LOCALdec (d, d')) =
-	    A.LOCALdec (i_dec loc d, i_dec loc d')
+	      A.LOCALdec (i_dec loc d, i_dec loc d')
 	  | i_dec loc (A.SEQdec l) = A.SEQdec (map (i_dec loc) l)
 	  | i_dec (n, _) (A.MARKdec (d, r)) = A.MARKdec (i_dec (n, r) d, r)
 	  | i_dec _ (d as (A.TYPEdec _ | A.DATATYPEdec _ |
@@ -301,38 +300,40 @@ structure BTrace :> BTRACE = struct
 
 	and i_rule tail loc (A.RULE (p, e)) = A.RULE (p, i_exp tail loc e)
 
-	and i_vb (n, r) (vb as A.VB { pat, exp, boundtvs, tyvars }) = let
-	    fun gv (A.VARpat v) = SOME v
-	      | gv (A.CONSTRAINTpat (p, _)) = gv p
-	      | gv (A.LAYEREDpat (p, p')) =
-		(case gv p of
-		     SOME v => SOME v
-		   | NONE => gv p')
-	      | gv _ = NONE
-	    fun recur n = A.VB { pat = pat, exp = i_exp false (n, r) exp,
-				 boundtvs = boundtvs, tyvars = tyvars }
-	in
-	    case gv pat of
-		SOME (VC.VALvar { path = SP.SPATH [x], info, ... }) =>
-		if II.isSimple info then vb
-		else recur (cons (x, n))
-	      | SOME (VC.VALvar { info, ... }) =>
-		if II.isSimple info then vb else recur n
-	      | _ => recur n
-	end
+	and i_vb (n, r) (vb as A.VB { pat, exp, boundtvs, tyvars }) =
+	    let fun gv (A.VARpat v) = SOME v
+		  | gv (A.CONSTRAINTpat (p, _)) = gv p
+		  | gv (A.LAYEREDpat (p, p')) =
+		      (case gv p of
+			   SOME v => SOME v
+			 | NONE => gv p')
+		  | gv _ = NONE
+		fun recur n = A.VB { pat = pat, exp = i_exp false (n, r) exp,
+				     boundtvs = boundtvs, tyvars = tyvars }
+	    in
+		case gv pat of
+		    SOME (VC.VALvar { path = SP.SPATH [x], info, ... }) =>
+		      if II.isSimple info then vb
+		      else recur (cons (x, n))
+		  | SOME (VC.VALvar { info, ... }) =>
+		      if II.isSimple info then vb else recur n
+		  | _ => recur n
+	    end
 
-	and i_rvb (n, r) (A.RVB { var, exp, boundtvs, resultty, tyvars }) = let
-	    val x =
-		case var of
-		    VC.VALvar { path = SymPath.SPATH [x], ... } => x
-		  | _ => impossible "VALRECdec"
-	in
-	    A.RVB { var = var, exp = i_exp false (cons (x, n), r) exp,
-		    boundtvs = boundtvs, resultty = resultty, tyvars = tyvars }
-	end
+	and i_rvb (n, r) (A.RVB { var, exp, boundtvs, resultty, tyvars }) =
+	    let val x =
+		    case var of
+			VC.VALvar { path = SymPath.SPATH [x], ... } => x
+		      | _ => impossible "VALRECdec"
+	    in
+		A.RVB { var = var, exp = i_exp false (cons (x, n), r) exp,
+			boundtvs = boundtvs, resultty = resultty,
+			tyvars = tyvars }
+	    end
 
 	and i_eb loc (A.EBgen { exn, etype, ident }) =
-	    A.EBgen { exn = exn, etype = etype, ident = i_exp false loc ident }
+	      A.EBgen { exn = exn, etype = etype,
+			ident = i_exp false loc ident }
 	  | i_eb _ eb = eb
 
 	and i_strb (n, r) (A.STRB { name, str, def }) =
@@ -344,18 +345,18 @@ structure BTrace :> BTRACE = struct
 		     def = i_fctexp (cons (name, n), r) def }
 
 	and i_strexp loc (A.LETstr (d, s)) =
-	    A.LETstr (i_dec loc d, i_strexp loc s)
+	      A.LETstr (i_dec loc d, i_strexp loc s)
 	  | i_strexp (n, _) (A.MARKstr (s, r)) =
-	    A.MARKstr (i_strexp (n, r) s, r)
+	      A.MARKstr (i_strexp (n, r) s, r)
 	  | i_strexp _ s = s
 
 	and i_fctexp loc (A.FCTfct { param, argtycs, def }) =
-	    A.FCTfct { param = param, argtycs = argtycs,
-		       def = i_strexp loc def }
+	      A.FCTfct { param = param, argtycs = argtycs,
+			 def = i_strexp loc def }
 	  | i_fctexp loc (A.LETfct (d, f)) =
-	    A.LETfct (i_dec loc d, i_fctexp loc f)
+	      A.LETfct (i_dec loc d, i_fctexp loc f)
 	  | i_fctexp (n, _) (A.MARKfct (f, r)) =
-	    A.MARKfct (i_fctexp (n, r) f, r)
+	      A.MARKfct (i_fctexp (n, r) f, r)
 	  | i_fctexp _ f = f
 
 	val d' = i_dec ([], (0, 0)) d
