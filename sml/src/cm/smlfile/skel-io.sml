@@ -27,6 +27,7 @@ structure SkelIO :> SKELIO = struct
     exception Format = UU.Format
 
     val s2b = Byte.stringToBytes
+    val b2s = Byte.bytesToString
     val b2c = Byte.byteToChar
 
     val version = "Skeleton 2\n"
@@ -83,12 +84,7 @@ structure SkelIO :> SKELIO = struct
 
     fun read_decl s = let
 
-	fun rd () =
-	    case BinIO.input1 s of
-		SOME w8 => b2c w8
-	      | NONE => raise Format
-
-	val session = UU.mkSession rd
+	val session = UU.mkSession (UU.stringGetter (b2s (BinIO.inputAll s)))
 
 	val symbol = UU.r_symbol session
 	fun list m r = UU.r_list session m r

@@ -447,7 +447,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    val pickle = Byte.bytesToString (bytesIn sz)
 	    val offset_adjustment = sz + 4
 
-	    val session = UU.mkSession (UU.stringReader pickle)
+	    val session = UU.mkSession (UU.stringGetter pickle)
 
 	    fun list m r = UU.r_list session m r
 	    fun option m r = UU.r_option session m r
