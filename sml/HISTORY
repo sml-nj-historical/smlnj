@@ -599,7 +599,7 @@ Description:
 
 3.  Assembly 
 
-    When generating assemby, resolve the value of client defined constants, 
+    When generating assembly, resolve the value of client defined constants, 
     instead of generating symbolic values.  This is controlled by the 
     new flag "asm-resolve-constants", which is default to true.
 
@@ -622,7 +622,7 @@ compilation unit.
 
 To this end, I arranged that instead of "structure Core" as "structure
 _Core" is bound in the pervasive environment.  Core access is done via
-_Core (which can never be accidentially rebound because _Core is not a
+_Core (which can never be accidentally rebound because _Core is not a
 legal surface-syntax symbol).
 
 The current solution is much cleaner because the core environment is
@@ -632,7 +632,7 @@ special-case handling that was necessary until now in order to deal
 with dynamic and symbolic parts of the core environment.
 
 Remaining hackery (to bind the "magic" symbol _Core) is localized in the
-compilation mananger's bootstrap compiler (actually: in the "init group"
+compilation manager's bootstrap compiler (actually: in the "init group"
 handling).  See the comments in src/system/smlnj/init/init.cmi for
 more details.
 
@@ -747,8 +747,8 @@ This update contains:
    (specified in the .cm file at each instance where the tool's class is
    used).
 
-   This was done to accomodate the new "make" and "shell" tools which
-   facilitate fairly seemless hookup to portions of code managed using
+   This was done to accommodate the new "make" and "shell" tools which
+   facilitate fairly seamless hookup to portions of code managed using
    Makefiles or Shell scripts.
 
    There are no classes "shared" or "private" anymore.  Instead, the
@@ -760,7 +760,7 @@ This update contains:
 
    All existing tools are described in the CM manual.
 
-   - Slightly better error handling.  (CM now surpresses many followup
+   - Slightly better error handling.  (CM now suppresses many followup
    error messages that tended to be more annoying than helpful.)
 
 2. Major changes to the compiler's static environment data structures.
@@ -894,7 +894,7 @@ CHANGES
 
      I've changed andl to testl in the floating point test sequence
      whenever appropriate.  The Intel optimization guide states that
-     testl is perferable to andl.
+     testl is preferable to andl.
 
 7. RA (x86 only)
 
@@ -1076,10 +1076,10 @@ Description:
 
 1. Tools.registerStdShellCmdTool (from smlnj/cm/tool.cm) takes an
 additional argument called "template" which is an optional string that
-specifiel the layout of the tool command line.  See the CM manual for
+specifies the layout of the tool command line.  See the CM manual for
 explanation.
 
-2. A special-purpose tool can be "regisitered" by simply dropping the
+2. A special-purpose tool can be "registered" by simply dropping the
 corresponding <...>-tool.cm (and/or <...>-ext.cm) into the same
 directory where the .cm file lives that uses this tool.  (The
 behavior/misfeature until now was to look for the tool description
@@ -1123,7 +1123,7 @@ and boot files around, so this saves time for at least one full
 rebuild.  Having sets of the form <base><k>.{bin,boot}.<arch>-unix for
 <k>=1,2,... is normally not a good idea when invoking fixpt.  However,
 they might be the result of an earlier partial run of fixpt (which
-perhaps got accidentially killed).  In this case, fixpt will quickly
+perhaps got accidentally killed).  In this case, fixpt will quickly
 move through what exists before continuing where it left off earlier,
 and, thus, saves a lot of time.
 
@@ -1173,7 +1173,7 @@ for a complete description of the new naming scheme.  Quick reference:
   it from that remote directory.
   This should simplify installation further:  For machines that have
   access to the internet, just fetch <version>-config.tgz, unpack it,
-  edit config/targets, and go (run config/install.sh).  The scipt will
+  edit config/targets, and go (run config/install.sh).  The script will
   fetch everything else that it might need all by itself.
 
   For CVS users, this mechanism is not relevant for source archives, but
