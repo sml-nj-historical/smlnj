@@ -68,6 +68,8 @@ struct
     val mem = T.Region.memory
     val stack = T.Region.memory
 
+    val paramAreaOffset = 68
+
     fun LI i = T.LI (T.I.fromInt (32, i))
 
     val GP = C.GPReg
@@ -93,7 +95,7 @@ struct
 	      | _ => T.ADD (32, x, T.LI d')
 	end
 
-    fun argaddr n = addli (spreg, 68+4*n)
+    fun argaddr n = addli (spreg, paramAreaOffset + 4*n)
 
     (* temp location for transfers through memory *)
     val tmpaddr = argaddr 1
@@ -134,7 +136,7 @@ struct
 	    pack (0, 1, l)
 	end
 
-    fun genCall { name, proto, structRet, saveRestoreDedicated,
+    fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
 		  callComment, args } = let
 	val { conv, retTy, paramTys } = proto
 	val _ = case conv of
