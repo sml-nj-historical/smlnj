@@ -101,6 +101,8 @@ structure Core =
     exception Subscript  	(* for all bounds checking *)
     exception Size 
 
+    exception Plugin
+
     local exception NoProfiler
     in val profile_register =
       ref(fn s:string => (raise NoProfiler):int*int array*int ref)
@@ -303,13 +305,18 @@ structure Core =
     val profile_sregister = ref(fn (x:Assembly.object,s:string)=>x)
 
     (* plugin stuff: *)
-    fun mkplugin (stamp: string, str:Assembly.object) : plugin =
-	InLine.cast (stamp, str)
+    fun mkplugin (stamp: string, str: 'a) : plugin = let
+	val obj : Assembly.object = InLine.cast str
+    in
+	InLine.cast (stamp, obj)
+    end
 
-    fun getplugin (stamp: string, p: plugin) = let
+    fun getplugin (stamp: string, p: plugin) : Assembly.object = let
 	val (origstamp: string, str: Assembly.object) = InLine.cast p
     in
 	if stringequal (stamp, origstamp) then str
-	else raise Bind			(* FIXME *)
+	else raise Plugin
     end
+
+    val cast : 'a -> 'b = InLine.cast
   end

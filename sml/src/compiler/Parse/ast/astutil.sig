@@ -16,6 +16,7 @@ signature ASTUTIL =
     val bogusID : Symbol.symbol
     val exnID : Symbol.symbol
     val pluginID : Symbol.symbol
+    val castID : Symbol.symbol list
     val itsym : Symbol.symbol list
 
     val unitExp : Ast.exp

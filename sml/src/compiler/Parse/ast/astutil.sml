@@ -14,6 +14,7 @@ val antiquoteDcon = [strSymbol "SMLofNJ", varSymbol "ANTIQUOTE"]
 val arrowTycon = tycSymbol "->"
 val exnID = Symbol.tycSymbol "exn"
 val pluginID = Symbol.varSymbol "<plugin>"
+val castID = [strSymbol "_Core", varSymbol "cast"]
 val bogusID = varSymbol "BOGUS"
 val itsym = [varSymbol "it"]
 

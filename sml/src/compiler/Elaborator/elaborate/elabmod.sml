@@ -735,7 +735,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			    compInfo = compInfo }
     in
 	case LU.lookVal (env, SP.SPATH [obj], error region) of
-	    V.VAL (pv as V.VALvar { access, typ, ... }) => let
+	    V.VAL (pv as V.VALvar { access, ... }) => let
 
 		(* a plugin is a pair of "stamp" * "structure" *)
 		val resStr = M.STR { sign = sg, rlzn = rlzn,
