@@ -28,7 +28,7 @@ the system:
 Basis:
 	- Implemented IntInf.
 	- Made LargeInt a projection of IntInf (by filtering through INTEGER).
-	- Added some missing Real54 operations, most notably Real.toLargeInt.
+	- Added some missing Real64 operations, most notably Real.toLargeInt.
 	- Added FixedInt as a synonym for Int32.
 
 compiler:
@@ -51,17 +51,17 @@ compiler:
 
 	* A word about conversion primops:
 	If conversions involving intinf do not cancel out during
-	CPS contract, the compiler must insert calls to Core functions.
+	CPS contract, then the compiler must insert calls to Core functions.
 	Since all core access must be resolved already during the FLINT
 	translate phase, it would be too late a the time of CPS contract
-	to add now Core calls.  For this reason, conversion primops
+	to add new Core calls.  For this reason, conversion primops
 	for intinf carry two arguments:  1. the numeric argument that
 	they are supposed to convert, and 2. the Core function that
 	can help with this conversion if necessary.  If CPS contract
-	eliminates the primop, the Core functions become dead and go
-	away.  Intinf conversion primops that do not get eliminated
-	by CPS contract get rewritten into calls of those core functions
-	by a separate, new phase.
+	eliminates a primop, then the associated Core function becomes
+        dead and goes away.  Intinf conversion primops that do not get
+        eliminated by CPS contract get rewritten into calls of their
+        core functions by a separate, new phase.
 
 interactive system:
 	- Control.Print.intinfDepth controls max length of intinf constants
@@ -82,7 +82,7 @@ CKIT:
 	FixedInt.
 
 Throughout the code:
-        Started useng IntInf.int literals and built-in operations
+        Started using IntInf.int literals and built-in operations
 	(e.g., comparison with 0) where this seems appropriate.
 
 
