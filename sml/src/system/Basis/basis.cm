@@ -65,6 +65,7 @@ Library
 	signature GC
 	signature SYS_INFO
 	signature WEAK
+	signature SUSP
 	signature SML_OF_NJ
 
 	signature UNSAFE_OBJECT

@@ -10,4 +10,5 @@ structure SMLofNJ : SML_OF_NJ =
     structure Internals = Internals
     structure SysInfo = SysInfo
     structure Weak = Weak
+    structure Susp = Susp
   end

@@ -64,6 +64,7 @@ Group
 	signature GC
 	signature SYS_INFO
 	signature WEAK
+	signature SUSP
 	signature SML_OF_NJ
 
 	signature UNSAFE_OBJECT
@@ -147,6 +148,7 @@ Group
 	structure Internals
 	structure SysInfo
 	structure Weak
+	structure Susp
 	structure Lazy
 
 #if defined(OPSYS_UNIX) orelse defined(OPSYS_WIN32)
@@ -218,6 +220,8 @@ is
 	NJ/signals.sml
 	NJ/weak.sig
 	NJ/weak.sml
+	NJ/susp.sig
+	NJ/susp.sml
 	NJ/export.sig
 	NJ/wrap-export.sml
 	NJ/export.sml

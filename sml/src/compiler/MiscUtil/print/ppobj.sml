@@ -81,10 +81,10 @@ fun decon(obj, {rep,name,domain}) = (case rep
            (case domain 
              of SOME t => 
                  if (isRecTy t) orelse (isUbxTy t)
-                 then obj else Obj.nth(obj, 0)
+                 then obj else (Obj.nth(obj, 0) handle e => raise e)
               | _ => bug "decon -- unexpected conrep-domain")
 
-       | A.TAGGED _ => Obj.nth(obj,1)
+       | A.TAGGED _ => (Obj.nth(obj,1) handle e => raise e)
 (*     | A.TAGGEDREC _ =>
 	   let (* skip first element, i.e. discard tag *)
 	       val a = tuple obj
@@ -98,7 +98,7 @@ fun decon(obj, {rep,name,domain}) = (case rep
        | A.CONSTANT _ => Obj.toObject ()
        | A.TRANSPARENT => obj
        | A.REF => !(Obj.toRef obj)
-       | A.EXN _ => Obj.nth(obj,0)
+       | A.EXN _ => (Obj.nth(obj,0) handle e => raise e)
        | A.LISTCONS => obj 
        | A.LISTNIL => bug "decon - constant datacon in decon"
        | A.SUSP _ => obj

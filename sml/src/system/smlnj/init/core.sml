@@ -168,26 +168,34 @@ structure Core =
        *  order to implement lazyness (in particular, in order to be
        *  able to compute pids for them.) *)
 
-      (* LAZY:  The following is hard-wired and needs to track the object
-       * descriptor definitions.
-       *)
-       val TSUS = 0;  (* == ObjectDesc.special_unevaled_susp *)
-       val TSES = 1;  (* == ObjectDesc.special_evaled_susp *)
+       local
+	   structure Susp :> sig
+	       type 'a susp
+	       val delay : (unit -> 'a) -> 'a susp
+	       val force : 'a susp -> 'a
+	   end = struct
+	   (* LAZY:  The following is hard-wired and needs to track the object
+	    * descriptor definitions.
+	    *)
+	   val TSUS = 0;  (* == ObjectDesc.special_unevaled_susp *)
+	   val TSES = 1;  (* == ObjectDesc.special_evaled_susp *)
 
-       datatype 'a susp = Something of 'a  (* Just a hack for bootstrapping *)
+	   (* Just a hack for bootstrapping: *)
+	   datatype 'a susp = Something of 'a
 
-       fun delay (f : unit -> 'a) = (InLine.mkspecial(TSUS , f)):('a susp)
-       fun force (x : 'a susp) =
-	     if InLine.i31eq((InLine.getspecial x),TSUS)
-	      then let
-		 val y : 'a = recSub (InLine.cast x, 0) ()
-		 in
-		   (InLine.cast x) := y;
-		   InLine.setspecial (InLine.cast x, TSES);
-		   y
-		 end
+	   fun delay (f : unit -> 'a) = InLine.mkspecial(TSUS,f): 'a susp
+	   fun force (x : 'a susp) =
+	       if InLine.i31eq((InLine.getspecial x),TSUS)
+	       then let val y : 'a = recSub (InLine.cast x, 0) ()
+		    in InLine.cast x := y;
+		       InLine.setspecial(InLine.cast x, TSES);
+		       y
+		    end
 	       else recSub (InLine.cast x, 0)
-
+	   end
+       in
+       open Susp
+       end
 
        (* equality primitives *)
 
