@@ -1,3 +1,8 @@
+2000-01-31  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* opt/fcontract.sml (fcLet/cassoc): don't do a second pass over the output
+	  of the rewrite.  It leads to quadratic behavior for `x1 andalso x2 ...'.
+
 1999-07-10  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* opt/split.sml: don't burp when you can't split.
