@@ -20,6 +20,8 @@
 
 ;;; Code:
 
+(require 'cl)
+
 (unless (fboundp 'set-keymap-parents)
   (defun set-keymap-parents (m parents)
     (if (keymapp parents) (setq parents (list parents)))
@@ -63,6 +65,42 @@ If DIR-FLAG is non-nil, create a new empty directory instead of a file."
       nil)
     file)))
 
+
+
+(unless (fboundp 'regexp-opt)
+  (defun regexp-opt (strings &optional paren)
+    (let ((open (if paren "\\(" "")) (close (if paren "\\)" "")))
+      (concat open (mapconcat 'regexp-quote strings "\\|") close))))
+
+
+;;;; 
+;;;; Custom
+;;;; 
+
+;; doesn't exist in Emacs < 20.1
+(unless (fboundp 'set-face-bold-p)
+  (defun set-face-bold-p (face v &optional f)
+    (when v (ignore-errors (make-face-bold face)))))
+(unless (fboundp 'set-face-italic-p)
+  (defun set-face-italic-p (face v &optional f)
+    (when v (ignore-errors (make-face-italic face)))))
+
+;; doesn't exist in Emacs < 20.1
+(ignore-errors (require 'custom))
+(unless (fboundp 'defgroup)
+  (defmacro defgroup (&rest rest) ()))
+(unless (fboundp 'defcustom)
+  (defmacro defcustom (sym val str &rest rest) `(defvar ,sym ,val ,str)))
+(unless (fboundp 'defface)
+  (defmacro defface (sym val str &rest rest)
+    `(defvar ,sym (make-face ',sym) ,str)))
+
+(defvar :group ':group)
+(defvar :type ':type)
+(defvar :copy ':copy)
+(defvar :dense ':dense)
+(defvar :inherit ':inherit)
+(defvar :suppress ':suppress)
 
 (provide 'sml-compat)
 
