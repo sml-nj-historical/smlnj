@@ -1,10 +1,9 @@
 short term:
-- improve noweb tool (witness files, subdir)
-- change ml-yacc tool so that options can be passed independently to
-  .sig file and to .sml file
 - come up with some version of ml-build that does not produce a new
   heap image if nothing had to be recompiled
 - remove unfortunate dependence of SrcPath module on Servers module
+- binfile module (in compiler) should not have to worry about unpickling;
+  (the current interface is just wrong)
 
 long term:
 - Try to generalize CM by abstracting from programming language (and compiler),

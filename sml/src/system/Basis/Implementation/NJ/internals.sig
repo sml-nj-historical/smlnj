@@ -30,7 +30,8 @@ signature INTERNALS =
   (* back-tracing control (experimental; M.Blume, 06/2000) *)
     structure BTrace : sig
 	val install : { corefns: { save: unit -> unit -> unit,
-				   push: unit -> unit -> unit,
+				   push: int * int -> unit -> unit,
+				   nopush: int * int -> unit,
 				   add: int * int -> unit,
 				   reserve: int -> int,
 				   register: int * int * string -> unit,

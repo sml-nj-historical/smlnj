@@ -37,6 +37,7 @@ structure BTrace :> BTRACE = struct
 
     val i_i_Ty = BT.intTy --> BT.intTy
     val ii_u_Ty = BT.tupleTy [BT.intTy, BT.intTy] --> BT.unitTy
+    val ii_u_u_Ty = ii_u_Ty --> BT.unitTy
     val u_u_Ty = BT.unitTy --> BT.unitTy
     val u_u_u_Ty = BT.unitTy --> u_u_Ty
     val iis_u_Ty = BT.tupleTy [BT.intTy, BT.intTy, BT.unitTy] --> BT.unitTy
@@ -96,12 +97,14 @@ structure BTrace :> BTRACE = struct
 	val bt_register = getCoreVal "bt_register"
 	val bt_save = getCoreVal "bt_save"
 	val bt_push = getCoreVal "bt_push"
+	val bt_nopush = getCoreVal "bt_nopush"
 	val bt_add = getCoreVal "bt_add"
 	val matchcon = getCoreCon "Match"
 
 	val bt_register_var = tmpvar ("<bt_register>", iis_u_Ty)
 	val bt_save_var = tmpvar ("<bt_save>", u_u_u_Ty)
-	val bt_push_var = tmpvar ("<bt_push>", u_u_u_Ty)
+	val bt_push_var = tmpvar ("<bt_push>", ii_u_u_Ty)
+	val bt_nopush_var = tmpvar ("<bt_nopush>", ii_u_Ty)
 	val bt_add_var = tmpvar ("<bt_add>", ii_u_Ty)
 	val bt_reserve_var = tmpvar ("<bt_reserve>", i_i_Ty)
 	val bt_module_var = tmpvar ("<bt_module>", BT.intTy)
@@ -113,9 +116,14 @@ structure BTrace :> BTRACE = struct
 	val pushexp = A.APPexp (VARexp bt_push_var, uExp)
 	val saveexp = A.APPexp (VARexp bt_save_var, uExp)
 
-	fun mkaddexp id = A.APPexp (VARexp bt_add_var,
-				    EU.TUPLEexp [VARexp bt_module_var,
-						 INTexp id])
+	fun mkmodidexp fctvar id =
+	    A.APPexp (VARexp fctvar,
+		      EU.TUPLEexp [VARexp bt_module_var, INTexp id])
+
+	val mkaddexp = mkmodidexp bt_add_var
+	val mkpushexp = mkmodidexp bt_push_var
+	val mknopushexp = mkmodidexp bt_nopush_var
+
 	fun mkregexp (id, s) =
 	    A.APPexp (VARexp bt_register_var,
 		      EU.TUPLEexp [VARexp bt_module_var,
@@ -124,9 +132,17 @@ structure BTrace :> BTRACE = struct
 	val regexps = ref []
 	val next = ref 0
 
-	fun mkadd (id, s) =
-	    (regexps := mkregexp (id, s) :: !regexps;
-	     mkaddexp id)
+	fun newid s = let
+	    val id = !next
+	in
+	    next := id + 1;
+	    regexps := mkregexp (id, s) :: !regexps;
+	    id
+	end
+
+	val mkadd = mkaddexp o newid
+	val mkpush = mkpushexp o newid
+	val mknopush = mknopushexp o newid
 
 	fun VALdec (v, e) =
 	    A.VALdec [A.VB { pat = A.VARpat v, exp = e,
@@ -141,11 +157,33 @@ structure BTrace :> BTRACE = struct
 	  | is_prim_exp (A.MARKexp (e, _)) = is_prim_exp e
 	  | is_prim_exp _ = false
 
-	fun is_raise_exp (A.RAISEexp _) = true
+	fun is_raise_exp (A.RAISEexp (e, _)) =
+	    let fun is_simple_exn (A.VARexp _) = true
+		  | is_simple_exn (A.CONexp _) = true
+		  | is_simple_exn (A.CONSTRAINTexp (e, _)) = is_simple_exn e
+		  | is_simple_exn (A.MARKexp (e, _)) = is_simple_exn e
+		  | is_simple_exn (A.RAISEexp (e, _)) =
+		    is_simple_exn e	(* !! *)
+		  | is_simple_exn _ = false
+	    in
+		is_simple_exn e
+	    end
 	  | is_raise_exp (A.MARKexp (e, _) |
 			  A.CONSTRAINTexp (e, _) |
 			  A.SEQexp [e]) = is_raise_exp e
 	  | is_raise_exp _ = false
+
+	fun mkDescr ((n, r), what) = let
+	    fun name ((s, 0), a) = Symbol.name s :: a
+	      | name ((s, m), a) = Symbol.name s :: "[" ::
+				   Int.toString (m + 1) :: "]" :: a
+	    fun dot ([z], a) = name (z, a)
+	      | dot (h :: t, a) = dot (t, "." :: name (h, a))
+	      | dot ([], a) = impossible (what ^ ": no path")
+	    val ms = matchstring r
+	in
+	    concat (ms :: ": " :: dot (n, []))
+	end
 
 	fun i_exp _ loc (A.RECORDexp l) =
 	    A.RECORDexp (map (fn (l, e) => (l, i_exp false loc e)) l)
@@ -155,20 +193,24 @@ structure BTrace :> BTRACE = struct
 	    A.VECTORexp (map (i_exp false loc) l, t)
 	  | i_exp tail loc (A.PACKexp (e, t, tcl)) =
 	    A.PACKexp (i_exp tail loc e, t, tcl)
-	  | i_exp tail loc (e as A.APPexp (f, a)) =
-	    if tail orelse is_prim_exp f then
-		A.APPexp (i_exp false loc f, i_exp false loc a)
-	    else let
-		    val mainexp = A.APPexp (i_exp false loc f,
-					    i_exp false loc a)
-		    val ty = Reconstruct.expType e
-		    val result = tmpvar ("tmpresult", ty)
-		    val restore = tmpvar ("tmprestore", u_u_Ty)
-		in
-		    LETexp (restore, pushexp,
-			    LETexp (result, mainexp,
-				    A.SEQexp [AUexp restore, VARexp result]))
-		end
+	  | i_exp tail loc (e as A.APPexp (f, a)) = let
+		val mainexp =  A.APPexp (i_exp false loc f, i_exp false loc a)
+	    in
+		if is_prim_exp f then mainexp
+		else if tail then A.SEQexp [mknopush (mkDescr (loc, "GOTO")),
+					    mainexp]
+		else let
+			val ty = Reconstruct.expType e
+			val result = tmpvar ("tmpresult", ty)
+			val restore = tmpvar ("tmprestore", u_u_Ty)
+			val pushexp = mkpush (mkDescr (loc, "CALL"))
+		    in
+			LETexp (restore, pushexp,
+				LETexp (result, mainexp,
+					A.SEQexp [AUexp restore,
+						  VARexp result]))
+		    end
+	    end
 	  | i_exp tail loc (A.HANDLEexp (e, A.HANDLER (A.FNexp (rl, t)))) = let
 		val restore = tmpvar ("tmprestore", u_u_Ty)
 		fun rule (r as A.RULE (p, e)) =
@@ -185,18 +227,7 @@ structure BTrace :> BTRACE = struct
 	  | i_exp tail loc (A.CASEexp (e, rl, b)) =
 	    A.CASEexp (i_exp false loc e, map (i_rule tail loc) rl, b)
 	  | i_exp tail loc (A.FNexp (rl, t)) = let
-		fun name ((s, 0), a) = Symbol.name s :: a
-		  | name ((s, m), a) = Symbol.name s :: "[" ::
-				     Int.toString (m + 1) :: "]" :: a
-		fun dot ([z], a) = name (z, a)
-		  | dot (h :: t, a) = dot (t, "." :: name (h, a))
-		  | dot ([], a) = impossible "FNexp: no path"
-		val (n, r) = loc
-		val ms = matchstring r
-		val descr = concat (ms :: ": " :: dot (n, []))
-		val id = !next
-		val _ = next := id + 1
-		val addexp = mkadd (id, descr)
+		val addexp = mkadd (mkDescr (loc, "FN"))
 		val arg = tmpvar ("fnvar", t)
 		val rl' = map (i_rule true loc) rl
 		val re = let
@@ -305,6 +336,7 @@ structure BTrace :> BTRACE = struct
 						INTexp (!next))),
 			      VALdec (bt_save_var, AUexp bt_save),
 			      VALdec (bt_push_var, AUexp bt_push),
+			      VALdec (bt_nopush_var, AUexp bt_nopush),
 			      VALdec (bt_register_var, AUexp bt_register),
 			      VALdec (bt_add_var,
 				      A.SEQexp (!regexps @ [AUexp bt_add]))],

@@ -263,8 +263,9 @@ structure Core =
 	    val hook =
 		ref { reserve = fn (nfct: int) => 0,
 		      save = fn () => fn () => (),
-		      push = fn () => fn () => (),
+		      push = fn (module: int, loc: int) => fn () => (),
 		      add = fn (module: int, fct: int) => (),
+		      nopush = fn (module: int, loc: int) => (),
 		      register = fn (module: int, fct: int, s: string) => (),
 		      report = fn () => fn () => ([]: string list) }
 	    val ! = InLine.!
@@ -275,6 +276,7 @@ structure Core =
 	    fun bt_reserve () = #reserve (!hook)
 	    fun bt_save () = #save (!hook)
 	    fun bt_push () = #push (!hook)
+	    fun bt_nopush () = #nopush (!hook)
 	    fun bt_add () = #add (!hook)
 	    fun bt_register () = #register (!hook)
 	    fun bt_report () = #report (!hook)

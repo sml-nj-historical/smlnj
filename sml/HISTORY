@@ -12,6 +12,21 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Matthias Blumen
+Date: 2000/06/29 16:04:00 JST
+Tag: blume-20000629-yacctool
+Description:
+
+Changes:
+
+1. Class "mlyacc" now takes separate arguments to pass options to
+   generated .sml- and .sig-files independently.
+2. Corresponding CM manual updates.
+3. BTrace module now also reports call sites.  (However, for loop clusters
+   it only shows from where the cluster was entered.)  There are associated
+   modifications to core.sml, internals.{sig,sml}, btrace.sml, and btimp.sml.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/06/27 16:51:00 JST
 Tag: blume-20000627-noweb

@@ -1218,9 +1218,18 @@ The ML-Yacc tool is responsible for files that are input to the
 ML-Yacc parser generator.  Its class name is {\tt mlyacc}.  Recognized
 file name suffixes are {\tt .grm} and {\tt .y}.  For a source file
 $f$, the tool produces two targets $f${\tt .sig} and $f${\tt .sml},
-both of which are always treated as ML source files.  Parameters are
-passed on without change to the $f${\tt .sml} file but not to the
-$f${\tt .sig} file.
+both of which are always treated as ML source files.  The {\tt mlyacc}
+class accepts two optional tool parameters labeled {\tt sigoptions}
+and {\tt smloptions}.  They specify tool options to be passed on to
+the generated {\tt .sig}- and {\tt .sml}-files, respectively.
+Example\footnote{Since the generated {\tt .sig}-file contains nothing
+more than an ML signature definition, it is typically not very useful
+to pass any options to it.}:
+
+\begin{verbatim}
+    lang.grm (sigoptions:(setup:(pre:"print \"compiling lang.grm.sig\\n\";"))
+              smloptions:(private))
+\end{verbatim}
 
 The tool invokes the {\tt ml-yacc} command if the targets are
 ``outdated''.  A target is outdated if it is missing or older than the
