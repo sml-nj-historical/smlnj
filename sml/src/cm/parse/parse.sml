@@ -25,22 +25,7 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    fun parse group = let
-
-	(* recParse returns a group (not an option)
-	 * and re-raises LrParser.ParseError.
-	 * This exception will be handled by the surrounding
-	 * call to parse.
-	 * This function is used to parse aliases and sub-groups. *)
-	fun recParse p =
-	    case parse p of
-		NONE => raise LrParser.ParseError
-	      | SOME res => res
-
-	fun doMember (p, c) =
-	    CMSemant.member recParse { sourcepath = p,
-				       group = group,
-				       class = c }
+    fun parse' (group, groupstack) = let
 
 	val currentDir = AbsPath.dir group
 	val context = AbsPath.relativeContext (AbsPath.dir group)
@@ -52,6 +37,56 @@ structure CMParse :> CMPARSE = struct
 	val sourceMap = #sourceMap source
 	fun error region m =
 	    EM.error source region EM.COMPLAIN m EM.nullErrorBody
+
+	(* recParse returns a group (not an option)
+	 * and re-raises LrParser.ParseError.
+	 * This exception will be handled by the surrounding
+	 * call to parse.
+	 * This function is used to parse aliases and sub-groups. *)
+	fun recParse (p1, p2) p =
+	    case parse' (p, (group, (source, p1, p2)) :: groupstack) of
+		NONE => raise LrParser.ParseError
+	      | SOME res => res
+
+	fun doMember (p, p1, p2, c) =
+	    CMSemant.member (recParse (p1, p2)) { sourcepath = p,
+						  group = group,
+						  class = c }
+
+	(* checking for cycles among groups and printing them nicely *)
+	val _ = let
+	    fun findCycle ([], _) = []
+	      | findCycle ((h as (g, (s, p1, p2))) :: t, cyc) =
+		if AbsPath.compare (g, group) = EQUAL then rev (h :: cyc)
+		else findCycle (t, h :: cyc)
+	    fun report ((g, (s, p1, p2)), hist) = let
+		fun pphist pps = let
+		    fun loop (_, []) = ()
+		      | loop (g0, (g, (s, p1, p2)) :: t) = let
+			    val s = EM.matchErrorString s (p1, p2)
+			in
+			    PrettyPrint.add_string pps s;
+			    PrettyPrint.add_string pps ": ";
+			    PrettyPrint.add_string pps (AbsPath.spec g0);
+			    PrettyPrint.add_newline pps;
+			    loop (g, t)
+			end
+		in
+		    PrettyPrint.add_newline pps;
+		    PrettyPrint.begin_block pps PrettyPrint.CONSISTENT 4;
+		    loop (g, hist);
+		    PrettyPrint.end_block pps
+		end
+	    in
+		EM.error s (p1, p2) EM.COMPLAIN
+		   ("group hierarchy forms a cycle with " ^ AbsPath.spec group)
+		   pphist
+	    end
+	in
+	    case findCycle (groupstack, []) of
+		[] => ()
+	      | h :: t => report (h, t)
+	end
 
 	val lexarg = let
 	    (* local state *)
@@ -119,6 +154,9 @@ structure CMParse :> CMPARSE = struct
 			   (context, error, recParse, doMember))
     in
 	TextIO.closeIn stream;
-	SOME parseResult
+	if !(#anyErrors source) then NONE
+	else SOME parseResult
     end handle LrParser.ParseError => NONE
+
+    fun parse group = parse' (group, [])
 end

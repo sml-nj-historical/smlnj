@@ -55,8 +55,8 @@ structure S = CMSemant
 %arg (context, error, recParse, doMember) :
     S.context *
     (pos * pos -> string -> unit) *
-    (S.pathname -> S.group) *
-    (S.pathname * S.cm_symbol option -> S.members)
+    (pos * pos -> S.pathname -> S.group) *
+    (S.pathname * pos * pos * S.cm_symbol option -> S.members)
 %start description
 %eop EOF
 %noshift EOF
@@ -81,7 +81,9 @@ structure S = CMSemant
 description : alias				(alias)
 	    | group				(group)
 
-alias : ALIAS pathname				(recParse pathname)
+alias : ALIAS pathname				(recParse
+						 (pathnameleft, pathnameright)
+						 pathname)
 
 group : GROUP
         opt_perms exports IS members	        (S.group
@@ -122,8 +124,14 @@ else_exports : ENDIF				(S.emptyExports)
 members : (* empty *)				(S.emptyMembers)
 	| member members			(S.members (member, members))
 
-member : pathname				(doMember (pathname, NONE))
-       | pathname COLON sym			(doMember (pathname, SOME sym))
+member : pathname				(doMember (pathname,
+							   pathnameleft,
+							   pathnameright,
+							   NONE))
+       | pathname COLON sym			(doMember (pathname,
+							   pathnameleft,
+							   pathnameright,
+							   SOME sym))
        | IF exp guarded_members			(S.guarded_members
 						 (exp, guarded_members))
        | ERROR                                  (S.error_member ERROR)

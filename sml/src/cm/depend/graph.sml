@@ -30,6 +30,6 @@ structure DependencyGraph = struct
 		   dangling: node list }
 
 
-    fun describeNode (PNODE p) = Dummy.f ()
+    fun describeNode (PNODE p) = Primitive.toString p
       | describeNode (NODE { smlinfo, ... }) = SmlInfo.describe smlinfo
 end

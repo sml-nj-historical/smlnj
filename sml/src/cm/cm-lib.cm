@@ -29,6 +29,7 @@ is
 	util/sources.cm
 
 	../compiler/viscomp-lib.cm
+	../comp-lib/UTIL.cm
 
 	ml-yacc-lib.cm
 
