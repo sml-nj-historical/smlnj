@@ -347,31 +347,10 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 
 #  if defined(OPSYS_LINUX)
     /** X86, LINUX **/
-/* sigcontext taken from /usr/src/linux/include/linux/signal.h */
-struct sigcontext {
-	unsigned short gs, __gsh;
-	unsigned short fs, __fsh;
-	unsigned short es, __esh;
-	unsigned short ds, __dsh;
-	unsigned long edi;
-	unsigned long esi;
-	unsigned long ebp;
-	unsigned long esp;
-	unsigned long ebx;
-	unsigned long edx;
-	unsigned long ecx;
-	unsigned long eax;
-	unsigned long trapno;
-	unsigned long err;
-	unsigned long eip;
-	unsigned short cs, __csh;
-	unsigned long eflags;
-	unsigned long esp_at_signal;
-	unsigned short ss, __ssh;
-	unsigned long i387;
-	unsigned long oldmask;
-	unsigned long cr2;
-};
+#    ifndef sigcontext_struct
+#      define sigcontext_struct sigcontext
+#    endif
+#    include <asm/sigcontext.h>
 
 #define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
