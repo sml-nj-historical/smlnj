@@ -424,6 +424,8 @@ end = struct
 	      sa ("ml-lex", NONE)
 	  | one "ml-burg" =
 	      sa ("ml-burg", NONE)
+	  | one "heap2asm" =
+	      sa ("heap2asm", NONE)
 	  | one "ml-nlffigen" =
 	      salist := (fn () => sa ("ml-nlffigen", NONE))
 			:: !salist

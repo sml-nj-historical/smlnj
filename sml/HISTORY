@@ -14,6 +14,35 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2005/01/14 18:00:00 CST
+Tag: blume-20050114-heap2exec
+Description:
+
+Implemented new (but still experimental) heap2exec facility.  This is
+tested under Mac OS X and should work under Linux (will test shortly).
+It will probably also work on the Sparc (will test some time later).
+
+  - removed old "HACKED_STANDALONE" hack from runtime
+
+To be able to test this, uncomment the request for "heap2asm" in
+config/targets prior to installation.  (Notice that this is different
+from "heap2exec" mentioned below.  Not a typo.)
+
+To perform an actual test, run the command
+
+   $ bin/heap2exec heapfile execfile
+
+(You can put heap2exec on your shell's path.)
+
+For example, run
+
+  $ bin/heap2exec bin/.heap/ml-yacc.ppc-darwin mly
+
+This will create a standalone executable called "mly" which you can
+then invoke directly as a command.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2005/01/07 11:44:00 CST
 Tag: blume-20050107-mlstring
 Description:

@@ -32,9 +32,6 @@ bool_t		GCMessages = FALSE;
 char		**RawArgs;
 char		**CmdLineArgs;	/* does not include the command name (argv[0]) */
 char		*MLCmdName;	/* the command name used to invoke the runtime */
-#ifdef HACKED_STANDALONE
-bool_t          StandAlone = TRUE;
-#endif
 
 /* local variables */
 PVT bool_t	isBoot = FALSE;	/* true if we should bootstrap a system */
@@ -99,9 +96,6 @@ PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams)
     RawArgs = argv;
     CmdLineArgs = NEW_VEC(char *, argc);
     MLCmdName = *argv++;
-#ifdef HACKED_STANDALONE
-    LoadImage = MLCmdName;
-#endif
     nextArg = CmdLineArgs;
     while (--argc > 0) {
 	char	*arg = *argv++;
@@ -124,16 +118,10 @@ PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams)
 	    else if (MATCH("load")) {
 		CHECK("load");
 		LoadImage = optionArg;
-#ifdef HACKED_STANDALONE
-		LoadImage = MLCmdName;
-#endif
 	    }
 	    else if (MATCH("cmdname")) {
 		CHECK("cmdname");
 		MLCmdName = optionArg;
-#ifdef HACKED_STANDALONE
-		StandAlone = FALSE;
-#endif
 	    }
 #ifdef MP_SUPPORT
 	    else if (MATCH("nprocs")) {

@@ -186,9 +186,6 @@ extern char	*MLCmdName;	/* the command name used to invoke the runtime */
 extern bool_t	SilentLoad;
 extern bool_t   DumpObjectStrings;
 extern bool_t	GCMessages;
-#ifdef HACKED_STANDALONE
-extern bool_t   StandAlone;
-#endif
 
 /* The table of virtual processor ML states */
 extern vproc_state_t	*VProc[];
@@ -196,5 +193,9 @@ extern int		NumVProcs;
 
 #endif /* !_ASM_ */
 
-#endif /* !_ML_BASE_ */
+#ifndef HEAP_IMAGE_SYMBOL
+#define HEAP_IMAGE_SYMBOL       "smlnj_heap_image"
+#define HEAP_IMAGE_LEN_SYMBOL   "smlnj_heap_image_len"
+#endif
 
+#endif /* !_ML_BASE_ */

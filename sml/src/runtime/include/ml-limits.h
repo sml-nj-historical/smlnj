@@ -10,10 +10,10 @@
 
 #include "ml-base.h"
 
+/* default image: NULL (means: try to find in-core image using dlopen/dlsym) */
 #ifndef DFLT_IMAGE
-#define DFLT_IMAGE		"sml-image"
+#define DFLT_IMAGE		NULL
 #endif
-
 
 /* the maximum length of a boot-file pathname */
 #ifndef MAX_BOOT_PATH_LEN

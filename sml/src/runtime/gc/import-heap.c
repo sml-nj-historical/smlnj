@@ -23,9 +23,8 @@
 #include "heap-input.h"
 #include "heap-io.h"
 
-#ifndef SEEK_SET
-#  define SEEK_SET	0
-#  define SEEK_END	2
+#ifdef DLOPEN
+#include <dlfcn.h>
 #endif
 
 #ifdef DEBUG
@@ -68,10 +67,6 @@ PVT bo_reloc_t *AddrToRelocInfo (aid_t *, addr_tbl_t *, aid_t, Addr_t);
 
 #define READ(bp,obj)	HeapIO_ReadBlock(bp, &(obj), sizeof(obj))
 
-#ifdef HACKED_STANDALONE
-PVT long	heapStart = -1;
-#endif
-
 
 /* ImportHeapImage:
  */
@@ -84,42 +79,48 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
     ml_vproc_image_t	image;
     inbuf_t		inBuf;
 
-  /* Resolve the name of the image.  If the file exists use it, otherwise try the
-   * pathname with the machine ID as an extension.
-   */
-    if ((inBuf.file = fopen(fname, "rb")) != NULL) {
+    if (fname != NULL) {
+      /* Resolve the name of the image.  If the file exists use it, otherwise try the
+       * pathname with the machine ID as an extension.
+       */
+      if ((inBuf.file = fopen(fname, "rb")) != NULL) {
 	if (! SilentLoad)
-	    Say("loading %s ", fname);
-    }
-    else {
+	  Say("loading %s ", fname);
+      }
+      else {
 	char	buf[1024];
 
 	if (QualifyImageName(strcpy(buf, fname))
-	&& ((inBuf.file = fopen(buf, "rb")) != NULL)) {
-	    if (! SilentLoad)
-		Say("loading %s ", buf);
+	    && ((inBuf.file = fopen(buf, "rb")) != NULL)) {
+	  if (! SilentLoad)
+	    Say("loading %s ", buf);
 	}
 	else
-	    Die ("unable to open heap image \"%s\"\n", fname);
-    }
+	  Die ("unable to open heap image \"%s\"\n", fname);
+      }
 
+      inBuf.needsSwap = FALSE;
+      inBuf.buf	    = NIL(Byte_t *);
+      inBuf.nbytes    = 0;
+    } else {
+      /* fname == NULL, so try to find an in-core heap image */
+#ifdef DLOPEN
+      void *lib = dlopen (NULL, RTLD_LAZY);
+      void *vimg, *vimglenptr;
+      if ((vimg = dlsym(lib,HEAP_IMAGE_SYMBOL)) == NULL)
+	Die("no in-core heap image found\n");
+      if ((vimglenptr = dlsym(lib,HEAP_IMAGE_LEN_SYMBOL)) == NULL)
+	Die("unable to find length of in-core heap image\n");
 
-    inBuf.needsSwap = FALSE;
-    inBuf.buf	    = NIL(Byte_t *);
-    inBuf.nbytes    = 0;
-
-#ifdef HACKED_STANDALONE
-  /* note that the seek may (will) succeed even if there's nothing there */
-  /* for now, we'll be content to just fail on the reads below */
-    if (StandAlone) {
-	if ((fseek (inBuf.file, -sizeof(long), SEEK_END) != 0)
-	||  (fread(&heapStart, sizeof(long), 1, inBuf.file) != 1)
-	||  (fseek (inBuf.file, heapStart, SEEK_SET) != 0)) {
-	    Die ("unable to seek to internal image in stand-alone at %x\n",
-		heapStart);
-	}
-    }
+      inBuf.file = NULL;
+      inBuf.needsSwap = FALSE;
+      inBuf.base = vimg;
+      inBuf.buf = inBuf.base;
+      inBuf.nbytes = *(long*)vimglenptr;
+#else
+      Die("in-core heap images not implemented\n");
 #endif
+    }
 
     READ(&inBuf, imHdr);
     if (imHdr.byteOrder != ORDER)
@@ -193,7 +194,8 @@ SayDebug("arg = %#x : [%#x, %#x]\n", msp->ml_arg, REC_SEL(msp->ml_arg, 0), REC_S
     }
 
     FREE (externs);
-    fclose (inBuf.file);
+    if (inBuf.file != NULL)
+      fclose (inBuf.file);
 
     if (! SilentLoad)
 	Say(" done\n");
@@ -291,22 +293,10 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
        */
 	for (j = 0;  j < NUM_ARENAS;  j++) {
 	    arena_t		*ap = gen->arena[j];
-	    long		offset;
 
 	    if (p->info.o.sizeB > 0) {
 		addrOffset[i][j] = (Addr_t)(ap->tospBase) - (Addr_t)(p->info.o.baseAddr);
-#ifdef HACKED_STANDALONE
-	      /* assuming here that ReadHeap is only called from ImportHeapImage
-	       * and that ImportHeapImage is only called from LoadML on startup.
-               * Otherwise, StandAlone needs to be set to FALSE after the intial
-	       * load; or need extra offset param here, etc.
-	       */
-		offset = (long)(p->offset) + (StandAlone ? heapStart : 0);
-#else
-		offset = (long)(p->offset);
-#endif
-		if (fseek (bp->file, offset, SEEK_SET) != 0)
-		    Die("unable to seek on heap image\n");
+		HeapIO_Seek (bp, (long)(p->offset));
 		HeapIO_ReadBlock(bp, (ap->tospBase), p->info.o.sizeB);
 		ap->nextw	= (ml_val_t *)((Addr_t)(ap->tospBase) + p->info.o.sizeB);
 		ap->oldTop	= ap->tospBase;

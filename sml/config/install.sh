@@ -260,6 +260,8 @@ installdriver _run-sml .run-sml
 installdriver _link-sml .link-sml
 installdriver _ml-makedepend ml-makedepend
 
+installdriver _heap2exec heap2exec
+
 #
 # set some architecture dependent run-time system flags
 #
@@ -314,6 +316,9 @@ else
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
 	mv run.$ARCH-$OPSYS "$RUNDIR"
+	if [ -f runx.$ARCH-$OPSYS ]; then
+	    mv runx.$ARCH-$OPSYS "$RUNDIR"
+	fi
 	$MAKE MAKE=$MAKE clean
     else
 	complain "$this: !!! Run-time system build failed for some reason."

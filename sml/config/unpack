@@ -280,6 +280,9 @@ do
       smlnj-c)
 	unpack "SML/NJ-C FFI" "$SRCDIR" smlnj-c smlnj-c
 	;;
+      heap2asm)
+	unpack "Heap->ASM tool" "$SRCDIR" heap2asm heap2asm
+	;;
       doc)
 	echo Package doc is currently unavailable.
 	# unpack Doc $ROOT doc doc

@@ -12,6 +12,11 @@
 #include "c-globals-tbl.h"
 #include "heap-input.h"
 
+#ifndef SEEK_SET
+#  define SEEK_SET	0
+#  define SEEK_END	2
+#endif
+
 /* local routines */
 PVT status_t ReadBlock (FILE *file, void *blk, long len);
 
@@ -66,7 +71,9 @@ status_t HeapIO_Seek (inbuf_t *bp, long offset)
 	}
     }
     else {
-	Die ("HeapIO_Seek");
+      if (fseek (bp->file, offset, SEEK_SET) != 0)
+	Die ("unable to seek on heap image\n");
+      bp->nbytes = 0;		/* just in case? */
     }
 
 } /* end of HeapIO_Seek */
