@@ -1,0 +1,58 @@
+(* This file is created by makeallcm *)
+Library
+  signature LOOP_STRUCTURE
+  functor LoopStructure
+  signature CONTROL_DEPENDENCE_GRAPH
+  functor ControlDependenceGraph
+  signature DOMINATOR_TREE
+  functor DominatorTree
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#else
+	$/smlnj-lib.cm
+	$/Control.cm
+	$/Lib.cm
+	$/Graphs.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
+#else
+	smlnj-lib.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+#endif
+	../ir/cdg.sig
+	../ir/cdg.sml
+	../ir/compute-freq.sig
+	../ir/compute-freq.sml
+	../ir/compute-freq2.sig
+	../ir/compute-freq2.sml
+	../ir/derived-graph.sig
+	../ir/derived-graph.sml
+	../ir/dj-dataflow.sig
+	../ir/dj-dataflow.sml
+	../ir/djgraph.sig
+	../ir/djgraph.sml
+	../ir/dominance-frontier.sig
+	../ir/dominance-frontier.sml
+	../ir/dominator.sig
+	../ir/dominator.sml
+	../ir/reducibility.sig
+	../ir/reducibility.sml
+	../ir/loop-structure.sig
+	../ir/loop-structure.sml
+	../ir/ssa.sig
+	../ir/ssa.sml

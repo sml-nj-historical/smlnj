@@ -1,0 +1,60 @@
+(* This file is created by makeallcm *)
+Library
+	signature PPCCELLS
+	signature PPCINSTR
+	signature PPCSHUFFLE
+	signature PPC_PSEUDO_INSTR
+	structure PPCCells
+	functor PPC
+	functor PPCAsmEmitter
+	functor PPCDelaySlots
+	functor PPCFreqProps
+	functor PPCGasPseudoOps
+	functor PPCInstr
+	functor PPCJumps
+	functor PPCMCEmitter
+	functor PPCProps
+	functor PPCRewrite
+	functor PPCShuffle
+is
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+	$/basis.cm
+#if defined(UNSHARED_MLRISC)
+	$/smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#else
+	$/smlnj-lib.cm
+	$/MLRISC.cm
+	$/Control.cm
+	$/Lib.cm
+#endif
+#else
+	basis.cm
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
+#else
+	smlnj-lib.cm
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+#endif
+	../ppc/instructions/ppcCells.sml
+	../ppc/instructions/ppcInstr.sml
+	../ppc/instructions/ppcShuffle.sig
+	../ppc/instructions/ppcShuffle.sml
+	../ppc/instructions/ppcProps.sml
+	../ppc/instructions/ppcFreqProps.sml
+	../ppc/emit/ppcAsm.sml
+	../ppc/emit/ppcMC.sml
+	../ppc/backpatch/ppcDelaySlots.sml
+	../ppc/backpatch/ppcJumps.sml
+	../ppc/flowgraph/ppcGasPseudoOps.sml
+	../ppc/mltree/ppcPseudoInstr.sig
+	../ppc/mltree/ppc.sml 
+	../ppc/ra/ppcRewrite.sml

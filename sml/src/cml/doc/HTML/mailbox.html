@@ -1,0 +1,114 @@
+<!-- HTML/mailbox.html -->
+
+<!-- COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies. -->
+<!-- COPYRIGHT (c) 1996 AT\|@AMP\|T Research. -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<TITLE>The Mailbox structure</TITLE>
+</HEAD>
+<BODY><A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
+<HR>
+
+
+<H2><A NAME="section:0">The Mailbox structure</A></H2>
+<HR>
+<H4>Synopsis</H4>
+<BLOCKQUOTE>
+<CODE><B>signature </B><A NAME="MAILBOX:SIG:SPEC"><CODE>MAILBOX</CODE></A><BR>
+<B>structure </B><A NAME="Mailbox:STR:SPEC"><CODE>Mailbox</CODE></A><B> : </B>MAILBOX<BR>
+</CODE>
+</BLOCKQUOTE>
+<P>
+The Mailbox structure provides buffered asynchronous channels, which we call mailboxes. 
+<HR>
+<H4>Interface</H4>
+<BLOCKQUOTE>
+<CODE><B>type</B> 'a <A NAME="SIG:MAILBOX.mbox:TY:SPEC" HREF="#SIG:MAILBOX.mbox:TY">mbox</A><BR>
+<B>val</B> <A NAME="SIG:MAILBOX.mailbox:VAL:SPEC" HREF="#SIG:MAILBOX.mailbox:VAL">mailbox</A> <B>:</B> unit -&gt; 'a mbox       <BR>
+<B>val</B> <A NAME="SIG:MAILBOX.sameMailbox:VAL:SPEC" HREF="#SIG:MAILBOX.sameMailbox:VAL">sameMailbox</A> <B>:</B> ('a mbox * 'a mbox) -&gt; bool       <BR>
+<B>val</B> <A NAME="SIG:MAILBOX.send:VAL:SPEC" HREF="#SIG:MAILBOX.send:VAL">send</A> <B>:</B> ('a mbox * 'a) -&gt; unit       <BR>
+<B>val</B> <A NAME="SIG:MAILBOX.recv:VAL:SPEC" HREF="#SIG:MAILBOX.recv:VAL">recv</A> <B>:</B> 'a mbox -&gt; 'a       <BR>
+<B>val</B> <A NAME="SIG:MAILBOX.recvEvt:VAL:SPEC" HREF="#SIG:MAILBOX.recvEvt:VAL">recvEvt</A> <B>:</B> 'a mbox -&gt; 'a event       <BR>
+<B>val</B> <A NAME="SIG:MAILBOX.recvPoll:VAL:SPEC" HREF="#SIG:MAILBOX.recvPoll:VAL">recvPoll</A> <B>:</B> 'a mbox -&gt; 'a option       <BR>
+</CODE>
+</BLOCKQUOTE>
+<H4>Description</H4>
+<DL>
+<DT> <A NAME="SIG:MAILBOX.mbox:TY"><CODE><B>type</B> 'a mbox</CODE></A>
+<DD>
+	This is the type constructor for a mailbox. 	A mailbox is an unbounded, buffered communication channel.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.mailbox:VAL"><CODE>mailbox ()
+        </CODE></A>
+<DD>
+creates a new mailbox.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.sameMailbox:VAL"><CODE>sameMailbox (<VAR>mb1</VAR>, <VAR>mb2</VAR>)
+        </CODE></A>
+<DD>
+returns <CODE>true</CODE>, if <VAR>mb1</VAR> and <VAR>mb2</VAR> are the same mailbox.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.send:VAL"><CODE>send (<VAR>mb</VAR>, <VAR>msg</VAR>)
+        </CODE></A>
+<DD>
+sends the message <VAR>msg</VAR> to the mailbox <VAR>mb</VAR>. 	Note that unlike <A HREF="cml.html#SIG:CML.send:VAL:SPEC">CML.send</A>, this is a non-blocking 	operation.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.recv:VAL"><CODE>recv <VAR>mb</VAR>
+        </CODE></A>
+<DD>
+receive the next message from the mailbox <VAR>mb</VAR>. 	If, the mailbox is empty, then this blocks the calling 	thread until there is a message available.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.recvEvt:VAL"><CODE>recvEvt <VAR>mb</VAR>
+        </CODE></A>
+<DD>
+returns the event value that represents the <A HREF="mailbox.html#SIG:MAILBOX.recv:VAL:SPEC">recv</A> operation 	on <VAR>mb</VAR>.     
+<BR>
+<BR>
+
+<DT> <A NAME="SIG:MAILBOX.recvPoll:VAL"><CODE><B>val</B> recvPoll</CODE></A>
+<DD>
+        This is the non-blocking version of <A HREF="mailbox.html#SIG:MAILBOX.recv:VAL:SPEC">recv</A>. 	If the corresponding blocking form would block (because the mailbox is 	empty), then this returns 	<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">NONE</A>, otherwise it returns 	<A HREF="http://www.cs.bell-labs.com/~jhr/sml/basis/pages/option.html#SIG:OPTION.option:TY:SPEC">SOME</A> of the received 	message.
+<BR>
+<BR>
+
+</DL>
+<HR>
+<H4>See Also</H4>
+<BLOCKQUOTE>
+<A HREF="cml.html#CML:STR:SPEC">CML</A>
+</BLOCKQUOTE>
+<H4>Discussion</H4>
+<P>
+Note that mailbox buffers are unbounded, which means that there is no flow control to prevent a producer from greatly outstriping a consumer, and thus exhausting memory. In situations where there is no natural limit to the rate of <A HREF="mailbox.html#SIG:MAILBOX.send:VAL:SPEC">send</A> operations, it is recommended that the synchronous channels from the <A HREF="cml.html#CML:STR:SPEC">CML</A> structure be used instead.
+
+
+<HR>
+<CENTER>
+<B>[ <A HREF="#top">Top</A>
+   | <A HREF="core-cml.html">Parent</A>
+   | <A HREF="toc.html">Contents</A>
+   | <A HREF="index-all.html">Index</A>
+   | <A HREF="refman.html">Root</A>
+   ]</B>
+</CENTER>
+<P>
+<I>Last Modified &date;</I><BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1998 Bell Labs, Lucent Technologies <BR>
+
+<HR>
+</BODY></HTML>

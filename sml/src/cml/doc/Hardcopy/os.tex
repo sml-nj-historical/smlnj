@@ -1,0 +1,32 @@
+\maybeclearpage
+\section{The {\cf OS} structure}
+
+
+The {\cf \small OS} structure is a container for a collection of structures for interacting with the operating system's file system, directory paths, processes and I/O subsystem. 
+\begin{synopsis}
+\item {\kw{signature}} \textcf{CML\_\linebreak[0]OS}\label{sig-CML_OS}
+\item {\STRUCTURE} \textcf{OS: CML\_\linebreak[0]OS}\label{str-OS}
+\end{synopsis}
+
+\begin{interface}
+\Nopagebreak
+\item {\index{OS@OS!CML_OS@\textcf{CML\_\linebreak[0]OS}}}{\cf OS}\marginref{OS}{sig-OS}{sigOS}\Nopagebreak
+\item {\STRUCTURE} {\cf Process : \kw{sig}}
+\begin{signature}
+CML\_\linebreak[0]OS\_\linebreak[0]PROCESS
+\end{signature}
+\END
+\Nopagebreak
+\item {\STRUCTURE} {\cf IO : \kw{sig}}
+\begin{signature}
+CML\_\linebreak[0]OS\_\linebreak[0]IO
+\end{signature}
+\END
+\end{interface}
+
+%\begin{descr}
+%\end{descr}
+
+\begin{seealso}
+{\cf OS} (\pageref{sig-OS}), {\cf OS.\-File\-Sys}, {\cf OS.\-Path}, {\cf OS.\-Process} (\pageref{str-CML_OS.Process}), {\cf OS.\-IO} (\pageref{str-CML_OS.IO})
+\end{seealso}

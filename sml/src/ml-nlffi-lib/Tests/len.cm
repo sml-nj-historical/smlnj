@@ -1,0 +1,12 @@
+library
+	structure Len
+	structure LenC
+	structure CList2MLList
+is
+	$/basis.cm
+	$/c-int.cm
+	len.c : shell (target:len.c.cm
+		ml-nlffigen -strname GenLen -lambdasplit infinity %s)
+	len-glue.sml (lambdasplit:infinity)
+	len-client.sml
+	clist2mllist.sml
