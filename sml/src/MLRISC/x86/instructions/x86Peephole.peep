@@ -32,14 +32,14 @@ struct
    let fun isStackPtr(I.Direct r) = CBase.sameColor(r, C.esp)
          | isStackPtr _ = false
 
+       fun isZeroLE le = (Eval.valueOf le = 0) handle _ => false
+
        fun isZero(I.Immed n) = n = 0
-         | isZero(I.ImmedLabel le) = ((Eval.valueOf le = 0) handle _ => false)
+         | isZero(I.ImmedLabel le) = isZeroLE le
          | isZero _ = false
 
        fun isZeroOpt NONE = true
          | isZeroOpt (SOME opn) = isZero opn
-
-       fun isZeroLE le = (Eval.valueOf le = 0) handle _ => false
 
        fun loop(code, instrs) = 
            (case code of
