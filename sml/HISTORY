@@ -13,6 +13,21 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/07/18 18:00:00 JST
+Tag: blume-20000718-Version_110_29
+Description:
+
+1. Updated src/compiler/TopLevel/main/version.sml to version 110.29
+
+2. Updated config/version to 110.29
+
+3. Updated config/srcarchiveurl
+
+3. New boot files!
+   ftp://ftp.cs.princeton.edu/pub/people/blume/sml/110.29-autofetch
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/07/11 13:58:00 JST
 Tag: blume-20000711-doctypo
 Description:
