@@ -1,0 +1,7 @@
+val it = () : unit
+signature S =
+  sig
+    type primop
+    sharing type primop = int 
+  end
+functor F : <sig>

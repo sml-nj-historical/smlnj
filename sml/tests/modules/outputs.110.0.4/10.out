@@ -1,0 +1,11 @@
+val it = () : unit
+signature FULLSET =
+  sig
+    type elem
+    val g : elem -> unit
+  end
+functor BS : <sig>
+functor FS : <sig>
+structure E : FULLSET
+val ff = fn : E.elem -> int
+val h = fn : int -> unit

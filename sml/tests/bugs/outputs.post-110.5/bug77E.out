@@ -1,0 +1,11 @@
+val it = () : unit
+infix 4 %
+infix 3 %%
+bug77E.sml:8.16-8.18 Warning: unnecessary `op'
+datatype foo = % of int * int
+bug77E.sml:9.7 Error: infix operator "%" used without "op" in fun dec
+bug77E.sml:9.11-9.13 Error: infix operator "%%" used without "op" in fun dec
+bug77E.sml:9.16 Error: infix operator "%" used without "op" in fun dec
+bug77E.sml:9.5-9.23 Error: data constructor % used without argument in pattern
+bug77E.sml:9.5-9.23 Error: data constructor % used without argument in pattern
+

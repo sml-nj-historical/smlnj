@@ -1,0 +1,10 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    datatype u = C1
+    datatype v = C2 of t
+  end
+functor F : <sig>
+structure M1 : S?
+Error: Compiler bug: TypesUtil: expandTyc:PATHtyc

@@ -1,0 +1,13 @@
+val it = () : unit
+structure I :
+  sig
+    datatype 'a intmap = ...
+    val new : unit -> bool intmap
+    val add : 'a intmap -> int * 'a -> unit
+    val map : 'a intmap -> int -> 'a
+  end
+2 nnn 
+
+uncaught exception overflow
+  raised at: bug1156.sml:28.27-28.30
+

@@ -1,0 +1,5 @@
+val it = () : unit
+r017a-ac.sml:15.1-16.60 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+val x = (fn,fn) : (?.X1 -> ?.X1) * (?.X2 -> ?.X2)
+

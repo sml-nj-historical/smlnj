@@ -1,0 +1,2 @@
+val it = () : unit
+bug75.sml:5.8 Error: illegal token

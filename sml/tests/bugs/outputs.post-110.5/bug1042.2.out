@@ -1,0 +1,4 @@
+val it = () : unit
+structure A : sig end
+bug1042.2.sml:7.3-7.35 Error: unmatched type specification: t
+

@@ -1,0 +1,2 @@
+val it = () : unit
+bug1390.1.sml:11.1-12.9 Error: syntax error: deleting  SIG TYPE ID

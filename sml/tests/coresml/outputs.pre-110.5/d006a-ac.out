@@ -1,0 +1,8 @@
+val it = () : unit
+val it = 14 : int
+val test1 = true : bool
+val it = [true,false] : bool list
+val test2 = true : bool
+val it = "Foo" : string
+val test3 = true : bool
+val alltrue = true : bool

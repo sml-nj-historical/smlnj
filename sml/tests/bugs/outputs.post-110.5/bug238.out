@@ -1,0 +1,4 @@
+val it = () : unit
+val a = ~1073741824 : int
+val it = ~536870912 : int
+

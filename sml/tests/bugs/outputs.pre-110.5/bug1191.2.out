@@ -1,0 +1,9 @@
+val it = () : unit
+datatype d = D | E
+datatype h = H of d
+datatype h = H of d
+val f = fn : h -> bool
+bug1191.2.sml:9.1-9.33 Error: match redundant
+          H _ => ...
+    -->   _ => ...
+  

@@ -1,0 +1,11 @@
+val it = () : unit
+val it = [7] : int list
+val Id = fn : 'a -> 'a
+val Id' = fn : 'a -> 'a
+val reverse = fn : 'a list -> 'a list
+val it = [3,2,1] : int list
+val it = [false,true] : bool list
+val f = fn : int ref -> int ref * int
+val it = (ref 666,99) : int ref * int
+val it = 8 : int
+

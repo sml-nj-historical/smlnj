@@ -1,0 +1,8 @@
+val it = () : unit
+structure S :
+  sig
+    datatype d = A | B of int
+    val x : d
+  end
+signature ONLY_D = sig datatype d = A | B of int end
+structure T : sig datatype d = A | B of int end

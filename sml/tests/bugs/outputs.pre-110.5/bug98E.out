@@ -1,0 +1,3 @@
+val it = () : unit
+datatype constant_type = CONSTANT
+bug98E.sml:5.47-5.55 Error: unbound type constructor: CONSTANT

@@ -1,0 +1,9 @@
+val it = () : unit
+type A
+type B = A
+bug231.sml:9.14-9.19 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         B * B
+  in expression:
+    x = x
+

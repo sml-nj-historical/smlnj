@@ -1,0 +1,23 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+val test1 = "OK" : string
+val test2a = "OK" : string
+val test2b = "OK" : string
+val test3a = "OK" : string
+val reset = fn : unit -> unit
+val incrv = fn : int -> unit
+val checkv = fn : unit -> string
+val test3b = "OK" : string
+val test4 = "OK" : string
+val test5a = "OK" : string
+val test5b = "OK" : string
+val test5c = "OK" : string
+val test5d = "OK" : string
+val test5e = "OK" : string
+val test6 = "OK" : string
+val test7 = "OK" : string

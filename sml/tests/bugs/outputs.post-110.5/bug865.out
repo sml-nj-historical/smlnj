@@ -1,0 +1,4 @@
+val it = () : unit
+bug865.sml:3.29-3.43 Error: unresolved flex record
+   (can't tell what fields there are besides #a)
+

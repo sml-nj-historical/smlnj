@@ -1,0 +1,18 @@
+val it = () : unit
+signature TAB = sig datatype term = T end
+signature PAR =
+  sig
+    structure PT : sig datatype term = T end
+    val x : PT.term
+    structure P1 : sig val x1 : PT.term end
+  end
+signature SIGX =
+  sig
+    structure P :
+      sig
+        structure PT : <sig>
+        val x : PT.term
+        structure P1 : <sig>
+      end
+  end
+functor Join : <sig>

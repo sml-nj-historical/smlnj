@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIG = sig end
+functor F : <sig>
+structure V : sig end
+structure X : sig end
+structure Y : sig end
+bug1216.sml:9.17 Error: syntax error found at ID
+

@@ -1,0 +1,3 @@
+val it = () : unit
+structure S : sig type t end
+signature S = sig datatype d = C of S.t end

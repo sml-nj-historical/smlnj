@@ -1,0 +1,5 @@
+val it = () : unit
+type  'a ft = (int * 'a) list
+val f = fn : (int * 'a) list -> int -> (int * 'a) list
+val g = fn : 'a ft -> int * 'a -> 'a ft
+

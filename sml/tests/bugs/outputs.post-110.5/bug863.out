@@ -1,0 +1,8 @@
+val it = () : unit
+structure A : sig val p : int end
+structure B : sig val p : bool end
+opening B
+  val p : bool
+opening A
+  val p : int
+

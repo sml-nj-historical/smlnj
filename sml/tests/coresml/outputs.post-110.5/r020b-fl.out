@@ -1,0 +1,12 @@
+val it = () : unit
+type stacktype
+val clear = - : stacktype
+val insert = fn : int * stacktype -> stacktype
+val x = - : stacktype
+val y = - : stacktype
+r020b-fl.sml:26.1-26.17 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         stacktype * stacktype
+  in expression:
+    x = y
+

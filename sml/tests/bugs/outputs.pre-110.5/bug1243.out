@@ -1,0 +1,4 @@
+val it = () : unit
+bug1243.sml:8.6-9.23 Warning: match nonexhaustive
+          SOME (x,_) => ...
+  

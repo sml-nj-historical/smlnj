@@ -1,0 +1,3 @@
+val it = () : unit
+bug1274.sml:4.4-6.26 Error: unbound signature: S
+bug1274.sml:4.4-6.26 Error: unbound signature: S

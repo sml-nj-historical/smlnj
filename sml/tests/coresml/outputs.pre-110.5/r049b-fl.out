@@ -1,0 +1,7 @@
+val it = () : unit
+type 'a t = {name:string, used:'a}
+r049b-fl.sml:15.1-15.47 Error: expression doesn't match constraint [tycon mismatch]
+  expression: {name:string, used:bool}
+  constraint: int t
+  in expression:
+    {name="Foo",used=true}: int t

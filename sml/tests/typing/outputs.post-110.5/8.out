@@ -1,0 +1,5 @@
+val it = () : unit
+8.sml:4.29 Error: unbound variable or constructor: f
+8.sml:4.5-4.22 Error: unresolved flex record
+   (can't tell what fields there are besides #a)
+

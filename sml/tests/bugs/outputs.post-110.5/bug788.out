@@ -1,0 +1,13 @@
+val it = () : unit
+signature S =
+  sig
+    type a
+    val nil : a
+    val :: : int * a -> a
+  end
+structure A : S
+opening A
+  datatype a = ...
+  val nil : a
+  val :: : int * a -> a
+

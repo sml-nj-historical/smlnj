@@ -1,0 +1,3 @@
+val it = () : unit
+bug415.sml:3.17 Error: syntax error found at SEMICOLON
+

@@ -1,0 +1,6 @@
+Standard ML of New Jersey, Version 0.93, February 15, 1993
+val it = () : unit
+- signature SIG = sig  end
+signature SIG' = sig structure S : ... end
+std_in:20.11-20.18 Error: unbound structure: T in path S'.T
+- 

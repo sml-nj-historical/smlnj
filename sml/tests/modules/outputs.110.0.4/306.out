@@ -1,0 +1,9 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    val x : t
+  end
+
+uncaught exception Unbound
+  raised at: elaborate/elabmod.sml:1329.39-1329.49

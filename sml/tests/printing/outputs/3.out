@@ -1,0 +1,8 @@
+val it = () : unit
+structure S :
+  sig
+    datatype d = D of t
+    datatype s = A | B of string
+    datatype t = C of s list
+  end
+val p = C [B "b"] : S.t

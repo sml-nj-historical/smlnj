@@ -1,0 +1,9 @@
+val it = () : unit
+signature AA = sig datatype s = a of s end
+signature BB = sig structure A : sig datatype s = a of s end end
+signature CC =
+  sig
+    structure B : sig structure A : <sig> end
+    type v
+  end
+bug361.sml:20.9-26.4 Error: unmatched type specification: v

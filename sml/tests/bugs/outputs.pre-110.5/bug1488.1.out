@@ -1,0 +1,7 @@
+val it = () : unit
+val ls = [] : (int * int) list
+val arr = [||] : (int * int) array
+val it = 0 : int
+
+uncaught exception subscript out of bounds
+  raised at: bug1488.1.sml:6.1-6.10

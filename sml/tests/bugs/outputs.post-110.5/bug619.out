@@ -1,0 +1,15 @@
+val it = () : unit
+signature SIG = sig exception Error of string end
+functor F : <sig>
+structure A : SIG
+structure B :
+  sig
+    datatype Exp = APP of Exp * Exp list
+    datatype Val = FUNC of Val list -> (Val -> unit) -> unit
+    exception Error of string
+    val extend_env : ''a list * 'b list * (''a -> 'b) -> ''a -> 'b
+    val extend_one : ''a * 'b * (''a -> 'b) -> ''a -> 'b
+    val meaning : Exp -> 'a -> (Val -> unit) -> unit
+    val meaninglis : Exp list -> 'a -> (Val list -> unit) -> unit
+  end
+

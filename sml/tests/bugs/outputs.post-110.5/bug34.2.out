@@ -1,0 +1,7 @@
+val it = () : unit
+bug34.2.sml:21.32-21.77 Error: operator and operand don't agree [UBOUND match]
+  operator domain: 'x * 'x list
+  operand:         'x * 'x
+  in expression:
+    v :: s (l,v)
+

@@ -1,0 +1,7 @@
+val it = () : unit
+type 'a pair = 'a * 'a
+type ('a,'b) pair2 = 'a * 'a
+val x = (1,2) : int pair
+val y = (1,2) : (int,_) pair2
+val test = true : bool
+

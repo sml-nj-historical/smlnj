@@ -1,0 +1,5 @@
+val it = () : unit
+datatype d = D of t
+datatype s = A | B of string
+datatype t = C of s
+val p = C (B "a") : t

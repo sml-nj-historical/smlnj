@@ -1,0 +1,8 @@
+val it = () : unit
+datatype test = testcon
+r013b-fl.sml:15.15-15.22 Error: argument of raise is not an exception [tycon mismatch]
+  raised: test
+  in expression:
+    raise testcon
+r013b-fl.sml:15.1-15.22 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)

@@ -1,0 +1,6 @@
+val it = () : unit
+structure S : sig end
+structure T : sig end
+bug210.sml:5.27-5.30 Error: nonlocal path in structure sharing: S
+bug210.sml:5.27-5.30 Error: nonlocal path in structure sharing: T
+

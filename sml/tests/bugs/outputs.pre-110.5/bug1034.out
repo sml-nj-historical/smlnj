@@ -1,0 +1,6 @@
+val it = () : unit
+bug1034.sml:4.1-4.37 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: string
+  operand:         Word8Vector.vector
+  in expression:
+    String.size (Word8Vector.fromList nil)

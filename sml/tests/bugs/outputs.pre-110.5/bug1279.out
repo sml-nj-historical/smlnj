@@ -1,0 +1,3 @@
+val it = () : unit
+val it = () : unit
+val it = [QUOTE "a"] : 'a SMLofNJ.frag list

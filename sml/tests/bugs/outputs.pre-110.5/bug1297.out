@@ -1,0 +1,20 @@
+val it = () : unit
+signature U = sig structure T : sig end end
+signature V2 =
+  sig
+    structure T1 : sig end
+    structure T2 : sig end
+    structure T3 : sig end
+    structure T4 : sig end
+    structure T5 : sig end
+    structure T6 : sig end
+    structure T7 : sig end
+    structure U1 : sig structure T : <sig> end
+    structure U2 : sig structure T : <sig> end
+    structure U3 : sig structure T : <sig> end
+    structure U4 : sig structure T : <sig> end
+    structure U5 : sig structure T : <sig> end
+    structure U6 : sig structure T : <sig> end
+    structure U7 : sig structure T : <sig> end
+  end
+structure V2 : V2

@@ -1,0 +1,4 @@
+val it = () : unit
+
+uncaught exception overflow
+  raised at: boot/num-scan.sml:162.50-162.58

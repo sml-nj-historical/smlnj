@@ -1,0 +1,23 @@
+val it = () : unit
+signature S = sig type t end
+structure R : S
+structure I : S
+functor F : <sig>
+structure FI :
+  sig
+    structure dummy : <sig>
+    type  t = t
+    val one : T.t -> T.t
+    val two : dummy.t -> dummy.t
+  end
+structure FR :
+  sig
+    structure dummy : <sig>
+    type  t = t
+    val one : T.t -> T.t
+    val two : dummy.t -> dummy.t
+  end
+val it = 2 : I.t
+val it = 2.0 : R.t
+val it = 2.0 : FR.dummy.t
+val it = 2 : FI.dummy.t

@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIGT =
+  sig
+    type t1
+    val e1 : t1
+  end
+functor T : <sig>
+structure A : SIGT
+val x = EMPTY : A.t1

@@ -1,0 +1,6 @@
+val it = () : unit
+structure foo : sig val myfoo : int end
+structure bar : sig val mybar : int end
+opening bar
+  val mybar : int
+

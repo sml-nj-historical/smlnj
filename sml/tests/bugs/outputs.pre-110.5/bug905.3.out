@@ -1,0 +1,8 @@
+val it = () : unit
+bug905.3.sml:4.7-4.22 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+bug905.3.sml:10.20-10.29 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: ?.X1 list ref * ?.X1 list
+  operand:         ?.X1 list ref * t list
+  in expression:
+    lr := x :: nil

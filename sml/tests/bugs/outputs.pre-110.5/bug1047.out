@@ -1,0 +1,24 @@
+val it = () : unit
+signature LIB_BASE =
+  sig
+    exception Unimplemented of string
+    exception Impossible of string
+    exception NotFound
+    val failure : {func:string, module:string, msg:string} -> 'a
+    val version : {date:string, system:string, version_id:int list}
+    val banner : string
+  end
+structure LibBase : LIB_BASE
+signature RAND =
+  sig
+    val randMin : real
+    val randMax : real
+    val random : real -> real
+    val mkRandom : real -> unit -> real
+    val norm : real -> real
+    val range : int * int -> real -> int
+  end
+structure Rand : RAND
+val it = 1073741823.5 : real
+val it = 1073741823.5 : real
+val it = 1073741823.5 : real

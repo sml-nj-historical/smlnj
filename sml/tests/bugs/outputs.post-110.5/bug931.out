@@ -1,0 +1,24 @@
+val it = () : unit
+structure A :
+  sig
+    datatype A = A
+    
+  end
+signature S1 =
+  sig
+    structure B :
+      sig
+        type t
+        sharing type t = A.A
+      end
+  end
+signature S2 =
+  sig
+    structure A :
+      sig
+        type t
+        sharing type t = A.A
+      end
+  end
+bug931.sml:10.58-10.65 Error: unbound structure: B in path B.t
+

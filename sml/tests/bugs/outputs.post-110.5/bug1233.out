@@ -1,0 +1,4 @@
+val it = () : unit
+val c = <hidden-value> : int
+val c = 2 : int
+

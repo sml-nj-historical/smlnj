@@ -1,0 +1,6 @@
+val it = () : unit
+bug721d.sml:5.43-5.56 Error: operator and operand don't agree [literal]
+  operator domain: int
+  operand:         bool
+  in expression:
+    f true

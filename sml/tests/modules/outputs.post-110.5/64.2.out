@@ -1,0 +1,11 @@
+val it = () : unit
+functor F : <sig>
+structure A : sig type t = int end
+structure B : sig end
+signature S = sig structure C : sig type t end end
+64.2.sml:26.3-26.20 Error: pattern and expression in val dec don't agree [literal]
+  pattern:    ?.X.t
+  expression:    int
+  in declaration:
+    x : ?.X.t = 3
+

@@ -1,0 +1,4 @@
+val it = () : unit
+signature NUM = sig val n : int end
+functor LeftSection : <sig>
+

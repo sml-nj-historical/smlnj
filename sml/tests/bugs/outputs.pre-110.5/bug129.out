@@ -1,0 +1,8 @@
+val it = () : unit
+signature S_sig =
+  sig
+    type 'a T
+    val fs : 'a T -> 'a T
+  end
+functor S : <sig>
+functor F : <sig>

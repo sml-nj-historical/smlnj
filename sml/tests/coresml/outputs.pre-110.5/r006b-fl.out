@@ -1,0 +1,3 @@
+val it = () : unit
+val test1 = true : bool
+r006b-fl.sml:19.27 Error: unbound variable or constructor: x

@@ -1,0 +1,15 @@
+val it = () : unit
+signature PSIG =
+  sig
+    eqtype 'a symTab
+    datatype guide = G1 | G2 of guide symTab
+  end
+functor PFUN : <sig>
+structure S : sig datatype 'a symTab = Empty end
+structure P :
+  sig
+    datatype guide = G1 | G2 of guide symTab
+    datatype 'a symTab = ...
+  end
+functor MFUN : <sig>
+structure M : sig val z : bool end

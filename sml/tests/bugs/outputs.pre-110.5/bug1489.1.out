@@ -1,0 +1,11 @@
+val it = () : unit
+type t
+val mk = fn : int -> t
+val eq = fn : t * t -> bool
+val x = - : t
+val y = - : t
+bug1489.1.sml:8.1-8.9 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         t * t
+  in expression:
+    eq (x,y)

@@ -1,0 +1,11 @@
+val it = () : unit
+signature SIG =
+  sig
+    exception Foo of int
+    val A : int
+    val B : int
+    val C : int
+  end
+bug21.sml:12.16-13.6 Error: syntax error: deleting  COLON ID VAL
+bug21.sml:13.7 Error: syntax error found at ID
+

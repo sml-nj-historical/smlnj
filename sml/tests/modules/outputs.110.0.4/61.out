@@ -1,0 +1,2 @@
+val it = () : unit
+61.sml:9.1-14.6 Error: Sharing structure with a descendent substructure

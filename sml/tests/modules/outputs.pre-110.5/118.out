@@ -1,0 +1,9 @@
+val it = () : unit
+signature S1 = sig datatype d = D end
+signature S2 =
+  sig
+    structure A : sig structure B : <sig> end
+    structure C : sig datatype d = D end
+    sharing type C.d = A.B.d
+  end
+functor F : <sig>

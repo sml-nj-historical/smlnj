@@ -1,0 +1,8 @@
+val it = () : unit
+232.sml:4.64-4.67 Error: nonlocal path in type sharing: u
+232.sml:8.3-8.20 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         a.t * b.t
+  in expression:
+    a.x = b.x
+

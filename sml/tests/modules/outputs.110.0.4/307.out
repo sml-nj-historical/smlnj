@@ -1,0 +1,10 @@
+val it = () : unit
+signature S =
+  sig
+    eqtype A
+    eqtype T
+    val e : T
+    val c : A * T -> T
+    val d : T -> A * T
+  end
+functor E : <sig>

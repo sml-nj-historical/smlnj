@@ -1,0 +1,9 @@
+rm *.bin
+
+sml
+import "a";
+import "b";
+^D
+
+sml
+use "c.sml";

@@ -1,0 +1,3 @@
+val it = () : unit
+bug83E.sml:5.28-5.34 Error: syntax error: deleting  LPAREN ID COMMA
+

@@ -1,0 +1,12 @@
+val it = () : unit
+r031b-fl.sml:14.4-14.21 Error: type variable in top level exception type
+r031b-fl.sml:16.11-16.14 Error: operator and operand don't agree [literal]
+  operator domain: 'a
+  operand:         int
+  in expression:
+    A 5
+r031b-fl.sml:13.1-18.4 Error: constructor and argument don't agree in pattern [literal]
+  constructor: 'a -> exn
+  argument:    int
+  in pattern:
+    A 5

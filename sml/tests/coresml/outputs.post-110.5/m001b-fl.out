@@ -1,0 +1,4 @@
+val it = () : unit
+m001b-fl.sml:15.1-15.28 Error: unresolved flex record
+   (can't tell what fields there are besides #a)
+

@@ -1,0 +1,9 @@
+val it = () : unit
+datatype A = B | C of A ref
+val x = C (ref B) : A
+bug32.sml:5.1-5.12 Warning: binding not exhaustive
+          C y = ...
+val y = ref B : A ref
+val it = () : unit
+val it = C (ref (C %0)) as %0 : A
+

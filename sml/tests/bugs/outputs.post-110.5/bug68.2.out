@@ -1,0 +1,7 @@
+val it = () : unit
+bug68.2.sml:4.42-4.56 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: 'Z list
+  operand:         string
+  in expression:
+    hd "s"
+

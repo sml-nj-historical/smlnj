@@ -1,0 +1,7 @@
+val it = () : unit
+247.sml:11.5-11.33 Error: syntax error: deleting  SIGNATURE ID EQUALOP
+247.sml:12.5-13.15 Error: syntax error: deleting  SIG DATATYPE
+247.sml:13.18-13.24 Error: syntax error: deleting  EQUALOP ID OF
+247.sml:13.25-13.28 Error: syntax error: deleting  LBRACE ID COLON
+247.sml:13.33-16.14 Error: syntax error: deleting  RBRACE END STRUCTURE
+247.sml:16.31 Error: syntax error found at COLON

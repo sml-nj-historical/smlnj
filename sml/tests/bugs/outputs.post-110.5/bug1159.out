@@ -1,0 +1,3 @@
+val it = () : unit
+bug1159.sml:4.10-4.16 Error: unbound type constructor: word32
+

@@ -1,0 +1,8 @@
+val it = () : unit
+datatype num = one_more_than of num | zero
+bug949.3.sml:4.1-4.17 Error: operator and operand don't agree [literal]
+  operator domain: num
+  operand:         int
+  in expression:
+    one_more_than 0
+

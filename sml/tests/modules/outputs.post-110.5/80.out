@@ -1,0 +1,8 @@
+val it = () : unit
+functor F : <sig>
+structure S1 : sig structure C : <sig> end
+structure S2 : sig structure C : <sig> end
+80.sml:22.5-22.40 Error: non-constructor applied to argument in pattern: h
+80.sml:22.37 Error: unbound variable or constructor: f
+80.sml:22.39 Error: unbound variable or constructor: x
+

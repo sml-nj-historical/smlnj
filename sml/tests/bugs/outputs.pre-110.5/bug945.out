@@ -1,0 +1,2 @@
+val it = () : unit
+bug945.sml:7.17-7.19 Error: unbound variable or constructor: ||

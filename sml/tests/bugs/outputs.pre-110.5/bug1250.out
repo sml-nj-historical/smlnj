@@ -1,0 +1,8 @@
+val it = () : unit
+bug1250.sml:4.1-4.29 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+bug1250.sml:4.1-4.29 Warning: binding not exhaustive
+          Foo1 f = ...
+
+uncaught exception nonexhaustive binding failure
+  raised at: bug1250.sml:4.1-4.29

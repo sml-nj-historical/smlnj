@@ -1,0 +1,9 @@
+val it = () : unit
+val f = fn : 'a -> 'a
+val x = fn : 'a -> 'a
+val y = fn : 'a -> 'a
+m003b-fl.sml:18.12-18.19 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         ('Y -> 'Y) * ('X -> 'X)
+  in expression:
+    x = y

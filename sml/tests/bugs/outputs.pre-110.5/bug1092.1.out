@@ -1,0 +1,6 @@
+val it = () : unit
+datatype 'a s1 = S1 of 'a
+datatype s2 = S2
+datatype m = M of n s1
+datatype n = N
+val it = M (S1 N) : m

@@ -1,0 +1,3 @@
+val it = () : unit
+val it = 1 : int
+bug140.sml:5.1-7.33 Error: unclosed comment

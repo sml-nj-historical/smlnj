@@ -1,0 +1,25 @@
+val it = () : unit
+signature S1 =
+  sig
+    type t
+    val x : t
+  end
+signature S2 =
+  sig
+    structure T :
+      sig
+        type t
+        val x : t
+      end
+  end
+signature S3 =
+  sig
+    type s
+    datatype t = Kt of s
+  end
+functor F1 : <sig>
+functor F2 : <sig>
+
+uncaught exception Unbound
+  raised at: translate/transmodules.sml:80.33-80.43
+             translate/translate.sml:129.39

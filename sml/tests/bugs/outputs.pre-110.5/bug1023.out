@@ -1,0 +1,4 @@
+val it = () : unit
+val a2v = fn : 'a array -> 'a vector
+val a0 = [||] : int array
+val it = #[] : int vector

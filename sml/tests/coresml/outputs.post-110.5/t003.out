@@ -1,0 +1,7 @@
+val it = () : unit
+datatype 'a Tree = Br of 'a * 'a Tree * 'a Tree | Lf
+val t1 = Br (2,Br (1,Lf,Lf),Br (3,Lf,Lf)) : int Tree
+val foldTree = fn : ('a -> 'b -> 'b -> 'b) -> 'b -> 'a Tree -> 'b
+val revBranch = fn : 'a -> 'a Tree -> 'a Tree -> 'a Tree
+val refl_t1 = Br (2,Br (3,Lf,Lf),Br (1,Lf,Lf)) : int Tree
+

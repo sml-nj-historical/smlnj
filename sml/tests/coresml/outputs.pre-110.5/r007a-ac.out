@@ -1,0 +1,6 @@
+val it = () : unit
+val x = 1 : int
+val y = 1 : int
+val z = () : unit
+val test1 = true : bool
+val test2 = true : bool

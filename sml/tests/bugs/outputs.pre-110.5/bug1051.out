@@ -1,0 +1,13 @@
+val it = () : unit
+structure Ab :
+  sig
+    type  AAb = int
+    val I : AAb -> AAb
+  end
+bug1051.sml:12.3-13.6 Error: syntax error: deleting  OPEN ID VAL
+bug1051.sml:13.7-13.14 Error: syntax error: deleting  ID COLON ID
+bug1051.sml:13.15-14.4 Error: syntax error: deleting  ARROW ID END
+bug1051.sml:16.19-18.8 Error: syntax error: deleting  EQUALOP STRUCT LOCAL
+bug1051.sml:18.9-18.19 Error: syntax error: deleting  OPEN ID IN
+bug1051.sml:19.5-19.12 Error: syntax error: deleting  FUN ID ID
+bug1051.sml:19.13-19.18 Error: syntax error: deleting  EQUALOP ID ID

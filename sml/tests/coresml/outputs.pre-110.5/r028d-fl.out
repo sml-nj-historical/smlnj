@@ -1,0 +1,2 @@
+val it = () : unit
+r028d-fl.sml:13.22 Error: unbound type constructor: x

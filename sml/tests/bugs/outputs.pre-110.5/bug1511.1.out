@@ -1,0 +1,7 @@
+val it = () : unit
+signature S =
+  sig
+    type ('a,'b) t = 'a -> 'b
+    val x : ('a,int) t
+  end
+Error: Compiler bug: TypesUtil: tyvarType: CONty

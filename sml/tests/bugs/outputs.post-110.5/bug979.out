@@ -1,0 +1,4 @@
+val it = () : unit
+val it = (15.0,3) : real * int
+val it = {1=15.0} : {1:real}
+

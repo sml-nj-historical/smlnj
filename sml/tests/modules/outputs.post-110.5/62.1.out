@@ -1,0 +1,5 @@
+val it = () : unit
+structure A : sig type  t = int end
+structure B : sig end
+signature S = sig structure C : sig type u end end
+

@@ -1,0 +1,4 @@
+val it = () : unit
+<toplevel loop>: Undefined structure F1 in path X.F1
+bug905.6.sml:8.5-8.9 Error: unbound structure: F1 in path X.F1
+

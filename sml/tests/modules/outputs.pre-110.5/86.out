@@ -1,0 +1,7 @@
+val it = () : unit
+functor F : <sig>
+structure S :
+  sig
+    datatype d = F
+    datatype e = E of d
+  end

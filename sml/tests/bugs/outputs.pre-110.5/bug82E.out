@@ -1,0 +1,3 @@
+val it = () : unit
+datatype a = A of int
+bug82E.sml:6.19 Error: unbound type constructor: A

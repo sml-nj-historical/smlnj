@@ -1,0 +1,8 @@
+val it = () : unit
+functor Bug : <sig>
+structure Bug :
+  sig
+    type  bar = int
+    type  baz = bar list
+    datatype foo = Foo
+  end

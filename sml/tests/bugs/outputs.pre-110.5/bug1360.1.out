@@ -1,0 +1,33 @@
+val it = () : unit
+signature EXTERN = sig type T end
+signature PRINTABLE = sig type T end
+signature KEY = sig type T end
+signature EXTERN_KEY = sig type T end
+signature EXTERNAL = sig type T end
+signature PROTOCOL =
+  sig
+    structure Address : sig type T end
+    structure Pattern : sig type T end
+    structure Connection_Key : sig type T end
+    structure Outgoing : sig type T end
+    type connection_extension
+    type listen_extension
+    type session_extension
+    datatype connection
+      = C of {abort:unit -> unit, extension:connection_extension,
+              send:unit -> unit}
+    datatype listen = L of {extension:listen_extension, stop:unit -> unit}
+    datatype handler
+      = H of Connection_Key.T
+             -> {connection_handler:connection -> unit,
+                 data_handler:connection * unit -> unit,
+                 status_handler:connection * unit -> unit}
+    datatype session
+      = S of {connect:Address.T * handler -> unit, extension:session_extension,
+              listen:Pattern.T * handler * unit -> listen}
+    val session : (session -> 'a) -> 'a
+  end
+functor Connection : <sig>
+
+uncaught exception FPRegEA
+  raised at: cps/generic.sml:98.67-98.74

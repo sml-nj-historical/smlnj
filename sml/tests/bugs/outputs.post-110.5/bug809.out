@@ -1,0 +1,7 @@
+val it = () : unit
+funsig A(<param>: sig end) : sig end
+functor F : <sig>
+funsig FS(<param>: sig end) : sig end
+signature U = sig functor FF : (<param>: <sig>) : <sig> end
+bug809.sml:10.1-12.4 Error: unmatched functor specification: S
+

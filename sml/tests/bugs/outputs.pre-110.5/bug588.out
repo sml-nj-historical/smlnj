@@ -1,0 +1,6 @@
+val it = () : unit
+bug588.sml:4.1-4.19 Error: operator and operand don't agree [literal]
+  operator domain: {'Z}
+  operand:         int
+  in expression:
+    (fn {...} => ()) 3

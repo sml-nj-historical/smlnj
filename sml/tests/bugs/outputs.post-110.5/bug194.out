@@ -1,0 +1,9 @@
+val it = () : unit
+val x = fn : ('a -> 'b) * 'a -> 'b ref
+val y = fn : ('a -> 'b) * 'a -> 'b ref
+bug194.sml:6.1-6.42 Error: expression doesn't match constraint [UBOUND match]
+  expression: ('1a -> '1b) * '1a -> '1b ref
+  constraint: ('1a -> '1b) * '_a -> '_b ref
+  in expression:
+    x: ('1a -> '1b) * '_a -> '_b ref
+

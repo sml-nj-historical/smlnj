@@ -1,0 +1,13 @@
+val it = () : unit
+structure A : sig val x : int end
+structure B :
+  sig
+    structure A : <sig>
+    val y : int
+  end
+opening A
+  val x : int
+opening B
+  structure A : sig val x : int end
+  val y : int
+val it = 1 : int

@@ -1,0 +1,9 @@
+val it = () : unit
+signature CAT = sig end
+signature L_F = sig structure Cat : sig end end
+signature TRANSLATOR =
+  sig
+    structure Cat : sig end
+    structure LF : sig structure Cat : <sig> end
+  end
+functor Translator : <sig>

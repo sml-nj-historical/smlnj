@@ -1,0 +1,3 @@
+val it = () : unit
+datatype AA = A | B
+val B = fn : 'a -> int

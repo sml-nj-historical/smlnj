@@ -1,0 +1,5 @@
+val it = () : unit
+signature Foo1 =
+  sig val foo : string end
+bug276.sml:10.3-11.17 Error: duplicate specifications for variable or constructor foo in signature
+

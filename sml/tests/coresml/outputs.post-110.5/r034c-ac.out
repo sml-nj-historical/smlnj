@@ -1,0 +1,9 @@
+val it = () : unit
+val f = fn : 'a -> 'a
+val x = <poly-record> : ('a -> 'a) * 'b list
+r034c-ac.sml:15.1-15.15 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+r034c-ac.sml:15.1-15.15 Warning: binding not exhaustive
+          (g,nil) = ...
+val g = fn : ?.X1 -> ?.X1
+

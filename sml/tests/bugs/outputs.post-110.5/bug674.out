@@ -1,0 +1,7 @@
+val it = () : unit
+val e =
+  {dynamic=NORM (T (#,#,#,#,#),EMPTY),
+   static=(BIND (12904,"hd",VALbind #,EMPTY),
+           [{eenvD=T #,fctD=E,sigD=T #,strD=T #,tycD=T #}]),symbolic=E}
+  : ?.SCEnv.Env.environment
+

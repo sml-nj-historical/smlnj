@@ -1,0 +1,7 @@
+val it = () : unit
+t011.sml:6.1-6.5 Error: syntax error: deleting  LPAREN LET
+t011.sml:8.2-8.15 Error: syntax error: deleting  IN STRING END
+t011.sml:8.15-9.7 Error: syntax error: deleting  RPAREN HANDLE
+t011.sml:9.13-9.22 Error: syntax error: deleting  DARROW STRING BAR
+t011.sml:9.23 Error: syntax error found at WILD
+

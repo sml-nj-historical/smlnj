@@ -1,0 +1,4 @@
+val it = () : unit
+/usr/local/sml/110/bin/sml: Fatal error -- Uncaught exception Io with <unknown> raised at boot/IO/text-io-fn.sml:444.14-444.56
+
+

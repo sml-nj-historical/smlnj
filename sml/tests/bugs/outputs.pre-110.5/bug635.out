@@ -1,0 +1,7 @@
+val it = () : unit
+val a = - : Word8Array.array
+Subscript
+val it = () : unit
+
+uncaught exception subscript out of bounds
+  raised at: bug635.sml:6.1-6.15

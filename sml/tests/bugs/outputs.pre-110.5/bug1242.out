@@ -1,0 +1,3 @@
+val it = () : unit
+structure A : sig datatype at = A | B | C of int end
+bug1242.sml:9.3-9.13 Error: unbound structure: Foo

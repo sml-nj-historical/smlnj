@@ -1,0 +1,4 @@
+val it = () : unit
+126.sml:10.3-11.7 Error: syntax error: deleting  OPEN ID OPEN
+126.sml:11.8-12.8 Error: syntax error: deleting  ID VAL ID
+

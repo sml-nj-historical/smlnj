@@ -1,0 +1,3 @@
+val it = () : unit
+val loop = fn : int * Word32.word * real -> unit
+

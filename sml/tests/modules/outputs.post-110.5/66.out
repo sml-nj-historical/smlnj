@@ -1,0 +1,23 @@
+val it = () : unit
+signature S1 =
+  sig
+    type t
+    val x : t
+  end
+signature S2 = sig val x : bool end
+signature S =
+  sig
+    structure A :
+      sig
+        type t
+        val x : t
+      end
+    structure B : sig val x : bool end
+    sharing B = A
+  end
+66.sml:19.10-19.30 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    ?.X.t
+  expression:    bool
+  in declaration:
+    x : ?.X.t = true
+

@@ -1,0 +1,3 @@
+val it = () : unit
+infix o
+val o = fn : ('a -> 'b) * ('c -> 'a) -> 'c -> 'b

@@ -1,0 +1,16 @@
+val it = () : unit
+bug27.sml:3.5-4.41 Error: clauses don't all have same number of patterns
+bug27.sml:3.1-4.41 Error: parameter or result constraints of clauses don't agree [tycon mismatch]
+  this clause:      'Z list * 'Y -> 'X
+  previous clauses:      'W list -> 'X
+  in declaration:
+    compose =
+      (fn nil => (fn <pat> => <exp>)
+        | (<pat> :: <pat>,x) => (compose <exp>) (f <exp>))
+bug27.sml:3.1-4.41 Error: right-hand-side of clause doesn't agree with function result type [circularity]
+  expression:  'Z
+  result type:  'Z -> 'Z
+  in declaration:
+    compose =
+      (fn nil => (fn <pat> => <exp>)
+        | (<pat> :: <pat>,x) => (compose <exp>) (f <exp>))

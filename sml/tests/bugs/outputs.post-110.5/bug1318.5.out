@@ -1,0 +1,18 @@
+val it = () : unit
+funsig FSIG(<param>: sig end) :
+           sig
+             type a
+             type b
+             val f : a -> b
+           end
+functor FUN : <sig>
+functor F0 : <sig>
+structure A :
+  sig
+    structure S : <sig>
+    type a = a
+    type b = b
+    val g : S.a -> S.b
+  end
+val it = 3 : int
+

@@ -1,0 +1,7 @@
+val it = () : unit
+233.sml:8.3-8.20 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         a.t * b.t
+  in expression:
+    a.x = b.x
+

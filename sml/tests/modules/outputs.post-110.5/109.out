@@ -1,0 +1,9 @@
+val it = () : unit
+signature S4 =
+  sig
+    type t
+    type u
+    sharing type u = t
+  end
+functor F4 : <sig>
+

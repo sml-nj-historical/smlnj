@@ -1,0 +1,12 @@
+val it = () : unit
+signature SIG =
+  sig
+    type EA
+    val fopt : (EA * EA -> unit) option
+  end
+bug254.sml:16.5-16.16 Error: operator and operand don't agree [literal]
+  operator domain: M.EA
+  operand:         int
+  in expression:
+    g 2
+

@@ -1,0 +1,4 @@
+val it = () : unit
+signature S =
+  sig type pos end
+functor Join : <sig>

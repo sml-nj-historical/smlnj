@@ -1,0 +1,6 @@
+val it = () : unit
+bug857.sml:3.11-3.20 Error: operator and operand don't agree [tycon mismatch]
+  operator domain: int * int
+  operand:         int * real
+  in expression:
+    h x + 0.1

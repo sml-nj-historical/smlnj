@@ -1,0 +1,66 @@
+val it = () : unit
+type word8 = Word8.word
+val iii1 = fn : int -> int -> int
+val iii2 = fn : int -> int -> int
+val iii3 = fn : int -> int -> int
+val iii4 = fn : int -> int -> int
+val iii5 = fn : int -> int -> int
+val iii6 = fn : int -> int -> bool
+val iib7 = fn : int -> int -> bool
+val iib8 = fn : int -> int -> bool
+val iib9 = fn : int -> int -> bool
+val ii10 = fn : int -> int
+val ii11 = fn : int -> int
+val www1 = fn : word -> word -> word
+val www2 = fn : word -> word -> word
+val www3 = fn : word -> word -> word
+val www4 = fn : word -> word -> word
+val www5 = fn : word -> word -> word
+val www6 = fn : word -> word -> bool
+val wwb7 = fn : word -> word -> bool
+val wwb8 = fn : word -> word -> bool
+val wwb9 = fn : word -> word -> bool
+val www1 = fn : word8 -> word8 -> word8
+val www2 = fn : word8 -> word8 -> word8
+val www3 = fn : word8 -> word8 -> word8
+val www4 = fn : word8 -> word8 -> word8
+val www5 = fn : word8 -> word8 -> word8
+val www6 = fn : word8 -> word8 -> bool
+val wwb7 = fn : word8 -> word8 -> bool
+val wwb8 = fn : word8 -> word8 -> bool
+val wwb9 = fn : word8 -> word8 -> bool
+val rrr1 = fn : real -> real -> real
+val rrr2 = fn : real -> real -> real
+val rrr3 = fn : real -> real -> real
+val rrb4 = fn : real -> real -> bool
+val rrb5 = fn : real -> real -> bool
+val rrb6 = fn : real -> real -> bool
+val rrb7 = fn : real -> real -> bool
+val rr8 = fn : real -> real
+val rr9 = fn : real -> real
+val ssb1 = fn : string -> string -> bool
+val ssb2 = fn : string -> string -> bool
+val ssb3 = fn : string -> string -> bool
+val ssb4 = fn : string -> string -> bool
+val ccb1 = fn : char -> char -> bool
+val ccb2 = fn : char -> char -> bool
+val ccb3 = fn : char -> char -> bool
+val ccb4 = fn : char -> char -> bool
+val succ1 = fn : word8 -> word8 list
+val succ2 = fn : word -> word list
+val less = fn : int * int -> bool
+val minii = fn : int * int -> int
+val eei1 = true : bool
+val eew1 = true : bool
+val eec1 = true : bool
+t016.sml:85.13-85.26 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         real * real
+  in expression:
+    117.0 = 117.0
+t016.sml:85.35-85.49 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         real * real
+  in expression:
+    117.1 <> 117.0
+

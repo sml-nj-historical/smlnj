@@ -1,0 +1,5 @@
+val it = () : unit
+bug280.sml:3.20-3.29 Warning: Fixity specification in signatures are ignored
+signature S1 = sig end
+signature S2 = sig end
+

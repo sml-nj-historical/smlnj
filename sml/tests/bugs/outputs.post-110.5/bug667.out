@@ -1,0 +1,11 @@
+val it = () : unit
+functor A : <sig>
+structure A :
+  sig
+    type a = int list
+    val a : 'a list
+  end
+opening A
+  type a = int list
+  val a : 'a list
+

@@ -1,0 +1,2 @@
+val it = () : unit
+bug1370.sml:3.13 Error: syntax error found at DOT

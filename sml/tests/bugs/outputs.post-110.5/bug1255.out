@@ -1,0 +1,8 @@
+val it = () : unit
+structure Foo :
+  sig
+    type  t = int
+    datatype u = U of t
+    structure Goo : <sig>
+  end
+

@@ -1,0 +1,7 @@
+val it = () : unit
+datatype id = ID of ?.int32
+val it = ID 0 : id
+datatype id = ID of ?.int32
+val it = ID 0 : id
+datatype id = ID of ?.word32
+val it = ID 0wx0 : id

@@ -1,0 +1,5 @@
+val it = () : unit
+bug265a.sml:2.9-2.26 Error: type variable in top level exception type
+bug265a.sml:1.1-4.8 Error: explicit type variable cannot be  generalized at its binding  declaration: 'aU
+bug265a.sml:1.1-4.8 Error: explicit type variable cannot be  generalized at its binding  declaration: 'bU
+

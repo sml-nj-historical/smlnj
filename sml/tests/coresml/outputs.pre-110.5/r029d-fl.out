@@ -1,0 +1,9 @@
+val it = () : unit
+datatype tree1 = Lf
+val y = Lf : tree1
+datatype tree2 = Lf
+r029d-fl.sml:17.1-17.19 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    tree1
+  expression:    tree2
+  in declaration:
+    x : tree1 = Lf

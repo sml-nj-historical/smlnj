@@ -1,0 +1,23 @@
+val it = () : unit
+signature A =
+  sig
+    type x
+    datatype d = D of {extension:x}
+  end
+signature B =
+  sig
+    type x
+    datatype d = D of {extension:x}
+    type t
+    type  b_x = {a:t, b:int}
+    sharing type x = b_x
+  end
+signature C =
+  sig
+    type x
+    datatype d = D of {extension:x}
+    type t
+    type  b_x = {a:t, b:int}
+    sharing type x = b_x
+  end
+functor F : <sig>

@@ -1,0 +1,6 @@
+val it = () : unit
+functor F : <sig>
+functor G : <sig>
+structure B : sig type  u = int end
+structure S : sig structure A : <sig> end
+

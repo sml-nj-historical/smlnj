@@ -1,0 +1,11 @@
+val it = () : unit
+signature ID = sig end
+signature ABSSYN = sig end
+signature UNOP = sig end
+signature BINOP = sig end
+functor AbsSyn : <sig>
+bug286.sml:12.52-12.54 Error: unbound structure: Id
+bug286.sml:12.29-12.56 Error: unmatched structure specification: Id
+bug286.sml:12.29-12.56 Error: unmatched structure specification: UnOp
+bug286.sml:12.29-12.56 Error: unmatched structure specification: BinOp
+

@@ -1,0 +1,5 @@
+val it = () : unit
+bug1323.1.sml:8.1-32.4 Warning: match nonexhaustive
+          x :: rest => ...
+  
+functor F : <sig>

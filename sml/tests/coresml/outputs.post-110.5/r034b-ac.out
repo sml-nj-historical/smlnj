@@ -1,0 +1,6 @@
+val it = () : unit
+val x = (1,17) : int * int
+r034b-ac.sml:14.1-14.14 Warning: binding not exhaustive
+          (1,w) = ...
+val w = 17 : int
+

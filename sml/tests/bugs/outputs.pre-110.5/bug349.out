@@ -1,0 +1,2 @@
+val it = () : unit
+bug349.sml:2.1-2.31 Error: duplicate function names in fun dec: foo

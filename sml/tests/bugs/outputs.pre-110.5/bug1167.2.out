@@ -1,0 +1,5 @@
+val it = () : unit
+datatype exp = UNARY of (string * int) * int
+val deco = <hidden-value> : string * int
+val unary = fn : string * int -> int -> exp
+val deco = fn : int -> exp

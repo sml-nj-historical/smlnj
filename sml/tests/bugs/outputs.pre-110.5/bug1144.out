@@ -1,0 +1,6 @@
+val it = () : unit
+structure B : sig structure A : <sig> end
+structure C : sig structure B : <sig> end
+opening C
+  structure B : sig structure A : <sig> end
+val t = fn : unit -> unit -> unit

@@ -1,0 +1,8 @@
+val it = () : unit
+signature SS =
+  sig
+    type t1
+    val t2 : t1
+  end
+bug229.sml:5.1-10.4 Error: unmatched type specification: t1
+

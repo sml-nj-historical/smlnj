@@ -1,0 +1,9 @@
+val it = () : unit
+signature DERIVED =
+  sig
+    type new_name
+    datatype dtype = Constructor of int
+    sharing type new_name = dtype
+  end
+functor F1 : <sig>
+functor F2 : <sig>

@@ -1,0 +1,7 @@
+val it = () : unit
+[opening bug355dat.sml]
+[use failed: Io: openIn failed on "bug355dat.sml", No such file or directory]
+
+uncaught exception exception Error
+  raised at: build/interact.sml:50.17-50.31
+

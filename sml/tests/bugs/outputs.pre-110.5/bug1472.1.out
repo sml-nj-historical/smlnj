@@ -1,0 +1,5 @@
+val it = () : unit
+datatype expression = Cast of ctype * expression | RealConst of real
+datatype ctype = Struct of declarator
+datatype declarator = Array_d of expression
+val f = fn : declarator * declarator -> bool

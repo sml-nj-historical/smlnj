@@ -1,0 +1,17 @@
+val it = () : unit
+signature SIG1 = sig datatype ('a,'b) dt = C of ('a,'b) dt end
+signature SIG2 =
+  sig
+    structure Struct1 : sig datatype ('a,'b) dt = C of ('a,'b) dt end
+    type ('a,'b) dt = ('a,'b) Struct1.dt
+  end
+signature SIG3 =
+  sig
+    structure Struct2 :
+      sig
+        structure Struct1 : <sig>
+        type ('a,'b) dt = ('a,'b) Struct1.dt
+      end
+    val f : (unit,unit) Struct2.Struct1.dt -> unit
+  end
+functor Fun : <sig>

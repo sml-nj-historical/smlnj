@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG = sig end
+signature SIG' = sig structure S : sig end end
+bug43.sml:19.11-19.19 Error: unbound structure: T in path S'.T

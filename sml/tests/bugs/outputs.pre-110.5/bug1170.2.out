@@ -1,0 +1,6 @@
+val it = () : unit
+signature S =
+  sig
+    type  t1 = int
+    type  t2 = bool
+  end
