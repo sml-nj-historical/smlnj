@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 
+ALLOC=1M
+
 ARCH=sparc
 OPSYS=solaris
 RUN_DIR=../../bin/.run
@@ -34,23 +36,6 @@ if [ -f ../../bin/.arch-n-opsys ]; then
 	echo $ARCH $OPSYS
   fi
 fi
-
-#
-# Allocation size: This snippet should be kept consistent with that
-#     in config/install.sh
-#
-case $ARCH in
-  mips*) ALLOC=1M ;;
-  x86)
-    ALLOC=256k
-  ;;
-  alpha32)
-    ALLOC=512k
-  ;;
-  *)
-    ALLOC=512k
-  ;;
-esac
 
 while [ "$#" != "0" ]
 do
