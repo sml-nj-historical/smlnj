@@ -295,9 +295,8 @@ in case (bodyI, bodyRet)
 	    NONE) *)
        end
 
-     | _ =>
-       (PPFlint.printLexp bodyRet;
-	bug "couldn't find the returned record")
+     | _ => (fdec, NONE)		(* sorry, can't do that *)
+     (* (PPFlint.printLexp bodyRet; bug "couldn't find the returned record") *)
 
 end
 
