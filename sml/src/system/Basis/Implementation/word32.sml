@@ -61,6 +61,7 @@ structure Word32Imp : WORD =
     val scan = NumScan.scanWord
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
+    (* this should get its own primop! *)
+    fun ~x = 0w1 + notb x
+
   end  (* structure Word32 *)
-
-

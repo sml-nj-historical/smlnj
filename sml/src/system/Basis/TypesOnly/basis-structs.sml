@@ -41,3 +41,8 @@ structure String =
   struct
     type string = PrimTypes.string
   end
+
+structure Char =
+  struct
+    type char = PrimTypes.char
+  end

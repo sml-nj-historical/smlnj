@@ -16,7 +16,7 @@ structure Bool : BOOL =
     fun scan (getc : (char, 'a) StringCvt.reader) cs = (
 	  case (getc (PreBasis.skipWS getc cs))
 	   of (SOME((#"t"| #"T"), cs')) => (case (PreBasis.getNChars getc (cs', 3))
-		 of (SOME([(#"r"| "#R"), (#"u"| #"U"), (#"e"| #"E")], cs'')) =>
+		 of (SOME([(#"r"| #"R"), (#"u"| #"U"), (#"e"| #"E")], cs'')) =>
                       SOME(true, cs'')
 		  | _ => NONE
 		(* end case *))

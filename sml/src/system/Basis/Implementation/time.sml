@@ -180,7 +180,7 @@ structure TimeImp : TIME =
     fun scan getc charStrm = let
 	  val chrLE : (char * char) -> bool = InlineT.cast InlineT.DfltInt.<=
 	  fun isDigit c = (chrLE(#"0", c) andalso chrLE(c, #"9"))
-	  fun incByDigit (n, c) = 10*n + Int.toLarge(Char.ord c - Char.ord #"0")
+	  fun incByDigit (n, c) = 10*n + Int.toLarge(CharImp.ord c - CharImp.ord #"0")
 	  fun scanSec (secs, cs) = (case (getc cs)
 		 of NONE => SOME(PB.TIME{sec=secs, usec=0}, cs)
 		  | (SOME(#".", cs')) => (case (getc cs')

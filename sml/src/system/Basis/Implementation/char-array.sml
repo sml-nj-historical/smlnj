@@ -65,7 +65,7 @@ structure CharArray : MONO_ARRAY =
     val sub         : (array * int) -> elem	  = InlineT.CharArray.chkSub
     val update      : (array * int * elem) -> unit 
                                                = InlineT.CharArray.chkUpdate
-
+(*
     fun extract (arr, base, optLen) = let
 	  val len = length arr
 	  fun newVec n = let
@@ -93,10 +93,37 @@ structure CharArray : MONO_ARRAY =
 		    then raise General.Subscript
 		    else newVec n
 	  end
+*)
 
-    fun vector a = extract (a, 0, NONE)
+    fun vector a = let
+	val len = length a
+    in
+	if 0 < len then let
+		val v = Assembly.A.create_s len
+		fun fill i = if (i < len) then
+				 (vecUpdate(v, i, unsafeSub(a, i));
+				  fill (i+1))
+			     else ()
+	    in
+		fill 0;
+		v
+	    end
+	else ""
+    end
 
-    fun copy {src, dst, di} = raise Fail "notyet"
+    fun copy {src, dst, di} = let
+	val srcLen = length src
+	val sstop = srcLen
+	val dstop = di + srcLen
+	fun copyDown (j, k) =
+	    if 0 <= j then
+		(unsafeUpdate (dst, k, unsafeSub (src, j));
+		 copyDown (j - 1, k - 1))
+	    else ()
+    in
+	if di < 0 orelse length dst < dstop then raise Subscript
+	else copyDown (sstop - 1, dstop - 1)
+    end
 (*
     fun copy {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
@@ -130,7 +157,21 @@ structure CharArray : MONO_ARRAY =
 	  end
 *)
 
-    fun copyVec {src, dst, di} = raise Fail "notyet"
+    fun copyVec {src, dst, di} = let
+	val srcLen = String.size src
+	val sstop = srcLen
+	val dstop = di + srcLen
+	(* assuming that there is no aliasing between vectors and arrays
+	 * it should not matter whether we copy up or down... *)
+	fun copyDown (j, k) =
+	    if 0 <= j then
+		(unsafeUpdate (dst, k, vecSub (src, j));
+		 copyDown (j - 1, k - 1))
+	    else ()
+    in
+	if di < 0 orelse length dst < dstop then raise Subscript
+	else copyDown (sstop - 1, dstop - 1)
+    end
 (*
     fun copyVec {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let

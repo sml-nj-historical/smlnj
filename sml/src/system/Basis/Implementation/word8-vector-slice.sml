@@ -33,6 +33,7 @@ struct
 
 (* val full : vector -> slice *)
   fun full base = SL{base=base,start=0,stop=InlineT.PolyVector.length base}
+(*
       let val blen = V.length base
        in if geu(start, blen)  (* checks start >= 0 *)
           then raise Core.Subscript
@@ -43,6 +44,7 @@ struct
 		      then raise Core.Subscript
 		      else SL{base=base,start=start,stop=start+n}
       end
+*)
 
 
 (* val slice : vector * int * int option -> slice *)

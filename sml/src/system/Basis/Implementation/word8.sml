@@ -85,6 +85,7 @@ structure Word8Imp : WORD =
 	  end
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
+    (* this should get its own primop! *)
+    fun ~x = 0w1 + notb x
+
   end  (* structure Word8 *)
-
-

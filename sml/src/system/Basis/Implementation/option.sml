@@ -26,6 +26,9 @@ structure Option : OPTION =
     fun compose (f, g) x = map f (g x)
     fun composePartial (f, g) x = mapPartial f (g x)
 
+    fun app f NONE = ()
+      | app f (SOME x) = f x
+
   end;
 
 

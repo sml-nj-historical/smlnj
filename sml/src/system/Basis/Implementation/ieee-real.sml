@@ -16,7 +16,7 @@ structure IEEEReal : IEEE_REAL =
     datatype nan_mode = QUIET | SIGNALLING
 
     datatype float_class
-      = NAN of nan_mode
+      = NAN
       | INF
       | ZERO
       | NORMAL
@@ -30,7 +30,7 @@ structure IEEEReal : IEEE_REAL =
 
     (* dbm: using original codes for rounding modes, not the ones used
      *  in SMLBasis *)
-    fun intToRM (0: Int32.int) = TO_NEAREST
+    fun intToRM 0 = TO_NEAREST
       | intToRM 1 = TO_ZERO
       | intToRM 2 = TO_POSINF
       | intToRM 3 = TO_NEGINF
@@ -44,20 +44,20 @@ structure IEEEReal : IEEE_REAL =
     fun getRoundingMode () = intToRM (SMLBasis.getRoundingMode ())
 
     type decimal_approx = {
-	kind : float_class,
+	class : float_class,
 	sign : bool,
 	digits : int list,
 	exp : int
       }
 
-    fun toString {kind, sign, digits, exp} = let
+    fun toString {class, sign, digits, exp} = let
 	  fun fmtExp 0 = []
 	    | fmtExp i = ["E", IntImp.toString i]
 	  fun fmtDigits ([], tail) = tail
 	    | fmtDigits (d::r, tail) =
 	      (IntImp.toString d) :: fmtDigits(r, tail)
 	  in
-	    case (sign, kind, digits)
+	    case (sign, class, digits)
 	     of (true, ZERO, _) => "~0.0"
 	      | (false, ZERO, _) => "0.0"
 	      | (true, (NORMAL|SUBNORMAL), []) => "~0.0"
@@ -68,14 +68,17 @@ structure IEEEReal : IEEE_REAL =
 		  StringImp.concat("0." :: fmtDigits(digits, fmtExp exp))
 	      | (true, INF, _) => "~inf"
 	      | (false, INF, _) => "inf"
-	      | (_, NAN _, []) => "nan"
-	      | (_, NAN _, _) =>
+	      | (_, NAN, []) => "nan"
+	      | (_, NAN, _) =>
 		  StringImp.concat("nan(" :: fmtDigits(digits, [")"]))
 	    (* end case *)
 	  end
 
 (** TODO: implement fromString **)
     fun fromString s = NONE
+
+(** TODO: implement scan **)
+    fun scan _ = raise Fail "notyet"
 
   end;
 

@@ -213,7 +213,7 @@ structure StringImp : STRING =
 		  val ai = unsafeSub(a,i)
 		  val bi = unsafeSub(b,i)
 		  in
-		    Char.>(ai, bi) orelse ((ai = bi) andalso cmp(i+1))
+		    CharImp.>(ai, bi) orelse ((ai = bi) andalso cmp(i+1))
 		  end
 	  in
 	    cmp 0
@@ -240,11 +240,11 @@ structure StringImp : STRING =
 	    accum (0, [])
 	  end
 
-    val fromString = fromString' Char.scan
-    val toString = translate Char.toString
+    val fromString = fromString' CharImp.scan
+    val toString = translate CharImp.toString
 
-    val fromCString = fromString' Char.scanC
-    val toCString = translate Char.toCString
+    val fromCString = fromString' CharImp.scanC
+    val toCString = translate CharImp.toCString
 
     fun concatWith sep l = let
 	fun build [] = []

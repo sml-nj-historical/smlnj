@@ -72,6 +72,9 @@ structure Word31Imp : WORD =
 	  end
     val fromString = PreBasis.scanString (scan StringCvt.HEX)
 
+    (* should have its own primop! *)
+    fun ~x = 0w1 + notb x
+
   end  (* structure Word31 *)
 
 

@@ -4,7 +4,7 @@
  *
  *)
 
-structure Char : sig
+structure CharImp : sig
     include CHAR
     val scanC : (char, 'a) StringCvt.reader -> (char, 'a) StringCvt.reader
 	(* internal scanning function for C-style escape sequences *)
@@ -19,7 +19,7 @@ structure Char : sig
     val itoc : int -> char = InlineT.cast
     val ctoi : char -> int = InlineT.cast
 
-    type char = char
+    type char = Char.char
     type string = string
 
     val minChar : char	= C.chr 0

@@ -5,7 +5,7 @@
 
 structure Text : TEXT =
   struct
-    structure Char = Char
+    structure Char = CharImp
     structure String = StringImp
     structure Substring = Substring
     structure CharVector = CharVector

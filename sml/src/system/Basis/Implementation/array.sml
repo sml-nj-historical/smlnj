@@ -49,6 +49,7 @@ structure Array : ARRAY =
     val sub : 'a array * int -> 'a = InlineT.PolyArray.chkSub
     val update : 'a array * int * 'a -> unit = InlineT.PolyArray.chkUpdate
 
+(*
     fun extract (v, base, optLen) = let
 	  val len = length v
 	  fun newVec n = let
@@ -74,10 +75,33 @@ structure Array : ARRAY =
 		    else newVec n
 	    (* end case *)
 	  end
+*)
 
-    fun vector a = extract (a, 0, NONE)
+    fun vector a = let
+	val len = length a
+    in
+	if 0 < len then let
+		fun tab (~1, l) = Assembly.A.create_v(len, l)
+		  | tab (i, l) = tab(i-1, InlineT.PolyArray.sub(a, i)::l)
+	    in
+		tab (len-1, [])
+	    end
+	else Assembly.vector0
+    end
 
-    fun copy {src, dst, di} = raise Fail "notyet"
+    fun copy {src, dst, di} = let
+	val srcLen = length src
+	val sstop = srcLen
+	val dstop = di + srcLen
+	fun copyDown (j, k) =
+	    if 0 <= j then
+		(InlineT.PolyArray.update (dst, k, InlineT.PolyArray.sub (src, j));
+		 copyDown (j - 1, k - 1))
+	    else ()
+    in
+	if di < 0 orelse length dst < dstop then raise Subscript
+	else copyDown (sstop - 1, dstop - 1)
+    end
 (*
     fun copy {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
@@ -111,7 +135,21 @@ structure Array : ARRAY =
 	  end
 *)
 
-    fun copyVec {src, dst, di} = raise Fail "notyet"
+    fun copyVec {src, dst, di} = let
+	val srcLen = InlineT.PolyVector.length src
+	val sstop = srcLen
+	val dstop = di + srcLen
+	(* assuming that there is no aliasing between vectors and arrays
+	 * it should not matter whether we copy up or down... *)
+	fun copyDown (j, k) =
+	    if 0 <= j then
+		(InlineT.PolyArray.update (dst, k, InlineT.PolyVector.sub (src, j));
+		 copyDown (j - 1, k - 1))
+	    else ()
+    in
+	if di < 0 orelse length dst < dstop then raise Subscript
+	else copyDown (sstop - 1, dstop - 1)
+    end
 (*
     fun copyVec {src, si, len, dst, di} = let
 	  val (sstop, dstop) = let
@@ -190,36 +228,38 @@ structure Array : ARRAY =
 	  end
 *)
 
-(* these operations moved to array-slice.sml
-    fun appi f slice = let
-	  val (arr, start, stop) = chkSlice slice
+(* the following comment does not seem to be true
+ * (The operations have not been moved away, they just changed their type a bit.) *)
+(* these operations moved to array-slice.sml *)
+    fun appi f arr = let
+	  val stop = length arr
 	  fun app i = if (i < stop)
 		then (f (i, InlineT.PolyArray.sub(arr, i)); app(i+1))
 		else ()
 	  in
-	    app start
+	    app 0
 	  end
 
-    fun foldli f init slice = let
-	  val (arr, start, stop) = chkSlice slice
+    fun foldli f init arr = let
+	  val stop = length arr
 	  fun fold (i, accum) = if (i < stop)
 		then fold (i+1, f (i, InlineT.PolyArray.sub(arr, i), accum))
 		else accum
 	  in
-	    fold (start, init)
+	    fold (0, init)
 	  end
 
-    fun foldri f init slice = let
-	  val (arr, start, stop) = chkSlice slice
-	  fun fold (i, accum) = if (i >= start)
+    fun foldri f init arr = let
+	  val stop = length arr
+	  fun fold (i, accum) = if (i >= 0)
 		then fold (i-1, f (i, InlineT.PolyArray.sub(arr, i), accum))
 		else accum
 	  in
 	    fold (stop - 1, init)
 	  end
 
-    fun modifyi f slice = let
-	  val (arr, start, stop) = chkSlice slice
+    fun modifyi f arr = let
+	  val stop = length arr
 	  fun modify' i = if (i < stop)
 		then (
 		  InlineT.PolyArray.update(arr, i,
@@ -227,9 +267,59 @@ structure Array : ARRAY =
 		  modify'(i+1))
 		else ()
 	  in
-	    modify' start
+	    modify' 0
 	  end
-*)
+
+    fun findi p a = let
+	val len = length a
+	fun loop i =
+	    if i >= len then NONE
+	    else let val v = InlineT.PolyArray.sub (a, i)
+		 in if p (i, v) then SOME (i, v) else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun find p a = let
+	val len = length a
+	fun loop i =
+	    if i >= len then NONE
+	    else let val v = InlineT.PolyArray.sub (a, i)
+		 in if p v then SOME v else loop (i + 1)
+		 end
+    in
+	loop 0
+    end
+
+    fun exists p a = let
+	val len = length a
+	fun loop i =
+	    i < len andalso (p (InlineT.PolyArray.sub (a, i)) orelse loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun all p a = let
+	val len = length a
+	fun loop i =
+	    i >= len orelse (p (InlineT.PolyArray.sub (a, i)) andalso loop (i + 1))
+    in
+	loop 0
+    end
+
+    fun collate ecmp (a, b) = let
+	val al = length a
+	val bl = length b
+	val l = if al < bl then al else bl
+	fun loop i =
+	    if i >= l then Int31Imp.compare (al, bl)
+	    else case ecmp (InlineT.PolyArray.sub (a, i),
+			    InlineT.PolyArray.sub (b, i)) of
+		     EQUAL => loop (i + 1)
+		   | unequal => unequal
+    in
+	loop 0
+    end
+
   end (* structure Array *)
-
-

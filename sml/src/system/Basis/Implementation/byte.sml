@@ -8,10 +8,12 @@ structure Byte : BYTE =
   struct
     val chr     : Word8.word -> char = InlineT.cast
     val ord     : char -> Word8.word = InlineT.cast
+(*
     val vectorToString : (Word8Vector.vector * int * int) -> string
 	  = InlineT.cast CharVector.extract
     val arrayToString : (Word8Array.array * int * int) -> string
 	  = InlineT.cast CharArray.extract
+*)
 
     val byteToChar : Word8.word -> char = InlineT.cast
     val charToByte : char -> Word8.word = InlineT.cast
@@ -20,9 +22,9 @@ structure Byte : BYTE =
     val stringToBytes : string -> Word8Vector.vector = InlineT.cast
 
     val unpackStringVec : (Word8Vector.vector * int * int option) -> string
-	 = InlineT.cast Word8Vector.extract
+	 = InlineT.cast (Word8VectorSlice.vector o Word8VectorSlice.slice)
     val unpackString  : (Word8Array.array * int * int option) -> string
-	 = InlineT.cast Word8Array.extract
+         = InlineT.cast (Word8ArraySlice.vector o Word8ArraySlice.slice)
 
     local
     (* the substring type is abstract, so we use a cast to an equivalent type

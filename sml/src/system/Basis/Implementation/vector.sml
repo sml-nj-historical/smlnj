@@ -52,6 +52,7 @@ structure Vector : VECTOR =
     fun rev ([], l) = l
       | rev (x::r, l) = rev (r, x::l)
 
+(*
     fun extract (v, base, optLen) = let
 	  val len = length v
 	  fun newVec n = let
@@ -77,6 +78,7 @@ structure Vector : VECTOR =
 		    else newVec n
 	    (* end case *)
 	  end
+*)
 
     fun concat [v] = v
       | concat vl = let

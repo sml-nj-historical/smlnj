@@ -170,13 +170,13 @@ structure Real64Imp : REAL =
 			          then IEEEReal.SUBNORMAL
 			          else IEEEReal.NORMAL
 	                else if x==x then IEEEReal.INF
-			             else IEEEReal.NAN IEEEReal.QUIET
+			             else IEEEReal.NAN
        else if x<posInf then if x == 0.0 then IEEEReal.ZERO
 	                     else if Assembly.A.logb x = ~1023
 			          then IEEEReal.SUBNORMAL
 			          else IEEEReal.NORMAL
 	                else if x==x then IEEEReal.INF
-			             else IEEEReal.NAN IEEEReal.QUIET
+			             else IEEEReal.NAN
 
     val radix = 2
     val precision = 52

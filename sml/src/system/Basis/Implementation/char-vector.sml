@@ -48,7 +48,7 @@ structure CharVector : MONO_VECTOR =
 	tabulate (length v, mostlySame)
     end
 
-    val extract  = String.extract
+(*  val extract  = String.extract *)
     val concat   = String.concat
 
     fun app f vec = let
