@@ -1,7 +1,11 @@
+2004-11-24  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* Release version 3.9.6.
+
 2004-11-23  Stefan Monnier  <monnier@iro.umontreal.ca>
- 
-       * sml-mode.el (sml-font-lock-symbols-alist): Add yet more silly entries.
- 
+
+	* sml-mode.el (sml-font-lock-symbols-alist): Add yet more silly entries.
+
 2004-11-15  Stefan Monnier  <monnier@iro.umontreal.ca>
 
 	* sml-mode.el (sml-font-lock-symbols-alist): Add entries for >= and <=.
