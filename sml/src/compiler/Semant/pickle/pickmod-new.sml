@@ -947,7 +947,7 @@ in
 
 	val op $ = PU.$ II
 	fun inl_info i =
-	    II.match i { inl_prim = fn (p, t) => "A" $ [primop p, ty t],
+	    II.match i { inl_prim = fn p => "A" $ [primop p],   (* PRIMOP *)
 			 inl_str = fn sl => "B" $ [list inl_info sl],
 			 inl_no = fn () => "C" $ [] }
 

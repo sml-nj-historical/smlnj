@@ -813,7 +813,7 @@ val inLine =
       fun mkVarElement((name, p, t),(symbols,elements,dacc,offset)) =
         let val s = S.varSymbol name
             val sp = M.VALspec{spec=t, slot=offset}
-            val d = II.mkPrimInfo(p, t)
+            val d = II.mkPrimInfo p  (* PRIMOP *)
          in (s::symbols, (s,sp)::elements, d::dacc, offset+1)
         end
       
@@ -824,14 +824,14 @@ val inLine =
             (rev allSymbols, rev allElements, rev infList)
 
       val sigrec ={stamp=ST.special "inLineSig",
-		       name=NONE, closed=true, 
-		       fctflag=false,
-		       symbols=allSymbols, elements=allElements,
-		       typsharing=nil, strsharing=nil,
-		       properties = PropList.newHolder (),
-		       (* boundeps=ref (SOME []), *)
-		       (* lambdaty=ref NONE, *)
-		       stub = NONE}
+		   name=NONE, closed=true, 
+		   fctflag=false,
+		   symbols=allSymbols, elements=allElements,
+		   typsharing=nil, strsharing=nil,
+		   properties = PropList.newHolder (),
+		   (* boundeps=ref (SOME []), *)
+		   (* lambdaty=ref NONE, *)
+		   stub = NONE}
       val _ = ModulePropLists.setSigBoundeps (sigrec, SOME [])
    in M.STR{sign=M.SIG sigrec,
             rlzn={stamp=ST.special "inLineStr",
@@ -840,7 +840,8 @@ val inLine =
 		  properties = PropList.newHolder (),
 		  (* lambdaty=ref(NONE), *)
 		  rpath=IP.IPATH[S.strSymbol "inLine"]},
-	    access=A.nullAcc, info= II.mkStrInfo infList}
+	    access=A.nullAcc,
+            info= II.mkStrInfo infList}
   end
 
 (* priming structures: PrimTypes and InLine *)
