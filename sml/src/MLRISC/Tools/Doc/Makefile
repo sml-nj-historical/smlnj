@@ -1,4 +1,4 @@
-MAINTEX=	rewrite-gen
+MAINTEX=	rewrite-gen	nowhere
 TEX=	$(MAINTEX:=.tex)
 DVI=	$(TEX:.tex=.dvi)
 PS=	$(TEX:.tex=.ps)

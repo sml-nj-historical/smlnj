@@ -1,0 +1,154 @@
+\documentclass{article}
+\usepackage{alltt}
+   \newcommand{\nowhere}{{\sf nowhere}}
+   \newcommand{\Nowhere}{{\sf Nowhere}}
+   \newcommand{\KW}[2]{\newcommand{#1}[1]{{\bf #2}\ }}
+   \newcommand{\END}{{\bf end}} 
+   \newcommand{\OF}{{\bf of}} 
+   \KW{\FUN}{fun} \KW{\VAL}{val}  
+   \KW{\LOCAL}{local} \KW{\ANDALSO}{andalso}
+   \KW{\CASE}{case} \KW{\LET}{let} \KW{\WHERE}{where}
+   \KW{\INCLUDE}{include} \KW{\SIGNATURE}{signature} \KW{\DATATYPE}{datatype}
+   \newcommand{\SIG}{{\bf sig}}
+   \KW{\IN}{in}
+   \KW{\AND}{and}
+
+   \title{\Nowhere{} 1.0 Manual}
+   \author{Allen Leung\thanks{New York University. Email:{\tt leunga@cs.nyu.edu}}}
+\begin{document}
+   \maketitle
+\section{Introduction}
+If you are like me, you lament the fact that SML doesn't have conditional
+pattern matching.  Personally, I don't fully understand the rationale for its
+omission in the standard--- even though there are semantics ambiguity 
+issues if guard expressions have side effects, conditional pattern matching
+is just too useful in practice.   When writing non-trivial transformations, I
+find myself having to manually factor pattern matching code, 
+whose job should be the compiler's.
+I consider its lack in SML a big flaw in an otherwise great language.
+
+  As a remedy, \nowhere{} is a simple source to source tool that translates
+SML programs augmented with where-clauses into normal SML code, i.e.,
+code without where-clauses\footnote{Thus the name of the tool.}.  
+
+\subsection{Syntax}
+Where-clauses that we recognize are of two forms.
+In case statements:
+\begin{alltt}
+    \(pat\) \WHERE \(exp\) => \(exp\)
+\end{alltt}
+and in function clauses:
+\begin{alltt}
+    \(pat\sb{1}\) \ldots \(pat\sb{n}\) \WHERE (\(exp\)) = \(exp\)
+\end{alltt}
+Note that parentheses are not optional in the latter form, because
+of syntactic ambiguity with \verb|=|.
+
+For example, the expression
+\begin{alltt}
+   \CASE [1,2,3] \OF 
+      [x,y,z] \WHERE x>y \ANDALSO y>z => 1
+    | [x,y,z] \WHERE x<y \ANDALSO y<z => 2
+    | _ => 3
+\end{alltt}
+evaluates to 2.
+
+\Nowhere takes input files of the following form:
+\begin{alltt}
+{\bf local}
+    {\sl datatype definitions}
+{\bf in}
+    {\sl code}
+{\bf end}
+\end{alltt}
+It looks for where-clauses within the {\sl code} section, and rewrite it into
+real SML code.  The {\sl datatype definitions} section is for the benefit
+of \nowhere, since it is rather stupid at the moment and doesn't understand
+SML's scoping rule and environments.  
+All datatypes that are used within the {\sl code}
+section should be mentioned here, so that \nowhere{} can find its definitions.
+
+You can use the special file import declaration:
+\begin{alltt}
+  {\bf include} "filename"
+\end{alltt}
+to import the definitions from a file.  Note that \nowhere{} will look 
+inside nested structure or signature definitions.  So if all datatypes are
+properly defined in signature files, all you have to do is import these
+files.
+
+\subsection{Semantics}
+   Expressions evaluated inside where-clauses should be side-effect free.
+This is a built-in assumption in the match compiler.  The result may
+not be as expected otherwise.
+
+\section{An Example}
+Here's a larger example taken from the x86 peephole phase in MLRISC.
+We only show the push and pop folding rules.  The first rule
+folds the instructions 
+\begin{verbatim}
+   subl 4, %esp
+   movl src, 0(%esp)
+\end{verbatim}
+into \verb|push src|, assuming src is not \verb|%esp|. 
+The second rule folds
+\begin{verbatim}
+   movl 0(%esp), dst
+   addl 4, %esp
+\end{verbatim}
+into \verb|pop dst|, again assuming dst is not \verb|%esp|.
+\begin{alltt}
+\LOCAL\ 
+   include "x86Instr.sml" (* import instruction definition *)
+\IN\ 
+   {\sl ...}
+   \FUN loop(current, instrs) =
+       \CASE current \OF
+         {\sl ...}
+      | I.BINARY\{binOp=I.SUBL, src=I.Immed 4, dst=I.Direct dst_i\}:: 
+        I.MOVE\{mvOp=I.MOVL,src,dst=I.Displace\{base,disp=I.Immed 0,...\}\}
+        ::rest 
+           \WHERE C.sameColor(base, C.esp) andalso
+                  C.sameColor(dst_i, C.esp) andalso
+                  not(isStackPtr src) =>
+           loop(rest, I.PUSHL src::instrs)
+               
+      | I.MOVE\{mvOp=I.MOVL, 
+              src=I.Displace\{base, disp=I.Immed 0, ...\}, dst\}::
+        I.BINARY\{binOp=I.ADDL, src=I.Immed 4, dst=I.Direct dst_i\}:: 
+        rest 
+           \WHERE C.sameColor(base, C.esp) andalso
+                 C.sameColor(dst_i,C.esp) andalso
+                 not(isStackPtr dst) =>
+           loop(rest, I.POP dst::instrs)
+
+     | i::rest => loop(rest, i::instrs)
+     {\sl ...}
+\END
+\end{alltt}
+
+\section{Compiling and Running the Tool}
+
+To compile the tool, go to the directory Tools/WhereGen, and in sml, type
+\begin{alltt}
+   use "build.sml"
+\end{alltt}
+When this completes, the image \verb|nowhere.<arch>| will be generated.
+
+The input files to \nowhere{} should have any suffix other than \verb|.sml|.
+To run the tool, type:
+\begin{alltt}
+    sml @SMLload=nowhere inputfile
+\end{alltt}
+
+\section{Bugs and Missing Features}
+   Currently, these things are missing:
+\begin{enumerate}
+  \item  Array and vector patterns are currently not supported. 
+        However, SML/NJ style OR-patterns are handled.
+  \item Type checking of patterns is missing.
+  \item The error messages may be less than clear.  Furthermore, 
+        line reporting may be out-of-sync.
+\end{enumerate}
+
+\end{document}

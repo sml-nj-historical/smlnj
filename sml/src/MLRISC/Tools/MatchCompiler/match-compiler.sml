@@ -52,30 +52,14 @@ struct
    fun listify (l,s,r) list = 
        l^List.foldr (fn (x,"") => x | (x,y) => x^s^y) "" list^r
 
+   (* ListPair.all has the wrong semantics! *)
+   fun forall f ([], []) = true
+     | forall f (x::xs, y::ys) = f(x,y) andalso forall f (xs, ys)
+     | forall f _ = false
+
    datatype index = INT of int | LABEL of Var.var
 
    datatype path  = PATH of index list
-
-   (* Internal rep of pattern after every variable has been renamed *) 
-   datatype pat = 
-     WILD                    (* wild card *)
-   | APP of decon * pat list
-   | TUPLE of pat list
-   | RECORD of (Var.var * pat) list
-
-   and decon = CON of Con.con          
-             | LIT of Literal.literal   
-
-   exception MatchCompiler of string
-
-   fun error msg = raise MatchCompiler msg 
-   fun bug msg   = error("bug: "^msg)
-
-   structure Con     = Con
-   structure Action  = Action
-   structure Literal = Literal
-   structure Guard   = Guard
-   structure Var     = Var
 
    structure Index =
    struct
@@ -111,8 +95,47 @@ struct
           "v_"^List.foldr (fn (i,"") => Index.toString i
                             | (i,s) => Index.toString i^"_"^s) "" p
       structure Map = RedBlackMapFn(type ord_key = path val compare = compare)
-      structure Set = RedBlackSetFn(type ord_key = path val compare = compare)
    end
+
+   datatype name = VAR of Var.var | PVAR of path
+
+   structure Name =
+   struct
+      fun toString(VAR v)  = Var.toString v
+        | toString(PVAR p) = Path.toString p 
+      fun compare(VAR x,VAR y) = Var.compare(x,y) 
+        | compare(PVAR x,PVAR y) = Path.compare(x,y) 
+        | compare(VAR  _, PVAR _) = LESS
+        | compare(PVAR  _, VAR _) = GREATER
+      fun equal(x,y) = compare(x,y) = EQUAL
+      structure Set = RedBlackSetFn(type ord_key = name val compare = compare)
+   end
+
+   structure VarSet = RedBlackSetFn(type ord_key = Var.var val compare = Var.compare)
+   structure Subst = RedBlackMapFn(type ord_key = Var.var val compare = Var.compare)
+   type subst = name Subst.map
+
+   (* Internal rep of pattern after every variable has been renamed *) 
+   datatype pat = 
+     WILD                               (* wild card *)
+   | APP of decon * pat list            (* constructor *)
+   | TUPLE of pat list                  (* tupling *)
+   | RECORD of (Var.var * pat) list     (* record *)
+   | OR of (subst * pat) list           (* disjunction *)
+
+   and decon = CON of Con.con          
+             | LIT of Literal.literal   
+
+   exception MatchCompiler of string
+
+   fun error msg = raise MatchCompiler msg 
+   fun bug msg   = error("bug: "^msg)
+
+   structure Con     = Con
+   structure Action  = Action
+   structure Literal = Literal
+   structure Guard   = Guard
+   structure Var     = Var
 
    structure Decon =
    struct
@@ -144,11 +167,14 @@ struct
         | toString(RECORD lps) = listify("{",",","}") 
                                  (map (fn (l,p) =>
                                       Var.toString l^"="^toString p) lps)
+        | toString(OR ps) = listify("(","|",")") (map toString' ps)
+      and toString'(subst,p) = toString p
 
       fun kind(WILD) = 0
         | kind(APP _) = 1
         | kind(TUPLE _) = 2
         | kind(RECORD _) = 3
+        | kind(OR _) = 4
 
       and compareList([], []) = EQUAL
         | compareList([], _)  = LESS
@@ -157,8 +183,8 @@ struct
           (case compare(x,y) of
             EQUAL => compareList(xs,ys)
           | ord   => ord 
-          ) 
- 
+          )
+
       and compare(WILD, WILD) = EQUAL
         | compare(APP(f,xs), APP(g,ys)) =
           (case Decon.compare(f,g) of
@@ -175,43 +201,47 @@ struct
                 | loop((i,x)::xs, (j,y)::ys) =
                   (case Var.compare(i, j) of 
                      EQUAL => (case compare(x,y) of
-                                  EQUAL => loop(xs,ys)
+                                 EQUAL => loop(xs,ys)
                                | ord => ord
                               )
                   |  ord => ord
                   )
           in  loop(xs, ys)
           end
+        | compare(OR xs, OR ys) = compareList(map #2 xs, map #2 ys)
         | compare(x, y) = Int.compare(kind x, kind y)
 
-      fun isRefutable WILD = false
-        | isRefutable (APP(f,_)) = true
-        | isRefutable (TUPLE ps) = List.exists isRefutable ps
-        | isRefutable (RECORD ps) = List.exists (fn (l,p) => isRefutable p) ps
-      
       structure Set = RedBlackSetFn(type ord_key = pat val compare = compare)
       fun equal(p1,p2) = compare(p1,p2) = EQUAL
    end
 
-   type subst = Var.var Path.Map.map
+   type rule_no = int
 
    datatype dfa = 
        DFA of  
        { stamp    : int,              (* unique dfa stamp *)
-         freeVars : Path.Set.set ref, (* free variables *)
+         freeVars : Name.Set.set ref, (* free variables *)
          refCount : int ref,          (* reference count *)
          generated: bool ref,         (* has code been generated? *)
+         height   : int ref,          (* dag height *)
          test     : test              (* type of tests *)
        }
 
    and test = 
-         CASE  of path * (decon * path list * dfa) list * 
-                  dfa option (* multiway *)
-       | WHERE of subst * guard * dfa * dfa              (* if test *)
-       | OK    of subst * Action.action                  (* final dfa *)
-       | BIND  of path * (path * index) list * dfa       (* bind *)
-       | FAIL                                            (* error dfa *)
-       | ROOT  of Path.Set.set * dfa  (* root *)
+         CASE   of path * (decon * path list * dfa) list * 
+                   dfa option (* multiway *)
+       | WHERE  of guard * dfa * dfa                  (* if test *)
+       | OK     of rule_no * Action.action            (* final dfa *)
+       | BIND   of subst * dfa                        (* bind *)
+       | SELECT of path * (path * index) list * dfa   (* projections *)
+       | FAIL                                         (* error dfa *)
+
+   and compiled_dfa  = 
+          ROOT of {dfa        : dfa, 
+                   used       : Name.Set.set,
+                   exhaustive : bool,
+                   redundant  : IntListSet.set
+                  }
 
    and guard = GUARD of Guard.guard ref
 
@@ -220,27 +250,34 @@ struct
        { rows  : row list,
          paths : path list                       (* path (per column) *)
        }
+       
 
    withtype row = 
               {pats  : pat list, 
                guard : (subst * guard) option,
                dfa   : dfa
               } 
-   type compiled_rule = pat list * guard option * subst * Action.action
+       and compiled_rule = 
+             rule_no * pat list * guard option * subst * Action.action
+
+       and compiled_pat = pat * subst
 
    (* Utilities for dfas *)
    structure DFA =
    struct
       val itow = Word.fromInt 
 
+      fun h(DFA{stamp, ...}) = itow stamp
       fun hash(DFA{stamp, test, ...}) = 
           (case test of
             FAIL    => 0w0
           | OK _    => 0w123 + itow stamp
-          | CASE(path, cases, default) => 0w1234 
-          | BIND(_, _, dfa) => 0w2313 + hash dfa
-          | WHERE(_, g, yes, no) => 0w2343
-          | ROOT _ => 0w3414
+          | CASE(path, cases, default) => 0w1234 +
+               foldr (fn ((_,_,x),y) => h x + y) 
+                     (case default of SOME x => h x | NONE => 0w0) cases
+          | SELECT(_, _, dfa) => 0w2313 + hash dfa
+          | WHERE(g, yes, no) => 0w2343 + h yes + h no
+          | BIND(_, dfa) => 0w23234 + h dfa
           )
 
       (* pointer equality *)
@@ -255,21 +292,27 @@ struct
              (case (t1, t2) of
                 (FAIL, FAIL) => true
               | (OK _, OK _) => s1 = s2
-              | (BIND(p1, b1, x), BIND(p2, b2, y)) => 
+              | (SELECT(p1, b1, x), SELECT(p2, b2, y)) => 
                  Path.equal(p1,p2) andalso eq(x,y) andalso
-                 ListPair.all(fn ((px,ix),(py,iy)) =>
+                 forall(fn ((px,ix),(py,iy)) =>
                     Path.equal(px,py) andalso Index.equal(ix,iy))
                      (b1,b2)
               | (CASE(p1,c1,o1), CASE(p2,c2,o2)) =>
                   Path.equal(p1,p2) andalso 
-                  ListPair.all
+                  forall
                      (fn ((u,_,x),(v,_,y)) => 
                           Decon.equal(u,v) andalso eq(x,y)) 
                         (c1,c2) andalso
                   eqOpt(o1,o2)
-              | (WHERE(_, GUARD(g1), y1, n1), 
-                 WHERE(_, GUARD(g2), y2, n2)) =>
+              | (WHERE(GUARD(g1), y1, n1), 
+                 WHERE(GUARD(g2), y2, n2)) =>
                   g1 = g2 andalso eq(y1,y2) andalso eq(n1,n2) 
+              | (BIND(s1, x), BIND(s2, y)) =>
+                  eq(x,y) andalso
+                    forall (fn ((p,x),(q,y)) =>
+                             Var.compare(p,q) = EQUAL andalso 
+                             Name.equal(x,y))
+                      (Subst.listItemsi s1, Subst.listItemsi s2)
               | _ => false
              )
 
@@ -279,7 +322,7 @@ struct
                      val hashVal = hash
                     )
 
-      fun toString dfa =
+      fun toString(ROOT{dfa, ...}) =
       let exception NotVisited
           val visited = IntHashTable.mkTable(32, NotVisited)
           fun mark stamp = IntHashTable.insert visited (stamp, true)
@@ -290,7 +333,6 @@ struct
           fun prArgs [] = nop
             | prArgs ps = seq(!!"(",!!",",!!")") (map (! o Path.toString) ps)
           fun walk(DFA{stamp, test=FAIL, ...}) = ! "fail"
-            | walk(DFA{test=ROOT(_,dfa), ...}) = walk dfa
             | walk(DFA{stamp, test, refCount=ref n, ...}) =
               if isVisited stamp then !"goto" ++ int stamp 
               else (mark stamp;
@@ -299,7 +341,7 @@ struct
                     (case test of
                       OK(_,a) => !"Ok" ++ !(Action.toString a)
                     | FAIL => !"Fail"
-                    | BIND(root,bindings,body) => 
+                    | SELECT(root,bindings,body) => 
                       line(!"Let") ++
                       block(seq (nop,nl,nop) 
                               (map (fn (p,i) =>
@@ -325,11 +367,16 @@ struct
                              )
                           )
                        )
-                    | WHERE(_,GUARD(ref g),y,n) =>
+                    | WHERE(GUARD(ref g),y,n) =>
                       line(!"If" ++ !(Guard.toString g)) ++
                       block(tab ++ ! "then" ++ walk y ++ nl ++
                             tab ++ ! "else" ++ walk n)
-                    | _ => bug "walk"
+                    | BIND(subst, x) =>
+                      line(Subst.foldri (fn (v,n,pp) =>
+                           tab ++ !(Var.toString v) ++ !!"<-" ++
+                                  !(Name.toString n) ++ pp)
+                               nop subst) ++
+                           walk x
                     )
                    )
       in  PP.text(walk dfa ++ nl)
@@ -339,10 +386,6 @@ struct
    (* Utilities for the pattern matrix *)
    structure Matrix =
    struct
-       datatype expandType = SWITCH of (decon * path list * matrix) list 
-                                     * matrix option
-                           | REBIND of path * (path * index) list * matrix
-
        fun row(MATRIX{rows, ...}, i) = List.nth(rows,i)
        fun col(MATRIX{rows, ...}, i) = 
              List.map (fn {pats, ...} => List.nth(pats, i)) rows
@@ -392,12 +435,13 @@ struct
                | _  =>
                  let val (cons, score) =
                     (* count distinct constructors; skip refutable cards 
-                     * Give records or tuples high scores so that
+                     * Give records, tuples and or pats, high scores so that
                      * they are immediately expanded
                      *)
                        List.foldr (fn (WILD, (S, n)) => (S, n)
                                  | (TUPLE _, (S, n)) => (S, 100000)
                                  | (RECORD _, (S, n)) => (S, 100000)
+                                 | (OR _, (S, n)) => (S, 100000)
                                  | (pat, (S, n)) => (Pat.Set.add(S, pat), n))
                            (Pat.Set.empty, 0) pats_i
                  in score + Pat.Set.numItems cons end
@@ -422,16 +466,225 @@ struct
            | NONE => NONE 
        end
 
-       structure LSet = RedBlackSetFn(type ord_key = Var.var 
-                                      val compare = Var.compare)
+   end (* Matrix *)
+
+   val toString = DFA.toString
+
+  (*
+    * Rename user pattern into internal pattern.
+    * The path business is hidden from the client.
+    *)
+   fun rename doIt (rule_no, pats, guard, action) : compiled_rule = 
+   let val empty = Subst.empty
+
+       fun bind(subst, v, p) = 
+           case Subst.find(subst, v) of
+             SOME _ => error("duplicated pattern variable "^Var.toString v)
+           | NONE => Subst.insert(subst, v, PVAR p)
+
+       fun process(path, subst:subst, pat) : compiled_pat = 
+       let fun idPat id = (WILD, bind(subst, id, path))
+           fun asPat(id, p) = 
+           let val (p, subst) = process(path, subst, p)
+           in  (p, bind(subst, id, path))
+           end
+           fun wildPat() = (WILD, subst)
+           fun litPat(lit) = (APP(LIT lit, []), subst)
+
+           fun processPats(pats) = 
+           let fun loop([], _, ps', subst) = (rev ps', subst)
+                 | loop(p::ps, i, ps', subst) = 
+                   let val path' = Path.dot(path, INT i)
+                       val (p, subst) = process(path', subst, p)
+                   in  loop(ps, i+1, p::ps', subst)
+                   end
+           in  loop(pats, 0, [], subst) end
+
+           fun processLPats(lpats) = 
+           let fun loop([], ps', subst) = (rev ps', subst)
+                 | loop((l,p)::ps, ps', subst) = 
+                   let val path' = Path.dot(path, LABEL l)
+                       val (p, subst) = process(path', subst, p)
+                   in  loop(ps, (l,p)::ps', subst)
+                   end
+           in  loop(lpats, [], subst) end
+ 
+           fun consPat(c,args) : compiled_pat = 
+           let val (pats, subst) = processPats(args)
+               val n = case c of
+                         LIT _ => 0
+                       | CON c => Con.arity c 
+           in  (* arity check *)
+               if n <> length args 
+               then error("arity mismatch "^Decon.toString c)
+               else ();
+               (APP(c, pats), subst) 
+           end
+
+           fun tuplePat(pats) : compiled_pat = 
+           let val (pats, subst) = processPats(pats)
+           in  (TUPLE pats, subst) end
+
+           fun recordPat(lpats) : compiled_pat = 
+           let val (lpats, subst) = processLPats(lpats)
+           in  (RECORD lpats, subst) end
+
+           (* Or patterns are tricky because the same variable name
+            * may be bound to different components.  We handle this by renaming
+            * all variables to some canonical set of paths, 
+            * then rename all variables to these paths. 
+            *)
+           fun orPat([])   = error "empty or pattern"
+             | orPat(pats) : compiled_pat =
+           let val results  = map (fn p => process(path, empty, p)) pats
+               val ps       = map #1 results
+               val orSubsts = map #2 results
+               fun sameVars([], s') = true
+                 | sameVars(s::ss, s') = 
+                   forall (fn (x,y) => Var.compare(x,y) = EQUAL) 
+                      (Subst.listKeys s, s') andalso
+                        sameVars(ss, s')
+               (* make sure all patterns use the same set of
+                * variable names
+                *)
+               val orNames = Subst.listKeys(hd orSubsts)
+               val _ = if sameVars(tl orSubsts, orNames) then ()
+                       else error "not all disjuncts have the same variable bindings"
+               val duplicated =
+                    VarSet.listItems( 
+                     VarSet.intersection
+                        (VarSet.addList(VarSet.empty, orNames),
+                         VarSet.addList(VarSet.empty, Subst.listKeys subst)))
+               val _ = case duplicated of
+                         [] => ()
+                       | _ => error("duplicated pattern variables: "^
+                                   listify("",",","") 
+                                     (map Var.toString duplicated))
+               (* build the new substitution to include all names in the    
+                * or patterns.
+                *)
+
+               val subst = Subst.foldri  
+                            (fn (v, _, subst) => Subst.insert(subst,v,VAR v)
+                            ) subst (hd orSubsts) 
+           in  (OR(ListPair.zip(orSubsts,ps)), subst)
+           end
+           
+
+       in  doIt {idPat=idPat,
+                 asPat=asPat,
+                 wildPat=wildPat,
+                 consPat=consPat,
+                 tuplePat=tuplePat,
+                 recordPat=recordPat,
+                 litPat=litPat,
+                 orPat=orPat
+                } pat
+       end
+
+       fun processAllPats(i, [], subst, ps') = (rev ps', subst)
+         | processAllPats(i, p::ps, subst, ps') =
+           let val (p, subst) = process(PATH[INT i], subst, p)
+           in  processAllPats(i+1, ps, subst, p::ps')  end
+
+       val (pats, subst) = processAllPats(0, pats, empty, [])  
+   in  (rule_no, pats, Option.map (GUARD o ref) guard, subst, action)
+   end
+
+   structure DFAMap = 
+      RedBlackMapFn(type ord_key = dfa 
+                    fun st(DFA{stamp, ...}) = stamp
+                    fun compare(x,y) = Int.compare(st x, st y)
+                   )
+
+   (*
+    * Give the arguments to case, factor out the common case and make it 
+    * the default.
+    *)
+   fun factorCase(p, cases, d as SOME _) = (p, cases, d)
+     | factorCase(p, cases, NONE) = 
+       let fun count(m,dfa) = getOpt(DFAMap.find(m,dfa),0)
+           fun inc((_,_,dfa),m) = DFAMap.insert(m, dfa, 1 + count(m, dfa))
+           val m = foldr inc DFAMap.empty cases
+           val best = DFAMap.foldri 
+                   (fn (dfa,c,NONE) => SOME(dfa,c)
+                     | (dfa,c,best as SOME(_,c')) =>
+                       if c > c' then SOME(dfa,c) else best)
+                      NONE m  
+           fun neq(DFA{stamp=x, ...},DFA{stamp=y,...}) = x<>y
+       in  case best of
+             NONE => (p, cases, NONE) 
+           | SOME(_,1) => (p, cases, NONE) 
+           | SOME(defaultCase,n) => 
+             let val others = List.filter(fn (_,_,x) => neq(x,defaultCase))
+                                cases
+             in  (p, others, SOME defaultCase) 
+             end
+       end 
+
+   structure LSet = RedBlackSetFn(type ord_key = Var.var 
+                                  val compare = Var.compare)
+
+   (* 
+    * The main pattern matching compiler.
+    * The dfa states are constructed with hash consing at the same time
+    * so no separate DFA minimization step is needed.
+    *)
+   fun compile{compiled_rules, compress} =
+   let exception NoSuchState
+
+       datatype expandType = SWITCH of (decon * path list * matrix) list 
+                                     * matrix option
+                           | PROJECT of path * (path * index) list * matrix
+
+       fun simp x = if compress then factorCase x else x
+
+       (* Table for hash consing *)
+       val dfaTable = DFA.HashTable.mkTable(32,NoSuchState) :
+                           dfa DFA.HashTable.hash_table
+       val lookupState = DFA.HashTable.lookup dfaTable
+       val insertState = DFA.HashTable.insert dfaTable
+
+       val stampCounter = ref 0
+
+       fun mkState(test) =   
+       let val stamp = !stampCounter
+       in  stampCounter := stamp + 1;
+           DFA{stamp=stamp, freeVars=ref Name.Set.empty, 
+               height=ref 0, refCount=ref 0, generated=ref false, test=test}
+       end
+
+       fun newState test =
+       let val s = mkState(test)
+       in  lookupState s handle NoSuchState => (insertState(s, s); s)
+       end
+
+       (* State constructors *)
+       val fail = newState(FAIL)
+       fun Ok x = newState(OK x)
+       fun Case(_, [], SOME x) = x
+         | Case(_, [], NONE) = fail
+         | Case(p, cases as (_,_,c)::cs, default) = 
+           if List.all(fn (_,_,c') => DFA.eq(c,c')) cs andalso
+              (case default of
+                 SOME x => DFA.eq(c,x)     
+               | NONE => true
+              )
+           then c
+           else newState(CASE(simp(p, cases, default)))
+       fun Select(x) = newState(SELECT(x))
+       fun Where(g, yes, no) = 
+           if DFA.eq(yes,no) then yes else newState(WHERE(g, yes, no))
+       fun Bind(subst, x) =
+           if Subst.numItems subst = 0 then x else newState(BIND(subst, x))
 
        (*
         * Expand column i, 
         * Return a new list of matrixes indexed by the deconstructors.
         *) 
        fun expandColumn(m as MATRIX{rows, paths, ...}, i) = 
-       let val ithCol = col(m, i)
-           val path_i = pathOf(m, i)
+       let val ithCol = Matrix.col(m, i)
+           val path_i = Matrix.pathOf(m, i)
            val _ = if debug then
                       (print("Expanding column "^i2s i^"\n"))
                    else ()
@@ -443,21 +696,45 @@ struct
                  | loop _ = bug "split_i"
            in  loop(0, ps, []) end
  
-           (* find first non-wild card constructor *)
-           val firstCon = List.find (fn WILD => false | _ => true) ithCol
+           (* If the ith column cfind out what to expand *)
+           fun expand(WILD::ps, this) = expand(ps, this)
+             | expand((p as OR _)::ps, this) = SOME p
+             | expand((p as TUPLE _)::ps, this) = expand(ps, SOME p)
+             | expand((p as RECORD _)::ps, this) = expand(ps, SOME p)
+             | expand((p as APP _)::ps, this) = expand(ps, SOME p)
+             | expand([], this) = this
 
             (* Split the paths *)
            val (prevPaths, _, nextPaths) = split_i paths
 
-       in  case firstCon of
-             SOME(TUPLE pats) => (* expand a tuple along all the columns *)
+       in  case expand(ithCol, NONE) of
+             SOME(OR _) => 
+                (* if we have or patterns then expand all rows
+                 * with or pattern
+                 *)
+             let fun expandOr(row as {pats, dfa, guard}) =
+                 let val (prev, pat_i, next) = split_i(pats)
+                 in  case pat_i of
+                       OR ps =>
+                         map (fn (subst,p) => 
+                              {pats=prev@[p]@next, dfa=Bind(subst,dfa), guard=guard})
+                             ps
+                     | _ => [row]
+                 end
+                 val newMatrix =
+                      MATRIX{rows  = List.concat (map expandOr rows),
+                             paths = paths
+                            }
+             in  expandColumn(newMatrix, i)
+             end
+           | SOME(TUPLE pats) => (* expand a tuple along all the columns *)
              let val arity = length pats
                  val wilds = map (fn _ => WILD) pats
                  fun processRow{pats, dfa, guard} =
                  let val (prev, pat_i, next) = split_i(pats)
                  in  case pat_i of
                         TUPLE ps' =>
-                        let val n = length ps'
+                        let val n   = length ps'
                         in  if n <> arity then error("tuple arity mismatch")
                             else ();
                             {pats=prev @ ps' @ next, dfa=dfa, guard=guard}
@@ -470,7 +747,7 @@ struct
                  val paths = prevPaths @ path_i' @ nextPaths
                  val bindings = List.tabulate (arity, fn i => 
                                        (Path.dot(path_i, INT i), INT i))
-             in  REBIND(path_i,bindings,
+             in  PROJECT(path_i,bindings,
                         MATRIX{rows=rows, paths=paths}
                        )
              end
@@ -533,9 +810,9 @@ struct
                  val bindings = map (fn l => 
                                        (Path.dot(path_i, LABEL l), LABEL l))
                                      labels
-             in  REBIND(path_i,bindings,
-                        MATRIX{rows=rows, paths=paths}
-                       )
+             in  PROJECT(path_i,bindings,
+                         MATRIX{rows=rows, paths=paths}
+                        )
              end
            | SOME(APP(decon,_)) => 
            (* Find out how many variants are there in this case *)
@@ -632,175 +909,27 @@ struct
              end
            | _ => error "expandColumn.1"
        end (* expandColumn *)
-   end (* Matrix *)
-
-   val toString = DFA.toString
-
-   (*
-    * Rename user pattern into internal pattern.
-    * The path business is hidden from the client.
-    *)
-   fun rename doIt (pats, guard, exp) = 
-   let val empty = Path.Map.empty
-       val bind  = Path.Map.insert
-
-       fun process(path, subst, pat) = 
-       let fun idPat id = (WILD, bind(subst, path, id))
-           fun asPat(id, p) = 
-           let val (p, subst) = process(path, subst, p)
-           in  (p, bind(subst, path, id))
-           end
-           fun wildPat() = (WILD, subst)
-           fun litPat(lit) = (APP(LIT lit, []), subst)
-
-           fun processPats(pats) = 
-           let fun loop([], _, ps', subst) = (rev ps', subst)
-                 | loop(p::ps, i, ps', subst) = 
-                   let val path' = Path.dot(path, INT i)
-                       val (p, subst) = process(path', subst, p)
-                   in  loop(ps, i+1, p::ps', subst)
-                   end
-           in  loop(pats, 0, [], subst) end
-
-           fun processLPats(lpats) = 
-           let fun loop([], ps', subst) = (rev ps', subst)
-                 | loop((l,p)::ps, ps', subst) = 
-                   let val path' = Path.dot(path, LABEL l)
-                       val (p, subst) = process(path', subst, p)
-                   in  loop(ps, (l,p)::ps', subst)
-                   end
-           in  loop(lpats, [], subst) end
- 
-           fun consPat(c,args) = 
-           let val (pats, subst) = processPats(args)
-           in  (APP(c, pats), subst) end
-
-           fun tuplePat(pats) = 
-           let val (pats, subst) = processPats(pats)
-           in  (TUPLE pats, subst) end
-
-           fun recordPat(lpats) = 
-           let val (lpats, subst) = processLPats(lpats)
-           in  (RECORD lpats, subst) end
-
-       in  doIt {idPat=idPat,
-                 asPat=asPat,
-                 wildPat=wildPat,
-                 consPat=consPat,
-                 tuplePat=tuplePat,
-                 recordPat=recordPat,
-                 litPat=litPat
-                } pat
-       end
-
-       fun processAllPats(i, [], subst, ps') = (rev ps', subst)
-         | processAllPats(i, p::ps, subst, ps') =
-           let val (p, subst) = process(PATH[INT i], subst, p)
-           in  processAllPats(i+1, ps, subst, p::ps')  end
-
-       val (pats, subst) = processAllPats(0, pats, empty, [])  
-   in  (pats, Option.map (GUARD o ref) guard, subst, exp)
-   end
-
-   structure DFAMap = 
-      RedBlackMapFn(type ord_key = dfa 
-                    fun st(DFA{stamp, ...}) = stamp
-                    fun compare(x,y) = Int.compare(st x, st y)
-                   )
-
-   (*
-    * Give the arguments to case, factor out the common case and make it 
-    * the default.
-    *)
-   fun factorCase(p, cases, d as SOME _) = (p, cases, d)
-     | factorCase(p, cases, NONE) = 
-       let fun count(m,dfa) = getOpt(DFAMap.find(m,dfa),0)
-           fun inc((_,_,dfa),m) = DFAMap.insert(m, dfa, 1 + count(m, dfa))
-           val m = foldr inc DFAMap.empty cases
-           val best = DFAMap.foldri 
-                   (fn (dfa,c,NONE) => SOME(dfa,c)
-                     | (dfa,c,best as SOME(_,c')) =>
-                       if c > c' then SOME(dfa,c) else best)
-                      NONE m  
-           fun neq(DFA{stamp=x, ...},DFA{stamp=y,...}) = x<>y
-       in  case best of
-             NONE => (p, cases, NONE) 
-           | SOME(_,1) => (p, cases, NONE) 
-           | SOME(defaultCase,n) => 
-             let val others = List.filter(fn (_,_,x) => neq(x,defaultCase))
-                                cases
-             in  (p, others, SOME defaultCase) 
-             end
-       end 
-
-   (* 
-    * The main pattern matching compiler.
-    * The dfa states are constructed with hash consing at the same time
-    * so no separate DFA minimization step is needed.
-    *)
-   fun compile{compiled_rules, compress} =
-   let exception NoSuchState
-
-       fun simp x = if compress then factorCase x else x
-
-       (* Table for hash consing *)
-       val dfaTable = DFA.HashTable.mkTable(32,NoSuchState) :
-                           dfa DFA.HashTable.hash_table
-       val lookupState = DFA.HashTable.lookup dfaTable
-       val insertState = DFA.HashTable.insert dfaTable
-
-       val stampCounter = ref 0
-
-       fun mkState(test) =   
-       let val stamp = !stampCounter
-       in  stampCounter := stamp + 1;
-           DFA{stamp=stamp, freeVars=ref Path.Set.empty, 
-               refCount=ref 0, generated=ref false, test=test}
-       end
-
-       fun newState test =
-       let val s = mkState(test)
-       in  lookupState s handle NoSuchState => (insertState(s, s); s)
-       end
-
-       (* State constructors *)
-       fun Fail() = newState(FAIL)
-       fun Ok(subst, action) = newState(OK(subst, action))
-       fun Case(_, [], SOME x) = x
-         | Case(_, [], NONE) = Fail()
-         | Case(p, cases as (_,_,c)::cs, default) = 
-           (* if List.all(fn (_,_,c') => DFA.eq(c,c')) cs andalso
-              (case default of
-                 SOME x => DFA.eq(c,x)     
-               | NONE => true
-              )
-           then c
-           else *) newState(CASE(simp(p, cases, default)))
-       fun Root(used, dfa) = newState(ROOT(used, dfa))
-       fun Bind(p, bindings, x) = newState(BIND(p, bindings, x))
-       fun Where(subst, g, yes, no) = 
-           if DFA.eq(yes,no) then yes else newState(WHERE(subst, g, yes, no))
 
        (*
         * Generate the DFA
         *)
        fun match matrix =
-           if Matrix.isEmpty matrix then Fail()
+           if Matrix.isEmpty matrix then fail
            else
            case Matrix.findBestMatchColumn matrix of
              NONE =>   (* first row is all wild cards *) 
                (case Matrix.row(matrix, 0) of
                  {guard=SOME(subst, g), dfa, ...} => (* generate guard *)
-                   Where(subst, g, dfa, 
-                         match(Matrix.removeFirstRow matrix
-                        ))
+                   Bind(subst,
+                       Where(g, dfa, 
+                             match(Matrix.removeFirstRow matrix)))
                | {guard=NONE, dfa, ...} => dfa
                )
            | SOME i => 
               (* mixture rule; split at column i *)
-             (case Matrix.expandColumn(matrix, i) of
+             (case expandColumn(matrix, i) of
                (* splitting a constructor *)
-               Matrix.SWITCH(cases, default) =>
+               SWITCH(cases, default) =>
                let val cases = map (fn (c,p,m) => (c,p,match m)) cases
                in  Case(Matrix.pathOf(matrix, i), cases, 
                         Option.map match default)
@@ -808,27 +937,32 @@ struct
                (* splitting a tuple or record;
                 * recompute new bindings.
                 *)
-             | Matrix.REBIND(p,bindings,m) => Bind(p, bindings, match m)
+             | PROJECT(p,bindings,m) => Select(p, bindings, match m)
              )
 
        fun makeMatrix rules =
-       let val (pats0, _, _, _) = hd rules
+       let val (_, pats0, _, _, _) = hd rules
            val arity = length pats0
-           fun makeRow(pats, NONE, subst, action) =
-               {pats=pats, guard=NONE, dfa=Ok(subst, action)}
-             | makeRow(pats, SOME g, subst, action) = 
-               {pats=pats, guard=SOME(subst,g), dfa=Ok(Path.Map.empty, action)}
+           fun makeRow(r, pats, NONE, subst, action) =
+               {pats=pats, guard=NONE, dfa=Bind(subst, Ok(r, action))}
+             | makeRow(r, pats, SOME g, subst, action) = 
+               {pats=pats, guard=SOME(subst,g), 
+                dfa=Ok(r, action)}
+             
        in  MATRIX{rows  = map makeRow rules,
-                  paths = List.tabulate(arity, fn i => PATH[INT i]) 
+                  paths = List.tabulate(arity, fn i => PATH[INT i])
                  }
        end
 
        val dfa = match(makeMatrix compiled_rules)
 
+       val rule_nos = map #1 compiled_rules
+
        (*
         * 1. Update the reference counts. 
         * 2. Compute the set of free path variables at each state. 
         * 3. Compute the set of path variables that are actually used.
+        * 4. Compute the height of each node.
         *)
        exception NotVisited
        val visited = IntHashTable.mkTable (32, NotVisited)
@@ -836,46 +970,76 @@ struct
        fun isVisited s = getOpt(IntHashTable.find visited s, false)
 
        fun set(fv, s) = (fv := s; s)
-       val union = Path.Set.union
-       val add   = Path.Set.add
-       val empty = Path.Set.empty
+       fun setH(height, h) = (height := h; h)
+       val union = Name.Set.union
+       val add   = Name.Set.add
+       val empty = Name.Set.empty
 
-       val used = ref Path.Set.empty
-       fun occurs s = used := Path.Set.union(!used,s)
+       val used = ref Name.Set.empty
+       fun occurs s = used := Name.Set.union(!used,s)
+       val redundant = ref(IntListSet.addList(IntListSet.empty, rule_nos))
+       fun ruleUsed r = redundant := IntListSet.delete(!redundant, r)
 
-       fun vars subst = Path.Set.addList(empty,Path.Map.listKeys subst)
+       fun vars subst = Name.Set.addList(empty,Subst.listItems subst)
 
-       fun visit(DFA{stamp, refCount, test, freeVars, ...}) = 
+       fun visit(DFA{stamp, refCount, test, freeVars, height, ...}) = 
            (refCount := !refCount + 1;
-            if isVisited stamp then !freeVars
+            if isVisited stamp then (!freeVars, !height)
             else (mark stamp;
                   case test of
-                    FAIL => empty
-                  | OK(subst, _) => 
-                    let val s = vars subst
-                    in  occurs s; set(freeVars, s) end
+                    FAIL => (empty, 0)
+                  | BIND(subst, dfa) => 
+                    let val (s, h) = visit dfa
+                        val s = union(s, vars subst)
+                    in  occurs s; 
+                        (set(freeVars, s), setH(height, h + 1))
+                    end
+                  | OK(rule_no, _) => (ruleUsed rule_no; (empty, 0))
                   | CASE(p, cases, opt) =>
-                    let val fvs = 
-                         List.foldr(fn ((_,_,x),s) => union(visit x,s))
-                             empty cases 
-                        val fvs =  
-                            case opt of NONE => fvs 
-                                      | SOME x => union(visit x,fvs)
-                        val fvs = add(fvs, p) 
-                    in  occurs fvs; set(freeVars, fvs) 
+                    let val (fvs, h) = 
+                         List.foldr (fn ((_,_,x),(s, h)) => 
+                             let val (fv,h') = visit x
+                             in  (union(fv,s), Int.max(h,h'))
+                             end)
+                             (empty, 0) cases 
+                        val (fvs, h) =  
+                            case opt of NONE => (fvs, h) 
+                                      | SOME x => 
+                                        let val (fv, h') = visit x
+                                        in  (union(fvs,fv), Int.max(h,h'))
+                                        end
+                        val fvs = add(fvs, PVAR p) 
+                    in  occurs fvs; 
+                        (set(freeVars, fvs), setH(height, h+1))
                     end 
-                  | WHERE(subst, _, y, n) => 
-                    let val s = union(vars subst, union(visit y, visit n))
-                    in  occurs s; set(freeVars, s) end
-                  | BIND(p, bs, x) => 
-                    let val s = add(visit x, p)
-                        val bs = foldr (fn ((p,_),S) => add(S,p)) s bs 
-                    in  occurs bs; set(freeVars, s) end 
-                  | ROOT _ => bug "visit"
+                  | WHERE(_, y, n) => 
+                    let val (sy, hy) = visit y
+                        val (sn, hn) = visit n
+                        val s = union(sy, sn)
+                        val h = Int.max(hy,hn) + 1
+                    in  occurs s; 
+                        (set(freeVars, s), setH(height, h))
+                    end
+                  | SELECT(p, bs, x) => 
+                    let val (s, h) = visit x
+                        val s  = add(s, PVAR p)
+                        val bs = foldr (fn ((p,_),S) => add(S,PVAR p)) s bs 
+                    in  occurs bs; 
+                        (set(freeVars, s), setH(height,h+1)) 
+                    end 
                  )
            )
-   in  visit dfa; Root(!used, dfa)
+       val _ = visit dfa; 
+       val DFA{refCount=failCount, ...} = fail
+   in  ROOT{used = !used, 
+            dfa = dfa, 
+            exhaustive= !failCount = 0, 
+            redundant= !redundant
+           }
    end
+
+   fun exhaustive(ROOT{exhaustive, ...}) = exhaustive
+   fun redundant(ROOT{redundant, ...}) = redundant
 
    (*
     * Generate final code for pattern matching.
@@ -894,16 +1058,18 @@ struct
           genVal  : Var.var * 'exp -> 'decl
         } (root, dfa) = 
    let
-       val DFA{test=ROOT(used,dfa), ...} = dfa
+       val ROOT{dfa, used, ...} = dfa
 
-       fun arg p = if Path.Set.member(used, p) then SOME p else NONE 
+       fun genPat p = if Name.Set.member(used, PVAR p) then SOME p else NONE 
        (* fun arg p = SOME p *)
 
        fun mkVars freeVarSet = 
-           map genVar (Path.Set.listItems (!freeVarSet))
+           map (fn PVAR p => genVar p
+                 | VAR v  => v
+               ) (Name.Set.listItems (!freeVarSet))
 
-
-       fun enque((F,B),x) = (F,x::B)
+       fun enque(dfa,(F,B)) = (F,dfa::B)
+       val emptyQueue = ([], [])
 
        (* Walk a state, if it is shared then just generate a goto to the
         * state function; otherwise expand it 
@@ -914,15 +1080,15 @@ struct
               (* just generate a goto *)
               let val code = genGoto(stamp, mkVars freeVars)
               in  if !generated then (code, workList)
-                  else (generated := true; (code, enque(workList, dfa)))
+                  else (generated := true; (code, enque(dfa,workList)))
               end
            else
               expandDfa(dfa, workList) 
 
            (* generate a new function definition *)
-       and genNewFun(dfa as DFA{stamp, freeVars, ...}, workList) =
+       and genNewFun(dfa as DFA{stamp, freeVars, height, ...}, workList) =
            let val (body, workList) = expandDfa(dfa, workList)
-           in  (genFun(stamp, mkVars freeVars, body), workList) 
+           in  ((!height,genFun(stamp, mkVars freeVars, body)), workList) 
            end
 
        and expandYesNo(yes, no, workList) =
@@ -935,19 +1101,23 @@ struct
        and expandDfa(DFA{stamp, test, ...}, workList) =  
               (case test of
                 (* action *)
-                OK(subst,action) => 
-                let val bindings = 
-                       Path.Map.foldri (fn (p,v,b) => (v,p)::b) [] subst
-                in  (genLet(genBind bindings, genOk(action)), workList)
-                end
+                OK(rule_no, action) => (genOk(action), workList)
                 (* failure *)
               | FAIL => (genFail(), workList)
                 (* guard *)
-              | WHERE(subst, GUARD(ref g), yes, no) =>
-                let val (yes, no, workList) = expandYesNo(yes, no, workList)
+              | BIND(subst, dfa) =>
+                let val (code, workList) = walk(dfa, workList)
                     val bindings = 
-                       Path.Map.foldri (fn (p,v,b) => (v,p)::b) [] subst
-                in  (genLet(genBind bindings, genIf(g, yes, no)), workList)
+                       Subst.foldri 
+                       (fn (v,PVAR p,b) => (v,p)::b
+                         | (v,VAR v',b) => b
+                         (* | (p,PVAR p',b) => (genVar p',p)::b *)
+                       ) [] subst
+                in  (genLet(genBind bindings, code), workList)
+                end
+              | WHERE(GUARD(ref g), yes, no) =>
+                let val (yes, no, workList) = expandYesNo(yes, no, workList)
+                in  (genIf(g, yes, no), workList)
                 end
                 (* case *)
               | CASE(path, cases, default) =>
@@ -955,7 +1125,7 @@ struct
                       List.foldr 
                       (fn ((con, paths, dfa), (cases, workList)) =>
                            let val (code, workList) = walk(dfa, workList)
-                           in  ((con, map arg paths, code)::cases, workList) 
+                           in  ((con, map genPat paths, code)::cases, workList) 
                            end
                       ) ([], workList) cases
 
@@ -970,29 +1140,32 @@ struct
                                      
                 in  (genCase(genVar path, cases, default), workList)
                 end
-              | BIND(path, bindings, body) =>
+              | SELECT(path, bindings, body) =>
                 let val (body, workList) = walk(body, workList)
                     val bindings = map (fn (p,v) => (SOME p,v)) bindings
                 in  (genLet([genProj(path, bindings)], body), workList)
                 end
-              | ROOT _ => bug "expandDfa"
               )
 
            (* Generate code for the dfa; accumulate all the auxiliary   
             * functions together and generate a let.
             *)
        fun genAll(root,dfa) =
-           let val (exp, workList) = walk(dfa, ([],[]))
-               fun genAuxFunctions(([],[]), funs) = funs
-                 | genAuxFunctions(([],B), funs) = 
-                   genAuxFunctions((rev B,[]), funs) 
+           let val (exp, workList) = walk(dfa, emptyQueue)
+               fun genAuxFunctions(([], []), funs) = funs   
+                 | genAuxFunctions(([], B), funs) = 
+                      genAuxFunctions((rev B,[]), funs)
                  | genAuxFunctions((dfa::F,B), funs) =
-                   let val (fun1, workList) = genNewFun(dfa, (F,B))
-                   in  genAuxFunctions(workList, fun1::funs)
+                   let val (newFun, workList) = genNewFun(dfa, (F, B))
+                   in  genAuxFunctions(workList, newFun :: funs)
                    end
                val rootDecl = genVal(genVar(PATH [INT 0]), root)
-               val decls = genAuxFunctions(workList, []) 
-           in  genLet(rootDecl::decls, exp)
+               val funs = genAuxFunctions(workList, [])
+               (* order the functions by dependencies; sort by lowest height *)
+               val funs = ListMergeSort.sort
+                           (fn ((h,_),(h',_)) => h > h') funs
+               val funs = map #2 funs 
+           in  genLet(rootDecl::funs, exp)
            end
    in  genAll(root,dfa)
    end

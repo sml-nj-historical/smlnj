@@ -12,6 +12,16 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: Fri Dec  8 19:23:26 EST 2000
+Description:
+Tag:  leunga-20001208-nowhere
+Description:
+
+  Slight improvements to the 'nowhere' tool to handle OR-patterns, 
+to generate better error messages etc.  Plus a brief manual. 
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2000/12/08 09:54:02 EST 2000
 Tag: Release_110_31

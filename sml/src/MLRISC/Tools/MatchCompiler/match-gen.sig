@@ -10,10 +10,17 @@ sig
 
    val compileTypes : Ast.datatypebind list -> compiled_type_info
 
-   val compile : compiled_type_info -> Ast.clause list -> MC.dfa
+   val compile : compiled_type_info -> Ast.clause list -> MC.compiled_dfa
+
+   val report : {warning : string -> unit,
+                 error   : string -> unit, 
+                 log     : string -> unit, 
+                 dfa     : MC.compiled_dfa,
+                 rules   : Ast.clause list
+                } -> unit
 
    val codeGen : {root : Ast.exp,
-                  dfa  : MC.dfa,
+                  dfa  : MC.compiled_dfa,
                   fail : unit -> Ast.exp
                  } -> Ast.exp     
 

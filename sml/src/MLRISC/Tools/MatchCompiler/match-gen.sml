@@ -13,6 +13,9 @@ struct
    structure R   = AstRewriter
 
    val NO = R.noRewrite
+   val ++ = PP.++
+  
+   infix ++
 
    val i2s = Int.toString
 
@@ -90,7 +93,11 @@ struct
                     tyTbl cbs
            ) Con.Map.empty datatypebinds
 
-   
+   fun prClause(p, g) = 
+       PP.text(AstPP.pat p ++ PP.sp ++ 
+               (case g of NONE => PP.! "=> ..."
+                        | SOME e => PP.! "where ... => ..."))
+
    fun compile tyTbl clauses =
    let (* rename all rules *)
 
@@ -115,13 +122,12 @@ struct
        in  #pat(R.rewrite{pat=pat,exp=NO,decl=NO,sexp=NO,ty=NO}) p
        end 
 
-       val empty = MC.Path.Map.empty
-       val bind = MC.Path.Map.insert
+       val rule_no = ref 0
 
        fun renameRule(c as A.CLAUSE([pat],guard,e)) = 
-           MC.rename
+           (MC.rename
                (fn {idPat, asPat, consPat, wildPat, 
-                    tuplePat, recordPat, litPat, ...} =>
+                    tuplePat, recordPat, litPat, orPat, ...} =>
                    fn A.IDpat id    => 
                        if hasCon id then consPat(lookupCon(A.IDENT([],id)),[])
                        else idPat id
@@ -132,11 +138,13 @@ struct
                     | A.TUPLEpat ps => tuplePat ps
                     | A.RECORDpat(lps,_) => recordPat lps
                     | A.LITpat lit => litPat lit
+                    | A.ORpat ps => orPat ps
                     | p => raise MC.MatchCompiler("illegal pattern "^
                                        PP.text(AstPP.pat p))
-               ) ([transListPat pat],guard,e)
+               ) (!rule_no, [transListPat pat],guard,e)
+               before rule_no := !rule_no + 1)
            handle MC.MatchCompiler msg =>
-              raise MC.MatchCompiler(msg^" in "^ PP.text(AstPP.clause c))
+              raise MC.MatchCompiler(msg^" in "^ prClause(pat,guard))
 
        val rules = map renameRule clauses
        
@@ -145,6 +153,34 @@ struct
    in  dfa
    end
 
+   (* Report errors *)
+   fun report {warning, error, log, dfa, rules} =  
+   let val red = MC.redundant dfa
+       val ex  = MC.exhaustive dfa
+       val bad = IntListSet.numItems red > 0
+       val error = if bad then error else warning
+       val message = if ex then 
+                        if bad then "redundant matches" 
+                        else ""
+                     else 
+                        if bad then "non-exhaustive and redundant matches" 
+                        else "non-exhaustive matches"
+       fun dumpRules(i, []) = ()
+         | dumpRules(i, r::rules) =
+           let val tab = if IntListSet.member(red,i) then "---> " else "     "
+               val A.CLAUSE([p], g, _) = r 
+               val text = prClause(p, g)
+           in  log(tab^text);
+               dumpRules(i+1, rules)
+           end
+   in  if not ex orelse bad then 
+          (error message;
+           dumpRules(0, rules)
+          ) 
+       else ()
+   end
+  
+   (* Generate ML code *)
    fun codeGen {root, dfa, fail=genFail} =
    let (* make unique name for path variables *)
        val nameCounter = ref 0

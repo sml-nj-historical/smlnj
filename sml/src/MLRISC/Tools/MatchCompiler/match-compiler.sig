@@ -31,8 +31,12 @@ sig
           structure Map : ORD_MAP where type Key.ord_key = path
       end
 
+   datatype name = VAR of Var.var | PVAR of path
+
+   structure Subst : ORD_MAP where type Key.ord_key = Var.var
+       
    type pat 
-   type subst 
+   type subst = name Subst.map
 
    datatype decon =
       CON   of Con.con          (* match a user constructor *)
@@ -40,33 +44,39 @@ sig
 
    exception MatchCompiler of string
 
-   type dfa (* compiled pattern matching dfa *)
+   type compiled_dfa (* compiled pattern matching dfa *)
    type compiled_rule 
+   type rule_no = int
+   type compiled_pat
 
    (* Compile a user pattern into internal pattern form;
     * This function abstracts out the computation of paths and bindings.
     *)
    val rename : 
-       ( { idPat     : Var.var -> pat * subst,
-           asPat     : Var.var * 'pat -> pat * subst,
-           wildPat   : unit -> pat * subst,
-           consPat   : decon * 'pat list -> pat * subst,
-           tuplePat  : 'pat list -> pat * subst,
-           recordPat : (Var.var * 'pat) list -> pat * subst,
-           litPat    : Literal.literal -> pat * subst
-         } -> 'pat -> pat * subst
+       ( { idPat     : Var.var -> compiled_pat,
+           asPat     : Var.var * 'pat -> compiled_pat,
+           wildPat   : unit -> compiled_pat,
+           consPat   : decon * 'pat list -> compiled_pat,
+           tuplePat  : 'pat list -> compiled_pat,
+           recordPat : (Var.var * 'pat) list -> compiled_pat,
+           litPat    : Literal.literal -> compiled_pat,
+           orPat     : 'pat list -> compiled_pat
+         } -> 'pat -> compiled_pat
        )
       ->
-       ('pat list * Guard.guard option * Action.action) 
+       (rule_no * 'pat list * Guard.guard option * Action.action) 
       -> compiled_rule
 
    (* Compile a set of canonical rules into a dfa  *)
    val compile : {compiled_rules:compiled_rule list,
                   compress: bool
-                 } -> dfa
+                 } -> compiled_dfa
+
+   val exhaustive : compiled_dfa -> bool
+   val redundant  : compiled_dfa -> IntListSet.set
 
    (* For debugging *)
-   val toString : dfa -> string
+   val toString : compiled_dfa -> string
 
    (* Generate code for a compiled dfa.
     * Assuming an ML-like language.
@@ -84,6 +94,6 @@ sig
           genVar  : path -> Var.var,
           genVal  : Var.var * 'exp -> 'decl,
           genProj : path * (path option * index) list -> 'decl
-        } -> ('exp * dfa)
+        } -> ('exp * compiled_dfa)
           -> 'exp
 end
