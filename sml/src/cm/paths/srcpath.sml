@@ -318,7 +318,10 @@ structure SrcPath :> SRCPATH = struct
 
     val descr = encode0 true o unintern
 
-    val osstring_dir = pp2name o #pp o elab_dir
+    fun osstring_dir d =
+	case pp2name (#pp (elab_dir d)) of
+	    "" => P.currentArc
+	  | s => s
 
     fun osstring' f = let
 	val oss = osstring f

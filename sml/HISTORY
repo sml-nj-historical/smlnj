@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/06/19 11:05:00 JST
+Tag: blume-20000619-chdir-bugfix
+Description:
+
+Fixed a bug in new SrcPath module that sometimes led to a bad chDir call.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/06/18 22:00:10 JST
 Tag: blume-20000618-implicit-anchors-really-gone
 Description:
