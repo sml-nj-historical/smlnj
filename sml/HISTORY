@@ -16,9 +16,14 @@ Name: Matthias Blume
 Date: 2000/12/22 21:20:00 JST
 Tag: blume-20001222-anchorenv
 Description:
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2000/12/22 23:16:00 JST
+Tag: blume-20001222-warn
+Description:
 
-Fixed a CM problem related to anchor environments and their interaction
-with CMB.make.
+Corrected wording and formatting of some CM warning message which I
+broke in my previous patch.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume

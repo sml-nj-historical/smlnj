@@ -618,6 +618,7 @@ struct
 		fun prepath2list what p = let
 		    fun warn_relabs (abs, descr) = let
 			val relabs = if abs then "absolute" else "relative"
+			val gdesc = SrcPath.descr grouppath
 			fun ppb pps = let
 			    fun space () = PP.add_break pps (1, 0)
 			    fun string s = PP.add_string pps s
@@ -625,26 +626,29 @@ struct
 			    fun nl () = PP.add_newline pps
 			in
 			    nl ();
-			    app ss [what, descr, "specified", "using", relabs];
-			    string "path"; nl ();
+			    PP.begin_block pps PP.INCONSISTENT 0;
+			    app ss ["The", "path", "specifying"];
+			    app ss [what, descr, "is"];
+			    string relabs; string "."; nl ();
 			    app ss ["(This", "means", "that", "in", "order",
 				    "to", "be", "able", "to", "use", "the",
-				    "result", "of", "stabilization,",
-				    "objects", "referred", "to", "using",
-				    "this", "path", "must", "be", "in", "the",
-				    "same"];
+				    "stabilized", "library"];
+			    string gdesc; ss ",";
+			    app ss ["it", "will", "be", "necessary", "to",
+				    "keep", "all", "imported", "libraries",
+				    "with", "names", "derived", "from", "or",
+				    "equal", "to"];
+			    ss descr;
+			    app ss ["in", "the", "same"];
 			    ss relabs;
 			    app ss ["location", "as", "they", "are"];
 			    string "now.)";
-			    nl ()
+			    PP.end_block pps
 			end
 		    in
-			EM.errorNoFile (#errcons gp, anyerrors) SM.nullRegion
-				       EM.WARN
-				       (concat [SrcPath.descr grouppath,
-						": ", what, " referred to by ",
-						relabs, " pathname."])
-				       ppb
+			EM.errorNoFile
+			    (#errcons gp, anyerrors) SM.nullRegion EM.WARN
+			    (gdesc ^ ": uses non-anchored path") ppb
 		    end
 		in
 		    SrcPath.pickle { warn = warn_relabs }
