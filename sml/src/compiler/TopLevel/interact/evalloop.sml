@@ -73,21 +73,6 @@ fun evalLoop source = let
                 val {static=statenv, dynamic=dynenv, symbolic=symenv} =
 		    getenv ()
 
-                val splitting = Control.LambdaSplitting.get ()
-                val {csegments, newstatenv, absyn, exportPid, exportLvars,
-                     imports, inlineExp, ...} = 
-                    C.compile {source=source, ast=ast,
-			       statenv=statenv,
-                               symenv=symenv,
-			       compInfo=cinfo, 
-                               checkErr=checkErrors,
-                               splitting=splitting,
-			       guid = () }
-                (** returning absyn and exportLvars here is a bad idea,
-                    they hold on things unnecessarily; this must be 
-                    fixed in the long run. (ZHONG)
-                 *)
-
 		(* start adding testing code of ppast.ppdec here *)
 		val debugging = ref true
 
@@ -115,14 +100,31 @@ fun evalLoop source = let
                      in debugPrint (Control.printAst) (msg, ppAstDec, dec)
                     end
 		    
+		(* testing code to print ast *)
+		val _ = ppAstDebug("AST::",ast)
+
+		(* now go and compile *)
+                val splitting = Control.LambdaSplitting.get ()
+                val {csegments, newstatenv, absyn, exportPid, exportLvars,
+                     imports, inlineExp, ...} = 
+                    C.compile {source=source, ast=ast,
+			       statenv=statenv,
+                               symenv=symenv,
+			       compInfo=cinfo, 
+                               checkErr=checkErrors,
+                               splitting=splitting,
+			       guid = () }
+                (** returning absyn and exportLvars here is a bad idea,
+                    they hold on things unnecessarily; this must be 
+                    fixed in the long run. (ZHONG)
+                 *)
+
 		fun ppAbsynDebug (msg,dec) =
 		    let fun ppAbsynDec ppstrm d = 
                             PPAbsyn.ppDec (statenv,NONE) ppstrm (d,!printDepth)
                      in debugPrint (Control.printAbsyn) (msg, ppAbsynDec, dec)
                     end
 
-		(* testing code to print ast *)
-		val _ = ppAstDebug("AST::",ast)
 		(* testing code to print absyn *)
 		val _ = ppAbsynDebug("ABSYN::",absyn)
 

@@ -210,6 +210,8 @@ structure SkelCvt :> SKELCVT = struct
       | exp_dl (WhileExp { test, expr }, d) = exp_dl (test, exp_dl (expr, d))
       | exp_dl (StructurePluginExp { str, sgn }, d) =
 	  dl_addP (str, dl_addSym (sgn, d))
+      | exp_dl (GetPluginExp { plugin, sgn }, d) =
+	  exp_dl (plugin, dl_addSym (sgn, d))
       | exp_dl (MarkExp (arg, _), d) = exp_dl (arg, d)
       | exp_dl ((IntExp _|WordExp _|RealExp _|StringExp _|CharExp _), d) = d
 
@@ -345,8 +347,8 @@ structure SkelCvt :> SKELCVT = struct
 	    (s, foldl Ign1 (Var (SP.SPATH p)) el)
 	end
       | strexp_p (LetStr (bdg, b)) = letexp (dec_dl (bdg, []), strexp_p b)
-      | strexp_p (PluginStr { def, sgn }) =
-	  (SS.singleton def, Var (SP.SPATH [sgn]))
+      | strexp_p (PluginStr { obj, sgn }) =
+	  (SS.singleton obj, Var (SP.SPATH [sgn]))
       | strexp_p (MarkStr (s, _)) = strexp_p s
 
     and dec_dl (ValDec (l, _), d) = foldl vb_dl d l
@@ -366,17 +368,6 @@ structure SkelCvt :> SKELCVT = struct
 		in
 		    (SS.union (s, s'), (name, e) :: bl)
 		end
-(*
-	      | one (StrPlugin { name, def, constraint }, (s, bl)) = let
-		    val (s', dl) = split_dl (exp_dl (def, []))
-		    val e =
-			case dl of
-			    [] =>  Var (SP.SPATH [constraint])
-			  | dl => Ign1 (Decl dl, Var (SP.SPATH [constraint]))
-		in
-		    (SS.union (s, s'), (name, e) :: bl)
-		end
-*)
 	in
 	    parbind one l d
 	end

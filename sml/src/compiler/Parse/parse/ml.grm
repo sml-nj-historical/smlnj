@@ -688,14 +688,17 @@ strb	: ident EQUALOP str
 			   (identleft,strright))])
 	| ident COLONGT ident EQUALOP LINK_PLUGIN exp
 		([MarkStrb(Strb{name = strSymbol ident1,
-				def = LetStr (ValDec ([Vb { pat = VarPat [pluginID],
-							    exp = MarkExp (exp,
-									   (expleft,expright)),
-							    lazyp = false }],
-						      []),
-					      MarkStr(PluginStr { def = pluginID,
-								  sgn = sigSymbol ident2 },
-						      (LINK_PLUGINleft, expright))),
+				def = LetStr (ValDec
+					([Vb { pat = VarPat [pluginID],
+					       exp = GetPluginExp
+							 { plugin = MarkExp (exp,
+									     (expleft,expright)),
+							   sgn = sigSymbol ident2 },
+					       lazyp = false }],
+					 []),
+					MarkStr(PluginStr { obj = pluginID,
+							    sgn = sigSymbol ident2 },
+						(LINK_PLUGINleft, expright))),
 				constraint = NoSig},
 			   (ident1left,expright))])
 	| strb AND strb		(strb1 @ strb2)

@@ -719,7 +719,7 @@ fun elab (BaseStr decl, env, entEnv, region) =
 
        in (resDec, bodyStr, resExp, EE.mark(mkStamp,EE.atopSp(bodyDee,entEnv')))
       end
-  | elab (PluginStr { def, sgn }, env, entEnv, region) = let
+  | elab (PluginStr { obj, sgn }, env, entEnv, region) = let
 	val sg = LU.lookSig (env, sgn, error region)
 	val { rlzn, ... } =
 	    INS.instParam { sign = sg,
@@ -734,31 +734,15 @@ fun elab (BaseStr decl, env, entEnv, region) =
 			    region = region,
 			    compInfo = compInfo }
     in
-	case (sg, LU.lookVal (env, SP.SPATH [def], error region)) of
-	    (M.SIG { stamp, ... },
-	     V.VAL (pv as V.VALvar { access, typ, ... })) => let
-		val tmpsy = Symbol.varSymbol "<plugin>"
-		val a = Access.namedAcc (tmpsy, mkv)
-		val tmpv =
-		    V.VALvar
-			{ access = a, info = II.Null, path = SP.SPATH [tmpsy],
-			  typ = ref BasicTypes.pluginTy }
+	case LU.lookVal (env, SP.SPATH [obj], error region) of
+	    V.VAL (pv as V.VALvar { access, typ, ... }) => let
 
 		(* a plugin is a pair of "stamp" * "structure" *)
 		val resStr = M.STR { sign = sg, rlzn = rlzn,
-				     access = a, info = II.Null }
+				     access = access, info = II.Null }
 
-		val gtp = CoreAccess.getVar (env, "getplugin")
 	    in
-		(A.VALdec
-		     [A.VB { pat = A.VARpat tmpv,
-			     exp = A.APPexp (A.VARexp (ref gtp, []),
-					     EU.TUPLEexp
-						 [A.STAMPexp stamp,
-						  A.VARexp (ref pv, [])]),
-			     boundtvs = [],
-			     tyvars = ref [] }],
-		 resStr, M.CONSTstr rlzn, EE.empty)
+		(A.SEQdec [], resStr, M.CONSTstr rlzn, EE.empty)
 	    end
 	  | _ => bug "elabmod:PluginStr:lookVal"
     end

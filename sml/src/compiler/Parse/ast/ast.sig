@@ -57,6 +57,7 @@ sig
     | WhileExp of {test:exp,expr:exp}
 				  (* while (derived form) *)
     | StructurePluginExp of { str: path, sgn: symbol }
+    | GetPluginExp of { plugin: exp, sgn: symbol }
     | MarkExp of exp * region	(* mark an expression *)
 
   (* RULE for case functions and exception handler *)
@@ -90,7 +91,7 @@ sig
 	     | AppStr of path * (strexp * bool) list (* application (external) *)
              | AppStrI of path * (strexp * bool) list (* application (internal) *)
 	     | LetStr of dec * strexp		(* let in structure *)
-	     | PluginStr of { def: symbol, sgn: symbol }
+	     | PluginStr of { obj: symbol, sgn: symbol }
 	     | MarkStr of strexp * region (* mark *)
 
   (* FUNCTOR EXPRESSION *)

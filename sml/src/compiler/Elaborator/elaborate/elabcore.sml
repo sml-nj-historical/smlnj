@@ -630,6 +630,20 @@ let
 			  | M.STRSIG _ => bug "StructurePluginExp:STRSIG"
 			  | M.ERRORstr => errcase ())
 		   | M.ERRORsig => errcase ()
+	     end
+
+	   | GetPluginExp { plugin, sgn } =>
+	     let val (p_exp, p_tv, p_updt) = elabExp (plugin, env, region)
+	     in
+		 case LU.lookSig (env, sgn, error region) of
+		     M.SIG { stamp, ... } => let
+			 val gp = CoreAccess.getVar (env, "getplugin")
+		     in
+			 (APPexp (VARexp (ref gp, []),
+				  TUPLEexp [STAMPexp stamp, p_exp]),
+			  p_tv, p_updt)
+		     end
+		   | M.ERRORsig => (TUPLEexp [], TS.empty, no_updt)
 	     end)
 
     and elabELabel(labs,env,region) =

@@ -419,6 +419,13 @@ and ppExp (context as (env, source_opt)) ppstrm =
 	      ppsay ": ";
 	      ppSym ppstrm sgn;
 	      ppsay ")")
+
+	 | ppExp' (GetPluginExp { plugin, sgn }, _, d) =
+	     (ppsay "getplugin<";
+	      ppSym ppstrm sgn;
+	      ppsay ">(";
+	      ppExp' (plugin, false, d);
+	      ppsay ")")
 	     
 	 | ppExp'(MarkExp (exp,(s,e)),atom,d) =
 	      (case source_opt
@@ -557,8 +564,12 @@ and ppStrExp (context as (_,source_opt)) ppstrm =
 	       ppsay "end";
 	       closeBox ppstrm)
 
-	   | ppStrExp'(PluginStr _,d) =
-	       ppsay "<plugin>" (* FIXME *)
+	   | ppStrExp'(PluginStr { obj, sgn },d) =
+	       (ppsay "link_plugin(";
+		ppSym ppstrm obj;
+		ppsay ",";
+		ppSym ppstrm sgn;
+		ppsay ")")
 
          | ppStrExp'(MarkStr(body,(s,e)),d) =
              ppStrExp' (body,d)
