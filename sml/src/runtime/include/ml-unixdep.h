@@ -207,6 +207,7 @@ extern char	*sys_errlist[];
 #  define HAS_SIGCONTEXT
 #  define HAS_STRERROR
 #  define HAS_SELECT
+#  define MAP_ANONYMOUS MAP_ANON
 
 #elif defined(OPSYS_DARWIN) && defined(OPSYS_MACOS_10_2) /** MacOS X 10.2 **/
 #  define OS_NAME       "Darwin"
@@ -218,6 +219,7 @@ extern char	*sys_errlist[];
 #  define HAS_UCONTEXT
 #  define HAS_STRERROR
 #  define HAS_SELECT
+#  define MAP_ANONYMOUS MAP_ANON
 
 #elif defined(OPSYS_HPUX9)  /** HPUX 9.0 **/
 #  define OS_NAME       "HPUX"
