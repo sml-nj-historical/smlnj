@@ -70,7 +70,7 @@ structure Bounce =
 	    fun setCursor c = EXeneWin.setCursor win (SOME c)
 	    fun quit () = (
 		  closeDisplay dpy;
-		  RunCML.shutdown())
+		  RunCML.shutdown OS.Process.success)
 	    val popupMenu = Menu.popupMenu win
 	    open Interact
 	    fun waitLoop (seqn, sz) = let
@@ -111,10 +111,10 @@ structure Bounce =
 			      val r = (real a) / dt
 			      val da = Real.trunc r
 			      val (abs, sign) =
-				    if (r < 0.0) then (~da, ~1) else (da, 1)
+				    if Real.!= (r, 0.0) then (~da, ~1) else (da, 1)
 			      in
 				if (da = 0)
-				  then if (r <> 0.0)
+				  then if Real.!= (r, 0.0)
 				    then sign
 				    else 0
 				else if (abs*updatesPerSec > 1000)
@@ -155,11 +155,12 @@ structure Bounce =
 	  XDebug.init flgs;
 	  RunCML.doit (
 	    fn () => (XDebug.xspawn("bounce", fn () => runBounce dpy); ()),
-	    SOME(Time.fromMilliseconds 10)))
+	    SOME(Time.fromMilliseconds 10));
+	  OS.Process.success)
 
     fun doit s = doit' ([],s)
 
-    fun main (prog::server::_,_) = doit server
+    fun main (prog,server::_) = doit server
       | main _ = doit ""
 
     end (* local *)

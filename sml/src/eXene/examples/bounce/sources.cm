@@ -1,9 +1,16 @@
 (* sources file for bounce demo *)
 Group
 is
-cml.cm
-cml-lib.cm
-../../sources.cm
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $cml-lib/smlnj-lib.cm
+  $/eXene.cm
+#else
+  cml.cm
+  cml-lib.cm
+  ../../sources.cm
+#endif
 
 heads.sml
 bounce-dm.sml

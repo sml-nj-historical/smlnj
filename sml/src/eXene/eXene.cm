@@ -1,7 +1,6 @@
+(* root sources file for eXene *)
+
 Library
-#if defined (NEW_CM)
-#error Not for use with new CM!
-#endif
 
   (** from lib **)
     signature GEOMETRY
@@ -139,4 +138,6 @@ Library
     functor ShapeView
 
 is
-    eXene.cm
+lib/sources.cm
+graph-util/sources.cm
+widgets/sources.cm

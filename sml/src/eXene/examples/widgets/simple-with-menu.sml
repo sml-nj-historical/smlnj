@@ -33,7 +33,7 @@ structure SimpleWithMenu :
   	]
   		  
     fun goodbye root = let
-          fun quit () = (W.delRoot root; RunCML.shutdown())
+          fun quit () = (W.delRoot root; RunCML.shutdown OS.Process.success)
           val style = W.styleFromStrings (root, resources)
           val name = Styles.mkView {name = Styles.styleName [],
                                     aliases = [Styles.styleName []]}
@@ -50,12 +50,12 @@ structure SimpleWithMenu :
   	  fun monitor () = let
   	        val n = CML.sync evt
   	        in
-  		  CIO.print("menu choice "^ makestring n ^ "\n");
+  		  TextIO.output (TextIO.stdOut, "menu choice "^ Int.toString n ^ "\n");
   		  monitor ()
   	        end
           val shell = Shell.shell (root,view,[]) widget
           fun loop () =
-                if (CIO.input_line CIO.std_in) = "quit\n"
+                if (TextIO.inputLine TextIO.stdIn) = "quit\n"
                   then quit ()
                   else loop ()
           in

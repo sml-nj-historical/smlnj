@@ -18,10 +18,16 @@ Library
     structure World
 
 is
-
+#if defined(NEW_CM)
+    $cml/basis.cm
+    $cml/cml.cm
+    $cml-lib/smlnj-lib.cm
+    $/eXene.cm
+#else
     cml.cm
     cml-lib.cm
     ../../../sources.cm
+#endif
 
     arrow.sml
     transform2d.sml

@@ -5,8 +5,8 @@
 
 structure Main : sig
 
-    val doit' : string list * string -> unit
-    val doit : string -> unit
+    val doit' : string list * string -> OS.Process.status
+    val doit : string -> OS.Process.status
     val main : (string * string list) -> OS.Process.status
 
   end = struct
@@ -220,10 +220,10 @@ structure Main : sig
 	  RunCML.doit (
 	    fn () => (XDebug.xspawn("triangle", fn () => triangle dpy); ()),
 	    SOME(Time.fromMilliseconds 20)))
-    fun doit s = doit' ([],s)
+    fun doit s = doit' ([], s)
 
-    fun main (prog, server::_) = (doit server; OS.Process.success)
-      | main _ = (doit ""; OS.Process.success)
+    fun main (prog, server::_) = doit server
+      | main _ = doit ""
 
   end (* Main *)
 

@@ -2,8 +2,14 @@
 Group 
 is
 
-cml.cm
-../../sources.cm
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $/eXene.cm
+#else
+  cml.cm
+  ../../sources.cm
+#endif
 
 color-state.sml  
 spot.sml    

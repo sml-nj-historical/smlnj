@@ -17,7 +17,7 @@ structure Simple :
       ]
 
     fun goodbye root = let
-          fun quit () = (W.delRoot root; RunCML.shutdown())
+          fun quit () = (W.delRoot root; RunCML.shutdown OS.Process.success)
           val style = W.styleFromStrings (root, resources)
           val name = Styles.mkView {name = Styles.styleName [],
                                     aliases = [Styles.styleName []]}
@@ -31,7 +31,7 @@ structure Simple :
                 ])
           val shell = Shell.shell (root,view,[]) (Box.widgetOf layout)
           fun loop () =
-                if (CIO.input_line CIO.std_in) = "quit\n"
+                if (TextIO.inputLine TextIO.stdIn) = "quit\n"
                   then quit ()
                   else loop ()
           in

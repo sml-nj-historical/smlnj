@@ -5,7 +5,7 @@
  * The library sources file for the EXene graph utilities level.
  *)
 
-Library
+Group (../eXene.cm)
 signature ROOT
 signature SHELL
 signature WIDGET
@@ -102,8 +102,14 @@ functor ShapeView
 
 is
 
-cml-lib.cm
-cml.cm
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $cml-lib/smlnj-lib.cm
+#else
+  cml-lib.cm
+  cml.cm
+#endif
 
 ../lib/sources.cm
 ../graph-util/sources.cm

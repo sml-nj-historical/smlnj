@@ -16,7 +16,7 @@ structure CalcTest =
       ]
   
     fun tester root = let
-	  fun quit () = (W.delRoot root; RunCML.shutdown())
+	  fun quit () = (W.delRoot root; RunCML.shutdown OS.Process.success)
           val style = W.styleFromStrings (root, resources)
           val name = Styles.mkView {name = Styles.styleName [],
                                     aliases = [Styles.styleName []]}
@@ -37,7 +37,7 @@ structure CalcTest =
   
     fun doit () = RunEXene.run tester
   
-    fun main (prog::server::_,_) = doit'([], server)
+    fun main (prog,server::_) = doit'([], server)
       | main _ = doit ()
   
   end (* local *)

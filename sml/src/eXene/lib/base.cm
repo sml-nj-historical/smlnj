@@ -3,11 +3,17 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *)
 
-Group
+Group (../eXene.cm)
 is
 
-cml-lib.cm
-cml.cm
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $cml-lib/smlnj-lib.cm
+#else
+  cml-lib.cm
+  cml.cm
+#endif
 
 misc/exene-version.sml
 misc/mlx-err.sml

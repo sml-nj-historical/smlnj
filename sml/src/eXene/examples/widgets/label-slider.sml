@@ -29,7 +29,7 @@ structure LabelSlider :
           val slider = Sl.slider (root,view,sArgs)
           fun set l = Label.setLabel label (Label.Text l)
           val evt = Sl.evtOf slider
-          fun loop () = loop (set (makestring (CML.sync evt)))
+          fun loop () = loop (set (Int.toString (CML.sync evt)))
           in
             CML.spawn loop;
             Box.widgetOf(Box.layout (root,view,[]) (Box.HzCenter [
@@ -41,7 +41,7 @@ structure LabelSlider :
           end
   
     fun tester root = let
-          fun quit () = (W.delRoot root; RunCML.shutdown())
+          fun quit () = (W.delRoot root; RunCML.shutdown OS.Process.success)
           val style = W.styleFromStrings (root, resources)
           val name = Styles.mkView {name = Styles.styleName [],
                                     aliases = [Styles.styleName []]}
@@ -53,7 +53,7 @@ structure LabelSlider :
   	      ])
           val shell = Shell.shell (root,view,[]) (Box.widgetOf layout)
           fun loop () =
-                if (CIO.input_line CIO.std_in) = "quit\n"
+                if (TextIO.inputLine TextIO.stdIn) = "quit\n"
                   then quit ()
                   else loop ()
           in

@@ -47,7 +47,7 @@ structure Plaid :
       val pen = 
         D.newPen [D.PV_Foreground W.EXB.color1, D.PV_Function D.OP_Xor]
       val idlePen = pen 
-      val timer = CML.timeout(Time.fromMilliseconds 100)
+      val timer = CML.timeOutEvt(Time.fromMilliseconds 100)
 
       fun realizePlaid {win,sz,env} = let
         val drawwin = D.drawableOfWin win
@@ -103,7 +103,7 @@ structure Plaid :
         and doIdle (size as SIZE{wid,ht}) = let
 
           fun redraw () = let
-            val bnd = min(wid,ht) div 2
+            val bnd = Int.min(wid,ht) div 2
             fun loop i = 
               if i > bnd then ()
               else (

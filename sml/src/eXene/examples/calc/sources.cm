@@ -1,8 +1,14 @@
 Group
 is
+#if defined (NEW_CM)
+  $cml/basis.cm
+  $cml/cml.cm
+  $/eXene.cm
+#else
 cml.cm
 ../../lib/sources.cm
 ../../widgets/sources.cm
+#endif
 acc.sml
 calc.sml
 main.sml

@@ -57,7 +57,7 @@ structure Calc : CALC =
                 fun cleanup () = (
 		      CML.sync(CML.timeOutEvt pause); 
                       W.delRoot root; 
-                      RunCML.shutdown())
+                      RunCML.shutdown OS.Process.success)
                 in (CML.spawn cleanup; ()) end
 	  val sw = Toggle.widgetOf (Toggle.toggleSwitch (root,view,args) quit)
 	  val switch_line = mkSwitchLine sw

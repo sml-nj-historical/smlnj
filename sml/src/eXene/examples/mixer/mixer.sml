@@ -47,7 +47,7 @@ structure Mixer :
           fun quit () = let
                 fun q () = (CML.sync(CML.timeOutEvt pause); 
                             Root.delRoot root; 
-                            RunCML.shutdown())
+                            RunCML.shutdown OS.Process.success)
                 in CML.spawn q; () end
        
           val switch = Toggle.toggleSwitch (root,view,[]) (fn _ => quit ())
