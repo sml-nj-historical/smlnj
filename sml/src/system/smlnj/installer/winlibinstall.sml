@@ -24,7 +24,7 @@ structure WinLibInstall : sig end = struct
 	    { smlnjroot = home,
 	      installdir = home,
 	      buildcmd = "build.bat",
-	      unpackcmd = NONE,
+	      unpack = NONE,
 	      instcmd = fn target =>
 			   copy { from = concat [home, "\\config\\",
 						 target, ".bat"],
