@@ -29,6 +29,10 @@ signature SRCPATH = sig
     (* This makes sure CM knows what the current working directory is: *)
     val revalidateCwd : unit -> unit
 
+    (* This marks the cwd cache as invalid so that the next revalidation
+     * will cause external servers to be notified. *)
+    val invalidateCwd : unit -> unit
+
     (* This erases all persistent state: *)
     val clear : unit -> unit
 
@@ -79,6 +83,7 @@ structure SrcPath :> SRCPATH = struct
     fun clear () = knownPaths := AbsPathMap.empty
 
     val revalidateCwd = AbsPath.revalidateCwd
+    val invalidateCwd = AbsPath.invalidateCwd
 
     fun intern ap =
 	case AbsPathMap.find (!knownPaths, ap) of

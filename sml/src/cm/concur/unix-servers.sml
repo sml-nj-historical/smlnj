@@ -24,7 +24,8 @@ structure Servers :> SERVERS = struct
 
     fun fname (n, S { pt = NONE, ... }) = n
       | fname (n, S { pt = SOME f, ... }) =
-	if OS.Path.isAbsolute n then f n else n
+	(if String.sub (n, 0) = #"/" then f n else n)
+	handle _ => n
 
     fun servName (S { name, ... }) = name
 
@@ -202,21 +203,11 @@ structure Servers :> SERVERS = struct
 	else false
     end
 	
-    fun cwdstring () = let
-	val d = OS.FileSys.getDir ()
-    in
-	case OS.Process.getEnv "HOME" of
-	    NONE => d
-	  | SOME h => OS.Path.mkRelative { path = d, relativeTo = h }
-    end
-
-    fun namespec (p, s) = fname (SrcPath.descr p, s)
-
     fun compile p =
 	if not (!enabled) orelse !nservers = 0 then false
 	else let
 	    val s = grab ()
-	    val f = namespec (p, s)
+	    val f = fname (p, s)
 	in
 	    Say.vsay ["[(", servName s, "): compiling ", f, "]\n"];
 	    send (s, concat ["compile ", f, "\n"]);
@@ -236,13 +227,22 @@ structure Servers :> SERVERS = struct
 			 cleanup = reset }
     end
 
-    fun cm p = let
-	val d = cwdstring ()
+    fun cd d = let
 	fun st s = let
-	    val f = namespec (p, s)
+	    val d' = fname (d, s)
 	in
-	    Say.vsay ["[(", servName s, "): project ", f, "]\n"];
-	    send (s, concat ["cm ", d, " ", f, "\n"]);
+	    send (s, concat ["cd ", d', "\n"]);
+	    ignore (wait_status (s, false))
+	end
+    in
+	startAll st
+    end
+
+    fun cm { archos, project } = let
+	fun st s = let
+	    val f = fname (project, s)
+	in
+	    send (s, concat ["cm ", archos, " ", f, "\n"]);
 	    ignore (wait_status (s, false))
 	end
     in
@@ -250,12 +250,8 @@ structure Servers :> SERVERS = struct
     end
 
     fun cmb { archos, root } = let
-	val d = cwdstring ()
-	val f = SrcPath.descr root
 	fun st s =
-	    (Say.vsay ["[(", servName s, "): btcompile for ", archos,
-		       ", root = ", f, "]\n"];
-	     send (s, concat ["cmb ", archos, " ", d, " ", f, "\n"]);
+	    (send (s, concat ["cmb ", archos, " ", root, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st
@@ -263,8 +259,7 @@ structure Servers :> SERVERS = struct
 
     fun dirbase db = let
 	fun st s =
-	    (Say.vsay ["[(", servName s, "): dirbase ", db, "]\n"];
-	     send (s, concat ["dirbase ", db, "\n"]);
+	    (send (s, concat ["dirbase ", db, "\n"]);
 	     ignore (wait_status (s, false)))
     in
 	startAll st

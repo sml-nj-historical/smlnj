@@ -31,6 +31,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure DG = DependencyGraph
 
       val os = SMLofNJ.SysInfo.getOSKind ()
+      val my_archos =
+	  concat [HostMachDepVC.architecture, "-", FilenamePolicy.kind2name os]
 
       structure SSV =
 	  SpecificSymValFn (structure MachDepVC = HostMachDepVC
@@ -41,7 +43,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       structure Compile =
 	  CompileFn (structure MachDepVC = HostMachDepVC
-		     val compile_there = Servers.compile)
+		     val compile_there = Servers.compile o SrcPath.descr)
 
       structure Link =
 	  LinkFn (structure MachDepVC = HostMachDepVC
@@ -56,7 +58,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	   structure BFC = BFC)
 
       fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
-	  Servers.cm grouppath
+	  Servers.cm { archos = my_archos, project = SrcPath.descr grouppath }
 
       fun recomp_runner gp g = let
 	  val _ = init_servers g
@@ -243,8 +245,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun say_error () = Say.say ["SLAVE: error\n"]
 	      fun say_pong () = Say.say ["SLAVE: pong\n"]
 
-	      val touch = HostMachDepVC.Interact.useStream o TextIO.openString 
-
 	      val home =
 		  case OS.Process.getEnv "HOME" of
 		      SOME h => (fn d => OS.Path.mkAbsolute { path = d,
@@ -253,19 +253,20 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       (Say.say ["HOME not set!\n"];
 				raise Fail "HOME not set"))
 
-	      fun chDir d0 =
-		  OS.FileSys.chDir (if OS.Path.isAbsolute d0 then d0
-				    else home d0)
-
 	      fun path (s, pcmode) = SrcPath.fromDescr pcmode s
+		  
+	      fun chDir d =
+		  (OS.FileSys.chDir (SrcPath.osstring (path (d, pcmode)));
+		   Say.say ["New dir: ", OS.FileSys.getDir (), "\n"])
 
 	      fun waitForStart () = let
 		  val line = TextIO.inputLine TextIO.stdIn
 	      in
 		  if line = "" then shutdown ()
 		  else case String.tokens Char.isSpace line of
-		      ["cm", d, f] => do_cm (d, f)
-		    | ["cmb", archos, d, f] => do_cmb (archos, d, f)
+		      ["cd", d] => (chDir d; say_ok (); waitForStart ())
+		    | ["cm", archos, f] => do_cm (archos, f)
+		    | ["cmb", archos, f] => do_cmb (archos, f)
 		    | ["ping"] => (say_pong (); waitForStart ())
 		    | ["finish"] => (say_ok (); waitForStart ())
 		    | ["dirbase", db] =>
@@ -274,9 +275,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		    | _ => (say_error (); waitForStart ())
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and do_cmb (archos, d, f) = let
-		  val _ = chDir d
-		  val slave = CMBSlave.slave { load = autoload, touch = touch }
+	      and do_cmb (archos, f) = let
+		  val slave = CMBSlave.slave make
 	      in
 		  case slave archos (!dbr, f) of
 		      NONE => (say_error (); waitForStart ())
@@ -288,21 +288,22 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      end
 	      end handle _ => (say_error (); waitForStart ())
 
-	      and do_cm (d, f) = let
-		  val _ = chDir d
-		  val p = path (f, pcmode)
-	      in
-		  case Parse.parse NONE (param ()) NONE p of
-		      NONE => (say_error (); waitForStart ())
-		    | SOME (g, gp) => let
-			  val _ = say_ok ()
-			  val index = Reachable.snodeMap g
-			  val trav = Compile.newSbnodeTraversal () gp
-			  fun trav' sbn = isSome (trav sbn)
-		      in
-			  workLoop (index, trav', pcmode)
-		      end
-	      end handle _ => (say_error (); waitForStart ())
+	      and do_cm (archos, f) =
+		  if archos <> my_archos then (say_error (); waitForStart ())
+		  else let
+		      val p = path (f, pcmode)
+		  in
+		      case Parse.parse NONE (param ()) NONE p of
+			  NONE => (say_error (); waitForStart ())
+			| SOME (g, gp) => let
+			      val _ = say_ok ()
+			      val index = Reachable.snodeMap g
+			      val trav = Compile.newSbnodeTraversal () gp
+			      fun trav' sbn = isSome (trav sbn)
+			  in
+			      workLoop (index, trav', pcmode)
+			  end
+		  end handle _ => (say_error (); waitForStart ())
 
 	      and workLoop (index, trav, pcmode) = let
 		  fun loop () = let
@@ -310,7 +311,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		  in
 		      if line = "" then shutdown ()
 		      else case String.tokens Char.isSpace line of
-			  ["compile", f] => let
+			  ["cd", d] => (chDir d; say_ok (); loop ())
+			| ["compile", f] => let
 			      val p = path (f, pcmode)
 			  in
 			      case SrcPathMap.find (index, p) of
@@ -322,8 +324,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				      else (say_error (); loop ())
 				  end
 			  end
-			| ["cm", d, f] => do_cm (d, f)
-			| ["cmb", archos, d, f] => do_cmb (archos, d, f)
+			| ["cm", archos, f] => do_cm (archos, f)
+			| ["cmb", archos, f] => do_cmb (archos, f)
 			| ["finish"] => (say_ok (); waitForStart ())
 			| ["dirbase", db] =>
 			      (say_ok (); dbr := db; waitForStart ())
@@ -484,7 +486,9 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   listLibs = listLibs,
 				   dismissLib = dismissLib,
 				   symval = SSV.symval,
-				   server_start = Servers.start,
+				   server_start =
+				     fn x => (Servers.start x
+					      before SrcPath.invalidateCwd ()),
 				   server_stop = Servers.stop,
 				   server_kill = Servers.kill })
 

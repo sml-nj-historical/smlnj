@@ -27,14 +27,17 @@ signature SERVERS = sig
     (* signal all servers that future cmb calls use a different dirbase *)
     val dirbase : string -> unit
 
+    (* signal all servers that we have a new working dir *)
+    val cd : string -> unit
+
     (* signal all servers that we are starting with a new .cm file *)
-    val cm : SrcPath.t -> unit
+    val cm : { archos: string, project: string } -> unit
 
     (* signal all servers that we are starting with a new CMB.make *)
-    val cmb : { archos: string, root: SrcPath.t } -> unit
+    val cmb : { archos: string, root: string } -> unit
 
     (* schedule a compilation *)
-    val compile : SrcPath.t -> bool
+    val compile : string -> bool
 
     val withServers : (unit -> 'a) -> 'a
 end

@@ -9,29 +9,16 @@
  *)
 structure CMBSlave = struct
     local
-	val lib = "target-compilers.cm"
-	val loaded = ref false
-	val table =
-	    foldl StringMap.insert' StringMap.empty
-	    [("alpha32-unix", "Alpha32UnixCMB.make"),
-	     ("hppa-unix", "HppaUnixCMB.make"),
-	     ("ppc-macos", "PPCMacOSCMB.make"),
-	     ("ppc-unix", "PPCUnixCMB.make"),
-	     ("sparc-unix", "SparcUnixCMB.make"),
-	     ("x86-unix", "X86UnixCMB.make"),
-	     ("x86-win32", "X86Win32CMB.make")]
+	val loaded = ref StringSet.empty
     in
-	(* "load" is supposed to be CM.autoload and "touch" should be
-	 * (Compiler.Interact.useStream o TextIO.openString) *)
-	fun slave { load, touch } arch s =
-	    case StringMap.find (table, arch) of
-		NONE => NONE
-	      | SOME cmd =>
-		    (if !loaded then ()
-		     else if load lib then loaded := true
-		     else raise Fail (concat ["dynamic linkage for CMB slave ",
-					      arch, " failed"]);
-		     touch cmd;
-		     CMBSlaveHook.slave arch s)
+	fun slave load arch s = let
+	    val lib = arch ^ ".cm"
+	in
+	    if StringSet.member (!loaded, lib) then ()
+	    else if load lib then loaded := StringSet.add (!loaded, lib)
+	    else  raise Fail (concat ["dynamic linkage for CMB slave ",
+				      arch, " failed"]);
+	    CMBSlaveHook.slave arch s
+	end
     end
 end

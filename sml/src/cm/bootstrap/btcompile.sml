@@ -33,10 +33,12 @@ end = struct
     val archos = concat [arch, "-", osname]
 
     fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
-	Servers.cmb { archos = archos, root = grouppath }
+	Servers.cmb { archos = archos,
+		      root = SrcPath.descr grouppath }
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC
-				   val compile_there = Servers.compile)
+				   val compile_there =
+				       Servers.compile o SrcPath.descr)
 
     structure BFC = BfcFn (structure MachDepVC = MachDepVC)
 
@@ -144,6 +146,9 @@ end = struct
 	    case root of
 		NONE => stdpath maingspec
 	      | SOME r => SrcPath.fromDescr pcmode r
+
+	val _ = Say.say ["CMB: maingspec = ", SrcPath.osstring maingspec,
+			 ", cwd = ", OS.FileSys.getDir (), "\n"]
 
 	val cmifile = valOf (SrcPath.reAnchoredName (initgspec, bootdir))
 	    handle Option => raise Fail "BootstrapCompile: cmifile"

@@ -22,5 +22,6 @@ is
 	srcpathset.sml
 
 	../util/sources.cm
+	../concur/sources.cm
 	basis.cm
 	viscomp-core.cm

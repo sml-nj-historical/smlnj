@@ -16,6 +16,7 @@ signature ABSPATH = sig
 
     val newEra : unit -> unit
     val revalidateCwd : unit -> unit
+    val invalidateCwd : unit -> unit
 
     val cwdContext: unit -> context
     val sameDirContext: t -> context
@@ -112,6 +113,17 @@ structure AbsPath :> ABSPATH = struct
 
     type ord_key = t
 
+    fun stdEncode p = let
+	fun a [] = []
+	  | a [x] = [x]
+	  | a (h :: t) = h :: "/" :: a t
+    in
+	case P.fromString p of
+	    { isAbs = false, arcs, ... } => concat (a arcs)
+	  | { vol = "", arcs, ... } => concat ("/" :: a arcs)
+	  | { vol, arcs, ... } => concat ("%" :: vol :: "/" :: a arcs)
+    end
+
     local
 	val cwdInfoCache : cwdinfo option ref = ref NONE
 	fun cwdInfo () =
@@ -134,19 +146,27 @@ structure AbsPath :> ABSPATH = struct
 	val newEra = Era.newEra
 
 	(* make sure the cwd is consistent *)
-	fun revalidateCwd () =
+	fun revalidateCwd () = let
+	    fun notify { stamp, name, id } = Servers.cd (stdEncode name)
+	in
 	    case !cwdInfoCache of
-		NONE => ignore (cwdInfo ())
+		NONE => notify (cwdInfo ())
 	      | SOME { name, id, ... } => let
 		    val name' = F.getDir ()
 		    val id' = PRESENT (F.fileId name')
 		in
-		    if compareId (id, id') <> EQUAL then
-			(newEra ();
-			 cwdInfoCache := SOME { stamp = ref (),
-					        name = name', id = id' })
+		    if compareId (id, id') <> EQUAL then let
+			val i = { stamp = ref (), name = name', id = id' }
+		    in
+			newEra ();
+			cwdInfoCache := SOME i;
+			notify i
+		    end
 		    else ()
 		end
+	end
+
+	fun invalidateCwd () = cwdInfoCache := NONE
 
 	fun cwdContext () =
 	    (revalidateCwd ();
@@ -319,7 +339,7 @@ structure AbsPath :> ABSPATH = struct
 	    fun d_c (CONFIG_ANCHOR { config_name = n, ... }, l) =
 		"$" :: n :: "/" :: l
 	      | d_c (DIR_OF (PATH { spec, context, ... }), l) =
-		d_c (context, dir (spec, l))
+		d_c (context, dir (stdEncode spec, l))
 	      | d_c (THEN_CWD _, l) = "./" :: l
 	      | d_c (ROOT "", l) = "/" :: l
 	      | d_c (ROOT vol, l) = "%" :: vol :: "/" :: l
@@ -351,7 +371,11 @@ structure AbsPath :> ABSPATH = struct
 				       s)
 		    end
 		  | #"/" => fresh (ROOT "", String.extract (d, 1, NONE))
-		  | #"." => fresh (cwdContext (), String.extract (d, 2, NONE))
+		  | #"." =>
+		    if String.sub (d, 1) = #"/" then
+			fresh (cwdContext (), String.extract (d, 2, NONE))
+		    else
+			fresh (cwdContext (), d)
 		  | #"%" => let
 			val (v, s) = split 1
 		    in

@@ -1,0 +1,10 @@
+Group (../cm-lib.cm) is
+	concur.sml
+	servers.sig
+# if defined (OPSYS_UNIX)
+	unix-servers.sml
+# else
+	dummy-servers.sml
+# endif
+	basis.cm
+	../util/sources.cm
