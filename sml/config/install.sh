@@ -514,7 +514,7 @@ else
     $MAKE -f mk.$ARCH-$OPSYS $EXTRA_DEFS
     if [ -x run.$ARCH-$OPSYS ]; then
 	mv run.$ARCH-$OPSYS $RUNDIR
-	# $MAKE MAKE=$MAKE clean
+	$MAKE MAKE=$MAKE clean
     else
 	echo "$this: !!! Run-time system build failed for some reason."
 	exit 1
