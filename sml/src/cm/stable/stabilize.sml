@@ -688,6 +688,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			       work = work,
 			       cleanup = fn () => () })
 	handle Format => NONE
+             | IO.Io _ => NONE
     end
 end
 
