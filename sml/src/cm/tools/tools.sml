@@ -303,7 +303,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    val targets = map mkTarget targetfiles
 	    fun runcmd () = let
 		val cmd = concat [command NONE, " ", f]
-		val _ = Say.vsay (concat ["[", cmd, "]\n"])
+		val _ = Say.vsay ["[", cmd, "]\n"]
 	    in
 		if OS.Process.system cmd = OS.Process.success then ()
 		else raise ToolError { tool = tool, msg = cmd }

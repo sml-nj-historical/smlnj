@@ -6,18 +6,18 @@
  * author: Matthias Blume (blume@cs.princeton.edu)
  *)
 signature SAY = sig
-    val say: string -> unit
-    val vsay: string -> unit
-    val dsay: string -> unit
+    val say: string list -> unit
+    val vsay: string list -> unit
+    val dsay: string list -> unit
 end
 
 structure Say :> SAY = struct
 
     structure Print = GenericVC.Control.Print
 
-    fun say s = (Print.say s; Print.flush ())
+    fun say l = (Print.say (concat l); Print.flush ())
 
-    fun csay cnd s = if cnd NONE then say s else ()
+    fun csay cnd l = if cnd NONE then say l else ()
     val vsay = csay StdConfig.verbose
     val dsay = csay StdConfig.debug
 end

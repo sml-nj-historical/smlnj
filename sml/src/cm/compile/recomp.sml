@@ -115,7 +115,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	    val stable = FilenamePolicy.mkStablePath fnp (BinInfo.group i)
 	    val os = BinInfo.offset i
 	    val descr = BinInfo.describe i
-	    val _ = Say.vsay (concat ["[consulting ", descr, "]\n"])
+	    val _ = Say.vsay ["[consulting ", descr, "]\n"]
 	    val s = AbsPath.openBinIn stable
 	    fun load () = let
 		val _ = Seek.seek (s, os)
@@ -152,9 +152,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
 	    SOME d => SOME d
 	  | NONE => let
-		val mkBinPath =
-		    FilenamePolicy.mkBinPath (#fnpolicy (#param gp))
-		val binpath = mkBinPath (SmlInfo.sourcepath i)
+		val binpath = SmlInfo.binpath i
 		val binname = AbsPath.name binpath
 		fun delete () = OS.FileSys.remove binname handle _ => ()
 
@@ -166,7 +164,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    Interrupt.guarded writer handle exn =>
 			(BinIO.closeOut s; raise exn);
 		    BinIO.closeOut s;
-		    Say.vsay (concat ["[wrote ", binname, "]\n"])
+		    Say.vsay ["[wrote ", binname, "]\n"]
 		end handle e as Interrupt.Interrupt => (delete (); raise e)
 	                 | exn => let
 			       fun ppb pps =
@@ -199,9 +197,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		    case SmlInfo.parsetree gp i of
 			NONE => NONE
 		      | SOME (ast, source) => let
-			    val _ = Say.vsay (concat ["[compiling ",
-						      SmlInfo.name i, " -> ",
-						      binname, "...]\n"])
+			    val _ = Say.vsay ["[compiling ", SmlInfo.name i,
+					      " -> ", binname, "...]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    val bfc = BF.create { runtimePid = NONE,
@@ -243,7 +240,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			if isValid bfc then let
 			    val memo = { bfc = bfc, ctxt = stat }
 			in
-			    Say.vsay (concat ["[", binname, " loaded]\n"]);
+			    Say.vsay ["[", binname, " loaded]\n"];
 			    PS.recomp_memo_sml (i, memo);
 			    SOME (memo2envdelta memo)
 			end

@@ -319,7 +319,7 @@ structure AbsPath :> ABSPATH = struct
 		end
 	    fun makedirs dir = generic (F.mkDir, makedirs, dir)
 	    fun advertisemakedirs dir =
-		(Say.vsay (concat ["[creating directory ", dir, " ...]\n"]);
+		(Say.vsay ["[creating directory ", dir, " ...]\n"];
 		 makedirs dir)
 	in
 	    generic (fileopener, advertisemakedirs, p)

@@ -151,7 +151,7 @@ structure SkelIO :> SKELIO = struct
 	in
 	    BinIO.closeOut s;
 	    OS.FileSys.remove p handle _ => ();
-	    Say.say (concat ["[writing ", p, " failed]\n"]);
+	    Say.say ["[writing ", p, " failed]\n"];
 	    raise exn
 	end
     end handle Interrupt.Interrupt => raise Interrupt.Interrupt

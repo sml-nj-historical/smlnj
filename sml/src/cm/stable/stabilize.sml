@@ -11,27 +11,23 @@ local
     structure EM = GenericVC.ErrorMsg
     structure GP = GeneralParams
     structure E = GenericVC.Environment
+
+    type statenvgetter = GP.info -> DG.bnode -> E.staticEnv
 in
 
 signature STABILIZE = sig
 
     val loadStable :
-	GP.info * (AbsPath.t -> GG.group) ->
-	{ group: AbsPath.t, s: BinIO.instream, anyerrors: bool ref } ->
-	GG.group option
+	GP.info * (AbsPath.t -> GG.group option) * bool ref ->
+	AbsPath.t -> GG.group option
 
     val stabilize :
 	GP.info ->
-	{ group: GG.group, s: BinIO.outstream, anyerrors: bool ref } ->
-	GG.group
+	{ group: GG.group, gpath: AbsPath.t, anyerrors: bool ref } ->
+	GG.group option
 end
 
-functor StablizeFn
-    (val bn2statenv : GP.info -> DG.bnode -> E.staticEnv
-     val binSizeOf : SmlInfo.info -> int
-     val copyBin : BinIO.outstream -> SmlInfo.info -> unit) :> STABILIZE =
-struct
-
+functor StabilizeFn (val bn2statenv : statenvgetter) :> STABILIZE = struct
 
     datatype pitem =
 	PSS of SymbolSet.set
@@ -77,10 +73,27 @@ struct
 	SymbolMap.foldl add IntBinaryMap.empty exports
     end
 
-    fun stabilize gp { group = g as GG.GROUP grec, s = outs, anyerrors } =
+    fun deleteFile n = OS.FileSys.remove n
+	handle e as Interrupt.Interrupt => raise e
+	     | _ => ()
+
+    fun stabilize gp { group = g as GG.GROUP grec, gpath, anyerrors } =
 	case #stableinfo grec of
-	    GG.STABLE _ => g
+	    GG.STABLE _ => SOME g
 	  | GG.NONSTABLE granted => let
+
+		val bname = AbsPath.name o SmlInfo.binpath
+		val bsz = OS.FileSys.fileSize o bname
+		fun cpb s i = let
+		    val ins = BinIO.openIn (bname i)
+		    fun cp () =
+			if BinIO.endOfStream ins then ()
+			else (BinIO.output (s, BinIO.input ins); cp ())
+		in
+		    cp () handle e => (BinIO.closeIn ins; raise e);
+		    BinIO.closeIn ins
+		end
+		val delb = deleteFile o bname
 
 		val grpSrcInfo = (#errcons gp, anyerrors)
 
@@ -193,7 +206,7 @@ struct
 		fun w_si i k = let
 		    val spec = AbsPath.spec (SmlInfo.sourcepath i)
 		    val locs = SmlInfo.errorLocation gp i
-		    val offset = registerOffset (i, binSizeOf i)
+		    val offset = registerOffset (i, bsz i)
 		in
 		    w_string spec
 		        (w_string locs
@@ -302,20 +315,45 @@ struct
 		in
 		    BinIO.output (s, Word8Array.extract (a, 0, NONE))
 		end
+		val memberlist = rev (!members)
+
+		val policy = #fnpolicy (#param gp)
+		val spath = FilenamePolicy.mkStablePath policy gpath
+		fun delete () = deleteFile (AbsPath.name spath)
+		val outs = AbsPath.openBinOut spath
+		fun try () =
+		    (Say.vsay ["[stabilizing ", AbsPath.name gpath, "]\n"];
+		     writeInt32 (outs, sz);
+		     BinIO.output (outs, Byte.stringToBytes pickle);
+		     app (cpb outs) memberlist;
+		     app delb memberlist;
+		     BinIO.closeOut outs;
+		     SOME (mkStableGroup ()))
 	    in
-		writeInt32 (outs, sz);
-		BinIO.output (outs, Byte.stringToBytes pickle);
-		app (copyBin outs) (rev (!members));
-		mkStableGroup ()
+		Interrupt.guarded try
+		handle e as Interrupt.Interrupt => (BinIO.closeOut outs;
+						    delete ();
+						    raise e)
+		     | exn => (BinIO.closeOut outs; NONE)
 	    end
 
-    fun loadStable (gp, getGroup) { group, s, anyerrors } = let
+    fun loadStable (gp, getGroup, anyerrors) group = let
 
-	val bn2env = #1 o Statenv2DAEnv.cvt o bn2statenv gp
+	fun bn2env n = Statenv2DAEnv.cvtMemo (fn () => bn2statenv gp n)
 
 	val grpSrcInfo = (#errcons gp, anyerrors)
 
 	exception Format
+
+	val policy = #fnpolicy (#param gp)
+	val spath = FilenamePolicy.mkStablePath policy group
+	val _ = Say.vsay ["[checking stable ", AbsPath.name group, "]\n"]
+	val s = AbsPath.openBinIn spath
+
+	fun getGroup' p =
+	    case getGroup p of
+		SOME g => g
+	      | NONE => raise Format
 
 	(* for getting sharing right... *)
 	val m = ref IntBinaryMap.empty
@@ -476,14 +514,13 @@ struct
 	      | #"b" => let
 		    val p = r_abspath ()
 		    val os = r_int ()
-		    val GG.GROUP { stableinfo, ... } = getGroup p
 		in
-		    case stableinfo of
-			GG.NONSTABLE _ => raise Format
-		      | GG.STABLE im =>
+		    case getGroup' p of
+			GG.GROUP { stableinfo = GG.STABLE im, ... } => 
 			    (case IntBinaryMap.find (im, os) of
 				 NONE => raise Format
 			       | SOME n => n)
+		      | _ => raise Format
 		end
 	      | _ => raise Format
 
@@ -510,8 +547,11 @@ struct
 	    val sy = r_symbol ()
 	    val (f, n) = r_fsbn ()	(* really reads farbnodes! *)
 	    val e = bn2env n
+	    (* put a filter in front to avoid having the FCTENV being
+	     * queried needlessly (this avoids spurious module loadings) *)
+	    val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
 	in
-	    (sy, ((f, DG.SB_BNODE n), e)) (* coerce to farsbnodes *)
+	    (sy, ((f, DG.SB_BNODE n), e')) (* coerce to farsbnodes *)
 	end
 
 	fun r_exports () =
@@ -524,7 +564,7 @@ struct
 	    val exports = r_exports ()
 	    val islib = r_bool ()
 	    val required = r_privileges ()
-	    val subgroups = r_list (getGroup o r_abspath) ()
+	    val subgroups = r_list (getGroup' o r_abspath) ()
 	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,
@@ -533,10 +573,13 @@ struct
 		       grouppath = group,
 		       subgroups = subgroups,
 		       stableinfo = GG.STABLE simap }
+	    before BinIO.closeIn s
 	end
     in
-	SOME (unpickle_group ()) handle Format => NONE
-    end
+	SOME (unpickle_group ())
+	handle Format => (BinIO.closeIn s; NONE)
+	     | exn => (BinIO.closeIn s; raise exn)
+    end handle IO.Io _ => NONE
 end
 
 end (* local *)

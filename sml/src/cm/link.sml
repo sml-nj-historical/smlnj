@@ -40,6 +40,12 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure RecompTraversal = CompileGenericFn (structure CT = Recomp)
       structure ExecTraversal = CompileGenericFn (structure CT = Exec)
 
+      fun bn2statenv gp i = #1 (#stat (valOf (RecompTraversal.bnode gp i)))
+
+      structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv)
+
+      structure Parse = ParseFn (structure Stabilize = Stabilize)
+
       fun doall farsbnode (GroupGraph.GROUP { exports, ... }, gp) = let
 	  fun one ((fsbn, _), false) = false
 	    | one ((fsbn, _), true) =
@@ -57,7 +63,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
   in
     structure CM = struct
 
-	fun run f s = let
+	fun run sflag f s = let
 	    val c = AbsPath.cwdContext ()
 	    val p = AbsPath.native { context = AbsPath.cwdContext (),
 				     spec = s }
@@ -70,14 +76,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  keep_going = false,
 			  pervasive = perv,
 			  corenv = corenv }
-	    val g = CMParse.parse param p
+	    val g = Parse.parse param sflag p
 	in
 	    Option.map f g
 	end
 
-	val parse = run #1
-	val recomp = run recomp_group
-	val make = run make_group
+	fun stabilize recursively = run (SOME recursively) #1
+	val recomp = run NONE recomp_group
+	val make = run NONE make_group
     end
 
     structure CMB = struct

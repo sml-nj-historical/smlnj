@@ -5,13 +5,13 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-signature CMPARSE = sig
+signature PARSE = sig
     val parse :
-	GeneralParams.param -> AbsPath.t
-	-> (CMSemant.group * GeneralParams.info) option
+	GeneralParams.param -> bool option ->
+	AbsPath.t -> (CMSemant.group * GeneralParams.info) option
 end
 
-structure CMParse :> CMPARSE = struct
+functor ParseFn (structure Stabilize: STABILIZE) :> PARSE = struct
 
     val lookAhead = 30
 
@@ -26,7 +26,13 @@ structure CMParse :> CMPARSE = struct
 		     structure Lex = CMLex
 		     structure LrParser = LrParser)
 
-    fun parse param group = let
+    fun parse param stabflag group = let
+
+	val (stabthis, staball) =
+	    case stabflag of
+		NONE => (false, false)
+	      | SOME false => (true, false)
+	      | SOME true => (true, true)
 
 	val groupreg = GroupReg.new ()
 	val errcons = EM.defaultConsumer ()
@@ -37,17 +43,17 @@ structure CMParse :> CMPARSE = struct
 	 * to parse it had failed. *)
 	val gc = ref (AbsPathMap.empty: CMSemant.group option AbsPathMap.map)
 
-	fun mparse (group, groupstack) =
+	fun mparse (group, groupstack, pErrFlag, stabthis) =
 	    case AbsPathMap.find (!gc, group) of
 		SOME g => g
 	      | NONE => let
-		    val g = parse' (group, groupstack)
+		    val g = parse' (group, groupstack, pErrFlag, stabthis)
 		in
 		    gc := AbsPathMap.insert (!gc, group, g);
 		    g
 		end
 
-	and parse' (group, groupstack) = let
+	and parse' (group, groupstack, pErrFlag, stabthis) = let
 	    (* checking for cycles among groups and printing them nicely *)
 	    fun findCycle ([], _) = []
 	      | findCycle ((h as (g, (s, p1, p2))) :: t, cyc) =
@@ -76,12 +82,30 @@ structure CMParse :> CMPARSE = struct
 			   pphist
 	    end
 
+	    fun getStable gpath = let
+		val loadStable =
+		    Stabilize.loadStable (ginfo, getStable, pErrFlag)
+	    in
+		case AbsPathMap.find (!gc, gpath) of
+		    SOME (x as SOME _) => x
+		  | SOME NONE => NONE
+		  | NONE =>
+			(case loadStable gpath of
+			     NONE => NONE
+			   | x as SOME _ =>
+				 (gc := AbsPathMap.insert (!gc, gpath, x); x))
+	    end
+
+	    fun stabilize g =
+		Stabilize.stabilize ginfo { group = g, gpath = group,
+					    anyerrors = pErrFlag }
+
 	    (* normal processing -- used when there is no cycle to report *)
 	    fun normal_processing () = let
 		val currentDir = AbsPath.dir group
 		val context = AbsPath.relativeContext (AbsPath.dir group)
 		val filename = AbsPath.name group
-		val _ = Say.vsay (concat ["[scanning ", filename, "]\n"])
+		val _ = Say.vsay ["[scanning ", filename, "]\n"]
 		val stream = TextIO.openIn filename
 		val source = S.newSource (filename, 1, stream, false, errcons)
 		val sourceMap = #sourceMap source
@@ -100,9 +124,10 @@ structure CMParse :> CMPARSE = struct
 		 * "anyErrors" flag of the parent group. *)
 		fun recParse (p1, p2) p = let
 		    val groupstack' = (group, (source, p1, p2)) :: groupstack
+		    val myErrorFlag = #anyErrors source
 		in
-		    case mparse (p, groupstack') of
-			NONE => (#anyErrors source := true;
+		    case mparse (p, groupstack', myErrorFlag, staball) of
+			NONE => (myErrorFlag := true;
 				 CMSemant.emptyGroup group)
 		      | SOME res => res
 		end
@@ -190,16 +215,20 @@ structure CMParse :> CMPARSE = struct
 	    in
 		TextIO.closeIn stream;
 		if !(#anyErrors source) then NONE
+		else if stabthis then stabilize parseResult
 		else SOME parseResult
 	    end
             handle LrParser.ParseError => NONE
 	in
 	    case findCycle (groupstack, []) of
 		h :: t => (report (h, t); NONE)
-	      | [] => normal_processing ()
+	      | [] =>
+		    (case getStable group of
+			 NONE => normal_processing ()
+		       | SOME g => SOME g)
 	end
     in
-	case mparse (group, []) of
+	case mparse (group, [], ref false, stabthis) of
 	    NONE => NONE
 	  | SOME g =>
 		if CheckSharing.check (g, ginfo) then

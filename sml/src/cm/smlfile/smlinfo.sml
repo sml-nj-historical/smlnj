@@ -29,6 +29,8 @@ signature SMLINFO = sig
 	-> info
 
     val sourcepath : info -> AbsPath.t
+    val skelpath : info -> AbsPath.t
+    val binpath : info -> AbsPath.t
     val error : GeneralParams.info -> info -> complainer
 
     val parsetree : GeneralParams.info -> info -> (ast * source) option
@@ -73,12 +75,16 @@ structure SmlInfo :> SMLINFO = struct
 		      
     datatype info =
 	INFO of { sourcepath: AbsPath.t,
+		  skelpath: AbsPath.t,
+		  binpath: AbsPath.t,
 		  persinfo: persinfo,
 		  share: bool option }
 
     type ord_key = info
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
+    fun skelpath (INFO { skelpath = sp, ... }) = sp
+    fun binpath (INFO { binpath = bp, ... }) = bp
     fun share (INFO { share = s, ... }) = s
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
@@ -118,6 +124,9 @@ structure SmlInfo :> SMLINFO = struct
 
     fun info (gp: GeneralParams.info) arg = let
 	val { sourcepath, group = gr as (group, region), share } = arg
+	val policy = #fnpolicy (#param gp)
+	val skelpath = FNP.mkSkelPath policy sourcepath
+	val binpath = FNP.mkBinPath policy sourcepath
 	val groupreg = #groupreg gp
 	fun newpersinfo () = let
 	    val pi = PERS { group = gr, lastseen = ref TStamp.NOTSTAMP,
@@ -146,6 +155,8 @@ structure SmlInfo :> SMLINFO = struct
 		    else pi
     in
 	INFO { sourcepath = sourcepath,
+	       skelpath = skelpath,
+	       binpath = binpath,
 	       persinfo = persinfo (),
 	       share = share }
     end
@@ -154,7 +165,7 @@ structure SmlInfo :> SMLINFO = struct
     fun validate (INFO ir) = let
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
-	val { sourcepath, persinfo = PERS pir, share } = ir
+	val { sourcepath, skelpath, binpath, persinfo = PERS pir, share } = ir
 	val { group, lastseen, parsetree, skeleton } = pir
 	val ts = !lastseen
 	val nts = AbsPath.tstamp sourcepath
@@ -179,7 +190,7 @@ structure SmlInfo :> SMLINFO = struct
 	  | NONE => let
 		val stream = AbsPath.openTextIn sourcepath
 		val _ = if noerrors orelse quiet then ()
-			else Say.vsay (concat ["[parsing ", name, "]\n"])
+			else Say.vsay ["[parsing ", name, "]\n"]
 		val source =
 		    Source.newSource (name, 1, stream, false, #errcons gp)
 		val pto = let
@@ -199,38 +210,35 @@ structure SmlInfo :> SMLINFO = struct
     end
 
     fun getSkeleton gp (i as INFO ir, noerrors) = let
-	val { sourcepath, persinfo = PERS pir, ... } = ir
+	val { sourcepath, skelpath, persinfo = PERS pir, ... } = ir
 	val { skeleton, lastseen, ... } = pir
     in
 	case !skeleton of
 	    SOME sk => SOME sk
-	  | NONE => let
-		val policy = #fnpolicy (#param gp)
-		val skelpath = FNP.mkSkelPath policy sourcepath
-	    in
-		case SkelIO.read (skelpath, !lastseen) of
-		    SOME sk => (skeleton := SOME sk; SOME sk)
-		  | NONE =>
-			(case getParseTree gp (i, false, noerrors) of
-			     SOME (tree, source) => let
-				 fun err sv region s =
-				     EM.error source region sv s
-					 EM.nullErrorBody
-				 val { skeleton = sk, complain } =
-				     SkelCvt.convert { tree = tree, err = err }
-			     in
-				 if noerrors then () else complain ();
-				 if EM.anyErrors (EM.errors source) then
-				     if noerrors then ()
-				     else error gp i EM.COMPLAIN
-					   "error(s) in ML source file"
-					   EM.nullErrorBody
-				 else (SkelIO.write (skelpath, sk);
-				       skeleton := SOME sk);
-				 SOME sk
-			     end
-			   | NONE => NONE)
-	    end
+	  | NONE =>
+		(case SkelIO.read (skelpath, !lastseen) of
+		     SOME sk => (skeleton := SOME sk; SOME sk)
+		   | NONE =>
+			 (case getParseTree gp (i, false, noerrors) of
+			      SOME (tree, source) => let
+				  fun err sv region s =
+				      EM.error source region sv s
+				               EM.nullErrorBody
+				  val { skeleton = sk, complain } =
+				      SkelCvt.convert { tree = tree,
+						        err = err }
+			      in
+				  if noerrors then () else complain ();
+				  if EM.anyErrors (EM.errors source) then
+				      if noerrors then ()
+				      else error gp i EM.COMPLAIN
+					         "error(s) in ML source file"
+						 EM.nullErrorBody
+				  else (SkelIO.write (skelpath, sk);
+					skeleton := SOME sk);
+				  SOME sk
+			      end
+			    | NONE => NONE))
     end
 
     (* first check the time stamp, then do your stuff... *)
