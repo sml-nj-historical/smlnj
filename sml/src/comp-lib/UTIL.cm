@@ -1,0 +1,20 @@
+Group is
+
+binary-dict.sml
+crc.sml
+dynamic.sml
+intmap.sig
+intmap.sml
+intmapf.sml
+intset.sml
+intsetf.sml
+intstrmap.sig
+intstrmap.sml
+mapf.sml
+ordkey.sig
+pp.sml
+ppqueue.sml
+scc.sml
+sortedlist.sml
+sort.sml
+strghash.sml
