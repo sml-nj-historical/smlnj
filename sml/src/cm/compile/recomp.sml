@@ -162,7 +162,9 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		   | SOME be => load be)
     end
 
-    fun dosml (i, { envs = { stat, sym }, pids }, gp) =
+    fun dosml (i, { envs = { stat, sym }, pids }, gp) = let
+	val pids = PidSet.union (pids, #pervcorepids (#param gp))
+    in
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
 	    SOME d => SOME d
 	  | NONE => let
@@ -260,4 +262,5 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			end
 			else compile ()
 	    end
+    end
 end

@@ -14,7 +14,8 @@ structure GeneralParams = struct
 		   fnpolicy: FilenamePolicy.policy,
 		   keep_going: bool,
 		   pervasive: GenericVC.Environment.environment,
-		   corenv: GenericVC.BareEnvironment.staticEnv }
+		   corenv: GenericVC.BareEnvironment.staticEnv,
+		   pervcorepids: PidSet.set }
 
     type info = { param: param,
 		  groupreg: GroupReg.groupreg,

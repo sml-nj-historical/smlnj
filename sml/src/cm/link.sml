@@ -14,6 +14,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure BE = GenericVC.BareEnvironment
       structure CMSE = GenericVC.CMStaticEnv
       structure S = GenericVC.Symbol
+      structure CoerceEnv = GenericVC.CoerceEnv
 
       (* For testing purposes, I need to have access to the old basis
        * library.  This is done via the "primitives" mechanism.  Eventually,
@@ -34,7 +35,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val sym = E.symbolicPart e
 	  val dyn = E.dynamicPart e
 	  val stat = E.staticPart e
-	  val bstat = CMSE.unCM stat
+	  val bstat = CoerceEnv.es2bs stat
 	  fun f ((s, b), (mods, nomods)) =
 	      case S.nameSpace s of
 		  (S.STRspace | S.SIGspace | S.FCTspace | S.FSIGspace) =>
@@ -100,7 +101,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   val delta = E.mkenv { static = stat, symbolic = sym,
 						 dynamic = dyn }
 			   val base = #get ER.topLevel ()
-			   val new = BE.concatEnv (ER.unCMenv delta, base)
+			   val new = BE.concatEnv (CoerceEnv.e2b delta, base)
 		       in
 			   #set ER.topLevel new;
 			   Say.vsay ["[New bindings added.]\n"];
@@ -147,7 +148,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  pcmode = pcmode,
 			  keep_going = true,
 			  pervasive = perv,
-			  corenv = corenv }
+			  corenv = corenv,
+			  pervcorepids = PidSet.empty }
 	in
 	    case Parse.parse param sflag p of
 		NONE => false
@@ -160,8 +162,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
     end
 
     structure CMB = struct
-	structure MkPrimPerv =
-	    MkPrimPervFn (structure MachDepVC = HostMachDepVC)
+	structure BootstrapCompile =
+	    BootstrapCompileFn (structure MachDepVC = HostMachDepVC)
 	fun setRetargetPervStatEnv x = ()
 	fun wipeOut () = ()
 	fun make' _ = ()

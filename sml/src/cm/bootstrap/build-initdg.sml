@@ -1,24 +1,27 @@
 (*
  * Build a simple dependency graph from a direct DAG description.
  *   - This is used in the bootstrap compiler to establish the
- *     pervasive env that is used in the rest of the system.
- *   - The DAG does not contain any BNODEs and the only PNODE will
- *     be the one for Environment.primEnv.
+ *     pervasive env, the core env, and the primitives which later
+ *     get used by the rest of the system.
+ *   - The DAG does not contain any BNODEs and the only PNODEs will
+ *     be those that correspond to primitives passed via "gp".
+ *     In practice, the only PNODE will be the one for Env.primEnv.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 
-signature BUILDINITDG = sig
+signature BUILD_INIT_DG = sig
     val build : GeneralParams.info -> AbsPath.t ->
 	{ rts: DependencyGraph.snode,
 	  core: DependencyGraph.snode,
 	  pervasive: DependencyGraph.snode,
-	  primitives: DependencyGraph.snode list }
+	  primitives: (string * DependencyGraph.snode) list,
+	  filepaths: AbsPath.t list } option
 end
 
-structure BuildInitDG = struct
+structure BuildInitDG :> BUILD_INIT_DG = struct
 
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
@@ -53,22 +56,23 @@ structure BuildInitDG = struct
 	    else SOME (String.tokens sep line, newpos)
 	end
 
-	fun loop (split, m, fl, pos) =
+	fun loop (split, m, pl, pos) =
 	    case lineIn pos of
 		NONE => (error (pos, pos) "unexpected end of file"; NONE)
 	      | SOME (line, newpos) => let
 		    val error = error (pos, newpos)
 		    fun sml (spec, split) = let
-			val sourcepath = AbsPath.standard pcmode
+			val p = AbsPath.standard pcmode
 			    { context = context, spec = spec }
 		    in
-			SmlInfo.info gp { sourcepath = sourcepath,
-					  group = (specgroup, (pos, newpos)),
-					  share = NONE,
-					  split = split }
+			(p,
+			 SmlInfo.info gp { sourcepath = p,
+					   group = (specgroup, (pos, newpos)),
+					   share = NONE,
+					   split = split })
 		    end
 		    fun bogus n = 
-			DG.SNODE { smlinfo = sml (n, false),
+			DG.SNODE { smlinfo = #2 (sml (n, false)),
 				   localimports = [], globalimports = [] }
 		    fun look n =
 			case StringMap.find (m, n) of
@@ -84,31 +88,35 @@ structure BuildInitDG = struct
 			    DG.SB_SNODE n => n
 			  | _ => (error ("illegal: " ^ n); bogus n)
 
-		    fun node (name, file, split, args) = let
+		    fun node (name, file, args) = let
 			fun one (arg, (li, gi)) =
 			    case look arg of
 				DG.SB_SNODE n => (n :: li, gi)
 			      | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
 			val (li, gi) = foldr one ([], []) args
-			val n = DG.SNODE { smlinfo = sml (file, split),
+			val (p, i) = sml (file, split)
+			val n = DG.SNODE { smlinfo = i,
 					   localimports = li,
 					   globalimports = gi }
 		    in
-			StringMap.insert (m, name, DG.SB_SNODE n)
+			loop (split,
+			      StringMap.insert (m, name, DG.SB_SNODE n),
+			      p :: pl, newpos)
 		    end
 		in
 		    case line of
-			[] => loop (split, m, fl, newpos)
-		      | ["split"] => loop (true, m, fl, newpos)
-		      | ["nosplit"] => loop (false, m, fl, newpos)
+			[] => loop (split, m, pl, newpos)
+		      | ["split"] => loop (true, m, pl, newpos)
+		      | ["nosplit"] => loop (false, m, pl, newpos)
 		      | ("let" :: name :: file :: args)  =>
-			    loop (split, node (name, file, split, args),
-				  file :: fl, newpos)
-		      | ("return" :: rts :: core :: pervasive :: primitives) =>
+			    node (name, file, args)
+		      | ("return" :: rts :: core :: pervasive :: prims) =>
 			    SOME { rts = look_snode rts,
 				   core = look_snode core,
 				   pervasive = look_snode pervasive,
-				   primitives = map look_snode primitives }
+				   primitives =
+				        map (fn n => (n, look_snode n)) prims,
+				   filepaths = rev pl }
 		      | _ => (error "malformed line"; NONE)
 		end
     in

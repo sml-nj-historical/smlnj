@@ -73,7 +73,8 @@ is
 	paths/abspathset.sml
 
 	(* bootstrap compiler (formerly known as "batch") *)
-	bootstrap/mkprimperv.sml
+	bootstrap/build-initdg.sml
+	bootstrap/btcompile.sml
 
 	(* CM-internal libraries *)
 	util/sources.cm
