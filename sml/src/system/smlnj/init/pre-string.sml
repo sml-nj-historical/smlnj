@@ -161,6 +161,21 @@ structure PreString =
 	    (n2 >= n1) andalso eq (0, i2)
 	  end
 
+  (* Could share the core of this function with Substring.position, from
+   * which this is adapted. (DBM)
+   * NOTE: some day we might want to implement KMP matching for this
+   *)
+    fun isSubstring (s1, s2) (* s2, i2, n2 *) =
+        let val n1 = stringSize s1
+            val n2 = stringSize s2
+	    fun eq (j, k) = (j >= len) orelse
+		((unsafeSub(s, j) = unsafeSub(s', k)) andalso eq (j+1, k+1))
+	    val stop = n2-n1 (* i2 + n2 - n1 *)
+	    fun cmp k =
+		(k <= stop) andalso (eq(0, k) orelse cmp(k+1))
+	 in cmp i
+	end
+
     fun collate cmpFn (s1, i1, n1, s2, i2, n2) = let
 	  val (n, order) =
 		if (n1 = n2) then (n1, EQUAL)
