@@ -56,14 +56,15 @@ struct
 		    andalso Array.sub(proh,r+1) <> stamp 
 		    andalso Array.sub(allRegs,r) 
 		    andalso Array.sub(allRegs,r+1) then r 
-              else let val r = r+1
-                       val r = if r >= limit then first else r
-                   in  if r = start then raise GetReg
-                       else search r
+              else let 
+		      val nxt = r+1
+                      val nxtR = if nxt+1 >= limit then first else nxt
+                   in 
+		      if nxtR = start then raise GetReg else search nxtR
                    end
               val found = search(start)
               val next = found + 1
-              val next = if next >= limit then first else next
+              val next = if next+1 >= limit then first else next
       in  
 	  lastReg := next;
           found
