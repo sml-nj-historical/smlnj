@@ -14,9 +14,24 @@
 
 2004-11-14  Stefan Monnier  <monnier@iro.umontreal.ca>
 
+	* sml-move.el (sml-backward-sexp, sml-forward-sexp): Remove unused var.
+
+	* sml-mode.el (sml-calculate-indentation): Remove unused var.
+	(sml-get-indent): Change first arg's meaning.
+	(sml-get-sym-indent): Adjust call.
+	(sml-forms-menu): Simplify.
+	(sml-font-lock-symbols, sml-font-lock-symbols-alist): New vars.
+	(sml-font-lock-compose-symbol, sml-font-lock-symbols-keywords):
+	New funs.
+	(sml-font-lock-keywords): Use them.
+
+	* sml-compat.el (temp-directory): Get rid of warning.
+
 	* Makefile (install_startup): Don't add to load-path any more.
 
 	* sml-proc.el (sml-make-error): Use match-string.
+	(sml-error-regexp-alist): Merge regexps.
+	(sml-update-cursor): Check sml-temp-file is non-nil.
 
 2004-04-21  Stefan Monnier  <monnier@iro.umontreal.ca>
 
