@@ -50,7 +50,7 @@ structure Alpha32CG =
     structure BackPatch =
        BBSched2(structure CFG=Alpha32CFG
                 structure Jumps = Jumps
-		structure Placement = DefaultBlockPlacement(Alpha32CFG)
+		structure Props = Alpha32Props
                 structure Emitter = Alpha32MCEmitter)
 
     structure RA = 

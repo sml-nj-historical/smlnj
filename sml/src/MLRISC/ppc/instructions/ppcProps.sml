@@ -27,11 +27,24 @@ struct
 
   fun instrKind(I.ANNOTATION{i, ...}) = instrKind i
     | instrKind(I.COPY _) = IK_COPY
-    | instrKind(I.INSTR instr) = 
-	(case instr
+    | instrKind(I.INSTR instr) = let
+	fun eqTest to = Word.andb(Word.fromInt to, 0w4) <> 0w0
+	fun trapAlways{to, ra, si} = 
+	  (case si
+	    of I.RegOp rb => 
+	       if CellsBasis.sameColor(ra,rb) andalso eqTest(to) then IK_JUMP
+	       else IK_INSTR
+             | I.ImmedOp 0 =>
+	       if CellsBasis.registerId ra = 0 andalso eqTest(to) then IK_JUMP
+	       else IK_INSTR
+          (*esac*))
+      in
+	case instr
 	 of (I.BC _) => IK_JUMP
 	  | (I.BCLR _) => IK_JUMP
 	  | (I.B _) => IK_JUMP
+	  | (I.TW t) => trapAlways(t)
+	  | (I.TD t) => trapAlways(t)
 	  | (I.ARITHI{oper=I.ORI, rt, ra, im=I.ImmedOp 0}) => 
 	       if CB.registerId rt = 0 andalso CB.registerId ra = 0 then IK_NOP
 	       else IK_INSTR
@@ -40,7 +53,9 @@ struct
 	  | (I.PHI _)    => IK_PHI
 	  | (I.SOURCE _) => IK_SOURCE
 	  | (I.SINK _)   => IK_SINK
-	  |  _ => IK_INSTR)
+	  |  _ => IK_INSTR
+        (*esac*)
+      end
     | instrKind _ = error "instrKind"
 
   fun moveInstr(I.COPY _) = true
@@ -79,10 +94,38 @@ struct
       (case labels of [] => [ESCAPES, FALLTHROUGH] | _ => map LABELLED labels)
     | branchTargets(I.INSTR(I.B{addr=I.LabelOp(T.LABEL lab), LK})) = [LABELLED lab]
     | branchTargets(I.INSTR(I.CALL{cutsTo, ...})) = FALLTHROUGH::map LABELLED cutsTo
+    | branchTargets(I.INSTR(I.TD _)) = [ESCAPES]
+    | branchTargets(I.INSTR(I.TW _)) = [ESCAPES]
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
+  fun labelOp l = I.LabelOp(T.LABEL l)
+
+  fun setTargets(I.INSTR(I.BC{bo as I.ALWAYS, bf, bit, addr, fall, LK}), [l]) = 
+        I.bc{bo=bo, bf=bf, bit=bit, fall=fall, LK=LK, addr=labelOp l}
+    | setTargets(I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), [f,t]) = 
+        I.bc{bo=bo, bf=bf, bit=bit, LK=LK, addr=labelOp t, fall=labelOp f}
+    | setTargets(I.INSTR(I.BCLR _), _) = error "setTargets BCLR"
+    | setTargets(I.INSTR(I.B{addr, LK}), [l]) =  I.b{addr=labelOp(l), LK=LK}
+    | setTargets(I.ANNOTATION{a,i}, l) = I.ANNOTATION{i=setTargets(i,l), a=a}
+    | setTargets _ = error "setTargets"
+
   fun jump lab = I.b{addr=I.LabelOp(T.LABEL lab), LK=false}
+
+  fun negateConditional(I.ANNOTATION{a,i}, l) = 
+        I.ANNOTATION{a=a, i=negateConditional(i, l)}
+    | negateConditional(I.INSTR(I.BC{bo, bf, bit, addr, fall, LK}), lab) = let
+       val bo' = (case bo 
+	 of I.TRUE => I.FALSE
+	  | I.FALSE => I.TRUE
+	  | I.ALWAYS => error "negateCondtional: ALWAYS"
+	  | I.COUNTER{eqZero, cond=NONE} => I.COUNTER{eqZero=not eqZero, cond=NONE}
+	  | I.COUNTER{eqZero, cond=SOME b} => error "negateConditional: COUNTER"
+        (*esac*))
+      in 
+	  I.bc{bo=bo', bf=bf, bit=bit, addr=labelOp lab, fall=fall, LK=LK}
+      end
+    | negateConditional _ = error "negateConditional"
 
   val immedRange = {lo= ~32768, hi=32767}
 
@@ -94,9 +137,6 @@ struct
   fun loadOperand{opn,t} = 
        I.arithi{oper=I.ADDI, rt=t, ra=zeroR(), im=opn}
 
-  fun setTargets _ = error " setTargets"
-
-  fun negateConditional _ = error "negateConditional"
 
   fun hashOpn(I.RegOp r) = CB.hashCell r
     | hashOpn(I.ImmedOp i) = Word.fromInt i

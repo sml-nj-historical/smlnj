@@ -14,22 +14,36 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Lal George
+Date: 2002/03/07 14:44:24 EST 2002
+Tag: george-20020307-weighted-block-placement
+
+Tested the weighted block placement optimization on all architectures
+(except the hppa) using AMPL to generate the block and edge frequencies.
+Changes were required in the machine properties to correctly
+categorize trap instructions. There is an MLRISC flag 
+"weighted-block-placement" that can be used to enable weighted block 
+placement, but this will be ineffective without block/edge
+frequencies (coming soon).
+
+
+----------------------------------------------------------------------
+Name: Lal George
 Date: 2002/03/05 17:24:48 EST 
 Tag: george-20020305-linkage-cluster
 
-In order to support the block placement optimization, the first
-cluster that is generated (called the linkage cluster) contains a jump
-to the entry point for the compilation unit. The linkage cluster
-contains only one function, so block placement will have no effect on
-the linkage cluster itself, but all the other clusters have full
-freedom in the manner in which they reorder blocks or functions.
+In order to support the block placement optimization, a new cluster
+is generated as the very first cluster (called the linkage cluster).
+It contains a single jump to the 'real' entry point for the compilation 
+unit. Block placement has no effect on the linkage cluster itself, but
+all the other clusters  have full freedom in the manner in which they
+reorder blocks or functions.  
 
 On the x86 the typical linkage code that is generated is:
    ----------------------
 	.align 2
    L0:
         addl    $L1-L0, 72(%esp)
-        jmp     L0
+        jmp     L1
 
 
         .align  2
@@ -38,13 +52,14 @@ On the x86 the typical linkage code that is generated is:
 
 72(%esp) is the memory location for the stdlink register. This 
 must contain the address of the CPS function being called. In the
-above example, it contains the address of memory for  L0; before
+above example, it contains the address of  L0; before
 calling L1 (the real entry point for the compilation unit), it
 must contain the address for L1, and hence
 
 	addl $L1-L0, 72(%esp)
 
-I have tested this on all architectures except the hppa.
+I have tested this on all architectures except the hppa.The increase
+in code size is of course negligible
 
 ----------------------------------------------------------------------
 Name: Allen Leung

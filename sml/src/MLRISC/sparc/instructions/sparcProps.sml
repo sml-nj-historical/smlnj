@@ -39,6 +39,7 @@ struct
 	| (I.RET _)   => IK_JUMP
 	| (I.BR _)    => IK_JUMP
 	| (I.BP _)    => IK_JUMP
+	| (I.Ticc {t=I.BA, ...}) => IK_JUMP (* trap always *)
 	| (I.CALL{cutsTo=_::_,...})  => IK_CALL_WITH_CUTS
 	| (I.CALL _)  => IK_CALL
 	| (I.JMPL{cutsTo=_::_,...})  => IK_CALL_WITH_CUTS
@@ -64,6 +65,7 @@ struct
 	 | (I.JMP{labs,...})    => map LABELLED labs
 	 | (I.CALL{cutsTo,...}) => FALLTHROUGH::map LABELLED cutsTo
 	 | (I.JMPL{cutsTo,...}) => FALLTHROUGH::map LABELLED cutsTo
+	 | (I.Ticc{t=I.BA, ...}) => [ESCAPES]
 	 |  _ => error "branchTargets"
       (*esac*))
     | branchTargets _  = error "branchTargets"

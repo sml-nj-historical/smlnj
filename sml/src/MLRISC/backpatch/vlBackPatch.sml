@@ -33,9 +33,7 @@ functor BackPatch
    structure CFG        : CONTROL_FLOW_GRAPH
                         where I = Emitter.I
    structure Asm        : INSTRUCTION_EMITTER
-                        where I = CFG.I
-   structure Placement  : BLOCK_PLACEMENT
-                        where CFG = CFG)  : BBSCHED = 
+                        where I = CFG.I) =
 struct 
   structure I   = Jumps.I
   structure C   = I.C
@@ -53,6 +51,16 @@ struct
 
   datatype cluster = CLUSTER of {cluster: desc}
 
+  structure DefaultPlacement = DefaultBlockPlacement(CFG)
+  structure WeightedPlacement = 
+     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
+
+  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
+
+  val blockPlacement = 
+      if !placementFlag then WeightedPlacement.blockPlacement
+      else DefaultPlacement.blockPlacement
+
   val maxIter = MLRiscControl.getInt "variable-length-backpatch-iterations"
   val _ = maxIter := 40
  
@@ -63,7 +71,7 @@ struct
   fun cleanUp() = (clusterList := []; dataList := [])
 
   fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
-    val blocks = map #2 (Placement.blockPlacement cfg)
+    val blocks = map #2 (blockPlacement cfg)
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)

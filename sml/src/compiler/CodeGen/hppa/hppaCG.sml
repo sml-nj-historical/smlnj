@@ -51,7 +51,6 @@ structure HppaCG =
     structure BackPatch =
        SpanDependencyResolution
          (structure CFG = HppaCFG
-	  structure Placement = DefaultBlockPlacement(HppaCFG)
           structure Jumps     = Jumps
           structure Emitter   = HppaMCEmitter
           structure DelaySlot = HppaDelaySlots

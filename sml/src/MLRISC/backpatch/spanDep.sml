@@ -18,8 +18,6 @@ functor SpanDependencyResolution
      			where I = CFG.I
      structure Props     : INSN_PROPERTIES
      			where I = CFG.I
-     structure Placement : BLOCK_PLACEMENT
-			where CFG = CFG
      ) : BBSCHED = 
 struct
 
@@ -32,6 +30,15 @@ struct
   structure D = DelaySlot
   structure G = Graph
   structure A = Array
+
+  structure DefaultPlacement = DefaultBlockPlacement(CFG)
+  structure WeightedPlacement = 
+     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
+
+  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
+  val blockPlacement = 
+      if !placementFlag then WeightedPlacement.blockPlacement
+      else DefaultPlacement.blockPlacement
 
   fun error msg = MLRiscErrorMsg.error("SpanDependencyResolution",msg)
 
@@ -66,7 +73,7 @@ struct
     fun maxBlockId (CFG.BLOCK{id, ...}::rest, curr) = 
        if id > curr then maxBlockId(rest, id) else maxBlockId(rest, curr)
      | maxBlockId([], curr) = curr
-    val blocks = map #2 (Placement.blockPlacement(cfg))
+    val blocks = map #2 (blockPlacement(cfg))
     val N = maxBlockId(blocks, #capacity graph ())
 
     (* Order of blocks in code layout *)

@@ -41,6 +41,7 @@ struct
 	 | (I.FBRANCH _)=> IK_JUMP
 	 | (I.BV _)     => IK_JUMP
 	 | (I.BLR _)    => IK_JUMP
+	 | (I.BREAK _)  => IK_JUMP
 	 | (I.NOP)      => IK_NOP
 	 | (I.BL{cutsTo=_::_,...}) => IK_CALL_WITH_CUTS
 	 | (I.BL  _)    => IK_CALL
@@ -92,6 +93,7 @@ struct
 	| (I.BLR{labs,...})    => map LABELLED labs
 	| (I.BL{cutsTo,...})   => FALLTHROUGH::map LABELLED cutsTo
 	| (I.BLE{cutsTo,...})  => FALLTHROUGH::map LABELLED cutsTo
+	| (I.BREAK _)	       => [ESCAPES]
 	| _ => error "branchTargets"
       (*easc*))
     | branchTargets  _ = error "branchTargets"

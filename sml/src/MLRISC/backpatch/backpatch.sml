@@ -9,12 +9,12 @@
 functor BBSched2
     (structure Emitter : INSTRUCTION_EMITTER
      structure CFG     : CONTROL_FLOW_GRAPH
-			 where I = Emitter.I
-		           and P = Emitter.S.P
+			where I = Emitter.I
+		          and P = Emitter.S.P
      structure Jumps   : SDI_JUMPS
      			where I = CFG.I
-     structure Placement : BLOCK_PLACEMENT
-     			where CFG=CFG
+     structure Props   : INSN_PROPERTIES
+			where I = CFG.I
     ) = 
 struct
 
@@ -25,6 +25,15 @@ struct
   structure E = Emitter
   structure J = Jumps
   structure P = CFG.P
+
+  structure DefaultPlacement = DefaultBlockPlacement(CFG)
+  structure WeightedPlacement = 
+     WeightedBlockPlacementFn(structure CFG = CFG structure InsnProps = Props)
+
+  val placementFlag = MLRiscControl.getFlag "weighted-block-placement"
+  val blockPlacement = 
+      if !placementFlag then WeightedPlacement.blockPlacement
+      else DefaultPlacement.blockPlacement
 
   fun error msg = MLRiscErrorMsg.error("BBSched",msg)
 
@@ -46,7 +55,7 @@ struct
   fun cleanUp() = (clusterList := []; dataList := [])
 
   fun bbsched(cfg as G.GRAPH{graph_info=CFG.INFO{data, ...}, ...}) = let
-    val blocks = map #2 (Placement.blockPlacement cfg)
+    val blocks = map #2 (blockPlacement cfg)
     
     fun compress [] = []
       | compress(CFG.BLOCK{align, labels, insns, ...} :: rest) = let

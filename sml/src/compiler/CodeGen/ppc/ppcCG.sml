@@ -46,8 +46,8 @@ structure PPCCG =
 
     structure BackPatch =
        BBSched2(structure CFG = PPCCFG
-		structure Placement = DefaultBlockPlacement(PPCCFG)
                 structure Jumps = Jumps
+		structure Props = PPCProps
                 structure Emitter = PPCMCEmitter)
 
     structure RA = 

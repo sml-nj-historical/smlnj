@@ -52,7 +52,6 @@ structure SparcCG =
     structure BackPatch =
        SpanDependencyResolution
          (structure CFG	      = SparcCFG
-	  structure Placement = DefaultBlockPlacement(SparcCFG) 
           structure Jumps     = Jumps
           structure Emitter   = SparcMCEmitter
           structure DelaySlot = SparcDelaySlots

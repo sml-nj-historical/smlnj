@@ -91,11 +91,20 @@ structure X86CG =
        BackPatch(structure Jumps=Jumps
                  structure Emitter=X86MCEmitter
                  structure Props=InsnProps
-		 structure Placement=DefaultBlockPlacement(X86CFG)
 		 structure CFG = X86CFG
                  structure Asm=X86AsmEmitter
                  structure CodeString=CodeString)
 
+   structure BackPatch = 
+      BackPatch(structure Jumps=Jumps
+                structure Emitter=X86MCEmitter
+                structure Props=InsnProps
+                structure Placement=
+                  WeightedBlockPlacementFn
+                     (structure CFG=X86CFG structure InsnProps=InsnProps)
+                structure CFG = X86CFG
+                structure Asm=X86AsmEmitter
+                structure CodeString=CodeString)
 
     structure RA = 
       X86RA
