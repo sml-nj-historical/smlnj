@@ -28,7 +28,7 @@ TARGETS=""
 
 # build ML-Yacc
 #
-#TARGETS="$TARGETS ml-yacc"
+TARGETS="$TARGETS ml-yacc"
 
 # Always: install the pre-compiled ML-Yacc Library; this is necessary
 # to use parsers produced by ML-Yacc, but also to bootstrap the system
@@ -37,18 +37,18 @@ TARGETS=""
 
 # build ML-Lex
 #
-#TARGETS="$TARGETS ml-lex"
+TARGETS="$TARGETS ml-lex"
 
 # Always: install the pre-compiled SML/NJ Library (necessary to bootstrap).
 
 
 # build ML-Burg
 #
-#TARGETS="$TARGETS ml-burg"
+TARGETS="$TARGETS ml-burg"
 
 # pre-compile and install the remaining components of the SML/NJ library
 # (everything except smlnj-lib.cm, aka Util, itself)
-#TARGETS="$TARGETS smlnj-lib"
+TARGETS="$TARGETS smlnj-lib"
 
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
