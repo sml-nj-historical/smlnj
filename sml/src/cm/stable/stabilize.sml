@@ -550,9 +550,9 @@ struct
 				(SymbolMap.listItems exports),
 			    sublibs)
 
-	    fun writeBFC s i = BF.write { stream = s,
-					  content = getBFC i,
-					  nopickle = true }
+	    fun writeBFC s i = ignore (BF.write { stream = s,
+						  content = getBFC i,
+						  nopickle = true })
 	    fun sizeBFC i = BF.size { content = getBFC i, nopickle = true }
 	    fun pidBFC i = BF.staticPidOf (getBFC i)
 

@@ -483,6 +483,7 @@ struct
 		if nopickle then (0, fn () => ())
 		else (Word8Vector.length senvP,
 		      fn () => BinIO.output (s, senvP))
+	    val datasz = Word8Vector.length (#data csegs)
 	in
 	    BinIO.output (s, MAGIC);
 	    app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
@@ -496,11 +497,12 @@ struct
 	    (* arena3 is empty *)
 	    (* arena4 is empty *)
 	    (* code objects *)
-	    writeInt32 s (Word8Vector.length (#data csegs));
+	    writeInt32 s datasz;
 	    BinIO.output(s, #data csegs);
 	    codeOut (#c0 csegs);
 	    app codeOut (#cn csegs);
-	    writeEnv ()
+	    writeEnv ();
+	    { env = es, inlinfo = sa2, data = datasz, code = cs }
 	end
 
 	fun create args = let

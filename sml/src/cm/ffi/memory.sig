@@ -10,6 +10,11 @@ signature CMEMORY = sig
     val null : addr
     val isNull : addr -> bool
     val ++ : addr * int -> addr
+    val -- : addr * addr -> int
+    val compare : addr * addr -> order
+    val bcopy : { from: addr, to: addr, bytes: word } -> unit
+    val alloc : word -> addr option
+    val free : addr -> unit
 
     type uchar
     type schar

@@ -15,6 +15,7 @@ local
     structure DE = GenericVC.DynamicEnv
     structure PP = PrettyPrint
     structure EM = GenericVC.ErrorMsg
+    structure SF = GenericVC.SmlFile
 
     type pid = Pid.persstamp
     type statenv = E.staticEnv
@@ -227,10 +228,24 @@ in
 			       work = useStream,
 			       cleanup = fn _ => () })
 		    fun save bfc = let
-			fun writer s =
-			    (BF.write { stream = s, content = bfc,
-					nopickle = false };
-			     Say.vsay ["[wrote ", binname, "]\n"])
+			fun writer s = let
+			    val sz = BF.write { stream = s, content = bfc,
+						nopickle = false }
+			    fun info ((sel, lab), (l, t)) =
+				case sel sz of
+				    0 => (l, t)
+				  | n => (lab :: ": " :: Int.toString n ::
+					  t :: " " :: l,
+					  ",")
+			in
+			    Say.vsay ("[" ::
+				      #1 (foldr info
+						(["(bytes)]\n"], " ")
+						[(#code, "code"),
+						 (#data, "data"),
+						 (#env, "env"),
+						 (#inlinfo, "inlinable")]))
+			end
 			fun cleanup _ =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
@@ -279,7 +294,15 @@ in
 			    save bfc;
 			    storeBFC (i, bfc);
 			    SOME memo
-			end handle _ => fail () (* catch elaborator exn *)
+			end handle (EM.Error | SF.Compile _)
+				   (* At this point we handle only
+				    * explicit compiler bugs and ordinary
+				    * compilation errors because for those
+				    * there will already have been
+				    * explanatory messages.  Everything
+				    * else "falls through" and will be
+				    * treated at top level. *)
+				   => fail ()
 		end (* compile_here *)
 		fun notlocal () = let
 		    val _ = youngest := TStamp.max (!youngest,

@@ -15,10 +15,11 @@ CMB.make'}:
 
 This (re-)compiles the interactive system's entire source tree,
 constructing stable versions for all libraries involved.  In the
-process, binfiles are placed under directory {\tt $u$.bin.$a$-$o$}
-where $a$ and $o$ are strings describing target architecture and
-target OS, respectively.  The string $u$ is the optional argument to
-{\tt CMB.make'}.  If set to {\tt NONE}, it defaults to \verb|"sml"|.
+process, binfiles are placed under directory {\tt $u$.bin.{\it
+arch}-{\it os}} where {\it arch} and {\it os} are strings describing
+target architecture and target OS, respectively.  The string $u$ is
+the optional argument to {\tt CMB.make'}.  If set to {\tt NONE}, it
+defaults to \verb|"sml"|.
 
 An alternative equivalent to invoking {\tt CMB.make'} with {\tt NONE}
 is to use {\tt CMB.make}:

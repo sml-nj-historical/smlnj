@@ -39,7 +39,8 @@ signature BINFILE = sig
 	bfContent
 
     val write:
-	{ stream: BinIO.outstream, content: bfContent, nopickle: bool } -> unit
+	{ stream: BinIO.outstream, content: bfContent, nopickle: bool } ->
+	{ env: int, inlinfo: int, data: int, code: int }
 
     val exec: bfContent * denv -> denv
 end (* signature BINFILE *)

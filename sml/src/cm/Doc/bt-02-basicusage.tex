@@ -32,7 +32,7 @@ implementation.
 (parser, type checker, etc.) of the compiler as well as its high-level
 optimizer (FLINT).
 \item[{\bf src/ml-yacc}] This source tree contains the implementation
-of ML-Yacc and its associated library ({\tt \$/ml-yacc-lib.cm}).
+of ML-Yacc and its library ({\tt \$/ml-yacc-lib.cm}).
 Technically, the sources of ML-Yacc itself are not needed (provided a
 working executable for ML-Yacc has been installed), but the library
 sources are.
@@ -87,11 +87,11 @@ Standard ML of New Jersey ...
 \end{verbatim}
 \end{enumerate}
 
-{\it Note for frequent compiler hackers:  The {\tt makeml} script (see
-below) builds the the interactive system in such a way that {\tt
-\$smlnj/cmb.cm} is already pre-registered.  Therefore, when using a
-so-built interactive system there is no need for having the bootstrap
-compiler be explicitly loaded.}
+\noindent{\it Note for frequent compiler hackers:} The {\tt makeml}
+script (see below) builds the the interactive system in such a way
+that {\tt \$smlnj/cmb.cm} is already pre-registered.  Therefore, when
+using a so-built interactive system there is no need for loading the
+bootstrap compiler explicitly.
 
 It this point one can invoke the bootstrap compiler by simply issuing
 the command {\tt CMB.make()}:
@@ -199,6 +199,8 @@ one will occasionally have to remove those first (prior to re-running
 {\tt config/install.sh}).  Binfiles for libraries unrelated to
 bootstrapping are handled by CM (and not CMB), so the usual CM rules
 for locating them apply.  (This means that in such a case the binfile
-for {\tt $d$/$f$.sml} will be in {\tt $d$/CM/$a$-$o$/$f$.sml} where
-$a$ is a string describing the CPU architecture and $o$ is a string
-describing the operating system kind.)
+for {\tt $d$/$f$.sml} will be in
+{\tt $d$/CM/{\it arch}-{\it os}/$f$.sml}
+where {\it arch} is a string describing the CPU
+architecture and {\it os} is a string describing the operating system
+kind.)

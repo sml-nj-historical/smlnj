@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/12/21 23:55:00 JST
+Tag: blume-20001221-exn
+Description:
+
+Probably most important: CM no longer silently swallows all exceptions
+in the compiler.
+Plus: some other minor CM changes.  For example, CM now reports some
+sizes for generated binfiles (code, data, envpickle, lambdapickle).
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/12/15 00:01:05 JST
 Tag: blume-20001215-dirtool
 Description:

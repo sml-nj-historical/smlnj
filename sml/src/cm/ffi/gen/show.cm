@@ -1,0 +1,7 @@
+library
+	structure ShowC
+is
+	$/basis.cm
+	$/ckit-lib.cm
+
+	show.sml

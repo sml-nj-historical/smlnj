@@ -10,10 +10,15 @@
 structure CMemory : CMEMORY = struct
     type addr = Word32.word
     val null = 0w0 : addr
-    fun isNull (a: addr) = a = null
-    infix ++
+    fun isNull a = a = null
+    infix ++ --
     (* rely on 2's-complement for the following... *)
-    fun (a: addr) ++ (i: int) = (a + Word32.fromInt i) : addr
+    fun (a: addr) ++ i = a + Word32.fromInt i
+    fun compare (a1, a2) = Word32.compare (a1, a2)
+    fun a1 -- a2 = Word32.toIntX (a1 - a2)
+    fun bcopy { from: addr, to: addr, bytes: word } = ()
+    fun alloc (bytes: word) = NONE : addr option
+    fun free (a: addr) = ()
 
     (* most of these types are represented using a bigger size
      * (for lack of the "right" size *)

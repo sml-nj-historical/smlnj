@@ -6,4 +6,4 @@
  *
  * author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure CTypes : CTYPES = CTypesInternal
+structure C : C = C_Int

@@ -30,18 +30,18 @@ significantly from those of the currently running system.
 Therefore, CMB keeps binfiles and stable files in separate directory
 trees.  The names of the directories where these trees are rooted at
 are constructed from three parts; the binfile directory's name is {\tt
-$u$.bin.$a$-$o$} and the stablefile directory's name is {\tt
-$u$.boot.$a$-$o$}.  Here, $a$ is a string describing the current CPU
-architecture and $o$ is a string describin the current operating
-system kind. Component $u$ is a string that can be selected freely
-when the bootstrap compiler is invoked.  When using {\tt CMB.make} it
-defaults to {\tt sml}, otherwise it is the argument given to {\tt
-CMB.make'}.
+$u$.bin.{\it arch}-{\it os}} and the stablefile directory's name is
+{\tt $u$.boot.{\it arch}-{\it os}}.  As mentioned before, {\it arch}
+is a string describing the current CPU architecture and {\it os} is a
+string describing the current operating system kind. Component $u$ is a
+string that can be selected freely when the bootstrap compiler is
+invoked.  When using {\tt CMB.make} it defaults to {\tt sml},
+otherwise it is the argument given to {\tt CMB.make'}.
 
-All auxiliary scripts ({\tt makeml}, {\tt testml}, {\tt installml},
-etc.) accept parameters to select $u$.  If the parameter is missing,
-it defaults to {\tt sml} (in accordance to how {\tt CMB.make}
-behaves).
+The auxiliary script {\tt makeml} (which is responsible for
+bootstrapping a new system) also accepts a parameters to select $u$.
+If the parameter is missing, it defaults to {\tt sml} (in accordance
+with {\tt CMB.make}'s behavior).
 
 \subsection{Init library}
 
@@ -63,7 +63,7 @@ ordinary CM library:
 normally is imported implicitly by every compilation unit.  Within the
 init library, no pervasive environment is available yet.
 \item One binding in the above-mentioned pervasive environment is a
-binding {\tt structure \_Core}.  The symbol {\tt \_Core} is not a
+binding for {\tt structure \_Core}.  The symbol {\tt \_Core} is not a
 legal SML identifier, and the bootstrap compiler has to take special
 action to create a binding for it anyway.
 \item One of the compilation units in this library is merely a
@@ -104,7 +104,7 @@ When booting a stand-alone program, though, there is no CM available
 yet.  Thus, executing module-level code and passing exports to imports
 has to be done by the (bare) runtime system.  The runtime system
 understands enough about the layout of binfiles and library files so
-that it can do that---provided there is a special file {\em bootlist}
+that it can do that---provided there is a special {\em bootlist}
 file that contains instructions about which modules to load in what
 order.
 
@@ -112,7 +112,7 @@ For ordinary stand-alone programs, it is CM's job to construct the
 bootlist file; in the case of bootstrap compilation the bootlist file
 is constructed by CMB.  The name of the file is {\tt BOOTLIST}, and it
 is located at the root of the directory tree that contains stable
-files (i.e., its name is {\tt $u$.boot.$a$-$o$/BOOTLIST}).
+files (i.e., its name is {\tt $u$.boot.{\it arch}-{\it os}/BOOTLIST}).
 
 \subsection{PIDMAP file}
 
@@ -121,11 +121,11 @@ module-level code which will trigger the self-initialization of the
 interactive system---including CM.  One job of CM is to manage sharing
 of link-time state.  Link-time state of a module used by the
 interactive system should be shared with any program using the same
-module.  The file {\tt $u$.boot.$a$-$o$/PIDMAP} contains information
-that enables CM to relate existing link-time state to particular
-library modules and also to identify any link-time state that will
-never be shared and which can therefore be dropped.  It is CMB's
-responsibility to construct it.
+module.  The file {\tt $u$.boot.{\it arch}-{\it os}/PIDMAP} contains
+information that enables CM to relate existing link-time state to
+particular library modules and also to identify any link-time state
+that will never be shared and which can therefore be dropped.  It is
+CMB's responsibility to construct it.
 
 \subsection{Cross-compiling}
 
@@ -138,13 +138,13 @@ structures---those corresponding to various cross-compilers.  All
 these structures share the same signature.
 
 The table also shows the names of libraries that the structures are
-exported from as well as those strings $a$ and $o$ that are used to
-name binfile- and stablefile-directory.
+exported from as well as those strings {\it arch} and {\it os} that
+are used to name binfile- and stablefile-directory.
 
 \begin{small}
 \begin{center}
 \begin{tabular}{p{2.2in}||p{1.5in}|l|l|l|l}
-library & structure & architecture & OS & $a$ & $o$ \\
+library & structure & architecture & OS & {\it arch} & {\it os} \\
 \hline\hline
 {\tt \$smlnj/cmb.cm} \newline
 {\tt \$smlnj/cmb/current.cm} & {\tt CMB} & current & current & & \\
