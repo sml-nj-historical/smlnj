@@ -486,6 +486,7 @@ struct
      | I.FLDLG2 => eBytes[0wxd9,0wxec]
      | I.FLDLN2 => eBytes[0wxd9,0wxed]
      | I.FLDZ   => eBytes[0wxd9,0wxee]
+     | I.FLDS opnd => encode(0wxd9, 0, opnd)
 
      | I.FLDL(I.ST n) => encodeST(0wxd9, 24, n)
      | I.FLDL opnd => encode(0wxdd, 0, opnd)
