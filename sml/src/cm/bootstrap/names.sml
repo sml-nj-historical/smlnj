@@ -10,4 +10,6 @@ structure BtNames = struct
     val maingspec = "root.cm"
     val dirbaseDefault = "sml"
     val pcmodespec = "pathconfig"
+    val bare_preloads = "preloads.bare"
+    val standard_preloads = "preloads.standard"
 end

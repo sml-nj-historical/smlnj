@@ -79,6 +79,7 @@ is
 	main/cleanup.sml
 	main/cm.sig
 	main/slave.sml
+	main/preload.sml
 	main/cm-boot.sml
 
 	(* pathname abstraction *)

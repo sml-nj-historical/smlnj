@@ -2,7 +2,7 @@
  * This is the module that actually puts together the contents of the
  * structure CM that people find at the top-level.  A "minimal" structure
  * CM is defined in CmHook, but it needs to be initialized at bootstrap
- * time -- and that is what's done here, too.
+ * time.
  *
  *   Copyright (c) 1999 by Lucent Bell Laboratories
  *
@@ -242,7 +242,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	       Parse.reset ();
 	       SmlInfo.reset ())
 
-	  fun initTheValues (bootdir, er) = let
+	  fun initTheValues (bootdir, er, autoload_postprocess) = let
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
@@ -338,6 +338,16 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 					  [#statpid corePidInfo,
 					   #statpid pervPidInfo,
 					   #sympid pervPidInfo])
+		      fun bare_autoload x =
+			  (Say.say
+			    ["!* ", x,
+			     ": \"autoload\" not available, using \"make\"\n"];
+			   make x)
+		      val bare_preload =
+			  Preload.preload { make = make,
+					    autoload = bare_autoload }
+		      val standard_preload =
+			  Preload.preload { make = make, autoload = autoload }
 		  in
 		      Compile.reset ();
 		      Link.reset ();
@@ -351,47 +361,47 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       pervcorepids = pervcorepids };
 		      case er of
 			  BARE =>
-			      (make "basis.cm";
-			       make "host-compiler.cm";
-			       system_values := emptydyn)
+			      (bare_preload BtNames.bare_preloads;
+			       system_values := emptydyn;
+			       NONE)
 			| AUTOLOAD =>
 			      (HostMachDepVC.Interact.installCompManager
 			            (SOME al_manager');
-			       autoload "basis.cm";
-			       autoload "minimal-cm.cm";
+				    standard_preload BtNames.standard_preloads;
 			       CmHook.init
 			         { stabilize = stabilize,
 				   recomp = recomp,
 				   make = make,
-				   autoload = autoload })
-
+				   autoload = autoload };
+			       SOME (autoload_postprocess ()))
 		  end
 	  end
       end
   in
-    fun init (bootdir, de, er) =
-	(system_values := de;
-	 initTheValues (bootdir, er);
-	 Cleanup.install initPaths)
-
-    fun procCmdLine () = let
-	val autoload = ignore o autoload
-	val make = ignore o make
-	fun p (f, ("sml" | "sig"), mk) = HostMachDepVC.Interact.useFile f
-	  | p (f, "cm", mk) = mk f
-	  | p (f, e, mk) = Say.say ["!* unable to process `", f,
-				    "' (unknown extension `", e, "')\n"]
-	fun arg ("-a", _) = autoload
-	  | arg ("-m", _) = make
-	  | arg (f, mk) =
-	    (p (f,
-		String.map Char.toLower (getOpt (OS.Path.ext f, "<none>")),
-		mk);
-	     mk)
+    fun init (bootdir, de, er) = let
+	fun procCmdLine () = let
+	    val autoload = ignore o autoload
+	    val make = ignore o make
+	    fun p (f, ("sml" | "sig"), mk) = HostMachDepVC.Interact.useFile f
+	      | p (f, "cm", mk) = mk f
+	      | p (f, e, mk) = Say.say ["!* unable to process `", f,
+					"' (unknown extension `", e, "')\n"]
+	    fun arg ("-a", _) = autoload
+	      | arg ("-m", _) = make
+	      | arg (f, mk) =
+		(p (f,
+		    String.map Char.toLower (getOpt (OS.Path.ext f, "<none>")),
+		    mk);
+		 mk)
+	in
+	    case SMLofNJ.getArgs () of
+		["@CMslave"] => (#set StdConfig.verbose false; slave ())
+	      | l => ignore (foldl arg autoload l)
+	end
     in
-	case SMLofNJ.getArgs () of
-	    ["@CMslave"] => (#set StdConfig.verbose false; slave ())
-	  | l => ignore (foldl arg autoload l)
+	system_values := de;
+	initTheValues (bootdir, er, fn () => (Cleanup.install initPaths;
+					      procCmdLine))
     end
 
     structure CM :> CM = struct
