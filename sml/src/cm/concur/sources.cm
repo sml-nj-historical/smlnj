@@ -1,0 +1,21 @@
+(*
+ * Simple concurrency for CM.
+ *  - local threads (very primitive)
+ *  - remote compile servers (Unix only; communication via
+ *    pipes and shared file system)
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Group (../../system/smlnj/internal/cm-lib.cm) is
+	concur.sml
+	servers.sig
+# if defined (OPSYS_UNIX)
+	unix-servers.sml
+# else
+	dummy-servers.sml
+# endif
+	../util/sources.cm
+	$/basis.cm
+	$smlnj/internal/srcpath-lib.cm

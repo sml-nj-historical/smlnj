@@ -1,0 +1,415 @@
+EXPORTS
+    AddrOfCSymbol @1
+    AddrTblApply @2
+    AddrTblInsert @3
+    AddrTblLookup @4
+    AddrToCSymbol @5
+    AllocGlobals @6
+    AllocMLState @7
+    ApplyMLFn @8
+    ArenaName @9 DATA
+    BIBOP @10 DATA
+    BO_AddrToCodeObjTag @11
+    BO_Alloc @12
+    BO_AllocRegion @13
+    BO_Free @14
+    BO_GetCodeObjTag @15
+    BO_GetDesc @16
+    BindCFun @17
+    BlastGC @18
+    BlastGC_AssignLitAddrs @19
+    BlastGC_BlastLits @20
+    BlastGC_FinishUp @21
+    BlastIn @22
+    BlastOut @23
+    BootML @24
+    BuildLiterals @25
+    CRoots @26 DATA
+    ChooseSignal @27
+    CmdLineArgs @28 DATA
+    DebugF @29 DATA
+    Die @30
+    DisableProfSignals @31
+    DumpObjectStrings @32 DATA
+    EnableProfSignals @33
+    EnqueueSignal @34
+    Error @35
+    Exit @36
+    ExportCSymbol @37
+    ExportFnImage @38
+    ExportHeapImage @39
+    ExportTableSz @40
+    ExportedSymbols @41
+    FPEEnable @42 DATA
+    Flip @43
+    FreeAddrTbl @44
+    FreeExportTbl @45
+    FreeGeneration @46
+    GCMessages @47 DATA
+    GCSignal @48
+    GetCPUTime @49
+    GetObjGen @50
+    GetSignalMask @51
+    GetSignalState @52
+    GetSzOption @53
+    HeapIO_ReadBlock @54
+    HeapIO_ReadExterns @55
+    HeapIO_Seek @56
+    HeapIO_WriteExterns @57
+    HeapIO_WriteImageHeader @58
+    ImportCSymbol @59
+    ImportHeapImage @60
+    InitCFunList @61
+    InitFaultHandlers @62
+    InitHeap @63
+    InitMLState @64
+    InitTimers @65
+    InvokeGC @66
+    InvokeGCWithRoots @67
+    ListSignals @68
+    LoadML @69
+    LoadResumeState @70
+    MEM_AllocMemObj @71
+    MEM_FreeMemObj @72
+    MEM_GetVMSize @73
+    MEM_InitMemory @74
+    MLCmdName @75 DATA
+    ML_AllocArray @76
+    ML_AllocBytearray @77
+    ML_AllocCData @78
+    ML_AllocCode @79
+    ML_AllocRaw32 @80
+    ML_AllocRaw64 @81
+    ML_AllocRealdarray @82
+    ML_AllocString @83
+    ML_AllocVector @84
+    ML_CData @85
+    ML_CString @86
+    ML_CStringList @87
+    ML_ShrinkRaw32 @88
+    ML_SysConst @89
+    ML_SysConstList @90
+    ML_X86Frame @91 DATA
+    MajorGC @92
+    MakeAddrTbl @93
+    MakeHandlerArg @94
+    MakeResumeCont @95
+    MarkRegion @96
+    MinorGC @97
+    NeedGC @98
+    NewDirtyVector @99
+    NewExportTbl @100
+    NewGeneration @101
+    NumCRoots @102 DATA
+    NumVProcs @103 DATA
+    POSIX_Error_Library @104 DATA
+    POSIX_FileSys_Library @105 DATA
+    POSIX_IO_Library @106 DATA
+    POSIX_OS_Library @107 DATA
+    POSIX_ProcEnv_Library @108 DATA
+    POSIX_Process_Library @109 DATA
+    POSIX_Signal_Library @110 DATA
+    POSIX_SysDB_Library @111 DATA
+    POSIX_TTY_Library @112 DATA
+    ParseHeapParams @113
+    PauseUntilSignal @114
+    ProfCntArray @115 DATA
+    QualifyImageName @116
+    RaiseMLExn @117
+    RaiseSysError @118
+    RawArgs @119 DATA
+    RecordCSymbol @120
+    RecordConcat @121
+    RecordGlobals @122
+    ResetTimers @123
+    RestoreCState @124
+    RunML @125
+    RunTimeCompUnit @126 DATA
+    SMLNJ_Date_Library @127 DATA
+    SMLNJ_Math_Library @128 DATA
+    SMLNJ_Prof_Library @129 DATA
+    SMLNJ_RunT_Library @130 DATA
+    SMLNJ_Sig_Library @131 DATA
+    SMLNJ_Sock_Library @132 DATA
+    SMLNJ_Time_Library @133 DATA
+    SaveCState @134
+    Say @135
+    SayDebug @136
+    ScanWeakPtrs @137
+    SetSignalMask @138
+    SetSignalState @139
+    SilentLoad @140 DATA
+    StartGCTimer @141
+    StopGCTimer @142
+    SwapBytes @143
+    SysErr_id0 @144 DATA
+    SysErr_s @145 DATA
+    SystemRunML @146
+    UNIX_Dynload_Library @147 DATA
+    VProc @148 DATA
+    WR_OpenFile @149
+    WR_OpenMem @150
+    _ActiveProcs0 @151 DATA
+    _Div_id0 @152 DATA
+    _Div_s @153 DATA
+    _ErrorNo @154 DATA
+    _MLPollHandler @155 DATA
+    _MLSignalHandler @156 DATA
+    _ML_string0 @157 DATA
+    _ML_string0_data @158 DATA
+    _ML_vector0 @159 DATA
+    _Overflow_id0 @160 DATA
+    _Overflow_s @161 DATA
+    _PervStruct @162 DATA
+    _PollEvent0 @163 DATA
+    _PollFreq0 @164 DATA
+    _ProfCurrent @165 DATA
+    _Sock_AddrFamily @166 DATA
+    _Sock_Type @167 DATA
+    _ml_Date_asctime @168
+    _ml_Date_gmtime @169
+    _ml_Date_localtime @170
+    _ml_Date_mktime @171
+    _ml_Date_strftime @172
+    _ml_Math_atan64 @173
+    _ml_Math_cos64 @174
+    _ml_Math_ctlrndmode @175
+    _ml_Math_exp64 @176
+    _ml_Math_log64 @177
+    _ml_Math_sin64 @178
+    _ml_Math_sqrt64 @179
+    _ml_NetDB_gethostbyaddr @180
+    _ml_NetDB_gethostbyname @181
+    _ml_NetDB_gethostname @182
+    _ml_NetDB_getnetbyaddr @183
+    _ml_NetDB_getnetbyname @184
+    _ml_NetDB_getprotbyname @185
+    _ml_NetDB_getprotbynum @186
+    _ml_NetDB_getservbyname @187
+    _ml_NetDB_getservbyport @188
+    _ml_OS_poll @189
+    _ml_OS_tmpname @190
+    _ml_P_Error_errmsg @191
+    _ml_P_Error_geterror @192
+    _ml_P_Error_listerrors @193
+    _ml_P_FileSys_access @194
+    _ml_P_FileSys_chdir @195
+    _ml_P_FileSys_chmod @196
+    _ml_P_FileSys_chown @197
+    _ml_P_FileSys_closedir @198
+    _ml_P_FileSys_fchmod @199
+    _ml_P_FileSys_fchown @200
+    _ml_P_FileSys_fpathconf @201
+    _ml_P_FileSys_fstat @202
+    _ml_P_FileSys_ftruncate @203
+    _ml_P_FileSys_getcwd @204
+    _ml_P_FileSys_link @205
+    _ml_P_FileSys_lstat @206
+    _ml_P_FileSys_mkdir @207
+    _ml_P_FileSys_mkfifo @208
+    _ml_P_FileSys_opendir @209
+    _ml_P_FileSys_openf @210
+    _ml_P_FileSys_osval @211
+    _ml_P_FileSys_pathconf @212
+    _ml_P_FileSys_readdir @213
+    _ml_P_FileSys_readlink @214
+    _ml_P_FileSys_rename @215
+    _ml_P_FileSys_rewinddir @216
+    _ml_P_FileSys_rmdir @217
+    _ml_P_FileSys_stat @218
+    _ml_P_FileSys_symlink @219
+    _ml_P_FileSys_umask @220
+    _ml_P_FileSys_unlink @221
+    _ml_P_FileSys_utime @222
+    _ml_P_IO_close @223
+    _ml_P_IO_dup @224
+    _ml_P_IO_dup2 @225
+    _ml_P_IO_fcntl_d @226
+    _ml_P_IO_fcntl_gfd @227
+    _ml_P_IO_fcntl_gfl @228
+    _ml_P_IO_fcntl_l @229
+    _ml_P_IO_fcntl_sfd @230
+    _ml_P_IO_fcntl_sfl @231
+    _ml_P_IO_fsync @232
+    _ml_P_IO_lseek @233
+    _ml_P_IO_osval @234
+    _ml_P_IO_pipe @235
+    _ml_P_IO_read @236
+    _ml_P_IO_readbuf @237
+    _ml_P_IO_write @238
+    _ml_P_IO_writebuf @239
+    _ml_P_ProcEnv_ctermid @240
+    _ml_P_ProcEnv_environ @241
+    _ml_P_ProcEnv_getegid @242
+    _ml_P_ProcEnv_getenv @243
+    _ml_P_ProcEnv_geteuid @244
+    _ml_P_ProcEnv_getgid @245
+    _ml_P_ProcEnv_getgroups @246
+    _ml_P_ProcEnv_getlogin @247
+    _ml_P_ProcEnv_getpgrp @248
+    _ml_P_ProcEnv_getpid @249
+    _ml_P_ProcEnv_getppid @250
+    _ml_P_ProcEnv_getuid @251
+    _ml_P_ProcEnv_isatty @252
+    _ml_P_ProcEnv_setgid @253
+    _ml_P_ProcEnv_setpgid @254
+    _ml_P_ProcEnv_setsid @255
+    _ml_P_ProcEnv_setuid @256
+    _ml_P_ProcEnv_sysconf @257
+    _ml_P_ProcEnv_time @258
+    _ml_P_ProcEnv_times @259
+    _ml_P_ProcEnv_ttyname @260
+    _ml_P_ProcEnv_uname @261
+    _ml_P_Process_alarm @262
+    _ml_P_Process_exec @263
+    _ml_P_Process_exece @264
+    _ml_P_Process_execp @265
+    _ml_P_Process_exit @266
+    _ml_P_Process_fork @267
+    _ml_P_Process_kill @268
+    _ml_P_Process_osval @269
+    _ml_P_Process_pause @270
+    _ml_P_Process_sleep @271
+    _ml_P_Process_waitpid @272
+    _ml_P_Signal_osval @273
+    _ml_P_SysDB_getgrgid @274
+    _ml_P_SysDB_getgrnam @275
+    _ml_P_SysDB_getpwnam @276
+    _ml_P_SysDB_getpwuid @277
+    _ml_P_TTY_osval @278
+    _ml_P_TTY_tcdrain @279
+    _ml_P_TTY_tcflow @280
+    _ml_P_TTY_tcflush @281
+    _ml_P_TTY_tcgetattr @282
+    _ml_P_TTY_tcgetpgrp @283
+    _ml_P_TTY_tcsendbreak @284
+    _ml_P_TTY_tcsetattr @285
+    _ml_P_TTY_tcsetpgrp @286
+    _ml_Proc_argv @287
+    _ml_Proc_cmd_name @288
+    _ml_Proc_raw_argv @289
+    _ml_Prof_getpquantum @290
+    _ml_Prof_setpref @291
+    _ml_Prof_setptimer @292
+    _ml_RunT_alloc_code @293
+    _ml_RunT_blast_in @294
+    _ml_RunT_blast_out @295
+    _ml_RunT_debug @296
+    _ml_RunT_dummy @297
+    _ml_RunT_export_fun @298
+    _ml_RunT_export_heap @299
+    _ml_RunT_gc_ctl @300
+    _ml_RunT_itick @301
+    _ml_RunT_mkexec @302
+    _ml_RunT_mkliterals @303
+    _ml_RunT_record1 @304
+    _ml_RunT_recordconcat @305
+    _ml_RunT_setitimer @306
+    _ml_RunT_sysinfo @307
+    _ml_Sig_getsigmask @308
+    _ml_Sig_getsigstate @309
+    _ml_Sig_listsigs @310
+    _ml_Sig_pause @311
+    _ml_Sig_setsigmask @312
+    _ml_Sig_setsigstate @313
+    _ml_Sock_accept @314
+    _ml_Sock_bind @315
+    _ml_Sock_close @316
+    _ml_Sock_connect @317
+    _ml_Sock_ctlBROADCAST @318
+    _ml_Sock_ctlDEBUG @319
+    _ml_Sock_ctlDONTROUTE @320
+    _ml_Sock_ctlKEEPALIVE @321
+    _ml_Sock_ctlLINGER @322
+    _ml_Sock_ctlNODELAY @323
+    _ml_Sock_ctlOOBINLINE @324
+    _ml_Sock_ctlRCVBUF @325
+    _ml_Sock_ctlREUSEADDR @326
+    _ml_Sock_ctlSNDBUF @327
+    _ml_Sock_frominetaddr @328
+    _ml_Sock_fromunixaddr @329
+    _ml_Sock_getATMARK @330
+    _ml_Sock_getERROR @331
+    _ml_Sock_getNREAD @332
+    _ml_Sock_getTYPE @333
+    _ml_Sock_getaddrfamily @334
+    _ml_Sock_getpeername @335
+    _ml_Sock_getsockname @336
+    _ml_Sock_inetany @337
+    _ml_Sock_listaddrfamilies @338
+    _ml_Sock_listen @339
+    _ml_Sock_listsocktypes @340
+    _ml_Sock_recv @341
+    _ml_Sock_recvbuf @342
+    _ml_Sock_recvbuffrom @343
+    _ml_Sock_recvfrom @344
+    _ml_Sock_sendbuf @345
+    _ml_Sock_sendbufto @346
+    _ml_Sock_setNBIO @347
+    _ml_Sock_shutdown @348
+    _ml_Sock_socket @349
+    _ml_Sock_socketpair @350
+    _ml_Sock_toinetaddr @351
+    _ml_Sock_tounixaddr @352
+    _ml_Time_gettime @353
+    _ml_Time_timeofday @354
+    _ml_U_Dynload_dlclose @355
+    _ml_U_Dynload_dldummy @356
+    _ml_U_Dynload_dlerror @357
+    _ml_U_Dynload_dlopen @358
+    _ml_U_Dynload_dlsym @359
+    _ml_posix_nv_lookup @360
+    _util_NetDB_mkhostent @361
+    _util_NetDB_mknetent @362
+    _util_NetDB_mkservent @363
+    _util_Sock_ControlFlg @364
+    array_a @365 DATA
+    array_v @366 DATA
+    bind_cfun_a @367 DATA
+    bind_cfun_v @368 DATA
+    build_literals_a @369 DATA
+    callc_a @370 DATA
+    callc_v @371 DATA
+    create_b_a @372 DATA
+    create_b_v @373 DATA
+    create_r_a @374 DATA
+    create_r_v @375 DATA
+    create_s_a @376 DATA
+    create_s_v @377 DATA
+    create_v_a @378 DATA
+    create_v_v @379 DATA
+    fegetround @380 DATA
+    fesetround @381 DATA
+    floor_a @382 DATA
+    floor_v @383 DATA
+    handle_a @384 DATA
+    handle_v @385 DATA
+    isRuntimeOption @386
+    logb_a @387 DATA
+    logb_v @388 DATA
+    machine_id @389 DATA
+    main @390
+    pollh_resume @391 DATA
+    pollh_return_a @392 DATA
+    pollh_return_c @393 DATA
+    request_fault @394 DATA
+    restoreregs @395 DATA
+    return_a @396 DATA
+    return_c @397 DATA
+    saveregs @398 DATA
+    scalb_a @399 DATA
+    scalb_v @400 DATA
+    set_request @401 DATA
+    sigh_resume @402 DATA
+    sigh_return_a @403 DATA
+    sigh_return_c @404 DATA
+    try_lock_a @405 DATA
+    try_lock_v @406 DATA
+    unlock_a @407 DATA
+    unlock_v @408 DATA
+    free @409
+    malloc @410
+    calloc @411
+    printf @412
+    fprintf @413
+    sprintf @414
