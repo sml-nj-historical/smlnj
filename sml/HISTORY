@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/06/10 16:35:00 EDT
+Tag: blume-20020610-ieeereal
+Description:
+
+I back-ported my implementation of IEEEReal.fromString from the
+idlbasis-devel branch so that we can test it.
+
+Another small change is that ppDec tries to give more information
+than just "<sig>" in the case of functors.  However, this code is
+broken in some mysterious way if the functor's body's signature
+has not been declared by ascription but gets inferred from the
+implementation.  This needs fixing...
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/05/31
 Tag: blume-20020531-btrace-mode
 Description:

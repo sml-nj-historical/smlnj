@@ -263,13 +263,16 @@ fun ppDec ({static,dynamic,...}: Environment.environment)
 	      add_newline ppstrm;
 	     end_block ppstrm)
 
-	and ppFctb(FCTB{name,fct,...}) = 
+	and ppFctb(FCTB{name,fct,...}) =
 	    (begin_block ppstrm CONSISTENT 0;
 	      pps "functor ";
 	      ppSym ppstrm name;
-	      pps " : <sig>";  (* DBM -- should print the signature *)
+	      case fct of
+		  M.FCT { sign, ... } =>
+		    PPModules.ppFunsig ppstrm (sign, static, !signatures)
+		| _ => pps " : <sig>";  (* blume: cannot (?) happen *)
 	      add_newline ppstrm;
-	     end_block ppstrm)
+	    end_block ppstrm)
 
         and ppSigb sign = 
 	    let val name = case sign 
