@@ -32,13 +32,16 @@ signature FLINTCONTROL =
 sig
     val print		: bool ref
     val printPhases	: bool ref
+    val phases		: string list ref
+
     val inlineThreshold	: int ref
     val unrollThreshold	: int ref
+    val maxargs		: int ref	(* to put a cap on arity raising *)
+    val dropinvariant	: bool ref
+
     val specialize	: bool ref
     val liftLiterals	: bool ref
     val sharewrap	: bool ref
-    val maxargs		: int ref	(* to put a cap on arity raising *)
-    val phases		: string list ref
     val saytappinfo	: bool ref	(* for verbose typelifting *)
 
     (* only for temporary debugging *)

@@ -14,13 +14,18 @@ local
     structure O  = Option
     structure M  = IntmapF
     structure S  = IntSetF
+    structure OU = OptUtils
     structure LK = LtyKernel
+    structure CTRL = Control.FLINT
 in
 
+val say = Control.Print.say
 fun bug msg = ErrorMsg.impossible ("Loopify: "^msg)
 val cplv = LambdaVar.dupLvar
 
-datatype info = I of {tails : int ref, calls: int ref, icalls: int ref, tcp: bool ref, parent: F.lvar}
+type al = F.value list list
+datatype info = I of {tails : al ref, calls: al ref, icalls: al ref,
+		      tcp: bool ref, parent: F.lvar}
 exception NotFound
 
 fun loopify (prog as (progkind,progname,progargs,progbody)) = let
@@ -33,7 +38,7 @@ fun loopify (prog as (progkind,progname,progargs,progbody)) = let
      * tcp: always called in tail-position
      * parent: enclosing function *)
     fun new (f,known,parent) =
-	let val i = I{tails=ref 0, calls=ref 0, icalls=ref 0,
+	let val i = I{tails=ref [], calls=ref [], icalls=ref [],
 		      tcp=ref known, parent=parent}
 	in Intmap.add m (f,i); i end
 
@@ -52,9 +57,9 @@ in case le
      | F.FIX([({isrec=(NONE | SOME(_,F.LK_TAIL)),known,...},f,_,body)],le) =>
        let val I{tcp,calls,icalls,...} = new(f, known, p)
 	   val _ = loop le
-	   val ecalls = !calls
+	   val necalls = length(!calls)
        in  collect f (if !tcp then S.add(f,tfs) else S.singleton f) body;
-	   icalls := !calls - ecalls
+	   icalls := List.take(!calls, length(!calls) - necalls)
        end
      | F.FIX(fdecs,le) =>
        let (* create the new entries in the map *)
@@ -62,17 +67,17 @@ in case le
 			 (fk, f, body, new(f, false, p)))
 			fdecs
 	   fun cfun ({isrec,...}:F.fkind,f,body,I{calls,icalls,...}) =
-	       let val ecalls = !calls
+	       let val necalls = length(!calls)
 	       in  collect f (S.singleton f) body;
-		   icalls := !calls - ecalls
+		   icalls := List.take(!calls, length(!calls) - necalls)
 	       end
        in  loop le;
 	   app cfun fs
        end
      | F.APP(F.VAR f,vs) =>
        (let val I{tails,calls,tcp,parent,...} = get f
-       in if S.member tfs f then tails := !tails + 1
-	  else (calls := !calls + 1;
+       in if S.member tfs f then tails := vs::(!tails)
+	  else (calls := vs::(!calls);
 		if S.member tfs parent then () else tcp := false)
        end handle NotFound => ())
      | F.TFN((_,_,body),le) => (collect p S.empty body; loop le)
@@ -89,6 +94,22 @@ in case le
 
      | F.APP _ => bug "weird F.APP in collect"
 end
+
+(* (intended as a `foldr' argument).
+ * `filt' is the bool list indicating if the arg is kept
+ * `func' is the list of arguments for the FIX
+ * `call' is the list of arguments for the APP
+ * `free' is the list of resulting free variables *)
+fun drop_invariant ((v,t),actuals,(filt,func,call,free)) =
+    if !CTRL.dropinvariant andalso List.all (fn a => F.VAR v = a) actuals then
+	(* drop the argument: the free list is unchanged *)
+	(false::filt, func, call, (v,t)::free)
+    else
+	(* keep the argument: create a new var (used in the call)
+	 * which will replace the old in the free vars *)
+	let val nv = cplv v
+	in (true::filt, (v,t)::func, (F.VAR nv)::call, (nv,t)::free)
+	end
 
 (* m: int intmap	renaming for function calls
  * tf:(int,int) list	the current functions (if any) and their tail version
@@ -121,46 +142,66 @@ in case le
 		* `C.callnb fi <= icallnb + 1': if there's only one external
 		*     call, loopification will probably (?) not be of much use
 		*     and the same benefit would be had by just moving f *)
-	       in if icalls = 0 andalso tails = 0
+	       in if null icalls andalso null tails
 		  then (fk, f, args, lexp m (if tcp then tfs else []) body)
 		  else
-		      let val fl = cplv f
-			  val ft = cplv f
-			  val largs = map (fn(v,t) => (cplv v, t)) args
-			  val args' = map (fn(v,t) => (cplv v, t)) args
-			  val cconv' =
+		      let val cconv' =
 			      case cconv
 			       of (F.CC_FCT | F.CC_FUN(LK.FF_FIXED)) => cconv
 				| F.CC_FUN(LK.FF_VAR(f1,f2)) =>
 				  F.CC_FUN(LK.FF_VAR(true,f2))
-			  val nm = M.add(m, f, fl)
-			  val tfs' = ((f,ft)::(if tcp then tfs else []))
+
+			  (* figure out what arguments of the tail loop
+			   * are invariants and create the corresponding
+			   * function args, call args, filter
+			   * function for the actual calls, ... *)
+			  val (tfs',atfun,atcall,args,ft) =
+			      if null tails then (tfs,[],[],args,f) else let
+				  val ft = cplv f
+				  val actuals = OU.transpose tails
+				  val (fcall,afun,acall,afree) =
+				      ListPair.foldr drop_invariant
+						     ([],[],[],[])
+						     (args, actuals)
+			      in ((f,ft,fcall)::(if tcp then tfs else []),
+				  afun, acall, afree, ft)
+			      end
+
+			  (* Do the same for the non-tail loop *)
+			  val (nm,alfun,alcall,args,fl) =
+			      if null icalls then (m,[],[],args,f) else let
+				  val fl = cplv f
+				  val actuals = OU.transpose icalls
+				  val (fcall,afun,acall,afree) =
+				      ListPair.foldr drop_invariant
+						     ([],[],[],[])
+						     (args, actuals)
+			      in (M.add(m, f, (fl, fcall)),
+				  afun, acall, afree, fl)
+			      end
 
 			  (* make the new body *)
-			  val (nargs,nbody) = (args, lexp nm tfs' body)
+			  val nbody = lexp nm tfs' body
+
 			  (* wrap into a tail loop if necessary *)
-			  val (nargs,nbody) =
-			      if tails = 0 then (nargs,nbody) else let
-				  val args' = map (fn(v,t) => (cplv v, t)) args
-			      in (args',
+			  val nbody =
+			      if null tails then nbody else
 				  F.FIX([({isrec=SOME(ltys, F.LK_TAIL),
 					   known=true, inline=F.IH_SAFE,
-					   cconv=cconv'}, ft, nargs,
+					   cconv=cconv'}, ft, atfun,
 					  nbody)],
-				    F.APP(F.VAR ft, map (F.VAR o #1) args')))
-			      end
+				    F.APP(F.VAR ft, atcall))
+
 			  (* wrap into a non-tail loop if necessary *)
-			  val (nargs,nbody) =
-			      if icalls = 0 then (nargs,nbody) else let
-				  val args' = map (fn(v,t) => (cplv v, t)) args
-			      in (args',
+			  val nbody =
+			      if null icalls then nbody else
 				  F.FIX([({isrec=SOME(ltys, F.LK_LOOP),
 					   known=true, inline=F.IH_SAFE,
-					   cconv=cconv'}, fl, nargs,
+					   cconv=cconv'}, fl, alfun,
 					  nbody)],
-				    F.APP(F.VAR fl, map (F.VAR o #1) args')))
-			      end
-		      in (fk, f, nargs, nbody)
+				    F.APP(F.VAR fl, alcall))
+
+		      in (fk, f, args, nbody)
 		      end
 	       end
 	     | cfun (fk as {inline=F.IH_UNROLL,isrec=SOME _,...},f,args,body) =
@@ -174,11 +215,11 @@ in case le
        in F.FIX(map cfun fdecs, loop le)
        end
      | F.APP(F.VAR f,vs) =>
-       (let val fl = M.lookup m f
-       in case List.find (fn (ft,ft') => ft = f) tfs
-	   of SOME(ft, ft') => F.APP(F.VAR ft', vs)
-	    | NONE => F.APP(F.VAR fl, vs)
-       end handle M.IntmapF => le)
+       (case List.find (fn (ft,ft',filt) => ft = f) tfs
+	 of SOME(ft, ft', filt) => F.APP(F.VAR ft', OU.filter filt vs)
+	  | NONE => let val (fl,filt) = M.lookup m f
+	    in F.APP(F.VAR fl, OU.filter filt vs)
+	    end handle M.IntmapF => le)
      | F.TFN((f,args,body),le) => F.TFN((f, args, loop body), loop le)
      | F.TAPP(f,tycs) => le
      | F.SWITCH(v,ac,arms,def) =>

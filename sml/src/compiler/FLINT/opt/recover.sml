@@ -143,9 +143,7 @@ fun recover (fdec, postRep) =
   in {getLty=getlty, cleanUp=fn () => Intmap.clear zz}
  end (* function recover *)
 
+ val recover = Stats.doPhase (Stats.makePhase "Compiler 050 recover") recover
+
 end (* local *)
 end (* structure Recover *)
-
-(*
- * $Log$
- *)

@@ -12,16 +12,19 @@ sig
 	              (FLINT.fkind * FLINT.fkind)
 
     (* this is a known APL function, but I don't know its real name *)
-    val filter : bool list * 'a list -> 'a list
+    val filter : bool list -> 'a list -> 'a list
 
     (* A less brain-dead version of ListPair.all: returns false if
      * length l1 <> length l2 *)
     val ListPair_all : ('a * 'b -> bool) -> 'a list * 'b list -> bool
 
+    val pow2 : int -> int
+
     (* This is not a proper transposition in that the order is reversed
      * in the following way:  transpose x = map rev (proper_trans x) *)
     exception Unbalanced
     val transpose : 'a list list -> 'a list list
+
     val foldl3 : ('a * 'b * 'c * 'd -> 'd) -> 'd -> 'a list * 'b list * 'c list -> 'd
 end
 
@@ -44,10 +47,10 @@ in
 	    {isrec=isrec', known=true, cconv=cconv', inline=inline})
 	end
 
-    fun filter ([],[]) = []
-      | filter (true::fs,x::xs)  = x::(filter(fs, xs))
-      | filter (false::fs,x::xs) = (filter(fs, xs))
-      | filter _ = bug "unmatched list length in filter"
+    fun filter [] [] = []
+      | filter (true::fs) (x::xs)  = x::(filter fs xs)
+      | filter (false::fs) (x::xs) = (filter fs xs)
+      | filter _ _ = bug "unmatched list length in filter"
 
     fun ListPair_all pred =
 	let fun allp (a::r1, b::r2) = pred(a, b) andalso allp (r1, r2)
@@ -55,6 +58,8 @@ in
 	      | allp _ = false
 	in allp
 	end
+
+    fun pow2 n = Word.toInt(Word.<<(Word.fromInt 1, Word.fromInt n))
 
     exception Unbalanced
     fun transpose [] = []

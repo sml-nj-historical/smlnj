@@ -41,18 +41,21 @@ structure Control : CONTROL =
     struct
 	val print	= ref false
 	val printPhases	= ref false
-	val inlineThreshold = ref 16
-	val unrollThreshold = ref 20
-	val specialize	= ref true
-	val liftLiterals= ref false
-	val sharewrap	= ref true
-	val maxargs	= ref 10
-	val saytappinfo	= ref false	(* for typelifting statistics *)
 	val phases	= ref ["lcontract", "specialize", "fixfix", "fcontract",
 			       "wrap", "fcontract",
 			       (* "names2deb", "typelift", "deb2names", *)
-			       "reify",
-			       "loopify", "fcontract", "fixfix", "fcontract"]
+			       "reify", "loopify", "fcontract",
+			       "fixfix", "fcontract"]
+
+	val inlineThreshold = ref 16
+	val unrollThreshold = ref 20
+	val maxargs	    = ref 10
+	val dropinvariant   = ref true
+
+	val specialize	= ref true
+	val liftLiterals= ref false
+	val sharewrap	= ref true
+	val saytappinfo	= ref false	(* for typelifting statistics *)
 			      
 	(* only for temporary debugging *)
 	val misc	= ref 0
@@ -201,11 +204,3 @@ structure Control : CONTROL =
     val lambdaSplitEnable = ref false
     val crossInlineEnable  = ref false
 end
-
-
-(*
- * $Log: control.sml,v $
- * Revision 1.4  1998/05/23 14:10:30  george
- *   Fixed RCS keyword syntax
- *
- *)

@@ -292,8 +292,8 @@ fun click s c = (if !CTRL.misc = 1 then say s else (); Stats.addCounter c 1)
 (*  val c_dropargs	 = Stats.newCounter[] *)
     val c_cstarg = Stats.newCounter[]
     val c_outofscope = Stats.newCounter[]
-    val _ = Stats.registerStat(Stats.newStat("FC-cstarg", [c_cstarg]))
-    val _ = Stats.registerStat(Stats.newStat("FC-outofscope", [c_outofscope]))
+(* (*      val _ = Stats.registerStat(Stats.newStat("FC-cstarg", [c_cstarg])) *) *)
+(* (*      val _ = Stats.registerStat(Stats.newStat("FC-outofscope", [c_outofscope])) *) *)
 
 fun contract (fdec as (_,f,_,_), counter) = let
 
@@ -525,15 +525,14 @@ fun fcFix (fs,le) =
 	    in f bs
 	    end *)
 	(* The actual function contraction *)
-	fun fcFun (m,[],acc) = acc
-	  | fcFun (m,(f,body,args,fk as {inline,cconv,known,isrec},actuals)::fs,
-		   acc) =
+	fun fcFun ((f,body,args,fk as {inline,cconv,known,isrec},actuals),
+		   (m,fs)) =
 	    let val fi = C.get f
-	    in if C.dead fi then fcFun(m, fs, acc)
+	    in if C.dead fi then (m,fs)
 	       else if C.iusenb fi = C.usenb fi then
 		   (* we need to be careful that undertake not be called
 		    * recursively *)
-		   (C.use NONE fi; undertake m f; fcFun(m, fs, acc))
+		   (C.use NONE fi; undertake m f; (m,fs))
 	       else
 		   let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
 		       val saved_ic = inline_count()
@@ -560,9 +559,8 @@ fun fcFix (fs,le) =
 			* gets inlined afterwards, the counts will reflect the
 			* new contracted code while we'll be working on the
 			* the old uncontracted code *)
-		       val nm = if null fs then nm else
-			   addbind(m, f, Fun(f, nbody, args, nfk, ref []))
-		   in fcFun(nm, fs, (nfk, f, args, nbody)::acc)
+		       val nm = addbind(m, f, Fun(f, nbody, args, nfk, ref []))
+		   in (nm, (nfk, f, args, nbody)::fs)
 		   (*  before say ("\nExiting "^(C.LVarString f)) *)
 		   end
 	    end
@@ -642,7 +640,7 @@ fun fcFix (fs,le) =
 			(* if some args are not used, let's drop them *)
 			if not (List.all (fn x => x) used) then
 			    (click_dropargs();
-			     dropargs (fn xs => OU.filter(used, xs)))
+			     dropargs (fn xs => OU.filter used xs))
 				
 			(* eta-split: add a wrapper for escaping uses *)
 			else if C.escaping gi then
@@ -665,16 +663,20 @@ fun fcFix (fs,le) =
 	(* check for eta redexes *)
 	val (nm,fs,_) = foldl fcEta (nm,[],[]) fs
 			      
-	(* move the inlinable functions to the end of the list *)
-	val (f1s,f2s) =
+	val (funs,wrappers) =
 	    List.partition (fn (_,_,_,{inline=F.IH_ALWAYS,...},_) => true
 			     | _ => false) fs
-	val fs = f2s @ f1s
+	val (funs,maybes) =
+	    List.partition (fn (_,_,_,{inline=F.IH_MAYBE _,...},_) => true
+			     | _ => false) funs
 			   
 	(* contract the main body *)
 	val nle = loop nm le cont
 	(* contract the functions *)
-	val fs = fcFun(nm, fs, [])
+	val fs = []
+	val (nm,fs) = foldl fcFun (nm,fs) funs
+	val (nm,fs) = foldl fcFun (nm,fs) maybes
+	val (nm,fs) = foldl fcFun (nm,fs) wrappers
 	(* junk newly unused funs *)
 	val fs = List.filter (used o #2) fs
     in
@@ -683,12 +685,8 @@ fun fcFix (fs,le) =
 	  | [f1 as ({isrec=NONE,...},_,_,_),f2] =>
 	    (* gross hack: `wrap' might have added a second
 	     * non-recursive function.  we need to split them into
-	     * 2 FIXes.  This is _very_ ad-hoc.  We know that the wrapper
-	     * ("wrap") is inlinable while the main function ("fun") isn't,
-	     * so `wrap' is in f1s and `fun' is in f2s.  Hence `wrap' is after
-	     * `fun' when passed to fcFun which inverts the order, so
-	     * f1 is `wrap' and f2 is `fun'. *)
-	    F.FIX([f2], F.FIX([f1], nle))
+	     * 2 FIXes.  This is _very_ ad-hoc. *)
+	    F.FIX([f1], F.FIX([f2], nle))
 	  | _ => F.FIX(fs, nle)
     end
 
