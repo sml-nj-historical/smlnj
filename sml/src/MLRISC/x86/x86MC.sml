@@ -264,10 +264,16 @@ struct
        (*esac*))
      | I.MOVE{mvOp=I.MOVB, dst, src=I.Direct r} => encodeReg(0wx88, r, dst)
      | I.MOVE{mvOp=I.MOVB, dst=I.Direct r, src} => encodeReg(0wx8a, r, src)
-     | I.MOVE{mvOp=I.MOVB, ...} => error "MOVE: MOVB"
-     | I.MOVE{mvOp=I.MOVZBL, src=I.Immed _, ...} => error "MOVE: MOVZBL"
-     | I.MOVE{mvOp=I.MOVZBL, src, dst=I.Direct r} =>
-         eBytes(0wx0f :: 0wxb6 :: eImmedExt(rNum r, src))
+     | I.MOVE{mvOp, src=I.Immed _, ...} => error "MOVE: Immed"
+     | I.MOVE{mvOp, src, dst=I.Direct r} =>
+       let val byte2 = 
+               case mvOp of
+                 I.MOVZBL => 0wxb6 
+               | I.MOVZWL => 0wxb7 
+               | I.MOVSBL => 0wxbe 
+               | I.MOVSWL => 0wxbf 
+               | _ => error "MOV[SZ]X"
+       in  eBytes(0wx0f :: byte2 :: eImmedExt(rNum r, src)) end
      | I.MOVE _ => error "MOVE"
      | I.LEA{r32, addr} => encodeReg(0wx8d, r32, addr)
      | I.CMPL{lsrc, rsrc} => arith(0wx38, 7) (rsrc, lsrc)
