@@ -37,131 +37,171 @@ Parse/
    * modules and signatures, signature matching, functor application
    * code found in directories Semant, ElabData, Elaborator
 
+[***
+ What is the distinction between Basics and Semant?  Should these be
+ merged?  How about ElabData?  Some of these files (Semant/types) might
+ also fit there.
+
+ We have Basics/*, Semant/basics, ElabData/basics, and Elaborator/basics.
+ What is the rationale telling us what goes in each of these places?
+
+ This complex organization seems to be partially motivated by the goal
+ of separating out any features that are SML/NJ-specific from the generic
+ SML stuff.
+***]
+
 Basics
+
   mlcomp/
-    symbol.sig/sml      -- symbols (should be in ElabData?)
-    fastsymbol.sig/sml  -- fast symbols (should be in ElabData?)
-    fixity.sml		-- fixity properties (should be in ElabData)
-    persstamps.sig/sml  -- persistant stamps (16 byte vectors)
-    persmap.sml		-- finite maps over pids (persistent stamps)
-    pidenv.sig/sml	-- environments using pid (persistant stamps) as keys
-    compileexn.sml	-- Compile exception (where used?)
-  miscutil/  (why not in MiscUtil?)
-    intstrmap.sig/sml   -- int/string maps for use in environments;
-			   appears redundant with IntStrMapV defined in
-			   Env (ElabData/basics/env.sml)
-  			   used in Tuples, ElabCore, Parse/lex/tokentable.sml.
+    basic front-end data structures (e.g. symbols, stamps, ...)
+      symbol.sig/sml      -- symbols (should be in ElabData?)
+      fastsymbol.sig/sml  -- fast symbols (should be in ElabData?)
+      fixity.sml	  -- fixity properties (should be in ElabData)
+      persstamps.sig/sml  -- persistant stamps (16 byte vectors)
+      persmap.sml	  -- finite maps over pids (persistent stamps)
+      pidenv.sig/sml	  -- environments using pid (persistant stamps) as keys
+      compileexn.sml	  -- Compile exception (where used?)
+
+  miscutil/  
+    some left-over stuff (why not in MiscUtil?  may be redundant)
+      intstrmap.sig/sml   -- int/string maps for use in environments;
+			     appears redundant with IntStrMapV defined in
+			     Env (ElabData/basics/env.sml)
+			     used in Tuples, ElabCore, Parse/lex/tokentable.sml.
   errormsg/
-    errormsg.sig/sml    -- error messages
+    error messages
+      errormsg.sig/sml    -- error message interface
+
   source/
-    pathnames.sig/sml   -- file path names
-    source.sig/sml      -- input source datastructure
-    sourcemap.sig/sml   -- map character positions in source to line no/column
-			   supporting #line "declaration"
+    -- the source abstraction + file pathnames
+      pathnames.sig/sml   -- file path names
+      source.sig/sml      -- input source datastructure
+      sourcemap.sig/sml   -- map character positions in source to line no/column
+			     supporting #line "declaration"
+
   print/
-    pp-wrapper.sml	-- implements old PP interface using new SML/NJ Lib PP
-    printutil.sig/sml   -- some print utilities (uses Symbol)
-    printcontrol.sml    -- print control flags, out, say
+    -- some printing support (more elsewhere?)
+      pp-wrapper.sml	  -- implements old PP interface using new SML/NJ Lib PP
+      printutil.sig/sml   -- some print utilities (uses Symbol)
+      printcontrol.sml    -- print control flags; out, say functions
+
   stats/
-    stats.sml		-- facilities for defining timed phases
+      stats.sml		  -- facilities for defining timed phases
+
   main/
-    basiccontrol.sml    -- printWarning control flag, topregistry
-			   uses ControlRegistry, Controls
+      basiccontrol.sml    -- printWarning control flag, topregistry
+			     uses ControlRegistry, Controls
 
 
 Semant
 
   basics/
-    inlinfo.sig/sml     -- inlining info (?)
+    -- some "basic" stuff -- why not in Basics?
+      inlinfo.sig/sml     -- inlining info (?)
 
   elaborate/
-    elabmod.sml         -- module level elaboration (why not in Elaborator)
-    elabtop.sml         -- top-level elaboration
+    -- module level, top level elaboration (why not under Elaborator?)  
+      elabmod.sml         -- module level elaboration
+      elabtop.sml         -- top-level elaboration
 
   modules/
-    evalent.sml
-    instantiate.sml
-    instantiate-param.sml
-    module-plists.sml
-    sigmatch.sml
+    -- mechanisms for module elaboration.  "Entity" is the static-phase
+       computation element associated with a module (a kind of expression).
+       entity expressions are basically a typed lambda calculus
+      evalent.sml         -- evaluation of entity expressions
+      instantiate.sml     -- create a free "realization" from a signature
+      instantiate-param.sml  -- like instantiate.sml, but different (how?)
+      module-plists.sml   -- ???
+      sigmatch.sml        -- signature matching (the type-checking of modules)
 
-  pickle/   -- pickling static environments
-    pickle-sym-pid.sml
-    unpickle-sym-pid.sml
-    pickmod-new.sml
-    unpickmod-new-sml
-    rehash.sml
+  pickle/
+    -- pickling static environments (the non-"new" variants should go away?)
+      pickle-sym-pid.sml
+      unpickle-sym-pid.sml
+      pickmod-new.sml
+      unpickmod-new-sml
+      rehash.sml
 
   statenv/
-    prim.sml
+    -- hand made primitive types, constructors, etc. 
+      prim.sml
 
   types/
-    cproto.sml
-    tp-var-info.sml
-    types-reformat.sml
-    typecheck.sml
+    -- some types stuff [why not in ElabData/types?]
+      cproto.sml
+      tp-var-info.sml
+      types-reformat.sml
+      typecheck.sml
 
 
 ElabData
+  -- data structures and utilities used in elaboration
 
   basics/
-    lambdavar.sig/sml
-      lambda variables, the abstract representation of variables, used
-      as roots of dynamic access chains
-    access.sig/sml
-      dynamic access paths
-    env.sig/sml
-      generic environments, mapping symbols to unspecified binding type
-    stamps.sig/sml
-      static identifiers, used for nominal type equivalence
-    stampmap.sml
-      generic finite mappings over stamps
-    sympaths.sig/sml
-      SymPath and InvPath: direct and inverse symbolic paths (selecting
-      module components)
-    ii.sml [FLINT]
-      FLINT related information for inlining (why is this in elaborator?)
-    lambdavar.sig/sml
-      lambda variables, the abstract representation of variables
-    core-ptnum.sml
-      core prim-type numbers (??? -- essentially the same as basic-ptnum.sml) 
-    coresym.sml
-      defines the special structure symbol "_Core" used to access certain
-      special bindings (e.g Match and Bind exceptions)
+    -- some basic data structures used in elaboration
+      lambdavar.sig/sml
+	lambda variables, the abstract representation of variables, used
+	as roots of dynamic access chains
+      access.sig/sml
+	dynamic access paths
+      env.sig/sml
+	generic environments, mapping symbols to unspecified binding type
+      stamps.sig/sml
+	static identifiers, used for nominal type equivalence
+      stampmap.sml
+	generic finite mappings over stamps
+      sympaths.sig/sml
+	SymPath and InvPath: direct and inverse symbolic paths (selecting
+	module components)
+      ii.sml [FLINT]
+	FLINT related information for inlining (why is this in the elaborator?)
+      lambdavar.sig/sml
+	lambda variables, the abstract representation of variables
+      core-ptnum.sml
+	core prim-type numbers (??? -- essentially the same as basic-ptnum.sml) 
+      coresym.sml
+	defines the special structure symbol "_Core" used to access certain
+	special bindings (e.g Match and Bind exceptions)
 
-  syntax/   -- (typed) abstract syntax
-    absyn.sig/sml   -- the abstract syntax types
-    varcon.sig/sml  -- variable and data constructor representations
-    absynutil.sml   -- utility functions for building tuple patterns and expressions
+  syntax/
+    -- (typed) abstract syntax
+      absyn.sig/sml   -- the abstract syntax types
+      varcon.sig/sml  -- variable and data constructor representations
+      absynutil.sml   -- utility functions for building tuple patterns and expressions
 
-  types/    -- representing, constructing and manipulating types
-    types.sig/sml      -- the representation of SML types
-    typesutil.sig/sml  -- large collection of utility functions for working with types
-    tuples.sml         -- fns for constructing tuple and record types
-    core-basictypes.sml -- building the primitive types and associated values
+  types/
+    -- representing, constructing and manipulating types
+      types.sig/sml      -- the representation of SML types
+      typesutil.sig/sml  -- large collection of utility functions for working with types
+      tuples.sml         -- fns for constructing tuple and record types
+      core-basictypes.sml -- building the primitive types and associated values
 
   statenv/
-    bindings.sig/sml   -- the basic binding forms (values, types, signatures, etc.)
-    statenv.sig/sml    -- instantiate generic environments with ML bindings
-    lookup.sig/sml     -- accessing symbols in environments
-    genmap.sml         -- rapid modmap generation based on modtrees
-    coreacc.sml        -- access components of the _Core structure
-    browse.sml         -- "browsing" the static environment (???)
+    -- representation and mechanism for static environments
+      bindings.sig/sml   -- the basic binding forms (values, types, signatures, etc.)
+      statenv.sig/sml    -- instantiate generic environments with ML bindings
+      lookup.sig/sml     -- accessing symbols in environments
+      genmap.sml         -- rapid modmap generation based on modtrees
+      coreacc.sml        -- access components of the _Core structure
+      browse.sml         -- "browsing" the static environment (???)
 
-  modules/   -- representation of modules
-    modules.sig/sml    -- representation of modules and signatures
-    moduleutil.sig/sml -- lots of utility functions for modules
-    moduleid.sml       -- module identities used in Modmaps ???
-    entpath.sml        -- 
-    entityenv.sig/sml  -- enity environments mapping entity variables
-    epcontext.sml      -- 
+  modules/
+    -- representation of modules
+      modules.sig/sml    -- representation of modules and signatures
+      moduleutil.sig/sml -- lots of utility functions for modules
+      moduleid.sml       -- module identities used in Modmaps ???
+      entpath.sml        -- 
+      entityenv.sig/sml  -- enity environments mapping entity variables
+      epcontext.sml      -- 
 
   main/
-    compinfo.sml       -- elaboration context parameter
-    edcontrol.sig/sml  -- control flags for ElabData
+    -- control flags and contex parameters
+      compinfo.sml       -- elaboration context parameter
+      edcontrol.sig/sml  -- control flags for ElabData
 
 
 Elaborator
+  -- the actual elaboration
 
   basics/
     elabcontrol.sml    -- Elaborator control flags
