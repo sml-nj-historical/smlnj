@@ -35,6 +35,12 @@ cp config/preloads preloads.standard
 #
 MAKE=make
 
+#
+# Make sure we don't have any unpleasant surprises due to the installing
+# user's process environment:
+#
+unset CM_PATHCONFIG
+
 SHELL=/bin/sh
 echo $this: Using shell $SHELL.
 
@@ -383,7 +389,9 @@ standalone() {
 	echo $this: Building $TARGET.
 	unpack $2 $SRCDIR $1 $1
 	cd $SRCDIR/$1
-	./build
+	# build it, but make sure we don't pick up some (unrelated)
+	# local path configuration...
+	CM_LOCAL_PATHCONFIG=/dev/null ./build
 	if [ -r $TARGETLOC ] ; then
 	    mv $TARGETLOC $HEAPDIR/$TARGET
 	    if [ ! -f $BINDIR/$1 ] ; then

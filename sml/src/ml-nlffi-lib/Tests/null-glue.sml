@@ -1,5 +1,5 @@
 structure Null = GenNull.GenNullFn
-		    (fun library () =
+		    (val library =
 			 DynLinkage.open_lib { name = "./null.so",
 					       lazy = true,
 					       global = true })

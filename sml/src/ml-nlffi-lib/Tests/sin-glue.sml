@@ -1,2 +1,1 @@
-structure Sin = GenSin.GenSinFn
-		(fun library () = DynLinkage.main_lib)
+structure Sin = GenSin.GenSinFn (val library = DynLinkage.main_lib)

@@ -1,6 +1,0 @@
-Library
-	structure BF
-is
-	$/basis.cm
-	$/c.cm
-	bf.sml

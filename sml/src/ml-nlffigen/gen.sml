@@ -962,7 +962,7 @@ end = struct
 	    sp ();
 	    PP.openHVBox strpp (PP.Rel 1);
 	    str "(";
-	    pr_vdecl ("library", Arrow (Unit, Type "DynLinkage.lib_handle"));
+	    pr_vdecl ("library", Type "DynLinkage.lib_handle");
 	    app pr_istruct_arg incomplete_structs;
 	    app pr_iunion_arg incomplete_unions;
 	    str ")";
@@ -990,8 +990,8 @@ end = struct
 	    (* low-level call operations for all function pointers *)
 	    app pr_fptr_rti fptr_types;
 
-	    (* grab the library handle *)
-	    nl (); str "val so_h = library ()";
+	    (* the library handle (handle on shared object) *)
+	    nl (); str "val so_h = library";
 	    (* addr handles for global variables *)
 	    app pr_gvar_addr gvars;
 	    (* addr handles for global C functions *)
