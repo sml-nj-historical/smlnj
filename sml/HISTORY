@@ -7,6 +7,21 @@ description.
 
 The form of an entry should be:
 
+Name:
+Date: yyyy/mm/dd
+Tag: <post-commit CVS tag>
+Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/04/23 10:40:00 CDT
+Tag: blume-20040423-ml-build
+Description:
+
+The ml-build script now terminates with a non-0 status when something
+goes wrong.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/04/22 16:35:00 CDT
 Tag: blume-20040422-Option
@@ -14,12 +29,6 @@ Description:
 
 Made exception Option to be the same as exception Option.Option
 (as it should be).
-
-----------------------------------------------------------------------
-Name:
-Date: yyyy/mm/dd
-Tag: <post-commit CVS tag>
-Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)

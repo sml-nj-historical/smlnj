@@ -69,6 +69,6 @@ if $SML $dulist @CMbuild $root $cmfile $heap $listfile $linkargsfile ; then
     if [ -r $linkargsfile ]; then
 	$LINK `cat $linkargsfile`
     fi
+else
+    exit $?
 fi
-
-exit $?
