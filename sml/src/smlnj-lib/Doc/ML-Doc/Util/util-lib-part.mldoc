@@ -1,6 +1,6 @@
 <!-- util-lib-part.mldoc --
   -- --
-  -- COPYRIGHT (c) 1998 Bell Laboratories, Lucent Technologies. --
+  -- COPYRIGHT (c) 2001 Bell Laboratories, Lucent Technologies. --
   -- --
   -- The root of the Utility library part of the manual.  -->
 
@@ -47,5 +47,6 @@
 <INCLFILE FILE="splay-map-fn">
 <INCLFILE FILE="splay-set-fn">
 <INCLFILE FILE="splaytree">
+<INCLFILE FILE="uref">
 </SECTION>
 

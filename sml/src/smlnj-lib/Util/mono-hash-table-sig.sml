@@ -30,6 +30,9 @@ signature MONO_HASH_TABLE =
 	 * then the old item is discarded.
 	 *)
 
+    val inDomain : 'a hash_table -> Key.hash_key -> bool
+	(* return true, if the key is in the domain of the table *)
+
     val lookup : 'a hash_table -> Key.hash_key -> 'a
 	(* Find an item, the table's exception is raised if the item doesn't exist *)
 

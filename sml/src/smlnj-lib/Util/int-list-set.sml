@@ -145,6 +145,7 @@ structure IntListSet :> ORD_SET where type Key.ord_key = Int.int =
     val foldr = List.foldr
     val foldl = List.foldl
     val filter = List.filter
+    val partition = List.partition
     val exists = List.exists
     val find = List.find
 

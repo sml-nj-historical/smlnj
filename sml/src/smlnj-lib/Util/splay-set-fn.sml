@@ -283,13 +283,30 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
             | filt (SplayObj{value,left,right},tree) = let
                 val t' = filt(right,filt(left,tree))
                 in
-                  if p value then insert(value,t')
-                  else t'
+                  if p value then insert(value,t') else t'
                 end
           in
             case filt(!root,(0,SplayNil)) of
               (0,_) => EMPTY
             | (cnt,t) => SET{nobj=cnt,root=ref t}
+          end
+
+    fun partition p EMPTY = (EMPTY, EMPTY)
+      | partition p (SET{root,...}) = let
+          fun filt (SplayNil, tree1, tree2) = (tree1, tree2)
+            | filt (SplayObj{value,left,right}, tree1, tree2) = let
+                val (t1, t2) = filt(left, tree1, tree2)
+		val (t1', t2') = filt(right, t1, t2)
+                in
+                  if p value
+		    then (insert(value, t1'), t2')
+                    else (t1', insert(value, t2'))
+                end
+	  fun mk (0, _) = EMPTY
+	    | mk (cnt, t) = SET{nobj=cnt, root=ref t}
+	  val (t1, t2) = filt (!root, (0, SplayNil), (0, SplayNil))
+          in
+	    (mk t1, mk t2)
           end
 
     fun exists p EMPTY = false

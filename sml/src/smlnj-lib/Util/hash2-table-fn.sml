@@ -139,6 +139,20 @@ functor Hash2TableFn (
 	    (* end case *)
 	  end
 
+  (* return true, if the key is in the domain of the table *)
+    fun inDomain (hashVal, sameKey) tbl key = let
+	  val arr = !tbl
+	  val hash = hashVal key
+	  val indx = index (hash, Array.length arr)
+	  fun look HTRep.NIL = false
+	    | look (HTRep.B(h, k, v, r)) = 
+		((hash = h) andalso sameKey(key, k)) orelse look r
+	  in
+	    look (Array.sub (arr, indx))
+	  end
+    fun inDomain1 (TBL{tbl1, ...}) = inDomain (Key1.hashVal, Key1.sameKey) tbl1
+    fun inDomain2 (TBL{tbl2, ...}) = inDomain (Key2.hashVal, Key2.sameKey) tbl2
+
   (* Look for an item, the table's exception is raised if the item doesn't exist *)
     fun lookup (hashVal, sameKey) (tbl, not_found) key = let
 	  val arr = !tbl

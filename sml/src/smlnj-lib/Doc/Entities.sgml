@@ -2,6 +2,7 @@
 <!-- code to. -->
 
 <!ENTITY SMLNJ-LIB SDATA "SML/NJ Library">
+<!ENTITY SML SDATA "SML">
 
 <!-- external documents -->
 <!ENTITY SML-BASIS-DOC  SDATA "SML-Basis-Doc">
@@ -31,6 +32,7 @@
 <!ENTITY MONO-DYNAMIC-ARRAY SDATA "mono-dynamic-array-sig.sml">
 <!ENTITY ORD-MAP SDATA "ord-map-sig.sml">
 <!ENTITY LIST-SORT SDATA "listsort-sig.sml">
+<!ENTITY UREF SDATA "uref-sig.sml">
 
 <!-- RegExp library filename entities -->
 <!ENTITY REGEXP SDATA "regexp-sig.sml">

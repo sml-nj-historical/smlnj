@@ -79,6 +79,8 @@ signature ORD_SET =
          * in decreasing order
          *)
 
+    val partition : (item -> bool) -> set -> (set * set)
+
     val filter : (item -> bool) -> set -> set
 
     val exists : (item -> bool) -> set -> bool
