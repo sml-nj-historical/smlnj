@@ -108,7 +108,9 @@ structure OS_IO : OS_IO =
     end (* local *)
 *)
 
-    val poll = SMLBasis.poll
+    (* val poll = SMLBasis.poll *)
+	  (* how is this supposed to work? *)
+    fun poll (pdl, to) = raise Fail "poll not yet implemented"
 
   (* check for conditions *)
     fun isIn (PollInfo(_, flgs)) = #rd flgs
