@@ -54,7 +54,7 @@ Description:
  - made makeml script's verbosity level configurable via environment
    variable (MAKEML_VERBOSITY)
 
- - eliminteded placeholder implementations for f32l, w16s, i16s, and f32s
+ - eliminated placeholder implementations for f32l, w16s, i16s, and f32s
    in rawmem-x86.sml; we are now using the real thing
 
 ----------------------------------------------------------------------
