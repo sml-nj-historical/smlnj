@@ -87,6 +87,18 @@ fun catchExn f (le,g) =
 fun laterPhase postReify = postReify
 
 fun check phase envs lexp = let
+    (* imperative table -- keeps track of already bound variables,
+     * so we can tell if a variable is re-bound (which should be 
+     * illegal).  Note that lvars and tvars actually share the same
+     * namespace!   --league, 11 April 1998
+     *)
+  val definedLvars = Intset.new()
+  fun lvarDef le (lvar:lvar) = 
+      if Intset.mem definedLvars lvar then
+          errMsg (le, ("lvar " ^ (LambdaVar.prLvar lvar) ^ " redefined"), ())
+      else
+          Intset.add definedLvars lvar
+
   val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
   val ltTAppChk =
     if !Control.CG.checkKinds then LT.lt_inst_chk_gen()
@@ -189,10 +201,14 @@ fun check phase envs lexp = let
 	| (INT32 _ | WORD32 _) => LT.ltc_int32
 	| REAL _ => LT.ltc_real
 	| STRING _ => LT.ltc_string
-      fun typeofFn ve (_,_,vts,eb) = let
-	fun split ((lv,t), (ve,ts)) = (LT.ltInsert (ve,lv,t,d), t::ts)
+      fun typeofFn ve (_,lvar,vts,eb) = let
+	fun split ((lv,t), (ve,ts)) = 
+            (lvarDef le lv;
+             (LT.ltInsert (ve,lv,t,d), t::ts))
 	val (ve',ts) = foldr split (ve,[]) vts
-	in (ts, typeIn ve' eb)
+	in 
+            lvarDef le lvar;
+            (ts, typeIn ve' eb)
 	end
 
       (* There are lvars hidden in Access.conrep, used by dcon.
@@ -243,7 +259,9 @@ fun check phase envs lexp = let
       in case le
        of RET vs => map typeofVal vs
 	| LET (lvs,e,e') =>
-	  typeIn (foldl2 (extEnv, venv, lvs, typeof e, mismatch (le,"LET"))) e'
+          (app (lvarDef le) lvs;
+           typeIn (foldl2 (extEnv, venv, lvs, 
+                           typeof e, mismatch (le,"LET"))) e')
 	| FIX ([],e) =>
 	  (say "\n**** Warning: empty declaration list in FIX\n"; typeof e)
 	| FIX ((fd as ((FK_FUN{isrec=NONE,...} | FK_FCT), 
@@ -291,9 +309,12 @@ fun check phase envs lexp = let
 	    end
 	| APP (v,vs) => ltFnApp (le,"APP") (typeofVal v, map typeofVal vs)
 	| TFN ((lv,tks,e), e') => let
-	    val ks = map #2 tks
+            fun getkind (tv,tk) = (lvarDef le tv; tk)
+	    val ks = map getkind tks
 	    val lts = typeInEnv (LT.tkInsert (kenv,ks), venv, DI.next d) e
-	    in typeWith (lv, LT.ltc_poly (ks,lts)) e'
+	    in 
+                lvarDef le lv;
+                typeWith (lv, LT.ltc_poly (ks,lts)) e'
 	    end
 	| TAPP (v,ts) => ltTyApp (le,"TAPP") (typeofVal v, ts, kenv)
 	| SWITCH (_,_,[],_) => errMsg (le,"empty SWITCH",[])
@@ -307,7 +328,9 @@ fun check phase envs lexp = let
 		      val fp = (le,"SWITCH DECON")
 		      val ct = chkSnglInst fp (lt,ts)
 		      val nts = ltFnAppR fp (ct, [selLty])
-		      in foldl2 (extEnv, venv, [v], nts, mismatch fp)
+		      in 
+                          lvarDef le v;
+                          foldl2 (extEnv, venv, [v], nts, mismatch fp)
 		      end
 		  | (INTcon _ | WORDcon _) => g LT.ltc_int
 		  | (INT32con _ | WORD32con _) => g LT.ltc_int32
@@ -329,6 +352,7 @@ fun check phase envs lexp = let
 	    end
 	| CON ((_,conrep,lt), ts, u, lv, e) =>
             (checkConrep conrep;
+             lvarDef le lv;
              typeWithBindingToSingleRsltOfInstAndApp ("CON",lt,ts,[u],lv) e)
 	| RECORD (rk,vs,lv,e) => let
 	    val lt = case rk
@@ -354,7 +378,9 @@ fun check phase envs lexp = let
 		    in LT.ltc_tuple (map chkMono vs)
 		    end
 		| RK_STRUCT => LT.ltc_str (map typeofVal vs)
-	    in typeWith (lv,lt) e
+	    in 
+                lvarDef le lv;
+                typeWith (lv,lt) e
 	    end
 	| SELECT (v,n,lv,e) => let
 	    val lt = catchExn
@@ -362,7 +388,9 @@ fun check phase envs lexp = let
 		(le,
 		 fn () =>
 		    (say "SELECT from wrong type or out of range"; LT.ltc_void))
-	    in typeWith (lv,lt) e
+	    in 
+                lvarDef le lv;
+                typeWith (lv,lt) e
 	    end
 	| RAISE (v,lts) => (ltMatch (le,"RAISE") (typeofVal v, ltExn); lts)
 	| HANDLE (e,v) => let val lts = typeof e
@@ -386,7 +414,8 @@ fun check phase envs lexp = let
         | PRIMOP ((_,PO.WCAST,lt,[]), [u], lv, e) => 
             (*** a hack: checked only after reifY is done ***)
             if laterPhase phase then
-              (case LT.ltd_fct lt
+              (lvarDef le lv;
+               case LT.ltd_fct lt
                 of ([argt], [rt]) => 
                       (ltMatch (le, "WCAST") (typeofVal u, argt); 
                        typeWith (lv, rt) e)
@@ -405,6 +434,7 @@ fun check phase envs lexp = let
                 | checkDict (NONE : dict option) = ()
           in
               checkDict dc;
+              lvarDef le lv;
               typeWithBindingToSingleRsltOfInstAndApp ("PRIMOP",lt,ts,vs,lv) e
           end
 (*
