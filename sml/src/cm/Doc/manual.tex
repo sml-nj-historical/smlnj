@@ -13,7 +13,7 @@ Kyoto University}
 
 \title{{\bf CM}\\
 The SML/NJ Compilation and Library Manager \\
-{\it\small (for SML/NJ version 110.20 and later)} \\
+{\it\small (for SML/NJ version 110.23 and later)} \\
 User Manual}
 
 \setlength{\parindent}{0pt}
@@ -39,18 +39,18 @@ previous version, CM is in charge of managing separate compilation and
 facilitates access to stable libraries.
 
 Programming projects that use CM are typically composed of separate
-{\em libraries}.  Libraries themselves can be internally
-sub-structured using CM's notion of {\em groups}.  Using libraries and
-groups, programs can be viewed as a {\em hierarchy of modules}.  The
-organization of large projects tends to benefit from this
-approach~\cite{blume:appel:cm99}.
+{\em libraries}.  Libraries are collections of ML compilation units
+and themselves can be internally sub-structured using CM's notion of
+{\em groups}.  Using libraries and groups, programs can be viewed as a
+{\em hierarchy of modules}.  The organization of large projects tends
+to benefit from this approach~\cite{blume:appel:cm99}.
 
 CM uses {\em cutoff} techniques~\cite{tichy94} to minimize
 recompilation work and provides automatic dependency analysis to free
 the programmer from having to specify a detailed module dependency
 graph by hand~\cite{blume:depend99}.
 
-This new version of CM emphasis on {\em working with libraries}.  This
+This new version of CM emphasizes {\em working with libraries}.  This
 contrasts with the previous implementation where the focus was on
 compilation management while libraries were added as an afterthought.
 Beginning now, CM takes a very library-centric view of the world.  In
@@ -59,30 +59,30 @@ meet this approach.
 
 \section{The CM model}
 
-A CM library is a collection of ML source files and references to
-other libraries together with an explicit export interface.  The
-export interface lists all toplevel-defined symbols of the library
-that shall be exported to its clients.  A library is described by the
-contents of its {\em description file}.
+A CM library is a collection of ML source files and may also contain
+references to other libraries together with an explicit export
+interface.  The export interface lists all toplevel-defined symbols of
+the library that shall be exported to its clients.  A library is
+described by the contents of its {\em description file}.
 
 \noindent Example:
 
 \begin{verbatim}
 Library
-    signature FOO
+    signature BAR
     structure Foo
 is
-    foo.sig
+    bar.sig
     foo.sml
     helper.sml
     basis.cm
 \end{verbatim}
 
 This library exports two definitions, one for a structure named {\tt
-Foo} and one for a signature named {\tt FOO}.  The specification for
+Foo} and one for a signature named {\tt BAR}.  The specification for
 such exports appear between the keywords {\tt Library} and {\tt is}.
 The {\em members} of the library are specified after the keyword {\tt
-is}.  Here we have three ML source files ({\tt foo.sig}, {\tt
+is}.  Here we have three ML source files ({\tt bar.sig}, {\tt
 foo.sml}, and {\tt helper.sml}) and a reference to one external
 library ({\tt basis.cm}).  The entry {\tt basis.cm} typically denotes
 the description file for the {\it Standard ML Basis
@@ -111,7 +111,8 @@ level.
 Note that these rules do not require the exports of sub-groups or
 sub-libraries to be distinct from the exports of ML source files.
 Here, the disambiguating rule is that the definition from the ML
-source overrides the definition imported from the group or library.
+source takes precedence over the definition imported from the group or
+library.
 
 The full syntax for library description files also includes provisions
 for a simple ``conditional compilation'' facility (see
@@ -123,9 +124,10 @@ delimited by \verb|(*| and \verb|*)|.
 
 In general, all definitions exported from members of a library are
 visible in all ML source files of that library.  The source code in
-those source files can refer to them directly.  Here, ``exported''
-means either a top-level definition within an ML source file or a
-definition listed in a (sub-)library's export list.
+those source files can refer to them directly without further
+qualification.  Here, ``exported'' means either a top-level definition
+within an ML source file or a definition listed in a (sub-)library's
+export list.
 
 If a library is structured into library components using {\em groups}
 (see Section~\ref{sec:groups}), then---as far as name visibility is
@@ -138,14 +140,14 @@ files within a library are detected and flagged as errors.
 \label{sec:groups}
 
 CM's group model eliminates a whole class of potential naming problems
-by providing control over name spaces for program linkage.  This has
-been described separately~\cite{blume:appel:cm99} but it sometimes
-involves the use of ``administrative'' libraries whose sole purpose is
-to rename certain definitions.
+by providing control over name spaces for program linkage. As has been
+described separately~\cite{blume:appel:cm99}, it sometimes involves
+the use of ``administrative'' libraries whose sole purpose is to
+rename certain definitions.
 
-However, under CM, ``library'' does not only refer to namespace
-management but often also to an actual file system object.  It would
-be inconvenient if name resolution problems would result in a
+However, under CM, the term ``library'' does not only mean namespace
+management but also refers to actual file system objects.  It would be
+inconvenient if name resolution problems would result in a
 proliferation of additional library files.  Therefore, CM also
 provides the notion of groups (or: library components).  Name
 resolution for groups works like name resolution for entire libraries,
@@ -157,9 +159,9 @@ The syntax of group description files is the same as that of library
 description files with the following exceptions:
 
 \begin{itemize}
-\item The initial keyword {\tt Library} is replaced with {\tt Group}
-followed by the name of the surrounding library's description file in
-parentheses.
+\item The initial keyword {\tt Library} is replaced with {\tt Group}.
+It is followed by the name of the surrounding library's description
+file in parentheses.
 \item The export list can be left empty, in which case CM will
 provide a default export list: all exports from ML source files plus
 all exports from sub-components of the component.  (Note that this does
@@ -207,8 +209,9 @@ libraries as the programmer desires.
 library that it is a component of.  However, within that library it
 can be referred to from arbitrarily many other groups.
 \item The same ML source file cannot appear more than once.  If an ML
-source file is to be referred to by multiple clients it must first be
-``wrapped'' into a library (or---if that's sufficient---a group).
+source file is to be referred to by multiple clients, it must first be
+``wrapped'' into a library (or---if all references are from within the
+same library---a group).
 \end{itemize}
 
 \subsection{Top-level groups}
@@ -217,8 +220,8 @@ Mainly to facilitate some superficial backward-compatibility, CM also
 allows groups to appear at top level, i.e., outside of any library.
 Such groups must omit the parenthetical library specification and then
 cannot also be used within libraries. One could think of the top level
-itself as a ``virtual unnamed library''.  Top-level groups are then
-components of this virtual library.
+itself as a ``virtual unnamed library'' whose components are these
+top-level groups.
 
 \section{Naming objects in the file system}
 
@@ -231,12 +234,12 @@ different approach to file name resolution.
 The main difficulty lies in the fact that files or even whole
 directories may move after CM has already partially (but not fully)
 processed them.  For example, this happens when the {\em autoloader}
-(see Section~\ref{sec:autoload}) has been used before saving an ML
-session via {\tt SMLofNJ.exportML}.  Under a correct installation, CM
-will now be able to resume such a session even when operating in a
-different environment, perhaps on a different machine with different
-file system mounts, or a different location of the SML/NJ
-installation.
+(see Section~\ref{sec:autoload}) has been invoked and the session
+(including CM's internal state) is then saved via {\tt
+SMLofNJ.exportML}.  CM is now able to resume such a session even when
+operating in a different environment, perhaps on a different machine
+with different file system mounted, or a different location of the
+SML/NJ installation.
 
 For this, CM provides a configurable mechanism for locating file
 system objects.  Moreover, it invokes this mechanism as late as
@@ -285,11 +288,11 @@ current working directory.  However, CM will internally represent the
 name in such a way that it remembers the corresponding working
 directory.  Should the working directory change during an ongoing CM
 session while there still is a reference to the name, then CM will
-switch its mode of operation prepend the path of the original working
-directory. As a result, two names specified using identical
-strings but with different working directories in effect will be kept
-distinct and continue to refer to those file system location that they
-referred to when they were first seen.
+switch its mode of operation and prepend the path of the original
+working directory. As a result, two names specified using identical
+strings but at different times when different working directories were
+in effect will be kept distinct and continue to refer to the file
+system location that they referred to when they were first seen.
 \end{itemize}
 
 \subsection{Anchor configuration}
@@ -303,7 +306,7 @@ mapping can be maintained using CM's interface functions {\tt
 CM.setAnchor}, {\tt CM.cancelAnchor}, and {\tt CM.resetPathConfig}
 (see Section~\ref{sec:api}).
 
-The default location of the installation specific configuration file
+The default location of the installation-specific configuration file
 is {\tt /usr/lib/smlnj-pathconfig}.  However, normally this default
 gets replaced (via an environment variable named {\tt
 CM\_PATHCONFIG\_DEFAULT}) at installation time by a path pointing to
@@ -348,12 +351,13 @@ Functions that control CM's operation are accessible as members of a
 structure named {\tt CM}.  This structure itself is exported from a
 library called {\tt host-cm.cm}.  Other libraries can exploit CM's
 functionality simply by putting a {\tt host-cm.cm} entry into their
-own description files.  Section~\ref{sec:dynlink} shows one
+own description file.  Section~\ref{sec:dynlink} shows one
 interesting used of this feature.
 
-The library is pre-registered at the interactive prompt which is more
-than a mere convenience: Structure {\tt CM} must be known a-priori at
-top level because otherwise there would also be no way to make it known.
+The {\tt host-cm.cm} library is pre-registered at the interactive
+prompt.  This is more than a mere convenience: structure {\tt CM} must
+already be known a-priori at top level because otherwise there would
+also be no way to make it known.
 
 Here is a description of the structure's members:
 
@@ -391,7 +395,7 @@ success or failure of the operation ({\tt true} = success).
 \subsubsection*{Linking}
 
 In SML/NJ, linking means executing top-level code of each compilation
-unit.  The resulting bindings can then be bound at the interactive top
+unit.  The resulting bindings can then be registered at the interactive top
 level.
 
 \begin{verbatim}
@@ -472,9 +476,10 @@ these warnings off. The default is {\em true} and can be overriden at
 startup time by the environment variable {\tt CM\_WARN\_OBSOLETE}.
 
 {\tt CM.debug} can be used to turn on debug mode.  This currently has
-no effect since there is no debug code in the implementation. The
-default is {\em false} and can be overriden at startup time by the
-environment variable {\tt CM\_DEBUG}.
+the effect of dumping a trace of the master-slave protocol for
+parallel and distributed compilation (see Section~\ref{sec:parmake})
+to TextIO.stdOut. The default is {\em false} and can be overriden at
+startup time by the environment variable {\tt CM\_DEBUG}.
 
 \subsubsection*{Path anchors}
 
@@ -526,9 +531,9 @@ of {\tt NONE} means that the variable is not defined.
 
 Some care is necessary as {\tt CM.symval} does not check whether the
 syntax of the argument string is valid.  (However, the worst thing
-that could happen is that the name of a variable cannot be written out
-in CM's description files and that, therefore, the associated value
-cannot be queried.)
+that could happen is that there is no way of naming the variable
+within CM's description files, and that, therefore, the associated
+value cannot be accessed.)
 
 \subsubsection*{Status inspection}
 
@@ -541,8 +546,7 @@ CM keeps a lot of internal state.  Some of this state can be inspected.
 
 {\tt CM.showPending} lists to standard output the names of all symbols
 which are currently registered as being bound at top level via the
-autoloading mechanism and which so far have not actually been
-resolved.
+autoloading mechanism but so far have not actually been resolved.
 
 {\tt CM.listLibs} lists to standard output the path names of library
 description files for those stable libraries that are currently known
@@ -585,21 +589,57 @@ not very advisable since it will also break the association with
 pre-loaded libraries.  It may be a useful tool for determining the
 amount of space taken up by the internal state, though.
 
+\subsubsection*{Compile servers}
+
+On Unix-like systems, CM supports parallel compilation.  For computers
+connected using a LAN, this can be extended to distributed compilation
+using a network file system and the operating system's ``rsh''
+facility.  For a detailed discussion, see Section~\ref{sec:parmake}.
+
+\begin{verbatim}
+  val server_start :
+      { name: string,
+        cmd: string * string list,
+        pathtrans: (string -> string) option,
+        pref: int } -> bool
+  val server_stop : string -> unit
+  val server_kill : string -> unit
+\end{verbatim}
+
+CM is put into ``parallel'' mode by attaching at least one compile
+server.  Compile servers are attached using invocations of {\tt
+CM.server\_start}.  The function takes the name of the server (as an
+arbitrary but unique string) ({\tt name}), the Unix command used to
+start the server in a form suitable as an argument to {\tt
+Unix.execute} ({\tt cmd}), an optional ``path transformation
+function'' for converting local absolute path names to remote absolute
+pathnames ({\tt pathtrans}), and a numeric ``preference'' value that
+is used to choose servers at times when more than one is idle ({\tt
+pref}).  The boolean result indicates success or failure of the attach
+operation.
+
+An existing server can be shut down and detached using either {\tt
+CM.server\_stop} or {\tt CM.server\_kill}.  The string argument in
+either case must match the {\tt name} argument of the corresponding
+{\tt server\_start} call.  Function {\tt server\_stop} uses CM's
+master-slave protocol to instruct the server to shut down gracefully.
+Only if this fails it may become necessary to use {\tt server\_kill}
+which will send a Unix KILL signal to destroy the server.
+
 \subsection{The autoloader}
 \label{sec:autoload}
 
 From the user's point of view, a call to {\tt CM.autoload} acts very
-much like the corresponding call ot {\tt CM.make} because the same
+much like the corresponding call to {\tt CM.make} because the same
 bindings that {\tt CM.make} would introduce into the top-level
 enviroment are also introduced by {\tt CM.autoload}.  However, most
-work will be deferred until some code entered later at the interactive
-top level refers to one or more of these bindings.  Only then will CM
-go and perform just the minimal work necessary to provide the actual
-definitions.
+work will be deferred until some code that is entered later refers to
+one or more of these bindings.  Only then will CM go and perform just
+the minimal work necessary to provide the actual definitions.
 
-In this version of CM the autoloader plays a central role.  Unlike
-before, it cannot be turned off since it provides many of the standard
-pre-defined top-level bindings in the interactive system.
+The autoloader plays a central role for the interactive system.
+Unlike in earlier versions, it cannot be turned off since it provides
+many of the standard pre-defined top-level bindings.
 
 The autoloader is a convenient tool for virtually ``loading'' an
 entire library without incurring an undue increase in memory
@@ -608,13 +648,14 @@ consumption for library modules that are not actually being used.
 \subsection{Sharing of state}
 \label{sec:sharing}
 
-By default, CM tries to let multiple invocations of {\tt CM.make} or
+Whenever it is legal, CM lets multiple invocations of {\tt CM.make} or
 {\tt CM.autoload} share dynamic state created by link-time effects.
-Of course, this is not possible if the compilation unit in question
-has recently been recompiled or depends on another compilation unit
-whose code has recently been re-executed.  The programmer can
-explicitly mark certain ML files as {\em shared}, in which case CM
-will issue a warning whenever the unit's code has to be re-executed.
+Of course, sharing is not possible (and hence not ``legal'') if the
+compilation unit in question has recently been recompiled or depends
+on another compilation unit whose code has recently been re-executed.
+The programmer can explicitly mark certain ML files as {\em shared},
+in which case CM will issue a warning whenever the unit's code has to
+be re-executed.
 
 State created by compilation units marked as {\em private} is never
 shared across multiple calls to {\tt CM.make} or {\tt CM.autoload}.
@@ -737,13 +778,15 @@ parentheses to enforce precedence.
 \subsection{CM variables}
 \label{sec:cmvars}
 
-CM provides a number of names that stand for certain integers.  The
-exact set of provided variable names depends on SML/NJ version number,
-machine architecture, and operating system.  A reference to a CM
-variable is considered an arithmetic expression. If the variable is
-not defined, then it evaluates to 0.  The expression {\tt
-defined}($v$) is a boolean expression that yields true if and only if
-$v$ is a defined CM variable.
+CM provides a number of ``variables'' (names that stand for certain
+integers). These variables may appear in expressions of the
+conditional-compilation facility. The exact set of provided variable
+names depends on SML/NJ version number, machine architecture, and
+operating system.  A reference to a CM variable is considered an
+arithmetic expression. If the variable is not defined, then it
+evaluates to 0.  The expression {\tt defined}($v$) is a boolean
+expression that yields true if and only if $v$ is a defined CM
+variable.
 
 The names of CM variables are formed starting with a letter followed
 by zero or more occurences of letters, decimal digits, apostrophes, or
@@ -810,12 +853,12 @@ is
 Here, the file {\tt bar-client.sml} gets included if {\tt
 SMLNJ\_VERSION} is greater than 110 and {\tt new-foo.sml} exports a
 structure {\tt Bar} {\em or} if {\tt SMLNJ\_VERSION <= 110} and {\tt
-old-foo.sml} exports structure {\tt Bar}. \\ Otherwise {\tt
-no-bar-so-far.sml} gets included instead.  In addition, the export of
-structure {\tt Bar} is guarded by its own existence.  (Structure {\tt
-Bar} could also be defined by {\tt no-bar-so-far.sml} in which case it
-would get exported regardless of the outcome of the other {\tt
-defined} test.)
+old-foo.sml} exports structure {\tt Bar}. \\
+Otherwise {\tt no-bar-so-far.sml} gets included instead.  In addition,
+the export of structure {\tt Bar} is guarded by its own existence.
+(Structure {\tt Bar} could also be defined by {\tt no-bar-so-far.sml}
+in which case it would get exported regardless of the outcome of the
+other {\tt defined} test.)
 
 \subsection{Explicit errors}
 
@@ -836,8 +879,8 @@ remainder of the line after the word {\tt error}.
 \nt{sym}    &\ar& \nt{letter} \{\nt{ldau}\} \\
 \\
 \nt{aatom}  &\ar& \nt{number} \vb \nt{sym} \vb \tl{(} \nt{asum} \tl{)} \vb \tl{$\tilde{~}$} \nt{aatom} \\
-\nt{aprod}  &\ar& \{\nt{aprod} (\tl{*} \vb \tl{div} \vb \tl{mod})\} \nt{aatom} \\
-\nt{asum}   &\ar& \{\nt{asum} (\tl{+} \vb \tl{-})\} \nt{aprod} \\
+\nt{aprod}  &\ar& \{\nt{aatom} (\tl{*} \vb \tl{div} \vb \tl{mod})\} \nt{aatom} \\
+\nt{asum}   &\ar& \{\nt{aprod} (\tl{+} \vb \tl{-})\} \nt{aprod} \\
 \\
 \nt{ns}     &\ar& \tl{structure} \vb \tl{signature} \vb \tl{functor} \vb \tl{funsig} \\
 \nt{mlsym}  &\ar& {\em a Standard ML identifier} \\
@@ -848,7 +891,7 @@ remainder of the line after the word {\tt error}.
 \nt{batom}  &\ar& \nt{query} \vb \nt{acmp} \vb \tl{not} \nt{batom} \vb \tl{(} \nt{bdisj} \tl{)} \\
 \nt{bcmp}   &\ar& \nt{batom} [(\ttl{=} \vb \ttl{<>}) \nt{batom}] \\
 \nt{bconj}  &\ar& \{\nt{bcmp} \tl{andalso}\} \nt{bcmp} \\
-\nt{bdisj}  &\ar& \{\nt{bconj} \tl{orelse}\} \nt{bdisj} \\
+\nt{bdisj}  &\ar& \{\nt{bconj} \tl{orelse}\} \nt{bconj} \\
 \\
 \nt{expression} &\ar& \nt{bdisj}
 \end{tabular}
@@ -857,8 +900,8 @@ remainder of the line after the word {\tt error}.
 \label{sec:access}
 
 The basic idea behind CM's access control is the following: In their
-description files groups and libraries can specify a list of
-{\em privileges} that the client must have in order to be able to use it.
+description files, groups and libraries can specify a list of
+{\em privileges} that the client must have in order to be able to use them.
 Privileges at this level are just names (strings) and must be written
 in front of the initial keyword {\tt Library} or {\tt Group}.  If one
 group or library imports from another group or library, then
@@ -867,13 +910,13 @@ In effect, to be able to use a program, one must have all privileges
 for all its libraries, sub-libraries and library components,
 components of sub-libraries, and so on.
 
-Of course, this alone would not yet be satisfactory because there
-should also be the possibility of setting up a ``safety wall:'' a
-library {\tt LSafe.cm} could ``wrap'' all the unsafe operations in
-{\tt LUnsafe.cm} with enough error checking that they become safe.
-Therefore, a user of {\tt LSafe.cm} should not also be required to
-possess the privileges that would be required if one were to use {\tt
-LUnsafe.cm} directly.
+Of course, this alone would not yet be satisfactory.  The main service
+of the access control system is that it can let a client use an
+``unsafe'' library ``safely''.  For example, a library {\tt LSafe.cm}
+could ``wrap'' all the unsafe operations in {\tt LUnsafe.cm} with
+enough error checking that they become safe.  Therefore, a user of
+{\tt LSafe.cm} should not also be required to possess the privileges
+that would be required if one were to use {\tt LUnsafe.cm} directly.
 
 In CM's access control model it is possible for a library to ``wrap''
 privileges.  If a privilege $P$ has been wrapped, then the user of the
@@ -926,9 +969,9 @@ is protected by requiring the client to possess  privilege $M$
 (see Section~\ref{sec:access}), i.e., a privilege that goes by the
 same name as the module itself.
 
-Currently, the following primitive module names are known: {\tt
-built-in}, {\tt print-hook}, {\tt use-hook}, {\tt exn-info-hook}, {\tt
-core}, {\tt init-utils}.
+User programs are strongly discouraged to access primitive modules
+directly. The exact set of primitive modules known to CM is subject to
+change without notice.
 
 \section{Files}
 
@@ -945,7 +988,7 @@ usually most parsing operations can be avoided that way.
 \item {\it Binfiles} are the SML/NJ equivalent of object files.  They
 contain executable code and a symbol table for the associated ML
 source file.
-\item {\it Library files} (sometimes called: {\em stablefiles})
+\item {\it Library files} (sometimes called: {\em stablefiles}) contain
 dependency graph, executable code, and symbol tables for an entire CM
 library including all of its components (groups).
 \end{enumerate}
@@ -1025,13 +1068,13 @@ val _ = Tools.registerStdShellCmdTool
     sml = true }
 \end{verbatim}
 
-This code can either by packaged as a CM library or entered at the
+This code can either be packaged as a CM library or entered at the
 interactive top level after loading the {\tt cm-tools.cm} library
 (e.g., via {\tt CM.autoload}).
 
-The call to {\tt Tools.newCmdGetterSetter} makes a `command
-getter-setter'' which is a value of type {\tt \{ get: unit -> string,
-set: string -> unit \} }. It can be invoked to query or set the
+The call to {\tt Tools.newCmdGetterSetter} makes a ``command
+getter-setter'' (a value of type {\tt \{ get: unit -> string,
+set: string -> unit \} }). It can be used to query or set the
 command string for the tool.  Here, the default string is {\tt
 new-ml-yacc} and can be customized at startup time using the
 environment variable {\tt CM\_NYACC}.
@@ -1071,11 +1114,116 @@ resulting in cascaded tool application.
 Less common kinds of rules can also be defined using the generic
 interface {\tt Tools.registerClass}.
 
+\section{Parallel and distributed compilation}
+\label{sec:parmake}
+
+To speed up recompilation of large projects with many ML source files,
+CM can exploit parallelism that is inherent in the dependency graph.
+Currently, the only kind of operating system for which this is
+implemented is Unix ({\tt OPSYS\_UNIX}), where separate processes are
+used.  From there, one can distribute the work across a network of
+machines by taking advantage of the network file system and the
+``rsh'' facility.
+
+To perform parallel compilations, one must attach ``compile servers'' to
+CM.  This is done using function {\tt CM.server\_start} with the following
+signature:
+
+\begin{verbatim}
+  val server_start :
+      { name: string,
+        cmd: string * string list,
+        pathtrans: (string -> string) option,
+        pref: int } -> bool
+\end{verbatim}
+
+
+Here, {\tt name} is a string uniquely identifying the server and {\tt
+cmd} is a value suitable as argument to {\tt Unix.execute}.
+
+The program to be specified by {\tt cmd} should be another instance of
+CM---running in ``slave mode''.  To start CM in slave mode, start {\tt
+sml} with a single command-line argument of {\tt @CMslave}.  For
+example, if you have installed in /path/to/smlnj/bin/sml, then a
+server process on the local machine could be started by
+
+\begin{verbatim}
+  CM.server_start { name = "A", pathtrans = NONE, pref = 0,
+                     cmd = ("/path/to/smlnj/bin/sml",
+                           ["@CMslave"]) };
+\end{verbatim}
+
+To run a process on a remote machine, e.g., ``thatmachine'', as
+compute server, one can use ``rsh''.  Unfortunately, at the moment it
+is necessary to specify the full path to ``rsh'' because {\tt
+Unix.execute} (and therefore {\tt CM.server\_start}) does not perform
+a {\tt PATH} search. The remote machine
+must share the file system with the local machine, for example via NFS.
+
+\begin{verbatim}
+  CM.server_start { name = "thatmachine",
+                    pathtrans = NONE, pref = 0,
+                    cmd = ("/usr/ucb/rsh",
+                           ["thatmachine",
+                            "/path/to/smlnj/bin/sml",
+                            "@CMslave"]) };
+\end{verbatim}
+
+You can start as many servers as you want, but they all must have
+different names.  If you attach any servers at all, then you should
+attach at least two (unless you want to attach one that runs on a
+machine vastly more powerful than your local one).  Local servers make
+sense on multi-CPU machines: start as many servers as there are CPUs.
+(Be careful, though.  Since there is no memory-sharing to speak of
+between separate instances of {\tt sml}, you should be sure to check
+that your machine has enough main memory.)
+
+If servers on machines of different power are attached, one can give
+some preference to faster ones by setting the {\tt pref} value higher.
+(But since the {\tt pref} value is consulted only in the rare case
+that more than one server is idle, this will rarely lead to vastly
+better throughput.) All attached servers must use the same
+architecture-OS combination as the controlling machine.
+
+The {\tt pathtrans} argument is used when connecting to a machine with
+a different file-system layout.
+For local servers, it can safely be left at {\tt NONE}.  The ``path
+transformation'' function is used to translate local absolute path
+names to their remote counterparts.
+This can be a bit tricky to get right, especially if the
+machines use automounters or similar devices.
+
+Once servers have been attached, one can invoke functions like
+{\tt CM.recomp}, {\tt CM.make}, and {\tt CM.stabilize}.  They should
+work the way the always do, but during compilation they will take
+advantage of parallelism.
+
+When CM is interrupted using Control-C (or such), one will sometimes
+experience a certain delay if servers are currently attached and busy.
+This is because the interrupt-handling code will wait for the servers
+to finish what they are currently doing and bring them back to an
+``idle'' state first.
+
+\subsection*{Parallel bootstrap compilation}
+
+The bootstrap compiler\footnote{otherwise not mentioned in this
+document} with its functions {\tt CMB.make}, {\tt CMB.deliver}, and
+the corresponding cross-compilation variants of the bootstrap compiler
+will also use any attached compile servers.  If one intends to
+exclusively use the bootstrap compiler, one can even attach servers
+that run on machines with different architecture or operating system.
+
+Since the master-slave protocol is fairly simple, it cannot handle
+complicated scenarios such as the one necessary for setting up the
+initial (pervasive) environment during {\tt CMB.make}.  Therefore,
+this will always be done locally by the master process.
+
 \section{Example: Dynamic linking}
 \label{sec:dynlink}
 
 Autoloading is convenient and avoids wasted memory for modules that
-have not been mentioned yet.  However, sometimes one wants to be more
+should be available at the interactive prompt but have not actually
+been used so far.  However, sometimes one wants to be even more
 aggressive and save the space needed for a function until---at
 runtime---that function is actually being dynamically invoked.
 
