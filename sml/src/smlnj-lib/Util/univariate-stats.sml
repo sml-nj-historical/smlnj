@@ -115,6 +115,6 @@ end = struct
 	RealOrderStats.median' (ArraySlice.slice (a, 0, SOME ni))
 
     fun averageDeviation (E { ext_info = (a, _), ni, nr, mean = m, ... }) =
-	let fun ad (i, ds) = if i>ni then ds/nr else ad (i+1, ds + abs(a$i-m))
+	let fun ad (i, ds) = if i>=ni then ds/nr else ad (i+1, ds + abs(a$i-m))
 	in ad (0, 0.0) end
 end
