@@ -1,3 +1,30 @@
+2000-12-24  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* Makefile (install): Also install .el files.
+	(dist): Don't rely on $CVSROOT.
+
+	* sml-mode.el: Require `skeleton'.
+	(sml-mode): Add the menu for XEmacs.  Make sure @ is a valid skeleton.
+	(sml-comment-indent): Remove.
+	(sml-mode-variables): Don't set comment-indent-function.
+	(sml-def-skeleton): Nop if skeletons aren't available.
+	(skeletons): Use `> _' and `@'.
+	(sml-forms-menu): Don't bother with easy-menu-filter-return crap.
+	(sml-cm-mode-syntax-table, sml-cm-font-lock-keywords): New vars.
+	(sml-cm-mode): Use define-derived-mode rather than define-generic-mode.
+	(sml-lex-font-lock-keywords, sml-lex-font-lock-defaults): New vars.
+	(sml-yacc-font-lock-keywords): Use sml-lex-font-lock-keywords.
+	Refine pattern to recognize the %prec keyword.
+	(sml-yacc-font-lock-defaults): Fix typo.
+
+	* sml-proc.el (inferior-sml-mode): Disable next-error for XEmacs.
+
+	* sml-util.el (defsyntax): Don't forget to eval `doc'.
+
+	* sml-mode.spec: Simplify.
+
+	* sml-defs.el (sml-mode-menu): Remove bogus entry for sml-mode-version.
+
 2000-10-06  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* sml-mode.el: Make the toplevel closer to usual practice.

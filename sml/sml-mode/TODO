@@ -21,7 +21,7 @@
 		(fn x =>
 		 some expressions)
 
-* take advantage of text after-the-line (when available) for indentation
+* take advantage of text after-the-line (when available) for indentation.
 
 * obey fixity directives.
 

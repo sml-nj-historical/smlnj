@@ -157,8 +157,8 @@ $(PACKAGE)-startup.el: $(ELFILES)
 
 TAG = $(shell echo v$(VERSION) | tr '.' '_')
 ftpdir=/home/ftp/pub/monnier/$(PACKAGE)
-cvsmodule=elisp/$(PACKAGE)
-cvsroot=$(cat CVS/Root)
+cvsmodule=$(shell cat CVS/Repository)
+cvsroot=$(shell cat CVS/Root)
 
 dist:
 	cvs tag -F $(TAG) &&\
