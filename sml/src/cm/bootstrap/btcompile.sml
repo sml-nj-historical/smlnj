@@ -192,8 +192,8 @@ end = struct
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
 	    val core = valOf (sbnode ginfo_nocore core)
-	    val corenv =  CoerceEnv.es2bs (#statenv (#ii core) ())
-	    val core_sym = #symenv (#ii core) ()
+	    val corenv =  CoerceEnv.es2bs (#statenv core ())
+	    val core_sym = #symenv core ()
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
@@ -208,13 +208,12 @@ end = struct
 	    val pervasive = rt pervasive
 
 	    fun sn2pspec (name, n) = let
-		val { ii = { statenv, symenv, statpid, sympid }, ctxt } = rt n
+		val { statenv, symenv, statpid, sympid } = rt n
 		val env =
 		    E.mkenv { static = statenv (),
 			      symbolic = symenv (),
 			      dynamic = emptydyn }
-		val pidInfo =
-		    { statpid = statpid, sympid = sympid, ctxt = ctxt }
+		val pidInfo = { statpid = statpid, sympid = sympid }
 	    in
 		{ name = name, env = env, pidInfo = pidInfo }
 	    end
@@ -226,20 +225,19 @@ end = struct
 	    (* The following is a hack but must be done for both the symbolic
 	     * and later the dynamic part of the core environment:
 	     * we must include these parts in the pervasive env. *)
-	    val perv_sym = E.layerSymbolic (#symenv (#ii pervasive) (),
+	    val perv_sym = E.layerSymbolic (#symenv pervasive (),
 					    core_sym)
 
 	    val param =
 		mkParam { primconf = Primitive.configuration pspecs,
-			  pervasive = E.mkenv { static =
-					         #statenv (#ii pervasive) (),
+			  pervasive = E.mkenv { static = #statenv pervasive (),
 					        symbolic = perv_sym,
 						dynamic = emptydyn },
 			  pervcorepids =
 			    PidSet.addList (PidSet.empty,
-					    [#statpid (#ii pervasive),
-					     #sympid (#ii pervasive),
-					     #statpid (#ii core)]) }
+					    [#statpid pervasive,
+					     #sympid pervasive,
+					     #statpid core]) }
 		        { corenv = corenv }
 	    val stab =
 		if deliver then SOME true else NONE
@@ -257,7 +255,7 @@ end = struct
 			    Servers.withServers (fn () => recomp gp)
 		    in
 			if isSome res then let
-			    val rtspid = PS.toHex (#statpid (#ii rts))
+			    val rtspid = PS.toHex (#statpid rts)
 			    fun writeList s = let
 				fun add ((p, flag), l) = let
 				    val n = listName (p, true)

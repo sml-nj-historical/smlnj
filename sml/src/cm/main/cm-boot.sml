@@ -398,8 +398,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       * traversal, it will fail. *)
 		      val sbnode = Compile.newSbnodeTraversal ()
 		      fun get n = let
-			  val { ii, ctxt } = valOf (sbnode ginfo n)
-			  val { statpid, statenv, symenv, sympid } = ii
+			  val { statpid, statenv, symenv, sympid } =
+			      valOf (sbnode ginfo n)
 			  (* We have not implemented the "sbnode" part
 			   * in the Link module.
 			   * But at boot time any relevant value should be
@@ -416,9 +416,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			  val env = E.mkenv { static = statenv (),
 					      symbolic = symenv (),
 					      dynamic = d }
-			  val pidInfo = { statpid = statpid,
-					  sympid = sympid,
-					  ctxt = ctxt }
+			  val pidInfo = { statpid = statpid, sympid = sympid }
 		      in
 			  (env, pidInfo)
 		      end

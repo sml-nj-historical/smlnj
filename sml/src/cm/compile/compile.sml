@@ -19,7 +19,7 @@ local
     type statenv = E.staticEnv
     type symenv = E.symenv
     type result = { stat: statenv, sym: symenv }
-    type ed = { ii: IInfo.info, ctxt: statenv }
+    type ed = IInfo.info
 in
     signature COMPILE = sig
 
@@ -76,10 +76,9 @@ in
 	      sympid: pid }
 
 	type env = { envs: unit -> result, pids: PidSet.set }
-	type envdelta = { ii: IInfo.info, ctxt: unit -> statenv }
+	type envdelta = IInfo.info
 
-	type memo =
-	    { ii: IInfo.info, ctxt: statenv, ts: TStamp.t, cmdata: PidSet.set }
+	type memo = { ii: IInfo.info, ts: TStamp.t, cmdata: PidSet.set }
 
 	(* persistent state! *)
 	val filtermap = ref (FilterMap.empty: pid FilterMap.map)
@@ -98,22 +97,22 @@ in
 
 	fun memo2ii (memo: memo) = #ii memo 
 
-	fun memo2ed memo = { ii = memo2ii memo, ctxt = fn () => #ctxt memo }
+	fun memo2ed memo = memo2ii memo
 
-	fun bfc2memo (bfc, ctxt, ts) = let
+	fun bfc2memo (bfc, ts) = let
 	    val ii = { statenv = fn () => BF.senvOf bfc,
 		       symenv = fn () => BF.symenvOf bfc,
 		       statpid = BF.staticPidOf bfc,
 		       sympid = BF.lambdaPidOf bfc }
 	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
 	in
-	    { ii = ii, ctxt = ctxt, ts = ts, cmdata = cmdata }
+	    { ii = ii, ts = ts, cmdata = cmdata }
 	end
 
 	fun pidset (p1, p2) = PidSet.add (PidSet.singleton p1, p2)
 
 	fun nofilter (ed: envdelta) = let
-	    val { ii = { statenv, symenv, statpid, sympid }, ctxt } = ed
+	    val { statenv, symenv, statpid, sympid } = ed
 	in
 	    { envs = fn () => { stat = statenv (), sym = symenv () },
 	      pids = pidset (statpid, sympid) }
@@ -122,7 +121,7 @@ in
 	fun exportsNothingBut set se =
 	    List.all (fn sy => SymbolSet.member (set, sy)) (E.catalogEnv se)
 
-	fun filter ({ ii, ctxt }: envdelta, s) = let
+	fun filter (ii, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
 	    val ste = statenv ()
 	in
@@ -136,8 +135,11 @@ in
 		    case FilterMap.find (!filtermap, key) of
 			SOME statpid' => statpid'
 		      | NONE => let
+			    (* We re-pickle the filtered ste relative to
+			     * the original one.  This should give a fairly
+			     * minimal pickle. *)
 			    val statpid' =
-				GenericVC.MakePid.makePid (ctxt (), ste')
+				GenericVC.MakePid.makePid (ste, ste')
 			in
 			    filtermap :=
 			      FilterMap.insert (!filtermap, key, statpid');
@@ -200,27 +202,12 @@ in
 			(* The beauty of this scheme is that we don't have
 			 * to do anything at all for SB_BNODEs:  Everything
 			 * is prepared ready to be used when the library
-			 * is unpickled.
-			 *
-			 * Making ctxt equal to ste is basically a hack
-			 * because we want to avoid having to keep the
-			 * real context around.  As a result there is a
-			 * slight loss of "smart recompilation":
-			 * eliminating a definition is not the same as
-			 * stripping it away using a filter.  This is a
-			 * minor issue anyway, and in the present case
-			 * it only happens when a stable library is
-			 * replaced by a different one. *)
-			SOME { ii = ii, ctxt = #statenv ii }
+			 * is unpickled. *)
+			SOME ii
 		  | DG.SB_SNODE n =>
 			(case snode gp n of
 			     NONE => NONE
-			   | SOME { ii, ... } =>
-				 (* Now, unfortunately, because of the
-				  * hack above (ctxt = ste) we must
-				  * do the same thing here or we end up
-				  * not being consistent. *)
-				 SOME { ii = ii, ctxt = #statenv ii })
+			   | SOME ii => SOME ii)
 
 	    and fsbnode gp (f, n) =
 		case (sbnode gp n, f) of
@@ -274,12 +261,12 @@ in
 						  senv = stat,
 						  symenv = sym,
 						  corenv = corenv }
-			    val memo = bfc2memo (bfc, stat, SmlInfo.lastseen i)
+			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
 			    save bfc;
 			    storeBFC (i, bfc);
 			    SOME memo
-			end
+			end handle _ => NONE (* catch elaborator exn *)
 		end (* compile_here *)
 		fun notlocal () = let
 		    val urgency = getUrgency i
@@ -327,7 +314,7 @@ in
 				    case load () of
 					NONE => otherwise ()
 				      | SOME (bfc, ts) => let
-					    val memo = bfc2memo (bfc, stat, ts)
+					    val memo = bfc2memo (bfc, ts)
 					in
 					    if isValidMemo (memo, pids, i) then
 						(Say.vsay ["[", binname,
@@ -429,9 +416,8 @@ in
 	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
 					       fn _ => (),
 					       fn _ => 0)
-	    fun envdelta2ed { ii, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
-	    fn gp => fn n => Option.map envdelta2ed (sbnode gp n)
+	    sbnode
 	end
 
 	fun evict i =

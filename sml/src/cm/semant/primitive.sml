@@ -12,8 +12,7 @@ signature PRIMITIVE = sig
     type primitive
 
     type pidInfo = { statpid: GenericVC.PersStamps.persstamp,
-		     sympid: GenericVC.PersStamps.persstamp,
-		     ctxt: GenericVC.Environment.staticEnv }
+		     sympid: GenericVC.PersStamps.persstamp }
 
     val eq : primitive * primitive -> bool
 
@@ -51,8 +50,7 @@ structure Primitive :> PRIMITIVE = struct
 
     type primitive = string
 
-    type pidInfo = { statpid: PS.persstamp, sympid: PS.persstamp,
-		     ctxt: E.staticEnv }
+    type pidInfo = { statpid: PS.persstamp, sympid: PS.persstamp }
 
     type pinfo = { name: string,
 		   exports: SymbolSet.set,
@@ -143,8 +141,7 @@ structure Primitive :> PRIMITIVE = struct
 				      symbolic = E.symbolicPart E.emptyEnv,
 				      dynamic = E.dynamicPart E.emptyEnv },
 		      pidInfo = { statpid = bogusPid,
-				  sympid = bogusPid,
-				  ctxt = SE.empty } }
+				  sympid = bogusPid } }
     in
 	configuration [pspec]
     end
