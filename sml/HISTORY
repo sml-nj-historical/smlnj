@@ -14,6 +14,20 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/07/14 14:38:00 EST
+Tag: leunga-110_46_1-ppc-lwzu
+Description:
+
+    Added these instructions to the PowerPC architecture:
+    LBZU(X), LHZU(X), LWZU(X),
+    STWU(X), STFDU, STFSU 
+    
+    etc...
+
+    Note: I haven't added their instruction encoding into the description.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
 Date: 2004/07/13 15:04:00 EST
 Tag: leunga-110_46_1-ppc-lwarx
 Description:

@@ -233,6 +233,11 @@ struct
        | (d, I.LWZ) => loadd {opcd=0wx20, rt=rt, ra=ra, d=d}
        | (de, I.LWZE) => loadde {opcd=0wx3a, rt=rt, ra=ra, de=de, xop=0wx6}
        | (de, I.LDE) => loadde {opcd=0wx3e, rt=rt, ra=ra, de=de, xop=0wx0}
+       | (I.RegOp rb, I.LHAU) => loadx {rt=rt, ra=ra, rb=rb, xop=0wx177}
+       | (I.RegOp rb, I.LHZU) => loadx {rt=rt, ra=ra, rb=rb, xop=0wx137}
+       | (I.RegOp rb, I.LWZU) => loadx {rt=rt, ra=ra, rb=rb, xop=0wx37}
+       | (d, I.LHZU) => loadd {opcd=0wx29, rt=rt, ra=ra, d=d}
+       | (d, I.LWZU) => loadd {opcd=0wx21, rt=rt, ra=ra, d=d}
        )
    and floadx {ft, ra, rb, xop} = 
        let val ft = emit_FP ft
@@ -258,10 +263,12 @@ struct
        | (I.RegOp rb, I.LFSE) => floadx {ft=ft, ra=ra, rb=rb, xop=0wx21f}
        | (I.RegOp rb, I.LFD) => floadx {ft=ft, ra=ra, rb=rb, xop=0wx257}
        | (I.RegOp rb, I.LFDE) => floadx {ft=ft, ra=ra, rb=rb, xop=0wx25f}
+       | (I.RegOp rb, I.LFDU) => floadx {ft=ft, ra=ra, rb=rb, xop=0wx277}
        | (d, I.LFS) => floadd {ft=ft, ra=ra, d=d, opcd=0wx30}
        | (de, I.LFSE) => floadde {ft=ft, ra=ra, de=de, opcd=0wx3e, xop=0wx4}
        | (d, I.LFD) => floadd {ft=ft, ra=ra, d=d, opcd=0wx32}
        | (de, I.LFDE) => floadde {ft=ft, ra=ra, de=de, opcd=0wx3e, xop=0wx6}
+       | (d, I.LFDU) => floadd {ft=ft, ra=ra, d=d, opcd=0wx33}
        )
    and storex {rs, ra, rb, xop} = 
        let val rs = emit_GP rs
@@ -433,7 +440,7 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 423.12 "ppc/ppc.mdl"*)
+(*#line 449.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
           in 
              (case oper of
@@ -451,7 +458,7 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 436.12 "ppc/ppc.mdl"*)
+(*#line 462.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = emit_farith oper
           in 
              (case oper of
@@ -470,14 +477,14 @@ struct
            val fb = emit_FP fb
        in 
           let 
-(*#line 445.12 "ppc/ppc.mdl"*)
+(*#line 471.12 "ppc/ppc.mdl"*)
               val (opcd, xo) = oper
           in a_form {opcd=opcd, frt=ft, fra=fa, frb=fb, frc=fc, xo=xo, rc=Rc}
           end
        end
    and cr_bit {cc} = 
        let 
-(*#line 450.12 "ppc/ppc.mdl"*)
+(*#line 476.12 "ppc/ppc.mdl"*)
            val (cr, bit) = cc
        in ((emit_CC cr) << 0wx2) + (itow 
           (case bit of
@@ -694,7 +701,7 @@ struct
        in eWord32 ((rs << 0wx15) + ((ra << 0wx10) + ((rb << 0wxb) + 0wx7c00012d)))
        end
 
-(*#line 546.7 "ppc/ppc.mdl"*)
+(*#line 572.7 "ppc/ppc.mdl"*)
    fun relative (I.LabelOp lexp) = (itow ((MLTreeEval.valueOf lexp) - ( ! loc))) ~>> 0wx2
      | relative _ = error "relative"
        fun emitter instr =

@@ -41,6 +41,11 @@ sig
    | LWZ
    | LWZE
    | LDE
+   | LBZU
+   | LHZU
+   | LHAU
+   | LWZU
+   | LDZU
    datatype store =
      STB
    | STBE
@@ -49,16 +54,24 @@ sig
    | STW
    | STWE
    | STDE
+   | STBU
+   | STHU
+   | STWU
+   | STDU
    datatype fload =
      LFS
    | LFSE
    | LFD
    | LFDE
+   | LFSU
+   | LFDU
    datatype fstore =
      STFS
    | STFSE
    | STFD
    | STFDE
+   | STFSU
+   | STFDU
    datatype cmp =
      CMP
    | CMPL
@@ -309,6 +322,11 @@ struct
    | LWZ
    | LWZE
    | LDE
+   | LBZU
+   | LHZU
+   | LHAU
+   | LWZU
+   | LDZU
    datatype store =
      STB
    | STBE
@@ -317,16 +335,24 @@ struct
    | STW
    | STWE
    | STDE
+   | STBU
+   | STHU
+   | STWU
+   | STDU
    datatype fload =
      LFS
    | LFSE
    | LFD
    | LFDE
+   | LFSU
+   | LFDU
    datatype fstore =
      STFS
    | STFSE
    | STFD
    | STFDE
+   | STFSU
+   | STFDU
    datatype cmp =
      CMP
    | CMPL
