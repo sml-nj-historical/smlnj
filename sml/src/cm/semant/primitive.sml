@@ -16,11 +16,16 @@ signature PRIMITIVE = sig
     val fromString : string -> primitive option
     val toString : primitive -> string
 
+    val pervasive : primitive
+
     (* the domain of (lookup p) must always properly include (exports p) *)
     val exports : configuration -> primitive -> SymbolSet.set
     val lookup : configuration -> primitive -> Symbol.symbol -> DAEnv.value
-    val static : configuration -> primitive -> GenericVC.Environment.staticEnv
-    val symbolic : configuration -> primitive -> GenericVC.Environment.symenv
+    val env : configuration -> primitive -> GenericVC.Environment.environment
+    val pidInfo : configuration -> primitive
+	-> { statpid: GenericVC.PersStamps.persstamp,
+	     sympid: GenericVC.PersStamps.persstamp,
+	     ctxt: GenericVC.Environment.staticEnv }
 
     val configuration :
 	{ basis: GenericVC.Environment.environment }
@@ -42,8 +47,7 @@ structure Primitive :> PRIMITIVE = struct
 
     type pinfo = { exports : SymbolSet.set,
 		   lookup : Symbol.symbol -> DE.value,
-		   static : GenericVC.Environment.staticEnv,
-		   symbolic : GenericVC.Environment.symenv }
+		   env : GenericVC.Environment.environment }
 
     type configuration = primitive -> pinfo
 
@@ -54,10 +58,11 @@ structure Primitive :> PRIMITIVE = struct
 
     fun toString BASIS = "basis"
 
+    val pervasive = BASIS
+
     fun exports (cfg: configuration) p = #exports (cfg p)
     fun lookup (cfg: configuration) p = #lookup (cfg p)
-    fun static (cfg: configuration) p = #static (cfg p)
-    fun symbolic (cfg: configuration) p = #symbolic (cfg p)
+    fun env (cfg: configuration) p = #env (cfg p)
 
     fun configuration { basis } = let
 
@@ -80,15 +85,12 @@ structure Primitive :> PRIMITIVE = struct
 	      | cvt_result BE.CM_NONE = NONE
 
 	    val sb = BE.staticPart (GenericVC.CoerceEnv.e2b e)
-	    val static = E.staticPart e
-	    val symbolic = E.symbolicPart e
 
 	    val { domain, looker } =
 		cvt_fctenv { symbols = fn () => BE.catalogEnv sb,
 			     look = BE.cmEnvOfModule sb }
 	in
-	    { exports = domain (), lookup = valOf o looker,
-	      static = static, symbolic = symbolic }
+	    { exports = domain (), lookup = valOf o looker, env = e }
 	end
 
 	val basis_pinfo = gen_pinfo basis
@@ -96,4 +98,5 @@ structure Primitive :> PRIMITIVE = struct
     in
 	cfg
     end
+    fun pidInfo c _ = Dummy.f ()
 end

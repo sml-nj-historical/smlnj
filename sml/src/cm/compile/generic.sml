@@ -1,47 +1,125 @@
-functor CompileGenericFn (structure CT: COMPILATION_TYPE) :> sig
-    type envdelta = CT.envdelta
-    val bnode : Primitive.configuration -> DependencyGraph.bnode -> envdelta
-end = struct
-
+(*
+ * The "generic" compilation traversal functor.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+local
+    structure GP = GeneralParams
     structure DG = DependencyGraph
+in
+    functor CompileGenericFn (structure CT: COMPILATION_TYPE) :> sig
 
-    type envdelta = CT.envdelta
+	type envdelta = CT.envdelta
+	type benv = CT.benv
+	type env = CT.env
 
-    infix o'
-    fun (f o' g) (x, y) = f (g x, y)
+	val bnode : GP.params -> DG.bnode -> envdelta option
+	val farbnode : GP.params -> DG.farbnode -> benv option
+	val snode : GP.params -> DG.snode -> envdelta option
+	val sbnode : GP.params -> DG.sbnode -> envdelta option
+	val farsbnode : GP.params -> DG.farsbnode -> env option
 
-    fun farnode near (NONE, n) = CT.nofilter (near n)
-      | farnode near (SOME s, n) = CT.filter (near n, s)
+    end = struct
 
-    fun bnode c (DG.PNODE p) = CT.primitive c p
-      | bnode c (DG.BNODE { bininfo, localimports = li, globalimports = gi }) =
-	case CT.lookstable bininfo of
-	    SOME e => e
-	  | NONE => let
-		val ge = foldl (CT.layer o' farbnode c) (CT.pervasive c) gi
-		val le = foldl (CT.layer o' (CT.nofilter o bnode c)) ge li
-		val e = CT.dostable (bininfo, le, c)
+	type envdelta = CT.envdelta
+	type env = CT.env
+	type benv = CT.benv
+
+	fun prim (gp: GP.params) = CT.primitive (#primconf gp)
+
+	fun foldlayer_k layer f = let
+	    fun loop r [] = r
+	      | loop NONE (h :: t) = (ignore (f h); loop NONE t)
+	      | loop (SOME e) (h :: t) =
+		case f h of
+		    NONE => loop NONE t
+		  | SOME e' => loop (SOME (layer (e', e))) t
+	in
+	    loop
+	end
+
+	fun foldlayer_s layer f NONE l = NONE
+	  | foldlayer_s layer f (SOME i) l = let
+		fun loop e [] = SOME e
+		  | loop e (h :: t) =
+		    case f h of
+			NONE => NONE
+		      | SOME e' => loop (layer (e', e)) t
 	    in
-		CT.memostable (bininfo, e);
-		e
+		loop i l
 	    end
 
-    and farbnode c = farnode (bnode c)
+	fun bnode (gp: GP.params) = let
 
-    fun snode c (DG.SNODE { smlinfo, localimports = li, globalimports = gi }) =
-	case CT.looksml smlinfo of
-	    SOME e => e
-	  | NONE => let
-		val ge = foldl (CT.layer o' farsbnode c) (CT.pervasive c) gi
-		val le = foldl (CT.layer o' (CT.nofilter o snode c)) ge li
-		val e = CT.dosml (smlinfo, le, c)
+	    val (glob, loc) = let
+		val globf = farbnode gp
+		val locf = Option.map CT.bnofilter o bnode gp
+		fun k f = foldlayer_k CT.blayer f
+		fun s f = foldlayer_s CT.blayer f
 	    in
-		CT.memosml (smlinfo, e);
-		e
+		if #keep_going gp then (k globf, k locf)
+		else (s globf, s locf)
 	    end
 
-    and sbnode c (DG.SB_BNODE b) = bnode c b
-      | sbnode c (DG.SB_SNODE s) = snode c s
+	    fun bn (DG.PNODE p) = SOME (prim gp p)
+	      | bn (DG.BNODE n) = let
+		    val { bininfo, localimports = li, globalimports = gi } = n
+		    fun mkenv () = let
+			val pe = CT.bnofilter (prim gp Primitive.pervasive)
+			val ge = glob (SOME pe) gi
+		    in
+			loc ge li
+		    end
+		in
+		    case CT.lookstable (bininfo, mkenv) of
+			CT.FOUND e => SOME e
+		      | CT.NOTFOUND (SOME le) => CT.dostable (bininfo, le, gp)
+		      | CT.NOTFOUND NONE => NONE
+		end
+	in
+	    bn
+	end
 
-    and farsbnode c = farnode (sbnode c)
+	and farbnode gp (f, n) =
+	    case (bnode gp n, f) of
+		(NONE, _) => NONE
+	      | (SOME d, NONE) => SOME (CT.bnofilter d)
+	      | (SOME d, SOME s) => SOME (CT.bfilter (d, s))
+
+	fun snode gp (DG.SNODE n) = let
+
+	    val (glob, loc) = let
+		val globf = farsbnode gp
+		val locf = Option.map CT.nofilter o snode gp
+		fun k f = foldlayer_k CT.layer f
+		fun s f = foldlayer_s CT.layer f
+	    in
+		if #keep_going gp then (k globf, k locf)
+		else (s globf, s locf)
+	    end
+
+	    val { smlinfo, localimports = li, globalimports = gi } = n
+	    val pe = CT.nofilter (prim gp Primitive.pervasive)
+	    val ge = glob (SOME pe) gi
+	    val le = loc ge li
+	in
+	    case le of
+		NONE => NONE
+	      | SOME le =>
+		    (case CT.looksml (smlinfo, le) of
+			 SOME e => SOME e
+		       | NONE => CT.dosml (smlinfo, le, gp))
+	end
+
+	and sbnode gp (DG.SB_BNODE b) = bnode gp b
+	  | sbnode gp (DG.SB_SNODE s) = snode gp s
+
+	and farsbnode gp (f, n) =
+	    case (sbnode gp n, f) of
+		(NONE, _) => NONE
+	      | (SOME d, NONE) => SOME (CT.nofilter d)
+	      | (SOME d, SOME s) => SOME (CT.filter (d, s))
+    end
 end

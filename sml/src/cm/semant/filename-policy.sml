@@ -15,6 +15,7 @@ signature FILENAMEPOLICY = sig
 
     val mkBinPath : policy -> AbsPath.t -> AbsPath.t
     val mkSkelPath : policy -> AbsPath.t -> AbsPath.t
+    val mkStablePath : policy -> AbsPath.t -> AbsPath.t
 end
 
 structure FilenamePolicy :> FILENAMEPOLICY = struct
@@ -33,4 +34,5 @@ structure FilenamePolicy :> FILENAMEPOLICY = struct
 
     fun mkBinPath _ s = cmpath ("bin", s)
     fun mkSkelPath _ s = cmpath ("SKEL", s)
+    fun mkStablePath _ s = cmpath ("bin", s)
 end

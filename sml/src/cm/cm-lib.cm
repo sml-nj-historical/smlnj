@@ -37,6 +37,7 @@ is
 
 	(* handling stable groups *)
 	stable/bininfo.sml
+	stable/stablemap.sml
 
 	(* tools for handling other source types *)
 	tools/tools.sml
@@ -45,8 +46,14 @@ is
 	tools/burgtool.sml
 
 	(* doing actual compilation work *)
+	compile/recomp-persstate.sig
+	compile/full-persstate.sig
+	compile/recomp-persstate-fn.sml
+	compile/full-persstate-fn.sml
 	compile/compile-type.sig
 	compile/generic.sml
+	compile/recomp.sml
+	compile/exec.sml
 
 	(* overall control of CM *)
 	main/say.sml

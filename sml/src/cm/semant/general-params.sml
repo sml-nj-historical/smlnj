@@ -11,6 +11,6 @@ structure GeneralParams = struct
 
     type params = { primconf : Primitive.configuration,
 		    fnpolicy: FilenamePolicy.policy,
-		    groupreg: GroupReg.groupreg }
-
+		    groupreg: GroupReg.groupreg,
+		    keep_going: bool }
 end

@@ -109,7 +109,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    val i =  SmlInfo.info
 			params
 			{ sourcepath = p, group = group,
-			  error = error EM.COMPLAIN,
+			  error = error,
 			  history = h,
 			  share = s }
 		    val exports = SmlInfo.exports i

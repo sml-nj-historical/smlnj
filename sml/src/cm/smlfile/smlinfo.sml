@@ -11,7 +11,7 @@ signature SMLINFO = sig
 
     type info
 
-    type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
+    type complainer = GenericVC.ErrorMsg.complainer
     type parsetree = GenericVC.Ast.dec
 
     val resync : unit -> unit		(* rebuild internal table *)
@@ -33,6 +33,7 @@ signature SMLINFO = sig
     val parsetree : info -> parsetree option
     val exports : info  -> SymbolSet.set
     val skeleton : info -> Skeleton.decl
+    val share : info -> bool option
 
     (* different ways of describing an sml file using group and source *)
     val spec : info -> string		(* sspec *)
@@ -52,7 +53,7 @@ structure SmlInfo :> SMLINFO = struct
     type source = Source.inputSource
     type parsetree = GenericVC.Ast.dec
 
-    type complainer = string -> (PrettyPrint.ppstream -> unit) -> unit
+    type complainer = EM.complainer
 
     datatype info =
 	INFO of {
@@ -62,12 +63,14 @@ structure SmlInfo :> SMLINFO = struct
 		 lastseen: TStamp.t ref,
 		 parsetree: { tree: parsetree, source: source } option ref,
 		 skelpath: AbsPath.t,
-		 skeleton: Skeleton.decl option ref
+		 skeleton: Skeleton.decl option ref,
+		 share: bool option
 		 (* to be extended *)
 		}
 
     fun sourcepath (INFO { sourcepath = sp, ... }) = sp
     fun error (INFO { error = e, ... }) = e
+    fun share (INFO { share = s, ... }) = s
 
     fun compare (INFO { sourcepath = p, ... }, INFO { sourcepath = p', ... }) =
 	AbsPath.compare (p, p')
@@ -87,8 +90,9 @@ structure SmlInfo :> SMLINFO = struct
 	knownInfo := foldl AbsPathMap.insert' AbsPathMap.empty l
     end
 
-    fun info params arg = let
-	val { fnpolicy, groupreg, primconf } = params
+    fun info (params: GeneralParams.params) arg = let
+	val fnpolicy = #fnpolicy params
+	val groupreg = #groupreg params
 	val { sourcepath, group, error, history, share } = arg
 	fun newinfo () = let
 	    val i = INFO {
@@ -98,7 +102,8 @@ structure SmlInfo :> SMLINFO = struct
 			  lastseen = ref TStamp.NOTSTAMP,
 			  parsetree = ref NONE,
 			  skelpath = FNP.mkSkelPath fnpolicy sourcepath,
-			  skeleton = ref NONE
+			  skeleton = ref NONE,
+			  share = share
 			 }
 	in
 	    knownInfo := AbsPathMap.insert (!knownInfo, sourcepath, i);
@@ -111,10 +116,12 @@ structure SmlInfo :> SMLINFO = struct
 		    (if GroupReg.registered groupreg g then
 			 let val n = AbsPath.name sourcepath
 			 in
-			     error (concat ["ML source file ", n,
-					    " appears in more than one group"])
+			     error EM.COMPLAIN
+			          (concat ["ML source file ", n,
+					   " appears in more than one group"])
 			           EM.nullErrorBody;
-			     e (concat ["(previous occurence of ", n, ")"])
+			     e EM.COMPLAIN 
+			       (concat ["(previous occurence of ", n, ")"])
 			       EM.nullErrorBody
 			 end
 		     else ();
@@ -128,7 +135,7 @@ structure SmlInfo :> SMLINFO = struct
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
 	val { sourcepath, group, error, lastseen,
-	      parsetree, skelpath, skeleton } = ir
+	      parsetree, skelpath, skeleton, share } = ir
 	val ts = !lastseen
 	val nts = AbsPath.tstamp sourcepath
     in
@@ -145,7 +152,7 @@ structure SmlInfo :> SMLINFO = struct
 	val { sourcepath, parsetree, error, ... } = ir
 	val name = AbsPath.name sourcepath
 	val err = if noerrors then (fn m => ())
-		  else (fn m => error m EM.nullErrorBody)
+		  else (fn m => error EM.COMPLAIN m EM.nullErrorBody)
     in
 	case !parsetree of
 	    SOME pt => SOME pt
@@ -195,7 +202,8 @@ structure SmlInfo :> SMLINFO = struct
 				  if noerrors then () else complain ();
 				  if EM.anyErrors (EM.errors source) then
 				      if noerrors then ()
-				      else error "error(s) in ML source file"
+				      else error EM.COMPLAIN
+					         "error(s) in ML source file"
 					         EM.nullErrorBody
 				  else (SkelIO.write (skelpath, sk);
 					skeleton := SOME sk);

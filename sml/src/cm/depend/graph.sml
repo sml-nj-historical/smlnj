@@ -46,7 +46,7 @@ structure DependencyGraph = struct
     (* comparing various nodes for equality *)
     fun beq (PNODE p, PNODE p') = Primitive.eq (p, p')
       | beq (BNODE { bininfo = i, ... }, BNODE { bininfo = i', ... }) =
-	BinInfo.eq (i, i')
+	BinInfo.compare (i, i') = EQUAL
       | beq _ = false
     fun seq (SNODE { smlinfo = i, ... }, SNODE { smlinfo = i', ... }) =
 	SmlInfo.eq (i, i')

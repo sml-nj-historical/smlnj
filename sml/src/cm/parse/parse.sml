@@ -37,7 +37,8 @@ structure CMParse :> CMPARSE = struct
 	val fnpolicy = FilenamePolicy.default
 	val params = { groupreg = groupreg,
 		       fnpolicy = fnpolicy,
-		       primconf = primconf }
+		       primconf = primconf,
+		       keep_going = false }
 
 	val gc = ref AbsPathMap.empty	(* the "group cache" *)
 

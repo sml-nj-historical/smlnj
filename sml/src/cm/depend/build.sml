@@ -87,7 +87,8 @@ structure BuildDepend :> BUILDDEPEND = struct
 			recur (AbsPath.spec f, history)
 		    end
 		in
-		    SmlInfo.error i "cyclic ML dependencies" pphist;
+		    SmlInfo.error i EM.COMPLAIN
+		         "cyclic ML dependencies" pphist;
 		    release (i, (DG.SNODE { smlinfo = i,
 					    localimports = [],
 					    globalimports = [] },
@@ -139,7 +140,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		fun lookfar () =
 		    case SM.find (imports, s) of
 			SOME (farn, e) => (globalImport farn; e)
-		      | NONE => (SmlInfo.error i
+		      | NONE => (SmlInfo.error i EM.COMPLAIN
 				  (concat (AbsPath.spec f ::
 					   ": reference to unknown " ::
 					   symDesc (s, [])))
@@ -167,7 +168,7 @@ structure BuildDepend :> BUILDDEPEND = struct
 		      | dotPath [s] = [S.name s]
 		      | dotPath (h :: t) = S.name h :: "." :: dotPath t
 		    fun complain s =
-			(SmlInfo.error i
+			(SmlInfo.error i EM.COMPLAIN
 			  (concat
 			   (AbsPath.spec f ::
 			    ": undefined " ::
