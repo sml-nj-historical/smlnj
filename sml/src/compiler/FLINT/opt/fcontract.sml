@@ -564,7 +564,8 @@ fun fcFix (fs,le) =
 		 * escaping one.  It's dangerous for optimisations based
 		 * on known functions (elimination of dead args, f.ex)
 		 * and could generate cases where call>use in collect *)
-		in if (C.escaping(C.get f)) andalso not(C.escaping(C.get g))
+		in if f = g orelse
+		    (C.escaping(C.get f)) andalso not(C.escaping(C.get g))
 		   (* the default case could ensure the inline *)
 		   then (m, fdec::fs, hs)
 		   else let
