@@ -104,7 +104,7 @@ struct
 
     | toString(PB.IMPORT labs) = decls(".extern %s", labs)
     | toString(PB.EXPORT labs) = decls(".global %s", labs)
-    | toString(PB.COMMENT txt) = Fmt.format "(* %s *)" [Fmt.STR txt]
+    | toString(PB.COMMENT txt) = Fmt.format "/* %s */" [Fmt.STR txt]
         
 
     | toString(PB.EXT _) = error "EXT"
