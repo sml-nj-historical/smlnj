@@ -23,6 +23,10 @@ signature ABSPATH = sig
     val spec : t -> string
     val contextName : context -> string
 
+    (* Replace the anchor context in the path argument with the
+     * given context. Returns NONE if there was no anchor context. *)
+    val reAnchor : t * context -> t option
+
     val native : { context: context, spec: string } -> t
     val standard : PathConfig.mode -> { context: context, spec: string } -> t
 
@@ -40,7 +44,7 @@ signature ABSPATH = sig
     val delete : t -> unit
 
     (* The open?Out functions automagically create any necessary directories
-     * and announce this activity via their string consumer argument. *)
+     * and announce this activity. *)
     val openTextIn : t -> TextIO.instream
     val openTextOut : t -> TextIO.outstream
     val openBinIn : t -> BinIO.instream
@@ -86,6 +90,7 @@ structure AbsPath :> ABSPATH = struct
 			   cache: elaboration option ref,
 			   config_name: string }
       | RELATIVE of t
+      | ROOT
 
     and t =
 	PATH of { context: context,
@@ -149,6 +154,8 @@ structure AbsPath :> ABSPATH = struct
 	  | validElab (SOME (e as { stamp, name, id })) =
 	    if stamp = !elabStamp then SOME e else NONE
 
+	val rootName = P.toString { isAbs = true, arcs = [], vol = "" }
+
 	fun elabContext c =
 	    case c of
 		CUR { stamp, name, id } =>
@@ -161,6 +168,7 @@ structure AbsPath :> ABSPATH = struct
 			 SOME e => e
 		       | NONE => mkElab (cache, fetch ()))
 	      | RELATIVE p => elab p
+	      | ROOT => mkElab (ref NONE, rootName)
 
 	and elab (PATH { context, spec, cache }) =
 	    (case validElab (!cache) of
@@ -205,7 +213,13 @@ structure AbsPath :> ABSPATH = struct
 	    PATH { context = context, spec = spec, cache = ref NONE }
 
 	(* make an abstract path from a native string *)
-	fun native { spec, context } = fresh (context, spec)
+	fun native { spec, context } = let
+	    val { isAbs, vol, arcs } = P.fromString spec
+	    val relSpec = P.toString { isAbs = false, vol = vol, arcs = arcs }
+	in
+	    if isAbs then fresh (ROOT, relSpec)
+	    else fresh (context, relSpec)
+	end
 
 	(* make an abstract path from a standard string *)
 	fun standard mode { spec, context } = let
@@ -217,24 +231,24 @@ structure AbsPath :> ABSPATH = struct
 	      | transl "." = OS.Path.currentArc
 	      | transl arc = arc
 
-	    fun mk (isAbs, arcs, context) =
+	    fun mk (arcs, context) =
 		fresh (context,
-		       P.toString { isAbs = isAbs, vol = "",
+		       P.toString { isAbs = false, vol = "",
 				    arcs = map transl arcs })
 	in
 	    case String.fields delim spec of
-		"" :: arcs => mk (true, arcs, context)
-	      | [] => mk (false, [], context) (* shouldn't happen *)
+		"" :: arcs => mk (arcs, ROOT)
+	      | [] => mk ([], context) (* shouldn't happen *)
 	      | arcs as (arc1 :: _) =>
 		    (case PathConfig.configAnchor mode arc1 of
-			 NONE => mk (false, arcs, context)
+			 NONE => mk (arcs, context)
 		       | SOME fetch => let
 			     val anchorcontext =
 				 CONFIG_ANCHOR { fetch = fetch,
 						 cache = ref NONE,
 						 config_name = arc1 }
 			 in
-			     mk (false, arcs, anchorcontext)
+			     mk (arcs, anchorcontext)
 			 end)
 	end
 
@@ -339,5 +353,20 @@ structure AbsPath :> ABSPATH = struct
 	val openBinIn = BinIO.openIn o name
 	val openTextOut = openOut TextIO.openOut
 	val openBinOut = openOut BinIO.openOut
+    end
+
+    fun reAnchor (p, c) = let
+	fun ctxt (CONFIG_ANCHOR { config_name, ... }) =
+	    SOME (relativeContext (native { context = c, spec = config_name }))
+	  | ctxt (RELATIVE t) = Option.map RELATIVE (path t)
+	  | ctxt (CUR _) = NONE
+	  | ctxt ROOT = NONE
+	and path (PATH { context, spec, ... }) = let
+	    fun p c = PATH { context = c, spec = spec, cache = ref NONE }
+	in
+	    Option.map p (ctxt context)
+	end
+    in
+	path p
     end
 end

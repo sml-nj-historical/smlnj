@@ -46,8 +46,6 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 
 	val ctxt = AbsPath.cwdContext ()
 
-	val initgspec = AbsPath.native { context = ctxt, spec = initgspec }
-	val maingspec = AbsPath.native { context = ctxt, spec = maingspec }
 	val pcmodespec = AbsPath.native { context = ctxt, spec = pcmodespec }
 	val binroot = AbsPath.native { context = ctxt, spec = binroot }
 	val pidfile = AbsPath.joinDirFile { dir = binroot, file = "RTPID" }
@@ -75,11 +73,14 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 			     cleanup = fn () => () }
 	end
 
+	fun stdpath s = AbsPath.standard pcmode { context = ctxt, spec = s }
+
+	val initgspec = stdpath initgspec
+	val maingspec = stdpath maingspec
+
 	val fnpolicy =
-	    FilenamePolicy.separate { root = binroot,
-				      parentArc = "DOTDOT",
-				      absArc = "ABSOLUTE" }
-	                            { arch = MachDepVC.architecture, os = os }
+	    FilenamePolicy.separate binroot
+	        { arch = MachDepVC.architecture, os = os }
 
 	fun mkParam { primconf, pervasive, pervcorepids } { corenv } =
 	    { primconf = primconf,

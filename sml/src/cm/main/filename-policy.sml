@@ -11,8 +11,7 @@ signature FILENAMEPOLICY = sig
     type policyMaker = { arch: string, os: SMLofNJ.SysInfo.os_kind } -> policy
 
     val colocate : policyMaker
-    val separate :
-	{ root: AbsPath.t, parentArc: string, absArc: string } -> policyMaker
+    val separate : AbsPath.t -> policyMaker
 
     val mkBinPath : policy -> AbsPath.t -> AbsPath.t
     val mkSkelPath : policy -> AbsPath.t -> AbsPath.t
@@ -47,25 +46,16 @@ functor FilenamePolicyFn (val cmdir : string
 	{ skel = cmpath skeldir, bin = archosdep, stable = archosdep }
     end
 
-    val colocate = mkPolicy (fn s => s)
+    val colocate = mkPolicy (fn p => p)
 
-    fun separate { root, parentArc, absArc } = let
+    fun separate root = let
 	val root = AbsPath.relativeContext root
-	fun shift p = let
-	    val s = AbsPath.name p
-	    fun cvt arc = if arc = OS.Path.parentArc then parentArc else arc
-	in
-	    case OS.Path.fromString s of
-		{ isAbs = false, vol = "", arcs } =>
-		    AbsPath.native { context = root,
-				     spec = OS.Path.toString
-				         { isAbs = false, vol = "",
-					   arcs = map cvt arcs } }
-	      | _ => AbsPath.native
-		    { context = root,
-		      spec = OS.Path.joinDirFile { dir = absArc,
-						   file = AbsPath.file p } }
-	end
+	fun shift p =
+	    case AbsPath.reAnchor (p, root) of
+		SOME p' => p'
+	      | NONE => (Say.say ["Failure: ", AbsPath.name p,
+				  " is not an anchored path!\n"];
+			 raise Fail "bad path")
     in
 	mkPolicy shift
     end
