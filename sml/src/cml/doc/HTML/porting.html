@@ -1,4 +1,4 @@
-<!-- porting.html -->
+<!-- HTML/porting.html -->
 
 <!-- COPYRIGHT (c) 1995 AT\|@AMP\|T Bell Laboratories. -->
 
@@ -8,8 +8,10 @@
 <TITLE>Porting old programs</TITLE>
 </HEAD>
 <BODY>
-<H1><A NAME="top-of-document">The Concurrent ML Reference Manual</A></H1>
+<A NAME="top"></A>
+<H1 align=CENTER>The Concurrent ML Reference Manual</H1>
 <HR>
+
 
 <H3>Porting old CML programs</H3>
 <P>
@@ -21,8 +23,6 @@ To ease the transition from version&nbsp;0.9.8 of CML to the new interfaces, we 
 <HR>
 <CENTER>
 <TABLE ALIGN=CENTER>
-<CAPTION ALIGN=TOP>
-<B>Name changes</B></CAPTION>
 <TR>
 <TH ALIGN=CENTER VALIGN=TOP>
 Old name 
@@ -74,13 +74,20 @@ The most significant changes to the CML interfaces have to do with input/output 
 <H4>Polling</H4>
 <P>
 The only loss in function from version&nbsp;0.9.8 is the elimination of the <CODE>poll</CODE> operation, which provided a non-blocking form of <A HREF="cml.html#SIG:CML.sync:VAL:SPEC">sync</A>. Instead of this operation, CML now provides non-blocking input operations on many of the basic communication types.
+
+
 <HR>
-<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="porting.html">TOP</A>
+<CENTER>
+<B>[ <A HREF="index-all.html">INDEX</A> | <A HREF="#top">TOP</A>
    | <A HREF="basics.html">Parent</A> | <A HREF="refman.html">Root</A>
    ]</B>
+</CENTER>
 <P>
 <I>Last Modified November 16, 1995</I><BR>
-Copyright &copy; 1996 AT&amp;T <BR>
+<I>Comments to <A HREF="mailto:jhr@research.bell-labs.com">John Reppy.</A></I><BR>
+
+Copyright &copy; 1997 Bell Labs, Lucent Technologies <BR>
+
 <HR>
 </BODY>
 </HTML>

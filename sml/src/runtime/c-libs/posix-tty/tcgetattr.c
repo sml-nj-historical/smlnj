@@ -28,7 +28,8 @@ ml_val_t _ml_P_TTY_tcgetattr (ml_state_t *msp, ml_val_t arg)
 
     sts = tcgetattr(fd, &data);
 
-    if (sts < 0) return RaiseSysError (msp, NIL(char *));
+    if (sts < 0)
+	return RAISE_SYSERR(msp, sts);
 
     WORD_ALLOC (msp, iflag, data.c_iflag);
     WORD_ALLOC (msp, oflag, data.c_oflag);

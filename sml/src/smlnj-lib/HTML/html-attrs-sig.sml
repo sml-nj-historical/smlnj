@@ -19,6 +19,7 @@ signature HTML_ATTRS =
     val mkBASE : (context * attrs) -> HTML.head_content
     val mkMETA : (context * attrs) -> HTML.head_content
     val mkLINK : (context * attrs) -> HTML.head_content
+    val mkBODY : (context * attrs * HTML.block) -> HTML.body
     val mkHn : (int * context * attrs * HTML.text) -> HTML.block
     val mkP : (context * attrs * HTML.text) -> HTML.block
     val mkUL : (context * attrs * HTML.list_item list) -> HTML.block

@@ -36,14 +36,18 @@
 
 
 #ifdef SYSCALL_RET_ERR
-ml_val_t RaiseSysError (ml_state_t *msp, int err, const char *alt_msg);
-#define RAISE_SYSERR(msp, sts)	RaiseSysError((msp), (sts), NIL(char *))
-#define RAISE_ERROR(msp, msg)	RaiseSysError((msp), 0, (msg))
+ml_val_t RaiseSysError (ml_state_t *msp, int err, const char *alt_msg, const char *at);
+#define RAISE_SYSERR(msp, sts)	\
+	RaiseSysError((msp), (sts), NIL(char *), "<" __FILE__ ">")
+#define RAISE_ERROR(msp, msg)	\
+	RaiseSysError((msp), 0, (msg), "<" __FILE__ ">")
 
 #else
-ml_val_t RaiseSysError (ml_state_t *msp, const char *alt_msg);
-#define RAISE_SYSERR(msp, sts)	RaiseSysError((msp), NIL(char *))
-#define RAISE_ERROR(msp, msg)	RaiseSysError((msp), (msg))
+ml_val_t RaiseSysError (ml_state_t *msp, const char *alt_msg, const char *at);
+#define RAISE_SYSERR(msp, sts)	\
+	RaiseSysError((msp), NIL(char *), "<" __FILE__ ">")
+#define RAISE_ERROR(msp, msg)	\
+	RaiseSysError((msp), (msg), "<" __FILE__ ">")
 
 #endif
 

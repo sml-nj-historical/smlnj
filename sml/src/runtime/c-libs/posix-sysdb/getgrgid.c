@@ -24,7 +24,7 @@ ml_val_t _ml_P_SysDB_getgrgid (ml_state_t *msp, ml_val_t arg)
 
     info = getgrgid(WORD_MLtoC(arg));
     if (info == NIL(struct group *))
-        return RaiseSysError(msp, NIL(char*));
+        return RAISE_SYSERR(msp, -1);
   
     gr_name = ML_CString (msp, info->gr_name);
     WORD_ALLOC (msp, gr_gid, (Word_t)(info->gr_gid));

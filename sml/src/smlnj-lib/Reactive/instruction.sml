@@ -23,11 +23,7 @@ structure Instruction =
       | stop
       | suspend
       | action of 'a -> unit
-      | exec of {
-	    start : 'a -> unit,
-	    stop : 'a -> unit,
-	    done : 'a -> bool
-	  }
+      | exec of 'a -> {stop : unit -> unit, done : unit -> bool}
       | ifThenElse of (('a -> bool) * 'a instr * 'a instr)
       | repeat of (int * 'a instr)
       | loop of 'a instr

@@ -69,11 +69,7 @@ structure Machine : sig
     val stop : unit -> code
     val suspend : unit -> code
     val action : (machine -> unit) -> code
-    val exec   : {
-	    start : machine -> unit,
-	    stop  : machine -> unit,
-	    done  : machine -> bool
-	  } -> code
+    val exec   : (machine -> {stop : unit -> unit, done : unit -> bool}) -> code
     val ifThenElse : ((machine -> bool) * code * code) -> code
     val repeat     : (int * code) -> code
     val loop       : code -> code
@@ -261,19 +257,23 @@ structure Machine : sig
 	      }
 	  end
 
-    fun exec {start, stop, done} = let
+    fun exec f = let
 	  val termFlg = ref false
-	  val running = ref false
+	  val ops = ref(NONE : {stop : unit -> unit, done : unit -> bool} option)
 (** NOTE: what if a reset occurs while we are running?  We would need to change
  ** the type of resetMeth to take a machine parameter.
  **)
 	  fun resetMeth () = (termFlg := false)
-	  fun preemptMeth m = if !running then (running := false; stop m) else ()
-	  fun activationMeth m = if !running
-		then if done m
-		  then (running := false; TERM)
-		  else STOP
-		else (running := true; start m; SUSP)
+	  fun preemptMeth m = (case !ops
+		 of NONE => ()
+		  | SOME{stop, ...} => (ops := NONE; stop())
+		(* end case *))
+	  fun activationMeth m = (case !ops
+		 of SOME{done, ...} => if done ()
+		      then (ops := NONE; TERM)
+		      else STOP
+		  | NONE => (ops := SOME(f m); SUSP)
+		(* end case *))
 	  in
 	    C{  isTerm		= isTermMeth termFlg,
 		terminate	= terminateMeth termFlg,

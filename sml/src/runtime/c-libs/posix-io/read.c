@@ -28,7 +28,7 @@ ml_val_t _ml_P_IO_read (ml_state_t *msp, ml_val_t arg)
     vec = ML_AllocString (msp, nbytes);
     n = read (fd, PTR_MLtoC(char, vec), nbytes);
     if (n < 0)
-	return RaiseSysError(msp, NIL(char *));
+	return RAISE_SYSERR(msp, n);
 
     if (n < nbytes) {
       /* we need to correct the length in the descriptor */

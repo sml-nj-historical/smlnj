@@ -65,20 +65,9 @@ structure Event : sig
 
     fun error msg = raise Fail msg
 
-    structure Rep : sig
-	datatype 'a event_status
-	  = ENABLED of {prio : int, doFn : unit -> 'a}
-	  | BLOCKED of {
-		transId : R.trans_id ref, cleanUp : unit -> unit, next : unit -> unit
-	      } -> 'a
-	type 'a base_evt (* = unit -> 'a event_status *)
-	datatype 'a event
-	  = BEVT of 'a base_evt list
-	  | CHOOSE of 'a event list
-	  | GUARD of unit -> 'a event
-	  | W_NACK of unit event -> 'a event
-      end = RepTypes
-    open Rep
+    datatype event_status = datatype RepTypes.event_status
+    type 'a base_evt = 'a RepTypes.base_evt
+    datatype event = datatype RepTypes.event
 
 
   (** Condition variables.  Because these variables are set inside atomic
@@ -93,18 +82,21 @@ structure Event : sig
   (* set a condition variable; we assume that this function is always
    * executed in an atomic region.
    *)
-    fun atomicCVarSet (R.CVAR(ref(R.CVAR_unset waiting))) = let
-	  val R.Q{rear, ...} = S.rdyQ1
-	  fun add [] = !rear
-	    | add ({transId=ref R.CANCEL, ...}::r) = add r
-	    | add ({transId as ref(R.TRANS tid), cleanUp, kont}::r) = (
-		transId := R.CANCEL;
-		cleanUp();
-		(tid, kont) :: (add r))
-	  in
-	    rear := add waiting
-	  end
-      | atomicCVarSet (R.CVAR _) = error "cvar already set"
+    fun atomicCVarSet (R.CVAR state) = (case !state
+	   of (R.CVAR_unset waiting) => let
+		val R.Q{rear, ...} = S.rdyQ1
+		fun add [] = !rear
+		  | add ({transId=ref R.CANCEL, ...}::r) = add r
+		  | add ({transId as ref(R.TRANS tid), cleanUp, kont}::r) = (
+		      transId := R.CANCEL;
+		      cleanUp();
+		      (tid, kont) :: (add r))
+		in
+		  state := R.CVAR_set 1;
+		  rear := add waiting
+		end
+	    | _ => error "cvar already set"
+	  (* end case *))
 
   (* the event constructor for waiting on a cvar *)
     fun cvarGetEvt (R.CVAR(state)) = let
@@ -116,9 +108,12 @@ structure Event : sig
 		  next ()
 		end)
 	  fun pollFn () = (case !state
-		 of (R.CVAR_set n) => (
-		      state := R.CVAR_set(n+1);
-		      ENABLED{prio=n, doFn=S.atomicEnd})
+		 of (R.CVAR_set n) => let
+		      fun doFn () = (state := R.CVAR_set 1; S.atomicEnd())
+		      in
+			state := R.CVAR_set(n+1);
+			ENABLED{prio=n, doFn=doFn}
+		      end
 		  | _ => BLOCKED blockFn
 		(* end case *))
 	  in

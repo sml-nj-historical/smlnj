@@ -20,8 +20,8 @@ structure Scheduler : sig
     val enqueueThread : (thread_id * unit cont) -> unit
 
     val enqueueAndSwitchCurThread : (unit cont * thread_id) -> unit
-	(* enqueue the current thread, and make the given thread ID be
-	 * the current one.
+	(* enqueue the given continuation with the current thread ID, and make
+	 * the given thread ID be the current one.
 	 *)
 
     val enqueueTmpThread : (unit -> unit) -> unit
@@ -46,8 +46,6 @@ structure Scheduler : sig
 	 * an atomic region.  Use atomicDispatch() for that case.
 	 *)
 
-    val atomicThrow : ('a cont * 'a) -> 'b
-
     val atomicSwitchTo : (thread_id * 'a cont * 'a) -> unit
 	(* switch to the given thread, while leaving the atomic region *)
 
@@ -59,7 +57,8 @@ structure Scheduler : sig
     val schedulerHook : unit cont ref
 	(* this hook points to a continuation that gets dispatched when
 	 * a preemption is received, or when a thread exits an atomic
-	 * region and there is a signal pending.
+	 * region and there is a signal pending.  It is invoked after
+	 * leaving the atomic region.
 	 *)
 
     val pauseHook : unit cont ref
@@ -108,7 +107,8 @@ structure Scheduler : sig
   (* The scheduler defines three continuation "hooks":
    *   schedulerHook	-- this points to a continuation that gets dispatched
    *			   when a thread attempts to exit an atomic region and
-   *			   there is a signal pending.
+   *			   there is a signal pending.  It is invoked after
+   *			   leaving the atomic region.
    *   pauseHook	-- this points to a continuation that gets invoked when
    *			   there is nothing else to do.
    *   shutdownHook	-- this points to a continuation that gets invoked when
@@ -196,26 +196,25 @@ structure Scheduler : sig
 	    | NONE => ()
 	  (* end case *))
 
-  (* preempt the current thread (with continuation k). *)
-    fun preempt k = let
-	  val curTid = getCurThread()
-	  val curP = (curTid, k)
-	  in
-	    if (isMarked curTid)
-	      then (
-		unmarkTid curTid;
-		promote ();
-		enqueue curP)
-	      else Q.enqueue(rdyQ2, curP)
-	  end
-
   (* global flag for implementing atomic operations *)
     datatype atomic_state = NonAtomic | Atomic | SignalPending
     val atomicState = ref NonAtomic
 
-    fun dispatchHook () = (
-	  atomicState := NonAtomic;
-	  throw (!schedulerHook) ())
+  (* Note, the first thing the scheduler hook does is a atomicBegin, so we don't
+   * need to clear the atomic state here.
+   *) 
+    fun dispatchSchedulerHook () = throw (!schedulerHook) ()
+
+(*
+    fun enqueueSchedulerHook () =  let
+	  val kont = callcc (fn k => (
+		callcc (fn k' => throw k k');
+		dispatchSchedulerHook ()))
+	  val R.Q{front, ...} = rdyQ1
+	  in
+	    front := (dummyTid, kont) :: !front
+	  end
+*)
 
     fun atomicBegin () = atomicState := Atomic
 
@@ -227,35 +226,37 @@ structure Scheduler : sig
    *)
     fun atomicEnd () = (case !atomicState
 	   of SignalPending => callcc (fn k => (
-		preempt k;
-		dispatchHook()))
+		enqueue(getCurThread(), k);
+		dispatchSchedulerHook()))
 	    | _ => atomicState := NonAtomic
 	  (* end case *))
 
-    fun atomicDispatch () = let
-          val _ = (case !atomicState
-                 of SignalPending => dispatchHook()
-                  | _ => ()
-                (* end case *))
-          val (id, kont) = dequeue1()
-          in
-            setCurThread id;
-            atomicState := NonAtomic;
-            throw kont ()
-          end
+    fun atomicDispatch () = (case !atomicState
+	   of SignalPending => dispatchSchedulerHook()
+	    | _ => let
+		val (id, kont) = dequeue1()
+		in
+		  setCurThread id;
+		  atomicState := NonAtomic;
+		  throw kont ()
+		end
+	  (* end case *))
 
     fun dispatch () = (atomicBegin(); atomicDispatch ())
 
-    fun atomicThrow (k, x) = (
-	  case !atomicState
-	   of SignalPending => dispatchHook()
-	    | _ => ()
-	  (* end case *);
-	  throw k x)
-
-    fun atomicSwitchTo (tid, k, x) = callcc (fn curK => (
-	  enqueueAndSwitchCurThread (curK, tid);
-	  atomicThrow (k, x)))
+    fun atomicSwitchTo (tid, k, x) =
+	  callcc (fn curK => (
+	    case !atomicState
+	     of SignalPending => 
+		  callcc (fn k' => (
+		    enqueue(tid, k');
+		    enqueue(getCurThread(), curK);
+		    dispatchSchedulerHook()))
+	      | _ => (
+		  enqueueAndSwitchCurThread (curK, tid);
+		  atomicState := NonAtomic)
+	    (* end case *);
+	    throw k x))
 
   (* Yield control to the next thread, while leaving the atomic region. *)
     fun atomicYield k = (
@@ -267,7 +268,7 @@ structure Scheduler : sig
    * of the scheduling queue.
    *)
     fun enqueueTmpThread f = let
-(** this should be, but the overhead is too hi right now. **
+(** this should be, but the overhead is too high right now. **
 	  val kont = SMLofNJ.Cont.isolate f
 **)
 	  val kont = callcc (fn k => (
@@ -297,7 +298,18 @@ structure Scheduler : sig
 	    | (SOME t) => t
 	  (* end case *))
 
-    structure IT = SMLofNJ.IntervalTimer
+  (* preempt the current thread (with continuation k). *)
+    fun preempt k = let
+	  val curTid = getCurThread()
+	  val curP = (curTid, k)
+	  in
+	    if (isMarked curTid)
+	      then (
+		unmarkTid curTid;
+		promote ();
+		enqueue curP)
+	      else Q.enqueue(rdyQ2, curP)
+	  end
 
   (* the preemption handler *)
     fun alrmHandler (_, _, k) = (
@@ -310,6 +322,8 @@ structure Scheduler : sig
 
     val defaultTimeQ = Time.fromMilliseconds 20
     val timeQ = ref defaultTimeQ
+
+    structure IT = SMLofNJ.IntervalTimer
 
     fun startTimer tq = let
 	  val tq = if Time.<(Time.zeroTime, tq) then tq else defaultTimeQ

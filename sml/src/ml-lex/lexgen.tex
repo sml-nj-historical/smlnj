@@ -284,6 +284,7 @@ The following \% commands are also available:
 \begin{description}
 \item[\tt \%reject]     create REJECT() function
 \item[\tt \%count]      count newlines using yylineno
+\item[\tt \%posarg]     pass initial-position argument to makeLexer
 \item[\tt \%full]       create lexer for the full 8-bit character set,
                           with characters in the range 0--255 permitted
                           as input.
@@ -361,8 +362,8 @@ command is in the ML-Lex definitions sections:
 					string, or that matches the longest
 					possible prefix of this string,
 					is used instead.} \\
-{\tt yypos} & & Current character position from
-					beginning of file.\\
+{\tt yypos} & & \parbox[t]{2.6in}{The position of the first character
+of {\tt yytext}, relative to the beginning of the file.}\\
 {\tt yylineno } & {\tt \%count} &         Current line number\\
 \\
 \end{tabular}
@@ -375,6 +376,10 @@ recognize {\tt \\n} and
 have an action that increments the line-number variable.)  The use of
 the lookahead operator {\tt /} will also slow down the entire lexer.
 The character-position, {\tt yypos}, is not costly to maintain, however.
+
+\paragraph{Bug.} The position of the first character in the file
+is reported as 2 (unless the {\tt \%posarg} feature is used).
+To preserve compatibility, this bug has not been fixed.
 
 \section{Running ML-Lex}
 
@@ -393,7 +398,13 @@ determined by appending ``{\tt .sml}'' to the input file name.
 
 When the output file is loaded, it will create a structure Mlex that
 contains the function {\tt makeLexer} which takes a function from
-${\it int} \rightarrow {\it string}$ and returns a lexing function.
+${\it int} \rightarrow {\it string}$ and returns a lexing function:
+
+\begin{verbatim}
+  val makeLexer : (int->string) -> yyarg -> lexresult
+\end{verbatim}
+where {\tt yyarg} is the type given in the {\tt \%yyarg} directive,
+or {\tt unit} if there is no {\tt \%yyarg} directive.
 
 For example,
 
@@ -402,6 +413,17 @@ For example,
 \end{verbatim}
 
 creates a lexer that operates on the file whose name is f.
+
+When the {\tt \%posarg} directive is used, the type of
+{\tt makeLexer} is 
+\begin{verbatim}
+  val makeLexer : ((int->string)*int) -> yyarg -> lexresult
+\end{verbatim}
+where the extra {\tt int} argument is one less than the {\tt yypos}
+of the first character in the input.  The value $k$ would be used,
+for example, when creating
+a lexer to start in the middle of a file, when $k$ characters have
+already been read.  At the beginning of the file, $k=0$ should be used.
 
 The ${\it int} \rightarrow {\it string}$ function
 should read a string of characters

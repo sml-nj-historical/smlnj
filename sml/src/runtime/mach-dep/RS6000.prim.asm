@@ -146,85 +146,89 @@
 #define CONTINUE					\
 	    cmpl	CR0,limitptr,allocptr;		\
 	    mtlr	stdcont;			\
-	    blr
+	    br
 #endif
 
 #define CHECKLIMIT(mask,label)	 			\
-	    bt		CR0_GT, label;			\
-	    lwz		atmp2,STARTGC_OFFSET(stackptr);	\
-	    li		atmp1,mask;			\
+	    bbt		CR0_GT, label;			\
+	    l		atmp2,STARTGC_OFFSET(stackptr);	\
+	    lil		atmp1,mask;			\
 	    mtspr	SPR_LR, atmp2;			\
-	    addi	gclink,stdlink,0;		\
-	    blr		;				\
+	    ai		gclink,stdlink,0;		\
+	    br		;				\
     label:
 
-	.extern		CSYM(_PollFreq0)
-	.extern 	CSYM(_PollEvent0)
-	.extern		CSYM(saveregs)
+/** A comment explaining what this does would be nice!! **/
+	.extern		CSYM(_PollFreq0{UA})
+	.extern 	CSYM(_PollEvent0{UA})
 
-#if defined (USE_TOC)
-/* create table of contents entries for things we need the address of. */
 	.toc
 T._PollFreq0:
-	.tc	H._PollFreq0[TC],CSYM(_PollFreq0)
+	.tc	H._PollFreq0{TC},_PollFreq0{UA}
 T._PollEvent0:
-	.tc	H._PollEvent0[TC],CSYM(_PollEvent0)
-T.saveregs:	
-	.tc	H.saveregs[TC],CSYM(saveregs)
-T.cvti2d_CONST:
-	.tc	H.cvti2d_CONST[TC],cvti2d_CONST
-#endif
-	RO_DATA
-	ALIGN8
-cvti2d_CONST:	
-	DOUBLE(4503601774854144.0)
+	.tc	H._PollEvent0{TC},_PollEvent0{UA}
 
-	TEXT
+/* create table of contents entries. */
+	.toc
+	.csect 	prim.s[BS]
+	.extern .saveregs
+
+	.csect  [RO]
+	.toc
+cvti2d_CONST:	
+	.tc 	fd43300000_80000000[TC],1127219200,-2147483648
+T.saveregs:	
+	.tc	saveregs[TC],.saveregs
+
+	.csect	[PR]
 /* sig_return : ('a cont * 'a) -> 'b
  */
 ML_CODE_HDR(sigh_return_a)
-	li 	atmp1,RET_MASK
-	li 	atmp4,REQ_SIG_RETURN
+	lil 	atmp1,RET_MASK
+	lil 	atmp4,REQ_SIG_RETURN
 	b	set_request
 
-ENTRY(sigh_resume)
-	li	atmp1,FUN_MASK
-	li	atmp4, REQ_SIG_RESUME
+GLOBAL(sigh_resume)
+sigh_resume:
+	lil	atmp1,FUN_MASK
+	lil	atmp4, REQ_SIG_RESUME
         b	set_request
 
 /* pollh_return_a:
  * The return continuation for the ML poll handler.
  */
 ML_CODE_HDR(pollh_return_a)
-	li	atmp1,RET_MASK
-	li	atmp4,REQ_POLL_RETURN
+	lil	atmp1,RET_MASK
+	lil	atmp4,REQ_POLL_RETURN
 	b	set_request
 
 /* pollh_resume:
  * Resume execution at the point at which a poll event occurred.
  */
 ENTRY(pollh_resume)
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_POLL_RESUME
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_POLL_RESUME
 	b	set_request
 
 		 /* exception handler for ML functions called from C */
 ML_CODE_HDR(handle_a)
-	li	atmp1,EXN_MASK
-	li	atmp4,REQ_EXN
+	lil	atmp1,EXN_MASK
+	lil	atmp4,REQ_EXN
 	b	set_request
 
 
 		/* continuation for ML functions called from C */		
 ML_CODE_HDR(return_a)
-	li	atmp1,RET_MASK
-	li	atmp4,REQ_RETURN
+	lil	atmp1,RET_MASK
+	lil	atmp4,REQ_RETURN
 	b	set_request
 
 
-ENTRY(request_fault)
-	li	atmp1,EXN_MASK
-	li	atmp4,REQ_FAULT
+GLOBAL(request_fault)
+
+request_fault:
+	lil	atmp1,EXN_MASK
+	lil	atmp4,REQ_FAULT
 	b	set_request
 
 
@@ -232,283 +236,275 @@ ENTRY(request_fault)
  */
 ML_CODE_HDR(bind_cfun_a)
 	CHECKLIMIT(FUN_MASK,bind_cfun_v_limit) 
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_BIND_CFUN
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_BIND_CFUN
 	b	set_request
 
 ML_CODE_HDR(build_literals_a)
 	CHECKLIMIT(FUN_MASK,build_literals_v_limit) 
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_BUILD_LITERALS
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_BUILD_LITERALS
 	b	set_request
 
 ML_CODE_HDR(callc_a)
 	CHECKLIMIT(FUN_MASK,callc_v_limit) 
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_CALLC
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_CALLC
 	/* fall through */
 
 set_request:
-	lwz	atmp3,MLSTATE_OFFSET(sp)	/* save the minimal ML state */
-	stw	atmp1,MaskOffMSP(atmp3)		/* mask */
-	lwz	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
-	li	0,0
-	stw	0,InMLOffVSP(atmp2)		/* note that we have left ML */
-	stw	allocptr,AllocPtrOffMSP(atmp3)
-	stw	limitptr,LimitPtrOffMSP(atmp3)
-	stw	storeptr,StorePtrOffMSP(atmp3)
-	stw	stdlink,LinkRegOffMSP(atmp3)
-	stw	stdlink,PCOffMSP(atmp3)
-	stw	stdarg,StdArgOffMSP(atmp3)
-	stw	stdcont,StdContOffMSP(atmp3)
-	stw	stdclos,StdClosOffMSP(atmp3)
-	stw	varptr,VarPtrOffMSP(atmp3)
-	stw	exncont,ExnPtrOffMSP(atmp3)
+	l	atmp3,MLSTATE_OFFSET(sp)	/* save the minimal ML state */
+	st	atmp1,MaskOffMSP(atmp3)		/* mask */
+	l	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
+	lil	0,0
+	st  	0,InMLOffVSP(atmp2)		/* note that we have left ML */
+	st	allocptr,AllocPtrOffMSP(atmp3)
+	st	limitptr,LimitPtrOffMSP(atmp3)
+	st	storeptr,StorePtrOffMSP(atmp3)
+	st	stdlink,LinkRegOffMSP(atmp3)
+	st	stdlink,PCOffMSP(atmp3)
+	st	stdarg,StdArgOffMSP(atmp3)
+	st	stdcont,StdContOffMSP(atmp3)
+	st	stdclos,StdClosOffMSP(atmp3)
+	st	varptr,VarPtrOffMSP(atmp3)
+	st	exncont,ExnPtrOffMSP(atmp3)
 #if CALLEESAVE > 0
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)
+	st	miscreg0,MiscRegOffMSP(0)(atmp3)
 #if CALLEESAVE > 1
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)
+	st	miscreg1,MiscRegOffMSP(1)(atmp3)
 #if CALLEESAVE > 2
-	stw	miscreg2,MiscRegOffMSP(2)(atmp3)
+	st	miscreg2,MiscRegOffMSP(2)(atmp3)
 #if CALLEESAVE > 3
 	??
 #endif
 #endif
 #endif
 #endif
-	addi	3,atmp4,0			/* request as argument */
+	ai	3,atmp4,0			/* request as argument */
 
 restore_c_regs:
-        lwz	atmp1,PSEUDOREG_OFFSET(sp)     /* restore pseudo registers */
-        stw	atmp1,PseudoReg1OffMSP(atmp3)   
-        lwz	atmp1,PSEUDOREG_OFFSET+4(sp)
-        stw	atmp1,PseudoReg2OffMSP(atmp3)
- 	lwz	2, (argblock+4)(sp) 
-	lwz	13, (argblock+8)(sp)
-	lwz	14, (argblock+12)(sp)
-	lwz	15, (argblock+16)(sp)
-	lwz	16, (argblock+20)(sp)
-	lwz	17, (argblock+24)(sp)
-	lwz	18, (argblock+28)(sp)
-	lwz	19, (argblock+32)(sp)
-	lwz	20, (argblock+36)(sp)
-	lwz	21, (argblock+40)(sp)
-	lwz	22, (argblock+44)(sp)
-	lwz	23, (argblock+48)(sp)
-	lwz	24, (argblock+52)(sp)
-	lwz	25, (argblock+56)(sp)
-	lwz	26, (argblock+60)(sp)
-	lwz	27, (argblock+64)(sp)
-	lwz	28, (argblock+68)(sp)
-	lwz	29, (argblock+72)(sp)
-	lwz	30, (argblock+76)(sp)
-	lwz	31, (argblock+80)(sp)
-	lwz	0, (argblock+84)(sp)
+        l       atmp1,PSEUDOREG_OFFSET(sp)     /* restore pseudo registers */
+        st      atmp1,PseudoReg1OffMSP(atmp3)   
+        l       atmp1,PSEUDOREG_OFFSET+4(sp)
+        st      atmp1,PseudoReg2OffMSP(atmp3)
+ 	l	2, (argblock+4)(sp) 
+	l	13, (argblock+8)(sp)
+	l	14, (argblock+12)(sp)
+	l 	15, (argblock+16)(sp)
+	l	16, (argblock+20)(sp)
+	l	17, (argblock+24)(sp)
+	l	18, (argblock+28)(sp)
+	l 	19, (argblock+32)(sp)
+	l 	20, (argblock+36)(sp)
+	l	21, (argblock+40)(sp)
+	l 	22, (argblock+44)(sp)
+	l 	23, (argblock+48)(sp)
+	l 	24, (argblock+52)(sp)
+	l	25, (argblock+56)(sp)
+	l 	26, (argblock+60)(sp)
+	l	27, (argblock+64)(sp)
+	l	28, (argblock+68)(sp)
+	l 	29, (argblock+72)(sp)
+	l	30, (argblock+76)(sp)
+	l 	31, (argblock+80)(sp)
+	l	0, (argblock+84)(sp)
 	mtlr    0
-	lwz	0, (argblock+88)(sp)
+	l	0, (argblock+88)(sp)
 	mtcrf	0x80, 0
-	addi	sp,sp,framesize 
-	blr
+	ai	sp,sp,framesize 
+	br
 
-	TEXT
-ENTRY(saveregs)
-	lwz	atmp3,MLSTATE_OFFSET(sp)
-	stw	atmp1,MaskOffMSP(atmp3)
+GLOBAL(.saveregs)
+	.csect [PR]
+.saveregs:
+	l	atmp3,MLSTATE_OFFSET(sp)
+	st	atmp1,MaskOffMSP(atmp3)
 
 #ifdef SOFT_POLL
 	/* free some regs */
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)	/* use as tmp */
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)	/* use as tmp */
+	st	miscreg0,MiscRegOffMSP(0)(atmp3)	/* use as tmp */
+	st	miscreg1,MiscRegOffMSP(1)(atmp3)	/* use as tmp */
 #define pfreq	atmp1
 #define	pevent	miscreg0
 #define ptmp    miscreg1
 
 	/* check if polling enabled (PollFreq > 0) */
-	lwz	pfreq,T._PollFreq0(2)		/* address of PollFreq */
-	lwz	pfreq,4(pfreq)			/* contents of PollFreq */
+	l	pfreq,T._PollFreq0(2)		/* address of PollFreq */
+	l	pfreq,4(pfreq)			/* contents of PollFreq */
 	sri	pfreq,pfreq,1			/* strip integer tag */
 	cmpi	CR0,pfreq,0
-	bt	CR0_EQ,check_for_gc		/* go check for real gc */
-	lwz	ptmp,InPollHandlerOffMSP(atmp3)	/* if we're in the handler */
+	bbt	CR0_EQ,check_for_gc		/* go check for real gc */
+	l	ptmp,InPollHandlerOffMSP(atmp3)	/* if we're in the handler */
 	cmpi	CR0,ptmp,0
-	bt	CR0_GT,reset_limit		/* ignore poll events */
-	lwz	ptmp,T._PollEvent0(2)		/* address of PollEvent */
-	lwz	pevent,4(ptmp)			/* contents of PollEvent */
+	bbt	CR0_GT,reset_limit		/* ignore poll events */
+	l	ptmp,T._PollEvent0(2)		/* address of PollEvent */
+	l	pevent,4(ptmp)			/* contents of PollEvent */
 	sri	pevent,pevent,1
 	cmpi	CR0,pevent,0
-	bt	CR0_EQ,reset_limit
+	bbt	CR0_EQ,reset_limit
 	/* event occurred, so set ml_pollHandlerPending */
-	li	ptmp,1
-	stw	ptmp,PollPendingOffMSP(atmp3)
+	lil	ptmp,1
+	st	ptmp,PollPendingOffMSP(atmp3)
 	b	do_gc		/* and handle event in the C runtime */
 
 reset_limit:				/* reset limit ptr */
-	slwi	pfreq,pfreq,POLL_GRAIN_BITS	/* mult by POLL_GRAIN_CPSI */
-	add	limitptr,pfreq,allocptr
+	sli	pfreq,pfreq,POLL_GRAIN_BITS	/* mult by POLL_GRAIN_CPSI */
+	a	limitptr,pfreq,allocptr
 
 check_for_gc:
 #define	ptmp2	pfreq
 #define vsp	pevent
 	/* ensure real limit is >= limit */
-	lwz	ptmp,RealLimitOffMSP(atmp3)
+	l	ptmp,RealLimitOffMSP(atmp3)
 	cmpl	CR0,ptmp,limitptr
-	bt	CR0_GT,ok_limit
-	addi	limitptr,ptmp,0           /* move ptmp into limit */
+	bbt	CR0_GT,ok_limit
+	ai	limitptr,ptmp,0           /* move ptmp into limit */
 ok_limit:
-	addi	ptmp,limitptr,-4096
+	ai	ptmp,limitptr,-4096
 	cmpl	CR0,ptmp,allocptr
-	bf	CR0_GT,do_gc 		/* gc *//* should be a common case */
+	bbf	CR0_GT,do_gc 		/* gc *//* should be a common case */
 	/* since a signal also sets limitptr == allocptr to force a trap, */
 	/* we need to disambiguate poll-events/signals here */
-	lwz	vsp,VProcOffMSP(atmp3)          /* get the vsp */
-	lwz	ptmp,PollPendingOffMSP(atmp3)
-	lwz	ptmp2,NPendingOffVSP(vsp)
-	add	ptmp,ptmp,ptmp2
-	lwz	ptmp2,NPendingSysOffVSP(vsp)
-	add	ptmp,ptmp,ptmp2
+	l	vsp,VProcOffMSP(atmp3)          /* get the vsp */
+	l	ptmp,PollPendingOffMSP(atmp3)
+	l	ptmp2,NPendingOffVSP(vsp)
+	a	ptmp,ptmp,ptmp2
+	l	ptmp2,NPendingSysOffVSP(vsp)
+	a	ptmp,ptmp,ptmp2
 	cmpi	CR0,ptmp,0
-	bt	CR0_GT,do_gc
+	bbt	CR0_GT,do_gc
 #undef  vsp
 #undef  ptmp2
 
 no_gc:	/* an uneventful poll check, back to ML */
-	lwz	miscreg0,MiscRegOffMSP(0)(atmp3)  /* reload miscregs */
-	lwz	miscreg1,MiscRegOffMSP(1)(atmp3)
-	b 	CSYM(ml_go)
+	l	miscreg0,MiscRegOffMSP(0)(atmp3)  /* reload miscregs */
+	l	miscreg1,MiscRegOffMSP(1)(atmp3)
+	b 	ml_go
 
 do_gc:
-	stw	limitptr,LimitPtrOffMSP(atmp3)
+	st	limitptr,LimitPtrOffMSP(atmp3)
 
 #undef pfreq
 #undef pevent
 #undef ptmp
 #endif /* SOFT_POLL */
 
-	lwz	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
-	li	0,0
-	stw	0,InMLOffVSP(atmp2)		/* note that we have left ML */
-	addi	basereg, basereg, -32764
-	stw	allocptr,AllocPtrOffMSP(atmp3)
-	stw	storeptr,StorePtrOffMSP(atmp3)
-	stw	stdarg,StdArgOffMSP(atmp3)
-	stw	stdcont,StdContOffMSP(atmp3)
-	stw	stdclos,StdClosOffMSP(atmp3)
-	stw	gclink,PCOffMSP(atmp3)
-	stw	exncont,ExnPtrOffMSP(atmp3)
+	l	atmp2,VProcOffMSP(atmp3)	/* atmp2 := VProc State ptr */
+	lil	0,0
+	st	0,InMLOffVSP(atmp2)		/* note that we have left ML */
+	ai	basereg, basereg, -32764
+	st	allocptr,AllocPtrOffMSP(atmp3)
+	st	storeptr,StorePtrOffMSP(atmp3)
+	st	stdarg,StdArgOffMSP(atmp3)
+	st	stdcont,StdContOffMSP(atmp3)
+	st	stdclos,StdClosOffMSP(atmp3)
+	st	gclink,PCOffMSP(atmp3)
+	st	exncont,ExnPtrOffMSP(atmp3)
 	/* save misc. roots */	
 #ifndef SOFT_POLL   /* miscreg0 & miscreg1 saved above for SOFT_POLL */
-	stw	miscreg0,MiscRegOffMSP(0)(atmp3)	
-	stw	miscreg1,MiscRegOffMSP(1)(atmp3)
+	st	miscreg0,MiscRegOffMSP(0)(atmp3)	
+	st	miscreg1,MiscRegOffMSP(1)(atmp3)
 #endif
-	stw	miscreg2,MiscRegOffMSP(2)(atmp3)
-	stw	miscreg3,MiscRegOffMSP(3)(atmp3)
-	stw	miscreg4,MiscRegOffMSP(4)(atmp3)
-	stw	miscreg5,MiscRegOffMSP(5)(atmp3)
-	stw	miscreg6,MiscRegOffMSP(6)(atmp3)
-	stw	miscreg7,MiscRegOffMSP(7)(atmp3)
-	stw	miscreg8,MiscRegOffMSP(8)(atmp3)
-	stw	miscreg9,MiscRegOffMSP(9)(atmp3)
-	stw	miscreg10,MiscRegOffMSP(10)(atmp3)
-	stw	miscreg11,MiscRegOffMSP(11)(atmp3)
-	stw	miscreg12,MiscRegOffMSP(12)(atmp3)
-	stw	miscreg13,MiscRegOffMSP(13)(atmp3)
-	stw	miscreg14,MiscRegOffMSP(14)(atmp3)
-	stw	stdlink,LinkRegOffMSP(atmp3)
-	stw	basereg,BasePtrOffMSP(atmp3)		/* base reg */
-	stw	varptr,VarPtrOffMSP(atmp3)
-        li	CARG1,REQ_GC
+	st	miscreg2,MiscRegOffMSP(2)(atmp3)
+	st	miscreg3,MiscRegOffMSP(3)(atmp3)
+	st	miscreg4,MiscRegOffMSP(4)(atmp3)
+	st	miscreg5,MiscRegOffMSP(5)(atmp3)
+	st	miscreg6,MiscRegOffMSP(6)(atmp3)
+	st	miscreg7,MiscRegOffMSP(7)(atmp3)
+	st	miscreg8,MiscRegOffMSP(8)(atmp3)
+	st	miscreg9,MiscRegOffMSP(9)(atmp3)
+	st	miscreg10,MiscRegOffMSP(10)(atmp3)
+	st	miscreg11,MiscRegOffMSP(11)(atmp3)
+	st	miscreg12,MiscRegOffMSP(12)(atmp3)
+	st	miscreg13,MiscRegOffMSP(13)(atmp3)
+	st	miscreg14,MiscRegOffMSP(14)(atmp3)
+	st	stdlink,LinkRegOffMSP(atmp3)
+	st	basereg,BasePtrOffMSP(atmp3)		/* base reg */
+	st	varptr,VarPtrOffMSP(atmp3)
+        lil	CARG1,REQ_GC
 	b	restore_c_regs
 
 
-CENTRY(restoreregs)
-	addi	sp,sp,-framesize
-#if defined(USE_TOC)
-	lwz	0,T.saveregs(2)
-#else
-	lis	0, CSYM(saveregs)@ha		/* GPR0 <- addrof(saveregs) */
-	addi	0, 0, CSYM(saveregs)@l
-#endif
-	stw	3, MLSTATE_OFFSET(sp)
-	stw	0, STARTGC_OFFSET(sp)
-#if defined(USE_TOC)
-	lwz	4, T.cvti2d_CONST(2)		/* GPR2 is RTOC */
-	lfd	0, 0(4)
-#else
-	lis	4, cvti2d_CONST@ha
-	lfd	0, cvti2d_CONST@l(4)
-#endif
+GLOBAL(.restoreregs)
+.restoreregs:
+	ai	sp,sp,-framesize
+	l	0,T.saveregs(2)
+	st	3, MLSTATE_OFFSET(sp)
+	st	0, STARTGC_OFFSET(sp)
+	lfd	0, cvti2d_CONST(2)
 	stfd	0, CVTI2D_OFFSET(sp)
 
-	stw	2, argblock+4(sp)
-	stw	13, argblock+8(sp)
-	stw	14, argblock+12(sp)
-	stw	15, argblock+16(sp)
-	stw	16, argblock+20(sp)
-	stw	17, argblock+24(sp)
-	stw	18, argblock+28(sp)
-	stw	19, argblock+32(sp)
-	stw	20, argblock+36(sp)
-	stw	21, argblock+40(sp)
-	stw	22, argblock+44(sp)
-	stw	23, argblock+48(sp)
-	stw	24, argblock+52(sp)
-	stw	25, argblock+56(sp)
-	stw	26, argblock+60(sp)
-	stw	27, argblock+64(sp)
-	stw	28, argblock+68(sp)
-	stw	29, argblock+72(sp)
-	stw	30, argblock+76(sp)
-	stw	31, argblock+80(sp)
+	st	2, argblock+4(sp)
+	st	13, argblock+8(sp)
+	st	14, argblock+12(sp)
+	st 	15, argblock+16(sp)
+	st	16, argblock+20(sp)
+	st	17, argblock+24(sp)
+	st	18, argblock+28(sp)
+	st 	19, argblock+32(sp)
+	st 	20, argblock+36(sp)
+	st	21, argblock+40(sp)
+	st 	22, argblock+44(sp)
+	st 	23, argblock+48(sp)
+	st 	24, argblock+52(sp)
+	st	25, argblock+56(sp)
+	st 	26, argblock+60(sp)
+	st	27, argblock+64(sp)
+	st	28, argblock+68(sp)
+	st 	29, argblock+72(sp)
+	st	30, argblock+76(sp)
+	st 	31, argblock+80(sp)
 	mflr    0
-	stw	0,  argblock+84(sp)
+	st	0,  argblock+84(sp)
 	mfcr	0
-	stw	0,  argblock+88(sp)
+	st	0,  argblock+88(sp)
 	
 	and	atmp1,3,3			/* atmp1 := MLState pointer */
 
-	lwz	allocptr,AllocPtrOffMSP(atmp1)
-	lwz	limitptr,LimitPtrOffMSP(atmp1)
-	lwz	storeptr,StorePtrOffMSP(atmp1)
-        lwz	atmp2,PseudoReg1OffMSP(atmp1)   /* restore pseudo registers */
-        lwz	atmp3,PseudoReg2OffMSP(atmp1)
-        stw	atmp2,PSEUDOREG_OFFSET(sp)
-        stw	atmp3,PSEUDOREG_OFFSET+4(sp)
-	lwz	atmp2,VProcOffMSP(atmp1)	/* atmp2 := VProc State ptr */
-	li	atmp3,1
-	stw	atmp3,InMLOffVSP(atmp2)         /* we are entering ML code */
-	lwz	stdarg,StdArgOffMSP(atmp1)
-	lwz	stdcont,StdContOffMSP(atmp1)
-	lwz	stdclos,StdClosOffMSP(atmp1)
-	lwz	exncont,ExnPtrOffMSP(atmp1)
-	lwz	miscreg0,MiscRegOffMSP(0)(atmp1)
-	lwz	miscreg1,MiscRegOffMSP(1)(atmp1)
-	lwz	miscreg2,MiscRegOffMSP(2)(atmp1)
-	lwz	miscreg3,MiscRegOffMSP(3)(atmp1)
-	lwz	miscreg4,MiscRegOffMSP(4)(atmp1)
-	lwz	miscreg5,MiscRegOffMSP(5)(atmp1)
-	lwz	miscreg6,MiscRegOffMSP(6)(atmp1)
-	lwz	miscreg7,MiscRegOffMSP(7)(atmp1)
-	lwz	miscreg8,MiscRegOffMSP(8)(atmp1)
-	lwz	miscreg9,MiscRegOffMSP(9)(atmp1)
-	lwz	miscreg10,MiscRegOffMSP(10)(atmp1)
-	lwz	miscreg11,MiscRegOffMSP(11)(atmp1)
-	lwz	miscreg12,MiscRegOffMSP(12)(atmp1)
-	lwz	miscreg13,MiscRegOffMSP(13)(atmp1)
-	lwz	miscreg14,MiscRegOffMSP(14)(atmp1)
-	lwz	stdlink,LinkRegOffMSP(atmp1)
-	lwz	varptr,VarPtrOffMSP(atmp1)
-	lwz	basereg,BasePtrOffMSP(atmp1)
-	lwz	gclink,PCOffMSP(atmp1)
-	addi	basereg,basereg,32764		/* adjust baseReg */
+	l	allocptr,AllocPtrOffMSP(atmp1)
+	l	limitptr,LimitPtrOffMSP(atmp1)
+	l	storeptr,StorePtrOffMSP(atmp1)
+        l       atmp2,PseudoReg1OffMSP(atmp1)   /* restore pseudo registers */
+        l       atmp3,PseudoReg2OffMSP(atmp1)
+        st      atmp2,PSEUDOREG_OFFSET(sp)
+        st      atmp3,PSEUDOREG_OFFSET+4(sp)
+	l 	atmp2,VProcOffMSP(atmp1)	/* atmp2 := VProc State ptr */
+	lil	atmp3,1
+	st	atmp3,InMLOffVSP(atmp2)         /* we are entering ML code */
+	l	stdarg,StdArgOffMSP(atmp1)
+	l	stdcont,StdContOffMSP(atmp1)
+	l	stdclos,StdClosOffMSP(atmp1)
+	l	exncont,ExnPtrOffMSP(atmp1)
+	l	miscreg0,MiscRegOffMSP(0)(atmp1)
+	l	miscreg1,MiscRegOffMSP(1)(atmp1)
+	l	miscreg2,MiscRegOffMSP(2)(atmp1)
+	l	miscreg3,MiscRegOffMSP(3)(atmp1)
+	l	miscreg4,MiscRegOffMSP(4)(atmp1)
+	l	miscreg5,MiscRegOffMSP(5)(atmp1)
+	l	miscreg6,MiscRegOffMSP(6)(atmp1)
+	l	miscreg7,MiscRegOffMSP(7)(atmp1)
+	l	miscreg8,MiscRegOffMSP(8)(atmp1)
+	l	miscreg9,MiscRegOffMSP(9)(atmp1)
+	l	miscreg10,MiscRegOffMSP(10)(atmp1)
+	l	miscreg11,MiscRegOffMSP(11)(atmp1)
+	l	miscreg12,MiscRegOffMSP(12)(atmp1)
+	l	miscreg13,MiscRegOffMSP(13)(atmp1)
+	l	miscreg14,MiscRegOffMSP(14)(atmp1)
+	l	stdlink,LinkRegOffMSP(atmp1)
+	l	varptr,VarPtrOffMSP(atmp1)
+	l 	basereg,BasePtrOffMSP(atmp1)
+	l	gclink,PCOffMSP(atmp1)
+	ai      basereg,basereg,32764		/* adjust baseReg */
 						/* check for pending signals */
-	lwz	atmp1,NPendingSysOffVSP(atmp2)
-	lwz	atmp3,NPendingOffVSP(atmp2)
-	add	atmp1,atmp1,atmp3
+	l	atmp1,NPendingSysOffVSP(atmp2)
+	l	atmp3,NPendingOffVSP(atmp2)
+	a	atmp1,atmp1,atmp3
 	cmpi	CR0,atmp1,0
-	bf	CR0_EQ,pending_sigs
+	bbf	CR0_EQ,pending_sigs
 
 
-ENTRY(ml_go) 
+GLOBAL(ml_go) 
+ml_go:	
 	cmpl	CR0,limitptr,allocptr
 	mtlr	gclink
 
@@ -516,74 +512,77 @@ ENTRY(ml_go)
 	mtfsfi  2,0
 	mtfsfi  1,0
 	mtfsfi  0,0
-	li	0,0
+	lil	0,0
 	mtxer   0
-	blr				/* jump to ML code */
+	br				/* jump to ML code */
 
 pending_sigs:				/* there are pending signals */
-	lwz	atmp1,InSigHandlerOffVSP(atmp2)
+	l	atmp1,InSigHandlerOffVSP(atmp2)
 	cmpi	CR0,atmp1,0
-	bf 	CR0_EQ,CSYM(ml_go)
+	bbf 	CR0_EQ,ml_go
 					/* check if currently handling a signal */	
-	lwz	atmp1,InSigHandlerOffVSP(atmp2)
+	l	atmp1,InSigHandlerOffVSP(atmp2)
 	cmpi	CR0,atmp1,0
-	bf	CR0_EQ,CSYM(ml_go)
+	bbf	CR0_EQ,ml_go
 
-	li	0,1
-	stw	0,HandlerPendingOffVSP(atmp2)
-	addi	limitptr,allocptr,0
-	b	CSYM(ml_go)
+	lil	0,1
+	st	0,HandlerPendingOffVSP(atmp2)
+	ai	limitptr,allocptr,0
+	b	ml_go
 
+
+GLOBAL(.SaveFPRegs)
+	.align 2
 
 ML_CODE_HDR(array_a)
 	CHECKLIMIT(FUN_MASK,array_a_limit)
-	lwz	atmp2,0(stdarg)		/* atmp2 := tagged length */
-	srawi	atmp2,atmp2,1		/* atmp2 := untagged length */
+	l	atmp2,0(stdarg)		/* atmp2 := tagged length */
+	srai	atmp2,atmp2,1		/* atmp2 := untagged length */
  	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a large object */
-	bf	CR0_LT,array_a_large	
-	slwi	atmp3,atmp2,TAG_SHIFTW  /* atmp3 := build descriptor */
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_array)
-	stw	atmp3,0(allocptr)	/* store the descriptor */
-	addi	allocptr,allocptr,4	/* points to new object */
-	lwz	atmp4,4(stdarg)		/* atmp4 := get initial value */
-	addi	stdarg,allocptr,0	/* put ptr in return register */
-	slwi	atmp2,atmp2,2		/* atmp2 := length in bytes */
-	add	atmp1,atmp2,allocptr	/* beyond last word of new array */
+	bbf	CR0_LT,array_a_large	
+	sli	atmp3,atmp2,TAG_SHIFTW  /* atmp3 := build descriptor */
+	oril	atmp3,atmp3,MAKE_TAG(DTAG_array)
+	st	atmp3,0(allocptr)	/* store the descriptor */
+	ai	allocptr,allocptr,4	/* points to new object */
+	l	atmp4,4(stdarg)		/* atmp4 := get initial value */
+	ai	stdarg,allocptr,0	/* put ptr in return register */
+	sli	atmp2,atmp2,2		/* atmp2 := length in bytes */
+	a	atmp1,atmp2,allocptr	/* beyond last word of new array */
 array_a_2:				/* loop */
-        addi	allocptr,allocptr,4	/* on to the next word */
+        ai	allocptr,allocptr,4	/* on to the next word */
 	cmp	CR0,allocptr,atmp1
-	stw	atmp4,-4(allocptr)	/* store the value */
-	bf	CR0_EQ, array_a_2	/* if not off the end, repeat */
+	st	atmp4,-4(allocptr)	/* store the value */
+	bbf	CR0_EQ, array_a_2	/* if not off the end, repeat */
 					/* end loop */
 	CONTINUE
 array_a_large:				/* off-line allocation */
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_ALLOC_ARRAY
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_ALLOC_ARRAY
 	b	set_request
 
 
 ML_CODE_HDR(create_b_a)
 	CHECKLIMIT(FUN_MASK,create_b_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
-	addi	atmp2,atmp2,3
-	srawi	atmp2,atmp2,2		/* length in words (including desc) */
+	srai	atmp2,stdarg,1		/* atmp1 = length */
+	ai	atmp2,atmp2,3
+	srai	atmp2,atmp2,2		/* length in words (including desc) */
 	cmpi    CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
-	bf     CR0_LT,create_b_a_large
+	bbf     CR0_LT,create_b_a_large
 
-	srawi	atmp3,stdarg,1		/* build descriptor in atmp3 */
-	slwi	atmp3,atmp3,TAG_SHIFTW
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_bytearray)
-	stw	atmp3,0(allocptr)	/* store descriptor */
-	addi	stdarg,allocptr,4	/* pointer to new string */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* length + tag */
-	add	allocptr,allocptr,atmp2	/* advance allocptr */
+	srai	atmp3,stdarg,1		/* build descriptor in atmp3 */
+	sli	atmp3,atmp3,TAG_SHIFTW
+	oril	atmp3,atmp3,MAKE_TAG(DTAG_bytearray)
+	st	atmp3,0(allocptr)	/* store descriptor */
+	ai	stdarg,allocptr,4	/* pointer to new string */
+	sli	atmp2,atmp2,2		/* length in bytes */
+	ai	atmp2,atmp2,4		/* length + tag */
+	a	allocptr,allocptr,atmp2	/* advance allocptr */
 	CONTINUE
 
 create_b_a_large:
-	li	atmp1,FUN_MASK
-	li 	atmp4,REQ_ALLOC_BYTEARRAY
-	b	set_request
+	lil	atmp1,FUN_MASK
+	lil 	atmp4,REQ_ALLOC_BYTEARRAY
+	b	set_request	
 
 
 /*
@@ -591,109 +590,95 @@ create_b_a_large:
 */
 ML_CODE_HDR(create_s_a)
 	CHECKLIMIT(FUN_MASK,create_s_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
-	addi	atmp2,atmp2,4
-	srawi	atmp2,atmp2,2		/* length in words (including desc) */
+	srai	atmp2,stdarg,1		/* atmp1 = length */
+	ai	atmp2,atmp2,4
+	srai	atmp2,atmp2,2		/* length in words (including desc) */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW /* is this a small object */
-	bf	CR0_LT,create_s_a_large
+	bbf	CR0_LT,create_s_a_large
 	
-	srawi	atmp1,stdarg,1		/* build descriptor in atmp1 */
-	slwi	atmp1,atmp1,TAG_SHIFTW
-	ori	atmp1,atmp1,MAKE_TAG(DTAG_string)
-	stw	atmp1,0(allocptr)	/* store descriptor */
-	addi	stdarg,allocptr,4	/* pointer to new string */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* + tag */
-	add	allocptr,allocptr,atmp2	/* advance allocptr */
-	li	0,0
-	stw	0,-4(allocptr)		/* zero in last word */
+	srai	atmp1,stdarg,1		/* build descriptor in atmp1 */
+	sli	atmp1,atmp1,TAG_SHIFTW
+	oril	atmp1,atmp1,MAKE_TAG(DTAG_string)
+	st	atmp1,0(allocptr)	/* store descriptor */
+	ai	stdarg,allocptr,4	/* pointer to new string */
+	sli	atmp2,atmp2,2		/* length in bytes */
+	ai	atmp2,atmp2,4		/* + tag */
+	a	allocptr,allocptr,atmp2	/* advance allocptr */
+	lil	0,0
+	st	0,-4(allocptr)		/* zero in last word */
 	CONTINUE
 
 create_s_a_large:
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_ALLOC_STRING
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_ALLOC_STRING
 	b	set_request
 
 
 
 ML_CODE_HDR(create_r_a)
 	CHECKLIMIT(FUN_MASK,create_r_a_limit)
-	srawi	atmp2,stdarg,1		/* atmp1 = length */
-	slwi	atmp2,atmp2,1		/* length in words */
+	srai	atmp2,stdarg,1		/* atmp1 = length */
+	sli	atmp2,atmp2,1		/* length in words */
 	cmpi	CR0,atmp2,SMALL_OBJ_SZW	/* is this a small object */
-	bf	CR0_LT,create_r_a_large
+	bbf	CR0_LT,create_r_a_large
 	
-	srawi	atmp3,stdarg,1		/* descriptor in atmp3 */
-	slwi	atmp3,atmp3,TAG_SHIFTW
-	ori	atmp3,atmp3,MAKE_TAG(DTAG_realdarray)
+	srai	atmp3,stdarg,1		/* descriptor in atmp3 */
+	sli	atmp3,atmp3,TAG_SHIFTW
+	oril	atmp3,atmp3,MAKE_TAG(DTAG_realdarray)
 #ifdef ALIGN_REALDS
-	ori	allocptr,allocptr,4
+	oril	allocptr,allocptr,4
 #endif	
-	stw	atmp3,0(allocptr)
-	addi	stdarg,allocptr,4	/* pointer to new realarray */
-	slwi	atmp2,atmp2,2		/* length in bytes */
-	addi	atmp2,atmp2,4		/* plus tag */
-	add	allocptr,allocptr,atmp2	/* new allocptr */
+	st	atmp3,0(allocptr)
+	ai	stdarg,allocptr,4	/* pointer to new realarray */
+	sli	atmp2,atmp2,2		/* length in bytes */
+	ai	atmp2,atmp2,4		/* plus tag */
+	a	allocptr,allocptr,atmp2	/* new allocptr */
 	CONTINUE
 create_r_a_large:
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_ALLOC_REALDARRAY
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_ALLOC_REALDARRAY
 	b	set_request
 
 
 ML_CODE_HDR(create_v_a)
 	CHECKLIMIT(FUN_MASK,create_v_a_limit)
-	lwz	atmp1,0(stdarg)		/* atmp1 := tagged length */
-	srawi	atmp1,atmp1,1		/* untagged length */
+	l	atmp1,0(stdarg)		/* atmp1 := tagged length */
+	srai	atmp1,atmp1,1		/* untagged length */
 	cmpi	CR0,atmp1,SMALL_OBJ_SZW /* is this a small object */
-	bf	CR0_LT,create_v_a_large
+	bbf	CR0_LT,create_v_a_large
 
-	slwi	atmp2,atmp1,TAG_SHIFTW	/* build descriptor in atmp2 */
-	ori	atmp2,atmp2,MAKE_TAG(DTAG_vector)
-	stw	atmp2,0(allocptr)
-	addi	allocptr,allocptr,4
-	lwz	atmp2,4(stdarg)		/* atmp2 := list */
-	addi	stdarg,allocptr,0	/* stdarg := vector */
-	li	atmp3,ML_nil
+	sli	atmp2,atmp1,TAG_SHIFTW	/* build descriptor in atmp2 */
+	oril	atmp2,atmp2,MAKE_TAG(DTAG_vector)
+	st	atmp2,0(allocptr)
+	ai	allocptr,allocptr,4
+	l	atmp2,4(stdarg)		/* atmp2 := list */
+	ai	stdarg,allocptr,0	/* stdarg := vector */
+	lil	atmp3,ML_nil
 
 create_v_a_1:
-	lwz	atmp1,0(atmp2)		/* atmp1:=hd(atmp2) */
-	lwz	atmp2,4(atmp2)		/* atmp2:=tl(atmp2) */
+	l	atmp1,0(atmp2)		/* atmp1:=hd(atmp2) */
+	l	atmp2,4(atmp2)		/* atmp2:=tl(atmp2) */
 	cmp	CR0,atmp2,atmp3
-	stw	atmp1,0(allocptr)	/* store word */
-	addi	allocptr,allocptr,4
-	bf	CR0_EQ,create_v_a_1
+	st	atmp1,0(allocptr)	/* store word */
+	ai	allocptr,allocptr,4
+	bbf	CR0_EQ,create_v_a_1
 
 	CONTINUE
 
 create_v_a_large:
-	li	atmp1,FUN_MASK
-	li	atmp4,REQ_ALLOC_VECTOR
+	lil	atmp1,FUN_MASK
+	lil	atmp4,REQ_ALLOC_VECTOR
 	b	set_request
 
 
-#if defined(USE_TOC)
+	.csect	[RO]
 	.toc
-T.floor_CONST:
-	.tc	H.floor_CONST[TC],floor_CONST
-T.floor_MAXINT:
-	.tc	H.floor_MAXINT[TC],floor_MAXINT
-#endif
-	RO_DATA
-	ALIGN8
-floor_CONST:
-	DOUBLE(4512395720392704.0)
-floor_MAXINT:
-	DOUBLE(1073741824.0)
+floor_CONST:	.tc	fd43300800_0[TC],0x43300800, 0
 
-	TEXT
+	.csect 	[PR]
 	/*
 	** floor_a : real -> int
-	**	The overflow test here is not quite 
-	**	accurate. MINIT = -MAXINT instead of 
-	**      MININT = -(MAXINT + 1). Should fix this
-	**	eventually!!
-	**
+        **  Caller must ensure arg in range.
 	**	This code essentially loads 1.0*2^52 into 
 	**	register f3. A floating add will internally 
 	**	perform an exponent alignment, which will 
@@ -701,55 +686,35 @@ floor_MAXINT:
 	*/
 ML_CODE_HDR(floor_a)
 	lfd	1, 0(stdarg)		
-#ifdef USE_TOC
-	lwz	atmp1, T.floor_MAXINT(2)
-	lfd	0, 0(atmp1)
-#else
-	lis	atmp1, floor_MAXINT@ha
-	lfd	0, floor_MAXINT@l(atmp1)
-#endif
-	fabs	5, 1
-	fcmpo	CR0,5,0
-	bt	CR0_GT,floor_overflow
-
 	/*
 	** Neat thing here is that this code works for
 	** both +ve and -ve floating point numbers.
 	*/
 	mffs	0
 	stfd	0,0(allocptr)	/* steal the allocptr for a second */
-	lwz	0, 4(allocptr)
+	l 	0, 4(allocptr)
 	mtfsb1	30
 	mtfsb1 	31
-#ifdef USE_TOC
-	lwz	atmp1, T.floor_CONST(2)
-	lfd	3, 0(atmp1)
-#else
-	lis	atmp1, floor_CONST@ha
-	lfd	3, floor_CONST@l(atmp1)
-#endif
-	fadd	6,1,3
+	lfd	3,floor_CONST(2)	
+	fa	6,1,3
 	stfd	6,FLOOR_OFFSET(sp)
-	lwz	stdarg,FLOOR_OFFSET+4(sp)
-	add	stdarg,stdarg,stdarg
-	addi	stdarg,stdarg,1
+	l	stdarg,FLOOR_OFFSET+4(sp)
+	a	stdarg,stdarg,stdarg
+	ai	stdarg,stdarg,1
 	
-	andi.	0,0, 0xf
+	andil.	0,0, 0xf
 	mtfsf	0xff,0
 	CONTINUE
-
-floor_overflow:
-	tweq	0,0
 
 
 
 ML_CODE_HDR(logb_a)
-	lwz	stdarg,0(stdarg)  	/* most significant part */
-	srawi 	stdarg,stdarg,20	/* throw out 20 low bits */
-	andi.	stdarg,stdarg,0x07ff	/* clear all but 11 low bits */
-	addi	stdarg,stdarg,-1023	/* subtract 1023 */
-	slwi	stdarg,stdarg,1		/* make room for tag bit */
-	addi	stdarg,stdarg,1		/* add the tag bit */
+	l 	stdarg,0(stdarg)  	/* most significant part */
+	srai 	stdarg,stdarg,20	/* throw out 20 low bits */
+	andil.	stdarg,stdarg,0x07ff	/* clear all but 11 low bits */
+	ai	stdarg,stdarg,-1023	/* subtract 1023 */
+	sli	stdarg,stdarg,1		/* make room for tag bit */
+	ai	stdarg,stdarg,1		/* add the tag bit */
 	CONTINUE
 
 
@@ -759,41 +724,41 @@ ML_CODE_HDR(logb_a)
 */
 ML_CODE_HDR(scalb_a)
 	CHECKLIMIT(FUN_MASK,scalb_v_limit)
-	lwz	atmp1,4(stdarg)		/* atmp1 := y */
-	srawi	atmp1,atmp1,1		/* atmp1 := machine int y */
-	lwz	stdarg,0(stdarg)	/* stdarg := x */
-	lwz	atmp2,0(stdarg)		/* atmp2 := MSW(x) */
-	lis	0,0x7ff0		/* r0 := 0x7ff0,0000 */
+	l	atmp1,4(stdarg)		/* atmp1 := y */
+	srai	atmp1,atmp1,1		/* atmp1 := machine int y */
+	l	stdarg,0(stdarg)	/* stdarg := x */
+	l	atmp2,0(stdarg)		/* atmp2 := MSW(x) */
+	liu	0,0x7ff0		/* r0 := 0x7ff0,0000 */
 	and.	atmp3,atmp2,0		/* atmp3 := atmp2 & 0x7ff00000 */
-	bt	CR0_EQ,scalb_all_done
+	bbt	CR0_EQ,scalb_all_done
 	
-	srawi	atmp3,atmp3,20		/* atmp3 := ieee(exp) */
-	add.	atmp1,atmp1,atmp3	/* scale exponent */
-	bt	CR0_LT,scalb_underflow
+	srai	atmp3,atmp3,20		/* atmp3 := ieee(exp) */
+	a.	atmp1,atmp1,atmp3	/* scale exponent */
+	bbt	CR0_LT,scalb_underflow
 
 	cmpi	CR0,atmp1,2047		/* max. ieee(exp) */
-	bf	CR0_LT,scalb_overflow
+	bbf	CR0_LT,scalb_overflow
 
-	not	0,0			/* r0 := not(r0) */
+	sfi	0,0,-1			/* r0 := not(r0) */
 	and	atmp2,atmp2,0		/* atmp2 := high mantessa bits + sign */
-	slwi	atmp1,atmp1,20		/* atmp1 := new exponent */
+	sli	atmp1,atmp1,20		/* atmp1 := new exponent */
 	or	atmp1,atmp1,atmp2	/* atmp1 := new MSB(x) */
-	lwz	atmp2, 4(stdarg)	
+	l 	atmp2, 4(stdarg)	
 
 scalb_write_out:
-	stw	atmp1, 4(allocptr)
-	stw	atmp2, 8(allocptr)
-	li	atmp3, DESC_reald
-	stw	atmp3, 0(allocptr)
-	addi	stdarg,allocptr,4
-	addi	allocptr,allocptr,12
+	st	atmp1, 4(allocptr)
+	st	atmp2, 8(allocptr)
+	lil	atmp3, DESC_reald
+	st	atmp3, 0(allocptr)
+	ai	stdarg,allocptr,4
+	ai	allocptr,allocptr,12
 
 scalb_all_done:
 	CONTINUE
 
 scalb_underflow:
-	li	atmp1,0
-	li	atmp2,0
+	lil	atmp1,0
+	lil	atmp2,0
 	b	scalb_write_out
 
 LABEL(scalb_overflow)
@@ -802,17 +767,17 @@ LABEL(scalb_overflow)
 
 
 ML_CODE_HDR(try_lock_a)
-	lwz	atmp1,0(stdarg)
-	li	atmp2,1			/* ML_false */
-	stw	atmp2,0(stdarg)
-	addi	stdarg,atmp1,0
+	l	atmp1,0(stdarg)
+	lil	atmp2,1			/* ML_false */
+	st	atmp2,0(stdarg)
+	ai	stdarg,atmp1,0
 	CONTINUE
 
 
 ML_CODE_HDR(unlock_a)
-	li	atmp1,3			/* ML_true */
-	stw	atmp1,0(stdarg)
-	li	stdarg,1		/* just return unit */
+	lil	atmp1,3			/* ML_true */
+	st	atmp1,0(stdarg)
+	lil	stdarg,1		/* just return unit */
 	CONTINUE
 
 
@@ -823,7 +788,7 @@ ML_CODE_HDR(unlock_a)
 #define ctmp3 10
 
 
-CENTRY(SaveFPRegs)
+LABEL(.SaveFPRegs)
 	stfd	14, 4(3)
 	stfd	15, 12(3)
 	stfd	16, 20(3)
@@ -843,9 +808,11 @@ CENTRY(SaveFPRegs)
 	stfd	30, 132(3)
 	stfd	31, 140(3)
 
-	blr
+	br
 
-CENTRY(RestoreFPRegs)
+GLOBAL(.RestoreFPRegs)
+	.align 2
+LABEL(.RestoreFPRegs)
 	lfd	14, 0(3)
 	lfd	15, 8(3)
 	lfd	16, 16(3)
@@ -864,31 +831,5 @@ CENTRY(RestoreFPRegs)
 	lfd	29, 120(3)
 	lfd	30, 128(3)
 	lfd	31, 136(3)
-	blr
-
-#if defined(OPSYS_MKLINUX)
-
-#define CACHE_LINE_SZB		32
-#define CACHE_LINE_MASK		(CACHE_LINE_SZB-1)
-#define CACHE_LINE_BITS		26
-
-/* FlushICache:
- *
- *   void FlushICache (Addr_t addr, Addr_t nbytes)
- */
-CENTRY(FlushICache)
-	add	4,3,4			/* stop := addr+nbytes */
-	addic	4,4,CACHE_LINE_MASK	/* stop := stop + CACHE_LINE_MASK */
-	rlwinm	4,4,0,0,CACHE_LINE_BITS	/* stop := stop & ~CACHE_LINE_MASK */
-L_FlushICache_1:
-	cmplw	1,3,4			/* while (addr < stop) */
-	bc	4,4,L_FlushICache_2
-	dcbf	0,3			/*   flush addr */
-	icbi	0,3			/*   invalidate addr */
-	addi	3,3,CACHE_LINE_SZB	/*   addr := addr + CACHE_LINE_SZB */
-	b	L_FlushICache_1		/* end while */
-L_FlushICache_2:
-	blr
-
-#endif
+	br
 

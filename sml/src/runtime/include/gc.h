@@ -39,6 +39,8 @@ typedef struct {	/* object information */
 
 extern obj_info_t GetObjInfo (ml_val_t obj);
 
+char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz);
+
 #ifdef HEAP_MONITOR
 extern status_t HeapMon_Init (heap_t *heap);
 #else

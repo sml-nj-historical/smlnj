@@ -1,6 +1,48 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+Version 1.0.11 (SML/NJ 109.33 and 110)
+--------------------------------------
+
+  - Added TextIO.scanStream function.
+    [1997-11-21]
+
+  - Added import of PathUtil:PATH_UTIL to CML library.
+    [1997-11-21]
+
+
+Version 1.0.10 (SML/NJ 109.32)
+------------------------------
+
+  - Fixed a scheduler bug that occured when the atomicState was SignalPending
+    and atomicSwitchTo was used to exit the atomic region.
+    [1997-09-18]
+
+  - Fixed a bug in the RunCML.doit code that prevented multiple runs (this bug
+    was exposed by the previous bug fix).
+    [1997-09-15]
+
+  - Fixed a serious bug with the internal condition variables (Event.atomicCVarSet
+    was not changing the state of the variable).
+    [1997-09-15]
+
+  - Introduced datatype rebinding to eliminate some structure opening.
+    [1997-09-15]
+
+  - Moved definition of tidToString to RepTypes, so that it can be used in
+    debugging the CML internals.
+    [1997-09-14]
+
+  - Server initialization/shutdown is now handled by a dedicated cleanup
+    routine.  Eventually, each server should define its own cleanup routine,
+    and we'll get rid of logServer.
+    [1997-09-12]
+
+  - Fixed bugs in the initialization and shutdown protocols for the standard
+    text streams.
+    [1997-09-12]
+
+
 Version 1.0.9 (SML/NJ 109.31)
 -----------------------------
 

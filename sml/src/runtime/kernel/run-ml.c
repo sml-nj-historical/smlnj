@@ -16,6 +16,7 @@
 #include "ml-signals.h"
 #include "c-library.h"
 #include "profile.h"
+#include "gc.h"
 
 /* local functions */
 PVT void UncaughtExn (ml_val_t e);
@@ -146,9 +147,22 @@ SayDebug ("run-ml: poll event\n");
 		UncaughtExn (msp->ml_arg);
 		return;
 
-	      case REQ_FAULT: /* a hardware fault */
-		RaiseMLExn (msp, msp->ml_faultExn);
-		break;
+	      case REQ_FAULT: { /* a hardware fault */
+		    ml_val_t	loc, traceStk, exn;
+		    char	buf1[128];
+		    if (BO_AddrToCodeObjTag(msp->ml_faultPC, buf1, sizeof(buf1))
+		      != NIL(char *))
+		    {
+			char	buf2[192];
+			sprintf(buf2, "<file %s>", buf1);
+			loc = ML_CString(msp, buf2);
+		    }
+		    else
+			loc = ML_CString(msp, "<unknown file>");
+		    LIST_cons(msp, traceStk, loc, LIST_nil);
+		    EXN_ALLOC(msp, exn, msp->ml_faultExn, ML_unit, traceStk);
+		    RaiseMLExn (msp, exn);
+		} break;
 
 	      case REQ_BIND_CFUN:
 		msp->ml_arg = BindCFun (

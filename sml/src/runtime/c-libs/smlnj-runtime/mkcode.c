@@ -43,7 +43,7 @@ ml_val_t _ml_RunT_mkcode (ml_state_t *msp, ml_val_t arg)
     }
     else {
       /* this object needs to be tagged */
-	ml_val_t	str = OPTION_get (argTag);
+	ml_val_t	str = OPTION_get(argTag);
 	int		strLen = OBJ_LEN(str);
 	int		padLen, extraLen;
 

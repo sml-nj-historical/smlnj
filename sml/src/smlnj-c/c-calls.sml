@@ -11,8 +11,8 @@
 
 functor CCalls (structure CCInfo : CC_INFO) : C_CALLS  = 
     struct
-	structure SU = System.Unsafe
-	structure SUC = System.Unsafe.CInterface
+	structure U = Unsafe
+	structure UC = U.CInterface
 
 	val maxWordSzB = 4
 
@@ -33,11 +33,11 @@ functor CCalls (structure CCInfo : CC_INFO) : C_CALLS  =
 	val say : string -> unit = print
 
 	(* implementation of an abstract pointer type *)
-	abstraction CAddress : sig eqtype caddr
-	                           val NULL : caddr
-				   val index : (caddr * int) -> caddr
-				   val difference : (caddr * caddr) -> word
-			       end =
+	structure CAddress :> sig eqtype caddr
+                                  val NULL : caddr
+				  val index : (caddr * int) -> caddr
+				  val difference : (caddr * caddr) -> word
+			      end =
 	    struct
 		type caddr = word
 
@@ -305,21 +305,21 @@ functor CCalls (structure CCInfo : CC_INFO) : C_CALLS  =
 	    end
 	        
 	val libname = "SMLNJ-CCalls"
-	fun cfun x = SUC.c_function libname x
+	fun cfun x = UC.c_function libname x
 
 (**     (* for debugging *)
 	fun cfun s = (print "binding C function '";
 		      print s;
 		      print "'\n";
-		      SUC.c_function libname s)
+		      UC.c_function libname s)
 **)
 
 	fun cbind (mf as (moduleName, funName)) = 
-	    let val f = SU.Assembly.A.bind_cfun mf
+	    let val f = UC.bindCFun mf
 	    in
-		if (SU.cast f <> 0) then SU.cast f
+		if (U.cast f <> 0) then U.cast f
 		else (print ("can't find "^moduleName ^ "." ^ funName^"\n");
-		      raise SUC.CFunNotFound(moduleName ^ "." ^ funName))
+		      raise UC.CFunNotFound(moduleName ^ "." ^ funName))
 	end
 
 	type arg_desc = string     (* type requirement *)

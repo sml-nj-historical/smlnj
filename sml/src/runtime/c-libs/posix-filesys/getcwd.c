@@ -31,27 +31,31 @@ ml_val_t _ml_P_FileSys_getcwd (ml_state_t *msp, ml_val_t arg)
 
     sts = getcwd(path, MAXPATHLEN);
 
-    if (sts != NIL(char *)) return ML_CString (msp, path);
+    if (sts != NIL(char *))
+	return ML_CString (msp, path);
 
-    if (errno != ERANGE) return RaiseSysError(msp, NIL(char *));
+    if (errno != ERANGE)
+	return RAISE_SYSERR(msp, sts);
 
     buflen = 2*MAXPATHLEN;
-    buf = malloc(buflen);
-    if (buf == NIL(char*)) return RaiseSysError(msp, "no malloc memory");
+    buf = MALLOC(buflen);
+    if (buf == NIL(char*))
+	return RAISE_ERROR(msp, "no malloc memory");
 
     while ((sts = getcwd(buf, buflen)) == NIL(char *)) {
-        free (buf);
+        FREE (buf);
         if (errno != ERANGE)
-           return RaiseSysError(msp, NIL(char *));
+	    return RAISE_SYSERR(msp, sts);
         else {
-          buflen = 2*MAXPATHLEN;
-          buf = malloc(buflen);
-          if (buf == NIL(char*)) return RaiseSysError(msp, "no malloc memory");
+            buflen = 2*buflen;
+            buf = MALLOC(buflen);
+            if (buf == NIL(char*))
+		return RAISE_ERROR(msp, "no malloc memory");
         }
     }
       
     p = ML_CString (msp, buf);
-    free (buf);
+    FREE (buf);
       
     return p;
 

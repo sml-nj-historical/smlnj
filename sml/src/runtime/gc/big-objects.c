@@ -250,3 +250,53 @@ bigobj_desc_t *BO_GetDesc (ml_val_t addr)
     return ADDR_TO_BODESC(rp, addr);
 
 } /* end of BO_GetDesc */
+
+
+/* BO_AddrToCodeObjTag:
+ *
+ * Return the tag of the code object containing the given PC (or else
+ * NIL).
+ */
+char *BO_AddrToCodeObjTag (Word_t pc, char *buf, int bufSz)
+{
+    bigobj_region_t	*region;
+    bigobj_desc_t	*bdp;
+    aid_t		aid;
+
+    aid = ADDR_TO_PAGEID(BIBOP, pc);
+
+    if (IS_BIGOBJ_AID(aid)) {
+	int		indx = BIBOP_ADDR_TO_INDEX(pc);
+	while (!BO_IS_HDR(aid))
+	    aid = BIBOP[--indx];
+	region = (bigobj_region_t *)BIBOP_INDEX_TO_ADDR(indx);
+	return BO_GetCodeObjTag (ADDR_TO_BODESC(region, pc), buf, bufSz);
+    }
+    else
+	return NIL(char *);
+
+} /* end of BO_AddrToCodeObjTag */
+
+
+/* BO_GetCodeObjTag:
+ *
+ * Return the tag of the given code object (return NIL, if it doesn't
+ * fit in the buffer).
+ */
+char *BO_GetCodeObjTag (bigobj_desc_t *bdp, char *buf, int bufSz)
+{
+    Byte_t		*lastByte;
+    int			len;
+
+    lastByte = (Byte_t *)(bdp->obj) + bdp->sizeB - 1;
+    len = *lastByte;
+    if (len < bufSz) {
+	strncpy (buf, lastByte-len, len);
+	buf[len] = '\0';
+	return buf;
+    }
+    else
+	return NIL(char *);
+
+} /* end of BO_GetCodeObjTag */
+

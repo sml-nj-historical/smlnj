@@ -52,7 +52,7 @@ ml_val_t _ml_P_ProcEnv_sysconf (ml_state_t *msp, ml_val_t arg)
     attr = _ml_posix_nv_lookup (PTR_MLtoC(char, arg), values, NUMELMS);
     if (!attr) {
       errno = EINVAL;
-      return RaiseSysError(msp, NIL(char *));
+      return RAISE_SYSERR(msp, -1);
     }
  
     errno = 0;
@@ -66,8 +66,8 @@ ml_val_t _ml_P_ProcEnv_sysconf (ml_state_t *msp, ml_val_t arg)
       return p;
     }
     else if (errno == 0)
-      return RaiseSysError(msp, "unsupported POSIX feature");
+      return RAISE_ERROR(msp, "unsupported POSIX feature");
     else
-      return RaiseSysError(msp, NIL(char *));
+      return RAISE_SYSERR(msp, -1);
 
 } /* end of _ml_P_ProcEnv_sysconf */

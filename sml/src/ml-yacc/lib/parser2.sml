@@ -1,12 +1,12 @@
 (* ML-Yacc Parser Generator (c) 1989 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:08  monnier
+ * *** empty log message ***
  *
-# Revision 1.2  1997/08/26  19:18:54  jhr
-#   Replaced used of "abstraction" with ":>".
-#
+ * Revision 1.2  1997/08/26 19:18:54  jhr
+ *   Replaced used of "abstraction" with ":>".
+ *
 # Revision 1.1.1.1  1997/01/14  01:38:04  george
 #   Version 109.24
 #

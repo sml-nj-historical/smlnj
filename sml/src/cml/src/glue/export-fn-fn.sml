@@ -55,13 +55,11 @@ functor ExportFnFn (G : OS_GLUE) : sig
 	  val (cleanUp, sts) = Cont.callcc (fn doneK => (
 		S.shutdownHook := doneK;
 		case tq of (SOME tq) => S.startTimer tq | _ => S.restartTimer();
-		CU.startServers();
 		CU.clean CU.AtInitFn;
 		CML.spawn initialProc;
 		CML.exit ()))
 	  in
 	    CU.clean CU.AtExit;
-	    CU.shutdownServers();
 	    G.shutdown();
 	    S.stopTimer();
 	    Thread.reset false;

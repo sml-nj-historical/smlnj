@@ -1,4 +1,4 @@
-(* threads.sml
+(* thread.sml
  *
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  * COPYRIGHT (c) 1989-1991 John H. Reppy
@@ -13,24 +13,9 @@ structure Thread : sig
     structure R = RepTypes
     structure S = Scheduler
 
-    structure Rep : sig
-	datatype thread_id = TID of {  (* thread ids *)
-	    id	       : int,
-	    alert      : bool ref,
-	    done_comm  : bool ref,
-	    exnHandler : (exn -> unit) ref,
-	    dead      : cvar
-	  }
-	and cvar = CVAR of cvar_state ref
-	and cvar_state
-	  = CVAR_unset of {
-		transId : R.trans_id ref,
-		cleanUp : unit -> unit,
-		kont : unit SMLofNJ.Cont.cont
-	      } list
-	  | CVAR_set of int
-      end = RepTypes
-    open Rep
+    datatype thread_id = datatype R.thread_id
+    datatype cvar = datatype R.cvar
+    datatype cvar_state = datatype R.cvar_state
 
     type 'a event = 'a R.event
 
@@ -66,8 +51,7 @@ structure Thread : sig
 
     fun hashTid (TID{id, ...}) = Word.fromInt id
 
-    fun tidToString (TID{id, ...}) =
-	  concat["[", StringCvt.padLeft #"0" 6 (Int.toString id), "]"]
+    val tidToString = R.tidToString
 
     fun notifyAndDispatch (TID{dead, ...}) = (
 	  S.atomicBegin(); Event.atomicCVarSet dead; S.atomicDispatch())

@@ -64,4 +64,10 @@ structure RepTypes =
       | GUARD of unit -> 'a event
       | W_NACK of unit event -> 'a event
 
+  (* we put this function here, because it is useful when debugging the
+   * CML internals.
+   *)
+    fun tidToString (TID{id, ...}) =
+	  concat["[", StringCvt.padLeft #"0" 6 (Int.toString id), "]"]
+
   end

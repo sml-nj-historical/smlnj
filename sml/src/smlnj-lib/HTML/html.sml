@@ -10,7 +10,7 @@
 structure HTML : HTML = 
   struct
 
-    val htmlVersion = "3.2"
+    val htmlVersion = "3.2 Final"
 
     type pcdata = string
     type cdata = string
@@ -138,7 +138,7 @@ structure HTML : HTML =
     datatype html = HTML of {
 	version : cdata option,
 	head : head_content list,
-	body : block
+	body : body
       }
 
     and head_content
@@ -160,6 +160,16 @@ structure HTML : HTML =
     (* SCRIPT/STYLE elements are placeholders for the next version of HTML *)
       | Head_SCRIPT of pcdata
       | Head_STYLE of pcdata
+
+    and body = BODY of {
+	background : url option,
+	bgcolor : cdata option,
+	text : cdata option,
+	link : cdata option,
+	vlink : cdata option,
+	alink : cdata option,
+	content : block
+      }
 
     and block
       = BlockList of block list

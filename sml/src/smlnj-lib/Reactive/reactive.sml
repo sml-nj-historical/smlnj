@@ -45,8 +45,7 @@ structure Reactive : REACTIVE =
 		  | I.stop => M.stop()
 		  | I.suspend => M.suspend()
 		  | I.action act => M.action act
-		  | I.exec{start, stop, done} =>
-		      M.exec{start=start, stop=stop, done=done}
+		  | I.exec f => M.exec f
 		  | I.ifThenElse(pred, i1, i2) =>
 		      M.ifThenElse(pred, trans(i1, env), trans(i2, env))
 		  | I.repeat(cnt, i) => M.repeat(cnt, trans(i, env))

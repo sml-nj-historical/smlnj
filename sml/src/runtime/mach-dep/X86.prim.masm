@@ -781,16 +781,11 @@ ML_CODE_HDR(unlock_a)
 
 #define FPOP	fstp FP_REG(st)	/* Pop the floating point register stack. */
 
-	DATA
-	ALIGN4
-GLOBAL(maxint_plus1)
-WORD32(maxint_plus1,HEXLIT(40000000))  /* Used in floor_a to check for overflow. */
-GLOBAL(minint_sub1)
-WORD32(minint_sub1,HEXLIT(bfffffff))
-
 /* Temporary storage for the old and new floating point control
    word.  We don't use the stack to for this, since doing so would 
    change the offsets of the pseudo-registers. */
+	DATA
+	ALIGN4
 GLOBAL(old_controlwd)
 WORD16(old_controlwd,0)
 GLOBAL(new_controlwd)
@@ -867,9 +862,8 @@ ENTRY(restorefpregs)
 	RET
 
 /* floor : real -> int
-   Return the nearest integer that is less or equal to the argument,
-   or else raise Float("floor") if out of range.  This could be made 
-   more efficient using integer comparisons to check for overflow. */
+   Return the nearest integer that is less or equal to the argument.
+   Caller's responsibility to make argument in range. */
 
 ML_CODE_HDR(floor_a)
 	/* Get FP control word. */
@@ -883,15 +877,6 @@ ML_CODE_HDR(floor_a)
 	fldcw	new_controlwd		/* Install new control word. */
 
 	FLDL	IND_OFF(REAL8,stdarg,0)	/* Load argument. */
-	FICOML	maxint_plus1		/* Compare: arg >= maxint + 1? */
-	fstsw	REG(ax)			/* Get FP status word. */
-	sahf				/* Copy to integer status word. */
-	jae	floor_err
-	FICOML	minint_sub1		/* Compare: arg <= maxint + 1? */
-	fstsw	REG(ax)			/* Get FP status word. */
-	sahf				/* Copy to integer status word. */
-	jbe	floor_err
-
 	SUBL	(IMMED(4), REG(esp))
 	FISTPL	IND_DW_OFF(REG(esp),0)	/* Round, store, and pop. */
 	POPL	stdarg
@@ -900,19 +885,6 @@ ML_CODE_HDR(floor_a)
 
 	fldcw	old_controlwd		/* Restore old FP control word. */
 	CONTINUE
-floor_err:
-	FPOP				/* Discard argument. */
-	fldcw	old_controlwd		/* Restore old FP control word. */
-	/* signal an overflow */
-	pushf
-	POPL	temp
-	ORL	(IMMED(HEXLIT(800)),temp)	/* set overflow flag */
-	PUSHL	temp
-	popf
-	into				/* can't use "int $4" here since */
-					/* signal dispatch looks for into */
-	/* shouldn't get here */
-
 
 /* logb : real -> int
  * Extract the unbiased exponent pointed to by stdarg.

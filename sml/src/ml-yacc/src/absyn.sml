@@ -1,12 +1,12 @@
 (* ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi 
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:08  monnier
+ * *** empty log message ***
  *
-# Revision 1.1.1.1  1997/01/14  01:38:05  george
-#   Version 109.24
-#
+ * Revision 1.1.1.1  1997/01/14 01:38:05  george
+ *   Version 109.24
+ *
  * Revision 1.3  1996/02/26  15:02:30  george
  *    print no longer overloaded.
  *    use of makestring has been removed and replaced with Int.toString ..

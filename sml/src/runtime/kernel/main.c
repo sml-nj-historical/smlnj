@@ -27,6 +27,7 @@ FILE		*BC_stdout = NULL;
 /* Runtime globals */
 bool_t		SilentLoad = TRUE;
 bool_t          DumpObjectStrings = FALSE;
+bool_t		GCMessages = FALSE;
 char		**RawArgs;
 char		**CmdLineArgs;	/* does not include the command name (argv[0]) */
 char		*MLCmdName;	/* the command name used to invoke the runtime */
@@ -154,6 +155,7 @@ PVT void ParseOptions (int argc, char **argv, heap_params_t **heapParams)
 	    else if (MATCH("debug")) {
 		CHECK("debug");
 		if ((DebugF = fopen(optionArg, "w")) == NULL) {
+		    DebugF = stderr; /* restore the file pointer */
 		    errFlg = TRUE;
 		    Error("unable to open debug output file \"%s\"\n", *(argv[-1]));
 		    continue;

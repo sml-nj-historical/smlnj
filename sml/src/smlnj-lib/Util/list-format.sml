@@ -12,7 +12,7 @@ structure ListFormat : LIST_FORMAT =
    * formatting function.  The list ``[a, b, ..., c]'' gets formated as
    * ``init ^ (fmt a) ^ sep ^ (fmt b) ^ sep ^ ... ^ sep ^ (fmt c) ^ final.''
    *)
-    fun formatList {init, sep, final, fmt} = let
+    fun fmt {init, sep, final, fmt} = let
 	  fun format [] = init ^ final
 	    | format [x] = concat[init, fmt x, final]
 	    | format (x::r) = let
@@ -25,13 +25,15 @@ structure ListFormat : LIST_FORMAT =
 	    format
 	  end (* formatList *)
 
+    fun listToString f = fmt {init="[", sep=",", final="]", fmt=f}
+
   (* given an expected initial string, a separator, a terminating
    * string, and an item scanning function, return a function that
    * scans a string for a list of items.  Whitespace is ignored.
    * If the input string has the incorrect syntax, then the exception
    * ScanList is raised with the position of the first error.
    *)
-    fun scanList {init, sep, final, scan} getc strm = let
+    fun scan {init, sep, final, scan} getc strm = let
 	  val skipWS = StringCvt.skipWS getc
 	  val scanItem = scan getc
 	  fun eat "" = (fn strm => (true, skipWS strm))
@@ -77,6 +79,6 @@ structure ListFormat : LIST_FORMAT =
 		  (* end case *))
 	      | (false, i) => NONE
 	    (* end case *)
-	  end (* scanList *)
+	  end (* scan *)
 
   end; (* ListFormat *)

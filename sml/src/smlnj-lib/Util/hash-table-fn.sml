@@ -36,6 +36,9 @@ functor HashTableFn (Key : HASH_KEY) : MONO_HASH_TABLE =
 	    n_items = ref 0
 	  }
 
+  (* remove all elements from the table *)
+    fun clear (HT{table, n_items, ...}) = (HTRep.clear(!table); n_items := 0)
+
   (* Insert an item.  If the key already has an item associated with it,
    * then the old item is discarded.
    *)

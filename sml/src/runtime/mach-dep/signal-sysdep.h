@@ -11,6 +11,7 @@
  *   typedef SigMask_t		the representation of a set of signals
  *
  *   SIG_GetCode(info, scp)	extract the signal generation information
+ *   SIG_GetPC(scp)		get the PC from the context
  *   SIG_SetPC(scp, addr)	set the PC in the context to the address
  *   SIG_SetHandler(sig, h)	set the signal handler
  *   SIG_GetHandler(sig, h)	get the current handler into h
@@ -157,6 +158,7 @@ extern void SetFSR(int);
 #    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTDIV_TRAP))
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTOVF_TRAP))
 #    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)	((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{			\
 	(scp)->sc_pc = (long)(addr);				\
 	(scp)->sc_npc = (scp)->sc_pc + 4;			\
@@ -174,26 +176,13 @@ extern void SetFSR(int);
 
 #  elif defined(OPSYS_SOLARIS)
     /** SPARC, SOLARIS **/
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[REG_PC])
 #    define SIG_SetPC(scp, addr)	{			\
 	(scp)->uc_mcontext.gregs[REG_PC] = (long)(addr);	\
 	(scp)->uc_mcontext.gregs[REG_nPC] = (long)(addr) + 4;	\
     }
 #    define SIG_ZeroLimitPtr(scp)	\
 	{ (scp)->uc_mcontext.gregs[REG_G4] = 0; }
-
-#  elif defined(OPSYS_SUNOS)
-    /** M68, SUNOS **/
-#    define SIG_FAULT1		SIGFPE
-#    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTDIV_TRAP))
-#    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_TRAPV_TRAP))
-#    define SIG_GetCode(info, scp)	(info)
-#    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
-#    define SIG_SavePC(msp, scp)	{		\
-	SigContext_t	*__scp = (scp);			\
-	extern Addr_t	SavedPC;			\
-	SavedPC = __scp->sc_pc;				\
-    }
-     typedef void SigReturn_t;
 
 #  endif
 
@@ -210,6 +199,7 @@ extern void SetFSR();
 #    define INT_DIVZERO(s, c)	(((s) == SIGTRAP) && ((c) == BRK_DIVZERO))
 #    define INT_OVFLW(s, c)	(((s) == SIGTRAP) && ((c) == BRK_OVERFLOW))
 #    define SIG_GetCode(info, scp)	((info) ? (info) : (scp)->sc_fpc_csr)
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ (scp)->sc_regs[19] = 0; }
      typedef void SigReturn_t;
@@ -224,6 +214,7 @@ extern void SetFSR();
 #    define INT_DIVZERO(s, c)	\
 	(((s) == SIGTRAP) || (((s) == SIGFPE) && ((c) == FPE_INTDIV)))
 
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[CTX_EPC])
 #    define SIG_SetPC(scp, addr)	\
 	{ (scp)->uc_mcontext.gregs[CTX_EPC] = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	\
@@ -239,6 +230,7 @@ extern void SetFSR();
 #    define INT_DIVZERO(s, c)	(((s) == SIGTRAP) && ((c) & FP_DIV_BY_ZERO))
 #    define INT_OVFLW(s, c)	(((s) == SIGTRAP) && ((c) == 0))
      PVT int SIG_GetCode (SigInfo_t info, SigContext_t *scp);
+#    define SIG_GetPC(scp)	((scp)->sc_jmpbuf.jmp_context.iar)
 #    define SIG_SetPC(scp, addr)	\
 	{ (scp)->sc_jmpbuf.jmp_context.iar = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	\
@@ -263,6 +255,7 @@ extern void SetFSR();
 
 #    define INT_DIVZERO(s, c)		(((s) == SIGILL) && ((c) == 0x84000000))
 #    define INT_OVFLW(s, c)		(((s) == SIGILL) && ((c) == 0x0))
+#    define SIG_GetPC(scp)		((scp)->nip)
 #    define SIG_SetPC(scp, addr)	{ (scp)->nip = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ ((scp)->gpr[15] = 0); }
 #    define SIG_GetCode(info,scp)	((scp)->fpscr)
@@ -279,6 +272,10 @@ extern void SetFSR();
     /** HPPA, HPUX 9.x **/
      typedef void SigReturn_t;
 #    define SIG_FAULT1 SIGFPE
+    /* Since exceptions can be raised both in data space and code space,
+     * implementing this on HPPA/HPUX is going to be complicated.
+     */
+#    define SIG_GetPC(scp)	0
     /* pcoq and pcsq are equivalent to the instruction address
      * offset queue (iaoq) and the IA space queue (iasq)
      */
@@ -313,6 +310,10 @@ extern void SetFSR();
 #    define sc_gr3 sc_sl.sl_ss.ss_narrow.ss_gr3
 #    define sc_gr4 sc_sl.sl_ss.ss_narrow.ss_gr4
 
+    /* Since exceptions can be raised both in data space and code space,
+     * implementing this on HPPA/HPUX is going to be complicated.
+     */
+#    define SIG_GetPC(scp)	0
     /*	pcoq and pcsq are equivalent to the instruction address
      * offset queue (iaoq) and the IA space queue (iasq)
      */
@@ -347,31 +348,33 @@ extern Addr_t *ML_X86Frame;   /* used to get at limitptr */
 
 #  if defined(OPSYS_LINUX)
     /** X86, LINUX **/
-/* sigcontext taken from /usr/src/linux/include/linux/signal.h */
-struct sigcontext {
-	unsigned short gs, __gsh;
-	unsigned short fs, __fsh;
-	unsigned short es, __esh;
-	unsigned short ds, __dsh;
-	unsigned long edi;
-	unsigned long esi;
-	unsigned long ebp;
-	unsigned long esp;
-	unsigned long ebx;
-	unsigned long edx;
-	unsigned long ecx;
-	unsigned long eax;
-	unsigned long trapno;
-	unsigned long err;
-	unsigned long eip;
-	unsigned short cs, __csh;
-	unsigned long eflags;
-	unsigned long esp_at_signal;
-	unsigned short ss, __ssh;
-	unsigned long i387;
-	unsigned long oldmask;
-	unsigned long cr2;
-};
+#    ifndef _SIGCONTEXT_H
+      /* older versions of Linux don't define this in <signal.h> */
+	struct sigcontext {
+	    unsigned short gs, __gsh;
+	    unsigned short fs, __fsh;
+	    unsigned short es, __esh;
+	    unsigned short ds, __dsh;
+	    unsigned long edi;
+	    unsigned long esi;
+	    unsigned long ebp;
+	    unsigned long esp;
+	    unsigned long ebx;
+	    unsigned long edx;
+	    unsigned long ecx;
+	    unsigned long eax;
+	    unsigned long trapno;
+	    unsigned long err;
+	    unsigned long eip;
+	    unsigned short cs, __csh;
+	    unsigned long eflags;
+	    unsigned long esp_at_signal;
+	    unsigned short ss, __ssh;
+	    unsigned long i387;
+	    unsigned long oldmask;
+	    unsigned long cr2;
+	};
+#    endif /* !_SIGCONTEXT_H */
 
 #define INTO_OPCODE		0xce	/* the 'into' instruction is a single */
 					/* instruction that signals Overflow */
@@ -383,10 +386,11 @@ struct sigcontext {
 #    define INT_OVFLW(s, c)	\
 	(((s) == SIGSEGV) && (((Byte_t *)c)[-1] == INTO_OPCODE))
 
-#    define SIG_GetCode(info,scp)  ((scp)->eip)
+#    define SIG_GetCode(info,scp)	((scp)->eip)
 /* for linux, SIG_GetCode simply returns the address of the fault */
-#    define SIG_SetPC(scp,addr)    { (scp)->eip = (long)(addr); }
-#    define SIG_ZeroLimitPtr(scp) { ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
+#    define SIG_GetPC(scp)		((scp)->eip)
+#    define SIG_SetPC(scp,addr)		{ (scp)->eip = (long)(addr); }
+#    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
      typedef void SigReturn_t;
 
 #  elif defined(OPSYS_FREEBSD)
@@ -396,6 +400,7 @@ struct sigcontext {
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTOVF_TRAP))
 
 #    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
@@ -426,6 +431,7 @@ struct sigcontext {
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) || ((s) == SIGBUS))
 
 #    define SIG_GetCode(info, scp)	(info)
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
@@ -434,6 +440,7 @@ struct sigcontext {
 #  elif defined(OPSYS_SOLARIS)
      /** x86, Solaris */
 
+#    define SIG_GetPC(scp)		((scp)->uc_mcontext.gregs[EIP])
 #    define SIG_SetPC(scp, addr)	{ (scp)->uc_mcontext.gregs[EIP] = (int)(addr); }
 #    define SIG_ZeroLimitPtr(scp)	{ ML_X86Frame[LIMITPTR_X86OFFSET] = 0; }
 
@@ -452,6 +459,7 @@ struct sigcontext {
 #    define SIG_FAULT1		SIGFPE
 #    define INT_DIVZERO(s, c)	(((s) == SIGFPE) && ((c) == -2))
 #    define INT_OVFLW(s, c)	(((s) == SIGFPE) && ((c) == FPE_INTOVF_FAULT))
+#    define SIG_GetPC(scp)		((scp)->sc_pc)
 #    define SIG_SetPC(scp, addr)	{ (scp)->sc_pc = (long)(addr); }
 #    define SIG_GetCode(info, scp)	info
 #    define SIG_ZeroLimitPtr(scp)	{ (scp)->sc_regs[9] = 0; }

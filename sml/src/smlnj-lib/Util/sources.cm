@@ -30,6 +30,7 @@ signature ORD_KEY
 signature ORD_MAP
 signature ORD_SET
 signature PARSER_COMB
+signature PATH_UTIL
 signature QUEUE
 signature RAND
 signature RANDOM
@@ -61,6 +62,7 @@ structure ListFormat
 structure ListMergeSort
 structure ListXProd
 structure ParserComb
+structure PathUtil
 structure Queue
 structure Rand
 structure Random
@@ -145,6 +147,8 @@ ord-map-sig.sml
 ord-set-sig.sml
 parser-comb-sig.sml
 parser-comb.sml
+path-util-sig.sml
+path-util.sml
 queue-sig.sml
 queue.sml
 rand-sig.sml

@@ -4,7 +4,6 @@
  */
 
 #include "ml-unixdep.h"
-#include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "ml-base.h"
@@ -36,8 +35,7 @@ ml_val_t _ml_P_Process_osval (ml_state_t *msp, ml_val_t arg)
     if (res)
 	return INT_CtoML(res->val);
     else {
-        errno = EINVAL;
-	return RaiseSysError(msp, NIL(char *));
+	return RAISE_ERROR(msp, "system constant not defined");
     }
 
 } /* end of _ml_P_Process_osval */

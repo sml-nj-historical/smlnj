@@ -23,7 +23,7 @@ ml_val_t _ml_P_SysDB_getpwnam (ml_state_t *msp, ml_val_t arg)
 
     info = getpwnam(PTR_MLtoC(char, arg));
     if (info == NIL(struct passwd *))
-        return RaiseSysError(msp, NIL(char*));
+        return RAISE_SYSERR(msp, -1);
   
     pw_name = ML_CString (msp, info->pw_name);
     WORD_ALLOC (msp, pw_uid, (Word_t)(info->pw_uid));

@@ -34,10 +34,15 @@ extern ml_val_t RunTimeCompUnit;
 extern ml_val_t MathVec;
 #endif
 
+extern ml_val_t _Div_id0[];
 extern ml_val_t _Div_e0[];
-#define DivExn PTR_CtoML(_Div_e0+1)
+#define DivId		PTR_CtoML(_Div_id0+1)
+#define DivExn		PTR_CtoML(_Div_e0+1)
+
+extern ml_val_t _Overflow_id0[];
 extern ml_val_t _Overflow_e0[];
-#define OverflowExn PTR_CtoML(_Overflow_e0+1)
+#define OverflowId	PTR_CtoML(_Overflow_id0+1)
+#define OverflowExn	PTR_CtoML(_Overflow_e0+1)
 
 #if defined(ASM_MATH)
 extern ml_val_t _Ln_e0[];

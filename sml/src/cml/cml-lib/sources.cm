@@ -40,6 +40,7 @@ Library
   signature ORD_MAP
   signature ORD_SET
   signature PARSER_COMB
+  signature PATH_UTIL
   signature QUEUE
   signature RAND
   signature RANDOM
@@ -71,6 +72,7 @@ Library
   structure ListMergeSort
   structure ListXProd
   structure ParserComb
+  structure PathUtil
   structure Queue
   structure Rand
   structure Random

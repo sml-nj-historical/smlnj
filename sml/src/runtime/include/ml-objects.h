@@ -162,10 +162,17 @@
 
 /** Boxed word values **/
 #define WORD_MLtoC(w)		(*PTR_MLtoC(Word_t, w))
-#define WORD_ALLOC(msp, p, w)	REC_ALLOC1(msp, p, (ml_val_t)w)
+#define WORD_ALLOC(msp, p, w)	{				\
+	ml_state_t	*__msp = (msp);				\
+	ml_val_t	*__p = __msp->ml_allocPtr;		\
+	*__p++ = MAKE_DESC(WORD_SZB, DTAG_string);		\
+	*__p++ = (ml_val_t)(w);					\
+	(p) = PTR_CtoML(__msp->ml_allocPtr + 1);		\
+	__msp->ml_allocPtr = __p;				\
+    }
 #define REC_SELWORD(p, i)	(*REC_SELPTR(Word_t, p, i))
 #define INT32_MLtoC(i)		(*PTR_MLtoC(Int32_t, i))
-#define INT32_ALLOC(msp, p, i)	REC_ALLOC1(msp, p, (ml_val_t)i)
+#define INT32_ALLOC(msp, p, i)	WORD_ALLOC(msp, p, i)
 #define REC_SELINT32(p, i)	(*REC_SELPTR(Int32_t, p, i))
 
 /** ML lists **/

@@ -5,7 +5,7 @@
  * constructs an SML/NJ  C interface for a specific C compiler
  *)
 
-val cd = Posix.FileSys.chdir;
+val cd = OS.FileSys.chDir;
 
 val _ = print "loading info about C types...\n";
 app use ["cc-info.sig.sml",

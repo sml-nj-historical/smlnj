@@ -13,12 +13,12 @@ signature HTML =
     val htmlVersion : string	(* = "3.2" *)
 
   (* the HTML data representations (these are all string) *)
-    type pcdata
-    type cdata
-    type url
-    type pixels		(* = cdata *)
-    type name
-    type id
+    type pcdata = string
+    type cdata = string
+    type url = string
+    type pixels = cdata
+    type name = string
+    type id = string
 
   (* the different types of HTTP methods *)
     structure HttpMethod : sig
@@ -116,7 +116,7 @@ signature HTML =
     datatype html = HTML of {
 	version : cdata option,
 	head : head_content list,
-	body : block
+	body : body
       }
 
     and head_content
@@ -138,6 +138,16 @@ signature HTML =
     (* SCRIPT/STYLE elements are placeholders for the next version of HTML *)
       | Head_SCRIPT of pcdata
       | Head_STYLE of pcdata
+
+    and body = BODY of {
+	background : url option,
+	bgcolor : cdata option,
+	text : cdata option,
+	link : cdata option,
+	vlink : cdata option,
+	alink : cdata option,
+	content : block
+      }
 
     and block
       = BlockList of block list

@@ -29,15 +29,15 @@ ml_val_t _ml_Prof_setptimer (ml_state_t *msp, ml_val_t arg)
     struct itimerval	new_itv;
     int			sts;
 
-    if (ProfCntArray == ML_unit) {
-	return RAISE_ERROR(msp, "no count array set");
-    }
 
     if (arg == ML_false) {
 	new_itv.it_interval.tv_sec	=
 	new_itv.it_value.tv_sec		=
 	new_itv.it_interval.tv_usec	=
 	new_itv.it_value.tv_usec	= 0;
+    }
+    else if (ProfCntArray == ML_unit) {
+	return RAISE_ERROR(msp, "no count array set");
     }
     else {
 	new_itv.it_interval.tv_sec	=

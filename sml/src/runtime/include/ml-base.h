@@ -185,6 +185,7 @@ extern char	**CmdLineArgs;	/* does not include the command name (argv[0]) */
 extern char	*MLCmdName;	/* the command name used to invoke the runtime */
 extern bool_t	SilentLoad;
 extern bool_t   DumpObjectStrings;
+extern bool_t	GCMessages;
 #ifdef HACKED_STANDALONE
 extern bool_t   StandAlone;
 #endif

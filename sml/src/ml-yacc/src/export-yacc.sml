@@ -3,12 +3,12 @@
  * ML-Yacc Parser Generator (c) 1991 Andrew W. Appel, David R. Tarditi
  *
  * $Log$
- * Revision 1.1  1997/10/04 23:33:23  monnier
- * Initial revision
+ * Revision 1.1.1.2  1998/01/18 01:00:08  monnier
+ * *** empty log message ***
  *
-# Revision 1.2  1997/03/03  17:10:37  george
-# moved callcc related functions to SMLofNJ.Cont
-#
+ * Revision 1.2  1997/03/03 17:10:37  george
+ * moved callcc related functions to SMLofNJ.Cont
+ *
 # Revision 1.1.1.1  1997/01/14  01:38:05  george
 #   Version 109.24
 #

@@ -103,7 +103,7 @@ structure CML_Socket : CML_SOCKET =
 
     fun close (PS.CMLSock{sock, state}) = (
 	  case (SyncVar.mTake state)
-	   of PS.Closed => SyncVar.mPut(state, PS.Closed)
+	   of PS.Closed => ()
 	    | _ => Socket.close sock
 	  (* end case *);
 	  SyncVar.mPut(state, PS.Closed))

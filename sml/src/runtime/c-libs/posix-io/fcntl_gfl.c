@@ -22,7 +22,7 @@ ml_val_t _ml_P_IO_fcntl_gfl (ml_state_t *msp, ml_val_t arg)
     flag = fcntl(fd, F_GETFD);
 
     if (flag < 0)
-      return RaiseSysError(msp, NIL(char*));
+	return RAISE_SYSERR(msp, flag);
 
     WORD_ALLOC (msp, flags, (flag & (~O_ACCMODE)));
     WORD_ALLOC (msp, mode, (flag & O_ACCMODE));

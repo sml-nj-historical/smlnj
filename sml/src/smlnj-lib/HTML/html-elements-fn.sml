@@ -215,7 +215,6 @@ functor HTMLElementsFn (
 		  (* end case *)
 		end
 	  in
-TextIO.print "scanStartTag\n";
 	    scanAttrs(rest, [])
 	  end
 
@@ -224,7 +223,6 @@ TextIO.print "scanStartTag\n";
 	  val tag' = SS.triml 1 (SS.trimr 1 (SS.all tag))
 	  val (name, attrs) = scanStartTag (ctx, tag')
 	  in
-TextIO.print(concat["startTag: ", SS.string name, "\n"]);
 	    case (find name, attrs)
 	     of (NONE, _) => (Err.badStartTag ctx (SS.string name); NONE)
 	      | (SOME{startT=WOAttrs _, ...}, _::_) => (
@@ -232,9 +230,7 @@ TextIO.print(concat["startTag: ", SS.string name, "\n"]);
 	      | (SOME{startT=WOAttrs tag, ...}, []) =>
 		  SOME(tag (p1, p2))
 	      | (SOME{startT=WAttrs tag, ...}, attrs) =>
-(TextIO.print "  with attributes\n";
 		  SOME(tag (attrs, p1, p2))
-)
 	    (* end case *)
 	  end
 
@@ -242,7 +238,6 @@ TextIO.print(concat["startTag: ", SS.string name, "\n"]);
 	  val ctx = {file=file, line=p1}
 	  val name = SS.triml 2 (SS.trimr 1 (SS.all tag))
 	  in
-TextIO.print(concat["endTag: ", SS.string name, "\n"]);
 	    case (find name)
 	     of NONE => (Err.badEndTag ctx (SS.string name); NONE)
 	      | (SOME{endT=Empty, ...}) => (Err.badEndTag ctx (SS.string name); NONE)

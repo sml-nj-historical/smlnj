@@ -42,10 +42,7 @@ structure Q : sig
 
   end = struct
 
-    structure Rep : sig
-	datatype 'a queue = Q of {front : 'a list ref, rear : 'a list ref}
-      end = RepTypes
-    open Rep
+    datatype queue = datatype RepTypes.queue
 
     fun reverse (x, [], rl) = (x, rl)
       | reverse (x, y :: rest, rl) = reverse (y, rest, x :: rl)

@@ -70,4 +70,9 @@ signature CML_TEXT_IO =
 
     val print : string -> unit
 
+    val scanStream :
+	  ((elem, StreamIO.instream) StringCvt.reader
+	    -> ('a, StreamIO.instream) StringCvt.reader
+	  ) -> instream -> 'a option
+
   end;

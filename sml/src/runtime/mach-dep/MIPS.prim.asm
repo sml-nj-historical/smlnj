@@ -5,9 +5,46 @@
 
 #define _MIPS_SIM	1	/* IRIX 5.x needs this in <regdef.h> */
 
-#ifndef OPSYS_MACH
-#include <regdef.h>
-#endif
+/** include <regdef.h> **/
+#define zero	$0	/* wired zero */
+#define AT	$at	/* assembler temp */
+#define v0	$2	/* return value */
+#define v1	$3
+#define a0	$4	/* argument registers */
+#define a1	$5
+#define a2	$6
+#define a3	$7
+#define t0	$8	/* caller saved */
+#define t1	$9
+#define t2	$10
+#define t3	$11
+#define t4	$12	/* caller saved - 32 bit env arg reg 64 bit */
+#define ta0	$12	/* caller saved in 32 bit - arg regs in 64 bit */
+#define t5	$13
+#define ta1	$13
+#define t6	$14
+#define ta2	$14
+#define t7	$15
+#define ta3	$15
+#define s0	$16	/* callee saved */
+#define s1	$17
+#define s2	$18
+#define s3	$19
+#define s4	$20
+#define s5	$21
+#define s6	$22
+#define s7	$23
+#define t8	$24	/* code generator */
+#define t9	$25
+#define jp	$25	/* PIC jump register */
+#define k0	$26	/* kernel temporary */
+#define k1	$27
+#define gp	$28	/* global pointer */
+#define sp	$29	/* stack pointer */
+#define fp	$30	/* frame pointer */
+#define s8	$30	/* calle saved */
+#define ra	$31	/* return address */
+/** end <regdef.h> **/
 
 #include "ml-base.h"
 #include "asm-base.h"
@@ -704,20 +741,13 @@ ML_CODE_HDR(create_v_a)
  *	DIVIDE BY ZERO - (div)
  *	OVERFLOW/UNDERFLOW - (add,div,sub,mul) as appropriate
  *
- * floor raises integer overflow if the float is out of 32-bit range,
- * so the float is tested before conversion, to make sure it is in (31-bit)
- * range */
+ * floor does not check for out-of-range ;  it's up to the ML code to do that beforehand.
+ */
 ML_CODE_HDR(floor_a)
 	CHECKLIMIT(FUN_MASK)
 	lwc1	$f4,LITTLEPART(stdarg)	/* get least significant word */
 	lwc1	$f5,BIGPART(stdarg)	/* get most significant word */
-	mtc1	zero,$f2		/* ($f2,$f3) := maxint */
- 	lui	atmp3,0x41d0
-	mtc1	atmp3,$f3
-	abs.d	$f6,$f4
-	c.le.d	$f6,$f2
 	cfc1	atmp3,$31		/* grab fpa control register */
-	bc1f	over
 	ori	atmp2,atmp3,0x03	/* set rounding bits to 11 */
 	ctc1	atmp2,$31		/* return fpa control register */
 	cvt.w.d $f6,$f4			/* convert to integer */

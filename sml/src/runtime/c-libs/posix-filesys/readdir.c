@@ -22,15 +22,23 @@ ml_val_t _ml_P_FileSys_readdir (ml_state_t *msp, ml_val_t arg)
 {
     struct dirent      *dirent;
     
-    errno = 0;
-    dirent = readdir(PTR_MLtoC(DIR, arg));
-    if (dirent == NIL(struct dirent *)) {
-      if (errno != 0)     /* Error occurred */
-	return RaiseSysError(msp, NIL(char *));
-      else                /* End of stream */
-        return ML_string0;
+    while (TRUE) {
+	errno = 0;
+	dirent = readdir(PTR_MLtoC(DIR, arg));
+	if (dirent == NIL(struct dirent *)) {
+	    if (errno != 0)     /* Error occurred */
+		return RAISE_SYSERR(msp, -1);
+	    else                /* End of stream */
+		return ML_string0;
+	}
+	else {
+	    char	*cp = dirent->d_name;
+	    if ((cp[0] == '.')
+	    && ((cp[1] == '\0') || ((cp[1] == '.') && (cp[2] == '\0'))))
+		continue;
+	    else
+		return ML_CString (msp, cp);
+	}
     }
-    else
-      return ML_CString (msp, dirent->d_name);
 
 } /* end of _ml_P_FileSys_readdir */

@@ -10,9 +10,6 @@ structure CleanUp : sig
 
     val clean : when -> unit
 
-    val startServers    : unit -> unit
-    val shutdownServers : unit -> unit
-
     val exportFnCleanup : unit -> unit
 
   end = struct
@@ -80,6 +77,14 @@ structure CleanUp : sig
 		  CML.joinEvt(CML.spawnc f when),
 		  CML.timeOutEvt(Time.fromSeconds 1)
 		]
+(*DEBUG*
+fun doCleaner (tag, _, f) = (
+Debug.sayDebugTS(concat["do Cleaner \"", tag, "\"\n"]);
+CML.select [
+CML.wrap(CML.joinEvt(CML.spawnc f when), fn _ => Debug.sayDebugTS "  done\n"),
+CML.wrap(CML.timeOutEvt(Time.fromSeconds 1), fn _ => Debug.sayDebugTS "  timeout\n")
+])
+*DEBUG*)
 	  in
 	  (* remove uneccesary clean-up routines *)
 	    case when
@@ -142,7 +147,7 @@ structure CleanUp : sig
 	    l := f(!l)
 	  end
 
-    fun appInit l () = List.app (fn ITEM{init, ...} => init()) (List.rev (!l))
+    fun appInit l = List.app (fn ITEM{init, ...} => init()) (List.rev (!l))
 
     fun unlogAll () = (chanList := []; mboxList := []; serverList := [])
 
@@ -171,7 +176,7 @@ structure CleanUp : sig
 	  serverList := ITEM{key=name, init=f, shut=g} :: (!serverList))
     val logServer = protect logServer
 
-    val startServers = appInit serverList
+    fun startServers () = appInit serverList
 
     fun shutdownServers () = let
 	  fun shut (ITEM{key, shut, ...}) = CML.select [
@@ -182,10 +187,16 @@ structure CleanUp : sig
 	    app shut (!serverList)
 	  end
 
-  (* clean the logged channels and mailboxes. *)
-    fun cleanChannels _ = (appInit chanList (); appInit mboxList ())
+    fun cleanServers (AtInit | AtInitFn) = startServers()
+      | cleanServers (AtShutdown | AtExit) = shutdownServers()
 
-    val _ = addCleaner ("Channels&Mailboxes", [AtInit,AtShutdown], cleanChannels)
+  (* clean the logged channels and mailboxes. *)
+    fun cleanChannels _ = (appInit chanList; appInit mboxList)
+
+  (* Add the standard cleaners *)
+    val _ = (
+	  addCleaner ("Channels&Mailboxes", [AtInit,AtShutdown], cleanChannels);
+	  addCleaner ("Servers", atAll, cleanServers))
 
   (* remove useless cleaners and clear the channel/mailbox logs
    * prior to exporting a stand-alone CML program.

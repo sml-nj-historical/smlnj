@@ -77,6 +77,7 @@ struct ml_state {
 				  /* Linkage information */
     Word_t	ml_liveRegMask;		/* The mask defining the live root registers */
     ml_val_t	ml_faultExn;		/* The exception packet for a hardware fault. */
+    Word_t	ml_faultPC;		/* the PC of the faulting instruction */
 #ifdef SOFT_POLL
     ml_val_t    *ml_realLimit;          /* real heap limit */
     bool_t      ml_pollPending;         /* poll event pending? */

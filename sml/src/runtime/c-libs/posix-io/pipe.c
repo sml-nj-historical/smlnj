@@ -19,7 +19,7 @@ ml_val_t _ml_P_IO_pipe (ml_state_t *msp, ml_val_t arg)
     int         fds[2];
 
     if (pipe(fds) == -1)
-        return RaiseSysError (msp, NIL(char *));
+        return RAISE_SYSERR(msp, -1);
     else {
         ml_val_t        obj;
         REC_ALLOC2 (msp, obj, INT_CtoML(fds[0]), INT_CtoML(fds[1]));

@@ -16,7 +16,7 @@ functor CheckHTMLFn (Err : HTML_ERROR) : sig
 
     type context = Err.context
 
-    fun check context (HTML.HTML{body, ...}) = let
+    fun check context (HTML.HTML{body=HTML.BODY{content, ...}, ...}) = let
 	  fun error (elem, ctx) =
 		Err.syntaxError context
 		  (Format.format "unexpected %s element in %s" [
@@ -201,7 +201,7 @@ functor CheckHTMLFn (Err : HTML_ERROR) : sig
 		  chk
 		end
 	  in
-	    checkBodyContent {inForm=false} body
+	    checkBodyContent {inForm=false} content
 	  end
 
   end

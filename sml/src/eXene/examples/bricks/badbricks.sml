@@ -5,9 +5,9 @@
 
 structure BadBricks : sig
 
-    val badBricks : string -> OS.Process.status
-
-    val main : (string * string list) -> OS.Process.status
+    val doit' : (string list * string * Int32.int) -> OS.Process.status
+    val doit  : string -> OS.Process.status
+    val main  : (string * string list) -> OS.Process.status
 
   end = struct
 
@@ -16,7 +16,7 @@ structure BadBricks : sig
     val XSize = 10
     val YSize = 30
 
-    fun doit server = let
+    fun badBricks server = let
       val root = mkRoot (server,NONE)
       val wall = Wall.mkWall root (XSize, YSize)
       (* fun doGC () = System.Unsafe.CInterface.gc 2 *)
@@ -69,8 +69,13 @@ structure BadBricks : sig
         loop ()
       end
 
-    fun badBricks server =
-	  RunCML.doit(fn () => doit server, SOME(Time.fromMilliseconds 20))
+    fun doit' (flgs, dpy, tq) = (
+          XDebug.init flgs;
+          RunCML.doit (
+	    fn () => (XDebug.xspawn("badBricks", fn () => badBricks dpy); ()),
+	    SOME(Time.fromMilliseconds tq)))
+
+    fun doit s = doit' ([], s, 20)
 
     fun main (prog, "-display" :: server :: _) = doit server
       | main _ = doit ""

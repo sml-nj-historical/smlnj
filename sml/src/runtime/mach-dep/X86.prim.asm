@@ -758,16 +758,12 @@ ML_CODE_HDR(unlock_a)
 
 #define FPOP	fstp %st	/* Pop the floating point register stack. */
 
-	DATA
-	ALIGN4
-maxint_plus1:
-	.long	0x40000000	/* Used in floor_a to check for overflow. */
-minint_sub1:
-	.long	0xbfffffff
 
 /* Temporary storage for the old and new floating point control
    word.  We don't use the stack to for this, since doing so would 
    change the offsets of the pseudo-registers. */
+	DATA
+	ALIGN4
 old_controlwd:	
 	.word	0
 new_controlwd:	
@@ -839,9 +835,8 @@ ENTRY(restorefpregs)
 	ret
 
 /* floor : real -> int
-   Return the nearest integer that is less or equal to the argument,
-   or else raise Float("floor") if out of range.  This could be made 
-   more efficient using integer comparisons to check for overflow. */
+   Return the nearest integer that is less or equal to the argument.
+	 Caller's responsibility to make sure arg is in range. */
 
 ML_CODE_HDR(floor_a)
 	fstcw	old_controlwd		/* Get FP control word. */
@@ -852,15 +847,6 @@ ML_CODE_HDR(floor_a)
 	fldcw	new_controlwd		/* Install new control word. */
 
 	fldl	(stdarg)		/* Load argument. */
-	ficoml	maxint_plus1		/* Compare: arg >= maxint + 1? */
-	fstsw	%ax			/* Get FP status word. */
-	sahf				/* Copy to integer status word. */
-	jae	floor_err
-	ficoml	minint_sub1		/* Compare: arg <= maxint + 1? */
-	fstsw	%ax			/* Get FP status word. */
-	sahf				/* Copy to integer status word. */
-	jbe	floor_err
-
 	subl	$4, %esp
 	fistpl	(%esp)			/* Round, store, and pop. */
 	popl	stdarg
@@ -869,18 +855,6 @@ ML_CODE_HDR(floor_a)
 
 	fldcw	old_controlwd		/* Restore old FP control word. */
 	CONTINUE
-floor_err:
-	FPOP				/* Discard argument. */
-	fldcw	old_controlwd		/* Restore old FP control word. */
-	/* signal an overflow */
-	pushf
-	popl	temp
-	orl	$0x800,temp		/* set overflow flag */
-	pushl	temp
-	popf
-	into				/* can't use "int $4" here since */
-					/* signal dispatch looks for into */
-	/* shouldn't get here */
 
 /* logb : real -> int
  * Extract the unbiased exponent pointed to by stdarg.

@@ -167,6 +167,8 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
 #endif
       /* read the ML heap */
 	ReadHeap (&inBuf, &heapHdr, msp, externs);
+      /* GC message are on by default for interactive images */
+	GCMessages = TRUE;
     }
     else {  /* EXPORT_FN_IMAGE */
 	ml_val_t	funct, cmdName, args;
@@ -190,6 +192,8 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
 /*
 SayDebug("arg = %#x : [%#x, %#x]\n", msp->ml_arg, REC_SEL(msp->ml_arg, 0), REC_SEL(msp->ml_arg, 1));
 */
+      /* GC message are off by default for exportFn images */
+	GCMessages = FALSE;
     }
 
     FREE (externs);
@@ -369,13 +373,9 @@ PVT void ReadHeap (inbuf_t *bp, ml_heap_hdr_t *hdr, ml_state_t *msp, ml_val_t *e
 
 		    if (DumpObjectStrings && (j == CODE_INDX)) {
 		      /* dump the comment string of the code object */
-			Byte_t		*lastByte =
-					    (Byte_t *)(bdp->obj) + bdp->sizeB - 1;
-			int		len = *lastByte;
 			char		buf[256];
-			strncpy (buf, lastByte-len, len);
-			buf[len] = '\0';
-			SayDebug ("[%6d bytes] %s\n", bdp->sizeB, buf);
+			if (BO_GetCodeObjTag(bdp, buf, sizeof(buf)) != NIL(char *))
+			    SayDebug ("[%6d bytes] %s\n", bdp->sizeB, buf);
 		    }
 		}
 
@@ -528,7 +528,7 @@ PVT void RepairHeap (
 				__aid, __obj);					\
 			*__p = PTR_CtoML((__obj - __dp->oldAddr) 		\
 				+ __dp->newObj->obj);				\
-			__gg = __dp->newObj->gen;				\
+			__gg = __dp->newObj->gen-1;				\
 		    }								\
 		    else {							\
 			__gg = EXTRACT_GEN(__aid)-1;				\

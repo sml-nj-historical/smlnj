@@ -82,10 +82,14 @@ PVT SigReturn_t FaultHandler (
 	Die ("bogus fault not in ML: (%d, %#x)\n", signal, SIG_GetCode(info, scp));
 
    /* Map the signal to the appropriate ML exception. */
-    if (INT_DIVZERO(signal, code))
-	msp->ml_faultExn = DivExn;
-    else if (INT_OVFLW(signal, code))
-	msp->ml_faultExn = OverflowExn;
+    if (INT_DIVZERO(signal, code)) {
+	msp->ml_faultExn = DivId;
+	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
+    }
+    else if (INT_OVFLW(signal, code)) {
+	msp->ml_faultExn = OverflowId;
+	msp->ml_faultPC = (Word_t)SIG_GetPC(scp);
+    }
     else
 	Die ("unexpected fault, signal = %d, code = %#x", signal, code);
 

@@ -5,6 +5,7 @@
 
 #include <time.h>
 #include "ml-base.h"
+#include "ml-c.h"
 #include "ml-objects.h"
 #include "cfun-proto-list.h"
 
@@ -19,7 +20,6 @@ ml_val_t _ml_Date_mktime (ml_state_t *msp, ml_val_t arg)
 {
     struct tm	tm;
     time_t	t;
-    ml_val_t	res;
 
     tm.tm_sec	= REC_SELINT(arg, 0);
     tm.tm_min	= REC_SELINT(arg, 1);
@@ -33,8 +33,14 @@ ml_val_t _ml_Date_mktime (ml_state_t *msp, ml_val_t arg)
 
     t = mktime (&tm);
 
-    INT32_ALLOC(msp, res, t);
+    if (t < 0) {
+	return RAISE_ERROR(msp, "Invalid date");
+    }
+    else {
+	ml_val_t	res;
 
-    return res;
+	INT32_ALLOC(msp, res, t);
+	return res;
+    }
 
 } /* end of _ml_Date_mktime */

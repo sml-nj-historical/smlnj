@@ -13,7 +13,33 @@
 
 #define TMP_PREFIX "TMP-SMLNJ"
 
-WIN32_FIND_DATA wfd;
+#define IS_DOTDIR(c) ((c)[0] == '.' && (!(c)[1] || ((c)[1] == '.' && !(c)[2])))
+
+static WIN32_FIND_DATA wfd;
+
+static ml_val_t find_next_file(ml_state_t *msp,HANDLE h)
+{
+  ml_val_t fname_opt,fname;
+
+loop:
+  if (FindNextFile(h,&wfd)) {
+    if (IS_DOTDIR(wfd.cFileName))
+      goto loop;
+    fname = ML_CString(msp,wfd.cFileName);
+    OPTION_SOME(msp,fname_opt,fname);
+  } else
+    fname_opt = OPTION_NONE;
+  return fname_opt;
+}
+    
+/* _ml_win32_FS_find_next_file: word32 -> (string option)
+ */
+ml_val_t _ml_win32_FS_find_next_file(ml_state_t *msp, ml_val_t arg)
+{
+  HANDLE h = (HANDLE) WORD_MLtoC(arg);
+
+  return find_next_file(msp,h);
+}
 
 /* _ml_win32_FS_find_first_file: string -> (word32 * string option)
  */
@@ -22,34 +48,18 @@ ml_val_t _ml_win32_FS_find_first_file(ml_state_t *msp, ml_val_t arg)
   HANDLE h = FindFirstFile(PTR_MLtoC(char,arg),&wfd);
   ml_val_t fname_opt, fname, w, res;
 
-  
   if (h != INVALID_HANDLE_VALUE) {
-    fname = ML_CString(msp,wfd.cFileName);
-    OPTION_SOME(msp,fname_opt,fname);
-  } else {
+    if (IS_DOTDIR(wfd.cFileName))
+      fname_opt = find_next_file(msp,h);
+    else {
+      fname = ML_CString(msp,wfd.cFileName);
+      OPTION_SOME(msp,fname_opt,fname);
+    }
+  } else
     fname_opt = OPTION_NONE;
-  }
   WORD_ALLOC(msp, w, (Word_t)h);
   REC_ALLOC2(msp,res,w,fname_opt);
   return res;
-}
-
-WIN32_FIND_DATA wfd;
-
-/* _ml_win32_FS_find_next_file: word32 -> (string option)
- */
-ml_val_t _ml_win32_FS_find_next_file(ml_state_t *msp, ml_val_t arg)
-{
-  ml_val_t fname_opt,fname;
-  HANDLE h = (HANDLE) WORD_MLtoC(arg);
-
-  if (FindNextFile(h,&wfd)) {
-    fname = ML_CString(msp,wfd.cFileName);
-    OPTION_SOME(msp,fname_opt,fname);
-  } else {
-    fname_opt = OPTION_NONE;
-  }
-  return fname_opt;
 }
 
 /* _ml_win32_FS_find_close: word32 -> bool
@@ -74,7 +84,7 @@ ml_val_t _ml_win32_FS_get_current_directory(ml_state_t *msp, ml_val_t arg)
   DWORD r = GetCurrentDirectory(MAX_PATH,buf);
 
   if (r == 0 || r > MAX_PATH) {
-    return  RaiseSysError(msp, NIL(char *));
+    return RAISE_SYSERR(msp,-1);
   }
   return ML_CString(msp,buf);
 }
@@ -142,7 +152,7 @@ ml_val_t _ml_win32_FS_get_full_path_name(ml_state_t *msp, ml_val_t arg)
 
   r = GetFullPathName(PTR_MLtoC(char,arg),MAX_PATH,buf,&dummy);
   if (r == 0 | r > MAX_PATH) {
-    return  RaiseSysError(msp, NIL(char *));
+    return  RAISE_SYSERR(msp,-1);
   }
   res = ML_CString(msp,buf);
   return res;
