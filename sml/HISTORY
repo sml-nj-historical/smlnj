@@ -13,7 +13,7 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
-Date: 2000/05/15 16:02 EDT
+Date: 2000/05/15 22:53 EDT
 Tag: leunga-20000515-alpha-x86-ra
 Description:
 
@@ -32,6 +32,8 @@ Description:
   3. Register Allocation
 
       The module ra-rewrite-with-renaming has been improved.
+
+  These have no effect on SML/NJ.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
