@@ -113,7 +113,7 @@ if [ "$ALLOC" = "" ] ; then
 		    ;;
 		512)
 		    # The Pentium II case...
-		    ALLOC="@SMLalloc=512k"
+		    ALLOC="@SMLalloc=256k"
 		    ;;
 		*)
 		    ;;
