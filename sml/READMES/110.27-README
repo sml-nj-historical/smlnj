@@ -31,7 +31,7 @@ Summary:
 
   for further information about these changes.
 
-  MLRISC, and particularly the x86 back end have been modiefied extensively.
+  MLRISC, and particularly the x86 back end have been modified extensively.
 
   There are a few updates to the SML/NJ Library
 
@@ -77,32 +77,61 @@ default optimization settings (more cpsopt and less flintopt).
 MLRISC:
 ======================================================================
 
-Name: Allen Leung
-Date: 2000/03/10 02:20:00
-Tag: leunga-20000310-fix_x86_asm_ra
-Description:
+1. Register Allocator
 
-More assembly output problems involving the indexed addressing mode
-on the x86 have been found and corrected. Thanks to Fermin Reig for the
-fix.
+   a. The interface and implementation of the register allocator have been 
+      changed slightly to accommodate the possibility of skipping 
+      the register allocation phases completely and go directly to 
+      memory allocation.  This is needed for C-- use.
 
-The interface and implementation of the register allocator have been changed
-slightly to accommodate the possibility to skip the register allocation 
-phases completely and go directly to memory allocation.  This is needed
-for C-- use.
+   b. I've improved the spill propagation algorithm, using an approximation
+      of maximal weighted independent sets.     This affects only the x86
+      platform. 
 
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/03/22 01:23:00
-Tag: leunga-20000322-fix_x86_hppa_ra
-Description:
+2. MLTREE
 
-1. X86 fixes/changes  
+   a. Renamed the constructor CALL in MLTREE by popular demand.
 
-   a.  x86Rewrite bug with MUL3 (found by Lal)
-   b.  Added the instructions FSTS, FSTL
+3. X86
 
-2. PA-RISC fixes/changes
+   a. More assembly output problems involving the indexed addressing mode
+      on the x86 have been found and corrected. Thanks to Fermin Reig for the
+      fix.
+
+   b.  x86Rewrite bug with MUL3 (found by Lal)
+
+   c.  Added the instructions FSTS, FSTL
+
+   d.  The old code generated for SETcc was completely wrong.  
+       The Intel optimization guide is VERY misleading.
+
+   e.  Various fixes related floating point, and extensions.
+
+   f.  Things like
+
+       jmp %eax
+       jmp (%eax)
+
+       are now output as
+
+       jmp *%eax
+       jmp *(%eax)
+
+    g.  Yet another fix for x86 assembly for idivl, imull, mull and friends.
+
+    h.  I've changed andl to testl in the floating point test sequence
+        whenever appropriate.  The Intel optimization guide states that
+        testl is perferable to andl.
+
+4. Alpha 
+
+    a. Some extra patterns related to loads with signed/zero extension
+       provided by Fermin.
+    b.  Added the instructions LDBU, LDWU, STB, STW as per Fermin's suggestion.
+    c.  Added a new mode byteWordLoadStores to the functor parameter to Alpha()
+    d.  Added reassociation code for address computation.
+
+5. PA-RISC 
 
    a.  B label should not be a delay slot candidate!  Why did this work?
    b.  ADDT(32, REG(32, r), LI n) now generates one instruction instead of two,
@@ -110,48 +139,56 @@ Description:
    c.  The assembly syntax for fstds and fstdd was wrong.
    d.  Added the composite instruction COMICLR/LDO, which is the immediate
        operand variant of COMCLR/LDO.
+   e.  Long jumps in span dependence resolution used to depend on the existence
+       of the base pointer in the SML/NJ runtime.  
 
-3. Generic MLRISC
+        A jump to a long label L was expanded into the following sequence:
+     
+      LDIL %hi(L-8192), %r29
+      LDO  %lo(L-8192)(%r29), %r29
+      ADD  %r29, baseptr, %r29
+      BV,n %r0(%r29)
+
+         I've changed it so that the following sequence of instructions 
+       are generated, which doesn't mention the base pointer at all:
+
+         BL,n  L', %r29           /* branch and link, L' + 4 -> %r29 */
+    L':  ADDIL L-(L'+4), %r29     /* Compute address of L */ 
+         BV,n  %r0(%r29)          /* Jump */ 
+
+6. Generic MLRISC
 
    a.  shuffle.sml rewritten to be slightly more efficient
    b.  DIV bug in mltree-simplify fixed (found by Fermin)
 
-4. Register Allocator
+7. Assembly Output
 
-   a.  I now release the interference graph earlier during spilling.
-       May improve memory usage.  
+    a.  When generating assemby, resolve the value of client defined constants, 
+        instead of generating symbolic values.  This is controlled by the 
+        new flag "asm-resolve-constants", which is default to true.
 
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/03/23 16:25:00
-Tag: leunga-20000323-fix_x86_alpha
-Description:
+    b.  Added a new flag 
 
-1. X86 fixes/changes  
+          "asm-indent-copies" (default to false)
 
-   a.  The old code generated for SETcc was completely wrong.  
-       The Intel optimization guide is VERY misleading.
+       When this flag is on, parallel copies will be indented an extra level.
 
-2. ALPHA fixes/changes
 
-   a.  Added the instructions LDBU, LDWU, STB, STW as per Fermin's suggestion.
-   b.  Added a new mode byteWordLoadStores to the functor parameter to Alpha()
-   c.  Added reassociation code for address computation.
+8. Machine Descriptions/Generation
 
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/03/29 18:00:00
-Tag: leunga-20000327-mlriscGen_hppa_alpha_x86
-Boot files (optional): ftp://react-ilp.cs.nyu.edu/leunga/110.26.1-sml.boot.x86-unix-20000330.tar.gz
-Description:
- 
-   This update contains *MAJOR* changes to the way code is generated from CPS
-in the module mlriscGen, and in various backend modules.
+    a. The precedence parser was slightly broken when parsing infixr symbols.
+    b. The type generalizing code had the bound variables reversed, resulting
+       in a problem during arity raising. 
+    c. Various fixes in machine descriptions.
 
-CHANGES
-=======
+======================================================================
+CPS->MLRISC Code Generation
+======================================================================
 
-1. MLRiscGen: forward propagation fix.
+   This release contains *MAJOR* changes to the way code is generated from CPS
+   in the module mlriscGen, and in various backend modules.
+
+1. Forward propagation fix.
 
    There was a bug in forward propagation introduced at about the same time
    as the MLRISC x86 backend, which prohibits coalescing to be 
@@ -160,7 +197,7 @@ CHANGES
    Effect: speed up of loops in RISC architectures.
            By itself, this actually slowed down certain benchmarks on the x86.
 
-2. MLRiscGen:  forward propagating addresses from consing.
+2. Forward propagating addresses from consing.
 
    I've changed the way consing code is generated.  Basically I separated 
    out the initialization part:
@@ -183,7 +220,7 @@ CHANGES
 
              [(0,0), (0,0), .... (0,0)]
 
-3. MLRiscGen: base pointer elimination.
+3. Base pointer elimination.
 
     As part of the linkage mechanism, we generate the sequence:
 
@@ -201,46 +238,8 @@ CHANGES
 
    Effect:  Smaller code size.  Speed up of most programs.
 
-4. Hppa back end
 
-     Long jumps in span dependence resolution used to depend on the existence
-  of the base pointer.  
-
-     A jump to a long label L was expanded into the following sequence:
-     
-      LDIL %hi(L-8192), %r29
-      LDO  %lo(L-8192)(%r29), %r29
-      ADD  %r29, baseptr, %r29
-      BV,n %r0(%r29)
-
-     In the presence of change (3) above, this will not work.  I've changed
-   it so that the following sequence of instructions are generated, which
-   doesn't mention the base pointer at all:
-
-         BL,n  L', %r29           /* branch and link, L' + 4 -> %r29 */
-    L':  ADDIL L-(L'+4), %r29     /* Compute address of L */ 
-         BV,n  %r0(%r29)          /* Jump */ 
-
-5. Alpha back end
-
-      New alpha instructions LDB/LDW have been added, as per Fermin's
-   suggestions.   This is unrelated to all other changes.
-
-6. X86 back end 
-
-     I've changed andl to testl in the floating point test sequence
-     whenever appropriate.  The Intel optimization guide states that
-     testl is perferable to andl.
-
-7. RA (x86 only)
-
-     I've improved the spill propagation algorithm, using an approximation
-   of maximal weighted independent sets.   This seems to be necessary to
-   alleviate the negative effect in light of the slow down in (1). 
-
-     I'll write down the algorithm one of these days.
-
-8. MLRiscGen: frequencies
+4. Frequency annotations
 
      I've added an annotation that states that all call gc blocks have zero
    execution frequencies.  This improves register allocation on the x86.
@@ -357,12 +356,10 @@ SML BENCHMARKS
   ----------------------------------------------------------------------------
    Average                     1.22%                                     3.36%
 
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/03/31 21:15:00 EST
-Tag: leunga-20000331-aliasing
-Description:
 
+
+Aliasing
+---------
 This update contains a rewritten (and hopefully more correct) module 
 for extracting aliasing information from CPS.  
 
@@ -381,94 +378,6 @@ for extracting aliasing information from CPS.
    The default of n is 3.
 
 ----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/04/02 21:17:00 EST
-Tag: leunga-20000402-mltree
-Description:
-
-   1. Renamed the constructor CALL in MLTREE by popular demand.
-   2. Added a bunch of files from my repository.  These are currently
-      used by other non-SMLNJ backends.
-
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/04/04 03:18:00 EST
-Tag: leunga-20000404-C--Moby
-Description:
-
-    All of these fixes are related to C--, Moby, and my own optimization
-    stuff; so they shouldn't affect SML/NJ.
-
-1.  X86
-
-    Various fixes related floating point, and extensions.
-
-2.  Alpha 
-
-    Some extra patterns related to loads with signed/zero extension
-    provided by Fermin.
-
-3.  Assembly 
-
-    When generating assemby, resolve the value of client defined constants, 
-    instead of generating symbolic values.  This is controlled by the 
-    new flag "asm-resolve-constants", which is default to true.
-
-4.  Machine Descriptions
-
-    a. The precedence parser was slightly broken when parsing infixr symbols.
-    b. The type generalizing code had the bound variables reversed, resulting
-       in a problem during arity raising. 
-    c. Various fixes in machine descriptions.
-
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/04/04 19:39:00 EST
-Tag: leunga-20000404-x86-asm
-Description:
-
-1.  Fixed a problem in X86 assembly.
-
-    Things like
-
-       jmp %eax
-       jmp (%eax)
-
-    should be output as
-
-       jmp *%eax
-       jmp *(%eax)
-
-2.  Assembly output
-
-      Added a new flag 
-
-          "asm-indent-copies" (default to false)
-
-      When this flag is on, parallel copies will be indented an extra level.
-
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/04/06 00:36:00 EST
-Tag: leunga-20000406-peephole-x86-SSA
-Description:
-
-1.  New Peephole code
-
-2.  Minor improvement to X86 instruction selection
-
-3.  Various fixes to SSA and machine description -> code translator
-
-----------------------------------------------------------------------
-Name: Allen Leung
-Date: 2000/04/09 19:09:00 EST
-Tag: leunga-20000409-misc
-Description:
-
-1.  Yet another fix for x86 assembly for idivl, imull, mull and friends.
-
-2.  Miscellaneous improvements to MLRISC (unused in sml/nj)  
-
 
 ======================================================================
 CM
