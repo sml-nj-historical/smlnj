@@ -7,7 +7,19 @@ else
     HEAP_IMAGE=sml
 fi
 
-LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
+cmddir=`dirname $0`
+cmddir=`cd $cmddir; pwd`
+
+bin=../../bin
+[ -x "$bin/.arch-n-opsys" ] || bin="$cmddir/$bin"
+
+eval `$bin/.arch-n-opsys`
+
+heapdir=`dirname $HEAP_IMAGE`
+[ -f "$heapdir/$HEAP_IMAGE.$HEAP_SUFFIX" ] || heapdir="$cmddir/$heapdir"
+HEAP_IMAGE=`cd $heapdir; pwd`/$HEAP_IMAGE
+
+LIB_DIR=${HEAP_IMAGE}.lib
 
 CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=/dev/null \
-    ../../bin/sml @SMLload=$HEAP_IMAGE "$@"
+    $bin/sml @SMLload=$HEAP_IMAGE "$@"
