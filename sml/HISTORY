@@ -1,0 +1,19 @@
+This is the HISTORY file for the Yale SML/NJ CVS repository.
+
+An entry should be made for _every_ commit to the repository.
+The entries in this file will be used when creating the README
+for new versions, so keep that in mind when writing the
+description.
+
+The form of an entry should be:
+
+Name: 
+Date:
+Tag: <post-commit CVS tag>
+Description:
+
+----------------------------------------------------------------------
+Name: 
+Date:
+Tag: 
+Description:
