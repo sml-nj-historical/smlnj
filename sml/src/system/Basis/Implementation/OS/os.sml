@@ -18,6 +18,6 @@ structure OSImp : OS = struct
 
     fun errorMsg e = SMLBasis.errorMessage (Int32Imp.fromInt e)
     fun errorName e = SMLBasis.errorName (Int32Imp.fromInt e)
-    fun syserror _ = NONE		(* FIXME!!!! *)
+    fun syserror s = SMLBasis.syserror s
 
 end

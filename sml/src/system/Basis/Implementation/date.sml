@@ -269,8 +269,6 @@ structure Date : DATE =
 *)
 	fun toTime _ = raise Fail "toTime not yet implemented"
 
-	fun localOffset () = raise Fail "localOffset not yet implemented"
-
 	fun fromTimeLocal (PB.TIME t) =
 	    (* fromTM (localTime (Time.toSeconds (t))) NONE *)
 	    fromTM (SMLBasis.localTime t) NONE
@@ -282,6 +280,30 @@ structure Date : DATE =
 	end
 
 	fun fromTimeUniv (t) = fromTimeOffset (t,Time.zeroTime)
+
+	fun localOffset () =
+	    (* trick: - take arbitrary time t (e.g., 0),
+	     *        - interpret it as UTC and make a date tm from it
+	     *        - set the date's offset to "local", yielding tm'
+	     *        - convert tm' to a time u
+	     *        - return difference between u and t *)
+	    let val t = Time.zeroTime
+		val DATE tm = fromTimeUniv t (* fromUTC t *)
+		val tm' = (* tm with { offset = NONE } *)
+		    { year = #year tm,
+		      month = #month tm,
+		      day = #day tm,
+		      hour = #hour tm,
+		      minute = #minute tm,
+		      second = #second tm,
+		      offset = NONE, (* local! *)
+		      wday = #wday tm,
+		      yday = #yday tm,
+		      isDst = #isDst tm }
+		val u = toTime (DATE tm')
+	    in
+		Time.- (u, t)
+	    end
 
 	fun date {year,month,day,hour,minute,second,offset} = 
 	    let val d = DATE {second = second,

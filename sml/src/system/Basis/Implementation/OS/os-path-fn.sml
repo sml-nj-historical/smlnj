@@ -249,7 +249,7 @@ functor OS_PathFn (OSPathBase : sig
 	    let fun tr arc =
 		    if arc = P.currentArc then "."
 		    else if arc = P.parentArc then ".."
-		    else if CharImp.contains arc #"/" then raise Path
+		    else if CharImp.contains arc #"/" then raise InvalidArc
 		    else arc
 	    in
 		String.concatWith "/" (if isAbs then "" :: arcs else arcs)
