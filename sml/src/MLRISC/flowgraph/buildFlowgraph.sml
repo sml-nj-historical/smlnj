@@ -44,6 +44,12 @@ struct
   type instrStream = 
      (I.instruction, Annotations.annotations, CFG.I.C.cellset, CFG.cfg) S.stream
 
+  val dumpCFG = 
+      MLRiscControl.mkFlag 
+        ("dump-initial-cfg",
+         "Dump CFG after instruction selection")
+	 
+		
   fun error msg = MLRiscErrorMsg.error ("BuildFlowGraph", msg)
 
   val hashLabel = Word.toInt o Label.hash
@@ -204,6 +210,11 @@ struct
 	addEdges (rev(!blockList));
 	app (fn lab => addEdge(ENTRY, target lab, CFG.ENTRY)) (!entryLabels);
 	let val an = CFG.annotations cfg in  an := annotations @ (!an) end;
+	if !dumpCFG
+	      then CFG.dump (
+		  !MLRiscControl.debug_stream,
+		  "after instruction selection", cfg)
+	      else ();
 	cfg
       end (* endCluster *)
 

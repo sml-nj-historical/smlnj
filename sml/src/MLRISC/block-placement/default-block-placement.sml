@@ -50,16 +50,16 @@ functor DefaultBlockPlacement (CFG : CONTROL_FLOW_GRAPH) : BLOCK_PLACEMENT =
 	    | placeNodes ((nd1 as (id1, b1))::r1, l) = if isMarked id1
 		then placeNodes (r1, l)
 		else (
-		  mark id1;
 		  case r1
 		   of [] => List.rev (exit::nd1::l)
 		    | (nd2 as (id2, b2))::r2 => if isMarked id2
-			  then placeNodes(nd1::r1, l)
+			  then placeNodes(nd1::r2, l)
 			  else (
 			  (* Here we know that both nd1 and nd2 have not been
 			   * placed.  We need to check for placement constraints
 			   * in nd1's out edges and nd2's in edges.
 			   *)
+			    mark id1;
 			    case findAdjEdge (#out_edges graph id1)
 			     of NONE => let
 				  fun pushPredChain (nd as (id, _), r) = (

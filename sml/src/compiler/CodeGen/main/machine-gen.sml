@@ -47,6 +47,13 @@ struct
    structure MachSpec   = MachSpec
    structure MLTreeComp = MLTreeComp
 
+
+   structure CFGViewer = 
+     CFGViewer
+       (structure CFG = CFG
+	structure GraphViewer = GraphViewer(AllDisplays)
+	structure Asm = Asm)
+
    (* expand copies into their primitive moves.
     * Copies are no longer treated as span dependent, which was a hack.
     *)
@@ -55,6 +62,9 @@ struct
 	  (structure CFG = CFG   
 	   structure Shuffle = Shuffle)
 
+   structure LoopProbs = 
+      EstimateLoopProbsFn(structure CFG=CFG)
+
    structure ComputeFreqs = 
       ComputeFreqsFn(structure CFG=CFG)
 
@@ -62,6 +72,11 @@ struct
       BlockPlacement
           (structure CFG = CFG 
 	   structure Props = InsnProps)
+
+   structure CheckPlacement = 
+      CheckPlacementFn
+          (structure CFG = CFG 
+	   structure InsnProps = InsnProps)
 
    (* After experimentation, some architecture specific control
     * may be needed for chainEscapes.
@@ -81,6 +96,16 @@ struct
 	   structure TS    = MLTreeComp.TS
 	  )
 
+   val graphical_view = 
+      MLRiscControl.mkFlag
+         ("cfg-graphical-view", 
+	  "graphical view of cfg after block placement")
+			
+   val graphical_view_size = 
+      MLRiscControl.mkInt
+         ("cfg-graphical-view_size", 
+	  "minimium threshold for size of graphical view")
+			
    fun omitFramePointer(cfg as G.GRAPH graph) = let
      val CFG.INFO{annotations, ...} = #graph_info graph 
    in
@@ -91,7 +116,8 @@ struct
      else cfg
    end     
 
-   fun computeFreqs cfg = (ComputeFreqs.compute cfg;   cfg)
+   fun computeFreqs cfg = 
+     (LoopProbs.estimate cfg;   ComputeFreqs.compute cfg;   cfg)
 
    type mlriscPhase = string * (CFG.cfg -> CFG.cfg) 
 
@@ -117,12 +143,22 @@ struct
 	 ]
 
    fun compile cluster = let
-       fun runPhases([],cluster) = cluster
-         | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
+     fun runPhases([],cluster) = cluster
+       | runPhases((_,f)::phases,cluster) = runPhases(phases,f cluster)
 
-       fun dumpBlocks cfg = mc (chainJumps (placement cfg))
+     fun dumpBlocks cfg = let
+       val cbp as (cfg, blks) = chainJumps (placement cfg)
+       fun view () = 
+	   if !graphical_view andalso length blks >= !graphical_view_size 
+	   then CFGViewer.view cfg 
+	   else ()
+     in
+	CheckPlacement.check cbp;
+        view ();   
+	mc cbp
+     end
    in  
-       dumpBlocks (runPhases(!optimizerHook,cluster))
+     dumpBlocks (runPhases(!optimizerHook,cluster))
    end
  
    (* compilation of CPS to MLRISC *)

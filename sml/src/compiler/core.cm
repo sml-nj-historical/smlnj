@@ -221,6 +221,7 @@ CodeGen/cpscompile/argPassing.sig
 CodeGen/cpscompile/argPassing.sml
 CodeGen/cpscompile/cluster.sml
 CodeGen/cpscompile/cps-aliasing.sml
+CodeGen/cpscompile/cpsBranchProb.sml
 CodeGen/cpscompile/cpsRegions.sig
 CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
@@ -277,6 +278,15 @@ $smlnj/MLRISC/Lib.cm			(* provides SortedList *)
 $smlnj/MLRISC/Control.cm
 $smlnj/MLRISC/Graphs.cm			
 $smlnj/MLRISC/MLRISC.cm
+
+$smlnj/MLRISC/Visual.cm
+(*
+/home/sml/Dev/george/SML-DEV/Prob/smlnj/src/MLRISC/cm/Visual.cm  
+			  (bind:(anchor:Lib.cm value:$smlnj/MLRISC)
+                           bind:(anchor:Control.cm value:$smlnj/MLRISC)
+                           bind:(anchor:Graphs.cm value:$smlnj/MLRISC)
+                           bind:(anchor:MLRISC.cm value:$smlnj/MLRISC))
+*)
 
 (* Other libaries. *)
 $/basis.cm

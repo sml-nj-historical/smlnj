@@ -305,6 +305,12 @@ struct
             | _ => addTypBinding(f, CPS.BOGt)
            (*esac*))
 
+      val brProb = CpsBranchProb.branchProb funcs
+
+      fun branchWithProb(br, NONE) = br
+	| branchWithProb(br, SOME prob) = 
+	   M.ANNOTATION(br, #create MLRiscAnnotations.BRANCH_PROB prob)
+
       (*
        * A CPS register may be implemented as a physical 
        * register or a memory location.  The function assign moves a
@@ -1132,19 +1138,23 @@ struct
               *)
 
               (* normal branches *)
-          and branch (cmp, [v, w], yes, no, hp) = 
+          and branch (cv, cmp, [v, w], yes, no, hp) = 
           let val trueLab = newLabel ()
           in  (* is single assignment great or what! *)
-              emit(M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab));
+              emit
+	        (branchWithProb
+		   (M.BCC(M.CMP(32, cmp, regbind v, regbind w), trueLab), 
+		   brProb cv));
               genCont(no, hp);
               genlab(trueLab, yes, hp)
           end
 
               (* branch if x is boxed *) 
-          and branchOnBoxed(x, yes, no, hp) = 
+          and branchOnBoxed(cv, x, yes, no, hp) = 
               let val lab = newLabel()
                   val cmp = M.CMP(32, M.NE, M.ANDB(ity, regbind x, one), zero)
-              in  emit(M.BCC(cmp, lab));
+              in  
+		  emit(branchWithProb(M.BCC(cmp, lab), brProb cv));
                   genCont(yes, hp);
                   genlab(lab, no, hp)
               end
@@ -1698,7 +1708,9 @@ struct
                   val lab = newLabel ()
               in  emit(M.MV(ity, tmp, regbind(INT32 0wx3fffffff)));
                   updtHeapPtr hp;
-                  emit(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab));
+                  emit
+		    (branchWithProb(M.BCC(M.CMP(32, M.LEU, vreg, tmpR),lab), 
+				    SOME Probability.likely));
                   emit(M.MV(ity, tmp, M.SLL(ity, tmpR, one)));
                   emit(M.MV(ity, tmp, M.ADDT(ity, tmpR, tmpR)));
                   defineLabel lab;
@@ -1982,8 +1994,8 @@ struct
                 (*esac*)) 
               then gen(e, hp)
               else gen(d, hp)
-            | gen(BRANCH(P.cmp{oper, kind=P.INT 31}, vw, _, e, d), hp) = 
-                branch(signedCmp oper, vw, e, d, hp)
+            | gen(BRANCH(P.cmp{oper, kind=P.INT 31}, vw, p, e, d), hp) = 
+                branch(p, signedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.cmp{oper,kind=P.UINT 31},[INT v', INT k'],_,e,d),hp)=
               let open Word
                   val v = fromInt v' 
@@ -1999,8 +2011,8 @@ struct
                   then gen(e, hp)
                   else gen(d, hp)
               end
-            | gen(BRANCH(P.cmp{oper, kind=P.UINT 31}, vw, _, e, d), hp) = 
-                branch(unsignedCmp oper, vw, e, d, hp)
+            | gen(BRANCH(P.cmp{oper, kind=P.UINT 31}, vw, p, e, d), hp) = 
+                branch(p, unsignedCmp oper, vw, e, d, hp)
             | gen(BRANCH(P.cmp{oper,kind=P.UINT 32},[INT32 v,INT32 k],_,e,d),
                   hp) = 
               let open Word32
@@ -2015,12 +2027,12 @@ struct
                   then gen(e, hp)
                   else gen(d, hp)
               end
-            | gen(BRANCH(P.cmp{oper, kind=P.UINT 32}, vw, _, e, d), hp) = 
-                branch(unsignedCmp oper, vw, e, d, hp)
+            | gen(BRANCH(P.cmp{oper, kind=P.UINT 32}, vw, p, e, d), hp) = 
+                branch(p, unsignedCmp oper, vw, e, d, hp)
     
-            | gen(BRANCH(P.cmp{oper, kind=P.INT 32}, vw, _, e, d), hp) = 
-                branch(signedCmp oper, vw, e, d, hp)
-            | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], _, d, e), hp) =
+            | gen(BRANCH(P.cmp{oper, kind=P.INT 32}, vw, p, e, d), hp) = 
+                branch(p, signedCmp oper, vw, e, d, hp)
+            | gen(BRANCH(P.fcmp{oper,size=64}, [v,w], p, d, e), hp) =
               let val trueLab = newLabel ()
                   val fcond = 
                       case oper
@@ -2044,14 +2056,14 @@ struct
                   genCont(e, hp);
                   genlab(trueLab, d, hp)
               end
-            | gen(BRANCH(P.peql, vw, _,e,d), hp) = branch(M.EQ, vw, e, d, hp)
-            | gen(BRANCH(P.pneq, vw, _, e, d), hp) = branch(M.NE, vw, e, d, hp)
-            | gen(BRANCH(P.strneq, [INT n,v,w], _, d, e), hp) = 
+            | gen(BRANCH(P.peql, vw, p, e,d), hp) = branch(p, M.EQ, vw, e, d, hp)
+            | gen(BRANCH(P.pneq, vw, p, e, d), hp) = branch(p, M.NE, vw, e, d, hp)
+            | gen(BRANCH(P.strneq, [INT n,v,w], p, d, e), hp) = 
                 branchStreq(n,v,w,e,d,hp)
-            | gen(BRANCH(P.streq, [INT n,v,w],_,d,e), hp) = 
+            | gen(BRANCH(P.streq, [INT n,v,w],p,d,e), hp) = 
                 branchStreq(n,v,w,d,e,hp)
-            | gen(BRANCH(P.boxed, [x], _, a, b), hp) = branchOnBoxed(x,a,b,hp)
-            | gen(BRANCH(P.unboxed, [x], _, a, b), hp) = branchOnBoxed(x,b,a,hp)
+            | gen(BRANCH(P.boxed, [x], p, a, b), hp) = branchOnBoxed(p,x,a,b,hp)
+            | gen(BRANCH(P.unboxed, [x], p, a, b), hp) = branchOnBoxed(p,x,b,a,hp)
             | gen(e, hp) =  (PPCps.prcps e; print "\n"; error "genCluster.gen")
 
          end (*local*)

@@ -13,6 +13,59 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/03/22 14:18:25 EST 
+Tag: blume-20020321-cps-branch-prob
+Description:
+
+Implemented the Ball-Larus branch prediction-heuristic, and 
+incorporated graphical viewers for control flow graphs.
+
+Ball-Larus Heuristic:
+---------------------
+See the file compiler/CodeGen/cpscompile/cpsBranchProb.sml.
+
+By design it uses the Dempster-Shafer theory for combining
+probabilities.  For example, in the function:
+
+    fun f(n,acc) = if n = 0 then acc else f(n-1, n*acc)
+
+the ball-larus heuristics predicts that the n=0 is unlikely
+(OH-heuristic), and the 'then' branch is unlikely because of the
+RH-heuristic -- giving the 'then' branch an even lower combined
+probability using the Dempster-Shater theory.
+
+Finally, John Reppy's loop analysis in MLRISC, further lowers the
+probability of the 'then' branch because of the loop in the else
+branch.
+
+
+Graphical Viewing:
+------------------ 
+I merely plugged in Allen's graphical viewers into the compiler. The
+additional code is not much. At the top level, saying:
+
+	Control.MLRISC.getFlag "cfg-graphical-view" := true;
+
+will display the graphical view of the control flow graph just before
+back-patching.  daVinci must be in your path for this to work. If
+daVinci is not available, then the default viewer can be changed
+using:
+
+	Control.MLRISC.getString "viewer"
+
+which can be set to "dot" or "vcg" for the corresponding viewers. Of
+course, these viewers must be in your path.
+
+The above will display the compilation unit at the level of clusters,
+many of which are small, boring, and un-interesting. Also setting:
+
+	Control.MLRISC.getInt "cfg-graphical-view_size"
+
+will display clusters that are larger than the value set by the above.
+
+ 
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/03/21 22:20:00 EST
 Tag: blume-20020321-kmp-bugfix
