@@ -21,65 +21,18 @@ type lexarg = {
 	       addSC: string * int -> unit,
 	       addSN: string * pos -> unit,
 	       getS: pos * (string * pos * pos -> lexresult) -> lexresult,
-	       handleEof: unit -> lexresult,
+	       handleEof: unit -> pos,
 	       newline: pos -> unit,
-	       error: pos -> string -> unit
+	       error: pos * pos -> string -> unit
 	      }
 
 type arg = lexarg
-	       
-fun eof (arg: lexarg) = (#handleEof arg ())
 
-(*
-local
-    val depth = ref 0
-    val curstring = ref ([]: char list)
-    val startpos = ref 0
-    val instring = ref false
+fun eof (arg: lexarg) = let
+    val pos = #handleEof arg ()
 in
-
-
-    fun resetAll () = (depth := 0; startpos := 0; instring := false)
-
-    (* comment stuff *)
-    fun enterC () = depth := !depth + 1
-    fun leaveC () = let
-	val d = !depth - 1
-	val _ = depth := d
-    in
-	d = 0
-    end
-
-    (* string stuff *)
-    fun newS sp = (curstring := []; startpos := sp; instring := true)
-    fun addS c = curstring := c :: (!curstring)
-    fun addSC (t, p, b) = addS (chr (ord (String.sub (t, 2)) - b))
-    fun addSN (t, p) = let
-	val ns = substring (t, 1, 3)
-	val n = Int.fromString ns
-    in
-	addS (chr (valOf n))
-	handle _ =>
-	    ErrorMsg.error p ("illegal decimal char spec " ^ ns)
-    end
-    fun getS endpos =
-	(instring := false;
-	 Tokens.STRING (implode (rev (!curstring)), !startpos, endpos + 1))
-
-    (* handling EOF *)
-    fun eof (arg: ) = let
-	val pos = ErrorMsg.lastLinePos ()
-    in
-	if !depth > 0 then
-	    ErrorMsg.error pos "unexpected EOF in COMMENT"
-	else if !instring then
-	    ErrorMsg.error pos "unexpected EOF in STRING"
-	else ();
-	resetAll ();
-	Tokens.EOF(pos,pos)
-    end
+    Tokens.EOF (pos, pos)
 end
-*)
 
 local
     val idlist = [("Alias", Tokens.ALIAS),
@@ -168,7 +121,8 @@ sharp="#";
 <C,PC,PMC,MC>{eol}      => (newline yypos; continue ());
 <C,PC,PMC,MC>.          => (continue ());
 
-<INITIAL,P,PM,M>"*)"	=> (error yypos "unmatched comment delimiter";
+<INITIAL,P,PM,M>"*)"	=> (error (yypos, yypos+2)
+			      "unmatched comment delimiter";
 			    continue ());
 
 <INITIAL>"\""		=> (YYBEGIN S; newS (yypos, "string"); continue ());
@@ -198,13 +152,14 @@ sharp="#";
 <S>"\\"{eol}	        => (YYBEGIN SS; newline (yypos + 1); continue ());
 <S>"\\"{ws}+	        => (YYBEGIN SS; continue ());
 
-<S>"\\".		=> (error yypos
+<S>"\\".		=> (error (yypos, yypos+2)
 			     ("illegal escape character in string " ^ yytext);
 			    continue ());
 
 <S>"\""		        => (YYBEGIN INITIAL; getS (yypos, Tokens.FILE_NATIVE));
 <S>{eol}		=> (newline yypos;
-			    error yypos "illegal linebreak in string";
+			    error (yypos, yypos + size yytext)
+			      "illegal linebreak in string";
 			    continue ());
 
 <S>.		        => (addS (String.sub (yytext, 0)); continue ());
@@ -212,7 +167,7 @@ sharp="#";
 <SS>{eol}	        => (newline yypos; continue ());
 <SS>{ws}+	        => (continue ());
 <SS>"\\"	        => (YYBEGIN S; continue ());
-<SS>.		        => (error yypos
+<SS>.		        => (error (yypos, yypos+1)
 			     ("illegal character in stringskip " ^ yytext);
 			    continue ());
 
@@ -233,7 +188,9 @@ sharp="#";
 <P>{digit}+	        => (Tokens.NUMBER
 			     (valOf (Int.fromString yytext)
 			      handle _ =>
-				  (error yypos "number too large"; 0),
+				  (error (yypos, yypos + size yytext)
+				     "number too large";
+				   0),
 			      yypos, yypos + size yytext));
 
 <P>{id}                 => (Tokens.CM_ID (yytext, yypos, yypos + size yytext));
@@ -275,7 +232,7 @@ sharp="#";
 
 <INITIAL,M,PM,P>{ws}+   => (continue ());
 
-<M,PM>.                 => (error yypos
+<M,PM>.                 => (error (yypos, yypos+1)
 			    ("illegal character at start of ML symbol: " ^
 			     yytext);
 			    continue ());
@@ -283,6 +240,6 @@ sharp="#";
 <INITIAL>{cmid}		=> (idToken (yytext, yypos));
 
 
-<INITIAL>.		=> (error yypos
+<INITIAL>.		=> (error (yypos, yypos+1)
 			    ("illegal character: " ^ yytext);
 			    continue ());

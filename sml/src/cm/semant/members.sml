@@ -14,31 +14,23 @@
 signature MEMBERCOLLECTION = sig
 
     type collection
-    type environment
 
-    val empty : collection
     val expandOne : AbsPath.t * string option -> collection
     val sequential : collection * collection -> collection
 
-    val envOf : collection -> environment
-
-    val num_look : environment -> string -> int
-    val ml_look : environment -> GenericVC.Symbol.symbol -> bool
-    val cm_look : environment -> string -> bool
+    val num_look : collection -> string -> int
+    val ml_look : collection -> GenericVC.Symbol.symbol -> bool
+    val cm_look : collection -> string -> bool
 end
 
 structure MemberCollection :> MEMBERCOLLECTION = struct
 
     type collection = unit
-    type environment = unit
 
-    val empty = ()
     fun expandOne (f: AbsPath.t, c: string option) = ()
     fun sequential (c1: collection, c2: collection) = ()
 
-    fun envOf (c: collection) = ()
-
-    fun num_look (e: environment) (s: string) = 0
-    fun ml_look (e: environment) (s: GenericVC.Symbol.symbol) = false
-    fun cm_look (e: environment) (s: string) = false
+    fun num_look (c: collection) (s: string) = 0
+    fun ml_look (c: collection) (s: GenericVC.Symbol.symbol) = false
+    fun cm_look (c: collection) (s: string) = false
 end

@@ -10,7 +10,7 @@ signature CM_SEMANT = sig
     exception ExplicitError of string
     exception ExpressionError of exn
 
-    type pathname
+    type pathname = AbsPath.t
     type ml_symbol
     type cm_symbol
 
@@ -97,7 +97,7 @@ structure CMSemant :> CM_SEMANT = struct
 
     type group = unit
 
-    type environment = MemberCollection.environment
+    type environment = MemberCollection.collection
 
     type perms = { required : StringSet.set, granted : StringSet.set }
 
@@ -142,14 +142,10 @@ structure CMSemant :> CM_SEMANT = struct
 	     { required = required, granted = StringSet.add (granted, s) })
     end
 
-    fun emptyMembers env = MemberCollection.empty
-    fun member (f, c) env = MemberCollection.expandOne (f, c)
-    fun members (m1, m2) env = let
-	val c1 = m1 env
-	val c2 = m2 (MemberCollection.envOf c1)
-    in
-	MemberCollection.sequential (c1, c2)
-    end
+    fun emptyMembers env = env
+    fun member (f, c) env =
+	MemberCollection.sequential (env, MemberCollection.expandOne (f, c))
+    fun members (m1, m2) env = m2 (m1 env)
     fun guarded_members (c, (m1, m2)) env =
 	if saveEval (c, env) then m1 env else m2 env
     fun error_member m env = raise ExplicitError m

@@ -16,6 +16,11 @@ signature ABSPATH = sig
 
     val native : { context: t, spec: string } -> t
     val standard : { context: t, spec: string } -> t
+
+    val joinDirFile : { dir: t, file: string } -> t
+    val splitDirFile : t -> { dir: t, file: string }
+    val dir : t -> t
+    val file : t -> string
 end
 
 structure AbsPath :> ABSPATH = struct
@@ -149,9 +154,11 @@ structure AbsPath :> ABSPATH = struct
 	(* compare pathnames efficiently *)
 	fun compare (p1, p2) = compareId (id p1, id p2)
 
-	(* make an abstract path from a native string *)
-	fun native { spec, context } =
+	fun fresh (context, spec) =
 	    SPEC { context = context, spec = spec, cache = ref NONE }
+
+	(* make an abstract path from a native string *)
+	fun native { spec, context } = fresh (context, spec)
 
 	(* make an abstract path from a standard string *)
 	fun standard { spec, context } = let
@@ -164,10 +171,9 @@ structure AbsPath :> ABSPATH = struct
 	      | transl arc = arc
 
 	    fun mk (isAbs, arcs, context) =
-		SPEC { context = context,
-		       spec = P.toString { isAbs = isAbs, vol = "",
-					   arcs = map transl arcs },
-		       cache = ref NONE }
+		fresh (context,
+		       P.toString { isAbs = isAbs, vol = "",
+				    arcs = map transl arcs })
 	in
 	    case String.fields delim spec of
 		"" :: arcs => mk (true, arcs, context)
@@ -183,5 +189,29 @@ structure AbsPath :> ABSPATH = struct
 			     mk (false, arcn, anchorcontext)
 			 end)
 	end
+
+	fun joinDirFile { dir as (CUR _ | CONFIG_ANCHOR _), file } =
+	    fresh (dir, file)
+	  | joinDirFile { dir = SPEC { context, spec, ... }, file } = let
+		val j =
+		    P.mkCanonical (P.joinDirFile { dir = spec, file = file })
+	    in
+		fresh (context, j)
+	    end
+
+	(* The cases where we try to split CUR, CONFIG_ANCHOR, ".",
+	 * or any path ending in ".." should never occur in practice.
+	 * It would perhaps be better to put error-handling here... *)
+	fun splitDirFile (x as (CUR _ | CONFIG_ANCHOR _)) =
+	    { dir = x, file = P.currentArc }
+	  | splitDirFile (SPEC { context, spec, ... }) = let
+		val { dir, file } = P.splitDirFile spec
+		val dir = if dir = "" then P.currentArc else dir
+	    in
+		{ dir = fresh (context, dir), file = file }
+	    end
+
+	val dir = #dir o splitDirFile
+	val file = #file o splitDirFile
     end
 end

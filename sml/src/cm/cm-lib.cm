@@ -8,6 +8,7 @@
 Group
 	(* for the time being leave this empty *)
 is
+	parse/parse.sml
 	parse/cm.grm
 	parse/cm.lex
 
