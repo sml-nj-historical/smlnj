@@ -69,11 +69,14 @@ structure SmlInfo :> SMLINFO = struct
 
     type complainer = EM.complainer
 
+    (* sh_mode is an elaboration of sh_spec;  it must be persistent
+     * and gets properly re-computed when there is a new sh_spec *)
     datatype persinfo =
 	PERS of { group: SrcPath.t * region,
 		  lastseen: TStamp.t ref,
 		  parsetree: (ast * source) option ref,
-		  skeleton: Skeleton.decl option ref }
+		  skeleton: Skeleton.decl option ref,
+		  sh_mode: Sharing.mode ref }
 		      
     datatype info =
 	INFO of { sourcepath: SrcPath.t,
@@ -81,7 +84,6 @@ structure SmlInfo :> SMLINFO = struct
 		  mkBinname: unit -> string,
 		  persinfo: persinfo,
 		  sh_spec: Sharing.request,
-		  sh_mode: Sharing.mode option ref,
 		  split: bool }
 
     type ord_key = info
@@ -90,10 +92,9 @@ structure SmlInfo :> SMLINFO = struct
     fun skelname (INFO { mkSkelname = msn, ... }) = msn ()
     fun binname (INFO { mkBinname = mbn, ... }) = mbn ()
     fun sh_spec (INFO { sh_spec = s, ... }) = s
-    fun sh_mode (INFO { sh_mode = ref (SOME m), ... }) = m
-      | sh_mode _ = EM.impossible "SmlInfo.sh_mode: "
-    fun set_sh_mode (INFO { sh_mode as ref NONE, ... }, m) = sh_mode := SOME m
-      | set_sh_mode _ = EM.impossible "SmlInfo.set_sh_mode"
+    fun sh_mode (INFO { persinfo = PERS { sh_mode = ref m, ... }, ... }) = m
+    fun set_sh_mode (INFO { persinfo = PERS { sh_mode, ... }, ... }, m) =
+	sh_mode := m
     fun split (INFO { split = s, ... }) = s
 
     fun gerror (gp: GeneralParams.info) = GroupReg.error (#groupreg gp)
@@ -130,7 +131,7 @@ structure SmlInfo :> SMLINFO = struct
     fun validate (sourcepath, PERS pir) = let
 	(* don't use "..." pattern to have the compiler catch later
 	 * additions to the type! *)
-	val { group, lastseen, parsetree, skeleton } = pir
+	val { group, lastseen, parsetree, skeleton, sh_mode } = pir
 	val ts = !lastseen
 	val nts = SrcPath.tstamp sourcepath
     in
@@ -150,7 +151,8 @@ structure SmlInfo :> SMLINFO = struct
 	fun newpersinfo () = let
 	    val ts = SrcPath.tstamp sourcepath
 	    val pi = PERS { group = gr, lastseen = ref ts,
-			    parsetree = ref NONE, skeleton = ref NONE }
+			    parsetree = ref NONE, skeleton = ref NONE,
+			    sh_mode = ref (Sharing.SHARE false) }
 	in
 	    knownInfo := SrcPathMap.insert (!knownInfo, sourcepath, pi);
 	    pi
@@ -184,7 +186,6 @@ structure SmlInfo :> SMLINFO = struct
 	       mkBinname = mkBinname,
 	       persinfo = persinfo (),
 	       sh_spec = sh_spec,
-	       sh_mode = ref NONE,
 	       split = split }
     end
 
