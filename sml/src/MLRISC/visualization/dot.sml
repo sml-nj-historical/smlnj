@@ -12,7 +12,7 @@ struct
 
    fun suffix() = ".dot"
    fun program() = "dotty"
-  
+
    fun visualize out (G.GRAPH G) =
    let val spaces = "                                           ";
        fun int n  = out (Int.toString n) 
@@ -24,6 +24,8 @@ struct
 
        and doAttrib t comma (L.LABEL "")   = false
          | doAttrib t comma (L.LABEL l)    = (out comma; tab t; label l; true)
+	 | doAttrib t comma (L.COLOR c)    = 
+	     (out comma; tab t; out "color=\"";  out c;  out "\"";  true)
          | doAttrib t comma _              = false
 
        and doAttribs t comma [] = ()
@@ -31,7 +33,7 @@ struct
             doAttribs t (if doAttrib t comma l then ",\n" else comma) ls
 
        and label l = (out "label=\""; out(String.toString l); out "\"\n")
-       
+
        fun doNode t (n,a) = (tab t; name n; attribs t a; semi())
 
        fun doEdge t (i,j,a) =
@@ -44,4 +46,3 @@ struct
    end
 
 end
-
