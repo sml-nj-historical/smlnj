@@ -100,7 +100,7 @@ if [ "$ALLOC" = "" ] ; then
 	# "head" is called to make sure we consider only one matching line.
 	# (On linux SMP systems there is more than one such line.)
 	cache=`fgrep 'cache size' </proc/cpuinfo | head -1`
-	if [ x$cache = x ] ; then
+	if [ "x$cache" = "x" ] ; then
 	    # No cache info in /proc/cputype.  No we are checking the CPU
 	    # type....
 	    cpu=`fgrep 'cpu	' </proc/cpuinfo | head -1`
