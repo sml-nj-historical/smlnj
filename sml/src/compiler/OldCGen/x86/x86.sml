@@ -120,14 +120,14 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   fun newlabel () = Immedlab (V.newlabel ()) 
 	       (* create a new label (but don't define it) *) 
 
-  fun die s = ErrorMsg.impossible ("x86/x86.sml: " ^ s)
+  fun bug s = ErrorMsg.impossible ("x86/x86.sml: " ^ s)
 
   fun emitlab (i,Immedlab lab) = V.emitlab (i,lab)
-    | emitlab _ = die "emitlab: bad args"
+    | emitlab _ = bug "emitlab: bad args"
 	       (* L3: emitlab (k,L2) is equivalent to L3: emitlong (L2+k-L3) *)
 
   fun define (Immedlab lab) = V.define lab
-    | define _ = die "define: bad arg"
+    | define _ = bug "define: bad arg"
 	       (* Associate a label with a point in the code *)
 
   (******************************* Move ****************************************)
@@ -145,18 +145,18 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	of (x as Floatreg 0,  y as Floatreg y') => V.fst false y
 	 | (x as Floatreg x', y as Floatreg y') => (V.fld x; 
 						    V.fst true (Floatreg (y'+1)))
-	 | (Floatreg _,	   _)		      => die "move: bad args"
-	 | (_,		   Floatreg _)	      => die "move: bad args"
-	 | (_,		   Immed _)	      => die "move: bad args"
-	 | (_,		   Immed32 _)	      => die "move: bad args"
-	 | (_,		   Immedlab _)	      => die "move: bad args"
+	 | (Floatreg _,	   _)		      => bug "move: bad args"
+	 | (_,		   Floatreg _)	      => bug "move: bad args"
+	 | (_,		   Immed _)	      => bug "move: bad args"
+	 | (_,		   Immed32 _)	      => bug "move: bad args"
+	 | (_,		   Immedlab _)	      => bug "move: bad args"
 	 | (x as Immedlab _,  y as Direct _)    => V.lea (x, y)
 	 | (x as Immed _	,  y)		      => V.movl (x, y)
 	 | (x as Immed32 _,  y)		      => V.movl (x, y)
 	 | (x as Direct _	,  y)		      => V.movl (x, y)
 	 | (x		,  y as Direct _)     => V.movl (x, y)
 	 | (x		,  y)		      => 
-	       if inEA (y, tempreg') then die "move: no temporary"
+	       if inEA (y, tempreg') then bug "move: no temporary"
 	       else (move (x, tempreg); move (tempreg, y))
 
   (*************************** Utility functions *******************************)
@@ -186,7 +186,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
     | three opcode (x, y, z as Displace _) = 
 	     (move (y, tempreg); opcode (x,tempreg); move (tempreg,z))
 	     (* NB: This increases code size, but decreases memory traffic. *)
-    | three _ _ = die "three: bad args"
+    | three _ _ = bug "three: bad args"
 
   fun three' opcode cmps (x, y, z as Direct _) = 
 	      if x=z then (opcode (y,z); cmps z)
@@ -203,7 +203,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	     if y=z then opcode (x,z) else (move (y,z); opcode (x,z))
     | three' opcode _ (x, y, z as Displace _) =
 	     (move (y,z); opcode (x,z))
-    | three' _ _ _ = die "three': bad args"
+    | three' _ _ _ = bug "three': bad args"
 
 
   (***************************** Memory check **********************************)
@@ -281,8 +281,12 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	    | f (x, OFFp 0)	    = if x=tempreg
 					then V.stos x
 					else (move (x,tempreg); V.stos tempreg)
+	    | f (Direct r, OFFp j)    = 
+                  bug "non-zero OFFp record field"
+(*
 	    | f (Direct r, OFFp j)    = (V.lea (Displace (r, j*4), tempreg);
-					 f (tempreg, OFFp 0))
+  					 f (tempreg, OFFp 0))
+ *)
 	    | f (x,p)		    = (move (x, tempreg); f (tempreg,p))
       in
 	  app f vl;
@@ -378,7 +382,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 		   V.addl(tempreg,tempreg);
 		   V.addl(x,tempreg);
 		   storeListUpdate tempreg)
-	    | _ => die "record store: bad args"
+	    | _ => bug "record store: bad args"
       end
   (**)
 
@@ -386,7 +390,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   fun select(i, Direct s, y)	    =  move (Displace (s, i*4), y)
     | select(i, x as Displace _, y)   = (move (x,tempreg); select(i, tempreg, y))
     | select(i, lab as Immedlab _, y) = (move(lab, tempreg); select(i,tempreg,y))
-    | select _ = die "select: bad args"
+    | select _ = bug "select: bad args"
 
   fun handlepseudo f (x,Immed 1) = f(pseudo1,x)
     | handlepseudo f (x,Immed 3) = f(pseudo2,x)
@@ -427,7 +431,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
     | offset (i,x as Displace _,y)	     = (move (x, tempreg);
 						  offset (i, tempreg, tempreg);
 						  move (tempreg, y))
-    | offset _ = die "offset: bad args"
+    | offset _ = bug "offset: bad args"
 
   (****************** Indexed fetch and store (byte) ***************************)
   (*
@@ -451,8 +455,8 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	  | (Displace _, Displace _) => (V.movl (x,tempreg);
 					 V.addl (z,tempreg);
 					 V.movzx (Displace (tempreg',0),y))
-	  | _ => die "fetchindexb: bad args")
-    | fetchindexb _ = die "fetchindexb: bad args"
+	  | _ => bug "fetchindexb: bad args")
+    | fetchindexb _ = bug "fetchindexb: bad args"
 
   (* storeindexb (x,y,z) stores a byte: x -> mem[y+z]
    * The 80386 can only perform byte operations on the al,bl,cl,dl,
@@ -498,7 +502,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	   | (Displace _, Displace _) => (V.movl (y,tempreg);
 					  V.addl (z,tempreg);
 					  storeb' (x,Displace (tempreg',0)))
-	   | _ => die "storeindexb: bad args"
+	   | _ => bug "storeindexb: bad args"
       end
 
   (************ Indexed fetch and store (word = 4 byte) ************************)
@@ -533,8 +537,8 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 				      V.addl (z,tempreg);
 				      V.addl (z,tempreg);
 				      V.movl (Displace (tempreg',~2), y))
-       | _ => die "fetchindexl: bad args")
-    | fetchindexl _ = die "fetchindexl: bad args"
+       | _ => bug "fetchindexl: bad args")
+    | fetchindexl _ = bug "fetchindexl: bad args"
 
   (* storeindexl (x,y,z) stores a word:	  x -> mem[y+2*(z-1)]	 *)
   fun storeindexl (x, y, z) =
@@ -564,7 +568,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 					  V.asll (Immed 1, tempreg);
 					  V.addl (y, tempreg);
 					  move' (x, Displace (tempreg', ~2)))
-	   | _ => die "storeindexl: bad args"
+	   | _ => bug "storeindexl: bad args"
       end
 
   (* fetchindexd (x,y,z): y<-mem[x+4*(z-1)] *)
@@ -574,11 +578,11 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
      fun indexdEA (Direct x', Direct y')	     = Index (x', ~4, y', Long)
        | indexdEA (Direct x', Immed i)	     = Displace (x', 4*(i-1))
        | indexdEA (Direct x', y as Displace _) = 
-	 if x' = tempreg' then die "tempreg in use in indexdEA 1"
+	 if x' = tempreg' then bug "tempreg in use in indexdEA 1"
 	 else (V.movl (y, tempreg);
 	       Index (x', ~4, tempreg', Long))
        | indexdEA (x as Displace _, Direct y') = 
-	 if y' = tempreg' then die "tempreg in use in indexdEA 2"
+	 if y' = tempreg' then bug "tempreg in use in indexdEA 2"
 	 else (V.movl (x, tempreg);
 	       Index (tempreg', ~4, y', Long))
        | indexdEA (x as Displace _, Immed i)   = (V.movl (x, tempreg);
@@ -591,21 +595,21 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   in
      fun fetchindexd (x, y as Floatreg y', z) = 
 	 let val src = indexdEA (x,z) 
-	     handle IndexdEA => die "fetchindexd: bad args"
+	     handle IndexdEA => bug "fetchindexd: bad args"
 	 in
 	     V.fld src;
 	     V.fst true (Floatreg (y'+1))
 	 end
-       | fetchindexd _ = die "fetchindexd: bad args"
+       | fetchindexd _ = bug "fetchindexd: bad args"
 
      fun storeindexd (x as Floatreg x', y, z) =
 	 let val dest = indexdEA (y,z)
-	     handle IndexdEA => die "storeindexd: bad args"
+	     handle IndexdEA => bug "storeindexd: bad args"
 	 in
 	     if x' = 0 then V.fst false dest
 	     else (V.fld x; V.fst true dest)
 	 end
-       | storeindexd _ = die "storeindexd: bad args"
+       | storeindexd _ = bug "storeindexd: bad args"
 
   end (* local *)
 
@@ -617,7 +621,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   local 
     val ecx' = 1
     val ecx = Direct ecx'
-    fun checkCnt' i = if i < 0 then die "shift: negative count"
+    fun checkCnt' i = if i < 0 then bug "shift: negative count"
 		      else Immed (Int.min(i,31))
     fun checkCnt (Immed i,x,y) = (checkCnt' i,x,y)
       | checkCnt (Immed32 i,x,y) = (checkCnt' (Word32.toIntX i),x,y)
@@ -754,12 +758,12 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   fun jmp (lab as Immedlab _) = V.jra lab
     | jmp (x   as Direct _)   = V.jmp x
     | jmp (x   as Displace _) = V.jmp x
-    | jmp _ = die "jmp: bad arg"
+    | jmp _ = bug "jmp: bad arg"
 
   (* jmpindexb (x,y)     (x+y) -> PC     *)
   fun jmpindexb (lab as Immedlab _, indx as Direct _)   = jmpidx (lab, indx)
     | jmpindexb (lab as Immedlab _, indx as Displace _) = jmpidx (lab, indx)
-    | jmpindexb _ = die "jmpindexb: bad arg"
+    | jmpindexb _ = bug "jmpindexb: bad arg"
 
   and jmpidx (lab, indx) = (move (lab, tempreg);
 			    V.addl (indx, tempreg);
@@ -817,7 +821,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 						V.jc l)
     | bbs (x as Immed _, y as Displace _, l) = (V.btst (x,y);
 						V.jc l)
-    | bbs _ = die "bbs: bad arg"
+    | bbs _ = bug "bbs: bad arg"
 
   (************************** Floating point instructions *********************)
 
@@ -835,7 +839,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
     | loadfloat (x, y as Floatreg y') = 
 	 (move (x, tempreg);
 	  fetchindexd (tempreg, y, Immed 1))
-    | loadfloat _ = die "loadfloat: bad args"
+    | loadfloat _ = bug "loadfloat: bad args"
 
   fun storefloat (x as Floatreg x', y) = 
 	 (V.movl (Immed(dtoi D.desc_reald), tempreg);
@@ -843,7 +847,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	  storeindexd (x, allocptr, Immed 1);
 	  move (allocptr, y);
 	  V.addl (Immed 8, allocptr))
-    | storefloat _ = die "storefloat: bad args"
+    | storefloat _ = bug "storefloat: bad args"
 
 
   (* float1 opr (x,y) generates code for y <- opr x. *)
@@ -851,7 +855,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   fun float1 opr (x as Floatreg x', y as Floatreg y') = 
 	 if x' = y' andalso y' = 0 then opr ()
 	 else (V.fld x; opr (); V.fst true (Floatreg (y'+1)))
-    | float1 _ _ = die "float1: bad args"
+    | float1 _ _ = bug "float1: bad args"
 
   (* float2 opr (x,y) generates code for y <- x opr y.  The operator
      takes a boolean that specifies whether to pop the register stack. *)
@@ -859,7 +863,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
   fun float2 opr (x as Floatreg x', y as Floatreg y') = 
 	 if x' = 0 (* orelse y' = 0 *) then opr false (x, y)
 	 else (V.fld x; opr true (Floatreg 0, Floatreg (y'+1)))
-    | float2 _ _ = die "float2: bad args"
+    | float2 _ _ = bug "float2: bad args"
 
   (* float3 opr b (x,y,z) generates code for z <- x opr y.  b is a
      boolean specifying whether opr is commutative.  The operator takes a
@@ -871,7 +875,7 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
 	 else (V.fld x;
 	       opr false (Floatreg (y'+1), Floatreg 0);
 	       V.fst true (Floatreg (z'+1)))
-    | float3 _ _ _ = die "float3: floating point register arguments expected"
+    | float3 _ _ _ = bug "float3: floating point register arguments expected"
 
   val fmuld = float3 V.fmul true
   val fdivd = float3 V.fdiv false
@@ -887,13 +891,13 @@ functor X86CM (V : X86CODER) : CMACHINE = struct
     | cvti2d (x as Displace _, y as Floatreg y') =
 	 (V.fild x;
 	  V.fst true (Floatreg (y'+1)))
-    | cvti2d _ = die "cvti2d: bad args"
+    | cvti2d _ = bug "cvti2d: bad args"
 
   fun fbranchd (cond, x, y, label) = let
     fun fcom (x as Floatreg x', y as Floatreg y') =
 	if x' = 0 then V.fucom false (x, y)
 	else (V.fld x; V.fucom true (Floatreg 0, Floatreg (y'+1)))
-      | fcom _ = die "fbranchd: bad args"
+      | fcom _ = bug "fbranchd: bad args"
     fun branch () = let
       fun andil i = V.andl(Immed i, tempreg)
       fun xoril i = V.xorl(Immed i, tempreg)

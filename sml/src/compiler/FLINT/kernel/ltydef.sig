@@ -202,7 +202,6 @@ val tcw_arrow  : tyc * (fflag * tyc list * tyc list -> 'a)
  *      | LT_STR of lty list
  *      | LT_FCT of lty list * lty list
  *      | LT_POLY of tkind list * lty list
- *      | LT_PST of (int * lty) list            (* SOON BECOME OBSOLETE *)
  *
  * We treat lty as an abstract type so we can no longer use pattern
  * matching. The client does not need to worry about whether an lty
@@ -214,28 +213,24 @@ val ltc_tyc    : tyc -> lty
 val ltc_str    : lty list -> lty
 val ltc_fct    : lty list * lty list -> lty
 val ltc_poly   : tkind list * lty list -> lty    
-val ltc_pst    : (int * lty) list -> lty        
 
 (** lty deconstructors *)
 val ltd_tyc    : lty -> tyc
 val ltd_str    : lty -> lty list
 val ltd_fct    : lty -> lty list * lty list
 val ltd_poly   : lty -> tkind list * lty list
-val ltd_pst    : lty -> (int * lty) list
 
 (** lty predicates *)
 val ltp_tyc    : lty -> bool
 val ltp_str    : lty -> bool
 val ltp_fct    : lty -> bool
 val ltp_poly   : lty -> bool
-val ltp_pst    : lty -> bool
 
 (** lty one arm switches *)
 val ltw_tyc    : lty * (tyc -> 'a) * (lty -> 'a) -> 'a
 val ltw_str    : lty * (lty list -> 'a) * (lty -> 'a) -> 'a
 val ltw_fct    : lty * (lty list * lty list -> 'a) * (lty -> 'a) -> 'a
 val ltw_poly   : lty * (tkind list * lty list -> 'a) * (lty -> 'a) -> 'a
-val ltw_pst    : lty * ((int * lty) list -> 'a) * (lty -> 'a) -> 'a
                                         
 
 (* 

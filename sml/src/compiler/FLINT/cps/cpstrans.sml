@@ -10,7 +10,14 @@ functor CPStrans(MachSpec : MACH_SPEC) : CPSTRANS = struct
 local open CPS 
       structure LV = LambdaVar
 in
- 
+
+fun bug s = ErrorMsg.impossible ("CPStrans: " ^ s)
+fun ident x = x
+val mkv = LV.mkLvar
+
+(**************************************************************************
+ *                    TOP OF THE MAIN FUNCTION                            *
+ **************************************************************************)
 fun cpstrans fe = let 
 
 val unboxedfloat = MachSpec.unboxedFloats
@@ -46,13 +53,13 @@ fun wrapint32(u,x,ce) = PURE(P.i32wrap,[u],x,BOGt,ce)
 
 fun select(i,u,x,ct,ce) =
   case (ct,unboxedfloat,untaggedint)
-   of (FLTt,true,_) => let val v = LV.mkLvar()
+   of (FLTt,true,_) => let val v = mkv()
                         in SELECT(i,u,v,BOGt,unwrapfloat(VAR v,x,ce))
                        end
-    | (INTt,_,true) => let val v = LV.mkLvar()
+    | (INTt,_,true) => let val v = mkv()
                         in SELECT(i,u,v,BOGt,unwrapint(VAR v,x,ce))
                        end
-    | (INT32t,_,_)  => let val v = LV.mkLvar()
+    | (INT32t,_,_)  => let val v = mkv()
                         in SELECT(i,u,v,BOGt,unwrapint32(VAR v,x,ce))
                        end
     | _ => SELECT(i,u,x,ct,ce)
@@ -60,39 +67,147 @@ fun select(i,u,x,ct,ce) =
 fun record(k,ul,w,ce) =
   let fun h((FLTt,u),(l,h)) = 
              if unboxedfloat then 
-              (let val v = LV.mkLvar()
+              (let val v = mkv()
                 in ((VAR v,OFFp 0)::l, fn ce => wrapfloat(#1 u,v,h(ce)))
                end)
              else (u::l,h)
         | h((INTt,u),(l,h)) = 
              if untaggedint then 
-              (let val v = LV.mkLvar()
+              (let val v = mkv()
                 in ((VAR v,OFFp 0)::l, fn ce => wrapint(#1 u,v,h(ce)))
                end)
              else (u::l,h)
         | h((INT32t,u),(l,h)) = 
-             let val v = LV.mkLvar()
+             let val v = mkv()
 	     in ((VAR v,OFFp 0)::l, fn ce => wrapint32(#1 u,v,h(ce)))
 	     end
         | h((_,u),(l,h)) = (u::l,h)
 
       val info = map (fn (u as (v,_)) => (grabty v,u)) ul
-      val (nul,header) = fold h info ([],fn x => x)
+      val (nul,header) = fold h info ([], ident)
    in header(RECORD(k,nul,w,ce))
   end
 <<***)
 
+
+(**************************************************************************
+ *          UTILITY FUNCTIONS THAT DO THE ARGUMENT SPILLING               *
+ **************************************************************************)
+
+(** the following figures must be consistent with the choices made
+    in the closure or spilling phases *)
+val fpnum = Int.min(MachSpec.numFloatRegs-2, MachSpec.numArgRegs)
+val nregs = MachSpec.numRegs - MachSpec.numCalleeSaves
+val gpnum = Int.min(nregs - 3, MachSpec.numArgRegs)
+
+fun argSpill (args, ctys) = 
+  let fun h([], [], ngp, nfp, ovs, ots, [], [], []) = NONE
+        | h([], [], ngp, nfp, ovs, ots, [x], [_], []) = NONE
+        | h([], [], ngp, nfp, ovs, ots, gvs, gts, fvs) = 
+           SOME(rev ovs, rev ots, rev gvs, rev gts, rev fvs)
+        | h(x::xs, ct::cts, ngp, nfp, ovs, ots, gvs, gts, fvs) = 
+           (case ct 
+             of FLTt => 
+                 if nfp > 0 then  
+                   h(xs, cts, ngp, nfp-1, x::ovs, ct::ots, gvs, gts, fvs)
+                 else
+                   h(xs, cts, ngp, nfp, ovs, ots, gvs, gts, x::fvs)
+              | _ => 
+                 if ngp > 0 then
+                   h(xs, cts, ngp-1, nfp, x::ovs, ct::ots, gvs, gts, fvs)
+                 else      
+                   h(xs, cts, ngp, nfp, ovs, ots, x::gvs, ct::gts, fvs))
+        | h _ = bug "unexpected case in argSpill"
+
+      val n = length args
+   in if (n > fpnum) orelse (n > gpnum) then
+        h (args, ctys, gpnum, fpnum, [], [], [], [], [])
+      else NONE
+  end (* function argSpill *)
+
+fun spillIn (origargs, origctys, spgvars, spgctys, spfvars) = 
+  let val (fhdr, spgvars, spgctys) = 
+        case spfvars
+         of [] => (ident, spgvars, spgctys)
+          | _ => let val v = mkv()
+                     val vs = map (fn x => (x, OFFp 0)) spfvars
+                     val ct = PTRt(FPT (length vs))
+                     val fh = fn e => RECORD(RK_FBLOCK, vs, v, e)
+                  in (fh, (VAR v)::spgvars, ct::spgctys)
+                 end
+      val (spgv, ghdr) = 
+        case spgvars
+         of [] => (NONE, fhdr)
+          | [x] => (SOME x, fhdr)
+          | _ => let val v = mkv()
+                     val vs = map (fn x => (x, OFFp 0)) spgvars
+                  in (SOME (VAR v), fn e => fhdr(RECORD(RK_RECORD, vs, v, e)))
+                 end
+   in case spgv of SOME x => SOME(origargs@[x], ghdr)
+                 | NONE => NONE
+  end
+
+fun spillOut (origargs, origctys, spgvars, spgctys, spfvars) =
+  let val (spfv, fhdr, spgvars, spgctys) = 
+        case spfvars
+         of [] => (NONE, ident, spgvars, spgctys)
+          | _ => let val v = mkv() 
+                     val u = VAR v
+                     fun g (sv, (i,hdr)) = 
+                       (i+1, fn e => SELECT(i, u, sv, FLTt, hdr e))
+                     val (n,fh) = foldr g (0, ident) spfvars
+                     val ct = PTRt(FPT n)
+                  in (SOME v, fh, v::spgvars, ct::spgctys)
+                 end
+      val (spgv, ghdr) = 
+        case (spgvars, spgctys)
+         of ([], _) => (NONE, fhdr)
+          | ([x], t::_) => (SOME (x,t), fhdr)
+          | _ => let val v = mkv()
+                     val u = VAR v
+                     fun g (sv, (i,hdr)) = 
+                       (i+1, fn e => SELECT(i, u, sv, FLTt, hdr e))
+                     val (n, gh) = foldr g (0, fhdr) spgvars
+                     val ct = PTRt(RPT n)
+                  in (SOME (v, ct), gh)
+                 end
+   in case spgv of SOME (x,t) => SOME (origargs@[x], origctys@[t], ghdr)
+                 | NONE => NONE
+  end
+
+(* mkargin : value list -> (cexp -> cexp * value list) option *)
+fun mkargin (args : value list) = 
+  let val ctys = map grabty args
+   in case argSpill (args, ctys)
+       of SOME xx => spillIn xx
+        | NONE => NONE
+  end
+
+(* mkargout : lvar list -> (lvar list * cty list * cexp -> cexp) option *)
+fun mkargout args = 
+  let val ctys = map getty args
+   in case argSpill (args, ctys)
+       of SOME xx => spillOut xx
+        | NONE => NONE
+  end
+
+(**************************************************************************
+ *              MAIN FUNCTIONS THAT TRANSLATE CPS CODE                    *
+ **************************************************************************)
 fun cexptrans(ce) = 
   case ce 
    of RECORD(k,vl,w,ce) => record(k,map rectrans vl,w,cexptrans ce)
     | SELECT(i,v,w,t,ce) => 
-          (let val _ = addty(w,t)
-               val v' = vtrans v
-               val ce' = cexptrans ce
-            in select(i, v', w, getty w, ce')
-           end)
+          let val _ = addty(w,t)
+              val v' = vtrans v
+              val ce' = cexptrans ce
+           in select(i, v', w, getty w, ce')
+          end
     | OFFSET(i,v,w,ce) => OFFSET(i, vtrans v, w, cexptrans ce)
-    | APP(v,vl) => APP(vtrans v, map vtrans vl)
+    | APP(v,vl) => 
+          (case mkargin vl
+            of SOME (nvl, hdr) => cexptrans(hdr(APP(v, nvl)))
+             | NONE =>  APP(vtrans v, map vtrans vl))
     | FIX(l,ce) => FIX(map functrans l, cexptrans ce)
     | SWITCH(v,c,l) => SWITCH(vtrans v,c,map cexptrans l)
     | LOOKER(p,vl,w,t,ce) => 
@@ -161,9 +276,14 @@ fun cexptrans(ce) =
 and functrans(fk,v,args,cl,ce) = 
       let val _ = ListPair.app addty (args,cl)
           val ce' = cexptrans ce
-       in (fk,v,args,map getty args,ce')
+       in (case mkargout args
+            of SOME (nargs, nctys, fhdr) =>
+                (fk, v, nargs, nctys, fhdr ce')
+             | NONE => (fk, v, args, cl, ce'))
       end
+
 and rectrans(v,acp) = (vtrans v,acp)
+
 and vtrans(VAR v) = (mapvl v) | vtrans u = u
 
  in functrans fe

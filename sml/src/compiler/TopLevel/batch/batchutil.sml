@@ -6,6 +6,7 @@ struct
     structure Pid = PersStamps
     structure Env = CMEnv.Env
     structure Err = ErrorMsg
+    structure CB = CompBasic
 
     exception FormatError 
     exception NoCodeBug
@@ -23,7 +24,7 @@ struct
     type symenv = Env.symenv
     type denv = Env.dynenv
     type env = Env.environment
-    type lambda = CompBasic.flint
+    type lambda = CB.flint
 
     type csegments = C.csegments
     type executable = C.executable
@@ -34,7 +35,7 @@ struct
       | CLOSURE of executable
 
     datatype 'iid cunit = CU of {
-	imports: pid list,
+	imports: C.import list,
 	exportPid: pid option,
 	references: 'iid,
 	staticPid: pid,
@@ -72,31 +73,114 @@ struct
     val >> = Word32.>>
     infix >>
 
-  (*
-   * layout of binfiles:
-   *  - 0..x-1:			magic string (length = x)
-   *  - x..x+3:			# of imports (= y)
-   *  - x+4..x+7:		# of exports (= z)
-   *  - x+8..x+11:		size CM-info = (# of envPids) * bytesPerPid
-   *  - x+12..x+15:		size lambda_i
-   *  - x+16..x+19:		size reserved area1
-   *  - x+20..x+23:		size reserved area2
-   *  - x+24..x+27:		size code
-   *  - x+28..x+31:		size env
-   *  - x+32..x+y+31:		import pids
-   *  - x+y+32..x+y+z+31:	export pids
-   *  - ...			CM-specific info (env pids)
-   *  - 			lambda_i
-   *  - 			reserved area1
-   *  - 			reserved area2
-   *  -				code
-   *  -				pickled_env
-   *  EOF
-   *
-   * All counts and sizes are represented in big-endian layout.
-   * This should be tracked by the run-time system header file
-   * "runtime/include/bin-file.h"
-   *)
+(*
+ * BINFILE FORMAT description:
+ *
+ *  Every 4-byte integer field is stored in big-endian format.
+ *
+ *     Start Size Purpose
+ * ----BEGIN OF HEADER----
+ *          0 16  magic string
+ *         16  4  number of import values (importCnt)
+ *         20  4  number of exports (exportCnt = currently always 0 or 1)
+ *         24  4  size of CM-specific info in bytes (cmInfoSzB)
+ *         28  4  size of pickled lambda-expression in bytes (lambdaSzB)
+ *         32  4  size of reserved area 1 in bytes (reserved1)
+ *         36  4  size of reserved area 2 in bytes (reserved2)
+ *         40  4  size of code area in bytes (codeSzB)
+ *         44  4  size of pickled environment in bytes (envSzB)
+ *         48  i  import trees [This area contains pickled import trees --
+ *                  see below.  The total number of leaves in these trees is
+ *                  importCnt.  The size impSzB of this area depends on the
+ *                  shape of the trees.]
+ *       i+48 ex  export pids [Each export pid occupies 16 bytes. Thus, the
+ *                  size ex of this area is 16*exportCnt (0 or 16).]
+ *    ex+i+48 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
+ * ----END OF HEADER----
+ *          0  h  HEADER (h = 48+cm+ex+i)
+ *          h  l  pickle of exported lambda-expr. (l = lambdaSzB)
+ *        l+h  r  reserved areas (r = reserved1+reserved2)
+ *      r+l+h  c  code area (c = codeSzB) [Structured into several
+ *                  segments -- see below.]
+ *    c+r+l+h  e  pickle of static environment (e = envSzB)
+ *  e+c+r+l+h  -  END OF BINFILE
+ *
+ * IMPORT TREE FORMAT description:
+ *
+ *  The import tree area contains a list of (pid * tree) pairs.
+ *  The pids are stored directly as 16-byte strings.
+ *  Trees are constructed according to the following ML-datatype:
+ *    datatype tree = NODE of (int * tree) list
+ *  Leaves in this tree have the form (NODE []).
+ *  Trees are written recursively -- (NODE l) is represented by n (= the
+ *  length of l) followed by n (int * node) subcomponents.  Each component
+ *  consists of the integer selector followed by the corresponding tree.
+ *
+ *  The size of the import tree area is only given implicitly. When reading
+ *  this area, the reader must count the number of leaves and compare it
+ *  with importCnt.
+ *
+ *  Integer values in the import tree area (lengths and selectors) are
+ *  written in "packed" integer format. In particular, this means that
+ *  Values in the range 0..127 are represented by only 1 byte.
+ *  Conceptually, the following pickling routine is used:
+ *
+ *    void recur_write_ul (unsigned long l, FILE *file)
+ *    {
+ *      if (l != 0) {
+ *        recur_write_ul (l / 0200, file);
+ *        putc ((l % 0200) | 0200, file);
+ *      }
+ *    }
+ *
+ *    void write_ul (unsigned long l, FILE *file)
+ *    {
+ *      recur_write_ul (l / 0200, file);
+ *      putc (l % 0200, file);
+ *    }
+ *
+ * CODE AREA FORMAT description:
+ *
+ *  The code area contains multiple code segements.  There will be at least
+ *  two.  The very first segment is the "data" segment -- responsible for
+ *  creating literal constants on the heap.  The idea is that code in the
+ *  data segment will be executed only once at link-time. Thus, it can
+ *  then be garbage-collected immediatly. (In the future it is possible that
+ *  the data segment will not contain executable code at all but some form
+ *  of bytecode that is to be interpreted separately.)
+ *
+ *  In the binfile, each code segment is represented by its size s (in
+ *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
+ *  machine- (or byte-) code. The total length of all code segments
+ *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *
+ * LINKING CONVENTIONS:
+ *
+ *  Linking is achieved by executing all code segments in sequential order.
+ *
+ *  The first code segment (i.e., the "data" segment) receives unit as
+ *  its single argument.
+ *
+ *  The second code segment receives a record as its single argument.
+ *  This record has (importCnt+1) components.  The first importCnt
+ *  components correspond to the leaves of the import trees.  The final
+ *  component is the result from executing the data segment.
+ *
+ *  All other code segments receive a single argument which is the result
+ *  of the preceding segment.
+ *
+ *  The result of the last segment represents the exports of the compilation
+ *  unit.  It is to be paired up with the export pid and stored in the
+ *  dynamic environment.  If there is no export pid, then the final result
+ *  will be thrown away.
+ *
+ *  The import trees are used for constructing the argument record for the
+ *  second code segment.  The pid at the root of each tree is the key for
+ *  looking up a value in the existing dynamic environment.  In general,
+ *  that value will be a record.  The selector fields of the import tree
+ *  associated with the pid are used to recursively fetch components of that
+ *  record.
+ *)
 
     val MAGIC = let
 	fun fit (i, s) = let
@@ -132,25 +216,110 @@ struct
 
     fun readInt32 s = LargeWord.toIntX(Pack32Big.subVec(bytesIn(s, 4), 0))
 
+    fun readPackedInt32 s = let
+	fun loop n =
+	    case BinIO.input1 s of
+		NONE => error "unable to read a packed int32"
+	      | SOME w8 => let
+		    val n' =
+			n * 0w128 + Word8.toLargeWord (Word8.andb (w8, 0w127))
+		in
+		    if Word8.andb (w8, 0w128) = 0w0 then n' else loop n'
+		end
+    in
+	LargeWord.toIntX (loop 0w0)
+    end
+
     fun readPid s = Pid.fromBytes (bytesIn (s, bytesPerPid))
     fun readPidList (s, n) = List.tabulate (n, fn _ => readPid s)
 
-    fun writeInt32 s i =  let
-	  val w = fromInt i
-	  fun out w = BinIO.output1 (s, toByte w)
-	  in
-	    out (w >> 0w24); out (w >> 0w16);  out (w >> 0w8); out w
-	  end
+    fun readImportTree s =
+	case readPackedInt32 s of
+	    0 =>  (CB.ITNODE [], 1)
+	  | cnt => let
+		fun readImportList 0 = ([], 0)
+		  | readImportList cnt = let
+			val selector = readPackedInt32 s
+			val (tree, n) = readImportTree s
+			val (rest, n') = readImportList (cnt - 1)
+		    in
+			((selector, tree) :: rest, n + n')
+		    end
+		val (l, n) = readImportList cnt
+	    in
+		(CB.ITNODE l, n)
+	    end
+
+    fun readImports (s, n) =
+	if n <= 0 then []
+	else let
+	    val pid = readPid s
+	    val (tree, n') = readImportTree s
+	    val rest = readImports (s, n - n')
+	in
+	    (pid, tree) :: rest
+	end
+
+    fun pickleInt32 i = let
+	val w = fromInt i
+	fun out w = toByte w
+    in
+	Word8Vector.fromList [toByte (w >> 0w24), toByte (w >> 0w16),
+			      toByte (w >> 0w8), toByte w]
+    end
+    fun writeInt32 s i = BinIO.output (s, pickleInt32 i)
+
+    fun picklePackedInt32 i = let
+	val n = fromInt i
+	val // = LargeWord.div
+	val %% = LargeWord.mod
+	val !! = LargeWord.orb
+	infix // %% !!
+	val toW8 = Word8.fromLargeWord
+	fun r (0w0, l) = Word8Vector.fromList l
+	  | r (n, l) = r (n // 0w128, toW8 ((n %% 0w128) !! 0w128) :: l)
+    in
+	r (n // 0w128, [toW8 (n %% 0w128)])
+    end
 
     fun writePid (s, pid) = BinIO.output (s, Pid.toBytes pid)
     fun writePidList (s, l) = app (fn p => writePid (s, p)) l
 
+    local
+	fun pickleImportSpec ((selector, tree), (n, p)) = let
+	    val sp = picklePackedInt32 selector
+	    val (n', p') = pickleImportTree (tree, (n, p))
+	in
+	    (n', sp :: p')
+	end
+	and pickleImportTree (CB.ITNODE [], (n, p)) =
+	    (n + 1, picklePackedInt32 0 :: p)
+	  | pickleImportTree (CB.ITNODE l, (n, p)) = let
+		val (n', p') = foldr pickleImportSpec (n, p) l
+	    in
+		(n', picklePackedInt32 (length l) :: p')
+	    end
+
+	fun pickleImport ((pid, tree), (n, p)) = let
+	    val (n', p') = pickleImportTree (tree, (n, p))
+	in
+	    (n', Pid.toBytes pid :: p')
+	end
+    in
+	fun pickleImports l = let
+	    val (n, p) = foldr pickleImport (0, []) l
+	in
+	    (n, Word8Vector.concat p)
+	end
+    end
+
     fun checkMagic s =
-	  if (bytesIn (s, magicBytes)) = MAGIC then () else error "bad magic number"
+	  if (bytesIn (s, magicBytes)) = MAGIC then ()
+	  else error "bad magic number"
 
     fun readHeader s = let
 	  val _ = checkMagic s
-	  val ni = readInt32 s
+	  val leni = readInt32 s
 	  val ne = readInt32 s
 	  val cmInfoSzB = readInt32 s
 	  val nei = cmInfoSzB div bytesPerPid
@@ -159,7 +328,7 @@ struct
 	  val sa2 = readInt32 s
 	  val cs = readInt32 s
 	  val es = readInt32 s
-	  val imports = readPidList (s, ni)
+	  val imports = readImports (s, leni)
 	  val exportPid = (case ne
 	         of 0 => NONE
 		  | 1 => SOME(readPid s)
@@ -169,7 +338,7 @@ struct
 	  in
 	    case envPids
 	     of (st :: lm :: references) => {
-		  nImports = ni, nExports = ne,
+		  nExports = ne,
 		  lambdaSz = sLam,
 		  res1Sz = sa1, res2Sz = sa2, codeSz = cs, envSz = es,
 		  imports = imports, exportPid = exportPid,
@@ -190,7 +359,7 @@ struct
 	  end
 
     fun readUnit {name=n, stream = s, pids2iid, senv = context, keep_code} = let
-        val { nImports = ni, nExports = ne, lambdaSz = sa2,
+        val { nExports = ne, lambdaSz = sa2,
 	      res1Sz, res2Sz, codeSz = cs, envSz = es,
 	      imports, exportPid, references,
 	      staticPid, lambdaPid
@@ -206,10 +375,10 @@ struct
 		end
 	val _ = if res1Sz = 0 andalso res2Sz = 0
 	      then () else error "non-zero reserved size"
-	val code = (case readCodeList (s, cs)
-	       of [] => error "missing code objects"
-		| c0 :: cn => { c0 = c0, cn = cn, name=ref(SOME(n)) }
-	      (* end case *))
+	val code = (case readCodeList (s, cs) of
+			data :: c0 :: cn => { data = data, c0 = c0, cn = cn,
+					      name = ref (SOME n) }
+		      | _ => error "missing code objects")
 	val penv = bytesIn (s, es)
 	val _ = if Word8Vector.length penv = es andalso BinIO.endOfStream s
 		then ()
@@ -218,7 +387,7 @@ struct
 						       pickle = penv })
         val senv = CMStaticEnv.CM b'senv
         in
-	  CU {
+	    CU {
 	      imports = imports, exportPid = exportPid, references = iid,
 	      staticPid = staticPid, senv = senv, penv = penv,
 	      lambdaPid = lambdaPid, lambda = lambda_i, plambda = plambda,
@@ -228,46 +397,51 @@ struct
         end
 
     fun writeUnit {stream = s, cunit = u, keep_code, iid2pids} = let
-	  val CU{
-		  imports, exportPid, references,
-		  staticPid, penv,
-		  lambdaPid, lambda, plambda, ...
-		} = u
-	  val envPids = staticPid :: lambdaPid :: iid2pids references
-	  val ni = length imports
-	  val (ne, epl) = (case exportPid of NONE => (0, []) 
-                                           | SOME p => (1, [p]))
-	  val nei = length envPids
-	  val cmInfoSzB = nei * bytesPerPid
-	  val sa2 = (case lambda of NONE => 0 
-                                  | _ => Word8Vector.length plambda)
-	  val res1Sz = 0
-	  val res2Sz = 0
-	  val { c0, cn , ...} = codeSegments u
-	  fun csize c = (Word8Vector.length c) + 4 (* including size field *)
-	  val cs = foldl (fn (c, a) => (csize c) + a) (csize c0) cn
-	  fun codeOut c = (
-		writeInt32 s (Word8Vector.length c);
-		BinIO.output (s, c))
-        in
-	  BinIO.output (s, MAGIC);
-	  app (writeInt32 s) [ni, ne, cmInfoSzB];
-	  app (writeInt32 s) [sa2, res1Sz, res2Sz, cs];
-	  writeInt32 s (Word8Vector.length penv);
-	  writePidList (s, imports);
-	  writePidList (s, epl);
+	val CU { imports, exportPid, references,
+		 staticPid, penv,
+		 lambdaPid, lambda, plambda, ...
+	       } = u
+	val envPids = staticPid :: lambdaPid :: iid2pids references
+	val (leni, picki) = pickleImports imports
+	val (ne, epl) =
+	    (case exportPid of
+		 NONE => (0, []) 
+	       | SOME p => (1, [p]))
+	val nei = length envPids
+	val cmInfoSzB = nei * bytesPerPid
+	val sa2 =
+	    (case lambda of
+		 NONE => 0 
+	       | _ => Word8Vector.length plambda)
+	val res1Sz = 0
+	val res2Sz = 0
+	val { data, c0, cn , ...} = codeSegments u
+	fun csize c = (Word8Vector.length c) + 4 (* including size field *)
+	val cs = foldl (fn (c, a) => (csize c) + a) (csize c0 +csize data) cn
+	fun codeOut c = (writeInt32 s (Word8Vector.length c);
+			 BinIO.output (s, c))
+    in
+	BinIO.output (s, MAGIC);
+	app (writeInt32 s) [leni, ne, cmInfoSzB];
+	app (writeInt32 s) [sa2, res1Sz, res2Sz, cs];
+	writeInt32 s (Word8Vector.length penv);
+	BinIO.output (s, picki);
+	writePidList (s, epl);
 	(* arena1 *)
-	  writePidList (s, envPids);
+	writePidList (s, envPids);
 	(* arena2 *)
-	  case lambda of NONE => () | _ => BinIO.output (s, plambda);
+	case lambda of
+	    NONE => ()
+	  | _ => BinIO.output (s, plambda);
 	(* arena3 is empty *)
 	(* arena4 is empty *)
 	(* code objects *)
-	  codeOut c0;
-	  app codeOut cn;
-	  BinIO.output (s, penv);
-	  if keep_code then () else discardCode u
-        end
+	codeOut data;
+	codeOut c0;
+	app codeOut cn;
+	BinIO.output (s, penv);
+	if keep_code then () else discardCode u
+    end
 
 
 (***************************************************************************
@@ -322,7 +496,7 @@ struct
 
     fun execUnit (u, denv) = let
         val ndenv = 
-            C.execute { executable = codeClosure u,
+            C.execute { executable = C.isolate(codeClosure u),
                         imports = importsCU u,
 		        exportPid = exportCU u,
 		        dynenv = denv }

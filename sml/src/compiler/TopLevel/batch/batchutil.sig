@@ -14,9 +14,7 @@ signature BATCHUTIL =
     type denv = CMEnv.Env.dynenv
     type env = CMEnv.Env.environment
 
-    type csegments = {c0: Word8Vector.vector, 
-                      cn: Word8Vector.vector list, 
-                      name: string option ref}
+    type csegments = CompBasic.csegments
 
     val readUnit: { name: string,
                     stream: BinIO.instream,

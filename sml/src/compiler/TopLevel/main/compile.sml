@@ -13,11 +13,14 @@ local structure FE = FrontEnd
       structure PS = PersStamps
       structure EM = ErrorMsg
       structure SE = StaticEnv
+      structure DE = DynamicEnv
       structure A  = Absyn
       structure DA = Access
       structure CB = CompBasic
       structure ST = Stats
       structure CI = Unsafe.CInterface
+      structure W8V = Word8Vector
+      structure V = Vector
 in
 
 val debugging = Control.CG.compdebugging
@@ -43,7 +46,7 @@ type object     = CB.object            (* runtime object *)
 
 (** environments and contexts used during the compilation *)
 type statenv    = SE.staticEnv         (* static env   : symbol -> binding *)
-type dynenv     = DynamicEnv.dynenv    (* dynamic env  : pid -> object *)
+type dynenv     = DE.dynenv    (* dynamic env  : pid -> object *)
 type symenv     = SymbolicEnv.symenv   (* symbolic env : pid -> flint *)
 
 type compInfo   = CB.compInfo          (* general compilation utilities *)
@@ -56,6 +59,7 @@ val fromCM      = CC.fromCM
 
 type lvar       = DA.lvar              (* local id *)
 type pid        = PS.persstamp         (* persistant id *)
+type import     = pid * CB.importTree  (* import specification *)
 type pickle     = CC.pickle            (* pickled format *)
 type hash       = CC.hash              (* environment hash id *)
 val makePid     = CC.makePid
@@ -160,7 +164,7 @@ val translate = ST.doPhase (ST.makePhase "Compiler 040 translate") translate
 local
   fun inline (flint, imports, symenv) = flint
 (*
-    let val importExps = map (SymbolicEnv.look symenv) imports
+    let val importExps = map (SymbolicEnv.look symenv) (map #1 imports)
      in (* optimize flint based on the knowledge of importExps *)
         bug "inline not implemented yet"
     end
@@ -172,12 +176,14 @@ local
                                   | SOME x => x)
     else (flint, NONE)
 
-  fun csegsize {c0, cn, name} =
-    foldl (fn (x, y) => (Word8Vector.length x) + y) (Word8Vector.length c0) cn
+
+  val w8vLen = W8V.length
+  fun csegsize {c0, cn, data, name} =
+    foldl (fn (x, y) => (w8vLen x) + y) (w8vLen c0 + w8vLen data) cn
 
   val addCode = ST.addStat (ST.makeStat "Code Size")
 in
-fun codegen {flint: flint, imports: pid list, symenv: symenv, 
+fun codegen {flint: flint, imports: import list, symenv: symenv, 
              splitting: bool, compInfo: compInfo} =
   let (* hooks for cross-module inlining and specialization *)
       val flint = inline (flint, imports, symenv)
@@ -223,7 +229,7 @@ fun compile {source=source, ast=ast, statenv=oldstatenv, symenv=symenv,
       val imports =
         (case (runtimePid, imports)
           of (NONE, _) => imports
-	   | (SOME p, [_]) => [p]
+	   | (SOME p, [(_,tr)]) => [(p, tr)]
            | _ => raise Compile "core compilation failed")
 
       val {csegments, inlineExp} = 
@@ -253,17 +259,22 @@ fun mksymenv (NONE, _) = SymbolicEnv.empty
 
 (** turn the byte-vector-like code segments into an executable closure *)
 local
-  type w8v = Word8Vector.vector
+  type w8v = W8V.vector
+  val vzero = V.fromList []
   val mkCodeV : w8v * string option -> (w8v * executable) = 
         CI.c_function "SMLNJ-RunT" "mkCode"
   val mkCodeO : w8v * string option -> (w8v * (object -> object)) =
         CI.c_function "SMLNJ-RunT" "mkCode"
 in
-fun mkexec {c0: w8v, cn: w8v list, name: string option ref} =
+fun mkexec {c0: w8v, cn: w8v list, data : w8v, name: string option ref} =
   let val s = case !name of NONE => "EMPTY COMMENT <-- check"
                           | SOME s => s
-      val (_, ex) = mkCodeV(c0, SOME s)
-   in foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) ex cn
+      val nex = 
+        let val (_, dt) = mkCodeV(data, NONE)
+            val (_, ex) = mkCodeV(c0, SOME s)
+         in fn ivec => ex (V.concat [ivec, V.fromList [dt vzero]])
+        end
+   in foldl (fn (c, r) => (#2 (mkCodeO (c,NONE))) o r) nex cn
   end 
 end (* local *)
 
@@ -292,14 +303,30 @@ end (* local of cont_stack *)
 
 (** perform the execution of the excutable, output the new dynenv *)
 fun execute{executable, imports, exportPid, dynenv} = 
-  let val args =  Vector.fromList (map (DynamicEnv.look dynenv) imports)
-      val result = 
-        (executable args) handle DynamicEnv.Unbound =>
-           (app (fn p => say ("lookup " ^ (PS.toHex p) ^ "\n")) imports;
-            fail "imported objects not found or inconsistent")
+  let val args : object V.vector = 
+        let fun selObj (obj, i) = 
+              ((V.sub (Unsafe.Object.toTuple obj, i)) handle _ =>
+                 bug "unexpected linkage interface in execute")
+
+            fun getObj ((p, n), zs) = 
+              let fun get (obj, CB.ITNODE [], z) = obj::z
+                    | get (obj, CB.ITNODE xl, z) = 
+                        let fun g ((i, n), x) = get (selObj(obj, i), n, x)
+                         in foldr g z xl
+                        end
+                  val obj = 
+                    ((DE.look dynenv p) handle DE.Unbound =>
+                       (say ("lookup " ^ (PS.toHex p) ^ "\n");
+                        fail "imported objects not found or inconsistent"))
+               in get(obj, n, zs)
+              end
+
+         in Vector.fromList (foldr getObj [] imports)
+        end
+      val result : object = executable args
    in case exportPid 
-       of NONE => DynamicEnv.empty
-	| SOME p => DynamicEnv.singleton (p, result)
+       of NONE => DE.empty
+	| SOME p => DE.singleton (p, result)
   end
 
 val execute = ST.doPhase (ST.makePhase "Execute") execute

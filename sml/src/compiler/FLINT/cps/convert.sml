@@ -25,7 +25,7 @@ local structure DA = Access
       open CPS 
 in
 
-fun bug s = ErrorMsg.impossible ("ConvertN: " ^ s)
+fun bug s = ErrorMsg.impossible ("Convert: " ^ s)
 val say = Control.Print.say
 val mkv = fn _ => LV.mkLvar()
 fun mkfn f = let val v = mkv() in f v end
@@ -184,7 +184,7 @@ fun map_primop p =
      | AP.OBJLENGTH =>  PKP (P.objlength)
      | AP.GETTAG =>     PKP (P.gettag)
      | AP.MKSPECIAL =>  PKP (P.mkspecial)
-     | AP.THROW =>      PKP (P.cast)
+(*   | AP.THROW =>      PKP (P.cast) *)
      | AP.CAST =>       PKP (P.cast)
      | AP.MKETAG =>     PKP (P.makeref)
         
@@ -510,6 +510,10 @@ fun convert fdec =
                     end
                in FIX(exndecs, FIX(newfdecs, loop(e, c)))
               end
+
+          | F.PRIMOP(po as (_,AP.THROW,_,_), [u], v, e) => 
+              (newname(v, lpvar u); loop(e, c)) 
+(*            PURE(P.wrap, [lpvar u], v, FUNt, c(VAR v))          *)
 
           | F.PRIMOP(po as (_,AP.WCAST,_,_), [u], v, e) =>
               (newname(v, lpvar u); loop(e, c))

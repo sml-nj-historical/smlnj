@@ -16,8 +16,8 @@
 #include "gc.h"
 #include "ml-globals.h"
 
-#ifndef SEEK_SET
-#  define SEEK_SET	0
+#ifndef SEEK_CUR
+#  define SEEK_CUR	1
 #endif
 
 /** The names of the boot and binary file lists **/
@@ -144,6 +144,114 @@ PVT FILE *OpenBinFile (const char *binDir, const char *fname, bool_t isBinary)
 
 } /* end of OpenBinFile */
 
+/*
+ * BINFILE FORMAT description:
+ *
+ *  Every 4-byte integer field is stored in big-endian format.
+ *
+ *     Start Size Purpose
+ * ----BEGIN OF HEADER----
+ *          0 16  magic string
+ *         16  4  number of import values (importCnt)
+ *         20  4  number of exports (exportCnt = currently always 0 or 1)
+ *         24  4  size of CM-specific info in bytes (cmInfoSzB)
+ *         28  4  size of pickled lambda-expression in bytes (lambdaSzB)
+ *         32  4  size of reserved area 1 in bytes (reserved1)
+ *         36  4  size of reserved area 2 in bytes (reserved2)
+ *         40  4  size of code area in bytes (codeSzB)
+ *         44  4  size of pickled environment in bytes (envSzB)
+ *         48  i  import trees [This area contains pickled import trees --
+ *                  see below.  The total number of leaves in these trees is
+ *                  importCnt.  The size impSzB of this area depends on the
+ *                  shape of the trees.]
+ *       i+48 ex  export pids [Each export pid occupies 16 bytes. Thus, the
+ *                  size ex of this area is 16*exportCnt (0 or 16).]
+ *    ex+i+48 cm  CM info [Currently a list of pid-pairs.] (cm = cmInfoSzB)
+ * ----END OF HEADER----
+ *          0  h  HEADER (h = 48+cm+ex+i)
+ *          h  l  pickle of exported lambda-expr. (l = lambdaSzB)
+ *        l+h  r  reserved areas (r = reserved1+reserved2)
+ *      r+l+h  c  code area (c = codeSzB) [Structured into several
+ *                  segments -- see below.]
+ *    c+r+l+h  e  pickle of static environment (e = envSzB)
+ *  e+c+r+l+h  -  END OF BINFILE
+ *
+ * IMPORT TREE FORMAT description:
+ *
+ *  The import tree area contains a list of (pid * tree) pairs.
+ *  The pids are stored directly as 16-byte strings.
+ *  Trees are constructed according to the following ML-datatype:
+ *    datatype tree = NODE of (int * tree) list
+ *  Leaves in this tree have the form (NODE []).
+ *  Trees are written recursively -- (NODE l) is represented by n (= the
+ *  length of l) followed by n (int * node) subcomponents.  Each component
+ *  consists of the integer selector followed by the corresponding tree.
+ *
+ *  The size of the import tree area is only given implicitly. When reading
+ *  this area, the reader must count the number of leaves and compare it
+ *  with importCnt.
+ *
+ *  Integer values in the import tree area (lengths and selectors) are
+ *  written in "packed" integer format. In particular, this means that
+ *  Values in the range 0..127 are represented by only 1 byte.
+ *  Conceptually, the following pickling routine is used:
+ *
+ *    void recur_write_ul (unsigned long l, FILE *file)
+ *    {
+ *      if (l != 0) {
+ *        recur_write_ul (l / 0200, file);
+ *        putc ((l % 0200) | 0200, file);
+ *      }
+ *    }
+ *
+ *    void write_ul (unsigned long l, FILE *file)
+ *    {
+ *      recur_write_ul (l / 0200, file);
+ *      putc (l % 0200, file);
+ *    }
+ *
+ * CODE AREA FORMAT description:
+ *
+ *  The code area contains multiple code segements.  There will be at least
+ *  two.  The very first segment is the "data" segment -- responsible for
+ *  creating literal constants on the heap.  The idea is that code in the
+ *  data segment will be executed only once at link-time. Thus, it can
+ *  then be garbage-collected immediatly. (In the future it is possible that
+ *  the data segment will not contain executable code at all but some form
+ *  of bytecode that is to be interpreted separately.)
+ *
+ *  In the binfile, each code segment is represented by its size s (in
+ *  bytes -- written as a 4-byte big-endian integer) followed by s bytes of
+ *  machine- (or byte-) code. The total length of all code segments
+ *  (including the bytes spent on representing individual sizes) is codeSzB.
+ *
+ * LINKING CONVENTIONS:
+ *
+ *  Linking is achieved by executing all code segments in sequential order.
+ *
+ *  The first code segment (i.e., the "data" segment) receives unit as
+ *  its single argument.
+ *
+ *  The second code segment receives a record as its single argument.
+ *  This record has (importCnt+1) components.  The first importCnt
+ *  components correspond to the leaves of the import trees.  The final
+ *  component is the result from executing the data segment.
+ *
+ *  All other code segments receive a single argument which is the result
+ *  of the preceding segment.
+ *
+ *  The result of the last segment represents the exports of the compilation
+ *  unit.  It is to be paired up with the export pid and stored in the
+ *  dynamic environment.  If there is no export pid, then the final result
+ *  will be thrown away.
+ *
+ *  The import trees are used for constructing the argument record for the
+ *  second code segment.  The pid at the root of each tree is the key for
+ *  looking up a value in the existing dynamic environment.  In general,
+ *  that value will be a record.  The selector fields of the import tree
+ *  associated with the pid are used to recursively fetch components of that
+ *  record.
+ */
 
 /* ReadBinFile:
  */
@@ -156,14 +264,46 @@ PVT void ReadBinFile (
 
 } /* end of ReadBinFile */
 
+/* Read an integer in "packed" format.  (Small numbers only require 1 byte.)
+ */
+static Int32_t recover_packed_int32 (FILE *file,
+				     const char *binDir, const char *fname)
+{
+  Unsigned32_t n;
+  unsigned char c;
+
+  n = 0;
+  do {
+    ReadBinFile (file, &c, 1, binDir, fname);
+    n = n * 0200 + (c & 0177);
+  } while (c & 0200);
+  return (Int32_t) n;
+}
+
+static Int32_t importPos;
+static void importSelection (ml_state_t *msp,
+			     FILE *file, const char *binDir, const char *fname,
+			     ml_val_t tree)
+{
+  Int32_t cnt = recover_packed_int32 (file, binDir, fname);
+  if (cnt == 0) {
+    ML_AllocWrite (msp, importPos, tree);
+    importPos++;
+  } else {
+    while (cnt-- > 0) {
+      Int32_t selector = recover_packed_int32 (file, binDir, fname);
+      importSelection (msp, file, binDir, fname, REC_SEL (tree, selector));
+    }
+  }
+}
 
 /* LoadBinFile:
  */
 PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 {
     FILE	    *file;
-    int		    i, importSzB, exportSzB, remainingCode;
-    ml_val_t	    codeObj, importVec, closure, exportVal, val;
+    int		    i, exportSzB, remainingCode, isDataSeg;
+    ml_val_t	    codeObj, importRec, closure, exportVal, val;
     binfile_hdr_t   hdr;
     pers_id_t	    exportPerID;
     Int32_t         thisSzB;
@@ -188,22 +328,18 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 
   /* read the import PerIDs, and create the import vector */
     {
-	pers_id_t	*imports;
+      if (NeedGC (msp, REC_SZB(hdr.importCnt + 1)))
+	InvokeGCWithRoots (msp, 0, &BinFileList, &exportVal, NIL(ml_val_t *));
 
-	importSzB = hdr.importCnt*sizeof(pers_id_t);
-	imports = (pers_id_t *) MALLOC (importSzB);
-	ReadBinFile (file, imports, importSzB, binDir, fname);
-
-	if (NeedGC (msp, REC_SZB(hdr.importCnt)))
-	    InvokeGCWithRoots (msp, 0, &BinFileList, &exportVal, NIL(ml_val_t *));
-
-      /* allocate the import PerID vector */
-	ML_AllocWrite (msp, 0, MAKE_DESC(hdr.importCnt, DTAG_vector));
-	for (i = 1;  i <= hdr.importCnt; i++)
-	    ML_AllocWrite(msp, i, LookupPerID (&(imports[i-1])));
-	importVec = ML_Alloc(msp, hdr.importCnt);
-
-	FREE (imports);
+      ML_AllocWrite (msp, 0, MAKE_DESC(hdr.importCnt + 1, DTAG_record));
+      importPos = 1;
+      while (importPos <= hdr.importCnt) {
+	pers_id_t importPid;
+	ReadBinFile (file, &importPid, sizeof (pers_id_t), binDir, fname);
+	importSelection (msp, file, binDir, fname, LookupPerID (&importPid));
+      }
+      ML_AllocWrite(msp, hdr.importCnt + 1, ML_nil);
+      importRec = ML_Alloc(msp, hdr.importCnt + 1);
     }
 
   /* read the export PerID */
@@ -218,14 +354,19 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 
   /* seek to code section */
     {
-	long	    off = sizeof(binfile_hdr_t)
+	long	    off =
+	  /* I calculate the seek offset relative to the current
+	     position, so we don't need this stuff:
+	                  sizeof(binfile_hdr_t)
 			+ importSzB
 	                + exportSzB
-			+ hdr.cmInfoSzB
+	                +
+	  */
+			  hdr.cmInfoSzB
 			+ hdr.lambdaSzB
 			+ hdr.reserved1 + hdr.reserved2;
 
-	if (fseek(file, off, SEEK_SET) == -1)
+	if (fseek(file, off, SEEK_CUR) == -1)
 	    Die ("cannot seek on bin file \"%s%c%s\"", binDir, PATH_ARC_SEP, fname);
     }
 
@@ -233,7 +374,8 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
    * object to mark which bin file it came from.  This code should be the
    * same as that in ../c-libs/smlnj-runtime/mkcode.c.
    */
-    val = importVec;
+    isDataSeg = 1;
+    val = ML_nil;
     remainingCode = hdr.codeSzB;
     while (remainingCode > 0) {
 	int		strLen = strlen(fname);
@@ -274,9 +416,18 @@ PVT void LoadBinFile (ml_state_t *msp, const char *binDir, const char *fname)
 	REC_ALLOC1 (msp, closure, PTR_CtoML(PTR_MLtoC(ml_val_t, codeObj) + 1));
 
       /* apply the closure to the import PerID vector */
-	SaveCState (msp, &BinFileList, NIL(ml_val_t *));
-	val = ApplyMLFn (msp, closure, val, TRUE);
-	RestoreCState (msp, &BinFileList, NIL(ml_val_t *));
+	if (isDataSeg) {
+	  SaveCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
+	  val = ApplyMLFn (msp, closure, val, TRUE);
+	  RestoreCState (msp, &BinFileList, &importRec, NIL(ml_val_t *));
+	  REC_SEL(importRec,hdr.importCnt) = val;
+	  val = importRec;
+	  isDataSeg = 0;
+	} else {
+	  SaveCState (msp, &BinFileList, NIL(ml_val_t *));
+	  val = ApplyMLFn (msp, closure, val, TRUE);
+	  RestoreCState (msp, &BinFileList, NIL(ml_val_t *));
+	}
 
       /* do a GC, if necessary */
 	if (NeedGC (msp, PERID_LEN+REC_SZB(5)))
