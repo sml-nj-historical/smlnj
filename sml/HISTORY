@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/02 15:55:00 CDT
+Tag: blume-20040802-backout
+Description:
+
+Backed out of change to win32-filesys.c.  The earlier patch to
+get_file_time caused CM to produce files with the wrong time stamp.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/08/02 14:45:00 CDT
 Tag: blume-20040802-nlffi-win32
 Description:
