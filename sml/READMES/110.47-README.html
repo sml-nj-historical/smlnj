@@ -99,8 +99,6 @@ fixes.
   <dt>Compiler internals:</dt>
   <dd>
     <ul>
-      <li>redesigned c-calls interface</li>
-      <li>c-calls implementation for ppc-macosx added</li>
       <li>low-level support for choosing C calling conventions by
       twiddling the type of of the <tt>rawccall</tt> primop  (see
       <tt>src/compiler/Semant/types/cproto.sml</tt> for details)<li>
@@ -115,6 +113,8 @@ fixes.
   <dt>MLRISC:</dt>
   <dd>
     <ul>
+      <li>redesigned c-calls interface</li>
+      <li>c-calls implementation for ppc-macosx added</li>
       <li>Added these instructions to the PowerPC architecture:
       <tt>LWARX</tt>, <tt>STWCX</tt>, <tt>LBZU(X)</tt>,
       <tt>LHZU(X)</tt>, <tt>LWZU(X)</tt>, <tt>STWU(X)</tt>,

@@ -71,8 +71,6 @@ Installer:
 Compiler internals:
 -------------------
 
-  - redesigned c-calls interface
-  - c-calls implementation for ppc-macosx added
   - low-level support for choosing C calling conventions by twiddling the
     type of of the rawccall primop  (see src/compiler/Semant/types/cproto.sml
     for details)
@@ -83,6 +81,8 @@ Compiler internals:
 MLRISC:
 -------
 
+  - redesigned c-calls interface
+  - c-calls implementation for ppc-macosx added
   - Added these instructions to the PowerPC architecture:
     LWARX, STWCX, LBZU(X), LHZU(X), LWZU(X), STWU(X), STFDU, STFSU, etc.
     (Instruction encodings not added yet, though.)
