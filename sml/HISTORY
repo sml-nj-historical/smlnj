@@ -11,6 +11,18 @@ Name:
 Date:
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/05/08  17:26:09 EDT
+Tag: george-20010508-omit-frameptr
+Description:
+
+Changes to implement the omit-frame-pointer optimization to support 
+raw C calls. For now, there is only support on the Intel x86, but
+other architectures will follow as more experience is gained with this. 
+
+
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/05/07 14:40:00 EDT
