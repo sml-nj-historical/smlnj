@@ -193,10 +193,10 @@ struct
 	     I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=tmp}
          end)
 
-    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION
-    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION
-    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION
-    val fCopyProp = FloatRa.ra IntRa.COPY_PROPAGATION
+    val iRegAlloc = IntRa.ra IntRa.REGISTER_ALLOCATION []
+    val fRegAlloc = FloatRa.ra FloatRa.REGISTER_ALLOCATION []
+    val iCopyProp = IntRa.ra IntRa.COPY_PROPAGATION []
+    val fCopyProp = FloatRa.ra IntRa.COPY_PROPAGATION []
 
     fun ra cluster = let
       val pg = PrintFlowGraph.printCluster TextIO.stdOut
@@ -240,6 +240,9 @@ end
 
 (*
  * $Log: alpha32xCG.sml,v $
+ * Revision 1.6  1999/01/18 15:49:23  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.5  1998/10/07 14:25:32  dbm
  * change 'where F' to 'where P' in Alpha32XCG parameter spec
  *
