@@ -24,7 +24,7 @@ and a file
   openbugs
 
 that lists test files with known problems in the current version
-of SML/NJ (i.e. known regression failures).
+of SML/NJ (i.e. known regression failures).  [Note!: basis/tests setup]
 
 
 Scripts:
@@ -96,6 +96,11 @@ Notes
 [filesys] The test basis/tests/filesys.sml is sensitive to file
 permissions and may produce spurious failures ("EXN" instead of "OK")
 if the tester is not the owner of the files in basis/tests.
+
+[basis/tests setup] After you have created tests directory (say by checking
+out from the Yale CVS repository), be sure to read the instructions
+in tests/basis/tests/README.  This file explains how to set up some
+symbolic and hard links needed by the filesys.sml test.
 
 [output variants] There are actually two versions of the outputs directory
 for each test suite.  These are named
