@@ -7,7 +7,7 @@
 	* opt/split.sml (sexp): don't split HANDLE (it's incorrect).
 	(funeffect): embryo to detect side-effect free APPs (non-functional).
 	(splitThreshold): to put a cap on inlining.
-	(stfn): don't bother splitting inlinable TFNs.
+	(stfn): don't bother splitting inlinable TFNs. 
 
 	* main/control.sml (splitThreshold): new var.
 
