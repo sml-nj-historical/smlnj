@@ -182,6 +182,8 @@ FLINT/obsol/interp.sml
 FLINT/obsol/literals.sml
 FLINT/obsol/spillNEW.sml
 FLINT/opt/lcontract.sml
+FLINT/opt/fcontract.sml
+FLINT/opt/collect.sml
 FLINT/opt/recover.sml
 FLINT/opt/specialize.sml
 FLINT/plambda/chkplexp.sml
