@@ -91,7 +91,7 @@ local
     structure PO = PrimOp
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug msg = ErrorMsg.impossible ("Collect: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
@@ -112,9 +112,9 @@ fun new args lv =
 (* map related helper functions *)
 fun get lv = (M.map m lv)
 		  handle x as NotFound =>
-		  (say ("Collect: ERROR: get unknown var "^
+		  ((* say ("Collect: ERROR: get unknown var "^
 			(LV.lvarName lv)^
-			". Pretending dead...\n");
+			". Pretending dead...\n"); *)
 		   (*  raise x; *)
 		   new NONE lv)
 
@@ -256,7 +256,7 @@ val census = let
 	  | F.APP (F.VAR f,vs) =>
 	    (call (SOME vs) f; app use vs)
 
-	  | F.TFN ((tf,args,body),le) =>
+	  | F.TFN ((tfk,tf,args,body),le) =>
 	    let val tfi = newf (SOME[]) tf
 	    in cexp le; if used tfi then cexp body else ()
 	    end
@@ -345,7 +345,7 @@ fun unuselexp undertaker = let
 	  | F.APP (F.VAR f,vs) =>
 	    (uncall f; app unuse vs)
 
-	  | F.TFN ((tf,args,body),le) =>
+	  | F.TFN ((tfk,tf,args,body),le) =>
 	     let val tfi = get tf
 	     in if used tfi then cexp body else ();
 		 def tfi; cexp le; kill tf

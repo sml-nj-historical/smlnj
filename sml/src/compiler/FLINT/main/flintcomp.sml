@@ -14,12 +14,16 @@ local structure CB = CompBasic
       structure Closure = Closure(MachSpec)
       structure Spill = Spill(MachSpec)
       structure CpsSplit = CpsSplitFun (MachSpec) 
-      structure CTRL = Control.FLINT
+      structure CTRL = FLINT_Control
+      structure PP = PPFlint
+      structure LT = LtyExtern
+      structure O  = Option
+      structure F  = FLINT
 in 
 
 val architecture = Gen.MachSpec.architecture
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
-val say = Control.Print.say
+val say = Control_Print.say
 
 datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
 
@@ -44,6 +48,7 @@ val wformed   = phase "Compiler 0536 wformed" Lift.wellFormed
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
 val reify     = phase "Compiler 055 reify" Reify.reify
+val recover   = phase "Compiler 05a recover" Recover.recover
 
 val convert   = phase "Compiler 060 convert" Convert.convert
 val cpstrans  = phase "Compiler 065 cpstrans" CPStrans.cpstrans
@@ -103,52 +108,66 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun wff (f, s) = if wformed f then ()
 		       else print ("\nAfter " ^ s ^ " CODE NOT WELL FORMED\n")
 
-      (* f:FLINT.prog	flint code
+      (* f:prog		flint code
+       * fi:prog opt	inlinable approximation of f
        * fk:flintkind	what kind of flint variant this is
        * l:string	last phase through which it went *)
-      fun runphase (p,(f,fk,l)) =
+      fun runphase (p,(f,fi,fk,l)) =
 	  case (p,fk)
 	   of (("fcontract" | "lcontract"), FK_DEBRUIJN) =>
 	      (say("\n!! "^p^" cannot be applied to the DeBruijn form !!\n");
-	       (f, fk, l))
+	       (f, fi, fk, l))
 
-	    | ("fcontract",_)		=> (fcontract f,  fk, p)
-	    | ("lcontract",_)		=> (lcontract f,  fk, p)
-	    | ("fixfix",   _)		=> (fixfix f,     fk, p)
-	    | ("split",   _)		=> (#1(split f),  fk, p)
-	    | ("loopify",  _)		=> (loopify f,    fk, p)
-	    | ("specialize",FK_NAMED)	=> (specialize f, fk, p)
-	    | ("wrap",FK_NAMED)		=> (wrapping f,	  FK_WRAP, p)
-	    | ("reify",FK_WRAP)		=> (reify f,      FK_REIFY, p)
-	    | ("deb2names",FK_DEBRUIJN) => (deb2names f,  FK_NAMED, p)
-	    | ("names2deb",FK_NAMED)	=> (names2deb f,  FK_DEBRUIJN, p)
+	    | ("fcontract",_)		=> (fcontract f,  fi, fk, p)
+	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
+	    | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
+	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)
+	    | ("specialize",FK_NAMED)	=> (specialize f, fi, fk, p)
+	    | ("wrap",FK_NAMED)		=> (wrapping f,	  fi, FK_WRAP, p)
+	    | ("reify",FK_WRAP)		=> (reify f,      fi, FK_REIFY, p)
+	    | ("deb2names",FK_DEBRUIJN) => (deb2names f,  fi, FK_NAMED, p)
+	    | ("names2deb",FK_NAMED)	=> (names2deb f,  fi, FK_DEBRUIJN, p)
 	    | ("typelift", _)		=>
-	      let val f' = typelift f
-	      in if !CTRL.check then wff(f', p) else (); (f', fk, p) end
+	      let val f = typelift f
+	      in if !CTRL.check then wff(f, p) else (); (f, fi, fk, p) end
+	    | ("split",    FK_NAMED)	=>
+	      let val (f,fi) = split f in (f, fi, fk, p) end
 
 	    (* pseudo FLINT phases *)
-	    | ("id",_) => (f,fk,l)
-	    | ("collect",_) => (fcollect f, fk, p)
-	    | ("print",_) =>
-	      (say("\n\n[ After "^l^"... ]\n\n");
-	       PPFlint.printFundec f;
-	       (f, fk, l) before say "\n")
-	    | ("wellformed",_) => (wff(f,l); (f,fk,p))
-	    | ("check",_) =>
-	      (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
-		     (fk = FK_REIFY, l) f; (f,fk,l))
+	    | ("pickle",   _)		=>
+	      (valOf(UnpickMod.unpickleFLINT(PickMod.pickleFLINT(SOME f))),
+	       UnpickMod.unpickleFLINT(PickMod.pickleFLINT fi),
+	       fk, p)
+	    | ("collect",_) => (fcollect f, fi, fk, p)
 	    | _ =>
-	      (say("\n!! Unknown or badly scheduled FLINT phase '"^p^"' !!\n");
-	       (f,fk,l))
+	      ((case (p,fk)
+		 of ("id",_) => ()
+		  | ("wellformed",_) => wff(f,l)
+		  | ("recover",_) =>
+		    let val {getLty,...} = recover(f, fk = FK_REIFY)
+		    in CTRL.recover := (say o LT.lt_print o getLty o F.VAR)
+		    end
+		  | ("print",_) =>
+		    (say("\n[After "^l^"...]\n\n"); PP.printFundec f; say "\n")
+		  | ("printsplit", _) => 
+		    (say "[ splitted ]\n\n"; O.map PP.printFundec fi; say "\n")
+		  | ("check",_) =>
+		    (check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
+			   (fk = FK_REIFY, l) f)
+		  | _ =>
+		    say("\n!! Unknown or badly scheduled FLINT phase '"^p^"' !!\n"));
+		    (f, fi, fk, l))
 
-      fun print (f,fk,l) = (prF l f; (f, fk, l))
-      fun check' (f,fk,l) =
-	  (if !CTRL.check then
-	       check (ChkFlint.checkTop, PPFlint.printFundec, "FLINT")
-		     (fk = FK_REIFY, l)
-		     (if fk = FK_DEBRUIJN then f else names2deb f)
-	   else ();
-	   (f, fk, l))
+      fun print (f,fi,fk,l) = (prF l f; (f, fi, fk, l))
+      fun check' (f,fi,fk,l) =
+	  let fun c n reified f =
+		  check (ChkFlint.checkTop, PPFlint.printFundec, n)
+			(reified, l) (names2deb f)
+	  in if !CTRL.check then
+	      (c "FLINT" (fk = FK_REIFY) f; O.map (c "iFLINT" false) fi; ())
+	     else ();
+		 (f, fi, fk, l)
+	  end
 
       fun runphase' (arg as (p,{1=f,...})) =
 	  (if !CTRL.printPhases then say("Phase "^p^"...") else ();
@@ -158,9 +177,9 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 			   dumpTerm(PPFlint.printFundec,"FLINT.core", f);
 			   raise x)
 
-      val (flint,fk,_) = foldl runphase'
-			       (flint, FK_DEBRUIJN, "flintnm")
-			       ((* "id" :: *) "deb2names" :: !CTRL.phases)
+      val (flint,fi,fk,_) = foldl runphase'
+				  (flint, NONE, FK_DEBRUIJN, "flintnm")
+				  ((* "id" :: *) "deb2names" :: !CTRL.phases)
 
       (* run any missing phases *)
       val (flint,fk) =
@@ -213,7 +232,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
              of (fun0 :: funn) => (gen fun0, map gen funn, gdata data)
               | [] => bug "unexpected case on gen in flintcomp"
         end
-   in {c0=nc0, cn=ncn, data=dseg, name=ref (SOME src)}
+   in ({c0=nc0, cn=ncn, data=dseg, name=ref (SOME src)}, fi)
   end (* function flintcomp *)
 
 val flintcomp = phase "Compiler 050 flintcomp" flintcomp

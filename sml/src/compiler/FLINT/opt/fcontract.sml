@@ -188,10 +188,10 @@ local
     structure LK = LtyKernel
     structure OU = OptUtils
     structure PO = PrimOp
-    structure CTRL = Control.FLINT
+    structure CTRL = FLINT_Control
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug msg = ErrorMsg.impossible ("FContract: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; bug msg)
@@ -517,7 +517,7 @@ fun fcFix (fs,le) =
 		    * recursively *)
 		   (C.use NONE fi; undertake m f; (m,fs))
 	       else
-		   let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
+		   let (* val _ = say ("\nEntering "^(C.LVarString f)^"\n") *)
 		       val saved_ic = inline_count()
 		       (* make up the bindings for args inside the body *)
 		       val actuals = if isSome isrec orelse
@@ -526,8 +526,13 @@ fun fcFix (fs,le) =
 				     then map (fn _ => []) args
 				     else OU.transpose(!actuals)
 		       val nm = ListPair.foldl merge_actuals m (args, actuals)
-		       (* contract the body and create the resulting fundec *)
-		       val nbody = fcexp (S.add(f, ifs)) nm body #2
+		       (* contract the body and create the resulting fundec.
+			* Temporarily remove f's definition from the
+			* environment while we're rebuilding it to avoid
+			* nasty problems. *)
+		       val nbody = fcexp (S.add(f, ifs))
+					 (addbind(nm, f, Var(f, NONE)))
+					 body #2
 		       (* if inlining took place, the body might be completely
 			* changed (read: bigger), so we have to reset the
 			* `inline' bit *)
@@ -544,7 +549,7 @@ fun fcFix (fs,le) =
 			* the old uncontracted code *)
 		       val nm = addbind(m, f, Fun(f, nbody, args, nfk, ref []))
 		   in (nm, (nfk, f, args, nbody)::fs)
-		   (*  before say ("\nExiting "^(C.LVarString f)) *)
+		   (* before say ("Exiting "^(C.LVarString f)^"\n") *)
 		   end
 	    end
 		    
@@ -702,6 +707,7 @@ fun fcApp (f,vs) =
 		    * but still requires some care: see comments at the
 		    * begining of this file and in cfun *)
 		   (click_simpleinline();
+		    (*  say("simpleinline "^(C.LVarString g)^"\n"); *)
 		    ignore(C.unuse true gi);
 		    loop m (F.LET(map #1 args, F.RET vs, body)) cont)
 	       fun copyinline () =
@@ -722,6 +728,7 @@ fun fcApp (f,vs) =
 		       val nle = C.copylexp M.empty nle
 		   in
 		       click_copyinline();
+		       (*  say("copyinline "^(C.LVarString g)^"\n"); *)
 		       (app (unuseval m) vs);
 		       unusecall m g;
 		       fcexp (S.add(g, ifs)) m nle cont
@@ -748,14 +755,14 @@ fun fcApp (f,vs) =
 	 | sv => cont(m,F.APP(sval2val svf, map sval2val svs))
     end
 
-fun fcTfn ((f,args,body),le) =
+fun fcTfn ((tfk,f,args,body),le) =
     let val fi = C.get f
     in if C.dead fi then (click_deadlexp(); loop m le cont) else
 	let val nbody = fcexp ifs m body #2
 	    val nm = addbind(m, f, TFun(f, nbody, args))
 	    val nle = loop nm le cont
 	in
-	    if C.dead fi then nle else F.TFN((f, args, nbody), nle)
+	    if C.dead fi then nle else F.TFN((tfk, f, args, nbody), nle)
 	end
     end
 

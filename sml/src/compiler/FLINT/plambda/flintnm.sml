@@ -22,7 +22,7 @@ local structure LT = PLambdaType
       structure BT = BasicTypes
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 val mkv = LambdaVar.mkLvar
 val cplv = LambdaVar.dupLvar
 val ident = fn le : L.lexp => le
@@ -475,7 +475,8 @@ and tolvar (venv,d,lvar,lexp,cont) =
                           fn (le_val, le_lty) => (F.RET [le_val], le_lty))
                 val lty = LT.ltc_ppoly(tks, body_lty)
                 val (lexp', lty) = cont(lty)
-            in  (F.TFN((lvar, map (fn tk => (mkv(), tk)) tks, body'), lexp'),
+		val args = map (fn tk => (mkv(), tk)) tks
+            in  (F.TFN(({inline=F.IH_SAFE}, lvar, args, body'), lexp'),
                  lty)
             end
 

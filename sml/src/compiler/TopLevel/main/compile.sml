@@ -23,11 +23,8 @@ local structure FE = FrontEnd
       structure V = Vector
 in
 
-val debugging = Control.CG.compdebugging
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug s = EM.impossible ("Compile:" ^ s)
-fun debugmsg msg =
-  if !debugging then (say msg; say "\n"; Control.Print.flush()) else ()
 
 exception Compile = Compile            (* raised during compilation only *)
 exception SilentException = CC.SilentException     (* raised by CM *)
@@ -187,10 +184,10 @@ in
 		  splitting: bool, compInfo: compInfo } = let
 	(* hooks for cross-module inlining and specialization *)
 	val (flint, revisedImports) = inline (flint, imports, symenv)
-	val (flint, inlineExp : flint option) = split(flint, splitting)
+	(* val (flint, inlineExp : flint option) = split(flint, splitting) *)
 
 	(* from optimized FLINT code, generate the machine code *)
-	val csegs = M.flintcomp(flint, compInfo)
+	val (csegs,inlineExp) = M.flintcomp(flint, compInfo)
     in
 	addCode(csegsize csegs); 
 	{ csegments=csegs, inlineExp=inlineExp, imports = revisedImports }

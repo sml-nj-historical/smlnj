@@ -50,6 +50,10 @@ type fkind
     cconv : cconv,			(* calling convention *)
     isrec : (lty list * loopkind) option} (* is it recursive *)
 
+(* additional attributes for type abstractions *)
+type tfkind
+ = {inline: ilhint}
+
 (** classifying various kinds of records *)
 datatype rkind
   = RK_VECTOR of tyc           (* vector: all elements have same type *)
@@ -113,7 +117,7 @@ datatype lexp
   | PRIMOP of primop * value list * lvar * lexp
 
 withtype fundec = fkind * lvar * (lvar * lty) list * lexp
-and tfundec = lvar * (tvar * tkind) list * lexp  
+and tfundec = tfkind * lvar * (tvar * tkind) list * lexp
 and dict = {default: lvar, table: (tyc list * lvar) list}
 and primop = dict option * PO.primop * lty * tyc list
         (* Invariant: primop's lty is always fully closed *)

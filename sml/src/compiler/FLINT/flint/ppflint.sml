@@ -12,9 +12,10 @@ struct
     structure LT = LtyExtern
     structure PO = PrimOp
     structure PU = PrintUtil
+    structure CTRL = Control.FLINT
 
     (** some print utilities **)
-    val say = Control.Print.say
+    val say = Control_Print.say
     val margin = ref 0
     exception Undent
     fun indent n = margin := !margin + n
@@ -98,7 +99,7 @@ struct
     val printValList = PU.printClosedSequence ("[",",","]") printSval
     val printVarList = PU.printClosedSequence ("[",",","]") printVar
     val printTycList = PU.printClosedSequence ("[",",","]") printTyc
-    val printLtyList = PU.printClosedSequence parenCommaSep printLty
+    val printLtyList = PU.printClosedSequence ("[",",","]") printLty
     val printTvTkList = PU.printClosedSequence ("[",",","]") printTvTk
 
     fun printDecon (F.DATAcon((_,Access.CONSTANT _,_),_,_)) = () 
@@ -181,7 +182,7 @@ struct
 	 dent();  
 	 pLexp body)
 	
-      | pLexp (F.TFN ((lvar, tv_tk_list, tfnbody), body)) =
+      | pLexp (F.TFN ((tfk as {inline,...}, lvar, tv_tk_list, tfnbody), body)) =
 	(* v = 
 	 *   TFN([tk],lty,
 	 *     <tfnbody>)
@@ -189,7 +190,7 @@ struct
 	 *)
 	(printVar lvar; say " = "; newline();
 	 indent 2; dent();
-	 say "TFN(";
+	 if inline = F.IH_SAFE then () else say "i"; say "TFN(";
 	 printTvTkList tv_tk_list; say ",";
 	 (*** printLty lty; say ","; *** lty no longer available ***)
          newline();
@@ -320,7 +321,7 @@ struct
 	  printValList values;
 	  newline();  dent();  pLexp body)
 	 
-    and printFundec (fkind, lvar, lvar_lty_list, body) =
+    and printFundec (fkind as {cconv,...}, lvar, lvar_lty_list, body) =
 	(*  <lvar> : (<fkind>) <lty> =
 	 *    FN([v1 : lty1,
 	 *        v2 : lty2],
@@ -337,7 +338,9 @@ struct
 	 (case lvar_lty_list of
 	      [] => ()
 	    | ((lvar,lty)::L) => 
-		  (printVar lvar; say " : "; printLty lty;
+		  (printVar lvar; say " : ";
+		   if !CTRL.printFctTypes orelse cconv <> F.CC_FCT
+		   then printLty lty else say "???";
 		   app (fn (lvar,lty) =>
 			(say ","; newline(); dent();
 			 printVar lvar; say " : "; printLty lty)) L));

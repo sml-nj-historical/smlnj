@@ -21,7 +21,7 @@ local structure LD = LtyDef
       open FLINT
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug s = ErrorMsg.impossible ("SpecializeNvar: " ^ s)
 fun mkv _ = LambdaVar.mkLvar()
 val ident = fn le : FLINT.lexp => le
@@ -65,19 +65,20 @@ type bnds = bnd list
 
 (** THE FOLLOWING FUNCTION IS NOT FULLY DEFINED *)
 fun kBnd kenv tc = 
-  (if LT.tcp_var tc then
-     (let val (i,j) = LT.tcd_var tc
-          val (_,ks) = List.nth(kenv, i-1) 
-                            handle _ => bug "unexpected case A in kBnd"
-             val (_,k) = List.nth(ks, j)
-                            handle _ => bug "unexpected case B in kBnd"
-       in if tk_eqv(tk_tbx, k) then KBOX else KTOP
-      end)
-   else if LT.tcp_prim tc then
-          (let val p = LT.tcd_prim tc
-            in if PT.unboxed p then KTOP else KBOX
-           end)
-        else KBOX)
+    if LT.tcp_var tc then
+	let val (i,j) = LT.tcd_var tc
+	    val (_,ks) = List.nth(kenv, i-1) 
+				 handle _ => bug "unexpected case A in kBnd"
+	    val (_,k) = List.nth(ks, j)
+				handle _ => bug "unexpected case B in kBnd"
+	in if tk_eqv(tk_tbx, k) then KBOX else KTOP
+	end
+    else if LT.tcp_nvar tc then KTOP	(* FIXME: check the kenv for KBOX *)
+    else if LT.tcp_prim tc then
+	let val p = LT.tcd_prim tc
+	in if PT.unboxed p then KTOP else KBOX
+	end
+    else KBOX
 
 fun kmBnd kenv (tc, KTOP) = KTOP
   | kmBnd kenv (tc, KBOX) = kBnd kenv tc
@@ -485,13 +486,13 @@ fun transform (ienv, d, nmap, smap, did_flat) =
            end
 
       (* lptf : tfundec * lexp -> lexp *** Invariant: ne2 has been processed *)
-      and lptf ((v, tvks, e1), ne2) = 
+      and lptf ((tfk, v, tvks, e1), ne2) = 
         let val nienv = pushItable(ienv, tvks)
             val nd = DI.next d
             val nnmap = addnmap(tvks, nd, nmap)
             val ne1 = transform (nienv, nd, nnmap, smap, false) e1
             val hdr = popItable nienv
-         in TFN((v, tvks, hdr ne1), ne2)
+         in TFN((tfk, v, tvks, hdr ne1), ne2)
         end
 
       (* loop : lexp -> lexp *)
@@ -555,15 +556,15 @@ fun transform (ienv, d, nmap, smap, did_flat) =
                      end
                end
 
-           | TFN((v, tvks, e1), e2) => 
+           | TFN((tfk, v, tvks, e1), e2) => 
                let val _ = entDtable(ienv, v, (d,NOCSTR))
                    val ne2 = loop e2 
                    val ks = map #2 tvks
                    val (hdr2, spinfo) = chkOutNorm(ienv, v, tvks, d)  
                    val ne2 = hdr2 ne2
                 in (case spinfo
-                     of NOSP => lptf((v, tvks, e1), ne2)
-                      | NARROW ntvks => lptf((v, ntvks, e1), ne2)
+                     of NOSP => lptf((tfk, v, tvks, e1), ne2)
+                      | NARROW ntvks => lptf((tfk, v, ntvks, e1), ne2)
                       | PARTSP {ntvks, nts, ...} =>
                           (* assume nts is already shifted one level down *)
                           let val nienv = pushItable(ienv, ntvks)
@@ -573,7 +574,7 @@ fun transform (ienv, d, nmap, smap, did_flat) =
                               val ne1 = 
                                 transform (nienv, xd, nnmap, nsmap, false) e1
                               val hdr0 = popItable nienv
-                           in TFN((v, ntvks, hdr0 ne1), ne2)
+                           in TFN((tfk, v, ntvks, hdr0 ne1), ne2)
                           end
                       | FULLSP (nts, xs) => 
                           let 

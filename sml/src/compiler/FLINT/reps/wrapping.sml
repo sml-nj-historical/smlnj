@@ -19,7 +19,7 @@ local structure CO = Coerce
 in
 
 fun bug s = ErrorMsg.impossible ("Wrapping: " ^ s)
-val say = Control.Print.say
+val say = Control_Print.say
 fun mkv _ = LambdaVar.mkLvar()
 val fkfun = {isrec=NONE,known=false,inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
 val ident = fn le => le
@@ -206,10 +206,10 @@ let (* In pass1, we calculate the old type of each variables in the FLINT
                | LET (vs, e1, e2) => LET (vs, loop e1, loop e2)
                | FIX (fdecs, e) => FIX(map lpfd fdecs, loop e)
                | APP _ => le
-               | TFN ((v, tvks, e1), e2) =>  (* put down all wrappers *)
+               | TFN ((tfk, v, tvks, e1), e2) =>  (* put down all wrappers *)
                    let val nwenv = CO.wpNew(wenv, d)
                        val ne1 = transform (nwenv, DI.next d) e1
-                    in TFN((v, tvks, CO.wpBuild(nwenv, ne1)), loop e2)
+                    in TFN((tfk, v, tvks, CO.wpBuild(nwenv, ne1)), loop e2)
                    end
                | TAPP (v, ts) => 
                    let val olt = getlty v

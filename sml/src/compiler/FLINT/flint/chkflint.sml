@@ -28,7 +28,7 @@ local structure LT = LtyExtern
       open FLINT
 
 fun bug s = ErrorMsg.impossible ("ChkFlint: "^s)
-val say = Control.Print.say
+val say = Control_Print.say
 val anyerror = ref false
 
 (****************************************************************************
@@ -46,7 +46,7 @@ fun simplify (le,0) = RET [STRING "<...>"]
   | simplify (le,n) = 
       let fun h le = simplify (le, n-1)
           fun h1 (fk,v,args,le) = (fk, v, args, h le)
-          fun h2 (v,tvs,le) = (v, tvs, h le)
+          fun h2 (tfk,v,tvs,le) = (tfk, v, tvs, h le)
        in case le 
            of LET (vs,e1,e2) => LET (vs, h e1, h e2)
             | FIX (fdecs,b) => FIX (map h1 fdecs, h b)
@@ -101,7 +101,7 @@ fun check phase envs lexp = let
 
   val ltEquiv = LT.lt_eqv_x (* should be LT.lt_eqv *)
   val ltTAppChk =
-    if !Control.FLINT.checkKinds then LT.lt_inst_chk_gen()
+    if !FLINT_Control.checkKinds then LT.lt_inst_chk_gen()
     else fn (lt,ts,_) => LT.lt_inst(lt,ts)
 
   fun constVoid _ = LT.ltc_void
@@ -304,7 +304,7 @@ fun check phase envs lexp = let
 	      typeIn venv' e
 	    end
 	| APP (v,vs) => ltFnApp (le,"APP") (typeofVal v, map typeofVal vs)
-	| TFN ((lv,tks,e), e') => let
+	| TFN ((tfk,lv,tks,e), e') => let
             fun getkind (tv,tk) = (lvarDef le tv; tk)
 	    val ks = map getkind tks
 	    val lts = typeInEnv (LT.tkInsert (kenv,ks), venv, DI.next d) e

@@ -161,15 +161,17 @@ fun copy ta alpha le = let
 	   FIX(nfdecs, copy nalpha le)
        end
      | APP (f,args) => APP(substval f, map substval args)
-     | TFN ((lv,args,body),le) =>
+     | TFN ((tfk,lv,args,body),le) =>
        (* don't forget to rename the tvar also *)
        let val (nlv,nalpha) = newv(lv,alpha)
 	   val (nargs,ialpha) = newvs(map #1 args, nalpha)
 	   val ita = tmap_sort ((ListPair.map
 				     (fn ((t,k),nt) => (t, LT.tcc_nvar nt))
 				     (args, nargs)) @ ta)
-       in TFN((nlv, ListPair.zip(nargs, map #2 args), copy' ita ialpha body),
-		copy nalpha le)
+       in TFN((tfk,nlv,
+	       ListPair.zip(nargs, map #2 args),
+	       copy' ita ialpha body),
+	      copy nalpha le)
        end
      | TAPP (f,tycs) => TAPP(substval f, map (tc_subst ta) tycs)
      | SWITCH (v,ac,arms,def) =>
@@ -235,7 +237,7 @@ in case lexp
 		   (loop le) fdecs),
 	    map #2 fdecs)
      | F.APP (f,args) => addvs(S.empty, f::args)
-     | F.TFN ((f,args,body),le) => S.union(S.rmv(f, loop le), loop body)
+     | F.TFN ((tfk,f,args,body),le) => S.union(S.rmv(f, loop le), loop body)
      | F.TAPP (f,args) => singleton f
      | F.SWITCH (v,ac,arms,def) =>
        let fun farm ((dc,le),fv) =
@@ -245,7 +247,9 @@ in case lexp
 			   of F.DATAcon(dc,_,lv) => fdcon(S.rmv(lv, fvle),dc)
 			    | _ => fvle)
 	       end
-       in foldl farm (case def of NONE => S.empty | SOME le => loop le) arms
+	   val fvs = case def of NONE => singleton v
+			       | SOME le => addv(loop le, v)
+       in foldl farm fvs arms
        end
      | F.CON (dc,tycs,v,lv,le) => fdcon(addv(S.rmv(lv, loop le), v),dc)
      | F.RECORD (rk,vs,lv,le) => addvs(S.rmv(lv, loop le), vs)

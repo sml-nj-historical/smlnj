@@ -474,16 +474,19 @@ fun pickleFLINT fdecOp =
       and fundec (fk, v, vts, e) () = 
             "05" $ [fkind fk, lvar v, list (tuple2(lvar, lty)) vts, lexp e]
 
-      and tfundec (v, tvks, e) () = 
-            "15" $ [lvar v, list (tuple2(tvar, tkind)) tvks, lexp e]
+      and ilhint inl = bool (inl = F.IH_ALWAYS)
 
-      and fkind {cconv=F.CC_FCT, ...} () = "25" $ []
+      and tfundec (tfk as {inline=i,...}, v, tvks, e) () = 
+            "15" $ [ilhint i, lvar v, list (tuple2(tvar, tkind)) tvks, lexp e]
+
+      and fkind {cconv=F.CC_FCT, inline, ...} () =
+	  "25" $ [ilhint inline]
         | fkind {isrec, cconv=F.CC_FUN(LK.FF_VAR(b1, b2)), known, inline} () = 
-            "35" $ [option (list lty) (Option.map #1 isrec),
-		    bool b1, bool b2, bool known, bool (inline = F.IH_ALWAYS)]
+	  "35" $ [option (list lty) (Option.map #1 isrec),
+		  bool b1, bool b2, bool known, ilhint inline]
         | fkind {isrec, cconv=F.CC_FUN LK.FF_FIXED, known, inline} () = 
-            "45" $ [option (list lty) (Option.map #1 isrec),
-		    bool known, bool (inline = F.IH_ALWAYS)]
+	  "45" $ [option (list lty) (Option.map #1 isrec),
+		  bool known, ilhint inline]
 
       and rkind (F.RK_VECTOR tc) () = "55" $ [tyc tc]
         | rkind (F.RK_STRUCT) () = "65" $ []

@@ -32,9 +32,11 @@ signature FLINTCONTROL =
 sig
     val print		: bool ref
     val printPhases	: bool ref
+    val printFctTypes   : bool ref
     val phases		: string list ref
 
     val inlineThreshold	: int ref
+    val splitThreshold	: int ref
     val unrollThreshold	: int ref
     val maxargs		: int ref	(* to put a cap on arity raising *)
     val dropinvariant	: bool ref

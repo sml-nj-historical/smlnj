@@ -38,6 +38,7 @@ fun mkv _ = LV.mkLvar ()
 val ident = fn le => le
 val fkfun = {isrec=NONE, known=false, inline=IH_ALWAYS, cconv=CC_FUN LT.ffc_fixed}
 val fkfct = {isrec=NONE, known=false, inline=IH_SAFE, cconv=CC_FCT}
+val tfk = {inline=IH_ALWAYS}
 fun fromto(i,j) = if i < j then (i::fromto(i+1,j)) else []
 
 fun opList (NONE :: r) = opList r
@@ -332,7 +333,7 @@ fun ltLoop wflag (nx, ox) =
                           LET(avs, TAPP(VAR f, ts), hdr (map VAR avs))
                         val nrbody = wpBuild(nwenv, rbody)
                         val atvks = map (fn k => (LT.mkTvar(),k)) aks
-                        val body = TFN((rf, atvks, nrbody), RET[VAR rf])
+                        val body = TFN((tfk, rf, atvks, nrbody), RET[VAR rf])
                         val fdec = (fkfct, wf, [(f, ax)], body)
                      in SOME(doWrap(wf, fdec))
                     end)

@@ -18,7 +18,7 @@ local structure DI = DebIndex
 in
 
 fun bug s = ErrorMsg.impossible ("LContract: "^s)
-val say = Control.Print.say
+val say = Control_Print.say
 val ident = fn x => x
 fun all p (a::r) = p a andalso all p r | all p nil = true
 
@@ -71,7 +71,7 @@ fun pass1 fdec =
         let fun psv (VAR x) = kill x
               | psv _ = ()
 
-            and pst (v, vks, e) = lple (DI.next d) e
+            and pst (tfk, v, vks, e) = lple (DI.next d) e
          
             and pse (RET vs) = app psv vs
               | pse (LET(vs, e1, e2)) = (pse e1; pse e2)          
@@ -319,8 +319,8 @@ end (* branchopt local *)
                      end
                  | _ => (APP(lpsv u, map lpsv us), false))
 
-          | TFN(tfdec as (v, tvks, xe), e) => 
-              lplet ((fn z => TFN((v, tvks, 
+          | TFN(tfdec as (tfk, v, tvks, xe), e) => 
+              lplet ((fn z => TFN((tfk, v, tvks, 
                               #1(loop xe)), z)), 
                      true, v, StdExp, e)
           | TAPP(u, ts) => (TAPP(lpsv u, ts), true)

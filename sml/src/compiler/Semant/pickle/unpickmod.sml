@@ -649,28 +649,32 @@ let fun access #"L" = R.int(fn i => %Uaccess (mkvar i))
         list (?tvarTkPair, fn UtvarTkPair x => x, fn UtvarTkPairList l => l,
               UtvarTkPairList) x
 
-    and tfundec #"1" = lvar (fn v =>
+    and ilhint f = ?bool (fn Ubool inl =>
+			  if inl then f F.IH_ALWAYS else f F.IH_SAFE)
+
+    and tfundec #"1" = ilhint (fn inline =>
+		       lvar (fn v =>
                         ?tvarTkPairList (fn UtvarTkPairList tvks =>
                          ?lexp (fn Ulexp e =>
-                           %Utfundec (v, tvks, e))))
+                           %Utfundec ({inline=inline}, v, tvks, e)))))
       | tfundec _ = raise Fail "    | tfundec"
 
     and fkind' (fixed,isrec,inline,known) =
 	{isrec=Option.map (fn ltys => (ltys,F.LK_UNKNOWN)) isrec,
-	 inline=if inline then F.IH_ALWAYS else F.IH_SAFE,
-	 cconv=F.CC_FUN fixed, known=known}
-    and fkind #"2" = %Ufkind {isrec=NONE, cconv=F.CC_FCT,
-			      inline=F.IH_SAFE, known=false}
+	 inline=inline, cconv=F.CC_FUN fixed, known=known}
+    and fkind #"2" = ilhint (fn inline =>
+		      %Ufkind {isrec=NONE, cconv=F.CC_FCT,
+			       inline=inline, known=false})
       | fkind #"3" = ?ltyListOption (fn UltyListOption isrec =>
                       ?bool (fn Ubool b1 =>
                        ?bool (fn Ubool b2 =>
                         ?bool (fn Ubool known =>
-                         ?bool (fn Ubool inline =>
+                         ilhint (fn inline =>
                           %Ufkind (fkind' (LT.ffc_var(b1, b2),
 					   isrec, inline, known)))))))
       | fkind #"4" = ?ltyListOption (fn UltyListOption isrec =>
                         ?bool (fn Ubool known =>
-                         ?bool (fn Ubool inline =>
+                         ilhint (fn inline =>
                           %Ufkind (fkind' (LT.ffc_fixed,
 					   isrec, inline, known)))))
       | fkind _ = raise Fail "    | fkind"

@@ -29,11 +29,12 @@ local
     structure M = IntmapF
     structure PP = PPFlint
     structure LT = LtyExtern
+    structure LK = LtyKernel
     structure OU = OptUtils
-    structure CTRL = Control.FLINT
+    structure CTRL = FLINT_Control
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug msg = ErrorMsg.impossible ("FixFix: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
@@ -95,27 +96,33 @@ fun fexp mf depth lexp = let
       | fdcon (fv,_) = fv
 
     (* recognize the curried essence of a function.
-     * - hd:bool identifies the head of the (potentially) curried function
-     * - r:bool indicates whether the head was recursive
+     * - hd:fkind option identifies the head of the curried function
      * - na:int gives the number of args still allowed *)
-    fun curry (hd,r,na) (le as (F.FIX([(fk,f,args,body)], F.RET[F.VAR lv]))) =
-	if lv = f andalso #inline fk = F.IH_SAFE then
-	    let val fisrec = isSome(#isrec fk)
-		val na = na - length args
-	    in if na >= 0 andalso (hd orelse r orelse not fisrec) then
-		(* recursive functions are only accepted for uncurrying
-		 * if they are the head of the function or if the head
-		 * is already recursive *)
-		let val (funs,body) =
-			curry (false, r orelse fisrec, na) body
+    fun curry (hd,na)
+	      (le as (F.FIX([(fk as {inline=F.IH_SAFE,...},f,args,body)],
+			    F.RET[F.VAR lv]))) =
+	if lv = f andalso na >= length args then
+	    case (hd,fk)
+	     of ((* (SOME{isrec=NONE,...},{isrec=SOME _,...}) | *)
+		 (SOME{cconv=F.CC_FCT,...},{cconv=F.CC_FUN _,...}) |
+		 (SOME{cconv=F.CC_FUN _,...},{cconv=F.CC_FCT,...})) =>
+		([], le)
+	      (* | ((NONE,_) |
+	            (SOME{isrec=SOME _,...},_) |
+	            (SOME{isrec=NONE,...},{isrec=NONE,...})) => *)
+	      (* recursive functions are only accepted for uncurrying
+	       * if they are the head of the function or if the head
+	       * is already recursive *)
+	      | _ =>
+		let val (funs,body) = curry (SOME fk, na - (length args)) body
 		in ((fk,f,args)::funs,body)
 		end
-	       else ([], le)
-	    end
 	else
 	    (* this "never" occurs, but dead-code removal is not bullet-proof *)
 	    ([], le)
-      | curry first le = ([], le)
+      | curry _ le = ([], le)
+
+    exception Uncurryable
 
     (* do the actual uncurrying *)
     fun uncurry (args as (fk,f,fargs)::_::_,body) =
@@ -128,7 +135,12 @@ fun fexp mf depth lexp = let
 			     | _ => bug "strange isrec") rtys
 
 	    (* create the new fkinds *)
+	    val ncconv = case #cconv(#1(List.last args)) of
+		F.CC_FUN(LK.FF_VAR(_,raw)) => F.CC_FUN(LK.FF_VAR(true, raw))
+	      | cconv => cconv
 	    val (nfk,nfk') = OU.fk_wrap(fk, foldl getrtypes NONE args)
+	    val nfk' = {inline= #inline nfk', isrec= #isrec nfk',
+			known= #known nfk', cconv= ncconv}
 
 	    (* funarg renaming *)
 	    fun newargs fargs = map (fn (a,t) => (cplv a,t)) fargs
@@ -201,7 +213,7 @@ in case lexp
 	   (* process each fun *)
 	   fun ffun (fdec as (fk as {isrec,...}:F.fkind,f,args,body,cf),
 		     (s,fv,funs,m)) =
-	       case curry (true,false,!maxargs)
+	       case curry (NONE,!maxargs)
 			  (F.FIX([(fk,f,args,body)], F.RET[F.VAR f]))
 		of (args as _::_::_,body) => (* curried function *)
 		   let val ((fk,f,fargs,fbody),(fk',f',fargs',fbody')) =
@@ -310,10 +322,11 @@ in case lexp
        in
 	   (scall + (length args), addvs(S.singleton f, args), lexp)
        end
-     | F.TFN ((f,args,body),le) =>
+     | F.TFN ((tfk,f,args,body),le) =>
        let val (se,fve,le) = loop le
 	   val (sb,fvb,body) = loop body
-       in (sb + se, S.union(S.rmv(f, fve), fvb), F.TFN((f, args, body), le))
+       in (sb + se, S.union(S.rmv(f, fve), fvb),
+	   F.TFN((tfk, f, args, body), le))
        end
      | F.TAPP (F.VAR f,args) =>
        (* The cost of TAPP is kinda hard to estimate.  It can be very cheap,

@@ -21,7 +21,7 @@ local structure LP = TypeOper
 in
 
 fun bug s = ErrorMsg.impossible ("Reify: " ^ s)
-val say = Control.Print.say
+val say = Control_Print.say
 val mkv = LambdaVar.mkLvar
 val ident = fn le => le
 fun option f NONE = NONE
@@ -147,6 +147,13 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
            | lpcon (DATAcon _) = bug "unexpected case in lpcon"
            | lpcon c = (c, ident)
     
+         (* lpev : lexp -> (value * (lexp -> lexp)) *)
+         and lpev (RET [v]) = (v, ident)
+           | lpev e = (* bug "lpev not implemented yet" *) 
+               let val x= mkv()
+                in (VAR x, fn y => LET([x], e, y))
+               end
+       
          (* loop: lexp -> lexp *)
          and loop le = 
            (case le
@@ -156,20 +163,20 @@ let val {getLty=getlty, cleanUp, ...} =  Recover.recover (fdec, false)
               | FIX(fdecs, e) => FIX(map lpfd fdecs, loop e)
               | APP _  => le
     
-              | TFN((v, tvks, e1), e2) => 
+              | TFN((tfk, v, tvks, e1), e2) => 
                   let val (nkenv, hdr) = LP.tkAbs(kenv, tvks, v)
                       val ne1 = transform (nkenv) e1
                    in hdr(ne1, loop e2)
                   end
               | TAPP(v, ts) => 
-                  let val (us, hdr) = LP.tsLexp(kenv, ts)
+                  let val (u, hdr) = lpev(LP.tsLexp(kenv, ts))
 
                       (* a temporary hack that fixes type mismatches *)
                       val lt = getlty v
                       val oldts = map ltf (#2 (LT.ltd_poly lt))
                       val newts = map ltf (LT.lt_inst(lt, ts))
                       val nhdr = mcast(oldts, newts)
-                   in nhdr (hdr (APP(v, us)))
+                   in nhdr (hdr (APP(v, [u])))
                   end
     
               | RECORD(RK_VECTOR tc, vs, v, e) => 

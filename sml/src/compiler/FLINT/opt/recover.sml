@@ -80,7 +80,7 @@ fun recover (fdec, postRep) =
                   (addvs (ListPair.zip(vs, lpe e1)); lpe e2)
               | lpe (FIX(fdecs, e)) = (lpds fdecs; lpe e)
               | lpe (APP(u, vs)) = #2(LT.ltd_fkfun (lpv u))
-              | lpe (TFN((v, tvks, e1), e2)) = 
+              | lpe (TFN((tfk, v, tvks, e1), e2)) = 
                   (addv(v, LT.lt_nvpoly(tvks, loop e1));
                    lpe e2)
               | lpe (TAPP(v, ts)) = LT.lt_inst (lpv v, ts)

@@ -16,10 +16,10 @@ local
     structure S  = IntSetF
     structure OU = OptUtils
     structure LK = LtyKernel
-    structure CTRL = Control.FLINT
+    structure CTRL = FLINT_Control
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug msg = ErrorMsg.impossible ("Loopify: "^msg)
 val cplv = LambdaVar.dupLvar
 
@@ -80,7 +80,7 @@ in case le
 	  else (calls := vs::(!calls);
 		if S.member tfs parent then () else tcp := false)
        end handle NotFound => ())
-     | F.TFN((_,_,body),le) => (collect p S.empty body; loop le)
+     | F.TFN((_,_,_,body),le) => (collect p S.empty body; loop le)
      | F.TAPP _ => ()
      | F.SWITCH(v,ac,arms,def) =>
        let fun carm (_,body) = loop body
@@ -220,7 +220,7 @@ in case le
 	  | NONE => let val (fl,filt) = M.lookup m f
 	    in F.APP(F.VAR fl, OU.filter filt vs)
 	    end handle M.IntmapF => le)
-     | F.TFN((f,args,body),le) => F.TFN((f, args, loop body), loop le)
+     | F.TFN((tfk,f,args,body),le) => F.TFN((tfk, f, args, loop body), loop le)
      | F.TAPP(f,tycs) => le
      | F.SWITCH(v,ac,arms,def) =>
        let fun carm (con,le) = (con, loop le)

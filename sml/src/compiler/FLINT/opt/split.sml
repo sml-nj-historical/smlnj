@@ -20,9 +20,10 @@ local
     structure LT = LtyExtern
     structure PO = PrimOp
     structure PP = PPFlint
+    structure CTRL = FLINT_Control
 in
 
-val say = Control.Print.say
+val say = Control_Print.say
 fun bug msg = ErrorMsg.impossible ("FSplit: "^msg)
 fun buglexp (msg,le) = (say "\n"; PP.printLexp le; say " "; bug msg)
 fun bugval (msg,v) = (say "\n"; PP.printSval v; say " "; bug msg)
@@ -37,9 +38,14 @@ fun addv (s,F.VAR lv) = S.add(lv, s)
 fun addvs (s,vs) = foldl (fn (v,s) => addv(s, v)) s vs
 fun rmvs (s,lvs) = foldl S.rmv s lvs
 
+exception Unknown
 
 fun split (fdec as (fk,f,args,body)) = let
     val {getLty,addLty,...} = Recover.recover (fdec, false)
+
+    val m = Intmap.new(64, Unknown)
+    fun addpurefun f = Intmap.add m (f, false)
+    fun funeffect f = (Intmap.map m f) handle Uknown => true
 
 (* sexp: env -> lexp -> (leE, leI, fvI, leRet)
  * - env: IntSetF.set	current environment
@@ -58,8 +64,7 @@ fun split (fdec as (fk,f,args,body)) = let
  *   mistakenly adding anything to leI.
  *)
 fun sexp env lexp =
-    let fun funeffect f = true		(* FIXME *)
-
+    let 
 	(* non-side effecting binds are copied to leI if exported *)
 	fun let1 (le,lewrap,lv,vs,effect) =
 	    let val (leE,leI,fvI,leRet) = sexp (S.add(lv, env)) le
@@ -97,8 +102,8 @@ fun sexp env lexp =
 	 (* IMPROVEME: lvs should not be restricted to [lv] *)
 	 | F.LET(lvs as [lv],body as F.TAPP (v,tycs),le) =>
 	   let1(le, fn e => F.LET(lvs, body, e), lv, [v], false)
-	 | F.LET (lvs as [lv],body as F.APP (v,vs),le) =>
-	   let1(le, fn e => F.LET(lvs, body, e), lv, v::vs, true)
+	 | F.LET (lvs as [lv],body as F.APP (v as F.VAR f,vs),le) =>
+	   let1(le, fn e => F.LET(lvs, body, e), lv, v::vs, funeffect f)
 
 	 | F.SWITCH (v,ac,[(dc as F.DATAcon(_,_,lv),le)],NONE) =>
 	   let1(le, fn e => F.SWITCH(v, ac, [(dc, e)], NONE), lv, [v], false)
@@ -108,18 +113,15 @@ fun sexp env lexp =
 	   in (fn e => F.LET(lvs, body, leE e), leI, fvI, leRet)
 	   end
 
-	 | F.HANDLE (le,v) =>
-	   let val (leE,leI,fvI,leRet) = sexp env le
-	   in (fn e => F.HANDLE(leE e, v), leI, fvI, leRet)
-	   end
-
-	 (* other non-binding lexps result in unsplittable functions *)
+	 (* useless sophistication *)
 	 | F.APP (F.VAR f,args) =>
 	   if funeffect f
 	   then (fn e => e, F.RET[], S.empty, lexp)
 	   else (fn e => e, lexp, addvs(S.singleton f, args), lexp)
+
+	 (* other non-binding lexps result in unsplittable functions *)
 	 | (F.APP _ | F.TAPP _) => bug "strange (T)APP"
-	 | (F.SWITCH _ | F.RAISE _ | F.BRANCH _) =>
+	 | (F.SWITCH _ | F.RAISE _ | F.BRANCH _ | F.HANDLE _) =>
 	   (fn e => e, F.RET[], S.empty, lexp)
     end
 
@@ -132,13 +134,15 @@ and sfix env (fdecs,le) =
 	val (leE,leI,fvI,leRet) = sexp nenv le
 	val nleE = fn e => F.FIX(fdecs, leE e)
     in case fdecs
-	of [({inline=(F.IH_ALWAYS | F.IH_MAYBE _),...},f,args,body)] =>
-	   if not (S.member fvI f)
-	   then (nleE, leI, fvI, leRet)
-	   else (nleE, F.FIX(fdecs, leI),
-		 rmvs(S.union(fvI, FU.freevars body),
-		      f::(map #1 args)),
-		 leRet)
+	of [({inline=inl as (F.IH_ALWAYS | F.IH_MAYBE _),...},f,args,body)] =>
+	   let val min = case inl of F.IH_MAYBE(n,_) => n | _ => 0
+	   in if not(S.member fvI f) orelse min > !CTRL.splitThreshold
+	      then (nleE, leI, fvI, leRet)
+	      else (nleE, F.FIX(fdecs, leI),
+		    rmvs(S.union(fvI, FU.freevars body),
+			 f::(map #1 args)),
+		    leRet)
+	   end
 	 | [fdec as (fk as {cconv=F.CC_FCT,...},_,_,_)] =>
 	   sfdec env (leE,leI,fvI,leRet) fdec
 
@@ -179,6 +183,7 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
 				      (n+1, F.SELECT(F.VAR argI, n, lv, le)))
 				     (0, bodyI) fvbIs *)
 	       val fdecI as (_,fI,_,_) = FU.copyfdec(fkI,f,argsI,bodyI)
+	       val _ = addpurefun fI
 						    
 	       (* nfdec *)
 	       val nargs = map (fn (v,t) => (cplv v, t)) args
@@ -207,21 +212,25 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
     end
 
 (* TFNs are kinda like FIX except there's no recursion *)
-and stfn env (tfdec as (tf,args,body),le) =
-    let val nenv = S.add(tf, env)
+and stfn env (tfdec as (tfk,tf,args,body),le) =
+    let val (bodyE,bodyI,fvbI,bodyRet) =
+	    if #inline tfk = F.IH_ALWAYS
+	    then (fn e => body, body, FU.freevars body, body)
+	    else sexp env body
+	val nenv = S.add(tf, env)
 	val (leE,leI,fvI,leRet) = sexp nenv le
-	val (bodyE,bodyI,fvbI,bodyRet) = sexp nenv body
     in case (bodyI, S.members(S.diff(fvbI, env)))
 	of ((F.RET _ | F.RECORD(_,_,_,F.RET _)),_) =>
 	   (* split failed *)
-	   (fn e => F.TFN((tf, args, bodyE bodyRet), leE e), leI, fvI, leRet)
+	   (fn e => F.TFN((tfk, tf, args, bodyE bodyRet), leE e),
+	    leI, fvI, leRet)
 	 | (_,[]) =>
 	   (* everything was split out *)
-	   let val ntfdec = (tf, args, bodyE bodyRet)
-	   in (fn e => F.TFN(ntfdec, leE e),
-	       F.TFN(ntfdec, leI),
-	       S.rmv(tf, S.union(fvI, fvbI)),
-	       leRet)
+	   let val ntfdec = ({inline=F.IH_ALWAYS}, tf, args, bodyE bodyRet)
+	       val nlE = fn e => F.TFN(ntfdec, leE e)
+	   in if not(S.member fvI tf) then (nlE, leI, fvI, leRet)
+	      else (nlE, F.TFN(ntfdec, leI),
+		    S.rmv(tf, S.union(fvI, fvbI)), leRet)
 	   end
 	 | (_,fvbIs) =>
 	   let (* tfdecE *)
@@ -232,6 +241,7 @@ and stfn env (tfdec as (tf,args,body),le) =
 	       val _ = addLty(tfE, tfElty)
 
 	       (* tfdecI *)
+	       val tfkI = {inline=F.IH_ALWAYS}
 	       val argsI = map (fn (v,k) => (cplv v, k)) args
 	       val tmap = ListPair.map (fn (a1,a2) =>
 					(#1 a1, LT.tcc_nvar(#1 a2)))
@@ -241,11 +251,12 @@ and stfn env (tfdec as (tf,args,body),le) =
 					  bodyI))
 	       (* F.TFN *)
 	       fun nleE e =
-		   F.TFN((tfE, args, bodyE), F.TFN((tf, argsI, bodyI), leE e))
+		   F.TFN((tfk, tfE, args, bodyE),
+			 F.TFN((tfkI, tf, argsI, bodyI), leE e))
 
 	   in if not(S.member fvI tf) then (nleE, leI, fvI, leRet)
 	      else (nleE,
-		    F.TFN((tf, argsI, bodyI), leI),
+		    F.TFN((tfkI, tf, argsI, bodyI), leI),
 		    S.add(tfE, S.union(S.rmv(tf, fvI), S.inter(env, fvbI))),
 		    leRet)
 	   end

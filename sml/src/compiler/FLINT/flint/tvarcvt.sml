@@ -69,8 +69,8 @@ struct
                           
                   | F.APP _ => exp              (* no processing required *)
                                                 
-                  | F.TFN ((v,tvtks,e1),e2) => 
-                    F.TFN ((v, tvtks, 
+                  | F.TFN ((tfk,v,tvtks,e1),e2) => 
+                    F.TFN ((tfk, v, tvtks, 
                             cvtExp (extendEnv env d 0 tvtks) (DI.next d) e1),
                            r e2)
                           
@@ -204,8 +204,8 @@ struct
                           
                   | F.APP _ => exp              (* no processing required *)
                                                 
-                  | F.TFN ((v,tvtks,e1),e2) => 
-                    F.TFN ((v, tvtks, 
+                  | F.TFN ((tfk,v,tvtks,e1),e2) => 
+                    F.TFN ((tfk, v, tvtks, 
                             cvtExp (extendEnv env d 0 tvtks) (DI.next d) e1),
                            r e2)
                           

@@ -42,7 +42,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 			    val v' = LV.mkLvar ()
 			    val (h, r) = oneNode (v', t, h, r)
 			in
-			    (fn e => F.SELECT (F.VAR v, s, v', e), r)
+			    (fn e => F.SELECT(F.VAR v, s, v', h e), r)
 			end
 		    in
 			foldl oneBranch (h, r) l
@@ -78,6 +78,7 @@ structure LSplitInline :> LSPLIT_INLINE = struct
 			    (tyl, imp :: imps, body)
 			end
 		      | SOME (f as (fk, fv, [(av, at)], b)) => let
+			    (* val _ = Control_Print.say "hello\n" *)
 			    val inlv = LV.mkLvar ()
 			    val (wrapSel, rvl) = selHdr (inlv, tr, rvl)
 			    val (tyl, imps, body) =

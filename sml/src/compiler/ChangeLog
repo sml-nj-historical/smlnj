@@ -1,3 +1,25 @@
+1999-03-08  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* TopLevel/viscomp/control.sig (FLINT.printFctTypes): to reduce clutter.
+	(splitThreshold): to control splitting agressiveness.
+
+	* TopLevel/viscomp/control.sml:  moved substructs outside so that clients
+	  can refer to them directly (rather than through Control.Foo) to reduce
+	  spurious dependencies.
+
+	* TopLevel/main/{codes,compile}: call `split' from flintcomp, not compile.
+
+1999-03-02  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* Semant/pickle/(un)pickmod.sml (fkind): pickle the inline bit.
+
+	* Semant/pickle/pickmod.sml (mkPickleLty):
+	  alpha-rename was not applied to NVAR.
+
+	* Semant/pickle/unpickmod.sml (lvar): was improperly defined.
+	(tyc): TC_NVAR wasn't read correctly.
+	(tfundec): pickle puts a leading "1", so look for a "1", not a "0".
+
 1998-11-12  Stefan Monnier  <monnier@cs.yale.edu>
 
 	* MiscUtil/util/stats.sml: added counters.

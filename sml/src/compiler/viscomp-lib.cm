@@ -196,6 +196,7 @@ FLINT/kernel/primop.sml
 FLINT/kernel/primtyc.sig
 FLINT/kernel/primtyc.sml
 FLINT/main/flintcomp.sml
+FLINT/main/control.sml
 FLINT/main/literals.sml
 FLINT/opt/fixfix.sml
 FLINT/opt/collect.sml

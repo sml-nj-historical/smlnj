@@ -19,7 +19,7 @@ local structure LE = LtyExtern
 (*    structure DA = Access    *)
       structure LB = LtyBasic
       structure LD = LtyDef
-      structure CTRL = Control.FLINT
+      structure CTRL = FLINT_Control
       open LtyKernel
       open FLINT
       open Access
@@ -220,7 +220,8 @@ fun wellFormed (fdec : fundec) =
 		    b
 		end
 	      | formed (CON(dc, ts, v, l, e), d) = formed(e, d)
-	      | formed (TFN((l, ts, e1), e2), d) = formed(e1, d) andalso formed(e2, d)
+	      | formed (TFN((tfk, l, ts, e1), e2), d) =
+		formed(e1, d) andalso formed(e2, d)
 	      | formed (FIX(fds, e), d) = 
 		let
 		    val b1 = formed(e, d)
@@ -375,7 +376,7 @@ fun lift (e, env, td, d, ad, rename) =
 			       end    
 			 | _ => (e, nt, fv', hd)
 	   end
-	 | loope (e as TFN((v,tvs,e1),e2), env as Ienv(venv,fenvs), d, ad) =
+	 | loope (e as TFN((tfk,v,tvs,e1),e2), env as Ienv(venv,fenvs), d, ad) =
 	   (case d of
 	       0 => 
 		   let
@@ -389,7 +390,7 @@ fun lift (e, env, td, d, ad, rename) =
 
 		       val (e2', nt'', fv'', hd'') = loope(e2, env, d, ad)
 		   in
-		       (TFN((v,tvs,e1'),e2'), nt'', fv'@fv'', hd'@hd'')
+		       (TFN((tfk,v,tvs,e1'),e2'), nt'', fv'@fv'', hd'@hd'')
 		   end
 	     | _ => 
 		   let
@@ -406,7 +407,7 @@ fun lift (e, env, td, d, ad, rename) =
 		       val(e2', nt'', fvs', hd') = loope(e2, env, d, ad)
 		       val exp = writeLambda(freevars, e1')
 		       val exp' = writeHeader(hd, exp)
-		       val hd = (Tfn, v, TFN((v,tvs,exp'),RET [])) :: hd'
+		       val hd = (Tfn, v, TFN((tfk,v,tvs,exp'),RET [])) :: hd'
 		   in
 		       (e2', nt'', fvs', hd)
 		   end )

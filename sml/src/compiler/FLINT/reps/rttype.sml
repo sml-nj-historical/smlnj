@@ -86,13 +86,29 @@ fun SELECTv(i, u) =
    in SELECT(u, i, x, RET [VAR x])
   end
 
-fun APPg (e1,(v2s,h2)) =
+fun APPg(e1, e2) = 
   let val (v1, h1) = split e1
-   in h1(h2(APP(v1, v2s)))
+      val (v2, h2) = split e2
+   in h1(h2(APP(v1, [v2])))
   end
 
-fun RETg es =
-  let fun f ([], vs, hdr) = (rev vs, hdr)
+fun RECORDg es = 
+  let fun f ([], vs, hdr) = 
+               let val x = mkv()
+                in hdr(RECORD(FU_rk_tuple, rev vs, x, RET[VAR x]))
+               end
+        | f (e::r, vs, hdr) = 
+              let val (v, h) = split e
+               in f(r, v::vs, hdr o h)
+              end
+   in f(es, [], ident)
+  end
+
+fun SRECORDg es = 
+  let fun f ([], vs, hdr) = 
+               let val x = mkv()
+                in hdr(RECORD(RK_STRUCT, rev vs, x, RET[VAR x]))
+               end
         | f (e::r, vs, hdr) = 
               let val (v, h) = split e
                in f(r, v::vs, hdr o h)
@@ -211,8 +227,15 @@ fun klookKE(kenv, i, j) =
 (* val tkAbsGen : kenv * lvar list * tkind list * lvar * fkind 
                   -> kenv * ((lexp *lexp) -> lexp) *)
 fun tkAbsGen (kenv, vs, ks, f, fk) = 
-  let val args = ListPair.map (fn (tv,k) => (tv, LT.tk_lty k)) (vs,ks)
-      fun hdr (e1, e2) = FIX([(fk, f, args, e1)], e2)
+  let val mkArgTy = case fk of {cconv=CC_FUN _,...} => LT.ltc_tuple
+                             | {cconv=CC_FCT,...} => LT.ltc_str
+      val argt = mkArgTy (map LT.tk_lty ks)
+
+      val w = mkv()
+      fun h([], i, base) = base
+	| h(v::r, i, base) = h(r, i+1, SELECT(VAR w, i, v, base))
+      
+      fun hdr (e1, e2) = FIX([(fk, f, [(w, argt)], h(vs,0,e1))], e2)
    in (addKE(kenv, vs, ks), hdr)
   end
 
@@ -246,11 +269,7 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 		  of (TC_APP _ | TC_PROJ _ | TC_VAR _) => 
 			APPg(loop tx, tcsLexp(kenv, ts))
 		   | _ => tcode_void)
-	   | (TC_SEQ ts) =>
-	     let val (vs,hdr) = tcsLexp(kenv, ts)
-		 val x = mkv()
-	     in hdr(RECORD(FU_rk_tuple, vs, x, RET[VAR x]))
-	     end
+	   | (TC_SEQ ts) => tcsLexp(kenv, ts)
 	   | (TC_PROJ(tx, i)) => SELECTg(i, loop tx)
 	   | (TC_PRIM pt) => 
 		if (pt = PT.ptc_real) then tcode_real 
@@ -305,12 +324,12 @@ fun rtLexp (kenv : kenv) (tc : tyc) =
 
 and tcsLexp (kenv, ts) = 
   let fun h tc = rtLexp kenv tc
-   in RETg(map h ts)
+   in RECORDg(map h ts)
   end (* function tcsLexp *)
 
 and tsLexp (kenv, ts) = 
   let fun h tc = rtLexp kenv tc
-   in RETg(map h ts)
+   in SRECORDg(map h ts)
   end (* function tsLexp *)
 
 and isFloat (kenv, tc) = 

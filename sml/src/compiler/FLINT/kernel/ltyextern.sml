@@ -420,7 +420,7 @@ fun tk_lty tk =
      | LK.TK_BOX => ltc_int
      | LK.TK_SEQ ks => ltc_tuple (map tk_lty ks)
      | LK.TK_FUN (ks, k) => 
-         ltc_arrow(ffc_fixed, map tk_lty ks, [tk_lty k]))
+         ltc_arrow(ffc_fixed, [ltc_tuple(map tk_lty ks)], [tk_lty k]))
 
 
 (* tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit->unit)) *)
@@ -440,7 +440,7 @@ fun tnarrow_gen () =
            | LK.LT_STR ts => ltc_str (map ltf ts)
            | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
            | LK.LT_POLY (ks, xs) => 
-               ltc_fct(map tk_lty ks, map ltf xs)
+               ltc_fct([ltc_str (map tk_lty ks)], map ltf xs)
            | LK.LT_CONT _ => bug "unexpected CNTs in ltNarrow"
            | LK.LT_IND _ => bug "unexpected INDs in ltNarrow"
            | LK.LT_ENV _ => bug "unexpected ENVs in ltNarrow")

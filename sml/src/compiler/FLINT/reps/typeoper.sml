@@ -17,7 +17,7 @@ sig
   val tkAbs  : kenv * (tvar * tkind) list * lvar -> 
                   (kenv * (lexp * lexp -> lexp))
   val tcLexp : kenv -> tyc -> lexp
-  val tsLexp : kenv * tyc list -> (value list * (lexp -> lexp))
+  val tsLexp : kenv * tyc list -> lexp 
 
   val utgc   : tyc * kenv * tyc -> value -> lexp 
   val utgd   : tyc * kenv * tyc -> value -> lexp 
@@ -119,9 +119,10 @@ fun SELECTv(i, u) =
    in SELECT(u, i, x, RET [VAR x])
   end
 
-fun APPg (e1,(v2s,h2)) = 
+fun APPg(e1, e2) = 
   let val (v1, h1) = split e1
-   in h1(h2(APP(v1, v2s)))
+      val (v2, h2) = split e2
+   in h1(h2(APP(v1, [v2])))
   end
 
 fun RECORDg es = 
