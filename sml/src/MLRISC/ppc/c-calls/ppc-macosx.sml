@@ -112,7 +112,7 @@ functor PPCMacOSX_CCalls (
   (* registers used for parameter passing *)
     val argGPRs = List.map C.GPReg [3, 4, 5, 6, 7, 8, 9, 10]
     val argFPRs = List.map C.FPReg [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-    val resGPR = C.GPReg 3
+    val resRegLoc = Reg(wordTy, C.GPReg 3, NONE)
     val resFPR = C.FPReg 1
 
   (* C callee-save registers *)
@@ -127,8 +127,10 @@ functor PPCMacOSX_CCalls (
 
   (* C caller-save registers (including argument registers) *)
     val callerSaveRegs =
-(* FIXME: also need link register *)
-	  (List.map C.GPReg [2, 11, 12]) @ argGPRs @ (List.map C.FPReg [0]) @ argFPRs
+	  T.FPR(T.FREG(dblTy, C.FPReg 0)) ::
+	    (List.map (fn r => T.GPR(T.REG(wordTy, C.GPReg r))) [2, 11, 12])
+
+    val linkReg = T.GPR(T.REG(wordTy, C.lr))
 
   (* the parameter area lies just above the linkage area in the caller's frame.
    * The linkage area is 24 bytes, so the first parameter is at 24(sp).
@@ -167,7 +169,7 @@ functor PPCMacOSX_CCalls (
     fun layout {conv, retTy, paramTys} = let
 	  fun gprRes isz = (case #sz(sizeOf isz)
 		 of 8 => raise Fail "register pairs not yet supported"
-		  | _ => SOME(Reg(wordTy, resGPR, NONE))
+		  | _ => SOME resRegLoc
 		(* end case *))
 	  val (resLoc, argGPRs, structRet) = (case retTy
 		 of CTy.C_void => (NONE, argGPRs, NONE)
@@ -176,7 +178,7 @@ functor PPCMacOSX_CCalls (
 		  | CTy.C_long_double => (SOME(FReg(dblTy, resFPR, NONE)), argGPRs, NONE)
 		  | CTy.C_unsigned isz => (gprRes isz, argGPRs, NONE)
 		  | CTy.C_signed isz => (gprRes isz, argGPRs, NONE)
-		  | CTy.C_PTR => (SOME(Reg(wordTy, resGPR, NONE)), argGPRs, NONE)
+		  | CTy.C_PTR => (SOME resRegLoc, argGPRs, NONE)
 		  | CTy.C_ARRAY _ => error "array return type"
 		  | CTy.C_STRUCT s => let
 		      val sz = sizeOfStruct s
@@ -185,8 +187,8 @@ functor PPCMacOSX_CCalls (
 		       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
 		       *)
 			if (sz > 4)
-			  then (SOME resGPR, List.tl argGPRs, SOME{szb=sz, align=4})
-			  else (SOME resGPR, argGPRs, NONE)
+			  then (SOME resRegLoc, List.tl argGPRs, SOME{szb=sz, align=4})
+			  else (SOME resRegLoc, argGPRs, NONE)
 		      end
 		(* end case *))
 	  fun assign ([], offset, _, _, layout) = List.rev layout
@@ -298,7 +300,7 @@ functor PPCMacOSX_CCalls (
 		  | addArgReg (_::locs, argRegs) = addArgReg(locs, argRegs)
 		val argRegs = addArgReg (locs, [])
 		in
-		  (argRegs, callerSaveRegs)
+		  (argRegs, linkReg :: callerSaveRegs)
 		end
 	(* the actual call instruction *)
 	  val callStm = T.CALL {
