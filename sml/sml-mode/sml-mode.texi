@@ -23,7 +23,7 @@
 
 @setfilename sml-mode.info
 @settitle SML mode - The Emacs SML editing mode
-@dircategory Editors
+@dircategory Emacs
 @direntry
 * sml:(sml-mode).	Emacs mode for editing SML
 @end direntry
