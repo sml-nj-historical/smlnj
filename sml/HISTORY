@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/10/16 11:32:00 EDT
+Tag: blume-20011016-netbsd
+Description:
+
+Underscore patch from Chris Richards (fixing problem with compiling
+runtime system under recent NetBSD).
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2001/10/12 17:18:32 EDT 2001
 Tag: leung-20011012-x86-printflowgraph
