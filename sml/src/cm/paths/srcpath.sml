@@ -42,7 +42,7 @@ signature SRCPATH = sig
     val get_anchor : env * anchor -> string option
     val reset_anchors : env -> unit
 
-    val processSpecFile : env * string -> unit
+    val processSpecFile : env * string -> unit (* must sync afterwards! *)
 
     (* non-destructive bindings for anchors (for anchor scoping) *)
     val bind: env -> rebindings -> env
@@ -381,12 +381,12 @@ structure SrcPath :> SRCPATH = struct
     fun set0 mkAbsolute (e: env, a, so) = let
 	fun name2pp s = string2pp (if P.isAbsolute s then s else mkAbsolute s)
     in
-	#set_free e (a, Option.map name2pp so);
-	sync ()
+	#set_free e (a, Option.map name2pp so)
     end
 
     fun set_anchor x =
 	set0 (fn n => P.mkAbsolute { path = n, relativeTo = F.getDir () }) x
+	before sync ()
 
     fun reset_anchors (e: env) = (#reset e (); sync ())
 
@@ -401,8 +401,8 @@ structure SrcPath :> SRCPATH = struct
 		else if String.sub (line, 0) = #"#" then loop ()
 		else case String.tokens Char.isSpace line of
 			 [a, d] => (set (e, a, SOME d); loop ())
-		       | ["-"] => (reset_anchors e; loop ())
-		       | [a] => (set_anchor (e, a, NONE); loop ())
+		       | ["-"] => (#reset e (); loop ())
+		       | [a] => (set (e, a, NONE); loop ())
 		       | [] => loop ()
 		       | _ => (Say.say [f, ": malformed line (ignored)\n"];
 			       loop ())

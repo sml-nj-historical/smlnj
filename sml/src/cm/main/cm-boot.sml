@@ -185,8 +185,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      fun processOne f = SrcPath.processSpecFile (penv, f)
 		  handle _ => ()
 	  in
-	      SrcPath.sync ();
-	      app processOne p
+	      app processOne p;
+	      SrcPath.sync ()
 	  end
 
 	  fun getTheValues () = valOf (!theValues)

@@ -136,6 +136,7 @@ end = struct
 
 	val penv = SrcPath.newEnv ()
 	val _ = SrcPath.processSpecFile (penv, penvspec)
+	val _ = SrcPath.sync ()
 
 	fun stdpath s =
 	    SrcPath.file (SrcPath.standard
