@@ -256,22 +256,16 @@ Returns T if the move indeed moved through one sexp and NIL if not."
 	(let ((point (point)))
 	  (ignore-errors (forward-sexp 1))
 	  (if (/= point (point)) t (forward-char 1) nil)))
-       ;; let...end atoms
-       ((or (string-match sml-begin-symbols-re op)
-	    (and (not prec)
-		 (or (string= "in" op) (string= "with" op))))
-	(sml-find-match-forward sml-begin-symbols-re "\\<end\\>"))
+       ;; stop as soon as precedence is smaller than `prec'
+       ((and prec op-prec (>= prec op-prec)) nil)
+       ;; special rules for nested constructs like if..then..else
+       ((and (or (not prec) (and prec op-prec))
+	     (setq match (cdr (assoc op sml-open-paren))))
+	(sml-find-match-forward (first match) (second match)))
+       ;; don't back over open-parens
+       ((assoc op sml-close-paren) nil)
        ;; infix ops precedence
        ((and prec op-prec) (< prec op-prec))
-       ;; [ prec = nil ]  if...then...else
-       ;; ((or (string= "else" op) (string= "then" op))
-       ;;  (sml-find-match-backward "\\<else\\>" "\\<if\\>"))
-       ;; [ prec = nil ]  case...of
-       ;; ((string= "of" op)
-       ;;  (sml-find-match-backward "\\<of\\>" "\\<case\\>"))
-       ;; [ prec = nil ]  while...do
-       ;; ((string= "do" op)
-       ;;  (sml-find-match-backward "\\<do\\>" "\\<while\\>"))
        ;; [ prec = nil ]  a new operator, let's skip the sexps until the next
        (op-prec (while (sml-move-if (sml-forward-sexp op-prec))) t)
        ;; special symbols indicating we're getting out of a nesting level

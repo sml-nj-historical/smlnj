@@ -135,7 +135,7 @@
   '("let" "abstype" "local" "struct" "sig")
   "Symbols matching the `end' symbol.")
 
-(defconst sml-begin-symbols-re
+(defconst sml-begin-syms-re
   (sml-syms-re "let" "abstype" "local" "struct" "sig")
   "Symbols matching the `end' symbol.")
 
@@ -202,14 +202,14 @@
 
 (defconst sml-open-paren
   (sml-preproc-alist
-   `((,(list* "with" "in" sml-begin-syms) . "\\<end\\>")))
+   `((,(list* "with" "in" sml-begin-syms) ,sml-begin-syms-re "\\<end\\>")))
   "Symbols that should behave somewhat like opening parens.")
 
 (defconst sml-close-paren
   `(("in" "\\<l\\(ocal\\|et\\)\\>")
     ("with" "\\<abstype\\>")
     ("withtype" "\\<\\(abs\\|data\\)type\\>")
-    ("end" ,sml-begin-symbols-re)
+    ("end" ,sml-begin-syms-re)
     ("then" "\\<if\\>")
     ("else" "\\<if\\>" (sml-bolp))
     ("of" "\\<case\\>")

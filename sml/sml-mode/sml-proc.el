@@ -234,10 +234,11 @@ prettyprinting switches.")
     ("\\(Error\\|Warning:\\) in '\\(.+\\)', line \\([0-9]+\\)" 2 3)
     ;; Moscow ML
     ("File \"\\([^\"]+\\)\", line \\([0-9]+\\)\\(-\\([0-9]+\\)\\)?, characters \\([0-9]+\\)-\\([0-9]+\\):" 1 2 5)
-    ;; SML/NJ
-    ("[-= ]*\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
-    ;; SML/NJ's exceptions
-    (" +\\(raised at: \\)?\\(.+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
+    ;; SML/NJ:  the file-pattern is restricted to no-spaces to avoid
+    ;; pathological behavior with very long lines.
+    ("^[-= ]*\\([^ ]+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)? \\(Error\\|Warning\\): .*" 1 sml-make-error 2 3 5 6)
+    ;; SML/NJ's exceptions:  see above.
+    ("^ +\\(raised at: \\)?\\([^ ]+\\):\\([0-9]+\\)\\.\\([0-9]+\\)\\(-\\([0-9]+\\)\\.\\([0-9]+\\)\\)" 2 sml-make-error 3 4 6 7)))
 
 (defvar sml-error-regexp nil
   "*Regexp for matching \(the start of\) an error message.")
