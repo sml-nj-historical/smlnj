@@ -85,6 +85,6 @@ signature C_INT = sig
 
     (* unsafe low-level array subscript that does not require RTI *)
     val unsafe_sub : int ->		(* element size *)
-		     (('t, 'f, 'n) arr, 'f, 'c) obj' * int ->
+		     (('t, 'n) arr, 'f, 'c) obj' * int ->
 		     ('t, 'f, 'n) obj'
 end

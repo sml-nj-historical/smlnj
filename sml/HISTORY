@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2001/05/25 15:30:00 EDT
+Tag: blume-20010525-iptr
+Description:
+
+  - put the official 110.33-README (as it appears on the ftp server) under
+    CVS
+  - fixed a small bug related to incomplete pointer types in
+    ml-nlffigen
+  - small cosmetic change to the ml-nlffi-lib's "arr" type constructor
+    (it does not need the 'f type parameter)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2001/05/23 14:30:00 EDT
 Tag: Release_110_33
 Description:

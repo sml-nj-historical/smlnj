@@ -4,6 +4,7 @@ ML-NLFFI library and ML-NLFFIGEN glue code generator
 A very incomplete introduction
 (by Matthias Blume (blume@research.bell-labs.com))
 
+!!! Warning:  this currently works on x86/Linux only! !!!
 
 The new NLFFI ("no-longer foreign function interface") is based on the
 idea of data-level interoperability:  ML code (a mixture of
@@ -253,7 +254,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    Arrays are second-class values.  Their (phantom) type is
 
-     type ('t, 'f, 'n) arr
+     type ('t, 'n) arr
 
    Here, 't is the type of the values stored in the array's individual
    elements, 'f here is the same as the 'f in the case of obj or ptr,
@@ -277,7 +278,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    The connection to array types is this:  An array of size N has type
 
-      ('t, 'f, [N]) arr
+      ('t, [N]) arr
 
    iff "[N] dim" is the type assigned to N by our Dim construction.
 
@@ -285,7 +286,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    The C type (int[312]) is encoded as
 
-      (sint, unit, dec dg3 dg1 dg2) arr
+      (sint, dec dg3 dg1 dg2) arr
 
    In other words, if you "squint away" the "dec", the "dg"s, and the
    spaces, then the array dimension gets spelled out in decimal.
@@ -293,8 +294,8 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    4.2. Operations over arrays:
 
    Since array types are second-class, there are no operations that
-   produce or consume values of type (?, ?, ?) arr.  Instead, we use
-   array objects of type ((?, ?, ?) arr, ?, ?) obj.
+   produce or consume values of type (?, ?) arr.  Instead, we use
+   array objects of type ((?, ?) arr, ?, ?) obj.
 
    Most operations related to array objects are in substructure Arr.
 
@@ -317,7 +318,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
 
    Function pointers have type 'f fptr where 'f is always instantiated
    to (A -> B) for some A and B.  This instantiation for 'f propagates
-   through all those 'f components of obj-, ptr-, or arr-types whose
+   through all those 'f components of obj-, ptr-, or T.typ-types whose
    't component somehow involves the fptr-type.
 
    A function pointer of type (A -> B) fptr can be invoked with an
@@ -419,7 +420,7 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    upon) for most operations.
 
    Light-weight versions of these types (constructors carry a prime in
-   their names): "obj'", "ptr'", "fptr'") do not use RTI in their
+   their names: "obj'", "ptr'", "fptr'") do not use RTI in their
    concrete representations.  This is more efficient for all
    operations that don't need access to RTI.  On the downside, it
    means that RTI must be passed in explicitly by the programmer for
@@ -434,8 +435,8 @@ omit the "C." prefix, assuming a global "open C" to be in effect.
    Array subscript, to name one example, on light-weight array objects
    enforces correct usage of RTI using ML's static typing:
 
-	Arr.sub' : (('t, 'f, 'n) arr, 'f) T.typ ->
-		   (('t, 'f, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
+	Arr.sub' : (('t, 'n) arr, 'f) T.typ ->
+		   (('t, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
 
    7.1 Light vs. heavy:
 

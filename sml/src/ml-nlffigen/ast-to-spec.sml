@@ -311,7 +311,9 @@ structure AstToSpec = struct
 	      | (A.AUTO | A.REGISTER | A.STATIC) => ()
 
 	fun declaration (A.TypeDecl { tid, ... }) =
-	    ignore (typeref (tid, fn _ => bug "missing type decl info"))
+	    (* Spec.SINT is an arbitrary choice; the value gets
+	     * ignored anyway *)
+	    ignore (typeref (tid, fn _ => Spec.SINT))
 	  | declaration (A.VarDecl (v, _)) = varDecl v
 
 	fun coreExternalDecl (A.ExternalDecl d) = declaration d

@@ -67,7 +67,7 @@ structure C :> C_INT = struct
     type ('t, 'f, 'c) ptr = addr * 'f objt (* RTI for target value *)
     type ('t, 'f, 'c) ptr' = addr
 
-    type ('t, 'f, 'n) arr = unit
+    type ('t, 'n) arr = unit
 
     type 'f fptr = addr * 'f
     type 'f fptr' = addr		(* does not carry function around *)

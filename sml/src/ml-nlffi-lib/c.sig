@@ -38,7 +38,7 @@ signature C = sig
 
     (* things to be substituted for 't *)
     type ('t, 'f, 'c) ptr		(* pointer to ('t, 'f, 'c) obj *)
-    type ('t, 'f, 'n) arr		(* 'n-sized array with 't elements *)
+    type ('t, 'n) arr			(* 'n-sized array with 't elements *)
 
     (* light-weight alternative *)
     type ('t, 'f, 'c) ptr'
@@ -276,15 +276,15 @@ signature C = sig
 	(* constructing new RTI from existing RTI *)
 	val pointer : ('t, 'f) typ -> (('t, 'f, rw) ptr, 'f) typ
 	val target  : (('t, 'f, 'c) ptr, 'f) typ -> ('t, 'f) typ
-	val arr     : ('t, 'f) typ * 'n Dim.dim -> (('t, 'f, 'n) arr, 'f) typ
-	val elem    : (('t, 'f, 'n) arr, 'f) typ -> ('t, 'f) typ
+	val arr     : ('t, 'f) typ * 'n Dim.dim -> (('t, 'n) arr, 'f) typ
+	val elem    : (('t, 'n) arr, 'f) typ -> ('t, 'f) typ
 	val ro      : (('t, 'f, 'c) ptr, 'f) typ -> (('t, 'f, ro) ptr, 'f) typ
 
 	(* calculating the size of an object given its RTI *)
 	val sizeof : ('t, 'f) typ -> 't S.size
 
 	(* dimension of array type *)
-	val dim : (('t, 'f, 'n) arr, 'f) typ -> 'n Dim.dim
+	val dim : (('t, 'n) arr, 'f) typ -> 'n Dim.dim
 
 	(* RTI for simple things *)
 	val schar  : schar_typ
@@ -503,28 +503,28 @@ signature C = sig
 	 * since we have RTI, we can actually make this safe:  we raise
 	 * General.Subscript for out-of-bounds access;
 	 * for unchecked access, go through arr_decay and ptr_sub *)
-	val sub : (('t, 'f, 'n) arr, 'f, 'c) obj * int -> ('t, 'f, 'c) obj
+	val sub : (('t, 'n) arr, 'f, 'c) obj * int -> ('t, 'f, 'c) obj
 
 	(* alt; needs explicit type (for array) *)
-	val sub' : (('t, 'f, 'n) arr, 'f) T.typ ->
-		   (('t, 'f, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
+	val sub' : (('t, 'n) arr, 'f) T.typ ->
+		   (('t, 'n) arr, 'f, 'c) obj' * int -> ('t, 'f, 'c) obj'
 
 	(* let an array object decay, yielding pointer to first element *)
-	val decay : (('t, 'f, 'n) arr, 'f, 'c) obj -> ('t, 'f, 'c) ptr
+	val decay : (('t, 'n) arr, 'f, 'c) obj -> ('t, 'f, 'c) ptr
 
 	(* alt *)
-	val decay' : (('t, 'f, 'n) arr, 'f, 'c) obj' -> ('t, 'f, 'c) ptr'
+	val decay' : (('t, 'n) arr, 'f, 'c) obj' -> ('t, 'f, 'c) ptr'
 
 	(* reconstruct an array object from the pointer to its first element *)
 	val reconstruct :
-	    ('t, 'f, 'c) ptr * 'n Dim.dim -> (('t, 'f, 'n) arr, 'f, 'c) obj
+	    ('t, 'f, 'c) ptr * 'n Dim.dim -> (('t, 'n) arr, 'f, 'c) obj
 
 	(* alt *)
 	val reconstruct' :
-	    ('t, 'f, 'c) ptr' * 'n Dim.dim -> (('t, 'f, 'n) arr, 'f, 'c) obj'
+	    ('t, 'f, 'c) ptr' * 'n Dim.dim -> (('t, 'n) arr, 'f, 'c) obj'
 
 	(* dimension of array object *)
-	val dim : (('t, 'f, 'n) arr, 'f, 'c) obj -> 'n Dim.dim
+	val dim : (('t, 'n) arr, 'f, 'c) obj -> 'n Dim.dim
     end
 
     (* allocating new objects *)

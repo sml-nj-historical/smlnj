@@ -152,6 +152,8 @@ end = struct
 	      | _ => NONE
 	end
 
+	val cgtys = List.filter (not o isSome o incomplete o #spec) gtys
+
 	fun istruct (K, tag) = concat ["I_", K, "_", tag]
 
 	fun rwro S.RW = Type "rw"
@@ -208,7 +210,7 @@ end = struct
 	  | wtn_f_ty_p p (S.ARR { t, d, ... }) = let
 		val (w, f) = wtn_f_ty t
 	    in
-		(Con ("arr", [w, f, dim_ty d]), f)
+		(Con ("arr", [w, dim_ty d]), f)
 	    end
 	  | wtn_f_ty_p p (S.FPTR spec) = wtn_f_fptr_p p spec
 
@@ -432,9 +434,9 @@ end = struct
 	    app pr_union_tag unions;
 	    app pr_struct_structure structs;
 	    app pr_union_structure unions;
-	    if not (List.null gtys) then
+	    if not (List.null cgtys) then
 		(nl (); nl (); str "(* RTI for typedefs *)";
-		 app pr_gty_rti gtys)
+		 app pr_gty_rti cgtys)
 	    else ();
 	    if not (List.null gvars) then
 		(nl (); nl (); str "(* object handles for global variables *)";
@@ -1015,7 +1017,7 @@ end = struct
 	    app pr_union_structure unions;
 
 	    (* RTI for C typedefs *)
-	    app pr_gty_rti gtys;
+	    app pr_gty_rti cgtys;
 	    (* (suspended) objects for global variables *)
 	    app pr_gvar_obj gvars;
 	    (* RTI for function pointers corresponding to global C functions *)
