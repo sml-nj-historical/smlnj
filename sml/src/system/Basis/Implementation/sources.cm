@@ -144,6 +144,7 @@ Group (../basis.cm)
 	signature NET_PROT_DB
 	signature NET_SERV_DB
 
+	signature SYNCHRONOUS_SOCKET
 	signature SOCKET
 	signature INET_SOCK
 	signature GENERIC_SOCK

@@ -7,7 +7,10 @@
 local
     structure OS = OSImp
 in
-signature SOCKET =
+
+(* We start with a version of this signature that does not contain
+ * any of the non-blocking operations: *)
+signature SYNCHRONOUS_SOCKET =
   sig
 
   (* sockets are polymorphic; the instantiation of the type variables
@@ -84,10 +87,7 @@ signature SOCKET =
     val listen    : ('af, passive stream) sock * int -> unit
     val accept    : ('af, passive stream) sock
 		    -> ('af, active stream) sock * 'af sock_addr
-    val acceptNB  : ('af, passive stream) sock
-		    -> (('af, active stream) sock * 'af sock_addr) option
     val connect   : ('af, 'sock_type) sock * 'af sock_addr -> unit
-    val connectNB : ('af, 'sock_type) sock * 'af sock_addr -> bool
     val close     : ('af, 'sock_type) sock -> unit
 
     datatype shutdown_mode = NO_RECVS | NO_SENDS | NO_RECVS_OR_SENDS
@@ -121,15 +121,6 @@ signature SOCKET =
     val sendArr'   : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
 			-> int
 
-    val sendVecNB  : ('af, active stream) sock * Word8VectorSlice.slice
-		       -> int option
-    val sendArrNB  : ('a, active stream) sock * Word8ArraySlice.slice
-			-> int option
-    val sendVecNB' : ('a, active stream) sock * Word8VectorSlice.slice * out_flags
-			-> int option
-    val sendArrNB' : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
-			-> int option
-
     val sendVecTo  : ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
 			-> unit
     val sendArrTo  : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
@@ -138,15 +129,6 @@ signature SOCKET =
 			-> unit
     val sendArrTo' : ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
 			-> unit
-
-    val sendVecToNB: ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
-			-> bool
-    val sendArrToNB: ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
-			-> bool
-    val sendVecToNB':('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice * out_flags
-			-> bool
-    val sendArrToNB':('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
-			-> bool
 
   (* Sock input operations *)
     val recvVec      : ('a, active stream) sock * int
@@ -158,6 +140,43 @@ signature SOCKET =
     val recvArr'     : ('a, active stream) sock * Word8ArraySlice.slice * in_flags
 			-> int
 
+    val recvVecFrom  : ('a, dgram) sock * int
+			-> Word8Vector.vector * 'b sock_addr
+    val recvArrFrom  : ('a, dgram) sock * Word8ArraySlice.slice
+			-> int * 'a sock_addr
+    val recvVecFrom' : ('a, dgram) sock * int * in_flags
+			-> Word8Vector.vector * 'b sock_addr
+    val recvArrFrom' : ('a, dgram) sock * Word8ArraySlice.slice * in_flags
+			-> int * 'a sock_addr
+  end
+
+(* add non-blocking ops: *)
+signature SOCKET =
+  sig
+    include SYNCHRONOUS_SOCKET
+
+    val acceptNB  : ('af, passive stream) sock
+		    -> (('af, active stream) sock * 'af sock_addr) option
+    val connectNB : ('af, 'sock_type) sock * 'af sock_addr -> bool
+
+    val sendVecNB  : ('af, active stream) sock * Word8VectorSlice.slice
+		       -> int option
+    val sendArrNB  : ('a, active stream) sock * Word8ArraySlice.slice
+			-> int option
+    val sendVecNB' : ('a, active stream) sock * Word8VectorSlice.slice * out_flags
+			-> int option
+    val sendArrNB' : ('a, active stream) sock * Word8ArraySlice.slice * out_flags
+			-> int option
+
+    val sendVecToNB: ('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice
+			-> bool
+    val sendArrToNB: ('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice
+			-> bool
+    val sendVecToNB':('a, dgram) sock * 'a sock_addr * Word8VectorSlice.slice * out_flags
+			-> bool
+    val sendArrToNB':('a, dgram) sock * 'a sock_addr * Word8ArraySlice.slice * out_flags
+			-> bool
+
     val recvVecNB    : ('a, active stream) sock * int
 			-> Word8Vector.vector option
     val recvArrNB    : ('a, active stream) sock * Word8ArraySlice.slice
@@ -167,16 +186,6 @@ signature SOCKET =
     val recvArrNB'   : ('a, active stream) sock * Word8ArraySlice.slice * in_flags
 			-> int option
 
-
-    val recvVecFrom  : ('a, dgram) sock * int
-			-> Word8Vector.vector * 'b sock_addr
-    val recvArrFrom  : ('a, dgram) sock * Word8ArraySlice.slice
-			-> int * 'a sock_addr
-    val recvVecFrom' : ('a, dgram) sock * int * in_flags
-			-> Word8Vector.vector * 'b sock_addr
-    val recvArrFrom' : ('a, dgram) sock * Word8ArraySlice.slice * in_flags
-			-> int * 'a sock_addr
-
     val recvVecFromNB: ('a, dgram) sock * int
 			-> (Word8Vector.vector * 'b sock_addr) option
     val recvArrFromNB: ('a, dgram) sock * Word8ArraySlice.slice
@@ -185,7 +194,5 @@ signature SOCKET =
 			-> (Word8Vector.vector * 'b sock_addr) option
     val recvArrFromNB':('a, dgram) sock * Word8ArraySlice.slice * in_flags
 			-> (int * 'a sock_addr) option
-
   end
 end
-

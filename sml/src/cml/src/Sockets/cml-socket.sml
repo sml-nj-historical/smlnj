@@ -88,9 +88,6 @@ structure CML_Socket : CML_SOCKET =
 	   of (SOME res) => res
 	    | NONE => (CML.sync(PreSock.inEvt s); accept' sock)
 	  (* end case *))
-
-    fun acceptNB (PS.CMLSock{sock, ...}) = acceptNB' sock
-
     end (* local *)
 
     fun bind (PS.CMLSock{sock, ...}, addr) = Socket.bind(sock, addr)
@@ -159,30 +156,6 @@ structure CML_Socket : CML_SOCKET =
     fun sendArrTo' (s as PS.CMLSock{sock, ...}, addr, buf, flgs) =
 	if Socket.sendArrToNB' (sock, addr, buf, flgs) then ()
 	else (CML.sync(PS.outEvt s); Socket.sendArrTo' (sock, addr, buf, flgs))
-
-    local
-	fun s2 f (PS.CMLSock{sock,...}, x) = f (sock, x)
-	fun s3 f (PS.CMLSock{sock,...}, x, y) = f (sock, x, y)
-	fun s4 f (PS.CMLSock{sock,...}, x, y, z) = f (sock, x, y, z)
-    in
-        fun connectNB arg = s2 Socket.connectNB arg
-        fun sendVecNB arg = s2 Socket.sendVecNB arg
-	fun sendArrNB arg = s2 Socket.sendArrNB arg
-	fun sendVecNB' arg = s3 Socket.sendVecNB' arg
-	fun sendArrNB' arg = s3 Socket.sendArrNB' arg
-	fun sendVecToNB arg = s3 Socket.sendVecToNB arg
-	fun sendArrToNB arg = s3 Socket.sendArrToNB arg
-	fun sendVecToNB' arg = s4 Socket.sendVecToNB' arg
-	fun sendArrToNB' arg = s4 Socket.sendArrToNB' arg
-	fun recvVecNB arg = s2 Socket.recvVecNB arg
-	fun recvArrNB arg = s2 Socket.recvArrNB arg
-	fun recvVecNB' arg = s3 Socket.recvVecNB' arg
-	fun recvArrNB' arg = s3 Socket.recvArrNB' arg
-	fun recvVecFromNB arg = s2 Socket.recvVecFromNB arg
-	fun recvArrFromNB arg = s2 Socket.recvArrFromNB arg
-	fun recvVecFromNB' arg = s3 Socket.recvVecFromNB' arg
-	fun recvArrFromNB' arg = s3 Socket.recvArrFromNB' arg
-    end
 
   (* Sock input operations *)
     fun recvVec (s as PS.CMLSock{sock, ...}, n) =

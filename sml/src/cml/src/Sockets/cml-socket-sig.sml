@@ -10,7 +10,7 @@ signature CML_SOCKET =
   sig
     type 'a event = 'a CML.event
 
-    include SOCKET
+    include SYNCHRONOUS_SOCKET		(* don't drag in non-blocking ops *)
 
     val connectEvt : (('a, 'b) sock * 'a sock_addr) -> unit event
 
