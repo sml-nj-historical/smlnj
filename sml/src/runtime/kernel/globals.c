@@ -29,7 +29,7 @@ typedef struct {
     ml_string_t id = {					\
 	DESC_string,					\
 	s,						\
-	INT_CtoML(sizeof(s))				\
+	INT_CtoML(sizeof(s)-1)				\
     }
 
 /* Exceptions are identified by (string ref) values */
@@ -61,7 +61,7 @@ typedef struct {
 #define ML_STRING(id,s)					\
     PVT char CONCAT(id,_data)[] = s;			\
     ml_string_t id = {					\
-	DESC_string, ML_unit, INT_CtoML(sizeof(s))	\
+	DESC_string, ML_unit, INT_CtoML(sizeof(s)-1)	\
     }
 
 #define PATCH_ML_STRING(id)				\
