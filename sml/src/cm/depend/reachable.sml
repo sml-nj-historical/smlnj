@@ -9,10 +9,12 @@ signature REACHABLE = sig
     val reachable' : DependencyGraph.impexp SymbolMap.map -> SrcPathSet.set
     val reachable : GroupGraph.group -> SrcPathSet.set
     val snodeMap : GroupGraph.group -> DependencyGraph.snode SrcPathMap.map
+    val groupsOf : GroupGraph.group -> SrcPathSet.set
 end
 
 structure Reachable :> REACHABLE = struct
     structure DG = DependencyGraph
+    structure GG = GroupGraph
 
     local
 	fun reach ops (exports: DG.impexp SymbolMap.map) = let
@@ -45,11 +47,11 @@ structure Reachable :> REACHABLE = struct
 		    member = SrcPathSet.member,
 		    empty = SrcPathSet.empty }
 
-	fun reachable (GroupGraph.GROUP { exports, ... }) = reachable' exports
+	fun reachable (GG.GROUP { exports, ... }) = reachable' exports
 
 	fun snodeMap g = let
 	    fun snm (g, (a, seen)) = let
-		val GroupGraph.GROUP { exports, sublibs, grouppath, ... } = g
+		val GG.GROUP { exports, sublibs, grouppath, ... } = g
 	    in
 		if SrcPathSet.member (seen, grouppath) then (a, seen)
 		else foldl (fn ((_, g), x) => snm (g, x))
@@ -59,6 +61,18 @@ structure Reachable :> REACHABLE = struct
 	    end
 	in
 	    #1 (snm (g, (SrcPathMap.empty, SrcPathSet.empty)))
+	end
+
+	fun groupsOf g = let
+	    fun go (GG.GROUP { grouppath, sublibs, ... }, a) = let
+		fun sl ((p, g as GG.GROUP { kind = GG.NOLIB, ... }), a) =
+		    if SrcPathSet.member (a, p) then a else go (g, a)
+		  | sl (_, a) = a
+	    in
+		SrcPathSet.add (foldl sl a sublibs, grouppath)
+	    end
+	in
+	    go (g, SrcPathSet.empty)
 	end
     end
 end

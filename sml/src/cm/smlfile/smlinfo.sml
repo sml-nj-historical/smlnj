@@ -239,7 +239,7 @@ structure SmlInfo :> SMLINFO = struct
 			    else Say.vsay ["[parsing ",
 					   SrcPath.descr sourcepath, "]\n"]
 		    val source =
-			Source.newSource (SrcPath.osstring sourcepath,
+			Source.newSource (SrcPath.osstring' sourcepath,
 					  1, stream, false, #errcons gp)
 		in
 		    (SF.parse source, source)

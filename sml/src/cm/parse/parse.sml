@@ -131,7 +131,8 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 			    (sgc := SrcPathMap.insert (!sgc, gpath, g);
 			     Say.vsay ["[library ", SrcPath.descr gpath,
 				       " is stable]\n"];
-			     SmlInfo.cleanGroup gpath;
+			     SrcPathSet.app SmlInfo.cleanGroup
+			                    (Reachable.groupsOf g);
 			     SOME g)
 		end
 	    in

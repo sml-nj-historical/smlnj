@@ -22,6 +22,8 @@ signature ABSPATH = sig
     val sameDirContext: t -> context
 
     val osstring : t -> string
+    (* like osstring; return relative path if shorter *)
+    val osstring' : t -> string
     val descr : t -> string
     val compare : t * t -> order
     val contextOf : t -> context
@@ -242,6 +244,20 @@ structure AbsPath :> ABSPATH = struct
 
 	(* get the name as a string (calls elab, so don't cache externally!) *)
 	fun osstring p = #name (elab p)
+
+	(* generate osstring and relative version thereof;
+	 * return the one that's shorter *)
+	fun osstring' p = let
+	    val oss = osstring p
+	in
+	    if P.isAbsolute oss then let
+		val cwd = cwdName ()
+		val ross = P.mkRelative { path = oss, relativeTo = cwd }
+	    in
+		if size ross < size oss then ross else oss
+	    end
+	    else oss
+	end
 
 	(* get the context back *)
 	fun contextOf (PATH { context = c, ... }) = c

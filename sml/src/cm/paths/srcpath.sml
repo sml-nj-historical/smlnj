@@ -37,6 +37,8 @@ signature SRCPATH = sig
     val clear : unit -> unit
 
     val osstring : t -> string
+    (* like osstring; return relative path if shorter *)
+    val osstring' : t -> string
     val descr : t -> string
     val reAnchoredName : t * string -> string option
     val contextOf : t -> context
@@ -104,6 +106,7 @@ structure SrcPath :> SRCPATH = struct
     fun contextOf (ap, _) = AbsPath.contextOf ap
     fun specOf (ap, _) = AbsPath.specOf ap
     fun osstring (ap, _) = AbsPath.osstring ap
+    fun osstring' (ap, _) = AbsPath.osstring' ap
     fun descr (ap, _) = AbsPath.descr ap
     fun reAnchoredName ((ap, _), root) = AbsPath.reAnchoredName (ap, root)
     fun tstamp (ap, _) = AbsPath.tstamp ap
