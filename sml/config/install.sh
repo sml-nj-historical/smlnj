@@ -393,8 +393,8 @@ unarchive() {
 # The variable $tryfetch is used to make sure this happens only once.
 fetch_n_unpack() {
     cd $2
-    if unarchive "$1" $4.tar.gz un_tar_gz ||
-       unarchive "$1" $4.tgz un_tar_gz ||
+    if unarchive "$1" $4.tgz un_tar_gz ||
+       unarchive "$1" $4.tar.gz un_tar_gz ||
        unarchive "$1" $4.tar.Z un_tar_Z ||
        unarchive "$1" $4.tar un_tar ||
        unarchive "$1" $4.tar.bz2 un_tar_bz2 ||
