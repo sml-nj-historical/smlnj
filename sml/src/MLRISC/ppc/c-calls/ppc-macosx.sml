@@ -131,6 +131,11 @@ functor PPCMacOSX_CCalls (
 (* FIXME: also need link register *)
 	  (List.map C.GPReg [2, 11, 12]) @ argGPRs @ (List.map C.FPReg [0]) @ argFPRs
 
+  (* the parameter area lies just above the linkage area in the caller's frame.
+   * The linkage area is 24 bytes, so the first parameter is at 24(sp).
+   *)
+    val paramAreaOffset = 24
+
   (* size and padding for integer types.  Note that the padding is based on the
    * parameter-passing description on p. 35 of the documentation.
    *)
@@ -143,7 +148,21 @@ functor PPCMacOSX_CCalls (
   (* sizes of other C types *)
     val sizeOfPtr = {sz = 4, pad = 0}
 
-    fun sizeOfStruct tys = ?
+    fun sizeOfStruct tys = let
+(*
+	  fun sz CTy.C_void = error "unexpected void argument type"
+	    | sz CTy.C_float = 4
+	    | sz CTy.C_double = 8
+	    | sz CTy.C_long_double = 8
+	    | sz CTy.C_unsigned isz = #sz(sizeOf isz)
+	    | sz CTy.C_signed isz = #sz(sizeOf isz)
+	    | sz CTy.C_PTR = 4
+	    | sz (CTy.C_ARRAY tys) = let
+	    | sz (CTy.C_STRUCT s) =
+*)
+	  in
+	    raise Fail "FIXME"
+	  end
 
   (* compute the layout of a C call's arguments *)
     fun layout {conv, retTy, paramTys} = let
@@ -151,14 +170,14 @@ functor PPCMacOSX_CCalls (
 		 of 8 => raise Fail "register pairs not yet supported"
 		  | _ => SOME resGPR
 		(* end case *))
-	  val (resReg, availGPRs) = (case retTy
-		 of CTy.C_void => (NONE, availGPRs)
-		  | CTy.C_float => (SOME resFPR, availGPRs)
-		  | CTy.C_double => (SOME resFPR, availGPRs)
-		  | CTy.C_long_double => (SOME resFPR, availGPRs)
-		  | CTy.C_unsigned isz => (gprRes isz, availGPRs)
-		  | CTy.C_signed isz => (gprRes isz, availGPRs)
-		  | CTy.C_PTR => (SOME resGPR, availGPRs)
+	  val (resReg, availGPRs, structRet) = (case retTy
+		 of CTy.C_void => (NONE, availGPRs, NONE)
+		  | CTy.C_float => (SOME resFPR, availGPRs, NONE)
+		  | CTy.C_double => (SOME resFPR, availGPRs, NONE)
+		  | CTy.C_long_double => (SOME resFPR, availGPRs, NONE)
+		  | CTy.C_unsigned isz => (gprRes isz, availGPRs, NONE)
+		  | CTy.C_signed isz => (gprRes isz, availGPRs, NONE)
+		  | CTy.C_PTR => (SOME resGPR, availGPRs, NONE)
 		  | CTy.C_ARRAY _ => error "array return type"
 		  | CTy.C_STRUCT s => let
 		      val sz = sizeOfStruct s
@@ -167,33 +186,35 @@ functor PPCMacOSX_CCalls (
 		       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
 		       *)
 			if (sz > 4)
-			  then (SOME resGPR, List.tl availGPRs)
-			  else (SOME resGPR, availGPRs)
+			  then (SOME resGPR, List.tl availGPRs, SOME{szb=sz, align=4})
+			  else (SOME resGPR, availGPRs, NONE)
 		      end
 		(* end case *))
 	  fun assign ([], offset, _, _, layout) = {sz = offset, layout = List.rev layout}
-	    | assign (arg::args, offset, availGPRs, availFPRs, layout) = (
-		case arg
-		 of CTy.C_void => error "unexpected void argument type"
+	    | assign (ty::tys, offset, availGPRs, availFPRs, layout) = (
+		case ty
+		 of CTy.C_void => error "unexpected void tyument type"
 		  | CTy.C_float => (case (availGPRs, availFPRs)
 		       of (_:gprs, fpr::fprs) =>
-			    assign (args, offset+4, gprs, fprs, FReg(fltTy, fpr, SOME offset)::layout)
+			    assign (tys, offset+4, gprs, fprs, FReg(fltTy, fpr, SOME offset)::layout)
 			| ([], fpr::fprs) =>
-			    assign (args, offset+4, [], fprs, FReg(fltTy, fpr, SOME offset)::layout)
+			    assign (tys, offset+4, [], fprs, FReg(fltTy, fpr, SOME offset)::layout)
 			| ([], []) =>
-			    assign (args, offset+4, [], [], FStk(fltTy, offset)::layout)
+			    assign (tys, offset+4, [], [], FStk(fltTy, offset)::layout)
 		      (* end case *))
 		  | CTy.C_double =>
+		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_long_double =>
+		      assignFPR (tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_unsigned isz =>
-		      assignGPR(sizeOf isz, args, offset, availGPRs, availFPRs, layout)
+		      assignGPR(sizeOf isz, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_signed isz =>
-		      assignGPR(sizeOf isz, args, offset, availGPRs, availFPRs, layout)
+		      assignGPR(sizeOf isz, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_PTR =>
-		      assignGPR(sizeOfPtr, args, offset, availGPRs, availFPRs, layout)
+		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_ARRAY _ =>
-		      assignGPR(sizeOfPtr, args, offset, availGPRs, availFPRs, layout)
-		  | CTy.C_STRUCT tys =>
+		      assignGPR(sizeOfPtr, tys, offset, availGPRs, availFPRs, layout)
+		  | CTy.C_STRUCT tys' => raise Fail "struct arguments not supported yet"
 		(* end case *))
 	(* assign a GP register and memory for an integer/pointer argument. *)
 	  and assignGPR ({sz, pad}, args, offset, availGPRs, availFPRs, layout) = let
@@ -221,7 +242,7 @@ functor PPCMacOSX_CCalls (
 	  in {
 	    argLocs = assign (paramTys, 0, argGPRs, argFPRs, []),
 	    resLoc = resReg,
-	    structRet = ?
+	    structRet = structRet
 	  } end
 
     datatype c_arg
@@ -231,6 +252,9 @@ functor PPCMacOSX_CCalls (
 
     val memRg = T.Region.memory
     val stkRg = T.Region.memory
+
+  (* SP-based address of parameter at given offset *)
+    fun paramAddr off = T.ADD(wordSz, spR, T.LI(off + IntInf.fromInt paramAreaOffset))
 
     fun genCall {
 	  name, proto, paramAlloc, structRet, saveRestoreDedicated,
@@ -243,11 +267,11 @@ functor PPCMacOSX_CCalls (
 	    | assignArgs (Reg(ty, r, _) :: locs, ARG exp :: args, stms) =
 		assignArgs (locs, args, T.MV(ty, r, exp) :: stms)
 	    | assignArgs (Stk(ty, off) :: locs, ARG exp :: args, stms) =
-		assignArgs (locs, args, T.STORE(ty, ?, exp, stkRg) :: stms)
+		assignArgs (locs, args, T.STORE(ty, paramAddr off, exp, stkRg) :: stms)
 	    | assignArgs (FReg(ty, r, _) :: locs, FARG fexp :: args) =
 		assignArgs (locs, args, T.FMV(ty, r, fexp) :: stms)
 	    | assignArgs (FStk(ty, off) :: locs, FARG fexp :: args, stms) =
-		assignArgs (locs, args, T.FSTORE(ty, ?, fexp, stkRg) :: stms)
+		assignArgs (locs, args, T.FSTORE(ty, paramAddr off, fexp, stkRg) :: stms)
 	    | assignArgs ((Args locs') :: locs, (ARGS args') :: args, stms) =
 		assignArgs (locs, args, assignArgs(locs', args', stms))
 	    | assignArgs _ = error "argument/formal mismatch"
@@ -289,10 +313,8 @@ functor PPCMacOSX_CCalls (
 		  | SOME c => T.ANNOTATION(callStm, #create MLRiscAnnotations.COMMENT c)
 		(* end case *))
 	  val callseq = List.concat [
-		  ??,
 		  argSetupCode,
-		  [callStm],
-		  ??
+		  [callStm]
 		]
 	  in
 	  (* check calling convention *)

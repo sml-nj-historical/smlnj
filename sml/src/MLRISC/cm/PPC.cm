@@ -46,6 +46,7 @@ is
 	Control.cm
 	Lib.cm
 #endif
+        ../ppc/c-calls/ppc-macosx.sml
 	../ppc/instructions/ppcCells.sml
 	../ppc/instructions/ppcInstr.sml
 	../ppc/instructions/ppcShuffle.sig
