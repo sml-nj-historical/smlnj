@@ -60,26 +60,28 @@ eval $ARCH_N_OPSYS
 #
 RUN="$RUN_DIR/run.$ARCH-$OPSYS"
 BOOT=""
-ARGS=""
 HEAP="sml"
 while [ "$#" != "0" ]; do
-  arg=$1; shift
+  arg=$1
   case "$arg" in
     @SMLrun=*)
       RUN=`echo "$arg" | sed 's/@SMLrun=//'`
+      shift
       ;;
     @SMLboot=*)
       BOOT=`echo "$arg" | sed 's/@SMLboot=//'`
+      shift
       ;;
     @SMLheap=*)
       HEAP=`echo "$arg" | sed 's/@SMLheap=//'`
+      shift
       ;;
     @SMLversion)
       echo "$CMD @VERSION@"
       exit 0
       ;;
     *)
-      ARGS="$ARGS $arg"
+      break
       ;;
   esac
 done
@@ -97,4 +99,4 @@ fi
 #
 # run the sucker!
 #
-exec "$RUN" @SMLboot="$BOOT" @SMLheap="$HEAP" $ARGS
+exec "$RUN" @SMLboot="$BOOT" @SMLheap="$HEAP" "$@"
