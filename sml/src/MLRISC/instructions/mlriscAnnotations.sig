@@ -1,4 +1,7 @@
-(*
+(* mlriscAnnotations.sig
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * These are some basic annotations understood by the MLRISC system.
  * The MLRISC client can create its own annotations and propagate them
  * to MLRISC.  Client-defined annotations are ignored by MLRISC. 
@@ -22,8 +25,8 @@ sig
      * Currently, the annotation is recognized by the static branch prediction
      * mondule. 
      *)
-   exception BRANCHPROB of int
-   val BRANCH_PROB : int Annotations.property (* in percentage (0-100)*) 
+   exception BRANCHPROB of Probability.prob
+   val BRANCH_PROB : Probability.prob Annotations.property
 
     (* The execution frequency of a basic block 
      * You can attach this at a basic block.

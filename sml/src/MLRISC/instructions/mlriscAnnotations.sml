@@ -1,4 +1,7 @@
-(*
+(* mlriscAnnotations.sml
+ *
+ * COPYRIGHT (c) 2002 Bell Labs, Lucent Technologies
+ *
  * These are some basic annotations understood by the MLRISC system
  *
  * -- Allen
@@ -11,10 +14,10 @@ structure MLRiscAnnotations : MLRISC_ANNOTATIONS = struct
 
     (* the branch probability of conditional branches *)
     (* in percentage *) 
-   exception BRANCHPROB of int
+   exception BRANCHPROB of Probability.prob
    val BRANCH_PROB = A.new'{create=BRANCHPROB, 
                             get=fn BRANCHPROB b => b | e => raise e,
-                            toString=fn b => "branch("^Int.toString b^"%)"}
+                            toString=fn p => "branch("^Probability.toString p^")"}
 
     (* the execution frequency of a basic block *)
    exception EXECUTIONFREQ of int

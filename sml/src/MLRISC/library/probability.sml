@@ -15,7 +15,7 @@ signature PROBABILITY =
     val never : prob	(* 0% probability *)
     val always : prob	(* 100% probability *)
 
-    val prob : (word * word) -> prob
+    val prob : (int * int) -> prob
     val fromFreq : int list -> prob list
 
     val + : (prob * prob) -> prob
@@ -81,9 +81,9 @@ structure Probability :> PROBABILITY =
 	  (* end case *))
 	    
     fun prob (n, d) =
-	  if (n > d) orelse (d = 0w0)
+	  if (n > d) orelse (n < 0) orelse (d <= 0)
 	    then raise Domain
-	    else normalize(n, d)
+	    else normalize(Word.fromInt n, Word.fromInt d)
 
     fun add (PROB(n1, d1), PROB(n2, d2)) = normalize(d2*n1 + d1*n2, d1*d2)
 
