@@ -13,6 +13,19 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Dave MacQueen (dbm@cs.uchicago.edu)
+Date: 2003/08/13 11:36:00 CDT
+Tag: dbm-20030813-mcz-merge1
+Description:
+
+Merging changes from the mcz-branch development branch into trunk.
+These changes involve replacement of the emulated old prettyprinter
+interface with direct use of the SML/NJ Lib PP library, and fixing
+of a couple of bugs (895, 1186) relating to error messages.  A new
+prettyprinter for ast datatypes (Elaborator/print/ppast.{sig,sml})
+has been added.
+
+----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/08/11 15:45:00 CDT
 Tag: blume-20030811-windows
