@@ -33,6 +33,13 @@ signature ABSPATH = sig
     val exists : t -> bool
     val tstamp : t -> TStamp.t
     val stabletstamp : t -> TStamp.t
+
+    (* The open?Out functions automagically create any necessary directories
+     * and announce this activity via their string consumer argument. *)
+    val openTextIn : t -> TextIO.instream
+    val openTextOut : (string -> unit) -> t -> TextIO.outstream
+    val openBinIn : t -> BinIO.instream
+    val openBinOut : (string -> unit) -> t -> BinIO.outstream
 end
 
 structure AbsPath :> ABSPATH = struct
@@ -263,5 +270,28 @@ structure AbsPath :> ABSPATH = struct
 	end
 	val tstamp = tstamp0 TStamp.TSTAMP
 	val stabletstamp = tstamp0 TStamp.STABLETSTAMP
+
+	fun openOut fileopener (say: string -> unit) ap = let
+	    val p = name ap
+	    fun generic (maker, pmaker, p) =
+		maker p
+		handle exn => let
+		    val { dir, ... } = P.splitDirFile p
+		in
+		    if dir = "" orelse fileExists dir then raise exn
+		    else (pmaker dir; maker p)
+		end
+	    fun makedirs dir = generic (F.mkDir, makedirs, dir)
+	    fun advertisemakedirs dir =
+		(say (concat ["[creating directory ", dir, " ...]\n"]);
+		 makedirs dir)
+	in
+	    generic (fileopener, advertisemakedirs, p)
+	end
+
+	val openTextIn = TextIO.openIn o name
+	val openBinIn = BinIO.openIn o name
+	val openTextOut = openOut TextIO.openOut
+	val openBinOut = openOut BinIO.openOut
     end
 end

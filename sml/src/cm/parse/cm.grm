@@ -30,7 +30,7 @@ structure S = CMSemant
 %nonterm description of S.group
        | alias of S.group
        | group of S.group
-       | perms of S.perms
+       | permspec of S.permspec
        | lib_exports of S.exports
        | exports of S.exports
        | export of S.exports
@@ -48,6 +48,7 @@ structure S = CMSemant
        | cmpath of S.pathname
        | nativepath of S.pathname
        | sym of S.cm_symbol
+       | word of S.cm_symbol
 
 %pos int
 %verbose
@@ -55,7 +56,8 @@ structure S = CMSemant
     S.context *
     (pos * pos -> string -> unit) *
     (pos * pos -> S.pathname -> S.group) *
-    (S.pathname * pos * pos * S.cm_symbol option -> S.members)
+    (S.pathname * pos * pos * S.cm_symbol option * (string -> unit)
+       -> S.members)
 %start description
 %eop EOF
 %noshift EOF
@@ -84,19 +86,19 @@ alias : ALIAS pathname				(recParse
 						 (pathnameleft, pathnameright)
 						 pathname)
 
-group : perms GROUP exports IS members	        (S.group
-						 (perms, exports, members))
-      | perms LIBRARY lib_exports IS members    (S.library
-						 (perms, lib_exports,
+group : permspec GROUP exports IS members	(S.group
+						 (permspec, exports, members))
+      | permspec LIBRARY lib_exports IS members (S.library
+						 (permspec, lib_exports,
 						  members))
 
-perms : (* empty *)                             (S.initialPerms)
-      | perms sym                               (S.require (perms, sym,
-							    error (symleft,
-								   symright)))
-      | perms LPAREN sym RPAREN                 (S.grant (perms, sym,
-							  error (symleft,
-								 symright)))
+permspec : (* empty *)                          (S.initialPermSpec)
+      | permspec word                           (S.require (permspec, word,
+							    error (wordleft,
+								   wordright)))
+      | permspec LPAREN word RPAREN             (S.grant (permspec, word,
+							  error (wordleft,
+								 wordright)))
 
 lib_exports : export exports		        (S.exports (export, exports))
 
@@ -105,15 +107,21 @@ exports : (* empty *)				(S.emptyExports)
 
 export : ml_symbol				(S.export ml_symbol)
        | IF exp guarded_exports			(S.guarded_exports
-						  (exp, guarded_exports))
-       | ERROR                                  (S.error_export ERROR)
+						  (exp, guarded_exports,
+						   error (expleft, expright)))
+       | ERROR                                  (S.error_export
+						 (fn () =>
+						  error (ERRORleft,
+							 ERRORright)
+						    ERROR))
 
 guarded_exports : exports else_exports	        ((exports, else_exports))
 
 else_exports : ENDIF				(S.emptyExports)
 	     | ELSE exports ENDIF		(exports)
              | ELIF exp guarded_exports		(S.guarded_exports
-						 (exp, guarded_exports))
+						 (exp, guarded_exports,
+						  error (expleft, expright)))
 
 members : (* empty *)				(S.emptyMembers)
 	| member members			(S.members (member, members))
@@ -121,21 +129,35 @@ members : (* empty *)				(S.emptyMembers)
 member : pathname				(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
-							   NONE))
-       | pathname COLON sym			(doMember (pathname,
+							   NONE,
+							   error
+							   (pathnameleft,
+							    pathnameright)))
+       | pathname COLON word			(doMember (pathname,
 							   pathnameleft,
 							   pathnameright,
-							   SOME sym))
+							   SOME word,
+							   error
+							   (pathnameleft,
+							    wordright)))
        | IF exp guarded_members			(S.guarded_members
-						 (exp, guarded_members))
-       | ERROR                                  (S.error_member ERROR)
+						 (exp, guarded_members,
+						  error (expleft, expright)))
+       | ERROR                                  (S.error_member
+						 (fn () =>
+						  error (ERRORleft,
+							 ERRORright)
+						    ERROR))
 
 guarded_members : members else_members	        ((members, else_members))
 
 else_members : ENDIF				(S.emptyMembers)
 	     | ELSE members ENDIF		(members)
 	     | ELIF exp guarded_members		(S.guarded_members
-						 (exp, guarded_members))
+						 (exp, guarded_members,
+						  error (expleft, expright)))
+
+word : FILE_STANDARD                            (S.cm_symbol FILE_STANDARD)
 
 sym : CM_ID                                     (S.cm_symbol CM_ID)
 

@@ -10,7 +10,6 @@ signature TOOLS = sig
     type fname = string
     type class = string
 
-    exception UnknownClass of class
     exception ToolError of { tool: string, msg: string }
 
     type item = fname * class option
@@ -67,7 +66,7 @@ signature PRIVATETOOLS = sig
       | ISGROUP
       | ISTOOL of class * rule
 
-    val expand : AbsPath.t * class option -> expansion list
+    val expand : (string -> unit) -> AbsPath.t * class option -> expansion list
 end
 
 structure PrivateTools :> PRIVATETOOLS = struct
@@ -75,7 +74,6 @@ structure PrivateTools :> PRIVATETOOLS = struct
     type fname = string
     type class = string
 
-    exception UnknownClass of class
     exception ToolError of { tool: string, msg: string }
 
     type item = fname * class option
@@ -150,77 +148,91 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	  | NONE => gen_loop (!gen_classifiers)
     end
 
-    (* get the rule corresponding to a given class *)
-    fun class2rule class =
-	case StringMap.find (!classes, class) of
-	    SOME rule => rule
-	  | NONE => raise UnknownClass class
+    fun expand error = let
 
-    (* apply a rule to a path within a given context *)
-    fun apply (rule, p, c) = let
-	fun rctxt rf = let
-	    val dir = AbsPath.contextName c
-	    val cwd = OS.FileSys.getDir ()
-	    fun doit () =
-		(OS.FileSys.chDir dir; rf () before OS.FileSys.chDir cwd)
-	in
-	    (Interrupt.guarded doit)
-	    handle exn => (OS.FileSys.chDir cwd; raise exn)
-	end
-    in
-	rule (p, rctxt)
-    end
+	(* get the rule corresponding to a given class *)
+	fun class2rule class =
+	    case StringMap.find (!classes, class) of
+		SOME rule => rule
+	      | NONE => (error (concat ["unknown class \"", class, "\""]);
+			 ISSML NONE)
 
-    fun expand' context = let
-	fun loop (acc, []) = rev acc
-	  | loop (acc, ((p, c), history) :: t) = let
-		fun step (ISSML share) =
-		    let
-			val ap = AbsPath.native { context = context, spec = p }
-			val src = { sourcepath = ap,
-				    history = rev history,
-				    share = share }
-		    in
-			loop (SMLSOURCE src :: acc, t)
-		    end
-		  | step ISGROUP = let
-			val ap = AbsPath.native { context = context, spec = p }
-		    in
-			loop (GROUP ap :: acc, t)
-		    end
-		  | step (ISTOOL (class, rule)) = let
-			val l = apply (rule, p, context)
-			val l' = map (fn i => (i, class :: history)) l
-		    in
-			loop (acc, l' @ t)
-		    end
+	(* apply a rule to a path within a given context *)
+	fun apply (rule, p, c) = let
+	    fun rctxt rf = let
+		val dir = AbsPath.contextName c
+		val cwd = OS.FileSys.getDir ()
+		fun doit () =
+		    (OS.FileSys.chDir dir; rf () before OS.FileSys.chDir cwd)
 	    in
-		case c of
-		    SOME class => step (class2rule class)
-		  | NONE =>
-			(case defaultClassOf p of
-			     SOME class => step (class2rule class)
-			   | NONE => step (ISSML NONE))
+		(Interrupt.guarded doit)
+		handle ToolError { tool, msg } =>
+		            (OS.FileSys.chDir cwd;
+			     error (concat ["tool \"", tool, "\" failed: ",
+					    msg]);
+			     [])
+		     | exn => (OS.FileSys.chDir cwd; raise exn)
 	    end
-    in
-	fn l => loop ([], l)
-    end
+	in
+	    rule (p, rctxt)
+	end
 
-    fun expand (ap, SOME class) =
-	(case class2rule class of
-	     ISSML share =>
-		 [SMLSOURCE { sourcepath = ap, history = [], share = share }]
-	   | ISGROUP =>
-		 [GROUP ap]
-	   | ISTOOL (class, rule) => let
-		 val c = AbsPath.context ap
-		 val l = apply (rule, AbsPath.spec ap, c)
-		 val l' = map (fn i => (i, [class])) l
-	     in
-		 expand' (AbsPath.context ap) l'
-	     end)
-      | expand (ap, NONE) =
-	     expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+	fun expand' context = let
+	    fun loop (acc, []) = rev acc
+	      | loop (acc, ((p, c), history) :: t) = let
+		    fun step (ISSML share) =
+			let
+			    val ap = AbsPath.native { context = context,
+						      spec = p }
+			    val src = { sourcepath = ap,
+				        history = rev history,
+					share = share }
+			in
+			    loop (SMLSOURCE src :: acc, t)
+			end
+		      | step ISGROUP = let
+			    val ap = AbsPath.native { context = context,
+						      spec = p }
+			in
+			    loop (GROUP ap :: acc, t)
+			end
+		      | step (ISTOOL (class, rule)) = let
+			    val l = apply (rule, p, context)
+			    val l' = map (fn i => (i, class :: history)) l
+			in
+			    loop (acc, l' @ t)
+			end
+		in
+		    case c of
+			SOME class => step (class2rule class)
+		      | NONE =>
+			    (case defaultClassOf p of
+				 SOME class => step (class2rule class)
+			       | NONE => step (ISSML NONE))
+		end
+	in
+	    fn l => loop ([], l)
+	end
+
+	fun expand0 (ap, SOME class) =
+	    (case class2rule class of
+		 ISSML share =>
+		     [SMLSOURCE { sourcepath = ap, history = [],
+				  share = share }]
+	       | ISGROUP =>
+		     [GROUP ap]
+	       | ISTOOL (class, rule) => let
+		     val c = AbsPath.context ap
+		     val l = apply (rule, AbsPath.spec ap, c)
+		     val l' = map (fn i => (i, [class])) l
+		 in
+		     expand' (AbsPath.context ap) l'
+		 end)
+	  | expand0 (ap, NONE) =
+		 expand' (AbsPath.context ap) [((AbsPath.spec ap, NONE), [])]
+    in
+	expand0
+    end
 
     (* registering standard classes and classifiers *)
     local

@@ -21,6 +21,9 @@ is
 	smlfile/policy.sml
 	smlfile/smlinfo.sml
 	smlfile/skeleton.sml
+	smlfile/skel-cvt.sml
+	smlfile/skel-io.sml
+	smlfile/skel-exports.sml
 
 	paths/pathconfig.sml
 	paths/abspath.sml
@@ -28,6 +31,9 @@ is
 	tools/tools.sml
 
 	util/sources.cm
+
+	main/say.sml
+	main/envcfg.sml
 
 	../compiler/viscomp-lib.cm
 	../comp-lib/UTIL.cm

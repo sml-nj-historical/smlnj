@@ -30,6 +30,7 @@ structure CMParse :> CMPARSE = struct
 	val currentDir = AbsPath.dir group
 	val context = AbsPath.relativeContext (AbsPath.dir group)
 	val filename = AbsPath.name group
+	val _ = Say.vsay (concat ["[scanning ", filename, "]\n"])
 	val stream = TextIO.openIn filename
 	val errcons =
 	    { linewidth = !P.linewidth, flush = P.flush, consumer = P.say }
@@ -48,10 +49,11 @@ structure CMParse :> CMPARSE = struct
 		NONE => (#anyErrors source := true; CMSemant.emptyGroup)
 	      | SOME res => res
 
-	fun doMember (p, p1, p2, c) =
+	fun doMember (p, p1, p2, c, e) =
 	    CMSemant.member (recParse (p1, p2)) { sourcepath = p,
 						  group = group,
-						  class = c }
+						  class = c,
+						  error = e }
 
 	(* checking for cycles among groups and printing them nicely *)
 	val _ = let

@@ -44,7 +44,7 @@ fun errorTok (t, p) = let
     val start = findGraph (5 + findError 0)
     val msg = String.extract (t, start, NONE)
 in
-    Tokens.ERROR (msg, p, p + size t)
+    Tokens.ERROR (msg, p + 1, p + size t)
 end
 
 val cm_ids = [("Alias", Tokens.ALIAS),

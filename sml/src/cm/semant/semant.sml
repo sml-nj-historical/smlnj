@@ -7,9 +7,6 @@
  *)
 signature CM_SEMANT = sig
 
-    exception ExplicitError of string
-    exception ExpressionError of exn
-
     type context = AbsPath.context
     type pathname = AbsPath.t
     type ml_symbol
@@ -18,6 +15,7 @@ signature CM_SEMANT = sig
     type group
 
     type perms
+    type permspec
     type aexp
     type exp
     type members			(* still conditional *)
@@ -36,29 +34,32 @@ signature CM_SEMANT = sig
 
     (* getting the full analysis for a group/library *)
     val emptyGroup : group
-    val group : perms * exports * members -> group
-    val library : perms * exports * members -> group
+    val group : permspec * exports * members -> group
+    val library : permspec * exports * members -> group
 
     (* assembling permission lists *)
-    val initialPerms : perms
-    val require : perms * cm_symbol * complainer -> perms
-    val grant : perms * cm_symbol * complainer -> perms
+    val initialPermSpec : permspec
+    val require : permspec * cm_symbol * complainer -> permspec
+    val grant : permspec * cm_symbol * complainer -> permspec
 
     (* constructing member collections *)
     val emptyMembers : members
     val member : (pathname -> group)
-	-> { sourcepath: pathname, group: pathname, class: cm_symbol option }
+	-> { sourcepath: pathname, group: pathname, class: cm_symbol option,
+	     error: string -> unit }
 	-> members
     val members : members * members -> members
-    val guarded_members : exp * (members * members) -> members
-    val error_member : string -> members
+    val guarded_members :
+	exp * (members * members) * (string -> unit) -> members
+    val error_member : (unit -> unit) -> members
 
     (* constructing export lists *)
     val emptyExports : exports
     val export : ml_symbol -> exports
     val exports : exports * exports -> exports
-    val guarded_exports : exp * (exports * exports) -> exports
-    val error_export : string -> exports
+    val guarded_exports :
+	exp * (exports * exports) * (string -> unit) -> exports
+    val error_export : (unit -> unit) -> exports
 
     (* arithmetic (number-valued) expression *)
     val number : int -> aexp
@@ -88,9 +89,6 @@ end
 
 structure CMSemant :> CM_SEMANT = struct
 
-    exception ExplicitError of string
-    exception ExpressionError of exn
-
     structure Symbol = GenericVC.Symbol
     structure SymPath = GenericVC.SymPath
 
@@ -103,7 +101,8 @@ structure CMSemant :> CM_SEMANT = struct
 
     type environment = MemberCollection.collection
 
-    type perms = { required : StringSet.set, granted : StringSet.set }
+    type perms = StringSet.set
+    type permspec = { required : perms, granted : perms }
 
     type aexp = environment -> int
     type exp = environment -> bool
@@ -112,10 +111,11 @@ structure CMSemant :> CM_SEMANT = struct
 
     type complainer = string -> unit
 
-    fun saveEval (exp, env) =
+    fun saveEval (exp, env, error) =
 	exp env
 	handle exn =>
-	    raise ExpressionError exn
+	    (error ("expression raises exception: " ^ General.exnMessage exn);
+	     false)
 
     fun file_native (s, d) = AbsPath.native { context = d, spec = s }
     fun file_standard (s, d) = AbsPath.standard { context = d, spec = s }
@@ -126,10 +126,10 @@ structure CMSemant :> CM_SEMANT = struct
     val ml_funsig = Symbol.fsigSymbol
 
     val emptyGroup = Dummy.v
-    fun group (p: perms, e: exports, m: members) =
+    fun group (p: permspec, e: exports, m: members) =
 	(ignore (m MemberCollection.empty);
 	 Dummy.v)
-    fun library (p: perms, e: exports, m: members) =
+    fun library (p: permspec, e: exports, m: members) =
 	(ignore (m MemberCollection.empty);
 	 Dummy.v)
 
@@ -140,7 +140,7 @@ structure CMSemant :> CM_SEMANT = struct
 		error ("duplicate permission name: " ^ s)
 	    else ()
     in
-	val initialPerms = { required = StringSet.empty,
+	val initialPermSpec = { required = StringSet.empty,
 			     granted = StringSet.empty }
 	fun require (a as ({ required, granted }, s, _)) =
 	    (sanity a;
@@ -156,22 +156,21 @@ structure CMSemant :> CM_SEMANT = struct
     fun emptyMembers env = env
     fun member rparse arg env = let
 	val coll = MemberCollection.expandOne (getExports o rparse) arg
+	val error = #error arg
     in
-	MemberCollection.sequential (env, coll)
+	MemberCollection.sequential (env, coll, error)
     end
     fun members (m1, m2) env = m2 (m1 env)
-    fun guarded_members (c, (m1, m2)) env =
-	if saveEval (c, env) then m1 env else m2 env
-    fun error_member m env =
-	(print (m ^ "\n");
-	 raise ExplicitError m)
+    fun guarded_members (c, (m1, m2), error) env =
+	if saveEval (c, env, error) then m1 env else m2 env
+    fun error_member thunk env = (thunk (); env)
 
     fun emptyExports env = SymbolSet.empty
     fun export s env = SymbolSet.singleton s
     fun exports (e1, e2) env = SymbolSet.union (e1 env, e2 env)
-    fun guarded_exports (c, (e1, e2)) env =
-	if saveEval (c, env) then e1 env else e2 env
-    fun error_export m env = raise ExplicitError m
+    fun guarded_exports (c, (e1, e2), error) env =
+	if saveEval (c, env, error) then e1 env else e2 env
+    fun error_export thunk env = (thunk (); SymbolSet.empty)
 
     fun number i _ = i
     fun variable v e = MemberCollection.num_look e v
