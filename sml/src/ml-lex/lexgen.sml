@@ -68,6 +68,9 @@ see the COPYRIGHT NOTICE for details and restrictions.
 # Revision 1.3  1997/10/04  03:52:13  dbm
 #   Fix to remove output file if ml-lex fails.
 #
+        10/17/02 (jhr) changed bad character error message to properly
+		print the bad character.
+        10/17/02 (jhr) fixed skipws to use Char.isSpace test.
  *)
 
 (* Subject: lookahead in sml-lex
@@ -421,12 +424,12 @@ fun AdvanceTok () : unit = let
 	      num (explode s, 0)
 	    end
 
-      fun skipws () = (case nextch()
-	     of #" " => skipws()
-	      | #"\t" => skipws() 
-	      | #"\n" => skipws()
-	      | x => x
-	    (* end case *))
+      fun skipws () = let val ch = nextch()
+	    in
+	      if Char.isSpace ch
+		then skipws()
+		else ch
+	    end
 		
       and nextch () = getch(!LexBuf) 
 
@@ -498,7 +501,9 @@ fun AdvanceTok () : unit = let
 			     end
 			in ID(getID [ch])
 			end
-		      else (prSynErr ("bad character: " ^ String.str ch))
+		      else prSynErr (String.concat[
+			  "bad character: \"", Char.toString ch, "\""
+			])
 	in NextTok := makeTok()
 	end
 	| 1 => let val rec makeTok = fn () =>
