@@ -66,7 +66,7 @@ structure Primitive :> PRIMITIVE = struct
     fun fromIdent #"b" = SOME BASIS
       | fromIdent _ = NONE
 
-    val reqpriv_basis = StringSet.empty
+    val reqpriv_basis = StringSet.singleton "basis"
 
     fun reqpriv BASIS = reqpriv_basis
 

@@ -83,6 +83,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
 	fun doit granted = let
+
+	    val _ = Say.say ("$Stabilize: wrapping the following privileges:\n"
+			     :: map (fn s => ("  " ^ s ^ "\n"))
+			            (StringSet.listItems granted))
+
 	    val bname = AbsPath.name o SmlInfo.binpath
 	    val bsz = OS.FileSys.fileSize o bname
 	    fun cpb s i = let

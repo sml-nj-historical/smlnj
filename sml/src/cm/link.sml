@@ -54,8 +54,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       fun exec_group arg =
 	  (doall ExecTraversal.farsbnode arg)
 	  before FullPersstate.rememberShared ()
-      fun make_group arg =
-	  (if recomp_group arg then exec_group arg else false)
+      fun make_group (arg as (GroupGraph.GROUP { required = rq, ... }, _)) =
+	  (Say.say ("$Execute: required privileges are:\n" ::
+		    map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
+	   if recomp_group arg then exec_group arg else false)
 
       structure Stabilize =  StabilizeFn (val bn2statenv = bn2statenv
 					  val recomp = recomp_group)
@@ -82,7 +84,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    Option.map f g
 	end
 
-	fun stabilize recursively = run (SOME recursively) #1
+	fun stabilize recursively = run (SOME recursively) ignore
 	val recomp = run NONE recomp_group
 	val make = run NONE make_group
     end
