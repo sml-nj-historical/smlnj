@@ -146,8 +146,8 @@ val quotedBogusString = "'BOGUS"
 %left ELSE
 %left RAISE
 %right HANDLE
-%left ORELSE
-%left ANDALSO
+%right ORELSE
+%right ANDALSO
 %right AS
 %left COLON
 
