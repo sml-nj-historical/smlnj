@@ -1,0 +1,10 @@
+val it = () : unit
+val it = "91827364509181" : string
+val it = "91827364509181.0" : string
+val it = "91827364509181.00" : string
+val it = "91827364509182" : string
+val it = "91827364509182.1" : string
+val it = "91827364509182.10" : string
+val it = "91827364509183" : string
+val it = "91827364509183.1" : string
+val it = "91827364509183.10" : string

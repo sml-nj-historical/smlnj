@@ -1,0 +1,75 @@
+val it = () : unit
+type  atom = string
+type  text = string
+val minprec = ~1 : int
+val maxprec = 101 : int
+type  precedence = int
+datatype associativity = LEFT | NONASSOC | RIGHT
+datatype fixity = INFIX of associativity | POSTFIX | PREFIX
+type  rator = text * precedence * fixity
+val is_prefix = fn : 'a * 'b * fixity -> bool
+val juxtarator = ("",100,INFIX LEFT) : string * int * fixity
+datatype exp
+  = ATOMexp of string
+  | BINARY of exp * (string * int * fixity) * exp
+  | UNARY of (string * int * fixity) * exp
+datatype image = IMAGE of lexeme list
+datatype lexeme = ATOMIC of atomic | RATOR of string * int * fixity
+datatype atomic = ATOMimage of string | PARENS of image
+val noparens = fn : rator * ('a * precedence * fixity) * associativity -> bool
+type  infixop = rator
+type  prefix = rator
+datatype stack
+  = BIN of (string * int * fixity) * exp * (string * int * fixity) list * stack
+  | BOT
+type  stacktop = prefix list * exp
+val minrator = ("<phony minimum-precedence operator>",~1,INFIX NONASSOC)
+  : string * int * fixity
+val srator = fn : stack -> infixop
+exception ParseError of string * rator list
+val parse = fn : image -> exp
+val image = fn : atom -> image
+val parenthesize = fn : image -> image
+val infix_image = fn : image * rator * image -> image
+val bracket = fn
+  : (rator * image) * associativity * ('a * precedence * fixity) -> image
+val unparse = fn : exp -> image
+infix 7 **
+infix 6 ++
+infix 4 ==
+infixr 3 ::==
+val mul = ("*",7,INFIX LEFT) : string * int * fixity
+val add = ("+",6,INFIX LEFT) : string * int * fixity
+val eq = ("=",4,INFIX NONASSOC) : string * int * fixity
+val gets = (":=",3,INFIX RIGHT) : string * int * fixity
+val ince = ("++",9,PREFIX) : string * int * fixity
+val inco = ("++",9,POSTFIX) : string * int * fixity
+val dece = <hidden-value> : string * int * fixity
+val deco = <hidden-value> : string * int * fixity
+val star = <hidden-value> : string * int * fixity
+val binary = fn : rator -> exp * exp -> exp
+val unary = fn : rator -> exp -> exp
+val ** = fn : exp * exp -> exp
+val ++ = fn : exp * exp -> exp
+val == = fn : exp * exp -> exp
+val ::== = fn : exp * exp -> exp
+val dece = fn : exp -> exp
+val deco = fn : exp -> exp
+val star = fn : exp -> exp
+val imstring = fn : image -> string
+val imstring' = fn : lexeme list -> string
+val astring = fn : atomic -> string
+val x = ATOMexp "x" : exp
+val y = ATOMexp "y" : exp
+val z = ATOMexp "z" : exp
+val E = fn : int -> exp
+val junk = "z := y := (x + y * z + 2 = 99) = x" : string
+val junk' = "z := y := (x + y * (z + 2) = 99) = x" : string
+val left = "x + y + z" : string
+val right = "x + (y + z)" : string
+val left' = "(x := y) := z" : string
+val right' = "x := y := z" : string
+val left'' = "(x = y) = z" : string
+val right'' = "x = (y = z)" : string
+val pp = "2 + *x--" : string
+val pp' = "2 + (*x)--" : string

@@ -1,0 +1,9 @@
+val it = () : unit
+datatype AA = A | B
+bug1085.1.sml:5.1-5.19 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    AA
+  expression:    'Z -> int
+  in declaration:
+    B =
+      (case (fn x => 90)
+        of B => ())

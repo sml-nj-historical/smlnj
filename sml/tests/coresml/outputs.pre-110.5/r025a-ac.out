@@ -1,0 +1,9 @@
+val it = () : unit
+val x = 5 : int
+val y = 6 : int
+val i = 5 : int
+val j = 6 : int
+val test1 = true : bool
+val test2 = true : bool
+val x = 10 : int
+val test3 = true : bool

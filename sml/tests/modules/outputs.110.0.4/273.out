@@ -1,0 +1,21 @@
+val it = () : unit
+signature POINT =
+  sig
+    type point
+    val <= : point * point -> bool
+  end
+signature INTERVAL =
+  sig
+    type interval
+    type point
+    val mk : point * point -> interval
+    val left : interval -> point
+    val right : interval -> point
+  end
+functor Interval : <sig>
+structure IntPoint : POINT
+functor G : <sig>
+functor RealInterval : <sig>
+structure ResultG : sig structure NatNumInt : <sig> end
+structure TG : INTERVAL
+val testG = 9.0 : ResultG.NatNumInt.point

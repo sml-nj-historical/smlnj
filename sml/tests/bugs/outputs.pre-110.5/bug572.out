@@ -1,0 +1,4 @@
+val it = () : unit
+val snd = fn : {a:'a, b:'b} -> 'b
+val f = fn : {a:'a, b:'b} -> 'b
+val it = true : bool

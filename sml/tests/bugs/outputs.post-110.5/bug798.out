@@ -1,0 +1,60 @@
+val it = () : unit
+signature CONCUR_ML =
+  sig
+    type 'a event
+    type thread_id
+    type 'a cond_var
+    type 'a chan
+  end
+signature INTERNAL_CML =
+  sig
+    datatype 'a queue_t = Q of {front:'a list ref, rear:'a list ref}
+    type 'a event
+    type thread_id
+    type 'a cond_var
+    type 'a chan
+  end
+structure CML : INTERNAL_CML
+signature RUN_CML =
+  sig
+    structure CML :
+      sig
+        type 'a event
+        type thread_id
+        type 'a cond_var
+        type 'a chan
+      end
+  end
+functor RunCML : <sig>
+signature CONCUR_IO =
+  sig
+    structure CML :
+      sig
+        type 'a event
+        type thread_id
+        type 'a cond_var
+        type 'a chan
+      end
+  end
+functor ConcurIO : <sig>
+signature TRACE_CML =
+  sig
+    structure CML :
+      sig
+        type 'a event
+        type thread_id
+        type 'a cond_var
+        type 'a chan
+      end
+    structure CIO : sig structure CML : <sig> end
+  end
+functor TraceCML : <sig>
+structure CML :
+  sig
+    structure CML : <sig>
+    structure RunCML : <sig>
+    structure CIO : <sig>
+    structure TraceCML : <sig>
+    sharing TraceCML.CML = CIO.CML = RunCML.CML = CML
+  end
+

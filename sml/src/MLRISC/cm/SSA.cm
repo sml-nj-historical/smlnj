@@ -1,0 +1,134 @@
+(*
+ *  This library implements the SSA optimizations.
+ *)
+
+Library 
+	signature CFG2SSA
+	signature SSA
+	signature SSA2CFG
+	signature SSA_CONDITIONAL_CONSTANT_PROPAGATION
+	signature SSA_CONSTANT_FOLDING
+	signature SSA_DATAFLOW_ANALYSIS
+	signature SSA_FLOWGRAPH
+	signature SSA_FLOWGRAPH_LIVENESS
+	signature SSA_GLOBAL_CODE_MOTION
+	signature SSA_GLOBAL_VALUE_NUMBERING
+	signature SSA_INSTRGEN
+	signature SSA_LIVENESS
+	signature SSA_OPTIMIZATION
+	signature SSA_PROPERTIES
+	functor CFG2SSA
+	functor SSA
+	functor SSA2CFG
+	functor SSACCP
+	functor SSACPR
+	functor SSACondConstProp
+	functor SSAConstantFolding
+	functor SSADCE
+	functor SSADataflow
+	functor SSAGCInvariants
+	functor SSAGCM
+	functor SSAGVN
+	functor SSAGlobalValueNumbering
+	functor SSAInstrGen
+	functor SSALiveness
+	functor SSAOSR
+	functor SSAPRE
+	functor SSAUntrap
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+
+	
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	MLRISC.cm
+	IR.cm
+	GC.cm
+	MLTREE.cm
+	RTL.cm
+	Region.cm
+	
+	(* The SSA representation *)
+	../SSA/ssa-flowgraph.sig
+	../SSA/ssa.sig
+	../SSA/ssa.sml
+
+	(* Conversion between SSA and CFG *)
+	../SSA/cfg2ssa.sig
+	../SSA/cfg2ssa.sml
+	../SSA/ssa2cfg.sig
+	../SSA/ssa2cfg.sml
+	../SSA/ssa-liveness.sig
+	../SSA/ssa-liveness.sml
+
+        (* Build an SSA graph directly (doesn't work!) *) 
+	(* ../SSA/ssa-gen.sml 110.0.6 bug *)
+
+	(* Machine properties for SSA *)
+	../SSA/ssa-props.sig
+
+	(*==== Analyses and transformations on SSA ====*)
+
+	(* Constant folding and algebraic simplification *)
+	../SSA/ssa-const-folding.sig
+	../SSA/ssa-const-folding.sml
+
+	(* Compute global value numbers *)
+	../SSA/ssa-gvn-basis.sig
+	../SSA/ssa-gvn-basis.sml
+
+	(* Compute conditional constants  *)
+	../SSA/ssa-ccp-basis.sig
+	../SSA/ssa-ccp-basis.sml
+
+        (* Dataflow analysis *)
+        ../SSA/ssa-dataflow.sig
+        ../SSA/ssa-dataflow.sml
+
+        (* Instruction generation *)
+        ../SSA/ssa-instrgen.sig
+        ../SSA/ssa-instrgen.sml
+        
+	(*==== Actual Optimization Phases ====*)
+	../SSA/ssa-optimization.sig
+
+	(* Dead code elimination *)
+	../SSA/ssa-dce.sml
+
+	(* Global code motion *)
+	../SSA/ssa-gcm.sml
+
+	(* Global value numbering *)
+	../SSA/ssa-gvn.sml
+
+	(* Operator Strength Reduction *) 
+	../SSA/ssa-osr.sml
+
+	(* Conditional Constant Propagation *)
+	../SSA/ssa-ccp.sml
+
+	(* Critical Path Reduction *)
+	../SSA/ssa-cpr.sml
+
+	(* Remove Trapping Arithmetic *)
+	../SSA/ssa-untrap.sml
+
+	(* Partial Redundancy Elimination *)
+	../SSA/ssa-pre.sml
+
+	(* GC Safety *)
+	../SSA/ssa-gc-invariants.sml

@@ -1,0 +1,11 @@
+val it = () : unit
+signature U = sig type t end
+functor T : <sig>
+functor F : <sig>
+structure A :
+  sig
+    structure Y : <sig>
+    datatype s = EE of Y.t
+    val y : Y.t -> s
+  end
+

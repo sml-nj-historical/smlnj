@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIG = sig type t end
+functor F : <sig>
+functor F' : <sig>
+functor G : <sig>
+functor H : <sig>
+functor H' : <sig>
+

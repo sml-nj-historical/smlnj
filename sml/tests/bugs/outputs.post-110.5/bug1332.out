@@ -1,0 +1,4 @@
+val it = () : unit
+signature SIG = sig structure Z : sig end end
+bug1332.sml:8.1-14.4 Error: possibly inconsistent structure definitions at: B.Z
+

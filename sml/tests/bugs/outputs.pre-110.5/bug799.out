@@ -1,0 +1,97 @@
+val it = () : unit
+signature LIB_BASE =
+  sig
+    exception Unimplemented of string
+    exception Impossible of string
+    exception BadArg of string
+    val badArg : {func:string, module:string, msg:string} -> 'a
+    datatype relation = Equal | Greater | Less
+    val version : {date:string, major:int, minor:int}
+    val versionName : string
+  end
+structure LibBase : LIB_BASE
+signature ORD_KEY =
+  sig
+    type ord_key
+    val cmpKey : ord_key * ord_key -> LibBase.relation
+  end
+signature ORD_SET =
+  sig
+    structure Key :
+      sig
+        type ord_key
+        val cmpKey : ord_key * ord_key -> LibBase.relation
+      end
+    type item
+    type set
+    exception NotFound
+    val empty : set
+    val singleton : item -> set
+    val add : set * item -> set
+    val addList : set * item list -> set
+    val find : set * item -> item
+    val peek : set * item -> item option
+    val isEmpty : set -> bool
+    val equal : set * set -> bool
+    val isSubset : set * set -> bool
+    val member : set * item -> bool
+    val delete : set * item -> set
+    val numItems : set -> int
+    val union : set * set -> set
+    val intersection : set * set -> set
+    val difference : set * set -> set
+    val listItems : set -> item list
+    val map : (item -> 'a) -> set -> 'a list
+    val app : (item -> 'a) -> set -> unit
+    val revapp : (item -> 'a) -> set -> unit
+    val fold : (item * 'a -> 'a) -> set -> 'a -> 'a
+    val revfold : (item * 'a -> 'a) -> set -> 'a -> 'a
+    val exists : (item -> bool) -> set -> item option
+    sharing type Key.ord_key = item
+  end
+functor BinarySet : <sig>
+signature SET =
+  sig
+    structure Key :
+      sig
+        type ord_key
+        val cmpKey : ord_key * ord_key -> LibBase.relation
+      end
+    type item
+    type set
+    exception NotFound
+    val empty : set
+    val singleton : item -> set
+    val add : set * item -> set
+    val addList : set * item list -> set
+    val find : set * item -> item
+    val peek : set * item -> item option
+    val isEmpty : set -> bool
+    val equal : set * set -> bool
+    val isSubset : set * set -> bool
+    val member : set * item -> bool
+    val delete : set * item -> set
+    val numItems : set -> int
+    val union : set * set -> set
+    val intersection : set * set -> set
+    val difference : set * set -> set
+    val listItems : set -> item list
+    val map : (item -> 'a) -> set -> 'a list
+    val app : (item -> 'a) -> set -> unit
+    val revapp : (item -> 'a) -> set -> unit
+    val fold : (item * 'a -> 'a) -> set -> 'a -> 'a
+    val revfold : (item * 'a -> 'a) -> set -> 'a -> 'a
+    val exists : (item -> bool) -> set -> item option
+    val subset : set * set -> bool
+    val mkset : item list -> set
+    sharing type Key.ord_key = item
+  end
+functor Set : <sig>
+structure Atom :
+  sig
+    datatype atom = Atom of int
+    type  ord_key = atom
+    val cmpKey : atom * atom -> LibBase.relation
+  end
+structure AtomSet : SET
+val it = fn : Atom.ord_key list -> ?.AtomSet.BinarySet.set

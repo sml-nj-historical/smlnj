@@ -1,0 +1,13 @@
+val it = () : unit
+signature S =
+  sig
+    type t
+    structure X : sig type u = t end
+    val v : X.u
+  end
+structure A : S
+bug1433.3.sml:20.1-20.12 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         A.X.u * A.X.u
+  in expression:
+    A.v = A.v

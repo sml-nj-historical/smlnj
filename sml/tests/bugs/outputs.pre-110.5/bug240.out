@@ -1,0 +1,4 @@
+val it = () : unit
+type Foo
+val foo = fn : int -> Foo
+val bar = - : Foo

@@ -1,0 +1,8 @@
+val it = () : unit
+functor F1 : <sig>
+structure B :
+  sig
+    type  u = ?.B.A.s * int
+    val z1 : unit
+    val z2 : unit
+  end

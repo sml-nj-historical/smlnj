@@ -1,0 +1,2 @@
+val it = () : unit
+bug85.1.sml:3.1-10.4 Error: unmatched type specification: foo

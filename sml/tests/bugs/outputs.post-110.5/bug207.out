@@ -1,0 +1,4 @@
+val it = () : unit
+signature SS = sig datatype t = A of t list | B of t end
+functor F : <sig>
+

@@ -1,0 +1,25 @@
+root.cm			../system
+
+smlnj			../system/smlnj
+MLRISC			../MLRISC/cm
+pickle-lib.cm		../compiler/MiscUtil/library
+
+cm			../cm
+compiler		../compiler
+
+basis.cm		../system/Basis
+smlnj-lib.cm		../smlnj-lib/Util
+ml-yacc-lib.cm		../ml-yacc/lib
+pp-lib.cm		../smlnj-lib/PP
+html-lib.cm		../smlnj-lib/HTML
+
+mlyacc-tool.cm		../cm/tools/mlyacc
+grm-ext.cm		../cm/tools/mlyacc
+mllex-tool.cm		../cm/tools/mllex
+lex-ext.cm		../cm/tools/mllex
+mlburg-tool.cm		../cm/tools/mlburg
+burg-ext.cm		../cm/tools/mlburg
+make-tool.cm		../cm/tools/make
+shell-tool.cm		../cm/tools/shell
+noweb-tool.cm		../cm/tools/noweb
+nw-ext.cm		../cm/tools/noweb

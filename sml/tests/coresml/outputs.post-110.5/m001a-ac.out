@@ -1,0 +1,6 @@
+val it = () : unit
+m001a-ac.sml:16.4-16.31 Error: unresolved flex record
+   (can't tell what fields there are besides #a)
+m001a-ac.sml:15.1-19.4 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+

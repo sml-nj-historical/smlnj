@@ -1,0 +1,4 @@
+val it = () : unit
+bug265.sml:3.1-6.8 Error: explicit type variable cannot be generalized at its binding declaration: 'a
+bug265.sml:3.1-6.8 Error: explicit type variable cannot be generalized at its binding declaration: 'b
+

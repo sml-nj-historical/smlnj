@@ -1,0 +1,8 @@
+val it = () : unit
+signature S1 =
+  sig
+    type  t = int
+    val x : t
+  end
+signature S2 = sig type  t = string end
+bug954.sml:16.3-17.14 Error: duplicate specifications for type t caused by include

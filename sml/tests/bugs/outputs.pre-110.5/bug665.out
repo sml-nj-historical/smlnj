@@ -1,0 +1,2 @@
+val it = () : unit
+bug665.sml:4.1-4.21 Error: unbound structure: NoSuchStructure

@@ -1,0 +1,3 @@
+val it = () : unit
+val i = 0wx7fffffff : Word32.word
+val it = true : bool

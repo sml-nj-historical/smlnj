@@ -1,0 +1,4 @@
+val it = () : unit
+datatype foo = Bar of int * foo | Foo of unit
+val it = fn : unit -> foo
+val it = Foo () : foo

@@ -1,0 +1,6 @@
+val it = () : unit
+val f = fn : int -> int
+val prev = ref [] : (int * int) list ref
+val it = 0 : int
+val it = 34 : int
+

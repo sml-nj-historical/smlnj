@@ -1,0 +1,1567 @@
+val it = () : unit
+val flatten = fn : 'a list list -> 'a list
+val it = [1,2,4,3] : int list
+val ind = fn : int -> string
+bug980.sml:15.1-16.35 Warning: match nonexhaustive
+          x :: nil => ...
+          x :: xs => ...
+  
+val wvars = fn : string list -> string
+val impl = fn : string list -> string
+val unparse = fn : (string * string list) list -> string
+bug980.sml:24.1-25.67 Warning: match nonexhaustive
+          ((s1,l1),(s2,l2) :: nil) => ...
+          ((s1,l1),(s2,l2) :: xs) => ...
+  
+val cons2 = fn
+  : (string * 'a list) * (string * 'a list) list -> (string * 'a list) list
+val it = [("else",["b","a","d","c"]),("elseif c<d then ",["b","a","c","d"])]
+  : (string * string list) list
+bug980.sml:30.1-31.69 Warning: match nonexhaustive
+          ((s1,l1),(s2,l2) :: nil) => ...
+          ((s1,l1),(s2,l2) :: xs) => ...
+  
+val cons3 = fn
+  : (string * 'a) * (string * 'b) list -> (string * ('a * 'b)) list
+val crossprod = fn
+  : (string * 'a) list * (string * 'b) list -> (string * ('a * 'b)) list
+val merge = fn : string list * string list -> (string * string list) list
+val it = [("\n  else ",["b","a"]),("if a<b then\n  ",["a","b"])]
+  : (string * string list) list
+val mergelists = fn
+  : (string * string list) list * (string * string list) list
+    -> (string * string list) list
+val it =
+  [("\n  else ",["d","c","b","a"]),("\n  else ",["d","b","c","a"]),
+   ("\n  else if b<c then\n  if a<c then\n  ",["d","b","a","c"]),
+   ("\n  else ",["b","d","c","a"]),
+   ("\n  else if a<c then\n  ",["b","d","a","c"]),
+   ("elseif b<d then\n  if a<d then\n  ",["b","a","d","c"]),
+   ("\n  else ",["c","d","b","a"]),("\n  else ",["c","b","d","a"]),
+   ("\n  else if b<d then\n  if a<d then\n  ",["c","b","a","d"]),
+   ("\n  else ",["b","c","d","a"]),
+   ("\n  else if a<d then\n  ",["b","c","a","d"]),
+   ("elseif c<d then if b<c then\n  if a<c then\n  ",["b","a","c","d"]),
+   ("\n  else ",["d","c","a","b"]),("\n  else ",["d","a","c","b"]),
+   ("\n  else if a<c then\n  if b<c then\n  ",["d","a","b","c"]),
+   ("\n  else ",["a","d","c","b"]),
+   ("\n  else if b<c then\n  ",["a","d","b","c"]),
+   ("elseif a<d then\n  if b<d then\n  ",["a","b","d","c"]),
+   ("\n  else ",["c","d","a","b"]),("\n  else ",["c","a","d","b"]),
+   ("\n  else if a<d then\n  if b<d then\n  ",["c","a","b","d"]),
+   ("\n  else ",["a","c","d","b"]),
+   ("\n  else if b<d then\n  ",["a","c","b","d"]),
+   ("if a<b then if c<d then if a<c then\n  if b<c then\n  ",
+    ["a","b","c","d"])] : (string * string list) list
+val split2 = fn : 'a list -> 'a list * 'a list
+val split1 = fn : 'a list -> 'a list * 'a list
+val mergesort = fn
+  : (string list -> string list * string list)
+    -> string list -> (string * string list) list
+val it =
+  [("\n  else ",["c","b","a"]),("\n  else if a<b then\n  ",["c","a","b"]),
+   ("\n  else if a<c then\n  ",["a","c","b"]),("\n  else ",["b","c","a"]),
+   ("\n  else if a<c then\n  ",["b","a","c"]),
+   ("if b<c then\n  if a<b then\n  ",["a","b","c"])]
+  : (string * string list) list
+val listgen = fn : int -> string list
+val pascalsort = fn : (string list -> string list * string list) -> int -> unit
+program sort(input,output);
+var a,b,c,d : integer;
+begin
+  readln(a,b,c,d);
+  if a<c then
+  if b<d then
+  if a<b then
+  if c<b then
+  writeln(a,c,b,d)
+  else if c<d then
+  writeln(a,b,c,d)
+  else writeln(a,b,d,c)
+  else if a<d then
+  if c<d then
+  writeln(b,a,c,d)
+  else writeln(b,a,d,c)
+  else writeln(b,d,a,c)
+  else if a<d then
+  if c<d then
+  writeln(a,c,d,b)
+  else if c<b then
+  writeln(a,d,c,b)
+  else writeln(a,d,b,c)
+  else if a<b then
+  if c<b then
+  writeln(d,a,c,b)
+  else writeln(d,a,b,c)
+  else writeln(d,b,a,c)
+  else if b<d then
+  if c<b then
+  if a<b then
+  writeln(c,a,b,d)
+  else if a<d then
+  writeln(c,b,a,d)
+  else writeln(c,b,d,a)
+  else if c<d then
+  if a<d then
+  writeln(b,c,a,d)
+  else writeln(b,c,d,a)
+  else writeln(b,d,c,a)
+  else if c<d then
+  if a<d then
+  writeln(c,a,d,b)
+  else if a<b then
+  writeln(c,d,a,b)
+  else writeln(c,d,b,a)
+  else if c<b then
+  if a<b then
+  writeln(d,c,a,b)
+  else writeln(d,c,b,a)
+  else writeln(d,b,c,a)
+end.
+val it = () : unit
+program sort(input,output);
+var a,b,c,d,e,f : integer;
+begin
+  readln(a,b,c,d,e,f);
+  if a<e then
+  if a<c then
+  if e<c then
+  if b<f then
+  if b<d then
+  if f<d then
+  if a<b then
+  if e<b then
+  if c<b then
+  writeln(a,e,c,b,f,d)
+  else if c<f then
+  writeln(a,e,b,c,f,d)
+  else if c<d then
+  writeln(a,e,b,f,c,d)
+  else writeln(a,e,b,f,d,c)
+  else if e<f then
+  if c<f then
+  writeln(a,b,e,c,f,d)
+  else if c<d then
+  writeln(a,b,e,f,c,d)
+  else writeln(a,b,e,f,d,c)
+  else if e<d then
+  if c<d then
+  writeln(a,b,f,e,c,d)
+  else writeln(a,b,f,e,d,c)
+  else writeln(a,b,f,d,e,c)
+  else if a<f then
+  if e<f then
+  if c<f then
+  writeln(b,a,e,c,f,d)
+  else if c<d then
+  writeln(b,a,e,f,c,d)
+  else writeln(b,a,e,f,d,c)
+  else if e<d then
+  if c<d then
+  writeln(b,a,f,e,c,d)
+  else writeln(b,a,f,e,d,c)
+  else writeln(b,a,f,d,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(b,f,a,e,c,d)
+  else writeln(b,f,a,e,d,c)
+  else writeln(b,f,a,d,e,c)
+  else writeln(b,f,d,a,e,c)
+  else if a<b then
+  if e<b then
+  if c<b then
+  writeln(a,e,c,b,d,f)
+  else if c<d then
+  writeln(a,e,b,c,d,f)
+  else if c<f then
+  writeln(a,e,b,d,c,f)
+  else writeln(a,e,b,d,f,c)
+  else if e<d then
+  if c<d then
+  writeln(a,b,e,c,d,f)
+  else if c<f then
+  writeln(a,b,e,d,c,f)
+  else writeln(a,b,e,d,f,c)
+  else if e<f then
+  if c<f then
+  writeln(a,b,d,e,c,f)
+  else writeln(a,b,d,e,f,c)
+  else writeln(a,b,d,f,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(b,a,e,c,d,f)
+  else if c<f then
+  writeln(b,a,e,d,c,f)
+  else writeln(b,a,e,d,f,c)
+  else if e<f then
+  if c<f then
+  writeln(b,a,d,e,c,f)
+  else writeln(b,a,d,e,f,c)
+  else writeln(b,a,d,f,e,c)
+  else if a<f then
+  if e<f then
+  if c<f then
+  writeln(b,d,a,e,c,f)
+  else writeln(b,d,a,e,f,c)
+  else writeln(b,d,a,f,e,c)
+  else writeln(b,d,f,a,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(a,e,c,d,b,f)
+  else if c<b then
+  writeln(a,e,d,c,b,f)
+  else if c<f then
+  writeln(a,e,d,b,c,f)
+  else writeln(a,e,d,b,f,c)
+  else if e<b then
+  if c<b then
+  writeln(a,d,e,c,b,f)
+  else if c<f then
+  writeln(a,d,e,b,c,f)
+  else writeln(a,d,e,b,f,c)
+  else if e<f then
+  if c<f then
+  writeln(a,d,b,e,c,f)
+  else writeln(a,d,b,e,f,c)
+  else writeln(a,d,b,f,e,c)
+  else if a<b then
+  if e<b then
+  if c<b then
+  writeln(d,a,e,c,b,f)
+  else if c<f then
+  writeln(d,a,e,b,c,f)
+  else writeln(d,a,e,b,f,c)
+  else if e<f then
+  if c<f then
+  writeln(d,a,b,e,c,f)
+  else writeln(d,a,b,e,f,c)
+  else writeln(d,a,b,f,e,c)
+  else if a<f then
+  if e<f then
+  if c<f then
+  writeln(d,b,a,e,c,f)
+  else writeln(d,b,a,e,f,c)
+  else writeln(d,b,a,f,e,c)
+  else writeln(d,b,f,a,e,c)
+  else if f<d then
+  if b<d then
+  if a<f then
+  if e<f then
+  if c<f then
+  writeln(a,e,c,f,b,d)
+  else if c<b then
+  writeln(a,e,f,c,b,d)
+  else if c<d then
+  writeln(a,e,f,b,c,d)
+  else writeln(a,e,f,b,d,c)
+  else if e<b then
+  if c<b then
+  writeln(a,f,e,c,b,d)
+  else if c<d then
+  writeln(a,f,e,b,c,d)
+  else writeln(a,f,e,b,d,c)
+  else if e<d then
+  if c<d then
+  writeln(a,f,b,e,c,d)
+  else writeln(a,f,b,e,d,c)
+  else writeln(a,f,b,d,e,c)
+  else if a<b then
+  if e<b then
+  if c<b then
+  writeln(f,a,e,c,b,d)
+  else if c<d then
+  writeln(f,a,e,b,c,d)
+  else writeln(f,a,e,b,d,c)
+  else if e<d then
+  if c<d then
+  writeln(f,a,b,e,c,d)
+  else writeln(f,a,b,e,d,c)
+  else writeln(f,a,b,d,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(f,b,a,e,c,d)
+  else writeln(f,b,a,e,d,c)
+  else writeln(f,b,a,d,e,c)
+  else writeln(f,b,d,a,e,c)
+  else if a<f then
+  if e<f then
+  if c<f then
+  writeln(a,e,c,f,d,b)
+  else if c<d then
+  writeln(a,e,f,c,d,b)
+  else if c<b then
+  writeln(a,e,f,d,c,b)
+  else writeln(a,e,f,d,b,c)
+  else if e<d then
+  if c<d then
+  writeln(a,f,e,c,d,b)
+  else if c<b then
+  writeln(a,f,e,d,c,b)
+  else writeln(a,f,e,d,b,c)
+  else if e<b then
+  if c<b then
+  writeln(a,f,d,e,c,b)
+  else writeln(a,f,d,e,b,c)
+  else writeln(a,f,d,b,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(f,a,e,c,d,b)
+  else if c<b then
+  writeln(f,a,e,d,c,b)
+  else writeln(f,a,e,d,b,c)
+  else if e<b then
+  if c<b then
+  writeln(f,a,d,e,c,b)
+  else writeln(f,a,d,e,b,c)
+  else writeln(f,a,d,b,e,c)
+  else if a<b then
+  if e<b then
+  if c<b then
+  writeln(f,d,a,e,c,b)
+  else writeln(f,d,a,e,b,c)
+  else writeln(f,d,a,b,e,c)
+  else writeln(f,d,b,a,e,c)
+  else if a<d then
+  if e<d then
+  if c<d then
+  writeln(a,e,c,d,f,b)
+  else if c<f then
+  writeln(a,e,d,c,f,b)
+  else if c<b then
+  writeln(a,e,d,f,c,b)
+  else writeln(a,e,d,f,b,c)
+  else if e<f then
+  if c<f then
+  writeln(a,d,e,c,f,b)
+  else if c<b then
+  writeln(a,d,e,f,c,b)
+  else writeln(a,d,e,f,b,c)
+  else if e<b then
+  if c<b then
+  writeln(a,d,f,e,c,b)
+  else writeln(a,d,f,e,b,c)
+  else writeln(a,d,f,b,e,c)
+  else if a<f then
+  if e<f then
+  if c<f then
+  writeln(d,a,e,c,f,b)
+  else if c<b then
+  writeln(d,a,e,f,c,b)
+  else writeln(d,a,e,f,b,c)
+  else if e<b then
+  if c<b then
+  writeln(d,a,f,e,c,b)
+  else writeln(d,a,f,e,b,c)
+  else writeln(d,a,f,b,e,c)
+  else if a<b then
+  if e<b then
+  if c<b then
+  writeln(d,f,a,e,c,b)
+  else writeln(d,f,a,e,b,c)
+  else writeln(d,f,a,b,e,c)
+  else writeln(d,f,b,a,e,c)
+  else if b<f then
+  if b<d then
+  if f<d then
+  if a<b then
+  if c<b then
+  if e<b then
+  writeln(a,c,e,b,f,d)
+  else if e<f then
+  writeln(a,c,b,e,f,d)
+  else if e<d then
+  writeln(a,c,b,f,e,d)
+  else writeln(a,c,b,f,d,e)
+  else if c<f then
+  if e<f then
+  writeln(a,b,c,e,f,d)
+  else if e<d then
+  writeln(a,b,c,f,e,d)
+  else writeln(a,b,c,f,d,e)
+  else if c<d then
+  if e<d then
+  writeln(a,b,f,c,e,d)
+  else writeln(a,b,f,c,d,e)
+  else writeln(a,b,f,d,c,e)
+  else if a<f then
+  if c<f then
+  if e<f then
+  writeln(b,a,c,e,f,d)
+  else if e<d then
+  writeln(b,a,c,f,e,d)
+  else writeln(b,a,c,f,d,e)
+  else if c<d then
+  if e<d then
+  writeln(b,a,f,c,e,d)
+  else writeln(b,a,f,c,d,e)
+  else writeln(b,a,f,d,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(b,f,a,c,e,d)
+  else writeln(b,f,a,c,d,e)
+  else writeln(b,f,a,d,c,e)
+  else writeln(b,f,d,a,c,e)
+  else if a<b then
+  if c<b then
+  if e<b then
+  writeln(a,c,e,b,d,f)
+  else if e<d then
+  writeln(a,c,b,e,d,f)
+  else if e<f then
+  writeln(a,c,b,d,e,f)
+  else writeln(a,c,b,d,f,e)
+  else if c<d then
+  if e<d then
+  writeln(a,b,c,e,d,f)
+  else if e<f then
+  writeln(a,b,c,d,e,f)
+  else writeln(a,b,c,d,f,e)
+  else if c<f then
+  if e<f then
+  writeln(a,b,d,c,e,f)
+  else writeln(a,b,d,c,f,e)
+  else writeln(a,b,d,f,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(b,a,c,e,d,f)
+  else if e<f then
+  writeln(b,a,c,d,e,f)
+  else writeln(b,a,c,d,f,e)
+  else if c<f then
+  if e<f then
+  writeln(b,a,d,c,e,f)
+  else writeln(b,a,d,c,f,e)
+  else writeln(b,a,d,f,c,e)
+  else if a<f then
+  if c<f then
+  if e<f then
+  writeln(b,d,a,c,e,f)
+  else writeln(b,d,a,c,f,e)
+  else writeln(b,d,a,f,c,e)
+  else writeln(b,d,f,a,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(a,c,e,d,b,f)
+  else if e<b then
+  writeln(a,c,d,e,b,f)
+  else if e<f then
+  writeln(a,c,d,b,e,f)
+  else writeln(a,c,d,b,f,e)
+  else if c<b then
+  if e<b then
+  writeln(a,d,c,e,b,f)
+  else if e<f then
+  writeln(a,d,c,b,e,f)
+  else writeln(a,d,c,b,f,e)
+  else if c<f then
+  if e<f then
+  writeln(a,d,b,c,e,f)
+  else writeln(a,d,b,c,f,e)
+  else writeln(a,d,b,f,c,e)
+  else if a<b then
+  if c<b then
+  if e<b then
+  writeln(d,a,c,e,b,f)
+  else if e<f then
+  writeln(d,a,c,b,e,f)
+  else writeln(d,a,c,b,f,e)
+  else if c<f then
+  if e<f then
+  writeln(d,a,b,c,e,f)
+  else writeln(d,a,b,c,f,e)
+  else writeln(d,a,b,f,c,e)
+  else if a<f then
+  if c<f then
+  if e<f then
+  writeln(d,b,a,c,e,f)
+  else writeln(d,b,a,c,f,e)
+  else writeln(d,b,a,f,c,e)
+  else writeln(d,b,f,a,c,e)
+  else if f<d then
+  if b<d then
+  if a<f then
+  if c<f then
+  if e<f then
+  writeln(a,c,e,f,b,d)
+  else if e<b then
+  writeln(a,c,f,e,b,d)
+  else if e<d then
+  writeln(a,c,f,b,e,d)
+  else writeln(a,c,f,b,d,e)
+  else if c<b then
+  if e<b then
+  writeln(a,f,c,e,b,d)
+  else if e<d then
+  writeln(a,f,c,b,e,d)
+  else writeln(a,f,c,b,d,e)
+  else if c<d then
+  if e<d then
+  writeln(a,f,b,c,e,d)
+  else writeln(a,f,b,c,d,e)
+  else writeln(a,f,b,d,c,e)
+  else if a<b then
+  if c<b then
+  if e<b then
+  writeln(f,a,c,e,b,d)
+  else if e<d then
+  writeln(f,a,c,b,e,d)
+  else writeln(f,a,c,b,d,e)
+  else if c<d then
+  if e<d then
+  writeln(f,a,b,c,e,d)
+  else writeln(f,a,b,c,d,e)
+  else writeln(f,a,b,d,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(f,b,a,c,e,d)
+  else writeln(f,b,a,c,d,e)
+  else writeln(f,b,a,d,c,e)
+  else writeln(f,b,d,a,c,e)
+  else if a<f then
+  if c<f then
+  if e<f then
+  writeln(a,c,e,f,d,b)
+  else if e<d then
+  writeln(a,c,f,e,d,b)
+  else if e<b then
+  writeln(a,c,f,d,e,b)
+  else writeln(a,c,f,d,b,e)
+  else if c<d then
+  if e<d then
+  writeln(a,f,c,e,d,b)
+  else if e<b then
+  writeln(a,f,c,d,e,b)
+  else writeln(a,f,c,d,b,e)
+  else if c<b then
+  if e<b then
+  writeln(a,f,d,c,e,b)
+  else writeln(a,f,d,c,b,e)
+  else writeln(a,f,d,b,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(f,a,c,e,d,b)
+  else if e<b then
+  writeln(f,a,c,d,e,b)
+  else writeln(f,a,c,d,b,e)
+  else if c<b then
+  if e<b then
+  writeln(f,a,d,c,e,b)
+  else writeln(f,a,d,c,b,e)
+  else writeln(f,a,d,b,c,e)
+  else if a<b then
+  if c<b then
+  if e<b then
+  writeln(f,d,a,c,e,b)
+  else writeln(f,d,a,c,b,e)
+  else writeln(f,d,a,b,c,e)
+  else writeln(f,d,b,a,c,e)
+  else if a<d then
+  if c<d then
+  if e<d then
+  writeln(a,c,e,d,f,b)
+  else if e<f then
+  writeln(a,c,d,e,f,b)
+  else if e<b then
+  writeln(a,c,d,f,e,b)
+  else writeln(a,c,d,f,b,e)
+  else if c<f then
+  if e<f then
+  writeln(a,d,c,e,f,b)
+  else if e<b then
+  writeln(a,d,c,f,e,b)
+  else writeln(a,d,c,f,b,e)
+  else if c<b then
+  if e<b then
+  writeln(a,d,f,c,e,b)
+  else writeln(a,d,f,c,b,e)
+  else writeln(a,d,f,b,c,e)
+  else if a<f then
+  if c<f then
+  if e<f then
+  writeln(d,a,c,e,f,b)
+  else if e<b then
+  writeln(d,a,c,f,e,b)
+  else writeln(d,a,c,f,b,e)
+  else if c<b then
+  if e<b then
+  writeln(d,a,f,c,e,b)
+  else writeln(d,a,f,c,b,e)
+  else writeln(d,a,f,b,c,e)
+  else if a<b then
+  if c<b then
+  if e<b then
+  writeln(d,f,a,c,e,b)
+  else writeln(d,f,a,c,b,e)
+  else writeln(d,f,a,b,c,e)
+  else writeln(d,f,b,a,c,e)
+  else if b<f then
+  if b<d then
+  if f<d then
+  if c<b then
+  if a<b then
+  if e<b then
+  writeln(c,a,e,b,f,d)
+  else if e<f then
+  writeln(c,a,b,e,f,d)
+  else if e<d then
+  writeln(c,a,b,f,e,d)
+  else writeln(c,a,b,f,d,e)
+  else if a<f then
+  if e<f then
+  writeln(c,b,a,e,f,d)
+  else if e<d then
+  writeln(c,b,a,f,e,d)
+  else writeln(c,b,a,f,d,e)
+  else if a<d then
+  if e<d then
+  writeln(c,b,f,a,e,d)
+  else writeln(c,b,f,a,d,e)
+  else writeln(c,b,f,d,a,e)
+  else if c<f then
+  if a<f then
+  if e<f then
+  writeln(b,c,a,e,f,d)
+  else if e<d then
+  writeln(b,c,a,f,e,d)
+  else writeln(b,c,a,f,d,e)
+  else if a<d then
+  if e<d then
+  writeln(b,c,f,a,e,d)
+  else writeln(b,c,f,a,d,e)
+  else writeln(b,c,f,d,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(b,f,c,a,e,d)
+  else writeln(b,f,c,a,d,e)
+  else writeln(b,f,c,d,a,e)
+  else writeln(b,f,d,c,a,e)
+  else if c<b then
+  if a<b then
+  if e<b then
+  writeln(c,a,e,b,d,f)
+  else if e<d then
+  writeln(c,a,b,e,d,f)
+  else if e<f then
+  writeln(c,a,b,d,e,f)
+  else writeln(c,a,b,d,f,e)
+  else if a<d then
+  if e<d then
+  writeln(c,b,a,e,d,f)
+  else if e<f then
+  writeln(c,b,a,d,e,f)
+  else writeln(c,b,a,d,f,e)
+  else if a<f then
+  if e<f then
+  writeln(c,b,d,a,e,f)
+  else writeln(c,b,d,a,f,e)
+  else writeln(c,b,d,f,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(b,c,a,e,d,f)
+  else if e<f then
+  writeln(b,c,a,d,e,f)
+  else writeln(b,c,a,d,f,e)
+  else if a<f then
+  if e<f then
+  writeln(b,c,d,a,e,f)
+  else writeln(b,c,d,a,f,e)
+  else writeln(b,c,d,f,a,e)
+  else if c<f then
+  if a<f then
+  if e<f then
+  writeln(b,d,c,a,e,f)
+  else writeln(b,d,c,a,f,e)
+  else writeln(b,d,c,f,a,e)
+  else writeln(b,d,f,c,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(c,a,e,d,b,f)
+  else if e<b then
+  writeln(c,a,d,e,b,f)
+  else if e<f then
+  writeln(c,a,d,b,e,f)
+  else writeln(c,a,d,b,f,e)
+  else if a<b then
+  if e<b then
+  writeln(c,d,a,e,b,f)
+  else if e<f then
+  writeln(c,d,a,b,e,f)
+  else writeln(c,d,a,b,f,e)
+  else if a<f then
+  if e<f then
+  writeln(c,d,b,a,e,f)
+  else writeln(c,d,b,a,f,e)
+  else writeln(c,d,b,f,a,e)
+  else if c<b then
+  if a<b then
+  if e<b then
+  writeln(d,c,a,e,b,f)
+  else if e<f then
+  writeln(d,c,a,b,e,f)
+  else writeln(d,c,a,b,f,e)
+  else if a<f then
+  if e<f then
+  writeln(d,c,b,a,e,f)
+  else writeln(d,c,b,a,f,e)
+  else writeln(d,c,b,f,a,e)
+  else if c<f then
+  if a<f then
+  if e<f then
+  writeln(d,b,c,a,e,f)
+  else writeln(d,b,c,a,f,e)
+  else writeln(d,b,c,f,a,e)
+  else writeln(d,b,f,c,a,e)
+  else if f<d then
+  if b<d then
+  if c<f then
+  if a<f then
+  if e<f then
+  writeln(c,a,e,f,b,d)
+  else if e<b then
+  writeln(c,a,f,e,b,d)
+  else if e<d then
+  writeln(c,a,f,b,e,d)
+  else writeln(c,a,f,b,d,e)
+  else if a<b then
+  if e<b then
+  writeln(c,f,a,e,b,d)
+  else if e<d then
+  writeln(c,f,a,b,e,d)
+  else writeln(c,f,a,b,d,e)
+  else if a<d then
+  if e<d then
+  writeln(c,f,b,a,e,d)
+  else writeln(c,f,b,a,d,e)
+  else writeln(c,f,b,d,a,e)
+  else if c<b then
+  if a<b then
+  if e<b then
+  writeln(f,c,a,e,b,d)
+  else if e<d then
+  writeln(f,c,a,b,e,d)
+  else writeln(f,c,a,b,d,e)
+  else if a<d then
+  if e<d then
+  writeln(f,c,b,a,e,d)
+  else writeln(f,c,b,a,d,e)
+  else writeln(f,c,b,d,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(f,b,c,a,e,d)
+  else writeln(f,b,c,a,d,e)
+  else writeln(f,b,c,d,a,e)
+  else writeln(f,b,d,c,a,e)
+  else if c<f then
+  if a<f then
+  if e<f then
+  writeln(c,a,e,f,d,b)
+  else if e<d then
+  writeln(c,a,f,e,d,b)
+  else if e<b then
+  writeln(c,a,f,d,e,b)
+  else writeln(c,a,f,d,b,e)
+  else if a<d then
+  if e<d then
+  writeln(c,f,a,e,d,b)
+  else if e<b then
+  writeln(c,f,a,d,e,b)
+  else writeln(c,f,a,d,b,e)
+  else if a<b then
+  if e<b then
+  writeln(c,f,d,a,e,b)
+  else writeln(c,f,d,a,b,e)
+  else writeln(c,f,d,b,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(f,c,a,e,d,b)
+  else if e<b then
+  writeln(f,c,a,d,e,b)
+  else writeln(f,c,a,d,b,e)
+  else if a<b then
+  if e<b then
+  writeln(f,c,d,a,e,b)
+  else writeln(f,c,d,a,b,e)
+  else writeln(f,c,d,b,a,e)
+  else if c<b then
+  if a<b then
+  if e<b then
+  writeln(f,d,c,a,e,b)
+  else writeln(f,d,c,a,b,e)
+  else writeln(f,d,c,b,a,e)
+  else writeln(f,d,b,c,a,e)
+  else if c<d then
+  if a<d then
+  if e<d then
+  writeln(c,a,e,d,f,b)
+  else if e<f then
+  writeln(c,a,d,e,f,b)
+  else if e<b then
+  writeln(c,a,d,f,e,b)
+  else writeln(c,a,d,f,b,e)
+  else if a<f then
+  if e<f then
+  writeln(c,d,a,e,f,b)
+  else if e<b then
+  writeln(c,d,a,f,e,b)
+  else writeln(c,d,a,f,b,e)
+  else if a<b then
+  if e<b then
+  writeln(c,d,f,a,e,b)
+  else writeln(c,d,f,a,b,e)
+  else writeln(c,d,f,b,a,e)
+  else if c<f then
+  if a<f then
+  if e<f then
+  writeln(d,c,a,e,f,b)
+  else if e<b then
+  writeln(d,c,a,f,e,b)
+  else writeln(d,c,a,f,b,e)
+  else if a<b then
+  if e<b then
+  writeln(d,c,f,a,e,b)
+  else writeln(d,c,f,a,b,e)
+  else writeln(d,c,f,b,a,e)
+  else if c<b then
+  if a<b then
+  if e<b then
+  writeln(d,f,c,a,e,b)
+  else writeln(d,f,c,a,b,e)
+  else writeln(d,f,c,b,a,e)
+  else writeln(d,f,b,c,a,e)
+  else if e<c then
+  if a<c then
+  if b<f then
+  if b<d then
+  if f<d then
+  if e<b then
+  if a<b then
+  if c<b then
+  writeln(e,a,c,b,f,d)
+  else if c<f then
+  writeln(e,a,b,c,f,d)
+  else if c<d then
+  writeln(e,a,b,f,c,d)
+  else writeln(e,a,b,f,d,c)
+  else if a<f then
+  if c<f then
+  writeln(e,b,a,c,f,d)
+  else if c<d then
+  writeln(e,b,a,f,c,d)
+  else writeln(e,b,a,f,d,c)
+  else if a<d then
+  if c<d then
+  writeln(e,b,f,a,c,d)
+  else writeln(e,b,f,a,d,c)
+  else writeln(e,b,f,d,a,c)
+  else if e<f then
+  if a<f then
+  if c<f then
+  writeln(b,e,a,c,f,d)
+  else if c<d then
+  writeln(b,e,a,f,c,d)
+  else writeln(b,e,a,f,d,c)
+  else if a<d then
+  if c<d then
+  writeln(b,e,f,a,c,d)
+  else writeln(b,e,f,a,d,c)
+  else writeln(b,e,f,d,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(b,f,e,a,c,d)
+  else writeln(b,f,e,a,d,c)
+  else writeln(b,f,e,d,a,c)
+  else writeln(b,f,d,e,a,c)
+  else if e<b then
+  if a<b then
+  if c<b then
+  writeln(e,a,c,b,d,f)
+  else if c<d then
+  writeln(e,a,b,c,d,f)
+  else if c<f then
+  writeln(e,a,b,d,c,f)
+  else writeln(e,a,b,d,f,c)
+  else if a<d then
+  if c<d then
+  writeln(e,b,a,c,d,f)
+  else if c<f then
+  writeln(e,b,a,d,c,f)
+  else writeln(e,b,a,d,f,c)
+  else if a<f then
+  if c<f then
+  writeln(e,b,d,a,c,f)
+  else writeln(e,b,d,a,f,c)
+  else writeln(e,b,d,f,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(b,e,a,c,d,f)
+  else if c<f then
+  writeln(b,e,a,d,c,f)
+  else writeln(b,e,a,d,f,c)
+  else if a<f then
+  if c<f then
+  writeln(b,e,d,a,c,f)
+  else writeln(b,e,d,a,f,c)
+  else writeln(b,e,d,f,a,c)
+  else if e<f then
+  if a<f then
+  if c<f then
+  writeln(b,d,e,a,c,f)
+  else writeln(b,d,e,a,f,c)
+  else writeln(b,d,e,f,a,c)
+  else writeln(b,d,f,e,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(e,a,c,d,b,f)
+  else if c<b then
+  writeln(e,a,d,c,b,f)
+  else if c<f then
+  writeln(e,a,d,b,c,f)
+  else writeln(e,a,d,b,f,c)
+  else if a<b then
+  if c<b then
+  writeln(e,d,a,c,b,f)
+  else if c<f then
+  writeln(e,d,a,b,c,f)
+  else writeln(e,d,a,b,f,c)
+  else if a<f then
+  if c<f then
+  writeln(e,d,b,a,c,f)
+  else writeln(e,d,b,a,f,c)
+  else writeln(e,d,b,f,a,c)
+  else if e<b then
+  if a<b then
+  if c<b then
+  writeln(d,e,a,c,b,f)
+  else if c<f then
+  writeln(d,e,a,b,c,f)
+  else writeln(d,e,a,b,f,c)
+  else if a<f then
+  if c<f then
+  writeln(d,e,b,a,c,f)
+  else writeln(d,e,b,a,f,c)
+  else writeln(d,e,b,f,a,c)
+  else if e<f then
+  if a<f then
+  if c<f then
+  writeln(d,b,e,a,c,f)
+  else writeln(d,b,e,a,f,c)
+  else writeln(d,b,e,f,a,c)
+  else writeln(d,b,f,e,a,c)
+  else if f<d then
+  if b<d then
+  if e<f then
+  if a<f then
+  if c<f then
+  writeln(e,a,c,f,b,d)
+  else if c<b then
+  writeln(e,a,f,c,b,d)
+  else if c<d then
+  writeln(e,a,f,b,c,d)
+  else writeln(e,a,f,b,d,c)
+  else if a<b then
+  if c<b then
+  writeln(e,f,a,c,b,d)
+  else if c<d then
+  writeln(e,f,a,b,c,d)
+  else writeln(e,f,a,b,d,c)
+  else if a<d then
+  if c<d then
+  writeln(e,f,b,a,c,d)
+  else writeln(e,f,b,a,d,c)
+  else writeln(e,f,b,d,a,c)
+  else if e<b then
+  if a<b then
+  if c<b then
+  writeln(f,e,a,c,b,d)
+  else if c<d then
+  writeln(f,e,a,b,c,d)
+  else writeln(f,e,a,b,d,c)
+  else if a<d then
+  if c<d then
+  writeln(f,e,b,a,c,d)
+  else writeln(f,e,b,a,d,c)
+  else writeln(f,e,b,d,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(f,b,e,a,c,d)
+  else writeln(f,b,e,a,d,c)
+  else writeln(f,b,e,d,a,c)
+  else writeln(f,b,d,e,a,c)
+  else if e<f then
+  if a<f then
+  if c<f then
+  writeln(e,a,c,f,d,b)
+  else if c<d then
+  writeln(e,a,f,c,d,b)
+  else if c<b then
+  writeln(e,a,f,d,c,b)
+  else writeln(e,a,f,d,b,c)
+  else if a<d then
+  if c<d then
+  writeln(e,f,a,c,d,b)
+  else if c<b then
+  writeln(e,f,a,d,c,b)
+  else writeln(e,f,a,d,b,c)
+  else if a<b then
+  if c<b then
+  writeln(e,f,d,a,c,b)
+  else writeln(e,f,d,a,b,c)
+  else writeln(e,f,d,b,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(f,e,a,c,d,b)
+  else if c<b then
+  writeln(f,e,a,d,c,b)
+  else writeln(f,e,a,d,b,c)
+  else if a<b then
+  if c<b then
+  writeln(f,e,d,a,c,b)
+  else writeln(f,e,d,a,b,c)
+  else writeln(f,e,d,b,a,c)
+  else if e<b then
+  if a<b then
+  if c<b then
+  writeln(f,d,e,a,c,b)
+  else writeln(f,d,e,a,b,c)
+  else writeln(f,d,e,b,a,c)
+  else writeln(f,d,b,e,a,c)
+  else if e<d then
+  if a<d then
+  if c<d then
+  writeln(e,a,c,d,f,b)
+  else if c<f then
+  writeln(e,a,d,c,f,b)
+  else if c<b then
+  writeln(e,a,d,f,c,b)
+  else writeln(e,a,d,f,b,c)
+  else if a<f then
+  if c<f then
+  writeln(e,d,a,c,f,b)
+  else if c<b then
+  writeln(e,d,a,f,c,b)
+  else writeln(e,d,a,f,b,c)
+  else if a<b then
+  if c<b then
+  writeln(e,d,f,a,c,b)
+  else writeln(e,d,f,a,b,c)
+  else writeln(e,d,f,b,a,c)
+  else if e<f then
+  if a<f then
+  if c<f then
+  writeln(d,e,a,c,f,b)
+  else if c<b then
+  writeln(d,e,a,f,c,b)
+  else writeln(d,e,a,f,b,c)
+  else if a<b then
+  if c<b then
+  writeln(d,e,f,a,c,b)
+  else writeln(d,e,f,a,b,c)
+  else writeln(d,e,f,b,a,c)
+  else if e<b then
+  if a<b then
+  if c<b then
+  writeln(d,f,e,a,c,b)
+  else writeln(d,f,e,a,b,c)
+  else writeln(d,f,e,b,a,c)
+  else writeln(d,f,b,e,a,c)
+  else if b<f then
+  if b<d then
+  if f<d then
+  if e<b then
+  if c<b then
+  if a<b then
+  writeln(e,c,a,b,f,d)
+  else if a<f then
+  writeln(e,c,b,a,f,d)
+  else if a<d then
+  writeln(e,c,b,f,a,d)
+  else writeln(e,c,b,f,d,a)
+  else if c<f then
+  if a<f then
+  writeln(e,b,c,a,f,d)
+  else if a<d then
+  writeln(e,b,c,f,a,d)
+  else writeln(e,b,c,f,d,a)
+  else if c<d then
+  if a<d then
+  writeln(e,b,f,c,a,d)
+  else writeln(e,b,f,c,d,a)
+  else writeln(e,b,f,d,c,a)
+  else if e<f then
+  if c<f then
+  if a<f then
+  writeln(b,e,c,a,f,d)
+  else if a<d then
+  writeln(b,e,c,f,a,d)
+  else writeln(b,e,c,f,d,a)
+  else if c<d then
+  if a<d then
+  writeln(b,e,f,c,a,d)
+  else writeln(b,e,f,c,d,a)
+  else writeln(b,e,f,d,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(b,f,e,c,a,d)
+  else writeln(b,f,e,c,d,a)
+  else writeln(b,f,e,d,c,a)
+  else writeln(b,f,d,e,c,a)
+  else if e<b then
+  if c<b then
+  if a<b then
+  writeln(e,c,a,b,d,f)
+  else if a<d then
+  writeln(e,c,b,a,d,f)
+  else if a<f then
+  writeln(e,c,b,d,a,f)
+  else writeln(e,c,b,d,f,a)
+  else if c<d then
+  if a<d then
+  writeln(e,b,c,a,d,f)
+  else if a<f then
+  writeln(e,b,c,d,a,f)
+  else writeln(e,b,c,d,f,a)
+  else if c<f then
+  if a<f then
+  writeln(e,b,d,c,a,f)
+  else writeln(e,b,d,c,f,a)
+  else writeln(e,b,d,f,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(b,e,c,a,d,f)
+  else if a<f then
+  writeln(b,e,c,d,a,f)
+  else writeln(b,e,c,d,f,a)
+  else if c<f then
+  if a<f then
+  writeln(b,e,d,c,a,f)
+  else writeln(b,e,d,c,f,a)
+  else writeln(b,e,d,f,c,a)
+  else if e<f then
+  if c<f then
+  if a<f then
+  writeln(b,d,e,c,a,f)
+  else writeln(b,d,e,c,f,a)
+  else writeln(b,d,e,f,c,a)
+  else writeln(b,d,f,e,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(e,c,a,d,b,f)
+  else if a<b then
+  writeln(e,c,d,a,b,f)
+  else if a<f then
+  writeln(e,c,d,b,a,f)
+  else writeln(e,c,d,b,f,a)
+  else if c<b then
+  if a<b then
+  writeln(e,d,c,a,b,f)
+  else if a<f then
+  writeln(e,d,c,b,a,f)
+  else writeln(e,d,c,b,f,a)
+  else if c<f then
+  if a<f then
+  writeln(e,d,b,c,a,f)
+  else writeln(e,d,b,c,f,a)
+  else writeln(e,d,b,f,c,a)
+  else if e<b then
+  if c<b then
+  if a<b then
+  writeln(d,e,c,a,b,f)
+  else if a<f then
+  writeln(d,e,c,b,a,f)
+  else writeln(d,e,c,b,f,a)
+  else if c<f then
+  if a<f then
+  writeln(d,e,b,c,a,f)
+  else writeln(d,e,b,c,f,a)
+  else writeln(d,e,b,f,c,a)
+  else if e<f then
+  if c<f then
+  if a<f then
+  writeln(d,b,e,c,a,f)
+  else writeln(d,b,e,c,f,a)
+  else writeln(d,b,e,f,c,a)
+  else writeln(d,b,f,e,c,a)
+  else if f<d then
+  if b<d then
+  if e<f then
+  if c<f then
+  if a<f then
+  writeln(e,c,a,f,b,d)
+  else if a<b then
+  writeln(e,c,f,a,b,d)
+  else if a<d then
+  writeln(e,c,f,b,a,d)
+  else writeln(e,c,f,b,d,a)
+  else if c<b then
+  if a<b then
+  writeln(e,f,c,a,b,d)
+  else if a<d then
+  writeln(e,f,c,b,a,d)
+  else writeln(e,f,c,b,d,a)
+  else if c<d then
+  if a<d then
+  writeln(e,f,b,c,a,d)
+  else writeln(e,f,b,c,d,a)
+  else writeln(e,f,b,d,c,a)
+  else if e<b then
+  if c<b then
+  if a<b then
+  writeln(f,e,c,a,b,d)
+  else if a<d then
+  writeln(f,e,c,b,a,d)
+  else writeln(f,e,c,b,d,a)
+  else if c<d then
+  if a<d then
+  writeln(f,e,b,c,a,d)
+  else writeln(f,e,b,c,d,a)
+  else writeln(f,e,b,d,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(f,b,e,c,a,d)
+  else writeln(f,b,e,c,d,a)
+  else writeln(f,b,e,d,c,a)
+  else writeln(f,b,d,e,c,a)
+  else if e<f then
+  if c<f then
+  if a<f then
+  writeln(e,c,a,f,d,b)
+  else if a<d then
+  writeln(e,c,f,a,d,b)
+  else if a<b then
+  writeln(e,c,f,d,a,b)
+  else writeln(e,c,f,d,b,a)
+  else if c<d then
+  if a<d then
+  writeln(e,f,c,a,d,b)
+  else if a<b then
+  writeln(e,f,c,d,a,b)
+  else writeln(e,f,c,d,b,a)
+  else if c<b then
+  if a<b then
+  writeln(e,f,d,c,a,b)
+  else writeln(e,f,d,c,b,a)
+  else writeln(e,f,d,b,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(f,e,c,a,d,b)
+  else if a<b then
+  writeln(f,e,c,d,a,b)
+  else writeln(f,e,c,d,b,a)
+  else if c<b then
+  if a<b then
+  writeln(f,e,d,c,a,b)
+  else writeln(f,e,d,c,b,a)
+  else writeln(f,e,d,b,c,a)
+  else if e<b then
+  if c<b then
+  if a<b then
+  writeln(f,d,e,c,a,b)
+  else writeln(f,d,e,c,b,a)
+  else writeln(f,d,e,b,c,a)
+  else writeln(f,d,b,e,c,a)
+  else if e<d then
+  if c<d then
+  if a<d then
+  writeln(e,c,a,d,f,b)
+  else if a<f then
+  writeln(e,c,d,a,f,b)
+  else if a<b then
+  writeln(e,c,d,f,a,b)
+  else writeln(e,c,d,f,b,a)
+  else if c<f then
+  if a<f then
+  writeln(e,d,c,a,f,b)
+  else if a<b then
+  writeln(e,d,c,f,a,b)
+  else writeln(e,d,c,f,b,a)
+  else if c<b then
+  if a<b then
+  writeln(e,d,f,c,a,b)
+  else writeln(e,d,f,c,b,a)
+  else writeln(e,d,f,b,c,a)
+  else if e<f then
+  if c<f then
+  if a<f then
+  writeln(d,e,c,a,f,b)
+  else if a<b then
+  writeln(d,e,c,f,a,b)
+  else writeln(d,e,c,f,b,a)
+  else if c<b then
+  if a<b then
+  writeln(d,e,f,c,a,b)
+  else writeln(d,e,f,c,b,a)
+  else writeln(d,e,f,b,c,a)
+  else if e<b then
+  if c<b then
+  if a<b then
+  writeln(d,f,e,c,a,b)
+  else writeln(d,f,e,c,b,a)
+  else writeln(d,f,e,b,c,a)
+  else writeln(d,f,b,e,c,a)
+  else if b<f then
+  if b<d then
+  if f<d then
+  if c<b then
+  if e<b then
+  if a<b then
+  writeln(c,e,a,b,f,d)
+  else if a<f then
+  writeln(c,e,b,a,f,d)
+  else if a<d then
+  writeln(c,e,b,f,a,d)
+  else writeln(c,e,b,f,d,a)
+  else if e<f then
+  if a<f then
+  writeln(c,b,e,a,f,d)
+  else if a<d then
+  writeln(c,b,e,f,a,d)
+  else writeln(c,b,e,f,d,a)
+  else if e<d then
+  if a<d then
+  writeln(c,b,f,e,a,d)
+  else writeln(c,b,f,e,d,a)
+  else writeln(c,b,f,d,e,a)
+  else if c<f then
+  if e<f then
+  if a<f then
+  writeln(b,c,e,a,f,d)
+  else if a<d then
+  writeln(b,c,e,f,a,d)
+  else writeln(b,c,e,f,d,a)
+  else if e<d then
+  if a<d then
+  writeln(b,c,f,e,a,d)
+  else writeln(b,c,f,e,d,a)
+  else writeln(b,c,f,d,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(b,f,c,e,a,d)
+  else writeln(b,f,c,e,d,a)
+  else writeln(b,f,c,d,e,a)
+  else writeln(b,f,d,c,e,a)
+  else if c<b then
+  if e<b then
+  if a<b then
+  writeln(c,e,a,b,d,f)
+  else if a<d then
+  writeln(c,e,b,a,d,f)
+  else if a<f then
+  writeln(c,e,b,d,a,f)
+  else writeln(c,e,b,d,f,a)
+  else if e<d then
+  if a<d then
+  writeln(c,b,e,a,d,f)
+  else if a<f then
+  writeln(c,b,e,d,a,f)
+  else writeln(c,b,e,d,f,a)
+  else if e<f then
+  if a<f then
+  writeln(c,b,d,e,a,f)
+  else writeln(c,b,d,e,f,a)
+  else writeln(c,b,d,f,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(b,c,e,a,d,f)
+  else if a<f then
+  writeln(b,c,e,d,a,f)
+  else writeln(b,c,e,d,f,a)
+  else if e<f then
+  if a<f then
+  writeln(b,c,d,e,a,f)
+  else writeln(b,c,d,e,f,a)
+  else writeln(b,c,d,f,e,a)
+  else if c<f then
+  if e<f then
+  if a<f then
+  writeln(b,d,c,e,a,f)
+  else writeln(b,d,c,e,f,a)
+  else writeln(b,d,c,f,e,a)
+  else writeln(b,d,f,c,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(c,e,a,d,b,f)
+  else if a<b then
+  writeln(c,e,d,a,b,f)
+  else if a<f then
+  writeln(c,e,d,b,a,f)
+  else writeln(c,e,d,b,f,a)
+  else if e<b then
+  if a<b then
+  writeln(c,d,e,a,b,f)
+  else if a<f then
+  writeln(c,d,e,b,a,f)
+  else writeln(c,d,e,b,f,a)
+  else if e<f then
+  if a<f then
+  writeln(c,d,b,e,a,f)
+  else writeln(c,d,b,e,f,a)
+  else writeln(c,d,b,f,e,a)
+  else if c<b then
+  if e<b then
+  if a<b then
+  writeln(d,c,e,a,b,f)
+  else if a<f then
+  writeln(d,c,e,b,a,f)
+  else writeln(d,c,e,b,f,a)
+  else if e<f then
+  if a<f then
+  writeln(d,c,b,e,a,f)
+  else writeln(d,c,b,e,f,a)
+  else writeln(d,c,b,f,e,a)
+  else if c<f then
+  if e<f then
+  if a<f then
+  writeln(d,b,c,e,a,f)
+  else writeln(d,b,c,e,f,a)
+  else writeln(d,b,c,f,e,a)
+  else writeln(d,b,f,c,e,a)
+  else if f<d then
+  if b<d then
+  if c<f then
+  if e<f then
+  if a<f then
+  writeln(c,e,a,f,b,d)
+  else if a<b then
+  writeln(c,e,f,a,b,d)
+  else if a<d then
+  writeln(c,e,f,b,a,d)
+  else writeln(c,e,f,b,d,a)
+  else if e<b then
+  if a<b then
+  writeln(c,f,e,a,b,d)
+  else if a<d then
+  writeln(c,f,e,b,a,d)
+  else writeln(c,f,e,b,d,a)
+  else if e<d then
+  if a<d then
+  writeln(c,f,b,e,a,d)
+  else writeln(c,f,b,e,d,a)
+  else writeln(c,f,b,d,e,a)
+  else if c<b then
+  if e<b then
+  if a<b then
+  writeln(f,c,e,a,b,d)
+  else if a<d then
+  writeln(f,c,e,b,a,d)
+  else writeln(f,c,e,b,d,a)
+  else if e<d then
+  if a<d then
+  writeln(f,c,b,e,a,d)
+  else writeln(f,c,b,e,d,a)
+  else writeln(f,c,b,d,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(f,b,c,e,a,d)
+  else writeln(f,b,c,e,d,a)
+  else writeln(f,b,c,d,e,a)
+  else writeln(f,b,d,c,e,a)
+  else if c<f then
+  if e<f then
+  if a<f then
+  writeln(c,e,a,f,d,b)
+  else if a<d then
+  writeln(c,e,f,a,d,b)
+  else if a<b then
+  writeln(c,e,f,d,a,b)
+  else writeln(c,e,f,d,b,a)
+  else if e<d then
+  if a<d then
+  writeln(c,f,e,a,d,b)
+  else if a<b then
+  writeln(c,f,e,d,a,b)
+  else writeln(c,f,e,d,b,a)
+  else if e<b then
+  if a<b then
+  writeln(c,f,d,e,a,b)
+  else writeln(c,f,d,e,b,a)
+  else writeln(c,f,d,b,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(f,c,e,a,d,b)
+  else if a<b then
+  writeln(f,c,e,d,a,b)
+  else writeln(f,c,e,d,b,a)
+  else if e<b then
+  if a<b then
+  writeln(f,c,d,e,a,b)
+  else writeln(f,c,d,e,b,a)
+  else writeln(f,c,d,b,e,a)
+  else if c<b then
+  if e<b then
+  if a<b then
+  writeln(f,d,c,e,a,b)
+  else writeln(f,d,c,e,b,a)
+  else writeln(f,d,c,b,e,a)
+  else writeln(f,d,b,c,e,a)
+  else if c<d then
+  if e<d then
+  if a<d then
+  writeln(c,e,a,d,f,b)
+  else if a<f then
+  writeln(c,e,d,a,f,b)
+  else if a<b then
+  writeln(c,e,d,f,a,b)
+  else writeln(c,e,d,f,b,a)
+  else if e<f then
+  if a<f then
+  writeln(c,d,e,a,f,b)
+  else if a<b then
+  writeln(c,d,e,f,a,b)
+  else writeln(c,d,e,f,b,a)
+  else if e<b then
+  if a<b then
+  writeln(c,d,f,e,a,b)
+  else writeln(c,d,f,e,b,a)
+  else writeln(c,d,f,b,e,a)
+  else if c<f then
+  if e<f then
+  if a<f then
+  writeln(d,c,e,a,f,b)
+  else if a<b then
+  writeln(d,c,e,f,a,b)
+  else writeln(d,c,e,f,b,a)
+  else if e<b then
+  if a<b then
+  writeln(d,c,f,e,a,b)
+  else writeln(d,c,f,e,b,a)
+  else writeln(d,c,f,b,e,a)
+  else if c<b then
+  if e<b then
+  if a<b then
+  writeln(d,f,c,e,a,b)
+  else writeln(d,f,c,e,b,a)
+  else writeln(d,f,c,b,e,a)
+  else writeln(d,f,b,c,e,a)
+end.
+val it = () : unit
+

@@ -1,0 +1,7 @@
+val it = () : unit
+bug274.sml:3.1-8.6 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+bug274.sml:6.6-6.45 Error: match redundant
+          x as (_,_) => ...
+    -->   (y,z) => ...
+  

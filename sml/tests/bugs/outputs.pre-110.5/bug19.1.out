@@ -1,0 +1,3 @@
+val it = () : unit
+signature A = sig exception Foo of string end
+bug19.1.sml:10.16-11.8 Error: syntax error: deleting  COLON ID END

@@ -1,0 +1,5 @@
+val it = () : unit
+bug1306.sml:3.1-3.21 Warning: binding not exhaustive
+          (5,x) = ...
+val x = [] : 'a list
+

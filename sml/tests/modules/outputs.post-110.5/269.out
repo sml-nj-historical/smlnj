@@ -1,0 +1,11 @@
+val it = () : unit
+signature PS =
+  sig
+    type reader
+    val x : reader
+  end
+functor PF : <sig>
+structure B : PS
+signature S = sig val mkReader : B.reader end
+structure P : S
+

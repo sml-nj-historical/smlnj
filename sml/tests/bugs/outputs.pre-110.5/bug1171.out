@@ -1,0 +1,9 @@
+val it = () : unit
+functor WRef : <sig>
+structure WR :
+  sig
+    type  t = int
+    type href
+    val new : t -> href
+  end
+val h = - : WR.href

@@ -1,0 +1,6 @@
+val it = () : unit
+9.sml:4.26-4.30 Error: operator and operand don't agree [literal]
+  operator domain: 'a
+  operand:         int
+  in expression:
+    x 10

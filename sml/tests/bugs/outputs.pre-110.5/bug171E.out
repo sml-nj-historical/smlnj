@@ -1,0 +1,3 @@
+val it = () : unit
+bug171E.sml:4.1-4.28 Error: datatype t has duplicate constructor name(s): C1
+bug171E.sml:4.1-4.28 Error: duplicate datacon names in datatype declaration: C1

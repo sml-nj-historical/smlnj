@@ -1,0 +1,5 @@
+val it = () : unit
+val f = fn : int -> int
+val g = fn : unit -> int
+val g = fn : unit -> int
+val f = fn : int -> int

@@ -1,0 +1,4 @@
+val it = () : unit
+structure A : sig type  t = int end
+58.sml:14.15-14.20 Error: nonlocal path in structure sharing: A
+

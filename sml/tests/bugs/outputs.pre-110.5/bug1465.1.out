@@ -1,0 +1,11 @@
+val it = () : unit
+bug1465.1.sml:3.6 Error: illegal token
+bug1465.1.sml:3.7 Error: illegal token
+bug1465.1.sml:4.6 Error: illegal token
+bug1465.1.sml:4.7-4.12 Error: syntax error: deleting  WILD ID EQUALOP
+bug1465.1.sml:5.6 Error: illegal token
+bug1465.1.sml:5.7 Error: illegal token
+bug1465.1.sml:5.8 Error: illegal token
+bug1465.1.sml:6.6 Error: illegal token
+bug1465.1.sml:6.7 Error: illegal token
+bug1465.1.sml:5.1-5.11 Error: syntax error: deleting  TYPE ID

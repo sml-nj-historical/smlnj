@@ -1,0 +1,2 @@
+val it = () : unit
+signature S = sig exception Option of int end

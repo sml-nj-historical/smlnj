@@ -1,0 +1,4 @@
+val it = () : unit
+structure A : sig datatype foo = Bar of int end
+structure B : sig type  foo' = A.foo end
+

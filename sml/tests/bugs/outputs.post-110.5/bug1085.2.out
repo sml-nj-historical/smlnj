@@ -1,0 +1,4 @@
+val it = () : unit
+datatype AA = A | B
+bug1085.2.sml:5.9-5.23 Error: rebinding data constructor "B" as variable
+

@@ -1,0 +1,8 @@
+val it = () : unit
+funsig FSIG(<param>: sig type info end) :
+           sig
+             type node
+             type info = info
+             val f : node -> info
+           end
+functor FUN : <sig>

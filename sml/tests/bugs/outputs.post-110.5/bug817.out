@@ -1,0 +1,12 @@
+val it = () : unit
+val it = () : unit
+signature prints_wrong =
+  sig
+    structure y :
+      sig
+        type b
+        val x : b
+      end
+  end
+bug817.sml:20.15-20.18 Error: unbound structure: y in path y.b
+

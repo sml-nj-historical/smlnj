@@ -1,0 +1,6 @@
+val it = () : unit
+exception test
+val f = fn : 'a -> 'a
+type t = {name:int -> int, ok:exn, used:bool}
+val x = {name=fn,ok=test(-),used=true} : t
+

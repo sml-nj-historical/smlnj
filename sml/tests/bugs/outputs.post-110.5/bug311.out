@@ -1,0 +1,4 @@
+val it = () : unit
+type t
+val f = fn : t * t -> bool
+

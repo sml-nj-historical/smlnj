@@ -1,0 +1,6 @@
+val it = () : unit
+val id = fn : 'a -> 'a
+bug612.sml:5.1-5.42 Error: operator is not a function [literal]
+  operator: int
+  in expression:
+    ((fn y => id <exp>) 1) 2

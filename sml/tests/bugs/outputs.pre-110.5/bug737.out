@@ -1,0 +1,6 @@
+val it = () : unit
+signature S0 = sig type t end
+signature S1 = sig structure A : sig type t end end
+functor F : <sig>
+structure B : S0
+bug737.sml:22.35-22.42 Error: nonlocal path in structure sharing: B

@@ -1,0 +1,5 @@
+val it = () : unit
+signature X = sig end
+functor Apply : <sig>
+functor FUN : <sig>
+

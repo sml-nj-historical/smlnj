@@ -1,0 +1,15 @@
+val it = () : unit
+signature Index = sig type A end
+signature Square =
+  sig
+    structure Source : sig type A end
+    structure Target : sig type A end
+    val top : Source.A -> Target.A
+  end
+signature FunctorSig =
+  sig
+    type 'a C
+    val map : ('a -> 'b) -> 'a C -> 'b C
+  end
+functor MapIndex : <sig>
+functor MapSquare : <sig>

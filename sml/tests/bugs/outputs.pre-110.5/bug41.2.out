@@ -1,0 +1,5 @@
+val it = () : unit
+signature AS = sig val x : int end
+structure A : AS
+signature BS = sig structure A : sig val x : int end end
+bug41.2.sml:15.1-18.4 Error: unmatched structure specification: A

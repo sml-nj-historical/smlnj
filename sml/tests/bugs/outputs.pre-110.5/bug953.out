@@ -1,0 +1,4 @@
+val it = () : unit
+bug953.sml:4.32-4.37 Error: nonlocal path in type sharing: t1
+bug953.sml:5.32-5.40 Error: nonlocal path in type sharing: t1
+bug953.sml:5.32-5.40 Error: nonlocal path in type sharing: int

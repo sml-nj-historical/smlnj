@@ -1,0 +1,2 @@
+val it = () : unit
+bug613.sml:5.7-5.45 Error: type variable in exception spec: IllegalException

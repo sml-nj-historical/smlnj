@@ -1,0 +1,3 @@
+val it = () : unit
+exception test
+s004e-fl.sml:14.9-14.23 Error: fn expression required on rhs of val rec

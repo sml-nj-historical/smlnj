@@ -1,0 +1,4 @@
+val it = () : unit
+val x = <hidden-value> : int
+val x = [7] : int list
+

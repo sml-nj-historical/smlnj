@@ -1,0 +1,6 @@
+val it = () : unit
+datatype d = D of t
+datatype s = A of int | B of int
+datatype t = C of s
+val p = C (B 0) : t
+

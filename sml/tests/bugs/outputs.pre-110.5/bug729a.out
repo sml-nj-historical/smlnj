@@ -1,0 +1,67 @@
+val it = () : unit
+signature ELEMENT =
+  sig
+    type element
+    val put : TextIO.outstream -> element -> unit
+  end
+signature EQ =
+  sig
+    type element
+    val put : TextIO.outstream -> element -> unit
+    val eq : element -> element -> bool
+  end
+signature ORDERED =
+  sig
+    type element
+    val put : TextIO.outstream -> element -> unit
+    val eq : element -> element -> bool
+    val compare : element -> element -> bool
+  end
+signature TERM =
+  sig
+    structure C :
+      sig
+        type element
+        val put : TextIO.outstream -> element -> unit
+        val eq : element -> element -> bool
+      end
+    structure V :
+      sig
+        type element
+        val put : TextIO.outstream -> element -> unit
+        val eq : element -> element -> bool
+        val gensym : element -> element
+      end
+    structure F :
+      sig
+        type element
+        val put : TextIO.outstream -> element -> unit
+        val eq : element -> element -> bool
+        val arity : element -> int
+      end
+    structure S :
+      sig
+        type element
+        val put : TextIO.outstream -> element -> unit
+        val empty : element
+        val compose : element -> element -> element
+      end
+    type term
+    type constant
+    type variable
+    type function
+    type substitution
+    sharing type S.element = substitution
+    sharing type F.element = function
+    sharing type V.element = variable
+    sharing type C.element = constant
+  end
+functor Term : <sig>
+structure StringLanguage :
+  sig
+    structure Fun : <sig>
+    structure Sym : <sig>
+    structure Terms1 : <sig>
+    structure Terms2 : <sig>
+    structure X : <sig>
+  end

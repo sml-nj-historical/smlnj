@@ -1,0 +1,7 @@
+val it = () : unit
+functor F : <sig>
+structure Rint : sig structure A : <sig> end
+structure Rbool : sig structure A : <sig> end
+val x = 3 : Rint.A.t
+val y = true : Rbool.A.t
+

@@ -1,0 +1,4 @@
+val it = () : unit
+signature S = sig type  primop = int end
+functor F : <sig>
+

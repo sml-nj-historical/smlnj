@@ -1,0 +1,14 @@
+val it = () : unit
+signature S1 = sig type t end
+structure A : sig type t = int end
+functor F : <sig>
+structure C :
+  sig
+    structure B : <sig>
+    type s = B.s1
+  end
+bug209.1.sml:13.16-13.23 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         C.s * C.s
+  in expression:
+    x = x

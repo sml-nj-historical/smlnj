@@ -1,0 +1,54 @@
+val it = () : unit
+infix 1 seq
+val seq = fn : 'a * 'b -> 'b
+val check = fn : bool -> string
+val check' = fn : (unit -> bool) -> string
+val range = fn : int * int -> (int -> bool) -> bool
+val checkrange = fn : int * int -> (int -> bool) -> string
+exception NoExceptionRaised
+val getExn = fn : (unit -> 'a) -> exn
+val prExn = fn : string * exn -> unit
+exception E1
+exception E2 = E1
+general.sml:33.39-33.55 Warning: binding not exhaustive
+          true = ...
+general.sml:34.36-34.49 Warning: match nonexhaustive
+          true => ...
+  
+
+Should be `E1 or E2':
+  E1
+  E1
+Should be `Bind':
+  Bind
+  nonexhaustive binding failure
+Should be `Match':
+  Match
+  nonexhaustive match failure
+Should be `Subscript':
+  Subscript
+  subscript out of bounds
+Should be `Size':
+  Size
+  size
+Should be `Div':
+  Div
+  divide by zero
+Should be `Chr':
+  Chr
+  Chr
+Should be `Fail':
+  Fail
+  Fail: demo
+Should be `Option':
+  Option
+  Option
+Should be `Empty':
+  Empty
+  Empty
+Should be `SysErr':
+  SysErr
+  SysErr: No such file or directory [noent]
+Should be `Io':
+  Io
+  Io: openOut failed on ".", Invalid argument

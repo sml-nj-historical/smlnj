@@ -1,0 +1,9 @@
+val it = () : unit
+val div31 = "OK" : string
+val mod31 = "WRONG (exn)" : string
+val quot31 = "OK" : string
+val rem31 = "WRONG (exn)" : string
+val div32 = "WRONG (no exn)" : string
+val mod32 = "OK" : string
+val quot32 = "WRONG (no exn)" : string
+val rem32 = "WRONG (exn)" : string

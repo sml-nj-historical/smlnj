@@ -1,0 +1,9 @@
+val it = () : unit
+exception Red
+exception White of int * bool
+infix White
+val x = Red(-) : exn
+val y = White(-) : exn
+nonfix White
+val t = Red(-) : exn
+

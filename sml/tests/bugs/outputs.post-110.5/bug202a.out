@@ -1,0 +1,7 @@
+val it = () : unit
+bug202a.sml:23.2-23.29 Warning: value restriction prevents type  variable generalization : 'Z
+bug202a.sml:16.9-28.4 Error: value type in structure doesn't match signature spec
+    name: ureplicas
+  spec:   int -> 'a chan -> 'b chan list
+  actual: int -> 'a chan -> 'a chan list
+

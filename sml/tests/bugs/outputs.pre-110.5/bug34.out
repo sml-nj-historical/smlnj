@@ -1,0 +1,6 @@
+val it = () : unit
+bug34.sml:21.32-21.77 Error: operator and operand don't agree (type mismatch)
+  operator domain: 'xU * 'xU list
+  operand:         'xU * 'xU
+  in expression:
+    :: (v,s (l,v))

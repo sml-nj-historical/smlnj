@@ -1,0 +1,4 @@
+val it = () : unit
+123.sml:12.3-13.12 Error: syntax error: deleting  OPEN ID STRUCTURE
+123.sml:13.13-14.9 Error: syntax error: deleting  ID COLON SIG
+123.sml:19.1 Error: syntax error found at END

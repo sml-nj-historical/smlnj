@@ -1,0 +1,4 @@
+val it = () : unit
+bug719.sml:5.2-5.29 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+structure Foo : sig val f : ?.X1 -> ?.X1 end

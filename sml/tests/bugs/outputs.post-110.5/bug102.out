@@ -1,0 +1,8 @@
+val it = () : unit
+val it = {1=999} : {1:int}
+bug102.sml:4.1-4.9 Error: operator and operand don't agree [literal]
+  operator domain: {1:int} * {1:int}
+  operand:         {1:int} * int
+  in expression:
+    it = 999
+

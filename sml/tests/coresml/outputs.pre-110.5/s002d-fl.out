@@ -1,0 +1,2 @@
+val it = () : unit
+s002d-fl.sml:13.1-13.34 Error: datatype color has duplicate constructor name(s): Red

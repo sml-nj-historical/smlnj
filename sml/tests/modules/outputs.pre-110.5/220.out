@@ -1,0 +1,2 @@
+val it = () : unit
+220.sml:6.21 Error: unbound structure: C

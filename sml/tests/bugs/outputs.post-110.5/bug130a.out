@@ -1,0 +1,13 @@
+val it = () : unit
+structure S :
+  sig
+    datatype 'a T = C
+    val fs : 'a T -> 'a T
+  end
+functor F : <sig>
+structure SF :
+  sig
+    type  FT = ?.SF.t S.T
+    val ff : FT -> t S.T
+  end
+

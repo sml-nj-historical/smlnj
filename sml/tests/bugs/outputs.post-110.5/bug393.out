@@ -1,0 +1,7 @@
+val it = () : unit
+type  ('a,'b) bogus = 'a
+val x = 0 : (int,_) bogus
+val y = 1 : (int,_) bogus
+val f = fn : 'a * 'a -> unit
+val it = () : unit
+

@@ -1,0 +1,42 @@
+Basis Regression Failures: 110
+
+The following fail across all arch-opsys configurations.  See
+/home/sml/tests/SUMMARY-110 for additional arch-opsys specific
+failures.
+
+---------------------------------------------------------------------
+array.sml
+  * array0 is unique, shouldn't be
+     test2
+     test10h
+     test10i
+
+---------------------------------------------------------------------
+date.sml
+  * Date.fromString is not implemented 
+     test3 (raise exn)
+     test4 (raise exn)
+
+---------------------------------------------------------------------
+real.sml
+  * test7a: round 2.5 returns 3 instead of 2
+  * test9a: fromString scans "ddd.<exp>" with no digits after point.
+     Real.fromString "12.E2" => SOME 1200.00
+     Real.fromString "12.E+2" => SOME 1200.00
+     Real.fromString "12.E-2" => SOME 0.12
+     These should all yield SOME 12.00.
+  * Real.fromString does not scan strings starting with "." or "[+-~]."
+     last four cases of: test9b-j
+  * Real.fmt fails
+     test11c (StringCvt.FIX)
+     test12c (StringCvt.SCI)
+     test13c (StringCvt.GEN)
+
+---------------------------------------------------------------------
+word8array.sml
+  * array0 is unique, shouldn't be
+     test2
+     test10h
+     test10i
+
+---------------------------------------------------------------------

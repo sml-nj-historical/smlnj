@@ -1,0 +1,19 @@
+val it = () : unit
+signature L2 =
+  sig
+    type u
+    structure nest3 : sig structure nest4 : <sig> end
+  end
+signature L1 =
+  sig
+    structure nest1 :
+      sig
+        eqtype t
+        val x : t
+        structure nest2 : <sig>
+        sharing type t = nest2.u
+      end
+  end
+functor f : <sig>
+structure a : L1
+functor g : <sig>

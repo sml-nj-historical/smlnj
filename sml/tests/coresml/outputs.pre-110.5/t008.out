@@ -1,0 +1,9 @@
+val it = () : unit
+datatype 'a arex
+  = ADD of 'a arex * 'a arex
+  | MINUS of 'a arex
+  | SUB of 'a arex * 'a arex
+  | TIP of 'a
+type 'a binary = 'a arex * 'a arex
+type 'a unary = 'a arex
+val a1 = MINUS (ADD (TIP 1,SUB (#,#))) : int arex

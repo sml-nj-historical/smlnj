@@ -1,0 +1,8 @@
+val it = () : unit
+104.sml:9.1-9.17 Error: found data constructor instead of exception
+104.sml:10.1-10.17 Error: found variable instead of exception
+104.sml:14.1-14.19 Error: found data constructor instead of exception
+104.sml:15.9-15.23 Error: variable found where constructor is required: A.f
+104.sml:15.9-15.23 Error: constant constructor applied to argument in pattern:bogus
+104.sml:18.1-18.19 Error: found data constructor instead of exception
+104.sml:19.1-19.19 Error: found variable instead of exception

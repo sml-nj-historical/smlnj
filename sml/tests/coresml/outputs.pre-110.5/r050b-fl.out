@@ -1,0 +1,7 @@
+val it = () : unit
+type t = int -> int * bool
+r050b-fl.sml:17.1-17.26 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    t
+  expression:    int -> int * int
+  in declaration:
+    f : t = (fn x => (x,x))

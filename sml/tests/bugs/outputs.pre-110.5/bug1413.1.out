@@ -1,0 +1,10 @@
+val it = () : unit
+val execute = fn : string * string list -> TextIO.instream * TextIO.outstream
+val instrm = - : TextIO.instream
+val outstrm = - : TextIO.outstream
+val it = () : unit
+val it = () : unit
+val it = () : unit
+val s =
+  "\nuncaught exception SysErr: Bad file number [badf]\n  raised at: <close#"
+  : TextIO.vector

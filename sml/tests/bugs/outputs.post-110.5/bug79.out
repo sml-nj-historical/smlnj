@@ -1,0 +1,5 @@
+val it = () : unit
+datatype type1 = T of int * (int * string)
+type  type2 = int
+type  type3 = type2 * string
+

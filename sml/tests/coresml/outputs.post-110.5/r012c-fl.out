@@ -1,0 +1,15 @@
+val it = () : unit
+datatype test = testcon
+r012c-fl.sml:15.1-15.30 Error: types of rules don't agree [tycon mismatch]
+  earlier rule(s): test -> int
+  this rule: exn -> 'Z
+  in rule:
+    exn => raise exn
+r012c-fl.sml:15.1-15.30 Error: handler domain is not exn [tycon mismatch]
+  handler domain: test
+  in expression:
+    1
+    handle 
+        testcon => 2
+    | exn => raise exn
+

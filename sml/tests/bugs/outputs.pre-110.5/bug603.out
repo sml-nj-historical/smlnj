@@ -1,0 +1,2 @@
+val it = () : unit
+val it = "System.Symbol.makestring seems O.K." : string

@@ -1,0 +1,5 @@
+val it = () : unit
+val it = 0.0 : real
+val it = ~1.0 : real
+val it = 1.0 : real
+val it = 0.0 : real

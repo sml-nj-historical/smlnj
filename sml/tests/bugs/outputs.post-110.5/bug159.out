@@ -1,0 +1,11 @@
+val it = () : unit
+signature SYMTAB = sig type ident end
+signature LEX =
+  sig
+    structure Symtab : sig type ident end
+    datatype lexeme = DELIM | ID of Symtab.ident
+  end
+structure Symtab : sig type  ident = string end
+functor lex : <sig>
+structure Lex : LEX
+

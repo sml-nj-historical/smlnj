@@ -1,0 +1,3 @@
+val it = () : unit
+val it = [0wxffffffff,0wxfffffffe,0wxfffffffd,0wxfffffffc,0wxfffffffb]
+  : Word32.word list

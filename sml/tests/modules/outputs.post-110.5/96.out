@@ -1,0 +1,12 @@
+val it = () : unit
+structure A : sig end
+structure B : sig end
+signature S1 = sig structure C : sig end end
+signature S2 = sig structure C : sig end end
+signature S3 =
+  sig
+    structure D : sig structure C : <sig> end
+    structure E : sig structure C : <sig> end
+    sharing E = D
+  end
+functor F : <sig>

@@ -1,0 +1,9 @@
+val it = () : unit
+bug46E.sml:7.1-8.27 Error: rules don't agree (equality type required)
+  expected: {a:''Y, ''...Z} * bool -> bool
+  found:    {b:'W -> 'V, ''...X} * bool -> 'V
+  rule:
+    ({b=b,...},false) => b (3 : 'W)
+bug46E.sml:7.1-8.27 Error: unresolved flex record
+(can't tell what fields there are besides #a)
+

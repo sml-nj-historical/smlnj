@@ -1,0 +1,36 @@
+val it = () : unit
+val max'digits = 100 : int
+bug718.sml:120.27-120.31 Error: syntax error: deleting  REAL EQUALOP
+bug718.sml:120.36-121.19 Error: syntax error: deleting  RPAREN BAR ID
+bug718.sml:121.21-122.12 Error: syntax error: deleting  EQUALOP LET VAL
+bug718.sml:122.16-122.18 Error: syntax error: deleting  EQUALOP LPAREN
+bug718.sml:122.28-123.12 Error: syntax error: deleting  REAL RPAREN VAL
+bug718.sml:123.20-124.12 Error: syntax error: deleting  EQUALOP REAL VAL
+bug718.sml:124.18-124.26 Error: syntax error: deleting  EQUALOP ID
+bug718.sml:125.9-125.16 Error: syntax error: deleting  FUN ID
+bug718.sml:125.26-125.34 Error: syntax error: deleting  EQUALOP ID
+bug718.sml:126.19-126.26 Error: syntax error: deleting  EQUALOP ID
+bug718.sml:127.9-127.17 Error: syntax error: deleting  FUN ID
+bug718.sml:127.20-128.8 Error: syntax error: deleting  EQUALOP IF
+bug718.sml:129.10-129.29 Error: syntax error: deleting  THEN ID
+bug718.sml:130.25-130.29 Error: syntax error: deleting  REAL RPAREN
+bug718.sml:130.33-130.37 Error: syntax error: deleting  REAL RPAREN
+bug718.sml:131.6-131.12 Error: syntax error: deleting  ELSE LPAREN
+bug718.sml:133.5-134.9 Error: syntax error: deleting  IN LPAREN
+bug718.sml:134.19-134.39 Error: syntax error: deleting  HANDLE ID DARROW
+bug718.sml:134.40-135.8 Error: syntax error: deleting  RAISE ID END
+bug718.sml:136.8-136.16 Error: syntax error: deleting  VAL ID EQUALOP
+bug718.sml:137.5-138.11 Error: syntax error: deleting  EXCEPTION ID FUN
+bug718.sml:138.27-139.7 Error: syntax error: deleting  EQUALOP IF
+bug718.sml:139.19-140.9 Error: syntax error: deleting  THEN INT0 ELSE
+bug718.sml:140.10-140.20 Error: syntax error: deleting  IF ID
+bug718.sml:140.39-141.7 Error: syntax error: deleting  THEN INT ELSE
+bug718.sml:141.8-141.15 Error: syntax error: deleting  LET VAL
+bug718.sml:141.21-141.23 Error: syntax error: deleting  EQUALOP ID
+bug718.sml:142.8-143.8 Error: syntax error: deleting  IN LPAREN IF
+bug718.sml:143.20-143.26 Error: syntax error: deleting  THEN INT
+bug718.sml:144.6-144.12 Error: syntax error: deleting  ELSE INT
+bug718.sml:144.36-145.21 Error: syntax error: deleting  HANDLE ID DARROW
+bug718.sml:145.21-146.11 Error: syntax error: deleting  RAISE ID END
+bug718.sml:147.4 Error: syntax error found at EXCEPTION
+

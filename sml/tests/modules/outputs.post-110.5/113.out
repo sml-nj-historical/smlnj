@@ -1,0 +1,5 @@
+val it = () : unit
+signature S81 = sig end
+signature S82 = sig structure A : sig end end
+functor F : <sig>
+

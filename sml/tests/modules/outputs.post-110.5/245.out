@@ -1,0 +1,9 @@
+val it = () : unit
+signature SIG =
+  sig
+    type t
+    val v : t
+  end
+functor MapIndex : <sig>
+functor MapSquare : <sig>
+

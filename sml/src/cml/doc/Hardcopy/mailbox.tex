@@ -1,0 +1,76 @@
+\section{The \texttt{Mailbox} structure}
+
+
+The \texttt{Mailbox} structure provides buffered asynchronous channels, which we call mailboxes.\- 
+\begin{synopsis}
+\item {\textbf{signature}} MAILBOX\label{sig-MAILBOX}
+\item {\STRUCTURE} Mailbox: MAILBOX\label{str-Mailbox}
+\end{synopsis}
+
+\begin{interface}
+\item {\index{mbox@mbox!MAILBOX@MAILBOX}}{\textbf{type}} \(\alpha\)~mbox
+\item {\index{mailbox@mailbox!MAILBOX@MAILBOX}}{\textbf{val}} {\tt mailbox: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{mbox}\)}
+
+\item {\index{sameMailbox@sameMailbox!MAILBOX@MAILBOX}}{\textbf{val}} {\tt sameMailbox: \((\alpha\:\mathrm{mbox}\:\verb,*,\:\alpha\:\mathrm{mbox})\rightarrow \mathrm{bool}\)}
+
+\item {\index{send@send!MAILBOX@MAILBOX}}{\textbf{val}} {\tt send: \((\alpha\:\mathrm{mbox}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}
+
+\item {\index{recv@recv!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recv: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\)}
+
+\item {\index{recvEvt@recvEvt!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recvEvt: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\:\mathrm{event}\)}
+
+\item {\index{recvPoll@recvPoll!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recvPoll: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\:\mathrm{option}\)}
+
+\end{interface}
+
+\begin{descr}
+\item {\index{mbox@mbox!MAILBOX@MAILBOX}}{\textbf{type}} \(\alpha\)~mbox\label{ty-MAILBOX.mbox}
+
+\begin{speccomment}
+\item 
+
+	This is the type constructor for a mailbox.\- 	A mailbox is an unbounded, buffered communication channel.\-     \end{speccomment}
+\item {\index{mailbox@mailbox!MAILBOX@MAILBOX}}{\textbf{val}} {\tt mailbox: \(\mathrm{unit}\rightarrow \alpha\:\mathrm{mbox}\)}\label{val-MAILBOX.mailbox}
+
+
+\begin{speccomment}
+\item {\tt mailbox ()         } 
+creates a new mailbox.\-     \end{speccomment}
+\item {\index{sameMailbox@sameMailbox!MAILBOX@MAILBOX}}{\textbf{val}} {\tt sameMailbox: \((\alpha\:\mathrm{mbox}\:\verb,*,\:\alpha\:\mathrm{mbox})\rightarrow \mathrm{bool}\)}\label{val-MAILBOX.sameMailbox}
+
+
+\begin{speccomment}
+\item {\tt same\-Mailbox (\textit{mb1}, \textit{mb2})         } 
+returns {\tt true}, if \textit{mb1} and \textit{mb2} are the same mailbox.\-     \end{speccomment}
+\item {\index{send@send!MAILBOX@MAILBOX}}{\textbf{val}} {\tt send: \((\alpha\:\mathrm{mbox}\:\verb,*,\:\alpha)\rightarrow \mathrm{unit}\)}\label{val-MAILBOX.send}
+
+
+\begin{speccomment}
+\item {\tt send (\textit{mb}, \textit{msg})         } 
+sends the message \textit{msg} to the mailbox \textit{mb}.\- 	Note that unlike \texttt{CML.\-send}\marginref{send}{val-CML.send}{valCMLsend}, this is a non-blocking 	operation.\-     \end{speccomment}
+\item {\index{recv@recv!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recv: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\)}\label{val-MAILBOX.recv}
+
+
+\begin{speccomment}
+\item {\tt recv \textit{mb}         } 
+receive the next message from the mailbox \textit{mb}.\- 	If, the mailbox is empty, then this blocks the calling 	thread until there is a message available.\-     \end{speccomment}
+\item {\index{recvEvt@recvEvt!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recvEvt: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\:\mathrm{event}\)}\label{val-MAILBOX.recvEvt}
+
+
+\begin{speccomment}
+\item {\tt recv\-Evt \textit{mb}         } 
+returns the event value that represents the \texttt{recv} operation 	on \textit{mb}.\-     \end{speccomment}
+\item {\index{recvPoll@recvPoll!MAILBOX@MAILBOX}}{\textbf{val}} {\tt recvPoll: \(\alpha\:\mathrm{mbox}\rightarrow \alpha\:\mathrm{option}\)}\label{val-MAILBOX.recvPoll}
+
+
+\begin{speccomment}
+\item 
+
+        This is the non-blocking version of \texttt{recv}.\- 	If the corresponding blocking form would block (because the mailbox is 	empty), then this returns 	\texttt{NONE}, otherwise it returns 	\texttt{SOME} of the received 	message.\-\end{speccomment}
+\end{descr}
+
+
+Note that mailbox buffers are unbounded, which means that there is no flow control to prevent a producer from greatly outstriping a consumer, and thus exhausting memory.\- In situations where there is no natural limit to the rate of \texttt{send}\marginref{send}{val-MAILBOX.send}{valMAILBOXsend} operations, it is recommended that the synchronous channels from the \texttt{CML} structure be used instead.\-
+\begin{seealso}
+\texttt{CML}
+\end{seealso}

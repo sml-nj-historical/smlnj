@@ -1,0 +1,4 @@
+val it = () : unit
+val x = fn : 'a -> int
+bug1396.1.sml:4.3-4.6 Error: unresolved flexible record
+  pattern: {y=y,...}

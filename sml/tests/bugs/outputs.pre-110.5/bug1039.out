@@ -1,0 +1,10 @@
+val it = () : unit
+structure C : sig type  elem = int end
+signature MV = sig eqtype elem end
+signature MA =
+  sig
+    eqtype elem
+    structure Vector : sig eqtype elem end
+    sharing type elem = Vector.elem
+  end
+bug1039.sml:20.1-20.21 Error: unmatched structure specification: Vector

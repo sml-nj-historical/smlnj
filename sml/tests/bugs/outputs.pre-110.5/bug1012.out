@@ -1,0 +1,10 @@
+val it = () : unit
+val low = 0wxde32 : Word32.word
+val high = 0wx8002 : Word32.word
+val high = 0wx8002 : Word32.word
+val low = 0wxde32 : Word32.word
+val x = 0wx8002de32 : Word32.word
+Overflow
+val it = 0 : int
+Overflow
+val it = 0 : int

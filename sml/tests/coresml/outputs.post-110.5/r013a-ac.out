@@ -1,0 +1,8 @@
+val it = () : unit
+exception exc_test
+val x = 1 : int
+val y = true : bool
+val z = 1 : int
+val s = [] : int list
+val t = exc_test(-) : exn
+

@@ -1,0 +1,2 @@
+val it = () : unit
+bug103.sml:3.5 Error: syntax error found at RBRACE

@@ -1,0 +1,5 @@
+val it = () : unit
+bug1139.2.sml:3.1-6.8 Warning: match nonexhaustive
+          arg as nil => ...
+  
+val g = fn : 'a list -> unit

@@ -1,0 +1,7 @@
+val it = () : unit
+r019c-fl.sml:13.1-13.48 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         ?.t * ?.t
+  in expression:
+    B = B
+

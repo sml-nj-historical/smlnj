@@ -1,0 +1,2 @@
+val it = () : unit
+101.1.sml:9.13-9.20 Error: unbound structure: X in path A.X

@@ -1,0 +1,10 @@
+val it = () : unit
+signature T1 =
+  sig
+    type t1
+    eqtype t2
+    val x : t1
+    sharing type t2 = t1
+  end
+functor F : <sig>
+

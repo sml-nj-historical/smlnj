@@ -1,0 +1,4 @@
+val it = () : unit
+val it = true : bool
+val it = false : bool
+val it = false : bool

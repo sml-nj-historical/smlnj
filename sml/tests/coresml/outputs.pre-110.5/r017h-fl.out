@@ -1,0 +1,16 @@
+val it = () : unit
+r017h-fl.sml:33.26-33.32 Error: operator and operand don't agree [literal]
+  operator domain: int
+  operand:         bool
+  in expression:
+    f true
+r017h-fl.sml:35.26-35.52 Error: operator and operand don't agree [literal]
+  operator domain: int list ref * int list
+  operand:         int list ref * bool list
+  in expression:
+    y := true :: nil
+r017h-fl.sml:35.26-35.52 Error: operator and operand don't agree [literal]
+  operator domain: bool list * bool list
+  operand:         bool list * int list
+  in expression:
+    true :: nil = ! y

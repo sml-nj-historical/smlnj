@@ -1,0 +1,3 @@
+val it = () : unit
+type t
+val test = true : bool

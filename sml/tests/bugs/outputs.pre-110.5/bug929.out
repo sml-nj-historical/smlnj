@@ -1,0 +1,3 @@
+val it = () : unit
+signature sig0 = sig type t end
+bug929.sml:7.3-8.18 Error: duplicate specifications for type constructor t in signature

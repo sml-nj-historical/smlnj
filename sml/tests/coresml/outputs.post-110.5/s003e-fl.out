@@ -1,0 +1,3 @@
+val it = () : unit
+s003e-fl.sml:12.1-14.4 Error: unbound type variable in type declaration: 'b
+

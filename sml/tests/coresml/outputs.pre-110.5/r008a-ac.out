@@ -1,0 +1,6 @@
+val it = () : unit
+val z = {1=true} : {1:bool}
+val x = {name="Foo",used=true} : {name:string, used:bool}
+val y = {name="Foo",used=true} : {name:string, used:bool}
+val test1 = true : bool
+val test2 = true : bool

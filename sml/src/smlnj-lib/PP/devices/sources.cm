@@ -1,0 +1,28 @@
+(* sources.cm
+ *
+ * Sources file for Pretty printer device library.
+ *)
+
+Group (../pp-lib.cm)
+
+  structure TextIOPP
+  structure SimpleTextIODev
+  structure HTMLDev
+  structure StringToken
+
+is
+#if defined(NEW_CM)
+  ../src/sources.cm
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/html-lib.cm
+#else
+  ../src/sources.cm
+  ../../Util/smlnj-lib.cm
+  ../../HTML/html-lib.cm
+#endif
+
+  textio-pp.sml
+  simple-textio-dev.sml
+  string-token.sml
+  html-dev.sml

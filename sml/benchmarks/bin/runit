@@ -1,0 +1,33 @@
+#!/bin/sh
+
+prgdir="programs"
+loadfile="load"
+benchnamefile="name"
+
+if [ $# -gt 0 ]; then repeat=$1; shift; fi
+if [ $# -gt 0 ]; then output=$1; shift; fi
+
+: ${repeat:=3}
+: ${output:=/dev/tty}
+
+loads=''
+for b do loads="$loads $prgdir/$b/$loadfile"; done
+: ${loads:=`echo $prgdir/*/$loadfile`}
+
+cat <<EOF
+	use "util/timeStd.sml";
+	val out = TextIO.openAppend("$output");
+EOF
+
+for load in $loads; do
+    bdir=`dirname $load`;
+    file=`basename $load`;
+    bench=`cat $bdir/$benchnamefile 2>/dev/null`
+    : ${bench:=`basename $bdir`}
+    cat <<EOF
+	OS.FileSys.chDir "$bdir";
+	Timing.timeCompKJgraph(out, "$bench", "$file");
+	OS.FileSys.chDir "../..";
+	Timing.timeRunKJgraph(out, "$bench", $repeat, Main.doit);
+EOF
+done

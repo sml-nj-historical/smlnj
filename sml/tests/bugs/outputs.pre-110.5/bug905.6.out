@@ -1,0 +1,2 @@
+val it = () : unit
+bug905.6.sml:8.5-8.9 Error: unbound structure: F1 in path X.F1

@@ -1,0 +1,10 @@
+val it = () : unit
+signature POINT = sig type point end
+signature INTERVAL =
+  sig
+    type point
+    val mk : point * point -> unit
+  end
+functor Interval : <sig>
+structure IntPoint : POINT
+functor G : <sig>

@@ -1,0 +1,6 @@
+val it = () : unit
+signature A = sig val x : int end
+functor f : <sig>
+funsig F(X: sig val x : int end) : sig val x : int end
+functor g : <sig>
+structure a : A

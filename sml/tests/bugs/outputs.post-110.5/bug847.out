@@ -1,0 +1,11 @@
+val it = () : unit
+structure M :
+  sig
+    type t = int
+    val D : t
+  end
+datatype t = D
+opening M
+  type t = int
+  val D : t
+

@@ -1,0 +1,3 @@
+val it = () : unit
+datatype X = A of X | B of int
+

@@ -1,0 +1,7 @@
+196-217,244-260: tests for uncaught EntityEnv.Unbound exception.
+
+220-243: former hof tests
+
+287-288: bug 1296
+
+297-306: sharing/def-spec conflicts

@@ -1,0 +1,7 @@
+val it = () : unit
+val new = fn : unit -> ?.A * (?.A -> unit)
+val a1 = A : ?.A
+val f1 = fn : ?.A -> unit
+val a2 = A : ?.A
+val f2 = fn : ?.A -> unit
+

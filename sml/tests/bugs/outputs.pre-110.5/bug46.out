@@ -1,0 +1,8 @@
+val it = () : unit
+bug46.sml:8.24-8.27 Error: operator is not a function [equality type required]
+  operator: ''Z
+  in expression:
+    b 3
+bug46.sml:7.1-8.27 Error: unresolved flex record (need to know the names of ALL the fields
+ in this context)
+  type: {a:''Y, b:''X; ''Z}

@@ -1,0 +1,9 @@
+val it = () : unit
+signature SS =
+  sig
+    type t
+    datatype r = C of t
+  end
+structure S : SS
+val it = fn : S.t -> S.r
+val it = C 3 : S.r

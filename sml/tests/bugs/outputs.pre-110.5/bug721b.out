@@ -1,0 +1,4 @@
+val it = () : unit
+bug721b.sml:6.30-6.54 Warning: type vars not generalized because of
+   value restriction are instantiated to dummy types (X1,X2,...)
+val y = 3 : int

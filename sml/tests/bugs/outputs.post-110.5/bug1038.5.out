@@ -1,0 +1,17 @@
+val it = () : unit
+signature ORD_KEY =
+  sig
+    type ord_key
+    val compare : ord_key * ord_key -> order
+  end
+signature ORD_SET =
+  sig
+    structure Key :
+      sig
+        type ord_key
+        val compare : ord_key * ord_key -> order
+      end
+    type  item = Key.ord_key
+  end
+bug1038.5.sml:19.23-19.45 Error: nonlocal path in type sharing: NodeSet.item
+

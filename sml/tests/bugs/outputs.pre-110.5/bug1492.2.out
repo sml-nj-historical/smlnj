@@ -1,0 +1,7 @@
+val it = () : unit
+bug1492.2.sml:9.989-9.991 Error: unbound variable or constructor: @!
+bug1492.2.sml:9.1-10.12 Error: operator is not a function [tycon mismatch]
+  operator: (string * int) list list
+  in expression:
+    ((("basic_declaration",81) :: (<exp>,<exp>) :: <exp> :: <exp>) :: nil)
+        <errorvar>

@@ -1,0 +1,27 @@
+val it = () : unit
+signature SIG =
+  sig
+    type t
+    val x : t
+  end
+signature SIG' =
+  sig
+    structure S :
+      sig
+        type t
+        val x : t
+      end
+    val y : S.t
+  end
+structure T : SIG
+structure T' : SIG'
+signature SIG'' =
+  sig
+    structure T :
+      sig
+        type t
+        val x : t
+      end
+    val y : T.t
+  end
+bug42.2.sml:21.1-21.45 Error: unmatched structure specification: T

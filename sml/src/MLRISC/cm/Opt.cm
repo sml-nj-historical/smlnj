@@ -1,0 +1,30 @@
+(*
+ * This library implemenents the MLRISC SSA optimizer.
+ *)
+
+Library 
+	functor MLRiscOptimizer
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+#else
+        basis.cm
+#endif
+#endif
+
+	
+	MLRISC.cm
+	Control.cm
+	Lib.cm
+	Graphs.cm
+	Visual.cm
+	ir.cm
+	IR.cm
+	RTL.cm
+	SSA.cm
+	Sched.cm
+	GC.cm
+	
+	../Glue/mlrisc-optimizer.sml

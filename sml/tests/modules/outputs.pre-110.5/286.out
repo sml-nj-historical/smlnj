@@ -1,0 +1,7 @@
+val it = () : unit
+functor F : <sig>
+structure S :
+  sig
+    functor G : <fctsig>
+    structure A : <sig>
+  end

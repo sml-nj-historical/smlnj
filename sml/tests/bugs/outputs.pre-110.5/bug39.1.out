@@ -1,0 +1,10 @@
+val it = () : unit
+type 'a church = ('a -> 'a) -> 'a -> 'a
+val zero = fn : 'a -> 'b -> 'b
+val succ = fn : (('a -> 'b) -> 'c -> 'a) -> ('a -> 'b) -> 'c -> 'b
+bug39.1.sml:7.22-7.63 Error: operator and operand don't agree [UBOUND match]
+  operator domain: 'a -> 'a
+  operand:         (('Z -> 'Y) -> 'X -> 'Z) * 'W
+                   -> (('Z -> 'Y) -> 'X -> 'Y) * (('Z -> 'Y) -> 'X -> 'Z)
+  in expression:
+    n (fn (a,b) => (succ <exp>,a))

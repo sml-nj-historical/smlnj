@@ -1,0 +1,29 @@
+(* MLRISC-Peephole.cm
+ *
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
+ *
+ * This library contains only the peephole optimization stuff.  
+ *)
+
+Library 
+	signature PEEPHOLE
+	functor ClusterPeephole
+is
+
+#if defined(NEW_CM)
+#if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
+        $/basis.cm
+        $/smlnj-lib.cm
+#else
+        basis.cm
+        smlnj-lib.cm
+#endif
+#else
+        smlnj-lib.cm
+#endif
+
+	MLRISC.cm
+
+	(* Peephole optimizations *)
+	../instructions/peephole.sig
+	../cluster/clusterPeephole.sml

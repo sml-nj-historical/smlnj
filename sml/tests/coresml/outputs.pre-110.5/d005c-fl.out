@@ -1,0 +1,5 @@
+val it = () : unit
+type Color
+type A = int
+val x = - : Color
+d005c-fl.sml:19.9-19.12 Error: unbound variable or constructor: Red

@@ -1,0 +1,8 @@
+val it = () : unit
+structure A : sig datatype a = mka of int -> int end
+signature SIG = sig datatype d = D of A.a end
+44.sml:17.3-17.56 Error: operator and operand don't agree [equality type required]
+  operator domain: ''Z * ''Z
+  operand:         X.d * X.d
+  in expression:
+    D (mka (fn <pat> => <exp>)) = D (mka (fn <pat> => <exp>))

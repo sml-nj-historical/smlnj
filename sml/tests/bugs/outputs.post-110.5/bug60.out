@@ -1,0 +1,11 @@
+val it = () : unit
+val start_seed1 = 0.71573298 : real
+val start_seed2 = 0.31872973 : real
+val start_seed3 = 0.45832123 : real
+val mul1 = 147.0 : real
+val mul2 = 375.0 : real
+val mul3 = 13.0 : real
+val random = fn : real -> real -> real
+val randlist = fn : real -> real -> real -> int -> int list
+val rlist = fn : int -> int list
+

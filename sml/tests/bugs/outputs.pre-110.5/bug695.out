@@ -1,0 +1,21 @@
+val it = () : unit
+std_in:59.7-69.56 Warning: match nonexhaustive
+          VarFct (path : System.Ast.path,
+                  constraint : System.Ast.fsigexp option) => ...
+          FctFct {body=body : System.Ast.strexp,
+                  constraint=constraint : System.Ast.sigexp option,
+                  params=params :
+                           (symbol option * System.Ast.sigexp) list} => ...
+          MarkFct (arg,_,_) => ...
+  
+structure bug :
+  sig
+    structure A : ...
+    val do_dec : System.Ast.dec -> unit
+    val f_fctb : System.Ast.fctb -> unit
+    val f_fctexp : System.Ast.fctexp -> unit
+    val ok : string -> unit
+    val p1 : string
+    val p2 : string
+    val try : string -> unit
+  end

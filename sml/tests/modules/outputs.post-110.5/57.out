@@ -1,0 +1,19 @@
+val it = () : unit
+functor F : <sig>
+structure B :
+  sig
+    datatype t = c
+    val x : t
+  end
+structure C :
+  sig
+    type  t = t
+    val x : X.t
+  end
+structure D :
+  sig
+    type  t = t
+    val x : X.t
+  end
+val x = true : bool
+

@@ -1,0 +1,15 @@
+val it = () : unit
+signature l =
+  sig
+    type i
+    val k : unit -> i
+    val j : i * i -> i
+  end
+signature k =
+  sig
+    type i
+    val k : unit -> int * i
+    val j : i * i -> i
+  end
+bug963.sml:17.19-17.39 Error: duplicate value specifications for k caused by include
+bug963.sml:17.19-17.39 Error: duplicate value specifications for j caused by include

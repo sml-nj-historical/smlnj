@@ -1,0 +1,9 @@
+val it = () : unit
+val r = {name="Foo",used=true} : {name:string, used:bool}
+r045b-fl.sml:15.1-15.32 Error: pattern and expression in val dec don't agree [tycon mismatch]
+  pattern:    {name:int; 'Z}
+  expression:    {name:string, used:bool}
+  in declaration:
+    {name=u : int,...} =
+      (case r
+        of {name=<pat> : int,...} => {1=u})

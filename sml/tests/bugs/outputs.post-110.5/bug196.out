@@ -1,0 +1,55 @@
+val it = () : unit
+signature COMPLEX =
+  sig
+    type elem
+    val complex : real * real -> elem
+    val + : elem * elem -> elem
+    val - : elem * elem -> elem
+    val * : elem * elem -> elem
+    val / : elem * elem -> elem
+    val ~ : elem -> elem
+    val inv : elem -> elem
+    val abs : elem -> real
+    val conj : elem -> elem
+    val cis : real -> elem
+    val zero : elem
+    val one : elem
+  end
+structure Complex : COMPLEX
+signature FIELD =
+  sig
+    type elem
+    val zero : elem
+    val one : elem
+    val + : elem * elem -> elem
+    val * : elem * elem -> elem
+    val ~ : elem -> elem
+    val inv : elem -> elem
+  end
+signature POLYNOMIAL =
+  sig
+    structure F :
+      sig
+        type elem
+        val zero : elem
+        val one : elem
+        val + : elem * elem -> elem
+        val * : elem * elem -> elem
+        val ~ : elem -> elem
+        val inv : elem -> elem
+      end
+    type poly
+    val x : poly
+    val const : F.elem -> poly
+    val * : poly * poly -> poly
+    val + : poly * poly -> poly
+    val ~ : poly -> poly
+    val eval : poly -> F.elem -> F.elem
+    val deriv : poly -> poly
+  end
+bug196.sml:87.9-87.52 Warning: match nonexhaustive
+          (z,a :: b) => ...
+  
+functor Polynomial : <sig>
+structure P : POLYNOMIAL
+

@@ -1,0 +1,5 @@
+val it = () : unit
+signature SIG1 = sig datatype t = T of int end
+signature SIG2 = sig structure N : sig datatype t = T of int end end
+functor F : <sig>
+

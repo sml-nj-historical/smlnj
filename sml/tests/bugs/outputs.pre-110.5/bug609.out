@@ -1,0 +1,8 @@
+val it = () : unit
+signature SIG1 = sig val x : int end
+signature SIG2 = sig val y : int end
+signature SIG3 =
+  sig
+    val x : int
+    val y : int
+  end

@@ -1,0 +1,6 @@
+val it = () : unit
+datatype Branch = Leaf of int * bool
+val it = Leaf (2,true) : Branch
+val r = {noname=Leaf (2,true),used=true} : {noname:Branch, used:bool}
+val x = 2 : int
+val test = true : bool

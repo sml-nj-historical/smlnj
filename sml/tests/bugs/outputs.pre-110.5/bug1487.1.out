@@ -1,0 +1,5 @@
+val it = () : unit
+bug1487.1.sml:3.10-3.13 Error: syntax error: deleting  ID COLON
+bug1487.1.sml:3.17-3.22 Error: syntax error: deleting  ARROW TYVAR
+bug1487.1.sml:3.24-3.28 Error: syntax error: deleting  EQUALOP FN
+bug1487.1.sml:3.29-3.35 Error: syntax error: deleting  ID DARROW ID

@@ -1,0 +1,11 @@
+val it = () : unit
+exception E
+val f = fn : unit -> 'a
+val it = "OK" : string
+val elist = [E(-),Size(-)] : exn list
+exception E' = E
+val it = "OK" : string
+val it = "OK" : string
+exception G of int
+val it = "OK" : string
+

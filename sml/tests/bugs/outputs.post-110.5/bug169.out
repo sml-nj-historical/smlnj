@@ -1,0 +1,13 @@
+val it = () : unit
+functor F : <sig>
+structure f :
+  sig
+    type t
+    val mk_t : t
+  end
+structure f :
+  sig
+    type t
+    val mk_t : t
+  end
+

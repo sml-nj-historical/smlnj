@@ -1,0 +1,4 @@
+val it = () : unit
+signature SS1 = sig datatype d = D of int end
+functor F2 : <sig>
+functor G2 : <sig>

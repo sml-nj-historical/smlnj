@@ -1,0 +1,10 @@
+val it = () : unit
+signature S0 = sig structure D : sig end end
+signature S2 =
+  sig
+    structure C : sig end
+    structure D : sig end
+  end
+54.sml:23.12-23.20 Error: nonlocal path in structure sharing: A.D
+54.sml:31.12-31.19 Error: nonlocal path in structure sharing: A.D
+

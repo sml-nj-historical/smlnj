@@ -1,0 +1,19 @@
+val it = () : unit
+signature S =
+  sig
+    type genT
+    type T
+    val embed : T -> genT
+  end
+structure S :
+  sig
+    type  T = int
+    type  genT = int
+    val embed : 'a -> 'a
+  end
+signature B =
+  sig
+    type genT
+    functor mkS : (<param>: <sig>) : <sig>
+  end
+structure B : B

@@ -1,0 +1,2 @@
+val it = () : unit
+bug1122.sml:4.1-4.28 Error: unmatched value specification: b
