@@ -534,7 +534,7 @@ fun fcFix (fs,le) =
 		    * recursively *)
 		   (C.use NONE fi; undertake m f; (m,fs))
 	       else
-		   let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
+		   let (* val _ = say ("Entering "^(C.LVarString f)^"\n") *)
 		       val saved_ic = inline_count()
 		       (* make up the bindings for args inside the body *)
 		       val actuals = if isSome isrec orelse
@@ -561,7 +561,7 @@ fun fcFix (fs,le) =
 			* the old uncontracted code *)
 		       val nm = addbind(m, f, Fun(f, nbody, args, nfk, ref []))
 		   in (nm, (nfk, f, args, nbody)::fs)
-		   (*  before say ("\nExiting "^(C.LVarString f)) *)
+		     (* before say ("Exiting "^(C.LVarString f)^"\n") *)
 		   end
 	    end
 		    
@@ -663,19 +663,23 @@ fun fcFix (fs,le) =
 	(* check for eta redexes *)
 	val (nm,fs,_) = foldl fcEta (nm,[],[]) fs
 			      
-	val (funs,wrappers) =
+	val (wrappers,funs) =
 	    List.partition (fn (_,_,_,{inline=F.IH_ALWAYS,...},_) => true
 			     | _ => false) fs
-	val (funs,maybes) =
+	val (maybes,funs) =
 	    List.partition (fn (_,_,_,{inline=F.IH_MAYBE _,...},_) => true
 			     | _ => false) funs
 			   
-	(* contract the main body *)
-	val nle = loop nm le cont
-	(* contract the functions *)
+	(* First contract the big inlinable functions.  This might make them
+	 * non-inlinable and we'd rather know that before we inline them.
+	 * Then we inline the body (so that we won't go through the inline-once
+	 * functions twice), then the normal functions and finally the wrappers
+	 * (which need to come last to make sure that they get inlined if
+	 * at all possible) *)
 	val fs = []
-	val (nm,fs) = foldl fcFun (nm,fs) funs
 	val (nm,fs) = foldl fcFun (nm,fs) maybes
+	val nle = loop nm le cont
+	val (nm,fs) = foldl fcFun (nm,fs) funs
 	val (nm,fs) = foldl fcFun (nm,fs) wrappers
 	(* junk newly unused funs *)
 	val fs = List.filter (used o #2) fs
@@ -686,7 +690,7 @@ fun fcFix (fs,le) =
 	    (* gross hack: `wrap' might have added a second
 	     * non-recursive function.  we need to split them into
 	     * 2 FIXes.  This is _very_ ad-hoc. *)
-	    F.FIX([f1], F.FIX([f2], nle))
+	    F.FIX([f2], F.FIX([f1], nle))
 	  | _ => F.FIX(fs, nle)
     end
 
@@ -708,7 +712,8 @@ fun fcApp (f,vs) =
 		    * This inlining strategy looks inoffensive enough,
 		    * but still requires some care: see comments at the
 		    * begining of this file and in cfun *)
-		   (click_simpleinline();
+		   ((* say("SimpleInline of "^(C.LVarString g)^"\n"); *)
+		    click_simpleinline();
 		    ignore(C.unuse true gi);
 		    loop m (F.LET(map #1 args, F.RET vs, body)) cont)
 	       fun copyinline () =
@@ -728,6 +733,7 @@ fun fcApp (f,vs) =
 		   let val nle = (F.LET(map #1 args, F.RET vs, body))
 		       val nle = C.copylexp M.empty nle
 		   in
+		       (* say("CopyInline of "^(C.LVarString g)^"\n"); *)
 		       click_copyinline();
 		       (app (unuseval m) vs);
 		       unusecall m g;
@@ -887,13 +893,16 @@ fun fcRecord (rk,vs,lv,le) =
 		let fun g' (n,Select(_,sv',i)::ss) =
 			if n = i andalso (sval2val sv) = (sval2val sv')
 			then g'(n+1,ss) else NONE
-		      | g' (n,[]) = 
+		      | g' (n,[]) =
 			(case sval2lty sv
 			  of SOME lty =>
-			     let val ltd = case rk
-					    of F.RK_STRUCT => LT.ltd_str
-					     | F.RK_TUPLE _ => LT.ltd_tuple
-					     | _ => buglexp("bogus rk",le)
+			     let val ltd =
+				     case (rk, LT.ltp_tyc lty)
+				      of (F.RK_STRUCT,false) => LT.ltd_str
+				       | (F.RK_TUPLE _,true) => LT.ltd_tuple
+				       (* we might select out of a struct
+					* into a tuple or vice-versa *)
+				       | _ => (fn _ => [])
 			     in if length(ltd lty) = n
 				then SOME sv else NONE
 			     end
@@ -943,7 +952,7 @@ fun fcBranch (po,vs,le1,le2) =
 
 fun fcPrimop (po,vs,lv,le) =
     let val lvi = C.get lv
-	val pure = PO.purePrimop (#2 po)
+	val pure = not(PO.effect(#2 po))
     in if pure andalso C.dead lvi then (click_deadval();loop m le cont) else
 	let val nvs = map substval vs
 	    val npo = cpo po

@@ -41,15 +41,16 @@ structure Control : CONTROL =
     struct
 	val print	= ref false
 	val printPhases	= ref false
-	val phases	= ref ["lcontract", "specialize", "fixfix", "fcontract",
-			       "wrap", "fcontract",
+	val phases	= ref ["lcontract", "specialize",
+			       "fixfix", "fcontract",
+			       "wrap", "loopify", "fixfix", "fcontract",
 			       (* "names2deb", "typelift", "deb2names", *)
-			       "reify", "loopify", "fcontract",
+			       "reify", "loopify", "fixfix", "fcontract",
 			       "fixfix", "fcontract"]
 
-	val inlineThreshold = ref 16
+	val inlineThreshold = ref 14
 	val unrollThreshold = ref 20
-	val maxargs	    = ref 10
+	val maxargs	    = ref 6
 	val dropinvariant   = ref true
 
 	val specialize	= ref true

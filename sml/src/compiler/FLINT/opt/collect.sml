@@ -202,7 +202,7 @@ fun usage bs =
 	 | [] => None
     end
 
-fun impurePO (po:F.primop) = not(PO.purePrimop (#2 po))
+fun impurePO (po:F.primop) = PO.effect (#2 po)
 
 val census = let
     (* val use = if inc then use else unuse *)
