@@ -1,0 +1,5 @@
+1998-10-26  Stefan Monnier  <monnier@cs.yale.edu>
+
+	* sml-mode.el (sml-font-lock-syntactic-keywords): added syntactic-keywords
+	  to support nested comments.
+

@@ -372,7 +372,6 @@ inferior-sml-mode-hook.
 (defvar sml-error-file nil)             ; file from which the last error came
 (defvar sml-real-file nil)              ; used for finding source errors
 (defvar sml-error-cursor nil)           ;   ditto
-(defvar sml-error-barrier nil)          ;   ditto
 
 (defun sml-proc-buffer ()
   "Returns the current ML process buffer,
@@ -489,11 +488,8 @@ TAB file name completion, as in shell-mode, etc.."
 
   ;; For sequencing through error messages:
   
-  (set (make-local-variable 'sml-error-cursor)
-       (marker-position (point-max-marker)))
-  (set (make-local-variable 'sml-error-barrier)
-       (marker-position (point-max-marker)))
-  (set (make-local-variable 'sml-real-file) (cons nil 0))
+  (set (make-local-variable 'sml-error-cursor) (point-max-marker))
+  (set (make-local-variable 'sml-real-file) nil)
   (set (make-local-variable 'font-lock-defaults)
        inferior-sml-font-lock-defaults)
 
@@ -626,18 +622,17 @@ See variables `sml-temp-threshold', `sml-temp-file' and `sml-use-command'."
          (comint-send-string (sml-proc) ";\n")))
   (if and-go (switch-to-sml nil)))
 
-;; Update the buffer-local variables sml-real-file and sml-error-barrier
+;; Update the buffer-local variables sml-real-file
 ;; in the process buffer:
 
-(defun sml-update-barrier (file pos)
+(defun sml-update-barrier (&optional file pos)
   (let ((buf (current-buffer)))
     (unwind-protect
         (let* ((proc (sml-proc))
                (pmark (marker-position (process-mark proc))))
           (set-buffer (process-buffer proc))
           ;; update buffer local variables
-          (setq sml-real-file (and file (cons file pos)))
-          (setq sml-error-barrier pmark))
+          (setq sml-real-file (and file (cons file pos))))
       (set-buffer buf))))
 
 ;; Update the buffer-local error-cursor in proc-buffer to be its
@@ -650,7 +645,7 @@ See variables `sml-temp-threshold', `sml-temp-file' and `sml-use-command'."
                (pmark (marker-position (process-mark proc))))
           (set-buffer proc-buffer)
           ;; update buffer local variable
-          (setq sml-error-cursor pmark))
+          (set-marker sml-error-cursor pmark))
       (set-buffer buf))))
 
 ;; This is quite bogus, so it isn't bound to a key by default.
@@ -821,25 +816,26 @@ be executed to change the compiler's working directory\; a trailing
       (cd dir))
     (setq sml-prev-l/c-dir/file (cons dir nil))))
 
-(defun sml-send-command (cmd &optional dir)
+(defun sml-send-command (cmd &optional dir print)
   "Send string to ML process, display this string in ML's buffer"
   (if (sml-noproc) (save-excursion (run-sml t)))
   (let* ((my-dir (or dir (expand-file-name default-directory)))
-	 (cd-cmd (if my-dir
-		     (concat (format sml-cd-command my-dir) "; ")
-		   ""))
+	 (cd-cmd (if my-dir (concat (format sml-cd-command my-dir) "; ") ""))
 	 (buf (sml-proc-buffer))
+	 (win (get-buffer-window buf 'visible))
 	 (proc (get-buffer-process buf))
 	 (string (concat cd-cmd cmd ";\n")))
     (save-some-buffers t)
     (save-excursion
-      (sml-update-cursor buf)
       (set-buffer buf)
+      (when win (select-window win))
       (goto-char (point-max))
-      (insert string)
-      (if my-dir (cd my-dir))
-      (set-marker (process-mark proc) (point))
-      (process-send-string proc string))
+      (when print (insert string))
+      (when my-dir (cd my-dir))
+      (sml-update-cursor buf)
+      (sml-update-barrier)
+      (set-marker (process-mark proc) (point-max))
+      (comint-send-string proc string))
     (switch-to-sml t)))
 
 (defun sml-make (command)
@@ -858,7 +854,7 @@ be executed to change the compiler's working directory\; a trailing
     (while (and dir (not (file-exists-p (concat dir sml-make-file-name))))
       (let ((newdir (file-name-directory (directory-file-name dir))))
 	(setq dir (if (equal newdir dir) nil newdir))))
-    (sml-send-command command dir)))
+    (sml-send-command command dir t)))
 
 ;;; PARSING ERROR MESSAGES
 
@@ -910,7 +906,7 @@ the output\) of the last error. This odd behaviour may have a use...?"
     ;; go to interaction buffer but don't raise it's frame 
     (pop-to-buffer (sml-proc-buffer))
     ;; go to the last remembered error, and search for the next one.
-    (goto-char sml-error-cursor)
+    (goto-char (marker-position sml-error-cursor))
     (if (not (re-search-forward sml-error-regexp (point-max) t))
         ;; no more errors -- move point to the sml prompt at the end
         (progn
@@ -918,7 +914,7 @@ the output\) of the last error. This odd behaviour may have a use...?"
           (if sml-window (select-window sml-window)) ;return there, perhaps
           (message "No error message(s) found."))
       ;; error found: point is at end of last match; set the cursor posn.
-      (setq sml-error-cursor (point))
+      (set-marker sml-error-cursor (point))
       ;; move the SML window's text up to this line
       (set-window-start (get-buffer-window proc-buffer) (match-beginning 0))
       (let* ((pos)
@@ -937,16 +933,13 @@ the output\) of the last error. This odd behaviour may have a use...?"
             (sml-bottle "Sorry, can't locate errors on std_in.")
           (if (string= file sml-temp-file)
               ;; errors found in tmp file; seek the real file
-              (if (< (point) sml-error-barrier)
-                  ;; weird. user cleared *sml* and use'd the tmp file?
-                  (sml-bottle "Temp file error report is not current.")
-                (if (not (car sml-real-file))
-                    ;; sent from a buffer w/o a file attached.
-                    ;; DEAL WITH THIS EVENTUALLY.
-                    (sml-bottle "No real file associated with the temp file.")
-                  ;; real file and error-barrier
-                  (setq file (car sml-real-file))
-                  (setq pos (cdr sml-real-file))))))
+	      (if (not (car sml-real-file))
+		  ;; sent from a buffer w/o a file attached.
+		  ;; DEAL WITH THIS EVENTUALLY.
+		  (sml-bottle "No real file associated with the temp file.")
+		;; real file and error-barrier
+		(setq file (car sml-real-file))
+		(setq pos (cdr sml-real-file)))))
         (if (not (file-readable-p file))
             (sml-bottle (concat "Can't read " file))
           ;; instead of (find-file-other-window file) to lookup the file
