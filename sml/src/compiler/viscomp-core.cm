@@ -239,6 +239,7 @@ FLINT/opt/specialize.sml
 FLINT/opt/loopify.sml
 FLINT/opt/split.sml
 FLINT/opt/lift.sml
+FLINT/opt/switchoff.sml
 FLINT/plambda/chkplexp.sml
 FLINT/plambda/flintnm.sml
 FLINT/plambda/pflatten.sig

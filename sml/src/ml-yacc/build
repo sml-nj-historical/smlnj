@@ -51,8 +51,10 @@ fi
 
 cd src
 $SML $ARGS <<ZZZ
-  CM.make "ml-yacc.cm";
-  ExportParseGen.export "$HEAP_IMAGE" : unit;
+    CM.autoload "host-compiler.cm";
+    Compiler.Control.FLINT.check:=true;
+    CM.make "ml-yacc.cm";
+    ExportParseGen.export "$HEAP_IMAGE" : unit;
 ZZZ
 cd ..
 

@@ -6,7 +6,7 @@ functor FLINTComp (structure Gen: MACHINE_GEN
 struct
 
 local structure CB = CompBasic
-(*        structure CGC = Control.CG *)
+      (*        structure CGC = Control.CG *)
       structure MachSpec = Gen.MachSpec
       structure Convert = Convert(MachSpec)
       structure CPStrans = CPStrans(MachSpec)
@@ -25,14 +25,14 @@ structure Machine = Gen
 val architecture = Gen.MachSpec.architecture
 fun bug s = ErrorMsg.impossible ("FLINTComp:" ^ s)
 val say = Control_Print.say
-
+	  
 datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
-
+								   
 fun phase x = Stats.doPhase (Stats.makePhase x)
-
+	      
 val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
 val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
-
+		
 val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
 (*  val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract *)
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
@@ -40,12 +40,12 @@ val fcontract = phase "Compiler 052b fcontract" FContract.contract
 val fcontract = fn opts => fcontract opts o fcollect
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
-
+val switchoff = phase "Compiler unnumbered switchoff" Switchoff.switchoff
 val split     = phase "Compiler 058 split" FSplit.split
-
+		
 val typelift  = phase "Compiler 0535 typelift" Lift.typeLift
 val wformed   = phase "Compiler 0536 wformed" Lift.wellFormed
-
+		
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
 val reify     = phase "Compiler 055 reify" Reify.reify
@@ -114,7 +114,18 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
 	    | ("fcontract+eta",_)	=>
 	      (fcontract {etaSplit=true, tfnInline=false} f,  fi, fk, p)
 	    | ("lcontract",_)		=> (lcontract f,  fi, fk, p)
-	    | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
+	   | ("switchoff", _)          => (					
+					   (*say("switchoff <-\n");*)
+					   (*prF l f;*)
+					   (*say("switchoff \n");
+					   let val result = switchoff f
+					   in
+					       prF l result;
+					       (result, fi, fk, p)
+					   end*)
+					  (switchoff f, fi, fk, p)
+					   )
+	   | ("fixfix",   _)		=> (fixfix f,     fi, fk, p)
 	    | ("loopify",  _)		=> (loopify f,    fi, fk, p)
 	    | ("specialize",FK_NAMED)	=> (specialize f, fi, fk, p)
 	    | ("wrap",FK_NAMED)		=> (wrapping f,	  fi, FK_WRAP, p)

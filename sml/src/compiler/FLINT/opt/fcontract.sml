@@ -446,46 +446,6 @@ fun fcLet (lvs,le,body) =
 		 if List.all (C.dead o C.get) lvs
 		 then loop nm body cont
 		 else cbody()
-	       | (F.BRANCH _ | F.SWITCH _) =>
-		 (* this is a hack originally meant to cleanup the BRANCH
-		  * mess introduced in flintnm (where each branch returns
-		  * just true or false which is generally only used as
-		  * input to a SWITCH).
-		  * The present code does more than clean up this case.
-		  * It has one serious shortcoming: it ends up making
-		  * three fcontract passes through the same code (plus
-		  * one cheap traversal). *)
-		 let fun cassoc (lv,F.SWITCH(F.VAR v,ac,arms,NONE),wrap) =
-			 if lv <> v orelse C.usenb(C.get lv) > 1
-			 then cbody() else
-			     let val (narms,fdecs) =
-				     ListPair.unzip (map extract arms)
-				 fun addswitch [v] =
-				     C.copylexp
-					 M.empty
-					 (F.SWITCH(v,ac,narms,NONE))
-				   | addswitch _ = bug "prob in addswitch"
-				 (* replace each leaf `ret' with a copy
-				  * of the switch *)
-				 val nle = append [lv] addswitch nle
-				 (* decorate with the functions extracted
-				  * from the switch arms *)
-				 val nle =
-				     foldl (fn (f,le) => F.FIX([f],le))
-					   (wrap nle) fdecs
-				 (* Ugly hack: force one more traversal *)
-				 (* val nle = loop nm nle #2 *)
-			     in  click_branch();
-				 loop nm nle cont
-			     end
-		       | cassoc _ = cbody()
-		 in case (lvs,body)
-		     of ([lv],le as F.SWITCH _) =>
-			cassoc(lv, le, fn x => x)
-		      | ([lv],F.LET(lvs,le as F.SWITCH _,rest)) =>
-			cassoc(lv, le, fn le => F.LET(lvs,le,rest))
-		      | _ => cbody()
-		 end
 	       | _ => cbody()
 	  end)
 
