@@ -12,7 +12,7 @@ struct
 			       "fixfix", "fcontract",
 			       "loopify", "fixfix", (* "split", *) "fcontract",
 			       "specialize", "fcontract",
-			       "wrap", "fcontract", (*"switchoff"*), "fcontract",
+			       "wrap", "fcontract", (*"switchoff", *) "fcontract",
 			       (* "names2deb", "typelift", "deb2names", *)
 			       "reify", "loopify", "fixfix", "fcontract",
 			       "fixfix", "fcontract+eta"]
