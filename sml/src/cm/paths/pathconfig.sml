@@ -29,7 +29,20 @@ structure PathConfig :> PATHCONFIG = struct
 
     type mode = string StringMap.map ref
 
-    fun set (m, a, s) = m := (Era.newEra (); StringMap.insert (!m, a, s))
+    fun set0 mkAbsolute (m, a, s) = let
+	val s' =
+	    if OS.Path.isAbsolute s then s
+	    else mkAbsolute s
+    in
+	m := (Era.newEra (); StringMap.insert (!m, a, s'))
+    end
+    fun set x = let
+	fun mkAbsolute rel =
+	    OS.Path.mkAbsolute { path = rel,
+				 relativeTo = OS.FileSys.getDir () }
+    in
+	set0 mkAbsolute x
+    end
     fun reset m = m := (Era.newEra (); StringMap.empty)
     fun cancel (m, a) =
 	(Era.newEra ();
@@ -54,6 +67,13 @@ structure PathConfig :> PATHCONFIG = struct
     end
 
     fun processSpecFile (m, f) = let
+	val full_f_dir = OS.Path.dir (OS.FileSys.fullPath f)
+	fun set x = let
+	    fun mkAbsolute rel =
+		OS.Path.mkAbsolute { path = rel, relativeTo = full_f_dir }
+	in
+	    set0 mkAbsolute x
+	end
 	fun work s = let
 	    fun loop () = let
 		val line = TextIO.inputLine s

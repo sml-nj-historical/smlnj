@@ -159,7 +159,6 @@ in
 		    handle exn =>
 			exn_err ("unable to load library module",
 				 error, descr, exn)
-		val epid = BF.exportPidOf bfc
 	    in
 		execute (bfc, e)
 		handle exn => exn_err ("link-time exception in library code",
