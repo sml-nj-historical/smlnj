@@ -6,4 +6,6 @@ functor DummyCCallsFn (T: MLTREE) :> C_CALLS where T = T = struct
       | ARGS of c_arg list
 
     fun genCall _ = ErrorMsg.impossible "C-calls not implemented"
+
+    val paramAreaOffset = 0
 end

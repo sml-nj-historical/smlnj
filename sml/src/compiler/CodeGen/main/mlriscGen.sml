@@ -1869,6 +1869,7 @@ struct
 		      CCalls.genCall
 			  { name = f, proto = p, structRet = sr,
 			    saveRestoreDedicated = srd,
+			    paramAlloc = fn _ => false,
 			    callComment =
 			    SOME ("C prototype is: " ^ CProto.pshow p),
 			    args = a }
