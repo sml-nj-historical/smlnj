@@ -43,14 +43,14 @@ User Manual}
 \section{Introduction}
 
 This manual describes a new implementation of CM, the ``Compilation
-and Library Manager'' for Standard ML of New Jersey (SML/NJ).  Like its
-previous version, CM is in charge of managing separate compilation and
-facilitates access to stable libraries.
+and Library Manager'' for Standard ML of New Jersey (SML/NJ).  Like
+its previous incarnation, CM is in charge of managing separate
+compilation and facilitates access to stable libraries.
 
-Programming projects that use CM are typically composed of separate
-{\em libraries}.  Libraries are collections of ML compilation units
-and themselves can be internally sub-structured using CM's notion of
-{\em library components}.
+Most programming projects that use CM are composed of separate {\em
+libraries}.  Libraries are collections of ML compilation units.  These
+collections themselves can be internally sub-structured using CM's
+notion of {\em library components}.
 
 CM offers the following features to the programmer:
 
@@ -78,10 +78,10 @@ is common to both user programs and SML/NJ itself
 \item conditional compilation (at compilation unit granularity)
 \item support for parallel and distributed compilation
 \item facilities for generating stand-alone ML programs
-\item a mechanism for deriving dependency information that can be used
-by other compilation managers such as Unix' {\bf make}
+\item a mechanism for deriving dependency information for use
+by other compilation managers (e.g., Unix' {\bf make})
 \item an API to access all these facilities at SML/NJ's interactive
-prompt
+prompt or from user programs
 \end{itemize}
 
 CM puts emphasis on {\em working with libraries}.  This contrasts with
@@ -137,7 +137,7 @@ toplevel-defined symbols of the library that shall be exported to its
 clients.  A library is described by the contents of its {\em
 description file}.\footnote{The description file may also contain
 references to input files for {\em tools} like {\tt ml-lex} or {\tt
-ml-yacc} that produce ML source files.  See section~\ref{sec:tools}.}
+ml-yacc} that produce ML source files.  See section~\ref{sec:classes}.}
 
 \noindent Example:
 
@@ -218,24 +218,23 @@ words, there can be no top-level type-, value-, or infix-definitions.
 \item For a given symbol, there can be at most one ML source file per
 library (or---more correctly---one file per library component; see
 Section~\ref{sec:groups}) that defines the symbol at top level.
-\item If more than one sub-library or sub-group is exporting the same
-symbol, then the definition (i.e., the ML source file that actually
-defines the symbol) must be identical in all cases.
+\item If more than one of the listed libraries or components is
+exporting the same symbol, then the definition (i.e., the ML source
+file that actually defines the symbol) must be identical in all cases.
 \label{rule:diamond}
 \item The use of ML's {\bf open} construct is not permitted at the top
 level of ML files compiled by CM.  (The use is still ok at the
 interactive top level.)
 \end{enumerate}
 
-Note that these rules do not require the exports of sub-groups or
-sub-libraries to be distinct from the exports of ML source files in
-the current library or group.  If an ML source file $f$ re-defines a
-name $n$ that is also imported from library or library component $l$,
-then the disambiguating rule is that the definition from $f$ takes
-precedence over that from $l$ in all sources except $f$ itself.  Free
-occurences of $n$ in $f$ refer to $l$'s definition.  This rule makes
-it possible to easily write code for exporting an ``augmented''
-version of some module.  Example:
+Note that these rules do not require the exports of imported libraries
+to be distinct from the exports of ML source files in the current
+library.  If an ML source file $f$ re-defines a name $n$ that is also
+imported from library $l$, then the disambiguating rule is that the
+definition from $f$ takes precedence over that from $l$ in all sources
+except $f$ itself.  Free occurences of $n$ in $f$ refer to $l$'s
+definition.  This rule makes it possible to easily write code for
+exporting an ``augmented'' version of some module.  Example:
 
 \begin{verbatim}
   structure A = struct (* defines augmented A *)
@@ -245,15 +244,15 @@ version of some module.  Example:
 \end{verbatim}
 
 Rule~\ref{rule:diamond} may come as a bit of a surprise considering
-that each ML source file can be a member of at most one group or
-library (see section~\ref{sec:multioccur}).  However, it is indeed
-possible for two libraries to (re-)export the ``same'' definition
-provided they both import that definition from a third library.  For
-example, let us assume that {\tt a.cm} exports a structure {\tt X}
-which was defined in {\tt x.sml}---one of {\tt a.cm}'s members.  Now,
-if both {\tt b.cm} and {\tt c.cm} re-export that same structure {\tt
-X} after importing it from {\tt a.cm}, it is legal for a fourth
-library {\tt d.cm} to import from both {\tt b.cm} and {\tt c.cm}.
+that each ML source file can be a member of at most one library (see
+section~\ref{sec:multioccur}).  However, it is indeed possible for two
+libraries to (re-)export the ``same'' definition provided they both
+import that definition from a third library.  For example, let us
+assume that {\tt a.cm} exports a structure {\tt X} which was defined
+in {\tt x.sml}---one of {\tt a.cm}'s members.  Now, if both {\tt b.cm}
+and {\tt c.cm} re-export that same structure {\tt X} after importing
+it from {\tt a.cm}, it is legal for a fourth library {\tt d.cm} to
+import from both {\tt b.cm} and {\tt c.cm}.
 
 The full syntax for library description files also includes provisions
 for a simple ``conditional compilation'' facility (see
@@ -264,7 +263,7 @@ delimited by \verb|(*| and \verb|*)|.
 \subsection{Name visibility}
 
 In general, all definitions exported from members (i.e., ML source
-files, subgroups and sublibraries) of a library are visible in all
+files, sublibraries, and components) of a library are visible in all
 other ML source files of that library.  The source code in those
 source files can refer to them directly without further qualification.
 Here, ``exported'' means either a top-level definition within an ML
@@ -277,7 +276,7 @@ concerned---each component (group) is treated like a separate library.
 Cyclic dependencies among libraries, library components, or ML source
 files within a library are detected and flagged as errors.
 
-\subsection{Groups}
+\subsection{Library components (groups)}
 \label{sec:groups}
 
 CM's group model eliminates a whole class of potential naming problems
@@ -294,7 +293,7 @@ model) but also refers to actual file system objects (e.g., CM
 description files and stable library files).  It would be inconvenient
 if name resolution problems would result in a proliferation of
 additional library files.  Therefore, CM also provides the notion of
-groups (or: ``library components'').  Name resolution for groups works
+library components (``groups'').  Name resolution for groups works
 like name resolution for entire libraries, but grouping is entirely
 internal to each library.
 
@@ -395,7 +394,7 @@ same library---a group).
 
 CM distinguishes between libraries that are {\em under development}
 and libraries that are {\em stable}.  A stable library is created by a
-call to {\tt CM.stabilize} (see Section~\ref{sec:api:compiling}).
+call of {\tt CM.stabilize} (see Section~\ref{sec:api:compiling}).
 
 Access to stable libraries is subject to less internal
 consistency-checking and touches far fewer file-system
@@ -854,7 +853,7 @@ master-slave protocol (see section~\ref{sec:pathencode}).
 
 {\tt CM.Library.osstring} produces a string denoting the given
 library's description file using the underlying operating system's
-native pathname syntax.  In other words, the result of a call to {\tt
+native pathname syntax.  In other words, the result of a call of {\tt
 CM.Library.osstring} is suitable as an argument to {\tt
 TextIO.openIn}.
 
@@ -955,7 +954,7 @@ server.
 
 An existing server can be shut down and detached using {\tt
 CM.Server.stop} or {\tt CM.Server.kill}.  The argument in either case
-must be the result of an earlier call to {\tt CM.Server.start}.
+must be the result of an earlier call of {\tt CM.Server.start}.
 Function {\tt CM.Server.stop} uses CM's master-slave protocol to
 instruct the server to shut down gracefully.  Only if this fails it
 may become necessary to use {\tt CM.Server.kill}, which will send a
@@ -989,7 +988,7 @@ of {\tt CM.make}, one can avoid polluting the interactive top-level
 environment with spurious exports of the extension module.
 
 CM itself uses plug-in modules in its member-class subsystem (see
-section~\ref{sec:classes}).  This makes it possible to add new classes
+section~\ref{sec:moretools}).  This makes it possible to add new classes
 and tools very easily without having to reconfigure or recompile CM,
 not to mention modify its source code.
 
@@ -1114,8 +1113,8 @@ Here, one would probably want to include derived sources:
 \subsection{The autoloader}
 \label{sec:autoload}
 
-From the user's point of view, a call to {\tt CM.autoload} acts very
-much like the corresponding call to {\tt CM.make} because the same
+From the user's point of view, a call of {\tt CM.autoload} acts very
+much like the corresponding call of {\tt CM.make} because the same
 bindings that {\tt CM.make} would introduce into the top-level
 enviroment are also introduced by {\tt CM.autoload}.  However, most
 work will be deferred until some code that is entered later refers to
@@ -1156,7 +1155,7 @@ As far as sharing is concerned, the rule is that during one traversal
 each compilation unit will be executed at most once.  This means that
 the same ``program'' will not see multiple instantiations of the same
 compilation unit (where ``program'' refers to the code managed by one
-call to {\tt CM.make} or {\tt CM.autoload}).  Each compilation unit
+call of {\tt CM.make} or {\tt CM.autoload}).  Each compilation unit
 will be linked at most once during a traversal and private state
 will not be confused with private state of other traversals that might
 be active at the same time.
@@ -1950,14 +1949,14 @@ different versions of the same source file have exactly the same time
 stamp}
 
 CM also uses time stamps to decide whether tools such as ML-Yacc or
-ML-Lex need to be run (see Section~\ref{sec:tools}).  However, the
+ML-Lex need to be run (see Section~\ref{sec:classes}).  However, the
 difference is that a file is considered outdated if it is older than
 its source.  Some care on the programmers side is necessary since this
 scheme does not allow CM to detect the situation where a source file
 gets replaced by an older version of itself.
 
-\section{Tools}
-\label{sec:tools}
+\section{Extending the tool set}
+\label{sec:moretools}
 
 CM's tool set is extensible: new tools can be added by writing a few
 lines of ML code.  The necessary hooks for this are provided by a
@@ -1967,7 +1966,7 @@ library.
 \subsection{Adding simple shell-command tools}
 
 If the tool is implemented as a ``typical'' shell command, then all
-that needs to be done is a single call to:
+that needs to be done is a single call of:
 
 \begin{verbatim}
   Tools.registerStdShellCmdTool
@@ -2093,14 +2092,13 @@ module can then register the required tool which enables CM to
 successfully deal with the previously unknown member.
 
 This mechanism makes it possible for new tools to be added by simply
-placing appropriately-named plug-in libraries into a global tool
-repository.  Of course, it will also require a corresponding
-re-configuration of the anchor environment.  In other words, for
-general-purpose tools that are installed in some central place,
-corresponding tool description files {\tt \$/}$c${\tt -tool.cm} and
-{\tt \$/}$s${\tt -ext.cm} should be registered using the path anchor
-mechanism.  If this is done, actual description files can be placed in
-arbitrary locations.
+placing appropriately-named plug-in libraries in some convenient place
+and making the corresponding adjustments to the anchor environment.
+In other words, description files {\tt \$/}$c${\tt -tool.cm} and {\tt
+\$/}$s${\tt -ext.cm} that correspond to general-purpose tools should
+be registered using the path anchor mechanism.  If this is done,
+actual description files for the tools' implementations can be placed
+in arbitrary locations.
 
 \subsubsection{Explicitly-loaded, local plug-in tools}
 \label{sec:localtools}
@@ -2134,20 +2132,13 @@ Likewise, classifiers (e.g., filename suffixes) registered by {\tt
 bar-tool.cm} will also be available.
 
 The effect of registering classes and classifiers using class {\tt
-tool} lasts until the end of the current description file.  Moreover,
-the effect is {\em restricted} to the current description file.  This
-means that other description files that also want to use class {\tt
-bar} will have to have their own {\tt tool} entry.
+tool} lasts until the end of the current description file and is
+restricted to that file.  This means that other description files that
+also want to use class {\tt bar} will have to have their own {\tt
+tool} entry.
 
-\noindent{\bf Important:} Registration of classes and classifiers
-happens by link-time side-effect.  If a class or a classifier has been
-registered locally via class {\tt tool}, then CM will {\em undo} this
-registration when finished with the corresponding description file.
-Therefore, it is important that the required side-effect happens {\em
-every time} the tool implementation is loaded!  Unfortunately, CM's
-default treatment of link-time state (see section~\ref{sec:sharing})
-would defeats this.  Therefore, it is necessary to mark the side-effecting
-ML code in the tool's implementation as {\em private}.
+Local tool classes and suffixes temporarily override any equally-named
+global classes or suffixes, respectively.
 
 \subsubsection{Locally declared suffixes}
 \label{sec:localsuffixes}
@@ -2296,7 +2287,7 @@ current value of the anchor.
 \item[Absolute paths] start either with a percent-sign {\bf \%} or a
 slash {\bf /}.  The canonical form is the one with the percent-sign:
 it specifies the volume name between the {\bf \%} and the first slash.
-The common case where the volume name is empty (i.e, {\em always} on
+In the common case where the volume name is empty (i.e, {\em always} on
 Unix systems), the path starts with {\bf /}.
 \item[Relative paths] are all other paths.
 \end{description}
@@ -2311,11 +2302,10 @@ decimal value of the respective character's ordinal number (i.e, the
 result of applying {\tt Char.ord}).
 
 The so-called {\em current} arc is encoded as {\bf .}, the {\em
-parent} arc uses {\bf ..} as its representation.  On some operating
-systems it can happen that although an arc is either {\tt .} or {\tt
-..}, it still does not actually refer to the current or the parent
-arc.  In such a case, CM will encode the dots in these names using the
-\verb|\ddd| method, too.
+parent} arc uses {\bf ..} as its representation.  It might be that
+under some operating systems the names {\tt .} or {\tt ..} do not
+actually refer to the current or the parent arc.  In such a case, CM
+will encode the dots in these names using the \verb|\ddd| method, too.
 
 When issuing progress messages, CM shows path names in a form that is
 almost the same as the protocol encoding.  The only difference is that

@@ -208,23 +208,30 @@ structure SrcPath :> SRCPATH = struct
 	    else if a = "." then dot 
 	    else if a = ".." then dotdot
 	    else ta a
-	fun e_p (PATH { arcs, context, ... }, ctxt, a) =
-	    let val l = rev arcs
-		val l = if ctxt andalso bracket then
-			    concat ["(", List.hd l, ")"] :: List.tl l
-			else l
-		val a = case l of
-			    [] => a
-			  | h :: t =>
-			    foldl (fn (x, l) => arc x :: "/" :: l)
-				  (arc h :: a) t
-	    in e_c (context, a)
+	fun e_p (PATH { arcs = [], context, ... }, _, a) =
+	    e_c (context, a, NONE)
+	  | e_p (PATH { arcs, context, ... }, ctxt, a) =
+	    let val l = map arc arcs
+		val a0 = List.hd l
+		val l' = rev l
+		val l'' = if ctxt andalso bracket then
+			      concat ["(", List.hd l', ")"] :: List.tl l'
+			else l'
+		val a' = foldl (fn (x, l) => arc x :: "/" :: l)
+			      (arc (List.hd l'') :: a) (List.tl l'')
+	    in e_c (context, a', SOME a0)
 	    end
-	and e_c (ROOT "", a) = concat ("/" :: a)
-	  | e_c (ROOT vol, a) = concat ("%" :: ta vol :: "/" :: a)
-	  | e_c (CWD _, a) = concat a
-	  | e_c (ANCHOR x, a) = concat ("$" :: ta (#name x) :: "/" :: a)
-	  | e_c (DIR p, a) = e_p (p, true, ":" :: a)
+	and e_c (ROOT "", a, _) = concat ("/" :: a)
+	  | e_c (ROOT vol, a, _) = concat ("%" :: ta vol :: "/" :: a)
+	  | e_c (CWD _, a, _) = concat a
+	  | e_c (ANCHOR x, a, NONE) = concat ("$" :: ta (#name x) :: "/" :: a)
+	  | e_c (ANCHOR x, a, SOME a1) = let
+		val a0 = ta (#name x)
+	    in
+		concat (if bracket andalso a0 = a1 then "$/" :: a
+			else "$" :: a0 :: "/" :: a)
+	    end
+	  | e_c (DIR p, a, _) = e_p (p, true, ":" :: a)
     in
 	e_p (p, false, [])
     end

@@ -1,5 +1,5 @@
 Library
 	structure SMLCopyTool
 is
-	smlcopy-tool.sml (private)
+	smlcopy-tool.sml
 	$smlnj/cm/tools.cm

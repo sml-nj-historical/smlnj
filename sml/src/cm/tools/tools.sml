@@ -158,6 +158,8 @@ signature PRIVATETOOLS = sig
 	-> expansion
 
     val defaultClassOf : (string -> bool) -> string -> class option
+
+    val withPlugin : SrcPath.file -> (unit -> 'a) -> 'a
 end
 
 signature TOOLS = sig
@@ -230,29 +232,50 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	partial_expansion
 
     type registry = { classes : rule StringMap.map ref,
-		      sfx_classifiers : (string -> class option) list ref,
-		      gen_classifiers : (string -> class option) list ref }
+		      sfx_classifiers : (string -> class option) ref,
+		      gen_classifiers : (string -> class option) ref }
+
+    fun layer (look1, look2) s = case look1 s of NONE => look2 s | x => x
 
     fun newRegistry () =  { classes = ref StringMap.empty,
-			    sfx_classifiers = ref [],
-			    gen_classifiers = ref [] } : registry
+			    sfx_classifiers = ref (fn _ => NONE),
+			    gen_classifiers = ref (fn _ => NONE) } : registry
+
+    (* Three registries:
+     *  1. global: where globally available tools are registered and found.
+     *  2. local: where locally available tools are found;
+     *            the local registry is being set anew every time "expand"
+     *            is being called; each instance of a local registry belongs
+     *            to one description file that is being processed.
+     *  3. plugin registries: mapping from tool implementations (indexed
+     *            by their respective description files) to that tool's
+     *            registry; here is where local tools register themselves;
+     *            the rule for the "tool" class causes the tool to register
+     *            itself if it has not already done so and then merges
+     *            the contents of the tool's registry into the current
+     *            local registry.
+     * These complications exist because tools register themselves via
+     * side-effects. *)
 
     val global_registry = newRegistry ()
 
-    val local_registry : registry option ref = ref NONE
+    val local_registry : registry ref = ref (newRegistry ())
+
+    val plugin_registries : registry SrcPathMap.map ref = ref SrcPathMap.empty
+
+    val current_plugin : SrcPath.file option ref = ref NONE
 
     local
-	fun registry join sel () = let
-	    val get = ! o sel
+	fun registry sel cvt s = let
+	    val get = cvt o ! o sel
 	in
-	    case !local_registry of
-		NONE => get global_registry
-	      | SOME rg => join (get rg, get global_registry)
+	    layer (get (!local_registry), get global_registry) s
 	end
+	fun curry f x y = f (x, y)
     in
-        val classes = registry (StringMap.unionWith #1) #classes
-        val sfx_classifiers = registry (op @) #sfx_classifiers
-	val gen_classifiers = registry (op @) #gen_classifiers
+        val classes = registry #classes (curry StringMap.find)
+        val sfx_classifiers = registry #sfx_classifiers (fn x => x)
+	val gen_classifiers = registry #gen_classifiers (fn x => x)
     end
 
     datatype classifier =
@@ -263,20 +286,52 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	SFX_CLASSIFIER (fn e => if sfx = e then SOME class else NONE)
 
     local
-	fun upd sel f = let
-	    val rf = sel (case !local_registry of
-			      SOME rg => rg
-			    | NONE => global_registry)
+	fun upd sel augment = let
+	    val rf =
+		sel (case !current_plugin of
+			 NONE => global_registry
+		       | SOME p =>
+			 (case SrcPathMap.find (!plugin_registries, p) of
+			      SOME r => r
+			    | NONE => let
+				  val r = newRegistry ()
+			      in
+				  plugin_registries :=
+				  SrcPathMap.insert (!plugin_registries, p, r);
+				  r
+			      end))
 	in
-	    rf := f (!rf)
+	    rf := augment (!rf)
 	end
     in
         fun registerClass (class, rule) =
 	    upd #classes (fn m => StringMap.insert (m, class, rule))
 	fun registerClassifier (SFX_CLASSIFIER c) =
-	    upd #sfx_classifiers (fn l => c :: l)
+	    upd #sfx_classifiers (fn c' => layer (c, c'))
 	  | registerClassifier (GEN_CLASSIFIER c) =
-	    upd #gen_classifiers (fn l => c :: l)
+	    upd #gen_classifiers (fn c' => layer (c, c'))
+
+	fun transfer_local p = let
+	    val lr = !local_registry
+	in
+	    case SrcPathMap.find (!plugin_registries, p) of
+		NONE => ()
+	      | SOME pr => let
+		    fun upd sel join = sel lr := join (! (sel pr), ! (sel lr))
+		in
+		    upd #classes (StringMap.unionWith #1);
+		    upd #sfx_classifiers layer;
+		    upd #gen_classifiers layer
+		end
+	end
+
+	fun withPlugin p thunk =
+	    SafeIO.perform { openIt = fn () => !current_plugin before
+					       current_plugin := SOME p,
+			     closeIt = fn prev => (transfer_local p;
+						   current_plugin := prev),
+			     work = fn _ => thunk (),
+			     cleanup = fn _ => () }
     end
 
     datatype extensionStyle =
@@ -333,41 +388,31 @@ structure PrivateTools :> PRIVATETOOLS = struct
     val makeDirs = AutoDir.makeDirs
 
     fun globally lp arg =
-	SafeIO.perform { openIt = fn () => !local_registry before
-					   local_registry := NONE,
-			 closeIt = fn previous => local_registry := previous,
+	SafeIO.perform { openIt = fn () => !current_plugin before
+					   current_plugin := NONE,
+			 closeIt = fn prev => current_plugin := prev,
 			 work = fn _ => lp arg,
 			 cleanup = fn _ => () }
 
     (* query default class *)
     fun defaultClassOf load_plugin p = let
-	fun gen_loop [] = NONE
-	  | gen_loop (h :: t) =
-	    (case h p of
-		 NONE => gen_loop t
-	       | SOME c => SOME c)
+	fun sfx_gen_check e =
+	    case sfx_classifiers e of
+		SOME c => SOME c
+	      | NONE => gen_classifiers p
 
-	fun sfx_loop e = let
-	    fun loop [] = gen_loop (gen_classifiers ())
-	      | loop (h :: t) =
-		(case h e of
-		     NONE => loop t
-		   | SOME c => SOME c)
-	in
-	    loop (sfx_classifiers ())
-	end
     in
 	case OS.Path.ext p of
 	    SOME e =>
-		(case sfx_loop e of
-		     SOME c => SOME c
-		   | NONE => let
-			 val plugin = concat ["$/", e, "-ext.cm"]
-		     in
-			 if globally load_plugin plugin then sfx_loop e
-			 else NONE
-		     end)
-	  | NONE => gen_loop (gen_classifiers ())
+	    (case sfx_gen_check e of
+		 SOME c => SOME c
+	       | NONE => let
+		     val plugin = concat ["$/", e, "-ext.cm"]
+		 in
+		     if globally load_plugin plugin then sfx_gen_check e
+		     else NONE
+		 end)
+	  | NONE => gen_classifiers p
     end
 
     fun parseOptions { tool, keywords, options } = let
@@ -480,7 +525,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	fun mkNativePath s =
 	    SrcPath.native { err = error } { context = context, spec = s }
 	fun class2rule class =
-	    case StringMap.find (classes (), class) of
+	    case classes class of
 		SOME rule => rule
 	      | NONE => let
 		    val base = concat ["$/", class, "-tool"]
@@ -491,7 +536,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 			 smlrule)
 		in
 		    if globally (load_plugin context) plugin then
-			case StringMap.find (classes (), class) of
+			case classes class of
 			    SOME rule => rule
 			  | NONE => complain ()
 		    else complain ()
@@ -533,8 +578,8 @@ structure PrivateTools :> PRIVATETOOLS = struct
 	    end
     in
 	SafeIO.perform { openIt = fn () => !local_registry
-					   before local_registry := SOME lr,
-			 closeIt = fn previous => local_registry := previous,
+					   before local_registry := lr,
+			 closeIt = fn prev => local_registry := prev,
 			 work = fn _ => loop ({ smlfiles = [], cmfiles = [],
 						sources = [] },
 					      [spec]),
@@ -658,9 +703,10 @@ functor ToolsFn (val load_plugin : string -> bool
 	fun toolrule { spec, context, mkNativePath } = let
 	    val { name, mkpath, opts, ... } : spec = spec
 	    fun err m = raise ToolError { tool = toolclass, msg = m }
+	    val p = srcpath (mkpath name)
 	in
 	    case opts of
-		NONE => if load_plugin' (srcpath (mkpath name)) then
+		NONE => if withPlugin p (fn () => load_plugin' p) then
 			    empty_expansion
 			else err "tool registration failed"
 	      | SOME _ => err "no tool options are recognized"
