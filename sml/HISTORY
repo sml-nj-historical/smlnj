@@ -13,6 +13,14 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2001/10/12 17:18:32 EDT 2001
+Tag: leung-20011012-x86-printflowgraph
+Description:
+
+X86RA now uses a valid (instead of dummy) PrintFlowgraph module.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/10/11 23:51:34 EDT
 Tag: george-20011011-too-many-instrs

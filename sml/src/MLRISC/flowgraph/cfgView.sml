@@ -54,7 +54,7 @@ struct
        in  emitHeader S block;
            app (fn CFG.PSEUDO p => pseudoOp p
                  | CFG.LABEL l  => defineLabel l) (!data);
-(*           app defineLabel (!labels); *) (* JHR *)
+           app defineLabel (!labels); 
            if outline then () else app emit (rev (!insns));
            emitFooter S block
        end

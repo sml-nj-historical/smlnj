@@ -101,7 +101,6 @@ struct
 	  val l = Label.anon ()
           in
 	    labels := [l];
-	    data := !data @ [LABEL l];	(* JHR *)
 	    l
 	  end
     fun insns(BLOCK{insns, ...}) = insns
@@ -177,7 +176,7 @@ struct
        in  emitHeader S block;
            app (fn PSEUDO p => pseudoOp p
                  | LABEL l  => defineLabel l) (!data);
-(*           app defineLabel (!labels); *) (* JHR *)
+           app defineLabel (!labels); 
            if outline then () else app emit (rev (!insns));
            emitFooter S block
        end

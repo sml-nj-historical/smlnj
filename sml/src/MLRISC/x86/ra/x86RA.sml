@@ -113,7 +113,7 @@ functor X86RA
     structure CFG        : CONTROL_FLOW_GRAPH where I = I
     structure Asm        : INSTRUCTION_EMITTER where I = I and P = CFG.P
 
-      (* Spilling heuristics determines which node should be spilled. 
+      (* Spilling heuristics determines which node should be spilled 
        * You can use Chaitin, ChowHenessey, or one of your own.
        *)
     structure SpillHeur : RA_SPILL_HEURISTICS 
@@ -210,14 +210,9 @@ struct
     val deadblocks = MLRiscControl.getCounter "x86-dead-blocks"
  *)
 
-(*
-    structure PrintFlowGraph=
-       PrintCluster(structure Flowgraph=CFG
-                    structure Asm = Asm)
-*)
-    structure PrintFlowGraph= struct
-      fun printCluster _ = error "printCluster: not implemented"
-    end
+    structure PrintFlowgraph=
+       PrintFlowgraph(structure CFG=CFG
+                      structure Asm = Asm)
 
     structure X86FP = 
        X86FP(structure X86Instr = I
@@ -624,7 +619,7 @@ struct
     fun run cluster =
     let val printGraph = 
             if !x86CfgDebugFlg then 
-               PrintFlowGraph.printCluster(!MLRiscControl.debug_stream)
+               PrintFlowgraph.printCFG(!MLRiscControl.debug_stream)
             else fn msg => fn _ => () 
 
         val S = beforeRA cluster 

@@ -42,6 +42,7 @@ Library
 	signature MLTREE_SIZE
 	signature OMIT_FRAME_POINTER
 	signature POINTS_TO
+	signature PRINT_FLOWGRAPH
 	signature PSEUDO_OPS
 	signature RA
 	signature RA_CORE
@@ -93,6 +94,7 @@ Library
 	functor MLTreeSize
 	functor MemoryRA
 	functor NoDelaySlots
+	functor PrintFlowgraph
 	functor RADeadCodeElim
 	functor RASpill
 	functor RASpillTypes
@@ -183,6 +185,7 @@ is
 	../flowgraph/cfgView.sml
 	../flowgraph/cfgCountCopies.sml
 	../flowgraph/cfgExpandCopies.sml
+	../flowgraph/printFlowgraph.sml	
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml

@@ -205,9 +205,10 @@ struct
 	|  _ => newBlock(1)
      (*esac*))
 
-    fun addPseudoOp p = let
-      val CFG.BLOCK{data, ...} = newPseudoOpBlock()
-    in data := !data @ [CFG.PSEUDO p]
+    fun addPseudoOp p = 
+    let val CFG.BLOCK{data, labels, ...} = newPseudoOpBlock()
+    in  data := !data @ map CFG.LABEL(!labels) @ [CFG.PSEUDO p];
+        labels := []
     end
 
     fun defineLabel lab = (case findLabel (hashLabel lab)
@@ -215,7 +216,6 @@ struct
         	val CFG.BLOCK{id, labels, data, ...} = newPseudoOpBlock()
         	in 
 		  labels := lab :: !labels;
-		  data := !data @ [CFG.LABEL lab];	(* JHR *)
 		  addLabel(hashLabel lab, id)
 		end
 	    | SOME _ => error (concat[
