@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Allen Leung
+Date: 2000/10/23 19:31:00
+Tag: leunga-20001023-demo-ra
+
+1. Minor RA changes that improves spilling on x86 (affects Moby and C-- only)
+2. Test programs for the graph library updated
+3. Some new MLRISC demo programs added
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/08/31 22:15:00 JST
 Tag: blume-20001017-errmsg
