@@ -314,8 +314,10 @@ end = struct
 					| SOME t => ty (t, a')
 		    val (f, s, u) = a''
 		    val cfth = hash_cft cft
+		    val i = IM.numItems f
 		in
-		    (IM.insert (f, cfth, (cft, IM.numItems f)), s, u)
+		    if IM.inDomain (f, cfth) then (f, s, u)
+		    else (IM.insert (f, cfth, (cft, i)), s, u)
 		end
 	    fun fs (S.OFIELD { spec = (_, t), ... }, a) = ty (t, a)
 	      | fs (_, a) = a
