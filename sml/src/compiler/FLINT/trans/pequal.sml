@@ -240,6 +240,8 @@ fun test(ty, 0) = raise Poly
 	  (case (!eq, kind) of
 	       (YES, PRIMITIVE _) => atomeq (tyc, ty)
 
+	     | (YES, ABSTRACT tyc') => test (CONty (tyc', tyl), depth)
+
              | (ABS,_) =>
                test(TU.mkCONty(GENtyc{eq=ref YES,stamp=stamp,arity=arity,
                                       kind=kind,path=path,stub=NONE}, tyl),
