@@ -15,7 +15,7 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/09/04 16:30:00 CDT
-Tag: blume-20030928-slices-etc
+Tag: blume-20030904-slices-etc
 Description:
 
   1. Changed interface to vectors and arrays in Basis to match
