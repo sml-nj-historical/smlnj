@@ -73,6 +73,7 @@
 (require 'sml-util)
 (require 'sml-move)
 (require 'sml-defs)
+(condition-case nil (require 'skeleton) (error nil))
 
 ;;; VARIABLES CONTROLLING INDENTATION
 
@@ -285,6 +286,10 @@ This mode runs `sml-mode-hook' just before exiting.
        'sml-current-fun-name)
   ;; forward-sexp-function is an experimental variable in my hacked Emacs.
   (set (make-local-variable 'forward-sexp-function) 'sml-user-forward-sexp)
+  ;; For XEmacs
+  (easy-menu-add sml-mode-menu)
+  ;; Compatibility
+  (unless (boundp 'skeleton-positions) (set (make-local-variable '@) nil))
   (sml-mode-variables))
 
 (defun sml-mode-variables ()
@@ -302,8 +307,7 @@ This mode runs `sml-mode-hook' just before exiting.
   ;;(set (make-local-variable 'block-comment-start) "* ")
   ;;(set (make-local-variable 'block-comment-end) "")
   (set (make-local-variable 'comment-column) 40)
-  (set (make-local-variable 'comment-start-skip) "(\\*+\\s-*")
-  (set (make-local-variable 'comment-indent-function) 'sml-comment-indent))
+  (set (make-local-variable 'comment-start-skip) "(\\*+\\s-*"))
 
 (defun sml-electric-pipe ()
   "Insert a \"|\".
@@ -371,19 +375,6 @@ a newline, and indent."
 If anyone has a good algorithm for this..."
   (interactive)
   (mark-paragraph))
-
-;; (defun sml-indent-region (begin end)
-;;   "Indent region of ML code."
-;;   (interactive "r")
-;;   (message "Indenting region...")
-;;   (save-excursion
-;;     (goto-char end) (setq end (point-marker)) (goto-char begin)
-;;     (while (< (point) end)
-;;       (skip-chars-forward "\t\n ")
-;;       (indent-according-to-mode)
-;;       (end-of-line))
-;;     (move-marker end nil))
-;;   (message "Indenting region... done"))
 
 (defun sml-indent-line ()
   "Indent current line of ML code."
@@ -665,12 +656,7 @@ Optional argument STYLE is currently ignored"
 	;; Skip all other declarations that we find at the same level.
 	(sml-skip-siblings))
       fullname)))
-    
 
-(defun sml-comment-indent ()
-  (if (looking-at "^(\\*")              ; Existing comment at beginning
-      0                                 ; of line stays there.
-    comment-column))
 
 ;;; INSERTING PROFORMAS (COMMON SML-FORMS)
 
@@ -688,25 +674,26 @@ and `sml-addto-forms-alist'.
 signature, structure, and functor by default.")
 
 (defmacro sml-def-skeleton (name interactor &rest elements)
-  (let ((fsym (intern (concat "sml-form-" name))))
-    `(progn
-       (add-to-list 'sml-forms-alist ',(cons name fsym))
-       (define-abbrev sml-mode-abbrev-table ,name "" ',fsym)
-       (define-skeleton ,fsym
-	 ,(format "SML-mode skeleton for `%s..' expressions" name)
-	 ,interactor
-	 ,(concat name " ") >
-	 ,@elements))))
+  (when (fboundp 'define-skeleton)
+    (let ((fsym (intern (concat "sml-form-" name))))
+      `(progn
+	 (add-to-list 'sml-forms-alist ',(cons name fsym))
+	 (define-abbrev sml-mode-abbrev-table ,name "" ',fsym)
+	 (define-skeleton ,fsym
+	   ,(format "SML-mode skeleton for `%s..' expressions" name)
+	   ,interactor
+	   ,(concat name " ") >
+	   ,@elements)))))
 (put 'sml-def-skeleton 'lisp-indent-function 2)
 
 (sml-def-skeleton "let" nil
-  _ "\nin" > "\nend" >)
+  @ "\nin " > _ "\nend" >)
 
 (sml-def-skeleton "if" nil
-  _ " then " > "\nelse " >)
+  @ " then " > _ "\nelse " > _)
 
 (sml-def-skeleton "local" nil
-  _ "\nin" > "\nend" >)
+  @ "\nin" > _ "\nend" >)
 
 (sml-def-skeleton "case" "Case expr: "
   str "\nof " > _ " => ")
@@ -735,24 +722,22 @@ signature, structure, and functor by default.")
   _ "\nend" >)
 
 (sml-def-skeleton "val" nil
-  _ " = " >)
+  @ " = " > _)
 
 (sml-def-skeleton "fn" nil
-  _ " =>" >)
+  @ " =>" > _)
 
 (sml-def-skeleton "fun" nil
-  _ " =" >)
+  @ " =" > _)
 
 ;;
 
 (defun sml-forms-menu (menu)
-  (easy-menu-filter-return
-   (easy-menu-create-menu "Forms"
-	 (mapcar (lambda (x)
-		   (let ((name (car x))
-			 (fsym (cdr x)))
-		     (vector name fsym t)))
-		 sml-forms-alist))))
+  (mapcar (lambda (x)
+	    (let ((name (car x))
+		  (fsym (cdr x)))
+	      (vector name fsym t)))
+	  sml-forms-alist))
 
 (defvar sml-last-form "let")
 
@@ -819,26 +804,42 @@ See also `edit-kbd-macro' which is bound to \\[edit-kbd-macro]."
 ;;;;  SML/NJ's Compilation Manager support
 ;;;;
 
+(defvar sml-cm-mode-syntax-table sml-mode-syntax-table)
+(defvar sml-cm-font-lock-keywords
+ `(,(concat "\\<" (regexp-opt '("library" "group" "is" "structure"
+				"functor" "signature" "funsig") t)
+	    "\\>")))
 ;;;###autoload
 (add-to-list 'completion-ignored-extensions "CM/")
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cm\\'" . sml-cm-mode))
 ;;;###autoload
-(define-generic-mode 'sml-cm-mode
-  '(("(*" . "*)"))
-  '("library" "Library" "LIBRARY" "group" "Group" "GROUP" "is" "IS"
-    "structure" "functor" "signature" "funsig")
-  nil '("\\.cm\\'")
-  (list (lambda () (local-set-key "\C-c\C-c" 'sml-compile)))
-  "Generic mode for SML/NJ's Compilation Manager configuration files.")
+(define-derived-mode sml-cm-mode fundamental-mode "SML-CM"
+  "Major mode for SML/NJ's Compilation Manager configuration files."
+  (local-set-key "\C-c\C-c" 'sml-compile)
+  (set (make-local-variable 'font-lock-defaults)
+       '(sml-cm-font-lock-keywords nil t nil nil)))
 
 ;;;;
-;;;; ML-Yacc (and ML-lex) support
+;;;; ML-Lex support
 ;;;;
 
-;; That seems to be good enough for now ;-)
+(defvar sml-lex-font-lock-keywords
+  (append
+   '(("^%\\sw+" . font-lock-builtin-face)
+     ("^%%" . font-lock-module-def-face))
+   sml-font-lock-keywords))
+(defconst sml-lex-font-lock-defaults
+  (cons 'sml-lex-font-lock-keywords (cdr sml-font-lock-defaults)))
+
 ;;;###autoload
-(define-derived-mode sml-lex-mode sml-mode "SML-Lex")
+(define-derived-mode sml-lex-mode sml-mode "SML-Lex"
+  "Major Mode for editing ML-Lex files."
+  (set (make-local-variable 'font-lock-defaults) sml-lex-font-lock-defaults))
+
+;;;;
+;;;; ML-Yacc support
+;;;;
 
 (defface sml-yacc-bnf-face
   '((t (:foreground "darkgreen")))
@@ -863,17 +864,18 @@ If nil, align it with previous cases."
   :type 'integer)
 
 (defvar sml-yacc-font-lock-keywords
-  (cons '("^\\(\\sw+\\s-*:\\|\\s-*|\\)\\(\\s-*\\sw+\\)*"
+  (cons '("^\\(\\sw+\\s-*:\\|\\s-*|\\)\\(\\s-*\\sw+\\)*\\s-*\\(\\(%\\sw+\\)\\s-+\\sw+\\|\\)"
 	  (0 (save-excursion
 	       (save-match-data
 		 (goto-char (match-beginning 0))
 		 (unless (or (re-search-forward "\\<of\\>" (match-end 0) 'move)
 			     (progn (sml-forward-spaces)
 				    (not (looking-at "("))))
-		   sml-yacc-bnf-face)))))
-	sml-font-lock-keywords))
+		   sml-yacc-bnf-face))))
+	  (4 font-lock-builtin-face t t))
+	sml-lex-font-lock-keywords))
 (defconst sml-yacc-font-lock-defaults
-  (cons sml-yacc-font-lock-keywords (cdr sml-font-lock-defaults)))
+  (cons 'sml-yacc-font-lock-keywords (cdr sml-font-lock-defaults)))
 
 (defun sml-yacc-indent-line ()
   "Indent current line of ML-Yacc code."
@@ -919,6 +921,7 @@ If nil, align it with previous cases."
 (add-to-list 'auto-mode-alist '("\\.grm\\'" . sml-yacc-mode))
 ;;;###autoload
 (define-derived-mode sml-yacc-mode sml-mode "SML-Yacc"
+  "Major Mode for editing ML-Yacc files."
   (set (make-local-variable 'indent-line-function) 'sml-yacc-indent-line)
   (set (make-local-variable 'font-lock-defaults) sml-yacc-font-lock-defaults))
 
