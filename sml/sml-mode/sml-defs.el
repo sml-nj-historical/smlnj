@@ -74,10 +74,10 @@ notion of \"the end of an outline\".")
   "The syntax table used in `sml-mode'.")
 
 
-(easy-menu-define sml-mode-menu sml-mode-map "Menu used in sml-mode."
+(easy-menu-define sml-mode-menu sml-mode-map "Menu used in `sml-mode'."
   '("SML"
     ("Process"
-     ["Start default ML compiler" sml		(fboundp 'sml)]
+     ["Start default ML compiler" sml		(fboundp 'sml)	t]
      ["-" nil nil]
      ["run CM.make"		sml-make	(featurep 'sml-proc)]
      ["load ML source file"	sml-load-file	(featurep 'sml-proc)]
@@ -111,10 +111,10 @@ notion of \"the end of an outline\".")
     ["SML mode help (brief)"       describe-mode t]
     ["SML mode *info*"             sml-mode-info t]
     ["-----" nil nil]
-    ["Remove overlay"    (sml-error-overlay 'undo) ;:active (sml-overlay-active-p)
+    ["Remove overlay"    (sml-error-overlay 'undo) t ;:active (sml-overlay-active-p)
      ]))
 
-;;; Make's sure they appear in the menu bar when sml-mode-map is active.
+;; Make's sure they appear in the menu bar when sml-mode-map is active.
 ;; On the hook for XEmacs only -- see easy-menu-add in auc-menu.el.
 ;; (defun sml-mode-menu-bar ()
 ;;   "Make sure menus appear in the menu bar as well as under mouse 3."
