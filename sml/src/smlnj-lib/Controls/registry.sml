@@ -94,7 +94,7 @@ structure ControlRegistry : CONTROL_REGISTRY =
 		 of SOME value => Controls.set(ctl, value)
 		  | NONE => ()
 		(* end case *))
-	    | initCtl _ => ()
+	    | initCtl _ = ()
 	  fun initSubreg (SubReg{reg, ...}) = init reg
 	  in
 	    CSet.app initCtl ctls;
