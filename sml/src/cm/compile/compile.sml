@@ -1,3 +1,10 @@
+(*
+ * Compilation traversals.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 local
     structure GP = GeneralParams
     structure DG = DependencyGraph
@@ -12,28 +19,47 @@ local
     type statenv = E.staticEnv
     type symenv = E.symenv
     type result = { stat: statenv, sym: symenv }
-    type ed = { ii: IInfo.info, ctxt: statenv }
-    type env = { envs: unit -> result, pids: PidSet.set }
+    type ed = IInfo.info
 in
     signature COMPILE = sig
+
+	type bfc
+
 	(* reset internal persistent state *)
 	val reset : unit -> unit
-	val sizeBFC : SmlInfo.info -> int
-	val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
+
+	(* notify linkage module about recompilation *)
+	type notifier = GP.info -> SmlInfo.info -> unit
+
+	(* type of a function to store away the binfile contents *)
+	type bfcReceiver = SmlInfo.info * bfc -> unit
+
 	val getII : SmlInfo.info -> IInfo.info
-	val newTraversal : unit ->
-	    { sbnode: GP.info -> DG.sbnode -> ed option,
-	      impexp: GP.info -> DG.impexp -> env option }
-	val  recomp: GP.info -> GG.group -> bool
+
+	val evict : SmlInfo.info -> unit
+	val evictAll : unit -> unit
+
+	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
+
+	val newTraversal : notifier * bfcReceiver * GG.group ->
+	    { group: GP.info -> result option,
+	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
-    functor CompileFn (structure MachDepVC : MACHDEP_VC) :> COMPILE = struct
+    functor CompileFn (structure MachDepVC : MACHDEP_VC
+		       val compile_there : SrcPath.t -> bool) :>
+	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
+    struct
+
+	type notifier = GP.info -> SmlInfo.info -> unit
 
 	structure BF = MachDepVC.Binfile
 
 	type bfc = BF.bfContent
 
-	structure FilterMap = BinaryMapFn
+	type bfcReceiver = SmlInfo.info * bfc -> unit
+
+	structure FilterMap = MapFn
 	    (struct
 		type ord_key = pid * SymbolSet.set
 		fun compare ((u, f), (u', f')) =
@@ -42,57 +68,62 @@ in
 		      | unequal => unequal
 	    end)
 
-	type envdelta =
-	    { ii: IInfo.info, ctxt: unit -> statenv, bfc: bfc option }
+	type bfinfo =
+	    { cmdata: PidSet.set,
+	      statenv: unit -> statenv,
+	      symenv: unit -> symenv,
+	      statpid: pid,
+	      sympid: pid }
 
-	type memo = { bfc: bfc, ctxt: statenv, ts: TStamp.t }
+	type env = { envs: unit -> result, pids: PidSet.set }
+	type envdelta = IInfo.info
+
+	type memo = { ii: IInfo.info, ts: TStamp.t, cmdata: PidSet.set }
 
 	(* persistent state! *)
 	val filtermap = ref (FilterMap.empty: pid FilterMap.map)
 
 	(* more persistent state! *)
-	val globalmap = ref (SmlInfoMap.empty: memo SmlInfoMap.map)
+	val globalstate = ref (SmlInfoMap.empty: memo SmlInfoMap.map)
 
 	fun reset () =
 	    (filtermap := FilterMap.empty;
-	     globalmap := SmlInfoMap.empty)
+	     globalstate := SmlInfoMap.empty)
 
 	fun isValidMemo (memo: memo, provided, smlinfo) =
 	    not (TStamp.needsUpdate { source = SmlInfo.lastseen smlinfo,
 				      target = #ts memo })
-	    andalso let
-		val demanded =
-		    PidSet.addList (PidSet.empty, BF.cmDataOf (#bfc memo))
-	    in
-		PidSet.equal (provided, demanded)
-	    end
+	    andalso PidSet.equal (provided, #cmdata memo)
 
-	fun memo2ii (memo: memo) =	    
-	    { statenv = fn () => BF.senvOf (#bfc memo),
-	      symenv = fn () => BF.symenvOf (#bfc memo),
-	      statpid = BF.staticPidOf (#bfc memo),
-	      sympid = BF.lambdaPidOf (#bfc memo) }
+	fun memo2ii (memo: memo) = #ii memo 
 
-	fun memo2ed memo =
-	    { ii = memo2ii memo,
-	      ctxt = fn () => #ctxt memo,
-	      bfc = SOME (#bfc memo) }
+	fun memo2ed memo = memo2ii memo
+
+	fun bfc2memo (bfc, ts) = let
+	    val ii = { statenv = fn () => BF.senvOf bfc,
+		       symenv = fn () => BF.symenvOf bfc,
+		       statpid = BF.staticPidOf bfc,
+		       sympid = BF.lambdaPidOf bfc }
+	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
+	in
+	    { ii = ii, ts = ts, cmdata = cmdata }
+	end
 
 	fun pidset (p1, p2) = PidSet.add (PidSet.singleton p1, p2)
 
 	fun nofilter (ed: envdelta) = let
-	    val { ii = { statenv, symenv, statpid, sympid }, ctxt, bfc } = ed
+	    val { statenv, symenv, statpid, sympid } = ed
 	in
-	    { envs = fn () => { stat = statenv (), sym = symenv () },
+	    { envs = fn () => { stat = #env (statenv ()), sym = symenv () },
 	      pids = pidset (statpid, sympid) }
 	end
 
 	fun exportsNothingBut set se =
 	    List.all (fn sy => SymbolSet.member (set, sy)) (E.catalogEnv se)
 
-	fun filter ({ ii, ctxt, bfc }: envdelta, s) = let
+	fun filter (ii, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
-	    val ste = statenv ()
+	    val { env = ste, ctxt } = statenv ()
 	in
 	    if exportsNothingBut s ste then
 		{ envs = fn () => { stat = ste, sym = symenv () },
@@ -104,8 +135,13 @@ in
 		    case FilterMap.find (!filtermap, key) of
 			SOME statpid' => statpid'
 		      | NONE => let
-			    val statpid' =
-				GenericVC.MakePid.makePid (ctxt (), ste')
+			    (* We re-pickle the filtered ste relative to
+			     * the original one.  This should give a fairly
+			     * minimal pickle. *)
+			    val statpid' = GenericVC.Rehash.rehash
+				{ context = ctxt,
+				  env = GenericVC.CoerceEnv.es2bs ste',
+				  orig_hash = statpid }
 			in
 			    filtermap :=
 			      FilterMap.insert (!filtermap, key, statpid');
@@ -117,23 +153,44 @@ in
 	    end
 	end
 
-	(* This is a bit ugly because somehow we need to mix dummy
-	 * dynamic envs into the equation just to be able to use
-	 * concatEnv.  But, alas', that's life... *)
-	fun rlayer (r, r') = let
+	local
 	    fun r2e { stat, sym } = E.mkenv { static = stat, symbolic = sym,
 					      dynamic = DE.empty }
 	    fun e2r e = { stat = E.staticPart e, sym = E.symbolicPart e }
 	in
-	    e2r (E.concatEnv (r2e r, r2e r'))
+	    (* This is a bit ugly because somehow we need to mix dummy
+	     * dynamic envs into the equation just to be able to use
+	     * concatEnv.  But, alas', that's life... *)
+	    fun rlayer (r, r') = e2r (E.concatEnv (r2e r, r2e r'))
+
+	    val emptyEnv =
+		{ envs = fn () => e2r E.emptyEnv, pids = PidSet.empty }
 	end
 
 	fun layer ({ envs = e, pids = p }, { envs = e', pids = p' }) =
 	    { envs = fn () => rlayer (e (), e' ()),
 	      pids = PidSet.union (p, p') }
 
-	fun newTraversal ()  = let
-	    val localmap = ref SmlInfoMap.empty
+	(* I would rather not use an exception here, but short of a better
+	 * implementation of concurrency I see no choice.
+	 * The problem is that at each node we sequentiallay wait for the
+	 * children nodes.  But the scheduler might (and probably will)
+	 * let a child run that we are not currently waiting for, so an
+	 * error there will not result in "wait" to immediately return
+	 * as it should for clean error recovery.
+	 * Using the exception avoids having to implement a
+	 * "wait for any child -- whichever finishes first" kind of call. *)
+	exception Abort
+
+	fun layer'wait u (p, NONE) =
+	    (ignore (Concur.waitU u p); NONE)
+	  | layer'wait u (p, SOME e) =
+	    (case Concur.waitU u p of
+		 SOME e' => SOME (layer (e', e))
+	       | NONE => NONE)
+
+	fun mkTraversal (notify, storeBFC, getUrgency) = let
+	    val localstate = ref SmlInfoMap.empty
 
 	    fun pervenv (gp: GP.info) = let
 		val e = #pervasive (#param gp)
@@ -144,40 +201,18 @@ in
 		  pids = PidSet.empty }
 	    end
 
-	    fun layerwork k w v0 l = let
-		fun lw v0 [] = v0
-		  | lw NONE (h :: t) =
-		    if k then (ignore (w h); lw NONE t)
-		    else NONE
-		  | lw (SOME v) (h :: t) = let
-			fun lay (NONE, v) = NONE
-			  | lay (SOME v', v) = SOME (layer (v', v))
-		    in
-			lw (lay (w h, v)) t
-		    end
-	    in
-		lw v0 l
-	    end
-
 	    fun sbnode gp n =
 		case n of 
 		    DG.SB_BNODE (_, ii) =>
 			(* The beauty of this scheme is that we don't have
 			 * to do anything at all for SB_BNODEs:  Everything
 			 * is prepared ready to be used when the library
-			 * is unpickled.
-			 *
-			 * Making ctxt equal to ste is basically a hack
-			 * because we want to avoid having to keep the
-			 * real context around.  As a result there is a
-			 * slight loss of "smart recompilation":
-			 * eliminating a definition is not the same as
-			 * stripping it away using a filter.  This is a
-			 * minor issue anyway, and in the present case
-			 * it only happens when a stable library is
-			 * replaced by a different one. *)
-			SOME { ii = ii, ctxt = #statenv ii, bfc = NONE }
-		  | DG.SB_SNODE n => snode gp n
+			 * is unpickled. *)
+			SOME ii
+		  | DG.SB_SNODE n =>
+			(case snode gp n of
+			     NONE => NONE
+			   | SOME ii => SOME ii)
 
 	    and fsbnode gp (f, n) =
 		case (sbnode gp n, f) of
@@ -189,15 +224,19 @@ in
 		val { smlinfo = i, localimports = li, globalimports = gi } = n
 		val binname = SmlInfo.binname i
 
-		fun compile (stat, sym, pids) = let
+		fun fail () =
+		    if #keep_going (#param gp) then NONE else raise Abort
+
+		fun compile_here (stat, sym, pids) = let
 		    fun save bfc = let
 			fun writer s =
 			    (BF.write { stream = s, content = bfc,
 					nopickle = false };
 			     Say.vsay ["[wrote ", binname, "]\n"])
-			fun cleanup () =
+			fun cleanup _ =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
+			notify gp i;
 			SafeIO.perform { openIt =
 				           fn () => AutoDir.openBinOut binname,
 					 closeIt = BinIO.closeOut,
@@ -215,10 +254,8 @@ in
 		    end (* save *)
 		in
 		    case SmlInfo.parsetree gp i of
-			NONE => NONE
+			NONE => fail ()
 		      | SOME (ast, source) => let
-			    val _ =
-			       Say.vsay ["[compiling ", SmlInfo.descr i, "]\n"]
 			    val corenv = #corenv (#param gp)
 			    val cmData = PidSet.listItems pids
 			    (* clear error flag (could still be set from
@@ -232,26 +269,29 @@ in
 						  senv = stat,
 						  symenv = sym,
 						  corenv = corenv }
-			    val memo = { bfc = bfc, ctxt = stat,
-					 ts = SmlInfo.lastseen i}
+			    val memo = bfc2memo (bfc, SmlInfo.lastseen i)
 			in
-			    SmlInfo.forgetParsetree i;
 			    save bfc;
-			    globalmap :=
-			      SmlInfoMap.insert (!globalmap, i, memo);
-			    SOME (memo2ed memo)
-			end
-		end (* compile *)
+			    storeBFC (i, bfc);
+			    SOME memo
+			end handle _ => fail () (* catch elaborator exn *)
+		end (* compile_here *)
 		fun notlocal () = let
-		    (* Ok, it is not in the local map, so we first have
+		    val urgency = getUrgency i
+		    (* Ok, it is not in the local state, so we first have
 		     * to traverse all children before we can proceed... *)
-		    val k = #keep_going (#param gp)
 		    fun loc li_n = Option.map nofilter (snode gp li_n)
 		    fun glob gi_n = fsbnode gp gi_n
+		    val gi_cl =
+			map (fn gi_n => Concur.fork (fn () => glob gi_n)) gi
+		    val li_cl =
+			map (fn li_n => Concur.fork (fn () => loc li_n)) li
 		    val e =
-			layerwork k loc
-			         (layerwork k glob (SOME (pervenv gp)) gi)
-				 li
+			foldl (layer'wait urgency)
+			      (foldl (layer'wait urgency)
+			             (SOME (pervenv gp))
+				     gi_cl)
+			      li_cl
 		in
 		    case e of
 			NONE => NONE
@@ -269,76 +309,135 @@ in
 						   name = binname,
 						   senv = stat },
 					 ts)
+					
 				in
 				    SOME (SafeIO.perform
 					  { openIt = openIt,
 					    closeIt = BinIO.closeIn,
 					    work = reader,
-					    cleanup = fn () => () })
+					    cleanup = fn _ => () })
 				    handle _ => NONE
 				end (* load *)
+				fun tryload (what, otherwise) =
+				    case load () of
+					NONE => otherwise ()
+				      | SOME (bfc, ts) => let
+					    val memo = bfc2memo (bfc, ts)
+					in
+					    if isValidMemo (memo, pids, i) then
+						(Say.vsay ["[", binname,
+							   " ", what, "]\n"];
+						 storeBFC (i, bfc);
+						 SOME memo)
+					    else otherwise ()
+					end
+				fun compile_again () =
+				    (Say.vsay ["[compiling ",
+					       SmlInfo.descr i, "]\n"];
+				     compile_here (stat, sym, pids))
+				fun compile () = let
+				    val sp = SmlInfo.sourcepath i
+				in
+				    if compile_there sp then
+					tryload ("received", compile_again)
+				    else compile_again ()
+				end
 			    in
-				case load () of
-				    NONE => compile (stat, sym, pids)
-				  | SOME (bfc, ts) => let
-					val memo = { bfc = bfc,
-						     ctxt = stat,
-						     ts = ts }
-				    in
-					if isValidMemo (memo, pids, i) then
-					    (globalmap :=
-					     SmlInfoMap.insert
-					     (!globalmap, i, memo);
-					     SOME (memo2ed memo))
-					else compile (stat, sym, pids)
-				    end
+				(* If anything goes wrong loading the first
+				 * time, we go and compile.  Compiling
+				 * may mean compiling externally, and if so,
+				 * we must load the result of that.
+				 * If the second load also goes wrong, we
+				 * compile locally to gather error messages
+				 * and make everything look "normal". *)
+				tryload ("loaded", compile)
 			    end (* fromfile *)
+			    fun notglobal () =
+				case fromfile () of
+				    NONE => NONE
+				  | SOME memo =>
+					(globalstate :=
+					 SmlInfoMap.insert (!globalstate, i,
+							    memo);
+					 SOME memo)
 			in
-			    case SmlInfoMap.find (!globalmap, i) of
-				NONE => fromfile ()
+			    case SmlInfoMap.find (!globalstate, i) of
+				NONE => notglobal ()
 			      | SOME memo =>
 				    if isValidMemo (memo, pids, i) then
-					SOME (memo2ed memo)
-				    else fromfile ()
+					SOME memo
+				    else notglobal ()
 			end
 		end (* notlocal *)
 	    in
-		case SmlInfoMap.find (!localmap, i) of
-		    SOME edopt => edopt
+		(* Here we just wait (no "waitU") so we don't get
+		 * priority over threads that may have to clean up after
+		 * errors. *)
+		case SmlInfoMap.find (!localstate, i) of
+		    SOME mopt_c => Option.map memo2ed (Concur.wait mopt_c)
 		  | NONE => let
-			val edopt = notlocal ()
+			val mopt_c = Concur.fork
+			    (fn () => notlocal () before
+			     (* "Not local" means that we have not processed
+			      * this file before.  Therefore, we should now
+			      * remove its parse tree... *)
+			     SmlInfo.forgetParsetree i)
 		    in
-			localmap := SmlInfoMap.insert (!localmap, i, edopt);
-			edopt
+			localstate :=
+			  SmlInfoMap.insert (!localstate, i, mopt_c);
+			Option.map memo2ed (Concur.wait mopt_c)
 		    end
 	    end (* snode *)
 
 	    fun impexp gp (n, _) = fsbnode gp n
-
-	    fun envdelta2ed { ii, bfc, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
-	    { sbnode = fn gp => fn n => Option.map envdelta2ed (sbnode gp n),
-	      impexp = impexp }
+	    { sbnode = sbnode, impexp = impexp }
 	end
 
-	fun recomp gp (GG.GROUP { exports, ... }) = let
-	    val { impexp, ... } = newTraversal ()
-	    val k = #keep_going (#param gp)
-	    fun loop ([], success) = success
-	      | loop (h :: t, success) =
-		if isSome (impexp gp h) then loop (t, success)
-		else if k then loop (t, false) else false
+	fun newTraversal (notify, storeBFC, g) = let
+	    val GG.GROUP { exports, ... } = g
+	    val um = Indegree.indegrees g
+	    fun getUrgency i = getOpt (SmlInfoMap.find (um, i), 0)
+	    val { impexp, ... } = mkTraversal (notify, storeBFC, getUrgency)
+	    fun group gp = let
+		val eo_cl =
+		    map (fn x => Concur.fork (fn () => impexp gp x))
+		        (SymbolMap.listItems exports)
+		val eo = foldl (layer'wait 0) (SOME emptyEnv) eo_cl
+	    in
+		case eo of
+		    NONE => (Servers.reset false; NONE)
+		  | SOME e => SOME (#envs e ())
+	    end handle Abort => (Servers.reset false; NONE)
+	    fun mkExport ie gp =
+		case impexp gp ie handle Abort => NONE of
+		    NONE => (Servers.reset false; NONE)
+		  | SOME e => SOME (#envs e ())
 	in
-	    loop (SymbolMap.listItems exports, true)
+	    { group = group,
+	      exports = SymbolMap.map mkExport exports }
 	end
 
-	local
-	    fun get i =	valOf (SmlInfoMap.find (!globalmap, i))
+	fun newSbnodeTraversal () = let
+	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
+					       fn _ => (),
+					       fn _ => 0)
+	    fun sbn_trav gp g = let
+		val r = sbnode gp g handle Abort => NONE
+	    in
+		if isSome r then () else Servers.reset false;
+		r
+	    end
 	in
-	    fun sizeBFC i = BF.size { content = #bfc (get i), nopickle = true }
-	    fun writeBFC s i = BF.write { content = #bfc (get i),
-					  stream = s, nopickle = true }
-	    fun getII i = memo2ii (get i)
+	    sbn_trav
 	end
+
+	fun evict i =
+	    (globalstate := #1 (SmlInfoMap.remove (!globalstate, i)))
+	    handle LibBase.NotFound => ()
+
+	fun evictAll () = globalstate := SmlInfoMap.empty
+
+	fun getII i = memo2ii (valOf (SmlInfoMap.find (!globalstate, i)))
     end
 end

@@ -1,180 +1,275 @@
-(* -*- sml -*- *)
+(* -*- sml -*-
+ *
+ * lexical analysis (ML-Lex specification) for CM description files
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 
 type svalue = Tokens.svalue
 type pos = int
+
 type ('a, 'b) token = ('a, 'b) Tokens.token
 type lexresult = (svalue, pos) token
 
-fun err (p1, p2) = ErrorMsg.error p1
+type lexarg = {
+	       enterC: unit -> unit,
+	       leaveC: unit -> bool,
+	       newS: pos -> unit,
+	       addS: char -> unit,
+	       addSC: string * int -> unit,
+	       addSN: string * pos -> unit,
+	       getS: pos * (string * pos * pos -> lexresult) -> lexresult,
+	       handleEof: unit -> pos,
+	       newline: pos -> unit,
+	       obsolete: pos * pos -> unit,
+	       error: pos * pos -> string -> unit,
+	       sync: pos * string -> unit
+	      }
 
-local
-    val depth = ref 0
-    val curstring = ref ([]: char list)
-    val startpos = ref 0
-    val instring = ref false
+type arg = lexarg
+
+fun eof (arg: lexarg) = let
+    val pos = #handleEof arg ()
 in
-    fun resetAll () = (depth := 0; startpos := 0; instring := false)
-
-    (* comment stuff *)
-    fun enterC () = depth := !depth + 1
-    fun leaveC () = let
-	val d = !depth - 1
-	val _ = depth := d
-    in
-	d = 0
-    end
-
-    (* string stuff *)
-    fun newS sp = (curstring := []; startpos := sp; instring := true)
-    fun addS c = curstring := c :: (!curstring)
-    fun addSC (t, p, b) = addS (chr (ord (String.sub (t, 2)) - b))
-    fun addSN (t, p) = let
-	val ns = substring (t, 1, 3)
-	val n = Int.fromString ns
-    in
-	addS (chr (valOf n))
-	handle _ =>
-	    ErrorMsg.error p ("illegal decimal char spec " ^ ns)
-    end
-    fun getS endpos =
-	(instring := false;
-	 Tokens.STRING (implode (rev (!curstring)), !startpos, endpos + 1))
-
-    (* handling EOF *)
-    fun eof() = let
-	val pos = ErrorMsg.lastLinePos ()
-    in
-	if !depth > 0 then
-	    ErrorMsg.error pos "unexpected EOF in COMMENT"
-	else if !instring then
-	    ErrorMsg.error pos "unexpected EOF in STRING"
-	else ();
-	resetAll ();
-	Tokens.EOF(pos,pos)
-    end
+    Tokens.EOF (pos, pos)
 end
 
-local
-    val idlist = [("Alias", Tokens.ALIAS),
-		  ("Group", Tokens.GROUP),
-		  ("Library", Tokens.LIBRARY),
-		  ("is", Tokens.IS),
-		  ("structure", Tokens.STRUCTURE),
-		  ("signature", Tokens.SIGNATURE),
-		  ("functor", Tokens.FUNCTOR),
-		  ("funsig", Tokens.FUNSIG),
-		  ("defined", Tokens.DEFINED),
-		  ("div", Tokens.DIV),
-		  ("mod", Tokens.MOD),
-		  ("andalso", Tokens.ANDALSO),
-		  ("orelse", Tokens.ORELSE),
-		  ("not", Tokens.NOT)]
+fun errorTok (t, p) = let
+    fun findGraph i =
+	if Char.isGraph (String.sub (t, i)) then i
+	else findGraph (i + 1)
+    fun findError i =
+	if String.sub (t, i) = #"e" then i
+	else findError (i + 1)
+    val start = findGraph (5 + findError 0)
+    val msg = String.extract (t, start, NONE)
 in
-    fun idToken (t, p) =
-	case List.find (fn (id, _) => id = t) idlist of
-	    NONE => Tokens.ID (t, p, p + size t)
-	  | SOME (_, tok) => tok (p, p + size t)
+    Tokens.ERROR (msg, p + 1, p + size t)
 end
 
-fun newLine p = ErrorMsg.newLine p
+val cm_ids = [("Group", Tokens.GROUP),
+	      ("GROUP", Tokens.GROUP),
+	      ("group", Tokens.GROUP),
+	      ("Library", Tokens.LIBRARY),
+	      ("LIBRARY", Tokens.LIBRARY),
+	      ("library", Tokens.LIBRARY),
+	      ("IS", Tokens.IS),
+	      ("is", Tokens.IS)]
+
+val ml_ids = [("structure", Tokens.STRUCTURE),
+	      ("signature", Tokens.SIGNATURE),
+	      ("functor", Tokens.FUNCTOR),
+	      ("funsig", Tokens.FUNSIG)]
+
+val pp_ids = [("defined", Tokens.DEFINED),
+	      ("div", Tokens.DIV),
+	      ("mod", Tokens.MOD),
+	      ("andalso", Tokens.ANDALSO),
+	      ("orelse", Tokens.ORELSE),
+	      ("not", Tokens.NOT)]
+
+fun idToken (t, p, idlist, default, chstate) =
+    case List.find (fn (id, _) => id = t) ml_ids of
+	SOME (_, tok) => (chstate (); tok (p, p + size t))
+      | NONE =>
+	    (case List.find (fn (id, _) => id = t) idlist of
+		 SOME (_, tok) => tok (p, p + size t)
+	       | NONE => default (t, p, p + size t))
+
+(* states:
+
+     INITIAL -> C
+       |
+       +------> P -> PC
+       |        |
+       |        +--> PM -> PMC
+       |
+       +------> M -> MC
+       |
+       +------> S -> SS
+
+   "C"  -- COMMENT
+   "P"  -- PREPROC
+   "M"  -- MLSYMBOL
+   "S"  -- STRING
+   "SS" -- STRINGSKIP
+*)
 
 %%
-%s COMMENT STRING STRINGSKIP;
+
+%s C P PC PM PMC M MC S SS;
 
 %header(functor CMLexFun (structure Tokens: CM_TOKENS));
 
+%arg ({ enterC, leaveC,
+        newS, addS, addSC, addSN, getS,
+        handleEof,
+        newline,
+	obsolete,
+	error,
+	sync });
+
 idchars=[A-Za-z'_0-9];
 id=[A-Za-z]{idchars}*;
+cmextrachars=[.;,!%&$+/<=>?@~|#*]|\-|\^;
+cmidchars={idchars}|{cmextrachars};
+cmid={cmidchars}+;
 ws=("\012"|[\t\ ]);
 eol=("\013\010"|"\013"|"\010");
+neol=[^\013\010];
 sym=[!%&$+/:<=>?@~|#*]|\-|\^|"\\";
 digit=[0-9];
 sharp="#";
 %%
 
-<COMMENT>"(*"		=> (enterC (); continue ());
-<COMMENT>"*)"		=> (if leaveC () then YYBEGIN INITIAL else ();
+<INITIAL>"(*"           => (enterC (); YYBEGIN C; continue ());
+<P>"(*"                 => (enterC (); YYBEGIN PC; continue ());
+<PM>"(*"                => (enterC (); YYBEGIN PMC; continue ());
+<M>"(*"                 => (enterC (); YYBEGIN MC; continue ());
+
+<C,PC,PMC,MC>"(*"       => (enterC (); continue ());
+
+<C>"*)"                 => (if leaveC () then YYBEGIN INITIAL else ();
 			    continue ());
-<COMMENT>{eol}		=> (newLine yypos; continue ());
-<COMMENT>.		=> (continue ());
+<PC>"*)"                => (if leaveC () then YYBEGIN P else ();
+			    continue ());
+<PMC>"*)"                => (if leaveC () then YYBEGIN PM else ();
+			    continue ());
+<MC>"*)"                => (if leaveC () then YYBEGIN M else ();
+			    continue ());
+<C,PC,PMC,MC>{eol}      => (newline yypos; continue ());
+<C,PC,PMC,MC>.          => (continue ());
 
-<STRING>"\\a"		=> (addS #"\a"; continue ());
-<STRING>"\\b"		=> (addS #"\b"; continue ());
-<STRING>"\\f"		=> (addS #"\f"; continue ());
-<STRING>"\\n"		=> (addS #"\n"; continue ());
-<STRING>"\\r"		=> (addS #"\r"; continue ());
-<STRING>"\\t"		=> (addS #"\t"; continue ());
-<STRING>"\\v"		=> (addS #"\v"; continue ());
+<INITIAL,P,PM,M>"*)"	=> (error (yypos, yypos+2)
+			      "unmatched comment delimiter";
+			    continue ());
 
-<STRING>"\\^"@		=> (addS (chr 0); continue ());
-<STRING>"\\^"[a-z]	=> (addSC (yytext, yypos, ord #"a"); continue ());
-<STRING>"\\^"[A-Z]	=> (addSC (yytext, yypos, ord #"A"); continue ());
-<STRING>"\\^["		=> (addS (chr 27); continue ());
-<STRING>"\\^\\"		=> (addS (chr 28); continue ());
-<STRING>"\\^]"		=> (addS (chr 29); continue ());
-<STRING>"\\^^"		=> (addS (chr 30); continue ());
-<STRING>"\\^_"		=> (addS (chr 31); continue ());
+<INITIAL>"\""		=> (YYBEGIN S; newS yypos; continue ());
 
-<STRING>"\\"[0-9][0-9][0-9]	=> (addSN (yytext, yypos); continue ());
+<S>"\\a"		=> (addS #"\a"; continue ());
+<S>"\\b"		=> (addS #"\b"; continue ());
+<S>"\\f"		=> (addS #"\f"; continue ());
+<S>"\\n"		=> (addS #"\n"; continue ());
+<S>"\\r"		=> (addS #"\r"; continue ());
+<S>"\\t"		=> (addS #"\t"; continue ());
+<S>"\\v"		=> (addS #"\v"; continue ());
 
-<STRING>"\\\""		=> (addS #"\""; continue ());
-<STRING>"\\\\"		=> (addS #"\\"; continue ());
+<S>"\\^"@		=> (addS (chr 0); continue ());
+<S>"\\^"[a-z]	        => (addSC (yytext, ord #"a"); continue ());
+<S>"\\^"[A-Z]	        => (addSC (yytext, ord #"A"); continue ());
+<S>"\\^["		=> (addS (chr 27); continue ());
+<S>"\\^\\"		=> (addS (chr 28); continue ());
+<S>"\\^]"		=> (addS (chr 29); continue ());
+<S>"\\^^"		=> (addS (chr 30); continue ());
+<S>"\\^_"		=> (addS (chr 31); continue ());
 
-<STRING>"\\"{eol}	=> (YYBEGIN STRINGSKIP; newLine yypos; continue ());
-<STRING>"\\"{ws}+	=> (YYBEGIN STRINGSKIP; continue ());
+<S>"\\"[0-9][0-9][0-9]	=> (addSN (yytext, yypos); continue ());
 
-<STRING>"\\".		=> (ErrorMsg.error yypos
+<S>"\\\""		=> (addS #"\""; continue ());
+<S>"\\\\"		=> (addS #"\\"; continue ());
+
+<S>"\\"{eol}	        => (YYBEGIN SS; newline (yypos + 1); continue ());
+<S>"\\"{ws}+	        => (YYBEGIN SS; continue ());
+
+<S>"\\".		=> (error (yypos, yypos+2)
 			     ("illegal escape character in string " ^ yytext);
 			    continue ());
 
-<STRING>"\""		=> (YYBEGIN INITIAL; getS yypos);
-<STRING>{eol}		=> (ErrorMsg.error yypos "illegal linebreak in string";
+<S>"\""		        => (YYBEGIN INITIAL; getS (yypos, Tokens.FILE_NATIVE));
+<S>{eol}		=> (newline yypos;
+			    error (yypos, yypos + size yytext)
+			      "illegal linebreak in string";
 			    continue ());
-<STRING>.		=> (addS (String.sub (yytext, 0)); continue ());
 
-<STRINGSKIP>{eol}	=> (newLine yypos; continue ());
-<STRINGSKIP>{ws}+	=> (continue ());
-<STRINGSKIP>"\\"	=> (YYBEGIN STRING; continue ());
-<STRINGSKIP>.		=> (ErrorMsg.error yypos
+<S>.		        => (addS (String.sub (yytext, 0)); continue ());
+
+<SS>{eol}	        => (newline yypos; continue ());
+<SS>{ws}+	        => (continue ());
+<SS>"\\"	        => (YYBEGIN S; continue ());
+<SS>.		        => (error (yypos, yypos+1)
 			     ("illegal character in stringskip " ^ yytext);
 			    continue ());
 
-<INITIAL>"(*"		=> (YYBEGIN COMMENT; enterC (); continue ());
-<INITIAL>"*)"		=> (ErrorMsg.error yypos "unmatched comment delimiter";
-			    continue ());
-<INITIAL>"\""		=> (YYBEGIN STRING; newS yypos; continue ());
-
-<INITIAL>"("		=> (Tokens.LPAREN (yypos, yypos + 1));
-<INITIAL>")"		=> (Tokens.RPAREN (yypos, yypos + 1));
-<INITIAL>","		=> (Tokens.COMMA (yypos, yypos + 1));
+<INITIAL,P>"("		=> (Tokens.LPAREN (yypos, yypos + 1));
+<INITIAL,P>")"		=> (Tokens.RPAREN (yypos, yypos + 1));
 <INITIAL>":"		=> (Tokens.COLON (yypos, yypos + 1));
-<INITIAL>"+"		=> (Tokens.PLUS (yypos, yypos + 1));
-<INITIAL>"-"		=> (Tokens.MINUS (yypos, yypos + 1));
-<INITIAL>"*"		=> (Tokens.TIMES (yypos, yypos + 1));
-<INITIAL>"<>"		=> (Tokens.NE (yypos, yypos + 2));
-<INITIAL>"<="		=> (Tokens.LE (yypos, yypos + 2));
-<INITIAL>"<"		=> (Tokens.LT (yypos, yypos + 1));
-<INITIAL>">="		=> (Tokens.GE (yypos, yypos + 2));
-<INITIAL>">"		=> (Tokens.GT (yypos, yypos + 1));
-<INITIAL>"="		=> (Tokens.EQ (yypos, yypos + 1));
+<P>"+"		        => (Tokens.PLUS (yypos, yypos + 1));
+<P>"-"		        => (Tokens.MINUS (yypos, yypos + 1));
+<P>"*"		        => (Tokens.TIMES (yypos, yypos + 1));
+<P>"<>"		        => (Tokens.NE (yypos, yypos + 2));
+<P>"!="                 => (obsolete (yypos, yypos + 2);
+			    Tokens.NE (yypos, yypos+2));
+<P>"<="		        => (Tokens.LE (yypos, yypos + 2));
+<P>"<"		        => (Tokens.LT (yypos, yypos + 1));
+<P>">="		        => (Tokens.GE (yypos, yypos + 2));
+<P>">"		        => (Tokens.GT (yypos, yypos + 1));
+<P>"=="                 => (obsolete (yypos, yypos + 2);
+			    Tokens.EQ (yypos, yypos + 2));
+<P>"="		        => (Tokens.EQ (yypos, yypos + 1));
+<P>"~"		        => (Tokens.TILDE (yypos, yypos + 1));
 
-<INITIAL>{digit}+	=> (Tokens.NUMBER
+<P>{digit}+	        => (Tokens.NUMBER
 			     (valOf (Int.fromString yytext)
 			      handle _ =>
-				  (ErrorMsg.error yypos "number too large"; 0),
+				  (error (yypos, yypos + size yytext)
+				     "number too large";
+				   0),
 			      yypos, yypos + size yytext));
-<INITIAL>{sym}+		=> (Tokens.ID (yytext, yypos, yypos + size yytext));
-<INITIAL>{id}		=> (idToken (yytext, yypos));
 
-<INITIAL>{eol}{sharp}{ws}*"if"	 => (Tokens.IF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"then" => (Tokens.THEN (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"elif" => (Tokens.ELIF (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"else" => (Tokens.ELSE (yypos, yypos + size yytext));
-<INITIAL>{eol}{sharp}{ws}*"endif" => (Tokens.ENDIF (yypos,
+<P>{id}                 => (idToken (yytext, yypos, pp_ids, Tokens.CM_ID,
+				     fn () => YYBEGIN PM));
+<P>"/"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.DIV (yypos, yypos + 1));
+<P>"%"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.MOD (yypos, yypos + 1));
+<P>"&&"                 => (obsolete (yypos, yypos + 2);
+			    Tokens.ANDALSO (yypos, yypos + 2));
+<P>"||"                 => (obsolete (yypos, yypos + 2);
+			    Tokens.ORELSE (yypos, yypos + 2));
+<P>"!"                  => (obsolete (yypos, yypos + 1);
+			    Tokens.NOT (yypos, yypos + 1));
+
+<M>({id}|{sym}+)        => (YYBEGIN INITIAL;
+			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
+<PM>({id}|{sym}+)       => (YYBEGIN P;
+			    Tokens.ML_ID (yytext, yypos, yypos + size yytext));
+
+<INITIAL,P>{eol}{sharp}{ws}*"if" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.IF (yypos, yypos + size yytext));
+<INITIAL,P>{eol}{sharp}{ws}*"elif" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.ELIF (yypos, yypos + size yytext));
+<INITIAL,P>{eol}{sharp}{ws}*"else" => (YYBEGIN P;
+				     newline yypos;
+				     Tokens.ELSE (yypos, yypos + size yytext));
+<INITIAL,P>{eol}{sharp}{ws}*"endif" => (YYBEGIN P;
+				      newline yypos;
+				      Tokens.ENDIF (yypos,
 						    yypos + size yytext));
+<INITIAL,P>{eol}{sharp}{ws}*"error"{ws}+{neol}* => (newline yypos;
+						    errorTok (yytext, yypos));
+<INITIAL,M,PM>{eol}     => (newline yypos; continue ());
+<P>{eol}                => (YYBEGIN INITIAL; newline yypos; continue ());
 
-<INITIAL>{eol}		=> (newLine yypos; continue ());
-<INITIAL>{ws}+		=> (continue ());
-<INITIAL>.		=> (ErrorMsg.error yypos
-			     ("illegal character " ^ yytext);
+<INITIAL,M,PM,P>{ws}+   => (continue ());
+
+<M,PM>.                 => (error (yypos, yypos+1)
+			    ("illegal character at start of ML symbol: " ^
+			     yytext);
 			    continue ());
+
+<INITIAL>{cmid}		=> (idToken (yytext, yypos, cm_ids,
+				     Tokens.FILE_STANDARD,
+				     fn () => YYBEGIN M));
+
+
+<INITIAL>.		=> (error (yypos, yypos+1)
+			    ("illegal character: " ^ yytext);
+			    continue ());
+
+{eol}{sharp}{ws}*"line"{ws}+{neol}* => (newline yypos;
+					sync (yypos, yytext);
+					continue ());

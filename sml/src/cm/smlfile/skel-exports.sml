@@ -15,12 +15,12 @@ structure SkelExports :> SKELEXPORTS = struct
     structure SS = SymbolSet
 
     fun exports d = let
-	fun e (SK.StrDecl l, a) = SS.addList (a, map #name l)
-	  | e (SK.FctDecl l, a) = SS.addList (a, map #name l)
-	  | e (SK.LocalDecl (l, b), a) = e (b, a)
-	  | e (SK.SeqDecl l, a) = foldl e a l
-	  | e (SK.OpenDecl _, a) = a	(* cannot happen *)
-	  | e (SK.DeclRef _, a) = a
+	fun e (SK.Bind (s, _), a) = SS.add (a, s)
+	  | e (SK.Local (l, b), a) = e (b, a)
+	  | e (SK.Par l, a) = foldl e a l
+	  | e (SK.Seq l, a) = foldl e a l
+	  | e (SK.Open _, a) = a	(* cannot happen *)
+	  | e (SK.Ref _, a) = a
     in
 	e (d, SS.empty)
     end

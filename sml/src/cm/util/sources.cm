@@ -1,11 +1,58 @@
-Library
-	signature SET
-	structure Set
+(*
+ * Utility modules for new CM.
+ *  Hooks into compiler and into SML/NJ library.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Group (../cm-lib.cm)
 	structure StringSet
+	structure StringMap
+	structure Symbol
+	structure SymbolOrdKey
+	structure SymbolSet
+	structure SymbolMap
+	structure PidSet
+	signature SAFEIO
+	structure SafeIO
+	structure TStamp
+	structure Seek
+	signature ENVCONFIG
+	structure EnvConfig
+	signature SAY
+	structure Say
+	structure StdConfig
+	structure AutoDir
+	structure Memoize
+
+	structure LibBase	(* from SML/NJ library *)
+	functor MapFn
+	functor SetFn
+	structure IntMap
+	structure IntSet
 is
-	set.sml
 	stringset.sml
+	stringmap.sml
+	symbol.sml
+	symbolordkey.sml
+	symbolset.sml
+	symbolmap.sml
+	pidset.sml
+	safeio.sml
+	tstamp.sml
+	seek.sml
+	envcfg.sml
+	stdcfg.sml
+	say.sml
+	autodir.sml
+	memoize.sml
 
+	map-fn.sml
+	set-fn.sml
+	int-map.sml
+	int-set.sml
+
+	basis.cm
+	viscomp-core.cm
 	smlnj-lib.cm
-
-

@@ -9,8 +9,7 @@ structure DAEnv = struct
 
     datatype env =
 	EMPTY
-      | FCTENV of { looker: Symbol.symbol -> value option,
-		    domain: unit -> SymbolSet.set }
+      | FCTENV of Symbol.symbol -> value option
       | BINDING of Symbol.symbol * value
       | LAYER of env * env
       | FILTER of SymbolSet.set * env

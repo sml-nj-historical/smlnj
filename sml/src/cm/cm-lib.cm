@@ -1,18 +1,109 @@
-Group
-	(* for the time being leave this empty *)
+(*
+ * Toplevel description file for new implementation of CM
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+(cm-hook)
+Library
+	signature CM
+
+	functor LinkCM
+	functor BootstrapCompileFn
+
+	structure Sharing
+	signature TOOLS
+	structure Tools
 is
+	(* the CM description file parser *)
+	parse/parse.sml
 	parse/cm.grm
 	parse/cm.lex
 
-	semant/modname.sig
-	semant/modname.sml
+	semant/sharing.sml
+	semant/iinfo.sml
+	semant/primitive.sml
+	semant/group-reg.sml
+
+	(* semantic actions for description file parser *)
+	semant/members.sml
 	semant/semant.sml
 
-	paths/pathconfig.sml
-	paths/abspath.sml
+	(* dependency graphs *)
+	depend/graph.sml
+	depend/build.sml
+	depend/da-env.sml
+	depend/se2dae.sml
+	depend/ggraph.sml
+	depend/reachable.sml
+	depend/checksharing.sml
+	depend/mklist.sml
+	depend/indegree.sml
 
+	(* handling SML source code *)
+	smlfile/smlinfo.sml
+	smlfile/smlinfoset.sml
+	smlfile/smlinfomap.sml
+	smlfile/skeleton.sml
+	smlfile/skel-cvt.sml
+	smlfile/skel-io.sml
+	smlfile/skel-exports.sml
+
+	(* handling stable groups *)
+	stable/bininfo.sml
+	stable/stablemap.sml
+	stable/stableset.sml
+	stable/stabilize.sml
+
+	(* tools for handling other source types *)
+	tools/tools.sml
+	tools/yacctool.sml
+	tools/lextool.sml
+	tools/burgtool.sml
+
+	(* concurrent/parallel/distributed make *)
+	concur/sources.cm
+
+	(* doing actual compilation work *)
+	compile/compile.sml
+	compile/link.sml
+	compile/bfc.sml
+
+	(* overall control of CM *)
+	main/general-params.sml
+	main/filename-policy.sml
+	main/symval.sml
+	main/specific-symval-fn.sml
+	main/autoload.sml
+	main/cleanup.sml
+	main/cm.sig
+	main/slave.sml
+	main/preload.sml
+	main/cm-boot.sml
+
+	(* pathname abstraction *)
+	paths/sources.cm
+
+	(* bootstrap compiler (formerly known as "batch") *)
+	bootstrap/names.sml
+	bootstrap/build-initdg.sml
+	bootstrap/btcompile.sml
+	bootstrap/mkbootlist.sml
+	bootstrap/cmb-slave-stub.sml
+	bootstrap/cmb-slave-hook.sml
+
+	(* CM-internal libraries *)
 	util/sources.cm
 
-	../compiler/viscomp-lib.cm
+	basis.cm
 
+	(* compiler libraries *)
+	viscomp-core.cm
+	comp-lib.cm
+
+	(* auxiliary libraries *)
 	ml-yacc-lib.cm
+
+	(* refer to hook module to break static dependencies *)
+	cm-hook.cm

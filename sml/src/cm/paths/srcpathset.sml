@@ -6,4 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure SrcPathSet = BinarySetFn (SrcPath)
+structure SrcPathSet = SetFn (SrcPath)

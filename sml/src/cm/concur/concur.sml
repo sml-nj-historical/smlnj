@@ -17,6 +17,11 @@
  *)
 signature CONCUR = sig
 
+    (* "private" is essentially the same as "unit", but we use it
+     * to make sure that only "pcond"-generated conditions are
+     * going to be explicitly signalled via "signal" *)
+    type private
+
     type 'a cond			(* condition with value *)
 
     val fork : (unit -> 'a) -> 'a cond	(* termination condition with value
@@ -28,14 +33,17 @@ signature CONCUR = sig
 					 * when waiting using "wait") *)
 
     val inputReady : TextIO.instream -> unit cond
-    val ucond : unit -> unit cond
-    val signal : unit cond -> unit
+
+    val pcond : unit -> private cond
+    val signal : private cond -> unit
 
     (* forget all waiting threads and input conditions *)
     val reset : unit -> unit
 end
 
 structure Concur :> CONCUR = struct
+
+    type private = unit
 
     type tstate = unit SMLofNJ.Cont.cont * int
 
@@ -71,7 +79,7 @@ structure Concur :> CONCUR = struct
       | wakeup (r as ref (Waiting tsl), v) =
 	(r := Arrived v; app (fn ts => enqueue (ts, runable)) tsl)
 
-    fun ucond () = (ref (Waiting [])) : unit cond
+    fun pcond () = (ref (Waiting [])) : private cond
     fun signal (ref (Arrived ())) = ()
       | signal uc = wakeup (uc, ())
 
@@ -122,11 +130,6 @@ structure Concur :> CONCUR = struct
     fun fork worker = let
 	val c = ref (Waiting [])
     in
-	(* We give new workers a low priority so that any threads that
-	 * were already running but are now waiting for some event
-	 * get control first if they are re-enabled.  This is because
-	 * waiting threads will clean up after errors in which case
-	 * we don't want new threads to run off. *)
 	SMLofNJ.Cont.callcc (fn return =>
 	  (SMLofNJ.Cont.callcc (fn ts => (enqueue ((ts, ~1), runable);
 					  SMLofNJ.Cont.throw return c));
@@ -136,23 +139,23 @@ structure Concur :> CONCUR = struct
 
     fun inputReady iis = let
 	val fis = TextIO.getInstream iis
-	val (r, v) = TextIO.StreamIO.getReader fis
 	fun bad () = (Say.say ["inputReady: bad stream\n"];
 		      raise Fail "concur")
-    in
-	case r of
-	    TextPrimIO.RD { ioDesc = SOME d, ... } =>
+	val rv = TextIO.StreamIO.getReader fis
+	val c = case rv of
+	    (TextPrimIO.RD { ioDesc = SOME d, ... }, "") =>
 		(case OS.IO.pollDesc d of
 		     NONE => bad ()
 		   | SOME pd => let
-			 val pd = OS.IO.pollIn pd
-			 val fis' = TextIO.StreamIO.mkInstream (r, v)
 			 val c = ref (Waiting [])
 		     in
-			 inputs := (c, pd) :: !inputs;
-			 TextIO.setInstream (iis, fis');
+			 inputs := (c, OS.IO.pollIn pd) :: !inputs;
 			 c
 		     end)
-	  | _ => bad ()
+	  | (_, "") => bad ()
+	  | rv => ref (Arrived ())
+    in
+	TextIO.setInstream (iis, TextIO.StreamIO.mkInstream rv);
+	c
     end
 end

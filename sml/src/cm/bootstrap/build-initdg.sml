@@ -1,24 +1,26 @@
 (*
  * Build a simple dependency graph from a direct DAG description.
  *   - This is used in the bootstrap compiler to establish the
- *     pervasive env that is used in the rest of the system.
- *   - The DAG does not contain any BNODEs and the only PNODE will
- *     be the one for Environment.primEnv.
+ *     pervasive env, the core env, and the primitives which later
+ *     get used by the rest of the system.
+ *   - The DAG does not contain any BNODEs and the only PNODEs will
+ *     be those that correspond to primitives passed via "gp".
+ *     In practice, the only PNODE will be the one for Env.primEnv.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-
-signature BUILDINITDG = sig
-    val build : GeneralParams.info -> AbsPath.t ->
-	{ rts: DependencyGraph.snode,
-	  core: DependencyGraph.snode,
-	  pervasive: DependencyGraph.snode,
-	  primitives: DependencyGraph.snode list }
+signature BUILD_INIT_DG = sig
+    val build : GeneralParams.info -> SrcPath.t ->
+	{ rts: DependencyGraph.sbnode,
+	  core: DependencyGraph.sbnode,
+	  pervasive: DependencyGraph.sbnode,
+	  primitives: (string * DependencyGraph.sbnode) list,
+	  binpaths: (string * bool) list } option
 end
 
-structure BuildInitDG = struct
+structure BuildInitDG :> BUILD_INIT_DG = struct
 
     structure S = GenericVC.Source
     structure EM = GenericVC.ErrorMsg
@@ -31,87 +33,105 @@ structure BuildInitDG = struct
 	val errcons = #errcons gp
 	val groupreg = #groupreg gp
 
-	val context = AbsPath.relativeContext (AbsPath.dir specgroup)
-	val specname = AbsPath.name specgroup
-	val stream = TextIO.openIn specname
-	val source = S.newSource (specname, 1, stream, false, errcons)
-	val sourceMap = #sourceMap source
+	val context = SrcPath.sameDirContext specgroup
+	val _ = Say.vsay ["[reading init spec from ",
+			  SrcPath.descr specgroup, "]\n"]
 
-	val _ = GroupReg.register groupreg (specgroup, source)
+	fun work stream = let
+	    val source = S.newSource (SrcPath.osstring specgroup,
+				      1, stream, false, errcons)
+	    val sourceMap = #sourceMap source
 
-	fun error r m = EM.error source r EM.COMPLAIN m EM.nullErrorBody
+	    val _ = GroupReg.register groupreg (specgroup, source)
 
-	fun lineIn pos = let
-	    val line = TextIO.inputLine stream
-	    val len = size line
-	    val newpos = pos + len
-	    val _ = GenericVC.SourceMap.newline sourceMap newpos
-	    fun sep c = Char.isSpace c orelse Char.contains "(),=;" c
+	    fun error r m = EM.error source r EM.COMPLAIN m EM.nullErrorBody
+
+	    fun lineIn pos = let
+		val line = TextIO.inputLine stream
+		val len = size line
+		val newpos = pos + len
+		val _ = GenericVC.SourceMap.newline sourceMap newpos
+		fun sep c = Char.isSpace c orelse Char.contains "(),=;" c
+	    in
+		if line = "" then NONE
+		else if String.sub (line, 0) = #"#" then SOME ([], newpos)
+		     else SOME (String.tokens sep line, newpos)
+	    end
+
+	    fun loop (split, m, bnl, pos, lst) =
+		case lineIn pos of
+		    NONE => (error (pos, pos) "unexpected end of file"; NONE)
+		  | SOME (line, newpos) => let
+			val error = error (pos, newpos)
+			fun sml (spec, split) = let
+			    val p = SrcPath.standard pcmode
+				{ context = context, spec = spec }
+			in
+			    SmlInfo.info gp { sourcepath = p,
+					      group = (specgroup,
+						       (pos, newpos)),
+					      sh_spec = Sharing.DONTCARE,
+					      split = split }
+			end
+			fun bogus n = 
+			    DG.SNODE { smlinfo = sml (n, false),
+				       localimports = [], globalimports = [] }
+			fun look n =
+			    case StringMap.find (m, n) of
+				SOME x => x
+			      | NONE =>
+				    (case Primitive.fromString primconf n of
+					 SOME p =>  let
+					     val ii =
+						 Primitive.iinfo primconf p
+					 in
+					     DG.SB_BNODE (DG.PNODE p, ii)
+					 end
+				       | NONE => (error ("undefined: " ^ n);
+						  DG.SB_SNODE (bogus n)))
+
+			fun node (name, file, args) = let
+			    fun one (arg, (li, gi)) =
+				case look arg of
+				    DG.SB_SNODE n => (n :: li, gi)
+				  | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
+			    val (li, gi) = foldr one ([], []) args
+			    val i = sml (file, split)
+			    val n = DG.SNODE { smlinfo = i,
+					       localimports = li,
+					       globalimports = gi }
+			in
+			    loop (split,
+				  StringMap.insert (m, name, DG.SB_SNODE n),
+				  (SmlInfo.binname i, lst) :: bnl,
+				  newpos,
+				  lst)
+			end
+		    in
+			case line of
+			    [] => loop (split, m, bnl, newpos, lst)
+			  | ["split"] => loop (true, m, bnl, newpos, lst)
+			  | ["nosplit"] => loop (false, m, bnl, newpos, lst)
+			  | ["start"] => loop (split, m, bnl, newpos, true)
+			  | ("bind" :: name :: file :: args)  =>
+				node (name, file, args)
+			  | ("return" :: core :: rts :: pervasive :: prims) =>
+				SOME { rts = look rts,
+				       core = look core,
+				       pervasive = look pervasive,
+				       primitives =
+				              map (fn n => (n, look n)) prims,
+				       binpaths = rev bnl }
+			  | _ => (error "malformed line"; NONE)
+		    end
 	in
-	    if line = "" then NONE
-	    else if String.sub (line, 0) = #"#" then SOME ([], newpos)
-	    else SOME (String.tokens sep line, newpos)
+	    loop (false, StringMap.empty, [], 1, false)
 	end
-
-	fun loop (split, m, fl, pos) =
-	    case lineIn pos of
-		NONE => (error (pos, pos) "unexpected end of file"; NONE)
-	      | SOME (line, newpos) => let
-		    val error = error (pos, newpos)
-		    fun sml (spec, split) = let
-			val sourcepath = AbsPath.standard pcmode
-			    { context = context, spec = spec }
-		    in
-			SmlInfo.info gp { sourcepath = sourcepath,
-					  group = (specgroup, (pos, newpos)),
-					  share = NONE,
-					  split = split }
-		    end
-		    fun bogus n = 
-			DG.SNODE { smlinfo = sml (n, false),
-				   localimports = [], globalimports = [] }
-		    fun look n =
-			case StringMap.find (m, n) of
-			    SOME x => x
-			  | NONE =>
-				(case Primitive.fromString primconf n of
-				     SOME p => DG.SB_BNODE (DG.PNODE p)
-				   | NONE => (error ("undefined: " ^ n);
-					      DG.SB_SNODE (bogus n)))
-
-		    fun look_snode n =
-			case look n of
-			    DG.SB_SNODE n => n
-			  | _ => (error ("illegal: " ^ n); bogus n)
-
-		    fun node (name, file, split, args) = let
-			fun one (arg, (li, gi)) =
-			    case look arg of
-				DG.SB_SNODE n => (n :: li, gi)
-			      | n as DG.SB_BNODE _ => (li, (NONE, n) :: gi)
-			val (li, gi) = foldr one ([], []) args
-			val n = DG.SNODE { smlinfo = sml (file, split),
-					   localimports = li,
-					   globalimports = gi }
-		    in
-			StringMap.insert (m, name, DG.SB_SNODE n)
-		    end
-		in
-		    case line of
-			[] => loop (split, m, fl, newpos)
-		      | ["split"] => loop (true, m, fl, newpos)
-		      | ["nosplit"] => loop (false, m, fl, newpos)
-		      | ("let" :: name :: file :: args)  =>
-			    loop (split, node (name, file, split, args),
-				  file :: fl, newpos)
-		      | ("return" :: rts :: core :: pervasive :: primitives) =>
-			    SOME { rts = look_snode rts,
-				   core = look_snode core,
-				   pervasive = look_snode pervasive,
-				   primitives = map look_snode primitives }
-		      | _ => (error "malformed line"; NONE)
-		end
+	fun openIt () = TextIO.openIn (SrcPath.osstring specgroup)
     in
-	loop (false, StringMap.empty, [], 2) (* consistent with ml-lex bug? *)
+	SafeIO.perform { openIt = openIt,
+			 closeIt = TextIO.closeIn,
+			 work = work,
+			 cleanup = fn _ => () }
     end
 end

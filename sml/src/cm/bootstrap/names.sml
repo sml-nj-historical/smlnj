@@ -8,6 +8,8 @@
 structure BtNames = struct
     val initgspec = "init.cmi"
     val maingspec = "root.cm"
-    val dirbaseDefault = "comp"
+    val dirbaseDefault = "sml"
     val pcmodespec = "pathconfig"
+    val bare_preloads = "preloads.bare"
+    val standard_preloads = "preloads.standard"
 end

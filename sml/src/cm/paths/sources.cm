@@ -1,13 +1,27 @@
-Library
-	signature ABSPATH
-	structure AbsPath
+(*
+ * Pathname handling for CM.
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
+Group (../cm-lib.cm)
 	signature PATHCONFIG
 	structure PathConfig
-	structure AbsPathMap
+	signature SRCPATH
+	structure SrcPath
+	structure SrcPathMap
+	structure SrcPathSet
 is
-	abspath.sml
+	era.sml
 	pathconfig.sml
+	abspath.sml
 	abspathmap.sml
+	srcpath.sml
+	srcpathmap.sml
+	srcpathset.sml
 
 	../util/sources.cm
-	../../smlnj-lib/Util/sources.cm
+	../concur/sources.cm
+	basis.cm
+	viscomp-core.cm

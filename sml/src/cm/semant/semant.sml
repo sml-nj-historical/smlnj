@@ -1,44 +1,79 @@
+(*
+ * semantic actions to go with the grammar for CM description files
+ *
+ * (C) 1999 Lucent Technologies, Bell Laboratories
+ *
+ * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
+ *)
 signature CM_SEMANT = sig
 
-    type pathname
+    type context = SrcPath.context
+    type pathname = SrcPath.t
+    type region = GenericVC.SourceMap.region
     type ml_symbol
     type cm_symbol
+    type cm_class
 
-    type group
+    type group = GroupGraph.group
 
-    type perm
+    type privilegespec
     type aexp
     type exp
     type members			(* still conditional *)
     type exports			(* still conditional *)
 
-    val file_native : string * pathname -> pathname
-    val file_standard : string * pathname -> pathname
+    type complainer = string -> unit
+
+    (* getting elements of primitive types (pathnames and symbols) *)
+    val file_native : string * context -> pathname
+    val file_standard : GeneralParams.info -> string * context -> pathname
     val cm_symbol : string -> cm_symbol
     val ml_structure : string -> ml_symbol
     val ml_signature : string -> ml_symbol
     val ml_functor : string -> ml_symbol
     val ml_funsig : string -> ml_symbol
+    val class : cm_symbol -> cm_class
 
-    val alias : pathname -> group
-    val group : perm list * exports * members -> group
-    val library : perm list * exports * members -> group
+    (* getting the full analysis for a group/library *)
+    val emptyGroup : pathname -> group
+    val group :
+	pathname * privilegespec * exports option * members *
+	GeneralParams.info * pathname option * pathname option * complainer
+	-> group
+    val library :
+	pathname * privilegespec * exports * members *
+	GeneralParams.info
+	-> group
 
-    val require : cm_symbol -> perm
-    val grant : cm_symbol -> perm
+    (* assembling privilege lists *)
+    val initialPrivilegeSpec : privilegespec
+    val require : privilegespec * cm_symbol * complainer -> privilegespec
+    val wrap : privilegespec * cm_symbol * complainer -> privilegespec
 
+    (* constructing member collections *)
     val emptyMembers : members
-    val member : pathname * cm_symbol option -> members
+    val member :
+	GeneralParams.info * (pathname option -> pathname -> group)
+	-> { name: string, mkpath: string -> pathname,
+	     group: pathname * region, class: cm_class option,
+	     context: SrcPath.context }
+	-> members
     val members : members * members -> members
-    val guarded_members : exp * (members * members) -> members
+    val guarded_members :
+	exp * (members * members) * (string -> unit) -> members
+    val error_member : (unit -> unit) -> members
 
+    (* constructing export lists *)
     val emptyExports : exports
-    val export : ml_symbol -> exports
+    val export : ml_symbol * complainer -> exports
     val exports : exports * exports -> exports
-    val guarded_exports : exp * (exports * exports) -> exports
+    val guarded_exports :
+	exp * (exports * exports) * (string -> unit) -> exports
+    val error_export : (unit -> unit) -> exports
 
+    (* arithmetic (number-valued) expression *)
     val number : int -> aexp
-    val variable : cm_symbol -> aexp
+    val variable : GeneralParams.info -> cm_symbol -> aexp
     val plus : aexp * aexp -> aexp
     val minus : aexp * aexp -> aexp
     val times : aexp * aexp -> aexp
@@ -46,8 +81,9 @@ signature CM_SEMANT = sig
     val modulus : aexp * aexp -> aexp
     val negate : aexp -> aexp
 
+    (* (bool-valued) expressions *)
     val ml_defined : ml_symbol -> exp
-    val cm_defined : cm_symbol -> exp
+    val cm_defined : GeneralParams.info -> cm_symbol -> exp
     val conj : exp * exp -> exp
     val disj : exp * exp -> exp
     val beq : exp * exp -> exp
@@ -59,58 +95,153 @@ signature CM_SEMANT = sig
     val ge : aexp * aexp -> exp
     val eq : aexp * aexp -> exp
     val ne : aexp * aexp -> exp
-
 end
 
 structure CMSemant :> CM_SEMANT = struct
 
-    type pathname = AbsPath.t
-    type ml_symbol = unit
+    structure SymPath = GenericVC.SymPath
+    structure EM = GenericVC.ErrorMsg
+    structure GG = GroupGraph
+
+    type pathname = SrcPath.t
+    type context = SrcPath.context
+    type region = GenericVC.SourceMap.region
+    type ml_symbol = Symbol.symbol
     type cm_symbol = string
+    type cm_class = string
 
-    type group = unit
+    type group = GG.group
+    type privilegespec = { required: GG.privileges, wrapped: GG.privileges }
 
-    type environment = unit
-    fun num_look () _ = 0
-    fun ml_look () _ = false
-    fun cm_look () _ = false
-
-    datatype perm =
-	REQUIRE of cm_symbol
-      | GRANT of cm_symbol
+    type environment = MemberCollection.collection
 
     type aexp = environment -> int
     type exp = environment -> bool
-    type members = unit
-    type exports = unit
+    type members = environment * pathname option -> MemberCollection.collection
+    type exports = environment -> SymbolSet.set
 
-    fun file_native (s, d) = AbsPath.native { context = d, spec = s }
-    fun file_standard (s, d) = AbsPath.standard { context = d, spec = s }
+    type complainer = string -> unit
+
+    fun saveEval (exp, env, error) =
+	exp env
+	handle exn =>
+	    (error ("expression raises exception: " ^ General.exnMessage exn);
+	     false)
+
+    fun file_native (s, d) = SrcPath.native { context = d, spec = s }
+    fun file_standard (gp: GeneralParams.info) (s, d) =
+	SrcPath.standard (#pcmode (#param gp)) { context = d, spec = s }
     fun cm_symbol s = s
-    fun ml_structure (s: string) = ()
-    fun ml_signature (s: string) = ()
-    fun ml_functor (s: string) = ()
-    fun ml_funsig (s: string) = ()
+    val ml_structure = Symbol.strSymbol
+    val ml_signature = Symbol.sigSymbol
+    val ml_functor = Symbol.fctSymbol
+    val ml_funsig = Symbol.fsigSymbol
 
-    fun alias (f: pathname) = ()
-    fun group (p: perm list, e: exports, m: members) = ()
-    fun library (p: perm list, e: exports, m: members) = ()
+    fun class s = String.map Char.toLower s
 
-    val require = REQUIRE
-    val grant = GRANT
+    fun applyTo mc e = e mc
 
-    val emptyMembers = ()
-    fun member (f: pathname, c: cm_symbol option) = ()
-    fun members (m1: members, m2: members) = ()
-    fun guarded_members (c: exp, (m1: members, m2: members)) = ()
+    fun emptyGroup path =
+	GG.GROUP { exports = SymbolMap.empty,
+		   kind = GG.NOLIB,
+		   required = StringSet.empty,
+		   grouppath = path,
+		   sublibs = [] }
 
-    val emptyExports = ()
-    fun export (s: ml_symbol) = ()
-    fun exports (e1: exports, e2: exports) = ()
-    fun guarded_exports (c: exp, (e1: exports, e2: exports)) = ()
+    fun sgl2sll subgroups = let
+	fun sameSL (p, g) (p', g') = SrcPath.compare (p, p') = EQUAL
+	fun add (x, l) =
+	    if List.exists (sameSL x) l then l else x :: l
+	fun oneSG (x as (_, GG.GROUP { kind, sublibs, ... }), l) =
+	    case kind of
+		GG.NOLIB => foldl add l sublibs
+	      | _ => add (x, l)
+    in
+	foldl oneSG [] subgroups
+    end
+
+    fun grouplib (islib, g, p, e, m, gp, curlib) = let
+	val mc = applyTo (MemberCollection.empty, curlib) m
+	val filter = Option.map (applyTo mc) e
+	val (exports, rp) = MemberCollection.build (mc, filter, gp)
+	val subgroups = MemberCollection.subgroups mc
+	val { required = rp', wrapped = wr } = p
+	val rp'' = StringSet.union (rp', StringSet.union (rp, wr))
+    in
+	GG.GROUP { exports = exports,
+		   kind = if islib then GG.LIB wr
+			  else (if StringSet.isEmpty wr then ()
+				else EM.impossible
+				    "group with wrapped privilege";
+				GG.NOLIB),
+		   required = rp'',
+		   grouppath = g,
+		   sublibs = sgl2sll subgroups }
+    end
+
+    fun group (g, p, e, m, gp, curlib, owner, error) = let
+	fun libname NONE = "<toplevel>"
+	  | libname (SOME p) = SrcPath.descr p
+	fun eq (NONE, NONE) = true
+	  | eq (SOME p, SOME p') = SrcPath.compare (p, p') = EQUAL
+	  | eq _ = false
+	fun checkowner () =
+	    if eq (curlib, owner) then ()
+	    else error (concat ["owner specified as ",
+				libname owner, " but found to be ",
+				libname curlib])
+    in
+	checkowner ();
+	grouplib (false, g, p, e, m, gp, curlib)
+    end
+    fun library (g, p, e, m, gp) =
+	grouplib (true, g, p, SOME e, m, gp, SOME g)
+
+    local
+	val isMember = StringSet.member
+	fun sanity ({ required, wrapped }, s, error) =
+	    if isMember (required, s) orelse isMember (wrapped, s) then
+		error ("duplicate privilege name: " ^ s)
+	    else ()
+    in
+	val initialPrivilegeSpec = { required = StringSet.empty,
+				     wrapped = StringSet.empty }
+	fun require (a as ({ required, wrapped }, s, _)) =
+	    (sanity a;
+	     { required = StringSet.add (required, s), wrapped = wrapped })
+	fun wrap (a as ({ required, wrapped }, s, _)) =
+	    (sanity a;
+	     { required = required, wrapped = StringSet.add (wrapped, s) })
+    end
+
+    fun emptyMembers (env, _) = env
+    fun member (gp, rparse) arg (env, curlib) = let
+	val coll = MemberCollection.expandOne (gp, rparse curlib) arg
+	val group = #group arg
+	val error = GroupReg.error (#groupreg gp) group
+	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
+    in
+	MemberCollection.sequential (env, coll, e0)
+    end
+    fun members (m1, m2) (env, curlib) = m2 (m1 (env, curlib), curlib)
+    fun guarded_members (c, (m1, m2), error) (env, curlib) =
+	if saveEval (c, env, error) then m1 (env, curlib) else m2 (env, curlib)
+    fun error_member thunk (env, _) = (thunk (); env)
+
+    fun emptyExports env = SymbolSet.empty
+    fun export (s, error) env =
+	if MemberCollection.ml_look env s then SymbolSet.singleton s
+	else (error (concat ["exported ",
+			     Symbol.nameSpaceToString (Symbol.nameSpace s),
+			     " not defined: ", Symbol.name s]);
+	      SymbolSet.empty)
+    fun exports (e1, e2) env = SymbolSet.union (e1 env, e2 env)
+    fun guarded_exports (c, (e1, e2), error) env =
+	if saveEval (c, env, error) then e1 env else e2 env
+    fun error_export thunk env = (thunk (); SymbolSet.empty)
 
     fun number i _ = i
-    fun variable v e = num_look e v
+    fun variable gp v e = MemberCollection.num_look gp e v
     fun plus (e1, e2) e = e1 e + e2 e
     fun minus (e1, e2) e = e1 e - e2 e
     fun times (e1, e2) e = e1 e * e2 e
@@ -118,8 +249,8 @@ structure CMSemant :> CM_SEMANT = struct
     fun modulus (e1, e2) e = e1 e mod e2 e
     fun negate ex e = ~(ex e)
 
-    fun ml_defined s e = ml_look e s
-    fun cm_defined s e = cm_look e s
+    fun ml_defined s e = MemberCollection.ml_look e s
+    fun cm_defined gp s e = MemberCollection.cm_look gp e s
     fun conj (e1, e2) e = e1 e andalso e2 e
     fun disj (e1, e2) e = e1 e orelse e2 e
     fun beq (e1: exp, e2) e = e1 e = e2 e

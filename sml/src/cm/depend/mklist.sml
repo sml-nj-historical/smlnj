@@ -26,29 +26,29 @@ end = struct
     fun bnode (DG.PNODE _) k m = k m
       | bnode (DG.BNODE n) k m = let
 	    val { bininfo = i, localimports = l, globalimports = g } = n
+	    fun k' m = bininfo i :: k (stab_reg (m, i))
 	in
 	    if stab_isreg (m, i) then k m
-	    else bininfo i
-		:: do_list bnode l (do_list farbnode g k) (stab_reg (m, i))
+	    else do_list bnode l (do_list farbnode g k') m
 	end
 
-    and farbnode (_, n) k m = bnode n k m
+    and farbnode (_, n) = bnode n
 
     fun snode (DG.SNODE n) k m = let
 	val { smlinfo = i, localimports = l, globalimports = g } = n
+	fun k' m = smlinfo i :: k (sml_reg (m, i))
     in
 	if sml_isreg (m, i) then k m
-	else smlinfo i
-	    :: do_list snode l (do_list farsbnode g k) (sml_reg (m, i))
+	else do_list snode l (do_list farsbnode g k') m
     end
 
-    and farsbnode (_, DG.SB_BNODE n) k m = bnode n k m
-      | farsbnode (_, DG.SB_SNODE n) k m = snode n k m
+    and farsbnode (_, DG.SB_BNODE (n, _)) = bnode n
+      | farsbnode (_, DG.SB_SNODE n) = snode n
 
-    fun impexp (n, _) k m = farsbnode n k m
+    fun impexp (n, _) = farsbnode n
 
     fun group (GroupGraph.GROUP { exports, ... }) =
 	do_list impexp (SymbolMap.listItems exports)
-	               (fn m => []) 
+	               (fn _ => [])
 		       (StableSet.empty, SmlInfoSet.empty)
 end

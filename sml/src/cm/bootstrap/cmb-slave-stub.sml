@@ -1,6 +1,6 @@
 (*
  * This is a stub providing "slave" functionality for CMB.
- * (We use dynamic linking technology to avoid loading host-cmb.cm
+ * (We use dynamic linking technology to avoid loading the target compiler
  *  on the slave side unless it is really needed.)
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
@@ -9,12 +9,16 @@
  *)
 structure CMBSlave = struct
     local
-	val initialized = ref false
+	val loaded = ref StringSet.empty (* remember what we already have *)
     in
-	fun slave make s =
-	    (if !initialized then ()
-	     else if make "host-cmb.cm" then initialized := true
-	     else raise Fail "dynamic linkage for CMB slave failed";
-	     CMBSlaveHook.slave s)
+	fun slave load arch s = let
+	    val lib = arch ^ ".cm" (* eg. sparc-unix -> sparc-unix.cm *)
+	in
+	    if StringSet.member (!loaded, lib) then ()
+	    else if load lib then loaded := StringSet.add (!loaded, lib)
+	    else  raise Fail (concat ["dynamic linkage for CMB slave ",
+				      arch, " failed"]);
+	    CMBSlaveHook.slave arch s
+	end
     end
 end

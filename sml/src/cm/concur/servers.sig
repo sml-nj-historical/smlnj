@@ -10,14 +10,18 @@
  *)
 signature SERVERS = sig
 
+    type server
+
     (* add a compile server *)
     val start : { name: string, cmd: string * string list,
 		  pathtrans: (string -> string) option,
-		  pref: int } -> bool
+		  pref: int } -> server option
 
-    val stop : string -> unit
+    val stop : server -> unit
 
-    val kill : string -> unit
+    val kill : server -> unit
+
+    val name : server -> string
 
     (* Reset scheduler and wait until all servers are idle.
      * The "bool" argument makes reset suitable as an argument to

@@ -1,8 +1,8 @@
 (*
  * This is the module that actually puts together the contents of the
- * structure CM that people find at the top-level.  The "real" structure
+ * structure CM that people find at the top-level.  A "minimal" structure
  * CM is defined in CmHook, but it needs to be initialized at bootstrap
- * time -- and _that_ is what's done here.
+ * time.
  *
  *   Copyright (c) 1999 by Lucent Bell Laboratories
  *
@@ -26,8 +26,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure CoerceEnv = GenericVC.CoerceEnv
       structure EM = GenericVC.ErrorMsg
       structure BF = HostMachDepVC.Binfile
+      structure P = OS.Path
+      structure F = OS.FileSys
+      structure DG = DependencyGraph
 
       val os = SMLofNJ.SysInfo.getOSKind ()
+      val my_archos =
+	  concat [HostMachDepVC.architecture, "-", FilenamePolicy.kind2name os]
 
       structure SSV =
 	  SpecificSymValFn (structure MachDepVC = HostMachDepVC
@@ -36,58 +41,58 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val emptydyn = E.dynamicPart E.emptyEnv
       val system_values = ref emptydyn
 
-      (* Instantiate the persistent state functor; this includes
-       * the binfile cache and the dynamic value cache *)
-      structure FullPersstate =
-	  FullPersstateFn (structure MachDepVC = HostMachDepVC
-			   val system_values = system_values)
+      structure Compile =
+	  CompileFn (structure MachDepVC = HostMachDepVC
+		     val compile_there = Servers.compile o SrcPath.descr)
 
-      (* Building "Exec" will automatically also build "Recomp" and
-       * "RecompTraversal"... *)
-      local
-	  structure E = ExecFn (structure PS = FullPersstate)
-      in
-	  structure Recomp = E.Recomp
-	  structure RT = E.RecompTraversal
-	  structure Exec = E.Exec
-      end
+      structure Link =
+	  LinkFn (structure MachDepVC = HostMachDepVC
+		  val system_values = system_values)
 
-      structure ET = CompileGenericFn (structure CT = Exec)
+      structure BFC =
+	  BfcFn (structure MachDepVC = HostMachDepVC)
 
       structure AutoLoad = AutoLoadFn
-	  (structure RT = RT
-	   structure ET = ET)
+	  (structure C = Compile
+	   structure L = Link
+	   structure BFC = BFC)
 
-      (* The StabilizeFn functor needs a way of converting bnodes to
-       * dependency-analysis environments.  This can be achieved quite
-       * conveniently by a "recompile" traversal for bnodes. *)
-      fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
-	  handle Option => raise Fail "bn2statenv"
+      fun init_servers (GroupGraph.GROUP { grouppath, ... }) =
+	  Servers.cm { archos = my_archos, project = SrcPath.descr grouppath }
 
-      (* exec_group is basically the same as ET.group with
-       * two additional actions to be taken:
-       *   1. Before executing the code, we announce the priviliges
-       *      that are being invoked.  (For the time being, we assume
-       *      that everybody has every conceivable privilege, but at the
-       *      very least we announce which ones are being made use of.)
-       *   2. After we are done we must make the values of "shared"
-       *      compilation units permanent. *)
-      fun exec_group gp (g as GroupGraph.GROUP { required = rq, ... }) =
-	  (if StringSet.isEmpty rq then ()
-	   else Say.say ("$Execute: required privileges are:\n" ::
-		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
-	   ET.group gp g)
-
-      fun recomp_runner gp g = isSome (RT.group gp g)
+      fun recomp_runner gp g = let
+	  val _ = init_servers g
+	  fun store _ = ()
+	  val { group, ... } = Compile.newTraversal (Link.evict, store, g)
+      in
+	  isSome (Servers.withServers (fn () => group gp))
+	  before Link.cleanup gp
+      end
 
       (* This function combines the actions of "recompile" and "exec".
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
-      fun make_runner gp g =
-	  case RT.group gp g of
+      fun make_runner gp g = let
+	  val { store, get } = BFC.new ()
+	  val _ = init_servers g
+	  val { group = c_group, ... } =
+	      Compile.newTraversal (Link.evict, store, g)
+	  val { group = l_group, ... } = Link.newTraversal (g, get)
+	  val GroupGraph.GROUP { required = rq, ... } = g
+      in
+	  case Servers.withServers (fn () => c_group gp) of
 	      NONE => false
 	    | SOME { stat, sym} =>
-		  (case exec_group gp g of
+		  (* Before executing the code, we announce the priviliges
+		   * that are being invoked.  (For the time being, we assume
+		   * that everybody has every conceivable privilege, but at
+		   * the very least we announce which ones are being made
+		   * use of.) *)
+		  (Link.cleanup gp;
+		   if StringSet.isEmpty rq then ()
+		   else Say.say ("$Execute: required privileges are:\n" ::
+		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
+		   case l_group gp of
 		       NONE => false
 		     | SOME dyn => let
 			   val delta = E.mkenv { static = stat, symbolic = sym,
@@ -99,14 +104,27 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   Say.vsay ["[New bindings added.]\n"];
 			   true
 		       end)
+      end
 
       val al_greg = GroupReg.new ()
 
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
-	  StabilizeFn (val bn2statenv = bn2statenv
-		       val recomp = recomp_runner
-		       val transfer_state = FullPersstate.transfer_state)
+	  StabilizeFn (structure MachDepVC = HostMachDepVC
+		       fun recomp gp g = let
+			   val { store, get } = BFC.new ()
+			   val _ = init_servers g
+			   val { group, ... } =
+			       Compile.newTraversal (Link.evict, store, g)
+		       in
+			   case Servers.withServers (fn () => group gp) of
+			       NONE => NONE
+			     | SOME _ => SOME get
+		       end
+		       fun destroy_state gp i =
+			   (Compile.evict i;
+			    Link.evict gp i)
+		       val getII = Compile.getII)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
@@ -129,27 +147,32 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val theValues = ref (NONE: kernelValues option)
 
       in
-	  fun setAnchor (a, s) = PathConfig.set (pcmode, a, s)
+	  fun setAnchor { anchor = a, path = s } =
+	      (PathConfig.set (pcmode, a, s); SrcPath.sync ())
+	  (* cancelling anchors cannot affect the order of existing paths
+	   * (it may invalidate some paths; but all other ones stay as
+	   * they are) *)
 	  fun cancelAnchor a = PathConfig.cancel (pcmode, a)
+	  (* same goes for reset because it just cancels all anchors... *)
 	  fun resetPathConfig () = PathConfig.reset pcmode
 
-	  fun showPending () = let
+	  fun getPending () = let
 	      fun one (s, _) = let
 		  val nss = Symbol.nameSpaceToString (Symbol.nameSpace s)
 		  val n = Symbol.name s
 	      in
-		  Say.say ["  ", nss, " ", n, "\n"]
+		  concat ["  ", nss, " ", n, "\n"]
 	      end
 	  in
-	      SymbolMap.appi one (AutoLoad.getPending ())
+	      map one (SymbolMap.listItemsi (AutoLoad.getPending ()))
 	  end
 
 	  fun initPaths () = let
-	      val lpcth = EnvConfig.getSet StdConfig.local_pathconfig NONE
+	      val lpcth = #get StdConfig.local_pathconfig ()
 	      val p = case lpcth () of
 		  NONE => []
 		| SOME f => [f]
-	      val p = EnvConfig.getSet StdConfig.pathcfgspec NONE :: p
+	      val p = #get StdConfig.pathcfgspec () :: p
 	      fun processOne f = PathConfig.processSpecFile (pcmode, f)
 		  handle _ => ()
 	  in
@@ -164,8 +187,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      { primconf = #primconf v,
 	        fnpolicy = fnpolicy,
 		pcmode = pcmode,
-		symenv = SSV.env,
-		keep_going = EnvConfig.getSet StdConfig.keep_going NONE,
+		symval = SSV.symval,
+		keep_going = #get StdConfig.keep_going (),
 		pervasive = #pervasive v,
 		corenv = #corenv v,
 		pervcorepids = #pervcorepids v }
@@ -205,35 +228,38 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val recomp = run NONE recomp_runner
 	  val make = run NONE make_runner
 
+	  fun slave () =
+	      Slave.slave { pcmode = pcmode,
+			    parse = fn p => Parse.parse NONE (param ()) NONE p,
+			    my_archos = my_archos,
+			    sbtrav = Compile.newSbnodeTraversal,
+			    make = make }
+
 	  fun reset () =
-	      (FullPersstate.reset ();
-	       RT.reset ();
-	       ET.reset ();
-	       Recomp.reset ();
-	       Exec.reset ();
+	      (Compile.reset ();
+	       Link.reset ();
 	       AutoLoad.reset ();
 	       Parse.reset ();
-	       SmlInfo.forgetAllBut SrcPathSet.empty)
+	       SmlInfo.reset ())
 
-	  fun initTheValues (bootdir, er) = let
+	  fun initTheValues (bootdir, er, autoload_postprocess) = let
 	      val _ = let
 		  fun listDir ds = let
 		      fun loop l =
-			  case OS.FileSys.readDir ds of
+			  case F.readDir ds of
 			      "" => l
 			    | x => loop (x :: l)
 		  in
 		      loop []
 		  end
 		  val fileList = SafeIO.perform
-		      { openIt = fn () => OS.FileSys.openDir bootdir,
-		        closeIt = OS.FileSys.closeDir,
+		      { openIt = fn () => F.openDir bootdir,
+		        closeIt = F.closeDir,
 			work = listDir,
-			cleanup = fn () => () }
-		  fun isDir x =
-		      OS.FileSys.isDir x handle _ => false
+			cleanup = fn _ => () }
+		  fun isDir x = F.isDir x handle _ => false
 		  fun subDir x = let
-		      val d = OS.Path.concat (bootdir, x)
+		      val d = P.concat (bootdir, x)
 		  in
 		      if isDir d then SOME (x, d) else NONE
 		  end
@@ -247,7 +273,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val ginfo = { param = { primconf = Primitive.primEnvConf,
 				      fnpolicy = fnpolicy,
 				      pcmode = pcmode,
-				      symenv = SSV.env,
+				      symval = SSV.symval,
 				      keep_going = false,
 				      pervasive = E.emptyEnv,
 				      corenv = BE.staticPart BE.emptyEnv,
@@ -264,24 +290,30 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       * been cheating, and if we ever have to try and
 		       * fetch assembly.sig or core.sml in a separate
 		       * traversal, it will fail. *)
-		      val rtts = RT.start ()
+		      val sbnode = Compile.newSbnodeTraversal ()
 		      fun get n = let
-			  val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } =
-			      valOf (RT.sbnode rtts ginfo n)
-			  (* Since we cannot start another recomp traversal,
-			   * we must also avoid exec traversals (because they
-			   * would internally trigger recomp traversals).
+			  val { statpid, statenv, symenv, sympid } =
+			      valOf (sbnode ginfo n)
+			  (* We have not implemented the "sbnode" part
+			   * in the Link module.
 			   * But at boot time any relevant value should be
-			   * available as a sysval, so there is no problem. *)
-			  val d =
-			      case Option.map (FullPersstate.sysval o
-					       BF.exportPidOf) bfc of
-				  SOME (SOME d) => d
-				| _ => emptydyn
-			  val env = E.mkenv { static = s, symbolic = sy,
+			   * available as a sysval, so there is no problem.
+			   *
+			   * WARNING!  HACK!
+			   * We are cheating somewhat by taking advantage
+			   * of the fact that the staticPid is always
+			   * the same as the exportPid if the latter exists.
+			   *)
+			  val d = case Link.sysval (SOME statpid) of
+			      SOME d => d
+			    | NONE => emptydyn
+			  val { env = static, ctxt } = statenv ()
+			  val env = E.mkenv { static = static,
+					      symbolic = symenv (),
 					      dynamic = d }
-			  val pidInfo = { statpid = sp, sympid = syp,
-					  ctxt = ctxt }
+			  val pidInfo =
+			      { statpid = statpid, sympid = sympid,
+			        ctxt = ctxt }
 		      in
 			  (env, pidInfo)
 		      end
@@ -306,12 +338,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 					  [#statpid corePidInfo,
 					   #statpid pervPidInfo,
 					   #sympid pervPidInfo])
+		      fun bare_autoload x =
+			  (Say.say
+			    ["!* ", x,
+			     ": \"autoload\" not available, using \"make\"\n"];
+			   make x)
+		      val bare_preload =
+			  Preload.preload { make = make,
+					    autoload = bare_autoload }
+		      val standard_preload =
+			  Preload.preload { make = make, autoload = autoload }
 		  in
-		      (* Nobody is going to try and share this state --
-		       * or, rather, this state is shared via access
-		       * to "primitives".  Therefore, we don't call
-		       * RT.finish and ET.finish and reset the state. *)
-		      FullPersstate.reset ();
+		      Compile.reset ();
+		      Link.reset ();
 		      #set ER.core corenv;
 		      #set ER.pervasive pervasive;
 		      #set ER.topLevel BE.emptyEnv;
@@ -322,41 +361,94 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			       pervcorepids = pervcorepids };
 		      case er of
 			  BARE =>
-			      (make "basis.cm";
-			       make "host-compiler.cm";
-			       system_values := emptydyn)
+			      (bare_preload BtNames.bare_preloads;
+			       system_values := emptydyn;
+			       NONE)
 			| AUTOLOAD =>
 			      (HostMachDepVC.Interact.installCompManager
 			            (SOME al_manager');
-			       autoload "basis.cm";
-			       autoload "host-cm.cm";
+				    standard_preload BtNames.standard_preloads;
 			       CmHook.init
 			         { stabilize = stabilize,
 				   recomp = recomp,
 				   make = make,
-				   autoload = autoload,
-				   reset = reset,
-				   verbose =
-				      EnvConfig.getSet StdConfig.verbose,
-				   debug =
-				      EnvConfig.getSet StdConfig.debug,
-				   keep_going =
-				      EnvConfig.getSet StdConfig.keep_going,
-				   parse_caching =
-				      EnvConfig.getSet StdConfig.parse_caching,
-				   setAnchor = setAnchor,
-				   cancelAnchor = cancelAnchor,
-				   resetPathConfig = resetPathConfig,
-				   synchronize = SrcPath.sync,
-				   showPending = showPending })
-
+				   autoload = autoload };
+			       SOME (autoload_postprocess ()))
 		  end
 	  end
       end
   in
-    fun init (bootdir, de, er) =
-	(system_values := de;
-	 initTheValues (bootdir, er);
-	 Cleanup.install initPaths)
+    fun init (bootdir, de, er) = let
+	fun procCmdLine () = let
+	    val autoload = ignore o autoload
+	    val make = ignore o make
+	    fun p (f, ("sml" | "sig"), mk) = HostMachDepVC.Interact.useFile f
+	      | p (f, "cm", mk) = mk f
+	      | p (f, e, mk) = Say.say ["!* unable to process `", f,
+					"' (unknown extension `", e, "')\n"]
+	    fun arg ("-a", _) = autoload
+	      | arg ("-m", _) = make
+	      | arg (f, mk) =
+		(p (f,
+		    String.map Char.toLower (getOpt (OS.Path.ext f, "<none>")),
+		    mk);
+		 mk)
+	in
+	    case SMLofNJ.getArgs () of
+		["@CMslave"] => (#set StdConfig.verbose false; slave ())
+	      | l => ignore (foldl arg autoload l)
+	end
+    in
+	system_values := de;
+	initTheValues (bootdir, er, fn () => (Cleanup.install initPaths;
+					      procCmdLine))
+    end
+
+    structure CM :> CM = struct
+	type 'a controller = { get : unit -> 'a, set : 'a -> unit }
+
+	structure Anchor = struct
+	    val set = setAnchor
+	    val cancel = cancelAnchor
+	    val reset = resetPathConfig
+	end
+
+	structure Control = struct
+	    val keep_going = StdConfig.keep_going
+	    val verbose = StdConfig.verbose
+	    val parse_caching = StdConfig.parse_caching
+	    val warn_obsolete = StdConfig.warn_obsolete
+	    val debug = StdConfig.debug
+	end
+
+	structure Library = struct
+	    type lib = SrcPath.t
+	    val known = Parse.listLibs
+	    val descr = SrcPath.descr
+	    val osstring = SrcPath.osstring
+	    val dismiss = Parse.dismissLib
+	end
+
+	structure State = struct
+	    val synchronize = SrcPath.sync
+	    val reset = reset
+	    val pending = getPending
+	end
+
+	structure Server = struct
+	    type server = Servers.server
+	    fun start x = Servers.start x before SrcPath.invalidateCwd ()
+	    val stop = Servers.stop
+	    val kill = Servers.kill
+	    val name = Servers.name
+	end
+
+	val autoload = autoload
+	val make = make
+	val recomp = recomp
+	val stabilize = stabilize
+
+	val symval = SSV.symval
+    end
   end
 end

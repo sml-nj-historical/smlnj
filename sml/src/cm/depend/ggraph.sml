@@ -9,12 +9,28 @@
 structure GroupGraph = struct
 
     type privileges = StringSet.set
-    type privilegespec = { required : privileges, granted : privileges }
 
+    datatype kind =
+	NOLIB
+      | LIB of privileges		(* wrapped privileges *)
+      | STABLELIB
+
+    (* the "required" field includes everything:
+     *   1. privileges required by subgroups
+     *   2. newly required privileges
+     *   3. privileges that would be wrapped once the group is stabilized
+     *)
     datatype group =
 	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
-		   islib: bool,
-		   privileges: privilegespec,
-		   grouppath: AbsPath.t,
-		   subgroups: group list }
+		   kind: kind,
+		   required: privileges,
+		   grouppath: SrcPath.t,
+		   sublibs: (SrcPath.t * group) list }
+    (* Note: "sublibs" consists of (srcpath, group) pairs where
+     * srcpath is equivalent -- but not necessarily identical -- to
+     * the "grouppath" component of "group".  The group might have
+     * been known before in which case "grouppath" would carry the
+     * path that was used back then to refer to the group.  But for
+     * the purpose of stabilization we must know the abstract path
+     * that was used this time. *)
 end

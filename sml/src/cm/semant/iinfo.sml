@@ -9,7 +9,8 @@
  *)
 structure IInfo = struct
     type info =
-	{ statenv: unit -> GenericVC.Environment.staticEnv,
+	{ statenv: unit -> { env: GenericVC.Environment.staticEnv,
+			     ctxt: GenericVC.ModuleId.Set.set },
 	  symenv: unit -> GenericVC.Environment.symenv,
 	  statpid: GenericVC.PersStamps.persstamp,
 	  sympid: GenericVC.PersStamps.persstamp }

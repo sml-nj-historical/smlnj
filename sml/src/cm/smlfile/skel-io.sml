@@ -6,25 +6,32 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 signature SKELIO = sig
-    exception InternalError
-    val read : AbsPath.t * TStamp.t -> Skeleton.decl option
-    val write : AbsPath.t * Skeleton.decl -> unit
+    val read : string * TStamp.t -> Skeleton.decl option
+    val write : string * Skeleton.decl * TStamp.t -> unit
 end
 
 structure SkelIO :> SKELIO = struct
 
     structure SK = Skeleton
     structure SS = SymbolSet
-    structure S = GenericVC.Symbol
+    structure S = Symbol
     structure SP = GenericVC.SymPath
+    structure PU = PickleUtil
+    structure PSymPid = PickleSymPid
+    structure UU = UnpickleUtil
 
-    exception InternalError
-    exception FormatError
+    infix 3 $
+    infixr 4 &
+    val op & = PU.&
+    val % = PU.%
+
+    exception Format = UU.Format
 
     val s2b = Byte.stringToBytes
+    val b2s = Byte.bytesToString
     val b2c = Byte.byteToChar
 
-    val version = "Decl 9\n"
+    val version = "Skeleton 3\n"
 
     fun makeset l = SS.addList (SS.empty, l)
 
@@ -41,205 +48,107 @@ structure SkelIO :> SKELIO = struct
 
     fun write_decl (s, d) = let
 
-	(* We are consing up the whole output as a list of strings
-	 * before concatenating it to form the final result and
-	 * wrinting it out using one single `output' call. *)
-	fun w_name (n, r) = let
-	    val ns = S.nameSpace n
-	    val prefix =
-		case ns of
-		    S.STRspace => "#"
-		  | S.SIGspace => "$"
-		  | S.FCTspace => "%"
-		  | S.FSIGspace => "&"
-		  | _ => raise InternalError
+	val symbol = PSymPid.w_symbol
+	val list = PU.w_list
+
+	fun path (SP.SPATH p) = list symbol p
+
+	fun decl arg = let
+	    val D = 1
+	    val op $ = PU.$ D
+	    fun d (SK.Bind (name, def)) = "a" $ symbol name & modExp def
+	      | d (SK.Local (x, y)) = "b" $ decl x & decl y
+	      | d (SK.Par l) = "c" $ list decl l
+	      | d (SK.Seq l) = "d" $ list decl l
+	      | d (SK.Open d) = "e" $ modExp d
+	      | d (SK.Ref s) = "f" $ list symbol (SS.listItems s)
 	in
-	    prefix :: S.name n :: "." :: r
+	    d arg
 	end
 
-	fun w_list w (l, r) = foldr w (";" :: r) l
+	and modExp arg = let
+	    val M = 2
+	    val op $ = PU.$ M
+	    fun m (SK.Var p) = "g" $ path p
+	      | m (SK.Decl d) = "h" $ list decl d
+	      | m (SK.Let (d, e)) = "i" $ list decl d & modExp e
+	      | m (SK.Ign1 (e1, e2)) = "j" $ modExp e1 & modExp e2
+	in
+	    m arg
+	end
 
-	fun w_path (SP.SPATH p, r) = w_list w_name (p, r)
-
-	fun w_option w (NONE, r) = "-" :: r
-	  | w_option w (SOME x, r) = "+" :: w (x, r)
-
-	fun w_decl (SK.StrDecl l, r) =
-	    let
-		fun w_item ({ name, def, constraint }, r) =
-		    w_name (name,
-			    w_strExp (def,
-				      w_option w_strExp (constraint, r)))
-	    in
-		"s" :: w_list w_item (l, r)
-	    end
-	  | w_decl (SK.FctDecl l, r) = let
-		fun w_item ({ name, def }, r) =
-		    w_name (name, w_fctExp (def, r))
-	    in
-		"f" :: w_list w_item (l, r)
-	    end
-          | w_decl (SK.LocalDecl (x, y), r) = "l" :: w_decl (x, w_decl (y, r))
-	  | w_decl (SK.SeqDecl l, r) = "q" :: w_list w_decl (l, r)
- 	  | w_decl (SK.OpenDecl l, r) = "o" :: w_list w_strExp (l, r)
-	  | w_decl (SK.DeclRef s, r) = "r" :: w_list w_name (SS.listItems s, r)
-
-	and w_strExp (SK.VarStrExp p, r) = "v" :: w_path (p, r)
-	  | w_strExp (SK.BaseStrExp d, r) = "s" :: w_decl (d, r)
-	  | w_strExp (SK.AppStrExp (p, l), r) =
-	    "a" :: w_path (p, w_list w_strExp (l, r))
-	  | w_strExp (SK.LetStrExp (d, se), r) =
-	    "l" :: w_decl (d, w_strExp (se, r))
-	  | w_strExp (SK.AugStrExp (se, s), r) =
-	    "g" :: w_strExp (se, w_list w_name (SS.listItems s, r))
- 	  | w_strExp (SK.ConStrExp (s1, s2), r) =
- 	    "c" :: w_strExp (s1, w_strExp(s2, r))
-
-	and w_fctExp (SK.VarFctExp (p, fe), r) =
-	    "v" :: w_path (p, w_option w_fctExp (fe, r))
-	  | w_fctExp (SK.BaseFctExp { params, body, constraint }, r) = let
-		fun w_item ((mn, se), r) =
-		    w_option w_name (mn, w_strExp (se, r))
-	    in
-		"f" ::
-		w_list w_item (params,
-			       w_strExp (body,
-					 w_option w_strExp (constraint, r)))
-	    end
-	  | w_fctExp (SK.AppFctExp (p, sel, feo), r) =
-	    "a" ::
-	    w_path (p, w_list w_strExp (sel, w_option w_fctExp (feo, r)))
-	  | w_fctExp (SK.LetFctExp (d, fe), r) =
-	    "l" :: w_decl (d, w_fctExp (fe, r))
-
+	val pickle = s2b (PU.pickle () (decl d))
     in
-	BinIO.output (s, s2b (concat (version :: w_decl (d, ["\n"]))))
+	BinIO.output (s, Byte.stringToBytes version);
+	BinIO.output (s, pickle)
     end
 
     fun read_decl s = let
 
-	fun rd () = Option.map b2c (BinIO.input1 s)
+	val firstLine = inputLine s
 
-	local
-	    fun get (ns, first) = let
-		fun loop (accu, NONE) = raise FormatError
-		  | loop ([], SOME #".") = raise FormatError
-		  | loop (accu, SOME #".") = ns (String.implode (rev accu))
-		  | loop (accu, SOME s) = loop (s :: accu, rd ())
-	    in
-		loop ([], first)
-	    end
+	val session = UU.mkSession (UU.stringGetter (b2s (BinIO.inputAll s)))
+
+	val string = UU.r_string session
+	val symbol = UnpickleSymPid.r_symbol (session, string)
+	fun list m r = UU.r_list session m r
+	fun share m f = UU.share session m f
+
+	val symbolListM = UU.mkMap ()
+	val declM = UU.mkMap ()
+	val declListM = UU.mkMap ()
+	val modExpM = UU.mkMap ()
+
+	val symbollist = list symbolListM symbol
+
+	fun path () = SP.SPATH (symbollist ())
+
+	fun decl () = let
+	    fun d #"a" = SK.Bind (symbol (), modExp ())
+	      | d #"b" = SK.Local (decl (), decl ())
+	      | d #"c" = SK.Par (decllist ())
+	      | d #"d" = SK.Seq (decllist ())
+	      | d #"e" = SK.Open (modExp ())
+	      | d #"f" = SK.Ref (makeset (symbollist ()))
+	      | d _ = raise Format
 	in
-	    fun r_name (SOME #"#") = get (S.strSymbol, rd ())
-	      | r_name (SOME #"$") = get (S.sigSymbol, rd ())
-	      | r_name (SOME #"%") = get (S.fctSymbol, rd ())
-	      | r_name (SOME #"&") = get (S.fsigSymbol, rd ())
-	      | r_name _ = raise FormatError
+	    share declM d
 	end
 
-	fun r_list r = let
-	    fun loop (accu, NONE) = raise FormatError
-	      | loop (accu, SOME #";") = rev accu
-	      | loop (accu, cur) = loop ((r cur) :: accu, rd ())
+	and decllist () = list declListM decl ()
+
+	and modExp () = let
+	    fun m #"g" = SK.Var (path ())
+	      | m #"h" = SK.Decl (decllist ())
+	      | m #"i" = SK.Let (decllist (), modExp ())
+	      | m #"j" = SK.Ign1 (modExp (), modExp ())
+	      | m _ = raise Format
 	in
-	    fn first => loop ([], first)
+	    share modExpM m
 	end
-
-	fun r_path first = SP.SPATH (r_list r_name first)
-
-	fun r_option r (SOME #"-") = NONE
-	  | r_option r (SOME #"+") = SOME (r (rd ()))
-	  | r_option r _ = raise FormatError
-
-	fun r_decl (SOME #"s") =
-	    let
-		fun r_item first = {
-				    name = r_name first,
-				    def = r_strExp (rd ()),
-				    constraint = r_option r_strExp (rd ())
-				   }
-	    in
-		SK.StrDecl (r_list r_item (rd ()))
-	    end
-	  | r_decl (SOME #"f") =
-	    let
-		fun r_item first = {
-				    name = r_name first,
-				    def = r_fctExp (rd ())
-				   }
-	    in
-		SK.FctDecl (r_list r_item (rd ()))
-	    end
-	  | r_decl (SOME #"l") = SK.LocalDecl (r_decl (rd ()), r_decl (rd ()))
-	  | r_decl (SOME #"q") = SK.SeqDecl (r_list r_decl (rd ()))
- 	  | r_decl (SOME #"o") = SK.OpenDecl (r_list r_strExp (rd ()))
-	  | r_decl (SOME #"r") = SK.DeclRef (makeset (r_list r_name(rd ())))
-	  | r_decl _ = raise FormatError
-
-	and r_strExp (SOME #"v") = SK.VarStrExp (r_path (rd ()))
-	  | r_strExp (SOME #"s") = SK.BaseStrExp (r_decl (rd ()))
-	  | r_strExp (SOME #"a") =
-	    SK.AppStrExp (r_path (rd ()), r_list r_strExp (rd ()))
-	  | r_strExp (SOME #"l") =
-	    SK.LetStrExp (r_decl (rd ()), r_strExp (rd ()))
-	  | r_strExp (SOME #"g") =
-	    SK.AugStrExp (r_strExp (rd ()), makeset (r_list r_name (rd ())))
- 	  | r_strExp (SOME #"c") =
- 	    SK.ConStrExp (r_strExp (rd ()), r_strExp (rd ()))
-	  | r_strExp _ = raise FormatError
-
-	and r_fctExp (SOME #"v") =
-	    SK.VarFctExp (r_path(rd()), r_option r_fctExp(rd()))
-	  | r_fctExp (SOME #"f") =
-	    let
-		fun r_param first = (r_option r_name first, r_strExp (rd ()))
-	    in
-		SK.BaseFctExp {
-			       params = r_list r_param (rd ()),
-			       body = r_strExp (rd ()),
-			       constraint = r_option r_strExp (rd ())
-			      }
-	    end
-	  | r_fctExp (SOME #"a") =
-	    SK.AppFctExp (r_path (rd ()),
-			  r_list r_strExp (rd ()),
-			  r_option r_fctExp (rd ()))
-	  | r_fctExp (SOME #"l") =
-	    SK.LetFctExp (r_decl (rd ()), r_fctExp (rd ()))
-	  | r_fctExp _ = raise FormatError
-
-	val firstline = inputLine s
-	val r = if firstline = version then r_decl (rd ())
-		else raise FormatError
-	val nl = rd ()
     in
-	if nl = SOME #"\n" then r else raise FormatError
+	if firstLine = version then decl () else raise Format
     end
 
-    fun read (ap, ts) =
-	if TStamp.earlier (AbsPath.tstamp ap, ts) then NONE
-	else let
-	    val s = AbsPath.openBinIn ap
-	    val r = read_decl s
-		handle exn => (BinIO.closeIn s; raise exn)
-	in
-	    BinIO.closeIn s; SOME r
-	end handle _ => NONE
+    fun read (s, ts) =
+	if TStamp.needsUpdate { target = TStamp.fmodTime s, source = ts } then
+	    NONE
+	else
+	    SOME (SafeIO.perform { openIt = fn () => BinIO.openIn s,
+				   closeIt = BinIO.closeIn,
+				   work = read_decl,
+				   cleanup = fn _ => () })
+	    handle _ => NONE
 
-    fun write (ap, sk) = let
-	val s = AbsPath.openBinOut Say.vsay ap
+    fun write (s, sk, ts) = let
+	fun cleanup _ =
+	    (OS.FileSys.remove s handle _ => ();
+	     Say.say ["[writing ", s, " failed]\n"])
     in
-	(Interrupt.guarded (fn () => write_decl (s, sk));
-	 BinIO.closeOut s)
-	handle exn => let
-	    val p = AbsPath.name ap
-	in
-	    BinIO.closeOut s;
-	    OS.FileSys.remove p handle _ => ();
-	    Say.say (concat ["[writing ", p, " failed]\n"]);
-	    raise exn
-	end
-    end handle Interrupt.Interrupt => raise Interrupt.Interrupt
-             | InternalError => raise InternalError
-             | _ => ()
+	SafeIO.perform { openIt = fn () => AutoDir.openBinOut s,
+			 closeIt = BinIO.closeOut,
+			 work = fn s => write_decl (s, sk),
+			 cleanup = cleanup };
+	TStamp.setTime (s, ts)
+    end
 end

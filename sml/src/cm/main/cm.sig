@@ -2,7 +2,7 @@
  * This is the signature for a "full" structure CM.  This structure gets
  * constructed in cm-boot.sml and is made available at top-level by
  * (auto-)loading the library "full-cm.cm".
- * (After system startup only a "minimal"* structure CM is visible.)
+ * (After system startup only a "minimal" structure CM is visible.)
  *
  *   Copyright (c) 1999 by Lucent Bell Laboratories
  *

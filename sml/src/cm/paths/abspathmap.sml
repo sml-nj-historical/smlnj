@@ -6,8 +6,4 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure AbsPathMap = BinaryMapFn
-    (struct
-	type ord_key = AbsPath.t
-	val compare = AbsPath.compare
-    end)
+structure AbsPathMap = MapFn (AbsPath)

@@ -5,6 +5,8 @@
  *   then there is a "consumer" traversal that uses the binfile contents.
  *   No error checking is done -- the "get" operation assumes that the
  *   stuff is either in its cache or in the file system.
+ *   Moreover, the static environment cannot be used (BF.senvOf will fail
+ *   if the binfile had to be reloaded from disk).
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -47,7 +49,7 @@ struct
 		    SafeIO.perform { openIt = fn () => BinIO.openIn binname,
 				     closeIt = BinIO.closeIn,
 				     work = reader,
-				     cleanup = fn () => () }
+				     cleanup = fn _ => () }
 		end
     in
 	{ store = store, get = get }

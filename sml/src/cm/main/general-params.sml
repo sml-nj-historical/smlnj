@@ -1,6 +1,6 @@
 (*
  * "General" parameters that may differ from invocation to invocation of
- * CM.  The "params" type bundles them up so they can be passed around
+ * CM.  The "info" type bundles them up so they can be passed around
  * more conveniently.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
@@ -9,8 +9,17 @@
  *)
 structure GeneralParams = struct
 
-    type params = { primconf : Primitive.configuration,
-		    fnpolicy: FilenamePolicy.policy,
-		    groupreg: GroupReg.groupreg,
-		    keep_going: bool }
+    type param = { primconf : Primitive.configuration,
+		   pcmode : PathConfig.mode,
+		   fnpolicy: FilenamePolicy.policy,
+		   symval: string -> { get: unit -> int option,
+				       set: int option -> unit },
+		   keep_going: bool,
+		   pervasive: GenericVC.Environment.environment,
+		   corenv: GenericVC.BareEnvironment.staticEnv,
+		   pervcorepids: PidSet.set }
+
+    type info = { param: param,
+		  groupreg: GroupReg.groupreg,
+		  errcons: PrettyPrint.ppconsumer }
 end
