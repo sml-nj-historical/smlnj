@@ -40,9 +40,8 @@ structure VersionTool = struct
     fun bumpRelease (file, r) =
 	if !bump_release then putRelease (file, r + 1) else ()
 
-    fun gen { template, target, vfile, rfile } =
+    fun gen { template, target, vfile, release } =
 	let val version = getVersion vfile
-	    val release = getRelease rfile
 	    val version' = case release of
 			       NONE => version
 			     | SOME r => version @ [r]
@@ -61,7 +60,7 @@ structure VersionTool = struct
 			| SOME c => (TextIO.output1 (ts, c); loop ())
 			| NONE => TextIO.output1 (ts, #"%"))
 		  | SOME c => (TextIO.output1 (ts, c); loop ())
-	in bumpRelease (rfile, getOpt (release, ~1));
+	in 
 	   loop ();
 	   TextIO.closeIn ss;
 	   TextIO.closeOut ts
@@ -87,11 +86,13 @@ structure VersionTool = struct
 		    val template = Tools.nativeSpec templatep
 		    val vfile = Tools.nativePreSpec versionfilepp
 		    val rfile = Tools.nativePreSpec releasefilepp
+		    val release = getRelease rfile
 		    fun newerThanTarget f = Tools.outdated tool ([target], f)
 		in if List.exists newerThanTarget [template, vfile, rfile] then
 		       gen { template = template, target = target,
-			     vfile = vfile, rfile = rfile }
+			     vfile = vfile, release = release }
 		   else ();
+		   bumpRelease (rfile, getOpt (release, ~1));
 		   ({ smlfiles = [(targetp, { share = Sharing.DONTCARE,
 					      setup = (NONE, NONE),
 					      split = NONE,
