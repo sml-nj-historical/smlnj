@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/02/13 16:41:00 EST
+Tag: blume-20020213-cmlpq
+Description:
+
+Added new priority queue export symbols (which have just been added to
+smlnj-lib.cm) to CML's version of smlnj-lib.cm.  (Otherwise CML would
+not compile and the installer would choke.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/02/13 16:15:00 EST
 Tag: blume-20020213-various
 Description:

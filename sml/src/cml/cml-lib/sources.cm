@@ -53,11 +53,13 @@ Group (cm/smlnj-lib.cm)
   signature MONO_DYNAMIC_ARRAY
   signature MONO_HASH_TABLE
   signature MONO_HASH2_TABLE
+  signature MONO_PRIORITYQ
   signature ORD_KEY
   signature ORD_MAP
   signature ORD_SET
   signature PARSER_COMB
   signature PATH_UTIL
+  signature PRIORITY
   signature PROP_LIST
   signature QUEUE
   signature RAND
@@ -124,6 +126,7 @@ Group (cm/smlnj-lib.cm)
   functor HashTableFn
   functor Hash2TableFn
   functor KeywordFn
+  functor LeftPriorityQFn
   functor ListMapFn
   functor ListSetFn
   functor MonoArrayFn
