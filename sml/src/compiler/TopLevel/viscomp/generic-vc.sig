@@ -17,6 +17,7 @@ signature GENERIC_VC = sig
     structure SourceMap : SOURCE_MAP
     structure ErrorMsg : ERRORMSG
     structure Symbol : SYMBOL
+    structure SymPath : SYMPATH
     structure StaticEnv : STATICENV
     structure DynamicEnv : DYNENV
     structure BareEnvironment : ENVIRONMENT
@@ -36,6 +37,7 @@ signature GENERIC_VC = sig
 	    -> PersStamps.persstamp
     end
     structure Ast : AST
+    structure SmlFile : SMLFILE
 
     structure PrintHooks : PRINTHOOKS
 
@@ -49,5 +51,10 @@ end
 
 
 (*
- * $Log$
+ * $Log: generic-vc.sig,v $
+ * Revision 1.1  1998/10/16 14:04:03  george
+ *   Implemented a hierachical bin directory structure and
+ *   broke up the Compiler structure into a machine dependent
+ *   and independent parts. [blume]
+ *
  *)

@@ -1,3 +1,9 @@
+(*
+ * Tarjan et als. idef/iuse sets.
+ *
+ * -- Allen
+ *)
+
 functor IDefsFn
    (structure Dom : DOMINATOR_TREE
     structure CFG : CONTROL_FLOW_GRAPH
@@ -24,6 +30,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

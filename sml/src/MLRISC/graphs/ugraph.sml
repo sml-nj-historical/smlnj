@@ -1,5 +1,7 @@
 (*
- *  Undirected graph
+ *  Undirected graph view.  This makes a graph look undirected.
+ *
+ *  -- Allen
  *)
 
 signature UNDIRECTED_GRAPH_VIEW =
@@ -65,14 +67,7 @@ struct
          exit_edges      = #exit_edges G,
          forall_nodes    = #forall_nodes G,
          forall_edges    = #forall_edges G
-	 (*
-         fold_nodes      = #fold_nodes G,
-         fold_edges      = #fold_edges G
-	 *)
        }
    end
 end
 
-(*
- * $Log$
- *)

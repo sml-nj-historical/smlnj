@@ -51,5 +51,26 @@ signature PP_STREAM =
 
     val control : stream -> (device -> unit) -> unit
 
+  (* pretty-print a PP description *)
+    type pp_desc
+    val description : stream -> pp_desc -> unit
+
+  (* PP description constructors *)
+    structure Desc : sig
+	val hBox    : pp_desc list -> pp_desc
+	val vBox    : (indent * pp_desc list) -> pp_desc
+	val hvBox   : (indent * pp_desc list) -> pp_desc
+	val hovBox  : (indent * pp_desc list) -> pp_desc
+	val box     : (indent * pp_desc list) -> pp_desc
+	val token   : token -> pp_desc
+	val string  : string -> pp_desc
+	val style   : (style * pp_desc list) -> pp_desc
+	val break   : {nsp : int, offset : int} -> pp_desc
+	val space   : int -> pp_desc
+	val cut     : pp_desc
+	val newline : pp_desc
+	val control : (device -> unit) -> pp_desc
+      end
+
   end
 

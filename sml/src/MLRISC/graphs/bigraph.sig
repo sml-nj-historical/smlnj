@@ -1,3 +1,9 @@
+(*
+ * This is the signature of a bipartite graph
+ *
+ * -- Allen
+ *)
+
 signature BIPARTITE_GRAPH =
 sig
 
@@ -46,6 +52,3 @@ sig
        }
 end
 
-(*
- * $Log$
- *)

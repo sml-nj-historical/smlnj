@@ -73,7 +73,7 @@ local
 		then true
 		else (a' > b')
 	end
- in fun sort3 x = uniq (Sort.sort gtr x)
+ in fun sort3 x = uniq (ListMergeSort.sort gtr x)
 end
 
 val EQUALsym = S.varSymbol "="
@@ -100,7 +100,7 @@ val bogusExp = VARexp(ref(V.mkVALvar(bogusID, A.nullAcc)), [])
 
 (* Verifies that all the elements of a list are unique *)
 fun checkUniq (err,message,names) =
-    let val names' = Sort.sort S.symbolGt names
+    let val names' = ListMergeSort.sort S.symbolGt names
 	fun f (x::y::rest) = (
 	      if S.eq(x,y)
 	      then err COMPLAIN (message^ ": " ^ S.name x) nullErrorBody
@@ -194,7 +194,8 @@ fun patproc (pp, compInfo as {mkLvar=mkv, ...} : compInfo) =
    ordering on numbers expressed by strings (tuples) *)
 
 local 
-  fun sort x = Sort.sort (fn ((a,_),(b,_)) => TypesUtil.gtLabel (a,b)) x
+  fun sort x = 
+    ListMergeSort.sort (fn ((a,_),(b,_)) => TypesUtil.gtLabel (a,b)) x
 in fun sortRecord(l,err) =
      (checkUniq(err, "duplicate label in record",map #1 l);
       sort l)
@@ -563,6 +564,9 @@ end (* structure ElabUtil *)
 
 (*
  * $Log: elabutil.sml,v $
+ * Revision 1.4  1998/08/19 18:17:14  dbm
+ * bug fixes for 110.9 [dbm]
+ *
  * Revision 1.3  1998/05/23 14:10:07  george
  *   Fixed RCS keyword syntax
  *

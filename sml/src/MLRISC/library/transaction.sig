@@ -1,3 +1,9 @@
+(*
+ * Start a transaction
+ * 
+ * -- Allen
+ *)
+
 signature TRANSACTION =
 sig
 
@@ -7,6 +13,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -220,12 +220,26 @@ IO/text-io-fn.sml
   Sockets/serv-db.sig
   Sockets/serv-db.sml
   Sockets/socket.sig
-  Sockets/socket.sml
+  Sockets/unix-socket.sml   (* winsock *)
   Sockets/generic-sock.sig
   Sockets/inet-sock.sig
   Sockets/unix-sock.sig
-  Sockets/generic-sock.sml
+  Sockets/unix-generic-sock.sml (* winsock *)
   Sockets/unix-sock.sml
+  Sockets/inet-sock.sml
+#elif defined(OPSYS_WIN32)   (* winsock *)
+  Sockets/pre-sock.sml
+  Sockets/host-db.sig
+  Sockets/host-db.sml
+  Sockets/prot-db.sig
+  Sockets/prot-db.sml
+  Sockets/serv-db.sig
+  Sockets/serv-db.sml
+  Sockets/socket.sig
+  Sockets/win32-socket.sml
+  Sockets/generic-sock.sig
+  Sockets/inet-sock.sig
+  Sockets/win32-generic-sock.sml
   Sockets/inet-sock.sml
 #endif
 

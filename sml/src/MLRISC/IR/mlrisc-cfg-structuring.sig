@@ -1,3 +1,9 @@
+(*
+ * Module for inserting preheaders and splitting critical edges.
+ *
+ * -- Allen
+ *)
+
 signature CFG_STRUCTURING =
 sig
 
@@ -10,6 +16,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

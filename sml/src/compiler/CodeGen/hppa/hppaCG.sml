@@ -1,6 +1,7 @@
-functor HppaCG(structure Emitter : EMITTER_NEW
+functor HppaCG(structure Emitter : INSTRUCTION_EMITTER
 		 where P = HppaPseudoOps
-	         and I = HppaInstr) : MACHINE_GEN = 
+	         and I = HppaInstr 
+                 and S.B = HppaMLTree.BNames) : MACHINE_GEN = 
 struct
   structure I = HppaInstr
   structure C = HppaCells
@@ -17,28 +18,27 @@ struct
   structure HppaRewrite = HppaRewrite(HppaInstr)
 
   (* properties of instruction set *)
-  structure P = 
-    HppaProps(structure HppaInstr = I 
-	      structure Shuffle = HppaShuffle)
+  structure P = HppaProps(I)
 
+  structure FreqProps = FreqProps(P)
   
   (* Label backpatching and basic block scheduling *)
   structure BBSched =
-    BBSched2(structure Flowgraph = F
-	     structure Jumps = 
+    SpanDependencyResolution
+            (structure Flowgraph = F
+	     structure Emitter = Emitter
+	     structure Jumps =
 	       HppaJumps(structure Instr=HppaInstr
 			 structure Shuffle=HppaShuffle)
-	     structure Emitter = Emitter)
+	     structure DelaySlot = HppaDelaySlots(structure I = I
+                                                  structure P = P)
+	     structure Props = P
+            )
 
-  (* flow graph pretty printing routine *)
-  structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = F
-                       structure Emitter   = Asm)
-
-  val intSpillCnt = Ctrl.getInt "ra-int-spills"
-  val floatSpillCnt = Ctrl.getInt "ra-float-spills"
-  val intReloadCnt = Ctrl.getInt "ra-int-reloads"
-  val floatReloadCnt = Ctrl.getInt "ra-float-reloads"
+  val intSpillCnt = Ctrl.getCounter "ra-int-spills"
+  val floatSpillCnt = Ctrl.getCounter "ra-float-spills"
+  val intReloadCnt = Ctrl.getCounter "ra-int-reloads"
+  val floatReloadCnt = Ctrl.getCounter "ra-float-reloads"
   
   (* register allocation *)
   structure RegAllocation : 
@@ -88,7 +88,7 @@ struct
 	  end
 
     fun mvInstr(rd,rs) = I.ARITH{a=I.OR, r1=rs, r2=0, t=rd}
-    fun fmvInstr(fd,fs) = I.FUNARY{fu=I.FCPY, f=fs, t=fd}
+    fun fmvInstr(fd,fs) = I.FUNARY{fu=I.FCPY_D, f=fs, t=fd}
 
     fun spillInit () = 
       (spillOffset := initialSpillOffset;
@@ -183,8 +183,8 @@ struct
 	 end
     end
 
-    structure GR = GetReg(val nRegs = 32 val available = R.availR)
-    structure FR = GetReg(val nRegs = 32 val available = R.availF)
+    structure GR = GetReg(val first=0 val nRegs = 32 val available = R.availR)
+    structure FR = GetReg(val first=32 val nRegs = 32 val available = R.availF)
 
     structure HppaRa = 
       HppaRegAlloc(structure P = P
@@ -216,7 +216,7 @@ struct
 	    structure I = HppaInstr
 	    structure B = B 
 
-	    val getreg = FR.getreg
+	    val getreg = FR.getreg 
 	    val spill = spillF
 	    val reload = reloadF
 	    val nFreeRegs = length R.availF
@@ -244,11 +244,12 @@ struct
 
   (* primitives for generation of HPPA instruction flowgraphs *)
   structure FlowGraphGen = 
-     FlowGraphGen(structure Flowgraph = F
-		  structure InsnProps = P
-		  structure MLTree = HppaMLTree
-		  val optimize = optimizerHook
-		  val output = BBSched.bbsched o RegAllocation.ra)
+     ClusterGen(structure Flowgraph = F
+	        structure InsnProps = P
+		structure MLTree = HppaMLTree
+		structure Stream = Emitter.S
+		val optimize = optimizerHook
+		val output = BBSched.bbsched o RegAllocation.ra)
 
   structure HppaMillicode = 
     HppaMillicode(structure MLTree=HppaMLTree
@@ -262,11 +263,15 @@ struct
   structure MLTreeGen = 
      MLRiscGen(structure MachineSpec=HppaSpec
 	       structure MLTreeComp=
-		 Hppa(structure Flowgen=FlowGraphGen
-		      structure HppaInstr = HppaInstr
+		 Hppa(structure HppaInstr = HppaInstr
+		      structure Stream = HppaStream
 		      structure HppaMLTree = HppaMLTree
 		      structure MilliCode=HppaMillicode
-		      structure LabelComp=HppaLabelComp)
+		      structure LabelComp=HppaLabelComp
+		      val costOfMultiply = ref 7
+		      val costOfDivision = ref 7
+                     )
+	       structure Flowgen=FlowGraphGen
 	       structure Cells=HppaCells
 	       structure C=HppaCpsRegs
 	       structure PseudoOp=HppaPseudoOps)
@@ -278,9 +283,6 @@ end
 
 (*
  * $Log: hppaCG.sml,v $
- * Revision 1.9  1999/03/22 19:30:39  george
- *   Changes to conform to new MLRISC Control
- *
  * Revision 1.8  1999/03/22 17:22:25  george
  *   Changes to support new GC API
  *

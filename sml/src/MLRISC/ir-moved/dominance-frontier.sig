@@ -1,3 +1,10 @@
+(*
+ * This module computes the dominance frontiers from a dominator
+ * tree.  This computation is done in batch mode.
+ *
+ * -- Allen
+ *)
+
 signature DOMINANCE_FRONTIERS =
 sig
 
@@ -9,6 +16,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

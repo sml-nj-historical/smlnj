@@ -32,7 +32,7 @@ struct
   in 
     [I.COPY{dst=[arg1, arg2], src=[rs, rt], impl=ref NONE, tmp=copyTmp()},
      I.LOADI{li=I.LDW, r=C.stackptrR, i=I.IMMED offset, t=tmpR, mem=stack},
-     I.BLE{t=31, b=tmpR, sr=5, d=I.IMMED 0, defs=defs, uses=uses},
+     I.BLE{t=31, b=tmpR, sr=5, d=I.IMMED 0, defs=defs, uses=uses, mem=stack},
      I.COPY{dst=[rd], src=[rv], impl=ref NONE, tmp=copyTmp()}]
   end
 
@@ -41,10 +41,17 @@ struct
   val mulo = doMilliCall mulOffset
   val mulu = doMilliCall muluOffset
 
-  fun cvti2d{rs, fd} = 
-    [I.STORE{st=I.STW, b=sp, d=I.IMMED cvti2dOffset, r=rs, mem=stack},
-     I.FLOAD{fl=I.FLDWS, b=sp, d=cvti2dOffset, t=fd, mem=Region.stack},
-     I.FUNARY{fu=I.FCNVXF, f=fd, t=fd}]
+  fun cvti2real fcnv {rs,fd} =
+  let val tmpF = C.newFreg()
+  in  [I.STORE{st=I.STW, b=C.stackptrR, d=I.IMMED cvti2dOffset,r=rs, mem=stack},
+       I.FLOAD{fl=I.FLDWS, b=C.stackptrR, d=cvti2dOffset, t=tmpF, mem=stack},
+       I.FCNV{fcnv=fcnv, f=tmpF, t=fd}
+      ]
+  end
+
+  val cvti2s = cvti2real I.FCNVXF_S
+  val cvti2d = cvti2real I.FCNVXF_D
+  val cvti2q = cvti2real I.FCNVXF_Q
 
 end
 

@@ -1,9 +1,14 @@
-structure HashTable :> HASH_TABLE =
+(*
+ * Hash table.
+ *
+ * -- Allen
+ *)
+structure Hashtable :> HASHTABLE =
 struct
 
    structure A = Array
 
-   type ('a,'b) table = ('a -> int) * 
+   type ('a,'b) table = ('a -> word) * 
                         ('a * 'a -> bool) *
                         exn *
                         ('a * 'b) list A.array ref * 
@@ -21,7 +26,7 @@ struct
        in  f(A.length a - 1); c := 0 end
    fun insert (hash,op==,exn,A as ref a,c) (k,v) =
    let val N  = A.length a
-       val h  = hash k mod N
+       val h  = Word.toIntX(hash k) mod N
        val es = A.sub(a,h)
        fun ins ([],es') = (A.update(a,h,(k,v)::es'); 
                            c := !c + 1;
@@ -37,7 +42,7 @@ struct
        let val M = N + N
            val M = if M < 13 then 13 else M
            val a' = A.array(M,[])
-           fun ins (k,v) = let val h = hash k mod M
+           fun ins (k,v) = let val h = Word.toIntX(hash k) mod M
                            in  A.update(a',h,(k,v)::A.sub(a',h)) end
        in  A.app (fn es => app ins es) a;
            A := a'
@@ -45,7 +50,7 @@ struct
 
    fun remove (hash,op==,exn,ref a,c) k =
    let val N  = A.length a
-       val h  = hash k mod N
+       val h  = Word.toIntX(hash k) mod N
        val es = A.sub(a,h)
        fun del ([],es') = ()
          | del ((e as (k',_))::es,es') = 
@@ -56,7 +61,7 @@ struct
  
    fun lookup(hash,op==,exn,ref a,_) k =
    let val N  = A.length a
-       val h  = hash k mod N
+       val h  = Word.toIntX(hash k) mod N
        fun find [] = raise exn
          | find ((k',v)::es) = if k == k' then v else find es
    in  find(A.sub(a,h))
@@ -64,8 +69,15 @@ struct
 
    fun app f (_,_,_,ref A,_) = A.app (List.app f) A
 
+   fun map f (_,_,_,ref A,_) =
+   let fun fl([],x) = x
+         | fl((k,v)::es,x) = f(k,v)::fl(es,x)
+   in  A.foldr fl [] A end
+
+   fun fold f x (_,_,_,ref A,_) = 
+   let fun fl([],x) = x
+         | fl((k,v)::es,x) = f(k,v,fl(es,x))
+   in  A.foldr fl x A end
+
 end
 
-(*
- * $Log$
- *)

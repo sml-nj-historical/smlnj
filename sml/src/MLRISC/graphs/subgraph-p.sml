@@ -1,5 +1,7 @@
 (*
- * Subgraph adaptor
+ * Subgraph adaptor. This restricts the view of a graph.
+ *
+ * -- Allen
  *)
 
 signature SUBGRAPH_P_VIEW = 
@@ -97,6 +99,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

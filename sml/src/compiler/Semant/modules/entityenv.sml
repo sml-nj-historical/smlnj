@@ -32,7 +32,7 @@ fun mark(_,e as M.MARKeenv _) = e
   | mark(mkStamp,env) = M.MARKeenv(mkStamp(),env)
 
 fun bind(v, e, M.BINDeenv(d, env)) = M.BINDeenv(ED.insert(d, v, e), env)
-  | bind(v, e, env) = M.BINDeenv(ED.insert(ED.mkDict(), v, e), env)
+  | bind(v, e, env) = M.BINDeenv(ED.insert(ED.empty, v, e), env)
 
 fun atop(_, M.ERReenv) = M.ERReenv
   | atop(M.ERReenv, _) = M.ERReenv
@@ -49,18 +49,19 @@ fun atopSp(_, M.ERReenv) = M.ERReenv
   | atopSp(M.NILeenv, e2) = e2
 
 and atopMerge(d, M.NILeenv) = M.BINDeenv(d, M.NILeenv)
-  | atopMerge(d, M.BINDeenv(d', e)) = M.BINDeenv(ED.overlay(d,d'),e)
+  | atopMerge(d, M.BINDeenv(d', e)) = M.BINDeenv(ED.unionWith #1 (d,d'),e)
   | atopMerge(d, M.MARKeenv(_,r)) = atopMerge(d, r)
 
 fun toList (M.MARKeenv(_,ee)) = toList ee
-  | toList (M.BINDeenv(d, ee)) = ED.fold((op ::), toList ee, d)
+  | toList (M.BINDeenv(d, ee)) = (*ED.fold((op ::), toList ee, d)*)
+     ED.foldri (fn (key, value, base) => (key,value)::base) (toList ee) d
   | toList M.NILeenv = nil
   | toList M.ERReenv = nil
 
 fun look(env,v) =
     let fun scan(M.MARKeenv(_,r)) = scan r
 	  | scan(M.BINDeenv(d, rest)) = 
-              (case ED.peek(d, v)
+              (case ED.find(d, v)
                 of SOME e => e
                  | NONE => scan rest)
 (*
@@ -133,5 +134,8 @@ end (* local *)
 end (* structure EntityEnv *)
 
 (*
- * $Log$
+ * $Log: entityenv.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
+ *
  *)

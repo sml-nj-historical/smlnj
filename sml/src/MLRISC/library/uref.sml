@@ -1,3 +1,9 @@
+(*
+ * References that can be merged
+ *
+ * -- Allen
+ *)
+
 signature UNION_FIND_REF =
 sig
 
@@ -56,6 +62,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

@@ -1,0 +1,9 @@
+@FILES
+  {"array-sort"; "The ARRAY_SORT signature";}
+@SIGNATURE ARRAY_SORT "array-sort" {
+  @TYPES 
+    @TYPE array
+  @VALS 
+    sort
+    sorted
+}

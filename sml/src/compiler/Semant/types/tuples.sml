@@ -25,7 +25,7 @@ open Types
 datatype labelOpt = NOlabel | SOMElabel of label
 datatype tyconOpt = NOtycon | SOMEtycon of tycon
 
-structure LabelArray = Dynamic (
+structure LabelArray = DynamicArrayFn (
   struct
     open Array
     type array = labelOpt array
@@ -33,7 +33,7 @@ structure LabelArray = Dynamic (
     type elem = labelOpt
   end)
 
-structure TyconArray = Dynamic (
+structure TyconArray = DynamicArrayFn (
   struct
     open Array
     type array = tyconOpt array
@@ -67,8 +67,8 @@ fun mkRECORDtyc labels =
 	  end
     end
 
-val numericLabels = LabelArray.array(NOlabel)
-val tupleTycons = TyconArray.array(NOtycon)
+val numericLabels = LabelArray.array(0,NOlabel)
+val tupleTycons = TyconArray.array(0,NOtycon)
 
 fun numlabel i =
     case LabelArray.sub(numericLabels,i)
@@ -105,5 +105,8 @@ fun isTUPLEtyc(RECORDtyc labels) = checklabels(1,labels)
 end (* structure Tuples *)
 
 (*
- * $Log$
+ * $Log: tuples.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:36  george
+ * Version 110.5
+ *
  *)

@@ -1,27 +1,32 @@
+(*
+ * Some simple routines for performing depth first search.
+ * 
+ * -- Allen
+ *)
+
 signature GRAPH_DEPTH_FIRST_SEARCH = 
 sig
 
    (* depth first search *)
 
-   val dfs : (Graph.node_id -> unit) ->
+   val dfs : ('n,'e,'g) Graph.graph  -> 
+             (Graph.node_id -> unit) ->
              ('e Graph.edge -> unit) -> 
-             ('n,'e,'g) Graph.graph  -> 
              Graph.node_id list -> unit
 
-   val dfs_fold : { node_f     : Graph.node_id * 'a -> 'b,
-                    node_unit  : 'b,
-                    edge_f     : 'e Graph.edge * 'b * 'a -> 'a,
-                    edge_unit  : 'a,
-                    graph_f    : 'b * 'c -> 'c,
-                    graph_unit : 'c
-                  } -> ('n,'e,'g) Graph.graph -> Graph.node_id list -> 'c
-                     
+   val dfsfold : ('n,'e,'g) Graph.graph  -> 
+                 (Graph.node_id * 'a -> 'a) ->
+                 ('e Graph.edge * 'b -> 'b) -> 
+                 Graph.node_id list -> 'a * 'b -> 'a * 'b
+   val dfsnum  : ('n,'e,'g) Graph.graph ->
+                 Graph.node_id list ->
+                 { dfsnum  : int Array.array,  (* dfs numbering *)
+                   compnum : int Array.array   (* completion time *)
+                 }
+
       (* preorder/postorder numbering *)
    val preorder_numbering  : ('n,'e,'g) Graph.graph -> int -> int Array.array
    val postorder_numbering : ('n,'e,'g) Graph.graph -> int -> int Array.array
 
 end
 
-(* 
- * $Log$
- *)

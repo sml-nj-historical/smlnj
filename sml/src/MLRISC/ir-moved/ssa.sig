@@ -1,3 +1,10 @@
+(*
+ * This generic module is used for computing static single assignment form.
+ * Actually only the renaming and iterated dominance frontiers computation
+ * is implemented here.  
+ *
+ * -- Allen
+ *)
 signature STATIC_SINGLE_ASSIGNMENT_FORM =
 sig
 
@@ -27,6 +34,3 @@ sig
        } -> unit
 end
 
-(*
- * $Log$
- *)

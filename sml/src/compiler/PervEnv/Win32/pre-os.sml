@@ -20,9 +20,18 @@ structure OS =
 	structure IO =
 	    struct
 		datatype iodesc = IODesc of Win32_General.hndl ref
+		                | SockDesc of int
 	    end
-    end
+    end;
+
+structure PreOS = OS;
 
 (*
- * $Log$
+ * $Log: pre-os.sml,v $
+ * Revision 1.1.1.1.2.1  1999/06/29 18:28:34  riccardo
+ * Winsock support
+ *
+ * Revision 1.1.1.1  1997/01/14 01:38:26  george
+ *   Version 109.24
+ *
  *)

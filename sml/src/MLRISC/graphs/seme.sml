@@ -3,6 +3,8 @@
  *
  * All exit edges are now directed into the exit node.
  * The unique node with entry edges becomes the new entry node.  
+ *
+ * -- Allen
  *)
 
 signature SINGLE_ENTRY_MULTIPLE_EXIT_VIEW = 
@@ -85,6 +87,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

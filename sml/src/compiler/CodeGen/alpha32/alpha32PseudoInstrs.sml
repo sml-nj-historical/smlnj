@@ -1,9 +1,11 @@
 functor Alpha32PseudoInstrs
-  (structure Instr : ALPHA32INSTR 
-     where Region=CPSRegions) : ALPHA32_PSEUDO_INSTR = 
+  (structure Instr : ALPHAINSTR 
+     where Region=CPSRegions) : ALPHA_PSEUDO_INSTR = 
 struct
   structure I = Instr
   structure C = Instr.C
+
+  fun error msg = MLRiscErrorMsg.impossible("Alpha32PsuedoInstrs."^msg)
 
   type reduceOpnd = I.operand -> int
 
@@ -25,15 +27,19 @@ struct
     [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
      I.LOAD{ldOp=I.LDL, r=27, b=sp, d=divlOffset, mem=stack},
-     I.JSR({r=26, b=27, d=0}, defs, uses),
-     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=copyTmp()}]
+     I.JSR({r=26, b=27, d=0}, defs, uses, stack),
+     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
+
+  fun divq _ = error "divq"
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
     [I.COPY{dst=[16, 17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
      I.LOAD{ldOp=I.LDL, r=27, b=sp, d=divluOffset, mem=stack},
-     I.JSR({r=26, b=27, d=0}, defs, uses),
-     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=copyTmp()}]
+     I.JSR({r=26, b=27, d=0}, defs, uses, stack),
+     I.COPY{dst=[rc], src=[0], impl=ref NONE, tmp=NONE}]
+
+  fun divqu _ = error "divqu"
      
   fun cvti2d({opnd, fd}, reduceOpnd) = let
     val ra = reduceOpnd opnd
@@ -41,8 +47,10 @@ struct
     [I.STORE{stOp=I.STQ, r=ra,
 	     b=sp, d=floatTmpOffset, mem=stack},
      I.FLOAD{ldOp=I.LDT, r=fd, b=sp, d=floatTmpOffset, mem=stack},
-     I.FOPERATE{oper=I.CVTQT, fa=zeroR, fb=fd, fc=fd}]
+     I.FUNARY{oper=I.CVTQT, fb=fd, fc=fd}]
   end
+
+  fun cvti2s _ = error "cvti2s"
 end
 
 (*

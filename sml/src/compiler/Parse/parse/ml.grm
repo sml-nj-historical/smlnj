@@ -15,15 +15,15 @@ fun markexp (e as MarkExp _, _, _) = e
 fun markdec(d as MarkDec _, _,_) = d
   | markdec(d,a,b) = MarkDec(d,(a,b))
 
-val asteriskHash = StrgHash.hashString "*"
+val asteriskHash = HashString.hashString "*"
 val asteriskString = "*"
-val equalHash = StrgHash.hashString "="
+val equalHash = HashString.hashString "="
 val equalString = "="
-val bogusHash = StrgHash.hashString "BOGUS"
+val bogusHash = HashString.hashString "BOGUS"
 val bogusString = "BOGUS"
-val quotedBogusHash = StrgHash.hashString "'BOGUS"
+val quotedBogusHash = HashString.hashString "'BOGUS"
 val quotedBogusString = "'BOGUS"
-val quotedBogusHash = StrgHash.hashString "'BOGUS"
+val quotedBogusHash = HashString.hashString "'BOGUS"
 val quotedBogusString = "'BOGUS"
 
   %%
@@ -704,5 +704,8 @@ interdec: sdecs'	(markdec(sdecs',sdecs'left,sdecs'right))
 				 expleft,expright))
 
 (*
- * $Log$
+ * $Log: ml.grm,v $
+ * Revision 1.4  1998/05/25 15:23:18  george
+ *   Fixed RCS keywords
+ *
  *)

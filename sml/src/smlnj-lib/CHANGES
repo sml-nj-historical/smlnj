@@ -3,6 +3,29 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1999-07-06]
+	Added declarative representation of pretty-printing to PPStreamFn.
+	This replaces the PPDescFn and PP_DESC components (which were not
+	implemented anyway).
+
+[1999-07-02]
+	Moved SockUtil structure into a new INet library.  Also split out the
+	Unix-specific socket operations into a UnixSockUtil module.  (Sockets
+	are now supported on Win32).
+
+[1999-06-17]
+	Added listKeys function to ORD_MAP API.
+
+[1999-06-14]
+	Added Riccardo Pucella's GetOpt structure to Util library.
+
+[1999-06-14]
+	Added singleton and inDomain functions to ORD_MAP API.
+
+[1999-06-02]
+	Merged in some bug fixes from the compiler's version of the IntInf
+	structure.
+
 [1999-05-05]
 	Fixed a couple of bugs in the PP library having to do with nesting
 	absolute and relative indentations.

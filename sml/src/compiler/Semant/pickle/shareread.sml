@@ -29,10 +29,10 @@ struct
 
 local structure IM = 
       struct
-        type 'a intmap = 'a IntmapF.intmap
-        val insert = IntmapF.add
-        fun find(a,i) = IntmapF.lookup a i
-        fun empty() = IntmapF.empty
+        type 'a intmap = 'a IntBinaryMap.map
+        val insert = IntBinaryMap.insert
+        fun find(a,i) = Option.valOf (IntBinaryMap.find(a, i))
+        val empty = IntBinaryMap.empty
       end (* structure IM *)
 
 in
@@ -156,7 +156,7 @@ fun root (pickle, trav) = let
 		else u
 	in
 	   (* stack := [(#"|",ref 0)];  debugging *)
-	  ? trav (fn u => fn k => k u) kont0 ((inputString,0),0,IM.empty())
+	  ? trav (fn u => fn k => k u) kont0 ((inputString,0),0,IM.empty)
 	end			
 (*  handle e => (app showstack (rev(!stack)); raise e)    debugging *)
 
@@ -164,5 +164,8 @@ end (* top-level local *)
 end (* functor ShareRead *)
 
 (*
- * $Log$
+ * $Log: shareread.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:33  george
+ * Version 110.5
+ *
  *)

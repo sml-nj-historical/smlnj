@@ -1,19 +1,21 @@
-functor HppaShuffle(I:HPPAINSTR) = struct
+functor HppaShuffle(I:HPPAINSTR) : HPPASHUFFLE = struct
   structure I = I
   structure Shuffle = Shuffle(I)
-  type t = {regMap:int->int, temp:I.ea option, dst:int list, src:int list}
+  type t = {regmap:I.C.register->I.C.register, tmp:I.ea option,                             dst:I.C.register list, src:I.C.register list}
 
-  fun error msg = MLRiscErrorMsg.impossible ("HppaShuffle." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("HppaShuffle",msg)
   val mem = I.Region.memory
 
-  fun move{src=I.Direct rs, dst=I.Direct rt} = [I.ARITH{a=I.OR, r1=rs, r2=0, t=rt}]
+  fun move{src=I.Direct rs, dst=I.Direct rt} = 
+       [I.ARITH{a=I.OR, r1=rs, r2=0, t=rt}]
     | move{src=I.Displace{base, disp}, dst=I.Direct rt} =
        [I.LOADI{li=I.LDW, r=base, i=I.IMMED disp, t=rt, mem=mem}]
     | move{src=I.Direct rs, dst=I.Displace{base, disp}} = 
        [I.STORE{st=I.STW, b=base, d=I.IMMED disp, r=rs, mem=mem}]
     | move _ = error "move"
 
-  fun fmove{src=I.FDirect fs, dst=I.FDirect fd} = [I.FUNARY{fu=I.FCPY, f=fs, t=fd}]
+  fun fmove{src=I.FDirect fs, dst=I.FDirect fd} =
+        [I.FUNARY{fu=I.FCPY_D, f=fs, t=fd}]
     | fmove{src=I.Displace{base, disp}, dst=I.FDirect ft} = let
         val tmp = I.C.newCell I.C.GP ()
       in
@@ -34,9 +36,3 @@ functor HppaShuffle(I:HPPAINSTR) = struct
 end
 
 
-(*
- * $Log: hppaShuffle.sml,v $
- * Revision 1.3  1998/05/25 15:11:01  george
- *   Fixed RCS keywords
- *
- *)

@@ -1,3 +1,9 @@
+(*
+ * Sorting
+ *
+ * -- Allen
+ *)
+
 signature SORTING =
 sig
 
@@ -40,8 +46,8 @@ struct
    end
 
    fun merge_uniq op< op== (a,b) =
-   let fun m ([],a) = a
-         | m (a,[]) = a
+   let fun m ([],a) = uniq op== a
+         | m (a,[]) = uniq op== a
          | m (a as (u::v), b as (w::x)) =
             if u == w then m(a,x)
             else if u < w then u::m(v,b) 
@@ -49,16 +55,17 @@ struct
    in  m(a,b)
    end
 
-   fun sort op< l = gensort (merge op<) op< l
-
-   fun sort_uniq op< op== l = gensort (merge_uniq op< op==) op< l
-
-   fun uniq op== l =
+   and uniq op== l =
    let fun f []                 = []
          | f (l as [x])         = l
          | f (x::(l as (y::z))) = if x == y then f l else x::f l
    in  f l
    end
+
+
+   fun sort op< l = gensort (merge op<) op< l
+
+   fun sort_uniq op< op== l = gensort (merge_uniq op< op==) op< l
 
    fun merge_uniqs op< op== l = sort_uniq op< op== (List.concat l)
 

@@ -90,15 +90,14 @@ fun stalePids (deltaEnv, baseEnv) =
 
       (* counting map *)
       val countM = ref (PersMap.empty: int ref PersMap.map)
-      fun look s = 
-            SOME (PersMap.lookup (!countM) s) handle PersMap.MapF => NONE
+      fun look s = PersMap.find (!countM, s)
 
       (* initialize the counter map: for each new binding with stamp
        * check if the same symbol was bound in the old env and enter
        * the old stamp into the map *)
       fun initOne s =
         case look s 
-         of NONE => countM := PersMap.add (!countM, s, ref (~1))
+         of NONE => countM := PersMap.insert (!countM, s, ref (~1))
           | SOME r => r := (!r) - 1
 
       fun initC (sy, _) =
@@ -123,7 +122,7 @@ fun stalePids (deltaEnv, baseEnv) =
 	  (* count the pids *)
 	  val _ = SE.app incC baseEnv
 	  (* pick out the stale ones *)
-	  val stalepids = foldl selZero [] (PersMap.members (!countM))
+	  val stalepids = foldl selZero [] (PersMap.listItemsi (!countM))
       in
 	  stalepids
       end
@@ -268,5 +267,8 @@ end (* structure Environment *)
 
 
 (*
- * $Log$
+ * $Log: environ.sml,v $
+ * Revision 1.2  1998/06/02 17:39:28  george
+ *   Changes to integrate CM functionality into the compiler --- blume
+ *
  *)

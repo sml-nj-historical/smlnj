@@ -1,5 +1,8 @@
 (*
- * Insert various types of dummy blocks into the CFG
+ * Insert various types of dummy blocks into the CFG.
+ * This is probably no longer used.
+ *
+ * -- Allen
  *)
 
 signature CONTROL_FLOW_GRAPH_RESTRUCTURE = 
@@ -17,6 +20,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -13,7 +13,7 @@ struct
   structure LE = LabelExp
   structure Const = I.Constant
 
-  fun error msg = MLRiscErrorMsg.impossible ("SparcJumps." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("SparcJumps",msg)
 
   val branchDelayedArch = true
 
@@ -24,24 +24,24 @@ struct
     | minSize(I.JMP{nop=true,...}) = 8
     | minSize(I.JMPL{nop=true,...}) = 8
     | minSize(I.CALL{nop=true,...}) = 8
+    | minSize(I.BR{nop=true,...}) = 8
+    | minSize(I.BP{nop=true,...}) = 8
     | minSize(I.RET{nop=true,...}) = 8
     | minSize(I.FCMP{nop=true,...}) = 8
     | minSize(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) = 8
-(*
-    | minSize(I.ANNOTATION(i,_)) = minSize i
-*)
+    | minSize(I.ANNOTATION{i,...}) = minSize i
     | minSize _          = 4
 
   fun maxSize (I.COPY _)   = error "maxSize:COPY"
     | maxSize (I.FCOPY _)  = error "maxSize:FCOPY"
-    | maxSize(I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) = 8
-(*
-    | maxSize (I.ANNOTATION(i,_)) = maxSize i
-*)
+    | maxSize (I.FPop1{a=(I.FMOVd | I.FNEGd | I.FABSd),...}) = 8
+    | maxSize (I.ANNOTATION{i,...}) = maxSize i
     | maxSize _		   = 4
 
   fun immed13 n = ~4096 <= n andalso n < 4096
   fun immed22 n = ~0x200000 <= n andalso n < 0x1fffff
+  fun immed16 n = ~0x8000 <= n andalso n < 0x8000
+  fun immed19 n = ~0x40000 <= n andalso n < 0x40000
   fun immed30 n = ~0x4000000 <= n andalso n < 0x3ffffff
 
   fun isSdi instr = 
@@ -60,18 +60,21 @@ struct
       | I.FSTORE{i,...} => oper i
       | I.JMPL{i,...} => oper i
       | I.JMP{i,...} => oper i
+      | I.MOVicc{i,...} => oper i
+      | I.MOVfcc{i,...} => oper i
+      | I.MOVR{i,...} => oper i
       | I.CALL _ => true
       | I.Bicc _ => true
       | I.FBfcc _ => true
+      | I.BR _ => true
+      | I.BP _ => true
       | I.Ticc{i,...} => oper i
       | I.WRY{i,...} => oper i
       | I.COPY _ => true
       | I.FCOPY _ => true
       | I.SAVE{i,...} => oper i
       | I.RESTORE{i,...} => oper i
-(*
-      | I.ANNOTATION(i,_) => isSdi i
-*)
+      | I.ANNOTATION{i,...} => isSdi i
       | _ => false
   end
 
@@ -88,7 +91,9 @@ struct
         | oper(I.LAB lexp,hi) = if immed13(LE.valueOf lexp) then 4 else hi
         | oper(I.CONST c,hi) = if immed13(Const.valueOf c) then 4 else hi
       fun displacement lab = ((labMap lab) - loc) div 4
-      fun branch lab = if immed22(displacement lab) then 4 else 16
+      fun branch22 lab = if immed22(displacement lab) then 4 else 16
+      fun branch19 lab = if immed19(displacement lab) then 4 else 16
+      fun branch16 lab = if immed16(displacement lab) then 4 else 16
       fun call lab = if immed30(displacement lab) then 4 else 20
       fun delaySlot false = 0
         | delaySlot true = 4
@@ -104,27 +109,30 @@ struct
       | I.Ticc{i,...} => oper(i,12)
       | I.SAVE{i,...} => oper(i,12)
       | I.RESTORE{i,...} => oper(i,12)
+      | I.MOVicc{i,...} => oper(i,12)
+      | I.MOVfcc{i,...} => oper(i,12)
+      | I.MOVR{i,...} => oper(i,12)
       | I.JMPL{i,nop,...} => oper(i,12) + delaySlot nop
       | I.JMP{i,nop,...} => oper(i,12) + delaySlot nop
-      | I.Bicc{label,nop,...} => branch label + delaySlot nop
-      | I.FBfcc{label,nop,...} => branch label + delaySlot nop
+      | I.Bicc{label,nop,...} => branch22 label + delaySlot nop
+      | I.FBfcc{label,nop,...} => branch22 label + delaySlot nop
+      | I.BR{label,nop,...} => branch16 label + delaySlot nop
+      | I.BP{label,nop,...} => branch19 label + delaySlot nop
       | I.CALL{label,...} => call label
       | I.WRY{i,...} => oper(i,12)
       | I.COPY{impl=ref(SOME l), ...} => 4 * length l
       | I.FCOPY{impl=ref(SOME l), ...} => instrLength(l,0)
       | I.COPY{dst, src, impl, tmp} =>
         let val instrs = 
-          Shuffle.shuffle{regMap=Intmap.map regmap,temp=tmp,dst=dst,src=src}
+          Shuffle.shuffle{regmap=regmap,tmp=tmp,dst=dst,src=src}
         in impl := SOME(instrs); 4 * length instrs
         end
       | I.FCOPY{dst, src, impl, tmp} => 
         let val instrs = 
-          Shuffle.shufflefp{regMap=Intmap.map regmap,temp=tmp,dst=dst,src=src}
+          Shuffle.shufflefp{regmap=regmap,tmp=tmp,dst=dst,src=src}
         in impl := SOME instrs; instrLength(instrs,0)
         end
-(*
-      | I.ANNOTATION(i,_) => size i
-*)
+      | I.ANNOTATION{i,...} => size i
       | _ => error "sdiSize"
   in  size instr
   end
@@ -144,71 +152,67 @@ struct
   fun expandImm(immed,instr) = 
       let val {lo,hi} = split immed
       in  [I.SETHI{i=hi,d=C.asmTmpR},
-           I.ARITH{a=I.OR,cc=false,r=C.asmTmpR,i=I.IMMED lo,d=C.asmTmpR},
+           I.ARITH{a=I.OR,r=C.asmTmpR,i=I.IMMED lo,d=C.asmTmpR},
            instr
           ]
       end
 
   (* Expand a span dependent instruction *)
-  fun expand(I.COPY{impl=ref(SOME instrs),...},_,_) = instrs
-    | expand(I.FCOPY{impl=ref(SOME instrs),...},_,_) = instrs
-    | expand(instr,4,_) = [instr]
-    | expand(I.ARITH{a=I.OR,r=0,i,d,cc},8,_) =
+  fun expand(instr,size,pos) = 
+    case (instr,size) of
+      (I.COPY{impl=ref(SOME instrs),...},_) => instrs
+    | (I.FCOPY{impl=ref(SOME instrs),...},_) => instrs
+    | (instr,4) => [instr]
+    | (I.ARITH{a=I.OR,r=0,i,d},8) =>
         let val {lo,hi} = split i
         in  [I.SETHI{i=hi,d=C.asmTmpR},
-             I.ARITH{a=I.OR,cc=cc,r=C.asmTmpR,i=I.IMMED lo,d=d}
+             I.ARITH{a=I.OR,r=C.asmTmpR,i=I.IMMED lo,d=d}
             ]
         end
-    | expand(I.ARITH{a,r,i,d,cc},12,_) =
-        expandImm(i,I.ARITH{a=a,r=r,i=I.REG C.asmTmpR,d=d,cc=cc})
-    | expand(I.SHIFT{s,r,i,d},12,_) =
+    | (I.ARITH{a,r,i,d},12) =>
+        expandImm(i,I.ARITH{a=a,r=r,i=I.REG C.asmTmpR,d=d})
+    | (I.SHIFT{s,r,i,d},12) =>
         expandImm(i,I.SHIFT{s=s,r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.SAVE{r,i,d},12,_) =
+    | (I.SAVE{r,i,d},12) =>
         expandImm(i,I.SAVE{r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.RESTORE{r,i,d},12,_) =
+    | (I.RESTORE{r,i,d},12) =>
         expandImm(i,I.RESTORE{r=r,i=I.REG C.asmTmpR,d=d})
-    | expand(I.LOAD{l,r,i,d,mem},12,_) =  
+    | (I.LOAD{l,r,i,d,mem},12) =>  
         expandImm(i,I.LOAD{l=l,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.STORE{s,r,i,d,mem},12,_) =
+    | (I.STORE{s,r,i,d,mem},12) =>
         expandImm(i,I.STORE{s=s,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.FLOAD{l,r,i,d,mem},12,_) = 
+    | (I.FLOAD{l,r,i,d,mem},12) =>
         expandImm(i,I.FLOAD{l=l,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(I.FSTORE{s,r,i,d,mem},12,_) = 
+    | (I.FSTORE{s,r,i,d,mem},12) =>
         expandImm(i,I.FSTORE{s=s,r=r,i=I.REG C.asmTmpR,d=d,mem=mem})
-    | expand(i as I.JMPL _,8,_) = [i]
-    | expand(i as I.JMP _,8,_) = [i]
-    | expand(i as I.Bicc _,8,_) = [i]
-    | expand(i as I.FBfcc _,8,_) = [i]
-    | expand(I.JMPL{r,i,d,defs,uses,nop},(12 | 16),_) = 
+    | (I.MOVicc{b,i,d},12) =>
+        expandImm(i,I.MOVicc{b=b,i=I.REG C.asmTmpR,d=d})
+    | (I.MOVfcc{b,i,d},12) =>
+        expandImm(i,I.MOVfcc{b=b,i=I.REG C.asmTmpR,d=d})
+    | (I.MOVR{rcond,r,i,d},12) =>
+        expandImm(i,I.MOVR{rcond=rcond,r=r,i=I.REG C.asmTmpR,d=d})
+    | (i as I.JMPL _,8) => [i]
+    | (i as I.JMP _,8) => [i]
+    | (i as I.Bicc _,8) => [i]
+    | (i as I.FBfcc _,8) => [i]
+    | (i as I.BR _,8) => [i]
+    | (i as I.BP _,8) => [i]
+    | (I.JMPL{r,i,d,defs,uses,nop,mem},(12 | 16)) => 
         expandImm(i,I.JMPL{r=r,i=I.REG C.asmTmpR,d=d,defs=defs,uses=uses,
-                           nop=nop})
-    | expand(I.JMP{r,i,labs,nop},(12 | 16),_) = 
+                           nop=nop,mem=mem})
+    | (I.JMP{r,i,labs,nop},(12 | 16)) => 
         expandImm(i,I.JMP{r=r,i=I.REG C.asmTmpR,labs=labs,nop=nop})
-    | expand(I.Ticc{t,r,i},12,_) =
-        expandImm(i,I.Ticc{t=t,r=r,i=I.REG C.asmTmpR})
+    | (I.Ticc{t,cc,r,i},12) =>
+        expandImm(i,I.Ticc{t=t,cc=cc,r=r,i=I.REG C.asmTmpR})
         (* 
          * The sparc uses 22bits signed extended displacement offsets
          * Let's hope it's enough
          *)
-    | expand(I.Bicc{b,a,label,nop},_,_) = error "Bicc"  
-    | expand(I.FBfcc{b,a,label,nop},_,_) = error "FBfcc" 
-    | expand(I.WRY{r,i},12,_) = expandImm(i,I.WRY{r=r,i=I.REG C.asmTmpR})
-(*
-    | expand(I.ANNOTATION(i,a),size) = expand(i,size)
-*)
-    | expand _ = error "expand"
+    | (I.Bicc{b,a,label,nop},_) => error "Bicc"  
+    | (I.FBfcc{b,a,label,nop},_) => error "FBfcc" 
+    | (I.WRY{r,i},12) => expandImm(i,I.WRY{r=r,i=I.REG C.asmTmpR})
+    | (I.ANNOTATION{i,...},size) => expand(i,size,pos)
+    |  _ => error "expand"
 
 end
 
-(*
- * $Log: sparcJumps.sml,v $
- * Revision 1.1.1.1  1999/01/04 21:56:27  george
- *   Version 110.12
- *
- * Revision 1.2  1998/08/12 13:36:23  leunga
- *   Fixed the 2.0 + 2.0 == nan bug by treating FCMP as instrs with delay slots
- *
- * Revision 1.1.1.1  1998/08/05 19:38:49  george
- *   Release 110.7.4
- *
- *)

@@ -1,3 +1,9 @@
+(*
+ * Bag datatype that uses hashing
+ * 
+ * -- Allen
+ *)
+
 structure HashBag :> HASH_BAG =
 struct
 
@@ -64,6 +70,3 @@ struct
                       | (x,l)  => str x ^ ", " ^ l) "" bag ^ "}"
 end
 
-(*
- * $Log$
- *)

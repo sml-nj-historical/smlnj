@@ -22,14 +22,19 @@ structure HppaFlowGraph =
 	    structure P=HppaPseudoOps
 	    structure B=FunctionNames)
 
+structure HppaStream = InstructionStreamFn(structure P = HppaPseudoOps
+                                           structure B = FunctionNames)
+
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr
 		 structure Shuffle=HppaShuffle
+                 structure Stream=HppaStream 
 		 structure PseudoOps=HppaPseudoOps)
 
 structure HppaMCEmitter = 
   HppaMCEmitter(structure Instr=HppaInstr
 		structure Assembler=HppaAsmEmitter
+                structure Stream=HppaStream 
 		structure CodeString=CodeString)
 
 
@@ -37,7 +42,10 @@ structure HppaMLTree =
   MLTreeF(structure Const=HppaConst
 	  structure R=CPSRegions
 	  structure P=HppaPseudoOps
-	  structure B=FunctionNames)
+	  structure B=FunctionNames
+          type rextension = unit 
+          type fextension = unit 
+         )
 
 
 (*

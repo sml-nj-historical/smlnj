@@ -1,15 +1,22 @@
 (*
- *  Tarjan's algorithm
+ * Tarjan's algorithm
+ *
+ * This module computes strongly connected components (SCC) of
+ * a graph.  Each SCC is represented as a list of nodes.  All nodes
+ * are folded together with a user supplied function.
+ *
+ * -- Allen
  *)
+
 structure GraphSCC : GRAPH_STRONGLY_CONNECTED_COMPONENTS =
 struct
 
    structure G = Graph
    structure A = Array
 
-   fun scc (G.GRAPH G) process S =
+   fun strong_components (G.GRAPH G) process S =
    let val N = #capacity G ()
-       val onstack = BitSet.create N
+       val onstack = Word8Array.array(N,0w0)
        val dfsnum = A.array(N,~1)
        fun dfs(v,num,stack,S) =
        let val dfsnum_v = num
@@ -20,19 +27,20 @@ struct
                      let val (num,stack,dfsnum_w,low_w,S) = dfs(w,num,stack,S)
                      in  f(es,num,stack,Int.min(low_v,low_w),S) end
                    else
-                     if dfsnum_w < dfsnum_v andalso BitSet.contains(onstack,w)
+                     if dfsnum_w < dfsnum_v andalso 
+                        Word8Array.sub(onstack,w) = 0w1
                      then f(es,num,stack,Int.min(dfsnum_w,low_v),S)
                    else
                       f(es,num,stack,low_v,S)
                end
            val _ = A.update(dfsnum,v,dfsnum_v)
-           val _ = BitSet.set(onstack,v)
+           val _ = Word8Array.update(onstack,v,0w1)
            val (num,stack,low_v,S) = 
                   f(#out_edges G v,num+1,v::stack,dfsnum_v,S)
            fun pop([],SCC,S) = ([],S)
              | pop(x::stack,SCC,S) =
                  let val SCC = x::SCC
-                     val _   = BitSet.reset(onstack,x)
+                     val _   = Word8Array.update(onstack,x,0w0)
                  in  if x = v then (stack,process(SCC,S)) 
                      else pop(stack,SCC,S)
                  end
@@ -51,6 +59,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

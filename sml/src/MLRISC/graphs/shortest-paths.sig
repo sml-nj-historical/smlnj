@@ -1,21 +1,32 @@
+(*
+ * Signatures for shortest paths problems
+ *
+ * -- Allen
+ *)
+
 signature SINGLE_SOURCE_SHORTEST_PATHS =
 sig
 
+   structure Num : ABELIAN_GROUP_WITH_INF
+
    val single_source_shortest_paths :
-                 { weight : 'e Graph.edge -> 'w,
-                   <      : 'w * 'w -> bool,
-                   +      : 'w * 'w -> 'w,
-                   zero   : 'w,
-                   inf    : 'w 
+                 { graph  : ('n,'e,'g') Graph.graph,
+                   weight : 'e Graph.edge -> Num.elem,
+                   s      : Graph.node_id
                  } -> 
-                 ('n,'e,'g') Graph.graph -> 
-                 Graph.node_id -> 
-                 { dist : 'w Array.array,
-                   pred :  Graph.node_id Array.array
+                 { dist : Num.elem Array.array,
+                   pred : Graph.node_id Array.array
                  }
 end
 
 signature ALL_PAIRS_SHORTEST_PATHS =
 sig
-
+   structure Num : ABELIAN_GROUP_WITH_INF
+   val all_pairs_shortest_paths :  
+                 { graph  : ('n,'e,'g') Graph.graph,
+                   weight : 'e Graph.edge -> Num.elem
+                 } -> 
+                 { dist : Num.elem Array2.array,
+                   pred : Graph.node_id Array2.array
+                 }
 end

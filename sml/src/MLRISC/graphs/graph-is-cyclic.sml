@@ -1,3 +1,9 @@
+(*
+ * Tests if a graph is cyclic
+ *
+ * -- Allen
+ *)
+
 structure GraphIsCyclic : GRAPH_IS_CYCLIC = 
 struct
 
@@ -28,6 +34,3 @@ struct
 
 end
 
-(* 
- * $Log$
- *)

@@ -1,5 +1,7 @@
 (* Computation of the dominance frontier using the algorithm
  * of Cytron, Ferrante, Rosen, Wegman and Zadeck in TOPLAS 91
+ *
+ * -- Allen
  *)
 
 functor DominanceFrontiersFn (Dom : DOMINATOR_TREE) 
@@ -47,6 +49,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

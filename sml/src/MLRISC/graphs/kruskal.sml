@@ -1,3 +1,10 @@
+(*
+ * This module implements Kruskal's algorithm for minimal cost
+ * spanning tree.
+ *
+ * -- Allen
+ *)
+
 structure Kruskal : MIN_COST_SPANNING_TREE =
 struct
    structure P = NodePartition
@@ -22,6 +29,3 @@ struct
    end handle Q.EmptyPriorityQueue => raise Unconnected
 end
 
-(*
- * $Log$
- *)

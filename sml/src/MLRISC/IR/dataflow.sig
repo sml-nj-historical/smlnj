@@ -1,3 +1,9 @@
+(* 
+ * Signatures used by the iterative data flow analyzers.
+ * 
+ * -- Allen
+ *)
+
 signature DATAFLOW_ANALYZER =
 sig
 
@@ -34,6 +40,3 @@ sig
                        } -> unit
 end
 
-(* 
- * $Log$
- *)

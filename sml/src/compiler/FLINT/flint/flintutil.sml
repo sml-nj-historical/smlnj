@@ -79,10 +79,10 @@ fun getUnWrapTyc (_, _, lt, []) = LT.ltd_tyc(#2(LT.ltd_parrow lt))
  *)
 fun copy mkLvar = let
 
-    fun look m v = (IntmapF.lookup m v) handle IntmapF.IntmapF => v
+    fun look m v = Option.getOpt(IntBinaryMap.find(m,v), v)
     fun rename (lv, m) = 
       let val lv' = mkLvar ()
-  	  val m' = IntmapF.add (m, lv, lv')
+  	  val m' = IntBinaryMap.insert (m, lv, lv')
        in (lv', m')
       end
 
@@ -223,7 +223,7 @@ fun copy mkLvar = let
       end
 in
     fn fdec => 
-      let val init = IntmapF.empty
+      let val init = IntBinaryMap.empty
           val (fdecs', _) = cf([fdec], init)
        in (case fdecs' 
             of [x] => x

@@ -43,8 +43,10 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
 	    f (!root)
 	  end
 
-	(* Insert an item.  
-	 *)
+    fun singleton (key, v) =
+          MAP{nobj=1,root=ref(SplayObj{value=(key,v),left=SplayNil,right=SplayNil})}
+
+  (* Insert an item.  *)
     fun insert (EMPTY,key,v) =
           MAP{nobj=1,root=ref(SplayObj{value=(key,v),left=SplayNil,right=SplayNil})}
       | insert (MAP{root,nobj},key,v) =
@@ -67,6 +69,12 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
               }
           | (_,SplayNil) => raise LibBase.Impossible "SplayMapFn.insert SplayNil"
     fun insert' ((k, x), m) = insert(m, k, x)
+
+    fun inDomain (EMPTY, _) = false
+      | inDomain (MAP{root,nobj}, key) = (case splay (cmpf key, !root)
+	   of (EQUAL, r as SplayObj{value,...}) => (root := r; true)
+	    | (_, r) => (root := r; false)
+	  (* end case *))
 
   (* Look for an item, return NONE if the item doesn't exist *)
     fun find (EMPTY,_) = NONE
@@ -106,6 +114,15 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
                 apply(left, value::(apply (right,l)))
         in
           apply (!root,[])
+        end
+
+    fun listKeys EMPTY = []
+      | listKeys (MAP{root,...}) = let
+	  fun apply (SplayNil, l) = l
+            | apply (SplayObj{value=(key, _),left,right},l) =
+                apply(left, key::(apply (right,l)))
+        in
+          apply (!root, [])
         end
 
     local

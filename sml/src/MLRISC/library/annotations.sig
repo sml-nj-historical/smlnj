@@ -5,6 +5,8 @@
  *  the optimizer.
  *
  *  Idea is stolen from Stephen Weeks
+ * 
+ *  -- Allen
  *)
 
 signature ANNOTATIONS =
@@ -12,13 +14,6 @@ sig
    
    type annotation  = exn
    type annotations = annotation list
-
-   (*
-    * The only predefined annotation is comment, which has no semantics.
-    * The user has to generate other annotations using exception
-    * declarations, or use the 'new' function below.
-    *)
-   exception COMMENT of string  
 
    (*
     * Generate a new annotation
@@ -40,8 +35,11 @@ sig
     *) 
    val toString : annotation -> string
 
-end
+   (*
+    * Register new a pretty printer.
+    * The pretty printer should raises an exception (any) if it cannot
+    * handle the annotation given.
+    *)
+   val attachPrettyPrinter : (annotation -> string) -> unit
 
-(*
- * $Log$
- *) 
+end

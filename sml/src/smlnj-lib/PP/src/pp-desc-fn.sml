@@ -5,44 +5,34 @@
  * This interface provides a declarative way to specify pretty-printing.
  *)
 
-functor PPDescFn (S : PP_STREAM) : PP_DESC =
+functor PPDescFn (S : sig
+    include PP_STREAM
+      where type indent = PPDesc.indent
+      where type pp_desc = (token, style, device) PPDesc.pp_desc
+  end) :> PP_DESC =
   struct
 
-    type token = S.token
-    type style = S.style
+    structure PPS = S
+    structure D = PPDesc
 
-    datatype indent
-      = Abs of int		(* indent relative to outer indentation *)
-      | Rel of int		(* indent relative to start of box *)
+    type pp_desc = PPS.pp_desc
+    type token = PPS.token
+    type style = PPS.style
+    type indent = PPS.indent
 
-    datatype box
-      = HBox of box list
-      | VBox of (indent * box list)
-      | HVBox of (indent * box list)
-      | HOVBox of (indent * box list)
-      | Box of (indent * box list)
-      | Token of token
-      | String of string
-      | Style of (style * box list)
-      | Break of {nsp : int, offset : int}
-      | Newline
-      | OnNewline of box
-
-    val hBox    = HBox
-    val vBox    = VBox
-    val hvBox   = HVBox
-    val hovBox  = HOVBox
-    val box     = Box
-    val token   = Token
-    val string  = String
-    val style   = Style
-    val break   = Break
-    fun space n = Break{nsp = n, offset = 0}
-    val cut     = Break{nsp = 0, offset = 0}
-    val newline = Newline
-    val onNewline = OnNewline
-
-(* functions to pretty-print to streams and devices? *)
+    val hBox    = D.HBox
+    val vBox    = D.VBox
+    val hvBox   = D.HVBox
+    val hovBox  = D.HOVBox
+    val box     = D.Box
+    val token   = D.Token
+    val string  = D.String
+    val style   = D.Style
+    val break   = D.Break
+    fun space n = D.Break{nsp = n, offset = 0}
+    val cut     = D.Break{nsp = 0, offset = 0}
+    val newline = D.NewLine
+    val control = D.Control
 
   end;
 

@@ -1,6 +1,8 @@
 functor PPCCG
-  (structure Emitter : EMITTER_NEW
-     where I = PPCInstr and P = PPCPseudoOps) : MACHINE_GEN = 
+  (structure Emitter : INSTRUCTION_EMITTER
+     where I = PPCInstr 
+       and P = PPCPseudoOps 
+       and S.B = PPCMLTree.BNames) : MACHINE_GEN = 
 struct
   structure I = PPCInstr
   structure C = PPCCells
@@ -11,29 +13,31 @@ struct
   structure MLTree   = PPCMLTree
   structure MachSpec = PPCSpec
   structure Ctrl = Control.MLRISC
-
+  
   fun error msg = ErrorMsg.impossible ("PPCCG." ^ msg)
 
   val stack = PPCInstr.Region.stack
   structure PPCRewrite = PPCRewrite(PPCInstr)
 
   (* properties of instruction set *)
-  structure P = 
-    PPCProps(structure PPCInstr= I
-		 structure Shuffle=PPCShuffle)
+  structure P = PPCProps(PPCInstr)
+
+  structure FreqProps = FreqProps(P)
 
   (* Label backpatching and basic block scheduling *)
   structure BBSched =
     BBSched2(structure Flowgraph = F
 	     structure Jumps = 
 	       PPCJumps(structure Instr=PPCInstr
-			    structure Shuffle=PPCShuffle)
+			structure Shuffle=PPCShuffle)
 	     structure Emitter = Emitter)
 
   (* flow graph pretty printing routine *)
+  (*
   structure PrintFlowGraph = 
      PrintFlowGraphFn (structure FlowGraph = F
                        structure Emitter   = Asm)
+   *)
 
   val intSpillCnt = Ctrl.getInt "ra-int-spills"
   val floatSpillCnt = Ctrl.getInt "ra-float-spills"
@@ -85,7 +89,7 @@ struct
     fun spill {regmap,instr,reg,id:B.name} = let
       val offset = I.ImmedOp (getRegLoc(reg))
       fun spillInstr(src) = 
-	[I.ST{sz=I.Word, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
+	[I.ST{st=I.STW, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
     in
       intSpillCnt := !intSpillCnt + 1;
       case instr
@@ -111,7 +115,7 @@ struct
     fun fspill {regmap,instr,reg,id:B.name} = let
       val offset = I.ImmedOp (getFregLoc(reg))
       fun spillInstr(src) = 
-	[I.ST{sz=I.Double, rs=src, ra=C.stackptrR, d=offset, mem=stack}]
+	[I.STF{st=I.STFD, fs=src, ra=C.stackptrR, d=offset, mem=stack}]
     in
       floatSpillCnt := !floatSpillCnt + 1;
       case instr
@@ -137,7 +141,7 @@ struct
     fun reload{regmap,instr,reg,id:B.name} = let
       val offset = I.ImmedOp (getRegLoc(reg))
       fun reloadInstr(dst, rest) =
-	I.L{sz=I.Word, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
+	I.L{ld=I.LWZ, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
     in 
       intReloadCnt := !intReloadCnt + 1;
       case instr
@@ -153,7 +157,7 @@ struct
     fun freload {regmap, instr, reg, id:B.name} = let
       val offset = I.ImmedOp (getFregLoc(reg))
       fun reloadInstr(dst, rest) =
-	I.L{sz=I.Double, rt=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
+	I.LF{ld=I.LFD, ft=dst, ra=C.stackptrR, d=offset, mem=stack}::rest
     in 
       floatReloadCnt := !floatReloadCnt + 1;
       case instr
@@ -171,8 +175,8 @@ struct
        regSpills := Intmap.new(8, RegSpills);
        fregSpills := Intmap.new(8, FregSpills))
 
-    structure GR = GetReg(val nRegs=32 val available=R.availR)
-    structure FR = GetReg(val nRegs=32 val available=R.availF)
+    structure GR = GetReg(val nRegs=32 val available=R.availR val first=0)
+    structure FR = GetReg(val nRegs=32 val available=R.availF val first=32)
 
     structure PPCRa = 
        PPCRegAlloc(structure P = P
@@ -218,7 +222,7 @@ struct
     val fCopyProp = FloatRa.ra FloatRa.COPY_PROPAGATION []
 
     fun ra cluster = let
-      val pg = PrintFlowGraph.printCluster TextIO.stdOut
+      (* val pg = PrintFlowGraph.printCluster TextIO.stdOut *)
       fun intRa cluster = (GR.reset(); iRegAlloc cluster)
       fun floatRa cluster = (FR.reset(); fRegAlloc cluster)
     in spillInit(); (floatRa o intRa) cluster
@@ -230,22 +234,25 @@ struct
 
  (* primitives for generation of DEC alpha instruction flowgraphs *)
   structure FlowGraphGen =
-     FlowGraphGen(structure Flowgraph = F
-		  structure InsnProps = P
-		  structure MLTree = MLTree
-		  val optimize = optimizerHook
-		  val output = BBSched.bbsched o RegAllocation.ra)
+     ClusterGen(structure Flowgraph = F
+		structure InsnProps = P
+		structure MLTree = MLTree
+                structure Stream=PPCStream
+		val optimize = optimizerHook
+		val output = BBSched.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen = 
      MLRiscGen(structure MachineSpec=PPCSpec
 	       structure MLTreeComp=
-		  PPC(structure Flowgen=FlowGraphGen
+		  PPC(structure Stream=PPCStream
 		      structure PPCInstr=PPCInstr
 		      structure PPCMLTree=PPCMLTree
 		      structure PseudoInstrs=
 			PPCPseudoInstr(structure Instr=PPCInstr)
-		      val rs6000flag=false)
+		      val bit64mode=false
+		      val multCost=ref 6 (* an estimate *))
+               structure Flowgen=FlowGraphGen
 	       structure Cells=PPCCells
 	       structure C=PPCCpsRegs
 	       structure PseudoOp=PPCPseudoOps)

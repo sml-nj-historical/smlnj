@@ -77,8 +77,8 @@ fun mkvN NONE = mkv()
 
 (** sorting the record fields for record types and record expressions *)
 fun elemgtr ((LABEL{number=x,...},_),(LABEL{number=y,...},_)) = (x>y)
-fun sorted x = Sort.sorted elemgtr x 
-fun sortrec x = Sort.sort elemgtr x
+fun sorted x = ListMergeSort.sorted elemgtr x 
+fun sortrec x = ListMergeSort.sort elemgtr x
 
 (** check if an access is external *)
 fun extern (DA.EXTERN _) = true
@@ -237,13 +237,21 @@ fun mergePidInfo (pi, t, l, nameOp) =
 val persmap = ref (Map.empty : pidInfo Map.map)
 
 fun mkPid (pid, t, l, nameOp) =
-  (let val pinfo = Map.lookup (!persmap) pid
-       val (npinfo, var) = mergePidInfo (pinfo, t, l, nameOp)
-    in persmap := Map.add(Map.delete(pid, !persmap), pid, npinfo); var
-   end handle Map.MapF => 
-	 let val (pinfo, var) = mkPidInfo (t, l, nameOp)
-	  in persmap := Map.add(!persmap, pid, pinfo); var
-	 end)
+    case Map.find (!persmap, pid)
+      of NONE => 
+	  let val (pinfo, var) = mkPidInfo (t, l, nameOp)
+	   in persmap := Map.insert(!persmap, pid, pinfo);
+	      var
+	  end
+       | SOME pinfo =>
+	  let val (npinfo, var) = mergePidInfo (pinfo, t, l, nameOp)
+	      fun rmv (key, map) = 
+		  let val (newMap, _) = Map.remove(map, key) 
+		  in newMap
+		  end handle e => map
+	   in persmap := Map.insert(rmv(pid, !persmap), pid, npinfo);
+	      var
+	  end
 
 (** converting an access w. type into a lambda expression *)
 fun mkAccT (p, t, nameOp) = 
@@ -1153,7 +1161,7 @@ val exportLexp = SRECORD (map VAR exportLvars)
 val body = mkDec (rootdec, DI.top) exportLexp
 
 (** wrapping up the body with the imported variables *)
-val (plexp, imports) = wrapPidInfo (body, Map.members (!persmap))
+val (plexp, imports) = wrapPidInfo (body, Map.listItemsi (!persmap))
 
 fun prGen (flag,printE) s e =
   if !flag then (say ("\n\n[After " ^ s ^ " ...]\n\n"); printE e) else ()
@@ -1170,5 +1178,8 @@ end (* structure Translate *)
 
 
 (*
- * $Log$
+ * $Log: translate.sml,v $
+ * Revision 1.7  1999/01/11 16:53:37  george
+ *   new array representation support
+ *
  *)

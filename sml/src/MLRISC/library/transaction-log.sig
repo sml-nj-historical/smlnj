@@ -1,3 +1,9 @@
+(* 
+ * This implements a transaction log.
+ *
+ * -- Allen
+ *)
+
 signature TRANSACTION_LOG =
 sig
 
@@ -13,6 +19,3 @@ sig
    val init         : unit -> unit
 end
 
-(*
- * $Log$
- *)

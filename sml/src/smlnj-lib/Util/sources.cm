@@ -20,6 +20,7 @@ signature HASH_KEY
 signature HASH_TABLE
 signature INT_INF
 signature IO_UTIL
+signature GET_OPT
 signature LIB_BASE
 signature LIST_FORMAT
 signature LIST_SORT
@@ -60,6 +61,7 @@ structure IntInf
 structure IntListMap
 structure IntListSet
 structure IOUtil
+structure GetOpt
 structure LibBase
 structure ListFormat
 structure ListMergeSort
@@ -132,6 +134,8 @@ int-list-map.sml
 int-list-set.sml
 io-util-sig.sml
 io-util.sml
+getopt-sig.sml
+getopt.sml
 lib-base-sig.sml
 lib-base.sml
 list-format-sig.sml

@@ -1,3 +1,9 @@
+(*
+ * Register set datatype
+ *
+ * -- Allen
+ *)
+
 signature REGISTER_SET =
 sig
 
@@ -27,6 +33,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

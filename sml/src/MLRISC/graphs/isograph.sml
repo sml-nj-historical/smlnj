@@ -1,5 +1,7 @@
 (*
- * Graph isomorphism
+ * Graph isomorphism view.  This works like the map function on lists.
+ *
+ * -- Allen
  *)
 
 signature ISOMORPHIC_GRAPH_VIEW =
@@ -63,6 +65,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

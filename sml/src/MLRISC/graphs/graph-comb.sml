@@ -1,3 +1,9 @@
+(*
+ * This module implements some combinators that joins two graphs
+ * into a single view.
+ *
+ *)
+
 structure GraphCombinations : GRAPH_COMBINATIONS = 
 struct
 
@@ -23,8 +29,4 @@ struct
      | sums (a::b) = sum(a,sums b)
 
 end
-
-(* 
- * $Log$
- *)
 

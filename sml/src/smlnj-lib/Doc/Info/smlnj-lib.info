@@ -1,0 +1,6 @@
+@FILES
+  {@EMPTY "smlnj-lib"; "SML/NJ Library Manual";
+     @FILE "intro-part"
+     @FILE "util-lib-part"
+     @FILE "regexp-lib-part"
+  }

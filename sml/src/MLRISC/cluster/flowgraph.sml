@@ -13,34 +13,34 @@ signature FLOWGRAPH = sig
   structure C : CELLS
   structure I : INSTRUCTIONS
   structure P : PSEUDO_OPS
+  structure W : FREQ
 	  sharing I.C = C
-
-
 
   datatype block =
       PSEUDO of P.pseudo_op
     | LABEL of Label.label
-    | BBLOCK of { blknum  : int,
-		  name    : B.name,
-		  liveIn  : C.cellset ref,
-		  liveOut : C.cellset ref,
-		  succ 	  : block list ref,
-		  pred 	  : block list ref,
-		  insns	  : I.instruction list ref
+    | BBLOCK of { blknum      : int,
+                  freq        : W.freq ref,
+                  annotations : Annotations.annotations ref,
+		  name        : B.name,
+		  liveIn      : C.cellset ref,
+		  liveOut     : C.cellset ref,
+		  succ 	      : edge list ref,
+		  pred 	      : edge list ref,
+		  insns	      : I.instruction list ref
 	        }
-    | ENTRY of {blknum : int,
-		succ : block list ref}
-    | EXIT of {blknum : int,
-	       pred : block list ref}
-    | ORDERED of block list
+    | ENTRY of {blknum : int, freq : W.freq ref, succ : edge list ref}
+    | EXIT of {blknum : int, freq : W.freq ref, pred : edge list ref}
+  withtype edge = block * W.freq ref
 
   datatype cluster = 
       CLUSTER of {
         blocks: block list, 
 	entry : block,
 	exit  : block,	  
-        regmap: int Intmap.intmap,
-        blkCounter : int ref
+        regmap: C.regmap,
+        blkCounter : int ref,
+        annotations : Annotations.annotations ref
       }
 end
 
@@ -56,43 +56,32 @@ struct
   structure C = I.C
   structure P = P
   structure B = B
+  structure W = Freq
 
   datatype block =
       PSEUDO of P.pseudo_op
     | LABEL of Label.label
-    | BBLOCK of { blknum  : int,
-		  name    : B.name,
-		  liveIn  : C.cellset ref,
-		  liveOut : C.cellset ref,
-		  succ 	  : block list ref,
-		  pred 	  : block list ref,
-		  insns	  : I.instruction list ref
+    | BBLOCK of { blknum      : int,
+                  freq        : W.freq ref,
+                  annotations : Annotations.annotations ref,
+		  name        : B.name,
+		  liveIn      : C.cellset ref,
+		  liveOut     : C.cellset ref,
+		  succ 	      : edge list ref,
+		  pred 	      : edge list ref,
+		  insns	      : I.instruction list ref
 	        }
-    | ENTRY of {blknum : int,
-		succ : block list ref}
-    | EXIT of {blknum : int,
-	       pred : block list ref}
-    | ORDERED of block list
+    | ENTRY of {blknum : int, freq : W.freq ref, succ : edge list ref}
+    | EXIT of {blknum : int, freq : W.freq ref, pred : edge list ref}
+  withtype edge = block * W.freq ref
 
   datatype cluster = 
       CLUSTER of {
         blocks: block list, 
 	entry : block,
 	exit  : block,	  
-        regmap: int Intmap.intmap,
-        blkCounter : int ref
+        regmap: C.regmap,
+        blkCounter : int ref,
+        annotations : Annotations.annotations ref
       }
 end
-
-
-
-
-(*
- * $Log: flowgraph.sml,v $
- * Revision 1.2  1998/07/25 03:08:18  george
- *   added to support block names in MLRISC
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

@@ -274,6 +274,3 @@ struct
        | _ => false
 end
 
-(*
- * $Log$
- *)

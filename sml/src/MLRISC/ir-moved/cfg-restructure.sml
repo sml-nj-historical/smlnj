@@ -1,3 +1,10 @@
+(*
+ * This module inserts preheaders and other stuff.
+ * This is probably no longer used.
+ *
+ * -- Allen
+ *)
+
 functor ControlFlowGraphRestructureFn
     (structure Loop : LOOP_STRUCTURE) : CONTROL_FLOW_GRAPH_RESTRUCTURE =
 struct
@@ -42,6 +49,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

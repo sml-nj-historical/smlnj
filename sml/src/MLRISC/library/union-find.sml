@@ -1,3 +1,9 @@
+(*
+ * Union-find
+ *
+ * -- Allen
+ *)
+
 signature UNION_FIND =
 sig
 

@@ -1,10 +1,6 @@
 (* COPYRIGHT (c) 1996 Bell Laboratories *)
 (* compile.sml *)
 
-local
-  exception Compile of string
-in
-
 functor CompileF(structure M  : CODEGENERATOR
 		 structure CC : CCONFIG) : COMPILE0 =
 struct
@@ -28,7 +24,7 @@ fun bug s = EM.impossible ("Compile:" ^ s)
 fun debugmsg msg =
   if !debugging then (say msg; say "\n"; Control.Print.flush()) else ()
 
-exception Compile = Compile            (* raised during compilation only *)
+exception Compile = SmlFile.Compile	(* raised during compilation only *)
 exception SilentException = CC.SilentException     (* raised by CM *)
 exception TopLevelException of exn     (* raised during executation only *)
 exception TopLevelCallcc               (* raised during executation only *)
@@ -68,31 +64,8 @@ fun fail s = raise (Compile s)
  *                               PARSING                                     *
  *****************************************************************************)
 
-(** take the input source and turn it into the concrete syntax *)
-val parsePhase = ST.makePhase "Compiler 010 parse"
-fun parseOne (source : source) =  
-  let val parser = FE.parse source
-      val parser = ST.doPhase parsePhase parser (* for correct timing *)
-   in fn () =>
-        case parser ()
-         of FE.EOF => NONE
-          | FE.ABORT => fail "syntax error"
-          | FE.ERROR => fail "syntax error"
-          | FE.PARSE ast => SOME ast
-  end
-
-fun parse (source : source) =
-  let val parser = FE.parse source
-      val parser = ST.doPhase parsePhase parser (* for correct timing *)
-      fun loop asts = 
-	case parser()
-         of FE.EOF => Ast.SeqDec(rev asts)
-	  | FE.ABORT => fail "syntax error"
-	  | FE.ERROR => fail "syntax error"
-	  | FE.PARSE ast => loop(ast::asts)
-   in loop nil
-  end
-
+    val parseOne = SmlFile.parseOne
+    val parse = SmlFile.parse
 
 (*****************************************************************************
  *                               ELABORATION                                 *
@@ -330,11 +303,11 @@ val execute = ST.doPhase (ST.makePhase "Execute") execute
 end (* local of CompileF *)
 end (* functor CompileF *)
 
-end (* local of exception Compile *)
-
-
 (*
  * $Log: compile.sml,v $
+ * Revision 1.10  1999/04/14 15:35:04  jhr
+ *   Changed code to use Object.mkTuple.
+ *
  * Revision 1.9  1998/12/30 20:21:30  jhr
  *   Modifications to support code generation directly into code objects.
  *

@@ -1,10 +1,16 @@
+(*
+ * This module communicates with the vcg tool.
+ * 
+ * -- Allen
+ *)
+
 structure VCG : GRAPH_DISPLAY =
 struct
 
    structure L = GraphLayout
    structure G = Graph
 
-   fun suffix() = "vcg"
+   fun suffix() = ".vcg"
    fun program() = "xvcg"
   
    fun visualize out (G.GRAPH G) =
@@ -63,6 +69,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

@@ -8,7 +8,7 @@ signature RA_ARCH_PARAMS = sig
 
   structure Liveness : LIVENESS
   structure InsnProps : INSN_PROPERTIES
-  structure AsmEmitter : EMITTER_NEW
+  structure AsmEmitter : INSTRUCTION_EMITTER
   structure I : INSTRUCTIONS
 
     (* all modules work on the same instruction type *)
@@ -30,14 +30,14 @@ signature RA_USER_PARAMS = sig
 
   val nFreeRegs : int
   val dedicated : int list	(* dedicated registers *)
-  val getreg : {pref: int list, proh: int list} -> int
+  val getreg : {pref: int list, stamp:int, proh: int Array.array} -> int
   val copyInstr : (int list * int list) * I.instruction -> I.instruction
 
   val spill : 
     {instr : I.instruction,	(* instruction where spill is to occur *)
      reg: int,			(* register to spill *)
      regmap: int -> int,	(* register map *)
-     id : B.name		(* block name *)
+     id : B.name 		(* block name *)
      } 
        ->
      {code: I.instruction list,	(* spill or reload code *)
@@ -48,7 +48,7 @@ signature RA_USER_PARAMS = sig
      {instr : I.instruction,	(* instruction where spill is to occur *)
       reg: int,			(* register to spill *)
       regmap: int -> int,	(* register map *)
-      id : B.name		(* block name *)
+      id : B.name 		(* block name *)
      } 
        -> 
      {code: I.instruction list,	(* spill or reload code *)
@@ -65,16 +65,3 @@ signature RA = sig
   val ra: mode -> int list -> F.cluster -> F.cluster
 end 
 
-
-(*
- * $Log: ra-params.sig,v $
- * Revision 1.1.1.1  1998/11/16 21:49:10  george
- *   Version 110.10
- *
- * Revision 1.2  1998/07/25 03:08:23  george
- *   added to support block names in MLRISC
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

@@ -26,7 +26,7 @@ struct
 local
     structure F  = FLINT
     structure S = IntSetF
-    structure M = IntmapF
+    structure M = IntBinaryMap
     structure PP = PPFlint
     structure LT = LtyExtern
     structure OU = OptUtils
@@ -75,8 +75,8 @@ fun fexp mf depth lexp = let
 
     val loop = fexp mf depth
 
-    fun lookup (F.VAR lv) = M.lookup mf lv
-      | lookup _ = raise M.IntmapF
+    fun lookup (F.VAR lv) = M.find mf lv
+      | lookup _ = NONE
 
     fun addv (s,F.VAR lv) = S.add(lv, s)
       | addv (s,_) = s
@@ -193,7 +193,7 @@ in case lexp
 	   val (fs,mf) = foldl (fn ((fk,f,args,body),(fs,mf)) =>
 				let val c = ref 0
 				in ((fk, f, args, body, c)::fs,
-				    M.add(mf, f, Fun c))
+				    M.insert(mf, f, Fun c))
 				end)
 			       ([],mf)
 			       fdecs
@@ -208,7 +208,7 @@ in case lexp
 			   uncurry(args,body)
 		       (* add the wrapper function *)
 		       val cs = map (fn _ => ref(0,0)) fargs
-		       val nm = M.add(m, f, ([f'], 1, fk, fargs, fbody, cf, cs))
+		       val nm = M.insert(m, f, ([f'], 1, fk, fargs, fbody, cf, cs))
 		   (* now, retry ffun with the uncurried function *)
 		   in ffun((fk', f', fargs', fbody', ref 1),
 			   (s+1, fv, S.add(f', funs), nm))
@@ -220,7 +220,7 @@ in case lexp
 			     | _ => depth
 		       val (mf,cs) = foldr (fn ((v,t),(m,cs)) =>
 					    let val c = ref(0, 0)
-					    in (M.add(m, v, Arg(newdepth, c)),
+					    in (M.insert(m, v, Arg(newdepth, c)),
 						c::cs) end)
 					   (mf,[]) args
 		       val (fs,ffv,body) = fexp mf newdepth body
@@ -228,7 +228,7 @@ in case lexp
 		       val ifv = S.inter(ffv, funs) (* set of rec funs ref'ed *)
 		   in
 		       (fs + s, S.union(ffv, fv), funs,
-			M.add(m,f,(S.members ifv, fs, fk, args, body, cf, cs)))
+			M.insert(m,f,(S.members ifv, fs, fk, args, body, cf, cs)))
 		   end
 
 	   (* process the main lexp and make it into a dummy function.
@@ -238,16 +238,21 @@ in case lexp
 	    * result nonetheless. *)
 	   val (s,fv,le) = fexp mf depth le
 	   val lename = LambdaVar.mkLvar()
-	   val m = M.singleton(lename, (S.members(S.inter(fv, funs)), 0,
-					{inline=F.IH_SAFE, isrec=NONE,
-					 known=true,cconv=F.CC_FCT},
-					[], le, ref 0, []))
+	   val m = M.insert(M.empty,
+			    lename, 
+			    (S.members(S.inter(fv, funs)), 0,
+			     {inline=F.IH_SAFE, isrec=NONE, 
+			      known=true,cconv=F.CC_FCT},
+			     [], le, ref 0, []))
 
 	   (* process the functions, collecting them in map m *)
 	   val (s,fv,funs,m) = foldl ffun (s, fv, funs, m) fs
 
 	   (* find strongly connected components *)
-	   val top = SCC.topOrder{root=lename, follow= #1 o (M.lookup m)}
+	   val top = 
+	     SCC.topOrder{root=lename, 
+			  follow=(fn n => #1(Option.valOf(M.find(m,n))))}
+	       handle x => (bug "top:follow"; raise x)
 
 	   (* turns them back into flint code *)
 	   fun sccSimple f (_,s,{isrec,cconv,known,inline},args,body,cf,cs) =
@@ -285,9 +290,9 @@ in case lexp
 	       in (fk, f, args, body)
 	       end
 	   fun sccconvert (SCC.SIMPLE f,le) =
-	       F.FIX([sccSimple f (M.lookup m f)], le)
+	       F.FIX([sccSimple f (Option.valOf(M.find(m, f)))], le)
 	     | sccconvert (SCC.RECURSIVE fs,le) =
-	       F.FIX(map (fn f => sccRec f (M.lookup m f)) fs, le)
+	       F.FIX(map (fn f => sccRec f (Option.valOf(M.find(m, f))) fs, le)
        in
 	   case top
 	    of (SCC.SIMPLE f)::sccs =>
@@ -300,11 +305,11 @@ in case lexp
        (* For known functions, increase the counter and
 	* make the call a bit cheaper. *)
        let val scall =
-	       (case M.lookup mf f
-		 of Fun(fc as ref c) => (fc := c + 1; 1)
-		  | Arg(d, ac as ref (sp,ti)) =>
-		    (ac := (4 + sp, OU.pow2(depth - d) * 30 + ti); 5))
-		   handle M.IntmapF => 5
+	       (case M.find(mf, f)
+		 of SOME(Fun(fc as ref c)) => (fc := c + 1; 1)
+		  | SOME(Arg(d, ac as ref (sp,ti))) =>
+		    (ac := (4 + sp, OU.pow2(depth - d) * 30 + ti); 5)
+		  | NONE => 5)
        in
 	   (scall + (length args), addvs(S.singleton f, args), lexp)
        end
@@ -334,9 +339,9 @@ in case lexp
 		      (s1+s2, Int.max(s1,smax), S.union(fv1, fv2), arm::arms))
 		     (narms, 0, S.empty, []) (map farm arms)
        in (case lookup v
-	    of Arg(d,ac as ref(sp,ti)) =>
+	    of SOME(Arg(d,ac as ref(sp,ti))) =>
 	       ac := (sp + s - smax + narms, OU.pow2(depth - d) * 2 + ti)
-	     | _ => ()) handle M.IntmapF => ();
+	     | _ => ());
 	   case def
 	    of NONE => (s, fv, F.SWITCH(v, ac, arms, NONE))
 	     | SOME le => let val (sd,fvd,le) = loop le
@@ -354,9 +359,9 @@ in case lexp
      | F.SELECT (v,i,lv,le) =>
        let val (s,fv,le) = loop le
        in (case lookup v
-	    of Arg(d,ac as ref(sp,ti)) =>
+	    of SOME(Arg(d,ac as ref(sp,ti))) =>
 	       ac := (sp + 1, OU.pow2(depth - d) + ti)
-	     | _ => ()) handle M.IntmapF=>();
+	     | _ => ());
 	   (1+s, addv(S.rmv(lv, fv), v), F.SELECT(v,i,lv,le))
        end
      | F.RAISE (F.VAR v,ltys) => (3, S.singleton v, lexp)
@@ -393,5 +398,8 @@ end
 end
 
 (*
- * $Log$
+ * $Log: fixfix.sml,v $
+ * Revision 1.1  1998/12/22 17:01:56  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)

@@ -1,5 +1,9 @@
 (*
- *  Interface of a graph object
+ *  A generic directed graph data structure.  
+ *  Implemented in an ``object oriented style''
+ *  All graphs are based on this interface.
+ * 
+ *  -- Allen
  *)
 
 structure Graph : GRAPH =
@@ -10,6 +14,8 @@ struct
    exception NotFound
    exception Unimplemented
    exception Readonly     
+   exception NotSingleEntry
+   exception NotSingleExit
 
    fun unimplemented _ = raise Unimplemented
 
@@ -73,6 +79,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

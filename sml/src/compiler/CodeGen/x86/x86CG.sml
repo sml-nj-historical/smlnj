@@ -10,16 +10,15 @@ structure X86CG = struct
   structure Ctrl = Control.MLRISC
   structure CG = Control.CG
 
-  structure P = 
-    X86Props(structure X86Instr=I
-	     structure Shuffle=X86Shuffle)
+  structure P = X86Props(X86Instr)
 
+  structure FreqProps = FreqProps(P)
 
   structure X86Spill = X86Spill(structure Instr=I structure Asm=X86AsmEmitter)
 
   structure PrintFlowGraph=
-    PrintFlowGraphFn(structure FlowGraph=X86FlowGraph
-		     structure Emitter = X86AsmEmitter)
+    PrintClusterFn(structure Flowgraph=X86FlowGraph
+	           structure Asm = X86AsmEmitter)
 
   structure X86Jumps = 
     X86Jumps(structure Instr=X86Instr
@@ -40,13 +39,14 @@ structure X86CG = struct
   fun cacheOffset r = I.Immed(toInt32(X86Runtime.vregStart + (r-8)*4))
 
   val stack = X86Instr.Region.stack 
-  val MLTree.REG stackptr = X86CpsRegs.stackptr
+  val MLTree.REG(_,stackptr) = X86CpsRegs.stackptr
 
   structure X86RewritePseudo=
     X86RewritePseudo(structure Instr=X86Instr
 		     structure Flowgraph=X86FlowGraph
 		     structure Shuffle=X86Shuffle
-		     fun ea r = I.Displace{base=C.esp, disp=cacheOffset r})
+		     fun ea r = I.Displace{base=C.esp, disp=cacheOffset r,
+                                           mem=I.Region.stack})
 
   val intSpillCnt = Ctrl.getInt "ra-int-spills"
   val floatSpillCnt = Ctrl.getInt "ra-float-spills"
@@ -66,7 +66,9 @@ structure X86CG = struct
 		   structure F = X86FlowGraph
 		   structure Asm = X86AsmEmitter)
 
-    structure FR = GetReg(val nRegs=32 val available=R.availF)
+    structure FR = GetReg(val nRegs=32 
+                          val available=R.availF 
+                          val first=32)
 
     structure FloatRaUser : RA_USER_PARAMS = struct
       structure I = X86Instr
@@ -82,7 +84,8 @@ structure X86CG = struct
 
      (* register allocation for floating point registers *)
       fun spill{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getFregLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getFregLoc reg,
+                              mem=I.Region.stack}
 	fun spillInstr(r) = [I.FLD(I.FDirect(r)), I.FSTP(slot)]
       in
 	case instr
@@ -92,7 +95,8 @@ structure X86CG = struct
 	     case tmp
 	     of SOME(I.Direct r) =>
 	        if r=reg then let 
-		    val slot = I.Displace{base=stackptr, disp=getFregLoc reg}
+		    val slot = I.Displace{base=stackptr, disp=getFregLoc reg,
+                                          mem=I.Region.stack}
 		    val fcopy = I.FCOPY{dst=dst, src=src, tmp=SOME slot}
 		  in  {code=[],  proh=[], instr= SOME fcopy}
 		  end
@@ -105,7 +109,8 @@ structure X86CG = struct
       end
 
       fun reload{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getFregLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getFregLoc reg,
+                              mem=I.Region.stack}
 	fun reloadInstr(r, rest) = I.FLD(slot) :: I.FSTP(I.FDirect r) :: rest
       in
 	case instr
@@ -127,7 +132,8 @@ structure X86CG = struct
       val availR32 = X86CpsRegs.availR @ range(8, X86Runtime.numVregs)
     end
 
-    structure GR32 = GetReg(val nRegs=32  val available=availR32)
+    structure GR32 = GetReg(val nRegs=32  val available=availR32
+                            val first=0)
 
     structure IntRa32User : RA_USER_PARAMS = struct
       structure I = X86Instr
@@ -139,16 +145,29 @@ structure X86CG = struct
 	I.COPY{dst=rds, src=rss, tmp=tmp}
 
       (* avoid the physical registers when possible. *)
-      fun getreg{pref, proh} = 
-	GR32.getreg{pref=pref, proh=proh @ X86CpsRegs.availR}
-	  handle _ => GR32.getreg{pref=pref, proh=proh}
+      fun getreg{pref, proh, stamp} = 
+      let fun add([],trail) = trail
+            | add(r::rs,trail) = 
+               let val x = Array.sub(proh,r)
+               in  Array.update(proh,r,stamp); 
+                   add(rs,if x <> stamp then r::trail else trail) 
+               end
+          fun reset(r::rs) = (Array.update(proh,r,~1); reset(rs))
+            | reset [] = ()
+          val trail = add(X86CpsRegs.availR,[])
+      in  GR32.getreg{pref=pref, stamp=stamp, proh=proh}
+	     handle _ => (reset trail; 
+                          GR32.getreg{pref=pref, stamp=stamp, proh=proh})
+      end
 
-      fun getreg{pref, proh} =  GR32.getreg{pref=pref, proh=proh} (* XXX *)
+      fun getreg{pref, proh, stamp} = 
+           GR32.getreg{pref=pref, proh=proh, stamp=stamp} (* XXX *)
 
       val getRegLoc = X86StackSpills.getRegLoc
 
       fun spill{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getRegLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getRegLoc reg,
+                              mem=I.Region.stack}
 	fun spillInstr(r) =
 	  [I.MOVE{mvOp=I.MOVL, src=I.Direct r, dst=slot}]
       in
@@ -163,7 +182,8 @@ structure X86CG = struct
 		    instr=
 		     SOME(I.COPY
 			  {dst=dst, src=src,
-			   tmp=SOME(I.Displace{base=stackptr, disp=getRegLoc r})})}
+			   tmp=SOME(I.Displace{base=stackptr, disp=getRegLoc r,
+                                               mem=I.Region.stack})})}
 		 else
 		   spillCpy(dst, src) 
 	      | _ => spillCpy(dst, src)
@@ -172,7 +192,8 @@ structure X86CG = struct
       end
 
       fun reload{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getRegLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getRegLoc reg, 
+                              mem=I.Region.stack}
 	fun reloadInstr(r, rest) =
 	  I.MOVE{mvOp=I.MOVL, src=slot, dst=I.Direct r}::rest
       in
@@ -188,7 +209,8 @@ structure X86CG = struct
 
     val spillSlotTbl : int Intmap.intmap option ref = ref NONE
 
-    structure GR8 = GetReg(val nRegs=8 val available=X86CpsRegs.availR)
+    structure GR8 = GetReg(val nRegs=8 val available=X86CpsRegs.availR
+                           val first=0)
  
     structure IntRa8User : RA_USER_PARAMS = struct
       structure I = X86Instr
@@ -198,12 +220,11 @@ structure X86CG = struct
       val dedicated = R.dedicatedR
       fun copyInstr((rds, rss), I.COPY{tmp, ...}) = 
   	    I.COPY{dst=rds, src=rss, tmp=tmp}
-        | copyInstr((rds, rss), instr) = let
-	    val dummy : int Intmap.intmap = Intmap.new(0, Overflow)
-	  in
-	    X86AsmEmitter.emitInstr(instr, dummy);
-	    error "copyInstr"
-	  end
+        | copyInstr((rds, rss), instr) = 
+            let val Asm.S.STREAM{emit,...} = Asm.makeStream()
+            in  emit (fn r => r) instr;
+	        error "copyInstr"
+	    end
 
       val getreg = GR8.getreg
 
@@ -216,7 +237,8 @@ structure X86CG = struct
 
      (* register allocation for general purpose registers *)
       fun spill{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getRegLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getRegLoc reg, 
+                              mem=I.Region.stack}
 	fun spillInstr(r) =
 	  [I.MOVE{mvOp=I.MOVL, src=I.Direct r, dst=slot}]
       in
@@ -231,7 +253,8 @@ structure X86CG = struct
 		    instr=
 		     SOME(I.COPY
 		       {dst=dst, src=src, 
-			tmp=SOME(I.Displace{base=stackptr, disp=getRegLoc r})})}
+			tmp=SOME(I.Displace{base=stackptr, disp=getRegLoc r,
+                                            mem=I.Region.stack})})}
 		 else
 		   spillCpy(dst, src)
 	      | _ => spillCpy(dst, src)
@@ -242,7 +265,8 @@ structure X86CG = struct
 	 {code=[instr], proh=[reg], instr=NONE})
 
       fun reload{instr, reg, regmap, id} = let
-	val slot = I.Displace{base=stackptr, disp=getRegLoc reg}
+	val slot = I.Displace{base=stackptr, disp=getRegLoc reg,
+                              mem=I.Region.stack}
 	fun reloadInstr(r, rest) =
 	  I.MOVE{mvOp=I.MOVL, src=slot, dst=I.Direct r}::rest
       in
@@ -274,12 +298,14 @@ structure X86CG = struct
       in app (Intmap.add new) (Intmap.intMapToList regmap); new
       end
 
-      fun setRegMap rmap (F.CLUSTER{blocks, entry, exit, blkCounter, ...}) =
+      fun setRegMap rmap 
+          (F.CLUSTER{blocks, entry, exit, blkCounter, annotations, ...}) =
 	F.CLUSTER{blocks=blocks, 
 		  entry=entry, 
 		  exit=exit, 
 		  blkCounter=blkCounter,
-		  regmap=rmap}
+		  regmap=rmap,
+		  annotations=annotations}
 
       fun intra32 cluster = let
 	val ra = IntRA32.ra IntRA32.REGISTER_ALLOCATION [] 
@@ -339,24 +365,27 @@ structure X86CG = struct
 
   (* primitives for generation of X86 instruction flowgraphs *)
   structure FlowGraphGen = 
-     FlowGraphGen(structure Flowgraph = X86FlowGraph
-		  structure InsnProps = P
-		  structure MLTree = X86MLTree
-		  val optimize = optimizerHook
-		  val output = BackPatch.bbsched o RegAllocation.ra)
+     ClusterGen(structure Flowgraph = X86FlowGraph
+	        structure InsnProps = P
+		structure MLTree = X86MLTree
+		structure Stream = X86Stream
+		val optimize = optimizerHook
+		val output = BackPatch.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen =
      MLRiscGen(structure MachineSpec=MachSpec
 	       structure MLTreeComp=
-		  X86(structure Flowgen=FlowGraphGen
+		  X86(structure Stream =X86Stream
 		      structure X86Instr=I
 		      structure X86MLTree=X86MLTree
-		      val tempMem=I.Displace{base=stackptr, disp=I.Immed 304})
+		      val tempMem=I.Displace{base=stackptr, disp=I.Immed 304,
+                                             mem=I.Region.stack})
 	       structure Cells=X86Cells
 	       structure C=X86CpsRegs
 	       structure PseudoOp=X86PseudoOps
-	       structure CpsTreeify=CpsTreeify)
+	       structure CpsTreeify=CpsTreeify
+               structure Flowgen=FlowGraphGen)
 
   fun copyProp _ = error "copyProp: not defined"
   val codegen = MLTreeGen.codegen

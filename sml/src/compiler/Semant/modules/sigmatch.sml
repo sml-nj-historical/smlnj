@@ -429,8 +429,8 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 
 	  fun commonElements(SIG{elements=elems1,...},SIG{elements=elems2,...}) =
 	      let fun elemGt ((s1,_),(s2,_)) = S.symbolGt(s1,s2)
-		  val elems1 = Sort.sort elemGt elems1
-	          val elems2 = Sort.sort elemGt elems2
+		  val elems1 = ListMergeSort.sort elemGt elems1
+	          val elems2 = ListMergeSort.sort elemGt elems2
 		  fun intersect(e1 as ((s1,spec1)::rest1),
 				e2 as ((s2,spec2)::rest2)) =
 	              if S.eq(s1,s2) then (s1,spec1,spec2)::intersect(rest1,rest2)
@@ -554,14 +554,14 @@ fun matchDefStr0(sigElements,signD,rlznD,signM,rlznM) =
 	val commonDM =
 	    if MU.eqSign(signD,signM) then
 	      let val SIG{elements=elems,...} = signD
-	          val elems = Sort.sort elemGt (dropVals elems)
+	          val elems = ListMergeSort.sort elemGt (dropVals elems)
 	       in map (fn (s,spec) => (s,spec,spec)) elems
 	      end
 	    else
 	      let val SIG{elements=elemsD,...} = signD
 		  val SIG{elements=elemsM,...} = signM
-		  val elemsD = Sort.sort elemGt (dropVals elemsD)
-		  val elemsM = Sort.sort elemGt (dropVals elemsM)
+		  val elemsD = ListMergeSort.sort elemGt (dropVals elemsD)
+		  val elemsM = ListMergeSort.sort elemGt (dropVals elemsM)
 		  fun intersect(e1 as ((s1,spec1)::rest1),
 				e2 as ((s2,spec2)::rest2)) =
 		      if S.eq(s1,s2) then (s1,spec1,spec2)::intersect(rest1,rest2)
@@ -1485,6 +1485,9 @@ end (* structure SigMatch *)
 
 (*
  * $Log: sigmatch.sml,v $
+ * Revision 1.7  1998/09/30 19:19:52  dbm
+ * change in type of TYCspec, remove TY.unWrapDefStar (bugs 1364, 1432)
+ *
  * Revision 1.5  1998/08/19 18:17:16  dbm
  * bug fixes for 110.9 [dbm]
  *

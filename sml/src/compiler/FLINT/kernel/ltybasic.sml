@@ -272,22 +272,24 @@ val tcInsert = LK.tcInsert
  ***************************************************************************)
 
 (** utility values and functions on ltyEnv *)
-type ltyEnv = (lty * DebIndex.depth) IntmapF.intmap
+type ltyEnv = (lty * DebIndex.depth) IntBinaryMap.map
 
 exception ltUnbound
-val initLtyEnv : ltyEnv = IntmapF.empty
+val initLtyEnv : ltyEnv = IntBinaryMap.empty
 
 fun ltLookup (venv, lv, nd) = 
-  let val (lt, d) = (IntmapF.lookup venv lv) handle _ => 
-                        (say "**** hmmm, I didn't find the variable ";
-                         say (Int.toString lv); say "\n";
-                         raise ltUnbound)
-   in if d=nd then lt
-      else if d > nd then bug "unexpected depth info in ltLookup"
-           else ltc_env(lt, 0, nd - d, LK.initTycEnv)
-  end
+  (case IntBinaryMap.find(venv, lv)
+     of NONE  => 
+	  (say "**** hmmm, I didn't find the variable ";
+	   say (Int.toString lv); say "\n";
+	   raise ltUnbound)
+      | SOME (lt, d) => 
+	  if d=nd then lt
+	  else if d > nd then bug "unexpected depth info in ltLookup"
+	       else ltc_env(lt, 0, nd - d, LK.initTycEnv)
+  (*easc*))
 
-fun ltInsert (venv, lv, lt, d) = IntmapF.add(venv, lv, (lt, d))
+fun ltInsert (venv, lv, lt, d) = IntBinaryMap.insert(venv, lv, (lt, d))
 
 end (* top-level local *)
 end (* structure LtyBasic *)

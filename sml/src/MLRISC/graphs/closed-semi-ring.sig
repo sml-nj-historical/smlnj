@@ -1,3 +1,10 @@
+(*
+ * Signature of a closed semi ring.  A closed semi ring has the
+ * closure operation (star)
+ * 
+ * -- Allen
+ *)
+
 signature CLOSED_SEMI_RING =
 sig
 
@@ -11,6 +18,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -1,7 +1,7 @@
 functor SparcCG
-  (  structure Emitter : EMITTER_NEW
-	 where I = SparcInstr and P = SparcPseudoOps
-   ) : MACHINE_GEN = 
+  (structure Emitter : INSTRUCTION_EMITTER
+     where I = SparcInstr and P = SparcPseudoOps and S.B = SparcMLTree.BNames
+  ) : MACHINE_GEN = 
 struct
   structure I = SparcInstr
   structure C = SparcCells
@@ -14,11 +14,11 @@ struct
 
   structure F = SparcFlowGraph
   (* properties of instruction set *)
-  structure P = 
-    SparcProps(structure SparcInstr = I 
-	       structure Shuffle = SparcShuffle)
+  structure P = SparcProps(I) 
 
-  structure SparcRewrite = SparcRewrite(SparcInstr)
+  structure FreqProps = FreqProps(P)
+
+  structure SparcRewrite = SparcRewrite(I)
 
   fun error msg = ErrorMsg.impossible ("SparcCG." ^ msg)
 
@@ -33,20 +33,15 @@ struct
          structure Flowgraph = F
 	 structure Jumps = SparcJumps
 	 structure Emitter = Emitter
-         structure DelaySlot = SparcDelaySlotProps(structure I=SparcInstr
-                                                   structure P=P)
+         structure DelaySlot = SparcDelaySlots(structure I=SparcInstr
+                                               structure P=P)
          structure Props = P
       )
 
-  (* flow graph pretty printing routine *)
-  structure PrintFlowGraph = 
-     PrintFlowGraphFn (structure FlowGraph = F
-                       structure Emitter   = Asm)
-
-  val intSpillsCnt = Ctrl.getInt "ra-int-spills"
-  val intReloadsCnt = Ctrl.getInt "ra-int-reloads"
-  val floatSpillsCnt = Ctrl.getInt "ra-float-spills"
-  val floatReloadsCnt = Ctrl.getInt "ra-float-reloads"
+  val intSpillsCnt = Ctrl.getCounter "ra-int-spills"
+  val intReloadsCnt = Ctrl.getCounter "ra-int-reloads"
+  val floatSpillsCnt = Ctrl.getCounter "ra-float-spills"
+  val floatReloadsCnt = Ctrl.getCounter "ra-float-reloads"
   
   (* register allocation *)
   structure RegAllocation : 
@@ -58,8 +53,6 @@ struct
    (* spill area management *)
     val itow      = Word.fromInt
     val stack     = Region.stack
-
-    fun fromto(n, m) = if n>m then [] else n :: fromto(n+1, m)
 
     val initialSpillOffset = 116	(* from runtime system *)
     val spillOffset = ref initialSpillOffset
@@ -91,7 +84,7 @@ struct
 	    aligned
 	  end
 
-    fun mvInstr(rd,rs) = I.ARITH{a=I.OR, r=0, i=I.REG rs, d=rd, cc=false}
+    fun mvInstr(rd,rs) = I.ARITH{a=I.OR, r=0, i=I.REG rs, d=rd}
     fun fmvInstr(fd,fs) = I.FPop1{a=I.FMOVd, r=fs, d=fd}
 
     fun spillInit () = 
@@ -182,8 +175,8 @@ struct
 	 end
     end
 
-    structure GR = GetReg(val nRegs = 32 val available = R.availR)
-    structure FR = GetReg(val nRegs = 32 val available = R.availF)
+    structure GR = GetReg(val first=0 val nRegs = 32 val available = R.availR)
+    structure FR = GetReg(val first=32 val nRegs = 32 val available = R.availF)
 
     structure SparcRa = 
       SparcRegAlloc(structure P = P
@@ -254,23 +247,31 @@ struct
 
   (* primitives for generation of SPARC instruction flowgraphs *)
   structure FlowGraphGen = 
-     FlowGraphGen(structure Flowgraph = F
-		  structure InsnProps = P
-		  structure MLTree = SparcMLTree
-		  val optimize = optimizerHook
-		  val output = BBSched.bbsched o RegAllocation.ra)
+     ClusterGen(structure Flowgraph = F
+	        structure InsnProps = P
+		structure MLTree = SparcMLTree
+                structure Stream = Emitter.S
+                structure Asm = Asm
+		val optimize = optimizerHook
+		val output = BBSched.bbsched o RegAllocation.ra)
 
   (* compilation of CPS to MLRISC *)
   structure MLTreeGen = 
      MLRiscGen(structure MachineSpec=SparcSpec
 	       structure MLTreeComp=
-		 Sparc(structure Flowgen=FlowGraphGen
-		       structure SparcInstr = SparcInstr
+		 Sparc(structure SparcInstr = SparcInstr
 		       structure SparcMLTree = SparcMLTree
                        structure PseudoInstrs = SparcPseudoInstrs 
-                       val overflowtrap = (* tvs 0x7 *)
-                           [I.Ticc{t=I.BVS,r=0,i=I.IMMED 7}]
+                       structure Stream = Emitter.S
+                       val V9 = false
+                       val muluCost = ref 5 
+                       val multCost = ref 3
+                       val divuCost = ref 5
+                       val divtCost = ref 5
+                       val registerwindow = ref false
+                       val useBR = ref false
                       )
+               structure Flowgen=FlowGraphGen
 	       structure Cells=SparcCells
 	       structure C=SparcCpsRegs
 	       structure PseudoOp=SparcPseudoOps)
@@ -282,9 +283,6 @@ end
 
 (*
  * $Log: sparcCG.sml,v $
- * Revision 1.5  1999/03/22 18:46:43  george
- *   Changes to conform to new MLRISC Control
- *
  * Revision 1.4  1999/03/22 17:22:39  george
  *   Changes to support new GC API
  *

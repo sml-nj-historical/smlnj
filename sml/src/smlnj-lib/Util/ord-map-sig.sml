@@ -19,12 +19,18 @@ signature ORD_MAP =
     val isEmpty : 'a map -> bool
 	(* Return true if and only if the map is empty *)
 
+    val singleton : (Key.ord_key * 'a) -> 'a map
+	(* return the specified singleton map *)
+
     val insert  : 'a map * Key.ord_key * 'a -> 'a map
     val insert' : ((Key.ord_key * 'a) * 'a map) -> 'a map
 	(* Insert an item. *)
 
     val find : 'a map * Key.ord_key -> 'a option
 	(* Look for an item, return NONE if the item doesn't exist *)
+
+    val inDomain : ('a map * Key.ord_key) -> bool
+	(* return true, if the key is in the domain of the map *)
 
     val remove : 'a map * Key.ord_key -> 'a map * 'a
 	(* Remove an item, returning new map and value removed.
@@ -40,8 +46,10 @@ signature ORD_MAP =
 
     val listItems  : 'a map -> 'a list
     val listItemsi : 'a map -> (Key.ord_key * 'a) list
-	(* Return an ordered list of the items (and their keys) in the map.
-         *)
+	(* Return an ordered list of the items (and their keys) in the map. *)
+
+    val listKeys : 'a map -> Key.ord_key list
+	(* return an ordered list of the keys in the map. *)
 
     val collate : ('a * 'a -> order) -> ('a map * 'a map) -> order
 	(* given an ordering on the map's range, return an ordering

@@ -4,7 +4,15 @@ struct
   structure I = Instr
   structure C = Instr.C
 
-  type reduceOpnd = I.operand -> int
+  type format1 =
+       {r:int, i:I.operand, d:int} *
+       (I.operand -> I.C.register) -> I.instruction list
+
+  type format2 =
+       {i:I.operand, d:int} *
+       (I.operand -> I.C.register) -> I.instruction list
+
+  fun error msg = MLRiscErrorMsg.impossible ("SparcPseudoInstrs."^msg)
 
   (* runtime system dependent *)
   val floatTmpOffset = I.IMMED 88
@@ -18,31 +26,33 @@ struct
   val native = true  (* use native versions of the instructions? *)
 
   fun umul_native({r, i, d}, reduceOpnd) =
-      [I.ARITH{a=I.UMUL,r=r,i=i,d=d,cc=false}]
+      [I.ARITH{a=I.UMUL,r=r,i=i,d=d}]
+
+  val TNE = I.Ticc{t=I.BNE,cc=I.ICC,r=0,i=I.IMMED 7}
+  val TVS = I.Ticc{t=I.BVS,cc=I.ICC,r=0,i=I.IMMED 7}
 
       (* overflows iff Y != (d ~>> 31) *)
   fun smul_native({r, i, d}, reduceOpnd) =
       let val t1 = C.newReg()
           val t2 = C.newReg()
-      in  [I.ARITH{a=I.SMUL,r=r,i=i,d=d,cc=false},
+      in  [I.ARITH{a=I.SMUL,r=r,i=i,d=d},
            I.SHIFT{s=I.SRA,r=d,i=I.IMMED 31,d=t1},
            I.RDY{d=t2},
-           I.ARITH{a=I.SUB,r=t1,i=I.REG t2,d=0,cc=true},
-           I.Ticc{t=I.BNE,r=0,i=I.IMMED 7}
+           I.ARITH{a=I.SUBCC,r=t1,i=I.REG t2,d=0},
+           TNE
           ] 
       end
   fun udiv_native({r,i,d},reduceOpnd) = 
       [I.WRY{r=0,i=I.REG 0},
-       I.ARITH{a=I.UDIV,r=r,i=i,d=d,cc=false}]
+       I.ARITH{a=I.UDIV,r=r,i=i,d=d}]
+
+   (* May overflow if MININT div -1 *)
   fun sdiv_native({r,i,d},reduceOpnd) = 
       let val t1 = C.newReg()
-          val t2 = C.newReg()
-          val t3 = C.newReg()
-      in  [I.SETHI{i=0x200000, d=t1},
-           I.ARITH{a=I.AND,r=t1,i=I.REG r,d=t2,cc=false},
-           I.SHIFT{s=I.SRA,r=t2,i=I.IMMED 31,d=t3},
-           I.WRY{r=t3,i=I.REG 0},
-           I.ARITH{a=I.SDIV,r=r,i=i,d=d,cc=false}
+      in  [I.SHIFT{s=I.SRA,r=r,i=I.IMMED 31,d=t1},
+           I.WRY{r=t1,i=I.REG 0},
+           I.ARITH{a=I.SDIVCC,r=r,i=i,d=d},
+           TVS
           ]
       end
 
@@ -59,7 +69,7 @@ struct
       [I.COPY{src=[r,reduceOpnd i],dst=[10,11],
                    tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
        I.LOAD{l=I.LD,r=C.stackptrR,i=offset,d=addr,mem=stack},
-       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,nop=true},
+       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,nop=true,mem=stack},
        I.COPY{src=[10],dst=[d],tmp=NONE,impl=ref NONE}
       ]
   end
@@ -74,12 +84,19 @@ struct
        I.FLOAD{l=I.LDF,r=C.stackptrR,i=floatTmpOffset,d=d,mem=stack},
        I.FPop1{a=I.FiTOd,r=d,d=d}
       ]
+  fun cvti2s _ = error "cvti2s"
+  fun cvti2q _ = error "cvti2q"
 
      (* Generate native versions of the instructions *)
   val umul = if native then umul_native else umul
   val smul = if native then smul_native else smul
   val udiv = if native then udiv_native else udiv
   val sdiv = if native then sdiv_native else sdiv
+
+  val overflowtrap32 = (* tvs 0x7 *)
+                       [I.Ticc{t=I.BVS,cc=I.ICC,r=0,i=I.IMMED 7}]
+  val overflowtrap64 = [] (* not needed *)
+
 
 end
 

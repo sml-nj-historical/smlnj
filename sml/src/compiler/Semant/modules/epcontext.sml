@@ -28,13 +28,13 @@ in
 structure Key = 
   struct 
     type ord_key = MI.modId
-    val cmpKey = MI.cmp
+    val compare = MI.cmp
   end
    
-structure D = BinaryDict(Key)
+structure D = BinaryMapFn(Key)
 
 type entPathR = EP.entVar list  
-type pathmap = entPathR D.dict 
+type pathmap = entPathR D.map 
 
 (* 
  * A structure body (struct decls end) is "closed" if 
@@ -64,7 +64,7 @@ fun isEmpty(EMPTY : context) = true
  * be accessed from outside (hence the null bindContext) 
  *)
 fun enterClosed epc = 
-  LAYER {locals=ref(D.mkDict()), lookContext=[],
+  LAYER {locals=ref(D.empty), lookContext=[],
          bindContext=[], outer=epc}
 
 (*
@@ -87,14 +87,14 @@ fun relative([],_) = []
 fun lookPath (EMPTY, _) = NONE
   | lookPath (LAYER{locals,lookContext,bindContext,outer}, id: MI.modId) 
           : entPathR option =
-      (case D.peek(!locals,id) 
+      (case D.find(!locals,id) 
         of NONE => lookPath(outer,id)
          | SOME rp => SOME(relative(rev rp, lookContext)))
 
 (* probe(ctx,s) checks whether a stamp has already be bound before *)
 fun probe (EMPTY, s) = false
   | probe (LAYER{locals, outer, ...}, s) = 
-      (case D.peek(!locals, s)
+      (case D.find(!locals, s)
         of NONE => probe(outer, s)
          | _ => true)
 
@@ -115,5 +115,8 @@ end (* local *)
 end (* structure EntPathContext *)
 
 (*
- * $Log$
+ * $Log: epcontext.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:26  george
+ * Version 110.5
+ *
  *)

@@ -3,10 +3,7 @@
  * COPYRIGHT (c) 1997 Bell Laboratories.
  *)
 
-functor X86Props
-  (structure X86Instr : X86INSTR
-   structure Shuffle : X86SHUFFLE
-     sharing Shuffle.I = X86Instr) : INSN_PROPERTIES =
+functor X86Props(X86Instr : X86INSTR) : INSN_PROPERTIES =
 struct
   structure I = X86Instr
   structure C = I.C
@@ -14,20 +11,27 @@ struct
 
   exception NegateConditional
 
-  fun error msg = MLRiscErrorMsg.impossible ("X86Props." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("X86Props",msg)
 
-  datatype kind = IK_JUMP | IK_NOP | IK_INSTR
+  datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL | IK_GROUP
+                | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
  (*========================================================================
   *  Instruction Kinds
   *========================================================================*)
   fun instrKind (I.JMP _) = IK_JUMP
     | instrKind (I.JCC _) = IK_JUMP
+    | instrKind (I.COPY _) = IK_COPY
+    | instrKind (I.FCOPY _) = IK_COPY
+    | instrKind (I.CALL _) = IK_CALL
+    | instrKind (I.ANNOTATION{i,...}) = instrKind i
+    | instrKind (I.GROUP _) = IK_GROUP
     | instrKind _ = IK_INSTR
 
 
   fun moveInstr(I.COPY _) = true
     | moveInstr(I.FCOPY _) = true
+    | moveInstr(I.ANNOTATION{i,...}) = moveInstr i
     | moveInstr _ = false 
 
   val nop = fn () => I.NOP
@@ -38,33 +42,13 @@ struct
   *========================================================================*)
   fun moveTmpR(I.COPY{tmp=SOME(I.Direct r), ...}) = SOME r
     | moveTmpR(I.FCOPY{tmp=SOME(I.FDirect f), ...}) = SOME f
+    | moveTmpR(I.ANNOTATION{i,...}) = moveTmpR i
     | moveTmpR _ = NONE
 
   fun moveDstSrc(I.COPY{src, dst, ...}) = (dst, src)
     | moveDstSrc(I.FCOPY{src, dst, ...}) = (dst, src)
+    | moveDstSrc(I.ANNOTATION{i,...}) = moveDstSrc i
     | moveDstSrc _ = error "moveDstSrc"
-
-  fun copy{src, dst} =
-       I.COPY{src=src, dst=dst, tmp=SOME(I.Direct(C.newReg()))} 
-
-  fun fcopy{src, dst} = let
-    fun trans r = if r >= 8 andalso r < 16 then r-8 else r
-    val src = map trans src
-    val dst = map trans dst
-  in I.FCOPY{src=src, dst=dst, tmp=SOME(I.FDirect(C.newFreg()))}
-  end
-    
-  fun splitCopies{regmap, insns} = let
-    val shuffle = Shuffle.shuffle
-    val shufflefp = Shuffle.shufflefp
-    fun scan([],is') = rev is'
-      | scan(I.COPY{dst,src,tmp,...}::is,is') = 
-	  scan(is,shuffle{regMap=regmap,src=src,dst=dst,temp=tmp}@is')
-      | scan(I.FCOPY{dst,src,tmp, ...}::is,is') = 
-	  scan(is,shufflefp{regMap=regmap,src=src,dst=dst,temp=tmp}@is')
-      | scan(i::is,is') = scan(is,i::is')
-  in scan(insns,[]) 
-  end
 
 
  (*=====================================================================
@@ -74,6 +58,7 @@ struct
     | branchTargets(I.JMP(_, labs)) = map LABELLED labs
     | branchTargets(I.JCC{opnd=I.ImmedLabel(LE.LABEL(lab)), ...}) = 
         [FALLTHROUGH, LABELLED lab]
+    | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
   fun jump label = I.JMP (I.ImmedLabel(LE.LABEL label), [label])
@@ -81,6 +66,38 @@ struct
   exception NotImplemented
   fun setTargets _ = raise NotImplemented
   fun negateConditional _ = raise NotImplemented
+
+  val immedRange={lo= ~1073741824, hi=1073741823}
+  val toInt32 = Int32.fromLarge o Int.toLarge
+  fun loadImmed{immed,t} =
+      I.MOVE{mvOp=I.MOVL,src=I.Immed(toInt32 immed),dst=I.Direct t}
+
+ (*=====================================================================
+  *  Hashing and Equality on operands
+  *=====================================================================*)
+   fun hashOpn(I.Immed i) = Word.fromInt(Int32.toInt i)
+     | hashOpn(I.Const c) = I.Constant.hash c
+     | hashOpn(I.ImmedLabel le) = LabelExp.hash le + 0w123
+     | hashOpn(I.Relative i) = Word.fromInt i + 0w1232
+     | hashOpn(I.LabelEA le) = LabelExp.hash le + 0w44444
+     | hashOpn(I.Direct r)  = Word.fromInt r
+     | hashOpn(I.FDirect f) = Word.fromInt f + 0w8888
+     | hashOpn(I.Displace {base, disp, ...}) = hashOpn disp + Word.fromInt base
+     | hashOpn(I.Indexed {base, index, scale, disp, ...}) =
+         Word.fromInt index + Word.fromInt scale + hashOpn disp
+   fun eqOpn(I.Immed a,I.Immed b) = a = b
+     | eqOpn(I.Const a,I.Const b) = I.Constant.==(a,b)
+     | eqOpn(I.ImmedLabel a,I.ImmedLabel b) = LabelExp.==(a,b)
+     | eqOpn(I.Relative a,I.Relative b) = a = b
+     | eqOpn(I.LabelEA a,I.LabelEA b) = LabelExp.==(a,b)
+     | eqOpn(I.Direct a,I.Direct b) = a = b
+     | eqOpn(I.FDirect a,I.FDirect b) = a = b
+     | eqOpn(I.Displace{base=a,disp=b,...},I.Displace{base=c,disp=d,...}) =
+          a = c andalso eqOpn(b,d)
+     | eqOpn(I.Indexed{base=a,index=b,scale=c,disp=d,...},
+             I.Indexed{base=e,index=f,scale=g,disp=h,...}) =
+          b = f andalso c = g andalso a = e andalso eqOpn(d,h)
+     | eqOpn _ = false
 
  (*========================================================================
   *  Definition and use (for register allocation mainly)
@@ -112,7 +129,7 @@ struct
     case instr
      of I.JMP(opnd, _)        => ([], operandUse opnd)
       | I.JCC{opnd, ...}      => ([], operandUse opnd)
-      | I.CALL(opnd,defs,uses)=> (#1 defs, operandAcc(opnd, #1 uses))
+      | I.CALL(opnd,defs,uses,_)=> (#1 defs, operandAcc(opnd, #1 uses))
       | I.MOVE{src, dst as I.Direct _, ...} => (operandDef dst, operandUse src)
       | I.MOVE{src, dst, ...} => ([], operandAcc(dst, operandUse src))
       | I.LEA{r32, addr}      => ([r32], operandUse addr)
@@ -135,6 +152,7 @@ struct
       | I.FBINARY{src, ...}   => ([], operandUse src)
       | I.FNSTSW	      => ([C.eax], [])
       | I.SAHF		      => ([], [C.eax])
+      | I.ANNOTATION{i,...}   => defUseR i
       | _		      => ([], [])
   end (* defUseR *)
 
@@ -145,24 +163,32 @@ struct
     case instr
      of I.FSTP opnd		=> (operand opnd, [])
       | I.FLD opnd		=> ([], operand opnd)
-      | I.CALL(_, defs, uses)	=> (#2 defs, #2 uses)
+      | I.CALL(_, defs, uses,_)	=> (#2 defs, #2 uses)
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
+      | I.ANNOTATION{i,...}   => defUseF i
       | _  => ([], [])
   end
 
   fun defUse C.GP = defUseR
     | defUse C.FP = defUseF
     | defUse _ = error "defUse"
+
+  (*========================================================================
+   *  Annotations 
+   *========================================================================*)
+  fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
+    | getAnnotations _ = []
+  fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
+
+  (*========================================================================
+   *  Groups 
+   *========================================================================*)
+  fun getGroup(I.ANNOTATION{i,...}) = getGroup i
+    | getGroup(I.GROUP r) = r
+    | getGroup _ = error "getGroup"
+
+  val makeGroup = I.GROUP
 end
 
-(*
- * $Log: X86Props.sml,v $
- * Revision 1.2  1998/08/27 14:12:18  george
- *   used sethi-ullman number for floating point stack
- *
- * Revision 1.1.1.1  1998/07/22 18:10:32  george
- *   X86.1
- *
- *)

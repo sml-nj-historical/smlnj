@@ -1,3 +1,9 @@
+(*
+ * A fixed capacity integer set datatype
+ *
+ * -- Allen
+ *)
+
 signature INTSET =
 sig
 
@@ -103,6 +109,3 @@ struct
 
 end 
 
-(*
- * $Log$
- *)

@@ -1,25 +1,12 @@
-(* instruction.sig --- target machine instructions 
- *
- * COPYRIGHT (c) 1996 AT&T Bell Laboratories.
- *
- *)
-
-(* basically says: 
- * represent instructions any which way you want 
- *)
-signature INSTRUCTIONS = sig
-    structure C : CELLS
-    structure Constant : CONSTANT
-
-    type ea
-    type operand    
-    type instruction
-end
-
-
 (*
- * $Log: instructions.sig,v $
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
+ *  This signature specifies the abstract view of an instruction.
  *)
+signature INSTRUCTIONS =
+sig
+   structure C        : CELLS
+   structure Constant : CONSTANT
+
+   type operand     (* operand is abstract *)
+   type ea          (* effective address is abstract *)
+   type instruction (* instruction is also abstract  *)
+end

@@ -1,5 +1,6 @@
 (*
- * Trace subgraph adaptor
+ * Trace subgraph adaptor.  This takes a linear list of node ids.
+ * The view returned is the part of the graph that lies on this linear list.
  *)
 
 signature TRACE_SUBGRAPH_VIEW = 
@@ -29,6 +30,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

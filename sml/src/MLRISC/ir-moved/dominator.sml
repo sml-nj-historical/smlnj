@@ -11,6 +11,8 @@
  * uses the DJgraph.  In order not to bother with constructing and 
  * maintaining the DJgraph, we'll just use a combination of the dominator tree
  * and the original cfg.
+ *
+ * -- Allen
  *)
 
 functor DominatorTreeFn (GraphImpl : GRAPH_IMPLEMENTATION
@@ -407,8 +409,17 @@ struct
       (Dom, PDom)
    end
 
+   fun levels(G.GRAPH dom) =
+   let val levels = A.array(#capacity dom (),~1)
+   in  #forall_nodes dom (fn (i,DOM{level,...}) => A.update(levels,i,level));
+       levels
+   end
+
+   fun idoms(G.GRAPH dom) =
+   let val idoms = A.array(#capacity dom (),~1)
+   in  #forall_edges dom (fn (i,j,_) => A.update(idoms,j,i));
+       idoms
+   end 
+
 end
 
-(*
- * $Log$
- *)

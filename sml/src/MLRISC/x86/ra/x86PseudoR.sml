@@ -16,7 +16,7 @@ struct
   structure I = Instr
   structure F = Flowgraph
 
-  fun error msg = MLRiscErrorMsg.impossible ("X86RewritePseudo." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("X86RewritePseudo",msg)
 
   fun rewrite firstPseudo (F.CLUSTER{blocks, regmap, ...}) = let
     val first = C.newReg()
@@ -24,7 +24,8 @@ struct
     fun shuffle(dests, srcs, tmp)  = let
       fun move(rd,rs) = I.MOVE{mvOp=I.MOVL, src=rs, dst=rd}
       fun lookup r = 
-	(Intmap.map regmap r handle _ => error "rewrite.subst.lookup")
+	(Intmap.map regmap r handle _ => 
+           error ("rewrite.subst.lookup "^Int.toString r))
       fun loop((p as (rd, dst, rs, src))::rest, changed, used, done, instrs) = 
 	  if List.exists (fn r => dst=r) used then
 	    loop(rest, changed, used, p::done, instrs)
@@ -65,7 +66,7 @@ struct
 	  in
 	    case !succ
 	     of [] => reset(!liveOut)
-	      | [F.EXIT _] => reset(!liveOut)
+	      | [(F.EXIT _,_)] => reset(!liveOut)
 	      | _ => ()
 	  end
 
@@ -74,55 +75,56 @@ struct
 	    fun movl{src, dst, acc} = 
 	      I.MOVE{mvOp=I.MOVL, src=src, dst=dst}::acc
 
-	    fun displace(base, disp, acc) = 
+	    fun displace(base, disp, acc, mem) = 
 	      if pseudoR base then let
 		  val tmpR = C.newReg()
-		  val newDisp = I.Displace{base=tmpR, disp=disp}
+		  val newDisp = I.Displace{base=tmpR, disp=disp, mem=mem}
 		in (newDisp, movl{src=ea base, dst=I.Direct tmpR, acc=acc})
 		end
-	      else (I.Displace{base=base, disp=disp}, acc)
+	      else (I.Displace{base=base, disp=disp, mem=mem}, acc)
 
-	    fun indexedEa(base, index, scale, disp) = 
-	      I.Indexed{base=base, index=index, scale=scale, disp=disp}
+	    fun indexedEa(base, index, scale, disp, mem) = 
+	      I.Indexed{base=base, index=index, scale=scale, disp=disp, mem=mem}
 
-	    fun indexed(NONE, index, scale, disp, acc) = 
+	    fun indexed(NONE, index, scale, disp, acc, mem) = 
 		if pseudoR index then let
 		    val tmpR = C.newReg()
-		    val newIndx = indexedEa(NONE, tmpR, scale, disp)
+		    val newIndx = indexedEa(NONE, tmpR, scale, disp, mem)
 		  in (newIndx, movl{src=ea index, dst=I.Direct tmpR, acc=acc})
 		  end
-		else (indexedEa(NONE, index, scale, disp), acc)
-	      | indexed(ba as SOME base, index, scale, disp, acc) = let
+		else (indexedEa(NONE, index, scale, disp, mem), acc)
+	      | indexed(ba as SOME base, index, scale, disp, acc, mem) = let
 		  val b = pseudoR base
 		  val i = pseudoR index
 		in 
 		  if b andalso i then let
 		      val tmpB = C.newReg()
 		      val tmpI = C.newReg()
-		      val opnd = indexedEa(SOME tmpB, tmpI, scale, disp)
+		      val opnd = indexedEa(SOME tmpB, tmpI, scale, disp, mem)
 		    in (opnd, movl{src=ea base, dst=I.Direct tmpB, 
 				   acc=movl{src=ea index, dst=I.Direct tmpI, acc=acc}})
 		    end
 		  else if b then let
 		      val tmpB = C.newReg()
-		    in (indexedEa(SOME tmpB, index, scale, disp), 
+		    in (indexedEa(SOME tmpB, index, scale, disp, mem), 
 			movl{src=ea base, dst=I.Direct tmpB, acc=acc})
 		    end
 		  else if i then let
 		      val tmpI = C.newReg()
-		    in (indexedEa(ba, tmpI, scale, disp), 
+		    in (indexedEa(ba, tmpI, scale, disp, mem), 
 			movl{src=ea index, dst=I.Direct tmpI, acc=acc})
 		    end
-		  else (indexedEa(ba, index, scale, disp), acc)
+		  else (indexedEa(ba, index, scale, disp, mem), acc)
 
 		end
 	    fun direct(r, acc) = 
 	      if pseudoR r then (ea r, acc) else (I.Direct r, acc)
 
 	    fun operand(I.Direct r, acc) = direct(r, acc)
-	      | operand(I.Indexed{base, index, scale, disp}, acc) = 
-		 indexed(base, index, scale, disp, acc)
-	      | operand(I.Displace{base, disp}, acc) = displace(base, disp, acc)
+	      | operand(I.Indexed{base, index, scale, disp, mem}, acc) = 
+		 indexed(base, index, scale, disp, acc, mem)
+	      | operand(I.Displace{base, disp, mem}, acc) = 
+                 displace(base, disp, acc, mem)
 	      | operand arg = arg
 
 	    fun done(opnd, f) = let
@@ -138,7 +140,8 @@ struct
 	      val t = C.newReg()
 	    in f t
 	    end
-	  in 
+
+            fun rewrite instr =
 	    case instr
 	     of I.JMP(opnd, labs) => done(opnd, fn opnd => I.JMP(opnd, labs))
 	      | I.JCC{opnd, cond} => done(opnd, fn opnd => I.JCC{opnd=opnd, cond=cond})
@@ -183,11 +186,11 @@ struct
 			 movl{src=srcOpnd, dst=I.Direct t, acc=acc2})
 		  else I.BINARY{binOp=binOp, src=srcOpnd, dst=dstOpnd}::acc2
 		end
-	      | I.CALL(opnd,def,use) => let
+	      | I.CALL(opnd,def,use,mem) => let
 		  val (opnd1, acc1) = operand(opnd, acc)
 		  fun cellset(gp, fp, cc) =
-		    (cc, List.filter (not o pseudoR) gp, fp)
-		in I.CALL(opnd1, cellset def, cellset use)::acc
+		    (List.filter (not o pseudoR) gp, fp, cc)
+		in I.CALL(opnd1, cellset def, cellset use, mem)::acc
 		end
 	      | I.MULTDIV{multDivOp, src} => 
 		  done(src, fn opnd => I.MULTDIV{multDivOp=multDivOp, src=opnd})
@@ -246,7 +249,9 @@ struct
 	      | I.FILD opnd => done(opnd, fn opnd => I.FILD opnd)
 	      | I.FBINARY{src,dst,binOp} => 
 		  done(src, fn opnd => I.FBINARY{binOp=binOp, src=opnd, dst=dst})
+              | I.ANNOTATION{i,a} => rewrite i
 	      | _ => instr::acc
+          in  rewrite instr
 	  end (* subst *)
 	in insns := List.foldl subst [] (rev(!insns));
 	   resetLiveOut()

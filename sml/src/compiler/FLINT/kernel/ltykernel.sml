@@ -1046,20 +1046,20 @@ fun tc_unroll_fix tyc =
  * supports making and checking these inductive assumptions.
  * Furthermore, we need to avoid unrolling any FIX more than once.
  *)
-structure TcDict = BinaryDict
+structure TcDict = BinaryMapFn
                        (struct
                            type ord_key = tyc
-                           val cmpKey = tc_cmp
+                           val compare = tc_cmp
                        end)
 (* for each tyc in this dictionary, we store a dictionary containing
  * tycs that are assumed equivalent to it.
  *)
-type eqclass = unit TcDict.dict
-type hyp = eqclass TcDict.dict
+type eqclass = unit TcDict.map
+type hyp = eqclass TcDict.map
 
 (* the null hypothesis, no assumptions about equality *)
-val empty_eqclass : eqclass = TcDict.mkDict() 
-val null_hyp : hyp = TcDict.mkDict()
+val empty_eqclass : eqclass = TcDict.empty
+val null_hyp : hyp = TcDict.empty
 
 (* add assumption t1=t2 to current hypothesis.  returns composite
  * hypothesis.
@@ -1080,7 +1080,7 @@ fun assume_eq (hyp, t1, t1eqOpt, t2, t2eqOpt) =
 val eq_by_hyp : eqclass option * tyc -> bool
     = fn (NONE, t2) => false
        | (SOME eqclass, t2) =>
-         isSome (TcDict.peek (eqclass, t2))
+         isSome (TcDict.find (eqclass, t2))
     
 (* have we made any assumptions about `t' already? *)
 val visited : eqclass option -> bool 
@@ -1092,7 +1092,7 @@ fun eq_fix (eqop1, hyp) (t1, t2) =
     of (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) => 
         if not (!Control.CG.checkDatatypes) then true 
         else let 
-            val t1eqOpt = TcDict.peek (hyp, t1)
+            val t1eqOpt = TcDict.find (hyp, t1)
         in
             (* first check the induction hypothesis.  we only ever
              * make hypotheses about FIX nodes, so this test is okay
@@ -1114,7 +1114,7 @@ fun eq_fix (eqop1, hyp) (t1, t2) =
                  *)
                 if visited t1eqOpt then false 
                 else let
-                    val t2eqOpt = TcDict.peek (hyp, t2)
+                    val t2eqOpt = TcDict.find (hyp, t2)
                 in
                     if visited t2eqOpt then false 
                     else eqop1 (assume_eq (hyp, t1, t1eqOpt,

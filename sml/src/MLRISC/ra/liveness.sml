@@ -26,7 +26,7 @@ struct
   structure F  = Flowgraph
   structure SL = SortedList
 
-  fun error msg = MLRiscErrorMsg.impossible ("Liveness."^msg)
+  fun error msg = MLRiscErrorMsg.error("Liveness",msg)
 
   fun prList(l,msg:string) = let
       fun pr([]) = print "\n"
@@ -72,11 +72,11 @@ struct
 	      end
 
 	  fun outB(F.BBLOCK{succ=ref [], ...}) = false
-	    | outB(F.BBLOCK{succ=ref [F.EXIT _], ...}) = false
+	    | outB(F.BBLOCK{succ=ref [(F.EXIT _,_)], ...}) = false
 	    | outB(F.BBLOCK{succ, liveOut,...}) = let
 		fun inSuccs([], acc) = acc
-		  | inSuccs(F.EXIT _::sl, acc) = inSuccs(sl, acc)
-		  | inSuccs(F.BBLOCK{blknum,liveIn,...}::sl, acc) = 
+		  | inSuccs((F.EXIT _,_)::sl, acc) = inSuccs(sl, acc)
+		  | inSuccs((F.BBLOCK{blknum,liveIn,...},_)::sl, acc) = 
 		      inSuccs(sl, SL.merge(regSet(!liveIn), acc))
 		val liveout = inSuccs(!succ, [])
 		val change = listNeq(regSet(!liveOut),liveout)
@@ -98,9 +98,9 @@ struct
 	      val visited = Array.array(M,false)
 	      fun visit(n, changed) = let
 		  fun visitSucc([],changed') = changed'
-		    | visitSucc(F.EXIT _::ns, changed') =
+		    | visitSucc((F.EXIT _,_)::ns, changed') =
 		       visitSucc(ns, changed')
-		    | visitSucc(F.BBLOCK{blknum=n, ...}::ns,changed') =
+		    | visitSucc((F.BBLOCK{blknum=n, ...},_)::ns,changed') =
 		       if Array.sub(visited,n) then visitSucc(ns,changed')
 		       else visitSucc(ns,visit(n,changed'))
 
@@ -132,9 +132,3 @@ struct
 end
 
 
-(*
- * $Log: liveness.sml,v $
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

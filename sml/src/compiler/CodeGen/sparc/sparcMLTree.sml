@@ -27,25 +27,37 @@ structure SparcFlowGraph =
 	    structure P=SparcPseudoOps
 	    structure B=FunctionNames)
 
+structure SparcStream = InstructionStreamFn(structure P=SparcPseudoOps
+    	                                    structure B=FunctionNames)
+
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr
 		  structure Shuffle=SparcShuffle
-		  structure PseudoOps=SparcPseudoOps)
+                  structure Stream = SparcStream
+		  structure PseudoOps=SparcPseudoOps
+                  val V9 = false)
 
 structure SparcMCEmitter = 
   SparcMCEmitter(structure Instr=SparcInstr
 		 structure Assembler=SparcAsmEmitter
+                 structure Stream = SparcStream
 		 structure CodeString=CodeString)
 
 structure SparcMLTree = 
   MLTreeF(structure Const=SparcConst
 	  structure R=CPSRegions
 	  structure P=SparcPseudoOps
-	  structure B=FunctionNames)
+	  structure B=FunctionNames
+          type rextension = unit
+          type fextension = unit
+         )
 
 
 (*
  * $Log: sparcMLTree.sml,v $
+ * Revision 1.4  1999/03/22 17:22:41  george
+ *   Changes to support new GC API
+ *
  * Revision 1.3  1998/12/30 20:21:23  jhr
  *   Modifications to support code generation directly into code objects.
  *

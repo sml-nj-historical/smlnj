@@ -99,7 +99,7 @@ fun sortdefs(defs) =
     let fun gt ([],_) = false
 	  | gt (_,[]) = true
           | gt (s1::_,s2::_) = Symbol.symbolGt(s1,s2)
-     in Sort.sort (fn ((p1,d1),(p2,d2)) => gt(p1,p2)) defs
+     in ListMergeSort.sort (fn ((p1,d1),(p2,d2)) => gt(p1,p2)) defs
     end
 
 fun prepareDefs whereDefs =
@@ -1106,6 +1106,9 @@ end (* structure ElabSig *)
 
 (*
  * $Log: elabsig.sml,v $
+ * Revision 1.4  1998/09/30 19:07:37  dbm
+ * fix bug 1432, types of TYCspec and TYCdef modified
+ *
  * Revision 1.3  1998/05/23 14:10:02  george
  *   Fixed RCS keyword syntax
  *

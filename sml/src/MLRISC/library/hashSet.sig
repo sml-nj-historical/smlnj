@@ -1,3 +1,9 @@
+(*
+ * A set datatype that uses hashing
+ *
+ * -- Allen
+ *)
+
 signature HASH_SET =
 sig
 
@@ -21,6 +27,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -17,7 +17,7 @@ local
   val maxgpfree = MachSpec.spillAreaSz div (2 * MachSpec.valueSize)
   val maxfpfree = MachSpec.spillAreaSz div (2 * MachSpec.realSize)
   val spillname = Symbol.varSymbol "spillrec" 
-  fun sortp x = Sort.sort (fn ((i:int,_),(j,_)) => i>j) x
+  fun sortp x = ListMergeSort.sort (fn ((i:int,_),(j,_)) => i>j) x
   val app2 = ListPair.app
   val unboxedfloat = MachSpec.unboxedFloats
   structure CGoptions = Control.CG
@@ -482,5 +482,8 @@ end (* local *)
 end (* functor Spill *)
 
 (*
- * $Log$
+ * $Log: spill.sml,v $
+ * Revision 1.1  1998/12/22 17:01:19  jhr
+ *   Added CPS spill phase to fix MLRisc spill area overflow.
+ *
  *)

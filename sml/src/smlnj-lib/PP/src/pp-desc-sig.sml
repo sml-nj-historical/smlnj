@@ -7,38 +7,32 @@
 
 signature PP_DESC =
   sig
-    type box
+    structure PPS : PP_STREAM
 
-    type token
-	(* tokens are an abstraction of strings (allowing for different
-	 * widths and style information).
-	 *)
-    type style
+    type pp_desc = PPS.pp_desc
+    type token = PPS.token
+    type style = PPS.style
+    type indent = PPS.indent
 
-    datatype indent
-      = Abs of int		(* indent relative to outer indentation *)
-      | Rel of int		(* indent relative to start of box *)
+    val hBox    : pp_desc list -> pp_desc
+    val vBox    : (indent * pp_desc list) -> pp_desc
+    val hvBox   : (indent * pp_desc list) -> pp_desc
+    val hovBox  : (indent * pp_desc list) -> pp_desc
+    val box     : (indent * pp_desc list) -> pp_desc
 
-    val hBox    : box list -> box
-    val vBox    : (indent * box list) -> box
-    val hvBox   : (indent * box list) -> box
-    val hovBox  : (indent * box list) -> box
-    val box     : (indent * box list) -> box
+    val token   : token -> pp_desc
+    val string  : string -> pp_desc
 
-    val token   : token -> box
-    val string  : string -> box
+    val style   : (style * pp_desc list) -> pp_desc
 
-    val style   : (style * box list) -> box
-
-    val break   : {nsp : int, offset : int} -> box
-    val space   : int -> box
+    val break   : {nsp : int, offset : int} -> pp_desc
+    val space   : int -> pp_desc
 	(* space n == break{nsp=n, offset=0} *)
-    val cut     : box
+    val cut     : pp_desc
 	(* cut == break{nsp=0, offset=0} *)
-    val newline : box
+    val newline : pp_desc
 
-    val onNewline : box -> box
-	(* the box is emitted iff it is preceeded by a newline *)
+    val control : (PPS.device -> unit) -> pp_desc
 
   end
 

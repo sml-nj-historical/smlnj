@@ -1,3 +1,10 @@
+(*
+ * This module rearranges and eliminate branches in a problem to
+ * get better locality. 
+ *
+ * -- Allen
+ *)
+
 functor ReshapeBranchesFn
     ( structure IR   : MLRISC_IR
       structure P    : INSN_PROPERTIES
@@ -68,9 +75,9 @@ struct
        fun should_flip_forward_branches(
            (i,j,CFG.EDGE{w=w1,k=CFG.BRANCH b1,...}),
            (_,k,CFG.EDGE{w=w2,k=CFG.BRANCH b2,...})) =
-             (b1 andalso W.>(!w1,!w2) andalso not(dominates(j,i)))
+             (b1 andalso !w1 > !w2 andalso not(dominates(j,i)))
              orelse
-             (b2 andalso W.>(!w2,!w1) andalso not(dominates(k,i)))
+             (b2 andalso !w2 > !w1 andalso not(dominates(k,i)))
         | should_flip_forward_branches _ = false
 
        (*
@@ -101,7 +108,7 @@ struct
        if no_pseudo_ops header then
        let fun find_best((e as (_,_,CFG.EDGE{w=w1,...}))::es,
                          best_e as (_,_,CFG.EDGE{w=w2,...})) =
-                  find_best(es,if W.>(!w1,!w2) then e else best_e)
+                  find_best(es,if !w1 > !w2 then e else best_e)
              | find_best([],best_e) = best_e
        in  case find_best(es,e) of
               best_e as (i,j,CFG.EDGE{k=CFG.JUMP,w,a}) =>
@@ -134,6 +141,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

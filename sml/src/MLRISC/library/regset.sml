@@ -1,3 +1,9 @@
+(*
+ * Register set datatype. Implemented as sorted lists.
+ *
+ * -- Allen
+ *) 
+
 structure RegSet :> REGISTER_SET =
 struct
 
@@ -122,6 +128,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

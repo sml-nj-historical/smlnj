@@ -1,3 +1,9 @@
+(*
+ * Map datatype that uses hashing.
+ *
+ * -- Allen
+ *)
+
 signature HASH_MAP =
 sig
 
@@ -26,6 +32,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

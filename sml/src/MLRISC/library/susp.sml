@@ -1,3 +1,9 @@
+(*
+ * Force/delay
+ *
+ * -- Allen
+ *)
+
 signature SUSPENSION =
 sig
    type 'a susp
@@ -17,6 +23,3 @@ struct
        in  r := VALUE v; v end  
 end
 
-(* 
- * $Log$
- *)

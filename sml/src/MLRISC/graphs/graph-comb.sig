@@ -1,3 +1,9 @@
+(*
+ * This module implements some combinators that joins two graphs
+ * into a single view.
+ *
+ *)
+
 signature GRAPH_COMBINATIONS = 
 sig
 
@@ -9,6 +15,3 @@ sig
 
 end
 
-(* 
- * $Log$
- *)

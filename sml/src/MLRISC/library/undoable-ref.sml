@@ -1,5 +1,7 @@
 (*
  *  A reference that allows undo.
+ *
+ *  -- Allen
  *)
 
 signature UNDOABLE_REF =
@@ -40,6 +42,3 @@ struct
    val op := = ::=
 end
 
-(*
- * $Log$
- *)

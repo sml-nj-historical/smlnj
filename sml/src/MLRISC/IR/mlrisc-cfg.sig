@@ -1,5 +1,8 @@
 (*
- * Control flow graph data structure.
+ * Control flow graph data structure used by the MLRISC IR.
+ * All basic optimizations are based on this representation.
+ *
+ * -- Allen
  *)
 
 signature CONTROL_FLOW_GRAPH =
@@ -9,10 +12,10 @@ sig
    structure B : BLOCK_NAMES
    structure P : PSEUDO_OPS
    structure C : CELLS
-   structure W : FIXED_POINT
+   structure W : FREQ
       sharing I.C = C
    
-   type weight = W.fixed_point
+   type weight = W.freq
 
    datatype block_kind = 
        START          (* entry node *)
@@ -24,6 +27,17 @@ sig
    and data = LABEL  of Label.label
             | PSEUDO of P.pseudo_op
 
+   (*
+    * NOTE: the instructions are listed in reverse order.
+    * This choice is for a few reasons:
+    * i)  Clusters represent instructions in reverse order, so keeping this
+    *     the same avoid having to do conversions.
+    * ii) This makes it easier to add instructions at the end of the block,
+    *     which is more common than adding instructions to the front.
+    * iii) This also makes it easier to manipulate the branch/jump instruction
+    *      at the end of the block.
+    *)
+   
    and block = 
       BLOCK of
       {  id          : int,                        (* block id *)
@@ -54,7 +68,7 @@ sig
    type node = block Graph.node
 
    datatype info = 
-       INFO of { regmap      : C.regmap,
+       INFO of { regmap      : C.regmap ref,
                  annotations : Annotations.annotations ref,
                  firstBlock  : int ref,
                  reorder     : bool ref
@@ -76,10 +90,10 @@ sig
    *  Methods for manipulating basic blocks
    *
    *========================================================================*)
-   val newBlock          : int * B.name -> block      (* empty *)
-   val newStart          : int -> block               (* start node *)
-   val newStop           : int -> block               (* stop node *)
-   val newFunctionEntry  : int -> block               (* fun entry node *)
+   val newBlock          : int * B.name * W.freq ref -> block (* empty *)
+   val newStart          : int * W.freq ref -> block          (* start node *)
+   val newStop           : int * W.freq ref -> block          (* stop node *)
+   val newFunctionEntry  : int * W.freq ref -> block  (* fun entry node *)
    val copyBlock         : int * block -> block       (* copy a block *)
    val defineLabel       : block -> Label.label       (* define a label *)
    val emit              : C.regmap -> block -> unit  (* emit assembly *)
@@ -96,7 +110,9 @@ sig
    val init     : cfg -> unit      (* add start/stop nodes *)
    val changed  : cfg -> unit      (* mark cfg as changed *)  
 
-   val regmap    : cfg -> C.regmap
+   val regmap         : cfg -> C.regmap
+   val setRegmap      : cfg * C.regmap -> unit
+   val setAnnotations : cfg * Annotations.annotations -> unit
    val reglookup : cfg -> C.register -> C.register
    val liveOut   : block -> C.cellset
    val fallsThruFrom : cfg * Graph.node_id -> Graph.node_id option
@@ -122,8 +138,4 @@ sig
    val cdgEdge : edge_info -> bool (* for building a CDG *)
 
 end
-
-(*
- * $Log$
- *)
 

@@ -1,3 +1,9 @@
+(*
+ * Signature of an imperative priority queue.
+ *
+ * -- Allen
+ *)
+
 signature PRIORITY_QUEUE =
 sig
 
@@ -15,10 +21,6 @@ sig
    val insert    : 'a priority_queue -> 'a -> unit
    val fromList  : ('a * 'a -> bool) -> 'a list -> 'a priority_queue
    val toList    : 'a priority_queue -> 'a list
-   val rerank    : 'a priority_queue -> unit
 
 end
 
-(*
- * $Log$
- *)

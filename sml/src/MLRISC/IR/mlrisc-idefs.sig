@@ -1,9 +1,10 @@
-
 (*
  * This is Reif and Tarjan's algorithm (SIAM J Computing 1981) 
  * for computing approximate birthpoints for expressions.   
  * For each basic block B,
  *   idef(B) = { v | v is defined on some path between B's idom and B }
+ *
+ * -- Allen
  *)
 signature MLRISC_IDEFS =
 sig
@@ -21,6 +22,3 @@ sig
        }
 end
 
-(*
- * $Log$
- *)

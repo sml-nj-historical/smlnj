@@ -24,8 +24,8 @@ structure Control : CONTROL =
     struct
       val printArgs = ref false
       val printRet = ref false
-      val bindContainsVar = ref true
-      val bindExhaustive = ref true
+      val bindNoVariableWarn = ref false
+      val bindNonExhaustiveWarn = ref true
       val matchNonExhaustiveWarn = ref true
       val matchNonExhaustiveError = ref false
           (* matchExhaustiveError overrides matchExhaustiveWarn *)
@@ -179,6 +179,9 @@ end
 
 (*
  * $Log: control.sml,v $
+ * Revision 1.8  1999/01/18 15:49:37  george
+ *   support of interactive loading of MLRISC optimizer
+ *
  * Revision 1.7  1999/01/11 16:53:42  george
  *   new array representation support
  *

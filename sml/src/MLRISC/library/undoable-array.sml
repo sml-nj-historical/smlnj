@@ -1,10 +1,12 @@
 (*
  *  Create a version of arrays that keeps track of its versions.
+ *
+ *  -- Allen
  *)
 
 functor UndoableArrayFn
-      (structure Array : ARRAY_SIG
-       structure Log : TRANSACTION_LOG) : ARRAY_SIG =
+      (structure Array : ARRAY
+       structure Log : TRANSACTION_LOG) : ARRAY =
 struct
 
    structure A = Array
@@ -60,6 +62,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

@@ -9,8 +9,7 @@
 functor BBSched2
     (structure Flowgraph : FLOWGRAPH
      structure Jumps : SDI_JUMPS
-     structure Emitter : EMITTER_NEW
-
+     structure Emitter : INSTRUCTION_EMITTER
        sharing Emitter.P = Flowgraph.P
        sharing Flowgraph.I = Jumps.I = Emitter.I): BBSCHED =
 
@@ -23,7 +22,7 @@ struct
   structure J = Jumps
   structure P = Flowgraph.P
 
-  fun error msg = MLRiscErrorMsg.impossible ("BBSched."^msg)
+  fun error msg = MLRiscErrorMsg.error("BBSched",msg)
 
   datatype code =
       SDI of {size : int ref,		(* variable sized *)
@@ -35,15 +34,15 @@ struct
       PSEUDO of P.pseudo_op
     | LABEL  of Label.label
     | CODE of  code list
-    | CLUSTER of {comp : compressed list, regmap : int Intmap.intmap}
+    | CLUSTER of {comp : compressed list, regmap : int -> int}
 
   val clusterList : compressed list ref = ref []
   fun cleanUp() = clusterList := []
 
   fun bbsched(cluster as F.CLUSTER{blocks, regmap, ...}) = let
+    val regmap = C.lookup regmap
     fun compress(F.PSEUDO pOp::rest) = PSEUDO pOp::compress rest
       | compress(F.LABEL lab::rest) = LABEL lab:: compress rest
-      | compress(F.ORDERED blks::rest) = compress(blks@rest)
       | compress(F.BBLOCK{insns, ...}::rest) = let
 	  fun mkCode(0, [], [], code) = code
 	    | mkCode(size, insns, [], code) = FIXED{size=size, insns=insns}:: code
@@ -108,40 +107,30 @@ struct
     in if adjust(zl, 0, false) then fixpoint zl else size
     end
 
-    fun emitCluster(CLUSTER{comp, regmap}, loc) = let
-      fun emit(PSEUDO pOp, loc) = (E.pseudoOp pOp; loc + P.sizeOf(pOp, loc))
-	| emit(LABEL lab, loc) = (E.defineLabel lab; loc)
-	| emit(CODE code, loc) = let
-	    val emitInstrs = app (fn i => E.emitInstr(i, regmap))
-	    fun e(FIXED{insns, size, ...}, loc) = (emitInstrs insns; loc+size)
-	      | e(SDI{size, insn}, loc) = 
-	         (emitInstrs (J.expand(insn, !size, loc)); loc + !size)
-	  in List.foldl e loc code
+    val Emitter.S.STREAM{emit,defineLabel,init,pseudoOp,...} = 
+            Emitter.makeStream()
+
+    fun emitCluster(CLUSTER{comp, regmap},loc) = let
+      val emit = emit regmap
+      fun process(PSEUDO pOp,loc) = (pseudoOp pOp; loc + P.sizeOf(pOp,loc))
+	| process(LABEL lab,loc) = (defineLabel lab; loc)
+	| process(CODE code,loc) = let
+	    fun emitInstrs insns = app emit insns
+	    fun e(FIXED{insns, size,...},loc) = (emitInstrs insns; loc+size)
+	      | e(SDI{size, insn},loc) = 
+                   (emitInstrs(J.expand(insn, !size, loc)); !size + loc)
+	  in foldl e loc code
 	  end
-    in List.foldl emit loc comp
+    in foldl process loc comp
     end
 
     val compressed = (rev (!clusterList)) before cleanUp()
   in
-    E.init(fixpoint compressed);
-    List.foldl  emitCluster 0 compressed;
+    init(fixpoint compressed);
+    foldl emitCluster 0 compressed; 
     ()
   end (*finish*)
 
 end (* bbsched2 *)
 
 
-(*
- * $Log: backpatch.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:47:14  george
- *   Version 110.10
- *
- * Revision 1.2  1998/10/06 14:07:44  george
- * Flowgraph has been removed from modules that do not need it.
- * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
- * 						[leunga]
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

@@ -1,3 +1,9 @@
+(*
+ * This is the signature of a visualization backend.
+ *
+ * -- Allen
+ *)
+
 signature GRAPH_DISPLAY =
 sig
 
@@ -7,6 +13,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

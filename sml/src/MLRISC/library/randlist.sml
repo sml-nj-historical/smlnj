@@ -1,5 +1,7 @@
 (*
  * Random Access Lists  (due to Chris Okasaki)
+ *
+ * -- Allen
  *)
 
 signature RANDOM_ACCESS_LIST =
@@ -118,6 +120,3 @@ struct
    fun toList rl  = foldr op:: [] rl
 end
 
-(*
- * $Log$
- *)

@@ -4,538 +4,804 @@
  *
  * generates machine code from the mltree.
  *
+ * This new version has been completely rewritten to take (more) advantage
+ * of the new improved instruction set. 
+ * 
+ * Please see the README.hppa file for details.
+ *
+ * -- Allen
  *)
+
 functor Hppa
   (structure HppaInstr : HPPAINSTR
-   structure HppaMLTree : MLTREE where Region = HppaInstr.Region
-                                 and Constant = HppaInstr.Constant
-   structure Flowgen : FLOWGRAPH_GEN where I = HppaInstr
-                                     and T = HppaMLTree
-                                     and B = HppaMLTree.BNames
-   structure MilliCode : HPPA_MILLICODE where I = HppaInstr
-   structure LabelComp : LABEL_COMP where I = HppaInstr
-                                    and T = HppaMLTree
-(* DBM: sharing/defn conflict:
-     sharing Flowgen.I = MilliCode.I = LabelComp.I = HppaInstr 
-     sharing Flowgen.T = LabelComp.T = HppaMLTree
-     sharing HppaMLTree.Region = HppaInstr.Region
-     sharing HppaMLTree.Constant = HppaInstr.Constant
-     sharing HppaMLTree.BNames = Flowgen.B
-*)
-  ) : MLTREECOMP = 
+   structure HppaMLTree : MLTREE
+      where Region = HppaInstr.Region
+        and Constant = HppaInstr.Constant
+      where type cond = MLTreeBasis.cond
+        and type fcond = MLTreeBasis.fcond
+        and type rounding_mode = MLTreeBasis.rounding_mode
+   structure Stream : INSTRUCTION_STREAM
+      where B = HppaMLTree.BNames
+        and P = HppaMLTree.PseudoOp 
+   structure MilliCode : HPPA_MILLICODE
+      where I = HppaInstr
+   structure LabelComp : LABEL_COMP 
+      where I = HppaInstr
+        and T = HppaMLTree
+   val costOfMultiply : int ref
+   val costOfDivision : int ref
+  ) : MLTREECOMP =
 struct
-  structure I = HppaInstr
-  structure F = Flowgen
-  structure T = HppaMLTree
-  structure C = HppaCells
-  structure MC = MilliCode
-  structure LC = LabelComp 
-  structure Region = I.Region
+   structure S = Stream
+   structure I = HppaInstr
+   structure T = HppaMLTree
+   structure C = HppaCells
+   structure MC = MilliCode
+   structure LC = LabelComp
+   structure LE = LabelExp
+   structure Region = I.Region
+   structure Gen = MLTreeGen(structure T = T
+                             val intTy = 32
+                             val naturalWidths = [32]
+                            )
 
-  structure M = struct
-    (* runtime system dependent constants. *)
-    val float64TmpOffset = 0				(* must be < 16 *)
-    val float32TmpOffset = float64TmpOffset		(* must be < 16 *)
-    val cvti2dOffset = ~4		
-  end
+   structure W = Word32
+   functor Multiply32 = MLTreeMult
+    (structure I = I
+     structure T = T
+     val intTy = 32
+     type arg  = {r1:C.register,r2:C.register,d:C.register}
+     type argi = {r:C.register,i:int,d:C.register}
 
-  fun error msg = MLRiscErrorMsg.impossible ("Hppa." ^ msg)
+     fun mov{r,d} = I.COPY{dst=[d],src=[r],tmp=NONE,impl=ref NONE}
+     fun add{r1,r2,d} = I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}
+     fun slli{r,i,d} = [I.SHIFT{s=I.ZDEP,r=r,p=31-i,len=32-i,t=d}]
+     fun srli{r,i,d} = [I.SHIFT{s=I.EXTRU,r=r,p=31-i,len=32-i,t=d}]
+     fun srai{r,i,d} = [I.SHIFT{s=I.EXTRS,r=r,p=31-i,len=32-i,t=d}]
+    )
 
-  val itow = Word.fromInt
+   (* signed, trapping version of multiply and divide *)
+   structure Mult32 = Multiply32
+    (val trapping = true
+     val signed = true
+     val multCost = costOfMultiply
+     val divCost  = costOfDivision
+     fun addv{r1,r2,d} = [I.ARITH{a=I.ADDO,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.ARITH{a=I.SUBO,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH1ADDO,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDO,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDO,r1=r1,r2=r2,t=d}])
+    )
 
-  val emitInstr = F.emitInstr
-  val emit = F.emitInstr
-  val ldLabelEA = LC.ldLabelEA emit
-  val ldLabelOpnd = LC.ldLabelOpnd emit
+   (* unsigned, non-trapping version of multiply and divide *)
+   structure Mulu32 = Multiply32
+    (val trapping = false
+     val signed   = false
+     val multCost = costOfMultiply
+     val divCost  = costOfDivision
+     fun addv{r1,r2,d} = [I.ARITH{a=I.ADD,r1=r1,r2=r2,t=d}]
+     fun subv{r1,r2,d} = [I.ARITH{a=I.SUB,r1=r1,r2=r2,t=d}]
+     val sh1addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH1ADDL,r1=r1,r2=r2,t=d}])
+     val sh2addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH2ADDL,r1=r1,r2=r2,t=d}])
+     val sh3addv = SOME(fn{r1,r2,d} => [I.ARITH{a=I.SH3ADDL,r1=r1,r2=r2,t=d}])
+    )
 
-  datatype ea = DISPea of int * I.operand  | INDXea of int * int
+   fun error msg = MLRiscErrorMsg.error("Hppa",msg)
 
-  (* integer ranges *)
-  fun im5 n = n < 16 andalso n >= ~16
-  fun im11 n = n < 1024 andalso n >= ~1024
-  fun im14 n = n < 8192 andalso n >= ~8192
+   datatype ea = 
+     DISPea of C.register * I.operand  (* displacement *)
+   | INDXea of C.register * C.register      (* indexed *)
+   | INDXSCALEDea of C.register * C.register (* indexed with scaling (b,x) *)
 
-  fun split n = let
-    val w = Word.fromInt(n)
-  in
-    (Word.toIntX(Word.~>>(w, 0w11)), Word.toIntX(Word.andb(w, 0wx7ff)))
-  end
+   datatype opnd = datatype LC.lab_opnd
+   datatype times248 = TIMES1
+                     | TIMES2 
+                     | TIMES4 
+                     | TIMES8 
 
-  val zeroR = 0
-  val zeroEA = I.Direct(zeroR)
+   val itow = W.fromInt
 
-  fun emitMove(src, dst) = emit(I.ARITH{a=I.OR, r1=src, r2=zeroR, t=dst})
+   fun selectInstructions
+        (S.STREAM{emit, defineLabel, entryLabel, init, finish, annotation,
+                  exitBlock, blockName, pseudoOp, ...}) =
+   let
+       (* operand type and effective addresss *)
+ 
+       val newReg  = C.newReg
+       val newFreg = C.newFreg
+       val CRReg   = C.Reg C.CR
+       val zeroR = 0  
+       val zeroF = C.FPReg 0
+       val zeroEA = I.Direct zeroR
+       val zeroT = T.REG(32,zeroR)
+       val zeroImmed = I.IMMED 0
+       val zeroOpn = OPND(zeroImmed)
+       val emit = emit(fn _ => 0)
 
-  fun loadImmedRd(n, rd) = 
-    if im14 n then (emit(I.LDO{i=I.IMMED n, b=0, t=rd}); rd)
-    else let
-        val (hi, lo) = split n
-	val tmpR = C.newReg()
-      in
-	emit(I.LDIL{i=I.IMMED hi, t=tmpR});
-	emit(I.LDO{i=I.IMMED lo, b=tmpR, t=rd});
-	rd
-      end
+       fun mark(i,an) =
+       let fun f(i,[]) = i
+             | f(i,a::an) = f(I.ANNOTATION{i=i,a=a},an)
+       in  emit(f(i,an)) end
+ 
+       val ldLabelEA = LC.ldLabelEA emit
+       val ldLabelOpnd = LC.ldLabelOpnd emit
 
-  fun loadImmed n = loadImmedRd(n, C.newReg())
+       (* Check whether an expression is being multiplied by 2, 4, or 8 *)
+       fun times(T.MULU(_,e,T.LI 2)) = (TIMES2,e)
+         | times(T.MULU(_,e,T.LI32 0w2)) = (TIMES2,e)
+         | times(T.MULU(_,e,T.LI 4)) = (TIMES4,e)
+         | times(T.MULU(_,e,T.LI32 0w4)) = (TIMES4,e)
+         | times(T.MULU(_,e,T.LI 8)) = (TIMES8,e)
+         | times(T.MULU(_,e,T.LI32 0w8)) = (TIMES8,e)
+         | times(T.MULU(_,T.LI 2,e)) = (TIMES2,e)
+         | times(T.MULU(_,T.LI32 0w2,e)) = (TIMES2,e)
+         | times(T.MULU(_,T.LI 4,e)) = (TIMES4,e)
+         | times(T.MULU(_,T.LI32 0w4,e)) = (TIMES4,e)
+         | times(T.MULU(_,T.LI 8,e)) = (TIMES8,e)
+         | times(T.MULU(_,T.LI32 0w8,e)) = (TIMES8,e)
+         | times(T.SLL(_,e,T.LI 1))  = (TIMES2,e)
+         | times(T.SLL(_,e,T.LI32 0w1))  = (TIMES2,e)
+         | times(T.SLL(_,e,T.LI 2))  = (TIMES4,e)
+         | times(T.SLL(_,e,T.LI32 0w2))  = (TIMES4,e)
+         | times(T.SLL(_,e,T.LI 3))  = (TIMES8,e)
+         | times(T.SLL(_,e,T.LI32 0w3))  = (TIMES8,e)
+         | times e = (TIMES1,e)
 
-  fun loadWord32Rd(w, rd) = let
-    val toInt = Word32.toIntX
-  in
-    if Word32.<(w, 0w8192) then emit(I.LDO{i=I.IMMED(toInt w), b=0, t=rd})
-    else let 
-        val tmpR = C.newReg()
-	val hi = Word32.~>>(w, 0w11)
-	val lo = Word32.andb(w, 0wx7ff)
-      in
-	emit(I.LDIL{i=I.IMMED(toInt hi), t=tmpR});
-	emit(I.LDO{i=I.IMMED(toInt lo), b=tmpR, t=rd})
-      end;
-    rd
-  end
-  fun loadWord32 w = loadWord32Rd(w, C.newReg())
+       (* trapping version of the above *)
+       fun timest(T.MULT(_,e,T.LI 2)) = (TIMES2,e)
+         | timest(T.MULT(_,e,T.LI 4)) = (TIMES4,e)
+         | timest(T.MULT(_,e,T.LI 8)) = (TIMES8,e)
+         | timest(T.MULT(_,T.LI 2,e)) = (TIMES2,e)
+         | timest(T.MULT(_,T.LI 4,e)) = (TIMES4,e)
+         | timest(T.MULT(_,T.LI 8,e)) = (TIMES8,e)
+         | timest e = (TIMES1,e)
 
-  fun milliCall(milliFn, exp1, exp2, ord, rd) = let
-    val (rs, rt) = orderedRR(exp1, exp2, ord)
-  in app emit (milliFn{rs=rs, rt=rt, rd=rd}); rd
-  end
 
-  and orderedRR(exp1, exp2, T.LR) = (regAction exp1, regAction exp2)
-    | orderedRR(exp1, exp2, T.RL) = let val r2 = regAction exp2
-      in 
-	(regAction exp1, r2)
-      end
-  
-  and orderedFF(exp1, exp2, T.LR) = (fregAction exp1, fregAction exp2)
-    | orderedFF(exp1, exp2, T.RL) = let val f2 = fregAction exp2
-      in (fregAction exp1, f2)
-      end
+       fun im5 n = n < 16 andalso n >= ~16
+       fun im11 n = n < 1024 andalso n >= ~1024
+       fun im14 n = n < 8192 andalso n >= ~8192
 
-  and eaAction(T.ADD(exp, T.LI n)) = DISPea(regAction exp, I.IMMED n)
-    | eaAction(T.ADD(T.LI n, exp)) = DISPea(regAction exp, I.IMMED n)
-    | eaAction(T.ADD(exp, T.CONST c)) = DISPea(regAction exp, I.ConstOp c)
-    | eaAction(T.ADD(T.CONST c, exp)) = DISPea(regAction exp, I.ConstOp c)
-    | eaAction(T.ADD(e1 as T.LABEL _, e2)) = eaAction(T.ADD(e2, e1))
-    | eaAction(T.ADD(e, T.LABEL le)) = let
-        val rs = regAction(e)
-      in
-	case ldLabelEA(le)
-	of (0, opnd) => DISPea(rs, opnd)
-         | (rt, I.IMMED 0) => INDXea(rs, rt)
-	 | (rt, opnd) => let 
-	     val tmpR = C.newReg()
-           in
-	     emit(I.ARITH{a=I.ADD, r1=rs, r2=rt, t=tmpR});
-	     DISPea(tmpR, opnd)
+       (* Split values into 11 low bits and 21 high bits *)
+       fun split11w w = 
+           {hi = Word32.toIntX(Word32.~>>(w,0w11)), 
+            lo = Word32.toIntX(Word32.andb(w,0wx7ff))}
+       fun split11 n = split11w(Word32.fromInt n)
+
+       (* load immediate *)
+       fun loadImmed(n,t,an) =
+           if im14 n 
+           then mark(I.LDO{i=I.IMMED n,b=0,t=t},an)
+           else let val {hi,lo} = split11 n
+                    val tmp = newReg()
+                in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
+                    mark(I.LDO{i=I.IMMED lo,b=tmp,t=t},an)
+                end
+
+       (* load word constant into register t *)
+       fun loadImmedw(w,t,an) =
+           if Word32.<(w,0w8192) 
+           then mark(I.LDO{i=I.IMMED(Word32.toIntX w),b=0,t=t},an)
+           else let val {hi,lo} = split11w w
+                    val tmp = newReg()
+                in  emit(I.LDIL{i=I.IMMED hi,t=tmp});
+                    mark(I.LDO{i=I.IMMED lo,b=tmp,t=t},an)
+                end
+
+       (* generate code to load a immediate constant *) 
+       fun immed n = let val t = newReg() in loadImmed(n,t,[]); t end
+       fun immedw w = let val t = newReg() in loadImmedw(w,t,[]); t end
+
+       (* load constant *)
+       fun loadConst(c,t,an) = mark(I.LDO{b=0,i=I.ConstOp c,t=t},an)
+
+       (* convert an operand into a register *)
+       fun reduceOpn i = 
+            let val t = newReg()
+            in  emit(I.LDO{i=i,b=0,t=t}); t end
+ 
+       (* emit parallel copies *)
+       fun copy(dst,src,an) =
+         mark(I.COPY{dst=dst,src=src,impl=ref NONE,
+                     tmp=case dst of [_] => NONE
+                                | _ => SOME(I.Direct(newReg()))},an)
+       fun fcopy(dst,src,an) =
+         mark(I.FCOPY{dst=dst,src=src,impl=ref NONE,
+                      tmp=case dst of [_] => NONE
+                                  | _ => SOME(I.FDirect(newFreg()))},an)
+ 
+       (* move register s to register t *)
+       fun move(s,t,an) =
+           if s = t orelse t = zeroR then ()
+           else if s = zeroR then
+                mark(I.LDO{i=zeroImmed,b=zeroR,t=t},an)
+           else mark(I.COPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+ 
+       (* move floating point register s to register t *)
+       fun fmove(s,t,an) =
+           if s = t then ()
+           else mark(I.FCOPY{src=[s],dst=[t],impl=ref NONE,tmp=NONE},an)
+
+       (* generate millicode function call *)
+       fun milliCall(milliFn, e1, e2, rd) =
+       let val rs = expr e1 
+           val rt = expr e2
+       in  app emit (milliFn{rs=rs,rt=rt,rd=rd}) end 
+
+       (* emit an arithmetic op with possible immediate mode 
+        * The immed operand is the first operand on the HPPA! Arrrrggggghhhh!
+        *)
+       and immedArith(a,ai,e1,e2,t,an) =  
+          case (opn e1,expr e2) of
+             (REG r1,r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
+           | (OPND i,r) => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+
+       (* emit a commutative arithmetic op with immediate mode *)
+       and commImmedArith(a,ai,e1,e2,t,an) =
+          case (opn e1,opn e2) of
+             (REG r1,REG r2) => mark(I.ARITH{a=a,r1=r1,r2=r2,t=t},an)
+          |  (REG r,OPND i)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+          |  (OPND i,REG r)  => mark(I.ARITHI{ai=ai,r=r,i=i,t=t},an)
+          |  (OPND i,OPND j) => mark(I.ARITHI{ai=ai,r=reduceOpn i,i=j,t=t},an)
+
+       (* emit an arithmetic op *)
+       and arith(a,e1,e2,t,an) = 
+          mark(I.ARITH{a=a,r1=expr e1,r2=expr e2,t=t},an)
+ 
+       (* emit an unary floating point op *)
+       and funary(a,e,t,an) = mark(I.FUNARY{fu=a,f=fexpr e,t=t},an)
+
+       (* emit an conversion floating point op *)
+       and fcnv(a,e,t,an) = mark(I.FCNV{fcnv=a,f=fexpr e,t=t},an)
+ 
+       (* emit a binary floating point op *)
+       and farith(a,e1,e2,t,an) = 
+           mark(I.FARITH{fa=a,r1=fexpr e1,r2=fexpr e2,t=t},an)
+ 
+       (* convert an expression into an addressing mode 
+        * scale is the size of the data being addressed.
+        *)
+       and addr(scale,T.ADD(_,e,T.LI n))    = DISPea(expr e,I.IMMED n)
+         | addr(scale,T.ADD(_,e,T.CONST c)) = DISPea(expr e,I.ConstOp c)
+         | addr(scale,T.ADD(ty,i as T.LI _,e)) = addr(scale,T.ADD(ty,e,i))
+         | addr(scale,T.ADD(_,T.CONST c,e)) = DISPea(expr e,I.ConstOp c)
+         | addr(scale,T.ADD(_,e,T.LABEL le)) = 
+             let val rs = expr e
+             in  case ldLabelEA le of
+                    (0, opnd) => DISPea(rs,opnd)
+                 |  (rt,I.IMMED 0) => INDXea(rs,rt)
+                 |  (rt,opnd) => 
+                     let val tmp = newReg()
+                     in  emit(I.ARITH{a=I.ADD,r1=rs,r2=rt,t=tmp});
+                         DISPea(tmp,opnd)
+                     end
+             end
+         | addr(scale,T.ADD(t,e1 as T.LABEL l,e2)) = addr(scale,T.ADD(t,e2,e1))
+         | addr(scale,T.ADD(_,e1,e2)) = 
+           let (* check for special multiply add sequence 
+                * here, e1 is is scaled 
+                *)
+               fun scaleIndexed(actualScale,opcode,e1,e2) = 
+               if actualScale = scale then (* can we use scaled indexing mode?*)
+                   let val x = expr e1
+                       val b = expr e2
+                   in  INDXSCALEDea(b,x) 
+                   end
+               else  (* no, use the SHnADD operator, then *)
+                   let val tmp = newReg()
+                   in  emit(I.ARITH{a=opcode,r1=expr e1,r2=expr e2,t=tmp});
+                       DISPea(tmp,zeroImmed)
+                   end
+           in  case times e1 of
+                 (TIMES2,e1) => scaleIndexed(16,I.SH1ADD,e1,e2)
+               | (TIMES4,e1) => scaleIndexed(32,I.SH2ADD,e1,e2)
+               | (TIMES8,e1) => scaleIndexed(64,I.SH3ADD,e1,e2)
+               | _ => 
+               case times e2 of
+                 (TIMES2,e2) => scaleIndexed(16,I.SH1ADD,e2,e1)
+               | (TIMES4,e2) => scaleIndexed(32,I.SH2ADD,e2,e1)
+               | (TIMES8,e2) => scaleIndexed(64,I.SH3ADD,e2,e1)
+               | _ => INDXea(expr e1,expr e2)
            end
-      end
-    | eaAction(T.ADD(exp1, exp2)) = INDXea(regAction exp1, regAction exp2)
-    | eaAction(T.SUB(exp, T.LI n, _)) = DISPea(regAction exp, I.IMMED(~n))
-    | eaAction(T.LABEL lexp) = DISPea(ldLabelEA(lexp))
-    | eaAction exp = DISPea(regAction exp, I.IMMED 0)
-    
-  and stmAction exp = let
-    fun store(ea, reg, instr, mem) = let
-      val (b, d) = 
-	  case eaAction ea
-	    of DISPea (bd as (base, I.IMMED disp)) => 
-		 if im14 disp then bd 
-		 else let 
-		     val (hi21, lo11) = split disp
-		     val tmpR1 = C.newReg()
-		     val tmpR2 = C.newReg()
-		   in
-		     emit(I.LDIL{i=I.IMMED hi21, t=tmpR1});
-		     emit(I.ARITH{a=I.ADD, r1=base, r2=tmpR1, t=tmpR2});
-		     (tmpR2, I.IMMED lo11)
-		   end
-	     | DISPea bd => bd
-	     | INDXea(r1,r2) => let 
-		 val t = C.newReg()
-	       in
-		 emit (I.ARITH {a=I.ADD, r1=r1, r2=r2, t=t});
-		 (t, I.IMMED 0)
-	       end
-    in emit (I.STORE {st=instr, b=b, d=d, r=regAction reg, mem=mem})
-    end
+         | addr(scale,T.SUB(ty,e,T.LI n)) = addr(scale,T.ADD(ty,e,T.LI(~n)))
+         | addr(scale,T.LABEL lexp)       = DISPea(ldLabelEA(lexp))
+         | addr(scale,ea)                 = DISPea(expr ea,zeroImmed)
+ 
+       (* emit an integer load 
+        * li - load immediate, 
+        * l  - load indexed
+        * ls - load indexed with scaling
+        * r1 is base r2 is x
+        *)
+       and load(scale,li,l,ls,ea,t,mem,an) = 
+           case addr(scale,ea) of
+              DISPea(r,i as I.IMMED off) =>
+                 if im14 off then
+                    mark(I.LOADI{li=li,r=r,i=i,t=t,mem=mem},an)
+                 else
+                    mark(I.LOAD{l=l,r1=r,r2=immed off,t=t,mem=mem},an)
+            | DISPea(r,i) => mark(I.LOADI{li=li,r=r,i=i,t=t,mem=mem},an) 
+            | INDXea(r1,r2) => mark(I.LOAD{l=l,r1=r1,r2=r2,t=t,mem=mem},an) 
+            | INDXSCALEDea(b,x) => mark(I.LOAD{l=ls,r1=b,r2=x,t=t,mem=mem},an)
+ 
+       (* emit an integer store *)
+       and store(st,ea,r,mem,an) =
+           let val (b,d) =
+               case addr(0,ea) of
+                  DISPea(b,d as I.IMMED disp) => 
+                    if im14 disp then (b,d) 
+                    else let val {hi,lo} = split11 disp
+                             val tmp1    = newReg()
+                             val tmp2    = newReg()
+                         in  emit(I.LDIL{i=I.IMMED hi,t=tmp1});
+                             emit(I.ARITH{a=I.ADD,r1=b,r2=tmp1,t=tmp2});
+                             (tmp2,I.IMMED lo)
+                         end  
+                | DISPea bd => bd
+                | INDXea(r1,r2) => 
+                    let val tmp = newReg()
+                    in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=tmp});
+                        (tmp,I.IMMED 0)
+                    end
+                | INDXSCALEDea _ => error "store"
+           in  mark(I.STORE{st=st,b=b,d=d,r=r,mem=mem},an) end
 
-    fun fstore(ea, freg, mem) = let
-      val r = fregAction freg
-    in
-      case eaAction ea
-	of DISPea(b, I.IMMED d) => 
-	    if im5 d then
-	      emit(I.FSTORE {fst=I.FSTDS, b=b, d=d, r=r, mem=mem})
-	    else
-	      emit(I.FSTOREX{fstx=I.FSTDX, b=b, x=loadImmed d, r=r, mem=mem})
-         | DISPea(b, d) => let
-	      val tmpR = C.newReg()
-	   in 
-	     emit(I.ARITHI{ai=I.ADDI, r=b, i=d, t=tmpR});
-	     emit(I.FSTORE{fst=I.FSTDS, b=tmpR, d=0, r=r, mem=mem})
-	   end
-	 | INDXea(b,x) => emit(I.FSTOREX{fstx=I.FSTDX, b=b, x=x, r=r, mem=mem})
-    end
+       (* emit a floating point load *)
+       and fload(scale,fl,flx,flxs,ea,t,mem,an) =
+           case addr(scale,ea) of
+             INDXea(b,x) => mark(I.FLOADX{flx=flx,b=b,x=x,t=t,mem=mem},an)
+           | INDXSCALEDea(b,x) => 
+               mark(I.FLOADX{flx=flxs,b=b,x=x,t=t,mem=mem},an)
+           | DISPea(b,I.IMMED d) =>
+               if im5 d then 
+                  mark(I.FLOAD{fl=fl,b=b,d=d,t=t,mem=mem},an)
+               else
+                  mark(I.FLOADX{flx=flx,b=b,x=immed d,t=t,mem=mem},an)
+           | DISPea(b,d) => 
+               let val tmp = newReg()
+               in  emit(I.ARITHI{ai=I.ADDI,r=b,i=d,t=tmp});
+                   mark(I.FLOADX{flx=flx,b=tmp,x=zeroR,t=t,mem=mem},an)
+               end
+  
+       (* emit a floating point store *)
+       and fstore(scale,fst,fstx,fstxs,ea,data,mem,an) =
+           let val r = fexpr data 
+           in  case addr(scale,ea) of
+                 DISPea(b,I.IMMED d) => 
+                   if im5 d then mark(I.FSTORE{fst=fst,b=b,d=d,r=r,mem=mem},an)
+                   else mark(I.FSTOREX{fstx=fstx,b=b,x=immed d,r=r,mem=mem},an)
+               | DISPea(b,d) => 
+                   let val tmp = newReg()
+                   in  emit(I.ARITHI{ai=I.ADDI,r=b,i=d,t=tmp});
+                       mark(I.FSTORE{fst=I.FSTDS,b=tmp,d=0,r=r,mem=mem},an)
+                   end
+               | INDXea(b,x) => 
+                   mark(I.FSTOREX{fstx=fstx,b=b,x=x,r=r,mem=mem},an)
+               | INDXSCALEDea(b,x) => 
+                   mark(I.FSTOREX{fstx=fstxs,b=b,x=x,r=r,mem=mem},an)
+           end
+ 
+       (* emit an integer branch instruction *)
+                              
+         (* generate a branch *)  
+       and branch(_,T.CMP(ty,cc,T.LI n,e),lab,an) = (* optimize cmp immed *) 
+             emitBranchCmpWithImmed(ty,cc,n,e,lab,an)
+         | branch(cond,T.CMP(ty,cc,e1,e2 as T.LI _),lab,an) = (* commute *) 
+             branch(cond,T.CMP(ty,MLTreeUtil.swapCond cc,e2,e1),lab,an)
+         | branch(_,T.CMP(ty,cc,a,b),lab,an) = (* do the usual *)
+             emitBranch(ty,cc,expr a,expr b,lab,an)
+         | branch(cc,e,lab,an) = error "branch: what is the semantics?" 
 
-    fun branch(bc, r1, r2, t) = let
-	val flab = Label.newLabel ""
-	fun emitBranch(cmp, ic, r1, r2) = 
-	  (emit(I.BCOND{cmp=cmp, bc=ic, r1=r1, r2=r2, t=t, f=flab, n=true});
-	   F.defineLabel flab)
-    in
-      (case bc
-	of T.LT  => emitBranch(I.COMBT, I.LT, r1, r2)
-	 | T.LE  => emitBranch(I.COMBT, I.LE, r1, r2)
-	 | T.GT  => emitBranch(I.COMBT, I.LT, r2, r1)
-	 | T.GE  => emitBranch(I.COMBT, I.LE, r2, r1)
-	 | T.EQ  => emitBranch(I.COMBT, I.EQ, r1, r2)
-	 | T.LTU => emitBranch(I.COMBT, I.LTU, r1, r2)
-	 | T.LEU => emitBranch(I.COMBT, I.LEU, r1, r2)
-	 | T.GEU => emitBranch(I.COMBT, I.LEU, r2, r1)
-	 | T.GTU => emitBranch(I.COMBT, I.LTU, r2, r1)
-	 | T.NEQ  => emitBranch(I.COMBF, I.EQ,  r1, r2)
-      (*esac*))
-    end
-    fun copyTmp() = SOME(I.Direct(C.newReg()))
-    fun fcopyTmp() = SOME(I.FDirect(C.newFreg()))
+        (* generate a branch cmp with immed *)
+       and emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,e,T.LI mask),t,an) = 
+             emitBranchOnBit(ty,cc,n,e2,e,itow mask,t,an)
+         | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,e,T.LI32 mask),t,an) =
+             emitBranchOnBit(ty,cc,n,e2,e,mask,t,an)
+         | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,T.LI mask,e),t,an) = 
+             emitBranchOnBit(ty,cc,n,e2,e,itow mask,t,an)
+         | emitBranchCmpWithImmed(ty,cc,n,e2 as T.ANDB(_,T.LI32 mask,e),t,an) = 
+             emitBranchOnBit(ty,cc,n,e2,e,mask,t,an)
+         | emitBranchCmpWithImmed(ty,cc,n,e2,t,an) = 
+             emitBranchI(ty,cc,n,e2,t,an)
 
-    val reduce={stm=stmAction, rexp=regAction, emit=emit}
-    val returnPtr = 2
-  in
-    case exp
-    of T.MV(rd, exp) => 
-       (case exp
-	 of T.REG(rs) => if rd = rs then () else emitMove(rs, rd)
-	  | T.LI n => (loadImmedRd(n, rd); ())
-	  | T.LI32 w => (loadWord32Rd(w, rd); ())
-	  | _ => let val rs = regActionRd(exp, rd)
-	      in if rs = rd then () else emitMove(rs, rd)
-	      end
-       (*esac*))
-     | T.FMV(fd, exp) => let
-	  fun fmove(src,dst) = I.FUNARY{fu=I.FCPY, f=src, t=dst}
-       in
-	  case exp
-	   of T.FREG(fs) => 
-	        if fs = fd then () else emit(fmove(fs, fd))
-	    | _ => let val fs = fregActionFd(exp, fd)
-		in if fs = fd then () else emit(fmove(fs, fd))
-		end
-	  (*esac*)
-       end
-     | T.CCMV(cd, exp) => let
-	 val cs = case exp of T.CC(r) => r | _ => ccActionCd(exp, cd)
-       in if cs=cd then () else emitMove(cs, cd)
-       end
+        (* generate a branch on bit *)
+       and emitBranchOnBit(ty,cc,n,e2,e,mask,t,an) =
+           let fun isPowerOf2 w = W.andb(w,w-0w1) = 0w0
+               fun log w = 
+               let fun f(0w1,n) = n
+                 | f(w,n) = f(W.>>(w,0w1),n+1)
+               in  f(w,0) end
+               val n' = itow n
+           in  if (n' = 0w0 orelse n' = mask) andalso
+                  (cc = T.EQ orelse cc = T.NE) andalso
+                  (mask > 0w0 andalso isPowerOf2 mask) then (* bit test! *)
+                  let val bc = 
+                          case (cc,n') of
+                            (T.EQ,0w0) => I.BCLR (* bit is 0 *)
+                          | (T.EQ,_)   => I.BSET (* bit is 1 *)
+                          | (T.NE,0w0) => I.BSET (* bit is 1 *)
+                          | (T.NE,_)   => I.BCLR (* bit is 0 *)
+                          | _          => error "emitBranchOnBit"
+                      val f = Label.newLabel "" 
+                      val bit = 31 - log mask 
+                  in  mark(I.BB{bc=bc,r=expr e,p=bit,t=t,f=f,
+                                n=false, nop=true},an);
+                      defineLabel f
+                  end 
+               else
+                  emitBranchI(ty,cc,n,e2,t,an)
+           end
+                  
+       (* generate a branch cmp with immediate *)
+       and emitBranchI(ty,cc,n,e2,t,an) = 
+           let val r2 = expr e2 
+           in  if im5 n then
+               let val f = Label.newLabel "" 
+                   val (cmpi,bc) =
+                       case cc of
+                         T.LT  => (I.COMIBT, I.LT)
+                       | T.LE  => (I.COMIBT, I.LE)
+                       | T.GT  => (I.COMIBF, I.LE)
+                       | T.GE  => (I.COMIBF, I.LT)
+                       | T.EQ  => (I.COMIBT, I.EQ)
+                       | T.LTU => (I.COMIBT, I.LTU)
+                       | T.LEU => (I.COMIBT, I.LEU)
+                       | T.GEU => (I.COMIBF, I.LTU)
+                       | T.GTU => (I.COMIBF, I.LEU)
+                       | T.NE  => (I.COMIBF, I.EQ)
+               in  mark(I.BCONDI{cmpi=cmpi,bc=bc,i=n,r2=r2,t=t,f=f,
+                                  n=false, nop=true},an);
+                   defineLabel f
+               end
+               else emitBranch(ty,cc,immed n,r2,t,an)
+           end
 
-     | T.COPY(rds as [_], rss) => 
-        emit(I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=NONE})
-     | T.COPY(rds, rss) => 
-        emit(I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=copyTmp()})
-     | T.FCOPY(fds as [_], fss)=>  
-        emit(I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=NONE})
-     | T.FCOPY(fds, fss) =>  
-        emit(I.FCOPY{dst=fds, src=fss, impl=ref NONE, tmp=fcopyTmp()})
+       (* generate a branch *)
+       and emitBranch(ty,cond,r1,r2,t,an) = 
+           let val f = Label.newLabel ""
+               val (cmp,bc,r1,r2) =
+                    case cond of
+                       T.LT  => (I.COMBT, I.LT, r1, r2)
+                     | T.LE  => (I.COMBT, I.LE, r1, r2)
+                     | T.GT  => (I.COMBT, I.LT, r2, r1)
+                     | T.GE  => (I.COMBT, I.LE, r2, r1)
+                     | T.EQ  => (I.COMBT, I.EQ, r1, r2)
+                     | T.LTU => (I.COMBT, I.LTU, r1, r2)
+                     | T.LEU => (I.COMBT, I.LEU, r1, r2)
+                     | T.GEU => (I.COMBT, I.LEU, r2, r1)
+                     | T.GTU => (I.COMBT, I.LTU, r2, r1)
+                     | T.NE  => (I.COMBF, I.EQ, r1, r2)
+           in  mark(I.BCOND{cmp=cmp,bc=bc,r1=r1,r2=r2,t=t,f=f,
+                            n=false,nop=true},an);
+               defineLabel f
+           end
 
-     | T.JMP _ => LC.doJmp(reduce, exp)
-     | T.CALL _ => LC.doCall(reduce, exp)
-     | T.RET  => emit(I.BV{labs=[], x=0, b=returnPtr, n=true}) 
-     | T.STORE8(ea, r, region)  => store(ea, r, I.STB, region)
-     | T.STORE32(ea, r, region) => store(ea, r, I.STW, region)
-     | T.STORED(ea, f, region)  => fstore(ea, f, region)
-     | T.STORECC(ea, cc, region)  => error "stmAction.STORECC"
-     | T.BCC(_, T.CMP(cc, exp, T.LI n, ord), lab) => let
-	 val r = regAction exp
-       in
-	 if im5 n then let
-	     val flab = Label.newLabel ""
-	     fun emitBranch(cmpi, ic) = 
-	       (emit(I.BCONDI{cmpi=cmpi,bc=ic,i=n,r2=r,t=lab,f=flab, n=true});
-		F.defineLabel flab)
-	   in
-	     case cc
-	      of T.LT  => emitBranch(I.COMIBF, I.LE)
-	       | T.LE  => emitBranch(I.COMIBF, I.LT)
-	       | T.GT  => emitBranch(I.COMIBT, I.LT)
-	       | T.GE  => emitBranch(I.COMIBT, I.LE)
-	       | T.EQ  => emitBranch(I.COMIBT, I.EQ)
-	       | T.LTU => emitBranch(I.COMIBF, I.LEU)
-	       | T.LEU => emitBranch(I.COMIBF, I.LTU)
-	       | T.GEU => emitBranch(I.COMIBT, I.LEU)
-	       | T.GTU => emitBranch(I.COMIBT, I.LTU)
-	       | T.NEQ  => emitBranch(I.COMIBF, I.EQ)
-	   end
-	 else 
-	   branch(cc, r, loadImmed n, lab)
-       end
-     | T.BCC(_, T.CMP(cc, exp1, exp2, order), lab) => let
-	 val (r1, r2) = orderedRR(exp1, exp2, order)
-       in
-	 branch(cc, r1, r2, lab)
-       end
-     | T.BCC(_, e, lab) => let
-	  val cc = ccAction e
-	  val flab = Label.newLabel""
-       in
-	 emit(I.BCOND{cmp=I.COMBT, bc=I.EQ, r1=cc, r2=zeroR, 
-		      t=lab, f=flab, n=true});
-	 F.defineLabel flab
-       end
-     | T.FBCC(_, T.FCMP(cc, exp1, exp2, order), lab) => let
-	 val (f1,f2) = orderedFF(exp1, exp2, order)
-	 val fallThrough = Label.newLabel ""
-	 fun fcond T.==   = I.!=
-	   | fcond T.?<>  = I.==
-	   | fcond T.?    = I.<=>   
-	   | fcond T.<=>  = I.?
-	   | fcond T.>    = I.?<=   
-	   | fcond T.>=   = I.?<
-	   | fcond T.?>   = I.<=
-	   | fcond T.?>=  = I.<
-	   | fcond T.<    = I.?>=   
-	   | fcond T.<=   = I.?>
-	   | fcond T.?<   = I.>=
-	   | fcond T.?<=  = I.>
-	   | fcond T.<>   = I.?=
-	   | fcond T.?=   = I.<>
-       in
-	 emit(I.FBRANCH{cc=fcond cc,f1=f1,f2=f2,t=lab,f=fallThrough, n=true,
-                        long=false});
-	 F.defineLabel fallThrough
-       end
-  end
+       and getFmt e =
+           case Gen.fsize e of
+             32  => I.SGL
+           | 64  => I.DBL
+           | 128 => I.QUAD
+           | _   => error "getFmt"
 
-  (* condition code registers are implemented using 
-   * general purpose registers.
-   *)
-  and ccAction(T.CC r) = r
-    | ccAction e = ccActionCd(e, C.newCCreg())
+       (* emit a floating point branch instruction *)
+       and fbranch(c,T.FCMP(fty,cc,a,b),lab,an) =
+           let val f1 = fexpr a
+               val f2 = fexpr b
+               val fallThrough = Label.newLabel ""
+               fun fcond T.==   = I.!=
+                 | fcond T.?<>  = I.==
+                 | fcond T.?    = I.<=>
+                 | fcond T.<=>  = I.?
+                 | fcond T.>    = I.?<=
+                 | fcond T.>=   = I.?<
+                 | fcond T.?>   = I.<=
+                 | fcond T.?>=  = I.<
+                 | fcond T.<    = I.?>=
+                 | fcond T.<=   = I.?>
+                 | fcond T.?<   = I.>=
+                 | fcond T.?<=  = I.>
+                 | fcond T.<>   = I.?=
+                 | fcond T.?=   = I.<>
+                 | fcond _      = error "fcond"
+           in  mark(I.FBRANCH{cc=fcond cc,f1=f1,f2=f2,t=lab,f=fallThrough,
+                              fmt=getFmt a,n=true,long=false},an);
+               defineLabel fallThrough
+           end
+         | fbranch _ = error "fbranch"
+            
+           (* generate code for a statement *)
+       and stmt(T.MV(32,t,e),an) = doExpr(e,t,an)
+         | stmt(T.FMV(64,t,e),an) = doFexpr(e,t,an)
+         | stmt(T.CCMV(t,e),an) = doCCexpr(e,t,an)
+         | stmt(T.COPY(32,dst,src),an) = copy(dst,src,an)
+         | stmt(T.FCOPY(64,dst,src),an) = fcopy(dst,src,an)
+         | stmt(T.JMP(T.LABEL(LE.LABEL l),_),an) = mark(I.B{lab=l,n=true},an)
+         | stmt(T.JMP(ea,labs),an) = jmp(ea,labs,an)
+         | stmt(s as T.CALL _,an) = call(s,an)
+         | stmt(T.RET,an) = mark(I.BV{labs=[],x=0,b=C.returnPtr,n=true},an)
+         | stmt(T.STORE(8,ea,t,mem),an) = store(I.STB,ea,expr t,mem,an)
+         | stmt(T.STORE(16,ea,t,mem),an) = store(I.STH,ea,expr t,mem,an)
+         | stmt(T.STORE(32,ea,t,mem),an) = store(I.STW,ea,expr t,mem,an)
+         | stmt(T.FSTORE(32,ea,t,mem),an) = 
+              fstore(32,I.FSTWS,I.FSTWX,I.FSTWX_S,ea,t,mem,an)
+         | stmt(T.FSTORE(64,ea,t,mem),an) = 
+              fstore(64,I.FSTDS,I.FSTDX,I.FSTDX_S,ea,t,mem,an)
+         | stmt(T.BCC(cond,cc,lab),an) = branch(cond,cc,lab,an)
+         | stmt(T.FBCC(cond,cc,lab),an) = fbranch(cond,cc,lab,an)
+         | stmt(T.ANNOTATION(i,a),an) = stmt(i,a::an)
+         | stmt _ = error "stmt"
 
-  and ccActionCd(T.CC r, _) = r
-    | ccActionCd(T.CMP(cond, exp1, exp2, order), rd) = let
-        val (r1, r2) = orderedRR(exp1, exp2, order)
-      in
-	case cond 
-	of T.GTU =>
-	     (emit(I.COMCLR{cc=I.GTU, r1=r1, r2=r2, t=rd});
-	      emit(I.LDO{i=I.IMMED 1, b=0, t=rd}))
-         (* enough for now *)
-         | _ => error "ccAction.CMP"		
-	(*esac*);
-	rd
-      end
-    | ccActionCd(T.FCMP _, _) = error "ccAction:FCMP"
-    | ccActionCd(T.LOADCC _, _) = error "ccAction:LOADCC"
+       and doStmt s = stmt(s,[])
 
-  and regAction(T.REG r) = r
-    | regAction exp = regActionRd(exp, C.newReg())
+       and jmp(e,labs,an) = 
+           let val (b,x) = 
+               case addr(32,e) of
+                 DISPea(b,I.IMMED 0) => (b,0)
+               | DISPea(r,i) => let val b=newReg()
+                                in  emit(I.ARITHI{ai=I.ADDI,i=i,r=r,t=b});
+                                    (b,0)
+                                end
+               | INDXea(r1,r2) => let val b=newReg()
+                                  in  emit(I.ARITH{a=I.ADD,r1=r1,r2=r2,t=b});
+                                      (b,0)
+                                  end
+               | INDXSCALEDea(b,x) => (b,x)
+           in mark(I.BV{b=b,x=x,n=true,labs=labs},an) end
 
-  and regActionRd(exp, rd) = let
-    datatype opnd = REG of int | OPND of I.operand
+       and call(s,an) = let val reduce = {stm=doStmt, rexp=expr, emit=emit}
+                        in  LC.doCall(reduce,s) end
 
-    fun opndAction(T.LI n) = 
-        if im11 n then OPND(I.IMMED n) else REG(loadImmed n)
-      | opndAction(T.LI32 w) = 
-	if Word32.<=(w, 0w1024) then OPND(I.IMMED(Word32.toInt w))
-	else REG(loadWord32 w)
-      | opndAction(T.CONST c) = OPND(I.ConstOp c)
-      | opndAction(T.LABEL le) = 
-	(case ldLabelOpnd{label=le, pref=NONE}
-	 of LC.REG r => REG r 
-          | LC.OPND opnd => OPND opnd
-	 (*esac*))
-      | opndAction exp = REG(regAction exp)
+           (* Optimize addition *)
+       and plus(times,sh1add,sh2add,sh3add,add,addi,a,b,t,an) =
+           case times a of
+              (TIMES2,a) => arith(sh1add,a,b,t,an)
+           |  (TIMES4,a) => arith(sh2add,a,b,t,an)
+           |  (TIMES8,a) => arith(sh3add,a,b,t,an)
+           |  _ =>
+           case times b of
+              (TIMES2,b) => arith(sh1add,b,a,t,an)
+           |  (TIMES4,b) => arith(sh2add,b,a,t,an)
+           |  (TIMES8,b) => arith(sh3add,b,a,t,an)
+           |  _          => commImmedArith(add,addi,a,b,t,an)
 
-    fun immedArith(exp1, exp2, order, immdOp, arithOp) = let
-      val (opnd, r2) = 
-	case order
-	 of T.LR => (opndAction exp1, regAction exp2)
-	  | T.RL => let val opnd' = opndAction exp1
-	    in
-	      (opnd', regAction exp2)
-	    end
-    in
-      case opnd 
-      of REG r1 =>  emit(I.ARITH{a=arithOp, r1=r1, r2=r2, t=rd})
-       | OPND opnd => emit(I.ARITHI{ai=immdOp, r=r2, i=opnd, t=rd})
-      (*esac*);
-      rd
-    end (* immedArith *)
+           (* Round to zero for division:
+            * d <- r + i
+            * d <- if r >= 0 then r else d
+            *)
+       and roundToZero{ty,r,i,d} = 
+          (doStmt(T.MV(ty,d,T.ADD(ty,T.REG(ty,r),T.LI i)));
+           doStmt(T.MV(ty,d,T.COND(ty,T.CMP(ty,T.GE,T.REG(ty,r),T.LI 0),
+                                   T.REG(ty,r),T.REG(ty,d))))
+          )
 
-    fun commImmedArith(arg as (exp1, exp2, ord, immdOp, arithOp)) = 
-      (case exp2 
-       of (T.LI _ | T.LI32 _ | T.CONST _ | T.LABEL _ )=>
-	    immedArith(exp2, exp1, ord, immdOp, arithOp)
-        | _ => immedArith arg
-      (*esac*))
+       and divu32 x = Mulu32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x
+       and divt32 x = Mult32.divide{mode=T.TO_ZERO,roundToZero=roundToZero} x
+       
+       and muldiv(ty,genConst,milliFn,a,b,t,commute,an) =
+           let fun const(a,i) =  
+               let val r = expr a 
+               in  app emit (genConst{r=r,i=i,d=t})
+                      handle _ => milliCall(milliFn,T.REG(ty,r),T.LI i,t)
+               end
+               fun constw(a,i) =
+                    const(a,Word32.toInt i) 
+                    handle Overflow => milliCall(milliFn,a,b,t)
+           in  case (commute,a,b) of
+                 (_,a,T.LI i)      => const(a,i)
+               | (_,a,T.LI32 i)    => constw(a,i)
+               | (true,T.LI i,a)   => const(a,i)
+               | (true,T.LI32 i,a) => constw(a,i)
+               | (_,a,b)           => milliCall(milliFn,a,b,t)
+           end 
 
-    local
-      fun shift (immdSht, varSht) = let
-	fun f(exp, T.LI n, _) = 
-	    if n < 0 orelse n > 31 then error "regActionRd:shift"
-	    else let
-	        val rs = regAction exp
-	      in
-		emit(I.SHIFT{s=immdSht, r=rs, p=31-n, len=32-n, t=rd});
-		rd
-	      end
-	  | f(exp1, exp2, order) = let
-	      val (r1, r2) = orderedRR(exp1, exp2, order)
-	      val tmp = C.newReg()
-	    in
-	      emit(I.ARITHI{ai=I.SUBI, i=I.IMMED 31, r=r2, t=tmp});
-	      emit(I.MTCTL{r=tmp, t=11});
-	      emit(I.SHIFTV{sv=varSht, r=r1, len=32, t=rd});
-	      rd
-	    end
-      in
-	f
-      end
-    in
-      val sll = shift (I.ZDEP, I.ZVDEP)
-      val srl = shift (I.EXTRU, I.VEXTRU)
-      val sra = shift (I.EXTRS, I.VEXTRS)
-    end
+           (* compile shift *)
+       and shift(immedShift,varShift,e,T.LI n,t,an) =
+             if n < 0 orelse n > 31 then error "shift"
+             else mark(I.SHIFT{s=immedShift,r=expr e,p=31-n,len=32-n,t=t},an)
+         | shift(immedShift,varShift,e1,e2,t,an) =
+             let val r1 = expr e1
+                 val r2 = expr e2
+                 val tmp = newReg()
+             in  emit(I.ARITHI{ai=I.SUBI, i=I.IMMED 31, r=r2, t=tmp});
+                 emit(I.MTCTL{r=tmp, t=CRReg 11});
+                 mark(I.SHIFTV{sv=varShift,r=r1,len=32, t=t},an)
+             end
 
-    fun arith(exp1, exp2, oper) =
-      (emit(I.ARITH{a=oper, r1=regAction exp1, r2=regAction exp2, t=rd});
-       rd)
+           (* Generate a COMCLR_LDO instruction sequence: 
+            *  COMCLR,cond r1, r2, t1
+            *  LDO i(b), t2 
+            * 
+            * Note: 
+            *    t <- if cond(r1,r2) then i else 0 can be mapped into:
+            *
+            *    COMCLR,cond r1, r2, t
+            *    LDO i(0), t
+            *
+            *    if cond(r1,r2) then t <- e can be mapped into:
+            *
+            *    t' <- e
+            *    COMCLR,cond r1, r2, 0
+            *    LDO 0(t'), t
+            *   
+            *    t <- if cond(r1,r2) then e1 else e2 can be mapped into:
+            *
+            *    t <- e2
+            *    t' <- e1
+            *    COMCLR,cond r1, r2, 0
+            *    LDO 0(t'), t
+            *)
+       and comclr(cond,r1,r2,yes,no,t,an) = 
+           let val cc = case cond of
+                          T.LT  => I.GE
+                        | T.LE  => I.GT
+                        | T.GT  => I.LE
+                        | T.GE  => I.LT
+                        | T.EQ  => I.NE
+                        | T.LTU => I.GEU
+                        | T.LEU => I.GTU
+                        | T.GEU => I.LTU
+                        | T.GTU => I.LEU
+                        | T.NE  => I.EQ
+               val (b,i) = 
+                  case yes of
+                    T.LI n   => if im14 n then (zeroR,n) else 
+                                let val {hi,lo} = split11 n
+                                    val b = newReg()
+                                in  emit(I.LDIL{i=I.IMMED hi,t=b}); (b,lo) end
+                  | T.LI32 w => let val {hi,lo} = split11w w
+                                    val b = newReg()
+                                in  emit(I.LDIL{i=I.IMMED hi,t=b}); (b,lo) end
+                  | e        => (expr e,0)
+               val t1 =
+                  case no of
+                   (T.LI 0 | T.LI32 0w0) => t (* false case is zero *)
+                 | _ => (doExpr(no,t,[]); zeroR) (* move false case to t *)
+           in  mark(I.COMCLR_LDO{cc=cc,r1=r1,r2=r2,b=b,i=i,t1=t1,t2=t},an) 
+           end
 
-    fun load(ea, rd, instri, instrx, mem) = 
-      (case eaAction ea
-	of DISPea(b, I.IMMED d) => 
-	    if im14 d then 
-              emit(I.LOADI{li=instri, i=I.IMMED d, r=b, t=rd, mem=mem})
-	    else 
-              emit(I.LOAD{l=instrx, r1=b, r2=loadImmed d, t=rd, mem=mem})
-         | DISPea(b, d) => 
-	     emit(I.LOADI{li=instri, i=d, r=b, t=rd, mem=mem})
-	 | INDXea(b,x) => 
-             emit(I.LOAD{l=instrx, r1=b, r2=x, t=rd, mem=mem})
-       (*esac*);
-      rd)
+           (* convert an expression into a register *) 
+       and expr(T.REG(_,r)) = r
+         | expr(T.LI 0)     = zeroR
+         | expr(T.LI32 0w0) = zeroR
+         | expr e           = let val t = newReg() in doExpr(e,t,[]); t end
+ 
+           (* compute an integer expression and put the result in register t *)
+       and doExpr(e,t,an) =
+           case e of
+             T.REG(_,r) => move(r,t,an)
+           | T.LI n     => loadImmed(n,t,an)
+           | T.LI32 w   => loadImmedw(w,t,an)
+           | T.LABEL le  => 
+                (case ldLabelOpnd{label=le,pref=SOME t} of
+                   REG r => move(r,t,an)
+                 | OPND opnd => mark(I.LDO{i=opnd,b=zeroR,t=t},an)
+                )
+           | T.CONST c  => loadConst(c,t,an)
+           | T.ADD(_,a,b) => plus(times,
+                                  I.SH1ADDL,I.SH2ADDL,I.SH3ADDL,I.ADD,I.ADDI,
+                                  a,b,t,an) 
+           | T.SUB(_,a,T.LI 0) => doExpr(a,t,an)
+           | T.SUB(_,a,T.LI32 0w0) => doExpr(a,t,an)
+           | T.SUB(_,a,T.LI n) => commImmedArith(I.ADD,I.ADDI,a,T.LI(~n),t,an)
+           | T.SUB(_,a,b) => immedArith(I.SUB,I.SUBI,a,b,t,an)
+           | T.ADDT(_,a,b) => plus(timest,
+                                 I.SH1ADDO,I.SH2ADDO,I.SH3ADDO,I.ADDO,I.ADDIO,
+                                 a,b,t,an) 
+           | T.SUBT(_,a,T.LI n) => immedArith(I.ADDO,I.ADDIO,a,T.LI(~n),t,an)
+           | T.SUBT(_,a,b) => immedArith(I.SUBO,I.SUBIO,a,b,t,an)
 
-    val reduce = {stm=stmAction, rexp=regAction, emit=emit}
-  in
-    case exp
-     of T.LI n => (loadImmedRd(n, rd); rd)
-      | T.LI32 w => (loadWord32Rd(w, rd); rd)
-      | T.CONST c => (emit(I.LDO{i=I.ConstOp(c), b=0, t=rd}); rd)
-      | T.LABEL le => 
-        (case ldLabelOpnd{label=le, pref=SOME(rd)}
-	 of LC.REG rs => if rd=rs then () else emitMove(rs, rd)
-          | LC.OPND opnd => emit(I.LDO{i=opnd, b=zeroR, t=rd})
-         (*esac*);
-         rd)
-      | T.ADD(exp1, exp2)    => commImmedArith(exp1, exp2, T.LR, I.ADDI, I.ADD)
-      | T.ADDT(e1, e2)       => commImmedArith(e1, e2, T.LR, I.ADDIO, I.ADDO)
-      | T.SUB(e, T.LI n, _)  => immedArith(T.LI(~n), e, T.LR, I.ADDI, I.ADDO)
-      | T.SUBT(e, T.LI n, _) => immedArith(T.LI(~n), e, T.LR, I.ADDIO, I.ADDO)
-      | T.SUB(exp1, exp2, ord) => immedArith(exp1, exp2, ord, I.SUBI, I.SUB)
-      | T.SUBT(exp1, exp2, ord) => immedArith(exp1, exp2, ord, I.SUBIO, I.SUBO)
-      | T.SLL arg	       => sll arg
-      | T.SRL arg	       => srl arg
-      | T.SRA arg              => sra arg
-      | T.ANDB(exp1, exp2)     => arith(exp1, exp2, I.AND)
-      | T.ORB(exp1, exp2)      => arith(exp1, exp2, I.OR)
-      | T.XORB(exp1, exp2)     => arith(exp1, exp2, I.XOR)
-      | T.DIVU(exp1, exp2, ord)=> milliCall(MC.divu, exp1, exp2, ord, rd)
-      | T.DIVT(exp1, exp2, ord)=> milliCall(MC.divo, exp1, exp2, ord, rd)
-      | T.MULT(exp1, exp2)     => milliCall(MC.mulo, exp1, exp2, T.LR, rd)
-      | T.MULU(exp1, exp2)     => milliCall(MC.mulu, exp1, exp2, T.LR, rd)
-      | T.LOAD8(ea, region)    => load(ea, rd, I.LDB, I.LDBX, region)
-      | T.LOAD32(ea, region)   => load(ea, rd, I.LDW, I.LDWX, region)
-      | T.SEQ(exp1, exp2)      => (stmAction exp1; regAction exp2)
-      | _  => error "regActionRd: missing rules"
-  end (* regActionRd *)
+           | T.ANDB(_,a,T.NOTB(_,b)) => arith(I.ANDCM,a,b,t,an)
+           | T.ANDB(_,T.NOTB(_,a),b) => arith(I.ANDCM,b,a,t,an)
+           | T.ANDB(_,a,b) => arith(I.AND,a,b,t,an)
+           | T.ORB(_,a,b)  => arith(I.OR,a,b,t,an)
+           | T.XORB(_,a,b) => arith(I.XOR,a,b,t,an)
 
-  and fregAction (T.FREG f) = f
-    | fregAction exp = fregActionFd(exp, C.newFreg())
+           | T.SLL(_,a,b)  => shift(I.ZDEP,I.ZVDEP,a,b,t,an)
+           | T.SRL(_,a,b)  => shift(I.EXTRU,I.VEXTRU,a,b,t,an)
+           | T.SRA(_,a,b)  => shift(I.EXTRS,I.VEXTRS,a,b,t,an)
+           | T.MULU(32,a,b) => muldiv(32,Mulu32.multiply,MC.mulu,a,b,t,true,an)
+           | T.MULT(32,a,b) => muldiv(32,Mult32.multiply,MC.mulo,a,b,t,true,an)
+           | T.DIVU(32,a,b)  => muldiv(32,divu32,MC.divu,a,b,t,false,an)
+           | T.DIVT(32,a,b)  => muldiv(32,divt32,MC.divo,a,b,t,false,an)
 
-  and fregActionFd(exp, fd) = let
-    fun orderedFarith(exp1, exp2, ord, arithOp) = let
-      val (f1, f2) = orderedFF(exp1, exp2, ord)
-    in
-      emit(I.FARITH{fa=arithOp, r1=f1, r2=f2, t=fd});
-      fd
-    end
-      
-  in
-    case exp 
-     of T.LOADD(ea, region) => 
-        (case eaAction ea
-	  of INDXea(r1, r2) => 
-               emit(I.FLOADX{flx=I.FLDDX, b=r1, x=r2, t=fd, mem=region})
-	   | DISPea(r, I.IMMED n) => 
-	      if im5 n then
-		emit(I.FLOAD{fl=I.FLDDS, b=r, d=n, t=fd, mem=region})
-	      else 
-		emit(I.FLOADX{flx=I.FLDDX, b=r, x=loadImmed n, t=fd, 
-                              mem=region})
-	   | DISPea(r,d) => let
-		val tmpR = C.newReg()
-	     in
-	       emit(I.ARITHI{ai=I.ADDI, r=r, i=d, t=tmpR});
-	       emit(I.FLOADX{flx=I.FLDDX, b=tmpR, x=zeroR, t=fd,mem=region})
-	     end
-	(*esac*);
-	fd)
-      | T.FADDD(exp1, exp2)	 => orderedFarith(exp1, exp2, T.LR, I.FADD)
-      | T.FSUBD(exp1, exp2, ord) => orderedFarith(exp1, exp2, ord, I.FSUB)
-      | T.FMULD(exp1, exp2)	 => orderedFarith(exp1, exp2, T.LR, I.FMPY)
-      | T.FDIVD(exp1, exp2, ord) => orderedFarith(exp1, exp2, ord, I.FDIV)
-      | T.FABSD exp => (emit(I.FUNARY{fu=I.FABS, f=fregAction exp, t=fd}); fd)
-      | T.FNEGD exp => (emit(I.FARITH{fa=I.FSUB, r1=0, r2=fregAction exp, t=fd}); fd)
-      | T.CVTI2D exp => 
-	 (emit(I.STORE{st=I.STW, b=C.stackptrR, d=I.IMMED M.cvti2dOffset, 
-		     r=regAction exp, mem=Region.stack});
-	  emit(I.FLOAD{fl=I.FLDWS, b=C.stackptrR, d=M.cvti2dOffset, t=fd,
-                       mem=Region.stack});
-	  emit(I.FUNARY{fu=I.FCNVXF, f=fd, t=fd});
-	  fd)
-      | T.FSEQ(e1, e2) => (stmAction e1; fregAction e2)
-      | _ => error "fregAction: missing rule"
-  end
+           | T.LOAD(8,ea,mem) => load(8,I.LDB,I.LDBX,I.LDBX,ea,t,mem,an)
+           | T.LOAD(16,ea,mem) => load(16,I.LDH,I.LDHX,I.LDHX_S,ea,t,mem,an)
+           | T.LOAD(32,ea,mem) => load(32,I.LDW,I.LDWX,I.LDWX_S,ea,t,mem,an)
 
-  and mltreeComp mltree = let
-    (* condition code registers are mapped onto general registers *)
-    fun cc (T.CCR(T.CC cc)) = T.GPR(T.REG cc)
-      | cc x = x
+           | T.COND(_,T.CMP(_,cond,x,y),yes,no) => 
+                comclr(cond,expr x,expr y,yes,no,t,an)
+           | T.SEQ(s,e) => (doStmt s; doExpr(e,t,an))
+           | T.MARK(e,a) => doExpr(e,t,a::an)
+           | e => doExpr(Gen.compile e,t,an)
+ 
+           (* convert an expression into a floating point register *) 
+       and fexpr(T.FREG(_,r))    = r
+         | fexpr e               = let val t = newFreg()
+                                   in  doFexpr(e,t,[]); t end
 
-    fun mltc(T.PSEUDO_OP pOp)    = F.pseudoOp pOp
-      | mltc(T.DEFINELABEL lab)  = F.defineLabel lab
-      | mltc(T.ENTRYLABEL lab)   = F.entryLabel lab
-      | mltc(T.ORDERED mlts)     = F.ordered mlts
-      | mltc(T.BEGINCLUSTER)     = F.beginCluster()
-      | mltc(T.CODE stms)	 = app stmAction stms
-      | mltc(T.BLOCK_NAME name)  = F.blockName name
-      | mltc(T.ENDCLUSTER regmap)= F.endCluster regmap
-      | mltc(T.ESCAPEBLOCK regs) = F.exitBlock (map cc regs)
-  in mltc mltree 
-  end 
+           (* compute a floating point expression and put the result in t *)
+       and doFexpr(e,t,an) =
+           case e of
+             (* single precision *)
+             T.FREG(32,r)      => fmove(r,t,an)
+           | T.FLOAD(32,ea,mem) =>
+                  fload(32,I.FLDWS,I.FLDWX,I.FLDWX_S,ea,t,mem,an)
+           | T.FADD(32,a,b)  => farith(I.FADD_S,a,b,t,an)
+           | T.FSUB(32,a,b)  => farith(I.FSUB_S,a,b,t,an)
+           | T.FMUL(32,a,b)  => farith(I.FMPY_S,a,b,t,an)
+           | T.FDIV(32,a,b)  => farith(I.FDIV_S,a,b,t,an)
+           | T.FABS(32,a)    => funary(I.FABS_S,a,t,an)
+           | T.FSQRT(32,a)   => funary(I.FSQRT_S,a,t,an)
+ 
+             (* double precision *)
+           | T.FREG(64,r)    => fmove(r,t,an)
+           | T.FLOAD(64,ea,mem) => 
+                  fload(64,I.FLDDS,I.FLDDX,I.FLDDX_S,ea,t,mem,an)
+           | T.FADD(64,a,b)  => farith(I.FADD_D,a,b,t,an)
+           | T.FSUB(64,a,b)  => farith(I.FSUB_D,a,b,t,an)
+           | T.FMUL(64,a,b)  => farith(I.FMPY_D,a,b,t,an)
+           | T.FDIV(64,a,b)  => farith(I.FDIV_D,a,b,t,an)
+           | T.FABS(64,a)    => funary(I.FABS_D,a,t,an)
+           | T.FSQRT(64,a)   => funary(I.FSQRT_D,a,t,an)
 
-  val mlriscComp = stmAction
-end
+             (* conversions *)
+           | T.CVTF2F(ty,mode,e) =>
+               (case (ty,mode,Gen.fsize e) of
+                  (64,T.TO_NEAREST,32) => fcnv(I.FCNVFF_SD,e,t,an)
+                | (32,_,64) => fcnv(I.FCNVFF_DS,e,t,an)
+                | (32,_,32) => doFexpr(e,t,an)
+                | (64,_,64) => doFexpr(e,t,an)
+                | _ => error "CVTF2F"
+               )
+           | T.CVTI2F(32,_,e) => app emit(MilliCode.cvti2s{rs=expr e,fd=t})
+           | T.CVTI2F(64,_,e) => app emit(MilliCode.cvti2d{rs=expr e,fd=t})
 
-(*
- * $Log: hppa.sml,v $
- * Revision 1.1.1.1  1999/01/04 21:56:27  george
- *   Version 110.12
- *
- * Revision 1.7  1998/10/06 14:04:26  george
- *   The instruction sequence FCMP, FTEST, FBCC is being replaced
- *   by the composite instruction FBRANCH.  This makes scheduling and
- *   other tasks easier.  Also, added BLR and BL in the instruction set.
- * 							[leunga]
- *
- * Revision 1.6  1998/09/30 19:35:03  dbm
- * fixing sharing/defspec conflict
- *
- * Revision 1.5  1998/08/11 14:03:23  george
- *   Exposed emitInstr in MLTREECOMP to allow a client to directly
- *   inject native instructions into the flowgraph.
- *
- * Revision 1.3  1998/05/25 15:10:52  george
- *   Fixed RCS keywords
- *
- *)
+             (* negation is implemented as subtraction *)
+           | T.FNEG(ty,a)    => doFexpr(T.FSUB(ty,T.FREG(ty,zeroF),a),t,an)
+
+           | T.FSEQ(s,e)     => (doStmt s; doFexpr(e,t,an))
+           | T.FMARK(e,a)    => doFexpr(e,t,a::an)
+
+           | _               => error "doFexpr"
+ 
+       and doCCexpr(T.CC r,t,an)  = move(r,t,an)
+         | doCCexpr(T.CMP(ty,cond,e1,e2),t,an) = error "doCCexpr"
+         | doCCexpr(T.CCMARK(e,a),t,an) = doCCexpr(e,t,a::an)
+         | doCCexpr e = error "doCCexpr"
+ 
+       and ccExpr(T.CC r) = r
+         | ccExpr e = let val t = newReg() in doCCexpr(e,t,[]); t end
+
+           (* convert an expression into an operand *) 
+       and opn(T.CONST c)     = OPND(I.ConstOp c)
+         | opn(T.LABEL le)    = ldLabelOpnd{label=le,pref=NONE}
+         | opn(e as T.LI n)   = if im11 n then OPND(I.IMMED n) 
+                                else REG(expr e)
+         | opn(e as T.LI32 w) = if Word32.<(w,0w1024) 
+                                then OPND(I.IMMED(Word32.toIntX w)) 
+                                else REG(expr e)
+         | opn e              = REG(expr e)
+ 
+       fun mltreeComp mltree = 
+       let (* condition code registers are mapped onto general registers *)
+           fun cc (T.CCR(T.CC cc)) = T.GPR(T.REG(32,cc))
+             | cc x = x
+ 
+           fun mltc(T.PSEUDO_OP pOp)    = pseudoOp pOp
+             | mltc(T.DEFINELABEL lab)  = defineLabel lab
+             | mltc(T.ENTRYLABEL lab)   = entryLabel lab
+             | mltc(T.BEGINCLUSTER)     = init 0
+             | mltc(T.CODE stms)        = app doStmt stms
+             | mltc(T.BLOCK_NAME name)  = blockName name
+             | mltc(T.BLOCK_ANNOTATION a) = annotation a
+             | mltc(T.ENDCLUSTER regmap) = finish regmap
+             | mltc(T.ESCAPEBLOCK regs) = exitBlock (map cc regs)
+             | mltc _ = error "mltreeComp"
+       in mltc mltree end
+ 
+   in  { mltreeComp = mltreeComp,
+         mlriscComp = doStmt,
+         emitInstr  = emit
+       }
+   end
+  
+ end

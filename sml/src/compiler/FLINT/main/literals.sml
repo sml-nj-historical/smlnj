@@ -184,14 +184,14 @@ datatype info
 
 exception LitInfo
 
-datatype rlit = RLIT of string * int
-fun toRlit s = RLIT(s, StrgHash.hashString s)
+datatype rlit = RLIT of string * word
+fun toRlit s = RLIT(s, HashString.hashString s)
 fun fromRlit (RLIT(s, _)) = s
 fun rlitcmp (RLIT(s1,i1), RLIT(s2,i2)) = 
   if i1 < i2 then LESS
   else if i1 > i2 then GREATER else String.compare(s1, s2)
-structure RlitDict = BinaryDict(struct type ord_key = rlit
-                                       val cmpKey = rlitcmp
+structure RlitDict = BinaryMapFn(struct type ord_key = rlit
+                                       val compare = rlitcmp
                                 end)
 
 (* lifting all literals from a CPS program *)
@@ -203,7 +203,7 @@ fun liftlits (body, root, offset) =
 
       (* check if an lvar is used by the main program *)
       val refset : Intset.intset = Intset.new()
-      val used : lvar -> unit = Intset.add refset 
+      val used : lvar -> unit =  Intset.add refset
       val isUsed : lvar -> bool = Intset.mem refset
 
       (* memoize the information on which corresponds to what *)
@@ -219,7 +219,7 @@ fun liftlits (body, root, offset) =
       (* register a string literal *)
       local val strs : string list ref = ref []
             val strsN : int ref = ref 0
-            val sdict = ref (RlitDict.mkDict())
+            val sdict = ref (RlitDict.empty)
             val srtv = mkv()
             val srtval = VAR srtv
       in
@@ -228,7 +228,7 @@ fun liftlits (body, root, offset) =
             val sd = !sdict
             val rlit = toRlit s
             val n = 
-              (case RlitDict.peek(sd, rlit)
+              (case RlitDict.find(sd, rlit)
                 of SOME k => k
                  | _ => let val _ = (strs := (s :: (!strs)))
                             val k = !strsN
@@ -266,7 +266,7 @@ fun liftlits (body, root, offset) =
       (** a special treatment of real constants *)
       local val reals : string list ref = ref []
             val realsN : int ref = ref 0
-            val rdict = ref (RlitDict.mkDict())
+            val rdict = ref (RlitDict.empty)
             val rrtv = mkv()
             val rrtval = VAR rrtv
       in				       
@@ -275,7 +275,7 @@ fun liftlits (body, root, offset) =
             val rd = !rdict
             val rlit = toRlit s
             val n = 
-              (case RlitDict.peek(rd, rlit)
+              (case RlitDict.find(rd, rlit)
                 of SOME k => k
                  | _ => let val _ = (reals := (s :: (!reals)))
                             val k = !realsN
@@ -468,6 +468,9 @@ end (* toplevel local *)
 end (* Literals *)
 
 (*
- * $Log$
+ * $Log: literals.sml,v $
+ * Revision 1.3  1998/12/22 17:01:54  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)
 

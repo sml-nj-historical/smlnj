@@ -1,3 +1,11 @@
+(*
+ * Signature for the minimal cost spanning tree problem.
+ * All spanning tree edges are folded together with a user supplied
+ * function.
+ * 
+ * -- Allen
+ *)
+
 signature MIN_COST_SPANNING_TREE =
 sig
 
@@ -9,6 +17,3 @@ sig
                          -> ('e Graph.edge * 'x -> 'x) -> 'x -> 'x
 end
 
-(*
- * $Log$
- *)

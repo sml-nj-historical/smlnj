@@ -1,3 +1,9 @@
+(*
+ * This implements a functional map 
+ *
+ * -- Allen
+ *)
+
 signature TREE_MAP =
 sig
     type key
@@ -78,6 +84,3 @@ struct
      
 end
 
-(*
- * $Log$
- *)

@@ -30,6 +30,7 @@ is
 TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
+TopLevel/batch/smlfile.sml
 TopLevel/bootstrap/boot.sml
 TopLevel/batch/cmsa.sig
 TopLevel/batch/cmsa.sml
@@ -255,6 +256,7 @@ CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
 CodeGen/cpscompile/functionNames.sml
 CodeGen/cpscompile/limit.sml
+CodeGen/cpscompile/memAliasing.sml
 CodeGen/cpscompile/memDisambig.sml
 CodeGen/cpscompile/mkRecord.sig
 CodeGen/cpscompile/mkRecord.sml
@@ -302,8 +304,6 @@ CodeGen/x86/x86spec.sml
 
 MiscUtil/bignums/bigint.sig
 MiscUtil/bignums/bigint.sml
-MiscUtil/bignums/int-inf.sig
-MiscUtil/bignums/int-inf.sml
 MiscUtil/bignums/realconst.sml
 MiscUtil/bignums/ieeereal.sml
 MiscUtil/print/ppabsyn.sml
@@ -340,6 +340,7 @@ MiscUtil/util/stats.sml
 ../comp-lib/UTIL.cm 			
 
 ../ml-yacc/lib/sources.cm
+../smlnj-lib/Util/sources.cm
 
-MLRISC.cm
+../MLRISC/MLRISC.cm
 

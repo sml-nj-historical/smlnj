@@ -18,15 +18,13 @@ functor PPStreamFn (
     structure D = Device
     structure T = Token
     structure Q = Queue
+    structure PPD = PPDesc
 
     type device = D.device
     type token = T.token
     type style = T.style
 
-    datatype indent
-      = Abs of int			(* Indent relative to outer indentation; *)
-					(* use Abs(0) for NoIndent. *)
-      | Rel of int			(* indent relative to start of box *)
+    datatype indent = datatype PPD.indent
 
   (**** DATA STRUCTURES ****)
     datatype pp_token
@@ -225,6 +223,9 @@ functor PPStreamFn (
 			| (Abs off) => (case !fmtStk
 			     of ((_, wid)::_) => wid - off
 			      | _ => width - (!curIndent + off)
+(* maybe this can be
+			      | _ => width - off
+??? *)
 			    (* end case *))
 		      (* end case *))
 (***** CAML version does the following: ****
@@ -363,8 +364,8 @@ functor PPStreamFn (
 	    (* check that depth < maxDepth *)
 ****)
 	      enqueueTok (strm, {sz = ref 0, tok = END, len = 0});
-	      setSize (strm, false);
 	      setSize (strm, true);
+	      setSize (strm, false);
 	      curDepth := depth-1)
 	    else raise Fail "unmatched close box"
 
@@ -469,6 +470,47 @@ functor PPStreamFn (
     fun onNewline  strm () = raise Fail "onNewline"
 
     fun control strm ctlFn = enqueueToken (strm, CTL ctlFn)
+
+  (* pretty print a description *)
+    type pp_desc = (token, style, device) PPD.pp_desc
+
+    fun description strm = let
+	  fun pp (PPD.HBox l) = (openHBox strm; ppList l; closeBox strm)
+	    | pp (PPD.VBox(i, l)) = (openVBox strm i; ppList l; closeBox strm)
+	    | pp (PPD.HVBox(i, l)) = (openHVBox strm i; ppList l; closeBox strm)
+	    | pp (PPD.HOVBox(i, l)) = (openHOVBox strm i; ppList l; closeBox strm)
+	    | pp (PPD.Box(i, l)) = (openBox strm i; ppList l; closeBox strm)
+	    | pp (PPD.Token tok) = token strm tok
+	    | pp (PPD.String s) = string strm s
+	    | pp (PPD.Style(sty, l)) = (
+		pushStyle(strm, sty); ppList l; popStyle strm)
+	    | pp (PPD.Break brk) = break strm brk
+	    | pp PPD.NewLine = newline strm
+	    | pp (PPD.NBSpace n) = nbSpace strm n
+	    | pp (PPD.Control ctlFn) = control strm ctlFn
+	  and ppList [] = ()
+	    | ppList (item::r) = (pp item; ppList r)
+	  in
+	    pp
+	  end
+
+  (* PP description constructors *)
+    structure Desc =
+      struct
+	val hBox    = PPD.HBox
+	val vBox    = PPD.VBox
+	val hvBox   = PPD.HVBox
+	val hovBox  = PPD.HOVBox
+	val box     = PPD.Box
+	val token   = PPD.Token
+	val string  = PPD.String
+	val style   = PPD.Style
+	val break   = PPD.Break
+	fun space n = PPD.Break{nsp = n, offset = 0}
+	val cut     = PPD.Break{nsp = 0, offset = 0}
+	val newline = PPD.NewLine
+	val control = PPD.Control
+      end
 
   end
 

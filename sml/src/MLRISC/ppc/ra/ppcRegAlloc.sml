@@ -1,7 +1,7 @@
 functor PPCRegAlloc(structure I : INSTRUCTIONS where C = PPCCells
 		     structure P : INSN_PROPERTIES where I = I
 		     structure F : FLOWGRAPH where I = I and P = P
-		     structure Asm : EMITTER_NEW where I = I and P = P) :
+		     structure Asm : INSTRUCTION_EMITTER where I=I and P=P) :
   sig
     functor IntRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
@@ -9,7 +9,7 @@ functor PPCRegAlloc(structure I : INSTRUCTIONS where C = PPCCells
     functor FloatRa (structure RaUser : RA_USER_PARAMS
 		     where I = I
 		     where type B.name = F.B.name) : RA
-  end=
+   end=
 struct
 
   structure C=I.C
@@ -19,8 +19,8 @@ struct
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.GP
-	     fun regSet c = #1 (c:PPCCells.cellset)
-	     fun cellset((_,f,c),r) = (r,f,c))
+	     val regSet = C.getCell C.GP 
+	     val cellset = C.updateCell C.GP)
 
 
   functor IntRa =
@@ -33,9 +33,9 @@ struct
 
 	   val defUse = P.defUse C.GP
 	   val firstPseudoR = 32
-	   val maxPseudoR = PPCCells.maxCell
-	   val numRegs = PPCCells.numCell PPCCells.GP
-	   fun regSet c = #1 (c:PPCCells.cellset)
+	   val maxPseudoR = C.maxCell
+	   val numRegs = C.numCell C.GP
+	   val regSet = C.getCell C.GP 
 	end)
 
   (* liveness analysis for floating point registers *)
@@ -43,8 +43,8 @@ struct
     Liveness(structure Flowgraph=F
 	     structure Instruction=I
 	     val defUse = P.defUse C.FP
-	     fun regSet c = #2 (c:PPCCells.cellset)
-	     fun cellset((r,_,c),f) = (r,f,c))
+	     val regSet = C.getCell C.FP 
+	     val cellset = C.updateCell C.FP)
 
   functor FloatRa =
     RegAllocator
@@ -55,10 +55,10 @@ struct
 	   structure Liveness=FregLiveness
 
  	   val defUse = P.defUse C.FP
-	   val firstPseudoR = 32
-	   val maxPseudoR = PPCCells.maxCell 
-	   val numRegs = PPCCells.numCell PPCCells.FP
-	   fun regSet c = #2 (c:PPCCells.cellset)
+	   val firstPseudoR = 64
+	   val maxPseudoR = C.maxCell 
+	   val numRegs = C.numCell C.FP
+	   val regSet = C.getCell C.FP 
 	end)
 end
 

@@ -1,63 +1,122 @@
-(* cells.sig
+(*
+ * Description of registers and other updatable cells.
  *
- * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
+ * IMPORTANT NOTE: 
+ * All physical registers in the machine architecture 
+ * all given unique encodings.  The encoding is not necessarily zero based.
+ * For example, 0 may NOT represent floating point register 0. 
  *
- * CELLS - describes storage units on the machine, such as
- *         dedicated and general registers, memory ...
+ * This means that the client should not
+ * use hard coded integers to represent physical registers, 
+ * but should instead use the function:
  *
- *	 This file acts as a bridge between MLRISC and the machine 
- *	 code.
+ *    Reg : cellkind -> int -> register
  *
- *)
-signature CELLS = sig
-  type register = int
-  type regmap = register Intmap.intmap
-  eqtype cellclass
-  exception Cells
-  val GP   : cellclass  (* general purpose register *)
-  val FP   : cellclass  (* floating point register *)
-  val CC   : cellclass  (* conditional code register *)
-  val MEM  : cellclass  (* memory *)
-  val CTRL : cellclass  (* control dependence *)
+ * to compute the proper encoding.
+ *
+ * A call "Reg k n" returns the nth physical register of kind k.
+ * For integer and float point registers, the functions:
+ *
+ *   GPReg : int -> register
+ *   FPReg : int -> register
+ *
+ * can also be used as shortcuts.
+ *
+ * -- Allen.
+ *) 
+signature CELLS_BASIS = 
+sig
+   eqtype cellkind 
+   type register = int
+   type regmap   = register Intmap.intmap
+   exception Cells
 
-  val stackptrR : int			(* stack pointer register *)
-  val asmTmpR : int			(* assembly temporary *)
-  val fasmTmp : int			(* floating point temporary *)
+   val cellkinds : cellkind list  (* list of all the cellkinds *)
 
-  val newCell : cellclass -> unit -> register (* generate a new name *)
-  val numCell : cellclass -> unit -> int (* number of names in class *)
-  val maxCell : unit -> int		 (* max id of name *)
-  val cellToString : register * cellclass -> string
+   val cellkindToString : cellkind -> string
 
-  val newReg : unit -> register		(* newClass GP *)
-  val newFreg : unit -> register	(* newClass FP *)
-  val newCCreg : unit -> register	(* newClass CC *)
+       (* first pseudo register *)
+   val firstPseudo : register                    
 
-  val firstPseudo : register
-  val zero : cellclass -> register option 
-       (* name of the register that contains zero *)
+       (* returns the encoding for the nth physical register of the given kind,
+        * raises Cells if there is none.
+        *)
+   val Reg   : cellkind -> int -> register
+   val GPReg : int -> register (* Reg GP *)
+   val FPReg : int -> register (* Reg FP *)
 
-  val resetRegs : unit -> regmap (* reset any local state *)
+       (* given a cellkind returns its encoding range *)
+   val cellRange : cellkind -> {low:int, high:int}
 
-  type cellset
-  val cellset2string : cellset -> string
-  val empty	     : cellset
-  val addCell        : cellclass -> register * cellset -> cellset
-  val cellsetToRegs  : regmap * cellset -> register list
+       (* generate a new name for a virtual register *)
+   val newCell   : cellkind -> unit -> register 
 
-  val addReg  : register * cellset -> cellset (* addCell GP *)
-  val addFreg : register * cellset -> cellset (* addCell FP *)
+       (* lookup the cellkind of a virtual register *)
+   val cellKind : register -> cellkind         
+
+       (* update the cellkind of a virtual register *)
+   val updateCellKind : register * cellkind -> unit        
+
+       (* lookup the number of virtual registers in a cellkind *)
+   val numCell   : cellkind -> unit -> int              
+
+       (* the next virtual register name *) 
+   val maxCell   : unit -> register
+     
+       (* newCell GP *)
+   val newReg    : unit -> register              
+
+       (* newCell FP *)
+   val newFreg   : unit -> register              
+
+       (* Create a new register that has the same cellkind as the given one 
+        * Note: the numCell kind is NOT updated!
+        *)
+   val newVar    : register -> register
+
+       (* create a new regmap *)
+   val regmap    : unit -> regmap
+   val lookup    : regmap -> register -> register
+
+       (* reset all counters *)
+   val reset     : unit -> unit
+
+        (* auxiliary functions *)
+   val printSet : (register -> string) -> (register list -> string)
+   val printTuple : string list * string list -> string
 end
 
-
 (*
- * $Log: cells.sig,v $
- * Revision 1.4  1998/10/06 14:07:45  george
- * Flowgraph has been removed from modules that do not need it.
- * Changes to compiler/CodeGen/*/*{MLTree,CG}.sml necessary.
- * 						[leunga]
- *
- * Revision 1.3  1998/05/25 15:11:02  george
- *   Fixed RCS keywords
- *
+ * This is the abstract interface of cells
  *)
+signature CELLS = 
+sig
+   include CELLS_BASIS
+   val GP   : cellkind  (* general purpose *)
+   val FP   : cellkind  (* floating point *)
+   val CC   : cellkind  (* condition code *)
+   val MEM  : cellkind  (* memory cell *)
+   val CTRL : cellkind  (* control dependence *)
+   val toString : cellkind -> register -> string
+   val stackptrR : register                    (* stack pointer register *)
+   val asmTmpR : register                      (* assembly temporary *)
+   val fasmTmp : register                      (* floating point temporary *)
+   val zeroReg : cellkind -> register option   (* register that contains 0 *)
+
+   type cellset
+
+      (* building a cellset *)
+   val empty      : cellset
+   val addCell    : cellkind -> register * cellset -> cellset
+   val addReg     : register * cellset -> cellset
+   val addFreg    : register * cellset -> cellset
+   val getCell    : cellkind -> cellset -> register list
+   val updateCell : cellkind -> cellset * register list -> cellset
+
+       (* pretty printing, the second one takes a regmap *)
+   val cellsetToString : cellset -> string
+   val cellsetToString' : (register -> register) -> cellset -> string
+
+       (* convert cellset into a list of registers *)
+   val cellsetToRegs : cellset -> register list
+end

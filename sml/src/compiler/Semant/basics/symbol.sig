@@ -18,7 +18,7 @@ signature SYMBOL = sig
     and tyvSymbol: string -> symbol
     and var'n'fix : string -> symbol * symbol
     and name: symbol -> string
-    and number: symbol -> int
+    and number: symbol -> word
     val nameSpace : symbol -> namespace
     val nameSpaceToString : namespace -> string
     val symbolToString : symbol -> string
@@ -32,7 +32,7 @@ signature FASTSYMBOL =
   sig
     type raw_symbol
     type symbol
-    val rawSymbol: int * string -> raw_symbol
+    val rawSymbol: word * string -> raw_symbol
     val sameSpaceSymbol : symbol -> raw_symbol -> symbol
     val varSymbol: raw_symbol -> symbol
     val tycSymbol: raw_symbol -> symbol
@@ -49,5 +49,8 @@ signature FASTSYMBOL =
 
 
 (*
- * $Log$
+ * $Log: symbol.sig,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:35  george
+ * Version 110.5
+ *
  *)

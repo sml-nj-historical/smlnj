@@ -1,79 +1,63 @@
+(*
+ * Some simple functions for performing depth first search
+ *
+ * -- Allen
+ *)
 structure GraphDFS : GRAPH_DEPTH_FIRST_SEARCH = 
 struct
 
    structure G = Graph
    structure A = Array
+   structure S = BitSet
 
    (*
     * Depth first search
     *)
-   fun dfs f g (G.GRAPH G) roots =
-   let val visited = BitSet.create(#capacity G ())
-       val out_edges = #out_edges G
+   fun dfs (G.GRAPH G) f g roots =
+   let val visited = S.create(#capacity G ())
        fun traverse n =
-           if BitSet.markAndTest(visited,n) then ()
-           else (f n; app traverse_edge (out_edges n))
+           if S.markAndTest(visited,n) then ()
+           else (f n; app traverse_edge (#out_edges G n))
        and traverse_edge (e as (_,n,_)) =
-           if BitSet.markAndTest(visited,n) then ()
-           else (f n; g e; app traverse_edge (out_edges n)) 
+           if S.markAndTest(visited,n) then ()
+           else (g e; f n; app traverse_edge (#out_edges G n))
    in  app traverse roots end
 
-   fun dfs_fold { node_f  = f,
-                  edge_f  = g,
-                  graph_f = h,
-                  node_unit = nu,
-                  edge_unit = eu,
-                  graph_unit = u
-                } (G.GRAPH G) roots =
-   let val visited = BitSet.create(#capacity G ())
-       val out_edges = #out_edges G
-       fun fold_node (n, nu) =
-             if BitSet.markAndTest(visited,n) then nu
-             else f(n,fold_edges(out_edges n,eu))
-       and fold_edges ([], eu) = eu
-         | fold_edges ((e as (_,n,_))::es, eu) =
-             if BitSet.contains(visited,n) then fold_edges(es,eu)
-             else g(e,fold_node(n,nu),fold_edges(es,eu))
-       fun fold_nodes []      = u
-         | fold_nodes (n::ns) =
-             if BitSet.contains(visited,n) then fold_nodes ns
-             else h(fold_node(n, nu), fold_nodes ns)
-   in 
-       fold_nodes roots
-   end
-
    (*
-    *  Reachability
+    * Depth first search fold
     *)
-   fun reachables G = 
-       dfs_fold { node_f     = op::,
-                  node_unit  = [],
-                  edge_f     = fn (_,a,b) => a @ b,
-                  edge_unit  = [],
-                  graph_f    = op @,
-                  graph_unit = [] } G
+   fun dfsfold (G.GRAPH G) f g roots (x,y) =
+   let val visited = S.create(#capacity G ())
+       fun traverse(n,x,y) =
+           if S.markAndTest(visited,n) then (x,y)
+           else traverse_edges(#out_edges G n,f(n,x),y)
+       and traverse_edges ([],x,y) = (x,y)
+         | traverse_edges ((e as (_,n,_))::es,x,y) =
+           if S.markAndTest(visited,n) then traverse_edges(es,x,y)
+           else let val y = g(e,y)
+                    val x = f(n,x)
+                    val (x,y) = traverse_edges(#out_edges G n,x,y)
+                in  traverse_edges(es,x,y) end
+       and traverseAll([],x,y) = (x,y)
+         | traverseAll(n::ns,x,y) = 
+            let val (x,y) = traverse(n,x,y)
+            in  traverseAll(ns,x,y) end
+   in  traverseAll(roots,x,y) end
 
 
-   (* 
-    * Closure 
-    *)
-
-   (*
-    * Topological sort
-    *)
-   fun topsort (G.GRAPH G) roots = 
-   let val visited = BitSet.create(#capacity G ())
-       val succ    = #succ G
-       fun dfs (n, list) =
-          if BitSet.markAndTest(visited,n) then list
-          else dfs'(n,succ n,list)
-       and dfs'(x,[],list)    = x::list
-         | dfs'(x,n::ns,list) = dfs'(x,ns,dfs(n,list))
-       and dfs''([], list)    = list
-         | dfs''(n::ns, list) = dfs''(ns,dfs(n,list))
-   in
-       dfs''(roots,[])
-   end
+   fun dfsnum (G.GRAPH G) roots =
+   let val N       = #capacity G ()
+       val dfsnum  = A.array(N,~1)
+       val compnum = A.array(N,~1)
+       fun traverse([],d,c) = c
+         | traverse(n::ns,d,c) =
+           if A.sub(dfsnum,n) >= 0 then traverse(ns,d,c)
+           else  let val _ = A.update(dfsnum,n,d); 
+                     val c = traverse(#succ G n,d+1,c)
+                 in  A.update(compnum,n,c);  
+                     traverse(ns,d,c+1)
+                 end
+   in  traverse(roots,0,0); {dfsnum=dfsnum,compnum=compnum} end
 
    fun preorder_numbering (G.GRAPH G) root =
    let val N = #capacity G ()
@@ -100,8 +84,4 @@ struct
            else n
    in  f(root,0); P end
 end
-
-(* 
- * $Log$
- *)
 

@@ -7,7 +7,7 @@ functor X86MCEmitter
   (structure Instr : X86INSTR
    structure Shuffle : X86SHUFFLE where I = Instr
    structure MemRegs : MEMORY_REGISTERS where I = Instr
-   structure AsmEmitter : EMITTER_NEW	where I = Instr) : MC_EMIT = 
+   structure AsmEmitter : INSTRUCTION_EMITTER where I = Instr) : MC_EMIT = 
 struct
   structure I = Instr
   structure C = I.C
@@ -46,13 +46,15 @@ struct
   and emitInstr(instr, regmap) = let
 (*    val rNum = Intmap.map regmap *)
     fun rNum r = let
-      val r' = Intmap.map regmap r
+      val r' = regmap r
     in if r' >=0 andalso r' <= 7 then r' 
-       else (AsmEmitter.emitInstr(instr, regmap);
-	     error ("rNum: bad register" ^ Int.toString r ^ " --> " ^
-		   Int.toString r'))
+       else  let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream()
+             in  emit regmap instr;
+   	         error ("rNum: bad register" ^ Int.toString r ^ " --> " ^
+		        Int.toString r')
+             end
     end 
-    fun fNum r = if r < 32 then r else Intmap.map regmap r
+    fun fNum r = if r < 32 then r else regmap r
 
     val memReg = MemRegs.memReg fNum
 
@@ -73,7 +75,7 @@ struct
     fun sib{ss, index, base} = Word8.fromInt(ss*64 + index*8 + base)
 
     fun eImmedExt(opc, I.Direct r) = [modrm{mod=3, reg=opc, rm=rNum r}]
-      | eImmedExt(opc, I.Displace{base, disp}) = let
+      | eImmedExt(opc, I.Displace{base, disp, ...}) = let
           val base = rNum base		(* XXX rNum may be done twice *)
 	  val immed = immedOpnd disp
 	  fun displace(mod, eDisp) = 
@@ -94,10 +96,10 @@ struct
 	   | Bits32 => displace(2, eLong)
 	  (*esac*)
 	end
-      | eImmedExt(opc, I.Indexed{base=NONE, index, scale, disp}) = 
+      | eImmedExt(opc, I.Indexed{base=NONE, index, scale, disp, ...}) = 
 	 (modrm{mod=0, reg=opc, rm=4} ::
 	  sib{base=5, ss=scale, index=rNum index} :: eLong(immedOpnd disp))
-      | eImmedExt(opc, I.Indexed{base=SOME b, index, scale, disp}) = let
+      | eImmedExt(opc, I.Indexed{base=SOME b, index, scale, disp, ...}) = let
 	  val index = rNum index
 	  val base = rNum b
 	  val immed = immedOpnd disp
@@ -195,8 +197,8 @@ struct
           | _ => 
 	     eBytes[Word8.+(0wx70,code), Word8.fromInt(i-2)]
        end
-     | I.CALL(I.Relative _, _, _) => error "CALL: Not implemented"
-     | I.CALL(opnd, _, _) => eBytes(0wxff :: eImmedExt(2, opnd))
+     | I.CALL(I.Relative _, _, _, _) => error "CALL: Not implemented"
+     | I.CALL(opnd, _, _, _) => eBytes(0wxff :: eImmedExt(2, opnd))
      | I.RET => eByte 0xc3
      (* integer *)
      | I.MOVE{mvOp=I.MOVL, src, dst} => 
@@ -307,18 +309,16 @@ struct
      | I.INTO => eByte(0xce)
 
      | I.COPY{dst, src, tmp, ...} => let
-	fun lookup r = Intmap.map regmap r handle _ => r
 	val instrs' = 
 	  Shuffle.shuffle
-	    {regMap=lookup, temp=tmp, dst=dst, src=src}
+	    {regmap=regmap, tmp=tmp, dst=dst, src=src}
        in emitInstrs(instrs', regmap)
        end
 
      | I.FCOPY{dst, src, tmp, ...} => let
-        fun lookup r = Intmap.map regmap r handle _ => r
 	val instrs' = 
 	  Shuffle.shufflefp
-	    {regMap=lookup, temp=tmp, dst=dst, src=src}
+	    {regmap=regmap, tmp=tmp, dst=dst, src=src}
        in emitInstrs(instrs', regmap)
        end
 
@@ -371,6 +371,7 @@ struct
 
      (* misc *)
      | I.SAHF => eByte(0x9e)
+     | I.ANNOTATION{i,...} => emitInstr(i,regmap)
      | _ => error "emitInstr"
   end 
 end

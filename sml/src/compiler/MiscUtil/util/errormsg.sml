@@ -107,6 +107,9 @@ struct
       (ppmsg(errConsumer,(location_string source (p1,p2)),severity,msg,body);
        record(severity,anyErrors))
 
+  fun errorNoSource (cons, anyE) locs sev msg body =
+      (ppmsg (cons, locs, sev, msg, body); record (sev, anyE))
+
   fun errorNoFile (errConsumer,anyErrors) ((p1,p2): region) severity msg body = 
       (ppmsg(errConsumer,
              if p2>0 then concat[Int.toString p1, "-", Int.toString p2] 
@@ -139,5 +142,8 @@ struct
 end  (* structure ErrorMsg *)
 
 (*
- * $Log$
+ * $Log: errormsg.sml,v $
+ * Revision 1.1.1.1  1998/04/08 18:39:16  george
+ * Version 110.5
+ *
  *)

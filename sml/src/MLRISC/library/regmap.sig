@@ -1,3 +1,9 @@
+(*
+ *  Register map datatype.
+ *
+ *  -- Allen
+ *) 
+
 signature REGISTER_MAP =
 sig
 
@@ -24,6 +30,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

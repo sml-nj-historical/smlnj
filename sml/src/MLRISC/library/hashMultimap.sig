@@ -1,3 +1,9 @@
+(*
+ * Multimap datatype that uses hashing.
+ *
+ * -- allen
+ *)
+
 signature HASH_MULTIMAP =
 sig
 
@@ -30,6 +36,3 @@ sig
 
 end
 
-(*
- * $Log$
- *)

@@ -1,22 +1,18 @@
 (* sources.cm
  *
- * COPYRIGHT (c) 1996 AT&T Research.
+ * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
  * Sources file for Unix utility library; part of the SML/NJ library suite.
  *)
 
 Library
-  signature SOCK_UTIL
   signature UNIX_ENV
 
-  structure SockUtil
   structure UnixEnv
 
 is
   ../Util/sources.cm
 
-  sock-util-sig.sml
-  sock-util.sml
   unix-env-sig.sml
   unix-env.sml
 

@@ -5,7 +5,10 @@
 
 
 (*
- * $Log$
+ * $Log: ml.lex,v $
+ * Revision 1.3  1998/05/25 21:01:37  george
+ *   Move RCS log messages to the beginning of file
+ *
  *)
 
 open ErrorMsg;
@@ -259,13 +262,13 @@ hexnum=[0-9a-fA-F]+;
 <AQ>{eol}       => (SourceMap.newline sourceMap yypos; continue());
 <AQ>{ws}        => (continue());
 <AQ>{id}        => (YYBEGIN Q; 
-                    let val hash = StrgHash.hashString yytext
+                    let val hash = HashString.hashString yytext
                     in
                     Tokens.AQID(FastSymbol.rawSymbol(hash,yytext),
 				yypos,yypos+(size yytext))
                     end);
 <AQ>{sym}+      => (YYBEGIN Q; 
-                    let val hash = StrgHash.hashString yytext
+                    let val hash = HashString.hashString yytext
                     in
                     Tokens.AQID(FastSymbol.rawSymbol(hash,yytext),
 				yypos,yypos+(size yytext))
@@ -276,4 +279,4 @@ hexnum=[0-9a-fA-F]+;
 <AQ>.           => (err (yypos,yypos+1) COMPLAIN
 		       ("ml lexer: bad character after antiquote "^yytext)
 		       nullErrorBody;
-                    Tokens.AQID(FastSymbol.rawSymbol(0,""),yypos,yypos));
+                    Tokens.AQID(FastSymbol.rawSymbol(0w0,""),yypos,yypos));

@@ -1,5 +1,5 @@
 (* shuffle.sml -- implements the parallel copy instruction as a sequence
- *		of moves. Makes use of asmTmpR from CELLS.
+ *		of moves. 
  *
  * COPYRIGHT (c) 1996 Bell Laboratories.
  *
@@ -12,8 +12,8 @@ functor Shuffle(I : INSTRUCTIONS) :
       {mvInstr : {dst:I.ea, src:I.ea} -> I.instruction list,
        ea : int -> I.ea} 
       ->
-	{regMap: int -> int,
-	 temp : I.ea option,
+	{regmap: int -> int,
+	 tmp : I.ea option,
 	 dst : int list,
 	 src : int list} 
 	-> I.instruction list
@@ -24,16 +24,17 @@ struct
     | equal (TEMP, TEMP) = true
     | equal _ = false
 
-  fun shuffle{mvInstr, ea} {regMap, temp, dst, src} = let
+  fun shuffle{mvInstr, ea} {regmap, tmp, dst, src} = let
     val mv = rev o mvInstr
     fun opnd (REG dst) = ea dst
-      | opnd TEMP = Option.valOf temp
+      | opnd TEMP = Option.valOf tmp
 
     (* perform unconstrained moves *)
     fun loop((p as (rd,rs))::rest, changed, used, done, instrs) = 
 	if List.exists (fn r => equal(r, rd)) used then
 	   loop(rest, changed, used, p::done, instrs)
-	else loop(rest, true, used, done, mv{dst=opnd rd, src=opnd rs}@instrs)
+	else loop(rest, true, used, done,
+                  mv{dst=opnd rd, src=opnd rs}@instrs)
       | loop([], changed, _, done, instrs) = (changed, done, instrs)
 
     fun cycle([], instrs) = instrs
@@ -44,7 +45,7 @@ struct
 	   | (false, (rd,rs)::acc, instrs) => let
 	       fun rename(p as (a,b)) = if equal(rd, b) then (a, TEMP) else p
 	       val acc' = (rd, rs) :: map rename acc
-	       val instrs' = mv{dst=Option.valOf temp, src=opnd rd}@instrs
+	       val instrs' = mv{dst=Option.valOf tmp, src=opnd rd}@instrs
 	       val (_, acc'', instrs'') = 
 		 loop(acc', false, map #2 acc', [], instrs')
 	     in cycle(acc'', instrs'')
@@ -53,8 +54,8 @@ struct
 
     (* remove moves that have been coalesced. *)
     fun rmvCoalesced(rd::rds, rs::rss) = let
-	  val dst = regMap rd
-	  val src = regMap rs
+	  val dst = regmap rd
+	  val src = regmap rs
 	in
 	  if dst = src then rmvCoalesced(rds, rss)
 	  else (REG dst, REG src)::rmvCoalesced(rds, rss)
@@ -64,12 +65,3 @@ struct
   end
 end
 
-(*
- * $Log: shuffle.sml,v $
- * Revision 1.1.1.1  1998/11/16 21:48:41  george
- *   Version 110.10
- *
- * Revision 1.1.1.1  1998/04/08 18:39:02  george
- * Version 110.5
- *
- *)

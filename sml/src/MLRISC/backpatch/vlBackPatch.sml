@@ -5,7 +5,8 @@
 signature MC_EMIT = sig
   structure I : INSTRUCTIONS
 
-  val emitInstr : I.instruction * int Intmap.intmap -> Word8Vector.vector
+  val emitInstr : I.instruction * 
+       (I.C.register -> I.C.register) -> Word8Vector.vector
 end
 
   
@@ -15,10 +16,11 @@ functor BackPatch
    structure Props : INSN_PROPERTIES 
    structure Emitter : MC_EMIT
    structure Flowgraph : FLOWGRAPH
-   structure Asm : EMITTER_NEW
+   structure Asm : INSTRUCTION_EMITTER
       sharing Emitter.I = Jumps.I = Flowgraph.I = Props.I = Asm.I) : BBSCHED = 
 struct 
   structure I = Jumps.I
+  structure C = I.C
   structure F = Flowgraph
   structure P = F.P
   structure W8V = Word8Vector
@@ -30,13 +32,14 @@ struct
     | LABEL of Label.label * desc
     | NIL
 
-  datatype cluster = CLUSTER of {cluster: desc, regmap: int Intmap.intmap}
+  datatype cluster = CLUSTER of {cluster: desc, regmap:C.register -> C.register}
 
-  fun error msg = MLRiscErrorMsg.impossible ("vlBackPatch." ^ msg)
+  fun error msg = MLRiscErrorMsg.error("vlBackPatch",msg)
 
   val clusters = ref ([] : cluster list)
 
   fun bbsched(F.CLUSTER{blocks, regmap,  ...}) = let
+    val regmap = C.lookup regmap
     fun bytes([], p) = p
       | bytes([s], p) = BYTES(s, p)
       | bytes(s, p) = BYTES(W8V.concat s, p)
@@ -54,7 +57,6 @@ struct
 	end 
       | f(F.ENTRY _::rest) = f rest
       | f(F.EXIT _::rest) = f rest
-      | f(F.ORDERED blks::rest) = f(blks@rest)
       | f [] = NIL
   in
     clusters := 
@@ -101,6 +103,8 @@ struct
     fun output v = 
       W8V.app (fn v => (CodeString.update(!loc, v); loc:= !loc+1)) v
 
+    val Asm.S.STREAM{emit,...} = Asm.makeStream()
+
     fun chunk(pos, []) = ()
       | chunk(pos, CLUSTER{cluster, regmap}::rest) = let
           fun outputInstr i = output (Emitter.emitInstr(nop, regmap))
@@ -117,7 +121,7 @@ struct
               in
 		if n > 0 then 
 		  (print ("\t\t\t Inserting " ^ Int.toString n ^ "nops\n");
-		   Asm.emitInstr(instr, regmap))
+		   emit regmap instr)
 		else ();
 		app output instrs;
 		if n < 0 then 

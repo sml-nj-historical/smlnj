@@ -4,6 +4,3 @@ structure Control = struct
   end
 end
 
-(*
- * $Log$
- *)

@@ -1,5 +1,7 @@
 (*
  *  The transpose of a graph
+ *
+ *  -- Allen
  *)
 
 signature REVERSED_GRAPH_VIEW =
@@ -58,6 +60,3 @@ struct
    end
 end
 
-(*
- * $Log$
- *)

@@ -8,7 +8,9 @@ Library
 	signature LOOP_STRUCTURE
 	signature STATIC_SINGLE_ASSIGNMENT_FORM
 	signature DERIVED_GRAPH
+	signature REDUCIBILITY
 	structure IDefs
+	functor ComputeFrequenciesFn
 	functor ControlDependenceGraphFn
 	functor ControlFlowGraphRestructureFn
 	functor DerivedGraphFn
@@ -16,6 +18,7 @@ Library
 	functor DominanceFrontiersFn
 	functor DominatorTreeFn
 	functor LoopStructureFn
+	functor ReducibilityFn
 	functor StaticSingleAssignmentFormFn
 is
 	../library/sources.cm
@@ -24,6 +27,9 @@ is
 	cdg.sml
 	cfg-restructure.sig
 	cfg-restructure.sml
+	compute-freq.sig
+	compute-freq.sml
+	derived-graph.sig
 	derived-graph.sml
 	djgraph.sig
 	djgraph.sml
@@ -35,5 +41,7 @@ is
 	idefs2.sml
 	loop-structure.sig
 	loop-structure.sml
+	reducibility.sig
+	reducibility.sml
 	ssa.sig
 	ssa.sml

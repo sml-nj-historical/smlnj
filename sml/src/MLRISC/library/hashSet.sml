@@ -1,3 +1,9 @@
+(*
+ * A set datatype that uses hashing
+ *
+ * -- Allen
+ *)
+
 structure HashSet :> HASH_SET =
 struct
 
@@ -92,6 +98,3 @@ struct
 
 end
 
-(*
- * $Log$
- *)

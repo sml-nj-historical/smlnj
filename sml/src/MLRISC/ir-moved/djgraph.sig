@@ -2,6 +2,8 @@
  *  Use the DJ-graph algorithm to compute dominance frontiers
  *  and iterated-dominance frontiers in O(n) time.
  *  Here, the dominator tree is treated as a DJ-graph.
+ *
+ *  -- Allen
  *)
 
 signature DJ_GRAPH =
@@ -18,6 +20,3 @@ sig
         }
 end
 
-(*
- * $Log
- *)

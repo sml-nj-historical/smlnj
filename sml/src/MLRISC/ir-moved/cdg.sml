@@ -1,3 +1,13 @@
+(*
+ * This is a generic module for computing the control dependence graph
+ * from a graph with an entry and an exit.  
+ * The graph is treated as a control flow graph.  
+ * The edge predicate is used to determine whether an edge should be
+ * treated as a branch edge.
+ *
+ * -- Allen
+ *)
+
 functor ControlDependenceGraphFn
    (structure Dom       : DOMINATOR_TREE
     structure GraphImpl : GRAPH_IMPLEMENTATION

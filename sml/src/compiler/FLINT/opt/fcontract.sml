@@ -177,7 +177,7 @@ structure FContract :> FCONTRACT =
 struct
 local
     structure F  = FLINT
-    structure M  = IntmapF
+    structure M  = IntBinaryMap
     structure S  = IntSetF
     structure C  = Collect
     structure O  = Option
@@ -274,7 +274,7 @@ fun extract (con,le) =
 	end
     end
 
-fun inScope m lv = (M.lookup m lv; true) handle M.IntmapF => false
+fun inScope m lv = Option.isSome(M.find(m,lv))
 
 fun click s c = (if !CTRL.misc = 1 then say s else ();
 		 c := !c + 1 (* Stats.addCounter c 1 *) )
@@ -320,11 +320,15 @@ fun contract (fdec as (_,f,_,_)) = let
       | eqConV (F.STRINGcon s1,	F.STRING s2)	= s1 = s2
       | eqConV (con,v) = bugval("unexpected comparison with val", v)
 
-    fun lookup m lv = (M.lookup m lv)
-			  handle e as M.IntmapF =>
-			  (say "\nlooking up unbound ";
-			   say (!PP.LVarString lv);
-			   raise e)
+    exception Lookup
+    fun lookup m lv = 
+      (case M.find(m,lv) 
+         of NONE => 
+	     (say "\nlooking up unbound ";
+	      say (!PP.LVarString lv);
+	      raise Lookup)
+          | SOME x => x
+      (*esac*))
 
     fun sval2val sv =
 	case sv
@@ -365,10 +369,12 @@ fun contract (fdec as (_,f,_,_)) = let
 	     (* decon's are implicit so we can't get rid of them *)
 	     | Decon _ => ()
 	end
-		handle M.IntmapF =>
-		(say("Unable to undertake "^(C.LVarString lv)^"\n"))
-		     | x =>
-		       (say("while undertaking "^(C.LVarString lv)^"\n"); raise x)
+	      handle 
+		  Lookup =>
+		    (say("Unable to undertake "^(C.LVarString lv)^"\n"))
+		| x =>
+		    (say("while undertaking "^(C.LVarString lv)^"\n"); 
+		     raise x)
 
     and unusesval m sv = unuseval m (sval2val sv)
     and unuseval m (F.VAR lv) =
@@ -452,7 +458,7 @@ fun fcLet (lvs,le,body) =
 				     ListPair.unzip (map extract arms)
 				 fun addswitch [v] =
 				     C.copylexp
-					 IntmapF.empty
+					 M.empty
 					 (F.SWITCH(v,ac,narms,NONE))
 				   | addswitch _ = bug "prob in addswitch"
 				 (* replace each leaf `ret' with a copy
@@ -974,5 +980,8 @@ end
 end
 
 (*
- * $Log$
+ * $Log: fcontract.sml,v $
+ * Revision 1.1  1998/12/22 17:01:56  jhr
+ *   Merged in 110.10 changes from Yale.
+ *
  *)
