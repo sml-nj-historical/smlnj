@@ -11,15 +11,15 @@ structure CoreInt64 = struct
   local
       structure CII = CoreIntInf
 
-      infix o val op o = InLine.compose
-      val not = InLine.inlnot
-      infix 7 * val op * = InLine.w32mul
-      infix 6 + - val op + = InLine.w32add val op - = InLine.w32sub
+      infix o       val op o = InLine.compose
+      infix 7 *     val op * = InLine.w32mul
+      infix 6 + -   val op + = InLine.w32add     val op - = InLine.w32sub
       infix 5 << >> val op << = InLine.w32lshift val op >> = InLine.w32rshiftl
-      infix 5 & val op & = InLine.w32andb
-      infix 4 < val op < = InLine.w32lt
-      infix 4 <> val op <> = InLine.w32ne
-      infix 4 == val op == = InLine.w32eq
+      infix 5 &     val op & = InLine.w32andb
+      infix 4 <     val op < = InLine.w32lt
+      infix 4 <>    val op <> = InLine.w32ne
+      infix 4 ==    val op == = InLine.w32eq
+      val not = InLine.inlnot
       val ~ = InLine.w32neg
       val ^ = InLine.w32notb
 

@@ -14,6 +14,21 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/13 00:20:00 CST
+Tag: blume-20041113-versiontool
+Description:
+
+- Stripped down the versiontool: It now only handles the version number.
+  The date string is generated at bootstrap time (during makeml).
+
+- In a previous commit, fixed a minor issue with how polyequal is being
+  translated.  In particular, the code now "looks through" abstractions.
+  This results in slightly fewer polyEqual warnings and hopefully slightly
+  more efficient code.  Important examples for where this matters are
+  the new int64 and word64 types.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/11/12 00:30:00 CST
 Tag: blume-20041112-int64
 Description:

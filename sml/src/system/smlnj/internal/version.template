@@ -15,17 +15,17 @@ structure SMLNJVersion : sig
 
     val banner : string
 
-  end = struct
+end = struct
 
+    (* generate date string at boot time *)
     val version = {
 	    system = "Standard ML of New Jersey",
 	    version_id = [%V],
-	    date = "%D"
-	  }
+	    date = Date.toString (Date.fromTimeLocal (Time.now ()))
+        }
 
     val banner = concat
 	  (#system version :: " v" ::
 	   String.concatWith "." (map Int.toString (#version_id version)) ::
 	   [" [built: ", #date version, "]"])
-
 end
