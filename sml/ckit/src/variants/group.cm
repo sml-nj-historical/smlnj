@@ -10,8 +10,6 @@ is
         (* standard basis *)
 	basis.cm
 #endif
-#else
-#error new CM required
 #endif
 
          parse-control-sig.sml

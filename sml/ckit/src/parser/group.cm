@@ -6,9 +6,6 @@ is
         (* standard basis *)
         $/basis.cm
 
-        (* Compiler *)
-	$smlnj/compiler.cm
-
 	(* standard library *)
 	$/smlnj-lib.cm
 
@@ -21,9 +18,6 @@ is
         (* standard basis *)
 	basis.cm
 
-        (* Compiler *)
-        host-compiler.cm
-
 	(* standard library *)
 	smlnj-lib.cm
 
@@ -34,7 +28,9 @@ is
         pp-lib.cm
 #endif
 #else
-#error new CM required
+	smlnj-lib.cm
+	ml-yacc-lib.cm
+	pp-lib.cm
 #endif
 
         (* configuration *)
