@@ -14,6 +14,8 @@ signature OS_PROCESS =
     val success   : status
     val failure   : status
 
+    val isSuccess : status -> bool
+
     val system    : string -> status
 
     val atExit    : (unit -> unit) -> unit
@@ -23,5 +25,6 @@ signature OS_PROCESS =
 
     val getEnv : string -> string option
 
-  end
+    val sleep : Time.time -> unit
 
+  end

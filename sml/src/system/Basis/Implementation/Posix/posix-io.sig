@@ -25,7 +25,7 @@ signature POSIX_IO =
     
     structure FD :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
 
         val cloexec : flags
 
@@ -33,7 +33,7 @@ signature POSIX_IO =
 
     structure O :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
 
         val append   : flags
         val dsync    : flags

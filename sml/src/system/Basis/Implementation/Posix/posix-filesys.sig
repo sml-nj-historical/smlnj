@@ -33,13 +33,10 @@ signature POSIX_FILE_SYS =
     val stdout : file_desc
     val stderr : file_desc
 
-    structure S :
-      sig
-        include POSIX_FLAGS
+    structure S : sig
+	type mode
+        include BIT_FLAGS where type flags = mode
 
-        type mode
-          sharing type mode = flags
- 
         val irwxu : mode
         val irusr : mode
         val iwusr : mode
@@ -61,7 +58,7 @@ signature POSIX_FILE_SYS =
 
     structure O :
       sig
-        include POSIX_FLAGS
+        include BIT_FLAGS
 
         val append   : flags
         val dsync    : flags

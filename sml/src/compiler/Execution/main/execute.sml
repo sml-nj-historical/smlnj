@@ -8,12 +8,25 @@
  *****************************************************************************)
 
 structure Execute : sig
-    val mkexec : CodeObj.csegments -> CodeObj.executable
+
+    exception Link			(* For compilation manager to
+					 * signal to interactive loop that
+					 * error messages have been issued
+					 * already.  The interactive loop
+					 * should simply discard this
+					 * exception (keep quiet) and
+					 * go to the next input prompt. *)
+
+    val mkexec : { cs : CodeObj.csegments,
+		   exnwrapper : exn -> exn } -> CodeObj.executable
     val execute : { executable: CodeObj.executable,
 		    imports: ImportTree.import list,
 		    exportPid: PersStamps.persstamp option,
 		    dynenv: DynamicEnv.env } -> DynamicEnv.env
 end = struct
+
+    exception Link
+
     structure Obj = Unsafe.Object
     type object = Obj.object
 
@@ -22,7 +35,7 @@ end = struct
 
 
     (** turn the byte-vector-like code segments into an executable closure *)
-    fun mkexec (cs : CodeObj.csegments) = let
+    fun mkexec { cs : CodeObj.csegments, exnwrapper } = let
 	val ex = CodeObj.exec (#c0 cs)
 	val nex =
 	    if (Word8Vector.length (#data cs) > 0) then
@@ -30,12 +43,14 @@ end = struct
 		    ex (Obj.mkTuple (Obj.toTuple ivec @
 				     [CodeObj.mkLiterals (#data cs)])))
 	    else (fn ivec => ex ivec)
+	val executable =
+	    foldl (fn (c, r) => (CodeObj.exec c) o r) nex (#cn cs)
     in
-	foldl (fn (c, r) => (CodeObj.exec c) o r) nex (#cn cs)
+	fn args => (executable args handle e => raise exnwrapper e)
     end 
 
     (** perform the execution of the excutable, output the new dynenv *)
-    fun execute {executable, imports, exportPid, dynenv} = let
+    fun execute {executable, imports, exportPid, dynenv } = let
 	val args : object = let
             fun selObj (obj, i) =
 		Obj.nth(obj, i)

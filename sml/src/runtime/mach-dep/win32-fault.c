@@ -47,6 +47,8 @@ BOOL win32_generic_handler(int code)
     EnqueueSignal(vsp, code);
     vsp->vp_numPendingSysSigs++;
 
+    vsp->vp_limitPtrMask = 0;
+
     if (vsp->vp_inMLFlag && 
       (! vsp->vp_handlerPending) && 
       (! vsp->vp_inSigHandler))

@@ -201,7 +201,7 @@ end
 fun l1 @ l2 = foldr (op ::) l2 l1
 fun app f = let
     fun a2 [] = ()
-      | a2 (h :: t) = (f h; a2 t)
+      | a2 (h :: t) = (f h : unit; a2 t)
 in
     a2
 end

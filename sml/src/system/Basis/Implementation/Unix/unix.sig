@@ -3,10 +3,22 @@
  * COPYRIGHT (c) 1995 AT&T Bell Laboratories.
  *
  *)
+signature UNIX = sig
 
-signature UNIX =
-  sig
     type proc
+(*
+    type ('a, 'b) proc
+
+    type signal
+
+    datatype exit_status =
+	     W_EXITED
+	   | W_EXITSTATUS of Word8.word
+	   | W_SIGNALED of signal
+	   | W_STOPPED of signal
+
+    val fromStatus : OS.Process.status -> exit_status
+*)
 
       (* executeInEnv (path, args, env)
        *   forks/execs new process given by path

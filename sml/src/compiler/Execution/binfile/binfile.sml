@@ -475,12 +475,16 @@ structure Binfile :> BINFILE = struct
 	{ env = es, inlinfo = lambdaSz, data = datasz, code = cs }
     end
 
-    fun exec (BF { imports, exportPid, executable, csegments, ... }, dynenv) =
+    fun exec (BF { imports, exportPid, executable, csegments, ... },
+	      dynenv, exnwrapper) =
 	let val executable =
 		case !executable of
 		    SOME e => e
 		  | NONE => let
-			val e = Isolate.isolate (Execute.mkexec csegments)
+			val e = Isolate.isolate
+				    (Execute.mkexec
+					 { cs = csegments,
+					   exnwrapper = exnwrapper })
 		    in executable := SOME e; e
 		    end
 	in

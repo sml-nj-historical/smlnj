@@ -96,71 +96,63 @@ structure POSIX_FileSys =
 
     structure S =
       struct
-        datatype flags = MODE of word
-        type mode = flags
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	    type mode = flags
+	end
 
-        fun fromWord w = MODE w
-        fun toWord (MODE w) = w
-
-        fun flags ms = MODE(List.foldl (fn (MODE m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (MODE m, MODE m') = (m & m') <> 0w0
-        fun allSet (MODE m, MODE m') = (m & m') = m
- 
-        val irwxu = MODE(w_osval "irwxu")
-        val irusr = MODE(w_osval "irusr")
-        val iwusr = MODE(w_osval "iwusr")
-        val ixusr = MODE(w_osval "ixusr")
-        val irwxg = MODE(w_osval "irwxg")
-        val irgrp = MODE(w_osval "irgrp")
-        val iwgrp = MODE(w_osval "iwgrp")
-        val ixgrp = MODE(w_osval "ixgrp")
-        val irwxo = MODE(w_osval "irwxo")
-        val iroth = MODE(w_osval "iroth")
-        val iwoth = MODE(w_osval "iwoth")
-        val ixoth = MODE(w_osval "ixoth")
-        val isuid = MODE(w_osval "isuid")
-        val isgid = MODE(w_osval "isgid")
+        val irwxu = fromWord (w_osval "irwxu")
+        val irusr = fromWord (w_osval "irusr")
+        val iwusr = fromWord (w_osval "iwusr")
+        val ixusr = fromWord (w_osval "ixusr")
+        val irwxg = fromWord (w_osval "irwxg")
+        val irgrp = fromWord (w_osval "irgrp")
+        val iwgrp = fromWord (w_osval "iwgrp")
+        val ixgrp = fromWord (w_osval "ixgrp")
+        val irwxo = fromWord (w_osval "irwxo")
+        val iroth = fromWord (w_osval "iroth")
+        val iwoth = fromWord (w_osval "iwoth")
+        val ixoth = fromWord (w_osval "ixoth")
+        val isuid = fromWord (w_osval "isuid")
+        val isgid = fromWord (w_osval "isgid")
 
       end
 
     structure O =
       struct
-        datatype flags = OFL of word
+        local structure BF = BitFlagsFn ()
+	in
+	    open BF
+	end
 
-        fun fromWord w = OFL w
-        fun toWord (OFL w) = w
-
-        fun flags ms = OFL(List.foldl (fn (OFL m,acc) => m ++ acc) 0w0 ms)
-        fun anySet (OFL m, OFL m') = (m & m') <> 0w0
-        fun allSet (OFL m, OFL m') = (m & m') = m
-
-        val append   = OFL(w_osval "O_APPEND")
-        val dsync    = OFL(w_osval "O_DSYNC")
-        val excl     = OFL(w_osval "O_EXCL")
-        val noctty   = OFL(w_osval "O_NOCTTY")
-        val nonblock = OFL(w_osval "O_NONBLOCK")
-        val rsync    = OFL(w_osval "O_RSYNC")
-        val sync     = OFL(w_osval "O_SYNC")
+        val append   = fromWord (w_osval "O_APPEND")
+        val dsync    = fromWord (w_osval "O_DSYNC")
+        val excl     = fromWord (w_osval "O_EXCL")
+        val noctty   = fromWord (w_osval "O_NOCTTY")
+        val nonblock = fromWord (w_osval "O_NONBLOCK")
+        val rsync    = fromWord (w_osval "O_RSYNC")
+        val sync     = fromWord (w_osval "O_SYNC")
         val o_trunc  = w_osval "O_TRUNC"
-        val trunc    = OFL o_trunc
+        val trunc    = fromWord  o_trunc
         val o_creat  = w_osval "O_CREAT"
         val crflags  = o_wronly ++ o_creat ++ o_trunc
 
       end
 
     val openf' : string * word * word -> s_int = cfun "openf"
-    fun openf (fname, omode, O.OFL flags) =
-          fd(openf'(fname, flags ++ (omodeToWord omode), 0w0))
-    fun createf (fname, omode, O.OFL oflags, S.MODE mode) = let
-          val flags = O.o_creat ++ oflags ++ (omodeToWord omode)
+    fun openf (fname, omode, flags) =
+          fd(openf'(fname, O.toWord flags ++ (omodeToWord omode), 0w0))
+    fun createf (fname, omode, oflags, mode) = let
+          val flags = O.o_creat ++ O.toWord oflags ++ (omodeToWord omode)
           in
-            fd(openf'(fname, flags, mode))
+            fd(openf'(fname, flags, S.toWord mode))
           end
-    fun creat (fname, S.MODE mode) =
-          fd(openf'(fname, O.crflags, mode))
+    fun creat (fname, mode) =
+          fd(openf'(fname, O.crflags, S.toWord mode))
 
     val umask' : word -> word = cfun "umask"
-    fun umask (S.MODE mode) = S.MODE(umask' mode)
+    fun umask mode = S.fromWord (umask' (S.toWord mode))
 
     val link' : string * string -> unit = cfun "link"
     fun link {old, new} = link'(old,new)
@@ -170,10 +162,10 @@ structure POSIX_FileSys =
     fun symlink {old, new} = symlink'(old,new)
 
     val mkdir' : string * word -> unit = cfun "mkdir"
-    fun mkdir (dirname, S.MODE mode) = mkdir'(dirname,mode)
+    fun mkdir (dirname, mode) = mkdir'(dirname, S.toWord mode)
 
     val mkfifo' : string * word -> unit = cfun "mkfifo"
-    fun mkfifo (name, S.MODE mode) = mkfifo'(name,mode)
+    fun mkfifo (name, mode) = mkfifo'(name, S.toWord mode)
 
     val unlink : string -> unit = cfun "unlink"
     val rmdir : string -> unit = cfun "rmdir"
@@ -245,7 +237,7 @@ structure POSIX_FileSys =
       )
     fun mkStat (sr : statrep) = ST.ST{
 	    ftype = #1 sr,
-            mode = S.MODE (#2 sr),
+            mode = S.fromWord (#2 sr),
             ino = INO (#3 sr),
             dev = DEV (#4 sr),
             nlink = SysWord.toInt(#5 sr),	(* probably should be an int in
@@ -283,10 +275,10 @@ structure POSIX_FileSys =
     fun access (fname, aml) = access'(fname, amodeToWord aml)
 
     val chmod' : string * word -> unit = cfun "chmod"
-    fun chmod (fname, S.MODE m) = chmod'(fname, m)
+    fun chmod (fname, m) = chmod'(fname, S.toWord m)
 
     val fchmod' : s_int * word -> unit = cfun "fchmod"
-    fun fchmod (FD{fd}, S.MODE m) = fchmod'(fd, m)
+    fun fchmod (FD{fd}, m) = fchmod'(fd, S.toWord m)
 
     val chown' : string * word * word -> unit = cfun "chown"
     fun chown (fname, UID uid, GID gid) = chown'(fname, uid, gid)

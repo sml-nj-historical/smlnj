@@ -3,13 +3,11 @@
  * (C) 2001, Lucent Technologies, Bell Labs
  *)
 structure Isolate : sig
-    exception TopLevelException of exn
     exception TopLevelCallcc
     (* wrap given function to catch toplevel call/cc *)
     val isolate : ('a -> 'b) -> ('a -> 'b)
 end = struct
 
-    exception TopLevelException of exn
     exception TopLevelCallcc
 
     local 
@@ -25,10 +23,7 @@ end = struct
 		    (cont_stack := rest;
 		     if r<>r' then raise TopLevelCallcc else ())
 		  | _ => raise TopLevelCallcc (* can this ever happen? *)
-	    val a = f x
-		handle e =>
-		       (pop_stack(); 
-			raise (case e of TopLevelException x => x | e => e))
+	    val a = f x handle e => (pop_stack(); raise e)
 	in
 	    pop_stack (); a
 	end
