@@ -36,6 +36,9 @@ sig
     val liftLiterals	: bool ref
     val sharewrap	: bool ref
 
+    (* only for temporary debugging *)
+    val misc		: int ref
+
     (* FLINT internal type-checking controls *)
     val check		: bool ref
     val checkDatatypes	: bool ref
