@@ -7,14 +7,16 @@
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
 
 * from tarballs
+	mkdir 110.6; cd 110.6
+	scp daffy:~ftp/pub/smlnj/working/110.6/\*.gz .
 	mkdir src; cd src
-	ztar ../*.gz
+	ztar ../110.6-*.gz
 	mv bin.* ../../
 	mv config ../
 	cd ..
-	mv *-bin.* ../../
+	mv *-bin.* ../
 	rm *.gz
-	cvs -qd ~cvs import -m '110.5.1 from Shao' flint FLINT v110_5_1 | grep -v '^U '
+	cvs -qd ~cvs import -m '110.6' flint SMLNJ v110_6 | grep -v '^U '
 
 * /softs install
 ** original
