@@ -277,7 +277,10 @@ struct
    and emit_isize x = emit (asm_isize x)
 
 (*#line 515.6 "x86/x86.mdl"*)
-   fun memReg r = MemRegs.memReg {reg=r, base=Option.valOf memRegBase}
+   fun memReg r = (case memRegBase
+	 of NONE => raise Fail "memReg"
+	  | SOME b => MemRegs.memReg {reg=r, base=b}
+	(* end case *))
 
 (*#line 516.6 "x86/x86.mdl"*)
    fun emitInt32 i = 
@@ -315,12 +318,14 @@ struct
        | I.LabelEA le => emit_labexp le
        | I.Relative _ => error "emit_operand"
        | I.Direct r => emitCell r
-       | I.MemReg r => emit_operand (memReg opn)
+       | I.MemReg r => emit_operand (memReg opn handle ex => raise ex)
        | I.ST f => emitCell f
        | I.FPR f => 
          ( emit "%f"; 
            emit (Int.toString (CellsBasis.registerNum f)))
-       | I.FDirect f => emit_operand (memReg opn)
+       | I.FDirect f => (
+print(concat["FDirect(", CellsBasis.toString f, ")\n"]);
+emit_operand (memReg opn handle ex => raise ex))
        | I.Displace{base, disp, mem, ...} => 
          ( emit_disp disp; 
            emit "("; 

@@ -59,7 +59,8 @@ struct
 	  (case loop(moves, false, map #4 moves, [], instrs) 
 	   of ([], instrs) => instrs
 	    | ((rd, rd', rs, rs')::nonCyclic, instrs) => let
-		val instrs' = move(Option.valOf tmp, I.Direct rs)::instrs
+		val SOME tmpR = tmp
+		val instrs' = move(tmpR, I.Direct rs)::instrs
 		val (cyclic, instrs'') = 
 		  loop(nonCyclic, false, map #4 nonCyclic, [], instrs')
 	      in cycle(cyclic, move(I.Direct rd, Option.valOf tmp)::instrs'')

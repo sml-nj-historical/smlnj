@@ -65,7 +65,7 @@ functor IA32SVID_CCalls (
       | ARGS of c_arg list
 
     val mem = T.Region.memory
-    val stack = T.Region.memory
+    val stack = T.Region.stack
 
   (* MLRISC types *)
     val wordTy = 32
@@ -332,7 +332,7 @@ functor IA32SVID_CCalls (
 					  val tmp = C.newReg()
 					  val stms =
 						T.STORE(ty, offSP offset, T.REG(ty, tmp), stack)
-						  :: T.MV(ty, tmp, T.LOAD (ty, addr(offset - baseOffset), stack))
+						  :: T.MV(ty, tmp, T.LOAD (ty, addr(offset - baseOffset), mem))
 						  :: stms
 					  in
 					    copy (locs, stms)
@@ -375,7 +375,7 @@ functor IA32SVID_CCalls (
 	  val { save, restore } = saveRestoreDedicated defs
 	  val callStm = T.CALL{
 		  funct=name, targets=[], defs=defs, uses=[], 
-		  region = T.Region.memory,
+		  region = mem,
 		  pops = if calleePops then Int32.fromInt(#szb argMem) else 0
 		}
 	  val callStm = (case callComment
