@@ -115,7 +115,7 @@ structure Array2 :> ARRAY2 =
 	  in
 	    if ltu(nrows, i)
 	      then raise General.Subscript
-	      else mkVec (stop+nrows-1, [])
+	      else mkVec (stop+ncols-1, [])
 	  end
     fun column ({data, nrows, ncols}, j) = let
 	  fun mkVec (i, l) =
@@ -288,6 +288,3 @@ structure Array2 :> ARRAY2 =
 
   end
 
-(*
- * $Log$
- *)

@@ -286,7 +286,13 @@ fun checkTycBinding(_,T.ERRORtyc,_) = ()
             if arity <> TU.tyconArity strTycon
             then complain' ("tycon arity for " ^ specName
                             ^ " does not match specified arity")
-            else (case (specKind, TU.unWrapDefStar strTycon)
+            else (case (specKind, (* TU.unWrapDefStar *) strTycon)
+		      (* this call of unWrapDefStar causes bug 1364,
+		       * because it can't distinguish between ordinary 
+		       * DEFtycs and datatype replication DEFtycs.
+		       * Claim: it's not needed in Repl case, because
+                       * Repl datatypes are GENtycs.
+		       *)
                    of (DATATYPE{index,family={members,...} ,...},
                        GENtyc{arity=a',kind=DATATYPE{index=index',
                               family={members=members',...}, ...},
@@ -678,7 +684,8 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                             (debugmsg ("$matchElems(TYCspec): "^S.name sym);
                              raise EE.Unbound))
 
-           | STRspec{sign=thisSpecSig, entVar, def, ...} =>
+           | STRspec{sign=thisSpecSig as SIG{elements=thisElements,...},
+		     entVar, def, ...} =>
               (let val _ = debugmsg(String.concat["--matchElems STRspec: ",
                                                   S.name sym,", ",
                                                   ST.stampToString entVar])
@@ -686,16 +693,17 @@ fun matchElems ([], entEnv, entDecs, decs, bindings, succeed) =
                      MU.getStr(strElements, strEntEnv, sym, rootAcc, rootInfo)
 
 		   (* verify spec definition, if any *)
-		     (* BUG: shallow test, comparing stamps -- 
-		      * needs to be augmented with component-wise test when
-		      * stamps disagree [dbm] *)
-		     (* how should this verification interact with signatures? *)
+		     (* matchDefStr now does the proper deep, component-wise
+                      * comparison of specStr and strStr when their stamps
+		      * don't agree, but the error message printed
+		      * when definition spec is not matched leaves something
+		      * to be desired *)
 		   val _ = 
 		       case def
 			 of NONE => ()
 			  | SOME(sd,_) =>
  			     let val specStr = MU.strDefToStr(sd,entEnv) 
- 			      in if matchDefStr(sigElements,specStr,strStr) then ()
+ 			      in if matchDefStr(thisElements,specStr,strStr) then ()
  			         else 
                                   (case sd
  				    of M.VARstrDef(sign,ep) =>
@@ -1469,12 +1477,4 @@ val applyFct =
 end (* local *)
 end (* structure SigMatch *)
 
-
-(*
- * $Log: sigmatch.sml,v $
- * Revision 1.3  1998/05/23 14:10:11  george
- *   Fixed RCS keyword syntax
- *
- *
- *)
 

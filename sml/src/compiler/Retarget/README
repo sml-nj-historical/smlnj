@@ -29,9 +29,10 @@ compiler source directory, run SML/NJ and type
 
 at the interactive prompt.
 
-(Note that this command is just a shorthand for
+(Note that this command is more or less a shorthand for
    CMB.CM.make' ("Retarget/<arch>-<os>.cm", false);
-In other words, cross-compilers are ordinary CM modules.)
+In other words, cross-compilers are ordinary CM modules. However, some
+internal trickery is done to avoid using the "wrong" pervasive environment...)
 
 ---------------
   M.Blume (5/1998)

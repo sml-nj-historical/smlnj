@@ -57,7 +57,13 @@ signature UNSAFE =
 (** NOTE: we may want to move the actual representation from build/boot.sml to
  ** here.
  **)
-    val pStruct : Object.object ref
+(** I have done just that.  -M.Blume (6/1998)
+ **)
+    datatype runDynEnv =
+	NILrde
+      | CONSrde of Word8Vector.vector * Object.object * runDynEnv
+
+    val pStruct : runDynEnv ref
 
     val topLevelCont : unit cont ref
 
@@ -66,6 +72,3 @@ signature UNSAFE =
   end;
 
 
-(*
- * $Log$
- *)

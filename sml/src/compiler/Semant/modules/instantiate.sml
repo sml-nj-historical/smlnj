@@ -104,12 +104,12 @@ in
 
 (* ----------------------- utility functions ----------------------------- *)
 
+(* debugging *)
 val say = Control.Print.say
 val debugging = Control.CG.insdebugging (* ref false *)
 fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
 fun bug s = EM.impossible ("Instantiate: " ^ s)
 
-(* debugging code *)
 fun wrap fname f arg =
       if !debugging then
           let val _ = say (">> "^fname^"\n")
@@ -125,16 +125,21 @@ fun debugType(msg: string, tyc: T.tycon) =
       (msg, PPType.ppTycon StaticEnv.empty, tyc))
 
 
+(* error state *)
 val error_found = ref false
+
+val infinity = 1000000 (* a big integer *)
 
 fun push(r,x) = (r := x::(!r))
 
 fun pathName (path: IP.path) : string = 
     SP.toString(ConvertPaths.invertIPath path)
 
-(* utility (should be in ModuleUtil) *)
+(* module utility functions (should be in ModuleUtil?) *)
 fun eqOrigin(STR{rlzn={stamp=s1,...},...},STR{rlzn={stamp=s2,...},...}) =
     ST.eq(s1,s2)
+
+fun eqSig(SIG{stamp,...}, SIG{stamp=stamp',...}) = Stamps.eq (stamp,stamp')
 
 fun sameStructure(STR{sign=sign1,rlzn={stamp=stamp1,...},...},
 		  STR{sign=sign2,rlzn={stamp=stamp2,...},...}) =
@@ -143,6 +148,7 @@ fun sameStructure(STR{sign=sign1,rlzn={stamp=stamp1,...},...},
 fun signName (SIG{name=SOME sym,...}) = S.name sym
   | signName (SIG{name=NONE,...}) = "Anonymous"
   | signName ERRORsig = "ERRORsig"
+
 
 (* -------------------- important data structures ------------------------ *)
 
@@ -153,6 +159,34 @@ datatype instKind
   = INST_ABSTR of M.strEntity
   | INST_FMBD of T.tycpath
   | INST_PARAM of DI.depth
+
+(* datatype stampInfo 
+ * encodes an instruction about how to get a stamp for a new entity
+ *)
+datatype stampInfo
+  = STAMP of ST.stamp   (* here is the stamp *)
+  | PATH of EP.entPath  (* get the stamp of the entity designated by the path *)
+  | GENERATE            (* generate a new stamp (using the mkStamp parameter) *)
+
+(* datatype entityInfo
+ * The contents of the finalEnt field of the FinalStr inst variant.
+ * Defined in finalize (in buildStrClass), used in instToStr to
+ * determine how to find or build the realization entity.
+ * 
+ * The bool argument of GENERATE_ENT is normally true when there was
+ * a VARstrDef applying to the structure spec with a different signature
+ * than the spec. This means that the spec signature should be considered
+ * as open, despite what it's "closed" field might say.  This was introduced
+ * to fix bug 1238.  [dbm, 8/13/97]
+ *)
+datatype entityInfo
+  = CONST_ENT of M.strEntity  (* here it is *)
+  | PATH_ENT of EP.entPath    (* find it via this entityPath *)
+  | GENERATE_ENT of bool      (* generate a new one *)
+
+datatype tycInst
+  = INST of tycon  (* already instantiated *)
+  | NOTINST of tycon  (* needing instantiation *)
 
 (* 
  * This datatype represents the continually changing DAG that is being 
@@ -173,50 +207,33 @@ datatype instKind
  *    If a Final node's expanded field is true, then all of its children
  *    are Final with expanded field true.
  *)
-
-datatype stampInfo
-  = STAMP of ST.stamp
-  | PATH of EP.entPath
-  | GENERATE
-
-(* datatype entityInfo:
- * the bool argument of GENERATE_ENT is normally true when there was
- * a VARstrDef applying to the structure spec with a different signature
- * than the spec. This means that the spec signature should be considered
- * as open, despite what it's "closed" field might say.  This was introduced
- * to fix bug 1238.  [dbm, 8/13/97]
- *)
-datatype entityInfo
-  = CONST_ENT of M.strEntity
-  | PATH_ENT of EP.entPath
-  | GENERATE_ENT of bool
-
-datatype tycInst
-  = INST of tycon  (* already instantiated *)
-  | NOTINST of tycon  (* needing instantiation *)
-
 datatype inst
-  = FinalStr of
+    (* structure instances *)
+  = FinalStr of   (* the equivalence class of this node is fully explored *)
      {sign : M.Signature,
       stamp : stampInfo ref,
       slotEnv : slotEnv,
       finalEnt: entityInfo ref,
       expanded : bool ref}
-  | PartialStr of
+  | PartialStr of (* we are in the process of exploring the equiv. class *)
      {sign : M.Signature,
       path : IP.path,
       slotEnv : slotEnv,
       comps : (S.symbol * slot) list, (* sorted by symbol *)
       depth : int,
       final_rep : inst option ref}
-  | InitialStr of
+  | InitialStr of (* haven't started exploring the equiv. class *)
      {sign : M.Signature,
       sigDepth : int,
       path : IP.path,
       epath : EP.entPath,
       slotEnv : slotEnv,
       inherited : constraint list ref}
-  | FinalTyc of tycInst ref
+  | NullStr
+  | ErrorStr
+
+    (* tycon instances *)
+  | FinalTyc of tycInst ref 
   | PartialTyc of
      {tycon : tycon, 
       path : IP.path, 
@@ -226,16 +243,16 @@ datatype inst
       path : IP.path, 
       epath: EP.entPath,
       inherited : constraint list ref}
+  | NullTyc
+  | ErrorTyc
+
+    (* functor instances *)
   | FinalFct of
      {sign : M.fctSig,
       def : M.Functor option ref,
       path: IP.path,
       epath: EP.entPath}
-  | NullStr
-  | NullTyc
   | NullFct
-  | ErrorStr
-  | ErrorTyc
 
 (* 
  * A constraint is essentially a directed arc indicating that two
@@ -246,17 +263,18 @@ datatype inst
  * by first finding the inst node in the its_ancestor slot, and then following
  * the symbolic path its_path to the node.  By going through the
  * ancestor, we are able to insure that the ancestor is explored
- * before the actual component is.
+ * before the actual component is, so that its inherited constraints are
+ * propagated downward properly.
  *)
 and constraint
   = SHARE of {my_path : SP.path,  (* regular symbolic path *)
 	      its_ancestor : slot,
 	      its_path : SP.path,  (* regular symbolic path *)
 	      depth : int}  (* signature nesting depth of base constraint *)
-  | SDEFINE of strDef * int
-  | TDEFINE of tycInst * int
+  | SDEFINE of strDef * int (* int is signature nesting depth of defn *)
+  | TDEFINE of tycInst * int (* int is signature nesting depth of defn *)
 
-
+(* slot: a node in the graph (maybe "node" would be a better name?) *)
 withtype slot = inst ref
 
 (* slotEnv: association list mapping entVars to slots *)
@@ -331,8 +349,11 @@ fun extTycToTycInst tyc =
        | _ => INST tyc
          (* GENtyc -- won't need instantiation *)
 
-(* get the component insts from an external structure *)
-fun getElemDefs (strDef,mkStamp,depth) =
+(* getElemDefs : strDef * (unit -> stamp) * int -> (S.symbol * constraint) list
+ *   returns the definition constraints for components of a strDef,
+ *   sorted by the component name in ascending order
+ *)
+fun getElemDefs (strDef,mkStamp,depth): (S.symbol * constraint) list =
     let val comps = 
 	     (case strDef
 	       of CONSTstrDef(STR{sign=SIG{elements,...},
@@ -384,7 +405,15 @@ fun getElemDefs (strDef,mkStamp,depth) =
      end
 
 
-(* get the component slots and insts for a local structure spec *)
+(* mkElemSlots: Signature * slotEnv * IP.path * entityPath * int
+ *              -> slotEnv * (S.symbol * slot) list
+ *
+ *   create slots with initial insts for the components of the signature
+ *   for a structure spec.  slots are associated with element names and
+ *   sorted in ascending order by element name.  the slots are also 
+ *   added to the inherited slotEnv, bound the corresponding element's
+ *   entityVar, and the augmented slotEnv is returned
+ *)
 fun mkElemSlots(SIG{elements,...},slotEnv,rpath,epath,sigDepth) =
     let fun mkSlot((sym,STRspec{sign as SIG{closed,...},entVar,def,...}),slotEnv) = 
 	     (* a definitional structure spec is translated into a SDEFINE
@@ -448,8 +477,23 @@ fun mkElemSlots(SIG{elements,...},slotEnv,rpath,epath,sigDepth) =
   val mkElemSlots = wrap "mkElemSlots" mkElemSlots
 *)
 
-(* ASSERT: both arguments of propDefs are sorted in assending order by the
- * symbol component *)
+(* propDefs : (symbol * slot) list * (symbol * constraint) list -> unit
+ *
+ *   Propogate definition constraints down to the components of a
+ *   structure node that has a definition constraint.  Called only
+ *   in constrain in buildStrClass, i.e. when propogating constraints
+ *   to children of a node.
+ *
+ * NOTE: does not check that each element in the first list has
+ * an associated constraint in the second list.
+ * 
+ * ASSERT: both arguments of propDefs are sorted in assending order by the
+ * symbol component (the arguments are supplied by mkElementSlots and
+ * getElemDefs, respectively).
+ *
+ * ASSERT: all constraints in the second argument are SDEFINE or TDEFINE,
+ * as appropriate.
+ *)
 fun propDefs(nil,_) = ()
   | propDefs(_,nil) = ()
   | propDefs(a1 as (sym1,sl)::rest1, a2 as (sym2,def)::rest2) =
@@ -464,8 +508,18 @@ fun propDefs(nil,_) = ()
 	    propDefs(rest1,rest2))
 
 
-(* ASSERT: both arguments of propSharing are sorted in assending order by the
- * symbol component *)
+(* propSharing : (S.symbol * slot) list * (S.symbol * slot) list -> unit
+ *
+ *   Propogates inherited sharing constraints (SHARE) to the matching
+ *   elements of two structure nodes.  Called only in addInst in
+ *   buildStrClass, i.e. when adding a new instance to an equiv. class.
+ * 
+ * ASSERT: both arguments of propSharing are sorted in assending order by the
+ * symbol component.
+ * 
+ * ASSERT: matching slots are either both InitialStr, both InitialTyc,
+ * or one is ErrorStr or ErrorTyc.
+ *)
 fun propSharing(nil,_,_) = ()
   | propSharing(_,nil,_) = ()
   | propSharing(a1 as (sym1,slot1)::rest1,
@@ -504,11 +558,13 @@ val propSharing = wrap "propSharing" propSharing
 
 
 (**************************************************************************
- * This function distributes the structure sharing constraints that a     *
- * signature has to the children of a corresponding node.  Note that this *
+ * distributeS : Signature * slotEnv * entEnv * int -> unit               *
+ *                                                                        *
+ * This function distributes the structure sharing constraints of a       *
+ * signature to the children of a corresponding node.  Note that this     *
  * only deals with the explicit constraints.  Implied and inherited       *
- * constraints are propogated by propSharing and the constrain functions of     *
- * buildStrClass and buildTycClass.                                      *
+ * constraints are propogated by propSharing and the constrain functions  *
+ * of buildStrClass and buildTycClass.                                    *
  **************************************************************************)
 exception DistributeS
 
@@ -539,10 +595,12 @@ fun distributeS (sign as SIG {strsharing,...}, slotEnv, entEnv, sigDepth) =
   | distributeS _ = () 
 
 
-(***************************************************************************
- * This function distributes the type sharing constraints that a signature *
- * has to the children of the corresponding node.                          *
- ***************************************************************************)
+(****************************************************************************
+ * distributeT : Signature * slotEnv * entEnv * (unit->stamp) * int -> unit *
+ *                                                                          *
+ * This function distributes the type sharing constraints that a signature  *
+ * has to the children of the corresponding node.                           *
+ ****************************************************************************)
 exception DistributeT
 
 fun distributeT (sign as SIG{typsharing,...}, slotEnv, entEnv, mkStamp, sigDepth) =
@@ -588,63 +646,70 @@ val distributeT = wrap "distributeT" distributeT
 
 exception ExploreInst of IP.path
 
+
 (* THIS COMMENT OBSOLETE *)
 (***************************************************************************
- * This is the main function of the algorithm.  Given an InitialStr node, 
- * it creates subs and typs arrays and converts the node to a PartialStr
- * node.  This step is skipped if the node has been explored previously
- * and is already PartialStr.  Then, we find all of the child nodes of
- * the node, create InitialStr insts for them, apply propSharing to them
- * resulting in a new union_components environment.  We then distribute
- * all of the sharing constraints to the new children and apply
- * the constrain function to our list of inherited constraints.  Constrain
- * in turn uses the constraints to track down other nodes that should
- * be placed in the same equivalence class.  If the ancestors of such
- * a node have not been explored yet, then they are explored first.
- * Once constrain is complete, class holds a list of inst nodes
- * (all PartialStr) that are equivalent and union_components holds an 
- * enviornment that maps the "union" of all components in the class
- * to instrep.  A class_origin is [lazily] built.  (The origin will
- * be available iff there is an external sharing constraint.)  Finally,
- * we apply the function finalize to each member of the class which
- * converts each of the PartialStr nodes to either FinalStr or Final_embed
- * nodes.  
+ * buildStrClass : slot * int * entityEnv * (unit -> stamp) * EM.complainer
+ *                  -> unit                          
  *
+ * The slot argument is assumed to contain an InitialStr.
+ * This function computes the equivalence class of the structure 
+ * element associated with the slot.  It proceeds as follows:
+ * 
+ * 1. New slots are created for the elements of the signature.
+ * 
+ * 2. The InitialStr is replaced by a PartialStr.
+ * 
+ * 3. The signature's explicit type and structure sharing constraints are
+ *    propogated to the member elements using distributeS and distributeT.
+ * 
+ * 4. This node's inherited constraints are processed.  If they apply
+ *    to this node, the equivalence class is enlarged (using addInst) or 
+ *    a definition is set (classDef).  If a constraint applies to children
+ *    of this node, they are propogated to the children.  Processing a 
+ *    sharing constraint may require that an ancestor of the other node
+ *    in the constraint first be explored by buildStrClass.
+ *    Once constrain is complete, class contains a list of equivalent PartialStr
+ *    nodes that constitute the sharing equivalence class of the original
+ *    node (thisSlot).
+ * 
+ * 5. finalize is applied to the members of the class to turn them
+ *    into FinalStrs.  The FinalStrs are memoized in the PartialStr
+ *    nodes to insure that equivalent nodes that have the same signature
+ *    will contain the same FinalStr value.
+ * 
  * If two slots in the class have nodes that share the same signature,
  * then the slots are made to point to only one of the nodes.  Of course,
  * the sharing constraints for both must be propogated to the descendants.  
- *
+ * 
  * Also, the "entEnv" argument here is strictly used for interpreting the
  * sharing constraints only. (ZHONG)
  ***************************************************************************)
-fun eqSig(SIG{stamp,...}, SIG{stamp=stamp',...}) = Stamps.eq (stamp,stamp')
-
-val infinity = 1000000 (* a big integer *)
 
 (* ASSERT: first_slot is always an InitialStr *)
-fun buildStrClass (this_slot: slot, class_depth: int, 
+fun buildStrClass (this_slot: slot, classDepth: int, 
                    entEnv: M.entityEnv, mkStamp, err: EM.complainer) : unit =
-let val class = ref ([] : slot list)
-    val class_def = ref (NONE : (strDef * int) option)
+let val class = ref ([this_slot] : slot list) (* the equivalence class *)
+    val classDef = ref (NONE : (strDef * int) option)
     val minDepth = ref infinity
 	(* minimum signature nesting depth of the sharing constraints used
 	 * in the construction of the equivalence class. *)
 
-    (* add_inst(old,new,depth);
+    (* addInst(old,new,depth);
      * adds new to the current equivalence class in response to a sharing
      * constraint relating old to new.  depth is the signature nesting depth of 
      * this sharing constraint.
      * Converts the new node from InitialStr to PartialStr.  Propagates sharing
      * to the respective common components.  Propagate downward the sharing
-     * constraints in new's signature. Then apply constrain to each of the inherited
-     * constraints.
+     * constraints in new's signature. Then apply constrain to each of the
+     * inherited constraints.
      *)
-    fun add_inst (old: slot, new: slot, depth) : unit =
+    fun addInst (old: slot, new: slot, depth: int) : unit =
        (minDepth := Int.min(!minDepth, depth);
 	case !new
 	  of ErrorStr => ()
 	   | (PartialStr {depth, path, ...}) =>
-		if (depth = class_depth) then () (* member current class *)
+		if (depth = classDepth) then () (* member current class *)
 		else raise ExploreInst path (* member of pending class *)
 	   | (InitialStr {sign, sigDepth, path, slotEnv, inherited, epath}) =>
 	       (case !old
@@ -654,8 +719,8 @@ let val class = ref ([] : slot list)
 		       if eqSig(sign,sign') then  (* same sign *)
 			  (new := p;   (* share the old instance *)
 			   push(class,new);  (* add new slot to class *)
-			   app (constrain(new,sign,slotEnv',path))
-			       (!inherited))  (* may be new inherited constraints *)
+			   constrain(new,!inherited,sign,slotEnv',path))
+			     (* may be new inherited constraints *)
 		       else (* different sign *)
 			(let val sigDepth' = sigDepth + 1
 			     val (slotEnv',newComps) =
@@ -664,13 +729,13 @@ let val class = ref ([] : slot list)
 					       slotEnv=slotEnv',
 					       comps=newComps,
 					       final_rep = ref NONE,
-					       depth=class_depth};
+					       depth=classDepth};
 			     push(class,new);
 			     propSharing(oldComps,newComps,depth);
 			     distributeS (sign, slotEnv', entEnv, sigDepth');
-			     distributeT (sign, slotEnv', entEnv, mkStamp, sigDepth');
-			     app (constrain (new, sign, slotEnv', path)) 
-				 (!inherited)
+			     distributeT (sign, slotEnv', entEnv, mkStamp,
+					  sigDepth');
+			     constrain (new, !inherited, sign, slotEnv', path)
 			  end
 			  handle (MU.Unbound _) =>  (* bad sharing paths *)
 			      (error_found := true;
@@ -678,158 +743,103 @@ let val class = ref ([] : slot list)
 		   | ErrorStr => ()
 		     (* could do more in this case  -- all the above
 		      * except for propSharing *)
-		   | _ => bug "add_inst 1")
+		   | _ => bug "addInst 1")
 	   | _ => if !error_found then new := ErrorStr
-		  else bug "add_inst.2")
+		  else bug "addInst.2")
 
-    and constrain (oldSlot, sign, slotEnv, path) =
+    and constrain (oldSlot, inherited, sign, slotEnv, path) =
 	(* Class shares with some external structure *)
-	fn (SDEFINE(strDef,depth)) =>
-	     (debugmsg "constrain: SDEFINE";
-	      case !class_def
-	       of SOME(CONSTstrDef(str'),_) =>
-		   (* multiple definitions -- can happen via multiple
-		    * where structure defs that are equated via internal
-		    * sharing. *)
-		       (* equality (equivalence?) of signatures should
-			* have been established earlier, by sigmatching,
-			* if necessary. Currently this is not done (BUG) *)
-		   (debugmsg "<checking consistency of multiple definitions>";
-		    case strDef
-		      of CONSTstrDef str =>
-			  if eqOrigin(str',str) then ()  
-			    (* BUG: not a semantically robust test without
-			     * structure generativity *)
-			  else
-			     err EM.COMPLAIN
-			       ("possibly inconsistent structure definitions at: "
-				^ SP.toString(ConvertPaths.invertIPath path))
-			       EM.nullErrorBody
-		       | _ => ())
-	        | SOME(VARstrDef _,_) =>
-		   err EM.COMPLAIN
-		     ("possibly inconsistent structure definitions at: "
-		      ^ SP.toString(ConvertPaths.invertIPath path))
-		     EM.nullErrorBody
-		| NONE =>
-		   let val PartialStr{comps,...} = !oldSlot
-		    in class_def := SOME(strDef,depth);
-		       propDefs (comps,getElemDefs(strDef,mkStamp,depth))
-		   end)
+	let fun constrain1 constraint =
+            case constraint
+              of (SDEFINE(strDef,depth)) =>
+		 (debugmsg "constrain: SDEFINE";
+		  case !classDef
+		   of SOME _ =>
+		       (* already defined -- ignore secondary definitions *)
+		       err EM.WARN
+			 ("multiple defs at structure spec: "
+			  ^ SP.toString(ConvertPaths.invertIPath path)
+			  ^ "\n    (secondary definitions ignored)")
+			 EM.nullErrorBody
+		    | NONE =>
+		       let val PartialStr{comps,...} = !oldSlot
+			in classDef := SOME(strDef,depth);
+			   propDefs (comps,getElemDefs(strDef,mkStamp,depth))
+		       end)
 
-	   (* Class shares with the structure in slot -- explore it *)
-	 | SHARE{my_path=SP.SPATH[],its_ancestor=slot,its_path=SP.SPATH [],
-		 depth} =>
-	     (debugmsg "<calling add_inst to add member to this equiv class>";
-	      add_inst(oldSlot,slot,depth)
-	      handle (ExploreInst path') =>
-		(err EM.COMPLAIN
-		   "sharing structure with a descendent substructure"
-		   EM.nullErrorBody;
-		 slot := ErrorStr))
-
-	   (* Class shares with another structure.  Make sure its ancestor
-	    * has been explored.  Then push the constraint down a level.
-	    *)
-	 | SHARE{my_path=SP.SPATH[],its_ancestor=slot,
-		 its_path=SP.SPATH(sym::rest),depth} =>
-	     (case (!slot)
-	       of InitialStr _ => 
-		    (debugmsg "<Having to call buildStrClass on an ancestor \
-			       \of a node I'm equivalent to.>";
-		     buildStrClass (slot, (class_depth+1), entEnv, mkStamp, err)
-		     handle (ExploreInst _) => bug "buildStrClass.4")
-		| ErrorStr => ()
-		| _ => ();
-
-	      debugmsg "<finished exploring his ancestor>";
-
-	      case (!slot)
-	       of FinalStr {sign=sign', slotEnv=slotEnv', ...} =>
-		    (debugmsg "<calling constrain recursively>";
-		     constrain (oldSlot, sign, slotEnv, path)
-		       (SHARE{my_path=SP.SPATH[], its_path=SP.SPATH rest,
-			      its_ancestor=getElemSlot(sym,sign',slotEnv'),
-			      depth=depth}))
-		| PartialStr _ =>  (* do we need to check depth? *)
+	       (* Class shares with the structure in slot -- explore it *)
+	       | SHARE{my_path=SP.SPATH[],its_ancestor=newSlot,
+		       its_path=SP.SPATH [], depth} =>
+		 (debugmsg "<calling addInst to add member to this equiv class>";
+		  addInst(oldSlot,newSlot,depth)
+		  handle (ExploreInst path') =>
 		    (err EM.COMPLAIN
-		     "Sharing structure with a descendent substructure"
-		     EM.nullErrorBody;
-		     slot := ErrorStr)
-		| ErrorStr => ()
-		| _ => bug "buildStrClass.5")
+		       "sharing structure with a descendent substructure"
+		       EM.nullErrorBody;
+		     newSlot := ErrorStr))
 
-	   (* One of the node's children shares with someone.  Push the
-	    * constraint down to the child now that we are explored.
-	    *)
-	 | SHARE{my_path=SP.SPATH(sym::rest), its_ancestor, its_path,depth} =>
-	    let val SIG{elements,...} = sign
-	     in case MU.getSpec(elements,sym)
-		  of TYCspec{spec=tycon,entVar,scope} => 
-		      (* ASSERT: rest = nil *)
-		      (case !(lookSlot(slotEnv,entVar))
-			of InitialTyc {inherited, ...} =>
-			     push(inherited,
-				  SHARE{my_path=SP.SPATH[], 
-					its_ancestor=its_ancestor, 
-					its_path=its_path,depth=depth})
-			 | _ => bug "buildStrClass.6")
-		   | STRspec{entVar,...} =>
-		      (case !(lookSlot(slotEnv,entVar))
-			of InitialStr {inherited, ...} =>
-			     push(inherited,
-				  SHARE{my_path=SP.SPATH rest, 
-					its_ancestor=its_ancestor, 
-					its_path=its_path,depth=depth})
-			 | _ => bug "buildStrClass.7")
-		   | _ => bug "buildStrClass.8"
-	    end
-	 | _ => bug "buildStrClass.9"
+	       (* Class shares with another structure.  Make sure its ancestor
+		* has been explored.  Then push the constraint down a level.
+		*)
+	       | SHARE{my_path=SP.SPATH[],its_ancestor=slot,
+		       its_path=SP.SPATH(sym::rest),depth} =>
+		 (case (!slot)
+		   of InitialStr _ => 
+			(debugmsg "<Having to call buildStrClass on an ancestor \
+				   \of a node I'm equivalent to.>";
+			 buildStrClass (slot, (classDepth+1), entEnv,
+					mkStamp, err)
+			 handle (ExploreInst _) => bug "buildStrClass.4")
+		    | ErrorStr => ()
+		    | _ => ();
 
+		  debugmsg "<finished exploring his ancestor>";
 
-    (* Should find everyone in the equiv. class and convert them to 
-     * PartialStr nodes.  
-     *)
-    val _ = (* creating initial member of equivalence class *)
-	case !this_slot  (* verify that this_slot is InitialStr *)
-	  of (InitialStr {sign, sigDepth, path, slotEnv, inherited, epath}) =>
-	      (let val sigDepth' = sigDepth + 1
-		   val (slotEnv',newComps) =
-		       mkElemSlots(sign,slotEnv,path,epath,sigDepth')
-		in this_slot := 
-		     PartialStr{sign=sign,path=path,
-				slotEnv=slotEnv',
-				comps=newComps,
-				final_rep = ref NONE,
-				depth=class_depth};
-		   push(class,this_slot);
-		   distributeS (sign, slotEnv', entEnv, sigDepth');
-		   distributeT (sign, slotEnv', entEnv, mkStamp, sigDepth');
-		   app (constrain (this_slot, sign, slotEnv', path)) 
-			     (!inherited)
-	       end
-	       handle (MU.Unbound _) =>  (* bad sharing paths *)
-		   (error_found := true;
-		    this_slot := ErrorStr))
+		  case (!slot)
+		   of FinalStr {sign=sign', slotEnv=slotEnv', ...} =>
+			(debugmsg "<calling constrain recursively>";
+			 constrain (oldSlot,
+			   [SHARE{my_path=SP.SPATH[], its_path=SP.SPATH rest,
+				  its_ancestor=getElemSlot(sym,sign',slotEnv'),
+				  depth=depth}],
+                           sign, slotEnv, path))
+		    | PartialStr _ =>  (* do we need to check depth? *)
+			(err EM.COMPLAIN
+			 "Sharing structure with a descendent substructure"
+			 EM.nullErrorBody;
+			 slot := ErrorStr)
+		    | ErrorStr => ()
+		    | _ => bug "buildStrClass.5")
 
-	   | _ => bug "buildStrClass.10" (* not InitialStr *)
-
-(* needs fixing. DBM
-    (* verify that any class definition is defined outside of the
-     * outermost sharing constraint *)
-    val _ = case !class_def
-	      of NONE => () (* no definition - ok *)
-	       | SOME(_,depth) =>
-		  if !minDepth < depth
-		  then err EM.WARN "definition spec inside of sharing"
-		           EM.nullErrorBody
-		  else ()
-*)
-    val class_stamp = 
-	ref(case !class_def
-	      of SOME(CONSTstrDef str,_)  => STAMP(MU.getStrStamp str)
-	       | SOME(VARstrDef(_,entPath),_) => PATH(entPath)
-	       | NONE => GENERATE)
+	       (* One of the node's children shares with someone.  Push the
+		* constraint down to the child now that we are explored.
+		*)
+	       | SHARE{my_path=SP.SPATH(sym::rest),
+		       its_ancestor, its_path, depth} =>
+		 let val SIG{elements,...} = sign
+		  in case MU.getSpec(elements,sym)
+		       of TYCspec{spec=tycon,entVar,scope} => 
+			   (* ASSERT: rest = nil *)
+			   (case !(lookSlot(slotEnv,entVar))
+			     of InitialTyc {inherited, ...} =>
+				  push(inherited,
+				       SHARE{my_path=SP.SPATH[], 
+					     its_ancestor=its_ancestor, 
+					     its_path=its_path,depth=depth})
+			      | _ => bug "buildStrClass.6")
+			| STRspec{entVar,...} =>
+			   (case !(lookSlot(slotEnv,entVar))
+			     of InitialStr {inherited, ...} =>
+				  push(inherited,
+				       SHARE{my_path=SP.SPATH rest, 
+					     its_ancestor=its_ancestor, 
+					     its_path=its_path,depth=depth})
+			      | _ => bug "buildStrClass.7")
+			| _ => bug "buildStrClass.8"
+		 end
+	       | _ => bug "buildStrClass.9"
+	 in app constrain1 (rev inherited)
+	end
 
     (* 
      * Converts all of the nodes in the class (which should be PartialStr)
@@ -837,7 +847,7 @@ let val class = ref ([] : slot list)
      * should share the same FinalStr nodes.  So, they are memoized using
      * the final_rep field of the PartialStr node.
      *)
-    fun finalize slot =
+    fun finalize (stampInfoRef: stampInfo ref) slot =
 	case (!slot) 
 	 of ErrorStr => ()
 	  | PartialStr {sign, path, slotEnv, final_rep, ...} =>
@@ -845,7 +855,7 @@ let val class = ref ([] : slot list)
 		of SOME inst => slot := inst
 		 | NONE =>
 		    let val finalEnt =
-			    case !class_def
+			    case !classDef
 			      of SOME(CONSTstrDef(STR{sign=sign',rlzn,...}),_) =>
 				  if eqSig(sign,sign') then CONST_ENT rlzn
 				  else GENERATE_ENT true
@@ -858,7 +868,7 @@ let val class = ref ([] : slot list)
 			       | _ => bug "buildStrClass.finalize 1"
 			val inst =
 			    FinalStr {sign = sign,
-				      stamp = class_stamp,
+				      stamp = stampInfoRef,
 				      slotEnv = slotEnv,
 				      finalEnt = ref finalEnt,
 				      expanded = ref false}
@@ -867,17 +877,68 @@ let val class = ref ([] : slot list)
 		    end)
 	  | _ => bug "buildStrClass.finalize 2"
 
- in app finalize (!class)
+    (* Should find everyone in the equiv. class and convert them to 
+     * PartialStr nodes.  
+     *)
+ in (* explore equivalence class, filling the class ref with a 
+     * list of PartialStr insts *)
+    case !this_slot  (* verify that this_slot is InitialStr *)
+      of (InitialStr {sign, sigDepth, path, slotEnv, inherited, epath}) =>
+	  (let val sigDepth' = sigDepth + 1
+	       val (slotEnv',newComps) =
+		   mkElemSlots(sign,slotEnv,path,epath,sigDepth')
+	    in this_slot := 
+		 PartialStr{sign=sign,path=path,
+			    slotEnv=slotEnv',
+			    comps=newComps,
+			    final_rep = ref NONE,
+			    depth=classDepth};
+	       distributeS (sign, slotEnv', entEnv, sigDepth');
+	       distributeT (sign, slotEnv', entEnv, mkStamp, sigDepth');
+	       constrain (this_slot, !inherited, sign, slotEnv', path)
+	   end
+	   handle (MU.Unbound _) =>  (* bad sharing paths *)
+	       (error_found := true;
+		this_slot := ErrorStr))
+
+       | _ => bug "buildStrClass.10"; (* not InitialStr *)
+
+ (* BUG: needs fixing. DBM
+    (* verify that any class definition is defined outside of the
+     * outermost sharing constraint *)
+    case !classDef
+      of NONE => () (* no definition - ok *)
+       | SOME(_,depth) =>
+	  if !minDepth < depth
+	  then err EM.WARN "definition spec inside of sharing"
+		   EM.nullErrorBody
+	  else ();
+  *)
+    let val classStampInfo = 
+	ref(case !classDef
+	      of SOME(CONSTstrDef str,_)  => STAMP(MU.getStrStamp str)
+	       | SOME(VARstrDef(_,entPath),_) => PATH(entPath)
+	       | NONE => GENERATE)
+
+     in app (finalize classStampInfo) (!class)
+    end
 end (* buildStrClass *)
 
 (* debugging wrappers
 val buildStrClass = wrap "buildStrClass" buildStrClass
 *)
 
+exception INCONSISTENT_EQ
+  (* raised if tycons with both YES and NO eqprops are found in an
+   * equivalence class *)
+
 (*************************************************************************
+ * buildTycClass: int * slot * entityEnv * instKind * rpath * (unit->stamp)
+ *                EM.complainer -> unit
+ *
  * This function deals with exploration of type nodes in the instance
- * graph and is similar to the buildStrClass function above.  It is
- * a bit simpler since it doesn't have to worry about "children" of
+ * graph.  It is similar to the buildStrClass function above, but it is
+ * simpler since it doesn't have to worry about "children" of
  * type nodes.  However, we must check that the arities of equivalenced
  * types are the same.  Also, if they have constructors, we must check
  * to see that they have the same constructor names.  We don't know how
@@ -892,13 +953,9 @@ val buildStrClass = wrap "buildStrClass" buildStrClass
  * sharing constraints only. (ZHONG)
  *
  *************************************************************************)
-exception INCONSISTENT_EQ
-  (* raised if tycons with both YES and NO eqprops are found in an
-   * equivalence class *)
-
 fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
   let val class = ref ([] : slot list)
-      val class_def = ref (NONE : (tycInst * int) option)
+      val classDef = ref (NONE : (tycInst * int) option)
       val minDepth = ref infinity
 	(* minimum signature nesting depth of the sharing constraints used
 	 * in the construction of the equivalence class. *)
@@ -912,45 +969,33 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
                   T.FLEXTYC(T.TP_VAR{depth=depth, num=cnt, kind=tk}))
           | INST_FMBD tp => (fn (ep,_) => T.FLEXTYC(T.TP_SEL(tp,cnt)))
  
-      fun add_inst (slot,depth)=
+      fun addInst (slot,depth)=
 	  (minDepth := Int.min(!minDepth, depth);
 	   case !slot
 	     of InitialTyc {tycon, path, epath, inherited} =>
 		   (debugmsg "<setting InitialTyc to PartialTyc>";
 		    slot := PartialTyc{tycon=tycon, path=path, epath=epath};
 		    push(class,slot);
-		    app constrain (!inherited))
+		    app constrain (rev(!inherited)))
 	      | PartialTyc _ => ()
 	      | ErrorTyc => ()
-	      | _ => bug "buildTycClass.add_inst")
+	      | _ => bug "buildTycClass.addInst")
 
       and constrain (def as TDEFINE(d as (tycInst2,depth))) =
-	    (case !class_def
-	      of SOME(tycInst1,depth) =>
-		  (* if there is a prior definition, and the two definitions
-		   * are both INST (instantiated), then check that they
-		   * are consistent.  Otherwise, punt (as in the structure
-		   * case). Alternative would be to remember the multiple
-		   * definitions and compare them after they are instantiated
-		   * in instToStr. *)
-		  (case (tycInst2,tycInst1)
-		     of (INST tyc2, INST tyc1) =>
-			 if TU.equalTycon(tyc1,tyc2)
-			 then ()
-			 else let val s = 
-				  "inconsistent type definitions : type " ^
-				  (S.name (TU.tycName tyc1))
-			       in debugType(">>inconsistent: tyc1 = ",tyc1);
-				  debugType(">>inconsistent: tyc2 = ",tyc2);
-				  err EM.COMPLAIN s EM.nullErrorBody
-			      end
-		      | _ => () (* one of the definitions is not yet
-				 * instantiated.  Do nothing. *))
-	       | NONE => class_def := SOME d)
+	    (case !classDef
+	      of SOME _ =>
+		  (* already defined -- ignore secondary definitions *)
+		   err EM.WARN
+		     ("multiple defs at tycon spec: "
+		      ^ SP.toString(ConvertPaths.invertIPath rpath)
+		      ^ "\n    (secondary definitions ignored)")
+		     EM.nullErrorBody
+
+	       | NONE => classDef := SOME d)
 
         | constrain (SHARE{my_path=SP.SPATH[], its_ancestor=slot,
 			   its_path=SP.SPATH[], depth}) =
-            add_inst(slot,depth)
+            addInst(slot,depth)
 
         | constrain (SHARE{my_path=SP.SPATH[],its_ancestor=slot,
 			   its_path=SP.SPATH(sym::rest),depth}) =
@@ -1125,12 +1170,12 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 	      tcOp
 	  end
 
-      val _ = add_inst(this_slot,infinity)
+      val _ = addInst(this_slot,infinity)
 
 (* needs fixing (like the other case)
       (* verify that any class definition is defined outside of the
        * outermost sharing constraint *)
-      val _ = case !class_def
+      val _ = case !classDef
 		of NONE => () (* no definition - ok *)
 		 | SOME(_,depth) =>
 		    if !minDepth < depth
@@ -1139,7 +1184,7 @@ fun buildTycClass (cnt, this_slot, entEnv, instKind, rpath, mkStamp, err) =
 		    else ()
 *)
 
-   in finalize(!class_def,!class)
+   in finalize(!classDef,!class)
   end (* buildTycClass *)
 
 (* debugging wrapper
@@ -1692,6 +1737,3 @@ val getTycPaths =
 end (* local *)
 end (* structure Instantiate *)
 
-(*
- * $Log$
- *)

@@ -51,23 +51,37 @@ fun redoSubst nil = ()
 fun softUnify(ty1: ty, ty2: ty): unit =
   let val subst: subst ref = ref nil
       fun softInst(tv as ref info: tyvar, ty: ty) : unit =
-	    let fun scan(ty: ty) : unit =  (* simple occurrence check *)
-		   case ty
-		     of VARty(tv') => 
-		          if TU.eqTyvar(tv, tv')
-			  then raise SoftUnify
-			  else (case tv'
-				  of ref(OPEN{kind=FLEX fields,...}) =>
-				       app (fn (_,ty') => scan ty') fields
-				   | _ => ())
-		      | CONty(_, args) => app scan args
-		      | ty => ()  (* propagate error *)
+	    let fun scan eq (ty: ty) : unit =  (* simple occurrence check *)
+		    case ty
+		      of VARty(tv') => 
+			   if TU.eqTyvar(tv, tv')
+			   then raise SoftUnify
+			   else (case tv'
+				   of ref(OPEN{kind=FLEX fields,...}) =>
+					(* DBM: can this happen? *)
+					app (fn (_,ty') => scan eq ty') fields
+				    | _ => ())
+		       | CONty(tycon, args) =>
+			 (* check equality property if necessary *)
+			   if eq
+			   then (case tycon
+			           of DEFtyc _ => 
+				       scan eq (TU.headReduceType ty)
+		                    | GENtyc{eq=eqp,...} =>
+				       (case !eqp
+                                          of YES => app (scan eq) args
+					   | OBJ => app (scan false) args
+					      (* won't happen *)
+					   | _ => raise SoftUnify)
+                                    | _ => raise SoftUnify) (* won't happen? *)
+			   else app (scan eq) args
+		       | ty => ()  (* propagate error *)
 	     in case info
-		  of (SCHEME _ | OPEN{kind=META,...}) => ()
-		   | _ => raise SoftUnify;
- 	        scan ty;
-		subst := (tv, info)::(!subst);
-		tv := INSTANTIATED ty
+		  of (SCHEME eq | OPEN{kind=META,eq,...}) =>
+		      (scan eq ty;
+		       subst := (tv, info)::(!subst);
+		       tv := INSTANTIATED ty)
+		   | _ => raise SoftUnify
 	    end
 	
 	fun unify(ty1: ty, ty2: ty): unit =
@@ -148,6 +162,3 @@ fun resolveOverloaded env  =
 end (* local *)
 end (* structure Overload *)
 
-(*
- * $Log$
- *)

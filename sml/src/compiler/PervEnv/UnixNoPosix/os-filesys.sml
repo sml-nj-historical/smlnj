@@ -106,7 +106,7 @@ structure OS_FileSys : OS_FILE_SYS =
 
     fun realPath p = if (P.isAbsolute p)
 	  then fullPath p
-	  else P.mkRelative (fullPath p, fullPath(getDir()))
+	  else P.mkRelative {path=fullPath p, relativeTo=fullPath(getDir())}
 
     local
       val modTime' : string -> int			= osFunc "modTime"
@@ -138,6 +138,3 @@ structure OS_FileSys : OS_FILE_SYS =
   end; (* FILE_SYS *)
 
 
-(*
- * $Log$
- *)

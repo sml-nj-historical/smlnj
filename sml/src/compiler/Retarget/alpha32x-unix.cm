@@ -1,5 +1,6 @@
 Group
 	structure Alpha32XUnixCMB
+	structure Alpha32XVisComp
 is
 	../viscomp-lib.cm	
 	../../cm/cm-lib.cm

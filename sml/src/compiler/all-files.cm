@@ -17,8 +17,8 @@ is
 	(* library of visible compilers for various architectures *)
 	viscomp-lib.cm
 
-	(* library of compilation managers for various architectures *)
-	compman-lib.cm
+	(* library providing the implementation of CM *)
+	../cm/cm-lib.cm
 
 	(* based on current architecture, select Compiler, CM, and CMB *)
 
@@ -46,8 +46,14 @@ is
 #   error "Strange architecture!"
 # endif
 
+	(* make CM and CMB once we have selected the Compiler *)
+	TopLevel/bootstrap/link-cm.sml
+
+	(* build boot environments *)
+	TopLevel/bootstrap/boot-env.sml
+
 	(* glue code (build the interactive system) *)
-	TopLevel/bootstrap/theGlue.sml
+	TopLevel/bootstrap/int-sys.sml
 
 	(* if desired, build all the cross-compilers as well *)
 # if defined(MAKE_CROSSCOMPILERS)

@@ -5,24 +5,23 @@
  *   completely redone by M.Blume (5/1998)
  *)
 signature BOOTENV = sig
-    type env = Environment.environment
-    val bootEnv: unit -> env
+    val bootEnv: unit -> Environment.environment
 end
 
 functor BootEnvF (structure VC: VISCOMP
 		  val setRetargetPervStatEnv: CMStaticEnv.staticEnv -> unit
-		  val cmbmake: string -> unit): BOOTENV = struct
+		  val cmbmake: string -> unit) :> BOOTENV = struct
 
     exception BootFailure
 
+    structure Env = Environment
     structure BF = VC.Binfile
     structure CMS = CMStaticEnv
     structure SE = StaticEnv
     structure DynE = DynamicEnv
-    structure SymE = SymbolicEnv
     structure PS = PersStamps
 
-    type env = Environment.environment
+    datatype envrequest = BARE | NORMAL | FULL
 
     fun say s = (Control.Print.say s; Control.Print.flush ())
     fun die s = (say s; raise BootFailure)
@@ -35,11 +34,7 @@ functor BootEnvF (structure VC: VISCOMP
 
     (* get the dynamic environment from the runtime system *)
     local
-	datatype runDynEnv =
-	    NILrde
-	  | CONSrde of Word8Vector.vector * Unsafe.Object.object * runDynEnv
-
-	val a_pstruct: runDynEnv ref = Unsafe.cast Unsafe.pStruct
+	structure U = Unsafe
 
 	(* Here we collect all export pids as they come from the
 	 * environments.  They may differ from those in the dynamic
@@ -51,9 +46,9 @@ functor BootEnvF (structure VC: VISCOMP
 
 	fun getdyn rebuilt = let
 	    (* ignore the very last pid -- it's the runtime system! *)
-	    fun convert (CONSrde (_, _, NILrde), [_]) = DynE.empty
-	      | convert (CONSrde (raw_dynpid, obj, rest), stpid :: pids) = let
-		    val dynpid = PS.fromBytes raw_dynpid
+	    fun convert (U.CONSrde (_, _, U.NILrde), [_]) = DynE.empty
+	      | convert (U.CONSrde (rawdynpid, obj, rest), stpid :: pids) = let
+		    val dynpid = PS.fromBytes rawdynpid
 		    val _ =
 			if rebuilt orelse stpid = dynpid then ()
 			else die (concat
@@ -63,7 +58,7 @@ functor BootEnvF (structure VC: VISCOMP
 		    DynE.bind (stpid, obj, convert (rest, pids))
 		end
 	      | convert _ = die "Pid list mismatch\n"
-	    val rde = !a_pstruct before a_pstruct := NILrde
+	    val rde = !U.pStruct before U.pStruct := U.NILrde
 	    val stpids = !stpids before stpids := []
 	in
 	    convert (rde, stpids)
@@ -71,7 +66,7 @@ functor BootEnvF (structure VC: VISCOMP
     end
 
     (* get the boot environments from the binfiles *)
-    fun fetchBootEnv (bindir, full, rebuilt) = let
+    fun fetchBootEnv (bindir, ereq, rebuilt) = let
 
 	fun b name = OS.Path.joinDirFile { dir = bindir, file = name }
 
@@ -110,16 +105,18 @@ functor BootEnvF (structure VC: VISCOMP
 
 	infix //
 	fun (st1, sy1) // (st2, sy2) =
-	    (CMS.atop (st1, st2), SymE.atop (sy1, sy2))
+	    (CMS.atop (st1, st2), Env.layerSymbolic (sy1, sy2))
 
 	(* magic file names *)
 	val assembly_sig = "assembly.sig.bin"
 	val dummy_sml = "dummy.sml.bin"
 	val core_sml = "core.sml.bin"
 
+	val emptysym = Env.symbolicPart Env.emptyEnv
+
 	(* build the core environment *)
 	val _ = say "----- CORE ENVIRONMENT -----\n"
-	val prim = (CMS.CM PrimEnv.primEnv, SymE.empty)
+	val prim = (CMS.CM PrimEnv.primEnv, emptysym)
 	val sig_prim = getbin (#1 prim, assembly_sig) // prim
 	val dummy_env = getbin (#1 sig_prim, dummy_sml) // sig_prim
 	val core_env = getbin (#1 dummy_env, core_sml)
@@ -131,7 +128,7 @@ functor BootEnvF (structure VC: VISCOMP
 	      | loop (f1 :: files, env) =
 		loop (files, getbin (CMS.atop (#1 env, scontext), f1) // env)
 	in
-	    loop (files, (CMS.empty, SymE.empty))
+	    loop (files, (CMS.empty, emptysym))
 	end
 
 	(* load all the files from BOOTLIST *)
@@ -152,16 +149,10 @@ functor BootEnvF (structure VC: VISCOMP
 	val pervstatenv = CMS.unCM pervstatenv
 	val compstatenv = CMS.unCM compstatenv
 
-	(* add stuff to the pervasive env (depends on "full" flag) *)
+	(* add stuff to the pervasive env (depends on "ereq" flag) *)
 	val _ = say "----- COMPILER BINDINGS -----\n"
 	val pervstatenv =
-	    if full then
-		(* "full" compiler -> put everything and the kitchen sink into
-		 *                    the pervasive environment *)
-		SE.atop (compstatenv, pervstatenv)
-	    else let
-		(* normal compile -> put only a few bindings into pervenv *)
-
+	    let
 		(* looking for symbols in compiler's static env *)
 		fun complook sym =
 		    SE.look (compstatenv, sym)
@@ -187,15 +178,28 @@ functor BootEnvF (structure VC: VISCOMP
 		    foldl comprebind (SE.bind (sym, b, e)) sigsyms
 		end
 
+		(* function for just rebinding the visible compiler *)
+		fun rebind_viscomp () =
+		    comprebind_strsym (Symbol.strSymbol "Compiler",
+				       pervstatenv)
 	    in
-		(* introduce bindings for compiler into pervasive env *)
-		foldl comprebind
-		  (comprebind_strsym (Symbol.strSymbol "Compiler",
-				      pervstatenv))
-		  [Symbol.strSymbol "CM",
-		   Symbol.strSymbol "CMB",
-		   Symbol.sigSymbol "CMTOOLS",
-		   Symbol.sigSymbol "COMPILATION_MANAGER"]
+		case ereq of
+		    BARE => rebind_viscomp () (* no CM, CMB, ... *)
+		  | FULL =>
+			(* "full" compiler ->
+			 *         put everything and the kitchen sink into
+			 *         the pervasive environment *)
+			SE.atop (compstatenv, pervstatenv)
+		  | NORMAL => let
+		    (* normal compile ->
+		     *             put only a few bindings into pervenv *)
+		    in
+			foldl comprebind (rebind_viscomp ())
+			      [Symbol.strSymbol "CM",
+			       Symbol.strSymbol "CMB",
+			       Symbol.sigSymbol "CMTOOLS",
+			       Symbol.sigSymbol "COMPILATION_MANAGER"]
+		    end
 	    end
 
 	(* consolidating static part *)
@@ -206,12 +210,13 @@ functor BootEnvF (structure VC: VISCOMP
 	 *       bindings responsible for stuff in core env! *)
 	val (dynamic, symbolic) = let
 	    val fulldynenv = getdyn rebuilt
-	    val fullsymenv = SymE.atop (compsymenv,
-					SymE.atop (pervsymenv, #2 core_env))
+	    val fullsymenv =
+		Env.layerSymbolic (compsymenv,
+				   Env.layerSymbolic (pervsymenv, #2 core_env))
 	    val trimstatic = SE.atop (pervstatenv, CMS.unCM (#1 core_env))
 	    val tobetrimmed = { static = trimstatic,
 			        dynamic = fulldynenv, symbolic = fullsymenv }
-	    val { dynamic, symbolic, ... } = Environment.trimEnv tobetrimmed
+	    val { dynamic, symbolic, ... } = Env.trimEnv tobetrimmed
 	in
 	    (dynamic, symbolic)
 	end
@@ -227,23 +232,25 @@ functor BootEnvF (structure VC: VISCOMP
 	    if String.isPrefix prefix arg then
 		SOME (String.extract (arg, size prefix, NONE))
 	    else NONE
-	fun bootArgs ([], bootdir, newbindir, full) =
-	    (bootdir, newbindir, full)
+	fun bootArgs ([], bootdir, newbindir, ereq) =
+	    (bootdir, newbindir, ereq)
 	  | bootArgs ("@SMLfull" :: rest, bootdir, newbindir, _) =
-	    bootArgs (rest, bootdir, newbindir, true)
-	  | bootArgs (head :: rest, bootdir, newbindir, full) =
+	    bootArgs (rest, bootdir, newbindir, FULL)
+	  | bootArgs ("@SMLbare" :: rest, bootdir, newbindir, _) =
+	    bootArgs (rest, bootdir, newbindir, BARE)
+	  | bootArgs (head :: rest, bootdir, newbindir, ereq) =
 	    (case vArg ("@SMLboot=", head) of
 		 SOME bootdir =>
-		     bootArgs (rest, bootdir, newbindir, full)
+		     bootArgs (rest, bootdir, newbindir, ereq)
 	       | NONE => (case vArg ("@SMLrebuild=", head) of
 			      newbindir as SOME _ =>
-				  bootArgs (rest, bootdir, newbindir, full)
+				  bootArgs (rest, bootdir, newbindir, ereq)
 			    | NONE =>
-				  bootArgs (rest, bootdir, newbindir, full)))
+				  bootArgs (rest, bootdir, newbindir, ereq)))
 
-	val (bootdir, newbindir, full) =
+	val (bootdir, newbindir, ereq) =
 	    bootArgs (SMLofNJ.getAllArgs (),
-		      "bin." ^ VC.architecture, NONE, false)
+		      "bin." ^ VC.architecture, NONE, NORMAL)
 	val bootdir = OS.Path.mkCanonical bootdir
 	val newbindir = Option.map OS.Path.mkCanonical newbindir
 
@@ -255,6 +262,6 @@ functor BootEnvF (structure VC: VISCOMP
 		    die "@SMLboot= and @SMLrebuild= name the same directory\n"
 		  else (recompile nbd; (nbd, true))
     in
-	fetchBootEnv (goodbindir, full, rebuilt)
+	fetchBootEnv (goodbindir, ereq, rebuilt)
     end
 end

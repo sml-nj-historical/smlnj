@@ -35,8 +35,8 @@ signature OS_PATH =
     val mkCanonical : string -> string
     val isCanonical : string -> bool
 
-    val mkAbsolute  : (string * string) -> string
-    val mkRelative  : (string * string) -> string
+    val mkAbsolute  : {path : string, relativeTo : string} -> string
+    val mkRelative  : {path : string, relativeTo : string} -> string
     val isAbsolute  : string -> bool
     val isRelative  : string -> bool
 
@@ -46,6 +46,3 @@ signature OS_PATH =
 
   end; (* OS_PATH *)
 
-(*
- * $Log$
- *)
