@@ -48,9 +48,12 @@ struct
     *=====================================================================*)
    fun isMerge (G.GRAPH cfg) node = length(#in_edges cfg node) > 1
    fun isSplit (G.GRAPH cfg) node = length(#out_edges cfg node) > 1
+(*
    fun hasSideExits (G.GRAPH cfg) node = 
          List.exists (fn (_,_,CFG.EDGE{k=CFG.SIDEEXIT _,...}) => true 
                        | _ => false) (#out_edges cfg node)
+*)
+   fun hasSideExits _ _ = false
    fun isCriticalEdge CFG (_,_,CFG.EDGE{k=CFG.ENTRY,...}) = false
      | isCriticalEdge CFG (_,_,CFG.EDGE{k=CFG.EXIT,...}) = false
      | isCriticalEdge CFG (i,j,_) = isSplit CFG i andalso isMerge CFG j

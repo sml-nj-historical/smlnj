@@ -6,10 +6,8 @@
 functor ControlFlowGraph
    (structure I : INSTRUCTIONS
     structure GraphImpl : GRAPH_IMPLEMENTATION
-    structure InsnProps : INSN_PROPERTIES
-    			where I = I
+    structure InsnProps : INSN_PROPERTIES where I = I
     structure Asm : INSTRUCTION_EMITTER where I = I
-                         
    ) : CONTROL_FLOW_GRAPH =
 struct
 
@@ -27,7 +25,6 @@ struct
         START          (* entry node *)
       | STOP           (* exit node *)
       | NORMAL         (* normal node *)
-      | HYPERBLOCK     (* hyperblock *)
 
     and block =
        BLOCK of
@@ -40,18 +37,20 @@ struct
           annotations : Annotations.annotations ref (* annotations *)
        }
 
-    and edge_kind = ENTRY           (* entry edge *) 
-                  | EXIT            (* exit edge *)
-                  | JUMP            (* unconditional jump *)
-                  | FALLSTHRU       (* falls through to next block *)  
-                  | BRANCH of bool  (* branch *) 
-                  | SWITCH of int   (* computed goto *)   
-                  | SIDEEXIT of int (* side exit *)   
+    and edge_kind	    (* edge kinds (see cfg.sig for more info) *)
+      = ENTRY			(* entry edge *) 
+      | EXIT            	(* exit edge *)
+      | JUMP			(* unconditional jump *)
+      | FALLSTHRU		(* falls through to next block *)  
+      | BRANCH of bool		(* branch *) 
+      | SWITCH of int		(* computed goto *)
+      | FLOWSTO			(* FLOW_TO edge *)
    
-    and edge_info = EDGE of { k : edge_kind,                  (* edge kind *)
-                              w : weight ref,                 (* edge freq *)
-                              a : Annotations.annotations ref (* annotations *)
-                            }
+    and edge_info = EDGE of {
+	k : edge_kind,                  (* edge kind *)
+	w : weight ref,                 (* edge freq *)
+	a : Annotations.annotations ref (* annotations *)
+      }
 
     type edge = edge_info Graph.edge
     type node = block Graph.node
@@ -134,7 +133,6 @@ struct
     *========================================================================*)
     fun kindName START          = "START"
       | kindName STOP           = "STOP"
-      | kindName HYPERBLOCK     = "Hyperblock"
       | kindName NORMAL         = "Block"
 
     fun nl() = TextIO.output(!AsmStream.asmOutStream,"\n")
@@ -291,7 +289,7 @@ struct
                       |  SWITCH i => Int.toString i
                       |  ENTRY    => "entry"
                       |  EXIT     => "exit"
-                      |  SIDEEXIT i => "sideexit("^Int.toString i^")"
+                      |  FLOWSTO  => "flowsto"
            val weight = "(" ^ W.toString (!w) ^ ")"
        in  kind ^ weight 
        end 

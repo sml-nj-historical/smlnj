@@ -20,7 +20,6 @@ struct
    fun nl() = TextIO.output(!AsmStream.asmOutStream,"\n")
    fun kindName CFG.START          = "START"
      | kindName CFG.STOP           = "STOP"
-     | kindName CFG.HYPERBLOCK     = "Hyperblock"
      | kindName CFG.NORMAL         = "Block"
 
 
@@ -82,19 +81,7 @@ struct
    val red   = L.COLOR "red"
    val yellow = L.COLOR "yellow"
 
- 
-    fun show_edge(CFG.EDGE{k,w,a,...}) = 
-       let val kind = case k of
-                         CFG.JUMP      => ""
-                      |  CFG.FALLSTHRU => "fallsthru"
-                      |  CFG.BRANCH b => Bool.toString b
-                      |  CFG.SWITCH i => Int.toString i
-                      |  CFG.ENTRY    => "entry"
-                      |  CFG.EXIT     => "exit"
-                      |  CFG.SIDEEXIT i => "sideexit("^Int.toString i^")"
-           val weight = "(" ^ W.toString (!w) ^ ")"
-       in  kind ^ weight 
-       end 
+   val show_edge = CFG.show_edge
 
    fun edgeStyle(i,j,e as CFG.EDGE{k,a,...}) = 
    let val a = L.LABEL(show_edge e) :: getStyle a

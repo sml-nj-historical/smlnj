@@ -22,7 +22,6 @@ sig
        START          (* entry node *)
      | STOP           (* exit node *)
      | NORMAL         (* normal node *)
-     | HYPERBLOCK     (* hyperblock *)
 
    (*
     * NOTE 1: the instructions are listed in reverse order.
@@ -53,18 +52,39 @@ sig
       }
 
 
-   and edge_kind = ENTRY           (* entry edge *) 
-                 | EXIT            (* exit edge *)
-                 | JUMP            (* unconditional jump *)
-                 | FALLSTHRU       (* falls through to next block *)  
-                 | BRANCH of bool  (* branch *) 
-                 | SWITCH of int   (* computed goto *)   
-                 | SIDEEXIT of int (* the ith side exit in a hyperblock *)
-
-   and edge_info = EDGE of { k : edge_kind,                  (* edge kind *)
-                             w : weight ref,                 (* edge freq *)
-                             a : Annotations.annotations ref (* annotations *)
-                           }
+  (* We have the following invariant on blocks and out-edge kinds:
+   *
+   *	If the last instruction of the block is an unconditional jump, then
+   *	there is one out edge labeled with JUMP.
+   *
+   *	If the last instruction of the block is a conditional jump, then
+   *	there are two out edges.  The one corresponding to the jump is
+   *	labeled BRANCH(true) and the other is labeled BRANCH(false).
+   *
+   *    If the last instruction of the block is not a jump, then there is
+   *	one out edge labeled with FALLSTHRU.
+   *
+   *	If the block ends with a switch, then the out edges are labeled with
+   *	SWITCH.
+   *
+   *	If the block ends with a call that has been wrapped with a FLOW_TO,
+   *	then there will be one FALLSTHRU out edges and one or more FLOWSTO
+   *	out edges.
+   *)
+    and edge_kind	    (* edge kinds *)
+      = ENTRY			(* entry edge *) 
+      | EXIT            	(* exit edge *)
+      | JUMP			(* unconditional jump *)
+      | FALLSTHRU		(* falls through to next block *)  
+      | BRANCH of bool		(* branch *) 
+      | SWITCH of int		(* computed goto *)
+      | FLOWSTO			(* FLOW_TO edge *)
+   
+    and edge_info = EDGE of {
+	k : edge_kind,                  (* edge kind *)
+	w : weight ref,                 (* edge freq *)
+	a : Annotations.annotations ref (* annotations *)
+      }
 
    type edge = edge_info Graph.edge
    type node = block Graph.node
