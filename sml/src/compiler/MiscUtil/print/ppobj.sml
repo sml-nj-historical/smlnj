@@ -125,7 +125,7 @@ local
 
   (* test membership in an association list and gives back 
    * the second element *)
-  fun mem a =
+  fun mem (a: unit ref) =
       let fun m [] = NONE | m ((x,r)::l) = if a = x then SOME r else m l
        in m
       end

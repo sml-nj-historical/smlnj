@@ -96,7 +96,7 @@ fun elabDB((tyc,args,name,def,region,lazyp),env,rpath:IP.path,error) =
          | checkrec(_,SOME typ) = 
 	     let fun findname(VarTy _) = ()
 		   | findname(ConTy([co],ts)) = 
-                       if co = name then (raise ISREC) 
+                       if Symbol.eq (co,name) then (raise ISREC) 
 		       else app findname ts
 		   | findname(ConTy(_,ts)) = app findname ts
 		   | findname(RecordTy lbs) = app (fn (_,t) => findname t) lbs

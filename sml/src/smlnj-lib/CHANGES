@@ -2,6 +2,9 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 
 --------------------------------------------------------------------------------
+[2003-05-27]
+	Avoid poly-eq in Util/parser-comb.sml.
+
 [2003-05-22]
 	More cleanup (all in the name of eliminating incomplete matches):
 	  - in HTML/html-attrs-fn.sml: fill in missing patterns in two

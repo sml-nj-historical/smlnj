@@ -293,7 +293,7 @@ structure Binfile :> BINFILE = struct
 	val v = fit (vbytes, concat (version version_id))
 	val a = fit (abytes, arch)
     in
-	Byte.stringToBytes (concat [v, a, "\n"])
+	concat [v, a, "\n"]
 	(* assert (Word8Vector.length (MAGIC <arch>) = magicBytes *)
     end
 
@@ -380,7 +380,8 @@ structure Binfile :> BINFILE = struct
     fun read { arch, version, stream = s } = let
 	val MAGIC = mkMAGIC (arch, version)
 	val magic = bytesIn (s, magicBytes)
-	val _ = if magic = MAGIC then () else error "bad magic number"
+	val _ = if Byte.bytesToString magic = MAGIC then ()
+		else error "bad magic number"
 	val leni = readInt32 s
 	val ne = readInt32 s
 	val importSzB = readInt32 s
@@ -452,7 +453,7 @@ structure Binfile :> BINFILE = struct
 	val datasz = Word8Vector.length (#data csegments)
 	val MAGIC = mkMAGIC (arch, version)
     in
-	BinIO.output (s, MAGIC);
+	BinIO.output (s, Byte.stringToBytes MAGIC);
 	app (writeInt32 s) [leni, ne, importSzB, cmInfoSzB,
 			    lambdaSz, g, pad, cs, es];
 	BinIO.output (s, picki);

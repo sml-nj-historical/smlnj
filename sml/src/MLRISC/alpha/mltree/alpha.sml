@@ -211,7 +211,7 @@ struct
   fun toInt i = T.I.toInt(32, i)
   val int_0   = T.I.int_0
   val int_1   = T.I.int_1
-  fun EQ(x:IntInf.int,y) = x=y
+  val EQ      = IntInf.==
 
   (*
    * Specialize the modules for multiplication/division 

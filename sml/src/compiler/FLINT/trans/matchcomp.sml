@@ -750,7 +750,7 @@ fun fixupUnused(nil, _, _, _, out) = out
       else fixupUnused(unused::urest, (rules, z)::mrest, n + 1, m, x::y)
   | fixupUnused _ = bug "bad fixup"
 
-fun redundant (nil, n) = false
+fun redundant (nil, n: int) = false
   | redundant (a::b, n) = a <> n orelse redundant (b, n)
 
 fun complement(n, m, a::b) =

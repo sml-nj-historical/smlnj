@@ -1839,7 +1839,7 @@ struct
       and unaryMem(unOp, opnd, mem, an) =
           mark(I.UNARY{unOp=unOp, opnd=address(opnd,mem)}, an)
 
-      and isOne(T.LI n) = n = one
+      and isOne(T.LI n) = IntInf.== (n, one)
         | isOne _ = false
 
       (* 

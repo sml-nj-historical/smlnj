@@ -45,7 +45,7 @@ structure ParserComb : PARSER_COMB =
 	    | _ => NONE
 	  (* end case *))
 
-    fun char c = eatChar (fn c' => (c = c'))
+    fun char (c: char) = eatChar (fn c' => (c = c'))
 
     fun string s getc strm = let
 	  fun eat (ss, strm) = (case (Substring.getc ss, getc strm)

@@ -33,7 +33,7 @@ struct
       List.last p
 	handle List.Empty => ErrorMsg.impossible "SymPath.last"
 
-  fun equal(SPATH p1: path, SPATH p2: path) = (p1 = p2)
+  fun equal(SPATH p1: path, SPATH p2: path) = ListPair.all Symbol.eq (p1, p2)
 
   val resultId = Symbol.strSymbol "<resultStr>"
   val returnId = Symbol.strSymbol "<returnStr>"
@@ -75,7 +75,7 @@ struct
   fun lastPrefix(IPATH []: path) = raise InvPath
     | lastPrefix(IPATH(_::p)) = IPATH p
 
-  fun equal(IPATH p1:path, IPATH p2:path) = (p1 = p2)
+  fun equal(IPATH p1:path, IPATH p2:path) = ListPair.all Symbol.eq (p1, p2)
 
   fun toString(IPATH p: path) =
      let fun f [s] = [Symbol.name s, ">"]

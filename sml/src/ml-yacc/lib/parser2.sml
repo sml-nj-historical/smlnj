@@ -99,11 +99,13 @@ structure LrParser :> LR_PARSER =
       structure LrTable = LrTable
       structure Stream = Stream
 
+      fun eqT (LrTable.T i, LrTable.T i') = i = i'
+
       structure Token : TOKEN =
 	struct
 	    structure LrTable = LrTable
 	    datatype ('a,'b) token = TOKEN of LrTable.term * ('a * 'b * 'b)
-	    val sameToken = fn (TOKEN(t,_),TOKEN(t',_)) => t=t'
+	    val sameToken = fn (TOKEN(t,_),TOKEN(t',_)) => eqT (t,t')
         end
 
       open LrTable
@@ -409,11 +411,11 @@ fun mkFixError({is_keyword,terms,errtermvalue,
      *)
         fun do_delete(nil,lp as (TOKEN(_,(_,l,_)),_)) = SOME(nil,l,l,lp)
           | do_delete([t],(tok as TOKEN(t',(_,l,r)),lp')) =
-	       if t=t'
+	       if eqT (t, t')
 		   then SOME([tok],l,r,Stream.get lp')
                    else NONE
           | do_delete(t::rest,(tok as TOKEN(t',(_,l,r)),lp')) =
-	       if t=t'
+	       if eqT (t,t')
 		   then case do_delete(rest,Stream.get lp')
                          of SOME(deleted,l',r',lp'') =>
 			       SOME(tok::deleted,l,r',lp'')

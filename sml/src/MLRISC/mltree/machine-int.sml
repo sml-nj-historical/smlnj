@@ -229,8 +229,8 @@ struct
    fun ZX(toSz,fromSz,i) = narrow(toSz, unsigned(fromSz, narrow(fromSz, i)))
 
    (* comparisions *)
-   fun EQ(sz,i,j)  = i = j
-   fun NE(sz,i,j)  = i <> j
+   fun EQ(sz,i,j)  = IntInf.== (i, j)
+   fun NE(sz,i,j)  = IntInf.!= (i, j)
    fun GT(sz,i,j)  = I.>(i,j)
    fun GE(sz,i,j)  = I.>=(i,j)
    fun LT(sz,i,j)  = I.<(i,j)

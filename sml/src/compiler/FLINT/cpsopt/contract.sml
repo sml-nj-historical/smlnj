@@ -479,7 +479,7 @@ fun setter (P.update, [_, _, INT _]) = P.unboxedupdate
 fun sameLvar(lvar, VAR lv) = lv = lvar
   | sameLvar _ = false
 
-fun cvtPreCondition(n, n2, x, v2) =
+fun cvtPreCondition(n:int, n2, x, v2) =
   n=n2 andalso usedOnce(x) andalso sameLvar(x, ren v2) 
 
 val rec reduce = fn cexp => g NONE cexp

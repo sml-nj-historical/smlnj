@@ -44,7 +44,7 @@ datatype aux_info =
 
 (* these two are originally from SortedList -- which I wanted to get
  * rid off.  -- Matthias  11/2000 *)
-fun mergeTvs (l, []) = l
+fun mergeTvs (l : tvar list, []) = l
   | mergeTvs ([], l) = l
   | mergeTvs (l as (h :: t), l' as (h' :: t')) =
     if h < h' then h :: mergeTvs (t, l')
@@ -1260,8 +1260,10 @@ fun lt_eqv_x(x : lty, y) =
   end (* function lt_eqv *)
 
 (** testing equivalence of fflags and rflags *)
-val ff_eqv   : fflag * fflag -> bool = (op =)
-val rf_eqv   : rflag * rflag -> bool = (op =)
+fun ff_eqv (FF_VAR (b1, b2), FF_VAR (b1', b2')) = b1 = b1' andalso b2 = b2'
+  | ff_eqv (FF_FIXED, FF_FIXED) = true
+  | ff_eqv ((FF_FIXED, FF_VAR _) | (FF_VAR _, FF_FIXED)) = false
+fun rf_eqv (RF_TMP, RF_TMP) = true
 
 (***************************************************************************
  *  UTILITY FUNCTIONS ON FINDING OUT THE DEPTH OF THE FREE TYC VARIABLES   *

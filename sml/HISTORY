@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume@tti-c.org)
+Date: 2003/05/27 16:55:00 CDT
+Tag: blume-20030527-polyeq
+Description:
+
+Tried to eliminated most cases of polymorphic equality.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume@tti-c.org)
 Date: 2003/05/21 17:45:00 CDT
 Tag: blume-20030517-complete
 Description:

@@ -1021,7 +1021,7 @@ fun partLayer(free,ccl) =
              | SOME v => (enter(v,t),b))
 
       (* process the rest groups in free *)
-      fun h([],i,r,t,b) = m(r,t,b)
+      fun h([],i:int,r,t,b) = m(r,t,b)
         | h((v,_,j)::z,i,r,t,b) = 
             if j = i then h(z,i,enter(v,r),t,b)
             else let val (nt,nb) = m(r,t,b)
