@@ -37,7 +37,6 @@ functor DefaultBlockPlacement (CFG : CONTROL_FLOW_GRAPH) : BLOCK_PLACEMENT =
 	  fun getBlk id = (id, #node_info graph id)
 	  val entry = CFG.entry cfg
 	  val exit = CFG.exit cfg
-	  val _ = (mark(#1 entry); mark(#1 exit))
 	(* return true if the edge must connect adjacent nodes *)
 	  fun adjEdge (_, _, CFG.EDGE{k=CFG.FALLSTHRU, ...}) = true
 	    | adjEdge (_, _, CFG.EDGE{k=CFG.BRANCH false, ...}) = true
@@ -79,7 +78,7 @@ functor DefaultBlockPlacement (CFG : CONTROL_FLOW_GRAPH) : BLOCK_PLACEMENT =
 				    placeNodes (getBlk dst::r1, nd1::l))
 			    (* end case *))
 		    (* end case *))
-	  val blocks = placeNodes (#nodes graph (), [entry])
+	  val blocks = placeNodes (entry :: #nodes graph (), [])
 	  in
 	    if !dumpBlocks
 	      then let
