@@ -409,7 +409,7 @@ functor IA32SVID_CCalls (
 		  | _ => error "bogus result location"
 		(* end case *))
 	(* assemble the call sequence *)
-	  val callSeq = copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
+	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
 	  in
 	    {callseq=callSeq, result=resultRegs}
 	  end
