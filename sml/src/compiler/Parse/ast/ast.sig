@@ -218,6 +218,3 @@ sig
 end (* signature AST *)
 
 
-(*
- * $Log$
- *)

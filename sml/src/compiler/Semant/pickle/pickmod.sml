@@ -50,11 +50,11 @@ local structure A  = Access
       structure V  = VarCon 
       structure LtyKey : ORD_KEY = 
         struct type ord_key = LK.lty * DI.depth
-               fun cmpKey((t,d),(t',d')) =
+               fun compare((t,d),(t',d')) =
                    case LK.lt_cmp(t,t') of EQUAL => DI.cmp(d,d')
                                          | x => x
         end
-      structure LtyDict = BinaryDict(LtyKey)
+      structure LtyDict = BinaryMapFn(LtyKey)
 in 
 
 val say = Control.Print.say
@@ -108,6 +108,7 @@ structure Key =
       | cmpKey(_, EPkey _) = LESS 
 *)
 
+    val compare = cmpKey
 
   end (* structure Key *)
 
@@ -803,7 +804,7 @@ let val alphaConvert = alphaConverter ()
 		         | NONE => "M4" $ [stamp s, entityEnv r])
           end
       | entityEnv (M.BINDeenv(d, r)) () = 
-	  "B4" $ [list (tuple2(entVar, entity)) (ED.members d), entityEnv r]
+	  "B4" $ [list (tuple2(entVar, entity)) (ED.listItemsi d), entityEnv r]
       | entityEnv M.NILeenv () = "N4" $ []
       | entityEnv M.ERReenv () = "E4" $ []
 
@@ -836,7 +837,7 @@ let val alphaConvert = alphaConverter ()
 	let fun uniq (a::b::rest) = if S.eq(a,b) then uniq(b::rest)
 				    else a::uniq(b::rest)
 	      | uniq l = l
-	    val syms = uniq(Sort.sort S.symbolGt (Env.symbols e))
+	    val syms = uniq(ListMergeSort.sort S.symbolGt (Env.symbols e))
 	    val pairs = map (fn s => (s, Env.look(e,s))) syms
 	 in "E3" $ [list (tuple2(symbol,alpha)) pairs]
 	end
@@ -872,7 +873,7 @@ fun dontPickle (senv : StaticEnv.staticEnv, count) =
 				else a::uniq(b::rest)
 	  | uniq l = l
         (* next two lines are alternative to using Env.consolidate *)
-	val syms = uniq(Sort.sort S.symbolGt (Env.symbols senv))
+	val syms = uniq(ListMergeSort.sort S.symbolGt (Env.symbols senv))
 	fun newAccess i = A.PATH (A.EXTERN hash, i)
 	fun mapbinding(sym,(i,env,lvars)) =
 	    case Env.look(senv,sym)
@@ -931,21 +932,3 @@ end (* structure PickMod *)
 
 
 
-(*
- * $Log: pickmod.sml,v $
- * Revision 1.9  1998/12/31 05:43:41  jhr
- *   Added UNBOXEDASSIGN primop to FLINT.
- *
- * Revision 1.8  1998/12/22 17:02:11  jhr
- *   Merged in 110.10 changes from Yale.
- *
- * Revision 1.6  1998/10/28 18:25:11  jhr
- *   New primops to support new array representation.
- *
- * Revision 1.5  1998/09/30 19:20:59  dbm
- * new repl field in TYCspec (bug 1432)
- *
- * Revision 1.4  1998/05/23 14:10:12  george
- *   Fixed RCS keyword syntax
- *
- *)

@@ -83,7 +83,3 @@ end (* local *)
 end (* structure ConRep *)
 
 
-(*
- * $Log$
- *
- *)

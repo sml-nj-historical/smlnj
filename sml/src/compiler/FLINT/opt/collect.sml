@@ -46,7 +46,7 @@ sig
     (* function to collect info about a newly created lexp *)
     val uselexp : FLINT.lexp -> unit
     (* function to copy (and collect info) a lexp *)
-    val copylexp : FLINT.lvar IntmapF.intmap  -> FLINT.lexp -> FLINT.lexp
+    val copylexp : FLINT.lvar IntBinaryMap.map  -> FLINT.lexp -> FLINT.lexp
 
     (* mostly useful for PPFlint *)
     val LVarString : FLINT.lvar -> string
@@ -415,3 +415,4 @@ fun collect (fdec as (_,f,_,_)) =
 
 end
 end
+

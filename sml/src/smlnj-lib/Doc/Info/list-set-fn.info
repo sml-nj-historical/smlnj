@@ -1,0 +1,6 @@
+@FILES
+  {"list-set-fn"; "The ListSetFn functor";}
+@SIGNATURE ORD_SET
+@SIGNATURE ORD_KEY
+@FUNCTOR ListSetFn "list-set-fn" ORD_KEY
+ORD_SET

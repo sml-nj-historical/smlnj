@@ -342,6 +342,3 @@ end (* end of function checkLty *)
 end (* toplevel local *)
 end (* structure CheckLty *)
 
-(*
- * $Log$
- *)

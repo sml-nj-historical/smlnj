@@ -65,6 +65,3 @@ struct
 
 end (* functor Interact *)
 
-(*
- * $Log$
- *)

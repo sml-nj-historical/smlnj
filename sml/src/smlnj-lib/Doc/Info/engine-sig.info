@@ -1,0 +1,13 @@
+@FILES
+  {"engine-sig"; "The REGEXP_ENGINE signature";}
+@SIGNATURE REGEXP_ENGINE "engine-sig" {
+  @TYPES 
+    @TYPE regexp
+  @VALS 
+    find
+    prefix
+    compile
+    match
+}
+@STRUCTURE BackTrackEngine "engine-sig" REGEXP_ENGINE
+@STRUCTURE DfaEngine "engine-sig" REGEXP_ENGINE

@@ -163,7 +163,8 @@ ml_state_t *ImportHeapImage (const char *fname, heap_params_t *params)
       /* read the ML heap */
 	ReadHeap (&inBuf, &heapHdr, msp, externs);
       /* GC message are on by default for interactive images */
-	/* GCMessages = TRUE; */
+      /* ...but not for me... (Blume) */
+      GCMessages = FALSE;
     }
     else {  /* EXPORT_FN_IMAGE */
 	ml_val_t	funct, cmdName, args;

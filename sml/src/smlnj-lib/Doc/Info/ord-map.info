@@ -1,0 +1,36 @@
+@FILES
+  {"ord-map"; "The ORD_MAP signature";}
+@SIGNATURE ORD_MAP "ord-map" {
+  @STRUCTURE Key ORD_KEY
+  @TYPES 
+    @TYPE map
+  @VALS 
+    foldri
+    foldl
+    find
+    mapPartiali
+    filter
+    foldr
+    mapi
+    listItemsi
+    appi
+    mapPartial
+    insert'
+    map
+    unionWithi
+    listItems
+    remove
+    app
+    numItems
+    collate
+    unionWith
+    insert
+    intersectWithi
+    foldli
+    intersectWith
+    filteri
+    empty
+}
+@SIGNATURE ORD_KEY
+@STRUCTURE IntListMap "ord-map" ORD_MAP
+@STRUCTURE IntBinaryMap "ord-map" ORD_MAP

@@ -188,12 +188,3 @@ end (* toplevel local *)
 end (* structure Equal *)
 
 
-(*
- * $Log: equal.sml,v $
- * Revision 1.3  1998/12/22 17:02:02  jhr
- *   Merged in 110.10 changes from Yale.
- *
- * Revision 1.1.1.1  1998/04/08 18:39:44  george
- * Version 110.5
- *
- *)

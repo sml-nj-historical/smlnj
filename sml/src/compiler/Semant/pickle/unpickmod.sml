@@ -1196,7 +1196,7 @@ fun unpickleEnv (context0, pickle) =
             ?entVElist(fn UentVElist vs =>
   	      ?entityEnv(fn UentityEnv r =>
 		%UentityEnv(M.BINDeenv(
-                   foldr (fn ((v,e), z) => ED.insert(z,v,e)) (ED.mkDict()) vs, 
+                   foldr (fn ((v,e), z) => ED.insert(z,v,e)) (ED.empty) vs, 
                    r))))
         | entityEnv #"N" = %UentityEnv(M.NILeenv)
         | entityEnv #"E" = %UentityEnv(M.ERReenv)
@@ -1268,9 +1268,3 @@ end (* local *)
 end (* structure UnpickleMod *)
 
 
-(*
- * $Log: unpickmod.sml,v $
- * Revision 1.4  1998/05/23 14:10:13  george
- *   Fixed RCS keyword syntax
- *
- *)

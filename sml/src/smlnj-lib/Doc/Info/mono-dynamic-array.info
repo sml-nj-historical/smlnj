@@ -1,0 +1,17 @@
+@FILES
+  {"mono-dynamic-array"; "The MONO_DYNAMIC_ARRAY signature";}
+@SIGNATURE MONO_DYNAMIC_ARRAY "mono-dynamic-array" {
+  @TYPES 
+    @TYPE elem
+    @TYPE array
+  @VALS 
+    update
+    truncate
+    bound
+    subArray
+    array
+    fromList
+    tabulate
+    default
+    sub
+}

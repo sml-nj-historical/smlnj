@@ -150,15 +150,15 @@ struct
 
         fun extendEnv env d i [] = env
           | extendEnv env d i ((tv,_)::tvtks) =
-            extendEnv (IntmapF.add (env, tv, (d,i)))
+            extendEnv (IntBinaryMap.insert (env, tv, (d,i)))
                       d (i+1) tvtks
 
-        fun queryEnv env (tvar, currDepth) = let
-            val (defnDepth, i) = IntmapF.lookup env tvar
-        in 
-            SOME (LT.tcc_var (DI.calc (currDepth, defnDepth), i))
-        end (* queryEnv *)
-            handle IntmapF.IntmapF => NONE
+        fun queryEnv env (tvar, currDepth) = 
+	  (case IntBinaryMap.find(env, tvar)
+	    of NONE => NONE
+	     | SOME(defnDepth, i) =>
+	         SOME (LT.tcc_var (DI.calc (currDepth, defnDepth), i))
+          (*esac*))
 
         val tc_nvar_elim = LT.tc_nvar_elim_gen()
         val lt_nvar_elim = LT.lt_nvar_elim_gen()
@@ -275,7 +275,7 @@ struct
              ) : F.fundec
         end (* cvtFundec *)
     in
-        cvtFundec IntmapF.empty DI.top
+        cvtFundec IntBinaryMap.empty DI.top
     end (* names2debIndex_gen *)
 
     (* generate tables once per invocation 
@@ -284,4 +284,5 @@ struct
     fun names2debIndex prog = names2debIndex_gen() prog
 
 end (* TvarCvt *)
+
 

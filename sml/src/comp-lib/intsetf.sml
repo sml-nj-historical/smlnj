@@ -51,6 +51,3 @@ in
 end
 end
 
-(*
- * $Log$
- *)

@@ -22,7 +22,7 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
     structure Tbl = IntStrMap
 
-    val hashStr = StrgHash.hashString
+    val hashStr = HashString.hashString
 
     fun mkTable (sz, l) = let
 	  val t = Tbl.new (128, NotToken)
@@ -131,7 +131,3 @@ functor TokenTable (Tokens:ML_TOKENS) : sig
 
   end
 
-(*
- * $Log$
- *
- *)

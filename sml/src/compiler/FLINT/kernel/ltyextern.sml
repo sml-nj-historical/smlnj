@@ -121,11 +121,11 @@ fun tkApp (tk, tks) =
  * tyc to an association list that maps the kinds of the free
  * variables in the tyc (represented as a TK_SEQ) to the tyc's kind.
  *)
-structure TcDict = BinaryDict
+structure TcDict = BinaryMapFn
                        (struct
                            type ord_key = tyc
-                           val cmpKey = LK.tc_cmp
-                           end)
+                           val compare = LK.tc_cmp
+			end)
                        
 structure Memo :> sig
     type dict 
@@ -133,8 +133,9 @@ structure Memo :> sig
     val recallOrCompute : dict * tkindEnv * tyc * (unit -> tkind) -> tkind
 end =
 struct
-    type dict = (tkind * tkind) list TcDict.dict ref
-    val newDict : unit -> dict = ref o TcDict.mkDict
+
+    type dict = (tkind * tkind) list TcDict.map ref
+    val newDict : unit -> dict = ref o (fn () => TcDict.empty)
 
     fun recallOrCompute (dict, kenv, tyc, doit) =
         (* what are the valuations of tyc's free variables
@@ -145,7 +146,7 @@ struct
                 (* encode those as a kind sequence *)
                 val k_fvs = tkc_seq ks_fvs
                 (* query the dictionary *)
-                val kci = case TcDict.peek(!dict, tyc) of
+                val kci = case TcDict.find(!dict, tyc) of
                     SOME kci => kci
                   | NONE => []
                 (* look for an equivalent environment *)

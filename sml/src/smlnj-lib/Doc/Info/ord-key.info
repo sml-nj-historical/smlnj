@@ -1,0 +1,8 @@
+@FILES
+  {"ord-key"; "The ORD_KEY signature";}
+@SIGNATURE ORD_KEY "ord-key" {
+  @TYPES 
+    @TYPE ord_key
+  @VALS 
+    compare
+}

@@ -1,0 +1,15 @@
+@FILES
+  {"random"; "The Random structure";}
+@SIGNATURE RANDOM "random" {
+  @TYPES 
+    @TYPE rand
+  @VALS 
+    randInt
+    randRange
+    rand
+    randReal
+    fromString
+    randNat
+    toString
+}
+@STRUCTURE Random "random" RANDOM

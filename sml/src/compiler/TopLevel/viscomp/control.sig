@@ -19,8 +19,8 @@ signature MCCONTROL =
 sig
   val printArgs : bool ref
   val printRet : bool ref
-  val bindContainsVar : bool ref
-  val bindExhaustive : bool ref
+  val bindNoVariableWarn : bool ref
+  val bindNonExhaustiveWarn : bool ref
   val matchNonExhaustiveWarn : bool ref
   val matchNonExhaustiveError : bool ref
   val matchRedundantWarn : bool ref
@@ -201,12 +201,3 @@ sig
 end
 
 
-(*
- * $Log: control.sig,v $
- * Revision 1.6  1999/01/11 16:53:41  george
- *   new array representation support
- *
- * Revision 1.3  1998/05/23 14:10:29  george
- *   Fixed RCS keyword syntax
- *
- *)

@@ -23,8 +23,8 @@ structure Control_MC : MCCONTROL =
 struct
     val printArgs = ref false
     val printRet = ref false
-    val bindContainsVar = ref true
-    val bindExhaustive = ref true
+    val bindNoVariableWarn = ref false
+    val bindNonExhaustiveWarn = ref true
     val matchNonExhaustiveWarn = ref true
     val matchNonExhaustiveError = ref false
     (* matchExhaustiveError overrides matchExhaustiveWarn *)
@@ -180,12 +180,3 @@ structure Control : CONTROL =
 end
 
 
-(*
- * $Log: control.sml,v $
- * Revision 1.7  1999/01/11 16:53:42  george
- *   new array representation support
- *
- * Revision 1.4  1998/05/23 14:10:30  george
- *   Fixed RCS keyword syntax
- *
- *)

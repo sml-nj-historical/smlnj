@@ -12,7 +12,7 @@ struct
 local
     structure F  = FLINT
     structure O  = Option
-    structure M  = IntmapF
+    structure M  = IntBinaryMap
     structure S  = IntSetF
     structure OU = OptUtils
     structure LK = LtyKernel
@@ -176,7 +176,7 @@ in case le
 				      ListPair.foldr drop_invariant
 						     ([],[],[],[])
 						     (args, actuals)
-			      in (M.add(m, f, (fl, fcall)),
+			      in (M.insert(m, f, (fl, fcall)),
 				  afun, acall, afree, fl)
 			      end
 
@@ -217,9 +217,12 @@ in case le
      | F.APP(F.VAR f,vs) =>
        (case List.find (fn (ft,ft',filt) => ft = f) tfs
 	 of SOME(ft, ft', filt) => F.APP(F.VAR ft', OU.filter filt vs)
-	  | NONE => let val (fl,filt) = M.lookup m f
-	    in F.APP(F.VAR fl, OU.filter filt vs)
-	    end handle M.IntmapF => le)
+	  | NONE => 
+	    (case M.find(m,f) 
+	      of SOME(fl, filt) =>
+		   F.APP(F.VAR fl, OU.filter filt vs)
+               | NONE => le
+            (*esac*))
      | F.TFN((tfk,f,args,body),le) => F.TFN((tfk, f, args, loop body), loop le)
      | F.TAPP(f,tycs) => le
      | F.SWITCH(v,ac,arms,def) =>
@@ -244,4 +247,5 @@ end
 
 end
 end
+
 
