@@ -7,6 +7,7 @@ Library
 	signature FREQ
 	signature LINE_BREAK
 	signature PRIORITY_QUEUE
+	signature PROBABILITY
 	signature STRING_OUTSTREAM
 	structure Annotations
 	structure BitSet
@@ -18,6 +19,7 @@ Library
 	structure LineBreak
 	structure PriorityHeap
 	structure PriorityQueue
+	structure Probability
 	structure SortedList
 	structure StringOutStream
 is
@@ -54,6 +56,7 @@ is
 	../library/line-break.sml
 	../library/priQueue.sig
 	../library/priQueue.sml
+	../library/probability.sml
 	../library/sortedlist.sml
 	../library/stringOutStream.sig
 	../library/stringOutStream.sml
