@@ -70,6 +70,18 @@ signature CORETOOLS = sig
 
     type splitting = int option option (* see ....Control.LambdaSplitting... *)
 
+    (* A controller is a generic mechanism for manipulating state.
+     * The first stage of save'restore is meant to capture the part of
+     * the state in question so that the second stage can restore it.
+     * Function set, on the other hand, is meant to establish the
+     * new state.  All controllers associated with an SML source are
+     * invoked for both parsing and compilation.
+     * Roughly speaking, given a controller c, each of these two phases
+     * is bracketed as follows:
+     *
+     *   let val restore = #save'restore c ()
+     *   in #set c (); parse_or_compile () before restore () end
+     *)
     type controller =
 	 { save'restore: unit -> unit -> unit,
 	   set: unit -> unit }
