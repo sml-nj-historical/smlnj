@@ -6,6 +6,16 @@
 	rm -r sml.* sml-cm.* *.sml bin.*
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
 
+* from tarballs
+	mkdir src; cd src
+	ztar ../*.gz
+	mv bin.* ../../
+	mv config ../
+	cd ..
+	mv *-bin.* ../../
+	rm *.gz
+	cvs -qd ~cvs import -m '110.5.1 from Shao' flint FLINT v110_5_1 | grep -v '^U '
+
 * /softs install
 ** original
 	cd /softs/smlnj-110
@@ -13,14 +23,15 @@
 	config/install.sh
 	rm -rf bin.* src/sml-nj
 ** upgrade
-	cvs update
-	cd src/sml-nj
+	cvs -q update
+	cd src/compiler
+	rm -r bin.*
 	./xrun <some sml-cm> <<EOF
 		   CMB.make();
 	EOF
 	./xrecompile
 	rm sml*.*
 	cd ../..
-	rm -rf bin lib **/CM
+	rm -r bin lib **/CM
 	config/install.sh
 	rm bin.*/*
