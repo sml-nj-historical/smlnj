@@ -8,6 +8,8 @@
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 structure CMemory : CMEMORY = struct
+    exception OutOfMemory
+
     type addr = Word32.word
     val null = 0w0 : addr
     fun isNull a = a = null
@@ -17,7 +19,7 @@ structure CMemory : CMEMORY = struct
     fun compare (a1, a2) = Word32.compare (a1, a2)
     fun a1 -- a2 = Word32.toIntX (a1 - a2)
     fun bcopy { from: addr, to: addr, bytes: word } = ()
-    fun alloc (bytes: word) = NONE : addr option
+    fun alloc (bytes: word) : addr = raise OutOfMemory
     fun free (a: addr) = ()
 
     (* most of these types are represented using a bigger size
@@ -86,4 +88,7 @@ structure CMemory : CMEMORY = struct
 
     fun sext (value, mask) =
 	int_u2s (if andb (value, mask) = 0w0 then value else orb (value, mask))
+
+    fun p2i x = x
+    fun i2p x = x
 end

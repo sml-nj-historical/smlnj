@@ -10,6 +10,8 @@
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 structure CMemory : CMEMORY = struct
+    exception OutOfMemory
+
     type addr = Word32.word
     val null = 0w0 : addr
     fun isNull a = a = null
@@ -71,7 +73,7 @@ structure CMemory : CMEMORY = struct
 		      -> Word32.word
 	    val a = w_p (DL.addr malloc_h, n, [])
 	in
-	    if a = 0w0 then NONE else SOME a
+	    if a = 0w0 then raise OutOfMemory else a
 	end
 	fun sys_free (a : Word32.word) = let
 	    val p_u = RawMemInlineT.rawccall :
@@ -122,4 +124,7 @@ structure CMemory : CMEMORY = struct
     fun unwrap_ulong (x : cc_ulong) = x : MLRep.ULong.word
     fun unwrap_float (x : cc_float) = x : MLRep.Float.real
     fun unwrap_double (x : cc_double) = x : MLRep.Double.real
+
+    fun p2i (x : addr) = x : MLRep.ULong.word
+    fun i2p (x : MLRep.ULong.word) = x : addr
 end

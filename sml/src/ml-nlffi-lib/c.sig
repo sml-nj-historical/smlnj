@@ -7,6 +7,8 @@
  *)
 signature C = sig
 
+    exception OutOfMemory
+
     (* objects of type 't, constness 'c;
      * The 't type variable will be instantiated with the object's "witness"
      * type. The intention is that there be an isomorphism between such
@@ -489,10 +491,10 @@ signature C = sig
     end
 
     (* allocating new objects *)
-    val new : 't T.typ -> ('t, rw) obj option
+    val new : 't T.typ -> ('t, rw) obj
 
     (* alt *)
-    val new' : 't S.size -> ('t, rw) obj' option
+    val new' : 't S.size -> ('t, rw) obj'
 
     (* freeing objects that were allocated earlier *)
     val discard : ('t, 'c) obj -> unit
@@ -501,10 +503,10 @@ signature C = sig
     val discard' : ('t, 'c) obj' -> unit
 
     (* allocating a dynamically-sized array *)
-    val alloc : 't T.typ -> word -> ('t, rw) ptr option
+    val alloc : 't T.typ -> word -> ('t, rw) ptr
 
     (* alt *)
-    val alloc' : 't S.size -> word -> ('t, rw) ptr' option
+    val alloc' : 't S.size -> word -> ('t, rw) ptr'
 
     (* freeing through pointers *)
     val free : ('t, 'c) ptr -> unit
@@ -517,4 +519,11 @@ signature C = sig
 
     (* alt; needs explicit type for the function pointer *)
     val call' : ('a -> 'b) fptr T.typ -> ('a -> 'b) fptr' * 'a -> 'b
+
+    (* completely unsafe stuff that every C programmer just *loves* to do *)
+    structure U : sig
+	val fcast : 'a fptr' -> 'b fptr'
+	val p2i : voidptr -> ulong
+	val i2p : ulong -> voidptr
+    end
 end

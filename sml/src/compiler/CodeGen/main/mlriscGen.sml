@@ -1918,7 +1918,9 @@ struct
 		      (([] | [_]), (CTypes.C_void | CTypes.C_STRUCT _)) =>
 		      defI31 (w, mlZero, e, hp)
 		    | ([], _) => error "RCC: unexpectedly few results"
-		    | ([M.FPR x], (CTypes.C_float | CTypes.C_double)) =>
+		    | ([M.FPR x], CTypes.C_float) =>
+		      treeifyDefF64 (w, M.CVTF2F (64, 32, x), e, hp)
+		    | ([M.FPR x], CTypes.C_double) =>
 		      treeifyDefF64 (w, x, e, hp)
 		    | ([M.FPR _], _) => error "RCC: unexpected FP result"
 		    | ([M.GPR x], _) => (* more sanity checking here ? *)

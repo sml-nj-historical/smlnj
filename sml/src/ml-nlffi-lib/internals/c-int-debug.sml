@@ -2,16 +2,19 @@
  * The implementation of the interface that encodes C's type system
  * in ML.  This implementation includes its "private" extensions.
  *
- *   (C) 2001, Lucent Technologies, Bell Laboratories
+ * DEBUG VERSION with CHECKED POINTER DEREFERENCING.
+ *
+ *   (C) 2002, Lucent Technologies, Bell Laboratories
  *
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 local
 (* We play some games here with first calling C_Int simply C and then
  * renaming it because they result in saner printing behavior. *)
-structure C :> C_INT = struct
+structure C_Debug :> C_INT_DEBUG = struct
 
     exception OutOfMemory = CMemory.OutOfMemory
+    exception NullPointer
 
     fun bug m = raise Fail ("impossible: " ^ m)
 
@@ -376,10 +379,12 @@ structure C :> C_INT = struct
 
     structure Ptr = struct
         val |&| = addr_type_id
-	val |*| = addr_type_id
+	fun |*| (0w0, _) = raise NullPointer
+	  | |*| x = addr_type_id x
 
 	val |&! = addr_id
-	val |*! = addr_id
+	fun |*! 0w0 = raise NullPointer
+	  | |*! x = addr_id x
 
 	fun compare (p, p') = CMemory.compare (p_strip_type p, p_strip_type p')
 
@@ -518,5 +523,5 @@ structure C :> C_INT = struct
     end (* local *)
 end
 in
-structure C_Int = C
+structure C_Int_Debug = C_Debug
 end

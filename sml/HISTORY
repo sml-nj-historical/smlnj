@@ -13,6 +13,27 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/01/15
+Tag: blume-20020115-ffiupdates
+Description:
+
+1. Fix for bug resulting in single-precision float values being returned
+   incorrectly from FFI calls.
+
+2. Small modifications to C FFI API:
+
+    - memory-allocation routines return straight objects (no options)
+      and raise an exception in out-of-memory situations
+    - unsafe extensions to cast between function pointers and pointers
+      from/to ints
+    - added structure C_Debug as an alternative to structure C where
+      pointer-dereferencing (|*| and |*!) always check for null-pointers
+    - added open_lib' to DynLinkage;  open_lib' works like open_lib
+      but also takes a (possibly empty) list of existing library handles
+      that the current library depends on
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/01/10
 Tag: blume-20020110-newffigen
 Description:

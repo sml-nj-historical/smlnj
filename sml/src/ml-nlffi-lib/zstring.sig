@@ -24,6 +24,6 @@ signature ZSTRING = sig
     val cpML' : { from: string, to: C.rw zstring' } -> unit
 
     (* Make C-duplicate of ML string (allocate memory and then copy). *)
-    val dupML : string -> C.rw zstring option
-    val dupML' : string -> C.rw zstring' option
+    val dupML : string -> C.rw zstring
+    val dupML' : string -> C.rw zstring'
 end

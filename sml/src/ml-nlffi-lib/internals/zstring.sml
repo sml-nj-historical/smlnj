@@ -45,11 +45,18 @@ structure ZString : ZSTRING = struct
 	end
 	fun cpML { from, to } = cpML' { from = from, to = Light.ptr to }
 
-	fun dupML' s =
-	    Option.map (fn z => (cpML' { from = s, to = z }; z))
-		       (C.alloc' C.S.uchar (Word.fromInt (size s + 1)))
-	fun dupML s =
-	    Option.map (fn z => (cpML { from = s, to = z }; z))
-		       (C.alloc C.T.uchar (Word.fromInt (size s + 1)))
+	fun dupML' s = let
+	    val z = C.alloc' C.S.uchar (Word.fromInt (size s + 1))
+	in
+	    cpML' { from = s, to = z };
+	    z
+	end
+
+	fun dupML s = let
+	    val z = C.alloc C.T.uchar (Word.fromInt (size s + 1))
+	in
+	    cpML { from = s, to = z };
+	    z
+	end
     end
 end

@@ -6,6 +6,8 @@
  * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 signature CMEMORY = sig
+    exception OutOfMemory
+
     type addr
     val null : addr
     val isNull : addr -> bool
@@ -13,7 +15,7 @@ signature CMEMORY = sig
     val -- : addr * addr -> int
     val compare : addr * addr -> order
     val bcopy : { from: addr, to: addr, bytes: word } -> unit
-    val alloc : word -> addr option
+    val alloc : word -> addr		(* may raise OutOfMemory *)
     val free : addr -> unit
 
     (* actual sizes of C types (not their ML representations) in bytes *)
@@ -90,4 +92,8 @@ signature CMEMORY = sig
     val unwrap_ulong : cc_ulong -> MLRep.ULong.word
     val unwrap_float : cc_float -> MLRep.Float.real
     val unwrap_double : cc_double -> MLRep.Double.real
+
+    (* unsafe pointer <-> int conversion *)
+    val p2i : addr -> MLRep.ULong.word
+    val i2p : MLRep.ULong.word -> addr
 end

@@ -19,6 +19,8 @@ signature DYN_LINKAGE = sig
 
     (* link new library and return its handle *)
     val open_lib : { name: string, lazy: bool, global: bool } -> lib_handle
+    val open_lib' : { name: string, lazy: bool, global: bool,
+		      dependencies: lib_handle list } -> lib_handle
 
     (* get the address handle of a symbol exported from a DL *)
     val lib_symbol : lib_handle * string -> addr_handle
