@@ -1,0 +1,3 @@
+This directory contains implementations of the generic OS structures
+for UNIX systems that do not provide the Posix library.
+

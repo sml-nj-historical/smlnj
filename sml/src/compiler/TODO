@@ -1,0 +1,72 @@
+TODO:
+   a. lcontract should do the following:
+        o reduce the code to normal form in one pass (no surprising redices)
+        o should contract type applications (i.e., polymorphic functions
+            that only applied once)
+        o how lcontract interacts with specialize ? how many rounds of
+          lcontract should be applied, before or after specialize ?
+          we should borrow the "accounting" heuristics in cpsopt.
+
+   b. ppflint --- probably should be less verbose on some canonical case,
+         e.g., FIX((_,f,_,_), RET[VAR f])
+      also if the body is very small, we don't have make a new line.
+      see pplexp.sml
+
+      printing  primops can be made less verbose, instead PRIMOP blah blah
+      just simply "x + 1" would do.
+
+   c. flintutil.sml:
+      how to represent the wrap, unwrap and etag primops ? should they
+      be monomorphic or polymorphic
+
+   d. flintnm.sml: recursions vs. true recursions. I hope that something
+      can be done on splitting pseudo recursions into separate FIX decs.
+
+   e. lcontract + specialize: how to adjust the lty and tyc when we have
+      to inline or specialize functions from one depth to another is a
+      major headache of using the de-Bruijn-index-based representations.
+      I have tried different ways in lcontract and specialize, but it
+      is pretty adhoc, it will be nice if we can show a more general way
+      of how this should be done.
+
+   f. Type specialization will lead to many new redices for the lcontract;
+      I currently will run one round of lcontract after specialize (see the
+      end of lcontract.sml). Is this an overkill ? 
+
+---------------------------------------------------------------------------
+TODO:
+
+   a. push lcontract into FLINT    (* easy *)
+   b. push specialize into FLINT   (* some work *)
+   c. push reps into FLINT         (* rework *)
+   d. push narrow into FLINT       (* easy *)
+   e. push convert into FLINT      (* register pressure ? *)
+
+   f. turn on the FLINT typechecker           (* CHRIS & VALERY *)
+   g. turn on the FLINT pretty printer        (* CHRIS & VALERY *)
+
+---------------------------------------------------------------------------
+OTHER:
+
+B  eliminate pointers to the middle of closures ... 
+C  clean up the copyright/etc in all the source files
+C  parametrize the cross-module linkage conventions
+     1. add code splitting
+     2. get rid of LT_PST through advanced linkage interface
+     3. new array splitting (code splitting, phase 1) 
+     4. all require runtime support in LoadBinFile in new-boot.c
+C. delay inlining of array primops to the backend 
+
+---------------------------------------------------------------------------
+DONE:
+
+X  merge EXNC and EXNF into ETAG;  (fixing exn flag typing)
+X  treat non-value carrying datatypes as unit-carrying ...
+X  merge EXNCONS and EXNFUN ?
+X  propagating datatypes into the middle-end
+X  clean up the primitives such as PACK and WRAP ...
+X  move the execution semantics from CM back into compile or evalloop 
+X  change lambda from Lambda.lexp to FLINT.prog
+        1. eliminate the PLambda to Lambda normalize module
+        2. plambda is now part of the "trans-mcomp" phase
+X  push FLINT into inl_info (?) and cleanup the CM interface

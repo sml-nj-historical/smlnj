@@ -1,0 +1,21 @@
+reps/coerce.sml:      structure LU = LtyUtil
+reps/ltnarrow.sml:local structure LU = LtyUtil
+reps/ltyutil.sml:structure LtyUtil : LTYUTIL = 
+reps/ltyutil.sml:fun bug s = ErrorMsg.impossible ("LtyUtil: " ^ s)
+reps/ltyutil.sml:end (* structure LtyUtil *)
+reps/reify.sml:      structure LU = LtyUtil
+reps/typeoper.sml:      structure LU = LtyUtil
+reps/wrapping.sml:      structure LU = LtyUtil
+
+
+repsNEW/coerce.sml:      tcd_arw and tcWrap
+repsNEW/typeoper.sml:      structure LU = LtyUtil
+
+(*
+repsNEW/wrapping.sml:   refers to tcWrapGen
+repsNEW/reify.sml:      refers to tcd_arw and tcWrap (* should go away soon *)
+*)
+
+(* leave it as is: )
+repsNEW/ltnarrow.sml:local structure LU = LtyUtil
+repsNEW/ltyutil.sml:structure LtyUtil : LTYUTIL = 
