@@ -84,14 +84,26 @@ functor PPCMacOSX_CCalls (
 
   ): PPC_MACOSX_C_CALLS = struct
     structure T  = T
-    structure Ty = CTypes
+    structure CTy = CTypes
     structure C = PPCCells
     structure IX = PPCInstrExt
 
     fun error msg = MLRiscErrorMsg.error ("PPCCompCCalls", msg)
 
+  (* the location of arguments/parameters; offsets are given with respect to the
+   * low end of the parameter area.
+   *)
+    datatype arg_location
+      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
+      | FReg of T.fty * T.freg		(* floating-point argument in register *)
+      | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
+      | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
+      | Args of arg_location list
+
+(* ?? use arg_location instead of the following? *)
     datatype arg_loc
       = GPR of C.cell
+      | GPR2 of C.cell * C.cell
       | FPR of C.cell
       | STK
 
@@ -99,6 +111,59 @@ functor PPCMacOSX_CCalls (
 	offset : int,		(* stack offset of memory for argument *)
 	loc : arg_loc		(* location where argument is passed *)
       }
+
+  (* registers used for parameter passing *)
+    val argGPRs = List.map C.GPReg [3, 4, 5, 6, 7, 8, 9, 10]
+    val argFPRs = List.map C.FPReg [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+
+  (* C callee-save registers *)
+    val calleeSaveRegs = List.map C.GPReg [
+	    13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+	    23, 24, 25, 26, 27, 28, 29, 30, 31
+	  ]
+    val calleeSaveFRegs = List.map C.FPReg [
+	    14, 15, 16, 17, 18, 19, 20, 21, 22,
+	    23, 24, 25, 26, 27, 28, 29, 30, 31
+	  ]
+
+  (* size of integer types *)
+    fun sizeOf CTy.I_char = {sz = 1, pad = 3}
+      | sizeOf CTy.I_short = {sz = 2, pad = 2}
+      | sizeOf CTy.I_int = {sz = 4, pad = 0}
+      | sizeOf CTy.I_long = {sz = 4, pad = 0}
+      | sizeOf CTy.I_long_long = {sz = 8, pad = 0}
+
+  (* compute the layout of a C call's arguments *)
+    fun layout {conv, retTy, paramTys} = let
+	  val structRet = (case retTy
+		 of CTy.C_STRUCT _ => true
+		  | _ => false
+		(* end case *))
+	  fun assign ([], offset, _, _, layout) = {sz = offset, layout = List.rev layout}
+	    | assign (arg::args, offset, availGPRs, availFPRs, layout) = (
+		case arg
+		 of CTy.C_void => error "unexpected void argument type"
+		  | CTy.C_float =>
+		  | CTy.C_double =>
+		  | CTy.C_long_double =>
+		  | CTy.C_unsigned isz =>
+		  | CTy.C_signed isz =>
+		  | CTy.C_PTR =>
+		  | CTy.C_ARRAY _ =>
+		  | CTy.C_STRUCT tys =>
+		(* end case *))
+	  and assignGPR (offset, sz, pad, availGPRs, availFPRs) = let
+		val offset' = offset + sz + pad
+		in
+		  ({offset = offset, loc = loc}, offset')
+		end
+	    | assignGPR (args, offset, [], availFPRs) =
+	  and assignFPR (offset, gpr::availGPRs, fpr::availFPRs) =
+	    | assignFPR (offset, [], fpr::availFPRs) =
+	    | assignFPR (offset, [], []) =
+	  in
+	    assign (paramTys, 0, argGPRs, argFPRs, [])
+	  end
 
     datatype c_arg
       = ARG of T.rexp	    

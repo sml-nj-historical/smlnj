@@ -72,4 +72,26 @@ signature C_CALLS =
 	    result: T.mlrisc list
 	  }
 
+  (* the location of arguments/parameters; offsets are given with respect to the
+   * low end of the parameter area (see paramAreaOffset above).
+   *)
+    datatype arg_location
+      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg		(* floating-point argument in register *)
+      | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
+      | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
+      | Args of arg_location list
+
+    val layout : CTypes.c_proto -> {
+	    args : arg_location list,	(* argument/parameter assignment *)
+	    res : arg_location option	(* result location; NONE for void functions *)
+	  }
+
+  (* Callee-save registers as defined in the C calling convention.  Note that
+   * these do not include special registers (e.g., stack and frame-pointers)
+   * that are preserved across calls.
+   *)
+    val calleeSaveRegs : T.reg list	(* C callee-save registers *)
+    val calleeSaveFRegs : T.reg list	(* C callee-save floating-point registers *)
+
   end

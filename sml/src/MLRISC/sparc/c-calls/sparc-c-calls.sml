@@ -78,6 +78,7 @@ struct
 
     fun greg r = GP r
     fun oreg r = GP (r + 8)
+    fun ireg r = GP (r + 24)
     fun freg r = FP r
 
     fun reg32 r = T.REG (32, r)
@@ -136,6 +137,30 @@ struct
 	in
 	    pack (0, 1, l)
 	end
+
+(**** START NEW CODE ****)
+
+  (* the location of arguments/parameters; offsets are given with respect to the
+   * low end of the parameter area (see paramAreaOffset above).
+   *)
+    datatype arg_location
+      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
+      | FReg of T.fty * T.reg		(* floating-point argument in register *)
+      | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
+      | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
+      | Args of arg_location list
+
+    fun layout {conv, retTy, paramTys} = let
+	  in
+	    raise Fail "layout not implemented yet"
+	  end
+
+  (* C callee-save registers *)
+    val calleeSaveRegs = (* %l0-%l7 and %i0-%i7 *)
+	  List.tabulate (16, fn r => GP(r+16))
+    val calleeSaveFRegs = []
+
+(**** END NEW CODE ****)
 
     fun genCall { name, proto, paramAlloc, structRet, saveRestoreDedicated,
 		  callComment, args } = let
