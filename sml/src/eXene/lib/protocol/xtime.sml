@@ -29,8 +29,13 @@ structure XTime : sig
     fun binOp rator (XT t1, XT t2) = XT(rator(t1, t2))
     fun cmpOp rator (XT t1, XT t2) = rator(t1, t2)
 
-(** NOTE: the following works for small time values, but not for big ones!! **)
-    fun toReal (XT w) = Real.fromInt(Word32.toInt w)
+    fun toReal (XT w) = let
+	  fun cvt w = if (w >= 0wx40000000)
+		then cvt(w - 0wx40000000) + 1073741824.0
+		else Real.fromInt(Word32.toInt w)
+	  in
+	    cvt w
+	  end
 
     val (op +) = binOp Word32.+
     val (op -) = binOp Word32.-

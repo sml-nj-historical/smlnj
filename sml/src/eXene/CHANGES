@@ -1,10 +1,10 @@
-[2001-06-20]
-  - compiles again under 110.33+ (library name is $/eXene.cm)
-
 eXene-1.0
 ------------------------
 
 GLOBAL CHANGES
+  - compiles again under 110.33+ (library name is $/eXene.cm)
+    [2001-06-20]
+
   - changed uses of System.Unsafe.
     [07/11/97]
 
@@ -39,6 +39,9 @@ GRAPHICS UTILITIES
     [04/07/97]
 
 LIBRARY CHANGES
+  - Fixed bug in XTime.toReal; it did not handle large time values.
+    [2001-10-24]
+
   - Added code to make the leycode to keysym translation bulletproof (some
     X servers seem to generate bogus keycodes in some situations).
     [09/14/99]
@@ -63,6 +66,10 @@ LIBRARY CHANGES
     [08/01/96]
 
 WIDGET CHANGES
+  - New Scrollbar implementation from Allen Stoughton that fixes various
+    problems.
+    [2002-03-12]
+
   - Removed old-style imperative type variables from signatures in 2D structured
     graphics library.
     [07/15/98]
