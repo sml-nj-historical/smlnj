@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/03/04 16:35:00 CST
+Tag: blume-20040304-intinf-fmt
+Description:
+
+Fixed problem with IntInf.fmt (sign would show up on the right instead
+of on the left for BIN, OCT, and HEX).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/03/04 11:25:00 CST
 Tag: blume-20040304-symlinks
 Description:
