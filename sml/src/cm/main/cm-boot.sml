@@ -194,6 +194,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		pervcorepids = #pervcorepids v }
 	  end
 
+	  fun dropPickles () =
+	      if #get StdConfig.conserve_memory () then
+		  Parse.dropPickles ()
+	      else ()
+
 	  fun autoload s = let
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
@@ -203,7 +208,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		 | SOME (g, _) =>
 		       (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
 			true))
-	      before Parse.dropPickles ()
+	      before dropPickles ()
 	  end
 
 	  fun al_ginfo () = { param = param (),
@@ -212,7 +217,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  val al_manager =
 	      AutoLoad.mkManager { get_ginfo = al_ginfo,
-				   dropPickles = Parse.dropPickles }
+				   dropPickles = dropPickles }
 
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
 
@@ -223,7 +228,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      (case Parse.parse NONE (param ()) sflag p of
 		   NONE => false
 		 | SOME (g, gp) => f gp g)
-	      before Parse.dropPickles ()
+	      before dropPickles ()
 	  end
 
 	  fun stabilize_runner gp g = true
@@ -377,6 +382,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 				   recomp = recomp,
 				   make = make,
 				   autoload = autoload };
+			       (* unconditionally drop all library pickles *)
+			       Parse.dropPickles ();
 			       SOME (autoload_postprocess ()))
 		  end
 	  end

@@ -43,9 +43,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	fun drop (GG.GROUP { kind = GG.STABLELIB dropper, ... }) = dropper ()
 	  | drop _ = ()
     in
-	if #get (StdConfig.conserve_memory) () then
-	    SrcPathMap.app drop (!sgc)
-	else ()
+	SrcPathMap.app drop (!sgc)
     end
 
     fun dismissLib l =
