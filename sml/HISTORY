@@ -13,6 +13,40 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/11/14 09:44:04 EST 
+Tag: 
+Description:
+
+  Fix for a backpatching bug reported by Allen.
+
+  Because the boundary between short and long span-dependent 
+  instructions is +/- 128, there are an astounding number of
+  span-dependent instructions whose size is over estimated. 
+
+  Allen came up with the idea of letting the size of span 
+  dependent instructions be non-monotonic, for a maxIter
+  number of times, after which the size must be monotonically
+  increasing.
+  
+  This table shows the number of span-dependent instructions
+  whose size was over-estimated as a function of maxIter, for the
+  file Parse/parse/ml.grm.sml:
+ 
+     maxIter		# of instructions:
+ 	10			687
+ 	20			438
+ 	30			198
+        40			  0
+ 
+  In compiling the compiler, there is no significant difference in
+  compilation speed between maxIter=10 and maxIter=40. Actually, 
+  my measurements showed that maxIter=40 was a tad faster than
+  maxIter=10! Also 96% of the  files in the compiler reach a fix
+  point within 13 iterations, so fixing maxIter at 40, while high, 
+  is okay.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/10/31 15:25:00 EST
 Tag: blume-20011031-pgraph
