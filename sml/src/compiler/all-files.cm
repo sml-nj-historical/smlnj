@@ -38,6 +38,8 @@ is
 	TopLevel/bootstrap/hppa-select.sml
 # elif defined(ARCH_RS6000)
 	TopLevel/bootstrap/rs6000-select.sml
+# elif defined(ARCH_PPC)
+	TopLevel/bootstrap/ppc-select.sml
 # elif defined(ARCH_SPARC)
 	TopLevel/bootstrap/sparc-select.sml
 # elif defined(ARCH_X86)

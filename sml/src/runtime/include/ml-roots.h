@@ -109,7 +109,7 @@
 #   define MISC6_INDX	    12		/* $12 */
 #   define MISC7_INDX	    13		/* $13 */
 
-#elif defined(TARGET_RS6000)
+#elif (defined(TARGET_PPC) || defined(TARGET_RS6000))
 #   define NROOTS	    24
 #   define N_ARG_REGS       19
 #   define N_PSEUDO_REGS    2
@@ -123,14 +123,22 @@
 #   define BASE_INDX	    6   
 #   define PC_INDX	    8
 
-#   define MISC0_INDX	    9
-#   define MISC1_INDX	    10
-#   define MISC2_INDX	    11
-#   define MISC3_INDX	    12
-#   define MISC4_INDX	    13
-#   define MISC5_INDX	    14
-#   define MISC6_INDX	    15
-#   define MISC7_INDX	    16
+#   define MISC0_INDX	    9	/* 24 */
+#   define MISC1_INDX	    10	/* 25 */
+#   define MISC2_INDX	    11	/* 26 */
+#   define MISC3_INDX	    12	/* 27 */
+#   define MISC4_INDX	    13	/* 3 */
+#   define MISC5_INDX	    14	/* 4 */
+#   define MISC6_INDX	    15	/* 5 */
+#   define MISC7_INDX	    16	/* 6 */
+#   define MISC8_INDX	    17	/* 7 */
+#   define MISC9_INDX	    18	/* 8 */
+#   define MISC10_INDX	    19	/* 9 */
+#   define MISC11_INDX	    20	/* 10 */
+#   define MISC12_INDX	    21	/* 11 */
+#   define MISC13_INDX	    22	/* 12 */
+#   define MISC14_INDX	    23	/* 13 */
+
 
 #elif defined(TARGET_SPARC)
 

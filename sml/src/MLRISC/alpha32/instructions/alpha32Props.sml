@@ -137,6 +137,14 @@ struct
 	 | I.PSEUDOARITH {oper, ra, rb, rc, tmps} => (rc:: #1 tmps, [ra])
 	 | I.OPERATEV arg => trap(Oper arg)
 	 (* copy *)
+(* and similarly for FCOPY
+	 | I.COPY{dst, src, tmp, ...} => 
+	   (case tmp
+	     of NONE => (dst, src)
+	      | SOME(I.Direct r) => (d::dst, src)
+	      | SOME(I.Displace{base, disp}) => (dst, base::src)
+            (*esac*))
+*)
 	 | I.COPY{dst, src, tmp=SOME(I.Direct r), ...} => (r::dst, src)
 	 | I.COPY{dst, src, ...} => (dst, src)
 	 (* floating operate *)
@@ -172,6 +180,9 @@ end
 
 (*
  * $Log: alpha32Props.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:54:46  george
+ *   Version 110.12
+ *
  * Revision 1.3  1998/05/25 15:10:48  george
  *   Fixed RCS keywords
  *

@@ -32,7 +32,6 @@ OBJS =		smlnj-runt-lib.o \
 		export-fun.o \
 		gc-ctl.o \
 		itick.o \
-		mkcode.o \
 		mkexec.o \
 		mkliterals.o \
 		record1.o \

@@ -88,7 +88,7 @@
 #  define END_PROC(P)
 #  define __SC__	!
 
-#elif defined(HOST_RS6000)
+#elif (defined(HOST_RS6000) || defined(HOST_PPC))
 #  if defined(OPSYS_AIX)
 #    define CFUNSYM(ID)	CONCAT(.,ID)
 #    define USE_TOC

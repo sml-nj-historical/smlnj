@@ -1,6 +1,6 @@
 Group
 	structure RS6000UnixCMB
-	structure RS6000VisComp
+	structure RS6000Compiler
 is
 	../viscomp-lib.cm
 	../../cm/cm-lib.cm

@@ -3,6 +3,7 @@ Group is
 ../MLRISC/UTIL.cm
 
 ../MLRISC/util/mlriscErrormsg.sml
+../MLRISC/util/mlriscErrormsg.sig
 
 ../MLRISC/control/mlrisc-control.sml
 ../MLRISC/control/mlrisc-profiling.sml
@@ -93,3 +94,18 @@ Group is
 ../MLRISC/sparc/mltree/sparcPseudoInstr.sig
 ../MLRISC/sparc/ra/sparcRegAlloc.sml
 ../MLRISC/sparc/ra/sparcRewrite.sml
+
+../MLRISC/ppc/backpatch/ppcJumps.sml
+../MLRISC/ppc/emit/ppcAsm.sml
+../MLRISC/ppc/emit/ppcMC.sml
+../MLRISC/ppc/instructions/ppcCells.sig
+../MLRISC/ppc/instructions/ppcCells.sml
+../MLRISC/ppc/instructions/ppcInstr.sig
+../MLRISC/ppc/instructions/ppcInstr.sml
+../MLRISC/ppc/instructions/ppcProps.sml
+../MLRISC/ppc/instructions/ppcShuffle.sig
+../MLRISC/ppc/instructions/ppcShuffle.sml
+../MLRISC/ppc/mltree/ppc.sml
+../MLRISC/ppc/mltree/ppcPseudoInstr.sig
+../MLRISC/ppc/ra/ppcRegAlloc.sml
+../MLRISC/ppc/ra/ppcRewrite.sml

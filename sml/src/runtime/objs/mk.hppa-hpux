@@ -12,7 +12,7 @@ CC =		cc -Aa -D__STDC__
 #CC  =		gcc -ansi -D__STDC__
 CPP =		/lib/cpp.ansi
 
-CFLAGS =	-O2
+CFLAGS =	-O
 
 AS =		/usr/ccs/bin/as 
 RANLIB =	ar ts

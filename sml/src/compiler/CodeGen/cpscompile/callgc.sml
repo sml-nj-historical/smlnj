@@ -137,7 +137,6 @@ struct
    * A record of live floating point registers is created on the
    * heap and assigned to a pseudo register.
    *)
-  val gclinkreg = T.GPR C.gclinkreg
   val maskreg = T.GPR C.maskreg
 
   (* allocptr must always be in a registe *)
@@ -158,8 +157,7 @@ struct
        * variable elimination, as the induction variable is killed by GC.
        *)
       val roots = map T.GPR (maskRegs @ i32Regs)
-      val defs' = gclinkreg::roots
-      val def = case C.exhausted of NONE => defs' | SOME cc => T.CCR cc::defs'
+      val def = case C.exhausted of NONE => roots | SOME cc => T.CCR cc::roots
       val use = maskreg::roots
       val gcAddr = T.ADD (C.stackptr, T.LI MS.startgcOffset)
 
@@ -278,6 +276,9 @@ end
 
 (*
  * $Log: callgc.sml,v $
+ * Revision 1.10  1998/11/23 20:09:19  jhr
+ *   Fixed length field of raw64 objects (should be in words).
+ *
  * Revision 1.9  1998/11/18 03:53:04  jhr
  *  New array representations.
  *

@@ -429,7 +429,7 @@ struct
          rd)
       | T.ADD(exp1, exp2)    => commImmedArith(exp1, exp2, T.LR, I.ADDI, I.ADD)
       | T.ADDT(e1, e2)       => commImmedArith(e1, e2, T.LR, I.ADDIO, I.ADDO)
-      | T.SUB(e, T.LI n, _)  => immedArith(T.LI(~n), e, T.LR, I.ADDIO, I.ADDO)
+      | T.SUB(e, T.LI n, _)  => immedArith(T.LI(~n), e, T.LR, I.ADDI, I.ADDO)
       | T.SUBT(e, T.LI n, _) => immedArith(T.LI(~n), e, T.LR, I.ADDIO, I.ADDO)
       | T.SUB(exp1, exp2, ord) => immedArith(exp1, exp2, ord, I.SUBI, I.SUB)
       | T.SUBT(exp1, exp2, ord) => immedArith(exp1, exp2, ord, I.SUBIO, I.SUBO)
@@ -519,6 +519,9 @@ end
 
 (*
  * $Log: hppa.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:27  george
+ *   Version 110.12
+ *
  * Revision 1.7  1998/10/06 14:04:26  george
  *   The instruction sequence FCMP, FTEST, FBCC is being replaced
  *   by the composite instruction FBRANCH.  This makes scheduling and

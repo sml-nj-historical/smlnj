@@ -67,8 +67,10 @@ struct
 
   (* load/store has 13 bits sign extended immediates *) 
   fun immed13 n = ~4096 <= n andalso n < 4096
-  fun immed13w w = let val x = W.~>>(w,0w12)
-                   in  W.orb(x,W.notb x) = 0w0 end
+  fun immed13w w = let 
+    val x = W.~>>(w,0w12)
+  in x=0w0 orelse (W.notb x)=0w0
+  end
 
   (* split into 22 high bits/10 low bits *)
 
@@ -453,6 +455,9 @@ end
 
 (* 
  * $Log: sparc.sml,v $
+ * Revision 1.1.1.1  1999/01/04 21:56:27  george
+ *   Version 110.12
+ *
  * Revision 1.4  1998/09/30 19:36:54  dbm
  * fixing sharing/defspec conflict
  *

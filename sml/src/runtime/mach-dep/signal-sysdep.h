@@ -221,9 +221,9 @@ extern void SetFSR();
 	{ (scp)->uc_mcontext.gregs[CTX_S3] = 0; }
 #  endif /* ARCH_MIPS */
 
-#elif defined(HOST_RS6000)
+#elif (defined(HOST_RS6000) || defined(HOST_PPC))
 #  if defined (OPSYS_AIX)
-    /** RS6000, AIX **/
+    /** RS6000 or PPC, AIX **/
 #    include <fpxcp.h>
 #    define SIG_FAULT1		SIGTRAP
 
@@ -264,7 +264,7 @@ extern void SetFSR();
 
 #    define SIG_Flags		0
 
-#  endif /* HOST_RS6000 */
+#  endif /* HOST_RS6000/HOST_PPC */
 
 #elif defined(HOST_HPPA)
 

@@ -16,6 +16,7 @@ Library
 	structure Alpha32XVisComp
 	structure Alpha32VisComp
 	structure HppaVisComp
+	structure PPCVisComp
 (**** no old-style code generators
 	structure MipsBigVisComp
 	structure MipsLittleVisComp
@@ -70,6 +71,7 @@ TopLevel/viscomp/mipsebvis.sml
 TopLevel/viscomp/mipselvis.sml
 TopLevel/viscomp/rs6000vis.sml
 ****)
+TopLevel/viscomp/ppcvis.sml
 TopLevel/viscomp/sparcvis.sml
 TopLevel/viscomp/generic-vc.sig
 TopLevel/viscomp/generic-vc.sml
@@ -285,6 +287,13 @@ CodeGen/main/mlrisc-export.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
+CodeGen/ppc/ppcCG.sml
+CodeGen/ppc/ppcCpsRegs.sml
+CodeGen/ppc/ppcMLTree.sml
+CodeGen/ppc/ppcMask.sml
+CodeGen/ppc/ppcPseudoInstr.sml
+CodeGen/ppc/ppcgen.sml
+CodeGen/ppc/ppcspec.sml
 CodeGen/sparc/sparcCG.sml
 CodeGen/sparc/sparcCpsRegs.sml
 CodeGen/sparc/sparcMLTree.sml
@@ -335,3 +344,4 @@ MiscUtil/util/stats.sml
 ../ml-yacc/lib/sources.cm
 
 MLRISC.cm
+

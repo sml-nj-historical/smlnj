@@ -32,7 +32,7 @@
 /* 386 & 486 have unified caches and the pentium has hardware consistency */
 #  define FlushICache(addr, size)
 
-#elif (defined(TARGET_RS6000) && defined(OPSYS_AIX))
+#elif ((defined(TARGET_RS6000) || defined(TARGET_PPC))&& defined(OPSYS_AIX))
 #  include <sys/cache.h>
 #  define FlushICache(addr, size)	_sync_cache_range((addr), (size))
 

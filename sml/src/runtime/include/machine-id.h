@@ -27,6 +27,8 @@
 #  define MACHINE_ID	"mipsel"
 #elif defined(TARGET_RS6000)
 #  define MACHINE_ID	"rs6000"
+#elif defined(TARGET_PPC)
+#  define MACHINE_ID	"ppc"
 #elif defined(TARGET_SPARC)
 #  define MACHINE_ID	"sparc"
 #elif defined(TARGET_X86)

@@ -35,7 +35,6 @@ OBJS =		smlnj-runt-lib.obj \
 		export-fun.obj \
 		gc-ctl.obj \
 		mkexec.obj \
-		mkcode.obj \
 		sysinfo.obj \
 		itick.obj \
 		setitimer.obj
@@ -86,9 +85,6 @@ export-fun.obj: export-fun.c $(DEPENDENTS)
 
 gc-ctl.obj: gc-ctl.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c gc-ctl.c
-
-mkcode.obj: mkcode.c $(DEPENDENTS)
-	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c mkcode.c
 
 sysinfo.obj: sysinfo.c $(DEPENDENTS)
 	$(CC) $(CFLAGS) $(DEFS) $(GC_INCLUDES) /c sysinfo.c
