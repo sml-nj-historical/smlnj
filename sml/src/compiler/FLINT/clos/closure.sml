@@ -1464,7 +1464,18 @@ val _ = COMMENT(fn() => (pr "*** Current Stage number and fun kind: ";
 
         (* for recursive functions, always spill deeper level free variables *)
         val ((gpspill,gpfree),(fpspill,fpfree),nflag) = case lpv 
-          of SOME _ => (partition deep1 gpfree,partition deep1 fpfree,true)
+          of SOME _ => 
+               let fun h((v,_,_),l) = 
+                     case whatIs(initEnv,v)
+                      of (Closure (CR(_,{free,...}))) => merge(rmv(v,free),l)
+                       | _ => l
+                   val gpfree = removeV(foldr h [] gpfree, gpfree)
+                   val gpfreePart = 
+                         if length(gpfree) < numCSgpregs
+                         then ([],gpfree)
+                         else partition deep1 gpfree
+                in (gpfreePart, partition deep1 fpfree,true)
+               end
            | NONE => if ekfuns v then ((gpfree,[]),(fpfree,[]),flag)
                      else (partition deep2 gpfree,partition deep2 fpfree,flag)
 

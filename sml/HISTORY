@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2001/08/13
+Tag: blume-20010813-closures
+Description:
+
+This fix was sent to us by Zhong Shao.  It is supposed to improve the
+performance of certain loops by avoiding needless closure allocation.
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2001/07/31 10:03:23 EDT 2001
 Tag: george-20010731-x86-fmalloc
