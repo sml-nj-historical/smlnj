@@ -763,7 +763,7 @@ let
       Ast.Simple(#2(cnvExpression expr))
 										   
   and processDecr (ty,sc,topLevel0) (decr,expr) =
-      let val (ty,varNameOpt) = mungeTyDecr (ty, decr)
+      let val (ty,varNameOpt,loc) = mungeTyDecr (ty, decr)
 	  val varName = 
 	      case varNameOpt
 		of SOME name => name
@@ -856,7 +856,7 @@ let
 		  val uid = case uidOpt of
 		    SOME uid => uid
 		  | NONE => Pid.new()
-		  val id = {name = varSym, uid = uid, location = getLoc(),
+		  val id = {name = varSym, uid = uid, location = loc,
 			    ctype = newTy, stClass = sc, status = status, global = true,
 			    kind = Ast.FUNCTION{hasFunctionDef=false}}
 		  val binding = ID id
@@ -871,7 +871,7 @@ let
 			checkIdRebinding(varSym, ty, status, {globalBinding=hasExtern})
 		  val uid = case uidOpt of SOME uid => uid | NONE => Pid.new()
 
-		  val id = {name = varSym, uid = uid, location = getLoc(),
+		  val id = {name = varSym, uid = uid, location = loc,
 			    ctype = ty, stClass = sc, status = status, global = topLevel() orelse hasExtern,
 			    kind = Ast.NONFUN}
 		  (* always rebind, even if there was a previous binding in
@@ -951,7 +951,7 @@ let
   and processTypedef ty decr =
     if !multi_file_mode then  (* version of processTypede for multi_file_mode *)
     let
-      val (ty,nameOpt) = mungeTyDecr (ty, decr)
+      val (ty,nameOpt,loc) = mungeTyDecr (ty, decr)
       val name = 
 	  case nameOpt
 	    of SOME name => name
@@ -999,7 +999,7 @@ let
       (* store actual typdef symbol mapped to named type id *)
       val _ = checkNonIdRebinding(sym, ty', "typedef ")
 
-      val binding = TYPEDEF{name = sym, uid = Pid.new(), location = getLoc(),
+      val binding = TYPEDEF{name = sym, uid = Pid.new(), location = loc,
 			    ctype = ty'}
 
       (* store named type id mapped to typedef in named-type table *)
@@ -1010,7 +1010,7 @@ let
     end
     else  (* standard version of processTypedef *)
 	  (* In time the two version should be combined. *)
-    let val (ty,nameOpt) = mungeTyDecr (ty, decr)
+    let val (ty,nameOpt,loc) = mungeTyDecr (ty, decr)
 	val name = 
 	    case nameOpt
 	      of SOME name => name
@@ -1026,7 +1026,7 @@ let
 
 	val _ = checkNonIdRebinding(sym, ty', "typedef ")
 
-	val binding = TYPEDEF{name = sym, uid = Pid.new(), location = getLoc(),
+	val binding = TYPEDEF{name = sym, uid = Pid.new(), location = loc,
 			      ctype = ty'}
 
 	(* store named type id mapped to typedef in named-type table *)
@@ -1039,9 +1039,10 @@ let
 
     (* like processDeclarator, except it munges a Ast.ctype with
      * a PT.declarator *)
-  and mungeTyDecr (ty: Ast.ctype, decr : PT.declarator) : Ast.ctype * string option =
+  and mungeTyDecr (ty: Ast.ctype, decr : PT.declarator)
+      : Ast.ctype * string option * SourceMap.location =
       case decr
-	of PT.VarDecr str => (ty,SOME str)
+	of PT.VarDecr str => (ty,SOME str,getLoc())
          | PT.PointerDecr decr => mungeTyDecr (Ast.Pointer ty, decr)
 	 | PT.ArrayDecr (decr,PT.EmptyExpr) => mungeTyDecr(Ast.Array (NONE, ty), decr)
 	 | PT.ArrayDecr (decr,sz) => 
@@ -1083,13 +1084,14 @@ let
 		else ();
 		mungeTyDecr (ty', decr)
 	    end
-	 | PT.EllipsesDecr => (Ast.Ellipses, SOME "**ellipses**")
-	 | PT.EmptyDecr => (ty, NONE)
+	 | PT.EllipsesDecr => (Ast.Ellipses, SOME "**ellipses**", getLoc())
+	 | PT.EmptyDecr => (ty, NONE, getLoc())
 	 | PT.MARKdeclarator(loc, decr) =>
 	    (pushLoc loc;
 	     mungeTyDecr(ty, decr)
 	     before popLoc ())
-	 | PT.DecrExt ext => CNVDeclarator (ty, ext)
+	 | PT.DecrExt ext =>
+	    let val (t,n) = CNVDeclarator (ty, ext) in (t,n,getLoc()) end
  
  
   (* --------------------------------------------------------------------
@@ -1161,7 +1163,7 @@ let
 				       funDecr, krParams: PT.declaration list, body}) =
       (* function definitions *)
       let
-	val (funTy, tagOpt, _) = processDeclarator (retType, funDecr)
+	val (funTy, tagOpt, funLoc) = processDeclarator (retType, funDecr)
 	val funName = case tagOpt
 		        of SOME tag => tag
 		         | NONE =>
@@ -1255,7 +1257,7 @@ let
 		else let val decrs = List.map (declExprToDecl "initializer in function declaration") decrExprs
 			 val (ty,sc) = cnvType (false, decltype)
 			 fun folder' (decr, argMap) = 
-			   let val (ty, sOpt) = mungeTyDecr (ty, decr)
+			   let val (ty, sOpt, loc) = mungeTyDecr (ty, decr)
 			       val s = 
 				 case sOpt
 				   of SOME s =>
@@ -1272,7 +1274,8 @@ let
 				       (error "Unnamed K&R style parameter - \
 					       \filling with unnamed_KR_parameter";
 					"<unnamed_KR_parameter>")
-			       val argMap = IdMap.insert (argMap, s, ((ty,sc),true, getLoc()))
+			       val argMap = IdMap.insert
+				             (argMap, s, ((ty,sc),true,loc))
 			   in argMap
 			   end
 		     in List.foldl folder' argMap decrs
@@ -1309,7 +1312,7 @@ let
 	val uid = case uidOpt of
 	  SOME uid => uid
 	| NONE => Pid.new()
-	val funId = {name = funSym, uid = uid, location = getLoc(),
+	val funId = {name = funSym, uid = uid, location = funLoc,
 		     ctype = funTy', stClass = sc, status = status,
 		     kind = Ast.FUNCTION{hasFunctionDef = true}, global = true}
 	val binding = ID funId
@@ -1460,10 +1463,15 @@ let
 	  processDecls(rest, processDeclaration decl)
       end
 
-    | processDecls( (PT.MARKstatement (newloc,stmt)) :: rest, astdecls ) =
+    | processDecls((PT.MARKstatement (newloc,stmt as PT.Decl _)) :: rest,
+		   astdecls) =
                 (pushLoc newloc;
 		 processDecls(stmt :: rest, astdecls)
 		 before popLoc ())
+
+    | processDecls((PT.MARKstatement (newloc,stmt as PT.MARKstatement _)) :: rest,
+		   astdecls ) =
+		 processDecls(stmt :: rest, astdecls)
 
     | processDecls (rest, astdecls) = (List.concat(rev astdecls), rest)
 
@@ -2719,7 +2727,7 @@ end old code ******)
 			    fun process2 (decr,expr)
 				 : Ast.ctype * Ast.member option * Int32.int option = 
 			      let
-				val (ty', memNameOpt) = mungeTyDecr (ty, decr)
+				val (ty', memNameOpt, loc) = mungeTyDecr (ty, decr)
 				val sizeOpt = 
 				  case expr of
 				    PT.EmptyExpr => NONE
@@ -2752,7 +2760,7 @@ end old code ******)
 					       else ();
 					      val member = {name = sym,
 							    uid = Pid.new(),
-							    location = getLoc(),
+							    location = loc,
 							    ctype = ty',
 							    kind = if isStruct
 							      then Ast.STRUCTmem
@@ -3010,7 +3018,12 @@ end old code ******)
 
   val _ = 
    let val coreFuns = {stateFuns=stateFuns,
-		       mungeTyDecr=mungeTyDecr,
+		       mungeTyDecr=(fn (ty, decr) =>
+				       let val (ctype, name, _) =
+					     mungeTyDecr(ty,decr)
+				        in (ctype, name) end),
+		       (* since we added location in the output of mungeTyDecr and
+			* we don't want to change the extension interface *)
 		       cnvType=cnvType,
 		       cnvExpression=cnvExpression,
 		       cnvStatement=cnvStatement,

@@ -27,10 +27,10 @@ struct
    * it looks like filePos could just be a ref of the record *)
 
   fun newmap{srcFile} = SOURCEMAP
-         { linePos = ref [0],
-           filePos = ref [{linePos=[],line=1,srcFile=srcFile}],
-           lineNum = ref 1
-         }
+      { linePos = ref [1], (* this compensates for lex bug : yypos off by 2 *)
+        filePos = ref [{linePos=[],line=1,srcFile=srcFile}],
+        lineNum = ref 1
+      }
 
   fun newline (SOURCEMAP{linePos,lineNum,...}) pos =
       (linePos := pos :: !linePos; lineNum := 1 + !lineNum)

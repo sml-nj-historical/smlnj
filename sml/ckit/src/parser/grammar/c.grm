@@ -254,7 +254,7 @@ end
 	| structOrUnionSpecifier of specifier
 	| fDefDeclaration of (decltype * declarator)
 	| declarationList of declaration seq
-	| identlist of string seq
+	| identlist of (string * int * int) seq
 	| functionDefinition of externalDecl
 	| declaration of declaration
 	| declaration1 of declaration
@@ -409,9 +409,9 @@ statementlist:
 (* original code: changed for "let" statements in D *)
 compoundStatement: 
 	  LCURLY pushScope declarationList ostatementlist popScope RCURLY
-					(Compound ((map Decl (seqToList declarationList)) @ ostatementlist))
+					(markStatement srcMap (Compound ((map Decl (seqToList declarationList)) @ ostatementlist), LCURLYleft, RCURLYright))
 	| LCURLY ostatementlist RCURLY
-					(Compound (ostatementlist))
+ 					(markStatement srcMap (Compound (ostatementlist), LCURLYleft, RCURLYright))
 (* *)
 
 
@@ -729,7 +729,7 @@ pointer:
 					(PointerDecr(loopQd(typeQualifierList,pointer)))
 
 aftertypeDirectDeclarator:
-	  TYPE_NAME			(VarDecr TYPE_NAME)
+ 	  TYPE_NAME			(markDeclarator srcMap (VarDecr TYPE_NAME,TYPE_NAMEleft,TYPE_NAMEright))
 	| LPAREN aftertypeDeclarator RPAREN		
 					(aftertypeDeclarator)
 	| aftertypeDirectDeclarator  LBRACE RBRACE %prec DOT
@@ -742,10 +742,10 @@ aftertypeDirectDeclarator:
 					(FuncDecr (aftertypeDirectDeclarator,parameterTypeList))
 	| aftertypeDirectDeclarator LPAREN identlist RPAREN		%prec DOT
 					(FuncDecr (aftertypeDirectDeclarator,
-						    map (fn x => (unknown,VarDecr x)) (seqToList identlist)))
+					    map (fn (x,y,z) => (unknown,markDeclarator srcMap (VarDecr x,y,z))) (seqToList identlist)))
 
 notypeDirectDeclarator:
-	  ID				(VarDecr ID)
+	  ID				(markDeclarator srcMap (VarDecr ID,IDleft,IDright))
 	| LPAREN notypeDeclarator RPAREN		
 					(notypeDeclarator)
 	| notypeDirectDeclarator LBRACE RBRACE %prec DOT
@@ -758,10 +758,10 @@ notypeDirectDeclarator:
 					(FuncDecr (notypeDirectDeclarator,parameterTypeList))
 	| notypeDirectDeclarator LPAREN identlist RPAREN	 %prec DOT	
 					(FuncDecr (notypeDirectDeclarator,
-						   map (fn x => (unknown,VarDecr x)) (seqToList identlist)))
+ 						   map (fn (x,y,z) => (unknown,markDeclarator srcMap (VarDecr x,y,z))) (seqToList identlist)))
 
 parmDirectDeclarator:
-	  TYPE_NAME			(VarDecr TYPE_NAME)
+ 	  TYPE_NAME			(markDeclarator srcMap (VarDecr TYPE_NAME,TYPE_NAMEleft,TYPE_NAMEright))
 	| parmDirectDeclarator LBRACE RBRACE  %prec DOT
 					(ArrayDecr (parmDirectDeclarator,EmptyExpr))
 	| parmDirectDeclarator LBRACE expr RBRACE  %prec DOT
@@ -772,7 +772,7 @@ parmDirectDeclarator:
 					(FuncDecr (parmDirectDeclarator,parameterTypeList))
 	| parmDirectDeclarator LPAREN identlist RPAREN	 %prec DOT	
 					(FuncDecr (parmDirectDeclarator,
-						    map (fn x => (unknown,VarDecr x)) (seqToList identlist)))
+						    map (fn (x,y,z) => (unknown,markDeclarator srcMap (VarDecr x,y,z))) (seqToList identlist)))
 
 initializer:
 	  expr				(expr)
@@ -794,8 +794,8 @@ declarationList:
 						  declarationList))
 	  
 identlist:
-	  ID			(singletonSeq ID)
-	| identlist COMMA ID	(addToSeq(ID, identlist))
+	  ID			(singletonSeq (ID,IDleft,IDright))
+	| identlist COMMA ID	(addToSeq((ID,IDleft,IDright),identlist))
 
 (* Put function name in the current scope and param names in a pushed scope. *)
 fDefDeclaration:
