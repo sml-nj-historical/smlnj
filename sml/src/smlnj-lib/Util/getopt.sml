@@ -29,8 +29,7 @@ structure GetOpt :> GET_OPT =
 
     datatype 'a opt_kind 
       = Opt of 'a
-      | NonOpt of string
-      | EndOfOpts
+      | NonOpt
 
     structure SS = Substring
     structure S = String
@@ -103,24 +102,24 @@ structure GetOpt :> GET_OPT =
 	(* handle long option
 	 * this is messy because you cannot pattern-match on substrings
 	 *)
-	  fun longOpt (subs, rest, optDescr : 'a opt_descr list) = let
-		val (opt,arg) = breakeq subs
+	  fun longOpt (subs, rest) = let
+		val (opt, arg) = breakeq subs
         	val opt' = SS.string opt
         	val options = List.filter
 		      (fn {long,...} => List.exists (S.isPrefix opt') long)
-			optDescr
+			options
         	val optStr = "--"^opt'
         	fun long (_::(_::_), _, rest') = (
-		      errAmbig optStr; (NonOpt optStr, rest'))
+		      errAmbig optStr; (NonOpt, rest'))
         	  | long ([NoArg a], x, rest') = 
                       if (SS.isEmpty x)
                 	then (Opt(a()),rest')
                       else if (SS.isPrefix "=" x) 
-                	then (errNoArg optStr; (NonOpt optStr, rest'))
+                	then (errNoArg optStr; (NonOpt, rest'))
                 	else raise Fail "long: impossible"
         	  | long ([ReqArg(f,d)], x, []) = 
                       if (SS.isEmpty x)
-                	then (errReq(d, optStr); (NonOpt optStr, []))
+                	then (errReq(d, optStr); (NonOpt, []))
                       else if (SS.isPrefix "=" x)
                 	then (Opt(f (SS.string (SS.triml 1 x))), [])
                 	else raise Fail "long: impossible"
@@ -137,7 +136,7 @@ structure GetOpt :> GET_OPT =
                 	then (Opt(f (SOME (SS.string (SS.triml 1 x)))), rest')
                 	else raise Fail "long: impossible"
         	  | long ([], _, rest') = (
-		      errUnrec optStr; (NonOpt optStr, rest'))
+		      errUnrec optStr; (NonOpt, rest'))
         	in
                   long (map #desc options, arg, rest)
         	end
@@ -145,21 +144,21 @@ structure GetOpt :> GET_OPT =
 	 * rest of the option string, rest is the rest of the command-line
 	 * options.
 	 *)
-	  fun shortOpt (x, subs, rest, optDescr : 'a opt_descr list) = let 
+	  fun shortOpt (x, subs, rest) = let 
         	val options =
-		      List.filter (fn {short,...} => Char.contains short x) optDescr
+		      List.filter (fn {short,...} => Char.contains short x) options
         	val ads = map #desc options
         	val optStr = "-"^(str x)
         	in
 		  case (ads, rest)
-		   of (_::_::_, rest1) => (errAmbig optStr; (NonOpt optStr, rest1))
+		   of (_::_::_, rest1) => (errAmbig optStr; (NonOpt, rest1))
 		    | ((NoArg a)::_, rest') =>
                 	if (SS.isEmpty subs)
                 	  then (Opt(a()), rest')
                 	  else (Opt(a()), ("-"^(SS.string subs))::rest')
         	    | ((ReqArg(f,d))::_, []) => 
                 	if (SS.isEmpty subs) 
-                	  then (errReq(d, optStr); (NonOpt optStr, []))
+                	  then (errReq(d, optStr); (NonOpt, []))
                 	  else (Opt(f (SS.string subs)), [])
         	    | ((ReqArg(f,_))::_, rest' as (r::rs)) => 
                 	if (SS.isEmpty subs)
@@ -169,44 +168,35 @@ structure GetOpt :> GET_OPT =
                 	if (SS.isEmpty subs)
                 	  then (Opt(f NONE), rest')
                 	  else (Opt(f (SOME(SS.string subs))), rest')
-        	    | ([], rest') =>
-                	if (SS.isEmpty subs)
-                	  then (errUnrec optStr; (NonOpt optStr, rest'))
-                	  else (
-			    errUnrec optStr;
-			    (NonOpt optStr, ("-" ^ SS.string subs)::rest'))
+        	    | ([], rest') => (errUnrec optStr; (NonOpt, rest'))
 		  (* end case *)
         	end
-	(* take a look at the next command line argument and decide what to
-	 * do with it
-	 *)
-	  fun getNext ([], _) = raise Fail "getNext: impossible"
-	    | getNext ("--" :: rest, _) = (EndOfOpts, rest)
-	    | getNext (x::rest, optDescr) =  let
-		val x' = SS.all x
+	  fun get ([], opts, nonOpts) = (List.rev opts, List.rev nonOpts)
+	    | get ("--"::rest, opts, nonOpts) = let
+		val nonOpts = List.revAppend(nonOpts, rest)
 		in
-		  if (SS.isPrefix "--" x')
-		    then longOpt (SS.triml 2 x', rest, optDescr)
-        	  else if (SS.isPrefix "-" x')
-		    then shortOpt (SS.sub(x',1), SS.triml 2 x', rest, optDescr)
-        	  else (NonOpt x,rest)
+		  case argOrder
+		   of ReturnInOrder f => (List.revAppend(opts, List.map f nonOpts), [])
+		    | _ => (List.rev opts, nonOpts)
+		  (* end case *)
 		end
-	  fun get [] = ([], [])
-	    | get args = let
-        	val (opt, rest) = getNext (args, options)
-        	val (os, xs) = get rest
-        	fun procNextOpt (Opt o', _) = (o'::os, xs)
-        	  | procNextOpt (NonOpt x, RequireOrder) = ([],x::rest)
-        	  | procNextOpt (NonOpt x, Permute) = (os,x::xs)
-        	  | procNextOpt (NonOpt x, ReturnInOrder f) = ((f x)::os,xs)
-        	  | procNextOpt (EndOfOpts, RequireOrder) = ([],rest)
-        	  | procNextOpt (EndOfOpts, Permute) = ([],rest)
-        	  | procNextOpt (EndOfOpts, ReturnInOrder f) = (map f rest,[])
-        	in
-        	  procNextOpt(opt, argOrder)
-        	end
+	    | get (arg::rest, opts, nonOpts) = let
+		val arg' = SS.full arg
+		fun addOpt (Opt opt, rest) = get(rest, opt::opts, nonOpts)
+		  | addOpt (NonOpt, rest) = get(rest, opts, arg::nonOpts)
+		in
+		  if (SS.isPrefix "--" arg')
+		    then addOpt(longOpt (SS.triml 2 arg', rest))
+        	  else if (SS.isPrefix "-" arg')
+		    then addOpt(shortOpt (SS.sub(arg', 1), SS.triml 2 arg', rest))
+        	  else (case argOrder
+		     of RequireOrder => (List.rev opts, List.revAppend(nonOpts, arg::rest))
+		      | Permute => get(rest, opts, arg::nonOpts)
+		      | ReturnInOrder f => get(rest, f arg :: opts, nonOpts)
+		    (* end case *))
+		end
 	  in
-	    get
+	    fn args => get(args, [], [])
 	  end (* getOpt *)
 
   end

@@ -2,6 +2,11 @@ This is a list of changes to the SML/NJ Library; the version numbers
 correspond to SML/NJ releases.
 --------------------------------------------------------------------------------
 
+[2005-03-21]
+	Fixed a bug in GetOpt.getOpt.  The argument processing functions
+	for ReqArg and OptArg, and the embedding function for ReturnInOrder
+	were getting applied to all arguments, even past a "--".
+
 [2005-02-11]
 	Added Atom.same and Atom.lexCompare to the Atom structure.  Eventually,
 	Atom.sameAtom will be removed.

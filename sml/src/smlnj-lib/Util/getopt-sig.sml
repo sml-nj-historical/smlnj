@@ -48,8 +48,8 @@ signature GET_OPT =
         | OptArg of (string option -> 'a) * string
       (* Description of an argument option:
        * NoArg: no argument required
-       * ReqArg: option requires an argument
-       * OptArg: optional argument
+       * ReqArg: option requires an argument; the string is the argument name
+       * OptArg: optional argument; the string is the argument name
        *)
           
       type 'a opt_descr = {
@@ -65,7 +65,8 @@ signature GET_OPT =
 	      options : 'a opt_descr list
 	    } -> string
       (* takes a header string and a list of option descriptions and
-       * returns a string explaining the usage information
+       * returns a string explaining the usage information.  A newline will
+       * be added following the header, so it should not be newline terminated.
        *)
  
       val getOpt : {
