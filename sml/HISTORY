@@ -14,6 +14,19 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/05/20 16:00:00 CDT
+Tag: blume-20040520-win32
+Description:
+
+Made the win32 version work again.  (Strangely, a misplaced comma had
+slipped into win32-process.c which prevented the runtime from being
+compiled correctly.)
+
+Also, included a minor addition to ml-build.bat analogous to what was
+done in blume-20040519-ml-build.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/05/19 22:10:00 CDT
 Tag: blume-20040519-ml-build
 Description:
