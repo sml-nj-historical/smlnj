@@ -14,6 +14,8 @@ struct
 		      "loopify", "fixfix", "split", "fcontract",
 		      "wrap", "fcontract", "reify",
 		      (*"abcopt",*) "fcontract", "fixfix", "fcontract+eta"]
+
+    val nflintGen       = ref false
 			  
     val inlineThreshold = ref 16
     (* val splitThreshold  = ref 0 *)

@@ -1,6 +1,6 @@
 (* tocps.sml *)
 
-structure Flint2CPS = struct
+structure NFlint2CPS = struct
 
 local
     open NFlint
