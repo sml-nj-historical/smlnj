@@ -175,23 +175,35 @@ struct
    * In either case we sign extend the 32-bit value. This is compatible 
    * with LDL which sign extends a 32-bit valued memory location.
    *)
-  fun loadImmed32 (n, base, rd) = let
-    val low = W32.andb(n, 0w65535)		(* unsigned low 16 bits *)
-    val high = W32.div(n, 0w65536)			(* Sign-extend *)
-    val (lowsgn, highsgn) =			
-      if W32.<=(low, 0w32767) then (low, high) 
-      else (W32.-(low,0w65536), W32.+(high,0w1))
-    val highsgn' = W32.andb(highsgn, 0w65535)
-  in    
-    emit(I.LDA{r=rd, b=base, d=I.IMMop(W32.toIntX lowsgn)});
-    if (highsgn' = 0w0) then ()
-    else if highsgn' < 0w32768 then 
-      emit(I.LDAH{r=rd, b=rd, d=I.IMMop(W32.toIntX highsgn)})
-    else
-      emit(I.LDAH{r=rd, b=rd, 
-		  d=I.IMMop(W32.toIntX (W32.-(highsgn, 0w65536)))})
-  end
-
+  fun loadImmed32(0w0, base, rd) = 
+       emit(I.OPERATE{oper=I.ADDL, ra=base, rb=zeroOp, rc=rd})
+    | loadImmed32(n, base, rd) = let
+	val low = W32.andb(n, 0w65535)	(* unsigned (0 .. 65535) *)
+	val high = W32.~>>(n, 0w16)	(* signed (~32768 .. 32768] *)
+	fun loadimmed(0, high) = emit(I.LDAH{r=rd, b=base, d=I.IMMop(high)})
+	  | loadimmed(low, high) =
+	     (emit(I.LDA{r=rd, b=base, d=I.IMMop(low)});
+	      emit(I.LDAH{r=rd, b=rd, d=I.IMMop(high)}))
+      in 
+	if W32.<(low, 0w32768) then loadimmed(W32.toInt low, W32.toIntX high)
+	else let (* low = (32768 .. 65535) *)
+	   val lowsgn = W32.-(low, 0w65536) (* signed (~1 .. ~32768)  *)
+	   val highsgn = W32.+(high, 0w1)   (* (~32768 .. 32768) *)
+	   val ilow = W32.toIntX lowsgn
+	   val ihigh = W32.toIntX highsgn
+	 in
+	   if ihigh <> 32768 then loadimmed(ilow, ihigh)
+	   else let 
+	       val tmpR = C.newReg()
+	     in
+	       (* you gotta do what you gotta do! *)
+	       emit(I.LDA{r=rd, b=base, d=I.IMMop(ilow)});
+	       emit(I.OPERATE{oper=I.ADDL, ra=zeroR, rb=I.IMMop 1, rc=tmpR}); 
+	       emit(I.OPERATE{oper=I.SLL, ra=tmpR, rb=I.IMMop 31, rc=tmpR});
+	       emit(I.OPERATE{oper=I.ADDL, ra=tmpR, rb=I.REGop rd, rc=rd})
+	     end
+	 end
+       end
 
   fun orderedFArith (exp1, exp2, T.LR) = (fregAction exp1, fregAction exp2)
     | orderedFArith (exp1, exp2, T.RL) = let
