@@ -1,7 +1,7 @@
 structure MDLAst : MDL_AST =
 struct
 
-   type loc  = SourceMap.location
+   type loc  = SourceMapping.location
 
    datatype decl = 
      DATATYPEdecl of datatypebind list * typebind list

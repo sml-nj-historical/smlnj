@@ -229,7 +229,7 @@ struct
            line(!"exception" ++ ands(map exceptionbind ebs))
      | decl(SHARINGdecl s) = line(! "sharing" ++ ands(map share s))
      | decl(MARKdecl(l,d)) = 
-        nl++ !(SourceMap.directive l) ++nl ++ decl d 
+        nl++ !(SourceMapping.directive l) ++nl ++ decl d 
      | decl(INFIXdecl(i,ids)) = line(! "infix" ++ int i ++ concat(map ! ids))
      | decl(INFIXRdecl(i,ids)) = line(! "infixr" ++ int i ++ concat(map ! ids))
      | decl(NONFIXdecl ids) = line(! "nonfix" ++ concat(map ! ids))

@@ -1,12 +1,12 @@
 structure MDLError : MDL_ERROR =
 struct
 
-   val loc = ref SourceMap.dummyLoc
+   val loc = ref SourceMapping.dummyLoc
    val errorCount   = ref 0
    val warningCount = ref 0
 
    fun init() = 
-        (errorCount := 0; warningCount := 0; loc := SourceMap.dummyLoc)
+        (errorCount := 0; warningCount := 0; loc := SourceMapping.dummyLoc)
 
    fun status() =
    let fun pr(0,s,t) = ("no "^s,t)
@@ -43,7 +43,7 @@ struct
 
    fun withLoc l f x =
    let val p = !loc
-       (* val _ = print(SourceMap.toString l^"\n") *)
+       (* val _ = print(SourceMapping.toString l^"\n") *)
        val _ = setLoc l
        val y = f x
    in  setLoc p;
@@ -56,10 +56,10 @@ struct
        printToLog text
    end
 
-   fun error msg = (log(SourceMap.toString (!loc)^": "^msg); 
+   fun error msg = (log(SourceMapping.toString (!loc)^": "^msg); 
                     errorCount := !errorCount + 1)
    fun errorPos(l, msg) = (setLoc l; error msg)
-   fun warning msg = (log(SourceMap.toString (!loc)^": warning: "^msg);
+   fun warning msg = (log(SourceMapping.toString (!loc)^": warning: "^msg);
                       warningCount := !warningCount + 1) 
    fun warningPos(l, msg) = (setLoc l; warning msg)
    fun fail msg = (error msg; raise Error)

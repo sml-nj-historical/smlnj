@@ -1,12 +1,12 @@
 Library
 	signature GENERATE_FILE
 	signature MDL_ERROR
-	signature SOURCE_MAP
-	signature SYMBOL
+	signature SOURCE_MAPPING
+	signature UNIQUE_SYMBOL
 	structure GenFile
 	structure MDLError
-	structure SourceMap
-	structure Symbol
+	structure SourceMapping
+	structure UniqueSymbol
 is
 
 #if defined(NEW_CM)

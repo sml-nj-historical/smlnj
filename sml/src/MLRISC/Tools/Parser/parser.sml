@@ -62,9 +62,9 @@ struct
 
    fun parseIt(filename,stream)=
    let val _     = Lex.UserDeclarations.init ()
-       val srcMap = SourceMap.newmap{srcFile=filename}
+       val srcMap = SourceMapping.newmap{srcFile=filename}
        fun err(a,b,msg) = 
-       let val loc = SourceMap.location srcMap (a,b)
+       let val loc = SourceMapping.location srcMap (a,b)
        in  Error.setLoc loc; Error.error(msg) end
        fun input n = TextIO.inputN(stream,n)
        val lexArg = {srcMap=srcMap, err=err, MDLmode=MDLmode}

@@ -75,9 +75,9 @@ end
 
 
 fun markdecl srcMap (decl,left,right) = 
-     MARKdecl(SourceMap.location srcMap (left,right), decl)
+     MARKdecl(SourceMapping.location srcMap (left,right), decl)
 fun markexp srcMap (exp,left,right) = 
-     MARKexp(SourceMap.location srcMap (left,right), exp)
+     MARKexp(SourceMapping.location srcMap (left,right), exp)
 
 exception Bad
 
@@ -109,8 +109,8 @@ fun clause(pats, guard, NONE, e) = CLAUSE(pats, guard, e)
         )
 
 %arg	(srcMap,err,import,precStack,extraCells) 
-   : SourceMap.sourcemap * (SourceMap.location * string -> unit) * 
-     (SourceMap.location * string -> decl list) *
+   : SourceMapping.sourcemap * (SourceMapping.location * string -> unit) * 
+     (SourceMapping.location * string -> decl list) *
      PrecedenceParser.precedence_stack ref *
      Ast.storagedecl list
 %name	MDL
@@ -358,7 +358,7 @@ decl:		mldecl optsemi	(mldecl)
 |		mddecl optsemi	(mddecl)
 |		INCLUDE string optsemi
 		(SEQdecl(import
-                  (SourceMap.location srcMap 
+                  (SourceMapping.location srcMap 
                       (INCLUDEleft,stringright), string)))
 
 mldecl:		mymldecl (markdecl srcMap (mymldecl,mymldeclleft,mymldeclright))
@@ -452,10 +452,10 @@ mymldecl:	DATATYPE datatypebinds withtypeclause
 |		RTL id LBRACE labpats0 RBRACE EQ exp 
                    (RTLdecl(IDpat id,LAMBDAexp
                                   [CLAUSE([RECORDpat labpats0],NONE,exp)],
-                      SourceMap.location srcMap (RTLleft, expright)))
+                      SourceMapping.location srcMap (RTLleft, expright)))
 |		RTL asapat EQ exp
                    (RTLdecl(asapat,exp,
-                            SourceMap.location srcMap (RTLleft,expright)))
+                            SourceMapping.location srcMap (RTLleft,expright)))
 |		RTL syms COLON ty (RTLSIGdecl(syms,ty))
 |		VAL valbinds (VALdecl(valbinds))
 |		VAL syms COLON ty	 (VALSIGdecl(syms,ty))
@@ -597,7 +597,7 @@ consbind:	sym of_ty consassembly consencoding rtl nop
 			  nop=nop,sdi=sdi,nullified=nullified, 
 			  delayslot=delayslot,
 			  delaycand=cand, latency=latency, pipeline=pipeline,
-                          loc=SourceMap.location srcMap (symleft,sdiright)
+                          loc=SourceMapping.location srcMap (symleft,sdiright)
 			 }
 		 end
 		)
@@ -758,18 +758,18 @@ aexp:		literal			(LITexp literal)
 |		DOLLAR id LBRACKET exp region RBRACKET (LOCexp(id,exp,region))
 |		LLBRACKET rtlterms RRBRACKET (RTLexp(rtlterms))
 |		sym CONCAT LBRACKET exps RBRACKET 
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp(err,loc,sym,exps),NONE) end
                 )
 |		LBRACKET exps RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp'(err,loc,exps,sym),NONE) end
                 )
 
 |		sym CONCAT LBRACKET exps RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                 (symleft,RBRACKETright)
                  in LISTexp(enumExp'(err,loc,
                                     enumExp(err,loc,sym1,exps),sym2),
@@ -801,7 +801,7 @@ appexp:		aexp2			([aexp2])
 |		appexp aexp2		(appexp @ [aexp2])
 
 exp: 		appexp			(parseExp precStack err 
-                 (SourceMap.location srcMap (appexpleft,appexpright)) appexp)
+                 (SourceMapping.location srcMap (appexpleft,appexpright)) appexp)
 |		IF exp THEN exp ELSE exp (IFexp(exp1,exp2,exp3))
 |		CASE exp OF clauses	(CASEexp(exp,clauses))
 |		FN clauses		(LAMBDAexp clauses)
@@ -835,19 +835,19 @@ apat:		ident2				(CONSpat(ident2,NONE))
 						(NESTEDpat(pat1,exp,pat2))
 |		LBRACE labpats0 RBRACE		(RECORDpat(labpats0))
 |		sym CONCAT LBRACKET pats RBRACKET 
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat(err,loc,sym,pats),NONE) end
 		)
 |		sym CONCAT LBRACKET pats RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat'(err,loc,
                                 enumPat(err,loc,sym1,pats),sym2),NONE) end
 		)
 
 |		LBRACKET pats RBRACKET CONCAT sym
-                (let val loc = SourceMap.location srcMap 
+                (let val loc = SourceMapping.location srcMap 
                                    (symleft,RBRACKETright)
                  in LISTpat(enumPat'(err,loc,pats,sym),NONE) end
 		)
@@ -867,7 +867,7 @@ apppat:		apat2			([apat2])
 |		apppat apat2		(apppat@[apat2])
 
 pat:		apppat		(parsePat precStack err 
-                                    (SourceMap.location srcMap 
+                                    (SourceMapping.location srcMap 
                                        (apppatleft,apppatright)) apppat)
 |		id AS pat	(ASpat(id,pat))
 
@@ -907,7 +907,7 @@ clauses:	clause			([clause])
 |		clause BAR clauses	(clause::clauses)
 
 funclause:	apppat funguard cont EQ exp	
-                (let val loc = SourceMap.location srcMap (apppatleft,expright)
+                (let val loc = SourceMapping.location srcMap (apppatleft,expright)
                  in case parseFunPat precStack err loc apppat of
                       (SOME f,ps) => (f,clause(ps,funguard,cont,exp))
                     | (NONE,ps) => 

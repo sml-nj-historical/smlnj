@@ -5,7 +5,7 @@
 
 signature MDL_AST =
 sig
-   type loc  = SourceMap.location
+   type loc  = SourceMapping.location
 
    datatype decl = 
      DATATYPEdecl of datatypebind list * typebind list

@@ -6,17 +6,17 @@ sig
 
    exception Error
 
-   val setLoc       : SourceMap.location -> unit
+   val setLoc       : SourceMapping.location -> unit
    val errorCount   : int ref
    val warningCount : int ref
    val init         : unit -> unit
    val log          : string -> unit
    val fail         : string -> 'a
    val error        : string -> unit
-   val errorPos     : SourceMap.location * string -> unit
+   val errorPos     : SourceMapping.location * string -> unit
    val warning      : string -> unit
-   val warningPos   : SourceMap.location * string -> unit
-   val withLoc      : SourceMap.location -> ('a -> 'b) -> 'a -> 'b
+   val warningPos   : SourceMapping.location * string -> unit
+   val withLoc      : SourceMapping.location -> ('a -> 'b) -> 'a -> 'b
    val status       : unit -> string
 
    (* attach error messages to a log file too *)

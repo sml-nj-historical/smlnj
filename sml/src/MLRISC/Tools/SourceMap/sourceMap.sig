@@ -2,14 +2,14 @@
  * This maps character position in the input stream to 
  * the source file location(s).
  *)
-signature SOURCE_MAP = 
+signature SOURCE_MAPPING = 
 sig
 
   type charpos = int 
 
   type region = charpos * charpos 
 
-  datatype location = LOC of {srcFile   : Symbol.symbol,
+  datatype location = LOC of {srcFile   : UniqueSymbol.symbol,
                               beginLine : int,
                               beginCol  : int,
                               endLine   : int,

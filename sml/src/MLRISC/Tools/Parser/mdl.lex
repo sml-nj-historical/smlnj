@@ -4,7 +4,7 @@ type pos = int
 type svalue = Tokens.svalue
 type ('a,'b) token = ('a,'b) Tokens.token
 type lexresult = (svalue,pos) token
-type lexarg = {srcMap  : SourceMap.sourcemap,
+type lexarg = {srcMap  : SourceMapping.sourcemap,
                err     : pos * pos * string -> unit,
                MDLmode : bool
               }
@@ -28,7 +28,7 @@ fun init() = (commentLevel := 0; metaLevel := 0;
 	     )
 
 fun eof{srcMap,err,MDLmode} = 
-    let val pos = SourceMap.currPos srcMap
+    let val pos = SourceMapping.currPos srcMap
     in  EOF(pos,pos) end
 fun debug _ = ()
 
@@ -197,7 +197,8 @@ val _ = app (HashTable.insert symbols)
 
 fun lookup(MDLmode,s,yypos) =
 let val l = String.size s
-    fun id() = ID(Symbol.toString(Symbol.fromString s), yypos, yypos + l)
+    fun id() = ID(UniqueSymbol.toString
+                    (UniqueSymbol.fromString s), yypos, yypos + l)
 in  HashTable.lookup keywords s (yypos,yypos + l) 
       handle _ => 
         (if MDLmode then 
@@ -209,7 +210,8 @@ end
 fun lookupSym(s,yypos) =
 let val l = String.size s
 in  HashTable.lookup symbols s (yypos,yypos + l) 
-      handle _ => SYMBOL(Symbol.toString(Symbol.fromString s), yypos, yypos + l)
+      handle _ => SYMBOL(UniqueSymbol.toString
+                     (UniqueSymbol.fromString s), yypos, yypos + l)
 end
 
 %%
@@ -245,7 +247,7 @@ inf=i;
 %s COMMENT ASM ASMQUOTE;
 
 %%
-<INITIAL,COMMENT,ASM>\n		=> (SourceMap.newline srcMap yypos; continue());
+<INITIAL,COMMENT,ASM>\n		=> (SourceMapping.newline srcMap yypos; continue());
 <INITIAL,COMMENT,ASM>{ws}	=> (continue());
 <ASMQUOTE>\n		=> (err(yypos,yypos+size yytext,
                                 "newline in assembly text!"); continue());
