@@ -1,10 +1,11 @@
 Group is
 
 #if defined (NEW_CM)
-  basis.cm
-#endif
-
+  $/basis.cm
+  $/ml-yacc-lib.cm
+#else
   ml-yacc-lib.cm
+#endif
 
   fol.lex
   fol.grm

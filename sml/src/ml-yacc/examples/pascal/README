@@ -3,7 +3,7 @@ not necessary because ML-Yacc supports LALR(1).
 
 To construct the parser, make this your current directory and run
 
-  CM.make();
+  CM.make "sources.cm";
 
 This will apply ML-Yacc to the file "pascal.grm" to create
 the files "pascal.grm.sig" and "pascal.grm.sml", then 
