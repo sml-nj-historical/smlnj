@@ -13,6 +13,25 @@ Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: Thu Dec 14 03:45:24 EST 2000  
+Description:
+Tag:  leunga-20001214-int-inf
+Description:
+
+   In IntInf, added these standard functions, which are missing from our
+implementation:
+
+    andb : int * int -> int
+    xorb : int * int -> int
+    orb  : int * int -> int
+    notb : int -> int
+     <<   : int * word -> int
+    ~>>  : int * word -> int
+
+   Not tested, I hope they are correct.  
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: Fri Dec  8 19:23:26 EST 2000
 Description:
 Tag:  leunga-20001208-nowhere

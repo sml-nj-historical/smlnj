@@ -630,6 +630,7 @@ structure IntInf :> INT_INF =
 
       end (* structure BigNat *)
 
+
     structure BN = BigNat
 
     datatype sign = POS | NEG
@@ -853,6 +854,153 @@ structure IntInf :> INT_INF =
 
     fun log2 (BI{sign=POS,digits}) = BN.log2 digits
       | log2 _ = raise Domain
+
+    (*-------------------------------------------------------------------
+     * Bit level operators are implemented here.
+     * Allen Leung 
+     * Last Updated: 12/13/2000
+     *
+     * Note: 
+     *  o  The base is 30 so there is no way that the sign bit is 1 after
+     *     andb, orb, or xorb.  But notb require a hack.
+     *  o  I use Word.word as the intermediate type for 
+     *     computing results because the conversion back to int does not
+     *     require a range check.  
+     *  o  Negative values are assumed to have an infinite number of
+     *     leading ones. 
+     *-------------------------------------------------------------------*)
+    structure BitOps =
+    struct
+       structure W = Word
+       val i2w = W.fromInt
+       val w2i = W.toIntX
+       val op - = W.-  
+
+       val base   = W.<<(0w1, i2w BN.lgBase)
+       val maxVal = W.-(base, 0w1)
+       fun stripSignBit w = W.andb(w, maxVal)
+
+       fun notb x = ~(x + one)
+
+       (* Internally we are store things in one's complement+sign form.
+        * But we have to simulate 2's complement arithmetic.
+        *) 
+       fun binary (f,g) (BI{sign=sx,digits=xs}, BI{sign=sy,digits=ys}) =
+       let val sign = g(sx,sy)  (* sign of result, if non-zero *)
+
+            (* convert to two's complement;
+             * Compute (- x - borrow)
+             *)
+           fun twos(POS, x, borrow) = (x, 0w0)
+             | twos(NEG, 0w0, 0w0) = (0w0, 0w0) (* no borrow *)
+             | twos(NEG, x, borrow) =(base - x - borrow, 0w1) (* borrow *)
+
+           (* convert to ones's complement *)
+           val ones = twos 
+
+           fun loop([], [], _, _, _) = []
+             | loop([], y::ys, bx, by, bz)  = 
+                    loop1(0w0, [], i2w y, ys, bx, by, bz)
+             | loop(x::xs, [], bx, by, bz) = 
+                    loop1(i2w x, xs, 0w0, [], bx, by, bz)
+             | loop(x::xs, y::ys, bx, by, bz) = 
+                    loop1(i2w x, xs, i2w y, ys, bx, by, bz)
+           and loop1(x, xs, y, ys, bx, by, bz) = 
+               let (* convert from ones complement *)
+                   val (x, bx) = twos(sx, x, bx)
+                   val (y, by) = twos(sy, y, by)
+                   val z  = f(x,y)
+                    (* convert back to ones complement *)
+                   val (z, bz) = ones(sign, z, bz)
+                   val z  = w2i z
+                   val zs = loop(xs, ys, bx, by, bz)
+               in  case (z, zs) of  (* strip leading zero *)
+                     (0, []) => []
+                   | (z, zs) => z::zs
+               end
+
+       in  case loop(xs, ys, 0w0, 0w0, 0w0) of
+             []     => zero
+           | digits => BI{sign=sign, digits=digits} 
+       end
+
+
+       val andb = binary (W.andb, fn (NEG,NEG) => NEG | _ => POS)
+       (* negative if any are negative *)
+       val orb  = binary (W.orb,  fn (POS,POS) => POS | _ => NEG)
+       (* negative if only one is negative *)
+       val xorb = binary (fn (x,y) => stripSignBit(W.xorb(x,y)),
+                          fn (NEG,POS) => NEG 
+                           | (POS,NEG) => NEG
+                           | _         => POS)
+
+       fun shiftAmount(w) = {bytes=W.div(w, i2w BN.lgBase), 
+                             bits=W.mod(w, i2w BN.lgBase)}
+
+       (* left shift; just shift the digits, no special treatment for
+        * signed versus unsigned.
+        *)
+       fun <<(i as BI{digits=[],sign}, w) = i (* 0 << n = 0 *)
+         | <<(i as BI{digits,sign}, w) =
+       let val {bytes, bits} = shiftAmount w
+           fun pad(0w0, digits) = digits 
+             | pad(n, digits) = pad(n-0w1, 0::digits)
+       in  if bits = 0w0 then BI{sign=sign,digits=pad(bytes, digits)}
+           else
+              let val shift = i2w BN.lgBase - bits
+                  fun shiftAll([], 0w0)   = []
+                    | shiftAll([], carry) = [w2i carry]
+                    | shiftAll(x::xs, carry) =
+                      let val x = i2w x
+                          val digit  = 
+                               stripSignBit(W.orb(carry, W.<<(x, bits)))
+                          val carry' = W.>>(x, shift)
+                      in  w2i digit::shiftAll(xs, carry')
+                      end
+              in  BI{sign=sign,digits=shiftAll(pad(bytes, digits), 0w0)}
+              end
+       end
+
+       (* 
+        * Right shift
+        *)
+       fun ~>>(i as BI{digits=[],sign}, w) = i (* 0 ~>> n = n *)
+         | ~>>(i as BI{digits,sign}, w) = 
+       let val {bytes, bits} = shiftAmount w
+           fun drop(0w0, i) = i 
+             | drop(n, []) = []
+             | drop(n, x::xs) = drop(n-0w1, xs)
+           val digits =
+              if bits = 0w0 then drop(bytes, digits)
+              else 
+              let val shift = i2w BN.lgBase - bits
+                  fun shiftAll [] = ([], 0w0)
+                    | shiftAll(x::xs) =  
+                      let val (zs, borrow) = shiftAll xs
+                          val x       = i2w x
+                          val z       = w2i(W.orb(borrow, W.>>(x, bits)))
+                          val borrow' = stripSignBit(W.<<(x, shift))
+                      in  case (z,zs) of
+                            (0, []) => ([], borrow') (* strip leading zero *)
+                          |  _ => (z::zs, borrow')
+                      end
+                  val (zs, _) = shiftAll(drop(bytes, digits))
+              in  zs
+              end
+       in  case digits of
+             [] => zero
+           | _  => BI{digits=digits, sign=sign}
+       end
+
+    end
+
+
+    val notb   = BitOps.notb
+    val andb   = BitOps.andb
+    val orb    = BitOps.orb
+    val xorb   = BitOps.xorb
+    val <<     = BitOps.<<
+    val ~>>    = BitOps.~>>
 
   end (* structure IntInf *)
 
