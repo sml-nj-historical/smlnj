@@ -4,4 +4,4 @@ signature S =
     type ('a,'b) t = 'a -> 'b
     val x : ('a,int) t
   end
-Error: Compiler bug: TypesUtil: tyvarType: CONty
+bug1511.1.sml:9.1-13.4 Error: type t does not match definitional specification
