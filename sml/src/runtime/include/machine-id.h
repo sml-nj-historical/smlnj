@@ -42,6 +42,8 @@
 #if   defined(OPSYS_UNIX)
 #  if   (defined(OPSYS_AIX))
 #    define OPSYS_ID	"aix"
+#  elif (defined(OPSYS_DARWIN))
+#    define OPSYS_ID    "darwin"
 #  elif (defined(OPSYS_DUNIX))
 #    define OPSYS_ID	"dunix"
 #  elif (defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD))

@@ -21,7 +21,11 @@
 
 /* flags for mmap */
 #ifdef HAS_ANON_MMAP
-#  define MMAP_FLGS	(MAP_ANONYMOUS|MAP_PRIVATE)
+#  if defined(OPSYS_DARWIN)
+#     define MMAP_FLGS   (MAP_ANON | MAP_PRIVATE)
+#  else
+#     define MMAP_FLGS	(MAP_ANONYMOUS|MAP_PRIVATE)
+#  endif
 #else
 #  define MMAP_FLGS	MAP_PRIVATE
 #endif

@@ -13,6 +13,17 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2001/04/20 09:15:28 EDT
+Tag: george-20010420-macosX
+Description:
+
+ - Changes to port to Mac OS X; Darwin.
+
+ - In the process I found that sqrt was broken on the PPC, because the
+   fsqrt instruction is not implemented.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2001/04/18 12:45:00 EDT
 Tag: blume-20010418-ccalls

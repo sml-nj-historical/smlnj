@@ -132,10 +132,12 @@ bind-core (xCore) xcore = xcore.sml (core)
 # (Everybody implicitly depends on xcore to have access to _Core.)
 bind built-in = built-in.sml (core, primitive, xcore)
 ifdef ARCH_ALPHA \
-	bind math-inlT = math-built-in-alpha.sml (core, primitive, xcore)
+	bind math-inlT = math-built-in-none.sml (core, primitive, xcore)
+ifdef ARCH_PPC \
+	bind math-inlT = math-built-in-none.sml (core, primitive, xcore)
 ifdef ARCH_X86 \
 	bind math-inlT = math-built-in-x86.sml (core, primitive, xcore)
-ifndef ARCH_ALPHA ifndef ARCH_X86 \
+ifndef ARCH_ALPHA ifndef ARCH_X86 ifndef ARCH_PPC\
 	bind math-inlT = math-built-in.sml (core, primitive, xcore)
 ifdef ARCH_X86 \
 	bind rawmem = rawmem-x86.sml (core, primitive, xcore)

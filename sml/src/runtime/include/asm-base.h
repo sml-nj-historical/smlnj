@@ -16,7 +16,7 @@
 #define FALSE	0
 #define TRUE	1
 
-#if (!defined(GLOBALS_HAVE_UNDERSCORE)) && (defined(OPSYS_SUNOS) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_NEXTSTEP) || defined(OPSYS_WIN32))
+#if (!defined(GLOBALS_HAVE_UNDERSCORE)) && (defined(OPSYS_SUNOS) || defined(OPSYS_FREEBSD) || defined(OPSYS_NETBSD) || defined(OPSYS_NEXTSTEP) || defined(OPSYS_WIN32) || defined(OPSYS_DARWIN))
 #  define GLOBALS_HAVE_UNDERSCORE
 #endif
 
@@ -100,6 +100,7 @@
 #    define ALIGN8	.align 3
 #    define DOUBLE(V)	.double V
 #    define LABEL(ID)   ID:
+
 #  elif (defined(OPSYS_LINUX) && defined(TARGET_PPC))
 #    define CFUNSYM(ID)	ID
 #    define GLOBAL(ID)	.globl CSYM(ID)
@@ -110,10 +111,22 @@
 #    define ALIGN8	.align 3
 #    define DOUBLE(V)	.double V
 #    define LABEL(ID)	ID:
+
+#  elif (defined(OPSYS_DARWIN) && defined(TARGET_PPC))
+#    define CFUNSYM(ID) CSYM(ID)
+#    define GLOBAL(ID)  .globl  CSYM(ID)
+#    define TEXT        .text
+#    define DATA        .data
+#    define RO_DATA     .data
+#    define ALIGN4      .align 2
+#    define ALIGN8	.align 3
+#    define DOUBLE(V)	.double V
+#    define LABEL(ID)	ID:
+#    define __SC__      @
 #  endif
 
 #  define CENTRY(ID)		\
-    .globl CFUNSYM(ID);		\
+    .globl CFUNSYM(ID) __SC__	\
     LABEL(CFUNSYM(ID))
 
 #elif defined(HOST_X86)
@@ -130,6 +143,7 @@
 #    define DATA          .data
 #    define BEGIN_PROC(P) .ent P
 #    define END_PROC(P)	  .end P
+
 #  endif
 
 #else
@@ -142,12 +156,12 @@
 #  define __SC__ 	;
 #endif
 
-#define ENTRY(ID)		\
-    GLOBAL(ID) __SC__		\
+#define ENTRY(ID)				\
+    GLOBAL(ID) __SC__				\
     LABEL(CSYM(ID))
 
 #define ML_CODE_HDR(name)			\
-	    GLOBAL(name) __SC__			\
+	    GLOBAL(name) __SC__		\
 	    ALIGN4 __SC__			\
     LABEL(CSYM(name))
 
