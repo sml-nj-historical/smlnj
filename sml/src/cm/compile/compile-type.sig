@@ -41,6 +41,4 @@ signature COMPILATION_TYPE = sig
     val nestedTraversalReset : unit -> unit
 
     val reset : unit -> unit
-
-    val withAccessTrap : bool ref -> env -> env
 end

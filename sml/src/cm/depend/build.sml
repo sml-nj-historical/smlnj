@@ -230,10 +230,9 @@ structure BuildDepend :> BUILDDEPEND = struct
 		SOME sk => eval sk
 	      | NONE => DE.EMPTY
 
-	    fun addTrap n = (n, ref false)
 	    val n = DG.SNODE { smlinfo = i,
-			       localimports = map addTrap (!li),
-			       globalimports = map addTrap (!gi) }
+			       localimports = !li,
+			       globalimports = !gi }
 	in
 	    (n, e)
 	end

@@ -2,8 +2,6 @@
  * Build an argument for the generic compilation functor.
  *   This gives a traversal that executes the code in each node as
  *   necessary (and builds the dynamic environment).
- *   A traversal requires prior successful traversal using the
- *   "RecompFn" functor (using the same persistent state).
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -16,8 +14,7 @@ functor ExecFn (structure PS : FULL_PERSSTATE) : sig
 end = struct
 
   structure Recomp = RecompFn (structure PS = PS)
-  structure RecompTraversal = CompileGenericFn (structure CT = Recomp
-						val thinTraversal = true)
+  structure RecompTraversal = CompileGenericFn (structure CT = Recomp)
 
   structure Exec = struct
     structure E = GenericVC.Environment
@@ -109,7 +106,5 @@ end = struct
 	  | _ => NONE
 
     val nestedTraversalReset = RecompTraversal.reset
-
-    fun withAccessTrap r e = e
   end
 end

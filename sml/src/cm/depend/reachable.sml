@@ -19,11 +19,8 @@ structure Reachable :> REACHABLE = struct
 	    val p = SmlInfo.sourcepath smlinfo
 	in
 	    if SrcPathSet.member (known, p) then known
-	    else foldl globi (foldl loci (SrcPathSet.add (known, p)) l) g
+	    else foldl farsbnode (foldl snode (SrcPathSet.add (known, p)) l) g
 	end
-
-	and loci ((n, _), known) = snode (n, known)
-	and globi ((n, _), known) = farsbnode (n, known)
 
 	and farsbnode ((_, n), known) = sbnode (n, known)
 

@@ -29,7 +29,7 @@ end = struct
 	    fun k' m = bininfo i :: k (stab_reg (m, i))
 	in
 	    if stab_isreg (m, i) then k m
-	    else do_list (bnode o #1) l (do_list (farbnode o #1) g k') m
+	    else do_list bnode l (do_list farbnode g k') m
 	end
 
     and farbnode (_, n) = bnode n
@@ -39,7 +39,7 @@ end = struct
 	fun k' m = smlinfo i :: k (sml_reg (m, i))
     in
 	if sml_isreg (m, i) then k m
-	else do_list (snode o #1) l (do_list (farsbnode o #1) g k') m
+	else do_list snode l (do_list farsbnode g k') m
     end
 
     and farsbnode (_, DG.SB_BNODE n) = bnode n
