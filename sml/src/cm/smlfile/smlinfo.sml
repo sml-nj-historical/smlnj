@@ -296,8 +296,13 @@ structure SmlInfo :> SMLINFO = struct
 					    linewidth = #linewidth normal_ec,
 					    flush = fn () => () }
 			    val parse_source =
-				Source.newSource (SrcPath.osstring' sourcepath,
-						  1, stream, false, dummy_ec)
+				(* clone of "source", mute error consumer *)
+				{ sourceMap = #sourceMap source,
+				  fileOpened = #fileOpened source,
+				  interactive = #interactive source,
+				  sourceStream = #sourceStream source,
+				  anyErrors = #anyErrors source,
+				  errConsumer = dummy_ec }
 			in
 			    (source, parse_source)
 			end

@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2000/08/31 22:15:00 JST
+Tag: blume-20001017-errmsg
+Description:
+
+More error message grief: Where there used to be no messages, there
+now were some that had bogus error regions.  Fixed.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2000/08/31 17:30:00 JST
 Tag: blume-20001017-v110p29p1
 Description:
