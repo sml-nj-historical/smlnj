@@ -24,6 +24,7 @@ structure StdConfig = struct
 					   (h, ".smlnj-pathconfig"))
 			                 (OS.Process.getEnv "HOME"))
 	val warn_obsolete = bool ("WARN_OBSOLETE", true)
+	val conserve_memory = bool ("CONSERVE_MEMORY", true)
     end
 end
 

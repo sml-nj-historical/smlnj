@@ -12,6 +12,7 @@ signature PARSE = sig
 	SrcPath.t -> (CMSemant.group * GeneralParams.info) option
     val reset : unit -> unit
     val listLibs : unit -> SrcPath.t list
+    val dropPickles : unit -> unit
     val dismissLib : SrcPath.t -> unit
 end
 
@@ -37,6 +38,15 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
     fun reset () = sgc := SrcPathMap.empty
 
     fun listLibs () = map #1 (SrcPathMap.listItemsi (!sgc))
+
+    fun dropPickles () = let
+	fun drop (GG.GROUP { kind = GG.STABLELIB dropper, ... }) = dropper ()
+	  | drop _ = ()
+    in
+	if #get (StdConfig.conserve_memory) () then
+	    SrcPathMap.app drop (!sgc)
+	else ()
+    end
 
     fun dismissLib l =
 	(sgc := #1 (SrcPathMap.remove (!sgc, l)))

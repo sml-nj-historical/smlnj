@@ -1,2 +1,5 @@
 - Implement "init" modules.
 - Generic notification architecture (ErrorMsg module, Say module, ...)
+- handling of non-generalizability move to later moment in time
+- lazy environment stubs
+- environment canonicalization

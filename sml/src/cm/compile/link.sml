@@ -263,7 +263,7 @@ in
 		else (visited := SrcPathSet.add (!visited, grouppath);
 		      app (registerGroup' o #2) sublibs;
 		      case kind of
-			  GG.STABLELIB => registerStableLib g
+			  GG.STABLELIB _ => registerStableLib g
 			| _ => ())
 	    end
 	in

@@ -26,6 +26,7 @@ signature CM = sig
 	val parse_caching : int controller
 	val warn_obsolete : bool controller
 	val debug : bool controller
+	val conserve_memory : bool controller
     end
 
     structure Library : sig

@@ -18,7 +18,8 @@ signature AUTOLOAD = sig
 
     val register : ER.envref * GG.group -> unit
 
-    val mkManager : (unit -> GP.info) -> GenericVC.Ast.dec * ER.envref -> unit
+    val mkManager : { get_ginfo: unit -> GP.info, dropPickles: unit -> unit }
+	-> GenericVC.Ast.dec * ER.envref -> unit
 
     val getPending : unit -> DG.impexp SymbolMap.map
 
@@ -75,7 +76,7 @@ functor AutoLoadFn (structure C : COMPILE
 	pending := SymbolMap.unionWith #1 (newNodes, !pending)
     end
 
-    fun mkManager get_ginfo (ast, ter: ER.envref) = let
+    fun mkManager { get_ginfo, dropPickles } (ast, ter: ER.envref) = let
 
 	val gp = get_ginfo ()
 
@@ -181,7 +182,8 @@ functor AutoLoadFn (structure C : COMPILE
 			    Say.say ["[autoloading done]\n"])
 		     | NONE => raise Fail "unable to load module(s)") }
 	      handle Fail msg =>
-		  Say.say ["[autoloading failed: ", msg, "]\n"])
+		  Say.say ["[autoloading failed: ", msg, "]\n"];
+	      dropPickles ())
     end
 
     fun getPending () = SymbolMap.map #1 (!pending)

@@ -80,6 +80,26 @@ struct
 	  insert = fn ({ ss, sn, pm }, k, v) =>
 	               { ss = ss, sn = SNMap.insert (sn, k, v), pm = pm } }
 
+    fun fetch_pickle s = let
+	fun bytesIn n = let
+	    val bv = BinIO.inputN (s, n)
+	in
+	    if n = Word8Vector.length bv then bv
+	    else raise UU.Format
+	end
+
+	val dg_sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
+	val dg_pickle = Byte.bytesToString (bytesIn dg_sz)
+    in
+	{ size = dg_sz, pickle = dg_pickle }
+    end
+
+    fun mkPickleFetcher mksname () =
+	SafeIO.perform { openIt = BinIO.openIn o mksname,
+			 closeIt = BinIO.closeIn,
+			 work = #pickle o fetch_pickle,
+			 cleanup = fn _ => () }
+
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
 	val primconf = #primconf (#param gp)
@@ -427,7 +447,7 @@ struct
 	    in
 		SmlInfoMap.appi (fn (i, _) => destroy_state gp i) (!m);
 		GG.GROUP { exports = exports,
-			   kind = GG.STABLELIB,
+			   kind = GG.STABLELIB (fn () => ()),
 			   required = required,
 			   grouppath = grouppath,
 			   sublibs = sublibs }
@@ -464,14 +484,14 @@ struct
 	end
     in
 	case #kind grec of
-	    GG.STABLELIB => SOME g
+	    GG.STABLELIB _ => SOME g
 	  | GG.NOLIB => EM.impossible "stabilize: no library"
 	  | GG.LIB wrapped =>
 	     (case recomp gp g of
 		  NONE => (anyerrors := true; NONE)
 		| SOME bfc_acc => let
 		      fun notStable (_, GG.GROUP { kind, ... }) =
-			  case kind of GG.STABLELIB => false | _ => true
+			  case kind of GG.STABLELIB _ => false | _ => true
 		  in
 		    case List.filter notStable (#sublibs grec) of
 			[] => doit (wrapped, bfc_acc)
@@ -529,17 +549,11 @@ struct
 		  | NONE => (error ["unable to find ", SrcPath.descr p];
 			     raise Format)
 
-	    fun bytesIn n = let
-		val bv = BinIO.inputN (s, n)
-	    in
-		if n = Word8Vector.length bv then bv
-		else raise Format
-	    end
-
-	    val dg_sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
-	    val dg_pickle = Byte.bytesToString (bytesIn dg_sz)
+	    val { size = dg_sz, pickle = dg_pickle } = fetch_pickle s
 	    val offset_adjustment = dg_sz + 4
-	    val session = UU.mkSession (UU.stringGetter dg_pickle)
+	    val { getter, dropper } =
+		UU.stringGetter' (SOME dg_pickle, mkPickleFetcher mksname)
+	    val session = UU.mkSession getter
 
 	    fun list m r = UU.r_list session m r
 	    val string = UU.r_string session
@@ -738,7 +752,7 @@ struct
 	    val required = privileges ()
 	in
 	    GG.GROUP { exports = exports,
-		       kind = GG.STABLELIB,
+		       kind = GG.STABLELIB dropper,
 		       required = required,
 		       grouppath = group,
 		       sublibs = sublibs }

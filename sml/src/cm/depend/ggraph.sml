@@ -13,7 +13,7 @@ structure GroupGraph = struct
     datatype kind =
 	NOLIB
       | LIB of privileges		(* wrapped privileges *)
-      | STABLELIB
+      | STABLELIB of unit -> unit	(* pickle dropper *)
 
     (* the "required" field includes everything:
      *   1. privileges required by subgroups

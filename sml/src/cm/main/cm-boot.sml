@@ -198,18 +198,21 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
-	      case Parse.parse (SOME al_greg) (param ()) NONE p of
-		  NONE => false
-		| SOME (g, _) =>
-		      (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
-		       true)
+	      (case Parse.parse (SOME al_greg) (param ()) NONE p of
+		   NONE => false
+		 | SOME (g, _) =>
+		       (AutoLoad.register (GenericVC.EnvRef.topLevel, g);
+			true))
+	      before Parse.dropPickles ()
 	  end
 
 	  fun al_ginfo () = { param = param (),
 			      groupreg = al_greg,
 			      errcons = EM.defaultConsumer () }
 
-	  val al_manager = AutoLoad.mkManager al_ginfo
+	  val al_manager =
+	      AutoLoad.mkManager { get_ginfo = al_ginfo,
+				   dropPickles = Parse.dropPickles }
 
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
 
@@ -217,9 +220,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      val c = SrcPath.cwdContext ()
 	      val p = SrcPath.standard pcmode { context = c, spec = s }
 	  in
-	      case Parse.parse NONE (param ()) sflag p of
-		  NONE => false
-		| SOME (g, gp) => f gp g
+	      (case Parse.parse NONE (param ()) sflag p of
+		   NONE => false
+		 | SOME (g, gp) => f gp g)
+	      before Parse.dropPickles ()
 	  end
 
 	  fun stabilize_runner gp g = true
@@ -419,6 +423,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	    val parse_caching = StdConfig.parse_caching
 	    val warn_obsolete = StdConfig.warn_obsolete
 	    val debug = StdConfig.debug
+	    val conserve_memory = StdConfig.conserve_memory
 	end
 
 	structure Library = struct
