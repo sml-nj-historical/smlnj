@@ -1726,9 +1726,11 @@ struct
                    DONE code
                end
 
-               fun call return =
-               let val returnSet = SL.return(SL.uniq(getCell return))
-               in  case returnSet of
+               fun call(instr, return) = let 
+		 val code = mark(instr, an)::code
+		 val returnSet = SL.return(SL.uniq(getCell return))
+               in
+		 case returnSet of
                      [] => ()
                    | [r] => ST.push(stack, CB.registerNum r)
                    | _   => 
@@ -1751,7 +1753,7 @@ struct
                | I.FCOPY x   => (log(); fcopy x)
 
                  (* handle calling convention *)
-               | I.CALL{return, ...}    => (log(); call return)
+               | I.CALL{return, ...}    => (log(); call(instr,return))
 
                   (* 
                    * Catch instructions that absolutely 
