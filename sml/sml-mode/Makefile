@@ -1,8 +1,6 @@
 # Makefile for emacs-lisp package
 
-#ident "@(#)$Name$:$Id$"
-
-# Copyright (C) 1998-1999  Stefan Monnier <monnier@cs.yale.edu>
+# Copyright (C) 1998, 1999, 2004  Stefan Monnier <monnier@gnu.org>
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -122,10 +120,8 @@ install_startup:
 	else \
 	    echo 'echo ";; load $(PACKAGE) setup code" >>$(startupfile)' ;\
 	    echo ";; load $(PACKAGE) setup code" >>$(startupfile) ;\
-	    echo 'echo "(add-to-list '\''load-path \"$(elcdir)\")" >>$(startupfile)' ;\
-	    echo "(add-to-list 'load-path \"$(elcdir)\")" >>$(startupfile) ;\
-	    echo 'echo "(load \"$(PACKAGE)-startup\")" >>$(startupfile)' ;\
-	    echo "(load \"$(PACKAGE)-startup\")" >>$(startupfile) ;\
+	    echo 'echo "(load \"$(elcdir)/$(PACKAGE)-startup\")" >>$(startupfile)' ;\
+	    echo "(load \"$(elcdir)/$(PACKAGE)-startup\")" >>$(startupfile) ;\
 	fi
 
 postscript: $(PACKAGE).ps
