@@ -40,18 +40,18 @@ structure Control : CONTROL =
     structure FLINT =
     struct
 	val print		= ref false
-	val inlineThreshold	= ref 0	(* it's buggy *)
+	val inlineThreshold	= ref 20
 	val specialize		= ref true
-	val liftLiterals	= ref false (* true *)
+	val liftLiterals	= ref true
 	val sharewrap		= ref true
+
+	(* only for temporary debugging *)
+	val misc		= ref 0
 
 	(* FLINT internal type-checking controls *)
 	val check		= ref true
 	val checkDatatypes	= ref true
 	val checkKinds		= ref true
-
-	(* debugging *)
-	val debugFContract	= ref false
     end
 
     structure CG : CGCONTROL =
