@@ -203,7 +203,8 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		fun save bfc = let
 		    fun writer s =
 			(BF.write { stream = s, content = bfc,
-				    keep_code = true };
+				    keep_code = true,
+				    noenv = false };
 			 Say.vsay ["[wrote ", binname, "]\n"])
 		    fun cleanup () = OS.FileSys.remove binname handle _ => ()
 		in

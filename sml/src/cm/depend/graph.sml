@@ -6,7 +6,11 @@
  *
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
-structure DependencyGraph = struct
+local
+    structure E = GenericVC.Environment
+    type pid = GenericVC.PersStamps.persstamp
+in
+  structure DependencyGraph = struct
 
     type primitive = Primitive.primitive
 
@@ -28,15 +32,15 @@ structure DependencyGraph = struct
 		   globalimports: farsbnode list }
 
     and sbnode =
-	SB_BNODE of bnode
+	SB_BNODE of bnode * IInfo.info
       | SB_SNODE of snode
 
     withtype farsbnode = sbnode filtered
 
     type impexp = farsbnode * DAEnv.env
 
-    fun describeSBN (SB_BNODE (PNODE p)) = Primitive.toString p
-      | describeSBN (SB_BNODE (BNODE { bininfo = i, ... })) =
+    fun describeSBN (SB_BNODE (PNODE p, _)) = Primitive.toString p
+      | describeSBN (SB_BNODE (BNODE { bininfo = i, ... }, _)) =
 	BinInfo.describe i
       | describeSBN (SB_SNODE (SNODE { smlinfo = i, ... })) =
 	SmlInfo.fullDescr i
@@ -50,7 +54,10 @@ structure DependencyGraph = struct
       | beq _ = false
     fun seq (SNODE { smlinfo = i, ... }, SNODE { smlinfo = i', ... }) =
 	SmlInfo.eq (i, i')
-    fun sbeq (SB_BNODE bn, SB_BNODE bn') = beq (bn, bn')
-      | sbeq (SB_SNODE sn, SB_SNODE sn') = seq (sn, sn')
+
+    fun sbeq (SB_SNODE n, SB_SNODE n') = seq (n, n')
+      | sbeq (SB_BNODE (n, _), SB_BNODE (n', _)) = beq (n, n')
       | sbeq _ = false
+  end
 end
+

@@ -65,9 +65,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 				 (sgc := SrcPathMap.insert (!sgc, group, g);
 				  SOME g)
 			     fun isStable (GG.GROUP { kind, ... }) =
-				 case kind of
-				     GG.STABLELIB _ => true
-				   | _ => false
+				 case kind of GG.STABLELIB => true | _ => false
 			     val pres =
 				 parse' (group, groupstack, pErrFlag,
 					 stabthis, curlib)
@@ -109,13 +107,11 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	    end
 
 	    fun getStable gpath = let
-		(* To make a cycle involving existing stable groups,
-		 * one must use aliases.  The cycle will be detected
-		 * amoung those aliases... (?? - hopefully) *)
 		fun getStableSG p =
 		    mparse (p, groupstack, pErrFlag, staball, SOME gpath)
 	    in
-		Stabilize.loadStable (ginfo, getStableSG, pErrFlag) gpath
+		Stabilize.loadStable ginfo { getGroup = getStableSG,
+					     anyerrors = pErrFlag } gpath
 	    end
 
 	    (* We stabilize libraries only because a stable library will

@@ -42,6 +42,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     structure DG = DependencyGraph
     structure EM = GenericVC.ErrorMsg
     structure CBE = GenericVC.BareEnvironment
+    structure E = GenericVC.Environment
     structure SS = SymbolSet
     structure GG = GroupGraph
 
@@ -158,7 +159,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		val exports = Primitive.exports primconf p
 		val env = Primitive.da_env primconf p
 		fun addFN (s, m) = let
-		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p))
+		    val ii = Primitive.iinfo primconf p
+		    val fsbn = (NONE, DG.SB_BNODE (DG.PNODE p, ii))
 		in
 		    SymbolMap.insert (m, s, (fsbn, env))
 		end

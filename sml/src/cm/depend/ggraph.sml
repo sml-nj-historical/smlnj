@@ -13,8 +13,7 @@ structure GroupGraph = struct
     datatype kind =
 	NOLIB
       | LIB of privileges		(* wrapped privileges *)
-      | STABLELIB of DependencyGraph.bnode IntBinaryMap.map
-                                        (* stable library with bnode map *)
+      | STABLELIB
 
     (* the "required" field includes everything:
      *   1. privileges required by subgroups

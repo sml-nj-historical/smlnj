@@ -14,8 +14,10 @@ local
     structure GP = GeneralParams
     structure E = GenericVC.Environment
     structure Pid = GenericVC.PersStamps
+    structure P = PickMod
+    structure UP = UnpickMod
+    structure E = GenericVC.Environment
 
-    type statenvgetter = GP.info -> DG.bnode -> E.staticEnv
     type recomp = GP.info -> GG.group -> bool
     type pid = Pid.persstamp
 in
@@ -23,16 +25,18 @@ in
 signature STABILIZE = sig
 
     val loadStable :
-	GP.info * (SrcPath.t -> GG.group option) * bool ref ->
-	SrcPath.t -> GG.group option
+	GP.info -> { getGroup: SrcPath.t -> GG.group option,
+		     anyerrors: bool ref }
+	-> SrcPath.t -> GG.group option
 
     val stabilize :
-	GP.info -> { group: GG.group, anyerrors: bool ref } ->
-	GG.group option
+	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
 end
 
-functor StabilizeFn (val bn2statenv : statenvgetter
-		     val transfer_state : SmlInfo.info * BinInfo.info -> unit
+functor StabilizeFn (val transfer_state : SmlInfo.info * BinInfo.info -> unit
+		     val writeBFC: BinIO.outstream -> SmlInfo.info -> unit
+		     val sizeBFC: SmlInfo.info -> int
+		     val getII:  SmlInfo.info -> IInfo.info
 		     val recomp : recomp) :> STABILIZE = struct
 
     structure SSMap = BinaryMapFn
@@ -48,13 +52,16 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 SmlInfo.compare (#smlinfo n, #smlinfo n')
 	end)
 
-    type 'a maps = { ss: 'a SSMap.map, sn: 'a SNMap.map }
-
-    val initMap = { ss = SSMap.empty, sn = SNMap.empty }
-
-    structure PU = PickleUtilFn (type 'a map = 'a maps val emptyMap = initMap)
-    structure PSym = PickleSymbolFn (structure PU = PU)
+    structure PU = PickleUtil
     structure UU = UnpickleUtil
+
+    type map = { ss: PU.id SSMap.map, sn: PU.id SNMap.map, pm: P.map }
+
+    val emptyMap = { ss = SSMap.empty, sn = SNMap.empty, pm = P.emptyMap }
+
+    val lifter =
+	{ extract = fn (m: map) => #pm m,
+	  patchback = fn (m: map, pm) => { ss = #ss m, sn = #sn m, pm = pm } }
 
     infix 3 $
     infixr 4 &
@@ -64,31 +71,20 @@ functor StabilizeFn (val bn2statenv : statenvgetter
     (* type info *)
     val (BN, SN, SBN, SS, SI, FSBN, IMPEXP, SHM) = (1, 2, 3, 4, 5, 6, 7, 8)
 
-    val SSs = { find = fn (m: 'a maps, k) => SSMap.find (#ss m, k),
-	        insert = fn ({ ss, sn }, k, v) =>
-		             { sn = sn, ss = SSMap.insert (ss, k, v) } }
-    val SNs = { find = fn (m: 'a maps, k) => SNMap.find (#sn m, k),
-	        insert = fn ({ ss, sn }, k, v) =>
-		             { ss = ss, sn = SNMap.insert (sn, k, v) } }
-
-    fun genStableInfoMap (exports, group) = let
-	(* find all the exported bnodes that are in the same group: *)
-	fun add (((_, DG.SB_BNODE (n as DG.BNODE b)), _), m) = let
-	    val i = #bininfo b
-	in
-	    if SrcPath.compare (BinInfo.group i, group) = EQUAL then
-		IntBinaryMap.insert (m, BinInfo.offset i, n)
-	    else m
-	end
-	  | add (_, m) = m
-    in
-	SymbolMap.foldl add IntBinaryMap.empty exports
-    end
+    val SSs =
+	{ find = fn (m: map, k) => SSMap.find (#ss m, k),
+	  insert = fn ({ ss, sn, pm }, k, v) =>
+	               { sn = sn, ss = SSMap.insert (ss, k, v), pm = pm } }
+    val	SNs =
+	{ find = fn (m: map, k) => SNMap.find (#sn m, k),
+	  insert = fn ({ ss, sn, pm }, k, v) =>
+	               { ss = ss, sn = SNMap.insert (sn, k, v), pm = pm } }
 
     fun stabilize gp { group = g as GG.GROUP grec, anyerrors } = let
 
 	val primconf = #primconf (#param gp)
 	val policy = #fnpolicy (#param gp)
+	val pervasive = #pervasive (#param gp)
 
 	val grouppath = #grouppath grec
 
@@ -101,26 +97,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			     :: map (fn s => ("  " ^ s ^ "\n"))
 			            (StringSet.listItems wrapped))
 
-	    val bname = SmlInfo.binname
-	    val bsz = OS.FileSys.fileSize o bname
-
-	    fun cpb s i = let
-		val N = 4096
-		fun copy ins = let
-		    fun cp () =
-			if BinIO.endOfStream ins then ()
-			else (BinIO.output (s, BinIO.inputN (ins, N));
-			      cp ())
-		in
-		    cp ()
-		end
-	    in
-		SafeIO.perform { openIt = fn () => BinIO.openIn (bname i),
-				 closeIt = BinIO.closeIn,
-				 work = copy,
-				 cleanup = fn () => () }
-	    end
-
 	    val grpSrcInfo = (#errcons gp, anyerrors)
 
 	    val exports = #exports grec
@@ -130,20 +106,26 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    (* The format of a stable archive is the following:
 	     *  - It starts with the size s of the pickled dependency
 	     *    graph. This size itself is written as four-byte string.
+	     *  - The size t of the pickled environment for the entire
+	     *    library (using the pickleEnvN interface of the pickler)
+	     *    in the same format as s.
 	     *  - The pickled dependency graph.  This graph contains
 	     *    integer offsets of the binfiles for the individual ML
 	     *    members. These offsets need to be adjusted by adding
-	     *    s + 4. The pickled dependency graph also contains integer
+	     *    s + t + 8. The pickled dependency graph also contains integer
 	     *    offsets relative to other stable groups.  These offsets
 	     *    need no further adjustment.
-	     *  - Individual binfile contents (concatenated).
+	     *  - The pickled environment (list).  To be unpickled using
+	     *    unpickleEnvN.
+	     *  - Individual binfile contents (concatenated) but without
+	     *    their static environments.
 	     *)
 
 	    (* Here we build a mapping that maps each BNODE to a number
 	     * representing the sub-library that it came from and a
 	     * representative symbol that can be used to find the BNODE
 	     * within the exports of that library *)
-	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n)), _), m) =
+	    fun oneB i (sy, ((_, DG.SB_BNODE (DG.BNODE n, _)), _), m) =
 		StableMap.insert (m, #bininfo n, (i, sy))
 	      | oneB i (_, _, m) = m
 	    fun oneSL ((g as GG.GROUP { exports, ... }), (m, i)) =
@@ -167,8 +149,94 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		(reg, get)
 	    end
 
+	    (* Collect all BNODEs and PNODEs that we see and build
+	     * a context suitable for P.envPickler. *)
+	    fun mkContext () = let
+		fun lst f [] k s = k s
+		  | lst f (h :: t) k s = f h (lst f t k) s
+
+		fun sbn n k (s as (prims, bnodes, snodes)) =
+		    case n of
+			DG.SB_BNODE (DG.PNODE p, { statenv, ... }) => let
+			    val str = String.str (Primitive.toIdent primconf p)
+			    val prims' = StringMap.insert (prims, str, statenv)
+			in
+			    k (prims', bnodes, snodes)
+			end
+		      | DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, ii) => let
+			    val { statenv, ... } = ii
+			    val nsy = valOf (StableMap.find (inverseMap, i))
+			    val bnodes' =
+				StableMap.insert (bnodes, i, (nsy, statenv))
+			in
+			    k (prims, bnodes', snodes)
+			end
+		      | DG.SB_SNODE n => sn n k s
+
+		and sn (DG.SNODE n) k (prims, bnodes, snodes) = let
+		    val i = #smlinfo n
+		    val li = #localimports n
+		    val gi = #globalimports n
+		in
+		    if SmlInfoSet.member (snodes, i) then
+			k (prims, bnodes, snodes)
+		    else let
+			val snodes' = SmlInfoSet.add (snodes, i)
+		    in
+			lst sn li (lst fsbn gi k) (prims, bnodes, snodes')
+		    end
+		end
+
+		and fsbn (_, n) k s = sbn n k s
+
+		fun impexp (n, _) k s = fsbn n k s
+
+		val (prims, bnodes) =
+		    lst impexp (SymbolMap.listItems exports)
+		        (fn (prims, bnodes, _) => (prims, bnodes))
+			(StringMap.empty, StableMap.empty, SmlInfoSet.empty)
+
+		val priml = StringMap.listItemsi prims
+		val bnodel = StableMap.listItems bnodes
+
+		fun cvt lk id = let
+		    fun nloop [] = NONE
+		      | nloop ((k, ge) :: t) =
+			(case lk (ge ()) id of
+			     SOME _ => SOME (P.NodeKey k)
+			   | NONE => nloop t)
+		    fun ploop [] = nloop bnodel
+		      | ploop ((k, ge) :: t) =
+			(case lk (ge ()) id of
+			     SOME _ => SOME (P.PrimKey k)
+			   | NONE => ploop t)
+		in
+		    case lk (E.staticPart pervasive) id of
+			NONE => ploop priml
+		      | SOME _ => SOME (P.PrimKey "pv")
+		end
+	    in
+		{ lookSTR = cvt GenericVC.CMStaticEnv.lookSTR,
+		  lookSIG = cvt GenericVC.CMStaticEnv.lookSIG,
+		  lookFCT = cvt GenericVC.CMStaticEnv.lookFCT,
+		  lookFSIG = cvt GenericVC.CMStaticEnv.lookFSIG,
+		  lookTYC = cvt GenericVC.CMStaticEnv.lookTYC,
+		  lookEENV = cvt GenericVC.CMStaticEnv.lookEENV }
+	    end
+
+	    (* make the picklers for static and symbolic environments;
+	     * lift them so we can use them here... *)
+	    val envContext = mkContext ()
+	    val env_orig = P.envPickler envContext
+	    val env = PU.lift_pickler lifter env_orig
+	    val symenv_orig = P.symenvPickler
+	    val symenv = PU.lift_pickler lifter symenv_orig
+	    val lazy_env = PU.w_lazy env
+	    val lazy_symenv = PU.w_lazy symenv
+
 	    val int = PU.w_int
-	    val symbol = PSym.w_symbol
+	    val symbol = PickleSymPid.w_symbol
+	    val pid = PickleSymPid.w_pid
 	    val share = PU.ah_share
 	    val option = PU.w_option
 	    val list = PU.w_list
@@ -198,7 +266,7 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		 * operation of CM itself. *)
 		val spec = SrcPath.specOf (SmlInfo.sourcepath i)
 		val locs = SmlInfo.errorLocation gp i
-		val offset = registerOffset (i, bsz i)
+		val offset = registerOffset (i, sizeBFC i)
 		val sh_mode = SmlInfo.sh_mode i
 		val op $ = PU.$ SI
 	    in
@@ -236,15 +304,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		list string pp
 	    end
 
-	    val op $ = PU.$ BN
-	    fun bn (DG.PNODE p) = "1" $ primitive p
-	      | bn (DG.BNODE { bininfo = i, ... }) = let
-		    val (n, sy) = valOf (StableMap.find (inverseMap, i))
-		in
-		    "2" $ int n & symbol sy
-		end
-
 	    fun sn n = let
+		val op $ = PU.$ SN
 		fun raw_sn (DG.SNODE n) =
 		    "a" $ si (#smlinfo n) & list sn (#localimports n) &
 		    list fsbn (#globalimports n)
@@ -252,12 +313,20 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		share SNs raw_sn n
 	    end
 
+	    (* Here we ignore the interface info because we will not
+	     * need it anymore when we unpickle. *)
 	    and sbn x = let
 		val op $ = PU.$ SBN
 	    in
 		case x of
-		    DG.SB_BNODE n => "a" $ bn n
-		  | DG.SB_SNODE n => "b" $ sn n
+		    DG.SB_BNODE (DG.PNODE p, { statenv = getE, ... }) =>
+			"1" $ primitive p
+		  | DG.SB_BNODE (DG.BNODE { bininfo = i, ... }, _) => let
+			val (n, sy) = valOf (StableMap.find (inverseMap, i))
+		    in
+			"2" $ int n & symbol sy
+		    end
+		  | DG.SB_SNODE n => "3" $ sn n
 	    end
 	
 	    and fsbn (f, n) = let
@@ -266,10 +335,20 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		"f" $ filter f & sbn n
 	    end
 
+	    (* Here is the place where we need to write interface info. *)
 	    fun impexp (s, (n, _)) = let
 		val op $ = PU.$ IMPEXP
+		val { statenv, symenv, statpid, sympid } =
+		    case n of
+			(_, DG.SB_BNODE (_, ii)) => ii
+		      | (_, DG.SB_SNODE (DG.SNODE { smlinfo, ... })) =>
+			    getII smlinfo
 	    in
-		"i" $ symbol s & fsbn n
+		"i" $ symbol s & fsbn n &
+		      lazy_env (GenericVC.CoerceEnv.es2bs o statenv) &
+		      lazy_symenv symenv &
+		      pid statpid &
+		      pid sympid
 	    end
 
 	    fun w_exports e = list impexp (SymbolMap.listItemsi e)
@@ -284,9 +363,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		list sg sublibs & w_exports exports & privileges required
 	    end
 
-	    val pickle = PU.pickle (group ())
-	    val sz = size pickle
-	    val offset_adjustment = sz + 4
+	    val dg_pickle =
+		Byte.stringToBytes (PU.pickle emptyMap (group ()))
+	    val dg_sz = Word8Vector.length dg_pickle
+
+	    val offset_adjustment = dg_sz + 4
 
 	    fun mkStableGroup mksname = let
 		val m = ref SmlInfoMap.empty
@@ -320,18 +401,21 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 			    n
 			end
 
-		and sbn (DG.SB_SNODE n) = sn n
-		  | sbn (DG.SB_BNODE n) = n
+		and sbn (DG.SB_SNODE (n as DG.SNODE { smlinfo = i, ... })) =
+		    let val ii = getII i
+		    in
+			(sn n, ii)
+		    end
+		  | sbn (DG.SB_BNODE (n, ii)) = (n, ii)
 
-		and fsbn (f, n) = (f, sbn n)
+		and fsbn (f, n) = (f, #1 (sbn n))
 
 		fun impexp ((f, n), e) = ((f, DG.SB_BNODE (sbn n)), e)
 
 		val exports = SymbolMap.map impexp (#exports grec)
-		val simap = genStableInfoMap (exports, grouppath)
 	    in
 		GG.GROUP { exports = exports,
-			   kind = GG.STABLELIB simap,
+			   kind = GG.STABLELIB,
 			   required = required,
 			   grouppath = grouppath,
 			   sublibs = sublibs }
@@ -349,9 +433,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	    fun mksname () = FilenamePolicy.mkStableName policy gpath
 	    fun work outs =
 		(Say.vsay ["[stabilizing ", SrcPath.descr gpath, "]\n"];
-		 writeInt32 (outs, sz);
-		 BinIO.output (outs, Byte.stringToBytes pickle);
-		 app (cpb outs) memberlist;
+		 writeInt32 (outs, dg_sz);
+		 BinIO.output (outs, dg_pickle);
+		 app (writeBFC outs) memberlist;
 		 mkStableGroup mksname)
 	in
 	    SOME (SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
@@ -364,14 +448,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	end
     in
 	case #kind grec of
-	    GG.STABLELIB _ => SOME g
+	    GG.STABLELIB => SOME g
 	  | GG.NOLIB => EM.impossible "stabilize: no library"
 	  | GG.LIB wrapped =>
 		if not (recomp gp g) then
 		    (anyerrors := true; NONE)
 		else let
 		    fun notStable (GG.GROUP { kind, ... }) =
-			case kind of GG.STABLELIB _ => false | _ => true
+			case kind of GG.STABLELIB => false | _ => true
 		in
 		    case List.filter notStable (#sublibs grec) of
 			[] => doit wrapped
@@ -404,13 +488,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		end
     end
 
-    fun loadStable (gp, getGroup, anyerrors) group = let
+    fun loadStable gp { getGroup, anyerrors } group = let
 
-	val es2bs = GenericVC.CoerceEnv.es2bs
-	fun bn2env n =
-	    Statenv2DAEnv.cvtMemo (fn () => es2bs (bn2statenv gp n))
-
-	val errcons = #errcons gp
+	val errcons = #errcons (gp: GeneralParams.info)
 	val grpSrcInfo = (errcons, anyerrors)
 	val gdescr = SrcPath.descr group
 	fun error l = EM.errorNoFile (errcons, anyerrors) SM.nullRegion
@@ -422,6 +502,8 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 	val pcmode = #pcmode (#param gp)
 	val policy = #fnpolicy (#param gp)
 	val primconf = #primconf (#param gp)
+	val pervasive = #pervasive (#param gp)
+
 	fun mksname () = FilenamePolicy.mkStableName policy group
 
 	fun work s = let
@@ -432,12 +514,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		  | NONE => (error ["unable to find ", SrcPath.descr p];
 			     raise Format)
 
-	    (* for getting sharing right... *)
-	    val m = ref IntBinaryMap.empty
-	    val next = ref 0
-
-	    val pset = ref PidSet.empty
-
 	    fun bytesIn n = let
 		val bv = BinIO.inputN (s, n)
 	    in
@@ -445,38 +521,14 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		else raise Format
 	    end
 
-	    val sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
-	    val pickle = Byte.bytesToString (bytesIn sz)
-	    val offset_adjustment = sz + 4
-
-	    val session = UU.mkSession (UU.stringGetter pickle)
+	    val dg_sz = LargeWord.toIntX (Pack32Big.subVec (bytesIn 4, 0))
+	    val dg_pickle = Byte.bytesToString (bytesIn dg_sz)
+	    val offset_adjustment = dg_sz + 4
+	    val session = UU.mkSession (UU.stringGetter dg_pickle)
 
 	    fun list m r = UU.r_list session m r
-	    fun option m r = UU.r_option session m r
-	    val int = UU.r_int session
-	    fun share m r = UU.share session m r
-	    fun nonshare r = UU.nonshare session r
 	    val string = UU.r_string session
-	    val symbol = UnpickleSymbol.r_symbol (session, string)
-	    val bool = UU.r_bool session
-
 	    val stringListM = UU.mkMap ()
-	    val symbolListM = UU.mkMap ()
-	    val stringListM = UU.mkMap ()
-	    val ssM = UU.mkMap ()
-	    val ssoM = UU.mkMap ()
-	    val boolOptionM = UU.mkMap ()
-	    val siM = UU.mkMap ()
-	    val sgListM = UU.mkMap ()
-	    val snM = UU.mkMap ()
-	    val snListM = UU.mkMap ()
-	    val bnM = UU.mkMap ()
-	    val sbnM = UU.mkMap ()
-	    val fsbnM = UU.mkMap ()
-	    val fsbnListM = UU.mkMap ()
-	    val impexpM = UU.mkMap ()
-	    val impexpListM = UU.mkMap ()
-
 	    val stringlist = list stringListM string
 
 	    fun abspath () =
@@ -486,7 +538,56 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		       (error ["configuration anchor \"", a, "\" undefined"];
 			raise Format)
 
-	    val symbollist = list symbolListM symbol
+	    fun sg () = getGroup' (abspath ())
+	    val sgListM = UU.mkMap ()
+	    val sublibs = list sgListM sg ()
+
+	    (* Now that we have the list of sublibs, we can build the
+	     * environment for unpickling the environment list.
+	     * We will need the environment list when unpickling the
+	     * export list (making SB_BNODES). *)
+	    fun prim_context "pv" = SOME (E.staticPart pervasive)
+	      | prim_context s =
+		SOME (E.staticPart (Primitive.env primconf
+				    (valOf (Primitive.fromIdent primconf
+					    (String.sub (s, 0))))))
+		handle _ => NONE
+	    fun node_context (n, sy) = let
+		val GG.GROUP { exports = slexp, ... } = List.nth (sublibs, n)
+	    in
+		case SymbolMap.find (slexp, sy) of
+		    SOME ((_, DG.SB_BNODE (_, { statenv = ge, ... })), _) =>
+			SOME (ge ())
+		  | _ => NONE
+	    end handle _ => NONE
+
+	    val { symenv, env, symbol, symbollist } =
+		UP.mkUnpicklers session
+		    { prim_context = prim_context,
+		      node_context = node_context }
+
+	    val lazy_symenv = UU.r_lazy session symenv
+	    val lazy_env = UU.r_lazy session env
+
+	    fun option m r = UU.r_option session m r
+	    val int = UU.r_int session
+	    fun share m r = UU.share session m r
+	    fun nonshare r = UU.nonshare session r
+	    val bool = UU.r_bool session
+	    val pid = UnpickleSymPid.r_pid string
+
+	    val stringListM = UU.mkMap ()
+	    val ssM = UU.mkMap ()
+	    val ssoM = UU.mkMap ()
+	    val boolOptionM = UU.mkMap ()
+	    val siM = UU.mkMap ()
+	    val snM = UU.mkMap ()
+	    val snListM = UU.mkMap ()
+	    val sbnM = UU.mkMap ()
+	    val fsbnM = UU.mkMap ()
+	    val fsbnListM = UU.mkMap ()
+	    val impexpM = UU.mkMap ()
+	    val impexpListM = UU.mkMap ()
 
 	    fun symbolset () = let
 		fun s #"s" = SymbolSet.addList (SymbolSet.empty, symbollist ())
@@ -531,27 +632,6 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		share siM s
 	    end
 
-	    fun sg () = getGroup' (abspath ())
-
-	    val sublibs = list sgListM sg ()
-
-	    fun bn () = let
-		fun bn' #"1" = DG.PNODE (primitive ())
-		  | bn' #"2" = let
-			val n = int ()
-			val sy = symbol ()
-			val GG.GROUP { exports = slexp, ... } =
-			    List.nth (sublibs, n) handle _ => raise Format
-		    in
-			case SymbolMap.find (slexp, sy) of
-			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _)), _) => n
-			  | _ => raise Format
-		    end
-		  | bn' _ = raise Format
-	    in
-		share bnM bn'
-	    end
-
 	    (* this is the place where what used to be an
 	     * SNODE changes to a BNODE! *)
 	    fun sn () = let
@@ -568,8 +648,19 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    (* this one changes from farsbnode to plain farbnode *)
 	    and sbn () = let
-		fun sbn' #"a" = bn ()
-		  | sbn' #"b" = sn ()
+		fun sbn' #"1" = DG.PNODE (primitive ())
+		  | sbn' #"2" = let
+			val n = int ()
+			val sy = symbol ()
+			val GG.GROUP { exports = slexp, ... } =
+			    List.nth (sublibs, n) handle _ => raise Format
+		    in
+			case SymbolMap.find (slexp, sy) of
+			    SOME ((_, DG.SB_BNODE (n as DG.BNODE _, _)), _) =>
+				n
+			  | _ => raise Format
+		    end
+		  | sbn' #"3" = sn ()
 		  | sbn' _ = raise Format
 	    in
 		share sbnM sbn'
@@ -588,14 +679,18 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 		fun ie #"i" =
 		    let val sy = symbol ()
 			val (f, n) = fsbn () (* really reads farbnodes! *)
-			val e = bn2env n
+			val ge = lazy_env ()
+			val ii = { statenv = GenericVC.CoerceEnv.bs2es o ge,
+				   symenv = lazy_symenv (),
+				   statpid = pid (),
+				   sympid = pid () }
+			val e = Statenv2DAEnv.cvtMemo ge
 			(* put a filter in front to avoid having the FCTENV
 			 * being queried needlessly (this avoids spurious
 			 * module loadings) *)
 			val e' = DAEnv.FILTER (SymbolSet.singleton sy, e)
 		    in
-			(* coerce to farsbnodes *)
-			(sy, ((f, DG.SB_BNODE n), e'))
+			(sy, ((f, DG.SB_BNODE (n, ii)), e'))
 		    end
 		  | ie _ = raise Format
 	    in
@@ -604,8 +699,11 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val impexplist = list impexpListM impexp
 
-	    fun r_exports () =
-		foldl SymbolMap.insert' SymbolMap.empty (impexplist ())
+	    fun r_exports () = let
+		val iel = impexplist ()
+	    in
+		foldl SymbolMap.insert' SymbolMap.empty iel
+	    end
 
 	    val stringlist = list stringListM string
 
@@ -614,10 +712,9 @@ functor StabilizeFn (val bn2statenv : statenvgetter
 
 	    val exports = r_exports ()
 	    val required = privileges ()
-	    val simap = genStableInfoMap (exports, group)
 	in
 	    GG.GROUP { exports = exports,
-		       kind = GG.STABLELIB simap,
+		       kind = GG.STABLELIB,
 		       required = required,
 		       grouppath = group,
 		       sublibs = sublibs }

@@ -82,7 +82,12 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 				SOME x => x
 			      | NONE =>
 				    (case Primitive.fromString primconf n of
-					 SOME p => DG.SB_BNODE (DG.PNODE p)
+					 SOME p =>  let
+					     val ii =
+						 Primitive.iinfo primconf p
+					 in
+					     DG.SB_BNODE (DG.PNODE p, ii)
+					 end
 				       | NONE => (error ("undefined: " ^ n);
 						  DG.SB_SNODE (bogus n)))
 

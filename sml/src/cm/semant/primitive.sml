@@ -30,6 +30,7 @@ signature PRIMITIVE = sig
     val da_env : configuration -> primitive -> DAEnv.env
     val env : configuration -> primitive -> GenericVC.Environment.environment
     val pidInfo : configuration -> primitive -> pidInfo
+    val iinfo : configuration -> primitive -> IInfo.info
 
     type pspec = { name: string,
 		   env: GenericVC.Environment.environment,
@@ -89,6 +90,18 @@ structure Primitive :> PRIMITIVE = struct
     val env = #env o' get
     val pidInfo = #pidInfo o' get
     val toIdent = #ident o' get
+
+    fun iinfo c p = let
+	val e = env c p
+	val { statpid, sympid, ... } = pidInfo c p
+	val ste = E.staticPart e
+	val sye = E.symbolicPart e
+    in
+	{ statenv = fn () => ste,
+	  symenv = fn () => sye,
+	  statpid = statpid,
+	  sympid = sympid }
+    end
 
     val reqpriv = StringSet.singleton o toString
 

@@ -26,6 +26,7 @@ end = struct
     structure P = OS.Path
     structure F = OS.FileSys
 
+(*
     (* Since the bootstrap compiler never executes any of the code
      * it produces, we don't need any dynamic values.  Therefore,
      * we create RecompPersstate (but not FullPersstate!) and
@@ -42,13 +43,26 @@ end = struct
     structure RT = CompileGenericFn (structure CT = Recomp)
 
     fun recomp gp g = isSome (RT.group gp g)
+*)
+
+    structure Compile =
+	CompileFn (structure MachDepVC = MachDepVC)
 
     (* instantiate Stabilize... *)
+(*
     structure Stabilize =
 	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
 		     fun warmup (i, p) = ()
 		     val recomp = recomp
 		     val transfer_state = RecompPersstate.transfer_state)
+*)
+    structure Stabilize =
+	StabilizeFn (fun transfer_state _ = raise Fail "transfer_state"
+		     val writeBFC = Compile.writeBFC
+		     val sizeBFC = Compile.sizeBFC
+		     val getII = Compile.getII
+		     val recomp = Compile.recomp)
+
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
 			       fun pending () = SymbolMap.empty)
@@ -177,13 +191,13 @@ end = struct
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
 	    val _ = ovldR := true
-	    val ts = RT.start ()
+	    val { sbnode, ... } = Compile.newTraversal ()
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
-	    val core = valOf (RT.sbnode ts ginfo_nocore core)
-	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
-	    val core_sym = #1 (#sym core)
+	    val core = valOf (sbnode ginfo_nocore core)
+	    val corenv =  CoerceEnv.es2bs (#statenv (#ii core) ())
+	    val core_sym = #symenv (#ii core) ()
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
@@ -193,15 +207,18 @@ end = struct
 	    val ginfo_justcore = { param = param_justcore, groupreg = groupreg,
 				   errcons = errcons }
 
-	    fun rt n = valOf (RT.sbnode ts ginfo_justcore n)
+	    fun rt n = valOf (sbnode ginfo_justcore n)
 	    val rts = rt rts
 	    val pervasive = rt pervasive
 
 	    fun sn2pspec (name, n) = let
-		val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } = rt n
+		val { ii = { statenv, symenv, statpid, sympid }, ctxt } = rt n
 		val env =
-		    E.mkenv { static = s, symbolic = sy, dynamic = emptydyn }
-		val pidInfo = { statpid = sp, sympid = syp, ctxt = ctxt }
+		    E.mkenv { static = statenv (),
+			      symbolic = symenv (),
+			      dynamic = emptydyn }
+		val pidInfo =
+		    { statpid = statpid, sympid = sympid, ctxt = ctxt }
 	    in
 		{ name = name, env = env, pidInfo = pidInfo }
 	    end
@@ -210,26 +227,23 @@ end = struct
 
 	    val _ = ovldR := savedOvld
 
-	    (* To be consistent, we would have to call RT.finish here.
-	     * However, this isn't really necessary because no dynamic
-	     * values exist and we drop "ts" at this point anyway. *)
-	    (* val _ = RT.finish ts *)
-
 	    (* The following is a hack but must be done for both the symbolic
 	     * and later the dynamic part of the core environment:
 	     * we must include these parts in the pervasive env. *)
-	    val perv_sym = E.layerSymbolic (#1 (#sym pervasive), core_sym)
+	    val perv_sym = E.layerSymbolic (#symenv (#ii pervasive) (),
+					    core_sym)
 
 	    val param =
 		mkParam { primconf = Primitive.configuration pspecs,
-			  pervasive = E.mkenv { static = #1 (#stat pervasive),
+			  pervasive = E.mkenv { static =
+					         #statenv (#ii pervasive) (),
 					        symbolic = perv_sym,
 						dynamic = emptydyn },
 			  pervcorepids =
 			    PidSet.addList (PidSet.empty,
-					    [#2 (#stat pervasive),
-					     #2 (#sym pervasive),
-					     #2 (#stat core)]) }
+					    [#statpid (#ii pervasive),
+					     #sympid (#ii pervasive),
+					     #statpid (#ii core)]) }
 		        { corenv = corenv }
 	    val stab =
 		if deliver then SOME true else NONE
@@ -237,8 +251,8 @@ end = struct
 	    case Parse.parse NONE param stab maingspec of
 		NONE => false
 	      | SOME (g, gp) =>
-		    if recomp gp g then let
-			val rtspid = PS.toHex (#2 (#stat rts))
+		    if Compile.recomp gp g then let
+			val rtspid = PS.toHex (#statpid (#ii rts))
 			fun writeList s = let
 			    fun add ((p, flag), l) = let
 				val n = listName (p, true)
@@ -281,7 +295,7 @@ end = struct
 		      true
 		    end
 		    else false
-	end handle Option => (RT.reset (); false)
+	end handle Option => (Compile.reset (); false)
 	    	   (* to catch valOf failures in "rt" *)
     in
 	case BuildInitDG.build ginfo_nocore initgspec of
@@ -290,9 +304,7 @@ end = struct
     end
 
     fun reset () =
-	(RecompPersstate.reset ();
-	 RT.reset ();
-	 Recomp.reset ();
+	(Compile.reset ();
 	 Parse.reset ())
 
     val make' = compile false
