@@ -821,7 +821,7 @@ fun extractDcons(tyc as GENtyc{kind=DATATYPE{index,stamps,freetycs,root,
   | extractDcons _ = bug "extractDcons"
 
 fun mkStrict 0 = []
-  | mkStrict n = true :: mkPolySign(n-1)
+  | mkStrict n = true :: mkStrict(n-1)
 
 (* used in ElabSig for datatype replication specs, where the tyc arg
  * is expected to be either a GENtyc/DATATYPE or a PATHtyc. *)

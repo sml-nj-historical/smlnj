@@ -481,7 +481,7 @@ fun checkSharing(sign as ERRORsig, entEnv) = ()
 				      let val str1 = EE.look(ee1,v1)
 				          val str2 = EE.look(ee2,v2)
 				       in compStr((SP.extend(p1,sym),(sign1',str1)),
-						  (SP.extend(p2,sym),(sign1',str2)))
+						  (SP.extend(p2,sym),(sign2',str2)))
 				      end
 				 | _ => ()) (* values, constructors, functors *)
 			     end
@@ -1472,6 +1472,5 @@ end (* structure SigMatch *)
 
 (*
  * $Log$
- *
  *)
 

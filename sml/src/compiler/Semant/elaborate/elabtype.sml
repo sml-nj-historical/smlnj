@@ -217,7 +217,11 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	val _ = debugmsg ">>elabDATATYPEdec"
 	fun preprocess region (Db{tyc=name,rhs=Constrs def,tyvars,lazyp}) = 
 	    let val tvs = elabTyvList(tyvars,error,region)
-		val tyc = GENtyc{path=IP.extend(rpath,name),
+		val strictName =
+		    if lazyp
+		    then S.tycSymbol(S.name name ^ "!")
+		    else name
+		val tyc = GENtyc{path=IP.extend(rpath,strictName),
 				 arity=length tyvars,
 				 stamp=mkStamp(),
 				 eq=ref DATA,kind=TEMP}
@@ -232,7 +236,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 			   
 		    else tyc
 	     in {tvs=tvs, name=name,def=def,region=region,tyc=tyc,
-		 binddef=binddef,lazyp=lazyp}
+		 binddef=binddef,lazyp=lazyp,
+		 strictName=strictName}
 	    end
 	  | preprocess _ (MarkDb(db',region')) = preprocess region' db'
 
@@ -309,7 +314,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 	       | t => t
 
 	(* elaborate the definition of a datatype *)
-	fun elabRHS ({tvs,name,def,region,tyc,lazyp,binddef}, (i,done)) = 
+	fun elabRHS ({tvs,name,def,region,tyc,lazyp,binddef,strictName},
+		     (i,done)) = 
 	    let val (datacons,_) = 
                       elabDB((tyc,tvs,name,def,region,lazyp),fullEnv,rpath,error)
 		fun mkDconDesc (DATACON{name,const,rep,sign,typ,lazyp}) = 
@@ -329,7 +335,8 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
 		  dconDescs=map mkDconDesc datacons,
 		  tyc=tyc,
 		  index=i,
-		  lazyp=lazyp} :: done)
+		  lazyp=lazyp,
+		  strictName=strictName} :: done)
 	    end
  
         val (_,dbs') = foldl elabRHS (0,nil) dbs
@@ -337,10 +344,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: RHS elaborated"
 
         fun mkMember{name,dcons,dconDescs,tyc=GENtyc{stamp,arity,eq,...},
-		     dconNames,index,lazyp} =
+		     dconNames,index,lazyp,strictName} =
 	    let val DATACON{sign,...}::_ = dcons
 		     (* extract common sign from first datacon *)
-	     in (stamp, {tycname=name,dcons=dconDescs,arity=arity,
+	     in (stamp, {tycname=strictName,dcons=dconDescs,arity=arity,
                          eq=eq,lazyp=lazyp,sign=sign})
 	    end
 
@@ -359,9 +366,9 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: members defined"
 
         fun fixDtyc{name,index,tyc as GENtyc{path,arity,stamp,eq,kind},
-		    dconNames,dcons,dconDescs,lazyp} =
+		    dconNames,dcons,dconDescs,lazyp,strictName} =
 	    {old=tyc,
-	     name=name,
+	     name=strictName,
 	     new=GENtyc{path=path,arity=arity,stamp=stamp,eq=eq,
 			kind=DATATYPE{index=index,
                                       stamps=nstamps,
@@ -379,10 +386,10 @@ fun elabDATATYPEdec({datatycs,withtycs}, env0, sigContext,
         val _ = debugmsg "--elabDATATYPEdec: defineEqProps done"
 
         fun applyMap m =
-            let fun sameTyc(GENtyc{stamp=s1,...},GENtyc{stamp=s2,...}) 
-                                     = Stamps.eq(s1,s2)
-                  | sameTyc(tyc1 as DEFtyc _, tyc2 as DEFtyc _) 
-                                     = equalTycon(tyc1, tyc2)  
+            let fun sameTyc(GENtyc{stamp=s1,...},GENtyc{stamp=s2,...}) =
+                      Stamps.eq(s1,s2)
+                  | sameTyc(tyc1 as DEFtyc _, tyc2 as DEFtyc _) =
+		      equalTycon(tyc1, tyc2)  
                   | sameTyc _ = false
 
                 fun f(CONty(tyc, args)) =
@@ -446,5 +453,4 @@ end (* structure ElabType *)
 
 (*
  * $Log$
- *
  *)
