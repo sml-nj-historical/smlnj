@@ -5,3 +5,16 @@
 	rm -rf **/CM
 	rm -r sml.* sml-cm.* *.sml bin.*
 	cvs -d ~cvs import -m '' smlnj/src/sml-nj FLINT v980311
+
+* /softs install
+** orignial
+	cd /softs/smlnj-110
+	ztar ~/work/110-bin.x86-unix.tar.gz
+	config/install.sh
+	rm -rf bin.* src/sml-nj
+** upgrade
+	cvs update
+	ztar ~/work/110.3-bin.x86-unix.tar.gz
+	rm -rf bin lib **/CM
+	config/install.sh
+	rm -rf bin.* src/sml-nj
