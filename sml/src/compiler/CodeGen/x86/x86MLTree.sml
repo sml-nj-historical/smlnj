@@ -15,6 +15,7 @@ structure X86Instr =
   X86Instr(
     LabelExp
        (structure T = X86MLTree
+	val labelFmt = {gPrefix="L", aPrefix="L"}
         fun h _ _ = 0w0 fun eq _ _ = false
         val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
         val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq

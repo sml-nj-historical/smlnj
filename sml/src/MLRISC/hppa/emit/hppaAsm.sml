@@ -42,6 +42,7 @@ struct
                       else s
                   end
        fun emit_label lab = emit(Label.toString lab)
+       fun emit_label lab = emit(LabelExp.toString(T.LABEL lab))
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)

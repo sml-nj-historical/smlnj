@@ -45,6 +45,7 @@ struct
                       else s
                   end
        fun emit_label lab = emit(Label.toString lab)
+       fun emit_label lab = emit(LabelExp.toString(T.LABEL lab))
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
@@ -317,13 +318,18 @@ struct
               emitCell d )
          end
        | I.ARITH{a, r, i, d} => 
-         (case (a, CellsBasis.registerId r, CellsBasis.registerId d) of
-           (I.OR, 0, _) => 
+         (case (a, CellsBasis.registerId r, CellsBasis.registerId d, i) of
+           (I.OR, 0, _, I.REG _) => 
            ( emit "mov\t"; 
              emit_operand i; 
              emit ", "; 
              emitCell d )
-         | (I.SUBCC, _, 0) => 
+         | (I.OR, 0, _, _) => 
+           ( emit "set\t"; 
+             emit_operand i; 
+             emit ", "; 
+             emitCell d )
+         | (I.SUBCC, _, 0, _) => 
            ( emit "cmp\t"; 
              emitCell r; 
              emit ", "; 
@@ -458,7 +464,7 @@ struct
            emit_operand i )
        | I.FPop1{a, r, d} => 
          let 
-(*#line 763.18 "sparc/sparc.mdl"*)
+(*#line 764.18 "sparc/sparc.mdl"*)
              fun f (a, r, d) = 
                  ( emit a; 
                    emit "\t"; 
@@ -466,10 +472,10 @@ struct
                    emit ", "; 
                    emit (C.showFP d))
 
-(*#line 768.18 "sparc/sparc.mdl"*)
+(*#line 769.18 "sparc/sparc.mdl"*)
              fun g (a, r, d) = 
                  let 
-(*#line 769.22 "sparc/sparc.mdl"*)
+(*#line 770.22 "sparc/sparc.mdl"*)
                      val r = CellsBasis.registerNum r
                      and d = CellsBasis.registerNum d
                  in f (a, r, d); 
@@ -477,10 +483,10 @@ struct
                     f ("fmovs", r + 1, d + 1)
                  end
 
-(*#line 773.18 "sparc/sparc.mdl"*)
+(*#line 774.18 "sparc/sparc.mdl"*)
              fun h (a, r, d) = 
                  let 
-(*#line 774.22 "sparc/sparc.mdl"*)
+(*#line 775.22 "sparc/sparc.mdl"*)
                      val r = CellsBasis.registerNum r
                      and d = CellsBasis.registerNum d
                  in f (a, r, d); 

@@ -527,6 +527,7 @@ struct
        | eImmed(I.ImmedLabel lexp) = emit_labexp lexp
        | eImmed _ = error "eImmed"
 
+    
      and emit_operand opn =
          case opn of
          I.Immed i => (emit "$"; emitInt32 i)

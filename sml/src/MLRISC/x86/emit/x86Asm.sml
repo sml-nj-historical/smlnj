@@ -48,6 +48,7 @@ struct
                       else s
                   end
        fun emit_label lab = emit(Label.toString lab)
+       fun emit_label lab = emit(LabelExp.toString(T.LABEL lab))
        fun emit_labexp le = emit(LabelExp.toString le)
        fun emit_const c = emit(Constant.toString c)
        fun emit_int i = emit(ms i)
@@ -345,13 +346,13 @@ struct
      | emit_disp (I.ImmedLabel lexp) = emit_labexp lexp
      | emit_disp _ = error "emit_disp"
 
-(*#line 564.7 "x86/x86.mdl"*)
+(*#line 565.7 "x86/x86.mdl"*)
    fun stupidGas (I.ImmedLabel lexp) = emit_labexp lexp
      | stupidGas opnd = 
        ( emit "*"; 
          emit_operand opnd )
 
-(*#line 568.7 "x86/x86.mdl"*)
+(*#line 569.7 "x86/x86.mdl"*)
    fun isMemOpnd (I.MemReg _) = true
      | isMemOpnd (I.FDirect f) = true
      | isMemOpnd (I.LabelEA _) = true
@@ -359,10 +360,10 @@ struct
      | isMemOpnd (I.Indexed _) = true
      | isMemOpnd _ = false
 
-(*#line 574.7 "x86/x86.mdl"*)
+(*#line 575.7 "x86/x86.mdl"*)
    fun chop fbinOp = 
        let 
-(*#line 575.15 "x86/x86.mdl"*)
+(*#line 576.15 "x86/x86.mdl"*)
            val n = size fbinOp
        in 
           (case Char.toLower (String.sub (fbinOp, n - 1)) of
@@ -371,11 +372,11 @@ struct
           )
        end
 
-(*#line 581.7 "x86/x86.mdl"*)
+(*#line 582.7 "x86/x86.mdl"*)
    fun isST0 (I.ST r) = (CellsBasis.registerNum r) = 0
      | isST0 _ = false
 
-(*#line 585.7 "x86/x86.mdl"*)
+(*#line 586.7 "x86/x86.mdl"*)
    fun emit_fbinaryOp (binOp, src, dst) = (if (isMemOpnd src)
           then 
           ( emit_fbinOp binOp; 
@@ -395,31 +396,31 @@ struct
             | _ => error "emit_fbinaryOp"
             )))
 
-(*#line 595.7 "x86/x86.mdl"*)
+(*#line 596.7 "x86/x86.mdl"*)
    val emit_dst = emit_operand
 
-(*#line 596.7 "x86/x86.mdl"*)
+(*#line 597.7 "x86/x86.mdl"*)
    val emit_src = emit_operand
 
-(*#line 597.7 "x86/x86.mdl"*)
+(*#line 598.7 "x86/x86.mdl"*)
    val emit_opnd = emit_operand
 
-(*#line 598.7 "x86/x86.mdl"*)
+(*#line 599.7 "x86/x86.mdl"*)
    val emit_opnd8 = emit_operand8
 
-(*#line 599.7 "x86/x86.mdl"*)
+(*#line 600.7 "x86/x86.mdl"*)
    val emit_rsrc = emit_operand
 
-(*#line 600.7 "x86/x86.mdl"*)
+(*#line 601.7 "x86/x86.mdl"*)
    val emit_lsrc = emit_operand
 
-(*#line 601.7 "x86/x86.mdl"*)
+(*#line 602.7 "x86/x86.mdl"*)
    val emit_addr = emit_operand
 
-(*#line 602.7 "x86/x86.mdl"*)
+(*#line 603.7 "x86/x86.mdl"*)
    val emit_src1 = emit_operand
 
-(*#line 603.7 "x86/x86.mdl"*)
+(*#line 604.7 "x86/x86.mdl"*)
    val emit_ea = emit_operand
    fun emitInstr' instr = 
        (case instr of

@@ -16,6 +16,8 @@ functor LabelExp
    val eqRext  : T.equality -> T.rext * T.rext -> bool
    val eqFext  : T.equality -> T.fext * T.fext -> bool
    val eqCCext : T.equality -> T.ccext * T.ccext -> bool
+   (* assembly output *)
+   val labelFmt : {gPrefix : string, aPrefix: string}
   ) : LABELEXP =
 struct
 
@@ -447,7 +449,7 @@ struct
 
   fun toString le = toStr(le, 0) 
 
-  and toStr(T.LABEL lab, _) = Label.toString lab 
+  and toStr(T.LABEL lab, _) = Label.fmt labelFmt lab 
     | toStr(T.LABEXP le, p) = toStr(le, p)
     | toStr(T.CONST c, _) = 
         if !resolveConstants then prInt(Constant.valueOf c)

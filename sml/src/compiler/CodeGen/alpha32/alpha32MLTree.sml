@@ -15,6 +15,7 @@ structure Alpha32Instr =
   AlphaInstr(
     LabelExp
        (structure T = Alpha32MLTree
+	val labelFmt = {gPrefix="L", aPrefix="L"}
         fun h _ _ = 0w0 fun eq _ _ = false
         val hashRext = h and hashFext = h and hashCCext = h and hashSext = h
         val eqRext = eq and eqFext = eq and eqCCext = eq and eqSext = eq
