@@ -268,7 +268,7 @@ fetchurl() {
     vsay $this: Fetching $1 from $3. Please stand by...
     fetched=no
     for base in $2 $VERSION-$2 ; do
-	for ext in tar.gz tgz tar.Z tz tar tar.bz2 ; do
+	for ext in tgz tar.gz tar.Z tz tar tar.bz2 ; do
 	    try=$base.$ext
 	    vsay $this: Trying $try ...
 	    if $getter $3/$try $ROOT/$try ; then
