@@ -16,17 +16,16 @@ Library
 	structure RS6000VisComp
 	structure SparcVisComp
 	structure X86VisComp
-	functor IntShare
+	functor BootEnvF
 is
 
 TopLevel/batch/batchconfig.sml
 TopLevel/batch/binfile.sig
 TopLevel/batch/binfile.sml
+TopLevel/bootstrap/boot.sml
 TopLevel/batch/cmsa.sig
 TopLevel/batch/cmsa.sml
 TopLevel/batch/envcvt.sml
-TopLevel/bootstrap/boot.sml
-TopLevel/bootstrap/shareglue.sml
 TopLevel/environ/dynenv.sig
 TopLevel/environ/dynenv.sml
 TopLevel/environ/environ.sig
@@ -243,6 +242,7 @@ CodeGen/cpscompile/cpsRegions.sml
 CodeGen/cpscompile/cpsRegs.sig
 CodeGen/cpscompile/frag.sig
 CodeGen/cpscompile/frag.sml
+CodeGen/cpscompile/functionNames.sml
 CodeGen/cpscompile/memDisambig.sml
 CodeGen/cpscompile/mkRecord.sig
 CodeGen/cpscompile/mkRecord.sml
@@ -265,6 +265,13 @@ CodeGen/main/machspec.sml
 CodeGen/main/mlriscGen.sml
 CodeGen/main/object-desc.sig
 CodeGen/main/object-desc.sml
+CodeGen/sparc/sparcCG.sml
+CodeGen/sparc/sparcCpsRegs.sml
+CodeGen/sparc/sparcMLTree.sml
+CodeGen/sparc/sparcMask.sml
+CodeGen/sparc/sparcPseudoInstrs.sml
+CodeGen/sparc/sparcgen.sml
+CodeGen/sparc/sparcspec.sml
 
 OldCGen/coder/backpatch.sml
 OldCGen/coder/coder.sml
@@ -292,11 +299,6 @@ OldCGen/rs6000/rs6000gen.sml
 OldCGen/rs6000/rs6000instrset.sml
 OldCGen/rs6000/rs6000mc.sml
 OldCGen/rs6000/rs6000spec.sml
-OldCGen/sparc/sparc.sml
-OldCGen/sparc/sparcgen.sml
-OldCGen/sparc/sparcinstr.sml
-OldCGen/sparc/sparcmc.sml
-OldCGen/sparc/sparcspec.sml
 OldCGen/x86/x86.sml
 OldCGen/x86/x86coder.sig
 OldCGen/x86/x86gen.sml
@@ -346,5 +348,3 @@ MiscUtil/util/stats.sml
 ../ml-yacc/lib/sources.cm
 
 ../MLRISC/MLRISC.cm
-
-

@@ -222,7 +222,7 @@ fun isTermIn f =
                  (OS.IO.kind iod = OS.IO.Kind.tty)
               | _ => false
 
-       val buf = if (buf = "") then NONE else SOME buf
+(*       val buf = if (buf = "") then NONE else SOME buf *)
      in (* since getting the reader will have terminated the stream, we need
         * to build a new stream. *)
        TextIO.setInstream(f, TextIO.StreamIO.mkInstream(rd, buf));
