@@ -98,8 +98,29 @@ structure PickMod :> PICKMOD = struct
 	structure DTMap = StampMap
 	structure MBMap = StampMap
     end
+
+
+    type pid = PS.persstamp
+    type mi = MI.modId * pid option
+
+    fun mi_cmp ((mi, po), (mi', po')) = let
+	fun po_cmp (NONE, NONE) = EQUAL
+	  | po_cmp (NONE, SOME _) = LESS
+	  | po_cmp (SOME _, NONE) = GREATER
+	  | po_cmp (SOME p, SOME p') = PS.compare (p, p')
+    in
+	case MI.cmp (mi, mi') of
+	    EQUAL => po_cmp (po, po')
+	  | unequal => unequal
+    end
+
+    fun acc_pid (A.LVAR _) = NONE
+      | acc_pid (A.EXTERN p) = SOME p
+      | acc_pid (A.PATH (a, _)) = acc_pid a
+      | acc_pid A.NO_ACCESS = NONE
+
     structure MIMap = BinaryMapFn
-	(struct type ord_key = MI.modId val compare = MI.cmp end)
+	(struct type ord_key = mi val compare = mi_cmp end)
 
     structure PU = PickleUtil
     structure PSymPid = PickleSymPid
@@ -719,7 +740,7 @@ structure PickMod :> PICKMOD = struct
 			  | NodeStub (i, s) =>
 					    "J" $ int i & symbol s & modId id
 		in
-		    share (MIs id) gt_raw x
+		    share (MIs (id, NONE)) gt_raw x
 		end
 	      | tc (T.DEFtyc x) = let
 		    fun dt_raw x = let
@@ -730,7 +751,7 @@ structure PickMod :> PICKMOD = struct
 			      list bool strict & ipath path
 		    end
 		in
-		    share (MIs (MI.TYCid (#stamp x))) dt_raw x
+		    share (MIs (MI.TYCid (#stamp x), NONE)) dt_raw x
 		end
 	      | tc (T.PATHtyc { arity, entPath = ep, path }) =
 		"D" $ int arity & entPath ep & ipath path
@@ -822,7 +843,7 @@ structure PickMod :> PICKMOD = struct
 				      "E" $ int i & symbol s & modId id
 		    end
 		in
-		    share (MIs id) sig_raw x
+		    share (MIs (id, NONE)) sig_raw x
 		end
 	in
 	    sg arg
@@ -848,7 +869,7 @@ structure PickMod :> PICKMOD = struct
 				      "e" $ int i & symbol s & modId id
 		    end
 		in
-		    share (MIs id) fsig_raw x
+		    share (MIs (id, NONE)) fsig_raw x
 		end
 	in
 	    fsg arg
@@ -904,7 +925,7 @@ structure PickMod :> PICKMOD = struct
 			  | NodeStub (i, s) =>
 				 "J" $ int i & symbol s & modId id & access a
 		in
-		    share (MIs id) s_raw x
+		    share (MIs (id, acc_pid (#access x))) s_raw x
 		end
 	      | str _ = bug "unexpected structure in pickmod"
 	in
@@ -927,7 +948,7 @@ structure PickMod :> PICKMOD = struct
 			  | NodeStub (i, s) =>
 				"I" $ int i & symbol s & modId id & access a
 		in
-		    share (MIs id) f_raw x
+		    share (MIs (id, acc_pid (#access x))) f_raw x
 		end
 	in
 	    fct arg
@@ -1004,7 +1025,7 @@ structure PickMod :> PICKMOD = struct
 		      | PrimStub s => "F" $ string s & modId id
 		      | NodeStub (i, s) => "G" $ int i & symbol s & modId id
 	    in
-		share (MIs id) mee_raw (s, r)
+		share (MIs (id, NONE)) mee_raw (s, r)
 	    end
 	  | entityEnv (M.BINDeenv (d, r)) =
 	    PU.$ EEV ("A", list (pair (entVar, entity)) (ED.listItemsi d) &

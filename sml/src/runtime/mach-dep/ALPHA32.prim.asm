@@ -160,9 +160,6 @@ ML_CODE_HDR(sigh_return_a)
  */
 ENTRY(sigh_resume)
 	mov	REQ_SIG_RESUME,ATMP1
-	mov	ML_unit, STDLINK
-	mov	ML_unit, STDCLOS
-	mov	ML_unit, PC
 	br	set_request
 
 /* pollh_return_a
@@ -180,9 +177,6 @@ ML_CODE_HDR(pollh_return_a)
  */
 ENTRY(pollh_resume)
 	mov	REQ_POLL_RETURN,ATMP1
-	mov	ML_unit, STDLINK
-	mov	ML_unit, STDCLOS
-	mov	ML_unit, PC
 	br	set_request
 
 ML_CODE_HDR(handle_a)

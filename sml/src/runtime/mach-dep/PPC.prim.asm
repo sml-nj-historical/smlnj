@@ -141,10 +141,7 @@ ML_CODE_HDR(sigh_return_a)
 
 ENTRY(sigh_resume)
 	li	atmp4, REQ_SIG_RESUME
-	li	stdlink, ML_unit
-	li	stdclos, ML_unit
-	li	pc, ML_unit
-        b	set_request
+	b	set_request
 
 /* pollh_return_a:
  * The return continuation for the ML poll handler.
@@ -161,9 +158,6 @@ ML_CODE_HDR(pollh_return_a)
  */
 ENTRY(pollh_resume)
 	li	atmp4,REQ_POLL_RESUME
-	li	stdlink, ML_unit
-	li	stdclos, ML_unit
-	li	pc, ML_unit
 	b	set_request
 
 		 /* exception handler for ML functions called from C */

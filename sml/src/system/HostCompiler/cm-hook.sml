@@ -16,8 +16,10 @@ structure CmHook = struct
 	fun b's_b (b: bool) (s: string) = false
 	fun s_b (s: string) = false
 	fun u_u () = ()
-	fun bo_b (bo: bool option) = false
-	fun io_i (io: int option) = 0
+	val b_gs = { get = fn () => false, set = fn (x: bool) => () }
+	val i_gs = { get = fn () => 0, set = fn (x: int) => () }
+	fun s_iogs (s: string) =
+	    { get = fn () => SOME 0, set = fn (x: int option) => () }
 	fun s_u (s: string) = ()
 	fun s's_u (s1: string, s2: string) = ()
 
@@ -27,41 +29,61 @@ structure CmHook = struct
 			 make = s_b,
 			 autoload = s_b,
 			 reset = u_u,
-			 verbose = bo_b,
-			 debug = bo_b,
-			 keep_going = bo_b,
-			 warn_obsolete = bo_b,
-			 parse_caching = io_i,
+			 verbose = b_gs,
+			 debug = b_gs,
+			 keep_going = b_gs,
+			 warn_obsolete = b_gs,
+			 parse_caching = i_gs,
 			 setAnchor = s's_u,
 			 cancelAnchor = s_u,
 			 resetPathConfig = u_u,
 			 synchronize = u_u,
 			 showPending = u_u,
 			 listLibs = u_u,
-			 dismissLib = s_u }
+			 dismissLib = s_u,
+			 symval = s_iogs }
+
+	fun gs label = let
+	    fun get' () = let
+		val { get, set } = label (!hook)
+	    in
+		get ()
+	    end
+	    fun set' x = let
+		val { get, set } = label (!hook)
+	    in
+		set x
+	    end
+	in
+	    { get = get', set = set' }
+	end
     in
 	(* the routine to be called at bootstrap time... *)
 	fun init v = hook := v
 
-	(* the CM structure that will be visible at top-level *)
-	structure CM = struct
-	    fun stabilize b s = #stabilize (!hook) b s
-	    fun recomp s = #recomp (!hook) s
-	    fun make s = #make (!hook) s
-	    fun autoload s = #autoload (!hook) s
-	    fun reset () = #reset (!hook) ()
-	    fun verbose bo = #verbose (!hook) bo
-	    fun debug bo = #debug (!hook) bo
-	    fun keep_going bo = #keep_going (!hook) bo
-	    fun warn_obsolete bo = #warn_obsolete (!hook) bo
-	    fun parse_caching io = #parse_caching (!hook) io
-	    fun setAnchor (a, s) = #setAnchor (!hook) (a, s)
-	    fun cancelAnchor a = #cancelAnchor (!hook) a
-	    fun resetPathConfig () = #resetPathConfig (!hook) ()
-	    fun synchronize () = #synchronize (!hook) ()
-	    fun showPending () = #showPending (!hook) ()
-	    fun listLibs () = #listLibs (!hook) ()
-	    fun dismissLib l = #dismissLib (!hook) l
+	local
+	in
+	    (* the CM structure that will be visible at top-level *)
+	    structure CM = struct
+		fun stabilize b s = #stabilize (!hook) b s
+		fun recomp s = #recomp (!hook) s
+		fun make s = #make (!hook) s
+		fun autoload s = #autoload (!hook) s
+		fun reset () = #reset (!hook) ()
+		val verbose = gs #verbose
+		val debug = gs #debug
+		val keep_going = gs #keep_going
+		val warn_obsolete = gs #warn_obsolete
+		val parse_caching = gs #parse_caching
+		fun setAnchor (a, s) = #setAnchor (!hook) (a, s)
+		fun cancelAnchor a = #cancelAnchor (!hook) a
+		fun resetPathConfig () = #resetPathConfig (!hook) ()
+		fun synchronize () = #synchronize (!hook) ()
+		fun showPending () = #showPending (!hook) ()
+		fun listLibs () = #listLibs (!hook) ()
+		fun dismissLib l = #dismissLib (!hook) l
+		fun symval s = #symval (!hook) s
+	    end
 	end
     end
 end

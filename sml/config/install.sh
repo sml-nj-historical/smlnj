@@ -43,16 +43,17 @@ echo Using shell $SHELL.
 REAL_PWD=`pwd`
 ROOT=${PWD:-$REAL_PWD}
 echo SML root is $ROOT.
+echo Installation directory is ${INSTALLDIR:=$ROOT}.
 
 #
 # set the various directory and file pathname variables
 #
-BINDIR=$ROOT/bin		# main dir for binary stuff
+BINDIR=$INSTALLDIR/bin		# main dir for binary stuff
 CONFIGDIR=$ROOT/config
 HEAPDIR=$BINDIR/.heap		# where heap images live
 RUNDIR=$BINDIR/.run		# where executables (i.e., the RTS) live
 SRCDIR=$ROOT/src		# where the source tree is rooted
-LIBDIR=$ROOT/lib		# where libraries live
+LIBDIR=$INSTALLDIR/lib		# where libraries live
 LIBLIST=$ROOT/liblist		# list of commands to stabilize libraries
 LIBMOVESCRIPT=$ROOT/libmove	# a temporary script
 LOCALPATHCONFIG=$ROOT/pathconfig # a temporary pathconfig file
@@ -137,14 +138,29 @@ unpack() {
 # $LIBDIR/$2/CM/$ARCH-unix/$2 so that it appears as if the description file
 # had been at $LIBDIR/$2/$2
 #
-movelib() {
-    if [ -f $1/CM/$ARCH-unix/$2 ] ; then
-	echo Moving library $2 to $LIBDIR.
-	makedir $LIBDIR/$2
-	makedir $LIBDIR/$2/CM
-	makedir $LIBDIR/$2/CM/$ARCH-unix
-	mv $1/CM/$ARCH-unix/$2 $LIBDIR/$2/CM/$ARCH-unix/$2
-    fi
+# (This script will also move all other libraries that show up in
+#  $1/CM/$ARCH-unix because in the case of the boot directory this indicates
+#  that some library did not have its own path anchor but was specified
+#  relative to $1/$2. Still, don't rely on this to be robust -- rather make
+#  separate anchors for every library!)
+#
+movelibs() {
+    for lib in `/bin/ls $1/CM/$ARCH-unix` ; do
+	case $lib in
+	*.cm)
+	    if [ $lib != $2 ] ; then
+		echo "! Warning:" $lib specified relative to $2
+	    fi
+	    echo Moving library $lib to $LIBDIR
+	    makedir $LIBDIR/$2
+	    makedir $LIBDIR/$2/CM
+	    makedir $LIBDIR/$2/CM/$ARCH-unix
+	    mv $1/CM/$ARCH-unix/$lib $LIBDIR/$2/CM/$ARCH-unix/$lib
+	    ;;
+	*)
+	    ;;
+	esac
+     done
 }
 
 # A shell function that registers a library for being built.
@@ -155,8 +171,8 @@ movelib() {
 #
 # This works by adding ML code to file $LIBLIST.  The code in this file
 # will be executed near the end of this script.  If $MOVE_LIBRARIES is
-# set to true, then reglib will also register a "movelib" to be executed at
-# the end by putting a "movelib" line into $LIBMOVESCRIPT.
+# set to true, then reglib will also register a "movelibs" to be executed at
+# the end by putting a "movelibs" line into $LIBMOVESCRIPT.
 
 reglib() {
     if [ x$MOVE_LIBRARIES = xtrue ] ; then
@@ -171,7 +187,7 @@ reglib() {
         echo "andalso CM.stabilize false \"$1\"" >>$LIBLIST
         echo $1 $SRCDIR/$2 >>$LOCALPATHCONFIG
         if [ x$MOVE_LIBRARIES = xtrue ] ; then
-	    echo movelib $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
+	    echo movelibs $SRCDIR/$2 $1 >>$LIBMOVESCRIPT
         fi
 	echo $1 $FINALLOCATION >>$CM_PATHCONFIG_DEFAULT
     fi
@@ -179,7 +195,7 @@ reglib() {
 
 #
 # Function to build a standalone program such as ml-yacc.  The function takes
-# 2 or 3 arguments.  First the name of the program with at the same time
+# 2 or 3 arguments.  First the name of the program which at the same time
 # is the directory name under $SRCDIR where the sources reside.  The second
 # argument is a descriptive name for the program (passed on to "unpack").
 # The optional third argument specifies the path relative to $SRCDIR/$1
@@ -334,7 +350,7 @@ else
 	cd $ROOT/$BOOT_FILES
 	for lib in *.cm ; do
 	    echo $lib $LIBDIR/$lib >>$CM_PATHCONFIG_DEFAULT
-	    movelib $ROOT/$BOOT_FILES/$lib $lib
+	    movelibs $ROOT/$BOOT_FILES/$lib $lib
 	done
 	cd $ROOT
 	rm -rf $BOOT_FILES

@@ -31,9 +31,9 @@ void ChooseSignal (vproc_state_t *vsp)
     vsp->vp_sigCode = vsp->vp_pendingSigQ[vsp->vp_nextPendingSig].sigNum;
     vsp->vp_sigCount = vsp->vp_pendingSigQ[vsp->vp_nextPendingSig].count;
     if (IS_SYSTEM_SIG(vsp->vp_sigCode))
-        vsp->vp_numPendingSigs -= vsp->vp_sigCount;
-    else
 	vsp->vp_numPendingSysSigs -= vsp->vp_sigCount;
+    else
+        vsp->vp_numPendingSigs -= vsp->vp_sigCount;
 
   /* advance the pending queue */
     if ((--vsp->vp_numInQ == 0) || (++vsp->vp_nextPendingSig == NUM_SIGS))
@@ -153,16 +153,16 @@ SayDebug ("LoadResumeState:\n");
 
     contClosure = PTR_MLtoC(ml_val_t, msp->ml_closure);
 
-    msp->ml_arg			= contClosure[2];
-    msp->ml_cont		= contClosure[3];
-    msp->ml_closure		= contClosure[4];
-    msp->ml_linkReg		= contClosure[5];
-    msp->ml_linkReg		= contClosure[6];
-    msp->ml_exnCont		= contClosure[7];
-    msp->ml_varReg		= contClosure[8];
-    msp->ml_calleeSave[0]	= contClosure[9];
-    msp->ml_calleeSave[1]	= contClosure[10];
-    msp->ml_calleeSave[2]	= contClosure[11];
+    msp->ml_arg			= contClosure[1];
+    msp->ml_cont		= contClosure[2];
+    msp->ml_closure		= contClosure[3];
+    msp->ml_linkReg		= contClosure[4];
+    msp->ml_pc			= contClosure[5];
+    msp->ml_exnCont		= contClosure[6];
+    msp->ml_varReg		= contClosure[7];
+    msp->ml_calleeSave[0]	= contClosure[8];
+    msp->ml_calleeSave[1]	= contClosure[9];
+    msp->ml_calleeSave[2]	= contClosure[10];
 
 } /* end of LoadResumeState */
 

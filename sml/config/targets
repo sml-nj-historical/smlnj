@@ -53,17 +53,17 @@ TARGETS="$TARGETS smlnj-lib"
 # pre-compile and install Concurrent ML, which is a library for message-passing
 # concurrency.
 #
-#TARGETS="$TARGETS cml"
+TARGETS="$TARGETS cml"
 
 # pre-compile and install the CML Library, which provides some useful CML
 # modules.
 #
-#TARGETS="$TARGETS cml-lib"
+TARGETS="$TARGETS cml-lib"
 
 # pre-compile and install eXene, which is a library for X-Windows programming.
 # EXene requires CML.
 #
-#TARGETS="$TARGETS eXene"
+TARGETS="$TARGETS eXene"
 
 # unpack and install the documentation directory.
 #
