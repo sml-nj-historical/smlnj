@@ -94,27 +94,23 @@ functor PPCMacOSX_CCalls (
    * low end of the parameter area.
    *)
     datatype arg_location
-      = Reg of T.ty * T.reg		(* integer/pointer argument in register *)
-      | FReg of T.fty * T.freg		(* floating-point argument in register *)
+      = Reg of T.ty * T.reg * T.I.machine_int option
+					(* integer/pointer argument in register *)
+      | FReg of T.fty * T.freg * T.I.machine_int option
+					(* floating-point argument in register *)
       | Stk of T.ty * T.I.machine_int	(* integer/pointer argument in parameter area *)
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list
 
-(* ?? use arg_location instead of the following? *)
-    datatype arg_loc
-      = GPR of C.cell
-      | GPR2 of C.cell * C.cell
-      | FPR of C.cell
-      | STK
-
-    type arg_pos = {
-	offset : int,		(* stack offset of memory for argument *)
-	loc : arg_loc		(* location where argument is passed *)
-      }
+    val wordTy = 32
+    val fltTy = 32	(* MLRISC type of float *)
+    val dblTy = 64	(* MLRISC type of double *)
 
   (* registers used for parameter passing *)
     val argGPRs = List.map C.GPReg [3, 4, 5, 6, 7, 8, 9, 10]
     val argFPRs = List.map C.FPReg [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    val resGPR = C.GPReg 3
+    val resFPR = C.FPReg 1
 
   (* C callee-save registers *)
     val calleeSaveRegs = List.map C.GPReg [
@@ -126,43 +122,95 @@ functor PPCMacOSX_CCalls (
 	    23, 24, 25, 26, 27, 28, 29, 30, 31
 	  ]
 
-  (* size of integer types *)
+  (* size and padding for integer types.  Note that the padding is based on the
+   * parameter-passing description on p. 35 of the documentation.
+   *)
     fun sizeOf CTy.I_char = {sz = 1, pad = 3}
       | sizeOf CTy.I_short = {sz = 2, pad = 2}
       | sizeOf CTy.I_int = {sz = 4, pad = 0}
       | sizeOf CTy.I_long = {sz = 4, pad = 0}
       | sizeOf CTy.I_long_long = {sz = 8, pad = 0}
 
+  (* sizes of other C types *)
+    val sizeOfPtr = {sz = 4, pad = 0}
+
+    fun sizeOfStruct ? = ?
+
   (* compute the layout of a C call's arguments *)
     fun layout {conv, retTy, paramTys} = let
-	  val structRet = (case retTy
-		 of CTy.C_STRUCT _ => true
-		  | _ => false
+	  fun gprRes isz = (case sizeOf isz
+		 of 8 => raise Fail "register pairs not yet supported"
+		  | _ => SOME resGPR
+		(* end case *))
+	  val (resReg, availGPRs) = (case retTy
+		 of CTy.C_void => (NONE, availGPRs)
+		  | CTy.C_float => (SOME resFPR, availGPRs)
+		  | CTy.C_double => (SOME resFPR, availGPRs)
+		  | CTy.C_long_double => (SOME resFPR, availGPRs)
+		  | CTy.C_unsigned isz => (gprRes isz, availGPRs)
+		  | CTy.C_signed isz => (gprRes isz, availGPRs)
+		  | CTy.C_PTR => (SOME resGPR, availGPRs)
+		  | CTy.C_ARRAY _ => error "array return type"
+		  | CTy.C_STRUCT s => let
+		      val sz = sizeOfStruct s
+		      in
+		      (* Note that this is a place where the MacOS X and Linux ABIs differ.
+		       * In Linux, GPR3/GPR4 are used to return composite values of 8 bytes.
+		       *)
+			if (sz > 4)
+			  then (SOME resGPR, List.tl availGPRs)
+			  else (SOME resGPR, availGPRs)
+		      end
 		(* end case *))
 	  fun assign ([], offset, _, _, layout) = {sz = offset, layout = List.rev layout}
 	    | assign (arg::args, offset, availGPRs, availFPRs, layout) = (
 		case arg
 		 of CTy.C_void => error "unexpected void argument type"
-		  | CTy.C_float =>
+		  | CTy.C_float => (case (availGPRs, availFPRs)
+		       of (_:gprs, fpr::fprs) =>
+			    assign (args, offset+4, gprs, fprs, FReg(fltTy, fpr, SOME offset)::layout)
+			| ([], fpr::fprs) =>
+			    assign (args, offset+4, [], fprs, FReg(fltTy, fpr, SOME offset)::layout)
+			| ([], []) =>
+			    assign (args, offset+4, [], [], FStk(fltTy, offset)::layout)
+		      (* end case *))
 		  | CTy.C_double =>
 		  | CTy.C_long_double =>
 		  | CTy.C_unsigned isz =>
+		      assignGPR(sizeOf isz, args, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_signed isz =>
+		      assignGPR(sizeOf isz, args, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_PTR =>
+		      assignGPR(sizeOfPtr, args, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_ARRAY _ =>
+		      assignGPR(sizeOfPtr, args, offset, availGPRs, availFPRs, layout)
 		  | CTy.C_STRUCT tys =>
 		(* end case *))
-	  and assignGPR (offset, sz, pad, availGPRs, availFPRs) = let
-		val offset' = offset + sz + pad
+	(* assign a GP register and memory for an integer/pointer argument. *)
+	  and assignGPR ({sz, pad}, args, offset, availGPRs, availFPRs, layout) = let
+		val (loc, availGPRs) = (case (sz, availGPRs)
+		       of (8, _) => raise Fail "register pairs not yet supported"
+			| (_, []) => (Stk(wordTy, offset), [])
+			| (_, r1::rs) => (Reg(wordTy, r1, SOME offset), rs)
+		      (* end case *))
+		val offset = offset + sz + pad
 		in
-		  ({offset = offset, loc = loc}, offset')
+		  assign (args, offset, availGPRs, availFPRs, loc::layout)
 		end
-	    | assignGPR (args, offset, [], availFPRs) =
-	  and assignFPR (offset, gpr::availGPRs, fpr::availFPRs) =
-	    | assignFPR (offset, [], fpr::availFPRs) =
-	    | assignFPR (offset, [], []) =
+	(* assign a FP register and memory/GPRs for double-precision argument. *)
+	  and assignFPR (args, offset, availGPRs, availFPRs, layout) = let
+		fun continue (availGPRs, availFPRs, loc) =
+		      assign (args, offset+8, availGPRs, availFPRs, loc::layout)
+		fun freg fpr = FReg(dblTy, fpr, SOME offset)
+		in
+		  case (availGPRs, availFPRs)
+		   of (_::_::gprs, fpr::fprs) => continue (gprs, fprs, freg fpr)
+		    | (_, fpr::fprs) => continue ([], fprs, freg fpr)
+		    | ([], []) => continue ([], [], FStk(dblTy, offset))
+		  (* end case *)
+		end
 	  in
-	    assign (paramTys, 0, argGPRs, argFPRs, [])
+	    { args = assign (paramTys, 0, argGPRs, argFPRs, []), res = resReg }
 	  end
 
     datatype c_arg
