@@ -4,6 +4,7 @@
 structure Alpha32CG = 
   MachineGen
   ( structure I          = Alpha32Instr
+    structure T          = Alpha32MLTree
     structure MachSpec   = Alpha32Spec
     structure ClientPseudoOps = Alpha32ClientPseudoOps
     structure PseudoOps  = Alpha32PseudoOps
@@ -55,9 +56,10 @@ structure Alpha32CG =
     structure RA = 
        RISC_RA
          (structure I         = Alpha32Instr
-          structure Flowgraph = Alpha32CFG
+          structure CFG       = Alpha32CFG
           structure InsnProps = InsnProps 
           structure Rewrite   = AlphaRewrite(Alpha32Instr)
+	  structure SpillInstr= AlphaSpillInstr(Alpha32Instr)
           structure Asm       = Alpha32AsmEmitter
           structure SpillHeur = ChaitinSpillHeur
           structure Spill     = RASpill(structure InsnProps = InsnProps
@@ -70,7 +72,10 @@ structure Alpha32CG =
 
           val architecture = Alpha32Spec.architecture
 
-          val beginRA = SpillTable.spillInit
+	  datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	  type spill_info = unit
+
+          fun beforeRA _ = SpillTable.spillInit()
 
           fun pure _ = false
 
@@ -80,28 +85,11 @@ structure Alpha32CG =
               val avail     = Alpha32CpsRegs.availR
               val dedicated = Alpha32CpsRegs.dedicatedR
 
-	      fun copy((rds, rss), I.COPY{k=CB.GP, sz, tmp, ...}) = let
-		val tmp = (case (rds, rss) of ([_], [_]) => NONE | _ => tmp)
-              in I.COPY{k=CB.GP, sz=sz, dst=rds, src=rss, tmp=tmp}
-              end
+	      fun mkDisp loc = T.LI(T.I.fromInt (32, SpillTable.getRegLoc loc))
 
-              (* spill copy temp *)
-              fun spillCopyTmp(an, I.COPY{k=CB.GP, sz, tmp,dst,src, ...},loc) =
-                  I.COPY{k=CB.GP, sz=sz,  dst=dst,src=src,
-			 tmp=SOME(I.Displace{base=sp, 
-                                             disp=SpillTable.getRegLoc loc})}
-
-              (* spill register *)
-              fun spillInstr{src,spilledCell,spillLoc,an} =
-                  [I.store{stOp=I.STL, b=sp,
-                           d=I.IMMop(SpillTable.getRegLoc spillLoc), 
-                           r=src, mem=spill}]
-
-              (* reload register *)
-              fun reloadInstr{dst,spilledCell,spillLoc,an} =
-                  [I.load{ldOp=I.LDL, b=sp, 
-                          d=I.IMMop(SpillTable.getRegLoc spillLoc),
-                          r=dst, mem=spill}]
+              fun spillLoc{info, an, cell, id} = 
+		  {opnd=I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		   kind=SPILL_LOC}
 
               val mode = RACore.NO_OPTIMIZATION
           end
@@ -111,25 +99,9 @@ structure Alpha32CG =
               val avail     = Alpha32CpsRegs.availF
               val dedicated = Alpha32CpsRegs.dedicatedF
 
-	      fun copy((fds, fss), I.COPY{k=CB.FP, sz, tmp, ...}) = let
-		val tmp =(case (fds, fss) of ([_],[_]) => NONE | _ => tmp)
-              in I.COPY{k=CB.FP, sz=sz, dst=fds, src=fss, tmp=tmp}
-              end
-
-              fun spillCopyTmp(an, I.COPY{k=CB.FP, sz, tmp,dst,src},loc) =
-                  I.COPY{k=CB.FP, sz=sz, dst=dst,src=src,
-			 tmp=SOME(I.Displace{base=sp, disp=SpillTable.getFregLoc loc})}
-                          
-
-              fun spillInstr(_, r,loc) =
-                  [I.fstore{stOp=I.STT, b=sp, 
-                            d=I.IMMop(SpillTable.getFregLoc loc), 
-                            r=r, mem=spill}]
-
-              fun reloadInstr(_, r,loc) =
-                  [I.fload{ldOp=I.LDT, b=sp,
-                           d=I.IMMop(SpillTable.getFregLoc loc), 
-                           r=r, mem=spill}]
+	      fun mkDisp loc = T.LI(T.I.fromInt (32, SpillTable.getFregLoc loc))
+	      fun spillLoc(S, an, loc) = 
+		I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
 
               val mode = RACore.NO_OPTIMIZATION
           end

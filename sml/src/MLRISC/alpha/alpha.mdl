@@ -285,7 +285,7 @@ struct
       datatype ea = 
           Direct of $GP 
         | FDirect of $FP         
-        | Displace of {base: $GP, disp:int}
+        | Displace of {base: $GP, disp: T.labexp, mem: Region.region}
     
       datatype operand = 
           REGop of $GP          ``<GP>''          rtl: $r[GP]

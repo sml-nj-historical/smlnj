@@ -30,7 +30,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:operand}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype load =
      LBZ
    | LBZE
@@ -294,7 +294,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:operand}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype load =
      LBZ
    | LBZE

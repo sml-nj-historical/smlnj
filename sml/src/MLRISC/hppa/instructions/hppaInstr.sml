@@ -206,7 +206,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int
@@ -525,7 +525,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REG of CellsBasis.cell
    | IMMED of int

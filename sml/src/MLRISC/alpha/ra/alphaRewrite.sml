@@ -13,8 +13,8 @@ functor AlphaRewrite(Instr : ALPHAINSTR) = struct
   fun rewriteUse(instr, rs, rt) = let
     fun match r = CB.sameColor(r,rs)
     fun replace r = if match r then rt else r
-    fun replaceEA(SOME(I.Displace{base, disp})) = 
-	  SOME(I.Displace{base=replace base, disp=disp})
+    fun replaceEA(SOME(I.Displace{base, disp, mem})) = 
+	  SOME(I.Displace{base=replace base, disp=disp, mem=mem})
       | replaceEA ea = ea
     fun alphaUse(instr) = let
       fun isRegOp (I.REGop r) = match r

@@ -7,30 +7,9 @@
  * whenever possible.  This eliminates some redundant temporaries which were
  * introduced before.
  *)
-signature X86SPILL = sig
-  structure I : X86INSTR
-  structure CB : CELLS_BASIS = CellsBasis
-  val spill :  
-    I.instruction * CB.cell * I.operand -> 
-      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
-
-  val reload : 
-    I.instruction * CB.cell * I.operand -> 
-      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
-
-  val fspill :  
-    I.instruction * CB.cell * I.operand -> 
-      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
-
-  val freload : 
-    I.instruction * CB.cell * I.operand -> 
-      {code:I.instruction list, proh:CB.cell list, newReg:CB.cell option}
-end
-
-
-functor X86Spill(structure Instr: X86INSTR
+functor X86SpillInstr(structure Instr: X86INSTR
                  structure Props: INSN_PROPERTIES where I = Instr
-		) : X86SPILL = struct
+		) : ARCH_SPILL_INSTR = struct
 
   structure I  = Instr
   structure C  = I.C
@@ -68,7 +47,7 @@ functor X86Spill(structure Instr: X86INSTR
   val newReg = C.newReg
 
 
-  fun spill(instr, reg, spillLoc) = let
+  fun spillR(instr, reg, spillLoc) = let
     fun x86Spill(instr, an) = let
       fun done(instr, an) = {code=[mark(instr, an)], proh=[], newReg=NONE}
     in
@@ -192,7 +171,7 @@ functor X86Spill(structure Instr: X86INSTR
   in f(instr, [])
   end 
 
-  fun reload(instr, reg, spillLoc) = let
+  fun reloadR(instr, reg, spillLoc) = let
     fun x86Reload(instr, reg, spillLoc, an) = let
         fun operand(rt, opnd) =
 	(case opnd
@@ -443,7 +422,7 @@ functor X86Spill(structure Instr: X86INSTR
 
 
 
-  fun fspill(instr, reg, spillLoc) = let
+  fun spillF(instr, reg, spillLoc) = let
     fun x86Fspill(instr, reg, spillLoc, an) = let
       fun withTmp(f, fsize, an) = let
 	val tmpR = C.newFreg()
@@ -513,7 +492,7 @@ functor X86Spill(structure Instr: X86INSTR
   end
 
 
-  fun freload(instr, reg, spillLoc) = let
+  fun reloadF(instr, reg, spillLoc) = let
     fun x86Freload(instr, reg, spillLoc, an) = let
 	fun rename(src as I.FDirect f) = 
 	    if CB.sameColor(f,reg) then spillLoc else src 
@@ -547,7 +526,7 @@ functor X86Spill(structure Instr: X86INSTR
 	       {code=[mark(I.FBINARY{binOp=binOp, src=spillLoc, dst=dst}, an)],
 		proh=[], 
 		newReg=NONE}
-	     else error "freload:FBINARY"
+	     else error "reloadF:FBINARY"
 
 	 (* Pseudo fp instructions.
 	  *)
@@ -600,7 +579,7 @@ functor X86Spill(structure Instr: X86INSTR
 			      return=return, pops=pops,
 			      uses=uses, cutsTo=cutsTo, mem=mem}, an)],
 	    newReg=NONE}
-	 | _  => error "freload"
+	 | _  => error "reloadF"
 	(*esac*))
     end (* x86Freload *)
 
@@ -614,4 +593,42 @@ functor X86Spill(structure Instr: X86INSTR
 
   in f(instr, [])
   end
+
+  fun spillToEA CB.GP (reg, ea) = let
+	fun returnMove() = 
+	  {code=[I.move{mvOp=I.MOVL, src=I.Direct reg, dst=ea}],
+	   proh=[], newReg=NONE}
+      in
+	 case ea
+	  of I.MemReg _  => returnMove()
+	   | I.Displace _ => returnMove()
+	   | I.Indexed _ => returnMove()
+	   | _ => error "spillToEA: GP"
+      end
+    | spillToEA CB.FP (freg, ea) = error "spillToEA: FP"
+    | spillToEA _ _ = error "spillToEA"
+
+  fun reloadFromEA CB.GP (reg, ea) = let
+        fun returnMove() = 
+	  {code=[I.move{mvOp=I.MOVL, dst=I.Direct reg, src=ea}],
+	   proh=[],
+	   newReg=NONE}
+      in
+	 case ea
+	  of I.MemReg _  => returnMove()
+	   | I.Displace _ => returnMove()
+	   | I.Indexed _ => returnMove()
+	   | _ => error "reloadFromEA: GP"
+      end 
+    | reloadFromEA CB.FP (freg, ea) = error "spillToEA: FP"
+    | reloadFromEA _ _ = error "spillToEA"
+
+
+  fun reload CB.GP = reloadR
+    | reload CB.FP = reloadF
+    | reload _ = error "reload"
+
+  fun spill CB.GP = spillR
+    | spill CB.FP = spillF
+    | spill _ = error "spill"
 end

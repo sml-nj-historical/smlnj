@@ -68,7 +68,7 @@ struct
       datatype ea = 
           Direct of $GP
         | FDirect of $FP
-        | Displace of {base: $GP, disp:operand} (* RegOp illegal as operand *)
+        | Displace of {base: $GP, disp: T.labexp, mem: Region.region} 
    
       (* Load/store operators that have the E suffix means that 64-bit
        * addressing is used.  Note: the x suffix is implicitly added if rb is a

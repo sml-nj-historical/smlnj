@@ -12,8 +12,8 @@ struct
      fun R r = if match r then rt else r 
      fun O(i as I.REG r) = if match r then I.REG rt else i
        | O i = i
-     fun EA(SOME(I.Displace{base, disp})) = 
-	  SOME(I.Displace{base=R base, disp=disp})
+     fun EA(SOME(I.Displace{base, disp, mem})) = 
+	  SOME(I.Displace{base=R base, disp=disp, mem=mem})
        | EA ea = ea
      fun sparcUse(instr) = 
        (case instr of

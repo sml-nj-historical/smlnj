@@ -178,7 +178,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype fsize =
      S
    | D
@@ -447,7 +447,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype fsize =
      S
    | D

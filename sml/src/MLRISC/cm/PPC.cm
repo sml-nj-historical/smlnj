@@ -17,6 +17,7 @@ Library
 	functor PPCProps
 	functor PPCRewrite
 	functor PPCShuffle
+	functor PPCSpillInstr
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -60,3 +61,5 @@ is
 	../ppc/mltree/ppcPseudoInstr.sig
 	../ppc/mltree/ppc.sml 
 	../ppc/ra/ppcRewrite.sml
+	../ppc/ra/ppcSpillInstr.sml
+

@@ -13,8 +13,8 @@ functor HppaRewrite(Instr:HPPAINSTR) = struct
 
   fun rewriteUse(instr, rs, rt) = let
     fun replc r = if CB.sameColor(r,rs) then rt else r
-    fun replcEA(SOME(I.Displace{base, disp})) = 
-	 SOME(I.Displace{base=replc base, disp=disp})
+    fun replcEA(SOME(I.Displace{base, disp, mem})) = 
+	 SOME(I.Displace{base=replc base, disp=disp, mem=mem})
       | replcEA ea  = ea
     fun hppaUse(instr) = 
      (case instr

@@ -10,8 +10,9 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
        if CB.sameColor(r,rs) then SOME(I.Direct rt) else e 
     | ea(e as SOME(I.FDirect r), rs, rt) = 
        if CB.sameColor(r,rs) then SOME(I.FDirect rt) else e 
-    | ea(e as SOME(I.Displace{base, disp}), rs, rt) =
-       if CB.sameColor(base,rs) then SOME(I.Displace{base=rt, disp=disp}) 
+    | ea(e as SOME(I.Displace{base, disp, mem}), rs, rt) =
+       if CB.sameColor(base,rs) then 
+	   SOME(I.Displace{base=rt, disp=disp, mem=mem}) 
        else e 
 
   fun rewriteUse(instr, rs, rt) = let
@@ -19,8 +20,8 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
     fun rwOperand(opnd as I.RegOp r) = 
 	 if CB.sameColor(r,rs) then I.RegOp rt else opnd
       | rwOperand opnd = opnd
-    fun ea(SOME(I.Displace{base, disp})) = 
-	SOME(I.Displace{base=rplac base, disp=disp}) 
+    fun ea(SOME(I.Displace{base, disp, mem})) = 
+	SOME(I.Displace{base=rplac base, disp=disp, mem=mem}) 
       | ea x = x
 
     fun ppcUse(instr) = 

@@ -6,7 +6,6 @@ Library
 	signature X86INSTR
 	signature X86REWRITE
 	signature X86SHUFFLE
-	signature X86SPILL
 	structure X86Cells
 	structure X86InstrExt
 	functor IA32SVID_CCalls
@@ -24,7 +23,7 @@ Library
 	functor X86RA
 	functor X86Rewrite
 	functor X86Shuffle
-	functor X86Spill
+        functor X86SpillInstr
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -77,7 +76,7 @@ is
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
 	../x86/ra/x86Rewrite.sml
-	../x86/ra/x86Spill.sml
+	../x86/ra/x86SpillInstr.sml
 	../x86/backpatch/x86Jumps.sml 
 	../x86/mltree/x86.sml
 	../x86/mltree/x86-fp.sml

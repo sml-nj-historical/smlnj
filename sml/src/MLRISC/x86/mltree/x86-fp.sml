@@ -1834,6 +1834,7 @@ struct
 	       of I.ANNOTATION{a,i} =>
 		      trans(stamp, i, a::an, rest, dead, lastUses, code)
 		| I.COPY{k=CB.FP, ...} => (log(); fcopy instr)
+		| I.LIVE _ => DONE(mark(instr, an)::code)
 		| I.INSTR instr => x86trans(instr)
 		| _  => FINISH(mark(instr, an)::code)
            end (* trans *)

@@ -158,7 +158,7 @@ functor X86RA
                         cell:CellsBasis.cell, (* spilled cell *)
                         id  :RAGraph.logical_spill_id
                        } -> 
-                       { opnd: I.operand,
+                       { opnd: I.ea,
                          kind: spillOperandKind
                        }
 
@@ -176,8 +176,8 @@ functor X86RA
        val memRegs   : CellsBasis.cell list
        val phases    : raPhase list
 
-       val spillLoc  : spill_info * Annotations.annotations ref * 
-                       RAGraph.logical_spill_id -> I.operand
+       val spillLoc  : spill_info * Annotations.annotations ref * RAGraph.logical_spill_id 
+		           -> I.ea
 
        (* This function is called once before spilling begins *)
        val spillInit : RAGraph.interferenceGraph -> unit
@@ -226,7 +226,11 @@ struct
              structure Asm = Asm
             )
 
-    structure X86Spill = X86Spill(structure Instr=I structure Props=InsnProps)
+   structure X86SpillInstr = X86SpillInstr(structure Instr=I structure Props=InsnProps)
+   val spillFInstr = X86SpillInstr.spill CB.FP
+   val reloadFInstr = X86SpillInstr.reload CB.FP
+   val spillInstr = X86SpillInstr.spill CB.GP
+   val reloadInstr = X86SpillInstr.reload CB.GP
 
    fun annotate([], i) = i
      | annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
@@ -348,10 +352,24 @@ struct
       | getFregLoc(S, an, Ra.MEM_REG r) = I.FDirect r
 
     (* spill floating point *)
-
-    fun spillF S {annotations=an, kill, reg, spillLoc, instr} = 
-	(floatSpillCnt := !floatSpillCnt + 1;
-	 X86Spill.fspill(instr, reg, getFregLoc(S, an, spillLoc)))
+    fun spillF S {annotations=an, kill, reg, spillLoc, instr} = let
+      (* preserve annotation on instruction *)
+      fun spill(instrAn, I.ANNOTATION{a, i}) = spill(a::instrAn, i)
+	| spill(instrAn, I.KILL{regs, spilled}) = 
+	   {code=
+	      [annotate
+		(instrAn, 
+		 I.KILL {regs=C.rmvFreg(reg, regs), 
+			 spilled=C.addFreg(reg, spilled)})],
+	     proh = [], 
+	     newReg=NONE}
+	| spill(instrAn, I.LIVE _) = error "spillF: LIVE"
+	| spill(_, I.COPY _) = error "spillF: COPY"
+	| spill(instrAn, I.INSTR _) = 
+	   (floatSpillCnt := !floatSpillCnt + 1;
+	    spillFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
+    in spill([], instr)
+    end
 
     fun spillFreg S {src, reg, spillLoc, annotations=an} = 
        (floatSpillCnt := !floatSpillCnt + 1;
@@ -374,13 +392,22 @@ struct
     (* rename floating point *)
     fun renameF{instr, fromSrc, toSrc} =
         (floatRenameCnt := !floatRenameCnt + 1;
-         X86Spill.freload(instr, fromSrc, I.FDirect toSrc)
+         reloadFInstr(instr, fromSrc, I.FDirect toSrc)
         )
 
     (* reload floating point *)
-    fun reloadF S {annotations=an,reg,spillLoc,instr} = 
-	(floatReloadCnt := !floatReloadCnt + 1;
-	 X86Spill.freload(instr, reg, getFregLoc(S, an, spillLoc)))
+    fun reloadF S {annotations=an,reg,spillLoc,instr} = let
+      fun reload(instrAn, I.ANNOTATION{a,i}) = reload(a::instrAn, i)
+	| reload(instrAn, I.LIVE{regs, spilled}) = 
+	   {code=[I.LIVE{regs=C.rmvFreg(reg, regs), spilled=C.addFreg(reg, spilled)}],
+	    proh=[],
+	    newReg=NONE}
+	| reload(_, I.KILL _) = error "reloadF: KILL"
+	| reload(instrAn, instr as I.INSTR _) = 
+  	   (floatReloadCnt := !floatReloadCnt + 1;
+	    reloadFInstr(instr, reg, getFregLoc(S, an, spillLoc)))
+    in reload([], instr)
+    end
 
     fun reloadFreg S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
@@ -415,7 +442,7 @@ struct
 
     fun renameF'{instr, fromSrc, toSrc} =
         (floatRenameCnt := !floatRenameCnt + 1;
-         X86Spill.freload(instr, fromSrc, I.FPR toSrc)
+         reloadFInstr(instr, fromSrc, I.FPR toSrc)
         )
 
     fun reloadFreg' S {dst, reg, spillLoc, annotations=an} = 
@@ -465,15 +492,33 @@ struct
     val K8 = length Int.avail
 
      (* register allocation for general purpose registers *)
-    fun spillR8 S {annotations=an, kill, reg, spillLoc, instr} = 
-	(case getRegLoc(S, an, reg, spillLoc) 
-	  of {opnd=spillLoc, kind=SPILL_LOC} => 
-		 ( intSpillCnt := !intSpillCnt + 1;
-		   X86Spill.spill(instr, reg, spillLoc)
-		  ) 
-	   | _ => (* don't have to spill a constant *)
-	         {code=[], newReg=NONE, proh=[]} 
-        (*esac*))
+    fun spillR8 S {annotations=an, kill, reg, spillLoc, instr} = let
+      fun annotate([], i) = i
+	| annotate(a::an, i) = annotate(an, I.ANNOTATION{a=a, i=i})
+
+      (* preserve annotation on instruction *)
+      fun spill(instrAn, I.ANNOTATION{a,i}) = spill(a::instrAn, i)
+	| spill(instrAn, I.KILL{regs, spilled}) = 
+	   {code=
+	      [annotate
+		(instrAn, 
+		 I.KILL {regs=C.rmvReg(reg, regs), 
+			 spilled=C.addReg(reg, spilled)})],
+	     proh = [], 
+	     newReg=NONE}
+	| spill(instrAn, I.LIVE _) = error "spill: LIVE"
+	| spill(_, I.COPY _) = error "spill: COPY"
+	| spill(instrAn, I.INSTR _) = 
+	  (case getRegLoc(S, an, reg, spillLoc) 
+	    of {opnd=spillLoc, kind=SPILL_LOC} => 
+		   ( intSpillCnt := !intSpillCnt + 1;
+		     spillInstr(annotate(instrAn, instr), reg, spillLoc)
+		    ) 
+	     | _ => (* don't have to spill a constant *)
+		   {code=[], newReg=NONE, proh=[]} 
+	  (*esac*))
+    in spill([], instr)
+    end
 
     fun isMemReg r = let val x = CB.registerNum r
                      in  x >= 8 andalso x < 32 end
@@ -503,13 +548,23 @@ struct
    
     fun renameR8{instr, fromSrc, toSrc} = 
         (intRenameCnt := !intRenameCnt + 1;
-         X86Spill.reload(instr, fromSrc, I.Direct toSrc)
+         reloadInstr(instr, fromSrc, I.Direct toSrc)
         )
 
-    fun reloadR8 S {annotations=an, reg, spillLoc, instr} = 
-	( intReloadCnt := !intReloadCnt + 1;
-	  X86Spill.reload(instr, reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
-	 ) 
+
+    fun reloadR8 S {annotations=an, reg, spillLoc, instr} = let
+      fun reload(instrAn, I.ANNOTATION{a,i}) = reload(a::instrAn, i)
+	| reload(instrAn, I.LIVE{regs, spilled}) = 
+	   {code=[I.LIVE{regs=C.rmvReg(reg, regs), spilled=C.addReg(reg, spilled)}],
+	    proh=[],
+	    newReg=NONE}
+	| reload(_, I.KILL _) = error "reload: KILL"
+	| reload(instrAn, instr as I.INSTR _)  = 
+  	 ( intReloadCnt := !intReloadCnt + 1;
+	   reloadInstr(annotate(instrAn, instr), reg, #opnd(getRegLoc(S,an,reg,spillLoc)))
+  	  ) 
+    in reload([], instr)
+    end 
 
     fun reloadReg S {dst, reg, spillLoc, annotations=an} = 
         let val _ = intReloadCnt := !intReloadCnt + 1

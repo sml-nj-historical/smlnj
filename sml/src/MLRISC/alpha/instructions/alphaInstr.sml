@@ -17,7 +17,7 @@ sig
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REGop of CellsBasis.cell
    | IMMop of int
@@ -305,7 +305,7 @@ struct
    datatype ea =
      Direct of CellsBasis.cell
    | FDirect of CellsBasis.cell
-   | Displace of {base:CellsBasis.cell, disp:int}
+   | Displace of {base:CellsBasis.cell, disp:T.labexp, mem:Region.region}
    datatype operand =
      REGop of CellsBasis.cell
    | IMMop of int

@@ -445,7 +445,7 @@ struct
    
       datatype ea = Direct of $GP
                   | FDirect of $GP
-                  | Displace of {base: $GP, disp: int}
+                  | Displace of {base: $GP, disp: T.labexp, mem: Region.region}
 
            (* used to encode the opf_low field V9 *)
       datatype fsize! = S 0b00100

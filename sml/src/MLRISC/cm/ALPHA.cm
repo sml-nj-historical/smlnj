@@ -15,6 +15,7 @@ Library
 	functor AlphaProps
 	functor AlphaRewrite
 	functor AlphaShuffle
+	functor	AlphaSpillInstr
 is
 #if defined(NEW_CM)
 #if SMLNJ_VERSION * 100 + SMLNJ_MINOR_VERSION >= 11030
@@ -56,3 +57,5 @@ is
 	../alpha/mltree/alphaPseudoInstr.sig
 	../alpha/mltree/alpha.sml
 	../alpha/ra/alphaRewrite.sml
+	../alpha/ra/alphaSpillInstr.sml
+

@@ -70,11 +70,11 @@ sig
     * Rename all uses fromSrc to toSrc
     *)
    type renameSrc =
-      {instr    : I.instruction,       (* instruction where spill is to occur *)
+      {instr    : I.instruction,        (* instruction where spill is to occur *)
        fromSrc  : CB.cell,              (* register to rename *)
        toSrc    : CB.cell               (* register to rename to *)
       } ->
-      {code     : I.instruction list,  (* renamed instr *)
+      {code     : I.instruction list,   (* renamed instr *)
        proh     : CB.cell list,         (* prohibited from future spilling *)
        newReg   : CB.cell option        (* the renamed value is here *)
       }
@@ -85,9 +85,9 @@ sig
    type reloadDst =
       {dst      : CB.cell,              (* register to reload to *)
        reg      : CB.cell,              (* the register *)
-       spillLoc : G.spillLoc,          (* logical spill location *)
+       spillLoc : G.spillLoc,           (* logical spill location *)
        annotations : Annotations.annotations ref (* annotations *)
-      } -> I.instruction list          (* reload code *)
+      } -> I.instruction list           (* reload code *)
 
    (*
     * The following function rewrites an instruction and insert

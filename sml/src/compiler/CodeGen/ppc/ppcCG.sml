@@ -4,6 +4,7 @@
 structure PPCCG = 
   MachineGen
   ( structure MachSpec   = PPCSpec
+    structure T		 = PPCMLTree
     structure CB	 = CellsBasis
     structure ClientPseudoOps = PPCClientPseudoOps
     structure PseudoOps  = PPCPseudoOps
@@ -52,10 +53,11 @@ structure PPCCG =
     structure RA = 
        RISC_RA
          (structure I         = PPCInstr
-          structure Flowgraph = PPCCFG
+          structure CFG       = PPCCFG
           structure CpsRegs   = PPCCpsRegs
           structure InsnProps = InsnProps 
           structure Rewrite   = PPCRewrite(PPCInstr) 
+	  structure SpillInstr= PPCSpillInstr(PPCInstr)
           structure Asm       = PPCAsmEmitter
           structure SpillHeur = ChaitinSpillHeur
           structure Spill     = RASpill(structure InsnProps = InsnProps
@@ -65,7 +67,10 @@ structure PPCCG =
 
           val architecture = PPCSpec.architecture
 
-          val beginRA = SpillTable.spillInit
+	  datatype spillOperandKind = SPILL_LOC | CONST_VAL
+	  type spill_info = unit
+
+          fun beforeRA _ = SpillTable.spillInit()
 
           val sp = I.C.stackptrR
           val spill = CPSRegions.spill
@@ -77,29 +82,11 @@ structure PPCCG =
              val avail     = PPCCpsRegs.availR
              val dedicated = PPCCpsRegs.dedicatedR
 
-             (* make copy *)
-	      fun copy((rds, rss), I.COPY{k=CB.GP, sz, tmp, ...}) = let
-		val tmp = (case (rds, rss) of ([_], [_]) => NONE | _ => tmp)
-              in I.COPY{k=CB.GP, sz=sz, dst=rds, src=rss, tmp=tmp}
-              end
+	     fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getRegLoc loc))
 
-              (* spill copy temp *)
-              fun spillCopyTmp(an, I.COPY{k=CB.GP, sz, tmp,dst,src, ...},loc) =
-                  I.COPY{k=CB.GP, sz=sz,  dst=dst, src=src,
-			 tmp=SOME(I.Displace{base=sp, 
-                                             disp=I.ImmedOp(SpillTable.getRegLoc loc)})}
-
-
-              (* spill register *)
-             fun spillInstr{src,spilledCell,spillLoc,an} =
-                 [I.st{st=I.STW, ra=sp, 
-                       d=I.ImmedOp(SpillTable.getRegLoc spillLoc),
-                       rs=src, mem=spill}]
-             (* reload register *)
-             fun reloadInstr{dst,spilledCell,spillLoc,an} =
-                 [I.l{ld=I.LWZ, ra=sp, 
-                      d=I.ImmedOp(SpillTable.getRegLoc spillLoc), 
-                      rt=dst, mem=spill}]
+             fun spillLoc{info, an, cell, id} = 
+		  {opnd=I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME id), mem=spill},
+		   kind=SPILL_LOC}
 
              val mode = RACore.NO_OPTIMIZATION
          end
@@ -108,24 +95,10 @@ structure PPCCG =
              val avail     = PPCCpsRegs.availF
              val dedicated = PPCCpsRegs.dedicatedF
 
-	     fun copy((fds, fss), I.COPY{k=CB.FP, sz, tmp, ...}) = let
-	       val tmp =(case (fds, fss) of ([_],[_]) => NONE | _ => tmp)
-	     in I.COPY{k=CB.FP, sz=sz, dst=fds, src=fss, tmp=tmp}
-	     end
+	     fun mkDisp loc = T.LI(T.I.fromInt(32, SpillTable.getFregLoc loc))
 
-	     fun spillCopyTmp(an, I.COPY{k=CB.FP, sz, tmp,dst,src},loc) =
-		 I.COPY{k=CB.FP, sz=sz, dst=dst,src=src,
-			tmp=SOME(I.Displace{base=sp, disp=I.ImmedOp(SpillTable.getFregLoc loc)})}
-
-
-             fun spillInstr(_, fs,loc) =
-                 [I.stf{st=I.STFD, ra=sp, 
-                        d=I.ImmedOp(SpillTable.getFregLoc loc), 
-                        fs=fs, mem=spill}]
-   
-             fun reloadInstr(_, ft,loc) =
-                 [I.lf{ld=I.LFD, ra=sp, d=I.ImmedOp(SpillTable.getFregLoc loc),
-                       ft=ft, mem=spill}]
+	     fun spillLoc(S, an, loc) = 
+		I.Displace{base=sp, disp=mkDisp(RAGraph.FRAME loc), mem=spill}
 
              val mode = RACore.NO_OPTIMIZATION
          end

@@ -542,7 +542,7 @@ struct
       datatype ea = 
           Direct of $GP
         | FDirect of $GP
-        | Displace of {base: $GP, disp:int}
+        | Displace of {base: $GP, disp: T.labexp, mem: Region.region}
    
       datatype operand =
           (* this is used only during instruction selection *)
