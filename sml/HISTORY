@@ -14,6 +14,26 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/07/30 17:55:00 CDT
+Tag: blume-20040730-various
+Description:
+
+Gearing up towards 110.47...
+
+- various minor bugfixes to ml-nlffigen
+- a beginning of a manual for nlffi
+
+- eliminated 'export name=value' in config/install.sh as this does
+  not work with certain versions of /bin/sh
+  (Thanks to David King at Motorola for catching this.)
+
+- several bugfixes provided or suggested by David Hansel at Reactive Systems:
+  - added a test for tm==NULL to gmtime.c and localtime.c
+  - applied patch for incorrect GetFileTime under win32
+  - toSeconds -> toMilliseconds in Win32/win32-process.sml
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/07/21 18:20:00 CDT
 Tag: blume-20040721-nlffigen
 Description:

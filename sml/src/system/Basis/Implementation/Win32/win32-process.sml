@@ -21,5 +21,5 @@ structure Win32_Process : WIN32_PROCESS =
 
 	val sleep' : W32G.word -> unit = cf "sleep"
 
-	val sleep = sleep' o W32G.Word.fromLargeInt o TimeImp.toSeconds
+	val sleep = sleep' o W32G.Word.fromLargeInt o TimeImp.toMilliseconds
     end

@@ -13,7 +13,8 @@
 #
 
 if [ x${INSTALL_QUIETLY} = xtrue ] ; then
-    export CM_VERBOSE=false
+    export CM_VERBOSE
+    CM_VERBOSE=false
 fi
 
 vsay() {
@@ -89,8 +90,8 @@ trap 'rm -f $tmpfiles' 0 1 2 3 15
 # that will be queried by the bootstrap code)
 # Especially important is CM_PATHCONFIG.
 #
-CM_PATHCONFIG=$LIBDIR/pathconfig
 export CM_PATHCONFIG
+CM_PATHCONFIG=$LIBDIR/pathconfig
 
 #
 # the release version that we are installing
@@ -326,7 +327,8 @@ if [ -r $HEAPDIR/sml.$HEAP_SUFFIX ]; then
     vsay $this: Heap image $HEAPDIR/sml.$HEAP_SUFFIX already exists.
     fish $LIBDIR/basis.cm
     # ignore requested arc name since we have to live with what is there:
-    export CM_DIR_ARC=$ORIG_CM_DIR_ARC
+    export CM_DIR_ARC
+    CM_DIR_ARC=$ORIG_CM_DIR_ARC
 else
     $CONFIGDIR/unpack $ROOT $BOOT_ARCHIVE
 
@@ -335,7 +337,8 @@ else
     cd $ROOT
 
     # Target arc:
-    export CM_DIR_ARC=${CM_DIR_ARC:-".cm"}
+    export CM_DIR_ARC
+    CM_DIR_ARC=${CM_DIR_ARC:-".cm"}
 
     if [ $CM_DIR_ARC = $ORIG_CM_DIR_ARC ] ; then
 	: we are happy
