@@ -1216,7 +1216,7 @@ let
 			     | _ => bug "makeFUNdec:checkuniq")
 			   fbs1));
 	    (let val (ndec, nenv) = 
-                   FUNdec(completeMatch,map makefb fbs1,region,compInfo)
+                   FUNdec(completeMatch,map makefb fbs1,compInfo)
               in showDec("elabFUNdec: ",ndec,nenv);
 		 (ndec, nenv, TS.empty, updt)
              end)

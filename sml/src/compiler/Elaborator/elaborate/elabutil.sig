@@ -87,7 +87,7 @@ sig
                     exp: Absyn.exp} list, 
           tyvars: Types.tyvar list ref,
 	  region: Ast.region } list 
-       * Ast.region * compInfo -> (Absyn.dec * StaticEnv.staticEnv)
+       * compInfo -> (Absyn.dec * StaticEnv.staticEnv)
 
   val wrapRECdec : Absyn.rvb list * compInfo 
                    -> (Absyn.dec * StaticEnv.staticEnv)

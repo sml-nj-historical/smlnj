@@ -319,8 +319,8 @@ val argVarSym = S.varSymbol "arg"
 
 fun cMARKexp (e, r) = if !ElabControl.markabsyn then MARKexp (e, r) else e
 
-fun FUNdec (completeMatch, fbl, region, 
-            compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
+fun FUNdec (completeMatch, fbl,
+	    compInfo as {mkLvar=mkv,errorMatch,...}: compInfo) = 
     let fun fb2rvb ({var, clauses as ({pats,resultty,exp}::_),tyvars,region}) =
 	    let fun getvar _ =  newVALvar(argVarSym, mkv)
 		val vars = map getvar pats
