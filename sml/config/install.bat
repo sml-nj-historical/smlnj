@@ -36,4 +36,4 @@ for /D %%a in (*.*) do move %%a ..\lib
 cd ..
 
 REM Do all the rest using the precompiled installer.
-%COMSPEC% /C "bin\sml config\libinstall.sml -m $smlnj/installer.cm"
+%COMSPEC% /C "bin\sml -m $smlnj/installer.cm"
