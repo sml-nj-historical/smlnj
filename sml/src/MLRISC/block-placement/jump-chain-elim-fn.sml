@@ -9,7 +9,7 @@ functor JumpChainElimFn (
 
     structure CFG : CONTROL_FLOW_GRAPH
     structure InsnProps : INSN_PROPERTIES
-    sharing CFG.I = InsnProps.I
+      where I = CFG.I
 
   ) : sig
 
@@ -23,10 +23,15 @@ functor JumpChainElimFn (
     structure IP = InsnProps
     structure G = Graph
 
+  (* flags *)
+    val disable = MLRiscControl.getFlag "disable-jump-chain-elim"
+    val dumpCFG = MLRiscControl.getFlag "dump-cfg-jump-chain-elim"
+    val dumpStrm = MLRiscControl.debug_stream
+
     fun run (cfg, blocks) = let
 	  val G.GRAPH{
 		  node_info, out_edges, set_out_edges, in_edges,
-		  forall_nodes, ...
+		  forall_nodes, remove_node, ...
 		} = cfg
 	  val needFilter = ref false
 	(* map a block ID to a label *)
@@ -101,10 +106,19 @@ functor JumpChainElimFn (
 		  (* end case *)
 		end
 	    | doBlock _ = ()
-	  fun keepBlock (blkId, _) = not(null(in_edges blkId))
+	  fun keepBlock (blkId, _) = if null(in_edges blkId)
+		then (remove_node blkId; false)
+		else true
+	  val blocks = if !disable
+		then blocks
+		else (
+		  forall_nodes doBlock;
+		  if !needFilter then List.filter keepBlock blocks else blocks)
 	  in
-	    forall_nodes doBlock;
-	    if !needFilter then List.filter keepBlock blocks else blocks
+	    if !dumpCFG
+	      then CFG.dump(!dumpStrm, "after jump-chain elimination", cfg)
+	      else ();
+	    blocks
 	  end
 
   end
