@@ -1,0 +1,5 @@
+(cm-init)
+Library
+	structure CMB
+is
+	host-compiler-0.cm

@@ -1,0 +1,6 @@
+(cm-hook)
+Library
+	structure CM
+is
+	cm-hook.cm
+	fetch-cm.sml

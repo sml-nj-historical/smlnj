@@ -1,0 +1,6 @@
+#!/bin/sh
+HEAP_IMAGE=$1
+shift
+LIB_DIR=`pwd`/${HEAP_IMAGE}.lib
+CM_PATHCONFIG=$LIB_DIR/pathconfig CM_LOCAL_PATHCONFIG=/dev/null \
+    sml @SMLload=$HEAP_IMAGE "$@"

@@ -1,0 +1,32 @@
+(* Copyright YALE FLINT PROJECT 1997 *)
+(* Copyright Bell Labs, Lucent Technologies 1999 *)
+(* intsys.cm *)
+
+(*
+ * Revised for using the new CM. (M.Blume, 7/1999)
+ *)
+
+(use-hook cm-init)
+Library
+	(* bootstrap stuff *)
+	structure InteractiveSystem
+is
+	use-hook
+
+	basis.cm
+	viscomp-lib.cm
+
+	(* need access to CM's "init" function *)
+	host-compiler-0.cm
+
+	(* these are just here so they get made... *)
+	host-compiler.cm
+	host-cm.cm
+	host-cmb.cm
+
+	(* build boot environments *)
+	boot-env-fn.sml
+	boot-env.sml
+
+	(* glue code (build the interactive system) *)
+	int-sys.sml
