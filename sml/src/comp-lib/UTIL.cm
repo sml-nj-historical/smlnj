@@ -7,6 +7,7 @@ intmap.sig
 intmap.sml
 intmapf.sml
 intset.sml
+intsetf.sml
 intstrmap.sig
 intstrmap.sml
 mapf.sml
