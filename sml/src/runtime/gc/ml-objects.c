@@ -525,9 +525,10 @@ ml_val_t ML_CData (ml_state_t *msp, void *data, int nbytes)
 PVT bool_t ShrinkCheck (arena_t *ap, Word_t reqSzB)
 {
     if ((ap->tospSizeB > ap->maxSizeB)
-    && (((Addr_t)(ap->nextw) - (Addr_t)(ap->tospBase)) + reqSzB < ap->maxSizeB)) {
+    && (USED_SPACE(ap) + 2*reqSzB < ap->tospSizeB)) {
       /* here the arena has grown beyond the soft max, while it would be
-       * possible to fit the request within the soft max, so we force another GC.
+       * possible to fit the twice request within the arena, so we force
+       * another GC.
        */
 	ap->reqSizeB = reqSzB;
 	return TRUE;
