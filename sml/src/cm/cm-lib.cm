@@ -26,6 +26,7 @@ is
 	depend/graph.sml
 	depend/build.sml
 	depend/da-env.sml
+	depend/ggraph.sml
 
 	(* handling SML source code *)
 	smlfile/smlinfo.sml
@@ -34,11 +35,18 @@ is
 	smlfile/skel-io.sml
 	smlfile/skel-exports.sml
 
+	(* handling stable groups *)
+	stable/bininfo.sml
+
 	(* tools for handling other source types *)
 	tools/tools.sml
 	tools/yacctool.sml
 	tools/lextool.sml
 	tools/burgtool.sml
+
+	(* doing actual compilation work *)
+	compile/compile-type.sig
+	compile/generic.sml
 
 	(* overall control of CM *)
 	main/say.sml

@@ -16,7 +16,7 @@ type lexresult = (svalue, pos) token
 type lexarg = {
 	       enterC: unit -> unit,
 	       leaveC: unit -> bool,
-	       newS: pos * string -> unit,
+	       newS: pos -> unit,
 	       addS: char -> unit,
 	       addSC: string * int -> unit,
 	       addSN: string * pos -> unit,
@@ -145,7 +145,7 @@ sharp="#";
 			      "unmatched comment delimiter";
 			    continue ());
 
-<INITIAL>"\""		=> (YYBEGIN S; newS (yypos, "string"); continue ());
+<INITIAL>"\""		=> (YYBEGIN S; newS yypos; continue ());
 
 <S>"\\a"		=> (addS #"\a"; continue ());
 <S>"\\b"		=> (addS #"\b"; continue ());

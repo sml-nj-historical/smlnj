@@ -1,5 +1,6 @@
 (*
  * Internal data structure representing a CM dependency graph.
+ * (fine-grain: compilation units)
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -15,7 +16,7 @@ structure DependencyGraph = struct
 
     datatype bnode =
 	PNODE of primitive
-      | BNODE of { bininfo: Dummy.t, (* BinInfo.info *)
+      | BNODE of { bininfo: BinInfo.info,
 		   localimports: bnode list,
 		   globalimports: farbnode list }
 
@@ -36,7 +37,7 @@ structure DependencyGraph = struct
 
     fun describeSBN (SB_BNODE (PNODE p)) = Primitive.toString p
       | describeSBN (SB_BNODE (BNODE { bininfo = i, ... })) =
-	(ignore Dummy.v; "bininfo")
+	BinInfo.describe i
       | describeSBN (SB_SNODE (SNODE { smlinfo = i, ... })) =
 	SmlInfo.fullName i
 
@@ -45,7 +46,7 @@ structure DependencyGraph = struct
     (* comparing various nodes for equality *)
     fun beq (PNODE p, PNODE p') = Primitive.eq (p, p')
       | beq (BNODE { bininfo = i, ... }, BNODE { bininfo = i', ... }) =
-	(ignore Dummy.v; false)
+	BinInfo.eq (i, i')
       | beq _ = false
     fun seq (SNODE { smlinfo = i, ... }, SNODE { smlinfo = i', ... }) =
 	SmlInfo.eq (i, i')

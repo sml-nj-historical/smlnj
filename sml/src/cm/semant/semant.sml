@@ -12,10 +12,9 @@ signature CM_SEMANT = sig
     type ml_symbol
     type cm_symbol
 
-    type group
+    type group = GroupGraph.group
 
-    type privileges
-    type privilegespec
+    type privilegespec = GroupGraph.privilegespec
     type aexp
     type exp
     type members			(* still conditional *)
@@ -50,7 +49,7 @@ signature CM_SEMANT = sig
     val emptyMembers : members
     val member : GeneralParams.params * (pathname -> group)
 	-> { sourcepath: pathname, group: pathname, class: cm_symbol option,
-	     error: string -> (PrettyPrint.ppstream -> unit) -> unit }
+	     error: GenericVC.ErrorMsg.complainer }
 	-> members
     val members : members * members -> members
     val guarded_members :
@@ -94,20 +93,16 @@ end
 structure CMSemant :> CM_SEMANT = struct
 
     structure SymPath = GenericVC.SymPath
+    structure EM = GenericVC.ErrorMsg
+    structure GG = GroupGraph
 
     type pathname = AbsPath.t
     type context = AbsPath.context
     type ml_symbol = Symbol.symbol
     type cm_symbol = string
 
-    type privileges = StringSet.set
-    type privilegespec = { required : privileges, granted : privileges }
-
-    datatype group =
-	GROUP of { exports: DependencyGraph.impexp SymbolMap.map,
-		   islib: bool,
-		   privileges: privilegespec,
-		   grouppath: AbsPath.t }
+    type group = GG.group
+    type privilegespec = GG.privilegespec
 
     type environment = MemberCollection.collection
 
@@ -135,29 +130,34 @@ structure CMSemant :> CM_SEMANT = struct
     fun applyTo mc e = e mc
 
     fun emptyGroup path =
-	GROUP { exports = SymbolMap.empty,
-	        islib = false,
-		privileges = { required = StringSet.empty,
-			       granted = StringSet.empty },
-		grouppath = path }
+	GG.GROUP { exports = SymbolMap.empty,
+		   islib = false,
+		   privileges = { required = StringSet.empty,
+				  granted = StringSet.empty },
+		   grouppath = path,
+		   subgroups = [] }
 	
 
     fun group (g, p, e, m, error) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = Option.map (applyTo mc) e
 	val exports = MemberCollection.build (mc, filter, error)
+	val subgroups = MemberCollection.subgroups mc
     in
-	GROUP { exports = exports, islib = false,
-	        privileges = p, grouppath = g }
+	GG.GROUP { exports = exports, islib = false,
+		   privileges = p, grouppath = g,
+		   subgroups = subgroups }
     end
 
     fun library (g, p, e, m, error) = let
 	val mc = applyTo MemberCollection.empty m
 	val filter = applyTo mc e
 	val exports = MemberCollection.build (mc, SOME filter, error)
+	val subgroups = MemberCollection.subgroups mc
     in
-	GROUP { exports = exports, islib = true,
-	        privileges = p, grouppath = g }
+	GG.GROUP { exports = exports, islib = true,
+		   privileges = p, grouppath = g,
+		   subgroups = subgroups }
     end
 
     local
@@ -177,16 +177,11 @@ structure CMSemant :> CM_SEMANT = struct
 	     { required = required, granted = StringSet.add (granted, s) })
     end
 
-    (* get the export map from a group *)
-    fun getExports (GROUP { exports, islib, ... }) =
-	{ imports = exports,
-	  gimports = if islib then SymbolMap.empty else exports }
-
     fun emptyMembers env = env
     fun member (params, rparse) arg env = let
-	val coll = MemberCollection.expandOne (params, getExports o rparse) arg
+	val coll = MemberCollection.expandOne (params, rparse) arg
 	val error = #error arg
-	fun e0 s = error s GenericVC.ErrorMsg.nullErrorBody
+	fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
     in
 	MemberCollection.sequential (env, coll, e0)
     end

@@ -17,19 +17,19 @@ signature MEMBERCOLLECTION = sig
 
     type collection
 
-    type farlooker = AbsPath.t ->
-	{ imports: impexp SymbolMap.map, gimports: impexp SymbolMap.map }
-
     val empty : collection
 
-    val expandOne : GeneralParams.params * farlooker
-	-> { sourcepath: AbsPath.t, group: AbsPath.t, class: string option,
-	     error : string -> (PrettyPrint.ppstream -> unit) -> unit }
+    val expandOne : GeneralParams.params * (AbsPath.t -> GroupGraph.group)
+	-> { sourcepath: AbsPath.t, group: AbsPath.t,
+	     class: string option,
+	     error : GenericVC.ErrorMsg.complainer }
 	-> collection
     val sequential : collection * collection * (string -> unit) -> collection
 
     val build : collection * SymbolSet.set option * (string -> unit)
 	-> impexp SymbolMap.map
+
+    val subgroups : collection -> GroupGraph.group list
 
     val num_look : collection -> string -> int
     val ml_look : collection -> symbol -> bool
@@ -42,6 +42,7 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     structure EM = GenericVC.ErrorMsg
     structure CBE = GenericVC.BareEnvironment
     structure SS = SymbolSet
+    structure GG = GroupGraph
 
     type smlinfo = SmlInfo.info
     type symbol = Symbol.symbol
@@ -51,16 +52,15 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	COLLECTION of { imports: impexp SymbolMap.map,
 		        gimports: impexp SymbolMap.map,
 		        smlfiles: smlinfo list,
-			localdefs: smlinfo SymbolMap.map }
-
-    type farlooker = AbsPath.t ->
-	{ imports: impexp SymbolMap.map, gimports: impexp SymbolMap.map }
+			localdefs: smlinfo SymbolMap.map,
+			subgroups: GG.group list }
 
     val empty =
 	COLLECTION { imports = SymbolMap.empty,
 		     gimports = SymbolMap.empty,
 		     smlfiles = [],
-		     localdefs = SymbolMap.empty }
+		     localdefs = SymbolMap.empty,
+		     subgroups = [] }
 
     fun sequential (COLLECTION c1, COLLECTION c2, error) = let
 	fun describeSymbol (s, r) = let
@@ -85,30 +85,35 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 	COLLECTION { imports = i_union (#imports c1, #imports c2),
 		     gimports = gi_union (#gimports c1, #gimports c2),
 		     smlfiles = #smlfiles c1 @ #smlfiles c2,
-		     localdefs = ld_union (#localdefs c1, #localdefs c2) }
+		     localdefs = ld_union (#localdefs c1, #localdefs c2),
+		     subgroups = #subgroups c1 @ #subgroups c2 }
     end
 
-    fun expandOne (params, gexports) arg = let
+    fun expandOne (params, rparse) arg = let
 	val primconf = #primconf params
 	val { sourcepath, group, class, error } = arg
 	fun noPrimitive () = let
-	    fun e0 s = error s EM.nullErrorBody
+	    fun e0 s = error EM.COMPLAIN s EM.nullErrorBody
+	    fun w0 s = error EM.WARN s EM.nullErrorBody
 	    val expansions = PrivateTools.expand e0 (sourcepath, class)
 	    fun exp2coll (PrivateTools.GROUP p) = let
-		    val { imports = i, gimports = gi } = gexports p
+		    val g as GG.GROUP { exports = i, islib, ... } = rparse p
+		    val gi = if islib then SymbolMap.empty else i
 	        in
 		    COLLECTION { imports = i, gimports = gi, smlfiles = [],
-				 localdefs = SymbolMap.empty }
+				 localdefs = SymbolMap.empty,
+				 subgroups = [g] }
 	        end
 	      | exp2coll (PrivateTools.SMLSOURCE src) = let
 		    val { sourcepath = p, history = h, share = s } = src
 		    val i =  SmlInfo.info
 			params
 			{ sourcepath = p, group = group,
-			  error = error, history = h,
+			  error = error EM.COMPLAIN,
+			  history = h,
 			  share = s }
 		    val exports = SmlInfo.exports i
-		    val _ = if SS.isEmpty exports then e0 "no module exports"
+		    val _ = if SS.isEmpty exports then w0 "no module exports"
 			    else ()
 		    fun addLD (s, m) = SymbolMap.insert (m, s, i)
 		    val ld = SS.foldl addLD SymbolMap.empty exports
@@ -116,7 +121,8 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		    COLLECTION { imports = SymbolMap.empty,
 				 gimports = SymbolMap.empty,
 				 smlfiles = [i],
-				 localdefs = ld }
+				 localdefs = ld,
+				 subgroups = [] }
 		end
 	    val collections = map exp2coll expansions
 	    fun combine (c1, c2) = sequential (c2, c1, e0)
@@ -140,12 +146,15 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 		COLLECTION { imports = imp,
 			     gimports = SymbolMap.empty,
 			     smlfiles = [],
-			     localdefs = SymbolMap.empty }
+			     localdefs = SymbolMap.empty,
+			     subgroups = [] }
 	    end
 	  | NONE => noPrimitive ()
     end
 
     fun build (COLLECTION c, fopt, error) = BuildDepend.build (c, fopt, error)
+
+    fun subgroups (COLLECTION { subgroups = sg, ... }) = sg
 
     fun num_look (c: collection) (s: string) = 0
 

@@ -44,26 +44,17 @@ structure SkelIO :> SKELIO = struct
 	(* We are consing up the whole output as a list of strings
 	 * before concatenating it to form the final result and
 	 * wrinting it out using one single `output' call. *)
-	fun w_name (n, r) = let
-	    val ns = S.nameSpace n
-	    val prefix =
-		case ns of
-		    S.SIGspace => ";"
-		  | S.FCTspace => "("
-		  | S.FSIGspace => ")"
-		  | S.STRspace => ""	(* this should be safe now *)
-		  | _ => raise InternalError
-	in
-	    prefix :: S.name n :: "." :: r
-	end
+	fun w_name (n, r) =
+	    (case S.nameSpace n of
+		 S.SIGspace => "'"	(* only tyvars could start like that *)
+	       | S.FCTspace => "("	(* no sym can start like that *)
+	       | S.FSIGspace => ")"	(* no sym can start like that *)
+	       | S.STRspace => ""	(* this should be safe now *)
+	       | _ => raise InternalError)
+	    :: S.name n :: "." :: r
 
-	fun w_list w ([], r) = "0" :: r
-	  | w_list w ([a], r) = "1" :: w (a, r)
-	  | w_list w ([a, b], r) = "2" :: w (a, w (b, r))
-	  | w_list w ([a, b, c], r) = "3" :: w (a, w (b, w (c, r)))
-	  | w_list w ([a, b, c, d], r) = "4" :: w (a, w (b, w (c, w (d, r))))
-	  | w_list w (a :: b :: c :: d :: e :: x, r) =
-	    "5" :: w (a, w (b, w (c, w (d, w (e, w_list w (x, r))))))
+	(* foldl means that last element appears first in output! *)
+	fun w_list w (l, r) = foldl w (";" :: r) l
 
 	fun w_path (SP.SPATH p, r) = w_list w_name (p, r)
 
@@ -99,24 +90,20 @@ structure SkelIO :> SKELIO = struct
 		loop ([], first)
 	    end
 	in
-	    fun r_name (SOME #";") = get (S.sigSymbol, rd ())
+	    fun r_name (SOME #"'") = get (S.sigSymbol, rd ())
 	      | r_name (SOME #"(") = get (S.fctSymbol, rd ())
 	      | r_name (SOME #")") = get (S.fsigSymbol, rd ())
 	      | r_name first = get (S.strSymbol, first)
 	end
 
-	fun r_list r = let
-	    fun n () = r (rd ())
-	    fun rl (SOME #"0") = []
-	      | rl (SOME #"1") = [n ()]
-	      | rl (SOME #"2") = [n (), n ()]
-	      | rl (SOME #"3") = [n (), n (), n ()]
-	      | rl (SOME #"4") = [n (), n (), n (), n ()]
-	      | rl (SOME #"5") =
-		n () :: n () :: n () :: n () :: n () ::	rl (rd ())
-	      | rl _ = raise FormatError
+	(* lists are written in reverse order, so a tail-recursive
+	 * reader is exactly right because it undoes the reversal *)
+	fun r_list r first = let
+	    (* argument order important: side effects in arguments! *)
+	    fun rl (l, SOME #";") = l
+	      | rl (l, first) = rl (r first :: l, rd ())
 	in
-	    rl
+	    rl ([], first)
 	end
 
 	fun r_path first = SP.SPATH (r_list r_name first)

@@ -55,12 +55,11 @@ structure S = CMSemant
 %arg (grouppath, context, error', error, recParse, doMember) :
     S.pathname *
     S.context *
-    (pos * pos -> string -> (PrettyPrint.ppstream -> unit) -> unit) *
+    (pos * pos -> GenericVC.ErrorMsg.complainer) *
     (pos * pos -> string -> unit) *
     (pos * pos -> S.pathname -> S.group) *
     (S.pathname * pos * pos * S.cm_symbol option *
-     (string -> (PrettyPrint.ppstream -> unit) -> unit)
-       -> S.members)
+     GenericVC.ErrorMsg.complainer -> S.members)
 %start description
 %eop EOF
 %noshift EOF

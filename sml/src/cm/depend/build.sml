@@ -12,7 +12,8 @@ signature BUILDDEPEND = sig
 	{ imports: impexp SymbolMap.map,
 	  gimports: impexp SymbolMap.map,
 	  smlfiles: SmlInfo.info list,
-	  localdefs: SmlInfo.info SymbolMap.map }
+	  localdefs: SmlInfo.info SymbolMap.map,
+	  subgroups: GroupGraph.group list }
 	* SymbolSet.set option		(* filter *)
 	* (string -> unit)		(* error *)
 	->
@@ -43,11 +44,10 @@ structure BuildDepend :> BUILDDEPEND = struct
 
     (* get the description for a symbol *)
     fun symDesc (s, r) =
-	S.nameSpaceToString (S.nameSpace s) :: " " ::
-	S.name s :: r
+	S.nameSpaceToString (S.nameSpace s) :: " " :: S.name s :: r
 
     fun build (coll, fopt, error) = let
-	val { imports, gimports, smlfiles, localdefs } = coll
+	val { imports, gimports, smlfiles, localdefs, subgroups } = coll
 
 	(* the "blackboard" where analysis results are announced *)
 	(* (also used for cycle detection) *)
@@ -199,11 +199,12 @@ structure BuildDepend :> BUILDDEPEND = struct
 		    (SS.app (ignore o lookup e) s; DE.EMPTY)
 
 		and evalSeqDecl e [] = DE.EMPTY
-		  | evalSeqDecl e (h :: t) =
-		    foldl (fn (d, e') =>
-			   DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e'))
-		          (evalDecl e h)
-			  t
+		  | evalSeqDecl e (h :: t) = let
+			fun one (d, e') =
+			    DE.LAYER (evalDecl (DE.LAYER (e', e)) d, e')
+		    in
+			foldl one (evalDecl e h) t
+		    end
 
 		and evalModExp e (SK.Var sp) = lookSymPath e sp
 		  | evalModExp e (SK.Decl l) = evalSeqDecl e l

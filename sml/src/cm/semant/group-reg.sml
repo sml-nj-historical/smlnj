@@ -1,6 +1,6 @@
 (*
  * The "group registry".  CM uses this to remember which groups it is
- * currently working on, and what the corresponding input sources are.
+ * currently working on and what the corresponding input sources are.
  *
  * (C) 1999 Lucent Technologies, Bell Laboratories
  *
@@ -22,7 +22,7 @@ structure GroupReg :> GROUPREG = struct
 
     fun new () = ref AbsPathMap.empty : groupreg
 
-    fun register gr (g, s) = gr := AbsPathMap.insert (!gr, g, s)
-    fun lookup gr g = valOf (AbsPathMap.find (!gr, g))
+    fun register gr (p, s) = gr := AbsPathMap.insert (!gr, p, s)
+    fun lookup gr p = valOf (AbsPathMap.find (!gr, p))
     fun registered gr g = isSome (AbsPathMap.find (!gr, g))
 end
