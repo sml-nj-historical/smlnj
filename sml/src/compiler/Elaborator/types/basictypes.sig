@@ -17,6 +17,9 @@ sig
   val int32Tycon : Types.tycon 
   val int32Ty : Types.ty
 
+  val int64Tycon : Types.tycon
+  val int64Ty : Types.ty
+
   val intinfTycon : Types.tycon
   val intinfTy : Types.ty
 
@@ -31,6 +34,9 @@ sig
 
   val word32Tycon : Types.tycon
   val word32Ty: Types.ty
+
+  val word64Tycon : Types.tycon
+  val word64Ty : Types.ty
 
   val stringTycon  : Types.tycon 
   val stringTy : Types.ty

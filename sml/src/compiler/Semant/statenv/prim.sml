@@ -62,11 +62,13 @@ val primTypes =
              ("unit", BT.unitTycon) :-:
              ("int", BT.intTycon) :-:
              ("int32", BT.int32Tycon) :-:
+             ("int64", BT.int64Tycon) :-:
 	     ("intinf", BT.intinfTycon) :-:
              ("real", BT.realTycon) :-:
              ("word", BT.wordTycon) :-:
              ("word8", BT.word8Tycon) :-:
              ("word32", BT.word32Tycon) :-:
+             ("word64", BT.word64Tycon) :-:
              ("cont", BT.contTycon) :-:
              ("control_cont", BT.ccontTycon) :-:
              ("array", BT.arrayTycon) :-:
@@ -180,16 +182,18 @@ fun rf t = T.CONty(BT.refTycon,[t])
 fun ay t = T.CONty(BT.arrayTycon,[t])
 fun vct t = T.CONty(BT.vectorTycon,[t])
 
-val bo = BT.boolTy
-val f64 = BT.realTy
-val i = BT.intTy
-val w = BT.wordTy
 val u = BT.unitTy
+val bo = BT.boolTy
+val i = BT.intTy
 val i32 = BT.int32Ty
-val w32 = BT.word32Ty
-val w8 = BT.word8Ty
-val s  = BT.stringTy
+val i64 = BT.int64Ty
 val inf = BT.intinfTy
+val w8 = BT.word8Ty
+val w = BT.wordTy
+val w32 = BT.word32Ty
+val w64 = BT.word64Ty
+val f64 = BT.realTy
+val s  = BT.stringTy
 
 fun p0 t = t
 fun p1 t = T.POLYty {sign=[false], tyfun=T.TYFUN {arity=1, body=t}}
@@ -286,16 +290,25 @@ val i_w8 = p0(ar(i,w8))
 val i32_w8 = p0(ar(i32,w8))
 val w32_w8 = p0(ar(w32,w8))
 
-val inf_i32 = p0(ar(inf,i32))
-val inf_w32 = p0(ar(inf,w32))
 val inf_i   = p0(ar(inf,i))
-val inf_w   = p0(ar(inf,w))
+val inf_i32 = p0(ar(inf,i32))
+val inf_i64 = p0(ar(inf,i64))
 val inf_w8  = p0(ar(inf,w8))
-val i32_inf = p0(ar(i32,inf))
-val w32_inf = p0(ar(w32,inf))
+val inf_w   = p0(ar(inf,w))
+val inf_w32 = p0(ar(inf,w32))
+val inf_w64 = p0(ar(inf,w64))
 val i_inf   = p0(ar(i,inf))
-val w_inf   = p0(ar(w,inf))
+val i32_inf = p0(ar(i32,inf))
+val i64_inf = p0(ar(i64,inf))
 val w8_inf  = p0(ar(w8,inf))
+val w_inf   = p0(ar(w,inf))
+val w32_inf = p0(ar(w32,inf))
+val w64_inf = p0(ar(w64,inf))
+
+val w64_pw32 = p0(ar(w64,tu[w32,w32]))
+val pw32_w64 = p0(ar(tu[w32,w32],w64))
+val i64_pw32 = p0(ar(i64,tu[w32,w32]))
+val pw32_i64 = p0(ar(tu[w32,w32],i64))
 
 val cc_b = binp BT.charTy
 
@@ -469,22 +482,37 @@ val allPrimops =
        ("trunc_32_8_w",  P.TRUNC(32,8),   	w32_w8) :-:
 
        (* conversion primops involving intinf *)
-       ("test_inf_32",   P.TEST_INF 32,         inf_i32) :-:
        ("test_inf_31",   P.TEST_INF 31,         inf_i)   :-:
-       ("copy_32_inf_w", P.COPY_INF 32,         w32_inf) :-:
-       ("copy_32_inf_i", P.COPY_INF 32,         i32_inf) :-:
-       ("copy_31_inf_w", P.COPY_INF 31,         w_inf)   :-:
-       ("copy_31_inf_i", P.COPY_INF 31,         i_inf)   :-:
+       ("test_inf_32",   P.TEST_INF 32,         inf_i32) :-:
+       ("test_inf_64",   P.TEST_INF 64,         inf_i64) :-:
        ("copy_8_inf",    P.COPY_INF 8,          w8_inf)  :-:
-       ("extend_32_inf_i", P.EXTEND_INF 32,     i32_inf) :-:
-       ("extend_32_inf_w", P.EXTEND_INF 32,     w32_inf) :-:
-       ("extend_31_inf_i", P.EXTEND_INF 31,     i_inf) :-:
-       ("extend_31_inf_w", P.EXTEND_INF 31,     w_inf) :-:
+       ("copy_8_inf_w",  P.COPY_INF 8,          w8_inf)  :-:
+       ("copy_31_inf_w", P.COPY_INF 31,         w_inf)   :-:
+       ("copy_32_inf_w", P.COPY_INF 32,         w32_inf) :-:
+       ("copy_64_inf_w", P.COPY_INF 64,         w64_inf) :-:
+       ("copy_31_inf_i", P.COPY_INF 31,         i_inf)   :-:
+       ("copy_32_inf_i", P.COPY_INF 32,         i32_inf) :-:
+       ("copy_64_inf_i", P.COPY_INF 64,         i64_inf) :-:
        ("extend_8_inf",  P.EXTEND_INF 8,        w8_inf)  :-:
-       ("trunc_inf_32",  P.TRUNC_INF 32,        inf_w32) :-:
-       ("trunc_inf_31",  P.TRUNC_INF 31,        inf_w) :-:
+       ("extend_8_inf_w",  P.EXTEND_INF 8,      w8_inf)  :-:
+       ("extend_31_inf_w", P.EXTEND_INF 31,     w_inf) :-:
+       ("extend_32_inf_w", P.EXTEND_INF 32,     w32_inf) :-:
+       ("extend_64_inf_w", P.EXTEND_INF 64,     w64_inf) :-:
+       ("extend_31_inf_i", P.EXTEND_INF 31,     i_inf) :-:
+       ("extend_32_inf_i", P.EXTEND_INF 32,     i32_inf) :-:
+       ("extend_64_inf_i", P.EXTEND_INF 64,     i64_inf) :-:
        ("trunc_inf_8",   P.TRUNC_INF 8,         inf_w8)  :-:
+       ("trunc_inf_31",  P.TRUNC_INF 31,        inf_w) :-:
+       ("trunc_inf_32",  P.TRUNC_INF 32,        inf_w32) :-:
+       ("trunc_inf_64",  P.TRUNC_INF 64,        inf_w64) :-:
        
+       (* primops to go between abstract and concrete representation of
+	* 64-bit ints and words *)
+       ("w64p",          P.INLIDENTITY,         w64_pw32) :-:
+       ("p64w",          P.INLIDENTITY,         pw32_w64) :-:
+       ("i64p",          P.INLIDENTITY,         i64_pw32) :-:
+       ("p64i",          P.INLIDENTITY,         pw32_i64) :-:
+
        (* *** integer 31 primops ***
         *   Many of the i31 primops are being abused for different types
 	*   (mostly Word8.word and also for char).  In these cases

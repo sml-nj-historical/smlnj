@@ -60,11 +60,29 @@ fun mkpt (sym,arity,eqprop,ptn) =
 	   kind = PRIMITIVE ptn,
 	   stub = NONE}
 
+val word32Tycon = mkpt("word32", 0, YES, PTN.ptn_int32)
+val word32Ty = CONty(word32Tycon, nil)
+
+val w32pairTycon =
+    DEFtyc { stamp = Stamps.special "w32pair",
+	     tyfun = TYFUN { arity = 0,
+			     body = CBT.tupleTy [word32Ty, word32Ty] },
+	     path = IP.IPATH [tycSymbol "w32pair"],
+	     strict = [] }
+
+fun mk64 sym =
+    GENtyc { stamp = Stamps.special sym, arity = 0, eq = ref YES,
+	     path = IP.IPATH [tycSymbol sym], stub = NONE,
+	     kind = ABSTRACT w32pairTycon }
+
 val intTycon = (* mkpt ("int", 0, YES, PTN.ptn_int31) *) CBT.intTycon
 val intTy = (* CONty(intTycon, nil) *) CBT.intTy
 
 val int32Tycon = mkpt ("int32", 0, YES, PTN.ptn_int32)
 val int32Ty = CONty(int32Tycon, nil)
+
+val int64Tycon = mk64 "int64"
+val int64Ty = CONty (int64Tycon, [])
 
 val intinfTycon = mkpt ("intinf", 0, YES, PTN.ptn_intinf)
 val intinfTy = CONty(intinfTycon, nil)
@@ -78,8 +96,8 @@ val wordTy = CONty(wordTycon, nil)
 val word8Tycon = mkpt("word8", 0, YES, PTN.ptn_int31)
 val word8Ty = CONty(word8Tycon, nil)
 
-val word32Tycon = mkpt("word32", 0, YES, PTN.ptn_int32)
-val word32Ty = CONty(word32Tycon, nil)
+val word64Tycon = mk64 "word64"
+val word64Ty = CONty (word64Tycon, [])
 
 val stringTycon = (* mkpt("string", 0, YES, PTN.ptn_string) *) CBT.stringTycon
 val stringTy = (* CONty(stringTycon, nil) *) CBT.stringTy

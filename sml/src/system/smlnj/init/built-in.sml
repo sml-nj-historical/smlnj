@@ -160,6 +160,12 @@ in
         val max     : word32 * word32 -> word32  = InLine.w32max
       end
 
+    structure Word64 =
+      struct
+        val extern : word64 -> word32 * word32 = InLine.cast
+	val intern : word32 * word32 -> word64 = InLine.cast
+      end
+
     structure Int32 =
       struct
         val test_int31   : int32 -> int    = InLine.test_32_31_i
@@ -280,6 +286,12 @@ in
         val min     : int * int -> int  = InLine.i31min
         val max     : int * int -> int  = InLine.i31max
         val abs     : int -> int = InLine.i31abs
+      end
+
+    structure Int64 =
+      struct
+        val extern : int64 -> word32 * word32 = InLine.cast
+	val intern : word32 * word32 -> int64 = InLine.cast
       end
 
     structure Word8 =

@@ -91,7 +91,7 @@ Group
 	structure IntImp
 	structure Int31Imp
 	structure Int32Imp
-	structure IntInfImp
+	structure Int64
 	structure IntInfImp
 	structure LargeIntImp
 	structure FixedIntImp
@@ -104,6 +104,7 @@ Group
 	structure WordImp
 	structure Word31Imp
 	structure Word32Imp
+	structure Word64
 	structure Bool
 	structure Word8Imp
 	structure Word8Vector
@@ -322,10 +323,12 @@ is
 	ieee-real.sml
 	int31.sml
 	int32.sml
+	int64.sml
 	int-inf-sig.sml
 	int-inf.sml
 	word31.sml
 	word32.sml
+	word64.sml
 	real64.sml
 #if defined(ARCH_X86)
 	math64-x86.sml

@@ -1129,17 +1129,22 @@ and mkExp (exp, d) =
              ((if TU.equalType (t, BT.intTy) then INT (LN.int s)
                else if TU.equalType (t, BT.int32Ty) then INT32 (LN.int32 s)
 	       else if TU.equalType (t, BT.intinfTy) then VAR (getII s)
+	       else if TU.equalType (t, BT.int64Ty) then
+		   let val (hi, lo) = LN.int64 s
+		   in RECORD [WORD32 hi, WORD32 lo]
+		   end
                else bug "translate INTexp")
               handle Overflow => (repErr "int constant too large"; INT 0))
 
         | g (WORDexp(s, t)) =
              ((if TU.equalType (t, BT.wordTy) then WORD (LN.word s)
-               else if TU.equalType (t, BT.word8Ty) 
-                    then WORD (LN.word8 s)
-                    else if TU.equalType (t, BT.word32Ty) 
-                         then WORD32 (LN.word32 s) 
-                         else (ppType t;
-			       bug "translate WORDexp"))
+               else if TU.equalType (t, BT.word8Ty) then WORD (LN.word8 s)
+               else if TU.equalType (t, BT.word32Ty) then WORD32 (LN.word32 s)
+	       else if TU.equalType (t, BT.word64Ty) then
+		   let val (hi, lo) = LN.word64 s
+		   in RECORD [WORD32 hi, WORD32 lo]
+		   end
+               else (ppType t; bug "translate WORDexp"))
                handle Overflow => (repErr "word constant too large"; INT 0))
 
         | g (REALexp s) = REAL s

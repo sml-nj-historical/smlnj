@@ -320,6 +320,12 @@ let fun ppValue (obj: object, ty: T.ty, depth: int) : unit =
                                                      root, family)),
 				  argtys',depth,l,r,accu)
 		       end
+		| (T.ABSTRACT _, _) =>
+		    (if TU.eqTycon (tyc, BT.int64Tycon) then
+			 PP.string ppstrm "<int64>"
+		     else  if TU.eqTycon (tyc, BT.word64Tycon) then
+			 PP.string ppstrm "<word64>"
+		     else PP.string ppstrm "-")
 		| _ => PP.string ppstrm "-")
 	   | T.CONty(tyc as T.RECORDtyc [], _) => PP.string ppstrm  "()"
 	   | T.CONty(tyc as T.RECORDtyc labels, argtys) =>

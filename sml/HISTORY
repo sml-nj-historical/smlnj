@@ -14,6 +14,15 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/11/09 17:50:00 CST
+Tag: blume-20041109-64bit
+Description:
+
+Started adding some infrastructure for supporting 64-bit int- and
+word-types.  (Still in its very early stages.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
 Date: 2004/10/28 10:45:00 CDT
 Tag: Release_110_50
 Description:
