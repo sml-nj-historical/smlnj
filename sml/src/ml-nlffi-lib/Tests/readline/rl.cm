@@ -1,3 +1,16 @@
+(* rl.cm
+ *
+ *   Top-level .cm file for readline example.
+ *
+ *   (To test the readline input stream, load this library
+ *    and run
+ *        TextIO.setInstream (TextIO.stdIn, ReadlineStream.stream);
+ *    and see what happens.)
+ *
+ * Copyright (c) 2004 by Toyota Technological Institute at Chicago
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 library
   structure RL
   structure ReadlineStream

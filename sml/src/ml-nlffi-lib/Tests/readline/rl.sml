@@ -1,3 +1,12 @@
+(* rl.sml
+ *
+ *   Simple stub for readline to hide NLFFI's C types and take
+ *   care of freeing malloc'd data.							
+ *
+ * Copyright (c) 2004 by Toyota Technological Institute at Chicago
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 structure RL : sig
     type prompt
     val noprompt : prompt

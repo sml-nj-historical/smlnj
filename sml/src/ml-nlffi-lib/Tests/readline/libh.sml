@@ -1,3 +1,11 @@
+(* libh.sml
+ *
+ *   Establish access to dynamically loaded libraries for curses and readline.
+ *
+ * Copyright (c) 2004 by Toyota Technological Institute at Chicago
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 structure LibH = struct
     local 
 	val lh_curses = DynLinkage.open_lib

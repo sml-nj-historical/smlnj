@@ -1,3 +1,12 @@
+(* stream.sml
+ *
+ *   Implementation of functional input stream (TextIO.StreamIO.instream)
+ *   on top of readline library linked via NLFFI.
+ *
+ * Copyright (c) 2004 by Toyota Technological Institute at Chicago
+ *
+ * Author: Matthias Blume (blume@tti-c.org)
+ *)
 structure ReadlineStream : sig
 
     val stream : TextIO.StreamIO.instream
