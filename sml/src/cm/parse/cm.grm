@@ -126,7 +126,10 @@ exports : export				(export)
 opt_exports : (* empty *)                       (NONE)
             | exports                           (SOME exports)
 
-export : ml_symbol				(S.export ml_symbol)
+export : ml_symbol				(S.export
+						 (ml_symbol,
+						  error (ml_symbolleft,
+							 ml_symbolright)))
        | IF exp guarded_exports			(S.guarded_exports
 						  (exp, guarded_exports,
 						   error (expleft, expright)))

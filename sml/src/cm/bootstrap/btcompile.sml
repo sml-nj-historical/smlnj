@@ -131,6 +131,7 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 	     * brewed pervasive env, core env, and primitives *)
 	    val core = valOf (RT.snode ginfo_nocore core)
 	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
+	    val core_sym = #1 (#sym core)
 
 	    (* The following is a bit of a hack (but corenv is a hack anyway):
 	     * As soon as we have core available, we have to patch the
@@ -157,10 +158,15 @@ functor BootstrapCompileFn (structure MachDepVC: MACHDEP_VC
 
 	    val _ = ovldR := savedOvld
 
+	    (* This is a hack but must be done for both the symbolic
+	     * and later the dynamic part of the core environment:
+	     * we must include these parts in the pervasive env. *)
+	    val perv_sym = E.layerSymbolic (#1 (#sym pervasive), core_sym)
+
 	    val param =
 		mkParam { primconf = Primitive.configuration pspecs,
 			  pervasive = E.mkenv { static = #1 (#stat pervasive),
-					        symbolic = #1 (#sym pervasive),
+					        symbolic = perv_sym,
 						dynamic = emptydyn },
 			  pervcorepids =
 			    PidSet.addList (PidSet.empty,

@@ -62,7 +62,7 @@ signature CM_SEMANT = sig
 
     (* constructing export lists *)
     val emptyExports : exports
-    val export : ml_symbol -> exports
+    val export : ml_symbol * complainer -> exports
     val exports : exports * exports -> exports
     val guarded_exports :
 	exp * (exports * exports) * (string -> unit) -> exports
@@ -211,7 +211,12 @@ structure CMSemant :> CM_SEMANT = struct
     fun error_member thunk env = (thunk (); env)
 
     fun emptyExports env = SymbolSet.empty
-    fun export s env = SymbolSet.singleton s
+    fun export (s, error) env =
+	if MemberCollection.ml_look env s then SymbolSet.singleton s
+	else (error (concat ["exported ",
+			     Symbol.nameSpaceToString (Symbol.nameSpace s),
+			     " not defined: ", Symbol.name s]);
+	      SymbolSet.empty)
     fun exports (e1, e2) env = SymbolSet.union (e1 env, e2 env)
     fun guarded_exports (c, (e1, e2), error) env =
 	if saveEval (c, env, error) then e1 env else e2 env
