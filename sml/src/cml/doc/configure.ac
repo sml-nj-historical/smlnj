@@ -56,7 +56,7 @@ dnl
 else
   AC_MSG_ERROR([must specify location of SML Basis Library info file])
 fi
-AC_SUBST(MLDOC_DIR)
+AC_SUBST(BASIS_INFO_PATH)
 
 dnl
 dnl Generate makefiles
