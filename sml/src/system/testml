@@ -1,11 +1,9 @@
 #!/bin/sh
 
-if [ $# -gt 0 ] ; then
-    HEAP_IMAGE=$1
-    shift
-else
-    HEAP_IMAGE=sml
-fi
+case "$1" in
+    [^@]*) HEAP_IMAGE=$1; shift ;;
+    *) HEAP_IMAGE=sml ;;
+esac
 
 cmddir=`dirname $0`
 cmddir=`cd $cmddir; pwd`
