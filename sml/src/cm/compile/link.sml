@@ -103,7 +103,7 @@ in
 			    else (evict gp i; false)
 			end
 	in
-	    app (visit o #1) (SmlInfoMap.listItemsi (!smlmap))
+	    app (ignore o visit o #1) (SmlInfoMap.listItemsi (!smlmap))
 	end
 
 	fun newTraversal0 (GG.ERRORGROUP, _) =
