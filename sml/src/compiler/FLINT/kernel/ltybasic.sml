@@ -267,6 +267,28 @@ fun tkLookup (kenv, i, j) =
 
 fun tkInsert (kenv, ks) = ks::kenv
 
+(* strip any unused type variables out of a kenv, given a list of
+ * [encoded] free type variables.  the result is a "parallel list" of
+ * the kinds of those free type variables in the environment.
+ * --CALeague
+ *)
+fun tkLookupFreeVars (kenv, ftvs) =
+    let
+	fun g (kenv, d, []) = []
+	  | g (kenv, d, ftv::ftvs) =
+	    let val (d', i') = LtyKernel.tvDecode ftv
+		val kenv' = List.drop (kenv, d'-d)
+		    handle _ => raise tkUnbound
+		val k = List.nth (hd kenv', i')
+		    handle _ => raise tkUnbound
+		val rest = g (kenv', d', ftvs)
+	    in
+		k :: rest
+	    end
+    in
+	g (kenv, 1, ftvs)
+    end
+
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TYC ENVIRONMENT                         *
  ***************************************************************************)

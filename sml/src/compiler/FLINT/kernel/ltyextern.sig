@@ -47,7 +47,7 @@ val lt_pinst_st : lty * tyc list -> lty        (* strict apply *)
 
 exception TkTycChk
 exception LtyAppChk
-val lt_inst_chk : lty * tyc list * tkindEnv -> lty list
+val lt_inst_chk_gen : unit -> lty * tyc list * tkindEnv -> lty list
 
 (* special adjustment functions used during type specializations *)
 val lt_sp_adj : tkind list * lty * tyc list * int * int -> lty

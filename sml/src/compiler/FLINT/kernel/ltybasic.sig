@@ -115,6 +115,7 @@ exception tkUnbound
 val initTkEnv: tkindEnv
 val tkLookup : tkindEnv * int * int -> tkind
 val tkInsert : tkindEnv * tkind list -> tkindEnv
+val tkLookupFreeVars : tkindEnv * LtyKernel.enc_tvar list -> tkind list
 
 (** utility functions on tycEnv *)
 exception tcUnbound

@@ -17,9 +17,9 @@ local open SortedList
 in 
 
 type enc_tvar = int
-fun tvToInt (d, i) = d * MVAL + i
-fun tvFromInt x = ((x div MVAL), (x mod MVAL))
-
+fun tvEncode (d, i) = d * MVAL + i
+fun tvDecode x = ((x div MVAL), (x mod MVAL))
+                    
 fun exitLevel xs = 
   let fun h ([], x) = rev x
         | h (a::r, x) = if a < BVAL then h(r, x) else h(r, (a-MVAL)::x)
@@ -326,7 +326,7 @@ local structure Weak = SMLofNJ.Weak
         | exitAux x = x
 
       fun tc_aux tc = 
-        let fun g (TC_VAR(d, i)) = AX_REG(true, [tvToInt(d, i)])
+        let fun g (TC_VAR(d, i)) = AX_REG(true, [tvEncode(d, i)])
               | g (TC_NVAR(v, d, i)) = baseAux (*** THIS IS WRONG ! ***)
               | g (TC_PRIM pt) = baseAux
               | g (TC_APP(ref(_, TC_FN _, AX_NO), _)) = AX_NO
@@ -385,6 +385,8 @@ fun tc_vs (r as ref(_ : int, _ : tycI, AX_NO)) = NONE
 fun lt_vs (r as ref(_ : int, _ : ltyI, AX_NO)) = NONE
   | lt_vs (r as ref(_ : int, _ : ltyI, AX_REG (_,x))) = SOME x
 
+(* unfortunately, the `temporary hack' is being exported now! *)
+val tc_freevars = tc_vs 
 
 (** converting from the hash-consing reps to the standard reps *)
 fun tk_outX (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
@@ -467,7 +469,7 @@ local fun tcc_env_int(x, 0, 0, te) = x
  
       fun withEff ([], ol, nl, tenv) = false
         | withEff (a::r, ol, nl, tenv) = 
-            let val (i, j) = tvFromInt a
+            let val (i, j) = tvDecode a
                 val neweff = 
                   if i > ol then (ol <> nl)
                   else (* case tcLookup(i, tenv)
@@ -1113,7 +1115,7 @@ fun tc_depth (x, d) =
    in case tvs
        of NONE => bug "unexpected case in tc_depth"
         | SOME [] => DI.top
-        | SOME (a::_) => d + 1 - (#1(tvFromInt a))
+        | SOME (a::_) => d + 1 - (#1(tvDecode a))
   end
 
 fun tcs_depth ([], d) = DI.top

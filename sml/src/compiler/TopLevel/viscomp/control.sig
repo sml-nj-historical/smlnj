@@ -138,6 +138,7 @@ sig
   val controlDependence : bool ref
   val flinton : bool ref
   val checkflint1 : bool ref
+  val checkkinds  : bool ref
 
   val compdebugging : bool ref
   val mudebugging   : bool ref
