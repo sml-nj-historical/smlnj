@@ -60,12 +60,12 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
     end
 
     fun expandOne gexports { sourcepath, group, class } = let
-	val expansions = Tools.expand (sourcepath, class)
-	fun exp2coll (Tools.GROUP p) =
+	val expansions = PrivateTools.expand (sourcepath, class)
+	fun exp2coll (PrivateTools.GROUP p) =
 	    COLLECTION { subexports = gexports p,
 			 smlfiles = [],
 			 localdefs = SymbolMap.empty }
-	  | exp2coll (Tools.PRIMITIVE p) = let
+	  | exp2coll (PrivateTools.PRIMITIVE p) = let
 		val exports = Primitive.exports p
 		fun addFN (s, m) =
 		    SymbolMap.insert (m, s, (NONE, DG.PNODE p))
@@ -75,10 +75,10 @@ structure MemberCollection :> MEMBERCOLLECTION = struct
 			     smlfiles = [],
 			     localdefs = SymbolMap.empty }
 	    end
-	  | exp2coll (Tools.SMLSOURCE src) = let
+	  | exp2coll (PrivateTools.SMLSOURCE src) = let
 		val { sourcepath = p, history = h, share = s } = src
 		val i =  SmlInfo.new { sourcepath = p, group = group,
-				       history = SOME h, share = s,
+				       history = h, share = s,
 				       stableinfo = NONE }
 		val exports = SmlInfo.exports i
 		fun addLD (s, m) = SymbolMap.insert (m, s, i)

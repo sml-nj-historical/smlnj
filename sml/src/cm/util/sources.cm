@@ -7,17 +7,19 @@
  * Author: Matthias Blume (blume@kurims.kyoto-u.ac.jp)
  *)
 Library
-	signature SET
-	structure Set
 	structure StringSet
+	structure StringMap
 	structure SymbolSet
 	structure SymbolMap
+	signature INTERRUPT
+	structure Interrupt
 is
-	set.sml
 	stringset.sml
+	stringmap.sml
 	symbolordkey.sml
 	symbolset.sml
 	symbolmap.sml
+	interrupt.sml
 
 	../../compiler/viscomp-lib.cm
 

@@ -8,7 +8,7 @@
 structure DependencyGraph = struct
 
     type groupinfo = Dummy.t
-    type primitive = Dummy.t
+    type primitive = Primitive.primitive
 
     type filter = SymbolSet.set option
 

@@ -18,6 +18,9 @@ signature ABSPATH = sig
 
     val name : t -> string
     val compare : t * t -> order
+    val context : t -> context
+    val spec : t -> string
+    val contextName : context -> string
 
     val native : { context: context, spec: string } -> t
     val standard : { context: context, spec: string } -> t
@@ -169,6 +172,13 @@ structure AbsPath :> ABSPATH = struct
 
 	(* get the name as a string (calls elab, so don't cache externally!) *)
 	fun name p = #name (elab p)
+
+	(* get the context back *)
+	fun context (PATH { context = c, ... }) = c
+	fun contextName c = #name (elabContext c)
+
+	(* get the spec back *)
+	fun spec (PATH { spec = s, ... }) = s
 
 	(* compare pathnames efficiently *)
 	fun compare (p1, p2) = compareId (id p1, id p2)

@@ -7,7 +7,7 @@ signature SMLINFO = sig
 
     val new : { sourcepath: AbsPath.t,
 	        group: AbsPath.t,
-	        history: string option,
+	        history: string list,
 		share: bool option,
 		stableinfo: stableinfo option }
 	-> info
