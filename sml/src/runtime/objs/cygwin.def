@@ -354,36 +354,36 @@ EXPORTS
     _ml_Time_gettime @353
     _ml_Time_timeofday @354
     _ml_U_Dynload_dlclose @355
-    _ml_U_Dynload_dldummy @356
-    _ml_U_Dynload_dlerror @357
-    _ml_U_Dynload_dlopen @358
-    _ml_U_Dynload_dlsym @359
-    _ml_posix_nv_lookup @360
-    _util_NetDB_mkhostent @361
-    _util_NetDB_mknetent @362
-    _util_NetDB_mkservent @363
-    _util_Sock_ControlFlg @364
-    array_a @365 DATA
-    array_v @366 DATA
-    bind_cfun_a @367 DATA
-    bind_cfun_v @368 DATA
-    build_literals_a @369 DATA
-    callc_a @370 DATA
-    callc_v @371 DATA
-    create_b_a @372 DATA
-    create_b_v @373 DATA
-    create_r_a @374 DATA
-    create_r_v @375 DATA
-    create_s_a @376 DATA
-    create_s_v @377 DATA
-    create_v_a @378 DATA
-    create_v_v @379 DATA
-    fegetround @380 DATA
-    fesetround @381 DATA
-    floor_a @382 DATA
-    floor_v @383 DATA
-    handle_a @384 DATA
-    handle_v @385 DATA
+    _ml_U_Dynload_dlerror @356
+    _ml_U_Dynload_dlopen @357
+    _ml_U_Dynload_dlsym @358
+    _ml_posix_nv_lookup @359
+    _util_NetDB_mkhostent @360
+    _util_NetDB_mknetent @361
+    _util_NetDB_mkservent @362
+    _util_Sock_ControlFlg @363
+    array_a @364 DATA
+    array_v @365 DATA
+    bind_cfun_a @366 DATA
+    bind_cfun_v @367 DATA
+    build_literals_a @368 DATA
+    callc_a @369 DATA
+    callc_v @370 DATA
+    create_b_a @371 DATA
+    create_b_v @372 DATA
+    create_r_a @373 DATA
+    create_r_v @374 DATA
+    create_s_a @375 DATA
+    create_s_v @376 DATA
+    create_v_a @377 DATA
+    create_v_v @378 DATA
+    fegetround @379 DATA
+    fesetround @380 DATA
+    floor_a @381 DATA
+    floor_v @382 DATA
+    handle_a @383 DATA
+    handle_v @384 DATA
+    init_fn @385
     isRuntimeOption @386
     logb_a @387 DATA
     logb_v @388 DATA
@@ -407,9 +407,3 @@ EXPORTS
     try_lock_v @406 DATA
     unlock_a @407 DATA
     unlock_v @408 DATA
-    free @409
-    malloc @410
-    calloc @411
-    printf @412
-    fprintf @413
-    sprintf @414

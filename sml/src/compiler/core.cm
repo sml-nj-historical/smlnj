@@ -109,6 +109,20 @@ Group (../system/smlnj/viscomp/core.cm)
 	signature PPTYPE
 	signature ACCESS
 	signature UNIFY
+
+	(* export of structures required to use FLINT directly *)
+	structure Translate
+	structure LtyKernel
+	structure LtyDef
+	structure LtyExtern
+	structure PrimTyc  
+	structure PPFlint
+	structure LContract
+	structure Specialize
+	structure PrimOp
+	structure LambdaVar
+	structure ChkFlint
+	structure DebIndex
 is
 
 TopLevel/environ/environ.sig

@@ -146,25 +146,6 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
       = MASKALL
       | MASK of signal list
 
-  (* increment the masking level of the given signal by one, and return true.
-   *)
-    fun incMask (SIG(sigId, _)) = let
-	  val {act, mask, signal} = getInfo sigId
-	  in
-	    setInfo(sigId, {act=act, mask=mask+1, signal=signal});
-	    true
-	  end
-  (* decrement the masking level of the given signal by one; return true,
-   * if the signal is still masked.
-   *)
-    fun decMask (SIG(sigId, _)) = let
-	  val {act, mask, signal} = getInfo sigId
-	  in
-	    (mask <> 0) andalso (
-	      setInfo(sigId, {act=act, mask=mask-1, signal=signal});
-	      (mask <> 1))
-	  end
-
     local
     (* Run-time system API:
      *   NONE   -- empty mask
@@ -173,7 +154,9 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
      *)
       val setSigMask   : CI.system_const list option -> unit = signalFn "setSigMask"
       val getSigMask : unit -> CI.system_const list option = signalFn "getSigMask"
-      fun applyMask maskFn mask = let
+    (* sort a list of signals eliminating duplicates *)
+      fun sortSigs MASKALL = !sigList
+	| sortSigs (MASK l) = let
 	  (* a simple insertion sort to eliminate duplicates *)
 	    fun insert (s as SIG(id, _), []) = [s]
 	      | insert (s as SIG(id, _), (s' as SIG(id', _))::r) =
@@ -182,33 +165,93 @@ fun getInfo sigId = (case (Array.sub(!sigTbl, sigId))
 		  else if (id = id')
 		    then s' :: r
 		    else s' :: insert(s, r)
-	    val sort = List.foldl insert []
-	  (* apply the masking operations, return a list of signals that must
-	   * be masked/unmasked at the OS level.
-	   *)
-	    fun f ([], l, n) = (l, n)
-	      | f (s::r, l, n) =
-		  if (maskFn s)
-		    then f (r, (sigToConst s)::l, n+1)
-		    else f (r, l, n)
-	    val (l', numMasked) = (case mask
-		  of MASKALL => f (!sigList, [], 0)
-		   | (MASK l) => f (sort l, [], 0)
-		(* end case *))
 	    in
-	      if (numMasked = 0) then NONE
-	      else if (numMasked = !numSigs) then SOME[]
-	      else SOME l'
+	      List.foldl insert [] l
 	    end
+  (* map a list of signals into the format expected by the runtime system API *)
+    fun makeMask (masked, nMasked) =
+	  if (nMasked = 0) then NONE
+	  else if (nMasked = !numSigs) then SOME[]
+	  else SOME masked
+  (* is the signal masked? *)
+    fun isMasked (SIG(id, _)) = (#mask(getInfo id) > 0)
     in
-    fun maskSignals mask = (case (applyMask incMask mask)
-	   of NONE => ()
-	    | m => setSigMask m
-	  (* end case *))
-    fun unmaskSignals mask = (case (applyMask decMask mask)
-	   of SOME[] => ()
-	    | m=> setSigMask m
-	  (* end case *))
+    fun maskSignals mask = let
+	  val sigs = sortSigs mask
+	(* function for incrementing a signal mask. *)
+	  fun incMask (SIG(sigId, _)) = let
+		val {act, mask, signal} = getInfo sigId
+		in
+		  setInfo(sigId, {act=act, mask=mask+1, signal=signal})
+		end
+	(* scan over the sorted mask list and the list of all signals.  Record which signals are masked
+	 * and how many new signals are masked.
+	 *)
+	  fun computeNewMask ([], _, _, _, 0) =
+	      (* no signals are masked, so we only update the local state *)
+		List.app incMask sigs
+	    | computeNewMask ([], [], masked, nMasked, _) = (
+	      (* NOTE: we must update the OS's view of the mask before we change
+	       * our own to avoid a race condition!
+	       *)
+		setSigMask (makeMask (masked, nMasked));
+		List.app incMask sigs)
+	    | computeNewMask ([], s2::r2, masked, nMasked, nNew) =
+		if isMasked s2
+		  then computeNewMask ([], r2, (sigToConst s2)::masked, nMasked+1, nNew)
+		  else computeNewMask ([], r2, masked, nMasked, nNew)
+	    | computeNewMask ((s1 as SIG(id1, _))::r1, (s2 as SIG(id2, _))::r2, masked, nMasked, nNew) =
+		if (id1 = id2)
+		  then let
+		    val nNew = if (isMasked s1) then nNew else nNew+1
+		    in
+		      computeNewMask (r1, r2, (sigToConst s1)::masked, nMasked+1, nNew)
+		    end
+		  else if (isMasked s2)
+		    then computeNewMask (s1::r1, r2, (sigToConst s2)::masked, nMasked+1, nNew)
+		    else computeNewMask (s1::r1, r2, masked, nMasked, nNew)
+	  in
+	    computeNewMask (sigs, !sigList, [], 0, 0)
+	  end
+    fun unmaskSignals mask = let
+	  val sigs = sortSigs mask
+	(* function for decrementing a signal mask. *)
+	  fun decMask (SIG(sigId, _)) = let
+		val {act, mask, signal} = getInfo sigId
+		in
+		  if (mask > 0)
+		    then setInfo(sigId, {act=act, mask=mask-1, signal=signal})
+		    else ()
+		end
+	(* return true if decrementing this signal's count will unmask it. *)
+	  fun isUnmasked (SIG(id, _)) = (#mask(getInfo id) <= 1)
+	(* scan over the sorted mask list and the list of all signals.  Record which signals
+	 * are masked and how many new signals are unmasked.
+	 *)
+	  fun computeNewMask ([], _, _, _, 0) =
+	      (* no signals are unmasked, so we only update the local state *)
+		List.app decMask sigs
+	    | computeNewMask ([], [], masked, nMasked, _) = (
+	      (* NOTE: we must update are local view of the mask before we change the OS's view
+	       * to avoid a race condition!
+	       *)
+		List.app decMask sigs;
+		setSigMask (makeMask (masked, nMasked)))
+	    | computeNewMask ([], s2::r2, masked, nMasked, nNew) =
+		if isMasked s2
+		  then computeNewMask ([], r2, (sigToConst s2)::masked, nMasked+1, nNew)
+		  else computeNewMask ([], r2, masked, nMasked, nNew)
+	    | computeNewMask ((s1 as SIG(id1, _))::r1, (s2 as SIG(id2, _))::r2, masked, nMasked, nNew) =
+		if (id1 = id2)
+		  then if (isUnmasked s1)
+		    then computeNewMask (r1, r2, masked, nMasked, nNew+1)
+		    else computeNewMask (r1, r2, (sigToConst s1)::masked, nMasked+1, nNew) (* still masked *)
+		  else if (isMasked s2)
+		    then computeNewMask (s1::r1, r2, (sigToConst s2)::masked, nMasked+1, nNew)
+		    else computeNewMask (s1::r1, r2, masked, nMasked, nNew)
+	  in
+	    computeNewMask (sigs, !sigList, [], 0, 0)
+	  end
     fun masked () = (case getSigMask()
 	   of NONE => MASK[]
 	    | SOME[] => MASKALL

@@ -42,9 +42,13 @@ struct
    exception PPCCells
    fun error msg = MLRiscErrorMsg.error("PPCCells",msg)
    open CellsBasis
-   fun showGPWithSize (r, ty) = (fn (r, _) => Int.toString r
+   fun showGPWithSize (r, ty) = (fn (r, _) => (if ( ! PPCAsmSyntax.ibm_syntax)
+                                       then (Int.toString r)
+                                       else ("r" ^ (Int.toString r)))
                                 ) (r, ty)
-   and showFPWithSize (r, ty) = (fn (f, _) => Int.toString f
+   and showFPWithSize (r, ty) = (fn (f, _) => (if ( ! PPCAsmSyntax.ibm_syntax)
+                                       then (Int.toString f)
+                                       else ("f" ^ (Int.toString r)))
                                 ) (r, ty)
    and showCCWithSize (r, ty) = (fn (cr, _) => "cr" ^ (Int.toString cr)
                                 ) (r, ty)

@@ -21,7 +21,8 @@
  * Calling convention:
  *
  *    Return result:
- *	+ Integer and pointer results are returned in %eax
+ *	+ Integer and pointer results are returned in %eax.  Small
+ *	  integer results are not promoted.
  *	+ 64-bit integers (long long) returned in %eax/%edx
  *	+ Floating point results are returned in %st(0) (all types).
  *	+ Struct results are returned in space provided by the caller.
@@ -183,6 +184,11 @@ functor IA32SVID_CCalls (
       | FStk of T.fty * T.I.machine_int	(* floating-point argument in parameter area *)
       | Args of arg_location list
 
+    fun intResult iTy = (case #ty(sizeOfInt iTy)
+	   of 64 => raise Fail "register pair result"
+	    | ty => (SOME(Reg(ty, eax, NONE)), NONE, 0)
+	  (* end case *))
+
     fun layout {conv, retTy, paramTys} = let
 	(* get the location of the result (resLoc) and the offset of the first
 	 * parameter/argument.  If the result is a struct or union, then we also
@@ -280,9 +286,9 @@ functor IA32SVID_CCalls (
 	  } = let
 	  val {argLocs, argMem, resLoc, structRetLoc} = layout proto
 	(* instruction to allocate space for arguments *)
-	  val argAlloc = if ((#szb argMem > 0) andalso paramAlloc argMem)
-		then [T.MV(wordTy, sp, T.SUB(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
-		else []
+	  val argAlloc = if ((#szb argMem = 0) orelse paramAlloc argMem)
+		then []
+		else [T.MV(wordTy, sp, T.SUB(wordTy, spR, T.LI(IntInf.fromInt(#szb argMem))))]
 	(* for functions that return a struct/union, pass the location
 	 * as an implicit first argument.
 	 *)
@@ -411,7 +417,7 @@ functor IA32SVID_CCalls (
 		  | _ => error "bogus result location"
 		(* end case *))
 	(* assemble the call sequence *)
-	  val callSeq = copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
+	  val callSeq = argAlloc @ copyArgs @ save @ [callStm] @ restore @ popArgs @ copyResult
 	  in
 	    {callseq=callSeq, result=resultRegs}
 	  end

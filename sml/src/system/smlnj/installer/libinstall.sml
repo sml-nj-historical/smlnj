@@ -78,9 +78,33 @@ end = struct
     fun mkdir "" = ()
       | mkdir d = if fexists d then () else (mkdir (P.dir d); F.mkDir d)
 
+    (* generalized F.rename that works across different file systems *)
+    fun rename { old, new } =
+	let fun copy () =
+		let val ins = BinIO.openIn old
+		    val outs = BinIO.openOut new
+		    fun loop () =
+			let val v = BinIO.input ins
+			in
+			    if Word8Vector.length v = 0 then
+				(BinIO.closeIn ins;
+				 BinIO.closeOut outs)
+			    else (BinIO.output (outs, v);
+				  loop ())
+			end
+		in
+		    loop ()
+		end
+	in
+	    F.rename { old = old, new = new }
+	    handle _ =>
+		   (* probably on different filesys *)
+		   (copy (); rmfile old)
+	end
+
     (* move a stable library file to its final location *)
     fun movelib src dst () =
-	(mkdir (P.dir dst); F.rename { old = src, new = dst })
+	(mkdir (P.dir dst); rename { old = src, new = dst })
 
     (* register a temporary anchor-value binding *)
     fun localanchor { anchor, path } =
@@ -325,8 +349,8 @@ end = struct
 		 F.chDir treedir;
 		 if OS.Process.system buildcmd = OS.Process.success then
 		     if fexists targetheaploc then
-			 (F.rename { old = targetheaploc,
-				     new = finalheaploc };
+			 (rename { old = targetheaploc,
+				   new = finalheaploc };
 			  instcmd target;
 			  #set (CM.Anchor.anchor target) (SOME bindir))
 		     else

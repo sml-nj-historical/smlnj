@@ -34,8 +34,8 @@
 /* tag to identify image byte order */
 #define ORDER		0x00112233
 
-/* heap image version identifier (date in 00mmddyy form) */
-#define IMAGE_MAGIC	0x00022499
+/* heap image version identifier (date in mmddyyyy form) */
+#define IMAGE_MAGIC	0x09082004
 
 /* blasted heap image version identifier (date in 00mmddyy form) */
 #define BLAST_MAGIC	0x00070995

@@ -7,10 +7,161 @@ description.
 
 The form of an entry should be:
 
-Name:
+Name: 
 Date: yyyy/mm/dd
 Tag: <post-commit CVS tag>
 Description:
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/13 16:50:00 CDT
+Tag: Release_110_49
+Description:
+
+New working version (110.49).  NEW BOOTFILES!
+
+----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2004/09/13 16:20:00 CDT
+Tag: blume-20040913-config-mlrisc
+Description:
+
+Put target "mlrisc" back into the default list.
+(There is no harm in having it, and some users have expressed their
+wish to have "mlrisc" included by default.)
+
+----------------------------------------------------------------------
+Name: John Reppy
+Date: 2004/09/13
+Tag: jhr-20040913-signals
+Description:
+
+Fixed the signal masking code to properly nest mask/unmask operations
+on a per-signal basis.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/09/08 13:20:00 CDT
+Tag: blume-20040908-heap-magic
+Description:
+
+Bumped the heap macig number to 0x09082004 to account for the changed
+layout of the ML frame under MacOS X.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/09/03 11:26:00 EST
+Tag: leunga-20040903-cygwin-install
+Description:
+
+   Added a patch to _arch-n-opsys to enable the Cygwin runtime.
+The Cygwin runtime is turned on by setting the environment
+variable SMLNJ_CYGWIN_RUNTIME to 1.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/31 17:15:00 CDT
+Tag: blume-20040831-core
+Description:
+
+Added some exports to src/compiler/core.cm upon request by J. Joemann.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/30 17:55:00 CDT
+Tag: blume-20040830-installer
+Description:
+
+Upon request by Johannes Joemann:
+
+- improved ML code of installer to fall back to coping when renaming
+  fails (i.e., when source and target are on different file systems);
+  the code compiles but has yet to be tested in anger
+- removed mlrisc from list of default targets (config/targets)
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/27 17:20:00 CDT
+Tag: blume-20040827-ptreql
+Description:
+
+Added ptreql primop to structure InlineT (upon request from Larry
+Paulson).
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/15 21:21:00 EST
+Tag: leunga-110_48-udgraph
+Description:
+
+Another bug fix from Carl Hauser:
+
+diff /net/niflab/smlnj48/src/MLRISC/graphs/udgraph.sml udgraph.sml
+> 48c48
+> <              | rmv((e as (k,_))::es,L) = rmv(es,if k = i then es else
+> e::L)
+> ---
+> >              | rmv((e as (k,_))::es,L) = rmv(es,if k = i then L else e::L)
+> Without this, any deletion of an edge in an undirected graph does severe
+> violence to the graph.
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/10 23:35:00 EST
+Tag: leunga-110_48-ppc
+Description:
+
+   The IBM/MacOS syntax switch on PPC was incorrectly swapped.
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/10 12:00:00 CDT
+Tag: Release_110_48
+Description:
+
+New working version (110.48).  NEW BOOTFILES!
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/09 12:21:00 EST
+Tag: leunga-110_47-dijsktra
+Description:
+
+Bug fix from Carl Hauser:
+
+single_source_shortest_paths in dijkstra.sml was observed to get wrong 
+answers (by comparing to single_source_shortest_paths in bellman-ford.sml).
+
+The problem is that following the expression A.update(dist,s,Num.zero) 
+it is necessary to update the priority queue using Q.decreaseWeight(Q,s).
+
+----------------------------------------------------------------------
+Name: Matthias Blume (blume (at) tti - c (dot) org)
+Date: 2004/08/06 18:10:00 CDT
+Tag: blume-20040806-cmdline
+Description:
+
+Fiddled with handling of command-line options:
+
+  * sml now quits after processing the command line
+    if -H, -S, -h<n>, or -s<n> appears as the last
+    command-line argument
+  * a new option -q terminates the session when encountered on
+    the command line; subsequent arguments will be ignored
+  * bug fixes: short (erroneous) arguments are no longer ignored
+    completely
+
+----------------------------------------------------------------------
+Name: Allen Leung (leunga (at) reservoir (dot) com)
+Date: 2004/08/04 18:17:00 EST
+Tag: leunga-110_47-ppc-ibm-asm
+Description:
+
+  - Added minimal IBM assembly syntax support for PowerPC.
+
+  - Cygwin: manually changed the file cygwin.def.  Some exported symbols have 
+    been altered in the runtime.  We need an automatic way to keep the file
+    in sync.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume (blume (at) tti - c (dot) org)
