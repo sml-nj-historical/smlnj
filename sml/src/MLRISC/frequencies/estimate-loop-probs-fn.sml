@@ -92,16 +92,20 @@ functor EstimateLoopProbsFn (
 			    else computeProbs (e2, e1, probLBH)
 			| _ => ()
 		      (* end case *))
-	      (* apply the Loop Exit Heuristic to an exit edges *)
+	      (* apply the Loop Exit Heuristic to an exit edges; note that
+	       * the probability is that the loop will NOT be exited.
+	       *)
 		fun doExitEdge (e as (src, _, _)) = (case out_edges src
 		       of [e1, e2] =>
 			    if sameEdge(e, e1)
 			      then if isLoopHeader (#2 e2)
 				then ()
-				else computeProbs (e1, e2, probLEH)
+			      (* e1 is exit edge, so e2 is taken branch *)
+				else computeProbs (e2, e1, probLEH)
 			      else if isLoopHeader (#2 e1)
 				then ()
-				else computeProbs (e2, e1, probLEH)
+			      (* e2 is exit edge, so e1 is taken branch *)
+				else computeProbs (e1, e2, probLEH)
 			| _ => ()
 		      (* end case *))
 		in
