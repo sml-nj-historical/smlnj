@@ -68,4 +68,4 @@ functor FilenamePolicyFn (val cmdir : string
 end
 
 structure FilenamePolicy =
-    FilenamePolicyFn (val cmdir = "NEWCM" val skeldir = "SKEL")
+    FilenamePolicyFn (val cmdir = "CM" val skeldir = "SKEL")

@@ -28,8 +28,7 @@ functor AutoLoadFn (structure RT : TRAVERSAL
 			where type result =
 			  { stat: E.staticEnv, sym: E.symenv }
 		    structure ET : TRAVERSAL
-			where type result = E.dynenv
-):> AUTOLOAD = struct
+			where type result = E.dynenv):> AUTOLOAD = struct
 
     structure SE = GenericVC.StaticEnv
 
@@ -144,7 +143,7 @@ functor AutoLoadFn (structure RT : TRAVERSAL
     in
 	if SymbolMap.isEmpty loadmap then ()
 	else
-	    (Say.say ["[autoloading...]\n"];
+	    (Say.say ["[autoloading]\n"];
 	     SrcPath.revalidateCwd ();
 	     (* We temporarily turn verbosity off, so we need to wrap this
 	      * with a SafeIO.perform... *)

@@ -71,6 +71,7 @@ is
 	main/specific-symval-fn.sml
 	main/autoload.sml
 	main/cleanup.sml
+	main/cm-boot.sml
 
 	(* pathname abstraction *)
 	paths/sources.cm
@@ -93,5 +94,5 @@ is
 	(* auxiliary libraries *)
 	ml-yacc-lib.cm
 
+	(* refer to hook module to break static dependencies *)
 	cm-hook.cm
-	cm-boot.sml
