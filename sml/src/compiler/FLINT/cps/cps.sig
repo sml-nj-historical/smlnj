@@ -3,6 +3,23 @@
 
 signature CPS = sig
 
+datatype record_kind
+  = RK_VECTOR
+  | RK_RECORD
+  | RK_SPILL
+  | RK_ESCAPE
+  | RK_EXN
+  | RK_CONT
+  | RK_FCONT
+  | RK_KNOWN
+  | RK_BLOCK
+  | RK_FBLOCK
+  | RK_I32BLOCK
+
+datatype pkind = VPT | RPT of int | FPT of int
+datatype cty = INTt | INT32t | PTRt of pkind
+         | FUNt | FLTt | CNTt | DSPt
+
 structure P : sig
 
     (* numkind includes kind and size *)
@@ -39,6 +56,7 @@ structure P : sig
       | sethdlr | setvar | uselvar | setspecial
       | free | acclink | setpseudo | setmark
       | rawstore of {kind: numkind}
+      | rawupdate of cty
 
     (* These fetch from the store, never have functions as arguments. *)
     datatype looker
@@ -64,6 +82,10 @@ structure P : sig
       | gettag | mkspecial | wrap | unwrap | cast | getcon | getexn
       | fwrap | funwrap | iwrap | iunwrap | i32wrap | i32unwrap
       | getseqdata | recsubscript | raw64subscript | newarray0
+      | rawrecord of record_kind option 
+           (* allocate uninitialized words from the heap; optionally
+            * initialize the tag.
+            *)
 
     val opp : branch -> branch
 
@@ -124,23 +146,6 @@ datatype fun_kind
   | KNOWN_CONT     
   | ESCAPE         
   | NO_INLINE_INTO 
-
-datatype record_kind
-  = RK_VECTOR
-  | RK_RECORD
-  | RK_SPILL
-  | RK_ESCAPE
-  | RK_EXN
-  | RK_CONT
-  | RK_FCONT
-  | RK_KNOWN
-  | RK_BLOCK
-  | RK_FBLOCK
-  | RK_I32BLOCK
-
-datatype pkind = VPT | RPT of int | FPT of int
-datatype cty = INTt | INT32t | PTRt of pkind
-             | FUNt | FLTt | CNTt | DSPt
 
 datatype cexp
   = RECORD of record_kind * (value * accesspath) list * lvar * cexp

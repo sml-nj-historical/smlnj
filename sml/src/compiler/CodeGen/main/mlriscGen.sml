@@ -484,11 +484,11 @@ struct
            * form M.CONST k, where offset is a reference to the
            * kth byte allocated since the beginning of the CPS function.
            *)
-          fun resolveHpOffset(M.CONST(absoluteHpOffset)) = 
+          fun resolveHpOffset(M.CONST(absoluteHpOffset)) =
               let val tmpR = newReg PTR 
                   val offset = absoluteHpOffset - !advancedHP
               in  emit(M.MV(pty, tmpR, M.ADD(addrTy, C.allocptr, LI offset)));
-                  M.REG(pty, tmpR) 
+                  M.REG(pty, tmpR)
               end
             | resolveHpOffset(e) = e
 
@@ -1044,13 +1044,12 @@ struct
           
           (* Generate code for
            *    x := allocptr + offset; k
-           * If there is only one reference then we delay the computation
-           * until it is used. 
+           * Forward propagate until it is used.
            *)
           and treeifyAlloc(x, offset, k, hp) = 
               (case treeify x of 
                 COMPUTE => defAlloc(x, offset, k, hp)
-              | TREEIFY => 
+              | TREEIFY =>
                 (* Note, don't mark this as treeified since it has low
                  * register pressure.
                  *)
@@ -1608,6 +1607,36 @@ struct
                      allocHeaderPair(hdrDesc, hdrM, dataPtr, 0, hp+8),
                         e, hp+20)
               end
+            | gen(PURE(P.rawrecord NONE, [INT n], x, _, e), hp) =
+                (* allocate space for CPS spilling *)
+                treeifyAlloc(x, hp, e, hp+n*4) (* no tag! *)
+            | gen(PURE(P.rawrecord(SOME rk), [INT n], x, _, e), hp) = 
+                (* allocate an uninitialized record with a tag *)
+              let val (tag, fp) = (* tagged version *)
+                    case rk of
+                      (RK_FCONT | RK_FBLOCK) => (D.tag_raw64, true)
+                    | RK_I32BLOCK => (D.tag_raw32, false)
+                    | RK_VECTOR => error "rawrecord VECTOR unsupported"
+                    | _ => (D.tag_record, false)
+
+                  (* len of record in 32-bit words *)
+                  val len  = if fp then n+n else n
+
+                  (* record descriptor *)
+                  val desc = dtoi(D.makeDesc(len, tag))
+
+                  (* Align floating point *)
+                  val hp = if fp andalso 
+                    Word.andb(Word.fromInt hp, 0w4) <> 0w0 then hp+4 else hp
+
+                  val mem = memDisambig x
+              in  (* store tag now! *)
+                  emit(M.STORE(ity, ea(C.allocptr, hp), LI desc, pi(mem, ~1)));
+
+                  (* assign the address to x *)
+                  treeifyAlloc(x, hp+4, e, hp+len*4+4)
+              end
+ 
             (*** ARITH ***)
             | gen(ARITH(P.arith{kind=P.INT 31, oper=P.~}, [v], x, _, e), hp) = 
                 (updtHeapPtr hp;
@@ -1721,9 +1750,18 @@ struct
                          e, hp)
             | gen(LOOKER(P.getpseudo, [i], x, _, e), hp) = 
                 (print "getpseudo not implemented\n"; nop(x, i, e, hp))
-            | gen( LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
+            | gen(LOOKER(P.rawload { kind }, [i], x, _, e), hp) =
                 rawload (kind, i, x, e, hp)
+               
             (*** SETTER ***)
+            | gen(SETTER(P.rawupdate FLTt,[v,i,w],e),hp) =
+                (emit(M.FSTORE(fty,scale8(regbind' v, i), fregbind w,R.memory));
+                 gen(e, hp))
+            | gen(SETTER(P.rawupdate _,[v,i,w],e),hp) = 
+                  (* XXX Assumes 32-bit. Needs 64-bit support later! *)
+                (emit(M.STORE(ity,scale4(regbind' v, i), regbind' w,R.memory));
+                 gen(e, hp))
+ 
             | gen(SETTER(P.assign, [a as VAR arr, v], e), hp) = 
               let val ea = regbind a
                   val mem = arrayRegion(getRegion a)

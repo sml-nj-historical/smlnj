@@ -14,6 +14,152 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2002/02/25 04:45:00 EST
+Tag: leunga-20020225-cps-spill
+
+This is a new implementation of the CPS spill phase.
+The new phase is in the new file compiler/CodeGen/cpscompile/spill-new.sml
+In case of problems, replace it with the old file spill.sml
+
+The current compiler runs into some serious performance problems when 
+constructing a large record.  This can happen when we try to compile a
+structure with many items.  Even a very simple structure like the following
+makes the compiler slow down.
+
+    structure Foo = struct
+       val x_1 = 0w1 : Word32.int
+       val x_2 = 0w2 : Word32.int
+       val x_3 = 0w3 : Word32.int
+       ...
+       val x_N = 0wN : Word32.int
+    end
+
+The following table shows the compile time, from N=1000 to N=4000, 
+with the old compiler:
+
+N
+1000   CPS 100 spill                           0.04u  0.00s  0.00g  
+       MLRISC ra                               0.06u  0.00s  0.05g  
+          (spills = 0 reloads = 0)
+       TOTAL                                   0.63u  0.07s  0.21g  
+
+1100   CPS 100 spill                           8.25u  0.32s  0.64g  
+       MLRISC ra                               5.68u  0.59s  3.93g  
+          (spills = 0 reloads = 0)
+       TOTAL                                   14.71u  0.99s  4.81g  
+
+1500   CPS 100 spill                           58.55u  2.34s  1.74g  
+       MLRISC ra                               5.54u  0.65s  3.91g  
+          (spills = 543 reloads = 1082)
+       TOTAL                                   65.40u  3.13s  6.00g  
+
+2000   CPS 100 spill                           126.69u  4.84s  3.08g  
+       MLRISC ra                               0.80u  0.10s  0.55g  
+          (spills = 42 reloads = 84)
+       TOTAL                                   129.42u  5.10s  4.13g 
+
+3000   CPS 100 spill                           675.59u  19.03s  11.64g  
+       MLRISC ra                               2.69u  0.27s  1.38g  
+          (spills = 62 reloads = 124)
+       TOTAL                                   682.48u  19.61s  13.99g  
+
+4000   CPS 100 spill                           2362.82u  56.28s  43.60g  
+       MLRISC ra                               4.96u  0.27s  2.72g  
+          (spills = 85 reloads = 170)
+       TOTAL                                   2375.26u  57.21s  48.00g  
+
+As you can see the old cps spill module suffers from some serious 
+performance problem but since I cannot decipher the old code fully, 
+innstead of patching the problems up, I'm reimplementing it 
+with a different algorithm.  The new code is more modular, 
+smaller when compiled, and substantially faster 
+(O(n log n) time and O(n) space).  Timing of the new spill module: 
+
+4000  CPS 100 spill                           0.02u  0.00s  0.00g  
+      MLRISC ra                               0.25u  0.02s  0.15g  
+         (spills=1 reloads=3) 
+      TOTAL                                   7.74u  0.34s  1.62g 
+
+Implementation details:
+
+As far as I can tell, the purpose of the CPS spill module is to make sure the 
+number of live variables at any program point (the bandwidth) 
+does not exceed a certain limit, which is determined by the 
+size of the spill area.  
+
+When the bandwidth is too large, we decrease the register pressure by 
+packing live variables into spill records.  How we achieve this is
+completely different than what we did in the old code.
+
+First, there is something about the MLRiscGen code generator 
+that we should be aware of:
+
+o MLRiscGen performs code motion!
+ 
+   In particular, it will move floating point computations and
+   address computations involving only the heap pointer to 
+   their use sites (if there is only a single use).  
+   What this means is that if we have a CPS record construction
+   statement
+ 
+       RECORD(k,vl,w,e)
+ 
+   we should never count the new record address w as live if w 
+   has only one use (which is often the case).
+ 
+   We should do something similar to floating point, but the transformation
+   there is much more complex, so I won't deal with that.
+
+Secondly, there are now two new cps primops at our disposal:
+
+ 1. rawrecord of record_kind option 
+    This pure operator allocates some uninitialized storage from the heap.
+    There are two forms:
+ 
+     rawrecord NONE [INT n]  allocates a tagless record of length n
+     rawrecord (SOME rk) [INT n] allocates a tagged record of length n
+                                 and initializes the tag.
+ 
+ 2. rawupdate of cty
+      rawupdate cty (v,i,x) 
+      Assigns to x to the ith component of record v.
+      The storelist is not updated.
+ 
+We use these new primops for both spilling and increment record construction.
+ 
+ 1. Spilling.
+    
+    This is implemented with a linear scan algorithm (but generalized
+    to trees).  The algorithm will create a single spill record at the
+    beginning of the cps function and use rawupdate to spill to it,
+    and SELECT or SELp to reload from it.  So both spills and reloads
+    are fine-grain operations.  In contrast, in the old algorithm 
+    "spills" have to be bundled together in records.  
+ 
+    Ideally, we should sink the spill record construction to where
+    it is needed.  We can even split the spill record into multiple ones
+    at the places where they are needed.  But CPS is not a good
+    representation for global code motion, so I'll keep it simple and
+    am not attempting this.
+ 
+ 2. Incremental record construction (aka record splitting).
+
+    Long records with many component values which are simulatenously live
+    (recall that single use record addresses are not considered to 
+     be live) are constructed with rawrecord and rawupdate.
+    We allocate space on the heap with rawrecord first, then gradually
+    fill it in with rawupdate.  This is the technique suggested to me
+    by Matthias.
+ 
+    Some restrictions on when this is applicable:
+    1. It is not a VECTOR record.  The code generator currently does not handle
+       this case. VECTOR record uses double indirection like arrays.
+    2. All the record component values are defined in the same "basic block" 
+       as the record constructor.  This is to prevent speculative 
+       record construction. 
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2002/02/22 01:02:00 EST
 Tag: leunga-20020222-mlrisc-tools
 

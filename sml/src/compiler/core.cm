@@ -238,7 +238,7 @@ CodeGen/cpscompile/smlnj-gctype.sml
 CodeGen/cpscompile/smlnj-mltreeext.sig
 CodeGen/cpscompile/smlnj-mltreeext.sml
 CodeGen/cpscompile/smlnj-pseudoOps.sml
-CodeGen/cpscompile/spill.sml
+CodeGen/cpscompile/spill-new.sml
 CodeGen/main/clusterAnnotation.sml    (* temporary hack; see comment in file *)
 CodeGen/main/code-string.sml
 CodeGen/main/machine.sig

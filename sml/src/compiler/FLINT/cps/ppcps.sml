@@ -85,6 +85,7 @@ fun setterName P.unboxedupdate = "unboxedupdate"
   | setterName P.setmark = "setmark"
   | setterName P.acclink = "acclink"
   | setterName (P.rawstore {kind}) = ("rawstore" ^ numkindName kind)
+  | setterName (P.rawupdate cty) = ("rawupdate" ^ CPS.ctyToString cty)
 
 fun cvtParams(from, to) = Int.toString from ^ "_" ^ Int.toString to
 
@@ -136,6 +137,22 @@ fun pureName P.length = "length"
   | pureName P.recsubscript = "recsubscript"
   | pureName P.raw64subscript = "raw64subscript"
   | pureName P.newarray0 = "newarray0"
+  | pureName (P.rawrecord rk) = "rawrecord"^
+                    (case rk of NONE => "" | SOME rk => rkstring rk)
+
+and rkstring rk = (case rk 
+        of RK_VECTOR => "RK_VECTOR"
+         | RK_RECORD => "RK_RECORD"
+         | RK_SPILL => "RK_SPILL"
+         | RK_ESCAPE => "RK_ESCAPE"
+         | RK_EXN => "RK_EXN"
+         | RK_CONT => "RK_CONT"
+         | RK_FCONT => "RK_FCONT"
+         | RK_KNOWN => "RK_KNOWN"
+         | RK_BLOCK => "RK_BLOCK"
+         | RK_FBLOCK => "RK_FBLOCK"
+         | RK_I32BLOCK => "RK_I32BLOCK")
+
 
 fun show0 say =
   let fun sayc (#"\n") = say "\\n"
@@ -154,19 +171,6 @@ fun show0 say =
         | sayvlist nil = ()
 	| sayvlist (v::vl) = (sayv v; say ","; sayvlist vl)
 
-
-      fun rkstring rk = (case rk 
-        of RK_VECTOR => "RK_VECTOR"
-         | RK_RECORD => "RK_RECORD"
-         | RK_SPILL => "RK_SPILL"
-         | RK_ESCAPE => "RK_ESCAPE"
-         | RK_EXN => "RK_EXN"
-         | RK_CONT => "RK_CONT"
-         | RK_FCONT => "RK_FCONT"
-         | RK_KNOWN => "RK_KNOWN"
-         | RK_BLOCK => "RK_BLOCK"
-         | RK_FBLOCK => "RK_FBLOCK"
-         | RK_I32BLOCK => "RK_I32BLOCK")
 
       fun sayrk(RK_RECORD,n) = ()
         | sayrk(RK_VECTOR,n) = ()
@@ -241,7 +245,8 @@ fun show0 say =
 		    space n; say "else\n";
 		    indent (n+3) e2)
 	      | RCC(p,vl,w,t,e) =>
-		   (space n; say "rcc("; sayvlist vl; say ") -> "; sayv(VAR w);
+		   (space n; 
+                    say "rcc("; sayvlist vl; say ") -> "; sayv(VAR w);
 		    sayt(t);nl(); f e)
          in f
         end
