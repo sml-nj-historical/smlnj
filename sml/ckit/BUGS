@@ -1,0 +1,33 @@
+ckit Bug List
+=============
+[Last updated: 3/31/00]
+
+----------------------------------------------------------------------
+NUMBER: 11
+SUBMITTER: Kathleen Fisher <kfisher@research.att.com>
+DATE: 12/10/99
+TEST: 
+STATUS: request for more complete example
+DESCRIPTION:
+
+The code: 
+void write_myArray (char *f, char *space, int size)
+{
+  Sfio_t *fp;
+  int *temp_space = (int *) space;
+  int i;
+
+  fp = openfile (f,"w");
+  for (i = 0; i<2; i++)
+      sfprintf (fp,"%d",&(*temp_space)[i]);
+}
+
+passes through the ckit compiler, but cc reports:
+
+"directory008.c", line 866: error(1138): expression must have
+          pointer-to-object type
+              sfprintf (fp,"%d",&(*temp_space)[i]);
+
+COMMENT: Could not compile example (it is incomplete);
+Kathleen indicates she can't reproduce this behaviour.
+
