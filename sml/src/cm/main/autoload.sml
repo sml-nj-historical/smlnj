@@ -88,7 +88,7 @@ functor AutoLoadFn (structure C : COMPILE
 		     end)
 	in
 	    (* make sure that there are no stale value around... *)
-	    L.cleanup ();
+	    L.cleanup gp;
 	    SymbolMap.foldl one (SOME BE.emptyEnv) m
 	end
 

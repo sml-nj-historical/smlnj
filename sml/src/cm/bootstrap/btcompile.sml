@@ -33,10 +33,10 @@ end = struct
 	StabilizeFn (val writeBFC = Compile.writeBFC
 		     val sizeBFC = Compile.sizeBFC
 		     val getII = Compile.getII
-		     fun destroy_state _ = ()
+		     fun destroy_state _ _ = ()
 		     fun recomp gp g = let
 			 val { group, ... } =
-			     Compile.newTraversal (fn _ => (), g)
+			     Compile.newTraversal (fn _ => fn _ => (), g)
 		     in
 			 isSome (group gp)
 		     end)
@@ -169,7 +169,7 @@ end = struct
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
 	    val _ = ovldR := true
-	    val sbnode = Compile.newSbnodeTraversal (fn _ => ())
+	    val sbnode = Compile.newSbnodeTraversal ()
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
@@ -230,7 +230,7 @@ end = struct
 		NONE => false
 	      | SOME (g, gp) => let
 		    val { group = recomp, ... } =
-			Compile.newTraversal (fn _ => (), g)
+			Compile.newTraversal (fn _ => fn _ => (), g)
 		in
 		    if isSome (recomp gp) then let
 			val rtspid = PS.toHex (#statpid (#ii rts))

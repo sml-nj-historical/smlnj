@@ -36,7 +36,7 @@ end
 functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 		     val sizeBFC : SmlInfo.info -> int
 		     val getII :  SmlInfo.info -> IInfo.info
-		     val destroy_state : SmlInfo.info -> unit
+		     val destroy_state : GP.info -> SmlInfo.info -> unit
 		     val recomp : recomp) :> STABILIZE = struct
 
     structure SSMap = BinaryMapFn
@@ -396,7 +396,7 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 					       localimports = li,
 					       globalimports = gi }
 			in
-			    destroy_state smlinfo;
+			    destroy_state gp smlinfo;
 			    m := SmlInfoMap.insert (!m, smlinfo, n);
 			    n
 			end

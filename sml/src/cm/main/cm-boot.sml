@@ -38,12 +38,13 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       val emptydyn = E.dynamicPart E.emptyEnv
       val system_values = ref emptydyn
 
-      structure Link =
-	  LinkFn (structure MachDepVC = HostMachDepVC
-		  val system_values = system_values)
-
       structure Compile =
 	  CompileFn (structure MachDepVC = HostMachDepVC)
+
+      structure Link =
+	  LinkFn (structure MachDepVC = HostMachDepVC
+		  val getBFC = Compile.getBFC
+		  val system_values = system_values)
 
       structure AutoLoad = AutoLoadFn
 	  (structure C = Compile
@@ -52,7 +53,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       fun recomp_runner gp g = let
 	  val { group, ... } = Compile.newTraversal (Link.evict, g)
       in
-	  isSome (group gp) before Link.cleanup ()
+	  isSome (group gp) before Link.cleanup gp
       end
 
       (* This function combines the actions of "recompile" and "exec".
@@ -71,7 +72,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		   * that everybody has every conceivable privilege, but at
 		   * the very least we announce which ones are being made
 		   * use of.) *)
-		  (Link.cleanup ();
+		  (Link.cleanup gp;
 		   if StringSet.isEmpty rq then ()
 		   else Say.say ("$Execute: required privileges are:\n" ::
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
@@ -97,7 +98,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       val writeBFC = Compile.writeBFC
 		       val sizeBFC = Compile.sizeBFC
 		       val getII = Compile.getII
-		       val destroy_state = Link.evict)
+		       fun destroy_state gp i = (Compile.evict i; Link.evict gp i))
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works
@@ -256,7 +257,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		       * been cheating, and if we ever have to try and
 		       * fetch assembly.sig or core.sml in a separate
 		       * traversal, it will fail. *)
-		      val sbnode = Compile.newSbnodeTraversal (fn _ => ())
+		      val sbnode = Compile.newSbnodeTraversal ()
 		      fun get n = let
 			  val { ii, ctxt } = valOf (sbnode ginfo n)
 			  val { statpid, statenv, symenv, sympid } = ii

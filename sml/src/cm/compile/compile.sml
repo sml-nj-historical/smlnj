@@ -15,26 +15,33 @@ local
     type ed = { ii: IInfo.info, ctxt: statenv }
 in
     signature COMPILE = sig
+	type bfc
+
 	(* reset internal persistent state *)
 	val reset : unit -> unit
 
 	(* notify linkage module about recompilation *)
-	type notifier = SmlInfo.info -> unit
+	type notifier = GP.info -> SmlInfo.info -> unit
 
 	val sizeBFC : SmlInfo.info -> int
 	val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	val getII : SmlInfo.info -> IInfo.info
+	val getBFC : SmlInfo.info -> bfc
 
-	val newSbnodeTraversal : notifier -> GP.info -> DG.sbnode -> ed option
+	val evict : SmlInfo.info -> unit
+
+	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
 
 	val newTraversal : notifier * GG.group ->
 	    { group: GP.info -> result option,
 	      exports: (GP.info -> result option) SymbolMap.map }
     end
 
-    functor CompileFn (structure MachDepVC : MACHDEP_VC) :> COMPILE = struct
+    functor CompileFn (structure MachDepVC : MACHDEP_VC) :>
+	COMPILE where type bfc = MachDepVC.Binfile.bfContent =
+    struct
 
-	type notifier = SmlInfo.info -> unit
+	type notifier = GP.info -> SmlInfo.info -> unit
 
 	structure BF = MachDepVC.Binfile
 
@@ -209,7 +216,7 @@ in
 			fun cleanup () =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
-			notify i;
+			notify gp i;
 			SafeIO.perform { openIt =
 				           fn () => AutoDir.openBinOut binname,
 					 closeIt = BinIO.closeOut,
@@ -355,8 +362,8 @@ in
 	      exports = SymbolMap.map mkExport exports }
 	end
 
-	fun newSbnodeTraversal notify = let
-	    val { sbnode, ... } = mkTraversal notify
+	fun newSbnodeTraversal () = let
+	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => ())
 	    fun envdelta2ed { ii, bfc, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
 	    fn gp => fn n => Option.map envdelta2ed (sbnode gp n)
@@ -369,6 +376,11 @@ in
 	    fun writeBFC s i = BF.write { content = #bfc (get i),
 					  stream = s, nopickle = true }
 	    fun getII i = memo2ii (get i)
+	    fun getBFC i = #bfc (get i)
+
+	    fun evict i =
+		(globalmap := #1 (SmlInfoMap.remove (!globalmap, i)))
+		handle LibBase.NotFound => ()
 	end
     end
 end

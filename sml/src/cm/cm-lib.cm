@@ -91,5 +91,3 @@ is
 
 	(* refer to hook module to break static dependencies *)
 	cm-hook.cm
-
-	dummy.sml
