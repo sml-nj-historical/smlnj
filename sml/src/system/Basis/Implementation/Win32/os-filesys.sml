@@ -201,7 +201,7 @@ structure OS_FileSys : OS_FILE_SYS =
 	fun rename {old: string,new: string} = 
 	    let fun rse' s = rse "rename" s
 		val _ = not (exists old) andalso 
-		        rse' "cannot find 'old'"
+		        rse' ("cannot find old='" ^ old ^ "'")
                 val same = (exists new) andalso 
 		           (fullPath old = fullPath new)
             in

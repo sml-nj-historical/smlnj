@@ -11,7 +11,7 @@ structure GetDpy : GET_DPY =
     structure EXB = EXeneBase
     structure SS = Substring
 
-    fun getDpyName NONE = (case (Posix.ProcEnv.getenv "DISPLAY")
+    fun getDpyName NONE = (case (OS.Process.getEnv "DISPLAY")
 	   of NONE => ""
 	    | (SOME dpy) => dpy
 	  (* end case *))

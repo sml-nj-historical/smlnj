@@ -113,10 +113,10 @@ in
    in  WARNING filename^text 
    end 
 
-   fun main x = GenFile.gen {program="nowhere",
-                             fileSuffix="sml",
-                             trans=gen
-                            } x
+   fun main x =
+       if GenFile.gen {program="nowhere", fileSuffix="sml", trans=gen } x = 0
+       then OS.Process.success
+       else OS.Process.failure
 
 end
 

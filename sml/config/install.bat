@@ -1,3 +1,9 @@
+REM Win32 installer for SML/NJ.
+REM
+REM (C) 2003 The Fellowship of SML/NJ.
+REM
+REM Author: Matthias Blume (blume@tti-c.org)
+
 REM begin by creating rudimentary directory hierarchy
 mkdir bin
 mkdir bin\.run
@@ -29,16 +35,5 @@ for /D %%a in (*.*) do echo %%a %%a >>..\lib\pathconfig
 for /D %%a in (*.*) do move %%a ..\lib
 cd ..
 
-REM compile and install ml-lex
-cd src\ml-lex
-%COMSPEC% /C "..\..\bin\ml-build ml-lex.cm ExportLexGen.lexGen ml-lex"
-move ml-lex.x86-win32 ..\..\bin\.heap
-cd ..\..
-echo ml-lex ..\bin >>lib\pathconfig
-
-REM compile and install ml-yacc
-cd src\ml-yacc\src
-%COMSPEC% /C "..\..\..\bin\ml-build ml-yacc.cm ExportParseGen.parseGen ml-yacc"
-move ml-yacc.x86-win32 ..\..\..\bin\.heap
-cd ..\..\..
-echo ml-yacc ..\bin >>lib\pathconfig
+REM Do all the rest using libinstall.sml.
+%COMSPEC% /C "bin\sml config\libinstall.sml config\winlibinstall.sml"

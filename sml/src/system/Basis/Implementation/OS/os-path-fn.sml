@@ -31,6 +31,7 @@ functor OS_PathFn (OSPathBase : sig
 	(* join a volume and path; raise Path on invalid volumes *)
     val arcSepChar : char
 	(* the character used to separate arcs (e.g., #"/" on UNIX) *)
+    val sameVol : string * string -> bool
 
   end) : OS_PATH = struct
 
@@ -185,7 +186,7 @@ functor OS_PathFn (OSPathBase : sig
 			isAbs=true, vol=vol, arcs=List.@(al2, al1)
 		     })
 		in
-		  if (v1 = v2) then mkCanon v1
+		  if P.sameVol (v1, v2) then mkCanon v1
 		  else if (v1 = "") then mkCanon v2
 		  else if (v2 = "") then mkCanon v1
 		    else raise Path
@@ -208,7 +209,7 @@ functor OS_PathFn (OSPathBase : sig
 		and mkArcs [] = [currentArc]
 		  | mkArcs al = al
 		in
-		  if (v1 <> v2)
+		  if not (P.sameVol (v1, v2))
 		    then raise Path
 		    else (case (al1, al2)
 		       of ([""], [""]) => currentArc
@@ -228,7 +229,7 @@ functor OS_PathFn (OSPathBase : sig
     fun concat (p1, p2) = (case (fromString p1, fromString p2)
 	   of (_, {isAbs=true, ...}) => raise Path
 	    | ({isAbs, vol=v1, arcs=al1}, {vol=v2, arcs=al2, ...}) =>
-		if ((v2 = "") orelse (v1 = v2))
+		if P.sameVol (v2, "") orelse P.sameVol (v1, v2)
 		  then toString{isAbs=isAbs, vol=v1, arcs=concatArcs(al1, al2)}
 		  else raise Path
 	  (* end case *))

@@ -19,7 +19,9 @@ Group (../cml-internal.cm)
   structure GenericSock
   structure NetHostDB
   structure INetSock
+#if defined (OPSYS_UNIX)
   structure UnixSock
+#endif
 #endif
 is
 

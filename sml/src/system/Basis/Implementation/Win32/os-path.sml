@@ -63,7 +63,10 @@ structure OS_Path = OS_PathFn (
 		| aux (false,vol,s) = (checkVol vol)^s
 	  in  aux arg
 	  end
+
+      fun sameVol (v1, v2) =
+	  (* volume names are case-insensitive *)
+	  v1 = v2 orelse
+	  String.map Char.toLower v1 = String.map Char.toLower v2
   end);
 end
-
-

@@ -1,6 +1,9 @@
 This is a record of changes made to CML and the CML Library.
 ------------------------------------------------------------
 
+[2003-09-09]
+        Made CML compile under Win32 again.
+
 [2003-09-03]
 	Added *_SLICE signatures and *Slice structures (copied from
 	"normal" Basis into CML Basis).

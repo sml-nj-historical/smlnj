@@ -2,6 +2,12 @@ eXene-1.0
 ------------------------
 
 GLOBAL CHANGES
+  - added a dummy implementation of UnixSock to kick when a native
+     implementation is unavailable (on non-Unix systems);
+    replaced reference to Posix.ProcEnv by reference to generic OS.Process;
+    eXene now compiles under Win32
+    [2003-09-09]
+
   - fixed code that broke because of Basis API changes (slices)
     [2003-09-03]
 

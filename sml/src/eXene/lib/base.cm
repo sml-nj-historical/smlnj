@@ -34,6 +34,9 @@ protocol/xsendevt.sml
 protocol/xio.sml
 protocol/xshutdown.sml
 protocol/xserver-addr.sml
+#if not (defined (OPSYS_UNIX))
+protocol/fake-unix-sock.sml
+#endif
 protocol/xdisplay.sml
 protocol/xwin.sml
 window/keysym.sml

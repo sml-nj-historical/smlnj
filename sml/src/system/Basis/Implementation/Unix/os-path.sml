@@ -38,5 +38,7 @@ structure OS_Path = OS_PathFn (
 
     val arcSepChar = #"/"
 
+    fun sameVol (v1, v2: string) = v1 = v2
+
   end);
 
