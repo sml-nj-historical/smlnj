@@ -22,10 +22,14 @@ functor CompleteProbsFn (
     structure CFG = CFG
     structure Prob = Probability
 
+    val dumpCFG = MLRiscControl.mkFlag
+		      ("dump-cfg-after-complete-probs",
+		       "when true, CFG is output after probability completion")
+
     val {get=getProb, ...} = MLRiscAnnotations.BRANCH_PROB
 
   (* Complete edge probabilities. *)
-    fun completeProbs (Graph.GRAPH{forall_nodes, out_edges, ...}) = let
+    fun completeProbs (cfg as Graph.GRAPH{forall_nodes, out_edges, ...}) = let
 	  fun doBlock (blkId, _) = let
 		fun computeProbs ((_, _, e as CFG.EDGE{a, ...})::r, remaining, n, es) = (
 		      case getProb(!a)
@@ -45,6 +49,9 @@ functor CompleteProbsFn (
 		end
 	  in
 	    forall_nodes doBlock
+	    before (if !dumpCFG then CFG.dump (!MLRiscControl.debug_stream,
+					      "after probability completion", cfg)
+		   else ())
 	  end
 
   end

@@ -530,7 +530,7 @@ fun inlminmax (nk, ismax) = let
 		val fequal =
 		    PRIM (PO.CMP { oper = PO.EQL, kind = nk }, lt_cmp, [])
 	    in
-		COND (APP (fequal, RECORD [VAR y, VAR y]), VAR x, VAR y)
+		COND (APP (fequal, RECORD [VAR y, VAR y]), VAR y, VAR x)
 	    end
 	  | _ => VAR y
 in

@@ -14,6 +14,16 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/06/25 17:23:00 EDT
+Tag: blume-20020625-fpmax
+Description:
+
+Fixed a bug in translation of INLMAX (and INLMIN) for the floating-point
+case.  (The sense of the isNaN test was reversed -- which made min and
+max always return their first argument.)
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/06/11
 Tag: blume-20020611-unixpath
 Description:
