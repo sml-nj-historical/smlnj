@@ -5,7 +5,7 @@ signature FCONTRACT =
 sig
     
     (* needs Collect to be setup properly *)
-    val contract : FLINT.prog * Stats.counter -> FLINT.prog
+    val contract : FLINT.prog -> FLINT.prog
 	
 end
 
@@ -276,29 +276,15 @@ fun extract (con,le) =
 
 fun inScope m lv = (M.lookup m lv; true) handle M.IntmapF => false
 
-fun click s c = (if !CTRL.misc = 1 then say s else (); Stats.addCounter c 1)
+fun click s c = (if !CTRL.misc = 1 then say s else ();
+		 c := !c + 1 (* Stats.addCounter c 1 *) )
 
-(*  val c_inline	 = Stats.newCounter[] *)
-(*  val c_deadval	 = Stats.newCounter[] *)
-(*  val c_deadlexp	 = Stats.newCounter[] *)
-(*  val c_select	 = Stats.newCounter[] *)
-(*  val c_record	 = Stats.newCounter[] *)
-(*  val c_lacktype	 = Stats.newCounter[] *)
-(*  val c_con	 = Stats.newCounter[] *)
-(*  val c_switch	 = Stats.newCounter[] *)
-(*  val c_eta	 = Stats.newCounter[] *)
-(*  val c_etasplit	 = Stats.newCounter[] *)
-(*  val c_branch	 = Stats.newCounter[] *)
-(*  val c_dropargs	 = Stats.newCounter[] *)
-    val c_cstarg = Stats.newCounter[]
-    val c_outofscope = Stats.newCounter[]
-(* (*      val _ = Stats.registerStat(Stats.newStat("FC-cstarg", [c_cstarg])) *) *)
-(* (*      val _ = Stats.registerStat(Stats.newStat("FC-outofscope", [c_outofscope])) *) *)
+fun contract (fdec as (_,f,_,_)) = let
 
-fun contract (fdec as (_,f,_,_), counter) = let
+    val c_dummy = ref 0 (* Stats.newCounter[] *)
+    val c_miss = ref 0 (* Stats.newCounter[] *)
 
-    val c_dummy = Stats.newCounter[]
-    val c_miss = Stats.newCounter[]
+    val counter = c_dummy
 
     fun click_deadval  () = (click "d" counter)
     fun click_deadlexp () = (click "D" counter)
@@ -315,14 +301,11 @@ fun contract (fdec as (_,f,_,_), counter) = let
 
     (* this counters is actually *used* by fcontract.
      * It's  not used just for statistics. *)
-    val c_inline	 = Stats.newCounter[counter]
-(*      val c_inline1	 = Stats.newCounter[c_inline] *)
-(*      val c_inline2	 = Stats.newCounter[c_inline] *)
-(*      val c_unroll	 = Stats.newCounter[c_inline] *)
+    val c_inline	 = ref 0 (* Stats.newCounter[counter] *)
     fun click_simpleinline () = (click "i" c_inline)
     fun click_copyinline   () = (click "I" c_inline)
     fun click_unroll       () = (click "u" c_inline)
-    fun inline_count () = Stats.getCounter c_inline
+    fun inline_count () = (* Stats.getCounter *) !c_inline
 
     fun used lv = (C.usenb(C.get lv) > 0)
 		      (* handle x =>
@@ -534,7 +517,7 @@ fun fcFix (fs,le) =
 		    * recursively *)
 		   (C.use NONE fi; undertake m f; (m,fs))
 	       else
-		   let (* val _ = say ("Entering "^(C.LVarString f)^"\n") *)
+		   let (*  val _ = say ("\nEntering "^(C.LVarString f)) *)
 		       val saved_ic = inline_count()
 		       (* make up the bindings for args inside the body *)
 		       val actuals = if isSome isrec orelse
@@ -561,7 +544,7 @@ fun fcFix (fs,le) =
 			* the old uncontracted code *)
 		       val nm = addbind(m, f, Fun(f, nbody, args, nfk, ref []))
 		   in (nm, (nfk, f, args, nbody)::fs)
-		     (* before say ("Exiting "^(C.LVarString f)^"\n") *)
+		   (*  before say ("\nExiting "^(C.LVarString f)) *)
 		   end
 	    end
 		    
@@ -669,7 +652,7 @@ fun fcFix (fs,le) =
 	val (maybes,funs) =
 	    List.partition (fn (_,_,_,{inline=F.IH_MAYBE _,...},_) => true
 			     | _ => false) funs
-			   
+
 	(* First contract the big inlinable functions.  This might make them
 	 * non-inlinable and we'd rather know that before we inline them.
 	 * Then we inline the body (so that we won't go through the inline-once
@@ -712,8 +695,7 @@ fun fcApp (f,vs) =
 		    * This inlining strategy looks inoffensive enough,
 		    * but still requires some care: see comments at the
 		    * begining of this file and in cfun *)
-		   ((* say("SimpleInline of "^(C.LVarString g)^"\n"); *)
-		    click_simpleinline();
+		   (click_simpleinline();
 		    ignore(C.unuse true gi);
 		    loop m (F.LET(map #1 args, F.RET vs, body)) cont)
 	       fun copyinline () =
@@ -733,7 +715,6 @@ fun fcApp (f,vs) =
 		   let val nle = (F.LET(map #1 args, F.RET vs, body))
 		       val nle = C.copylexp M.empty nle
 		   in
-		       (* say("CopyInline of "^(C.LVarString g)^"\n"); *)
 		       click_copyinline();
 		       (app (unuseval m) vs);
 		       unusecall m g;

@@ -252,7 +252,7 @@ val purePrimop =
 
 (* should return more than just a boolean *)
 val effect =
- fn (* ARITH{overflow,...} => overflow
+ fn ARITH{overflow,...} => overflow
   | (INLRSHIFT _ | INLRSHIFTL _) => false
   | CMP _ => false
   | (EXTEND _ | TRUNC _ | COPY _) => false
@@ -264,7 +264,7 @@ val effect =
   | (INLMIN | INLMAX | INLNOT | INLCOMPOSE) => false
   | (INL_ARRAY | INL_VECTOR | INL_MONOARRAY _ | INL_MONOVECTOR _) => false
   | (WRAP | UNWRAP) => false
-  | *) _ => true
+  | _ => true
   
 val mayRaise =
   fn ARITH{overflow,...} => overflow

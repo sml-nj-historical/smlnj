@@ -187,7 +187,7 @@ in  (if rounds < 0 then function
 		| apply ("print",f)	    = (PPCps.printcps0 f; f)
 		| apply (p,f) = (say("\n!! Unknown cps phase '"^p^"' !!\n"); f)
      in foldl apply function (!CG.cpsopt)
-(*  val function1 = first_contract function *)
+(*                 val function1 = first_contract function *)
 (*                 val function2 = eta function1 *)
 (*                 val function3 = uncurry function2 *)
 (*                 val function4 = etasplit function3 *)

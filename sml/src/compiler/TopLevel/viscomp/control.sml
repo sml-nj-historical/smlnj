@@ -39,32 +39,32 @@ structure Control : CONTROL =
 
     structure FLINT =
     struct
-	val print	= ref false
-	val printPhases	= ref false
-	val phases	= ref ["lcontract", "specialize",
-			       "fixfix", "fcontract",
-			       "wrap", "loopify", "fixfix", "fcontract",
-			       (* "names2deb", "typelift", "deb2names", *)
-			       "reify", "loopify", "fixfix", "fcontract",
-			       "fixfix", "fcontract"]
+	val print	    = ref false
+	val printPhases	    = ref false
+	val phases	    = ref ["lcontract", "specialize",
+				   "fixfix", "fcontract",
+				   "wrap", "loopify", "fixfix", "fcontract",
+				   (* "names2deb", "typelift", "deb2names", *)
+				   "reify", "loopify", "fixfix", "fcontract",
+				   "fixfix", "fcontract"]
 
-	val inlineThreshold = ref 14
+	val inlineThreshold = ref 16
 	val unrollThreshold = ref 20
 	val maxargs	    = ref 6
 	val dropinvariant   = ref true
 
-	val specialize	= ref true
-	val liftLiterals= ref false
-	val sharewrap	= ref true
-	val saytappinfo	= ref false	(* for typelifting statistics *)
+	val specialize	    = ref true
+	val liftLiterals    = ref false
+	val sharewrap	    = ref true
+	val saytappinfo	    = ref false	(* for typelifting statistics *)
 			      
 	(* only for temporary debugging *)
-	val misc	= ref 0
+	val misc	    = ref 0
 			      
 	(* FLINT internal type-checking controls *)
-	val check	= ref true
-	val checkDatatypes = ref false	(* loops on the new cm.sml *)
-	val checkKinds	= ref true
+	val check	    = ref true	(* fails on MLRISC/sparc/sparcRegAlloc.sml *)
+	val checkDatatypes  = ref false	(* loops on the new cm.sml *)
+	val checkKinds	    = ref true
     end
 
     structure CG : CGCONTROL =

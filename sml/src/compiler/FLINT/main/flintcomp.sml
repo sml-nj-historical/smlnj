@@ -25,9 +25,6 @@ datatype flintkind = FK_WRAP | FK_REIFY | FK_DEBRUIJN | FK_NAMED | FK_CPS
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-val fcc = Stats.newCounter[];
-val _ = Stats.registerStat(Stats.newStat("FContract", [fcc]))
-
 val deb2names = phase "Compiler 056 deb2names" TvarCvt.debIndex2names
 val names2deb = phase "Compiler 057 names2deb" TvarCvt.names2debIndex
 
@@ -35,7 +32,7 @@ val lcontract = phase "Compiler 052 lcontract" LContract.lcontract
 val lcontract' = phase "Compiler 052 lcontract'" LContract.lcontract
 val fcollect  = phase "Compiler 052a fcollect" Collect.collect
 val fcontract = phase "Compiler 052b fcontract" FContract.contract
-val fcontract = fn f => ((* lcontract' f; *) fcontract(fcollect f, fcc))
+val fcontract = fcontract o fcollect
 val loopify   = phase "Compiler 057 loopify" Loopify.loopify
 val fixfix    = phase "Compiler 056 fixfix" FixFix.fixfix
 
@@ -104,30 +101,8 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
       fun wff (f, s) = if wformed f then ()
 		       else print ("\nAfter " ^ s ^ " CODE NOT WELL FORMED\n")
 
-      (* val fcing = ref (!fcs)
-      fun fcontract f =
-	  case !fcing
-	   of fcontract::fcs => (fcing := fcs; fcontract f)
-	    | [] => let val fcc = Stats.newCounter[]
-			val fcname = "FContract-"^(Int.toString(length(!fcs)))
-			val coname = "FCollect-"^(Int.toString(length(!fcs)))
-			val lcname = "LContract-"^(Int.toString(length(!fcs)))
-			val fcstat = Stats.newStat(fcname, [fcc])
-			val fcphase = phase ("Compiler 052b "^fcname)
-					    FContract.contract
-			val cophase = phase ("Compiler 052a "^coname)
-					    Collect.collect
-			val lcphase = phase ("Compiler 052 "^lcname)
-					    LContract.lcontract
-			fun g c = (lcphase c; fcphase(cophase c,fcc))
-	      in
-		  Stats.registerStat fcstat;
-		  fcs := (!fcs) @ [g];
-		  g f
-	      end *)
-		  
-      (* f:FLINT.prog	flint codee
-       * r:boot		whether it has gone through reify yet
+      (* f:FLINT.prog	flint code
+       * fk:flintkind	what kind of flint variant this is
        * l:string	last phase through which it went *)
       fun runphase (p,(f,fk,l)) =
 	  case (p,fk)
