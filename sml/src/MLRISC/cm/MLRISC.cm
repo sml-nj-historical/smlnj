@@ -12,6 +12,7 @@ Library
 (*	signature CFG_VIEW *)
 	signature CLIENT_PSEUDO_OPS
 	signature CODE_STRING
+	signature COMPUTE_EXECUTION_FREQUENCIES
 	signature CONSTANT
 	signature CONTROL_FLOWGRAPH_GEN
 	signature CONTROL_FLOW_GRAPH
@@ -89,9 +90,8 @@ Library
 (*	functor CFGView *)
 	functor Cells
 	functor ClusterRA
-(*
-	functor ComputeWeightsFn
-*)
+	functor CompleteProbsFn
+	functor ComputeFreqsFn
 	functor ControlFlowGraph
 	functor DefaultBlockPlacement
 	functor FreqProps
@@ -216,9 +216,9 @@ is
 	../flowgraph/pseudo-ops-big.sml
 	../flowgraph/pseudo-ops-endian.sig
 	../flowgraph/pseudo-ops-little.sml
-(*
-	../flowgraph/compute-weights-fn.sml
-*)
+	../frequencies/complete-probs-fn.sml
+	../frequencies/compute-execution-freqs.sig
+	../frequencies/compute-freqs-fn.sml
 	../ir-archive/dominator.sig
 	../ir-archive/dominator.sml
 	../ir-archive/loop-structure.sig

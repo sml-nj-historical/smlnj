@@ -298,7 +298,7 @@ struct
         	  | FLOWSTO	=> "flowsto"
 		(* end case *))
 	  in
-	    F.format "%s(%f)" [F.STR kind, F.REAL(!w)]
+	    F.format "%s[%f]" [F.STR kind, F.REAL(!w)]
 	  end
 
     fun getString f x = let

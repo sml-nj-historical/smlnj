@@ -86,7 +86,9 @@ functor JumpChainElimFn (
 		      (* end case *))
 		  | _ => NONE
 		(* end case *))
-
+	(* For each normal block, check the outgoing edges to see if they
+	 * can be redirected.
+	 *)
 	  fun doBlock (blkId, CFG.BLOCK{insns, kind=CFG.NORMAL, ...}) = let
 	        fun setTargets labs = let
 		      val jmp::r = !insns
@@ -128,10 +130,10 @@ functor JumpChainElimFn (
 		end
 	    | doBlock _ = ()
           val [entry] = entries()
-	  fun keepBlock (blkId, _) = if null(in_edges blkId) andalso (blkId <> entry)
-		then (remove_node blkId; false)
-		else true
-
+	  fun keepBlock (blkId, _) =
+		if null(in_edges blkId) andalso (blkId <> entry)
+		  then (remove_node blkId; false)
+		  else true
 	  val blocks = if !disable
 		then blocks
 		else (
