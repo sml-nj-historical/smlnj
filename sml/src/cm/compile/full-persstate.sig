@@ -15,16 +15,21 @@ signature FULL_PERSSTATE = sig
 
     include RECOMP_PERSSTATE
 
+    type ts				(* traversal state *)
+
+    val start : unit -> ts
+    val finish : ts -> unit		(* remember shared values *)
+
     val exec_look_sml :
-	SmlInfo.info * GeneralParams.info * pid option -> env option
+	SmlInfo.info * GeneralParams.info * pid option * ts -> env option
     val exec_memo_sml :
-	SmlInfo.info * env * SmlInfo.info list * BinInfo.info list -> unit
+	SmlInfo.info * env * SmlInfo.info list * BinInfo.info list * ts -> unit
 
     val exec_look_stable :
-	BinInfo.info * GeneralParams.info * pid option -> env option
+	BinInfo.info * GeneralParams.info * pid option * ts -> env option
     val exec_memo_stable :
-	BinInfo.info * env * BinInfo.info list -> unit
+	BinInfo.info * env * BinInfo.info list * ts -> unit
 
-    val rememberShared : unit -> unit
+    val sysval : pid option -> env option
 end
 end

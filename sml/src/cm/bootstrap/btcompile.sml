@@ -45,13 +45,13 @@ end = struct
 
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
+	StabilizeFn (fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
 		     fun warmup (i, p) = ()
 		     val recomp = recomp
 		     val transfer_state = RecompPersstate.transfer_state)
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
-			       val pending = AutoLoad.getPending)
+			       fun pending () = SymbolMap.empty)
 
     (* copying an input file to an output file safely... *)
     fun copyFile (oi, ci, oo, co, inp, outp, eof) (inf, outf) = let
@@ -177,10 +177,11 @@ end = struct
 	    val ovldR = GenericVC.Control.overloadKW
 	    val savedOvld = !ovldR
 	    val _ = ovldR := true
+	    val ts = RT.start ()
 
 	    (* here we build a new gp -- the one that uses the freshly
 	     * brewed pervasive env, core env, and primitives *)
-	    val core = valOf (RT.sbnode ginfo_nocore core)
+	    val core = valOf (RT.sbnode ts ginfo_nocore core)
 	    val corenv =  CoerceEnv.es2bs (#1 (#stat core))
 	    val core_sym = #1 (#sym core)
 
@@ -192,7 +193,7 @@ end = struct
 	    val ginfo_justcore = { param = param_justcore, groupreg = groupreg,
 				   errcons = errcons }
 
-	    fun rt n = valOf (RT.sbnode ginfo_justcore n)
+	    fun rt n = valOf (RT.sbnode ts ginfo_justcore n)
 	    val rts = rt rts
 	    val pervasive = rt pervasive
 
@@ -209,7 +210,12 @@ end = struct
 
 	    val _ = ovldR := savedOvld
 
-	    (* This is a hack but must be done for both the symbolic
+	    (* To be consistent, we would have to call RT.finish here.
+	     * However, this isn't really necessary because no dynamic
+	     * values exist and we drop "ts" at this point anyway. *)
+	    (* val _ = RT.finish ts *)
+
+	    (* The following is a hack but must be done for both the symbolic
 	     * and later the dynamic part of the core environment:
 	     * we must include these parts in the pervasive env. *)
 	    val perv_sym = E.layerSymbolic (#1 (#sym pervasive), core_sym)
@@ -289,7 +295,7 @@ end = struct
     fun deliver () = deliver' NONE
     fun reset () =
 	(RecompPersstate.reset ();
-	 RT.resetAll ();
+	 RT.reset ();
 	 Recomp.reset ();
 	 Parse.reset ())
 end

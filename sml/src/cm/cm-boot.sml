@@ -25,6 +25,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
       structure S = GenericVC.Symbol
       structure CoerceEnv = GenericVC.CoerceEnv
       structure EM = GenericVC.ErrorMsg
+      structure BF = HostMachDepVC.Binfile
 
       val os = SMLofNJ.SysInfo.getOSKind ()
 
@@ -53,10 +54,14 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       structure ET = CompileGenericFn (structure CT = Exec)
 
+      structure AutoLoad = AutoLoadFn
+	  (structure RT = RT
+	   structure ET = ET)
+
       (* The StabilizeFn functor needs a way of converting bnodes to
        * dependency-analysis environments.  This can be achieved quite
        * conveniently by a "recompile" traversal for bnodes. *)
-      fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode gp i)))
+      fun bn2statenv gp i = #1 (#stat (valOf (RT.bnode' gp i)))
 	  handle Option => raise Fail "bn2statenv"
 
       (* exec_group is basically the same as ET.group with
@@ -71,8 +76,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  (if StringSet.isEmpty rq then ()
 	   else Say.say ("$Execute: required privileges are:\n" ::
 		     map (fn s => ("  " ^ s ^ "\n")) (StringSet.listItems rq));
-	   ET.group gp g
-	   before FullPersstate.rememberShared ())
+	   ET.group gp g)
 
       fun recomp_runner gp g = isSome (RT.group gp g)
 
@@ -95,25 +99,6 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   Say.vsay ["[New bindings added.]\n"];
 			   true
 		       end)
-
-      fun al_loadit gp m =
-	  case RT.impexpmap gp m of
-	      NONE => NONE
-	    | SOME { stat, sym } => let
-		  fun exec () =
-		      ET.impexpmap gp m
-		      before FullPersstate.rememberShared ()
-	      in
-		  case exec () of
-		      NONE => NONE
-		    | SOME dyn => let
-			  val e = E.mkenv { static = stat, symbolic = sym,
-					    dynamic =dyn }
-			  val be = GenericVC.CoerceEnv.e2b e
-		      in
-			  SOME be
-		      end
-	      end
 
       val al_greg = GroupReg.new ()
 
@@ -201,8 +186,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			      groupreg = al_greg,
 			      errcons = EM.defaultConsumer () }
 
-	  val al_manager =
-	      AutoLoad.mkManager (fn m => al_loadit (al_ginfo ()) m)
+	  val al_manager = AutoLoad.mkManager al_ginfo
 
 	  fun al_manager' (ast, _, ter) = al_manager (ast, ter)
 
@@ -223,8 +207,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
 	  fun reset () =
 	      (FullPersstate.reset ();
-	       RT.resetAll ();
-	       ET.resetAll ();
+	       RT.reset ();
+	       ET.reset ();
 	       Recomp.reset ();
 	       Exec.reset ();
 	       AutoLoad.reset ();
@@ -274,10 +258,26 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	      case BuildInitDG.build ginfo initgspec of
 		  NONE => raise Fail "CMBoot: BuiltInitDG.build"
 		| SOME { rts, core, pervasive, primitives, ... } => let
+		      (* It is absolutely crucial that we don't finish the
+		       * recomp traversal until we are done with all
+		       * nodes of the InitDG.  This is because we have
+		       * been cheating, and if we ever have to try and
+		       * fetch assembly.sig or core.sml in a separate
+		       * traversal, it will fail. *)
+		      val rtts = RT.start ()
 		      fun get n = let
 			  val { stat = (s, sp), sym = (sy, syp), ctxt, bfc } =
-			      valOf (RT.sbnode ginfo n)
-			  val d = Exec.env2result (valOf (ET.sbnode ginfo n))
+			      valOf (RT.sbnode rtts ginfo n)
+			  (* Since we cannot start another recomp traversal,
+			   * we must also avoid exec traversals (because they
+			   * would internally trigger recomp traversals).
+			   * But at boot time any relevant value should be
+			   * available as a sysval, so there is no problem. *)
+			  val d =
+			      case Option.map (FullPersstate.sysval o
+					       BF.exportPidOf) bfc of
+				  SOME (SOME d) => d
+				| _ => emptydyn
 			  val env = E.mkenv { static = s, symbolic = sy,
 					      dynamic = d }
 			  val pidInfo = { statpid = sp, sympid = syp,
@@ -307,6 +307,11 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 					   #statpid pervPidInfo,
 					   #sympid pervPidInfo])
 		  in
+		      (* Nobody is going to try and share this state --
+		       * or, rather, this state is shared via access
+		       * to "primitives".  Therefore, we don't call
+		       * RT.finish and ET.finish and reset the state. *)
+		      FullPersstate.reset ();
 		      #set ER.core corenv;
 		      #set ER.pervasive pervasive;
 		      #set ER.topLevel BE.emptyEnv;

@@ -13,7 +13,8 @@ functor RecompPersstateFn
     (structure MachDepVC : MACHDEP_VC
      val new_smlinfo : SmlInfo.info -> unit
      val stable_value_present : BinInfo.info * pid option -> bool
-     val discard_code : bool) :> RECOMP_PERSSTATE = struct
+     val discard_code : bool) :> RECOMP_PERSSTATE
+	 where MachDepVC = MachDepVC = struct
 
 	structure MachDepVC = MachDepVC
 	structure BF = MachDepVC.Binfile

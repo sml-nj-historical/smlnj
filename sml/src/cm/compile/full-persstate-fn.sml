@@ -14,7 +14,8 @@ local
     type env = GenericVC.Environment.dynenv
 in
 functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
-			 val system_values: env ref) :> FULL_PERSSTATE =
+			 val system_values: env ref) :>
+    FULL_PERSSTATE where MachDepVC = MachDepVC =
     struct
 	type env = env
 
@@ -26,7 +27,6 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 	  | compare (STABLE _, SML _) = GREATER
 	  | compare (SML i, SML i') = SmlInfo.compare (i, i')
 	  | compare (STABLE i, STABLE i') = BinInfo.compare (i, i')
-
 
 	structure K = struct
 	    type ord_key = ord_key
@@ -40,8 +40,11 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 	type persentry = env * Set.set ref
 	type tmpentry = env * ord_key list
 
+	type ts = tmpentry Map.map ref
+
 	val persmap = ref (Map.empty: persentry option Map.map)
-	val tmpmap = ref (Map.empty: tmpentry Map.map)
+
+	fun start () = ref Map.empty
 
 	fun share (SML i) = SmlInfo.share i
 	  | share (STABLE i) = BinInfo.share i
@@ -77,17 +80,16 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 	    open RecompPersstate
 	    fun reset () =
 		(reset_recomp ();
-		 persmap := Map.empty;
-		 tmpmap := Map.empty)
+		 persmap := Map.empty)
 	    fun transfer_state (si, bi) =
 		(transfer_state_recomp (si, bi);
 		 discard_pers (SML si))
 	end
 
 	infix o'
-	fun (f o' g) (x, y, z) = f (g x, y, z)
+	fun (f o' g) (x, y, z, w) = f (g x, y, z, w)
 
-	fun exec_look (k, gp, popt) = let
+	fun exec_look (k, gp, popt, tmpmap: ts) = let
 	    fun descr (SML i) = SmlInfo.descr i
 	      | descr (STABLE i) = BinInfo.describe i
 	    fun error (SML i) = SmlInfo.error gp i
@@ -101,52 +103,62 @@ functor FullPersstateFn (structure MachDepVC : MACHDEP_VC
 			     (case Map.find (!persmap, k) of
 				  NONE => NONE
 				| SOME NONE =>
-				      (if share k = SOME true then
-					 error k EM.WARN
-					   (concat ["re-instantiating ",
-						    descr k,
-						    " (sharing may be lost)"])
-					   EM.nullErrorBody
-				       else ();
-					   NONE)
+				      (case share k of
+					   SOME true =>
+					       error k EM.WARN
+					        (concat ["re-instantiating ",
+							 descr k,
+						     " (sharing may be lost)"])
+						EM.nullErrorBody
+					 | _ => ();
+				       NONE)
 				| SOME (SOME (e, _)) =>
-					   if share k = SOME false then
-					       (discard_pers k; NONE)
-					   else  SOME e)
+					   (case share k of
+						SOME false =>
+						    (discard_pers k; NONE)
+					      | _ =>  SOME e))
 		       | SOME (e, _) => SOME e)
 	end
 
 	val exec_look_sml = exec_look o' SML
 	val exec_look_stable = exec_look o' STABLE
 
-	fun exec_memo (k, e, d) = tmpmap := Map.insert (!tmpmap, k, (e, d))
+	fun exec_memo (k, e, d, tmpmap: ts) =
+	    tmpmap := Map.insert (!tmpmap, k, (e, d))
 
-	fun exec_memo_sml (i, e, sl, bl) =
-	    exec_memo (SML i, e, map STABLE bl @ map SML sl)
+	fun exec_memo_sml (i, e, sl, bl, tmpmap) =
+	    exec_memo (SML i, e, map STABLE bl @ map SML sl, tmpmap)
 
-	fun exec_memo_stable (i, e, il) =
-	    exec_memo (STABLE i, e, map STABLE il)
+	fun exec_memo_stable (i, e, il, tmpmap) =
+	    exec_memo (STABLE i, e, map STABLE il, tmpmap)
 
-	fun rememberShared () = let
-	    fun retainShared (k, (e, d), m) = let
-		val m = discard (k, m)
+	fun finish (tmpmap: ts) = let
+	    (* We keep non-shared bindings in tmpmap; this is necessary for
+	     * those partial traversals that the autoloader does.
+	     * Non-shared bindings will eventually go away when the
+	     * traversal state is dropped. *)
+	    fun retainShared (k, (e, d), (pm, tm)) = let
+		val m = discard (k, pm)
 	    in
-		if share k = SOME false then m
-		else Map.insert (m, k, SOME (e, ref Set.empty))
+		case share k of
+		    SOME false => (pm, Map.insert (tm, k, (e, d)))
+		  | _ => (Map.insert (m, k, SOME (e, ref Set.empty)), tm)
 	    end
+	    val pm = !persmap
+	    val tm = !tmpmap
+	    val (pm', tm') = Map.foldli retainShared (pm, Map.empty) tm
 	    fun addDep (k, (e, d)) = let
 		fun addOneDep k' =
-		    case Map.find (!persmap, k') of
+		    case Map.find (pm', k') of
 			NONE => ()
 		      | SOME NONE => ()
 		      | SOME (SOME (_, r as ref s)) => r := Set.add (s, k)
 	    in
 		app addOneDep d
 	    end
-	    val tm = !tmpmap
 	in
-	    tmpmap := Map.empty;
-	    persmap := Map.foldli retainShared (!persmap) tm;
+	    tmpmap := tm';
+	    persmap := pm';
 	    Map.appi addDep tm
 	end
     end

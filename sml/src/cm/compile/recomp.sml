@@ -20,6 +20,10 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
     structure DE = GenericVC.DynamicEnv
     structure CMSE = GenericVC.CMStaticEnv
 
+    type ts = unit
+    fun start () = ()
+    fun finish () = ()
+
     type pid = Pid.persstamp
     type bfc = BF.bfContent
 
@@ -148,7 +152,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 	  sym = (BF.symenvOf bfc, BF.lambdaPidOf bfc),
 	  ctxt = ctxt, bfc = SOME bfc }
 
-    fun dostable (i, mkenv, gp: GeneralParams.info, bn) = let
+    fun dostable (i, mkenv, gp: GeneralParams.info, bn, ()) = let
 	fun load be = let
 	    val stable = BinInfo.stablename i
 	    val os = BinInfo.offset i
@@ -187,7 +191,7 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 		   | SOME be => load (be ()))
     end
 
-    fun dosml (i, { envs, pids }, gp, sn) = let
+    fun dosml (i, { envs, pids }, gp, sn, ()) = let
 	val pids = PidSet.union (pids, #pervcorepids (#param gp))
     in
 	case Option.map memo2envdelta (PS.recomp_look_sml (i, pids, gp)) of
@@ -292,6 +296,4 @@ functor RecompFn (structure PS : RECOMP_PERSSTATE) : COMPILATION_TYPE = struct
 			else compile ()
 	    end
     end
-
-    fun nestedTraversalReset () = ()
 end

@@ -14,17 +14,20 @@ in
 	type envdelta
 	type result
 
-	val bnode : GP.info -> DG.bnode -> envdelta option
+	type ts				(* traversal state *)
+
+	val start : unit -> ts
+	val finish : ts -> unit
+
 	val group : GP.info -> GG.group -> result option
-	val impexpmap :
-	    GP.info -> DependencyGraph.impexp SymbolMap.map -> result option
+	val bnode' : GP.info -> DG.bnode -> envdelta option
+	val snode' : GP.info -> DG.snode -> envdelta option
 
-	(* If you go through the "sbnode" or "snode" interface, then
-	 * you must reset explicitly when you are done. *)
-	val sbnode : GP.info -> DG.sbnode -> envdelta option
-	val snode : GP.info -> DG.snode -> envdelta option
+	val sbnode : ts -> GP.info -> DG.sbnode -> envdelta option
+
+	val resume : ('a -> DependencyGraph.farsbnode * ts) ->
+	    GP.info -> 'a SymbolMap.map -> result option
+
 	val reset : unit -> unit
-
-	val resetAll : unit -> unit
     end
 end

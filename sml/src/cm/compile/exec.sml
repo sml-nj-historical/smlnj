@@ -28,6 +28,10 @@ end = struct
     type envdelta = env
     type result = E.dynenv
 
+    type ts = PS.ts
+    val start = PS.start
+    val finish = PS.finish
+
     fun reset () = ()
 
     fun layer ((d, sl, bl), (d', sl', bl')) =
@@ -73,38 +77,40 @@ end = struct
 	NONE
     end
 
-    fun dostable (i, mkbenv, gp, bn) =
+    fun dostable (i, mkbenv, gp, bn, ts) =
       case mkbenv () of
 	  NONE => NONE
 	| SOME (benv, sl, bl) =>
-	      (case RecompTraversal.bnode gp bn of
-		   SOME { bfc = SOME bfc, ... } =>
-		       (case PS.exec_look_stable (i, gp, BF.exportPidOf bfc) of
-			    SOME m =>
-				(BF.discardCode bfc;
-				 SOME (thunkify m, [], [i]))
-			  | NONE => (execute
-				     (bfc, benv,
-				      BinInfo.error i EM.COMPLAIN,
-				      BinInfo.describe i,
-				      fn e => PS.exec_memo_stable (i, e, bl),
-				      [], [i])))
+	      (case RecompTraversal.bnode' gp bn of
+		   SOME { bfc = SOME bfc, ... } => let
+		       val epid = BF.exportPidOf bfc
+		   in
+		       case PS.exec_look_stable (i, gp, epid, ts) of
+			   SOME m =>
+			       (BF.discardCode bfc;
+				SOME (thunkify m, [], [i]))
+			 | NONE => (execute
+				    (bfc, benv,
+				     BinInfo.error i EM.COMPLAIN,
+				     BinInfo.describe i,
+				     fn e =>PS.exec_memo_stable (i, e, bl, ts),
+				     [], [i]))
+		   end
 		 | _ => NONE)
 
-    fun dosml (i, (env, sl, bl), gp, sn) =
-	case RecompTraversal.snode gp sn of
+    fun dosml (i, (env, sl, bl), gp, sn, ts) =
+	case RecompTraversal.snode' gp sn of
 	    SOME { bfc = SOME bfc, ... } =>
-		(case PS.exec_look_sml (i, gp, BF.exportPidOf bfc) of
+		(case PS.exec_look_sml (i, gp, BF.exportPidOf bfc, ts) of
 		     SOME m =>
 			 (BF.discardCode bfc;
 			  SOME (thunkify m, [i], []))
 		   | NONE => (execute (bfc, env,
 				       SmlInfo.error gp i EM.COMPLAIN,
 				       SmlInfo.descr i,
-				       fn m => PS.exec_memo_sml (i, m, sl, bl),
+				       fn m =>
+				           PS.exec_memo_sml (i, m, sl, bl, ts),
 				       [i], [])))
 	  | _ => NONE
-
-    val nestedTraversalReset = RecompTraversal.reset
   end
 end

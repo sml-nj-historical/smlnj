@@ -12,6 +12,11 @@ signature COMPILATION_TYPE = sig
     type envdelta
     type result
 
+    type ts				(* traversal state *)
+
+    val start : unit -> ts
+    val finish : ts -> unit
+
     val empty : result
     val env2result : env -> result
 
@@ -31,14 +36,12 @@ signature COMPILATION_TYPE = sig
 
     val dostable:
 	BinInfo.info * (unit -> benv option) * GeneralParams.info *
-	DependencyGraph.bnode
+	DependencyGraph.bnode * ts
 	-> envdelta option
 
     val dosml :
-	SmlInfo.info * env * GeneralParams.info * DependencyGraph.snode
+	SmlInfo.info * env * GeneralParams.info * DependencyGraph.snode * ts
 	-> envdelta option
-
-    val nestedTraversalReset : unit -> unit
 
     val reset : unit -> unit
 end
