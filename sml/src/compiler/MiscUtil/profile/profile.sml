@@ -71,6 +71,13 @@ structure Profile : sig
 	  (i*j div k) 
 	     handle Overflow => muldiv(i,j div 2, k div 2)
 
+    (* This convolution is required because the PPC cannot distinguish 
+     * between div-by-zero and overflow -- Lal.
+     *)
+    fun muldiv(i, j, 0) = raise General.Div
+      | muldiv(i, j, k) = 
+         (i * j div k) handle Overflow => muldiv(i, j div 2, k div 2)
+ 
     fun decfield(n,j,k,w1,w2) = 
 	  field(decimal(Int.toString (muldiv(n,j,k)),w1)
 		  handle Div => "",w2)
