@@ -563,9 +563,14 @@ fun fcFix (fs,le) =
 		(* NOTE: we don't want to turn a known function into an
 		 * escaping one.  It's dangerous for optimisations based
 		 * on known functions (elimination of dead args, f.ex)
-		 * and could generate cases where call>use in collect *)
+		 * and could generate cases where call>use in collect.
+		 * Of course, if g is not a locally defined function (it's
+		 * bound by a LET or as an argument), then knownness is
+		 * irrelevant. *)
 		in if f = g orelse
-		    (C.escaping(C.get f)) andalso not(C.escaping(C.get g))
+		    ((C.escaping(C.get f)) andalso
+		     not(C.escaping(C.get g)) andalso
+		     (case svg of Fun _ => true | _ => false))
 		   (* the default case could ensure the inline *)
 		   then (m, fdec::fs, hs)
 		   else let
@@ -590,8 +595,7 @@ fun fcFix (fs,le) =
 	  | fcEta (fdec,(m,fs,hs)) = (m,fdec::fs,hs)
 					
 	(* add wrapper for various purposes *)
-	fun wrap (f as ({inline=F.IH_ALWAYS,...},_,_,_):F.fundec,fs) = f::fs
-	  | wrap (f as (fk as {isrec,...},g,args,body):F.fundec,fs) =
+	fun wrap (f as (fk as {isrec,inline,...},g,args,body):F.fundec,fs) =
 	    let val gi = C.get g
 		fun dropargs filter =
 		    let val (nfk,nfk') = OU.fk_wrap(fk, O.map #1 isrec)
@@ -618,7 +622,8 @@ fun fcFix (fs,le) =
 		 * might turn into calls in the course of fcontract, so
 		 * by not introducing wrappers here, we avoid useless work
 		 * but we also postpone useful work to later invocations. *)
-		if C.dead gi then fs else
+		if C.dead gi then fs
+		else if inline=F.IH_ALWAYS then f::fs else
 		    let val used = map (used o #1) args
 		    in if C.called gi then
 			(* if some args are not used, let's drop them *)

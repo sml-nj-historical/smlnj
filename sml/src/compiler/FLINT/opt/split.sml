@@ -154,6 +154,8 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
 	    leI, fvI, leRet)
 	 | _ =>
 	   let val fvbIs = S.members(S.diff(fvbI, benv))
+	       val (nfk,fkE) = OU.fk_wrap(fk, NONE)
+
 	       (* fdecE *)
 	       val fE = cplv f
 	       val fErets = (map F.VAR fvbIs)
@@ -161,7 +163,7 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
 	       (* val tmp = mklv()
 	       val bodyE = bodyE(F.RECORD(F.RK_STRUCT, map F.VAR fvbIs,
 					  tmp, F.RET[F.VAR tmp])) *)
-	       val fdecE = (fk, fE, args, bodyE)
+	       val fdecE = (fkE, fE, args, bodyE)
 	       val fElty = LT.ltc_fct(map #2 args, map getLty fErets)
 	       val _ = addLty(fE, fElty)
 
@@ -179,7 +181,6 @@ and sfdec env (leE,leI,fvI,leRet) (fk,f,args,body) =
 	       val fdecI as (_,fI,_,_) = FU.copyfdec(fkI,f,argsI,bodyI)
 						    
 	       (* nfdec *)
-	       val (nfk,_) = OU.fk_wrap(fk, NONE)
 	       val nargs = map (fn (v,t) => (cplv v, t)) args
 	       val argsv = map (fn (v,t) => F.VAR v) nargs
 	       val nbody =
@@ -273,14 +274,14 @@ in case (bodyI, bodyRet)
 
 	   val nargs = map (fn (v,t) => (cplv v, t)) args
        in
-	   (* (fdecE, SOME fdecI) *)
-	   ((fk, f, nargs,
+	   (fdecE, SOME fdecI)
+	   (* ((fk, f, nargs,
 	     F.FIX([fdecE],
 		   F.FIX([fdecI],
 			 F.LET([argI],
 			       F.APP(F.VAR fE, map (F.VAR o #1) nargs),
 			       F.APP(F.VAR fI, [F.VAR argI]))))),
-	    NONE)
+	    NONE) *)
        end
 
      | _ =>

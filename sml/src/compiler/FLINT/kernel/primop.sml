@@ -262,7 +262,6 @@ val effect =
   | (LENGTH | OBJLENGTH) => false
   | (CAST | WCAST) => false
   | (INLMIN | INLMAX | INLNOT | INLCOMPOSE) => false
-  | (INL_ARRAY | INL_VECTOR | INL_MONOARRAY _ | INL_MONOVECTOR _) => false
   | (WRAP | UNWRAP) => false
   | _ => true
   
