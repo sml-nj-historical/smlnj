@@ -22,7 +22,7 @@ val say = Control.Print.say
 
 fun phase x = Stats.doPhase (Stats.makePhase x)
 
-val lcontract = phase "Compiler 052 lcontract" LContract.lcontract 
+(*  val lcontract = phase "Compiler 052 lcontract" LContract.lcontract  *)
 val fcontract = phase "Compiler 052 fcontract" FContract.contract
 val specialize= phase "Compiler 053 specialize" Specialize.specialize
 val wrapping  = phase "Compiler 054 wrapping" Wrapping.wrapping
@@ -94,6 +94,7 @@ fun flintcomp(flint, compInfo as {error, sourceName=src, ...}: CB.compInfo) =
         if !Control.FLINT.specialize then
            (chkF (false,"3") o prF "Specialization" o specialize) flint
         else flint
+      val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
 
 (*        val flint = (chkF (false,"6") o prF "FixFix" o fixfix) flint *)
       val flint = (chkF (false,"2") o prF "Fcontract" o fcontract) flint
