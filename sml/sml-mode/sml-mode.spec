@@ -39,9 +39,7 @@ cat >> %{lispdir}/site-start.el <<EOF
 ;; sml-mode-end
 EOF
 
-/sbin/install-info %{_infodir}/sml-mode.info.gz %{_infodir}/dir \
-    --section=Emacs \
-    --entry="* SML: (sml-mode).    Editing & Running Standard ML from Emacs"
+/sbin/install-info %{_infodir}/sml-mode.info.gz %{_infodir}/dir
 
 %postun
 ed -s %{lispdir}/site-start.el <<EOF
