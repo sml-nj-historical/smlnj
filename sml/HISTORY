@@ -12,6 +12,21 @@ Date:
 Tag: <post-commit CVS tag>
 Description:
 ----------------------------------------------------------------------
+Name: Dave MacQueen
+Date: 2000/04/09 14:00 EDT
+Tag: dbm-20000502-Version_110_28
+Description:
+
+1. Updated src/compiler/TopLevel/main/version.sml to version 110.28
+
+2. Updated config/version to 110.28
+
+3. Updated config/srcarchiveurl
+
+3. New boot files!
+   ftp://ftp.research.bell-labs.com/dist/smlnj/working/110.28/
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2000/05/01 19:05:00 JST
 Tag: blume-20000501-noweb
