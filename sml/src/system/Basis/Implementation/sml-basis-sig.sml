@@ -20,11 +20,11 @@ type ML_string_t = string
 type ML_string_opt_t = string option
 type ML_string_list_t = string list
 type ML_int_opt_t = int option
-type ML_iodesc_t = Unsafe.Object.object
+type ML_iodesc_t = word (* was: Unsafe.Object.object *)
 type ML_directory_t = Unsafe.Object.object
 type Time_t = {seconds:Int32.int,uSeconds:Int32.int}
-type ML_polldesc_list_t = (word * Unsafe.Object.object) list
-type ML_pollinfo_list_t = (word * Unsafe.Object.object) list
+type ML_polldesc_list_t = (word * word (* Unsafe.Object.object *)) list
+type ML_pollinfo_list_t = (word * word (* Unsafe.Object.object *)) list
 type Date_t = {tm_sec:Int32.int,tm_min:Int32.int,tm_hour:Int32.int,tm_mday:Int32.int,tm_mon:Int32.int,tm_year:Int32.int,tm_wday:Int32.int,tm_yday:Int32.int,tm_isdst:Int32.int}
 val TO_NEAREST : Int.int
 val TO_NEGINF : Int.int

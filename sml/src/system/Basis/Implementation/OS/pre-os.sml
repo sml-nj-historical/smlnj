@@ -18,7 +18,7 @@ structure OS = struct
 
     structure IO =
       struct
-          type iodesc = SMLBasis.ML_iodesc_t ref
+          datatype iodesc = IODesc of SMLBasis.ML_iodesc_t
 (** This probably should be
 	datatype iodesc = IODesc of Posix.FileSys.file_desc
  **)

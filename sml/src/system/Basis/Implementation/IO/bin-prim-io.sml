@@ -65,7 +65,7 @@ structure BinPrimIO : BIN_PRIM_IO = struct
 	{ pos = ref (0 : Position.int),
 	  getPos = NONE, setPos = NONE, endPos = NONE, verifyPos = NONE }
 
-    fun mkReader { fd = rfd as ref fd, name, chunkSize } = let
+    fun mkReader { fd = rfd as OS.IO.IODesc fd, name, chunkSize } = let
 	val isReg = (SMLBasis.ioDescKind fd = SMLBasis.IOD_KIND_FILE)
 	val chunkSize = getOpt (chunkSize, defaultBufferSize)
 	val closed = ref false
@@ -132,7 +132,7 @@ structure BinPrimIO : BIN_PRIM_IO = struct
 	     ioDesc    = SOME rfd }
     end
 
-    fun mkWriter { fd = rfd as ref fd, name, chunkSize } = let
+    fun mkWriter { fd = rfd as OS.IO.IODesc fd, name, chunkSize } = let
 	val isReg = (SMLBasis.ioDescKind fd = SMLBasis.IOD_KIND_FILE)
 	val chunkSize = getOpt (chunkSize, defaultBufferSize)
 	val closed = ref false
@@ -197,17 +197,17 @@ structure BinPrimIO : BIN_PRIM_IO = struct
 	val openAppFlags = OPEN_WR + OPEN_CREATE + OPEN_APPEND
     in
         fun openRd fname =
-	    mkReader { fd = ref (openFile (fname, openRdFlags)),
+	    mkReader { fd = OS.IO.IODesc (openFile (fname, openRdFlags)),
 		       name = fname,
 		       chunkSize = NONE }
 
 	fun openWr fname =
-	    mkWriter { fd = ref (openFile (fname, openWrFlags)),
+	    mkWriter { fd = OS.IO.IODesc (openFile (fname, openWrFlags)),
 		       name = fname,
 		       chunkSize = NONE }
 
 	fun openApp fname =
-	    mkWriter { fd = ref (openFile (fname, openAppFlags)),
+	    mkWriter { fd = OS.IO.IODesc (openFile (fname, openAppFlags)),
 		       name = fname,
 		       chunkSize = NONE }
     end

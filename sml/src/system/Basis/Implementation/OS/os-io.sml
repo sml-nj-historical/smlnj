@@ -9,8 +9,8 @@ structure OS_IO : OS_IO = struct
 
     type iodesc = OS.IO.iodesc
 
-    fun hash d = raise Fail "hash not yet implemented"
-    fun compare (ref d1, ref d2) =
+    fun hash (OS.IO.IODesc d) = d
+    fun compare (OS.IO.IODesc d1, OS.IO.IODesc d2) =
 	IntImp.compare (SMLBasis.cmpIODesc (d1, d2), 0)
 
     datatype iodesc_kind = K of string
@@ -25,7 +25,7 @@ structure OS_IO : OS_IO = struct
         val device = K "DEV"
       end
 
-    fun kind (ref d) = let
+    fun kind (OS.IO.IODesc d) = let
 	val k = SMLBasis.ioDescKind d
     in
 	if k = SMLBasis.IOD_KIND_FILE then Kind.file
@@ -53,13 +53,8 @@ structure OS_IO : OS_IO = struct
   (* polling function *)
     fun poll (pds, timeOut) = let
 	(* the low-level polling function does not expect ref cells *)
-	fun strip (f, ref d) = (f, d)
-	(* we must put the _original_ ref cells back into our result... *)
-	fun sameAs d (_, ref d') = SMLBasis.cmpIODesc (d, d') = 0
-	fun redress (f, d) =
-	    case List.find (sameAs d) pds of
-		SOME (_, dr) => (f, dr)
-	      | NONE => raise Fail "impossible: bogus poll result"
+	fun strip (f, OS.IO.IODesc d) = (f, d)
+	fun redress (f, d) = (f, OS.IO.IODesc d)
     in
 	map redress
 	    (SMLBasis.osPoll (map strip pds,
