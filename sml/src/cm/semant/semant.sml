@@ -58,8 +58,8 @@ signature CM_SEMANT = sig
 	     class: cm_class option }
 	-> members
     val members : members * members -> members
-    val guarded_members :	
-exp * (members * members) * (string -> unit) -> members
+    val guarded_members :
+	exp * (members * members) * (string -> unit) -> members
     val error_member : (unit -> unit) -> members
 
     (* constructing export lists *)
