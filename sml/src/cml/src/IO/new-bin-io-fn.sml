@@ -411,6 +411,35 @@ functor BinIOFn (
 	      end
 *)
 
+    (* IO event constructors:
+     * We exploit the "functional" nature of stream IO to implement the event
+     * constructors.  These constructors spawn a thread to do the operation
+     * and and write the result in an iVar that serves as the synchronization
+     * value.
+     * NOTE: this implementation has the weakness that it prevents shutdown when
+     * everything else is deadlocked, since the thread that is spawned to actually
+     * do the IO could proceed.
+     *)
+	local
+	  datatype 'a result = RES of 'a | EXN of exn
+	  fun doInput inputOp = let
+		fun input arg = RES(inputOp arg) handle ex => EXN ex
+		in
+		  fn arg => CML.guard (fn () => let
+			val resV = SV.iVar()
+			in
+			  CML.spawn (fn () => SV.iPut(resV, input arg));
+			  CML.wrap(SV.iGetEvt resV,
+			    fn (RES x) => x | (EXN ex) => raise ex)
+			end)
+		end
+	in
+	val input1Evt = doInput input1
+	val inputEvt = doInput input
+	val inputNEvt = doInput inputN
+	val inputAllEvt = doInput inputAll
+	end (* local *)
+
 
       (*** Output streams ***)
 

@@ -259,12 +259,6 @@ functor TextIOFn (
 		(data, findEOS buf)
 	      end
 
-	fun input1Evt _ = raise Fail "input1Evt unimplemented"
-	fun inputEvt _ = raise Fail "inputEvt unimplemented"
-	fun inputNEvt _ = raise Fail "inputNEvt unimplemented"
-	fun inputAllEvt _ = raise Fail "inputAllEvt unimplemented"
-	fun inputLineEvt _ = raise Fail "inputLineEvt unimplemented"
-
       (* Return SOME k, if k <= amount characters can be read without blocking. *)
 	fun canInput (strm as ISTRM(buf, pos), amount) = let
 (******
@@ -476,6 +470,37 @@ functor TextIOFn (
 	      in
 		(V.concat data, strm)
 	      end
+
+    (* IO event constructors:
+     * We exploit the "functional" nature of stream IO to implement the event
+     * constructors.  These constructors spawn a thread to do the operation
+     * and and write the result in an iVar that serves as the synchronization
+     * value.
+     * NOTE: this implementation has the weakness that it prevents shutdown when
+     * everything else is deadlocked, since the thread that is spawned to actually
+     * do the IO could proceed.
+     *)
+	local
+	  datatype 'a result = RES of 'a | EXN of exn
+	  fun doInput inputOp = let
+		fun input arg = RES(inputOp arg) handle ex => EXN ex
+		in
+		  fn arg => CML.guard (fn () => let
+			val resV = SV.iVar()
+			in
+			  CML.spawn (fn () => SV.iPut(resV, input arg));
+			  CML.wrap(SV.iGetEvt resV,
+			    fn (RES x) => x | (EXN ex) => raise ex)
+			end)
+		end
+	in
+	val input1Evt = doInput input1
+	val inputEvt = doInput input
+	val inputNEvt = doInput inputN
+	val inputAllEvt = doInput inputAll
+	val inputLineEvt = doInput inputLine
+	end (* local *)
+
 
       (*** Output streams ***)
 
