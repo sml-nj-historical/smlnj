@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/01/24
+Tag: george-20020124-risc-ra-interface
+Description:
+
+   There is a dramatic simplification in the interface to the
+   register allocator for RISC architectures as a result of making 
+   parallel copy instructions explicit. 
+   
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/22
 Tag: blume-20020122-x86-ccalls
