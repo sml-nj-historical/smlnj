@@ -105,6 +105,9 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 	handle LibBase.NotFound => ()
 
     fun parse args = let
+
+	val _ = SrcPath.sync ()
+
 	val { load_plugin, gr, param, stabflag, group,
 	      init_group, paranoid } = args
 

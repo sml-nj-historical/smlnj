@@ -14,6 +14,18 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
+Date: 2002/12/06 22:40:00 EST
+Tag: blume-20021206-cm-fileid
+Description:
+
+Added a call of SrcPath.sync at the beginning of Parse.parse (in CM).
+This fixes the problem of CM getting confused by files that suddenly
+change their identity (e.g., by getting unlinked and recreated by some
+text editor such as vi).  There might be a better/cheaper/cleaner way
+of doing this, but for now this will have to do.
+
+----------------------------------------------------------------------
+Name: Matthias Blume
 Date: 2002/10/28 09:50:00 EST
 Tag: blume-20021028-typecheck 
 Description:
