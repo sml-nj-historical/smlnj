@@ -11,9 +11,11 @@ sig
 end (* signature TYPECHECK *)
 
 
-(* functorized to factor out dependencies on FLINT... *)
-functor TypecheckFn (val ii_ispure : II.ii -> bool
-	     (* PRIMOP: val ii2ty : II.ii -> Types.ty option *)) : TYPECHECK =
+(* No longer functorized to factor out dependencies on FLINT (ii2ty, ii_ispure)
+ * Instead, TypesUtil depends directly on InlInfo -- it calls InlInfo.pureInfo to test
+ * for the CAST primop in function isValue. *)
+
+structure Typecheck : TYPECHECK =
 struct
 
 local open Array List Types VarCon BasicTypes TypesUtil Unify Absyn
@@ -36,8 +38,6 @@ fun debugmsg (msg: string) = if !debugging then (say msg; say "\n") else ()
 val debugPrint = (fn x => ED.debugPrint debugging x)
 
 fun bug msg = ErrorMsg.impossible("TypeCheck: "^msg)
-
-val isValue = isValue { ii_ispure = ii_ispure }
 
 infix 9 sub
 infix -->
@@ -264,6 +264,9 @@ fun generalizeTy(VALvar{typ,path,...}, userbound: tyvar list,
   | generalizeTy _ = bug "generlizeTy - bad arg"
   
 
+(* the VARpat case seems designed to ensure that only one variable in a pattern
+ * can have generalized type variables: either x or !tvs must be nil or a bug
+ * message is generated.  Why is this? [dbm] *)
 fun generalizePat(pat: pat, userbound: tyvar list, occ: occ, 
                   generalize: bool, region) =
     let val tvs : tyvar list ref = ref []
@@ -405,7 +408,7 @@ in
      case exp
       of VARexp(r as ref(VALvar{typ, ...}), _) =>
 	  let val (ty, insts) = instantiatePoly(!typ)
-	   in (VARexp(r, insts), ty)
+	   in (VARexp(r, ty), ty)
 	  end
 
        | VARexp(refvar as ref(OVLDvar _),_) =>

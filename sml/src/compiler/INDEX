@@ -331,6 +331,8 @@ PrimEnv
   Semant/statenv/prim.sml
 PRIMREAL
   MiscUtil/bignums/realconst.sml
+PrimOp
+  FLINT/kernel/primop.sml
 PrimTycNum
   Elaborator/basics/ptnum.sml
 PRINTCONTROL

@@ -457,10 +457,13 @@ fun checkEqTySig(ty, sign: polysign) =
     handle CHECKEQ => false
 end
 
+(* compType, compareTypes used to compare specification type with type of
+ * corresponding actual element.  Check that spec type is an instance of
+ * the actual type *)
 exception CompareTypes
 fun compType(specty, specsign:polysign, actty,
 	     actsign:polysign, actarity): unit =
-    let val env = array(actarity,UNDEFty)
+    let val env = array(actarity,UNDEFty) (* instantiations of IBOUNDs in actual body *)
 	fun comp'(WILDCARDty, _) = ()
 	  | comp'(_, WILDCARDty) = ()
 	  | comp'(ty1, IBOUND i) =
@@ -484,7 +487,7 @@ fun compType(specty, specsign:polysign, actty,
      in comp(specty,actty)
     end
 
-(* returns true if actual type > spec type *)
+(* returns true if actual type > spec type, i.e. if spec is an instance of actual *)
 fun compareTypes (spec : ty, actual: ty): bool = 
     let val actual = prune actual
      in case spec
@@ -561,58 +564,58 @@ fun gtLabel(a,b) =
    be nonexpansive. (Taha, DBM) *) 
 local open Absyn in
 
-fun isValue { ii_ispure } = let
-    fun isval (VARexp _) = true
-      | isval (CONexp _) = true
-      | isval (INTexp _) = true
-      | isval (WORDexp _) = true
-      | isval (REALexp _) = true
-      | isval (STRINGexp _) = true
-      | isval (CHARexp _) = true
-      | isval (FNexp _) = true
-      | isval (RECORDexp fields) =
-	foldr (fn ((_,exp),x) => x andalso (isval exp)) true fields
-      | isval (SELECTexp(_, e)) = isval e
-      | isval (VECTORexp (exps, _)) =
-	foldr (fn (exp,x) => x andalso (isval exp)) true exps
-      | isval (SEQexp nil) = true
-      | isval (SEQexp [e]) = isval e
-      | isval (SEQexp _) = false
-      | isval (APPexp(rator, rand)) =
-	let fun isrefdcon(DATACON{rep=A.REF,...}) = true
-              | isrefdcon _ = false
-	    fun iscast (VALvar { info, ... }) = ii_ispure info
-	      | iscast _ = false
-	    (*
-            fun iscast(VALvar{info,...}) = II.pureInfo (II.fromExn info)
-              | iscast _ = false
-	     *)
+fun isValue (VARexp _) = true
+  | isValue (CONexp _) = true
+  | isValue (INTexp _) = true
+  | isValue (WORDexp _) = true
+  | isValue (REALexp _) = true
+  | isValue (STRINGexp _) = true
+  | isValue (CHARexp _) = true
+  | isValue (FNexp _) = true
+  | isValue (RECORDexp fields) =
+    foldr (fn ((_,exp),x) => x andalso (isValue exp)) true fields
+  | isValue (SELECTexp(_, e)) = isValue e
+  | isValue (VECTORexp (exps, _)) =
+    foldr (fn (exp,x) => x andalso (isValue exp)) true exps
+  | isValue (SEQexp nil) = true
+  | isValue (SEQexp [e]) = isValue e
+  | isValue (SEQexp _) = false
+  | isValue (APPexp(rator, rand)) =
+    let fun isrefdcon(DATACON{rep=A.REF,...}) = true
+          | isrefdcon _ = false
+        fun iscast (VALvar { info, ... }) = InlInfo.pureInfo info
+          | iscast _ = false
+        (* -- parameterized by ii_ispure, which will be bound to InlInfo.pureInfo 
+        fun iscast (VALvar { info, ... }) = ii_ispure info
+          | iscast _ = false
+        *)
+        (*
+        fun iscast(VALvar{info,...}) = II.pureInfo (II.fromExn info)
+          | iscast _ = false
+         *)
 
-            (* LAZY: The following function allows applications of the
-	     * fixed-point combinators generated for lazy val recs to
-	     * be non-expansive. *)
-            fun issafe(VALvar{path=(SymPath.SPATH [s]),...}) = 
-		(case String.explode (Symbol.name s)
-		  of (#"Y" :: #"$" :: _) => true
-		   | _ => false)
-              | issafe _ = false
+        (* LAZY: The following function allows applications of the
+         * fixed-point combinators generated for lazy val recs to
+         * be non-expansive. *)
+        fun issafe(VALvar{path=(SymPath.SPATH [s]),...}) = 
+            (case String.explode (Symbol.name s)
+              of (#"Y" :: #"$" :: _) => true
+               | _ => false)
+          | issafe _ = false
 
-	    fun iscon (CONexp(dcon,_)) = not (isrefdcon dcon)
-	      | iscon (MARKexp(e,_)) = iscon e
-              | iscon (VARexp(ref v, _)) = (iscast v) orelse (issafe v)
-	      | iscon _ = false
-	in if iscon rator then isval rand
-           else false
-	end
-      | isval (CONSTRAINTexp(e,_)) = isval e
-      | isval (CASEexp(e, (RULE(p,_))::_, false)) = 
-	(isval e) andalso (irref p) (* special bind CASEexps *)
-      | isval (LETexp(VALRECdec _, e)) = (isval e) (* special RVB hacks *)
-      | isval (MARKexp(e,_)) = isval e
-      | isval _ = false
-in
-    isval
-end
+        fun iscon (CONexp(dcon,_)) = not (isrefdcon dcon)
+          | iscon (MARKexp(e,_)) = iscon e
+          | iscon (VARexp(ref v, _)) = (iscast v) orelse (issafe v)
+          | iscon _ = false
+    in if iscon rator then isValue rand
+       else false
+    end
+  | isValue (CONSTRAINTexp(e,_)) = isValue e
+  | isValue (CASEexp(e, (RULE(p,_))::_, false)) = 
+    (isValue e) andalso (irref p) (* special bind CASEexps *)
+  | isValue (LETexp(VALRECdec _, e)) = (isValue e) (* special RVB hacks *)
+  | isValue (MARKexp(e,_)) = isValue e
+  | isValue _ = false
 
 (* testing if a binding pattern is irrefutable --- complete *)
 and irref pp  = 

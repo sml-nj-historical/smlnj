@@ -2,6 +2,9 @@
  *
  * (C) 2001 Lucent Technologies, Bell Labs
  *)
+
+(* imports PrimOp [FLINT] *)
+
 structure InlInfo : INL_INFO = struct
 
     fun bug s = ErrorMsg.impossible ("InlInfo: " ^ s)
@@ -43,6 +46,7 @@ structure InlInfo : INL_INFO = struct
     fun isPrimCallcc (II.Info (E ((PrimOp.CALLCC | PrimOp.CAPTURE), _))) = true
       | isPrimCallcc _ = false
 
+    (* tests whether primop is cast -- should be named isCast *)
     fun pureInfo (II.Info (E (p, _))) =
 	let fun isPure PrimOp.CAST = true
 	      | isPure _ = false

@@ -111,7 +111,8 @@ and fctexp
  * does not contain any variable patterns; boundtvs gives the list of
  * type variables that are being generalized at this binding. 
  *)
-and vb = VB of {pat: pat, exp: exp, boundtvs: tyvar list,
+and vb = VB of {pat: pat, exp: exp,
+                boundtvs: tyvar list,
                 tyvars: tyvar list ref}
 
 (*
