@@ -1,12 +1,12 @@
 (*
  * This module provides an infinite family of mutually distinct types
  * where each type corresponds to a sequence of "letters" (taken
- * from [a-zA-Z0-9_]).  There are no values that correspond to these
+ * from [a-zA-Z0-9_']).  There are no values that correspond to these
  * types.
  *
  * (C) 2001, Lucent Technologies, Bell Laboratories
  *
- * author: Matthias Blume
+ * author: Matthias Blume (blume@research.bell-labs.com)
  *)
 structure Tag :> sig
 
@@ -14,7 +14,7 @@ structure Tag :> sig
     type 't t_4 type 't t_5 type 't t_6 type 't t_7
     type 't t_8 type 't t_9
 
-    type 't t__
+    type 't t__ type 't t_'
 
     type 't t_a type 't t_b type 't t_c type 't t_d
     type 't t_e type 't t_f type 't t_g type 't t_h
@@ -40,7 +40,7 @@ end = struct
     type 't t_4 = unit type 't t_5 = unit type 't t_6 = unit type 't t_7 = unit
     type 't t_8 = unit type 't t_9 = unit
 
-    type 't t__ = unit
+    type 't t__ = unit type 't t_' = unit
 
     type 't t_a = unit type 't t_b = unit type 't t_c = unit type 't t_d = unit
     type 't t_e = unit type 't t_f = unit type 't t_g = unit type 't t_h = unit

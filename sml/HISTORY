@@ -13,6 +13,16 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/02/14 11:50:00 EST
+Tag: blume-20020214-quote
+Description:
+
+Added a type 't t_' to tag.sml (in ml-nlffi-lib.cm).  This is required
+because of the new and improved tag generation scheme.  (Thanks to Allen
+Leung for pointing it out.)
+
+----------------------------------------------------------------------
 Name: Lal George
 Date: 2002/02/14 09:55:27 EST 2002
 Tag: george-20020214-isabelle-bug
