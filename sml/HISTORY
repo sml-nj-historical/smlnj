@@ -14,6 +14,14 @@ Description:
 
 ----------------------------------------------------------------------
 Name: Allen Leung
+Date: 2002/03/21 20:30:00 EST
+Tag: leunga-20020321-cfg
+Description:
+
+  Fixed a potential problem in cfg edge splitting.
+
+----------------------------------------------------------------------
+Name: Allen Leung
 Date: 2002/03/21 17:15:00 EST
 Tag: leunga-20020321-x86-fp-cfg
 Description:

@@ -455,58 +455,102 @@ struct
     *
     *  Split a group of control flow edge.
     *
+    *  Split n groups of control flow edges, all initially entering block j,
+    *
+    *     i_11 -> j,  i_12 -> j, ...         group 1
+    *     i_21 -> j,  i_22 -> j, ...         group 2
+    *             ....
+    *     i_n1 -> j,  i_n2 -> j, ...         group n
+    *  
+    *  into 
+    *
+    *     i_11 -> k_1 
+    *     i_12 -> k_1
+    *        ...
+    *     i_21 -> k_2
+    *     i_22 -> k_2
+    *        ...
+    *     i_n1 -> k_n
+    *     i_n2 -> k_n
+    *        ...
+    * 
+    *  and k_1 -> k_2
+    *      k_2 -> k_3
+    *        ...
+    *      k_n -> j
+    * 
+    *  Return the new edges 
+    *       k_1->j,...,k_n -> j 
+    *
+    *  and the new blocks 
+    *       k_1, ..., k_n.
+    *
+    *  Each block k_1, ..., k_n can have instructions placed in them.
+    *
+    *  If the jump flag is true, then a jump is always placed in the 
+    *  new block k_n; otherwise, we try to eliminate the jump when feasible.
+    *
     *=====================================================================*)
    fun splitEdges (CFG as G.GRAPH cfg) {groups=[], jump} = []
      | splitEdges (CFG as G.GRAPH cfg) {groups as ((first,_)::_), jump} = 
    let (* target of all the edges *)
        val j = let val (_,j,_) = hd first in j end
 
-       fun process([], freq, new) = new
-         | process((edges, insns)::groups, freq, new) = 
+       (* Insert an edge i->j with frequency freq.
+        * It is a jump edge iff jump flag is true or
+        * some other block is already falling into j
+        *)
+       fun insertEdge(i,j,node_i,freq,jump) = 
+       let val kind = 
+               if jump orelse isSome(fallsThruFrom(CFG,j)) then 
+                  let val insns_i = insns node_i
+                  in  insns_i := InsnProps.jump(labelOf CFG j) :: !insns_i;
+                      JUMP
+                  end
+               else
+                  FALLSTHRU
+           val edge_info = EDGE{k=kind, w=ref freq, a=ref []}
+           val edge = (i,j,edge_info)
+       in  #add_edge cfg edge;
+           edge
+       end
+ 
+       (* Redirect all edges *)
+       fun redirect([], freq, new) = new
+         | redirect((edges, insns)::groups, freq, new) = 
        let
            val freq = sumEdgeFreqs edges + freq (* freq of new block *)
 
-           (* should we place a jump in the new block? *)
-           fun scan([], jump) = jump
-             | scan((u,v,_)::es, jump) = 
+           (*  Sanity check
+            *)
+           fun check [] = ()
+             | check((u,v,_)::es) = 
                (if v <> j then error "splitEdge: bad edge" else ();
-                scan(es, jump orelse u = v orelse
-                         (case fallsThruFrom(CFG, v) of
-                           NONE => false
-                         | SOME u' => u <> u'
-                         ))
+                check es
                )
 
-           val jump = scan(edges, jump)
+           val () = check edges 
          
-           (* if it is not the last group then no jumps are needed *)
-           val jump = case groups of
-                        [] => jump 
-                      | _ => false 
-
-           val insns = ref(if jump then InsnProps.jump(labelOf CFG j)::insns 
-                                   else insns)
            val k = #new_id cfg () (* new block id *)
            val node_k = 
                BLOCK{id=k, kind=NORMAL, 
                      freq= ref freq, align=ref NONE, labels = ref [],
-                     insns=insns, annotations=ref []}
-           val kind = if jump then JUMP else FALLSTHRU
-           val edgeinfo_k = EDGE{w=ref freq,a=ref [],k=kind}
+                     insns=ref insns, annotations=ref []}
+
        in  app (removeEdge CFG) edges;
            app (fn (i,_,e) => #add_edge cfg (i,k,e)) edges;
            #add_node cfg (k,node_k);
-           process(groups, freq, (k, node_k, edgeinfo_k)::new) 
+           redirect(groups, freq, (k, node_k, edges, freq)::new) 
        end
 
-       val new = process(groups, 0.0, [])
+       val new = redirect(groups, 0.0, [])
 
        (* Add the edges on the chain *)
-       fun postprocess([], j, new) = new
-         | postprocess((k, node_k, edgeinfo_k)::rest, j, new) =
-           let val edge = (k, j, edgeinfo_k)
-           in  #add_edge cfg edge;
-               postprocess(rest, k, ((k,node_k),edge)::new)
+       fun postprocess([], next, new) = new
+         | postprocess((k, node_k, edges, freq)::rest, next, new) =
+           let val jump = next = j andalso jump 
+               val edge = insertEdge(k, next, node_k, freq, jump)
+           in  postprocess(rest, k, ((k,node_k),edge)::new)
            end
 
        val new = postprocess(new, j, [])
