@@ -362,7 +362,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 		      { openIt = fn () => F.openDir bootdir,
 		        closeIt = F.closeDir,
 			work = listDir,
-			cleanup = fn () => () }
+			cleanup = fn _ => () }
 		  fun isDir x = F.isDir x handle _ => false
 		  fun subDir x = let
 		      val d = P.concat (bootdir, x)

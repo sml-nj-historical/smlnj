@@ -75,14 +75,14 @@ end = struct
 	    SafeIO.perform { openIt = fn () => oo outf,
 			     closeIt = co,
 			     work = workOut,
-			     cleanup = fn () =>
+			     cleanup = fn _ =>
 			         (F.remove outf handle _ => ()) }
 	end
     in
 	SafeIO.perform { openIt = fn () => oi inf,
 			 closeIt = ci,
 			 work = workIn,
-			 cleanup = fn () => () }
+			 cleanup = fn _ => () }
     end
 
     val copyTextFile =
@@ -286,7 +286,7 @@ end = struct
 				   closeIt = TextIO.closeOut,
 				   work = fn s =>
 				       TextIO.output (s, rtspid ^ "\n"),
-				   cleanup = fn () =>
+				   cleanup = fn _ =>
 				       OS.FileSys.remove pidfile
 				       handle _ => () };
 				 SafeIO.perform
@@ -294,7 +294,7 @@ end = struct
 				       AutoDir.openTextOut listfile,
 				   closeIt = TextIO.closeOut,
 				   work = writeList,
-				   cleanup = fn () =>
+				   cleanup = fn _ =>
 				       OS.FileSys.remove listfile
 				       handle _ => () };
 				 copyTextFile (SrcPath.osstring initgspec,
@@ -320,11 +320,7 @@ end = struct
     fun compile deliver dbopt =
 	case mk_compile deliver NONE dbopt of
 	    NONE => false
-	  | SOME (_, thunk) =>
-		SafeIO.perform { openIt = fn () => (),
-				 closeIt = Servers.reset,
-				 work = thunk,
-				 cleanup = fn () => () }
+	  | SOME (_, thunk) => thunk ()
 
     local
 	fun slave (dirbase, root) =
@@ -350,7 +346,7 @@ end = struct
 	SafeIO.perform { openIt = fn () => (),
 			 closeIt = reset,
 			 work = fn () => compile true arg,
-			 cleanup = fn () => () }
+			 cleanup = fn _ => () }
     fun deliver () = deliver' NONE
     val symval = SSV.symval
 end

@@ -462,7 +462,7 @@ struct
 	    SOME (SafeIO.perform { openIt = AutoDir.openBinOut o mksname,
 				   closeIt = BinIO.closeOut,
 				   work = work,
-				   cleanup = fn () =>
+				   cleanup = fn _ =>
 				    (OS.FileSys.remove (mksname ())
 				     handle _ => ()) })
 	    handle exn =>
@@ -755,7 +755,7 @@ struct
 	SOME (SafeIO.perform { openIt = BinIO.openIn o mksname,
 			       closeIt = BinIO.closeIn,
 			       work = work,
-			       cleanup = fn () => () })
+			       cleanup = fn _ => () })
 	handle Format => (error ["file is corrupted (old version?)"];
 			  NONE)
              | IO.Io _ => NONE

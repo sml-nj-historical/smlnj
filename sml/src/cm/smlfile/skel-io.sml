@@ -137,11 +137,11 @@ structure SkelIO :> SKELIO = struct
 	    SOME (SafeIO.perform { openIt = fn () => BinIO.openIn s,
 				   closeIt = BinIO.closeIn,
 				   work = read_decl,
-				   cleanup = fn () => () })
+				   cleanup = fn _ => () })
 	    handle _ => NONE
 
     fun write (s, sk, ts) = let
-	fun cleanup () =
+	fun cleanup _ =
 	    (OS.FileSys.remove s handle _ => ();
 	     Say.say ["[writing ", s, " failed]\n"])
     in

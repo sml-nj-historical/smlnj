@@ -132,6 +132,6 @@ structure BuildInitDG :> BUILD_INIT_DG = struct
 	SafeIO.perform { openIt = openIt,
 			 closeIt = TextIO.closeIn,
 			 work = work,
-			 cleanup = fn () => () }
+			 cleanup = fn _ => () }
     end
 end

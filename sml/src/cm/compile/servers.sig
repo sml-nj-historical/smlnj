@@ -19,8 +19,10 @@ signature SERVERS = sig
 
     val kill : string -> unit
 
-    (* reset scheduler and wait until all servers are idle *)
-    val reset : unit -> unit
+    (* Reset scheduler and wait until all servers are idle.
+     * The "bool" argument makes reset suitable as an argument to
+     * SafeIO.perform. *)
+    val reset : bool -> unit
 
     (* signal all servers that future cmb calls use a different dirbase *)
     val dirbase : string -> unit

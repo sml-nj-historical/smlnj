@@ -49,7 +49,7 @@ struct
 		    SafeIO.perform { openIt = fn () => BinIO.openIn binname,
 				     closeIt = BinIO.closeIn,
 				     work = reader,
-				     cleanup = fn () => () }
+				     cleanup = fn _ => () }
 		end
     in
 	{ store = store, get = get }

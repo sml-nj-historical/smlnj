@@ -320,7 +320,7 @@ functor ParseFn (val pending : unit -> DependencyGraph.impexp SymbolMap.map
 		    SafeIO.perform { openIt = openIt,
 				     closeIt = TextIO.closeIn,
 				     work = work,
-				     cleanup = fn () => () }
+				     cleanup = fn _ => () }
 	    in
 		case pro of
 		    NONE => NONE

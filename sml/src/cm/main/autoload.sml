@@ -172,7 +172,7 @@ functor AutoLoadFn (structure C : COMPILE
 	      { openIt = fn () => #get StdConfig.verbose () before
 	                          #set StdConfig.verbose false,
 	        closeIt = ignore o #set StdConfig.verbose,
-		cleanup = fn () => (),
+		cleanup = fn _ => (),
 		work = fn _ =>
 	          (case loadit loadmap of
 		       SOME e =>

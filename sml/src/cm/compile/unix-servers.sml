@@ -142,7 +142,7 @@ structure Servers :> SERVERS = struct
      * if we wanted to only wait for "ok"s from currently busy servers.
      * (The race would happen when an interrupt occurs between receiving
      * "ok" and marking the corresponding slave idle). *)
-    fun wait_all () = let
+    fun wait_all is_int = let
 	val al = StringMap.listItems (!all)
 	fun ping (s as S { name, proc = p, ... }) = let
 	    val (ins, _) = Unix.streamsOf p
@@ -162,7 +162,10 @@ structure Servers :> SERVERS = struct
     in
 	if List.null al then ()
 	else (Concur.signal si;
-	      Say.say ["Waiting for attached servers to become idle...\n"]);
+	      if is_int then
+		  Say.say
+		  ["Waiting for attached servers to become idle...\n"]
+	      else ());
 	app ping al;
 	idle := al;
 	someIdle := si
@@ -220,7 +223,7 @@ structure Servers :> SERVERS = struct
 	    wait_status (s, true)
 	end
 
-    fun reset () = (Concur.reset (); wait_all ())
+    fun reset is_int = (Concur.reset (); wait_all is_int)
 
     fun startAll st = let
 	val l = !idle

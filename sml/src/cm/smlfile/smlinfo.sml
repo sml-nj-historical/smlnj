@@ -214,7 +214,7 @@ structure SmlInfo :> SMLINFO = struct
 		    SOME (SafeIO.perform { openIt = openIt,
 					   closeIt = TextIO.closeIn,
 					   work = work,
-					   cleanup = fn () => () })
+					   cleanup = fn _ => () })
 		(* Counting the trees explicitly may be a bit slow,
 		 * but maintaining an accurate count is difficult, so
 		 * this method should be robust.  (I don't think that

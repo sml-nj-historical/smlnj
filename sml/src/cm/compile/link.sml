@@ -155,7 +155,7 @@ in
 		    SafeIO.perform { openIt = fn () => BinIO.openIn stable,
 				     closeIt = BinIO.closeIn,
 				     work = work,
-				     cleanup = fn () => () }
+				     cleanup = fn _ => () }
 		    handle exn =>
 			exn_err ("unable to load library module",
 				 error, descr, exn)

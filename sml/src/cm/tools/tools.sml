@@ -206,7 +206,7 @@ structure PrivateTools :> PRIVATETOOLS = struct
 		SafeIO.perform { openIt = fn () => OS.FileSys.chDir dir,
 				 closeIt = fn () => OS.FileSys.chDir cwd,
 				 work = rf,
-				 cleanup = fn () => () }
+				 cleanup = fn _ => () }
 		handle ToolError { tool, msg } =>
 		    (error (concat ["tool \"", tool, "\" failed: ", msg]); [])
 	    end

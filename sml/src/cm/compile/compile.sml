@@ -238,7 +238,7 @@ in
 			    (BF.write { stream = s, content = bfc,
 					nopickle = false };
 			     Say.vsay ["[wrote ", binname, "]\n"])
-			fun cleanup () =
+			fun cleanup _ =
 			    OS.FileSys.remove binname handle _ => ()
 		    in
 			notify gp i;
@@ -320,7 +320,7 @@ in
 					  { openIt = openIt,
 					    closeIt = BinIO.closeIn,
 					    work = reader,
-					    cleanup = fn () => () })
+					    cleanup = fn _ => () })
 				    handle _ => NONE
 				end (* load *)
 				fun tryload (what, otherwise) =

@@ -93,6 +93,6 @@ structure PathConfig :> PATHCONFIG = struct
 	SafeIO.perform { openIt = fn () => TextIO.openIn f,
 			 closeIt = TextIO.closeIn,
 			 work = work,
-			 cleanup = fn () => () }
+			 cleanup = fn _ => () }
     end
 end

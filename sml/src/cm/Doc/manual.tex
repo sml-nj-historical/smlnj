@@ -612,13 +612,12 @@ CM.server\_start}.  The function takes the name of the server (as an
 arbitrary but unique string) ({\tt name}), the Unix command used to
 start the server in a form suitable as an argument to {\tt
 Unix.execute} ({\tt cmd}), an optional ``path transformation
-function'' for converting local absolute path names to remote absolute
-pathnames ({\tt pathtrans}), and a numeric ``preference'' value that
-is used to choose servers at times when more than one is idle ({\tt
-pref}).  The boolean result indicates success or failure of the attach
-operation.
+function'' for converting local path names to remote pathnames ({\tt
+pathtrans}), and a numeric ``preference'' value that is used to choose
+servers at times when more than one is idle ({\tt pref}).  The boolean
+result indicates success or failure of the attach operation.
 
-An existing server can be shut down and detached using either {\tt
+An existing server can be shut down and detached using {\tt
 CM.server\_stop} or {\tt CM.server\_kill}.  The string argument in
 either case must match the {\tt name} argument of the corresponding
 {\tt server\_start} call.  Function {\tt server\_stop} uses CM's
@@ -868,7 +867,7 @@ the line causes an explicit error message unless it gets excluded by
 the conditional compilation logic.  The error message is given by the
 remainder of the line after the word {\tt error}.
 
-\subsection{BNF for expressions}
+\subsection{EBNF for expressions}
 
 \begin{tabular}{rcl}
 \nt{letter} &\ar& \tl{A} \vb $\ldots$ \vb \tl{Z} \vb \tl{a} \vb $\ldots$ \vb \tl{z} \\
@@ -1188,10 +1187,12 @@ architecture-OS combination as the controlling machine.
 The {\tt pathtrans} argument is used when connecting to a machine with
 a different file-system layout.
 For local servers, it can safely be left at {\tt NONE}.  The ``path
-transformation'' function is used to translate local absolute path
+transformation'' function is used to translate local path
 names to their remote counterparts.
 This can be a bit tricky to get right, especially if the
 machines use automounters or similar devices.
+The {\tt pathtrans} functions consumes and produces names in CM's
+internal ``protocol encoding'' (see Section~\ref{sec:pathencode}).
 
 Once servers have been attached, one can invoke functions like
 {\tt CM.recomp}, {\tt CM.make}, and {\tt CM.stabilize}.  They should
@@ -1204,7 +1205,35 @@ This is because the interrupt-handling code will wait for the servers
 to finish what they are currently doing and bring them back to an
 ``idle'' state first.
 
-\subsection*{Parallel bootstrap compilation}
+\subsection{Pathname protocol encoding}
+\label{sec:pathencode}
+
+The master-slave protocol encodes pathnames in the following way:
+
+A pathname consists of {\bf /}-separated arcs (like Unix patnames).
+The first arc can be interpreted relative to the current working directory,
+relative to the root of the file system, relative to the root of a
+volume (on systems that support separate volumes), or relative to a
+directory that corresponds to a pathname anchor.  The first character
+of the pathname is used to distinguish between these cases.
+
+\begin{itemize}
+\item If the name starts with {\bf ./}, then the name is relative to
+the working directory.
+\item If the name starts with {\bf /}, then the name is relative to
+the file system root.
+\item If the name starts with {\bf \%}, then the substring between this
+{\bf \%} and the first {\bf /} is used as the name of a volume and the
+remaining arcs are interpreted relative to the root of that volume.
+\item If the name starts with {\bf \$}, then the substring between
+this {\bf \$} and the first {\bf /} must be the name of a pathname
+anchor.  The remaining arcs are interpreted relative to the directory
+that (on the slave side) is denoted by the anchor.
+\item Any other name is interpreted relative to the current working
+directory.
+\end{itemize}
+
+\subsection{Parallel bootstrap compilation}
 
 The bootstrap compiler\footnote{otherwise not mentioned in this
 document} with its functions {\tt CMB.make}, {\tt CMB.deliver}, and
