@@ -12,7 +12,7 @@ structure Servers :> SERVERS = struct
     type pathtrans = (string -> string) option
     type server = string * Unix.proc * pathtrans
 
-    val enabled = ref true
+    val enabled = ref false
     val nservers = ref 0
     val all = ref (StringMap.empty: server StringMap.map)
 
@@ -43,9 +43,7 @@ structure Servers :> SERVERS = struct
      * if taking the only server. *)
     fun grab () =
 	case !idle of
-	    [] => (Say.dsay ["Scheduler: waiting for idle slave.\n"];
-		   Concur.wait (!someIdle);
-		   grab ())
+	    [] => (Concur.wait (!someIdle); grab ())
 	  | [only as (name, _, _)] =>
 		(Say.dsay ["Scheduler: taking last idle slave (",
 			   name, ").\n"];
@@ -58,7 +56,7 @@ structure Servers :> SERVERS = struct
 		 show_idle ();
 		 first)
 
-    fun wait_status (name, p, tr) = let
+    fun wait_status ((name, p, tr), echo) = let
 	val (ins, _) = Unix.streamsOf p
 
 	fun unexpected l = let
@@ -72,10 +70,14 @@ structure Servers :> SERVERS = struct
 	    (Say.say ["! Slave ", name, " has crashed\n"];
 	     Unix.reap p)
 
-	fun loop () =
+	val show =
+	    if echo then (fn report => Say.say (rev report))
+	    else (fn _ => ())
+
+	fun loop report =
 	    case TextIO.canInput (ins, 1) of
-		NONE => wait ()
-	      | SOME 0 => wait ()
+		NONE => wait report
+	      | SOME 0 => wait report
 	      | SOME _ => let
 		    val line = TextIO.inputLine ins
 		in
@@ -84,18 +86,26 @@ structure Servers :> SERVERS = struct
 			(Say.dsay ["<- ", name, ": ", line];
 			 case String.tokens Char.isSpace line of
 			     ["SLAVE:", "ok"] =>
-				 (mark_idle (name, p, tr); true)
+				 (mark_idle (name, p, tr);
+				  show report;
+				  true)
 			   | ["SLAVE:", "error"] =>
-				 (mark_idle (name, p, tr); false)
-			   | "SLAVE:" :: l => (unexpected l; loop ())
-			   | _ => loop ())
+				 (mark_idle (name, p, tr);
+				  (* In the case of error we don't show
+				   * the report because it will be re-enacted
+				   * locally. *)
+				  false)
+			   | "SLAVE:" :: l => (unexpected l;
+					       loop report)
+			   | _ => loop (line :: report))
 		end
 
-	and wait () = (Say.dsay ["Scheduler: ", name,
-				 " is waiting for slave response.\n"];
-		       Concur.wait (Concur.inputReady ins); loop ())
+	and wait report = (Say.dsay ["Scheduler: ", name,
+				     " is waiting for slave response.\n"];
+			   Concur.wait (Concur.inputReady ins);
+			   loop report)
     in
-	loop ()
+	loop []
     end
 
     fun stop name = let
@@ -124,7 +134,7 @@ structure Servers :> SERVERS = struct
 	val p = Unix.execute cmd
 	val s = (name, p, pathtrans)
     in
-	if wait_status s then
+	if wait_status (s, false) then
 	    (all := StringMap.insert (!all, name, s);
 	     nservers := 1 + !nservers;
 	     true)
@@ -140,14 +150,14 @@ structure Servers :> SERVERS = struct
 	in
 	    Say.vsay ["(", name, "): compiling ", f, "\n"];
 	    send (name, outs, concat ["compile ", fname (f, tr), "\n"]);
-	    wait_status s
+	    wait_status (s, true)
 	end
 
     fun waitforall () = let
 	fun busy (name, p, _) =
 	    not (List.exists (fn (n', _, _) => name = n') (!idle))
 	val b = List.filter busy (StringMap.listItems (!all))
-	fun w s = ignore (wait_status s)
+	fun w s = ignore (wait_status (s, false))
     in
 	app w b
     end
@@ -161,7 +171,7 @@ structure Servers :> SERVERS = struct
 	    Say.vsay ["(", name, "): project ", f, "\n"];
 	    send (name, outs, concat ["cm ", fname (d, tr), " ",
 				      fname (f, tr), "\n"]);
-	    ignore (wait_status s)
+	    ignore (wait_status (s, false))
 	end
 	val _ = waitforall ()
 	val l = !idle
@@ -178,7 +188,7 @@ structure Servers :> SERVERS = struct
 	in
 	    Say.vsay ["(", name, "): bootstrap compile ", db, "\n"];
 	    send (name, outs, concat ["cmb ", fname (d, tr), " ", db, "\n"]);
-	    ignore (wait_status s)
+	    ignore (wait_status (s, false))
 	end
 	val _ = waitforall ()
 	val l = !idle
@@ -190,4 +200,10 @@ structure Servers :> SERVERS = struct
 
     fun enable () = enabled := true
     fun disable () = enabled := false
+
+    fun withServers f =
+	SafeIO.perform { openIt = enable,
+			 closeIt = disable,
+			 work = f,
+			 cleanup = fn () => () }
 end

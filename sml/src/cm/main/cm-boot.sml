@@ -58,7 +58,8 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  fun store _ = ()
 	  val { group, ... } = Compile.newTraversal (Link.evict, store, g)
       in
-	  isSome (group gp) before Link.cleanup gp
+	  isSome (Servers.withServers (fn () => group gp))
+	  before Link.cleanup gp
       end
 
       (* This function combines the actions of "recompile" and "exec".
@@ -71,7 +72,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 	  val { group = l_group, ... } = Link.newTraversal (g, get)
 	  val GroupGraph.GROUP { required = rq, ... } = g
       in
-	  case c_group gp of
+	  case Servers.withServers (fn () => c_group gp) of
 	      NONE => false
 	    | SOME { stat, sym} =>
 		  (* Before executing the code, we announce the priviliges
@@ -107,7 +108,7 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 			   val { group, ... } =
 			       Compile.newTraversal (Link.evict, store, g)
 		       in
-			   case group gp of
+			   case Servers.withServers (fn () => group gp) of
 			       NONE => NONE
 			     | SOME _ => SOME get
 		       end

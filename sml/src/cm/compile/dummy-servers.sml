@@ -16,6 +16,5 @@ structure Servers :> SERVERS = struct
     fun cm _ = ()
     fun cmb _ = ()
     fun compile _ = false
-    fun disable () = ()
-    fun enable () = ()
+    fun withServers f = f ()
 end

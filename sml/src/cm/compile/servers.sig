@@ -30,6 +30,5 @@ signature SERVERS = sig
     (* schedule a compilation *)
     val compile : SrcPath.t -> bool
 
-    val disable : unit -> unit
-    val enable : unit -> unit
+    val withServers : (unit -> 'a) -> 'a
 end

@@ -343,7 +343,7 @@ in
 				    val sp = SmlInfo.sourcepath i
 				in
 				    if compile_there sp then
-					tryload ("compiled", compile_again)
+					tryload ("received", compile_again)
 				    else compile_again ()
 				end
 			    in

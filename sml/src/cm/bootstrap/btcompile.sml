@@ -43,7 +43,7 @@ end = struct
 			     Compile.newTraversal (fn _ => fn _ => (),
 						   store, g)
 		     in
-			 case group gp of
+			 case Servers.withServers (fn () => group gp) of
 			     NONE => NONE
 			   | SOME _ => SOME get
 		     end
@@ -172,6 +172,7 @@ end = struct
 			     errcons = errcons }
 
 	fun mk_main_compile arg = let
+
 	    val { rts, core, pervasive, primitives, binpaths } = arg
 
 	    val ovldR = GenericVC.Control.overloadKW
@@ -233,6 +234,10 @@ end = struct
 		        { corenv = corenv }
 	    val stab =
 		if deliver then SOME true else NONE
+
+	    (* We need to announce the project here because Parse.parse
+	     * may already invoke the compiler (because of "deliver"). *)
+	    val _ = Servers.cmb dirbase
 	in
 	    case Parse.parse NONE param stab maingspec of
 		NONE => NONE
@@ -241,8 +246,10 @@ end = struct
 			fun store _ = ()
 			val { group = recomp, ... } =
 			    Compile.newTraversal (fn _ => fn _ => (), store, g)
+			val res =
+			    Servers.withServers (fn () => recomp gp)
 		    in
-			if isSome (recomp gp) then let
+			if isSome res then let
 			    val rtspid = PS.toHex (#statpid (#ii rts))
 			    fun writeList s = let
 				fun add ((p, flag), l) = let
@@ -293,7 +300,7 @@ end = struct
 			else false
 		    end
 		in
-		    SOME ((g, gp), thunk, dirbase)
+		    SOME ((g, gp), thunk)
 		end
 	end handle Option => (Compile.reset (); NONE)
 	    	   (* to catch valOf failures in "rt" *)
@@ -304,20 +311,15 @@ end = struct
     end
 
     fun compile deliver dbopt =
-	(Servers.disable ();		(* no parallel stuff during init *)
-	 case mk_compile deliver dbopt of
-	     NONE => false
-	   | SOME (_, thunk, db) =>
-		 (Servers.enable ();
-		  Servers.cmb db;
-		  thunk ()
-		  before Servers.waitforall ()))
+	case mk_compile deliver dbopt of
+	    NONE => false
+	  | SOME (_, thunk) => thunk () before Servers.waitforall ()
 
     local
 	fun slave dirbase =
 	    case mk_compile false (SOME dirbase) of
 		NONE => NONE
-	      | SOME ((g, gp), _, _) => let
+	      | SOME ((g, gp), _) => let
 		    val trav = Compile.newSbnodeTraversal () gp
 		    fun trav' sbn = isSome (trav sbn)
 		in
