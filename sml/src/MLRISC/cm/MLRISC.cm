@@ -94,6 +94,7 @@ Library
 	functor ComputeFreqsFn
 	functor ControlFlowGraph
 	functor DefaultBlockPlacement
+	functor EstimateLoopProbsFn
 	functor FreqProps
 	functor GCCells
 	functor GasPseudoOps
@@ -219,6 +220,7 @@ is
 	../frequencies/complete-probs-fn.sml
 	../frequencies/compute-execution-freqs.sig
 	../frequencies/compute-freqs-fn.sml
+	../frequencies/estimate-loop-probs-fn.sml
 	../ir-archive/dominator.sig
 	../ir-archive/dominator.sml
 	../ir-archive/loop-structure.sig
