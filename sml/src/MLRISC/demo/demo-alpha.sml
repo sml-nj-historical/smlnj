@@ -220,9 +220,9 @@ structure AlphaBackEnd =
             | copy((rds, rss), I.COPY{tmp, ...}) =
               I.COPY{dst=rds, src=rss, impl=ref NONE, tmp=tmp}
           (* spill register *)
-          fun spillInstr(_,r,loc) =
-              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop(get loc), 
-                       r=r, mem=spill}]
+          fun spillInstr{an,src,spilledCell,spillLoc}
+              [I.STORE{stOp=I.STL, b=sp, d=I.IMMop(get spillLoc), 
+                       r=src, mem=spill}]
 
           (* spill copy temp *)
           fun spillCopyTmp(_,I.COPY{tmp,dst,src,impl},loc) =
@@ -230,8 +230,9 @@ structure AlphaBackEnd =
                      dst=dst,src=src,impl=impl}
       
           (* reload register *)
-          fun reloadInstr(_,r,loc) =
-              [I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop(get loc), r=r, mem=spill}]
+           fun reloadInstr{an,dst,spilledCell,spillLoc} =
+               [I.LOAD{ldOp=I.LDL, b=sp, d=I.IMMop(get spillLoc), r=dst, 
+                     mem=spill}]
        end
 
        structure Float = 

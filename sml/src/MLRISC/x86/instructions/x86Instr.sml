@@ -218,7 +218,8 @@ sig
      NOP
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
-   | CALL of (operand * C.cellset * C.cellset * Region.region)
+   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option
@@ -497,7 +498,8 @@ struct
      NOP
    | JMP of (operand * Label.label list)
    | JCC of {cond:cond, opnd:operand}
-   | CALL of (operand * C.cellset * C.cellset * Region.region)
+   | CALL of {opnd:operand, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region}
    | ENTER of {src1:operand, src2:operand}
    | LEAVE
    | RET of operand option

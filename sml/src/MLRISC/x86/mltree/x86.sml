@@ -1030,8 +1030,9 @@ struct
            in  g(mlrisc, C.empty) end
 
           (* generate code for calls *)
-      and call(ea, flow, def, use, mem, an) = 
-          mark(I.CALL(operand ea,cellset(def),cellset(use),mem),an)
+      and call(ea, flow, def, use, mem, cutsTo, an) = 
+          mark(I.CALL{opnd=operand ea,defs=cellset(def),uses=cellset(use),
+                      cutsTo=cutsTo,mem=mem},an)
 
           (* generate code for integer stores *)
       and store8(ea, d, mem, an) = 
@@ -1562,7 +1563,10 @@ struct
         | stmt(T.FCOPY(fty, dst, src), an) = fcopy(fty, dst, src, an)
         | stmt(T.JMP(e, labs), an) = jmp(e, labs, an)
         | stmt(T.CALL{funct, targets, defs, uses, region, ...}, an) = 
-             call(funct,targets,defs,uses,region,an)
+             call(funct,targets,defs,uses,region,[],an)
+        | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, ...},
+                         cutTo), an) = 
+             call(funct,targets,defs,uses,region,cutTo,an)
         | stmt(T.RET _, an) = mark(I.RET NONE, an)
         | stmt(T.STORE(8, ea, d, mem), an) = store8(ea, d, mem, an)
         | stmt(T.STORE(16, ea, d, mem), an) = store16(ea, d, mem, an)

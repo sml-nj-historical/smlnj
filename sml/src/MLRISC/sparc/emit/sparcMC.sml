@@ -475,10 +475,10 @@ struct
      | emitInstr (I.JMP{r, i, labs, nop}) = 
        ( jmp {r=r, i=i}; 
          delay {nop=nop})
-     | emitInstr (I.JMPL{r, i, d, defs, uses, nop, mem}) = 
+     | emitInstr (I.JMPL{r, i, d, defs, uses, cutsTo, nop, mem}) = 
        ( jmpl {r=r, i=i, d=d}; 
          delay {nop=nop})
-     | emitInstr (I.CALL{defs, uses, label, nop, mem}) = 
+     | emitInstr (I.CALL{defs, uses, label, cutsTo, nop, mem}) = 
        ( call {disp30=disp label}; 
          delay {nop=nop})
      | emitInstr (I.Ticc{t, cc, r, i}) = ticc {t=t, r=r, cc=cc, i=i}

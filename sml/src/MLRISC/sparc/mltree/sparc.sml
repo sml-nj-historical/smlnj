@@ -409,16 +409,16 @@ struct
       in  g(mlrisc, C.empty) end
  
       (* emit a function call *)
-      and call(a,flow,defs,uses,mem,an) =
+      and call(a,flow,defs,uses,mem,cutsTo,an) =
       let val (r,i) = addr a
           val defs=cellset(defs)
           val uses=cellset(uses)
       in  case (C.registerId r,i) of
             (0,I.LAB(T.LABEL l)) =>
              mark(I.CALL{label=l,defs=C.addReg(C.linkReg,defs),uses=uses,
-                         mem=mem,nop=true},an)
-          | _ => mark(I.JMPL{r=r,i=i,d=C.linkReg,defs=defs,uses=uses,mem=mem,
-                             nop=true},an)
+                         cutsTo=cutsTo,mem=mem,nop=true},an)
+          | _ => mark(I.JMPL{r=r,i=i,d=C.linkReg,defs=defs,uses=uses,
+                             cutsTo=cutsTo,mem=mem,nop=true},an)
       end
 
       (* emit an integer branch instruction *)
@@ -480,7 +480,10 @@ struct
             mark(I.Bicc{b=I.BA,a=true,label=l,nop=false},an)
         | stmt(T.JMP(e,labs),an) = jmp(e,labs,an)
         | stmt(T.CALL{funct,targets,defs,uses,region,...},an) = 
-            call(funct,targets,defs,uses,region,an)
+            call(funct,targets,defs,uses,region,[],an)
+        | stmt(T.FLOW_TO
+                 (T.CALL{funct,targets,defs,uses,region,...},cutsTo),an) = 
+            call(funct,targets,defs,uses,region,cutsTo,an)
         | stmt(T.RET _,an) = mark(I.RET{leaf=not registerwindow,nop=true},an)
         | stmt(T.STORE(8,a,d,mem),an)   = store(I.STB,a,d,mem,an)
         | stmt(T.STORE(16,a,d,mem),an)  = store(I.STH,a,d,mem,an)

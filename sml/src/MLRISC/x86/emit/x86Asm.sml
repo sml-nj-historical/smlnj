@@ -23,6 +23,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
    val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("X86AsmEmitter",msg)
@@ -67,6 +68,9 @@ struct
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
        fun emit_uses cellset = emit_cellset("uses: ",cellset)
+       val emit_cutsTo = 
+         if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit
+         else doNothing
        fun emitter instr =
        let
    fun asm_cond (I.EQ) = "e"
@@ -414,12 +418,13 @@ struct
            emit_cond cond; 
            emit "\t"; 
            stupidGas opnd )
-       | I.CALL(operand, cellset1, cellset2, region) => 
+       | I.CALL{opnd, defs, uses, cutsTo, mem} => 
          ( emit "call\t"; 
-           stupidGas operand; 
-           emit_region region; 
-           emit_defs cellset1; 
-           emit_uses cellset2 )
+           stupidGas opnd; 
+           emit_region mem; 
+           emit_defs defs; 
+           emit_uses uses; 
+           emit_cutsTo cutsTo )
        | I.ENTER{src1, src2} => 
          ( emit "enter\t"; 
            emit_operand src1; 

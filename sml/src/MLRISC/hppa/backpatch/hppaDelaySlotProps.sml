@@ -66,8 +66,8 @@ struct
        | (I.BV{labs,b,x,...},false) => I.BV{labs=labs,b=b,x=x,n=n}
        | (I.BE{labs,b,d,sr,...},false) => I.BE{labs=labs,b=b,d=d,sr=sr,n=n}
        | (I.BLR{x,t,labs,...},false) => I.BLR{x=x,t=t,labs=labs,n=n}
-       | (I.BL{lab,t,defs,uses,mem,...},false) => 
-            I.BL{lab=lab,t=t,defs=defs,uses=uses,mem=mem,n=n}
+       | (I.BL{lab,t,defs,uses,cutsTo,mem,...},false) => 
+            I.BL{lab=lab,t=t,defs=defs,uses=uses,cutsTo=cutsTo,mem=mem,n=n}
        | (I.LONGJUMP{lab,tmp,tmpLab,...},false) => 
             I.LONGJUMP{lab=lab,tmp=tmp,tmpLab=tmpLab,n=n}
        | (I.ANNOTATION{i,a},_) => 

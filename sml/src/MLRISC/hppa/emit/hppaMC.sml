@@ -601,9 +601,9 @@ struct
           ext3=0wx6, n=n}
      | emitInstr (I.BLR{x, t, labs, n}) = BranchVectored {Op=0wx3a, t=t, x=x, 
           ext3=0wx2, n=n}
-     | emitInstr (I.BL{lab, t, defs, uses, mem, n}) = branchLink (0wx3a, t, 
-          lab, 0wx0, n)
-     | emitInstr (I.BLE{d, b, sr, t, defs, uses, mem}) = 
+     | emitInstr (I.BL{lab, t, defs, uses, cutsTo, mem, n}) = branchLink (0wx3a, 
+          t, lab, 0wx0, n)
+     | emitInstr (I.BLE{d, b, sr, t, defs, uses, cutsTo, mem}) = 
        (case (d, C.registerId t) of
          (I.IMMED 0, 31) => BranchExternal {Op=0wx39, b=b, w1=0wx0, s=assemble_3 (itow sr), 
             w2=0wx0, n=true, w=0wx0}
@@ -623,7 +623,7 @@ struct
        )
      | emitInstr (I.FSTOREX{fstx, b, x, r, mem}) = 
        let 
-(*#line 1065.18 "hppa/hppa.mdl"*)
+(*#line 1066.18 "hppa/hppa.mdl"*)
            val (Op, uid, u, m) = emit_fstorex fstx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx1, uid=uid, 
              rt=r}
@@ -637,7 +637,7 @@ struct
        )
      | emitInstr (I.FLOADX{flx, b, x, t, mem}) = 
        let 
-(*#line 1085.18 "hppa/hppa.mdl"*)
+(*#line 1086.18 "hppa/hppa.mdl"*)
            val (Op, uid, u, m) = emit_floadx flx
        in CoProcIndexed {Op=Op, b=b, x=x, s=0wx0, u=u, m=m, ls=0wx0, uid=uid, 
              rt=t}
@@ -648,20 +648,20 @@ struct
             r22=0wx0}
        | _ => 
          let 
-(*#line 1096.25 "hppa/hppa.mdl"*)
+(*#line 1097.25 "hppa/hppa.mdl"*)
              val (sop, fmt) = emit_farith fa
          in FloatOp3Maj0C {sop=sop, r1=r1, r2=r2, t=t, n=0wx0, fmt=fmt}
          end
        )
      | emitInstr (I.FUNARY{fu, f, t}) = 
        let 
-(*#line 1113.18 "hppa/hppa.mdl"*)
+(*#line 1114.18 "hppa/hppa.mdl"*)
            val (sop, fmt) = emit_funary fu
        in FloatOp0Maj0C {r=f, t=t, sop=sop, fmt=fmt}
        end
      | emitInstr (I.FCNV{fcnv, f, t}) = 
        let 
-(*#line 1122.18 "hppa/hppa.mdl"*)
+(*#line 1123.18 "hppa/hppa.mdl"*)
            val (sop, sf, df) = emit_fcnv fcnv
        in FloatOp1Maj0E {r=f, t=t, sop=sop, sf=sf, df=df, r2=0wx1, t2=0wx0}
        end

@@ -77,14 +77,17 @@ structure PPCCG =
                                     disp=I.ImmedOp(SpillTable.getRegLoc loc)})}
 
               (* spill register *)
-             fun spillInstr(_, rs,loc) =
-                 [I.ST{st=I.STW, ra=sp, d=I.ImmedOp(SpillTable.getRegLoc loc),
-                       rs=rs, mem=spill}]
+             fun spillInstr{src,spilledCell,spillLoc,an} =
+                 [I.ST{st=I.STW, ra=sp, 
+                       d=I.ImmedOp(SpillTable.getRegLoc spillLoc),
+                       rs=src, mem=spill}]
              (* reload register *)
-             fun reloadInstr(_, rt,loc) =
-                 [I.L{ld=I.LWZ, ra=sp, d=I.ImmedOp(SpillTable.getRegLoc loc), 
-                     rt=rt, mem=spill}]
+             fun reloadInstr{dst,spilledCell,spillLoc,an} =
+                 [I.L{ld=I.LWZ, ra=sp, 
+                      d=I.ImmedOp(SpillTable.getRegLoc spillLoc), 
+                      rt=dst, mem=spill}]
 
+             val mode = RACore.NO_OPTIMIZATION
          end
          structure Float =
          struct
@@ -111,6 +114,8 @@ structure PPCCG =
              fun reloadInstr(_, ft,loc) =
                  [I.LF{ld=I.LFD, ra=sp, d=I.ImmedOp(SpillTable.getFregLoc loc),
                        ft=ft, mem=spill}]
+
+             val mode = RACore.NO_OPTIMIZATION
          end
         )
   )

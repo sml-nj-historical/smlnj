@@ -2,6 +2,109 @@
  * X86 specific register allocator.
  * This module abstracts out all the nasty RA business on the x86.  
  * So you should only have to write the callbacks.
+ *
+ *   Here's more some info on the x86 functor.
+ *Basically the new functor encapsulates all the features in the
+ *x86 register allocator, including things like memory pseudo registers,
+ *and the new floating point allocator that maps things onto the %st registers.
+ *For floating point, we can also switch between the sethi-ullman mode and 
+ *the %st register mode.
+ *
+ *   Notes on the parameters of the functor: 
+ *
+ *>   structure SpillHeur : RA_SPILL_HEURISTICS
+ *
+ *   This should be one of the spill heuristic module like ChaitinSpillHeur or
+ * Command ('i' to return to index):  you can also roll your own.
+ *
+ *>   structure Spill : RA_SPILL 
+ *
+ *   This should be either RASpill or RASpillWithRenaming.
+ *
+ *>   val fast_floating_point : bool ref
+ *
+ *    This flag is used to turn on the new x86 fp mode.  The same flag
+ *    is also passed to the x86 instruction selection module.
+ *
+ *>   datatype raPhase = SPILL_PROPAGATION | SPILL_COLORING
+ *
+ *    This datatype specifies which additional phases we should run.
+ *
+ *>   val beforeRA : flowgraph -> spill_info
+ *
+ *    This callback is invoked before each call to RA.  The RA may have
+ *    to perform both integer and floating point RA.  This is called before
+ *    integer RA.   
+ *
+ *    The callbacks for integer and floating point are separated into
+ *    the substructures Int and Float.
+ *
+ *>   structure Int :
+ *>   sig
+ *>      val avail     : I.C.cell list
+ *>      val dedicated : I.C.cell list
+ *>      val memRegs   : I.C.cell list
+ *>      val phases    : raPhase list
+ *>      val spillLoc  : spill_info * Annotations.annotations ref *
+ *>                      RAGraph.logical_spill_id -> I.operand
+ *>      val spillInit :  RAGraph.interferenceGraph -> unit
+ *>   end                 
+ *
+ *    avail is the list of registers available for allocation
+ *    memRegs is the list of memory registers that may appear in the program
+ *    phases is a list of additional RA phases.  I recommend turning on 
+ *    everything:
+ *
+ *         [SPILL_PROPAGATION, SPILL_COLORING]
+ *
+ *    spillInit is called once before spilling occurs.
+ *
+ *    spillLoc is a callback that maps logical_spill_ids into an x86
+ *    effective address.  The list of allocations is from the block in which
+ *    the spilled instruction occurs.  The client should keep track of 
+ *    existing ids, and allocate a new effective address when a new id occurs.
+ *    In general, the client should keep track of a single table of free
+ *    spill space for both integer and floating point registers.
+ *
+ *    Previously, the spill/reload routines have to do special things in the
+ *    presence of memory registers, but that stuff is taken care of in the
+ *    new module, so all spillLoc has to do is map logical_spill_ids into
+ *    effective address.
+ *
+ *>   structure Float :
+ *>   sig
+ *>      val avail     : I.C.cell list
+ *>      val dedicated : I.C.cell list
+ *>      val memRegs   : I.C.cell list
+ *>      val phases    : raPhase list
+ *>      val spillLoc  : spill_info * Annotations.annotations ref *
+ *>                      RAGraph.logical_spill_id -> I.operand
+ *>      val spillInit : RAGraph.interferenceGraph -> unit
+ *>   end   
+ *
+ *    For floating point, it is similar.
+ *
+ *>   
+ *>      val fastMemRegs : I.C.cell list
+ *>      val fastPhases  : raPhase list
+ *
+ *    When fast_floating_point is turned on, we use different parameters:  
+ *
+ *    avail is set to [%st(0), ..., %st(6)]  
+ *    dedicated is set to []
+ *    memRegs is set to fastMemRegs
+ *
+ *    In general, the flow of the module is like this:
+ *
+ *    ra:
+ *         call beforeRA()
+ *         integer RA --- call Int.spillInit() once if spilling is needed
+ *         floating fp RA --- call Real.spillInit() once if spilling is needed
+ *         if !fast_floating_point then
+ *            invoke the module X86FP to convert fake %fp registers 
+ *            into real %st registers
+ *         endif
+ *
  *)
 
 functor X86RA 
@@ -23,6 +126,8 @@ functor X86RA
 
     sharing F.P = Asm.P
 
+    type spill_info (* user-defined abstract type *)
+
        (* Should we use allocate register on the floating point stack? 
         * Note that this flag must match the one passed to the code generator 
         * module.
@@ -33,7 +138,7 @@ functor X86RA
                      | SPILL_COLORING
 
     (* Called before register allocation; perform your initialization here. *)
-    val beforeRA : unit -> unit
+    val beforeRA : F.cluster -> spill_info
 
     (* Integer register allocation parameters *)
     structure Int :
@@ -43,7 +148,7 @@ functor X86RA
        val memRegs   : I.C.cell list
        val phases    : raPhase list
 
-       val spillLoc  : Annotations.annotations ref * 
+       val spillLoc  : spill_info * Annotations.annotations ref * 
                        RAGraph.logical_spill_id -> I.operand
 
        (* This function is called once before spilling begins *)
@@ -60,7 +165,7 @@ functor X86RA
        val memRegs   : I.C.cell list
        val phases    : raPhase list
 
-       val spillLoc  : Annotations.annotations ref * 
+       val spillLoc  : spill_info * Annotations.annotations ref * 
                        RAGraph.logical_spill_id -> I.operand
 
        (* This function is called once before spilling begins *)
@@ -218,31 +323,31 @@ struct
 
     val copyInstrF = fn x => [copyInstrF x]
  
-    fun getFregLoc(an, Ra.FRAME loc) = Float.spillLoc(an, loc)
-      | getFregLoc(an, Ra.MEM_REG r) = I.FDirect r
+    fun getFregLoc(S, an, Ra.FRAME loc) = Float.spillLoc(S, an, loc)
+      | getFregLoc(S, an, Ra.MEM_REG r) = I.FDirect r
 
     (* spill floating point *)
-    fun spillF{instr, reg, spillLoc, kill, annotations=an} = 
+    fun spillF S {instr, reg, spillLoc, kill, annotations=an} = 
         (floatSpillCnt := !floatSpillCnt + 1;
-         X86Spill.fspill(instr, reg, getFregLoc(an, spillLoc)) 
+         X86Spill.fspill(instr, reg, getFregLoc(S, an, spillLoc)) 
         )
 
-    fun spillFreg{src, reg, spillLoc, annotations=an} = 
+    fun spillFreg S {src, reg, spillLoc, annotations=an} = 
        (floatSpillCnt := !floatSpillCnt + 1;
-        let val fstp = [I.FSTPL(getFregLoc(an, spillLoc))]
+        let val fstp = [I.FSTPL(getFregLoc(S, an, spillLoc))]
         in  if C.sameColor(src,C.ST0) then fstp
             else I.FLDL(I.FDirect(src))::fstp
         end
        )
 
-   fun spillFcopyTmp{copy=I.FCOPY{dst, src, ...}, spillLoc, 
-                     annotations=an} =
+   fun spillFcopyTmp S {copy=I.FCOPY{dst, src, ...}, spillLoc, 
+                        annotations=an} =
         (floatSpillCnt := !floatSpillCnt + 1;
-         I.FCOPY{dst=dst, src=src, tmp=SOME(getFregLoc(an, spillLoc))}
+         I.FCOPY{dst=dst, src=src, tmp=SOME(getFregLoc(S, an, spillLoc))}
         )
-     | spillFcopyTmp{copy=I.ANNOTATION{i,a}, spillLoc, annotations} =
-        let val i = spillFcopyTmp{copy=i, spillLoc=spillLoc, 
-                                  annotations=annotations}
+     | spillFcopyTmp S {copy=I.ANNOTATION{i,a}, spillLoc, annotations} =
+        let val i = spillFcopyTmp S {copy=i, spillLoc=spillLoc, 
+                                     annotations=annotations}
         in  I.ANNOTATION{i=i, a=a} end
 
     (* rename floating point *)
@@ -252,17 +357,17 @@ struct
         )
 
     (* reload floating point *)
-    fun reloadF{instr, reg, spillLoc, annotations=an} = 
+    fun reloadF S {instr, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
-         X86Spill.freload(instr, reg, getFregLoc(an, spillLoc))
+         X86Spill.freload(instr, reg, getFregLoc(S, an, spillLoc))
         )
 
-    fun reloadFreg{dst, reg, spillLoc, annotations=an} = 
+    fun reloadFreg S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
          if C.sameColor(dst,C.ST0) then 
-            [I.FLDL(getFregLoc(an, spillLoc))]
+            [I.FLDL(getFregLoc(S, an, spillLoc))]
          else  
-            [I.FLDL(getFregLoc(an, spillLoc)), I.FSTPL(I.FDirect dst)]
+            [I.FLDL(getFregLoc(S, an, spillLoc)), I.FSTPL(I.FDirect dst)]
         )
 
     (* -------------------------------------------------------------------
@@ -282,9 +387,10 @@ struct
 
     val copyInstrF' = fn x => [copyInstrF' x]
 
-    fun spillFreg'{src, reg, spillLoc, annotations=an} = 
+    fun spillFreg' S {src, reg, spillLoc, annotations=an} = 
         (floatSpillCnt := !floatSpillCnt + 1;
-         [I.FMOVE{fsize=I.FP64, src=FMemReg src, dst=getFregLoc(an,spillLoc)}]
+         [I.FMOVE{fsize=I.FP64, src=FMemReg src, 
+                  dst=getFregLoc(S, an,spillLoc)}]
         )
 
     fun renameF'{instr, fromSrc, toSrc} =
@@ -292,9 +398,10 @@ struct
          X86Spill.freload(instr, fromSrc, I.FPR toSrc)
         )
 
-    fun reloadFreg'{dst, reg, spillLoc, annotations=an} = 
+    fun reloadFreg' S {dst, reg, spillLoc, annotations=an} = 
         (floatReloadCnt := !floatReloadCnt + 1;
-         [I.FMOVE{fsize=I.FP64, dst=FMemReg dst, src=getFregLoc(an,spillLoc)}]
+         [I.FMOVE{fsize=I.FP64, dst=FMemReg dst, 
+                  src=getFregLoc(S,an,spillLoc)}]
         )
  
     (* -------------------------------------------------------------------
@@ -324,8 +431,8 @@ struct
           copyInstrR(x, i) (* XXX *)
       
 
-    fun getRegLoc(an, Ra.FRAME loc) = Int.spillLoc(an, loc)
-      | getRegLoc(an, Ra.MEM_REG r) = I.MemReg r
+    fun getRegLoc(S, an, Ra.FRAME loc) = Int.spillLoc(S, an, loc)
+      | getRegLoc(S, an, Ra.MEM_REG r) = I.MemReg r
 
         (* No, logical spill locations... *)
 
@@ -336,17 +443,17 @@ struct
     val K8 = length Int.avail
 
      (* register allocation for general purpose registers *)
-    fun spillR8{instr, reg, spillLoc, kill, annotations=an} = 
+    fun spillR8 S {instr, reg, spillLoc, kill, annotations=an} = 
         (intSpillCnt := !intSpillCnt + 1;
-         X86Spill.spill(instr, reg, getRegLoc(an, spillLoc))
+         X86Spill.spill(instr, reg, getRegLoc(S, an, spillLoc))
         ) 
 
     fun isMemReg r = let val x = C.registerNum r
                      in  x >= 8 andalso x < 32 end
  
-    fun spillReg{src, reg, spillLoc, annotations=an} = 
+    fun spillReg S {src, reg, spillLoc, annotations=an} = 
         let val _ = intSpillCnt := !intSpillCnt + 1;
-            val dstLoc = getRegLoc(an,spillLoc)
+            val dstLoc = getRegLoc(S,an,spillLoc)
             val isMemReg = isMemReg src
             val srcLoc = if isMemReg then I.MemReg src else I.Direct src
         in  if InsnProps.eqOpn(srcLoc, dstLoc) then []
@@ -354,9 +461,9 @@ struct
             else [I.MOVE{mvOp=I.MOVL, src=srcLoc, dst=dstLoc}]
         end
 
-    fun spillCopyTmp{copy=I.COPY{src, dst,...}, spillLoc, annotations=an} = 
+    fun spillCopyTmp S {copy=I.COPY{src, dst,...}, spillLoc, annotations=an} = 
         (intSpillCnt := !intSpillCnt + 1;
-         I.COPY{dst=dst, src=src, tmp=SOME(getRegLoc(an, spillLoc))}
+         I.COPY{dst=dst, src=src, tmp=SOME(getRegLoc(S, an, spillLoc))}
         )
    
     fun renameR8{instr, fromSrc, toSrc} = 
@@ -364,14 +471,14 @@ struct
          X86Spill.reload(instr, fromSrc, I.Direct toSrc)
         )
 
-    fun reloadR8{instr, reg, spillLoc, annotations=an} = 
+    fun reloadR8 S {instr, reg, spillLoc, annotations=an} = 
         (intReloadCnt := !intReloadCnt + 1;
-         X86Spill.reload(instr, reg, getRegLoc(an,spillLoc))
+         X86Spill.reload(instr, reg, getRegLoc(S,an,spillLoc))
         ) 
 
-    fun reloadReg{dst, reg, spillLoc, annotations=an} = 
+    fun reloadReg S {dst, reg, spillLoc, annotations=an} = 
         let val _ = intReloadCnt := !intReloadCnt + 1
-            val srcLoc = getRegLoc(an, spillLoc)
+            val srcLoc = getRegLoc(S, an, spillLoc)
             val isMemReg = isMemReg dst
             val dstLoc = if isMemReg then I.MemReg dst else I.Direct dst
         in  if InsnProps.eqOpn(srcLoc,dstLoc) then []
@@ -410,11 +517,12 @@ struct
     (* How to allocate integer registers:    
      * Perform register alocation + memory allocation
      *)
-    val RAInt = {spill     = spillR8,
-                 spillSrc  = spillReg,
-                 spillCopyTmp= spillCopyTmp,
-                 reload    = reloadR8,
-                 reloadDst = reloadReg,
+    fun RAInt S = 
+                {spill     = spillR8 S,
+                 spillSrc  = spillReg S,
+                 spillCopyTmp= spillCopyTmp S,
+                 reload    = reloadR8 S,
+                 reloadDst = reloadReg S,
                  renameSrc = renameR8,
                  copyInstr = copyInstrR,
                  K         = K8,
@@ -429,11 +537,12 @@ struct
     (* How to allocate floating point registers:    
      * Allocate all fp registers on the stack.  This is the easy way.
      *)
-    val RAFP32 ={spill     = spillF,
-                 spillSrc  = spillFreg,
-                 spillCopyTmp= spillFcopyTmp,
-                 reload    = reloadF,
-                 reloadDst = reloadFreg,
+    fun RAFP32 S =
+                {spill     = spillF S,
+                 spillSrc  = spillFreg S,
+                 spillCopyTmp= spillFcopyTmp S,
+                 reload    = reloadF S,
+                 reloadDst = reloadFreg S,
                  renameSrc = renameF,
                  copyInstr = copyInstrF,
                  K         = KF32,
@@ -449,11 +558,12 @@ struct
      * Allocate fp registers on the %st stack.  Also perform
      * memory allcoation.
      *)
-     val RAFP8 ={spill     = spillF,
-                 spillSrc  = spillFreg',
-                 spillCopyTmp= spillFcopyTmp,
-                 reload    = reloadF,
-                 reloadDst = reloadFreg',
+     fun RAFP8 S =
+                {spill     = spillF S,
+                 spillSrc  = spillFreg' S,
+                 spillCopyTmp= spillFcopyTmp S,
+                 reload    = reloadF S,
+                 reloadDst = reloadFreg' S,
                  renameSrc = renameF',
                  copyInstr = copyInstrF',
                  K         = KF8,
@@ -466,8 +576,8 @@ struct
                 } : Ra.raClient
 
     (* Two RA modes, fast and normal *) 
-    val fast_fp = [RAInt, RAFP8]
-    val normal_fp = [RAInt, RAFP32]
+    fun fast_fp S = [RAInt S, RAFP8 S]
+    fun normal_fp S = [RAInt S, RAFP32 S]
  
     (* The main ra routine *)
     fun run cluster =
@@ -476,13 +586,13 @@ struct
                PrintFlowGraph.printCluster(!MLRiscControl.debug_stream)
             else fn msg => fn _ => () 
 
-        val _ = beforeRA() 
+        val S = beforeRA cluster 
         val _ = resetRA()
 
         (* generic register allocator *)
 
         val cluster = Ra.ra
-                      (if !fast_floating_point then fast_fp else normal_fp)
+                      (if !fast_floating_point then fast_fp S else normal_fp S)
                       cluster
 
         val _ = removeDeadCode cluster

@@ -15,7 +15,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("HppaProps",msg)
 
   datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
-                | IK_PHI | IK_SOURCE | IK_SINK
+                | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
 
   val zeroR = Option.valOf(C.zeroReg C.GP)
@@ -36,7 +36,9 @@ struct
     | instrKind(I.NOP)      = IK_NOP
     | instrKind(I.COPY _)   = IK_COPY
     | instrKind(I.FCOPY _)  = IK_COPY
+    | instrKind(I.BL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
     | instrKind(I.BL  _)    = IK_CALL
+    | instrKind(I.BLE{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
     | instrKind(I.BLE _)    = IK_CALL
     | instrKind(I.PHI _)    = IK_PHI
     | instrKind(I.SOURCE _) = IK_SOURCE
@@ -77,6 +79,8 @@ struct
     | branchTargets(I.BV{labs=[],...})  = [ESCAPES]
     | branchTargets(I.BV{labs,...})     = map LABELLED labs
     | branchTargets(I.BLR{labs,...})    = map LABELLED labs
+    | branchTargets(I.BL{cutsTo,...})   = FALLTHROUGH::map LABELLED cutsTo
+    | branchTargets(I.BLE{cutsTo,...})  = FALLTHROUGH::map LABELLED cutsTo
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 

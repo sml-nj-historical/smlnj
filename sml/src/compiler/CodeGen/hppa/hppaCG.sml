@@ -102,16 +102,19 @@ structure HppaCG =
                                            disp= ~(SpillTable.getRegLoc loc)})}
 
              (* spill register *) 
-             fun spillInstr(_, r,loc) =
+             fun spillInstr{src,spilledCell,spillLoc,an} =
                  [I.STORE{st=I.STW, b=sp, 
-                          d=I.IMMED(~(SpillTable.getRegLoc loc)), 
-                          r=r, mem=spill}]
+                          d=I.IMMED(~(SpillTable.getRegLoc spillLoc)), 
+                          r=src, mem=spill}]
 
              (* reload register *) 
-             fun reloadInstr(_, t,loc) =
-                 [I.LOADI{li=I.LDW, i=I.IMMED(~(SpillTable.getRegLoc loc)), 
-                          r=sp, t=t, mem=spill}
+             fun reloadInstr{dst,spilledCell,spillLoc,an} =
+                 [I.LOADI{li=I.LDW, 
+                          i=I.IMMED(~(SpillTable.getRegLoc spillLoc)), 
+                          r=sp, t=dst, mem=spill}
                  ]
+
+             val mode = RACore.NO_OPTIMIZATION
           end
 
           structure Float = 
@@ -144,6 +147,8 @@ structure HppaCG =
                   I.FLOADX{flx=I.FLDDX, b=sp, x=tmpR, t=t, mem=spill} 
                  ]
              end
+
+             val mode = RACore.NO_OPTIMIZATION
           end
          )
   )

@@ -15,7 +15,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("X86Props",msg)
 
   datatype kind = IK_JUMP | IK_NOP | IK_INSTR | IK_COPY | IK_CALL 
-                | IK_PHI | IK_SOURCE | IK_SINK
+                | IK_CALL_WITH_CUTS | IK_PHI | IK_SOURCE | IK_SINK
   datatype target = LABELLED of Label.label | FALLTHROUGH | ESCAPES
  (*========================================================================
   *  Instruction Kinds
@@ -24,6 +24,7 @@ struct
     | instrKind (I.JCC _) = IK_JUMP
     | instrKind (I.COPY _) = IK_COPY
     | instrKind (I.FCOPY _) = IK_COPY
+    | instrKind (I.CALL{cutsTo=_::_,...}) = IK_CALL_WITH_CUTS
     | instrKind (I.CALL _) = IK_CALL
     | instrKind (I.PHI _)    = IK_PHI
     | instrKind (I.SOURCE _) = IK_SOURCE
@@ -75,6 +76,7 @@ struct
     | branchTargets(I.RET _) = [ESCAPES]
     | branchTargets(I.JCC{opnd=I.ImmedLabel(T.LABEL(lab)), ...}) = 
         [FALLTHROUGH, LABELLED lab]
+    | branchTargets(I.CALL{cutsTo, ...}) = FALLTHROUGH :: map LABELLED cutsTo
     | branchTargets(I.ANNOTATION{i,...}) = branchTargets i
     | branchTargets _ = error "branchTargets"
 
@@ -170,7 +172,7 @@ struct
     case instr
      of I.JMP(opnd, _)        => ([], operandUse opnd)
       | I.JCC{opnd, ...}      => ([], operandUse opnd)
-      | I.CALL(opnd,defs,uses,_)=> 
+      | I.CALL{opnd,defs,uses,...} => 
            (C.getReg defs, operandAcc(opnd, C.getReg uses))
       | I.MOVE{src, dst=I.Direct r, ...} => ([r], operandUse src)
       | I.MOVE{src, dst=I.MemReg r, ...} => ([r], operandUse src)
@@ -261,7 +263,7 @@ struct
       | I.FLDS opnd		=> ([], operand opnd)
       | I.FUCOM opnd            => ([], operand opnd)
       | I.FUCOMP opnd           => ([], operand opnd)
-      | I.CALL(_, defs, uses,_)	=> (C.getFreg defs, C.getFreg uses)
+      | I.CALL{defs, uses, ...}	=> (C.getFreg defs, C.getFreg uses)
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, tmp=SOME(I.FPR f), ...}  => (f::dst, src)

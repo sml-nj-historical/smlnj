@@ -240,10 +240,10 @@ sig
    | BE of {b:C.cell, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:C.cell, b:C.cell, labs:Label.label list, n:bool}
    | BLR of {x:C.cell, t:C.cell, labs:Label.label list, n:bool}
-   | BL of {lab:Label.label, t:C.cell, defs:C.cellset, uses:C.cellset, mem:Region.region, 
-        n:bool}
+   | BL of {lab:Label.label, t:C.cell, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region, n:bool}
    | BLE of {d:operand, b:C.cell, sr:int, t:C.cell, defs:C.cellset, uses:C.cellset, 
-        mem:Region.region}
+        cutsTo:Label.label list, mem:Region.region}
    | LDIL of {i:operand, t:C.cell}
    | LDO of {i:operand, b:C.cell, t:C.cell}
    | MTCTL of {r:C.cell, t:C.cell}
@@ -501,10 +501,10 @@ struct
    | BE of {b:C.cell, d:operand, sr:int, n:bool, labs:Label.label list}
    | BV of {x:C.cell, b:C.cell, labs:Label.label list, n:bool}
    | BLR of {x:C.cell, t:C.cell, labs:Label.label list, n:bool}
-   | BL of {lab:Label.label, t:C.cell, defs:C.cellset, uses:C.cellset, mem:Region.region, 
-        n:bool}
+   | BL of {lab:Label.label, t:C.cell, defs:C.cellset, uses:C.cellset, cutsTo:Label.label list, 
+        mem:Region.region, n:bool}
    | BLE of {d:operand, b:C.cell, sr:int, t:C.cell, defs:C.cellset, uses:C.cellset, 
-        mem:Region.region}
+        cutsTo:Label.label list, mem:Region.region}
    | LDIL of {i:operand, t:C.cell}
    | LDO of {i:operand, b:C.cell, t:C.cell}
    | MTCTL of {r:C.cell, t:C.cell}

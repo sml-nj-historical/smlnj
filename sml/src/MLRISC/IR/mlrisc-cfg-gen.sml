@@ -139,9 +139,10 @@ struct
        fun emit i =
        let val CFG.BLOCK{insns,...} = getBlock()
        in  insns := i :: !insns;
-           if InsnProps.instrKind i = InsnProps.IK_JUMP then
-              currentBlock := NOBLOCK
-           else () 
+           case InsnProps.instrKind i of
+             (InsnProps.IK_JUMP | InsnProps.IK_CALL_WITH_CUTS) =>
+                currentBlock := NOBLOCK
+           | _ => () 
        end
 
        (* End current cluster *)
@@ -169,10 +170,11 @@ struct
                (case !insns of
                   [] => fallsThru(id,blocks)
                 | instr::_ =>
-                   if InsnProps.instrKind instr = InsnProps.IK_JUMP then
-                      jump(id,InsnProps.branchTargets instr,blocks)
-                   else 
-                     fallsThru(id,blocks);
+                   (case InsnProps.instrKind instr of 
+                      (InsnProps.IK_JUMP | InsnProps.IK_CALL_WITH_CUTS) =>
+                        jump(id,InsnProps.branchTargets instr,blocks)
+                   | _ => fallsThru(id,blocks)
+                   );
                 addEdges blocks
                )
            and fallsThru(i,CFG.BLOCK{id=j,data,...}::_) =

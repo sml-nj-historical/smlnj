@@ -16,6 +16,7 @@ sig
                  | IK_INSTR  (* normal instructions *)
                  | IK_COPY   (* parallel copy *)
                  | IK_CALL   (* call instructions *)
+                 | IK_CALL_WITH_CUTS (* call with cut edges *)
                  | IK_PHI    (* A phi node (SSA) *)
                  | IK_SINK   (* A sink node (SSA) *)
                  | IK_SOURCE (* A source node (SSA) *)

@@ -187,6 +187,11 @@ struct
       in f l
       end         
 
+      fun member(x, l) = 
+          let val x = registerId x
+          in  List.exists (fn y => registerId y = x) l 
+          end
+
       fun rmv(cell, l) = let
         val c = registerId cell
         fun f [] = []

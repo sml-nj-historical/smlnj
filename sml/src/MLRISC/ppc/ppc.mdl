@@ -705,8 +705,9 @@ struct
 	b{li=relative addr,aa=false,lk=LK}
 
      (* CALL = BCLR {bo=ALWAYS, bf=0, bit=0, LK=true, labels=[] *)
-     | CALL of {def:C.cellset, use:C.cellset, mem: Region.region}
-	``blrl<mem><emit_defs(def)><emit_uses(use)>''
+     | CALL of {def:C.cellset, use:C.cellset, 
+                cutsTo: Label.label list, mem: Region.region}
+	``blrl<mem><emit_defs(def)><emit_uses(use)><emit_cutsTo cutsTo>''
         bclr{bo=I.ALWAYS,bi=0w0,lk=true}
     
      | COPY of {dst: $GP list, src: $GP list, 

@@ -1003,17 +1003,18 @@ struct
 	pipeline: BRANCH
 
     | BL of {lab:Label.label ,t: $GP, defs: $cellset, uses: $cellset, 
-             mem:Region.region, n:bool}
-        asm: ``bl<n>\t<lab>, <t><mem><emit_defs(defs)><emit_uses(uses)>''
+             cutsTo: Label.label list, mem:Region.region, n:bool}
+        asm: ``bl<n>\t<lab>, <t><mem><emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo>''
         mc:  branchLink(0wx3a,t,lab,0w0,n)
         nullified: n = true
         delayslot candidate: false
 	pipeline: BRANCH
 
     | BLE of {d:operand,b: $GP, sr:int, t: $GP,
-              defs: $cellset, uses: $cellset, mem:Region.region}
+              defs: $cellset, uses: $cellset, cutsTo: Label.label list,
+              mem:Region.region}
         asm: ``ble\t<d>(<emit_int sr>,<b>)<mem><
-               emit_defs(defs)><emit_uses(uses)>''
+               emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo>''
         mc:  (case (d,C.registerId t) of
                (I.IMMED 0,31) =>
                  BranchExternal{Op=0wx39,b=b,w1=0w0,s=assemble_3(itow sr),

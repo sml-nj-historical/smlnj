@@ -243,8 +243,8 @@ struct
              | _ => 
                 eBytes[Word8.+(0wx70,code), Word8.fromInt(i-2)]
        end 
-     | I.CALL(I.Relative _, _, _, _) => error "CALL: Not implemented"
-     | I.CALL(opnd, _, _, _) => encode(0wxff, 2, opnd)
+     | I.CALL{opnd=I.Relative _, ...} => error "CALL: Not implemented"
+     | I.CALL{opnd, ...} => encode(0wxff, 2, opnd)
      | I.RET NONE => eByte 0xc3
      (* integer *)
      | I.MOVE{mvOp=I.MOVL, src, dst} => 

@@ -712,7 +712,8 @@ struct
      | emitInstr (I.BCLR{bo, bf, bit, LK, labels}) = bclr {bo=bo, bi=cr_bit {cc=(bf, 
           bit)}, lk=LK}
      | emitInstr (I.B{addr, LK}) = b {li=relative addr, aa=false, lk=LK}
-     | emitInstr (I.CALL{def, use, mem}) = bclr {bo=I.ALWAYS, bi=0wx0, lk=true}
+     | emitInstr (I.CALL{def, use, cutsTo, mem}) = bclr {bo=I.ALWAYS, bi=0wx0, 
+          lk=true}
      | emitInstr (I.COPY{dst, src, impl, tmp}) = error "COPY"
      | emitInstr (I.FCOPY{dst, src, impl, tmp}) = error "FCOPY"
      | emitInstr (I.ANNOTATION{i, a}) = emitInstr i

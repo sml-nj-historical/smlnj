@@ -29,7 +29,7 @@ struct
 	val defs = C.addReg(returnPtr, live(defs, C.empty))
 	val uses = live(uses, C.empty)
       in emit(I.BLE{b=rexp funct, d=I.IMMED 0, sr=5, t=returnPtr, 
-                    defs=defs, uses=uses, mem=region})
+                    defs=defs, uses=uses, cutsTo=[], mem=region})
       end
     | doCall _ = error "doCall"
 

@@ -262,11 +262,10 @@ struct
               mark(I.BCLR{bo=I.ALWAYS,bf=CR0,bit=I.LT,LK=false,labels=labs},an)
           end
         | stmt(T.CALL{funct, targets, defs, uses, region, ...}, an) = 
-          let val defs=cellset(defs)
-              val uses=cellset(uses)
-           in emit(MTLR(expr funct));
-              mark(I.CALL{def=defs, use=uses, mem=region}, an)
-           end
+            call(funct, targets, defs, uses, region, [], an) 
+        | stmt(T.FLOW_TO(T.CALL{funct, targets, defs, uses, region, ...}, 
+                         cutTo), an) = 
+            call(funct, targets, defs, uses, region, cutTo, an) 
         | stmt(T.RET flow,an) = mark(RET,an)
         | stmt(T.STORE(ty,ea,data,mem),an) = store(ty,ea,data,mem,an)
         | stmt(T.FSTORE(ty,ea,data,mem),an) = fstore(ty,ea,data,mem,an)
@@ -274,6 +273,13 @@ struct
         | stmt(T.DEFINE l, _) = defineLabel l
         | stmt(T.ANNOTATION(s,a),an) = stmt(s,a::an)
         | stmt(s, _) = doStmts(Gen.compileStm s)
+
+      and call(funct, targets, defs, uses, region, cutsTo, an) = 
+          let val defs=cellset(defs)
+              val uses=cellset(uses)
+          in  emit(MTLR(expr funct));
+              mark(I.CALL{def=defs, use=uses, cutsTo=cutsTo, mem=region}, an)
+          end
 
       and branch(T.CMP(_, _, T.LI _, T.LI _), _, _) = error "branch"
         | branch(T.CMP(ty, cc, e1 as T.LI _, e2), lab, an) = 

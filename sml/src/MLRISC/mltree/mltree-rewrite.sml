@@ -31,6 +31,7 @@ struct
                T.CALL{funct=rexp funct,targets=targets,
                       defs=mlriscs defs,uses=mlriscs uses,
                       region=region}
+           | T.FLOW_TO(s,controlflow) => T.FLOW_TO(stm s,controlflow)
            | T.RET _ => s
            | T.IF(cc,yes,no) => T.IF(ccexp cc,stm yes,stm no)
            | T.STORE(ty,ea,d,r) => T.STORE(ty,rexp ea,rexp d,r)

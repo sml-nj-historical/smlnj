@@ -131,6 +131,7 @@ sig
        val empty      : sorted_cells
        val enter      : cell * sorted_cells -> sorted_cells
        val rmv        : cell * sorted_cells -> sorted_cells
+       val member     : cell * sorted_cells -> bool
        val eq         : sorted_cells * sorted_cells -> bool
        val notEq      : sorted_cells * sorted_cells -> bool
        val uniq       : cell list -> sorted_cells

@@ -71,7 +71,8 @@ struct
       [I.COPY{src=[r,reduceOpnd i],dst=[r10,r11],
                    tmp=SOME(I.Direct(C.newReg())),impl=ref NONE},
        I.LOAD{l=I.LD,r=C.stackptrR,i=offset,d=addr,mem=stack},
-       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,nop=true,mem=stack},
+       I.JMPL{r=addr,i=I.IMMED 0,d=C.linkReg,defs=defs,uses=uses,
+              cutsTo=[],nop=true,mem=stack},
        I.COPY{src=[r10],dst=[d],tmp=NONE,impl=ref NONE}
       ]
   end

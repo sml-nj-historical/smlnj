@@ -29,7 +29,7 @@ struct
   in 
     [I.COPY{dst=[arg1, arg2], src=[rs, rt], impl=ref NONE, tmp=copyTmp()},
      I.LOADI{li=I.LDW, r=C.stackptrR, i=I.IMMED offset, t=tmpR, mem=stack},
-     I.BLE{t=C.GPReg 31, 
+     I.BLE{t=C.GPReg 31, cutsTo=[],
            b=tmpR, sr=5, d=I.IMMED 0, defs=defs, uses=uses, mem=stack},
      I.COPY{dst=[rd], src=[rv], impl=ref NONE, tmp=copyTmp()}]
   end

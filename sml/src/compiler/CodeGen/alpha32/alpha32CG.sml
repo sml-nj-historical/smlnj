@@ -78,16 +78,18 @@ structure Alpha32CG =
                          dst=dst,src=src,impl=impl}
 
               (* spill register *)
-              fun spillInstr(_, r,loc) =
+              fun spillInstr{src,spilledCell,spillLoc,an} =
                   [I.STORE{stOp=I.STL, b=sp,
-                           d=I.IMMop(SpillTable.getRegLoc loc), 
-                           r=r, mem=spill}]
+                           d=I.IMMop(SpillTable.getRegLoc spillLoc), 
+                           r=src, mem=spill}]
 
               (* reload register *)
-              fun reloadInstr(_, r,loc) =
+              fun reloadInstr{dst,spilledCell,spillLoc,an} =
                   [I.LOAD{ldOp=I.LDL, b=sp, 
-                          d=I.IMMop(SpillTable.getRegLoc loc),
-                          r=r, mem=spill}]
+                          d=I.IMMop(SpillTable.getRegLoc spillLoc),
+                          r=dst, mem=spill}]
+
+              val mode = RACore.NO_OPTIMIZATION
           end
  
           structure Float =   
@@ -114,6 +116,8 @@ structure Alpha32CG =
                   [I.FLOAD{ldOp=I.LDT, b=sp,
                            d=I.IMMop(SpillTable.getFregLoc loc), 
                            r=r, mem=spill}]
+
+              val mode = RACore.NO_OPTIMIZATION
           end
          )
   )

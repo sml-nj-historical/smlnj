@@ -267,6 +267,7 @@ IA32.cm:
 	../x86/instructions/x86Props.sml
 	../x86/instructions/x86MemRegs.sig
 	../x86/instructions/x86FreqProps.sml
+	../x86/instructions/x86ExpandCopies.sml
 	../x86/emit/x86Asm.sml
 	../x86/x86MC.sml
 	../x86/ra/x86Rewrite.sig
@@ -541,6 +542,7 @@ MLRISC.cm:
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
+	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig
@@ -589,6 +591,7 @@ MLRISC.cm:
 	../cluster/printCluster.sml
 	../cluster/clusterOptimization.sig
 	../cluster/clusterCountCopies.sml
+	../cluster/clusterExpandCopies.sml
 	
 	(* Core register allocator utilities *)
 	../ra/getreg.sig

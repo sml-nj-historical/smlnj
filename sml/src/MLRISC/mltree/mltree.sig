@@ -47,6 +47,7 @@ signature MLTREE = sig
     | CALL    of {funct:rexp, targets:controlflow,
                   defs:mlrisc list, uses:mlrisc list,
                   region: Region.region} 
+    | FLOW_TO of stm * controlflow 
     | RET     of controlflow 
     | IF      of ccexp * stm * stm   
 

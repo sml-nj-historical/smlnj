@@ -31,10 +31,12 @@ struct
 
    fun enableDelaySlot{instr, n, nop} =
        case (instr,n) of
-         (I.CALL{defs,uses,label,mem,...},false) => 
-	    I.CALL{defs=defs,uses=uses,label=label,nop=nop,mem=mem}
-       | (I.JMPL{r,i,d,defs,uses,mem,...},false) => 
-	    I.JMPL{r=r,i=i,d=d,defs=defs,uses=uses,nop=nop,mem=mem}
+         (I.CALL{defs,uses,label,cutsTo,mem,...},false) => 
+	    I.CALL{defs=defs,uses=uses,label=label,cutsTo=cutsTo,
+                   nop=nop,mem=mem}
+       | (I.JMPL{r,i,d,defs,uses,mem,cutsTo,...},false) => 
+	    I.JMPL{r=r,i=i,d=d,defs=defs,uses=uses,cutsTo=cutsTo,
+                   nop=nop,mem=mem}
        | (I.JMP{r,i,labs,...},false) => 
 	    I.JMP{r=r,i=i,labs=labs,nop=nop}
        | (I.RET{leaf,...},false) => I.RET{leaf=leaf,nop=nop}

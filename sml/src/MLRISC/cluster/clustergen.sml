@@ -82,8 +82,9 @@ struct
           | _ => currBlock := newBasicBlock [instr]
           ;
           case InsnProps.instrKind instr of 
-            InsnProps.IK_JUMP => (blocks := !currBlock :: !blocks; 
-                                  currBlock := NOBLOCK)
+            (InsnProps.IK_JUMP | InsnProps.IK_CALL_WITH_CUTS) => 
+             (blocks := !currBlock :: !blocks; 
+              currBlock := NOBLOCK)
           | _ => ()
          )
 
@@ -192,7 +193,7 @@ struct
               in  case !insns of
                     lastInstr::_ =>
                     (case InsnProps.instrKind lastInstr of
-                       InsnProps.IK_JUMP => 
+                       (InsnProps.IK_JUMP | InsnProps.IK_CALL_WITH_CUTS) => 
                           succ := succBlocks
                              (InsnProps.branchTargets lastInstr,[])
                      | _ => 

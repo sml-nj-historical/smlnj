@@ -175,6 +175,7 @@ struct
           "",
           "val show_cellset = MLRiscControl.getFlag \"asm-show-cellset\"",
           "val show_region  = MLRiscControl.getFlag \"asm-show-region\"",
+          "val show_cutsTo = MLRiscControl.getFlag \"asm-show-cutsto\"",
           "val indent_copies = MLRiscControl.getFlag \"asm-indent-copies\"",
           ""
         ],
@@ -220,6 +221,9 @@ struct
           "      if !show_cellset then emit_cellset else doNothing",
           "    fun emit_defs cellset = emit_cellset(\"defs: \",cellset)",
           "    fun emit_uses cellset = emit_cellset(\"uses: \",cellset)",
+          "    val emit_cutsTo = ",
+          "      if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit",
+          "      else doNothing",
           "    fun emitter instr =",
           "    let"
          ],

@@ -90,16 +90,19 @@ structure SparcCG =
                                             disp=SpillTable.getRegLoc loc})}
 
              (* spill register *)
-             fun spillInstr(_, d,loc) =
-                 [I.STORE{s=I.ST, r=sp, i=I.IMMED(SpillTable.getRegLoc loc), 
-                          d=d, mem=spill}]
+             fun spillInstr{src,spilledCell,an,spillLoc} =
+                 [I.STORE{s=I.ST,r=sp,
+                          i=I.IMMED(SpillTable.getRegLoc spillLoc), 
+                          d=src, mem=spill}]
 
              (* reload register *)
-             fun reloadInstr(_, d,loc) =
-                 [I.LOAD{l=I.LD, r=sp, i=I.IMMED(SpillTable.getRegLoc loc), 
-                         d=d, mem=spill}
+             fun reloadInstr{dst,spilledCell,an,spillLoc} =
+                 [I.LOAD{l=I.LD, r=sp, 
+                         i=I.IMMED(SpillTable.getRegLoc spillLoc), 
+                         d=dst, mem=spill}
                  ]
 
+             val mode = RACore.NO_OPTIMIZATION
           end
 
           structure Float = 
@@ -127,6 +130,8 @@ structure SparcCG =
                           i=I.IMMED(SpillTable.getFregLoc loc), 
                           d=d, mem=spill}
                  ]
+
+             val mode = RACore.NO_OPTIMIZATION
           end
          )
   )

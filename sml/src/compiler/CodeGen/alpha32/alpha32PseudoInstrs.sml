@@ -33,14 +33,14 @@ struct
     [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
      I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divlOffset, mem=stack},
-     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, mem=stack},
+     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
      I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun divlu({ra, rb, rc}, reduceOpnd) = 
     [I.COPY{dst=[r16, r17], src=[ra, reduceOpnd rb], impl=ref NONE, 
 	    tmp=copyTmp()},
      I.LOAD{ldOp=I.LDL, r=r27, b=sp, d=divluOffset, mem=stack},
-     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, mem=stack},
+     I.JSR{r=r26, b=r27, d=0, defs=defs, uses=uses, cutsTo=[], mem=stack},
      I.COPY{dst=[rc], src=[r0], impl=ref NONE, tmp=NONE}]
 
   fun unimplemented _ = error "unimplemented pseudo-instr"

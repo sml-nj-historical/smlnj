@@ -415,10 +415,10 @@ struct
      fun jcc cc {opnd} = if cc then Jmp(long opnd) else ()
      rtl J^^     [EQ,NE,LT,LE,GT,GE,B,BE,A,AE,C,NC,P,NP,O,NO] = 
          map jcc [E ,NE,L, LE,G ,GE,B,BE,A,AE,C,NC,P,NP,O,NO] 
-     rtl CALL{operand,cellset1,cellset2} =
-         Call(long operand) ||
-         Kill $cellset[cellset1] || 
-         Use $cellset[cellset2] 
+     rtl CALL{opnd,defs,uses} =
+         Call(long opnd) ||
+         Kill $cellset[defs] || 
+         Use $cellset[uses] 
 
      (* semantics of floating point operators
       * The 3-address fake operators first. 
@@ -644,10 +644,12 @@ struct
 	asm: ``j<cond>\t<stupidGas opnd>''
 	rtl: ``J<cond>''
 
-    | CALL of operand * $cellset * $cellset * Region.region
-	asm: ``call\t<stupidGas operand><region><
-          	emit_defs(cellset1)><
-          	emit_uses(cellset2)>''
+    | CALL of {opnd: operand, defs: $cellset,uses: $cellset,
+               cutsTo: Label.label list, mem: Region.region}
+	asm: ``call\t<stupidGas opnd><mem><
+          	emit_defs(defs)><
+          	emit_uses(uses)><
+                emit_cutsTo cutsTo>''
 	rtl: ``CALL''
 
     | ENTER of {src1:operand, src2:operand} 

@@ -11,6 +11,7 @@ struct
      | size(T.LI _) = intTy
      | size(T.LABEL _) = intTy
      | size(T.CONST _) = intTy
+     | size(T.LABEXP e) = size e
      | size(T.NEG(ty,_)) = ty
      | size(T.ADD(ty,_,_)) = ty
      | size(T.SUB(ty,_,_)) = ty

@@ -27,6 +27,7 @@ Library
 	functor X86
 	functor X86AsmEmitter
 	functor X86CompInstrExt
+	functor X86ExpandCopies
 	functor X86FP
 	functor X86FreqProps
 	functor X86Instr

@@ -12,6 +12,7 @@ Library
 	signature CONSTANT
 	signature C_CALLS
 	signature DELAY_SLOT_PROPERTIES
+	signature EXPAND_COPIES
 	signature FLOWGRAPH
 	signature FLOWGRAPH_GEN
 	signature FREQUENCY_PROPERTIES
@@ -73,6 +74,7 @@ Library
 	functor CellsCommon
 	functor ClusterCountCopies
 	functor ClusterEmit
+	functor ClusterExpandCopies
 	functor ClusterGen
 	functor ClusterPartitioner
 	functor ClusterRA
@@ -127,6 +129,7 @@ is
 	../instructions/cells.sml
 	../instructions/cells-basis.sig
 	../instructions/cells-basis.sml
+	../instructions/expandCopies.sig
 	../instructions/rewrite.sig
 	../instructions/insnProps.sig
 	../instructions/stream.sig
@@ -169,6 +172,7 @@ is
 	../cluster/printCluster.sml
 	../cluster/clusterOptimization.sig
 	../cluster/clusterCountCopies.sml
+	../cluster/clusterExpandCopies.sml
 	../ra/getreg.sig
 	../ra/getreg.sml
 	../ra/getreg2.sml

@@ -211,9 +211,9 @@ sig
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
    | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
    | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, nop:bool, 
-        mem:Region.region}
    | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
    | FPop1 of {a:farith1, r:C.cell, d:C.cell}
    | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}
@@ -437,9 +437,9 @@ struct
    | BP of {b:branch, p:prediction, cc:cc, a:bool, label:Label.label, nop:bool}
    | JMP of {r:C.cell, i:operand, labs:Label.label list, nop:bool}
    | JMPL of {r:C.cell, i:operand, d:C.cell, defs:C.cellset, uses:C.cellset, 
+        cutsTo:Label.label list, nop:bool, mem:Region.region}
+   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, cutsTo:Label.label list, 
         nop:bool, mem:Region.region}
-   | CALL of {defs:C.cellset, uses:C.cellset, label:Label.label, nop:bool, 
-        mem:Region.region}
    | Ticc of {t:branch, cc:cc, r:C.cell, i:operand}
    | FPop1 of {a:farith1, r:C.cell, d:C.cell}
    | FPop2 of {a:farith2, r1:C.cell, r2:C.cell, d:C.cell}

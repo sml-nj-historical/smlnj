@@ -661,19 +661,11 @@ struct
           | SOME 0w3 => arith(I.S8ADDQ,a,zeroT,d,an)
           | _        => arith(I.SLL,a,b,d,an)
 
-      and sra32(a,b,d,an) =
-          let val ra = expr a
-              val rb = opn b
-              val t  = newReg()
-          in  (* On the alpha, all 32 bit values are already sign extended.
-               * So no sign extension is necessary. 
-               * signExt32(ra,t); 
-               * mark(I.OPERATE{oper=I.SRA,ra=t,rb=rb,rc=d},an) 
-               *)
-              mark(I.OPERATE{oper=I.SRA,ra=ra,rb=rb,rc=d},an)
-          end
-        
-      and sra64(a,b,d,an) = 
+       (* On the alpha, all 32 bit values are already sign extended. 
+        * So no sign extension is necessary.  We do the same for 
+        * sra32 and sra64
+        *)
+      and sra(a,b,d,an) = 
           mark(I.OPERATE{oper=I.SRA,ra=expr a,rb=opn b,rc=d},an)
 
       and srl32(a,b,d,an) = 
@@ -966,7 +958,7 @@ struct
           | T.REMS(32,a,b) => pseudo(P.reml,a,b,d)
 
           | T.SLL(32,a,b) => sll32(a,b,d,an)
-          | T.SRA(32,a,b) => sra32(a,b,d,an)
+          | T.SRA(32,a,b) => sra(a,b,d,an)
           | T.SRL(32,a,b) => srl32(a,b,d,an)
 
             (* 64 bit support *)
@@ -994,7 +986,7 @@ struct
           | T.REMS(64,a,b) => pseudo(P.remq,a,b,d)
 
           | T.SLL(64,a,b) => sll64(a,b,d,an)
-          | T.SRA(64,a,b) => sra64(a,b,d,an)
+          | T.SRA(64,a,b) => sra(a,b,d,an)
           | T.SRL(64,a,b) => srl64(a,b,d,an)
 
             (* special bit operations with complement *)
@@ -1416,15 +1408,16 @@ struct
       and goto(lab,an) = mark(I.BRANCH{b=I.BR,r=zeroR,lab=lab},an)
 
          (* generate an call instruction *)
-      and call(ea,flow,defs,uses,mem,an) = 
+      and call(ea,flow,defs,uses,mem,cutTo,an) = 
        let val defs=cellset defs
            val uses=cellset uses
            val instr = 
                case (ea, flow) of
                  (T.LABEL lab, [_]) => 
-                   I.BSR{lab=lab,r=C.returnAddr,defs=defs,uses=uses,mem=mem}
+                   I.BSR{lab=lab,r=C.returnAddr,defs=defs,uses=uses,
+                         cutsTo=cutTo,mem=mem}
                | _ => I.JSR{r=C.returnAddr,b=expr ea,
-                            d=0,defs=defs,uses=uses,mem=mem}
+                            d=0,defs=defs,uses=uses,cutsTo=cutTo,mem=mem}
        in  mark(instr,an)
        end
 
@@ -1455,7 +1448,9 @@ struct
           | T.JMP(e,labs) => mark(I.JMPL({r=zeroR,b=expr e,d=0},labs),an)
           | T.BCC(cc,lab) => branch(cc,lab,an)
           | T.CALL{funct,targets,defs,uses,region,...} => 
-              call(funct,targets,defs,uses,region,an)
+              call(funct,targets,defs,uses,region,[],an)
+          | T.FLOW_TO(T.CALL{funct,targets,defs,uses,region,...},cutTo) => 
+              call(funct,targets,defs,uses,region,cutTo,an)
           | T.RET _ => mark(I.RET{r=zeroR,b=C.returnAddr,d=0},an)
           | T.STORE(8,ea,data,mem) => store8(ea,data,mem,an)
           | T.STORE(16,ea,data,mem) => store16(ea,data,mem,an)

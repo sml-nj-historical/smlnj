@@ -20,6 +20,7 @@ struct
    
    val show_cellset = MLRiscControl.getFlag "asm-show-cellset"
    val show_region  = MLRiscControl.getFlag "asm-show-region"
+   val show_cutsTo = MLRiscControl.getFlag "asm-show-cutsto"
    val indent_copies = MLRiscControl.getFlag "asm-indent-copies"
    
    fun error msg = MLRiscErrorMsg.error("HppaAsmEmitter",msg)
@@ -64,6 +65,9 @@ struct
          if !show_cellset then emit_cellset else doNothing
        fun emit_defs cellset = emit_cellset("defs: ",cellset)
        fun emit_uses cellset = emit_cellset("uses: ",cellset)
+       val emit_cutsTo = 
+         if !show_cutsTo then AsmFormatUtil.emit_cutsTo emit
+         else doNothing
        fun emitter instr =
        let
    fun asm_fmt (I.SGL) = "sgl"
@@ -445,7 +449,7 @@ struct
            emit "("; 
            emitCell t; 
            emit ")" )
-       | I.BL{lab, t, defs, uses, mem, n} => 
+       | I.BL{lab, t, defs, uses, cutsTo, mem, n} => 
          ( emit "bl"; 
            emit_n n; 
            emit "\t"; 
@@ -454,8 +458,9 @@ struct
            emitCell t; 
            emit_region mem; 
            emit_defs defs; 
-           emit_uses uses )
-       | I.BLE{d, b, sr, t, defs, uses, mem} => 
+           emit_uses uses; 
+           emit_cutsTo cutsTo )
+       | I.BLE{d, b, sr, t, defs, uses, cutsTo, mem} => 
          ( emit "ble\t"; 
            emit_operand d; 
            emit "("; 
@@ -465,7 +470,8 @@ struct
            emit ")"; 
            emit_region mem; 
            emit_defs defs; 
-           emit_uses uses )
+           emit_uses uses; 
+           emit_cutsTo cutsTo )
        | I.LDIL{i, t} => 
          ( emit "ldil\t"; 
            emit_operand i; 

@@ -41,8 +41,9 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.MTSPR{rs, spr} => I.MTSPR{rs=rplac rs, spr=spr}
      | I.TW {to, ra, si} => I.TW{to=to, ra=rplac ra, si=rwOperand si}
      | I.TD {to, ra, si} => I.TD{to=to, ra=rplac ra, si=rwOperand si}
-     | I.CALL {def, use, mem} => 
-          I.CALL{def=def, use=C.CellSet.map {from=rs,to=rt} use, mem=mem}
+     | I.CALL {def, use, cutsTo, mem} => 
+          I.CALL{def=def, use=C.CellSet.map {from=rs,to=rt} use, 
+                 cutsTo=cutsTo, mem=mem}
      | I.COPY{dst, src, impl, tmp} =>
 	I.COPY{dst=dst, src=map rplac src, impl=impl, tmp=tmp}
      | I.FCOPY{dst, src, impl, tmp} =>
@@ -74,8 +75,9 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.ROTATEI {oper, ra, rs, sh, mb, me} =>
 	I.ROTATEI {oper=oper, ra=rplac ra, rs=rs, sh=sh, mb=mb, me=me}
      | I.MFSPR {rt, spr} => I.MFSPR{rt=rplac rt, spr=spr}
-     | I.CALL {def, use, mem} => 
-        I.CALL{def=C.CellSet.map {from=rs,to=rt} def, use=use, mem=mem}
+     | I.CALL {def, use, cutsTo, mem} => 
+        I.CALL{def=C.CellSet.map {from=rs,to=rt} def, use=use, 
+               cutsTo=cutsTo, mem=mem}
      | I.COPY {dst, src, impl, tmp} =>
 	I.COPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,rs,rt)}
      | I.ANNOTATION{i,a} => 
@@ -94,8 +96,9 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
     case instr
     of I.STF {st, fs, ra, d, mem} =>
          I.STF{st=st, fs=rplac fs, ra=ra, d=d, mem=mem}
-     | I.CALL{def, use, mem} => 
-         I.CALL{def=def, use=C.CellSet.map {from=fs,to=ft} use, mem=mem}
+     | I.CALL{def, use, cutsTo, mem} => 
+         I.CALL{def=def, use=C.CellSet.map {from=fs,to=ft} use, 
+                cutsTo=cutsTo, mem=mem}
      | I.FCOMPARE {cmp, bf, fa, fb} =>
 	 I.FCOMPARE{cmp=cmp, bf=bf, fa=rplac fa, fb=rplac fb}
      | I.FUNARY {oper, ft, fb, Rc} =>
@@ -130,8 +133,9 @@ functor PPCRewrite(Instr : PPCINSTR) = struct
      | I.FARITH3{oper, ft, fa, fb, fc, Rc} =>
 	I.FARITH3{oper=oper, ft=rplac ft, fa=fa, fb=fb, fc=fc, Rc=Rc}
     (* CALL = BCLR {bo=ALWAYS, bf=0, bit=0, LK=true, labels=[] *)
-     | I.CALL{def, use, mem} => 
-        I.CALL{def=C.CellSet.map {from=fs,to=ft} def, use=use, mem=mem}
+     | I.CALL{def, use, cutsTo, mem} => 
+        I.CALL{def=C.CellSet.map {from=fs,to=ft} def, use=use, 
+               cutsTo=cutsTo, mem=mem}
      | I.FCOPY {dst, src, impl, tmp} =>
         I.FCOPY{dst=map rplac dst, src=src, impl=impl, tmp=ea(tmp,fs,ft)}
      | I.ANNOTATION{i,a} => 

@@ -544,14 +544,16 @@ struct
      rtl: ``JMPL''
 
    | JSR of {r: $GP, b: $GP, d:int, 
-             defs: $cellset, uses: $cellset, mem:Region.region}
-     asm: ``jsr\t<r>, (<b>)<mem><emit_defs(defs)><emit_uses(uses)>''
+             defs: $cellset, uses: $cellset, cutsTo: Label.label list,
+             mem:Region.region}
+     asm: ``jsr\t<r>, (<b>)<mem><emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo>''
      mc:  Jump{h=0w1,ra=r,rb=b,disp=d}
      rtl: ``JSR''
 
    | BSR of {r: $GP, lab: Label.label,
-             defs: $cellset, uses: $cellset, mem:Region.region}
-     asm: ``bsr\t<r>, <lab><mem><emit_defs(defs)><emit_uses(uses)>''
+             defs: $cellset, uses: $cellset, cutsTo: Label.label list,
+             mem:Region.region}
+     asm: ``bsr\t<r>, <lab><mem><emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo>''
      mc:  Bsr{ra=r,disp=disp lab}
      rtl: ``BSR''
 

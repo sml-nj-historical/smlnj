@@ -73,7 +73,9 @@ structure X86CG =
                               structure InsnProps = InsnProps
                              )
 
-       val beforeRA = X86StackSpills.init
+       type spill_info = unit
+
+       fun beforeRA _ = X86StackSpills.init()
        val fast_floating_point = fast_floating_point
 
        val toInt32 = Int32.fromInt
@@ -113,7 +115,7 @@ structure X86CG =
  
           val getRegLoc' = X86StackSpills.getRegLoc
  
-          fun spillLoc(an, loc) = 
+          fun spillLoc(S, an, loc) = 
               I.Displace{base=esp, disp=getRegLoc' loc, mem=spill}
  
        end
@@ -143,7 +145,7 @@ structure X86CG =
               end 
               else ()
 
-          fun spillLoc(an, loc) =
+          fun spillLoc(S, an, loc) =
             I.Displace{base=esp, disp=X86StackSpills.getFregLoc loc, mem=spill}
 
           val fastMemRegs = C.Regs C.FP {from=8, to=31, step=1}

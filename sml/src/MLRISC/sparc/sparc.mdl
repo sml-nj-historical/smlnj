@@ -725,9 +725,10 @@ struct
         delayslot candidate: false
 
    |  JMPL of { r: $GP, i:operand, d: $GP, 
-                defs: $cellset, uses: $cellset, nop:bool, mem:Region.region
+                defs: $cellset, uses: $cellset, 
+                cutsTo : Label.label list, nop:bool, mem:Region.region
               }
-        asm: ``jmpl\t[<r>+<i>], <d><mem><emit_defs defs><emit_uses uses><nop>'' 
+        asm: ``jmpl\t[<r>+<i>], <d><mem><emit_defs defs><emit_uses uses><emit_cutsTo cutsTo><nop>'' 
         mc:  (jmpl{r,i,d}; delay{nop})
 	rtl: ``JMPL''
         padding: nop = true
@@ -735,9 +736,10 @@ struct
         delayslot candidate: false
 
    |  CALL of  { defs: $cellset, uses: $cellset, 
-                 label:Label.label, nop:bool, mem:Region.region
+                 label:Label.label, cutsTo:Label.label list,
+                 nop:bool, mem:Region.region
                }  
-        asm: ``call\t<label><mem><emit_defs(defs)><emit_uses(uses)><nop>'' 
+        asm: ``call\t<label><mem><emit_defs(defs)><emit_uses(uses)><emit_cutsTo cutsTo><nop>'' 
         mc:  (call{disp30=disp label}; delay{nop})
 	rtl: ``CALL''
         padding: nop 
