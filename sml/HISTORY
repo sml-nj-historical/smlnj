@@ -13,6 +13,15 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Lal George
+Date: 2002/05/23 12:21:40 EDT
+Tag: george-20020523-visual-labels
+Description:
+
+Labels are now displayed in the graphical output to make
+the fall-through and target blocks obvious.
+
+----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/05/22 11:03:00 EDT
 Tag: blume-20020522-shrink

@@ -51,26 +51,33 @@ struct
        in  [label, color] end
 
        fun title(blknum,ref freq) = 
-           " "^Int.toString blknum^" ("^Real.toString freq^")"
+           " "^Int.toString blknum ^ " freq="^Real.toString freq
 
        fun ann(annotations) = 
             List.foldl(fn (a,l) => "/* "^Annotations.toString a^" */\n"^l) ""
                              (!annotations)
 
-       fun node(_, CFG.BLOCK{kind, id, freq, insns, annotations, ...}) = 
+       fun node(_, CFG.BLOCK{kind, labels, id, freq, insns, annotations, ...}) = 
 	 (case kind
 	   of CFG.START => 
 	        [L.LABEL("entry"^title(id,freq)^"\n"^ann(annotations))]
 	    | CFG.STOP  => 
                 [L.LABEL("exit"^title(id,freq))]
 	    | _ => 
-              [L.LABEL(title(id,freq)^"\n"^
+              [L.LABEL("BLK"^title(id,freq)^"\n"^
+		 (case !labels
+		   of [] => ""
+		    | labs => 
+		       String.concatWith ":\n" (map Label.toString labs) ^ ":\n"
+                 (*easc*)) ^
                  ann(annotations)^
                  (if !outline then "" else
-                 List.foldl (fn (i,t) => 
-                             let val text = toString i
-                             in  if text = "" then t else text^"\n"^t end
-                            ) "" (!insns)))]
+                 List.foldl 
+		     (fn (i,t) => let val text = toString i
+				  in  if text = "" then t else text^"\n"^t 
+				  end) 
+		     "" 
+		     (!insns)))]
 	  (*esac*))
 
    in  
