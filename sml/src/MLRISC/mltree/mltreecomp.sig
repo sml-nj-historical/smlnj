@@ -4,7 +4,7 @@
  *)
 signature MLTREECOMP = 
 sig
-    structure T : MLTREE
+    structure T : MLTREE 
     structure I : INSTRUCTIONS
        sharing T.Constant = I.Constant
 

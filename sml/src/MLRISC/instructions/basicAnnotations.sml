@@ -7,46 +7,39 @@
 structure BasicAnnotations : BASIC_ANNOTATIONS =
 struct
 
+   structure A = Annotations
+
     (* the branch probability of conditional branches *)
-   exception BRANCH_PROB of int (* in percentage *) 
+    (* in percentage *) 
+   val BRANCH_PROB = A.new(SOME(fn b => "branch("^Int.toString b^"%)"))
 
     (* the execution frequency of a basic block *)
-   exception EXECUTION_FREQ of real
+   val EXECUTION_FREQ = A.new(SOME(fn r => "freq("^Real.toString r^")"))
 
     (* no effect at all; just allows you to insert comments *)
-   exception COMMENT of string
+   val COMMENT = A.new(SOME(fn s => s))
 
     (* control dependence definition and use *)
-   exception CTRL_DEF of int
-   exception CTRL_USE of int
+   datatype ctrl_dep = CTRL_DEF of int | CTRL_USE of int
+   fun prCtrl (CTRL_DEF x) = "ctrl-def "^Int.toString x
+     | prCtrl (CTRL_USE x) = "ctrl-use "^Int.toString x
+   val CTRL = A.new(SOME prCtrl)
 
     (*
      * These annotations specifies definitions and uses                              * for a pseudo instruction.
      *)
-   exception DEFUSER  of int list * int list
-   exception DEFUSEF  of int list * int list
-   exception DEFUSECC of int list * int list
-
-   exception REGINFO of int -> string
-
-   exception NO_OPTIMIZATION
-   exception CALLGC
-
-   fun toString(BRANCH_PROB b)    = "branch("^Int.toString b^"%)"
-     | toString(EXECUTION_FREQ r) = "freq("^Real.toString r^")"
-     | toString(COMMENT s)        = s
-     | toString(CTRL_DEF x)       = "ctrl-def "^Int.toString x
-     | toString(CTRL_USE x)       = "ctrl-use "^Int.toString x
-     | toString(DEFUSER x)        = "reg "^defUse x
-     | toString(DEFUSEF x)        = "freg "^defUse x
-     | toString(DEFUSECC x)       = "ccreg "^defUse x
-     | toString a                 = raise a
-
-   and defUse(d,u) =
+   fun defUse(d,u) =
    let fun list l = 
            String.concat(foldr (fn (r,l) => Int.toString r::" "::l) [] l)
    in  "defs="^list d^" uses="^list u end
 
-   val _ = Annotations.attachPrettyPrinter toString
+   val DEFUSER  = A.new(SOME(fn x => "reg "^defUse x))
+   val DEFUSEF  = A.new(SOME(fn x => "freg "^defUse x))
+   val DEFUSECC = A.new(SOME(fn x => "ccreg "^defUse x))
+
+   val REGINFO = A.new(SOME(fn _ => "REGINFO")) : (int -> string) A.property
+
+   val NO_OPTIMIZATION = A.newFlag("NO_OPTIMIZATION") : unit A.property
+   val CALLGC = A.newFlag("CALLGC") : unit A.property
 
 end

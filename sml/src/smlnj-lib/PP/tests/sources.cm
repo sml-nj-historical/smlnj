@@ -12,6 +12,12 @@ Library
   structure HTML
   structure PrHTML
 is
+#if defined(NEW_CM)
   basis.cm
   html-lib.cm
   pp-lib.cm
+#else
+  ../../HTML/html-lib.cm
+  ../src/sources.cm
+  ../devices/sources.cm
+#endif

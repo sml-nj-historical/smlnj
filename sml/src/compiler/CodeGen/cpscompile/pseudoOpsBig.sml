@@ -65,7 +65,3 @@ functor PseudoOpsBig(M : MACH_SPEC) = struct
 
 end
 
-
-
-	
-

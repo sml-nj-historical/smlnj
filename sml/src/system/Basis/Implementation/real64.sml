@@ -91,7 +91,13 @@ structure Real64Imp : REAL =
 
     fun ceil n = I.-(~1,floor(~(n+1.0)))
     fun trunc n = if n < 0.0 then ceil n else floor n
-    fun round x = floor(x+0.5)  (* bug: does not do round-to-nearest *)
+    fun round x =
+        (* ties go to the nearest even number *)
+	let val fl = floor(x+0.5)
+	    val cl = ceil(x-0.5)
+	 in if fl=cl then fl
+	    else if Word31Imp.andb(Word31Imp.fromInt fl,0w1) = 0w1 then cl else fl
+	end
 
   (* This is the IEEE double-precision maxint *)
     val maxInt = 4503599627370496.0

@@ -12,7 +12,6 @@ functor SSAOptimizerFn
     structure FreqProps : FREQUENCY_PROPERTIES
        sharing P.I = SP.I = GCP.I = Asm.I = F.I = FreqProps.I = MLTreeComp.I
        sharing F.P = Asm.P = MLTreeComp.T.PseudoOp 
-       sharing MLTreeComp.T.BNames = F.B
        sharing MLTreeComp.T.Constant = F.I.Constant
     val callgc : { id     : int,
                    label  : Label.label,
@@ -24,7 +23,6 @@ struct
 
    structure F = F
    structure I = F.I
-   structure B = F.B
 
    val view_IR    = MLRiscControl.getFlag "view-IR" 
    val verbose    = MLRiscControl.getFlag "verbose"
@@ -39,7 +37,6 @@ struct
 
    structure CFG = ControlFlowGraphFn
       (structure I = I
-       structure B = B
        structure P = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm

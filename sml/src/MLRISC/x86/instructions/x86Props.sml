@@ -159,8 +159,11 @@ struct
       | I.FBINARY{src, ...}   => ([], operandUse src)
       | I.FNSTSW	      => ([C.eax], [])
       | I.SAHF		      => ([], [C.eax])
-      | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
-      | I.ANNOTATION{i,...}   => defUseR i
+      | I.ANNOTATION{a, i, ...} =>
+          (case #peek BasicAnnotations.DEFUSER a of
+             SOME(d,u) => (d,u)
+           | NONE => defUseR i
+          )
       | _		      => ([], [])
   end (* defUseR *)
 
@@ -175,8 +178,11 @@ struct
       | I.FBINARY{dst, src, ...}=> (operand dst, operand dst @ operand src)
       | I.FCOPY{dst, src, tmp=SOME(I.FDirect f), ...}  => (f::dst, src)
       | I.FCOPY{dst, src, ...}  => (dst, src)
-      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
-      | I.ANNOTATION{i,...}   => defUseF i
+      | I.ANNOTATION{a, i, ...} =>
+          (case #peek BasicAnnotations.DEFUSEF a of
+             SOME(d,u) => (d,u)
+           | NONE => defUseF i
+          )
       | _  => ([], [])
   end
 
@@ -187,8 +193,9 @@ struct
   (*========================================================================
    *  Annotations 
    *========================================================================*)
-  fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
-    | getAnnotations _ = []
+  fun getAnnotations(I.ANNOTATION{i,a}) = 
+       let val (i,an) = getAnnotations i in (i,a::an) end
+    | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
   (*========================================================================

@@ -13,7 +13,6 @@ functor ClusterGen
      sharing Flowgraph.I = InsnProps.I
      sharing MLTree.Constant = InsnProps.I.Constant  
      sharing MLTree.PseudoOp = Flowgraph.P 
-     sharing Flowgraph.B = MLTree.BNames 
   ) : FLOWGRAPH_GEN = 
 struct
 
@@ -23,7 +22,6 @@ struct
   structure C = I.C
 
   structure T = MLTree
-  structure B = MLTree.BNames
   structure P = T.PseudoOp
   structure S = T.Stream
   
@@ -36,7 +34,6 @@ struct
   fun newStream() = 
   let val bblkCnt = ref 0 
       val entryLabels = ref ([] : Label.label list)
-      val blkName  = ref B.default 
       val regmap  = ref NONE
       fun can'tUse _ = error "unimplemented" 
       val aliasF  = ref can'tUse : (T.alias -> unit) ref
@@ -45,20 +42,12 @@ struct
       val blockList : F.block list ref = ref []
     
       fun nextBlkNum () = !bblkCnt before bblkCnt := !bblkCnt + 1
-      fun blockName name = 
-        (case !currBlock
-         of blk as F.BBLOCK _ => 
-             (currBlock := NOBLOCK; blockList := blk:: !blockList)
-          | _ => ()
-         (*esac*);
-         blkName := name)
     
       (** Note - currBlock will always be a reference to a F.BBLOCK{..} **)
       fun newBasicBlk init = 
           F.BBLOCK{blknum=nextBlkNum(),
-                   freq=ref 0,
+                   freq=ref 1,
                    annotations=ref [],
-                   name= !blkName,
                    liveIn=ref C.empty,
                    liveOut=ref C.empty,
                    succ=ref [],
@@ -148,7 +137,7 @@ struct
             | fillLabTbl(_::blks) = fillLabTbl(blks)
             | fillLabTbl [] = ()
     
-          val exitBlk = F.EXIT{blknum=nextBlkNum(), pred=ref [], freq=ref 0}
+          val exitBlk = F.EXIT{blknum=nextBlkNum(), pred=ref [], freq=ref 1}
     
           (** update successor and predecessor information **)
           fun graphEdges((blk as F.BBLOCK{blknum,insns,succ,...})::blks) = let
@@ -192,7 +181,7 @@ struct
             val blocks = 
                  map (fn Label.Label{id,...} => (lookupLabTbl id,ref 0)) 
                        (!entryLabels)
-            val entryBlk = F.ENTRY{blknum=nextBlkNum(), freq=ref 0,
+            val entryBlk = F.ENTRY{blknum=nextBlkNum(), freq=ref 1,
                                    succ=ref blocks}
           in
             app (fn (F.BBLOCK{pred, ...},w) => 
@@ -221,7 +210,6 @@ struct
       let val map = C.regmap()
       in  entryLabels := [];
           bblkCnt := 0;
-          blkName := B.default;
           blockList := [];
           currBlock := NOBLOCK;
           regmap := SOME map;
@@ -229,7 +217,7 @@ struct
           map
       end 
 
-      fun comment msg = annotation(BasicAnnotations.COMMENT msg)
+      fun comment msg = annotation(#create BasicAnnotations.COMMENT msg)
       fun alias(v,r) = !aliasF(v,r)
 
    in S.STREAM
@@ -240,7 +228,6 @@ struct
         entryLabel  = entryLabel,
         pseudoOp    = pseudoOp,
         exitBlock   = exitBlock,
-        blockName   = blockName,
         annotation  = annotation,
         comment     = comment,
         alias       = alias,

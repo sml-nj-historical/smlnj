@@ -16,11 +16,9 @@ structure PPCPseudoOps = PseudoOpsBig(PPCSpec)
 structure PPCFlowGraph = 
   FlowGraph(structure I=PPCInstr
 	    structure P=PPCPseudoOps
-	    structure B=FunctionNames)
+           )
 
-structure PPCStream = 
-  InstructionStreamFn(structure P=PPCPseudoOps
-                      structure B=FunctionNames)
+structure PPCStream = InstructionStreamFn(PPCPseudoOps)
 
 structure PPCAsmEmitter=
   PPCAsmEmitter(structure Instr=PPCInstr

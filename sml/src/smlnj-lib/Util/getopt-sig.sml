@@ -43,7 +43,7 @@ signature GET_OPT =
        *)
           
       datatype 'a arg_descr
-        = NoArg of 'a
+        = NoArg of unit -> 'a
         | ReqArg of (string -> 'a) * string
         | OptArg of (string option -> 'a) * string
       (* Description of an argument option:
@@ -59,20 +59,25 @@ signature GET_OPT =
           help : string
         }
       (* Description of a single option *)
-          
-      val usageInfo : string -> 'a opt_descr list -> string
+
+      val usageInfo : {
+	      header : string,
+	      options : 'a opt_descr list
+	    } -> string
       (* takes a header string and a list of option descriptions and
        * returns a string explaining the usage information
        *)
-          
-      val getOpt : 'a arg_order -> 'a opt_descr list -> string list
-	                  -> ('a list * string list)
+ 
+      val getOpt : {
+	      argOrder : 'a arg_order,
+	      options : 'a opt_descr list,
+	      errFn : string -> unit
+	    } -> string list -> ('a list * string list)
       (* takes as argument an arg_order to specify the non-options
        * handling, a list of option descriptions and a command line
        * containing the options and arguments, and returns a list of 
        * (options, non-options)
        *)      
-          
-          
+ 
   end
 

@@ -12,18 +12,17 @@
 
   1. Load the optimizer sources:
 
-	CM.make'{force_relink=false, 
-		 group="src/compiler/MLRISC-OPTIMIZER.cm"};
+	CM.make "src/compiler/MLRISC-OPTIMIZER.cm";
 
   2. At the top level execute:
 
        structure M = Compiler.Control.MLRISC;
 
-       M.mlrisc" :=true;		(* enable optimizer *)
+       M.mlrisc :=true;				(* enable optimizer *)
        M.getString "viewer" := "daVinci";	(* set viewer *)
        M.getFlag "view-IR" := true;		(* enable viewer *)
        M.mlrisc_phases :=			(* set phases *)
-	["cluster->cfg", "view-dom", "cfg->cluster"];
+	 ["cluster->cfg", "view-dom", "cfg->cluster"];
 
   3. Compiling anything from here onwards, will go through the 
      optimizer. 
@@ -55,33 +54,22 @@
   clusters.
 *)
 
-Group is
+Library
+  structure Compiler
+  structure MLRISCOptimizer
+is
 
-CodeGen/optimizer/mlrisc-optimizer.sml
-CodeGen/optimizer/mlrisc-environment.sml
+  basis.cm
+  comp-lib.cm
+  viscomp-lib.cm
+  smlnj-lib.cm
+  host-compiler.cm
 
-../MLRISC/library/sources.cm
-../MLRISC/graphs/sources.cm
-../MLRISC/visualization/sources.cm
-../MLRISC/ir/sources.cm
+  MLRISC.cm
+	(* Could use the anchors to eliminate the path *)
+  ../MLRISC/MLRISC-IR.cm
+  ../MLRISC/MLRISC-Visual.cm
+  ../MLRISC/MLRISC-Graphs.cm
+  ../MLRISC/MLRISC-ir.cm
 
-../MLRISC/IR/dataflow.sig
-../MLRISC/IR/dataflow.sml
-../MLRISC/IR/mlrisc-cfg-util.sig
-../MLRISC/IR/mlrisc-cfg-util.sml
-../MLRISC/IR/mlrisc-cfg.sig
-../MLRISC/IR/mlrisc-cfg.sml
-../MLRISC/IR/mlrisc-cfg2cluster.sml
-../MLRISC/IR/mlrisc-cluster2cfg.sml
-../MLRISC/IR/mlrisc-format-insn.sml
-../MLRISC/IR/mlrisc-ir.sig
-../MLRISC/IR/mlrisc-ir.sml
-../MLRISC/IR/mlrisc-liveness.sml
-../MLRISC/IR/mlrisc-reshape-branches.sig
-../MLRISC/IR/mlrisc-reshape-branches.sml
-../MLRISC/IR/static-branch-prediction.sig
-../MLRISC/IR/static-branch-prediction.sml
-
-../MLRISC/Glue/mlrisc-glue.sig
-../MLRISC/Glue/mlrisc-glue.sml
-
+  CodeGen/optimizer/mlrisc-optimizer.sml

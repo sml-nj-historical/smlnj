@@ -10,9 +10,8 @@ structure AsmFormatUtil : ASM_FORMAT_UTIL =
 struct
 
   fun reginfo(emit,an) =
-  let fun find [] = (fn _ => ())
-        | find(BasicAnnotations.REGINFO f::_) = (fn r => emit(f r))
-        | find(_::an) = find an
-  in  find an end
+      case #get BasicAnnotations.REGINFO an of
+         SOME f => (fn r => emit(f r))
+      |  NONE => (fn _ => ())
 
 end

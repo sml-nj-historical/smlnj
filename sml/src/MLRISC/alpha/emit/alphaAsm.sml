@@ -43,7 +43,6 @@ struct
        fun entryLabel lab = defineLabel lab
        fun comment msg = emit("\t/* " ^ msg ^ " */")
        fun annotation a = (comment(Annotations.toString a); nl())
-       fun blockName b = (comment(S.B.toString b); nl())
        fun emit_region mem = comment(I.Region.toString mem)
        fun pseudoOp pOp = emit(P.toString pOp)
        fun init size = (comment("Code Size = " ^ ms size); nl())
@@ -254,6 +253,9 @@ struct
      | asm_fcmove (I.FCMOVENE) = "fcmovene"
    and emit_fcmove x = (emit (asm_fcmove x))
 
+   fun isZero (I.CONSTop c) = ((Constant.valueOf c) = 0)
+     | isZero _ = false
+
    fun emitInstr instr = 
        ((tab ()); 
        
@@ -263,17 +265,19 @@ struct
         ((emit "/* deffreg\t"); 
         (emit_FP FP); 
         (emit " */"))
-      | I.LDA{r, b, d} => 
-        ((emit "lda\t"); 
-        (emit_GP r); 
-        (emit ", "); 
-        (emit_operand d); 
-        (if (b = 31)
+      | I.LDA{r, b, d} => (if (isZero d)andalso (r = b)
            then ()
            else 
-           ((emit "("); 
-           (emit_GP b); 
-           (emit ")"))))
+           ((emit "lda\t"); 
+           (emit_GP r); 
+           (emit ", "); 
+           (emit_operand d); 
+           (if (b = 31)
+              then ()
+              else 
+              ((emit "("); 
+              (emit_GP b); 
+              (emit ")")))))
       | I.LDAH{r, b, d} => 
         ((emit "ldah\t"); 
         (emit_GP r); 
@@ -358,7 +362,7 @@ struct
         (emit_label label))
       | I.OPERATE{oper, ra, rb, rc} => let
 
-(*#line 306.1 "alpha/alpha.md"*)
+(*#line 313.1 "alpha/alpha.md"*)
 
            fun f (oper, ra, rb, rc) = 
                ((emit oper); 
@@ -468,7 +472,6 @@ struct
                 entryLabel=entryLabel,
                 comment=comment,
                 exitBlock=doNothing,
-                blockName=blockName,
                 annotation=annotation,
                 phi=doNothing,
                 alias=doNothing

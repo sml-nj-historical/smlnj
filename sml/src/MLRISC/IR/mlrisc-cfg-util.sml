@@ -112,13 +112,15 @@ struct
                      else ()
                |  _ => raise Can'tMerge  
        val _ = if mustPreceed CFG (i,j) then raise Can'tMerge else ()
-       val CFG.BLOCK{data=d2,name=n2,insns=i2,annotations=a2,...} = 
+       val CFG.BLOCK{data=d2,insns=i2,annotations=a2,...} = 
               #node_info cfg j
        val _  = case !d2 of [] => () | _ => raise Can'tMerge
-       val CFG.BLOCK{data=d1,name=n1,insns=i1,annotations=a1,...} = 
+       val CFG.BLOCK{data=d1,insns=i1,annotations=a1,...} = 
               #node_info cfg i
-          (* If the two blocks have different names then don't merge them *)
-       val _ = if CFG.B.==(n1,n2) then () else raise Can'tMerge
+          (* If both blocks have annotations then don't merge them *)
+       val _ = case (!a1, !a2) of
+                 (_::_, _::_) => raise Can'tMerge
+               | _ => ()
        val insns1 = case !i1 of
                       [] => []
                     | insns as jmp::rest => 
@@ -192,7 +194,7 @@ struct
               | SOME _ => true)
        val insns = ref(if jump then [P.jump(labelOf CFG j)] else [])
        val node = 
-           CFG.BLOCK{id=k, kind=kind, name=CFG.B.default,
+           CFG.BLOCK{id=k, kind=kind, 
                      freq= ref(!w), data=ref [], labels = ref [],
                      insns=insns, annotations=ref []}
        val kind = if jump then CFG.JUMP else CFG.FALLSTHRU

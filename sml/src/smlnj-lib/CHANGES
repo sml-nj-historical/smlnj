@@ -3,6 +3,38 @@ correspond to SML/NJ releases.
 
 
 --------------------------------------------------------------------------------
+[1999-09-21]
+	Changed the getOpt API.  Errors are now reported using a callback
+	and both usage and getOpt take records as arguments.  Also changed
+	the NoArg descriptor to take a function so that imperative argument
+	processing can be supported.
+
+[1999-09-20]
+	Changed CM files to be compatible with both the old (110.0.x) and
+	new (110.20+) versions of CM.
+
+[1999-09-17]
+	Added PropList:PROP_LIST structure.  This structure implements
+	property lists using Stephen Weeks's technique.
+
+[1999-09-17]
+	Improved the red-black tree implementations with linear-time union,
+	intersection, difference, and filter operations.  Also reimplemented
+	the delete function in a way that does not require an extra constructor.
+
+[1999-09-09]
+	Added Red-Black-Tree implementation of sets and maps.  Two new
+	functors (RedBlackMapFn and RedBlackSetFn) and four new structures
+	(IntRedBlackMap, IntRedBlackSet, AtomIntRedBlackMap, and IntRedBlackSet).
+	Also added aliases AtomMap and AtomSet that for the RB implementations.
+
+[1999-09-03]
+	Added missing support for WORD and WORD8 format items to Format structure.
+	Still need to handle LWORD items!!
+
+[1999-08-17]
+	Added DynamicArray:DYNAMIC_ARRAY structure.
+
 [1999-07-06]
 	Added declarative representation of pretty-printing to PPStreamFn.
 	This replaces the PPDescFn and PP_DESC components (which were not

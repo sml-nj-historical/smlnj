@@ -20,10 +20,9 @@ structure HppaPseudoOps = PseudoOpsBig(HppaSpec)
 structure HppaFlowGraph = 
   FlowGraph(structure I=HppaInstr
 	    structure P=HppaPseudoOps
-	    structure B=FunctionNames)
+           )
 
-structure HppaStream = InstructionStreamFn(structure P = HppaPseudoOps
-                                           structure B = FunctionNames)
+structure HppaStream = InstructionStreamFn(HppaPseudoOps)
 
 structure HppaAsmEmitter = 
   HppaAsmEmitter(structure Instr=HppaInstr

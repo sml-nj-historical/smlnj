@@ -100,7 +100,7 @@ struct
 
   fun selectInstructions
       (S.STREAM{emit,comment,
-                defineLabel,entryLabel,blockName,pseudoOp,annotation,
+                defineLabel,entryLabel,pseudoOp,annotation,
                 beginCluster,endCluster,exitBlock,phi,alias,...}) =
   let (* mark an instruction with annotations *)
       fun mark'(instr,[]) = instr
@@ -730,7 +730,6 @@ struct
          pseudoOp     = pseudoOp,
          defineLabel  = defineLabel,
          entryLabel   = entryLabel,
-         blockName    = blockName,
          comment      = comment,
          annotation   = annotation,
          exitBlock    = exitBlock,

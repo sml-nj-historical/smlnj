@@ -185,8 +185,11 @@ struct
         | I.Ticc{r,i,...} => oper(i,[],[r]) 
         | I.RDY{d,...} => ([d],[]) 
         | I.WRY{r,i,...} => oper(i,[],[r]) 
-        | I.ANNOTATION{a=BasicAnnotations.DEFUSER(d,u),...} => (d,u)
-        | I.ANNOTATION{i,...} => defUseR i
+        | I.ANNOTATION{a, i, ...} =>
+           (case #peek BasicAnnotations.DEFUSER a of
+              SOME(d,u) => (d,u)
+            | NONE => defUseR i
+           )
         | _ => ([],[])  
     end
 
@@ -204,8 +207,11 @@ struct
       | I.FMOVfcc{r,d,...} => ([d],[r,d])
       | I.FCOPY{src,dst,tmp=SOME(I.FDirect r),...} => (r::dst,src)
       | I.FCOPY{src,dst,...} => (dst,src)
-      | I.ANNOTATION{a=BasicAnnotations.DEFUSEF(d,u),...} => (d,u)
-      | I.ANNOTATION{i,...} => defUseF i
+      | I.ANNOTATION{a, i, ...} =>
+          (case #peek BasicAnnotations.DEFUSEF a of
+             SOME(d,u) => (d,u)
+           | NONE => defUseF i
+          )
       | _ => ([],[])
 
   fun defUse C.GP = defUseR
@@ -215,8 +221,9 @@ struct
   (*========================================================================
    *  Annotations 
    *========================================================================*)
-  fun getAnnotations(I.ANNOTATION{i,a}) = a::getAnnotations i
-    | getAnnotations _ = []
+  fun getAnnotations(I.ANNOTATION{i,a}) = 
+       let val (i,an) = getAnnotations i in (i,a::an) end
+    | getAnnotations i = (i,[])
   fun annotate(i,a) = I.ANNOTATION{i=i,a=a}
 
   (*========================================================================

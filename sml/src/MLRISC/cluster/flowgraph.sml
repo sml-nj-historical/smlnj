@@ -9,7 +9,6 @@
 
 signature FLOWGRAPH = sig
 
-  structure B : BLOCK_NAMES
   structure C : CELLS
   structure I : INSTRUCTIONS
   structure P : PSEUDO_OPS
@@ -22,7 +21,6 @@ signature FLOWGRAPH = sig
     | BBLOCK of { blknum      : int,
                   freq        : W.freq ref,
                   annotations : Annotations.annotations ref,
-		  name        : B.name,
 		  liveIn      : C.cellset ref,
 		  liveOut     : C.cellset ref,
 		  succ 	      : edge list ref,
@@ -50,12 +48,11 @@ end
  *)
 functor FlowGraph(structure I : INSTRUCTIONS
 		  structure P : PSEUDO_OPS
-		  structure B : BLOCK_NAMES) : FLOWGRAPH = 
+		 ) : FLOWGRAPH = 
 struct
   structure I = I
   structure C = I.C
   structure P = P
-  structure B = B
   structure W = Freq
 
   datatype block =
@@ -64,7 +61,6 @@ struct
     | BBLOCK of { blknum      : int,
                   freq        : W.freq ref,
                   annotations : Annotations.annotations ref,
-		  name        : B.name,
 		  liveIn      : C.cellset ref,
 		  liveOut     : C.cellset ref,
 		  succ 	      : edge list ref,

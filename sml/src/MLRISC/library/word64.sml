@@ -140,7 +140,8 @@ struct
 
    fun max (w1, w2) = if gt(w1,w2) then w1 else w2
 
-   fun divide((a,b),(0w0,0w0):word) = raise Div 
+   fun divide((a,b):word,(0w0,0w0):word) = raise Div 
+     | divide((0w0,b),(0w0,d)) = (0w0:W.word,b div d)
      | divide((a,b),(c,d)) = raise Match
       (* okay, not yet supported, I'm lazy *)
 

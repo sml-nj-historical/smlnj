@@ -6,13 +6,10 @@
  * -- Allen
  *)
 
-functor InstructionStreamFn(structure P : PSEUDO_OPS
-                            structure B : BLOCK_NAMES
-                           ) : INSTRUCTION_STREAM =
+functor InstructionStreamFn(P : PSEUDO_OPS) : INSTRUCTION_STREAM =
 struct
 
    structure P = P
-   structure B = B
 
    datatype ('a,'b,'c,'d,'e,'f) stream =
       STREAM of
@@ -23,7 +20,6 @@ struct
         defineLabel : Label.label -> unit,     (* define a local label *)
         entryLabel  : Label.label -> unit,     (* define an external label *)
         comment     : string -> unit,          (* emit comment *)
-        blockName   : B.name -> unit,          (* change block name *)
         annotation  : Annotations.annotation -> unit, (* add annotation *)
         exitBlock   : 'd -> unit,              (* mark the end of a procedure *)
         alias       : 'e -> unit,              (* generate alias information *)

@@ -16,7 +16,7 @@ struct
    structure An  = Annotations 
 
    fun gcTyping(IR as G.GRAPH cfg) =
-       case An.get(fn GC.GCMAP m => SOME m | _ => NONE) (CFG.getAnnotations IR)
+       case #get GC.GCMAP (CFG.getAnnotations IR)
        of NONE => IR (* no gc map; do nothing *)
         | SOME gcmap =>
        let val lookup = Intmap.map gcmap

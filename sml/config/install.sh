@@ -180,7 +180,7 @@ reglib() {
     else
 	FINALLOCATION=$SRCDIR/$2
     fi
-    if [ -d $FINALLOCATION ] ; then
+    if [ -d $FINALLOCATION/CM/$ARCH-unix ] ; then
 	echo "Library $1 already exists in $FINALLOCATION."
     else
         echo "Scheduling library $1 to be built in $FINALLOCATION."
@@ -463,3 +463,4 @@ if [ -r $LIBMOVESCRIPT ] ; then
     . $LIBMOVESCRIPT
     rm -f $LIBMOVESCRIPT
 fi
+

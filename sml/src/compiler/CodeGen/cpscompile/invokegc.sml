@@ -92,9 +92,11 @@ struct
           T.CALL(
             T.LOAD(32, T.ADD(addrTy,C.stackptr,T.LI MS.startgcOffset), R.stack),
                    def, use, R.stack),
-          BasicAnnotations.COMMENT "call gc")
+          #create BasicAnnotations.COMMENT "call gc")
    end
- 
+
+   val CALLGC = #create BasicAnnotations.CALLGC ()
+
        (*
         * record descriptors
         *)
@@ -108,7 +110,7 @@ struct
        (* what type of comparison to use for GC test? *)
    val gcCmp = if C.signedGCTest then T.GT else T.GTU
 
-   val unlikely = BasicAnnotations.BRANCH_PROB 0
+   val unlikely = #create BasicAnnotations.BRANCH_PROB 0
 
    val normalTestLimit = T.CMP(pty, gcCmp, C.allocptr, C.limitptr)
 
@@ -450,7 +452,7 @@ struct
 
        fun mark(call) =
            if !debug then
-              T.ANNOTATION(call,BasicAnnotations.COMMENT 
+              T.ANNOTATION(call,#create BasicAnnotations.COMMENT 
                  ("roots="^setToString gcrootAvail^
                   " boxed="^setToString boxedRoots))
            else call
@@ -472,7 +474,7 @@ struct
        val (extraRoots,unpack) = pack(emit, gcroots, boxed, int32, float)
 
    in  initRoots(emit, extraRoots);
-       annotation(BasicAnnotations.CALLGC);
+       annotation(CALLGC);
        emit(mark(gcCall));
        if known then computeBasePtr(emit,defineLabel) else ();
        unpack();

@@ -9,8 +9,11 @@ struct
 
    structure I = AlphaInstr
 
-   fun branchProb(I.ANNOTATION{a=BasicAnnotations.BRANCH_PROB b,...}) = b
-     | branchProb(I.ANNOTATION{i,...}) = branchProb i
+   fun branchProb(I.ANNOTATION{a, i, ...}) =
+        (case #peek BasicAnnotations.BRANCH_PROB a of
+           SOME b => b
+         | NONE => branchProb i
+        )
      | branchProb(I.BRANCH(I.BR,_,_)) = 100 (* unconditional *)
      | branchProb(I.BRANCH(I.BEQ,_,_)) = 10
      | branchProb(I.BRANCH(I.BNE,_,_)) = 90

@@ -15,7 +15,6 @@ sig
    structure GC : GC_TYPE
      sharing T.Constant = IR.I.Constant
      sharing T.PseudoOp = IR.CFG.P
-     sharing T.BNames   = IR.CFG.B
      sharing C          = IR.I.C
 
    type callgcCallback =

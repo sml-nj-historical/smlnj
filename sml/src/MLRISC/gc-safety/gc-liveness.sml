@@ -74,10 +74,9 @@ struct
 
   fun liveness (IR as G.GRAPH cfg) = 
   let val an = CFG.getAnnotations IR
-      fun get(GC.GCMAP m::_) = m
-        | get(_::an) = get an
-        | get [] = error "no gc map"
-      val gcmap = get (CFG.getAnnotations IR)
+      val gcmap = case #get GC.GCMAP (CFG.getAnnotations IR) of
+                    SOME gcmap => gcmap
+                  | NONE => error "no gc map"
       val regmap = CFG.regmap IR
       val table = A.array(#capacity cfg (),{liveIn=R.empty,liveOut=R.empty})
       val gclookup = Intmap.mapWithDefault (gcmap,GC.TOP)

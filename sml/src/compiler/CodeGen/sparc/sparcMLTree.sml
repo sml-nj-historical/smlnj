@@ -22,10 +22,9 @@ structure SparcPseudoOps = PseudoOpsBig(SparcSpec)
 structure SparcFlowGraph = 
   FlowGraph(structure I=SparcInstr
 	    structure P=SparcPseudoOps
-	    structure B=FunctionNames)
+           )
 
-structure SparcStream = InstructionStreamFn(structure P=SparcPseudoOps
-    	                                    structure B=FunctionNames)
+structure SparcStream = InstructionStreamFn(SparcPseudoOps)
 
 structure SparcAsmEmitter = 
   SparcAsmEmitter(structure Instr=SparcInstr

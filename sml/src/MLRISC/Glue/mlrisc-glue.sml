@@ -17,7 +17,6 @@ struct
 
    structure F = F
    structure I = F.I
-   structure B = F.B
  
    val viewer  = MLRiscControl.getString     "viewer"
    val mlrisc  = MLRiscControl.getFlag       "mlrisc"
@@ -33,7 +32,6 @@ struct
 
    structure CFG = ControlFlowGraphFn
       (structure I = I
-       structure B = B
        structure P = F.P
        structure GraphImpl = DirectedGraph
        structure Asm = Asm

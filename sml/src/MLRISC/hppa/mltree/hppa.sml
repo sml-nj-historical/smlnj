@@ -104,7 +104,7 @@ struct
    fun selectInstructions
         (S.STREAM{emit, defineLabel, entryLabel, 
                   beginCluster, endCluster, annotation,
-                  exitBlock, blockName, pseudoOp, phi, alias, comment, ...}) =
+                  exitBlock, pseudoOp, phi, alias, comment, ...}) =
    let
        (* operand type and effective addresss *)
  
@@ -791,7 +791,6 @@ struct
         pseudoOp    = pseudoOp,
         defineLabel = defineLabel,
         entryLabel  = entryLabel,
-        blockName   = blockName,
         comment     = comment,
         annotation  = annotation,
         exitBlock   = fn regs => exitBlock(map cc regs),

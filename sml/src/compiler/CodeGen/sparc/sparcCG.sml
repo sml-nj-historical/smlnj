@@ -38,7 +38,7 @@ structure SparcCG =
          )
 
     structure RA = 
-       RegAlloc
+       RegAlloc2
          (structure I         = SparcInstr
           structure MachSpec  = SparcSpec
           structure Flowgraph = SparcFlowGraph
@@ -46,10 +46,18 @@ structure SparcCG =
           structure InsnProps = InsnProps 
           structure Rewrite   = SparcRewrite(SparcInstr)
           structure Asm       = SparcAsmEmitter
-          functor Ra = SparcRegAlloc 
 
           val sp = I.C.stackptrR
           val stack = I.Region.stack
+         
+          fun pure(I.ANNOTATION{i,...}) = pure i
+            | pure(I.LOAD _) = true
+            | pure(I.FLOAD _) = true
+            | pure(I.SETHI _) = true
+            | pure(I.SHIFT _) = true
+            | pure(I.FPop1 _) = true
+            | pure(I.FPop2 _) = true
+            | pure _ = false
 
           (* make copy *)
           fun copyR((rds as [_], rss as [_]), _) =

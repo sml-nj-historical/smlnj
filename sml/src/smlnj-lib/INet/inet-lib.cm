@@ -1,4 +1,4 @@
-(* sources.cm
+(* inet-lib.cm
  *
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
@@ -15,8 +15,12 @@ Library
 #endif
 
 is
+#if defined(NEW_CM)
   basis.cm
   smlnj-lib.cm
+#else
+  ../Util/smlnj-lib.cm
+#endif
 
   sock-util-sig.sml
   sock-util.sml

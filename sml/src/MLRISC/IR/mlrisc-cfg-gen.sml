@@ -10,13 +10,11 @@ functor ControlFlowGraphGenFn
     structure InsnProps : INSN_PROPERTIES
         sharing CFG.I = InsnProps.I
         sharing CFG.P = Stream.P
-        sharing CFG.B = Stream.B
    ) : CONTROL_FLOW_GRAPH_GEN =
 struct
 
    structure CFG     = CFG
    structure I       = CFG.I
-   structure B       = CFG.B
    structure P       = CFG.P
    structure G       = Graph
    structure W       = CFG.W
@@ -25,10 +23,9 @@ struct
    fun error msg = MLRiscErrorMsg.error("ControlFlowGraphGen",msg)
 
    fun builder(CFG) = 
-   let val NOBLOCK      = CFG.newBlock(~1,B.default,ref 0)
+   let val NOBLOCK      = CFG.newBlock(~1,ref 0)
        val currentBlock = ref NOBLOCK 
        val newBlocks    = ref [] : CFG.block list ref 
-       val blkName      = ref B.default
        val entryLabels  = ref [] : Label.label list ref
        fun can'tUse _   = error "unimplemented"
        exception NotFound
@@ -41,7 +38,6 @@ struct
            (currentBlock := NOBLOCK;
             newBlocks := [];
             entryLabels := [];
-            blkName := B.default; 
             Intmap.clear labelMap;
             aliasF := can'tUse
            ) 
@@ -53,7 +49,7 @@ struct
        fun newBlock() = 
        let val G.GRAPH cfg = !CFG
            val id = #new_id cfg ()
-           val b  = CFG.newBlock(id,!blkName,ref 0)
+           val b  = CFG.newBlock(id,ref 0)
        in  currentBlock := b; 
            newBlocks := b :: !newBlocks;
            #add_node cfg (id,b);
@@ -93,7 +89,7 @@ struct
 
        fun exitBlock liveOut = 
        let fun setLiveOut(CFG.BLOCK{annotations,...}) = 
-                 annotations := CFG.LIVEOUT liveOut :: !annotations
+                 annotations := #create CFG.LIVEOUT liveOut :: !annotations
        in  case !currentBlock of
               CFG.BLOCK{id= ~1,...} => 
                 (case !newBlocks of
@@ -103,9 +99,7 @@ struct
             | b => setLiveOut b
        end
 
-       fun comment msg = annotation(BasicAnnotations.COMMENT msg)
-
-       fun blockName name = blkName := name
+       fun comment msg = annotation(#create BasicAnnotations.COMMENT msg)
 
        fun emitInstr i =
        let val CFG.BLOCK{insns,...} = getBlock()
@@ -197,7 +191,6 @@ struct
               pseudoOp    = pseudoOp,
               emit        = emitInstr,
               exitBlock   = exitBlock,
-              blockName   = blockName,
               comment     = comment,
               annotation  = annotation,
               alias       = alias,

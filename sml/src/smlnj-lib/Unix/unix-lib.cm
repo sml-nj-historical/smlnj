@@ -1,4 +1,4 @@
-(* sources.cm
+(* unix-lib.cm
  *
  * COPYRIGHT (c) 1999 Bell Labs, Lucent Technologies.
  *
@@ -11,8 +11,12 @@ Library
   structure UnixEnv
 
 is
+#if defined(NEW_CM)
   basis.cm
   smlnj-lib.cm
+#else
+  ../Util/smlnj-lib.cm
+#endif
 
   unix-env-sig.sml
   unix-env.sml

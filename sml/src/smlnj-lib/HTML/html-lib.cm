@@ -1,4 +1,4 @@
-(* sources.cm
+(* html-lib.cm
  *
  * COPYRIGHT (c) 1996 AT&T Research.
  *
@@ -15,9 +15,12 @@ Library
   structure HTMLDefaults
   functor HTMLParserFn
 is
-
+#if defined(NEW_CM)
   basis.cm
   smlnj-lib.cm
+#else
+  ../Util/smlnj-lib.cm
+#endif
 
   ml-yacc-lib.cm
   html-lex : MLLex

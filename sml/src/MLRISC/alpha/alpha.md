@@ -236,6 +236,12 @@ struct
       fun disp lab = itow(Label.addrOf lab - !loc - 4) ~>> 0w2
    end
 
+   structure Assembly =
+   struct
+      fun isZero(I.CONSTop c) = Constant.valueOf c = 0
+        | isZero _ = false
+   end
+
    (*
     * The main instruction set definition consists of the following:
     *  1) constructor-like declaration defines the view of the instruction,
@@ -253,8 +259,9 @@ struct
  
    (* Load/Store *)
    | LDA of {r: $GP, b: $GP, d:operand}	(* use of REGop is illegal *)
-     ``<(emit "lda\t"; emit_GP r; emit ", "; emit_operand d;
-         if b=31 then () else (emit "("; emit_GP b; emit ")"))
+     ``<(if isZero d andalso r = b then ()
+         else (emit "lda\t"; emit_GP r; emit ", "; emit_operand d;
+               if b=31 then () else (emit "("; emit_GP b; emit ")")))
        >''
      ILoadStore{opc=0w08,r,b,d}
 

@@ -35,4 +35,3 @@ signature CPSREGS = sig
   val dedicatedF : int list
   val availF     : int list
 end
-

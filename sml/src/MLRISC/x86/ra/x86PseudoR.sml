@@ -63,8 +63,11 @@ struct
 	    val dst = lookup rd
 	    val src = lookup rs
 	  in
-	    if dst = src then 
-	      rmCoalesced(rds, rss, remain, move(I.Direct rd, I.Direct rs)::coalesced)
+	    if dst = ~1 then (* eliminate dead copies *)
+	      rmCoalesced(rds, rss, remain, coalesced)
+            else if dst = src then 
+	      rmCoalesced(rds, rss, remain, 
+                          move(I.Direct rd, I.Direct rs)::coalesced)
 	    else rmCoalesced(rds, rss, (rd, dst, rs, src)::remain, coalesced)
 	  end
     in rev (cycle (rmCoalesced(dests, srcs, [], [])))

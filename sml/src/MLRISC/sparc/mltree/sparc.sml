@@ -146,7 +146,7 @@ struct
   fun error msg = MLRiscErrorMsg.error("Sparc",msg)
 
   fun selectInstructions
-       (S.STREAM{emit,defineLabel,entryLabel,blockName,pseudoOp,annotation,
+       (S.STREAM{emit,defineLabel,entryLabel,pseudoOp,annotation,
                  beginCluster,endCluster,exitBlock,alias,phi,comment,...}) =
   let
       (* Flags *)
@@ -712,7 +712,6 @@ struct
         pseudoOp    = pseudoOp,
         defineLabel = defineLabel,
         entryLabel  = entryLabel,
-        blockName   = blockName,
         comment     = comment,
         annotation  = annotation,
         exitBlock   = fn regs => exitBlock(cc regs),

@@ -10,7 +10,6 @@ sig
    structure F   : FLOWGRAPH
       sharing CFG.I = F.I
       sharing CFG.P = F.P
-      sharing CFG.B = F.B
 
    (* 
     * If relayout is true, then always use the layout algorithm.
@@ -27,7 +26,6 @@ functor CFG2ClusterFn
     structure F    : FLOWGRAPH
        sharing CFG.I = F.I
        sharing CFG.P = F.P
-       sharing CFG.B = F.B
    ) : CFG2CLUSTER =
 struct
 
@@ -48,18 +46,15 @@ struct
 
         (* create a new BBLOCK with id i *)
     fun bblock M (i,b as 
-                 CFG.BLOCK{kind,freq,name,annotations,insns,labels,data,...}) =
+                 CFG.BLOCK{kind,freq,annotations,insns,labels,data,...}) =
     let val labels = map F.LABEL (!labels)
     in  case kind of
            CFG.STOP => map pseudo_op (!data)
         |  _ =>
-        let fun filter(CFG.LIVEOUT _::an,an') = filter(an,an')
-              | filter(a::an,an') = filter(an,a::an')
-              | filter([],an') = an'
-            val block = F.BBLOCK{blknum      = i,
+        let val block = F.BBLOCK{blknum      = i,
                                  freq        = freq,
-                                 annotations = ref(filter(!annotations,[])),
-                                 name        = name,
+                                 annotations = ref(#rmv CFG.LIVEOUT 
+                                                    (!annotations)),
                                  insns       = insns,
                                  liveIn      = ref F.C.empty,
                                  liveOut     = ref (CFG.liveOut b),
