@@ -90,8 +90,6 @@ val rf_eqv   : rflag * rflag -> bool
 (** testing the equivalence for tycs and ltys with relaxed constraints *)
 val tc_eqv_x : tyc * tyc -> bool
 val lt_eqv_x : lty * lty -> bool
-val tc_eqv_bx: tyc * tyc -> bool
-val lt_eqv_bx: lty * lty -> bool
 
 (** utility functions on tycEnv *)
 exception tcUnbound
@@ -113,7 +111,7 @@ val initTkEnv        : tkindEnv
 val tkLookup         : tkindEnv * int * int -> tkind
 val tkInsert         : tkindEnv * tkind list -> tkindEnv
 val tkLookupFreeVars : tkindEnv * tyc -> tkind list option
-                   
+
 (** utility functions for TC_ENV and LT_ENV types *)
 val tcc_env  : tyc * int * int * tycEnv -> tyc
 val ltc_env  : lty * int * int * tycEnv -> lty

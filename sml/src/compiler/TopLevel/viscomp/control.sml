@@ -110,7 +110,6 @@ structure Control : CONTROL =
       val spillGen = ref 0
       val foldconst = ref true
       val etasplit = ref true
-      val printLambda = ref false
       val printFlint = ref false
       val printit = ref false
       val printsize = ref false

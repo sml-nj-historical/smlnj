@@ -19,7 +19,7 @@ in
 type enc_tvar = int
 fun tvEncode (d, i) = d * MVAL + i
 fun tvDecode x = ((x div MVAL), (x mod MVAL))
-                    
+
 fun exitLevel xs = 
   let fun h ([], x) = rev x
         | h (a::r, x) = if a < BVAL then h(r, x) else h(r, (a-MVAL)::x)
@@ -385,6 +385,7 @@ fun tc_vs (r as ref(_ : int, _ : tycI, AX_NO)) = NONE
 fun lt_vs (r as ref(_ : int, _ : ltyI, AX_NO)) = NONE
   | lt_vs (r as ref(_ : int, _ : ltyI, AX_REG (_,x))) = SOME x
 
+
 (** converting from the hash-consing reps to the standard reps *)
 fun tk_outX (r as ref(_ : int, t : tkindI, _ : aux_info)) = t
 fun tc_outX (r as ref(_ : int, t : tycI, _ : aux_info)) = t
@@ -395,6 +396,7 @@ fun lt_outX (r as ref(_ : int, t : ltyI, _ : aux_info)) = t
 fun tk_injX t = look(tk_table, wtoi(tk_hash t), t, tkI_eq, tk_mk)
 fun tc_injX t = look(tc_table, wtoi(tc_hash t), t, tcI_eq, tc_mk)
 fun lt_injX t = look(lt_table, wtoi(lt_hash t), t, ltI_eq, lt_mk)
+
 
 (** key-comparison on tkind, tyc, lty *)
 fun tk_cmp (k1, k2) = cmp(tk_table, k1, k2)
@@ -408,7 +410,6 @@ fun lt_key (ref (h : int, _ : ltyI, _ : aux_info)) = h
 (***************************************************************************
  *            UTILITY FUNCTIONS ON TKIND ENVIRONMENT                       *
  ***************************************************************************)
-
 (** tkind environment: maps each tyvar, i.e., its debindex, to its kind *)
 type tkindEnv = tkind list list
 
@@ -603,6 +604,8 @@ and tc_autoflat tc =
    in (case tc_outX ntc
         of TC_TUPLE (_, [_]) => (* singleton record is not flattened to ensure
                               isomorphism btw plambdatype and flinttype *)
+             (true, [ntc], false)
+         | TC_TUPLE (_, []) =>  (* unit is not flattened to avoid coercions *)
              (true, [ntc], false)
          | TC_TUPLE (_, ts) => 
              if length ts < 10 then (true, ts, true)
@@ -933,7 +936,7 @@ local val name = "TC_WRAP"
                               (case (tc_outX x)
                                 of TC_TUPLE(_, [y, z]) => 
                                     (false, [ggg y, ggg z])
-                                 | _ => (true, [nt1]))
+                                 | _ => (false, [nt1]))
                             else (false, [nt1])
                         | _ => (unknown nt1, [nt1]))
                    val nt = tcc_arw(FF_FIXED, nts1, ts2)
@@ -988,7 +991,7 @@ val lt_out = lt_outX o lt_whnm
 fun eqlist p (x::xs, y::ys) = (p(x,y)) andalso (eqlist p (xs, ys))
   | eqlist p ([], []) = true
   | eqlist _ _ = false
-                      
+
 (** testing the "pointer" equality on normalized tkind, tyc, and lty *)
 fun tk_eq (x: tkind, y) = (x = y)
 fun tc_eq (x: tyc, y) = (x = y)
@@ -1078,16 +1081,10 @@ val eq_by_hyp : eqclass option * tyc -> bool
 val visited : eqclass option -> bool 
   = isSome
 
-(* tc_eqv_generator, invariant: t1 and t2 are in the wh-normal form 
- *     eqop1 is the default equality to be used for tycs
- *     eqop2 is used for body of FN, arguments in APP,
- *     eqop3 is used for ABS and BOX.
- *     eqop4 is used for arrow arguments and results
- * Each of these first takes the set of hypotheses.
- *)
-fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) hyp (t1, t2) = 
-    case (tc_outX t1, tc_outX t2) of
-        (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) =>
+(* testing if two recursive datatypes are equivalent *)
+fun eq_fix (eqop1, hyp) (t1, t2) = 
+  (case (tc_outX t1, tc_outX t2) 
+    of (TC_FIX((n1,tc1,ts1),i1), TC_FIX((n2,tc2,ts2),i2)) => 
         if not (!Control.CG.checkDatatypes) then true 
         else let 
             val t1eqOpt = TcDict.peek (hyp, t1)
@@ -1105,7 +1102,7 @@ fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) hyp (t1, t2) =
             else
                 (n1 = n2 andalso i1 = i2 andalso
                  eqop1 hyp (tc1, tc2) andalso 
-                 eqlist (eqop2 hyp) (ts1, ts2)) orelse
+                 eqlist (eqop1 hyp) (ts1, ts2)) orelse
                 (* not equal by inspection; we have to unroll it.
                  * we prevent unrolling the same FIX twice by asking
                  * the `visited' function.
@@ -1120,10 +1117,23 @@ fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) hyp (t1, t2) =
                                (tc_unroll_fix t1, tc_unroll_fix t2)
                 end
         end
+     | _ => bug "unexpected types in eq_fix")
+
+
+(* tc_eqv_generator, invariant: t1 and t2 are in the wh-normal form 
+ *     eqop1 is the default equality to be used for tycs
+ *     eqop2 is used for body of FN, arguments in APP,
+ *     eqop3 is used for ABS and BOX.
+ *     eqop4 is used for arrow arguments and results
+ * Each of these first takes the set of hypotheses.
+ *)
+fun tc_eqv_gen (eqop1, eqop2, hyp) (t1, t2) = 
+    case (tc_outX t1, tc_outX t2) of
+        (TC_FIX _, TC_FIX _) => eqop2 (eqop1, hyp) (t1, t2)
       | (TC_FN(ks1, b1), TC_FN(ks2, b2)) =>
-        eqlist tk_eqv (ks1, ks2) andalso eqop2 hyp (b1, b2)
+        eqlist tk_eqv (ks1, ks2) andalso eqop1 hyp (b1, b2)
       | (TC_APP(a1, b1), TC_APP(a2, b2)) =>
-        eqop1 hyp (a1, a2) andalso eqlist (eqop2 hyp) (b1, b2)
+        eqop1 hyp (a1, a2) andalso eqlist (eqop1 hyp) (b1, b2)
       | (TC_SEQ ts1, TC_SEQ ts2) =>
         eqlist (eqop1 hyp) (ts1, ts2)
       | (TC_SUM ts1, TC_SUM ts2) =>
@@ -1132,29 +1142,20 @@ fun tc_eqv_gen (eqop1, eqop2, eqop3, eqop4) hyp (t1, t2) =
         eqlist (eqop1 hyp) (ts1, ts2)
       | (TC_ABS a, TC_ABS b) =>
         eqop1 hyp (a, b)
-      | (TC_ABS a, _) =>
-        eqop3 hyp (a, t2)
-      | (_, TC_ABS b) =>
-        eqop3 hyp (t1, b)
       | (TC_BOX a, TC_BOX b) =>
         eqop1 hyp (a, b)
-      | (TC_BOX a, _) =>
-        eqop3 hyp (a, t2)
-      | (_, TC_BOX b) =>
-        eqop3 hyp (t1, b)
       | (TC_TOKEN(k1,t1), TC_TOKEN(k2,t2)) => 
         token_eq(k1,k2) andalso eqop1 hyp (t1,t2)
       | (TC_PROJ(a1, i1), TC_PROJ(a2, i2)) =>
         i1 = i2 andalso eqop1 hyp (a1, a2)
       | (TC_ARROW(r1, a1, b1), TC_ARROW(r2, a2, b2)) => 
-        r1 = r2 andalso eqop4 hyp (a1, a2) andalso eqop4 hyp (b1, b2)
+        r1 = r2 andalso eqlist (eqop1 hyp) (a1, a2) 
+                andalso eqlist (eqop1 hyp) (b1, b2)
       | (TC_PARROW(a1, b1), TC_PARROW(a2, b2)) => 
         eqop1 hyp (a1, a2) andalso eqop1 hyp (b1, b2)
       | (TC_CONT ts1, TC_CONT ts2) =>
         eqlist (eqop1 hyp) (ts1, ts2)
       | _ => false
-
-fun never h (t1,t2) = false
 
 (** general equality for tycs *)
 fun tc_eqv' hyp (x as ref (_, _, AX_REG(true, _)),
@@ -1165,8 +1166,7 @@ fun tc_eqv' hyp (x as ref (_, _, AX_REG(true, _)),
     in
         if tcp_norm t1 andalso tcp_norm t2 then tc_eq (t1, t2)
         else    
-            tc_eqv_gen (tc_eqv', tc_eqv', never, eqlist o tc_eqv')
-                       hyp (t1, t2)
+            tc_eqv_gen (tc_eqv', fn _ => tc_eq, hyp) (t1, t2)
     end (* tc_eqv' *)
 
 (* slightly relaxed constraints (???) *)
@@ -1175,44 +1175,21 @@ fun tc_eqv_x' hyp (x, y) =
       val t2 = tc_whnm y
    in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
        else false) orelse
-       (tc_eqv_gen (tc_eqv_x', tc_eqv_x', never, eqlist o tc_eqv_x')
-                   hyp (t1, t2))
+       (tc_eqv_gen (tc_eqv_x', eq_fix, hyp) (t1, t2))
   end (* function tc_eqv_x *)
-
-(** testing the equivalence of two tycs with relaxed constraints *)
-fun mkeqop4 eqop1 hyp (ts1, ts2) =
-    eqop1 hyp (tc_autotuple ts1, tc_autotuple ts2)
-                         
-fun tc_eqv_bx' hyp (x : tyc, y) =
-  let val t1 = tc_whnm x
-      val t2 = tc_whnm y
-   in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
-      else false) orelse 
-      (tc_eqv_gen (tc_eqv_bx', tc_eqv_sp', never,
-                   mkeqop4 tc_eqv_bx')
-                  hyp (t1, t2))
-  end (* function tc_eqv_bx *)
-
-and tc_eqv_sp' hyp (x : tyc, y) = 
-  let val t1 = tc_whnm x
-      val t2 = tc_whnm y
-   in (if (tcp_norm t1) andalso (tcp_norm t2) then tc_eq(t1, t2)
-      else false) orelse
-      (tc_eqv_gen (tc_eqv_sp', tc_eqv_sp', tc_eqv_sp',
-                   mkeqop4 tc_eqv_sp')
-                  hyp (t1, t2))
-  end (* function tc_eqv_sp *)
 
 in (* tyc equivalence utilities *)
 
-(* TODO: explain the precise difference between these three notions of
- * equality!  --league
- *)
 val tc_eqv = tc_eqv' null_hyp
 val tc_eqv_x = tc_eqv_x' null_hyp
-val tc_eqv_bx = tc_eqv_bx' null_hyp
 
 end (* tyc equivalence utilities *)
+
+(* 
+ * all the complexity of lt_eqv comes from the partial-structure (or
+ * partial record) type (the LT_PST type). If we can remove LT_PST
+ * type, then the following can be considerabily simplified. (ZHONG)
+ *)
 
 (** lt_eqv_generator, invariant: x and y are in the wh-normal form *)
 fun lt_eqv_gen (eqop1, eqop2) (x : lty, y) = 
@@ -1268,18 +1245,6 @@ fun lt_eqv_x(x : lty, y) =
                 else seq(t1, t2)
             end)
   end (* function lt_eqv *)
-
-fun lt_eqv_bx (x : lty, y) = 
-  let val seq = lt_eqv_gen (lt_eqv_bx, tc_eqv_bx) 
-   in if (ltp_norm x) andalso (ltp_norm y) then 
-        (lt_eq(x, y)) orelse (seq(x, y))  
-      else (let val t1 = lt_whnm x
-                val t2 = lt_whnm y
-             in if (ltp_norm t1) andalso (ltp_norm t2) then 
-                 (lt_eq(t1, t2)) orelse (seq(t1, t2))  
-                else seq(t1, t2)
-            end)
-  end (* function lt_eqv_bx *)
 
 (** testing equivalence of fflags and rflags *)
 val ff_eqv   : fflag * fflag -> bool = (op =)

@@ -49,9 +49,6 @@ fun lt_inst (lt : lty, ts : tyc list) =
 fun lt_pinst (lt : lty, ts : tyc list) = 
   (case lt_inst (lt, ts) of [y] => y | _ => bug "unexpected lt_pinst")
 
-val lt_inst_st = (map lt_norm) o lt_inst   (* strict instantiation *)
-val lt_pinst_st = lt_norm o lt_pinst   (* strict instantiation *)
-
 (********************************************************************
  *                      KIND-CHECKING ROUTINES                      *
  ********************************************************************)
@@ -97,6 +94,13 @@ fun tkAssertIsMono k =
 fun tkSel (tk, i) = 
   (case (tk_out tk)
     of (LK.TK_SEQ ks) => (List.nth(ks, i) handle _ => raise TkTycChk)
+     | _ => raise TkTycChk)
+
+fun tks_eqv (ks1, ks2) = tk_eqv(tkc_seq ks1, tkc_seq ks2)
+
+fun tkApp (tk, tks) = 
+  (case (tk_out tk)
+    of LK.TK_FUN(a, b) => if tks_eqv(a, tks) then b else raise TkTycChk
      | _ => raise TkTycChk)
 
 (* check the application of tycs of kinds `tks' to a type function of
@@ -228,7 +232,13 @@ fun tkTycGen() = let
                 (List.app (tkAssertIsMono o g) ts1;
                  List.app (tkAssertIsMono o g) ts2;
                  tkc_mono)
-              | _ => bug "unexpected TC_ENV or TC_CONT in tkTyc"
+              | LK.TC_TOKEN(_, tc) =>
+                (tkAssertIsMono (g tc);
+                 tkc_mono)
+              | LK.TC_PARROW _ => bug "unexpected TC_PARROW in tkTyc"
+              | LK.TC_ENV _ => bug "unexpected TC_ENV in tkTyc"
+              | LK.TC_IND _ => bug "unexpected TC_IND in tkTyc"
+              | LK.TC_CONT _ => bug "unexpected TC_CONT in tkTyc"
     in
         Memo.recallOrCompute (dict, kenv, t, mk)
     end
@@ -383,42 +393,6 @@ fun ltc_rkind (FL.RK_TUPLE _, lts) = ltc_tuple lts
 fun ltd_rkind (lt, i) = lt_select (lt, i)
 
 (****************************************************************************
- *        THE FOLLOWING UTILITY FUNCTIONS WILL SOON BE OBSOLETE             *
- ****************************************************************************)
-
-(** a version of ltc_arrow with singleton argument and return result *)
-val ltc_arw = ltc_parrow
-
-(** not knowing what FUNCTION this is, to build a fct or an arw *)
-fun ltc_fun (x, y) = 
-  (case (lt_out x, lt_out y) 
-    of (LK.LT_TYC _, LK.LT_TYC _) => ltc_parrow(x, y)
-     | _ => ltc_pfct(x, y))
-
-(* lt_arrow used by chkflint.sml, checklty.sml, chkplexp.sml, convert.sml
- * and wrapping.sml only 
- *)
-fun lt_arrow t = 
-  (case (lt_out t) 
-    of (LK.LT_FCT([t1], [t2])) => (t1, t2)
-     | (LK.LT_FCT(_, _)) => bug "unexpected case in lt_arrow"
-     | (LK.LT_CONT [t]) => (t, ltc_void)
-     | _ => (ltd_parrow t) handle _ => 
-                bug ("unexpected lt_arrow --- more info: \n\n"
-                     ^ (lt_print t) ^ "\n\n")) 
-
-(* lt_arrowN used by flintnm.sml and ltysingle.sml only, should go away soon *)
-fun lt_arrowN t = 
-  (case (lt_out t) 
-    of (LK.LT_FCT(ts1, ts2)) => (ts1, ts2)
-     | (LK.LT_CONT ts) => (ts, [])
-     | _ => (let val (_, s1, s2) = ltd_arrow t
-              in (s1, s2)
-             end))
-
-
-
-(****************************************************************************
  *             UTILITY FUNCTIONS USED BY POST-REPRESENTATION ANALYSIS       *
  ****************************************************************************)
 (** find out what is the appropriate primop given a tyc *)
@@ -450,10 +424,11 @@ fun tk_lty tk =
     of LK.TK_MONO => ltc_int
      | LK.TK_BOX => ltc_int
      | LK.TK_SEQ ks => ltc_tuple (map tk_lty ks)
-     | LK.TK_FUN (ks, k) => ltc_parrow(ltc_tuple(map tk_lty ks), tk_lty k))
+     | LK.TK_FUN (ks, k) => 
+         ltc_arrow(ffc_fixed, [ltc_tuple(map tk_lty ks)], [tk_lty k]))
 
 
-(* val tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit->unit)) *)
+(* tnarrow_gen : unit -> ((tyc -> tyc) * (lty -> lty) * (unit->unit)) *)
 fun tnarrow_gen () = 
   let fun tcNarrow tcf t = 
         (case (tc_out t)
@@ -461,7 +436,7 @@ fun tnarrow_gen () =
                if PT.isvoid pt then tcc_void else t
            | LK.TC_TUPLE (_, tcs) => tcc_tuple (map tcf tcs)
            | LK.TC_ARROW (r, ts1, ts2) => 
-               tcc_arrow(r, map tcf ts1, map tcf ts2)
+               tcc_arrow(ffc_fixed, map tcf ts1, map tcf ts2)
            | _ => tcc_void)
 
       fun ltNarrow (tcf, ltf) t = 
@@ -477,8 +452,90 @@ fun tnarrow_gen () =
            | LK.LT_ENV _ => bug "unexpected ENVs in ltNarrow")
 
       val {tc_map, lt_map} = LtyDict.tmemo_gen {tcf=tcNarrow, ltf=ltNarrow}
-   in (tc_map, lt_map, fn ()=>())
+   in (tc_map o tc_norm, lt_map o lt_norm, fn ()=>())
   end (* function tnarrow_gen *)
+
+(* twrap_gen   : bool -> ((tyc -> tyc) * (lty -> lty) *
+ *                        (tyc -> tyc) * (lty -> lty) * (unit -> unit)) 
+ *)
+fun twrap_gen bbb = 
+  let fun tc_wmap (w, u) t =
+        (case (tc_out t)
+          of (LK.TC_VAR _ | LK.TC_NVAR _) => t
+           | LK.TC_PRIM pt => if PT.unboxed pt then tcc_wrap t else t
+           | LK.TC_FN (ks, tc) => tcc_fn(ks, w tc) (* impossible case *)
+           | LK.TC_APP (tc, tcs) => tcc_app(w tc, map w tcs)
+           | LK.TC_SEQ tcs => tcc_seq(map w tcs)
+           | LK.TC_PROJ (tc, i) => tcc_proj(w tc, i)
+           | LK.TC_SUM tcs => tcc_sum (map w tcs)
+           | LK.TC_FIX ((n,tc,ts), i) => 
+               tcc_fix((n, tc_norm (u tc), map w ts), i) 
+
+           | LK.TC_TUPLE (_, ts) => tcc_wrap(tcc_tuple (map w ts)) (* ? *)
+           | LK.TC_ARROW (LK.FF_VAR(b1,b2), ts1, ts2) =>  
+               let val nts1 =    (* too specific ! *)                       
+                     (case ts1 of [t11,t12] => [w t11, w t12] 
+                                | _ => [w (LK.tc_autotuple ts1)])
+                   val nts2 = [w (LK.tc_autotuple ts2)]
+                   val nt = tcc_arrow(ffc_fixed, nts1, nts2)
+                in if b1 then nt else tcc_wrap nt
+               end
+           | LK.TC_ARROW (LK.FF_FIXED, _, _) =>  
+                bug "unexpected TC_FIXED_ARROW in tc_umap"
+           | LK.TC_TOKEN (k, t) => bug "unexpected token tyc in tc_wmap"
+           | LK.TC_BOX _ => bug "unexpected TC_BOX in tc_wmap"
+           | LK.TC_ABS _ => bug "unexpected TC_ABS in tc_wmap"
+           | _ => bug "unexpected other tycs in tc_wmap")
+
+      fun tc_umap (u, w) t =
+        (case (tc_out t)
+          of (LK.TC_VAR _ | LK.TC_NVAR _ | LK.TC_PRIM _) => t
+           | LK.TC_FN (ks, tc) => tcc_fn(ks, u tc) (* impossible case *) 
+           | LK.TC_APP (tc, tcs) => tcc_app(u tc, map w tcs)
+           | LK.TC_SEQ tcs => tcc_seq(map u tcs)
+           | LK.TC_PROJ (tc, i) => tcc_proj(u tc, i)
+           | LK.TC_SUM tcs => tcc_sum (map u tcs)
+           | LK.TC_FIX ((n,tc,ts), i) => 
+               tcc_fix((n, tc_norm (u tc), map w ts), i) 
+
+           | LK.TC_TUPLE (rk, tcs) => tcc_tuple(map u tcs)
+           | LK.TC_ARROW (LK.FF_VAR(b1,b2), ts1, ts2) =>  
+               tcc_arrow(ffc_fixed, map u ts1, map u ts2)
+           | LK.TC_ARROW (LK.FF_FIXED, _, _) =>  
+               bug "unexpected TC_FIXED_ARROW in tc_umap"
+           | LK.TC_PARROW _ => bug "unexpected TC_PARROW in tc_umap"
+
+           | LK.TC_BOX _ => bug "unexpected TC_BOX in tc_umap"
+           | LK.TC_ABS _ => bug "unexpected TC_ABS in tc_umap"
+           | LK.TC_TOKEN (k, t) => 
+               if LK.token_eq(k, LK.wrap_token) then 
+                 bug "unexpected TC_WRAP in tc_umap"
+               else tc_inj (LK.TC_TOKEN (k, u t))
+
+           | _ => bug "unexpected other tycs in tc_umap")
+
+      fun lt_umap (tcf, ltf) t = 
+        (case (lt_out t)
+          of LK.LT_TYC tc => ltc_tyc (tcf tc)
+           | LK.LT_STR ts => ltc_str (map ltf ts)
+           | LK.LT_FCT (ts1, ts2) => ltc_fct(map ltf ts1, map ltf ts2)
+           | LK.LT_POLY (ks, xs) => ltc_poly(ks, map ltf xs)
+           | LK.LT_PST its => ltc_pst (map (fn (i, t) => (i, ltf t)) its)
+           | LK.LT_CONT _ => bug "unexpected CNTs in lt_umap"
+           | LK.LT_IND _ => bug "unexpected INDs in lt_umap"
+           | LK.LT_ENV _ => bug "unexpected ENVs in lt_umap")
+
+      val {tc_wmap=tcWrap, tc_umap=tcMap, lt_umap=ltMap, cleanup} =
+        LtyDict.wmemo_gen{tc_wmap=tc_wmap, tc_umap=tc_umap, lt_umap=lt_umap}
+
+      fun ltWrap x = 
+        ltw_tyc (x, (fn tc => ltc_tyc (tcWrap tc)),
+                     fn _ => bug "unexpected case in ltWrap")
+
+   in (tcWrap o tc_norm, ltWrap o lt_norm, 
+       tcMap o tc_norm, ltMap o lt_norm, cleanup)
+  end
+
 
 end (* top-level local *)
 end (* structure LtyExtern *)

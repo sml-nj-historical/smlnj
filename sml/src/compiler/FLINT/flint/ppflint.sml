@@ -255,7 +255,8 @@ struct
 	  say "HANDLE(";  printSval value;  say ")")
 
       | pLexp (F.BRANCH ((d, primop, lty, tycs), values, body1, body2)) =
-	 (* IF PRIM(<primop>, <lty>, [<tycs>]) [<values>] THEN
+	 (* IF PRIM(<primop>, <lty>, [<tycs>]) [<values>] 
+          * THEN
 	  *   <body1>
           * ELSE
 	  *   <body2>
@@ -265,11 +266,10 @@ struct
 	  say (PO.prPrimop primop);  say ", ";
 	  printLty lty;  say ", ";
 	  printTycList tycs;  say ") ";
-	  printValList values;
-          say " THEN";
-	  newline();  dent(); pLexp body1; 
-          newline();  say "ELSE"; 
-          newline();  dent(); pLexp body2)
+	  printValList values; newline();
+          dent();
+          appPrint printBranch (newline & dent) 
+              [("THEN", body1), ("ELSE", body2)])
 	 
       | pLexp (F.PRIMOP (p as (_, PO.MKETAG, _, _), [value], lvar, body)) =
 	 (* <lvar> = ETAG(<value>[<tyc>])
@@ -342,6 +342,11 @@ struct
 	 say " => ";
          indent 4; newline(); dent();
 	 printDecon con;
+	 pLexp lexp; undent 4)
+
+    and printBranch (s, lexp) =
+	(say s;
+         indent 4; newline(); dent();
 	 pLexp lexp; undent 4)
 
     fun printLexp lexp = pLexp lexp before (newline(); newline())
