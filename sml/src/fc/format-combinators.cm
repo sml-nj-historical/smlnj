@@ -1,7 +1,0 @@
-Library
-	signature FORMAT_COMBINATORS
-	structure FormatCombinators
-is
-	format-combinators-sig.sml
-	format-combinators.sml
-	$/basis.cm
