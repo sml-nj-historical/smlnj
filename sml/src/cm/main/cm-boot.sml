@@ -43,15 +43,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       structure Link =
 	  LinkFn (structure MachDepVC = HostMachDepVC
-		  val getBFC = Compile.getBFC
 		  val system_values = system_values)
+
+      structure BFC =
+	  BfcFn (structure MachDepVC = HostMachDepVC)
 
       structure AutoLoad = AutoLoadFn
 	  (structure C = Compile
-	   structure L = Link)
+	   structure L = Link
+	   structure BFC = BFC)
 
       fun recomp_runner gp g = let
-	  val { group, ... } = Compile.newTraversal (Link.evict, g)
+	  fun store _ = ()
+	  val { group, ... } = Compile.newTraversal (Link.evict, store, g)
       in
 	  isSome (group gp) before Link.cleanup gp
       end
@@ -60,8 +64,10 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
        * When successful, it combines the results (thus forming a full
        * environment) and adds it to the toplevel environment. *)
       fun make_runner gp g = let
-	  val { group = c_group, ... } = Compile.newTraversal (Link.evict, g)
-	  val { group = l_group, ... } = Link.newTraversal g
+	  val { store, get } = BFC.new ()
+	  val { group = c_group, ... } =
+	      Compile.newTraversal (Link.evict, store, g)
+	  val { group = l_group, ... } = Link.newTraversal (g, get)
 	  val GroupGraph.GROUP { required = rq, ... } = g
       in
 	  case c_group gp of
@@ -94,11 +100,19 @@ functor LinkCM (structure HostMachDepVC : MACHDEP_VC) = struct
 
       (* Instantiate the stabilization mechanism. *)
       structure Stabilize =
-	  StabilizeFn (val recomp = recomp_runner
-		       val writeBFC = Compile.writeBFC
-		       val sizeBFC = Compile.sizeBFC
-		       val getII = Compile.getII
-		       fun destroy_state gp i = (Compile.evict i; Link.evict gp i))
+	  StabilizeFn (structure MachDepVC = HostMachDepVC
+		       fun recomp gp g = let
+			   val { store, get } = BFC.new ()
+			   val { group, ... } =
+			       Compile.newTraversal (Link.evict, store, g)
+		       in
+			   case group gp of
+			       NONE => NONE
+			     | SOME _ => SOME get
+		       end
+		       fun destroy_state gp i =
+			   (Compile.evict i; Link.evict gp i)
+		       val getII = Compile.getII)
 
       (* Access to the stabilization mechanism is integrated into the
        * parser. I'm not sure if this is the cleanest way, but it works

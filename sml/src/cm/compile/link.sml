@@ -18,6 +18,10 @@ local
     type env = E.dynenv
 in
     signature LINK = sig
+
+	type bfc
+	type bfcGetter = SmlInfo.info -> bfc
+
 	(* Evict value from cache if it exists *)
 	val evict : GP.info -> SmlInfo.info -> unit
 
@@ -25,7 +29,7 @@ in
 	 * meanwhile evicted ones. *)
 	val cleanup : GP.info -> unit
 
-	val newTraversal : GG.group ->
+	val newTraversal : GG.group * bfcGetter ->
 	    { group: GP.info -> env option,
 	      exports: (GP.info -> env option) SymbolMap.map }
 
@@ -36,10 +40,14 @@ in
     end
 
     functor LinkFn (structure MachDepVC : MACHDEP_VC
-		    val getBFC : SmlInfo.info -> MachDepVC.Binfile.bfContent
-		    val system_values : env ref) :> LINK = struct
+		    val system_values : env ref) :> LINK
+	where type bfc = MachDepVC.Binfile.bfContent =
+    struct
 
 	structure BF = MachDepVC.Binfile
+
+	type bfc = BF.bfContent
+	type bfcGetter = SmlInfo.info -> bfc
 
 	type bfun = GP.info -> E.dynenv -> E.dynenv
 
@@ -73,7 +81,7 @@ in
 	in
 	    case sysval (BF.exportPidOf bfc) of
 		NONE => exec ()
-	      | SOME de => de
+	      | SOME de' => de'
 	end
 
 	fun memoize thunk = let
@@ -162,7 +170,7 @@ in
 	    end
 	end
 
-	fun link_sml (gp, i, getE, snl) = let
+	fun link_sml (gp, i, getBFC, getE, snl) = let
 	    fun fresh () = let
 		val bfc = getBFC i
 	    in
@@ -273,7 +281,7 @@ in
 		    | _ => ())
 	end
 
-	fun newTraversal (group as GG.GROUP { exports, ... }) = let
+	fun newTraversal (group as GG.GROUP { exports, ... }, getBFC) = let
 	    val _ = registerGroup group
 
 	    val l_stablemap = ref StableMap.empty
@@ -321,7 +329,7 @@ in
 			val gi = foldl add (SOME o getPerv, [])
 			                   (map fsbn globalimports)
 			val (getE, snl) = foldl add gi (map sn localimports)
-			fun thunk gp = link_sml (gp, i, getE, snl)
+			fun thunk gp = link_sml (gp, i, getBFC, getE, snl)
 			val m_thunk = memoize thunk
 		    in
 			l_smlmap := SmlInfoMap.insert (!l_smlmap, i, m_thunk);

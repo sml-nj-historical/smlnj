@@ -25,21 +25,27 @@ end = struct
 				      val os = os)
     structure P = OS.Path
     structure F = OS.FileSys
+    structure BF = MachDepVC.Binfile
 
     structure Compile = CompileFn (structure MachDepVC = MachDepVC)
 
+    structure BFC = BfcFn (structure MachDepVC = MachDepVC)
+
     (* instantiate Stabilize... *)
     structure Stabilize =
-	StabilizeFn (val writeBFC = Compile.writeBFC
-		     val sizeBFC = Compile.sizeBFC
-		     val getII = Compile.getII
-		     fun destroy_state _ _ = ()
+	StabilizeFn (fun destroy_state _ _ = ()
+		     structure MachDepVC = MachDepVC
 		     fun recomp gp g = let
+			 val { store, get } = BFC.new ()
 			 val { group, ... } =
-			     Compile.newTraversal (fn _ => fn _ => (), g)
+			     Compile.newTraversal (fn _ => fn _ => (),
+						   store, g)
 		     in
-			 isSome (group gp)
-		     end)
+			 case group gp of
+			     NONE => NONE
+			   | SOME _ => SOME get
+		     end
+		     val getII = Compile.getII)
 
     (* ... and Parse *)
     structure Parse = ParseFn (structure Stabilize = Stabilize
@@ -229,8 +235,9 @@ end = struct
 	    case Parse.parse NONE param stab maingspec of
 		NONE => false
 	      | SOME (g, gp) => let
+		    fun store _ = ()
 		    val { group = recomp, ... } =
-			Compile.newTraversal (fn _ => fn _ => (), g)
+			Compile.newTraversal (fn _ => fn _ => (), store, g)
 		in
 		    if isSome (recomp gp) then let
 			val rtspid = PS.toHex (#statpid (#ii rts))

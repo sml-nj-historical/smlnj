@@ -31,17 +31,17 @@ in
 	(* notify linkage module about recompilation *)
 	type notifier = GP.info -> SmlInfo.info -> unit
 
-	val sizeBFC : SmlInfo.info -> int
-	val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
+	(* type of a function to store away the binfile contents *)
+	type bfcReceiver = SmlInfo.info * bfc -> unit
+
 	val getII : SmlInfo.info -> IInfo.info
-	val getBFC : SmlInfo.info -> bfc
 
 	val evict : SmlInfo.info -> unit
 	val evictAll : unit -> unit
 
 	val newSbnodeTraversal : unit -> GP.info -> DG.sbnode -> ed option
 
-	val newTraversal : notifier * GG.group ->
+	val newTraversal : notifier * bfcReceiver * GG.group ->
 	    { group: GP.info -> result option,
 	      exports: (GP.info -> result option) SymbolMap.map }
     end
@@ -56,6 +56,8 @@ in
 
 	type bfc = BF.bfContent
 
+	type bfcReceiver = SmlInfo.info * bfc -> unit
+
 	structure FilterMap = BinaryMapFn
 	    (struct
 		type ord_key = pid * SymbolSet.set
@@ -65,11 +67,18 @@ in
 		      | unequal => unequal
 	    end)
 
-	type env = { envs: unit -> result, pids: PidSet.set }
-	type envdelta =
-	    { ii: IInfo.info, ctxt: unit -> statenv, bfc: bfc option }
+	type bfinfo =
+	    { cmdata: PidSet.set,
+	      statenv: unit -> statenv,
+	      symenv: unit -> symenv,
+	      statpid: pid,
+	      sympid: pid }
 
-	type memo = { bfc: bfc, ctxt: statenv, ts: TStamp.t }
+	type env = { envs: unit -> result, pids: PidSet.set }
+	type envdelta = { ii: IInfo.info, ctxt: unit -> statenv }
+
+	type memo =
+	    { ii: IInfo.info, ctxt: statenv, ts: TStamp.t, cmdata: PidSet.set }
 
 	(* persistent state! *)
 	val filtermap = ref (FilterMap.empty: pid FilterMap.map)
@@ -84,28 +93,26 @@ in
 	fun isValidMemo (memo: memo, provided, smlinfo) =
 	    not (TStamp.needsUpdate { source = SmlInfo.lastseen smlinfo,
 				      target = #ts memo })
-	    andalso let
-		val demanded =
-		    PidSet.addList (PidSet.empty, BF.cmDataOf (#bfc memo))
-	    in
-		PidSet.equal (provided, demanded)
-	    end
+	    andalso PidSet.equal (provided, #cmdata memo)
 
-	fun memo2ii (memo: memo) =	    
-	    { statenv = fn () => BF.senvOf (#bfc memo),
-	      symenv = fn () => BF.symenvOf (#bfc memo),
-	      statpid = BF.staticPidOf (#bfc memo),
-	      sympid = BF.lambdaPidOf (#bfc memo) }
+	fun memo2ii (memo: memo) = #ii memo 
 
-	fun memo2ed memo =
-	    { ii = memo2ii memo,
-	      ctxt = fn () => #ctxt memo,
-	      bfc = SOME (#bfc memo) }
+	fun memo2ed memo = { ii = memo2ii memo, ctxt = fn () => #ctxt memo }
+
+	fun bfc2memo (bfc, ctxt, ts) = let
+	    val ii = { statenv = fn () => BF.senvOf bfc,
+		       symenv = fn () => BF.symenvOf bfc,
+		       statpid = BF.staticPidOf bfc,
+		       sympid = BF.lambdaPidOf bfc }
+	    val cmdata = PidSet.addList (PidSet.empty, BF.cmDataOf bfc)
+	in
+	    { ii = ii, ctxt = ctxt, ts = ts, cmdata = cmdata }
+	end
 
 	fun pidset (p1, p2) = PidSet.add (PidSet.singleton p1, p2)
 
 	fun nofilter (ed: envdelta) = let
-	    val { ii = { statenv, symenv, statpid, sympid }, ctxt, bfc } = ed
+	    val { ii = { statenv, symenv, statpid, sympid }, ctxt } = ed
 	in
 	    { envs = fn () => { stat = statenv (), sym = symenv () },
 	      pids = pidset (statpid, sympid) }
@@ -114,7 +121,7 @@ in
 	fun exportsNothingBut set se =
 	    List.all (fn sy => SymbolSet.member (set, sy)) (E.catalogEnv se)
 
-	fun filter ({ ii, ctxt, bfc }: envdelta, s) = let
+	fun filter ({ ii, ctxt }: envdelta, s) = let
 	    val { statenv, symenv, statpid, sympid } = ii
 	    val ste = statenv ()
 	in
@@ -174,7 +181,7 @@ in
 	    lw v0 l
 	end
 
-	fun mkTraversal notify = let
+	fun mkTraversal (notify, storeBFC) = let
 	    val localstate = ref SmlInfoMap.empty
 
 	    fun pervenv (gp: GP.info) = let
@@ -203,7 +210,7 @@ in
 			 * minor issue anyway, and in the present case
 			 * it only happens when a stable library is
 			 * replaced by a different one. *)
-			SOME { ii = ii, ctxt = #statenv ii, bfc = NONE }
+			SOME { ii = ii, ctxt = #statenv ii }
 		  | DG.SB_SNODE n => snode gp n
 
 	    and fsbnode gp (f, n) =
@@ -260,11 +267,10 @@ in
 						  senv = stat,
 						  symenv = sym,
 						  corenv = corenv }
-			    val memo = { bfc = bfc, ctxt = stat,
-					 ts = SmlInfo.lastseen i}
+			    val memo = bfc2memo (bfc, stat, SmlInfo.lastseen i)
 			in
-			    SmlInfo.forgetParsetree i;
 			    save bfc;
+			    storeBFC (i, bfc);
 			    SOME memo
 			end
 		end (* compile *)
@@ -295,8 +301,7 @@ in
 						   name = binname,
 						   senv = stat },
 					 ts)
-					before
-					Say.vsay ["[", binname, " loaded]\n"]
+					
 				in
 				    SOME (SafeIO.perform
 					  { openIt = openIt,
@@ -309,12 +314,13 @@ in
 				case load () of
 				    NONE => compile (stat, sym, pids)
 				  | SOME (bfc, ts) => let
-					val memo = { bfc = bfc,
-						     ctxt = stat,
-						     ts = ts }
+					val memo = bfc2memo (bfc, stat, ts)
 				    in
 					if isValidMemo (memo, pids, i) then
-					    SOME memo
+					    (Say.vsay ["[", binname,
+						       " loaded]\n"];
+					     storeBFC (i, bfc);
+					     SOME memo)
 					else compile (stat, sym, pids)
 				    end
 			    end (* fromfile *)
@@ -341,6 +347,10 @@ in
 		  | NONE => let
 			val mopt = notlocal ()
 		    in
+			(* "Not local" means that we have not processed
+			 * this file before.  Therefore, we should now
+			 * remove its parse tree... *)
+			SmlInfo.forgetParsetree i;
 			localstate :=
 			  SmlInfoMap.insert (!localstate, i, mopt);
 			Option.map memo2ed mopt
@@ -352,8 +362,8 @@ in
 	    { sbnode = sbnode, impexp = impexp }
 	end
 
-	fun newTraversal (notify, GG.GROUP { exports, ... }) = let
-	    val { impexp, ... } = mkTraversal notify
+	fun newTraversal (notify, storeBFC, GG.GROUP { exports, ... }) = let
+	    val { impexp, ... } = mkTraversal (notify, storeBFC)
 	    fun group gp = let
 		val k = #keep_going (#param gp)
 		fun loop ([], success) = success
@@ -378,26 +388,19 @@ in
 	end
 
 	fun newSbnodeTraversal () = let
-	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => ())
-	    fun envdelta2ed { ii, bfc, ctxt } = { ii = ii, ctxt = ctxt () }
+	    val { sbnode, ... } = mkTraversal (fn _ => fn _ => (),
+					       fn _ => ())
+	    fun envdelta2ed { ii, ctxt } = { ii = ii, ctxt = ctxt () }
 	in
 	    fn gp => fn n => Option.map envdelta2ed (sbnode gp n)
 	end
 
-	local
-	    fun get i = valOf (SmlInfoMap.find (!globalstate, i))
-	in
-	    fun sizeBFC i = BF.size { content = #bfc (get i), nopickle = true }
-	    fun writeBFC s i = BF.write { content = #bfc (get i),
-					  stream = s, nopickle = true }
-	    fun getII i = memo2ii (get i)
-	    fun getBFC i = #bfc (get i)
+	fun evict i =
+	    (globalstate := #1 (SmlInfoMap.remove (!globalstate, i)))
+	    handle LibBase.NotFound => ()
 
-	    fun evict i =
-		(globalstate := #1 (SmlInfoMap.remove (!globalstate, i)))
-		handle LibBase.NotFound => ()
+	fun evictAll () = globalstate := SmlInfoMap.empty
 
-	    fun evictAll () = globalstate := SmlInfoMap.empty
-	end
+	fun getII i = memo2ii (valOf (SmlInfoMap.find (!globalstate, i)))
     end
 end

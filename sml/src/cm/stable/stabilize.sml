@@ -17,10 +17,6 @@ local
     structure P = PickMod
     structure UP = UnpickMod
     structure E = GenericVC.Environment
-
-    type recomp = GP.info -> GG.group -> bool
-
-    type pid = Pid.persstamp
 in
 
 signature STABILIZE = sig
@@ -34,11 +30,14 @@ signature STABILIZE = sig
 	GP.info -> { group: GG.group, anyerrors: bool ref } -> GG.group option
 end
 
-functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
-		     val sizeBFC : SmlInfo.info -> int
-		     val getII :  SmlInfo.info -> IInfo.info
-		     val destroy_state : GP.info -> SmlInfo.info -> unit
-		     val recomp : recomp) :> STABILIZE = struct
+functor StabilizeFn (val destroy_state : GP.info -> SmlInfo.info -> unit
+		     structure MachDepVC : MACHDEP_VC
+		     val recomp : GP.info -> GG.group ->
+			 (SmlInfo.info -> MachDepVC.Binfile.bfContent) option
+		     val getII : SmlInfo.info -> IInfo.info) :> STABILIZE =
+struct
+
+    structure BF = MachDepVC.Binfile
 
     structure SSMap = BinaryMapFn
 	(struct
@@ -89,7 +88,15 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 
 	val grouppath = #grouppath grec
 
-	fun doit wrapped = let
+	fun doit (wrapped, getBFC) = let
+
+	    fun writeBFC s i = BF.write { stream = s,
+					  content = getBFC i,
+					  nopickle = true }
+	    fun sizeBFC i = BF.size { content = getBFC i, nopickle = true }
+
+	    val _ =
+		Say.vsay ["[stabilizing ", SrcPath.descr grouppath, "]\n"]
 
 	    val _ =
 		if StringSet.isEmpty wrapped then ()
@@ -228,6 +235,7 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	    (* make the picklers for static and symbolic environments;
 	     * lift them so we can use them here... *)
 	    val envContext = mkContext ()
+
 	    val env_orig = P.envPickler envContext
 	    val env = PU.lift_pickler lifter env_orig
 	    val symenv_orig = P.symenvPickler
@@ -366,6 +374,7 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 
 	    val dg_pickle =
 		Byte.stringToBytes (PU.pickle emptyMap (group ()))
+
 	    val dg_sz = Word8Vector.length dg_pickle
 
 	    val offset_adjustment = dg_sz + 4
@@ -430,11 +439,9 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	    end
 	    val memberlist = rev (!members)
 
-	    val gpath = #grouppath grec
-	    fun mksname () = FilenamePolicy.mkStableName policy gpath
+	    fun mksname () = FilenamePolicy.mkStableName policy grouppath
 	    fun work outs =
-		(Say.vsay ["[stabilizing ", SrcPath.descr gpath, "]\n"];
-		 writeInt32 (outs, dg_sz);
+		(writeInt32 (outs, dg_sz);
 		 BinIO.output (outs, dg_pickle);
 		 app (writeBFC outs) memberlist;
 		 mkStableGroup mksname)
@@ -452,13 +459,14 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 	    GG.STABLELIB => SOME g
 	  | GG.NOLIB => EM.impossible "stabilize: no library"
 	  | GG.LIB wrapped =>
-		if not (recomp gp g) then (anyerrors := true; NONE)
-		else let
-		    fun notStable (GG.GROUP { kind, ... }) =
-			case kind of GG.STABLELIB => false | _ => true
-		in
+	     (case recomp gp g of
+		  NONE => (anyerrors := true; NONE)
+		| SOME bfc_acc => let
+		      fun notStable (GG.GROUP { kind, ... }) =
+			  case kind of GG.STABLELIB => false | _ => true
+		  in
 		    case List.filter notStable (#sublibs grec) of
-			[] => doit wrapped
+			[] => doit (wrapped, bfc_acc)
 		      | l => let
 			    val grammar = case l of [_] => " is" | _ => "s are"
 			    fun ppb pps = let
@@ -485,7 +493,7 @@ functor StabilizeFn (val writeBFC : BinIO.outstream -> SmlInfo.info -> unit
 			       ppb;
 			    NONE
 			end
-		end
+		  end)
     end
 
     fun loadStable gp { getGroup, anyerrors } group = let

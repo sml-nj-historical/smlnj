@@ -26,7 +26,9 @@ signature AUTOLOAD = sig
 end
 
 functor AutoLoadFn (structure C : COMPILE
-		    structure L : LINK) :> AUTOLOAD = struct
+		    structure L : LINK
+		    structure BFC : BFC
+		    sharing type C.bfc = L.bfc = BFC.bfc) :> AUTOLOAD = struct
 
     structure SE = GenericVC.StaticEnv
 
@@ -52,8 +54,9 @@ functor AutoLoadFn (structure C : COMPILE
 	(* getting rid of unneeded bindings... *)
 	val te' = BE.filterEnv (te, SymbolSet.listItems rss)
 	(* make traversal states *)
-	val { exports = cTrav, ... } = C.newTraversal (L.evict, g)
-	val { exports = lTrav, ... } = L.newTraversal g
+	val { store, get } = BFC.new ()
+	val { exports = cTrav, ... } = C.newTraversal (L.evict, store, g)
+	val { exports = lTrav, ... } = L.newTraversal (g, get)
 	fun combine (ss, d) gp =
 	    case ss gp of
 		SOME { stat, sym } =>

@@ -58,6 +58,7 @@ is
 	(* doing actual compilation work *)
 	compile/compile.sml
 	compile/link.sml
+	compile/bfc.sml
 
 	(* overall control of CM *)
 	main/general-params.sml
