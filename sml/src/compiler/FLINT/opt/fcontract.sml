@@ -474,7 +474,7 @@ fun fcLet (lvs,le,body) =
 				     foldl (fn (f,le) => F.FIX([f],le))
 					   (wrap nle) fdecs
 				 (* Ugly hack: force one more traversal *)
-				 val nle = loop nm nle #2
+				 (* val nle = loop nm nle #2 *)
 			     in  click_branch();
 				 loop nm nle cont
 			     end
