@@ -111,7 +111,7 @@ structure Real64Imp : REAL =
 	    val saveMode = IEEEReal.getRoundingMode ()
 	    in
 	      IEEEReal.setRoundingMode mode;
-	      if x>=0.0 then x+maxInt-maxInt else x-maxInt+maxInt
+	      (if x>=0.0 then x+maxInt-maxInt else x-maxInt+maxInt)
 		before IEEEReal.setRoundingMode saveMode
 	    end
     in

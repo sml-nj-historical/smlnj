@@ -103,9 +103,8 @@ structure AstToSpec = struct
 		     Tidtab.insert (tags, tid, s);
 		     s
 		 end)
-	  | tagname (NONE, SOME n, _) = "_" ^ n
-	  | tagname (SOME n, _, _) =
-	    if String.sub (n, 0) = #"_" then "_" ^ n else n
+	  | tagname (NONE, SOME n, _) = "'" ^ n
+	  | tagname (SOME n, _, _) = n
 
 	fun valty A.Void = raise VoidType
 	  | valty A.Ellipses = raise Ellipsis
@@ -144,7 +143,6 @@ structure AstToSpec = struct
 
 	and valty_nonvoid t = valty t
 	    handle VoidType => err "void variable type"
-
 
 	and valty_td (A.StructRef tid, tdname) =
 	    typeref (tid, Spec.STRUCT, tdname)

@@ -62,12 +62,6 @@ Sketch of translation- (and naming-) scheme:
                     field types     t_f_xxx
                     field RTTI      typ_f_xxx
 
-       Note: If foo has the form _bar (leading underscore), then
-       an *extra* underscore will be added, i.e.,
-             "struct _bar" --> structure ST___bar etc.
-       This is to prevent clashes with 'typedef struct { ... } bar'
-       (see below).
-
   union foo { ... }
       -->   structure UT_foo   in    ut-foo.sml  (not exported)
                basic type info (name, size)
@@ -78,16 +72,13 @@ Sketch of translation- (and naming-) scheme:
                     field types     t_f_xxx
                     field RTTI      typ_f_xxx
 
-       An underscore rule analogous to the struct case applies.
-
-
   struct { ... }
-      like struct <n> { ... }, where <n> is a fresh integer or _bar
+      like struct <n> { ... }, where <n> is a fresh integer or 'bar
       if 'struct { ... }' occurs in the context of a
       'typedef struct { ... } bar'
 
   union { ... }
-      like union <n> { ... }, where <n> is a fresh integer or _bar
+      like union <n> { ... }, where <n> is a fresh integer or 'bar
       if 'union { ... }' occurs in the context of a
       'typedef union { ... } bar'
 
@@ -95,10 +86,9 @@ Sketch of translation- (and naming-) scheme:
   enum foo { ... }
       -->   structure E_foo   in     e-foo.sml
                enum constants    e_xxx
-      An underscore rule analogous to the struct and union cases applies.
 
   enum { ... }
-      like enum <n> { ... }, where <n> is a fresh integer or _bar
+      like enum <n> { ... }, where <n> is a fresh integer or 'bar
       if 'enum { ... }' occurs in the context of a
       'typedef enum { ... } bar'
 

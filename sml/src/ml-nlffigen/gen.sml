@@ -158,6 +158,9 @@ end = struct
 	val exports = ref []
 
 	fun smlfile x = let
+	    (* we don't want apostrophes in file names -> turn them into
+	     * minuses... *)
+	    val x = String.translate (fn #"'" => "-" | c => String.str c) x
 	    val file = OS.Path.joinBaseExt { base = x, ext = SOME "sml" }
 	    val result = OS.Path.joinDirFile { dir = dirname, file = file }
 	in

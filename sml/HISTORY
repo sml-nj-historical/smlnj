@@ -13,6 +13,22 @@ Tag: <post-commit CVS tag>
 Description:
 
 ----------------------------------------------------------------------
+Name: Matthias Blume
+Date: 2002/01/28 10:56:00 EST
+Tag: blume-20020128-retraction
+Description:
+
+0. Retracted earlier 110.38.  (The Release_110_38 tag has been replaced
+   with blume-Release_110_38-retracted.)
+
+1. Fixed a problem with incorrect rounding modes in real64.sml.
+   (Thanks to Andrew Mccreight <andrew.mccreight@yale.edu>.)
+
+2. A bug in ml-nlffigen related to the handling of unnamed structs, unions,
+   and enums fixed.  The naming of corresponding ML identifiers should 
+   now be consistent again.
+
+----------------------------------------------------------------------
 Name: Allen Leung
 Date: 2002/01/27 
 Tag: leunga-20020127-nowhere
@@ -25,12 +41,15 @@ Description:
 ----------------------------------------------------------------------
 Name: Matthias Blume
 Date: 2002/01/25 21:27:00 EST
-Tag: Release_110_38
+Tag: blume-Release_110_38-retracted
 Description:
 
 Call it a (working) release!  Version is 110.38. Bootfiles are ready.
 
 README will be added later.
+
+!!! NOTE:  Re-tagged as blume-Release_110_38-retracted. Original tag
+(Release_110_38) removed.  Reason: Last-minute bug fixes.
 
 ----------------------------------------------------------------------
 Name: Matthias Blume
