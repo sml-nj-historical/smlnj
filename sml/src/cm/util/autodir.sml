@@ -17,15 +17,16 @@ end = struct
     fun fileExists n = F.access (n, []) handle _ => false
 
     fun openOut fileopener p = let
+	fun mkDir d = if fileExists d then () else F.mkDir d
 	fun generic (maker, pmaker, p) =
 	    maker p
 	    handle exn => let
-		val { dir, ... } = P.splitDirFile p
+		val dir = P.dir p
 	    in
 		if dir = "" orelse fileExists dir then raise exn
 		else (pmaker dir; maker p)
 	    end
-	fun makedirs dir = generic (F.mkDir, makedirs, dir)
+	fun makedirs dir = generic (mkDir, makedirs, dir)
 	fun advertisemakedirs dir =
 	    (Say.vsay ["[creating directory ", dir, " ...]\n"];
 	     makedirs dir)
