@@ -176,7 +176,10 @@ struct
       | I.FLDL opnd	      => float opnd
       | I.FLDS opnd	      => float opnd
       | I.FILD opnd           => float opnd
+      | I.FILDL opnd          => float opnd
+      | I.FILDLL opnd         => float opnd
       | I.FBINARY{src, ...}   => ([], operandUse src)
+      | I.FIBINARY{src, ...}  => ([], operandUse src)
       | I.FENV{opnd, ...}     => ([], operandUse opnd)
       | I.FNSTSW	      => ([C.eax], [])
       | I.SAHF		      => ([], [C.eax])

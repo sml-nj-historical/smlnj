@@ -68,6 +68,8 @@ functor X86Rewrite(Instr : X86INSTR) = struct
      | I.FENV{fenvOp,opnd} => I.FENV{fenvOp=fenvOp, opnd=operand opnd}
      | I.FBINARY{binOp, src, dst} => 
 	I.FBINARY{binOp=binOp, src=operand src, dst=dst}
+     | I.FIBINARY{binOp, src} => 
+	I.FIBINARY{binOp=binOp, src=operand src}
      | I.CMOV{cond, src, dst} => I.CMOV{cond=cond, src=operand src, dst=dst}
      | I.ANNOTATION{i,a}=> I.ANNOTATION{i=rewriteUse(mapr,i,rs,rt),a=a}
      | _ => instr

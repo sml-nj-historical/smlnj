@@ -51,7 +51,10 @@ struct
      | I.FLDL opnd => operand opnd
      | I.FLDS opnd => operand opnd
      | I.FBINARY{src, dst, ...} => operand src orelse operand dst
+     | I.FIBINARY{src, ...} => operand src 
      | I.FILD opnd => operand opnd
+     | I.FILDL opnd => operand opnd
+     | I.FILDLL opnd => operand opnd
      | I.ANNOTATION{i,...} => isSdi i
      | _ => false
   end

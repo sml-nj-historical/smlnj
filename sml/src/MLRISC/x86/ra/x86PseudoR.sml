@@ -320,11 +320,15 @@ struct
 	      | I.FLDL opnd => done(opnd, I.FLDL, an)
 	      | I.FLDS opnd => done(opnd, I.FLDS, an)
 	      | I.FILD opnd => done(opnd, I.FILD, an)
+	      | I.FILDL opnd => done(opnd, I.FILDL, an)
+	      | I.FILDLL opnd => done(opnd, I.FILDLL, an)
 	      | I.FENV{fenvOp, opnd} => done(opnd, 
                     fn opnd => I.FENV{fenvOp=fenvOp,opnd=opnd}, an)
 	      | I.FBINARY{src,dst,binOp} => 
 		  done(src, 
                        fn opnd => I.FBINARY{binOp=binOp, src=opnd, dst=dst},an)
+	      | I.FIBINARY{src,binOp} => 
+		  done(src, fn opnd => I.FIBINARY{binOp=binOp, src=opnd},an)
               | I.ANNOTATION{i,a} => rewrite(i,a::an)
 	      | _ => mark(instr,an)::acc
           in  rewrite(instr,[])

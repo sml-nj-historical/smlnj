@@ -53,6 +53,8 @@ struct
 
   type instrStream = (I.instruction,C.regmap,C.cellset) T.stream
   type mltreeStream = (T.stm,C.regmap,T.mlrisc list) T.stream
+
+  datatype kind = REAL | INTEGER
  
   structure Gen = MLTreeGen
      (structure T = T
@@ -941,6 +943,14 @@ struct
         | fld(80, opnd) = I.FLDT opnd
         | fld _         = error "fld"
 
+      and fild(16, opnd) = I.FILD opnd
+        | fild(32, opnd) = I.FILDL opnd
+        | fild(64, opnd) = I.FILDLL opnd
+        | fild _         = error "fild"
+
+      and fxld(INTEGER, ty, opnd) = fild(ty, opnd)
+        | fxld(REAL, fty, opnd) = fld(fty, opnd)
+
       and fstp(32, opnd) = I.FSTPS opnd
         | fstp(64, opnd) = I.FSTPL opnd
         | fstp(80, opnd) = I.FSTPT opnd
@@ -980,155 +990,170 @@ struct
           let val ST = I.ST(C.ST 0)
               val ST1 = I.ST(C.ST 1)
 
-              datatype su_numbers = 
-                LEAF of int 
-              | BINARY of int * su_numbers * su_numbers
-              | UNARY of int * su_numbers
+              datatype su_tree = 
+                LEAF of int * T.fexp * ans
+              | BINARY of int * T.fty * fbinop * su_tree * su_tree * ans
+              | UNARY of int * T.fty * I.funOp * su_tree * ans
+              and fbinop = FADD | FSUB | FMUL | FDIV
+                         | FIADD | FISUB | FIMUL | FIDIV
+              withtype ans = Annotations.annotations
  
-              datatype direction = LEFT | RIGHT
+              fun label(LEAF(n, _, _)) = n
+                | label(BINARY(n, _, _, _, _, _)) = n
+                | label(UNARY(n, _, _, _, _)) = n
 
-              fun label(LEAF n) = n
-                | label(BINARY(n, _, _)) = n
-                | label(UNARY(n, _)) = n
+              fun annotate(LEAF(n, x, an), a)  = LEAF(n,x,a::an)
+                | annotate(BINARY(n,t,b,x,y,an), a) = BINARY(n,t,b,x,y,a::an)
+                | annotate(UNARY(n,t,u,x,an), a) = UNARY(n,t,u,x,a::an)
 
-             (* Generate tree of sethi-ullman numbers *)
-              fun suBinary(t1, t2) = 
-                  let val su1 = suNumbering(t1, LEFT)
-                      val su2 = suNumbering(t2, RIGHT)
-                      val n1 = label su1
-                      val n2 = label su2
-                  in  BINARY(if n1=n2 then n1+1 else Int.max(n1, n2), su1, su2)
+              (* Generate expression tree with sethi-ullman numbers *)
+              fun su(e as T.FREG _)       = LEAF(1, e, [])
+                | su(e as T.FLOAD _)      = LEAF(1, e, [])
+                | su(e as T.CVTI2F _)     = LEAF(1, e, [])
+                | su(T.CVTF2F(_, _, t))   = su t
+                | su(T.FMARK(t, a))       = annotate(su t, a)
+                | su(T.FABS(fty, t))      = suUnary(fty, I.FABS, t)
+                | su(T.FNEG(fty, t))      = suUnary(fty, I.FCHS, t)
+                | su(T.FSQRT(fty, t))     = suUnary(fty, I.FSQRT, t)
+                | su(T.FADD(fty, t1, t2)) = suComBinary(fty,FADD,FIADD,t1,t2)
+                | su(T.FMUL(fty, t1, t2)) = suComBinary(fty,FMUL,FIMUL,t1,t2)
+                | su(T.FSUB(fty, t1, t2)) = suBinary(fty,FSUB,FISUB,t1,t2)
+                | su(T.FDIV(fty, t1, t2)) = suBinary(fty,FDIV,FIDIV,t1,t2)
+                | su _ = error "su"
+         
+              (* Try to fold the the memory operand or integer conversion *) 
+              and suFold(e as T.FREG _) = (LEAF(0, e, []), false)
+                | suFold(e as T.FLOAD _) = (LEAF(0, e, []), false)
+                | suFold(e as T.CVTI2F(_,(16 | 32),_)) = (LEAF(0, e, []), true)
+                | suFold(T.CVTF2F(_, _, t)) = suFold t
+                | suFold(T.FMARK(t, a)) = 
+                  let val (t, integer) = suFold t 
+                  in  (annotate(t, a), integer) end
+                | suFold e = (su e, false)
+
+              (* Can the tree be folded into the src operand? *)
+              and foldable(T.FREG _) = true
+                | foldable(T.FLOAD _) = true
+                | foldable(T.CVTI2F(_, (16 | 32), _)) = true
+                | foldable(T.CVTF2F(_, _, t)) = foldable t
+                | foldable(T.FMARK(t, _)) = foldable t
+                | foldable _ = false
+
+              (* Form unary tree *)
+              and suUnary(fty, funary, t) = 
+                  let val t = su t
+                  in  UNARY(label t, fty, funary, t, [])
                   end
-              
-              and suUnary(t) = 
-                  let val su = suNumbering(t, LEFT)
-                  in  UNARY(label su, su)
-                  end
-          
-              and suNumbering(T.FREG _, LEFT) = LEAF 1
-                | suNumbering(T.FREG _, RIGHT) = LEAF 0
-                | suNumbering(T.FLOAD _, LEFT) = LEAF 1
-                | suNumbering(T.FLOAD _, RIGHT) = LEAF 0
-                | suNumbering(T.FADD(_, t1, t2), _) = suBinary(t1, t2)
-                | suNumbering(T.FMUL(_, t1, t2), _) = suBinary(t1, t2)
-                | suNumbering(T.FSUB(_, t1, t2), _) = suBinary(t1, t2)
-                | suNumbering(T.FDIV(_, t1, t2), _) = suBinary(t1, t2)
-                | suNumbering(T.FABS(_,t), _) = suUnary(t)
-                | suNumbering(T.FNEG(_,t), _) = suUnary(t)
-                | suNumbering(T.CVTI2F _, _) = UNARY(1, LEAF 0)
-                | suNumbering(T.CVTF2F(_,_,T.FLOAD _), _) = UNARY(1, LEAF 0)
-                | suNumbering(T.CVTF2F(_,_,t), _) = suUnary t
-                | suNumbering(T.FMARK(e,a),x) = suNumbering(e,x)
-                | suNumbering _ = error "suNumbering"
-          
-              fun leafEA(T.FREG(fty, f)) = (fty, I.FDirect f)
-                | leafEA(T.FLOAD(fty, ea, mem)) = (fty, address(ea, mem))
-                | leafEA(T.CVTF2F(_, _, T.FLOAD(fty, ea, mem))) = 
-                      (fty, address(ea, mem))
-                | leafEA _ = error "leafEA"
-          
-              fun cvti2d(t,an) =   
-              let val opnd = operand t
-                  fun doMemOpnd () =
-                      (emit(I.MOVE{mvOp=I.MOVL, src=opnd, dst=tempMem});
-                       mark(I.FILD tempMem,an))
-              in  case opnd of 
-                    I.Direct _ => doMemOpnd()
-                  | I.Immed _ => doMemOpnd()
-                  | _ => mark(I.FILD opnd, an)
-              end
-          
-              (* traverse expression and su-number tree *)
-              fun gencode(_, LEAF 0, an) = ()
-                | gencode(T.FMARK(e,a), x, an) = gencode(e, x, a::an)
-                | gencode(f, LEAF 1, an) = mark(fld(leafEA f), an)
-                | gencode(t, BINARY(_, su1, LEAF 0), an) = 
-                  let (* optimize the common case when both operands 
-                       * are equal *)
-                      fun sameEA(T.FREG(t1, f1), T.FREG(t2, f2)) = 
-                            t1 = t2 andalso f1 = f2 
-                        | sameEA _ = false
 
-                      fun doit(oper32, oper64, t1, t2) = 
-                      let val _ = gencode(t1, su1, [])
-                          val (fty, src) = leafEA t2
-                      in  if sameEA(t1, t2) then 
-                             mark(I.FBINARY{binOp=oper64, src=ST, dst=ST}, an)
+              (* Form binary tree *)
+              and suBinary(fty, binop, ibinop, t1, t2) =
+                  let val t1 = su t1
+                      val (t2, integer) = suFold t2
+                      val n1 = label t1
+                      val n2 = label t2
+                      val n  = if n1=n2 then n1+1 else Int.max(n1,n2)
+                      val myOp = if integer then ibinop else binop
+                  in  BINARY(n, fty, myOp, t1, t2, []) 
+                  end
+
+              (* Try to fold in the operand if possible. 
+               * This only applies to commutative operations.
+               *)
+              and suComBinary(fty, binop, ibinop, t1, t2) =
+                  let val (t1, t2) = if foldable t2 then (t1, t2) else (t2, t1)
+                  in  suBinary(fty, binop, ibinop, t1, t2) end
+
+              and sameTree(LEAF(_, T.FREG(t1,f1), []), 
+                           LEAF(_, T.FREG(t2,f2), [])) = t1=t2 andalso f1=f2
+                | sameTree _ = false
+
+              (* Traverse tree and generate code *)
+              fun gencode(LEAF(_, t, an)) = mark(fxld(leafEA t), an)
+                | gencode(BINARY(_, _, binop, x, t2 as LEAF(0, y, a1), a2)) = 
+                  let val _          = gencode x
+                      val (_, fty, src) = leafEA y
+                      fun gen(code) = mark(code, a1 @ a2)
+                      fun binary(oper32, oper64) =
+                          if sameTree(x, t2) then 
+                             gen(I.FBINARY{binOp=oper64, src=ST, dst=ST})
                           else
                              let val oper = 
-                                     if isMemOpnd src then
-                                         case fty of
-                                           32 => oper32
-                                         | 64 => oper64
-                                         | _  => error "gencode: binary"  
-                                     else oper64
-                             in mark(I.FBINARY{binOp=oper, src=src, dst=ST}, an)
-                             end
-                      end 
-                  in
-                    case t of 
-                       T.FADD(_, t1, t2) => doit(I.FADDS,I.FADDL,t1,t2)
-                     | T.FMUL(_, t1, t2) => doit(I.FMULS,I.FMULL,t1,t2)
-                     | T.FSUB(_, t1, t2) => doit(I.FSUBS,I.FSUBL,t1,t2)
-                     | T.FDIV(_, t1, t2) => doit(I.FDIVS,I.FDIVL,t1,t2)
+                                   if isMemOpnd src then
+                                      case fty of
+                                        32 => oper32
+                                      | 64 => oper64
+                                      | _  => error "gencode: BINARY"
+                                   else oper64
+                             in gen(I.FBINARY{binOp=oper, src=src, dst=ST}) end
+                      fun ibinary(oper16, oper32) =
+                          let val oper = case fty of
+                                           16 => oper16 
+                                         | 32 => oper32 
+                                         | _  => error "gencode: IBINARY"
+                          in  gen(I.FIBINARY{binOp=oper, src=src}) end
+                  in  case binop of
+                        FADD => binary(I.FADDS, I.FADDL) 
+                      | FSUB => binary(I.FDIVS, I.FSUBL) 
+                      | FMUL => binary(I.FMULS, I.FMULL) 
+                      | FDIV => binary(I.FDIVS, I.FDIVL) 
+                      | FIADD => ibinary(I.FIADDS, I.FIADDL) 
+                      | FISUB => ibinary(I.FIDIVS, I.FISUBL) 
+                      | FIMUL => ibinary(I.FIMULS, I.FIMULL) 
+                      | FIDIV => ibinary(I.FIDIVS, I.FIDIVL) 
+                  end  
+                | gencode(BINARY(_, fty, binop, t1, t2, an)) = 
+                  let fun doit(t1, t2, oper, operP, operRP) = 
+                      let (* oper[P] =>  ST(1) := ST oper ST(1); [pop] 
+                           * operR[P] => ST(1) := ST(1) oper ST; [pop]
+                           *)
+                           val n1 = label t1
+                           val n2 = label t2
+                      in if n1 < n2 andalso n1 <= 7 then 
+                           (gencode t2;
+                            gencode t1;
+                            mark(I.FBINARY{binOp=operP, src=ST, dst=ST1}, an))
+                         else if n2 <= n1 andalso n2 <= 7 then
+                           (gencode t1;
+                            gencode t2;
+                            mark(I.FBINARY{binOp=operRP, src=ST, dst=ST1}, an))
+                         else 
+                         let (* both labels > 7 *)
+                             val fs = I.FDirect(newFreg())
+                         in  gencode t2;
+                             emit(fstp(fty, fs));
+                             gencode t1;
+                             mark(I.FBINARY{binOp=oper, src=fs, dst=ST}, an)
+                         end
+                     end
+                  in case binop of 
+                       FADD => doit(t1,t2,I.FADDL,I.FADDP,I.FADDP)
+                     | FMUL => doit(t1,t2,I.FMULL,I.FMULP,I.FMULP)
+                     | FSUB => doit(t1,t2,I.FSUBL,I.FSUBP,I.FSUBRP)
+                     | FDIV => doit(t1,t2,I.FDIVL,I.FDIVP,I.FDIVRP)
                      | _ => error "gencode.BINARY"
                   end
-                | gencode(fexp, BINARY(fty, su1, su2), an) = 
-                  let fun doit(t1, t2, oper, operP, operRP) = let
-                     (* oper[P] =>  ST(1) := ST oper ST(1); [pop] 
-                      * operR[P] => ST(1) := ST(1) oper ST; [pop]
-                      *)
-                      val n1 = label su1
-                      val n2 = label su2
-                    in
-                      if n1 < n2 andalso n1 <= 7 then 
-                        (gencode(t2, su2, []); 
-                         gencode(t1, su1, []); 
-                         mark(I.FBINARY{binOp=operP, src=ST, dst=ST1}, an))
-                      else if n2 <= n1 andalso n2 <= 7 then
-                        (gencode(t1, su1, []); 
-                         gencode(t2, su2, []); 
-                         mark(I.FBINARY{binOp=operRP, src=ST, dst=ST1}, an))
-                      else let (* both labels > 7 *)
-                          val fs = I.FDirect(newFreg())
-                        in
-                          gencode (t2, su2, []);
-                          emit(fstp(fty, fs));
-                          gencode (t1, su1, []);
-                          mark(I.FBINARY{binOp=oper, src=fs, dst=ST}, an)
-                        end
-                    end
-                  in
-                    case fexp
-                    of T.FADD(_, t1, t2) => doit(t1,t2,I.FADDL,I.FADDP,I.FADDP)
-                     | T.FMUL(_, t1, t2) => doit(t1,t2,I.FMULL,I.FMULP,I.FMULP)
-                     | T.FSUB(_, t1, t2) => doit(t1,t2,I.FSUBL,I.FSUBP,I.FSUBRP)
-                     | T.FDIV(_, t1, t2) => doit(t1,t2,I.FDIVL,I.FDIVP,I.FDIVRP)
-                     | _ => error "gencode.BINARY"
+                | gencode(UNARY(_, _, unaryOp, su, an)) = 
+                   (gencode(su); mark(I.FUNARY(unaryOp),an))
+
+              (* Generate code for a leaf.
+               * Returns the type and an effective address
+               *) 
+              and leafEA(T.FREG(fty, f)) = (REAL, fty, I.FDirect f)
+                | leafEA(T.FLOAD(fty, ea, mem)) = (REAL, fty, address(ea, mem))
+                | leafEA(T.CVTI2F(_, 32, t)) = int2real(32, I.MOVL, t)
+                | leafEA(T.CVTI2F(_, 16, t)) = int2real(16, I.MOVSWL, t)
+                | leafEA(T.CVTI2F(_, 8, t))  = int2real(8, I.MOVSBL, t)
+                | leafEA _ = error "leafEA"
+
+              (* Move integer t of size ty into a memory location *)
+              and int2real(ty, mov, t) = 
+                  let val opnd = operand t
+                  in  if isMemOpnd opnd andalso (ty = 16 orelse ty = 32)
+                      then (INTEGER, ty, opnd)
+                      else (emit(I.MOVE{mvOp=mov, src=opnd, dst=tempMem});
+                            (INTEGER, 32, tempMem))
                   end
-                | gencode(fexp, UNARY(_, LEAF 0), an) = 
-                  (case fexp
-                    of T.FABS(fty, t) => 
-                         (emit(fld(leafEA t)); mark(I.FUNARY(I.FABS),an))
-                     | T.FNEG(fty, t) => 
-                         (emit(fld(leafEA t)); mark(I.FUNARY(I.FCHS),an))
-                     | T.CVTI2F(_,_,t) => cvti2d(t,an) (* XXX *)
-                     | _ => error "gencode.UNARY"
-                   (*esac*))
-                | gencode(fexp, UNARY(_, su), an) = 
-                  let fun doit(oper, t) = 
-                       (gencode(t, su, []); mark(I.FUNARY(oper),an))
-                  in case fexp
-                     of T.FABS(_, t) => doit(I.FABS, t)
-                      | T.FNEG(_, t) => doit(I.FCHS, t)
-                      | T.CVTF2F(_,_,t) => gencode(t, su, an)
-                      | T.CVTI2F _ => error "gencode:UNARY:cvti2f"
-                      | _ => error "gencode.UNARY"
-                  end
-                | gencode _ = error "gencode"
-            
-              val labels = suNumbering(fexp, LEFT)
-          in  gencode(fexp, labels, an)
+          in  gencode(su fexp)
           end (*reduceFexp*)
  
           (* generate code for a statement *)

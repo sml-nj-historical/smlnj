@@ -53,15 +53,17 @@ struct
     Word8Vector.concat(map (fn I => emitInstr(I, regmap)) instrs)
 
   and emitInstr(instr, regmap) = let
+    val error = 
+        fn msg =>
+           let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
+           in  emit regmap instr; error msg end
+
 (*    val rNum = Intmap.map regmap *)
     fun rNum r = let
       val r' = regmap r
     in if r' >=0 andalso r' <= 7 then r' 
-       else  let val AsmEmitter.S.STREAM{emit,...} = AsmEmitter.makeStream []
-             in  emit regmap instr;
-   	         error ("rNum: bad register " ^ Int.toString r ^ " --> " ^
-		        Int.toString r')
-             end
+       else error ("rNum: bad register " ^ Int.toString r ^ " --> " ^
+	            Int.toString r')
     end 
     fun fNum r = if r < 64 then r else regmap r
 
@@ -129,7 +131,7 @@ struct
            | Bits32 => indexed(2, eLong)
           (*esac*)
 	end
-      | eImmedExt(opc, I.FDirect f) = error "eImmedExt: FDirect"
+      | eImmedExt(opc, opnd as I.FDirect f) = eImmedExt(opc, memReg opnd)
       | eImmedExt(_, I.Immed _) = error "eImmedExt: Immed"
       | eImmedExt(_, I.ImmedLabel _) = error "eImmedExt: ImmedLabel"
       | eImmedExt(_, I.Relative _) = error "eImmedExt: Relative"
@@ -396,10 +398,24 @@ struct
 	 | I.FSUBRL => eBytes[0wxdc, 0wxe9]
        (*esac*))
      | I.FBINARY{binOp, src, dst=I.ST 32} => let
-	 val code = 
-	   (case binOp
-	     of I.FADDL => 0 | I.FMULL => 1 | I.FSUBL => 4 | I.FDIVL => 6
-	      | I.FSUBRL => 5 | I.FDIVRL => 7
+	 val (opc, code) = 
+	   (case binOp of 
+                I.FADDL  => (0wxdc, 0) 
+              | I.FMULL  => (0wxdc, 1) 
+              | I.FCOML  => (0wxdc, 2) 
+              | I.FCOMPL => (0wxdc, 3) 
+              | I.FSUBL  => (0wxdc, 4) 
+	      | I.FSUBRL => (0wxdc, 5) 
+              | I.FDIVL  => (0wxdc, 6)
+              | I.FDIVRL => (0wxdc, 7)
+              | I.FADDS  => (0wxd8, 0) 
+              | I.FMULS  => (0wxd8, 1) 
+              | I.FCOMS  => (0wxd8, 2) 
+              | I.FCOMPS => (0wxd8, 3) 
+              | I.FSUBS  => (0wxd8, 4) 
+	      | I.FSUBRS => (0wxd8, 5) 
+              | I.FDIVS  => (0wxd8, 6)
+              | I.FDIVRS => (0wxd8, 7)
 	      | _ =>  error "FBINARY:pop:dst=%st"
            (*esac*))
 	 val src' = 	   
@@ -408,19 +424,41 @@ struct
              | I.ST f => I.Direct(f-fpoffset)
 	     | mem => mem
 	    (*esac*))
-       in eBytes(0wxdc :: eImmedExt(code, src'))
+       in eBytes(opc :: eImmedExt(code, src'))
        end
-     | I.FBINARY _ => error "FBINARY"
-
+     | I.FIBINARY{binOp, src} => 
+       let val (opc, code) =
+             case binOp of
+               I.FIADDL  => (0wxda, 0)
+             | I.FIMULL  => (0wxda, 1)
+             | I.FICOML  => (0wxda, 2)
+             | I.FICOMPL => (0wxda, 3)
+             | I.FISUBL  => (0wxda, 4)
+             | I.FISUBRL => (0wxda, 5)
+             | I.FIDIVL  => (0wxda, 6)
+             | I.FIDIVRL => (0wxda, 7)
+             | I.FIADDS  => (0wxde, 0)
+             | I.FIMULS  => (0wxde, 1)
+             | I.FICOMS  => (0wxde, 2)
+             | I.FICOMPS => (0wxde, 3)
+             | I.FISUBS  => (0wxde, 4)
+             | I.FISUBRS => (0wxde, 5)
+             | I.FIDIVS  => (0wxde, 6)
+             | I.FIDIVRS => (0wxde, 7)
+       in  eBytes(opc :: eImmedExt(code, src)) end
      | I.FUNARY unOp =>
         eBytes[0wxd9, case unOp of I.FABS => 0wxe1 | I.FCHS => 0wxe0]
      | I.FXCH{opnd=33} => eBytes[0wxd9, 0wxc9]
      | I.FUCOMPP => eBytes[0wxda, 0wxe9]
      | I.FSTPL(f as I.FDirect _) => emitInstr(I.FSTPL(memReg f), regmap)
      | I.FSTPL opnd => eBytes(0wxdd :: eImmedExt(3, opnd))
+     | I.FLD1 => eBytes[0wxd9,0wxe8]
+     | I.FLDZ => eBytes[0wxd9,0wxee]
      | I.FLDL(f as I.FDirect _) => emitInstr(I.FLDL(memReg f), regmap)
      | I.FLDL opnd => eBytes(0wxdd :: eImmedExt(0, opnd))
-     | I.FILD opnd => eBytes(0wxdb :: eImmedExt(0, opnd))
+     | I.FILD opnd => eBytes(0wxdf :: eImmedExt(0, opnd))
+     | I.FILDL opnd => eBytes(0wxdb :: eImmedExt(0, opnd))
+     | I.FILDLL opnd => eBytes(0wxdf :: eImmedExt(5, opnd))
      | I.FNSTSW => eBytes[0wxdf, 0wxe0]
 
      (* misc *)

@@ -91,33 +91,42 @@ sig
    datatype fbinOp =
      FADDP
    | FADDS
-   | FIADDS
    | FMULP
    | FMULS
-   | FIMULS
+   | FCOMS
+   | FCOMPS
    | FSUBP
    | FSUBS
-   | FISUBS
    | FSUBRP
    | FSUBRS
-   | FISUBRS
    | FDIVP
    | FDIVS
-   | FIDIVS
    | FDIVRP
    | FDIVRS
-   | FIDIVRS
    | FADDL
-   | FIADDL
    | FMULL
-   | FIMULL
+   | FCOML
+   | FCOMPL
    | FSUBL
-   | FISUBL
    | FSUBRL
-   | FISUBRL
    | FDIVL
-   | FIDIVL
    | FDIVRL
+   datatype fibinOp =
+     FIADDS
+   | FIMULS
+   | FICOMS
+   | FICOMPS
+   | FISUBS
+   | FISUBRS
+   | FIDIVS
+   | FIDIVRS
+   | FIADDL
+   | FIMULL
+   | FICOML
+   | FICOMPL
+   | FISUBL
+   | FISUBRL
+   | FIDIVL
    | FIDIVRL
    datatype funOp =
      FABS
@@ -167,18 +176,27 @@ sig
    | COPY of {dst:int list, src:int list, tmp:operand option}
    | FCOPY of {dst:int list, src:int list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
+   | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
    | FUCOMPP
-   | FCOM
    | FCOMPP
    | FXCH of {opnd:int}
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand
+   | FLD1
+   | FLDL2E
+   | FLDL2T
+   | FLDLG2
+   | FLDLN2
+   | FLDPI
+   | FLDZ
    | FLDL of operand
    | FLDS of operand
    | FLDT of operand
    | FILD of operand
+   | FILDL of operand
+   | FILDLL of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}
    | SAHF
@@ -273,33 +291,42 @@ struct
    datatype fbinOp =
      FADDP
    | FADDS
-   | FIADDS
    | FMULP
    | FMULS
-   | FIMULS
+   | FCOMS
+   | FCOMPS
    | FSUBP
    | FSUBS
-   | FISUBS
    | FSUBRP
    | FSUBRS
-   | FISUBRS
    | FDIVP
    | FDIVS
-   | FIDIVS
    | FDIVRP
    | FDIVRS
-   | FIDIVRS
    | FADDL
-   | FIADDL
    | FMULL
-   | FIMULL
+   | FCOML
+   | FCOMPL
    | FSUBL
-   | FISUBL
    | FSUBRL
-   | FISUBRL
    | FDIVL
-   | FIDIVL
    | FDIVRL
+   datatype fibinOp =
+     FIADDS
+   | FIMULS
+   | FICOMS
+   | FICOMPS
+   | FISUBS
+   | FISUBRS
+   | FIDIVS
+   | FIDIVRS
+   | FIADDL
+   | FIMULL
+   | FICOML
+   | FICOMPL
+   | FISUBL
+   | FISUBRL
+   | FIDIVL
    | FIDIVRL
    datatype funOp =
      FABS
@@ -349,18 +376,27 @@ struct
    | COPY of {dst:int list, src:int list, tmp:operand option}
    | FCOPY of {dst:int list, src:int list, tmp:operand option}
    | FBINARY of {binOp:fbinOp, src:operand, dst:operand}
+   | FIBINARY of {binOp:fibinOp, src:operand}
    | FUNARY of funOp
    | FUCOMPP
-   | FCOM
    | FCOMPP
    | FXCH of {opnd:int}
    | FSTPL of operand
    | FSTPS of operand
    | FSTPT of operand
+   | FLD1
+   | FLDL2E
+   | FLDL2T
+   | FLDLG2
+   | FLDLN2
+   | FLDPI
+   | FLDZ
    | FLDL of operand
    | FLDS of operand
    | FLDT of operand
    | FILD of operand
+   | FILDL of operand
+   | FILDLL of operand
    | FNSTSW
    | FENV of {fenvOp:fenvOp, opnd:operand}
    | SAHF

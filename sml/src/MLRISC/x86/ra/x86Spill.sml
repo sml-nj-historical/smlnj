@@ -312,6 +312,8 @@ functor X86Spill(structure Instr: X86INSTR
      | I.PUSHB arg => reloadPush(I.PUSHB, arg, an)
      | I.COPY _ => error "reload:COPY"
      | I.FILD opnd => reloadReal(I.FILD, opnd, an) 
+     | I.FILDL opnd => reloadReal(I.FILDL, opnd, an) 
+     | I.FILDLL opnd => reloadReal(I.FILDLL, opnd, an) 
      | I.FLDT opnd => reloadReal(I.FLDT, opnd, an)
      | I.FLDL opnd => reloadReal(I.FLDL, opnd, an)
      | I.FLDS opnd => reloadReal(I.FLDS, opnd, an)
@@ -323,6 +325,8 @@ functor X86Spill(structure Instr: X86INSTR
      | I.FBINARY{binOp, src, dst} => 
 	withTmp'(fn tmpR => 
 	         I.FBINARY{binOp=binOp, src=operand(tmpR, src), dst=dst}, an)
+     | I.FIBINARY{binOp, src} => 
+	withTmp'(fn tmpR => I.FIBINARY{binOp=binOp, src=operand(tmpR, src)}, an)
      | I.ANNOTATION{i,a} => reloadIt(i, a::an)
      | _ => error "reload"
   in reloadIt(instr, [])

@@ -135,11 +135,10 @@ struct
           val r = (if (r <= 63)
                  then (r - 32)
                  else r)
-       in (fn (f, _) => (if (f = 0)
-                 then "%st"
-                 else (if (f < 8)
-                    then (("%st(" ^ (Int.toString f)) ^ ")")
-                    else ("%f" ^ (Int.toString f))))
+       in (fn (0, _) => "%st"
+            | (f, _) => (if (f < 8)
+                 then (("%st(" ^ (Int.toString f)) ^ ")")
+                 else ("%f" ^ (Int.toString f)))
           ) (r, ty)
        end
 
