@@ -24,6 +24,7 @@ structure RepTypes =
 	done_comm  : bool ref,	(* set this whenever this thread does some *)
 				(* concurrency operation. *)
 	exnHandler : (exn -> unit) ref,	(* root-level exception handler hook *)
+	props	   : exn list ref, (* holds thread-local properties *)
 	dead       : cvar	(* the cvar that becomes set when the thread *)
 				(* dies *)
       }

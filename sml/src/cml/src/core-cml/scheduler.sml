@@ -130,7 +130,9 @@ structure Scheduler : sig
    *)
     val dummyTid = R.TID{
 	    id = ~1, alert = ref false, done_comm = ref false,
-	    exnHandler = ref(fn _ => ()), dead = R.CVAR(ref(R.CVAR_unset[]))
+	    exnHandler = ref(fn _ => ()),
+	    props = ref[],
+	    dead = R.CVAR(ref(R.CVAR_unset[]))
 	  }
   (* the error thread.  This thread is used to trap attempts to run CML
    * without proper initialization (i.e., via RunCML).  This thread is
@@ -138,7 +140,9 @@ structure Scheduler : sig
    *)
     val errorTid = R.TID{
             id = ~2, alert = ref false, done_comm = ref false,
-            exnHandler = ref(fn _ => ()), dead = R.CVAR(ref(R.CVAR_unset[]))
+            exnHandler = ref(fn _ => ()),
+	    props = ref[],
+	    dead = R.CVAR(ref(R.CVAR_unset[]))
           }
     val errorCont : unit cont = SMLofNJ.Cont.isolate (fn _ => (
 	    Debug.sayDebug "**** Use RunCML.doit to run CML ****\n";

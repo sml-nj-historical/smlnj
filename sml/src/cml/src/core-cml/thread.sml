@@ -40,6 +40,7 @@ structure Thread : sig
 		alert = ref false,
 		done_comm = ref false,
 		exnHandler = ref(! defaultExnHandler),
+		props = ref[],
 		dead = cvar()
 	      }
 	  end
@@ -92,10 +93,84 @@ structure Thread : sig
 
     val getTid = S.getCurThread
 
-    fun exit () = notifyAndDispatch(getTid())
+    fun exit () = let
+	  val (tid as TID{props, ...}) = getTid()
+	  in
+	    props := [];
+	    notifyAndDispatch tid
+	  end
 
     fun yield () = SMLofNJ.Cont.callcc (fn k => (
 	  S.atomicBegin();
 	  S.atomicYield k))
+
+  (* thread-local data *)
+    local
+      fun mkProp () = let
+	    exception E of 'a 
+	    fun cons (a, l) = E a :: l 
+	    fun peek [] = NONE
+	      | peek (E a :: _) = SOME a
+	      | peek (_ :: l) = peek l
+	    fun delete [] = []
+	      | delete (E a :: r) = r
+	      | delete (x :: r) = x :: delete r
+	    in
+	      { cons = cons, peek = peek, delete = delete }
+	    end
+      fun mkFlag () = let
+	    exception E
+	    fun peek [] = false
+	      | peek (E :: _) = true
+	      | peek (_ :: l) = peek l
+	    fun set (l, flg) = let
+		  fun set ([], _) = if flg then E::l else l
+		    | set (E::r, xs) = if flg then l else List.revAppend(xs, r)
+		    | set (x::r, xs) = set (r, x::xs)
+		  in
+		    set (l, [])
+		  end
+	    in
+	      { set = set, peek = peek }
+	    end
+      fun getProps () = let val TID{props, ...} = getTid() in props end
+    in
+    fun newThreadProp (init : unit -> 'b) = let
+	  val {peek, cons, delete} = mkProp() 
+	  fun peekFn () = peek(!(getProps()))
+	  fun getF () = let
+		val h = getProps()
+		in
+		  case peek(!h)
+		   of NONE => let val b = init() in h := cons(b, !h); b end
+		    | (SOME b) => b
+		  (* end case *)
+		end
+	  fun clrF () = let
+		val h = getProps()
+		in
+		  h := delete(!h)
+		end
+	  fun setFn x = let
+		val h = getProps()
+		in
+		  h := cons(x, delete(!h))
+		end
+	  in
+	    {peekFn = peekFn, getFn = getF, clrFn = clrF, setFn = setFn}
+	  end
+
+    fun newThreadFlag () = let
+	  val {peek, set} = mkFlag() 
+	  fun getF ()= peek(!(getProps()))
+	  fun setF flg = let
+		val h = getProps()
+		in
+		  h := set(!h, flg)
+		end
+	  in
+	    {getFn = getF, setFn = setF}
+	  end
+    end (* local *)
 
   end;

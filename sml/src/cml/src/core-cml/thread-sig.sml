@@ -26,5 +26,19 @@ signature THREAD =
 
     val yield : unit -> unit	(* mostly for benchmarking *)
 
+  (* thread-local data *)
+    val newThreadProp : (unit -> 'a) -> {
+	    clrFn : unit -> unit,	(* clear's current thread's property *)
+	    getFn : unit -> 'a,		(* get current thread's property; if *)
+					(* the property is not defined, then *)
+					(* it sets it using the initialization *)
+					(* function. *)
+	    peekFn : unit -> 'a option,	(* return the property's value, if any *)
+	    setFn : 'a -> unit		(* set the property's value for the *)
+					(* current thread. *)
+	  }
+
+    val newThreadFlag : unit -> {getFn : unit -> bool, setFn : bool -> unit}
+
   end;
 
